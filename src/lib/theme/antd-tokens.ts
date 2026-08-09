@@ -32,6 +32,12 @@
  * untuk isian pekat, ikon berlatar, dan `Progress` — di sana ambangnya 3:1
  * non-teks. Yang diganti hanya perannya sebagai warna teks.
  *
+ * **Koreksi kedua (issue #219): "isian pekat" pun punya satu pengecualian.**
+ * Tombol `danger` adalah isian yang MEMIKUL TEKS 14px di atasnya, jadi di sana
+ * ambangnya 4,5:1 dan `colorError` bawaan gagal di kedua tema (3,27 / 4,24).
+ * Penggantinya dipersempit ke `components.Button` di bagian
+ * `dangerButtonTokens` di bawah; `colorError` global tetap utuh.
+ *
  * **Koreksi (issue #187): `Tag` dan `Badge` dulu ikut disebut di kalimat itu,
  * dan itu keliru.** Keduanya bukan isian — keduanya TEKS berlatar tipis, dan
  * teksnya `fontSizeSM` = 12px. Diukur pada `Tag` yang benar-benar terpasang:
@@ -323,6 +329,109 @@ export const PRIMARY_BUTTON_DARK: PrimaryButtonTokens = {
 
 export function primaryButtonTokens(resolved: ResolvedTheme): PrimaryButtonTokens {
   return resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Isian tombol DESTRUKTIF (issue #219)                                       */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Isian tombol `danger` — token KOMPONEN, lingkupnya `Button` saja.
+ *
+ * Sisa terakhir #187: label putih di atas `colorError` bawaan GAGAL 4,5:1 di
+ * KEDUA tema — terang `#ff4d4f` = 3,27:1, gelap `#dc4446` = 4,24:1. Tombol
+ * destruktif ("Hapus", "Tolak", "Buka kembali periode") adalah tempat terakhir
+ * yang boleh dibiarkan ambigu, jadi kegagalan ini bukan yang paling besar
+ * angkanya tapi yang paling mahal akibatnya.
+ *
+ * Seperti `colorPrimary`, yang dipersempit hanya lingkupnya: `colorError`
+ * GLOBAL tetap bawaan AntD apa adanya — ia ikon `Alert`, garis `Form.Item`
+ * bergalat, isian `Progress`, dan di sana ambangnya memang 3:1 non-teks.
+ * (Perannya sebagai TEKS sudah punya jawabannya sendiri sejak #186/#187:
+ * `colorMoneyNegative` untuk angka, `Tag.colorError` untuk label status.)
+ *
+ * ── Dua syarat yang tarik-menarik ─────────────────────────────────────────
+ * Tombol berisian harus lolos DUA ambang sekaligus, dan menaikkan yang satu
+ * menurunkan yang lain:
+ *
+ *  1. **label putih di atas isian** ≥ 4,5:1 (teks 14px, WCAG 1.4.3)
+ *  2. **isian di atas latar halaman** ≥ 3:1 (grafis non-teks, WCAG 1.4.11) —
+ *     supaya tombolnya sendiri terbaca sebagai tombol
+ *
+ * Di tema TERANG tangga merah AntD (`generate('#ff4d4f')`) punya anak tangga
+ * yang lolos keduanya dengan lapang; di tema GELAP
+ * (`generate('#ff4d4f', { theme: 'dark' })`) **tidak ada satu pun**:
+ *
+ *   red-6 gelap `#dc4446` : label 4,24 GAGAL · isian 3,89 lolos
+ *   red-5 gelap `#ad393a` : label 6,13 lolos · isian **2,69 GAGAL**
+ *
+ * ── Keputusan pemilik: utamakan LABEL ─────────────────────────────────────
+ * Dipilih `red-5` di tema gelap; isian yang lebih melebur (2,69) diterima
+ * dengan sadar. **Alasannya bukan aritmetika.** MASTER.md mewajibkan aksi
+ * destruktif memakai merah **DAN** konfirmasi, dan 22 berkas memang memakai
+ * `ConfirmDialog`. Jadi risiko "tidak melihat ada tombol destruktif di sana"
+ * sudah ditutup oleh dialognya; risiko "salah membaca tombolnya" tidak ditutup
+ * apa pun. Membayar keterbacaan label demi bidang merah yang lebih tegas
+ * berarti membeli perlindungan yang sudah kita punya.
+ *
+ * ── Keadaan hover & aktif: MENGGELAP di kedua tema ────────────────────────
+ * Sama seperti tombol primer #187, dan karena alasan yang sama: menerangkan
+ * isian di tema gelap (red-6 `#dc4446`) menjatuhkan labelnya ke 4,24. Ambang
+ * 3:1 "isian vs latar" karena itu diberlakukan pada keadaan DIAM saja — saat
+ * hover, kursor pengguna sendiri sudah menandai letak tombolnya.
+ *
+ * | Keadaan | TERANG    | label | isian min | GELAP     | label | isian min |
+ * |---------|-----------|-------|-----------|-----------|-------|-----------|
+ * | diam    | `#d9363e` |  4,62 | 4,24      | `#ad393a` |  6,13 | **2,69**  |
+ * | hover   | `#b32430` |  6,54 | 6,00      | `#7e2e2f` |  9,06 | 1,82      |
+ * | aktif   | `#8c1523` |  9,35 | 8,57      | `#5b2526` | 12,09 | 1,36      |
+ *
+ * Tidak ada hex baru yang lahir di sini. Keduanya keadaan DIAM adalah
+ * `colorErrorActive` bawaan AntD tema masing-masing, dan hover terang `#b32430`
+ * adalah `colorMoneyNegative` #186 — anak tangga yang sama melayani dua peran.
+ *
+ * ── Yang WAJIB ikut dicatat, karena ia bisa membalik keputusannya ─────────
+ * Kalimat "palet AntD tidak menyediakan langkah di antaranya" benar untuk
+ * tangga yang diturunkan dari BENIH `colorError`. Ia TIDAK benar untuk palet
+ * `red` resmi AntD (`presetDarkPalettes.red`, keluarga yang sama yang dipakai
+ * #208 untuk `grey`). Terukur:
+ *
+ *   preset gelap red-6 `#d32029` : label **5,24 lolos** · isian **3,15 lolos**
+ *
+ * Yaitu satu-satunya anak tangga merah yang melewati KEDUA ambang di tema
+ * gelap. Ia tidak dipakai di sini karena keputusan A diambil sebelum
+ * pengukuran ini ada, bukan karena ia kalah — dan angkanya dikunci di
+ * `tests/antd-tokens.test.ts` supaya pilihan itu tetap terbuka dan tidak
+ * hilang bersama issue-nya. Harganya, kalau suatu hari diambil: label gelap
+ * turun 6,13 -> 5,24 (tetap di atas 4,5) dan merahnya berpindah keluarga,
+ * sehingga tombol destruktif tidak lagi sewarna `colorError` bawaan.
+ */
+export interface DangerButtonTokens {
+  colorError: string;
+  colorErrorHover: string;
+  colorErrorActive: string;
+}
+
+/** red-7 / red-8 / red-9 dari tangga `colorError` AntD, tema terang. */
+export const DANGER_BUTTON_LIGHT: DangerButtonTokens = {
+  colorError: "#d9363e", // label putih 4,62:1 · isian min 4,24:1
+  colorErrorHover: "#b32430", // label 6,54:1 · isian min 6,00:1
+  colorErrorActive: "#8c1523", // label 9,35:1 · isian min 8,57:1
+};
+
+/**
+ * red-5 / red-4 / red-3 dari tangga yang sama versi gelap. Keadaan diam
+ * SENGAJA di bawah 3:1 terhadap latar (2,69) — lihat "keputusan pemilik" di
+ * atas; tema gelap di sini memang diperlakukan berbeda dari terang.
+ */
+export const DANGER_BUTTON_DARK: DangerButtonTokens = {
+  colorError: "#ad393a", // label putih 6,13:1 · isian min 2,69:1 (di bawah 3:1, disengaja)
+  colorErrorHover: "#7e2e2f", // label 9,06:1 · isian min 1,82:1
+  colorErrorActive: "#5b2526", // label 12,09:1 · isian min 1,36:1
+};
+
+export function dangerButtonTokens(resolved: ResolvedTheme): DangerButtonTokens {
+  return resolved === "dark" ? DANGER_BUTTON_DARK : DANGER_BUTTON_LIGHT;
 }
 
 /* ------------------------------------------------------------------------ */

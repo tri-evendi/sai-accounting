@@ -25,7 +25,11 @@ export async function LandingClosingCta() {
   const t = await getT();
 
   return (
-    <LandingSection center>
+    /* Nada `accent` (16%) dipakai TEPAT SEKALI di halaman ini, di sini —
+       nada terkuat kehilangan artinya kalau ia muncul dua kali. Ia masih
+       memikul tombol primer, jadi kadarnya dibatasi ambang 3:1 terhadap isian
+       tombol di tema gelap (terukur 3,11:1); lihat `landing-scale.ts`. */
+    <LandingSection center tone="accent">
       <LandingSectionIntro title={t("landing.ctaHeading")} center>
         {t("landing.ctaBody")}
       </LandingSectionIntro>

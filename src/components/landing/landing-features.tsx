@@ -22,6 +22,10 @@ import {
 
 import {
   LANDING_BODY,
+  type LandingHue,
+  landingChip,
+  landingFill,
+  landingGlyph,
   landingGrid,
 } from "@/components/landing/landing-scale";
 import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
@@ -34,20 +38,49 @@ const ICON_BOX = 40;
 export async function LandingFeatures() {
   const t = await getT();
 
-  const features = [
+  /*
+   * ══ SATU NADA PER KARTU — dan hue-nya adalah PENANDA, bukan selera ═══════
+   * Empat kartu ini menjawab empat pertanyaan yang berbeda, dan sebelum
+   * perubahan ini keempatnya kotak putih bergaris dengan kotak ikon yang sama
+   * persis: satu wilayah yang harus dibaca berurutan supaya ketahuan isinya
+   * empat hal. Nada yang berbeda per kartu membuat barisnya bisa DIPINDAI.
+   *
+   * Nada TIDAK pernah menjadi satu-satunya penanda (MASTER.md §Anti-Patterns):
+   * setiap kartu tetap punya judul, ikonnya sendiri, dan kalimat penjelas.
+   * Yang ditambahkan warna hanyalah "ini empat hal, bukan satu".
+   *
+   * Kartu ini berdiri di atas seksi POLOS, bukan di atas pita — itu syaratnya.
+   * Nada kartu dan nada pita yang sama-sama tint akan saling meniadakan di tema
+   * terang (1,03:1); aturannya karena itu satu kalimat: **warnai pitanya ATAU
+   * kartunya, tidak keduanya.**
+   */
+  const features: {
+    icon: typeof ShopOutlined;
+    hue: LandingHue;
+    title: string;
+    body: string;
+  }[] = [
     {
       icon: ShopOutlined,
+      hue: "brand",
       title: t("landing.featureCompaniesTitle"),
       body: t("landing.featureCompaniesBody"),
     },
     {
       icon: SafetyCertificateOutlined,
+      hue: "indigo",
       title: t("landing.featureRolesTitle"),
       body: t("landing.featureRolesBody"),
     },
-    { icon: FileTextOutlined, title: t("landing.featureTaxTitle"), body: t("landing.featureTaxBody") },
+    {
+      icon: FileTextOutlined,
+      hue: "cyan",
+      title: t("landing.featureTaxTitle"),
+      body: t("landing.featureTaxBody"),
+    },
     {
       icon: TranslationOutlined,
+      hue: "violet",
       title: t("landing.featureLanguageTitle"),
       body: t("landing.featureLanguageBody"),
     },
@@ -67,12 +100,16 @@ export async function LandingFeatures() {
       >
         {features.map((feature) => (
           <li key={feature.title}>
-            <Card style={{ height: "100%" }}>
+            <Card style={{ height: "100%", background: landingFill(feature.hue) }}>
               <CardContent style={{ display: "flex", gap: "var(--ant-margin)" }}>
                 {/* Ikon dekoratif: kotaknya `aria-hidden`, jadi span
                     `role="img"` bawaan ikon AntD tidak ikut dibacakan sesudah
                     judul yang sudah mengatakan hal yang sama. Ukurannya
-                    `font-size`, bukan kelas kotak (MASTER.md §Ikon). */}
+                    `font-size`, bukan kelas kotak (MASTER.md §Ikon).
+
+                    Kotaknya berisi PEKAT (28%) dan glifnya anak tangga ke-8
+                    dari hue yang sama — pasangan yang bergerak searah di kedua
+                    tema, terukur 4,51–8,27:1 (ambang ikon 3:1). */}
                 <span
                   aria-hidden="true"
                   style={{
@@ -83,8 +120,8 @@ export async function LandingFeatures() {
                     width: ICON_BOX,
                     height: ICON_BOX,
                     borderRadius: "var(--ant-border-radius-lg)",
-                    background: "var(--ant-color-primary-bg)",
-                    color: "var(--ant-color-primary)",
+                    background: landingChip(feature.hue),
+                    color: landingGlyph(feature.hue),
                     fontSize: "var(--ant-font-size-xl)",
                   }}
                 >

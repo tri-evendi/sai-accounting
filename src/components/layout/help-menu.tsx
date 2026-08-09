@@ -1,12 +1,26 @@
 "use client";
 
 /**
- * Menu Bantuan di navbar (issue #21) — pintu masuk tetap ke dua hal:
- *   • Kamus Istilah (`/glossary`), dan
+ * Menu Bantuan di navbar (issue #21) — pintu masuk tetap ke tiga hal:
+ *   • Kamus Istilah (`/glossary`),
+ *   • dokumentasi sistem — halaman yang menjelaskan MODUL yang sedang dibuka,
+ *     dan daftar isi selengkapnya (issue #300), dan
  *   • memutar ulang tur panduan halaman yang sedang dibuka.
  *
  * Tur ditawarkan hanya bila halaman ini memang punya tur (`tourForPath`), jadi
- * pengguna tidak menekan tombol yang tidak melakukan apa-apa.
+ * pengguna tidak menekan tombol yang tidak melakukan apa-apa. Butir dokumentasi
+ * mengikuti aturan yang sama: bila modul ini belum punya halaman dokumen, yang
+ * muncul adalah baris nonaktif yang mengatakannya — bukan tautan yang mendarat
+ * di daftar isi dan membuat orang menyangka ia salah menekan.
+ *
+ * ── Kenapa tautan kontekstualnya lahir DI SINI ────────────────────────────
+ * Alternatifnya menambah prop `docSlug` ke `PageHeader` dan menuliskannya di
+ * setiap halaman modul — 87 berkas, 87 kesempatan untuk lupa, dan yang terlupa
+ * tidak bersuara. Menu Bantuan sudah tahu alamat yang sedang dibuka, dan
+ * `docForPathname` memetakannya lewat tabel yang SAMA yang dipakai penjaga
+ * kelengkapan (`lib/docs.ts`). Jadi begitu sebuah halaman dokumen menyebut
+ * `navHrefs`-nya, tautannya muncul di seluruh modul itu tanpa satu berkas
+ * halaman pun disentuh.
  *
  * ── Setelah migrasi AntD (issue #193) ─────────────────────────────────────
  * Dropdown rakitan tangan (pemicu `button` mentah + panel `role="menu"` + tiga
@@ -33,10 +47,16 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Dropdown, Flex, Grid, theme } from "antd";
 import type { MenuProps } from "antd";
-import { CompassOutlined, QuestionCircleOutlined, ReadOutlined } from "@ant-design/icons";
+import {
+  BookOutlined,
+  CompassOutlined,
+  QuestionCircleOutlined,
+  ReadOutlined,
+} from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/components/ui/app-link";
 import { GLOSSARY_PATH } from "@/lib/labels";
+import { DOCS_ROOT, docForPathname, docsPath } from "@/lib/docs";
 import { tourForPath } from "@/lib/tours";
 import { replayTour } from "@/components/help/guided-tour";
 import { useT } from "@/lib/i18n/client";
@@ -59,6 +79,7 @@ export function HelpMenu() {
   const { token } = theme.useToken();
   const screens = Grid.useBreakpoint();
   const tour = tourForPath(pathname);
+  const doc = docForPathname(pathname);
   const [open, setOpen] = useState(false);
 
   const judul: React.CSSProperties = {
@@ -81,6 +102,33 @@ export function HelpMenu() {
         <Link href={GLOSSARY_PATH} style={{ display: "block", color: "inherit" }}>
           <span style={judul}>{t("helpMenu.glossaryTitle")}</span>
           <span style={penjelas}>{t("helpMenu.glossaryDescription")}</span>
+        </Link>
+      ),
+    },
+    doc
+      ? {
+          key: "doc-page",
+          icon: <BookOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
+          style: BARIS_DUA_BARIS,
+          label: (
+            <Link href={docsPath(doc.slug)} style={{ display: "block", color: "inherit" }}>
+              <span style={judul}>{t("docs.helpMenuTitle")}</span>
+              <span style={penjelas}>{doc.judul}</span>
+            </Link>
+          ),
+        }
+      : {
+          key: "doc-none",
+          disabled: true,
+          style: BARIS_DUA_BARIS,
+          label: <span style={penjelas}>{t("docs.helpMenuNone")}</span>,
+        },
+    {
+      key: "doc-index",
+      icon: <BookOutlined aria-hidden="true" style={{ fontSize: 16 }} />,
+      label: (
+        <Link href={DOCS_ROOT} style={{ display: "block", color: "inherit" }}>
+          <span style={judul}>{t("docs.helpMenuIndex")}</span>
         </Link>
       ),
     },

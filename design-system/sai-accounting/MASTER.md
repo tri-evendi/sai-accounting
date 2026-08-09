@@ -105,8 +105,15 @@ teks aplikasi ini justru berada di sisi yang KETAT:
 
 Karena baris pertama itulah anak tangga ke-6 palet AntD gagal: sebagai teks 14px
 `colorSuccess` 2,27:1 · `colorWarning` 1,90:1 · `colorError` 3,27:1. Ketiganya
-akan LOLOS kalau dipakai sebagai isian pekat berlatar putih atau sebagai ikon —
-dan di sanalah mereka memang tetap dipakai.
+akan LOLOS kalau dipakai sebagai ikon atau sebagai isian yang tidak memikul apa
+pun — dan di sanalah mereka memang tetap dipakai.
+
+⚠ **"Isian pekat" bukan izin otomatis, dan #219 menemukan batasnya:** isian yang
+MEMIKUL TEKS 14px di atasnya (tombol berisian) tetap terikat baris pertama tabel
+— label putih di atas `colorError` bawaan hanya 3,27:1 (terang) / 4,24:1 (gelap).
+Isian tombol karena itu harus lolos **dua** ambang sekaligus: label ≥ 4,5:1
+**dan** isian vs latar ≥ 3:1. Nilainya di `dangerButtonTokens` /
+`primaryButtonTokens`, lingkupnya `components.Button` saja.
 
 **Ambang ini berlaku juga DI DALAM SVG.** Recharts menyalin warna seri ke label
 irisan dan ke baris tooltip, jadi sebuah `fill` yang sah sebagai bilah 3:1
@@ -209,6 +216,8 @@ Semua angka di atas dihitung ulang setiap kali suite berjalan —
 - Aturan lama tetap berlaku di atasnya: warna **tidak pernah** penanda tunggal, dan ambang kontrasnya tidak berubah. Buktinya SSR ada di `tests/antd-css-var-ssr.test.tsx`.
 
 *Dark mode:* algoritma gelap AntD, dipilih `AntdProvider` dari cookie yang dibaca root layout, jadi blok token yang benar sudah ikut pada HTML pertama tanpa kedipan sebelum hydrate. Semantik warna dan ambang kontrasnya tidak berubah antar-tema; nilai gelapnya berdiri di sebelah nilai terangnya di `antd-tokens.ts`.
+
+> **Satu tema TIDAK diperlakukan sama, dan itu keputusan tertulis (#219).** Isian tombol destruktif di tema gelap sengaja **gagal** ambang 3:1 "isian vs latar" (2,69:1) demi menahan labelnya di 6,13:1; di tema terang keduanya lolos. Alasannya di §Aksi destruktif di bawah. Jangan "menyeragamkannya" tanpa membaca bagian itu lebih dulu.
 
 Satu pengecualian yang tersisa: pilihan **"ikut sistem"**. Preferensi OS tak terlihat dari server, jadi HTML pertamanya selalu membawa token terang; yang memperbaikinya sebelum cat pertama adalah skrip sinkron di `<head>` yang memasang kelas `.dark`, dan dua variabel di `globals.css` yang menempel pada kelas itu (latar halaman + warna teks). Sisa tokennya baru benar setelah hydrate - dicatat sebagai kekurangan yang diketahui, bukan sebagai desain.
 
@@ -451,6 +460,104 @@ Keputusannya **ya**, karena alternatifnya lebih buruk: tanpa token, satu-satunya
 
 Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(tenant)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
 
+### Permukaan KETIGA: `/platform`, dan bagaimana ia boleh berwarna tanpa menembus batas (issue #303)
+
+`/platform` bukan pendaratan dan bukan buku besar — ia panel tempat pelanggan **membeli dan mengelola langganannya**. Ketika ia diminta ikut berwarna, jawabannya bukan mengimpor `landing-scale.ts` (ditolak penjaga, dan penolakan itu benar) dan bukan menyalin resepnya ke berkas kedua (dua salinan yang akan menyimpang). Yang diangkat adalah **RESEPNYA, bukan tokennya**:
+
+- `src/lib/theme/tone-recipe.ts` — netral-permukaan. Ia tidak mendeklarasikan satu pun variabel CSS dan tidak tahu apa-apa tentang halaman mana pun; isinya hanya bentuk `color-mix(in srgb, var(--ant-<hue>-6) N%, var(--ant-color-bg-*))` + peta peran→keluarga palet. `components/landing/**` memang sudah boleh mengimpor `@/lib/**`, jadi **penjaga #245 tidak dilonggarkan sedikit pun**.
+- Setiap permukaan **MENDEKLARASIKAN nadanya sendiri**, dengan nama & lingkup `data-*` sendiri: `--sai-landing-*` di `[data-landing]`, `--sai-platform-*` di `[data-platform]`. Menyalin nama variabel satu dunia ke dunia lain tetap menghasilkan properti yang tak pernah teratasi.
+- **ANGKANYA tidak ikut jadi milik bersama.** Kadar campuran dibatasi oleh tombol dan latar yang dipikul permukaannya: pendaratan diikat isian tombol PRIMER di tema gelap (pita 10/16%, kartu 14/28%), `/platform` diikat tepi tombol GARIS di tema TERANG (kepala 16%, chip 32%). Menyalin angka antar-permukaan menghasilkan angka yang benar untuk halaman lain — rinciannya di `pages/platform.md`.
+
+Aturannya untuk permukaan berikutnya (mis. `/docs`, #300): ambil resepnya, ukur kadarnya sendiri, deklarasikan di lingkup `data-*` sendiri, dan tulis penjaganya sendiri.
+
+---
+
+## Dokumentasi `/docs`: permukaan KETIGA (issue #300)
+
+Sejak #300 ada permukaan ketiga, dan ia berdiri PERSIS di antara dua dunia di
+atas: `/docs` dibaca **tanpa sesi** — jadi ia tidak boleh memikul chrome dasbor —
+tetapi ia **tidak menjual apa pun** — jadi ia tidak boleh memikul skala
+pemasaran. Ia butuh keputusan tertulis, bukan warisan dari tetangganya, karena
+sebuah halaman panjang berkolom baca adalah bentuk yang paling mudah tergelincir
+menjadi halaman jualan tanpa satu orang pun memutuskannya.
+
+**Keputusannya: dokumentasi memakai skala APP, dipersempit — bukan skala
+pemasaran, dilonggarkan.**
+
+| Dimensi | Pendaratan `/` | **Dokumentasi `/docs`** | App internal |
+|---|---|---|---|
+| **Skala judul** | `--sai-landing-font-size-hero` ≈53px (`fontSizeHeading1 × 1,4`) | **`fontSizeHeading2` (30px)** — di BAWAH langit-langit app | langit-langit `fontSizeHeading1` (38px) |
+| **Bobot CTA** | satu ajakan diulang empat kali, primer + garis berpasangan | **NOL tombol berisi penuh**; satu tautan "masuk ke aplikasi" `secondary` | satu aksi utama, di `PageHeader.actions` |
+| **Irama antar-seksi** | `--sai-landing-rhythm` 64px → 96px | **`--ant-margin-lg` 24px** — irama app | 24px |
+| **Lebar maksimum** | kolom baca 42rem, seksi 72rem, di tengah | **kolom baca 768px** (angka telanjang, preseden `/terms` & `/privacy`) | lebar penuh area kerja |
+
+Kenapa langit-langitnya lebih RENDAH daripada app internal, bukan di antara
+keduanya: sebuah permukaan yang judulnya lebih kecil daripada judul layar kerja
+tidak akan pernah terbaca sebagai halaman jualan — bahkan oleh orang yang
+menyalin bentuk hero ke sana tanpa membaca satu komentar pun. Dan nol-CTA bukan
+pengetatan tambahan melainkan penerapan aturan yang sudah ada: §Aksi utama per
+layar menyebut "nol juga sah", dan halaman yang hanya menjelaskan memang tidak
+mengikat maupun memajukan apa pun.
+
+**Yang membuatnya mekanisme, bukan imbauan** — dan dua di antaranya sudah ada
+sebelum #300, jadi yang dikerjakan #300 adalah membuktikan cakupannya:
+
+- **Sisi pemasaran sudah tertutup tanpa satu baris pun ditambahkan.**
+  `tests/landing-boundary.test.ts` hanya mengizinkan `app/page.tsx` mengimpor
+  `components/landing/**`; berkas dokumentasi berdiri di luar `PINTU_MASUK`,
+  jadi sebuah impor ke sana MERAH (dibuktikan di PR #300, lalu dikembalikan).
+  Menyalin `var(--sai-landing-…)` pun tidak menghasilkan hero: blok itu terkurung
+  di `[data-landing]` yang tidak pernah dipasang di sini.
+- **Sisi app internal ditutup di #300** (`tests/docs.test.ts`), dan ia arah yang
+  belum dijaga siapa pun: bentuknya daftar-IZIN impor — `@/components/ui`,
+  `@/lib`, sesama berkas dokumentasi — seperti yang dipakai `components/landing`
+  di #245, dan dengan alasan yang sama persis: halaman ini dibaca tanpa sesi,
+  dan setiap impor ke app internal adalah satu jalan bagi kode
+  ber-`auth()`/ber-Prisma ikut ke permukaan publik.
+- **Langit-langit & nol-CTA dijaga sebagai teks berkas**: `--ant-font-size-heading-1`
+  tidak boleh muncul di permukaan ini, dan `variant="primary"` tidak boleh muncul
+  sama sekali.
+- **Publiknya dijaga dua kali**: `tests/authz-coverage.test.ts` mendaftarkan grup
+  rute `(docs)` sebagai grup PUBLIK — halamannya tidak boleh memanggil satu
+  penjaga pun, tidak boleh menyentuh `auth()` maupun Prisma — dan `src/proxy.ts`
+  melepaskan subpohonnya lewat `isDocsPath()`. Salah satu saja yang hilang sudah
+  cukup membuat halamannya tidak terbaca tanpa sesi, dan gejalanya bukan galat
+  melainkan halaman masuk.
+
+**Bahasa: Indonesia, dan pilihannya DITAMPILKAN.** Prosa dokumentasi bukan label:
+label menamai sesuatu yang layarnya sudah render, prosa harus DITULIS ULANG
+setiap kali mesinnya berubah. Karena itu isinya hidup di `lib/docs-content.ts`
+dalam bahasa sumber, di luar kamus — kamus repo ini menuntut ketiga bahasa terisi
+(`tsc` + `tests/i18n.test.ts` menolak nilai yang sama dengan bahasa Indonesia),
+jadi menaruh prosa di sana berarti menjanjikan tiga bahasa pada setiap perubahan
+perilaku. Yang TIDAK dilakukan: membiarkannya terbaca sebagai terjemahan yang
+kebetulan hilang. Kerangkanya tetap trilingual (`docs.*`), dan pembaca ber-`en`/
+`zh` mendapat pemberitahuan **dalam bahasanya sendiri** beserta alasannya.
+Bandingkan #278, yang memutuskan hal serupa untuk ekspor.
+
+**Peran & izin DIBANGKITKAN.** Halaman peran/izin membaca `PERMISSION_ROLES` +
+`ROLE_VALUES` saat render, jadi menambah izin di `authz.ts` mengubah halamannya
+tanpa dokumen disunting. Ia WAJIB menyebut dirinya **bawaan yang bisa ditimpa**:
+matriks efektif = bawaan + `role_permission_overrides` per tenant (#73), dan
+peran kini DATA (tabel `roles`). Permukaan publik tidak punya konteks perusahaan
+dan karena itu tidak bisa membaca keduanya — menebaknya akan melanggar aturan
+pertama `docs/MULTI-COMPANY.md` — jadi yang benar adalah menyatakan batasnya dan
+menunjuk ke `/permissions` di dalam aplikasi.
+
+**Kelengkapan dijaga, bukan diharapkan.** Setiap item `NAV_GROUPS` punya halaman
+dokumen ATAU berdiri di `NAV_TANPA_DOKUMEN` dengan alasan yang ditulis — dijaga
+DUA ARAH, jadi entri basi juga merah. Yang dijaga bukan "semuanya sudah ditulis"
+(itu tidak akan pernah benar, dan penjaga yang menuntutnya akan dilonggarkan
+sampai tak berarti) melainkan bahwa **modul baru tidak bisa lahir diam-diam tanpa
+dokumen**. Pola yang sama: `tests/print-label-dictionary.test.ts` (#298) dan
+penjaga kunci yatim (#260).
+
+**Istilah tetap milik `/glossary`.** Blok `istilah` MEMBACA `TERMS`
+(`lib/labels.ts`, #21/#1); definisi yang disalin ke dalam prosa ditolak
+penjaganya. Definisinya dirender di tempat alih-alih ditautkan karena
+`/glossary` bertenant dan menuntut sesi — sebuah tautan ke sana dari permukaan
+publik adalah tautan yang memantul ke halaman masuk.
+
 ---
 
 ## Anti-Patterns (JANGAN)
@@ -603,8 +710,64 @@ Yang **tidak** memenuhi syarat:
   bukan menjalankan.
 - **Aksi destruktif.** `variant="destructive"` tidak pernah dihitung sebagai
   aksi utama layar — ia menonjol karena bahayanya, bukan karena dimaksudkan.
-  ⚠ **Angka kontrasnya bukan urusan bagian ini: tombol `danger` gagal 4,5:1 di
-  kedua tema dan sedang dikerjakan di #219.** Jangan memutuskannya dua kali.
+  Angka kontrasnya diputuskan di #219 dan ditulis di §Aksi destruktif: warna
+  di bawah ini.
+
+### Aksi destruktif: warna — dan kenapa tema gelap SENGAJA berbeda (#219)
+
+Aturan bentuknya tidak berubah: **destruktif = merah + konfirmasi** (§Pola
+Komponen). Yang diputuskan #219 adalah merah yang mana. Isian `danger` bawaan
+AntD menjatuhkan label putihnya di bawah 4,5:1 di **kedua** tema — 3,27:1
+terang, 4,24:1 gelap — dan tombol "Hapus" adalah tempat terakhir yang boleh
+dibiarkan ambigu.
+
+Tombol berisian harus lolos dua ambang yang tarik-menarik: **label putih ≥
+4,5:1** (teks 14px) dan **isian vs latar ≥ 3:1** (grafis non-teks, supaya
+tombolnya terbaca sebagai tombol). Di tema terang tangga merah AntD punya anak
+tangga yang lolos keduanya. **Di tema gelap tidak ada satu pun** — red-6
+`#dc4446` memberi label 4,24 (gagal), red-5 `#ad393a` memberi isian 2,69
+(gagal).
+
+**Keputusan pemilik: utamakan LABEL.** Tema gelap memakai red-5 dan menerima
+isian 2,69:1. Alasannya bukan aritmetika: aksi destruktif di app ini **wajib**
+lewat `ConfirmDialog`, jadi risiko "tidak melihat ada tombol destruktif di
+sana" sudah ditutup dialognya — sedangkan risiko "salah membaca tombolnya"
+tidak ditutup apa pun. Membayar keterbacaan label demi bidang merah yang lebih
+tegas berarti membeli perlindungan yang sudah kita punya.
+
+| Keadaan | TERANG | label | isian min | GELAP | label | isian min |
+|---|---|---|---|---|---|---|
+| diam  | `#d9363e` | 4,62 | 4,24 | `#ad393a` | 6,13 | **2,69** |
+| hover | `#b32430` | 6,54 | 6,00 | `#7e2e2f` | 9,06 | 1,82 |
+| aktif | `#8c1523` | 9,35 | 8,57 | `#5b2526` | 12,09 | 1,36 |
+
+Isian **menggelap** saat disentuh di kedua tema — aturan yang sudah berlaku
+untuk tombol primer sejak #187, dan karena sebab yang sama: menerangkannya di
+tema gelap menjatuhkan labelnya. Ambang 3:1 karena itu diberlakukan pada
+keadaan **diam** saja; saat hover, kursor pengguna sendiri sudah menandai letak
+tombolnya.
+
+Tiga hal yang tidak boleh hilang dari sini:
+
+- **Ini pengecualian yang disengaja, bukan kelalaian.** Tema gelap di app ini
+  diperlakukan berbeda dari terang tepat pada satu angka. Seseorang yang
+  menemukan 2,69:1 lalu "memperbaikinya" ke red-6 sedang membatalkan keputusan
+  ini, bukan menambal bug.
+- **Prasyaratnya adalah dialognya.** Kalau sebuah tombol destruktif hidup TANPA
+  `ConfirmDialog`, alasan di atas tidak berlaku untuknya — di sana risiko
+  "tidak melihatnya" memang tidak tertutup apa pun. Tambahkan dialognya, bukan
+  warna khusus.
+- **Ada alternatif terukur yang belum diambil.** Palet `red` resmi AntD
+  (`presetDarkPalettes`, keluarga yang sama yang dipakai #208 untuk `grey`)
+  punya satu anak tangga yang melewati KEDUA ambang di tema gelap: `#d32029`,
+  label 5,24 · isian 3,15. Ia tidak dipakai karena keputusan di atas diambil
+  sebelum pengukurannya ada, dan harganya adalah label yang turun dari 6,13 ke
+  5,24 serta merah yang berpindah keluarga. Angkanya dikunci di
+  `tests/antd-tokens.test.ts` supaya pilihan itu tetap terbuka.
+
+Seluruh angka di tabel dihitung ulang dari paket `antd` yang terpasang setiap
+kali suite berjalan — `tests/antd-tokens.test.ts` → "label tombol destruktif
+(#219)".
 
 ### CTA kepala halaman vs CTA keadaan-kosong — kepala yang menang
 
@@ -900,6 +1063,8 @@ membaca hijau dan menyimpulkan aman.
 | Kepala tabel tidak berganti warna saat menempel | `tests/permission-matrix-sticky.test.tsx` |
 | Tirai/fokus/Escape overlay; `styles` Modal memakai nama bagian yang sungguh ada | `tests/ui-overlay-antd.test.tsx` |
 | Batas dunia pemasaran ↔ app internal | `tests/landing-boundary.test.ts` |
+| Nada pekat pendaratan: teks/tombol/glif/lantai "nadanya terlihat", dihitung ulang dari token terpasang + resep yang dirender | `tests/landing-colors.test.ts` |
+| Nada pekat `/platform`: kadar diikat tepi tombol garis, badan kartu tetap telanjang, dan nadanya terkurung di `[data-platform]` | `tests/platform-colors.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
 | Tak ada `<a>` yang membungkus `<button>`: jumlah sarang anchor–tombol per berkas hanya boleh MENGECIL, modul yang sudah dibersihkan tetap nol, `legacyBehavior` tidak dipakai (⚠ sarang yang dirakit antar-berkas dan alias impor baru TIDAK terlihat penjaga) | `tests/anchor-button-nesting.test.ts` |
 | `<ButtonLink>` benar-benar menavigasi di sisi klien: satu `<a class="ant-btn">`, `href` ter-scope tenant, `router.push` pada klik biasa, dan Ctrl/klik-tengah/`download`/alamat luar tetap milik peramban | `tests/button-link-navigation.test.tsx` |
@@ -910,6 +1075,9 @@ membaca hijau dan menyimpulkan aman.
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
 | Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
 | Keluarga isian pilihan: hanya `SelectField` yang ikut `FormData`; `name` pada kedua isian berpencarian ditolak `tsc` bahkan lewat `{...field}` | `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipenya lewat `@ts-expect-error` yang dinilai `bun run typecheck`) |
+| Tidak ada kunci kamus yang menganggur: setiap kunci di `id/en/zh.json` punya rujukan di `src/` — literal, rantai properti berakar kamus, atau bentuk dinamis yang **terdaftar** (daftarnya dijaga dua arah: entri basi merah, bentuk dinamis baru yang belum diputuskan juga merah) (⚠ subpohon yang diambil utuh, dan kunci yang hanya dirujuk dari `tests/`, TIDAK terlihat penjaga) | `tests/i18n-orphan-keys.test.ts` |
+| Permukaan dokumentasi tetap permukaan KETIGA: tidak mengimpor chrome app internal, tidak melampaui `fontSizeHeading2`, nol tombol berisi penuh; setiap modul navigasi punya halaman dokumen atau alasan tertulis (dijaga dua arah); definisi istilah tidak disalin; `isDocsPath` benar-benar dipakai proxy | `tests/docs.test.ts` |
+| `/docs` terbaca TANPA sesi: grup rute `(docs)` terdaftar sebagai grup publik, halamannya tidak memanggil penjaga apa pun dan tidak menyentuh `auth()`/Prisma | `tests/authz-coverage.test.ts` → "permukaan PUBLIK: dokumentasi sistem (#300)" |
 
 **Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
 yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah

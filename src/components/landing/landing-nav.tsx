@@ -46,8 +46,15 @@ export async function LandingNav() {
         borderBottom: "1px solid var(--ant-color-border-secondary)",
         /* Nyaris pekat, bukan pekat: isi yang lewat di baliknya terbaca sebagai
            gulungan, bukan sebagai lompatan. `backdrop-filter` hanya penyedap —
-           peramban yang tak mendukungnya tetap mendapat latar 92%. */
-        background: "color-mix(in srgb, var(--ant-color-bg-container) 92%, transparent)",
+           peramban yang tak mendukungnya tetap mendapat latar 92%.
+
+           Latarnya kini nada merek pendaratan, bukan `colorBgContainer`
+           telanjang: bilah ini MENEMPEL, jadi ia satu-satunya bidang yang
+           menemani pembaca sepanjang gulungan — dan sebelumnya ia bidang putih
+           yang berpindah dari hero berwarna ke seksi berwarna tanpa pernah ikut
+           berwarna sendiri. Isian tombol primer di atasnya tetap 3,29:1 di tema
+           gelap, di atas ambang 3:1. */
+        background: "color-mix(in srgb, var(--sai-landing-band-brand) 92%, transparent)",
         backdropFilter: "blur(8px)",
       }}
     >

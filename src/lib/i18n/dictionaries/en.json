@@ -64,7 +64,6 @@
     "close": "Close",
     "delete": "Delete",
     "edit": "Edit",
-    "add": "Add",
     "search": "Search",
     "continue": "Continue",
     "loading": "Loading...",
@@ -73,10 +72,7 @@
     "back": "Back",
     "next": "Next",
     "previous": "Previous",
-    "yes": "Yes",
-    "no": "No",
     "all": "All",
-    "language": "Language",
     "saving": "Saving...",
     "saveChanges": "Save Changes",
     "active": "Active",
@@ -277,17 +273,14 @@
   },
   "userMenu": {
     "trigger": "Account: {name} ({role})",
-    "menu": "Account menu",
     "tenantAccount": "Account & Companies",
     "changePassword": "Change Password",
     "signOut": "Sign out",
     "language": "Language",
-    "languageMenu": "Choose a language",
     "languageSwitching": "Switching language..."
   },
   "helpMenu": {
     "trigger": "Help",
-    "menu": "Help menu",
     "glossaryTitle": "Glossary",
     "glossaryDescription": "Accounting terms explained in everyday words.",
     "replayTour": "Replay this page's tour",
@@ -310,7 +303,6 @@
       "heading": "Sign in",
       "description": "Already have an account? Sign in to open the books and your daily work. New customers can sign up via the link below.",
       "username": "Username",
-      "usernamePlaceholder": "your.username",
       "identifier": "Email or Username",
       "identifierPlaceholder": "name@company.com",
       "password": "Password",
@@ -507,9 +499,6 @@
   },
   "errors": {
     "accountParentCycle": "The chosen parent is a descendant of this account — the hierarchy would loop. Pick another parent.",
-    "generic": "Something went wrong. Please try again.",
-    "network": "Could not reach the server. Check your connection.",
-    "unauthorized": "You do not have access to this page.",
     "notFound": "Data not found.",
     "invalidId": "The requested record could not be identified.",
     "invalidJson": "The submitted data could not be read. Reload the page and try again.",
@@ -554,7 +543,6 @@
     "setupSupplierNotFound": "Supplier #{id} was not found.",
     "accountCodeTaken": "That account code is already in use.",
     "accountOwnParent": "An account cannot be its own parent.",
-    "usernameTaken": "That username is already taken.",
     "emailTaken": "That email is already in use by another account.",
     "companyQuotaReached": "Your plan's company quota is fully used. Upgrade your plan to add more companies.",
     "tenantNotActive": "Your subscription is not active, so new companies cannot be created. Contact us to reactivate it.",
@@ -1893,7 +1881,6 @@
     "errBothSides": "One transaction may only go one way: fill in Money In only, or Money Out only. If money really moves between cash accounts, record two separate transactions.",
     "errPickCounterAccount": "Select a counter account — the automatic journal entry needs the other side of the transaction.",
     "errPickCategory": "Select a category — where this money came from, or what it was used for.",
-    "errRateRequired": "A rate is required for a {currency} transaction: without it, the rupiah value in the ledger cannot be computed.",
     "saveFailed": "The transaction could not be saved yet.",
     "advCurrency": "{currency} · rate {rate}",
     "advHasNote": "has a note",
@@ -2268,8 +2255,6 @@
     "itemSaveFailed": "The new item could not be saved yet.",
     "movementSaveFailed": "The stock movement could not be saved yet.",
     "movementSaved": "Stock movement saved",
-    "pickItemFirst": "Pick an item first — a stock movement always belongs to one item.",
-    "qtyPositive": "Quantity must be greater than 0 — a zero movement changes nothing.",
     "movementTitle": "Record Stock Movement",
     "emptyFormTitle": "No items to record yet",
     "emptyFormDescription": "Create your first item with the “+ New Item” button above, then record its incoming stock.",
@@ -2590,16 +2575,9 @@
   },
   "users": {
     "title": "User Management",
-    "newUser": "New User",
-    "createTitle": "Create New User",
-    "passwordField": "Password (min 8 characters)",
     "displayName": "Display Name",
     "role": "Role",
-    "creating": "Creating...",
-    "createUser": "Create User",
     "errNoPermission": "You do not have permission to manage users.",
-    "errCreate": "Failed to create the user",
-    "created": "User created successfully",
     "deleted": "User deleted",
     "errDelete": "Failed to delete the user",
     "passwordReset": "Password reset to 'changeme123'. The user must change it at the next sign-in.",
@@ -3047,8 +3025,7 @@
   "searchableSelect": {
     "placeholder": "Select…",
     "searchPlaceholder": "Search…",
-    "empty": "No matches",
-    "clear": "Clear selection"
+    "empty": "No matches"
   },
   "pdf": {
     "previewStock": "Preview Stock",
@@ -3594,8 +3571,7 @@
       "colCreated": "Signed up",
       "colUsage": "Usage",
       "usageValue": "{companies}/{maxCompanies} companies · {users}/{maxUsers} users",
-      "empty": "No tenants match this filter.",
-      "count": "{count} tenants"
+      "empty": "No tenants match this filter."
     },
     "tenant": {
       "notFound": "Tenant not found.",
@@ -3611,7 +3587,6 @@
       "subscriptionHeading": "Subscription (platform database)",
       "billingUnavailable": "The billing database is unreachable. The control section above is still correct; the platform section returns once the database is back.",
       "noSubscription": "No subscription recorded on the platform yet.",
-      "cycleLabel": "Cycle",
       "cycleMonthly": "monthly",
       "cycleYearly": "yearly",
       "priceLabel": "Price (snapshot)",
@@ -3814,5 +3789,27 @@
       "lastTestNever": "Never tested from this page.",
       "auditNote": "Every save and every test send is written to the operator audit trail — with your name, without the password."
     }
+  },
+  "docs": {
+    "title": "Documentation",
+    "description": "How this application works, and why it works that way.",
+    "openApp": "Sign in to the app",
+    "backToIndex": "All documentation",
+    "branchCustomer": "For customers",
+    "branchCustomerDescription": "Plans, quotas, a second company, and your data.",
+    "branchUser": "For everyday users",
+    "branchUserDescription": "Daily work — sales, cash, stock — and the bookkeeping behind it.",
+    "languageNotice": "The documentation text is currently available in Indonesian only.",
+    "languageNoticeWhy": "A deliberate choice, not a missing translation: guidance prose gets rewritten whenever the underlying behaviour changes, and promising three languages means promising it on every such change.",
+    "termsHeading": "Terms used on this page",
+    "termsSource": "Definitions come from the in-app glossary — written once, read here.",
+    "matrixTitle": "Default permission matrix",
+    "matrixColModule": "Module",
+    "matrixColPermission": "Permission",
+    "matrixHeld": "Yes",
+    "matrixNotHeld": "No",
+    "helpMenuTitle": "Guide for this page",
+    "helpMenuIndex": "All documentation",
+    "helpMenuNone": "This page does not have a documentation page yet."
   }
 }

@@ -14,6 +14,7 @@
  * Query di bawahnya karena itu tidak perlu bersyarat sama sekali.
  */
 import { ArrowRightOutlined } from "@ant-design/icons";
+import { platformHead } from "@/components/tenant/platform-tone";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -43,6 +44,22 @@ const CARD_BODY: React.CSSProperties = {
   fontSize: "var(--ant-font-size)",
   lineHeight: 1.625,
   color: "var(--ant-color-text-secondary)",
+};
+
+/**
+ * Kepala kartu bernada `violet` — wilayah "katalog paket" (#303).
+ *
+ * Kartu ini adalah PINTU menuju `/platform/billing/plans`, jadi ia memakai hue
+ * tujuannya, bukan hue halamannya. Warna di sini menjawab "saya akan dibawa ke
+ * mana", dan itu satu-satunya alasan ia berwarna.
+ *
+ * ⚠ Radius atas wajib — kepala adalah anak pertama `.ant-card`, yang tidak
+ * memasang `overflow: hidden`.
+ */
+const UPGRADE_HEAD: React.CSSProperties = {
+  background: platformHead("violet"),
+  borderTopLeftRadius: "var(--ant-border-radius-lg)",
+  borderTopRightRadius: "var(--ant-border-radius-lg)",
 };
 
 export default async function PlatformBillingPage() {
@@ -76,7 +93,7 @@ export default async function PlatformBillingPage() {
             dijawab di katalog, bukan di sini, sebab jawabannya adalah
             perbandingan, bukan satu angka. */}
         <Card>
-          <CardHeader>
+          <CardHeader style={UPGRADE_HEAD}>
             <h2 style={CARD_HEADING}>{t("platform.plansUpgradeHeading")}</h2>
           </CardHeader>
           {/* Kalimat dan tombol berdampingan saat muat, bertumpuk saat tidak —

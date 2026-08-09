@@ -29,6 +29,8 @@ import {
   BORDER_TOKENS_LIGHT,
   BRAND_TEXT_DARK,
   BRAND_TEXT_LIGHT,
+  DANGER_BUTTON_DARK,
+  DANGER_BUTTON_LIGHT,
   MONEY_TOKENS_DARK,
   MONEY_TOKENS_LIGHT,
   NEUTRAL_TEXT_DARK,
@@ -39,6 +41,7 @@ import {
   TABLE_HEAD_BG_LIGHT,
   borderTokens,
   brandTextTokens,
+  dangerButtonTokens,
   moneyPalette,
   moneyTokens,
   neutralTextTokens,
@@ -137,6 +140,16 @@ const SURFACES = {
 const worst = (color: string, mode: "light" | "dark") =>
   Math.min(...SURFACES[mode].map((bg) => contrast(color, bg)));
 
+/** Dua desimal — bentuk yang sama dengan angka di komentar `antd-tokens.ts`. */
+const round = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Luminansi sebuah warna tanpa latar. Dipakai untuk menguji ARAH sebuah tangga
+ * ("hover selalu lebih gelap dari diam"), bukan kontrasnya — pernyataan yang
+ * tidak bisa dibuat dengan rasio, karena rasio tidak punya tanda.
+ */
+const luminanceOf = (color: string) => luminance(parse(color).rgb);
+
 /** Ambang teks biasa. Berlaku di mana-mana karena `fontSize` bawaan AntD 14px. */
 const AA = 4.5;
 
@@ -196,7 +209,6 @@ describe("token uang kustom", () => {
 
   it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
     // Angka di komentar berhenti benar diam-diam; ini yang membuatnya berbunyi.
-    const round = (n: number) => Math.round(n * 100) / 100;
     expect(round(worst(MONEY_TOKENS_LIGHT.colorMoneyPositive, "light"))).toBe(5.12);
     expect(round(worst(MONEY_TOKENS_DARK.colorMoneyPositive, "dark"))).toBe(9.23);
     expect(round(worst(MONEY_TOKENS_LIGHT.colorMoneyNegative, "light"))).toBe(6.0);
@@ -331,7 +343,6 @@ describe("warna merek sebagai TEKS", () => {
   });
 
   it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
-    const round = (n: number) => Math.round(n * 100) / 100;
     expect(round(worst(BRAND_TEXT_LIGHT.colorBrandText, "light"))).toBe(5.65);
     expect(round(worst(BRAND_TEXT_LIGHT.colorBrandTextHover, "light"))).toBe(8.23);
     expect(round(worst(BRAND_TEXT_LIGHT.colorBrandTextActive, "light"))).toBe(11.08);
@@ -387,6 +398,213 @@ describe("label tombol primer", () => {
     // hanya diberlakukan pada keadaan diam.
     expect(worst(PRIMARY_BUTTON_LIGHT.colorPrimary, "light")).toBeGreaterThanOrEqual(3);
     expect(worst(PRIMARY_BUTTON_DARK.colorPrimary, "dark")).toBeGreaterThanOrEqual(3);
+  });
+});
+
+/* ========================================================================== */
+/* issue #219 — label tombol DESTRUKTIF                                       */
+/* ========================================================================== */
+
+describe("label tombol destruktif (#219)", () => {
+  /** Isian `danger` solid AntD menaruh `dangerColor` = `colorTextLightSolid`. */
+  const LABEL = "#ffffff";
+
+  /**
+   * Ketiga keadaan seperti yang benar-benar dipasang, dibaca dari token —
+   * bukan hex yang diketik ulang di sini. Kalau paletnya bergeser, seluruh
+   * angka di bawah ikut bergeser alih-alih hijau palsu.
+   */
+  const STATES = ["colorError", "colorErrorHover", "colorErrorActive"] as const;
+  const APPLIED_DANGER = { light: DANGER_BUTTON_LIGHT, dark: DANGER_BUTTON_DARK } as const;
+
+  it("`dangerButtonTokens` memang mengembalikan tabel per tema yang diuji", () => {
+    expect(dangerButtonTokens("light")).toEqual(DANGER_BUTTON_LIGHT);
+    expect(dangerButtonTokens("dark")).toEqual(DANGER_BUTTON_DARK);
+  });
+
+  it("colorError bawaan menjatuhkan label putih di KEDUA tema", () => {
+    // Mengunci kegagalan yang menjadi sebab token ini ada. Kalau baris ini
+    // hijau, AntD sudah menggeser benih merahnya: ukur ulang seluruh tabel.
+    expect(contrast(LABEL, LIGHT.colorError)).toBeCloseTo(3.27, 1);
+    expect(contrast(LABEL, DARK.colorError)).toBeCloseTo(4.24, 1);
+    expect(contrast(LABEL, LIGHT.colorError)).toBeLessThan(AA);
+    expect(contrast(LABEL, DARK.colorError)).toBeLessThan(AA);
+  });
+
+  it("hover bawaan lebih buruk lagi — di kedua tema", () => {
+    // `colorErrorHover` selalu bergerak MENJAUH dari label putih (lebih
+    // terang), jadi "pakai hover bawaan saja" bukan jalan keluar di sini —
+    // pola yang sama persis dengan `colorPrimaryHover` di #187.
+    expect(contrast(LABEL, LIGHT.colorErrorHover)).toBeLessThan(contrast(LABEL, LIGHT.colorError));
+    expect(contrast(LABEL, DARK.colorErrorHover)).toBeLessThan(contrast(LABEL, DARK.colorError));
+  });
+
+  for (const mode of ["light", "dark"] as const) {
+    it(`setiap keadaan menahan label putih di atas 4,5:1 — tema ${mode}`, () => {
+      for (const state of STATES) {
+        expect(contrast(LABEL, APPLIED_DANGER[mode][state])).toBeGreaterThanOrEqual(AA);
+      }
+    });
+
+    it(`keadaan berikutnya selalu MENJAUH dari label, tidak mendekat — tema ${mode}`, () => {
+      const t = APPLIED_DANGER[mode];
+      expect(contrast(LABEL, t.colorErrorHover)).toBeGreaterThan(contrast(LABEL, t.colorError));
+      expect(contrast(LABEL, t.colorErrorActive)).toBeGreaterThan(
+        contrast(LABEL, t.colorErrorHover)
+      );
+    });
+  }
+
+  it("tema TERANG lolos keduanya — label DAN isian vs latar, di ketiga keadaan", () => {
+    for (const state of STATES) {
+      expect(worst(DANGER_BUTTON_LIGHT[state], "light")).toBeGreaterThanOrEqual(NON_TEXT);
+    }
+  });
+
+  it("tema GELAP tidak punya anak tangga yang lolos KEDUANYA — itulah dilemanya", () => {
+    /*
+     * Baris ini yang membuat keputusan A tidak bisa "dirapikan" belakangan
+     * menjadi B. Kedua kandidat di tangga benih `colorError` versi gelap:
+     *
+     *   red-6 #dc4446 : label 4,24 GAGAL · isian 3,89 lolos
+     *   red-5 #ad393a : label 6,13 lolos · isian 2,69 GAGAL
+     */
+    const darkLadder = step(LIGHT.colorError, "dark");
+    const lolosKeduanya = darkLadder.filter(
+      (c) => contrast(LABEL, c) >= AA && worst(c, "dark") >= NON_TEXT
+    );
+    expect(lolosKeduanya).toEqual([]);
+  });
+
+  it("keputusan A: label diutamakan, isian gelap SENGAJA di bawah 3:1", () => {
+    /*
+     * Angka ini dikunci, bukan sekadar "di bawah 3": kalau ia bergeser,
+     * ongkos yang pemilik setujui sudah berubah dan keputusannya harus
+     * ditimbang ulang — bukan angkanya yang ditambal.
+     *
+     * Alasannya ada di MASTER.md §Aksi destruktif: risiko "tidak melihat ada
+     * tombol destruktif" sudah ditutup `ConfirmDialog` yang wajib, risiko
+     * "salah membaca tombolnya" tidak ditutup apa pun.
+     */
+    expect(round(worst(DANGER_BUTTON_DARK.colorError, "dark"))).toBe(2.69);
+    expect(worst(DANGER_BUTTON_DARK.colorError, "dark")).toBeLessThan(NON_TEXT);
+    expect(contrast(LABEL, DANGER_BUTTON_DARK.colorError)).toBeGreaterThanOrEqual(AA);
+    // …dan alternatif B benar-benar kalah pada sumbu yang dipilih pemilik.
+    expect(contrast(LABEL, DARK.colorError)).toBeLessThan(
+      contrast(LABEL, DANGER_BUTTON_DARK.colorError)
+    );
+  });
+
+  it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
+    expect(round(contrast(LABEL, DANGER_BUTTON_LIGHT.colorError))).toBe(4.62);
+    expect(round(contrast(LABEL, DANGER_BUTTON_LIGHT.colorErrorHover))).toBe(6.54);
+    expect(round(contrast(LABEL, DANGER_BUTTON_LIGHT.colorErrorActive))).toBe(9.35);
+    expect(round(worst(DANGER_BUTTON_LIGHT.colorError, "light"))).toBe(4.24);
+    expect(round(worst(DANGER_BUTTON_LIGHT.colorErrorHover, "light"))).toBe(6.0);
+    expect(round(worst(DANGER_BUTTON_LIGHT.colorErrorActive, "light"))).toBe(8.57);
+
+    expect(round(contrast(LABEL, DANGER_BUTTON_DARK.colorError))).toBe(6.13);
+    expect(round(contrast(LABEL, DANGER_BUTTON_DARK.colorErrorHover))).toBe(9.06);
+    expect(round(contrast(LABEL, DANGER_BUTTON_DARK.colorErrorActive))).toBe(12.09);
+    expect(round(worst(DANGER_BUTTON_DARK.colorError, "dark"))).toBe(2.69);
+    expect(round(worst(DANGER_BUTTON_DARK.colorErrorHover, "dark"))).toBe(1.82);
+    expect(round(worst(DANGER_BUTTON_DARK.colorErrorActive, "dark"))).toBe(1.36);
+  });
+
+  it("tak satu hex pun baru: semuanya anak tangga merah AntD sendiri", () => {
+    const light = step(LIGHT.colorError, "light");
+    const dark = step(LIGHT.colorError, "dark");
+    expect(DANGER_BUTTON_LIGHT.colorError).toBe(light[6]); // red-7
+    expect(DANGER_BUTTON_LIGHT.colorErrorHover).toBe(light[7]); // red-8
+    expect(DANGER_BUTTON_LIGHT.colorErrorActive).toBe(light[8]); // red-9
+    expect(DANGER_BUTTON_DARK.colorError).toBe(dark[4]); // red-5
+    expect(DANGER_BUTTON_DARK.colorErrorHover).toBe(dark[3]); // red-4
+    expect(DANGER_BUTTON_DARK.colorErrorActive).toBe(dark[2]); // red-3
+    // Keduanya keadaan DIAM adalah `colorErrorActive` bawaan AntD, dan hover
+    // terang memakai ulang `colorMoneyNegative` #186 — satu anak tangga, dua
+    // peran, nol hex tambahan yang harus diaudit ulang.
+    expect(DANGER_BUTTON_LIGHT.colorError).toBe(LIGHT.colorErrorActive);
+    expect(DANGER_BUTTON_DARK.colorError).toBe(DARK.colorErrorActive);
+    expect(DANGER_BUTTON_LIGHT.colorErrorHover).toBe(MONEY_TOKENS_LIGHT.colorMoneyNegative);
+  });
+
+  it("isian MENGGELAP saat disentuh di kedua tema — sama seperti tombol primer", () => {
+    /*
+     * Berlawanan dengan kebiasaan AntD yang menerangkan, dan alasannya
+     * terukur: menerangkan isian di tema gelap berarti menjatuhkan labelnya.
+     * Konsekuensinya ditanggung dengan sadar — isian hover/aktif jatuh jauh di
+     * bawah 3:1 terhadap latar — karena yang harus "ditemukan" adalah keadaan
+     * DIAM; saat hover, kursor pengguna sendiri sudah menandai letaknya. Aturan
+     * yang sama sudah berlaku untuk tombol primer sejak #187.
+     */
+    for (const mode of ["light", "dark"] as const) {
+      const t = APPLIED_DANGER[mode];
+      expect(luminanceOf(t.colorErrorHover)).toBeLessThan(luminanceOf(t.colorError));
+      expect(luminanceOf(t.colorErrorActive)).toBeLessThan(luminanceOf(t.colorErrorHover));
+    }
+    expect(worst(PRIMARY_BUTTON_DARK.colorPrimaryHover, "dark")).toBeLessThan(NON_TEXT);
+  });
+
+  it("`AntdProvider` benar-benar mengoper token itu ke `Button`", () => {
+    // Tanpa baris ini, menghapus override-nya meninggalkan seluruh describe
+    // ini hijau sambil mengukur warna yang tidak pernah sampai ke layar.
+    const src = readFileSync(
+      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      "utf8"
+    );
+    expect(src).toMatch(
+      /Button:\s*\{\s*\.\.\.primaryButtonTokens\(resolved\),\s*\.\.\.dangerButtonTokens\(resolved\)\s*\}/
+    );
+  });
+
+  it("`colorError` GLOBAL tetap bawaan — yang dipersempit hanya lingkup `Button`", () => {
+    /*
+     * `colorError` global memberi ikon `Alert`, garis isian bergalat, dan
+     * `Progress` status exception — peran non-teks dengan ambang 3:1.
+     * Menggantinya global akan menggelapkan seluruh bahasa "galat" aplikasi
+     * demi satu komponen.
+     *
+     * Yang jujur harus ikut ditulis: bawaannya duduk PERSIS di lantai itu —
+     * terukur 2,997:1 di atas `colorBgLayout`, yaitu 3,00 bila dibulatkan dan
+     * 0,003 di sisi yang salah bila tidak. Itu temuan tersendiri tentang ikon
+     * dan garis galat, bukan tentang isian tombol, dan sengaja TIDAK ditambal
+     * di sini: menaikkannya menggeser setiap permukaan "galat" sekaligus.
+     * Angkanya dikunci supaya ia tidak diam-diam memburuk.
+     */
+    const src = readFileSync(
+      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      "utf8"
+    );
+    const globalBlock = src.slice(src.indexOf("token: {"), src.indexOf("components: {"));
+    expect(globalBlock).not.toContain("dangerButtonTokens");
+    expect(round(worst(LIGHT.colorError, "light"))).toBe(3);
+  });
+
+  it("TEMUAN yang sengaja dikunci: palet `red` resmi AntD punya anak tangga yang lolos keduanya", () => {
+    /*
+     * Kalimat "palet AntD tidak menyediakan langkah di antaranya" benar untuk
+     * tangga yang diturunkan dari BENIH `colorError` (diuji di atas). Ia TIDAK
+     * benar untuk palet `red` resmi — keluarga yang sama yang sudah dipakai
+     * #208 untuk `grey`:
+     *
+     *   preset gelap red-6 #d32029 : label 5,24 lolos · isian 3,15 lolos
+     *
+     * Itu satu-satunya anak tangga merah yang melewati KEDUA ambang di tema
+     * gelap. Ia tidak dipakai (keputusan A diambil sebelum pengukuran ini ada),
+     * dan angkanya dikunci di sini supaya pilihan itu tetap terbuka dan tidak
+     * hilang bersama issue-nya. Kalau baris ini merah, alternatifnya sudah
+     * lenyap dan keputusan A menjadi satu-satunya yang tersedia.
+     */
+    const alternatif = presetDarkPalettes.red[5];
+    expect(alternatif).toBe("#d32029");
+    expect(round(contrast(LABEL, alternatif))).toBe(5.24);
+    expect(round(worst(alternatif, "dark"))).toBe(3.15);
+    expect(contrast(LABEL, alternatif)).toBeGreaterThanOrEqual(AA);
+    expect(worst(alternatif, "dark")).toBeGreaterThanOrEqual(NON_TEXT);
+    // …dan harganya, kalau suatu hari diambil: label gelap turun dari 6,13.
+    expect(contrast(LABEL, alternatif)).toBeLessThan(
+      contrast(LABEL, DANGER_BUTTON_DARK.colorError)
+    );
   });
 });
 
@@ -452,7 +670,6 @@ describe("token teks netral kustom (#207)", () => {
   });
 
   it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
-    const round = (n: number) => Math.round(n * 100) / 100;
     expect(round(worst(NEUTRAL_TEXT_LIGHT.colorTextTertiary, "light"))).toBe(6.76);
     expect(round(worst(NEUTRAL_TEXT_DARK.colorTextTertiary, "dark"))).toBe(7.65);
   });
@@ -581,7 +798,6 @@ describe("token batas kustom (#208)", () => {
   });
 
   it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
-    const round = (n: number) => Math.round(n * 100) / 100;
     expect(round(worst(BORDER_TOKENS_LIGHT.colorBorder, "light"))).toBe(3.62);
     expect(round(worst(BORDER_TOKENS_LIGHT.colorBorderSecondary, "light"))).toBe(3.08);
     expect(round(worst(BORDER_TOKENS_LIGHT.colorSplit, "light"))).toBe(2.61);

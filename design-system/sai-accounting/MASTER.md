@@ -472,6 +472,94 @@ Aturannya untuk permukaan berikutnya (mis. `/docs`, #300): ambil resepnya, ukur 
 
 ---
 
+## Dokumentasi `/docs`: permukaan KETIGA (issue #300)
+
+Sejak #300 ada permukaan ketiga, dan ia berdiri PERSIS di antara dua dunia di
+atas: `/docs` dibaca **tanpa sesi** — jadi ia tidak boleh memikul chrome dasbor —
+tetapi ia **tidak menjual apa pun** — jadi ia tidak boleh memikul skala
+pemasaran. Ia butuh keputusan tertulis, bukan warisan dari tetangganya, karena
+sebuah halaman panjang berkolom baca adalah bentuk yang paling mudah tergelincir
+menjadi halaman jualan tanpa satu orang pun memutuskannya.
+
+**Keputusannya: dokumentasi memakai skala APP, dipersempit — bukan skala
+pemasaran, dilonggarkan.**
+
+| Dimensi | Pendaratan `/` | **Dokumentasi `/docs`** | App internal |
+|---|---|---|---|
+| **Skala judul** | `--sai-landing-font-size-hero` ≈53px (`fontSizeHeading1 × 1,4`) | **`fontSizeHeading2` (30px)** — di BAWAH langit-langit app | langit-langit `fontSizeHeading1` (38px) |
+| **Bobot CTA** | satu ajakan diulang empat kali, primer + garis berpasangan | **NOL tombol berisi penuh**; satu tautan "masuk ke aplikasi" `secondary` | satu aksi utama, di `PageHeader.actions` |
+| **Irama antar-seksi** | `--sai-landing-rhythm` 64px → 96px | **`--ant-margin-lg` 24px** — irama app | 24px |
+| **Lebar maksimum** | kolom baca 42rem, seksi 72rem, di tengah | **kolom baca 768px** (angka telanjang, preseden `/terms` & `/privacy`) | lebar penuh area kerja |
+
+Kenapa langit-langitnya lebih RENDAH daripada app internal, bukan di antara
+keduanya: sebuah permukaan yang judulnya lebih kecil daripada judul layar kerja
+tidak akan pernah terbaca sebagai halaman jualan — bahkan oleh orang yang
+menyalin bentuk hero ke sana tanpa membaca satu komentar pun. Dan nol-CTA bukan
+pengetatan tambahan melainkan penerapan aturan yang sudah ada: §Aksi utama per
+layar menyebut "nol juga sah", dan halaman yang hanya menjelaskan memang tidak
+mengikat maupun memajukan apa pun.
+
+**Yang membuatnya mekanisme, bukan imbauan** — dan dua di antaranya sudah ada
+sebelum #300, jadi yang dikerjakan #300 adalah membuktikan cakupannya:
+
+- **Sisi pemasaran sudah tertutup tanpa satu baris pun ditambahkan.**
+  `tests/landing-boundary.test.ts` hanya mengizinkan `app/page.tsx` mengimpor
+  `components/landing/**`; berkas dokumentasi berdiri di luar `PINTU_MASUK`,
+  jadi sebuah impor ke sana MERAH (dibuktikan di PR #300, lalu dikembalikan).
+  Menyalin `var(--sai-landing-…)` pun tidak menghasilkan hero: blok itu terkurung
+  di `[data-landing]` yang tidak pernah dipasang di sini.
+- **Sisi app internal ditutup di #300** (`tests/docs.test.ts`), dan ia arah yang
+  belum dijaga siapa pun: bentuknya daftar-IZIN impor — `@/components/ui`,
+  `@/lib`, sesama berkas dokumentasi — seperti yang dipakai `components/landing`
+  di #245, dan dengan alasan yang sama persis: halaman ini dibaca tanpa sesi,
+  dan setiap impor ke app internal adalah satu jalan bagi kode
+  ber-`auth()`/ber-Prisma ikut ke permukaan publik.
+- **Langit-langit & nol-CTA dijaga sebagai teks berkas**: `--ant-font-size-heading-1`
+  tidak boleh muncul di permukaan ini, dan `variant="primary"` tidak boleh muncul
+  sama sekali.
+- **Publiknya dijaga dua kali**: `tests/authz-coverage.test.ts` mendaftarkan grup
+  rute `(docs)` sebagai grup PUBLIK — halamannya tidak boleh memanggil satu
+  penjaga pun, tidak boleh menyentuh `auth()` maupun Prisma — dan `src/proxy.ts`
+  melepaskan subpohonnya lewat `isDocsPath()`. Salah satu saja yang hilang sudah
+  cukup membuat halamannya tidak terbaca tanpa sesi, dan gejalanya bukan galat
+  melainkan halaman masuk.
+
+**Bahasa: Indonesia, dan pilihannya DITAMPILKAN.** Prosa dokumentasi bukan label:
+label menamai sesuatu yang layarnya sudah render, prosa harus DITULIS ULANG
+setiap kali mesinnya berubah. Karena itu isinya hidup di `lib/docs-content.ts`
+dalam bahasa sumber, di luar kamus — kamus repo ini menuntut ketiga bahasa terisi
+(`tsc` + `tests/i18n.test.ts` menolak nilai yang sama dengan bahasa Indonesia),
+jadi menaruh prosa di sana berarti menjanjikan tiga bahasa pada setiap perubahan
+perilaku. Yang TIDAK dilakukan: membiarkannya terbaca sebagai terjemahan yang
+kebetulan hilang. Kerangkanya tetap trilingual (`docs.*`), dan pembaca ber-`en`/
+`zh` mendapat pemberitahuan **dalam bahasanya sendiri** beserta alasannya.
+Bandingkan #278, yang memutuskan hal serupa untuk ekspor.
+
+**Peran & izin DIBANGKITKAN.** Halaman peran/izin membaca `PERMISSION_ROLES` +
+`ROLE_VALUES` saat render, jadi menambah izin di `authz.ts` mengubah halamannya
+tanpa dokumen disunting. Ia WAJIB menyebut dirinya **bawaan yang bisa ditimpa**:
+matriks efektif = bawaan + `role_permission_overrides` per tenant (#73), dan
+peran kini DATA (tabel `roles`). Permukaan publik tidak punya konteks perusahaan
+dan karena itu tidak bisa membaca keduanya — menebaknya akan melanggar aturan
+pertama `docs/MULTI-COMPANY.md` — jadi yang benar adalah menyatakan batasnya dan
+menunjuk ke `/permissions` di dalam aplikasi.
+
+**Kelengkapan dijaga, bukan diharapkan.** Setiap item `NAV_GROUPS` punya halaman
+dokumen ATAU berdiri di `NAV_TANPA_DOKUMEN` dengan alasan yang ditulis — dijaga
+DUA ARAH, jadi entri basi juga merah. Yang dijaga bukan "semuanya sudah ditulis"
+(itu tidak akan pernah benar, dan penjaga yang menuntutnya akan dilonggarkan
+sampai tak berarti) melainkan bahwa **modul baru tidak bisa lahir diam-diam tanpa
+dokumen**. Pola yang sama: `tests/print-label-dictionary.test.ts` (#298) dan
+penjaga kunci yatim (#260).
+
+**Istilah tetap milik `/glossary`.** Blok `istilah` MEMBACA `TERMS`
+(`lib/labels.ts`, #21/#1); definisi yang disalin ke dalam prosa ditolak
+penjaganya. Definisinya dirender di tempat alih-alih ditautkan karena
+`/glossary` bertenant dan menuntut sesi — sebuah tautan ke sana dari permukaan
+publik adalah tautan yang memantul ke halaman masuk.
+
+---
+
 ## Anti-Patterns (JANGAN)
 - ❌ Emoji sebagai ikon → pakai `@ant-design/icons`.
 - ❌ Dua paket ikon di satu layar; ❌ prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
@@ -988,6 +1076,8 @@ membaca hijau dan menyimpulkan aman.
 | Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
 | Keluarga isian pilihan: hanya `SelectField` yang ikut `FormData`; `name` pada kedua isian berpencarian ditolak `tsc` bahkan lewat `{...field}` | `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipenya lewat `@ts-expect-error` yang dinilai `bun run typecheck`) |
 | Tidak ada kunci kamus yang menganggur: setiap kunci di `id/en/zh.json` punya rujukan di `src/` — literal, rantai properti berakar kamus, atau bentuk dinamis yang **terdaftar** (daftarnya dijaga dua arah: entri basi merah, bentuk dinamis baru yang belum diputuskan juga merah) (⚠ subpohon yang diambil utuh, dan kunci yang hanya dirujuk dari `tests/`, TIDAK terlihat penjaga) | `tests/i18n-orphan-keys.test.ts` |
+| Permukaan dokumentasi tetap permukaan KETIGA: tidak mengimpor chrome app internal, tidak melampaui `fontSizeHeading2`, nol tombol berisi penuh; setiap modul navigasi punya halaman dokumen atau alasan tertulis (dijaga dua arah); definisi istilah tidak disalin; `isDocsPath` benar-benar dipakai proxy | `tests/docs.test.ts` |
+| `/docs` terbaca TANPA sesi: grup rute `(docs)` terdaftar sebagai grup publik, halamannya tidak memanggil penjaga apa pun dan tidak menyentuh `auth()`/Prisma | `tests/authz-coverage.test.ts` → "permukaan PUBLIK: dokumentasi sistem (#300)" |
 
 **Menambah penjaga: langgar sengaja SEKALI, pastikan ia merah karena alasan
 yang benar, lalu kembalikan.** Ini bukan seremoni. Sepanjang epik #206 sudah

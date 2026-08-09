@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { isDocsPath } from "@/lib/docs";
 import { resolvePostLoginPath } from "@/lib/post-login";
 import { legacyTenantScopedPath, renamedPagePath, tenantPath } from "@/lib/tenant-routes";
 
@@ -38,6 +39,25 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/register" || pathname === "/verify-email") return true;
   // issue #142 — dokumen hukum: harus terbaca SEBELUM orang menyetujuinya.
   if (pathname === "/terms" || pathname === "/privacy") return true;
+  /*
+   * issue #300 — dokumentasi sistem. SATU-SATUNYA pelepasan berbentuk SUBPOHON
+   * di berkas ini, dan itu memang perlu dibenarkan: baris-baris di atas sengaja
+   * menyebut jalur PERSIS supaya halaman publik baru harus disebut namanya di
+   * sini. Sebuah pohon dokumen tidak bisa dienumerasi di proxy — ia tumbuh
+   * dengan setiap halaman yang ditulis, dan daftar yang harus diperbarui setiap
+   * kali adalah daftar yang akan tertinggal.
+   *
+   * Yang menggantikan enumerasi itu adalah dua hal, dan keduanya lebih ketat
+   * daripada sebuah daftar jalur:
+   *   • bentuknya dijawab `isDocsPath` — satu fungsi murni yang diuji, bukan
+   *     `startsWith("/docs")` telanjang yang juga akan melepaskan `/docsx`;
+   *   • ISI subpohonnya dijaga `tests/authz-coverage.test.ts` (grup `(docs)`
+   *     tidak boleh memuat penjaga apa pun) dan `tests/docs.test.ts` (tidak
+   *     boleh mengimpor `auth()`, Prisma, atau chrome app internal). Jadi
+   *     "publik" di sini bukan janji melainkan sifat yang dibuktikan berkas
+   *     demi berkas.
+   */
+  if (isDocsPath(pathname)) return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
   // issue #141 — webhook gerbang pembayaran: pengirimnya server Midtrans,

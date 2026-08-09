@@ -3789,5 +3789,27 @@
       "lastTestNever": "Belum pernah diuji dari halaman ini.",
       "auditNote": "Setiap penyimpanan dan setiap uji kirim tercatat di jejak audit operator — beserta nama Anda, tanpa kata sandinya."
     }
+  },
+  "docs": {
+    "title": "Dokumentasi",
+    "description": "Bagaimana aplikasi ini bekerja, dan kenapa ia bekerja begitu.",
+    "openApp": "Masuk ke aplikasi",
+    "backToIndex": "Semua dokumentasi",
+    "branchCustomer": "Untuk pelanggan",
+    "branchCustomerDescription": "Paket, kuota, perusahaan kedua, dan data Anda.",
+    "branchUser": "Untuk pengguna",
+    "branchUserDescription": "Pekerjaan sehari-hari — penjualan, kas, stok — dan pembukuan di belakangnya.",
+    "languageNotice": "Isi dokumentasi baru tersedia dalam bahasa Indonesia.",
+    "languageNoticeWhy": "Ini pilihan yang disengaja, bukan terjemahan yang tertinggal: prosa panduan ditulis ulang setiap kali cara kerjanya berubah, dan menjanjikan tiga bahasa berarti menjanjikannya pada setiap perubahan itu.",
+    "termsHeading": "Istilah di halaman ini",
+    "termsSource": "Definisinya datang dari Kamus Istilah di dalam aplikasi — ditulis sekali, dibaca di sini.",
+    "matrixTitle": "Matriks izin bawaan",
+    "matrixColModule": "Modul",
+    "matrixColPermission": "Izin",
+    "matrixHeld": "Ya",
+    "matrixNotHeld": "Tidak",
+    "helpMenuTitle": "Panduan halaman ini",
+    "helpMenuIndex": "Semua dokumentasi",
+    "helpMenuNone": "Halaman ini belum punya halaman dokumentasi."
   }
 }

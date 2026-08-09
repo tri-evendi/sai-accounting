@@ -3789,5 +3789,27 @@
       "lastTestNever": "Never tested from this page.",
       "auditNote": "Every save and every test send is written to the operator audit trail — with your name, without the password."
     }
+  },
+  "docs": {
+    "title": "Documentation",
+    "description": "How this application works, and why it works that way.",
+    "openApp": "Sign in to the app",
+    "backToIndex": "All documentation",
+    "branchCustomer": "For customers",
+    "branchCustomerDescription": "Plans, quotas, a second company, and your data.",
+    "branchUser": "For everyday users",
+    "branchUserDescription": "Daily work — sales, cash, stock — and the bookkeeping behind it.",
+    "languageNotice": "The documentation text is currently available in Indonesian only.",
+    "languageNoticeWhy": "A deliberate choice, not a missing translation: guidance prose gets rewritten whenever the underlying behaviour changes, and promising three languages means promising it on every such change.",
+    "termsHeading": "Terms used on this page",
+    "termsSource": "Definitions come from the in-app glossary — written once, read here.",
+    "matrixTitle": "Default permission matrix",
+    "matrixColModule": "Module",
+    "matrixColPermission": "Permission",
+    "matrixHeld": "Yes",
+    "matrixNotHeld": "No",
+    "helpMenuTitle": "Guide for this page",
+    "helpMenuIndex": "All documentation",
+    "helpMenuNone": "This page does not have a documentation page yet."
   }
 }

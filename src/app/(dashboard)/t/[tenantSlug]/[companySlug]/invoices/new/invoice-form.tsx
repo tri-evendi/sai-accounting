@@ -469,11 +469,16 @@ export function NewInvoiceForm({
                 value={contractId != null ? String(contractId) : null}
                 onChange={(v) => chooseContract(v == null ? null : Number(v))}
               />
+              {/* Ukuran bawaan, bukan `sm`: `align="flex-end"` menyejajarkan
+                  kedua tombol ini dengan dasar `ServerSearchableSelect` di
+                  kolom kisi sebelahnya (40px). `sm` = 30px, dan yang terlihat
+                  adalah dua tombol yang menggantung 10px di atas dasar isian
+                  yang mereka layani. MASTER.md §Satu baris kendali = satu
+                  ukuran. */}
               <Flex wrap align="flex-end" gap={token.marginXS}>
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
                   disabled={!outstanding || outstanding.pull.contract.length === 0}
                   onClick={() => pull("contract")}
                 >
@@ -482,7 +487,6 @@ export function NewInvoiceForm({
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
                   disabled={!outstanding || outstanding.pull.delivery.length === 0}
                   onClick={() => pull("delivery")}
                 >

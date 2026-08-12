@@ -48,8 +48,24 @@ kustom yang lahir dari pengukuran kontras.
 - **Cara memakainya:** `style={{ color: "var(--ant-color-text-secondary)" }}`,
   atau `theme.useToken()` bila nilainya memang perlu dihitung. Nama variabel =
   nama token dalam kebab-case berawalan `--ant-`.
-- **Identitas mereknya bawaan AntD** (`colorPrimary` `#1677ff`), keputusan epik
-  #206. `#1E40AF` lama tidak dikembalikan.
+- **Identitas mereknya NAVY INSTITUSIONAL**, bukan lagi bawaan AntD. Keputusan
+  pemilik berubah: `#1677ff` terbaca sebagai warna *framework*, bukan merek.
+  (Keputusan epik #206 "merek = bawaan AntD" karena itu **sudah tidak berlaku**;
+  `#1E40AF` lama tetap tidak dikembalikan.)
+
+  ⚠ **Warna merek punya TIGA peran, dan ketiganya token TERPISAH.** Di tema
+  terang ketiganya berdekatan; di tema GELAP ketiganya berbeda, dan
+  menyatukannya akan mematahkan salah satu:
+
+  | Token | Peran | TERANG | GELAP |
+  |---|---|---|---|
+  | `colorPrimary` | teks, aksen, cincin fokus | `#1E3A5F` | dirender `#6f99c5` |
+  | `colorBrandSolid` | isian DI BELAKANG teks terang (lambang, avatar) | `#1E3A5F` | `#2F6FBF` |
+  | `colorBrandTone` | bibit nada permukaan (pita & chip) | `#2F6FBF` | `#2F6FBF` |
+
+  Memakai `colorPrimary` sebagai ISIAN di belakang teks putih sudah terukur
+  gagal di tema gelap (**2,98:1**) — itulah sebab `colorBrandSolid` ada. Angka
+  & alasan lengkapnya di `lib/theme/antd-tokens.ts`.
 
 ### Peta peran -> token
 
@@ -272,6 +288,49 @@ keluarga kendali — Button, Input, Select, DatePicker — naik bersamanya, dan
 itu juga berarti `size="sm"` adalah TURUNAN (`controlHeight × 0,75` = 30px),
 sehingga ia tetap bukan target sentuh utama.
 
+### Satu baris kendali = satu ukuran
+
+Karena tingginya satu token, **dua ukuran kendali dalam satu baris adalah cacat,
+bukan selera.** 40px dan 30px berselisih sepuluh piksel; pada baris yang
+disejajarkan (`alignItems: "flex-end"`, `align="center"`, `<Row>`) yang terlihat
+bukan "tombol yang lebih ringan" melainkan garis dasar yang patah — satu kendali
+menggantung di atas tetangganya, dan mata membaca itu sebagai render yang gagal,
+bukan sebagai hierarki.
+
+Aturannya karena itu berlaku **per baris, bukan per tombol**: setiap kendali yang
+berdampingan mendatar — `Button`, `ButtonLink`, `Input`/`TextInput`,
+`Select`/`SelectField`, `MoneyInput`, `PasswordField`, `Textarea`, kedua isian
+berpencarian — memakai ukuran yang sama. Kalau salah satunya `sm`, semuanya `sm`;
+kalau salah satunya bawaan, semuanya bawaan.
+
+**Yang menang saat baris itu campur adalah UKURAN BAWAAN**, bukan `sm`: `sm`
+mencampuri baris karena tombolnya dikecilkan, dan mengecilkan isian di sebelahnya
+supaya cocok akan menurunkan lima target sentuh demi menyelamatkan satu. Naikkan
+tombolnya (hapus `size="sm"`), jangan turunkan barisnya.
+
+`size="sm"` **sah** — dan tetap sah — di tempat yang seluruh barisnya kecil dan
+memang bukan target sentuh utama:
+
+- **aksi di dalam baris tabel** (Ubah/Hapus per baris), di mana tinggi baris
+  memang padat dan tak ada isian 40px di sebelahnya;
+- **grup chip saringan** yang berdiri di barisnya SENDIRI (`/invoices`,
+  `stock-period-filter.tsx`) — seluruh chip `sm`, dan baris isian di bawahnya
+  punya ukurannya sendiri;
+- **kaki dialog & panel padat**, selama tak ada isian berukuran bawaan di baris
+  yang sama.
+
+`size="sm"` **tidak sah** di baris saringan/pencarian yang berdampingan dengan
+`Select`/`Input` — itu bentuk yang dilaporkan pemilik di `/finance` (empat
+`SelectField` 40px berdampingan dengan "Filter" 30px) dan ia berulang di lima
+tempat. Baris kirim di bawah tumpukan isian **bukan** baris yang sama: tombol
+melebar penuh di bawah kolom isian (layar auth memakai `size="lg"` + `width:
+100%`) tidak menyentuh garis dasar siapa pun, jadi ia di luar aturan ini.
+
+⚠ Yang diubah aturan ini adalah UKURAN, bukan `variant`. Hierarki aksi utama
+(#267) tidak ikut bergerak: tombol saringan tetap `outline`, aksi sampingan tetap
+`secondary`. Dijaga `tests/control-size-row.test.ts`; batas penglihatannya
+ditulis di kepala berkas itu.
+
 ---
 
 ## Kepala Halaman & Breadcrumb (wajib)
@@ -475,11 +534,16 @@ Aturannya untuk permukaan berikutnya (mis. `/docs`, #300): ambil resepnya, ukur 
 ## Dokumentasi `/docs`: permukaan KETIGA (issue #300)
 
 Sejak #300 ada permukaan ketiga, dan ia berdiri PERSIS di antara dua dunia di
-atas: `/docs` dibaca **tanpa sesi** — jadi ia tidak boleh memikul chrome dasbor —
-tetapi ia **tidak menjual apa pun** — jadi ia tidak boleh memikul skala
-pemasaran. Ia butuh keputusan tertulis, bukan warisan dari tetangganya, karena
-sebuah halaman panjang berkolom baca adalah bentuk yang paling mudah tergelincir
-menjadi halaman jualan tanpa satu orang pun memutuskannya.
+atas: `/docs` harus tetap terbaca **tanpa sesi** — jadi isinya tidak boleh
+bergantung pada chrome dasbor — tetapi ia **tidak menjual apa pun** — jadi ia
+tidak boleh memikul skala pemasaran. Ia butuh keputusan tertulis, bukan warisan
+dari tetangganya, karena sebuah halaman panjang berkolom baca adalah bentuk yang
+paling mudah tergelincir menjadi halaman jualan tanpa satu orang pun
+memutuskannya.
+
+⚠ Sejak "satu halaman, dua kulit" kalimat di atas berbicara tentang ISI, bukan
+tentang bingkainya: bingkainya kini **dua**, dan aturannya di sub-bab
+"Satu halaman, DUA kulit" di bawah. Tabel dimensi berikut berlaku untuk KEDUANYA.
 
 **Keputusannya: dokumentasi memakai skala APP, dipersempit — bukan skala
 pemasaran, dilonggarkan.**
@@ -514,6 +578,12 @@ sebelum #300, jadi yang dikerjakan #300 adalah membuktikan cakupannya:
   di #245, dan dengan alasan yang sama persis: halaman ini dibaca tanpa sesi,
   dan setiap impor ke app internal adalah satu jalan bagi kode
   ber-`auth()`/ber-Prisma ikut ke permukaan publik.
+  ⚠ Sejak "satu halaman, dua kulit" daftar itu punya **tepat satu**
+  pengecualian bernama — `components/docs/docs-app-chrome.tsx`, yang memang
+  bertugas mengimpor kulit panel akun. Bentuknya nama berkas, bukan
+  pelonggaran direktori: melonggarkan `components/docs/**` akan membuka jalan
+  yang sama bagi kolom baca, daftar isi, dan pengalih halaman — yang tidak satu
+  pun punya alasan menyentuh chrome. Dijaga dua arah.
 - **Langit-langit & nol-CTA dijaga sebagai teks berkas**: `--ant-font-size-heading-1`
   tidak boleh muncul di permukaan ini, dan `variant="primary"` tidak boleh muncul
   sama sekali.
@@ -557,6 +627,102 @@ penjaga kunci yatim (#260).
 penjaganya. Definisinya dirender di tempat alih-alih ditautkan karena
 `/glossary` bertenant dan menuntut sesi — sebuah tautan ke sana dari permukaan
 publik adalah tautan yang memantul ke halaman masuk.
+
+### Satu halaman, DUA kulit — dan kenapa yang kedua BUKAN kerangka dasbor
+
+Sampai perbaikan ini `/docs` selalu memakai kepala publik yang ramping (lambang
++ "Dokumentasi" + satu tautan "masuk ke aplikasi"), **termasuk untuk pengguna
+yang sedang bersesi**. Pintu masuk yang paling sering dipakai justru dari DALAM
+aplikasi — menu Bantuan di bilah atas — jadi satu klik "Panduan halaman ini"
+melempar penggunanya keluar dari chrome-nya ke halaman telanjang: tanpa menu
+samping, tanpa bilah atas, tanpa jalan kembali selain tombol Back. Kelas cacat
+yang sama sudah diperbaiki dua kali: `/companies/new` (dulu `AuthShell` bergaya
+login padahal dibuka dari panel akun) dan wisaya penyiapan (dulu `SetupShell`).
+
+**Aturannya: kulit ditentukan oleh SESI, bukan oleh rutenya — dan kulitnya dua,
+tidak pernah tiga.**
+
+| Keadaan pembaca | Kulit | Yang menggambarnya |
+|---|---|---|
+| bersesi, dengan PT terbuka | **aplikasi** — menu samping + bilah atas, butir pertama "Kembali ke buku" | `PlatformShell` |
+| bersesi, tanpa satu pun PT | **aplikasi** — menu samping panel akun, tanpa butir buku | `PlatformShell` |
+| tanpa sesi | **publik** — kepala ramping seperti sejak #300, tak berubah | `docs-public-chrome.tsx` |
+| bersesi, tanpa keanggotaan tenant | **publik** — tak ada nama tenant untuk dipajang | `docs-public-chrome.tsx` |
+
+**Kenapa kulit keduanya `PlatformShell` dan bukan kerangka dasbor**, meski
+"kerangka dasbor" yang diminta — dua ukuran, bukan selera:
+
+- **Kerangka dasbor tidak bisa menjawab keadaan kedua sama sekali.**
+  `(dashboard)/layout.tsx` menyusun menunya dari `session.user.role`, yaitu
+  peran DI SEBUAH PT; ketika peran itu `null` ia harfiah
+  `return <PageLoader …>`. Pemilik tenant yang belum punya satu pun PT akan
+  melihat pemutar memuat selamanya, di halaman yang sengaja dibuat publik.
+  Alasan yang sama sudah tertulis di kepala `(tenant)/layout.tsx` dan
+  `platform-shell.tsx` — inilah pemakaian ketiganya.
+- **Menunya akan memantul.** Ke-±40 butir menu dasbor beralamat jalur APLIKASI
+  (`/invoices`, `/dashboard`), dan yang menerjemahkannya ke jalur kanonik
+  adalah `scopedHref` yang membaca slug dari `usePathname()`. Di `/docs` tidak
+  ada slug di alamatnya: setiap butir menunjuk jalur lama dan bergantung pada
+  pantulan 307, dan tidak satu butir pun bertanda aktif.
+
+**Kolom baca tetap 768px DI DALAM kulit aplikasi.** Baris "lebar maksimum" di
+tabel dimensi mengikat, dan ia mengikat justru di sana: area kerja dasbor lebar
+penuh, jadi prosa yang dibiarkan ikut melebar merusak persis yang diperbaiki
+#300. Angkanya hidup di SATU tempat (`docs-shell.tsx`), dipakai kedua kulit.
+
+**Yang membuatnya mekanisme:**
+
+- `tests/docs-chrome.test.tsx` merender layout & halaman yang ASLI untuk
+  keempat keadaan di tabel — termasuk "menu samping tidak kosong dan tidak satu
+  butir pun menuntut sebuah PT";
+- `tests/docs.test.ts` mengunci bahwa kulitnya dipilih di LAYOUT (kedua
+  `page.tsx` tetap bersih dari sesi), bahwa jalur pemilihan kulit tidak memuat
+  satu penjaga/`redirect()` pun, bahwa 768 tidak disalin, dan bahwa daftar-IZIN
+  impornya dikecualikan untuk **satu** berkas bernama;
+- `tests/authz-coverage.test.ts` tetap menuntut kedua halaman tidak menyentuh
+  sesi maupun Prisma — yang tidak berubah, karena yang membaca sesi bukan
+  halaman.
+
+**Prosanya TIDAK ikut berganti bahasa.** Badan dokumentasi tetap Indonesia
+sementara chrome di sekelilingnya mengikuti bahasa sesi; itu keputusan #300
+(lihat "Bahasa: Indonesia, dan pilihannya DITAMPILKAN" di atas) dan ia tidak
+berubah karena chrome-nya kini bisa berupa chrome aplikasi.
+
+### Daftar isi: DAFTAR, bukan sepuluh kartu — dan kenapa lebarnya tidak diubah
+
+Bentuk pertama daftar isi `/docs` adalah satu kartu per halaman: tepi, bayangan,
+isian, judul biru. Sepuluh kartu seragam yang berjajar ke bawah menghasilkan
+tekstur yang RATA — tidak ada yang lebih berat daripada yang lain, jadi tidak
+ada yang bisa dipindai — dan chrome-nya memakan tinggi layar yang seharusnya
+memperlihatkan lebih banyak judul sekaligus. Kartu adalah bentuk untuk PILIHAN
+SETARA yang sedikit; daftar isi sepuluh entri bukan itu.
+
+Bentuk yang berlaku sekarang, dan aturannya berlaku untuk halaman dokumentasi
+berikutnya:
+
+- **dua cabang** mendapat perlakuan peta — bilah lompat di puncak dengan jumlah
+  halaman masing-masing, supaya pembaca tahu dokumentasi ini ditulis untuk dua
+  pembaca sebelum ia menggulung melewati bagian yang salah;
+- **entri** menjadi daftar tipografis: `<h3>` (bukan `<span>` — sepuluh judul
+  yang tak berjenjang membuat daftar ini terbaca sebagai dua baris oleh pembaca
+  layar), satu kalimat sekunder, garis rambut pemisah, panah di tepi kanan;
+- **judul entri bukan biru tautan.** Warna berhenti berarti begitu semua baris
+  memakainya. Afordansnya tidak bergantung pada warna saja: panah + garis bawah
+  & warna tautan saat `:hover`/`:focus-visible`;
+- **pemisahan bagian datang dari GARIS, bukan dari ruang.** Irama 24px di tabel
+  di atas mengikat; menambah jarak antar-bagian berarti meminjam irama
+  pemasaran;
+- **jangkar bagian diturunkan dari KUNCI cabang** (`#cabang-pengguna`), bukan
+  dari judulnya yang diterjemahkan — kerangka halaman ini trilingual, alamatnya
+  tidak boleh ikut berganti bahasa;
+- **halaman dokumen punya pengalih maju/mundur** di dalam cabangnya. Di sana
+  kotak bertepi justru bentuk yang benar: paling banyak dua, setara,
+  bersebelahan.
+
+**Yang SENGAJA tidak dikerjakan:** kolom baca tidak dilebarkan dari 768px meski
+kanvas layar lebar terasa kosong. Melebarkannya merusak yang sedang diperbaiki —
+kalimat ringkas yang membentang melewati ±75 karakter berhenti bisa dipindai
+sekali lihat — dan baris "lebar maksimum" di tabel di atas mengikat.
 
 ---
 
@@ -1081,6 +1247,7 @@ membaca hijau dan menyimpulkan aman.
 | `<ButtonLink>` benar-benar menavigasi di sisi klien: satu `<a class="ant-btn">`, `href` ter-scope tenant, `router.push` pada klik biasa, dan Ctrl/klik-tengah/`download`/alamat luar tetap milik peramban | `tests/button-link-navigation.test.tsx` |
 | Satu aksi utama per layar: `variant` eksplisit di **seluruh** `src/app` + `src/components` (tanpa daftar pengecualian sejak potongan 4, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register` (⚠ `.map()`, primer antar-komponen, primer antar-lingkup dalam satu berkas — **yaitu setiap kolom tabel** — dan primer berkondisi TIDAK terlihat penjaga; lihat §Aksi utama per layar) | `tests/button-emphasis.test.ts` |
 | Bawaan `variant` primitif `Button` = `secondary`, di kedua bentuknya (tombol & anchor), dikunci di sumber **dan** di markup hasil render | `tests/button-emphasis.test.ts` · `tests/ui-controls-antd.test.tsx` |
+| Satu baris kendali = satu ukuran: kendali yang berdampingan mendatar (`Flex`/`Space`/`Row`/`display: flex\|grid`) tidak boleh mencampur `sm` (30px) dengan bawaan (40px) atau `lg`; tumpukan dan sel kisi melebar-penuh punya barisnya sendiri; model `sm→small` di kedua primitif ikut dikunci (⚠ TIDAK terlihat penjaga: baris yang dirakit antar-BERKAS, gaya yang datang dari impor, `size={x ? "sm" : "md"}`, dan tinggi yang dipaksa lewat `style`) | `tests/control-size-row.test.ts` |
 | Destruktif = merah **+ konfirmasi**: setiap `<Button>` yang bisa bernilai `danger`/`destructive` berpasangan dengan `ConfirmDialog` (sebagai `trigger`, atau bentuk terkendali di berkas yang sama); satu-satunya pengecualian berbentuk ATRIBUT (`aria-pressed` = saklar, yang menekannya lagi mengembalikannya), bukan daftar nama berkas — jadi tak ada daftar yang bisa membusuk. ⚠ TIDAK terlihat penjaga: dialog mana untuk tombol mana (bentuk terkendali dinilai per-BERKAS), apakah pesannya menyebut akibatnya, tombol destruktif yang tidak berwarna merah, dan perakitan antar-berkas | `tests/destructive-confirm.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
 | `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
@@ -1124,6 +1291,7 @@ menunjuk halaman acak). `bun run build` adalah gerbang tersendiri, dan ia wajib
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
 - [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`). **Tombol-tautan: `<ButtonLink href>` untuk rute di dalam app** (satu `<a>`, navigasi sisi-klien + prefetch, #289), `<Button href>` untuk tautan keluar / `download` / pemuatan penuh yang disengaja — **tidak pernah `<Link><Button/></Link>`** (dua elemen interaktif bersarang: HTML tak sah, pembaca layar mengumumkannya dua kali), dan `asChild` sudah dicabut (#250).
 - [ ] **Hitung tombol berisi penuh di layar jadi — termasuk yang lahir dari `.map()`, dari komponen lain, dan dari kolom tabel. Satu, atau nol.** `variant` ditulis eksplisit di SETIAP `<Button>`; bawaannya `secondary`, jadi penekanan tinggi harus diminta (`variant="primary"`) — dan tombol yang variannya lupa ditulis tidak akan tampak salah, ia hanya diam-diam kehilangan penekanannya. §Aksi utama per layar.
+- [ ] **Satu ukuran kendali per baris.** Lihat barisnya, bukan tombolnya: `size="sm"` (30px) yang berdampingan dengan `Select`/`Input`/`MoneyInput` bawaan (40px) mematahkan garis dasar barisnya. Kalau campur, NAIKKAN tombolnya — jangan mengecilkan isian di sebelahnya. §Satu baris kendali = satu ukuran.
 - [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya sejak #203; sebuah kelas tidak gagal, ia hanya berhenti berlaku. Gaya ditulis sebaris, dan yang tak punya bentuk sebaris (`:hover`, `::after`, `@media`) hidup di satu `<style href precedence>` di komponennya - pola `landing-scale.ts` / `ui/table.tsx`.
 - [ ] Empty state bermakna + aksi.
 - [ ] **`bun run verify` hijau DAN `bun run build` `EXIT=0`** — yang pertama tidak membuktikan yang kedua, lihat §Penjaga.

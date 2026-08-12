@@ -79,6 +79,14 @@ export interface NavGroup {
   label: string;
   /** Kunci kamus untuk nama area tugas (`nav.groups.*`). */
   labelKey: DictionaryKey;
+  /**
+   * Ikon area tugas — kunci ke peta `ICONS` di `components/layout/sidebar.tsx`.
+   *
+   * WAJIB, dan bukan hiasan: saat kolom samping DILIPAT, judul grup tidak
+   * dirender sama sekali dan ikon inilah SATU-SATUNYA yang tersisa dari sebuah
+   * area tugas. Grup tanpa ikon = kotak kosong yang tidak bisa ditebak isinya.
+   */
+  icon: string;
   items: NavItem[];
 }
 
@@ -106,6 +114,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "persetujuan",
     label: "Persetujuan",
     labelKey: "nav.groups.approvals",
+    icon: "ClipboardCheck",
     items: [
       {
         href: "/approvals",
@@ -127,6 +136,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "penjualan",
     label: "Penjualan",
     labelKey: "nav.groups.sales",
+    icon: "Receipt",
     items: [
       // Wizard terpandu (issue #5) berdiri paling atas: sebelumnya hanya bisa
       // dijangkau dari Aksi Cepat beranda, sehingga dari halaman lain pengguna
@@ -153,6 +163,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "pembelian",
     label: "Pembelian",
     labelKey: "nav.groups.purchasing",
+    icon: "ShoppingCart",
     items: [
       // Kembaran "Catat Penjualan" di atas — alasannya sama (issue #5).
       { href: "/purchases/new", label: "Catat Pembelian", labelKey: "nav.items.recordPurchase", icon: "ShoppingCart", permission: "purchase.write", termKey: "pembelian" },
@@ -165,6 +176,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "kas",
     label: "Kas & Bank",
     labelKey: "nav.groups.cash",
+    icon: "Coins",
     items: [
       // "Buku Kas & Bank", bukan "Kas & Bank": label item tidak boleh kembar
       // dengan label kelompoknya (lihat penjaga di tests/quick-actions.test.ts).
@@ -176,6 +188,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "stok",
     label: "Stok & Aset",
     labelKey: "nav.groups.inventory",
+    icon: "Package",
     items: [
       { href: "/inventory", label: "Stok Barang", labelKey: "nav.items.inventory", icon: "Package", permission: "inventory.read", termKey: "persediaan" },
       // Kartu Stok baca-saja, jadi izinnya `inventory.read` — bukan `write`
@@ -191,6 +204,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "laporan",
     label: "Laporan",
     labelKey: "nav.groups.reports",
+    icon: "BarChart3",
     items: [
       // issue #19 — Pusat Laporan adalah pintu masuk semua laporan.
       { href: "/reports", label: "Pusat Laporan", labelKey: "nav.items.reports", icon: "BarChart3", permission: "report.read" },
@@ -215,6 +229,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "pengaturan",
     label: "Bantuan & Pengaturan",
     labelKey: "nav.groups.settings",
+    icon: "Settings",
     items: [
       { href: "/glossary", label: "Kamus Istilah", labelKey: "nav.items.glossary", icon: "BookMarked", permission: "glossary.read" },
       { href: "/periods", label: "Kunci Bulan", labelKey: "nav.items.periods", icon: "Lock", permission: "period.manage", termKey: "tutup_periode" },
@@ -226,11 +241,26 @@ export const NAV_GROUPS: NavGroup[] = [
       // issue #104 — berpindah buku. Hanya muncul bila memang ADA yang lain
       // untuk dipilih; halaman itu memantul balik ke beranda kalau tidak.
       { href: "/select-company", label: "Pilih Perusahaan", labelKey: "nav.items.selectCompany", icon: "Building2", minCompanies: 2 },
-      // issue #104 — menambah PT baru dulu menuntut akses SSH ke server; kini
-      // ia berdiri di tempat orang yang berwenang memang sudah berada.
-      // Sejak issue #135 izinnya TINGKAT TENANT (owner/admin tenant), bukan
-      // milik peran di PT mana pun — lihat holdsPermission di bawah.
-      { href: "/companies/new", label: "Tambah Perusahaan", labelKey: "nav.items.companyNew", icon: "Building2", permission: "company.create" },
+      /*
+       * ⚠ "Tambah Perusahaan" SUDAH TIDAK DI SINI, dan itu keputusan.
+       *
+       * Butir ini dulu ada dengan alasan yang masuk akal pada zamannya (#104):
+       * menambah PT baru dulu menuntut akses SSH ke server, jadi menaruhnya di
+       * menu adalah kemajuan besar — "ia berdiri di tempat orang yang berwenang
+       * memang sudah berada". Alasan itu gugur sejak panel akun lahir (#172).
+       *
+       * Yang membuatnya salah sekarang: menu ini adalah menu SEBUAH BUKU
+       * (`/t/{tenant}/{company}/…`), sedangkan membuat PT adalah tindakan
+       * tingkat AKUN — izinnya pun izin tenant (`company.create`), bukan peran
+       * di PT mana pun. Menekannya dari dalam buku PT A berarti melompat keluar
+       * ke kulit yang lain sama sekali, dan butir itu tergandakan: menu samping
+       * `/platform` sudah memuatnya (`lib/panel-nav.tsx`).
+       *
+       * Jalan masuknya tidak hilang: menu avatar memuat "Akun & Perusahaan"
+       * (`components/layout/user-menu.tsx`), dan dari panel itulah "Tambah
+       * Perusahaan" berdiri bersama saudara-saudaranya yang juga tingkat akun
+       * (Tim, Langganan, Data & Privasi).
+       */
       { href: "/settings", label: "Pengaturan", labelKey: "nav.items.settings", icon: "Settings", permission: "settings.view" },
     ],
   },

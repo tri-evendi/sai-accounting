@@ -117,14 +117,42 @@ const SUMMARY_GRID: React.CSSProperties = {
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
 };
 
-/** Kisi kartu perusahaan — bekas `sm:grid-cols-2 xl:grid-cols-3`. */
+/**
+ * Baris ringkasan yang isinya SATU ubin — anggota tanpa izin tagihan.
+ *
+ * `auto-fit` MENGUNCUPKAN trek yang kosong lalu membagi seluruh lebar kepada
+ * yang tersisa; dengan satu ubin itu berarti satu kartu selebar 1152px yang
+ * isinya sebuah kata dan sebuah angka. `auto-fill` menahan trek kosongnya tetap
+ * ada, jadi ubinnya tinggal di kolom pertama dengan lebar yang sama seperti
+ * saat ia bertetangga.
+ */
+const SUMMARY_GRID_ONE: React.CSSProperties = {
+  ...SUMMARY_GRID,
+  gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))",
+};
+
+/**
+ * Kisi kartu perusahaan — bekas `sm:grid-cols-2 xl:grid-cols-3`.
+ *
+ * ⚠ `auto-fill`, BUKAN `auto-fit`, dan perbedaannya baru terlihat pada jumlah
+ * yang paling sering: SATU. Keduanya menghitung trek yang muat sama saja, tapi
+ * `auto-fit` menguncupkan yang kosong — jadi pemilik dengan satu PT melihat
+ * kartu selebar 1102px berisi satu nama pendek, dengan tombol "Buka" selebar
+ * 1070px di bawahnya. Itu bukan kartu; itu pita. `auto-fill` membiarkan ketiga
+ * trek sisanya tetap ada dan kartunya tinggal ±266px — bentuk yang sama persis
+ * dengan yang dilihat pemilik dengan empat PT.
+ *
+ * Yang TIDAK ikut berubah adalah baris ringkasan di atasnya: isinya 3–5 ubin
+ * yang memang harus membentang selebar isi, jadi `SUMMARY_GRID` tetap
+ * `auto-fit` — `SUMMARY_GRID_ONE` mengurus satu-satunya keadaan yang tidak.
+ */
 const COMPANY_GRID: React.CSSProperties = {
   listStyle: "none",
   display: "grid",
   gap: 12,
   margin: 0,
   padding: 0,
-  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+  gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 240px), 1fr))",
 };
 
 /* ── Gaya DI DALAM `Card` — token AntD lewat variabel CSS ───────────────── */
@@ -134,6 +162,21 @@ const CARD_HEADING: React.CSSProperties = {
   fontSize: "var(--ant-font-size-lg)",
   fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
   color: "var(--ant-color-text)",
+};
+
+/**
+ * Judul seksi di luar kartu ("Pemakaian") — SAMA ukurannya dengan judul kartu.
+ *
+ * Ia dulu `fontSize: 18`, dan 18 bukan anak tangga token mana pun: skalanya
+ * 38 · 30 · 24 · 20 · 16 (MASTER.md §Typography). Yang benar di sini bukan
+ * membulatkannya ke 20 melainkan ke 16 — `PageHeader` sudah 24px, dan judul
+ * seksi yang hanya 4px di bawah judul halaman berhenti berfungsi sebagai
+ * tingkat kedua. Pada 16px ia sejajar dengan "Akun" dan "Perusahaan Anda", yang
+ * memang sederajat dengannya.
+ */
+const SECTION_HEADING: React.CSSProperties = {
+  ...CARD_HEADING,
+  marginBottom: "var(--ant-margin-sm)",
 };
 
 const CARD_BODY: React.CSSProperties = {
@@ -283,19 +326,11 @@ export default async function PlatformPage() {
             (dan datanya memang tidak pernah dibaca untuknya). */}
         <section aria-labelledby={canSeeBilling && overview ? "ringkasan" : undefined}>
           {canSeeBilling && overview && (
-            <h2
-              id="ringkasan"
-              style={{
-                margin: "0 0 12px",
-                fontSize: 18,
-                fontWeight: 600,
-                color: "var(--ant-color-text)",
-              }}
-            >
+            <h2 id="ringkasan" style={SECTION_HEADING}>
               {t("tenantSettings.usageHeading")}
             </h2>
           )}
-          <div style={SUMMARY_GRID}>
+          <div style={canSeeBilling && overview ? SUMMARY_GRID : SUMMARY_GRID_ONE}>
             {canSeeBilling && overview ? (
               <>
                 {/* METER, bukan angka telanjang. "2 / 3" benar dan tidak

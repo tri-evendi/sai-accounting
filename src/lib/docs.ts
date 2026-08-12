@@ -135,6 +135,20 @@ export function docAnchor(judul: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Jangkar bagian cabang di daftar isi (`/docs#cabang-pengguna`).
+ *
+ * Diturunkan dari KUNCI cabang, bukan dari judulnya yang diterjemahkan. Kalau
+ * ia diturunkan dari judul, jangkarnya ikut berganti bahasa — `#untuk-pengguna`
+ * bagi pembaca `id`, `#for-everyday-users` bagi pembaca `en` — dan setiap
+ * tautan yang pernah disalin seseorang mendarat di puncak halaman pada bahasa
+ * yang lain. Kerangka halaman ini memang trilingual (keputusan 3); alamatnya
+ * tidak boleh ikut.
+ */
+export function docBranchAnchor(cabang: DocBranch): string {
+  return `cabang-${cabang}`;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
  * ISI — bahasa Indonesia, keputusan 3.
  *
@@ -229,7 +243,15 @@ const PAKET = {
   ringkas:
     "Apa yang sebenarnya dibatasi sebuah paket, dan kenapa setiap PT berdiri di bukunya sendiri.",
   cabang: "pelanggan",
-  navHrefs: ["/companies/new", "/select-company"],
+  /*
+   * `/companies/new` SUDAH TIDAK di sini: membuat PT hanya berlangsung di panel
+   * akun, jadi butirnya dicabut dari menu perusahaan (`lib/nav.ts`) dan
+   * `navHrefs` harus menunjuk butir navigasi yang benar-benar ada — dijaga
+   * `tests/docs.test.ts`. Dokumen ini tetap menempel pada `/select-company`,
+   * tempat pertanyaan "kenapa PT kedua berdiri di bukunya sendiri" memang
+   * muncul.
+   */
+  navHrefs: ["/select-company"],
 } as const satisfies DocMeta;
 
 const DATA_ANDA = {
@@ -332,6 +354,26 @@ export function docForNavHref(href: string): DocEntry | undefined {
 /** Halaman dokumen sebuah cabang, urut deklarasi. */
 export function docsInBranch(cabang: DocBranch): DocEntry[] {
   return DOC_INDEX.filter((page) => page.cabang === cabang);
+}
+
+/**
+ * Tetangga sebuah halaman DI DALAM cabangnya — urutan baca `DOC_INDEX`.
+ *
+ * Dipakai pengalih halaman di kaki halaman dokumen. Sengaja tidak melintasi
+ * cabang: "berikutnya" yang melompat dari halaman terakhir cabang pengguna ke
+ * halaman pertama cabang pelanggan menjanjikan sebuah urutan baca yang memang
+ * tidak ada — kedua cabang ditulis untuk dua pembaca yang berbeda, dan
+ * `DOC_BRANCHES` menyatakannya.
+ */
+export function docNeighbours(slug: string): {
+  sebelum: DocEntry | undefined;
+  sesudah: DocEntry | undefined;
+} {
+  const page = docBySlug(slug);
+  if (!page) return { sebelum: undefined, sesudah: undefined };
+  const sekabang = docsInBranch(page.cabang);
+  const i = sekabang.findIndex((p) => p.slug === slug);
+  return { sebelum: sekabang[i - 1], sesudah: sekabang[i + 1] };
 }
 
 /**

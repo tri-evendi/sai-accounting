@@ -39,10 +39,25 @@
  * Angka besar memakai angka PROPORSIONAL, bukan `tabular-nums`: tabular
  * memberi setiap digit lebar `0` dan membuat nilai tunggal tampak renggang.
  * Tabular tetap benar di KOLOM tabel, tempat digit harus sejajar ke bawah.
+ *
+ * ══ KOTAKNYA `Card`, BUKAN TEPI TULISAN TANGAN ═════════════════════════════
+ * Sampai perbaikan ini berkas ini menggambar permukaannya sendiri — `div`
+ * bertepi `colorBorderSecondary`, radius `borderRadiusLG`, padding 16. Nilainya
+ * benar satu per satu dan tetap menghasilkan ubin yang BUKAN kartu: `Card`
+ * memikul bayangan `boxShadowTertiary` sejak #266 dan padding sisinya
+ * `paddingLG` (24), jadi meteran ini berdiri di sebelah `StatCard` di baris
+ * ringkasan `/platform` dengan elevasi, indentasi, dan irama judul→nilai yang
+ * berbeda. Tiga ubin sebaris, dua keluarga.
+ *
+ * Sekarang keduanya memakai `Card` + anatomi bersama `ui/stat-tile.ts`, jadi
+ * yang tersisa sebagai perbedaan adalah yang memang berbeda: meteran punya
+ * batang, kartu status tidak.
  */
 
 import { Progress, theme } from "antd";
 
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { TILE_CONTENT, TILE_HEADER, TILE_LABEL } from "@/components/ui/stat-tile";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 export interface QuotaMeterProps {
@@ -91,57 +106,62 @@ export function QuotaMeter({
       : token.colorPrimaryBg;
 
   return (
-    <div
-      style={{
-        borderRadius: token.borderRadiusLG,
-        border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-        background: token.colorBgContainer,
-        padding: token.padding,
-      }}
-    >
-      <p style={{ margin: 0, color: token.colorTextSecondary }}>{label}</p>
-      <p
-        style={{
-          margin: `${token.marginXXS}px 0 0`,
-          fontSize: token.fontSizeHeading3,
-          fontWeight: token.fontWeightStrong,
-          color: token.colorText,
-        }}
-      >
-        {valueLabel}
-      </p>
-
-      <div
-        role="progressbar"
-        aria-valuenow={used}
-        aria-valuemin={0}
-        aria-valuemax={max}
-        aria-label={`${label}: ${valueLabel}`}
-        style={{ marginTop: token.marginSM }}
-      >
-        <div aria-hidden>
-          <Progress
-            percent={Math.round(ratio * 100)}
-            showInfo={false}
-            strokeColor={stroke}
-            railColor={rail}
-          />
-        </div>
-      </div>
-
-      {/* Keadaan sebagai KATA. Tanpa baris ini, satu-satunya perbedaan antara
-          "lega" dan "mentok" adalah rona batang. */}
-      {stateLabel && (full || nearly) && (
+    /* `height: 100%` supaya meteran yang berbagi kisi dengan kartu status
+       (baris ringkasan `/platform`) mengisi tinggi barisnya alih-alih
+       menggantung — ubin sebaris yang tepi bawahnya tidak segaris terbaca
+       sebagai kartu yang isinya belum selesai dimuat. */
+    <Card style={{ height: "100%" }}>
+      <CardHeader style={TILE_HEADER}>
+        <p style={TILE_LABEL}>{label}</p>
+      </CardHeader>
+      <CardContent style={TILE_CONTENT}>
         <p
           style={{
-            margin: `${token.marginXS}px 0 0`,
+            margin: 0,
+            fontSize: token.fontSizeHeading3,
             fontWeight: token.fontWeightStrong,
-            color: full ? money.colorMoneyNegative : money.colorMoneyPending,
+            color: token.colorText,
           }}
         >
-          {stateLabel}
+          {valueLabel}
         </p>
-      )}
-    </div>
+
+        <div
+          role="progressbar"
+          aria-valuenow={used}
+          aria-valuemin={0}
+          aria-valuemax={max}
+          aria-label={`${label}: ${valueLabel}`}
+          style={{ marginTop: token.marginXS }}
+        >
+          {/* `display: flex` menelan turunan garis-dasar di bawah `Progress`:
+              `.ant-progress` sebuah `inline-block`, jadi barisnya menyisakan
+              ruang untuk ekor huruf yang tidak pernah ada di sini. */}
+          <div aria-hidden style={{ display: "flex" }}>
+            <Progress
+              percent={Math.round(ratio * 100)}
+              showInfo={false}
+              strokeColor={stroke}
+              railColor={rail}
+              style={{ width: "100%", margin: 0 }}
+            />
+          </div>
+        </div>
+
+        {/* Keadaan sebagai KATA. Tanpa baris ini, satu-satunya perbedaan antara
+            "lega" dan "mentok" adalah rona batang. */}
+        {stateLabel && (full || nearly) && (
+          <p
+            style={{
+              margin: `${token.marginXS}px 0 0`,
+              fontWeight: token.fontWeightStrong,
+              color: full ? money.colorMoneyNegative : money.colorMoneyPending,
+            }}
+          >
+            {stateLabel}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

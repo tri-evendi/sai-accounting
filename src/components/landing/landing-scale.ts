@@ -67,7 +67,12 @@
  */
 import type { CSSProperties } from "react";
 
-import { TONE_HUES, TONE_HUE_TOKEN, toneMix, type ToneHue } from "@/lib/theme/tone-recipe";
+import {
+  TONE_HUES,
+  TONE_HUE_TOKEN,
+  toneMix,
+  type ToneHue,
+} from "@/lib/theme/tone-recipe";
 
 /* ------------------------------------------------------------------------ */
 /* NADA PEKAT — pita seksi & kartu berisi solid (permintaan pemilik)          */
@@ -149,7 +154,36 @@ export type LandingHue = ToneHue;
 export const LANDING_HUE_TOKEN = TONE_HUE_TOKEN;
 
 /** Kadar campuran per peran, dalam persen. Alasannya di komentar di atas. */
-export const LANDING_MIX = { band: 10, accent: 16, fill: 14, chip: 28 } as const;
+/*
+ * ⚠ `band` 10% → 14% dan `accent` 16% → 18% saat warna merek menjadi navy.
+ *
+ * Kadar lama diturunkan dari isian tombol BIRU LAMA (`#1668dc`), yang hanya
+ * berjarak 3,55:1 dari latar gelap — jarak setipis itu yang dulu menahan pita
+ * di 10%. Isian navy (`#2F6FBF`) punya jarak berbeda, jadi batasnya diukur
+ * ULANG terhadap ketiga ambang yang benar-benar mengikat:
+ *
+ *   • teks & teks sekunder di atas pita  ≥ 4,5:1
+ *   • isian tombol primer di atas pita   ≥ 3:1   (hero & ajakan penutup)
+ *   • TEPI tombol garis di atas pita     ≥ 3:1   (tombol "Masuk" di hero)
+ *
+ * Hasil sapuan per hue, diambil yang TERKECIL dari kedua tema:
+ *
+ *   brand 20% · cyan 14% · indigo 18% · violet 16%   →  seragam 14%
+ *
+ * Cyan yang mengikat, dan ia mengikat di tema GELAP lewat isian tombol. Aksen
+ * memakai hue merek (batas 20%), diambil 18% supaya tetap bermargin.
+ *
+ * Ini menjawab keluhan "warnanya masih sangat pudar": pita naik 40% lebih pekat
+ * dan aksen 12,5%, tanpa satu ambang pun ditawar.
+ * `tests/landing-colors.test.ts` menghitung ulang semuanya dari token yang
+ * benar-benar terpasang — jadi angka di atas tidak bisa basi diam-diam.
+ */
+export const LANDING_MIX = {
+  band: 14,
+  accent: 18,
+  fill: 14,
+  chip: 28,
+} as const;
 
 const mix = (hue: LandingHue, pct: number, base: "container" | "elevated") =>
   toneMix(hue, pct, base);
@@ -182,7 +216,12 @@ const PITA = [
  * 4,51–8,27:1 — jauh di atas ambang ikon 3:1.
  */
 const GLYPH: Record<LandingHue, string> = {
-  brand: "var(--ant-blue-8)",
+  /* ⚠ `brand` memakai `--ant-color-primary`, bukan `--ant-blue-8`. Sejak warna
+     merek menjadi navy, blue-8 bukan lagi anak tangga merek — glif biru terang
+     di atas kotak bernada navy adalah dua hue di satu lambang. Primary bekerja
+     di KEDUA tema tanpa cabang: gelap di tema terang, terang di tema gelap,
+     dan kotaknya bergerak ke arah yang sama. */
+  brand: "var(--ant-color-primary)",
   cyan: "var(--ant-cyan-8)",
   indigo: "var(--ant-geekblue-8)",
   violet: "var(--ant-purple-8)",
@@ -218,6 +257,28 @@ const CHIP: Record<LandingHue, string> = {
 
 export const landingFill = (hue: LandingHue) => FILL[hue];
 
+/**
+ * Isian kartu bernada dengan KEDALAMAN — satu bidang rata diganti gradien
+ * dua-henti yang sangat tipis.
+ *
+ * ══ KENAPA ═════════════════════════════════════════════════════════════════
+ * Sesudah tepi kartu dicabut, yang tersisa adalah persegi berwarna rata — dan
+ * bidang rata tanpa tepi itulah yang membuat halaman terbaca POLOS. Yang
+ * mengembalikan dimensinya bukan tepi (itu justru yang baru saja dibuang)
+ * melainkan CAHAYA: sedikit lebih terang di atas, sedikit lebih pekat di bawah,
+ * seperti permukaan yang menerima cahaya dari arah yang sama dengan sorotan
+ * radial di hero.
+ *
+ * Selisihnya sengaja kecil (nada murni → 60% nada di atas permukaan). Lebih
+ * dari itu dan kartunya berhenti terbaca sebagai satu bidang; ia menjadi dua.
+ *
+ * ⚠ Ini BUKAN bayangan. MASTER.md §Jarak, radius, bayangan melarang menulis
+ * `box-shadow` sendiri — nilainya berlapis tiga dan disetel per algoritma tema.
+ * Kedalaman di sini datang dari isian, yang memang milik pemanggil.
+ */
+export const landingFillSoft = (hue: LandingHue) =>
+  `linear-gradient(180deg, color-mix(in srgb, ${FILL[hue]} 60%, var(--sai-landing-surface)) 0%, ${FILL[hue]} 100%)`;
+
 export const landingChip = (hue: LandingHue) => CHIP[hue];
 
 /**
@@ -245,6 +306,31 @@ export const LANDING_SURFACE = "var(--sai-landing-surface)";
  * kepala `app/(auth)/loading.tsx`).
  */
 export const LANDING_BREAKPOINT = 576;
+
+/**
+ * Titik patah KEDUA — dan satu-satunya, khusus untuk tautan seksi di bilah atas.
+ *
+ * ══ KENAPA ADA PENGECUALIAN DARI "SATU TITIK PATAH" ════════════════════════
+ * Halaman ini sengaja berpatah di satu titik saja (lihat `LANDING_BREAKPOINT`),
+ * dan aturan itu masih benar untuk ISI. Bilah atas berbeda: ia bukan kolom yang
+ * mengalir melainkan satu baris yang harus memuat merek + empat tautan +
+ * pemilih bahasa + dua tombol SEKALIGUS.
+ *
+ * Diukur di peramban, bukan diperkirakan: dengan tautan seksi tampil, bilah itu
+ * menuntut **685px**. Menampilkannya mulai 576px karena itu membuat halaman
+ * MENGGULUNG MENDATAR di seluruh rentang 576–685px — cacat yang dilarang tegas
+ * ("no horizontal scroll") dan yang tidak terlihat di dua ukuran yang biasa
+ * ditangkap layar (1920 dan 390).
+ *
+ * 768px memberi kelonggaran di atas 685px yang terukur itu, dan ia titik patah
+ * tablet yang lazim. Di bawahnya tautan seksi disembunyikan — yang hilang tidak
+ * ada: seksinya berurutan ke bawah, dan kolom PRODUK di kaki halaman memuat
+ * jangkar yang sama.
+ *
+ * ⚠ Jangan menambah titik patah ketiga tanpa mengukur lebih dulu. Yang
+ * membenarkan yang satu ini adalah angka, bukan selera.
+ */
+export const LANDING_NAV_LINKS_BREAKPOINT = 768;
 
 /**
  * Tinggi bilah atas yang menempel (`position: sticky`). Dipakai dua kali dan
@@ -283,14 +369,38 @@ export const LANDING_STYLE = `
   --sai-landing-cta-gap:var(--ant-margin-sm);
   --sai-landing-cta-space:var(--ant-margin-xl);
   --sai-landing-surface:var(--ant-color-bg-elevated);
+  --sai-landing-radius:calc(var(--ant-border-radius-lg) * 2);
+  --sai-landing-radius-control:calc(var(--ant-border-radius) * 2);
+  --sai-landing-lift:calc(var(--ant-margin-xxs) * -0.75);
   ${PITA}
   ${NADA}
 }
+/* Perangkap madu formulir kontak: TERSEMBUNYI dari mata, tetap ada di DOM.
+   Bukan display:none dan bukan type=hidden -- sebagian bot melewati keduanya
+   justru karena mengenalinya sebagai perangkap. Teknik yang dipakai sama
+   dengan tautan lewati-ke-isi di bawah: dikurung 1px dan dipotong. */
+[data-landing-honeypot]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;opacity:0;pointer-events:none}
 [data-landing-skip]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 [data-landing-skip]:focus{position:absolute;top:var(--ant-margin);left:var(--ant-margin);z-index:1000;width:auto;height:auto;clip:auto;padding:var(--ant-padding-xs) var(--ant-padding);border-radius:var(--ant-border-radius);background:var(--ant-color-primary);color:var(--ant-color-text-light-solid);text-decoration:none}
 [data-landing-actions]{display:flex;flex-direction:column;gap:var(--sai-landing-cta-gap)}
 [data-landing-chrome]{display:none;align-items:center;gap:var(--ant-margin-xs)}
 [data-landing-chrome-narrow]{display:flex;align-items:center;gap:var(--ant-margin-xs)}
+/* Tautan seksi di bilah atas. Disembunyikan di bawah 576px bersama sakelar
+   bahasa/tema, dan karena alasan yang sama: bilah selebar ponsel hanya cukup
+   untuk merek + dua pintu tanpa menyusutkan target sentuh. Yang hilang di sana
+   tidak perlu diganti di kaki halaman seperti sakelar itu — seksinya memang
+   berurutan ke bawah, jadi menggulung SUDAH jalan menuju semuanya. */
+[data-landing-links]{display:none;align-items:center;gap:var(--ant-margin);list-style:none;margin:0;padding:0}
+/* Kaki berkolom. Di ponsel SATU kolom (identitas lalu tiga daftar tautan);
+   di >=576px kolom identitas mendapat 2fr karena ia memikul kalimat sedangkan
+   tiga sisanya hanya daftar pendek. */
+[data-landing-footer-grid]{display:grid;gap:var(--ant-margin-lg);grid-template-columns:1fr}
+[data-landing-footer-bar]{display:flex;flex-direction:column;align-items:flex-start;gap:var(--ant-margin);margin-top:var(--ant-margin-xl);padding-top:var(--ant-padding);border-top:1px solid var(--ant-color-border-secondary)}
+/* Hero dua kolom. Di ponsel SATU kolom dan purwarupa produk berada SESUDAH
+   ajakan — bukan sebelumnya: di layar sempit gambar setinggi layar sebelum
+   tombol berarti tombolnya terdorong ke bawah lipatan, dan yang dikorbankan
+   adalah satu-satunya hal yang halaman ini minta orang lakukan. */
+[data-landing-hero]{display:grid;gap:var(--ant-margin-xl);align-items:center}
 [data-landing-brand]{transition:opacity 200ms ease}
 [data-landing-brand]:hover{opacity:.8}
 [data-landing-link]{transition:color 200ms ease}
@@ -300,10 +410,74 @@ export const LANDING_STYLE = `
 [data-landing-faq]:hover{color:var(--ant-color-link)}
 [data-landing-faq]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:2px}
 [data-landing-caret]{transition:transform 200ms ease}
+/* == KARTU YANG HIDUP, BUKAN KOTAK YANG DIAM =============================
+   Sampai perubahan ini tak satu pun dari ~20 kartu di halaman ini punya
+   keadaan hover. Halaman yang tidak menjawab kursor terbaca sebagai gambar,
+   bukan sebagai perangkat lunak -- dan untuk halaman yang MENJUAL perangkat
+   lunak itu kesan yang salah.
+
+   Yang dianimasikan hanya transform + box-shadow: keduanya properti komposit,
+   jadi tidak ada tata letak yang dihitung ulang saat kursor bergerak melintasi
+   kisi. Angkatnya kecil (3px) dan bayangannya token AntD, bukan tulisan tangan
+   (MASTER.md melarang box-shadow sendiri: nilainya berlapis tiga per tema). */
+/* == PEMISAH SEKSI YANG MELELEH DI TEPI ===================================
+   Garis penuh selebar layar adalah elemen paling "kertas bergaris" di halaman
+   ini: enam hairline lurus dari tepi kiri ke tepi kanan. Mencabutnya bukan
+   pilihan -- diukur pada token yang benar-benar terpasang, selisih pita
+   terhadap latar halaman hanya 1,09:1 di tema terang dan 1,14:1 di tema gelap,
+   jadi warna sendirian TIDAK menggambar batas wilayah di kedua tema.
+
+   Yang bisa diubah adalah bentuk garisnya. Gradien membuatnya pekat di tengah
+   -- tepat di kolom tempat isi berdiri dan batas itu memang perlu dibaca --
+   lalu meleleh menjadi nol sebelum mencapai tepi viewport. Batasnya tetap ada,
+   kesan "digaris" hilang.
+
+   Dipasang sebagai ::before, bukan border-top: sebuah border tidak bisa
+   memiliki gradien sepanjang jalurnya. */
+/* Bilah atas: kisi TIGA kolom, bukan space-between. Dengan space-between
+   posisi kelompok tengah ditentukan lebar kedua tetangganya -- terukur, tautan
+   seksi mendarat ~66px di kiri titik tengah sebenarnya, dan selisih sebesar itu
+   terbaca sebagai salah sejajar, bukan sebagai tata letak. "1fr auto 1fr"
+   menaruhnya di tengah tanpa bergantung pada lebar merek atau tombol.
+   Di bawah 576px kolom tengahnya kosong (tautan disembunyikan) dan kisinya
+   tetap benar: merek di kiri, aksi di kanan. */
+[data-landing-nav]{display:grid;grid-template-columns:1fr auto 1fr;position:relative}
+[data-landing-nav-actions]{justify-self:end}
+/* Garis bawah bilah meleleh di tepi, sama dengan pemisah seksi -- bilah ini
+   menempel sepanjang gulungan, jadi ia garis yang paling lama dilihat orang. */
+[data-landing-nav]::after{content:"";position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,var(--ant-color-border-secondary) 16%,var(--ant-color-border-secondary) 84%,transparent 100%)}
+[data-landing-divider]{position:relative}
+[data-landing-divider]::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,var(--ant-color-border-secondary) 16%,var(--ant-color-border-secondary) 84%,transparent 100%)}
+[data-landing-card]{transition:transform 220ms ease,box-shadow 220ms ease}
+[data-landing-card]:hover{transform:translateY(var(--sai-landing-lift));box-shadow:var(--ant-box-shadow)}
+/* Kendali di halaman ini lebih bulat daripada di app internal. Radius app
+   (6px) dipilih untuk kerapatan data; pendaratan tidak memikul tabel, dan
+   sudut yang lebih lunak adalah selisih terbesar antara "berwibawa" dan
+   "kaku" pada bidang sebesar tombol ajakan. Diturunkan dari token yang sama,
+   jadi ia bergerak bila skala radius app bergerak. */
+[data-landing] .ant-btn{border-radius:var(--sai-landing-radius-control)}
 [data-landing] details[open] [data-landing-caret]{transform:rotate(180deg)}
 @media (min-width:${LANDING_BREAKPOINT}px){
   [data-landing]{
-    --sai-landing-font-size-hero:calc(var(--ant-font-size-heading-1) * 1.4);
+    /* == HERO YANG IKUT LEBAR LAYAR ======================================
+       Sebelumnya satu angka mati: 38 x 1,4 = 53px, sama persis di 576px dan
+       di 2560px. Di monitor lebar hero itu berhenti terbaca sebagai hero --
+       ia hanya judul agak besar di tengah kolom 72rem.
+
+       clamp() dengan KEDUA UJUNG turunan --ant-font-size-heading-1:
+       lantainya 1,1x (~42px, masih di atas langit-langit app 38px) dan
+       langit-langitnya 1,6x (~61px). Suku tengah 4.5vw hanya menentukan
+       LAJU di antara keduanya -- ia tidak bisa membawa hero keluar dari
+       rentang yang tetap ditentukan skala aplikasi, jadi syarat "skala
+       pemasaran adalah TURUNAN skala aplikasi" tetap dipenuhi di kedua
+       ujungnya (dan tests/landing-boundary.test.ts kini memeriksa
+       keduanya, bukan satu angka seperti sebelumnya).
+
+       CATATAN PENYUNTING: blok ini hidup di dalam sebuah template literal,
+       jadi komentar di sini TIDAK BOLEH memuat backtick. Satu backtick
+       menutup literalnya, dan galatnya muncul sebagai puluhan baris
+       "Declaration expected" yang menunjuk ke mana-mana kecuali ke sini. */
+    --sai-landing-font-size-hero:clamp(calc(var(--ant-font-size-heading-1) * 1.1), 4.5vw, calc(var(--ant-font-size-heading-1) * 1.6));
     --sai-landing-font-size-section:var(--ant-font-size-heading-2);
     --sai-landing-rhythm:calc(var(--ant-margin-xxl) * 2);
     --sai-landing-gutter:var(--ant-padding-lg);
@@ -311,9 +485,70 @@ export const LANDING_STYLE = `
   [data-landing-actions]{flex-direction:row}
   [data-landing-chrome]{display:flex}
   [data-landing-chrome-narrow]{display:none}
+  [data-landing-footer-grid]{grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--ant-margin-xl)}
+  [data-landing-footer-bar]{flex-direction:row;align-items:center;justify-content:space-between}
+  /* 1,1fr : 1fr — kolom kalimat sedikit lebih lebar daripada purwarupanya.
+     Bagi rata membuat hero terbaca sebagai dua hal yang sama pentingnya;
+     yang menjual halaman ini tetap kalimatnya. */
+  [data-landing-hero]{grid-template-columns:1.1fr 1fr;gap:var(--sai-landing-rhythm)}
+}
+@media (min-width:${LANDING_NAV_LINKS_BREAKPOINT}px){
+  [data-landing-links]{display:flex}
 }
 @media (prefers-reduced-motion:reduce){
-  [data-landing-brand],[data-landing-link],[data-landing-caret]{transition:none}
+  [data-landing-brand],[data-landing-link],[data-landing-caret],[data-landing-card]{transition:none}
+  [data-landing-card]:hover{transform:none}
+}
+/* == MUNCUL SAAT DIGULUNG -- TANPA SATU BARIS JAVASCRIPT ==================
+   Pola pendaratan modern memakai scroll-reveal halus; pustaka yang biasa
+   melakukannya (GSAP + ScrollTrigger) adalah JavaScript sisi klien, dan
+   halaman ini membayarnya dengan hidrasi untuk pengunjung yang mungkin tidak
+   pernah mendaftar -- persis yang dikunci AMBANG_KLIEN.
+
+   animation-timeline: view() melakukannya di peramban, di thread compositor,
+   tanpa satu pun berkas skrip. Tiga pagar yang membuatnya aman dipasang:
+
+     - prefers-reduced-motion: no-preference -- bukan "reduce" yang mematikan,
+       melainkan izin yang hanya menyala saat pengguna TIDAK meminta
+       pengurangan gerak. Bedanya menentukan: dengan bentuk ini, peramban yang
+       tidak mengerti kueri itu sama sekali tidak menganimasi.
+     - @supports -- peramban tanpa dukungan tidak mendapat aturan apa pun, dan
+       isinya tetap terlihat penuh. Itu sebabnya keadaan AKHIR-nya yang normal
+       (opacity:1), bukan keadaan awalnya: kegagalan apa pun berarti "tidak ada
+       animasi", tidak pernah "isi tak terlihat".
+     - hanya translateY -- properti komposit; tidak ada width/height yang
+       memaksa tata letak dihitung ulang.
+
+   == KENAPA OPACITY DICABUT (dan ini bukan selera) =======================
+   Versi pertama menganimasi opacity 0 -> 1. Itu bekerja benar saat orang
+   BENAR-BENAR menggulung, dan gagal di setiap konteks yang TIDAK menggulung
+   -- karena di sana seksi yang belum "masuk" berhenti di keadaan awalnya,
+   yaitu tak terlihat. Terukur di Chromium 131 dengan viewport setinggi
+   dokumen (bentuk yang dipakai perender halaman-penuh, termasuk perayap yang
+   merender): tiga seksi terakhir -- harga, FAQ, ajakan penutup -- diam di
+   opacity 0.
+
+   Untuk halaman internal itu cacat kecil. Untuk halaman PEMASARAN yang
+   justru baru diberi metadata & data terstruktur supaya ditemukan, itu
+   risiko bahwa mesin pencari membaca bagian harga sebagai isi tersembunyi.
+   Dengan hanya transform, kegagalan seburuk apa pun hanya menggeser teks
+   14px -- isinya tidak pernah bisa hilang. Jangan menambahkan opacity ke
+   keyframes di bawah.
+
+   Jaraknya sengaja pendek (14px, entry 0% -> entry 40%): ini penegas ritme
+   gulungan, bukan koreografi.
+
+   CATATAN PENYUNTING: tanpa backtick -- lihat blok hero di atas. */
+@media (prefers-reduced-motion:no-preference){
+  @supports (animation-timeline:view()){
+    @keyframes sai-landing-reveal{from{transform:translateY(14px)}to{transform:none}}
+    [data-landing-reveal]{animation:sai-landing-reveal linear both;animation-timeline:view();animation-range:entry 0% entry 40%}
+  }
+}
+/* Cetak tidak menggulung: matikan sisa gerak apa pun supaya halaman yang
+   dicetak tidak pernah membawa pergeseran yang berhenti setengah jalan. */
+@media print{
+  [data-landing-reveal]{animation:none;transform:none}
 }
 `;
 
@@ -323,7 +558,8 @@ export const LANDING_HERO_TITLE: CSSProperties = {
   fontSize: "var(--sai-landing-font-size-hero)",
   lineHeight: "var(--sai-landing-line-height-hero)",
   letterSpacing: "var(--sai-landing-tracking-hero)",
-  fontWeight: "var(--sai-landing-font-weight-display)" as CSSProperties["fontWeight"],
+  fontWeight:
+    "var(--sai-landing-font-weight-display)" as CSSProperties["fontWeight"],
 };
 
 /** Judul seksi (`<h2>`) — satu tingkat di bawah hero, tetap di atas skala app. */
@@ -331,14 +567,19 @@ export const LANDING_SECTION_TITLE: CSSProperties = {
   margin: 0,
   fontSize: "var(--sai-landing-font-size-section)",
   letterSpacing: "var(--sai-landing-tracking-hero)",
-  fontWeight: "var(--sai-landing-font-weight-display)" as CSSProperties["fontWeight"],
+  fontWeight:
+    "var(--sai-landing-font-weight-display)" as CSSProperties["fontWeight"],
 };
 
 /** Kalimat pembuka di bawah judul hero. */
 export const LANDING_LEAD: CSSProperties = {
   margin: 0,
   fontSize: "var(--sai-landing-font-size-lead)",
-  lineHeight: 1.6,
+  /* 1,7 dan bukan 1,6: kalimat pembuka hero dibaca, tidak dipindai seperti
+     label antarmuka. Selisih sepersepuluh terdengar sepele dan justru itu
+     yang paling terasa pada blok tiga baris — ia yang memisahkan "padat" dari
+     "sesak". */
+  lineHeight: 1.7,
   color: "var(--ant-color-text-secondary)",
 };
 
@@ -346,7 +587,7 @@ export const LANDING_LEAD: CSSProperties = {
 export const LANDING_BODY: CSSProperties = {
   margin: 0,
   fontSize: "var(--sai-landing-font-size-body)",
-  lineHeight: 1.6,
+  lineHeight: 1.7,
   color: "var(--ant-color-text-secondary)",
 };
 

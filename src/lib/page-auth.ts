@@ -9,6 +9,8 @@ import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-rou
 import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { tenantStateForCompany } from "@/lib/tenant-state";
 import { tenantPath } from "@/lib/tenant-routes";
+import { isCompanyUnlocked, NAMA_COOKIE_KUNCI } from "@/lib/company-unlock";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 /**
@@ -123,6 +125,35 @@ export async function requirePagePermission(
  * terakhir dibuka) sebagai jawaban atas "Anda tidak punya izin di sini", dan
  * itu jauh lebih membingungkan daripada penolakannya sendiri.
  */
+/**
+ * Gerbang KUNCI BUKU, diekspor supaya halaman yang MENJAGA DIRINYA SENDIRI
+ * bisa memanggilnya.
+ *
+ * ⚠ Diekspor bukan demi kenyamanan melainkan demi menutup lubang yang sudah
+ * pernah terbuka: beranda dasbor (`/t/{tenant}/{company}/dashboard`) tidak
+ * memakai `requirePagePermission` — ia terbuka untuk SEMUA peran, jadi tidak
+ * ada satu izin yang bisa ia deklarasikan — sehingga gerbang yang hanya hidup
+ * di dalam `gateAfterCompany` melewatkan justru PINTU PERTAMA sesudah masuk.
+ *
+ * Karena itu aturannya tinggal di satu fungsi, dan setiap halaman berpenjaga-
+ * sendiri wajib memanggilnya. `tests/company-unlock.test.ts` mengunci daftar
+ * itu: halaman yang memasang konteks perusahaannya sendiri tanpa memanggil
+ * fungsi ini = tes merah.
+ */
+export async function requireUnlockedCompany(
+  userId: string,
+  companyId: number,
+  home: { tenantSlug: string; companySlug: string }
+): Promise<void> {
+  const jar = await cookies();
+  if (isCompanyUnlocked(jar.get(NAMA_COOKIE_KUNCI)?.value, userId, companyId, Date.now())) return;
+
+  const tujuan = tenantPath(home.tenantSlug, home.companySlug, "/dashboard");
+  redirect(
+    `/unlock?company=${encodeURIComponent(home.companySlug)}&next=${encodeURIComponent(tujuan)}`
+  );
+}
+
 async function gateAfterCompany(
   session: PageSession,
   permission: Permission,
@@ -130,6 +161,26 @@ async function gateAfterCompany(
   home: { tenantSlug: string; companySlug: string }
 ): Promise<PageSession> {
   const homePath = tenantPath(home.tenantSlug, home.companySlug, "/dashboard");
+
+  /*
+   * ── Gerbang KUNCI BUKU (otentikasi ulang) ────────────────────────────────
+   *
+   * PALING AWAL di antara gerbang-gerbang ini, dan urutannya disengaja: semua
+   * gerbang di bawah menjawab pertanyaan TENTANG buku ini (sudah disiapkan?
+   * modulnya aktif? langganannya hidup?), sedangkan yang ini menjawab
+   * pertanyaan tentang ORANG di depan layar. Menjawab pertanyaan tentang buku
+   * kepada orang yang belum membuktikan dirinya berarti membocorkan keadaan
+   * buku itu lewat halaman pantulannya — "PT ini belum disiapkan" adalah
+   * informasi.
+   *
+   * Wisaya penyiapan TIDAK dikecualikan. Ia menulis jurnal saldo awal, yaitu
+   * titik nol seluruh laporan perusahaan; kalau ada satu pintu yang paling
+   * pantas menuntut bukti kehadiran, itu pintu ini.
+   *
+   * Alasan lengkap kenapa fitur ini ada — dan kenapa ia BUKAN tambalan lubang
+   * — di kepala `lib/company-unlock.ts`.
+   */
+  await requireUnlockedCompany(session.user.id, companyId, home);
 
   /*
    * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).

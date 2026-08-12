@@ -246,8 +246,16 @@ export default async function AccountsPage({
             di potongan 3 untuk lima kotak cari yang bentuknya sama
             (`/contracts`, `/delivery-orders`, `/documents`, `/invoices`,
             `/finance`). Ini yang keenam — dilewatkan di sana karena variannya
-            sudah tertulis, jadi ia tidak muncul di sapuan tombol implisit. */}
-        <Button type="submit" variant="outline" size="sm">
+            sudah tertulis, jadi ia tidak muncul di sapuan tombol implisit.
+
+            UKURANNYA bawaan, bukan `sm`: kotak carinya `TextInput` setinggi
+            `controlHeight` (40px) dan baris ini `alignItems: center`, jadi
+            tombol 30px di sebelahnya menghasilkan dua tinggi kendali dalam satu
+            baris. Kelima kotak cari lain (`/invoices`, `/contracts`,
+            `/delivery-orders`, `/documents`, `/finance`) sudah begitu; yang ini
+            satu-satunya yang menyimpang. Lihat MASTER.md §Satu baris kendali =
+            satu ukuran. */}
+        <Button type="submit" variant="outline">
           {t("common.search")}
         </Button>
         {q && (
@@ -256,7 +264,7 @@ export default async function AccountsPage({
              dirender `<a class="ant-btn">` — sebuah anchor tidak pernah menjadi
              tombol kirim sebuah formulir, jadi penjaganya tidak lagi punya yang
              perlu dijaga. */
-          <ButtonLink href="/accounts" variant="ghost" size="sm">
+          <ButtonLink href="/accounts" variant="ghost">
             {t("accounts.clearSearch")}
           </ButtonLink>
         )}

@@ -33,79 +33,110 @@
  * akan salah pada perubahan berikutnya, dan salahnya persis di tempat yang
  * paling merusak kepercayaan: halaman yang dibaca sebelum orang percaya.
  */
-import { CheckOutlined } from "@ant-design/icons";
+import {
+  AuditOutlined,
+  BankOutlined,
+  BookOutlined,
+  FileProtectOutlined,
+  FolderOpenOutlined,
+  GoldOutlined,
+  InboxOutlined,
+  ShopOutlined,
+  ShoppingCartOutlined,
+  SwapOutlined,
+} from "@ant-design/icons";
 import {
   LANDING_NOTE,
-  LANDING_SURFACE,
   landingChip,
-  landingFill,
-  landingGrid,
+  landingGlyph,
 } from "@/components/landing/landing-scale";
-import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
+import {
+  LandingSection,
+  LandingSectionIntro,
+} from "@/components/landing/landing-section";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { BUSINESS_MODULES, CORE_MODULE, MODULE_META } from "@/lib/business-modules";
-import { CURRENCIES } from "@/lib/constants";
-import { LOCALES } from "@/lib/i18n/config";
+import {
+  BUSINESS_MODULES,
+  CORE_MODULE,
+  MODULE_META,
+  type BusinessModule,
+} from "@/lib/business-modules";
 import { getT } from "@/lib/i18n/server";
+
+/**
+ * Ikon per modul — supaya sepuluh baris bisa DIPINDAI, bukan dibaca berurutan.
+ *
+ * ══ KENAPA PETA LOKAL, BUKAN DI `business-modules.ts` ══════════════════════
+ * Ikon adalah keputusan TAMPILAN, dan satu-satunya permukaan yang menampilkan
+ * kesepuluh modul sekaligus adalah halaman ini. Menaruhnya di registri bersama
+ * berarti wisaya penyiapan, konsol, dan penjaga modul ikut memikul bidang yang
+ * tak satu pun dari mereka render.
+ *
+ * ⚠ Bertipe `Record<BusinessModule, …>` — sama dengan `MODULE_META`, dan
+ * dengan alasan yang sama: modul baru tanpa ikon ditolak `tsc`, bukan tampil
+ * sebagai baris tanpa lambang di halaman publik.
+ *
+ * ⚠ SATU warna untuk kesepuluhnya. `landing.md` menolak nada per-kategori untuk
+ * daftar ini ("sepuluh hue berdampingan adalah konfeti, bukan hierarki"), dan
+ * penolakan itu berlaku sama untuk ikon: yang dibedakan BENTUK, bukan warna.
+ * Yang dibawa ikon hanyalah "baris ini tentang apa" pada satu kedipan mata.
+ */
+const MODULE_ICON: Record<BusinessModule, typeof BookOutlined> = {
+  core_accounting: BookOutlined,
+  sales: ShopOutlined,
+  purchasing: ShoppingCartOutlined,
+  trading: SwapOutlined,
+  inventory: InboxOutlined,
+  cash_bank: BankOutlined,
+  fixed_assets: GoldOutlined,
+  approvals: AuditOutlined,
+  tax_id: FileProtectOutlined,
+  documents: FolderOpenOutlined,
+};
 
 export async function LandingModules() {
   const t = await getT();
 
-  const facts = [
-    { value: String(BUSINESS_MODULES.length), label: t("landing.factModules") },
-    { value: String(LOCALES.length), label: t("landing.factLanguages") },
-    { value: CURRENCIES.join(" · "), label: t("landing.factCurrencies") },
-  ];
-
   return (
     <LandingSection id="modul" tone="cyan">
-      <LandingSectionIntro title={t("landing.modulesHeading")}>
+      <LandingSectionIntro
+        eyebrow={t("landing.eyebrowModules")}
+        title={t("landing.modulesHeading")}
+      >
         {t("landing.modulesBody")}
       </LandingSectionIntro>
 
-      {/* Strip fakta: tiga angka yang menjawab "seberapa banyak" sebelum
-          orang menyusuri sepuluh kartu di bawahnya.
-
-          Ketiganya berisi nada TERKUAT di seksi ini (`chip-brand`, 28%) dan
-          itu disengaja: angka adalah hal pertama yang dicari mata di wilayah
-          ini, dan sebelumnya ia kotak putih bergaris di antara sepuluh kotak
-          putih bergaris lain. Nada birunya berbeda hue dari pita cyan
-          seksinya, jadi ia terpisah dari pita bukan hanya oleh terang-gelap
-          (1,16:1 terang · 1,29:1 gelap). */}
-      <dl style={{ ...landingGrid(3, 200), margin: 0, marginTop: "var(--ant-margin-lg)" }}>
-        {facts.map((fact) => (
-          <div
-            key={fact.label}
-            style={{
-              borderRadius: "var(--ant-border-radius-lg)",
-              border: "1px solid var(--ant-color-border-secondary)",
-              background: landingChip("brand"),
-              padding: "var(--ant-padding)",
-            }}
-          >
-            <dt style={{ ...LANDING_NOTE }}>{fact.label}</dt>
-            <dd
-              style={{
-                margin: 0,
-                marginTop: "var(--ant-margin-xxs)",
-                fontSize: "var(--ant-font-size-heading-3)",
-                fontWeight: "var(--ant-font-weight-strong)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {fact.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
+      {/* ⚠ Strip fakta TIDAK lagi di sini — ia pindah ke hero
+          (`landing-stats.tsx`). Alasannya ada dua dan keduanya tercatat di
+          sana: ia bukti terbaik halaman ini (angkanya dihitung dari registri,
+          jadi tak satu pun bisa berbohong) tetapi terkubur di sepertiga
+          halaman ke bawah; dan bentuknya sama persis dengan sepuluh kartu di
+          bawah ini, sehingga terbaca sebagai tiga modul lagi. */}
       <ul
         style={{
-          ...landingGrid(3, 260),
+          /* ══ DAFTAR, BUKAN SEPULUH KARTU ═══════════════════════════════
+             Bentuk sebelumnya: sepuluh `Card` berpermukaan melayang di dalam
+             kisi tiga kolom. Ia benar secara aturan dan salah secara kesan —
+             sepuluh persegi bertepi seragam adalah blok paling kaku di
+             halaman ini, dan seksi ini yang paling panjang, jadi kesan itulah
+             yang paling lama dibawa pembaca.
+
+             Yang hilang bersama kartunya tidak ada: modul bukan sesuatu yang
+             diklik, dibandingkan, atau dipilih di sini — ia DAFTAR ISI. Daftar
+             yang ditulis sebagai daftar terbaca lebih cepat daripada daftar
+             yang dibungkus kotak satu per satu, dan pita seksinya sudah
+             menggambar wilayahnya.
+
+             Dua kolom, bukan tiga: barisnya kini punya deskripsi penuh di
+             sebelah label, dan tiga kolom akan memotongnya jadi dua-tiga kata
+             per baris. */
+          display: "grid",
+          gap: "var(--ant-margin-lg) var(--ant-margin-xl)",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(max(280px, (100% - var(--ant-margin-xl)) / 2), 1fr))",
           listStyle: "none",
           margin: 0,
-          marginTop: "var(--ant-margin)",
+          marginTop: "var(--ant-margin-lg)",
           padding: 0,
         }}
       >
@@ -113,54 +144,76 @@ export async function LandingModules() {
           const meta = MODULE_META[module];
           const core = module === CORE_MODULE;
           return (
-            <li key={module}>
-              {/* Sepuluh kartu di atas pita berwarna: badannya
-                  `--sai-landing-surface` (melayang), BUKAN nada — sepuluh
-                  kotak bernada di atas pita sehue akan melebur jadi satu blok
-                  di tema terang. Yang dibedakan nada hanyalah modul INTI, satu
-                  buah, karena ia memang satu-satunya yang berbeda status; dan
-                  pembedanya tetap berlapis — lencana berteks + tepi merek —
-                  bukan warna saja. */}
-              <Card
+            <li
+              key={module}
+              style={{
+                display: "flex",
+                gap: "var(--ant-margin-sm)",
+                alignItems: "flex-start",
+              }}
+            >
+              {/* ⚠ BUKAN `colorMoneyPositive`. Centang ini berarti "modul ini
+                  ada", bukan pernyataan tentang uang. `landing.md` §Nada pekat
+                  mengurung hijau/merah/emas/jingga sebagai bahasa uang &
+                  status; alasan yang sama berlaku untuk glif, dan di sini
+                  lebih tajam — sepuluh centang hijau di halaman yang menjual
+                  PEMBUKUAN terbaca sebagai pernyataan tentang angka. */}
+              <span
+                aria-hidden="true"
                 style={{
-                  height: "100%",
-                  background: core ? landingFill("brand") : LANDING_SURFACE,
-                  ...(core ? { borderColor: "var(--ant-color-primary)" } : null),
+                  display: "inline-flex",
+                  flexShrink: 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  background: landingChip("brand"),
+                  color: landingGlyph("brand"),
+                  fontSize: "var(--ant-font-size)",
                 }}
               >
-                <CardContent>
-                  <div
+                {(() => {
+                  const Ikon = MODULE_ICON[module];
+                  return <Ikon />;
+                })()}
+              </span>
+              <div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: "var(--ant-margin-xs)",
+                  }}
+                >
+                  <h3
                     style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      gap: "var(--ant-margin-xs)",
+                      margin: 0,
+                      fontSize: "var(--ant-font-size-lg)",
+                      fontWeight: "var(--ant-font-weight-strong)",
                     }}
                   >
-                    <CheckOutlined
-                      aria-hidden="true"
-                      style={{
-                        flexShrink: 0,
-                        color: "var(--ant-color-money-positive)",
-                        fontSize: "var(--ant-font-size-lg)",
-                      }}
-                    />
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: "var(--ant-font-size-lg)",
-                        fontWeight: "var(--ant-font-weight-strong)",
-                      }}
-                    >
-                      {t(meta.labelKey)}
-                    </h3>
-                    {core && <Badge variant="success">{t("landing.modulesCore")}</Badge>}
-                  </div>
-                  <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-xs)" }}>
-                    {t(meta.descriptionKey)}
-                  </p>
-                </CardContent>
-              </Card>
+                    {t(meta.labelKey)}
+                  </h3>
+                  {/* `default` (netral berisi), bukan `success`: "selalu aktif"
+                      adalah STATUS MODUL, bukan kabar baik tentang uang.
+                      Lencananya tetap BERTEKS — itulah yang dijaga, bukan
+                      warnanya, dan itu pula yang menggantikan tepi merek yang
+                      hilang bersama kartunya. */}
+                  {core && (
+                    <Badge variant="default">{t("landing.modulesCore")}</Badge>
+                  )}
+                </div>
+                <p
+                  style={{
+                    ...LANDING_NOTE,
+                    marginTop: "var(--ant-margin-xxs)",
+                  }}
+                >
+                  {t(meta.descriptionKey)}
+                </p>
+              </div>
             </li>
           );
         })}

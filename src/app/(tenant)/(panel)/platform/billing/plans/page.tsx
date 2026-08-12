@@ -64,6 +64,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { activePlans } from "@/lib/plan-catalog";
+import { planDescriptionKey } from "@/lib/plan-copy";
 import { periodDaysFor } from "@/lib/plan-change";
 import { formatMoney } from "@/lib/money-format";
 
@@ -271,7 +272,17 @@ export default async function PlatformPlansPage() {
                             )}
                           </>
                         )}
-                        {plan.description && <p style={BODY}>{plan.description}</p>}
+                        {/* Deskripsi lewat kunci kamus — sama persis dengan
+                            kartu paket di pendaratan. Halaman ini berbahasa
+                            pengguna yang sudah masuk, jadi kolom basis data
+                            berbahasa Indonesia di sini menghasilkan kegagalan
+                            yang sama, hanya tanpa saksi dari luar. Alasannya di
+                            `lib/plan-copy.ts`. */}
+                        {(() => {
+                          const kunci = planDescriptionKey(plan.key);
+                          const deskripsi = kunci ? t(kunci) : plan.description;
+                          return deskripsi ? <p style={BODY}>{deskripsi}</p> : null;
+                        })()}
                         <ul
                           style={{
                             listStyle: "none",

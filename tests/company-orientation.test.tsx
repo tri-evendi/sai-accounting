@@ -183,6 +183,15 @@ describe("layar tanpa perusahaan bukan jalan buntu", () => {
      * bukan pendaratannya. Kerangka menjaminnya untuk seluruh permukaan
      * sekaligus, dan hanya ada satu tempat yang bisa lupa.
      */
-    expect(read("app/(tenant)/platform/layout.tsx")).toContain("<SignedInAs ");
+    /*
+     * ⚠ Bentuk jaminannya BERGESER, isinya tidak. Kepala panel dulu memajang
+     * `SignedInAs` + pengalih bahasa + pengalih tema sebagai kendali lepas;
+     * kini keempatnya satu `UserMenu` — komponen yang SAMA dengan bilah atas
+     * dasbor, jadi identitas & jalan keluar tidak lagi punya dua bentuk di dua
+     * kulit. Yang dijaga tetap sama: kerangkanya, bukan halamannya, yang
+     * menjaminnya untuk seluruh permukaan sekaligus.
+     */
+    expect(read("components/tenant/platform-shell.tsx")).toContain("<UserMenu ");
+    expect(read("app/(tenant)/(panel)/layout.tsx")).toMatch(/userName=\{user\.name/);
   });
 });

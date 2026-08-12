@@ -124,11 +124,39 @@ const { default: LandingPage } = await import("@/app/page");
 async function render(): Promise<string> {
   const stream = await renderToReadableStream(
     <LocaleProvider locale="id" dictionary={dict}>
-      {await LandingPage()}
+      {await LandingPage({ searchParams: Promise.resolve({}) })}
     </LocaleProvider>
   );
   const html = await new Response(stream).text();
   return html.replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+}
+
+/** Pola satu blok data terstruktur, dipakai kedua penolong di bawah. */
+/* `[\s\S]` dan bukan `.` + flag `s`: target tsconfig repo ini di bawah es2018,
+   jadi flag `s` ditolak `tsc` (TS1501). Keduanya cocok dengan hal yang sama. */
+const POLA_JSONLD = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g;
+
+/**
+ * Markup TAMPAK — sumber halaman tanpa blok data terstruktur.
+ *
+ * Diperlukan sejak JSON-LD terpasang: nama paket & pertanyaan FAQ kini memang
+ * muncul dua kali di sumber (sekali terlihat, sekali untuk mesin), jadi
+ * menghitung kemunculan di seluruh HTML berhenti menjawab "berapa kartu".
+ */
+function tanpaJsonLd(html: string): string {
+  return html.replace(POLA_JSONLD, "");
+}
+
+/**
+ * Setiap blok data terstruktur, sudah diurai.
+ *
+ * Diurai — bukan dicocokkan sebagai teks — supaya tes ini ikut membuktikan
+ * bahwa yang diterbitkan adalah JSON yang SAH. Pelolosan `<` di
+ * `landing-jsonld.tsx` justru membuat pencocokan teks menyesatkan: sebuah blok
+ * yang rusak bisa saja masih mengandung kata yang dicari.
+ */
+function jsonLdBlocks(html: string): Record<string, unknown>[] {
+  return [...html.matchAll(POLA_JSONLD)].map(([, isi]) => JSON.parse(isi));
 }
 
 beforeEach(() => {
@@ -173,8 +201,45 @@ describe("halaman pendaratan publik", () => {
     // Paket yang ditarik dari penjualan tidak pernah sampai ke sini: itu
     // urusan `activePlans()`, dan halaman ini tidak boleh menyaring ulang
     // (dua penyaring akan berbeda). Yang dijaga di sini: halaman menampilkan
-    // PERSIS apa yang katalog berikan.
-    expect(html.match(/Starter/g)?.length).toBe(1);
+    // PERSIS apa yang katalog berikan — SATU kartu per paket.
+    //
+    // Dihitung pada markup TAMPAK saja: sejak data terstruktur terpasang, nama
+    // paket memang muncul dua kali di sumber halaman — sekali di kartunya, dan
+    // sekali di blok `SoftwareApplication`. Itu bukan kartu kedua, dan justru
+    // memang yang dituntut data terstruktur (isinya harus mencerminkan yang
+    // terlihat). Yang tetap dijaga di sini adalah jumlah KARTU-nya.
+    expect(tanpaJsonLd(html).match(/Starter/g)?.length).toBe(1);
+  });
+
+  it("data terstruktur mencerminkan katalog — dan tidak memajang paket rundingan", async () => {
+    /*
+     * Data terstruktur adalah salinan kedua isi halaman, dibaca mesin pencari.
+     * Dua hal yang harus benar sekaligus, dan keduanya gagal tanpa berbunyi:
+     *
+     *   • ia harus MENCERMINKAN yang terlihat — cuplikan pencarian yang
+     *     menyebut paket yang tidak ada di halaman adalah salinan yang sudah
+     *     menyimpang;
+     *   • paket RUNDINGAN tidak boleh punya `Offer`. Harganya 0 di katalog
+     *     karena memang dirundingkan, dan menerbitkan "IDR 0" sebagai penawaran
+     *     yang bisa dibaca mesin berarti mesin pencari memajangnya sebagai
+     *     GRATIS — kegagalan yang sama yang sudah dijaga di layar, kali ini di
+     *     tempat yang tidak dilihat siapa pun sampai ada yang mencarinya.
+     */
+    const blok = jsonLdBlocks(await render());
+    const aplikasi = blok.find((b) => b["@type"] === "SoftwareApplication");
+    expect(aplikasi, "blok SoftwareApplication tidak diterbitkan").toBeDefined();
+
+    const offers = aplikasi!.offers as { name: string; price: number }[];
+    const berbayar = PLANS.filter((p) => !p.contactOnly);
+    expect(offers.map((o) => o.name).sort()).toEqual(berbayar.map((p) => p.name).sort());
+    for (const plan of PLANS.filter((p) => p.contactOnly)) {
+      expect(offers.map((o) => o.name)).not.toContain(plan.name);
+    }
+
+    // FAQ: enam pertanyaan yang dirender adalah enam pertanyaan yang diterbitkan.
+    const faq = blok.find((b) => b["@type"] === "FAQPage");
+    expect(faq, "blok FAQPage tidak diterbitkan").toBeDefined();
+    expect((faq!.mainEntity as unknown[]).length).toBe(6);
   });
 
   it("lama uji coba dari konstanta yang sama yang menghitungnya", async () => {

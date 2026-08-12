@@ -114,8 +114,37 @@ const MIGRATED = new Set(MIGRATED_ROOT_SEGMENTS);
  * Bangun jalur kanonik. `path` selalu jalur lama yang diawali `/`
  * (mis. `/invoices/12`); querystring & fragment ikut apa adanya.
  */
+/**
+ * BERANDA BUKU — jalur APLIKASI-nya, bukan alamat kanoniknya.
+ *
+ * Alamat kanonik beranda sebuah PT adalah AKAR perusahaannya:
+ * `/t/{tenant}/{company}`, tanpa segmen apa pun sesudahnya. Itu benar secara
+ * makna dan bukan sekadar lebih pendek — akar sebuah perusahaan MEMANG
+ * berandanya, persis seperti `/` adalah beranda situs. Ia tidak butuh kata
+ * benda karena ia tidak sedang membedakan dirinya dari saudara-saudaranya
+ * (`/customers`, `/invoices`, `/reports`); ia wadah yang memuat mereka.
+ *
+ * Tapi string `"/dashboard"` TIDAK bisa ikut dihapus, dan itu yang paling mudah
+ * terlewat: ia bukan hanya URL, melainkan **kunci identitas** di empat tabel
+ * yang tidak tahu apa-apa tentang tenant — `nav.ts` (menu mana yang menyala,
+ * lewat `activeNavHref`), `tours.ts` (tur mana yang berlaku), `docs.ts`
+ * (`navHrefs`), dan Aksi Cepat. Tabel-tabel itu ditulis dalam jalur APLIKASI
+ * karena slug tenant baru diketahui saat permintaan berjalan.
+ *
+ * Karena itu bentuknya dua, dan pemetaannya dikunci di DUA TITIK di berkas ini
+ * saja — `tenantPath()` untuk arah maju, `parseTenantPath()` untuk arah balik.
+ * Di luar keduanya, seluruh aplikasi tetap menyebut `"/dashboard"` seperti
+ * sebelumnya dan tidak perlu tahu apa pun tentang perubahan ini.
+ */
+export const COMPANY_HOME_PATH = "/dashboard";
+
 export function tenantPath(tenantSlug: string, companySlug: string, path: string): string {
   const suffix = path.startsWith("/") ? path : `/${path}`;
+  /* Beranda = akar perusahaan. Arah baliknya di `parseTenantPath`; keduanya
+     harus bergerak bersama, dan `tests/tenant-routes.test.ts` menguncinya. */
+  if (suffix === COMPANY_HOME_PATH) {
+    return `${TENANT_ROUTE_PREFIX}/${tenantSlug}/${companySlug}`;
+  }
   return `${TENANT_ROUTE_PREFIX}/${tenantSlug}/${companySlug}${suffix}`;
 }
 
@@ -217,5 +246,13 @@ export function parseTenantPath(
   const companySlug = parts[3];
   if (!isValidSlug(tenantSlug) || !isValidSlug(companySlug)) return null;
   const rest = parts.slice(4).join("/");
-  return { tenantSlug, companySlug, rest: rest ? `/${rest}` : "/" };
+  /*
+   * Akar perusahaan → `"/dashboard"`, bukan `"/"`. Arah balik dari
+   * `tenantPath`; lihat catatan `COMPANY_HOME_PATH`.
+   *
+   * `"/"` akan salah dua kali: ia jalur halaman PENDARATAN pemasaran, dan tak
+   * satu pun tabel jalur-aplikasi (menu, tur, docs, Aksi Cepat) mengenalnya —
+   * jadi beranda buku akan diam-diam berhenti menyalakan butir menunya.
+   */
+  return { tenantSlug, companySlug, rest: rest ? `/${rest}` : COMPANY_HOME_PATH };
 }

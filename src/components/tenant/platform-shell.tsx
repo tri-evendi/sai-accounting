@@ -77,6 +77,7 @@
  * bukan 1024px milik Tailwind).
  */
 
+import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -86,10 +87,9 @@ import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { PLATFORM_STYLE } from "@/components/tenant/platform-tone";
+import { UserMenu } from "@/components/layout/user-menu";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
-import { LocaleToggle } from "@/components/ui/locale-toggle";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
 
@@ -97,8 +97,21 @@ import { useT } from "@/lib/i18n/client";
 const LEBAR_MENU = 256;
 /** `h-16` — tinggi kepala, sama dengan chrome dasbor. */
 const TINGGI_KEPALA = 64;
-/** `max-w-6xl` — lebar isi halaman. */
-const LEBAR_ISI = 1152;
+/*
+ * ⚠ TIDAK ADA batas lebar isi lagi.
+ *
+ * Isi dulu terkurung `max-w-6xl` (1152px) di tengah, dan itu yang membuat panel
+ * ini terasa bukan aplikasi yang sama dengan dasbor: dasbor sudah lama memakai
+ * lebar penuh (`(dashboard)/layout.tsx` — "tanpa batas maks, sesuai
+ * permintaan"), jadi berpindah ke sini pada monitor 2400px berarti isinya
+ * menciut ke tengah dengan dua bidang kosong selebar ±600px di kiri-kanan.
+ *
+ * Yang menggantikan batas itu bukan ketiadaan aturan melainkan aturan satu
+ * lapis lebih dalam: wadahnya selebar layar, dan yang menjaga barisan teks
+ * tetap terbaca adalah KISI di dalam halaman (`formGrid`/`fieldGrid` di
+ * `lib/layout-width.ts`) — jumlah kolomnya bertambah saat layar melebar,
+ * alih-alih dua kolom yang sama-sama membengkak.
+ */
 
 const TRUNCATE: React.CSSProperties = {
   overflow: "hidden",
@@ -119,8 +132,10 @@ interface PlatformShellProps {
   /** Nama tenant — orientasi "akun siapa", sejajar `CompanyIndicator` di dasbor. */
   tenantName: string;
   nav: PlatformNavItem[];
-  /** `SignedInAs` — identitas + keluar, dioper supaya kulit tidak menyentuh sesi. */
-  account?: React.ReactNode;
+  /** Nama pengguna untuk `UserMenu`. */
+  userName: string;
+  /** Peran yang ditampilkan di menu akun — peran TENANT di permukaan ini. */
+  role: string;
 }
 
 /**
@@ -275,7 +290,7 @@ function PanelMenu({
   );
 }
 
-export function PlatformShell({ children, tenantName, nav, account }: PlatformShellProps) {
+export function PlatformShell({ children, tenantName, nav, userName, role }: PlatformShellProps) {
   const t = useT();
   const pathname = usePathname();
   const { token } = theme.useToken();
@@ -366,15 +381,40 @@ export function PlatformShell({ children, tenantName, nav, account }: PlatformSh
               {tenantName}
             </p>
           </Flex>
+          {/*
+           * SATU menu akun, sama dengan bilah atas dasbor — bukan deretan
+           * kendali lepas.
+           *
+           * Sampai perbaikan ini kepala panel memajang empat hal berdampingan
+           * tanpa pengelompokan apa pun: pengalih bahasa (ID/EN/中), pengalih
+           * tema (tiga ikon), kalimat "Masuk sebagai …", dan tombol "Keluar".
+           * Keempatnya sudah ada DI DALAM `UserMenu` yang dipakai dasbor, jadi
+           * yang dipajang di sini adalah salinan kedua dari menu yang sama —
+           * dengan bentuk yang berbeda, di kulit yang berbeda, pada aplikasi
+           * yang sama. Pengguna yang sudah belajar membaca satu bilah atas
+           * harus belajar lagi saat berpindah permukaan.
+           *
+           * `UserMenu` juga membawa yang tidak dipunyai deretan lepas itu:
+           * berganti perusahaan, ganti kata sandi, dan pintu ke `/platform` —
+           * semuanya di tempat yang sama dengan di dasbor.
+           */}
           <Flex align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
-            <LocaleToggle />
-            <ThemeToggle />
-            {account}
+            <UserMenu userName={userName} role={role} onSignOut={() => signOut({ callbackUrl: "/login" })} />
           </Flex>
         </Layout.Header>
 
-        <Layout.Content style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: token.padding }}>
-          <div style={{ width: "100%", maxWidth: LEBAR_ISI, margin: "0 auto" }}>{children}</div>
+        {/* Padding tepi mengikuti `(dashboard)/layout.tsx` persis — termasuk
+            longgarnya di layar lebar — supaya jarak tepi tidak bergeser saat
+            pengguna berpindah antar-permukaan. */}
+        <Layout.Content
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            padding: lebar ? token.paddingLG : token.padding,
+          }}
+        >
+          {children}
         </Layout.Content>
       </Layout>
     </Layout>

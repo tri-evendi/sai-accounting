@@ -33,6 +33,7 @@ import { Alert, Flex, Typography, theme } from "antd";
 import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fieldGrid } from "@/lib/layout-width";
 import { useT } from "@/lib/i18n/client";
 import {
   databaseNameForSlug,
@@ -262,9 +263,15 @@ export function CompanyForm({
         {SPIN_RULE}
       </style>
       <Flex vertical gap={token.marginLG}>
-        {/* Satu kolom: sejak pindah ke kulit AuthShell (issue #135) lebar kartunya
-            maks 28rem — dua kolom di ruang itu memotong label & bantuan slug. */}
-        <Flex vertical gap={token.margin}>
+        {/*
+         * Dua isian setara → `fieldGrid`. Catatan lamanya ("satu kolom, sebab
+         * kartu `AuthShell` maks 28rem") sudah tidak berlaku: halaman ini kini
+         * hidup di panel akun yang selebar layar. Yang menahan isiannya tidak
+         * ikut membengkak adalah trek `fieldGrid` yang berhenti di
+         * `LEBAR_KOLOM_ISIAN` — layar lebar menambah KOLOM, bukan melebarkan
+         * kotak.
+         */}
+        <div style={fieldGrid()}>
           <Flex vertical gap={token.marginXXS}>
             <Input
               id="company-name"
@@ -297,7 +304,7 @@ export function CompanyForm({
               {t("companies.slugHelp")}
             </Text>
           </Flex>
-        </Flex>
+        </div>
 
         {previewDatabase && (
           <Text type="secondary">

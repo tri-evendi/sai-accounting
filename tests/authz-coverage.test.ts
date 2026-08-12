@@ -115,7 +115,7 @@ const PAGE_EXCEPTIONS = new Set([
   // deklarasikan. Ia menjaga diri dengan auth() + `enterCompanyFromRoute`
   // (konteks perusahaan dari JALUR, keanggotaan diverifikasi permintaan ini,
   // gagal = 404) dan menyusun isinya per peran di server.
-  "(dashboard)/t/[tenantSlug]/[companySlug]/dashboard/page.tsx",
+  "(dashboard)/t/[tenantSlug]/[companySlug]/page.tsx",
   // `/dashboard` TELANJANG (issue #157): bukan halaman, melainkan pengarah.
   // Tidak ada query di dalamnya — hanya auth() lalu `resolvePostLoginPath`.
   // Ia tinggal di jalur lama karena `/dashboard` adalah tujuan bawaan seluruh
@@ -181,6 +181,14 @@ const API_EXCEPTIONS = new Set([
   // notifikasi (diverifikasi SEBELUM query apa pun; 503 fail-closed bila kunci
   // tidak terpasang di produksi); idempoten lewat UNIQUE payments.gateway_ref.
   "billing/webhook/route.ts",
+  // self-scoped: OTENTIKASI ULANG sebelum masuk ke buku sebuah PT (kunci
+  // buku). Tidak boleh memakai `requireApiPermission` — penjaga itu MEMANGGIL
+  // gerbang kunci buku, jadi route yang membuka kunci akan menuntut kunci yang
+  // belum ada. Penjaganya ditulis di dalamnya dan lebih ketat daripada sekadar
+  // izin: sesi + KEANGGOTAAN di PT itu + bcrypt atas sandi pemanggil sendiri,
+  // dibatasi laju per-pengguna dengan anggaran `RATE_LIMITS.login`, dan setiap
+  // kegagalan dijawab satu kalimat yang sama (anti-enumerasi).
+  "company-unlock/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.
@@ -248,10 +256,10 @@ describe("cakupan penjaga halaman tenant (issue #135)", () => {
 
   it("grup (tenant) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
     expect(pages.length).toBeGreaterThan(0);
-    expect(pages).toContain("(tenant)/companies/new/page.tsx");
+    expect(pages).toContain("(tenant)/(panel)/companies/new/page.tsx");
     // Pendaratan pasca-masuk (issue #172) hidup di grup ini, dan ALAMATNYA
     // `/platform` — bukan `/tenant`, yang sejak itu hanya dipantulkan proxy.
-    expect(pages).toContain("(tenant)/platform/page.tsx");
+    expect(pages).toContain("(tenant)/(panel)/platform/page.tsx");
     expect(pages).not.toContain("(tenant)/tenant/page.tsx");
   });
 
@@ -526,10 +534,10 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     // Grup (tenant): route TINGKAT TENANT (#135) — pemilik tenant tanpa satu
     // pun PT adalah pemanggil yang sah, jadi menuntut perusahaan di sini
     // justru menutup permukaan yang dibuat untuk berdiri tanpanya.
-    "app/(tenant)/companies/new/company-form.tsx",
-    "app/(tenant)/platform/billing-actions.tsx",
-    "app/(tenant)/platform/billing/plans/plan-actions.tsx",
-    "app/(tenant)/platform/privacy-section.tsx",
+    "app/(tenant)/(panel)/companies/new/company-form.tsx",
+    "app/(tenant)/(panel)/platform/billing-actions.tsx",
+    "app/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
+    "app/(tenant)/(panel)/platform/privacy-section.tsx",
     // Pembungkusnya sendiri.
     "lib/api-fetch.ts",
   ]);

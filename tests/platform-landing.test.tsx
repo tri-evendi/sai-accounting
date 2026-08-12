@@ -216,12 +216,16 @@ vi.mock("@/components/tenant/platform-shell", () => ({
     children,
     tenantName,
     nav,
-    account,
+    userName,
   }: {
     children: React.ReactNode;
     tenantName: string;
     nav: { href: string; label: string }[];
-    account?: React.ReactNode;
+    /* Kepala panel kini merender `UserMenu` sendiri dari nama + peran, bukan
+       menerima simpul `account` jadi. Stub ini cukup memuntahkan namanya —
+       yang dijaga tes di bawah adalah bahwa kerangkanya MENERIMA identitas. */
+    userName: string;
+    role: string;
   }) => (
     <div>
       <p>{tenantName}</p>
@@ -232,18 +236,18 @@ vi.mock("@/components/tenant/platform-shell", () => ({
           </a>
         ))}
       </nav>
-      {account}
+      <p>{userName}</p>
       {children}
     </div>
   ),
 }));
 
-const { default: PlatformPage } = await import("@/app/(tenant)/platform/page");
-const { default: PlatformLayout } = await import("@/app/(tenant)/platform/layout");
-const { default: TeamPage } = await import("@/app/(tenant)/platform/team/page");
-const { default: BillingPage } = await import("@/app/(tenant)/platform/billing/page");
-const { default: PlansPage } = await import("@/app/(tenant)/platform/billing/plans/page");
-const { default: PrivacyPage } = await import("@/app/(tenant)/platform/privacy/page");
+const { default: PlatformPage } = await import("@/app/(tenant)/(panel)/platform/page");
+const { default: PlatformLayout } = await import("@/app/(tenant)/(panel)/layout");
+const { default: TeamPage } = await import("@/app/(tenant)/(panel)/platform/team/page");
+const { default: BillingPage } = await import("@/app/(tenant)/(panel)/platform/billing/page");
+const { default: PlansPage } = await import("@/app/(tenant)/(panel)/platform/billing/plans/page");
+const { default: PrivacyPage } = await import("@/app/(tenant)/(panel)/platform/privacy/page");
 
 /**
  * Markup sebuah halaman, dengan entitas HTML dikembalikan ke huruf aslinya —
@@ -383,7 +387,7 @@ describe("setiap rute menjaga dirinya sendiri", () => {
     await render(PlatformPage);
     expect(state.companiesForUserId).toBe(7);
 
-    const src = readFileSync(join(SRC, "app", "(tenant)", "platform", "page.tsx"), "utf8");
+    const src = readFileSync(join(SRC, "app", "(tenant)", "(panel)", "platform", "page.tsx"), "utf8");
     expect(src).toContain("companiesForUser(");
     // Membaca `tenant.companies` (atau menyentuh basis data kendali langsung)
     // akan membocorkan keberadaan PT lain kepada staf salah satu PT.
@@ -404,7 +408,7 @@ describe("member biasa — mendarat, TIDAK bisa menjangkau halaman owner", () =>
     const html = await render(PlatformPage);
     expect(html).toContain(T("platform.title"));
     expect(html).toContain("PT Satu");
-    expect(html).toContain("/t/acme/pt-satu/dashboard");
+    expect(html).toContain("/t/acme/pt-satu");
   });
 
   it("dan data langganannya tidak pernah DIBACA sama sekali", async () => {
@@ -451,8 +455,8 @@ describe("owner — melihat kuota, perusahaan, langganan, paket, dan privasi", (
     expect(html).toContain("PT Satu");
     expect(html).toContain("PT Dua");
     // Membuka buku = pergi ke alamat kanonik PT itu (#157/#158).
-    expect(html).toContain("/t/acme/pt-satu/dashboard");
-    expect(html).toContain("/t/acme/pt-dua/dashboard");
+    expect(html).toContain("/t/acme/pt-satu");
+    expect(html).toContain("/t/acme/pt-dua");
     // Kuota terpakai, di kartu ringkasan.
     expect(html).toContain(T("tenantSettings.usageHeading"));
     expect(html).toContain(T("tenantSettings.usageOf", { used: 2, max: 3 }));
@@ -532,10 +536,11 @@ describe("katalog paket — perbandingan yang jujur, tanpa tombol yang berbohong
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/^\s*\/\/.*$/gm, "");
 
-    const page = strip(["app", "(tenant)", "platform", "billing", "plans", "page.tsx"]);
+    const page = strip(["app", "(tenant)", "(panel)", "platform", "billing", "plans", "page.tsx"]);
     const actions = strip([
       "app",
       "(tenant)",
+      "(panel)",
       "platform",
       "billing",
       "plans",
@@ -582,8 +587,19 @@ describe("nol perusahaan — dua keadaan, dua jawaban, tak satu pun jalan buntu"
       state.companies = [];
       state.held = ["tenant.home"];
       const html = await renderNode(await PlatformLayout({ children: null }));
-      expect(html, role).toContain(T("auth.selectCompany.signOut"));
+      /*
+       * ⚠ Keluar kini hidup DI DALAM `UserMenu`, yang isinya baru dirender
+       * saat menunya dibuka — jadi kalimat "Keluar" memang tidak ada di HTML
+       * pertama, dan menuntutnya di sini akan menuntut bentuk lama kembali.
+       * Yang dibuktikan tetap sama: kerangka memajang identitas pemakainya,
+       * dan pemicu menu akun ADA. Isi menunya (keluar, ganti sandi, pindah
+       * perusahaan) dijaga di tempatnya sendiri.
+       */
       expect(html, role).toContain("Budi Santoso");
+      expect(
+        readFileSync(join(SRC, "components", "tenant", "platform-shell.tsx"), "utf8"),
+        "kerangka panel harus merender UserMenu — di sanalah keluar & identitas hidup"
+      ).toContain("<UserMenu ");
     }
   });
 });
@@ -607,7 +623,7 @@ describe("alamat lama /tenant → /platform (307)", () => {
       "/platform/billing/plans",
       "/platform/privacy",
       "/t/acme/pt-satu/invoices",
-      "/t/acme/pt-satu/dashboard",
+      "/t/acme/pt-satu",
       "/select-company",
       "/companies/new",
       "/login",
@@ -627,12 +643,26 @@ describe("alamat lama /tenant → /platform (307)", () => {
   });
 
   it("halamannya DIPINDAHKAN, bukan digandakan — tidak ada berkas tersisa di /tenant", () => {
+    /*
+     * ⚠ Dua tingkat, sejak `/platform` dan `/companies/new` disatukan ke bawah
+     * satu kulit. Keduanya kini tinggal di grup rute `(panel)` — dan grup rute
+     * TIDAK muncul di URL, jadi alamatnya tidak bergeser sedikit pun. Yang
+     * dijaga tes ini juga tidak: tidak boleh ada direktori `tenant` yang
+     * tertinggal di tingkat mana pun, sebab `/tenant` sejak #172 hanya
+     * dipantulkan proxy.
+     */
     const group = join(SRC, "app", "(tenant)");
     const dirs = readdirSync(group, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
-    expect(dirs).toContain("platform");
+    expect(dirs).toEqual(["(panel)"]);
     expect(dirs).not.toContain("tenant");
+
+    const panel = readdirSync(join(group, "(panel)"), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
+    expect(panel).toEqual(["companies", "platform"]);
   });
 });
 
@@ -674,7 +704,7 @@ describe("tanpa pantulan yang berputar", () => {
   it("halamannya sendiri tidak mengarahkan ke mana pun", () => {
     // Satu-satunya pantulan yang mungkin datang dari penjaga (tanpa sesi /
     // tanpa keanggotaan tenant), dan tujuannya BUKAN halaman ini.
-    const src = readFileSync(join(SRC, "app", "(tenant)", "platform", "page.tsx"), "utf8");
+    const src = readFileSync(join(SRC, "app", "(tenant)", "(panel)", "platform", "page.tsx"), "utf8");
     expect(src).not.toContain("redirect(");
     const guard = readFileSync(join(SRC, "lib", "tenant-guard.ts"), "utf8");
     expect(guard).not.toContain('"/platform"');

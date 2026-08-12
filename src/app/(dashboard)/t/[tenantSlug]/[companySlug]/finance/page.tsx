@@ -341,8 +341,14 @@ export default async function FinancePage({
             )}
 
             {/* Kirim yang hanya MENYARING — `outline` (#267), preseden "Saring"
-                di `/operator` dan `shared/ledger-filter.tsx`. */}
-            <Button type="submit" variant="outline" size="sm">
+                di `/operator` dan `shared/ledger-filter.tsx`.
+
+                UKURANNYA bawaan, bukan `sm`: baris ini `alignItems: flex-end`
+                berisi empat `SelectField` setinggi `controlHeight` (40px), dan
+                `sm` adalah 30px — tombolnya duduk 10px lebih pendek dari
+                kendali di sebelahnya dan garis dasar barisnya patah. Lihat
+                MASTER.md §Satu baris kendali = satu ukuran. */}
+            <Button type="submit" variant="outline">
               {t("finance.filterSubmit")}
             </Button>
             {/* "Bersihkan" BUKAN kendali formulir: ia menavigasi ke `/finance`
@@ -351,7 +357,7 @@ export default async function FinancePage({
                 Pada sebuah anchor atribut itu berarti tipe MIME dokumen tujuan,
                 dan anchor tidak pernah bisa mengirim formulir yang
                 membungkusnya. */}
-            <ButtonLink href="/finance" variant="ghost" size="sm">
+            <ButtonLink href="/finance" variant="ghost">
               {t("finance.filterClear")}
             </ButtonLink>
           </form>

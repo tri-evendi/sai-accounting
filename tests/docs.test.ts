@@ -24,6 +24,12 @@
  *     kalau pemakaian itu hilang, seluruh `/docs` mulai memantul ke `/login`
  *     dan tidak ada tes halaman mana pun yang akan menyebutkannya.
  *
+ *     ⚠ Sejak "satu halaman, dua kulit", subpohon ini MEMBACA sesi — di satu
+ *     berkas, `src/app/(docs)/layout.tsx`, dan hanya untuk memilih chrome.
+ *     Bacaan itu bersifat "kalau ada": `pembacaDokumentasi()` menjawab `null`
+ *     alih-alih memantulkan, dan describe "dua kulit" di bawah menguncinya —
+ *     nol penjaga, nol `redirect()`, nol `notFound()` di jalur kulit.
+ *
  *  4. **ISTILAH TIDAK DISALIN.** Definisi hidup di `lib/labels.ts` (#21/#1).
  *     Prosa yang menyalinnya melahirkan definisi kedua yang akan berselisih
  *     pada perubahan berikutnya.
@@ -79,6 +85,18 @@ const BERKAS_DOKUMENTASI = new Map<string, string>(
 );
 
 const NAV_ITEMS = [NAV_HOME, ...NAV_GROUPS.flatMap((g) => g.items)];
+
+/**
+ * SATU berkas yang boleh mengimpor chrome app internal — kulit yang dipakai
+ * pembaca yang sedang bersesi.
+ *
+ * Pengecualiannya sengaja berupa satu NAMA BERKAS, bukan sebuah pelonggaran
+ * direktori: yang dijaga daftar-IZIN di bawah adalah berkas-berkas yang dibaca
+ * TANPA sesi, dan melonggarkannya untuk `components/docs/**` akan membuka jalan
+ * yang sama bagi kolom baca, daftar isi, dan pengalih halaman — yang tidak
+ * satu pun punya alasan menyentuh chrome.
+ */
+const KULIT_APLIKASI = "components/docs/docs-app-chrome.tsx";
 
 describe("pemindainya memindai yang benar", () => {
   it("menemukan halaman & komponen dokumentasi", () => {
@@ -285,22 +303,28 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
      * yang sama yang membuat `components/landing/**` diberi daftar-IZIN impor
      * di #245. Bentuknya karena itu IZIN, bukan larangan: daftar larangan
      * selalu tertinggal satu direktori.
+     *
+     * ⚠ `"next"` DIBANDINGKAN PERSIS, dan `"next/"` sebagai awalan — bukan
+     * `startsWith("next")`. Bentuk longgar itu ikut melepaskan `next-auth`,
+     * `next-auth/react`, dan setiap paket pihak ketiga yang namanya kebetulan
+     * berawalan sama; sebuah lubang yang tidak pernah berbunyi.
      */
     const SAH = [
       "@/components/docs/",
       "@/components/ui/",
       "@/lib/",
-      // `next` sendiri (tipe `Metadata`) dan subpohonnya (`next/navigation`).
-      "next",
       "react",
       "@ant-design/icons",
     ];
+    const nextSendiri = (spec: string) => spec === "next" || spec.startsWith("next/");
     const IMPOR = /^\s*import\s+(?:type\s+)?(?:[^;]*?\s+from\s+)?["']([^"']+)["']/gm;
 
     const pelanggar: string[] = [];
     for (const [berkas, kode] of BERKAS_DOKUMENTASI) {
+      if (berkas === KULIT_APLIKASI) continue;
       for (const m of kode.matchAll(IMPOR)) {
         const spec = m[1];
+        if (nextSendiri(spec)) continue;
         if (SAH.some((ok) => spec === ok || spec.startsWith(ok))) continue;
         pelanggar.push(`${berkas} — ${spec}`);
       }
@@ -312,8 +336,34 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
         pelanggar.join("\n  ") +
         "\n\nHalaman ini dibaca tanpa sesi. Kalau yang dibutuhkan sebuah kendali, " +
         "ambil primitifnya dari `@/components/ui`; kalau sebuah angka atau daftar, " +
-        "ambil sumbernya dari `@/lib`."
+        "ambil sumbernya dari `@/lib`.\n\nSatu berkas dikecualikan — " +
+        KULIT_APLIKASI +
+        " — dan pengecualiannya dijaga tesnya sendiri di bawah."
     ).toEqual([]);
+  });
+
+  it("pengecualian daftar-IZIN itu SATU berkas, dan ia memang ada", () => {
+    /*
+     * Arah kedua dari pengecualian di atas. Tanpa tes ini, `KULIT_APLIKASI`
+     * yang salah tulis akan diam-diam membuat daftar izinnya berlaku penuh
+     * (tidak ada yang dilewati) ATAU — jauh lebih buruk — sebuah berkas kedua
+     * bisa diberi nama yang sama lalu ikut lolos tanpa siapa pun memutuskannya.
+     */
+    expect([...BERKAS_DOKUMENTASI.keys()]).toContain(KULIT_APLIKASI);
+
+    const kode = BERKAS_DOKUMENTASI.get(KULIT_APLIKASI) ?? "";
+    // Yang boleh diimpornya di luar daftar SAH: kulit panel akun, dan itu saja.
+    expect(kode).toContain('from "@/components/tenant/platform-shell"');
+    // Kerangka dasbor TIDAK. Alasannya di kepala `src/lib/docs-chrome.tsx`:
+    // ia menyusun menunya dari peran DI SEBUAH PT dan karena itu memutar layar
+    // pemuatan selamanya bagi pembaca yang belum punya satu pun PT.
+    for (const dilarang of [
+      "@/components/layout/sidebar",
+      "@/components/layout/navbar",
+      "@/app/(dashboard)",
+    ]) {
+      expect(kode, `${KULIT_APLIKASI} menyeret kerangka dasbor`).not.toContain(dilarang);
+    }
   });
 
   it("tidak menyentuh skala pemasaran, dan tidak mengaku sebagai pendaratan", () => {
@@ -349,6 +399,102 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
      */
     for (const [berkas, kode] of BERKAS_DOKUMENTASI) {
       expect(kode, `${berkas} memasang tombol berisi penuh`).not.toContain('variant="primary"');
+    }
+  });
+});
+
+describe("satu halaman, DUA kulit", () => {
+  const LAYOUT = "app/(docs)/layout.tsx";
+  const layout = BERKAS_DOKUMENTASI.get(LAYOUT) ?? "";
+  const viewer = readFileSync(join(SRC, "lib", "docs-viewer.ts"), "utf8");
+
+  it("kulitnya dipilih di LAYOUT, dan kedua halaman tetap bersih dari sesi", () => {
+    /*
+     * Kalau pemilihan kulit turun ke halaman, dua hal patah sekaligus: janji
+     * `tests/authz-coverage` ("halaman grup (docs) tidak menyentuh sesi") dan
+     * jaminan bahwa halaman dokumentasi BERIKUTNYA ikut mendapat kulit yang
+     * benar tanpa penulisnya mengingat apa pun.
+     */
+    expect([...BERKAS_DOKUMENTASI.keys()]).toContain(LAYOUT);
+    expect(layout).toContain("pembacaDokumentasi(");
+    expect(layout).toContain("kulitDokumentasi(");
+
+    for (const halaman of ["app/(docs)/docs/page.tsx", "app/(docs)/docs/[...slug]/page.tsx"]) {
+      const kode = BERKAS_DOKUMENTASI.get(halaman) ?? "";
+      expect(kode, `${halaman} membaca sesi`).not.toContain("@/lib/auth");
+      expect(kode, `${halaman} membaca sesi`).not.toContain("pembacaDokumentasi");
+    }
+  });
+
+  it("pembacaan sesinya bersifat “kalau ada”, bukan “harus ada”", () => {
+    /*
+     * Inilah yang membedakan berkas ini dari sebuah penjaga. Satu `redirect()`
+     * yang menyelinap ke jalur pemilihan kulit akan mengubah `/docs` menjadi
+     * halaman masuk bagi orang yang paling membutuhkannya — dan gejalanya bukan
+     * galat melainkan halaman masuk yang terlihat bekerja.
+     */
+    for (const [nama, kode] of [
+      [LAYOUT, layout],
+      ["lib/docs-viewer.ts", viewer],
+    ] as const) {
+      for (const penjaga of [
+        "requirePagePermission(",
+        "requireTenantPagePermission(",
+        "requirePageSession(",
+        "requireOperatorPage(",
+        "redirect(",
+        "notFound(",
+      ]) {
+        expect(kode, `${nama} memanggil ${penjaga}`).not.toContain(penjaga);
+      }
+    }
+    // Dan jawabannya memang punya bentuk "tidak ada pembaca".
+    expect(viewer).toContain("Promise<PembacaDokumentasi | null>");
+  });
+
+  it("kolom baca 768px ditulis SEKALI dan dipakai kedua kulit", () => {
+    /*
+     * MASTER.md §Dokumentasi mengikat 768. Angka yang disalin ke kulit kedua
+     * adalah angka yang akan bergeser sendiri — dan yang bergeser adalah kulit
+     * APLIKASI, tempat area kerjanya lebar penuh dan kolom yang melebar tidak
+     * terlihat salah bagi siapa pun yang tidak membaca tabelnya.
+     */
+    const shell = BERKAS_DOKUMENTASI.get("components/docs/docs-shell.tsx") ?? "";
+    expect(shell).toContain("const LEBAR_BACA = 768");
+
+    const menulisSendiri = [...BERKAS_DOKUMENTASI]
+      .filter(([berkas]) => berkas !== "components/docs/docs-shell.tsx")
+      .filter(([, kode]) => /\b768\b/.test(kode))
+      .map(([berkas]) => berkas);
+    expect(menulisSendiri, "Angka 768 disalin di luar `docs-shell.tsx`").toEqual([]);
+
+    for (const kulit of [KULIT_APLIKASI, "components/docs/docs-public-chrome.tsx"]) {
+      const kode = BERKAS_DOKUMENTASI.get(kulit) ?? "";
+      expect(kode, `${kulit} tidak memakai kolom baca bersama`).toContain("KOLOM_BACA");
+    }
+  });
+
+  it("hanya SATU `<main>` di kedua kulit — `Layout.Content` sudah merendernya", () => {
+    /*
+     * `Layout.Content` AntD merender `<main>`-nya sendiri. Sebuah `<main>` yang
+     * ditulis di dalam kolom baca akan bersarang di sana: markup tak sah, dan
+     * dua tengara "main" bagi pembaca layar — cacat yang tidak terlihat sama
+     * sekali di layar.
+     */
+    /*
+     * Komentar dibuang lebih dulu: ketiga berkas di bawah MENJELASKAN aturan
+     * ini di prosanya, dan sebuah penjaga yang merah karena penjelasannya
+     * sendiri akan dilonggarkan pada perubahan berikutnya.
+     */
+    const kode = (berkas: string) =>
+      (BERKAS_DOKUMENTASI.get(berkas) ?? "").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+
+    expect(kode("components/docs/docs-public-chrome.tsx")).toContain("<main");
+    for (const berkas of ["components/docs/docs-shell.tsx", KULIT_APLIKASI]) {
+      expect(
+        kode(berkas),
+        `${berkas} menulis tengara main di dalam kulit yang sudah punya satu`
+      ).not.toContain("<main");
     }
   });
 });

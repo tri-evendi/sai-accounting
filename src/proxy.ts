@@ -4,7 +4,13 @@ import { getToken } from "next-auth/jwt";
 
 import { isDocsPath } from "@/lib/docs";
 import { resolvePostLoginPath } from "@/lib/post-login";
-import { legacyTenantScopedPath, renamedPagePath, tenantPath } from "@/lib/tenant-routes";
+import {
+  COMPANY_HOME_PATH,
+  legacyTenantScopedPath,
+  parseTenantPath,
+  renamedPagePath,
+  tenantPath,
+} from "@/lib/tenant-routes";
 
 import {
   clientIpFrom,
@@ -40,6 +46,23 @@ function isPublicPath(pathname: string): boolean {
   // issue #142 — dokumen hukum: harus terbaca SEBELUM orang menyetujuinya.
   if (pathname === "/terms" || pathname === "/privacy") return true;
   /*
+   * Berkas metadata halaman pendaratan. Ketiganya dibangkitkan Next dari
+   * `app/robots.ts`, `app/sitemap.ts`, dan `app/opengraph-image.tsx`, dan
+   * ketiganya HANYA berguna kalau bisa diambil TANPA sesi — pembacanya perayap
+   * dan pratinjau tautan aplikasi perpesanan, yang tidak punya cookie.
+   *
+   * Tanpa baris ini semuanya dipantulkan ke `/login`: peta situs tak pernah
+   * terbaca, dan setiap tautan yang ditempel ke WhatsApp memajang pratinjau
+   * halaman MASUK — layar yang persis dihindari halaman pendaratan.
+   *
+   * `/opengraph-image` dicocokkan sebagai awalan, bukan persis: Next
+   * menambahkan sufiks versi pada jalurnya (`/opengraph-image?<hash>` dan,
+   * pada sebagian versi, segmen id) — jadi pencocokan persis akan lolos hari
+   * ini lalu diam-diam berhenti cocok setelah pemutakhiran.
+   */
+  if (pathname === "/robots.txt" || pathname === "/sitemap.xml") return true;
+  if (pathname === "/opengraph-image" || pathname.startsWith("/opengraph-image/")) return true;
+  /*
    * issue #300 — dokumentasi sistem. SATU-SATUNYA pelepasan berbentuk SUBPOHON
    * di berkas ini, dan itu memang perlu dibenarkan: baris-baris di atas sengaja
    * menyebut jalur PERSIS supaya halaman publik baru harus disebut namanya di
@@ -52,10 +75,19 @@ function isPublicPath(pathname: string): boolean {
    *   • bentuknya dijawab `isDocsPath` — satu fungsi murni yang diuji, bukan
    *     `startsWith("/docs")` telanjang yang juga akan melepaskan `/docsx`;
    *   • ISI subpohonnya dijaga `tests/authz-coverage.test.ts` (grup `(docs)`
-   *     tidak boleh memuat penjaga apa pun) dan `tests/docs.test.ts` (tidak
-   *     boleh mengimpor `auth()`, Prisma, atau chrome app internal). Jadi
+   *     tidak boleh memuat penjaga apa pun) dan `tests/docs.test.ts`. Jadi
    *     "publik" di sini bukan janji melainkan sifat yang dibuktikan berkas
    *     demi berkas.
+   *
+   *     ⚠ Kalimat itu dulu berbunyi "tidak boleh mengimpor `auth()`, Prisma,
+   *     atau chrome app internal", dan sejak `/docs` memakai DUA kulit
+   *     (kepala publik tanpa sesi, kerangka aplikasi bagi yang sudah masuk) ia
+   *     tidak lagi presisi: TEPAT SATU berkas layout membaca sesi, dan TEPAT
+   *     SATU berkas kulit mengimpor `PlatformShell`. Keduanya berkas bernama
+   *     yang didaftarkan sebagai pengecualian di `tests/docs.test.ts`, dijaga
+   *     dua arah — jadi yang berubah bentuk jaminannya, bukan kekuatannya:
+   *     halamannya sendiri tetap tidak boleh menyentuh sesi, dan pembaca
+   *     ANONIM tetap tidak memicu satu pun query.
    */
   if (isDocsPath(pathname)) return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
@@ -238,6 +270,27 @@ export async function proxy(request: NextRequest) {
     const target = request.nextUrl.clone();
     target.pathname = renamed;
     return NextResponse.redirect(target, 307);
+  }
+
+  /*
+   * ── Beranda buku: `/t/{t}/{c}/dashboard` → `/t/{t}/{c}` ────────────────────
+   *
+   * Segmen `dashboard` dicabut karena akar sebuah perusahaan MEMANG berandanya
+   * (alasan lengkapnya di `COMPANY_HOME_PATH`, `lib/tenant-routes.ts`). Yang
+   * dipantulkan di sini adalah alamat yang sudah terlanjur beredar: bookmark,
+   * tautan di surel yang sudah terkirim, dan riwayat peramban.
+   *
+   * 307, sama alasannya dengan pantulan di bawah: 308/301 tersimpan di cache
+   * peramban selamanya, dan alamat yang sudah di-cache tidak bisa ditarik
+   * kembali kalau kelak keputusannya berubah.
+   */
+  if (!pathname.startsWith("/api/")) {
+    const bertenant = parseTenantPath(pathname);
+    if (bertenant && bertenant.rest === COMPANY_HOME_PATH && pathname.endsWith(COMPANY_HOME_PATH)) {
+      const target = request.nextUrl.clone();
+      target.pathname = tenantPath(bertenant.tenantSlug, bertenant.companySlug, COMPANY_HOME_PATH);
+      return NextResponse.redirect(target, 307);
+    }
   }
 
   /*

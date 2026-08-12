@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { requireUnlockedCompany } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
@@ -186,6 +187,20 @@ export default async function DashboardPage({
     if (scoped.reason === "no-session") redirect("/login");
     notFound();
   }
+
+  /*
+   * Kunci buku — WAJIB di sini juga, dan justru di sini yang paling penting.
+   *
+   * Halaman ini menjaga dirinya sendiri (lihat catatan di atas), jadi ia tidak
+   * lewat `gateAfterCompany` tempat gerbang ini berdiri untuk semua halaman
+   * lain. Tanpa baris ini, pintu PERTAMA sesudah masuk — dan satu-satunya yang
+   * memajang saldo, piutang, dan stok di satu layar — adalah satu-satunya
+   * pintu yang tidak menuntut bukti kehadiran.
+   */
+  await requireUnlockedCompany(session.user.id, scoped.companyId, {
+    tenantSlug: scoped.tenantSlug,
+    companySlug: scoped.companySlug,
+  });
 
   const t = await getT();
   const dictionary = await getDictionary(await getLocale());

@@ -39,6 +39,13 @@ const SUB: React.CSSProperties = {
   fontSize: "var(--ant-font-size-heading-4)",
   fontWeight: 600,
   color: "var(--ant-color-text)",
+  /*
+   * Tautan kontekstual dari menu Bantuan mendarat di jangkar INI. Tanpa ini
+   * judulnya berhenti menempel di garis atas layar, dan yang terbaca pertama
+   * kali adalah paragraf di bawahnya — pembaca tidak pernah melihat judul yang
+   * memberi tahu ia sampai di tempat yang benar.
+   */
+  scrollMarginTop: "var(--ant-margin-lg)",
 };
 
 const DAFTAR: React.CSSProperties = {

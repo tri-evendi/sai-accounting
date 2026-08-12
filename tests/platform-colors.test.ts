@@ -40,6 +40,8 @@ import {
   BORDER_TOKENS_LIGHT,
   PRIMARY_BUTTON_DARK,
   PRIMARY_BUTTON_LIGHT,
+  brandPrimary,
+  brandTone,
 } from "@/lib/theme/antd-tokens";
 
 type RGB = [number, number, number, number];
@@ -106,14 +108,42 @@ type Base = "layout" | "container" | "elevated";
  * diukur di sini. Yang diurai adalah teks CSS-nya.
  */
 function kadar(nama: string): { hue: string; pct: number; base: Base } {
+  /*
+   * Dua bentuk sumber yang sah — sama persis dengan `landing-colors.test.ts`,
+   * sebab kedua permukaan memakai resep yang SAMA (`lib/theme/tone-recipe.ts`,
+   * #303):
+   *
+   *   var(--ant-<hue>-6)        — tiga hue preset
+   *   var(--ant-color-brand-tone) — hue MEREK, sejak merek menjadi navy
+   *
+   * Bibit merek tidak lagi bisa diambil dari tangga `--ant-blue-*`: tangga itu
+   * tetap biru bawaan AntD dan berhenti mewakili merek pada hari merek pindah.
+   */
   const m = PLATFORM_STYLE.match(
     new RegExp(
-      `--sai-platform-${nama}:\\s*color-mix\\(\\s*in srgb,\\s*var\\(--ant-([a-z]+)-6\\)\\s*(\\d+)%,\\s*var\\(--ant-color-bg-(layout|container|elevated)\\)\\s*\\)`
+      `--sai-platform-${nama}:\\s*color-mix\\(\\s*in srgb,\\s*var\\((?:--ant-([a-z]+)-6|--ant-(color-brand-tone))\\)\\s*(\\d+)%,\\s*var\\(--ant-color-bg-(layout|container|elevated)\\)\\s*\\)`
     )
   );
   if (!m) throw new Error(`resep --sai-platform-${nama} tidak ditemukan di PLATFORM_STYLE`);
-  return { hue: m[1], pct: Number(m[2]), base: m[3] as Base };
+  return { hue: m[1] ?? "brandTone", pct: Number(m[3]), base: m[4] as Base };
 }
+
+
+/**
+ * `colorPrimary` yang BENAR-BENAR dirender.
+ *
+ * Algoritma gelap AntD mentransformasi benih yang diberikan, jadi mengukur
+ * benihnya berarti mengukur warna yang tidak pernah muncul di layar — dan itu
+ * sudah sempat terjadi: benih 5,41:1 keluar sebagai 4,24:1 tanpa satu penjaga
+ * pun berbunyi.
+ */
+const appliedPrimary = (mode: Mode): string =>
+  (
+    theme.getDesignToken({
+      algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      token: { colorPrimary: brandPrimary(mode) },
+    }) as unknown as Record<string, string>
+  ).colorPrimary;
 
 const MODES = ["light", "dark"] as const;
 type Mode = (typeof MODES)[number];
@@ -144,7 +174,12 @@ function tokens(mode: Mode) {
     /** Tepi tombol `variant="outline"` (= AntD `type="default"`). */
     outlineEdge: parse(border.colorBorder),
     buttonPrimary: parse(button.colorPrimary),
-    hue: (h: PlatformHue, step: number) => parse(t[`${HUE_TOKEN[h]}${step}`]),
+    /* `brandTone` bukan keluarga palet: glif merek memakai warna merek itu
+       sendiri (`--ant-color-primary`), jadi ia dibaca dari sumbernya. */
+    hue: (h: PlatformHue, step: number) =>
+      HUE_TOKEN[h] === "brandTone"
+        ? parse(appliedPrimary(mode))
+        : parse(t[`${HUE_TOKEN[h]}${step}`]),
   };
 }
 
@@ -155,7 +190,9 @@ function permukaan(mode: Mode) {
   const base = { layout: t.layout, container: t.container, elevated: parse(r.colorBgElevated) };
   const dari = (nama: string): RGB => {
     const { hue, pct, base: b } = kadar(nama);
-    return mix(parse(r[`${hue}6`]), pct, base[b]);
+    /* `brandTone` bukan keluarga palet melainkan bibit merek per tema. */
+    const sumber = hue === "brandTone" ? brandTone(mode) : r[`${hue}6`];
+    return mix(parse(sumber), pct, base[b]);
   };
   const out: Record<string, RGB> = {};
   for (const hue of PLATFORM_HUES) {

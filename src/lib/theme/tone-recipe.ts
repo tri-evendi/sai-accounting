@@ -11,7 +11,7 @@
  *
  * Ada tiga jalan menuju sana, dan dua di antaranya salah:
  *
- *   • **Mengimpor `landing-scale.ts` dari `(tenant)/platform/*`.** Ditolak
+ *   • **Mengimpor `landing-scale.ts` dari `(tenant)/(panel)/platform/*`.** Ditolak
  *     `tests/landing-boundary.test.ts`, dan penolakan itu benar: direktori
  *     pendaratan memuat SKALA PEMASARAN (hero ≈53px, irama 96px, CTA
  *     berulang), dan satu impor membuka pintu bagi semuanya sekaligus.
@@ -115,5 +115,28 @@ export type ToneBase = "layout" | "container" | "elevated";
  * itu mengukur warna yang sungguh sampai ke layar, bukan warna yang diniatkan.
  */
 export function toneMix(hue: ToneHue, pct: number, base: ToneBase): string {
-  return `color-mix(in srgb, var(--ant-${TONE_HUE_TOKEN[hue]}-6) ${pct}%, var(--ant-color-bg-${base}))`;
+  /*
+   * ⚠ Nada `brand` mengikuti `--ant-color-primary`, BUKAN `--ant-blue-6`.
+   *
+   * Sejak warna merek menjadi navy (`antd-tokens.ts` §colorPrimary GLOBAL),
+   * tangga preset `--ant-blue-*` tidak lagi mewakilinya: ia tetap biru terang
+   * bawaan AntD. Membiarkan nada merek diturunkan dari sana menghasilkan
+   * halaman yang tombolnya navy tetapi pitanya biru lama — dua merek di satu
+   * layar, dan tak satu pun penjaga yang akan menyebutkannya.
+   *
+   * ⚠ Yang dipakai `--ant-color-brand-tone`, BUKAN `--ant-color-primary`.
+   * Keduanya navy, tetapi perannya beda: yang pertama berbobot PERMUKAAN (sama
+   * dengan anak tangga -6 milik hue lain), yang kedua berbobot TEKS dan di tema
+   * gelap sengaja terang. Memakai yang kedua sebagai bibit sudah diukur dan
+   * menjatuhkan isian tombol ke 2,96:1 terhadap pita ajakan.
+   *
+   * Tiga hue lain TETAP di tangga preset: cyan, geekblue, dan purple memang
+   * bukan warna merek, dan justru itu gunanya (lihat catatan di atas — keempat
+   * hue dipilih karena tidak memikul arti apa pun di aplikasi ini).
+   */
+  const sumber =
+    hue === "brand"
+      ? "var(--ant-color-brand-tone)"
+      : `var(--ant-${TONE_HUE_TOKEN[hue]}-6)`;
+  return `color-mix(in srgb, ${sumber} ${pct}%, var(--ant-color-bg-${base}))`;
 }

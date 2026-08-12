@@ -122,12 +122,41 @@ function runInTx<T>(
   return fn(client as Prisma.TransactionClient);
 }
 
-/** Sequential journal number per year-month: JV.YYYY.MM.NNNNN */
+/**
+ * Sequential journal number per year-month: JV.YYYY.MM.NNNNN
+ *
+ * ⚠ RENTANG (`gte`/`lte`), BUKAN `startsWith` — dan itu bukan selera.
+ *
+ * `startsWith` membuat Prisma memancarkan `LIKE CONCAT(?, '%')`, dan pada
+ * MariaDB 11.8 bentuk itu MELEDAK ketika dikirim sebagai prepared statement
+ * (yang memang dilakukan `@prisma/adapter-mariadb`):
+ *
+ *     Error 1267: Illegal mix of collations
+ *     (utf8mb4_unicode_ci, IMPLICIT) and (utf8mb4_bin, NONE) for operation 'like'
+ *
+ * Sebabnya parameter terikat di protokol biner tidak membawa kolasi yang bisa
+ * dipaksakan; di-`CONCAT` dengan literal `'%'` hasilnya berkolasi `utf8mb4_bin`
+ * berderivasi NONE, lalu bertabrakan dengan kolom yang `utf8mb4_unicode_ci`.
+ * Diukur: bentuk `LIKE ?` polos LOLOS, `LIKE CONCAT(?, '%')` lewat `query()`
+ * (protokol teks) LOLOS, dan hanya lewat `execute()` yang gagal. Opsi
+ * `collation`/`charset` di tingkat pool TIDAK menolong.
+ *
+ * Fungsi ini dipanggil `postJournal()` — satu-satunya primitif pembuat jurnal —
+ * jadi kegagalannya bukan "satu halaman rusak" melainkan SETIAP pembukuan
+ * berhenti, termasuk jurnal saldo awal yang menutup wisaya penyiapan.
+ *
+ * Rentangnya eksak karena formatnya eksak: sufiksnya selalu lima digit, jadi
+ * batas atasnya `${prefix}99999`. Bulan lain tidak bisa ikut terhitung —
+ * `JV.2026.02.00001` sudah lebih besar dari `JV.2026.01.99999`. Bonusnya
+ * perbandingan rentang memakai indeks kolom apa adanya, tanpa LIKE.
+ */
 async function nextNumber(tx: Prisma.TransactionClient, date: Date): Promise<string> {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const prefix = `JV.${y}.${m}.`;
-  const count = await tx.journal.count({ where: { number: { startsWith: prefix } } });
+  const count = await tx.journal.count({
+    where: { number: { gte: prefix, lte: `${prefix}99999` } },
+  });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }
 

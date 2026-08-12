@@ -17,9 +17,14 @@
  * dijaga: setiap tombol primer di direktori ini harus menuju `/register`
  * (`tests/button-emphasis.test.ts`).
  */
-import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
-import { Button } from "@/components/ui/button";
+import { LANDING_NOTE } from "@/components/landing/landing-scale";
+import {
+  LandingSection,
+  LandingSectionIntro,
+} from "@/components/landing/landing-section";
+import { ButtonLink } from "@/components/ui/button";
 import { getT } from "@/lib/i18n/server";
+import { TRIAL_DAYS } from "@/lib/registration";
 
 export async function LandingClosingCta() {
   const t = await getT();
@@ -34,10 +39,28 @@ export async function LandingClosingCta() {
         {t("landing.ctaBody")}
       </LandingSectionIntro>
       <div style={{ marginTop: "var(--sai-landing-cta-space)" }}>
-        <Button href="/register" size="lg" variant="primary">
+        <ButtonLink href="/register" size="lg" variant="primary">
           {t("landing.heroPrimary")}
-        </Button>
+        </ButtonLink>
       </div>
+
+      {/* Penenang terakhir, tepat di bawah tombolnya — di situlah keraguan
+          menit terakhir muncul ("berapa lama saya bisa mencoba", "apa yang
+          harus saya pasang").
+
+          ⚠ Angkanya dari `TRIAL_DAYS`, konstanta yang SAMA yang menghitung
+          masa uji coba — bukan diketik. Dan tidak ada klaim tambahan di sini:
+          "tanpa kartu kredit" TIDAK ditulis, sebab tak ada satu pun kode di
+          repo ini yang menjaminnya (`landing.md` §KLAIM HARUS PUNYA SUMBER). */}
+      <p
+        style={{
+          ...LANDING_NOTE,
+          marginTop: "var(--ant-margin)",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {t("landing.ctaTrialNote", { days: TRIAL_DAYS })}
+      </p>
     </LandingSection>
   );
 }

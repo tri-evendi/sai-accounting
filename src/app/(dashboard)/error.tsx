@@ -11,7 +11,7 @@
  * mencoba lagi (`reset()`) atau pindah halaman tanpa kehilangan konteks.
  *
  * ── Tanpa satu kelas Tailwind pun (PR penutup #201/#240) ───────────────────
- * Kembarannya `(tenant)/platform/error.tsx` sudah dikonversi di #200; berkas
+ * Kembarannya `(tenant)/(panel)/platform/error.tsx` sudah dikonversi di #200; berkas
  * ini tertinggal karena ia bukan halaman dan bukan komponen, jadi tak masuk
  * lingkup issue mana pun. Susunannya kini dibuat SAMA dengan kembarannya itu —
  * dua layar galat yang berbeda jarak dan berbeda warna lingkaran ikonnya adalah
@@ -98,7 +98,7 @@ export default function DashboardError({
                   dokumen baru. `router.push()` mempertahankan runtime yang
                   sama persis, termasuk yang barusan meledak.
 
-                  Kembarannya `(tenant)/platform/error.tsx` sudah `<Button href>`
+                  Kembarannya `(tenant)/(panel)/platform/error.tsx` sudah `<Button href>`
                   sejak #200; dua layar galat yang berbeda perilakunya adalah
                   cacat yang hanya terlihat kalau seseorang kebetulan memicu
                   keduanya. */}

@@ -41,22 +41,103 @@
  * yang tidak punya sumber di kode ini — "tanpa kartu kredit", "gratis
  * selamanya" — sengaja tidak ada.
  */
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { LandingClosingCta } from "@/components/landing/landing-closing-cta";
+import { LandingContact } from "@/components/landing/landing-contact";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingFeatures } from "@/components/landing/landing-features";
 import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingShell } from "@/components/landing/landing-shell";
+import { LandingTrust } from "@/components/landing/landing-trust";
 import { auth } from "@/lib/auth";
+import type { ContactOutcome } from "@/lib/contact-actions";
+import { APP_NAME } from "@/lib/constants";
+import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { publicAppUrl } from "@/lib/public-url";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+/**
+ * ══ METADATA: HALAMAN INI ADALAH YANG DIBAGIKAN, BUKAN YANG DIBUKA ═════════
+ * Sampai sekarang satu-satunya metadata aplikasi ini adalah `title` +
+ * `description` di `app/layout.tsx`. Untuk app internal itu memang cukup — tak
+ * ada yang menempelkan alamat halaman piutang ke grup WhatsApp. Untuk halaman
+ * INI tidak: ia satu-satunya permukaan yang dibagikan orang, dan tanpa
+ * `openGraph` ia dibagikan sebagai tautan telanjang tanpa judul, tanpa
+ * kalimat, tanpa gambar — di kanal yang justru menjadi jalur penjualan
+ * sebenarnya di Indonesia.
+ *
+ * ⚠ TANPA `alternates.languages`, DAN ITU DISENGAJA. `hreflang` menuntut satu
+ * ALAMAT per bahasa. Aplikasi ini menyimpan bahasa di COOKIE, bukan di segmen
+ * rute — keputusan yang alasannya panjang dan masih berlaku
+ * (`lib/i18n/config.ts` §"locale di COOKIE, bukan segmen rute `[lang]`"). Jadi
+ * ketiga bahasa berbagi SATU alamat, dan `hreflang` yang menunjuk alamat yang
+ * sama tiga kali bukan sekadar tidak berguna: ia memberi tahu mesin pencari
+ * sesuatu yang tidak benar. Kalau kelak bahasa pindah ke `/(id|en|zh)/…`,
+ * di sinilah `alternates` dipasang — bukan sebelum itu.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const dictionary = await getDictionary(await getLocale());
+  const asal = publicAppUrl();
+  const judul = `${APP_NAME} — ${dictionary.landing.heroHeading}`;
+
+  return {
+    metadataBase: asal,
+    title: judul,
+    /* Kalimat pembuka hero, bukan kalimat pemasaran kedua: dua kalimat untuk
+       satu janji akan menyimpang pada hari salah satunya disunting. */
+    description: dictionary.landing.heroBody,
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      siteName: APP_NAME,
+      title: judul,
+      description: dictionary.landing.heroBody,
+      url: asal.toString(),
+      /* Gambarnya TIDAK disebut di sini — `app/opengraph-image.tsx` sudah
+         terpasang otomatis oleh Next dan menyebutnya kedua kali justru
+         menimpanya dengan jalur yang harus dijaga sendiri. */
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: judul,
+      description: dictionary.landing.heroBody,
+    },
+    robots: { index: true, follow: true },
+  };
+}
+
+/** Hasil kiriman formulir kontak yang sah muncul di `?kontak=`. */
+const HASIL_KONTAK = new Set<ContactOutcome>([
+  "terkirim",
+  "gagal",
+  "takbenar",
+  "terlalu-sering",
+]);
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
   if (session) redirect("/dashboard");
+
+  /*
+   * Hasil formulir kontak dibaca dari kueri, bukan dari state — itulah yang
+   * membuat formulirnya bekerja tanpa JavaScript (alasan lengkap di
+   * `lib/contact-actions.ts`). Nilainya DISARING terhadap daftar yang sah:
+   * `?kontak=` bisa diisi siapa saja, dan nilai sembarang tidak boleh menjadi
+   * kunci pencarian pesan.
+   */
+  const kontak = (await searchParams).kontak;
+  const hasilKontak = HASIL_KONTAK.has(kontak as ContactOutcome)
+    ? (kontak as ContactOutcome)
+    : undefined;
 
   return (
     <LandingShell>
@@ -68,12 +149,23 @@ export default async function Home() {
           isinya. */}
       <LandingFeatures />
       <LandingModules />
+      {/* Bukti SEBELUM harga, dan itu urutan yang disengaja: dua keberatan
+          terbesar pada pembukuan multi-PT — "apakah data saya bisa tercampur"
+          dan "apakah saya bisa keluar lagi" — muncul saat orang membayangkan
+          memakainya, bukan saat ia melihat angkanya. Menjawabnya sesudah harga
+          berarti menjawabnya kepada orang yang sudah pergi. */}
+      <LandingTrust />
       <LandingPricing />
       {/* FAQ tepat SESUDAH harga: di situlah keberatan muncul — orang sudah
           melihat angkanya dan sedang mencari alasan untuk tidak melanjutkan.
           Menaruhnya sebelum harga berarti menjawab pertanyaan yang belum
           ditanyakan siapa pun. */}
       <LandingFaq />
+      {/* Kontak SESUDAH FAQ: enam pertanyaan menjawab keberatan umum, dan
+          yang tersisa sesudahnya memang perlu orang. Menaruhnya sebelum FAQ
+          berarti meminta orang mengetik pertanyaan yang jawabannya ada satu
+          layar di bawahnya. */}
+      <LandingContact outcome={hasilKontak} />
       <LandingClosingCta />
     </LandingShell>
   );

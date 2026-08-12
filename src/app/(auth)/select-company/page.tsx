@@ -29,7 +29,7 @@
  * mewarnai dirinya (primitif `Button`).
  */
 import { redirect } from "next/navigation";
-import { PlusOutlined, ShopOutlined, UserOutlined } from "@ant-design/icons";
+import { ShopOutlined, UserOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
@@ -115,13 +115,22 @@ export default async function SelectCompanyPage() {
         {canCreate ? (
           <div style={{ display: "flex", flexDirection: "column", gap: STACK_MD }}>
             <p style={BODY_TEXT}>{t("auth.selectCompany.noCompanyYetOwner")}</p>
-            {/* Satu-satunya jalan maju dari layar nol-perusahaan, jadi primer.
-                Bandingkan dengan kembarannya di kaki kartu daftar (bawah):
-                di sana ia jalan SAMPING di sebelah pilihan perusahaan, jadi
-                `outline`. Tombol yang sama, dua peran — MASTER.md §Aksi utama. */}
-            <Button href="/companies/new" variant="primary" style={FULL_WIDTH}>
-              <PlusOutlined aria-hidden="true" />
-              {t("companies.newTitle")}
+            {/*
+             * Satu-satunya jalan maju dari layar nol-perusahaan, jadi primer.
+             *
+             * ⚠ Tujuannya PANEL AKUN, bukan formulir "Tambah Perusahaan"
+             * langsung. Membuat PT kini hanya berlangsung di `/platform`:
+             * pintunya satu, dan satu pintu berarti satu tempat yang harus
+             * benar. Sampai perubahan ini layar ini menembak formulirnya
+             * langsung, jadi ada dua jalan masuk ke tindakan yang sama — dan
+             * yang satu ini melewati panel tempat kuota, paket, serta daftar PT
+             * yang sudah ada justru ditampilkan. Bagi pemilik yang belum punya
+             * PT sama sekali, itu bukan langkah yang terlewat melainkan konteks
+             * yang memang perlu ia lihat sebelum membuat yang pertama.
+             */}
+            <Button href="/platform" variant="primary" style={FULL_WIDTH}>
+              <UserOutlined aria-hidden="true" />
+              {t("platform.title")}
             </Button>
           </div>
         ) : (
@@ -152,12 +161,11 @@ export default async function SelectCompanyPage() {
          * orangnya lebih dulu SADAR ia masuk sebagai siapa.
          */
         <div style={{ display: "flex", flexDirection: "column", gap: STACK_SM }}>
-          {canCreate && (
-            <Button href="/companies/new" variant="outline" style={FULL_WIDTH}>
-              <PlusOutlined aria-hidden="true" />
-              {t("companies.newTitle")}
-            </Button>
-          )}
+          {/* "Tambah Perusahaan" SUDAH TIDAK di sini: membuat PT hanya
+              berlangsung di panel akun, dan tombol menuju panel itu berdiri
+              tepat di bawah ini. Dua tombol berdampingan yang salah satunya
+              jalan pintas ke dalam yang lain hanya menambah pilihan tanpa
+              menambah kemampuan. */}
           {canOpenPlatform && (
             <Button href="/platform" variant="outline" style={FULL_WIDTH}>
               <UserOutlined aria-hidden="true" />

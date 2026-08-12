@@ -52,6 +52,20 @@ export const PERSISTENT_RATE_LIMITS = {
   /** Penerimaan undangan staf (#139) per IP — publik bertoken 256 bit; pagar
    *  ini menahan penebakan buta, bukan pemakaian wajar. */
   invitationAcceptIp: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
+  /**
+   * Formulir "hubungi kami" di pendaratan, per IP.
+   *
+   * Penghitung PERSISTEN, bukan memori — aturan di kepala `rate-limit.ts`:
+   * endpoint yang TERBUKA KE INTERNET tidak boleh memakai penghitung memori
+   * (hilang saat restart, tidak terbagi antar-instance). Formulir ini bahkan
+   * lebih terbuka daripada `/register`: ia tidak menuntut apa pun dari
+   * pengirim, dan setiap kiriman MENGIRIM SUREL — persis bentuk yang dicari
+   * penyalahguna sebagai meriam spam.
+   *
+   * Lima per jam per IP: cukup untuk orang yang salah ketik lalu mengirim
+   * ulang, jauh di bawah ambang berguna bagi pengirim massal.
+   */
+  contactIp: { windowMs: 60 * 60 * 1000, maxAttempts: 5 },
 } as const satisfies Record<string, PersistentRateLimitOptions>;
 
 export interface PersistentRateLimitResult {

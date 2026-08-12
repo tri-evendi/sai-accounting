@@ -195,9 +195,14 @@ export function UserMenu({
   const centang = <CheckOutlined aria-hidden="true" style={{ fontSize: 16 }} />;
   /*
    * Latar avatar memakai isian tombol primer (#186), bukan `colorPrimary`
-   * global: inisial di dalamnya adalah TEKS PUTIH, dan putih di atas `#1677ff`
-   * berkontras 4,10:1 — gagal 4,5:1. Anak tangga yang sudah diukur untuk peran
-   * "label putih di atas isian merek" persis token itu.
+   * global: inisial di dalamnya adalah TEKS PUTIH.
+   *
+   * ⚠ Alasannya MENGUAT sejak warna merek menjadi navy. Dulu `colorPrimary`
+   * (`#1677ff`) gagal tipis (4,10:1). Sekarang `colorPrimary` di tema GELAP
+   * sengaja TERANG karena perannya teks — putih di atasnya hanya **2,98:1**,
+   * yaitu lambang/avatar yang lenyap. Token yang benar untuk peran "teks terang
+   * di atas isian merek" tetap yang dipakai di bawah (lihat `colorBrandSolid`
+   * di `lib/theme/antd-tokens.ts`, nilainya sama).
    */
   const latarAvatar = primaryButtonTokens(resolved).colorPrimary;
   /** Tautan mengisi lebar barisnya, dan warnanya ikut keadaan baris menu. */

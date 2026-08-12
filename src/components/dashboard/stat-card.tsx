@@ -56,6 +56,7 @@
 
 import { Link } from "@/components/ui/app-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TILE_CONTENT, TILE_HEADER, TILE_LABEL } from "@/components/ui/stat-tile";
 
 /**
  * Arah angka kartu. `neutral` (bawaan) sengaja tanpa warna: di beranda
@@ -90,15 +91,12 @@ const SIZE_FONT: Record<StatSize, string> = {
   phrase: "var(--ant-font-size-lg)",
 };
 
-/** `CardHeader` `pb-1` = `paddingXXS` (4). */
-const HEADER: React.CSSProperties = { paddingBottom: "var(--ant-padding-xxs)" };
-
-/** `text-sm font-medium text-muted-foreground` — judul kartu. */
-const TITLE: React.CSSProperties = {
-  fontSize: "var(--ant-font-size)",
-  fontWeight: 500,
-  color: "var(--ant-color-text-secondary)",
-};
+/* Kepala, badan, dan judul ubin datang dari `components/ui/stat-tile.ts` —
+ * modul yang sama yang dipakai `QuotaMeter`, supaya keduanya bisa berdiri
+ * berdampingan di satu kisi tanpa terbaca sebagai dua keluarga kartu. Yang
+ * berubah bersamanya, dan itu perbaikan bukan efek samping: `CardHeader` tidak
+ * lagi menggambar garis bawah 4px di bawah judulnya (alasan lengkap di kepala
+ * `stat-tile.ts`). */
 
 /** `mt-1 text-sm text-muted-foreground` — baris konteks di bawah angkanya. */
 const HINT: React.CSSProperties = {
@@ -132,10 +130,10 @@ export function StatCard({
 }: StatCardProps) {
   const content = (
     <Card style={href ? { height: "100%" } : undefined}>
-      <CardHeader style={HEADER}>
-        <CardTitle style={TITLE}>{title}</CardTitle>
+      <CardHeader style={TILE_HEADER}>
+        <CardTitle style={TILE_LABEL}>{title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent style={TILE_CONTENT}>
         {/* Warna DASARnya `colorText`; `tone` menimpanya hanya ketika ia memang
             menyebut arah. */}
         <p

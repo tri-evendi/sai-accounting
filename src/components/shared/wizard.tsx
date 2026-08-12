@@ -22,28 +22,31 @@
  *     app ini (`resolveSubmitFailure`).
  *
  *  4. **Status langkah tidak pernah warna saja.** Setiap langkah membawa teks
- *     "Selesai / Sedang diisi / Belum" dan ikon centang, sesuai MASTER.md.
+ *     "Selesai / Sedang diisi / Belum", sesuai MASTER.md.
  *
- * **Kenapa penanda langkah tetap `<button>` mentah.** Tombol aksi wizard
- * ("Kembali"/"Lanjut"/"Selesai") memakai primitif `Button`, tetapi kartu
- * penanda langkah TIDAK: ia adalah kembaran interaktif dari `<div>` di
- * sebelahnya (langkah yang belum boleh dilompati) dan harus tampil identik —
- * kartu dua baris, tinggi mengikuti isi, `rounded-lg`, `flex-1` selebar kolom.
- * `Button` memaksa tinggi tetap 40px, `justify-center`, dan `whitespace-nowrap`
- * yang justru merusak kesamaan itu. Dikecualikan sadar di
- * `tests/design-system-primitives.test.ts`.
+ * **Penanda langkahnya sudah TIDAK tinggal di sini.** Sampai penyatuan penanda
+ * langkah, berkas ini menggambar sendiri deretan kartu dua baris — termasuk
+ * `<button>` mentah yang dikecualikan sadar di
+ * `tests/design-system-primitives.test.ts`, sebab ia harus tampil identik
+ * dengan `<div>` di sebelahnya (langkah yang belum boleh dilompati) dan
+ * `Button` memaksa tinggi 40px + `whitespace-nowrap` yang merusak kesamaan itu.
+ *
+ * Seluruh blok itu kini `components/ui/wizard-steps.tsx` di atas `Steps` AntD,
+ * dipakai bersama wisaya penyiapan `/t/…/setup` yang dulu punya kosakata
+ * penanda SENDIRI (pil datar bernomor, dan bedanya "sedang dibuka" dari "belum"
+ * cuma rona). Alasan lengkapnya di kepala berkas itu. Yang ikut hilang bersama
+ * kartunya adalah pengecualian `<button>` mentah tadi — `Steps` menggambar
+ * elemen interaktifnya sendiri.
  */
 
 import { useState } from "react";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { WizardSteps } from "@/components/ui/wizard-steps";
 import { canJumpToStep, stepIndex, type WizardStepMeta } from "@/lib/wizard";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, ExclamationCircleOutlined, RightOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
-/** Bulatan nomor langkah — sebesar `h-7 w-7` sebelum migrasi. */
-const STEP_BULLET = 28;
+import { ArrowLeftOutlined, ArrowRightOutlined, ExclamationCircleOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 
 interface WizardProps {
   steps: readonly WizardStepMeta[];
@@ -113,160 +116,28 @@ export function Wizard({
     void onFinish();
   }
 
-  /**
-   * Rupa bulatan langkah. Warnanya penanda KEDUA — bentuk pertamanya adalah
-   * ikon (centang / titik / angka) dan kata di sebelahnya ("Selesai / Sedang
-   * diisi / Belum"), jadi keadaannya tetap terbaca tanpa warna sama sekali.
-   * `colorSuccessBg`/`colorMoneyPositive` dipakai berpasangan seperti `Tag`
-   * (#187), bukan `colorSuccess` yang di ukuran ini hanya 2,21:1.
-   */
-  const money = moneyPalette(token);
-  const bulletLook = (state: "done" | "current" | "todo") => {
-    if (state === "done") {
-      return { background: token.colorSuccessBg, color: money.colorMoneyPositive };
-    }
-    if (state === "current") {
-      return { background: token.colorPrimary, color: token.colorWhite };
-    }
-    return { background: token.colorFillSecondary, color: token.colorTextSecondary };
-  };
-
   return (
     <div>
       {/* ── Penanda langkah ─────────────────────────────────────────────── */}
-      <nav aria-label={t("wizard.stepsAria")} style={{ marginBottom: token.marginLG }}>
-        <Typography.Text
-          type="secondary"
-          strong
-          style={{ display: "block", marginBottom: token.marginXS }}
-        >
-          {t("wizard.stepOf", { step: index + 1, total: steps.length })}
-        </Typography.Text>
-        {/*
-         * Menumpuk di 375px, berjajar sejak `sm`. `Flex wrap` + `flex: 1` per
-         * butir menggantikan `flex-col sm:flex-row sm:flex-wrap`: kartu langkah
-         * tumbuh membagi baris, dan turun sendiri saat tak muat — tanpa titik
-         * patah yang harus dijaga tetap sama dengan titik patah lain.
-         */}
-        <Flex component="ol" wrap gap={token.marginXS} align="stretch" style={{ margin: 0, padding: 0, listStyle: "none" }}>
-          {steps.map((s, i) => {
-            const state = i < index ? "done" : i === index ? "current" : "todo";
-            const reachable = canJumpToStep(steps, s.id, currentId) && i !== index;
-            const label =
-              state === "done"
-                ? t("wizard.stateDone")
-                : state === "current"
-                  ? t("wizard.stateCurrent")
-                  : t("wizard.stateTodo");
-            const content = (
-              <>
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: STEP_BULLET,
-                    height: STEP_BULLET,
-                    flexShrink: 0,
-                    borderRadius: "50%",
-                    fontSize: token.fontSizeSM,
-                    fontWeight: token.fontWeightStrong,
-                    ...bulletLook(state),
-                  }}
-                >
-                  {state === "done" ? (
-                    <CheckOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
-                  ) : state === "current" ? (
-                    <RightOutlined aria-hidden="true" style={{ fontSize: token.fontSize }} />
-                  ) : (
-                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{i + 1}</span>
-                  )}
-                </span>
-                <span style={{ minWidth: 0, textAlign: "left" }}>
-                  <span
-                    style={{
-                      display: "block",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontWeight: token.fontWeightStrong,
-                    }}
-                  >
-                    {t(s.titleKey)}
-                    {s.optional && (
-                      <Typography.Text
-                        type="secondary"
-                        style={{ marginInlineStart: token.marginXXS, fontWeight: "normal" }}
-                      >
-                        {t("wizard.optionalSuffix")}
-                      </Typography.Text>
-                    )}
-                  </span>
-                  <Typography.Text
-                    type="secondary"
-                    style={{ display: "block", fontSize: token.fontSizeSM }}
-                  >
-                    {label}
-                  </Typography.Text>
-                </span>
-              </>
-            );
-
-            /** Kartu langkah — sama persis untuk yang bisa & tidak bisa ditekan. */
-            const cardStyle: React.CSSProperties = {
-              display: "flex",
-              width: "100%",
-              alignItems: "center",
-              gap: token.marginXS,
-              paddingBlock: token.paddingXS,
-              paddingInline: token.paddingSM,
-              borderRadius: token.borderRadiusLG,
-              borderStyle: "solid",
-              borderWidth: token.lineWidth,
-              textAlign: "left",
-              transition: `background ${token.motionDurationMid}, border-color ${token.motionDurationMid}`,
-            };
-
-            return (
-              <li key={s.id} style={{ flex: 1, listStyle: "none" }}>
-                {reachable ? (
-                  /* Tetap `<button>` mentah — alasannya di kepala berkas, dan
-                     pengecualiannya terdaftar di
-                     `tests/design-system-primitives.test.ts`. */
-                  <button
-                    type="button"
-                    onClick={() => onNavigate(s.id)}
-                    aria-current={undefined}
-                    style={{
-                      ...cardStyle,
-                      cursor: "pointer",
-                      borderColor: token.colorBorderSecondary,
-                      background: token.colorBgContainer,
-                      font: "inherit",
-                      color: "inherit",
-                    }}
-                  >
-                    {content}
-                  </button>
-                ) : (
-                  <div
-                    aria-current={state === "current" ? "step" : undefined}
-                    style={{
-                      ...cardStyle,
-                      borderColor:
-                        state === "current" ? token.colorPrimary : token.colorBorderSecondary,
-                      background:
-                        state === "current" ? token.colorPrimaryBg : token.colorBgContainer,
-                    }}
-                  >
-                    {content}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </Flex>
-      </nav>
+      {/* ── Penanda langkah — komponen bersama, lihat `ui/wizard-steps.tsx` ── */}
+      <div style={{ marginBottom: token.marginLG }}>
+        <WizardSteps
+          steps={steps.map((s) => ({
+            key: s.id,
+            title: t(s.titleKey),
+            optional: s.optional,
+          }))}
+          current={index}
+          canJump={(i) => {
+            const target = steps[i];
+            return target ? canJumpToStep(steps, target.id, currentId) : false;
+          }}
+          onJump={(i) => {
+            const target = steps[i];
+            if (target) onNavigate(target.id);
+          }}
+        />
+      </div>
 
       {/* ── Judul & penjelasan langkah ──────────────────────────────────── */}
       <div style={{ marginBottom: token.margin }}>

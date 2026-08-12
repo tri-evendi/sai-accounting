@@ -19,15 +19,20 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   assertSafeDatabaseName,
   COMPANY_DATABASE_PREFIX,
   databaseNameForSlug,
   firstConflict,
+  isAccessDeniedError,
   MAX_DATABASE_NAME_LENGTH,
   normalizeSlug,
+  PROVISION_ERROR_CODES,
   ProvisionError,
+  provisionErrorMessage,
   resolveDatabaseName,
 } from "@/lib/company-provisioning-shared";
 import { proveCompanySlugScope } from "@/lib/company-slug-proof";
@@ -36,11 +41,13 @@ import {
   ProvisionProgress,
   PROVISION_STEPS,
   type ProvisionState,
-} from "@/app/(tenant)/companies/new/provision-progress";
+} from "@/app/(tenant)/(panel)/companies/new/provision-progress";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
-import type { Dictionary } from "@/lib/i18n/dictionary";
+import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
+import en from "@/lib/i18n/dictionaries/en.json";
+import zh from "@/lib/i18n/dictionaries/zh.json";
 
 describe("nama basis data — ini penjaga keamanan, bukan kerapian", () => {
   it("selalu berawalan sai_ (pola yang sama dengan hak akses di server), dengan id tenant di awalan (issue #153)", () => {
@@ -221,6 +228,128 @@ describe("checksum migration — kontrak dengan `prisma migrate deploy`", () => 
     // bertemu di nilai yang sama, atau pembukuannya hanya benar di salah satu.
     const sql = "ALTER TABLE `y` ADD COLUMN `z` int;\n";
     expect(migrationChecksum(Buffer.from(sql, "utf8"))).toBe(migrationChecksum(sql));
+  });
+});
+
+/**
+ * Galat 1044 apa adanya dari PRODUKSI (2026-08-09, pembuatan PT Movin
+ * Nusantara Cakrawala) — bukan karangan. Bentuk inilah yang dulu ditampilkan
+ * utuh di layar pemilik PT, lengkap dengan nomor koneksi, SQLState, pernyataan
+ * SQL, dan nama pengguna basis data.
+ */
+const GALAT_1044 = Object.assign(
+  new Error(
+    "(conn:67709, no: 1044, SQLState: 42000) Access denied for user 'sai'@'%' " +
+      "to database 'sai_t3_pt_movin_nusantara_cakrawala'\n" +
+      "sql: CREATE DATABASE `sai_t3_pt_movin_nusantara_cakrawala` " +
+      "DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci - parameters:[]"
+  ),
+  { errno: 1044, sqlState: "42000", code: "ER_DBACCESS_DENIED_ERROR" }
+);
+
+/** Yang tidak boleh ada satu pun di kalimat yang dibaca pengguna. */
+const BOCORAN = ["SQLState", "conn:", "CREATE DATABASE", "'sai'@'%'", "errno", "1044"];
+
+const KAMUS: ReadonlyArray<{ nama: string; kamus: Dictionary; admin: string }> = [
+  { nama: "id", kamus: id as unknown as Dictionary, admin: "administrator" },
+  { nama: "en", kamus: en as unknown as Dictionary, admin: "administrator" },
+  { nama: "zh", kamus: zh as unknown as Dictionary, admin: "管理员" },
+];
+
+describe("hak akses basis data dikenali dari NOMOR galatnya, bukan dari teksnya", () => {
+  it("1044/1045 — dua-duanya 'tidak berhak', dan keduanya harus tertangkap", () => {
+    // Teks pesan mariadb berubah antar versi dan antar bahasa server; nomornya
+    // tidak. Karena itu yang dibaca `errno`/`code`, bukan `message`.
+    expect(isAccessDeniedError(GALAT_1044)).toBe(true);
+    expect(isAccessDeniedError({ errno: 1045 })).toBe(true);
+    expect(isAccessDeniedError({ code: "ER_DBACCESS_DENIED_ERROR" })).toBe(true);
+    expect(isAccessDeniedError({ code: "ER_ACCESS_DENIED_ERROR" })).toBe(true);
+  });
+
+  it("kegagalan lain TIDAK ikut terbawa — tindak lanjutnya berbeda", () => {
+    // Kalau semua kegagalan disebut "hubungi admin soal hak akses", pesan itu
+    // akan menyesatkan pada hari nama bentrok atau koneksi putus.
+    expect(isAccessDeniedError({ errno: 1007 })).toBe(false); // basis data sudah ada
+    expect(isAccessDeniedError({ errno: 2006 })).toBe(false); // koneksi putus
+    expect(isAccessDeniedError({ code: "ECONNREFUSED" })).toBe(false);
+    expect(isAccessDeniedError(new Error("Access denied for user"))).toBe(false);
+    expect(isAccessDeniedError("1044")).toBe(false);
+    expect(isAccessDeniedError(null)).toBe(false);
+    expect(isAccessDeniedError(undefined)).toBe(false);
+  });
+});
+
+describe("pesan kegagalan penyediaan: berbahasa tugas, bukan berbahasa mariadb", () => {
+  it("galat SQL mentah tidak pernah jadi kalimat pengguna — ia jatuh ke pesan umum", () => {
+    const { key } = provisionErrorMessage(GALAT_1044);
+    expect(key).toBe("companies.errFailed");
+    for (const { kamus } of KAMUS) {
+      const teks = translate(kamus, key);
+      for (const bocor of BOCORAN) expect(teks).not.toContain(bocor);
+    }
+  });
+
+  it("1044 yang sudah dikenali penyedia menyebut APA yang gagal DAN langkah berikutnya", () => {
+    const error = new ProvisionError("CREATE DATABASE `sai_t3_x` ditolak (1044).", "create_database", {
+      code: "database_permission_denied",
+      cause: GALAT_1044,
+    });
+    const { key } = provisionErrorMessage(error);
+    expect(key).toBe("companies.errPermissionDenied");
+
+    for (const { kamus, admin } of KAMUS) {
+      const teks = translate(kamus, key);
+      // Langkah berikutnya disebut namanya: ini bukan sesuatu yang bisa
+      // ditindaklanjuti sendiri oleh pemilik PT.
+      expect(teks.toLowerCase()).toContain(admin.toLowerCase());
+      for (const bocor of BOCORAN) expect(teks).not.toContain(bocor);
+    }
+
+    // Galat aslinya tetap ada — di `cause`, yang perginya ke log server.
+    expect(error.cause).toBe(GALAT_1044);
+  });
+
+  it("bentrok nama tetap bisa dibedakan dari kegagalan hak akses", () => {
+    const bentrok = new ProvisionError('Slug "pt-baru" sudah dipakai.', "validate", {
+      code: "slug_taken",
+      values: { slug: "pt-baru" },
+    });
+    const { key, values } = provisionErrorMessage(bentrok);
+    expect(key).toBe("companies.errSlugTaken");
+    expect(translate(id as unknown as Dictionary, key, values)).toContain("pt-baru");
+    expect(translate(id as unknown as Dictionary, key, values)).not.toContain("{slug}");
+  });
+
+  it("setiap kode punya kalimatnya di KETIGA kamus", () => {
+    for (const kode of PROVISION_ERROR_CODES) {
+      const { key } = provisionErrorMessage(
+        new ProvisionError("apa saja", "validate", { code: kode })
+      );
+      for (const { nama, kamus } of KAMUS) {
+        // translate() mengembalikan kuncinya sendiri saat kunci tak ada.
+        expect(`${nama}: ${translate(kamus, key)}`).not.toBe(`${nama}: ${key}`);
+      }
+    }
+  });
+
+  it("route handler tidak punya jalan lain untuk mengirim galat ke layar", () => {
+    /*
+     * Penjaga tingkat sumber, karena inilah bentuk regresi yang paling mudah
+     * terjadi: satu `error.message` yang ditambahkan "supaya lebih informatif"
+     * mengembalikan kebocoran nomor koneksi, SQLState, dan nama pengguna basis
+     * data — dan tidak ada tes perilaku yang akan menyebutkannya.
+     */
+    const source = readFileSync(
+      join(__dirname, "..", "src", "app", "api", "companies", "route.ts"),
+      "utf8"
+    );
+    // Komentar dibuang lebih dulu — catatan yang MENJELASKAN kebocoran lama
+    // (dan mengutip bentuknya) bukan kebocoran, dan penjaga yang melarang
+    // penjelasannya akan dilucuti pada review berikutnya.
+    const kode = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(kode).toContain("provisionErrorMessage(");
+    expect(kode).toContain("console.error(");
+    expect(kode).not.toMatch(/\berror\.message\b/);
   });
 });
 

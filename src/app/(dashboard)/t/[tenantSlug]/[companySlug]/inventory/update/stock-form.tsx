@@ -457,11 +457,16 @@ export function StockUpdateForm({
                     PERGERAKAN stok — panel ini hanya jalan pintas supaya
                     barang yang belum terdaftar tidak memaksa keluar halaman.
                     Bentuknya sama dengan `shared/advance-compensation.tsx`
-                    di potongan 2: memposting, tapi bukan maksud layarnya. */}
+                    di potongan 2: memposting, tapi bukan maksud layarnya.
+
+                    Yang SAMPINGAN adalah penekanannya (`secondary`), bukan
+                    tingginya: baris ini `alignItems: flex-end` dengan dua
+                    `TextInput` setinggi `controlHeight` (40px), jadi `sm`
+                    (30px) di ujungnya mematahkan garis dasar barisnya. Lihat
+                    MASTER.md §Satu baris kendali = satu ukuran. */}
                 <Button
                   type="submit"
                   variant="secondary"
-                  size="sm"
                   disabled={itemForm.formState.isSubmitting}
                 >
                   {t("common.save")}

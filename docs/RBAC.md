@@ -214,6 +214,50 @@ dan `route.ts` API wajib memanggil penjaganya — file tanpa deklarasi izin = te
 Pengecualian eksplisit + alasannya ada di file tes itu (beranda, NextAuth, endpoint
 self-scoped, health).
 
+## Kunci buku — otentikasi ulang sebelum masuk ke buku sebuah PT
+
+Membuka buku sebuah perusahaan menuntut **sandi sekali lagi**, sekali per hari kerja
+per PT. Gerbangnya berdiri **paling awal** di `gateAfterCompany()`
+(`src/lib/page-auth.ts`), sebelum gerbang penyiapan, modul, dan suspensi.
+
+**Ini bukan tambalan lubang, dan itu penting supaya tidak ada yang menghapusnya
+karena mengira ia berlebihan.** Sejak issue #158 tidak ada "sesi perusahaan" yang
+memberi akses: `session.user.companyId` hanya catatan "terakhir dibuka", jalur kanonik
+`/t/{tenant}/{company}/…` yang membawa perusahaannya, dan penjaga memeriksa ulang
+KEANGGOTAAN di setiap permintaan. Mengetik URL buku PT lain sudah ditolak tanpa fitur
+ini. Yang dibelinya adalah **bukti kehadiran** (pola `sudo`): sesi yang ditinggalkan
+terbuka di laptop yang tidak terkunci tetap bisa membuka menu mana pun, dan kunci ini
+membuat pintu ke buku — tempat jurnal ditulis dan saldo awal dibukukan — menuntut
+sandi.
+
+- **Sandinya SANDI YANG SAMA.** Identitas di aplikasi ini tunggal (basis data
+  kendali); peran menempel pada **keanggotaan** per PT, dan pembuat PT otomatis
+  menjadi `MANAGING_DIRECTOR` di PT yang baru lahir (`app/api/companies/route.ts`).
+  Kredensial terpisah per PT pernah ditimbang dan **ditolak**: `docs/MULTI-COMPANY.md`
+  melarang FK ke `users` dari basis data perusahaan, jadi model itu menuntut sistem
+  identitas KEDUA beserta reset sandi, undangan, dan audit yang tergandakan per PT.
+- **Mekanismenya cookie ber-HMAC**, bukan klaim di JWT: penjaga halaman butuh
+  jawabannya di server, sinkron, pada permintaan yang sedang berjalan — sedangkan
+  `update()` NextAuth berjalan di klien. Ditandatangani `AUTH_SECRET`; **`users.id`
+  ikut ditandatangani**, jadi cookie yang tertinggal setelah berganti akun di peramban
+  yang sama tidak berlaku. Lihat `src/lib/company-unlock.ts`.
+- **Kedaluwarsa per PT**, delapan jam (satu hari kerja). Membuka PT kedua tidak
+  memperpanjang kunci PT pertama.
+- **Yang membuka kuncinya** `POST /api/company-unlock`: sesi + **keanggotaan di PT
+  itu** + bcrypt atas sandi pemanggil. Setiap kegagalan dijawab satu kalimat yang sama
+  (anti-enumerasi), dibatasi laju per-pengguna dengan anggaran `RATE_LIMITS.login`.
+  Ia terdaftar di `API_EXCEPTIONS` `tests/authz-coverage.test.ts` dan **tidak boleh**
+  memakai `requireApiPermission` — penjaga itu memanggil gerbang kunci, jadi route
+  yang membuka kunci akan menuntut kunci yang belum ada.
+- **Layar promptnya** `/unlock` di grup `(auth)`, satu-satunya tempat `AuthShell`
+  memang pada tempatnya. Ia sengaja TIDAK memakai `requirePagePermission` (kalau tidak
+  ia memantul ke dirinya sendiri); penjaganya ringan dan ditulis di halaman itu.
+  Slug yang bukan milik pemanggil dijawab `notFound()`, bukan pesan berbeda —
+  kalau tidak, halaman itu menjadi alat penebak keberadaan PT.
+- Penjaganya `tests/company-unlock.test.ts`: tanda tangan yang diutak-atik, isi yang
+  diutak-atik dengan tanda tangan lama, cookie milik pengguna lain, entri kedaluwarsa,
+  dan `AUTH_SECRET` yang hilang (harus MELEMPAR, bukan memakai nilai bawaan).
+
 ## Sesi & pencabutan (fase 3)
 
 Peran hidup di JWT (24 jam) + `users.session_version` (migrasi 0028). Callback `jwt`

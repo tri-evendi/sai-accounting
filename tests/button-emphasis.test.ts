@@ -213,8 +213,32 @@ function varianDari(node: Jsx): string | undefined {
   return undefined;
 }
 
+/**
+ * Tag yang MEMIKUL penekanan — keduanya, bukan `Button` saja.
+ *
+ * ══ KENAPA `ButtonLink` HARUS IKUT ═════════════════════════════════════════
+ * `Button` dan `ButtonLink` berbagi satu perakit (`ButtonAnchor`) dan merender
+ * `<a class="ant-btn">` yang identik; yang membedakan hanya apa yang terjadi
+ * saat diklik. Di layar keduanya adalah bidang berisi penuh yang sama persis.
+ *
+ * Selama penjaga ini hanya mencocokkan `"Button"`, seluruh aturan penekanan
+ * #267 bisa dilewati dengan satu huruf: menulis `<ButtonLink variant="primary">`
+ * alih-alih `<Button variant="primary">` membuat tombolnya HILANG dari
+ * hitungan — dua primer dalam satu wadah lolos, dan primer pendaratan yang
+ * menuju ke mana pun selain `/register` juga lolos. Lubang itu bukan hipotetis:
+ * #289 memindahkan 45 dari 50 sarang anchor–tombol ke `ButtonLink`, jadi
+ * justru bentuk yang PALING banyak dipakai untuk menavigasi adalah bentuk yang
+ * tidak dijaga.
+ *
+ * Diukur sebelum diperlebar: 0 `<ButtonLink>` tanpa `variant` eksplisit, dan 0
+ * wadah yang menjadi >1 primer karenanya di luar pendaratan. Jadi pelebaran ini
+ * tidak melonggarkan apa pun dan tidak menuntut satu pun perubahan tampilan —
+ * ia hanya menutup jalan memutar.
+ */
+const TAG_PENEKANAN = new Set(["Button", "ButtonLink"]);
+
 const primer = (node: Jsx) => {
-  if (namaTag(node) !== "Button") return false;
+  if (!TAG_PENEKANAN.has(namaTag(node))) return false;
   const v = varianDari(node);
   return v !== undefined && NILAI_PRIMER.has(v);
 };
@@ -302,7 +326,7 @@ function tombolImplisit(jalur: string): number[] {
   const src = sumber(jalur);
   const baris: number[] = [];
   const kunjungi = (node: ts.Node) => {
-    if (isJsx(node) && namaTag(node) === "Button" && varianDari(node) === undefined) {
+    if (isJsx(node) && TAG_PENEKANAN.has(namaTag(node)) && varianDari(node) === undefined) {
       baris.push(src.getLineAndCharacterOfPosition(node.getStart()).line + 1);
     }
     ts.forEachChild(node, kunjungi);

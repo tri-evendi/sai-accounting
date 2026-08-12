@@ -55,6 +55,7 @@ export default async function PlatformTeamPage() {
         <CardContent>
           {companies.length === 0 ? (
             <EmptyState
+              flat
               icon={<TeamOutlined style={{ fontSize: 48 }} />}
               title={t("auth.selectCompany.noCompanyYetHeading")}
               description={t("auth.selectCompany.noCompanyYetBody")}

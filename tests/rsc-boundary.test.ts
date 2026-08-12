@@ -176,6 +176,22 @@ const SRC = join(__dirname, "..", "src");
  * Ukur ulangnya ada di `tests/antd-css-var-ssr.test.tsx`, yang membuktikannya
  * dari string SSR — bukan dari layar, karena kedipan warna justru tidak
  * terlihat kalau kotaknya kecil dan cepat.
+ *
+ * 157 saat penanda langkah disatukan dan wisaya penyiapan pindah ke kulit panel
+ * — angka ini TURUN dua, dan itu hasil yang dikejar. `components/setup/
+ * setup-shell.tsx` DIHAPUS (wisaya memakai `PlatformShell`, kulit yang sama
+ * dengan panel akun) dan `app/(setup)/layout.tsx` kembali menjadi SERVER
+ * component: ia kini menyusun menu dari matriks izin lewat
+ * `requireTenantPagePermission`, pekerjaan yang memang milik server. Yang naik
+ * satu hanyalah komponen penanda langkah bersama.
+ *
+ * Catatan penanda langkah: `components/ui/wizard-steps.tsx` lahir
+ * sebagai client component. Naiknya satu, dan yang dibeli dengan satu itu
+ * adalah DUA penanda langkah tulisan tangan yang lenyap — deretan kartu di
+ * `components/shared/wizard.tsx` dan deretan pil di wisaya penyiapan, keduanya
+ * sudah client sejak semula. Jadi jumlah modulnya +1 sementara jumlah KOSAKATA
+ * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
+ * karena perubahan ini.
  */
 const AMBANG_KLIEN = 158;
 
@@ -204,6 +220,7 @@ const KLIEN_TERSAHKAN = [
   "app/(auth)/register/page.tsx",
   "app/(auth)/reset-password/page.tsx",
   "app/(auth)/select-company/company-choices.tsx",
+  "app/(auth)/unlock/unlock-form.tsx",
   "app/(auth)/verify-email/page.tsx",
   "app/(dashboard)/error.tsx",
   "app/(dashboard)/layout.tsx",
@@ -266,15 +283,14 @@ const KLIEN_TERSAHKAN = [
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
   "app/(operator)/operator/login/login-form.tsx",
-  "app/(setup)/layout.tsx",
   "app/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
-  "app/(tenant)/companies/new/company-form.tsx",
-  "app/(tenant)/companies/new/provision-progress.tsx",
+  "app/(tenant)/(panel)/companies/new/company-form.tsx",
+  "app/(tenant)/(panel)/companies/new/provision-progress.tsx",
+  "app/(tenant)/(panel)/platform/billing-actions.tsx",
+  "app/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
+  "app/(tenant)/(panel)/platform/error.tsx",
+  "app/(tenant)/(panel)/platform/privacy-section.tsx",
   "app/(tenant)/layout.tsx",
-  "app/(tenant)/platform/billing-actions.tsx",
-  "app/(tenant)/platform/billing/plans/plan-actions.tsx",
-  "app/(tenant)/platform/error.tsx",
-  "app/(tenant)/platform/privacy-section.tsx",
   "components/auth/auth-shell.tsx",
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",
@@ -296,7 +312,6 @@ const KLIEN_TERSAHKAN = [
   "components/settings/audit-log-panel.tsx",
   "components/settings/module-picker.tsx",
   "components/settings/module-settings-panel.tsx",
-  "components/setup/setup-shell.tsx",
   "components/shared/advance-compensation.tsx",
   "components/shared/consignee-select.tsx",
   "components/shared/cost-center-field.tsx",
@@ -349,6 +364,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/textarea.tsx",
   "components/ui/theme-toggle.tsx",
   "components/ui/toast.tsx",
+  "components/ui/wizard-steps.tsx",
   "lib/company-identity-client.tsx",
   "lib/i18n/client.tsx",
   "lib/report-files.ts",

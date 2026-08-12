@@ -53,7 +53,10 @@ import {
   ANTD_CSS_VAR_KEY,
   PRIMARY_BUTTON_DARK,
   borderTokens,
+  brandPrimary,
+  brandSolid,
   brandTextTokens,
+  brandTone,
   dangerButtonTokens,
   focusRingColor,
   moneyTokens,
@@ -155,17 +158,30 @@ export function AntdProvider({
         controlHeight: CONTROL_HEIGHT,
         ...moneyTokens(resolved),
         /*
-         * `colorPrimary` sengaja TIDAK disebut: keputusan pemiliknya adalah
-         * warna merek = bawaan AntD (#1677ff), dan menuliskannya ulang di sini
-         * hanya menciptakan salinan kedua yang bisa menyimpang.
+         * ⚠ `colorPrimary` KINI DISEBUT — keputusan pemilik berubah.
          *
-         * Yang diganti hanya perannya sebagai TEKS. `colorLink*` bawaan
-         * memakai `colorPrimary` apa adanya (4,10:1 di atas putih) dan
-         * hover-nya malah lebih terang lagi (#69b1ff = 2,06:1) — tautan yang
-         * lenyap tepat saat kursor menyentuhnya. Nilai penggantinya sama
-         * dengan `colorBrandText*`, jadi tautan dan teks merek non-tautan
-         * tidak bisa berpisah warna.
+         * Sampai perubahan ini warna merek = bawaan AntD (#1677ff) dan baris
+         * ini sengaja kosong supaya tidak ada salinan kedua. Pemilik mengganti
+         * arahnya: warna merek menjadi **navy institusional**, sebab biru
+         * bawaan terbaca sebagai warna framework, bukan sebagai merek.
+         *
+         * Nilainya per TEMA, dan itu wajib — navy tua 11,50:1 di atas putih
+         * tetapi hanya 1,60:1 di atas hitam. Angka & alasan lengkapnya di
+         * `lib/theme/antd-tokens.ts` §`colorPrimary` GLOBAL; di sini hanya
+         * jalur pendaftarannya, jadi tetap tidak ada salinan kedua.
+         *
+         * `colorLink*` tetap diganti terpisah: bawaan AntD memakai
+         * `colorPrimary` apa adanya dan hover-nya justru LEBIH terang —
+         * tautan yang lenyap tepat saat kursor menyentuhnya. Nilai
+         * penggantinya sama dengan `colorBrandText*`, jadi tautan dan teks
+         * merek non-tautan tidak bisa berpisah warna.
          */
+        colorPrimary: brandPrimary(resolved),
+        /* Bibit nada merek — peran permukaan, lihat `brandTone` di antd-tokens. */
+        colorBrandTone: brandTone(resolved),
+        /* Isian merek yang memikul teks TERANG (lambang). Berbeda dari
+           `colorPrimary` justru di tema gelap — lihat `brandSolid`. */
+        colorBrandSolid: brandSolid(resolved),
         ...brand,
         colorLink: brand.colorBrandText,
         colorLinkHover: brand.colorBrandTextHover,

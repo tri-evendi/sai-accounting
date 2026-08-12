@@ -91,3 +91,12 @@ __pycache__/
 
 # Local DB dumps / backups — never commit
 backups/
+
+# Keadaan RUNTIME di dalam `data/`, bukan kode.
+#   mail-outbox/  surel yang DITANGKAP transport `file` (MAIL_TRANSPORT=file);
+#                 pada pemasangan nyata isinya alamat & badan surel sungguhan.
+#   *.log         log server.
+# ⚠ Sengaja BUKAN `/data/` polos: `data/audit/.gitkeep` memang terlacak supaya
+# direktorinya ada sejak checkout pertama.
+/data/mail-outbox/
+/data/*.log

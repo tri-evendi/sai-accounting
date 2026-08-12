@@ -136,7 +136,7 @@ describe("app internal tidak mengimpor bentuk pemasaran", () => {
     // satu-satunya layar internal yang juga memajang daftar harga. Kepala
     // berkasnya sudah menyatakan ia tidak mengimpor apa pun dari sana; di sini
     // pernyataan itu berhenti menjadi komentar.
-    const file = "app/(tenant)/platform/billing/plans/page.tsx";
+    const file = "app/(tenant)/(panel)/platform/billing/plans/page.tsx";
     const code = files.get(file);
     expect(code, `${file} tidak ditemukan — jalurnya berubah?`).toBeDefined();
     expect(importsOf(code!).filter(menujuLanding)).toEqual([]);
@@ -284,12 +284,28 @@ describe("skala pemasaran adalah TURUNAN skala aplikasi", () => {
      * dituntut karena itu `calc(var(--ant-font-size-heading-1) * n)`, n > 1 —
      * hero HARUS lebih besar dari langit-langit app, dan harus ikut bergerak
      * kalau skala app bergeser.
+     *
+     * ⚠ Sejak hero menjadi FLUID (`clamp()`), yang diperiksa bukan lagi satu
+     * angka melainkan KEDUA UJUNGNYA — dan itu justru lebih ketat daripada
+     * sebelumnya. Suku tengah `clamp()` boleh berbasis viewport (`vw`): ia
+     * hanya menentukan laju di antara dua ujung yang keduanya turunan token
+     * aplikasi, jadi hero tidak bisa menyimpang keluar dari skala app di
+     * ukuran layar mana pun. Yang TIDAK boleh adalah ujung yang berupa angka
+     * mati — di situlah tipografi kedua lahir.
      */
-    const hero = LANDING_STYLE.match(
-      /--sai-landing-font-size-hero:\s*calc\(var\(--ant-font-size-heading-1\)\s*\*\s*([\d.]+)\)/
-    );
-    expect(hero, "hero ≥576px bukan turunan `--ant-font-size-heading-1`").not.toBeNull();
-    expect(Number(hero![1])).toBeGreaterThan(1);
+    const ujung = [
+      ...LANDING_STYLE.matchAll(/calc\(var\(--ant-font-size-heading-1\)\s*\*\s*([\d.]+)\)/g),
+    ].map((m) => Number(m[1]));
+
+    expect(
+      ujung.length,
+      "hero tidak menyebut `--ant-font-size-heading-1` sama sekali — " +
+        "kalau ia kini berdiri di atas angka sendiri, skala pemasaran sudah " +
+        "menjadi tipografi kedua yang bisa menyimpang tanpa ada yang tahu"
+    ).toBeGreaterThanOrEqual(2);
+
+    // Setiap ujung harus MELAMPAUI langit-langit app, bukan hanya yang terbesar.
+    for (const n of ujung) expect(n).toBeGreaterThan(1);
   });
 
   it("hanya LEBAR yang boleh berupa angka telanjang", () => {

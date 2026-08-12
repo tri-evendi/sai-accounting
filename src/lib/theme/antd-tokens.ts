@@ -239,11 +239,14 @@ export function moneyTokens(resolved: ResolvedTheme): MoneyTokens {
  * 1,64:1 (terburuk di ketiga latar) — keduanya gagal bahkan ambang 3:1, jadi
  * tautannya praktis lenyap justru saat kursor menyentuhnya.
  *
- * | Peran        | TERANG    | ctr/layout/elev      | min   | GELAP     | ctr/layout/elev      | min  |
- * |--------------|-----------|----------------------|-------|-----------|----------------------|------|
- * | teks/tautan  | `#0958d9` |  6,16 /  5,65 / 6,16 |  5,65 | `#3c89e8` |  5,21 / 5,94 / 4,66  | 4,66 |
- * | hover        | `#003eb3` |  8,97 /  8,23 / 8,97 |  8,23 | `#65a9f3` |  7,48 / 8,52 / 6,69  | 6,69 |
- * | aktif        | `#002c8c` | 12,08 / 11,08 /12,08 | 11,08 | `#8dc5f8` | 10,07 /11,47 / 9,01  | 9,01 |
+ * ⚠ Tabel di bawah DIPERBARUI saat warna merek menjadi navy. Angka "min" =
+ * rasio TERBURUK di antara ketiga permukaan, dan itulah yang dikunci tes.
+ *
+ * | Peran        | TERANG    | min   | GELAP     | min  |
+ * |--------------|-----------|-------|-----------|------|
+ * | teks/tautan  | `#1E3A5F` | 10,55 | `#5B8DD0` | 4,84 |
+ * | hover        | `#16304F` | 12,27 | `#6FA0DC` | 6,07 |
+ * | aktif        | `#101F33` | 15,22 | `#87B4E8` | 7,63 |
  */
 export interface BrandTextTokens {
   colorBrandText: string;
@@ -251,18 +254,24 @@ export interface BrandTextTokens {
   colorBrandTextActive: string;
 }
 
-/** blue-7 / blue-8 / blue-9 dari tangga `colorPrimary`, tema terang. */
+/** Tangga NAVY, tema terang. Diukur di atas `colorBgContainer` putih. */
 export const BRAND_TEXT_LIGHT: BrandTextTokens = {
-  colorBrandText: "#0958d9", // min 5,65:1
-  colorBrandTextHover: "#003eb3", // min 8,23:1
-  colorBrandTextActive: "#002c8c", // min 11,08:1
+  colorBrandText: "#1E3A5F", // 11,50:1
+  colorBrandTextHover: "#16304F", // 13,38:1
+  colorBrandTextActive: "#101F33", // 16,59:1
 };
 
-/** Tangga yang sama diturunkan lewat algoritma gelap AntD. */
+/**
+ * Tema gelap MENERANG, bukan menggelap — dan itu bukan ketidakkonsistenan.
+ * Navy tua di atas `#141414` hanya 1,60:1: sebagai TEKS ia praktis tak terbaca.
+ * Peran teks karena itu naik ke anak tangga terang; peran ISIAN (tombol) tetap
+ * gelap, di `PRIMARY_BUTTON_DARK`. Pemisahan itu sudah ada sebelum navy dan
+ * justru navy yang membuatnya wajib.
+ */
 export const BRAND_TEXT_DARK: BrandTextTokens = {
-  colorBrandText: "#3c89e8", // min 4,66:1
-  colorBrandTextHover: "#65a9f3", // min 6,69:1
-  colorBrandTextActive: "#8dc5f8", // min 9,01:1
+  colorBrandText: "#5B8DD0", // 5,41:1 halaman · 4,84:1 elevated
+  colorBrandTextHover: "#6FA0DC", // 6,79:1
+  colorBrandTextActive: "#87B4E8", // 8,53:1
 };
 
 export function brandTextTokens(resolved: ResolvedTheme): BrandTextTokens {
@@ -299,9 +308,9 @@ export function brandTextTokens(resolved: ResolvedTheme): BrandTextTokens {
  *
  * | Keadaan | TERANG    | label putih | GELAP     | label putih |
  * |---------|-----------|-------------|-----------|-------------|
- * | diam    | `#0958d9` |  6,16:1     | `#1668dc` |  5,19:1     |
- * | hover   | `#003eb3` |  8,97:1     | `#1554ad` |  7,23:1     |
- * | aktif   | `#002c8c` | 12,08:1     | `#15417e` | 10,05:1     |
+ * | diam    | `#1E3A5F` | 11,50:1     | `#2F6FBF` |  5,06:1     |
+ * | hover   | `#16304F` | 13,38:1     | `#2861A8` |  6,24:1     |
+ * | aktif   | `#101F33` | 16,59:1     | `#1F4C85` |  8,64:1     |
  *
  * Jalan keluar "biarkan `#1677ff`, besarkan hurufnya" sudah diukur dan
  * DITOLAK: ambang 3:1 baru berlaku pada ≥18,66px **tebal**, sedangkan
@@ -316,16 +325,134 @@ export interface PrimaryButtonTokens {
 }
 
 export const PRIMARY_BUTTON_LIGHT: PrimaryButtonTokens = {
-  colorPrimary: "#0958d9", // blue-7 · label putih 6,16:1
-  colorPrimaryHover: "#003eb3", // blue-8 · 8,97:1
-  colorPrimaryActive: "#002c8c", // blue-9 · 12,08:1
+  colorPrimary: "#1E3A5F", // navy · label putih 11,50:1
+  colorPrimaryHover: "#16304F", // 13,38:1
+  colorPrimaryActive: "#101F33", // 16,59:1
 };
 
+/**
+ * Isian tema gelap TIDAK bisa memakai navy yang sama. Diukur: `#1E3A5F` di atas
+ * halaman gelap hanya **1,60:1** — tombolnya berhenti bisa ditemukan sebagai
+ * bidang. Nilai di bawah adalah navy yang dinaikkan sampai lolos KEDUA ambang
+ * sekaligus (label putih ≥4,5 DAN bidang ≥3 terhadap halaman maupun permukaan
+ * melayang), yang ternyata hanya terpenuhi di pita sempit.
+ */
 export const PRIMARY_BUTTON_DARK: PrimaryButtonTokens = {
-  colorPrimary: "#1668dc", // bawaan AntD · label putih 5,19:1 — lolos, tak diubah
-  colorPrimaryHover: "#1554ad", // blue-5 gelap · 7,23:1
-  colorPrimaryActive: "#15417e", // blue-4 gelap · 10,05:1
+  colorPrimary: "#2F6FBF", // label 5,06:1 · halaman 3,64:1 · elevated 3,25:1
+  colorPrimaryHover: "#2861A8", // label 6,24:1 · halaman 2,95:1
+  colorPrimaryActive: "#1F4C85", // label 8,64:1 · halaman 2,13:1
 };
+
+/**
+ * `colorPrimary` GLOBAL — warna merek sebagai aksen, cincin fokus, garis aktif,
+ * dan (di pendaratan) label kategori, centang, serta garis sparkline.
+ *
+ * ══ KENAPA SEKARANG DISEBUT, PADAHAL DULU SENGAJA TIDAK ════════════════════
+ * Sampai perubahan ini keputusan pemiliknya adalah "warna merek = bawaan AntD
+ * (#1677ff)", dan menuliskannya ulang hanya menciptakan salinan kedua. Pemilik
+ * mengganti keputusan itu: warna merek kini **navy institusional**, dipilih
+ * karena `#1677ff` terbaca sebagai biru bawaan framework, bukan sebagai merek —
+ * dan karena riset jenis produk (perkakas faktur & pembukuan) menaruh navy tua
+ * sebagai primernya.
+ *
+ * ⚠ Ia BERBEDA per tema, dan itu wajib. Navy tua adalah warna TEKS yang sangat
+ * baik di atas putih (11,50:1) dan warna teks yang mustahil di atas hitam
+ * (1,60:1). Satu nilai untuk kedua tema karena itu tidak bisa ada — dan nilai
+ * lama pun sebenarnya sudah menyerempet: `#1677ff` sebagai teks di tema gelap
+ * hanya **4,49:1**, di bawah ambang 4,5. Memisahkannya per tema sekaligus
+ * memperbaiki kegagalan tipis yang sudah berjalan itu.
+ *
+ * | Peran            | TERANG    | rasio   | GELAP     | rasio |
+ * |------------------|-----------|---------|-----------|-------|
+ * | aksen / teks     | `#1E3A5F` | 11,50:1 | `#5B8DD0` | 5,41:1 |
+ */
+/*
+ * ⚠ NILAI DI SINI ADALAH BENIH, BUKAN WARNA YANG DIRENDER — dan di tema gelap
+ * keduanya BERBEDA.
+ *
+ * Algoritma gelap AntD mentransformasi `colorPrimary` yang diberikan. Benih
+ * `#5B8DD0` (yang secara langsung terukur 5,41:1) keluar sebagai `#507bb4`,
+ * yaitu **4,24:1** di atas halaman gelap dan **3,79:1** di atas permukaan
+ * melayang — dua-duanya di bawah ambang teks 4,5:1, padahal token inilah yang
+ * memikul label kategori, centang, dan garis sparkline di pendaratan.
+ *
+ * Kekeliruan itu tidak tertangkap penjaga mana pun karena penjaganya mengukur
+ * BENIH. Sejak perbaikan ini penjaga mengukur nilai TERPAKAI (lihat
+ * `landing-colors.test.ts` §appliedPrimary), dan benih di bawah dipilih supaya
+ * HASIL transformasinya yang lolos:
+ *
+ *   benih `#7FB0E4`  →  dirender `#6f99c5`  →  worst 5,52:1  ✓
+ */
+export const BRAND_PRIMARY_LIGHT = "#1E3A5F"; // dirender apa adanya · 11,50:1
+export const BRAND_PRIMARY_DARK = "#7FB0E4"; // dirender #6f99c5 · worst 5,52:1
+
+/**
+ * BIBIT NADA MEREK — peran PERMUKAAN, dan sengaja berbeda dari `brandPrimary`.
+ *
+ * ══ KENAPA TIDAK MEMAKAI `colorPrimary` SAJA ═══════════════════════════════
+ * Resep nada (`tone-recipe.ts`) mencampur 10–28% bibit ke permukaan yang sedang
+ * berlaku. Tiga hue lain memakai anak tangga `-6`, yaitu bobot PERMUKAAN. Warna
+ * merek versi teks tidak sebobot itu: di tema gelap ia `#5B8DD0` — sengaja
+ * terang supaya terbaca sebagai huruf. Memakainya sebagai bibit membuat pita
+ * merek melompat terang, dan itu terukur menabrak dua ambang sekaligus:
+ * isian tombol primer turun ke 2,96:1 terhadap `band-accent` (batas 3:1).
+ *
+ * Bibit di bawah karena itu memakai bobot yang sama dengan ISIAN TOMBOL:
+ * hubungan "pita 10% vs tombol 100%" itulah yang selama ini menjaga jarak
+ * keduanya, dan ia tidak bergantung pada hue melainkan pada kadar campuran.
+ */
+/*
+ * ⚠ SATU nilai untuk kedua tema, dan itu disengaja.
+ *
+ * Bibit ini dicampur 10–28% ke permukaan yang SEDANG berlaku, jadi arah
+ * terang/gelapnya sudah datang dari permukaannya — bukan dari bibitnya. Yang
+ * harus dijaga bibit hanyalah BOBOTNYA, dan navy tua (`#1E3A5F`) terlalu berat:
+ * dicampur ke permukaan terang ia menghasilkan pita yang cukup gelap untuk
+ * menjatuhkan tepi tombol garis ke 2,96:1 di `/platform` (ambang 3:1).
+ *
+ * `#2F6FBF` adalah navy yang sama pada bobot PERMUKAAN — sama dengan anak
+ * tangga `-6` milik tiga hue lain, dan sama dengan isian tombol tema gelap.
+ * Hubungan "pita 10% vs tombol 100%" yang menjaga jarak keduanya tidak
+ * bergantung pada hue, melainkan pada kadar campuran.
+ */
+export const BRAND_TONE_LIGHT = "#2F6FBF";
+export const BRAND_TONE_DARK = "#2F6FBF";
+
+/**
+ * ISIAN MEREK yang memikul teks TERANG — lambang produk, dan apa pun yang
+ * menaruh putih di atas warna merek.
+ *
+ * ══ KENAPA TIDAK `colorPrimary` SAJA ═══════════════════════════════════════
+ * Sejak merek menjadi navy, `colorPrimary` memikul dua peran yang saling
+ * berlawanan di tema GELAP:
+ *
+ *   • sebagai TEKS/garis di atas halaman → harus TERANG (dirender `#6f99c5`,
+ *     terukur 5,52–6,17:1 — benar);
+ *   • sebagai ISIAN di belakang glif putih → harus GELAP.
+ *
+ * `BrandMark` memakai peran kedua, dan dengan `colorPrimary` ia terukur
+ * **2,98:1** di tema gelap — di bawah ambang 3:1 untuk grafis non-teks, apalagi
+ * 4,5:1. Lambang produk yang lenyap di tema gelap adalah kegagalan yang tidak
+ * akan terlihat oleh siapa pun yang bekerja di tema terang.
+ *
+ * Nilainya sama dengan isian TOMBOL primer, dan itu bukan kebetulan: keduanya
+ * peran yang sama persis — bidang merek yang memikul teks putih. Rasionya sudah
+ * diukur di `PRIMARY_BUTTON_*`: 11,50:1 (terang) dan 5,06:1 (gelap).
+ */
+export const BRAND_SOLID_LIGHT = PRIMARY_BUTTON_LIGHT.colorPrimary;
+export const BRAND_SOLID_DARK = PRIMARY_BUTTON_DARK.colorPrimary;
+
+export function brandSolid(resolved: ResolvedTheme): string {
+  return resolved === "dark" ? BRAND_SOLID_DARK : BRAND_SOLID_LIGHT;
+}
+
+export function brandTone(resolved: ResolvedTheme): string {
+  return resolved === "dark" ? BRAND_TONE_DARK : BRAND_TONE_LIGHT;
+}
+
+export function brandPrimary(resolved: ResolvedTheme): string {
+  return resolved === "dark" ? BRAND_PRIMARY_DARK : BRAND_PRIMARY_LIGHT;
+}
 
 export function primaryButtonTokens(resolved: ResolvedTheme): PrimaryButtonTokens {
   return resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT;
@@ -964,6 +1091,48 @@ export function tableHeadBg(resolved: ResolvedTheme): string {
  * memakai `colorTextLightSolid`, bukan `colorText`.
  */
 export const SIDER_BG_DARK = "#001529";
+
+/* ------------------------------------------------------------------------ */
+/* Kartu pratinjau sosial (`app/opengraph-image.tsx`)                         */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Palet gambar Open Graph — satu-satunya permukaan aplikasi ini yang TIDAK
+ * dirender peramban, dan karena itu satu-satunya yang tidak bisa memakai
+ * `var(--ant-…)`.
+ *
+ * **Kenapa nilainya harfiah, dan kenapa itu bukan pengecualian yang dicuri:**
+ * `ImageResponse` merender lewat Satori, bukan lewat mesin tata letak peramban.
+ * Tidak ada dokumen, tidak ada `:root`, dan karena itu tidak ada satu pun
+ * properti kustom yang bisa teratasi — `var(--ant-color-primary)` di sana tidak
+ * menghasilkan warna merek melainkan warna KOSONG. Ini kelas yang sama dengan
+ * `SIDER_BG_DARK` di atas (nilai yang dibutuhkan di tempat variabelnya tidak
+ * pernah ada), jadi ia tinggal di berkas yang sama dan bukan di berkas yang
+ * memakainya.
+ *
+ * **Tidak bertema, dan memang tidak bisa:** kartu pratinjau dirender sekali
+ * untuk perayap dan aplikasi perpesanan. Pengirim tautan tidak tahu tema
+ * pembacanya, dan tidak ada mekanisme untuk menanyakannya. Karena itu palet ini
+ * TERANG saja — dan setiap pasangannya diukur pada latar terang itu:
+ *
+ *   | pasangan                              | rasio     | ambang           |
+ *   |---------------------------------------|-----------|------------------|
+ *   | `OG_TEXT` di atas `OG_BG`             | 18,42:1   | 4,5:1 (teks)     |
+ *   | `OG_TEXT_SECONDARY` di atas `OG_BG`   |  7,00:1   | 4,5:1 (teks)     |
+ *   | `OG_BRAND` di atas `OG_BG`            | 11,50:1   | 4,5:1 (teks)     |
+ *   | `OG_BG` di atas `OG_BRAND` (lambang)  | 11,50:1   | 4,5:1 (teks)     |
+ *   | `OG_BORDER` di atas `OG_BG`           |  1,41:1   | — (garis hias)   |
+ *
+ * `OG_BRAND` adalah `colorPrimary` tema terang apa adanya (navy `#1E3A5F`).
+ * Sejak warna merek menjadi navy, pengecualian "teks besar" yang dulu
+ * diperlukan sudah TIDAK ada lagi: 11,50:1 lolos ambang teks penuh (4,5:1),
+ * jadi ia aman dipakai pada ukuran berapa pun di kartu itu.
+ */
+export const OG_BG = "#ffffff";
+export const OG_TEXT = "#141414"; // 18,42:1 di atas OG_BG
+export const OG_TEXT_SECONDARY = "#595959"; // 7,00:1
+export const OG_BRAND = "#1E3A5F"; // = colorPrimary terang (navy) · 11,50:1
+export const OG_BORDER = "#d9d9d9"; // garis hias, 1,41:1
 
 /* ------------------------------------------------------------------------ */
 /* Tirai overlay: yang DIPERIKSA, lalu sengaja TIDAK diganti (issue #190)     */

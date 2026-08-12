@@ -55,10 +55,12 @@ import { invalidateCompany } from "@/lib/company-registry";
 import {
   assertSafeDatabaseName,
   firstConflict,
+  isAccessDeniedError,
   normalizeSlug,
   ProvisionError,
   resolveDatabaseName,
   type ProvisionEvent,
+  type ProvisionPhase,
 } from "@/lib/company-provisioning-shared";
 
 /** Direktori migration di dalam image produksi maupun saat pengembangan. */
@@ -89,7 +91,8 @@ function provisioningUrl(): URL {
   if (!raw) {
     throw new ProvisionError(
       "CONTROL_DATABASE_URL belum diset — tidak tahu di server mana basis data dibuat.",
-      "validate"
+      "validate",
+      { code: "config_missing" }
     );
   }
   return new URL(raw);
@@ -152,6 +155,7 @@ export async function provisionCompany(
 
   if (!slug) throw new ProvisionError("Slug tidak boleh kosong.", "validate");
   if (!name) throw new ProvisionError("Nama perusahaan tidak boleh kosong.", "validate");
+  // (Keduanya sudah ditolak zod di route; tanpa kode, pesannya untuk log.)
   assertSafeDatabaseName(databaseName);
 
   /*
@@ -174,7 +178,10 @@ export async function provisionCompany(
       conflict === "slug"
         ? `Slug "${slug}" sudah dipakai perusahaan lain.`
         : `Basis data "${databaseName}" sudah terdaftar untuk perusahaan lain.`,
-      "validate"
+      "validate",
+      conflict === "slug"
+        ? { code: "slug_taken", values: { slug } }
+        : { code: "database_taken", values: { database: databaseName } }
     );
   }
 
@@ -182,6 +189,8 @@ export async function provisionCompany(
   const server = poolFor(url);
 
   let companyId: number;
+  /* Tahap yang sedang berjalan — dipakai jaring pengaman di `catch` bawah. */
+  let phase: ProvisionPhase = "create_database";
   try {
     // ── 2. Basis data ────────────────────────────────────────
     await emit({ phase: "create_database", message: `Membuat basis data ${databaseName}…` });
@@ -205,7 +214,11 @@ export async function provisionCompany(
         throw new ProvisionError(
           `Basis data "${databaseName}" sudah ada DAN sudah berisi ${tables[0].n} tabel. ` +
             "Penyediaan dihentikan supaya tidak menimpa data yang mungkin masih dipakai.",
-          "create_database"
+          "create_database",
+          {
+            code: "database_not_empty",
+            values: { database: databaseName, tables: Number(tables[0].n) },
+          }
         );
       }
       await emit({
@@ -213,13 +226,40 @@ export async function provisionCompany(
         message: `Basis data ${databaseName} sudah ada dan masih kosong — dipakai apa adanya.`,
       });
     } else {
-      // Nama tidak bisa jadi parameter; keamanannya dari assertSafeDatabaseName.
-      await server.query(
-        `CREATE DATABASE \`${databaseName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-      );
+      try {
+        // Nama tidak bisa jadi parameter; keamanannya dari assertSafeDatabaseName.
+        await server.query(
+          `CREATE DATABASE \`${databaseName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+        );
+      } catch (error) {
+        /*
+         * ── KEGAGALAN YANG PALING SERING, DAN SATU-SATUNYA YANG BUKAN BUG ───
+         * Galat 1044/1045: pengguna basis data aplikasi tidak berhak membuat
+         * basis data baru. Itu keadaan PEMASANGAN — banyak hosting memang
+         * tidak memberikannya, dan hak itu diberikan sekali lewat pola nama
+         * (docs/MULTI-COMPANY.md §3), bukan lewat kode.
+         *
+         * Yang dilempar karena itu kode, bukan kalimat, dan galat aslinya
+         * dititipkan sebagai `cause` supaya ia sampai ke LOG SERVER tanpa
+         * pernah melewati layar: pesan mentah mariadb membawa nomor koneksi,
+         * SQLState, pernyataan `CREATE DATABASE` utuh, dan nama pengguna basis
+         * datanya — empat hal yang tidak menolong pemilik PT dan tidak boleh
+         * dibaca orang lain.
+         */
+        if (isAccessDeniedError(error)) {
+          throw new ProvisionError(
+            `CREATE DATABASE \`${databaseName}\` ditolak server basis data ` +
+              "(galat 1044/1045) — pengguna basis datanya tidak berhak membuat basis data baru.",
+            "create_database",
+            { code: "database_permission_denied", cause: error }
+          );
+        }
+        throw error;
+      }
     }
 
     // ── 3. Skema ─────────────────────────────────────────────
+    phase = "migrate";
     const names = await migrationNames();
     const db = poolFor(url, databaseName);
     try {
@@ -249,6 +289,7 @@ export async function provisionCompany(
     }
 
     // ── 4. Registry — PALING AKHIR ───────────────────────────
+    phase = "register";
     await emit({ phase: "register", message: "Mendaftarkan perusahaan…" });
 
     const company = await controlDb.company.create({
@@ -270,6 +311,23 @@ export async function provisionCompany(
     });
     companyId = company.id;
     invalidateCompany(companyId);
+  } catch (error) {
+    /*
+     * Jaring pengaman untuk "tidak berhak" yang datang dari LUAR pernyataan
+     * `CREATE DATABASE`: kredensial yang ditolak saat menyambung (1045), atau
+     * basis data yang bisa dibuat tapi tidak boleh diisi (1044 di tahap
+     * skema). Ketiganya satu tindak lanjut bagi yang menunggu, dan ketiganya
+     * tidak boleh muncul sebagai teks mariadb.
+     */
+    if (!(error instanceof ProvisionError) && isAccessDeniedError(error)) {
+      throw new ProvisionError(
+        `Server basis data menolak akses (galat 1044/1045) pada tahap "${phase}" ` +
+          `untuk basis data ${databaseName}.`,
+        phase,
+        { code: "database_permission_denied", cause: error }
+      );
+    }
+    throw error;
   } finally {
     await server.end();
   }

@@ -68,6 +68,28 @@
  * suatu keadaan-kosong kelak sungguh SATU-SATUNYA jalan maju layarnya (kartu
  * "buat kategori dulu" di `/fixed-assets/new` adalah kandidatnya), yang benar
  * adalah menambah prop eskalasi di sini — bukan menaikkan bawaan ini kembali.
+ *
+ * ── PERMUKAANNYA MILIK BLOK INI, bukan pemanggilnya ───────────────────────
+ * Sampai perbaikan ini blok kosong digambar TELANJANG di atas latar halaman,
+ * dan itulah yang membuatnya terbaca sebagai halaman yang gagal memuat alih-
+ * alih daftar yang memang kosong. Bentuknya paling terasa di halaman daftar,
+ * yang percabangannya begini:
+ *
+ *     {rows.length === 0 ? <EmptyState … /> : <Card>…tabel…</Card>}
+ *
+ * Yaitu: halaman punya kartu bertepi ketika berisi, dan TIDAK PUNYA APA-APA
+ * tepat ketika isinya nol — permukaannya lenyap justru pada keadaan yang paling
+ * membingungkan pengguna baru. Ikon tipis dan dua baris teks yang mengambang di
+ * tengah kanvas 1700px tidak punya apa pun yang mengatakan "ini memang isinya".
+ *
+ * Diukur sebelum diputuskan: 51 pemanggil menggambarnya telanjang, 2 di dalam
+ * `CardContent`. Karena itu permukaannya pindah KE SINI — 51 berkas tidak perlu
+ * disentuh, dan keduanya yang sudah membungkus dilepas supaya tidak menjadi
+ * kartu di dalam kartu. Anatominya sengaja disalin dari `components/ui/card.tsx`
+ * (tepi `colorBorderSecondary`, radius `borderRadiusLG`, bayangan
+ * `boxShadowTertiary`) supaya kotak kosong dan kotak berisi adalah permukaan
+ * yang SAMA — berpindah dari nol baris ke satu baris tidak lagi mengubah bentuk
+ * halaman.
  */
 
 import { Empty, theme } from "antd";
@@ -80,6 +102,21 @@ interface EmptyStateProps {
   description?: string;
   actionLabel?: string;
   actionHref?: string;
+  /**
+   * Jangan gambar permukaannya — blok ini sudah berada DI DALAM sebuah `Card`
+   * milik pemanggil.
+   *
+   * Sengaja bukan bawaan, dan sengaja sempit: dari 53 pemanggil hanya DUA yang
+   * membutuhkannya, yaitu yang cabang berisinya memakai kartu yang sama
+   * (`/platform/team`, dan formulir surat jalan yang kartunya punya kepala
+   * beraksi sendiri). Tanpa prop ini keduanya menjadi kartu di dalam kartu —
+   * dua tepi berjarak 24px yang tidak menandai apa pun.
+   *
+   * ⚠ Bukan tombol "matikan gayanya". Kalau sebuah keadaan-kosong berdiri
+   * sendiri di halaman, ia HARUS punya permukaan; alasan lengkapnya di kepala
+   * berkas.
+   */
+  flat?: boolean;
 }
 
 export function EmptyState({
@@ -88,17 +125,63 @@ export function EmptyState({
   description,
   actionLabel,
   actionHref,
+  flat = false,
 }: EmptyStateProps) {
   const { token } = theme.useToken();
 
   return (
+    <div
+      style={{
+        ...(flat
+          ? {}
+          : {
+              /* Anatomi `Card` — lihat catatan permukaan di kepala berkas. */
+              borderRadius: token.borderRadiusLG,
+              border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+              background: token.colorBgContainer,
+              boxShadow: token.boxShadowTertiary,
+              /* Tinggi minimum supaya kotaknya tidak terbaca sebagai pita tipis
+                 di halaman selebar layar; isinya dipusatkan di dalamnya
+                 alih-alih menempel ke tepi atas. */
+              minHeight: 280,
+            }),
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
     <Empty
       styles={{
-        root: { paddingBlock: token.paddingXL, paddingInline: token.padding },
+        root: { paddingBlock: token.paddingXL, paddingInline: token.padding, margin: 0 },
         // Tinggi mengikuti isi — lihat catatan `image` di kepala berkas.
-        image: { height: "auto", marginBottom: token.margin, color: token.colorTextSecondary },
+        image: { height: "auto", marginBottom: token.margin },
       }}
-      image={icon ?? <ContainerOutlined style={{ fontSize: 48 }} />}
+      image={
+        /*
+         * Ikon BERPIJAK, bukan glif tipis yang mengambang.
+         *
+         * Latarnya `colorFillTertiary` dan BUKAN `colorFillQuaternary`: yang
+         * terakhir translusen 2–4% dan di atas kartu putih praktis tidak ada di
+         * layar — pelajaran #266, yang sama yang menaikkan kotak ikon
+         * `/platform` ke nada opak (#303). Glifnya `colorTextTertiary`: ia
+         * grafis non-teks berambang 3:1, dan ia tidak boleh bersaing dengan
+         * judul di bawahnya.
+         */
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 88,
+            height: 88,
+            borderRadius: "50%",
+            background: token.colorFillTertiary,
+            color: token.colorTextTertiary,
+          }}
+        >
+          {icon ?? <ContainerOutlined style={{ fontSize: 40 }} />}
+        </span>
+      }
       description={
         <>
           {/* Tetap sebuah heading: keadaan kosong sering menjadi satu-satunya
@@ -106,7 +189,10 @@ export function EmptyState({
           <h3
             style={{
               margin: 0,
-              fontSize: token.fontSize,
+              /* Satu anak tangga DI ATAS isi (16 vs 14): sampai perbaikan ini
+                 judul dan kalimat penjelasnya sama besar, jadi bloknya tidak
+                 punya baris yang dibaca lebih dulu. */
+              fontSize: token.fontSizeLG,
               fontWeight: token.fontWeightStrong,
               color: token.colorText,
             }}
@@ -138,5 +224,6 @@ export function EmptyState({
         </Button>
       )}
     </Empty>
+    </div>
   );
 }

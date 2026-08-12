@@ -62,7 +62,12 @@ export function BrandMark({ size = "md" }: { size?: BrandMarkSize }) {
         flexShrink: 0,
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--ant-color-primary)",
+        /* ⚠ `--ant-color-brand-solid`, BUKAN `--ant-color-primary`. Sejak
+           merek menjadi navy, `colorPrimary` di tema GELAP sengaja TERANG
+           (perannya teks), dan glif putih di atasnya terukur 2,98:1 — lambang
+           yang lenyap di tema gelap. Token ini isian merek yang memang memikul
+           teks terang: 11,50:1 terang · 5,06:1 gelap. */
+        background: "var(--ant-color-brand-solid)",
         color: "var(--ant-color-text-light-solid)",
       }}
       aria-hidden="true"

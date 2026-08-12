@@ -84,7 +84,7 @@
  * properti yang tidak pernah teratasi, dan elemennya diam-diam mewarisi latar
  * induknya. `tests/platform-colors.test.ts` menutup sisanya: string
  * `--sai-platform-` tidak boleh muncul di luar berkas ini dan
- * `app/(tenant)/platform/**`, dan akarnya dipasang tepat satu berkas.
+ * `app/(tenant)/(panel)/platform/**`, dan akarnya dipasang tepat satu berkas.
  */
 import { toneMix, type ToneHue } from "@/lib/theme/tone-recipe";
 
@@ -94,7 +94,19 @@ export const PLATFORM_HUES = ["brand", "indigo", "violet"] as const satisfies re
 export type PlatformHue = (typeof PLATFORM_HUES)[number];
 
 /** Kadar campuran per peran, dalam persen. Alasannya di kepala berkas. */
-export const PLATFORM_MIX = { head: 16, chip: 32 } as const;
+/*
+ * ⚠ `chip` 36% — naik dari 32% saat warna merek menjadi navy.
+ *
+ * Alasannya sama persis dengan kenaikan 30% → 32% sebelumnya, hanya dengan
+ * isian tombol yang baru: pada 32% violet kembali ke 3,03:1 terhadap isian
+ * tombol gelap (`#2F6FBF`), dan aturan "tidak ada tombol di atas chip" kembali
+ * menjadi janji yang harus diingat orang alih-alih batas yang terukur.
+ *
+ * Terukur pada 36%: violet 2,95 · indigo 2,81 · brand 2,46 — ketiganya di bawah
+ * 3:1 dengan margin, jadi kenaikan berikutnya tidak diperlukan hanya karena
+ * satu hue menyerempet.
+ */
+export const PLATFORM_MIX = { head: 16, chip: 36 } as const;
 
 /**
  * Deklarasi nada, DIBANGKITKAN dari satu resep — bukan enam baris tangan.
@@ -155,7 +167,11 @@ const CHIP: Record<PlatformHue, string> = {
  * ambang ikon 3:1.
  */
 const GLYPH: Record<PlatformHue, string> = {
-  brand: "var(--ant-blue-8)",
+  /* ⚠ `brand` mengikuti `--ant-color-primary`, bukan `--ant-blue-8` — sejak
+     warna merek menjadi navy, blue-8 bukan lagi anak tangga merek. Sama dengan
+     keputusan di `components/landing/landing-scale.ts`; keduanya harus
+     bergerak bersama, sebab keduanya memakai resep nada yang sama. */
+  brand: "var(--ant-color-primary)",
   indigo: "var(--ant-geekblue-8)",
   violet: "var(--ant-purple-8)",
 };

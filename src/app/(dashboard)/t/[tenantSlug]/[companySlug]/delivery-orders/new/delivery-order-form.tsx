@@ -431,6 +431,7 @@ export function DeliveryOrderForm({
         <CardContent>
           {items.length === 0 ? (
             <EmptyState
+              flat
               icon={<ContainerOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
               title={t("common.emptyStockTitle")}
               description={t("deliveryOrders.emptyStockDescription")}

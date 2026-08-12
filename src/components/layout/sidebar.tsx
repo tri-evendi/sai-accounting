@@ -51,11 +51,11 @@
  * pernah terjadi ketika tirai memakai token yang ikut berbalik.
  */
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
-import { AccountBookOutlined, AimOutlined, AppstoreAddOutlined, AuditOutlined, BarChartOutlined, BookOutlined, BranchesOutlined, CloseOutlined, ContainerOutlined, DeliveredProcedureOutlined, DollarOutlined, FileDoneOutlined, FileExcelOutlined, FileTextOutlined, FormOutlined, GlobalOutlined, HomeOutlined, IdcardOutlined, KeyOutlined, LockOutlined, MoneyCollectOutlined, PayCircleOutlined, ProfileOutlined, ReadOutlined, ReconciliationOutlined, RollbackOutlined, SafetyCertificateOutlined, SettingOutlined, ShopOutlined, ShoppingCartOutlined, TeamOutlined, ToolOutlined, TruckOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
+import { AccountBookOutlined, AimOutlined, AppstoreAddOutlined, AuditOutlined, BarChartOutlined, BookOutlined, BranchesOutlined, CloseOutlined, ContainerOutlined, DeliveredProcedureOutlined, DollarOutlined, FileDoneOutlined, FileExcelOutlined, FileTextOutlined, FormOutlined, GlobalOutlined, HomeOutlined, IdcardOutlined, KeyOutlined, LockOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MoneyCollectOutlined, PayCircleOutlined, ProfileOutlined, ReadOutlined, ReconciliationOutlined, RollbackOutlined, SafetyCertificateOutlined, SettingOutlined, ShopOutlined, ShoppingCartOutlined, TeamOutlined, ToolOutlined, TruckOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
 import type { IconComponent } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Link, useAppRouter } from "@/components/ui/app-link";
@@ -84,8 +84,71 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-/** Lebar menu samping — sama dengan `w-64` sebelum migrasi. */
-const LEBAR_MENU = 256;
+/**
+ * Lebar menu samping — 288, naik dari 256 (`w-64` sebelum migrasi).
+ *
+ * Angkanya diukur dari label yang TERPOTONG di 256: "Unpaid by Customer"
+ * menjadi "Unpaid by Custom…" dan "Match Bank Statement" menjadi "Match Bank
+ * State…". Label menu yang terpotong memaksa pembacanya menebak tujuan sebuah
+ * pintu — dan di aplikasi akuntansi, "Unpaid by Custom…" bisa berarti apa saja.
+ * 288 memuat keduanya utuh berikut ikon dan indennya, dan tetap kelipatan 8
+ * seperti seluruh skala jarak di sini.
+ */
+const LEBAR_MENU = 288;
+
+/**
+ * Lebar saat terlipat — cukup untuk ikon dan target sentuhnya, tidak lebih.
+ *
+ * 80 adalah bawaan `Layout.Sider` AntD, dan dipakai apa adanya: ia sudah
+ * sesumbu dengan `controlHeight` 40 (dua kali), jadi ikonnya duduk di tengah
+ * tanpa angka baru yang harus dijaga.
+ */
+const LEBAR_MENU_TERLIPAT = 80;
+
+/** Kunci `localStorage` untuk keadaan terlipat. */
+const KUNCI_LIPAT = "sai.sidebar-collapsed";
+
+/*
+ * ── Keadaan terlipat sebagai TOKO LUAR, bukan `useState` + efek ───────────
+ *
+ * Bentuk yang lebih jelas — `useState(false)` lalu membacanya dari
+ * `localStorage` di dalam `useEffect` — ditolak dua kali. ESLint menolaknya
+ * ("Calling setState synchronously within an effect can trigger cascading
+ * renders"), dan ia memang benar: itu render kedua untuk setiap pemuatan
+ * halaman, hanya demi satu boolean.
+ *
+ * `useSyncExternalStore` menjawab persis pertanyaan yang kita punya: nilai
+ * yang hidup DI LUAR React (penyimpanan peramban), dengan potret SERVER yang
+ * terpisah. Potret servernya `false` — server tidak punya `localStorage`, dan
+ * menebaknya akan membuat HTML pertama berbeda dari render klien, yaitu
+ * ketidakcocokan hidrasi. Ongkosnya tetap satu bingkai bagi yang melipatnya:
+ * kolom lebar sekejap saat memuat ulang. Menghilangkan kedipan itu menuntut
+ * keadaan ini dibaca di server, yaitu cookie — dan cookie untuk preferensi
+ * tampilan ikut terkirim pada SETIAP permintaan, termasuk tiap berkas statis.
+ *
+ * `storage` didengarkan supaya dua tab tidak berselisih pendapat; `pendengar`
+ * lokal mengurus tab yang sedang ditekan tombolnya, sebab peristiwa `storage`
+ * tidak pernah menyala di tab yang menulisnya sendiri.
+ */
+const pendengar = new Set<() => void>();
+
+function langganLipat(onChange: () => void): () => void {
+  pendengar.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    pendengar.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function bacaLipat(): boolean {
+  return window.localStorage.getItem(KUNCI_LIPAT) === "1";
+}
+
+function simpanLipat(nilai: boolean): void {
+  window.localStorage.setItem(KUNCI_LIPAT, nilai ? "1" : "0");
+  pendengar.forEach((beri) => beri());
+}
 
 /** Tinggi baris lambang, disamakan dengan bilah atas. */
 const TINGGI_KEPALA = 64;
@@ -142,27 +205,35 @@ const ICONS: Record<string, IconComponent> = {
  * sasaran klik; sisa 40px barisnya ditutup `onClick` menu — lihat
  * `klikBaris()`.
  */
+/**
+ * ⚠ Ikon dioper sebagai PROP `icon`, bukan ditaruh di dalam `label`.
+ *
+ * Bentuk lamanya (ikon + teks di dalam satu `<Link>`) tampak benar dan patah
+ * total saat kolomnya dilipat: `Menu` inline yang terlipat TIDAK merender isi
+ * `label` sama sekali — ia hanya menggambar slot `icon`. Karena slot itu kosong,
+ * kolom terlipatnya berisi deretan kotak tanpa apa pun di dalamnya, dan
+ * satu-satunya yang terlihat adalah blok biru butir yang sedang aktif.
+ *
+ * Konsekuensinya: `<Link>` kini hanya membungkus TEKS-nya. Sasaran klik satu
+ * baris penuh tidak hilang — `klikBaris` di bawah yang menutupnya, persis
+ * seperti sebelumnya untuk sisa baris yang memang tidak pernah tertutup anchor.
+ */
 function barisNav(
   item: NavItem,
   aktif: boolean,
-  t: TranslateFn,
-  jarak: number
+  t: TranslateFn
 ): NonNullable<MenuProps["items"]>[number] {
   const Icon = ICONS[item.icon] ?? HomeOutlined;
   return {
     key: item.href,
+    icon: <Icon aria-hidden="true" style={{ fontSize: 18 }} />,
     label: (
       <Link
         href={item.href}
         aria-current={aktif ? "page" : undefined}
-        style={{ display: "flex", alignItems: "center", gap: jarak, color: "inherit" }}
+        style={{ color: "inherit" }}
       >
-        <Icon aria-hidden="true" style={{ fontSize: 18, flexShrink: 0 }} />
-        <span
-          style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-        >
-          {t(item.labelKey)}
-        </span>
+        {t(item.labelKey)}
       </Link>
     ),
   };
@@ -182,6 +253,8 @@ function PanelMenu({
   onOpenKeys,
   onClose,
   tampilkanTutup,
+  terlipat = false,
+  onToggleLipat,
 }: {
   groups: NavGroup[];
   homeVisible: boolean;
@@ -190,6 +263,15 @@ function PanelMenu({
   onOpenKeys: (keys: string[]) => void;
   onClose: () => void;
   tampilkanTutup: boolean;
+  /**
+   * Kolom tetap sedang terlipat. SELALU `false` di dalam `Drawer`: laci itu
+   * sendiri sudah bentuk ringkasnya, dan laci yang isinya ikut terlipat adalah
+   * menu ikon di dalam panel selebar 288px — ringkas dua kali, terbaca nol
+   * kali.
+   */
+  terlipat?: boolean;
+  /** Tanpa ini tombol pelipatnya tidak dirender (mis. di dalam laci). */
+  onToggleLipat?: () => void;
 }) {
   const t = useT();
   const { token } = theme.useToken();
@@ -212,7 +294,7 @@ function PanelMenu({
   };
 
   const items: MenuProps["items"] = [
-    ...(homeVisible ? [barisNav(NAV_HOME, activeHref === NAV_HOME.href, t, token.marginSM)] : []),
+    ...(homeVisible ? [barisNav(NAV_HOME, activeHref === NAV_HOME.href, t)] : []),
     ...groups.map((group) => {
       const terbuka = openKeys.includes(group.id);
       const berisiAktif = group.items.some((i) => i.href === activeHref);
@@ -237,8 +319,14 @@ function PanelMenu({
             )}
           </Flex>
         ),
+        /* Ikon grup — SATU-SATUNYA yang tersisa dari sebuah area tugas saat
+           kolomnya terlipat; lihat catatan `icon` di `NavGroup`. */
+        icon: (() => {
+          const IkonGrup = ICONS[group.icon] ?? HomeOutlined;
+          return <IkonGrup aria-hidden="true" style={{ fontSize: 18 }} />;
+        })(),
         children: group.items.map((item) =>
-          barisNav(item, item.href === activeHref, t, token.marginSM)
+          barisNav(item, item.href === activeHref, t)
         ),
       };
     }),
@@ -247,6 +335,12 @@ function PanelMenu({
   return (
     <Layout.Sider
       width={LEBAR_MENU}
+      collapsedWidth={LEBAR_MENU_TERLIPAT}
+      collapsed={terlipat}
+      /* Pemicunya kami sendiri (di baris lambang), bukan batang bawaan AntD
+         yang menempel di dasar kolom: batang itu memakan satu baris penuh dan
+         berada sejauh mungkin dari mata orang yang baru saja membaca menunya. */
+      trigger={null}
       theme="dark"
       style={{
         height: "100%",
@@ -273,15 +367,36 @@ function PanelMenu({
       <Flex vertical style={{ height: "100%" }}>
         <Flex
           align="center"
-          justify="space-between"
+          /* Terlipat: satu tombol, dipusatkan. Lihat catatan di bawah. */
+          justify={terlipat ? "center" : "space-between"}
           gap={token.marginXS}
           style={{
             height: TINGGI_KEPALA,
             flexShrink: 0,
-            paddingInline: token.paddingLG,
+            /* Saat terlipat, padding sisi dikecilkan supaya lambang dan tombol
+               tetap punya target sentuh 40px di kolom selebar 80. */
+            paddingInline: terlipat ? token.paddingXS : token.paddingLG,
             borderBottom: `1px solid ${BORDER_TOKENS_DARK.colorSplit}`,
           }}
         >
+          {/*
+           * ⚠ Lambang menghilang SEUTUHNYA saat terlipat, bukan sekadar
+           * teksnya.
+           *
+           * Percobaan pertama hanya menyembunyikan nama aplikasi dan
+           * mempertahankan kotak lambangnya di sebelah tombol pelipat. Di kolom
+           * 80px keduanya tidak muat: keduanya target sentuh 40px, ditambah
+           * jarak dan padding sisi, jadi salah satunya terdorong keluar kotak —
+           * persis tabrakan yang dilaporkan.
+           *
+           * Yang mengalah lambangnya, bukan tombolnya, dan itu bukan undian:
+           * tombol pelipat adalah SATU-SATUNYA jalan keluar dari keadaan
+           * terlipat — menyembunyikannya mengunci pengguna di kolom ikon.
+           * Lambang hanyalah tautan kedua ke beranda; yang pertama berdiri tepat
+           * di bawahnya sebagai butir menu paling atas, dan ikonnya tetap
+           * terlihat saat terlipat.
+           */}
+          {!terlipat && (
           <Link
             href="/dashboard"
             style={{
@@ -295,12 +410,43 @@ function PanelMenu({
             }}
           >
             <BrandMark size="sm" />
+            {/* Nama aplikasi menghilang saat terlipat; lambangnya tetap, dan
+                ia tetap tautan ke beranda. `aria-label` di `Link` menjaga
+                tautannya tetap punya nama yang bisa dibacakan tanpa teks. */}
             <span
               style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
             >
               {APP_NAME}
             </span>
           </Link>
+          )}
+          {/*
+           * Pelipat kolom. Hanya di kolom TETAP — di dalam laci ia tidak
+           * dirender sama sekali (`onToggleLipat` tidak dioper), sebab laci
+           * sudah bentuk ringkasnya sendiri.
+           *
+           * Ikonnya menyatakan ARAH tindakan, bukan keadaan sekarang: panah
+           * ke kanan saat terlipat (= "lebarkan"), ke kiri saat terbuka
+           * (= "sempitkan"). Ikon yang menyatakan keadaan membuat separuh
+           * pengguna menekannya untuk hal yang berlawanan.
+           */}
+          {onToggleLipat && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleLipat}
+              aria-label={t(terlipat ? "sidebar.expandMenu" : "sidebar.collapseMenu")}
+              aria-expanded={!terlipat}
+              style={{ color: token.colorTextLightSolid, flexShrink: 0 }}
+            >
+              {terlipat ? (
+                <MenuUnfoldOutlined aria-hidden="true" style={{ fontSize: 18 }} />
+              ) : (
+                <MenuFoldOutlined aria-hidden="true" style={{ fontSize: 18 }} />
+              )}
+            </Button>
+          )}
+
           {tampilkanTutup && (
             <Button
               variant="ghost"
@@ -350,7 +496,10 @@ function PanelMenu({
             color: NEUTRAL_TEXT_DARK.colorTextTertiary,
           }}
         >
-          <span>{APP_NAME}</span>
+          {/* Nama aplikasi disembunyikan saat terlipat: di kolom 80px ia
+              membungkus jadi tiga baris dan meluber keluar kotaknya. Versi
+              tetap tampil — itu yang dibaca orang saat melaporkan masalah. */}
+          {!terlipat && <span>{APP_NAME}</span>}
           {/* Dari `package.json` saat build, bukan literal — nomor yang
               diketik tangan tidak pernah ikut naik saat rilis, dan justru
               dibaca orang ketika sedang melaporkan masalah. */}
@@ -388,8 +537,32 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
   const activeGroupId =
     groups.find((g) => g.items.some((i) => i.href === activeHref))?.id ?? null;
   const [openKeys, setOpenKeys] = useState<string[] | null>(null);
+
+  /*
+   * Keadaan terlipat, DIINGAT antar-kunjungan.
+   *
+   * Nilai awalnya sengaja "terbuka" dan baru disetel dari `localStorage` di
+   * dalam efek: render server tidak punya akses ke penyimpanan peramban, dan
+   * menebaknya akan membuat HTML pertama berbeda dari render klien —
+   * ketidakcocokan hidrasi yang React laporkan sebagai galat. Ongkosnya satu
+   * bingkai: pengguna yang melipatnya melihat kolom lebar sekejap saat memuat
+   * ulang. Menghilangkan kedipan itu menuntut keadaan ini dibaca di SERVER,
+   * yaitu cookie — dan cookie untuk preferensi tampilan berarti ia ikut
+   * terkirim pada setiap permintaan, termasuk setiap gambar dan berkas statis.
+   */
+  const terlipat = useSyncExternalStore(langganLipat, bacaLipat, () => false);
+
+  function toggleLipat() {
+    simpanLipat(!terlipat);
+  }
   const openKeysEfektif = openKeys ?? (activeGroupId ? [activeGroupId] : []);
 
+  /*
+   * ⚠ Melipat HANYA milik kolom tetap. Laci tidak menerima `terlipat` maupun
+   * `onToggleLipat`, dan itu bukan kelalaian: laci SUDAH bentuk ringkas dari
+   * menu ini, jadi laci yang isinya ikut terlipat adalah menu ikon di dalam
+   * panel selebar 288px — ringkas dua kali, terbaca nol kali.
+   */
   const panel = (
     <PanelMenu
       groups={groups}
@@ -399,6 +572,7 @@ export function Sidebar({ role, accountantMode, companyCount, open, onClose }: S
       onOpenKeys={setOpenKeys}
       onClose={onClose}
       tampilkanTutup={!lebar}
+      {...(lebar ? { terlipat, onToggleLipat: toggleLipat } : {})}
     />
   );
 

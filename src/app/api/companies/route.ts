@@ -33,7 +33,7 @@ import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { companyCreateSchema } from "@/lib/validations/company";
 import { provisionCompany } from "@/lib/company-provisioning";
-import { ProvisionError, type ProvisionEvent } from "@/lib/company-provisioning-shared";
+import { provisionErrorMessage, type ProvisionEvent } from "@/lib/company-provisioning-shared";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { runWithCompany } from "@/lib/company-context";
@@ -91,6 +91,14 @@ export async function POST(request: Request) {
 
   const session = result.session;
   const userId = Number.parseInt(session.user.id, 10);
+
+  /*
+   * Penerjemah diambil SEBELUM aliran dibuka, bukan di dalam `catch`-nya:
+   * `getRequestI18n` membaca cookie & header permintaan, dan pekerjaan di
+   * dalam `start()` berlanjut setelah penanganan permintaan berpindah tangan.
+   * Mengambilnya di sini membuat bahasa pesan galat pasti bahasa penggunanya.
+   */
+  const { t } = await getRequestI18n();
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -159,13 +167,24 @@ export async function POST(request: Request) {
           }
         );
       } catch (error) {
-        const message =
-          error instanceof ProvisionError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : "Penyediaan gagal.";
-        send({ phase: "error", message });
+        /*
+         * ══ GALAT MENTAH TIDAK PERNAH SAMPAI KE LAYAR ═════════════════════
+         * Sebelumnya `error.message` dikirim apa adanya, dan di produksi yang
+         * mendarat di layar pemilik PT adalah:
+         *
+         *   (conn:67709, no: 1044, SQLState: 42000) Access denied for user
+         *   'sai'@'%' to database 'sai_t3_…'  sql: CREATE DATABASE `sai_t3_…`
+         *
+         * Dua kerugian sekaligus: tak seorang pun bisa menindaklanjuti
+         * "SQLState: 42000", dan kalimat itu membocorkan nama pengguna basis
+         * data beserta bentuk pernyataan internal. Yang dikirim sekarang
+         * adalah kalimat berbahasa tugas dari kamus (`provisionErrorMessage`,
+         * murni & teruji) — sementara galat aslinya, LENGKAP dengan `cause`,
+         * dicatat di log server tempat operator memang mencarinya.
+         */
+        console.error("[companies] penyediaan gagal:", error);
+        const { key, values } = provisionErrorMessage(error);
+        send({ phase: "error", message: t(key, values) });
       } finally {
         controller.close();
       }

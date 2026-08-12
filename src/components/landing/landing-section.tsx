@@ -76,13 +76,29 @@ export function LandingSection({
     scrollMarginTop: ANCHOR_OFFSET,
   };
   /* Garisnya TETAP ada di setiap batas pita, juga ketika nadanya sudah
-     berbeda: di tema gelap selisih pita terhadap latar halaman hanya
-     1,06–1,14:1, jadi warna saja belum tentu menggambar batasnya. */
-  if (divider) outer.borderTop = "1px solid var(--ant-color-border-secondary)";
+     berbeda — diukur ulang pada token yang benar-benar terpasang: selisih
+     pita terhadap latar halaman hanya 1,09:1 (terang) dan 1,14:1 (gelap),
+     jadi warna sendirian TIDAK menggambar batas wilayah di kedua tema.
+
+     Yang berubah hanya BENTUKNYA: bukan lagi `border-top` selebar layar
+     melainkan `::before` bergradien yang pekat di kolom isi lalu meleleh
+     sebelum tepi viewport (`landing-scale.ts`). Batasnya tetap terbaca; kesan
+     "kertas bergaris" hilang. */
   if (tone !== "plain") outer.background = TONE_BG[tone];
 
   return (
-    <section id={id} style={outer}>
+    /* `data-landing-reveal` pada SEKSI, bukan pada tiap kartu: yang ditegaskan
+       adalah perpindahan antar-wilayah saat digulung, dan sepuluh kartu yang
+       muncul satu per satu adalah koreografi — hal yang justru dilarang
+       ("decorative-only animation"). Aturannya, beserta ketiga pagarnya, ada di
+       `landing-scale.ts`; tanpa dukungan peramban atribut ini tidak berarti
+       apa-apa dan isinya terlihat penuh. */
+    <section
+      id={id}
+      data-landing-reveal=""
+      {...(divider ? { "data-landing-divider": "" } : null)}
+      style={outer}
+    >
       <div
         style={{
           width: "100%",
@@ -102,16 +118,50 @@ export function LandingSection({
 }
 
 /**
- * Kepala seksi: judul + kalimat penjelas, dikurung pada lebar baca.
+ * Label kategori di atas judul seksi ("Manfaat", "Harga", "Keamanan & kendali").
+ *
+ * ══ KENAPA INI, DAN KENAPA BUKAN SEKADAR HIASAN ════════════════════════════
+ * Sampai perubahan ini setiap seksi dimulai DINGIN — langsung `<h2>`, tanpa
+ * apa pun yang memberi tahu pembaca yang sedang menggulung cepat bahwa ia baru
+ * memasuki wilayah lain. Pita berwarna melakukannya untuk mata, tetapi tidak
+ * untuk orang yang memindai teks, dan sama sekali tidak untuk pembaca layar.
+ *
+ * Label kategori adalah pola baku situs B2B/keuangan justru karena halaman
+ * seperti ini dibaca dengan MELOMPAT, bukan berurutan: ia menjawab "bagian ini
+ * tentang apa" dalam satu kata sebelum kalimat judulnya dibaca.
+ *
+ * Bentuknya: 12px, tebal, huruf besar, jarak huruf lebar, warna merek. Ini satu
+ * dari sedikit tempat `--ant-font-size-sm` (12px) SAH untuk teks yang bukan
+ * keterangan berulang (MASTER.md §Tipografi melarangnya untuk DATA) — di sini
+ * ia label struktural, dan huruf besar + `letter-spacing` menjaganya tetap
+ * terbaca. Ia dirender sebagai `<p>`, BUKAN heading: menyisipkan `<h3>` di atas
+ * `<h2>` akan mematahkan urutan tingkat heading yang justru dipakai pembaca
+ * layar untuk menavigasi.
+ */
+const LANDING_EYEBROW: CSSProperties = {
+  margin: 0,
+  marginBottom: "var(--ant-margin-xs)",
+  fontSize: "var(--ant-font-size-sm)",
+  fontWeight: "var(--ant-font-weight-strong)",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "var(--ant-color-primary)",
+};
+
+/**
+ * Kepala seksi: label kategori + judul + kalimat penjelas, dikurung pada lebar
+ * baca.
  *
  * Kolom teksnya `--sai-landing-measure-copy` (42rem) meski seksinya 72rem —
  * judul selebar layar penuh berhenti bisa dibaca sebagai satu tarikan napas.
  */
 export function LandingSectionIntro({
+  eyebrow,
   title,
   children,
   center = false,
 }: {
+  eyebrow?: string;
   title: string;
   children?: React.ReactNode;
   center?: boolean;
@@ -123,9 +173,12 @@ export function LandingSectionIntro({
         marginInline: center ? "auto" : undefined,
       }}
     >
+      {eyebrow !== undefined && <p style={LANDING_EYEBROW}>{eyebrow}</p>}
       <h2 style={LANDING_SECTION_TITLE}>{title}</h2>
       {children !== undefined && (
-        <p style={{ ...LANDING_BODY, marginTop: "var(--ant-margin-sm)" }}>{children}</p>
+        <p style={{ ...LANDING_BODY, marginTop: "var(--ant-margin-sm)" }}>
+          {children}
+        </p>
       )}
     </div>
   );

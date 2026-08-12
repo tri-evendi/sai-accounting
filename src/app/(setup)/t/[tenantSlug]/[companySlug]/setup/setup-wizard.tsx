@@ -32,6 +32,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { WizardSteps } from "@/components/ui/wizard-steps";
+import { fieldGrid, formGrid } from "@/lib/layout-width";
 import { formatCurrency } from "@/lib/utils";
 import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
@@ -47,6 +49,7 @@ import {
 } from "@/lib/business-modules";
 
 const { Title, Text } = Typography;
+
 
 interface CashAccount {
   id: number;
@@ -123,7 +126,6 @@ export function SetupWizard({
 }) {
   const t = useT();
   const { token } = theme.useToken();
-  const money = moneyPalette(token);
   const router = useAppRouter();
   const { toast } = useToast();
 
@@ -475,26 +477,6 @@ export function SetupWizard({
 
   const currencyOptions = currencies.map((c) => ({ value: c, label: c }));
 
-  /** Warna pil langkah — selesai / sedang / belum. Ketiganya juga dibedakan
-   *  IKON (centang vs nomor), jadi warnanya bukan penanda tunggal. */
-  function pillStyle(index: number): React.CSSProperties {
-    const base: React.CSSProperties = {
-      display: "flex",
-      alignItems: "center",
-      gap: token.marginXS,
-      padding: `${token.paddingXXS}px ${token.paddingSM}px`,
-      borderRadius: token.borderRadius,
-      fontSize: token.fontSize,
-    };
-    if (index === step) {
-      return { ...base, background: token.colorPrimary, color: token.colorTextLightSolid };
-    }
-    if (index < step) {
-      return { ...base, background: token.colorSuccessBg, color: money.colorMoneyPositive };
-    }
-    return { ...base, background: token.colorFillQuaternary, color: token.colorTextSecondary };
-  }
-
   return (
     <Flex vertical gap={token.marginLG}>
       <style href="sai-spin" precedence="default">
@@ -512,51 +494,61 @@ export function SetupWizard({
        * baris, dan "seberapa jauh lagi" — satu-satunya pertanyaan pengguna di
        * layar wajib — jadi harus dihitung sendiri dengan mata.
        */}
-      <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-        <Text strong type="secondary" style={TABULAR}>
-          {t("setup.stepCounter", { current: step + 1, total: steps.length })}
-        </Text>
-
-        {/*
-         * Penanda draf — mekanismenya sudah ada sejak audit 2026-07, yang
-         * belum ada adalah pemberitahuannya.
-         *
-         * Ketikan wizard disimpan ke `sessionStorage` pada setiap perubahan
-         * dan dipulihkan saat halaman dimuat ulang. Selama itu tak pernah
-         * dikatakan, jaringnya tidak menolong siapa pun: orang yang tabnya
-         * tertutup di tengah empat puluh baris saldo awal tetap mengira
-         * pekerjaannya hilang, dan yang ragu-ragu tetap tidak berani
-         * meninggalkan layar ini untuk mencari angkanya. Rasa aman itulah
-         * gunanya, dan rasa aman harus terbaca.
-         */}
-        {(step > 0 || hasMeaningfulDraft) && (
-          <Flex align="center" gap={token.marginXXS}>
-            <SaveOutlined aria-hidden="true" style={{ fontSize: 14, flexShrink: 0, color: token.colorTextSecondary }} />
-            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-              {t("setup.draftSaved")}
-            </Text>
-          </Flex>
-        )}
-      </Flex>
-
-      <Flex
-        component="ol"
-        wrap
-        gap={token.marginXS}
-        aria-label={t("setup.stepsAria")}
-        style={{ listStyle: "none", margin: 0, padding: 0 }}
-      >
-        {steps.map((label, i) => (
-          <li key={label} aria-current={i === step ? "step" : undefined} style={pillStyle(i)}>
-            {i < step ? (
-              <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
-            ) : (
-              <span style={TABULAR}>{i + 1}.</span>
-            )}
-            {label}
-          </li>
-        ))}
-      </Flex>
+      {/*
+       * Penanda langkah — komponen BERSAMA (`components/ui/wizard-steps.tsx`),
+       * bukan lagi deretan pil milik berkas ini.
+       *
+       * Pil lamanya punya dua cacat yang keduanya hilang bersamanya. Yang
+       * pertama aturan: bedanya langkah "sedang dibuka" dari "belum" hanyalah
+       * RONA (biru vs abu), dan MASTER.md §Anti-Patterns melarang warna sebagai
+       * penanda tunggal — sekarang setiap langkah membawa katanya sendiri
+       * ("Selesai / Sedang diisi / Belum"). Yang kedua keseragaman: wisaya
+       * Penjualan/Pembelian memakai kosakata penanda yang sama sekali lain,
+       * jadi pengguna yang sudah belajar membaca yang satu harus belajar lagi.
+       *
+       * Hitungan "Langkah X dari Y" ikut pindah ke dalamnya (kunci
+       * `wizard.stepOf`, satu kalimat untuk kedua wisaya) — `setup.stepCounter`
+       * karena itu tidak lagi dipanggil siapa pun.
+       *
+       * Melompat MUNDUR kini bisa lewat penanda, sesuatu yang pil lama tidak
+       * pernah izinkan. Maju tetap tidak: `canJump` hanya meloloskan indeks di
+       * bawah yang sedang dibuka, jadi penjaga per-langkah (`validateStep`)
+       * tidak bisa dilewati dari sini.
+       */}
+      <WizardSteps
+        steps={steps.map((label, i) => ({ key: STEP_KEYS[i], title: label }))}
+        current={step}
+        canJump={(i) => i < step}
+        onJump={(i) => {
+          setStepErrors({});
+          setStep(i);
+        }}
+        aside={
+          /*
+           * Penanda draf — mekanismenya sudah ada sejak audit 2026-07, yang
+           * belum ada adalah pemberitahuannya.
+           *
+           * Ketikan wizard disimpan ke `sessionStorage` pada setiap perubahan
+           * dan dipulihkan saat halaman dimuat ulang. Selama itu tak pernah
+           * dikatakan, jaringnya tidak menolong siapa pun: orang yang tabnya
+           * tertutup di tengah empat puluh baris saldo awal tetap mengira
+           * pekerjaannya hilang, dan yang ragu-ragu tetap tidak berani
+           * meninggalkan layar ini untuk mencari angkanya. Rasa aman itulah
+           * gunanya, dan rasa aman harus terbaca.
+           */
+          step > 0 || hasMeaningfulDraft ? (
+            <Flex align="center" gap={token.marginXXS}>
+              <SaveOutlined
+                aria-hidden="true"
+                style={{ fontSize: 14, flexShrink: 0, color: token.colorTextSecondary }}
+              />
+              <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                {t("setup.draftSaved")}
+              </Text>
+            </Flex>
+          ) : null
+        }
+      />
 
       <Card style={{ padding: token.paddingLG }}>
         {/* Step 0 — identity */}
@@ -577,12 +569,23 @@ export function SetupWizard({
              * angka neraca akan berhenti di sini dan menunda seluruh
              * pemasangan, atau — lebih buruk — mengarang angkanya.
              */}
+            {/*
+             * ⚠ Latarnya `colorFillTertiary`, BUKAN `colorFillQuaternary`.
+             *
+             * Yang terakhir itu fill translusen 2–4%: digambar di atas kartu
+             * putih ia praktis tidak ada di layar, jadi panel ini terbaca
+             * sebagai teks yang kebetulan bertepi — persis keluhan yang
+             * melahirkan issue #266, dan alasan yang sama yang menaikkan kotak
+             * ikon `/platform` dari fill yang sama ke nada opak (#303). Panel
+             * ini justru satu-satunya tempat di seluruh wisaya yang menjelaskan
+             * APA yang sedang dimulai; ia harus terbaca sebagai bidang.
+             */}
             <div
               style={{
                 padding: `${token.paddingSM}px ${token.padding}px`,
                 borderRadius: token.borderRadiusLG,
                 border: `1px solid ${token.colorBorderSecondary}`,
-                background: token.colorFillQuaternary,
+                background: token.colorFillTertiary,
               }}
             >
               <Text strong>{t("setup.introTitle")}</Text>
@@ -616,36 +619,51 @@ export function SetupWizard({
             </div>
 
             <StepTitle token={token}>{t("setup.identityTitle")}</StepTitle>
-            <Input
-              id="name"
-              label={t("setup.nameField")}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                clearStepError("name");
-              }}
-              error={stepErrors.name}
-              maxLength={150}
-              required
-            />
-            <Flex vertical gap={token.marginXXS}>
-              <Label htmlFor="address">{t("common.address")}</Label>
-              <Textarea
-                id="address"
-                rows={2}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                maxLength={1000}
+            {/*
+             * Isian setara → `fieldGrid`, dan itu penerapan aturan lebar penuh
+             * di tempat yang benar (`lib/layout-width.ts`).
+             *
+             * Ketiganya teks pendek — nama PT, alamat, NPWP. Dibiarkan mengisi
+             * lebar kartu yang kini selebar layar, masing-masing jadi kotak
+             * ribuan piksel: nomor NPWP 20 karakter mengambang di sepertiga
+             * kirinya, dan mata harus menempuh sisanya untuk pulang ke label
+             * berikutnya. `fieldGrid` menahan tiap sel di `LEBAR_KOLOM_ISIAN`
+             * lalu memakai sisa ruangnya untuk menambah KOLOM — jadi layar
+             * lebar memuat lebih banyak, bukan hal yang sama dalam ukuran
+             * lebih besar.
+             */}
+            <div style={fieldGrid()}>
+              <Input
+                id="name"
+                label={t("setup.nameField")}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  clearStepError("name");
+                }}
+                error={stepErrors.name}
+                maxLength={150}
+                required
               />
-            </Flex>
-            <Input
-              id="npwp"
-              label={t("setup.npwpField")}
-              value={npwp}
-              onChange={(e) => setNpwp(e.target.value)}
-              maxLength={30}
-              placeholder={t("setup.npwpPlaceholder")}
-            />
+              <Flex vertical gap={token.marginXXS}>
+                <Label htmlFor="address">{t("common.address")}</Label>
+                <Textarea
+                  id="address"
+                  rows={2}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  maxLength={1000}
+                />
+              </Flex>
+              <Input
+                id="npwp"
+                label={t("setup.npwpField")}
+                value={npwp}
+                onChange={(e) => setNpwp(e.target.value)}
+                maxLength={30}
+                placeholder={t("setup.npwpPlaceholder")}
+              />
+            </div>
           </Flex>
         )}
 
@@ -700,35 +718,39 @@ export function SetupWizard({
         {current === "settings" && (
           <Flex vertical gap={token.margin}>
             <StepTitle token={token}>{t("setup.stepCurrency")}</StepTitle>
-            <Row gutter={[token.margin, token.margin]}>
-              <Col xs={24} sm={12}>
-                <Select
-                  id="baseCurrency"
-                  label={t("setup.baseCurrencyField")}
-                  value={baseCurrency}
-                  onChange={(e) => {
-                    setBaseCurrency(e.target.value);
-                    clearStepError("baseCurrency");
-                  }}
-                  error={stepErrors.baseCurrency}
-                  options={currencyOptions}
-                />
-              </Col>
-              <Col xs={24} sm={12}>
-                <Input
-                  id="fiscalYearStart"
-                  type="date"
-                  label={t("setup.fiscalYearStartField")}
-                  value={fiscalYearStart}
-                  onChange={(e) => {
-                    setFiscalYearStart(e.target.value);
-                    clearStepError("fiscalYearStart");
-                  }}
-                  error={stepErrors.fiscalYearStart}
-                  required
-                />
-              </Col>
-            </Row>
+            {/*
+             * Kolom SETARA → `formGrid`, bukan `Row`/`Col xs={24} sm={12}`.
+             *
+             * Yang lama membeku di dua kolom sejak 576px dan tidak pernah
+             * beradaptasi lagi; kisi ini menurunkan jumlah kolomnya dari lebar
+             * yang benar-benar tersedia. Alasan lengkapnya di
+             * `lib/layout-width.ts`.
+             */}
+            <div style={formGrid()}>
+              <Select
+                id="baseCurrency"
+                label={t("setup.baseCurrencyField")}
+                value={baseCurrency}
+                onChange={(e) => {
+                  setBaseCurrency(e.target.value);
+                  clearStepError("baseCurrency");
+                }}
+                error={stepErrors.baseCurrency}
+                options={currencyOptions}
+              />
+              <Input
+                id="fiscalYearStart"
+                type="date"
+                label={t("setup.fiscalYearStartField")}
+                value={fiscalYearStart}
+                onChange={(e) => {
+                  setFiscalYearStart(e.target.value);
+                  clearStepError("fiscalYearStart");
+                }}
+                error={stepErrors.fiscalYearStart}
+                required
+              />
+            </div>
             <Alert
               type="info"
               icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}

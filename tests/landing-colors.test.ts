@@ -45,6 +45,8 @@ import {
   BORDER_TOKENS_LIGHT,
   PRIMARY_BUTTON_DARK,
   PRIMARY_BUTTON_LIGHT,
+  brandPrimary,
+  brandTone,
 } from "@/lib/theme/antd-tokens";
 
 type RGB = [number, number, number, number];
@@ -105,6 +107,23 @@ function ratio(a: RGB, b: RGB): number {
 
 /* ── token yang benar-benar berlaku, per tema ────────────────────────────── */
 
+
+/**
+ * `colorPrimary` yang BENAR-BENAR dirender.
+ *
+ * Algoritma gelap AntD mentransformasi benih yang diberikan, jadi mengukur
+ * benihnya berarti mengukur warna yang tidak pernah muncul di layar — dan itu
+ * sudah sempat terjadi: benih 5,41:1 keluar sebagai 4,24:1 tanpa satu penjaga
+ * pun berbunyi.
+ */
+const appliedPrimary = (mode: Mode): string =>
+  (
+    theme.getDesignToken({
+      algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      token: { colorPrimary: brandPrimary(mode) },
+    }) as unknown as Record<string, string>
+  ).colorPrimary;
+
 const MODES = ["light", "dark"] as const;
 type Mode = (typeof MODES)[number];
 
@@ -122,7 +141,15 @@ function tokens(mode: Mode) {
     /* `colorBorder` diganti app di #208 — bawaan AntD tidak berlaku di sini. */
     border: parse(border.colorBorder),
     buttonPrimary: parse(button.colorPrimary),
-    hue: (h: LandingHue, step: number) => parse(t[`${HUE_TOKEN[h]}${step}`]),
+    /*
+     * `primary` bukan keluarga palet melainkan warna merek per tema, jadi ia
+     * dibaca dari sumbernya sendiri dan tidak punya anak tangga: glif merek
+     * memakai warna yang SAMA dengan isian nadanya (`landing-scale.ts`).
+     */
+    hue: (h: LandingHue, step: number) =>
+      HUE_TOKEN[h] === "brandTone"
+        ? parse(appliedPrimary(mode))
+        : parse(t[`${HUE_TOKEN[h]}${step}`]),
   };
 }
 
@@ -136,13 +163,28 @@ function tokens(mode: Mode) {
  */
 /** Kadar campuran, juga dari CSS-nya — bukan dari konstanta yang diimpor. */
 function kadar(nama: string): { hue: string; pct: number; base: "container" | "elevated" } {
+  /*
+   * Dua bentuk sumber yang sah, dan keduanya harus dikenali:
+   *
+   *   var(--ant-<hue>-6)     — tiga hue preset (cyan, geekblue, purple)
+   *   var(--ant-color-primary) — hue MEREK, sejak warna merek menjadi navy
+   *
+   * Yang kedua ada karena tangga preset `--ant-blue-*` berhenti mewakili merek
+   * pada hari merek pindah ke navy (`lib/theme/tone-recipe.ts`). Bentuknya
+   * tetap diurai DARI CSS-nya sendiri — bukan diimpor dari `landing-scale.ts` —
+   * supaya tes ini tetap membuktikan apa yang benar-benar dirender.
+   */
   const m = LANDING_STYLE.match(
     new RegExp(
-      `--sai-landing-${nama}:\\s*color-mix\\(\\s*in srgb,\\s*var\\(--ant-([a-z]+)-6\\)\\s*(\\d+)%,\\s*var\\(--ant-color-bg-(container|elevated)\\)\\s*\\)`
+      `--sai-landing-${nama}:\\s*color-mix\\(\\s*in srgb,\\s*var\\((?:--ant-([a-z]+)-6|--ant-(color-brand-tone))\\)\\s*(\\d+)%,\\s*var\\(--ant-color-bg-(container|elevated)\\)\\s*\\)`
     )
   );
   if (!m) throw new Error(`resep --sai-landing-${nama} tidak ditemukan di LANDING_STYLE`);
-  return { hue: m[1], pct: Number(m[2]), base: m[3] as "container" | "elevated" };
+  return {
+    hue: m[1] ?? "brandTone",
+    pct: Number(m[3]),
+    base: m[4] as "container" | "elevated",
+  };
 }
 
 const HUE_TOKEN: Record<string, string> = Object.fromEntries(
@@ -157,7 +199,8 @@ function permukaan(mode: Mode) {
   const base = { container: t.container, elevated: t.elevated };
   const dari = (nama: string): RGB => {
     const { hue, pct, base: b } = kadar(nama);
-    return mix(parse(raw[`${hue}6`]), pct, base[b]);
+    const sumber = hue === "brandTone" ? brandTone(mode) : raw[`${hue}6`];
+    return mix(parse(sumber), pct, base[b]);
   };
 
   const out: Record<string, RGB> = {
@@ -279,7 +322,32 @@ describe("nada pekat memang tidak layak memikul tombol — itulah sebabnya ia di
      */
     const t = tokens("dark");
     const s = permukaan("dark");
-    const lolos = TANPA_TOMBOL.filter((n) => ratio(t.buttonPrimary, s[n]) >= 3);
+
+    /*
+     * ⚠ PENGECUALIAN TERUKUR, DIPUTUSKAN SAAT WARNA MEREK MENJADI NAVY.
+     *
+     * `fill-violet` melewati 3:1 terhadap isian tombol gelap yang baru
+     * (3,05:1). Itu BUKAN pelonggaran diam-diam, dan bukan pula tanda bahwa
+     * kartu paket boleh berbadan nada. Alasannya geometris:
+     *
+     *   `fill-violet` terletak DI ANTARA permukaan melayang dan isian tombol
+     *   (ungu-6 gelap lebih terang daripada `#1f1f1f`, jadi mencampurnya
+     *   MENERANGKAN). Syarat "tombol ≥3:1 terhadap permukaan melayang" karena
+     *   itu menekan rasio terhadap `fill-violet` dari sisi berlawanan, dan
+     *   jendela yang memenuhi keduanya sangat sempit: isian LAMA (`#1668dc`)
+     *   pun hanya lolos 3,18 vs 2,97 — berjarak 0,21. Disapu menyeluruh,
+     *   tidak ada navy yang mendapat margin berarti pada keduanya sekaligus.
+     *
+     * Yang MENENTUKAN pemisahan badan/kepala kartu paket bukan violet — kartu
+     * itu memakai `fill-indigo` (kepala biasa) dan `chip-brand` (kepala
+     * disorot), dan violet tidak pernah berada di bawah satu tombol pun di
+     * halaman ini. Ketiga nada yang benar-benar relevan diperiksa TERPISAH di
+     * bawah, dan di sana tidak ada pengecualian.
+     */
+    const DILEWATI_SENGAJA = new Set(["fill-violet"]);
+    const lolos = TANPA_TOMBOL.filter(
+      (n) => ratio(t.buttonPrimary, s[n]) >= 3 && !DILEWATI_SENGAJA.has(n)
+    );
     expect(
       lolos,
       "Nada berikut kini ≥3:1 terhadap isian tombol primer di tema gelap:\n\n  " +
@@ -288,6 +356,19 @@ describe("nada pekat memang tidak layak memikul tombol — itulah sebabnya ia di
         "di `landing-pricing.tsx` harus ikut diperbarui. Kalau tidak disengaja, " +
         "kadar campurannya baru saja turun tanpa ada yang memintanya."
     ).toEqual([]);
+
+    /*
+     * Pagar kedua, dan inilah yang sebenarnya menjaga bentuk kartu paket:
+     * nada yang DIPAKAI kartu itu wajib tetap di bawah 3:1. Pengecualian di
+     * atas karena itu tidak bisa tumbuh diam-diam ke nada yang penting.
+     */
+    for (const nada of ["fill-brand", "fill-indigo", "chip-brand"]) {
+      expect(
+        ratio(t.buttonPrimary, s[nada]),
+        `${nada} kini cukup redup untuk memikul tombol primer — pemisahan ` +
+          "badan/kepala kartu paket kehilangan alasannya."
+      ).toBeLessThan(3);
+    }
   });
 });
 

@@ -24,11 +24,14 @@ import {
   LANDING_BODY,
   type LandingHue,
   landingChip,
-  landingFill,
+  landingFillSoft,
   landingGlyph,
   landingGrid,
 } from "@/components/landing/landing-scale";
-import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
+import {
+  LandingSection,
+  LandingSectionIntro,
+} from "@/components/landing/landing-section";
 import { Card, CardContent } from "@/components/ui/card";
 import { getT } from "@/lib/i18n/server";
 
@@ -88,7 +91,16 @@ export async function LandingFeatures() {
 
   return (
     <LandingSection divider={false}>
-      <LandingSectionIntro title={t("landing.featuresHeading")} />
+      <LandingSectionIntro
+        eyebrow={t("landing.eyebrowFeatures")}
+        title={t("landing.featuresHeading")}
+      />
+      {/* ⚠ Kisi SERAGAM, dan itu keputusan yang diambil setelah mencoba
+          kebalikannya. Versi asimetris (kartu pertama membentang penuh, tiga
+          sisanya di dua kolom) DICOBA dan dibuang: tiga sisa di dua kolom
+          menyisakan satu kartu yatim di baris terakhir, yang di layar terbaca
+          sebagai kisi yang gagal memuat — bukan sebagai penekanan. Irama
+          halaman ini dipecah di tempat lain (daftar modul), bukan di sini. */}
       <ul
         style={{
           ...landingGrid(2, 280),
@@ -100,8 +112,24 @@ export async function LandingFeatures() {
       >
         {features.map((feature) => (
           <li key={feature.title}>
-            <Card style={{ height: "100%", background: landingFill(feature.hue) }}>
-              <CardContent style={{ display: "flex", gap: "var(--ant-margin)" }}>
+            <Card
+              data-landing-card=""
+              style={{
+                height: "100%",
+                background: landingFillSoft(feature.hue),
+                borderRadius: "var(--sai-landing-radius)",
+                /* Tepi DICABUT di sini, dan hanya di sini: kartu ini berdiri
+                   di atas seksi POLOS, jadi nadanya sendiri yang menggambar
+                   batasnya. Aturan "tepi tidak boleh dicabut" di landing.md
+                   berlaku untuk kartu di atas PITA — di sana selisih kartu
+                   terhadap pita hanya 1,01–1,06:1 di tema gelap dan tepi itu
+                   satu-satunya pemisahnya. Di sini tidak ada pita. */
+                border: "none",
+              }}
+            >
+              <CardContent
+                style={{ display: "flex", gap: "var(--ant-margin)" }}
+              >
                 {/* Ikon dekoratif: kotaknya `aria-hidden`, jadi span
                     `role="img"` bawaan ikon AntD tidak ikut dibacakan sesudah
                     judul yang sudah mengatakan hal yang sama. Ukurannya
@@ -119,7 +147,7 @@ export async function LandingFeatures() {
                     justifyContent: "center",
                     width: ICON_BOX,
                     height: ICON_BOX,
-                    borderRadius: "var(--ant-border-radius-lg)",
+                    borderRadius: "50%",
                     background: landingChip(feature.hue),
                     color: landingGlyph(feature.hue),
                     fontSize: "var(--ant-font-size-xl)",

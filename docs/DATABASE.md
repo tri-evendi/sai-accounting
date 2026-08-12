@@ -209,8 +209,10 @@ menyertakannya di antara kendali dan perusahaan).
 **Aturan yang tidak boleh dilanggar:**
 
 - **Pengguna basis data aplikasi tidak menyentuh `sai_platform` di jalur
-  permintaan biasa.** Karena GRANT pola `sai\_%` (docs/MULTI-COMPANY.md §3) ikut
-  mencakup nama `sai_platform`, pisahkan di sisi KREDENSIAL:
+  permintaan biasa.** Pola GRANT yang dianjurkan sekarang (`sai\_t%`,
+  docs/MULTI-COMPANY.md §3) memang TIDAK mencakup `sai_platform` — tetapi
+  pemasangan lama memakai `sai\_%`, yang mencakupnya. Yang menentukan tetap sisi
+  KREDENSIAL, bukan pola nama:
   `PLATFORM_DATABASE_URL` memakai pengguna tersendiri (`sai_billing`) yang hanya
   berhak atas `sai_platform` — bukan pengguna `sai` milik buku besar.
 - **Tidak ada FK lintas-basis-data.** Kolom `tenant_id` di setiap tabel platform

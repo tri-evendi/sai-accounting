@@ -32,7 +32,11 @@ import { LandingNav } from "@/components/landing/landing-nav";
 import { LANDING_STYLE } from "@/components/landing/landing-scale";
 import { getT } from "@/lib/i18n/server";
 
-export async function LandingShell({ children }: { children: React.ReactNode }) {
+export async function LandingShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const t = await getT();
 
   return (

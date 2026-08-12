@@ -28,6 +28,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Permission } from "@/lib/authz";
+import { encodeUnlockCookie, NAMA_COOKIE_KUNCI } from "@/lib/company-unlock";
 
 /* ── Tepian yang dipalsukan ──────────────────────────────────────────────────
  * Hanya LIMA hal: sesi (auth), header permintaan (lingkup perusahaan yang
@@ -82,9 +83,14 @@ const state = vi.hoisted(() => ({
   userOverrides: [] as Array<{ permission: string; allowed: boolean }>,
   /** Slug PT yang "sedang dibuka" menurut alamat — sumber header lingkup. */
   activeSlug: null as string | null,
+  /** Cookie kunci buku — diisi di `beforeEach`, lihat catatan di `vi.mock`. */
+  unlockCookie: "" as string,
 }));
 
 const TENANT_SLUG = "tenant-uji";
+
+/** `users.id` pemanggil di seluruh berkas ini — sama dengan sesi di bawah. */
+const USER_ID = "1";
 
 vi.mock("@/lib/auth", () => ({
   auth: async () => state.session,
@@ -101,6 +107,19 @@ vi.mock("next/headers", () => ({
         : name === "x-company-slug"
           ? state.activeSlug
           : null,
+  }),
+  /*
+   * Kunci buku (otentikasi ulang, `lib/company-unlock.ts`) berdiri PALING AWAL
+   * di `gateAfterCompany`, jadi tanpa cookie ini setiap tes di berkas ini akan
+   * memantul ke `/unlock` sebelum sempat menyentuh gerbang suspensi yang
+   * memang sedang diuji. Yang dipalsukan hanya PEMBACAAN cookienya; nilainya
+   * ditandatangani sungguhan oleh `encodeUnlockCookie`, jadi tes ini tetap
+   * gagal kalau verifikasi tanda tangannya rusak — bukan cangkang yang selalu
+   * mengiyakan.
+   */
+  cookies: async () => ({
+    get: (name: string) =>
+      name === NAMA_COOKIE_KUNCI ? { name, value: state.unlockCookie } : undefined,
   }),
 }));
 
@@ -196,6 +215,20 @@ let nextCompanyId = 9000;
 function seedCompany(tenantStatus: string | null): number {
   nextCompanyId += 1;
   const id = nextCompanyId;
+  /*
+   * Buku setiap PT yang di-seed dianggap SUDAH terbuka. Berkas ini menguji
+   * gerbang suspensi, sedangkan gerbang kunci buku (otentikasi ulang,
+   * `lib/company-unlock.ts`) berdiri lebih awal — tanpa baris ini setiap tes
+   * memantul ke `/unlock` sebelum sempat menyentuh yang sedang diuji.
+   *
+   * Cookienya DITANDATANGANI sungguhan, bukan cangkang yang selalu mengiyakan:
+   * kalau verifikasi tanda tangan atau pengikatan ke `users.id` rusak, tes di
+   * berkas ini ikut merah.
+   */
+  state.unlockCookie = encodeUnlockCookie({
+    u: USER_ID,
+    c: [...state.companies.keys(), id].map((c) => [c, Date.now() + 60 * 60 * 1000] as const),
+  });
   state.companies.set(id, {
     slug: `pt-uji-${id}`,
     name: `PT Uji ${id}`,
@@ -244,7 +277,7 @@ function routeParams() {
 
 /** Beranda PT yang sedang dibuka — tujuan setiap pantulan penolakan. */
 function homePath(): string {
-  return `/t/${TENANT_SLUG}/${state.activeSlug}/dashboard`;
+  return `/t/${TENANT_SLUG}/${state.activeSlug}`;
 }
 
 async function expectRedirect(promise: Promise<unknown>, url: string): Promise<void> {
@@ -254,6 +287,7 @@ async function expectRedirect(promise: Promise<unknown>, url: string): Promise<v
 beforeEach(() => {
   state.session = null;
   state.activeSlug = null;
+  state.unlockCookie = "";
   state.userOverrides = [];
   state.companies.clear();
   invalidateTenantState();

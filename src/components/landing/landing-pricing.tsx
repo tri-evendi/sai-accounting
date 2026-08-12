@@ -24,6 +24,7 @@
  * boleh mengosongkan halaman yang menjelaskan produknya.
  */
 import { CheckOutlined } from "@ant-design/icons";
+import { JsonLd } from "@/components/landing/landing-jsonld";
 import {
   LANDING_NOTE,
   LANDING_SURFACE,
@@ -31,13 +32,20 @@ import {
   landingFill,
   landingGrid,
 } from "@/components/landing/landing-scale";
-import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
+import {
+  LandingSection,
+  LandingSectionIntro,
+} from "@/components/landing/landing-section";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { BUSINESS_MODULES } from "@/lib/business-modules";
+import { APP_NAME, CURRENCIES } from "@/lib/constants";
+import { LOCALES } from "@/lib/i18n/config";
 import { getT } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
+import { planDescriptionKey } from "@/lib/plan-copy";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
@@ -67,7 +75,11 @@ const QUOTA_ROW: React.CSSProperties = {
 const CHECK: React.CSSProperties = {
   flexShrink: 0,
   marginTop: 2,
-  color: "var(--ant-color-money-positive)",
+  /* ⚠ BUKAN `colorMoneyPositive` — baris kuota menyatakan "termasuk", bukan
+     uang masuk. Alasan lengkap di `landing-modules.tsx` pada centang yang
+     sama; keduanya harus bergerak bersama, sebab dua centang berbeda warna
+     untuk arti yang sama justru menyiratkan arti yang berbeda. */
+  color: "var(--ant-color-primary)",
   fontSize: "var(--ant-font-size-lg)",
 };
 
@@ -84,27 +96,71 @@ export async function LandingPricing() {
 
   return (
     <LandingSection id="harga" tone="indigo">
-      <LandingSectionIntro title={t("landing.pricingHeading")}>
+      <LandingSectionIntro
+        eyebrow={t("landing.eyebrowPricing")}
+        title={t("landing.pricingHeading")}
+      >
         {t("landing.pricingBody")}
       </LandingSectionIntro>
 
       {plans === null ? (
-        <Card style={{ marginTop: "var(--ant-margin-lg)", background: LANDING_SURFACE }}>
+        <Card
+          style={{
+            marginTop: "var(--ant-margin-lg)",
+            background: LANDING_SURFACE,
+          }}
+        >
           <CardContent>
             <p style={LANDING_NOTE}>{t("landing.pricingUnavailable")}</p>
           </CardContent>
         </Card>
       ) : plans.length === 0 ? (
-        <Card style={{ marginTop: "var(--ant-margin-lg)", background: LANDING_SURFACE }}>
+        <Card
+          style={{
+            marginTop: "var(--ant-margin-lg)",
+            background: LANDING_SURFACE,
+          }}
+        >
           <CardContent>
             <p style={LANDING_NOTE}>{t("landing.pricingEmpty")}</p>
           </CardContent>
         </Card>
       ) : (
         <>
+          {/* `SoftwareApplication` + penawarannya, dibangkitkan dari `plans`
+              yang SAMA yang merender kartunya. Paket rundingan tidak ikut
+              sebagai `Offer`: harganya 0 di katalog karena memang dirundingkan,
+              dan menerbitkan "IDR 0" sebagai penawaran yang bisa dibaca mesin
+              adalah bentuk paling harfiah dari kegagalan yang sudah dijaga di
+              layar ("Rp 0 terbaca sebagai gratis") — kali ini dibaca oleh mesin
+              pencari, yang akan memajangnya sebagai harga. */}
+          <JsonLd
+            data={{
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: APP_NAME,
+              applicationCategory: "BusinessApplication",
+              operatingSystem: "Web",
+              offers: plans
+                .filter((plan) => !plan.contactOnly)
+                .map((plan) => ({
+                  "@type": "Offer",
+                  name: plan.name,
+                  price: plan.priceMonthly,
+                  priceCurrency: plan.currency,
+                })),
+            }}
+          />
           <ul
             style={{
-              ...landingGrid(3, 260),
+              /* Kolomnya DIHITUNG dari jumlah paket, bukan dipatok 3.
+                 Semaian mengapalkan tiga paket dan hanya DUA yang `isPublic`
+                 (`internal` milik penyedia tidak ditawarkan), jadi kisi yang
+                 dipatok tiga menghasilkan dua kartu setengah lebar dengan
+                 rongga di dalamnya — di setiap pemasangan, bukan hanya di
+                 lingkungan pengembangan. Dibatasi 3 supaya katalog berisi
+                 lima paket tidak melahirkan lima kolom sempit. */
+              ...landingGrid(Math.min(plans.length, 3), 260),
               listStyle: "none",
               margin: 0,
               marginTop: "var(--ant-margin-lg)",
@@ -129,11 +185,13 @@ export async function LandingPricing() {
                     yang penuh untuk satu kartu, tanpa tiga kartu yang
                     berteriak bersamaan. */}
                 <Card
+                  data-landing-card=""
                   style={{
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
                     background: LANDING_SURFACE,
+                    borderRadius: "var(--sai-landing-radius)",
                     /* Sorotan paket: tepi merek + cincin setebal 1px. Ia
                        penanda KETIGA — yang pertama lencana berteks di
                        kepalanya, yang kedua nada kepala itu sendiri. */
@@ -162,8 +220,8 @@ export async function LandingPricing() {
                          dua sudut siku di luar tepi kartu yang membulat —
                          cacat yang hanya terlihat sesudah kepalanya berwarna,
                          jadi ia tidak pernah muncul sebelum perubahan ini. */
-                      borderTopLeftRadius: "var(--ant-border-radius-lg)",
-                      borderTopRightRadius: "var(--ant-border-radius-lg)",
+                      borderTopLeftRadius: "var(--sai-landing-radius)",
+                      borderTopRightRadius: "var(--sai-landing-radius)",
                     }}
                   >
                     <h3
@@ -179,7 +237,14 @@ export async function LandingPricing() {
                         tepi berwarna: tepi saja tidak terbaca oleh siapa pun
                         yang tidak membedakan warnanya (MASTER.md
                         §Anti-Patterns). */}
-                    {plan.isRecommended && <Badge variant="success">{t("landing.pricingRecommended")}</Badge>}
+                    {plan.isRecommended && (
+                      /* `default`, bukan `success` — "direkomendasikan" adalah
+                         keputusan penjualan, bukan status berhasil. Alasan yang
+                         sama dengan lencana modul inti. */
+                      <Badge variant="default">
+                        {t("landing.pricingRecommended")}
+                      </Badge>
+                    )}
                   </CardHeader>
                   <CardContent
                     style={{
@@ -196,7 +261,12 @@ export async function LandingPricing() {
                       <p style={PRICE}>{t("landing.pricingContactPrice")}</p>
                     ) : (
                       <>
-                        <p style={{ ...PRICE, fontVariantNumeric: "tabular-nums" }}>
+                        <p
+                          style={{
+                            ...PRICE,
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
                           {formatMoney(plan.priceMonthly, plan.currency)}
                           <span
                             style={{
@@ -209,17 +279,57 @@ export async function LandingPricing() {
                           </span>
                         </p>
                         {plan.priceYearly !== null && (
-                          <p style={{ ...LANDING_NOTE, fontVariantNumeric: "tabular-nums" }}>
+                          <p
+                            style={{
+                              ...LANDING_NOTE,
+                              fontVariantNumeric: "tabular-nums",
+                            }}
+                          >
                             {formatMoney(plan.priceYearly, plan.currency)}
                             {t("platform.plansPerYear")}
                           </p>
                         )}
                       </>
                     )}
-                    {plan.description && <p style={LANDING_NOTE}>{plan.description}</p>}
+                    {/* Deskripsi lewat KUNCI KAMUS, bukan kolom basis data.
+                        Sampai perubahan ini baris ini merender
+                        `plan.description` apa adanya — literal Indonesia dari
+                        `scripts/seed-plans.ts` — sehingga kartu Pro berbahasa
+                        Inggris berbunyi "Sampai tiga PT, lima belas pengguna."
+                        tepat di atas baris kuota "3 companies / 15 users":
+                        satu fakta, dua bahasa, tiga baris berjarak. Alasan
+                        lengkap + kenapa bukan kolom per bahasa: `lib/plan-copy.ts`.
+                        Paket buatan operator tidak punya kunci dan jatuh ke
+                        kolomnya, jadi ia tetap tampil. */}
+                    {(() => {
+                      const kunci = planDescriptionKey(plan.key);
+                      const deskripsi = kunci ? t(kunci) : plan.description;
+                      return deskripsi ? (
+                        <p style={LANDING_NOTE}>{deskripsi}</p>
+                      ) : null;
+                    })()}
                     {/* Kuota memakai kunci yang SAMA dengan halaman paket di
                         dalam aplikasi: dua kalimat untuk angka yang sama akan
                         berbeda pada hari salah satunya disunting. */}
+                    {/* Label "Termasuk" di atas daftar kuota.
+                        Tanpa itu baris centang menggantung tepat di bawah
+                        nominal tanpa mengatakan HUBUNGANNYA dengan angka itu —
+                        pembaca harus menyimpulkan sendiri bahwa "3 perusahaan"
+                        adalah yang ia DAPAT, bukan yang ia bayar. Di kartu
+                        harga, menyimpulkan adalah gesekan. */}
+                    <p
+                      style={{
+                        margin: 0,
+                        marginTop: "var(--ant-margin-xxs)",
+                        fontSize: "var(--ant-font-size-sm)",
+                        fontWeight: "var(--ant-font-weight-strong)",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                        color: "var(--ant-color-text-secondary)",
+                      }}
+                    >
+                      {t("landing.pricingIncluded")}
+                    </p>
                     <ul
                       style={{
                         display: "flex",
@@ -245,14 +355,22 @@ export async function LandingPricing() {
                         <>
                           <li style={QUOTA_ROW}>
                             <CheckOutlined aria-hidden="true" style={CHECK} />
-                            <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                              {t("platform.plansQuotaCompanies", { max: plan.maxCompanies })}
+                            <span
+                              style={{ fontVariantNumeric: "tabular-nums" }}
+                            >
+                              {t("platform.plansQuotaCompanies", {
+                                max: plan.maxCompanies,
+                              })}
                             </span>
                           </li>
                           <li style={QUOTA_ROW}>
                             <CheckOutlined aria-hidden="true" style={CHECK} />
-                            <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                              {t("platform.plansQuotaUsers", { max: plan.maxUsers })}
+                            <span
+                              style={{ fontVariantNumeric: "tabular-nums" }}
+                            >
+                              {t("platform.plansQuotaUsers", {
+                                max: plan.maxUsers,
+                              })}
                             </span>
                           </li>
                         </>
@@ -284,7 +402,10 @@ export async function LandingPricing() {
                          satu ajakan yang diulang, bukan tiga pilihan yang
                          bersaing. Paket rundingan `outline`: tujuannya beda
                          (mailto), dan itu memang aksi lain. */
-                      <div data-landing-actions="" style={{ marginTop: "auto" }}>
+                      <div
+                        data-landing-actions=""
+                        style={{ marginTop: "auto" }}
+                      >
                         {plan.contactOnly ? (
                           <Button
                             href={`mailto:${contactEmail}?subject=${encodeURIComponent(plan.name)}`}
@@ -293,9 +414,13 @@ export async function LandingPricing() {
                             {t("landing.pricingContactCta")}
                           </Button>
                         ) : (
-                          <Button href="/register" variant="primary">
+                          /* `ButtonLink` — rute internal (#289). Kartu
+                             rundingan di atas tetap `Button href` karena
+                             tujuannya `mailto:`, yaitu justru tautan KELUAR
+                             yang tidak boleh dinavigasi sisi-klien. */
+                          <ButtonLink href="/register" variant="primary">
                             {t("landing.heroPrimary")}
-                          </Button>
+                          </ButtonLink>
                         )}
                       </div>
                     )}
@@ -305,6 +430,76 @@ export async function LandingPricing() {
             ))}
           </ul>
 
+          {/* ══ YANG DIDAPAT SETIAP PAKET ═══════════════════════════════════
+              Kartu paket hanya menjawab "apa BEDANYA" (kuota). Yang tidak
+              dijawab siapa pun sampai perubahan ini adalah pertanyaan yang
+              justru lebih dulu muncul: *apa yang saya dapat terlepas dari
+              paket mana pun.* Tanpa itu pembaca menyimpulkan bahwa modul,
+              bahasa, dan mata uang ikut dijatah — padahal tidak.
+
+              Ketiga angkanya DIHITUNG dari registri yang sama dengan strip
+              bukti di hero, bukan diketik: modul baru muncul di sini tanpa ada
+              yang perlu ingat. Ia juga mengisi ketidakseimbangan visual yang
+              lahir dari dua kartu berukuran beda isi. */}
+          <div
+            style={{
+              marginTop: "var(--ant-margin)",
+              borderRadius: "var(--sai-landing-radius)",
+              background: landingFill("indigo"),
+              padding: "var(--ant-padding)",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "var(--ant-font-size-sm)",
+                fontWeight: "var(--ant-font-weight-strong)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--ant-color-text-secondary)",
+              }}
+            >
+              {t("landing.pricingAllTitle")}
+            </p>
+            <dl
+              style={{
+                ...landingGrid(3, 160),
+                margin: 0,
+                marginTop: "var(--ant-margin-sm)",
+              }}
+            >
+              {[
+                {
+                  v: String(BUSINESS_MODULES.length),
+                  l: t("landing.factModules"),
+                },
+                { v: String(LOCALES.length), l: t("landing.factLanguages") },
+                { v: CURRENCIES.join(" · "), l: t("landing.factCurrencies") },
+              ].map((f) => (
+                <div
+                  key={f.l}
+                  style={{ display: "flex", flexDirection: "column-reverse" }}
+                >
+                  <dt style={{ ...LANDING_NOTE }}>{f.l}</dt>
+                  <dd
+                    style={{
+                      margin: 0,
+                      fontSize: "var(--ant-font-size-lg)",
+                      fontWeight: "var(--ant-font-weight-strong)",
+                    }}
+                  >
+                    {f.v}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {/* Catatan uji coba & PPN sebagai BLOK BERPERMUKAAN, bukan kalimat
+              lepas. Keduanya mengubah angka yang baru saja dibaca orang (yang
+              tertagih = harga + PPN), dan kalimat telanjang di bawah tiga
+              kartu adalah bentuk paling mudah untuk dilewati mata. Tepinya
+              menahan mata satu ketukan lebih lama, tanpa menjadi peringatan. */}
           <p
             style={{
               ...LANDING_NOTE,
@@ -317,7 +512,8 @@ export async function LandingPricing() {
                 paket `trial` selama TRIAL_DAYS hari, dan angkanya diambil
                 dari konstanta yang sama dengan yang menghitungnya. */}
             {t("landing.pricingTrialNote", { days: TRIAL_DAYS })}
-            {ppnEnabled && ` ${t("landing.pricingTaxNote", { rate: DEFAULT_TAX_RATE })}`}
+            {ppnEnabled &&
+              ` ${t("landing.pricingTaxNote", { rate: DEFAULT_TAX_RATE })}`}
           </p>
         </>
       )}

@@ -140,7 +140,7 @@ describe("pendaratan menurut peran tenant", () => {
 
   it("member (tanpa urusan akun) mendarat di BUKU", () => {
     expect(resolvePostLoginPath(false, withCompany("member"), null)).toBe(
-      "/t/acme/pusat/dashboard"
+      "/t/acme/pusat"
     );
   });
 

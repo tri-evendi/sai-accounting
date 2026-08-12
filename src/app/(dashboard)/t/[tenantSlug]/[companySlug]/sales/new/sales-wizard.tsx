@@ -632,11 +632,15 @@ export function SalesWizard({
                     patch((d) => ({ ...d, contractId: v == null ? null : Number(v) }));
                   }}
                 />
+                {/* Ukuran bawaan, bukan `sm`: `align="flex-end"` menyejajarkan
+                    tombol ini dengan dasar `ServerSearchableSelect` di kolom
+                    kisi sebelahnya (40px) — kembar dari baris yang sama di
+                    `invoices/new/invoice-form.tsx`. MASTER.md §Satu baris
+                    kendali = satu ukuran. */}
                 <Flex align="flex-end">
                   <Button
                     type="button"
                     variant="secondary"
-                    size="sm"
                     disabled={!outstanding || outstanding.pull.contract.length === 0}
                     onClick={pullFromContract}
                   >

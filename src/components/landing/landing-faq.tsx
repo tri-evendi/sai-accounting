@@ -30,9 +30,15 @@
  * `aria-expanded`, dan pencarian di dalam halaman (Ctrl+F membuka panelnya di
  * peramban modern) tanpa satu baris skrip.
  */
+import Link from "next/link";
+
 import { DownOutlined } from "@ant-design/icons";
-import { LANDING_NOTE, LANDING_SURFACE } from "@/components/landing/landing-scale";
-import { LandingSection, LandingSectionIntro } from "@/components/landing/landing-section";
+import { JsonLd } from "@/components/landing/landing-jsonld";
+import { LANDING_NOTE, landingFill } from "@/components/landing/landing-scale";
+import {
+  LandingSection,
+  LandingSectionIntro,
+} from "@/components/landing/landing-section";
 import { getT } from "@/lib/i18n/server";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
@@ -41,17 +47,49 @@ export async function LandingFaq() {
   const t = await getT();
 
   const items = [
-    { q: t("landing.faqTrialQ"), a: t("landing.faqTrialA", { days: TRIAL_DAYS }) },
+    {
+      q: t("landing.faqTrialQ"),
+      a: t("landing.faqTrialA", { days: TRIAL_DAYS }),
+    },
     { q: t("landing.faqAfterTrialQ"), a: t("landing.faqAfterTrialA") },
     { q: t("landing.faqQuotaQ"), a: t("landing.faqQuotaA") },
-    { q: t("landing.faqTaxQ"), a: t("landing.faqTaxA", { rate: DEFAULT_TAX_RATE }) },
+    {
+      q: t("landing.faqTaxQ"),
+      a: t("landing.faqTaxA", { rate: DEFAULT_TAX_RATE }),
+    },
     { q: t("landing.faqIsolationQ"), a: t("landing.faqIsolationA") },
     { q: t("landing.faqExportQ"), a: t("landing.faqExportA") },
   ];
 
   return (
-    <LandingSection id="tanya" width="narrow">
-      <LandingSectionIntro title={t("landing.faqHeading")} />
+    /* ⚠ `width` DIBIARKAN LEBAR, dan kolom bacanya dipasang pada `<dl>` saja.
+       Sebelumnya seksi ini `width="narrow"` (48rem), yang memusatkan SELURUH
+       isinya — termasuk judulnya. Akibatnya tepi kiri halaman melompat ke
+       dalam tepat satu seksi lalu kembali keluar, dan di layar itu terbaca
+       sebagai salah sejajar, bukan sebagai kolom baca yang disengaja.
+       Yang memang perlu sempit hanyalah teks yang dibaca berurutan, jadi
+       hanya itu yang disempitkan. */
+    <LandingSection id="tanya">
+      {/* `FAQPage` dibangkitkan dari `items` DI ATAS — array yang sama yang
+          merender panelnya. Ini yang membuat data terstruktur tidak bisa
+          menyimpang dari halamannya: pertanyaan ketujuh memperbarui keduanya
+          sekaligus, dan tidak ada salinan kedua untuk dilupakan. Alasan
+          lengkap + kenapa `<` diloloskan: `landing-jsonld.tsx`. */}
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: items.map((item) => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        }}
+      />
+      <LandingSectionIntro
+        eyebrow={t("landing.eyebrowFaq")}
+        title={t("landing.faqHeading")}
+      />
 
       {/* Seksi ini sengaja seksi POLOS — dua wilayah berwarna berturut-turut
           (harga, lalu ajakan penutup) membutuhkan satu tempat istirahat di
@@ -65,9 +103,18 @@ export async function LandingFaq() {
              yaitu satu-satunya penanda yang dimiliki pengguna keyboard. */
           margin: 0,
           marginTop: "var(--ant-margin-lg)",
-          borderRadius: "var(--ant-border-radius-lg)",
-          border: "1px solid var(--ant-color-border-secondary)",
-          background: LANDING_SURFACE,
+          /* Kolom baca hidup DI SINI sekarang, bukan di seksinya — lihat
+             catatan pada `<LandingSection>` di atas. Tanpa `marginInline`
+             otomatis: ia rata kiri bersama judulnya, sejajar dengan setiap
+             seksi lain. */
+          maxWidth: "var(--sai-landing-measure-narrow)",
+          borderRadius: "var(--sai-landing-radius)",
+          /* ⚠ TANPA tepi. Panel ini berdiri di seksi POLOS, jadi nadanya
+             sendiri yang menggambar batasnya — persis alasan yang sama dengan
+             kartu manfaat & kartu keamanan. Sebelumnya ia `surface` + garis
+             1px, dan garis itulah yang membuat blok enam pertanyaan terbaca
+             sebagai kotak yang digambar, bukan sebagai bidang. */
+          background: landingFill("brand"),
           paddingInline: "var(--ant-padding-lg)",
         }}
       >
@@ -112,13 +159,40 @@ export async function LandingFaq() {
                   }}
                 />
               </summary>
-              <dd style={{ ...LANDING_NOTE, margin: 0, paddingBottom: "var(--ant-padding)" }}>
+              <dd
+                style={{
+                  ...LANDING_NOTE,
+                  margin: 0,
+                  paddingBottom: "var(--ant-padding)",
+                }}
+              >
                 {item.a}
               </dd>
             </details>
           </div>
         ))}
       </dl>
+
+      {/* Enam pertanyaan tidak mungkin menutup semuanya, dan pembaca yang
+          pertanyaannya TIDAK ada di sini sebelumnya sampai di ujung seksi
+          tanpa jalan ke mana pun — persis di titik ia paling mungkin pergi.
+          Dokumentasi publik sudah ada; yang kurang hanya penunjuknya. */}
+      <p
+        style={{
+          ...LANDING_NOTE,
+          maxWidth: "var(--sai-landing-measure-narrow)",
+          marginTop: "var(--ant-margin-lg)",
+        }}
+      >
+        {t("landing.faqMoreText")}{" "}
+        <Link
+          href="/docs"
+          data-landing-link=""
+          style={{ color: "var(--ant-color-link)", textDecoration: "none" }}
+        >
+          {t("landing.faqMoreCta")} →
+        </Link>
+      </p>
     </LandingSection>
   );
 }

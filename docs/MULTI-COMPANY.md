@@ -404,15 +404,85 @@ Hak itu dibatasi **pola nama**, bukan diberikan menyeluruh:
 
 ```bash
 docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
-  GRANT ALL PRIVILEGES ON \`sai\_%\`.* TO '"'"'$MARIADB_USER'"'"'@'"'"'%'"'"';
+  GRANT CREATE, ALTER, DROP, INDEX, REFERENCES,
+        SELECT, INSERT, UPDATE, DELETE
+    ON \`sai\_t%\`.* TO '"'"'$MARIADB_USER'"'"'@'"'"'%'"'"';
   FLUSH PRIVILEGES;"'
 ```
 
-`sai\_%` berarti aplikasi hanya bisa menyentuh basis data yang namanya
-berawalan `sai_` — dan kode memaksa awalan yang sama
-(`COMPANY_DATABASE_PREFIX`). Dua sisi yang saling menjaga: satu di server, satu
-di kode. Tanpa GRANT ini halamannya tetap berguna, hanya jalurnya berbeda:
-administrator membuat basis data kosong lebih dulu, lalu penyediaan mengisinya.
+Polanya: `sai\_t%` cocok dengan `sai_t3_pt_movin_nusantara`,
+`sai_t7_pt_bumi_baru`, dan setiap nama yang DIBUAT penyediaan — sebab sejak
+issue #153 namanya selalu `sai_t{tenantId}_{slug}` (`databaseNameForSlug`). Ia
+**tidak** cocok dengan `sai_control`, `sai_platform`, maupun basis data warisan
+(`sai_production`, `sai_cv_maju`): hak atas nama-nama itu tetap diberikan satu
+per satu, jadi satu baris GRANT ini tidak diam-diam memperluas jangkauan
+aplikasi ke basis data yang bukan buku perusahaan. (Pemasangan lama memakai pola yang lebih longgar, `sai\_%`; ia juga
+jalan, tetapi ikut mencakup `sai_platform` — persis yang diperingatkan
+docs/DATABASE.md §Platform.)
+
+Tiga hal yang mudah salah pada baris di atas, dan semuanya membuatnya sunyi
+alih-alih merah:
+
+- **`\_` bukan salah ketik.** Di dalam `GRANT`, nama basis data adalah pola
+  bergaya `LIKE`: `_` di sana berarti "satu karakter apa saja". Tanpa garis
+  miring, `sai_t%` juga cocok dengan `saixt…` — lebih luas dari yang dimaksud.
+- **Backtick, bukan kutip tunggal.** `'sai\_t%'.*` ditolak parser.
+- **Hibah tidak berlaku surut untuk sesi yang sedang hidup.** Setelah
+  `FLUSH PRIVILEGES`, koneksi yang sudah terbuka di pool aplikasi masih memakai
+  hak lama; halaman penyediaan baru mulus setelah aplikasinya di-restart
+  (`docker compose restart app`) atau pool-nya berputar sendiri.
+
+Memeriksanya tanpa membuat perusahaan: `SHOW GRANTS FOR 'sai'@'%';` — barisnya
+harus menyebut ``` `sai\_t%` ```.
+
+Dua sisi yang saling menjaga: kode memaksa awalan `sai_`
+(`COMPANY_DATABASE_PREFIX`), server memaksa pola yang sama. Tanpa GRANT ini
+halamannya tetap berguna, hanya jalurnya berbeda: administrator membuat basis
+data kosong lebih dulu, lalu penyediaan mengisinya.
+
+#### Kalau halaman itu berhenti di "Membuat basis data" (galat 1044)
+
+Inilah bentuknya di log server (di layar pengguna yang muncul kalimat berbahasa
+tugas — lihat catatan di bawah):
+
+```
+(conn:67709, no: 1044, SQLState: 42000) Access denied for user 'sai'@'%'
+to database 'sai_t3_pt_movin_nusantara_cakrawala'
+```
+
+**Itu bukan bug aplikasi** — itu hibah yang belum pernah dijalankan di server
+ini. Jalankan blok GRANT di atas (sebagai root), restart aplikasinya, lalu ulangi
+dari halaman yang sama: penyediaan menulis registry PALING AKHIR, jadi kegagalan
+di tahap ini tidak meninggalkan perusahaan yang terdaftar. Bila hak itu memang
+tidak akan pernah diberikan, jalur satunya tetap terbuka: administrator membuat
+basis datanya manual —
+
+```sql
+CREATE DATABASE `sai_t3_pt_movin_nusantara_cakrawala`
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- `\_` juga di sini: di GRANT (dan HANYA di GRANT) `_` adalah wildcard, jadi
+-- nama yang tidak di-escape diam-diam menjadi pola yang lebih luas.
+GRANT CREATE, ALTER, DROP, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE
+  ON `sai\_t3\_pt\_movin\_nusantara\_cakrawala`.* TO 'sai'@'%';
+FLUSH PRIVILEGES;
+```
+
+— lalu penyediaan yang sama mengisinya (basis data yang sudah ada **dan masih
+kosong** dipakai apa adanya; yang sudah berisi tabel ditolak, supaya tidak ada
+buku yang tertimpa). Nama yang harus dibuat persis sama dengan yang dipratinjau
+formulirnya.
+
+⚠ Yang TIDAK boleh disarankan sebagai jalan pintas: `GRANT ALL PRIVILEGES ON
+*.*`. Ia memberi aplikasi hak atas seluruh server — termasuk `mysql.user` —
+demi satu operasi yang jarang.
+
+**Yang dilihat pengguna** sejak perbaikan galat ini: kalimat "pengguna basis
+data aplikasi belum berhak membuat basis data baru di server ini — hubungi
+administrator server Anda", bukan teks mariadb. Galat mentahnya (nomor koneksi,
+SQLState, pernyataan SQL, nama pengguna basis data) hanya ada di log server;
+pemetaannya murni dan teruji — `provisionErrorMessage`
+(`src/lib/company-provisioning-shared.ts`), dijaga
+`tests/company-provisioning.test.tsx`.
 
 Migration diterapkan oleh aplikasi SENDIRI, bukan lewat Prisma CLI (image
 produksi tidak memuatnya). Pembukuannya ditulis ke `_prisma_migrations` dengan

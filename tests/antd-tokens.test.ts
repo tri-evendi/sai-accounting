@@ -27,6 +27,10 @@ import {
   SIDER_BG_DARK,
   BORDER_TOKENS_DARK,
   BORDER_TOKENS_LIGHT,
+  BRAND_PRIMARY_DARK,
+  BRAND_PRIMARY_LIGHT,
+  BRAND_SOLID_DARK,
+  BRAND_SOLID_LIGHT,
   BRAND_TEXT_DARK,
   BRAND_TEXT_LIGHT,
   DANGER_BUTTON_DARK,
@@ -40,6 +44,7 @@ import {
   TABLE_HEAD_BG_DARK,
   TABLE_HEAD_BG_LIGHT,
   borderTokens,
+  brandPrimary,
   brandTextTokens,
   dangerButtonTokens,
   moneyPalette,
@@ -281,21 +286,50 @@ describe("token kustom tetap berasal dari palet AntD", () => {
     expect(MONEY_TOKENS_DARK.colorMoneyInfo).toBe(step(LIGHT.colorPrimary, "dark")[6]);
   });
 
-  it("token merek = blue-7/8/9 dari benih colorPrimary yang sama", () => {
-    const light = step(LIGHT.colorPrimary, "light");
-    const dark = step(LIGHT.colorPrimary, "dark");
-    expect(BRAND_TEXT_LIGHT.colorBrandText).toBe(light[6]);
-    expect(BRAND_TEXT_LIGHT.colorBrandTextHover).toBe(light[7]);
-    expect(BRAND_TEXT_LIGHT.colorBrandTextActive).toBe(light[8]);
-    expect(BRAND_TEXT_DARK.colorBrandText).toBe(dark[6]);
-    expect(BRAND_TEXT_DARK.colorBrandTextHover).toBe(dark[7]);
-    expect(BRAND_TEXT_DARK.colorBrandTextActive).toBe(dark[8]);
+  it("token merek TIDAK lagi diturunkan dari tangga biru AntD", () => {
+    /*
+     * ⚠ ASERSI INI DIBALIK saat warna merek menjadi NAVY.
+     *
+     * Sampai itu, token merek adalah blue-7/8/9 dari benih `colorPrimary`
+     * bawaan AntD, dan tes ini mengunci hubungan tersebut. Pemilik mengganti
+     * keputusannya: merek kini navy institusional, yang memang BUKAN anak
+     * tangga mana pun di tangga biru AntD.
+     *
+     * Yang dijaga sekarang justru kebalikannya — bahwa tak seorang pun
+     * mengembalikannya diam-diam ke tangga AntD "supaya rapi", sebab itu akan
+     * memulihkan biru bawaan framework sebagai warna merek tanpa satu pun
+     * keputusan yang tertulis.
+     */
+    const tanggaTerang = step(LIGHT.colorPrimary, "light");
+    const tanggaGelap = step(LIGHT.colorPrimary, "dark");
+    for (const nilai of Object.values(BRAND_TEXT_LIGHT)) {
+      expect(tanggaTerang).not.toContain(nilai);
+    }
+    for (const nilai of Object.values(BRAND_TEXT_DARK)) {
+      expect(tanggaGelap).not.toContain(nilai);
+    }
+
+    // Satu sumber: teks merek terang = warna merek terang, bukan salinan lain.
+    expect(BRAND_TEXT_LIGHT.colorBrandText).toBe(BRAND_PRIMARY_LIGHT);
   });
 
-  it("colorPrimary tetap bawaan AntD — tidak ada brand kustom yang kembali", () => {
-    // Keputusan pemilik: #1677ff, dan #1E40AF lama tidak dihidupkan lagi.
-    expect(LIGHT.colorPrimary).toBe("#1677ff");
-    expect(MONEY_TOKENS_LIGHT.colorMoneyInfo).toBe(BRAND_TEXT_LIGHT.colorBrandText);
+  it("colorPrimary adalah navy kustom, BUKAN bawaan AntD", () => {
+    /*
+     * Kebalikan dari asersi lama ("tetap bawaan AntD"). `LIGHT.colorPrimary`
+     * di bawah adalah token BAWAAN AntD — ia memang tetap `#1677ff`, sebab itu
+     * milik AntD; yang berubah adalah nilai yang DIPAKAI aplikasi ini.
+     */
+    expect(BRAND_PRIMARY_LIGHT).toBe("#1E3A5F");
+    expect(BRAND_PRIMARY_LIGHT).not.toBe(LIGHT.colorPrimary);
+    expect(brandPrimary("dark")).toBe(BRAND_PRIMARY_DARK);
+
+    /*
+     * ⚠ `colorMoneyInfo` TIDAK lagi sama dengan teks merek. Dulu keduanya
+     * kebetulan blue-7 yang sama. Sejak merek menjadi navy keduanya berpisah,
+     * dan itu benar: "info" adalah bahasa UANG (sejajar positif/negatif/
+     * menunggu), bukan identitas merek. Dikunci supaya perpisahan itu disengaja.
+     */
+    expect(MONEY_TOKENS_LIGHT.colorMoneyInfo).not.toBe(BRAND_TEXT_LIGHT.colorBrandText);
   });
 });
 
@@ -343,12 +377,52 @@ describe("warna merek sebagai TEKS", () => {
   });
 
   it("rasio terhitung cocok dengan tabel di kepala antd-tokens.ts", () => {
-    expect(round(worst(BRAND_TEXT_LIGHT.colorBrandText, "light"))).toBe(5.65);
-    expect(round(worst(BRAND_TEXT_LIGHT.colorBrandTextHover, "light"))).toBe(8.23);
-    expect(round(worst(BRAND_TEXT_LIGHT.colorBrandTextActive, "light"))).toBe(11.08);
-    expect(round(worst(BRAND_TEXT_DARK.colorBrandText, "dark"))).toBe(4.66);
-    expect(round(worst(BRAND_TEXT_DARK.colorBrandTextHover, "dark"))).toBe(6.69);
-    expect(round(worst(BRAND_TEXT_DARK.colorBrandTextActive, "dark"))).toBe(9.01);
+    expect(round(worst(BRAND_TEXT_LIGHT.colorBrandText, "light"))).toBe(10.55);
+    expect(round(worst(BRAND_TEXT_LIGHT.colorBrandTextHover, "light"))).toBe(12.27);
+    expect(round(worst(BRAND_TEXT_LIGHT.colorBrandTextActive, "light"))).toBe(15.22);
+    expect(round(worst(BRAND_TEXT_DARK.colorBrandText, "dark"))).toBe(4.84);
+    expect(round(worst(BRAND_TEXT_DARK.colorBrandTextHover, "dark"))).toBe(6.07);
+    expect(round(worst(BRAND_TEXT_DARK.colorBrandTextActive, "dark"))).toBe(7.63);
+  });
+});
+
+describe("isian merek yang memikul teks terang (lambang)", () => {
+  /**
+   * ⚠ Penjaga ini lahir dari kegagalan NYATA saat merek menjadi navy.
+   *
+   * `BrandMark` memakai latar merek + glif `colorTextLightSolid` (putih).
+   * Selama merek biru, `colorPrimary` kebetulan cocok untuk kedua peran. Navy
+   * memisahkan keduanya: di tema gelap `colorPrimary` sengaja TERANG (perannya
+   * teks), dan glif putih di atasnya jatuh ke **2,98:1** — lambang produk yang
+   * lenyap di tema gelap, dan tak satu pun tes yang melihatnya.
+   */
+  const LABEL_TERANG = "#ffffff";
+
+  it("glif terang di atas isian merek lolos 4,5:1 di KEDUA tema", () => {
+    expect(contrast(LABEL_TERANG, BRAND_SOLID_LIGHT)).toBeGreaterThanOrEqual(AA);
+    expect(contrast(LABEL_TERANG, BRAND_SOLID_DARK)).toBeGreaterThanOrEqual(AA);
+  });
+
+  it("isian merek BUKAN colorPrimary — keduanya berpisah justru di tema gelap", () => {
+    // Di tema terang keduanya memang sama; yang membuat token ini ada adalah
+    // tema gelap, dan di situlah perpisahannya wajib.
+    expect(BRAND_SOLID_LIGHT).toBe(BRAND_PRIMARY_LIGHT);
+    expect(BRAND_SOLID_DARK).not.toBe(BRAND_PRIMARY_DARK);
+  });
+
+  it("memakai colorPrimary sebagai isian lambang MEMANG gagal — inilah sebabnya", () => {
+    /*
+     * Angka yang membenarkan token ini, dikunci supaya alasannya tidak menjadi
+     * cerita: kalau suatu hari ia lolos, token ini boleh dicabut — dengan
+     * sengaja, bukan karena seseorang menyederhanakan.
+     */
+    const dirender = (
+      theme.getDesignToken({
+        algorithm: theme.darkAlgorithm,
+        token: { colorPrimary: BRAND_PRIMARY_DARK },
+      }) as unknown as Record<string, string>
+    ).colorPrimary;
+    expect(contrast(LABEL_TERANG, dirender)).toBeLessThan(3);
   });
 });
 
@@ -361,12 +435,20 @@ describe("label tombol primer", () => {
     expect(contrast(LABEL, LIGHT.colorPrimary)).toBeLessThan(AA);
   });
 
-  it("di tema GELAP isian bawaan justru lolos — jadi tidak diubah", () => {
-    // Asimetri yang sama seperti token uang: satu tema tidak bisa dijadikan
-    // patokan untuk yang lain.
-    expect(contrast(LABEL, DARK.colorPrimary)).toBeCloseTo(5.19, 1);
-    expect(contrast(LABEL, DARK.colorPrimary)).toBeGreaterThanOrEqual(AA);
-    expect(PRIMARY_BUTTON_DARK.colorPrimary).toBe(DARK.colorPrimary);
+  it("isian GELAP kini navy kustom — bawaan AntD tidak lagi dipakai", () => {
+    /*
+     * ⚠ ASERSI INI DIBALIK bersama pergantian merek ke navy.
+     *
+     * Dulu isian gelap = bawaan AntD (`#1668dc`), sebab bawaan itu kebetulan
+     * sudah lolos dan tidak perlu disentuh. Navy mengubah premisnya: navy tua
+     * yang dipakai tema TERANG hanya 1,60:1 terhadap halaman gelap, jadi tema
+     * gelap wajib punya nilainya sendiri — dan nilai itu harus lolos DUA ambang
+     * sekaligus (label putih ≥4,5 dan bidang ≥3 terhadap permukaan terburuk).
+     */
+    expect(PRIMARY_BUTTON_DARK.colorPrimary).not.toBe(DARK.colorPrimary);
+    expect(contrast(LABEL, PRIMARY_BUTTON_DARK.colorPrimary)).toBeCloseTo(5.06, 1);
+    expect(contrast(LABEL, PRIMARY_BUTTON_DARK.colorPrimary)).toBeGreaterThanOrEqual(AA);
+    expect(round(worst(PRIMARY_BUTTON_DARK.colorPrimary, "dark"))).toBe(3.25);
   });
 
   it("colorPrimaryHover bawaan terang justru MEMPERBURUK label", () => {

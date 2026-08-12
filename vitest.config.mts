@@ -25,6 +25,14 @@ export default defineConfig({
     env: {
       DATABASE_URL: "mysql://test:test@127.0.0.1:3306/test",
       CONTROL_DATABASE_URL: "mysql://test:test@127.0.0.1:3306/test_control",
+      /*
+       * Rahasia penandatangan kunci buku (`lib/company-unlock.ts`). Nilainya
+       * sembarang; yang penting ADA — modul itu sengaja MELEMPAR tanpa rahasia,
+       * sebab tanda tangan yang bisa dikarang siapa pun lebih buruk daripada
+       * tidak ada kunci: ia terlihat seperti perlindungan. Tes yang membuktikan
+       * lemparan itu menyetel ulang variabelnya sendiri.
+       */
+      AUTH_SECRET: "rahasia-uji-jangan-dipakai-di-mana-pun-selain-tes",
     },
   },
 });

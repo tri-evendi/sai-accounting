@@ -34,6 +34,7 @@
  * `precedence` yang menyasar atribut `data-skeleton`, bukan kelas.
  */
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { TILE_CONTENT, TILE_HEADER } from "@/components/ui/stat-tile";
 
 /** Balok kerangka. Warnanya `fillSecondary`, bukan `fillQuaternary`: yang
  *  terakhir itu latar halus untuk bidang lebar, dan sebagai BALOK di atas
@@ -69,23 +70,21 @@ export default function PlatformLoading() {
             gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
           }}
         >
-          {/* Radius 8px, sama dengan `borderRadiusLG` AntD yang dipakai
-              `QuotaMeter` sejak #191 — sudut yang meleset dari isinya adalah
-              lompatan tata letak juga. */}
+          {/* Ubinnya `Card` + anatomi `ui/stat-tile.ts` — BERKAS YANG SAMA yang
+              dipakai `QuotaMeter` dan `StatCard`, bukan kotak setara yang
+              ditulis ulang di sini. Tepi, radius, bayangan, dan padding karena
+              itu tidak bisa meleset dari isi yang menggantikannya; kerangka
+              yang bentuknya meleset justru menambah lompatan tata letak. */}
           {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{
-                padding: 16,
-                borderRadius: 8,
-                border: "1px solid var(--ant-color-border-secondary)",
-                background: "var(--ant-color-bg-container)",
-              }}
-            >
-              <div style={bar(96, 16)} />
-              <div style={{ ...bar(80, 28), marginTop: 8 }} />
-              <div style={{ ...bar("100%", 8, 999), marginTop: 12 }} />
-            </div>
+            <Card key={i}>
+              <CardHeader style={TILE_HEADER}>
+                <div style={bar(96, 22)} />
+              </CardHeader>
+              <CardContent style={TILE_CONTENT}>
+                <div style={bar(80, 32)} />
+                <div style={{ ...bar("100%", 8, 999), marginTop: 8 }} />
+              </CardContent>
+            </Card>
           ))}
         </div>
 

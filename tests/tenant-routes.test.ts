@@ -61,6 +61,9 @@ describe("bentuk jalur bertenant", () => {
     expect(tenantPath("acme", "cv-maju", "/invoices/12")).toBe("/t/acme/cv-maju/invoices/12");
     expect(tenantPath("acme", "cv-maju", "invoices")).toBe("/t/acme/cv-maju/invoices");
     expect(tenantPath("acme", "cv-maju", "/")).toBe("/t/acme/cv-maju/");
+    /* Beranda buku = AKAR perusahaan, tanpa segmen. Pasangan baliknya diuji di
+       `parseTenantPath` di bawah; keduanya harus bergerak bersama. */
+    expect(tenantPath("acme", "cv-maju", "/dashboard")).toBe("/t/acme/cv-maju");
   });
 
   it("mengenali jalur yang sudah bertenant — supaya pantulan tidak memantul ke dirinya sendiri", () => {
@@ -79,7 +82,10 @@ describe("bentuk jalur bertenant", () => {
     expect(parseTenantPath("/t/acme/cv-maju")).toEqual({
       tenantSlug: "acme",
       companySlug: "cv-maju",
-      rest: "/",
+      /* Akar perusahaan memetakan balik ke jalur APLIKASI berandanya, bukan
+         "/" — yang terakhir itu halaman pendaratan pemasaran, dan tak satu pun
+         tabel jalur-aplikasi (menu, tur, docs) mengenalnya. */
+      rest: "/dashboard",
     });
     expect(parseTenantPath("/invoices/12")).toBeNull();
     expect(parseTenantPath("/t/acme")).toBeNull();
@@ -105,7 +111,16 @@ describe("daftar segmen yang sudah dimigrasikan", () => {
    * mati diam-diam. Keduanya merah di sini.
    */
   it("sama persis dengan direktori bertenant sungguhan di semua grup rute", () => {
-    const actual = [...new Set(SCOPED_DIRS.flatMap(directoriesIn))].sort();
+    /*
+     * `dashboard` SATU-SATUNYA segmen tanpa direktori, dan itu disengaja:
+     * alamat kanonik beranda buku adalah AKAR perusahaan (`/t/{t}/{c}`), jadi
+     * halamannya duduk di `[companySlug]/page.tsx`, bukan di sebuah
+     * subdirektori. Ia tetap terdaftar di sini karena bentuk jalur-APLIKASI-nya
+     * (`/dashboard`) masih dipakai seluruh app sebagai kunci identitas menu,
+     * tur, dan docs — dan proxy harus tetap memantulkannya. Lihat
+     * `COMPANY_HOME_PATH` di `lib/tenant-routes.ts`.
+     */
+    const actual = [...new Set(SCOPED_DIRS.flatMap(directoriesIn)), "dashboard"].sort();
     expect([...MIGRATED_ROOT_SEGMENTS].sort()).toEqual(actual);
   });
 

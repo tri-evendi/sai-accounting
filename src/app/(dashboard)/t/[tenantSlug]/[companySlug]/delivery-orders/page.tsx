@@ -209,6 +209,7 @@ export default async function DeliveryOrdersPage({
           type="text"
           name="search"
           placeholder={t("common.search")}
+          aria-label={t("common.search")}
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />

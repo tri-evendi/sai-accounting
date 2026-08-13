@@ -84,7 +84,7 @@ export function NewReconciliationForm() {
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("reconciliation.accountPeriodTitle")}</CardTitle>
+            <CardTitle level={2}>{t("reconciliation.accountPeriodTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Row gutter={[token.margin, token.margin]}>

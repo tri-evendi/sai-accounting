@@ -131,7 +131,7 @@ export function StatCard({
   const content = (
     <Card style={href ? { height: "100%" } : undefined}>
       <CardHeader style={TILE_HEADER}>
-        <CardTitle style={TILE_LABEL}>{title}</CardTitle>
+        <CardTitle level={2} style={TILE_LABEL}>{title}</CardTitle>
       </CardHeader>
       <CardContent style={TILE_CONTENT}>
         {/* Warna DASARnya `colorText`; `tone` menimpanya hanya ketika ia memang

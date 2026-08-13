@@ -254,7 +254,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       {/* ── Period list ── */}
       <Card style={{ flex: `1 1 ${PANEL_BASIS}px`, minWidth: 0 }}>
         <CardHeader>
-          <CardTitle>{t("periods.listTitle")}</CardTitle>
+          <CardTitle level={2}>{t("periods.listTitle")}</CardTitle>
         </CardHeader>
         <StaticTable
           columns={periodColumns}
@@ -278,7 +278,7 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
       <Card style={{ flex: `1 1 ${PANEL_BASIS}px`, minWidth: 0 }}>
         <CardHeader>
           <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-            <CardTitle>
+            <CardTitle level={2}>
               {summary ? t("periods.summaryOf", { label: summary.label }) : t("periods.summaryTitle")}
             </CardTitle>
             {selected && (

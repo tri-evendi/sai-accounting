@@ -104,7 +104,7 @@ export function EditConsigneeForm() {
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("consignees.dataTitle")}</CardTitle>
+            <CardTitle level={2}>{t("consignees.dataTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Row gutter={[token.margin, token.margin]}>

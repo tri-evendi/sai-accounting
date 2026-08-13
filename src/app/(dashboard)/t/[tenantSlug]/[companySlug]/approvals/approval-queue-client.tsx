@@ -454,7 +454,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       {/* ── Antrean penyetuju ── */}
       <Card data-tour="persetujuan-antrean">
         <CardHeader style={cardHeaderStyle}>
-          <CardTitle>{t("approvals.inboxTitle")}</CardTitle>
+          <CardTitle level={2}>{t("approvals.inboxTitle")}</CardTitle>
           <Badge variant={inbox.length > 0 ? "warning" : "default"}>
             <span>{t("approvals.docCount", { count: inbox.length })}</span>
           </Badge>
@@ -637,7 +637,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       {/* ── Pengajuan saya (notifikasi in-app) ── */}
       <Card data-tour="persetujuan-pengajuan">
         <CardHeader style={cardHeaderStyle}>
-          <CardTitle>{t("approvals.mineTitle")}</CardTitle>
+          <CardTitle level={2}>{t("approvals.mineTitle")}</CardTitle>
           {unread.length > 0 && (
             <Badge variant="warning">
               <span>{t("approvals.unreadBadge", { count: unread.length })}</span>
@@ -684,7 +684,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
       {decided.length > 0 && (
         <Card data-tour="persetujuan-riwayat">
           <CardHeader>
-            <CardTitle>
+            <CardTitle level={2}>
               <Flex align="center" gap={token.marginXS} style={{ display: "inline-flex" }}>
                 <SafetyCertificateOutlined aria-hidden="true" style={{ color: token.colorTextSecondary }} />
                 {t("approvals.historyTitle")}

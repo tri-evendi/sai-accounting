@@ -206,6 +206,7 @@ export default async function DocumentsPage({
           type="text"
           name="search"
           placeholder={t("common.search")}
+          aria-label={t("common.search")}
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />

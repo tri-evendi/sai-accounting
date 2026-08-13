@@ -672,6 +672,59 @@ export function tagStatusTokens(resolved: ResolvedTheme): TagStatusTokens {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Peran TEKS berstatus: colorSuccessText & saudaranya (issue #355)           */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * `colorSuccessText` / `colorWarningText` / `colorErrorText` / `colorInfoText`
+ * — celah terakhir yang tertinggal dari #186.
+ *
+ * ── Bagaimana ia lolos ─────────────────────────────────────────────────────
+ * #186 mengganti peran TEKS `colorSuccess` dan #187 mempersempitnya lagi ke
+ * `Tag`/`Badge`. Yang tak pernah disebut keduanya adalah keempat token
+ * `color*Text` — dan AntD MENURUNKANNYA dari bibit yang sama, sehingga
+ * `colorSuccessText` tetap `#52c41a`: **2,27:1**, angka yang sudah tercetak di
+ * kepala berkas ini sebagai contoh yang gagal.
+ *
+ * Audit produksi 13 Agustus 2026 menemukannya di halaman Tutup Buku. Kodenya
+ * justru BENAR — `period-manager.tsx` dengan hati-hati memisahkan warna ikon
+ * (`token.colorSuccess`, non-teks, ambang 3:1) dari warna kata
+ * (`token.colorSuccessText`) — tetapi token yang ia raih tidak pernah disetel.
+ * Hasilnya "· Aman" tercetak 11,2px hijau bawaan di atas putih: teks paling
+ * tidak terbaca di seluruh aplikasi, dan kebetulan ia adalah kalimat penenang
+ * pada layar yang mengunci pembukuan sebulan.
+ *
+ * ── Kenapa GLOBAL, bukan per komponen seperti `Tag` ────────────────────────
+ * `colorSuccess` dipersempit ke komponen karena ia punya peran sah lain: isian
+ * pekat dan ikon, di mana 3:1 memang cukup. `colorSuccessText` tidak punya
+ * peran lain — namanya sendiri menyatakan ia teks. Karena itu tak ada yang
+ * perlu dilindungi dari penggantian ini, dan mendaftarkannya global sekaligus
+ * menutup setiap pemakai berikutnya tanpa mereka perlu tahu apa-apa.
+ *
+ * Nilainya SAMA dengan warna uang (bukan angka baru), jadi tak ada salinan
+ * ketiga yang bisa berpisah: positif 5,12:1 min · menunggu 6,23 · negatif 6,00
+ * · info 5,65 di tema terang, dan 9,23 / 10,69 / 7,86 / 4,66 di tema gelap.
+ * `tests/money-tokens.test.ts` menghitung ulang angka-angka itu tiap suite
+ * berjalan, jadi versi AntD baru tidak bisa menggesernya diam-diam.
+ */
+export interface StatusTextTokens {
+  colorSuccessText: string;
+  colorWarningText: string;
+  colorErrorText: string;
+  colorInfoText: string;
+}
+
+export function statusTextTokens(resolved: ResolvedTheme): StatusTextTokens {
+  const money = moneyTokens(resolved);
+  return {
+    colorSuccessText: money.colorMoneyPositive,
+    colorWarningText: money.colorMoneyPending,
+    colorErrorText: money.colorMoneyNegative,
+    colorInfoText: money.colorMoneyInfo,
+  };
+}
+
+/* ------------------------------------------------------------------------ */
 /* Teks bantuan & placeholder (issue #207)                                    */
 /* ------------------------------------------------------------------------ */
 

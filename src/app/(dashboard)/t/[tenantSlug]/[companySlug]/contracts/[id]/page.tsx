@@ -450,7 +450,7 @@ export default async function ContractDetailPage({
       {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("contracts.chainTitle")}</CardTitle>
+          <CardTitle level={2}>{t("contracts.chainTitle")}</CardTitle>
           <p
             style={{
               margin: 0,
@@ -469,7 +469,7 @@ export default async function ContractDetailPage({
       {/* Sisa per baris kontrak — dikirim & difakturkan vs sisa (issue #15) */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("contracts.outstandingTitle")}</CardTitle>
+          <CardTitle level={2}>{t("contracts.outstandingTitle")}</CardTitle>
           <p
             style={{
               margin: 0,
@@ -548,7 +548,7 @@ export default async function ContractDetailPage({
       >
         <Card style={{ flex: `1 1 ${PAIR_BASIS}px`, minWidth: 0 }}>
           <CardHeader>
-            <CardTitle
+            <CardTitle level={2}
               style={{ display: "flex", alignItems: "center", gap: INLINE_GAP }}
             >
               <TruckOutlined aria-hidden style={{ color: "var(--ant-color-icon)" }} />
@@ -611,7 +611,7 @@ export default async function ContractDetailPage({
 
         <Card style={{ flex: `1 1 ${PAIR_BASIS}px`, minWidth: 0 }}>
           <CardHeader>
-            <CardTitle
+            <CardTitle level={2}
               style={{ display: "flex", alignItems: "center", gap: INLINE_GAP }}
             >
               <FileDoneOutlined aria-hidden style={{ color: "var(--ant-color-icon)" }} />
@@ -681,7 +681,7 @@ export default async function ContractDetailPage({
       {/* Contract Info */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("contracts.infoTitle")}</CardTitle>
+          <CardTitle level={2}>{t("contracts.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {/* `sm:grid-cols-2` diganti baris yang membungkus sendiri: satu kolom
@@ -739,7 +739,7 @@ export default async function ContractDetailPage({
           `style`, jadi berkas ini tetap nol `className`. */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
+          <CardTitle level={2}>{t("contracts.goodsTitle")}</CardTitle>
         </CardHeader>
         <StaticTable
           columns={itemColumns}
@@ -761,7 +761,7 @@ export default async function ContractDetailPage({
               gap: INLINE_GAP,
             }}
           >
-            <CardTitle>{t("contracts.paymentsTitle")}</CardTitle>
+            <CardTitle level={2}>{t("contracts.paymentsTitle")}</CardTitle>
             <div
               style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}
             >

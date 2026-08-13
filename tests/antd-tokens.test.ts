@@ -51,6 +51,7 @@ import {
   moneyTokens,
   neutralTextTokens,
   primaryButtonTokens,
+  statusTextTokens,
   tableHeadBg,
   type BorderTokens,
   type BrandTextTokens,
@@ -258,6 +259,127 @@ const step = (seed: string, mode: "light" | "dark") =>
   mode === "dark"
     ? generate(seed, { theme: "dark", backgroundColor: DARK.colorBgContainer })
     : generate(seed);
+
+/**
+ * Peran TEKS berstatus (issue #355) — dan pasangan yang tak pernah diukur.
+ *
+ * Dua kegagalan berbeda ditutup di sini, keduanya ditemukan audit produksi
+ * 13 Agustus 2026:
+ *
+ *  1. `colorSuccessText` & saudaranya DITURUNKAN AntD dari bibit yang sama
+ *     dengan `colorSuccess`, jadi mereka lolos dari #186/#187 dan tetap
+ *     2,27:1 — angka yang justru dicetak di kepala `antd-tokens.ts` sebagai
+ *     contoh yang gagal. Halaman Tutup Buku memakainya untuk kata "· Aman".
+ *
+ *  2. Teks merek di atas `colorPrimaryBg`. Metodologi berkas token menghitung
+ *     "min" terhadap tiga latar NETRAL; tint merek bukan salah satunya, jadi
+ *     pasangan ini tak pernah masuk hitungan sama sekali.
+ */
+describe("peran teks berstatus (#355)", () => {
+  for (const mode of ["light", "dark"] as const) {
+    it(`colorSuccessText & saudaranya lolos 4,5:1 di tema ${mode}`, () => {
+      const tokens = statusTextTokens(mode);
+      const applied = theme.getDesignToken({
+        algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token: tokens,
+      });
+      for (const role of [
+        "colorSuccessText",
+        "colorWarningText",
+        "colorErrorText",
+        "colorInfoText",
+      ] as const) {
+        for (const surface of [
+          applied.colorBgContainer,
+          applied.colorBgLayout,
+          applied.colorBgElevated,
+        ]) {
+          expect(
+            contrast(applied[role], surface),
+            `${role} di tema ${mode} atas ${surface}`
+          ).toBeGreaterThanOrEqual(AA);
+        }
+      }
+    });
+  }
+
+  /*
+   * Pembuktian bahwa perbaikannya memang PERLU: bawaan AntD gagal. Tanpa
+   * pasangan tes ini, tes di atas tetap hijau seandainya seseorang mencabut
+   * `statusTextTokens` dan bawaannya kebetulan membaik.
+   */
+  it("bawaan AntD untuk peran yang sama memang gagal — itu sebab perbaikannya ada", () => {
+    expect(contrast(LIGHT.colorSuccessText, LIGHT.colorBgContainer)).toBeLessThan(AA);
+    expect(round(contrast(LIGHT.colorSuccessText, LIGHT.colorBgContainer))).toBe(2.27);
+  });
+
+  /*
+   * `colorPrimaryBg` DIHITUNG dari `colorPrimary` merek, bukan dari bawaan
+   * AntD — kalau tidak, yang diukur adalah tint biru yang sudah tidak ada di
+   * layar sejak warna merek menjadi navy.
+   */
+  const withBrand = (mode: "light" | "dark") =>
+    theme.getDesignToken({
+      algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      token: { colorPrimary: brandPrimary(mode) },
+    });
+
+  it("teks merek di atas tint merek GAGAL di kedua tema — sebab kartunya memakai colorText", () => {
+    for (const mode of ["light", "dark"] as const) {
+      const t = withBrand(mode);
+      expect(
+        contrast(brandTextTokens(mode).colorBrandText, t.colorPrimaryBg),
+        `tema ${mode}`
+      ).toBeLessThan(AA);
+    }
+  });
+
+  it("colorText di atas tint merek LOLOS di kedua tema", () => {
+    for (const mode of ["light", "dark"] as const) {
+      const t = withBrand(mode);
+      expect(contrast(t.colorText, t.colorPrimaryBg), `tema ${mode}`).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
+  /*
+   * Penjaga permukaan: kedua kartu berlatar tint merek tidak boleh kembali
+   * memakai `--ant-color-link` untuk teksnya. Nilainya benar terhadap latar
+   * netral, dan justru itu yang membuat regresinya mudah terjadi lagi.
+   */
+  it("kartu berlatar tint merek mewarnai TEKS-nya dengan colorText", () => {
+    const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
+    for (const rel of ["components/reports/plain-summary.tsx", "components/shared/aging.tsx"]) {
+      const src = read(rel).replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(src, rel).toContain("var(--ant-color-primary-bg)");
+      expect(src, rel).toContain("var(--ant-color-text)");
+    }
+  });
+
+  /*
+   * IKON pun tidak bisa bertahan memakai warna merek di kartu ini.
+   *
+   * Dugaan pertama saat memperbaiki #355 adalah ikon boleh tetap `colorLink`,
+   * sebab ikon bukan teks dan ambangnya 3:1 (WCAG 1.4.11) — aturan yang sama
+   * yang membuat `colorSuccess` bawaan tetap sah untuk ikon di kepala
+   * `antd-tokens.ts`. Pengukuran membantahnya: di tema GELAP pasangannya hanya
+   * 2,98:1, jadi ia gagal bahkan pada ambang yang lebih longgar itu. Angka ini
+   * dipaku supaya kelonggaran tadi tidak dihidupkan lagi berdasarkan ingatan.
+   */
+  it("warna merek di atas tint merek gagal bahkan pada ambang non-teks di tema gelap", () => {
+    const dark = contrast(brandTextTokens("dark").colorBrandText, withBrand("dark").colorPrimaryBg);
+    expect(round(dark)).toBe(2.98);
+    expect(dark).toBeLessThan(3);
+
+    // Tema terang lolos 3:1 tetapi tetap gagal 4,5:1 — karena itu teksnya pindah.
+    const light = contrast(
+      brandTextTokens("light").colorBrandText,
+      withBrand("light").colorPrimaryBg
+    );
+    expect(round(light)).toBe(4.05);
+    expect(light).toBeGreaterThanOrEqual(3);
+    expect(light).toBeLessThan(AA);
+  });
+});
 
 describe("token kustom tetap berasal dari palet AntD", () => {
   /*

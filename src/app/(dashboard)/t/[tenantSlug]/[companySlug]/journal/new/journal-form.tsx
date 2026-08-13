@@ -160,7 +160,26 @@ export function NewJournalForm() {
 
   const totalDebit = lines.reduce((s, l) => s + base(l.debit, l.rate), 0);
   const totalCredit = lines.reduce((s, l) => s + base(l.credit, l.rate), 0);
-  const balanced = Math.round(totalDebit * 100) === Math.round(totalCredit * 100) && totalDebit > 0;
+
+  /*
+   * DUA pertanyaan, dan sampai issue #355 keduanya dijawab satu variabel.
+   *
+   * `balanced` di bawah menjawab "boleh disimpan?" — dan untuk itu `totalDebit
+   * > 0` memang wajib: jurnal kosong bukan jurnal. Tetapi LENCANA di baris
+   * total menjawab pertanyaan lain, "apakah kedua sisi cocok?", dan pada
+   * formulir yang belum diisi jawabannya bukan "tidak".
+   *
+   * Akibatnya formulir jurnal yang baru dibuka menyambut penggunanya dengan
+   * lencana MERAH berbunyi "Selisih Rp 0" — peringatan galat untuk keadaan
+   * yang sama sekali belum salah, pada layar yang justru paling menakutkan
+   * bagi pengguna awam akuntansi. Audit produksi 13 Agustus 2026 menemukannya.
+   *
+   * `sidesMatch` karena itu dipisah, dan keadaan "belum ada isian" mendapat
+   * lencana netralnya sendiri. Tombol simpannya tidak berubah sedikit pun.
+   */
+  const sidesMatch = Math.round(totalDebit * 100) === Math.round(totalCredit * 100);
+  const untouched = totalDebit === 0 && totalCredit === 0;
+  const balanced = sidesMatch && totalDebit > 0;
 
   function updateLine(i: number, patch: Partial<LineRow>) {
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -345,7 +364,11 @@ export function NewJournalForm() {
         debit: <Money value={totalDebit} currency="IDR" />,
         credit: <Money value={totalCredit} currency="IDR" />,
         currency: {
-          content: balanced ? (
+          /* Tiga keadaan, bukan dua — lihat catatan `sidesMatch` di atas.
+             Belum diisi = netral; sisi cocok = berhasil; sisanya = selisih. */
+          content: untouched ? (
+            <Badge variant="default">{t("journal.awaitingEntry")}</Badge>
+          ) : sidesMatch ? (
             <Badge variant="success">{t("journal.balanced")}</Badge>
           ) : (
             <Badge variant="danger">
@@ -380,7 +403,7 @@ export function NewJournalForm() {
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("journal.infoTitle")}</CardTitle>
+            <CardTitle level={2}>{t("journal.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Row gutter={[token.margin, token.margin]}>
@@ -430,7 +453,7 @@ export function NewJournalForm() {
 
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("journal.linesTitle")}</CardTitle>
+            <CardTitle level={2}>{t("journal.linesTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <StaticTable

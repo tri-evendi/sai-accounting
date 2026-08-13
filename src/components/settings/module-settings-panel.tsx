@@ -144,7 +144,7 @@ export function ModuleSettingsPanel() {
   return (
     <Card style={{ marginBottom: token.marginLG }}>
       <CardHeader>
-        <CardTitle>{t("modules.sectionTitle")}</CardTitle>
+        <CardTitle level={2}>{t("modules.sectionTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         <Typography.Paragraph type="secondary" style={{ marginBottom: token.margin }}>

@@ -301,6 +301,7 @@ export default async function InvoicesPage({
           type="text"
           name="search"
           placeholder={t("searchableSelect.searchPlaceholder")}
+          aria-label={t("searchableSelect.searchPlaceholder")}
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />

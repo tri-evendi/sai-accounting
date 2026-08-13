@@ -169,7 +169,7 @@ export function AuditLogPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("audit.title")}</CardTitle>
+        <CardTitle level={2}>{t("audit.title")}</CardTitle>
         <p
           style={{
             margin: 0,
@@ -270,5 +270,47 @@ function formatDetails(log: AuditEntry, t: TranslateFn): string {
     return `${d.itemName} · ${d.quantity ?? ""} ${d.type ?? ""}`.trim();
   }
   if (typeof d.name === "string") return String(d.name);
-  return JSON.stringify(d).slice(0, 80);
+
+  /*
+   * ── Dua jejak yang dulu tercetak sebagai JSON mentah (issue #355) ─────────
+   *
+   * Audit produksi 13 Agustus 2026 menemukan kolom Rincian berbunyi
+   * `{"coaCreated":0,"coaExisting":38,"journalNumb…` — potongan `JSON.stringify`
+   * di bawah, terpotong di tengah nama field. Barisnya berasal dari
+   * `setup.create`, yang detailnya memang tujuh field dan tak satu pun bernama
+   * `description`/`itemName`/`name`.
+   *
+   * Jejak audit dibaca justru saat sedang ada masalah. Struktur data internal
+   * yang bocor ke layar pada saat itu bukan cuma jelek — ia memaksa pembacanya
+   * menerjemahkan nama field sendiri, tepat ketika ia paling tidak punya waktu.
+   */
+  if (typeof d.coaCreated === "number" && typeof d.coaExisting === "number") {
+    const journal = typeof d.journalNumber === "string" ? d.journalNumber : null;
+    return journal
+      ? t("audit.setupDone", {
+          created: d.coaCreated,
+          existing: d.coaExisting,
+          journal,
+        })
+      : t("audit.setupDonePlain");
+  }
+
+  if (Array.isArray(d.modules)) {
+    return t("audit.modulesUpdated", { count: d.modules.length });
+  }
+
+  /*
+   * Sisanya: KOSONG, bukan JSON.
+   *
+   * Godaannya adalah menyimpan `JSON.stringify` sebagai cadangan "kalau-kalau
+   * berguna". Ia tidak berguna: dipotong 80 karakter, ia hampir selalu berhenti
+   * di tengah field, jadi yang sampai ke pembaca adalah setengah nama kunci
+   * tanpa nilainya. Kolom Tindakan sudah menyebut APA yang terjadi dan kolom
+   * Waktu/Pengguna menyebut siapa & kapan; rincian yang tak punya kalimat lebih
+   * jujur dinyatakan tidak ada. Jejak lengkapnya tetap utuh di basis data.
+   *
+   * Menambah jenis aksi baru = menambah satu cabang di atas, bukan melonggarkan
+   * kembali cabang ini.
+   */
+  return t("audit.unavailable");
 }

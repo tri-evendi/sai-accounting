@@ -211,7 +211,7 @@ export function ApprovalRules({
               gap: token.marginSM,
             }}
           >
-            <CardTitle>{t("approvals.rulesListTitle")}</CardTitle>
+            <CardTitle level={2}>{t("approvals.rulesListTitle")}</CardTitle>
             <Badge variant={active.length > 0 ? "success" : "default"}>
               <span>{t("approvals.activeCount", { count: active.length })}</span>
             </Badge>
@@ -247,7 +247,7 @@ export function ApprovalRules({
       <Col {...HALF}>
         <Card>
           <CardHeader>
-            <CardTitle>{t("approvals.addRuleTitle")}</CardTitle>
+            <CardTitle level={2}>{t("approvals.addRuleTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={create}>

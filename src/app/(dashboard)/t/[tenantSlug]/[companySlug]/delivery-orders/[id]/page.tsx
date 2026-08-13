@@ -164,7 +164,7 @@ export default async function DeliveryOrderDetailPage({
 
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("deliveryOrders.infoTitle")}</CardTitle>
+          <CardTitle level={2}>{t("deliveryOrders.infoTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {/* `sm:grid-cols-2` diganti baris yang membungkus sendiri: satu kolom
@@ -186,7 +186,7 @@ export default async function DeliveryOrderDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
+          <CardTitle level={2}>{t("deliveryOrders.goodsTitle")}</CardTitle>
         </CardHeader>
         {/* Tabelnya menempel tepi kartu — `CardContent px-0` lama hanya ada
             untuk itu, jadi pembungkusnya dilepas seluruhnya. */}

@@ -410,7 +410,7 @@ export function UsersClient({
           Penerima menentukan kata sandinya sendiri lewat tautan surel. */}
       {showInvite && (
         <Card style={blockGap}>
-          <CardHeader><CardTitle>{t("users.inviteTitle")}</CardTitle></CardHeader>
+          <CardHeader><CardTitle level={2}>{t("users.inviteTitle")}</CardTitle></CardHeader>
           <div style={{ paddingInline: token.paddingLG, paddingBottom: token.paddingLG }}>
             <Typography.Paragraph type="secondary">
               {t("users.inviteHint")}
@@ -505,7 +505,7 @@ export function UsersClient({
 
       {canInvite && invitations.length > 0 && (
         <Card style={blockGap}>
-          <CardHeader><CardTitle>{t("users.pendingInvites")}</CardTitle></CardHeader>
+          <CardHeader><CardTitle level={2}>{t("users.pendingInvites")}</CardTitle></CardHeader>
           <StaticTable
             columns={invitationColumns}
             rows={invitations}

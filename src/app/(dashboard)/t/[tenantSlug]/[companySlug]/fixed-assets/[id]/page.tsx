@@ -260,7 +260,7 @@ export default async function FixedAssetDetailPage({
       {asset.status === "disposed" ? (
         <Card style={{ marginBottom: SECTION_GAP }}>
           <CardHeader>
-            <CardTitle>{t("fixedAssets.disposalTitle")}</CardTitle>
+            <CardTitle level={2}>{t("fixedAssets.disposalTitle")}</CardTitle>
           </CardHeader>
           <dl
             style={{
@@ -314,7 +314,7 @@ export default async function FixedAssetDetailPage({
       <div style={grid(PANEL_BASIS, SECTION_GAP)}>
         <Card>
           <CardHeader>
-            <CardTitle>{t("fixedAssets.depreciationHistory")}</CardTitle>
+            <CardTitle level={2}>{t("fixedAssets.depreciationHistory")}</CardTitle>
           </CardHeader>
           {/* `sticky` + `maxHeight` berpasangan: jadwal panjang menggulung di
               dalam kartunya sendiri, judul kolomnya tetap terbaca. */}
@@ -341,7 +341,7 @@ export default async function FixedAssetDetailPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("fixedAssets.locationHistory")}</CardTitle>
+            <CardTitle level={2}>{t("fixedAssets.locationHistory")}</CardTitle>
           </CardHeader>
           <StaticTable<MoveLine>
             columns={moveColumns}

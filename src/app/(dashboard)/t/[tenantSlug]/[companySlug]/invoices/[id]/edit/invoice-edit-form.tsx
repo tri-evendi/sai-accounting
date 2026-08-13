@@ -246,7 +246,7 @@ export function EditInvoiceForm() {
 
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
-          <CardHeader><CardTitle>{t("invoices.dataTitle")}</CardTitle></CardHeader>
+          <CardHeader><CardTitle level={2}>{t("invoices.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
             <div style={twoColumnGrid(token.margin)}>
               <Input id="invoiceNo" label={t("invoices.invoiceNo")} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} required />
@@ -285,7 +285,7 @@ export function EditInvoiceForm() {
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-              <CardTitle>{t("invoices.goodsSoldTitle")}</CardTitle>
+              <CardTitle level={2}>{t("invoices.goodsSoldTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
                 <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
               </Button>

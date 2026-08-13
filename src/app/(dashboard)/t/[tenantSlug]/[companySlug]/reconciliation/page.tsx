@@ -241,7 +241,7 @@ export default async function ReconciliationListPage({
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>{t("reconciliation.listTitle", { count: totalCount })}</CardTitle>
+            <CardTitle level={2}>{t("reconciliation.listTitle", { count: totalCount })}</CardTitle>
           </CardHeader>
           <StaticTable<StatementRow>
             columns={columns}

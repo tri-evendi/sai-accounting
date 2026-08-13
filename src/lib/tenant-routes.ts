@@ -149,6 +149,45 @@ export function tenantPath(tenantSlug: string, companySlug: string, path: string
 }
 
 /**
+ * ALAMAT LAMA beranda buku — `/t/{tenant}/{company}/dashboard` — atau `null`.
+ *
+ * ══ KENAPA INI BUKAN PEKERJAAN `parseTenantPath` (issue #343) ══════════════
+ * Menjawabnya dari `parseTenantPath().rest` TIDAK BISA, dan pernah dicoba:
+ * fungsi itu sengaja MENORMALKAN akar perusahaan menjadi `COMPANY_HOME_PATH`,
+ * jadi `rest === "/dashboard"` benar untuk DUA jalur yang berbeda —
+ * `/t/acme/pusat/dashboard` (alamat lama, memang harus dipantulkan) dan
+ * `/t/acme/pusat` (akar, sudah kanonik). Normalisasi itu benar dan tidak boleh
+ * dicabut; yang salah adalah memakainya untuk pertanyaan ini.
+ *
+ * Penjaga tambahan `pathname.endsWith("/dashboard")` memisahkan keduanya —
+ * sampai SLUG PERUSAHAANNYA SENDIRI bernama `dashboard`. Untuk
+ * `/t/acme/dashboard` sisanya kosong (→ dinormalkan) DAN akhirannya cocok
+ * (karena yang cocok adalah slug-nya), sehingga tujuan pantulan dihitung sama
+ * persis dengan asalnya: 307 ke diri sendiri, tanpa henti, dan seluruh buku PT
+ * itu tidak bisa dibuka. `companyCreateSchema` menerima `dashboard` sebagai
+ * slug yang sah, jadi ini bukan bentuk yang mustahil lahir.
+ *
+ * Karena itu pertanyaannya dijawab dari SEGMEN MENTAH: tepat lima segmen,
+ * dengan `dashboard` benar-benar TERTULIS di posisi kelima. Hasilnya tujuan
+ * selalu berjumlah empat segmen sementara asalnya lima — berputar menjadi
+ * mustahil karena BENTUKNYA, bukan karena ada penjaga kedua yang mengintip.
+ */
+export function legacyCompanyHomePath(
+  pathname: string
+): { tenantSlug: string; companySlug: string } | null {
+  // ["", "t", tenant, company, "dashboard"] — tepat lima, tidak lebih.
+  const parts = pathname.split("/");
+  if (parts.length !== 5) return null;
+  if (parts[1] !== TENANT_ROUTE_PREFIX.slice(1)) return null;
+  if (`/${parts[4]}` !== COMPANY_HOME_PATH) return null;
+
+  const tenantSlug = parts[2];
+  const companySlug = parts[3];
+  if (!isValidSlug(tenantSlug) || !isValidSlug(companySlug)) return null;
+  return { tenantSlug, companySlug };
+}
+
+/**
  * ── HALAMAN yang alamatnya BERGANTI NAMA (issue #172) ──────────────────────
  *
  * `/tenant` adalah kosakata ARSITEKTUR, bukan kosakata pelanggan: yang dibuka

@@ -6,8 +6,8 @@ import { isDocsPath } from "@/lib/docs";
 import { resolvePostLoginPath } from "@/lib/post-login";
 import {
   COMPANY_HOME_PATH,
+  legacyCompanyHomePath,
   legacyTenantScopedPath,
-  parseTenantPath,
   renamedPagePath,
   tenantPath,
 } from "@/lib/tenant-routes";
@@ -283,12 +283,18 @@ export async function proxy(request: NextRequest) {
    * 307, sama alasannya dengan pantulan di bawah: 308/301 tersimpan di cache
    * peramban selamanya, dan alamat yang sudah di-cache tidak bisa ditarik
    * kembali kalau kelak keputusannya berubah.
+   *
+   * ⚠ Pertanyaan "apakah ini alamat lama?" dijawab `legacyCompanyHomePath`,
+   * BUKAN `parseTenantPath().rest` — yang terakhir menormalkan akar perusahaan
+   * menjadi `/dashboard` dan karenanya tidak bisa membedakan keduanya. Versi
+   * pertama pantulan ini memakainya, dan berputar tanpa henti pada PT yang
+   * slug-nya bernama `dashboard` (issue #343); alasan lengkapnya di sana.
    */
   if (!pathname.startsWith("/api/")) {
-    const bertenant = parseTenantPath(pathname);
-    if (bertenant && bertenant.rest === COMPANY_HOME_PATH && pathname.endsWith(COMPANY_HOME_PATH)) {
+    const lama = legacyCompanyHomePath(pathname);
+    if (lama) {
       const target = request.nextUrl.clone();
-      target.pathname = tenantPath(bertenant.tenantSlug, bertenant.companySlug, COMPANY_HOME_PATH);
+      target.pathname = tenantPath(lama.tenantSlug, lama.companySlug, COMPANY_HOME_PATH);
       return NextResponse.redirect(target, 307);
     }
   }

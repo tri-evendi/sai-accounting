@@ -149,6 +149,42 @@ export function tenantPath(tenantSlug: string, companySlug: string, path: string
 }
 
 /**
+ * SLUG PERUSAHAAN YANG DICADANGKAN (issue #346).
+ *
+ * ══ SATU NAMA, DAN KENAPA HANYA SATU ══════════════════════════════════════
+ * Awalan `/t/` ADA supaya slug pelanggan tidak pernah berebut ruang nama
+ * dengan jalur akar — alasannya di kepala berkas ini. Mencadangkan daftar
+ * panjang kata terlarang karena itu justru MELAWAN rancangan itu, dan setiap
+ * kata yang dicadangkan tanpa sebab adalah nama PT yang ditolak tanpa sebab.
+ *
+ * Yang benar-benar istimewa cuma satu: nilai `COMPANY_HOME_PATH`, sebab
+ * `tenantPath()` dan `parseTenantPath()` memetakannya secara khusus. PT yang
+ * memakainya tidak lagi RUSAK sejak #343 — pantulannya mustahil berputar apa
+ * pun slug-nya — tapi alamatnya terbaca sebagai teka-teki oleh manusia
+ * (`/t/acme/dashboard/dashboard` adalah alamat lama beranda PT `dashboard`),
+ * dan nama itu tidak dibutuhkan siapa pun sebagai nama PT.
+ *
+ * ⚠ DITURUNKAN, tidak diketik ulang. Daftar yang mengeja `"dashboard"` sendiri
+ * akan diam-diam meleset pada hari `COMPANY_HOME_PATH` berganti nama — dan
+ * melesetnya tidak berbunyi: yang tersisa adalah cadangan atas nama yang sudah
+ * tidak istimewa, sementara nama yang baru istimewa bebas dipilih.
+ */
+export const RESERVED_COMPANY_SLUGS: readonly string[] = [COMPANY_HOME_PATH.slice(1)];
+
+/**
+ * Apakah slug ini dicadangkan?
+ *
+ * Dipanggil dari TIGA jalan lahirnya sebuah PT, dan itu bukan pengulangan yang
+ * bisa dihapus: `companyCreateSchema` menjaga formulir dan `/api/companies`,
+ * tetapi `scripts/create-company.ts` dan `scripts/adopt-existing-company.ts`
+ * memvalidasi slug dengan regex mereka sendiri — aturan yang hanya hidup di
+ * zod tidak akan pernah dilihat keduanya.
+ */
+export function isReservedCompanySlug(slug: string): boolean {
+  return RESERVED_COMPANY_SLUGS.includes(slug.trim().toLowerCase());
+}
+
+/**
  * ALAMAT LAMA beranda buku — `/t/{tenant}/{company}/dashboard` — atau `null`.
  *
  * ══ KENAPA INI BUKAN PEKERJAAN `parseTenantPath` (issue #343) ══════════════

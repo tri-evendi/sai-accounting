@@ -3272,6 +3272,7 @@
     "tooManyOverrideRows": "覆盖规则行数过多。",
     "companyDatabasePrefix": "数据库名称必须以 \"sai_\" 开头",
     "companySlugInvalid": "标识只能包含小写字母、数字和连字符（例如 pt-bumi-baru）",
+    "companySlugReserved": "标识 \"dashboard\" 为系统保留 — 请另选一个",
     "companyDatabaseInvalid": "数据库名称只能包含小写字母、数字和下划线",
     "itemNameRequired": "请填写商品名称",
     "bagsMin0": "袋数必须为 0 或以上",

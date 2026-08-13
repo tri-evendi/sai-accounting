@@ -25,12 +25,15 @@ import {
   appPath,
   isTenantScopedPath,
   COMPANY_HOME_PATH,
+  RESERVED_COMPANY_SLUGS,
+  isReservedCompanySlug,
   isValidSlug,
   legacyCompanyHomePath,
   legacyTenantScopedPath,
   parseTenantPath,
   tenantPath,
 } from "@/lib/tenant-routes";
+import { companyCreateSchema } from "@/lib/validations/company";
 import { scopedHref } from "@/components/ui/app-link";
 import { activeNavHref } from "@/lib/nav";
 import { tourForPath } from "@/lib/tours";
@@ -178,6 +181,75 @@ describe("pantulan beranda buku tidak pernah berputar (issue #343)", () => {
     const proxy = readFileSync(join(SRC, "proxy.ts"), "utf8");
     expect(proxy).toContain("legacyCompanyHomePath");
     expect(proxy).not.toContain("pathname.endsWith(COMPANY_HOME_PATH)");
+  });
+});
+
+describe("slug perusahaan yang dicadangkan (issue #346)", () => {
+  it("berisi nama beranda, dan TIDAK ADA yang lain", () => {
+    /*
+     * Daftar ini menahan nama PT yang boleh dipilih pelanggan, jadi setiap
+     * tambahan harus dibayar alasannya. Awalan `/t/` sudah memisahkan ruang
+     * nama slug dari jalur akar (`/login`, `/invoices`, …) — mencadangkan
+     * kata-kata itu akan menolak nama PT yang sah tanpa sebab.
+     */
+    expect(RESERVED_COMPANY_SLUGS).toEqual([COMPANY_HOME_PATH.slice(1)]);
+  });
+
+  it("DITURUNKAN dari `COMPANY_HOME_PATH`, bukan diketik ulang", () => {
+    /*
+     * Inti issue #346. Daftar yang mengeja `"dashboard"` sendiri akan lulus
+     * setiap tes di berkas ini hari ini, lalu diam-diam meleset pada hari
+     * berandanya berganti nama: yang tersisa adalah cadangan atas nama yang
+     * sudah tidak istimewa, sementara nama yang BARU istimewa bebas dipilih.
+     * Melesetnya tidak berbunyi, jadi yang menjaganya harus bentuk sumbernya.
+     */
+    const src = readFileSync(join(SRC, "lib", "tenant-routes.ts"), "utf8");
+    const deklarasi = src
+      .split("\n")
+      .find((baris) => baris.includes("export const RESERVED_COMPANY_SLUGS"));
+    expect(deklarasi).toBeDefined();
+    expect(deklarasi).toContain("COMPANY_HOME_PATH");
+    expect(deklarasi).not.toMatch(/["'`]dashboard["'`]/);
+  });
+
+  it("mengenali nama yang dicadangkan apa pun bentuk ketikannya", () => {
+    expect(isReservedCompanySlug("dashboard")).toBe(true);
+    expect(isReservedCompanySlug("DASHBOARD")).toBe(true);
+    expect(isReservedCompanySlug("  dashboard  ")).toBe(true);
+    /* Yang MENGANDUNG namanya tidak ikut tercadang — hanya yang persis. */
+    expect(isReservedCompanySlug("dashboards")).toBe(false);
+    expect(isReservedCompanySlug("dash-board")).toBe(false);
+    expect(isReservedCompanySlug("pt-sai")).toBe(false);
+  });
+
+  it("skema pembuatan PT menolaknya — dengan pesan yang menjelaskan SEBABNYA", () => {
+    const ditolak = companyCreateSchema.safeParse({ name: "PT Uji", slug: "dashboard" });
+    expect(ditolak.success).toBe(false);
+    /* Bukan `companySlugInvalid`: bentuk slug-nya sah sempurna, yang salah
+       adalah namanya. Pesan "hanya boleh huruf kecil…" akan membuat orang
+       mengetik ulang slug yang sudah benar bentuknya. */
+    expect(JSON.stringify(ditolak.error?.issues)).toContain("validation.companySlugReserved");
+
+    expect(companyCreateSchema.safeParse({ name: "PT Uji", slug: "pt-uji" }).success).toBe(true);
+  });
+
+  it("KETIGA jalan lahirnya PT memanggil pagar yang sama", () => {
+    /*
+     * `companyCreateSchema` menjaga formulir dan `/api/companies`, tapi kedua
+     * skrip operator memvalidasi slug dengan regex mereka sendiri — aturan yang
+     * hanya hidup di zod tidak akan pernah mereka lihat. Tanpa tes ini, pagar
+     * itu tampak lengkap sambil membiarkan dua pintu terbuka.
+     */
+    const ROOT = join(__dirname, "..");
+    expect(readFileSync(join(SRC, "lib", "validations", "company.ts"), "utf8")).toContain(
+      "isReservedCompanySlug"
+    );
+    for (const skrip of ["create-company.ts", "adopt-existing-company.ts"]) {
+      const src = readFileSync(join(ROOT, "scripts", skrip), "utf8");
+      expect(src, `${skrip} tidak memanggil pagar slug dicadangkan`).toContain(
+        "isReservedCompanySlug("
+      );
+    }
   });
 });
 

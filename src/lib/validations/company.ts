@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { vmsg } from "@/lib/i18n/validation";
 import { COMPANY_DATABASE_PREFIX } from "@/lib/company-provisioning-shared";
+import { isReservedCompanySlug } from "@/lib/tenant-routes";
 
 /**
  * Membuat perusahaan baru (issue #104) — satu skema, dua sisi.
@@ -20,7 +21,14 @@ export const companyCreateSchema = z.object({
     .min(2, vmsg("validation.companySlugInvalid"))
     .max(40)
     .regex(/^[a-z0-9-]+$/, vmsg("validation.companySlugInvalid"))
-    .trim(),
+    .trim()
+    /* Nama yang dimaknai khusus oleh lapisan jalur — lihat
+       `RESERVED_COMPANY_SLUGS` di `lib/tenant-routes.ts` (issue #346). Skrip
+       operator memakai regex sendiri, jadi keduanya memanggil predikat yang
+       sama; pagar ini tidak menjaga mereka. */
+    .refine((v) => !isReservedCompanySlug(v), {
+      message: vmsg("validation.companySlugReserved"),
+    }),
   /**
    * Opsional: diturunkan dari slug bila kosong. Diisi manual pada pemasangan
    * yang penggunanya tidak boleh `CREATE DATABASE` — administrator membuat

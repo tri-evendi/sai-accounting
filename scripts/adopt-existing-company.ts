@@ -40,6 +40,7 @@ import path from "node:path";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { isReservedCompanySlug } from "../src/lib/tenant-routes";
 
 interface LegacyUser {
   id: number;
@@ -101,6 +102,14 @@ async function main() {
       'Usage: bunx tsx scripts/adopt-existing-company.ts --slug <slug> --emails <peta.json> [--name "Nama PT"] [--tenant-slug <slug>] [--owners a,b]\n' +
         "  slug: huruf kecil, angka, dan tanda hubung (mis. pt-sai)\n" +
         '  peta.json: { "<username>": "<email>", ... } — disiapkan operator (issue #134)'
+    );
+    process.exit(1);
+  }
+  /* Skrip ini memvalidasi slug dengan regexnya sendiri, jadi pagar di
+     `companyCreateSchema` tidak pernah melihatnya (issue #346). */
+  if (isReservedCompanySlug(slug)) {
+    console.error(
+      `ERROR: slug "${slug}" dicadangkan sistem — lapisan jalur memaknainya khusus. Pilih nama lain.`
     );
     process.exit(1);
   }

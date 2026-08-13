@@ -213,6 +213,29 @@ function formatFull(value: number): string {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
+/**
+ * Nominal DIPENDEKKAN untuk label sumbu ("12,5 jt"), issue #355.
+ *
+ * Hanya untuk sumbu: label sumbu rupiah yang penuh ("12.500.000") memakan
+ * lebar plot sampai batangnya nyaris tak tersisa ruang. Angka LENGKAPNYA tidak
+ * hilang ke mana-mana — ia tetap ada di tooltip dan di kartu ember di atas
+ * grafik, jadi aturan "setiap angka bisa ditelusuri" tetap utuh.
+ *
+ * Singkatannya mengikuti bahasa sumber (`jt`/`rb`) sebab ia menempel pada
+ * angka, bukan berdiri sebagai kalimat; `Intl.NumberFormat` dengan
+ * `notation: "compact"` tidak dipakai karena keluarannya untuk `id` adalah
+ * "12 jt" juga tetapi berbeda-beda antar versi ICU, dan sumbu yang berubah
+ * bentuk antar-lingkungan membuat tangkapan layar dokumentasi tak bisa
+ * dipercaya.
+ */
+function compactMoney(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `${formatFull(Math.round(value / 100_000_000) / 10)} m`;
+  if (abs >= 1_000_000) return `${formatFull(Math.round(value / 100_000) / 10)} jt`;
+  if (abs >= 1_000) return `${formatFull(Math.round(value / 100) / 10)} rb`;
+  return formatFull(value);
+}
+
 function formatMoney(value: number, currency: string): string {
   try {
     const localeMap: Record<string, string> = { IDR: "id-ID", USD: "en-US", CNY: "zh-CN" };
@@ -463,6 +486,253 @@ export function CashFlowChart({ data, currency }: CashFlowChartProps) {
         />
         <Bar dataKey="debit" fill={palette.moneyIn} name={t("finance.colMoneyIn")} radius={[4, 4, 0, 0]} maxBarSize={36} />
         <Bar dataKey="credit" fill={palette.moneyOut} name={t("finance.colMoneyOut")} radius={[4, 4, 0, 0]} maxBarSize={36} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Umur piutang / utang (issue #355)                                          */
+/* ------------------------------------------------------------------------ */
+
+export interface AgingChartDatum {
+  /** Nama ember, sudah diterjemahkan pemanggil ("0–30 hari"). */
+  label: string;
+  amount: number;
+}
+
+/**
+ * Batang umur piutang/utang — satu batang per ember.
+ *
+ * ── Kenapa laporan INI yang lebih dulu dapat grafik ────────────────────────
+ * Umur piutang sudah BERBENTUK grafik batang; ia hanya digambar sebagai lima
+ * kartu berjajar. Empat ember berurutan dari muda ke tua, masing-masing satu
+ * nilai — persis susunan yang dibuat untuk batang. Membacanya sebagai angka
+ * berarti pembacanya harus membandingkan lima bilangan panjang di kepalanya
+ * sendiri, padahal pertanyaan yang sebenarnya ("apakah tunggakan menumpuk di
+ * ember tua?") adalah pertanyaan tentang BENTUK, bukan tentang angka.
+ *
+ * ── Warna: gradasi umur, bukan penilaian benar/salah ──────────────────────
+ * Nadanya `statusTones` per POSISI — muda→tua = positif→menunggu→negatif,
+ * urutan yang sama dengan donat status di berkas ini, dan jangan diurutkan
+ * ulang (lihat kepala berkas). Ember 61–90 memakai nada "menunggu" yang sama
+ * dengan 31–60 karena hanya ada tiga nada untuk empat ember: yang dibedakan
+ * warna adalah TINGKAT kekhawatiran, bukan identitas embernya — identitasnya
+ * dibawa sumbu X, yang selalu ada.
+ *
+ * Warna karena itu tidak pernah penanda tunggal di sini: nama embernya tercetak
+ * di sumbu, dan tooltipnya menyebut nama + nominalnya sekaligus.
+ */
+export function AgingChart({
+  data,
+  currency,
+}: {
+  data: AgingChartDatum[];
+  currency: string;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const palette = chartPalette(token);
+
+  /*
+   * Semua ember nol = tidak ada tunggakan sama sekali. Itu kabar BAIK, dan
+   * menggambar empat batang setinggi nol untuk mengatakannya hanya membuat
+   * layar sibuk tanpa menambah satu pun informasi.
+   */
+  if (data.every((d) => d.amount <= 0)) {
+    return <ChartEmpty message={t("charts.noAging")} />;
+  }
+
+  const tones = [
+    palette.statusTones[0],
+    palette.statusTones[1],
+    palette.statusTones[1],
+    palette.statusTones[2],
+  ];
+
+  return (
+    <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+      <BarChart data={data} margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} vertical={false} />
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 11, fill: palette.tickStrong }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          tick={{ fontSize: 11, fill: palette.tick }}
+          axisLine={false}
+          tickLine={false}
+          width={72}
+          /* Sumbu uang dipendekkan (12 jt), bukan penuh: label sumbu penuh
+             pada nominal rupiah mendorong plotnya jadi sempit sekali. Angka
+             lengkapnya tetap ada di tooltip dan di kartu di atas grafik. */
+          tickFormatter={(v: number) => compactMoney(Number(v))}
+        />
+        <Tooltip
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          formatter={(value: any) => [formatMoney(Number(value ?? 0), currency), t("charts.seriesOutstanding")]}
+          cursor={{ fill: palette.cursor }}
+          contentStyle={tooltipSurface(token)}
+          labelStyle={tooltipLabelStyle(token)}
+        />
+        <Bar dataKey="amount" name={t("charts.seriesOutstanding")} radius={[4, 4, 0, 0]} maxBarSize={64}>
+          {data.map((d, i) => (
+            <Cell key={d.label} fill={tones[i] ?? palette.unknownTone} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Laba/Rugi bertingkat sebagai waterfall (issue #355)                        */
+/* ------------------------------------------------------------------------ */
+
+export interface WaterfallStep {
+  label: string;
+  /** Nilai langkah ini. Negatif = mengurangi (HPP, beban). */
+  value: number;
+  /** `subtotal` digambar dari nol — ia POSISI, bukan perubahan. */
+  kind: "delta" | "subtotal";
+}
+
+/**
+ * Waterfall Laba/Rugi — Penjualan → HPP → Laba Kotor → Beban → Laba Bersih.
+ *
+ * ── Kenapa waterfall, dan kenapa laporan ini yang memintanya ───────────────
+ * Laba/Rugi di aplikasi ini BERTINGKAT (#123): penjualan dikurangi HPP menjadi
+ * laba kotor, dikurangi beban menjadi laba usaha, dan seterusnya. Rantai itu
+ * adalah keseluruhan isi laporannya — dan dalam bentuk tabel ia harus dirakit
+ * ulang di kepala pembacanya, baris demi baris. Waterfall menggambarkannya apa
+ * adanya: batang naik menambah, batang turun mengurangi, batang dari nol
+ * adalah hasil antara.
+ *
+ * Untuk pemilik usaha awam inilah satu-satunya bentuk yang menjawab "uangnya
+ * habis ke mana" tanpa ia perlu tahu istilah satu pun.
+ *
+ * ── Mekanismenya: dua batang, satu tak terlihat ───────────────────────────
+ * recharts tidak punya waterfall bawaan. Yang digambar adalah dua `Bar`
+ * bertumpuk: `base` transparan yang mengangkat batangnya ke ketinggian yang
+ * benar, lalu `span` yang berwarna. Subtotal punya `base` nol, jadi ia berdiri
+ * dari dasar — pembedaan yang membuat "Laba Kotor" terbaca sebagai posisi,
+ * bukan sebagai tambahan lain.
+ *
+ * ── Warna bukan penanda tunggal ──────────────────────────────────────────
+ * Setiap batang bernama di sumbu X, dan tooltipnya menyebut nama + nominal.
+ * Nadanya mengikuti ARAH (masuk/keluar) memakai token uang yang sama dengan
+ * `Money` di tabel di atasnya, jadi angka di grafik dan angka di baris tidak
+ * bisa berbeda warna. Subtotal memakai nada netral `countPrimary`: ia bukan
+ * arah, ia hasil.
+ */
+
+interface WaterfallBar {
+  label: string;
+  /** Batang tak terlihat yang mengangkat `span` ke ketinggian yang benar. */
+  base: number;
+  span: number;
+  /** Nilai asli berikut tandanya — yang dibaca tooltip dan penentu nadanya. */
+  raw: number;
+  kind: WaterfallStep["kind"];
+}
+
+/**
+ * Menghitung kumulatif berjalan sebuah waterfall.
+ *
+ * Di tingkat MODUL, bukan di badan komponen: menjumlahkan berjalan menuntut satu
+ * nilai yang berubah antar-langkah, dan React Compiler menolak mutasi semacam
+ * itu di dalam komponen (`react-hooks/immutability`) — dengan benar, sebab nilai
+ * turunan render harus bisa dihitung ulang kapan saja tanpa sisa. Sebagai fungsi
+ * murni ia bebas melakukannya: masukan sama, keluaran sama, tanpa keadaan yang
+ * hidup melewati pemanggilan.
+ *
+ * Aturannya: setiap `delta` bertumpu pada hasil sebelumnya, setiap `subtotal`
+ * MENYETEL ULANG kumulatifnya ke nilainya sendiri. Tanpa penyetelan itu subtotal
+ * akan ikut dijumlahkan lagi dan seluruh sisa grafiknya bergeser.
+ */
+function buildWaterfall(steps: WaterfallStep[]): WaterfallBar[] {
+  const bars: WaterfallBar[] = [];
+  let running = 0;
+  for (const s of steps) {
+    if (s.kind === "subtotal") {
+      running = s.value;
+      bars.push({ label: s.label, base: 0, span: Math.abs(s.value), raw: s.value, kind: s.kind });
+      continue;
+    }
+    const start = running;
+    running += s.value;
+    bars.push({
+      label: s.label,
+      base: Math.min(start, running),
+      span: Math.abs(s.value),
+      raw: s.value,
+      kind: s.kind,
+    });
+  }
+  return bars;
+}
+
+export function IncomeWaterfallChart({
+  steps,
+  currency,
+}: {
+  steps: WaterfallStep[];
+  currency: string;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const palette = chartPalette(token);
+
+  if (steps.every((s) => s.value === 0)) {
+    return <ChartEmpty message={t("charts.noIncome")} />;
+  }
+
+  const data = buildWaterfall(steps);
+
+  const toneFor = (d: WaterfallBar) =>
+    d.kind === "subtotal"
+      ? palette.countPrimary
+      : d.raw < 0
+        ? palette.moneyOut
+        : palette.moneyIn;
+
+  return (
+    <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+      <BarChart data={data} margin={{ top: 4, right: 12, left: 4, bottom: 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} vertical={false} />
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 11, fill: palette.tickStrong }}
+          axisLine={false}
+          tickLine={false}
+          interval={0}
+        />
+        <YAxis
+          tick={{ fontSize: 11, fill: palette.tick }}
+          axisLine={false}
+          tickLine={false}
+          width={72}
+          tickFormatter={(v: number) => compactMoney(Number(v))}
+        />
+        <Tooltip
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          formatter={(_v: any, _n: any, item: any) => {
+            const d = item?.payload as WaterfallBar;
+            return [formatMoney(d?.raw ?? 0, currency), d?.label ?? ""];
+          }}
+          cursor={{ fill: palette.cursor }}
+          contentStyle={tooltipSurface(token)}
+          labelStyle={tooltipLabelStyle(token)}
+        />
+        {/* Batang pengangkat: TIDAK TERLIHAT dan tidak masuk tooltip. */}
+        <Bar dataKey="base" stackId="wf" fill="transparent" isAnimationActive={false} legendType="none" tooltipType="none" />
+        <Bar dataKey="span" stackId="wf" radius={[4, 4, 0, 0]} maxBarSize={56}>
+          {data.map((d) => (
+            <Cell key={d.label} fill={toneFor(d)} />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

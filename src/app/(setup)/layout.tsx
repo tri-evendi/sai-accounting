@@ -1,43 +1,47 @@
 /**
- * Grup rute `(setup)` — wisaya penyiapan perusahaan.
+ * Grup rute `(setup)` — kerangka FOKUS untuk wisaya penyiapan (issue #103).
  *
  * Grup rute TIDAK mengubah URL: halamannya tetap `/t/{tenant}/{company}/setup`,
  * semua tautan lama tetap benar. Yang berubah hanya kerangka yang membungkusnya.
  *
- * ══ KENAPA LAYAR INI DULU TANPA MENU SAMPING — DAN KENAPA ITU BERUBAH ══════
- * Sampai perbaikan ini wisaya memakai kulitnya sendiri (`SetupShell`), dan
- * alasannya tertulis apa adanya di sana: wisaya pernah tinggal di grup
- * `(dashboard)`, jadi ia dirender dengan sidebar ~40 menu — dan karena gerbang
- * "belum disiapkan" memantulkan setiap halaman itu kembali ke wisaya, hasilnya
- * empat puluh pintu yang semuanya memantul ke tempat yang sama, pada layar
- * pertama yang pernah dilihat pengguna baru.
+ * ══ SATU JALAN KE DEPAN, DAN KENAPA ITU DIPILIH LAGI (#341 → #352) ═════════
+ * Rilis #341 memindahkan wisaya ke `PlatformShell` — kulit yang sama dengan
+ * panel akun — dan alasannya benar sejauh yang diperiksanya: menu panel akun
+ * TIDAK memantul. Butirnya (`/platform`, `/platform/team`, `/platform/billing`,
+ * `/platform/privacy`, `/companies/new`) dijaga `requireTenantPagePermission`
+ * (`lib/tenant-guard.ts`), yang tidak punya gerbang setup. Yang memantul adalah
+ * menu DASBOR: halaman berlingkup perusahaan lewat `requirePagePermission`
+ * (`lib/page-auth.ts`) → gerbang setup → kembali ke wisaya. Itu sebabnya
+ * kerangka dasbor tidak pernah boleh dipakai di sini, dan itu tidak berubah.
  *
- * Alasan itu benar, dan ia TETAP benar — tapi hanya untuk sidebar DASBOR.
- * Dibaca ulang di kode: gerbang setup hidup di `requirePagePermission`
- * (`lib/page-auth.ts`), yang menjaga halaman berlingkup PERUSAHAAN. Menu panel
- * akun tidak lewat sana sama sekali — `/platform`, `/platform/team`,
- * `/platform/billing`, `/platform/privacy`, `/companies/new` semuanya dijaga
- * `requireTenantPagePermission` (`lib/tenant-guard.ts`), yang tidak punya
- * gerbang setup. Tidak satu pun butirnya memantul.
+ * Yang berubah adalah penilaian atas PERTUKARANNYA. #341 menukar "satu jalan ke
+ * depan" dengan keseragaman; #352 menukarnya kembali. Wisaya penyiapan dilewati
+ * SEKALI seumur perusahaan, dan ia layar wajib pertama — menu samping di sana
+ * menawarkan pekerjaan lain pada satu-satunya momen ketika pekerjaan lain belum
+ * bisa dimulai. Alasan lengkapnya di kepala `components/setup/setup-shell.tsx`.
  *
- * Jadi jebakan yang melahirkan `SetupShell` tidak pernah berlaku untuk menu
- * ini; ia hanya belum ada saat `SetupShell` ditulis (#103 mendahului panel akun
- * #172). Yang tersisa hanyalah satu layar yang bentuknya berbeda sendiri.
+ * ⚠ Yang TIDAK ikut dibalik: `/docs` dan `/companies/new` tetap `PlatformShell`.
+ * Keduanya dibuka dari DALAM aplikasi oleh orang yang sudah bekerja, dan
+ * melempar mereka keluar dari chrome-nya memang cacat (MASTER.md §"Satu
+ * halaman, DUA kulit"). Wisaya ini tidak begitu — tidak ada chrome untuk
+ * dilempar keluar darinya; ia mendahului chrome mana pun.
  *
- * ⚠ Yang HILANG bersama `SetupShell`, dan itu memang ditukar dengan sadar:
- * "satu jalan ke depan, yaitu wisaya itu sendiri". Wisaya kini bisa
- * ditinggalkan lewat menu samping. Yang membuat pertukaran ini aman adalah
- * mekanisme yang sudah ada sejak audit 2026-07: ketikan wisaya disimpan ke
- * `sessionStorage` pada setiap perubahan dan dipulihkan saat kembali, dan sejak
- * penanda "draf tersimpan" muncul di sebelah hitungan langkah, jaring itu juga
- * TERBACA. Kalau kelak fokus dianggap lebih berharga daripada keseragaman,
- * yang perlu dikembalikan adalah kulit ini — bukan menunya.
+ * ══ SERVER COMPONENT, meski kulitnya klien ════════════════════════════════
+ * Versi lama berkas ini memikul `"use client"`. Tidak perlu: `SessionProvider`,
+ * `ToastProvider`, dan `SetupShell` masing-masing sudah menjadi batas kliennya
+ * sendiri, dan sebuah server component boleh merendernya selama `children`
+ * hanya dioper. Menjadikan layout ini klien akan menyeret seluruh pohon
+ * penyiapan ke sisi klien tanpa satu pun yang membutuhkannya — dan
+ * `tests/rsc-boundary.test.ts` menghitung modul klien justru untuk mencegah itu
+ * merayap.
  *
- * Halamannya sendiri TETAP dijaga `requirePagePermission("setup.manage")`, dan
- * `tests/authz-coverage.test.ts` ikut menelusuri grup ini persis seperti
- * `(dashboard)` — pindah kulit tidak boleh berarti pindah keluar dari penjaga.
- * Penjaga di layout ini (`tenant.home`) adalah lapisan pertamanya, bukan
- * penggantinya.
+ * ══ PENJAGA ═══════════════════════════════════════════════════════════════
+ * Layout ini TIDAK memanggil penjaga, dan itu bukan kelalaian: `SetupShell`
+ * tidak butuh data tenant apa pun (identitas pemakainya datang dari sesi di
+ * klien), jadi tidak ada yang perlu diambil di sini. Halamannya sendiri tetap
+ * dijaga `requirePagePermission("setup.manage")`, dan
+ * `tests/authz-coverage.test.ts` menelusuri grup ini persis seperti
+ * `(dashboard)` — pindah kulit tidak pernah berarti pindah keluar dari penjaga.
  *
  * Provider-nya tetap dua — sesi (menu pengguna & keluar) dan toast (wisaya
  * melaporkan hasil simpan lewat toast). Tidak ada `GuidedTour`: tur adalah
@@ -48,27 +52,14 @@
 
 import { SessionProvider } from "next-auth/react";
 
-import { PlatformShell } from "@/components/tenant/platform-shell";
+import { SetupShell } from "@/components/setup/setup-shell";
 import { ToastProvider } from "@/components/ui/toast";
-import { getT } from "@/lib/i18n/server";
-import { panelNav } from "@/lib/panel-nav";
-import { requireTenantPagePermission } from "@/lib/tenant-guard";
 
-export default async function SetupLayout({ children }: { children: React.ReactNode }) {
-  const { user, tenant } = await requireTenantPagePermission("tenant.home");
-  const t = await getT();
-
+export default function SetupLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <ToastProvider>
-        <PlatformShell
-          tenantName={tenant.tenantName}
-          nav={panelNav(tenant, t)}
-          userName={user.name ?? ""}
-          role={tenant.role ?? ""}
-        >
-          {children}
-        </PlatformShell>
+        <SetupShell>{children}</SetupShell>
       </ToastProvider>
     </SessionProvider>
   );

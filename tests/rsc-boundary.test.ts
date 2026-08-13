@@ -185,6 +185,15 @@ const SRC = join(__dirname, "..", "src");
  * `requireTenantPagePermission`, pekerjaan yang memang milik server. Yang naik
  * satu hanyalah komponen penanda langkah bersama.
  *
+ * 159 saat kerangka fokus wisaya DIKEMBALIKAN (#352, membalik sebagian #341).
+ * `components/setup/setup-shell.tsx` hidup lagi sebagai komponen klien — ia
+ * membaca sesi untuk menu penggunanya — jadi angkanya naik satu. Yang TIDAK
+ * ikut naik: `app/(setup)/layout.tsx` tetap SERVER component. Versi lamanya
+ * memikul `"use client"`; itu tidak pernah perlu, sebab provider dan kulitnya
+ * masing-masing sudah menjadi batas kliennya sendiri. Menaikkan ambang ini
+ * karena sebuah KERANGKA kembali adalah harga yang disengaja; menaikkannya
+ * karena sebuah HALAMAN merayap ke klien tidak pernah.
+ *
  * Catatan penanda langkah: `components/ui/wizard-steps.tsx` lahir
  * sebagai client component. Naiknya satu, dan yang dibeli dengan satu itu
  * adalah DUA penanda langkah tulisan tangan yang lenyap — deretan kartu di
@@ -193,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 158;
+const AMBANG_KLIEN = 159;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -312,6 +321,7 @@ const KLIEN_TERSAHKAN = [
   "components/settings/audit-log-panel.tsx",
   "components/settings/module-picker.tsx",
   "components/settings/module-settings-panel.tsx",
+  "components/setup/setup-shell.tsx",
   "components/shared/advance-compensation.tsx",
   "components/shared/consignee-select.tsx",
   "components/shared/cost-center-field.tsx",

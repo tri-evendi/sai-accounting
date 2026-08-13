@@ -2354,6 +2354,7 @@
     "opnameSaved": "Stock count saved — {count} items adjusted."
   },
   "setup": {
+    "shellSubtitle": "First-time company setup",
     "title": "Company Setup",
     "doneNote": "The company is already set up. The wizard runs only once — below is a summary of the opening balances on record.",
     "identityTitle": "Company Identity",

@@ -637,7 +637,30 @@ aplikasi — menu Bantuan di bilah atas — jadi satu klik "Panduan halaman ini"
 melempar penggunanya keluar dari chrome-nya ke halaman telanjang: tanpa menu
 samping, tanpa bilah atas, tanpa jalan kembali selain tombol Back. Kelas cacat
 yang sama sudah diperbaiki dua kali: `/companies/new` (dulu `AuthShell` bergaya
-login padahal dibuka dari panel akun) dan wisaya penyiapan (dulu `SetupShell`).
+login padahal dibuka dari panel akun).
+
+> **⚠ Wisaya penyiapan adalah PENGECUALIAN, dan pernah salah didaftar di sini.**
+> Kalimat di atas dulu ikut menyebut "dan wisaya penyiapan (dulu `SetupShell`)"
+> sebagai cacat yang sudah diperbaiki. Itu dibalik di #352: wisaya
+> `/t/{tenant}/{company}/setup` kembali memakai kerangka fokusnya sendiri
+> (`components/setup/setup-shell.tsx`) — kepala ramping, tanpa navigasi, hanya
+> menu pengguna sebagai jalan keluar.
+>
+> Bedanya bukan selera melainkan **dari mana layarnya dibuka**. Aturan "kulit
+> ditentukan oleh SESI" menjawab layar yang dibuka dari DALAM aplikasi oleh
+> orang yang sudah bekerja — `/docs` lewat menu Bantuan, `/companies/new` dari
+> panel akun. Melempar mereka keluar dari chrome-nya memang cacat: ada chrome
+> untuk dilempar keluar darinya.
+>
+> Wisaya penyiapan MENDAHULUI chrome mana pun. Ia layar wajib pertama sebuah
+> perusahaan, dilewati sekali seumur perusahaan itu, dan setiap butir menu di
+> sana menawarkan pekerjaan lain pada satu-satunya momen ketika pekerjaan lain
+> belum bisa dimulai. Karena itu di sini fokus menang atas keseragaman.
+>
+> Yang TIDAK berubah: kerangka DASBOR tetap terlarang di layar itu — halaman
+> berlingkup perusahaan lewat gerbang setup dan dipantulkan kembali ke wisaya,
+> jadi sidebar dasbor di sana adalah puluhan pintu yang semuanya memantul.
+> Jalan KELUAR tetap wajib ada (§"Layar pra-aplikasi"): menu pengguna di kepala.
 
 **Aturannya: kulit ditentukan oleh SESI, bukan oleh rutenya — dan kulitnya dua,
 tidak pernah tiga.**

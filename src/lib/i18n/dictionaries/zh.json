@@ -2354,6 +2354,7 @@
     "opnameSaved": "盘点已保存——共调整 {count} 项货物。"
   },
   "setup": {
+    "shellSubtitle": "公司首次设置",
     "title": "公司初始设置",
     "doneNote": "公司已完成初始设置。向导只运行一次——以下是已记录的期初余额摘要。",
     "identityTitle": "公司信息",

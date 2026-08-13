@@ -2354,6 +2354,7 @@
     "opnameSaved": "Opname tersimpan — {count} barang disesuaikan."
   },
   "setup": {
+    "shellSubtitle": "Penyiapan awal perusahaan",
     "title": "Setup Perusahaan",
     "doneNote": "Perusahaan sudah selesai disiapkan. Wizard hanya dijalankan sekali — di bawah ini ringkasan saldo awal yang tercatat.",
     "identityTitle": "Identitas Perusahaan",

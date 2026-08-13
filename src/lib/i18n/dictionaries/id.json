@@ -3272,6 +3272,7 @@
     "tooManyOverrideRows": "Terlalu banyak baris override.",
     "companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
     "companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",
+    "companySlugReserved": "Slug \"dashboard\" dicadangkan sistem — pilih nama lain",
     "companyDatabaseInvalid": "Nama basis data hanya boleh huruf kecil, angka, dan garis bawah",
     "itemNameRequired": "Nama barang wajib diisi",
     "bagsMin0": "Bags harus 0 atau lebih",

@@ -50,16 +50,24 @@ import { getTerm, glossaryHref } from "@/lib/labels";
 /**
  * Tiga hal yang tidak punya bentuk sebaris, dan ketiganya bukan hiasan:
  *
- *  • **`::after`** — area sentuh ~40px di sekeliling ikon "?" tanpa mengubah
+ *  • **`::after`** — area sentuh **44px** di sekeliling ikon "?" tanpa mengubah
  *    tinggi baris teksnya. Ikon 20px sendirian di bawah ambang target sentuh
  *    MASTER.md, dan membesarkan ikonnya akan merusak baris yang memuatnya.
+ *
+ *    Angkanya `inset:-12px`, bukan `-10px` seperti sebelumnya: 20 + (12 × 2)
+ *    = 44, ambang WCAG 2.5.8 / iOS HIG yang utuh. Yang lama menghasilkan 40 —
+ *    sudah jauh lebih baik daripada 20, tapi masih 4px kurang, dan ikon inilah
+ *    SATU-SATUNYA jalan masuk ke penjelasan istilah di tengah formulir. Audit
+ *    produksi 13 Agustus 2026 sempat melaporkannya sebagai 20×20; itu keliru —
+ *    `getBoundingClientRect()` mengukur kotak tombolnya dan tidak melihat
+ *    perluasan `::after` ini sama sekali.
  *  • **cincin fokus** — ini `<button>` telanjang, bukan komponen AntD, jadi
  *    `genFocusStyle()` AntD tidak menyentuhnya. Warnanya `colorPrimaryBorder`,
  *    token yang sama dengan cincin fokus AntD (#187).
  *  • **garis bawah saat disorot** pada tautan "Pelajari selengkapnya".
  */
 const TERM_RULES = `
-[data-term-trigger]::after{content:"";position:absolute;inset:-10px}
+[data-term-trigger]::after{content:"";position:absolute;inset:-12px}
 [data-term-trigger]:focus{outline:none}
 [data-term-trigger]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:1px}
 [data-term-link]:hover{text-decoration:underline}

@@ -1420,7 +1420,8 @@
     "costCenterField": "成本中心（默认）",
     "costCenterHint": "适用于所有未单独选择成本中心的分录行。",
     "colCostCenter": "成本中心",
-    "costCenterFollowHeader": "跟随表头"
+    "costCenterFollowHeader": "跟随表头",
+    "awaitingEntry": "尚未录入"
   },
   "periods": {
     "title": "会计期间结账",
@@ -1823,7 +1824,9 @@
         "title": "电子发票（e-Faktur）导出（DJP/CTAS）",
         "description": "将销项税务发票导出为 DJP 导入格式。"
       }
-    }
+    },
+    "waterfallTitle": "从销售到净利润",
+    "waterfallDesc": "向上为增加，向下为减少；从基线起的柱形为阶段结果。"
   },
   "budget": {
     "title": "预算与目标",
@@ -1990,6 +1993,28 @@
       "terima_uang": {
         "label": "收取第一笔款项",
         "description": "记录进入现金或银行账户的资金。"
+      }
+    }
+  },
+  "monthlyRoutine": {
+    "title": "{month} 月度事项",
+    "subtitle": "{month} 已结束，但账簿尚未锁定。以下三步在结账前把它整理妥当。",
+    "progress": "已完成 {done} / {total}",
+    "done": "已完成",
+    "start": "开始",
+    "again": "再次打开",
+    "items": {
+      "pengeluaran": {
+        "label": "登记上月支出",
+        "description": "所有付出的款项——租金、工资、水电、采购。未登记的支出不会出现在报表中。"
+      },
+      "cocokkan_bank": {
+        "label": "核对银行对账单",
+        "description": "将您的记录与银行流水逐笔核对。差额通常是漏记的交易。"
+      },
+      "tutup_bulan": {
+        "label": "查看报表，然后结账",
+        "description": "阅读上月的利润表与资产负债表。如果无误，请锁定该月份，使数字不再变动。"
       }
     }
   },
@@ -2831,7 +2856,8 @@
     "unresolvedBefore": "有 {count} 张外币单据尚未填写汇率，其印尼盾金额无从得知，因此",
     "unresolvedStrong": "未计入合计",
     "unresolvedAfter": "。请在单据上填写汇率，使其纳入计算。",
-    "docCount": "{count} 张单据"
+    "docCount": "{count} 张单据",
+    "chartTitle": "账龄分布"
   },
   "ledgerFilter": {
     "asOfField": "截至日期",
@@ -2848,7 +2874,10 @@
     "tooltipMoneyIn": "资金流入：{amount}",
     "tooltipMoneyOut": "资金流出：{amount}",
     "tooltipDifference": "差额：{amount}",
-    "tooltipCurrentStock": "当前库存"
+    "tooltipCurrentStock": "当前库存",
+    "noAging": "本期没有未结款项",
+    "seriesOutstanding": "未结金额",
+    "noIncome": "本期没有销售或费用"
   },
   "workflows": {
     "penjualan": {
@@ -3048,7 +3077,11 @@
     "colAction": "操作",
     "colDetails": "详情",
     "colIp": "IP 地址",
-    "overrodeApprover": "越权代替审批人 {role}"
+    "overrodeApprover": "越权代替审批人 {role}",
+    "setupDone": "会计科目表：新增 {created} 个，已有 {existing} 个 · 期初余额 {journal}",
+    "setupDonePlain": "公司初始设置已完成",
+    "modulesUpdated": "业务模块已变更——当前启用 {count} 个",
+    "unavailable": "无明细"
   },
   "auditAction": {
     "finance_create": "资金与银行交易",
@@ -3896,5 +3929,9 @@
     "failed": "密码错误，或您不是该公司的成员。",
     "tooMany": "尝试次数过多。请几分钟后再试。",
     "hint": "每个公司每个工作日询问一次。密码与您的登录密码相同。"
+  },
+  "demoCompany": {
+    "title": "这是示例公司。",
+    "body": "其中为虚构数据，便于您查看报表填充后的样子。数字并非真实账目，且无法修改。如需记录自己的账目，请新建公司。"
   }
 }

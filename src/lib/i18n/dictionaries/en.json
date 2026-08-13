@@ -1420,7 +1420,8 @@
     "costCenterField": "Cost Centre (default)",
     "costCenterHint": "Applied to every line that does not pick a cost centre of its own.",
     "colCostCenter": "Cost Centre",
-    "costCenterFollowHeader": "Follow header"
+    "costCenterFollowHeader": "Follow header",
+    "awaitingEntry": "Nothing entered yet"
   },
   "periods": {
     "title": "Close Period",
@@ -1823,7 +1824,9 @@
         "title": "e-Faktur Export (DJP/CTAS)",
         "description": "Export output tax invoices to the DJP import format."
       }
-    }
+    },
+    "waterfallTitle": "From sales to net profit",
+    "waterfallDesc": "Bars up add, bars down subtract; bars from the baseline are running results."
   },
   "budget": {
     "title": "Budget & Targets",
@@ -1990,6 +1993,28 @@
       "terima_uang": {
         "label": "Receive Your First Payment",
         "description": "Record money coming into cash or a bank account."
+      }
+    }
+  },
+  "monthlyRoutine": {
+    "title": "{month} routine",
+    "subtitle": "{month} has ended but its books are not locked yet. These three tidy it up before closing.",
+    "progress": "{done} of {total} done",
+    "done": "Done",
+    "start": "Start",
+    "again": "Open again",
+    "items": {
+      "pengeluaran": {
+        "label": "Record last month's expenses",
+        "description": "Every payment out — rent, wages, utilities, purchases. What is not recorded never reaches the reports."
+      },
+      "cocokkan_bank": {
+        "label": "Reconcile the bank statement",
+        "description": "Match your own records against the bank's. A difference is usually a transaction you missed."
+      },
+      "tutup_bulan": {
+        "label": "Review the reports, then close the books",
+        "description": "Read last month's Profit & Loss and Balance Sheet. If they look right, lock the month so the figures can no longer change."
       }
     }
   },
@@ -2831,7 +2856,8 @@
     "unresolvedBefore": "{count} foreign-currency documents have no rate yet, so their IDR value is unknown and they are",
     "unresolvedStrong": "not included in the total",
     "unresolvedAfter": ". Enter the rate on the document so it counts.",
-    "docCount": "{count} documents"
+    "docCount": "{count} documents",
+    "chartTitle": "Age distribution"
   },
   "ledgerFilter": {
     "asOfField": "As of Date",
@@ -2848,7 +2874,10 @@
     "tooltipMoneyIn": "Money in: {amount}",
     "tooltipMoneyOut": "Money out: {amount}",
     "tooltipDifference": "Difference: {amount}",
-    "tooltipCurrentStock": "Current stock"
+    "tooltipCurrentStock": "Current stock",
+    "noAging": "Nothing outstanding in this period",
+    "seriesOutstanding": "Outstanding",
+    "noIncome": "No sales or expenses in this period"
   },
   "workflows": {
     "penjualan": {
@@ -3048,7 +3077,11 @@
     "colAction": "Action",
     "colDetails": "Details",
     "colIp": "IP",
-    "overrodeApprover": "Overrode approver {role}"
+    "overrodeApprover": "Overrode approver {role}",
+    "setupDone": "Chart of accounts: {created} new, {existing} already there · opening balance {journal}",
+    "setupDonePlain": "Company setup completed",
+    "modulesUpdated": "Business modules changed — {count} now active",
+    "unavailable": "No details"
   },
   "auditAction": {
     "finance_create": "Cash & bank transaction",
@@ -3896,5 +3929,9 @@
     "failed": "Wrong password, or you are not a member of this company.",
     "tooMany": "Too many attempts. Try again in a few minutes.",
     "hint": "Asked once per working day for each company. It is the same password you sign in with."
+  },
+  "demoCompany": {
+    "title": "This is a sample company.",
+    "body": "It holds made-up data so you can see what filled-in reports look like. The figures are not real bookkeeping and cannot be edited. Create a new company to start keeping your own books."
   }
 }

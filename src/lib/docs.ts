@@ -268,6 +268,15 @@ const DATA_ANDA = {
  * berdiri di depan yang menjelaskan alur, karena alur mana pun baru masuk akal
  * setelah orang tahu apa yang terjadi saat ia menekan Simpan.
  */
+const LAPORAN = {
+  slug: "membaca-laporan",
+  judul: "Kenapa setiap laporan menanyakan periode lebih dulu",
+  ringkas:
+    "Kenapa laporan yang sama bisa memberi dua angka berbeda, dan bagaimana membaca mana yang benar.",
+  cabang: "pengguna",
+  navHrefs: ["/reports", "/budget"],
+} as const satisfies DocMeta;
+
 export const DOC_INDEX = [
   MESIN_AKUNTANSI,
   PERIODE,
@@ -278,6 +287,7 @@ export const DOC_INDEX = [
   SALDO_AWAL,
   PERAN_IZIN,
   PAKET,
+  LAPORAN,
   DATA_ANDA,
 ] as const satisfies readonly DocMeta[];
 
@@ -328,9 +338,6 @@ export const NAV_TANPA_DOKUMEN: Readonly<Record<string, string>> = {
     "Gelombang berikutnya. Uang muka adalah kelas kesalahan tersendiri (uang berpindah sebelum kewajibannya ada) dan pantas mendapat halamannya sendiri, bukan satu paragraf.",
   "/fixed-assets":
     "Gelombang berikutnya. Penyusutan adalah contoh terbaik “kenapa mesinnya begitu” yang tersisa: biaya yang tidak pernah menjadi pengeluaran kas.",
-  "/reports":
-    "Gelombang berikutnya. Yang perlu dijelaskan bukan daftar laporannya melainkan kenapa setiap laporan menanyakan periode LEBIH DULU.",
-  "/budget": "Gelombang berikutnya — bersama halaman Pusat Laporan.",
   "/tax/efaktur":
     "Gelombang berikutnya. Menyentuh aturan DJP yang berubah di luar kendali aplikasi ini; dokumen yang salah di sini lebih mahal daripada tidak ada dokumen.",
   "/customers":

@@ -308,6 +308,51 @@ const DATA_ANDA: readonly DocBlock[] = [
   ];
 
 /** Isi setiap halaman, dikunci pada daftar isi lewat `DocSlug`. */
+const LAPORAN: readonly DocBlock[] = [
+    {
+      kind: "paragraf",
+      teks:
+        "Hampir setiap laporan di aplikasi ini menanyakan tanggal sebelum menampilkan satu angka pun, dan itu bukan formalitas. Buku besar bukan daftar saldo melainkan daftar KEJADIAN, masing-masing bertanggal. “Berapa laba saya” tidak punya jawaban sampai Anda menyebutkan sejak kapan sampai kapan — sama seperti “berapa jarak yang saya tempuh” tidak punya jawaban tanpa menyebut dari kapan dihitung.",
+    },
+    {
+      kind: "paragraf",
+      teks:
+        "Karena itu ada dua jenis laporan, dan membedakannya adalah satu-satunya hal yang benar-benar perlu Anda hafal. Laporan PERIODE menjumlahkan apa yang terjadi di antara dua tanggal: Laba/Rugi, Arus Kas, Penjualan per Pelanggan. Laporan POSISI memotret keadaan pada SATU tanggal: Neraca, Neraca Saldo, Nilai Persediaan. Yang pertama bertanya “apa yang terjadi”, yang kedua bertanya “apa yang saya punya sekarang”.",
+    },
+    { kind: "sub", judul: "Kenapa laporan yang sama bisa memberi dua angka" },
+    {
+      kind: "paragraf",
+      teks:
+        "Kalau laporan yang Anda buka hari ini berbeda dengan salinan yang dicetak minggu lalu untuk periode yang sama, biasanya bukan aplikasinya yang berubah pikiran. Tiga sebab yang paling sering, semuanya wajar: ada transaksi baru yang dicatat mundur ke periode itu; ada dokumen yang tadinya menunggu persetujuan lalu jurnalnya terbit; atau periodenya memang belum ditutup, sehingga isinya memang masih boleh bertambah.",
+    },
+    {
+      kind: "paragraf",
+      teks:
+        "Itulah hubungan antara halaman ini dan Tutup Buku. Selama sebuah bulan masih terbuka, laporannya adalah gambaran sementara — benar hari ini, dan boleh berubah besok. Menutup bulan mengubahnya menjadi angka yang tidak bisa bergerak lagi. Laporan yang diberikan kepada bank, pemegang saham, atau kantor pajak sebaiknya diambil dari bulan yang sudah ditutup.",
+    },
+    { kind: "sub", judul: "Angka di beranda dan angka di laporan" },
+    {
+      kind: "paragraf",
+      teks:
+        "Kartu di beranda dan laporan cetak bisa menyebut angka yang berbeda pada hari yang sama, dan keduanya benar. Beranda meringkas periode berjalan sampai detik ini; laporan menjawab persis periode yang Anda minta. Kalau keduanya harus cocok, samakan dulu periodenya — hampir semua selisih yang dilaporkan orang berakhir di sini.",
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Setiap laporan bisa diekspor ke PDF atau Excel, dan berkasnya memuat periode yang dipakai di kepala halaman — jadi salinan yang beredar tidak pernah kehilangan konteksnya.",
+        "Nilai ditampilkan dalam IDR, yaitu nilai dasar buku besar. Transaksi valas sudah dikonversi memakai kurs yang tercatat pada dokumennya, bukan kurs hari ini.",
+        "Pilahan per pusat biaya hanya ditawarkan pada Laba/Rugi. Neraca sengaja tidak: menyaring neraca per unit membuat sisi kiri dan kanannya tidak lagi seimbang, kecuali ada akun antar-unit yang menjembataninya.",
+        "Realisasi vs Anggaran membaca angka realisasinya dari buku besar yang sama dengan Laba/Rugi — jadi kalau keduanya berbeda, yang berbeda adalah periodenya, bukan sumbernya.",
+      ],
+    },
+    {
+      kind: "catatan",
+      teks:
+        "Laporan tidak pernah menghitung ulang apa pun sendiri. Ia menjumlahkan jurnal yang sudah ada. Kalau sebuah angka terasa salah, yang perlu dicari bukan “rumusnya di mana” melainkan transaksi mana yang menyusunnya — dan setiap laporan bisa ditelusuri sampai ke barisnya.",
+    },
+    { kind: "istilah", kunci: ["laba_rugi", "neraca", "tutup_periode"] },
+  ];
+
 export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "mesin-akuntansi": MESIN_AKUNTANSI,
   "periode-terkunci": PERIODE,
@@ -318,5 +363,6 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "saldo-awal": SALDO_AWAL,
   "peran-dan-izin": PERAN_IZIN,
   "paket-dan-perusahaan": PAKET,
+  "membaca-laporan": LAPORAN,
   "data-anda": DATA_ANDA,
 };

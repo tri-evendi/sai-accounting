@@ -262,12 +262,41 @@ export function SetupWizard({
   );
 
   // ── Live totals (IDR base) ──
+  /*
+   * ── SALDO AWAL MENGIKUTI MODUL (issue #349) ───────────────────────────────
+   *
+   * Setiap slot saldo awal memposting ke sebuah akun, dan akun itu hanya lahir
+   * kalau MODUL pemiliknya menyala: bagan akun disemai `seedCoaForModules`
+   * mengikuti modul terpilih, dan penyemai mapping MELEWATI slot yang kode
+   * akunnya tidak ada — diam-diam, tanpa galat, tanpa log.
+   *
+   * Tanpa pagar ini wisaya MENGUNDANG angka yang kemudian ia tolak: perusahaan
+   * Jasa tidak punya modul `inventory`, tapi isian "Persediaan" tetap tampil,
+   * dan menyimpannya berhenti dengan `MissingMappingError` di tengah langkah
+   * terakhir — galat yang benar, di tempat yang salah.
+   *
+   * ⚠ Dipakai di TIGA tempat: render, hitungan total, dan PAYLOAD. Yang ketiga
+   * paling mudah terlewat, dan justru yang menentukan: angka yang terlanjur
+   * diketik SEBELUM kategori usahanya diganti masih duduk di state. Kalau hanya
+   * rendernya yang dipagari, angka itu tetap terkirim dan galatnya kembali
+   * persis seperti semula — kali ini dari isian yang tidak terlihat siapa pun.
+   */
+  const saldoAktif = useMemo(
+    () => ({
+      cash: modules.has("cash_bank"),
+      receivables: modules.has("sales"),
+      inventory: modules.has("inventory"),
+      payables: modules.has("purchasing"),
+    }),
+    [modules]
+  );
+
   const totals = useMemo(() => {
     let assets = 0;
     let liabilities = 0;
     let unrated = 0; // foreign rows missing a rate
 
-    for (const r of cash) {
+    for (const r of saldoAktif.cash ? cash : []) {
       const amt = Number(r.amount) || 0;
       if (amt <= 0) continue;
       const acc = cashById.get(r.accountId);
@@ -279,7 +308,7 @@ export function SetupWizard({
         else unrated++;
       }
     }
-    for (const r of receivables) {
+    for (const r of saldoAktif.receivables ? receivables : []) {
       const amt = Number(r.amount) || 0;
       if (amt <= 0) continue;
       if (r.currency === "IDR") assets = round2(assets + baseOf(amt, 1));
@@ -289,10 +318,10 @@ export function SetupWizard({
         else unrated++;
       }
     }
-    const inv = Number(inventory) || 0;
+    const inv = saldoAktif.inventory ? Number(inventory) || 0 : 0;
     if (inv > 0) assets = round2(assets + baseOf(inv, 1));
 
-    for (const r of payables) {
+    for (const r of saldoAktif.payables ? payables : []) {
       const amt = Number(r.amount) || 0;
       if (amt <= 0) continue;
       if (r.currency === "IDR") liabilities = round2(liabilities + baseOf(amt, 1));
@@ -306,7 +335,7 @@ export function SetupWizard({
     const equity = round2(assets - liabilities);
     const hasAny = assets > 0 || liabilities > 0;
     return { assets, liabilities, equity, unrated, hasAny };
-  }, [cash, receivables, payables, inventory, cashById]);
+  }, [cash, receivables, payables, inventory, cashById, saldoAktif]);
 
   function updateCash(key: number, patch: Partial<CashRow>) {
     setCash((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -344,7 +373,7 @@ export function SetupWizard({
         businessCategory: category || undefined,
         modules: normalizeEnabledModules(modules),
       },
-      cash: cash
+      cash: (saldoAktif.cash ? cash : [])
         .filter((r) => r.accountId && (Number(r.amount) || 0) > 0)
         .map((r) => {
           const cur = cashById.get(r.accountId)?.currency ?? "IDR";
@@ -355,7 +384,7 @@ export function SetupWizard({
             ...(cur !== "IDR" ? { rate: Number(r.rate) } : {}),
           };
         }),
-      receivables: receivables
+      receivables: (saldoAktif.receivables ? receivables : [])
         .filter((r) => r.partnerId && (Number(r.amount) || 0) > 0)
         .map((r) => ({
           partnerId: Number(r.partnerId),
@@ -363,7 +392,7 @@ export function SetupWizard({
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
         })),
-      payables: payables
+      payables: (saldoAktif.payables ? payables : [])
         .filter((r) => r.partnerId && (Number(r.amount) || 0) > 0)
         .map((r) => ({
           partnerId: Number(r.partnerId),
@@ -371,7 +400,7 @@ export function SetupWizard({
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
         })),
-      inventory: Number(inventory) || 0,
+      inventory: saldoAktif.inventory ? Number(inventory) || 0 : 0,
     };
 
     try {
@@ -789,6 +818,7 @@ export function SetupWizard({
             <StepTitle token={token}>{t("setup.stepBalances")}</StepTitle>
 
             {/* Kas / Bank */}
+            {saldoAktif.cash && (
             <Section
               title={t("nav.groups.cash")}
               hint={t("setup.cashSectionHint")}
@@ -860,8 +890,10 @@ export function SetupWizard({
                 );
               })}
             </Section>
+            )}
 
             {/* Piutang */}
+            {saldoAktif.receivables && (
             <PartnerSection
               title={t("setup.receivablesTitle")}
               hint={t("setup.receivablesHint")}
@@ -877,8 +909,10 @@ export function SetupWizard({
               token={token}
               onUpdate={(k, p) => updatePartner(setReceivables, k, p)}
             />
+            )}
 
             {/* Persediaan */}
+            {saldoAktif.inventory && (
             <div>
               <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
                 {t("accountType.inventory")}
@@ -904,8 +938,10 @@ export function SetupWizard({
                 </Col>
               </Row>
             </div>
+            )}
 
             {/* Utang */}
+            {saldoAktif.payables && (
             <PartnerSection
               title={t("setup.payablesTitle")}
               hint={t("setup.payablesHint")}
@@ -922,6 +958,7 @@ export function SetupWizard({
               onUpdate={(k, p) => updatePartner(setPayables, k, p)}
             />
 
+            )}
             <BalancePanel totals={totals} t={t} token={token} />
           </Flex>
         )}

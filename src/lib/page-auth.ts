@@ -6,7 +6,8 @@ import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
-import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@/lib/tenant-state";
 import { tenantPath } from "@/lib/tenant-routes";
 import { isCompanyUnlocked, NAMA_COOKIE_KUNCI } from "@/lib/company-unlock";
@@ -244,6 +245,16 @@ async function gateAfterCompany(
   if (isWritePermission(permission)) {
     const tenantState = await tenantStateForCompany(companyId);
     if (readOnlyRefusal(tenantState?.status, permission)) {
+      redirect(homePath);
+    }
+    /*
+     * Perusahaan CONTOH (issue #355) — gerbang KEDUA, di dalam cabang yang
+     * sama supaya izin baca tidak membayar satu query pun. Dibaca dari
+     * registry yang sudah di-cache 60 detik, jadi tidak ada perjalanan
+     * tambahan ke basis data kendali pada permintaan yang sudah memuatnya.
+     */
+    const company = await getCompany(companyId);
+    if (demoWriteRefusal(company?.isDemo, permission)) {
       redirect(homePath);
     }
   }

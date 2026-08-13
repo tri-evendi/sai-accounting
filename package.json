@@ -32,6 +32,8 @@
     "scheduler:subscriptions": "tsx scripts/subscription-scheduler.ts",
     "_scheduler_note": "Penjadwal langganan (issue #140): trial habis, tagihan, dunning, suspensi, pengingat H-7/H-3/H-1, sinkronisasi pemakaian, rekonsiliasi. IDEMPOTEN — aman dijalankan berulang. Jadwalkan lewat cron host: `17 * * * * cd <app> && docker compose run --rm migrate bun run scheduler:subscriptions` (lihat kepala scripts/subscription-scheduler.ts).",
     "db:seed:plans": "tsx scripts/seed-plans.ts",
+    "db:seed:demo": "tsx scripts/seed-demo.ts",
+    "_db_seed_demo_note": "Mengisi SATU perusahaan (slug wajib disebut) dengan tiga bulan transaksi contoh yang BENAR-BENAR diposting lewat mesin posting yang sama dengan formulir sungguhan — jadi Neraca-nya seimbang dan Laba/Rugi-nya terisi. Berbeda dari prisma/seed.ts, yang menulis baris TANPA jurnal dan karena itu fixture pengembangan, bukan buku. Menolak berjalan bila perusahaannya sudah punya transaksi; setiap baris ditandai [CONTOH]. Lihat kepala scripts/seed-demo.ts.",
     "efaktur:platform": "tsx scripts/efaktur-platform.ts",
     "change-plan": "tsx scripts/change-tenant-plan.ts",
     "bootstrap": "tsx scripts/bootstrap.ts",

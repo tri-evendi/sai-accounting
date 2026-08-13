@@ -158,6 +158,43 @@ export function readOnlyRefusal(
   };
 }
 
+/**
+ * Penolakan kedua: perusahaan CONTOH (issue #355).
+ *
+ * Bentuknya sengaja sama dengan `readOnlyRefusal` di atas — dua penjaga
+ * (`page-auth.ts`, `auth-guard.ts`) sudah memanggil yang itu, jadi yang ini
+ * masuk lewat pintu yang sama dan tidak menambah satu pun cabang baru pada
+ * mereka.
+ *
+ * ── KENAPA BUKAN MEMAKAI `readOnlyRefusal` SAJA ────────────────────────────
+ * Karena KALIMATNYA yang penting, bukan mekanismenya. "Langganan sedang
+ * ditangguhkan" pada buku contoh adalah kalimat yang salah pada orang yang
+ * salah di menit pertama mereka memakai produknya — dan ia mengirim mereka
+ * mengejar tagihan yang tidak ada. Sama seperti #99 memisahkan "fitur belum
+ * aktif" dari "tidak punya akses", dua keadaan berbeda tidak boleh berbagi satu
+ * kalimat hanya karena akibat teknisnya kebetulan sama.
+ *
+ * ── YANG DITOLAK HANYA TULISAN ─────────────────────────────────────────────
+ * Membaca, menyaring, dan MENGEKSPOR tetap terbuka: seluruh guna buku contoh
+ * adalah dilihat-lihat, dan pengguna yang ingin membuktikan laporannya sungguhan
+ * justru harus bisa mengunduhnya. `isWritePermission` yang sama dengan gerbang
+ * langganan yang memutuskan mana yang mana.
+ */
+export function demoWriteRefusal(
+  isDemo: boolean | null | undefined,
+  permission: string
+): { code: "demo_company"; message: string } | null {
+  if (!isDemo) return null;
+  if (!isWritePermission(permission)) return null;
+  return {
+    code: "demo_company",
+    message:
+      "Ini perusahaan CONTOH — isinya data buatan untuk dilihat-lihat, jadi " +
+      "tidak bisa diubah. Membaca, menyaring, dan mengekspor laporan tetap " +
+      "bisa. Untuk mulai membukukan usaha Anda sendiri, buat perusahaan baru.",
+  };
+}
+
 /* ── Penjadwal: perencana MURNI (idempoten teruji) ─────────────────────────── */
 
 /** Masa tenggang past_due → suspended. */

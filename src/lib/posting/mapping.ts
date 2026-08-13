@@ -265,10 +265,26 @@ export class MissingMappingError extends Error {
   ) {
     const label = MAPPING_KEY_LABELS[key as MappingKey] ?? key;
     const cur = currency && currency !== ANY_CURRENCY ? ` (mata uang ${currency})` : "";
+    /*
+     * ⚠ Kalimat ini dulu berbunyi 'Tambahkan mapping "…" di pengaturan akun
+     * (account_mappings)' — dan itu mengirim orang ke layar yang TIDAK PERNAH
+     * ADA: tak satu pun berkas di `src/app/` menyentuh `accountMapping`
+     * (issue #349). Nasihat yang tidak bisa dijalankan lebih buruk daripada
+     * tidak ada nasihat: yang membacanya menghabiskan waktu mencari menu yang
+     * tidak akan ditemukannya, lalu menyimpulkan aplikasinya rusak.
+     *
+     * Yang BISA dijalankan: slot kosong hampir selalu berarti modul pemilik
+     * akunnya belum menyala — bagan akun disemai mengikuti modul aktif, dan
+     * menyalakan modulnya di Pengaturan menyemai akun BESERTA slot-nya saat itu
+     * juga (`api/company-settings/modules`). Karena itu ke sanalah pesan ini
+     * menunjuk, dan hanya itu yang dijanjikannya.
+     */
     super(
       `Pemetaan akun "${label}"${cur} belum diatur. ` +
-        `Tambahkan mapping "${key}" di pengaturan akun (account_mappings), ` +
-        `lalu ulangi. Jurnal tidak diposting agar tidak salah catat.`
+        `Biasanya ini berarti modul yang memakainya belum aktif — nyalakan di ` +
+        `Pengaturan → Modul, yang sekaligus membuat akun dan pemetaannya. ` +
+        `Kalau modulnya sudah aktif, hubungi administrator (slot "${key}"). ` +
+        `Jurnal tidak diposting agar tidak salah catat.`
     );
     this.name = "MissingMappingError";
   }

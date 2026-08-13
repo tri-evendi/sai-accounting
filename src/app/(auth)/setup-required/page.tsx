@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
 import { canEffective } from "@/lib/authz-effective";
+import { runWithCompany } from "@/lib/company-context";
+import { getCompany } from "@/lib/company-registry";
 import { isSetupDone } from "@/lib/setup-gate";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -67,9 +69,32 @@ export default async function SetupRequiredPage() {
    */
   if (session.user.companyId == null) redirect("/select-company");
 
+  /*
+   * ⚠ KONTEKS PERUSAHAAN DITANAM SENDIRI — sama persis dengan
+   * `feature-inactive/page.tsx`, dan karena alasan yang sama (issue #355).
+   *
+   * `isSetupDone()` dan `canEffective()` keduanya menempuh `currentCompanyId()`,
+   * sementara halaman ini — seperti semua penghuni grup `(auth)` — tidak lewat
+   * penjaga, jadi tak ada yang menanamkan konteksnya. Hasilnya sebelum ini:
+   * layar galat bawaan Next berbahasa Inggris (HTTP 409), bukan penjelasan
+   * "penyiapan belum selesai" yang ditulis di bawah.
+   *
+   * Perusahaannya disebut EKSPLISIT dari sesi, bukan ditebak — doktrin #104
+   * utuh. Satu `runWithCompany()` membungkus KEDUA pembacaan sekaligus supaya
+   * keduanya bicara tentang perusahaan yang sama.
+   */
+  const company = await getCompany(session.user.companyId);
+  /* Perusahaan di sesi sudah lenyap/nonaktif — pilih ulang, jangan menebak. */
+  if (!company) redirect("/select-company");
+
+  const state = await runWithCompany(company, async () => ({
+    setupDone: await isSetupDone(),
+    canManage: await canEffective(session.user, "setup.manage"),
+  }));
+
   // Bukan jalan buntu: kedua keadaan di bawah membuat halaman ini tak relevan.
-  if (await isSetupDone()) redirect("/dashboard");
-  if (await canEffective(session.user, "setup.manage")) redirect("/setup");
+  if (state.setupDone) redirect("/dashboard");
+  if (state.canManage) redirect("/setup");
 
   const t = await getT();
 

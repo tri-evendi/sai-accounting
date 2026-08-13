@@ -17,8 +17,13 @@
  *     menyimpan.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  MissingCompanyContextError,
+  runWithCompany,
+  runWithoutCompany,
+} from "@/lib/company-context";
 import { ROLES } from "@/lib/constants";
 import { PERMISSIONS, type Permission } from "@/lib/authz";
 
@@ -243,5 +248,85 @@ describe("penjaga halaman & API benar-benar memakai gerbang modul", () => {
     const src = read("app/(auth)/feature-inactive/page.tsx");
     expect(src).toContain("isModuleEnabled(");
     expect(src).toContain('redirect("/dashboard")');
+  });
+
+  /*
+   * Issue #355 — regresi yang membuat gerbang modul terasa seperti kerusakan.
+   *
+   * Halaman DI LUAR `(dashboard)` tidak lewat `requirePagePermission`, dan
+   * penjaga itulah satu-satunya yang menanam konteks perusahaan untuk sebuah
+   * permintaan HTTP. Halaman semacam itu yang tetap memanggil pembaca
+   * ber-lingkup-perusahaan akan melempar `MissingCompanyContextError` — yang
+   * sampai ke pengguna sebagai layar galat bawaan Next berbahasa Inggris
+   * ("This page couldn't load", HTTP 409), bukan sebagai penjelasan.
+   *
+   * Persis itu yang terjadi pada `/feature-inactive` dan `/setup-required`:
+   * 16 rute milik modul yang dimatikan berakhir di layar galat, dan penjelasan
+   * berbahasa Indonesia di dalamnya tidak pernah terlihat sekali pun.
+   *
+   * Tesnya sengaja MENYAPU, bukan menyebut dua berkas itu: yang dijaga adalah
+   * sifatnya — "membaca lingkup perusahaan tanpa penjaga ⇒ wajib menanam
+   * konteks sendiri" — supaya halaman `(auth)` BERIKUTNYA yang memanggil
+   * `canEffective()` ikut tertangkap.
+   */
+  it("halaman di luar (dashboard) yang membaca lingkup perusahaan menanam konteksnya sendiri", () => {
+    const SCOPED_READERS = [
+      "getEnabledModules(",
+      "canEffective(",
+      "isSetupDone(",
+      "effectivePermissionsFor(",
+      "isModuleActiveFor(",
+      "currentCompanyId(",
+    ];
+    const roots = ["app/(auth)", "app/(tenant)", "app/(operator)", "app/(docs)"];
+    const offenders: string[] = [];
+
+    for (const root of roots) {
+      const dir = join(__dirname, "..", "src", root);
+      if (!existsSync(dir)) continue;
+      for (const file of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
+        if (!file.endsWith(".tsx") && !file.endsWith(".ts")) continue;
+        const rel = join(root, file);
+        const src = read(rel);
+        // Baris komentar dibuang dulu: berkas ini justru MENJELASKAN jebakannya
+        // dengan menyebut nama fungsinya, dan penjelasan bukan pemanggilan.
+        const code = src
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/^\s*\/\/.*$/gm, "");
+        const reads = SCOPED_READERS.filter((fn) => code.includes(fn));
+        if (reads.length === 0) continue;
+        if (!code.includes("runWithCompany(")) {
+          offenders.push(`${rel} memanggil ${reads.join(", ")} tanpa runWithCompany()`);
+        }
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  /*
+   * Pasangan perilaku untuk tes sapuan di atas. Yang itu menjaga BENTUK
+   * kodenya; yang ini membuktikan PREMIS-nya — bahwa `runWithCompany()` memang
+   * yang membedakan "melempar" dari "menjawab". Tanpa tes ini, sapuan di atas
+   * hanya memaksa sebuah nama fungsi muncul di berkas.
+   *
+   * `runWithoutCompany()` dipakai untuk keluar dari konteks yang dipasang
+   * `tests/setup-company-context.ts` ke SETIAP tes — tanpa itu, konteks global
+   * tes akan menutupi justru keadaan yang ingin dibuktikan di sini.
+   */
+  it("getEnabledModules() melempar tanpa konteks, dan menjawab di dalam runWithCompany()", async () => {
+    setDb({ enabledModules: "core_accounting,sales" });
+
+    await expect(
+      runWithoutCompany(() => getEnabledModules())
+    ).rejects.toThrow(MissingCompanyContextError);
+
+    const enabled = await runWithoutCompany(() =>
+      runWithCompany(
+        { companyId: 7, slug: "pt-lain", databaseName: "sai_lain" },
+        () => getEnabledModules()
+      )
+    );
+    expect(enabled.has("sales")).toBe(true);
   });
 });

@@ -30,6 +30,7 @@ import { spawnSync } from "node:child_process";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
+import { isReservedCompanySlug } from "../src/lib/tenant-routes";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
@@ -82,6 +83,14 @@ async function main() {
     console.error(
       'Usage: bunx tsx scripts/create-company.ts --slug <slug> --name "Nama PT" [--database <db>] [--admin <username>] [--tenant <slug-tenant>]\n' +
         "  slug: huruf kecil, angka, tanda hubung (mis. pt-b)"
+    );
+    process.exit(1);
+  }
+  /* Skrip ini memvalidasi slug dengan regexnya sendiri, jadi pagar di
+     `companyCreateSchema` tidak pernah melihatnya (issue #346). */
+  if (isReservedCompanySlug(slug)) {
+    console.error(
+      `ERROR: slug "${slug}" dicadangkan sistem — lapisan jalur memaknainya khusus. Pilih nama lain.`
     );
     process.exit(1);
   }

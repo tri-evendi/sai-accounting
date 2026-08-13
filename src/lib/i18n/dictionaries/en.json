@@ -3272,6 +3272,7 @@
     "tooManyOverrideRows": "Too many override rows.",
     "companyDatabasePrefix": "The database name must start with \"sai_\"",
     "companySlugInvalid": "Slug may contain only lowercase letters, numbers and hyphens (e.g. pt-bumi-baru)",
+    "companySlugReserved": "The slug \"dashboard\" is reserved by the system — please choose another",
     "companyDatabaseInvalid": "Database name may contain only lowercase letters, numbers and underscores",
     "itemNameRequired": "Item name is required",
     "bagsMin0": "Bags must be 0 or more",

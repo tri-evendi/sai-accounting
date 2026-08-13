@@ -24,7 +24,9 @@ import {
   MIGRATED_ROOT_SEGMENTS,
   appPath,
   isTenantScopedPath,
+  COMPANY_HOME_PATH,
   isValidSlug,
+  legacyCompanyHomePath,
   legacyTenantScopedPath,
   parseTenantPath,
   tenantPath,
@@ -99,6 +101,83 @@ describe("bentuk jalur bertenant", () => {
     expect(isValidSlug("a")).toBe(false);
     expect(isValidSlug("x".repeat(51))).toBe(false);
     expect(isValidSlug(null)).toBe(false);
+  });
+});
+
+describe("pantulan beranda buku tidak pernah berputar (issue #343)", () => {
+  it("mengenali alamat LAMA, dan hanya itu", () => {
+    expect(legacyCompanyHomePath("/t/acme/cv-maju/dashboard")).toEqual({
+      tenantSlug: "acme",
+      companySlug: "cv-maju",
+    });
+    /* Akar perusahaan SUDAH kanonik — memantulkannya berarti memantulkan ke
+       diri sendiri. `parseTenantPath` menjawab `/dashboard` untuk jalur ini
+       (normalisasi yang memang benar), jadi inilah yang tidak boleh ditanyakan
+       kepadanya. */
+    expect(legacyCompanyHomePath("/t/acme/cv-maju")).toBeNull();
+    /* Lebih dalam dari beranda — bukan urusan pantulan ini. */
+    expect(legacyCompanyHomePath("/t/acme/cv-maju/dashboard/rincian")).toBeNull();
+    expect(legacyCompanyHomePath("/t/acme/cv-maju/invoices")).toBeNull();
+    expect(legacyCompanyHomePath("/dashboard")).toBeNull();
+    expect(legacyCompanyHomePath("/t/acme")).toBeNull();
+  });
+
+  it("PT yang slug-nya bernama `dashboard` tetap bisa dibuka — kasus yang dulu berputar", () => {
+    /*
+     * Bentuk inilah seluruh isi issue #343. `companyCreateSchema` menerima
+     * `dashboard` sebagai slug yang sah, jadi ia bisa lahir dari `/companies/new`
+     * tanpa satu pun galat — dan sebelum perbaikan, PT itu lahir MATI: setiap
+     * halamannya dipantulkan ke dirinya sendiri di proxy, sebelum penjaga mana
+     * pun sempat berjalan.
+     */
+    expect(legacyCompanyHomePath("/t/acme/dashboard")).toBeNull();
+    /* Alamat lama MILIK PT itu tetap dipantulkan seperti PT lain. */
+    expect(legacyCompanyHomePath("/t/acme/dashboard/dashboard")).toEqual({
+      tenantSlug: "acme",
+      companySlug: "dashboard",
+    });
+    /* Slug tenant pun boleh bernama `dashboard`. */
+    expect(legacyCompanyHomePath("/t/dashboard/dashboard")).toBeNull();
+  });
+
+  it("menolak slug tak sah SEBELUM ia menjadi tujuan pantulan", () => {
+    expect(legacyCompanyHomePath("/t/../cv-maju/dashboard")).toBeNull();
+    expect(legacyCompanyHomePath("/t/acme/CV-Maju/dashboard")).toBeNull();
+  });
+
+  it("tujuan pantulan TIDAK PERNAH sama dengan asalnya — sifat, bukan kebetulan", () => {
+    /*
+     * Yang diuji di sini keputusan proxy itu sendiri, disalin apa adanya:
+     * cocok = pantulkan ke `tenantPath(…, COMPANY_HOME_PATH)`. Kalau tujuan
+     * pernah sama dengan asal, itulah putaran tanpa henti yang dilihat
+     * pengguna sebagai ERR_TOO_MANY_REDIRECTS.
+     */
+    const pantul = (pathname: string): string | null => {
+      const lama = legacyCompanyHomePath(pathname);
+      return lama ? tenantPath(lama.tenantSlug, lama.companySlug, COMPANY_HOME_PATH) : null;
+    };
+
+    const slugs = ["cv-maju", "dashboard", "t", "pusat", "invoices", "acme"];
+    for (const tenantSlug of slugs) {
+      for (const companySlug of slugs) {
+        for (const suffix of ["", "/dashboard", "/dashboard/dashboard", "/invoices"]) {
+          const asal = `/t/${tenantSlug}/${companySlug}${suffix}`;
+          const tujuan = pantul(asal);
+          expect(tujuan, `berputar di ${asal}`).not.toBe(asal);
+        }
+      }
+    }
+  });
+
+  it("proxy memakai predikat itu, bukan `parseTenantPath` — penjaga arah balik", () => {
+    /*
+     * Perbaikannya hidup di `lib/`, tapi cacatnya lahir di `proxy.ts`. Tanpa
+     * penjaga ini, seseorang bisa menyusun ulang pantulannya dari
+     * `parseTenantPath().rest` lagi dan seluruh tes di atas tetap hijau.
+     */
+    const proxy = readFileSync(join(SRC, "proxy.ts"), "utf8");
+    expect(proxy).toContain("legacyCompanyHomePath");
+    expect(proxy).not.toContain("pathname.endsWith(COMPANY_HOME_PATH)");
   });
 });
 

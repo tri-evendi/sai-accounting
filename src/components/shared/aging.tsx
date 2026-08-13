@@ -45,6 +45,11 @@ import { Money, MoneyCell } from "@/components/ui/money";
 import { CheckCircleOutlined, ClockCircleOutlined, MinusCircleOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { AGING_BUCKETS, type AgingBucket, type PaymentStatus } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
+/* `ChartCard` server, `AgingChart` client — batas RSC-nya sama persis dengan
+   pemakaian grafik lain (beranda, /inventory, /reports/cash-flow), jadi berkas
+   ini TETAP server component. Dijaga `tests/rsc-boundary.test.ts`. */
+import { ChartCard } from "@/components/dashboard/chart-card";
+import { AgingChart } from "@/components/shared/dashboard-charts";
 
 /**
  * Lebar dasar satu kartu ember umur. Menggantikan
@@ -163,10 +168,19 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
   /** Isi satu kartu ember: keterangan di atas, nominal besar di bawah. */
   const bucketCard = (label: string, value: number, emphasised = false) => (
     <div style={{ padding: "var(--ant-padding)" }}>
+      {/*
+       * Kartu total berlatar `colorPrimaryBg`, jadi keterangannya `colorText`
+       * dan BUKAN `colorLink` (issue #355). Komentar di bawah dulu menyebut
+       * "5,65:1" untuk `--ant-color-link`; angka itu benar terhadap latar
+       * NETRAL, bukan terhadap tint merek yang benar-benar ada di belakangnya.
+       * Diukur pada `antd` terpasang: 4,05:1 di tema terang, 3,49:1 di gelap.
+       * `colorText` lolos keduanya (6,59 / 9,08), dan penekanannya tetap ada
+       * lewat batas + tint kartunya.
+       */}
       <p
         style={{
           margin: 0,
-          color: emphasised ? "var(--ant-color-link)" : "var(--ant-color-text-secondary)",
+          color: emphasised ? "var(--ant-color-text)" : "var(--ant-color-text-secondary)",
         }}
       >
         {label}
@@ -200,9 +214,9 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
         ))}
         {/*
          * Kartu total ditandai batas & latar merek — penanda KEDUA; yang
-         * pertama adalah katanya sendiri ("Total Tunggakan"). Teksnya
-         * `--ant-color-link` (= `colorBrandText`, 5,65:1), bukan
-         * `--ant-color-primary` yang sebagai teks hanya 4,10:1.
+         * pertama adalah katanya sendiri ("Total Tunggakan"). Warna teksnya
+         * dijelaskan di `bucketCard` di atas: `colorText`, sebab teks merek di
+         * atas tint merek gagal 4,5:1 di kedua tema (issue #355).
          */}
         <Card
           style={{
@@ -213,6 +227,24 @@ export async function AgingSummary({ buckets, total, unresolved, caption }: Agin
         >
           {bucketCard(t("aging.totalOutstanding"), total, true)}
         </Card>
+      </div>
+
+      {/*
+       * Bentuk umurnya, bukan hanya angkanya (issue #355).
+       *
+       * Kartu di atas sudah menyebut setiap nominal; grafik ini menjawab
+       * pertanyaan yang berbeda dan tidak bisa dijawab deretan angka:
+       * "menumpuk di ember tua atau tidak?". Ia diletakkan DI BAWAH kartunya,
+       * bukan menggantikan — angka tetap sumber kebenaran, grafik tetap
+       * ringkasan.
+       */}
+      <div style={{ marginTop: CARD_GAP }}>
+        <ChartCard title={t("aging.chartTitle")} description={caption}>
+          <AgingChart
+            data={AGING_BUCKETS.map((b) => ({ label: bucketLabels[b], amount: buckets[b] }))}
+            currency="IDR"
+          />
+        </ChartCard>
       </div>
       <p style={{ margin: 0, marginTop: CARD_GAP, color: "var(--ant-color-text-secondary)" }}>
         <small>

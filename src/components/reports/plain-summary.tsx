@@ -139,17 +139,39 @@ export async function PlainSummary({ summary }: { summary: ReportSummary }) {
     <Card style={CARD}>
       <div style={BODY}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--ant-margin-sm)" }}>
+          {/*
+           * Ikonnya ikut `colorText` (issue #355). Ikon bukan teks, jadi
+           * ambangnya 3:1 — tetapi diukur di atas `colorPrimaryBg` yang benar,
+           * warna merek hanya 4,05:1 di tema terang dan **2,98:1 di tema
+           * gelap**: gagal bahkan pada ambang non-teks yang lebih longgar itu.
+           * Aksen kartunya tetap ada lewat batas & tint latarnya.
+           */}
           <BulbOutlined
             aria-hidden="true"
-            style={{ fontSize: 20, flexShrink: 0, marginTop: 2, color: "var(--ant-color-link)" }}
+            style={{ fontSize: 20, flexShrink: 0, marginTop: 2, color: "var(--ant-color-text)" }}
           />
           <div>
+            {/*
+             * Judulnya `colorText`, BUKAN `colorLink` (issue #355).
+             *
+             * Kartu ini berlatar `colorPrimaryBg`, dan teks merek di atas tint
+             * merek adalah pasangan yang tak pernah diukur #186/#207: metodologi
+             * berkas token menghitung "min" terhadap tiga latar NETRAL, dan
+             * `colorPrimaryBg` bukan salah satunya. Diukur pada `antd` yang
+             * benar-benar terpasang: `colorBrandText` di atas `colorPrimaryBg`
+             * = 4,05:1 di tema terang dan 3,49:1 di tema gelap — gagal di
+             * KEDUANYA. `colorText` lolos keduanya (6,59 / 9,08).
+             *
+             * Aksen mereknya tidak hilang: ikon bohlam, batas kartu, dan tint
+             * latarnya tetap membawanya — tiga penanda, tanpa satu pun
+             * bergantung pada teks yang sulit dibaca.
+             */}
             <h2
               style={{
                 margin: 0,
                 fontSize: "var(--ant-font-size)",
                 fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
-                color: "var(--ant-color-link)",
+                color: "var(--ant-color-text)",
               }}
             >
               {t("dashboard.plainTitle")}

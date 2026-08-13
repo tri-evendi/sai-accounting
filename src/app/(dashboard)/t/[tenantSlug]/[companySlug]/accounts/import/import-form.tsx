@@ -170,7 +170,7 @@ export function ImportAccountsForm() {
       {/* Persiapan file — mengikuti konvensi Accurate yang biasa dipakai staff. */}
       <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
-          <CardTitle>{t("accounts.prepTitle")}</CardTitle>
+          <CardTitle level={2}>{t("accounts.prepTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Flex vertical gap={token.marginSM} style={{ color: token.colorTextSecondary }}>
@@ -232,7 +232,7 @@ export function ImportAccountsForm() {
       {/* Unggah */}
       <Card>
         <CardHeader>
-          <CardTitle>{t("accounts.uploadTitle")}</CardTitle>
+          <CardTitle level={2}>{t("accounts.uploadTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>

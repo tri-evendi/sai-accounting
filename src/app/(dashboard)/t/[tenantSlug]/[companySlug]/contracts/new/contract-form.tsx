@@ -247,7 +247,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
 
       <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
-          <CardTitle>{t("contracts.detailsTitle")}</CardTitle>
+          <CardTitle level={2}>{t("contracts.detailsTitle")}</CardTitle>
           <Typography.Text
             type="secondary"
             style={{ display: "block", marginTop: token.marginXXS }}
@@ -326,7 +326,7 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
       <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
           <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-            <CardTitle>{t("contracts.contractedGoodsTitle")}</CardTitle>
+            <CardTitle level={2}>{t("contracts.contractedGoodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addItem}>
               {/* Jarak ikon–teks dari `iconGap` `.ant-btn`; ukurannya dari
                   primitif `Button`. */}

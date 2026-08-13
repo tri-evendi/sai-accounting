@@ -274,7 +274,7 @@ export function UserPermissionsPanel({
       <CardHeader>
         <Flex wrap align="flex-start" justify="space-between" gap={token.marginSM}>
           <div>
-            <CardTitle>
+            <CardTitle level={2}>
               <Flex wrap align="center" gap={token.marginXS} style={{ display: "inline-flex" }}>
                 {t("users.panelTitle", { name: displayName })}
                 {savedOverrideCount > 0 ? (

@@ -112,7 +112,7 @@ export function NewCustomerForm() {
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <Card style={{ marginBottom: token.marginLG }}>
             <CardHeader>
-              <CardTitle>{t("customers.dataTitle")}</CardTitle>
+              <CardTitle level={2}>{t("customers.dataTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               {/* Baris yang membungkus: 1 kolom di ponsel, 2 sejak `sm` (576px).

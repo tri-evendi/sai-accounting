@@ -127,7 +127,7 @@ export function SettingsClient({
 
       <Card style={blockGap}>
         <CardHeader>
-          <CardTitle>{t("settings.profileTitle")}</CardTitle>
+          <CardTitle level={2}>{t("settings.profileTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Flex vertical gap={token.marginSM}>
@@ -164,7 +164,7 @@ export function SettingsClient({
       {/* issue #21 — pintu masuk kedua ke Kamus Istilah, selain menu Bantuan. */}
       <Card style={blockGap}>
         <CardHeader>
-          <CardTitle>{t("helpMenu.trigger")}</CardTitle>
+          <CardTitle level={2}>{t("helpMenu.trigger")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Flex vertical align="flex-start" gap={token.marginSM}>
@@ -179,7 +179,7 @@ export function SettingsClient({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("settings.aboutTitle")}</CardTitle>
+          <CardTitle level={2}>{t("settings.aboutTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Flex vertical gap={token.marginXXS}>

@@ -79,7 +79,7 @@ export default async function ConsigneeDetailPage({
       />
 
       <Card>
-        <CardHeader><CardTitle>{t("consignees.infoTitle")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle level={2}>{t("consignees.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
           <dl style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: INFO_GAP }}>
             {infoItem(t("common.name"), consignee.name)}

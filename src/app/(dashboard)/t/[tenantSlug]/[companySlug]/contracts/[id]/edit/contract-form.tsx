@@ -230,7 +230,7 @@ export function EditContractForm() {
 
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
-          <CardHeader><CardTitle>{t("contracts.detailsTitle")}</CardTitle></CardHeader>
+          <CardHeader><CardTitle level={2}>{t("contracts.detailsTitle")}</CardTitle></CardHeader>
           <CardContent>
             <Row gutter={[token.margin, token.margin]}>
               <Col xs={24} sm={12}>
@@ -302,7 +302,7 @@ export function EditContractForm() {
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
             <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-              <CardTitle>{t("contracts.goodsTitle")}</CardTitle>
+              <CardTitle level={2}>{t("contracts.goodsTitle")}</CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>
                 <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
               </Button>

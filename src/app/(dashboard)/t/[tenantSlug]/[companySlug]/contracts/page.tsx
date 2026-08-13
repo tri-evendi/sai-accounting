@@ -296,6 +296,7 @@ export default async function ContractsPage({
           type="text"
           name="search"
           placeholder={t("contracts.searchPlaceholder")}
+          aria-label={t("contracts.searchPlaceholder")}
           defaultValue={filters.search}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />

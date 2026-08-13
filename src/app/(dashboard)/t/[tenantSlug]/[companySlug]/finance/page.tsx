@@ -386,7 +386,7 @@ export default async function FinancePage({
             return (
               <Card key={`${b.type}_${b.currency}`}>
                 <CardHeader>
-                  <CardTitle>
+                  <CardTitle level={2}>
                     <span style={{ color: "var(--ant-color-text-secondary)" }}>
                       {cashLabels[b.type as CashType] || b.type} ({b.currency})
                     </span>
@@ -452,7 +452,7 @@ export default async function FinancePage({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("finance.txListTitle", { count: totalCount })}</CardTitle>
+          <CardTitle level={2}>{t("finance.txListTitle", { count: totalCount })}</CardTitle>
         </CardHeader>
         <StaticTable<CashRow>
           columns={columns}

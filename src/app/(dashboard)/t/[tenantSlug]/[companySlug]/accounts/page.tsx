@@ -240,6 +240,7 @@ export default async function AccountsPage({
           name="search"
           defaultValue={q}
           placeholder={t("accounts.searchPlaceholder")}
+          aria-label={t("accounts.searchPlaceholder")}
           style={{ flex: `1 1 ${SEARCH_MAX_WIDTH}px`, maxWidth: SEARCH_MAX_WIDTH }}
         />
         {/* `outline`, bukan `secondary`: submit yang MENYARING sudah diputuskan

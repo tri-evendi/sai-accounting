@@ -327,7 +327,7 @@ export function DeliveryOrderForm({
 
       <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
-          <CardTitle>
+          <CardTitle level={2}>
             <TermTooltip term="surat_jalan">{t("deliveryOrders.detailsTitle")}</TermTooltip>
           </CardTitle>
         </CardHeader>
@@ -422,7 +422,7 @@ export function DeliveryOrderForm({
       <Card style={{ marginBottom: token.marginLG }}>
         <CardHeader>
           <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-            <CardTitle>{t("deliveryOrders.goodsTitle")}</CardTitle>
+            <CardTitle level={2}>{t("deliveryOrders.goodsTitle")}</CardTitle>
             <Button type="button" variant="secondary" size="sm" onClick={addLine}>
               <PlusOutlined aria-hidden="true" /> {t("common.addItem")}
             </Button>

@@ -21,6 +21,7 @@
 import { notFound } from "next/navigation";
 
 import { CompanySessionSync } from "@/components/layout/company-session-sync";
+import { DemoCompanyBanner } from "@/components/layout/demo-company-banner";
 import { companyIdForRoute } from "@/lib/company-route";
 
 export default async function TenantScopedLayout({
@@ -37,6 +38,13 @@ export default async function TenantScopedLayout({
   return (
     <>
       <CompanySessionSync companyId={companyId} />
+      {/*
+       * Spanduk buku CONTOH (issue #355) — di TATA LETAK, jadi ia muncul di
+       * setiap layar perusahaan itu tanpa satu halaman pun perlu mengingatnya.
+       * Mengembalikan `null` untuk perusahaan biasa, jadi tak ada biaya bagi
+       * yang bukan demo selain satu pembacaan registry yang sudah di-cache.
+       */}
+      <DemoCompanyBanner companyId={companyId} />
       {children}
     </>
   );

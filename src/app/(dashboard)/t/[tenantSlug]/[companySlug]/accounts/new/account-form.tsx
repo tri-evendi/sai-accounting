@@ -102,7 +102,7 @@ export function NewAccountForm() {
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("accounts.infoTitle")}</CardTitle>
+            <CardTitle level={2}>{t("accounts.infoTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Row gutter={[token.margin, token.margin]}>

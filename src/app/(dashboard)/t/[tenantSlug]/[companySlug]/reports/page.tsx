@@ -1,3 +1,5 @@
+import { effectiveAccountantMode } from "@/lib/accountant-mode";
+import { canEffective } from "@/lib/authz-effective";
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { Card } from "@/components/ui/card";
@@ -167,10 +169,58 @@ export default async function ReportsPage({
 }: {
   params: Promise<TenantScopedParams>;
 }) {
-  await requirePagePermission("report.read", params);
+  const session = await requirePagePermission("report.read", params);
   const t = await getT();
   const dictionary = await getDictionary(await getLocale());
-  const groups = reportsByCategory();
+
+  /*
+   * Katalog disaring per izin sebelum dirender (issue #355).
+   *
+   * Sebelumnya keenam belas kartu tampil untuk semua orang, jadi perusahaan
+   * yang mematikan modul Stok tetap melihat kategori "Stok" lengkap dengan
+   * ajakan "Buka laporan" — yang mendarat di layar modul-tidak-aktif. Menu
+   * samping sudah lama menyembunyikan hal yang sama lewat
+   * `effectivePermissionsFor`; Pusat Laporan adalah satu-satunya permukaan yang
+   * belum ikut, dan karena itu satu-satunya yang menjanjikan sesuatu lalu
+   * menolak membukanya.
+   *
+   * `canEffective` — bukan sekadar cek modul — sebab ia memeriksa modul LEBIH
+   * DULU lalu peran, jadi satu panggilan menutup dua lubang sekaligus: laporan
+   * milik modul yang mati, DAN laporan yang perannya memang tak boleh buka
+   * (mis. pemegang `report.read` tanpa `cash.read` yang selama ini tetap
+   * disodori kartu Kas & Bank).
+   *
+   * Kategori yang habis isinya ikut hilang — judul kategori tanpa satu kartu
+   * pun adalah ruang kosong yang tak menjelaskan apa-apa. Yang TIDAK berubah:
+   * `coming_soon` tetap tampil (statusnya jujur, bukan janji yang gagal).
+   *
+   * ── Saringan KEDUA: Mode Akuntan (issue #355) ─────────────────────────────
+   * Dialog Mode Akuntan berjanji mematikannya menyembunyikan "label
+   * debit/kredit" sehingga tampilan jadi "bahasa sehari-hari saja". Sampai
+   * audit produksi 13 Agustus 2026 janji itu ditepati di menu saja: Jurnal,
+   * Buku Besar, dan Daftar Akun hilang, tetapi Pusat Laporan tetap memajang
+   * Neraca Saldo lengkap dengan kalimat "Saldo debit/kredit seluruh akun".
+   * Fungsi penyaringnya sengaja `effectiveAccountantMode` yang SAMA dengan
+   * `nav.ts`, supaya menu dan katalog tak pernah berbeda pendapat.
+   */
+  const accountantOn = effectiveAccountantMode(session.user);
+  const allowed = await Promise.all(
+    reportsByCategory().map(async (group) => ({
+      category: group.category,
+      reports: (
+        await Promise.all(
+          group.reports.map(async (r) =>
+            r.accountingOnly && !accountantOn
+              ? null
+              : (await canEffective(session.user, r.permission))
+                ? r
+                : null
+          )
+        )
+      ).filter((r): r is ReportDefinition => r !== null),
+    }))
+  );
+  const groups = allowed.filter((g) => g.reports.length > 0);
   const categoryText = dictionary.reports.catalogCategory;
   // Diambil SEKALI untuk seluruh katalog, bukan per kartu: hanya laporan yang
   // menyatakan saringan `costCenter` yang menerimanya (lihat ReportCard).

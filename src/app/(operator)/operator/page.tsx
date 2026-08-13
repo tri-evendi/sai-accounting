@@ -170,6 +170,7 @@ export default async function OperatorTenantsPage({
             name="q"
             label={t("operator.tenants.searchLabel")}
             placeholder={t("operator.tenants.searchPlaceholder")}
+            aria-label={t("operator.tenants.searchPlaceholder")}
             defaultValue={q}
           />
         </div>

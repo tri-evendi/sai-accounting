@@ -24,6 +24,8 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { theme } from "antd";
 import { DefaultTooltipContent } from "recharts";
@@ -290,5 +292,142 @@ describe("tooltip recharts: putih pekat sampai kita menyebut lain", () => {
     expect(surface.borderRadius).toBe(token.borderRadiusLG);
     expect(surface.border).toContain(token.colorBorderSecondary);
     expect(surface.boxShadow).toBe(token.boxShadowSecondary);
+  });
+});
+
+/**
+ * Grafik umur piutang/utang (issue #355).
+ *
+ * Ditambahkan setelah koreksi audit: aplikasi ini SUDAH punya lapisan grafik
+ * (recharts, warnanya token) di /contracts, /inventory, dan /reports/cash-flow.
+ * Audit produksi 13 Agustus 2026 melaporkannya "nol grafik" — keliru, sebab
+ * tenant yang diperiksa mematikan dua modul itu dan halaman ketiganya
+ * menggantung grafiknya pada data yang kebetulan kosong.
+ *
+ * Yang memang belum punya visualisasi adalah laporan keuangan lain, dan umur
+ * piutang adalah kasus terkuatnya: ia SUDAH berbentuk grafik batang, hanya
+ * digambar sebagai lima kartu berjajar.
+ */
+describe("grafik umur piutang (#355)", () => {
+  const src = readFileSync(
+    join(__dirname, "..", "src", "components", "shared", "dashboard-charts.tsx"),
+    "utf8"
+  );
+  const aging = readFileSync(
+    join(__dirname, "..", "src", "components", "shared", "aging.tsx"),
+    "utf8"
+  );
+
+  /**
+   * Irisan komponennya dibatasi sampai `export` BERIKUTNYA, dan komentarnya
+   * dibuang lebih dulu. Keduanya perlu, dan keduanya ketahuan saat berkas ini
+   * ditulis: irisan sampai akhir berkas ikut menyeret komponen sesudahnya, dan
+   * rujukan isu seperti `#123` / `#355` terbaca sebagai warna heksadesimal oleh
+   * regex yang jujur — `1`, `2`, `3` semuanya digit hex yang sah.
+   */
+  const componentBody = (name: string) => {
+    const start = src.indexOf(`export function ${name}`);
+    const rest = src.slice(start + 1);
+    const next = rest.indexOf("\nexport function ");
+    const block = next === -1 ? rest : rest.slice(0, next);
+    return block.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  };
+
+  it("memakai nada status dari palet token, bukan hex sendiri", () => {
+    const block = componentBody("AgingChart");
+    expect(block).toContain("palette.statusTones");
+    // Tidak ada satu pun warna mentah yang lahir di dalam komponennya.
+    expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+
+  /*
+   * Empat ember, tiga nada: yang dibedakan warna adalah TINGKAT kekhawatiran,
+   * bukan identitas embernya. Identitas dibawa sumbu X — kanal yang bertahan
+   * pada deuteranopia maupun cetakan hitam-putih.
+   */
+  it("nama ember tercetak di sumbu, jadi warna bukan penanda tunggal", () => {
+    const block = componentBody("AgingChart");
+    expect(block).toContain('dataKey="label"');
+    expect(block).toContain("XAxis");
+  });
+
+  it("semua ember nol menghasilkan keadaan kosong, bukan empat batang nol", () => {
+    const block = componentBody("AgingChart");
+    expect(block).toContain("d.amount <= 0");
+    expect(block).toContain("charts.noAging");
+  });
+
+  /*
+   * Grafiknya MELENGKAPI kartunya, tidak menggantikan. Angka tetap sumber
+   * kebenaran yang bisa ditelusuri; label sumbu yang dipendekkan ("12,5 jt")
+   * boleh ada justru karena angka penuhnya masih terbaca di atasnya.
+   */
+  it("dipasang DI BAWAH kartu ember, bukan menggantikannya", () => {
+    expect(aging).toContain("AgingChart");
+    expect(aging).toContain("aging.totalOutstanding");
+    expect(aging.indexOf("aging.totalOutstanding")).toBeLessThan(aging.indexOf("<AgingChart"));
+  });
+
+  it("pemendek nominal hanya untuk sumbu, dan tidak memakai Intl compact", () => {
+    expect(src).toContain("function compactMoney");
+    /*
+     * Diperiksa pada sumber TANPA komentar: `compactMoney` sendiri menjelaskan
+     * kenapa `notation: "compact"` ditolak (keluarannya berubah antar versi
+     * ICU, dan sumbu yang berubah bentuk antar-lingkungan membuat tangkapan
+     * layar dokumentasi tak bisa dipercaya). Mencocokkan kalimat itu dengan
+     * pemakaian sungguhan membuat penjelasan yang benar menjatuhkan tesnya.
+     */
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(code).not.toContain('notation: "compact"');
+  });
+});
+
+/**
+ * Waterfall Laba/Rugi (issue #355) — rantai bertingkat #123 digambar apa adanya.
+ */
+describe("waterfall laba/rugi (#355)", () => {
+  const src = readFileSync(
+    join(__dirname, "..", "src", "components", "shared", "dashboard-charts.tsx"),
+    "utf8"
+  );
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  /*
+   * Kumulatifnya dihitung fungsi MURNI di tingkat modul, bukan di badan
+   * komponen: React Compiler menolak mutasi nilai turunan render
+   * (`react-hooks/immutability`), dan lint memerahkannya saat berkas ini
+   * ditulis. Menariknya kembali ke dalam komponen akan lolos tes tapi gagal
+   * lint — jadi arahnya dikunci di sini juga.
+   */
+  it("kumulatifnya fungsi murni di tingkat modul", () => {
+    expect(code).toContain("function buildWaterfall(");
+    const body = code.slice(code.indexOf("export function IncomeWaterfallChart"));
+    expect(body).not.toContain("let running");
+  });
+
+  it("subtotal menyetel ulang kumulatif, bukan ikut dijumlahkan", () => {
+    const fn = code.slice(code.indexOf("function buildWaterfall"));
+    expect(fn).toContain('kind === "subtotal"');
+    expect(fn).toContain("running = s.value");
+  });
+
+  it("batang pengangkat tak terlihat dan tak masuk tooltip", () => {
+    const body = code.slice(code.indexOf("export function IncomeWaterfallChart"));
+    expect(body).toContain('fill="transparent"');
+    expect(body).toContain('tooltipType="none"');
+  });
+
+  /* Nama tiap langkah ada di sumbu X — warna tak pernah penanda tunggal. */
+  it("setiap langkah bernama di sumbu", () => {
+    const body = code.slice(code.indexOf("export function IncomeWaterfallChart"));
+    expect(body).toContain('dataKey="label"');
+    expect(body).toContain("interval={0}");
+  });
+
+  it("subtotal memakai nada netral, delta memakai arah uang", () => {
+    const body = code.slice(code.indexOf("export function IncomeWaterfallChart"));
+    expect(body).toContain("palette.countPrimary");
+    expect(body).toContain("palette.moneyOut");
+    expect(body).toContain("palette.moneyIn");
   });
 });

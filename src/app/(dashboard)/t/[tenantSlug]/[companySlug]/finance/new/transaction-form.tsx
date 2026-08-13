@@ -419,7 +419,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
       <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("finance.detailsTitle")}</CardTitle>
+            <CardTitle level={2}>{t("finance.detailsTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div style={twoColumnGrid(token.margin)}>

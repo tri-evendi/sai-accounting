@@ -1420,7 +1420,8 @@
     "costCenterField": "Pusat Biaya (bawaan)",
     "costCenterHint": "Dipakai untuk setiap baris yang tidak memilih pusat biayanya sendiri.",
     "colCostCenter": "Pusat Biaya",
-    "costCenterFollowHeader": "Ikut kepala"
+    "costCenterFollowHeader": "Ikut kepala",
+    "awaitingEntry": "Belum ada isian"
   },
   "periods": {
     "title": "Tutup Periode",
@@ -1823,7 +1824,9 @@
         "title": "Ekspor e-Faktur (DJP/CTAS)",
         "description": "Ekspor faktur pajak keluaran ke format impor DJP."
       }
-    }
+    },
+    "waterfallTitle": "Dari penjualan ke laba bersih",
+    "waterfallDesc": "Batang naik menambah, batang turun mengurangi; batang dari dasar adalah hasil antara."
   },
   "budget": {
     "title": "Anggaran & Target",
@@ -1990,6 +1993,28 @@
       "terima_uang": {
         "label": "Terima Pembayaran Pertama",
         "description": "Catat uang yang masuk ke kas atau rekening bank."
+      }
+    }
+  },
+  "monthlyRoutine": {
+    "title": "Rutinitas {month}",
+    "subtitle": "Bulan {month} sudah lewat tapi bukunya belum dikunci. Tiga hal ini merapikannya sebelum ditutup.",
+    "progress": "{done} dari {total} selesai",
+    "done": "Selesai",
+    "start": "Mulai",
+    "again": "Buka lagi",
+    "items": {
+      "pengeluaran": {
+        "label": "Catat Pengeluaran Bulan Lalu",
+        "description": "Semua uang yang keluar — sewa, gaji, listrik, belanja. Yang belum dicatat tidak muncul di laporan."
+      },
+      "cocokkan_bank": {
+        "label": "Cocokkan Rekening Koran",
+        "description": "Samakan catatan Anda dengan mutasi dari bank. Selisihnya biasanya transaksi yang terlewat."
+      },
+      "tutup_bulan": {
+        "label": "Periksa Laporan, lalu Tutup Buku",
+        "description": "Lihat Laba/Rugi dan Neraca bulan lalu. Kalau sudah sesuai, kunci bulannya supaya angkanya tidak berubah lagi."
       }
     }
   },
@@ -2831,7 +2856,8 @@
     "unresolvedBefore": "{count} dokumen valas belum berkurs, jadi nilai IDR-nya tidak diketahui dan",
     "unresolvedStrong": "tidak ikut dijumlahkan",
     "unresolvedAfter": ". Isi kurs pada dokumen agar terhitung.",
-    "docCount": "{count} dokumen"
+    "docCount": "{count} dokumen",
+    "chartTitle": "Sebaran umur"
   },
   "ledgerFilter": {
     "asOfField": "Per Tanggal",
@@ -2848,7 +2874,10 @@
     "tooltipMoneyIn": "Uang masuk: {amount}",
     "tooltipMoneyOut": "Uang keluar: {amount}",
     "tooltipDifference": "Selisih: {amount}",
-    "tooltipCurrentStock": "Stok saat ini"
+    "tooltipCurrentStock": "Stok saat ini",
+    "noAging": "Tidak ada tunggakan pada periode ini",
+    "seriesOutstanding": "Belum dibayar",
+    "noIncome": "Belum ada penjualan maupun beban pada periode ini"
   },
   "workflows": {
     "penjualan": {
@@ -3048,7 +3077,11 @@
     "colAction": "Tindakan",
     "colDetails": "Rincian",
     "colIp": "IP",
-    "overrodeApprover": "Menimpa penyetuju {role}"
+    "overrodeApprover": "Menimpa penyetuju {role}",
+    "setupDone": "Bagan akun {created} akun baru, {existing} sudah ada · saldo awal {journal}",
+    "setupDonePlain": "Penyiapan awal perusahaan selesai",
+    "modulesUpdated": "Modul usaha diubah — kini {count} modul aktif",
+    "unavailable": "Tidak ada rincian"
   },
   "auditAction": {
     "finance_create": "Transaksi kas & bank",
@@ -3896,5 +3929,9 @@
     "failed": "Sandi salah, atau Anda bukan anggota perusahaan ini.",
     "tooMany": "Terlalu banyak percobaan. Coba lagi beberapa menit lagi.",
     "hint": "Ditanyakan sekali per hari kerja untuk tiap perusahaan. Sandinya sama dengan sandi masuk Anda."
+  },
+  "demoCompany": {
+    "title": "Ini perusahaan contoh.",
+    "body": "Isinya data buatan supaya Anda bisa melihat laporan yang sudah terisi. Angkanya bukan pembukuan sungguhan, dan tidak bisa diubah. Untuk mulai membukukan usaha Anda sendiri, buat perusahaan baru."
   }
 }

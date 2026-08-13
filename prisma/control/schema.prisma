@@ -132,6 +132,26 @@ model Company {
   /// hilang dari pemilih dan tak bisa dibuka; basis datanya tidak disentuh.
   isActive Boolean @default(true) @map("is_active")
 
+  /// Perusahaan CONTOH — bukunya berisi data buatan, bukan pembukuan sungguhan
+  /// (issue #355).
+  ///
+  /// KENAPA FLAG SENDIRI, bukan menumpang status langganan: read-only yang sudah
+  /// ada terikat pada tenant yang DITANGGUHKAN, dan memakainya di sini akan
+  /// menampilkan "langganan Anda ditangguhkan" pada perusahaan yang justru
+  /// dibuat untuk menyambut pengguna baru. Dua keadaan yang berbeda sama sekali
+  /// tidak boleh berbagi satu penanda — persis alasan `/feature-inactive`
+  /// dipisahkan dari "tidak punya akses" di issue #99.
+  ///
+  /// Akibatnya di aplikasi ada DUA: setiap tulisan ditolak penjaga
+  /// (`lib/page-auth.ts` / `lib/auth-guard.ts`), dan setiap layarnya membawa
+  /// spanduk yang menyebut isinya data contoh. Yang pertama menjaga bukunya,
+  /// yang kedua menjaga penggunanya — sebuah buku demo yang bisa dikira nyata
+  /// adalah kesalahan yang mahal di aplikasi akuntansi.
+  ///
+  /// `false` untuk setiap baris yang sudah ada: perusahaan sungguhan tidak
+  /// pernah berubah arti karena kolom ini lahir.
+  isDemo Boolean @default(false) @map("is_demo")
+
   /// Tenant PEMILIK perusahaan ini (issue #134). Nullable di TIPE hanya untuk
   /// masa transisi adopsi (migration 0002 → skrip adopsi → 0003 NOT NULL);
   /// kode yang MEMBUAT perusahaan wajib selalu mengisinya — basis data menolak

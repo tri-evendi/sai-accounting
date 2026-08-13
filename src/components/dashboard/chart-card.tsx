@@ -64,7 +64,7 @@ export function ChartCard({
   return (
     <Card style={CARD}>
       <CardHeader style={HEADER}>
-        <CardTitle style={TITLE}>{title}</CardTitle>
+        <CardTitle level={2} style={TITLE}>{title}</CardTitle>
         {description && <p style={DESCRIPTION}>{description}</p>}
       </CardHeader>
       <CardContent style={CONTENT}>

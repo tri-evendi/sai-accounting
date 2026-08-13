@@ -45,6 +45,13 @@ const controlDb = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
 }));
 const membershipFor = vi.hoisted(() => vi.fn());
+/*
+ * `getCompany` ikut di-mock sejak issue #355: penjaga membacanya pada jalur
+ * TULIS untuk memeriksa flag perusahaan-contoh. Bawaannya bukan-demo, sehingga
+ * seluruh tes di berkas ini tetap menguji apa yang memang ia uji — lingkup
+ * perusahaan — tanpa gerbang baru itu ikut campur.
+ */
+const getCompany = vi.hoisted(() => vi.fn(async () => ({ isDemo: false })));
 const routeSlot = vi.hoisted(() => ({ value: null as unknown }));
 const setRouteCompany = vi.hoisted(() => vi.fn());
 const routeCompany = vi.hoisted(() => vi.fn());
@@ -57,7 +64,7 @@ const tenantStateForCompany = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/control-db", () => ({ controlDb }));
-vi.mock("@/lib/company-registry", () => ({ membershipFor }));
+vi.mock("@/lib/company-registry", () => ({ membershipFor, getCompany }));
 vi.mock("@/lib/current-company", () => ({ setRouteCompany, routeCompany }));
 vi.mock("@/lib/auth", () => ({ auth: authFn }));
 vi.mock("next/headers", () => ({ headers: headersFn }));

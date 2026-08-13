@@ -363,7 +363,7 @@ export default async function InvoiceDetailPage({
 
       {/* Invoice Info */}
       <Card style={{ marginBottom: SECTION_GAP }}>
-        <CardHeader><CardTitle>{t("invoices.infoTitle")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle level={2}>{t("invoices.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
           {/* `sm:grid-cols-2` diganti baris yang membungkus sendiri: satu kolom
               di 375px, dua atau lebih begitu ruangnya ada. */}
@@ -450,7 +450,7 @@ export default async function InvoiceDetailPage({
 
       {/* Items */}
       <Card style={{ marginBottom: SECTION_GAP }}>
-        <CardHeader><CardTitle>{t("invoices.goodsTitle")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle level={2}>{t("invoices.goodsTitle")}</CardTitle></CardHeader>
         <StaticTable
           columns={itemColumns}
           rows={itemRows}
@@ -475,7 +475,7 @@ export default async function InvoiceDetailPage({
               gap: INLINE_GAP,
             }}
           >
-            <CardTitle>{t("invoices.paymentsTitle")}</CardTitle>
+            <CardTitle level={2}>{t("invoices.paymentsTitle")}</CardTitle>
             <div style={{ textAlign: "right", color: "var(--ant-color-text-secondary)" }}>
               <div style={{ fontVariantNumeric: "tabular-nums" }}>
                 {baseAmount != null
@@ -525,7 +525,7 @@ export default async function InvoiceDetailPage({
       {/* Uang muka (issue #26) — the down-payment coming off this bill. */}
       <Card style={{ marginTop: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("invoices.advanceTitle")}</CardTitle>
+          <CardTitle level={2}>{t("invoices.advanceTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <InvoiceAdvanceSection

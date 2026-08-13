@@ -33,6 +33,11 @@ import { formatDate } from "@/lib/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { ChartCard } from "@/components/dashboard/chart-card";
+import { IncomeWaterfallChart } from "@/components/shared/dashboard-charts";
+
+/** Jarak antar-blok halaman — sama dengan `marginLG` yang dipakai laporan lain. */
+const SECTION_GAP = 24;
 export const dynamic = "force-dynamic";
 
 export default async function IncomeStatementPage({
@@ -145,6 +150,46 @@ export default async function IncomeStatementPage({
       <Card>
         <IncomeStatementTable payload={payload} t={t} />
       </Card>
+
+      {/*
+       * Rantai bertingkatnya digambar (issue #355).
+       *
+       * Laporan ini SUDAH bertingkat (#123): penjualan − HPP = laba kotor,
+       * − beban = laba usaha, ± lain-lain = laba bersih. Dalam bentuk tabel
+       * rantai itu harus dirakit ulang di kepala pembacanya baris demi baris;
+       * waterfall menggambarkannya apa adanya. Diletakkan DI BAWAH tabelnya —
+       * angka tetap sumber kebenaran, grafik tetap ringkasan.
+       *
+       * Nilainya diambil dari `is`, objek yang SAMA yang mengisi tabel di atas,
+       * jadi grafik dan tabel tidak bisa berselisih angka.
+       */}
+      <div style={{ marginTop: SECTION_GAP }}>
+        <ChartCard
+          title={t("reports.waterfallTitle")}
+          description={t("reports.waterfallDesc")}
+        >
+          <IncomeWaterfallChart
+            currency="IDR"
+            steps={[
+              { label: t("reports.sectionRevenue"), value: is.sales.total, kind: "delta" },
+              { label: t("reports.sectionCogs"), value: -is.cogs.total, kind: "delta" },
+              { label: t("reports.grossProfitRow"), value: is.grossProfit, kind: "subtotal" },
+              {
+                label: t("reports.sectionOperatingExpense"),
+                value: -is.operatingExpense.total,
+                kind: "delta",
+              },
+              { label: t("reports.operatingProfitRow"), value: is.operatingProfit, kind: "subtotal" },
+              {
+                label: t("reports.sectionOtherIncome"),
+                value: is.otherIncome.total - is.otherExpense.total,
+                kind: "delta",
+              },
+              { label: t("reports.netIncomeRow"), value: is.netIncome, kind: "subtotal" },
+            ]}
+          />
+        </ChartCard>
+      </div>
     </div>
   );
 }

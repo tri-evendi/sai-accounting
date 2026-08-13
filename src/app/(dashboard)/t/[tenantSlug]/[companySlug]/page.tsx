@@ -29,6 +29,16 @@ import {
   type FirstStepProgress,
 } from "@/lib/first-steps";
 import { FirstStepsPanel } from "@/components/dashboard/first-steps-panel";
+import {
+  formatMonthYear,
+  isRoutineDue,
+  monthBounds,
+  previousMonth,
+  visibleMonthlySteps,
+  type MonthlyRoutineProgress,
+} from "@/lib/monthly-routine";
+import { MonthlyRoutinePanel } from "@/components/dashboard/monthly-routine-panel";
+import { GlossaryHint } from "@/components/dashboard/glossary-hint";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -203,7 +213,10 @@ export default async function DashboardPage({
   });
 
   const t = await getT();
-  const dictionary = await getDictionary(await getLocale());
+  /* Dipegang sebagai variabel: dipakai dua kali sekarang — kamus, dan nama
+     bulan di panel Rutinitas Bulanan (issue #355). */
+  const locale = await getLocale();
+  const dictionary = await getDictionary(locale);
 
   /*
    * Peran DI PERUSAHAAN JALUR — bukan `session.user.role`, yang menyimpan peran
@@ -319,6 +332,10 @@ export default async function DashboardPage({
             pemasok: supplierCount > 0,
           }}
         />
+
+        {/* Hari pertama justru saat istilahnya paling asing — jadi ajakan ke
+            kamus ikut di layar sambutan, bukan hanya di beranda biasa. */}
+        {allowed.has("glossary.read") && <GlossaryHint />}
       </div>
     );
   }
@@ -583,6 +600,57 @@ export default async function DashboardPage({
     statusColumn({ dataIndex: "status", title: t("common.status") }),
   ];
 
+  /*
+   * ── Rutinitas Bulanan (issue #355) ────────────────────────────────────────
+   *
+   * Panel Langkah Pertama menghilang untuk selamanya begitu transaksi pertama
+   * tercatat, dan sampai audit 13 Agustus 2026 tak ada penggantinya: pengguna
+   * awam akuntansi tak pernah diberi tahu bahwa sebuah bulan perlu DITUTUP,
+   * apalagi kenapa. `/periods` duduk di menu tanpa satu pun jalan ke sana.
+   *
+   * Probe-nya SATU kueri dan dijalankan lebih dulu: cukup tahu bulan lalu sudah
+   * terkunci atau belum. Kalau sudah, dua hitungan sisanya tidak pernah
+   * berjalan — beranda yang tenang tidak boleh membayar untuk panel yang tidak
+   * dirender. Aturan yang sama dengan probe Langkah Pertama di atas.
+   */
+  const monthlySteps = visibleMonthlySteps(role, allowed);
+  const lastMonth = previousMonth(new Date());
+  const closedPeriod =
+    monthlySteps.length > 0
+      ? await prisma.period.findUnique({
+          where: { year_month: { year: lastMonth.year, month: lastMonth.month } },
+          select: { status: true },
+        })
+      : null;
+
+  let monthlyProgress: MonthlyRoutineProgress | null = null;
+  if (monthlySteps.length > 0) {
+    const progress: MonthlyRoutineProgress = {
+      tutup_bulan: closedPeriod?.status === "closed",
+    };
+    if (isRoutineDue(progress)) {
+      const bounds = monthBounds(lastMonth.year, lastMonth.month);
+      const [spendCount, statementCount] = await Promise.all([
+        /* Uang KELUAR = sisi kredit buku kas (lihat api/finance/route.ts:71). */
+        prisma.cashMovement.count({
+          where: { date: { gte: bounds.start, lte: bounds.end }, credit: { gt: 0 } },
+        }),
+        /* Rekening koran yang sudah DIKUNCI, bukan yang masih draft: draft
+           berarti pencocokannya sedang berjalan, belum selesai. */
+        prisma.bankStatement.count({
+          where: {
+            status: "locked",
+            periodStart: { gte: bounds.start },
+            periodEnd: { lte: bounds.end },
+          },
+        }),
+      ]);
+      progress.pengeluaran = spendCount > 0;
+      progress.cocokkan_bank = statementCount > 0;
+      monthlyProgress = progress;
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: SECTION_GAP }}>
       <PageHeader
@@ -594,6 +662,19 @@ export default async function DashboardPage({
           Paling atas karena beranda lebih sering dipakai untuk MENGERJAKAN
           sesuatu daripada untuk membaca angka. */}
       <QuickActions actions={quickActions} />
+
+      {/* ─── Rutinitas Bulanan (issue #355) ───
+          Di ATAS Alur Kerja karena ia PUNYA TENGGAT: alur kerja menjelaskan
+          urutan kerja harian yang selalu berlaku, sedangkan panel ini muncul
+          hanya selama ada bulan yang belum dikunci — dan hilang sendiri begitu
+          dikunci. Yang berbatas waktu didahulukan. */}
+      {monthlyProgress && (
+        <MonthlyRoutinePanel
+          steps={monthlySteps}
+          progress={monthlyProgress}
+          monthLabel={formatMonthYear(lastMonth.year, lastMonth.month, locale)}
+        />
+      )}
 
       {/* ─── Alur Kerja (panduan urutan) ───
           Tepat di bawah Aksi Cepat: setelah tombol "kerjakan sekarang", tunjukkan
@@ -900,6 +981,12 @@ export default async function DashboardPage({
           </Card>
         </DashboardSection>
       )}
+
+      {/* ─── Kamus Istilah (issue #355) ───
+          Paling BAWAH dan sengaja tenang: ini jaring pengaman, bukan tugas.
+          Yang mencarinya menemukannya setiap hari di tempat yang sama; yang
+          tidak membutuhkannya tidak pernah terganggu olehnya. */}
+      {allowed.has("glossary.read") && <GlossaryHint />}
     </div>
   );
 }

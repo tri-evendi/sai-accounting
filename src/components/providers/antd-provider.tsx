@@ -63,6 +63,7 @@ import {
   neutralTextTokens,
   primaryButtonTokens,
   tableHeadBg,
+  statusTextTokens,
   tagStatusTokens,
 } from "@/lib/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
@@ -199,6 +200,15 @@ export function AntdProvider({
          * `colorIcon`, keduanya turunan `colorTextTertiary`.
          */
         ...neutralTextTokens(resolved),
+        /*
+         * Peran TEKS berstatus (issue #355). `colorSuccessText` & saudaranya
+         * diturunkan AntD dari bibit yang sama dengan `colorSuccess`, jadi
+         * mereka LOLOS dari #186/#187 dan tetap 2,27:1 — angka yang justru
+         * dicetak di kepala `antd-tokens.ts` sebagai contoh yang gagal.
+         * Global, bukan per komponen: tidak seperti `colorSuccess`, token
+         * `*Text` tidak punya peran non-teks yang perlu dilindungi.
+         */
+        ...statusTextTokens(resolved),
         /*
          * Batas (issue #208). Bawaannya 1,05–1,64:1 — batas yang ada tapi tak
          * terlihat, kegagalan yang sama dengan "dua bidang sewarna tanpa

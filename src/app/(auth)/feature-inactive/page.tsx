@@ -35,6 +35,8 @@ import { Button } from "@/components/ui/button";
 
 import { auth } from "@/lib/auth";
 import { getEnabledModules } from "@/lib/authz-effective";
+import { runWithCompany } from "@/lib/company-context";
+import { getCompany } from "@/lib/company-registry";
 import { MODULE_META, isBusinessModule, isModuleEnabled } from "@/lib/business-modules";
 import { getT } from "@/lib/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -75,7 +77,36 @@ export default async function FeatureInactivePage({
   // Nilai dari URL tidak pernah dipercaya: hanya modul yang dikenal kode yang
   // boleh disebut namanya di layar.
   if (!isBusinessModule(raw)) redirect("/dashboard");
-  if (isModuleEnabled(raw, await getEnabledModules())) redirect("/dashboard");
+
+  /*
+   * ⚠ KONTEKS PERUSAHAAN DITANAM SENDIRI DI SINI — jangan hapus (issue #355).
+   *
+   * "Modul mana yang menyala" adalah pertanyaan PER PERUSAHAAN, jadi
+   * `getEnabledModules()` menempuh `currentCompany()`. Yang menanam konteks itu
+   * untuk sebuah permintaan HTTP hanyalah penjaga (`requirePagePermission` /
+   * `requireApiPermission`) — dan halaman ini sengaja TIDAK memanggil penjaga,
+   * sebab gerbang modul hidup di dalamnya dan halaman ini akan memantul ke
+   * dirinya sendiri tanpa henti (lihat kepala berkas).
+   *
+   * Akibatnya halaman ini dulu MELEMPAR `MissingCompanyContextError` — benar
+   * menurut doktrin #104, tapi hasilnya layar galat bawaan Next berbahasa
+   * Inggris ("This page couldn't load", HTTP 409) di setiap rute milik modul
+   * yang dimatikan. Penjelasan berbahasa Indonesia di bawah tidak pernah
+   * terlihat sekali pun.
+   *
+   * Perbaikannya BUKAN melonggarkan doktrin: tidak ada `?? defaultCompany` dan
+   * tidak ada tebakan. Perusahaannya disebut EKSPLISIT — dari `session.user`,
+   * yang sudah dipastikan tidak null tepat di atas — lalu dibungkus
+   * `runWithCompany()`, persis jalur yang dipakai skrip dan cron. `run()`
+   * (bukan `enterWith()`) memang yang benar di sini: seluruh pekerjaannya muat
+   * di dalam satu callback, jadi rambatannya bisa diandalkan sepenuhnya.
+   */
+  const company = await getCompany(session.user.companyId);
+  /* Perusahaan di sesi sudah lenyap/nonaktif — pilih ulang, jangan menebak. */
+  if (!company) redirect("/select-company");
+
+  const enabled = await runWithCompany(company, () => getEnabledModules());
+  if (isModuleEnabled(raw, enabled)) redirect("/dashboard");
 
   const t = await getT();
 

@@ -444,7 +444,7 @@ export function NewInvoiceForm({
         {/* ── Ambil dari kontrak (issue #15) ── */}
         <Card style={{ marginBottom: token.marginLG }}>
           <CardHeader>
-            <CardTitle>{t("invoices.pullTitle")}</CardTitle>
+            <CardTitle level={2}>{t("invoices.pullTitle")}</CardTitle>
             <Typography.Text
               type="secondary"
               style={{ display: "block", marginTop: token.marginXXS }}
@@ -549,7 +549,7 @@ export function NewInvoiceForm({
 
         <Card style={{ marginBottom: token.marginLG }} data-tour="faktur-identitas">
           <CardHeader>
-            <CardTitle>{t("invoices.identityTitle")}</CardTitle>
+            <CardTitle level={2}>{t("invoices.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             {/* CSS grid, bukan `Row`/`Col`: `InvoiceCustomerField` dan
@@ -597,7 +597,7 @@ export function NewInvoiceForm({
         <Card style={{ marginBottom: token.marginLG }} data-tour="faktur-barang">
           <CardHeader>
             <Flex wrap align="center" justify="space-between" gap={token.marginXS}>
-              <CardTitle>
+              <CardTitle level={2}>
                 <TermTooltip term="faktur">{t("invoices.goodsSoldTitle")}</TermTooltip>
               </CardTitle>
               <Button type="button" variant="secondary" size="sm" onClick={addItem}>

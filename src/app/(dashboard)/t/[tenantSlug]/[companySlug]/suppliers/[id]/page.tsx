@@ -300,7 +300,7 @@ export default async function SupplierDetailPage({
 
       {/* Supplier Info */}
       <Card style={{ marginBottom: SECTION_GAP }}>
-        <CardHeader><CardTitle>{t("suppliers.infoTitle")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle level={2}>{t("suppliers.infoTitle")}</CardTitle></CardHeader>
         <CardContent>
           <dl style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: INFO_GAP }}>
             {infoItem(t("common.name"), supplier.name)}
@@ -315,7 +315,7 @@ export default async function SupplierDetailPage({
           their goods/invoice arrived, and the flow that takes it off a purchase. */}
       <Card style={{ marginBottom: SECTION_GAP }}>
         <CardHeader>
-          <CardTitle>{t("suppliers.advanceTitle")}</CardTitle>
+          <CardTitle level={2}>{t("suppliers.advanceTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <SupplierAdvancePanel
@@ -353,7 +353,7 @@ export default async function SupplierDetailPage({
 
       {/* Transactions */}
       <Card>
-        <CardHeader><CardTitle>{t("suppliers.historyTitle")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle level={2}>{t("suppliers.historyTitle")}</CardTitle></CardHeader>
         <CardContent>
           <SupplierTransactionForm supplierId={supplier.id} />
         </CardContent>

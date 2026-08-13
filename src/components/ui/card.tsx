@@ -153,11 +153,37 @@ function CardFooter({ style, ...props }: DivProps) {
   );
 }
 
-function CardTitle({ style, ...props }: React.ComponentProps<"h3">) {
+/**
+ * Judul kartu — TINGKATNYA bisa dipilih (issue #355).
+ *
+ * Dulu `<h3>` mati. Itu benar untuk kartu yang bersarang di dalam
+ * `DashboardSection` (yang menggambar `<h2>`-nya sendiri), sehingga urutannya
+ * h1 → h2 → h3. Tapi sebagian besar halaman meletakkan kartu LANGSUNG di bawah
+ * `PageHeader`, dan di sana urutannya menjadi **h1 → h3**: satu tingkat
+ * dilompati, dan pengguna pembaca layar yang menjelajah per-heading kehilangan
+ * struktur seksi yang secara visual sudah jelas. Audit produksi 13 Agustus 2026
+ * menemukannya di delapan rute; Pengaturan bahkan `1,3,3,3,3,3,3`.
+ *
+ * Bawaannya sengaja TETAP 3 — mengganti bawaan akan mengubah setiap kartu di
+ * 45 berkas sekaligus, termasuk yang sudah benar bersarang di bawah `<h2>`, dan
+ * regresi semacam itu tidak menghasilkan galat apa pun. Yang memakai `level={2}`
+ * hanyalah halaman yang kartunya memang duduk langsung di bawah judul halaman.
+ */
+function CardTitle({
+  level = 3,
+  style,
+  ...props
+}: React.ComponentProps<"h3"> & { level?: 2 | 3 | 4 }) {
+  const Heading = `h${level}` as "h2" | "h3" | "h4";
   return (
-    <h3
+    <Heading
       data-slot="card-title"
       style={{
+        /* Rupanya tidak ikut berubah bersama tingkatnya: ukuran judul kartu
+           adalah keputusan tata letak, sedangkan tingkat heading adalah
+           keputusan STRUKTUR. Menyatukan keduanya berarti memperbaiki
+           aksesibilitas dengan cara membesarkan teks yang tidak diminta siapa
+           pun untuk membesar. */
         fontSize: "var(--ant-font-size-lg)",
         fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
         color: "var(--ant-color-text)",

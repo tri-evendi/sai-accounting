@@ -86,7 +86,7 @@ export function NewConsigneeForm() {
 
       <form onSubmit={handleSubmit}>
         <Card style={{ marginBottom: token.marginLG }}>
-          <CardHeader><CardTitle>{t("consignees.dataTitle")}</CardTitle></CardHeader>
+          <CardHeader><CardTitle level={2}>{t("consignees.dataTitle")}</CardTitle></CardHeader>
           <CardContent>
             <Row gutter={[token.margin, token.margin]}>
               <Col {...half}>

@@ -38,6 +38,7 @@
  * figure. They reuse `toISODate` so the ISO⇄Date round-trip matches the dashboard
  * and the report pages byte-for-byte.
  */
+import type { Permission } from "@/lib/authz";
 import { toISODate } from "@/lib/dashboard-summary";
 import type { Dictionary, DictionaryKey } from "@/lib/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -166,6 +167,46 @@ export interface ReportDefinition {
   id: ReportId;
   category: ReportCategory;
   status: ReportStatus;
+  /**
+   * Izin yang DIJAGA oleh halaman tujuan laporan ini — bukan izin karangan
+   * (issue #355).
+   *
+   * Sebelum ini katalognya tidak tahu apa-apa soal izin, jadi Pusat Laporan
+   * menawarkan keenam belas kartu kepada semua orang. Untuk perusahaan yang
+   * mematikan modul Stok, tiga kartu "Stok" tetap terpampang lengkap dengan
+   * ajakan "Buka laporan" — dan menekannya mendarat di layar modul-tidak-aktif.
+   * Kartu yang menjanjikan sesuatu lalu menolak membukanya lebih buruk daripada
+   * kartu yang memang tidak ada.
+   *
+   * Nilainya WAJIB sama persis dengan `requirePagePermission()` di halaman
+   * `href`-nya; kesamaan itu dijaga `tests/report-catalog-permissions.test.ts`,
+   * yang membaca kedua sisi dari berkasnya sendiri. Dengan satu medan ini,
+   * gerbang modul (`canEffective` memeriksa modul lebih dulu) ikut berlaku
+   * untuk katalog tanpa Pusat Laporan perlu tahu apa itu modul.
+   */
+  permission: Permission;
+  /**
+   * Laporan yang hanya masuk akal bagi pembaca ber-Mode Akuntan (issue #355).
+   *
+   * Cerminan `NavItem.accountingOnly` di `lib/nav.ts`, dan disaring dengan
+   * fungsi yang sama (`effectiveAccountantMode`) supaya menu dan Pusat Laporan
+   * tidak pernah berbeda pendapat.
+   *
+   * KENAPA PERLU MEDAN SENDIRI, bukan `ACCOUNTING_PERMISSIONS`: gerbang Mode
+   * Akuntan di `page-auth.ts` bekerja per-IZIN, sedangkan enam laporan berbagi
+   * satu izin `report.read`. Laba/Rugi, Neraca, dan Arus Kas adalah laporan
+   * yang justru paling perlu dibaca pemilik usaha; Neraca Saldo tidak. Menandai
+   * `report.read` sebagai izin akuntansi akan menyembunyikan keenam-enamnya —
+   * jadi penandanya harus per-LAPORAN.
+   *
+   * Sejauh ini isinya satu: Neraca Saldo. Dialog Mode Akuntan berjanji
+   * menyembunyikan "label debit/kredit", dan penjelasan laporan ini berbunyi
+   * persis "Saldo debit/kredit seluruh akun pada satu tanggal — harus
+   * seimbang". Sebelum ini janji itu ditepati di menu (Jurnal, Buku Besar,
+   * Daftar Akun hilang) tapi tidak di Pusat Laporan, sehingga artefak PALING
+   * akuntan di pembukuan berpasangan justru satu-satunya yang bertahan.
+   */
+  accountingOnly?: boolean;
   /** Route for an `available` report; undefined for `coming_soon`. */
   href?: string;
   paramKind: ReportParamKind;
@@ -234,6 +275,8 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "trial-balance",
     category: "keuangan",
+    permission: "report.read",
+    accountingOnly: true,
     status: "available",
     href: "/reports/trial-balance",
     paramKind: "as_of",
@@ -243,6 +286,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "income-statement",
     category: "keuangan",
+    permission: "report.read",
     status: "available",
     href: "/reports/income-statement",
     paramKind: "period",
@@ -255,6 +299,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "balance-sheet",
     category: "keuangan",
+    permission: "report.read",
     status: "available",
     href: "/reports/balance-sheet",
     paramKind: "as_of",
@@ -264,6 +309,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "cash-flow",
     category: "keuangan",
+    permission: "report.read",
     status: "available",
     href: "/reports/cash-flow",
     paramKind: "period",
@@ -273,6 +319,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "budget-realization",
     category: "keuangan",
+    permission: "budget.manage",
     status: "available",
     // `/budget` hanyalah HUB berisi tiga tautan; laporannya ada satu klik lebih
     // dalam. Kartu yang menjanjikan "Realisasi vs Anggaran" lalu mendaratkan
@@ -290,6 +337,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "receivables",
     category: "penjualan",
+    permission: "receivable.read",
     status: "available",
     href: "/receivables",
     paramKind: "as_of",
@@ -309,6 +357,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "sales-target",
     category: "penjualan",
+    permission: "budget.manage",
     status: "available",
     // Realisasi target penjualan hidup di halaman yang SAMA dengan realisasi
     // anggaran — satu periode, dua bagian. Dua kartu katalog yang menunjuk satu
@@ -320,6 +369,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "sales-by-customer",
     category: "penjualan",
+    permission: "report.read",
     status: "available",
     href: "/reports/sales-by-customer",
     paramKind: "period",
@@ -337,6 +387,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "payables",
     category: "pembelian",
+    permission: "payable.read",
     status: "available",
     href: "/payables",
     paramKind: "as_of",
@@ -356,6 +407,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "purchases-by-supplier",
     category: "pembelian",
+    permission: "report.read",
     status: "available",
     href: "/reports/purchases-by-supplier",
     paramKind: "period",
@@ -373,6 +425,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "stock-value",
     category: "stok",
+    permission: "inventory.read",
     status: "available",
     // Halaman laporannya SENDIRI, bukan `/inventory`. Halaman modul itu adalah
     // tempat bekerja — berkartu, bergrafik, terpaginasi sepuluh baris — dan
@@ -395,6 +448,7 @@ export const REPORTS: ReportDefinition[] = [
     // di glosarium & judul cetakan — pola yang sama dengan "Hitung Ulang Stok"
     // (stok opname) dan "Cocokkan Rekening Koran" (rekonsiliasi bank).
     category: "stok",
+    permission: "inventory.read",
     status: "available",
     href: "/inventory/movement",
     paramKind: "period",
@@ -419,6 +473,7 @@ export const REPORTS: ReportDefinition[] = [
     // hidup di halaman hitung ulang yang berizin tulis, sehingga pemegang
     // izin baca-saja tidak pernah bisa sampai ke sana (audit 2026-07).
     category: "stok",
+    permission: "inventory.read",
     status: "available",
     href: "/inventory/opname/history",
     paramKind: "period",
@@ -429,6 +484,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "cash-bank",
     category: "kas_bank",
+    permission: "cash.read",
     status: "available",
     // Halaman laporannya sendiri, dengan alasan yang sama seperti Nilai
     // Persediaan: `/finance` adalah tempat MENCATAT kas masuk & keluar, dan
@@ -448,6 +504,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "bank-reconciliation",
     category: "kas_bank",
+    permission: "reconciliation.read",
     status: "available",
     href: "/reconciliation",
     paramKind: "none",
@@ -457,6 +514,7 @@ export const REPORTS: ReportDefinition[] = [
   {
     id: "efaktur",
     category: "pajak",
+    permission: "tax.read",
     status: "available",
     href: "/tax/efaktur",
     // Halaman e-Faktur menyaring dengan `?from=&to=` — rentang tanggal, bukan

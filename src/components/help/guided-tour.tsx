@@ -304,6 +304,15 @@ export function GuidedTour() {
   });
 
   return (
+    <>
+      {/*
+       * `inset:-11px` pada ikon 22×22 = 44×44 area sentuh, tanpa satu piksel
+       * pun berubah di layar. Angkanya sama dengan ikon "?" di `term-tooltip`;
+       * kalau salah satunya digeser, keduanya harus digeser bersama.
+       */}
+      <style href="sai-tour" precedence="default">
+        {`[data-tour-close]::after{content:"";position:absolute;inset:-11px}`}
+      </style>
     <Tour
       open={index !== null}
       current={index ?? 0}
@@ -321,7 +330,32 @@ export function GuidedTour() {
        * bawaan AntD yang berbahasa Inggris — panel meletakkan atribut aria milik
        * `closable` SETELAH labelnya sendiri.
        */
-      closable={{ closeIcon: <CloseOutlined aria-hidden="true" style={{ fontSize: 16 }} />, "aria-label": t("tour.close") }}
+      /*
+       * ── Area sentuh tombol tutup (issue #355) ────────────────────────────
+       * AntD menggambar tombol tutupnya 22×22 — di bawah ambang target sentuh
+       * WCAG 2.2 AA (2.5.8), yang 24×24. Tur ini memang masih bisa ditutup
+       * lewat "Lewati" yang berukuran penuh, tapi tombol silang adalah yang
+       * pertama dicari orang, dan pada ponsel 22px berarti sering meleset.
+       *
+       * Diperluas lewat `::after` pada IKON KITA SENDIRI — bukan dengan
+       * menyasar `.ant-tour-close`. Bedanya bukan gaya: kelas internal AntD
+       * bisa berganti nama di rilis mana pun tanpa satu galat pun muncul, dan
+       * seluruh `<style>` di repo ini konsisten menyasar `data-*` justru untuk
+       * menghindari ketergantungan itu. Ikonnya kita yang menulis, jadi
+       * penandanya boleh kita pasang sendiri.
+       *
+       * Kliknya tetap mendarat di tombol: `::after` adalah bagian dari span di
+       * DALAM tombol, jadi peristiwanya menggelembung ke sana — pola yang sama
+       * persis dengan ikon "?" di `ui/term-tooltip.tsx`.
+       */
+      closable={{
+        closeIcon: (
+          <span data-tour-close style={{ position: "relative", display: "inline-flex" }}>
+            <CloseOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+          </span>
+        ),
+        "aria-label": t("tour.close"),
+      }}
       /*
        * Penanda langkah bawaan AntD adalah titik-titik: pada tur 5 langkah ia
        * tidak memberi tahu langkah ke berapa, dan tidak terbaca pembaca layar
@@ -363,5 +397,6 @@ export function GuidedTour() {
       /* Jarak lubang sorotan dari sasaran — 8px, sama dengan overlay lama. */
       gap={{ offset: token.marginXS, radius: token.borderRadius }}
     />
+    </>
   );
 }

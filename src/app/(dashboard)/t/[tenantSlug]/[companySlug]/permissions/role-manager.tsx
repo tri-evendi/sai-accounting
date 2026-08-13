@@ -212,7 +212,7 @@ export function RoleManager({ onRolesChanged }: { onRolesChanged: () => void }) 
   return (
     <Card style={{ marginBottom: token.marginLG }}>
       <CardHeader>
-        <CardTitle>{t("permissions.roleManagerTitle")}</CardTitle>
+        <CardTitle level={2}>{t("permissions.roleManagerTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
         <Flex vertical gap={token.margin}>

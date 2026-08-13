@@ -116,7 +116,7 @@ export default async function SetupPage({
 
         <Card style={{ marginBottom: 24 }}>
           <CardHeader>
-            <CardTitle>{t("setup.identityTitle")}</CardTitle>
+            <CardTitle level={2}>{t("setup.identityTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl
@@ -151,7 +151,7 @@ export default async function SetupPage({
         {journal && (
           <Card>
             <CardHeader>
-              <CardTitle>{t("setup.openingJournalTitle", { number: journal.number })}</CardTitle>
+              <CardTitle level={2}>{t("setup.openingJournalTitle", { number: journal.number })}</CardTitle>
             </CardHeader>
             <CardContent>
               {/*

@@ -125,7 +125,7 @@ export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) 
         <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <Card style={{ marginBottom: token.marginLG }}>
             <CardHeader>
-              <CardTitle>{t("costCenters.dataTitle")}</CardTitle>
+              <CardTitle level={2}>{t("costCenters.dataTitle")}</CardTitle>
             </CardHeader>
             <CardContent>
               {/* `sm:grid-cols-2` → `Row` yang membungkus: satu kolom di 375px,

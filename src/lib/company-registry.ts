@@ -25,6 +25,8 @@ import type { CompanyContext } from "@/lib/company-context";
 export interface CompanyRecord extends CompanyContext {
   name: string;
   isActive: boolean;
+  /** Buku CONTOH — tulisan ditolak penjaga, layarnya berspanduk (issue #355). */
+  isDemo: boolean;
 }
 
 const TTL_MS = 60_000;
@@ -42,6 +44,7 @@ function toRecord(row: {
   name: string;
   databaseName: string;
   isActive: boolean;
+  isDemo: boolean;
 }): CompanyRecord {
   return {
     companyId: row.id,
@@ -49,6 +52,7 @@ function toRecord(row: {
     name: row.name,
     databaseName: row.databaseName,
     isActive: row.isActive,
+    isDemo: row.isDemo,
   };
 }
 
@@ -59,7 +63,7 @@ export async function getCompany(companyId: number): Promise<CompanyRecord | nul
 
   const row = await controlDb.company.findUnique({
     where: { id: companyId },
-    select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, name: true, databaseName: true, isActive: true, isDemo: true },
   });
   if (!row) {
     cache.delete(companyId);
@@ -83,7 +87,7 @@ export async function companiesForUser(userId: number): Promise<CompanyRecord[]>
     select: {
       role: true,
       company: {
-        select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
+        select: { id: true, slug: true, name: true, databaseName: true, isActive: true, isDemo: true },
       },
     },
     orderBy: { company: { name: "asc" } },
@@ -104,7 +108,7 @@ export async function membershipFor(
       accountantMode: true,
       isActive: true,
       company: {
-        select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
+        select: { id: true, slug: true, name: true, databaseName: true, isActive: true, isDemo: true },
       },
     },
   });

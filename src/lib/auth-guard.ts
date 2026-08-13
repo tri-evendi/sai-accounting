@@ -5,7 +5,8 @@ import type { Permission } from "@/lib/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromRequest } from "@/lib/company-request";
-import { isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@/lib/tenant-state";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 
@@ -207,6 +208,20 @@ async function gateAfterCompany(
           { error: refusal.message, code: refusal.code },
           { status: 403 }
         ),
+      };
+    }
+    /*
+     * Perusahaan CONTOH (issue #355) — cerminan gerbang yang sama di
+     * `page-auth.ts`. WAJIB ada di kedua tempat: menyembunyikan tombolnya di
+     * layar tanpa menutup route-nya hanya memindahkan pintu, dan sebuah POST
+     * yang dirakit tangan akan menulis ke buku contoh dengan mulus.
+     */
+    const company = await getCompany(companyId);
+    const demo = demoWriteRefusal(company?.isDemo, permission);
+    if (demo) {
+      return {
+        authorized: false,
+        response: NextResponse.json({ error: demo.message, code: demo.code }, { status: 403 }),
       };
     }
   }

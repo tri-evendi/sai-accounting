@@ -487,7 +487,7 @@ export function ReconciliationWorkspace({
         <Col xs={24} lg={12}>
           <Card>
             <CardHeader>
-              <CardTitle>{t("reconciliation.bookSideTitle")}</CardTitle>
+              <CardTitle level={2}>{t("reconciliation.bookSideTitle")}</CardTitle>
             </CardHeader>
             <StaticTable<MatchRow>
               columns={bookColumns}
@@ -513,7 +513,7 @@ export function ReconciliationWorkspace({
         <Col xs={24} lg={12}>
           <Card>
             <CardHeader>
-              <CardTitle>{t("reconciliation.statementSideTitle")}</CardTitle>
+              <CardTitle level={2}>{t("reconciliation.statementSideTitle")}</CardTitle>
             </CardHeader>
             <StaticTable<MatchRow>
               columns={lineColumns}
@@ -587,7 +587,7 @@ export function ReconciliationWorkspace({
       {/* Matched pairs */}
       <Card>
         <CardHeader>
-          <CardTitle>{t("reconciliation.matchedTitle", { count: matchedLines.length })}</CardTitle>
+          <CardTitle level={2}>{t("reconciliation.matchedTitle", { count: matchedLines.length })}</CardTitle>
         </CardHeader>
         <StaticTable<LineRow>
           columns={matchedColumns}
@@ -613,7 +613,7 @@ export function ReconciliationWorkspace({
       {!locked && (
         <Card>
           <CardHeader>
-            <CardTitle>{t("reconciliation.addLineTitle")}</CardTitle>
+            <CardTitle level={2}>{t("reconciliation.addLineTitle")}</CardTitle>
           </CardHeader>
           <div style={{ padding: token.paddingLG }}>
             <form onSubmit={addManualLine}>

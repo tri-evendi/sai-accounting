@@ -38,6 +38,7 @@ import {
   type MonthlyRoutineProgress,
 } from "@/lib/monthly-routine";
 import { MonthlyRoutinePanel } from "@/components/dashboard/monthly-routine-panel";
+import { SampleDataBanner } from "@/components/dashboard/sample-data-banner";
 import { GlossaryHint } from "@/components/dashboard/glossary-hint";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -656,6 +657,16 @@ export default async function DashboardPage({
       <PageHeader
         title={t("nav.items.dashboard")}
         description={t("dashboard.description", { name: session.user.name })}
+      />
+
+      {/* ─── Data contoh masih ada ───
+          PALING ATAS, di atas Aksi Cepat: ia mengubah arti setiap angka di
+          layar ini, jadi ia harus terbaca SEBELUM angkanya. Hilang sendiri
+          begitu data contohnya dibuang; buku yang tak pernah punya data contoh
+          membayar satu pencarian indeks dan tidak merender apa pun. */}
+      <SampleDataBanner
+        tenantSlug={scoped.tenantSlug}
+        companySlug={scoped.companySlug}
       />
 
       {/* ─── Aksi Cepat (issue #2) ───

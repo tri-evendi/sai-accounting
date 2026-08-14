@@ -309,3 +309,56 @@ describe("membuang kembali data contoh", () => {
     expect(route).toContain("writeAuditLog");
   });
 });
+
+describe("spanduk beranda — data contoh tidak boleh diam-diam ikut terhitung", () => {
+  const banner = readFileSync(
+    join(root, "src", "components", "dashboard", "sample-data-banner.tsx"),
+    "utf8"
+  );
+  const home = readFileSync(
+    join(root, "src", "app", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "page.tsx"),
+    "utf8"
+  );
+
+  /*
+   * Awalan `[CONTOH]` menandai BARIS; laporan menampilkan ANGKA. Begitu nilainya
+   * masuk ke Laba/Rugi ia kehilangan namanya, dan angka yang salah dipercaya
+   * tidak berbunyi sama sekali — ia dibawa ke rapat, ke bank, atau ke kantor
+   * pajak. Karena itu spanduknya dirender di layar yang memajang ringkasannya.
+   */
+  it("dirender di beranda perusahaan", () => {
+    expect(home).toContain("SampleDataBanner");
+  });
+
+  /*
+   * Beranda dimuat terus-menerus, selamanya, termasuk di buku yang tidak pernah
+   * punya data contoh. `sampleDataSummary` menjalankan enam hitungan dan empat
+   * di antaranya `LIKE` pada kolom TAK berindeks — pemindaian tabel penuh di
+   * buku produksi. Spanduknya karena itu wajib memakai jalur murah yang
+   * bersandar pada `invoice_no` (@unique, jadi berindeks).
+   */
+  it("memakai pemeriksaan MURAH, bukan hitungan lengkap", () => {
+    expect(banner).toContain("hasSampleData");
+    /* Terhadap sumber TANPA komentar: kepala berkasnya justru MENJELASKAN
+       kenapa `sampleDataSummary` tidak dipakai di sini, dan mencocokkan
+       kalimat itu dengan pemakaian sungguhan membuat penjelasan yang baik
+       menjatuhkan tesnya sendiri — persis jebakan yang disebut di kepala
+       berkas tes ini. */
+    expect(strip(banner)).not.toContain("sampleDataSummary");
+  });
+
+  /* Server component: tak sebaris pun ikut ke bundel client. */
+  it("tetap server component", () => {
+    expect(strip(banner)).not.toContain('"use client"');
+  });
+
+  /*
+   * Dua pintu ke satu tindakan merusak adalah satu pintu terlalu banyak — dan
+   * yang di beranda akan terlihat oleh peran yang bahkan tidak boleh
+   * menekannya. Spanduknya menunjuk ke Pengaturan, tidak menghapus sendiri.
+   */
+  it("menunjuk ke Pengaturan, tidak menghapus sendiri", () => {
+    expect(banner).toContain("/settings");
+    expect(strip(banner)).not.toContain("clearSampleData");
+  });
+});

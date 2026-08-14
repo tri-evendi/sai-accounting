@@ -2276,7 +2276,10 @@
     "unresolvedAfter": "di angka ini.",
     "workflowTitle": "Alur Kerja",
     "workflowHint": "Belum tahu mulai dari mana? Ikuti urutan langkah berikut — tiap langkah membuka halamannya.",
-    "workflowOptional": "opsional"
+    "workflowOptional": "opsional",
+    "sampleBannerTitle": "Buku ini masih memuat data contoh.",
+    "sampleBannerBody": "Angka bertanda [CONTOH] ikut terhitung di Laba/Rugi, Neraca, dan Arus Kas — jadi ringkasan di bawah belum menggambarkan usaha Anda sendiri.",
+    "sampleBannerAction": "Buang di Pengaturan"
   },
   "stockMovement": {
     "title": "Riwayat Stok",

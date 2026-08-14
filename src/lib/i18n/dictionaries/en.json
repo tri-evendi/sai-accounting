@@ -2276,7 +2276,10 @@
     "unresolvedAfter": "shown here.",
     "workflowTitle": "Workflows",
     "workflowHint": "Not sure where to start? Follow the steps in order — each one opens its page.",
-    "workflowOptional": "optional"
+    "workflowOptional": "optional",
+    "sampleBannerTitle": "This book still contains sample data.",
+    "sampleBannerBody": "Figures marked [CONTOH] are included in the Income Statement, Balance Sheet, and Cash Flow — so the summary below does not yet describe your own business.",
+    "sampleBannerAction": "Remove in Settings"
   },
   "stockMovement": {
     "title": "Stock History",

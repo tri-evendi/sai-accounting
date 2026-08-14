@@ -155,6 +155,50 @@ export async function requireUnlockedCompany(
   );
 }
 
+/**
+ * Gerbang "perusahaan ini belum disiapkan" — dipakai DUA pihak.
+ *
+ * ── KENAPA DIEKSPOR, BUKAN TINGGAL DI `gateAfterCompany` ───────────────────
+ * Beranda perusahaan MENJAGA DIRINYA SENDIRI: ia terbuka untuk semua peran,
+ * jadi tidak ada satu izin yang bisa ia deklarasikan ke
+ * `requirePagePermission` — dan karena itu ia tidak pernah lewat
+ * `gateAfterCompany`, tempat gerbang ini berdiri untuk ~50 halaman lain.
+ *
+ * Akibatnya nyata dan sempat terlihat di produksi 14-15 Agustus 2026: SETIAP
+ * halaman lain memantulkan perusahaan yang belum disiapkan ke wisayanya,
+ * sementara halaman PERTAMA sesudah masuk — satu-satunya yang pasti dibuka
+ * pengguna baru — justru tidak. Yang mereka lihat adalah dasbor berisi nol,
+ * tanpa satu kalimat pun yang menyebut bahwa wisayanya belum dijalankan.
+ *
+ * Disalin ke beranda akan berarti dua salinan aturan yang sama, dan yang satu
+ * pasti tertinggal saat yang lain berubah. Karena itu ia fungsi, bukan pola.
+ *
+ * Pemanggil yang halamannya BERIZIN `setup.manage` wajib melewatinya sendiri
+ * (lihat pemakaian di bawah) — kalau tidak, wisayanya memantul tanpa henti ke
+ * dirinya sendiri.
+ */
+export async function requireSetupDone(
+  user: { id?: string | number | null; role?: string | null } | null | undefined,
+  home: { tenantSlug: string; companySlug: string }
+): Promise<void> {
+  if (await isSetupDone()) return;
+  /*
+   * Wizard-nya ikut bertenant sejak #158, jadi tujuannya harus disusun dari
+   * perusahaan YANG SEDANG DIBUKA. Memantulkan ke `/setup` telanjang akan
+   * membuat proxy menyusun jalurnya dari SESI — dan orang yang membuka buku
+   * PT A lewat tautan dalam akan mendarat di wizard PT B, tempat ia mungkin
+   * menuliskan saldo awal yang salah kamar.
+   *
+   * Yang tidak berhak menjalankan wizard tidak dilempar ke /setup (di sana
+   * mereka hanya akan ditolak izin), melainkan ke layar penjelasan.
+   */
+  redirect(
+    (await canEffective(user, "setup.manage"))
+      ? tenantPath(home.tenantSlug, home.companySlug, "/setup")
+      : "/setup-required"
+  );
+}
+
 async function gateAfterCompany(
   session: PageSession,
   permission: Permission,
@@ -198,19 +242,8 @@ async function gateAfterCompany(
    * Yang tidak berhak menjalankan wizard tidak dilempar ke /setup (di sana
    * mereka hanya akan ditolak izin), melainkan ke layar penjelasan.
    */
-  if (permission !== "setup.manage" && !(await isSetupDone())) {
-    /*
-     * Wizard-nya ikut bertenant sejak #158, jadi tujuannya harus disusun dari
-     * perusahaan YANG SEDANG DIBUKA. Memantulkan ke `/setup` telanjang akan
-     * membuat proxy menyusun jalurnya dari SESI — dan orang yang membuka buku
-     * PT A lewat tautan dalam akan mendarat di wizard PT B, tempat ia mungkin
-     * menuliskan saldo awal yang salah kamar.
-     */
-    redirect(
-      (await canEffective(session.user, "setup.manage"))
-        ? tenantPath(home.tenantSlug, home.companySlug, "/setup")
-        : "/setup-required"
-    );
+  if (permission !== "setup.manage") {
+    await requireSetupDone(session.user, home);
   }
 
   /*

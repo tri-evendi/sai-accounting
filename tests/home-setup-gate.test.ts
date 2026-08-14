@@ -87,3 +87,60 @@ describe("dan pantulannya tidak boleh berputar", () => {
     expect(pageAuthCode).toContain('permission !== "setup.manage"');
   });
 });
+
+describe("langkah pertama 'Penyiapan & Saldo Awal'", () => {
+  const firstSteps = readFileSync(join(root, "src", "lib", "first-steps.ts"), "utf8");
+  const firstStepsCode = strip(firstSteps);
+
+  /*
+   * Ia langkah PERTAMA, dan urutannya bukan selera: empat langkah di bawahnya
+   * masuk akal hanya setelah saldo awal ada. Menampilkannya di tengah daftar
+   * menyiratkan pembukuan bisa dimulai tanpa titik nol.
+   */
+  it("berdiri paling depan di daftar", () => {
+    const penyiapan = firstStepsCode.indexOf('key: "penyiapan"');
+    const pelanggan = firstStepsCode.indexOf('key: "pelanggan"');
+    expect(penyiapan).toBeGreaterThan(-1);
+    expect(penyiapan).toBeLessThan(pelanggan);
+  });
+
+  /*
+   * PALING PENTING. Wisayanya jalan-sekali — `applyOpeningBalances` menolak
+   * jalan kedua — jadi menautkan langkah ini ke `/setup` berarti mengirim
+   * orang ke pintu yang akan menolaknya. Layar ringkasannya justru menyatakan
+   * apa yang barusan dibuat, dijaga izin yang SAMA, dan hanya bisa dibuka
+   * ketika penyiapannya memang sudah selesai.
+   */
+  it("menautkan ke ringkasan penyiapan, BUKAN ke wisayanya", () => {
+    const blok = firstStepsCode.slice(
+      firstStepsCode.indexOf('key: "penyiapan"'),
+      firstStepsCode.indexOf('key: "pelanggan"')
+    );
+    expect(blok).toContain('href: "/setup/done"');
+    expect(blok).not.toMatch(/href:\s*"\/setup"/);
+    // Izinnya sama dengan penjaga halaman tujuannya.
+    expect(blok).toContain('permission: "setup.manage"');
+  });
+
+  /*
+   * Ia tidak pernah bisa tercentang di layar ini sebab ia SUDAH tercentang:
+   * beranda memantulkan perusahaan yang belum disiapkan ke wisayanya, jadi
+   * siapa pun yang membaca daftar ini sudah melewatinya. Sebuah langkah yang
+   * ditampilkan sebagai BELUM selesai padahal sudah akan membuat seluruh
+   * daftarnya terbaca sebagai salah.
+   */
+  it("selalu ditandai selesai di beranda", () => {
+    expect(homeCode).toContain("penyiapan: true");
+  });
+
+  /*
+   * `isFirstRun` memutuskan panelnya masih tampil atau tidak, dan ambangnya
+   * adalah "belum ada TRANSAKSI". Langkah yang selalu selesai tidak boleh ikut
+   * menentukannya — kalau ikut, panelnya menghilang sejak awal dan empat
+   * langkah sisanya tidak pernah terlihat siapa pun.
+   */
+  it("tidak ikut menentukan apakah panelnya masih tampil", () => {
+    const blok = firstStepsCode.slice(firstStepsCode.indexOf("export function isFirstRun"));
+    expect(blok).not.toContain("penyiapan");
+  });
+});

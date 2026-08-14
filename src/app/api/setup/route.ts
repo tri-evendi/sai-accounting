@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { seedCoaForModules } from "@/lib/coa-seeding";
+import { bookActivity, seedSampleBook, type SampleBookResult } from "@/lib/demo-seed";
 import { setupSchema } from "@/lib/validations/setup";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
@@ -215,6 +216,48 @@ export async function POST(request: Request) {
 
     const applied = await applyOpeningBalances(input);
 
+    /*
+     * ── BUKU BARU TIDAK LAGI LAHIR KOSONG (lanjutan issue #355) ─────────────
+     *
+     * Temuan audit yang melahirkan #355 berbunyi: perusahaan baru punya bagan
+     * akun dan NOL transaksi, jadi setiap laporan berbunyi "Rp 0" — dan
+     * pengguna awam akuntansi tidak bisa membedakan laporan yang BEKERJA dari
+     * laporan yang RUSAK, sebab keduanya terlihat persis sama di hari pertama.
+     * #355 menjawabnya dengan perusahaan CONTOH terpisah; pemilik memutuskan
+     * (14 Agustus 2026) buku setiap pengguna baru ikut diisi.
+     *
+     * ── DI SINI, BUKAN DI `provisionCompany` ───────────────────────────────
+     * Penyediaan hanya membuat basis data + skema: pada saat itu belum ada satu
+     * akun pun, apalagi pemetaannya, jadi tidak ada yang bisa diposting. Momen
+     * paling awal yang mungkin adalah SETELAH baris di atas — bagan akun sudah
+     * disemai, pemetaan sudah ada, saldo awal sudah terposting.
+     *
+     * ── `is_demo` TETAP FALSE, DAN ITU BUKAN KELALAIAN ─────────────────────
+     * Bendera itu menyalakan gerbang tulis di kedua penjaga (`page-auth`,
+     * `auth-guard`). Menyalakannya di sini akan membuat buku milik pelanggan
+     * sendiri MENOLAK setiap tulisan — perusahaan yang baru saja mereka siapkan
+     * seketika jadi hanya-baca. Yang menandai isinya di sini hanyalah awalan
+     * `[CONTOH]` pada setiap baris, dan itu memang disengaja: bukunya milik
+     * mereka, boleh ditulisi, dan barisnya boleh dihapus.
+     *
+     * ── KEGAGALANNYA TIDAK PERNAH MENJATUHKAN PENYIAPAN ────────────────────
+     * `try` sendiri, sengaja terpisah dari `try` besar di luar. Penyiapan yang
+     * berhasil lalu dilaporkan gagal hanya karena data HIASAN tidak jadi ditulis
+     * adalah pertukaran yang salah arah: perusahaannya sudah tersiapkan, saldo
+     * awalnya sudah terposting, dan tak satu pun dari itu boleh dibatalkan oleh
+     * contoh yang tidak esensial.
+     */
+    let sample: SampleBookResult | null = null;
+    try {
+      /* Buku yang entah bagaimana sudah berisi transaksi tidak pernah disentuh —
+         pagar yang sama dengan skrip CLI, hitungan yang sama persis. */
+      if ((await bookActivity()).total === 0) {
+        sample = await seedSampleBook({ today: new Date() });
+      }
+    } catch (error) {
+      console.error("[setup] data contoh tidak jadi diisi:", error);
+    }
+
     // Sebelum ini pemuat modul mungkin sempat mengingat "belum ada baris
     // perusahaan" (= semua modul aktif). Pilihan wizard harus berlaku pada
     // permintaan berikutnya, bukan setelah satu TTL.
@@ -235,11 +278,15 @@ export async function POST(request: Request) {
         businessCategory: company.businessCategory ?? null,
         // NULL di sini berarti "semua modul aktif" — jejaknya sengaja jujur.
         enabledModules,
+        /* Data contoh masuk ke jejak audit: seseorang yang kelak bertanya
+           "faktur INV-CONTOH-001 ini dari mana" harus bisa menemukan
+           jawabannya, bukan menyimpulkan bukunya pernah dibobol. */
+        sampleData: sample,
       },
       request,
     });
 
-    return NextResponse.json({ ok: true, ...applied }, { status: 201 });
+    return NextResponse.json({ ok: true, ...applied, sampleData: sample }, { status: 201 });
   } catch (e) {
     // Run-once conflict: the wizard has already been completed. 409, not 422 —
     // the payload is fine, the operation is simply no longer available.

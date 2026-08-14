@@ -2590,7 +2590,8 @@
     "company_setting": "Profil Perusahaan",
     "authz": "Hak Akses",
     "glossary": "Kamus Istilah",
-    "settings": "Pengaturan"
+    "settings": "Pengaturan",
+    "sample": "Data Contoh"
   },
   "permission": {
     "approval_view": "Melihat antrean persetujuan",
@@ -2650,7 +2651,8 @@
     "company_setting_manage": "Mengubah profil perusahaan",
     "authz_manage": "Mengatur hak akses (halaman ini)",
     "glossary_read": "Membuka kamus istilah",
-    "settings_view": "Membuka halaman pengaturan"
+    "settings_view": "Membuka halaman pengaturan",
+    "sample_clear": "Membuang seluruh data contoh dari buku ini"
   },
   "users": {
     "title": "Manajemen Pengguna",
@@ -2813,7 +2815,17 @@
     "helpDescription": "Tidak paham sebuah istilah akuntansi? Buka kamusnya — semuanya dijelaskan dengan bahasa sehari-hari beserta contoh.",
     "openGlossary": "Buka Kamus Istilah",
     "aboutTitle": "Tentang Aplikasi",
-    "aboutTagline": "Sistem pembukuan, kontrak, dan stok barang"
+    "aboutTagline": "Sistem pembukuan, kontrak, dan stok barang",
+    "sampleTitle": "Data Contoh",
+    "sampleBody": "Buku ini masih memuat transaksi contoh bertanda [CONTOH] yang dibuatkan saat perusahaan disiapkan. Angkanya IKUT TERHITUNG di Laba/Rugi, Neraca, dan Arus Kas — jadi selama belum dibuang, laporan Anda belum menggambarkan usaha Anda sendiri.",
+    "sampleCounts": "{invoices} faktur · {purchases} pembelian · {expenses} beban · {customers} pelanggan · {suppliers} pemasok",
+    "sampleClear": "Buang semua data contoh",
+    "sampleClearing": "Membuang…",
+    "sampleConfirmTitle": "Buang semua data contoh?",
+    "sampleConfirmBody": "Seluruh dokumen bertanda [CONTOH] dihapus beserta jurnalnya. Data yang Anda catat sendiri tidak disentuh. Tindakan ini tidak bisa dibatalkan.",
+    "sampleCleared": "Data contoh sudah dibuang. Laporan kini hanya berisi transaksi Anda.",
+    "sampleKept": "Masih disimpan karena sudah Anda pakai di dokumen sungguhan: {names}",
+    "sampleFailed": "Gagal membuang data contoh"
   },
   "glossary": {
     "descriptionBefore": "{count} istilah akuntansi yang dipakai aplikasi ini, dijelaskan dengan bahasa sehari-hari beserta contohnya. Istilah yang sama juga muncul sebagai ikon",

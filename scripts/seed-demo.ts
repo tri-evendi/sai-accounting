@@ -17,11 +17,25 @@
  * kepercayaan: Neraca-nya tidak seimbang dan Laba/Rugi-nya kosong meski daftar
  * fakturnya penuh, sehingga pengguna baru menyimpulkan aplikasinya salah hitung.
  *
- * Skrip ini karena itu menempuh `postForSource()` — MESIN POSTING YANG SAMA yang
+ * Pengisinya karena itu menempuh `postForSource()` — MESIN POSTING YANG SAMA yang
  * dipakai formulir sungguhan. Konsekuensinya disengaja: angka demo mematuhi
  * aturan akuntansi yang sama, Neraca Saldo-nya seimbang, dan HPP-nya lahir dari
  * biaya rata-rata tertimbang seperti transaksi asli. Kalau mesin postingnya
  * berubah, demo ini ikut berubah — itu fitur, bukan beban.
+ *
+ * ══ ANGKANYA TIDAK TINGGAL DI SINI ═════════════════════════════════════════
+ *
+ * Sejak buku perusahaan BARU ikut diisi contoh pada akhir wisaya penyiapan
+ * (14 Agustus 2026), pemanggilnya ada dua: skrip ini dan `api/setup/route.ts`.
+ * Angka, urutan posting, dan hitungan "buku ini sudah dipakai" karena itu
+ * tinggal di `src/lib/demo-seed.ts` — menyalinnya ke tempat kedua berarti dua
+ * kumpulan angka yang akan berpisah diam-diam pada perubahan pertama.
+ *
+ * Yang tinggal di berkas ini hanyalah yang memang MILIK baris perintah: memilih
+ * perusahaan, menolak dengan kalimat yang menyebut angkanya, dan — satu-satunya
+ * perbedaan perilaku yang sesungguhnya — MENANDAI perusahaannya `is_demo`.
+ * Route penyiapan sengaja TIDAK menandainya: buku itu milik pelanggan, dan
+ * bendera itu akan membuatnya hanya-baca.
  *
  * ══ DETERMINISTIK, BUKAN ACAK ══════════════════════════════════════════════
  *
@@ -59,12 +73,7 @@
 import "dotenv/config";
 import { controlDb } from "../src/lib/control-db";
 import { runWithCompany, type CompanyContext } from "../src/lib/company-context";
-import { prisma } from "../src/lib/prisma";
-import { postForSource } from "../src/lib/posting";
-import { MAPPING_KEYS, resolveAccountId } from "../src/lib/posting/mapping";
-
-/** Penanda baris demo — muncul di layar, jadi tak pernah menyamar jadi data asli. */
-const TAG = "[CONTOH]";
+import { bookActivity, seedSampleBook, SAMPLE_TAG } from "../src/lib/demo-seed";
 
 interface Args {
   /** Salah satu dari keduanya terisi; `--id` menang bila dua-duanya ada. */
@@ -99,191 +108,24 @@ function parseArgs(argv: string[]): Args {
   return { slug, companyId, today };
 }
 
-/** Hari ke-`day` pada bulan yang `monthsAgo` bulan sebelum `today`. */
-function dateIn(today: Date, monthsAgo: number, day: number): Date {
-  return new Date(today.getFullYear(), today.getMonth() - monthsAgo, day, 10, 0, 0, 0);
-}
-
 /**
  * Buku yang SUDAH DIPAKAI tidak pernah disentuh.
  *
- * Jurnal pembuka (saldo awal) sengaja TIDAK dihitung sebagai "sudah dipakai":
- * perusahaan yang baru selesai wisaya penyiapan memang sudah punya satu, dan
- * justru perusahaan seperti itulah yang paling masuk akal diisi demo.
+ * Hitungannya sendiri ada di `lib/demo-seed.ts` (`bookActivity`) — dipakai
+ * bersama route penyiapan, supaya "buku ini masih kosong" tidak pernah berarti
+ * dua hal berbeda di dua tempat. Yang tinggal di sini hanyalah KALIMATNYA:
+ * skrip berhenti dengan galat yang menyebut angkanya, sedangkan route diam-diam
+ * melewati pengisian. Penolakan yang sama, akibat yang sengaja berbeda.
  */
 async function refuseIfInUse(): Promise<void> {
-  const [invoices, cash, purchases, journals] = await Promise.all([
-    prisma.invoice.count(),
-    prisma.cashMovement.count(),
-    prisma.supplierTransaction.count(),
-    prisma.journal.count({ where: { type: { not: "opening" } } }),
-  ]);
-  const used = invoices + cash + purchases + journals;
-  if (used > 0) {
+  const used = await bookActivity();
+  if (used.total > 0) {
     throw new Error(
-      `Perusahaan ini sudah punya transaksi (faktur ${invoices}, kas ${cash}, ` +
-        `pembelian ${purchases}, jurnal non-pembuka ${journals}). ` +
+      `Perusahaan ini sudah punya transaksi (faktur ${used.invoices}, kas ${used.cash}, ` +
+        `pembelian ${used.purchases}, jurnal non-pembuka ${used.journals}). ` +
         "Skrip demo berhenti — buku yang sudah dipakai tidak pernah diisi data contoh."
     );
   }
-}
-
-const CUSTOMERS = [
-  { name: `${TAG} Toko Sinar Jaya`, address: "Jl. Merdeka No. 12, Bandung", phone: "022-4210031", pic: "Bu Ratna" },
-  { name: `${TAG} CV Berkah Mandiri`, address: "Jl. Diponegoro No. 8, Semarang", phone: "024-3517722", pic: "Pak Hendra" },
-  { name: `${TAG} Warung Bu Tini`, address: "Jl. Pasar Baru No. 3, Bekasi", phone: "021-8891234", pic: "Bu Tini" },
-];
-
-const SUPPLIERS = [
-  { name: `${TAG} PT Sumber Pangan`, address: "Jl. Industri Raya No. 20, Tangerang", phone: "021-5523100" },
-  { name: `${TAG} UD Tani Makmur`, address: "Jl. Raya Solo No. 45, Klaten", phone: "0272-321900" },
-];
-
-/**
- * Tiga bulan penjualan. Sengaja NAIK dari bulan ke bulan supaya laporan
- * perbandingan periode punya sesuatu untuk ditunjukkan — demo yang datar tidak
- * mengajarkan apa pun tentang membaca tren.
- */
-const SALES = [
-  { monthsAgo: 3, day: 6, customer: 0, amount: 12_500_000, paidAfterDays: 12 },
-  { monthsAgo: 3, day: 19, customer: 1, amount: 8_750_000, paidAfterDays: 20 },
-  { monthsAgo: 2, day: 4, customer: 2, amount: 6_200_000, paidAfterDays: 9 },
-  { monthsAgo: 2, day: 15, customer: 0, amount: 15_400_000, paidAfterDays: 18 },
-  { monthsAgo: 2, day: 27, customer: 1, amount: 9_900_000, paidAfterDays: null }, // masih piutang
-  { monthsAgo: 1, day: 8, customer: 2, amount: 11_300_000, paidAfterDays: 14 },
-  { monthsAgo: 1, day: 21, customer: 0, amount: 18_600_000, paidAfterDays: null }, // masih piutang
-];
-
-/** Pembelian ke pemasok — pasangan biaya bagi penjualan di atas. */
-const PURCHASES = [
-  { monthsAgo: 3, day: 3, supplier: 0, amount: 7_400_000 },
-  { monthsAgo: 2, day: 2, supplier: 1, amount: 5_100_000 },
-  { monthsAgo: 2, day: 20, supplier: 0, amount: 8_800_000 },
-  { monthsAgo: 1, day: 5, supplier: 1, amount: 6_600_000 },
-];
-
-/**
- * Beban operasional bulanan — yang membuat Laba/Rugi terbaca sebagai laporan
- * sungguhan alih-alih daftar penjualan. Semuanya keluar dari kas/bank.
- */
-const EXPENSES = [
-  { day: 2, description: "Sewa kios", amount: 2_500_000 },
-  { day: 5, description: "Gaji karyawan", amount: 4_200_000 },
-  { day: 12, description: "Listrik & air", amount: 780_000 },
-  { day: 25, description: "Transport & bensin", amount: 950_000 },
-];
-
-async function seed(args: Args): Promise<void> {
-  await refuseIfInUse();
-
-  // ── Master data ──────────────────────────────────────────────────────────
-  const customers = [];
-  for (const c of CUSTOMERS) customers.push(await prisma.customer.create({ data: c }));
-  console.log(`  ✓ ${customers.length} pelanggan contoh`);
-
-  const suppliers = [];
-  for (const s of SUPPLIERS) suppliers.push(await prisma.supplier.create({ data: s }));
-  console.log(`  ✓ ${suppliers.length} pemasok contoh`);
-
-  /*
-   * Sisi lawan untuk kas: beban operasional. Dibaca dari PEMETAAN perusahaan,
-   * bukan dari kode akun yang ditanam di sini — bagan akun boleh berbeda antar
-   * perusahaan, dan menanam "6101" akan meledak diam-diam pada bagan lain.
-   */
-  let expenseAccountId: number;
-  try {
-    expenseAccountId = await resolveAccountId(MAPPING_KEYS.PURCHASE_EXPENSE, "IDR", prisma);
-  } catch {
-    /* `resolveAccountId` melempar `MissingMappingError`, tidak mengembalikan
-       null. Diterjemahkan ke kalimat yang menyebut JALAN KELUARNYA — pesan
-       aslinya benar tapi tidak memberi tahu apa yang harus dikerjakan. */
-    throw new Error(
-      "Pemetaan akun beban (purchase_expense) belum ada di perusahaan ini. " +
-        "Jalankan wisaya penyiapan perusahaannya lebih dulu — demo tidak menebak akun."
-    );
-  }
-
-  // ── Penjualan + pelunasannya ─────────────────────────────────────────────
-  let invoiceSeq = 0;
-  for (const sale of SALES) {
-    const date = dateIn(args.today, sale.monthsAgo, sale.day);
-    invoiceSeq += 1;
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNo: `INV-CONTOH-${String(invoiceSeq).padStart(3, "0")}`,
-        date,
-        status: "signed",
-        items: {
-          create: [
-            {
-              itemName: `${TAG} Penjualan barang dagang`,
-              quantity: 1,
-              price: sale.amount,
-              unit: "paket",
-            },
-          ],
-        },
-      },
-    });
-    await postForSource({ sourceType: "invoice", sourceId: invoice.id });
-
-    if (sale.paidAfterDays !== null) {
-      const paidAt = new Date(date.getTime() + sale.paidAfterDays * 86_400_000);
-      const payment = await prisma.invoicePayment.create({
-        data: {
-          invoiceId: invoice.id,
-          date: paidAt,
-          amount: sale.amount,
-          currency: "IDR",
-          note: `${TAG} Pelunasan`,
-        },
-      });
-      await postForSource({ sourceType: "invoice_payment", sourceId: payment.id });
-    }
-  }
-  console.log(`  ✓ ${SALES.length} faktur penjualan (2 sengaja belum lunas → Piutang terisi)`);
-
-  // ── Pembelian ────────────────────────────────────────────────────────────
-  for (const purchase of PURCHASES) {
-    const tx = await prisma.supplierTransaction.create({
-      data: {
-        supplierId: suppliers[purchase.supplier].id,
-        date: dateIn(args.today, purchase.monthsAgo, purchase.day),
-        type: "receive",
-        amount: purchase.amount,
-        currency: "IDR",
-        note: `${TAG} Pembelian barang dagang`,
-      },
-    });
-    await postForSource({ sourceType: "supplier_transaction", sourceId: tx.id });
-  }
-  console.log(`  ✓ ${PURCHASES.length} pembelian ke pemasok`);
-
-  // ── Beban operasional, berulang tiap bulan ───────────────────────────────
-  let expenseCount = 0;
-  for (const monthsAgo of [3, 2, 1]) {
-    for (const expense of EXPENSES) {
-      const movement = await prisma.cashMovement.create({
-        data: {
-          type: "bank",
-          date: dateIn(args.today, monthsAgo, expense.day),
-          description: `${TAG} ${expense.description}`,
-          currency: "IDR",
-          debit: 0,
-          credit: expense.amount, // uang KELUAR = sisi kredit buku kas
-        },
-      });
-      /* `counterAccountId` WAJIB untuk cash_movement: mesin posting tidak boleh
-         menebak sisi lawan sebuah transaksi kas. */
-      await postForSource({
-        sourceType: "cash_movement",
-        sourceId: movement.id,
-        counterAccountId: expenseAccountId,
-      });
-      expenseCount += 1;
-    }
-  }
-  console.log(`  ✓ ${expenseCount} beban operasional (3 bulan × ${EXPENSES.length})`);
 }
 
 async function main(): Promise<void> {
@@ -310,7 +152,10 @@ async function main(): Promise<void> {
   console.log(`\nMengisi data contoh ke: ${row.name} (${row.slug})`);
   console.log(`Periode: tiga bulan sebelum ${args.today.toISOString().slice(0, 10)}\n`);
 
-  await runWithCompany(company, () => seed(args));
+  await runWithCompany(company, async () => {
+    await refuseIfInUse();
+    await seedSampleBook({ today: args.today, onStep: (m) => console.log(`  ✓ ${m}`) });
+  });
 
   /*
    * Perusahaannya DITANDAI demo setelah isinya jadi, bukan sebelum (issue #355).
@@ -338,7 +183,7 @@ async function main(): Promise<void> {
 
   console.log(
     `\nSelesai. Buka Pusat Laporan — Laba/Rugi, Neraca, dan Arus Kas kini terisi.\n` +
-      `Setiap baris contoh diberi awalan "${TAG}" supaya mudah dikenali.\n`
+      `Setiap baris contoh diberi awalan "${SAMPLE_TAG}" supaya mudah dikenali.\n`
   );
 }
 

@@ -2590,7 +2590,8 @@
     "company_setting": "公司资料",
     "authz": "访问权限",
     "glossary": "术语表",
-    "settings": "设置"
+    "settings": "设置",
+    "sample": "示例数据"
   },
   "permission": {
     "approval_view": "查看审批队列",
@@ -2650,7 +2651,8 @@
     "company_setting_manage": "修改公司资料",
     "authz_manage": "配置访问权限（本页）",
     "glossary_read": "打开术语表",
-    "settings_view": "打开设置页面"
+    "settings_view": "打开设置页面",
+    "sample_clear": "清除本账簿中的所有示例数据"
   },
   "users": {
     "title": "用户管理",
@@ -2813,7 +2815,17 @@
     "helpDescription": "看不懂某个会计术语？打开术语表——每一条都用日常用语解释，并附有示例。",
     "openGlossary": "打开术语表",
     "aboutTitle": "关于本应用",
-    "aboutTagline": "记账、合同与库存管理系统"
+    "aboutTagline": "记账、合同与库存管理系统",
+    "sampleTitle": "示例数据",
+    "sampleBody": "本账簿仍包含建立公司时生成的示例交易（标记为 [CONTOH]）。这些金额会计入损益表、资产负债表和现金流量表——在清除之前，报表尚未反映您自己的业务。",
+    "sampleCounts": "{invoices} 张发票 · {purchases} 笔采购 · {expenses} 笔费用 · {customers} 个客户 · {suppliers} 个供应商",
+    "sampleClear": "清除所有示例数据",
+    "sampleClearing": "正在清除…",
+    "sampleConfirmTitle": "清除所有示例数据？",
+    "sampleConfirmBody": "所有标记为 [CONTOH] 的单据及其会计分录都会被删除。您自己录入的数据不会受到影响。此操作无法撤销。",
+    "sampleCleared": "示例数据已清除。报表现在只包含您自己的交易。",
+    "sampleKept": "以下项目因已用于真实单据而保留：{names}",
+    "sampleFailed": "无法清除示例数据"
   },
   "glossary": {
     "descriptionBefore": "本应用使用的 {count} 个会计术语，均以日常用语解释并附示例。同样的术语也会以",

@@ -155,6 +155,21 @@ export const PERMISSION_ROLES = {
   // (lihat PROTECTED_CELLS di authz-overrides.ts).
   "authz.manage": FULL,
 
+  /*
+   * Menghapus SELURUH data contoh sekaligus (`[CONTOH]`) — akses penuh saja.
+   *
+   * Satu penekanan menghapus belasan dokumen beserta jurnalnya. Itu sifatnya
+   * sama dengan `invoice.delete` / `purchase.delete` yang sudah FULL, hanya
+   * dalam jumlah banyak — jadi ambangnya tidak boleh lebih rendah dari yang
+   * paling ketat di antara yang ia lakukan.
+   *
+   * Sebagai izin TULIS (`isWritePermission`: aksinya bukan baca), ia otomatis
+   * ikut ditolak pada perusahaan CONTOH dan tenant yang ditangguhkan. Untuk
+   * yang pertama itu justru yang diinginkan: buku demo memang untuk dilihat,
+   * dan isinya bukan sampah yang perlu dibersihkan siapa pun.
+   */
+  "sample.clear": FULL,
+
   // ── Halaman bersama ──────────────────────────────────────────────────
   "glossary.read": ALL,
   "settings.view": ALL,

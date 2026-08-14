@@ -28,6 +28,10 @@ import { APP_NAME, type SystemRole } from "@/lib/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
+import {
+  SampleDataPanel,
+  type SampleDataCounts,
+} from "@/components/settings/sample-data-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { CloseSquareOutlined, ReadOutlined } from "@ant-design/icons";
@@ -46,12 +50,16 @@ interface SettingsClientProps {
   /** issue #103 — modul yang sedang MATI, dihitung di server. Daftar kosong
    *  berarti semuanya menyala dan barisnya tidak muncul sama sekali. */
   inactiveModules: BusinessModule[];
+  /** Sisa data `[CONTOH]`; `null` bila pembacanya tidak berhak membuangnya.
+   *  API-nya tetap ber-gate `sample.clear` — ini murni permukaan. */
+  sampleData: SampleDataCounts | null;
 }
 
 export function SettingsClient({
   canReadAudit,
   canManageModules,
   inactiveModules,
+  sampleData,
 }: SettingsClientProps) {
   const t = useT();
   const company = useCompanyIdentity();
@@ -176,6 +184,8 @@ export function SettingsClient({
           </Flex>
         </CardContent>
       </Card>
+
+      {sampleData ? <SampleDataPanel counts={sampleData} /> : null}
 
       <Card>
         <CardHeader>

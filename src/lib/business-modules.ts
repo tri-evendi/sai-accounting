@@ -100,6 +100,7 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
   budget: "core_accounting",
   audit: "core_accounting",
   settings: "core_accounting",
+  sample: "core_accounting",
   setup: "core_accounting",
   company_setting: "core_accounting",
   authz: "core_accounting",

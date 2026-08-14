@@ -17,6 +17,7 @@
  * satu-satunya pergeseran yang disengaja di sini.
  */
 import { useState } from "react";
+import { useParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { SessionProvider } from "next-auth/react";
 import { Grid, Layout, theme } from "antd";
@@ -34,6 +35,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const t = useT();
   const { token } = theme.useToken();
   const screens = Grid.useBreakpoint();
+  /* Rute berperusahaan dikenali dari segmen dinamisnya, bukan dari sesi —
+     justru sesinyalah yang sedang belum tahu apa-apa di cabang `!role`. */
+  const params = useParams();
+  const onCompanyRoute = typeof params?.companySlug === "string";
 
   if (status === "loading") {
     return <PageLoader message={t("common.loadingSession")} />;
@@ -44,13 +49,54 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   /*
    * Sesi tanpa PERAN berarti pengguna belum memilih perusahaan (issue #104):
    * peran datang dari keanggotaan, jadi selama belum ada perusahaan aktif tidak
-   * ada peran untuk menyusun menu. Penjaga halaman di bawah tata letak ini
-   * sedang memantulkannya ke /select-company; sementara itu yang benar untuk
-   * ditampilkan adalah keadaan memuat — bukan menu kosong yang terlihat seperti
-   * "Anda tidak punya akses apa pun".
+   * ada peran untuk menyusun menu. Yang benar untuk ditampilkan adalah keadaan
+   * memuat — bukan menu kosong yang terlihat seperti "Anda tidak punya akses
+   * apa pun".
+   *
+   * ══ TAPI LOADER SAJA PERNAH BERARTI MACET SELAMANYA ════════════════════════
+   *
+   * Komentar di sini dulu berbunyi "penjaga halaman di bawah tata letak ini
+   * sedang memantulkannya ke /select-company". Itu benar untuk `/dashboard`
+   * telanjang — dan TIDAK benar untuk `/t/<tenant>/<pt>`, yang perusahaannya
+   * datang dari JALUR, sehingga penjaganya puas dan tidak memantulkan apa pun.
+   *
+   * Satu-satunya yang menambal token adalah `CompanySessionSync`
+   * (`update({ companyId })`), dan ia dirender oleh tata letak PERUSAHAAN —
+   * yaitu di dalam `children` milik berkas ini. Mengembalikan loader saja
+   * berarti `children` tidak pernah dirender, komponen itu tidak pernah
+   * dipasang, token tidak pernah ditambal, `role` tetap null, dan loadernya
+   * berputar SELAMANYA. Penambalnya terkunci di dalam pintu yang ia sendiri
+   * harus buka.
+   *
+   * Terjadi di produksi 14 Agustus 2026 pada pendaftar baru pertama dari luar:
+   * ia mendaftar 04:54 UTC, membuat PT pertamanya 04:55 — token yang terbit
+   * SEBELUM PT itu ada tidak membawa perusahaan — lalu mencoba membuat PT yang
+   * sama sekali lagi pada 05:02, yang memang yang dilakukan orang ketika layar
+   * tidak pernah selesai memuat.
+   *
+   * ══ KENAPA `children` DIRENDER TERSEMBUNYI, BUKAN DITAMPILKAN ══════════════
+   *
+   * Isinya belum boleh terlihat: tanpa `role` tidak ada sidebar dan tidak ada
+   * navbar, jadi menampilkannya apa adanya akan mengedipkan halaman tanpa
+   * kerangka sebelum kerangkanya datang. Yang dibutuhkan hanyalah subtree itu
+   * DIPASANG, supaya `useEffect` milik `CompanySessionSync` berjalan; atribut
+   * `hidden` memberi tepat itu — terpasang, tak terlihat, satu putaran render
+   * saja sampai `update()` membawa perannya.
+   *
+   * Dibatasi pada rute yang JALURNYA memang menyebut perusahaan. Di luar itu
+   * (mis. `/dashboard` telanjang) tidak ada yang perlu ditambal — penjaganya
+   * memang memantulkan ke /select-company — dan memasang subtree-nya diam-diam
+   * hanya akan menjalankan efek halaman yang tidak diminta siapa pun.
    */
   const role = session.user.role;
-  if (!role) return <PageLoader message={t("common.loadingSession")} />;
+  if (!role) {
+    return (
+      <>
+        {onCompanyRoute ? <div hidden>{children}</div> : null}
+        <PageLoader message={t("common.loadingSession")} />
+      </>
+    );
+  }
 
   return (
     /*

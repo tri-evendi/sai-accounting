@@ -18,8 +18,13 @@ import { describe, expect, it } from "vitest";
 import { FIRST_STEPS, isFirstRun, visibleFirstSteps } from "@/lib/first-steps";
 
 describe("visibleFirstSteps", () => {
-  it("bos mendapat kelima langkah, urut seperti daftar induknya", () => {
+  it("bos mendapat keenam langkah, urut seperti daftar induknya", () => {
+    /* `penyiapan` paling depan: empat langkah sesudahnya masuk akal HANYA
+       setelah saldo awal ada. Ia satu-satunya yang sudah selesai sebelum
+       daftarnya terlihat — beranda memantulkan perusahaan yang belum disiapkan
+       ke wisayanya, jadi pembacanya pasti sudah melewatinya. */
     expect(visibleFirstSteps("managing_director").map((s) => s.key)).toEqual([
+      "penyiapan",
       "pelanggan",
       "pemasok",
       "stok_awal",

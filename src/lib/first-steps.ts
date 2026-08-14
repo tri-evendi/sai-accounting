@@ -29,6 +29,7 @@ import type { AllowedPermissions } from "@/lib/nav";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
 export type FirstStepKey =
+  | "penyiapan"
   | "pelanggan"
   | "pemasok"
   | "stok_awal"
@@ -62,6 +63,40 @@ export interface FirstStep {
  * formulir transaksi), lalu stok awal, baru transaksi pertama, baru uangnya.
  */
 export const FIRST_STEPS: FirstStep[] = [
+  /*
+   * ── Langkah yang SUDAH SELESAI sebelum daftarnya terlihat ────────────────
+   *
+   * Ia tidak pernah bisa tercentang di layar ini, sebab ia SUDAH tercentang:
+   * beranda memantulkan perusahaan yang belum disiapkan ke wisayanya
+   * (`requireSetupDone`), jadi siapa pun yang membaca daftar ini sudah
+   * melewatinya. Itu disengaja, dan bukan hiasan:
+   *
+   *  • Daftar yang dimulai dari nol menyembunyikan pekerjaan yang BARU SAJA
+   *    dikerjakan orangnya. Menyiapkan saldo awal adalah langkah tersulit di
+   *    seluruh rangkaian ini — mengetik ulang posisi keuangan perusahaan — dan
+   *    membuka layar berikutnya dengan "0 dari 5" memberi tahu mereka bahwa
+   *    semua itu tidak dihitung.
+   *  • Urutannya jadi jujur. Empat langkah di bawah masuk akal HANYA setelah
+   *    saldo awal ada; menampilkannya sebagai awal rangkaian menyiratkan
+   *    pembukuan bisa dimulai tanpa titik nol.
+   *
+   * `href`-nya ke layar RINGKASAN penyiapan, bukan ke wisayanya: wisaya itu
+   * jalan-sekali (`applyOpeningBalances` menolak jalan kedua), jadi menautkan
+   * ke sana berarti mengirim orang ke pintu yang akan menolaknya. `/setup/done`
+   * justru menyatakan apa yang barusan dibuat dan menautkannya untuk diperiksa
+   * — dan ia dijaga izin yang SAMA (`setup.manage`) serta hanya bisa dibuka
+   * ketika penyiapannya memang sudah selesai.
+   */
+  {
+    key: "penyiapan",
+    label: "Penyiapan & Saldo Awal",
+    description: "Titik nol pembukuan Anda — sudah selesai. Buka untuk memeriksanya kembali.",
+    labelKey: "firstSteps.items.penyiapan.label",
+    descriptionKey: "firstSteps.items.penyiapan.description",
+    href: "/setup/done",
+    icon: "Wand",
+    permission: "setup.manage",
+  },
   {
     key: "pelanggan",
     label: "Tambah Pelanggan",

@@ -1974,6 +1974,10 @@
     "start": "Mulai",
     "again": "Buka lagi",
     "items": {
+      "penyiapan": {
+        "label": "Penyiapan & Saldo Awal",
+        "description": "Titik nol pembukuan Anda — sudah selesai. Buka untuk memeriksanya kembali."
+      },
       "pelanggan": {
         "label": "Tambah Pelanggan",
         "description": "Siapa yang membeli dari Anda. Dipilih saat mencatat penjualan."

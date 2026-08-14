@@ -1974,6 +1974,10 @@
     "start": "开始",
     "again": "再次打开",
     "items": {
+      "penyiapan": {
+        "label": "初始设置与期初余额",
+        "description": "您账簿的起点——已完成。点击可复查。"
+      },
       "pelanggan": {
         "label": "添加客户",
         "description": "向您购买的一方。记录销售时从中选择。"

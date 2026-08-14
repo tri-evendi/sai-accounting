@@ -308,6 +308,14 @@ export default async function DashboardPage({
   ]);
 
   const firstStepProgress: FirstStepProgress = {
+    /*
+     * SELALU true, dan bukan karena malas menghitung: halaman ini baru sampai
+     * di baris ini setelah `requireSetupDone` di atas melewatkannya, jadi
+     * penyiapannya PASTI sudah selesai. Menanyakannya lagi ke basis data hanya
+     * akan menambah satu perjalanan untuk membenarkan sesuatu yang sudah
+     * dijamin gerbangnya beberapa baris sebelumnya.
+     */
+    penyiapan: true,
     penjualan: saleCount > 0,
     terima_uang: cashCount > 0,
     stok_awal: stockCount > 0,

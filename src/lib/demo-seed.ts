@@ -499,3 +499,32 @@ export async function clearSampleData(): Promise<ClearSampleDataResult> {
   };
   return { removed, keptPartners };
 }
+
+/**
+ * Adakah data contoh di buku ini? — versi MURAH, untuk spanduk beranda.
+ *
+ * ── KENAPA HANYA FAKTUR, PADAHAL `sampleDataSummary` MENGHITUNG ENAM ───────
+ * Spanduk beranda dirender pada SETIAP pemuatan beranda, selamanya, termasuk
+ * di buku yang tidak pernah punya data contoh sama sekali. `sampleDataSummary`
+ * menjalankan enam hitungan, dan empat di antaranya `LIKE '[CONTOH]%'` pada
+ * kolom yang TIDAK berindeks (`note`, `description`, `name`) — pemindaian
+ * tabel penuh, di buku produksi yang isinya bertahun-tahun. Itu harga yang
+ * terlalu mahal untuk sebuah spanduk.
+ *
+ * `invoices.invoice_no` justru `@unique`, jadi ia berindeks: `startsWith`
+ * menjadi pemindaian RENTANG indeks, bukan tabel. Satu pencarian murah,
+ * dijalankan sekali per pemuatan.
+ *
+ * ── APA YANG DIKORBANKAN, DAN KENAPA ITU BOLEH ─────────────────────────────
+ * Buku yang faktur contohnya sudah dihapus satu per satu tetapi bebannya masih
+ * tersisa TIDAK akan berspanduk. Penyemai selalu menulis tujuh faktur, jadi
+ * keadaan itu hanya lahir dari penghapusan manual sebagian — dan orang yang
+ * menghapus faktur contoh satu per satu sudah tahu data contohnya ada.
+ *
+ * Yang PENTING: kartu di Pengaturan tetap memakai `sampleDataSummary` yang
+ * lengkap, jadi sisa semacam itu tetap terlihat dan tetap bisa dibuang. Yang
+ * dihemat di sini hanyalah pengingatnya, bukan pembersihnya.
+ */
+export async function hasSampleData(): Promise<boolean> {
+  return (await prisma.invoice.count({ where: SAMPLE_INVOICE_WHERE })) > 0;
+}

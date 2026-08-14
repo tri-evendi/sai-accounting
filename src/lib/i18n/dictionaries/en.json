@@ -1974,6 +1974,10 @@
     "start": "Start",
     "again": "Open again",
     "items": {
+      "penyiapan": {
+        "label": "Setup & Opening Balances",
+        "description": "The zero point of your books — already done. Open it to review."
+      },
       "pelanggan": {
         "label": "Add a Customer",
         "description": "Who buys from you. Picked when you record a sale."

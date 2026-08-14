@@ -35,6 +35,7 @@ import {
   CheckSquareOutlined,
   FileDoneOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
   TruckOutlined,
 } from "@ant-design/icons";
 
@@ -49,6 +50,7 @@ import type { FirstStep, FirstStepProgress } from "@/lib/first-steps";
  * `@ant-design/icons` adalah NILAI peta ini.
  */
 const ICONS: Record<string, IconComponent> = {
+  Wand: ThunderboltOutlined,
   Users: TeamOutlined,
   Truck: TruckOutlined,
   PackagePlus: AppstoreAddOutlined,

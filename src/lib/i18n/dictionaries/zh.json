@@ -2276,7 +2276,10 @@
     "unresolvedAfter": "于此金额中。",
     "workflowTitle": "工作流程",
     "workflowHint": "不知从何入手？请按以下步骤顺序操作——每一步都会打开对应页面。",
-    "workflowOptional": "可选"
+    "workflowOptional": "可选",
+    "sampleBannerTitle": "本账簿仍包含示例数据。",
+    "sampleBannerBody": "标记为 [CONTOH] 的金额会计入损益表、资产负债表和现金流量表——因此下方的摘要尚未反映您自己的业务。",
+    "sampleBannerAction": "在设置中清除"
   },
   "stockMovement": {
     "title": "库存变动记录",

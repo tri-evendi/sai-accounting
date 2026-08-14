@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { requireUnlockedCompany } from "@/lib/page-auth";
+import { requireSetupDone, requireUnlockedCompany } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
@@ -209,6 +209,27 @@ export default async function DashboardPage({
    * pintu yang tidak menuntut bukti kehadiran.
    */
   await requireUnlockedCompany(session.user.id, scoped.companyId, {
+    tenantSlug: scoped.tenantSlug,
+    companySlug: scoped.companySlug,
+  });
+
+  /*
+   * Gerbang "belum disiapkan" — WAJIB di sini juga, dengan alasan yang sama
+   * persis seperti kunci buku di atasnya.
+   *
+   * Halaman ini menjaga dirinya sendiri, jadi ia tidak lewat
+   * `gateAfterCompany` tempat gerbang ini berdiri untuk ~50 halaman lain.
+   * Akibatnya sempat terlihat di produksi: SETIAP halaman lain memantulkan
+   * perusahaan yang belum disiapkan ke wisayanya, sementara halaman PERTAMA
+   * sesudah masuk — satu-satunya yang pasti dibuka pengguna baru — justru
+   * tidak. Yang mereka lihat adalah dasbor berisi nol, dan tak satu kalimat
+   * pun di layar itu menyebut bahwa wisayanya belum dijalankan.
+   *
+   * SESUDAH kunci buku, bukan sebelum: "PT ini belum disiapkan" adalah
+   * informasi tentang buku, dan buku tidak menjawab apa pun kepada orang yang
+   * belum membuktikan kehadirannya (urutan yang sama dengan `page-auth.ts`).
+   */
+  await requireSetupDone(session.user, {
     tenantSlug: scoped.tenantSlug,
     companySlug: scoped.companySlug,
   });

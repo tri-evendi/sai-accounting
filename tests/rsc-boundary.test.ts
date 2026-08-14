@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 159;
+const AMBANG_KLIEN = 160;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -321,6 +321,10 @@ const KLIEN_TERSAHKAN = [
   "components/settings/audit-log-panel.tsx",
   "components/settings/module-picker.tsx",
   "components/settings/module-settings-panel.tsx",
+  // Pulau client kecil: satu tombol + dialog konfirmasi + `router.refresh()`.
+  // Halaman Pengaturan yang memanggilnya tetap server component; angkanya
+  // dihitung di sana dan diturunkan sebagai prop.
+  "components/settings/sample-data-panel.tsx",
   "components/setup/setup-shell.tsx",
   "components/shared/advance-compensation.tsx",
   "components/shared/consignee-select.tsx",

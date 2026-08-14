@@ -17,6 +17,13 @@ export type AuditAction =
   /** Re-allocating an existing payment across purchases (issue #38). No journal. */
   | "supplier_transaction.allocate"
   | "auth.password_change"
+  /**
+   * Seluruh data CONTOH dibuang sekaligus (`[CONTOH]`). Belasan dokumen dan
+   * jurnalnya hilang dalam satu tindakan, jadi ia WAJIB berjejak: orang
+   * berikutnya yang bertanya "faktur contohnya ke mana" harus menemukan
+   * jawabannya di sini, bukan menyimpulkan bukunya pernah dibobol.
+   */
+  | "sample_data.clear"
   | "period.close"
   | "period.reopen"
   /** Recording uang muka received/paid before any invoice exists (issue #26). */
@@ -164,6 +171,8 @@ export type AuditEntity =
   | "sales_return"
   | "purchase_return"
   | "company_settings"
+  /** Bukan sebuah tabel — kumpulan baris bertanda `[CONTOH]` di banyak tabel. */
+  | "sample_data"
   | "fixed_asset_category"
   | "fixed_asset"
   | "delivery_order"

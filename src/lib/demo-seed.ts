@@ -26,12 +26,22 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { postForSource } from "@/lib/posting";
+import { postForSource, unpostForSource } from "@/lib/posting";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
 import { OPENING_BALANCE_SOURCE } from "@/lib/opening-balance";
 
 /** Penanda baris contoh — muncul di layar, jadi tak pernah menyamar jadi data asli. */
 export const SAMPLE_TAG = "[CONTOH]";
+
+/**
+ * Awalan nomor faktur contoh.
+ *
+ * Dipakai DUA arah: saat menulis, dan saat mencari kembali untuk dihapus.
+ * Karena itu ia konstanta, bukan literal yang diketik dua kali — sebuah
+ * penghapus yang mencari awalan yang tidak lagi ditulis penyemainya akan
+ * melaporkan "tidak ada data contoh" pada buku yang penuh dengannya.
+ */
+export const SAMPLE_INVOICE_PREFIX = "INV-CONTOH-";
 
 export const SAMPLE_CUSTOMERS = [
   { name: `${SAMPLE_TAG} Toko Sinar Jaya`, address: "Jl. Merdeka No. 12, Bandung", phone: "022-4210031", pic: "Bu Ratna" },
@@ -202,7 +212,7 @@ export async function seedSampleBook(opts: {
     invoiceSeq += 1;
     const invoice = await prisma.invoice.create({
       data: {
-        invoiceNo: `INV-CONTOH-${String(invoiceSeq).padStart(3, "0")}`,
+        invoiceNo: `${SAMPLE_INVOICE_PREFIX}${String(invoiceSeq).padStart(3, "0")}`,
         date,
         status: "signed",
         /*
@@ -299,4 +309,193 @@ export async function seedSampleBook(opts: {
     purchases: SAMPLE_PURCHASES.length,
     expenses: expenseCount,
   };
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* MENGHAPUS kembali data contoh                                              */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * ── KENAPA INI HARUS ADA ───────────────────────────────────────────────────
+ *
+ * Sejak buku perusahaan BARU ikut diisi contoh, setiap pelanggan memulai
+ * pembukuannya dengan pendapatan yang bukan miliknya. Awalan `[CONTOH]` menandai
+ * BARISNYA, tetapi laporan tidak menampilkan baris — ia menampilkan ANGKA. Di
+ * Laba/Rugi tidak ada satu pun tanda bahwa Rp 82 juta itu karangan, dan angka
+ * yang salah dipercaya tidak menimbulkan galat apa pun: ia dibawa ke rapat, ke
+ * bank, atau ke kantor pajak.
+ *
+ * Tanpa tindakan ini "boleh dihapus" hanyalah benar secara teknis — ~23 dokumen
+ * dihapus satu per satu lewat layar yang berbeda-beda, dengan urutan yang harus
+ * ditebak sendiri (pelunasan sebelum faktur, dokumen sebelum mitra). Yang
+ * ditawarkan sebagai kemudahan berubah menjadi pekerjaan rumah, dan pekerjaan
+ * rumah yang membosankan tidak dikerjakan — datanya menetap.
+ *
+ * ── DIKENALI DARI YANG DITULIS PENYEMAI, BUKAN DARI TEBAKAN ────────────────
+ * Faktur dikenali dari `SAMPLE_INVOICE_PREFIX` (bentuk yang tidak mungkin
+ * diketik orang), selebihnya dari awalan `SAMPLE_TAG` pada catatan/nama —
+ * persis medan yang ditulis `seedSampleBook` di atas.
+ */
+export interface SampleDataSummary {
+  invoices: number;
+  payments: number;
+  purchases: number;
+  expenses: number;
+  customers: number;
+  suppliers: number;
+  total: number;
+}
+
+const SAMPLE_INVOICE_WHERE = { invoiceNo: { startsWith: SAMPLE_INVOICE_PREFIX } } as const;
+const SAMPLE_NOTE_WHERE = { note: { startsWith: SAMPLE_TAG } } as const;
+
+/** Apa saja yang masih tersisa dari data contoh di buku yang sedang aktif. */
+export async function sampleDataSummary(): Promise<SampleDataSummary> {
+  const [invoices, payments, purchases, expenses, customers, suppliers] = await Promise.all([
+    prisma.invoice.count({ where: SAMPLE_INVOICE_WHERE }),
+    prisma.invoicePayment.count({ where: { invoice: SAMPLE_INVOICE_WHERE } }),
+    prisma.supplierTransaction.count({ where: SAMPLE_NOTE_WHERE }),
+    prisma.cashMovement.count({ where: { description: { startsWith: SAMPLE_TAG } } }),
+    prisma.customer.count({ where: { name: { startsWith: SAMPLE_TAG } } }),
+    prisma.supplier.count({ where: { name: { startsWith: SAMPLE_TAG } } }),
+  ]);
+  return {
+    invoices,
+    payments,
+    purchases,
+    expenses,
+    customers,
+    suppliers,
+    total: invoices + payments + purchases + expenses + customers + suppliers,
+  };
+}
+
+export interface ClearSampleDataResult {
+  removed: SampleDataSummary;
+  /**
+   * Mitra contoh yang SENGAJA ditinggalkan karena masih dipakai dokumen lain —
+   * disebut namanya supaya penggunanya tahu kenapa daftarnya belum bersih.
+   */
+  keptPartners: string[];
+}
+
+/**
+ * Hapus seluruh data contoh dari buku yang sedang aktif.
+ *
+ * ── DOKUMEN DIBALIK, BUKAN SEKADAR DIHAPUS ─────────────────────────────────
+ * Setiap dokumen dilepas lewat `unpostForSource` — jalur yang SAMA dengan
+ * tombol Hapus di layar faktur (`api/invoices/[id]/route.ts`). Menghapus
+ * barisnya saja akan meninggalkan jurnal yang sumbernya tidak ada lagi: buku
+ * besar yang tetap memuat pendapatan karangan, tanpa satu pun dokumen yang bisa
+ * ditunjuk sebagai asalnya. Itu kerusakan yang lebih buruk daripada data contoh
+ * yang dibiarkan.
+ *
+ * ── SATU TRANSAKSI UNTUK DOKUMEN ───────────────────────────────────────────
+ * Semua-atau-tidak-sama-sekali. Kalau satu pembalikan ditolak — misalnya
+ * periodenya sudah ditutup (`assertPeriodOpen` di `reverseJournal`) — yang
+ * benar adalah tidak ada yang terhapus sama sekali, bukan buku yang separuh
+ * bersih dengan jurnal yang tinggal separuh. `timeout` dinaikkan dari bawaan
+ * 5 detik: ~23 dokumen dengan pembalikannya masing-masing melewatinya di kotak
+ * yang sibuk, dan transaksi yang mati karena waktu terbaca seperti bug.
+ *
+ * ── MITRA DIHAPUS DI LUAR TRANSAKSI ITU, SATU PER SATU ─────────────────────
+ * Pelanggan/pemasok contoh boleh saja SUDAH DIPAKAI dokumen sungguhan —
+ * seseorang yang mencoba aplikasi ini wajar menerbitkan faktur pertamanya ke
+ * "[CONTOH] Toko Sinar Jaya". Menghapusnya akan menyeret dokumen sungguhan itu
+ * (atau ditolak FK di tengah transaksi dokumen, membatalkan pembersihan yang
+ * sudah benar). Karena itu masing-masing dicoba sendiri-sendiri SETELAHNYA, dan
+ * yang ditolak dicatat namanya alih-alih menggagalkan keseluruhan.
+ */
+export async function clearSampleData(): Promise<ClearSampleDataResult> {
+  const before = await sampleDataSummary();
+
+  const [invoices, purchases, expenses] = await Promise.all([
+    prisma.invoice.findMany({ where: SAMPLE_INVOICE_WHERE, select: { id: true } }),
+    prisma.supplierTransaction.findMany({ where: SAMPLE_NOTE_WHERE, select: { id: true } }),
+    prisma.cashMovement.findMany({
+      where: { description: { startsWith: SAMPLE_TAG } },
+      select: { id: true },
+    }),
+  ]);
+
+  await prisma.$transaction(
+    async (tx) => {
+      for (const invoice of invoices) {
+        /* Pelunasan ikut terhapus lewat `onDelete: Cascade`, jadi jurnalnya
+           harus dilepas LEBIH DULU — kalau tidak, buku besar menyimpan entri
+           yang baris sumbernya sudah lenyap. Urutan yang sama dipakai route
+           hapus faktur. */
+        const payments = await tx.invoicePayment.findMany({
+          where: { invoiceId: invoice.id },
+          select: { id: true },
+        });
+        for (const payment of payments) {
+          await unpostForSource({ sourceType: "invoice_payment", sourceId: payment.id, tx });
+        }
+        await unpostForSource({ sourceType: "invoice", sourceId: invoice.id, tx });
+        await tx.invoice.delete({ where: { id: invoice.id } });
+      }
+
+      for (const purchase of purchases) {
+        await unpostForSource({ sourceType: "supplier_transaction", sourceId: purchase.id, tx });
+        await tx.supplierTransaction.delete({ where: { id: purchase.id } });
+      }
+
+      for (const expense of expenses) {
+        await unpostForSource({ sourceType: "cash_movement", sourceId: expense.id, tx });
+        await tx.cashMovement.delete({ where: { id: expense.id } });
+      }
+    },
+    { timeout: 60_000, maxWait: 10_000 }
+  );
+
+  const keptPartners: string[] = [];
+  let customersRemoved = 0;
+  let suppliersRemoved = 0;
+
+  const customers = await prisma.customer.findMany({
+    where: { name: { startsWith: SAMPLE_TAG } },
+    select: { id: true, name: true },
+  });
+  for (const customer of customers) {
+    try {
+      await prisma.customer.delete({ where: { id: customer.id } });
+      customersRemoved += 1;
+    } catch {
+      /* Masih dirujuk dokumen sungguhan (FK RESTRICT). Ditinggalkan dengan
+         sengaja — nama contoh di daftar pelanggan jauh lebih murah daripada
+         menghapus faktur yang benar-benar diterbitkan penggunanya. */
+      keptPartners.push(customer.name);
+    }
+  }
+
+  const suppliers = await prisma.supplier.findMany({
+    where: { name: { startsWith: SAMPLE_TAG } },
+    select: { id: true, name: true },
+  });
+  for (const supplier of suppliers) {
+    try {
+      await prisma.supplier.delete({ where: { id: supplier.id } });
+      suppliersRemoved += 1;
+    } catch {
+      keptPartners.push(supplier.name);
+    }
+  }
+
+  const removed: SampleDataSummary = {
+    invoices: invoices.length,
+    payments: before.payments,
+    purchases: purchases.length,
+    expenses: expenses.length,
+    customers: customersRemoved,
+    suppliers: suppliersRemoved,
+    total:
+      invoices.length +
+      before.payments +
+      purchases.length +
+      expenses.length +
+      customersRemoved +
+      suppliersRemoved,
+  };
+  return { removed, keptPartners };
 }

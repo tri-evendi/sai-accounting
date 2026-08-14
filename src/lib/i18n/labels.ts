@@ -267,6 +267,7 @@ export function permissionResourceLabels(
     authz: r.authz,
     glossary: r.glossary,
     settings: r.settings,
+    sample: r.sample,
   };
 }
 
@@ -335,6 +336,7 @@ export function permissionLabels(
     "authz.manage": p.authz_manage,
     "glossary.read": p.glossary_read,
     "settings.view": p.settings_view,
+    "sample.clear": p.sample_clear,
   };
 }
 

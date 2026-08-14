@@ -54,6 +54,7 @@ export const RESOURCE_LABELS: Record<PermissionResource, string> = {
   authz: "Hak Akses",
   glossary: "Kamus Istilah",
   settings: "Pengaturan",
+  sample: "Data Contoh",
 };
 
 /** Satu kalimat per izin: apa yang BOLEH dilakukan pemegangnya. */
@@ -127,6 +128,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 
   "glossary.read": "Membuka kamus istilah",
   "settings.view": "Membuka halaman pengaturan",
+  "sample.clear": "Membuang seluruh data contoh dari buku ini",
 };
 
 export interface PermissionGroup {

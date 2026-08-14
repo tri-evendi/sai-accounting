@@ -10,6 +10,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { canEffective, getEnabledModules } from "@/lib/authz-effective";
 import { BUSINESS_MODULES, isModuleEnabled } from "@/lib/business-modules";
+import { sampleDataSummary } from "@/lib/demo-seed";
 import { SettingsClient } from "./settings-client";
 
 export const dynamic = "force-dynamic";
@@ -41,11 +42,21 @@ export default async function SettingsPage({
    */
   const enabled = await getEnabledModules();
   const inactiveModules = BUSINESS_MODULES.filter((m) => !isModuleEnabled(m, enabled));
+  /*
+   * Data CONTOH yang masih tersisa. Dihitung di SERVER seperti keputusan lain
+   * di halaman ini — kartunya hanya muncul untuk yang boleh membuangnya, dan
+   * API-nya tetap ber-gate `sample.clear`, jadi bukan tampilan yang menjaga
+   * dirinya. Buku yang bersih mengembalikan `total: 0` dan kartunya tidak
+   * pernah dirender.
+   */
+  const canClearSample = await canEffective(session.user, "sample.clear");
+  const sampleData = canClearSample ? await sampleDataSummary() : null;
   return (
     <SettingsClient
       canReadAudit={canReadAudit}
       canManageModules={canManageModules}
       inactiveModules={inactiveModules}
+      sampleData={sampleData}
     />
   );
 }

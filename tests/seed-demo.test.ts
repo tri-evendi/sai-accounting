@@ -236,3 +236,76 @@ describe("terdaftar sebagaimana mestinya", () => {
     expect(pkg.scripts._db_seed_demo_note).toContain("diposting");
   });
 });
+
+describe("membuang kembali data contoh", () => {
+  /*
+   * Penanda yang DITULIS penyemai harus sama dengan yang DICARI penghapus.
+   * Kalau keduanya berpisah, penghapusnya melaporkan "tidak ada data contoh"
+   * pada buku yang penuh dengannya — kegagalan yang diam dan meyakinkan.
+   */
+  it("mencari dengan penanda yang sama seperti yang ditulis", () => {
+    expect(lib).toContain('export const SAMPLE_INVOICE_PREFIX = "INV-CONTOH-"');
+    // Ditulis lewat konstantanya, bukan literal yang diketik ulang.
+    expect(libCode).toContain("${SAMPLE_INVOICE_PREFIX}");
+    expect(libCode).toContain("startsWith: SAMPLE_INVOICE_PREFIX");
+  });
+
+  /*
+   * Menghapus barisnya saja meninggalkan jurnal yang sumbernya tidak ada lagi:
+   * buku besar yang tetap memuat pendapatan karangan tanpa satu pun dokumen
+   * yang bisa ditunjuk sebagai asalnya — lebih buruk daripada data contoh yang
+   * dibiarkan. Jalur yang sama dipakai tombol Hapus di layar faktur.
+   */
+  it("setiap dokumen DIBALIK jurnalnya, bukan sekadar dihapus", () => {
+    expect(libCode).toContain("unpostForSource");
+    for (const sourceType of [
+      "invoice",
+      "invoice_payment",
+      "supplier_transaction",
+      "cash_movement",
+    ]) {
+      expect(
+        libCode,
+        `sumber "${sourceType}" dihapus tanpa dilepas dari buku besar`
+      ).toContain(`unpostForSource({ sourceType: "${sourceType}"`);
+    }
+  });
+
+  /*
+   * Pelunasan ikut terhapus lewat `onDelete: Cascade`, jadi jurnalnya wajib
+   * dilepas LEBIH DULU — sesudah fakturnya hilang, barisnya tak bisa ditemukan
+   * lagi untuk dibalik.
+   */
+  it("pelunasan dilepas sebelum fakturnya", () => {
+    const bayar = libCode.indexOf('unpostForSource({ sourceType: "invoice_payment"');
+    const faktur = libCode.indexOf('unpostForSource({ sourceType: "invoice"');
+    expect(bayar).toBeGreaterThan(-1);
+    expect(faktur).toBeGreaterThan(-1);
+    expect(bayar).toBeLessThan(faktur);
+  });
+
+  /*
+   * Mitra contoh boleh saja sudah dipakai dokumen sungguhan — seseorang yang
+   * mencoba aplikasi ini wajar menerbitkan faktur pertamanya ke "[CONTOH] Toko
+   * Sinar Jaya". Menghapusnya akan menyeret dokumen itu; yang benar adalah
+   * meninggalkannya dan menyebut namanya.
+   */
+  it("mitra yang masih dipakai ditinggalkan, bukan diseret ikut terhapus", () => {
+    expect(libCode).toContain("keptPartners");
+    // Dicoba satu per satu DI LUAR transaksi dokumen: kegagalan FK satu mitra
+    // tidak boleh membatalkan pembersihan yang sudah benar.
+    const tx = libCode.indexOf("$transaction");
+    const mitra = libCode.indexOf("keptPartners.push");
+    expect(tx).toBeLessThan(mitra);
+  });
+
+  it("route-nya berpenjaga izin sendiri, bukan menumpang izin dokumen", () => {
+    const route = readFileSync(
+      join(root, "src", "app", "api", "sample-data", "route.ts"),
+      "utf8"
+    );
+    expect(route).toContain('requireApiPermission("sample.clear")');
+    // Belasan dokumen hilang sekaligus — itu wajib berjejak.
+    expect(route).toContain("writeAuditLog");
+  });
+});

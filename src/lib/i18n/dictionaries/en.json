@@ -2590,7 +2590,8 @@
     "company_setting": "Company Profile",
     "authz": "Access Rights",
     "glossary": "Glossary",
-    "settings": "Settings"
+    "settings": "Settings",
+    "sample": "Sample Data"
   },
   "permission": {
     "approval_view": "View the approval queue",
@@ -2650,7 +2651,8 @@
     "company_setting_manage": "Edit the company profile",
     "authz_manage": "Configure access rights (this page)",
     "glossary_read": "Open the glossary",
-    "settings_view": "Open the settings page"
+    "settings_view": "Open the settings page",
+    "sample_clear": "Remove all sample data from this book"
   },
   "users": {
     "title": "User Management",
@@ -2813,7 +2815,17 @@
     "helpDescription": "Not sure what an accounting term means? Open the glossary — every one is explained in plain language, with an example.",
     "openGlossary": "Open the Glossary",
     "aboutTitle": "About This App",
-    "aboutTagline": "Bookkeeping, contracts, and stock in one system"
+    "aboutTagline": "Bookkeeping, contracts, and stock in one system",
+    "sampleTitle": "Sample Data",
+    "sampleBody": "This book still contains sample transactions marked [CONTOH], created when the company was set up. Their figures ARE INCLUDED in the Income Statement, Balance Sheet, and Cash Flow — so until you remove them, your reports do not yet describe your own business.",
+    "sampleCounts": "{invoices} invoices · {purchases} purchases · {expenses} expenses · {customers} customers · {suppliers} suppliers",
+    "sampleClear": "Remove all sample data",
+    "sampleClearing": "Removing…",
+    "sampleConfirmTitle": "Remove all sample data?",
+    "sampleConfirmBody": "Every document marked [CONTOH] is deleted along with its journal entries. Anything you recorded yourself is left untouched. This cannot be undone.",
+    "sampleCleared": "Sample data removed. Your reports now contain only your own transactions.",
+    "sampleKept": "Kept because you have already used them on real documents: {names}",
+    "sampleFailed": "Could not remove the sample data"
   },
   "glossary": {
     "descriptionBefore": "{count} accounting terms used by this app, explained in plain language with an example. The same terms also appear as a",

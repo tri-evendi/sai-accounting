@@ -225,7 +225,7 @@ const SALDO_AWAL = {
   ringkas:
     "Kenapa aplikasi perlu tahu keadaan keuangan Anda sebelum hari pertama, dan apa akibatnya kalau dilewati.",
   cabang: "pengguna",
-  navHrefs: ["/setup"],
+  navHrefs: ["/setup", "/master/import"],
 } as const satisfies DocMeta;
 
 const PERAN_IZIN = {

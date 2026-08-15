@@ -248,7 +248,8 @@
       "users": "Pengguna",
       "permissions": "Hak Akses",
       "settings": "Pengaturan",
-      "selectCompany": "Pilih Perusahaan"
+      "selectCompany": "Pilih Perusahaan",
+      "masterImport": "Impor Data Awal"
     }
   },
   "quickActions": {
@@ -628,6 +629,8 @@
     "excelUnreadable": "File tidak dapat dibaca. Pastikan berformat Excel (.xlsx).",
     "rowsNeedFixing": "Ada baris yang perlu diperbaiki.",
     "noAccountRows": "Tidak ada baris akun untuk diimpor.",
+    "noImportRows": "Tidak ada baris yang bisa diimpor dari berkas ini.",
+    "unknownImportKind": "Jenis impor tidak dikenal.",
     "csvEmpty": "Isi CSV kosong.",
     "csvInvalidRows": "CSV memuat baris yang tidak valid. Perbaiki lalu impor ulang.",
     "contractInUse": "Kontrak ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontraknya saja agar rantai dokumen tetap utuh.",
@@ -3961,5 +3964,29 @@
   "demoCompany": {
     "title": "Ini perusahaan contoh.",
     "body": "Isinya data buatan supaya Anda bisa melihat laporan yang sudah terisi. Angkanya bukan pembukuan sungguhan, dan tidak bisa diubah. Untuk mulai membukukan usaha Anda sendiri, buat perusahaan baru."
+  },
+  "masterImport": {
+    "title": "Impor Data Awal",
+    "description": "Pindahkan daftar pelanggan, pemasok, dan barang dari Excel — tanpa mengetik ulang.",
+    "kindLabel": "Jenis data",
+    "kindCustomers": "Pelanggan",
+    "kindSuppliers": "Pemasok",
+    "kindItems": "Barang",
+    "step1Title": "1. Unduh templat",
+    "step2Title": "2. Unggah berkas yang sudah diisi",
+    "templateHint": "Templat sudah berisi judul kolom, satu baris contoh, dan lembar Petunjuk. Urutan kolom bebas — kolom dikenali dari judulnya.",
+    "downloadTemplate": "Unduh templat {kind}",
+    "uploadHint": "Berkas .xlsx, maksimal 5 MB. Bila ADA satu baris yang salah, tidak ada yang disimpan — perbaiki lalu unggah ulang.",
+    "upload": "Unggah & impor",
+    "uploading": "Mengimpor…",
+    "pickFileFirst": "Pilih berkas lebih dulu.",
+    "failed": "Impor gagal.",
+    "rowErrorsTitle": "{count} baris perlu diperbaiki",
+    "colRow": "Baris",
+    "colProblem": "Masalah",
+    "doneTitle": "Impor selesai",
+    "doneBody": "{created} baris baru ditambahkan, {skipped} dilewati karena namanya sudah ada, dari {total} baris.",
+    "truncated": "Berkasnya melebihi batas 10.000 baris; sisanya tidak dibaca.",
+    "toastImported": "{created} baris diimpor"
   }
 }

@@ -218,3 +218,34 @@ export function readMapped<T>(
   }
   return value;
 }
+
+/**
+ * Ya / Tidak dari sel spreadsheet.
+ *
+ * Menerima gaya Indonesia dan Inggris, angka, dan centang — sebab satu kolom
+ * "Bebas PPN" akan diisi kelima bentuk itu oleh lima orang berbeda, dan
+ * menolak empat di antaranya bukan ketelitian melainkan penghalang.
+ *
+ * Yang TIDAK dilakukan: menebak. Teks yang tidak dikenali menjadi galat, bukan
+ * `false` — sebuah "Iya" yang salah eja tidak boleh diam-diam berarti "tidak",
+ * karena kolom seperti ini menentukan apakah pajak dikenakan.
+ */
+const TRUE_WORDS = new Set(["ya", "y", "yes", "true", "benar", "1", "v", "x", "✓"]);
+const FALSE_WORDS = new Set(["tidak", "t", "no", "n", "false", "salah", "0", "-"]);
+
+export function readBoolean(
+  raw: string,
+  label: string,
+  issues: RowIssues,
+  options: { required?: boolean } = {}
+): boolean | null {
+  if (!raw) {
+    if (options.required) issues.add(`${label} kosong`);
+    return null;
+  }
+  const value = raw.toLowerCase();
+  if (TRUE_WORDS.has(value)) return true;
+  if (FALSE_WORDS.has(value)) return false;
+  issues.add(`${label} "${raw}" tidak dikenali (isi Ya atau Tidak)`);
+  return null;
+}

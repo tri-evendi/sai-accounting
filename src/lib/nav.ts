@@ -234,6 +234,25 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/glossary", label: "Kamus Istilah", labelKey: "nav.items.glossary", icon: "BookMarked", permission: "glossary.read" },
       { href: "/periods", label: "Kunci Bulan", labelKey: "nav.items.periods", icon: "Lock", permission: "period.manage", termKey: "tutup_periode" },
       { href: "/setup", label: "Setup & Saldo Awal", labelKey: "nav.items.setup", icon: "Wand2", permission: "setup.manage", termKey: "saldo_awal" },
+      /*
+       * Impor Data Awal (#381). Duduk TEPAT di bawah "Setup & Saldo Awal"
+       * karena di situlah ia dibutuhkan: saldo awal per barang (#379) menuntut
+       * barangnya sudah ada, dan piutang awal menuntut pelanggannya sudah ada.
+       * Menaruhnya di grup Penjualan atau Persediaan berarti orang yang sedang
+       * menyiapkan bukunya harus menebak di menu mana daftarnya dimasukkan.
+       *
+       * Izin MENU-nya `setup.manage`, sengaja LEBIH SEMPIT daripada izin
+       * halamannya. Ini pekerjaan saat MENYIAPKAN buku, bukan pekerjaan harian:
+       * seorang petugas gudang boleh mengimpor barang (`inventory.write`, dan
+       * route-nya memang mengizinkannya) tetapi tidak perlu butir ini menghuni
+       * menunya setiap hari selama bertahun-tahun.
+       *
+       * Menu adalah KURASI, penjaga adalah wewenang — pemisahan yang sama yang
+       * sudah berlaku di seluruh berkas ini ("TAMPILAN saja; tiap halaman
+       * tujuan tetap dijaga `requirePagePermission`"). Yang tidak melihat
+       * butirnya tetap bisa membuka alamatnya, dan tetap diterima.
+       */
+      { href: "/master/import", label: "Impor Data Awal", labelKey: "nav.items.masterImport", icon: "Upload", permission: "setup.manage" },
       { href: "/users", label: "Pengguna", labelKey: "nav.items.users", icon: "UserCog", permission: "user.manage" },
       // issue #73 — matriks izin dikonfigurasi dari sini; anti-lockout menjamin
       // peran berakses penuh tidak pernah kehilangan pintunya sendiri.

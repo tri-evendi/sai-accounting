@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 160;
+const AMBANG_KLIEN = 161;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -272,6 +272,15 @@ const KLIEN_TERSAHKAN = [
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/ledger/ledger-filter.tsx",
+  /* Impor Data Awal (#381 tahap 2) — pulau client karena alasan yang sama
+     dengan impor daftar akun: pemilih berkas, unggah, dan tabel galat
+     per-baris yang muncul TANPA memuat ulang halaman. Sebuah berkas 300 baris
+     yang ditolak harus memperlihatkan ke-300 masalahnya di layar yang sama,
+     bukan lewat pemuatan penuh yang menghapus pilihan berkasnya. Halamannya
+     sendiri TETAP server component: izin ketiga jenis dihitung di server dan
+     diturunkan sebagai daftar, jadi yang menyeberang kendalinya, bukan
+     keputusan izinnya. */
+  "app/(dashboard)/t/[tenantSlug]/[companySlug]/master/import/master-import-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",

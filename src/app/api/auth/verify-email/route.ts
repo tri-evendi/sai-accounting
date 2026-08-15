@@ -22,6 +22,7 @@ import {
 import { consumeVerificationToken } from "@/lib/registration-store";
 import { createInitialSubscription } from "@/lib/subscription-store";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { clientIpFrom } from "@/lib/client-ip";
 
@@ -108,11 +109,13 @@ export async function POST(request: Request) {
   try {
     await createInitialSubscription(result.tenantId);
   } catch (error) {
-    console.error(
-      `[verify-email] kelahiran langganan tenant #${result.tenantId} gagal — ` +
-        "tenant tetap lahir; putaran adopsi penjadwal yang menyembuhkan:",
-      error
-    );
+    /* Tenant tetap lahir; putaran adopsi penjadwal yang menyembuhkan (#152).
+       Tapi "disembuhkan oleh putaran berikutnya" hanya benar selama penjadwalnya
+       hidup — jadi kegagalannya harus terdengar, bukan berhenti di log. */
+    await reportError("verify_email.initial_subscription_failed", error, {
+      tenantId: result.tenantId,
+      tenantSlug: result.tenantSlug,
+    });
   }
 
   return NextResponse.json({ ok: true });

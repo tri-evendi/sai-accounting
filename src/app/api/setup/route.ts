@@ -107,7 +107,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { company, cash, receivables, payables, inventory } = parsed.data;
+  const { company, cash, receivables, payables, inventory, fixedAssets } = parsed.data;
 
   /*
    * Modul per kategori usaha (issue #99). Wizard boleh menyertakan himpunan
@@ -139,11 +139,25 @@ export async function POST(request: Request) {
   // Nama barang untuk gerakan stok pembuka (#379) mengikuti aturan yang sama:
   // apa pun yang muncul di buku ditulis dari baris yang benar-benar ada, bukan
   // dari teks kiriman peramban.
-  const [customers, suppliers, items] = await Promise.all([
+  const [customers, suppliers, items, assetCategories] = await Promise.all([
     prisma.customer.findMany({ select: { id: true, name: true } }),
     prisma.supplier.findMany({ select: { id: true, name: true } }),
     prisma.item.findMany({ select: { id: true, name: true } }),
+    /* Kategori aset membawa AKUN-nya (aset / akumulasi / beban) dan umur
+       bawaannya — itulah kenapa berkas impor cukup menyebut namanya (#381). */
+    prisma.fixedAssetCategory.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        defaultUsefulLifeMonths: true,
+        assetAccountId: true,
+        accumulatedAccountId: true,
+        expenseAccountId: true,
+      },
+    }),
   ]);
+  const categoryByName = new Map(assetCategories.map((c) => [c.name.trim().toLowerCase(), c]));
   const customerName = new Map(customers.map((c) => [c.id, c.name]));
   const supplierName = new Map(suppliers.map((s) => [s.id, s.name]));
   const itemName = new Map(items.map((i) => [i.id, i.name]));
@@ -176,6 +190,40 @@ export async function POST(request: Request) {
       const { t } = await getRequestI18n();
       return NextResponse.json(
         { error: t("errors.setupItemNotFound", { id: row.itemId }) },
+        { status: 400 }
+      );
+    }
+  }
+
+  /* Kategori yang tidak ada ditolak SEBELUM transaksi dibuka — sama seperti
+     barang di #379. Aset tanpa kategori tidak punya akun, dan tanpa akun tidak
+     ada baris jurnal yang bisa dibuat. */
+  for (const a of fixedAssets) {
+    if (!categoryByName.has(a.category.trim().toLowerCase())) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        { error: t("errors.setupAssetCategoryNotFound", { name: a.category }) },
+        { status: 400 }
+      );
+    }
+  }
+
+  /* Kode aset yang SUDAH ADA ditolak: `fixed_assets.asset_no` unik, dan
+     membiarkannya menabrak constraint di tengah transaksi menghasilkan galat
+     yang tidak menyebut baris mana. */
+  if (fixedAssets.length > 0) {
+    const existing = await prisma.fixedAsset.findMany({
+      where: { assetNo: { in: fixedAssets.map((a) => a.assetNo) } },
+      select: { assetNo: true },
+    });
+    if (existing.length > 0) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        {
+          error: t("errors.setupAssetNoTaken", {
+            codes: existing.map((e) => e.assetNo).join(", "),
+          }),
+        },
         { status: 400 }
       );
     }
@@ -224,6 +272,28 @@ export async function POST(request: Request) {
       documentDate: p.documentDate ? new Date(p.documentDate) : null,
       dueDate: p.dueDate ? new Date(p.dueDate) : null,
     })),
+    fixedAssets: fixedAssets.map((a) => {
+      const category = categoryByName.get(a.category.trim().toLowerCase())!;
+      return {
+        assetNo: a.assetNo,
+        name: a.name,
+        categoryId: category.id,
+        assetAccountId: category.assetAccountId,
+        accumulatedAccountId: category.accumulatedAccountId,
+        expenseAccountId: category.expenseAccountId,
+        acquisitionDate: new Date(a.acquisitionDate),
+        cost: a.cost,
+        residual: a.residual,
+        /* Umur kosong memakai bawaan KATEGORINYA — bukan angka yang ditebak di
+           sini, dan bukan nol yang akan membuat penyusutannya membagi dengan
+           nol pada putaran pertama. */
+        usefulLifeMonths: a.usefulLifeMonths ?? category.defaultUsefulLifeMonths,
+        accumulated: a.accumulated,
+        lastDepreciationYear: a.lastDepreciationYear ?? null,
+        lastDepreciationMonth: a.lastDepreciationMonth ?? null,
+        location: a.location ?? null,
+      };
+    }),
     inventory: inventory.map((row) => ({
       itemId: row.itemId,
       itemName: itemName.get(row.itemId)!,

@@ -71,6 +71,28 @@ export const openingStockSchema = z.object({
 });
 
 /**
+ * Satu aset tetap yang dibawa masuk (issue #381 tahap 4).
+ *
+ * Kategori disebut NAMANYA, bukan id: berkas impor datang dari sistem lain dan
+ * tidak tahu id apa pun di sini. Route yang mencocokkannya — dan kategori itu
+ * pula yang membawa akun aset/akumulasi/bebannya.
+ */
+export const openingFixedAssetSchema = z.object({
+  assetNo: z.string().min(1).max(50).trim(),
+  name: z.string().min(1).max(150).trim(),
+  category: z.string().min(1).max(100).trim(),
+  acquisitionDate: z.string().min(1),
+  cost: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
+  residual: z.coerce.number().min(0).default(0),
+  /** Kosong → bawaan kategorinya. */
+  usefulLifeMonths: z.coerce.number().int().positive().optional(),
+  accumulated: z.coerce.number().min(0).default(0),
+  lastDepreciationYear: z.coerce.number().int().optional(),
+  lastDepreciationMonth: z.coerce.number().int().min(1).max(12).optional(),
+  location: z.string().max(150).trim().optional(),
+});
+
+/**
  * Seller tax identity (issue #17) — the NPWP + tax name/address any e-Faktur
  * output needs. All optional: a legacy setup predates them, and the e-Faktur
  * export surfaces a missing NPWP rather than the wizard forcing it here.
@@ -116,13 +138,16 @@ export const setupSchema = z
     payables: z.array(openingPartnerSchema).max(1000).default([]),
     /** Saldo awal persediaan, PER BARANG (issue #379). */
     inventory: z.array(openingStockSchema).max(2000).default([]),
+    /** Aset tetap yang dibawa masuk (issue #381 tahap 4). */
+    fixedAssets: z.array(openingFixedAssetSchema).max(2000).default([]),
   })
   .superRefine((data, ctx) => {
     const hasAny =
       data.cash.length > 0 ||
       data.receivables.length > 0 ||
       data.payables.length > 0 ||
-      data.inventory.length > 0;
+      data.inventory.length > 0 ||
+      data.fixedAssets.length > 0;
     if (!hasAny) {
       ctx.addIssue({
         code: "custom",

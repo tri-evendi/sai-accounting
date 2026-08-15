@@ -596,6 +596,8 @@
     "setupCustomerNotFound": "Pelanggan #{id} tidak ditemukan.",
     "setupSupplierNotFound": "Supplier #{id} tidak ditemukan.",
     "setupItemNotFound": "Barang #{id} tidak ditemukan.",
+    "setupAssetCategoryNotFound": "Kategori aset \"{name}\" tidak ditemukan. Buat kategorinya lebih dulu di menu Aset Tetap.",
+    "setupAssetNoTaken": "Kode aset berikut sudah dipakai: {codes}.",
     "accountCodeTaken": "Kode perkiraan itu sudah dipakai.",
     "accountOwnParent": "Akun perkiraan tidak boleh menjadi induk dirinya sendiri.",
     "emailTaken": "Email itu sudah dipakai akun lain.",

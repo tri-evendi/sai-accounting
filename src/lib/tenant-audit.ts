@@ -22,6 +22,7 @@
 
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { clientIpFrom } from "@/lib/client-ip";
 
 /**
  * Peristiwa tenant yang dicatat. Union eksplisit (pola `AuditAction`):
@@ -102,7 +103,6 @@ export async function writeTenantAuditLog(params: {
   request?: Request;
 }): Promise<void> {
   const { dir, file } = fileFor(params.tenantSlug);
-  const forwarded = params.request?.headers.get("x-forwarded-for");
   const entry: TenantAuditEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     tenantId: params.tenantId,
@@ -112,9 +112,11 @@ export async function writeTenantAuditLog(params: {
     tenantRole: params.tenantRole,
     action: params.action,
     details: params.details,
-    ipAddress: forwarded
-      ? (forwarded.split(",")[0]?.trim() ?? null)
-      : (params.request?.headers.get("x-real-ip") ?? null),
+    /* Entri ke-N dari KANAN (issue #372). Jejak yang mencatat alamat pilihan
+       penyerang menyesatkan penyelidikan yang membacanya — dan jejak tenant
+       adalah tempat pendaftaran, penghapusan akun, dan tindakan operator
+       tercatat. */
+    ipAddress: params.request ? clientIpFrom(params.request.headers) : null,
     createdAt: new Date().toISOString(),
   };
 

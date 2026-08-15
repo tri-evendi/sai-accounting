@@ -23,13 +23,21 @@ import { consumeVerificationToken } from "@/lib/registration-store";
 import { createInitialSubscription } from "@/lib/subscription-store";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
+import { clientIpFrom } from "@/lib/client-ip";
 
 function clientIp(request: Request): string {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown"
-  );
+  /*
+   * `clientIpFrom` — entri ke-N dari KANAN, bukan yang paling kiri (issue
+   * #372). Yang paling kiri bisa diketik klien, dan kunci pembatas laju
+   * yang bisa diketik klien bukan pembatas laju: satu header acak per
+   * permintaan membuat setiap permintaan tampak datang dari alamat baru.
+   *
+   * `null` (rantai lebih pendek dari topologi yang dikonfigurasi) menjadi
+   * "unknown", yaitu SATU ember bersama — gagal-tertutup: permintaan yang
+   * asal-usulnya tidak bisa dipastikan berbagi jatah, tidak mendapat jatah
+   * tak terbatas masing-masing.
+   */
+  return clientIpFrom(request.headers) ?? "unknown";
 }
 
 export async function POST(request: Request) {

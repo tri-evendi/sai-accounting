@@ -43,6 +43,7 @@ import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
+import { clientIpFrom } from "@/lib/client-ip";
 
 /** Hasil yang bisa muncul di `?kontak=` — dibaca `app/page.tsx`. */
 export type ContactOutcome =
@@ -61,15 +62,18 @@ const Skema = z.object({
 
 /** Alamat IP pengirim, untuk pembatas laju. */
 async function alamatIp(): Promise<string> {
-  const h = await headers();
   /*
-   * `x-forwarded-for` boleh berisi rantai; yang pertama adalah klien asli.
-   * Di belakang proxy tepercaya inilah satu-satunya sumber IP yang ada —
-   * dan bila tidak ada sama sekali, kunci "tak-dikenal" tetap membatasi
-   * (semua yang tak beralamat berbagi satu jatah, bukan bebas tanpa jatah).
+   * Entri ke-N dari KANAN (issue #372), bukan yang pertama. Kalimat lama di
+   * sini berbunyi "yang pertama adalah klien asli" — dan itu benar hanya
+   * selama Traefik MENIMPA header kiriman klien. Begitu ada proxy kedua di
+   * depannya, yang pertama menjadi teks pilihan pengirim, dan sebuah pembatas
+   * laju yang kuncinya bisa diketik pengirim tidak membatasi apa pun. Formulir
+   * ini MENGIRIM SUREL pada setiap kiriman, jadi taruhannya meriam spam.
+   *
+   * Tanpa alamat yang bisa dipastikan → "tak-dikenal": satu ember bersama,
+   * bukan jatah tak terbatas masing-masing.
    */
-  const maju = h.get("x-forwarded-for");
-  return maju?.split(",")[0]?.trim() || h.get("x-real-ip") || "tak-dikenal";
+  return clientIpFrom(await headers()) ?? "tak-dikenal";
 }
 
 function kembali(hasil: ContactOutcome): never {

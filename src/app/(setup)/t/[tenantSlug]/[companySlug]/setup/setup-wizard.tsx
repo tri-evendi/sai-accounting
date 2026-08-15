@@ -117,6 +117,29 @@ interface PartnerRow {
  * Satu baris saldo awal PERSEDIAAN (issue #379). Selalu IDR — harga pokok
  * persediaan adalah nilai base, dan tidak ada kurs yang perlu ditanyakan.
  */
+/**
+ * Satu aset tetap hasil impor (issue #381 tahap 4).
+ *
+ * TIDAK ada bentuk "ketik tangan" untuk jenis ini, dan itu disengaja: sebuah
+ * aset menuntut tujuh angka termasuk akumulasi penyusutan dan bulan
+ * terakhirnya — mengetiknya baris demi baris di wisaya adalah permukaan yang
+ * salah, dan modul Aset Tetap sudah menyediakan formulir yang benar untuk
+ * sesudah penyiapan. Yang dibutuhkan di sini hanya jalan masuk massal.
+ */
+interface AssetRow {
+  assetNo: string;
+  name: string;
+  category: string;
+  acquisitionDate: string;
+  cost: number;
+  residual: number;
+  usefulLifeMonths?: number;
+  accumulated: number;
+  lastDepreciationYear: number | null;
+  lastDepreciationMonth: number | null;
+  location: string | null;
+}
+
 interface StockRow {
   key: number;
   itemId: string;
@@ -202,6 +225,7 @@ export function SetupWizard({
   const [receivables, setReceivables] = useState<PartnerRow[]>([]);
   const [payables, setPayables] = useState<PartnerRow[]>([]);
   const [inventory, setInventory] = useState<StockRow[]>([]);
+  const [fixedAssets, setFixedAssets] = useState<AssetRow[]>([]);
 
   // ── Draf tahan-muat-ulang (audit 2026-07) ──────────────────────────────────
   // Empat puluh baris saldo awal yang lenyap karena tab ter-refresh adalah
@@ -236,6 +260,7 @@ export function SetupWizard({
         if (d.receivables != null) setReceivables(rows<PartnerRow>(d.receivables));
         if (d.payables != null) setPayables(rows<PartnerRow>(d.payables));
         setInventory(rows<StockRow>(d.inventory));
+        setFixedAssets(rows<AssetRow>(d.fixedAssets));
       }
     } catch {
       // Draf rusak → mulai bersih; jangan pernah memblokir wizard-nya sendiri.
@@ -263,15 +288,20 @@ export function SetupWizard({
           receivables,
           payables,
           inventory,
+          fixedAssets,
         })
       );
     } catch {
       // Storage penuh/di-nonaktifkan — draf memang best-effort.
     }
-  }, [step, name, address, npwp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory]);
+  }, [step, name, address, npwp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory, fixedAssets]);
 
   const hasMeaningfulDraft =
-    cash.length > 0 || receivables.length > 0 || payables.length > 0 || inventory.length > 0;
+    cash.length > 0 ||
+    receivables.length > 0 ||
+    payables.length > 0 ||
+    inventory.length > 0 ||
+    fixedAssets.length > 0;
 
   useEffect(() => {
     if (!hasMeaningfulDraft) return;
@@ -314,6 +344,7 @@ export function SetupWizard({
       receivables: modules.has("sales"),
       inventory: modules.has("inventory"),
       payables: modules.has("purchasing"),
+      fixedAssets: modules.has("fixed_assets"),
     }),
     [modules]
   );
@@ -356,6 +387,18 @@ export function SetupWizard({
       : 0;
     if (inv > 0) assets = round2(assets + baseOf(inv, 1));
 
+    /* Aset tetap menyumbang NILAI BUKUNYA (perolehan − akumulasi). Jurnalnya
+       mencatat kotor — debit perolehan, kredit akumulasi — dan selisih kedua
+       baris itu persis nilai bukunya, jadi pratinjau Modal di layar ini tetap
+       sama dengan yang dihitung server. Menjumlahkan perolehannya saja akan
+       melebihkan aset (dan karenanya Modal) sebesar seluruh akumulasi. */
+    if (saldoAktif.fixedAssets) {
+      for (const a of fixedAssets) {
+        const buku = (Number(a.cost) || 0) - (Number(a.accumulated) || 0);
+        if (buku > 0) assets = round2(assets + baseOf(buku, 1));
+      }
+    }
+
     for (const r of saldoAktif.payables ? payables : []) {
       const amt = Number(r.amount) || 0;
       if (amt <= 0) continue;
@@ -370,7 +413,7 @@ export function SetupWizard({
     const equity = round2(assets - liabilities);
     const hasAny = assets > 0 || liabilities > 0;
     return { assets, liabilities, equity, unrated, hasAny };
-  }, [cash, receivables, payables, inventory, cashById, saldoAktif]);
+  }, [cash, receivables, payables, inventory, fixedAssets, cashById, saldoAktif]);
 
   function updateCash(key: number, patch: Partial<CashRow>) {
     setCash((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -447,6 +490,7 @@ export function SetupWizard({
           ...(r.documentDate ? { documentDate: r.documentDate } : {}),
           ...(r.dueDate ? { dueDate: r.dueDate } : {}),
         })),
+      fixedAssets: saldoAktif.fixedAssets ? fixedAssets : [],
       inventory: saldoAktif.inventory
         ? inventory
             .filter((r) => r.itemId && Number(r.quantity) > 0 && Number(r.unitCost) > 0)
@@ -981,6 +1025,11 @@ export function SetupWizard({
             />
             )}
 
+            {/* Aset tetap — impor saja; lihat catatan di `AssetRow`. */}
+            {saldoAktif.fixedAssets && (
+              <FixedAssetSection rows={fixedAssets} setRows={setFixedAssets} t={t} token={token} />
+            )}
+
             {/* Utang */}
             {saldoAktif.payables && (
             <PartnerSection
@@ -1362,12 +1411,20 @@ const IMPORT_LABEL: React.CSSProperties = {
  */
 function OpeningImport({
   kind,
-  setRows,
+  onRows,
   t,
   token,
 }: {
-  kind: "receivables" | "payables";
-  setRows: React.Dispatch<React.SetStateAction<PartnerRow[]>>;
+  kind: "receivables" | "payables" | "fixed-assets";
+  /**
+   * Baris MENTAH dari route; pemanggil yang memetakannya ke bentuknya sendiri.
+   *
+   * Komponen ini sengaja tidak tahu bentuk barisnya: ketiga jenis berbagi
+   * seluruh alur yang sulit (unggah, 422 dengan galat per baris, ganti-bukan-
+   * tambah) dan berbeda hanya pada pemetaan terakhirnya. Menaruh percabangan
+   * bentuk di sini akan menjadikan satu komponen yang tahu tiga skema.
+   */
+  onRows: (rows: Record<string, unknown>[]) => void;
   t: TranslateFn;
   token: GlobalToken;
 }) {
@@ -1404,27 +1461,9 @@ function OpeningImport({
       return;
     }
 
-    type Baris = {
-      partnerId: number;
-      documentNo: string;
-      date: string;
-      dueDate: string | null;
-      currency: string;
-      rate: number | null;
-      amount: number;
-    };
-    const rows: PartnerRow[] = (data.rows as Baris[]).map((r) => ({
-      key: nextId(),
-      partnerId: String(r.partnerId),
-      currency: r.currency,
-      amount: String(r.amount),
-      rate: r.rate == null ? "" : String(r.rate),
-      documentNo: r.documentNo,
-      documentDate: r.date,
-      dueDate: r.dueDate ?? undefined,
-    }));
-    setRows(rows);
-    setImported(rows.length);
+    const raw = (data.rows ?? []) as Record<string, unknown>[];
+    onRows(raw);
+    setImported(raw.length);
   }
 
   return (
@@ -1501,6 +1540,99 @@ function OpeningImport({
   );
 }
 
+/**
+ * Aset tetap yang dibawa masuk — IMPOR SAJA (issue #381 tahap 4).
+ *
+ * Tanpa tombol "tambah baris", berbeda dari bagian saldo awal lainnya. Sebuah
+ * aset menuntut tujuh angka termasuk akumulasi penyusutan dan bulan
+ * terakhirnya; mengetiknya baris demi baris di dalam wisaya adalah permukaan
+ * yang salah, dan modul Aset Tetap sudah punya formulir yang benar untuk
+ * sesudah penyiapan. Yang dibutuhkan di sini hanya jalan masuk massal.
+ *
+ * Yang ditampilkan sesudah impor bukan daftar asetnya melainkan RINGKASAN:
+ * berapa aset, berapa perolehannya, berapa akumulasinya, berapa nilai bukunya.
+ * Empat angka itu yang diperiksa orang sebelum menyimpan — daftar 400 baris di
+ * tengah wisaya justru menyembunyikannya.
+ */
+function FixedAssetSection({
+  rows,
+  setRows,
+  t,
+  token,
+}: {
+  rows: AssetRow[];
+  setRows: React.Dispatch<React.SetStateAction<AssetRow[]>>;
+  t: TranslateFn;
+  token: GlobalToken;
+}) {
+  const perolehan = rows.reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
+  const akumulasi = rows.reduce((sum, a) => sum + (Number(a.accumulated) || 0), 0);
+
+  return (
+    <div>
+      <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
+        {t("setup.fixedAssetsTitle")}
+      </Title>
+      <Text
+        type="secondary"
+        style={{ display: "block", marginBottom: token.marginXS, fontSize: token.fontSizeSM }}
+      >
+        {t("setup.fixedAssetsHint")}
+      </Text>
+
+      <Flex gap={token.marginXS} wrap align="center">
+        <OpeningImport
+          kind="fixed-assets"
+          t={t}
+          token={token}
+          onRows={(raw) => setRows(raw as unknown as AssetRow[])}
+        />
+      </Flex>
+
+      {rows.length > 0 && (
+        <Flex vertical gap={4} style={{ marginTop: token.marginSM }}>
+          <Text style={{ fontSize: token.fontSizeSM }}>
+            {t("setup.fixedAssetsCount", { count: rows.length })}
+          </Text>
+          <Flex gap={token.marginLG} wrap>
+            <SummaryFigure label={t("setup.fixedAssetsCost")} value={perolehan} token={token} />
+            <SummaryFigure
+              label={t("setup.fixedAssetsAccumulated")}
+              value={akumulasi}
+              token={token}
+            />
+            <SummaryFigure
+              label={t("setup.fixedAssetsBookValue")}
+              value={perolehan - akumulasi}
+              token={token}
+            />
+          </Flex>
+        </Flex>
+      )}
+    </div>
+  );
+}
+
+/** Satu angka ringkasan berlabel — dipakai tiga kali di atas. */
+function SummaryFigure({
+  label,
+  value,
+  token,
+}: {
+  label: string;
+  value: number;
+  token: GlobalToken;
+}) {
+  return (
+    <Flex vertical>
+      <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+        {label}
+      </Text>
+      <Money value={value} currency="IDR" hideCurrency />
+    </Flex>
+  );
+}
+
 function PartnerSection({
   title,
   hint,
@@ -1549,7 +1681,25 @@ function PartnerSection({
       }
       extraActions={
         parties.length > 0 ? (
-          <OpeningImport kind={importKind} setRows={setRows} t={t} token={token} />
+          <OpeningImport
+            kind={importKind}
+            t={t}
+            token={token}
+            onRows={(raw) =>
+              setRows(
+                raw.map((r) => ({
+                  key: nextId(),
+                  partnerId: String(r.partnerId),
+                  currency: String(r.currency),
+                  amount: String(r.amount),
+                  rate: r.rate == null ? "" : String(r.rate),
+                  documentNo: String(r.documentNo),
+                  documentDate: String(r.date),
+                  dueDate: r.dueDate == null ? undefined : String(r.dueDate),
+                }))
+              )
+            }
+          />
         ) : undefined
       }
     >

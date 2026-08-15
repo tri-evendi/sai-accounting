@@ -34,6 +34,7 @@ import {
 import { createRegistration, emailHasAccount } from "@/lib/registration-store";
 import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
 import { sendMail } from "@/lib/mailer";
+import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { clientIpFrom } from "@/lib/client-ip";
@@ -139,7 +140,15 @@ export async function POST(request: Request) {
           "— SAI Accounting",
       });
     } catch (error) {
-      console.error("[register] gagal mencatat/mengirim verifikasi:", error);
+      /*
+       * Jalur ini SENGAJA tidak bisa mengubah respons (§ jawaban seragam di
+       * kepala berkas), jadi pendaftar yang surelnya gagal terkirim tidak
+       * melihat apa pun yang salah — ia hanya tidak pernah menerima tautannya,
+       * lalu pergi. Sampai #374 kegagalan itu berhenti di `console.error` yang
+       * tidak dibaca siapa pun. Sekarang ia mengetuk pintu (teredam satu surel
+       * per jam per jenis galat).
+       */
+      await reportError("register.verification_mail_failed", error, { email });
     }
   })();
 

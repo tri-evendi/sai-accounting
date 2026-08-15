@@ -299,9 +299,27 @@ export async function writeAuditLog(params: {
       },
     });
   } catch (err) {
-    // Sifat yang dipertahankan dari versi berkas: jejak yang gagal ditulis
-    // TIDAK menggagalkan aksi yang sudah sah (lihat kepala berkas).
-    console.error("[audit] failed to write log:", err);
+    /*
+     * Sifat yang dipertahankan dari versi berkas: jejak yang gagal ditulis
+     * TIDAK menggagalkan aksi yang sudah sah (lihat kepala berkas).
+     *
+     * Tapi diam bukan bagian dari sifat itu. Sebuah tindakan yang terjadi tanpa
+     * meninggalkan jejak adalah persis keadaan yang jejak audit ada untuk
+     * mencegahnya, dan tidak ada satu pun permukaan yang akan
+     * memperlihatkannya — halamannya hanya tampak lebih pendek. Sejak #374 ia
+     * mengetuk pintu (teredam satu surel per jam per jenis galat).
+     *
+     * Impornya DINAMIS, dan itu perlu: `lib/alert.ts` mengirim surel dan
+     * menyentuh basis data kendali, sementara berkas ini diimpor 65 route.
+     * Memuatnya statis menyeret mailer ke jalur panas setiap route hanya demi
+     * cabang yang hampir tidak pernah jalan.
+     */
+    const { reportError } = await import("@/lib/alert");
+    await reportError("audit.write_failed", err, {
+      action: params.action,
+      entity: params.entity,
+      entityId: params.entityId ?? null,
+    });
   }
 }
 

@@ -231,6 +231,26 @@ company's database, and that `bun run migrate:audit --apply` has run.
 
 **Upload fails** — Check `data/documents/` permissions and `client_max_body_size` in nginx.
 
+### Reading the logs (issue #374)
+
+Every deliberate error-swallow now emits one JSON line, so the logs can be
+aggregated without a dashboard:
+
+```bash
+# what is failing, and how often
+docker compose logs web | grep '"level":"error"' | jq -r .event | sort | uniq -c | sort -rn
+
+# everything about one event
+docker compose logs web | grep '"event":"register.verification_mail_failed"' | jq .
+```
+
+Set `PLATFORM_ALERT_EMAIL` and those same errors also knock on the door —
+throttled to **one email per error kind per hour**, because an alert flood is as
+useless as no alerts and more dangerous, since it feels like having them.
+
+Keys whose name suggests a secret (`password`, `token`, `*_KEY`, …) are redacted
+before the line is written, regardless of how the caller spelled them.
+
 **A document 404s** — The row exists but the file does not, or `documents.filepath`
 still holds the legacy `/uploads/…` form while the file has already been moved.
 Run `bun run migrate:documents` (without `--apply`) — it reports both cases per company.

@@ -162,6 +162,8 @@ pemulihan yang pernah dibuktikan adalah risiko yang tidak sepadan.
 
 #### F-5 · Tidak ada pemantauan maupun pelacakan galat
 
+> **Status:** issue [#374](https://github.com/tri-evendi/sai-accounting/issues/374) — dikerjakan. Keputusan pemilik: **log terstruktur + peringatan surel**, bukan vendor. Konsekuensinya ditanggung apa adanya: tanpa dasbor tidak ada pengelompokan galat dan tidak ada riwayat, jadi yang menggantikannya adalah bentuk JSON yang bisa diagregasi `jq` dan peredam satu surel per jenis galat per jam. Halaman status publik **belum** ada.
+
 Nol Sentry, nol OpenTelemetry, nol metrik. Setiap kegagalan berakhir sebagai
 `console.error` di log container. `/api/health` hanya membuktikan basis data
 kendali terjangkau — ia **tidak** memeriksa basis data platform, tidak
@@ -369,7 +371,7 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 |---|---|
 | **Cadangan** | ✅ Layanan `backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
 | **Pemulihan** | ⬜ **Latihan pemulihan yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
-| **Pemantauan** | Sentry (atau setara) untuk galat + `/api/health` yang diperluas: kendali, platform, satu PT contoh, dan **umur jalan terakhir penjadwal**. Peringatan ke kanal yang benar-benar dibaca. |
+| **Pemantauan** | ✅ Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut penjadwal (#373). ⬜ Belum: pemeriksaan platform & satu PT contoh di probe yang sama. |
 | **Penjadwal** | ✅ Layanan `scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
 | **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Pelanggan yang membayar berhak tahu sebelum bertanya. |

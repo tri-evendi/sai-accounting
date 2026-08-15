@@ -1753,3 +1753,69 @@ model ApprovalRequest {
   @@index([createdAt])
   @@map("approval_requests")
 }
+
+// ─── Jejak Audit (issue #370) ────────────────────────────
+// Sampai issue ini jejak audit adalah BERKAS: `data/audit/<slug>/audit.jsonl`,
+// ditambah dengan `appendFile` dan dibaca UTUH ke memori setiap kali halaman
+// Audit dibuka — untuk mengambil 20 baris. Tanpa rotasi, tanpa batas, di mesin
+// yang rutin menyisakan ratusan megabita.
+//
+// Kenapa TABEL DI SINI, dan bukan di basis data kendali: alasan berkas terpisah
+// per perusahaan (kepala `lib/audit.ts`) tetap berlaku sepenuhnya —
+//
+//   "dengan berkas terpisah, pembaca yang lupa menyaring TIDAK PUNYA apa-apa
+//    untuk bocor"
+//
+// — dan tabel di basis data PT-nya sendiri memberi jaminan yang sama persis dari
+// mekanisme yang lebih kuat: `prisma` di dalam permintaan ADALAH klien PT aktif.
+// Sebagai gantinya, empat hal yang selama ini ditulis tangan menjadi urusan
+// basis data: paginasi, penulisan serentak, ekspor mandiri (sapuan
+// `information_schema` mengambil tabel ini sendiri), dan penghancuran buku.
+//
+// TANPA kolom `company_id`: basis datanya ADALAH perusahaannya — argumen yang
+// sama dengan seluruh tabel lain di skema ini.
+model AuditLog {
+  id Int @id @default(autoincrement())
+
+  /// Id entri di berkas JSONL lama (`<epoch>-<acak>`), diisi HANYA oleh
+  /// `bun run migrate:audit`. Inilah yang membuat pemindahan idempoten lewat
+  /// CONSTRAINT alih-alih periksa-lalu-tulis — doktrin yang sama dengan
+  /// `payments.gateway_ref`. Baris yang lahir dari aplikasi mengisinya NULL,
+  /// dan MySQL mengizinkan NULL berulang pada kolom unik.
+  legacyId String? @unique @map("legacy_id") @db.VarChar(40)
+
+  /// Id GLOBAL pengguna (basis data kendali). TANPA foreign key, dan itu
+  /// wajib: `users` hidup di basis data lain, dan docs/MULTI-COMPANY.md
+  /// melarang FK ke sana dari basis data perusahaan. Namanya ikut disalin di
+  /// bawah supaya jejak tetap terbaca tanpa memanggil direktori pengguna.
+  userId   String  @map("user_id") @db.VarChar(64)
+  username String  @db.VarChar(50)
+  /// Peran aktor SAAT beraksi. Peran bisa berubah; jejak tidak.
+  role     String? @db.VarChar(50)
+
+  /// enum-like `AuditAction` di `lib/audit.ts` — nilai `snake_case` ber-titik.
+  action   String  @db.VarChar(50)
+  /// enum-like `AuditEntity`.
+  entity   String  @db.VarChar(50)
+  /// Id baris yang disentuh, bila tindakannya memang menyentuh satu baris.
+  entityId Int?    @map("entity_id")
+
+  /// Rincian sebagai JSON dalam TEKS. Skema ini belum punya satu pun kolom
+  /// `Json`, dan di MariaDB `JSON` toh alias `LONGTEXT` — jadi teks adalah
+  /// bentuk yang jujur, dan penguraiannya tetap milik `lib/audit.ts`.
+  details   String? @db.Text
+  /// Cukup untuk IPv6 (45 karakter).
+  ipAddress String? @map("ip_address") @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Urutan bawaan halaman Audit: terbaru dulu.
+  @@index([createdAt])
+  /// Saringan yang sudah ada di UI.
+  @@index([action])
+  /// "Apa saja yang pernah terjadi pada faktur ini" — pertanyaan yang selama
+  /// jejaknya berupa berkas hanya bisa dijawab dengan membaca seluruhnya.
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}

@@ -124,7 +124,7 @@ Named volumes survive `docker compose down`:
 | `db_data`   | `/var/lib/mysql`      | MariaDB data                                    |
 | `documents` | `/app/data/documents` | Uploaded documents, one directory per company   |
 | `uploads`   | `/app/public/uploads` | Legacy uploads — until `migrate:documents` ran   |
-| `audit`     | `/app/data/audit`     | Audit-trail JSONL logs                          |
+| `audit`     | `/app/data/audit`     | Tenant + operator audit trails (JSONL)          |
 
 > `uploads` stays mounted until `bun run migrate:documents --apply` has run on
 > this installation: rows that were never moved still point into it. Once the

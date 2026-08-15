@@ -192,6 +192,8 @@ kunci: `login:id:<pengenal>` dan `login:ip:<alamat>`.
 
 #### F-7 · Jejak audit sebagai berkas, dibaca utuh
 
+> **Status:** issue [#370](https://github.com/tri-evendi/sai-accounting/issues/370) — dikerjakan. Jejak **tenant** dan **operator** masih berkas; keduanya menyusul di issue tersendiri.
+
 `lib/audit.ts:222` menaruh jejak di `data/audit/<slug>/audit.jsonl`; baris 269
 menambahkan; baris 328 **membaca seluruh berkas ke memori lalu mem-parse
 setiap baris** untuk setiap pembukaan halaman audit, hanya untuk mengambil 20

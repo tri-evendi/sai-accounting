@@ -101,7 +101,7 @@ Ensure the process user can write:
 
 | Path | Purpose |
 |------|---------|
-| `data/audit/` | Security audit log (`audit.jsonl`) |
+| `data/audit/` | Tenant + operator audit trails (`audit.jsonl`). **Company audit lives in the database since issue #370** — this directory only holds the tenant/operator planes and any not-yet-migrated company files. |
 | `data/documents/` | Uploaded documents, one directory per company (issue #367) |
 | `public/uploads/` | Legacy upload directory — only until `bun run migrate:documents --apply` has run |
 
@@ -123,6 +123,23 @@ Back up all three with your server backups.
 > ```
 >
 > Idempotent. Files nothing references are reported as orphans and left alone.
+
+> **One-time step per installation (issue #370).** The company audit trail moved
+> from `data/audit/<slug>/audit.jsonl` to an `audit_logs` table in each company's
+> own database — so it is now covered by backups, by the self-service export, and
+> by ledger destruction, and the audit page no longer reads a whole file into
+> memory per page view. Migration `0044_audit_logs` creates the table; the rows
+> are moved by a script. Run it **after** `db:migrate:all`:
+>
+> ```bash
+> bun run migrate:audit            # report only
+> bun run migrate:audit --apply    # actually move
+> ```
+>
+> Reads line by line, inserts in batches of 500, idempotent through a unique
+> `legacy_id`. The old file is **renamed** to `audit.jsonl.dipindahkan`, never
+> deleted. Until it runs, the Audit page looks empty — the trail has not moved
+> yet, it is not lost.
 
 ## 7. Post-deploy checklist
 
@@ -180,7 +197,9 @@ If you use PM2 without `--env-file`, export variables in `ecosystem.config.cjs` 
 
 **401 on API** — Session cookie requires HTTPS in production if `AUTH_URL` is https.
 
-**Audit log empty** — Check write permissions on `data/audit/`.
+**Audit log empty** — Since #370 the company audit trail is the `audit_logs`
+table, not a file: check that migration `0044_audit_logs` was applied to that
+company's database, and that `bun run migrate:audit --apply` has run.
 
 **Upload fails** — Check `data/documents/` permissions and `client_max_body_size` in nginx.
 

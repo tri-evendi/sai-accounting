@@ -265,6 +265,35 @@ export async function depreciateAsset(
     return { ...base, posted: false, amount: 0, reason: "already_posted" };
   }
 
+  /*
+   * ══ PERIODE YANG SUDAH TERTUTUP AKUMULASINYA (issue #381 tahap 4) ═════════
+   *
+   * `alreadyDepreciated` memeriksa BARIS RIWAYAT — dan itu jawaban yang lengkap
+   * hanya selama seluruh riwayat aset ini lahir DI SINI. Aset yang DIIMPOR dari
+   * sistem lama membawa `accumulatedDepreciation` + `lastDepreciation*` tanpa
+   * satu baris riwayat pun: bulan-bulan itu memang sudah disusutkan, tetapi
+   * jurnalnya ada di pembukuan lama, bukan di sini.
+   *
+   * Tanpa pemeriksaan ini, menjalankan penyusutan untuk bulan yang SUDAH
+   * disusutkan di sistem lama akan memposting sekali lagi — beban penyusutan
+   * ganda untuk satu bulan yang sama, tanpa satu pun galat. Riwayat barisnya
+   * kosong, jadi tidak ada yang menolak.
+   *
+   * ⚠ Ini juga MENUTUP pengisian-mundur bagi aset biasa: periode SEBELUM yang
+   * terakhir diposting kini ditolak, padahal dulu diterima. Itu perbaikan, bukan
+   * kehilangan — nilai per periode dihitung dari JUMLAH BARIS yang mendahuluinya
+   * (`elapsed`), jadi sebuah bulan yang disisipkan mundur selalu memakai indeks
+   * yang salah dan menghasilkan angka yang tidak ada di jadwal mana pun.
+   */
+  const lastYear = asset.lastDepreciationYear;
+  const lastMonth = asset.lastDepreciationMonth;
+  if (lastYear != null && lastMonth != null) {
+    const requested = year * 12 + month;
+    if (requested <= lastYear * 12 + lastMonth) {
+      return { ...base, posted: false, amount: 0, reason: "already_posted" };
+    }
+  }
+
   const accumulated = num(asset.accumulatedDepreciation);
   // The amount for the NEXT posting depends on how many periods precede it (the
   // index that carries the final-period true-up), not on the calendar month.

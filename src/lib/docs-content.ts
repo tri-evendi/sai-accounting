@@ -275,6 +275,20 @@ const PERAN_IZIN: readonly DocBlock[] = [
       teks:
         "Jurnal, buku besar, dan daftar akun hanya muncul saat Mode Akuntan menyala. Itu SAKELAR TAMPILAN, bukan izin: mematikannya menyembunyikan permukaan yang membingungkan staf non-akuntan, tetapi tidak memberi siapa pun akses yang tidak ia punya, dan tidak mencabut akses siapa pun. Yang memutuskan tetap izinnya.",
     },
+    {
+      kind: "paragraf",
+      teks:
+        "Aturan yang sama berlaku bagi MESIN. Sebuah sistem luar — kasir, marketplace, laporan otomatis — membaca buku Anda lewat TOKEN API, dan token itu tidak punya izinnya sendiri: ia BERPERAN sebagai salah satu peran di atas, dan mendapat persis apa yang peran itu dapat, termasuk kehilangan akses ke modul yang Anda matikan.",
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Token diperlihatkan SEKALI, saat diterbitkan. Yang disimpan hanya sidik jarinya — itulah sebabnya basis data yang bocor tidak membawa serta kredensial yang bisa dipakai, dan juga sebabnya token yang hilang harus dicabut lalu diterbitkan ulang, bukan dilihat lagi.",
+        "Terbitkan SATU token per sistem yang menyambung, bukan satu untuk semuanya. Kalau salah satunya bocor, yang dicabut hanya yang itu.",
+        "Kolom “Terakhir dipakai” adalah cara Anda tahu token mana yang sudah tidak dipakai siapa pun — dan token yang tidak dipakai siapa pun adalah yang paling aman dicabut sekaligus paling berbahaya dibiarkan hidup.",
+        "Mencabut berlaku seketika. Catatannya tetap tersimpan: siapa menerbitkan, kapan terakhir dipakai, kapan dicabut.",
+      ],
+    },
   ];
 
 const PAKET: readonly DocBlock[] = [

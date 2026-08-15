@@ -249,7 +249,8 @@
       "permissions": "Hak Akses",
       "settings": "Pengaturan",
       "selectCompany": "Pilih Perusahaan",
-      "masterImport": "Impor Data Awal"
+      "masterImport": "Impor Data Awal",
+      "apiTokens": "Token API"
     }
   },
   "quickActions": {
@@ -4003,5 +4004,32 @@
     "doneBody": "{created} baris baru ditambahkan, {skipped} dilewati karena namanya sudah ada, dari {total} baris.",
     "truncated": "Berkasnya melebihi batas 10.000 baris; sisanya tidak dibaca.",
     "toastImported": "{created} baris diimpor"
+  },
+  "apiTokens": {
+    "title": "Token API",
+    "description": "Kredensial untuk sistem luar membaca buku PT ini lewat /api/v1.",
+    "newTitle": "Terbitkan token baru",
+    "nameLabel": "Nama",
+    "namePlaceholder": "Integrasi kasir",
+    "roleLabel": "Berperan sebagai",
+    "roleHint": "Token membaca sebagai peran yang Anda pilih — izinnya persis sama dengan pengguna berperan itu, termasuk modul yang dimatikan.",
+    "create": "Terbitkan",
+    "creating": "Menerbitkan…",
+    "createFailed": "Gagal menerbitkan token.",
+    "freshTitle": "Token terbit",
+    "freshWarning": "Salin sekarang. Token ini TIDAK akan ditampilkan lagi — yang tersimpan hanya sidik jarinya.",
+    "colName": "Nama",
+    "colRole": "Peran",
+    "colLastUsed": "Terakhir dipakai",
+    "colCreatedBy": "Diterbitkan oleh",
+    "neverUsed": "Belum pernah",
+    "revoke": "Cabut",
+    "revokeTitle": "Cabut token ini?",
+    "revokeBody": "Token “{name}” berhenti berlaku seketika. Integrasi yang memakainya akan gagal pada permintaan berikutnya. Catatannya tetap tersimpan.",
+    "revoked": "Token “{name}” dicabut",
+    "revokeFailed": "Gagal mencabut token.",
+    "revokedAt": "Dicabut {at}",
+    "emptyTitle": "Belum ada token",
+    "emptyBody": "Terbitkan satu untuk memberi sistem luar akses baca ke buku PT ini."
   }
 }

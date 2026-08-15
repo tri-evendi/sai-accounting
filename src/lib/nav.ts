@@ -257,6 +257,14 @@ export const NAV_GROUPS: NavGroup[] = [
       // issue #73 — matriks izin dikonfigurasi dari sini; anti-lockout menjamin
       // peran berakses penuh tidak pernah kehilangan pintunya sendiri.
       { href: "/permissions", label: "Hak Akses", labelKey: "nav.items.permissions", icon: "KeyRound", permission: "authz.manage" },
+      /*
+       * Token API (#389). Duduk di sebelah Pengguna dan Hak Akses karena ia
+       * pertanyaan yang sama — siapa boleh membaca buku ini, sebagai apa —
+       * hanya subjeknya mesin, bukan orang. Izinnya pun sama dengan mengundang
+       * staf (`user.manage`): menerbitkan token berperan tidak membuka batas
+       * eskalasi baru, ia bentuk kedua dari kemampuan yang sudah ada.
+       */
+      { href: "/api-tokens", label: "Token API", labelKey: "nav.items.apiTokens", icon: "Plug", permission: "user.manage" },
       // issue #104 — berpindah buku. Hanya muncul bila memang ADA yang lain
       // untuk dipilih; halaman itu memantul balik ke beranda kalau tidak.
       { href: "/select-company", label: "Pilih Perusahaan", labelKey: "nav.items.selectCompany", icon: "Building2", minCompanies: 2 },

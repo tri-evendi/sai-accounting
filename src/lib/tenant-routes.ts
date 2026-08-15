@@ -74,6 +74,8 @@ export function isValidSlug(slug: string | null | undefined): slug is string {
 export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "accounts",
   "advances",
+  /* Token API — kredensial mesin per PT (issue #389). */
+  "api-tokens",
   "approvals",
   "budget",
   "consignees",

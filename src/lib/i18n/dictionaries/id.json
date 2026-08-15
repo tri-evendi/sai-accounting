@@ -630,6 +630,7 @@
     "rowsNeedFixing": "Ada baris yang perlu diperbaiki.",
     "noAccountRows": "Tidak ada baris akun untuk diimpor.",
     "noImportRows": "Tidak ada baris yang bisa diimpor dari berkas ini.",
+    "openingDocumentLocked": "Dokumen saldo awal tidak bisa diubah atau dihapus. Nilainya tercatat di jurnal pembuka; perbaiki lewat Penyiapan bila memang salah.",
     "unknownImportKind": "Jenis impor tidak dikenal.",
     "csvEmpty": "Isi CSV kosong.",
     "csvInvalidRows": "CSV memuat baris yang tidak valid. Perbaiki lalu impor ulang.",

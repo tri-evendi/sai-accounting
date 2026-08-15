@@ -1360,10 +1360,53 @@ const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
  * The stamp lands on the ENTRY, and `prepareLines` pushes it down to every line.
  * That is why not one of the pure `buildXLines()` rules mentions cost centres.
  */
+/**
+ * DOKUMEN PEMBUKA TIDAK PERNAH MEMPOSTING (issue #381 tahap 3).
+ *
+ * Faktur & transaksi pemasok yang lahir dari penyiapan menandai dirinya
+ * `is_opening`. Nilainya SUDAH tercatat di jurnal pembuka — satu baris ke akun
+ * kontrol Piutang/Utang — jadi dokumennya sendiri tidak boleh menerbitkan
+ * jurnal kedua di atasnya.
+ *
+ * ⚠ Ini BUKAN penjaga teoretis. Membuat barisnya saja memang tidak memposting
+ * apa pun, sebab posting hanya terjadi lewat `postForSource` yang dipanggil
+ * route. Tapi itu benar hanya sampai seseorang MENYUNTING dokumen itu:
+ * `repostForSource` di jalur sunting akan memanggil pembangun entri, dan saat
+ * itu faktur pembuka menerbitkan jurnalnya sendiri DI ATAS nilai yang sudah
+ * ada. Penggandaan piutang yang lahir berbulan-bulan sesudah impornya, dari
+ * tindakan yang tampak sama sekali tidak berbahaya.
+ *
+ * Diperiksa DI SINI — satu tempat, sesudah entrinya dibangun — bukan di setiap
+ * pembangun: pemeriksaan yang harus diingat berkali-kali adalah pemeriksaan
+ * yang akan terlupa pada jenis dokumen berikutnya.
+ */
+const OPENING_AWARE: Partial<
+    Record<PostingSourceType, (client: Client, id: number) => Promise<boolean>>
+  > =
+  {
+    invoice: async (client, id) =>
+      (await client.invoice.findUnique({ where: { id }, select: { isOpening: true } }))
+        ?.isOpening === true,
+    supplier_transaction: async (client, id) =>
+      (
+        await client.supplierTransaction.findUnique({
+          where: { id },
+          select: { isOpening: true },
+        })
+      )?.isOpening === true,
+  };
+
+/** `true` bila sumber ini dokumen pembuka — dan karena itu tidak boleh diposting. */
+export async function isOpeningDocument(client: Client, ctx: PostingContext): Promise<boolean> {
+  const check = OPENING_AWARE[ctx.sourceType];
+  return check ? check(client, ctx.sourceId) : false;
+}
+
 async function buildStampedEntry(
   client: Client,
   ctx: PostingContext
 ): Promise<JournalEntryInput | null> {
+  if (await isOpeningDocument(client, ctx)) return null;
   const entry = await buildEntry(client, ctx);
   if (!entry) return null;
   const costCenterId = await COST_CENTER_OF[ctx.sourceType](client, ctx.sourceId);

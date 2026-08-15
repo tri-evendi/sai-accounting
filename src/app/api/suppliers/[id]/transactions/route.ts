@@ -302,6 +302,19 @@ export async function PUT(
     );
   }
 
+  /* Dokumen pembuka terkunci (issue #381 tahap 3) — alasan lengkapnya di
+     `api/invoices/[id]/route.ts`: nilainya ada di JURNAL PEMBUKA, bukan di
+     jurnalnya sendiri, jadi menyuntingnya di sini tidak menggerakkan buku besar
+     — ia hanya membuat dokumen dan akun kontrolnya berhenti sama, diam-diam. */
+  const openingTx = await prisma.supplierTransaction.findUnique({
+    where: { id: transactionId },
+    select: { isOpening: true },
+  });
+  if (openingTx?.isOpening) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.openingDocumentLocked") }, { status: 409 });
+  }
+
   // Ownership check before anything else: the payment must be this supplier's,
   // and must be a payment — a purchase creates debt, it cannot settle any.
   const payment = await prisma.supplierTransaction.findFirst({
@@ -452,6 +465,19 @@ export async function DELETE(
       { error: t("errors.paramRequired", { name: "transactionId" }) },
       { status: 400 }
     );
+  }
+
+  /* Dokumen pembuka terkunci (issue #381 tahap 3) — alasan lengkapnya di
+     `api/invoices/[id]/route.ts`: nilainya ada di JURNAL PEMBUKA, bukan di
+     jurnalnya sendiri, jadi menyuntingnya di sini tidak menggerakkan buku besar
+     — ia hanya membuat dokumen dan akun kontrolnya berhenti sama, diam-diam. */
+  const openingTx = await prisma.supplierTransaction.findUnique({
+    where: { id: transactionId },
+    select: { isOpening: true },
+  });
+  if (openingTx?.isOpening) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.openingDocumentLocked") }, { status: 409 });
   }
 
   const existing = await prisma.supplierTransaction.findFirst({

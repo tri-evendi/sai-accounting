@@ -51,6 +51,29 @@ export async function PUT(
   if (!result.authorized) return result.response;
 
   const { id } = await params;
+
+  /*
+   * DOKUMEN PEMBUKA TIDAK BISA DISUNTING/DIHAPUS (issue #381 tahap 3).
+   *
+   * Nilainya tercatat di JURNAL PEMBUKA, bukan di jurnalnya sendiri (mesin
+   * posting menolak dokumen pembuka). Mengubah nilainya di sini karena itu
+   * tidak akan menggerakkan buku besar sama sekali — yang terjadi hanyalah
+   * dokumen dan akun kontrolnya berhenti sama, diam-diam, tanpa satu pun
+   * permukaan yang menyebutkannya.
+   *
+   * Yang benar bukan "izinkan lalu sesuaikan jurnalnya": jurnal pembuka
+   * SEKALI-JALAN dan menyeimbangkan dirinya lewat Modal. Menyuntingnya dari
+   * sini berarti menulis ulang titik nol pembukuan dari layar faktur.
+   */
+  const opening = await prisma.invoice.findUnique({
+    where: { id: parseInt(id) },
+    select: { isOpening: true },
+  });
+  if (opening?.isOpening) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.openingDocumentLocked") }, { status: 409 });
+  }
+
   const body = await request.json();
   const parsed = invoiceSchema.safeParse(body);
 
@@ -203,6 +226,15 @@ export async function DELETE(
 
   const { id } = await params;
   const invoiceId = parseInt(id);
+
+  const openingDoc = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { isOpening: true },
+  });
+  if (openingDoc?.isOpening) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("errors.openingDocumentLocked") }, { status: 409 });
+  }
 
   // Dokumen berantai: faktur yang sudah ditarik oleh surat jalan, retur
   // penjualan, atau kompensasi uang muka di-RESTRICT oleh FK masing-masing

@@ -82,13 +82,33 @@ export interface OpeningCashInput {
   rate?: number | null;
 }
 
-/** One opening receivable/payable, per partner (customer or supplier). */
+/**
+ * One opening receivable/payable, per partner (customer or supplier).
+ *
+ * ── Nomor & tanggal dokumen (issue #381 tahap 3) ───────────────────────────
+ * Ketiganya OPSIONAL, dan itu yang membuat dua jalur masuk hidup berdampingan:
+ *
+ *   • WISAYA penyiapan mengumpulkan satu TOTAL per mitra — orang yang mengetik
+ *     saldo awal jarang punya rincian fakturnya di tangan. Tanpa nomor, satu
+ *     dokumen pembuka dibuat untuk seluruh saldonya, bertanggal awal tahun buku.
+ *   • IMPOR berkas membawa RINCIANNYA — nomor faktur asli, tanggal terbit,
+ *     jatuh tempo. Umur piutangnya jadi umur yang sebenarnya, bukan umur yang
+ *     dihitung dari hari pertama.
+ *
+ * Keduanya menghasilkan bentuk yang sama di basis data; yang berbeda hanya
+ * seberapa halus rinciannya.
+ */
 export interface OpeningPartnerInput {
   partnerId: number;
   partnerName: string;
   currency: string;
   amount: number;
   rate?: number | null;
+  /** Nomor dokumen asli. Kosong → diturunkan dari nama mitra. */
+  documentNo?: string | null;
+  /** Tanggal terbit asli. Kosong → tanggal jurnal pembuka. */
+  documentDate?: Date | null;
+  dueDate?: Date | null;
 }
 
 /**
@@ -332,6 +352,78 @@ export async function applyOpeningBalances(
       },
       tx
     );
+
+    /*
+     * ══ SISI KEDUA PIUTANG & UTANG: DOKUMENNYA (issue #381 tahap 3) ════════
+     *
+     * Jurnal di atas menyatakan NILAI piutang/utang di akun kontrolnya. Buku
+     * besar PEMBANTU — umur piutang, daftar tagihan yang bisa dilunasi —
+     * membaca DOKUMEN SUMBER, bukan baris jurnal. Tanpa dokumen di sini,
+     * perusahaan pindahan memulai hidupnya dengan neraca yang menunjukkan
+     * piutang miliaran dan umur piutang yang kosong, serta faktur lama yang
+     * tidak bisa dilunasi karena tidak ada yang bisa ditunjuk.
+     *
+     * Bentuknya meniru #379 persis: satu baris jurnal untuk nilainya, dokumen
+     * per mitra untuk rinciannya, dalam TRANSAKSI YANG SAMA.
+     *
+     * ⚠ Dokumennya ditandai `isOpening`, dan penanda itulah yang menahan
+     * penggandaan: mesin posting menolaknya (`buildStampedEntry`), dan jalur
+     * sunting menolak mengubahnya. Tanpa penanda itu, SUNTINGAN pertama pada
+     * faktur pembuka akan menerbitkan jurnal di atas nilai yang sudah ada.
+     *
+     * ⚠ Faktur pembuka WAJIB punya satu baris item. Total faktur di seluruh
+     * aplikasi ini dihitung dari `invoice_items` (`receivables.ts`), bukan dari
+     * sebuah kolom nilai — faktur tanpa baris bernilai NOL dan dilewati diam-
+     * diam oleh umur piutang, yaitu persis kegagalan yang bagian ini ada untuk
+     * memperbaikinya. Sisi UTANG tidak simetris: `supplier_transactions` dibaca
+     * dari kolom `amount`, jadi ia tidak butuh baris apa pun.
+     */
+    for (const r of input.receivables) {
+      const amount = num(r.amount);
+      if (amount <= 0) continue;
+      const date = r.documentDate ?? input.company.fiscalYearStart;
+      await tx.invoice.create({
+        data: {
+          invoiceNo: r.documentNo?.trim() || `SA-AR-${r.partnerId}`,
+          date,
+          dueDate: r.dueDate ?? null,
+          customerId: r.partnerId,
+          currency: r.currency,
+          rate: r.rate ?? null,
+          baseAmount: round2(amount * rateFor(r.currency, r.rate)),
+          isOpening: true,
+          status: "pending",
+          items: {
+            create: [
+              {
+                itemName: `Saldo awal piutang — ${r.partnerName}`,
+                quantity: 1,
+                price: amount,
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    for (const p of input.payables) {
+      const amount = num(p.amount);
+      if (amount <= 0) continue;
+      await tx.supplierTransaction.create({
+        data: {
+          supplierId: p.partnerId,
+          date: p.documentDate ?? input.company.fiscalYearStart,
+          dueDate: p.dueDate ?? null,
+          type: "purchase",
+          amount,
+          currency: p.currency,
+          rate: p.rate ?? null,
+          baseAmount: round2(amount * rateFor(p.currency, p.rate)),
+          isOpening: true,
+          note: `Saldo awal utang — ${p.partnerName}`,
+        },
+      });
+    }
 
     /*
      * ══ SISI KEDUA PERSEDIAAN: BUKU PEMBANTUNYA (issue #379) ═══════════════

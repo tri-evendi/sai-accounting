@@ -105,7 +105,35 @@ Ensure the process user can write:
 | `data/documents/` | Uploaded documents, one directory per company (issue #367) |
 | `public/uploads/` | Legacy upload directory — only until `bun run migrate:documents --apply` has run |
 
-Back up all three with your server backups.
+Since issue #374 these are backed up automatically by the `backup` compose
+service — see below. Nothing here needs a hand-written cron.
+
+### Automated backups (issue #374)
+
+The `backup` service runs `scripts/backup.sh` once a day: dump **every**
+database (`--all-databases`, so a newly registered company is never missed) plus
+`data/documents` and `data/audit` → encrypt → upload to S3-compatible object
+storage → prune past the retention window.
+
+It **refuses to start** without `BACKUP_ENCRYPTION_KEY` and `BACKUP_S3_BUCKET`.
+That is deliberate: an unencrypted backup, or one that never leaves this
+machine, only looks like a backup. See `.env.docker.example` for every variable.
+
+```bash
+docker compose run --rm backup sh scripts/backup.sh --dry-run   # print, write nothing
+docker compose run --rm backup bun run prove-backup-restore     # prove the newest one opens
+```
+
+> ⚠ **Losing `BACKUP_ENCRYPTION_KEY` means losing every backup, permanently.**
+> Store it somewhere that is not this server. Rotating it does not re-encrypt
+> old archives — keep the previous key for as long as archives it sealed are
+> still inside the retention window.
+
+**A backup that has never been restored is not a backup.** `prove-backup-restore`
+checks the checksum, the passphrase, and that every registered database is
+actually inside the dump — but it deliberately does **not** load anything: one
+mis-aimed `mariadb <` overwrites production with old data. Loading into a shadow
+server is the quarterly drill a human runs, with a target they typed themselves.
 
 > **One-time step per installation (issue #367).** Uploaded documents used to
 > land in a single shared `public/uploads/`, served as static files that pass

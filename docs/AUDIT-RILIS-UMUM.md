@@ -146,6 +146,8 @@ wajib nol.
 
 #### F-4 · Tidak ada cadangan otomatis, dan pemulihan belum pernah dilatih
 
+> **Status:** issue [#374](https://github.com/tri-evendi/sai-accounting/issues/374) — separuh pertama dikerjakan (cadangan). Keputusan pemilik: penyimpanan objek **S3-compatible**. Latihan pemulihan kuartalan tetap milik manusia, dan **belum pernah dijalankan** — jadi baris daftar siap-rilis ini belum boleh dicentang.
+
 `docker-compose.yml` tidak memuat layanan cadangan. `PRODUCTION.md:107` hanya
 berbunyi *"Back up both with your server backups."* Direktori `backups/` berisi
 tiga dump manual, yang termuda 28 Juli 2026.
@@ -365,8 +367,8 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Cadangan** | Layanan `backup` di compose: `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
-| **Pemulihan** | **Latihan pemulihan yang dijadwalkan**, bukan dokumen. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
+| **Cadangan** | ✅ Layanan `backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
+| **Pemulihan** | ⬜ **Latihan pemulihan yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
 | **Pemantauan** | Sentry (atau setara) untuk galat + `/api/health` yang diperluas: kendali, platform, satu PT contoh, dan **umur jalan terakhir penjadwal**. Peringatan ke kanal yang benar-benar dibaca. |
 | **Penjadwal** | ✅ Layanan `scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |

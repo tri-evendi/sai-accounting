@@ -93,6 +93,43 @@ services:
       - -c
       - "while true; do bun run scheduler:subscriptions || true; sleep 3600; done"
 
+  # ── CADANGAN (issue #374) ─────────────────────────────────────────────────
+  # Menjual langganan atas pembukuan yang WAJIB disimpan sepuluh tahun (UU KUP)
+  # tanpa cadangan otomatis bukan risiko teknis, melainkan risiko hukum.
+  #
+  # Ia butuh volume yang SAMA dengan `web` — tapi HANYA-BACA (`:ro`): layanan
+  # yang tugasnya menyalin tidak punya satu alasan pun untuk bisa menulis, dan
+  # bendera itu menghapus seluruh kelas kecelakaan di mana skrip cadangan justru
+  # merusak yang dicadangkannya.
+  #
+  # Sekali sehari, bukan sejam sekali: dump seluruh basis data + berkas adalah
+  # pekerjaan berat di kotak ini, dan RPO satu hari adalah janji yang jujur untuk
+  # skala sekarang. Menaikkannya berarti menaikkan ongkosnya juga — putuskan
+  # sadar-sadar, jangan diam-diam.
+  backup:
+    build:
+      context: .
+      target: backup
+    image: sai-luckyhands-backup:latest
+    container_name: sai-backup
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - documents:/app/data/documents:ro
+      - audit:/app/data/audit:ro
+    networks:
+      - internal
+    # `|| true` — alasan yang sama dengan layanan `scheduler`: satu cadangan
+    # gagal tidak boleh mematikan seluruh jadwal cadangan berikutnya. Yang
+    # gagal berbunyi di log; yang mati diam-diam tidak berbunyi sama sekali.
+    command:
+      - sh
+      - -c
+      - "while true; do sh scripts/backup.sh || true; sleep 86400; done"
+
   web:
     build:
       context: .

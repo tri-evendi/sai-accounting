@@ -29,6 +29,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { postJournal } from "@/lib/ledger";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
+import { round2 } from "@/lib/posting/rules";
 import {
   buildOpeningBalanceLines,
   openingEquityPlug,
@@ -90,6 +91,24 @@ export interface OpeningPartnerInput {
   rate?: number | null;
 }
 
+/**
+ * Satu baris saldo awal PERSEDIAAN, per barang (issue #379).
+ *
+ * Menggantikan `inventory: number` — satu angka gelondongan yang menerbitkan
+ * jurnal TANPA satu pun gerakan stok, sehingga Neraca menunjukkan persediaan
+ * sementara laporan stok kosong. Keduanya menjawab pertanyaan yang sama dan
+ * dibaca dari sumber yang berbeda, jadi selisihnya tidak pernah terlihat oleh
+ * siapa pun sampai ada akuntan yang membandingkannya.
+ */
+export interface OpeningStockInput {
+  itemId: number;
+  /** Nama barang — hanya untuk memo jurnal & catatan gerakan. */
+  itemName: string;
+  quantity: number;
+  /** Harga pokok per satuan, IDR (nilai base). */
+  unitCost: number;
+}
+
 export interface OpeningBalancesInput {
   company: {
     name: string;
@@ -109,8 +128,18 @@ export interface OpeningBalancesInput {
   cash: OpeningCashInput[];
   receivables: OpeningPartnerInput[];
   payables: OpeningPartnerInput[];
-  /** Persediaan awal, in IDR base. */
-  inventory?: number | null;
+  /** Saldo awal persediaan, PER BARANG (issue #379). */
+  inventory: OpeningStockInput[];
+}
+
+/** Nilai IDR satu baris persediaan awal — satu rumus, dipakai jurnal & gerakan. */
+export function openingStockValue(row: Pick<OpeningStockInput, "quantity" | "unitCost">): number {
+  return round2(num(row.quantity) * num(row.unitCost));
+}
+
+/** Total nilai persediaan awal — inilah yang didebit ke akun Persediaan. */
+export function openingStockTotal(rows: OpeningStockInput[]): number {
+  return round2(rows.reduce((sum, row) => sum + openingStockValue(row), 0));
 }
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
@@ -176,17 +205,26 @@ async function resolveOpeningLines(
     });
   }
 
-  // Persediaan — asset, IDR base.
-  const inventory = num(input.inventory);
-  if (inventory > 0) {
+  /*
+   * Persediaan — SATU baris jurnal untuk TOTALNYA, bukan satu baris per barang.
+   *
+   * Buku besar mencatat NILAI; rinciannya per barang adalah urusan buku
+   * pembantu, dan buku pembantu persediaan di aplikasi ini adalah
+   * `stock_movements` — yang diterbitkan `applyOpeningBalances` dari daftar
+   * yang sama. Satu baris jurnal per barang akan menggandakan rincian yang
+   * sudah ada di tempat yang benar, dan membuat jurnal pembuka perusahaan
+   * dengan 2.000 barang mustahil dibaca manusia.
+   */
+  const inventoryTotal = openingStockTotal(input.inventory);
+  if (inventoryTotal > 0) {
     const accountId = await resolveAccountId(MAPPING_KEYS.INVENTORY, "IDR", client);
     lines.push({
       accountId,
       side: "debit",
-      amount: inventory,
+      amount: inventoryTotal,
       currency: "IDR",
       rate: 1,
-      memo: "Persediaan awal",
+      memo: `Persediaan awal — ${input.inventory.length} barang`,
     });
   }
 
@@ -294,6 +332,43 @@ export async function applyOpeningBalances(
       },
       tx
     );
+
+    /*
+     * ══ SISI KEDUA PERSEDIAAN: BUKU PEMBANTUNYA (issue #379) ═══════════════
+     *
+     * Jurnal di atas baru menyatakan NILAINYA. Tanpa gerakan stok pembuka,
+     * laporan Nilai Persediaan — yang membaca `stock_movements`, bukan jurnal —
+     * tetap kosong, dan perusahaan memulai hidupnya dengan dua angka yang
+     * menjawab pertanyaan yang sama secara berbeda.
+     *
+     * Bentuknya meniru PEMBELIAN, satu-satunya tempat di sistem ini yang kedua
+     * sisinya memang sudah sinkron: jurnalnya mendebit Persediaan, dan
+     * gerakan stoknya (`createStockInMovementsInTx`) sengaja tidak memposting
+     * apa pun. Di sini pun begitu.
+     *
+     * ⚠ `postForSource` TIDAK dipanggil, dan itu keputusan yang disengaja.
+     * Memanggilnya tidak akan menggandakan apa pun — `buildStockMovementEntry`
+     * memulangkan `null` untuk gerakan `in` — tapi justru itu masalahnya:
+     * sebuah pemanggilan yang tidak melakukan apa-apa adalah pemanggilan yang
+     * akan disalahpahami orang berikutnya sebagai "di sinilah jurnalnya
+     * terbit". Nilainya sudah ada di jurnal pembuka, satu baris di atas.
+     *
+     * Tanggalnya SAMA dengan jurnal pembuka: rata-rata tertimbang membaca
+     * gerakan urut waktu, dan stok yang seolah masuk sesudah transaksi pertama
+     * akan salah menghargai HPP-nya.
+     */
+    for (const row of input.inventory) {
+      await tx.stockMovement.create({
+        data: {
+          itemId: row.itemId,
+          quantity: row.quantity,
+          type: "in",
+          date: input.company.fiscalYearStart,
+          unitCost: row.unitCost,
+          note: `Saldo awal — ${row.itemName}`,
+        },
+      });
+    }
 
     const saved = await tx.companySetting.update({
       where: { id: setting.id },

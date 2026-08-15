@@ -95,92 +95,22 @@ export function decideOperatorRouting(
 
 /* ─────────────────────────── Daftar IP operator ─────────────────────────── */
 
-/** Bawaan: satu proxy tepercaya di depan aplikasi — Traefik, dan hanya itu. */
-export const DEFAULT_TRUSTED_PROXY_HOPS = 1;
-
-/**
- * Berapa banyak proxy TEPERCAYA yang berdiri di depan aplikasi
- * (`OPERATOR_TRUSTED_PROXY_HOPS`). Hari ini 1: Traefik. Menaruh Cloudflare,
- * CDN, atau load-balancer kedua di depannya menjadikannya 2 — dan angka itu
- * HARUS diperbarui bersamaan, sebab ia yang menentukan entri mana di
- * `x-forwarded-for` yang benar-benar ditulis oleh mesin milik kita.
+/*
+ * `DEFAULT_TRUSTED_PROXY_HOPS`, `trustedProxyHops`, dan `clientIpFrom` PINDAH
+ * ke `lib/client-ip.ts` di issue #372 — mereka tidak pernah benar-benar milik
+ * bidang operator. Delapan permukaan PELANGGAN membaca alamat klien sendiri
+ * dengan `x-forwarded-for.split(",")[0]`, yaitu entri yang justru bisa diketik
+ * klien, dan memperbaikinya menuntut satu pembaca bersama — bukan salinan
+ * kesembilan.
  *
- * Nilai yang tidak masuk akal (bukan bilangan bulat, < 1) jatuh ke bawaan,
- * bukan ke 0: hop 0 berarti mempercayai entri paling kanan yang ditulis
- * KLIEN — persis lubang yang issue #162 tutup.
+ * Di-ekspor ulang di sini supaya setiap pemanggil lama (`proxy.ts`,
+ * `operator/guard.ts`, aksi konsol) dan tesnya tidak perlu berubah sama sekali.
+ * Nama variabel environment-nya SENGAJA tetap `OPERATOR_TRUSTED_PROXY_HOPS`:
+ * ia menggambarkan topologi pemasangan, bukan bidang operator, dan menggantinya
+ * berarti setiap pemasangan yang sudah berjalan diam-diam kembali ke bawaan
+ * pada hari deploy berikutnya.
  */
-export function trustedProxyHops(
-  env: Record<string, string | undefined> = process.env
-): number {
-  const raw = env.OPERATOR_TRUSTED_PROXY_HOPS?.trim();
-  if (!raw) return DEFAULT_TRUSTED_PROXY_HOPS;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < 1) return DEFAULT_TRUSTED_PROXY_HOPS;
-  return value;
-}
-
-/**
- * Alamat klien dari header proxy — DIHITUNG DARI KANAN (issue #162).
- *
- * ══ KENAPA BUKAN ENTRI PERTAMA ═════════════════════════════════════════════
- * `x-forwarded-for` bertambah dari KIRI ke KANAN: setiap proxy MENAMBAHKAN
- * alamat lawan bicaranya di ujung kanan. Entri paling kiri karena itu bukan
- * "IP klien" melainkan "apa pun yang mula-mula ada di header itu" — dan yang
- * mula-mula ada di sana bisa saja diketik klien sendiri.
- *
- * Sebelum #162 fungsi ini mengambil entri PERTAMA. Itu benar hanya selama
- * Traefik MENIMPA header kiriman klien alih-alih menambahinya — dan Traefik
- * menimpanya hanya selama `forwardedHeaders.trustedIPs` kosong. Begitu
- * seseorang mengisi `trustedIPs` (persis yang dilakukan orang saat menaruh
- * Cloudflare atau load-balancer kedua di depan), Traefik mulai
- * MEMPERTAHANKAN header kiriman klien — dan entri pertama menjadi teks
- * pilihan penyerang:
- *
- *     X-Forwarded-For: <ip-yang-diizinkan>
- *
- * Perubahan itu terjadi di berkas konfigurasi infrastruktur, jauh dari berkas
- * ini, dan tidak ada satu pun tes yang akan berubah warna karenanya. Karena
- * itu yang diperbaiki bukan konfigurasinya melainkan CARA MEMBACANYA: dengan
- * menghitung dari kanan, sampah yang ditambahkan klien di depan tidak pernah
- * terbaca, berapa pun banyaknya.
- *
- * Entri ke-`hops` dari kanan adalah yang ditulis proxy TERLUAR yang masih
- * kita percayai. Dengan satu Traefik (hops = 1) itu entri paling kanan —
- * satu-satunya yang Traefik sendiri tulis, dan satu-satunya yang klien tidak
- * bisa sentuh.
- *
- * ══ GAGAL-TERTUTUP ═════════════════════════════════════════════════════════
- * Rantai yang LEBIH PENDEK dari `hops` berarti permintaan ini tidak melewati
- * jalur yang kita kira — misalnya menembus langsung ke Traefik, melewati CDN
- * yang seharusnya di depan. Itu tidak ditebak: null → `ipAllowed` menolak.
- *
- * `x-real-ip` hanya dipakai bila `x-forwarded-for` TIDAK ADA sama sekali, dan
- * hanya saat hops = 1. Dengan proxy berlapis, `x-real-ip` yang ditulis proxy
- * terdekat berisi alamat proxy SEBELUMNYA, bukan alamat klien — memakainya di
- * situ berarti membandingkan daftar IP operator dengan IP milik CDN.
- */
-export function clientIpFrom(
-  headers: {
-    get(name: string): string | null;
-  },
-  env: Record<string, string | undefined> = process.env
-): string | null {
-  const hops = trustedProxyHops(env);
-
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    const entries = forwarded
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-    // Rantai lebih pendek dari yang dikonfigurasi → JANGAN menebak.
-    return entries[entries.length - hops] ?? null;
-  }
-
-  if (hops > 1) return null;
-  const real = headers.get("x-real-ip")?.trim();
-  return real || null;
-}
+export { DEFAULT_TRUSTED_PROXY_HOPS, clientIpFrom, trustedProxyHops } from "@/lib/client-ip";
 
 function ipv4ToInt(ip: string): number | null {
   const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);

@@ -42,6 +42,7 @@
  * halaman Audit membaca dari tabel dan berkas lamanya belum terlihat: itulah
  * kenapa skripnya LANGKAH RILIS, bukan kebersihan yang bisa ditunda.
  */
+import { clientIpFrom } from "@/lib/client-ip";
 import { prisma } from "@/lib/prisma";
 
 export type AuditAction =
@@ -257,13 +258,17 @@ export type AuditLogEntry = {
   createdAt: string;
 };
 
+/**
+ * Alamat pelaku, untuk baris jejak. Lewat `clientIpFrom` — entri ke-N dari
+ * KANAN (issue #372), bukan yang paling kiri.
+ *
+ * Bedanya menentukan justru DI SINI: sebuah jejak audit yang mencatat alamat
+ * pilihan penyerang tidak sekadar tidak berguna, ia MENYESATKAN penyelidikan
+ * yang membacanya — dan jejak audit dibaca justru ketika sedang ada masalah.
+ */
 export function getClientIp(request?: Request): string | null {
   if (!request) return null;
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() || null;
-  }
-  return request.headers.get("x-real-ip");
+  return clientIpFrom(request.headers);
 }
 
 export async function writeAuditLog(params: {

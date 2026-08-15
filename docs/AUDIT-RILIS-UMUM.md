@@ -177,6 +177,12 @@ terlihat oleh siapa pun sampai ada yang mengeluh tidak bisa masuk.
 
 #### F-6 · Pembatas laju login masih di memori, dan hanya per-pengenal
 
+> **Status:** issue [#372](https://github.com/tri-evendi/sai-accounting/issues/372) — dikerjakan.
+>
+> ⚠ **Cakupannya melebar saat dikerjakan, dan temuan barunya lebih berat daripada F-6 sendiri.** Delapan permukaan membaca alamat klien dengan `x-forwarded-for.split(",")[0]` — entri paling KIRI, yang justru bisa diketik klien. Lima di antaranya adalah kunci pembatas laju **per-IP endpoint publik** yang dibangun #138 (`/register`, `/forgot-password`, `/reset-password`, verifikasi surel, penerimaan undangan), satu formulir kontak pendaratan, dan dua jejak audit.
+>
+> Artinya seluruh pembatas laju per-IP yang selama ini dianggap kokoh **bisa dilewati dengan satu header**: satu nilai acak per permintaan, dan setiap permintaan tampak datang dari alamat baru. Jejak auditnya pun mencatat alamat pilihan penyerang sebagai fakta. Logika pembacaan yang benar sudah ada dan sudah teruji sejak #162 — ia hanya tinggal di `lib/operator/plane.ts` dan tidak pernah dipakai bidang pelanggan.
+
 `lib/rate-limit.ts:5` menyimpan hitungan di `Map` proses; `lib/auth.ts:56`
 memakainya dengan kunci `login:<pengenal>`. Tiga akibat: hitungannya **hilang
 setiap deploy**, tidak terbagi bila kelak ada dua instance, dan — yang

@@ -20,7 +20,7 @@
  *     penebakan sandi persis seperti `/login` — dan pemakainya SUDAH bersesi,
  *     yang berarti penyerangnya adalah sesi yang dibajak atau laptop yang
  *     ditinggal terbuka. Penghitungnya per PENGGUNA, memakai anggaran
- *     `RATE_LIMITS.login` yang sama.
+ *     `RATE_LIMITS.passwordGuess` yang sama.
  */
 import bcrypt from "bcrypt";
 import { cookies } from "next/headers";
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
 
-  const rate = checkRateLimit(`unlock:${userId}`, RATE_LIMITS.login);
+  const rate = checkRateLimit(`unlock:${userId}`, RATE_LIMITS.passwordGuess);
   if (!rate.allowed) {
     return NextResponse.json({ error: t("unlock.tooMany") }, { status: 429 });
   }

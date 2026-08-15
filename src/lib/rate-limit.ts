@@ -1,6 +1,20 @@
 /**
- * In-memory rate limiter for auth-sensitive endpoints.
- * For multi-instance production, replace with Redis-backed limiting.
+ * Pembatas laju DI MEMORI — hanya untuk permukaan yang sudah TERAUTENTIKASI.
+ *
+ * ══ /login TIDAK LAGI DI SINI (issue #372) ══════════════════════════════════
+ * Sampai issue itu, jalur masuk memakai penghitung ini dengan alasan "login
+ * permukaan internal". Alasan itu benar sebelum ada `/register`: pintunya hanya
+ * untuk orang yang akunnya dibuatkan admin. Sejak pendaftaran mandiri (#138),
+ * halaman masuk sama publiknya dengan endpoint lain — dan ketiga kelemahan
+ * penghitung memori berlaku penuh baginya: hilang saat restart, tidak terbagi
+ * antar-instance, dan (yang khusus miliknya) tanpa pagar per-IP sama sekali.
+ * Ia kini memakai `rate-limit-persistent.ts`, dengan DUA kunci.
+ *
+ * Yang tersisa di sini semuanya menuntut sesi yang sah lebih dulu, jadi
+ * penyerangnya bukan orang asing di internet melainkan sesi yang dibajak —
+ * permukaan yang jauh lebih sempit, dan penghitung memori memadai untuknya.
+ * Untuk produksi multi-instance, tukar penyimpanannya (Redis, atau penghitung
+ * persisten yang sama).
  */
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
@@ -15,14 +29,19 @@ const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
 };
 
 /*
- * HANYA untuk permukaan internal (login, ganti kata sandi milik sesi sendiri).
- * Endpoint yang TERBUKA KE INTERNET — /register, verifikasi email, atur-ulang
- * kata sandi — memakai penghitung PERSISTEN di `rate-limit-persistent.ts`
- * (issue #138): penghitung memori hilang saat restart dan tidak terbagi
- * antar-instance.
+ * HANYA untuk permukaan yang menuntut sesi. Endpoint yang TERBUKA KE INTERNET
+ * — /login (#372), /register, verifikasi email, atur-ulang kata sandi —
+ * memakai penghitung PERSISTEN di `rate-limit-persistent.ts` (#138).
  */
 export const RATE_LIMITS = {
-  login: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
+  /**
+   * Anggaran penebakan SANDI di permukaan yang sudah bersesi — hari ini hanya
+   * `/api/company-unlock`. Dulu bernama `login`, dan namanya menjadi salah
+   * begitu jalur masuk pindah ke penghitung persisten (#372): sebuah kunci
+   * bernama `login` yang tidak dipakai login adalah petunjuk yang menyesatkan
+   * pembaca berikutnya. Angkanya tidak berubah.
+   */
+  passwordGuess: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
   changePassword: { windowMs: 15 * 60 * 1000, maxAttempts: 5 },
   /*
    * Penerbitan undangan staf (issue #139): per-PENGUNDANG — permukaan

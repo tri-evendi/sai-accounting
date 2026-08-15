@@ -232,6 +232,8 @@ dan waktu cadangan jauh sebelum menabrak CPU.
 
 #### F-9 · Siklus hidup langganan bergantung pada cron yang dipasang tangan
 
+> **Status:** issue [#373](https://github.com/tri-evendi/sai-accounting/issues/373) — dikerjakan. Cakupannya menyempit setelah kodenya dibaca: ringkasan tiap putaran **sudah** tercatat di tabel `scheduler_runs` sejak #154, dan konsol operator **sudah** menampilkannya. Yang benar-benar kurang tinggal penjadwalnya sebagai layanan, denyutnya di `/api/health`, dan skrip pembuktiannya.
+
 `package.json` (`_scheduler_note`) menyebut penjadwal harus dipasang lewat cron
 host. Ia idempoten dan tertulis rapi — tetapi **tidak ada apa pun yang
 memeriksa ia terpasang**. Bila terlewat pada hari rilis: uji coba tidak pernah
@@ -366,7 +368,7 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 | **Cadangan** | Layanan `backup` di compose: `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
 | **Pemulihan** | **Latihan pemulihan yang dijadwalkan**, bukan dokumen. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
 | **Pemantauan** | Sentry (atau setara) untuk galat + `/api/health` yang diperluas: kendali, platform, satu PT contoh, dan **umur jalan terakhir penjadwal**. Peringatan ke kanal yang benar-benar dibaca. |
-| **Penjadwal** | Layanan di compose (F-9), bukan cron host. |
+| **Penjadwal** | ✅ Layanan `scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
 | **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Pelanggan yang membayar berhak tahu sebelum bertanya. |
 

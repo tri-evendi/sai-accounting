@@ -1,0 +1,124 @@
+/**
+ * Denyut penjadwal (issue #373) — putusan "masih berdetak atau tidak".
+ *
+ * Yang dijaga di sini bukan sekadar aritmetika umur, melainkan tiga keputusan
+ * yang mudah dibalik oleh orang berikutnya dan yang akibatnya baru terasa
+ * berbulan-bulan kemudian:
+ *
+ *   1. `unknown` BUKAN `late`. Pemasangan yang baru lahir tidak boleh berbunyi
+ *      seperti pemasangan yang rusak.
+ *   2. `/api/health` TIDAK PERNAH 503 karena penjadwal (doktrin #137) — kalau
+ *      ia 503, Traefik berhenti mengirim lalu lintas dan satu masalah
+ *      penagihan berubah menjadi pemadaman total.
+ *   3. Penjadwalnya adalah LAYANAN, bukan cron host yang dipasang tangan.
+ */
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import {
+  SCHEDULER_STALE_AFTER_MINUTES,
+  schedulerHealth,
+} from "@/lib/scheduler-heartbeat";
+
+const now = new Date("2026-08-15T12:00:00.000Z");
+const minutesAgo = (n: number) => new Date(now.getTime() - n * 60_000);
+
+describe("schedulerHealth", () => {
+  it("putaran barusan → ok", () => {
+    const health = schedulerHealth(minutesAgo(5), now);
+    expect(health.status).toBe("ok");
+    expect(health.ageMinutes).toBe(5);
+    expect(health.lastRunAt).toBe(minutesAgo(5).toISOString());
+  });
+
+  it("tepat di ambang masih ok — yang melewatinya baru terlambat", () => {
+    expect(schedulerHealth(minutesAgo(SCHEDULER_STALE_AFTER_MINUTES), now).status).toBe("ok");
+    expect(schedulerHealth(minutesAgo(SCHEDULER_STALE_AFTER_MINUTES + 1), now).status).toBe("late");
+  });
+
+  it("ambangnya dua putaran, bukan satu", () => {
+    // Satu putaran terlewat karena deploy atau mesin sibuk bukan insiden, dan
+    // pemantauan yang berbunyi untuk hal normal akhirnya diabaikan orang.
+    expect(SCHEDULER_STALE_AFTER_MINUTES).toBe(120);
+    expect(schedulerHealth(minutesAgo(90), now).status).toBe("ok");
+  });
+
+  it("belum pernah jalan → unknown, TIDAK PERNAH late", () => {
+    for (const value of [null, undefined, new Date(Number.NaN)]) {
+      const health = schedulerHealth(value, now);
+      expect(health.status).toBe("unknown");
+      expect(health.lastRunAt).toBeNull();
+      expect(health.ageMinutes).toBeNull();
+    }
+  });
+
+  it("tanggal di masa depan → umur 0, bukan negatif", () => {
+    // Jam container dan jam basis data bisa berselisih beberapa detik; selisih
+    // itu tidak boleh menjadi angka yang membingungkan pembacanya.
+    const health = schedulerHealth(new Date(now.getTime() + 30_000), now);
+    expect(health.ageMinutes).toBe(0);
+    expect(health.status).toBe("ok");
+  });
+
+  it("ambangnya ikut dilaporkan — pembacanya tidak perlu menebak", () => {
+    expect(schedulerHealth(minutesAgo(1), now).staleAfterMinutes).toBe(
+      SCHEDULER_STALE_AFTER_MINUTES
+    );
+  });
+});
+
+describe("penjadwal sebagai layanan (#373)", () => {
+  const compose = readFileSync(join(process.cwd(), "docker-compose.yml"), "utf8");
+
+  it("ada layanan `scheduler` yang lahir bersama deploy", () => {
+    expect(compose).toMatch(/^ {2}scheduler:$/m);
+    expect(compose).toContain("scheduler:subscriptions");
+    expect(compose).toContain("restart: unless-stopped");
+  });
+
+  it("satu putaran gagal tidak mematikan putaran berikutnya", () => {
+    // Loop yang mati karena satu galat mengembalikan kita persis ke kegagalan
+    // senyap yang layanan ini ada untuk menutupnya.
+    expect(compose).toContain("bun run scheduler:subscriptions || true");
+  });
+
+  it("menunggu migration selesai — tabelnya harus ada sebelum putaran pertama", () => {
+    const service = compose.slice(compose.indexOf("\n  scheduler:"), compose.indexOf("\n  web:"));
+    expect(service).toContain("service_completed_successfully");
+  });
+});
+
+describe("/api/health menyebut penjadwal tanpa ikut memutuskan (#373 · doktrin #137)", () => {
+  const route = readFileSync(
+    join(process.cwd(), "src", "app", "api", "health", "route.ts"),
+    "utf8"
+  );
+  const code = route.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("melaporkan denyutnya", () => {
+    expect(code).toContain("scheduler:");
+    expect(code).toContain("schedulerHealth");
+  });
+
+  it("HANYA basis data kendali yang bisa membuatnya 503", () => {
+    // Penagihan mati ≠ aplikasi mati. Kalau probe ini gagal karena penjadwal
+    // telat, Traefik berhenti mengirim lalu lintas ke container yang masih
+    // melayani setiap pembukuan pelanggan dengan sempurna.
+    const failures = [...code.matchAll(/status:\s*503/g)];
+    expect(failures).toHaveLength(1);
+
+    // Yang diperiksa adalah BADAN handler-nya, bukan seluruh berkas: `platformDb`
+    // memang diimpor di atas, dan yang menentukan bukan keberadaan impornya
+    // melainkan apakah ia ikut menjaga gerbang 503.
+    const body = code.slice(code.indexOf("export async function GET()"));
+    const gate = body.slice(0, body.indexOf("status: 503"));
+    expect(gate).toContain("controlDb");
+    expect(gate).not.toContain("platformDb");
+    expect(gate).not.toContain("lastSchedulerRun");
+  });
+
+  it("platform tak terjangkau dijawab `unknown`, bukan lemparan", () => {
+    expect(code).toMatch(/catch\s*\{[\s\S]*?schedulerHealth\(null\)/);
+  });
+});

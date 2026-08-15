@@ -1,6 +1,48 @@
-import { appendFile, mkdir, readFile } from "fs/promises";
-import path from "path";
-import { currentCompany } from "@/lib/current-company";
+/**
+ * JEJAK AUDIT — siapa melakukan apa, di perusahaan mana.
+ *
+ * ══ DARI BERKAS KE TABEL (issue #370) ══════════════════════════════════════
+ * Sampai issue ini jejaknya adalah `data/audit/<slug>/audit.jsonl`: ditambah
+ * dengan `appendFile`, dan DIBACA UTUH ke memori setiap kali halaman Audit
+ * dibuka — seluruh berkas, seluruh barisnya di-parse, untuk mengambil 20.
+ * Tanpa rotasi dan tanpa batas, di mesin yang rutin menyisakan ratusan
+ * megabita. Tiga akibat lain lahir dari sebab yang sama, yaitu jejak yang
+ * hidup DI LUAR basis data PT:
+ *
+ *   • tidak ikut ekspor mandiri tenant (#142) — sapuannya hanya melihat tabel;
+ *   • tidak ikut penghancuran buku — berkasnya bertahan selamanya di direktori
+ *     bersama, lengkap dengan nama pengguna dan alamat IP;
+ *   • `appendFile` dari dua proses adalah baris yang saling menimpa, senyap,
+ *     pada hari pertama penskalaan mendatar.
+ *
+ * Ketiganya menjadi urusan basis data begitu jejaknya menjadi tabel.
+ *
+ * ══ ALASAN PEMISAHAN PER PERUSAHAAN TIDAK DILEPAS ══════════════════════════
+ * Versi berkas memilih satu berkas per perusahaan dengan alasan yang masih
+ * berlaku kata demi kata: "siapa mengubah faktur siapa" adalah informasi yang
+ * paling tidak boleh menyeberang, dan dengan penyimpanan terpisah, pembaca yang
+ * lupa menyaring TIDAK PUNYA apa-apa untuk bocor.
+ *
+ * Tabel `audit_logs` hidup di basis data PT ITU SENDIRI, jadi jaminan itu utuh
+ * — ditegakkan mekanisme yang lebih kuat, bukan konvensi: `prisma` di dalam
+ * permintaan adalah klien PT aktif (konteksnya dimasuki penjaga), dan tabel ini
+ * karena itu tidak punya kolom `company_id` untuk dilupakan seseorang.
+ *
+ * ══ MENULIS JEJAK TIDAK BOLEH MENGGAGALKAN AKSINYA ═════════════════════════
+ * Sifat yang dipertahankan apa adanya dari versi berkas: penulisan jejak
+ * terjadi SESUDAH transaksi bisnisnya, dan kegagalannya ditelan ke log. Sebuah
+ * faktur yang sah tidak boleh batal hanya karena catatannya gagal ditulis.
+ * Menjadikannya bagian transaksi adalah keputusan tersendiri yang pantas
+ * dipikirkan terpisah — bukan efek samping pemindahan penyimpanan.
+ *
+ * ══ BERKAS LAMA ════════════════════════════════════════════════════════════
+ * `bun run migrate:audit --apply` memindahkan isinya ke tabel ini, lalu MENGGANTI
+ * NAMA berkasnya (tidak menghapusnya — menghapus jejak audit secara otomatis
+ * adalah persis kebalikan dari alasan jejak itu ada). Sampai itu dijalankan,
+ * halaman Audit membaca dari tabel dan berkas lamanya belum terlihat: itulah
+ * kenapa skripnya LANGKAH RILIS, bukan kebersihan yang bisa ditunda.
+ */
+import { prisma } from "@/lib/prisma";
 
 export type AuditAction =
   /** Perusahaan baru dibuat dari aplikasi — basis datanya ikut lahir (#104). */
@@ -187,45 +229,33 @@ export type AuditEntity =
   /** Dokumen unggahan (lampiran). */
   | "document";
 
+/**
+ * Satu baris jejak, sebagaimana dibaca layar Audit.
+ *
+ * `id` bertipe NUMBER sejak #370 — kunci baris `audit_logs`. Versi berkas
+ * menyusunnya sebagai string `<epoch>-<acak>`, sementara `audit-log-panel.tsx`
+ * sudah lama mendeklarasikannya `number`: ketidakcocokan yang tidak pernah
+ * terasa karena nilainya hanya dipakai sebagai `rowKey` React. Sekarang
+ * keduanya bicara hal yang sama.
+ *
+ * `companyId`/`companySlug` DICABUT, bukan hilang: barisnya hidup di basis data
+ * perusahaan itu, jadi menyebutkan perusahaannya di setiap baris adalah
+ * pengulangan yang bisa menyimpang — dan satu-satunya pembacanya adalah berkas
+ * ini sendiri.
+ */
 export type AuditLogEntry = {
-  id: string;
-  /** Perusahaan tempat tindakan ini terjadi (issue #104). */
-  companyId?: number;
-  companySlug?: string;
+  id: number;
   userId: string;
   username: string;
   /** Peran aktor SAAT beraksi (audit RBAC fase 3) — peran bisa berubah, jejak tidak. */
-  role?: string;
+  role: string | null;
   action: AuditAction;
   entity: AuditEntity;
-  entityId?: number;
-  details?: Record<string, unknown>;
+  entityId: number | null;
+  details: Record<string, unknown> | null;
   ipAddress: string | null;
   createdAt: string;
 };
-
-/**
- * Jejak audit DIPISAH PER PERUSAHAAN (issue #104): `data/audit/<slug>/audit.jsonl`.
- *
- * Kenapa berkas terpisah, bukan satu berkas dengan kolom `companyId`. Layar
- * Audit hanya boleh memperlihatkan jejak perusahaan yang sedang dibuka —
- * "siapa mengubah faktur siapa" adalah informasi yang paling tidak boleh
- * menyeberang. Dengan satu berkas bersama, kebenaran itu bergantung pada satu
- * penyaring yang harus diingat setiap pembaca; dengan berkas terpisah, pembaca
- * yang lupa menyaring TIDAK PUNYA apa-apa untuk bocor. Pemisahan yang sama
- * dengan alasan basis data per perusahaan.
- *
- * Berkas lama `data/audit/audit.jsonl` (sebelum multi-perusahaan) dibiarkan di
- * tempatnya dan tetap terbaca sebagai jejak perusahaan yang diadopsi — lihat
- * `scripts/adopt-existing-company.ts`, yang memindahkannya ke folder slug-nya.
- */
-const AUDIT_ROOT = path.join(process.cwd(), "data", "audit");
-
-async function auditPaths(): Promise<{ dir: string; file: string; companyId: number }> {
-  const { slug, companyId } = await currentCompany();
-  const dir = path.join(AUDIT_ROOT, slug);
-  return { dir, file: path.join(dir, "audit.jsonl"), companyId };
-}
 
 export function getClientIp(request?: Request): string | null {
   if (!request) return null;
@@ -247,27 +277,25 @@ export async function writeAuditLog(params: {
   details?: Record<string, unknown>;
   request?: Request;
 }) {
-  const { dir, file, companyId } = await auditPaths();
-  const slug = path.basename(dir);
-  const entry: AuditLogEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    companyId,
-    companySlug: slug,
-    userId: params.userId,
-    username: params.username.slice(0, 50),
-    role: params.role,
-    action: params.action,
-    entity: params.entity,
-    entityId: params.entityId,
-    details: params.details,
-    ipAddress: getClientIp(params.request),
-    createdAt: new Date().toISOString(),
-  };
-
   try {
-    await mkdir(dir, { recursive: true });
-    await appendFile(file, `${JSON.stringify(entry)}\n`, "utf8");
+    await prisma.auditLog.create({
+      data: {
+        userId: params.userId,
+        // Batas kolom (VarChar(50)) ditegakkan DI SINI, bukan diserahkan ke
+        // basis data: MariaDB non-strict akan memotong diam-diam, dan yang
+        // terpotong diam-diam adalah nama aktor di sebuah jejak audit.
+        username: params.username.slice(0, 50),
+        role: params.role ?? null,
+        action: params.action,
+        entity: params.entity,
+        entityId: params.entityId ?? null,
+        details: params.details ? JSON.stringify(params.details) : null,
+        ipAddress: getClientIp(params.request),
+      },
+    });
   } catch (err) {
+    // Sifat yang dipertahankan dari versi berkas: jejak yang gagal ditulis
+    // TIDAK menggagalkan aksi yang sudah sah (lihat kepala berkas).
     console.error("[audit] failed to write log:", err);
   }
 }
@@ -280,60 +308,98 @@ export interface AuditPage {
   totalPages: number;
 }
 
-/**
- * Pure pagination over raw JSONL lines (issue #60). Extracted so the paging
- * rules are unit-testable without touching the filesystem.
- *
- * Paginates over ALL lines, newest first — no arbitrary window. The previous
- * `slice(-5000)` cap silently hid older entries and undercounted `totalCount`,
- * so the UI showed fewer pages than existed. The whole file is read anyway, so
- * removing the cap costs nothing beyond parsing (cheap for small JSON lines).
- */
-export function paginateAuditLines(
-  lines: string[],
-  options: { page?: number; perPage?: number; action?: string | null }
-): AuditPage {
-  // NaN-safe: `Math.max(1, NaN)` tetap NaN dan `slice(NaN, NaN)` mengembalikan
-  // [] — halaman yang tak bisa diurai jatuh ke bawaan, bukan ke daftar kosong.
-  const rawPage = options.page ?? 1;
-  const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
-  const rawPerPage = options.perPage ?? 20;
-  const perPage = Number.isFinite(rawPerPage) ? Math.min(50, Math.max(1, rawPerPage)) : 20;
-
-  const ordered = [...lines].reverse();
-  const entries: AuditLogEntry[] = [];
-  for (const line of ordered) {
-    try {
-      const parsed = JSON.parse(line) as AuditLogEntry;
-      if (options.action && parsed.action !== options.action) continue;
-      entries.push(parsed);
-    } catch {
-      // skip corrupt lines
-    }
-  }
-
-  const totalCount = entries.length;
-  const totalPages = Math.ceil(totalCount / perPage) || 0;
-  const logs = entries.slice((page - 1) * perPage, page * perPage);
-  return { logs, page, perPage, totalCount, totalPages };
-}
-
-export async function readAuditLogs(options: {
+export interface AuditPagingOptions {
   page?: number;
   perPage?: number;
   action?: string | null;
-}): Promise<AuditPage> {
-  let lines: string[] = [];
+}
+
+/**
+ * Sanitasi parameter halaman — MURNI, jadi aturannya teruji tanpa basis data
+ * (yang tersisa dari `paginateAuditLines` #60, satu-satunya bagiannya yang
+ * memang bukan urusan penyimpanan).
+ *
+ * Aman terhadap NaN dengan sengaja: `?page=abc` bisa diketik siapa saja, dan
+ * `Math.max(1, NaN)` tetap NaN — yang dulu diteruskan ke `slice(NaN, NaN)` dan
+ * menghasilkan daftar berisi yang tampak kosong. Sekarang taruhannya lebih
+ * besar lagi: NaN yang lolos ke `skip`/`take` Prisma adalah galat kueri, bukan
+ * halaman kosong.
+ *
+ * `perPage` dibatasi 50 — batas yang sama seperti sebelumnya, kini berarti
+ * batas baris yang benar-benar diambil basis data, bukan potongan dari sesuatu
+ * yang sudah terlanjur dibaca seluruhnya.
+ */
+export function normalizeAuditPaging(options: AuditPagingOptions): {
+  page: number;
+  perPage: number;
+} {
+  const rawPage = options.page ?? 1;
+  const page = Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1;
+  const rawPerPage = options.perPage ?? 20;
+  const perPage = Number.isFinite(rawPerPage)
+    ? Math.min(50, Math.max(1, Math.floor(rawPerPage)))
+    : 20;
+  return { page, perPage };
+}
+
+/**
+ * `details` disimpan sebagai TEKS berisi JSON. Baris yang tidak bisa diurai
+ * TIDAK menjatuhkan halamannya: ia dipulangkan `null`, persis seperti versi
+ * berkas melewati baris yang rusak. Sebuah jejak audit yang satu barisnya
+ * cacat tetap harus bisa dibaca seluruhnya.
+ */
+function parseDetails(raw: string | null): Record<string, unknown> | null {
+  if (!raw) return null;
   try {
-    const raw = await readFile((await auditPaths()).file, "utf8");
-    lines = raw.trim().split("\n").filter(Boolean);
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
   } catch {
-    // Sanitasi sama dengan paginateAuditLines — termasuk aman terhadap NaN.
-    const rawPage = options.page ?? 1;
-    const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1;
-    const rawPerPage = options.perPage ?? 20;
-    const perPage = Number.isFinite(rawPerPage) ? Math.min(50, Math.max(1, rawPerPage)) : 20;
-    return { logs: [], page, perPage, totalCount: 0, totalPages: 0 };
+    return null;
   }
-  return paginateAuditLines(lines, options);
+}
+
+/**
+ * Satu halaman jejak perusahaan AKTIF — terbaru dulu.
+ *
+ * Sejak #370 paginasinya dikerjakan basis data (`skip`/`take` + `count`), bukan
+ * dengan membaca seluruh berkas lalu memotongnya. Perusahaannya tidak disebut
+ * di `where` karena tidak bisa disebut: `prisma` di sini adalah klien PT aktif.
+ */
+export async function readAuditLogs(options: AuditPagingOptions): Promise<AuditPage> {
+  const { page, perPage } = normalizeAuditPaging(options);
+  const where = options.action ? { action: options.action } : {};
+
+  const [rows, totalCount] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      // `id` sebagai pemutus seri: beberapa entri bisa berbagi milidetik
+      // `created_at` yang sama, dan tanpa urutan total sebuah baris bisa
+      // berpindah halaman antar permintaan (pola yang sama dengan /documents).
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
+
+  return {
+    logs: rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      username: row.username,
+      role: row.role,
+      action: row.action as AuditAction,
+      entity: row.entity as AuditEntity,
+      entityId: row.entityId,
+      details: parseDetails(row.details),
+      ipAddress: row.ipAddress,
+      createdAt: row.createdAt.toISOString(),
+    })),
+    page,
+    perPage,
+    totalCount,
+    totalPages: Math.ceil(totalCount / perPage) || 0,
+  };
 }

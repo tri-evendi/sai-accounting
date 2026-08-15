@@ -23,13 +23,31 @@ export const openingCashSchema = z
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
 
-/** One opening receivable/payable, per partner. */
+/**
+ * One opening receivable/payable.
+ *
+ * ── Rincian dokumen OPSIONAL (issue #381 tahap 3/4) ────────────────────────
+ * Ketiganya boleh kosong, dan itu yang membuat dua jalur masuk hidup
+ * berdampingan tanpa dua skema: wisaya mengumpulkan satu TOTAL per mitra, impor
+ * berkas membawa nomor & tanggal aslinya. Yang kedua yang membuat umur
+ * piutangnya menjadi umur yang SEBENARNYA — tanpa tanggal terbit, setiap
+ * dokumen memakai tanggal jurnal pembuka dan seluruh piutang lama tampil di
+ * ember umur yang sama pada hari pertama.
+ *
+ * Karena rinciannya opsional, satu mitra kini boleh muncul BERKALI-KALI —
+ * sekali per dokumen. Penjaga "mitra tidak boleh kembar" di bawah karena itu
+ * hanya berlaku bagi baris TANPA nomor dokumen.
+ */
 export const openingPartnerSchema = z
   .object({
     partnerId: z.coerce.number().int().positive(),
     currency: currencyEnum.default("IDR"),
     amount: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
     rate: rateField,
+    documentNo: z.string().max(50).trim().optional(),
+    /** `YYYY-MM-DD`; kosong → tanggal jurnal pembuka. */
+    documentDate: z.string().max(10).trim().optional(),
+    dueDate: z.string().max(10).trim().optional(),
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
 
@@ -131,9 +149,26 @@ export const setupSchema = z
 
     // No partner may appear twice on the same side — one opening balance per
     // customer / per supplier keeps the memo sub-ledger unambiguous.
+    /*
+     * ⚠ Penjaga ini kini hanya berlaku bagi baris TANPA nomor dokumen
+     * (issue #381 tahap 4). Sebelumnya "satu saldo awal per mitra" benar tanpa
+     * kecuali: setiap mitra menghasilkan satu baris jurnal ke akun kontrol, dan
+     * dua baris untuk mitra yang sama akan menjadi dua memo yang tak
+     * terbedakan.
+     *
+     * Sejak saldo awal AR/AP lahir sebagai DOKUMEN, seorang pelanggan dengan
+     * dua belas faktur terbuka memang MENGHASILKAN dua belas baris — dan itu
+     * justru yang dimaksud: dua belas dokumen yang bisa dilunasi satu per satu.
+     * Yang membedakannya nomor dokumennya, dan kekembarannya dijaga di sana
+     * (`invoices.invoice_no` UNIK, plus penjaga kembar di parser impor).
+     *
+     * Baris tanpa nomor tetap dijaga seperti dulu: ia jalur WISAYA, satu total
+     * per mitra, dan dua di antaranya tetap tak terbedakan.
+     */
     for (const side of ["receivables", "payables"] as const) {
       const seen = new Set<number>();
       data[side].forEach((row, i) => {
+        if (row.documentNo) return;
         if (seen.has(row.partnerId)) {
           ctx.addIssue({
             code: "custom",

@@ -199,12 +199,20 @@ export async function POST(request: Request) {
       amount: c.amount,
       rate: c.rate,
     })),
+    /* Rincian dokumen (issue #381 tahap 4) diteruskan apa adanya; `undefined`
+       berarti wisaya, dan `applyOpeningBalances` yang jatuh ke tanggal jurnal
+       pembuka. Tanggal diurai DI SINI, bukan di lapisan bawah: `new Date()` atas
+       teks kosong menghasilkan Invalid Date yang mendarat di basis data sebagai
+       galat yang tidak menyebut kolomnya. */
     receivables: receivables.map((r) => ({
       partnerId: r.partnerId,
       partnerName: customerName.get(r.partnerId)!,
       currency: r.currency,
       amount: r.amount,
       rate: r.rate,
+      documentNo: r.documentNo || null,
+      documentDate: r.documentDate ? new Date(r.documentDate) : null,
+      dueDate: r.dueDate ? new Date(r.dueDate) : null,
     })),
     payables: payables.map((p) => ({
       partnerId: p.partnerId,
@@ -212,6 +220,9 @@ export async function POST(request: Request) {
       currency: p.currency,
       amount: p.amount,
       rate: p.rate,
+      documentNo: p.documentNo || null,
+      documentDate: p.documentDate ? new Date(p.documentDate) : null,
+      dueDate: p.dueDate ? new Date(p.dueDate) : null,
     })),
     inventory: inventory.map((row) => ({
       itemId: row.itemId,

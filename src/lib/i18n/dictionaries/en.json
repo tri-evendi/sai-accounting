@@ -596,6 +596,8 @@
     "setupCustomerNotFound": "Customer #{id} was not found.",
     "setupSupplierNotFound": "Supplier #{id} was not found.",
     "setupItemNotFound": "Item #{id} was not found.",
+    "setupAssetCategoryNotFound": "Asset category \"{name}\" was not found. Create it under Fixed Assets first.",
+    "setupAssetNoTaken": "These asset codes are already in use: {codes}.",
     "accountCodeTaken": "That account code is already in use.",
     "accountOwnParent": "An account cannot be its own parent.",
     "emailTaken": "That email is already in use by another account.",

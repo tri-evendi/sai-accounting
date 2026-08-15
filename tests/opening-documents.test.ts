@@ -147,3 +147,44 @@ describe("rincian dokumen bersifat opsional", () => {
     expect(blok).toContain("r.documentDate ?? input.company.fiscalYearStart");
   });
 });
+
+describe("aset tetap: register DAN jurnalnya (#381 tahap 4)", () => {
+  it("harga perolehan didebit, akumulasi dikredit — pencatatan KOTOR", () => {
+    /*
+     * Menuliskan nilai bukunya saja (perolehan − akumulasi) menghasilkan neraca
+     * yang angkanya benar tetapi kehilangan informasi yang justru dicari
+     * pembacanya: berapa yang sudah disusutkan.
+     */
+    expect(opening).toContain("assetByAccount");
+    expect(opening).toContain("accumulatedByAccount");
+    const blok = opening.slice(opening.indexOf("for (const [accountId, amount] of assetByAccount)"));
+    expect(blok.slice(0, 300)).toContain('side: "debit"');
+    const kredit = opening.slice(
+      opening.indexOf("for (const [accountId, amount] of accumulatedByAccount)")
+    );
+    expect(kredit.slice(0, 300)).toContain('side: "credit"');
+  });
+
+  it("DIGABUNG per akun, bukan satu baris per aset", () => {
+    // Perusahaan dengan 400 aset akan punya jurnal pembuka yang mustahil dibaca
+    // manusia kalau setiap aset punya barisnya sendiri — alasan yang sama
+    // dengan persediaan di #379.
+    expect(opening).toContain("new Map<number, number>()");
+    expect(opening).toMatch(/assetByAccount\.set\(a\.assetAccountId/);
+  });
+
+  it("registernya lahir di transaksi yang SAMA", () => {
+    // Register tanpa jurnal = daftar aset terisi, neraca nol. Jurnal tanpa
+    // register = neraca terisi, tidak ada yang bisa disusutkan. Keduanya adalah
+    // bentuk cacat F-3 di permukaan baru.
+    const mulai = opening.indexOf("prisma.$transaction");
+    expect(opening.indexOf("tx.fixedAsset.create")).toBeGreaterThan(mulai);
+  });
+
+  it("keadaan penyusutannya ikut, riwayatnya TIDAK", () => {
+    const blok = opening.slice(opening.indexOf("tx.fixedAsset.create"));
+    expect(blok.slice(0, 900)).toContain("accumulatedDepreciation: a.accumulated");
+    expect(blok.slice(0, 900)).toContain("lastDepreciationYear");
+    expect(opening).not.toContain("fixedAssetDepreciation");
+  });
+});

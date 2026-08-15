@@ -129,6 +129,32 @@ export interface OpeningStockInput {
   unitCost: number;
 }
 
+/**
+ * Satu aset tetap yang dibawa masuk dari sistem lama (issue #381 tahap 4).
+ *
+ * Akun-akunnya DISERTAKAN, tidak dicari di sini: akun aset/akumulasi/beban
+ * tinggal di `fixed_asset_categories`, dan route yang mencocokkan nama kategori
+ * ke barisnya sudah memegangnya. Pola yang sama dengan `partnerName` —
+ * pencarian nama bukan urusan modul ini.
+ */
+export interface OpeningFixedAssetInput {
+  assetNo: string;
+  name: string;
+  categoryId: number;
+  assetAccountId: number;
+  accumulatedAccountId: number;
+  expenseAccountId: number;
+  acquisitionDate: Date;
+  cost: number;
+  residual: number;
+  usefulLifeMonths: number;
+  /** Yang SUDAH disusutkan di sistem lama. */
+  accumulated: number;
+  lastDepreciationYear: number | null;
+  lastDepreciationMonth: number | null;
+  location: string | null;
+}
+
 export interface OpeningBalancesInput {
   company: {
     name: string;
@@ -150,6 +176,8 @@ export interface OpeningBalancesInput {
   payables: OpeningPartnerInput[];
   /** Saldo awal persediaan, PER BARANG (issue #379). */
   inventory: OpeningStockInput[];
+  /** Aset tetap yang dibawa masuk (issue #381 tahap 4). */
+  fixedAssets: OpeningFixedAssetInput[];
 }
 
 /** Nilai IDR satu baris persediaan awal — satu rumus, dipakai jurnal & gerakan. */
@@ -245,6 +273,63 @@ async function resolveOpeningLines(
       currency: "IDR",
       rate: 1,
       memo: `Persediaan awal — ${input.inventory.length} barang`,
+    });
+  }
+
+  /*
+   * ══ ASET TETAP: DUA SISI, DIGABUNG PER AKUN (issue #381 tahap 4) ══════════
+   *
+   * Membuat baris `fixed_assets` saja TIDAK menerbitkan jurnal apa pun —
+   * pembuatan aset bukan sumber posting di aplikasi ini (hanya penyusutan dan
+   * pelepasan yang memposting). Jadi tanpa baris di bawah, daftar aset akan
+   * menunjukkan Rp 2 miliar sementara neraca menunjukkan nol: bentuk cacat yang
+   * sama persis dengan F-3 (#379), di permukaan yang baru.
+   *
+   * Aset dicatat KOTOR: harga perolehan di debit, akumulasi penyusutan di
+   * kredit sebagai kontra-aset. Menuliskan nilai bukunya saja (perolehan −
+   * akumulasi) akan menghasilkan neraca yang angkanya benar tetapi kehilangan
+   * informasi yang justru dicari pembacanya — berapa yang sudah disusutkan.
+   *
+   * DIGABUNG PER AKUN, bukan satu baris per aset: buku besar mencatat NILAI,
+   * rinciannya milik register aset. Perusahaan dengan 400 aset akan punya
+   * jurnal pembuka yang mustahil dibaca manusia kalau setiap aset punya
+   * barisnya sendiri — alasan yang sama dengan persediaan di #379. Kategori
+   * yang berbeda memakai akun yang berbeda, jadi penggabungannya per AKUN,
+   * bukan satu untuk semuanya.
+   */
+  const assetByAccount = new Map<number, number>();
+  const accumulatedByAccount = new Map<number, number>();
+  for (const a of input.fixedAssets) {
+    const cost = num(a.cost);
+    if (cost > 0) {
+      assetByAccount.set(a.assetAccountId, round2((assetByAccount.get(a.assetAccountId) ?? 0) + cost));
+    }
+    const accumulated = num(a.accumulated);
+    if (accumulated > 0) {
+      accumulatedByAccount.set(
+        a.accumulatedAccountId,
+        round2((accumulatedByAccount.get(a.accumulatedAccountId) ?? 0) + accumulated)
+      );
+    }
+  }
+  for (const [accountId, amount] of assetByAccount) {
+    lines.push({
+      accountId,
+      side: "debit",
+      amount,
+      currency: "IDR",
+      rate: 1,
+      memo: "Aset tetap — harga perolehan",
+    });
+  }
+  for (const [accountId, amount] of accumulatedByAccount) {
+    lines.push({
+      accountId,
+      side: "credit",
+      amount,
+      currency: "IDR",
+      rate: 1,
+      memo: "Akumulasi penyusutan aset tetap",
     });
   }
 
@@ -421,6 +506,44 @@ export async function applyOpeningBalances(
           baseAmount: round2(amount * rateFor(p.currency, p.rate)),
           isOpening: true,
           note: `Saldo awal utang — ${p.partnerName}`,
+        },
+      });
+    }
+
+    /*
+     * ══ REGISTER ASET TETAP (issue #381 tahap 4) ═══════════════════════════
+     *
+     * Sisi kedua dari baris jurnal aset tetap di atas. Keduanya dalam
+     * transaksi yang SAMA — setengahnya saja adalah persis cacat yang bagian
+     * ini ada untuk mencegahnya: register tanpa jurnal (daftar aset terisi,
+     * neraca nol) atau jurnal tanpa register (neraca terisi, daftar aset
+     * kosong dan tidak ada yang bisa disusutkan).
+     *
+     * ⚠ TIDAK ada baris `fixed_asset_depreciation` yang dibuat, dan itu
+     * disengaja: setiap baris riwayat di aplikasi ini berpasangan dengan
+     * JURNAL yang benar-benar diposting, sementara beban bulan-bulan itu sudah
+     * dibebankan di pembukuan lama. Yang dibawa hanya KEADAANNYA
+     * (`accumulatedDepreciation` + `lastDepreciation*`), dan `depreciateAsset`
+     * menolak periode yang sudah tercakup keadaan itu.
+     */
+    for (const a of input.fixedAssets) {
+      await tx.fixedAsset.create({
+        data: {
+          assetNo: a.assetNo,
+          name: a.name,
+          categoryId: a.categoryId,
+          acquisitionDate: a.acquisitionDate,
+          acquisitionCost: a.cost,
+          residualValue: a.residual,
+          usefulLifeMonths: a.usefulLifeMonths,
+          assetAccountId: a.assetAccountId,
+          accumulatedAccountId: a.accumulatedAccountId,
+          expenseAccountId: a.expenseAccountId,
+          location: a.location,
+          status: "active",
+          accumulatedDepreciation: a.accumulated,
+          lastDepreciationYear: a.lastDepreciationYear,
+          lastDepreciationMonth: a.lastDepreciationMonth,
         },
       });
     }

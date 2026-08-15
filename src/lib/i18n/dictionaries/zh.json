@@ -596,6 +596,8 @@
     "setupCustomerNotFound": "未找到客户 #{id}。",
     "setupSupplierNotFound": "未找到供应商 #{id}。",
     "setupItemNotFound": "未找到商品 #{id}。",
+    "setupAssetCategoryNotFound": "未找到资产类别“{name}”。请先在固定资产中创建。",
+    "setupAssetNoTaken": "以下资产编号已被使用：{codes}。",
     "accountCodeTaken": "该科目代码已被使用。",
     "accountOwnParent": "会计科目不能作为自身的上级科目。",
     "emailTaken": "该邮箱已被其他账号使用。",

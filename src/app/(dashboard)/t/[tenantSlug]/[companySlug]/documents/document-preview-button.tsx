@@ -26,10 +26,16 @@ function kindOf(filename: string): "pdf" | "image" | null {
 
 export function DocumentPreviewButton({
   filename,
-  filepath,
+  href,
 }: {
   filename: string;
-  filepath: string;
+  /**
+   * Alamat pengambilan berkasnya (`/api/documents/<id>/file`, issue #367) —
+   * BUKAN `documents.filepath`. Sejak berkasnya keluar dari `public/`, kolom
+   * itu adalah kunci penyimpanan internal dan tidak pernah bisa dipasang di
+   * `href` maupun `src`.
+   */
+  href: string;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -49,7 +55,7 @@ export function DocumentPreviewButton({
      */
     return (
       <Button
-        href={filepath}
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         variant="secondary"
@@ -70,7 +76,7 @@ export function DocumentPreviewButton({
         open={open}
         onOpenChange={setOpen}
         title={filename}
-        src={filepath}
+        src={href}
         kind={kind}
       />
     </>

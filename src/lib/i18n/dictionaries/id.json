@@ -2472,7 +2472,13 @@
     "balanced": "Seimbang: Aset = Kewajiban + Modal/Ekuitas ({amount})",
     "noBalancesYet": "Belum ada saldo awal yang diisi.",
     "savingStatus": "Menyimpan penyiapan — identitas, modul, bagan akun, dan jurnal saldo awal. Mohon tunggu, jangan tutup halaman ini.",
-    "finishing": "Menyimpan…"
+    "finishing": "Menyimpan…",
+    "downloadTemplate": "Unduh templat",
+    "importFromFile": "Impor dari berkas",
+    "importing": "Membaca…",
+    "importFailed": "Impor gagal.",
+    "importReplaced": "{count} baris dari berkas menggantikan isi bagian ini.",
+    "rowLabel": "Baris {row}"
   },
   "approvalDocumentType": {
     "contract": "Kontrak",

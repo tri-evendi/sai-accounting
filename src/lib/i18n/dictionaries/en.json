@@ -2472,7 +2472,13 @@
     "balanced": "Balanced: Assets = Liabilities + Capital/Equity ({amount})",
     "noBalancesYet": "No opening balances entered yet.",
     "savingStatus": "Saving your setup — identity, modules, chart of accounts and the opening-balance journal. Please wait; keep this page open.",
-    "finishing": "Saving…"
+    "finishing": "Saving…",
+    "downloadTemplate": "Download template",
+    "importFromFile": "Import from file",
+    "importing": "Reading…",
+    "importFailed": "Import failed.",
+    "importReplaced": "{count} rows from the file replaced this section.",
+    "rowLabel": "Row {row}"
   },
   "approvalDocumentType": {
     "contract": "Contract",

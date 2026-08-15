@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Col, Flex, Row, Typography, theme } from "antd";
 import type { GlobalToken } from "antd";
+import { usePathname } from "next/navigation";
 import { useAppRouter } from "@/components/ui/app-link";
 import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,9 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { WizardSteps } from "@/components/ui/wizard-steps";
 import { fieldGrid, formGrid } from "@/lib/layout-width";
+import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
+import { DownloadOutlined, UploadOutlined, ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { ModulePicker } from "@/components/settings/module-picker";
@@ -99,6 +101,17 @@ interface PartnerRow {
   currency: string;
   amount: string;
   rate: string;
+  /**
+   * Rincian dokumen — hanya terisi pada baris HASIL IMPOR (#381 tahap 4).
+   *
+   * Baris yang diketik tangan meninggalkannya kosong, dan `applyOpeningBalances`
+   * jatuh ke tanggal jurnal pembuka. Bedanya terlihat di umur piutang: tanpa
+   * tanggal terbit asli, seluruh piutang lama menumpuk di ember "0–30 hari"
+   * pada hari pertama — dan justru daftar itulah alasan orang membukanya.
+   */
+  documentNo?: string;
+  documentDate?: string;
+  dueDate?: string;
 }
 /**
  * Satu baris saldo awal PERSEDIAAN (issue #379). Selalu IDR — harga pokok
@@ -413,6 +426,12 @@ export function SetupWizard({
           currency: r.currency,
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
+          /* Hanya dikirim bila ADA — baris ketikan tangan tidak boleh mengirim
+             string kosong yang lolos `z.string().optional()` lalu menjadi
+             `new Date("")` = Invalid Date di route. */
+          ...(r.documentNo ? { documentNo: r.documentNo } : {}),
+          ...(r.documentDate ? { documentDate: r.documentDate } : {}),
+          ...(r.dueDate ? { dueDate: r.dueDate } : {}),
         })),
       payables: (saldoAktif.payables ? payables : [])
         .filter((r) => r.partnerId && (Number(r.amount) || 0) > 0)
@@ -421,6 +440,12 @@ export function SetupWizard({
           currency: r.currency,
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
+          /* Hanya dikirim bila ADA — baris ketikan tangan tidak boleh mengirim
+             string kosong yang lolos `z.string().optional()` lalu menjadi
+             `new Date("")` = Invalid Date di route. */
+          ...(r.documentNo ? { documentNo: r.documentNo } : {}),
+          ...(r.documentDate ? { documentDate: r.documentDate } : {}),
+          ...(r.dueDate ? { dueDate: r.dueDate } : {}),
         })),
       inventory: saldoAktif.inventory
         ? inventory
@@ -938,6 +963,7 @@ export function SetupWizard({
               t={t}
               token={token}
               onUpdate={(k, p) => updatePartner(setReceivables, k, p)}
+              importKind="receivables"
             />
             )}
 
@@ -971,6 +997,7 @@ export function SetupWizard({
               t={t}
               token={token}
               onUpdate={(k, p) => updatePartner(setPayables, k, p)}
+              importKind="payables"
             />
 
             )}
@@ -1150,6 +1177,7 @@ function Section({
   addLabel,
   empty,
   token,
+  extraActions,
 }: {
   title: string;
   hint: string;
@@ -1158,6 +1186,8 @@ function Section({
   addLabel: string;
   empty?: string;
   token: GlobalToken;
+  /** Tombol unduh templat & impor, bila bagian ini punya jalur berkas. */
+  extraActions?: React.ReactNode;
 }) {
   return (
     <div>
@@ -1181,16 +1211,13 @@ function Section({
           {empty}
         </Text>
       ) : (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          style={{ marginTop: token.marginSM }}
-          onClick={onAdd}
-        >
-          <PlusOutlined aria-hidden="true" />
-          {addLabel}
-        </Button>
+        <Flex gap={token.marginXS} wrap style={{ marginTop: token.marginSM }}>
+          <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+            <PlusOutlined aria-hidden="true" />
+            {addLabel}
+          </Button>
+          {extraActions}
+        </Flex>
       )}
     </div>
   );
@@ -1299,6 +1326,181 @@ function StockSection({
   );
 }
 
+/**
+ * Label unggah yang digayai seperti `Button variant="secondary" size="sm"` —
+ * ia memang harus label, bukan tombol (lihat catatan di dalam komponennya).
+ */
+const IMPORT_LABEL: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  height: 24,
+  padding: "0 8px",
+  borderRadius: "var(--ant-border-radius-sm)",
+  border: "1px solid var(--ant-color-border)",
+  background: "var(--ant-color-bg-container)",
+  color: "var(--ant-color-text)",
+  fontSize: "var(--ant-font-size-sm)",
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+/**
+ * Unduh templat + impor berkas piutang/utang terbuka (issue #381 tahap 4).
+ *
+ * ══ HASILNYA MENGGANTI, BUKAN MENAMBAH ═════════════════════════════════════
+ * Keputusan yang paling menentukan di komponen ini. Menggabungkan akan
+ * menggandakan diam-diam saat orang mengunggah berkas yang sama dua kali — dan
+ * mengunggah ulang sesudah memperbaiki SATU baris adalah persis yang paling
+ * sering dilakukan orang, sebab satu baris salah menolak seluruh berkas.
+ *
+ * ══ TIDAK ADA YANG TERSIMPAN DI SINI ═══════════════════════════════════════
+ * Route-nya hanya membaca. Barisnya hidup di state wisaya sampai orangnya
+ * menekan simpan, dan saat itulah seluruh penyiapan tersimpan sebagai SATU
+ * transaksi — jurnal pembuka, dokumen pembukanya, gerakan stok pembukanya.
+ * Impor yang menulis lebih dulu akan memecah transaksi itu menjadi dua.
+ */
+function OpeningImport({
+  kind,
+  setRows,
+  t,
+  token,
+}: {
+  kind: "receivables" | "payables";
+  setRows: React.Dispatch<React.SetStateAction<PartnerRow[]>>;
+  t: TranslateFn;
+  token: GlobalToken;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [rowErrors, setRowErrors] = useState<{ row: number; message: string }[]>([]);
+  const [imported, setImported] = useState<number | null>(null);
+
+  /* Alamat bertenant di JALURNYA, bukan di header: tombol unduh templat adalah
+     `<a href download>` biasa, dan sebuah tautan tidak melewati `apiFetch()`
+     (#158). Unggahannya memakai alamat yang sama. */
+  const pathname = usePathname();
+  const scope = pathname ? parseTenantPath(pathname) : null;
+  const endpoint = scope
+    ? `${tenantApiPath(scope.tenantSlug, scope.companySlug, "/master/opening")}?kind=${kind}`
+    : "";
+
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    setError("");
+    setRowErrors([]);
+    setImported(null);
+    setLoading(true);
+
+    const form = new FormData();
+    form.set("file", file);
+    const res = await apiFetch(endpoint, { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || t("setup.importFailed"));
+      if (Array.isArray(data.rowErrors)) setRowErrors(data.rowErrors);
+      return;
+    }
+
+    type Baris = {
+      partnerId: number;
+      documentNo: string;
+      date: string;
+      dueDate: string | null;
+      currency: string;
+      rate: number | null;
+      amount: number;
+    };
+    const rows: PartnerRow[] = (data.rows as Baris[]).map((r) => ({
+      key: nextId(),
+      partnerId: String(r.partnerId),
+      currency: r.currency,
+      amount: String(r.amount),
+      rate: r.rate == null ? "" : String(r.rate),
+      documentNo: r.documentNo,
+      documentDate: r.date,
+      dueDate: r.dueDate ?? undefined,
+    }));
+    setRows(rows);
+    setImported(rows.length);
+  }
+
+  return (
+    <>
+      {/* `<Button href download>`, BUKAN `<ButtonLink>` (#289): navigasi
+          sisi-klien mencegat `download`, dan yang terjadi malah pindah halaman. */}
+      <Button href={endpoint} download variant="secondary" size="sm">
+        <DownloadOutlined aria-hidden="true" />
+        {t("setup.downloadTemplate")}
+      </Button>
+
+      {/*
+        * `<label>` sebagai permukaan yang diklik + isian berkas ber-`data-sr-only`.
+        *
+        * BUKAN `display: none` (dijaga `tests/design-system-primitives.test.ts`):
+        * itu mengeluarkan isiannya dari urutan Tab, dan `<label>` bukan elemen
+        * fokusable — permukaannya berhenti punya perhentian Tab sama sekali dan
+        * unggahannya menjadi mouse-only. `data-sr-only` memotongnya jadi 1×1px
+        * tanpa mencabut fokusnya.
+        *
+        * BUKAN pula `<label><Button/></label>`: itu menaruh elemen interaktif
+        * di dalam elemen interaktif. Labelnya sendiri yang digayai seperti
+        * tombol sekunder — pola acuan `accounts/import/import-form.tsx`.
+        */}
+      <label style={IMPORT_LABEL} data-disabled={loading || undefined}>
+        <UploadOutlined aria-hidden="true" />
+        {loading ? t("setup.importing") : t("setup.importFromFile")}
+        <input
+          type="file"
+          accept=".xlsx"
+          disabled={loading}
+          data-sr-only
+          onChange={(e) => {
+            void handleFile(e.target.files?.[0] ?? null);
+            // Berkas yang SAMA boleh dipilih lagi sesudah diperbaiki — tanpa ini
+            // `onChange` tidak menyala untuk nama berkas yang sama, dan
+            // mengunggah ulang sesudah memperbaiki satu baris adalah hal yang
+            // paling sering dilakukan orang di layar ini.
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      {(error || imported !== null || rowErrors.length > 0) && (
+        <div style={{ flexBasis: "100%", marginTop: token.marginXS }}>
+          {error && <Alert type="error" showIcon message={error} />}
+          {imported !== null && (
+            <Alert
+              type="success"
+              showIcon
+              message={t("setup.importReplaced", { count: imported })}
+            />
+          )}
+          {rowErrors.length > 0 && (
+            <ul
+              style={{
+                margin: `${token.marginXS}px 0 0`,
+                paddingInlineStart: token.paddingLG,
+                fontSize: token.fontSizeSM,
+                color: token.colorTextSecondary,
+              }}
+            >
+              {rowErrors.slice(0, 20).map((e) => (
+                <li key={`${e.row}-${e.message}`}>
+                  {t("setup.rowLabel", { row: e.row })}: {e.message}
+                </li>
+              ))}
+              {rowErrors.length > 20 && <li>… {rowErrors.length - 20}</li>}
+            </ul>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 function PartnerSection({
   title,
   hint,
@@ -1313,6 +1515,7 @@ function PartnerSection({
   t,
   token,
   onUpdate,
+  importKind,
 }: {
   title: string;
   hint: string;
@@ -1327,6 +1530,8 @@ function PartnerSection({
   t: TranslateFn;
   token: GlobalToken;
   onUpdate: (key: number, patch: Partial<PartnerRow>) => void;
+  /** Jenis berkas saldo awal yang boleh diimpor ke bagian ini (#381 tahap 4). */
+  importKind: "receivables" | "payables";
 }) {
   return (
     <Section
@@ -1341,6 +1546,11 @@ function PartnerSection({
           ...r,
           { key: nextId(), partnerId: "", currency: "IDR", amount: "", rate: "" },
         ])
+      }
+      extraActions={
+        parties.length > 0 ? (
+          <OpeningImport kind={importKind} setRows={setRows} t={t} token={token} />
+        ) : undefined
       }
     >
       {rows.map((row) => {

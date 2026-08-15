@@ -2472,7 +2472,13 @@
     "balanced": "已平衡：资产 = 负债 + 资本/权益（{amount}）",
     "noBalancesYet": "尚未填写任何期初余额。",
     "savingStatus": "正在保存设置——公司信息、模块、会计科目表和期初余额日记账。请稍候，勿关闭此页面。",
-    "finishing": "保存中…"
+    "finishing": "保存中…",
+    "downloadTemplate": "下载模板",
+    "importFromFile": "从文件导入",
+    "importing": "读取中…",
+    "importFailed": "导入失败。",
+    "importReplaced": "文件中的 {count} 行已替换本节内容。",
+    "rowLabel": "第 {row} 行"
   },
   "approvalDocumentType": {
     "contract": "合同",

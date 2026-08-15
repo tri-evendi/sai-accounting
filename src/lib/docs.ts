@@ -234,7 +234,7 @@ const PERAN_IZIN = {
   ringkas:
     "Siapa boleh melihat dan mengerjakan apa — dan kenapa tabel di halaman ini hanya titik awalnya.",
   cabang: "pengguna",
-  navHrefs: ["/permissions", "/users"],
+  navHrefs: ["/permissions", "/users", "/api-tokens"],
 } as const satisfies DocMeta;
 
 const PAKET = {

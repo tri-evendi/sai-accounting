@@ -249,7 +249,8 @@
       "permissions": "Access Rights",
       "settings": "Settings",
       "selectCompany": "Switch Company",
-      "masterImport": "Import Starting Data"
+      "masterImport": "Import Starting Data",
+      "apiTokens": "API Tokens"
     }
   },
   "quickActions": {
@@ -4003,5 +4004,32 @@
     "doneBody": "{created} new rows added, {skipped} skipped because the name already exists, out of {total} rows.",
     "truncated": "The file exceeded the 10,000-row limit; the rest was not read.",
     "toastImported": "{created} rows imported"
+  },
+  "apiTokens": {
+    "title": "API Tokens",
+    "description": "Credentials for external systems to read this company's books through /api/v1.",
+    "newTitle": "Issue a new token",
+    "nameLabel": "Name",
+    "namePlaceholder": "POS integration",
+    "roleLabel": "Acts as",
+    "roleHint": "The token reads as the role you pick — exactly the permissions a user with that role has, including modules that are switched off.",
+    "create": "Issue",
+    "creating": "Issuing…",
+    "createFailed": "Could not issue the token.",
+    "freshTitle": "Token issued",
+    "freshWarning": "Copy it now. This token will NOT be shown again — only its fingerprint is stored.",
+    "colName": "Name",
+    "colRole": "Role",
+    "colLastUsed": "Last used",
+    "colCreatedBy": "Issued by",
+    "neverUsed": "Never",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke this token?",
+    "revokeBody": "Token “{name}” stops working immediately. Integrations using it will fail on their next request. Its record is kept.",
+    "revoked": "Token “{name}” revoked",
+    "revokeFailed": "Could not revoke the token.",
+    "revokedAt": "Revoked {at}",
+    "emptyTitle": "No tokens yet",
+    "emptyBody": "Issue one to give an external system read access to this company's books."
   }
 }

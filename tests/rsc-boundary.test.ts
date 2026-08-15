@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 161;
+const AMBANG_KLIEN = 162;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -237,6 +237,12 @@ const KLIEN_TERSAHKAN = [
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/new/account-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form.tsx",
+  /* Token API (#389) — pulau client karena satu sebab yang tidak bisa
+     dipindahkan ke server: token utuh hanya ADA sekali, di jawaban POST, dan
+     ia harus tetap terlihat di layar yang sama sesudah daftarnya menyegar.
+     Halamannya sendiri TETAP server component dan membaca daftarnya lewat
+     Prisma — yang menyeberang formulirnya, bukan datanya. */
+  "app/(dashboard)/t/[tenantSlug]/[companySlug]/api-tokens/api-tokens-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/approval-queue-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/rules/approval-rules-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/budget/accounts/budget-accounts-client.tsx",

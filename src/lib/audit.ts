@@ -72,6 +72,13 @@ export type AuditAction =
    * seseorang, dan seratus baris jejak untuk satu tindakan mengubur tindakan
    * lain yang justru perlu dibaca.
    */
+  /**
+   * Token API (issue #389). Tokennya sendiri TIDAK PERNAH masuk jejak — jejak
+   * dibaca lebih banyak orang daripada yang berhak memakai tokennya. Yang
+   * dicatat namanya, perannya, dan siapa yang menerbitkan/mencabutnya.
+   */
+  | "api_token.create"
+  | "api_token.revoke"
   | "master.import"
   | "sample_data.clear"
   | "period.close"
@@ -215,6 +222,8 @@ export type AuditEntity =
    */
   | "customer"
   | "supplier"
+  /** Kredensial mesin (issue #389). */
+  | "api_token"
   | "supplier_transaction"
   | "user"
   /** Baris `invitations` di basis data kendali (issue #139). */

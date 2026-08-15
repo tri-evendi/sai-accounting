@@ -36,10 +36,11 @@ import {
   OPENING_AR_COLUMNS,
   parseOpeningDocuments,
 } from "@/lib/import/opening-ar-ap";
+import { FIXED_ASSET_COLUMNS, parseFixedAssetRows } from "@/lib/import/fixed-assets";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-type Kind = "receivables" | "payables";
+type Kind = "receivables" | "payables" | "fixed-assets";
 
 const KINDS = {
   receivables: {
@@ -54,11 +55,27 @@ const KINDS = {
     fileName: "templat-utang-awal.xlsx",
     partners: () => prisma.supplier.findMany({ select: { id: true, name: true } }),
   },
+  /*
+   * Aset tetap ikut di route ini, BUKAN di `master/import` yang menulis — dan
+   * itu bukan penempatan sembarangan: nilainya masuk ke JURNAL PEMBUKA, jadi ia
+   * harus lahir di dalam transaksi sekali-jalan `applyOpeningBalances` bersama
+   * jurnalnya. Route yang menulis asetnya lebih dulu akan meninggalkan register
+   * tanpa jurnal bila langkah kedua gagal — persis cacat yang #387 tutup.
+   *
+   * `partners` tidak dipakai untuk jenis ini (yang dicocokkan KATEGORI, bukan
+   * mitra); cabangnya terpisah di POST.
+   */
+  "fixed-assets": {
+    columns: FIXED_ASSET_COLUMNS,
+    sheetName: "Aset Tetap",
+    fileName: "templat-aset-tetap.xlsx",
+    partners: () => Promise.resolve([]),
+  },
 } as const;
 
 function kindOf(request: Request): Kind | null {
   const raw = new URL(request.url).searchParams.get("kind");
-  return raw === "receivables" || raw === "payables" ? raw : null;
+  return raw === "receivables" || raw === "payables" || raw === "fixed-assets" ? raw : null;
 }
 
 export async function POST(request: Request, ctx: TenantApiContext) {
@@ -91,6 +108,66 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     sheet = await readFirstSheetRows(Buffer.from(await file.arrayBuffer()));
   } catch {
     return NextResponse.json({ error: t("errors.excelUnreadable") }, { status: 400 });
+  }
+
+  if (kind === "fixed-assets") {
+    const parsedAssets = parseFixedAssetRows(sheet);
+
+    /* Kategori dicocokkan DI SINI, bukan di parser (yang murni). Kategori yang
+       tidak dikenali menjadi galat PER BARIS — bukan satu pesan gabungan di
+       akhir yang memaksa orang mencari sendiri baris mana. */
+    const categories = await prisma.fixedAssetCategory.findMany({
+      where: { isActive: true },
+      select: { name: true },
+    });
+    const known = new Set(categories.map((c) => c.name.trim().toLowerCase()));
+    const assetErrors = [...parsedAssets.errors];
+
+    parsedAssets.rows.forEach((row, i) => {
+      if (!known.has(row.category.trim().toLowerCase())) {
+        assetErrors.push({
+          row: i + 2,
+          message:
+            `Kategori "${row.category}" belum ada. Buat kategorinya di menu ` +
+            "Aset Tetap, atau samakan penulisan namanya.",
+        });
+      }
+    });
+
+    if (assetErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: t("errors.rowsNeedFixing"),
+          rowErrors: assetErrors,
+          valid: parsedAssets.rows.length,
+        },
+        { status: 422 }
+      );
+    }
+    if (parsedAssets.rows.length === 0) {
+      return NextResponse.json({ error: t("errors.noImportRows") }, { status: 422 });
+    }
+
+    /* Tanggal dipulangkan sebagai `YYYY-MM-DD`: payload wisaya adalah JSON, dan
+       `Date` yang diserialisasi menjadi ISO penuh akan membawa zona waktu yang
+       menggeser tanggal dokumen satu hari di sebagian peramban. */
+    return NextResponse.json({
+      rows: parsedAssets.rows.map((a) => ({
+        assetNo: a.assetNo,
+        name: a.name,
+        category: a.category,
+        acquisitionDate: a.acquisitionDate.toISOString().slice(0, 10),
+        cost: a.cost,
+        residual: a.residual,
+        usefulLifeMonths: a.usefulLifeMonths,
+        accumulated: a.accumulated,
+        lastDepreciationYear: a.lastDepreciationYear,
+        lastDepreciationMonth: a.lastDepreciationMonth,
+        location: a.location,
+      })),
+      total: parsedAssets.rows.length,
+      truncated: parsedAssets.truncated,
+    });
   }
 
   const parsed = parseOpeningDocuments(sheet, spec.columns);

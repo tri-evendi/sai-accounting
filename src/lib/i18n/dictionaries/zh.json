@@ -2480,7 +2480,13 @@
     "importing": "读取中…",
     "importFailed": "导入失败。",
     "importReplaced": "文件中的 {count} 行已替换本节内容。",
-    "rowLabel": "第 {row} 行"
+    "rowLabel": "第 {row} 行",
+    "fixedAssetsTitle": "固定资产",
+    "fixedAssetsHint": "您已拥有的资产及其累计折旧。通过文件填写——单项资产需要七个数字，在此逐条录入并不合适。",
+    "fixedAssetsCount": "来自文件的 {count} 项资产",
+    "fixedAssetsCost": "取得成本",
+    "fixedAssetsAccumulated": "累计折旧",
+    "fixedAssetsBookValue": "账面价值"
   },
   "approvalDocumentType": {
     "contract": "合同",

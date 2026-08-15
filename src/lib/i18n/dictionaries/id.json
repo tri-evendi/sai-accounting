@@ -2480,7 +2480,13 @@
     "importing": "Membaca…",
     "importFailed": "Impor gagal.",
     "importReplaced": "{count} baris dari berkas menggantikan isi bagian ini.",
-    "rowLabel": "Baris {row}"
+    "rowLabel": "Baris {row}",
+    "fixedAssetsTitle": "Aset Tetap",
+    "fixedAssetsHint": "Aset yang sudah Anda miliki beserta akumulasi penyusutannya. Diisi lewat berkas — satu aset menuntut tujuh angka, dan mengetiknya satu per satu di sini bukan tempatnya.",
+    "fixedAssetsCount": "{count} aset dari berkas",
+    "fixedAssetsCost": "Harga perolehan",
+    "fixedAssetsAccumulated": "Akumulasi penyusutan",
+    "fixedAssetsBookValue": "Nilai buku"
   },
   "approvalDocumentType": {
     "contract": "Kontrak",

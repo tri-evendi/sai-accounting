@@ -2480,7 +2480,13 @@
     "importing": "Reading…",
     "importFailed": "Import failed.",
     "importReplaced": "{count} rows from the file replaced this section.",
-    "rowLabel": "Row {row}"
+    "rowLabel": "Row {row}",
+    "fixedAssetsTitle": "Fixed Assets",
+    "fixedAssetsHint": "Assets you already own, with their accumulated depreciation. Filled from a file — one asset needs seven figures, and typing them one by one here is the wrong place.",
+    "fixedAssetsCount": "{count} assets from the file",
+    "fixedAssetsCost": "Acquisition cost",
+    "fixedAssetsAccumulated": "Accumulated depreciation",
+    "fixedAssetsBookValue": "Book value"
   },
   "approvalDocumentType": {
     "contract": "Contract",

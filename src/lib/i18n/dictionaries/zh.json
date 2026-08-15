@@ -624,7 +624,6 @@
     "fileTooLarge": "文件过大，最大 {max}。",
     "fileTypeNotAllowed": "不支持该文件类型。可上传：JPG、PNG、GIF、PDF。",
     "fileContentMismatch": "文件内容与其扩展名不符。",
-    "invalidFilePath": "文件名无效。",
     "excelUnreadable": "无法读取该文件。请确认其为 Excel 格式（.xlsx）。",
     "rowsNeedFixing": "有些行需要修正。",
     "noAccountRows": "没有可导入的科目行。",

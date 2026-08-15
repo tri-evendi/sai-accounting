@@ -34,7 +34,7 @@ Edit `.env`:
 bun run setup:prod
 ```
 
-This runs: `bun install --frozen-lockfile` → Prisma generate → migrations → creates `data/audit` & `public/uploads` → production build.
+This runs: `bun install --frozen-lockfile` → Prisma generate → migrations → creates `data/audit`, `data/documents` & `public/uploads` → production build.
 
 **Do not run** `bun run db:seed` on production.
 
@@ -102,9 +102,27 @@ Ensure the process user can write:
 | Path | Purpose |
 |------|---------|
 | `data/audit/` | Security audit log (`audit.jsonl`) |
-| `public/uploads/` | Contract documents |
+| `data/documents/` | Uploaded documents, one directory per company (issue #367) |
+| `public/uploads/` | Legacy upload directory — only until `bun run migrate:documents --apply` has run |
 
-Back up both with your server backups.
+Back up all three with your server backups.
+
+> **One-time step per installation (issue #367).** Uploaded documents used to
+> land in a single shared `public/uploads/`, served as static files that pass
+> through no permission guard — any signed-in user of any tenant could fetch
+> another tenant's document if they knew the filename. They now live in
+> `data/documents/<companyId>/` and are only reachable through
+> `/api/documents/<id>/file`, which requires `document.read` and finds the row
+> in the active company's database.
+>
+> Existing files still need moving. Run it alongside `db:migrate:all`:
+>
+> ```bash
+> bun run migrate:documents            # report only
+> bun run migrate:documents --apply    # actually move
+> ```
+>
+> Idempotent. Files nothing references are reported as orphans and left alone.
 
 ## 7. Post-deploy checklist
 
@@ -164,4 +182,8 @@ If you use PM2 without `--env-file`, export variables in `ecosystem.config.cjs` 
 
 **Audit log empty** — Check write permissions on `data/audit/`.
 
-**Upload fails** — Check `public/uploads/` permissions and `client_max_body_size` in nginx.
+**Upload fails** — Check `data/documents/` permissions and `client_max_body_size` in nginx.
+
+**A document 404s** — The row exists but the file does not, or `documents.filepath`
+still holds the legacy `/uploads/…` form while the file has already been moved.
+Run `bun run migrate:documents` (without `--apply`) — it reports both cases per company.

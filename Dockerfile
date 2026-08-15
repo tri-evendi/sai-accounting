@@ -160,7 +160,7 @@ COPY --from=builder /app/public ./public
 
 # Runtime-writable dirs. Creating + chowning them here means Docker named
 # volumes mounted at these paths inherit `node` ownership on first use.
-RUN mkdir -p ./public/uploads ./data/audit \
+RUN mkdir -p ./public/uploads ./data/audit ./data/documents \
     && chown -R node:node /app
 
 USER node

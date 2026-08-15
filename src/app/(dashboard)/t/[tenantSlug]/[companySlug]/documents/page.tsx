@@ -18,6 +18,7 @@ import {
   type SortSpec,
 } from "@/lib/table-sort";
 import type { Prisma } from "@/generated/prisma/client";
+import { documentFileHref } from "@/lib/document-storage";
 import { formatDate, parsePageParam } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
@@ -65,7 +66,13 @@ const SORTABLE: SortSpec<Prisma.DocumentOrderByWithRelationInput[]> = {
 interface DocumentRow {
   id: number;
   filename: string;
-  filepath: string;
+  /**
+   * Alamat PENGAMBILAN berkasnya — `/api/documents/<id>/file`, bukan lagi
+   * `documents.filepath` (issue #367). Kolom itu kini menyimpan kunci
+   * penyimpanan di dalam `data/documents/`, dan ia sengaja bukan sesuatu yang
+   * bisa dipasang sebagai `href`: berkasnya hanya keluar lewat route ber-izin.
+   */
+  href: string;
   type: string | null;
   contractNo: string | null;
   uploadedAt: string;
@@ -117,7 +124,7 @@ export default async function DocumentsPage({
   const rows: DocumentRow[] = documents.map((doc) => ({
     id: doc.id,
     filename: doc.filename,
-    filepath: doc.filepath,
+    href: documentFileHref(doc.id),
     type: doc.type,
     contractNo: doc.contract ? doc.contract.contractNo : null,
     uploadedAt: formatDate(doc.createdAt),
@@ -130,11 +137,11 @@ export default async function DocumentsPage({
       title: t("documents.colFilename"),
       align: "left",
       sorter: true,
-      // Berkas yang diunggah dibuka di tab baru — tautan KELUAR dari aplikasi,
-      // jadi ia `<a>` biasa dan bukan `Link` bertenant.
+      // Berkas yang diunggah dibuka di tab baru — tautan ke ROUTE berkas, bukan
+      // ke halaman app, jadi ia `<a>` biasa dan bukan `Link` bertenant.
       render: (_v, row) => (
         <a
-          href={row.filepath}
+          href={row.href}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: "var(--ant-color-link)", fontWeight: STRONG }}
@@ -174,7 +181,7 @@ export default async function DocumentsPage({
       title: t("common.actions"),
       align: "right",
       render: (_v, row) => (
-        <DocumentPreviewButton filename={row.filename} filepath={row.filepath} />
+        <DocumentPreviewButton filename={row.filename} href={row.href} />
       ),
     },
   ];

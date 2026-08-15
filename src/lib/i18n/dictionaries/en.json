@@ -624,7 +624,6 @@
     "fileTooLarge": "The file is too large. Maximum size is {max}.",
     "fileTypeNotAllowed": "That file type is not accepted. Allowed: JPG, PNG, GIF, PDF.",
     "fileContentMismatch": "The file contents do not match its extension.",
-    "invalidFilePath": "Invalid file name.",
     "excelUnreadable": "The file could not be read. Make sure it is an Excel file (.xlsx).",
     "rowsNeedFixing": "Some rows need fixing.",
     "noAccountRows": "There are no account rows to import.",

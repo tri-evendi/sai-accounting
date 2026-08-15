@@ -28,6 +28,8 @@
     "db:migrate:platform": "tsx scripts/migrate-platform.ts",
     "db:migrate:companies": "tsx scripts/migrate-all-companies.ts",
     "db:migrate:all": "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies",
+    "migrate:documents": "tsx scripts/migrate-documents.ts",
+    "_migrate_documents_note": "LANGKAH RILIS #367, sejajar db:migrate:all dan sama-sama sekali jalan per pemasangan. Ia memindahkan berkas dokumen dari `public/uploads/` bersama ke `data/documents/<companyId>/`, lalu menulis ulang `documents.filepath`. Tanpa --apply ia hanya melapor. Selama ini belum dijalankan, dokumen lama tetap terbaca (route berkas mengenali bentuk lama) TAPI berkasnya masih duduk di direktori bersama yang bisa dijangkau sesi tenant mana pun — yaitu keadaan yang issue itu ada untuk mengakhiri. Idempoten; berkas yatim dilaporkan, tidak dihapus.",
     "reconcile:platform": "tsx scripts/reconcile-platform.ts",
     "scheduler:subscriptions": "tsx scripts/subscription-scheduler.ts",
     "_scheduler_note": "Penjadwal langganan (issue #140): trial habis, tagihan, dunning, suspensi, pengingat H-7/H-3/H-1, sinkronisasi pemakaian, rekonsiliasi. IDEMPOTEN — aman dijalankan berulang. Jadwalkan lewat cron host: `17 * * * * cd <app> && docker compose run --rm migrate bun run scheduler:subscriptions` (lihat kepala scripts/subscription-scheduler.ts).",

@@ -1,13 +1,29 @@
+/**
+ * Unggah dokumen (B/L, PEB, packing list, faktur pindaian, …).
+ *
+ * ── Ke mana byte-nya ditulis, dan kenapa berubah (issue #367) ──────────────
+ * Sampai issue itu berkasnya mendarat di `public/uploads/` — satu direktori
+ * BERSAMA seluruh PT seluruh tenant — dengan nama yang mempertahankan nama asli
+ * pengguna, lalu disajikan sebagai berkas statis yang tidak melewati satu pun
+ * penjaga. Sekarang ia mendarat di `data/documents/<companyId>/<uuid>.<ext>`,
+ * di luar `public/`, dan hanya bisa diambil lewat `/api/documents/[id]/file`
+ * yang menuntut `document.read` DAN menemukan barisnya di basis data PT aktif.
+ * Alasan lengkapnya di kepala `lib/document-storage.ts`.
+ *
+ * `companyId` datang dari konteks yang sudah dimasuki penjaga di bawah, bukan
+ * dari klien — pola yang sama dengan `lib/audit.ts`.
+ */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
+import { currentCompanyId } from "@/lib/current-company";
+import { newStorageKey, resolveDocumentPath } from "@/lib/document-storage";
 import { DOCUMENT_TYPES, type DocumentType } from "@/lib/constants";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getRequestI18n } from "@/lib/i18n/server";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Allowed extensions and their expected magic bytes
@@ -99,27 +115,22 @@ export async function POST(request: Request) {
     }
   }
 
-  // Create upload directory
-  await mkdir(UPLOAD_DIR, { recursive: true });
-
-  // Generate safe filename (strip all special chars, use timestamp)
-  const safeName = path.basename(file.name, ext).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
-  const timestamp = Date.now();
-  const filename = `${safeName}_${timestamp}${ext}`;
-  const filepath = path.join(UPLOAD_DIR, filename);
-
-  // Prevent path traversal
-  if (!filepath.startsWith(UPLOAD_DIR)) {
-    const { t } = await getRequestI18n();
-    return NextResponse.json({ error: t("errors.invalidFilePath") }, { status: 400 });
-  }
-
+  /*
+   * Kunci penyimpanan: `<companyId>/<uuid><ext>` — TANPA satu byte pun nama
+   * asli. Nama aslinya tetap tersimpan di kolom `filename`; itulah yang
+   * dipulangkan `Content-Disposition` saat berkasnya diambil. `resolveDocumentPath`
+   * yang menyusun jalur absolutnya, jadi hanya ADA SATU tempat di repo ini yang
+   * tahu di mana dokumen tinggal.
+   */
+  const storageKey = newStorageKey(await currentCompanyId(), ext);
+  const filepath = resolveDocumentPath(storageKey)!;
+  await mkdir(path.dirname(filepath), { recursive: true });
   await writeFile(filepath, buffer);
 
   const document = await prisma.document.create({
     data: {
       filename: file.name,
-      filepath: `/uploads/${filename}`,
+      filepath: storageKey,
       type: docType || null,
       contractId: contractId ? parseInt(contractId) : null,
     },

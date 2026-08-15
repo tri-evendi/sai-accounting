@@ -624,7 +624,6 @@
     "fileTooLarge": "File terlalu besar. Maksimal {max}.",
     "fileTypeNotAllowed": "Jenis file itu tidak diterima. Yang bisa diunggah: JPG, PNG, GIF, PDF.",
     "fileContentMismatch": "Isi file tidak cocok dengan akhiran namanya.",
-    "invalidFilePath": "Nama file tidak sah.",
     "excelUnreadable": "File tidak dapat dibaca. Pastikan berformat Excel (.xlsx).",
     "rowsNeedFixing": "Ada baris yang perlu diperbaiki.",
     "noAccountRows": "Tidak ada baris akun untuk diimpor.",

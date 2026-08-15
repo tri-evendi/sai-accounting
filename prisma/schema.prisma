@@ -204,6 +204,22 @@ model ContractPayment {
 model Invoice {
   id         Int      @id @default(autoincrement())
   invoiceNo  String   @unique @map("invoice_no") @db.VarChar(50)
+  /// DOKUMEN PEMBUKA (issue #381 tahap 3) — faktur yang sudah terbit SEBELUM
+  /// aplikasi ini dipakai, dimasukkan saat penyiapan supaya umur piutang terisi
+  /// dan pelunasannya bisa dicatat.
+  ///
+  /// Nilainya SUDAH ada di jurnal pembuka (satu baris ke akun kontrol Piutang),
+  /// jadi dokumen ini TIDAK BOLEH menerbitkan jurnalnya sendiri — mesin posting
+  /// menolaknya, dan jalur sunting menolak mengubahnya. Tanpa penanda ini,
+  /// SUNTINGAN pertama pada faktur pembuka akan memanggil `repostForSource` dan
+  /// menerbitkan jurnal DI ATAS nilai yang sudah tercatat: penggandaan piutang
+  /// yang lahir berbulan-bulan sesudah impornya, dari tindakan yang tampak tidak
+  /// berbahaya.
+  ///
+  /// Kolom sungguhan, BUKAN awalan pada `invoice_no`: penanda yang hidup di
+  /// dalam teks nomor dokumen hilang pada penomoran ulang pertama, dan yang
+  /// mengandalkannya tidak akan tahu.
+  isOpening  Boolean  @default(false) @map("is_opening")
   date       DateTime
   /// Structured payment due date for AR aging (issue #12). NULL = unknown, and
   /// deliberately never backfilled — an invented due date would drive a false
@@ -430,6 +446,10 @@ model Supplier {
 model SupplierTransaction {
   id         Int      @id @default(autoincrement())
   supplierId Int      @map("supplier_id")
+  /// DOKUMEN PEMBUKA (issue #381 tahap 3) — utang yang sudah ada sebelum
+  /// aplikasi ini dipakai. Alasan & aturannya sama persis dengan
+  /// `invoices.is_opening`; lihat di sana.
+  isOpening  Boolean  @default(false) @map("is_opening")
   date       DateTime
   /// Structured payment due date for AP aging (issue #12). Meaningful only on
   /// `purchase` rows; NULL = unknown, aged from `date` and never flagged overdue.

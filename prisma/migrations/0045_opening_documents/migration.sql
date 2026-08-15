@@ -1,0 +1,50 @@
+-- DOKUMEN PEMBUKA — issue #381 tahap 3.
+--
+-- KENAPA: sampai sekarang saldo awal piutang/utang masuk sebagai SATU BARIS
+-- JURNAL per mitra ke akun kontrol, dengan nama mitra di memo. Neraca dan
+-- Neraca Saldo benar. Tetapi buku besar pembantu Piutang/Utang membaca DOKUMEN
+-- SUMBER (faktur / transaksi pemasok), bukan baris jurnal — jadi di hari
+-- pertama pelanggan pindahan:
+--
+--   • umur piutang KOSONG walau neraca menunjukkan piutang miliaran;
+--   • pembayaran atas faktur lama TIDAK BISA dicatat, sebab fakturnya tidak
+--     ada sebagai dokumen yang bisa dilunasi.
+--
+-- Bagi perusahaan yang pindah dari Accurate atau Excel — yaitu setiap pelanggan
+-- rilis umum — itu jalan buntu di hari pertama, sebelum ia sempat menilai apa
+-- pun yang lain.
+--
+-- Kolom ini menandai dokumen yang lahir dari penyiapan itu.
+--
+-- ══ APA YANG DIJAGA PENANDA INI, DAN KENAPA IA HARUS KOLOM ═════════════════
+-- Nilai dokumen pembuka SUDAH tercatat di jurnal pembuka (satu baris ke akun
+-- kontrol). Dokumennya sendiri karena itu tidak boleh menerbitkan jurnal.
+--
+-- Membuat barisnya saja memang tidak memposting apa pun — posting hanya terjadi
+-- lewat pemanggilan `postForSource` yang eksplisit. Tapi itu benar HANYA sampai
+-- seseorang MENYUNTING dokumen itu: jalur sunting memanggil `repostForSource`,
+-- dan saat itu dokumen pembuka menerbitkan jurnalnya sendiri DI ATAS nilai yang
+-- sudah ada. Penggandaan piutang yang lahir berbulan-bulan sesudah impornya,
+-- dari tindakan yang tampak tidak berbahaya.
+--
+-- Karena itu: kolom sungguhan, dibaca mesin posting (menolak), dan dibaca jalur
+-- sunting (menolak). BUKAN awalan pada `invoice_no` — penanda yang hidup di
+-- dalam teks nomor dokumen hilang pada penomoran ulang pertama, dan yang
+-- mengandalkannya tidak akan tahu bahwa ia hilang.
+--
+-- ══ TIDAK ADA BARIS YANG BERUBAH KEADAANNYA ════════════════════════════════
+-- Bawaannya FALSE, jadi setiap dokumen yang sudah ada tetap dokumen biasa:
+-- tetap memposting, tetap bisa disunting. Migration ini hanya membuka
+-- kemungkinan, tidak mengubah satu pun perilaku yang berlaku.
+--
+-- ══ TANPA INDEX ════════════════════════════════════════════════════════════
+-- Sengaja. Kolom ini dibaca per-DOKUMEN (mesin posting menanyakan satu baris
+-- yang sudah ditemukan lewat primary key), bukan sebagai saringan daftar.
+-- Sebuah index di kolom boolean yang 99,9% barisnya bernilai sama tidak
+-- menolong satu kueri pun, dan tetap harus dipelihara setiap penulisan.
+
+-- AlterTable
+ALTER TABLE `invoices` ADD COLUMN `is_opening` BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE `supplier_transactions` ADD COLUMN `is_opening` BOOLEAN NOT NULL DEFAULT false;

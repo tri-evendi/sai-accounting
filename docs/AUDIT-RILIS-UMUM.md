@@ -98,6 +98,8 @@ penulisan ke `public/uploads` di seluruh `src/`.
 
 #### F-2 · Tidak ada jalan masuk bagi data perusahaan yang sudah berjalan
 
+> **Status:** issue [#381](https://github.com/tri-evendi/sai-accounting/issues/381) — tahap 1 (inti impor), 2 (master data), dan 3 (dokumen pembuka piutang/utang) sudah mendarat. Tahap 4 (impor berkas AR/AP berinci + aset tetap) menyusul.
+
 Impor yang ada hari ini: **daftar akun** (`lib/coa-import.ts`, xlsx bergaya
 Accurate) dan **rekening koran** untuk rekonsiliasi. Selesai. Tidak ada impor
 untuk pelanggan, pemasok, barang, saldo stok per barang, aset tetap beserta

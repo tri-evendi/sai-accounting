@@ -630,6 +630,7 @@
     "rowsNeedFixing": "有些行需要修正。",
     "noAccountRows": "没有可导入的科目行。",
     "noImportRows": "此文件没有可导入的行。",
+    "openingDocumentLocked": "期初余额单据不可修改或删除。其金额记录在期初分录中；如有错误请通过初始设置更正。",
     "unknownImportKind": "未知的导入类型。",
     "csvEmpty": "CSV 内容为空。",
     "csvInvalidRows": "CSV 中包含无效行。请修正后重新导入。",

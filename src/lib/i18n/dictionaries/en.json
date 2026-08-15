@@ -630,6 +630,7 @@
     "rowsNeedFixing": "Some rows need fixing.",
     "noAccountRows": "There are no account rows to import.",
     "noImportRows": "This file has no rows that can be imported.",
+    "openingDocumentLocked": "An opening-balance document cannot be edited or deleted. Its value lives in the opening journal; correct it through Setup if it is wrong.",
     "unknownImportKind": "Unknown import type.",
     "csvEmpty": "The CSV is empty.",
     "csvInvalidRows": "The CSV contains invalid rows. Fix them, then import again.",

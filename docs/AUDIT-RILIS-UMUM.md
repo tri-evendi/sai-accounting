@@ -123,26 +123,59 @@ membuat **dokumen pembuka** (faktur/pembelian ber-`source_type =
 pelunasan, dan retur bekerja seperti dokumen biasa, sementara jurnal
 pembukanya tetap satu dan tetap seimbang.
 
-#### F-3 · Saldo awal persediaan bisa tercatat dua kali, tanpa penjaga
+#### F-3 · Saldo awal persediaan dan Nilai Persediaan tidak pernah bertemu
 
-Wisaya menerima persediaan sebagai **satu angka gelondongan**
-(`lib/opening-balance.ts:113`, diposting ke akun `INVENTORY` di baris 180–186).
-Sementara itu penambahan stok per barang lewat `/inventory/update`
-**memposting jurnalnya sendiri** (`api/inventory/route.ts:200`).
+> **KOREKSI (15 Agustus 2026).** Versi pertama temuan ini berjudul *"bisa
+> tercatat dua kali"* dan menyatakan bahwa mengisi wisaya LALU memasukkan stok
+> per barang **menggandakan akun Persediaan**. **Itu salah.** Saya menyimpulkannya
+> dari `api/inventory/route.ts:200` yang memanggil `postForSource`, tanpa membaca
+> aturannya sampai habis. `buildStockMovementEntry` (`posting/index.ts:1022`)
+> berbunyi:
+>
+> > `if (movement.type !== "out") return null;`
+>
+> Stok MASUK manual karena itu **tidak memposting jurnal apa pun**. Tidak ada
+> penggandaan, dan tidak pernah ada.
+>
+> Cacatnya nyata, tetapi bentuknya justru KEBALIKANNYA — dan karena itu tetap
+> P0. Uraian di bawah sudah diperbaiki.
 
-Maka pengguna yang melakukan hal paling wajar — mengisi nilai persediaan di
-wisaya, lalu memasukkan stok per barang supaya laporan stok terisi —
-**menggandakan akun Persediaan**. Yang mengisi salah satunya saja mendapat
-Nilai Persediaan ≠ Neraca sejak hari pertama. Tidak ada satu pun penjaga,
-peringatan, maupun rekonsiliasi yang menangkap ini.
+Dua angka yang menjawab pertanyaan yang sama — "berapa nilai persediaan kami" —
+dihitung dari **dua sumber yang sama sekali terpisah**:
 
-**Perbaikan.** Cabut angka gelondongan. Saldo awal persediaan diisi **per
-barang (kuantitas × harga pokok)** di langkah yang sama, lalu diposting
-sebagai satu bagian dari jurnal pembuka **sekaligus** menerbitkan
-`stock_movements` pembuka — satu tindakan, dua akibat yang konsisten. Sampai
-itu ada: penjaga yang menolak stok masuk bertanggal ≤ tanggal saldo awal, dan
-satu laporan rekonsiliasi "Nilai Persediaan vs saldo akun Persediaan" yang
-wajib nol.
+| Angka | Dibaca dari |
+|---|---|
+| Persediaan di **Neraca** | baris jurnal |
+| **Nilai Persediaan** di laporan stok | `stock_movements` |
+
+Dalam operasi normal keduanya sinkron **secara konstruksi**: satu pembelian
+menerbitkan jurnal debit Persediaan (`posting/index.ts:641`) **dan** membuat
+gerakan stok masuk (`createStockInMovementsInTx`) yang sengaja tidak memposting
+apa pun. Satu peristiwa, dua sisi, sekali masing-masing.
+
+**Jalur pembukaan adalah satu-satunya tempat rangkaian itu putus**, dan ia putus
+ke dua arah sekaligus:
+
+- Wisaya menerima persediaan sebagai **satu angka gelondongan**
+  (`opening-balance.ts:113`, diposting ke akun Persediaan di baris 180–192) —
+  **jurnal saja, tanpa satu pun gerakan stok**. Neraca menunjukkan persediaan
+  Rp 500 juta; laporan stok kosong.
+- Memasukkan stok per barang lewat `/inventory/update` menghasilkan
+  **gerakan stok saja, tanpa jurnal**. Laporan stok terisi; akun Persediaan nol.
+
+Jadi pengguna baru menghadapi dua pilihan yang **dua-duanya salah**, tidak ada
+petunjuk mana yang dimaksud, dan tidak ada satu pun penjaga, peringatan, atau
+rekonsiliasi yang menyebutkan bahwa kedua angkanya berbeda. Yang menemukannya
+adalah akuntan, berbulan-bulan kemudian, saat neracanya tidak bisa dijelaskan.
+
+**Perbaikan.** Cabut angka gelondongan. Saldo awal persediaan diisi **per barang
+(kuantitas × harga pokok)**, dan jalur pembukaan berperilaku seperti pembelian —
+satu-satunya tempat di sistem ini yang kedua sisinya memang sudah sinkron: satu
+baris jurnal untuk totalnya, **dan** gerakan stok pembuka per barang, dalam
+transaksi yang sama. Ditambah satu laporan rekonsiliasi "Nilai Persediaan vs
+saldo akun Persediaan" yang wajib nol — sebab yang membuat cacat ini bertahan
+bukan sulitnya diperbaiki, melainkan tidak adanya yang pernah membandingkan
+kedua angka itu.
 
 #### F-4 · Tidak ada cadangan otomatis, dan pemulihan belum pernah dilatih
 

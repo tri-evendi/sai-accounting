@@ -136,12 +136,17 @@ export async function POST(request: Request) {
   const enabledModules = company.modules ? serializeEnabledModules(moduleSet) : null;
 
   // Partner names for the AR/AP line memos come from the DB, not the client.
-  const [customers, suppliers] = await Promise.all([
+  // Nama barang untuk gerakan stok pembuka (#379) mengikuti aturan yang sama:
+  // apa pun yang muncul di buku ditulis dari baris yang benar-benar ada, bukan
+  // dari teks kiriman peramban.
+  const [customers, suppliers, items] = await Promise.all([
     prisma.customer.findMany({ select: { id: true, name: true } }),
     prisma.supplier.findMany({ select: { id: true, name: true } }),
+    prisma.item.findMany({ select: { id: true, name: true } }),
   ]);
   const customerName = new Map(customers.map((c) => [c.id, c.name]));
   const supplierName = new Map(suppliers.map((s) => [s.id, s.name]));
+  const itemName = new Map(items.map((i) => [i.id, i.name]));
 
   for (const r of receivables) {
     if (!customerName.has(r.partnerId)) {
@@ -157,6 +162,20 @@ export async function POST(request: Request) {
       const { t } = await getRequestI18n();
       return NextResponse.json(
         { error: t("errors.setupSupplierNotFound", { id: p.partnerId }) },
+        { status: 400 }
+      );
+    }
+  }
+
+  /* Barang yang tidak ada ditolak SEBELUM transaksi dibuka — sebuah gerakan
+     stok pembuka yang gagal di tengah akan meninggalkan jurnal pembuka yang
+     sudah terbit tanpa buku pembantunya, yaitu persis keadaan yang #379
+     diperbaiki. */
+  for (const row of inventory) {
+    if (!itemName.has(row.itemId)) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        { error: t("errors.setupItemNotFound", { id: row.itemId }) },
         { status: 400 }
       );
     }
@@ -194,7 +213,12 @@ export async function POST(request: Request) {
       amount: p.amount,
       rate: p.rate,
     })),
-    inventory,
+    inventory: inventory.map((row) => ({
+      itemId: row.itemId,
+      itemName: itemName.get(row.itemId)!,
+      quantity: row.quantity,
+      unitCost: row.unitCost,
+    })),
   };
 
   try {

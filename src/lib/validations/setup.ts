@@ -34,6 +34,25 @@ export const openingPartnerSchema = z
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
 
 /**
+ * Satu baris saldo awal PERSEDIAAN, per barang (issue #379).
+ *
+ * Menggantikan `inventory: number` — satu angka gelondongan yang menerbitkan
+ * jurnal TANPA satu pun gerakan stok, sehingga Neraca menunjukkan persediaan
+ * sementara laporan stok kosong. Per barang, jalur pembukaan bisa menerbitkan
+ * KEDUA sisinya seperti pembelian: jurnalnya dan gerakan stoknya.
+ *
+ * Kuantitas `Decimal(15,3)` dan harga pokok `Decimal(15,2)` mengikuti
+ * docs/DATABASE.md — dan keduanya WAJIB positif: baris nol tidak menambah apa
+ * pun ke jurnal maupun ke stok, jadi ia hanya baris yang membingungkan
+ * pembacanya. Selalu IDR: harga pokok persediaan adalah nilai base.
+ */
+export const openingStockSchema = z.object({
+  itemId: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().positive(vmsg("validation.openingStockPositive")),
+  unitCost: z.coerce.number().positive(vmsg("validation.openingStockCostPositive")),
+});
+
+/**
  * Seller tax identity (issue #17) — the NPWP + tax name/address any e-Faktur
  * output needs. All optional: a legacy setup predates them, and the e-Faktur
  * export surfaces a missing NPWP rather than the wizard forcing it here.
@@ -77,15 +96,15 @@ export const setupSchema = z
     cash: z.array(openingCashSchema).max(200).default([]),
     receivables: z.array(openingPartnerSchema).max(1000).default([]),
     payables: z.array(openingPartnerSchema).max(1000).default([]),
-    /** Persediaan awal, IDR base. */
-    inventory: z.coerce.number().min(0).optional(),
+    /** Saldo awal persediaan, PER BARANG (issue #379). */
+    inventory: z.array(openingStockSchema).max(2000).default([]),
   })
   .superRefine((data, ctx) => {
     const hasAny =
       data.cash.length > 0 ||
       data.receivables.length > 0 ||
       data.payables.length > 0 ||
-      (data.inventory ?? 0) > 0;
+      data.inventory.length > 0;
     if (!hasAny) {
       ctx.addIssue({
         code: "custom",
@@ -93,6 +112,22 @@ export const setupSchema = z
         message: vmsg("validation.atLeastOneOpeningBalance"),
       });
     }
+
+    /* Satu barang hanya boleh punya SATU baris saldo awal. Dua baris untuk
+       barang yang sama akan menerbitkan dua gerakan stok pembuka dengan harga
+       pokok berbeda — dan rata-rata tertimbangnya menjadi angka yang tidak
+       pernah dimaksudkan siapa pun. */
+    const seenItems = new Set<number>();
+    data.inventory.forEach((row, index) => {
+      if (seenItems.has(row.itemId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["inventory", index, "itemId"],
+          message: vmsg("validation.openingStockDuplicateItem"),
+        });
+      }
+      seenItems.add(row.itemId);
+    });
 
     // No partner may appear twice on the same side — one opening balance per
     // customer / per supplier keeps the memo sub-ledger unambiguous.

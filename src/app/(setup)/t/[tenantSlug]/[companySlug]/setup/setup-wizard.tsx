@@ -28,6 +28,7 @@ import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Money } from "@/components/ui/money";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
@@ -99,6 +100,16 @@ interface PartnerRow {
   amount: string;
   rate: string;
 }
+/**
+ * Satu baris saldo awal PERSEDIAAN (issue #379). Selalu IDR — harga pokok
+ * persediaan adalah nilai base, dan tidak ada kurs yang perlu ditanyakan.
+ */
+interface StockRow {
+  key: number;
+  itemId: string;
+  quantity: string;
+  unitCost: string;
+}
 
 /** Judul langkah — `<h2>` yang ukurannya token, bukan `text-lg`. */
 function StepTitle({ children, token }: { children: React.ReactNode; token: GlobalToken }) {
@@ -116,6 +127,7 @@ export function SetupWizard({
   cashAccounts,
   customers,
   suppliers,
+  items,
 }: {
   defaults: { name: string; address: string; baseCurrency: string };
   currencies: string[];
@@ -123,6 +135,8 @@ export function SetupWizard({
   cashAccounts: CashAccount[];
   customers: Party[];
   suppliers: Party[];
+  /** Barang untuk saldo awal persediaan (#379). */
+  items: Party[];
 }) {
   const t = useT();
   const { token } = theme.useToken();
@@ -174,7 +188,7 @@ export function SetupWizard({
   const [cash, setCash] = useState<CashRow[]>([]);
   const [receivables, setReceivables] = useState<PartnerRow[]>([]);
   const [payables, setPayables] = useState<PartnerRow[]>([]);
-  const [inventory, setInventory] = useState("");
+  const [inventory, setInventory] = useState<StockRow[]>([]);
 
   // ── Draf tahan-muat-ulang (audit 2026-07) ──────────────────────────────────
   // Empat puluh baris saldo awal yang lenyap karena tab ter-refresh adalah
@@ -208,7 +222,7 @@ export function SetupWizard({
         if (d.cash != null) setCash(rows<CashRow>(d.cash));
         if (d.receivables != null) setReceivables(rows<PartnerRow>(d.receivables));
         if (d.payables != null) setPayables(rows<PartnerRow>(d.payables));
-        if (str(d.inventory)) setInventory(d.inventory);
+        setInventory(rows<StockRow>(d.inventory));
       }
     } catch {
       // Draf rusak → mulai bersih; jangan pernah memblokir wizard-nya sendiri.
@@ -244,7 +258,7 @@ export function SetupWizard({
   }, [step, name, address, npwp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory]);
 
   const hasMeaningfulDraft =
-    cash.length > 0 || receivables.length > 0 || payables.length > 0 || inventory !== "";
+    cash.length > 0 || receivables.length > 0 || payables.length > 0 || inventory.length > 0;
 
   useEffect(() => {
     if (!hasMeaningfulDraft) return;
@@ -318,7 +332,15 @@ export function SetupWizard({
         else unrated++;
       }
     }
-    const inv = saldoAktif.inventory ? Number(inventory) || 0 : 0;
+    /* Nilai persediaan awal = Σ (kuantitas × harga pokok). Rumus yang SAMA
+       dipakai server (`openingStockTotal`) untuk baris jurnalnya — kalau
+       keduanya menyimpang, pratinjau di layar berbohong tentang Modal. */
+    const inv = saldoAktif.inventory
+      ? inventory.reduce(
+          (sum, r) => sum + (Number(r.quantity) || 0) * (Number(r.unitCost) || 0),
+          0
+        )
+      : 0;
     if (inv > 0) assets = round2(assets + baseOf(inv, 1));
 
     for (const r of saldoAktif.payables ? payables : []) {
@@ -400,7 +422,15 @@ export function SetupWizard({
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
         })),
-      inventory: saldoAktif.inventory ? Number(inventory) || 0 : 0,
+      inventory: saldoAktif.inventory
+        ? inventory
+            .filter((r) => r.itemId && Number(r.quantity) > 0 && Number(r.unitCost) > 0)
+            .map((r) => ({
+              itemId: Number(r.itemId),
+              quantity: Number(r.quantity),
+              unitCost: Number(r.unitCost),
+            }))
+        : [],
     };
 
     try {
@@ -911,33 +941,18 @@ export function SetupWizard({
             />
             )}
 
-            {/* Persediaan */}
+            {/* Persediaan — PER BARANG sejak #379 */}
             {saldoAktif.inventory && (
-            <div>
-              <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
-                {t("accountType.inventory")}
-              </Title>
-              <Text
-                type="secondary"
-                style={{ display: "block", marginBottom: token.marginXS, fontSize: token.fontSizeSM }}
-              >
-                {t("setup.inventoryHint")}
-              </Text>
-              <Row>
-                <Col xs={24} sm={12}>
-                  <Input
-                    id="inventory"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    style={AMOUNT_INPUT}
-                    label={t("setup.inventoryField")}
-                    value={inventory}
-                    onChange={(e) => setInventory(e.target.value)}
-                  />
-                </Col>
-              </Row>
-            </div>
+            <StockSection
+              rows={inventory}
+              setRows={setInventory}
+              items={items}
+              t={t}
+              token={token}
+              onUpdate={(k, patch) =>
+                setInventory((rows) => rows.map((r) => (r.key === k ? { ...r, ...patch } : r)))
+              }
+            />
             )}
 
             {/* Utang */}
@@ -1178,6 +1193,109 @@ function Section({
         </Button>
       )}
     </div>
+  );
+}
+
+/**
+ * Saldo awal PERSEDIAAN, per barang (issue #379).
+ *
+ * Menggantikan satu isian gelondongan yang menerbitkan jurnal TANPA satu pun
+ * gerakan stok — sehingga Neraca menunjukkan persediaan sementara laporan stok
+ * kosong, dan tidak ada apa pun di layar yang menyebutkan selisihnya. Per
+ * barang, jalur pembukaan bisa menerbitkan kedua sisinya sekaligus.
+ *
+ * Tanpa pemilih MATA UANG, berbeda dari `PartnerSection`, dan itu disengaja:
+ * harga pokok persediaan adalah nilai base. Menawarkan kurs di sini berarti
+ * mengundang pertanyaan yang jawabannya tidak pernah dipakai.
+ */
+function StockSection({
+  rows,
+  setRows,
+  items,
+  t,
+  token,
+  onUpdate,
+}: {
+  rows: StockRow[];
+  setRows: React.Dispatch<React.SetStateAction<StockRow[]>>;
+  items: Party[];
+  t: TranslateFn;
+  token: GlobalToken;
+  onUpdate: (key: number, patch: Partial<StockRow>) => void;
+}) {
+  return (
+    <Section
+      title={t("accountType.inventory")}
+      hint={t("setup.inventoryHint")}
+      addLabel={t("setup.addStockRow")}
+      token={token}
+      empty={items.length === 0 ? t("setup.emptyItems") : undefined}
+      onAdd={() =>
+        items.length > 0 &&
+        setRows((r) => [...r, { key: nextId(), itemId: "", quantity: "", unitCost: "" }])
+      }
+    >
+      {rows.map((row) => {
+        /* Nilai baris dihitung dan DIPERLIHATKAN. Kuantitas × harga pokok
+           adalah perkalian yang mudah salah ketik satu nol, dan angka yang
+           tidak pernah ditampilkan adalah angka yang tidak pernah diperiksa. */
+        const nilai = (Number(row.quantity) || 0) * (Number(row.unitCost) || 0);
+        return (
+          <Row key={row.key} gutter={[token.marginXS, token.marginXS]} align="bottom">
+            <Col xs={24} sm={8}>
+              <Select
+                id={`i-${row.key}`}
+                label={t("setup.itemField")}
+                value={row.itemId}
+                onChange={(e) => onUpdate(row.key, { itemId: e.target.value })}
+                placeholder={t("setup.pickItem")}
+                options={items.map((i) => ({ value: String(i.id), label: i.name }))}
+              />
+            </Col>
+            <Col xs={24} sm={5}>
+              <Input
+                id={`q-${row.key}`}
+                type="number"
+                step="0.001"
+                min="0"
+                style={AMOUNT_INPUT}
+                label={t("setup.quantityField")}
+                value={row.quantity}
+                onChange={(e) => onUpdate(row.key, { quantity: e.target.value })}
+              />
+            </Col>
+            <Col xs={24} sm={5}>
+              <Input
+                id={`u-${row.key}`}
+                type="number"
+                step="0.01"
+                min="0"
+                style={AMOUNT_INPUT}
+                label={t("setup.unitCostField")}
+                value={row.unitCost}
+                onChange={(e) => onUpdate(row.key, { unitCost: e.target.value })}
+              />
+            </Col>
+            <Col xs={24} sm={4}>
+              <Flex vertical justify="flex-end" style={{ height: "100%" }}>
+                <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                  {t("setup.lineValue")}
+                </Text>
+                <Money value={nilai} currency="IDR" hideCurrency />
+              </Flex>
+            </Col>
+            <Col xs={24} sm={2}>
+              <Flex justify="flex-end">
+                <RemoveButton
+                  onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
+                  label={t("journal.removeRow")}
+                />
+              </Flex>
+            </Col>
+          </Row>
+        );
+      })}
+    </Section>
   );
 }
 

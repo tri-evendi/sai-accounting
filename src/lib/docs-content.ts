@@ -234,6 +234,20 @@ const SALDO_AWAL: readonly DocBlock[] = [
         "Jumlah sisi kiri dan kanan harus sama. Selisihnya bukan untuk dibulatkan; ia berarti ada yang belum dihitung.",
       ],
     },
+    {
+      kind: "paragraf",
+      teks:
+        "Semua itu menuntut daftarnya sudah ada lebih dulu: piutang awal per pelanggan mustahil diisi kalau pelanggannya belum terdaftar, dan stok awal per barang mustahil kalau barangnya belum ada. Mengetik ulang ratusan baris dari Excel adalah pekerjaan yang tidak perlu dilakukan siapa pun — Impor Data Awal memindahkannya langsung dari berkas yang sudah Anda punya.",
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Unduh templatnya lebih dulu. Ia sudah berisi judul kolom yang benar, satu baris contoh, dan lembar Petunjuk.",
+        "Urutan kolom bebas — kolom dikenali dari JUDULNYA. Kolom tambahan dari aplikasi lama Anda diabaikan, bukan ditolak.",
+        "Kalau ada SATU baris yang salah, tidak ada yang disimpan. Setiap masalah dilaporkan beserta nomor barisnya, supaya diperbaiki sekaligus lalu diunggah ulang.",
+        "Nama yang sudah ada dilewati, tidak pernah ditimpa. Mengunggah berkas yang sama dua kali tidak menggandakan apa pun, dan tidak menghapus suntingan yang Anda buat sesudahnya.",
+      ],
+    },
     { kind: "istilah", kunci: ["saldo_awal", "neraca"] },
   ];
 

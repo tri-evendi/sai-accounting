@@ -248,7 +248,8 @@
       "users": "用户",
       "permissions": "访问权限",
       "settings": "设置",
-      "selectCompany": "切换公司"
+      "selectCompany": "切换公司",
+      "masterImport": "导入初始数据"
     }
   },
   "quickActions": {
@@ -628,6 +629,8 @@
     "excelUnreadable": "无法读取该文件。请确认其为 Excel 格式（.xlsx）。",
     "rowsNeedFixing": "有些行需要修正。",
     "noAccountRows": "没有可导入的科目行。",
+    "noImportRows": "此文件没有可导入的行。",
+    "unknownImportKind": "未知的导入类型。",
     "csvEmpty": "CSV 内容为空。",
     "csvInvalidRows": "CSV 中包含无效行。请修正后重新导入。",
     "contractInUse": "该合同已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该合同，以保持单据链完整。",
@@ -3961,5 +3964,29 @@
   "demoCompany": {
     "title": "这是示例公司。",
     "body": "其中为虚构数据，便于您查看报表填充后的样子。数字并非真实账目，且无法修改。如需记录自己的账目，请新建公司。"
+  },
+  "masterImport": {
+    "title": "导入初始数据",
+    "description": "从 Excel 迁移客户、供应商和商品清单，无需重新录入。",
+    "kindLabel": "数据类型",
+    "kindCustomers": "客户",
+    "kindSuppliers": "供应商",
+    "kindItems": "商品",
+    "step1Title": "1. 下载模板",
+    "step2Title": "2. 上传填好的文件",
+    "templateHint": "模板包含列标题、一行示例和说明工作表。列顺序不限——按标题识别列。",
+    "downloadTemplate": "下载{kind}模板",
+    "uploadHint": ".xlsx 文件，最大 5 MB。只要有一行有误，就不会保存任何内容——请修正后重新上传。",
+    "upload": "上传并导入",
+    "uploading": "正在导入…",
+    "pickFileFirst": "请先选择文件。",
+    "failed": "导入失败。",
+    "rowErrorsTitle": "{count} 行需要修正",
+    "colRow": "行",
+    "colProblem": "问题",
+    "doneTitle": "导入完成",
+    "doneBody": "共 {total} 行，新增 {created} 行，{skipped} 行因名称已存在而跳过。",
+    "truncated": "文件超过 10,000 行上限；其余未读取。",
+    "toastImported": "已导入 {created} 行"
   }
 }

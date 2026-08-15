@@ -248,7 +248,8 @@
       "users": "Users",
       "permissions": "Access Rights",
       "settings": "Settings",
-      "selectCompany": "Switch Company"
+      "selectCompany": "Switch Company",
+      "masterImport": "Import Starting Data"
     }
   },
   "quickActions": {
@@ -628,6 +629,8 @@
     "excelUnreadable": "The file could not be read. Make sure it is an Excel file (.xlsx).",
     "rowsNeedFixing": "Some rows need fixing.",
     "noAccountRows": "There are no account rows to import.",
+    "noImportRows": "This file has no rows that can be imported.",
+    "unknownImportKind": "Unknown import type.",
     "csvEmpty": "The CSV is empty.",
     "csvInvalidRows": "The CSV contains invalid rows. Fix them, then import again.",
     "contractInUse": "This contract is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the contract so the document chain stays intact.",
@@ -3961,5 +3964,29 @@
   "demoCompany": {
     "title": "This is a sample company.",
     "body": "It holds made-up data so you can see what filled-in reports look like. The figures are not real bookkeeping and cannot be edited. Create a new company to start keeping your own books."
+  },
+  "masterImport": {
+    "title": "Import Starting Data",
+    "description": "Move your customer, supplier, and item lists from Excel — without retyping them.",
+    "kindLabel": "Data type",
+    "kindCustomers": "Customers",
+    "kindSuppliers": "Suppliers",
+    "kindItems": "Items",
+    "step1Title": "1. Download the template",
+    "step2Title": "2. Upload the filled file",
+    "templateHint": "The template carries the column headers, one example row, and an instructions sheet. Column order is free — columns are recognised by their heading.",
+    "downloadTemplate": "Download {kind} template",
+    "uploadHint": "An .xlsx file, 5 MB max. If ANY row is wrong, nothing is saved — fix it and upload again.",
+    "upload": "Upload & import",
+    "uploading": "Importing…",
+    "pickFileFirst": "Pick a file first.",
+    "failed": "Import failed.",
+    "rowErrorsTitle": "{count} rows need fixing",
+    "colRow": "Row",
+    "colProblem": "Problem",
+    "doneTitle": "Import finished",
+    "doneBody": "{created} new rows added, {skipped} skipped because the name already exists, out of {total} rows.",
+    "truncated": "The file exceeded the 10,000-row limit; the rest was not read.",
+    "toastImported": "{created} rows imported"
   }
 }

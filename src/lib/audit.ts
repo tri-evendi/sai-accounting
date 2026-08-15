@@ -66,6 +66,13 @@ export type AuditAction =
    * berikutnya yang bertanya "faktur contohnya ke mana" harus menemukan
    * jawabannya di sini, bukan menyimpulkan bukunya pernah dibobol.
    */
+  /**
+   * Impor master data dari berkas (issue #381). Satu entri per BERKAS, bukan
+   * per baris: seratus pelanggan yang masuk sekaligus adalah SATU tindakan
+   * seseorang, dan seratus baris jejak untuk satu tindakan mengubur tindakan
+   * lain yang justru perlu dibaca.
+   */
+  | "master.import"
   | "sample_data.clear"
   | "period.close"
   | "period.reopen"
@@ -201,6 +208,13 @@ export type AuditEntity =
   | "cash_movement"
   | "stock"
   | "item"
+  /**
+   * Mitra dagang sebagai ENTITAS jejak (issue #381). Sebelum ini hanya
+   * `supplier_transaction` yang ada — transaksinya, bukan mitranya — sehingga
+   * "seratus pemasok diimpor" tidak punya entitas untuk disebut.
+   */
+  | "customer"
+  | "supplier"
   | "supplier_transaction"
   | "user"
   /** Baris `invitations` di basis data kendali (issue #139). */

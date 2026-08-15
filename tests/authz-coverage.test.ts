@@ -406,6 +406,26 @@ describe("cakupan penjaga halaman aplikasi", () => {
   });
 });
 
+/**
+ * Route `/api/v1/…` — API PUBLIK ber-token (issue #389, F-10).
+ *
+ * Ia tidak memakai `requireApiPermission`, dan itu bukan kelalaian: penjaga
+ * pelanggan membaca SESI (cookie, JWT, pencabutan sesi, wajib-ganti-kata-sandi),
+ * dan tidak satu pun berlaku bagi mesin. Yang dipakai bersama justru bagian yang
+ * penting — keputusan izinnya lewat `canEffective`, matriks yang sama dengan
+ * manusia, termasuk modul mati (#99) dan override per perusahaan (#73).
+ *
+ * Yang dijaga di bawah: setiap route v1 memakai `requireApiToken`, dan TIDAK
+ * PERNAH menyentuh penjaga sesi. Sebuah route v1 yang diam-diam menerima cookie
+ * adalah endpoint publik yang bisa dipanggil dari peramban korban (CSRF), dan
+ * itu kelas kerentanan yang tidak akan terlihat di satu pun tes fungsional.
+ */
+const V1_ROUTES = new Set(
+  filesNamed(API_DIR, "route.ts")
+    .map((f) => relative(API_DIR, f))
+    .filter((rel) => rel.startsWith("v1/"))
+);
+
 describe("cakupan penjaga API route", () => {
   const routes = filesNamed(API_DIR, "route.ts");
 
@@ -416,7 +436,9 @@ describe("cakupan penjaga API route", () => {
   it("setiap route mendeklarasikan izinnya (requireApiPermission)", () => {
     const offenders = routes
       .map((f) => relative(API_DIR, f))
-      .filter((rel) => !API_EXCEPTIONS.has(rel) && !TENANT_API_ROUTES.has(rel))
+      .filter(
+        (rel) => !API_EXCEPTIONS.has(rel) && !TENANT_API_ROUTES.has(rel) && !V1_ROUTES.has(rel)
+      )
       .filter((rel) => !readFileSync(join(API_DIR, rel), "utf8").includes("requireApiPermission("));
     expect(offenders).toEqual([]);
   });
@@ -431,6 +453,18 @@ describe("cakupan penjaga API route", () => {
       // `requireApiPermission(` juga cocok dengan nama panjangnya, jadi cek
       // impornya: route tenant tidak boleh menyentuh penjaga perusahaan.
       expect(src, `${rel} mengimpor penjaga perusahaan`).not.toContain("@/lib/auth-guard");
+    }
+  });
+
+  it("route v1 memakai requireApiToken — dan TIDAK PERNAH penjaga sesi", () => {
+    expect(V1_ROUTES.size).toBeGreaterThan(0);
+    for (const rel of V1_ROUTES) {
+      const src = readFileSync(join(API_DIR, rel), "utf8");
+      expect(src, `${rel} tanpa requireApiToken`).toContain("requireApiToken(");
+      // Menerima cookie di endpoint publik = bisa dipanggil dari peramban
+      // korban (CSRF), dan itu tidak akan terlihat di satu pun tes fungsional.
+      expect(src, `${rel} menyentuh penjaga sesi`).not.toContain("@/lib/auth-guard");
+      expect(src, `${rel} membaca sesi`).not.toContain("@/lib/auth");
     }
   });
 

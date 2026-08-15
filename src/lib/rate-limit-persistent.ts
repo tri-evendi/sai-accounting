@@ -61,6 +61,19 @@ export const PERSISTENT_RATE_LIMITS = {
    * antar-instance), bukan seberapa ketat.
    */
   loginIdentifier: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
+  /**
+   * Permintaan `/api/v1/…` per TOKEN (issue #389).
+   *
+   * Kuncinya token, bukan IP: sebuah integrasi hidup di satu alamat dan
+   * menariknya ribuan kali sehari — membatasi per-IP akan menghukum pemakaian
+   * yang benar, sementara token yang bocor tetap leluasa selama penyerangnya
+   * berpindah alamat.
+   *
+   * 600 per menit ≈ 10 per detik: jauh di atas laju penarikan yang wajar
+   * (integrasi menarik per menit atau per jam, bukan per milidetik), dan jauh
+   * di bawah laju yang bisa menguras basis data kendali.
+   */
+  apiToken: { windowMs: 60 * 1000, maxAttempts: 600 },
   /** /register per alamat IP — pagar penyisiran massal. */
   registerIp: { windowMs: 60 * 60 * 1000, maxAttempts: 10 },
   /** /register per email — pagar spam ke satu kotak masuk. */

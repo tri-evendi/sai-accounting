@@ -165,6 +165,8 @@ model Company {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   memberships Membership[]
+  /// Token API yang boleh membaca buku PT ini (issue #389).
+  apiTokens   ApiToken[]
   invitations Invitation[]
 
   /// Slug unik DI DALAM tenantnya (issue #153) — lihat komentar `slug`.
@@ -220,6 +222,8 @@ model User {
 
   memberships         Membership[]
   tenantMemberships   TenantMembership[]
+  /// Token API yang ia terbitkan (issue #389).
+  apiTokensCreated    ApiToken[]
   passwordResetTokens PasswordResetToken[]
 
   @@index([tenantId])
@@ -442,4 +446,66 @@ model Membership {
   @@index([companyId])
   @@index([isActive])
   @@map("memberships")
+}
+
+// ─── Token API (issue #389 — F-10 lapis 1) ───────────────
+/// Kredensial mesin untuk membaca buku SATU perusahaan lewat `/api/v1/…`.
+///
+/// ══ KENAPA DI BASIS DATA KENDALI ═══════════════════════════════════════════
+/// Ia menjawab pertanyaan yang sama dengan `memberships`: "siapa boleh membuka
+/// buku mana, sebagai apa". Pertanyaan itu selalu dijawab kendali — buku
+/// perusahaan tidak boleh memuat kredensial yang bisa membuka dirinya sendiri,
+/// sebab satu SELECT di sana akan membawa pergi kuncinya.
+///
+/// ══ TOKENNYA TIDAK PERNAH DISIMPAN ═════════════════════════════════════════
+/// Yang tersimpan SHA-256-nya. Bentuk tokennya `sai_<id>_<rahasia>`: `id`
+/// dipakai MENCARI barisnya (satu kueri berindeks, bukan memindai seluruh
+/// tabel dan membandingkan hash satu per satu), `rahasia` yang di-hash.
+///
+/// SHA-256, BUKAN bcrypt — dan itu bukan kelalaian. bcrypt sengaja lambat untuk
+/// menahan penebakan kata sandi manusia yang entropinya rendah; rahasia di sini
+/// 32 byte acak, dan menebaknya mustahil tanpa bantuan pelambatan apa pun.
+/// Memakai bcrypt di sini berarti membayar ~100 ms pada SETIAP permintaan API
+/// untuk keamanan yang tidak bertambah.
+model ApiToken {
+  id        Int @id @default(autoincrement())
+  companyId Int @map("company_id")
+
+  /// Nama yang ditulis manusia ("Integrasi kasir", "Laporan mingguan") — supaya
+  /// mencabut token berarti mencabut sesuatu yang bisa dikenali, bukan sebuah id.
+  name String @db.VarChar(100)
+
+  /// SHA-256 heksadesimal dari bagian rahasianya. 64 karakter, selalu.
+  tokenHash String @map("token_hash") @db.VarChar(64)
+
+  /// Peran yang DIPERANKAN token ini di perusahaan itu.
+  ///
+  /// Bukan daftar cakupan tersendiri, dan itu keputusan: matriks izin sudah
+  /// menjawab "peran apa boleh apa", termasuk override per perusahaan
+  /// (issue #73). Daftar cakupan kedua di sebelahnya akan menyimpang dari
+  /// matriks itu pada perubahan izin pertama — dan yang menyimpang selalu yang
+  /// lebih jarang dibaca.
+  role String @db.VarChar(20)
+
+  /// Siapa yang menerbitkannya. Id global (basis data ini), jadi FK-nya sah.
+  createdByUserId Int @map("created_by_user_id")
+
+  /// Kapan terakhir dipakai — satu-satunya cara pemiliknya tahu token mana yang
+  /// sudah tidak dipakai siapa pun dan aman dicabut. Ditulis paling banyak
+  /// sekali per menit; lihat `lib/api-token.ts`.
+  lastUsedAt DateTime? @map("last_used_at")
+
+  /// Dicabut. Baris TIDAK dihapus: token yang pernah menarik data pelanggan
+  /// harus tetap bisa dijawab "siapa yang menerbitkannya, dan kapan dicabut".
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([revokedAt])
+  @@map("api_tokens")
 }

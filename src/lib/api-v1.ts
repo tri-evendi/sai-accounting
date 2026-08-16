@@ -11,6 +11,44 @@
  * MURNI: penguraian kueri + penyusunan meta, tanpa Prisma dan tanpa I/O.
  */
 
+/** Akar permukaan v1. Satu tempat, supaya proxy dan spesifikasi tak bisa berselisih. */
+export const V1_ROOT = "/api/v1";
+
+/**
+ * Jalur ini milik permukaan `/api/v1` — yang autentikasinya **token Bearer**,
+ * bukan cookie sesi.
+ *
+ * ══ KENAPA FUNGSI INI ADA (regresi produksi 2026-08-16) ════════════════════
+ * `src/proxy.ts` membaca sesi NextAuth untuk setiap `/api/*` yang tidak
+ * disebut `isPublicPath`, dan menjawab 401 bila tak ada cookie. Sebuah
+ * permintaan ber-`Authorization: Bearer sai_…` TIDAK menghasilkan cookie sesi
+ * — jadi seluruh `/api/v1` dijawab 401 **sebelum** `requireApiToken` sempat
+ * berjalan. Bukan sebagian: setiap endpoint, setiap token sah, tanpa kecuali.
+ * Termasuk `/api/v1/openapi.json`, yang justru sengaja publik supaya integrator
+ * bisa membaca bentuk API sebelum punya kredensial.
+ *
+ * Cacat itu lolos `bun run verify` DAN `bun run build`, dan pantas dicatat
+ * kenapa: seluruh tes token memanggil `requireApiToken` LANGSUNG. Tak satu pun
+ * menembus proxy, jadi tak satu pun bisa melihat penolakan yang terjadi satu
+ * lapis di atasnya. Hijau di kedua gerbang, mati di produksi.
+ *
+ * ══ KENAPA FUNGSI MURNI, BUKAN `startsWith` DI PROXY ═══════════════════════
+ * Alasan yang sama yang sudah ditulis `isDocsPath` di berkas ini sebelahnya:
+ * yang diketik ulang akan berbeda, dan `startsWith("/api/v1")` telanjang juga
+ * melepaskan `/api/v1x` — rute yang belum ada hari ini dan yang kelahirannya
+ * tidak akan mengingatkan siapa pun. Di sini melepaskan jalur berarti
+ * melepaskan pemeriksaan sesi, jadi salah cocok bukan salah tampilan.
+ *
+ * ══ AMANKAH MELEPASKANNYA DARI PROXY ═══════════════════════════════════════
+ * Ya, dan itu dibuktikan, bukan diasumsikan: `tests/api-v1-spec.test.ts`
+ * menuntut SETIAP route `/api/v1/*` memanggil `requireApiToken("izin")` dengan
+ * izin yang sama persis dengan yang didokumentasikan. Proxy tidak pernah
+ * menjadi penjaga permukaan ini — ia hanya menghalanginya.
+ */
+export function isBearerApiPath(pathname: string): boolean {
+  return pathname === V1_ROOT || pathname.startsWith(`${V1_ROOT}/`);
+}
+
 /** Batas baris per permintaan. Bawaan sengaja kecil; maksimum sengaja bukan tak-hingga. */
 export const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 200;

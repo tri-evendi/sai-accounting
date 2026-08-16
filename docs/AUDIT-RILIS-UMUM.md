@@ -297,6 +297,26 @@ keberatan penjualan pertama.
 
 **Perbaikan.** Lihat §4.2.
 
+> **Catatan pasca-rilis 2026-08-16 — lapis 1 pernah MATI di produksi.**
+> Deploy pertama yang memuat `/api/v1` menjawab **401 untuk setiap endpoint**,
+> termasuk `openapi.json` yang sengaja publik. Sebabnya bukan di penjaganya:
+> `src/proxy.ts` membaca sesi NextAuth untuk setiap `/api/*` yang tidak
+> disebut `isPublicPath`, dan token Bearer tidak menghasilkan cookie sesi —
+> jadi permintaannya ditolak **sebelum** `requireApiToken` sempat berjalan.
+>
+> Yang pantas dicatat adalah kenapa ia lolos: `bun run verify` (3341 tes) dan
+> `bun run build` keduanya hijau, sebab setiap tes token memanggil
+> `requireApiToken` LANGSUNG dan tak satu pun menembus proxy. Penolakan yang
+> terjadi satu lapis di atas yang diuji tidak terlihat oleh tes mana pun — dan
+> yang menemukannya adalah pemeriksaan `curl` sesudah deploy, bukan gerbangnya.
+>
+> Diperbaiki lewat `isBearerApiPath` (fungsi murni, sepola `isDocsPath`) dan
+> dijaga `tests/proxy-bearer-api.test.ts`, yang memanggil `proxy()` yang
+> SUNGGUHAN — penjaga di lapisan yang benar, bukan penjaga kesekian di lapisan
+> yang sudah aman. **Pelajaran yang berlaku di luar F-10:** setiap permukaan
+> ber-autentikasi-bukan-sesi yang ditambahkan kelak akan menabrak perangkap
+> yang sama, dan gerbangnya tidak akan berbunyi.
+
 ---
 
 ### P2 — sedang

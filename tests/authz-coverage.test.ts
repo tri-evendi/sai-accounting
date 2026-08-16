@@ -420,10 +420,31 @@ describe("cakupan penjaga halaman aplikasi", () => {
  * adalah endpoint publik yang bisa dipanggil dari peramban korban (CSRF), dan
  * itu kelas kerentanan yang tidak akan terlihat di satu pun tes fungsional.
  */
+/**
+ * Route v1 yang sah TANPA token, beserta alasannya.
+ *
+ * Daftar ini sengaja dibuat sebagai DAFTAR, bukan pola: sebuah pengecualian
+ * yang harus disebut namanya tidak bisa bertambah diam-diam.
+ */
+const V1_PUBLIC = new Set([
+  /*
+   * Spesifikasi OpenAPI. Yang dipulangkan adalah BENTUK API-nya — nama
+   * endpoint, nama medan, aturan paginasi — bukan satu byte pun data
+   * perusahaan. Menuntut token untuk membacanya berarti integrator harus sudah
+   * punya kredensial sebelum bisa tahu apa yang bisa dilakukannya, dan itu
+   * urutan yang terbalik: orang membaca dokumentasi untuk MEMUTUSKAN apakah
+   * akan memakainya.
+   *
+   * Bentuk API bukan rahasia; datanya yang rahasia, dan itu dijaga
+   * `requireApiToken` di setiap endpoint yang memulangkannya.
+   */
+  "v1/openapi.json/route.ts",
+]);
+
 const V1_ROUTES = new Set(
   filesNamed(API_DIR, "route.ts")
     .map((f) => relative(API_DIR, f))
-    .filter((rel) => rel.startsWith("v1/"))
+    .filter((rel) => rel.startsWith("v1/") && !V1_PUBLIC.has(rel))
 );
 
 describe("cakupan penjaga API route", () => {
@@ -437,7 +458,11 @@ describe("cakupan penjaga API route", () => {
     const offenders = routes
       .map((f) => relative(API_DIR, f))
       .filter(
-        (rel) => !API_EXCEPTIONS.has(rel) && !TENANT_API_ROUTES.has(rel) && !V1_ROUTES.has(rel)
+        (rel) =>
+          !API_EXCEPTIONS.has(rel) &&
+          !TENANT_API_ROUTES.has(rel) &&
+          !V1_ROUTES.has(rel) &&
+          !V1_PUBLIC.has(rel)
       )
       .filter((rel) => !readFileSync(join(API_DIR, rel), "utf8").includes("requireApiPermission("));
     expect(offenders).toEqual([]);
@@ -453,6 +478,20 @@ describe("cakupan penjaga API route", () => {
       // `requireApiPermission(` juga cocok dengan nama panjangnya, jadi cek
       // impornya: route tenant tidak boleh menyentuh penjaga perusahaan.
       expect(src, `${rel} mengimpor penjaga perusahaan`).not.toContain("@/lib/auth-guard");
+    }
+  });
+
+  it("route v1 yang PUBLIK tidak memulangkan data perusahaan", () => {
+    /*
+     * Pengecualian di `V1_PUBLIC` hanya sah selama ia benar-benar tidak
+     * menyentuh buku. Sebuah endpoint publik yang suatu hari menambahkan satu
+     * kueri Prisma adalah kebocoran yang tidak akan terlihat di satu pun tes
+     * fungsional — jawabannya tetap 200, isinya saja yang bertambah.
+     */
+    for (const rel of V1_PUBLIC) {
+      const src = readFileSync(join(API_DIR, rel), "utf8");
+      expect(src, `${rel} menyentuh basis data perusahaan`).not.toContain("@/lib/prisma");
+      expect(src, `${rel} menyentuh basis data kendali`).not.toContain("@/lib/control-db");
     }
   });
 

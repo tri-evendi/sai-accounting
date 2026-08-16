@@ -40,11 +40,17 @@
  * bukan URL. Kolom yang isinya URL adalah kolom yang mengundang dirinya dipakai
  * sebagai `href`, dan begitulah kebocoran ini lahir pertama kali.
  *
- * ══ BARIS LAMA ══════════════════════════════════════════════════════════════
- * Baris yang `filepath`-nya masih berbentuk `/uploads/<nama>` tetap bisa dibaca
- * (`legacyPublicName`) sampai `bun run migrate:documents` memindahkannya. Itu
- * kelonggaran BACA saja: tidak ada satu pun jalur tulis di repo ini yang boleh
+ * ══ BENTUK LAMA SUDAH TIDAK ADA ═════════════════════════════════════════════
+ * Sampai 2026-08-16 modul ini juga membaca bentuk lama `/uploads/<nama>`,
+ * sebagai kelonggaran BACA sementara sampai `migrate:documents` memindahkannya.
+ * Pemindahan itu sudah dijalankan di pemasangan ini dan melaporkan 0 dipindahkan
+ * · 0 yatim — atas tabel `documents` yang memang berisi 0 baris di keempat PT,
+ * dan `public/uploads` yang berisi 0 berkas. Jadi kelonggarannya dicabut, bukan
+ * "dianggap tidak terpakai": tidak ada satu baris pun yang bisa memakainya.
+ *
+ * Yang TETAP berlaku: tidak ada satu pun jalur tulis di repo ini yang boleh
  * menghasilkan bentuk lama lagi — dijaga `tests/no-public-uploads.test.ts`.
+ * Penjaga itu sengaja tidak ikut dicabut. Ia menjaga arah, bukan sisa.
  *
  * ══ TANPA `server-only` ═════════════════════════════════════════════════════
  * Sengaja, alasan yang sama dengan `mailer-core.ts`: skrip pemindahan dan skrip
@@ -59,12 +65,6 @@ import { rm } from "node:fs/promises";
 
 /** Akar penyimpanan dokumen. Sejajar `data/audit`, dan sama-sama volume. */
 export const DOCUMENTS_ROOT = path.join(process.cwd(), "data", "documents");
-
-/**
- * Direktori `public/uploads` LAMA — hanya dibaca (baris yang belum dipindahkan)
- * dan dikosongkan oleh skrip pemindahan. Tidak ada yang menulis ke sini lagi.
- */
-export const LEGACY_UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
 /** Ekstensi yang boleh diunggah, beserta tipe MIME yang dipulangkan. */
 export const DOCUMENT_CONTENT_TYPES: Record<string, string> = {
@@ -84,9 +84,6 @@ export const DOCUMENT_CONTENT_TYPES: Record<string, string> = {
 const STORAGE_KEY =
   /^[1-9][0-9]{0,9}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,8}$/;
 
-/** Nama berkas lama yang aman dibaca: satu segmen, tanpa jalur, tanpa titik-dua. */
-const LEGACY_NAME = /^[A-Za-z0-9_-]+\.[A-Za-z0-9]{1,8}$/;
-
 /** Kunci penyimpanan baru untuk sebuah unggahan. `ext` sudah ber-titik & huruf kecil. */
 export function newStorageKey(companyId: number, ext: string): string {
   if (!Number.isInteger(companyId) || companyId <= 0) {
@@ -104,24 +101,12 @@ export function isStorageKey(value: string): boolean {
 }
 
 /**
- * Nama berkas lama di balik `filepath` berbentuk `/uploads/<nama>`, atau `null`
- * bila `filepath` bukan bentuk lama (atau bentuk lama yang namanya tidak wajar).
- */
-export function legacyPublicName(filepath: string): string | null {
-  if (!filepath.startsWith("/uploads/")) return null;
-  const name = filepath.slice("/uploads/".length);
-  return LEGACY_NAME.test(name) ? name : null;
-}
-
-/**
  * Jalur absolut sebuah `documents.filepath`, apa pun bentuknya — atau `null`
  * bila nilainya tidak dikenali. `null` berarti 404, TIDAK PERNAH tebakan:
  * `filepath` yang aneh adalah baris yang rusak, bukan undangan mencari-cari.
  */
 export function resolveDocumentPath(filepath: string): string | null {
-  if (isStorageKey(filepath)) return path.join(DOCUMENTS_ROOT, filepath);
-  const legacy = legacyPublicName(filepath);
-  return legacy ? path.join(LEGACY_UPLOAD_DIR, legacy) : null;
+  return isStorageKey(filepath) ? path.join(DOCUMENTS_ROOT, filepath) : null;
 }
 
 /** Direktori seluruh dokumen satu PT — yang disalin ekspor, yang dihapus. */

@@ -73,8 +73,9 @@ Aturannya:
 - Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan **melempar** untuk
   nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka salah
   tanpa jejak.
-- Memeriksa data yang sudah ada: `bun run check:legacy-values` (BINARY, jadi
-  perbedaan huruf besar/kecil terlihat) — jalankan pada gladi resik rilis.
+- Migration `0043` sudah menyelaraskan nilai enum-like warisan aplikasi lama.
+  Skrip pemeriksanya (`check:legacy-values`) dicabut 2026-08-16 bersama basis
+  data stagingnya; aturan penulisannya di atas tetap berlaku untuk kolom baru.
 
 ---
 

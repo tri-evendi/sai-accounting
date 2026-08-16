@@ -123,12 +123,11 @@ Named volumes survive `docker compose down`:
 | --------- | --------------------- | ---------------------- |
 | `db_data`   | `/var/lib/mysql`      | MariaDB data                                    |
 | `documents` | `/app/data/documents` | Uploaded documents, one directory per company   |
-| `uploads`   | `/app/public/uploads` | Legacy uploads — until `migrate:documents` ran   |
 | `audit`     | `/app/data/audit`     | Tenant + operator audit trails (JSONL)          |
 
-> `uploads` stays mounted until `bun run migrate:documents --apply` has run on
-> this installation: rows that were never moved still point into it. Once the
-> script reports 0 moved and 0 orphans, the volume can be dropped (issue #367).
+> The `uploads` volume was dropped on 2026-08-16, on the condition this file
+> itself set: the move had run and reported 0 moved / 0 orphans, over a
+> `documents` table holding 0 rows in all four companies (issue #367).
 
 ## Networks
 

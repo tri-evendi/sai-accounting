@@ -330,9 +330,6 @@ docker compose run --rm migrate bun run adopt-company -- \
 #    0043 menyelaraskan nilai enum-like data legacy (issue #111)
 docker compose run --rm migrate bun run db:migrate:companies
 
-# 4. Buktikan nilai enum-like sudah baku di SETIAP perusahaan
-docker compose run --rm migrate bun run check:legacy-values
-
 # 5. Naikkan image baru (skema & kode harus naik bersama)
 docker compose up -d          # image-nya sudah dibangun di langkah 1
 ```

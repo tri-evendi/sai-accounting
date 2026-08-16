@@ -29,9 +29,7 @@
     "db:migrate:companies": "tsx scripts/migrate-all-companies.ts",
     "db:migrate:all": "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies",
     "migrate:audit": "tsx scripts/migrate-audit.ts",
-    "_migrate_audit_note": "LANGKAH RILIS #370, sepola migrate:documents. Memindahkan `data/audit/<slug>/audit.jsonl` ke tabel `audit_logs` di basis data PT masing-masing, lalu MENGGANTI NAMA berkasnya jadi `.dipindahkan` (tidak menghapus — menghapus jejak audit secara otomatis adalah kebalikan dari alasan jejak itu ada). Dibaca baris demi baris, disisipkan per 500, idempoten lewat `legacy_id` UNIK + skipDuplicates. WAJIB dijalankan sesudah `db:migrate:all`: tabelnya lahir dari migration 0044, isinya dari skrip ini. Sebelum dijalankan, halaman Audit tampak KOSONG — jejaknya belum pindah, bukan hilang.",
-    "migrate:documents": "tsx scripts/migrate-documents.ts",
-    "_migrate_documents_note": "LANGKAH RILIS #367, sejajar db:migrate:all dan sama-sama sekali jalan per pemasangan. Ia memindahkan berkas dokumen dari `public/uploads/` bersama ke `data/documents/<companyId>/`, lalu menulis ulang `documents.filepath`. Tanpa --apply ia hanya melapor. Selama ini belum dijalankan, dokumen lama tetap terbaca (route berkas mengenali bentuk lama) TAPI berkasnya masih duduk di direktori bersama yang bisa dijangkau sesi tenant mana pun — yaitu keadaan yang issue itu ada untuk mengakhiri. Idempoten; berkas yatim dilaporkan, tidak dihapus.",
+    "_migrate_audit_note": "LANGKAH RILIS #370. Memindahkan `data/audit/<slug>/audit.jsonl` ke tabel `audit_logs` di basis data PT masing-masing, lalu MENGGANTI NAMA berkasnya jadi `.dipindahkan` (tidak menghapus — menghapus jejak audit secara otomatis adalah kebalikan dari alasan jejak itu ada). Dibaca baris demi baris, disisipkan per 500, idempoten lewat `legacy_id` UNIK + skipDuplicates. WAJIB dijalankan sesudah `db:migrate:all`: tabelnya lahir dari migration 0044, isinya dari skrip ini. Sebelum dijalankan, halaman Audit tampak KOSONG — jejaknya belum pindah, bukan hilang.",
     "prove-scheduler-alive": "tsx scripts/prove-scheduler-alive.ts",
     "prove-backup-restore": "tsx scripts/prove-backup-restore.ts",
     "_prove_backup_note": "Issue #374. Membuktikan cadangan TERBARU bisa dibuka: sidik jarinya cocok, sandinya benar, dan SETIAP basis data terdaftar ada di dalamnya (termasuk tiap buku PT — cadangan yang kehilangan satu PT adalah bentuk kegagalan yang paling mudah tidak terlihat). Ia TIDAK memuat dump ke basis data mana pun: satu `mariadb <` yang salah sasaran menimpa produksi dengan data lama, dan tidak ada nilai pembuktian yang sepadan dengan risiko itu. Pemuatan sungguhan ke server BAYANGAN adalah latihan KUARTALAN yang dijalankan manusia. Butuh awscli + openssl (ada di image `backup`): `docker compose run --rm backup bun run prove-backup-restore`.",
@@ -54,7 +52,6 @@
     "adopt-company": "tsx scripts/adopt-existing-company.ts",
     "adopt-tenant": "tsx scripts/adopt-tenant.ts",
     "prove-tenant": "tsx scripts/prove-tenant-adoption.ts",
-    "check:legacy-values": "tsx scripts/check-legacy-values.ts",
     "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {

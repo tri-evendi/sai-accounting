@@ -236,6 +236,7 @@ export async function POST(request: Request) {
       baseCurrency: company.baseCurrency,
       fiscalYearStart: new Date(company.fiscalYearStart),
       npwp: company.npwp ?? null,
+      isPkp: company.isPkp,
       taxName: company.taxName ?? null,
       taxAddress: company.taxAddress ?? null,
       businessCategory: company.businessCategory ?? null,

@@ -29,7 +29,7 @@
  * berhenti membentang penuh.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Col, Flex, Row, Spin, theme, Typography } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,8 @@ import {
   useCostCenters,
 } from "@/components/shared/cost-center-field";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
-import { defaultInvoiceTax } from "@/lib/tax";
+import { companyTaxRateOn, defaultInvoiceTax } from "@/lib/tax";
+import { useCompanyTaxProfile } from "@/lib/tax-profile-client";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { resolveSubmitFailure } from "@/lib/form-sections";
 import {
@@ -133,6 +134,20 @@ export function NewInvoiceForm({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedInvalid, setAdvancedInvalid] = useState(false);
   const [date, setDate] = useState("");
+  /*
+   * Cermin `date` yang bisa dibaca `adoptCurrency` (issue #368).
+   *
+   * `adoptCurrency` sengaja ber-dependensi kosong — identitasnya masuk ke
+   * daftar kebergantungan sebuah effect pengambil data, jadi membuatnya lahir
+   * ulang setiap ketukan tombol tanggal akan memicu pengambilan ulang kontrak.
+   * Ref memberi tanggal TERKINI tanpa mengubah identitas fungsinya, dan
+   * tanggalnya penting: faktur yang tanggalnya sudah dipilih lalu mata uangnya
+   * mengikuti kontrak harus mendapat tarif bulan itu, bukan tarif terbaru.
+   */
+  const dateRef = useRef("");
+  useEffect(() => {
+    dateRef.current = date;
+  }, [date]);
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
   // issue #98 — dimensi cabang/unit faktur ini. Ikut diwarisi surat jalan yang
@@ -148,18 +163,33 @@ export function NewInvoiceForm({
   const [loadingOutstanding, setLoadingOutstanding] = useState(initialContractId != null);
   const [pullNote, setPullNote] = useState("");
 
+  /*
+   * Profil pajak PERUSAHAAN INI (issue #368) — penanda PKP + riwayat tarif.
+   * Datang sebagai prop dari server lewat `TaxProfileProvider`, jadi ia sudah
+   * benar pada render pertama: tidak ada jendela waktu di mana perusahaan
+   * non-PKP menampilkan bawaan 11% yang bisa terkirim.
+   */
+  const taxProfile = useCompanyTaxProfile();
+
   // Currency drives which extra fields the accounting engine needs from the user.
-  // A new domestic IDR invoice defaults to PPN 11%; choosing a foreign currency
-  // or a tax-exempt customer flips it to 0% (see InvoiceFxFields).
-  const [fx, setFx] = useState<InvoiceFxValues>({
+  // A new domestic IDR invoice defaults to the company's own PPN rate for that
+  // date; choosing a foreign currency or a tax-exempt customer flips it to 0%
+  // (see InvoiceFxFields). Perusahaan non-PKP mulai dengan PPN mati.
+  const [fx, setFx] = useState<InvoiceFxValues>(() => {
+    const d = defaultInvoiceTax({
+      currency: "IDR",
+      companyRate: companyTaxRateOn("", taxProfile),
+    });
+    return {
     customerId: "",
     currency: "IDR",
     rate: "",
-    taxable: true,
-    taxRate: "11",
+    taxable: d.taxable,
+    taxRate: String(d.taxRate),
     pebNumber: "",
     pebDate: "",
     exportNote: "",
+    };
   });
 
   const subtotal = invoiceSubtotal(items);
@@ -187,10 +217,10 @@ export function NewInvoiceForm({
   const adoptCurrency = useCallback((currency: string) => {
     setFx((prev) => {
       if (prev.currency === currency) return prev;
-      const d = defaultInvoiceTax({ currency });
+      const d = defaultInvoiceTax({ currency, companyRate: companyTaxRateOn(dateRef.current, taxProfile) });
       return { ...prev, currency, taxable: d.taxable, taxRate: String(d.taxRate) };
     });
-  }, []);
+  }, [taxProfile]);
 
   // Fetch the picked contract's outstanding — an external system, so an effect is
   // the right home. All state changes happen in the async callback (the reset on
@@ -588,6 +618,7 @@ export function NewInvoiceForm({
                 customers={customers}
                 value={fx}
                 onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
+                documentDate={date}
               />
               <InvoiceTotalsSummary value={fx} subtotal={subtotal} />
             </div>
@@ -750,6 +781,7 @@ export function NewInvoiceForm({
                 customers={customers}
                 value={fx}
                 onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
+                documentDate={date}
               />
               <div style={{ gridColumn: "1 / -1" }}>
                 <CostCenterField

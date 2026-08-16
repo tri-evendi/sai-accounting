@@ -207,12 +207,25 @@ export type AuditAction =
    * menulis berkas ke server, dan setiap route yang menulis wajib meninggalkan
    * jejak.
    */
-  | "document.upload";
+  | "document.upload"
+  /**
+   * Pajak perusahaan (issue #368): penanda PKP dan tabel tarif PPN
+   * ber-efektif-tanggal. Tidak menyentuh satu baris jurnal pun — dokumen
+   * tersimpan membawa `tax_rate`-nya sendiri, jadi yang berubah hanyalah bawaan
+   * formulir berikutnya. Tetap diaudit justru karena bawaan itu ikut ke faktur
+   * yang dikirim ke pelanggan: "sejak kapan faktur kita 12%, dan atas
+   * perintah siapa" harus punya jawaban.
+   */
+  | "company_setting.tax.pkp"
+  | "company_setting.tax.rate.upsert"
+  | "company_setting.tax.rate.delete";
 
 export type AuditEntity =
   /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */
   | "company"
   | "cash_movement"
+  /** Tabel tarif PPN ber-efektif-tanggal (issue #368). */
+  | "tax_rates"
   | "stock"
   | "item"
   /**

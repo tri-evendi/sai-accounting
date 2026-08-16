@@ -570,6 +570,7 @@ model Customer {
   /// as free text (digits/dots/dashes) — not validated as a check-digit here.
   npwp String? @db.VarChar(30)
 
+
   /// Master data dinonaktifkan, bukan dihapus (docs/DATABASE.md §1.3). Pelanggan
   /// yang punya faktur TIDAK BOLEH hilang — piutang, faktur pajak, dan jurnalnya
   /// menyebut namanya. `false` = keluar dari pemilih, riwayat utuh. Pola yang
@@ -1310,6 +1311,18 @@ model CompanySetting {
   /// until it is filled rather than emitting a blank that would fail DJP import.
   /// Stored as free text (digits/dots/dashes), not check-digit validated.
   npwp String? @db.VarChar(30)
+
+  /// PKP — Pengusaha Kena Pajak (issue #368).
+  ///
+  /// Menentukan apakah perusahaan ini MEMUNGUT PPN sama sekali. Non-PKP
+  /// mendapat tarif bawaan 0 di setiap formulir; PKP mendapat tarif yang
+  /// berlaku pada tanggal dokumennya (tabel `tax_rates`).
+  ///
+  /// Bawaannya `true`, dan itu disengaja: setiap perusahaan yang sudah ada
+  /// hari ini berperilaku seolah PKP (bawaan 11%), jadi `true` adalah
+  /// satu-satunya nilai yang tidak mengubah keadaan siapa pun saat migration
+  /// diterapkan. Wisaya penyiapan yang menanyakannya kepada perusahaan BARU.
+  isPkp Boolean @default(true) @map("is_pkp")
   /// Nama sesuai NPWP, when it differs from the trading `name` above. NULL → the
   /// e-Faktur export falls back to `name`.
   taxName String? @map("tax_name") @db.VarChar(150)
@@ -1838,4 +1851,55 @@ model AuditLog {
   /// jejaknya berupa berkas hanya bisa dijawab dengan membaca seluruhnya.
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ─── Tarif PPN ber-EFEKTIF-TANGGAL (issue #368) ──────────
+/// Tarif PPN yang berlaku SEJAK sebuah tanggal.
+///
+/// ══ KENAPA TABEL, BUKAN KONSTANTA ══════════════════════════════════════════
+/// Sampai issue ini tarifnya `DEFAULT_TAX_RATE = 11` di `lib/tax.ts`, dengan
+/// alasan yang masuk akal pada zamannya: "angka statuter dengan tepat satu nilai
+/// benar pada satu waktu, sama untuk setiap pemakai aplikasi". Dua premisnya
+/// gugur begitu pendaftaran dibuka untuk umum:
+///
+///   • "satu nilai benar pada satu waktu" benar hanya bila WAKTU diabaikan.
+///     Tarif berubah menurut aturan (11% sejak 1 April 2022, UU HPP), dan
+///     dokumen yang dicatat MUNDUR ke bulan sebelum perubahan harus memakai
+///     tarif yang berlaku PADA TANGGALNYA — bukan tarif hari ini.
+///   • "sama untuk setiap pemakai" tidak benar untuk pelanggan NON-PKP, yang
+///     tidak memungut PPN sama sekali. Rilis umum berarti mereka pasti ada.
+///
+/// Ditambah satu akibat operasional: mengubah tarif hari ini menuntut redeploy
+/// ~10 menit, untuk satu angka yang berubah karena Peraturan Menteri.
+///
+/// ══ TIDAK ADA BARIS YANG DIHAPUS ═══════════════════════════════════════════
+/// Tarif lama TETAP, sebab dokumen lama tetap harus bisa dijelaskan. Mengubah
+/// tarif berarti MENAMBAH baris ber-`effective_from` baru, tidak pernah
+/// menyunting yang lama — menyunting tarif 2022 hari ini akan mengubah cara
+/// setiap faktur 2022 dibaca ulang.
+model TaxRate {
+  id Int @id @default(autoincrement())
+
+  /// Persen, mis. `11.00`. `Decimal(5,2)` — tarif bukan uang, tapi ia dikalikan
+  /// ke uang, dan Float akan menyeret pembulatannya ke dalam jurnal.
+  rate Decimal @db.Decimal(5, 2)
+
+  /// Berlaku SEJAK tanggal ini (inklusif). Tarif sebuah dokumen adalah baris
+  /// dengan `effective_from` TERBESAR yang masih <= tanggal dokumennya.
+  effectiveFrom DateTime @map("effective_from") @db.Date
+
+  /// Dasar hukumnya, ditulis manusia ("UU HPP, berlaku 1 April 2022"). Bukan
+  /// hiasan: yang membaca tabel ini bertahun-tahun kemudian perlu tahu KENAPA
+  /// angkanya berubah, dan satu baris tanpa alasan adalah angka yang tak bisa
+  /// dipertanggungjawabkan kepada pemeriksa pajak.
+  note String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu tarif per tanggal berlaku — dua tarif yang mulai di hari yang sama
+  /// bukan keadaan yang bisa dijawab tanpa menebak.
+  @@unique([effectiveFrom])
+  @@index([effectiveFrom])
+  @@map("tax_rates")
 }

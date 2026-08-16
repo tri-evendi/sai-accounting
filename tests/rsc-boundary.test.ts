@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 162;
+const AMBANG_KLIEN = 164;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -340,6 +340,7 @@ const KLIEN_TERSAHKAN = [
   // Halaman Pengaturan yang memanggilnya tetap server component; angkanya
   // dihitung di sana dan diturunkan sebagai prop.
   "components/settings/sample-data-panel.tsx",
+  "components/settings/tax-settings-panel.tsx",
   "components/setup/setup-shell.tsx",
   "components/shared/advance-compensation.tsx",
   "components/shared/consignee-select.tsx",
@@ -397,6 +398,7 @@ const KLIEN_TERSAHKAN = [
   "lib/company-identity-client.tsx",
   "lib/i18n/client.tsx",
   "lib/report-files.ts",
+  "lib/tax-profile-client.tsx",
   "lib/theme/client.tsx",
   "lib/use-effective-permissions.ts",
 ];

@@ -88,7 +88,11 @@ export function EditInvoiceForm() {
     currency: "IDR",
     rate: "",
     taxable: false,
-    taxRate: "11",
+    /* Nilai antara sebelum faktur tersimpan dibaca (efek di bawah menimpanya
+       dengan tarif faktur itu sendiri). Bukan bawaan yang dilihat pemakai:
+       yang berlaku saat PPN dinyalakan datang dari `InvoiceFxFields`, yang
+       memakai tarif perusahaan pada tanggal dokumen (issue #368). */
+    taxRate: "",
     pebNumber: "",
     pebDate: "",
     exportNote: "",
@@ -270,6 +274,7 @@ export function EditInvoiceForm() {
                 value={fx}
                 onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
                 subtotal={subtotal}
+                documentDate={date}
               />
               <div style={{ gridColumn: "1 / -1" }}>
                 <CostCenterField

@@ -114,28 +114,26 @@ export function EditInvoiceForm() {
         setStatus(data.status);
         setContractId(data.contractId ?? null);
         setCostCenterId(data.costCenterId ? String(data.costCenterId) : "");
-        // A legacy taxed row (taxable false but tax_amount > 0) is shown as taxed,
-        // with the rate inferred from amount ÷ DPP so the user sees a sensible
-        // percentage rather than a blank. A stored tax_rate always wins.
-        const legacyTaxed = !data.taxable && Number(data.taxAmount) > 0;
-        const subtotal = (data.items ?? []).reduce(
-          (s: number, i: { quantity: number; price: number }) =>
-            s + Number(i.quantity) * Number(i.price),
-          0
-        );
-        const inferredRate =
-          data.taxRate != null
-            ? Number(data.taxRate)
-            : legacyTaxed && subtotal > 0
-              ? Math.round((Number(data.taxAmount) / subtotal) * 10000) / 100
-              : 11;
+        /*
+         * Tarif faktur ini. Sampai 2026-08-16 ada cabang tambahan untuk BARIS
+         * LAMA — `taxable` false tapi `tax_amount` > 0 — yang menyimpulkan
+         * tarifnya dari nominal ÷ DPP. Cabang itu dicabut setelah dihitung:
+         * baris berbentuk begitu ada 0 di keempat PT. Yang dicabut adalah
+         * penanganan keadaan yang tidak ada, bukan keadaan yang jarang.
+         *
+         * `?? 0` dan bukan `?? 11`: faktur tanpa `tax_rate` tersimpan memang
+         * tidak punya tarif, dan mengarang 11 di sini akan menampilkan angka
+         * yang tidak pernah dicatat siapa pun — terlebih sejak #368, ketika
+         * bawaan perusahaan bisa saja bukan 11.
+         */
+        const inferredRate = data.taxRate != null ? Number(data.taxRate) : 0;
         setFx({
           customerId: data.customerId ? String(data.customerId) : "",
-          // Legacy rows may predate the column; treat a missing value as IDR,
-          // which is how they have been posted all along.
+          // Nilai kosong diperlakukan IDR — begitulah baris tanpa mata uang
+          // selalu diposting.
           currency: data.currency || "IDR",
           rate: data.rate != null ? String(Number(data.rate)) : "",
-          taxable: Boolean(data.taxable) || legacyTaxed,
+          taxable: Boolean(data.taxable),
           taxRate: String(inferredRate),
           pebNumber: data.pebNumber || "",
           pebDate: data.pebDate ? new Date(data.pebDate).toISOString().split("T")[0] : "",

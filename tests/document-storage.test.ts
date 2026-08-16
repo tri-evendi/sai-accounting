@@ -15,7 +15,6 @@ import {
   contentTypeFor,
   documentFileHref,
   isStorageKey,
-  legacyPublicName,
   newStorageKey,
   resolveDocumentPath,
 } from "@/lib/document-storage";
@@ -67,24 +66,6 @@ describe("isStorageKey", () => {
   });
 });
 
-describe("legacyPublicName", () => {
-  it("membaca nama di balik bentuk lama `/uploads/<nama>`", () => {
-    expect(legacyPublicName("/uploads/Kontrak_1755000000000.pdf")).toBe(
-      "Kontrak_1755000000000.pdf"
-    );
-  });
-
-  it("menolak nama yang memuat jalur — sebuah `..` di sini adalah pembacaan di luar direktori", () => {
-    expect(legacyPublicName("/uploads/../../.env")).toBeNull();
-    expect(legacyPublicName("/uploads/sub/berkas.pdf")).toBeNull();
-  });
-
-  it("bukan bentuk lama → null", () => {
-    expect(legacyPublicName("12/berkas.pdf")).toBeNull();
-    expect(legacyPublicName("https://contoh.test/berkas.pdf")).toBeNull();
-  });
-});
-
 describe("resolveDocumentPath", () => {
   const uuid = "3f2a1b4c-5d6e-4f70-8a91-b2c3d4e5f607";
 
@@ -94,10 +75,18 @@ describe("resolveDocumentPath", () => {
     expect(resolved!.startsWith(DOCUMENTS_ROOT + path.sep)).toBe(true);
   });
 
-  it("baris lama tetap terbaca sampai dipindahkan", () => {
-    expect(resolveDocumentPath("/uploads/B-L_1750000000000.pdf")).toContain(
-      path.join("public", "uploads")
-    );
+  it("bentuk LAMA `/uploads/<nama>` kini null — bukan lagi dibaca", () => {
+    /*
+     * Kelonggaran baca bentuk lama dicabut 2026-08-16, setelah dihitung: tabel
+     * `documents` berisi 0 baris di keempat PT dan `public/uploads` berisi 0
+     * berkas, jadi tak ada satu baris pun yang bisa memakainya.
+     *
+     * Tes ini tidak dihapus melainkan DIBALIK, dan itu disengaja: menghapusnya
+     * akan membuat bentuk lama kembali "tidak diuji" — keadaan yang sama
+     * dengan sebelum #367 — sehingga sebuah jalur baca yang kelak menerima
+     * `/uploads/…` lagi tidak akan menabrak apa pun. Sekarang ia menabrak ini.
+     */
+    expect(resolveDocumentPath("/uploads/B-L_1750000000000.pdf")).toBeNull();
   });
 
   it("nilai yang tidak dikenali → null, TIDAK PERNAH tebakan", () => {

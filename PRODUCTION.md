@@ -103,7 +103,6 @@ Ensure the process user can write:
 |------|---------|
 | `data/audit/` | Tenant + operator audit trails (`audit.jsonl`). **Company audit lives in the database since issue #370** — this directory only holds the tenant/operator planes and any not-yet-migrated company files. |
 | `data/documents/` | Uploaded documents, one directory per company (issue #367) |
-| `public/uploads/` | Legacy upload directory — only until `bun run migrate:documents --apply` has run |
 
 Since issue #374 these are backed up automatically by the `backup` compose
 service — see below. Nothing here needs a hand-written cron.
@@ -143,12 +142,9 @@ server is the quarterly drill a human runs, with a target they typed themselves.
 > `/api/documents/<id>/file`, which requires `document.read` and finds the row
 > in the active company's database.
 >
-> Existing files still need moving. Run it alongside `db:migrate:all`:
->
-> ```bash
-> bun run migrate:documents            # report only
-> bun run migrate:documents --apply    # actually move
-> ```
+> The one-off move of pre-#367 uploads is **done** (ran 2026-08-16: 0 moved,
+> 0 orphans, over a `documents` table holding 0 rows in all four companies).
+> The `migrate:documents` script and the `uploads` volume were removed with it.
 >
 > Idempotent. Files nothing references are reported as orphans and left alone.
 
@@ -251,6 +247,7 @@ useless as no alerts and more dangerous, since it feels like having them.
 Keys whose name suggests a secret (`password`, `token`, `*_KEY`, …) are redacted
 before the line is written, regardless of how the caller spelled them.
 
-**A document 404s** — The row exists but the file does not, or `documents.filepath`
-still holds the legacy `/uploads/…` form while the file has already been moved.
-Run `bun run migrate:documents` (without `--apply`) — it reports both cases per company.
+**A document 404s** — The row exists but the file does not. `resolveDocumentPath`
+returns `null` for anything that is not a `<companyId>/<uuid>.<ext>` storage key,
+and `null` means 404 rather than a guess: an odd `filepath` is a broken row, not
+an invitation to go looking.

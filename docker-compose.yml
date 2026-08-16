@@ -163,13 +163,12 @@ services:
       retries: 3
       start_period: 20s
     volumes:
-      # Berkas dokumen sejak issue #367. `uploads` (public/) TETAP dipasang
-      # sampai `bun run migrate:documents --apply` dijalankan di pemasangan ini:
-      # baris lama masih menunjuk ke sana, dan melepas volumenya lebih dulu
-      # berarti dokumen lama hilang. Setelah pemindahan terbukti selesai (skrip
-      # melaporkan 0 dipindahkan dan 0 yatim), baris `uploads` boleh dicabut.
+      # Berkas dokumen sejak issue #367. Volume `uploads` (public/) DICABUT
+      # 2026-08-16 sesuai syarat yang ditulis di sini sendiri: pemindahannya
+      # sudah dijalankan dan melaporkan 0 dipindahkan · 0 yatim, atas tabel
+      # `documents` yang berisi 0 baris di keempat PT. Jadi tidak ada dokumen
+      # lama yang kehilangan tempat — memang tidak pernah ada.
       - documents:/app/data/documents
-      - uploads:/app/public/uploads
       - audit:/app/data/audit
     networks:
       - traefik
@@ -237,5 +236,4 @@ networks:
 volumes:
   db_data:
   documents:
-  uploads:
   audit:

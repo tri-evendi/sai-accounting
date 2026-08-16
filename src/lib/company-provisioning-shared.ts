@@ -48,6 +48,19 @@ export interface ProvisionEvent {
   /** Kemajuan 0–1 bila diketahui; tahap migration mengisinya per berkas. */
   progress?: number;
   detail?: string;
+  /**
+   * Id perusahaan yang BARU LAHIR — hanya pada tahap `done` (issue #339).
+   *
+   * Ada di aliran ini karena pembuatnya butuh angka itu SEBELUM ia pindah
+   * halaman: sesi menyimpan "PT mana yang sedang dibuka", dan satu-satunya
+   * cara sah mengisinya adalah `update({ companyId })` yang keanggotaannya
+   * diperiksa ulang di server (`lib/auth.ts`). Tanpa angkanya, formulir hanya
+   * tahu slug — dan slug bukan yang diterima pemeriksaan itu.
+   *
+   * Opsional, dan pembacanya WAJIB memperlakukan ketiadaannya sebagai keadaan
+   * normal: aliran ini juga dibaca kode yang lebih tua daripada baris ini.
+   */
+  companyId?: number;
 }
 
 /** Slug: huruf kecil, angka, tanda hubung. Dipakai di URL dan pesan galat. */

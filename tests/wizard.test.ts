@@ -61,7 +61,7 @@ const TODAY = "2026-07-20";
 
 /** Draf penjualan yang sudah lengkap — titik awal setiap uji "apa yang rusak". */
 function completeSalesDraft(): SalesDraft {
-  const draft = emptySalesDraft(TODAY);
+  const draft = emptySalesDraft(TODAY, 11);
   return {
     ...draft,
     customer: { ...draft.customer, mode: "existing", id: 7 },
@@ -168,7 +168,7 @@ describe("penjaga langkah penjualan", () => {
   });
 
   it("langkah 1 menahan pelanggan yang belum dipilih maupun yang tanpa nama", () => {
-    const draft = emptySalesDraft(TODAY);
+    const draft = emptySalesDraft(TODAY, 11);
     expect(validateSalesStep(draft, "pelanggan")).toHaveLength(1);
 
     const baru = { ...draft, customer: { ...draft.customer, mode: "new" as const } };
@@ -258,7 +258,7 @@ describe("penjaga langkah penjualan", () => {
   });
 
   it("langkah pertama yang bermasalah dilaporkan menurut urutan tampil", () => {
-    const draft = emptySalesDraft(TODAY);
+    const draft = emptySalesDraft(TODAY, 11);
     expect(firstBlockedSalesStep(draft)).toBe("pelanggan");
   });
 });

@@ -240,7 +240,7 @@ export default async function SetupPage({
   }
 
   // ── First run → the wizard ──
-  const [identity, coaCount, cashAccounts, customers, suppliers] = await Promise.all([
+  const [identity, coaCount, cashAccounts, customers, suppliers, items] = await Promise.all([
     getCompanyIdentity(),
     prisma.account.count({ where: { isActive: true } }),
     prisma.account.findMany({
@@ -250,6 +250,14 @@ export default async function SetupPage({
     }),
     prisma.customer.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    /* Barang untuk saldo awal PERSEDIAAN per barang (#379). `isActive` saja:
+       barang nonaktif tidak ditawarkan untuk gerakan BARU, dan saldo awal
+       adalah gerakan yang paling baru dari semuanya. */
+    prisma.item.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (
@@ -272,6 +280,7 @@ export default async function SetupPage({
         cashAccounts={cashAccounts}
         customers={customers}
         suppliers={suppliers}
+        items={items}
       />
     </div>
   );

@@ -28,13 +28,17 @@
  * baru terbuka bertahun-tahun kemudian: ia menolak (`ledgerDropVerdict`)
  * sebelum permintaan berstatus `executed` DAN `retention_until` lewat. Gerbang
  * ini SENGAJA tidak diberi tombol konsol (#155): ia sah hanya sekali dalam
- * sepuluh tahun, dan gesekan command-line-nya justru yang diinginkan.
+ * sepuluh tahun, dan gesekan command-line-nya justru yang diinginkan. Sejak
+ * issue #367 ia juga menghapus BERKAS DOKUMEN tiap PT (`data/documents/<id>/`)
+ * — sebelumnya berkas itu bertahan di disk selamanya, di direktori yang dibagi
+ * bersama tenant yang masih hidup.
  */
 
 import "dotenv/config";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
+import { removeCompanyDocuments } from "../src/lib/document-storage";
 import { ledgerDropVerdict } from "../src/lib/tenant-deletion";
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import {
@@ -130,6 +134,15 @@ async function main() {
       }
       console.log(`  menghancurkan buku ${company.slug} (${company.databaseName})…`);
       await control.$executeRawUnsafe(`DROP DATABASE IF EXISTS \`${company.databaseName}\``);
+      /*
+       * Berkas dokumennya ikut, DI GERBANG INI dan bukan di gerbang pertama
+       * (issue #367). Dokumen unggahan — kontrak, B/L, faktur pindaian — adalah
+       * BUKTI PEMBUKUAN, jadi ia mengikuti nasib buku besarnya: disimpan selama
+       * masa retensi UU KUP, dihancurkan bersama bukunya sesudah itu. Membuangnya
+       * di gerbang pertama (yang justru berjanji "buku besar tidak disentuh")
+       * akan menghancurkan bukti yang jam retensinya sedang melindungi.
+       */
+      await removeCompanyDocuments(company.id);
       await control.company.delete({ where: { id: company.id } });
     }
     await writeTenantAuditLog({

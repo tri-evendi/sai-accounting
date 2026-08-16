@@ -34,7 +34,7 @@ Edit `.env`:
 bun run setup:prod
 ```
 
-This runs: `bun install --frozen-lockfile` → Prisma generate → migrations → creates `data/audit` & `public/uploads` → production build.
+This runs: `bun install --frozen-lockfile` → Prisma generate → migrations → creates `data/audit`, `data/documents` & `public/uploads` → production build.
 
 **Do not run** `bun run db:seed` on production.
 
@@ -101,10 +101,69 @@ Ensure the process user can write:
 
 | Path | Purpose |
 |------|---------|
-| `data/audit/` | Security audit log (`audit.jsonl`) |
-| `public/uploads/` | Contract documents |
+| `data/audit/` | Tenant + operator audit trails (`audit.jsonl`). **Company audit lives in the database since issue #370** — this directory only holds the tenant/operator planes and any not-yet-migrated company files. |
+| `data/documents/` | Uploaded documents, one directory per company (issue #367) |
 
-Back up both with your server backups.
+Since issue #374 these are backed up automatically by the `backup` compose
+service — see below. Nothing here needs a hand-written cron.
+
+### Automated backups (issue #374)
+
+The `backup` service runs `scripts/backup.sh` once a day: dump **every**
+database (`--all-databases`, so a newly registered company is never missed) plus
+`data/documents` and `data/audit` → encrypt → upload to S3-compatible object
+storage → prune past the retention window.
+
+It **refuses to start** without `BACKUP_ENCRYPTION_KEY` and `BACKUP_S3_BUCKET`.
+That is deliberate: an unencrypted backup, or one that never leaves this
+machine, only looks like a backup. See `.env.docker.example` for every variable.
+
+```bash
+docker compose run --rm backup sh scripts/backup.sh --dry-run   # print, write nothing
+docker compose run --rm backup bun run prove-backup-restore     # prove the newest one opens
+```
+
+> ⚠ **Losing `BACKUP_ENCRYPTION_KEY` means losing every backup, permanently.**
+> Store it somewhere that is not this server. Rotating it does not re-encrypt
+> old archives — keep the previous key for as long as archives it sealed are
+> still inside the retention window.
+
+**A backup that has never been restored is not a backup.** `prove-backup-restore`
+checks the checksum, the passphrase, and that every registered database is
+actually inside the dump — but it deliberately does **not** load anything: one
+mis-aimed `mariadb <` overwrites production with old data. Loading into a shadow
+server is the quarterly drill a human runs, with a target they typed themselves.
+
+> **One-time step per installation (issue #367).** Uploaded documents used to
+> land in a single shared `public/uploads/`, served as static files that pass
+> through no permission guard — any signed-in user of any tenant could fetch
+> another tenant's document if they knew the filename. They now live in
+> `data/documents/<companyId>/` and are only reachable through
+> `/api/documents/<id>/file`, which requires `document.read` and finds the row
+> in the active company's database.
+>
+> The one-off move of pre-#367 uploads is **done** (ran 2026-08-16: 0 moved,
+> 0 orphans, over a `documents` table holding 0 rows in all four companies).
+> The `migrate:documents` script and the `uploads` volume were removed with it.
+>
+> Idempotent. Files nothing references are reported as orphans and left alone.
+
+> **One-time step per installation (issue #370).** The company audit trail moved
+> from `data/audit/<slug>/audit.jsonl` to an `audit_logs` table in each company's
+> own database — so it is now covered by backups, by the self-service export, and
+> by ledger destruction, and the audit page no longer reads a whole file into
+> memory per page view. Migration `0044_audit_logs` creates the table; the rows
+> are moved by a script. Run it **after** `db:migrate:all`:
+>
+> ```bash
+> bun run migrate:audit            # report only
+> bun run migrate:audit --apply    # actually move
+> ```
+>
+> Reads line by line, inserts in batches of 500, idempotent through a unique
+> `legacy_id`. The old file is **renamed** to `audit.jsonl.dipindahkan`, never
+> deleted. Until it runs, the Audit page looks empty — the trail has not moved
+> yet, it is not lost.
 
 ## 7. Post-deploy checklist
 
@@ -162,6 +221,33 @@ If you use PM2 without `--env-file`, export variables in `ecosystem.config.cjs` 
 
 **401 on API** — Session cookie requires HTTPS in production if `AUTH_URL` is https.
 
-**Audit log empty** — Check write permissions on `data/audit/`.
+**Audit log empty** — Since #370 the company audit trail is the `audit_logs`
+table, not a file: check that migration `0044_audit_logs` was applied to that
+company's database, and that `bun run migrate:audit --apply` has run.
 
-**Upload fails** — Check `public/uploads/` permissions and `client_max_body_size` in nginx.
+**Upload fails** — Check `data/documents/` permissions and `client_max_body_size` in nginx.
+
+### Reading the logs (issue #374)
+
+Every deliberate error-swallow now emits one JSON line, so the logs can be
+aggregated without a dashboard:
+
+```bash
+# what is failing, and how often
+docker compose logs web | grep '"level":"error"' | jq -r .event | sort | uniq -c | sort -rn
+
+# everything about one event
+docker compose logs web | grep '"event":"register.verification_mail_failed"' | jq .
+```
+
+Set `PLATFORM_ALERT_EMAIL` and those same errors also knock on the door —
+throttled to **one email per error kind per hour**, because an alert flood is as
+useless as no alerts and more dangerous, since it feels like having them.
+
+Keys whose name suggests a secret (`password`, `token`, `*_KEY`, …) are redacted
+before the line is written, regardless of how the caller spelled them.
+
+**A document 404s** — The row exists but the file does not. `resolveDocumentPath`
+returns `null` for anything that is not a `<companyId>/<uuid>.<ext>` storage key,
+and `null` means 404 rather than a guess: an odd `filepath` is a broken row, not
+an invitation to go looking.

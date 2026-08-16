@@ -16,14 +16,36 @@
  *   dikecualikan adalah pembukuan alat (`_prisma_migrations`).
  * • Baca ber-potongan (1000 baris, ORDER BY kolom pertama) — mesin ~1GB tidak
  *   boleh menelan tabel terbesar sekaligus.
+ * • BERKAS DOKUMEN IKUT (issue #367). Sampai issue itu ekspor ini memulangkan
+ *   baris `documents` TANPA dokumennya — berkasnya hidup di `public/uploads`,
+ *   di luar jangkauan sapuan information_schema, jadi "seluruh buku" tidak
+ *   pernah benar-benar seluruhnya. Sejak berkasnya disekat per perusahaan
+ *   (`data/documents/<companyId>/`), ia bisa disebut dan karena itu disalin.
+ *
+ * ══ ARSIPNYA DI-STREAM, TIDAK DIKUMPULKAN DI MEMORI ════════════════════════
+ * Menambahkan berkas ke arsip yang dibangun UTUH di memori akan mengubah
+ * ekspor menjadi cara paling mudah menjatuhkan mesin ~3,6 GB: satu tenant
+ * dengan 200 dokumen 10 MB adalah 2 GB dalam satu permintaan. Maka isi berkas
+ * masuk sebagai ALIRAN (`createReadStream`) dan arsipnya keluar sebagai aliran
+ * (`generateNodeStream`) — puncak memorinya tinggal CSV-nya saja, persis
+ * seperti sebelum issue ini.
+ *
+ * Konsekuensi bentuk: fungsi di bawah tidak lagi memulangkan `Buffer`
+ * melainkan pembuka aliran. Jumlah tabel & baris tetap DIKETAHUI sebelum
+ * aliran dimulai (CSV-nya sudah disusun saat itu), jadi jejak audit tenant
+ * tetap bisa ditulis sebelum satu byte pun terkirim.
  */
 
 import "server-only";
+
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 
 import JSZip from "jszip";
 
 import { controlDb } from "@/lib/control-db";
 import { getCompanyClient } from "@/lib/company-clients";
+import { resolveDocumentPath } from "@/lib/document-storage";
 import { toCsv } from "@/lib/export-csv";
 
 const CHUNK = 1000;
@@ -38,10 +60,23 @@ function assertSafeIdentifier(name: string): string {
 }
 
 interface CompanyToExport {
+  /** Dipakai menemukan direktori dokumennya (`data/documents/<id>/`). */
+  id: number;
   slug: string;
   name: string;
   databaseName: string;
   isActive: boolean;
+}
+
+/**
+ * Nama entri di dalam arsip. Nama asli boleh mengandung apa saja — termasuk
+ * pemisah jalur, yang di dalam ZIP berarti FOLDER; sebuah nama berisi `../`
+ * adalah entri yang menulis ke luar tempat orang mengekstraknya (zip-slip).
+ * Id di depan sekaligus menyelesaikan nama kembar tanpa menebak.
+ */
+function archiveEntryName(id: number, filename: string): string {
+  const safe = filename.replace(/[\\/]/g, "_").replace(/^\.+/, "_").slice(0, 120) || "dokumen";
+  return `${id}-${safe}`;
 }
 
 async function exportCompanyInto(
@@ -98,12 +133,77 @@ async function exportCompanyInto(
     folder.file(`${table}.csv`, content);
   }
 
+  await exportDocumentsInto(folder, db);
+
   return { tables: tables.length, rows: totalRows };
+}
+
+/**
+ * Berkas dokumen perusahaan ini (issue #367) — isinya masuk sebagai ALIRAN,
+ * jadi tidak ada satu berkas pun yang pernah utuh di memori proses.
+ *
+ * Baris yang berkasnya tidak ada di disk TIDAK didiamkan: ia dicatat di
+ * `BERKAS-TIDAK-DITEMUKAN.txt`. Ekspor yang diam-diam melewati sesuatu adalah
+ * ekspor yang mengaku lengkap padahal tidak — larangan yang sama dengan
+ * "daftar tabel yang diketik tangan" di kepala berkas ini.
+ */
+async function exportDocumentsInto(
+  folder: JSZip,
+  db: ReturnType<typeof getCompanyClient>
+): Promise<void> {
+  const missing: string[] = [];
+  let cursor = 0;
+
+  for (;;) {
+    const documents = await db.document.findMany({
+      where: { id: { gt: cursor } },
+      select: { id: true, filename: true, filepath: true },
+      orderBy: { id: "asc" },
+      take: CHUNK,
+    });
+    if (documents.length === 0) break;
+    cursor = documents[documents.length - 1].id;
+
+    for (const doc of documents) {
+      const absolute = resolveDocumentPath(doc.filepath);
+      if (!absolute || !(await isReadableFile(absolute))) {
+        missing.push(`${doc.id}\t${doc.filename}\t${doc.filepath}`);
+        continue;
+      }
+      folder.file(`documents/${archiveEntryName(doc.id, doc.filename)}`, createReadStream(absolute));
+    }
+
+    if (documents.length < CHUNK) break;
+  }
+
+  if (missing.length > 0) {
+    folder.file(
+      "documents/BERKAS-TIDAK-DITEMUKAN.txt",
+      "Baris `documents` berikut ada di basis data, tetapi berkasnya tidak\r\n" +
+        "ditemukan di penyimpanan saat ekspor ini dibuat.\r\n\r\n" +
+        "id\tnama berkas\tkunci penyimpanan\r\n" +
+        missing.join("\r\n") +
+        "\r\n"
+    );
+  }
+}
+
+async function isReadableFile(absolute: string): Promise<boolean> {
+  try {
+    return (await stat(absolute)).isFile();
+  } catch {
+    return false;
+  }
 }
 
 export interface TenantExportResult {
   filename: string;
-  buffer: Buffer;
+  /**
+   * Membuka aliran arsipnya. Dipanggil SETELAH jejak audit ditulis, sebab sejak
+   * byte pertama terkirim tidak ada lagi kesempatan menjawab galat dengan
+   * status HTTP.
+   */
+  openStream: () => NodeJS.ReadableStream;
   companies: number;
   tables: number;
   rows: number;
@@ -120,7 +220,7 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
 
   const companies = await controlDb.company.findMany({
     where: { tenantId },
-    select: { slug: true, name: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
     orderBy: { slug: "asc" },
   });
 
@@ -168,20 +268,22 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
       "tabel pembukuannya, apa adanya — dibuka dengan Excel, LibreOffice, atau\r\n" +
       "editor teks; encoding UTF-8 (ber-BOM), pemisah koma, tanggal ISO-8601.\r\n" +
       "Nilai uang tercantum sebagai teks desimal, tidak pernah dibulatkan.\r\n\r\n" +
+      "Sub-folder `documents/` berisi berkas yang pernah diunggah ke perusahaan\r\n" +
+      "itu (kontrak, B/L, faktur pindaian). Namanya diawali id barisnya di tabel\r\n" +
+      "`documents.csv`, supaya keduanya bisa dipasangkan kembali.\r\n\r\n" +
       "Simpan arsip ini baik-baik: UU KUP menuntut buku dan catatan pembukuan\r\n" +
       "disimpan 10 (sepuluh) tahun.\r\n"
   );
 
-  const buffer = await zip.generateAsync({
-    type: "nodebuffer",
-    compression: "DEFLATE",
-    compressionOptions: { level: 6 },
-  });
-
   const stamp = generatedAt.toISOString().slice(0, 10);
   return {
     filename: `ekspor-${tenant.slug}-${stamp}.zip`,
-    buffer,
+    openStream: () =>
+      zip.generateNodeStream({
+        type: "nodebuffer",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+      }),
     companies: companies.length,
     tables,
     rows,

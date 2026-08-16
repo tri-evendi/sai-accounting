@@ -6,6 +6,8 @@ import { calculateStockTotals } from "@/lib/inventory";
 import { PageHeader } from "@/components/ui/page-header";
 import { LearnMore } from "@/components/ui/learn-more";
 import { getT } from "@/lib/i18n/server";
+import { TaxProfileProvider } from "@/lib/tax-profile-client";
+import { readCompanyTaxProfile } from "@/lib/tax-rates";
 import { SalesWizard } from "./sales-wizard";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +48,7 @@ export default async function NewSaleWizardPage({
   // daftar terpotong membuat baris lama mustahil dipilih (audit). Pemilihnya
   // kini mencari ke server (`ServerSearchableSelect` → `?picker=1`); filter
   // `active=1` issue #104 ikut lewat query string endpoint-nya.
-  const [items, closedPeriods] = await Promise.all([
+  const [items, closedPeriods, taxProfile] = await Promise.all([
     prisma.item.findMany({
       orderBy: { name: "asc" },
       select: {
@@ -57,6 +59,11 @@ export default async function NewSaleWizardPage({
       },
     }),
     listClosedPeriods(),
+    /* Profil pajak perusahaan (issue #368) — dibaca di server supaya draf
+       wisaya tidak pernah lahir dengan bawaan 11% pada perusahaan non-PKP.
+       Draf ini bertahan di penyimpanan lokal, jadi bawaan yang salah sesaat
+       akan bertahan melewati muat ulang. */
+    readCompanyTaxProfile(),
   ]);
 
   return (
@@ -69,7 +76,8 @@ export default async function NewSaleWizardPage({
         title={t("sales.title")}
         description={
           <>
-            {t("sales.descriptionA")} <strong>{t("sales.descriptionStrong")}</strong>{" "}
+            {t("sales.descriptionA")}{" "}
+            <strong>{t("sales.descriptionStrong")}</strong>{" "}
             {t("sales.descriptionB")}
           </>
         }
@@ -78,16 +86,18 @@ export default async function NewSaleWizardPage({
         <LearnMore term="faktur" label={t("invoices.learnMore")} />
       </div>
 
-      <SalesWizard
-        canUpdateStock={canUpdateStock}
-        items={items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          unit: i.unit,
-          currentStock: calculateStockTotals(i.stockMovements).currentStock,
-        }))}
-        closedPeriods={closedPeriods}
-      />
+      <TaxProfileProvider profile={taxProfile}>
+        <SalesWizard
+          canUpdateStock={canUpdateStock}
+          items={items.map((i) => ({
+            id: i.id,
+            name: i.name,
+            unit: i.unit,
+            currentStock: calculateStockTotals(i.stockMovements).currentStock,
+          }))}
+          closedPeriods={closedPeriods}
+        />
+      </TaxProfileProvider>
     </div>
   );
 }

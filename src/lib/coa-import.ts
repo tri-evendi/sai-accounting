@@ -13,6 +13,9 @@
  *     internal app. Saldo normal TIDAK diminta — ia turunan dari tipe.
  */
 import { normalBalanceFor, type NormalBalance } from "@/lib/accounting";
+import { readImportRows, DuplicateGuard, RowIssues, type RowError } from "@/lib/import/rows";
+import { readMapped, requiredText } from "@/lib/import/fields";
+import { MAX_IMPORT_ROWS, type ColumnSpec } from "@/lib/import/spec";
 
 /**
  * Peta kode tipe Accurate → tipe internal app (`ACCOUNT_TYPES.value`).
@@ -60,8 +63,51 @@ export const ACCURATE_TYPE_LEGEND: { code: string; label: string }[] = [
 /** Mata uang yang dikenal app. Kode lain ditolak agar tak memicu galat format. */
 const KNOWN_CURRENCIES = new Set(["IDR", "USD", "CNY"]);
 
-/** Accurate hanya memproses 10.000 baris pertama; kita samakan agar jujur. */
-export const MAX_IMPORT_ROWS = 10_000;
+export { MAX_IMPORT_ROWS };
+
+/**
+ * Kolom berkas impor. Sejak #381 dipetakan menurut JUDUL, bukan posisi.
+ *
+ * Perbedaannya bukan kerapian: pembacaan menurut posisi benar selama berkasnya
+ * lahir dari templat kita sendiri, dan salah pada berkas pertama yang datang
+ * dari aplikasi lain — di mana kolomnya berurutan lain atau ada kolom tambahan
+ * di depan. Yang terjadi saat itu bukan penolakan melainkan IMPOR YANG
+ * BERHASIL DENGAN NILAI TERTUKAR: nama akun masuk ke kolom kode, tanpa satu
+ * pun galat.
+ */
+export const COA_COLUMNS: readonly ColumnSpec[] = [
+  {
+    key: "code",
+    header: "Kode",
+    aliases: ["Kode Akun", "Account Code", "No Akun"],
+    required: true,
+    example: "1101",
+    hint: "Maksimal 20 karakter, unik.",
+  },
+  {
+    key: "name",
+    header: "Nama",
+    aliases: ["Nama Akun", "Account Name", "Keterangan"],
+    required: true,
+    example: "Kas",
+    hint: "Maksimal 150 karakter.",
+  },
+  {
+    key: "type",
+    header: "Tipe",
+    aliases: ["Tipe Akun", "Account Type", "Jenis"],
+    required: true,
+    example: "BANK",
+    hint: "Kode tipe Accurate — lihat legenda.",
+  },
+  {
+    key: "currency",
+    header: "Mata Uang",
+    aliases: ["Currency", "Valuta"],
+    example: "IDR",
+    hint: "Opsional; kosong berarti IDR. Pilihan: IDR, USD, CNY.",
+  },
+];
 
 export interface ParsedAccount {
   code: string;
@@ -71,11 +117,7 @@ export interface ParsedAccount {
   currency: string;
 }
 
-export interface RowError {
-  /** Nomor baris di file (1-based, termasuk baris judul). */
-  row: number;
-  message: string;
-}
+export type { RowError };
 
 export interface CoaImportResult {
   accounts: ParsedAccount[];
@@ -83,8 +125,6 @@ export interface CoaImportResult {
   /** Baris duplikat KODE di dalam file yang sama (dibuang, dicatat). */
   duplicateCodesInFile: string[];
 }
-
-const str = (v: unknown): string => (v == null ? "" : String(v).trim());
 
 /**
  * Validasi & petakan baris mentah Excel menjadi akun.
@@ -97,59 +137,61 @@ const str = (v: unknown): string => (v == null ? "" : String(v).trim());
 export function parseCoaRows(rows: unknown[][]): CoaImportResult {
   const accounts: ParsedAccount[] = [];
   const errors: RowError[] = [];
-  const seenCodes = new Map<string, number>();
-  const duplicateCodesInFile: string[] = [];
+  const duplikat = new DuplicateGuard("Kode");
 
-  // Lewati baris judul (baris 1). Batasi ke MAX_IMPORT_ROWS baris data.
-  const dataRows = rows.slice(1, 1 + MAX_IMPORT_ROWS);
+  const { rows: dataRows, missingColumns } = readImportRows(rows, COA_COLUMNS);
 
-  dataRows.forEach((raw, i) => {
-    const rowNo = i + 2; // +1 untuk judul, +1 untuk 1-based
-    const cells = Array.isArray(raw) ? raw : [];
-    const code = str(cells[0]);
-    const name = str(cells[1]);
-    const typeCode = str(cells[2]).toUpperCase();
-    const currencyRaw = str(cells[3]).toUpperCase();
+  /* Kolom wajib yang tidak ditemukan adalah kesalahan BERKAS, bukan baris —
+     dan melaporkannya sebagai galat pada baris 1 membuat orang mencari-cari di
+     dalam datanya, padahal yang salah judulnya. */
+  if (missingColumns.length > 0) {
+    return {
+      accounts: [],
+      errors: [
+        {
+          row: 1,
+          message:
+            `Kolom wajib tidak ditemukan di baris judul: ${missingColumns.join(", ")}. ` +
+            "Unduh templat lalu salin datanya ke sana.",
+        },
+      ],
+      duplicateCodesInFile: [],
+    };
+  }
 
-    // Baris benar-benar kosong: lewati tanpa galat.
-    if (!code && !name && !typeCode && !currencyRaw) return;
+  for (const { row, values } of dataRows) {
+    const issues = new RowIssues(row);
 
-    const rowErrors: string[] = [];
-    if (!code) rowErrors.push("Kode akun kosong");
-    if (code.length > 20) rowErrors.push("Kode akun lebih dari 20 karakter");
-    if (!name) rowErrors.push("Nama akun kosong");
-    if (name.length > 150) rowErrors.push("Nama akun lebih dari 150 karakter");
+    const code = requiredText(values.code, "Kode akun", 20, issues);
+    const name = requiredText(values.name, "Nama akun", 150, issues);
+    const type = readMapped(values.type, "Tipe akun", ACCURATE_TYPE_MAP, issues, {
+      required: true,
+    });
 
-    const type = ACCURATE_TYPE_MAP[typeCode];
-    if (!typeCode) rowErrors.push("Tipe akun kosong");
-    else if (!type) rowErrors.push(`Kode tipe "${typeCode}" tidak dikenal`);
-
+    const currencyRaw = values.currency.toUpperCase();
     const currency = currencyRaw || "IDR";
     if (currencyRaw && !KNOWN_CURRENCIES.has(currencyRaw)) {
-      rowErrors.push(`Mata uang "${currencyRaw}" tidak didukung (pakai IDR/USD/CNY)`);
+      issues.add(`Mata uang "${currencyRaw}" tidak didukung (pakai IDR/USD/CNY)`);
     }
 
-    if (rowErrors.length > 0) {
-      errors.push({ row: rowNo, message: rowErrors.join("; ") });
-      return;
-    }
+    // Kembar diperiksa SESUDAH bentuknya sah: melaporkan "kode ganda" untuk
+    // dua baris yang kodenya sama-sama kosong tidak menolong siapa pun.
+    if (!issues.failed) duplikat.check(code, row, issues);
 
-    // Duplikat kode di dalam file: catat sekali, buang baris kedua dst.
-    if (seenCodes.has(code)) {
-      if (!duplicateCodesInFile.includes(code)) duplicateCodesInFile.push(code);
-      errors.push({ row: rowNo, message: `Kode "${code}" ganda di dalam file (baris ${seenCodes.get(code)})` });
-      return;
+    const error = issues.toError();
+    if (error) {
+      errors.push(error);
+      continue;
     }
-    seenCodes.set(code, rowNo);
 
     accounts.push({
       code,
       name,
-      type,
-      normalBalance: normalBalanceFor(type),
+      type: type!,
+      normalBalance: normalBalanceFor(type!),
       currency,
     });
-  });
+  }
 
-  return { accounts, errors, duplicateCodesInFile };
+  return { accounts, errors, duplicateCodesInFile: duplikat.duplicates };
 }

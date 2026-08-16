@@ -121,9 +121,13 @@ Named volumes survive `docker compose down`:
 
 | Volume    | Mounted at            | Contents               |
 | --------- | --------------------- | ---------------------- |
-| `db_data` | `/var/lib/mysql`      | MariaDB data           |
-| `uploads` | `/app/public/uploads` | Uploaded files         |
-| `audit`   | `/app/data/audit`     | Audit-trail JSONL logs |
+| `db_data`   | `/var/lib/mysql`      | MariaDB data                                    |
+| `documents` | `/app/data/documents` | Uploaded documents, one directory per company   |
+| `audit`     | `/app/data/audit`     | Tenant + operator audit trails (JSONL)          |
+
+> The `uploads` volume was dropped on 2026-08-16, on the condition this file
+> itself set: the move had run and reported 0 moved / 0 orphans, over a
+> `documents` table holding 0 rows in all four companies (issue #367).
 
 ## Networks
 

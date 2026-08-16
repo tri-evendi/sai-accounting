@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 import { isDocsPath } from "@/lib/docs";
+import { isBearerApiPath } from "@/lib/api-v1";
 import { resolvePostLoginPath } from "@/lib/post-login";
 import {
   COMPANY_HOME_PATH,
@@ -99,6 +100,23 @@ function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/api/auth/")) {
     return !pathname.startsWith("/api/auth/change-password");
   }
+  /*
+   * issue #389 — permukaan `/api/v1`: autentikasinya token Bearer, BUKAN
+   * cookie sesi. Tanpa baris ini proxy menjawab 401 sebelum `requireApiToken`
+   * sempat berjalan, sehingga tidak ada token sah yang bisa menjangkau satu
+   * endpoint pun — dan itu memang yang terjadi di produksi sampai 2026-08-16.
+   *
+   * "Publik" di sini berarti publik BAGI PROXY, bukan tanpa penjaga: setiap
+   * route di bawahnya memanggil `requireApiToken`, dan
+   * `tests/api-v1-spec.test.ts` menuntutnya dengan izin yang sama persis
+   * dengan yang didokumentasikan. Kecuali `openapi.json`, yang memang publik
+   * dengan sengaja dan tidak memulangkan satu byte pun data perusahaan.
+   *
+   * Bentuknya dijawab fungsi murni yang diuji (`isBearerApiPath`), sepola
+   * `isDocsPath` di atas — `startsWith("/api/v1")` telanjang juga akan
+   * melepaskan `/api/v1x`.
+   */
+  if (isBearerApiPath(pathname)) return true;
   return false;
 }
 

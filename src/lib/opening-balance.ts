@@ -29,6 +29,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { postJournal } from "@/lib/ledger";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
+import { round2 } from "@/lib/posting/rules";
 import {
   buildOpeningBalanceLines,
   openingEquityPlug,
@@ -81,13 +82,77 @@ export interface OpeningCashInput {
   rate?: number | null;
 }
 
-/** One opening receivable/payable, per partner (customer or supplier). */
+/**
+ * One opening receivable/payable, per partner (customer or supplier).
+ *
+ * ── Nomor & tanggal dokumen (issue #381 tahap 3) ───────────────────────────
+ * Ketiganya OPSIONAL, dan itu yang membuat dua jalur masuk hidup berdampingan:
+ *
+ *   • WISAYA penyiapan mengumpulkan satu TOTAL per mitra — orang yang mengetik
+ *     saldo awal jarang punya rincian fakturnya di tangan. Tanpa nomor, satu
+ *     dokumen pembuka dibuat untuk seluruh saldonya, bertanggal awal tahun buku.
+ *   • IMPOR berkas membawa RINCIANNYA — nomor faktur asli, tanggal terbit,
+ *     jatuh tempo. Umur piutangnya jadi umur yang sebenarnya, bukan umur yang
+ *     dihitung dari hari pertama.
+ *
+ * Keduanya menghasilkan bentuk yang sama di basis data; yang berbeda hanya
+ * seberapa halus rinciannya.
+ */
 export interface OpeningPartnerInput {
   partnerId: number;
   partnerName: string;
   currency: string;
   amount: number;
   rate?: number | null;
+  /** Nomor dokumen asli. Kosong → diturunkan dari nama mitra. */
+  documentNo?: string | null;
+  /** Tanggal terbit asli. Kosong → tanggal jurnal pembuka. */
+  documentDate?: Date | null;
+  dueDate?: Date | null;
+}
+
+/**
+ * Satu baris saldo awal PERSEDIAAN, per barang (issue #379).
+ *
+ * Menggantikan `inventory: number` — satu angka gelondongan yang menerbitkan
+ * jurnal TANPA satu pun gerakan stok, sehingga Neraca menunjukkan persediaan
+ * sementara laporan stok kosong. Keduanya menjawab pertanyaan yang sama dan
+ * dibaca dari sumber yang berbeda, jadi selisihnya tidak pernah terlihat oleh
+ * siapa pun sampai ada akuntan yang membandingkannya.
+ */
+export interface OpeningStockInput {
+  itemId: number;
+  /** Nama barang — hanya untuk memo jurnal & catatan gerakan. */
+  itemName: string;
+  quantity: number;
+  /** Harga pokok per satuan, IDR (nilai base). */
+  unitCost: number;
+}
+
+/**
+ * Satu aset tetap yang dibawa masuk dari sistem lama (issue #381 tahap 4).
+ *
+ * Akun-akunnya DISERTAKAN, tidak dicari di sini: akun aset/akumulasi/beban
+ * tinggal di `fixed_asset_categories`, dan route yang mencocokkan nama kategori
+ * ke barisnya sudah memegangnya. Pola yang sama dengan `partnerName` —
+ * pencarian nama bukan urusan modul ini.
+ */
+export interface OpeningFixedAssetInput {
+  assetNo: string;
+  name: string;
+  categoryId: number;
+  assetAccountId: number;
+  accumulatedAccountId: number;
+  expenseAccountId: number;
+  acquisitionDate: Date;
+  cost: number;
+  residual: number;
+  usefulLifeMonths: number;
+  /** Yang SUDAH disusutkan di sistem lama. */
+  accumulated: number;
+  lastDepreciationYear: number | null;
+  lastDepreciationMonth: number | null;
+  location: string | null;
 }
 
 export interface OpeningBalancesInput {
@@ -98,6 +163,8 @@ export interface OpeningBalancesInput {
     fiscalYearStart: Date;
     // ── Seller tax identity for e-Faktur (issue #17) — all optional. ──
     npwp?: string | null;
+    /** PKP — memungut PPN atau tidak (issue #368). Bawaan `true`. */
+    isPkp?: boolean;
     taxName?: string | null;
     taxAddress?: string | null;
     // ── Modul per kategori usaha (issue #99) — jawaban wizard, preset saja. ──
@@ -109,8 +176,20 @@ export interface OpeningBalancesInput {
   cash: OpeningCashInput[];
   receivables: OpeningPartnerInput[];
   payables: OpeningPartnerInput[];
-  /** Persediaan awal, in IDR base. */
-  inventory?: number | null;
+  /** Saldo awal persediaan, PER BARANG (issue #379). */
+  inventory: OpeningStockInput[];
+  /** Aset tetap yang dibawa masuk (issue #381 tahap 4). */
+  fixedAssets: OpeningFixedAssetInput[];
+}
+
+/** Nilai IDR satu baris persediaan awal — satu rumus, dipakai jurnal & gerakan. */
+export function openingStockValue(row: Pick<OpeningStockInput, "quantity" | "unitCost">): number {
+  return round2(num(row.quantity) * num(row.unitCost));
+}
+
+/** Total nilai persediaan awal — inilah yang didebit ke akun Persediaan. */
+export function openingStockTotal(rows: OpeningStockInput[]): number {
+  return round2(rows.reduce((sum, row) => sum + openingStockValue(row), 0));
 }
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
@@ -176,17 +255,83 @@ async function resolveOpeningLines(
     });
   }
 
-  // Persediaan — asset, IDR base.
-  const inventory = num(input.inventory);
-  if (inventory > 0) {
+  /*
+   * Persediaan — SATU baris jurnal untuk TOTALNYA, bukan satu baris per barang.
+   *
+   * Buku besar mencatat NILAI; rinciannya per barang adalah urusan buku
+   * pembantu, dan buku pembantu persediaan di aplikasi ini adalah
+   * `stock_movements` — yang diterbitkan `applyOpeningBalances` dari daftar
+   * yang sama. Satu baris jurnal per barang akan menggandakan rincian yang
+   * sudah ada di tempat yang benar, dan membuat jurnal pembuka perusahaan
+   * dengan 2.000 barang mustahil dibaca manusia.
+   */
+  const inventoryTotal = openingStockTotal(input.inventory);
+  if (inventoryTotal > 0) {
     const accountId = await resolveAccountId(MAPPING_KEYS.INVENTORY, "IDR", client);
     lines.push({
       accountId,
       side: "debit",
-      amount: inventory,
+      amount: inventoryTotal,
       currency: "IDR",
       rate: 1,
-      memo: "Persediaan awal",
+      memo: `Persediaan awal — ${input.inventory.length} barang`,
+    });
+  }
+
+  /*
+   * ══ ASET TETAP: DUA SISI, DIGABUNG PER AKUN (issue #381 tahap 4) ══════════
+   *
+   * Membuat baris `fixed_assets` saja TIDAK menerbitkan jurnal apa pun —
+   * pembuatan aset bukan sumber posting di aplikasi ini (hanya penyusutan dan
+   * pelepasan yang memposting). Jadi tanpa baris di bawah, daftar aset akan
+   * menunjukkan Rp 2 miliar sementara neraca menunjukkan nol: bentuk cacat yang
+   * sama persis dengan F-3 (#379), di permukaan yang baru.
+   *
+   * Aset dicatat KOTOR: harga perolehan di debit, akumulasi penyusutan di
+   * kredit sebagai kontra-aset. Menuliskan nilai bukunya saja (perolehan −
+   * akumulasi) akan menghasilkan neraca yang angkanya benar tetapi kehilangan
+   * informasi yang justru dicari pembacanya — berapa yang sudah disusutkan.
+   *
+   * DIGABUNG PER AKUN, bukan satu baris per aset: buku besar mencatat NILAI,
+   * rinciannya milik register aset. Perusahaan dengan 400 aset akan punya
+   * jurnal pembuka yang mustahil dibaca manusia kalau setiap aset punya
+   * barisnya sendiri — alasan yang sama dengan persediaan di #379. Kategori
+   * yang berbeda memakai akun yang berbeda, jadi penggabungannya per AKUN,
+   * bukan satu untuk semuanya.
+   */
+  const assetByAccount = new Map<number, number>();
+  const accumulatedByAccount = new Map<number, number>();
+  for (const a of input.fixedAssets) {
+    const cost = num(a.cost);
+    if (cost > 0) {
+      assetByAccount.set(a.assetAccountId, round2((assetByAccount.get(a.assetAccountId) ?? 0) + cost));
+    }
+    const accumulated = num(a.accumulated);
+    if (accumulated > 0) {
+      accumulatedByAccount.set(
+        a.accumulatedAccountId,
+        round2((accumulatedByAccount.get(a.accumulatedAccountId) ?? 0) + accumulated)
+      );
+    }
+  }
+  for (const [accountId, amount] of assetByAccount) {
+    lines.push({
+      accountId,
+      side: "debit",
+      amount,
+      currency: "IDR",
+      rate: 1,
+      memo: "Aset tetap — harga perolehan",
+    });
+  }
+  for (const [accountId, amount] of accumulatedByAccount) {
+    lines.push({
+      accountId,
+      side: "credit",
+      amount,
+      currency: "IDR",
+      rate: 1,
+      memo: "Akumulasi penyusutan aset tetap",
     });
   }
 
@@ -258,6 +403,7 @@ export async function applyOpeningBalances(
             baseCurrency: input.company.baseCurrency,
             fiscalYearStart: input.company.fiscalYearStart,
             npwp: input.company.npwp ?? null,
+            isPkp: input.company.isPkp ?? true,
             taxName: input.company.taxName ?? null,
             taxAddress: input.company.taxAddress ?? null,
             businessCategory: input.company.businessCategory ?? null,
@@ -295,6 +441,153 @@ export async function applyOpeningBalances(
       tx
     );
 
+    /*
+     * ══ SISI KEDUA PIUTANG & UTANG: DOKUMENNYA (issue #381 tahap 3) ════════
+     *
+     * Jurnal di atas menyatakan NILAI piutang/utang di akun kontrolnya. Buku
+     * besar PEMBANTU — umur piutang, daftar tagihan yang bisa dilunasi —
+     * membaca DOKUMEN SUMBER, bukan baris jurnal. Tanpa dokumen di sini,
+     * perusahaan pindahan memulai hidupnya dengan neraca yang menunjukkan
+     * piutang miliaran dan umur piutang yang kosong, serta faktur lama yang
+     * tidak bisa dilunasi karena tidak ada yang bisa ditunjuk.
+     *
+     * Bentuknya meniru #379 persis: satu baris jurnal untuk nilainya, dokumen
+     * per mitra untuk rinciannya, dalam TRANSAKSI YANG SAMA.
+     *
+     * ⚠ Dokumennya ditandai `isOpening`, dan penanda itulah yang menahan
+     * penggandaan: mesin posting menolaknya (`buildStampedEntry`), dan jalur
+     * sunting menolak mengubahnya. Tanpa penanda itu, SUNTINGAN pertama pada
+     * faktur pembuka akan menerbitkan jurnal di atas nilai yang sudah ada.
+     *
+     * ⚠ Faktur pembuka WAJIB punya satu baris item. Total faktur di seluruh
+     * aplikasi ini dihitung dari `invoice_items` (`receivables.ts`), bukan dari
+     * sebuah kolom nilai — faktur tanpa baris bernilai NOL dan dilewati diam-
+     * diam oleh umur piutang, yaitu persis kegagalan yang bagian ini ada untuk
+     * memperbaikinya. Sisi UTANG tidak simetris: `supplier_transactions` dibaca
+     * dari kolom `amount`, jadi ia tidak butuh baris apa pun.
+     */
+    for (const r of input.receivables) {
+      const amount = num(r.amount);
+      if (amount <= 0) continue;
+      const date = r.documentDate ?? input.company.fiscalYearStart;
+      await tx.invoice.create({
+        data: {
+          invoiceNo: r.documentNo?.trim() || `SA-AR-${r.partnerId}`,
+          date,
+          dueDate: r.dueDate ?? null,
+          customerId: r.partnerId,
+          currency: r.currency,
+          rate: r.rate ?? null,
+          baseAmount: round2(amount * rateFor(r.currency, r.rate)),
+          isOpening: true,
+          status: "pending",
+          items: {
+            create: [
+              {
+                itemName: `Saldo awal piutang — ${r.partnerName}`,
+                quantity: 1,
+                price: amount,
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    for (const p of input.payables) {
+      const amount = num(p.amount);
+      if (amount <= 0) continue;
+      await tx.supplierTransaction.create({
+        data: {
+          supplierId: p.partnerId,
+          date: p.documentDate ?? input.company.fiscalYearStart,
+          dueDate: p.dueDate ?? null,
+          type: "purchase",
+          amount,
+          currency: p.currency,
+          rate: p.rate ?? null,
+          baseAmount: round2(amount * rateFor(p.currency, p.rate)),
+          isOpening: true,
+          note: `Saldo awal utang — ${p.partnerName}`,
+        },
+      });
+    }
+
+    /*
+     * ══ REGISTER ASET TETAP (issue #381 tahap 4) ═══════════════════════════
+     *
+     * Sisi kedua dari baris jurnal aset tetap di atas. Keduanya dalam
+     * transaksi yang SAMA — setengahnya saja adalah persis cacat yang bagian
+     * ini ada untuk mencegahnya: register tanpa jurnal (daftar aset terisi,
+     * neraca nol) atau jurnal tanpa register (neraca terisi, daftar aset
+     * kosong dan tidak ada yang bisa disusutkan).
+     *
+     * ⚠ TIDAK ada baris `fixed_asset_depreciation` yang dibuat, dan itu
+     * disengaja: setiap baris riwayat di aplikasi ini berpasangan dengan
+     * JURNAL yang benar-benar diposting, sementara beban bulan-bulan itu sudah
+     * dibebankan di pembukuan lama. Yang dibawa hanya KEADAANNYA
+     * (`accumulatedDepreciation` + `lastDepreciation*`), dan `depreciateAsset`
+     * menolak periode yang sudah tercakup keadaan itu.
+     */
+    for (const a of input.fixedAssets) {
+      await tx.fixedAsset.create({
+        data: {
+          assetNo: a.assetNo,
+          name: a.name,
+          categoryId: a.categoryId,
+          acquisitionDate: a.acquisitionDate,
+          acquisitionCost: a.cost,
+          residualValue: a.residual,
+          usefulLifeMonths: a.usefulLifeMonths,
+          assetAccountId: a.assetAccountId,
+          accumulatedAccountId: a.accumulatedAccountId,
+          expenseAccountId: a.expenseAccountId,
+          location: a.location,
+          status: "active",
+          accumulatedDepreciation: a.accumulated,
+          lastDepreciationYear: a.lastDepreciationYear,
+          lastDepreciationMonth: a.lastDepreciationMonth,
+        },
+      });
+    }
+
+    /*
+     * ══ SISI KEDUA PERSEDIAAN: BUKU PEMBANTUNYA (issue #379) ═══════════════
+     *
+     * Jurnal di atas baru menyatakan NILAINYA. Tanpa gerakan stok pembuka,
+     * laporan Nilai Persediaan — yang membaca `stock_movements`, bukan jurnal —
+     * tetap kosong, dan perusahaan memulai hidupnya dengan dua angka yang
+     * menjawab pertanyaan yang sama secara berbeda.
+     *
+     * Bentuknya meniru PEMBELIAN, satu-satunya tempat di sistem ini yang kedua
+     * sisinya memang sudah sinkron: jurnalnya mendebit Persediaan, dan
+     * gerakan stoknya (`createStockInMovementsInTx`) sengaja tidak memposting
+     * apa pun. Di sini pun begitu.
+     *
+     * ⚠ `postForSource` TIDAK dipanggil, dan itu keputusan yang disengaja.
+     * Memanggilnya tidak akan menggandakan apa pun — `buildStockMovementEntry`
+     * memulangkan `null` untuk gerakan `in` — tapi justru itu masalahnya:
+     * sebuah pemanggilan yang tidak melakukan apa-apa adalah pemanggilan yang
+     * akan disalahpahami orang berikutnya sebagai "di sinilah jurnalnya
+     * terbit". Nilainya sudah ada di jurnal pembuka, satu baris di atas.
+     *
+     * Tanggalnya SAMA dengan jurnal pembuka: rata-rata tertimbang membaca
+     * gerakan urut waktu, dan stok yang seolah masuk sesudah transaksi pertama
+     * akan salah menghargai HPP-nya.
+     */
+    for (const row of input.inventory) {
+      await tx.stockMovement.create({
+        data: {
+          itemId: row.itemId,
+          quantity: row.quantity,
+          type: "in",
+          date: input.company.fiscalYearStart,
+          unitCost: row.unitCost,
+          note: `Saldo awal — ${row.itemName}`,
+        },
+      });
+    }
+
     const saved = await tx.companySetting.update({
       where: { id: setting.id },
       data: {
@@ -303,6 +596,7 @@ export async function applyOpeningBalances(
         baseCurrency: input.company.baseCurrency,
         fiscalYearStart: input.company.fiscalYearStart,
         npwp: input.company.npwp ?? null,
+        isPkp: input.company.isPkp ?? true,
         taxName: input.company.taxName ?? null,
         taxAddress: input.company.taxAddress ?? null,
         // Modul (issue #99): NULL = semua aktif, jadi wizard yang dilewati

@@ -6,7 +6,11 @@ import { companiesForUser, membershipFor } from "@/lib/company-registry";
 import { tenantCan } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { loginSchema } from "@/lib/validations/auth";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { clientIpFrom } from "@/lib/client-ip";
+import {
+  PERSISTENT_RATE_LIMITS,
+  checkPersistentRateLimit,
+} from "@/lib/rate-limit-persistent";
 import { evaluateSession, shouldRecheckSession } from "@/lib/session-guard";
 
 /**
@@ -46,15 +50,48 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         identifier: {},
         password: {},
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
         const identifier = parsed.data.identifier.toLowerCase();
 
-        // Rate limit per pengenal (email/username), sebelum menyentuh DB.
-        const rateCheck = checkRateLimit(`login:${identifier}`, RATE_LIMITS.login);
-        if (!rateCheck.allowed) {
+        /*
+         * ── PEMBATAS LAJU: PERSISTEN, DUA KUNCI (issue #372) ────────────────
+         *
+         * Sampai issue itu jalur ini memakai penghitung MEMORI dan HANYA
+         * per-pengenal. Ketiga kelemahannya sudah lama diakui repo ini — kepala
+         * `rate-limit-persistent.ts` (#138) menuliskannya untuk /register:
+         * hitungan hilang saat restart, tidak terbagi antar-instance. Yang
+         * ketiga khusus milik jalur ini: TANPA pagar per-IP, isian-kredensial
+         * yang menyebar ke seribu akun dari satu alamat tidak menyentuh batas
+         * mana pun, sebab tiap akun hanya dicoba sekali.
+         *
+         * Alasan lama "login itu permukaan internal" benar sebelum ada
+         * `/register`. Sejak pendaftaran mandiri, halaman masuk sama publiknya
+         * dengan yang lain.
+         *
+         * URUTANNYA disengaja: IP DULU, dan yang ditolak di sana LANGSUNG
+         * pulang — supaya penyerang tidak bisa membakar jatah milik akun
+         * korban lewat alamat yang sudah diblokir.
+         */
+        const ip = clientIpFrom(request.headers) ?? "unknown";
+        const perIp = await checkPersistentRateLimit(
+          `login:ip:${ip}`,
+          PERSISTENT_RATE_LIMITS.loginIp
+        );
+        if (!perIp.allowed) {
+          throw new Error("Too many login attempts. Please try again later.");
+        }
+
+        const perIdentifier = await checkPersistentRateLimit(
+          `login:id:${identifier}`,
+          PERSISTENT_RATE_LIMITS.loginIdentifier
+        );
+        /* Pesannya SAMA PERSIS untuk kedua sebab: membedakannya memberi tahu
+           penyerang apakah yang tersaring alamatnya atau akunnya — dan yang
+           kedua sekaligus menjawab bahwa akun itu ada. */
+        if (!perIdentifier.allowed) {
           throw new Error("Too many login attempts. Please try again later.");
         }
 

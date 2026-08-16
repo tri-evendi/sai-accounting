@@ -8,6 +8,8 @@
  * tertunggak berarti menghalangi kewajiban hukum pelanggan. Setiap unduhan
  * tercatat di jejak audit tenant (siapa, kapan, berapa baris).
  */
+import { Readable } from "node:stream";
+
 import { NextResponse } from "next/server";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
@@ -44,7 +46,22 @@ export async function GET(request: Request) {
     request,
   });
 
-  return new Response(new Uint8Array(exported.buffer), {
+  /*
+   * DI-STREAM, bukan disusun utuh di memori (issue #367): sejak berkas dokumen
+   * ikut, arsip sebuah tenant bisa berukuran giga — dan mengumpulkannya di
+   * memori akan menjadikan tombol "Unduh Data Saya" cara paling mudah
+   * menjatuhkan mesinnya. Jejak audit sudah ditulis DI ATAS, sebab sesudah byte
+   * pertama terkirim tidak ada lagi cara menjawab galat dengan status HTTP.
+   *
+   * `Readable.toWeb` memulangkan `ReadableStream` versi `node:stream/web`;
+   * `Response` menuntut yang versi DOM. Keduanya sama di runtime — perbedaannya
+   * hanya deklarasi tipe, jadi ini satu-satunya tempat cast itu dibenarkan.
+   */
+  const body = Readable.toWeb(
+    Readable.from(exported.openStream())
+  ) as unknown as ReadableStream<Uint8Array>;
+
+  return new Response(body, {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="${exported.filename}"`,

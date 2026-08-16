@@ -35,7 +35,8 @@ import {
   CurrencyRateFields,
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
-import { computeTax, defaultInvoiceTax, DEFAULT_TAX_RATE } from "@/lib/tax";
+import { computeTax, defaultInvoiceTax } from "@/lib/tax";
+import { useDefaultTaxRate } from "@/lib/tax-profile-client";
 import { FileDoneOutlined, GlobalOutlined, InfoCircleOutlined, TeamOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
@@ -104,14 +105,23 @@ export function useInvoiceCustomers(): CustomerOption[] {
   return customers;
 }
 
-/** The PPN default (taxable + rate string) implied by a currency/customer. */
+/**
+ * The PPN default (taxable + rate string) implied by a currency/customer.
+ *
+ * `companyRate` (issue #368) adalah tarif perusahaan pada tanggal dokumen — 0
+ * untuk perusahaan non-PKP, yang lalu membuat `taxable` ikut mati. Ia WAJIB di
+ * sini justru karena fungsi ini kecil dan mudah dipanggil dari tempat baru:
+ * parameter opsional akan diam-diam jatuh ke 11% pada pemanggil berikutnya.
+ */
 function applyTaxDefault(
   current: InvoiceFxValues,
-  next: { currency?: string; customerTaxExempt?: boolean }
+  next: { currency?: string; customerTaxExempt?: boolean },
+  companyRate: number
 ) {
   const d = defaultInvoiceTax({
     currency: next.currency ?? current.currency,
     customerTaxExempt: next.customerTaxExempt,
+    companyRate,
   });
   return { taxable: d.taxable, taxRate: String(d.taxRate) };
 }
@@ -129,17 +139,24 @@ export function InvoiceCustomerField({
   customers,
   value,
   onChange,
+  documentDate,
 }: {
   customers: CustomerOption[];
   value: InvoiceFxValues;
   onChange: Patch;
+  /** Tanggal dokumen (`YYYY-MM-DD`) — lihat `InvoiceFxAdvancedFields`. */
+  documentDate: string;
 }) {
   const t = useT();
   const { token } = theme.useToken();
+  const companyRate = useDefaultTaxRate(documentDate);
 
   function handleCustomerChange(id: string) {
     const picked = customers.find((c) => String(c.id) === id);
-    onChange({ customerId: id, ...applyTaxDefault(value, { customerTaxExempt: picked?.taxExempt }) });
+    onChange({
+      customerId: id,
+      ...applyTaxDefault(value, { customerTaxExempt: picked?.taxExempt }, companyRate),
+    });
   }
 
   return (
@@ -180,13 +197,24 @@ export function InvoiceFxAdvancedFields({
   customers,
   value,
   onChange,
+  documentDate,
 }: {
   customers: CustomerOption[];
   value: InvoiceFxValues;
   onChange: Patch;
+  /**
+   * Tanggal dokumen (`YYYY-MM-DD`) — menentukan TARIF MANA yang jadi bawaan
+   * saat PPN dinyalakan (issue #368). Ia prop dan bukan bagian
+   * `InvoiceFxValues` karena tanggal faktur dimiliki formulir induknya, bukan
+   * blok valas ini.
+   */
+  documentDate: string;
 }) {
   const t = useT();
   const { token } = theme.useToken();
+  /* Tarif perusahaan PADA TANGGAL DOKUMEN, bukan konstanta kompilasi dan bukan
+     tarif hari ini — faktur yang dicatat mundur mengikuti tarif bulannya. */
+  const companyRate = useDefaultTaxRate(documentDate);
   const { customerId, currency, rate, taxable, taxRate, pebNumber, pebDate, exportNote } = value;
   const effectiveRate = taxable ? Number(taxRate) || 0 : 0;
 
@@ -212,7 +240,7 @@ export function InvoiceFxAdvancedFields({
     const picked = customers.find((cust) => String(cust.id) === customerId);
     onChange({
       currency: c,
-      ...applyTaxDefault(value, { currency: c, customerTaxExempt: picked?.taxExempt }),
+      ...applyTaxDefault(value, { currency: c, customerTaxExempt: picked?.taxExempt }, companyRate),
     });
   }
 
@@ -241,9 +269,9 @@ export function InvoiceFxAdvancedFields({
           onCheckedChange={(v) =>
             onChange({
               taxable: v === true,
-              // Turning PPN on with no rate yet gives the statutory default.
-              taxRate:
-                v === true && !(Number(taxRate) > 0) ? String(DEFAULT_TAX_RATE) : taxRate,
+              // Turning PPN on with no rate yet gives the company's own rate
+              // for this document's date (issue #368) — 0 for a non-PKP company.
+              taxRate: v === true && !(Number(taxRate) > 0) ? String(companyRate) : taxRate,
             })
           }
         >
@@ -440,19 +468,36 @@ interface InvoiceFxFieldsProps {
   onChange: Patch;
   /** Net line total (DPP), in the invoice's own currency. */
   subtotal: number;
+  /** Tanggal dokumen (`YYYY-MM-DD`) — lihat `InvoiceFxAdvancedFields`. */
+  documentDate: string;
 }
 
 /**
  * Ketiga bagian berurutan, seperti sebelum issue #4. Dipakai halaman Ubah
  * Faktur, yang formulirnya memang tidak dilipat.
  */
-export function InvoiceFxFields({ value, onChange, subtotal }: InvoiceFxFieldsProps) {
+export function InvoiceFxFields({
+  value,
+  onChange,
+  subtotal,
+  documentDate,
+}: InvoiceFxFieldsProps) {
   const customers = useInvoiceCustomers();
 
   return (
     <>
-      <InvoiceCustomerField customers={customers} value={value} onChange={onChange} />
-      <InvoiceFxAdvancedFields customers={customers} value={value} onChange={onChange} />
+      <InvoiceCustomerField
+        customers={customers}
+        value={value}
+        onChange={onChange}
+        documentDate={documentDate}
+      />
+      <InvoiceFxAdvancedFields
+        customers={customers}
+        value={value}
+        onChange={onChange}
+        documentDate={documentDate}
+      />
       <InvoiceTotalsSummary value={value} subtotal={subtotal} />
     </>
   );

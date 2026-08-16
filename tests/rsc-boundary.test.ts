@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 160;
+const AMBANG_KLIEN = 164;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -237,6 +237,12 @@ const KLIEN_TERSAHKAN = [
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/new/account-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form.tsx",
+  /* Token API (#389) — pulau client karena satu sebab yang tidak bisa
+     dipindahkan ke server: token utuh hanya ADA sekali, di jawaban POST, dan
+     ia harus tetap terlihat di layar yang sama sesudah daftarnya menyegar.
+     Halamannya sendiri TETAP server component dan membaca daftarnya lewat
+     Prisma — yang menyeberang formulirnya, bukan datanya. */
+  "app/(dashboard)/t/[tenantSlug]/[companySlug]/api-tokens/api-tokens-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/approval-queue-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/rules/approval-rules-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/budget/accounts/budget-accounts-client.tsx",
@@ -272,6 +278,15 @@ const KLIEN_TERSAHKAN = [
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/ledger/ledger-filter.tsx",
+  /* Impor Data Awal (#381 tahap 2) — pulau client karena alasan yang sama
+     dengan impor daftar akun: pemilih berkas, unggah, dan tabel galat
+     per-baris yang muncul TANPA memuat ulang halaman. Sebuah berkas 300 baris
+     yang ditolak harus memperlihatkan ke-300 masalahnya di layar yang sama,
+     bukan lewat pemuatan penuh yang menghapus pilihan berkasnya. Halamannya
+     sendiri TETAP server component: izin ketiga jenis dihitung di server dan
+     diturunkan sebagai daftar, jadi yang menyeberang kendalinya, bukan
+     keputusan izinnya. */
+  "app/(dashboard)/t/[tenantSlug]/[companySlug]/master/import/master-import-form.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
   "app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",
@@ -325,6 +340,7 @@ const KLIEN_TERSAHKAN = [
   // Halaman Pengaturan yang memanggilnya tetap server component; angkanya
   // dihitung di sana dan diturunkan sebagai prop.
   "components/settings/sample-data-panel.tsx",
+  "components/settings/tax-settings-panel.tsx",
   "components/setup/setup-shell.tsx",
   "components/shared/advance-compensation.tsx",
   "components/shared/consignee-select.tsx",
@@ -382,6 +398,7 @@ const KLIEN_TERSAHKAN = [
   "lib/company-identity-client.tsx",
   "lib/i18n/client.tsx",
   "lib/report-files.ts",
+  "lib/tax-profile-client.tsx",
   "lib/theme/client.tsx",
   "lib/use-effective-permissions.ts",
 ];

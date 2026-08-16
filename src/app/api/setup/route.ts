@@ -107,7 +107,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { company, cash, receivables, payables, inventory } = parsed.data;
+  const { company, cash, receivables, payables, inventory, fixedAssets } = parsed.data;
 
   /*
    * Modul per kategori usaha (issue #99). Wizard boleh menyertakan himpunan
@@ -136,12 +136,31 @@ export async function POST(request: Request) {
   const enabledModules = company.modules ? serializeEnabledModules(moduleSet) : null;
 
   // Partner names for the AR/AP line memos come from the DB, not the client.
-  const [customers, suppliers] = await Promise.all([
+  // Nama barang untuk gerakan stok pembuka (#379) mengikuti aturan yang sama:
+  // apa pun yang muncul di buku ditulis dari baris yang benar-benar ada, bukan
+  // dari teks kiriman peramban.
+  const [customers, suppliers, items, assetCategories] = await Promise.all([
     prisma.customer.findMany({ select: { id: true, name: true } }),
     prisma.supplier.findMany({ select: { id: true, name: true } }),
+    prisma.item.findMany({ select: { id: true, name: true } }),
+    /* Kategori aset membawa AKUN-nya (aset / akumulasi / beban) dan umur
+       bawaannya — itulah kenapa berkas impor cukup menyebut namanya (#381). */
+    prisma.fixedAssetCategory.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        defaultUsefulLifeMonths: true,
+        assetAccountId: true,
+        accumulatedAccountId: true,
+        expenseAccountId: true,
+      },
+    }),
   ]);
+  const categoryByName = new Map(assetCategories.map((c) => [c.name.trim().toLowerCase(), c]));
   const customerName = new Map(customers.map((c) => [c.id, c.name]));
   const supplierName = new Map(suppliers.map((s) => [s.id, s.name]));
+  const itemName = new Map(items.map((i) => [i.id, i.name]));
 
   for (const r of receivables) {
     if (!customerName.has(r.partnerId)) {
@@ -162,6 +181,54 @@ export async function POST(request: Request) {
     }
   }
 
+  /* Barang yang tidak ada ditolak SEBELUM transaksi dibuka — sebuah gerakan
+     stok pembuka yang gagal di tengah akan meninggalkan jurnal pembuka yang
+     sudah terbit tanpa buku pembantunya, yaitu persis keadaan yang #379
+     diperbaiki. */
+  for (const row of inventory) {
+    if (!itemName.has(row.itemId)) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        { error: t("errors.setupItemNotFound", { id: row.itemId }) },
+        { status: 400 }
+      );
+    }
+  }
+
+  /* Kategori yang tidak ada ditolak SEBELUM transaksi dibuka — sama seperti
+     barang di #379. Aset tanpa kategori tidak punya akun, dan tanpa akun tidak
+     ada baris jurnal yang bisa dibuat. */
+  for (const a of fixedAssets) {
+    if (!categoryByName.has(a.category.trim().toLowerCase())) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        { error: t("errors.setupAssetCategoryNotFound", { name: a.category }) },
+        { status: 400 }
+      );
+    }
+  }
+
+  /* Kode aset yang SUDAH ADA ditolak: `fixed_assets.asset_no` unik, dan
+     membiarkannya menabrak constraint di tengah transaksi menghasilkan galat
+     yang tidak menyebut baris mana. */
+  if (fixedAssets.length > 0) {
+    const existing = await prisma.fixedAsset.findMany({
+      where: { assetNo: { in: fixedAssets.map((a) => a.assetNo) } },
+      select: { assetNo: true },
+    });
+    if (existing.length > 0) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json(
+        {
+          error: t("errors.setupAssetNoTaken", {
+            codes: existing.map((e) => e.assetNo).join(", "),
+          }),
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   const input: OpeningBalancesInput = {
     company: {
       name: company.name,
@@ -169,6 +236,7 @@ export async function POST(request: Request) {
       baseCurrency: company.baseCurrency,
       fiscalYearStart: new Date(company.fiscalYearStart),
       npwp: company.npwp ?? null,
+      isPkp: company.isPkp,
       taxName: company.taxName ?? null,
       taxAddress: company.taxAddress ?? null,
       businessCategory: company.businessCategory ?? null,
@@ -180,12 +248,20 @@ export async function POST(request: Request) {
       amount: c.amount,
       rate: c.rate,
     })),
+    /* Rincian dokumen (issue #381 tahap 4) diteruskan apa adanya; `undefined`
+       berarti wisaya, dan `applyOpeningBalances` yang jatuh ke tanggal jurnal
+       pembuka. Tanggal diurai DI SINI, bukan di lapisan bawah: `new Date()` atas
+       teks kosong menghasilkan Invalid Date yang mendarat di basis data sebagai
+       galat yang tidak menyebut kolomnya. */
     receivables: receivables.map((r) => ({
       partnerId: r.partnerId,
       partnerName: customerName.get(r.partnerId)!,
       currency: r.currency,
       amount: r.amount,
       rate: r.rate,
+      documentNo: r.documentNo || null,
+      documentDate: r.documentDate ? new Date(r.documentDate) : null,
+      dueDate: r.dueDate ? new Date(r.dueDate) : null,
     })),
     payables: payables.map((p) => ({
       partnerId: p.partnerId,
@@ -193,8 +269,38 @@ export async function POST(request: Request) {
       currency: p.currency,
       amount: p.amount,
       rate: p.rate,
+      documentNo: p.documentNo || null,
+      documentDate: p.documentDate ? new Date(p.documentDate) : null,
+      dueDate: p.dueDate ? new Date(p.dueDate) : null,
     })),
-    inventory,
+    fixedAssets: fixedAssets.map((a) => {
+      const category = categoryByName.get(a.category.trim().toLowerCase())!;
+      return {
+        assetNo: a.assetNo,
+        name: a.name,
+        categoryId: category.id,
+        assetAccountId: category.assetAccountId,
+        accumulatedAccountId: category.accumulatedAccountId,
+        expenseAccountId: category.expenseAccountId,
+        acquisitionDate: new Date(a.acquisitionDate),
+        cost: a.cost,
+        residual: a.residual,
+        /* Umur kosong memakai bawaan KATEGORINYA — bukan angka yang ditebak di
+           sini, dan bukan nol yang akan membuat penyusutannya membagi dengan
+           nol pada putaran pertama. */
+        usefulLifeMonths: a.usefulLifeMonths ?? category.defaultUsefulLifeMonths,
+        accumulated: a.accumulated,
+        lastDepreciationYear: a.lastDepreciationYear ?? null,
+        lastDepreciationMonth: a.lastDepreciationMonth ?? null,
+        location: a.location ?? null,
+      };
+    }),
+    inventory: inventory.map((row) => ({
+      itemId: row.itemId,
+      itemName: itemName.get(row.itemId)!,
+      quantity: row.quantity,
+      unitCost: row.unitCost,
+    })),
   };
 
   try {

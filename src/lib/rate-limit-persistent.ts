@@ -39,6 +39,41 @@ export interface PersistentRateLimitOptions {
 
 /** Konfigurasi endpoint publik (issue #138). */
 export const PERSISTENT_RATE_LIMITS = {
+  /**
+   * MASUK, per alamat IP (issue #372) — pagar terhadap isian-kredensial yang
+   * MENYEBAR ke banyak akun.
+   *
+   * Inilah bentuk serangan yang batas per-pengenal tidak pernah lihat: seribu
+   * akun dicoba masing-masing satu kali dari satu alamat, dan tidak satu pun
+   * penghitung per-akun mendekati batasnya.
+   *
+   * 50 per 15 menit, sengaja jauh lebih longgar daripada batas per-akun: satu
+   * kantor di balik NAT adalah SATU alamat, dan batas per-IP yang seketat
+   * per-akun akan mengunci seluruh kantor karena satu orang salah ketik. 50
+   * masih jauh di atas pemakaian wajar dan jauh di bawah ambang berguna bagi
+   * penyisir daftar kredensial.
+   */
+  loginIp: { windowMs: 15 * 60 * 1000, maxAttempts: 50 },
+  /**
+   * MASUK, per pengenal — pagar terhadap SATU akun yang digempur. Angkanya
+   * sama persis dengan `RATE_LIMITS.login` di memori yang digantikannya, jadi
+   * yang berubah hanya ketahanannya (selamat dari restart, terbagi
+   * antar-instance), bukan seberapa ketat.
+   */
+  loginIdentifier: { windowMs: 15 * 60 * 1000, maxAttempts: 10 },
+  /**
+   * Permintaan `/api/v1/…` per TOKEN (issue #389).
+   *
+   * Kuncinya token, bukan IP: sebuah integrasi hidup di satu alamat dan
+   * menariknya ribuan kali sehari — membatasi per-IP akan menghukum pemakaian
+   * yang benar, sementara token yang bocor tetap leluasa selama penyerangnya
+   * berpindah alamat.
+   *
+   * 600 per menit ≈ 10 per detik: jauh di atas laju penarikan yang wajar
+   * (integrasi menarik per menit atau per jam, bukan per milidetik), dan jauh
+   * di bawah laju yang bisa menguras basis data kendali.
+   */
+  apiToken: { windowMs: 60 * 1000, maxAttempts: 600 },
   /** /register per alamat IP — pagar penyisiran massal. */
   registerIp: { windowMs: 60 * 60 * 1000, maxAttempts: 10 },
   /** /register per email — pagar spam ke satu kotak masuk. */

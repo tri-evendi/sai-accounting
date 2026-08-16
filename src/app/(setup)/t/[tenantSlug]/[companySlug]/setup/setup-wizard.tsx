@@ -23,19 +23,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Col, Flex, Row, Typography, theme } from "antd";
 import type { GlobalToken } from "antd";
+import { usePathname } from "next/navigation";
 import { useAppRouter } from "@/components/ui/app-link";
 import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Money } from "@/components/ui/money";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { WizardSteps } from "@/components/ui/wizard-steps";
 import { fieldGrid, formGrid } from "@/lib/layout-width";
+import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
 import { formatCurrency } from "@/lib/utils";
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
+import { DownloadOutlined, UploadOutlined, ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { ModulePicker } from "@/components/settings/module-picker";
@@ -98,6 +102,50 @@ interface PartnerRow {
   currency: string;
   amount: string;
   rate: string;
+  /**
+   * Rincian dokumen — hanya terisi pada baris HASIL IMPOR (#381 tahap 4).
+   *
+   * Baris yang diketik tangan meninggalkannya kosong, dan `applyOpeningBalances`
+   * jatuh ke tanggal jurnal pembuka. Bedanya terlihat di umur piutang: tanpa
+   * tanggal terbit asli, seluruh piutang lama menumpuk di ember "0–30 hari"
+   * pada hari pertama — dan justru daftar itulah alasan orang membukanya.
+   */
+  documentNo?: string;
+  documentDate?: string;
+  dueDate?: string;
+}
+/**
+ * Satu baris saldo awal PERSEDIAAN (issue #379). Selalu IDR — harga pokok
+ * persediaan adalah nilai base, dan tidak ada kurs yang perlu ditanyakan.
+ */
+/**
+ * Satu aset tetap hasil impor (issue #381 tahap 4).
+ *
+ * TIDAK ada bentuk "ketik tangan" untuk jenis ini, dan itu disengaja: sebuah
+ * aset menuntut tujuh angka termasuk akumulasi penyusutan dan bulan
+ * terakhirnya — mengetiknya baris demi baris di wisaya adalah permukaan yang
+ * salah, dan modul Aset Tetap sudah menyediakan formulir yang benar untuk
+ * sesudah penyiapan. Yang dibutuhkan di sini hanya jalan masuk massal.
+ */
+interface AssetRow {
+  assetNo: string;
+  name: string;
+  category: string;
+  acquisitionDate: string;
+  cost: number;
+  residual: number;
+  usefulLifeMonths?: number;
+  accumulated: number;
+  lastDepreciationYear: number | null;
+  lastDepreciationMonth: number | null;
+  location: string | null;
+}
+
+interface StockRow {
+  key: number;
+  itemId: string;
+  quantity: string;
+  unitCost: string;
 }
 
 /** Judul langkah — `<h2>` yang ukurannya token, bukan `text-lg`. */
@@ -116,6 +164,7 @@ export function SetupWizard({
   cashAccounts,
   customers,
   suppliers,
+  items,
 }: {
   defaults: { name: string; address: string; baseCurrency: string };
   currencies: string[];
@@ -123,6 +172,8 @@ export function SetupWizard({
   cashAccounts: CashAccount[];
   customers: Party[];
   suppliers: Party[];
+  /** Barang untuk saldo awal persediaan (#379). */
+  items: Party[];
 }) {
   const t = useT();
   const { token } = theme.useToken();
@@ -161,6 +212,15 @@ export function SetupWizard({
   const [address, setAddress] = useState(defaults.address);
   // Seller NPWP for e-Faktur (issue #17) — optional at setup, editable later.
   const [npwp, setNpwp] = useState("");
+  /*
+   * PKP — memungut PPN atau tidak (issue #368).
+   *
+   * `true` sebagai bawaan, bukan `false`: itu perilaku setiap perusahaan yang
+   * sudah ada hari ini, jadi wisaya yang dilewati begitu saja tidak mengubah
+   * apa pun. Jawabannya menentukan bawaan PPN di SETIAP formulir dokumen —
+   * perusahaan non-PKP tidak lagi mendapat 11% yang salah sejak faktur pertama.
+   */
+  const [isPkp, setIsPkp] = useState(true);
   const [baseCurrency, setBaseCurrency] = useState(defaults.baseCurrency);
   const [fiscalYearStart, setFiscalYearStart] = useState(`${new Date().getFullYear()}-01-01`);
 
@@ -174,7 +234,8 @@ export function SetupWizard({
   const [cash, setCash] = useState<CashRow[]>([]);
   const [receivables, setReceivables] = useState<PartnerRow[]>([]);
   const [payables, setPayables] = useState<PartnerRow[]>([]);
-  const [inventory, setInventory] = useState("");
+  const [inventory, setInventory] = useState<StockRow[]>([]);
+  const [fixedAssets, setFixedAssets] = useState<AssetRow[]>([]);
 
   // ── Draf tahan-muat-ulang (audit 2026-07) ──────────────────────────────────
   // Empat puluh baris saldo awal yang lenyap karena tab ter-refresh adalah
@@ -198,6 +259,7 @@ export function SetupWizard({
         if (str(d.name) && d.name) setName(d.name);
         if (str(d.address)) setAddress(d.address);
         if (str(d.npwp)) setNpwp(d.npwp);
+        if (typeof d.isPkp === "boolean") setIsPkp(d.isPkp);
         if (str(d.baseCurrency) && d.baseCurrency) setBaseCurrency(d.baseCurrency);
         if (str(d.fiscalYearStart) && d.fiscalYearStart) setFiscalYearStart(d.fiscalYearStart);
         if (str(d.category) && isBusinessCategory(d.category)) setCategory(d.category);
@@ -208,7 +270,8 @@ export function SetupWizard({
         if (d.cash != null) setCash(rows<CashRow>(d.cash));
         if (d.receivables != null) setReceivables(rows<PartnerRow>(d.receivables));
         if (d.payables != null) setPayables(rows<PartnerRow>(d.payables));
-        if (str(d.inventory)) setInventory(d.inventory);
+        setInventory(rows<StockRow>(d.inventory));
+        setFixedAssets(rows<AssetRow>(d.fixedAssets));
       }
     } catch {
       // Draf rusak → mulai bersih; jangan pernah memblokir wizard-nya sendiri.
@@ -228,6 +291,7 @@ export function SetupWizard({
           name,
           address,
           npwp,
+          isPkp,
           baseCurrency,
           fiscalYearStart,
           category,
@@ -236,15 +300,20 @@ export function SetupWizard({
           receivables,
           payables,
           inventory,
+          fixedAssets,
         })
       );
     } catch {
       // Storage penuh/di-nonaktifkan — draf memang best-effort.
     }
-  }, [step, name, address, npwp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory]);
+  }, [step, name, address, npwp, isPkp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory, fixedAssets]);
 
   const hasMeaningfulDraft =
-    cash.length > 0 || receivables.length > 0 || payables.length > 0 || inventory !== "";
+    cash.length > 0 ||
+    receivables.length > 0 ||
+    payables.length > 0 ||
+    inventory.length > 0 ||
+    fixedAssets.length > 0;
 
   useEffect(() => {
     if (!hasMeaningfulDraft) return;
@@ -287,6 +356,7 @@ export function SetupWizard({
       receivables: modules.has("sales"),
       inventory: modules.has("inventory"),
       payables: modules.has("purchasing"),
+      fixedAssets: modules.has("fixed_assets"),
     }),
     [modules]
   );
@@ -318,8 +388,28 @@ export function SetupWizard({
         else unrated++;
       }
     }
-    const inv = saldoAktif.inventory ? Number(inventory) || 0 : 0;
+    /* Nilai persediaan awal = Σ (kuantitas × harga pokok). Rumus yang SAMA
+       dipakai server (`openingStockTotal`) untuk baris jurnalnya — kalau
+       keduanya menyimpang, pratinjau di layar berbohong tentang Modal. */
+    const inv = saldoAktif.inventory
+      ? inventory.reduce(
+          (sum, r) => sum + (Number(r.quantity) || 0) * (Number(r.unitCost) || 0),
+          0
+        )
+      : 0;
     if (inv > 0) assets = round2(assets + baseOf(inv, 1));
+
+    /* Aset tetap menyumbang NILAI BUKUNYA (perolehan − akumulasi). Jurnalnya
+       mencatat kotor — debit perolehan, kredit akumulasi — dan selisih kedua
+       baris itu persis nilai bukunya, jadi pratinjau Modal di layar ini tetap
+       sama dengan yang dihitung server. Menjumlahkan perolehannya saja akan
+       melebihkan aset (dan karenanya Modal) sebesar seluruh akumulasi. */
+    if (saldoAktif.fixedAssets) {
+      for (const a of fixedAssets) {
+        const buku = (Number(a.cost) || 0) - (Number(a.accumulated) || 0);
+        if (buku > 0) assets = round2(assets + baseOf(buku, 1));
+      }
+    }
 
     for (const r of saldoAktif.payables ? payables : []) {
       const amt = Number(r.amount) || 0;
@@ -335,7 +425,7 @@ export function SetupWizard({
     const equity = round2(assets - liabilities);
     const hasAny = assets > 0 || liabilities > 0;
     return { assets, liabilities, equity, unrated, hasAny };
-  }, [cash, receivables, payables, inventory, cashById, saldoAktif]);
+  }, [cash, receivables, payables, inventory, fixedAssets, cashById, saldoAktif]);
 
   function updateCash(key: number, patch: Partial<CashRow>) {
     setCash((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -367,6 +457,7 @@ export function SetupWizard({
         baseCurrency,
         fiscalYearStart,
         npwp: npwp || undefined,
+        isPkp,
         // Modul usaha (issue #99). Kategori hanya dicatat; yang berlaku adalah
         // himpunan modulnya, dan server menormalkan + memvalidasinya lagi
         // (modul inti tak bisa dimatikan, bahkan dari sini).
@@ -391,6 +482,12 @@ export function SetupWizard({
           currency: r.currency,
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
+          /* Hanya dikirim bila ADA — baris ketikan tangan tidak boleh mengirim
+             string kosong yang lolos `z.string().optional()` lalu menjadi
+             `new Date("")` = Invalid Date di route. */
+          ...(r.documentNo ? { documentNo: r.documentNo } : {}),
+          ...(r.documentDate ? { documentDate: r.documentDate } : {}),
+          ...(r.dueDate ? { dueDate: r.dueDate } : {}),
         })),
       payables: (saldoAktif.payables ? payables : [])
         .filter((r) => r.partnerId && (Number(r.amount) || 0) > 0)
@@ -399,8 +496,23 @@ export function SetupWizard({
           currency: r.currency,
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
+          /* Hanya dikirim bila ADA — baris ketikan tangan tidak boleh mengirim
+             string kosong yang lolos `z.string().optional()` lalu menjadi
+             `new Date("")` = Invalid Date di route. */
+          ...(r.documentNo ? { documentNo: r.documentNo } : {}),
+          ...(r.documentDate ? { documentDate: r.documentDate } : {}),
+          ...(r.dueDate ? { dueDate: r.dueDate } : {}),
         })),
-      inventory: saldoAktif.inventory ? Number(inventory) || 0 : 0,
+      fixedAssets: saldoAktif.fixedAssets ? fixedAssets : [],
+      inventory: saldoAktif.inventory
+        ? inventory
+            .filter((r) => r.itemId && Number(r.quantity) > 0 && Number(r.unitCost) > 0)
+            .map((r) => ({
+              itemId: Number(r.itemId),
+              quantity: Number(r.quantity),
+              unitCost: Number(r.unitCost),
+            }))
+        : [],
     };
 
     try {
@@ -692,6 +804,24 @@ export function SetupWizard({
                 maxLength={30}
                 placeholder={t("setup.npwpPlaceholder")}
               />
+              {/* PKP (issue #368) — pertanyaan yang menentukan bawaan PPN di
+                  seluruh aplikasi, jadi ia diajukan sekali di sini alih-alih
+                  ditebak. Jawabannya bisa diubah kapan saja di Pengaturan. */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <Checkbox
+                  id="isPkp"
+                  checked={isPkp}
+                  onCheckedChange={(v) => setIsPkp(v === true)}
+                >
+                  {t("setup.pkpField")}
+                </Checkbox>
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", fontSize: "var(--ant-font-size-sm)" }}
+                >
+                  {t("setup.pkpHint")}
+                </Typography.Text>
+              </div>
             </div>
           </Flex>
         )}
@@ -908,36 +1038,27 @@ export function SetupWizard({
               t={t}
               token={token}
               onUpdate={(k, p) => updatePartner(setReceivables, k, p)}
+              importKind="receivables"
             />
             )}
 
-            {/* Persediaan */}
+            {/* Persediaan — PER BARANG sejak #379 */}
             {saldoAktif.inventory && (
-            <div>
-              <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
-                {t("accountType.inventory")}
-              </Title>
-              <Text
-                type="secondary"
-                style={{ display: "block", marginBottom: token.marginXS, fontSize: token.fontSizeSM }}
-              >
-                {t("setup.inventoryHint")}
-              </Text>
-              <Row>
-                <Col xs={24} sm={12}>
-                  <Input
-                    id="inventory"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    style={AMOUNT_INPUT}
-                    label={t("setup.inventoryField")}
-                    value={inventory}
-                    onChange={(e) => setInventory(e.target.value)}
-                  />
-                </Col>
-              </Row>
-            </div>
+            <StockSection
+              rows={inventory}
+              setRows={setInventory}
+              items={items}
+              t={t}
+              token={token}
+              onUpdate={(k, patch) =>
+                setInventory((rows) => rows.map((r) => (r.key === k ? { ...r, ...patch } : r)))
+              }
+            />
+            )}
+
+            {/* Aset tetap — impor saja; lihat catatan di `AssetRow`. */}
+            {saldoAktif.fixedAssets && (
+              <FixedAssetSection rows={fixedAssets} setRows={setFixedAssets} t={t} token={token} />
             )}
 
             {/* Utang */}
@@ -956,6 +1077,7 @@ export function SetupWizard({
               t={t}
               token={token}
               onUpdate={(k, p) => updatePartner(setPayables, k, p)}
+              importKind="payables"
             />
 
             )}
@@ -1135,6 +1257,7 @@ function Section({
   addLabel,
   empty,
   token,
+  extraActions,
 }: {
   title: string;
   hint: string;
@@ -1143,6 +1266,8 @@ function Section({
   addLabel: string;
   empty?: string;
   token: GlobalToken;
+  /** Tombol unduh templat & impor, bila bagian ini punya jalur berkas. */
+  extraActions?: React.ReactNode;
 }) {
   return (
     <div>
@@ -1166,18 +1291,376 @@ function Section({
           {empty}
         </Text>
       ) : (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          style={{ marginTop: token.marginSM }}
-          onClick={onAdd}
-        >
-          <PlusOutlined aria-hidden="true" />
-          {addLabel}
-        </Button>
+        <Flex gap={token.marginXS} wrap style={{ marginTop: token.marginSM }}>
+          <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+            <PlusOutlined aria-hidden="true" />
+            {addLabel}
+          </Button>
+          {extraActions}
+        </Flex>
       )}
     </div>
+  );
+}
+
+/**
+ * Saldo awal PERSEDIAAN, per barang (issue #379).
+ *
+ * Menggantikan satu isian gelondongan yang menerbitkan jurnal TANPA satu pun
+ * gerakan stok — sehingga Neraca menunjukkan persediaan sementara laporan stok
+ * kosong, dan tidak ada apa pun di layar yang menyebutkan selisihnya. Per
+ * barang, jalur pembukaan bisa menerbitkan kedua sisinya sekaligus.
+ *
+ * Tanpa pemilih MATA UANG, berbeda dari `PartnerSection`, dan itu disengaja:
+ * harga pokok persediaan adalah nilai base. Menawarkan kurs di sini berarti
+ * mengundang pertanyaan yang jawabannya tidak pernah dipakai.
+ */
+function StockSection({
+  rows,
+  setRows,
+  items,
+  t,
+  token,
+  onUpdate,
+}: {
+  rows: StockRow[];
+  setRows: React.Dispatch<React.SetStateAction<StockRow[]>>;
+  items: Party[];
+  t: TranslateFn;
+  token: GlobalToken;
+  onUpdate: (key: number, patch: Partial<StockRow>) => void;
+}) {
+  return (
+    <Section
+      title={t("accountType.inventory")}
+      hint={t("setup.inventoryHint")}
+      addLabel={t("setup.addStockRow")}
+      token={token}
+      empty={items.length === 0 ? t("setup.emptyItems") : undefined}
+      onAdd={() =>
+        items.length > 0 &&
+        setRows((r) => [...r, { key: nextId(), itemId: "", quantity: "", unitCost: "" }])
+      }
+    >
+      {rows.map((row) => {
+        /* Nilai baris dihitung dan DIPERLIHATKAN. Kuantitas × harga pokok
+           adalah perkalian yang mudah salah ketik satu nol, dan angka yang
+           tidak pernah ditampilkan adalah angka yang tidak pernah diperiksa. */
+        const nilai = (Number(row.quantity) || 0) * (Number(row.unitCost) || 0);
+        return (
+          <Row key={row.key} gutter={[token.marginXS, token.marginXS]} align="bottom">
+            <Col xs={24} sm={8}>
+              <Select
+                id={`i-${row.key}`}
+                label={t("setup.itemField")}
+                value={row.itemId}
+                onChange={(e) => onUpdate(row.key, { itemId: e.target.value })}
+                placeholder={t("setup.pickItem")}
+                options={items.map((i) => ({ value: String(i.id), label: i.name }))}
+              />
+            </Col>
+            <Col xs={24} sm={5}>
+              <Input
+                id={`q-${row.key}`}
+                type="number"
+                step="0.001"
+                min="0"
+                style={AMOUNT_INPUT}
+                label={t("setup.quantityField")}
+                value={row.quantity}
+                onChange={(e) => onUpdate(row.key, { quantity: e.target.value })}
+              />
+            </Col>
+            <Col xs={24} sm={5}>
+              <Input
+                id={`u-${row.key}`}
+                type="number"
+                step="0.01"
+                min="0"
+                style={AMOUNT_INPUT}
+                label={t("setup.unitCostField")}
+                value={row.unitCost}
+                onChange={(e) => onUpdate(row.key, { unitCost: e.target.value })}
+              />
+            </Col>
+            <Col xs={24} sm={4}>
+              <Flex vertical justify="flex-end" style={{ height: "100%" }}>
+                <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                  {t("setup.lineValue")}
+                </Text>
+                <Money value={nilai} currency="IDR" hideCurrency />
+              </Flex>
+            </Col>
+            <Col xs={24} sm={2}>
+              <Flex justify="flex-end">
+                <RemoveButton
+                  onClick={() => setRows((r) => r.filter((x) => x.key !== row.key))}
+                  label={t("journal.removeRow")}
+                />
+              </Flex>
+            </Col>
+          </Row>
+        );
+      })}
+    </Section>
+  );
+}
+
+/**
+ * Label unggah yang digayai seperti `Button variant="secondary" size="sm"` —
+ * ia memang harus label, bukan tombol (lihat catatan di dalam komponennya).
+ */
+const IMPORT_LABEL: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  height: 24,
+  padding: "0 8px",
+  borderRadius: "var(--ant-border-radius-sm)",
+  border: "1px solid var(--ant-color-border)",
+  background: "var(--ant-color-bg-container)",
+  color: "var(--ant-color-text)",
+  fontSize: "var(--ant-font-size-sm)",
+  lineHeight: 1,
+  cursor: "pointer",
+};
+
+/**
+ * Unduh templat + impor berkas piutang/utang terbuka (issue #381 tahap 4).
+ *
+ * ══ HASILNYA MENGGANTI, BUKAN MENAMBAH ═════════════════════════════════════
+ * Keputusan yang paling menentukan di komponen ini. Menggabungkan akan
+ * menggandakan diam-diam saat orang mengunggah berkas yang sama dua kali — dan
+ * mengunggah ulang sesudah memperbaiki SATU baris adalah persis yang paling
+ * sering dilakukan orang, sebab satu baris salah menolak seluruh berkas.
+ *
+ * ══ TIDAK ADA YANG TERSIMPAN DI SINI ═══════════════════════════════════════
+ * Route-nya hanya membaca. Barisnya hidup di state wisaya sampai orangnya
+ * menekan simpan, dan saat itulah seluruh penyiapan tersimpan sebagai SATU
+ * transaksi — jurnal pembuka, dokumen pembukanya, gerakan stok pembukanya.
+ * Impor yang menulis lebih dulu akan memecah transaksi itu menjadi dua.
+ */
+function OpeningImport({
+  kind,
+  onRows,
+  t,
+  token,
+}: {
+  kind: "receivables" | "payables" | "fixed-assets";
+  /**
+   * Baris MENTAH dari route; pemanggil yang memetakannya ke bentuknya sendiri.
+   *
+   * Komponen ini sengaja tidak tahu bentuk barisnya: ketiga jenis berbagi
+   * seluruh alur yang sulit (unggah, 422 dengan galat per baris, ganti-bukan-
+   * tambah) dan berbeda hanya pada pemetaan terakhirnya. Menaruh percabangan
+   * bentuk di sini akan menjadikan satu komponen yang tahu tiga skema.
+   */
+  onRows: (rows: Record<string, unknown>[]) => void;
+  t: TranslateFn;
+  token: GlobalToken;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [rowErrors, setRowErrors] = useState<{ row: number; message: string }[]>([]);
+  const [imported, setImported] = useState<number | null>(null);
+
+  /* Alamat bertenant di JALURNYA, bukan di header: tombol unduh templat adalah
+     `<a href download>` biasa, dan sebuah tautan tidak melewati `apiFetch()`
+     (#158). Unggahannya memakai alamat yang sama. */
+  const pathname = usePathname();
+  const scope = pathname ? parseTenantPath(pathname) : null;
+  const endpoint = scope
+    ? `${tenantApiPath(scope.tenantSlug, scope.companySlug, "/master/opening")}?kind=${kind}`
+    : "";
+
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    setError("");
+    setRowErrors([]);
+    setImported(null);
+    setLoading(true);
+
+    const form = new FormData();
+    form.set("file", file);
+    const res = await apiFetch(endpoint, { method: "POST", body: form });
+    const data = await res.json().catch(() => ({}));
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || t("setup.importFailed"));
+      if (Array.isArray(data.rowErrors)) setRowErrors(data.rowErrors);
+      return;
+    }
+
+    const raw = (data.rows ?? []) as Record<string, unknown>[];
+    onRows(raw);
+    setImported(raw.length);
+  }
+
+  return (
+    <>
+      {/* `<Button href download>`, BUKAN `<ButtonLink>` (#289): navigasi
+          sisi-klien mencegat `download`, dan yang terjadi malah pindah halaman. */}
+      <Button href={endpoint} download variant="secondary" size="sm">
+        <DownloadOutlined aria-hidden="true" />
+        {t("setup.downloadTemplate")}
+      </Button>
+
+      {/*
+        * `<label>` sebagai permukaan yang diklik + isian berkas ber-`data-sr-only`.
+        *
+        * BUKAN `display: none` (dijaga `tests/design-system-primitives.test.ts`):
+        * itu mengeluarkan isiannya dari urutan Tab, dan `<label>` bukan elemen
+        * fokusable — permukaannya berhenti punya perhentian Tab sama sekali dan
+        * unggahannya menjadi mouse-only. `data-sr-only` memotongnya jadi 1×1px
+        * tanpa mencabut fokusnya.
+        *
+        * BUKAN pula `<label><Button/></label>`: itu menaruh elemen interaktif
+        * di dalam elemen interaktif. Labelnya sendiri yang digayai seperti
+        * tombol sekunder — pola acuan `accounts/import/import-form.tsx`.
+        */}
+      <label style={IMPORT_LABEL} data-disabled={loading || undefined}>
+        <UploadOutlined aria-hidden="true" />
+        {loading ? t("setup.importing") : t("setup.importFromFile")}
+        <input
+          type="file"
+          accept=".xlsx"
+          disabled={loading}
+          data-sr-only
+          onChange={(e) => {
+            void handleFile(e.target.files?.[0] ?? null);
+            // Berkas yang SAMA boleh dipilih lagi sesudah diperbaiki — tanpa ini
+            // `onChange` tidak menyala untuk nama berkas yang sama, dan
+            // mengunggah ulang sesudah memperbaiki satu baris adalah hal yang
+            // paling sering dilakukan orang di layar ini.
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      {(error || imported !== null || rowErrors.length > 0) && (
+        <div style={{ flexBasis: "100%", marginTop: token.marginXS }}>
+          {error && <Alert type="error" showIcon message={error} />}
+          {imported !== null && (
+            <Alert
+              type="success"
+              showIcon
+              message={t("setup.importReplaced", { count: imported })}
+            />
+          )}
+          {rowErrors.length > 0 && (
+            <ul
+              style={{
+                margin: `${token.marginXS}px 0 0`,
+                paddingInlineStart: token.paddingLG,
+                fontSize: token.fontSizeSM,
+                color: token.colorTextSecondary,
+              }}
+            >
+              {rowErrors.slice(0, 20).map((e) => (
+                <li key={`${e.row}-${e.message}`}>
+                  {t("setup.rowLabel", { row: e.row })}: {e.message}
+                </li>
+              ))}
+              {rowErrors.length > 20 && <li>… {rowErrors.length - 20}</li>}
+            </ul>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Aset tetap yang dibawa masuk — IMPOR SAJA (issue #381 tahap 4).
+ *
+ * Tanpa tombol "tambah baris", berbeda dari bagian saldo awal lainnya. Sebuah
+ * aset menuntut tujuh angka termasuk akumulasi penyusutan dan bulan
+ * terakhirnya; mengetiknya baris demi baris di dalam wisaya adalah permukaan
+ * yang salah, dan modul Aset Tetap sudah punya formulir yang benar untuk
+ * sesudah penyiapan. Yang dibutuhkan di sini hanya jalan masuk massal.
+ *
+ * Yang ditampilkan sesudah impor bukan daftar asetnya melainkan RINGKASAN:
+ * berapa aset, berapa perolehannya, berapa akumulasinya, berapa nilai bukunya.
+ * Empat angka itu yang diperiksa orang sebelum menyimpan — daftar 400 baris di
+ * tengah wisaya justru menyembunyikannya.
+ */
+function FixedAssetSection({
+  rows,
+  setRows,
+  t,
+  token,
+}: {
+  rows: AssetRow[];
+  setRows: React.Dispatch<React.SetStateAction<AssetRow[]>>;
+  t: TranslateFn;
+  token: GlobalToken;
+}) {
+  const perolehan = rows.reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
+  const akumulasi = rows.reduce((sum, a) => sum + (Number(a.accumulated) || 0), 0);
+
+  return (
+    <div>
+      <Title level={3} style={{ fontSize: token.fontSize, marginBlock: 0 }}>
+        {t("setup.fixedAssetsTitle")}
+      </Title>
+      <Text
+        type="secondary"
+        style={{ display: "block", marginBottom: token.marginXS, fontSize: token.fontSizeSM }}
+      >
+        {t("setup.fixedAssetsHint")}
+      </Text>
+
+      <Flex gap={token.marginXS} wrap align="center">
+        <OpeningImport
+          kind="fixed-assets"
+          t={t}
+          token={token}
+          onRows={(raw) => setRows(raw as unknown as AssetRow[])}
+        />
+      </Flex>
+
+      {rows.length > 0 && (
+        <Flex vertical gap={4} style={{ marginTop: token.marginSM }}>
+          <Text style={{ fontSize: token.fontSizeSM }}>
+            {t("setup.fixedAssetsCount", { count: rows.length })}
+          </Text>
+          <Flex gap={token.marginLG} wrap>
+            <SummaryFigure label={t("setup.fixedAssetsCost")} value={perolehan} token={token} />
+            <SummaryFigure
+              label={t("setup.fixedAssetsAccumulated")}
+              value={akumulasi}
+              token={token}
+            />
+            <SummaryFigure
+              label={t("setup.fixedAssetsBookValue")}
+              value={perolehan - akumulasi}
+              token={token}
+            />
+          </Flex>
+        </Flex>
+      )}
+    </div>
+  );
+}
+
+/** Satu angka ringkasan berlabel — dipakai tiga kali di atas. */
+function SummaryFigure({
+  label,
+  value,
+  token,
+}: {
+  label: string;
+  value: number;
+  token: GlobalToken;
+}) {
+  return (
+    <Flex vertical>
+      <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+        {label}
+      </Text>
+      <Money value={value} currency="IDR" hideCurrency />
+    </Flex>
   );
 }
 
@@ -1195,6 +1678,7 @@ function PartnerSection({
   t,
   token,
   onUpdate,
+  importKind,
 }: {
   title: string;
   hint: string;
@@ -1209,6 +1693,8 @@ function PartnerSection({
   t: TranslateFn;
   token: GlobalToken;
   onUpdate: (key: number, patch: Partial<PartnerRow>) => void;
+  /** Jenis berkas saldo awal yang boleh diimpor ke bagian ini (#381 tahap 4). */
+  importKind: "receivables" | "payables";
 }) {
   return (
     <Section
@@ -1223,6 +1709,29 @@ function PartnerSection({
           ...r,
           { key: nextId(), partnerId: "", currency: "IDR", amount: "", rate: "" },
         ])
+      }
+      extraActions={
+        parties.length > 0 ? (
+          <OpeningImport
+            kind={importKind}
+            t={t}
+            token={token}
+            onRows={(raw) =>
+              setRows(
+                raw.map((r) => ({
+                  key: nextId(),
+                  partnerId: String(r.partnerId),
+                  currency: String(r.currency),
+                  amount: String(r.amount),
+                  rate: r.rate == null ? "" : String(r.rate),
+                  documentNo: String(r.documentNo),
+                  documentDate: String(r.date),
+                  dueDate: r.dueDate == null ? undefined : String(r.dueDate),
+                }))
+              )
+            }
+          />
+        ) : undefined
       }
     >
       {rows.map((row) => {

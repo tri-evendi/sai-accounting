@@ -56,7 +56,8 @@ import { formatCurrency, formatNumber } from "@/lib/utils";
 import { humanizeFieldMessage } from "@/lib/form-guards";
 import type { ClosedPeriodRef } from "@/lib/form-guards";
 import { resolveSubmitFailure } from "@/lib/form-sections";
-import { defaultInvoiceTax } from "@/lib/tax";
+import { companyTaxRateOn, defaultInvoiceTax } from "@/lib/tax";
+import { useCompanyTaxProfile } from "@/lib/tax-profile-client";
 import { normalizeItemName, type ContractLineOutstanding } from "@/lib/document-chain";
 import {
   SALES_STEPS,
@@ -140,9 +141,21 @@ export function SalesWizard({
   const router = useAppRouter();
   const t = useT();
   const { token } = theme.useToken();
+  /*
+   * Profil pajak perusahaan ini (issue #368) — bukan `DEFAULT_TAX_RATE`.
+   * Datang sebagai prop dari server, jadi sudah benar di render pertama; wisaya
+   * ini menyimpan draf ke penyimpanan lokal, dan draf yang lahir dengan bawaan
+   * 11% pada perusahaan non-PKP akan bertahan melewati muat ulang.
+   */
+  const taxProfile = useCompanyTaxProfile();
+  /** Tarif perusahaan pada tanggal faktur draf ini. */
+  const companyRateFor = useCallback(
+    (date: string) => companyTaxRateOn(date, taxProfile),
+    [taxProfile]
+  );
   const { draft, setDraft, clear, ready, notice, dismissNotice } = useWizardDraft<SalesDraft>(
     "sales",
-    () => emptySalesDraft(todayISO())
+    () => emptySalesDraft(todayISO(), companyTaxRateOn(todayISO(), taxProfile))
   );
   const [stepId, setStepId] = useState<SalesStepId>("pelanggan");
   const [busy, setBusy] = useState(false);
@@ -230,6 +243,7 @@ export function SalesWizard({
           const tax = defaultInvoiceTax({
             currency: d.invoice.currency,
             customerTaxExempt: cached.taxExempt,
+            companyRate: companyRateFor(d.invoice.date),
           });
           return { ...d, invoice: { ...d.invoice, taxable: tax.taxable, taxRate: tax.taxRate } };
         });
@@ -250,7 +264,7 @@ export function SalesWizard({
     return () => {
       cancelled = true;
     };
-  }, [draft.customer.mode, draft.customer.id, customerInfo, patch]);
+  }, [draft.customer.mode, draft.customer.id, customerInfo, patch, companyRateFor]);
 
   // Label penerima barang terpilih — untuk pemilih & draf yang dipulihkan.
   useEffect(() => {
@@ -510,7 +524,7 @@ export function SalesWizard({
                   onClick={() => {
                     setResult(null);
                     setStepId("pelanggan");
-                    setDraft(emptySalesDraft(todayISO()));
+                    setDraft(emptySalesDraft(todayISO(), companyRateFor(todayISO())));
                     setOutstanding(null);
                     setPullNote("");
                   }}
@@ -578,6 +592,7 @@ export function SalesWizard({
               const tax = defaultInvoiceTax({
                 currency: d.invoice.currency,
                 customerTaxExempt: exempt,
+                companyRate: companyRateFor(d.invoice.date),
               });
               return {
                 ...d,
@@ -1141,7 +1156,25 @@ export function SalesWizard({
                   label={t("sales.invoiceDate")}
                   value={draft.invoice.date}
                   onChange={(e) =>
-                    patch((d) => ({ ...d, invoice: { ...d.invoice, date: e.target.value } }))
+                    patch((d) => {
+                      /* Tanggal faktur menentukan TARIF yang berlaku (issue
+                         #368). Bawaan PPN karena itu ikut bergerak saat
+                         tanggalnya dimundurkan ke bulan sebelum tarif berubah
+                         — kecuali pemakai sudah mematikan PPN atau menuliskan
+                         tarif sendiri, yang tidak boleh ditimpa. */
+                      const date = e.target.value;
+                      const wasDefault =
+                        d.invoice.taxable &&
+                        d.invoice.taxRate === companyRateFor(d.invoice.date);
+                      return {
+                        ...d,
+                        invoice: {
+                          ...d.invoice,
+                          date,
+                          taxRate: wasDefault ? companyRateFor(date) : d.invoice.taxRate,
+                        },
+                      };
+                    })
                   }
                   required
                 />
@@ -1281,7 +1314,10 @@ export function SalesWizard({
                   onChange={(e) =>
                     patch((d) => {
                       const next = e.target.value;
-                      const tax = defaultInvoiceTax({ currency: next });
+                      const tax = defaultInvoiceTax({
+                        currency: next,
+                        companyRate: companyRateFor(d.invoice.date),
+                      });
                       return {
                         ...d,
                         invoice: {

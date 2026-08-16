@@ -23,15 +23,74 @@ export const openingCashSchema = z
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
 
-/** One opening receivable/payable, per partner. */
+/**
+ * One opening receivable/payable.
+ *
+ * ── Rincian dokumen OPSIONAL (issue #381 tahap 3/4) ────────────────────────
+ * Ketiganya boleh kosong, dan itu yang membuat dua jalur masuk hidup
+ * berdampingan tanpa dua skema: wisaya mengumpulkan satu TOTAL per mitra, impor
+ * berkas membawa nomor & tanggal aslinya. Yang kedua yang membuat umur
+ * piutangnya menjadi umur yang SEBENARNYA — tanpa tanggal terbit, setiap
+ * dokumen memakai tanggal jurnal pembuka dan seluruh piutang lama tampil di
+ * ember umur yang sama pada hari pertama.
+ *
+ * Karena rinciannya opsional, satu mitra kini boleh muncul BERKALI-KALI —
+ * sekali per dokumen. Penjaga "mitra tidak boleh kembar" di bawah karena itu
+ * hanya berlaku bagi baris TANPA nomor dokumen.
+ */
 export const openingPartnerSchema = z
   .object({
     partnerId: z.coerce.number().int().positive(),
     currency: currencyEnum.default("IDR"),
     amount: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
     rate: rateField,
+    documentNo: z.string().max(50).trim().optional(),
+    /** `YYYY-MM-DD`; kosong → tanggal jurnal pembuka. */
+    documentDate: z.string().max(10).trim().optional(),
+    dueDate: z.string().max(10).trim().optional(),
   })
   .superRefine((data, ctx) => requireRateForForeign(data, ctx));
+
+/**
+ * Satu baris saldo awal PERSEDIAAN, per barang (issue #379).
+ *
+ * Menggantikan `inventory: number` — satu angka gelondongan yang menerbitkan
+ * jurnal TANPA satu pun gerakan stok, sehingga Neraca menunjukkan persediaan
+ * sementara laporan stok kosong. Per barang, jalur pembukaan bisa menerbitkan
+ * KEDUA sisinya seperti pembelian: jurnalnya dan gerakan stoknya.
+ *
+ * Kuantitas `Decimal(15,3)` dan harga pokok `Decimal(15,2)` mengikuti
+ * docs/DATABASE.md — dan keduanya WAJIB positif: baris nol tidak menambah apa
+ * pun ke jurnal maupun ke stok, jadi ia hanya baris yang membingungkan
+ * pembacanya. Selalu IDR: harga pokok persediaan adalah nilai base.
+ */
+export const openingStockSchema = z.object({
+  itemId: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().positive(vmsg("validation.openingStockPositive")),
+  unitCost: z.coerce.number().positive(vmsg("validation.openingStockCostPositive")),
+});
+
+/**
+ * Satu aset tetap yang dibawa masuk (issue #381 tahap 4).
+ *
+ * Kategori disebut NAMANYA, bukan id: berkas impor datang dari sistem lain dan
+ * tidak tahu id apa pun di sini. Route yang mencocokkannya — dan kategori itu
+ * pula yang membawa akun aset/akumulasi/bebannya.
+ */
+export const openingFixedAssetSchema = z.object({
+  assetNo: z.string().min(1).max(50).trim(),
+  name: z.string().min(1).max(150).trim(),
+  category: z.string().min(1).max(100).trim(),
+  acquisitionDate: z.string().min(1),
+  cost: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
+  residual: z.coerce.number().min(0).default(0),
+  /** Kosong → bawaan kategorinya. */
+  usefulLifeMonths: z.coerce.number().int().positive().optional(),
+  accumulated: z.coerce.number().min(0).default(0),
+  lastDepreciationYear: z.coerce.number().int().optional(),
+  lastDepreciationMonth: z.coerce.number().int().min(1).max(12).optional(),
+  location: z.string().max(150).trim().optional(),
+});
 
 /**
  * Seller tax identity (issue #17) — the NPWP + tax name/address any e-Faktur
@@ -40,6 +99,14 @@ export const openingPartnerSchema = z
  */
 export const companyTaxIdentitySchema = z.object({
   npwp: z.string().max(30).trim().optional(),
+  /**
+   * PKP — Pengusaha Kena Pajak (issue #368).
+   *
+   * Menentukan apakah perusahaan ini memungut PPN sama sekali. Bawaannya
+   * `true`: perilaku setiap perusahaan yang sudah ada hari ini, jadi wisaya
+   * yang dilewati begitu saja tidak mengubah apa pun.
+   */
+  isPkp: z.coerce.boolean().default(true),
   taxName: z.string().max(150).trim().optional(),
   taxAddress: z.string().max(1000).trim().optional(),
 });
@@ -77,15 +144,18 @@ export const setupSchema = z
     cash: z.array(openingCashSchema).max(200).default([]),
     receivables: z.array(openingPartnerSchema).max(1000).default([]),
     payables: z.array(openingPartnerSchema).max(1000).default([]),
-    /** Persediaan awal, IDR base. */
-    inventory: z.coerce.number().min(0).optional(),
+    /** Saldo awal persediaan, PER BARANG (issue #379). */
+    inventory: z.array(openingStockSchema).max(2000).default([]),
+    /** Aset tetap yang dibawa masuk (issue #381 tahap 4). */
+    fixedAssets: z.array(openingFixedAssetSchema).max(2000).default([]),
   })
   .superRefine((data, ctx) => {
     const hasAny =
       data.cash.length > 0 ||
       data.receivables.length > 0 ||
       data.payables.length > 0 ||
-      (data.inventory ?? 0) > 0;
+      data.inventory.length > 0 ||
+      data.fixedAssets.length > 0;
     if (!hasAny) {
       ctx.addIssue({
         code: "custom",
@@ -94,11 +164,44 @@ export const setupSchema = z
       });
     }
 
+    /* Satu barang hanya boleh punya SATU baris saldo awal. Dua baris untuk
+       barang yang sama akan menerbitkan dua gerakan stok pembuka dengan harga
+       pokok berbeda — dan rata-rata tertimbangnya menjadi angka yang tidak
+       pernah dimaksudkan siapa pun. */
+    const seenItems = new Set<number>();
+    data.inventory.forEach((row, index) => {
+      if (seenItems.has(row.itemId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["inventory", index, "itemId"],
+          message: vmsg("validation.openingStockDuplicateItem"),
+        });
+      }
+      seenItems.add(row.itemId);
+    });
+
     // No partner may appear twice on the same side — one opening balance per
     // customer / per supplier keeps the memo sub-ledger unambiguous.
+    /*
+     * ⚠ Penjaga ini kini hanya berlaku bagi baris TANPA nomor dokumen
+     * (issue #381 tahap 4). Sebelumnya "satu saldo awal per mitra" benar tanpa
+     * kecuali: setiap mitra menghasilkan satu baris jurnal ke akun kontrol, dan
+     * dua baris untuk mitra yang sama akan menjadi dua memo yang tak
+     * terbedakan.
+     *
+     * Sejak saldo awal AR/AP lahir sebagai DOKUMEN, seorang pelanggan dengan
+     * dua belas faktur terbuka memang MENGHASILKAN dua belas baris — dan itu
+     * justru yang dimaksud: dua belas dokumen yang bisa dilunasi satu per satu.
+     * Yang membedakannya nomor dokumennya, dan kekembarannya dijaga di sana
+     * (`invoices.invoice_no` UNIK, plus penjaga kembar di parser impor).
+     *
+     * Baris tanpa nomor tetap dijaga seperti dulu: ia jalur WISAYA, satu total
+     * per mitra, dan dua di antaranya tetap tak terbedakan.
+     */
     for (const side of ["receivables", "payables"] as const) {
       const seen = new Set<number>();
       data[side].forEach((row, i) => {
+        if (row.documentNo) return;
         if (seen.has(row.partnerId)) {
           ctx.addIssue({
             code: "custom",

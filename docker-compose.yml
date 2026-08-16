@@ -45,6 +45,91 @@ services:
     networks:
       - internal
 
+  # ── PENJADWAL LANGGANAN (issue #373) ──────────────────────────────────────
+  # Trial berakhir, tagihan terbit, dunning, suspensi, pengingat H-7/H-3/H-1.
+  #
+  # ⚠ KENAPA LAYANAN, BUKAN CRON HOST. Sampai #373 ini sebaris crontab yang
+  # dipasang tangan — dan TIDAK ADA APA PUN yang memeriksa baris itu ada. Kalau
+  # ia terlewat saat rilis, atau hilang karena server dibangun ulang, yang
+  # terjadi adalah: uji coba tidak pernah berakhir, tagihan pertama tidak pernah
+  # terbit, penunggak tidak pernah ditangguhkan — SEMUANYA tanpa satu pun galat,
+  # tanpa halaman rusak, tanpa log merah. Terlihat persis seperti sistem sehat,
+  # sampai seseorang membuka laporan pendapatan dan bertanya kenapa nol.
+  #
+  # Sebagai layanan ia LAHIR BERSAMA DEPLOY: tidak ada langkah manual yang bisa
+  # terlewat, dan `docker compose ps` memperlihatkan keberadaannya.
+  #
+  # Image `migrator` dipakai ulang — env & node_modules yang sama, dan
+  # satu-satunya cara menjangkau service `db` yang tidak memublikasikan port
+  # (alasan yang sama dengan migration; docs/MULTI-COMPANY.md §3).
+  #
+  # `|| true` disengaja: satu putaran yang gagal TIDAK BOLEH mematikan
+  # putaran-putaran berikutnya. Skripnya idempoten, jadi putaran berikutnya
+  # menyembuhkan yang tertinggal — sedangkan loop yang mati karena satu galat
+  # mengembalikan kita persis ke kegagalan senyap yang layanan ini tutup.
+  # Kegagalannya tetap terbaca: tercatat di `scheduler_runs` (status `error`),
+  # tampil di /operator/scheduler, dan terbaca `prove-scheduler-alive`.
+  #
+  # Tidur 3600 detik, BUKAN cron di dalam container: satu proses shell yang
+  # tidur tidak memakan apa pun, dan menambah daemon cron ke image berarti satu
+  # hal lagi yang bisa mati diam-diam di kotak yang sudah padat.
+  scheduler:
+    build:
+      context: .
+      target: migrator
+    image: sai-luckyhands-migrator:latest
+    container_name: sai-scheduler
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+    command:
+      - sh
+      - -c
+      - "while true; do bun run scheduler:subscriptions || true; sleep 3600; done"
+
+  # ── CADANGAN (issue #374) ─────────────────────────────────────────────────
+  # Menjual langganan atas pembukuan yang WAJIB disimpan sepuluh tahun (UU KUP)
+  # tanpa cadangan otomatis bukan risiko teknis, melainkan risiko hukum.
+  #
+  # Ia butuh volume yang SAMA dengan `web` — tapi HANYA-BACA (`:ro`): layanan
+  # yang tugasnya menyalin tidak punya satu alasan pun untuk bisa menulis, dan
+  # bendera itu menghapus seluruh kelas kecelakaan di mana skrip cadangan justru
+  # merusak yang dicadangkannya.
+  #
+  # Sekali sehari, bukan sejam sekali: dump seluruh basis data + berkas adalah
+  # pekerjaan berat di kotak ini, dan RPO satu hari adalah janji yang jujur untuk
+  # skala sekarang. Menaikkannya berarti menaikkan ongkosnya juga — putuskan
+  # sadar-sadar, jangan diam-diam.
+  backup:
+    build:
+      context: .
+      target: backup
+    image: sai-luckyhands-backup:latest
+    container_name: sai-backup
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - documents:/app/data/documents:ro
+      - audit:/app/data/audit:ro
+    networks:
+      - internal
+    # `|| true` — alasan yang sama dengan layanan `scheduler`: satu cadangan
+    # gagal tidak boleh mematikan seluruh jadwal cadangan berikutnya. Yang
+    # gagal berbunyi di log; yang mati diam-diam tidak berbunyi sama sekali.
+    command:
+      - sh
+      - -c
+      - "while true; do sh scripts/backup.sh || true; sleep 86400; done"
+
   web:
     build:
       context: .
@@ -78,7 +163,12 @@ services:
       retries: 3
       start_period: 20s
     volumes:
-      - uploads:/app/public/uploads
+      # Berkas dokumen sejak issue #367. Volume `uploads` (public/) DICABUT
+      # 2026-08-16 sesuai syarat yang ditulis di sini sendiri: pemindahannya
+      # sudah dijalankan dan melaporkan 0 dipindahkan · 0 yatim, atas tabel
+      # `documents` yang berisi 0 baris di keempat PT. Jadi tidak ada dokumen
+      # lama yang kehilangan tempat — memang tidak pernah ada.
+      - documents:/app/data/documents
       - audit:/app/data/audit
     networks:
       - traefik
@@ -145,5 +235,5 @@ networks:
 
 volumes:
   db_data:
-  uploads:
+  documents:
   audit:

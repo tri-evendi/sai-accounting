@@ -52,7 +52,6 @@ import {
   type ContractOutstanding,
 } from "@/lib/document-chain";
 import { closedPeriodIssue, type ClosedPeriodRef } from "@/lib/form-guards";
-import { DEFAULT_TAX_RATE } from "@/lib/tax";
 import type { TermKey } from "@/lib/labels";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
@@ -303,7 +302,17 @@ export interface SalesDraft {
   };
 }
 
-export function emptySalesDraft(today: string): SalesDraft {
+/**
+ * Draf penjualan kosong.
+ *
+ * `taxRate` WAJIB diberikan pemanggil sejak issue #368: tarif PPN bukan lagi
+ * konstanta kompilasi melainkan milik perusahaan pada tanggal dokumennya (0
+ * untuk non-PKP). Berkas ini murni — tanpa Prisma, tanpa React — jadi ia tidak
+ * bisa membacanya sendiri; wisaya yang menghitungnya lewat `companyTaxRateOn`
+ * lalu menurunkannya ke sini. Dibuat wajib, bukan opsional dengan bawaan 11%,
+ * supaya pemanggil BARU tidak bisa diam-diam menghidupkan kembali cacatnya.
+ */
+export function emptySalesDraft(today: string, taxRate: number): SalesDraft {
   return {
     customer: emptyPartner(),
     contractId: null,
@@ -322,8 +331,11 @@ export function emptySalesDraft(today: string): SalesDraft {
       dueDate: "",
       currency: "IDR",
       rate: 0,
-      taxable: true,
-      taxRate: DEFAULT_TAX_RATE,
+      /* Perusahaan non-PKP mendapat tarif 0, dan dokumennya karena itu bukan
+         dokumen ber-PPN — bukan dokumen ber-PPN nol, yang akan mencetak baris
+         "PPN 0" pada faktur perusahaan yang memang tidak memungutnya. */
+      taxable: taxRate > 0,
+      taxRate,
     },
   };
 }

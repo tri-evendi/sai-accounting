@@ -145,6 +145,30 @@ RUN NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate \
 CMD ["bun", "run", "db:migrate:all"]
 
 
+# ─── Cadangan (dipakai service `backup` di compose) ──────────
+# Issue #374. Di atas `migrator` — bukan tahap baru dari nol — karena skrip
+# pembuktian pemulihan (`prove-backup-restore`) menuntut klien Prisma yang
+# sudah lahir di sana, dan membangunnya dua kali berarti dua kali waktu build
+# di mesin yang sudah sempit.
+#
+# Dua perkakas yang belum ada di image mana pun: `mariadb-client` (untuk
+# `mariadb-dump`) dan `awscli` (untuk `aws s3`, yang berbicara ke penyedia
+# S3-compatible mana pun lewat `--endpoint-url`). `openssl` sudah ada dari
+# tahap `base` — ia dipasang di sana untuk Prisma, dan dipakai ulang di sini
+# untuk menyandikan arsipnya.
+#
+# ⚠ awscli DIPAKAI, BUKAN SigV4 buatan sendiri. Menandatangani permintaan S3
+# sendiri hanya butuh ~60 baris, dan itulah jebakannya: ia akan terlihat benar
+# di uji dan gagal pada penyedia pertama yang menormalkan header sedikit
+# berbeda — pada hari kita mencoba MEMULIHKAN. Protokol yang sudah dipakai
+# jutaan orang tidak layak ditulis ulang demi menghemat satu paket.
+FROM migrator AS backup
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends mariadb-client awscli \
+    && rm -rf /var/lib/apt/lists/*
+CMD ["sh", "scripts/backup.sh"]
+
+
 # ─── Runtime ─────────────────────────────────────────────────
 FROM base AS runner
 ENV NODE_ENV=production \
@@ -160,7 +184,7 @@ COPY --from=builder /app/public ./public
 
 # Runtime-writable dirs. Creating + chowning them here means Docker named
 # volumes mounted at these paths inherit `node` ownership on first use.
-RUN mkdir -p ./public/uploads ./data/audit \
+RUN mkdir -p ./public/uploads ./data/audit ./data/documents \
     && chown -R node:node /app
 
 USER node

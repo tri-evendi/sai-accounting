@@ -58,15 +58,23 @@ describe("saldo awal mengikuti modul (issue #349)", () => {
      * rendernya yang dipagari, angka itu tetap terkirim dan galat aslinya
      * kembali — kali ini dari isian yang tidak terlihat siapa pun.
      */
-    expect(src).toContain("inventory: saldoAktif.inventory ? Number(inventory) || 0 : 0");
+    /* Bentuk persediaannya berubah di #379 — dari satu angka gelondongan
+       menjadi daftar per barang — tapi PAGARNYA harus tetap ada, dan itulah
+       yang diuji: modul mati → daftar KOSONG yang terkirim, bukan baris yang
+       terlanjur diketik sebelum kategorinya diganti. */
+    expect(src).toContain("inventory: saldoAktif.inventory");
+    expect(src).toMatch(/inventory: saldoAktif\.inventory[\s\S]{0,400}?:\s*\[\],/);
     expect(src).toContain("cash: (saldoAktif.cash ? cash : [])");
     expect(src).toContain("receivables: (saldoAktif.receivables ? receivables : [])");
     expect(src).toContain("payables: (saldoAktif.payables ? payables : [])");
   });
 
   it("isian Persediaan TIDAK lagi dirender tanpa syarat", () => {
-    /* Bentuk lamanya: komentar bagian langsung diikuti `<div>` pembuka. */
-    expect(src).not.toMatch(/\{\/\* Persediaan \*\/\}\s*\n\s*<div>/);
+    /* Bentuk lamanya: komentar bagian langsung diikuti `<div>` pembuka.
+       Sejak #379 bagiannya adalah `<StockSection>`, dan pagarnya tetap
+       `saldoAktif.inventory` — yang diuji sifatnya, bukan tag-nya. */
+    expect(src).not.toMatch(/\{\/\* Persediaan[^}]*\*\/\}\s*\n\s*<div>/);
+    expect(src).toMatch(/\{saldoAktif\.inventory && \(\s*\n\s*<StockSection/);
   });
 
   it("kategori Jasa memang tanpa modul persediaan — pagar di atas menggigit", () => {

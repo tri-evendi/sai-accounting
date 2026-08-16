@@ -28,9 +28,14 @@
     "db:migrate:platform": "tsx scripts/migrate-platform.ts",
     "db:migrate:companies": "tsx scripts/migrate-all-companies.ts",
     "db:migrate:all": "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies",
+    "migrate:audit": "tsx scripts/migrate-audit.ts",
+    "_migrate_audit_note": "LANGKAH RILIS #370. Memindahkan `data/audit/<slug>/audit.jsonl` ke tabel `audit_logs` di basis data PT masing-masing, lalu MENGGANTI NAMA berkasnya jadi `.dipindahkan` (tidak menghapus — menghapus jejak audit secara otomatis adalah kebalikan dari alasan jejak itu ada). Dibaca baris demi baris, disisipkan per 500, idempoten lewat `legacy_id` UNIK + skipDuplicates. WAJIB dijalankan sesudah `db:migrate:all`: tabelnya lahir dari migration 0044, isinya dari skrip ini. Sebelum dijalankan, halaman Audit tampak KOSONG — jejaknya belum pindah, bukan hilang.",
+    "prove-scheduler-alive": "tsx scripts/prove-scheduler-alive.ts",
+    "prove-backup-restore": "tsx scripts/prove-backup-restore.ts",
+    "_prove_backup_note": "Issue #374. Membuktikan cadangan TERBARU bisa dibuka: sidik jarinya cocok, sandinya benar, dan SETIAP basis data terdaftar ada di dalamnya (termasuk tiap buku PT — cadangan yang kehilangan satu PT adalah bentuk kegagalan yang paling mudah tidak terlihat). Ia TIDAK memuat dump ke basis data mana pun: satu `mariadb <` yang salah sasaran menimpa produksi dengan data lama, dan tidak ada nilai pembuktian yang sepadan dengan risiko itu. Pemuatan sungguhan ke server BAYANGAN adalah latihan KUARTALAN yang dijalankan manusia. Butuh awscli + openssl (ada di image `backup`): `docker compose run --rm backup bun run prove-backup-restore`.",
     "reconcile:platform": "tsx scripts/reconcile-platform.ts",
     "scheduler:subscriptions": "tsx scripts/subscription-scheduler.ts",
-    "_scheduler_note": "Penjadwal langganan (issue #140): trial habis, tagihan, dunning, suspensi, pengingat H-7/H-3/H-1, sinkronisasi pemakaian, rekonsiliasi. IDEMPOTEN — aman dijalankan berulang. Jadwalkan lewat cron host: `17 * * * * cd <app> && docker compose run --rm migrate bun run scheduler:subscriptions` (lihat kepala scripts/subscription-scheduler.ts).",
+    "_scheduler_note": "Penjadwal langganan (issue #140): trial habis, tagihan, dunning, suspensi, pengingat H-7/H-3/H-1, sinkronisasi pemakaian, rekonsiliasi. IDEMPOTEN — aman dijalankan berulang. SEJAK #373 ia LAYANAN `scheduler` di docker-compose.yml, bukan lagi cron host yang dipasang tangan: cron yang terlewat saat rilis membuat trial tak pernah habis dan tagihan tak pernah terbit, tanpa satu pun galat di mana pun. Perintah ini tetap ada untuk menjalankan satu putaran manual (mis. setelah memperbaiki sesuatu). Denyutnya dibuktikan `bun run prove-scheduler-alive` dan terbaca di /api/health serta /operator/scheduler.",
     "db:seed:plans": "tsx scripts/seed-plans.ts",
     "db:seed:demo": "tsx scripts/seed-demo.ts",
     "_db_seed_demo_note": "Mengisi SATU perusahaan (slug wajib disebut) dengan tiga bulan transaksi contoh yang BENAR-BENAR diposting lewat mesin posting yang sama dengan formulir sungguhan — jadi Neraca-nya seimbang dan Laba/Rugi-nya terisi. Berbeda dari prisma/seed.ts, yang menulis baris TANPA jurnal dan karena itu fixture pengembangan, bukan buku. Menolak berjalan bila perusahaannya sudah punya transaksi; setiap baris ditandai [CONTOH]. Lihat kepala scripts/seed-demo.ts.",
@@ -47,7 +52,6 @@
     "adopt-company": "tsx scripts/adopt-existing-company.ts",
     "adopt-tenant": "tsx scripts/adopt-tenant.ts",
     "prove-tenant": "tsx scripts/prove-tenant-adoption.ts",
-    "check:legacy-values": "tsx scripts/check-legacy-values.ts",
     "check:env": "node scripts/check-env.mjs"
   },
   "dependencies": {

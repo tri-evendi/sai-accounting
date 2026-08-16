@@ -16,18 +16,108 @@
 import { round2 } from "@/lib/posting/rules";
 
 /**
- * The global default PPN rate, in percent. 11% in Indonesia since 1 April 2022
- * (UU HPP). This is the "global tax setting" issue #16 asks for: one authoritative
- * default that a per-invoice `taxRate` overrides and that a tax-exempt customer or
- * an export (foreign-currency) document switches off.
+ * Tarif PPN bawaan, dalam persen. 11% di Indonesia sejak 1 April 2022 (UU HPP).
  *
- * Kept as a constant, not a settings table row, on purpose: the rate is a
- * statutory figure with exactly one correct value at a time, the same for every
- * user of the app — not per-tenant configuration. A document that needs a
- * different rate carries its own `taxRate`; if the statutory rate itself changes,
- * this one line changes with it and every default follows.
+ * ══ PERANNYA BERUBAH DI ISSUE #368 — BACA INI SEBELUM MEMAKAINYA ═══════════
+ * Dulu ini SATU-SATUNYA tarif yang ada, dengan alasan yang ditulis di sini:
+ * "angka statuter dengan tepat satu nilai benar pada satu waktu, sama untuk
+ * setiap pemakai aplikasi — bukan konfigurasi per-tenant". Dua premisnya gugur
+ * begitu pendaftaran dibuka untuk umum:
+ *
+ *   1. "tepat satu nilai pada satu waktu" benar hanya bila waktunya diabaikan.
+ *      Dokumen yang dicatat MUNDUR ke bulan sebelum tarif berubah harus memakai
+ *      tarif yang berlaku PADA TANGGALNYA.
+ *   2. "sama untuk setiap pemakai" tidak benar untuk perusahaan NON-PKP, yang
+ *      tidak memungut PPN sama sekali.
+ *
+ * Jadi bawaan per perusahaan sekarang datang dari `companyTaxRateOn()` di bawah,
+ * yang membaca tabel `tax_rates` + penanda `is_pkp`.
+ *
+ * Konstanta ini TETAP ADA dan tetap benar untuk dua hal:
+ *
+ *   • BENIH. Perusahaan baru disemai dengan nilai ini sebagai tarif pertamanya
+ *     (`ensureTaxRates` di `lib/tax-rates.ts`), lalu tabelnya yang berbicara.
+ *   • FAKTA TINGKAT PLATFORM — tagihan langganan KAMI sendiri
+ *     (`subscription-lifecycle.ts`) dan klaim harga di halaman pemasaran
+ *     (`landing-pricing`, `landing-faq`). Itu PPN yang dipungut SAI, bukan yang
+ *     dipungut pelanggan; ia tidak boleh ikut berubah ketika satu perusahaan
+ *     menyunting tarifnya sendiri.
+ *
+ * Yang TIDAK boleh lagi memakainya: bawaan formulir dokumen milik perusahaan.
+ * Dijaga `tests/tax-rates.test.ts`.
  */
 export const DEFAULT_TAX_RATE = 11;
+
+/** Satu baris tarif yang berlaku sejak sebuah tanggal. */
+export interface TaxRateRow {
+  /** Tarif dalam persen. */
+  rate: number;
+  /** Tanggal mulai berlaku, `YYYY-MM-DD`. */
+  effectiveFrom: string;
+}
+
+/** Profil pajak sebuah perusahaan: memungut PPN atau tidak, dan tarif mana. */
+export interface CompanyTaxProfile {
+  /** Pengusaha Kena Pajak. `false` → tidak memungut PPN sama sekali. */
+  isPkp: boolean;
+  /** Riwayat tarif, urutan bebas. */
+  rates: TaxRateRow[];
+}
+
+/**
+ * Tarif yang berlaku pada `date`, atau `null` bila tidak ada baris yang
+ * mencakupinya.
+ *
+ * Perbandingannya LEKSIKOGRAFIS atas tanggal ISO `YYYY-MM-DD`, bukan aritmetika
+ * `Date`. Itu disengaja: tanggal dokumen adalah tanggal KALENDER, dan mengubahnya
+ * jadi momen memasukkan zona waktu ke dalam perbandingan — sebuah faktur
+ * 1 April di mesin ber-UTC bisa jatuh ke 31 Maret dan mendapat tarif lama.
+ * Bandingkan teks, dan bulan tak pernah bergeser.
+ *
+ * `null` — bukan `DEFAULT_TAX_RATE` — ketika tanggalnya MENDAHULUI baris paling
+ * awal. Memulangkan tarif hari ini untuk dokumen 2019 berarti mengarang; yang
+ * jujur adalah mengaku tidak tahu dan membiarkan pemanggilnya memutuskan.
+ */
+export function taxRateFor(date: string, rates: readonly TaxRateRow[]): number | null {
+  let best: TaxRateRow | null = null;
+  for (const row of rates) {
+    if (row.effectiveFrom > date) continue;
+    if (best == null || row.effectiveFrom > best.effectiveFrom) best = row;
+  }
+  return best ? best.rate : null;
+}
+
+/**
+ * Tarif PPN bawaan untuk sebuah dokumen perusahaan bertanggal `date`.
+ *
+ * Non-PKP selalu 0 — itu pemeriksaan PERTAMA, sebelum tabel tarif dilihat sama
+ * sekali, sebab perusahaan non-PKP tidak memungut PPN berapa pun tarifnya.
+ *
+ * Bila PKP tapi tak ada baris yang mencakup tanggalnya, jatuh ke
+ * `DEFAULT_TAX_RATE`: yang dipulangkan fungsi ini hanya BAWAAN FORMULIR yang
+ * masih bisa diubah pemakainya, dan bawaan statuter hari ini lebih menolong
+ * daripada 0 yang diam-diam menghilangkan PPN dari faktur.
+ */
+export function companyTaxRateOn(date: string, profile: CompanyTaxProfile): number {
+  if (!profile.isPkp) return 0;
+  /*
+   * Tanggal KOSONG artinya pemakai belum memilih tanggal, bukan "tanggal nol".
+   * Yang benar untuknya adalah tarif TERBARU — dan itu harus dikatakan, sebab
+   * perbandingan teks akan membuat "" lebih kecil dari setiap tanggal ISO,
+   * sehingga tak ada baris yang cocok dan tarifnya jatuh ke konstanta. Selama
+   * konstantanya kebetulan sama dengan tarif terbaru, salahnya tak terlihat —
+   * dan berhenti tak terlihat tepat pada hari tarifnya berubah.
+   */
+  const at = date || latestEffectiveFrom(profile.rates);
+  return taxRateFor(at, profile.rates) ?? DEFAULT_TAX_RATE;
+}
+
+/** Tanggal berlaku paling akhir di antara baris-barisnya; "" bila tak ada. */
+function latestEffectiveFrom(rates: readonly TaxRateRow[]): string {
+  let latest = "";
+  for (const row of rates) if (row.effectiveFrom > latest) latest = row.effectiveFrom;
+  return latest;
+}
 
 /** Export / non-VAT rate. The sensible default for foreign-currency invoices. */
 export const EXPORT_TAX_RATE = 0;
@@ -107,14 +197,31 @@ export function resolveInvoiceTax(subtotal: number, input: InvoiceTaxInput): Res
  *
  * Export / foreign-currency invoices are commonly PPN 0% (or not-VAT), and a
  * tax-exempt customer (non-PKP, or an export buyer) is never charged PPN — so
- * both default to non-taxable. Domestic IDR invoices default to the standard 11%.
- * This is only the DEFAULT: the form control lets the user override it either way.
+ * both default to non-taxable. Domestic IDR invoices default to the company's
+ * own rate. This is only the DEFAULT: the form control lets the user override it
+ * either way.
+ *
+ * `companyRate` (issue #368) adalah tarif perusahaan pada TANGGAL DOKUMEN —
+ * lihat `companyTaxRateOn`. Ia opsional supaya pemanggil yang memang berbicara
+ * tentang tarif tingkat platform tidak dipaksa mengarang satu; yang lalai
+ * mengirimkannya mendapat `DEFAULT_TAX_RATE` seperti sebelum #368, yaitu
+ * perilaku lama yang salah bagi non-PKP. Karena itu `tests/tax-rates.test.ts`
+ * menuntut setiap formulir dokumen mengirimkannya.
+ *
+ * Nilai `0` diteruskan APA ADANYA (`??`, bukan `||`): perusahaan non-PKP
+ * mengirim 0, dan `||` akan menukarnya diam-diam dengan 11.
  */
 export function defaultInvoiceTax(opts: {
   currency?: string | null;
   customerTaxExempt?: boolean | null;
+  companyRate?: number | null;
 }): { taxable: boolean; taxRate: number } {
+  const rate = opts.companyRate ?? DEFAULT_TAX_RATE;
   if (opts.customerTaxExempt) return { taxable: false, taxRate: EXPORT_TAX_RATE };
   if (opts.currency && opts.currency !== "IDR") return { taxable: false, taxRate: EXPORT_TAX_RATE };
-  return { taxable: true, taxRate: DEFAULT_TAX_RATE };
+  /* Perusahaan non-PKP: tarifnya 0, jadi dokumennya bukan dokumen ber-PPN.
+     Mengembalikan `taxable: true` dengan tarif 0 akan mencetak baris "PPN 0"
+     pada faktur perusahaan yang memang tidak memungut PPN. */
+  if (rate <= 0) return { taxable: false, taxRate: 0 };
+  return { taxable: true, taxRate: rate };
 }

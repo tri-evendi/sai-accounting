@@ -283,6 +283,9 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.returnQuantityPositive": "Jumlah retur harus lebih besar dari nol",
   "validation.minOneReturnLine": "Minimal satu baris retur",
   "validation.openingBalancePositive": "Saldo harus lebih besar dari 0",
+  "validation.openingStockPositive": "Kuantitas saldo awal harus lebih besar dari nol",
+  "validation.openingStockCostPositive": "Harga pokok saldo awal harus lebih besar dari nol",
+  "validation.openingStockDuplicateItem": "Barang ini sudah punya baris saldo awal",
   "validation.companyNameRequired": "Nama perusahaan wajib diisi",
   "validation.fiscalYearStartRequired": "Awal tahun buku wajib diisi",
   "validation.atLeastOneOpeningBalance": "Isi minimal satu saldo awal (kas/bank, piutang, utang, atau persediaan).",
@@ -304,4 +307,6 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.amountNotNegative": "Jumlah tidak boleh negatif",
   "validation.amountTooLarge": "Jumlah terlalu besar",
   "validation.categoryRequired": "Kategori wajib dipilih",
+  "validation.taxRateOutOfRange": "Tarif PPN harus antara 0 dan 100 persen",
+  "validation.taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)",
 };

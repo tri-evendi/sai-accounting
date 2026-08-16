@@ -557,7 +557,22 @@ describe("konteks perusahaan tidak datang dari sesi (issue #156)", () => {
     // jawaban cadangan untuk /select-company dan /dashboard telanjang, yang
     // memang tidak punya perusahaan di alamatnya.
     "api/user/companies/route.ts",
-
+    /*
+     * ── Pembuatan PT (issue #339) ───────────────────────────────────────────
+     * Formulir tingkat TENANT, dan pembacanya justru orang yang boleh jadi
+     * belum punya satu pun perusahaan — jadi tidak ada penjaga perusahaan yang
+     * bisa memberi konteks di sini, sama seperti grup `(auth)` di atas.
+     *
+     * Yang ditanyakan pun bukan "perusahaan mana yang sedang saya query",
+     * melainkan "apakah sesi ini SUDAH menunjuk sebuah PT" — satu-satunya
+     * pertanyaan yang memisahkan pendaftar baru (belum ada, ambil yang baru
+     * lahir) dari orang yang sedang bekerja di PT A dan membuat PT B (jangan
+     * pindahkan bukunya). Jawabannya hanya menentukan apakah
+     * `update({ companyId })` dipanggil; keputusannya sendiri murni di
+     * `lib/company-selection.ts`, dan angkanya tetap diperiksa ULANG ke
+     * keanggotaan di server. Nol query di berkas ini.
+     */
+    "(tenant)/(panel)/companies/new/company-form.tsx",
   ]);
 
   const readers = sourceFiles(APP_DIR)

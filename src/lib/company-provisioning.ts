@@ -337,6 +337,9 @@ export async function provisionCompany(
     message: `${name} siap dibuka.`,
     detail: databaseName,
     progress: 1,
+    /* Ikut di peristiwa terakhir supaya pembuatnya bisa langsung MEMILIH
+     * perusahaan ini di sesinya (issue #339) — lihat `ProvisionEvent`. */
+    companyId,
   });
 
   return { companyId, databaseName };

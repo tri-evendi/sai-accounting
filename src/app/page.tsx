@@ -44,11 +44,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { LandingAudience } from "@/components/landing/landing-audience";
 import { LandingClosingCta } from "@/components/landing/landing-closing-cta";
 import { LandingContact } from "@/components/landing/landing-contact";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingFeatures } from "@/components/landing/landing-features";
 import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingIntegrations } from "@/components/landing/landing-integrations";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingShell } from "@/components/landing/landing-shell";
@@ -149,6 +151,15 @@ export default async function Home({
           isinya. */}
       <LandingFeatures />
       <LandingModules />
+      {/* "Untuk siapa" SESUDAH daftar modul, bukan sesudah manfaat (#398):
+          kartunya menyebut modul lewat NAMANYA, jadi ia rujukan ke sesuatu
+          yang baru saja dibaca — "dari sepuluh itu, mana yang untuk saya".
+          Lalu "Integrasi & jalan keluar data" sebagai pita di antara dua
+          seksi polos berkartu nada (untuk siapa, kepercayaan): tanpa pita
+          itu halaman memajang tiga kisi kartu bernada berturut-turut. Alasan
+          lengkapnya di kepala kedua berkas komponennya. */}
+      <LandingAudience />
+      <LandingIntegrations />
       {/* Bukti SEBELUM harga, dan itu urutan yang disengaja: dua keberatan
           terbesar pada pembukuan multi-PT — "apakah data saya bisa tercampur"
           dan "apakah saya bisa keluar lagi" — muncul saat orang membayangkan

@@ -31,15 +31,39 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
     hero (+ purwarupa produk + strip bukti)   gradien brand → cyan
       → "Yang Anda dapatkan"           polos, kartu bernada
       → "Apa saja yang ada di dalam"   pita cyan, DAFTAR (tanpa kartu)
+      → "Untuk siapa"                  polos, kartu bernada + pil modul   (#398)
+      → "Integrasi & jalan keluar data" pita brand, DAFTAR (tanpa kartu)  (#398)
       → "Yang menjaga pembukuan Anda"  polos, kartu bernada  ← sebelum harga
       → "Paket & harga"                pita indigo, kartu `surface` bertepi
       → FAQ                            polos, panel bernada
+      → kontak                         polos, panel bernada + daftar kanal
       → ajakan penutup                 pita accent
       → kaki                           pita indigo
 
 Perhatikan iramanya: **polos → pita → polos → pita**. Itu bukan kebetulan
 melainkan hasil aturan tepi di bawah — seksi yang kartunya bernada wajib polos,
 dan seksi yang pitanya bernada tidak boleh mewarnai kartunya.
+
+### "Untuk siapa" berdiri SESUDAH daftar modul, dan "Integrasi" adalah pita (#398)
+
+Issue #398 membebaskan pilihan antara sesudah manfaat atau sesudah modul.
+Sesudah modul, karena kartunya menyebut modul lewat NAMANYA (pil
+`MODULE_META[m].labelKey`, kunci `BusinessModule` — modul yang dihapus ditolak
+`tsc`): sebelum daftar modul kata "Perdagangan"/"Dokumen ekspor" belum
+diperkenalkan; sesudahnya seksi ini menjawab *"dari sepuluh itu, mana yang
+untuk saya"*. Dan menaruh seksi polos berkartu nada tepat di bawah seksi
+manfaat yang bentuknya sama menghasilkan dua kisi identik berturut-turut —
+persis keluhan "terlalu kaku".
+
+"Integrasi & jalan keluar data" berbentuk **pita `brand` + daftar** (bentuk
+seksi modul), bukan kartu — bukan karena selera: tanpa pita itu halaman
+memajang TIGA kisi kartu bernada berturut-turut (untuk siapa → kepercayaan).
+Enam butirnya semuanya punya sumber (`lib/efaktur.ts`, `lib/reconciliation.ts`
++ `lib/bank-statements.ts`, `lib/import/*` + `lib/coa-import.ts`,
+`app/api/v1/*` + `lib/api-token.ts`, `lib/tenant-export.ts` +
+`lib/report-export.ts`, `CURRENCIES`); yang tidak ada di kode (sinkron bank
+otomatis, marketplace) tidak ditulis, dan tautan dokumennya `DocSlug | null` —
+tanpa dokumen = tanpa tautan, bukan tautan ke topik terdekat.
 
 Dua keberatan terbesar pada pembukuan multi-PT — *"apakah data saya bisa
 tercampur"* dan *"apakah saya bisa keluar lagi"* — muncul saat orang
@@ -295,7 +319,25 @@ kirim berisi penuh akan menjadi ajakan KEDUA yang bersaing di halaman yang sama.
 
 Bilah atas terukur menuntut 685px dengan empat tautan; tautan kelima
 mendorongnya melewati titik patah 768px dan menghidupkan lagi gulungan mendatar
-yang baru saja diperbaiki.
+yang baru saja diperbaiki. (Sejak #398 ia juga ada di **panel menu ponsel** —
+di panel yang bertumpuk ke bawah, lebar bukan kendala.)
+
+### Kanal dukungan: HANYA yang ada, dan tanpa janji waktu (#398)
+
+Di bawah formulir ada daftar kanal — surel, WhatsApp, dokumentasi — dan
+daftarnya dibangun dari `lib/contact-channels.ts`: surel bila
+`PLATFORM_CONTACT_EMAIL` terisi, WhatsApp bila `PLATFORM_CONTACT_WHATSAPP`
+terisi **dan sah** (nomor internasional tanpa `+`; yang salah bentuk ditolak
+`scripts/check-env.mjs` saat mulai dan tidak dirender), dokumentasi selalu.
+Kanal yang tidak disetel **tidak dirender**, bukan dirender kelabu.
+
+- Tombol WhatsApp `outline` + `Button href` (tautan KELUAR, `target=_blank`
+  `rel=noopener`), bukan `ButtonLink`, bukan `primary` — penjaga penekanan
+  mengunci setiap primer pendaratan ke `/register`; WhatsApp jalan bertanya,
+  bukan jalan mendaftar.
+- ⚠ **Tanpa jam layanan, SLA, atau "dibalas dalam N jam".** Tak ada kode yang
+  menjaminnya (§KLAIM HARUS PUNYA SUMBER), dan janji waktu balas adalah janji
+  yang paling cepat ditagih.
 
 ## Setiap seksi harus punya JALAN KELUAR, bukan berhenti di tempat
 
@@ -632,6 +674,21 @@ satu per satu adalah koreografi, dan koreografi adalah animasi hias.
   ukuran yang biasa ditangkap layar (1920 & 390), dan yang baru ketahuan setelah
   lebar disapu satu per satu. Jangan menambah titik patah ketiga tanpa mengukur
   lebih dulu.
+- **Menu ponsel (#398): `<details><summary>`, tanpa JavaScript.** Di bawah
+  768px tautan seksi + `#kontak` + pemilih bahasa (<576px saja — di 576–768
+  sakelar di bilah sudah tampil) hidup di panel `position:absolute` di bawah
+  bilah, dibuka tombol 40px yang ikonnya bertukar (garis tiga ↔ X) lewat
+  `[open]`. Bilah di bawah 768px berkisi **dua** kolom (`auto 1fr`), tiga
+  kolom baru mulai 768px; **teks merek disembunyikan visual di bawah 576px**
+  (lambang tetap, teks tetap di DOM untuk pembaca layar) — di 390px ia
+  terukur patah dua baris begitu tombol menu ikut ke kolom aksi. Bukan titik
+  patah 400px baru: 576px yang sudah ada cukup. Disapu 320–767px lewat CDP:
+  `scrollWidth == innerWidth` di setiap lebar, tertutup maupun terbuka; panel
+  tidak melampaui viewport.
+  ⚠ Batas jujurnya: tanpa skrip, panel **tidak menutup sendiri** saat tautan
+  seksi ditekan — ia tetap terbuka di bawah bilah menempel sampai tombol X
+  ditekan. Menutup otomatis menuntut JavaScript; itu lebih mahal daripada satu
+  ketukan.
 - **Skala pemasaran = `--sai-landing-*`**, dideklarasikan HANYA di dalam
   `[data-landing]` dan seluruhnya turunan token AntD, kecuali tiga lebar baca.
   Menyalinnya ke halaman internal tidak menghasilkan apa-apa.

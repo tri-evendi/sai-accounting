@@ -20,7 +20,41 @@
  * halaman pendaratan bekerja, bukan pelanggaran #267 — lihat MASTER.md §Aksi
  * utama per layar → "Pendaratan `/` dikecualikan", dan batasnya (semua primer
  * menuju `/register`) di `tests/button-emphasis.test.ts`.
+ *
+ * ══ MENU PONSEL: `<details>`, TANPA JAVASCRIPT (#398) ══════════════════════
+ * Di bawah `LANDING_NAV_LINKS_BREAKPOINT` tautan seksi disembunyikan, dan
+ * sampai perubahan ini TIDAK ADA penggantinya: pengunjung ponsel kehilangan
+ * jalan ke harga/FAQ/dokumentasi, dan pemilih bahasa hanya ada di KAKI —
+ * pengunjung berbahasa Mandarin membaca ID/EN sampai menggulung ke bawah.
+ *
+ * Penggantinya `<details><summary>` — pola FAQ yang sudah ada — sebab halaman
+ * ini sengaja nol JavaScript sisi klien (`AMBANG_KLIEN`): sebuah menu
+ * ber-`useState` akan menyeret bilah ini menjadi komponen klien. Panelnya
+ * `position:absolute` di bawah bilah (tidak mendorong isi, tidak mengubah
+ * tinggi bilah yang dipakai `scroll-margin-top`), berisi tautan seksi yang
+ * SAMA dengan bilah lebar + `#kontak` (di bilah lebar ia sengaja tidak ada —
+ * terukur mendorong bilah melewati 768px; di panel ponsel lebar bukan
+ * kendala) + pemilih bahasa untuk <576px (di 576–768 sakelar di bilah sudah
+ * tampil, jadi yang di panel disembunyikan lewat pasangan
+ * `data-landing-chrome-narrow` yang sama dengan kaki).
+ *
+ * ⚠ Batas yang jujur: tanpa skrip, panel TIDAK menutup sendiri saat sebuah
+ * tautan seksi ditekan — peramban menggulung ke jangkarnya, dan panel tetap
+ * terbuka di bawah bilah menempel sampai tombolnya ditekan lagi (ikonnya
+ * berubah menjadi X saat terbuka supaya jalan menutupnya jelas). Menutupnya
+ * otomatis menuntut JavaScript, dan itu harga yang lebih mahal daripada satu
+ * ketukan tambahan.
+ *
+ * ══ MEREK DI BAWAH 576px: LAMBANG SAJA ═════════════════════════════════════
+ * Terukur di 390px teks merek patah dua baris: kisi bilah membagi ruang sisa
+ * ke kolom merek, dan dengan tombol menu ditambahkan ke kolom aksi, ruang itu
+ * habis. Di bawah `LANDING_BREAKPOINT` teks merek karena itu disembunyikan
+ * secara VISUAL (tetap di DOM untuk pembaca layar — `<a>` merek harus tetap
+ * punya nama), lambangnya tetap. Bukan titik patah baru di 400px: `landing.md`
+ * melarang titik patah ketiga tanpa pengukuran, dan yang tersedia (576px)
+ * sudah cukup — di 576–768 teks merek muat bersama tombol menu.
  */
+import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 import Link from "next/link";
 
 import { LANDING_NAV_HEIGHT } from "@/components/landing/landing-scale";
@@ -48,8 +82,63 @@ const NAV_LINK: React.CSSProperties = {
   textDecoration: "none",
 };
 
+/**
+ * Tautan di panel menu ponsel: blok penuh, 44px — jari, bukan kursor. Ukuran
+ * teksnya `lg` (16px) sebab di panel tidak ada baris yang harus dihemat.
+ */
+const MENU_LINK: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  minHeight: 44,
+  paddingInline: "var(--ant-padding-xs)",
+  color: "var(--ant-color-text)",
+  fontSize: "var(--ant-font-size-lg)",
+  textDecoration: "none",
+};
+
+interface NavLinkItem {
+  href: string;
+  label: string;
+  /** Rute di dalam app (`/docs`) → `<Link>`; jangkar seksi → `<a>`. */
+  internal?: boolean;
+  /**
+   * Hanya di panel ponsel. `#kontak` sengaja TIDAK di bilah lebar: terukur
+   * tautan kelima mendorong bilah melewati 768px (`landing.md` §Formulir
+   * kontak). Di panel yang bertumpuk ke bawah, lebar bukan kendala.
+   */
+  menuOnly?: boolean;
+}
+
+function NavLink({
+  link,
+  style,
+}: {
+  link: NavLinkItem;
+  style: React.CSSProperties;
+}) {
+  return link.internal ? (
+    <Link href={link.href} data-landing-link="" style={style}>
+      {link.label}
+    </Link>
+  ) : (
+    <a href={link.href} data-landing-link="" style={style}>
+      {link.label}
+    </a>
+  );
+}
+
 export async function LandingNav() {
   const t = await getT();
+
+  /* SATU daftar untuk bilah lebar dan panel ponsel — dua daftar yang ditulis
+     terpisah akan berbeda pada hari salah satunya mendapat tautan baru. */
+  const links: NavLinkItem[] = [
+    { href: "#modul", label: t("landing.navModules") },
+    { href: "#harga", label: t("landing.navPricing") },
+    { href: "#tanya", label: t("landing.navFaq") },
+    { href: "#kontak", label: t("landing.navContact"), menuOnly: true },
+    { href: "/docs", label: t("landing.navDocs"), internal: true },
+  ];
 
   return (
     <header
@@ -105,7 +194,10 @@ export async function LandingNav() {
           }}
         >
           <BrandMark size="sm" />
+          {/* Disembunyikan visual di <576px, `nowrap` di atasnya — keduanya
+              di `[data-landing-brand-name]`, blok gaya `landing-scale.ts`. */}
           <span
+            data-landing-brand-name=""
             style={{
               fontSize: "var(--ant-font-size-lg)",
               fontWeight: "var(--ant-font-weight-strong)",
@@ -130,26 +222,13 @@ export async function LandingNav() {
             pelanggan bisa memeriksa produk ini lebih dalam sebelum membuat
             akun. Ia `<Link>`, bukan `<a>`: rute di dalam app. */}
         <ul data-landing-links="">
-          <li>
-            <a href="#modul" data-landing-link="" style={NAV_LINK}>
-              {t("landing.navModules")}
-            </a>
-          </li>
-          <li>
-            <a href="#harga" data-landing-link="" style={NAV_LINK}>
-              {t("landing.navPricing")}
-            </a>
-          </li>
-          <li>
-            <a href="#tanya" data-landing-link="" style={NAV_LINK}>
-              {t("landing.navFaq")}
-            </a>
-          </li>
-          <li>
-            <Link href="/docs" data-landing-link="" style={NAV_LINK}>
-              {t("landing.navDocs")}
-            </Link>
-          </li>
+          {links
+            .filter((link) => !link.menuOnly)
+            .map((link) => (
+              <li key={link.href}>
+                <NavLink link={link} style={NAV_LINK} />
+              </li>
+            ))}
         </ul>
 
         <div
@@ -192,6 +271,61 @@ export async function LandingNav() {
           <ButtonLink href="/register" variant="primary">
             {t("landing.signUp")}
           </ButtonLink>
+
+          {/* ══ MENU PONSEL — `<details>`, tanpa JavaScript ══════════════════
+              Disembunyikan mulai `LANDING_NAV_LINKS_BREAKPOINT` (tautan seksi
+              tampil di bilah). Semua keadaannya — tombol 40px, ikon yang
+              bertukar saat terbuka, panel absolut di bawah bilah, fokus —
+              hidup di `[data-landing-menu*]`, blok gaya `landing-scale.ts`;
+              alasan pola ini di kepala berkas. */}
+          <details data-landing-menu="">
+            <summary
+              data-landing-menu-toggle=""
+              aria-label={t("landing.navMenu")}
+              title={t("landing.navMenu")}
+            >
+              <MenuOutlined data-landing-menu-open="" aria-hidden="true" />
+              <CloseOutlined data-landing-menu-close="" aria-hidden="true" />
+            </summary>
+            <div data-landing-menu-panel="">
+              <ul
+                style={{
+                  listStyle: "none",
+                  margin: 0,
+                  padding: 0,
+                }}
+              >
+                {links.map((link) => (
+                  <li key={link.href}>
+                    <NavLink link={link} style={MENU_LINK} />
+                  </li>
+                ))}
+              </ul>
+              {/* Bahasa di <576px saja — di 576–768 sakelar di bilah sudah
+                  tampil (`data-landing-chrome`), dan dua sakelar untuk hal
+                  yang sama di satu layar adalah satu terlalu banyak. */}
+              <div
+                data-landing-chrome-narrow=""
+                style={{
+                  justifyContent: "space-between",
+                  marginTop: "var(--ant-margin-xs)",
+                  paddingTop: "var(--ant-padding-sm)",
+                  paddingInline: "var(--ant-padding-xs)",
+                  borderTop: "1px solid var(--ant-color-border-secondary)",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "var(--ant-font-size)",
+                    color: "var(--ant-color-text-secondary)",
+                  }}
+                >
+                  {t("landing.navMenuLanguage")}
+                </span>
+                <LocaleToggle />
+              </div>
+            </div>
+          </details>
         </div>
       </nav>
     </header>

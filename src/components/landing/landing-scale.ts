@@ -474,9 +474,9 @@ export const LANDING_STYLE = `
 [data-landing-menu-toggle]::-webkit-details-marker{display:none}
 [data-landing-menu-toggle]:hover{border-color:var(--ant-color-primary);color:var(--ant-color-primary)}
 [data-landing-menu-toggle]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:2px}
-[data-landing-menu-close]{display:none}
-[data-landing-menu][open] [data-landing-menu-open]{display:none}
-[data-landing-menu][open] [data-landing-menu-close]{display:inline-flex}
+[data-landing-menu-toggle] [data-landing-menu-close]{display:none}
+[data-landing-menu][open] [data-landing-menu-toggle] [data-landing-menu-open]{display:none}
+[data-landing-menu][open] [data-landing-menu-toggle] [data-landing-menu-close]{display:inline-flex}
 [data-landing-menu-panel]{position:absolute;top:100%;left:0;right:0;padding:var(--ant-padding-xs) var(--sai-landing-gutter) var(--ant-padding);background:var(--sai-landing-surface);border-bottom:1px solid var(--ant-color-border-secondary);border-radius:0 0 var(--sai-landing-radius) var(--sai-landing-radius);box-shadow:var(--ant-box-shadow)}
 /* Garis bawah bilah meleleh di tepi, sama dengan pemisah seksi -- bilah ini
    menempel sepanjang gulungan, jadi ia garis yang paling lama dilihat orang. */

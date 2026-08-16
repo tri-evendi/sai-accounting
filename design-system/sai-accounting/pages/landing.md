@@ -1,6 +1,7 @@
 # Halaman Pendaratan `/` — override MASTER.md
 
-> Berlaku HANYA untuk `/` (`src/app/page.tsx` + `src/components/landing/**`).
+> Berlaku HANYA untuk `/` dan `/harga` (`src/app/(marketing)/**` +
+> `src/components/landing/**`).
 > Untuk halaman lain, MASTER.md tetap berlaku apa adanya.
 
 ## Kenapa halaman ini perlu override
@@ -31,6 +32,7 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
     hero (+ purwarupa produk + strip bukti)   gradien brand → cyan
       → "Yang Anda dapatkan"           polos, kartu bernada
       → "Apa saja yang ada di dalam"   pita cyan, DAFTAR (tanpa kartu)
+          + galeri tiga layar          purwarupa dirender, di dalam pita  (#399)
       → "Untuk siapa"                  polos, kartu bernada + pil modul   (#398)
       → "Integrasi & jalan keluar data" pita brand, DAFTAR (tanpa kartu)  (#398)
       → "Yang menjaga pembukuan Anda"  polos, kartu bernada  ← sebelum harga
@@ -916,3 +918,86 @@ tag. Sebelumnya ia hanya mencocokkan `<Button>`, sehingga seluruh aturan #267
 bisa dilewati dengan menulis `<ButtonLink variant="primary">` — termasuk batas
 "setiap primer pendaratan menuju `/register`". Diukur saat diperlebar: 0
 `<ButtonLink>` tanpa `variant`, 0 wadah yang menjadi >1 primer karenanya.
+
+## Layout akar pemasaran, `/harga`, galeri layar (#399)
+
+### Dua root layout — dan angka yang membenarkannya (diukur, bukan dikira)
+
+Sampai #399 `/` berdiri di bawah root layout aplikasi, dan halaman yang
+dokumen ini sebut "nol JavaScript sisi klien" **terukur di produksi
+(2026-08-16)** mengirim 21 `<script src>` ≈ **350 KB gzip** JS, **130 KB gzip**
+HTML, dan 333 KB skrip sebaris — bukan dari `components/landing/**`, melainkan
+dari yang dibawa `app/layout.tsx` untuk SEMUA rute: `LocaleProvider` yang
+menyerialkan kamus ±2.500 kunci ke payload RSC, dan `CompanyIdentityProvider`
+yang memanggil `/api/company/identity` pada setiap muatan.
+
+Next hanya punya satu cara memisahkan itu: dua root layout di dua route group
+tanpa `app/layout.tsx` di atasnya. Maka seluruh app pindah apa adanya ke
+`app/(app)/**` (`git mv`, riwayat terjaga), `/` dan `/harga` ke
+`app/(marketing)/**`, dan bagian yang SAMA (`<html>`, font, kelas pemikul
+token, skrip tema, `AntdRegistry`, `AntdProvider`) hidup sekali di
+`components/providers/root-document.tsx` supaya kedua akar tidak menyimpang.
+
+**Sesudah** (build produksi lokal, `next start`, tanpa cache):
+
+| | sebelum (produksi) | sesudah `/` | sesudah `/harga` |
+|---|---|---|---|
+| `<script src>` | 21 | 20 | 20 |
+| JS gzip yang dirujuk | ≈350 KB | ≈346 KB | ≈346 KB |
+| HTML gzip | ≈130 KB | **≈70 KB** | ≈35 KB |
+| skrip sebaris (RSC payload) | 333 KB | **192 KB** | 72 KB |
+| `GET /api/company/identity` per muatan | 1 | **0** | 0 |
+
+Yang turun adalah **payload dokumen** (kamus & identitas), bukan chunk JS:
+±346 KB itu AntD (`ConfigProvider` + `Button`/`Card`/`Segmented` yang dipakai
+dua daun client `LocaleToggle`/`ThemeToggle`) dan runtime Next/React —
+`AntdProvider` tetap di akar pemasaran DENGAN SENGAJA, sebab ialah yang
+menulis blok `.sai-tokens{--ant-…}` yang mewarnai seluruh pendaratan.
+Menurunkan angka JS itu berarti pendaratan tanpa satu pun komponen AntD dan
+lembar token yang dibangkitkan terpisah — pekerjaan lain, dan angkanya di
+sini supaya orang berikutnya tidak mengulang pengukurannya.
+
+⚠ Dua daun client pendaratan menerima `locale`/label sebagai **prop** dari
+komponen server (`landing-nav.tsx`, `landing-footer.tsx`): akar pemasaran
+tidak memasang `LocaleProvider`. Daun client baru yang memanggil `useT()` di
+sini mendapat KUNCInya sebagai teks — pasang propnya, jangan providernya.
+
+### `/harga` — komponen yang sama, alamat sendiri
+
+Semua situs pembukuan berbahasa Indonesia yang ditinjau di #397 punya
+`/harga`; kita hanya jangkar. `/harga` merender `LandingPricing` + `LandingFaq`
+yang PERSIS sama (judul harga menjadi `<h1>` lewat `headingLevel`), metadata &
+kanonik sendiri, masuk `sitemap.ts`, dilepaskan `isPublicPath` di `proxy.ts`,
+dan pengunjung bersesi dipantulkan ke `/dashboard` seperti `/`. Ia pintu masuk
+KEDUA ke `components/landing/**` (`PINTU_MASUK`, `tests/landing-boundary`).
+
+Konsekuensi pada bilah & kaki: keduanya kini dipakai dua halaman, jadi
+jangkar ditulis **berakar** (`/#modul`, bukan `#modul`) — di `/` peramban
+tetap menggulung dalam-dokumen, di `/harga` ia menuju seksi yang benar — dan
+"Harga" adalah `<Link href="/harga">` di kedua halaman, bukan jangkar. Satu
+perilaku, bukan bercabang per halaman. Di kaki tautan berakar itu `<Link>`,
+sebab `@next/next/no-html-link-for-pages` menolak `<a href="/#…">` harfiah.
+
+### Galeri tiga layar — purwarupa dirender, di dalam pita modul
+
+Kompetitor memperlihatkan beberapa layar produk; kita satu kartu ringkasan.
+`landing-gallery.tsx` menambah tiga purwarupa dengan pola `landing-hero-mock`:
+**jurnal umum** (debit = kredit, jumlahnya DIHITUNG dari barisnya), **faktur
+penjualan** (PPN dari `computeTax`/`DEFAULT_TAX_RATE` — karena itu berkasnya
+masuk `ALLOWED` di `tests/tax-rates.test.ts`), dan **pengalih PT** (dua PT
+contoh). Ketiga syarat §"Angkanya karangan" berlaku penuh: label "contoh
+tampilan" selalu terlihat, nama PT jelas contoh, `aria-hidden`; nominal lewat
+`formatMoney()` server. Ia hidup DI DALAM pita "Apa saja yang ada di dalam"
+(sesudah daftar modul), bukan seksi sendiri: gambar layar adalah jawaban
+visual atas "apakah pekerjaan saya ada di dalamnya", pertanyaan yang seksi
+itu jawab dengan daftar.
+
+### Ikon menu ponsel: dua rule, spesifisitas (0,2,0)
+
+Ditemukan pada build produksi (bukan `next dev`): `≡` dan `×` tampil
+**bersamaan**. `[data-landing-menu-close]{display:none}` berspesifisitas
+(0,1,0) — sama dengan `.anticon{display:inline-flex}` milik
+`@ant-design/icons`, yang di produksi disisipkan SESUDAH blok pendaratan dan
+karena itu menang. Ketiga rule ikon kini disarangkan di bawah
+`[data-landing-menu-toggle]` (≥ (0,2,0)). Pelajarannya umum: rule pendaratan
+yang menyasar elemen AntD tidak boleh mengandalkan URUTAN penyisipan.

@@ -401,6 +401,13 @@ export const LANDING_STYLE = `
    tombol berarti tombolnya terdorong ke bawah lipatan, dan yang dikorbankan
    adalah satu-satunya hal yang halaman ini minta orang lakukan. */
 [data-landing-hero]{display:grid;gap:var(--ant-margin-xl);align-items:center}
+/* Catatan "sudah diundang rekan kerja?" di hero (#397): disembunyikan di bawah
+   576px, tampil kembali di blok media di bawah. Di ponsel hero satu kolom dan
+   setiap baris di atas purwarupa mendorong sisa halaman ke bawah lipatan,
+   sedangkan orang yang diundang datang lewat tautan di surelnya -- ia hampir
+   tidak pernah membaca hero ini. Kalimatnya tetap di HTML; yang berubah hanya
+   di layar mana ia memakan ruang. */
+[data-landing-hero-note]{display:none}
 [data-landing-brand]{transition:opacity 200ms ease}
 [data-landing-brand]:hover{opacity:.8}
 [data-landing-link]{transition:color 200ms ease}
@@ -483,6 +490,7 @@ export const LANDING_STYLE = `
     --sai-landing-gutter:var(--ant-padding-lg);
   }
   [data-landing-actions]{flex-direction:row}
+  [data-landing-hero-note]{display:block}
   [data-landing-chrome]{display:flex}
   [data-landing-chrome-narrow]{display:none}
   [data-landing-footer-grid]{grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--ant-margin-xl)}

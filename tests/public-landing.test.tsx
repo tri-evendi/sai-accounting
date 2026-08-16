@@ -179,6 +179,9 @@ describe("halaman pendaratan publik", () => {
     expect(html).toContain('href="/register"');
     expect(html).toContain('href="/login"');
     expect(html).toContain(T("landing.heroHeading"));
+    // Ajakan hero menyebut lama uji coba dari konstanta yang menghitungnya
+    // (#397) — bukan angka yang diketik ke kalimatnya.
+    expect(html).toContain(T("landing.heroTrialCta", { days: TRIAL_DAYS }));
   });
 
   it("harga & kuota datang dari katalog, bukan dari teks di markup", async () => {
@@ -197,6 +200,23 @@ describe("halaman pendaratan publik", () => {
     // Harga tahunan hanya muncul untuk paket yang punya — bukan Rp 0 untuk
     // paket yang tidak dijual tahunan.
     expect(html).toContain(formatMoney(4500000, "IDR"));
+    // Hemat tahunan DIHITUNG dari kedua kolom yang sama (#397):
+    // 450.000 × 12 − 4.500.000 = 900.000 ≈ 2 bulan. Paket tanpa harga tahunan
+    // tidak punya barisnya sama sekali — satu-satunya nominal hemat di halaman
+    // adalah milik Pro.
+    expect(html).toContain(
+      T("landing.pricingYearlySaving", { amount: formatMoney(900000, "IDR"), months: "2" })
+    );
+    expect(tanpaJsonLd(html).match(/hemat/g)?.length).toBe(1);
+    // "Semua paket mendapat" kini SATU kalimat berangka (#397), bukan strip
+    // kedua yang identik dengan strip bukti di hero.
+    expect(html).toContain(
+      T("landing.pricingAllNote", {
+        modules: BUSINESS_MODULES.length,
+        languages: LOCALES.length,
+        currencies: CURRENCIES.join(" · "),
+      })
+    );
 
     // Paket yang ditarik dari penjualan tidak pernah sampai ke sini: itu
     // urusan `activePlans()`, dan halaman ini tidak boleh menyaring ulang
@@ -236,10 +256,13 @@ describe("halaman pendaratan publik", () => {
       expect(offers.map((o) => o.name)).not.toContain(plan.name);
     }
 
-    // FAQ: enam pertanyaan yang dirender adalah enam pertanyaan yang diterbitkan.
+    // FAQ: pertanyaan yang dirender adalah pertanyaan yang diterbitkan — sebelas
+    // sejak #397 (enam soal tagihan & isolasi + lima pertanyaan pembeli).
+    // Angkanya dipatok, bukan dihitung dari halaman: yang dijaga justru bahwa
+    // menambah/menghapus pertanyaan terasa di sini dan dilakukan dengan sadar.
     const faq = blok.find((b) => b["@type"] === "FAQPage");
     expect(faq, "blok FAQPage tidak diterbitkan").toBeDefined();
-    expect((faq!.mainEntity as unknown[]).length).toBe(6);
+    expect((faq!.mainEntity as unknown[]).length).toBe(11);
   });
 
   it("lama uji coba dari konstanta yang sama yang menghitungnya", async () => {
@@ -329,7 +352,7 @@ describe("halaman pendaratan publik", () => {
     expect(html).toContain(T("landing.pricingRecommended"));
   });
 
-  it("FAQ menjawab enam keberatan, dengan angka dari sumbernya", async () => {
+  it("FAQ menjawab keberatan & pertanyaan pembeli, dengan angka dari sumbernya", async () => {
     const html = await render();
 
     expect(html).toContain(T("landing.faqHeading"));
@@ -338,6 +361,12 @@ describe("halaman pendaratan publik", () => {
       "landing.faqQuotaQ",
       "landing.faqIsolationQ",
       "landing.faqExportQ",
+      // Lima pertanyaan pembeli (#397).
+      "landing.faqFitQ",
+      "landing.faqImportQ",
+      "landing.faqAccountantQ",
+      "landing.faqSupportQ",
+      "landing.faqDataQ",
     ]) {
       expect(html, `${key} hilang dari FAQ`).toContain(T(key));
     }

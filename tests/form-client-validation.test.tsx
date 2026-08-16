@@ -513,7 +513,7 @@ describe("applyServerFieldErrors", () => {
 /* 5. Penjaga sumber: ketujuh berkas benar-benar memakai pola ini      */
 /* ------------------------------------------------------------------ */
 
-const APP = join(__dirname, "..", "src", "app", "(dashboard)", "t", "[tenantSlug]", "[companySlug]");
+const APP = join(__dirname, "..", "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]");
 
 /** Ketujuh berkas yang dicatat issue #216, beserta skema bersamanya. */
 const FORM_FILES = [

@@ -43,7 +43,7 @@ status pengembangan.
 
 | # | Tahap | Jalur | Status |
 |---|---|---|---|
-| 1 | Pendaratan pemasaran | `src/app/page.tsx` → `components/landing/**` | **Baik.** Hero → fitur → modul → bukti → harga → FAQ → kontak. Harga & kuota dibaca dari katalog paket, lama uji coba dari `TRIAL_DAYS`, tarif PPN dari `lib/tax.ts` — tidak ada angka yang diketik ke kalimat pemasaran. `openGraph` + `robots` + `sitemap` terpasang. |
+| 1 | Pendaratan pemasaran | `src/app/(marketing)/page.tsx` → `components/landing/**` | **Baik.** Hero → fitur → modul → bukti → harga → FAQ → kontak. Harga & kuota dibaca dari katalog paket, lama uji coba dari `TRIAL_DAYS`, tarif PPN dari `lib/tax.ts` — tidak ada angka yang diketik ke kalimat pemasaran. `openGraph` + `robots` + `sitemap` terpasang. |
 | 2 | Formulir kontak | `lib/contact-actions.ts:80` | **Bersyarat.** Butuh `PLATFORM_CONTACT_EMAIL`; tanpa itu setiap kiriman gagal. Masuk daftar pra-rilis. |
 | 3 | Pendaftaran | `/register` → `api/auth/register` | **Baik.** Jawaban seragam (anti-enumerasi), bcrypt di dalam permintaan, pembatas laju **persisten** per-IP + per-email, S&K ber-versi. Tidak ada apa pun yang lahir sebelum tautan diklik. |
 | 4 | Verifikasi email | `api/auth/verify-email` | **Baik.** POST (bukan GET) supaya pemindai tautan surel tidak membakar token. Tenant + User + Membership + langganan lahir di sini; kegagalan langganan tidak menggagalkan pendaftaran (disembuhkan putaran adopsi penjadwal). |

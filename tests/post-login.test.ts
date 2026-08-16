@@ -94,13 +94,13 @@ describe("kedua pintu memakai aturan yang sama — tanpa salinan", () => {
   });
 
   it("halaman /login mengimpor, bukan mendefinisikan ulang", () => {
-    const src = read("src", "app", "(auth)", "login", "page.tsx");
+    const src = read("src", "app", "(app)", "(auth)", "login", "page.tsx");
     expect(src).toContain('from "@/lib/post-login"');
     expect(src).not.toContain("function resolvePostLoginPath");
   });
 
   it("beranda (yang menjaga dirinya sendiri) juga memakai aturan yang sama", () => {
-    const src = read("src", "app", "(dashboard)", "dashboard", "page.tsx");
+    const src = read("src", "app", "(app)", "(dashboard)", "dashboard", "page.tsx");
     expect(src).toContain("resolvePostLoginPath(");
   });
 

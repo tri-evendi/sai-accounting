@@ -64,8 +64,25 @@ const VISUALLY_HIDDEN: React.CSSProperties = {
   border: 0,
 };
 
-export function LocaleToggle() {
-  const active = useLocale();
+export function LocaleToggle({
+  locale,
+  label,
+}: {
+  /**
+   * Bahasa aktif & nama kelompoknya sebagai PROP — untuk pemanggil yang
+   * berdiri di luar `LocaleProvider` (issue #399): halaman pendaratan hidup di
+   * root layout pemasaran yang SENGAJA tidak memasang provider itu, sebab
+   * provider itu menyerialkan seluruh kamus ke setiap pengunjung anonim.
+   * `useLocale()` di luar provider jatuh ke bahasa BAWAAN (pengunjung Inggris
+   * melihat "ID" tersorot) dan `useT()` mengembalikan kuncinya sendiri — jadi
+   * di sana keduanya wajib diberikan. Di dalam app keduanya dibiarkan kosong
+   * dan konteks yang menjawab.
+   */
+  locale?: Locale;
+  label?: string;
+} = {}) {
+  const contextLocale = useLocale();
+  const active = locale ?? contextLocale;
   const router = useRouter();
   const t = useT();
   const name = useId();
@@ -76,7 +93,7 @@ export function LocaleToggle() {
       /* Nama kelompoknya diganti karena bawaan rc-segmented adalah string
          Inggris yang ditanam di kodenya ("segmented control") — ia akan
          diumumkan apa adanya justru di pemilih BAHASA. */
-      aria-label={t("userMenu.language")}
+      aria-label={label ?? t("userMenu.language")}
       name={name}
       value={active}
       disabled={switching}

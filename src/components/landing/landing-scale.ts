@@ -303,7 +303,7 @@ export const LANDING_SURFACE = "var(--sai-landing-surface)";
  * ini pada saat yang sama: seluruh pendaratan berpatah di satu titik ini saja,
  * jadi selisihnya akan terlihat sebagai kepala versi ponsel yang bertahan
  * sementara isinya sudah versi lebar (kegagalan yang sama yang tercatat di
- * kepala `app/(auth)/loading.tsx`).
+ * kepala `app/(app)/(auth)/loading.tsx`).
  */
 export const LANDING_BREAKPOINT = 576;
 

@@ -11,7 +11,7 @@
  * lapisannya tepat satu, dan yang lebih dalam mendapat 404 — bukan halaman
  * pertama yang kebetulan cocok.
  *
- * Kenapa tidak ada penjaga di sini: lihat kepala `src/app/(docs)/docs/page.tsx`.
+ * Kenapa tidak ada penjaga di sini: lihat kepala `src/app/(app)/(docs)/docs/page.tsx`.
  */
 
 import type { Metadata } from "next";

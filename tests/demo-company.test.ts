@@ -98,7 +98,7 @@ describe("registry & skema membawa flagnya", () => {
 
 describe("spanduk di layar", () => {
   it("dirender di TATA LETAK perusahaan, bukan per halaman", () => {
-    const layout = src("app/(dashboard)/t/[tenantSlug]/[companySlug]/layout.tsx");
+    const layout = src("app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/layout.tsx");
     expect(layout).toContain("DemoCompanyBanner");
   });
 

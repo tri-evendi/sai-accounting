@@ -70,10 +70,25 @@ const VISUALLY_HIDDEN: React.CSSProperties = {
   border: 0,
 };
 
-export function ThemeToggle() {
+/** Teks sakelar — nama kelompok + satu label per pilihan. */
+export type ThemeToggleLabels = Record<"label" | Theme, string>;
+
+export function ThemeToggle({
+  labels,
+}: {
+  /**
+   * Teks sebagai PROP untuk pemanggil di luar `LocaleProvider` (issue #399):
+   * halaman pendaratan hidup di root layout pemasaran tanpa provider itu, dan
+   * `useT()` di sana mengembalikan kuncinya sendiri ("theme.light") sebagai
+   * teks. Di dalam app dibiarkan kosong dan konteks yang menjawab.
+   */
+  labels?: ThemeToggleLabels;
+} = {}) {
   const { theme, changeTheme } = useTheme();
   const t = useT();
   const name = useId();
+  const teks = (key: "label" | Theme) =>
+    labels ? labels[key] : t(key === "label" ? "theme.label" : LABELS[key]);
 
   return (
     <Segmented<Theme>
@@ -83,13 +98,13 @@ export function ThemeToggle() {
        * rc-segmented ("segmented control"), yang akan diumumkan apa adanya di
        * layar berbahasa Indonesia maupun Mandarin.
        */
-      aria-label={t("theme.label")}
+      aria-label={teks("label")}
       name={name}
       value={theme}
       onChange={changeTheme}
       options={THEMES.map((option) => {
         const Icon = ICONS[option];
-        const label = t(LABELS[option]);
+        const label = teks(option);
         return {
           value: option,
           icon: <Icon aria-hidden="true" style={{ fontSize: 16 }} />,

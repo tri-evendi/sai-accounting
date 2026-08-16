@@ -1,27 +1,38 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { AntdRegistry } from "@ant-design/nextjs-registry";
-import "./globals.css";
-import { APP_NAME } from "@/lib/constants";
-import { AntdProvider } from "@/components/providers/antd-provider";
-import { LocaleProvider } from "@/lib/i18n/client";
-import { CompanyIdentityProvider } from "@/lib/company-identity-client";
-import { getDictionary, getLocale } from "@/lib/i18n/server";
-import { ANTD_CSS_VAR_KEY } from "@/lib/theme/antd-tokens";
-import { colorScheme, themeClass, themeScript } from "@/lib/theme/config";
-import { ThemeProvider } from "@/lib/theme/client";
-import { getTheme } from "@/lib/theme/server";
-
-// Inter (MASTER.md) — dipilih karena dukungan `tabular-nums` untuk angka keuangan.
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 /**
- * Aksara Han (bahasa Mandarin) SENGAJA tidak memakai webfont.
+ * `<html>` + `<body>` + lapisan tema — bagian root layout yang SAMA untuk
+ * kedua akar aplikasi ini (issue #399).
  *
+ * ══ KENAPA ADA DUA ROOT LAYOUT, DAN KENAPA BERKAS INI ══════════════════════
+ * Sampai #399 seluruh aplikasi berdiri di bawah SATU root layout, dan root
+ * layout itu memikul segalanya: `AntdRegistry`, `ThemeProvider`,
+ * `LocaleProvider` (yang menyerialkan seluruh kamus ~2.500 kunci ke payload
+ * RSC), `AntdProvider`, dan `CompanyIdentityProvider` (yang memanggil
+ * `/api/company/identity` pada setiap muatan). Untuk app internal itu memang
+ * harganya. Untuk halaman pendaratan `/` — permukaan yang dibaca orang TANPA
+ * akun — itu berarti setiap pengunjung anonim mengunduh kamus lengkap dan
+ * memicu satu query identitas perusahaan yang tidak pernah ia lihat.
+ *
+ * Next hanya punya satu cara memisahkan keduanya: dua root layout, masing-
+ * masing di route group-nya sendiri (`app/(marketing)` dan `app/(app)`),
+ * tanpa `app/layout.tsx` di atasnya (docs `route-groups.md` §Use cases). Root
+ * layout WAJIB merender `<html>` dan `<body>`, jadi tanpa berkas ini kedua
+ * layout itu akan menyalin ~90 baris yang sama — font, kelas pemikul token,
+ * skrip tema sebelum-cat, registri gaya AntD — dan salinan itu menyimpang pada
+ * hari salah satunya disunting. Yang membedakan keduanya HANYA yang mereka
+ * taruh di dalam `children`: `(app)` menambah kamus & identitas perusahaan,
+ * `(marketing)` tidak menambah apa pun.
+ *
+ * ══ YANG TETAP DI SINI, DAN KENAPA TIDAK BISA LEBIH TIPIS ══════════════════
+ * `AntdRegistry` + `AntdProvider` (dan `ThemeProvider` yang dibaca
+ * `AntdProvider`) ikut ke akar pemasaran juga, bukan karena kelalaian:
+ * `AntdProvider`-lah yang lewat `cssVar: { key: ANTD_CSS_VAR_KEY }` menulis
+ * blok `.sai-tokens{--ant-…}` yang dipikul `<html>` — dan seluruh halaman
+ * pendaratan berwarna lewat `var(--ant-…)`. Tanpa provider itu tidak ada satu
+ * pun galat; halamannya hanya kehilangan seluruh warnanya. `AntdRegistry`
+ * yang menyisipkan blok itu (dan gaya `Button`/`Card`/`Segmented` yang
+ * dipakai pendaratan) ke HTML pertama, sebelum hidrasi.
+ *
+ * ══ Aksara Han (bahasa Mandarin) SENGAJA tidak memakai webfont ═════════════
  * Inter hanya memuat subset `latin`, jadi aksara Tionghoa memang harus datang
  * dari font lain — tapi font itu font SISTEM, bukan unduhan (lihat tumpukan
  * `html:lang(zh)` di globals.css). Alasannya biaya build: `next/font/google`
@@ -37,30 +48,32 @@ const inter = Inter({
  * Android/Linux). Pembaca Mandarin justru mendapat font yang sudah familier,
  * tanpa FOUT dan tanpa mengunduh berkas Han berukuran megabita.
  */
+import { Inter } from "next/font/google";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const dictionary = await getDictionary(await getLocale());
-  return {
-    // Dari konstanta, bukan literal: judul tab adalah permukaan merek juga, dan
-    // literal di sini sudah sekali tertinggal saat produknya berganti nama.
-    title: APP_NAME,
-    description: dictionary.app.description,
-  };
-}
+import "@/app/globals.css";
+import { AntdProvider } from "@/components/providers/antd-provider";
+import type { Locale } from "@/lib/i18n/config";
+import { ANTD_CSS_VAR_KEY } from "@/lib/theme/antd-tokens";
+import { colorScheme, themeClass, themeScript, type Theme } from "@/lib/theme/config";
+import { ThemeProvider } from "@/lib/theme/client";
 
-export default async function RootLayout({
+// Inter (MASTER.md) — dipilih karena dukungan `tabular-nums` untuk angka keuangan.
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+export function RootDocument({
+  locale,
+  theme,
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  // Bahasa ditentukan di SATU tempat: cookie `locale` (lihat lib/i18n/config.ts
-  // untuk alasan cookie ketimbang segmen rute `[lang]`). Kamus yang sudah
-  // terpilih diteruskan ke provider client, jadi hanya bahasa aktif yang
-  // menyeberang ke browser.
-  const locale = await getLocale();
-  const dictionary = await getDictionary(locale);
-  /*
-   * Tema ikut dibaca DI SERVER, dari cookie yang sama-sama tampilan-saja —
+}: {
+  /** Bahasa aktif — dibaca root layout dari cookie (`getLocale()`), SEKALI. */
+  locale: Locale;
+  /**
+   * Tema — ikut dibaca DI SERVER dari cookie yang sama-sama tampilan-saja,
    * jadi algoritma AntD yang benar sudah dipilih sebelum HTML pertama dikirim,
    * dan tidak ada ketidakcocokan hydrate yang lahir dari membaca localStorage
    * setelah render pertama.
@@ -71,8 +84,9 @@ export default async function RootLayout({
    * benar-benar membutuhkannya adalah pilihan "ikut sistem" — lihat blok
    * `html.dark` di sana sebelum menghapusnya.
    */
-  const theme = await getTheme();
-
+  theme: Theme;
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang={locale}
@@ -127,22 +141,13 @@ export default async function RootLayout({
          * komponen AntD, karena itu letaknya paling luar di dalam <body>.
          */}
         <AntdRegistry>
-        <ThemeProvider theme={theme}>
-        <LocaleProvider locale={locale} dictionary={dictionary}>
-          {/* Di dalam ThemeProvider dengan sengaja: jembatan AntD membaca tema
-              dari konteks itu supaya toggle tema mengubah komponen AntD tanpa
-              muat ulang (alasan lengkapnya di antd-provider.tsx). Bahasanya
-              tetap datang sebagai prop dari server. */}
-          <AntdProvider locale={locale}>
-            {/* Identitas perusahaan diambil di sisi client (lihat
-                company-identity-client.tsx): membacanya di server SINI berarti
-                satu query Prisma di root layout, yang ikut berjalan saat
-                `next build` menghasilkan 49 halaman statis — padahal build
-                memakai DATABASE_URL placeholder tanpa koneksi. */}
-            <CompanyIdentityProvider>{children}</CompanyIdentityProvider>
-          </AntdProvider>
-        </LocaleProvider>
-        </ThemeProvider>
+          <ThemeProvider theme={theme}>
+            {/* Di dalam ThemeProvider dengan sengaja: jembatan AntD membaca
+                tema dari konteks itu supaya toggle tema mengubah komponen AntD
+                tanpa muat ulang (alasan lengkapnya di antd-provider.tsx).
+                Bahasanya tetap datang sebagai prop dari server. */}
+            <AntdProvider locale={locale}>{children}</AntdProvider>
+          </ThemeProvider>
         </AntdRegistry>
       </body>
     </html>

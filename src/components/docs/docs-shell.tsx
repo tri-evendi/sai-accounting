@@ -4,7 +4,7 @@
  * ⚠ Berkas ini bukan lagi KULIT. Sampai perbaikan "satu halaman, dua kulit" ia
  * memikul dua pekerjaan sekaligus: kepala publik (lambang + tombol "Masuk ke
  * aplikasi") DAN kolom baca 768px. Yang pertama pindah ke `docs-public-chrome.tsx`
- * / `docs-app-chrome.tsx`, dipilih `src/app/(docs)/layout.tsx` menurut ada
+ * / `docs-app-chrome.tsx`, dipilih `src/app/(app)/(docs)/layout.tsx` menurut ada
  * tidaknya sesi; yang tersisa di sini adalah isi kolomnya — judul, ringkasan,
  * pemberitahuan bahasa, kaki "semua dokumentasi", dan satu blok gaya.
  *

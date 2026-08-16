@@ -264,15 +264,20 @@ describe("server component tanpa komponen AntD di atasnya", () => {
 describe("kedua ujung mekanisme harus menyebut kunci yang sama", () => {
   const baca = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
 
-  it("root layout memasang ANTD_CSS_VAR_KEY pada <html>", () => {
+  it("dokumen akar memasang ANTD_CSS_VAR_KEY pada <html>", () => {
     /*
      * Mekanisme ini punya dua ujung yang letaknya berjauhan: `AntdProvider`
      * (yang MENULIS bloknya) dan root layout (yang MEMASANG pemikulnya).
      * Menghapus salah satunya tidak menghasilkan galat apa pun — `var(--ant-…)`
      * hanya berhenti teratasi dan warnanya jatuh diam-diam ke warisan. Karena
      * itu keduanya dijaga di sini, bukan hanya yang bisa dirender.
+     *
+     * Sejak #399 `<html>` tidak lagi ditulis di `app/layout.tsx` melainkan di
+     * `components/providers/root-document.tsx` — SATU komponen yang dipakai
+     * KEDUA root layout (`app/(app)` dan `app/(marketing)`), justru supaya
+     * pemikul kunci ini tidak bisa hilang di salah satunya.
      */
-    const layout = baca("app/layout.tsx");
+    const layout = baca("components/providers/root-document.tsx");
     expect(layout).toContain("ANTD_CSS_VAR_KEY");
     expect(layout).toMatch(/className=\{`[^`]*\$\{ANTD_CSS_VAR_KEY\}[^`]*`\}/);
   });

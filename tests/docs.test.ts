@@ -15,7 +15,7 @@
  *  2. **PERMUKAAN KETIGA.** Dokumentasi tidak boleh mewarisi bentuk pemasaran
  *     maupun chrome app internal. Sisi pemasaran sudah ditutup
  *     `tests/landing-boundary.test.ts` tanpa satu baris pun ditambahkan di sana
- *     (hanya `app/page.tsx` yang boleh mengimpor `components/landing/**`) —
+ *     (hanya halaman `app/(marketing)/` yang boleh mengimpor `components/landing/**`) —
  *     dan tes di bawah MEMBUKTIKAN penjaga itu benar-benar mencakup direktori
  *     ini, alih-alih mengandaikannya. Sisi app internal belum dijaga siapa pun,
  *     dan itu yang ditutup di sini.
@@ -25,7 +25,7 @@
  *     dan tidak ada tes halaman mana pun yang akan menyebutkannya.
  *
  *     ⚠ Sejak "satu halaman, dua kulit", subpohon ini MEMBACA sesi — di satu
- *     berkas, `src/app/(docs)/layout.tsx`, dan hanya untuk memilih chrome.
+ *     berkas, `src/app/(app)/(docs)/layout.tsx`, dan hanya untuk memilih chrome.
  *     Bacaan itu bersifat "kalau ada": `pembacaDokumentasi()` menjawab `null`
  *     alih-alih memantulkan, dan describe "dua kulit" di bawah menguncinya —
  *     nol penjaga, nol `redirect()`, nol `notFound()` di jalur kulit.
@@ -62,7 +62,7 @@ import { PERMISSIONS } from "@/lib/authz";
 
 const ROOT = join(__dirname, "..");
 const SRC = join(ROOT, "src");
-const DOCS_APP_DIR = join(SRC, "app", "(docs)");
+const DOCS_APP_DIR = join(SRC, "app", "(app)", "(docs)");
 const DOCS_COMPONENT_DIR = join(SRC, "components", "docs");
 
 function sourceFiles(dir: string): string[] {
@@ -104,7 +104,7 @@ describe("pemindainya memindai yang benar", () => {
     // dengan daftar kosong — kelas kegagalan yang §Penjaga MASTER.md sebut
     // sebagai "terbaca benar, tidak menjaga apa pun".
     expect(BERKAS_DOKUMENTASI.size).toBeGreaterThanOrEqual(5);
-    expect([...BERKAS_DOKUMENTASI.keys()]).toContain("app/(docs)/docs/page.tsx");
+    expect([...BERKAS_DOKUMENTASI.keys()]).toContain("app/(app)/(docs)/docs/page.tsx");
     expect([...BERKAS_DOKUMENTASI.keys()]).toContain("components/docs/docs-shell.tsx");
   });
 
@@ -279,8 +279,8 @@ describe("bentuk alamat & pelepasan proxy", () => {
 describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
   it("tidak mengimpor apa pun dari components/landing — dan penjaganya memang mencakupnya", () => {
     /*
-     * Sisi ini sudah ditutup `tests/landing-boundary.test.ts` (hanya
-     * `app/page.tsx` yang boleh mengimpornya), jadi yang dilakukan di sini
+     * Sisi ini sudah ditutup `tests/landing-boundary.test.ts` (hanya halaman
+     * `app/(marketing)/` yang boleh mengimpornya), jadi yang dilakukan di sini
      * bukan menduplikasi aturannya melainkan MEMBUKTIKAN cakupannya: berkas
      * dokumentasi berdiri di luar `PINTU_MASUK`, sehingga sebuah impor ke sana
      * akan memerahkan penjaga itu. Sanity check di bawah menjaga agar keadaan
@@ -292,7 +292,9 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
     expect(pelanggar).toEqual([]);
 
     const landingGuard = readFileSync(join(ROOT, "tests", "landing-boundary.test.ts"), "utf8");
-    expect(landingGuard).toContain('const PINTU_MASUK = ["app/page.tsx"];');
+    expect(landingGuard).toContain(
+      'const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/harga/page.tsx"];'
+    );
   });
 
   it("tidak mengimpor chrome app internal — sisi yang belum dijaga siapa pun", () => {
@@ -360,7 +362,7 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
     for (const dilarang of [
       "@/components/layout/sidebar",
       "@/components/layout/navbar",
-      "@/app/(dashboard)",
+      "@/app/(app)/(dashboard)",
     ]) {
       expect(kode, `${KULIT_APLIKASI} menyeret kerangka dasbor`).not.toContain(dilarang);
     }
@@ -404,7 +406,7 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
 });
 
 describe("satu halaman, DUA kulit", () => {
-  const LAYOUT = "app/(docs)/layout.tsx";
+  const LAYOUT = "app/(app)/(docs)/layout.tsx";
   const layout = BERKAS_DOKUMENTASI.get(LAYOUT) ?? "";
   const viewer = readFileSync(join(SRC, "lib", "docs-viewer.ts"), "utf8");
 
@@ -419,7 +421,7 @@ describe("satu halaman, DUA kulit", () => {
     expect(layout).toContain("pembacaDokumentasi(");
     expect(layout).toContain("kulitDokumentasi(");
 
-    for (const halaman of ["app/(docs)/docs/page.tsx", "app/(docs)/docs/[...slug]/page.tsx"]) {
+    for (const halaman of ["app/(app)/(docs)/docs/page.tsx", "app/(app)/(docs)/docs/[...slug]/page.tsx"]) {
       const kode = BERKAS_DOKUMENTASI.get(halaman) ?? "";
       expect(kode, `${halaman} membaca sesi`).not.toContain("@/lib/auth");
       expect(kode, `${halaman} membaca sesi`).not.toContain("pembacaDokumentasi");

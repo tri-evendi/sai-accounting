@@ -32,12 +32,11 @@ import { renderToReadableStream } from "react-dom/server";
 import { BUSINESS_MODULES, MODULE_META } from "@/lib/business-modules";
 import { CURRENCIES } from "@/lib/constants";
 import { LOCALES } from "@/lib/i18n/config";
-import { LocaleProvider } from "@/lib/i18n/client";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
 import { formatMoney } from "@/lib/money-format";
 import { TRIAL_DAYS } from "@/lib/registration";
-import { DEFAULT_TAX_RATE } from "@/lib/tax";
+import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
 
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);
@@ -115,20 +114,32 @@ vi.mock("@/lib/auth", () => ({ auth: async () => state.session }));
  * yang dipakai tetap kamus SUNGGUHAN (`id.json`), jadi kunci yang salah ketik
  * tetap terlihat sebagai teks kunci di markup, bukan tersembunyi di balik
  * tiruan yang mengembalikan apa saja. */
-vi.mock("@/lib/i18n/server", () => ({ getT: async () => T }));
+vi.mock("@/lib/i18n/server", () => ({ getT: async () => T, getLocale: async () => "id" }));
 
 vi.mock("@/lib/plan-catalog", () => ({ activePlans: async () => state.plans }));
 
-const { default: LandingPage } = await import("@/app/page");
+const { default: LandingPage } = await import("@/app/(marketing)/page");
+const { default: PricingPage } = await import("@/app/(marketing)/harga/page");
 
-async function render(): Promise<string> {
-  const stream = await renderToReadableStream(
-    <LocaleProvider locale="id" dictionary={dict}>
-      {await LandingPage({ searchParams: Promise.resolve({}) })}
-    </LocaleProvider>
-  );
+/**
+ * TANPA `LocaleProvider` — dengan sengaja (#399). Halaman pemasaran hidup di
+ * root layout yang tidak memasang provider itu, jadi tes ini merender persis
+ * keadaan produksinya: dua daun client (`LocaleToggle`, `ThemeToggle`) harus
+ * mendapat bahasa & teksnya lewat PROP, dan sebuah kunci kamus yang bocor
+ * sebagai teks ("theme.light") akan tertangkap di sini.
+ */
+async function renderTree(tree: React.ReactNode): Promise<string> {
+  const stream = await renderToReadableStream(tree);
   const html = await new Response(stream).text();
   return html.replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+}
+
+async function render(): Promise<string> {
+  return renderTree(await LandingPage({ searchParams: Promise.resolve({}) }));
+}
+
+async function renderPricing(): Promise<string> {
+  return renderTree(await PricingPage());
 }
 
 /** Pola satu blok data terstruktur, dipakai kedua penolong di bawah. */
@@ -380,5 +391,77 @@ describe("halaman pendaratan publik", () => {
     const html = await render();
     expect(html).toContain('href="/terms"');
     expect(html).toContain('href="/privacy"');
+  });
+
+  it("dua daun client mendapat teksnya lewat prop — tanpa LocaleProvider, tak ada kunci yang bocor (#399)", async () => {
+    const html = await render();
+    // Sakelar bahasa: nama kelompoknya kalimat, bukan "userMenu.language".
+    expect(html).toContain(`aria-label="${T("userMenu.language")}"`);
+    expect(html).not.toContain("userMenu.language");
+    // Sakelar tema: ketiga labelnya kalimat, bukan "theme.light" dst.
+    expect(html).toContain(T("theme.light"));
+    expect(html).not.toMatch(/theme\.(label|light|dark|system)/);
+  });
+
+  it("galeri layar: tiga purwarupa dirender, berlabel contoh, aria-hidden, angkanya dihitung (#399)", async () => {
+    const html = tanpaJsonLd(await render());
+    for (const key of ["landing.mockJournalTitle", "landing.mockInvoiceTitle", "landing.mockSwitcherTitle"])
+      expect(html).toContain(T(key));
+    // Label contoh tampil di hero + tiga layar galeri = empat kali.
+    expect(html.split(T("landing.mockCaption")).length - 1).toBe(4);
+    // PPN & total faktur dari mesin pajak yang sama dengan faktur sungguhan;
+    // jurnalnya seimbang karena DIHITUNG — label "Seimbang" hanya lahir dari
+    // hasil hitung, dan totalnya cocok dengan faktur di sebelahnya.
+    const pajak = computeTax(9_500_000 + 3_000_000, DEFAULT_TAX_RATE);
+    expect(html).toContain(formatMoney(pajak.taxAmount, "IDR"));
+    expect(html).toContain(formatMoney(pajak.total, "IDR"));
+    expect(html).toContain(T("landing.mockVat", { rate: DEFAULT_TAX_RATE }));
+    expect(html).toContain(T("landing.mockBalanced"));
+    // Nama PT contoh, dan bukan nama PT pemasangan ini.
+    expect(html).toContain(T("landing.mockCompanyTwo"));
+    // Seluruh galeri `aria-hidden` — di dalam wadah yang berisi ketiga judul.
+    const galeri = html.slice(html.indexOf(T("landing.galleryHeading")));
+    expect(galeri.indexOf('aria-hidden="true"')).toBeGreaterThan(-1);
+    expect(galeri.indexOf('aria-hidden="true"')).toBeLessThan(galeri.indexOf(T("landing.mockJournalTitle")));
+  });
+
+  it("navigasi menaut ke /harga (halaman), jangkar seksi berakar `/` (#399)", async () => {
+    const html = await render();
+    expect(html).toContain('href="/harga"');
+    expect(html).toContain('href="/#modul"');
+    expect(html).toContain('href="/#tanya"');
+    expect(html).toContain('href="/#kontak"');
+    expect(html).not.toContain('href="#harga"');
+  });
+});
+
+describe("halaman harga publik /harga (#399)", () => {
+  it("pengunjung bersesi memantul — sama seperti /", async () => {
+    state.session = { user: { id: "7" } };
+    await expect(renderPricing()).rejects.toThrow("redirect: /dashboard");
+  });
+
+  it("merender katalog & FAQ yang SAMA dengan /, dengan judul harga sebagai <h1>", async () => {
+    const html = tanpaJsonLd(await renderPricing());
+    expect(html).toMatch(new RegExp(`<h1[^>]*>${T("landing.pricingHeading")}</h1>`));
+    // Tepat satu <h1> — hero tidak ikut ke sini.
+    expect(html.match(/<h1[\s>]/g)?.length).toBe(1);
+    for (const plan of PLANS) expect(html).toContain(plan.name);
+    for (const plan of PLANS.filter((p) => !p.contactOnly))
+      expect(html).toContain(formatMoney(plan.priceMonthly, plan.currency));
+    expect(html).toContain(T("landing.faqTrialQ"));
+    // Tanpa hero, tanpa galeri, tanpa kontak — hanya harga + FAQ di dalam kulit.
+    expect(html).not.toContain(T("landing.heroHeading"));
+    expect(html).not.toContain(T("landing.galleryHeading"));
+    expect(html).not.toContain(T("landing.contactHeading"));
+    // Kulitnya tetap: bilah atas dengan kedua pintu.
+    expect(html).toContain('href="/register"');
+    expect(html).toContain('href="/login"');
+  });
+
+  it("di / judul harga tetap <h2> — satu-satunya <h1> di sana milik hero", async () => {
+    const html = tanpaJsonLd(await render());
+    expect(html).toMatch(new RegExp(`<h2[^>]*>${T("landing.pricingHeading")}</h2>`));
+    expect(html.match(/<h1[\s>]/g)?.length).toBe(1);
   });
 });

@@ -4,7 +4,7 @@
  * Dipindahkan keluar dari `app/page.tsx` di issue #245, dan pemindahannya
  * bukan kerapian: setelah pendaratan dan app internal berdiri di atas token
  * yang sama, satu-satunya yang memisahkan keduanya adalah DI MANA markup
- * pemasaran boleh tinggal. `app/page.tsx` kini hanya menyusun; setiap bentuk
+ * pemasaran boleh tinggal. `app/(marketing)/page.tsx` kini hanya menyusun; setiap bentuk
  * khas pemasaran — hero, kisi kartu jualan, ajakan penutup — hidup di
  * direktori ini, tempat penjaga impor bisa mengurungnya.
  *

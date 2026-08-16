@@ -16,12 +16,21 @@
  * ══ BERKAS INI MENYUSUN, TIDAK MENGGAMBAR (issue #245) ═════════════════════
  * Sampai #245 sebagian bentuk pemasaran — hero, kisi kartu, ajakan penutup,
  * kaki halaman — ditulis langsung di sini. Sekarang tidak lagi, dan itu bukan
- * kerapian: `app/page.tsx` adalah SATU-SATUNYA berkas di luar
- * `components/landing/**` yang boleh mengimpor apa pun dari sana
- * (`tests/landing-boundary.test.ts`). Selama bentuk pemasaran masih bisa
- * ditulis di sebuah `page.tsx`, "jangan tiru gaya pendaratan di app internal"
- * tetap imbauan; setelah bentuk itu hanya ada sebagai komponen di satu
- * direktori berpagar, menyalinnya menjadi impor yang GAGAL di tes.
+ * kerapian: halaman di `app/(marketing)/` (berkas ini dan `harga/page.tsx`)
+ * adalah SATU-SATUNYA berkas di luar `components/landing/**` yang boleh
+ * mengimpor apa pun dari sana (`PINTU_MASUK`, `tests/landing-boundary.test.ts`).
+ * Selama bentuk pemasaran masih bisa ditulis di sebuah `page.tsx`, "jangan
+ * tiru gaya pendaratan di app internal" tetap imbauan; setelah bentuk itu
+ * hanya ada sebagai komponen di satu direktori berpagar, menyalinnya menjadi
+ * impor yang GAGAL di tes.
+ *
+ * ══ ROOT LAYOUT SENDIRI (issue #399) ═══════════════════════════════════════
+ * Berkas ini hidup di route group `(marketing)` dengan root layout-nya
+ * sendiri (`../layout.tsx`), TERPISAH dari root layout aplikasi di `(app)`.
+ * Yang tidak ikut ke sini: `LocaleProvider` (kamus ~2.500 kunci di payload
+ * RSC) dan `CompanyIdentityProvider` (satu `GET /api/company/identity` per
+ * muatan) — keduanya milik aplikasi bersesi, bukan milik pengunjung anonim.
+ * Angka sebelum/sesudahnya di `pages/landing.md` §Layout akar pemasaran.
  *
  * ══ KENAPA HALAMAN INI BOLEH BERGAYA "LANDING" ═════════════════════════════
  * MASTER.md §Pemasaran vs App menyatakan pendaratan dalam token — skala hero,

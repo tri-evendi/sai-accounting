@@ -22,7 +22,7 @@
  * `role="alert"` sendiri pada akarnya dan membuang `role` yang dioper
  * (`pickAttrs(props, {aria, data})`), jadi pembungkus `role="status"` tidak
  * menambah apa pun — alasan lengkapnya di kepala
- * `app/(auth)/forgot-password/page.tsx`.
+ * `app/(app)/(auth)/forgot-password/page.tsx`.
  *
  * Kisi isiannya tetap CSS grid, bukan `Row`/`Col`: beberapa isian membentang
  * dengan `gridColumn: "1 / -1"`, dan di dalam `Col` flexbox properti itu tidak
@@ -68,11 +68,11 @@ import {
   type MailSettingsFormInput,
   type MailTestFormInput,
 } from "@/lib/validations/operator";
-import type { OperatorMailActionResult } from "@/app/(operator)/operator/mail/actions";
+import type { OperatorMailActionResult } from "@/app/(app)/(operator)/operator/mail/actions";
 import {
   operatorSaveMailSettings,
   operatorSendTestMail,
-} from "@/app/(operator)/operator/mail/actions";
+} from "@/app/(app)/(operator)/operator/mail/actions";
 
 /* ── Bentuk data dari halaman server (serial; tanggal sudah terformat) ─────── */
 

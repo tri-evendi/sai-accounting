@@ -129,7 +129,7 @@ describe("orientasi tidak boleh hilang dari chrome", () => {
   it("tata letak dashboard mengoper perusahaan aktif ke top bar", () => {
     // Menghapus prop ini akan lolos tsc bila suatu saat ia dibuat opsional —
     // dan penandanya menghilang tanpa satu pun tes merah.
-    expect(read("app/(dashboard)/layout.tsx")).toMatch(/companyName={session\.user\.companyName}/);
+    expect(read("app/(app)/(dashboard)/layout.tsx")).toMatch(/companyName={session\.user\.companyName}/);
   });
 
   it("top bar merender penandanya", () => {
@@ -151,7 +151,7 @@ describe("layar tanpa perusahaan bukan jalan buntu", () => {
      * sebagai akun yang salah (komputer bersama) hanya bisa membuka buku
      * perusahaan dengan akun orang lain.
      */
-    const page = read("app/(auth)/select-company/page.tsx");
+    const page = read("app/(app)/(auth)/select-company/page.tsx");
     const branches = page.match(/SignedInAs/g) ?? [];
     expect(branches.length).toBeGreaterThanOrEqual(2);
   });
@@ -192,6 +192,6 @@ describe("layar tanpa perusahaan bukan jalan buntu", () => {
      * menjaminnya untuk seluruh permukaan sekaligus.
      */
     expect(read("components/tenant/platform-shell.tsx")).toContain("<UserMenu ");
-    expect(read("app/(tenant)/(panel)/layout.tsx")).toMatch(/userName=\{user\.name/);
+    expect(read("app/(app)/(tenant)/(panel)/layout.tsx")).toMatch(/userName=\{user\.name/);
   });
 });

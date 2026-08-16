@@ -84,7 +84,7 @@
  * properti yang tidak pernah teratasi, dan elemennya diam-diam mewarisi latar
  * induknya. `tests/platform-colors.test.ts` menutup sisanya: string
  * `--sai-platform-` tidak boleh muncul di luar berkas ini dan
- * `app/(tenant)/(panel)/platform/**`, dan akarnya dipasang tepat satu berkas.
+ * `app/(app)/(tenant)/(panel)/platform/**`, dan akarnya dipasang tepat satu berkas.
  */
 import { toneMix, type ToneHue } from "@/lib/theme/tone-recipe";
 

@@ -24,6 +24,7 @@ const WIZARD = join(
   "..",
   "src",
   "app",
+  "(app)",
   "(setup)",
   "t",
   "[tenantSlug]",

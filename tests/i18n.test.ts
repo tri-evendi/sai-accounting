@@ -232,6 +232,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "landing.navMenu",
     // "WhatsApp" adalah nama diri (merek) — sama di semua bahasa (#398).
     "landing.contactChannelWhatsapp",
+    // "Debit" — istilah akuntansi Latin yang ejaannya identik di kedua bahasa;
+    // kepala kolom purwarupa jurnal di galeri pendaratan (#399). Mandarin 借方.
+    "landing.mockDebit",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).

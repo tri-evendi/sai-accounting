@@ -374,7 +374,7 @@ Laporan **tidak dibuka langsung dari kartunya**. Menekan kartu membuka dialog pa
 
 ## Konvensi Form (issue #53)
 
-Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
+Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
 
 1. **Satu skema zod, dua sisi.** Skema yang divalidasi form **wajib** skema yang sama dipakai route handler — **diimpor, bukan disalin**. Bila server menambah field (mis. `invoiceId` dari URL), pisahkan field bersama sebagai objek yang dipakai ulang (contoh: `paymentFormFields` di `lib/validations/payment.ts`, dipakai `paymentFormSchema` client dan `invoicePaymentSchema`/`contractPaymentSchema` server). Client & server tidak boleh bisa menyimpang diam-diam.
 2. **Pesan error lewat KUNCI kamus, ramah awam.** Skema tidak menulis kalimat, melainkan kunci bertipe: `z.string().min(1, vmsg("validation.dateRequired"))` (`@/lib/i18n/validation`). Alasannya: pesan zod dipanggang saat modul dimuat sehingga tidak bisa ikut berganti bahasa — sedangkan mengubahnya menjadi pabrik `make…Schema(t)` melanggar aturan 1, dan `z.setErrorMap()` global membocorkan bahasa antar-permintaan yang berjalan bersamaan. Kalimatnya karena itu disusun di **batas tampilan**: `FormMessage` di client, `translateFieldErrors()` di route handler, `humanizeFieldMessage()` di jalur pesan API. Kunci salah ketik ditolak `tsc` (tipe `ValidationKey`); `tests/i18n-validation.test.tsx` menolak kalimat yang tertinggal di dalam skema. Pesan yang membawa nominal memakai `vissue("…", { … })` — kunci + nilainya ikut sebagai `params` zod, bukan sandi yang diselundupkan ke dalam teks pesan.
@@ -512,12 +512,12 @@ Keputusannya **ya**, karena alternatifnya lebih buruk: tanpa token, satu-satunya
 
 ### Penjaganya (`tests/landing-boundary.test.ts`)
 
-- **App internal tidak mengimpor apa pun dari `components/landing/**`.** Pintu masuknya satu: `src/app/page.tsx`. Menambah pintu kedua = satu baris di `PINTU_MASUK` yang terlihat di diff.
+- **App internal tidak mengimpor apa pun dari `components/landing/**`.** Pintu masuknya halaman di `src/app/(marketing)/` (`/` dan `/harga`, #399). Menambah pintu baru = satu baris di `PINTU_MASUK` yang terlihat di diff.
 - **Sebaliknya juga:** berkas pendaratan hanya boleh mengimpor `@/components/ui`, `@/lib`, dan sesama berkas pendaratan. Halaman ini dibaca tanpa sesi; setiap impor ke app internal adalah jalan bagi kode ber-`auth()`/ber-Prisma ikut ke permukaan publik.
 - **`--sai-landing-` dan `data-landing` tidak boleh muncul di satu berkas pun di luar direktori itu**, dan akarnya dipasang tepat satu berkas (`landing-shell.tsx`).
 - **Blok skalanya tidak boleh dideklarasikan pada selektor global** (`:root`/`html`/`body`/`*`) — justru pengurungan itulah yang membuat batas ini mekanisme, bukan imbauan.
 
-Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(tenant)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
+Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(app)/(tenant)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
 
 ### Permukaan KETIGA: `/platform`, dan bagaimana ia boleh berwarna tanpa menembus batas (issue #303)
 
@@ -567,7 +567,7 @@ mengikat maupun memajukan apa pun.
 sebelum #300, jadi yang dikerjakan #300 adalah membuktikan cakupannya:
 
 - **Sisi pemasaran sudah tertutup tanpa satu baris pun ditambahkan.**
-  `tests/landing-boundary.test.ts` hanya mengizinkan `app/page.tsx` mengimpor
+  `tests/landing-boundary.test.ts` hanya mengizinkan halaman `app/(marketing)/` mengimpor
   `components/landing/**`; berkas dokumentasi berdiri di luar `PINTU_MASUK`,
   jadi sebuah impor ke sana MERAH (dibuktikan di PR #300, lalu dikembalikan).
   Menyalin `var(--sai-landing-…)` pun tidak menghasilkan hero: blok itu terkurung
@@ -752,7 +752,7 @@ sekali lihat — dan baris "lebar maksimum" di tabel di atas mengikat.
 ## Anti-Patterns (JANGAN)
 - ❌ Emoji sebagai ikon → pakai `@ant-design/icons`.
 - ❌ Dua paket ikon di satu layar; ❌ prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
-- ❌ `className` di mana pun (satu pengecualian: `<html>` di `app/layout.tsx`) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
+- ❌ `className` di mana pun (satu pengecualian: `<html>` di `components/providers/root-document.tsx`, dipakai kedua root layout) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
 - ❌ Nilai warna mentah (hex, `rgb()`, nama warna CSS) di luar `lib/theme/antd-tokens.ts` → ditolak ESLint `sai/warna-token-antd`.
 - ❌ Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
 - ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan; ❌ **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.
@@ -768,7 +768,7 @@ sekali lihat — dan baris "lebar maksimum" di tabel di atas mengikat.
 
 ## Primitif Wajib: Tabel & Tombol
 
-Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen ini bocor — yang hilang justru bagian tak terlihat: pembungkus geser, cincin fokus keyboard, target sentuh. Karena itu dua keluarga ini **wajib** lewat primitif, dan dijaga oleh `tests/design-system-primitives.test.ts` (lingkup `src/app/(dashboard)` + `src/app/(setup)` + `src/components`, kecuali `src/components/ui` tempat primitifnya sendiri tinggal).
+Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen ini bocor — yang hilang justru bagian tak terlihat: pembungkus geser, cincin fokus keyboard, target sentuh. Karena itu dua keluarga ini **wajib** lewat primitif, dan dijaga oleh `tests/design-system-primitives.test.ts` (lingkup `src/app/(app)/(dashboard)` + `src/app/(app)/(setup)` + `src/components`, kecuali `src/components/ui` tempat primitifnya sendiri tinggal).
 
 - **Tabel → `StaticTable` atau `DataTable`** (sejak issue #189 primitifnya dipecah dua, dengan **satu kontrak kolom** di `src/components/ui/table-columns.tsx`):
   - **`StaticTable`** (`src/components/ui/static-table.tsx`) — **BAWAAN.** Untuk laporan & daftar yang dipaginasi server: dirender di server, tanpa satu baris JavaScript pun. Dipakai 46 dari 66 tabel app ini.

@@ -32,6 +32,11 @@ function isPublicPath(pathname: string): boolean {
   // bersesi tetap ada, tapi di halamannya sendiri: ia yang tahu tujuan
   // pasca-masuk, dan proxy tidak boleh menduanya.
   if (pathname === "/") return true;
+  // issue #399 — halaman harga publik: alamat tujuan untuk kueri "harga
+  // software akuntansi", berbagi root layout pemasaran dengan `/`. Jalur
+  // PERSIS, bukan awalan; daftarnya dijaga `tests/authz-coverage` (grup
+  // `(marketing)`).
+  if (pathname === "/harga") return true;
   // issue #136 — alur atur-ulang kata sandi mandiri: orang yang lupa kata
   // sandinya jelas belum punya sesi. API pasangannya sudah tercakup
   // `/api/auth/*` di bawah.
@@ -48,7 +53,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/terms" || pathname === "/privacy") return true;
   /*
    * Berkas metadata halaman pendaratan. Ketiganya dibangkitkan Next dari
-   * `app/robots.ts`, `app/sitemap.ts`, dan `app/opengraph-image.tsx`, dan
+   * `app/robots.ts`, `app/sitemap.ts`, dan `app/(marketing)/opengraph-image.tsx`, dan
    * ketiganya HANYA berguna kalau bisa diambil TANPA sesi — pembacanya perayap
    * dan pratinjau tautan aplikasi perpesanan, yang tidak punya cookie.
    *

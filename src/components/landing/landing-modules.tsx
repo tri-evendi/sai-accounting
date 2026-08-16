@@ -45,6 +45,7 @@ import {
   ShoppingCartOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
+import { LandingGallery } from "@/components/landing/landing-gallery";
 import {
   LANDING_NOTE,
   landingChip,
@@ -224,6 +225,16 @@ export async function LandingModules() {
       <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-lg)" }}>
         {t("landing.modulesNote")}
       </p>
+
+      {/* ══ GALERI LAYAR (#399) — jawaban HARFIAH atas judul seksi ini ══════
+          Tiga purwarupa dirender (jurnal umum, faktur penjualan, pengalih
+          PT) di bawah daftar modul, BUKAN sebagai seksi sendiri: irama
+          halaman (polos → pita → polos → pita) tidak menyisakan tempat untuk
+          seksi baru tanpa dua polos/pita berturut-turut, dan "apa saja yang
+          ada di dalam" memang paling jujur dijawab dengan layarnya. Kartunya
+          `surface` bertepi di atas pita cyan — bentuk purwarupa hero di atas
+          pita hero. Alasan lengkap & aturan angkanya di kepala berkasnya. */}
+      <LandingGallery />
     </LandingSection>
   );
 }

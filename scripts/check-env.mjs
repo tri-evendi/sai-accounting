@@ -95,6 +95,26 @@ if (!settingsKey) {
   process.exit(1);
 }
 
+/*
+ * PLATFORM_CONTACT_WHATSAPP (#398) — tombol WhatsApp di seksi kontak halaman
+ * pendaratan. Opsional: kosong = tombolnya tidak dirender. Yang ditolak adalah
+ * nomor yang SALAH BENTUK: `wa.me` menuntut nomor internasional tanpa `+`,
+ * spasi, atau nol awal (`62812…`), dan nomor yang salah menghasilkan tautan
+ * yang membuka WhatsApp lalu berkata "nomor tidak ditemukan" — kegagalan yang
+ * baru ketahuan dari calon pelanggan. Polanya sama dengan
+ * `src/lib/contact-channels.ts`, yang juga menolak nomor seperti itu (tidak
+ * dirender) — di sini kegagalannya disuarakan kepada operator, bukan
+ * ditelan.
+ */
+const contactWhatsapp = process.env.PLATFORM_CONTACT_WHATSAPP?.trim();
+if (contactWhatsapp && !/^[1-9]\d{6,14}$/.test(contactWhatsapp)) {
+  console.error(
+    "ERROR: PLATFORM_CONTACT_WHATSAPP harus nomor internasional tanpa '+', spasi, " +
+      "atau nol awal — mis. 6281234567890 (bukan 081234567890 atau +62 812…)."
+  );
+  process.exit(1);
+}
+
 if (process.env.NODE_ENV !== "production") {
   console.error(
     "ERROR: NODE_ENV must be 'production' for this app (current:",

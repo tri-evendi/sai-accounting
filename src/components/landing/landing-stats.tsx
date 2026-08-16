@@ -23,6 +23,13 @@
  * ketiganya berdiri tanpa kotak — di atas pita hero yang sudah berwarna,
  * kotak bernada di atas nada hanya saling meniadakan (`landing.md` §"warnai
  * pitanya ATAU kartunya, tidak keduanya").
+ *
+ * ══ INI SATU-SATUNYA STRIP (#397) ══════════════════════════════════════════
+ * Sampai #397 ketiga angka ini muncul DUA KALI identik — di sini dan sebagai
+ * `<dl>` "Semua paket mendapat" di seksi harga. Yang tersisa di harga kini
+ * satu kalimat (`pricingAllNote`, angkanya tetap dihitung dari registri yang
+ * sama). Jangan menghidupkan salinan keduanya: bukti yang diulang berhenti
+ * terbaca sebagai bukti dan mulai terbaca sebagai pengisi.
  */
 import { LANDING_NOTE, landingGrid } from "@/components/landing/landing-scale";
 import { BUSINESS_MODULES } from "@/lib/business-modules";

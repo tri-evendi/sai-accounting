@@ -312,13 +312,15 @@ memeriksa**:
   pembaca mengklik lalu menemukan topik lain, merusak persis kepercayaan yang
   sedang dibangun. Slug-nya bertipe `DocSlug`, jadi dokumen yang dihapus
   ditolak `tsc`, bukan menjadi tautan mati di halaman publik.
-- **Harga** — strip "semua paket mendapat". Kartu paket hanya menjawab *apa
+- **Harga** — kalimat "semua paket mendapat". Kartu paket hanya menjawab *apa
   bedanya* (kuota); yang lebih dulu ditanya orang adalah *apa yang saya dapat
   terlepas dari paket mana pun*. Tanpa itu pembaca menyimpulkan modul, bahasa,
   dan mata uang ikut dijatah — padahal tidak. Ketiga angkanya dihitung dari
-  registri yang sama dengan strip bukti di hero.
-- **FAQ** — enam pertanyaan tidak mungkin menutup semuanya; yang pertanyaannya
-  tidak ada di sana sebelumnya sampai di ujung tanpa jalan ke mana pun.
+  registri yang sama dengan strip bukti di hero. (Sejak #397 bentuknya SATU
+  KALIMAT, bukan strip kedua — §Strip fakta muncul sekali.)
+- **FAQ** — sebelas pertanyaan tidak mungkin menutup semuanya; yang
+  pertanyaannya tidak ada di sana sebelumnya sampai di ujung tanpa jalan ke
+  mana pun.
 - **Ajakan penutup** — satu kalimat penenang tepat di bawah tombol, tempat
   keraguan menit terakhir muncul. Angkanya dari `TRIAL_DAYS`.
   ⚠ "Tanpa kartu kredit" TIDAK ditulis — tak ada kode di repo ini yang
@@ -455,6 +457,135 @@ Letaknya dulu di dalam pita modul — sekitar sepertiga halaman ke bawah, yaitu
 sesudah orang memutuskan untuk terus menggulung atau tidak — dan berbentuk
 **sama persis** dengan sepuluh kartu modul di bawahnya, sehingga terbaca sebagai
 tiga modul lagi. Sekarang: tepat sesudah hero, angka di atas label, tanpa kotak.
+
+## Copy, harga, FAQ — hasil tinjauan terhadap sembilan kompetitor (#397)
+
+Halaman ini dibandingkan dengan Jurnal, Accurate, Kledo, Zahir, Paper.id,
+Majoo, Wave, FreshBooks, dan Zoho. Yang diambil dari mereka hanya yang **punya
+sumber di kode kita**; yang tidak (jumlah pelanggan, "tanpa kartu kredit",
+SLA) tetap ditolak — §KLAIM HARUS PUNYA SUMBER tidak melunak karena
+kompetitor melakukannya.
+
+### Ajakan hero menyebut lama uji coba
+
+"Coba gratis {days} hari" (`heroTrialCta`), bukan "Buat akun". Yang dijual
+tombol itu adalah **percobaan tanpa risiko**, dan itu baru tersampaikan bila
+lamanya tertulis DI TOMBOLNYA — sebelumnya angka itu baru muncul di ajakan
+penutup, tiga layar ke bawah. Sumbernya `TRIAL_DAYS`, konstanta yang sama yang
+menghitung masa uji coba.
+
+- **Kunci baru, bukan `heroPrimary` yang diubah bunyinya.** `heroPrimary`
+  dipanggil TANPA `{days}` oleh kartu paket dan ajakan penutup; placeholder
+  yang tidak diisi mendarat sebagai teks `{days}` di halaman publik. Kedua
+  tempat itu tetap "Buat akun" — tujuannya sama (`/register`), jadi
+  `tests/button-emphasis.test.ts` tetap membacanya sebagai satu ajakan yang
+  diulang.
+- ⚠ Tetap TANPA "tanpa kartu kredit". Tidak ada kode yang menjaminnya.
+
+### Copy pembuka berorientasi hasil pembeli, kejujuran "dari kode" jadi kalimat KEDUA
+
+Empat pembuka (hero, modul, harga, kepercayaan) sebelumnya **meta** — bicara
+tentang halamannya (*"Daftar ini bukan brosur…"*, *"Harga di bawah diambil dari
+katalog…"*, *"Empat hal di bawah bukan janji pemasaran…"*), bukan tentang
+masalah pembeli. Kalimat pertama kini menyebut **pekerjaan yang selesai**
+(catat transaksi, tutup periode, laporan & PPN; satu buku besar per PT; pilih
+paket sesuai PT & pengguna; catatan yang bisa dipertanggungjawabkan kepada
+pemilik, auditor, kantor pajak) — dan kalimat "datanya dari kode" **tetap
+ada**, sebagai kalimat kedua. Ia bukan hiasan: itu satu-satunya hal yang
+membedakan halaman ini dari halaman kompetitor yang mengatakan hal serupa.
+
+Setiap klaim di kalimat pertama punya pelaksananya: penutupan periode
+(`/periods`, `form-guards.ts`), laporan (`lib/reports.ts` — neraca saldo, laba
+rugi, neraca, arus kas), PPN & e-Faktur (`lib/tax.ts`, modul `tax_id`), satu
+buku besar per PT (#104; modul tidak pernah menggerbangi buku besar —
+`business-modules.ts` aturan 1), naik paket mandiri (`lib/plan-change.ts`).
+
+**Judul hero merangkul satu PT**: "Pembukuan satu atau beberapa PT, dalam satu
+akun". Judul lama ("Pembukuan beberapa PT…") membuat pemilik satu PT — pasar
+terbesar — merasa bukan sasaran, padahal paket terkecil memang satu PT. Kalimat
+tubuhnya menutup: *"Mulai dari satu PT; PT berikutnya cukup ditambahkan."*
+Purwarupa hero (tumpukan bilah PT) tetap benar: "beberapa" masih ada di
+judulnya.
+
+### Hemat tahunan: DIHITUNG di kartu, hilang bila nol/negatif
+
+Baris "Bayar tahunan hemat Rp X (≈ N bulan)" di bawah harga tahunan. Nominal
+tahunan sendirian menuntut pembaca mengalikan 12 di kepalanya; Kledo & Zoho
+menonjolkan selisihnya, dan itu memang informasi, bukan bujukan. Angkanya
+`priceMonthly × 12 − priceYearly` dari **dua kolom katalog yang sama** yang
+merender kedua harga di atasnya (`landing-pricing.tsx`) — tidak ada angka
+diskon yang diketik.
+
+- **Nol atau negatif → baris tidak dirender.** Katalog yang menghapus diskon
+  tahunan, atau memasang tahunan lebih mahal, tidak boleh memajang "hemat
+  Rp 0" / "hemat −Rp …" — benar secara aritmetika, terbaca sebagai halaman
+  rusak.
+- Bulan ditampilkan satu desimal format `id-ID` (2,0 → "2"; 1,5 tetap "1,5").
+  `tabular-nums`, sesuai aturan angka MASTER.md.
+
+### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
+
+Tiga angka (modul · bahasa · mata uang) dulu tampil **dua kali identik**: strip
+bukti di bawah hero dan `<dl>` "Semua paket mendapat" di seksi harga. Yang
+dipertahankan sebagai STRIP adalah yang di hero, dan yang di harga menjadi
+**satu kalimat berangka** (`pricingAllNote`: *"Semua paket mendapat 10 modul,
+3 bahasa antarmuka, dan mata uang USD · CNY · IDR. Yang dijatah per paket hanya
+jumlah PT dan pengguna."*). Alasannya:
+
+1. **Kedua tempat menjawab pertanyaan yang BERBEDA.** Di hero pertanyaannya
+   *"seberapa banyak"* — itu bukti, dan bukti berbentuk angka besar. Di harga
+   pertanyaannya *"apa yang saya dapat terlepas dari paket"* — itu jaminan, dan
+   jaminan berbentuk kalimat. Tiga angka besar tidak menjawab "apakah modul
+   dijatah"; kalimatnya menjawab, sekaligus menyebut apa yang MEMANG dijatah
+   (`Plan` hanya punya `maxCompanies` & `maxUsers`).
+2. **Seksi harga sudah memikul tiga kartu berisi nominal.** Tiga angka besar
+   lagi di bawahnya bersaing dengan harga yang seharusnya paling dibaca di
+   seksi itu.
+3. Bukti yang diulang berhenti terbaca sebagai bukti dan mulai terbaca sebagai
+   pengisi. Arah sebaliknya (strip di harga, kalimat di hero) ditolak karena
+   strip di hero adalah keputusan §Strip bukti pindah ke hero, yang alasannya
+   masih berlaku: bukti terbaik halaman harus tampil SEBELUM orang memutuskan
+   menggulung.
+
+Ketiga angka di kalimatnya tetap **dihitung** dari registri yang sama
+(`BUSINESS_MODULES.length`, `LOCALES.length`, `CURRENCIES`). Kunci
+`pricingAllTitle` dihapus dari ketiga kamus (penjaga kunci yatim).
+
+### Lima FAQ pembeli — setiap jawaban diverifikasi ke kode SEBELUM ditulis
+
+Enam pertanyaan lama seluruhnya soal tagihan & isolasi; yang ditanya orang
+SEBELUM sampai ke tagihan tidak terjawab satu pun. Lima yang ditambahkan, dan
+sumber tiap jawabannya (juga tercatat di kepala `landing-faq.tsx`):
+
+| Pertanyaan | Sumber jawaban | Yang SENGAJA tidak diklaim |
+|---|---|---|
+| Cocok untuk usaha apa | `BUSINESS_CATEGORIES`/`CATEGORY_META` — daftar presetnya **dirakit dari registri** (tanpa `custom`) dan `BUSINESS_MODULES.length`; modul per PT, tidak menggerbangi buku besar | segmen/industri yang tidak punya preset |
+| Impor dari sistem lama | `coa-import.ts` (akun, kolom Accurate), `import/master.ts` (pelanggan/pemasok/barang), `import/opening-ar-ap.ts`, `import/fixed-assets.ts`, templat `import/template.ts`, kolom dikenali dari judul (`import/spec.ts`), yang sudah ada dilewati bukan ditimpa; saldo awal akun di wizard penyiapan | **riwayat jurnal** — TIDAK diimpor, dan itu ditulis apa adanya |
+| Akuntan/KAP eksternal | undangan surel + peran per PT (docs/MULTI-TENANT.md §7.2–7.3, kuota `maxUsers`), peran bawaan bisa disetel + peran kustom (docs/RBAC.md), jejak audit, pencabutan sesi (docs/RBAC.md §Sesi & pencabutan) | peran "hanya-baca" siap pakai (tidak ada; yang ada: bisa dibuat) |
+| Kanal dukungan | dokumentasi publik `/docs`; formulir kontak (`landing-contact.tsx`) | **jam layanan / SLA / telepon / obrolan** — tidak ada kodenya |
+| Tempat data & UU PDP | basis data per PT (#104), ekspor mandiri, permintaan hapus bertenggang 30 hari & bisa dibatalkan (docs/COMPLIANCE.md), tidak ada hapus otomatis, `/privacy` | **lokasi server** — data residency masih keputusan terbuka (COMPLIANCE.md §5.1) |
+
+⚠ **Jawaban dukungan BERCABANG pada sakelar yang sama dengan formulirnya.**
+Formulir kontak hanya dirender bila `PLATFORM_CONTACT_EMAIL` terisi; jawaban
+yang menyuruh "pakai formulir kontak di halaman ini" pada pemasangan tanpa
+formulir adalah penunjuk palsu. Tanpa alamat, jawabannya
+`faqSupportADocsOnly` — dokumentasi saja.
+
+Urutan lima pertanyaan mengikuti urutan orang menanyakannya: cocok untuk saya?
+→ data lama saya? → akuntan saya? → kalau macet? → data saya di mana?
+`FAQPage` JSON-LD ikut otomatis (dibangkitkan dari array yang sama).
+
+### Catatan undangan disembunyikan di bawah 576px
+
+"Sudah diundang rekan kerja? …" (`heroNote`) `display:none` di bawah 576px
+lewat `[data-landing-hero-note]` di `LANDING_STYLE`, tampil kembali di blok
+media ≥576px. Di ponsel hero SATU kolom dan setiap baris di atas purwarupa
+mendorong sisa halaman ke bawah lipatan; kalimat ini menyasar orang yang
+hampir pasti tidak sedang membaca hero — yang diundang datang lewat tautan di
+surelnya. Alternatif "pindahkan ke bawah tombol Masuk" ditolak: di ponsel
+tombol-tombol bertumpuk satu kolom, jadi "di bawah Masuk" persis tempatnya
+sekarang — tidak menghemat satu baris pun. Kalimatnya tetap di HTML dan tetap
+tampil di layar yang punya ruang.
 
 ## Gerak: CSS, tidak pernah JavaScript
 

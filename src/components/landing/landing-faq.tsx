@@ -1,12 +1,12 @@
 /**
- * FAQ halaman pendaratan — enam pertanyaan yang jawabannya SUDAH ADA di kode,
- * bukan enam pertanyaan yang enak dijawab.
+ * FAQ halaman pendaratan — sebelas pertanyaan yang jawabannya SUDAH ADA di kode,
+ * bukan sebelas pertanyaan yang enak dijawab.
  *
  * ══ KENAPA PERTANYAAN INI, BUKAN YANG LAIN ═════════════════════════════════
  * Pola `Pricing Page + CTA` menaruh FAQ tepat sesudah kartu harga karena di
  * situlah keberatan muncul: orang sudah melihat angkanya dan sedang mencari
  * alasan untuk tidak melanjutkan. Yang menjawab keberatan bukan kalimat
- * meyakinkan melainkan FAKTA yang bisa ditelusuri, dan keenam jawaban di bawah
+ * meyakinkan melainkan FAKTA yang bisa ditelusuri, dan enam jawaban pertama
  * masing-masing punya sumbernya:
  *
  *   • lama uji coba          → `TRIAL_DAYS`
@@ -18,6 +18,42 @@
  *   • ekspor mandiri         → `lib/tenant-export.ts` (ZIP CSV, tetap bekerja
  *                              saat akun ditangguhkan — itu justru intinya)
  *
+ * Lima pertanyaan PEMBELI ditambahkan di #397 — keenam pertanyaan pertama
+ * seluruhnya soal tagihan & isolasi, dan yang ditanya orang SEBELUM sampai ke
+ * tagihan tidak terjawab satu pun. Masing-masing diverifikasi ke kode dulu:
+ *
+ *   • impor dari sistem lama → `lib/coa-import.ts` (akun, kolom Accurate),
+ *                              `lib/import/master.ts` (pelanggan/pemasok/
+ *                              barang), `lib/import/opening-ar-ap.ts`,
+ *                              `lib/import/fixed-assets.ts`; templat lewat
+ *                              `lib/import/template.ts`; kolom dikenali dari
+ *                              JUDUL (`lib/import/spec.ts`); yang sudah ada
+ *                              dilewati, bukan ditimpa (route impornya).
+ *                              Saldo awal akun: wizard `(setup)/…/setup`.
+ *                              ⚠ Riwayat jurnal TIDAK diimpor — dan itu
+ *                              ditulis apa adanya, bukan disembunyikan.
+ *   • akuntan/KAP eksternal  → undangan surel + peran per PT
+ *                              (docs/MULTI-TENANT.md §7.2–7.3, kuota
+ *                              `maxUsers` dicek), izin per peran + peran
+ *                              kustom (docs/RBAC.md), jejak audit
+ *                              (`lib/audit.ts`), pencabutan sesi ≤60 dtk
+ *                              (docs/RBAC.md §Sesi & pencabutan).
+ *   • kanal dukungan         → HANYA yang ada: dokumentasi publik `/docs` dan
+ *                              formulir kontak `landing-contact.tsx`, yang
+ *                              hanya dirender bila `PLATFORM_CONTACT_EMAIL`
+ *                              terisi — maka jawabannya BERCABANG pada sakelar
+ *                              yang sama (lihat `faqSupportADocsOnly`). Tanpa
+ *                              jam layanan, tanpa SLA: tak ada kode yang
+ *                              menjaminnya.
+ *   • tempat data & UU PDP   → basis data per PT (#104), ekspor mandiri,
+ *                              permintaan hapus bertenggang 30 hari & bisa
+ *                              dibatalkan (docs/COMPLIANCE.md), `/privacy`.
+ *                              ⚠ LOKASI SERVER TIDAK DIKLAIM — data residency
+ *                              masih keputusan terbuka (COMPLIANCE.md §5.1).
+ *   • cocok untuk usaha apa  → `BUSINESS_CATEGORIES`/`CATEGORY_META` (preset
+ *                              wizard) + `BUSINESS_MODULES.length`; daftar
+ *                              presetnya DIRAKIT dari registri, bukan diketik.
+ *
  * Pertanyaan yang jawabannya belum ada di kode TIDAK ditulis di sini. FAQ
  * pemasaran adalah tempat paling mudah bagi janji untuk lahir tanpa
  * pelaksananya, dan janji seperti itu baru ketahuan saat ada yang menagihnya.
@@ -25,7 +61,7 @@
  * ══ `<details>`, BUKAN AKORDEON BER-JAVASCRIPT ═════════════════════════════
  * Isinya harus ADA di HTML pertama: mesin pencari membacanya, penerjemah
  * halaman membacanya, dan orang yang mencetak halaman ini ikut membawanya.
- * Akordeon klien menyembunyikan keenam jawaban dari ketiganya demi animasi yang
+ * Akordeon klien menyembunyikan seluruh jawaban dari ketiganya demi animasi yang
  * tidak menambah apa pun. `<details>`/`<summary>` juga sudah membawa keyboard,
  * `aria-expanded`, dan pencarian di dalam halaman (Ctrl+F membuka panelnya di
  * peramban modern) tanpa satu baris skrip.
@@ -39,12 +75,30 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
+import {
+  BUSINESS_CATEGORIES,
+  BUSINESS_MODULES,
+  CATEGORY_META,
+} from "@/lib/business-modules";
 import { getT } from "@/lib/i18n/server";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
 export async function LandingFaq() {
   const t = await getT();
+
+  /* Formulir kontak hanya dirender bila alamat tujuannya ada
+     (`landing-contact.tsx`, sakelar yang sama). Jawaban yang menyuruh orang
+     "pakai formulir kontak di halaman ini" pada pemasangan tanpa formulir
+     adalah penunjuk palsu — jadi jawabannya mengikuti sakelar itu. */
+  const kontakAda = Boolean(process.env.PLATFORM_CONTACT_EMAIL?.trim());
+
+  /* Preset kategori usaha DIRAKIT dari registri: `custom` bukan jenis usaha
+     melainkan "pilih sendiri", dan itu disebut kalimatnya secara terpisah.
+     Kategori baru muncul di sini tanpa ada yang perlu ingat. */
+  const kategori = BUSINESS_CATEGORIES.filter((c) => c !== "custom")
+    .map((c) => t(CATEGORY_META[c].labelKey))
+    .join(", ");
 
   const items = [
     {
@@ -59,6 +113,25 @@ export async function LandingFaq() {
     },
     { q: t("landing.faqIsolationQ"), a: t("landing.faqIsolationA") },
     { q: t("landing.faqExportQ"), a: t("landing.faqExportA") },
+    /* Lima pertanyaan pembeli (#397) — urutannya mengikuti urutan orang
+       menanyakannya: cocok untuk saya? → data lama saya? → akuntan saya? →
+       kalau macet? → data saya di mana? Sumber tiap jawaban di kepala berkas. */
+    {
+      q: t("landing.faqFitQ"),
+      a: t("landing.faqFitA", {
+        categories: kategori,
+        modules: BUSINESS_MODULES.length,
+      }),
+    },
+    { q: t("landing.faqImportQ"), a: t("landing.faqImportA") },
+    { q: t("landing.faqAccountantQ"), a: t("landing.faqAccountantA") },
+    {
+      q: t("landing.faqSupportQ"),
+      a: kontakAda
+        ? t("landing.faqSupportA")
+        : t("landing.faqSupportADocsOnly"),
+    },
+    { q: t("landing.faqDataQ"), a: t("landing.faqDataA") },
   ];
 
   return (
@@ -93,9 +166,9 @@ export async function LandingFaq() {
 
       {/* Seksi ini sengaja seksi POLOS — dua wilayah berwarna berturut-turut
           (harga, lalu ajakan penutup) membutuhkan satu tempat istirahat di
-          antaranya. Yang menggantikan warna di sini adalah PERMUKAAN: enam
+          antaranya. Yang menggantikan warna di sini adalah PERMUKAAN: sebelas
           pertanyaan dikurung dalam satu bidang melayang, bukan dibiarkan
-          menjadi enam garis di atas latar halaman. */}
+          menjadi sebelas garis di atas latar halaman. */}
       <dl
         style={{
           /* Tanpa `overflow: hidden` — ia akan memotong cincin fokus
@@ -112,7 +185,7 @@ export async function LandingFaq() {
           /* ⚠ TANPA tepi. Panel ini berdiri di seksi POLOS, jadi nadanya
              sendiri yang menggambar batasnya — persis alasan yang sama dengan
              kartu manfaat & kartu keamanan. Sebelumnya ia `surface` + garis
-             1px, dan garis itulah yang membuat blok enam pertanyaan terbaca
+             1px, dan garis itulah yang membuat blok pertanyaan terbaca
              sebagai kotak yang digambar, bukan sebagai bidang. */
           background: landingFill("brand"),
           paddingInline: "var(--ant-padding-lg)",
@@ -173,7 +246,7 @@ export async function LandingFaq() {
         ))}
       </dl>
 
-      {/* Enam pertanyaan tidak mungkin menutup semuanya, dan pembaca yang
+      {/* Sebelas pertanyaan tidak mungkin menutup semuanya, dan pembaca yang
           pertanyaannya TIDAK ada di sini sebelumnya sampai di ujung seksi
           tanpa jalan ke mana pun — persis di titik ia paling mungkin pergi.
           Dokumentasi publik sudah ada; yang kurang hanya penunjuknya. */}

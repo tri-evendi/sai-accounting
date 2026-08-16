@@ -34,6 +34,7 @@ import {
 import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@/components/ui/button";
 import { getT } from "@/lib/i18n/server";
+import { TRIAL_DAYS } from "@/lib/registration";
 
 export async function LandingHero() {
   const t = await getT();
@@ -123,8 +124,24 @@ export async function LandingHero() {
                 satu-satunya alasan halaman ini ada, dan sampai perubahan ini
                 ia justru satu-satunya tautan di halaman yang memuat ulang
                 seluruh aplikasi sebelum formulir pendaftaran muncul. */}
+              {/* ══ AJAKAN HERO MENYEBUT LAMA UJI COBA (#397) ═══════════════
+                  "Coba gratis {days} hari", bukan "Buat akun". Yang dijual
+                  tombol ini adalah PERCOBAAN TANPA RISIKO, dan itu baru
+                  tersampaikan kalau lamanya tertulis di tombolnya — bukan
+                  tiga layar ke bawah di catatan harga. Angkanya `TRIAL_DAYS`,
+                  konstanta yang sama yang menghitung masa uji coba, jadi ia
+                  tidak bisa berbohong (§KLAIM HARUS PUNYA SUMBER).
+
+                  Kuncinya SENDIRI (`heroTrialCta`), bukan `heroPrimary` yang
+                  diubah teksnya: `heroPrimary` dipanggil TANPA `{days}` oleh
+                  kartu paket & ajakan penutup, dan placeholder yang tidak
+                  diisi mendarat sebagai teks "{days}" di halaman publik.
+                  Tujuannya tetap `/register` — satu ajakan yang diulang
+                  (`tests/button-emphasis.test.ts`), hanya bunyinya berbeda.
+                  ⚠ "Tanpa kartu kredit" TIDAK ditulis; tak ada kode yang
+                  menjaminnya. */}
               <ButtonLink href="/register" size="lg" variant="primary">
-                {t("landing.heroPrimary")}
+                {t("landing.heroTrialCta", { days: TRIAL_DAYS })}
               </ButtonLink>
               <ButtonLink href="/login" size="lg" variant="outline">
                 {t("landing.heroSecondary")}
@@ -133,8 +150,22 @@ export async function LandingHero() {
             {/* Orang yang diundang rekan kerja TIDAK boleh mendaftar sendiri:
               akun kedua membuatnya jadi tenant baru, bukan anggota tim yang
               mengundangnya. Kalimat ini menahannya sebelum ia menekan tombol
-              yang salah. */}
-            <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin)" }}>
+              yang salah.
+
+              ⚠ DISEMBUNYIKAN DI BAWAH 576px (`[data-landing-hero-note]`,
+              `landing-scale.ts`) — bukan dihapus. Di ponsel hero adalah SATU
+              kolom dan setiap baris di atas purwarupa mendorong sisa halaman
+              ke bawah lipatan; kalimat ini menyasar orang yang hampir pasti
+              TIDAK sedang membaca hero (yang diundang datang lewat tautan di
+              surelnya, bukan lewat halaman ini). Ia tetap di HTML dan tetap
+              tampil di ≥576px, tempat ruangnya ada; yang hilang hanya di
+              layar yang paling mahal ruangnya bagi pengunjung yang paling
+              tidak membutuhkannya.
+              Alasan lengkap: `pages/landing.md` §Catatan undangan. */}
+            <p
+              data-landing-hero-note=""
+              style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin)" }}
+            >
               {t("landing.heroNote")}
             </p>
           </div>

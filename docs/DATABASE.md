@@ -126,6 +126,23 @@ Aturannya:
 - **Dokumen**: `number` unik + `status` (enum-like: `draft`/`posted`/`paid`/...). Pola **header + lines** (`*_items`/`*_lines`), lines `onDelete: Cascade`.
 - **Jurnal**: `journals` (header) + `journal_lines` (`account_id`, `debit`, `credit`, `currency`, `base_amount`). Invarian: **Σ debit = Σ credit** (validasi di service layer, jangan hanya UI).
 - **Jangan hapus** transaksi yang sudah diposting/di-periode-tutup — buat jurnal balik.
+- **Tarif PPN (issue #368)**: `tax_rates` (`rate` `Decimal(5,2)`, `effective_from`
+  `@db.Date` **unik**) + `company_settings.is_pkp`. Tarif adalah **data
+  ber-efektif-tanggal**, bukan konstanta kode. Dua aturan yang tidak boleh
+  dilanggar:
+  1. **Baris tarif tidak pernah disunting tanggalnya.** Mengubah tarif = MENAMBAH
+     baris ber-`effective_from` baru. Menyunting `effective_from` sebuah baris
+     lama akan mengubah cara setiap dokumen di antara dua tanggal dibaca ulang —
+     yaitu menulis ulang masa lalu, dari layar pengaturan.
+  2. **Dokumen tetap membawa tarifnya sendiri** (`invoices.tax_rate`), dan mesin
+     posting membaca kolom itu — bukan tabel ini. Karena itu menambah tarif baru
+     TIDAK mengubah satu pun angka yang sudah terbit di laporan; yang berubah
+     hanya bawaan formulir berikutnya.
+
+  `src/lib/tax.ts` **tetap** memuat `DEFAULT_TAX_RATE` untuk dua hal yang memang
+  bukan milik pelanggan: benih tarif pertama sebuah perusahaan baru, dan PPN
+  tingkat **platform** (tagihan langganan kita sendiri — lihat §11).
+  `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali.
 
 ---
 

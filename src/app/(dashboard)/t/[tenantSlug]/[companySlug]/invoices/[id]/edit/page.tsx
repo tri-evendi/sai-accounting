@@ -6,6 +6,8 @@
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { TaxProfileProvider } from "@/lib/tax-profile-client";
+import { readCompanyTaxProfile } from "@/lib/tax-rates";
 import { EditInvoiceForm } from "./invoice-edit-form";
 
 export const dynamic = "force-dynamic";
@@ -16,5 +18,16 @@ export default async function EditInvoicePage({
   params: Promise<TenantScopedParams>;
 }) {
   await requirePagePermission("invoice.write", params);
-  return <EditInvoiceForm />;
+  /*
+   * Profil pajak perusahaan (issue #368). Halaman UBAH pun membutuhkannya:
+   * faktur tersimpan memang membawa tarifnya sendiri, tapi menyalakan kembali
+   * PPN pada faktur yang tadinya tak kena pajak akan mengambil sebuah bawaan —
+   * dan bawaan itu harus milik perusahaan ini, bukan konstanta.
+   */
+  const taxProfile = await readCompanyTaxProfile();
+  return (
+    <TaxProfileProvider profile={taxProfile}>
+      <EditInvoiceForm />
+    </TaxProfileProvider>
+  );
 }

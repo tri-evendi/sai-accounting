@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { getT } from "@/lib/i18n/server";
+import { TaxProfileProvider } from "@/lib/tax-profile-client";
+import { readCompanyTaxProfile } from "@/lib/tax-rates";
 import { NewInvoiceForm } from "./invoice-form";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +41,15 @@ export default async function NewInvoicePage({
   const { contractId } = await searchParams;
   const preselectedRaw = Number(contractId);
   const preselected =
-    Number.isFinite(preselectedRaw) && preselectedRaw > 0 ? preselectedRaw : null;
+    Number.isFinite(preselectedRaw) && preselectedRaw > 0
+      ? preselectedRaw
+      : null;
 
   // Daftar kontrak TIDAK lagi dipreload `take: 300` — daftar terpotong membuat
   // kontrak lama mustahil dipilih (audit). Pemilihnya mencari ke server
   // (`/api/contracts?picker=1`); yang dibaca di sini hanya kontrak yang sudah
   // terpilih lewat `?contractId=`, supaya labelnya langsung tampil.
-  const [preselectedContract, closedPeriods] = await Promise.all([
+  const [preselectedContract, closedPeriods, taxProfile] = await Promise.all([
     preselected != null
       ? prisma.contract.findUnique({
           where: { id: preselected },
@@ -53,6 +57,14 @@ export default async function NewInvoicePage({
         })
       : Promise.resolve(null),
     listClosedPeriods(),
+    /*
+     * Profil pajak perusahaan (issue #368). Dibaca di SERVER dan diturunkan
+     * sebagai prop, bukan diambil formulir lewat `fetch` sesudah terpasang:
+     * yang dibawanya adalah tarif PPN, dan formulir bisa dikirim sebelum
+     * jawaban jaringan tiba — perusahaan non-PKP akan menyimpan faktur ber-PPN
+     * 11% karena satu jendela waktu selebar satu permintaan.
+     */
+    readCompanyTaxProfile(),
   ]);
 
   return (
@@ -62,7 +74,9 @@ export default async function NewInvoicePage({
           { label: t("invoices.breadcrumb"), href: "/invoices" },
           { label: t("invoices.createTitle") },
         ]}
-        title={<TermTooltip term="faktur">{t("invoices.createTitle")}</TermTooltip>}
+        title={
+          <TermTooltip term="faktur">{t("invoices.createTitle")}</TermTooltip>
+        }
         description={
           <>
             {t("invoices.createDescriptionBefore")}{" "}
@@ -86,18 +100,20 @@ export default async function NewInvoicePage({
       <div style={{ marginBottom: LEARN_MORE_GAP }}>
         <LearnMore term="faktur" label={t("invoices.learnMore")} />
       </div>
-      <NewInvoiceForm
-        initialContract={
-          preselectedContract
-            ? {
-                value: String(preselectedContract.id),
-                label: preselectedContract.contractNo,
-                hint: `${preselectedContract.buyer} · ${preselectedContract.currency || "IDR"}`,
-              }
-            : null
-        }
-        closedPeriods={closedPeriods}
-      />
+      <TaxProfileProvider profile={taxProfile}>
+        <NewInvoiceForm
+          initialContract={
+            preselectedContract
+              ? {
+                  value: String(preselectedContract.id),
+                  label: preselectedContract.contractNo,
+                  hint: `${preselectedContract.buyer} · ${preselectedContract.currency || "IDR"}`,
+                }
+              : null
+          }
+          closedPeriods={closedPeriods}
+        />
+      </TaxProfileProvider>
     </div>
   );
 }

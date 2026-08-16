@@ -28,6 +28,7 @@ import { useAppRouter } from "@/components/ui/app-link";
 import { apiFetch } from "@/lib/api-fetch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Money } from "@/components/ui/money";
 import { Label } from "@/components/ui/label";
@@ -211,6 +212,15 @@ export function SetupWizard({
   const [address, setAddress] = useState(defaults.address);
   // Seller NPWP for e-Faktur (issue #17) — optional at setup, editable later.
   const [npwp, setNpwp] = useState("");
+  /*
+   * PKP — memungut PPN atau tidak (issue #368).
+   *
+   * `true` sebagai bawaan, bukan `false`: itu perilaku setiap perusahaan yang
+   * sudah ada hari ini, jadi wisaya yang dilewati begitu saja tidak mengubah
+   * apa pun. Jawabannya menentukan bawaan PPN di SETIAP formulir dokumen —
+   * perusahaan non-PKP tidak lagi mendapat 11% yang salah sejak faktur pertama.
+   */
+  const [isPkp, setIsPkp] = useState(true);
   const [baseCurrency, setBaseCurrency] = useState(defaults.baseCurrency);
   const [fiscalYearStart, setFiscalYearStart] = useState(`${new Date().getFullYear()}-01-01`);
 
@@ -249,6 +259,7 @@ export function SetupWizard({
         if (str(d.name) && d.name) setName(d.name);
         if (str(d.address)) setAddress(d.address);
         if (str(d.npwp)) setNpwp(d.npwp);
+        if (typeof d.isPkp === "boolean") setIsPkp(d.isPkp);
         if (str(d.baseCurrency) && d.baseCurrency) setBaseCurrency(d.baseCurrency);
         if (str(d.fiscalYearStart) && d.fiscalYearStart) setFiscalYearStart(d.fiscalYearStart);
         if (str(d.category) && isBusinessCategory(d.category)) setCategory(d.category);
@@ -280,6 +291,7 @@ export function SetupWizard({
           name,
           address,
           npwp,
+          isPkp,
           baseCurrency,
           fiscalYearStart,
           category,
@@ -294,7 +306,7 @@ export function SetupWizard({
     } catch {
       // Storage penuh/di-nonaktifkan — draf memang best-effort.
     }
-  }, [step, name, address, npwp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory, fixedAssets]);
+  }, [step, name, address, npwp, isPkp, baseCurrency, fiscalYearStart, category, modules, cash, receivables, payables, inventory, fixedAssets]);
 
   const hasMeaningfulDraft =
     cash.length > 0 ||
@@ -445,6 +457,7 @@ export function SetupWizard({
         baseCurrency,
         fiscalYearStart,
         npwp: npwp || undefined,
+        isPkp,
         // Modul usaha (issue #99). Kategori hanya dicatat; yang berlaku adalah
         // himpunan modulnya, dan server menormalkan + memvalidasinya lagi
         // (modul inti tak bisa dimatikan, bahkan dari sini).
@@ -791,6 +804,24 @@ export function SetupWizard({
                 maxLength={30}
                 placeholder={t("setup.npwpPlaceholder")}
               />
+              {/* PKP (issue #368) — pertanyaan yang menentukan bawaan PPN di
+                  seluruh aplikasi, jadi ia diajukan sekali di sini alih-alih
+                  ditebak. Jawabannya bisa diubah kapan saja di Pengaturan. */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <Checkbox
+                  id="isPkp"
+                  checked={isPkp}
+                  onCheckedChange={(v) => setIsPkp(v === true)}
+                >
+                  {t("setup.pkpField")}
+                </Checkbox>
+                <Typography.Text
+                  type="secondary"
+                  style={{ display: "block", fontSize: "var(--ant-font-size-sm)" }}
+                >
+                  {t("setup.pkpHint")}
+                </Typography.Text>
+              </div>
             </div>
           </Flex>
         )}

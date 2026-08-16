@@ -99,6 +99,14 @@ export const openingFixedAssetSchema = z.object({
  */
 export const companyTaxIdentitySchema = z.object({
   npwp: z.string().max(30).trim().optional(),
+  /**
+   * PKP — Pengusaha Kena Pajak (issue #368).
+   *
+   * Menentukan apakah perusahaan ini memungut PPN sama sekali. Bawaannya
+   * `true`: perilaku setiap perusahaan yang sudah ada hari ini, jadi wisaya
+   * yang dilewati begitu saja tidak mengubah apa pun.
+   */
+  isPkp: z.coerce.boolean().default(true),
   taxName: z.string().max(150).trim().optional(),
   taxAddress: z.string().max(1000).trim().optional(),
 });

@@ -41,7 +41,8 @@ export const invoiceSchema = z
     // ── PPN as a first-class field (issue #16) ──
     // Whether PPN Keluaran applies. FALSE = untaxed / export (0%) → no VAT line.
     taxable: z.boolean().default(false),
-    // Per-invoice PPN rate override, in percent. Blank → DEFAULT_TAX_RATE (11).
+    // Per-invoice PPN rate override, in percent. Kosong → bawaan perusahaan
+    // pada tanggal dokumen (issue #368), bukan konstanta 11.
     taxRate: z.coerce
       .number()
       .min(0, vmsg("validation.taxRateNotNegative"))

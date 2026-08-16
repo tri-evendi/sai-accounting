@@ -28,6 +28,7 @@ import { APP_NAME, type SystemRole } from "@/lib/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
+import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";
 import {
   SampleDataPanel,
   type SampleDataCounts,
@@ -160,6 +161,15 @@ export function SettingsClient({
       {canManageModules && (
         <div id="modules">
           <ModuleSettingsPanel />
+        </div>
+      )}
+
+      {/* issue #368 — PPN: status PKP + tarif ber-efektif-tanggal. Izinnya
+          sama (`company_setting.manage`): keduanya profil perusahaan, dan
+          keduanya diputuskan orang yang sama. */}
+      {canManageModules && (
+        <div id="tax" style={blockGap}>
+          <TaxSettingsPanel />
         </div>
       )}
 

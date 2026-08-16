@@ -163,6 +163,8 @@ export interface OpeningBalancesInput {
     fiscalYearStart: Date;
     // ── Seller tax identity for e-Faktur (issue #17) — all optional. ──
     npwp?: string | null;
+    /** PKP — memungut PPN atau tidak (issue #368). Bawaan `true`. */
+    isPkp?: boolean;
     taxName?: string | null;
     taxAddress?: string | null;
     // ── Modul per kategori usaha (issue #99) — jawaban wizard, preset saja. ──
@@ -401,6 +403,7 @@ export async function applyOpeningBalances(
             baseCurrency: input.company.baseCurrency,
             fiscalYearStart: input.company.fiscalYearStart,
             npwp: input.company.npwp ?? null,
+            isPkp: input.company.isPkp ?? true,
             taxName: input.company.taxName ?? null,
             taxAddress: input.company.taxAddress ?? null,
             businessCategory: input.company.businessCategory ?? null,
@@ -593,6 +596,7 @@ export async function applyOpeningBalances(
         baseCurrency: input.company.baseCurrency,
         fiscalYearStart: input.company.fiscalYearStart,
         npwp: input.company.npwp ?? null,
+        isPkp: input.company.isPkp ?? true,
         taxName: input.company.taxName ?? null,
         taxAddress: input.company.taxAddress ?? null,
         // Modul (issue #99): NULL = semua aktif, jadi wizard yang dilewati

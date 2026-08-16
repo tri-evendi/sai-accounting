@@ -224,6 +224,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // identik di kedua bahasa — sama seperti "Status" di atas (issue #169).
     "operator.mail.transportSmtp",
     "operator.mail.portLabel",
+    // "{rate}%" — satu placeholder dan tanda persen; tidak ada kata untuk
+    // diterjemahkan, dan tanda persennya sama di ketiga bahasa (issue #368).
+    "taxSettings.ratePercent",
   ]),
   zh: new Set([
     // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
@@ -238,6 +241,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "operator.tenant.npwp",
     // "SMTP" adalah nama protokol — sama di semua bahasa (issue #169).
     "operator.mail.transportSmtp",
+    // "{rate}%" — lihat catatan yang sama di daftar `en` (issue #368).
+    "taxSettings.ratePercent",
   ]),
 };
 

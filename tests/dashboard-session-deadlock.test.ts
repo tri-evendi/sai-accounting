@@ -6,9 +6,9 @@
  *
  * Dua tata letak bersarang, dan yang satu mengunci yang lain:
  *
- *   • `app/(dashboard)/layout.tsx` — bila `session.user.role` masih null, ia
+ *   • `app/(app)/(dashboard)/layout.tsx` — bila `session.user.role` masih null, ia
  *     menampilkan loader "Memuat sesi…".
- *   • `app/(dashboard)/t/[tenantSlug]/[companySlug]/layout.tsx` — merender
+ *   • `app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/layout.tsx` — merender
  *     `CompanySessionSync`, SATU-SATUNYA pemanggil `update({ companyId })`
  *     yang menaruh perusahaan (dan karenanya peran) ke dalam token.
  *
@@ -37,9 +37,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(__dirname, "..");
-const layout = readFileSync(join(root, "src", "app", "(dashboard)", "layout.tsx"), "utf8");
+const layout = readFileSync(join(root, "src", "app", "(app)", "(dashboard)", "layout.tsx"), "utf8");
 const companyLayout = readFileSync(
-  join(root, "src", "app", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "layout.tsx"),
+  join(root, "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "layout.tsx"),
   "utf8"
 );
 const sync = readFileSync(

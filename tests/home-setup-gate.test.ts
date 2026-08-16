@@ -27,11 +27,11 @@ import { join } from "node:path";
 
 const root = join(__dirname, "..");
 const home = readFileSync(
-  join(root, "src", "app", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "page.tsx"),
+  join(root, "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "page.tsx"),
   "utf8"
 );
 const setupPage = readFileSync(
-  join(root, "src", "app", "(setup)", "t", "[tenantSlug]", "[companySlug]", "setup", "page.tsx"),
+  join(root, "src", "app", "(app)", "(setup)", "t", "[tenantSlug]", "[companySlug]", "setup", "page.tsx"),
   "utf8"
 );
 const pageAuth = readFileSync(join(root, "src", "lib", "page-auth.ts"), "utf8");

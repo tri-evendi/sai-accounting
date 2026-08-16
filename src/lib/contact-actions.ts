@@ -45,7 +45,7 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { clientIpFrom } from "@/lib/client-ip";
 
-/** Hasil yang bisa muncul di `?kontak=` — dibaca `app/page.tsx`. */
+/** Hasil yang bisa muncul di `?kontak=` — dibaca `app/(marketing)/page.tsx`. */
 export type ContactOutcome =
   "terkirim" | "gagal" | "takbenar" | "terlalu-sering";
 

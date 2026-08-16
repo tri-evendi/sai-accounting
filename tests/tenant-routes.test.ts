@@ -39,7 +39,7 @@ import { activeNavHref } from "@/lib/nav";
 import { tourForPath } from "@/lib/tours";
 
 const SRC = join(__dirname, "..", "src");
-const DASHBOARD_DIR = join(SRC, "app", "(dashboard)");
+const DASHBOARD_DIR = join(SRC, "app", "(app)", "(dashboard)");
 /**
  * Direktori bertenant ada di DUA grup rute, dan itu disengaja: wizard penyiapan
  * tinggal di `(setup)` demi kerangkanya sendiri (issue #103), lalu ikut pindah
@@ -50,7 +50,7 @@ const DASHBOARD_DIR = join(SRC, "app", "(dashboard)");
  */
 const SCOPED_DIRS = [
   join(DASHBOARD_DIR, "t", "[tenantSlug]", "[companySlug]"),
-  join(SRC, "app", "(setup)", "t", "[tenantSlug]", "[companySlug]"),
+  join(SRC, "app", "(app)", "(setup)", "t", "[tenantSlug]", "[companySlug]"),
 ];
 
 function directoriesIn(dir: string): string[] {

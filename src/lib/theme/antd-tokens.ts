@@ -1146,7 +1146,7 @@ export function tableHeadBg(resolved: ResolvedTheme): string {
 export const SIDER_BG_DARK = "#001529";
 
 /* ------------------------------------------------------------------------ */
-/* Kartu pratinjau sosial (`app/opengraph-image.tsx`)                         */
+/* Kartu pratinjau sosial (`app/(marketing)/opengraph-image.tsx`)                         */
 /* ------------------------------------------------------------------------ */
 
 /**

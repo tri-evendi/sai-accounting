@@ -1,6 +1,6 @@
 # Panel Akun `/platform` — override MASTER.md
 
-> Berlaku untuk `/platform` dan seluruh anak-rutenya (`src/app/(tenant)/platform/**`
+> Berlaku untuk `/platform` dan seluruh anak-rutenya (`src/app/(app)/(tenant)/platform/**`
 > + `src/components/tenant/platform-*`). Untuk halaman lain, MASTER.md tetap
 > berlaku apa adanya.
 

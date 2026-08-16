@@ -49,7 +49,7 @@ import {
 import {
   AdvanceForm,
   type ContractOption,
-} from "@/app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form";
+} from "@/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { CloseOutlined, InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";

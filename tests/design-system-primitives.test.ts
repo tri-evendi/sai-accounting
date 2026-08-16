@@ -41,7 +41,7 @@
  * markup apa yang DITULIS, dan penjaga berbasis regex tetap hijau/merah tanpa
  * bergantung pada jsdom.
  *
- * Lingkup dua larangan pertama `src/app/(dashboard)` + `src/app/(setup)` +
+ * Lingkup dua larangan pertama `src/app/(app)/(dashboard)` + `src/app/(app)/(setup)` +
  * `src/components`, KECUALI `src/components/ui` — di situlah primitifnya
  * sendiri tinggal, dan mereka memang harus menulis `<table>`/`<button>`
  * mentah. Tiga larangan berikutnya berlaku di SELURUH `src/`: sebuah kelas
@@ -57,8 +57,8 @@ const SRC_DIR = join(__dirname, "..", "src");
 // sendiri demi kerangka fokus, dan pindah grup rute tidak boleh berarti pindah
 // keluar dari aturan primitif.
 const ROOTS = [
-  join(SRC_DIR, "app", "(dashboard)"),
-  join(SRC_DIR, "app", "(setup)"),
+  join(SRC_DIR, "app", "(app)", "(dashboard)"),
+  join(SRC_DIR, "app", "(app)", "(setup)"),
   join(SRC_DIR, "components"),
 ];
 /** Rumah para primitif — satu-satunya tempat markup mentah memang benar. */
@@ -122,9 +122,10 @@ const RAW_BUTTON_ALLOWLIST = new Set([
  * (`ANTD_CSS_VAR_KEY`, yang membuat `var(--ant-…)` teratasi di seluruh dokumen
  * sejak #227), dan kelas tema yang dipasang skrip sinkron di `<head>`.
  * Ketiganya disasar SELEKTOR, bukan aturan utilitas; tak satu pun punya bentuk
- * sebaris.
+ * sebaris. Sejak #399 `<html>` itu ditulis SEKALI di `RootDocument` dan dipakai
+ * kedua root layout (`app/(app)`, `app/(marketing)`).
  */
-const CLASSNAME_ALLOWLIST = new Set(["app/layout.tsx"]);
+const CLASSNAME_ALLOWLIST = new Set(["components/providers/root-document.tsx"]);
 
 function tsxFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -331,7 +332,7 @@ describe("isian berkas tetap bisa dijangkau papan ketik (#205)", () => {
         "Pakai atribut `data-sr-only` (aturannya di `src/app/globals.css`): " +
         "isiannya tetap fokusable dan tetap dibacakan pembaca layar, hanya " +
         "kotaknya yang 1x1px terpotong. Acuan lengkap beserta alasannya: " +
-        "`app/(dashboard)/.../accounts/import/import-form.tsx`."
+        "`app/(app)/(dashboard)/.../accounts/import/import-form.tsx`."
     ).toEqual([]);
   });
 

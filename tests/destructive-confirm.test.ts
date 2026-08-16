@@ -286,7 +286,7 @@ describe("tombol destruktif berpasangan dengan ConfirmDialog (#308)", () => {
      * Kalau ia dicabut, yang harus merah adalah sesuatu yang menyebut #219.
      */
     const rel =
-      "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/[id]/asset-actions.tsx";
+      "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/[id]/asset-actions.tsx";
     const berkas = BERKAS.find((b) => b.rel === rel);
     expect(berkas, `${rel} tidak ditemukan — penjaga ini menunjuk berkas yang salah`).toBeDefined();
 

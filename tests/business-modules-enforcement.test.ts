@@ -245,7 +245,7 @@ describe("penjaga halaman & API benar-benar memakai gerbang modul", () => {
   });
 
   it("layar penjelasannya ada dan menjaga dirinya sendiri agar bukan jalan buntu", () => {
-    const src = read("app/(auth)/feature-inactive/page.tsx");
+    const src = read("app/(app)/(auth)/feature-inactive/page.tsx");
     expect(src).toContain("isModuleEnabled(");
     expect(src).toContain('redirect("/dashboard")');
   });
@@ -278,7 +278,7 @@ describe("penjaga halaman & API benar-benar memakai gerbang modul", () => {
       "isModuleActiveFor(",
       "currentCompanyId(",
     ];
-    const roots = ["app/(auth)", "app/(tenant)", "app/(operator)", "app/(docs)"];
+    const roots = ["app/(app)/(auth)", "app/(app)/(tenant)", "app/(app)/(operator)", "app/(app)/(docs)"];
     const offenders: string[] = [];
 
     for (const root of roots) {

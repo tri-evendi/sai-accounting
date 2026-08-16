@@ -77,7 +77,9 @@ export function useT(): TranslateFn {
       if (!dictionary && process.env.NODE_ENV !== "production") {
         console.error(
           `[i18n] useT() dipanggil di luar <LocaleProvider> (kunci: "${key}"). ` +
-            "Provider dipasang di src/app/layout.tsx dan membungkus seluruh aplikasi."
+            "Provider dipasang di src/app/(app)/layout.tsx (root layout aplikasi); " +
+            "halaman pemasaran di src/app/(marketing) SENGAJA tanpa provider ini — " +
+            "di sana teks diberikan lewat prop (#399)."
         );
       }
       return translate(dictionary, key, values);

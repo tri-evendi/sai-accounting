@@ -23,7 +23,7 @@
  * teks di atas latar tipis, jadi maknanya tidak bergantung warna. `Alert`
  * menulis `role="alert"` sendiri dan membuang `role` yang dioper, jadi
  * pembungkus `role="status"` yang dulu ada di sini tidak bisa dipertahankan;
- * alasan lengkapnya di kepala `app/(auth)/forgot-password/page.tsx`.
+ * alasan lengkapnya di kepala `app/(app)/(auth)/forgot-password/page.tsx`.
  *
  * ⚠ Konsol operator berjalan di domain terpisah (`ops.`) dan tidak boleh
  * mewarisi konteks perusahaan — berkas ini tidak mengimpor apa pun yang
@@ -88,13 +88,13 @@ import {
   type ManualPaymentFormInput,
   type SuspensionFormInput,
 } from "@/lib/validations/operator";
-import type { OperatorActionResult } from "@/app/(operator)/operator/tenants/[id]/actions";
+import type { OperatorActionResult } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
 import {
   operatorChangePlan,
   operatorExecuteDeletion,
   operatorMarkInvoicePaid,
   operatorSetSuspension,
-} from "@/app/(operator)/operator/tenants/[id]/actions";
+} from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
 
 /* ── Bentuk data dari halaman server (serial, tanggal sudah terformat) ────── */
 

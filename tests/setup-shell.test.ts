@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const SRC = join(__dirname, "..", "src");
-const LAYOUT = join(SRC, "app", "(setup)", "layout.tsx");
+const LAYOUT = join(SRC, "app", "(app)", "(setup)", "layout.tsx");
 const SHELL = join(SRC, "components", "setup", "setup-shell.tsx");
 
 /**

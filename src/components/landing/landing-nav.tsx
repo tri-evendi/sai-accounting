@@ -62,7 +62,7 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { ButtonLink } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { APP_NAME } from "@/lib/constants";
-import { getT } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 /**
  * Tautan seksi: warna sekunder, penuh + bergaris saat hover (aturan hover ada
@@ -129,14 +129,34 @@ function NavLink({
 
 export async function LandingNav() {
   const t = await getT();
+  /* Bahasa aktif diteruskan ke `LocaleToggle` sebagai PROP: akar pemasaran
+     tidak memasang `LocaleProvider` (#399), jadi tanpa prop ini pengunjung
+     berbahasa Inggris melihat "ID" tersorot. `getLocale()` membaca cookie yang
+     sama yang dibaca `getT()` di atas — satu sumber, dua pembacaan. */
+  const locale = await getLocale();
+  const localeLabel = t("userMenu.language");
 
   /* SATU daftar untuk bilah lebar dan panel ponsel — dua daftar yang ditulis
-     terpisah akan berbeda pada hari salah satunya mendapat tautan baru. */
+     terpisah akan berbeda pada hari salah satunya mendapat tautan baru.
+
+     ══ JANGKAR BERAKAR `/`, DAN "HARGA" ADALAH HALAMAN (#399) ═══════════════
+     Bilah ini kini dipakai DUA halaman: `/` dan `/harga`. Jangkar telanjang
+     (`#modul`) di `/harga` menunjuk ke seksi yang tidak ada di halaman itu,
+     jadi setiap jangkar ditulis berakar (`/#modul`): di `/` peramban tetap
+     memperlakukannya sebagai gulungan dalam-dokumen, di `/harga` ia menuju
+     seksi yang benar di halaman yang benar. Diputuskan SATU perilaku, bukan
+     bercabang per halaman.
+
+     "Harga" TIDAK lagi jangkar melainkan `/harga` — di kedua halaman. `/harga`
+     ada justru supaya kueri "harga software akuntansi" punya alamat tujuan;
+     tautan navigasi utamanya menuju alamat itu, bukan ke jangkar yang hanya
+     ada di `/`. Rute internal ⇒ `<Link>` (navigasi sisi-klien; kedua halaman
+     berbagi root layout pemasaran, jadi ini bukan pemuatan penuh). */
   const links: NavLinkItem[] = [
-    { href: "#modul", label: t("landing.navModules") },
-    { href: "#harga", label: t("landing.navPricing") },
-    { href: "#tanya", label: t("landing.navFaq") },
-    { href: "#kontak", label: t("landing.navContact"), menuOnly: true },
+    { href: "/#modul", label: t("landing.navModules") },
+    { href: "/harga", label: t("landing.navPricing"), internal: true },
+    { href: "/#tanya", label: t("landing.navFaq") },
+    { href: "/#kontak", label: t("landing.navContact"), menuOnly: true },
     { href: "/docs", label: t("landing.navDocs"), internal: true },
   ];
 
@@ -259,7 +279,7 @@ export async function LandingNav() {
               kenyamanan, dan halaman ini light-first — pembaca yang
               menginginkannya akan mencarinya, dan menemukannya di kaki. */}
           <div data-landing-chrome="">
-            <LocaleToggle />
+            <LocaleToggle locale={locale} label={localeLabel} />
           </div>
           {/* `ButtonLink` (#289) — rute internal, jadi navigasi sisi-klien +
               prefetch. Bilah ini MENEMPEL sepanjang gulungan, jadi kedua
@@ -322,7 +342,7 @@ export async function LandingNav() {
                 >
                   {t("landing.navMenuLanguage")}
                 </span>
-                <LocaleToggle />
+                <LocaleToggle locale={locale} label={localeLabel} />
               </div>
             </div>
           </details>

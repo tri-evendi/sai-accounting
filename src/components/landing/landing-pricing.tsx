@@ -83,7 +83,12 @@ const CHECK: React.CSSProperties = {
   fontSize: "var(--ant-font-size-lg)",
 };
 
-export async function LandingPricing() {
+export async function LandingPricing({
+  headingLevel = "h2",
+}: {
+  /** `h1` di `/harga`, tempat seksi ini menjadi kepala halamannya (#399). */
+  headingLevel?: "h1" | "h2";
+} = {}) {
   const t = await getT();
   const plans = await activePlans();
   const ppnEnabled = process.env.PLATFORM_PPN_DISABLED !== "true";
@@ -99,6 +104,7 @@ export async function LandingPricing() {
       <LandingSectionIntro
         eyebrow={t("landing.eyebrowPricing")}
         title={t("landing.pricingHeading")}
+        headingLevel={headingLevel}
       >
         {t("landing.pricingBody")}
       </LandingSectionIntro>

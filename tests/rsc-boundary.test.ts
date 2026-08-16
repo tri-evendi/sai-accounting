@@ -180,7 +180,7 @@ const SRC = join(__dirname, "..", "src");
  * 157 saat penanda langkah disatukan dan wisaya penyiapan pindah ke kulit panel
  * — angka ini TURUN dua, dan itu hasil yang dikejar. `components/setup/
  * setup-shell.tsx` DIHAPUS (wisaya memakai `PlatformShell`, kulit yang sama
- * dengan panel akun) dan `app/(setup)/layout.tsx` kembali menjadi SERVER
+ * dengan panel akun) dan `app/(app)/(setup)/layout.tsx` kembali menjadi SERVER
  * component: ia kini menyusun menu dari matriks izin lewat
  * `requireTenantPagePermission`, pekerjaan yang memang milik server. Yang naik
  * satu hanyalah komponen penanda langkah bersama.
@@ -188,7 +188,7 @@ const SRC = join(__dirname, "..", "src");
  * 159 saat kerangka fokus wisaya DIKEMBALIKAN (#352, membalik sebagian #341).
  * `components/setup/setup-shell.tsx` hidup lagi sebagai komponen klien — ia
  * membaca sesi untuk menu penggunanya — jadi angkanya naik satu. Yang TIDAK
- * ikut naik: `app/(setup)/layout.tsx` tetap SERVER component. Versi lamanya
+ * ikut naik: `app/(app)/(setup)/layout.tsx` tetap SERVER component. Versi lamanya
  * memikul `"use client"`; itu tidak pernah perlu, sebab provider dan kulitnya
  * masing-masing sudah menjadi batas kliennya sendiri. Menaikkan ambang ini
  * karena sebuah KERANGKA kembali adalah harga yang disengaja; menaikkannya
@@ -212,7 +212,7 @@ const AMBANG_KLIEN = 164;
  *    dan di sinilah AntD boleh diimpor;
  *  • `*-form.tsx`, `*-client.tsx`, `*-actions.tsx` — pulau interaktif yang
  *    dirender server component sebagai daun;
- *  • halaman di bawah `app/(auth)` — tujuh halaman auth, satu-satunya HALAMAN
+ *  • halaman di bawah `app/(app)/(auth)` — tujuh halaman auth, satu-satunya HALAMAN
  *    client di aplikasi ini (formulir murni, tanpa pembacaan buku besar).
  *
  * Yang TIDAK ada di sini, dan tidak boleh muncul, adalah halaman laporan,
@@ -221,63 +221,63 @@ const AMBANG_KLIEN = 164;
  * peramban".
  */
 const KLIEN_TERSAHKAN = [
-  "app/(auth)/accept-invitation/page.tsx",
-  "app/(auth)/change-password/page.tsx",
-  "app/(auth)/forgot-password/page.tsx",
-  "app/(auth)/layout.tsx",
-  "app/(auth)/login/page.tsx",
-  "app/(auth)/register/page.tsx",
-  "app/(auth)/reset-password/page.tsx",
-  "app/(auth)/select-company/company-choices.tsx",
-  "app/(auth)/unlock/unlock-form.tsx",
-  "app/(auth)/verify-email/page.tsx",
-  "app/(dashboard)/error.tsx",
-  "app/(dashboard)/layout.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/[id]/edit/account-edit-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/new/account-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form.tsx",
+  "app/(app)/(auth)/accept-invitation/page.tsx",
+  "app/(app)/(auth)/change-password/page.tsx",
+  "app/(app)/(auth)/forgot-password/page.tsx",
+  "app/(app)/(auth)/layout.tsx",
+  "app/(app)/(auth)/login/page.tsx",
+  "app/(app)/(auth)/register/page.tsx",
+  "app/(app)/(auth)/reset-password/page.tsx",
+  "app/(app)/(auth)/select-company/company-choices.tsx",
+  "app/(app)/(auth)/unlock/unlock-form.tsx",
+  "app/(app)/(auth)/verify-email/page.tsx",
+  "app/(app)/(dashboard)/error.tsx",
+  "app/(app)/(dashboard)/layout.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/[id]/edit/account-edit-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/new/account-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form.tsx",
   /* Token API (#389) — pulau client karena satu sebab yang tidak bisa
      dipindahkan ke server: token utuh hanya ADA sekali, di jawaban POST, dan
      ia harus tetap terlihat di layar yang sama sesudah daftarnya menyegar.
      Halamannya sendiri TETAP server component dan membaca daftarnya lewat
      Prisma — yang menyeberang formulirnya, bukan datanya. */
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/api-tokens/api-tokens-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/approval-queue-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/rules/approval-rules-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/budget/accounts/budget-accounts-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/budget/targets/sales-target-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/edit/consignee-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/new/consignee-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/edit/contract-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/payment-section.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/pdf-buttons.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/new/contract-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/cost-centers/cost-center-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/[id]/edit/customer-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/[id]/pdf-button.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/new/delivery-order-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/document-preview-button.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/documents/upload/upload-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/finance/finance-actions.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/finance/new/transaction-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/[id]/asset-actions.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/categories/category-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/new/asset-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/run-depreciation.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/glossary/glossary-browser.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/inventory-actions.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/opname/opname-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/update/stock-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/advance-section.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/edit/invoice-edit-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/payment-section.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/pdf-button.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/new/invoice-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/ledger/ledger-filter.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/api-tokens/api-tokens-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/approval-queue-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/rules/approval-rules-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/budget/accounts/budget-accounts-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/budget/targets/sales-target-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/edit/consignee-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/new/consignee-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/edit/contract-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/payment-section.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/pdf-buttons.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/new/contract-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/cost-centers/cost-center-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/customers/[id]/edit/customer-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/[id]/pdf-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/new/delivery-order-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/documents/document-preview-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/documents/upload/upload-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/finance/finance-actions.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/finance/new/transaction-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/[id]/asset-actions.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/categories/category-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/new/asset-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/fixed-assets/run-depreciation.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/glossary/glossary-browser.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/inventory-actions.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/opname/opname-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/inventory/update/stock-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/advance-section.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/edit/invoice-edit-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/payment-section.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/pdf-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/new/invoice-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/ledger/ledger-filter.tsx",
   /* Impor Data Awal (#381 tahap 2) — pulau client karena alasan yang sama
      dengan impor daftar akun: pemilih berkas, unggah, dan tabel galat
      per-baris yang muncul TANPA memuat ulang halaman. Sebuah berkas 300 baris
@@ -286,35 +286,35 @@ const KLIEN_TERSAHKAN = [
      sendiri TETAP server component: izin ketiga jenis dihitung di server dan
      diturunkan sebagai daftar, jadi yang menyeberang kendalinya, bukan
      keputusan izinnya. */
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/master/import/master-import-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/purchases/new/purchase-wizard.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/[id]/reconciliation-workspace.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/new/reconciliation-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/reports/report-filters.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/returns/new/return-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/returns/pdf-button.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/sales/new/sales-wizard.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/settings/settings-client.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/advance-panel.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/allocation-editor.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/edit/supplier-edit-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/transaction-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/new/supplier-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/seller-identity-form.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
-  "app/(operator)/operator/login/login-form.tsx",
-  "app/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
-  "app/(tenant)/(panel)/companies/new/company-form.tsx",
-  "app/(tenant)/(panel)/companies/new/provision-progress.tsx",
-  "app/(tenant)/(panel)/platform/billing-actions.tsx",
-  "app/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
-  "app/(tenant)/(panel)/platform/error.tsx",
-  "app/(tenant)/(panel)/platform/privacy-section.tsx",
-  "app/(tenant)/layout.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/master/import/master-import-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/purchases/new/purchase-wizard.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/[id]/reconciliation-workspace.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/new/reconciliation-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reports/report-filters.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/returns/new/return-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/returns/pdf-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/sales/new/sales-wizard.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/settings/settings-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/advance-panel.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/allocation-editor.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/edit/supplier-edit-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/[id]/transaction-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/suppliers/new/supplier-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/seller-identity-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
+  "app/(app)/(operator)/operator/login/login-form.tsx",
+  "app/(app)/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
+  "app/(app)/(tenant)/(panel)/companies/new/company-form.tsx",
+  "app/(app)/(tenant)/(panel)/companies/new/provision-progress.tsx",
+  "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
+  "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
+  "app/(app)/(tenant)/(panel)/platform/error.tsx",
+  "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
+  "app/(app)/(tenant)/layout.tsx",
   "components/auth/auth-shell.tsx",
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",

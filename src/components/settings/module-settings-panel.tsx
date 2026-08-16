@@ -152,7 +152,7 @@ export function ModuleSettingsPanel() {
         </Typography.Paragraph>
 
         {/* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah
-            apa pun — lihat catatan di `app/(auth)/forgot-password/page.tsx`. */}
+            apa pun — lihat catatan di `app/(app)/(auth)/forgot-password/page.tsx`. */}
         {loadError ? (
           <Alert type="error" showIcon message={loadError} />
         ) : (

@@ -30,7 +30,7 @@ import { join } from "node:path";
 import { PERMISSIONS } from "@/lib/authz";
 import { REPORTS } from "@/lib/report-catalog";
 
-const APP = join(__dirname, "..", "src", "app", "(dashboard)", "t", "[tenantSlug]", "[companySlug]");
+const APP = join(__dirname, "..", "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]");
 
 /** Halaman tujuan sebuah `href` katalog ("/reports/cash-flow" → page.tsx-nya). */
 function pageFileFor(href: string): string | null {
@@ -102,7 +102,7 @@ describe("permukaan yang memakai katalog benar-benar menyaring", () => {
   const read = (rel: string) => readFileSync(join(__dirname, "..", "src", rel), "utf8");
 
   it("Pusat Laporan menyaring kartunya lewat canEffective", () => {
-    const src = read("app/(dashboard)/t/[tenantSlug]/[companySlug]/reports/page.tsx");
+    const src = read("app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reports/page.tsx");
     expect(src).toContain("canEffective(");
     expect(src).toContain("r.permission");
   });
@@ -152,7 +152,7 @@ describe("Mode Akuntan menyaring laporan yang khusus akuntan", () => {
   });
 
   it("Pusat Laporan menyaring dengan effectiveAccountantMode, fungsi yang sama dengan menu", () => {
-    const src = read("app/(dashboard)/t/[tenantSlug]/[companySlug]/reports/page.tsx");
+    const src = read("app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reports/page.tsx");
     expect(src).toContain("effectiveAccountantMode(");
     expect(src).toContain("accountingOnly");
     // Menu memakai fungsi yang sama — kalau keduanya berbeda, katalog dan
@@ -167,7 +167,7 @@ describe("Mode Akuntan menyaring laporan yang khusus akuntan", () => {
    */
   it("halaman Neraca Saldo sendiri ikut tertutup saat Mode Akuntan OFF", () => {
     const src = read(
-      "app/(dashboard)/t/[tenantSlug]/[companySlug]/reports/trial-balance/page.tsx"
+      "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reports/trial-balance/page.tsx"
     );
     expect(src).toContain("effectiveAccountantMode(");
     expect(src).toContain("redirect(");

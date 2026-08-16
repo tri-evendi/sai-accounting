@@ -28,7 +28,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const APP_DIR = join(__dirname, "..", "src", "app");
+/* `(app)` — root layout aplikasi (#399); halaman pemasaran di `(marketing)`
+   tidak tunduk pada konvensi ini (mereka menulis `<h1>` sendiri, lihat
+   `pages/landing.md`). */
+const APP_DIR = join(__dirname, "..", "src", "app", "(app)");
 
 /**
  * Grup rute yang halamannya tunduk pada konvensi ini. `(setup)` ikut sejak

@@ -23,7 +23,7 @@
  *   1. Skala pemasaran (`--sai-landing-*`) hanya dideklarasikan di dalam
  *      `[data-landing]`, yang hanya dipasang `LandingShell`.
  *   2. `LandingShell` — dan semua yang serumah dengannya — hanya boleh diimpor
- *      oleh `app/page.tsx`.
+ *      oleh halaman di `app/(marketing)/` (`PINTU_MASUK`).
  *   3. String `--sai-landing-` dan atribut `data-landing` tidak boleh muncul di
  *      satu berkas pun di luar `src/components/landing/**`.
  *
@@ -55,13 +55,17 @@ const SRC = join(__dirname, "..", "src");
 const LANDING_DIR = "components/landing/";
 
 /**
- * SATU-SATUNYA berkas di luar direktori itu yang boleh mengimpor darinya.
+ * Berkas di luar direktori itu yang boleh mengimpor darinya — halaman-halaman
+ * di route group PEMASARAN, dan hanya itu (issue #399: `/` dan `/harga`, yang
+ * berbagi root layout pemasaran `app/(marketing)/layout.tsx`).
  *
- * Daftarnya sengaja daftar, bukan pengecualian yang ditanam di dalam kondisi:
- * menambah pintu masuk kedua harus terlihat sebagai baris di diff, dengan nama
- * berkasnya, supaya bisa dipertanyakan seorang peninjau.
+ * Daftarnya sengaja daftar, bukan pengecualian yang ditanam di dalam kondisi
+ * (mis. "semua `page.tsx` di bawah `(marketing)`"): menambah pintu masuk baru
+ * harus terlihat sebagai baris di diff, dengan nama berkasnya, supaya bisa
+ * dipertanyakan seorang peninjau — dan supaya sebuah `page.tsx` yang diselipkan
+ * ke grup itu tidak otomatis mewarisi izinnya.
  */
-const PINTU_MASUK = ["app/page.tsx"];
+const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/harga/page.tsx"];
 
 /**
  * Yang boleh diimpor DARI dalam `components/landing/**`.
@@ -108,7 +112,7 @@ describe("pemindainya memindai yang benar", () => {
 });
 
 describe("app internal tidak mengimpor bentuk pemasaran", () => {
-  it("hanya app/page.tsx yang boleh mengimpor components/landing/**", () => {
+  it("hanya halaman (marketing) yang boleh mengimpor components/landing/**", () => {
     const pelanggar = [...files]
       .filter(([file]) => !isLanding(file) && !PINTU_MASUK.includes(file))
       .filter(([, code]) => importsOf(code).some(menujuLanding))
@@ -131,12 +135,16 @@ describe("app internal tidak mengimpor bentuk pemasaran", () => {
     ).toEqual([]);
   });
 
+  it("setiap pintu masuk benar-benar ada — daftar yang menunjuk berkas hantu tidak menjaga apa pun", () => {
+    for (const file of PINTU_MASUK) expect(files.has(file), `${file} tidak ditemukan`).toBe(true);
+  });
+
   it("halaman harga DI DALAM aplikasi tetap berdiri sendiri", () => {
     // Tetangga terdekat pendaratan, dan karena itu yang paling mudah kabur:
     // satu-satunya layar internal yang juga memajang daftar harga. Kepala
     // berkasnya sudah menyatakan ia tidak mengimpor apa pun dari sana; di sini
     // pernyataan itu berhenti menjadi komentar.
-    const file = "app/(tenant)/(panel)/platform/billing/plans/page.tsx";
+    const file = "app/(app)/(tenant)/(panel)/platform/billing/plans/page.tsx";
     const code = files.get(file);
     expect(code, `${file} tidak ditemukan — jalurnya berubah?`).toBeDefined();
     expect(importsOf(code!).filter(menujuLanding)).toEqual([]);

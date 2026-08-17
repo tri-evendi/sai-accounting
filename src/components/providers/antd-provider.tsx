@@ -55,6 +55,8 @@ import {
   borderTokens,
   brandPrimary,
   brandSolid,
+  brandSolidActive,
+  brandSolidHover,
   brandTextTokens,
   brandTone,
   dangerButtonTokens,
@@ -183,6 +185,11 @@ export function AntdProvider({
         /* Isian merek yang memikul teks TERANG (lambang). Berbeda dari
            `colorPrimary` justru di tema gelap — lihat `brandSolid`. */
         colorBrandSolid: brandSolid(resolved),
+        /* Keadaan sentuh isian merek — angka `PRIMARY_BUTTON_*` yang sama,
+           diterbitkan global karena token komponen `Button` tidak sampai ke
+           dokumen sebagai variabel (#402, `brandSolidHover`). */
+        colorBrandSolidHover: brandSolidHover(resolved),
+        colorBrandSolidActive: brandSolidActive(resolved),
         ...brand,
         colorLink: brand.colorBrandText,
         colorLinkHover: brand.colorBrandTextHover,

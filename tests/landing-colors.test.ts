@@ -44,6 +44,7 @@ import {
   LANDING_STYLE,
   type LandingHue,
 } from "@/components/landing/landing-scale";
+import { WHATSAPP_FAB_STYLE } from "@/components/landing/landing-whatsapp";
 import { INVERSE_BUTTON_MIX, INVERSE_BUTTON_STYLE } from "@/components/ui/button";
 import {
   BORDER_TOKENS_DARK,
@@ -52,6 +53,8 @@ import {
   PRIMARY_BUTTON_LIGHT,
   brandPrimary,
   brandSolid,
+  brandSolidActive,
+  brandSolidHover,
   brandTone,
 } from "@/lib/theme/antd-tokens";
 
@@ -581,5 +584,116 @@ describe("pita pekat ajakan penutup (#401)", () => {
       "utf8"
     );
     expect(hero).toMatch(/var\(--sai-landing-band-accent\)/);
+  });
+});
+
+/* ── #402: kepala kartu Pro, pil strip fakta, tombol WhatsApp melayang ────── */
+
+/**
+ * Tiga pasangan baru dari issue #402, diukur dari token & resep yang sama
+ * dengan di atas:
+ *
+ *   • **kepala kartu Pro** `chip-brand` (28%) vs kepala kartu lain
+ *     `fill-indigo` (14%) — keduanya kepala kartu paket yang berdampingan,
+ *     dan yang membedakan Pro dari Enterprise di sebelahnya harus benar-benar
+ *     ada di layar (lantai 1,05 yang sama dengan §"nada benar-benar
+ *     terlihat"); teks di atas kepala Pro ≥4,5:1 sudah dijaga loop umum di
+ *     atas, di sini ditulis eksplisit supaya angkanya terbaca di laporan;
+ *   • **pil strip fakta** `chip-brand` di atas gradien hero (`band-brand` →
+ *     `band-cyan`) — nada di atas nada yang landing.md tolak untuk `fill`
+ *     (1,03:1) dan yang untuk `chip` TERUKUR lolos lantai 1,05 di kedua
+ *     tema; glif ikonnya `colorPrimary` di atas `surface` (lingkaran di
+ *     dalam pil) ≥3:1;
+ *   • **tombol WhatsApp melayang** — isian `brand-solid` + glif putih (sama
+ *     dengan `BrandMark`: 11,50 / 5,06), keadaan hover/aktif menggelap
+ *     (`brand-solid-hover`/`-active` = `PRIMARY_BUTTON_*`), cincin
+ *     `colorBgContainer` yang menggambar tepinya di atas pita penutup navy
+ *     (token yang sama = 1,00:1 tanpa cincin), dan bidangnya ≥3:1 terhadap
+ *     latar halaman & kedua ujung gradien hero yang dilintasinya.
+ */
+describe("kepala kartu Pro, pil fakta, tombol WhatsApp melayang (#402)", () => {
+  for (const mode of MODES) {
+    it(`tema ${mode}: kepala Pro (chip-brand) terbaca DAN berbeda dari kepala fill-indigo`, () => {
+      const t = tokens(mode);
+      const s = permukaan(mode);
+      const kepalaPro = s["chip-brand"];
+      const kepalaLain = s["fill-indigo"];
+      expect(ratio(over(t.text, kepalaPro), kepalaPro)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(over(t.textSecondary, kepalaPro), kepalaPro)).toBeGreaterThanOrEqual(4.5);
+      // Dua kepala berdampingan harus bisa DIBEDAKAN sebagai bidang (terukur 1,20 / 1,22).
+      expect(ratio(kepalaPro, kepalaLain)).toBeGreaterThanOrEqual(1.05);
+      // …dan keduanya berbeda dari badan kartu (`surface`) di bawahnya.
+      expect(ratio(kepalaPro, s.surface)).toBeGreaterThanOrEqual(1.05);
+    });
+
+    it(`tema ${mode}: pil strip fakta (chip-brand) terlihat di atas kedua ujung gradien hero`, () => {
+      const t = tokens(mode);
+      const s = permukaan(mode);
+      for (const pita of ["band-brand", "band-cyan", "band-accent"] as const) {
+        const r = ratio(s["chip-brand"], s[pita]);
+        expect(r, `chip-brand vs ${pita} = ${r.toFixed(2)}`).toBeGreaterThanOrEqual(1.05);
+      }
+      // Angka & label di dalam pil.
+      expect(ratio(over(t.text, s["chip-brand"]), s["chip-brand"])).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(over(t.textSecondary, s["chip-brand"]), s["chip-brand"])).toBeGreaterThanOrEqual(4.5);
+      // Glif `colorPrimary` di lingkaran `surface` di dalam pil — ikon, ambang 3:1.
+      expect(ratio(t.hue("brand", 8), s.surface)).toBeGreaterThanOrEqual(3);
+    });
+
+    it(`tema ${mode}: tombol WhatsApp — glif putih ≥4,5:1 di setiap keadaan, bidang ≥3:1, cincin menggambar tepinya di atas pita navy`, () => {
+      const gaya = WHATSAPP_FAB_STYLE as unknown as Record<string, string>;
+      const putih = parse(
+        (
+          theme.getDesignToken({
+            algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          }) as unknown as Record<string, string>
+        ).colorTextLightSolid
+      );
+      const t = tokens(mode);
+      const s = permukaan(mode);
+
+      // Gayanya merujuk TOKEN, bukan warna yang diketik (hijau WA #25D366 tidak bisa masuk).
+      expect(gaya["--ant-btn-bg-color"]).toBe("var(--ant-color-brand-solid)");
+      expect(gaya["--ant-btn-bg-color-hover"]).toBe("var(--ant-color-brand-solid-hover)");
+      expect(gaya["--ant-btn-bg-color-active"]).toBe("var(--ant-color-brand-solid-active)");
+      for (const k of ["--ant-btn-text-color", "--ant-btn-text-color-hover", "--ant-btn-text-color-active"]) {
+        expect(gaya[k]).toBe("var(--ant-color-text-light-solid)");
+      }
+      for (const k of ["--ant-btn-border-color", "--ant-btn-border-color-hover", "--ant-btn-border-color-active"]) {
+        expect(gaya[k]).toBe("var(--ant-color-bg-container)");
+      }
+
+      // Glif putih di atas isian diam / hover / aktif — semuanya ≥4,5:1 (menggelap, jadi naik).
+      const diam = parse(brandSolid(mode));
+      const hover = parse(brandSolidHover(mode));
+      const aktif = parse(brandSolidActive(mode));
+      expect(ratio(putih, diam)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(putih, hover)).toBeGreaterThanOrEqual(ratio(putih, diam));
+      expect(ratio(putih, aktif)).toBeGreaterThanOrEqual(ratio(putih, hover));
+
+      // Bidang navy ≥3:1 terhadap latar halaman dan kedua ujung gradien hero yang dilintasinya.
+      for (const nama of ["halaman", "band-brand", "band-cyan"] as const) {
+        const r = ratio(diam, s[nama]);
+        expect(r, `brand-solid vs ${nama} = ${r.toFixed(2)}`).toBeGreaterThanOrEqual(3);
+      }
+
+      // Di atas pita penutup (token yang SAMA) bulatannya lenyap — 1,00:1 —
+      // dan cincin `colorBgContainer` yang menggambar tepinya: ≥3:1 vs pita.
+      expect(ratio(diam, parse(brandSolid(mode)))).toBeCloseTo(1, 5);
+      expect(ratio(t.container, parse(brandSolid(mode)))).toBeGreaterThanOrEqual(3);
+    });
+  }
+
+  it("tombol WhatsApp melayang bukan pita: ia `Button href` keluar, bukan `primary`, dan hanya dirender dari `contactChannels()`", () => {
+    const isi = readFileSync(
+      join(__dirname, "..", "src", "components", "landing", "landing-whatsapp.tsx"),
+      "utf8"
+    );
+    expect(isi).toMatch(/contactChannels\(\)/);
+    expect(isi).not.toMatch(/process\.env\./);
+    expect(isi).not.toMatch(/variant="primary"/);
+    expect(isi).not.toMatch(/tone="solid"/);
+    expect(isi).toMatch(/target="_blank"/);
+    expect(isi).toMatch(/rel="noopener/);
   });
 });

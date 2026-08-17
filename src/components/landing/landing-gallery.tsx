@@ -141,13 +141,11 @@ function Layar({
       caption={caption}
       style={{ height: "100%" }}
     >
-      <div
-        style={{
-          ...FRAME_CARD,
-          height: "100%",
-          fontSize: "var(--ant-font-size)",
-        }}
-      >
+      {/* Kartu TIDAK diregangkan setinggi kerangka: di kartu jurnal yang
+          dua baris kisi (≥992px) sisa tingginya lebih jujur sebagai area
+          kerja kosong (`colorBgLayout`, seperti app) daripada sebagai kartu
+          putih besar yang separuhnya kosong. */}
+      <div style={{ ...FRAME_CARD, fontSize: "var(--ant-font-size)" }}>
         {children}
       </div>
     </LandingAppFrame>

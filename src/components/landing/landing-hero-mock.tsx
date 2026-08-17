@@ -183,9 +183,11 @@ function BarisPeriode({
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        /* Di kerangka dasbor rapat KIRI (sisi kanan tertutup kartu ponsel);
+           di ponsel yang sempit baru dibentang. */
+        justifyContent: compact ? "space-between" : "flex-start",
         flexWrap: "wrap",
-        gap: "var(--ant-margin-xxs) var(--ant-margin-xs)",
+        gap: "var(--ant-margin-xxs) var(--ant-margin)",
         fontSize: "var(--ant-font-size-sm)",
         color: "var(--ant-color-text-secondary)",
         paddingTop: compact ? "var(--ant-padding-xxs)" : "var(--ant-padding-xs)",
@@ -241,7 +243,7 @@ export async function LandingHeroMock() {
        kepada pengguna pembaca layar berarti membacakan data palsu seolah data.
        Yang perlu mereka dengar sudah ada di kalimat hero di sebelahnya.
        `data-landing-hero-frame` → kaki kerangka menyisakan ruang untuk kartu
-       ponsel mulai 768px (`landing-scale.ts`). */
+       ponsel mulai 992px (`landing-scale.ts`). */
     <div
       aria-hidden="true"
       data-landing-hero-frame=""
@@ -283,29 +285,17 @@ export async function LandingHeroMock() {
 
         {/* ══ GRAFIK AREA — kartu "selisih bersih": label · nilai · delta ·
             tren, kontrak stat tile penuh. Delta hijau karena naik memang baik
-            di sini, dan tandanya (+) sudah membawa artinya tanpa warna. */}
+            di sini, dan tandanya (+) sudah membawa artinya tanpa warna.
+
+            Label, nilai, dan delta BERTUMPUK DI KIRI — bukan nilai di kanan
+            seperti ubin: kartu ponsel bertumpuk di sisi kanan kartu ini
+            (terukur menutupi ~60% lebarnya di 1440px), dan angka yang
+            tertutup kartu lain terbaca sebagai render yang gagal. Yang boleh
+            tertutup hanya ujung kanan grafik. */}
         <div style={{ ...FRAME_CARD, marginTop: "var(--ant-margin-xs)" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "var(--ant-margin-xxs) var(--ant-margin-sm)",
-            }}
-          >
-            <span style={{ display: "inline-flex", flexDirection: "column", minWidth: 0 }}>
-              <span style={{ ...TILE_LABEL, fontSize: "var(--ant-font-size-sm)" }}>
-                {t("landing.mockNetLabel")}
-              </span>
-              <span
-                style={{
-                  fontSize: "var(--ant-font-size-sm)",
-                  color: "var(--ant-color-money-positive)",
-                }}
-              >
-                {t("landing.mockDelta")}
-              </span>
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span style={{ ...TILE_LABEL, fontSize: "var(--ant-font-size-sm)" }}>
+              {t("landing.mockNetLabel")}
             </span>
             <span
               style={{
@@ -315,6 +305,14 @@ export async function LandingHeroMock() {
               }}
             >
               {formatMoney(selisih, "IDR")}
+            </span>
+            <span
+              style={{
+                fontSize: "var(--ant-font-size-sm)",
+                color: "var(--ant-color-money-positive)",
+              }}
+            >
+              {t("landing.mockDelta")}
             </span>
           </div>
           <div style={{ marginTop: "var(--ant-margin-xs)" }}>
@@ -331,8 +329,9 @@ export async function LandingHeroMock() {
       {/* ══ KARTU PONSEL — layar yang sama, versi ringkas ═════════════════
           Bertumpuk di sudut kanan-bawah, menjorok 16px keluar kerangka ke
           kanan & bawah (masih di dalam gutter seksi, jadi tidak menggulung
-          mendatar). Disembunyikan di bawah 768px (`[data-landing-phone]`):
-          di kerangka selebar layar ponsel ia hanya menutupi angka. TANPA
+          mendatar). Disembunyikan di bawah 992px (`[data-landing-phone]`;
+          issue meminta <768px, diukur di 768px ia menutupi 45% kerangka —
+          alasannya di `landing-scale.ts`). TANPA
           label contoh sendiri — ia bagian komposisi yang labelnya sudah ada
           di kaki kerangka, dan `aria-hidden` mewarisinya dari wadah ini.
           Radius lebih bulat daripada kartu (1,25×): itu yang membuatnya

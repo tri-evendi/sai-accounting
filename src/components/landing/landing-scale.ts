@@ -375,8 +375,8 @@ export const LANDING_BREAKPOINT = 576;
 export const LANDING_NAV_LINKS_BREAKPOINT = 768;
 
 /**
- * Titik patah KETIGA — `screenLG` AntD (992px), dipakai HANYA oleh galeri
- * layar (#401): tata letak 1 kartu besar + 2 kecil.
+ * Titik patah KETIGA — `screenLG` AntD (992px), dipakai oleh dua hal (#401):
+ * galeri layar (1 kartu besar + 2 kecil) dan kemunculan kartu ponsel di hero.
  *
  * Ditambahkan sesudah diukur, bukan sebelumnya (syarat `landing.md`): pada
  * pembagian 3fr:2fr kolom kanan baru mencapai ~360px — lebar minimum agar
@@ -475,6 +475,8 @@ export const LANDING_STYLE = `
      - >=520px: PT kedua tampil di pengalih, dan sidebar yang MEMINTA label
        (data-landing-frame-nav="wide", hanya hero) menampilkannya. */
 [data-landing-frame]{container-type:inline-size}
+[data-landing-frame-nav]{display:flex;flex-direction:column}
+[data-landing-frame-caption]{padding-inline-end:var(--ant-padding)}
 [data-landing-frame-nav-label]{display:none}
 [data-landing-frame-alt]{display:none}
 [data-landing-phone]{display:none}
@@ -594,11 +596,22 @@ export const LANDING_STYLE = `
        ujungnya (dan tests/landing-boundary.test.ts kini memeriksa
        keduanya, bukan satu angka seperti sebelumnya).
 
+       == LANGIT-LANGIT 1,3x SEJAK #401, BUKAN 1,6x -- DIUKUR ===============
+       Kolom kalimat hero menyusut ke 45% (kerangka aplikasi memikul 55%),
+       yaitu ~497px di 1440px. Diukur dengan metrik Inter yang terpasang:
+       pada 60,8px (1,6x) SETIAP judul <= 8 kata yang dicoba patah tiga baris
+       di kolom itu; pada 49,4px (1,3x) judul ID/EN/ZH yang dipilih dua baris.
+       Suku tengah 3,6vw (dulu 4,5vw) supaya laju kenaikannya mencapai
+       langit-langit baru di ~1370px, bukan melompat ke langit-langit di 990px.
+       Kedua ujung tetap turunan --ant-font-size-heading-1 dan tetap di atas
+       skala app (1,1x lantai), jadi syarat "skala pemasaran adalah TURUNAN
+       skala aplikasi" tidak berubah.
+
        CATATAN PENYUNTING: blok ini hidup di dalam sebuah template literal,
        jadi komentar di sini TIDAK BOLEH memuat backtick. Satu backtick
        menutup literalnya, dan galatnya muncul sebagai puluhan baris
        "Declaration expected" yang menunjuk ke mana-mana kecuali ke sini. */
-    --sai-landing-font-size-hero:clamp(calc(var(--ant-font-size-heading-1) * 1.1), 4.5vw, calc(var(--ant-font-size-heading-1) * 1.6));
+    --sai-landing-font-size-hero:clamp(calc(var(--ant-font-size-heading-1) * 1.1), 3.6vw, calc(var(--ant-font-size-heading-1) * 1.3));
     --sai-landing-font-size-section:var(--ant-font-size-heading-2);
     --sai-landing-rhythm:calc(var(--ant-margin-xxl) * 2);
     --sai-landing-gutter:var(--ant-padding-lg);
@@ -626,14 +639,20 @@ export const LANDING_STYLE = `
      sebab yang kini menjual adalah GAMBAR produknya, dan judulnya sudah
      dipendekkan (<= 8 kata) supaya muat di kolom yang lebih sempit.
      Jaraknya margin-xxl (48px), bukan rhythm (96px): dengan 96px kolom
-     kalimat di 768px tinggal 281px. Kartu ponsel muncul di sini juga, dan
-     kaki kerangka menyisakan ruang selebar kartu itu supaya kalimat "contoh
-     tampilan" tidak tertutup olehnya. */
+     kalimat di 768px tinggal 281px. Kartu ponsel BELUM muncul di sini --
+     lihat blok 992px di bawah. */
   [data-landing-hero]{grid-template-columns:minmax(0,9fr) minmax(0,11fr);gap:var(--ant-margin-xxl)}
-  [data-landing-phone]{display:block}
-  [data-landing-hero-frame] [data-landing-frame-caption]{padding-inline-end:calc(${LANDING_PHONE_WIDTH}px + var(--ant-margin))}
 }
 @media (min-width:${LANDING_WIDE_BREAKPOINT}px){
+  /* == KARTU PONSEL MULAI 992px, BUKAN 768px -- DIUKUR (#401) ==============
+     Issue menyembunyikannya di bawah 768px. Diukur di 768px: kerangka hero
+     370px, kartu ponsel 168px menutupi 45% kerangka -- separuh grafik dan
+     ubin ketiga -- dan kaki kerangka hanya menyisakan 170px untuk kalimat
+     "contoh tampilan". Di 992px kerangka 493px dan kartu menutupi 34%,
+     hanya ujung kanan grafik. Kaki kerangka menyisakan ruang selebar kartu
+     supaya kalimatnya tidak tertutup. */
+  [data-landing-phone]{display:block}
+  [data-landing-hero-frame] [data-landing-frame-caption]{padding-inline-end:calc(${LANDING_PHONE_WIDTH}px + var(--ant-margin))}
   /* == GALERI 1 BESAR + 2 KECIL (#401) ======================================
      Jurnal dominan di kiri (3fr ~ 60%), faktur & pengalih PT bertumpuk di
      kanan (2fr). Titik patahnya screenLG AntD (992px): di bawahnya kolom

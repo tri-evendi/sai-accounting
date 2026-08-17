@@ -115,8 +115,9 @@ const TOPBAR_HEIGHT = 44;
 /** Lebar sidebar berikon — 40px (permintaan issue: "sidebar 40px berikon"). */
 const NAV_WIDTH = 40;
 
+/* `display` sengaja TIDAK di sini — chip aktif menulisnya sendiri; chip PT
+   kedua mendapatnya dari CSS (`[data-landing-frame-alt]`, tampil ≥520px). */
 const CHIP: CSSProperties = {
-  display: "inline-flex",
   alignItems: "center",
   gap: "var(--ant-margin-xxs)",
   minWidth: 0,
@@ -209,6 +210,7 @@ export function LandingAppFrame({
                 key={company.name}
                 style={{
                   ...CHIP,
+                  display: "inline-flex",
                   background: landingChip("brand"),
                   color: landingGlyph("brand"),
                   fontWeight: "var(--ant-font-weight-strong)",
@@ -256,11 +258,14 @@ export function LandingAppFrame({
 
       {/* ── Badan: sidebar + area utama ─────────────────────────────────── */}
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {/* ⚠ TANPA `display` sebaris di sidebar & PT kedua: keduanya
+            disembunyikan/ditampilkan oleh aturan `@container` di
+            `LANDING_STYLE`, dan gaya sebaris akan MENANG atas aturan itu —
+            terukur: dengan `display:flex` sebaris sidebar tetap tampil di
+            kerangka 288px. `display`-nya hidup di CSS. */}
         <div
           data-landing-frame-nav={navLabels ? "wide" : ""}
           style={{
-            display: "flex",
-            flexDirection: "column",
             gap: 2,
             flexShrink: 0,
             minWidth: NAV_WIDTH,
@@ -327,7 +332,12 @@ export function LandingAppFrame({
           ...LANDING_NOTE,
           borderTop: "1px solid var(--ant-color-border-secondary)",
           background: "var(--ant-color-fill-quaternary)",
-          paddingInline: "var(--ant-padding)",
+          /* ⚠ Hanya sisi AWAL yang sebaris. Sisi akhir milik CSS
+             (`[data-landing-frame-caption]`): di hero ia diperlebar selebar
+             kartu ponsel mulai 768px, dan `paddingInline` sebaris (shorthand
+             kedua sisi) akan MENANG atas aturan itu — terukur, kalimatnya
+             lewat di bawah kartu ponsel. */
+          paddingInlineStart: "var(--ant-padding)",
           paddingBlock: "var(--ant-padding-xs)",
           fontSize: "var(--ant-font-size)",
         }}

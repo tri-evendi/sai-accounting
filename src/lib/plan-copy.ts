@@ -48,9 +48,37 @@ import type { DictionaryKey } from "@/lib/i18n/dictionary";
  */
 const DESKRIPSI: Record<string, DictionaryKey> = {
   internal: "plans.description.internal",
+  starter: "plans.description.starter",
   pro: "plans.description.pro",
+  business: "plans.description.business",
   enterprise: "plans.description.enterprise",
 };
+
+/**
+ * Butir "termasuk" TAMBAHAN per paket, di bawah dua baris kuota (#404).
+ *
+ * Kuota (PT & pengguna) datang dari kolom katalog dan dirender pemanggil;
+ * yang ada di sini adalah janji yang TIDAK punya kolom — dan karena itu wajib
+ * punya sumber selain tabel `plans` (`pages/landing.md` §KLAIM HARUS PUNYA
+ * SUMBER). Satu-satunya untuk saat ini: dukungan prioritas paket Business
+ * (balasan hari kerja berikutnya lewat kanal kontak yang sudah ada), keputusan
+ * pemilik yang tercatat di #404 dan `docs/PRICING.md`. Paket lain sengaja
+ * KOSONG, bukan diisi butir hiasan ("semua modul", "tiga bahasa") — itu sudah
+ * dinyatakan satu kali untuk semua paket di bawah kisi (`pricingAllNote`), dan
+ * mengulanginya per kartu membuat pembaca mengira paket lain tidak
+ * mendapatkannya.
+ *
+ * Paket rundingan (`contactOnly`) tidak lewat sini: butirnya sudah tiga dan
+ * dirender pemanggil sendiri (`pricingContactQuota/Support/Terms`).
+ */
+const SOROTAN: Record<string, readonly DictionaryKey[]> = {
+  business: ["plans.highlight.prioritySupport"],
+};
+
+/** Kunci kamus butir sorotan sebuah paket; kosong bila tidak ada. */
+export function planHighlightKeys(planKey: string): readonly DictionaryKey[] {
+  return SOROTAN[planKey] ?? [];
+}
 
 /**
  * Kunci kamus untuk deskripsi sebuah paket, atau `null` bila paket itu tidak

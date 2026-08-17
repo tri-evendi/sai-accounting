@@ -64,7 +64,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { activePlans } from "@/lib/plan-catalog";
-import { planDescriptionKey } from "@/lib/plan-copy";
+import { planDescriptionKey, planHighlightKeys } from "@/lib/plan-copy";
 import { periodDaysFor } from "@/lib/plan-change";
 import { formatMoney } from "@/lib/money-format";
 
@@ -298,6 +298,11 @@ export default async function PlatformPlansPage() {
                           {[
                             t("platform.plansQuotaCompanies", { max: plan.maxCompanies }),
                             t("platform.plansQuotaUsers", { max: plan.maxUsers }),
+                            /* Butir bersumber di luar kuota (#404) — daftar
+                               yang SAMA dengan kartu harga publik, supaya
+                               yang dijanjikan di luar tidak berbeda dengan
+                               yang tampak di dalam. */
+                            ...planHighlightKeys(plan.key).map((kunci) => t(kunci)),
                           ].map((line) => (
                             <li
                               key={line}

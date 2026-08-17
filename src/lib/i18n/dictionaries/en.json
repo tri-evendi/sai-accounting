@@ -39,7 +39,7 @@
     "pricingRecommended": "Recommended",
     "pricingContactPrice": "Priced by negotiation",
     "pricingContactQuota": "Company & user quota negotiated",
-    "pricingContactSupport": "Direct support through the contact channels",
+    "pricingContactSupport": "Data migration, team training, direct support",
     "pricingContactTerms": "Custom terms and contract period",
     "pricingContactCta": "Contact us",
     "pricingContactMissing": "No contact address is configured on this installation.",
@@ -3610,9 +3610,14 @@
   },
   "plans": {
     "description": {
+      "business": "For business groups with several companies and a larger finance team.",
       "enterprise": "Quota, support, and terms by negotiation.",
       "internal": "Provider-internal plan. Not offered publicly.",
-      "pro": "For businesses running several companies at once."
+      "pro": "For businesses running several companies at once.",
+      "starter": "For a business with a single company."
+    },
+    "highlight": {
+      "prioritySupport": "Priority support — answered by the next business day"
     }
   },
   "companies": {

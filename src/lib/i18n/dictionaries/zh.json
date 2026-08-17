@@ -39,7 +39,7 @@
     "pricingRecommended": "推荐",
     "pricingContactPrice": "价格需洽谈",
     "pricingContactQuota": "公司与用户配额按需商定",
-    "pricingContactSupport": "通过联系渠道获得直接支持",
+    "pricingContactSupport": "数据迁移、团队培训、直接支持",
     "pricingContactTerms": "定制条款与合同期限",
     "pricingContactCta": "联系我们",
     "pricingContactMissing": "本安装尚未配置联系地址。",
@@ -3610,9 +3610,14 @@
   },
   "plans": {
     "description": {
+      "business": "适合拥有多家公司和较大财务团队的企业集团。",
       "enterprise": "配额、支持与条款均可协商。",
       "internal": "服务商内部方案，不对外提供。",
-      "pro": "适用于同时经营多家公司的企业。"
+      "pro": "适用于同时经营多家公司的企业。",
+      "starter": "适合只有一家公司的企业。"
+    },
+    "highlight": {
+      "prioritySupport": "优先支持——下一个工作日内回复"
     }
   },
   "companies": {

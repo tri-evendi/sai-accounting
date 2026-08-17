@@ -116,8 +116,12 @@ const TOPBAR_HEIGHT = 44;
 const NAV_WIDTH = 40;
 
 /* `display` sengaja TIDAK di sini — chip aktif menulisnya sendiri; chip PT
-   kedua mendapatnya dari CSS (`[data-landing-frame-alt]`, tampil ≥520px). */
-const CHIP: CSSProperties = {
+   kedua mendapatnya dari CSS (`[data-landing-frame-alt]`, tampil ≥520px).
+
+   DIEKSPOR sejak #402: potongan UI di kartu manfaat ("buku terpisah per PT")
+   menggambar pengalih PT yang SAMA dengan bilah kerangka — bentuk yang
+   ditulis dua kali akan berbeda pada hari salah satunya disunting. */
+export const FRAME_CHIP: CSSProperties = {
   alignItems: "center",
   gap: "var(--ant-margin-xxs)",
   minWidth: 0,
@@ -209,7 +213,7 @@ export function LandingAppFrame({
               <span
                 key={company.name}
                 style={{
-                  ...CHIP,
+                  ...FRAME_CHIP,
                   display: "inline-flex",
                   background: landingChip("brand"),
                   color: landingGlyph("brand"),
@@ -223,7 +227,7 @@ export function LandingAppFrame({
               <span
                 key={company.name}
                 data-landing-frame-alt=""
-                style={{ ...CHIP, color: "var(--ant-color-text-secondary)" }}
+                style={{ ...FRAME_CHIP, color: "var(--ant-color-text-secondary)" }}
               >
                 {company.name}
               </span>

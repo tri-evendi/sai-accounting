@@ -58,6 +58,7 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
+import { MODULE_ICON } from "@/components/landing/landing-modules";
 import { Card, CardContent } from "@/components/ui/card";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
 import { getT } from "@/lib/i18n/server";
@@ -226,27 +227,44 @@ export async function LandingAudience() {
                       padding: 0,
                     }}
                   >
-                    {segment.modules.map((module) => (
-                      <li
-                        key={module}
-                        style={{
-                          /* Pil: chip sehue di atas fill sehue — pasangan
-                             yang sama dengan kotak ikon. Teksnya
-                             `colorText` 14px, bukan 12px: nama modul adalah
-                             ISI, bukan keterangan. */
-                          display: "inline-flex",
-                          alignItems: "center",
-                          minHeight: 28,
-                          paddingInline: "var(--ant-padding-xs)",
-                          borderRadius: "var(--sai-landing-radius-control)",
-                          background: landingChip(segment.hue),
-                          color: "var(--ant-color-text)",
-                          fontSize: "var(--ant-font-size)",
-                        }}
-                      >
-                        {t(MODULE_META[module].labelKey)}
-                      </li>
-                    ))}
+                    {segment.modules.map((module) => {
+                      /* Ikon modul dari peta yang SAMA dengan daftar modul &
+                         sidebar kerangka (`MODULE_ICON`) — pil ini kini
+                         menunjuk balik ke baris yang baru saja dibaca di
+                         seksi modul, bukan sekadar menyebut namanya (#402). */
+                      const Icon = MODULE_ICON[module];
+                      return (
+                        <li
+                          key={module}
+                          style={{
+                            /* Pil: chip sehue di atas fill sehue — pasangan
+                               yang sama dengan kotak ikon. Teksnya
+                               `colorText` 14px, bukan 12px: nama modul adalah
+                               ISI, bukan keterangan. Glifnya anak tangga -8
+                               sehue (≥3:1 di atas chip, terukur). */
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "var(--ant-margin-xxs)",
+                            minHeight: 32,
+                            paddingInline: "var(--ant-padding-sm)",
+                            borderRadius: "var(--sai-landing-radius-control)",
+                            background: landingChip(segment.hue),
+                            color: "var(--ant-color-text)",
+                            fontSize: "var(--ant-font-size)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          <Icon
+                            aria-hidden="true"
+                            style={{
+                              color: landingGlyph(segment.hue),
+                              fontSize: "var(--ant-font-size-lg)",
+                            }}
+                          />
+                          {t(MODULE_META[module].labelKey)}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </CardContent>

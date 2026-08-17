@@ -22,9 +22,11 @@
  * platform). Membiarkan kolomnya basi berarti dua orang yang mendaftar lewat
  * pintu berbeda mendapat masa uji coba berbeda — dan tidak ada yang berbunyi.
  *
- * ══ KATALOG YANG DIJUAL: starter · pro · business · enterprise (#404) ═══════
- * Empat anak tangga: Starter (1 PT/3 pengguna) · Pro (3/15, disorot) · Business
- * (8/40) · Enterprise (rundingan). Pembedanya HANYA kuota PT & pengguna —
+ * ══ KATALOG YANG DIJUAL: starter · pro · business (#404, #408) ══════════════
+ * Tiga anak tangga publik: Starter (1 PT/3 pengguna) · Pro (3/15, disorot) ·
+ * Business (8/40). `enterprise` (rundingan) tetap ada tetapi TIDAK dipajang
+ * sebagai kartu sendiri sejak #408 — jalur rundingannya menumpang kartu
+ * Business. Pembedanya HANYA kuota PT & pengguna —
  * semua paket memuat seluruh modul, tiga bahasa, semua mata uang — persis yang
  * bisa dinyatakan kolom `plans` (tidak ada kolom fitur/add-on) dan persis yang
  * sudah dijanjikan halaman harga ("Yang dijatah per paket hanya jumlah PT dan
@@ -155,7 +157,15 @@ const DEFAULT_PLANS = [
      *
      * Kuota di sini hanya BAWAAN katalog: yang berlaku bagi tenant adalah
      * salinan di `tenants.max_*` yang dipasang saat paketnya diberikan, dan
-     * angka itulah yang dirundingkan per pelanggan. */
+     * angka itulah yang dirundingkan per pelanggan.
+     *
+     * `isPublic: false` sejak #408 — BUKAN pensiun, melainkan pindah tempat:
+     * jalur rundingan kini hidup DI DALAM kartu Business ("butuh lebih dari
+     * 8 PT? hubungi kami"), supaya funel publik tiga anak tangga (Starter →
+     * Pro → Business) dan rundingan hanya bagi yang melewati kuota Business.
+     * Paketnya tetap AKTIF dan `contact_only`: kontrak yang sudah ada tetap
+     * sah, dan operator tetap memberikannya lewat `changeTenantPlan`. Pemasangan
+     * berjalan: migration platform `0010_enterprise_not_public`. */
     key: "enterprise",
     name: "Enterprise",
     description: "Kuota, dukungan, dan ketentuan yang dirundingkan.",
@@ -163,7 +173,7 @@ const DEFAULT_PLANS = [
     maxCompanies: 10,
     maxUsers: 50,
     trialDays: 0,
-    isPublic: true,
+    isPublic: false,
     contactOnly: true,
   },
 ] as const;

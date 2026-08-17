@@ -18,6 +18,10 @@ const MIGRATION = readFileSync(
   "utf8"
 );
 const DOCS = readFileSync("docs/PRICING.md", "utf8");
+const MIGRATION_0010 = readFileSync(
+  "prisma/platform/migrations/0010_enterprise_not_public/migration.sql",
+  "utf8"
+);
 
 /** Katalog yang disepakati di #404 — angka yang dijaga, bukan diturunkan. */
 const LADDER = [
@@ -81,6 +85,18 @@ describe("tangga harga #404 — seed, migration, dan docs memuat angka yang sama
     expect(retired).toContain('"trial"');
     expect(retired).not.toContain('"starter"');
     expect(retired).not.toContain('"business"');
+  });
+
+  it("enterprise TIDAK publik tetapi tetap rundingan & aktif (#408) — seed dan migration 0010 sepakat", () => {
+    const blok = seedBlock("enterprise");
+    expect(blok).toContain("isPublic: false");
+    expect(blok).toContain("contactOnly: true");
+    expect(MIGRATION_0010).toContain("`is_public`      = 0");
+    expect(MIGRATION_0010).toContain("WHERE `key` = 'enterprise'");
+    // Hanya bendera katalog yang disentuh — bukan pensiun, bukan harga.
+    // Diperiksa pada PERNYATAAN SQL-nya (komentar kepala boleh menyebut apa saja).
+    const sql = MIGRATION_0010.slice(MIGRATION_0010.indexOf("UPDATE `plans`"));
+    expect(sql).not.toMatch(/is_active|contact_only|price_monthly/);
   });
 
   it("docs/PRICING.md memuat setiap angka katalog dalam format id-ID", () => {

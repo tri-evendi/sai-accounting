@@ -43,6 +43,7 @@
     "pricingContactTerms": "Custom terms and contract period",
     "pricingContactCta": "Contact us",
     "pricingContactMissing": "No contact address is configured on this installation.",
+    "pricingNegotiateNote": "Need more than {companies} companies or {users} users? Quota, data migration, SLA, and contract period are negotiated.",
     "faqHeading": "Frequently asked questions",
     "faqTrialQ": "How long is the trial, and when does it start?",
     "faqTrialA": "{days} days, counted from the moment you click the verification link in your email — not from when you submit the registration form.",

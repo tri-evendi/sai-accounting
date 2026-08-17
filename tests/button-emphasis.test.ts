@@ -435,6 +435,45 @@ describe("penekanan tombol (#267)", () => {
     expect(salahTujuan).toEqual([]);
   });
 
+  it("tombol WhatsApp melayang (#402) adalah tautan KELUAR `<Button href>`, bukan ajakan utama", () => {
+    /*
+     * Bulatan navy 48px di kanan-bawah (`landing-whatsapp.tsx`) berisi penuh
+     * seperti primer — tetapi ia jalan BERTANYA, bukan jalan mendaftar, dan
+     * penjaga #3 di atas mengunci setiap primer pendaratan ke `/register`.
+     * Yang dijaga di sini: ia ditulis sebagai `<Button href>` (tautan keluar,
+     * tab baru) dengan varian yang BUKAN primer, sehingga tidak masuk hitungan
+     * ajakan; isian navy-nya datang dari gaya varian bernama
+     * (`WHATSAPP_FAB_STYLE`), bukan dari `variant="primary"`. Kalau suatu hari
+     * ia ditulis ulang sebagai primer, penjaga #3 yang merah (href-nya
+     * `https://wa.me/…`, bukan `/register`) — dan tes ini menjelaskan kenapa
+     * itu bukan jalan keluarnya.
+     */
+    const jalur = join(ROOT, AREA_PENDARATAN, "landing-whatsapp.tsx");
+    const src = sumber(jalur);
+    const tombol: Jsx[] = [];
+    const kunjungi = (node: ts.Node) => {
+      if (isJsx(node) && TAG_PENEKANAN.has(namaTag(node))) tombol.push(node);
+      ts.forEachChild(node, kunjungi);
+    };
+    kunjungi(src);
+    expect(tombol).toHaveLength(1);
+    const [fab] = tombol;
+    expect(namaTag(fab)).toBe("Button");
+    // `href` dinamis (URL wa.me dari `contactChannels()`), bukan literal — dan
+    // karena itu bukan `ButtonLink` (rute internal).
+    const atribut = (ts.isJsxElement(fab) ? fab.openingElement : fab).attributes.properties
+      .filter(ts.isJsxAttribute)
+      .map((a) => a.name.getText());
+    expect(atribut).toContain("href");
+    expect(atribut).toContain("target");
+    expect(atribut).toContain("rel");
+    expect(atribut).toContain("aria-label");
+    expect(primer(fab)).toBe(false);
+    expect(varianDari(fab)).toBe("outline");
+    // …dan berkasnya tidak menyebut varian primer sama sekali.
+    expect(readFileSync(jalur, "utf8")).not.toMatch(/variant="(?:primary|default|inverse)"/);
+  });
+
   it("pendeteksinya benar-benar bisa merah — dibuktikan di sini, bukan diandaikan", () => {
     const uji = (kode: string) => {
       const src = ts.createSourceFile("uji.tsx", kode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

@@ -496,6 +496,16 @@ export const LANDING_STYLE = `
    tidak pernah membaca hero ini. Kalimatnya tetap di HTML; yang berubah hanya
    di layar mana ia memakan ruang. */
 [data-landing-hero-note]{display:none}
+/* Kalimat KEDUA body hero (#402): di bawah 576px disembunyikan secara VISUAL
+   (dikurung 1px, teknik yang sama dengan nama merek di bilah) -- bukan
+   display:none, supaya pembaca layar & metadata tetap mendapat kalimat
+   utuhnya; satu sumber teks (heroBody), tanpa kunci i18n kedua. Diukur di
+   390px: dua kalimat = 5 baris sebelum tombol, satu kalimat = 3 baris. */
+[data-landing-hero-body-more]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Tombol WhatsApp melayang (#402): HANYA >=576px -- di bawahnya tombol hero
+   selebar isi dan bulatan 48px menutupi 13-17% lebarnya (angka di kepala
+   landing-whatsapp.tsx). */
+[data-landing-fab]{display:none}
 [data-landing-brand]{transition:opacity 200ms ease}
 [data-landing-brand]:hover{opacity:.8}
 [data-landing-link]{transition:color 200ms ease}
@@ -618,6 +628,8 @@ export const LANDING_STYLE = `
   }
   [data-landing-actions]{flex-direction:row}
   [data-landing-hero-note]{display:block}
+  [data-landing-hero-body-more]{position:static;width:auto;height:auto;overflow:visible;clip:auto;white-space:normal}
+  [data-landing-fab]{display:block}
   [data-landing-chrome]{display:flex}
   [data-landing-chrome-narrow]{display:none}
   [data-landing-brand-name]{position:static;width:auto;height:auto;overflow:visible;clip:auto}

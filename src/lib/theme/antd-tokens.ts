@@ -446,6 +446,29 @@ export function brandSolid(resolved: ResolvedTheme): string {
   return resolved === "dark" ? BRAND_SOLID_DARK : BRAND_SOLID_LIGHT;
 }
 
+/**
+ * Keadaan HOVER/AKTIF isian merek — nilai yang SAMA dengan `PRIMARY_BUTTON_*`
+ * (menggelap di kedua tema; angkanya di tabel di atas), diterbitkan sebagai
+ * token GLOBAL (`--ant-color-brand-solid-hover` / `-active`) sejak #402.
+ *
+ * Kenapa perlu: token `Button` (`colorPrimaryHover`) adalah token KOMPONEN,
+ * dan variabel CSS-nya (`--ant-button-color-primary-hover`) TIDAK ada di
+ * dokumen — terukur kosong lewat `getComputedStyle` pada tombol pendaratan.
+ * Isian merek yang ditulis lewat variabel per-elemen `--ant-btn-bg-color-*`
+ * (tombol WhatsApp melayang, `landing-whatsapp.tsx`) butuh keadaan sentuh
+ * yang bisa dirujuk dari server component tanpa hook — dan tanpa menyalin
+ * heksnya ke tempat lain. Satu sumber (`PRIMARY_BUTTON_*`), dua jalur.
+ */
+export function brandSolidHover(resolved: ResolvedTheme): string {
+  return (resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT)
+    .colorPrimaryHover;
+}
+
+export function brandSolidActive(resolved: ResolvedTheme): string {
+  return (resolved === "dark" ? PRIMARY_BUTTON_DARK : PRIMARY_BUTTON_LIGHT)
+    .colorPrimaryActive;
+}
+
 export function brandTone(resolved: ResolvedTheme): string {
   return resolved === "dark" ? BRAND_TONE_DARK : BRAND_TONE_LIGHT;
 }

@@ -10,8 +10,8 @@
     "navPricing": "价格",
     "navFaq": "常见问题",
     "navDocs": "文档",
-    "heroHeading": "一家或多家公司的账簿，一个账号",
-    "heroBody": "记录日常交易、结账、生成财务报表与增值税数据，无需会计背景——会计流程本身仍然规范。从一家公司开始；下一家公司直接添加即可，拥有各自独立的总账，无需另建账号。",
+    "heroHeading": "一家或多家公司，账簿井井有条",
+    "heroBody": "记录交易、结账、生成财务报表与增值税数据，无需会计背景。每家公司都有独立的总账，全部在同一个账号之下。",
     "heroPrimary": "创建账号",
     "heroSecondary": "登录账号",
     "heroNote": "同事已邀请您？请使用邮件中的邀请链接。",
@@ -184,7 +184,8 @@
     "mockSwitcherTitle": "公司切换",
     "mockSwitcherHint": "一个账号，每家公司独立账套",
     "mockActive": "当前打开",
-    "mockAddCompany": "添加公司"
+    "mockAddCompany": "添加公司",
+    "mockDashboardTitle": "仪表盘"
   },
   "common": {
     "save": "保存",

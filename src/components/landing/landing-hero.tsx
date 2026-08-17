@@ -170,14 +170,13 @@ export async function LandingHero() {
             </p>
           </div>
 
-          {/* Purwarupa produk — mengisi kolom yang selama ini kosong. Di bawah
-              576px ia jatuh ke baris KEDUA (satu kolom), jadi ajakan di atas
-              tidak pernah terdorong ke bawah lipatan.
-
-              `paddingTop` memberi ruang bagi TUMPUKAN kartu yang menyembul ke
-              atas (`landing-hero-mock.tsx`); tanpa itu dua kartu belakang
-              terpotong tepi seksi di layar sempit. */}
-          <div style={{ paddingTop: "var(--ant-padding-lg)" }}>
+          {/* Purwarupa produk — komposisi kerangka aplikasi + kartu ponsel
+              (#401), mengisi kolom yang selama ini kosong. Di bawah 768px
+              hero SATU kolom (`landing-scale.ts`) dan purwarupa jatuh ke
+              baris KEDUA, jadi ajakan di atas tidak pernah terdorong ke bawah
+              lipatan; kartu ponsel menjorok 16px ke bawah kerangka, dan
+              `paddingBottom` menampungnya supaya tidak menabrak strip bukti. */}
+          <div style={{ minWidth: 0, paddingBottom: "var(--ant-padding)" }}>
             <LandingHeroMock />
           </div>
         </div>

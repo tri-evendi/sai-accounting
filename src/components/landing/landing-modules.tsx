@@ -82,7 +82,12 @@ import { getT } from "@/lib/i18n/server";
  * penolakan itu berlaku sama untuk ikon: yang dibedakan BENTUK, bukan warna.
  * Yang dibawa ikon hanyalah "baris ini tentang apa" pada satu kedipan mata.
  */
-const MODULE_ICON: Record<BusinessModule, typeof BookOutlined> = {
+/*
+ * Diekspor sejak #401: sidebar kerangka aplikasi (`landing-app-frame.tsx`,
+ * dipakai hero & galeri) memakai ikon modul yang SAMA — satu peta, bukan dua
+ * yang bisa memberi lambang berbeda untuk modul yang sama di satu halaman.
+ */
+export const MODULE_ICON: Record<BusinessModule, typeof BookOutlined> = {
   core_accounting: BookOutlined,
   sales: ShopOutlined,
   purchasing: ShoppingCartOutlined,

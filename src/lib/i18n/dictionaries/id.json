@@ -10,8 +10,8 @@
     "navPricing": "Harga",
     "navFaq": "Tanya jawab",
     "navDocs": "Dokumentasi",
-    "heroHeading": "Pembukuan satu atau beberapa PT, dalam satu akun",
-    "heroBody": "Catat transaksi harian, tutup periode, dan susun laporan keuangan & PPN tanpa harus menjadi akuntan — proses akuntansinya tetap baku. Mulai dari satu PT; PT berikutnya cukup ditambahkan, dengan buku besarnya sendiri dan tanpa akun baru.",
+    "heroHeading": "Pembukuan rapi untuk satu PT — atau banyak",
+    "heroBody": "Catat transaksi, tutup periode, dan susun laporan keuangan & PPN tanpa harus menjadi akuntan. Setiap PT punya buku besarnya sendiri, semuanya dalam satu akun.",
     "heroPrimary": "Buat akun",
     "heroSecondary": "Masuk ke akun",
     "heroNote": "Sudah diundang rekan kerja? Pakai tautan undangan di surel Anda.",
@@ -184,7 +184,8 @@
     "mockSwitcherTitle": "Pengalih perusahaan",
     "mockSwitcherHint": "Satu akun, buku besar terpisah per PT",
     "mockActive": "Sedang dibuka",
-    "mockAddCompany": "Tambah PT"
+    "mockAddCompany": "Tambah PT",
+    "mockDashboardTitle": "Dasbor"
   },
   "common": {
     "save": "Simpan",

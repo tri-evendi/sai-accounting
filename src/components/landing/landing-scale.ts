@@ -180,10 +180,38 @@ export const LANDING_HUE_TOKEN = TONE_HUE_TOKEN;
  */
 export const LANDING_MIX = {
   band: 14,
+  /*
+   * ⚠ Sejak #401 `accent` TIDAK lagi menjadi pita ajakan penutup — penutup
+   * kini pita PEKAT (`--sai-landing-band-solid`, lihat PITA di bawah).
+   * Tokennya TETAP ADA karena masih dipakai tepat sekali: sorotan radial di
+   * kuadran hero (`landing-hero.tsx`), yang memang harus lebih pekat daripada
+   * `band-brand` di bawahnya supaya hero punya satu sumber cahaya. Kadarnya
+   * tetap dikunci ambang tombol primer (hero memikul tombol), jadi ia tidak
+   * boleh dinaikkan hanya karena tidak lagi memikul ajakan penutup.
+   */
   accent: 18,
   fill: 14,
   chip: 28,
 } as const;
+
+/**
+ * Kadar putih untuk teks REDUP di atas pita pekat — DIUKUR, bukan 85%.
+ *
+ * Kebiasaan "teks sekunder = putih 85%" gagal di sini karena isian navy tema
+ * gelap (`#2F6FBF`) hanya berjarak 5,06:1 dari putih penuh; setiap persen
+ * transparansi memakan jarak itu. Terukur di `tests/landing-colors.test.ts`:
+ * 85% → 4,14:1 (gelap, GAGAL) · 90% → 4,44 (GAGAL) · 92% → 4,56 (lolos).
+ * Hierarki teks utama/redup di pita ini karena itu datang terutama dari
+ * UKURAN (judul seksi vs 14px), bukan dari selisih warnanya yang tipis.
+ */
+export const LANDING_ON_SOLID_MUTED_PCT = 92;
+
+/**
+ * Lebar kartu ponsel di komposisi hero (#401), dalam px. Dipakai dua kali dan
+ * harus sama di keduanya: lebar kartunya sendiri, dan ruang yang disisakan
+ * label contoh di kaki kerangka supaya kalimatnya tidak tertutup kartu itu.
+ */
+export const LANDING_PHONE_WIDTH = 168;
 
 const mix = (hue: LandingHue, pct: number, base: "container" | "elevated") =>
   toneMix(hue, pct, base);
@@ -205,6 +233,20 @@ const PITA = [
   `--sai-landing-band-cyan:${mix("cyan", LANDING_MIX.band, "container")};`,
   `--sai-landing-band-indigo:${mix("indigo", LANDING_MIX.band, "container")};`,
   `--sai-landing-band-accent:${mix("brand", LANDING_MIX.accent, "container")};`,
+  /* ══ PITA PEKAT — satu-satunya bidang navy penuh di halaman ini (#401) ═══
+     Ajakan penutup. BUKAN tint: ia `--ant-color-brand-solid` apa adanya —
+     token isian merek yang memang memikul teks terang (11,50:1 terang ·
+     5,06:1 gelap, `lib/theme/antd-tokens.ts` §brandSolid). Ia BUKAN tangga
+     biru AntD (yang membalik di tema gelap) dan BUKAN `SIDER_BG_DARK`;
+     `landing.md` §Yang DITOLAK direvisi eksplisit untuk ini, dengan angkanya.
+     Teks di atasnya `colorTextLightSolid`; teks REDUP di atasnya bukan
+     `colorTextSecondary` (2,2:1 di navy) melainkan putih yang dicampur ke
+     transparan — dan kadarnya DIUKUR, bukan diambil dari kebiasaan "85%":
+     85% putih di atas `#2F6FBF` (gelap) hanya 4,14:1. 92% adalah kadar
+     terendah yang lolos 4,5:1 di kedua tema (`tests/landing-colors.test.ts`). */
+  `--sai-landing-band-solid:var(--ant-color-brand-solid);`,
+  `--sai-landing-on-solid:var(--ant-color-text-light-solid);`,
+  `--sai-landing-on-solid-muted:color-mix(in srgb, var(--ant-color-text-light-solid) ${LANDING_ON_SOLID_MUTED_PCT}%, transparent);`,
 ].join("");
 
 /**
@@ -333,6 +375,25 @@ export const LANDING_BREAKPOINT = 576;
 export const LANDING_NAV_LINKS_BREAKPOINT = 768;
 
 /**
+ * Titik patah KETIGA — `screenLG` AntD (992px), dipakai HANYA oleh galeri
+ * layar (#401): tata letak 1 kartu besar + 2 kecil.
+ *
+ * Ditambahkan sesudah diukur, bukan sebelumnya (syarat `landing.md`): pada
+ * pembagian 3fr:2fr kolom kanan baru mencapai ~360px — lebar minimum agar
+ * kerangka aplikasi di dalamnya masih memuat sidebar berikon (aturan
+ * `@container` di `LANDING_STYLE`) — mulai 992px. Di 768–991px kolom kanan
+ * 270–360px: kerangka faktur kehilangan sidebarnya sementara kerangka jurnal
+ * di sebelahnya masih punya, dan dua kerangka yang tidak sebentuk berdampingan
+ * terbaca sebagai bug. Bertumpuk satu kolom di bawah 992px karena itu bukan
+ * kompromi melainkan bentuk yang benar.
+ *
+ * Kerangka aplikasi sendiri TIDAK memakai titik patah viewport sama sekali —
+ * bentuk dalamnya mengikuti lebar kerangkanya (`@container`), sebab satu
+ * kerangka berdiri di tiga lebar berbeda pada viewport yang sama.
+ */
+export const LANDING_WIDE_BREAKPOINT = 992;
+
+/**
  * Tinggi bilah atas yang menempel (`position: sticky`). Dipakai dua kali dan
  * harus sama di keduanya: oleh bilahnya sendiri, dan oleh jarak jangkar seksi
  * (`scroll-margin-top`) — tanpa itu tautan "#harga" menaruh judul seksinya
@@ -401,6 +462,31 @@ export const LANDING_STYLE = `
    tombol berarti tombolnya terdorong ke bawah lipatan, dan yang dikorbankan
    adalah satu-satunya hal yang halaman ini minta orang lakukan. */
 [data-landing-hero]{display:grid;gap:var(--ant-margin-xl);align-items:center}
+/* == KERANGKA APLIKASI (#401): hero & galeri memakai satu bentuk =========
+   Aturannya berbasis LEBAR KERANGKA (container query), bukan lebar viewport:
+   kerangka yang sama berdiri di kolom hero (55% seksi), di kartu galeri
+   besar (60%), dan di kartu galeri kecil (40%) -- tiga lebar berbeda pada
+   satu viewport yang sama, jadi titik patah viewport tidak bisa menjawabnya.
+   Peramban tanpa @container mendapat keadaan bawaannya: sidebar tampil tanpa
+   label, PT kedua di pengalih tersembunyi -- kerangka yang lebih sederhana,
+   bukan yang rusak.
+     - <360px: sidebar disembunyikan (seperti app di ponsel: menu jadi laci),
+       supaya tiga ubin angka masih punya ruang di kerangka selebar 288px;
+     - >=520px: PT kedua tampil di pengalih, dan sidebar yang MEMINTA label
+       (data-landing-frame-nav="wide", hanya hero) menampilkannya. */
+[data-landing-frame]{container-type:inline-size}
+[data-landing-frame-nav-label]{display:none}
+[data-landing-frame-alt]{display:none}
+[data-landing-phone]{display:none}
+@container (max-width:359px){
+  [data-landing-frame-nav]{display:none}
+}
+@container (min-width:520px){
+  [data-landing-frame-alt]{display:inline-flex}
+  [data-landing-frame-nav="wide"] [data-landing-frame-nav-label]{display:inline}
+}
+/* Galeri: satu kolom sampai 992px; 1 besar + 2 kecil di blok media LG di bawah. */
+[data-landing-gallery]{display:grid;gap:var(--ant-margin);grid-template-columns:minmax(0,1fr)}
 /* Catatan "sudah diundang rekan kerja?" di hero (#397): disembunyikan di bawah
    576px, tampil kembali di blok media di bawah. Di ponsel hero satu kolom dan
    setiap baris di atas purwarupa mendorong sisa halaman ke bawah lipatan,
@@ -524,15 +610,38 @@ export const LANDING_STYLE = `
   [data-landing-brand-name]{position:static;width:auto;height:auto;overflow:visible;clip:auto}
   [data-landing-footer-grid]{grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--ant-margin-xl)}
   [data-landing-footer-bar]{flex-direction:row;align-items:center;justify-content:space-between}
-  /* 1,1fr : 1fr — kolom kalimat sedikit lebih lebar daripada purwarupanya.
-     Bagi rata membuat hero terbaca sebagai dua hal yang sama pentingnya;
-     yang menjual halaman ini tetap kalimatnya. */
-  [data-landing-hero]{grid-template-columns:1.1fr 1fr;gap:var(--sai-landing-rhythm)}
 }
 @media (min-width:${LANDING_NAV_LINKS_BREAKPOINT}px){
   [data-landing-links]{display:flex}
   [data-landing-nav]{grid-template-columns:1fr auto 1fr}
   [data-landing-menu]{display:none}
+  /* == HERO DUA KOLOM MULAI 768px, BUKAN 576px (#401) -- DIUKUR ============
+     Sampai #401 hero berkolom dua sejak 576px dengan purwarupa satu kartu
+     ringkasan yang muat di 206px. Kerangka aplikasi (sidebar 40px + tiga ubin
+     angka "Rp 184.500.000" + grafik) TIDAK muat di sana: di 576px kolom
+     purwarupanya 206px, ubin nominal 14px tabular menuntut ~118px masing-
+     masing. Diukur: 576-767px satu kolom, kerangka selebar isi (528-720px)
+     dan tiga ubin sebaris; mulai 768px dua kolom 45:55 -- kerangka memikul
+     55% (permintaan issue: komposisi +-55% lebar seksi) dan kalimat 45%,
+     sebab yang kini menjual adalah GAMBAR produknya, dan judulnya sudah
+     dipendekkan (<= 8 kata) supaya muat di kolom yang lebih sempit.
+     Jaraknya margin-xxl (48px), bukan rhythm (96px): dengan 96px kolom
+     kalimat di 768px tinggal 281px. Kartu ponsel muncul di sini juga, dan
+     kaki kerangka menyisakan ruang selebar kartu itu supaya kalimat "contoh
+     tampilan" tidak tertutup olehnya. */
+  [data-landing-hero]{grid-template-columns:minmax(0,9fr) minmax(0,11fr);gap:var(--ant-margin-xxl)}
+  [data-landing-phone]{display:block}
+  [data-landing-hero-frame] [data-landing-frame-caption]{padding-inline-end:calc(${LANDING_PHONE_WIDTH}px + var(--ant-margin))}
+}
+@media (min-width:${LANDING_WIDE_BREAKPOINT}px){
+  /* == GALERI 1 BESAR + 2 KECIL (#401) ======================================
+     Jurnal dominan di kiri (3fr ~ 60%), faktur & pengalih PT bertumpuk di
+     kanan (2fr). Titik patahnya screenLG AntD (992px): di bawahnya kolom
+     kanan < 360px dan kerangka faktur kehilangan sidebar-nya (aturan
+     container di atas) -- tiga kerangka bertumpuk satu kolom lebih jujur
+     daripada dua kolom yang salah satunya menyusut menjadi daftar. */
+  [data-landing-gallery]{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+  [data-landing-gallery-main]{grid-row:1 / span 2}
 }
 @media (prefers-reduced-motion:reduce){
   [data-landing-brand],[data-landing-link],[data-landing-caret],[data-landing-card]{transition:none}

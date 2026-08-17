@@ -81,6 +81,28 @@ export function planHighlightKeys(planKey: string): readonly DictionaryKey[] {
 }
 
 /**
+ * Paket yang MEMIKUL jalur rundingan di kartunya (#408).
+ *
+ * Sejak #408 `enterprise` tidak lagi dipajang sebagai kartu sendiri
+ * (`is_public = false`) — funel publik tiga anak tangga, dan rundingan hanya
+ * bagi yang melewati kuota Business. Yang tersisa dari Enterprise di halaman
+ * harga adalah SATU kalimat + tautan kontak di kaki kartu Business: "butuh
+ * lebih dari {companies} PT atau {users} pengguna? kuota, migrasi data, SLA,
+ * dan masa kontrak dirundingkan — hubungi kami". Angkanya dari kolom katalog
+ * paket pemikulnya, jadi menaikkan kuota Business ikut menggeser kalimatnya.
+ *
+ * Dipetakan di sini, bukan dibandingkan `plan.key === "business"` di
+ * komponen: kalau kelak paket teratas berganti nama, satu baris ini yang
+ * berubah — bukan kartu publik dan halaman paket dalam aplikasi terpisah.
+ */
+const PEMIKUL_RUNDINGAN = "business";
+
+/** Apakah kartu paket ini memuat kalimat + tautan rundingan di kakinya. */
+export function planCarriesNegotiation(planKey: string): boolean {
+  return planKey === PEMIKUL_RUNDINGAN;
+}
+
+/**
  * Kunci kamus untuk deskripsi sebuah paket, atau `null` bila paket itu tidak
  * dikapalkan produk ini (paket buatan operator).
  *

@@ -43,6 +43,7 @@
     "pricingContactTerms": "Ketentuan & masa kontrak khusus",
     "pricingContactCta": "Hubungi kami",
     "pricingContactMissing": "Alamat kontak belum disetel pada pemasangan ini.",
+    "pricingNegotiateNote": "Butuh lebih dari {companies} PT atau {users} pengguna? Kuota, migrasi data, SLA, dan masa kontrak dirundingkan.",
     "faqHeading": "Pertanyaan yang sering muncul",
     "faqTrialQ": "Berapa lama masa uji coba, dan kapan mulainya?",
     "faqTrialA": "{days} hari, dihitung sejak tautan verifikasi di surel Anda diklik — bukan sejak formulir pendaftaran dikirim.",

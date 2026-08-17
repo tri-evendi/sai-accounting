@@ -774,6 +774,30 @@ Nama paket TIDAK diterjemahkan (nama produk, `lib/plan-copy.ts`), maka
 "Starter"/"Business", bukan "Mulai"/"Bisnis": satu tangga dalam satu bahasa
 di ketiga kamus. Deskripsi tiap paket tetap lewat `plans.description.*`.
 
+### Enterprise dilebur ke kaki kartu Business — tiga kartu lagi (#408)
+
+Sehari sesudah #404 pemilik memutuskan funel publik **tiga** anak tangga:
+Starter → Pro → Business, dan rundingan hanya bagi yang melewati kuota
+Business. `enterprise` menjadi `is_public = false` (tetap aktif &
+`contact_only` — diberikan operator untuk kontrak; migration platform 0010),
+sehingga kisi kembali ke tiga kolom `landingGrid` dengan sendirinya. Jalur
+≥4 kartu (#404) **tidak dihapus**: katalog lain boleh memajang empat, dan
+kartu `contactOnly` generik tetap dirender bila operator memublikasikan paket
+rundingan lain.
+
+Yang tersisa dari Enterprise di halaman harga adalah **satu paragraf catatan
+di kaki kartu Business** (`[data-landing-negotiate]`,
+`pricingNegotiateNote`): *"Butuh lebih dari 8 PT atau 40 pengguna? Kuota,
+migrasi data, SLA, dan masa kontrak dirundingkan. Hubungi kami →"*. Angkanya
+dari `maxCompanies`/`maxUsers` paket pemikulnya (`lib/plan-copy.ts`
+`planCarriesNegotiation`, dipetakan — bukan `key === "business"` di
+komponen). Tautannya **tautan teks** pola `faqMoreCta` (`data-landing-link`,
+`colorLink`), BUKAN tombol kedua: kartu itu sudah memikul satu primer, dan
+dua tombol bertumpuk adalah dua ajakan yang bersaing di kartu yang justru
+ingin orang bayar sendiri. Tanpa `PLATFORM_CONTACT_EMAIL` kalimatnya tetap
+dan `pricingContactMissing` menggantikan tautan (pola #397). Diuji
+`public-landing.test.tsx` §#408.
+
 ### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
 
 Tiga angka (modul · bahasa · mata uang) dulu tampil **dua kali identik**: strip

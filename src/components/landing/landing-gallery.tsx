@@ -42,26 +42,36 @@
  * dengan purwarupa hero di atas pita hero, dan tepinya WAJIB (§Tepi hanya
  * wajib untuk kartu DI ATAS PITA).
  *
+ * ══ KERANGKA APLIKASI + SATU KARTU DOMINAN (#401) ══════════════════════════
+ * Sampai #401 tiga kartu "dokumen" sejajar tanpa chrome aplikasi. Kini tiap
+ * layar dibungkus `LandingAppFrame` — kerangka yang SAMA dengan hero (bilah
+ * judul jendela: nama layar + pengalih PT mini; sidebar 40px berikon) —
+ * supaya galeri terbaca sebagai tiga LAYAR dari satu aplikasi, bukan tiga
+ * kartu. Tata letaknya 1 besar + 2 kecil di ≥992px (`landing-scale.ts`
+ * `[data-landing-gallery]`): jurnal dominan di kiri (~60%) sebab ialah layar
+ * yang paling menjawab "seperti apa pekerjaan saya di dalamnya"; faktur &
+ * pengalih PT bertumpuk di kanan; satu kolom di bawahnya. Sidebar tiap
+ * kerangka menandai modul layar itu aktif (jurnal → pembukuan inti, faktur →
+ * penjualan, pengalih → pembukuan inti).
+ *
  * Warna uang TIDAK dipakai di sini: debit/kredit dan total faktur bukan
  * "masuk"/"keluar" — mewarnainya hijau/merah justru pernyataan yang salah.
- * Satu-satunya warna di luar netral adalah nada `brand` pada kepala kartu dan
+ * Satu-satunya warna di luar netral adalah nada `brand` pada pengalih PT dan
  * ikon, sama seperti purwarupa hero.
  */
-import {
-  BankOutlined,
-  BookOutlined,
-  CheckOutlined,
-  FileTextOutlined,
-  PlusOutlined,
-  SwapOutlined,
-} from "@ant-design/icons";
+import { BankOutlined, CheckOutlined, PlusOutlined } from "@ant-design/icons";
 
 import {
+  FRAME_CARD,
+  LandingAppFrame,
+  landingFrameNav,
+  type FrameCompany,
+  type FrameNavItem,
+} from "@/components/landing/landing-app-frame";
+import {
   LANDING_NOTE,
-  LANDING_SURFACE,
   landingChip,
   landingGlyph,
-  landingGrid,
 } from "@/components/landing/landing-scale";
 import { getT } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/money-format";
@@ -106,75 +116,39 @@ const KEPALA_KOLOM: React.CSSProperties = {
 };
 
 /**
- * Bingkai satu layar: kepala bernada (ikon + nama layar), badan, dan label
- * contoh di kaki — bentuk yang sama dengan `landing-hero-mock.tsx`.
+ * Satu layar galeri: kerangka aplikasi bersama (`LandingAppFrame`) dengan
+ * isi layar di dalam satu kartu area kerja (`FRAME_CARD`) — bentuk yang
+ * SAMA dengan purwarupa hero, jadi keempatnya terbaca sebagai satu produk.
  */
 function Layar({
-  icon,
   title,
+  companies,
+  nav,
   caption,
   children,
 }: {
-  icon: React.ReactNode;
   title: string;
+  companies: FrameCompany[];
+  nav: FrameNavItem[];
   caption: string;
   children: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: "var(--sai-landing-radius)",
-        border: "1px solid var(--ant-color-border-secondary)",
-        background: LANDING_SURFACE,
-        boxShadow: "var(--ant-box-shadow-tertiary)",
-        overflow: "hidden",
-      }}
+    <LandingAppFrame
+      title={title}
+      companies={companies}
+      nav={nav}
+      caption={caption}
+      style={{ height: "100%" }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--ant-margin-xs)",
-          borderBottom: "1px solid var(--ant-color-border-secondary)",
-          background: landingChip("brand"),
-          paddingInline: "var(--ant-padding)",
-          paddingBlock: "var(--ant-padding-sm)",
-          fontWeight: "var(--ant-font-weight-strong)",
-        }}
-      >
-        <span style={{ color: landingGlyph("brand"), fontSize: "var(--ant-font-size-lg)" }}>
-          {icon}
-        </span>
-        {title}
-      </div>
-      <div
-        style={{
-          flex: 1,
-          paddingInline: "var(--ant-padding)",
-          paddingBlock: "var(--ant-padding-sm)",
-          fontSize: "var(--ant-font-size)",
-        }}
-      >
+      {/* Kartu TIDAK diregangkan setinggi kerangka: di kartu jurnal yang
+          dua baris kisi (≥992px) sisa tingginya lebih jujur sebagai area
+          kerja kosong (`colorBgLayout`, seperti app) daripada sebagai kartu
+          putih besar yang separuhnya kosong. */}
+      <div style={{ ...FRAME_CARD, fontSize: "var(--ant-font-size)" }}>
         {children}
       </div>
-      {/* Label contoh: BERTEKS, selalu terlihat, di dalam kartunya sendiri.
-          14px, bukan 12px — ia mekanisme yang membuat angka di atasnya sah,
-          bukan keterangan hias (alasan lengkap di `landing-hero-mock.tsx`). */}
-      <p
-        style={{
-          ...LANDING_NOTE,
-          borderTop: "1px solid var(--ant-color-border-secondary)",
-          background: "var(--ant-color-fill-quaternary)",
-          paddingInline: "var(--ant-padding)",
-          paddingBlock: "var(--ant-padding-xs)",
-          fontSize: "var(--ant-font-size)",
-        }}
-      >
-        {caption}
-      </p>
-    </div>
+    </LandingAppFrame>
   );
 }
 
@@ -187,14 +161,32 @@ export async function LandingGallery() {
   const subtotal = CONTOH.itemOne + CONTOH.itemTwo;
   const pajak = computeTax(subtotal, DEFAULT_TAX_RATE);
 
-  const jurnal = [
-    { account: t("landing.mockAccountReceivable"), debit: pajak.total, credit: 0 },
-    { account: t("landing.mockAccountSales"), debit: 0, credit: pajak.dpp },
-    { account: t("landing.mockAccountVatOut"), debit: 0, credit: pajak.taxAmount },
-  ];
-  const totalDebit = jurnal.reduce((sum, row) => sum + row.debit, 0);
-  const totalKredit = jurnal.reduce((sum, row) => sum + row.credit, 0);
-  const seimbang = totalDebit === totalKredit;
+  /* DUA entri jurnal sejak #401 — kartu jurnal kini dominan (dua baris kisi
+     di ≥992px) dan satu entri tiga baris menyisakan bidang kosong. Entri
+     kedua adalah PELUNASAN faktur yang sama (kas & bank ← piutang), jadi
+     ketiga layar tetap satu cerita: faktur → jurnal penjualan → pelunasan.
+     Jumlah & keseimbangan tiap entri DIHITUNG dari barisnya. */
+  const entri = [
+    {
+      memo: t("landing.mockJournalMemo"),
+      rows: [
+        { account: t("landing.mockAccountReceivable"), debit: pajak.total, credit: 0 },
+        { account: t("landing.mockAccountSales"), debit: 0, credit: pajak.dpp },
+        { account: t("landing.mockAccountVatOut"), debit: 0, credit: pajak.taxAmount },
+      ],
+    },
+    {
+      memo: t("landing.mockJournalMemoTwo"),
+      rows: [
+        { account: t("landing.mockRowCash"), debit: pajak.total, credit: 0 },
+        { account: t("landing.mockAccountReceivable"), debit: 0, credit: pajak.total },
+      ],
+    },
+  ].map((e) => {
+    const totalDebit = e.rows.reduce((sum, row) => sum + row.debit, 0);
+    const totalKredit = e.rows.reduce((sum, row) => sum + row.credit, 0);
+    return { ...e, totalDebit, totalKredit, seimbang: totalDebit === totalKredit };
+  });
 
   const perusahaan = [
     { name: t("landing.mockCompany"), active: true },
@@ -229,91 +221,98 @@ export async function LandingGallery() {
           atas, yang berada DI LUAR wadah ini. */}
       <div
         aria-hidden="true"
-        style={{ ...landingGrid(3, 260), marginTop: "var(--ant-margin-lg)" }}
+        data-landing-gallery=""
+        style={{ marginTop: "var(--ant-margin-lg)" }}
       >
-        {/* ══ 1. JURNAL UMUM ═══════════════════════════════════════════════ */}
-        <Layar
-          icon={<BookOutlined />}
-          title={t("landing.mockJournalTitle")}
-          caption={caption}
-        >
-          <p style={{ ...LANDING_NOTE, marginBottom: "var(--ant-margin-xs)" }}>
-            {t("landing.mockJournalMemo")}
-          </p>
-          <div
-            style={{
-              ...BARIS,
-              ...KEPALA_KOLOM,
-              borderBottom: "1px solid var(--ant-color-border-secondary)",
-            }}
+        {/* ══ 1. JURNAL UMUM — kartu DOMINAN (kiri, dua baris di ≥992px) ══ */}
+        <div data-landing-gallery-main="" style={{ minWidth: 0 }}>
+          <Layar
+            title={t("landing.mockJournalTitle")}
+            companies={perusahaan}
+            nav={landingFrameNav(t, "core_accounting")}
+            caption={caption}
           >
-            <span>{t("landing.mockAccount")}</span>
-            <span style={{ display: "flex", gap: "var(--ant-margin-md)" }}>
-              <span style={{ ...NOMINAL, minWidth: "7ch" }}>{t("landing.mockDebit")}</span>
-              <span style={{ ...NOMINAL, minWidth: "7ch" }}>{t("landing.mockCredit")}</span>
-            </span>
-          </div>
-          {jurnal.map((row) => (
-            <div key={row.account} style={BARIS}>
-              {/* Baris kredit menjorok — konvensi penulisan jurnal. */}
-              <span style={{ paddingInlineStart: row.debit ? 0 : "var(--ant-padding)" }}>
-                {row.account}
-              </span>
-              <span style={{ display: "flex", gap: "var(--ant-margin-md)" }}>
-                <span style={{ ...NOMINAL, minWidth: "7ch" }}>{nominal(row.debit)}</span>
-                <span style={{ ...NOMINAL, minWidth: "7ch" }}>{nominal(row.credit)}</span>
-              </span>
-            </div>
-          ))}
-          {/* Baris jumlah — garis lebih tegas (`colorBorder`), konvensi yang
-              sama dengan neraca di aplikasi. Kedua jumlah DIHITUNG. */}
-          <div
-            style={{
-              ...BARIS,
-              borderTop: "2px solid var(--ant-color-border)",
-              marginTop: "var(--ant-margin-xxs)",
-              fontWeight: "var(--ant-font-weight-strong)",
-            }}
-          >
-            <span
+            <div
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "var(--ant-margin-xxs)",
+                ...BARIS,
+                ...KEPALA_KOLOM,
+                borderBottom: "1px solid var(--ant-color-border-secondary)",
               }}
             >
-              {t("landing.mockTotal")}
-              {/* "Seimbang" HANYA bila hasil hitungnya memang sama — teks +
-                  centang, dan centangnya `colorPrimary`, bukan hijau: ini
-                  pernyataan tentang jurnal, bukan tentang uang. */}
-              {seimbang && (
-                <span
+              <span>{t("landing.mockAccount")}</span>
+              <span style={{ display: "flex", gap: "var(--ant-margin-md)" }}>
+                <span style={{ ...NOMINAL, minWidth: "7ch" }}>{t("landing.mockDebit")}</span>
+                <span style={{ ...NOMINAL, minWidth: "7ch" }}>{t("landing.mockCredit")}</span>
+              </span>
+            </div>
+            {entri.map((e, i) => (
+              <div key={e.memo} style={{ marginTop: i === 0 ? "var(--ant-margin-xs)" : "var(--ant-margin)" }}>
+                <p style={{ ...LANDING_NOTE, marginBottom: "var(--ant-margin-xxs)" }}>{e.memo}</p>
+                {e.rows.map((row) => (
+                  <div key={row.account} style={BARIS}>
+                    {/* Baris kredit menjorok — konvensi penulisan jurnal. */}
+                    <span style={{ paddingInlineStart: row.debit ? 0 : "var(--ant-padding)" }}>
+                      {row.account}
+                    </span>
+                    <span style={{ display: "flex", gap: "var(--ant-margin-md)" }}>
+                      <span style={{ ...NOMINAL, minWidth: "7ch" }}>{nominal(row.debit)}</span>
+                      <span style={{ ...NOMINAL, minWidth: "7ch" }}>{nominal(row.credit)}</span>
+                    </span>
+                  </div>
+                ))}
+                {/* Baris jumlah — garis lebih tegas (`colorBorder`), konvensi
+                    yang sama dengan neraca di aplikasi. Kedua jumlah DIHITUNG. */}
+                <div
                   style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                    marginInlineStart: "var(--ant-margin-xs)",
-                    fontSize: "var(--ant-font-size-sm)",
-                    fontWeight: "normal",
-                    color: "var(--ant-color-primary)",
+                    ...BARIS,
+                    borderTop: "2px solid var(--ant-color-border)",
+                    marginTop: "var(--ant-margin-xxs)",
+                    fontWeight: "var(--ant-font-weight-strong)",
                   }}
                 >
-                  <CheckOutlined />
-                  {t("landing.mockBalanced")}
-                </span>
-              )}
-            </span>
-            <span style={{ display: "flex", gap: "var(--ant-margin-md)" }}>
-              <span style={{ ...NOMINAL, minWidth: "7ch" }}>{formatMoney(totalDebit, "IDR")}</span>
-              <span style={{ ...NOMINAL, minWidth: "7ch" }}>{formatMoney(totalKredit, "IDR")}</span>
-            </span>
-          </div>
-        </Layar>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "var(--ant-margin-xxs)",
+                    }}
+                  >
+                    {t("landing.mockTotal")}
+                    {/* "Seimbang" HANYA bila hasil hitungnya memang sama — teks +
+                        centang, dan centangnya `colorPrimary`, bukan hijau: ini
+                        pernyataan tentang jurnal, bukan tentang uang. */}
+                    {e.seimbang && (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          marginInlineStart: "var(--ant-margin-xs)",
+                          fontSize: "var(--ant-font-size-sm)",
+                          fontWeight: "normal",
+                          color: "var(--ant-color-primary)",
+                        }}
+                      >
+                        <CheckOutlined />
+                        {t("landing.mockBalanced")}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{ display: "flex", gap: "var(--ant-margin-md)" }}>
+                    <span style={{ ...NOMINAL, minWidth: "7ch" }}>{formatMoney(e.totalDebit, "IDR")}</span>
+                    <span style={{ ...NOMINAL, minWidth: "7ch" }}>{formatMoney(e.totalKredit, "IDR")}</span>
+                  </span>
+                </div>
+              </div>
+            ))}
+          </Layar>
+        </div>
 
         {/* ══ 2. FAKTUR PENJUALAN ══════════════════════════════════════════ */}
         <Layar
-          icon={<FileTextOutlined />}
           title={t("landing.mockInvoiceTitle")}
+          companies={perusahaan}
+          nav={landingFrameNav(t, "sales")}
           caption={caption}
         >
           <div style={{ ...BARIS, paddingTop: 0 }}>
@@ -367,8 +366,9 @@ export async function LandingGallery() {
             dengan dua PT contoh, satu sedang dibuka, dan jalan menambah PT —
             `companies/new` memang ada, jadi tombol itu bukan janji kosong. */}
         <Layar
-          icon={<SwapOutlined />}
           title={t("landing.mockSwitcherTitle")}
+          companies={perusahaan}
+          nav={landingFrameNav(t, "core_accounting")}
           caption={caption}
         >
           <p style={{ ...LANDING_NOTE, marginBottom: "var(--ant-margin-xs)" }}>

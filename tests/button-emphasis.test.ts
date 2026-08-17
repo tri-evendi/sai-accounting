@@ -192,7 +192,15 @@ const namaTag = (n: Jsx) => (ts.isJsxElement(n) ? n.openingElement.tagName : n.t
  * hari dicabut, penjaga #2 memang jadi buta terhadap tombol implisit — tetapi
  * di dunia itu tombol implisit memang sekunder, jadi butanya benar.
  */
-const NILAI_PRIMER = new Set(["primary", "default"]);
+/*
+ * `inverse` (#401) IKUT dihitung: ia tombol berisi penuh — isian putih, label
+ * navy — yang dibuat untuk berdiri di atas pita navy pekat, tempat `primary`
+ * lenyap sebagai bidang (navy di atas navy). Secara penekanan ia SETARA
+ * primer, jadi ia tunduk pada kedua aturan yang sama: satu per wadah, dan di
+ * pendaratan wajib menuju `/register`. Penjaga yang tidak mengenalnya akan
+ * membuka jalan memutar yang persis sama dengan `ButtonLink` dulu.
+ */
+const NILAI_PRIMER = new Set(["primary", "default", "inverse"]);
 
 /**
  * Nilai `variant` sebuah `<Button>`, atau `undefined` bila tidak ditulis.
@@ -208,7 +216,7 @@ function varianDari(node: Jsx): string | undefined {
     const nilai = a.initializer;
     if (nilai && ts.isStringLiteral(nilai)) return nilai.text;
     const teks = nilai ? nilai.getText() : "";
-    return /["'](?:primary|default)["']/.test(teks) ? "primary" : "__dinamis__";
+    return /["'](?:primary|default|inverse)["']/.test(teks) ? "primary" : "__dinamis__";
   }
   return undefined;
 }
@@ -439,6 +447,8 @@ describe("penekanan tombol (#267)", () => {
     expect(uji('<div><Button variant="primary">A</Button><Button variant="primary">B</Button></div>')).toBe(2);
     // `default` adalah alias `primary` di `ui/button.tsx`, bukan "tombol biasa".
     expect(uji('<div><Button variant="default">A</Button><Button variant="primary">B</Button></div>')).toBe(2);
+    // `inverse` (#401) adalah tombol berisi penuh yang dibalik warnanya — tetap primer.
+    expect(uji('<div><ButtonLink variant="inverse" href="/x">A</ButtonLink><Button variant="primary">B</Button></div>')).toBe(2);
     // Varian berkondisi yang salah satu cabangnya primer tetap dihitung.
     expect(
       uji('<div><Button variant={x ? "primary" : "outline"}>A</Button><Button variant="primary">B</Button></div>')

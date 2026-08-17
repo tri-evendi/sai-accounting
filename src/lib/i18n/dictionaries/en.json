@@ -10,8 +10,8 @@
     "navPricing": "Pricing",
     "navFaq": "FAQ",
     "navDocs": "Docs",
-    "heroHeading": "Books for one company or several, in one account",
-    "heroBody": "Record daily transactions, close the period, and produce financial statements and VAT figures without being an accountant — the accounting itself stays by the book. Start with one company; the next one is simply added, with its own ledger and no second account.",
+    "heroHeading": "Tidy books for one company — or many",
+    "heroBody": "Record transactions, close the period, and produce financial statements and VAT figures without being an accountant. Every company keeps its own ledger, all under one account.",
     "heroPrimary": "Create an account",
     "heroSecondary": "Sign in",
     "heroNote": "Invited by a colleague? Use the invitation link in your email.",
@@ -56,7 +56,7 @@
     "pricingUnavailable": "The plan list is unreachable right now. Please try again later, or contact us.",
     "pricingEmpty": "No plans are on offer yet. Contact us for a quote.",
     "ctaHeading": "Ready to start?",
-    "ctaBody": "Create an account, verify your email, then register your first company. Nothing to install.",
+    "ctaBody": "Create an account, verify your email, then register your first company.",
     "footerTagline": "Bookkeeping for businesses in Indonesia.",
     "footerLegal": "Legal",
     "footerTerms": "Terms and conditions",
@@ -184,7 +184,9 @@
     "mockSwitcherTitle": "Company switcher",
     "mockSwitcherHint": "One account, a separate ledger per company",
     "mockActive": "Open now",
-    "mockAddCompany": "Add a company"
+    "mockAddCompany": "Add a company",
+    "mockDashboardTitle": "Dashboard",
+    "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank"
   },
   "common": {
     "save": "Save",

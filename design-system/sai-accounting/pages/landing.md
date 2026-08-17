@@ -29,8 +29,8 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
 
 ## Susunan seksi, dan kenapa urutannya begitu
 
-    hero (+ kerangka aplikasi & ponsel + strip bukti)   gradien brand → cyan
-      → "Yang Anda dapatkan"           polos, kartu bernada
+    hero (+ kerangka aplikasi & ponsel + strip fakta berpil)  gradien brand → cyan
+      → "Yang Anda dapatkan"           polos, kartu bernada + potongan UI (#402)
       → "Apa saja yang ada di dalam"   pita cyan, DAFTAR (tanpa kartu)
           + galeri tiga layar          kerangka aplikasi, 1 besar + 2 kecil (#399, #401)
       → "Untuk siapa"                  polos, kartu bernada + pil modul   (#398)
@@ -41,6 +41,7 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
       → kontak                         polos, panel bernada + daftar kanal
       → ajakan penutup                 pita PEKAT navy merek — PUNCAK (#401)
       → kaki                           pita indigo
+    (+ tombol WhatsApp melayang, ≥576px, bila nomornya disetel — bukan seksi, bukan pita; #402)
 
 Perhatikan iramanya: **polos → pita → polos → pita**. Itu bukan kebetulan
 melainkan hasil aturan tepi di bawah — seksi yang kartunya bernada wajib polos,
@@ -275,6 +276,48 @@ dan dibuang: tiga sisa di dua kolom menyisakan **satu kartu yatim** di baris
 terakhir, yang terbaca sebagai kisi yang gagal memuat — bukan sebagai
 penekanan. Irama halaman ini dipecah di daftar modul, bukan di sini. Jangan
 menghidupkannya kembali tanpa menyelesaikan yatimnya lebih dulu.
+
+### Potongan UI di kartu manfaat & pil modul berikon (#402)
+
+Sesudah hero memakai kerangka aplikasi (#401), seksi manfaat adalah yang
+pertama kembali ke "ikon + judul + paragraf" — kompetitor tidak pernah berhenti
+memperlihatkan produknya. Tiap kartu kini memuat SATU potongan UI kecil,
+dirender server, yang menggambar hal yang kalimatnya katakan
+(`landing-features.tsx`):
+
+| Kartu | Potongan | Sumbernya |
+|---|---|---|
+| Buku terpisah per PT | pengalih PT — chip yang SAMA dengan bilah kerangka (`FRAME_CHIP`, diekspor dari `landing-app-frame.tsx`) + kalimat `mockSwitcherHint` | nama PT contoh (`mockCompany*`) |
+| Peran & jejak audit | tiga lencana peran (chip indigo) + baris "siapa · kapan · apa" | `ROLES` + `roleLabels()` — penolong yang sama dengan halaman Pengguna, bukan kunci kamus yang dirakit dinamis |
+| PPN & e-Faktur | tabel tiga baris DPP / PPN / total | `computeTax(DEFAULT_TAX_RATE)` — kunci baris yang sama dengan faktur galeri; berkasnya masuk `ALLOWED` `tests/tax-rates.test.ts` |
+| Tiga bahasa | pil bahasa | `LOCALES` + `LOCALE_LABELS` (nama dalam bahasanya sendiri) |
+
+Aturan yang mengikatnya:
+
+- **Primitif kerangka, bukan bentuk baru.** Wadah potongan = `FRAME_CARD`
+  (permukaan `colorBgContainer` bertepi — tepinya WAJIB: ia berdiri di atas
+  kartu BERNADA, 1,2–1,5:1 tanpa tepi), pil = `landingChip` sehue kartu.
+- **§Angkanya karangan berlaku pada satu-satunya potongan bernominal (PPN)**:
+  label "contoh tampilan" (`mockCaption`, kunci yang sama) di dalam kartunya —
+  jadi labelnya kini tampil LIMA kali di `/` (hero + 3 galeri + 1), dikunci
+  `tests/public-landing.test.tsx`. Seluruh potongan `aria-hidden` (ilustrasi
+  kalimat di atasnya). Nama peran & bahasa bukan angka karangan.
+- **Potongan SELEBAR kartu, di bawah baris ikon+teks — DIUKUR.** Di 320px
+  kolom teks kartu hanya ±184px (kartu 288 − padding 48 − ikon 40 − jarak 16)
+  dan tabel DPP/PPN/total menuntut ±200px; di lebar kartu penuh (±240px) ia
+  muat tanpa memotong nominal. Overflow potongan terukur 0 di 320/390/576/
+  768/992/1440. Tinggi kartu tidak lagi seragam (1440: 208/208/267/267;
+  390: 232/281/314/223) — kisi `landingGrid` meregangkan per baris, jadi
+  yang berpasangan sebaris tetap sama tinggi.
+- **Tiga peran, bukan empat**: pil "Administrator Sistem" patah ke baris
+  ketiga di kartu 280px.
+- **Pil modul "Untuk siapa"** kini berikon `MODULE_ICON` (peta yang sama
+  dengan daftar modul & sidebar kerangka), 32px, `fontWeight 500`, glif anak
+  tangga -8 sehue (≥3:1 di atas chip — pasangan yang sudah diukur). Pil
+  menunjuk balik ke baris yang baru dibaca di seksi modul, bukan sekadar
+  menyebut namanya.
+- **Keterangan Integrasi dipangkas ke SATU kalimat** di ketiga bahasa
+  (`integration*Body`); klaimnya tidak berubah, hanya panjangnya.
 
 ## Formulir kontak — satu-satunya formulir di pendaratan
 
@@ -552,6 +595,33 @@ sesudah orang memutuskan untuk terus menggulung atau tidak — dan berbentuk
 **sama persis** dengan sepuluh kartu modul di bawahnya, sehingga terbaca sebagai
 tiga modul lagi. Sekarang: tepat sesudah hero, angka di atas label, tanpa kotak.
 
+### Strip fakta berpil: ikon + angka besar (#402)
+
+Tiga angka teks polos adalah bobot visual paling lemah di halaman (tinjauan
+visual 2026-08-17). Kini tiap fakta berdiri di dalam **pil `chip-brand`**
+(28%): lingkaran ikon `surface` 40px di kiri (glif `colorPrimary`), angka
+`fontSizeHeading2` `tabular-nums` + label 14px di kanan; ketiganya `flex-wrap`
+basis 200px, tepat di atas garis bawah hero.
+
+- **Nada di atas nada — DIUKUR, bukan dilarang mentah.** §"warnai pitanya ATAU
+  kartunya" lahir dari `fill` (14%) di atas pita sehue: 1,03:1. Pil ini `chip`
+  (28%), dan terhadap kedua ujung gradien hero terukur **1,22 / 1,31:1
+  (terang) · 1,31 / 1,23:1 (gelap)** — di atas lantai 1,05 "nada ini
+  benar-benar ada di layar", dan justru LEBIH terlihat daripada permukaan
+  `surface` (1,01:1 terhadap `band-brand` di tema gelap). Teks 11,89 / 9,43:1,
+  glif 7,82 / 4,16:1; pil tidak memikul tombol. Dikunci
+  `tests/landing-colors.test.ts` §#402.
+- **Baris, diukur:** 320px (288 tersedia) & 390px → tiga pil bertumpuk (71px
+  tiap); 576px → 2 + 1 (pil ketiga melebar 528px); ≥768px satu baris (232 →
+  360px per pil di 1440). Aturan bilangan vs daftar (§di atas) tetap: mata
+  uang `fontSizeHeading4` tanpa `tabular-nums`.
+- **Slot lencana PSE Komdigi**: barisnya `flex-wrap` + `flex: 1 1 200px`, jadi
+  butir keempat tinggal ditambahkan ke daftar `facts` dan barisnya patah
+  sendiri (4 × 200 + 3 × 12 = 836px < 1152px → tetap sebaris di 1440;
+  2 + 2 di 768). Lencananya SENDIRI belum ada dan TIDAK boleh dipajang sebelum
+  pendaftarannya nyata (§KLAIM HARUS PUNYA SUMBER).
+- Tetap muncul SEKALI (#397): yang di harga tetap kalimat.
+
 ## Copy, harga, FAQ — hasil tinjauan terhadap sembilan kompetitor (#397)
 
 Halaman ini dibandingkan dengan Jurnal, Accurate, Kledo, Zahir, Paper.id,
@@ -616,6 +686,17 @@ purwarupanya (pengalih PT di kerangka) mengatakan hal yang sama. `ctaBody`
 kehilangan kalimat "Tidak ada yang perlu dipasang" — di pita penutup ia
 berdiri satu baris di atas `ctaTrialNote` yang mengatakan hal yang sama.
 
+**Kalimat KEDUA `heroBody` disembunyikan di bawah 576px (#402).** Dua kalimat
+terukur 5 baris di 390px sebelum tombol. `landing-hero.tsx` memotong teks
+pada tanda akhir kalimat pertama (`. ! ?` atau `。` ZH) dan membungkus sisanya
+`[data-landing-hero-body-more]`, yang di bawah 576px **dikurung 1px** (teknik
+nama merek di bilah — BUKAN `display:none`, supaya pembaca layar tetap
+mendapat kalimat utuh) dan kembali `static` mulai 576px. Satu kunci kamus,
+tetap dipakai `generateMetadata`. **Diukur:** 320px → 3 baris, 390px → 3
+baris (dulu 5); ≥576px kalimat utuh (576: 3 baris, 992/1440: 4 baris; 768:
+5 baris — kolom hero 45% di titik patah dua kolom, keadaan #401 yang tidak
+berubah). Kamus yang kelak hanya satu kalimat dirender apa adanya.
+
 ### Hemat tahunan: DIHITUNG di kartu, hilang bila nol/negatif
 
 Baris "Bayar tahunan hemat Rp X (≈ N bulan)" di bawah harga tahunan. Nominal
@@ -631,6 +712,32 @@ diskon yang diketik.
   rusak.
 - Bulan ditampilkan satu desimal format `id-ID` (2,0 → "2"; 1,5 tetap "1,5").
   `tabular-nums`, sesuai aturan angka MASTER.md.
+
+### Kisi harga dipusatkan (≤2 kartu), Enterprise setinggi Pro (#402)
+
+Katalog publik memuat DUA paket (Pro + rundingan) dan kisi 72rem memberi
+masing-masing 568px — selebar dua kolom teks, separuh badan Enterprise kosong.
+Kini `<ul>` paket ber-`maxWidth` **760px** + `marginInline: auto` selama
+`plans.length ≤ 2`, dan melebar otomatis (tanpa `maxWidth`) bila katalog
+punya ≥3 paket — bukan kolom mati yang menunggu. **Diukur keduanya:** dua
+kartu di 760px = (760 − 16) / 2 = **372px** per kartu di ≥992px (`<ul>` di
+x=116 pada 992, x=340 pada 1440); tiga kartu di kisi penuh = (1152 − 32) / 3 =
+**373px** — kartu paket berlebar sama berapa pun jumlah paketnya. Di 768px
+kisi 720px (kartu 352), di ≤576px satu kolom.
+
+Kartu rundingan mendapat **tiga butir "termasuk"** (kuota dirundingkan,
+dukungan langsung lewat kanal kontak, ketentuan & masa kontrak khusus —
+`pricingContactQuota/Support/Terms`, tiga bahasa) supaya isinya setinggi Pro
+(terukur 402px keduanya di 992/1440; badannya memang diregang kisi, yang
+diisi butir adalah RUANGnya). Ketiganya jujur: kuota memang dirundingkan
+(`plan-change-contact-only`), dukungan lewat kanal `contactChannels()` yang
+sama — TANPA jam layanan/SLA (§KLAIM HARUS PUNYA SUMBER) — dan ketentuan
+kontrak memang milik perundingan.
+
+Kepala Pro `chip-brand` (28%) vs kepala Enterprise `fill-indigo` (14%): teks
+di atas kepala Pro **11,89 / 9,43:1**, dan kedua kepala berbeda satu sama lain
+**1,20 / 1,22:1** (kedua tema; lantai 1,05) — kini dikunci eksplisit di
+`tests/landing-colors.test.ts` §#402. Pil "Direkomendasikan" tetap netral.
 
 ### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
 
@@ -770,6 +877,16 @@ satu per satu adalah koreografi, dan koreografi adalah animasi hias.
   seksi ditekan — ia tetap terbuka di bawah bilah menempel sampai tombol X
   ditekan. Menutup otomatis menuntut JavaScript; itu lebih mahal daripada satu
   ketukan.
+- **Dua penumpang baru titik patah 576px (#402):** `[data-landing-fab]`
+  (tombol WhatsApp melayang: `none` → `block`) dan
+  `[data-landing-hero-body-more]` (kalimat kedua hero: dikurung 1px →
+  `static`). Keduanya menumpang titik patah yang ADA, bukan titik patah baru.
+  ⚠ Diukur di #402 pada `develop` SEBELUM perubahan apa pun: di **tepat
+  768px** bilah atas menuntut **782px** (`[data-landing-nav-actions]` sampai
+  x=782 dengan tautan seksi + sakelar bahasa + dua tombol) — 14px gulungan
+  mendatar yang sudah ada sejak tautan bertambah di #398/#399, bukan dari
+  #402, dan di luar lingkupnya; angkanya ditulis di sini supaya orang
+  berikutnya tidak mengukurnya lagi dari nol.
 - **Skala pemasaran = `--sai-landing-*`**, dideklarasikan HANYA di dalam
   `[data-landing]` dan seluruhnya turunan token AntD, kecuali tiga lebar baca.
   Menyalinnya ke halaman internal tidak menghasilkan apa-apa.
@@ -890,6 +1007,46 @@ aplikasi (hero & galeri) memakai token yang sama, tetapi ia strip di dalam
 GAMBAR produk, bukan pita — dan tidak memikul tombol. Pita `solid` kedua di
 halaman ini menghapus puncaknya.
 
+**Tombol WhatsApp melayang (#402) juga BUKAN pita.** Ia bulatan 48px
+`position:fixed` kanan-bawah (`bottom/right: margin-lg`), isian
+`--ant-color-brand-solid` + glif putih (11,50 / 5,06:1 — angka `BrandMark`),
+`landing-whatsapp.tsx`; yang dijaga aturan ini adalah bidang navy SELEBAR
+LAYAR yang memikul ajakan, dan ini bidang kecil yang memikul satu ikon.
+Angka & keputusannya:
+
+| | TERANG | GELAP |
+|---|---|---|
+| glif putih di atas isian diam / hover / aktif (`brand-solid`, `-hover`, `-active` — token global baru = `PRIMARY_BUTTON_*`) | 11,50 / 13,38 / 16,59 | 5,06 / 6,24 / 8,64 |
+| bidang navy vs latar halaman | 11,50 | 3,64 |
+| bidang navy vs `band-brand` / `band-cyan` (hero yang dilintasinya) | 9,55 / 10,23 | 3,22 / 3,02 |
+| bidang navy vs pita penutup (token yang SAMA) | **1,00** | **1,00** |
+| cincin 2px `colorBgContainer` vs pita penutup | 11,50 | 3,64 |
+
+- **Cincin `border` 2px `colorBgContainer`, bukan `box-shadow` tulisan tangan**:
+  tanpa cincin bulatannya lenyap tepat saat melintasi pita penutup (1,00:1);
+  di atas halaman cincin sewarna latar dan memang tak terlihat. Bayangan
+  melayangnya token `--ant-box-shadow`.
+- **BUKAN hijau WhatsApp**: hijau = uang masuk di app ini, dan
+  `tests/landing-colors.test.ts` menolak warna mentah.
+- **`Button href` `outline` + gaya varian bernama (`WHATSAPP_FAB_STYLE`),
+  bukan `primary`**: tautan KELUAR (`https://wa.me/…`, tab baru, `rel`
+  noopener), dan penjaga penekanan mengunci primer pendaratan ke `/register`
+  — dijaga eksplisit di `tests/button-emphasis.test.ts`. Sumbernya
+  `contactChannels()`, sakelar yang sama dengan seksi kontak: nomor kosong /
+  salah bentuk = tidak dirender.
+- **Hover/aktif lewat token GLOBAL baru `--ant-color-brand-solid-hover` /
+  `-active`** (`antd-tokens.ts` `brandSolidHover/Active`, nilainya =
+  `PRIMARY_BUTTON_*`): token komponen `Button` (`colorPrimaryHover`) TERUKUR
+  tidak sampai ke dokumen sebagai variabel (`getComputedStyle` →
+  `--ant-button-color-primary-hover` kosong), dan `var()` yang tak teratasi
+  membuat isian hover jatuh ke `unset`.
+- **Hanya ≥576px — DIUKUR** (issue: "kalau bertabrakan, ≥576px"). Di 320/390
+  tombol hero bertumpuk selebar isi (x 16–304 / 16–374) dan bulatan 48px
+  menempati x 248–296 / 318–366 — menutupi 48px = 17% / 13% lebar ajakan
+  utama pada setiap posisi gulungan yang menaruhnya di 72px terbawah layar.
+  Di 576px tombol hero berjajar dan berakhir di x=191, bulatan di x=504–552:
+  tidak bersentuhan. Di bawah 576px WhatsApp tetap ada di seksi kontak.
+
 ### Hijau/merah/emas/jingga: TERMASUK glif dan lencana
 
 Aturan "keempatnya sudah menjadi bahasa uang & status, jadi bukan nada hias"
@@ -951,7 +1108,9 @@ label barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
 ### Penjaganya
 
 `tests/landing-colors.test.ts` menghitung ulang setiap pasangan
-teks-di-atas-warna dari token yang benar-benar terpasang dan dari resep
+teks-di-atas-warna (sejak #402 juga: kepala Pro vs kepala Enterprise, pil
+strip fakta vs gradien hero, dan tombol WhatsApp melayang di setiap keadaan)
+dari token yang benar-benar terpasang dan dari resep
 `color-mix` yang **diurai dari `LANDING_STYLE` itu sendiri** — bukan diketik
 ulang di tes. Ia mengunci: teks ≥4,5:1 di kedua tema, isian tombol ≥3:1 pada
 setiap permukaan yang memikulnya, glif ikon ≥3:1 di atas kotaknya, dan lantai

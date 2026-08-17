@@ -303,7 +303,7 @@ export const LANDING_SURFACE = "var(--sai-landing-surface)";
  * ini pada saat yang sama: seluruh pendaratan berpatah di satu titik ini saja,
  * jadi selisihnya akan terlihat sebagai kepala versi ponsel yang bertahan
  * sementara isinya sudah versi lebar (kegagalan yang sama yang tercatat di
- * kepala `app/(auth)/loading.tsx`).
+ * kepala `app/(app)/(auth)/loading.tsx`).
  */
 export const LANDING_BREAKPOINT = 576;
 
@@ -401,6 +401,13 @@ export const LANDING_STYLE = `
    tombol berarti tombolnya terdorong ke bawah lipatan, dan yang dikorbankan
    adalah satu-satunya hal yang halaman ini minta orang lakukan. */
 [data-landing-hero]{display:grid;gap:var(--ant-margin-xl);align-items:center}
+/* Catatan "sudah diundang rekan kerja?" di hero (#397): disembunyikan di bawah
+   576px, tampil kembali di blok media di bawah. Di ponsel hero satu kolom dan
+   setiap baris di atas purwarupa mendorong sisa halaman ke bawah lipatan,
+   sedangkan orang yang diundang datang lewat tautan di surelnya -- ia hampir
+   tidak pernah membaca hero ini. Kalimatnya tetap di HTML; yang berubah hanya
+   di layar mana ia memakan ruang. */
+[data-landing-hero-note]{display:none}
 [data-landing-brand]{transition:opacity 200ms ease}
 [data-landing-brand]:hover{opacity:.8}
 [data-landing-link]{transition:color 200ms ease}
@@ -439,10 +446,38 @@ export const LANDING_STYLE = `
    seksi mendarat ~66px di kiri titik tengah sebenarnya, dan selisih sebesar itu
    terbaca sebagai salah sejajar, bukan sebagai tata letak. "1fr auto 1fr"
    menaruhnya di tengah tanpa bergantung pada lebar merek atau tombol.
-   Di bawah 576px kolom tengahnya kosong (tautan disembunyikan) dan kisinya
-   tetap benar: merek di kiri, aksi di kanan. */
-[data-landing-nav]{display:grid;grid-template-columns:1fr auto 1fr;position:relative}
+   Tiga kolom itu HANYA mulai 768px (tautan tampil); di bawahnya dua kolom --
+   alasannya di blok berikutnya. */
+[data-landing-nav]{display:grid;grid-template-columns:auto 1fr;position:relative}
 [data-landing-nav-actions]{justify-self:end}
+/* == BILAH DI BAWAH 768px: DUA KOLOM, MEREK TANPA TEKS DI BAWAH 576px (#398) ==
+   Kisi tiga kolom di bawah membagi ruang SISA rata ke kolom merek dan kolom
+   ketiga yang kosong; begitu tombol menu ikut ke kolom aksi, ruang itu habis
+   dan teks merek patah dua baris (terlihat di 390px). Di bawah 768px kolom
+   tengah memang kosong (tautan disembunyikan), jadi kisinya cukup dua kolom:
+   merek selebar isinya, aksi mengisi sisanya dan rapat ke kanan.
+
+   Di bawah 576px teks merek disembunyikan secara VISUAL, bukan dihapus:
+   tautan mereknya harus tetap punya nama untuk pembaca layar. Tekniknya sama
+   dengan tautan lewati-ke-isi. Di atasnya teks kembali, dan nowrap menjaganya
+   tidak patah lagi pada lebar mana pun. */
+[data-landing-brand-name]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* == MENU PONSEL: details/summary, tanpa JavaScript (#398) ================
+   Tombol 40px (target sentuh MASTER.md) berisi dua ikon yang bertukar lewat
+   [open] -- tanpa skrip: menu bertanda X saat terbuka, tanda garis tiga saat
+   tertutup. Panelnya ABSOLUT di bawah bilah: ia tidak mendorong isi dan tidak
+   mengubah tinggi bilah yang dipakai scroll-margin-top jangkar seksi.
+   Permukaannya opak (surface) di atas bilah yang 92% translusen, dan tepi
+   bawah + bayangan token AntD memisahkannya dari isi yang lewat di baliknya.
+   Disembunyikan seluruhnya mulai 768px, tempat tautan seksi tampil di bilah. */
+[data-landing-menu-toggle]{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--sai-landing-radius-control);border:1px solid var(--ant-color-border);background:transparent;color:var(--ant-color-text);font-size:var(--ant-font-size-lg);cursor:pointer;list-style:none}
+[data-landing-menu-toggle]::-webkit-details-marker{display:none}
+[data-landing-menu-toggle]:hover{border-color:var(--ant-color-primary);color:var(--ant-color-primary)}
+[data-landing-menu-toggle]:focus-visible{outline:2px solid var(--ant-color-primary-border);outline-offset:2px}
+[data-landing-menu-toggle] [data-landing-menu-close]{display:none}
+[data-landing-menu][open] [data-landing-menu-toggle] [data-landing-menu-open]{display:none}
+[data-landing-menu][open] [data-landing-menu-toggle] [data-landing-menu-close]{display:inline-flex}
+[data-landing-menu-panel]{position:absolute;top:100%;left:0;right:0;padding:var(--ant-padding-xs) var(--sai-landing-gutter) var(--ant-padding);background:var(--sai-landing-surface);border-bottom:1px solid var(--ant-color-border-secondary);border-radius:0 0 var(--sai-landing-radius) var(--sai-landing-radius);box-shadow:var(--ant-box-shadow)}
 /* Garis bawah bilah meleleh di tepi, sama dengan pemisah seksi -- bilah ini
    menempel sepanjang gulungan, jadi ia garis yang paling lama dilihat orang. */
 [data-landing-nav]::after{content:"";position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,var(--ant-color-border-secondary) 16%,var(--ant-color-border-secondary) 84%,transparent 100%)}
@@ -483,8 +518,10 @@ export const LANDING_STYLE = `
     --sai-landing-gutter:var(--ant-padding-lg);
   }
   [data-landing-actions]{flex-direction:row}
+  [data-landing-hero-note]{display:block}
   [data-landing-chrome]{display:flex}
   [data-landing-chrome-narrow]{display:none}
+  [data-landing-brand-name]{position:static;width:auto;height:auto;overflow:visible;clip:auto}
   [data-landing-footer-grid]{grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--ant-margin-xl)}
   [data-landing-footer-bar]{flex-direction:row;align-items:center;justify-content:space-between}
   /* 1,1fr : 1fr — kolom kalimat sedikit lebih lebar daripada purwarupanya.
@@ -494,6 +531,8 @@ export const LANDING_STYLE = `
 }
 @media (min-width:${LANDING_NAV_LINKS_BREAKPOINT}px){
   [data-landing-links]{display:flex}
+  [data-landing-nav]{grid-template-columns:1fr auto 1fr}
+  [data-landing-menu]{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   [data-landing-brand],[data-landing-link],[data-landing-caret],[data-landing-card]{transition:none}

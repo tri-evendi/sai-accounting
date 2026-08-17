@@ -62,7 +62,7 @@ describe("perusahaan yang baru lahir: dipilih hanya bila belum ada", () => {
   });
 
   it("formulir pembuatan memakai keputusan itu, bukan salinannya", () => {
-    const form = read("app/(tenant)/(panel)/companies/new/company-form.tsx");
+    const form = read("app/(app)/(tenant)/(panel)/companies/new/company-form.tsx");
     expect(form).toMatch(/companyToAdoptAfterCreate\(session\?\.user\?\.companyId/);
     expect(form).toMatch(/update\(\{ companyId: adopt \}\)/);
   });

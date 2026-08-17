@@ -57,8 +57,8 @@ const token = theme.getDesignToken();
 const HEAD_BG = tableHeadBg("light");
 
 const MATRIX_FILES = [
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
+  "src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
+  "src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
 ];
 
 function source(relative: string) {
@@ -215,7 +215,7 @@ describe("matriks izin — header tetap terbaca saat digulir", () => {
         join(
           __dirname,
           "..",
-          "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/matrix-sticky.ts"
+          "src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/matrix-sticky.ts"
         )
       ),
       "matrix-sticky.ts hidup lagi"

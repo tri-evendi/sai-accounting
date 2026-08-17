@@ -407,7 +407,7 @@ export function AuthShell({
 
                 {/* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak
                     menambah apa pun — lihat catatan di
-                    `app/(auth)/forgot-password/page.tsx`. */}
+                    `app/(app)/(auth)/forgot-password/page.tsx`. */}
                 {error && (
                   <div style={{ marginBottom: token.marginLG }}>
                     <Alert type="error" showIcon message={error} />

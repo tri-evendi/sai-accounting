@@ -83,7 +83,12 @@ const CHECK: React.CSSProperties = {
   fontSize: "var(--ant-font-size-lg)",
 };
 
-export async function LandingPricing() {
+export async function LandingPricing({
+  headingLevel = "h2",
+}: {
+  /** `h1` di `/harga`, tempat seksi ini menjadi kepala halamannya (#399). */
+  headingLevel?: "h1" | "h2";
+} = {}) {
   const t = await getT();
   const plans = await activePlans();
   const ppnEnabled = process.env.PLATFORM_PPN_DISABLED !== "true";
@@ -99,6 +104,7 @@ export async function LandingPricing() {
       <LandingSectionIntro
         eyebrow={t("landing.eyebrowPricing")}
         title={t("landing.pricingHeading")}
+        headingLevel={headingLevel}
       >
         {t("landing.pricingBody")}
       </LandingSectionIntro>
@@ -289,6 +295,45 @@ export async function LandingPricing() {
                             {t("platform.plansPerYear")}
                           </p>
                         )}
+                        {/* ══ HEMAT TAHUNAN — DIHITUNG, TIDAK DIKETIK (#397) ══
+                            Nominal tahunan sendirian menuntut pembaca
+                            mengalikan 12 di kepalanya untuk tahu apakah ia
+                            untung. Baris ini menjawabnya: selisih
+                            `bulanan×12 − tahunan`, dan padanannya dalam
+                            bulan — dari DUA kolom katalog yang sama yang
+                            merender kedua harga di atasnya. Katalog yang
+                            menghapus diskon tahunan (selisih 0) atau
+                            memasang tahunan lebih MAHAL (negatif) membuat
+                            barisnya hilang, bukan memajang "hemat Rp 0" /
+                            "hemat −Rp …" — kalimat yang benar secara
+                            aritmetika tapi terbaca sebagai halaman rusak. */}
+                        {(() => {
+                          if (plan.priceYearly === null) return null;
+                          const hemat =
+                            plan.priceMonthly * 12 - plan.priceYearly;
+                          if (!(hemat > 0) || !(plan.priceMonthly > 0)) {
+                            return null;
+                          }
+                          const bulan = hemat / plan.priceMonthly;
+                          return (
+                            <p
+                              style={{
+                                ...LANDING_NOTE,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            >
+                              {t("landing.pricingYearlySaving", {
+                                amount: formatMoney(hemat, plan.currency),
+                                /* Satu desimal, format `id-ID` (MASTER.md
+                                   §angka): 1.198.000/599.000 = 2,0 → "2";
+                                   pecahan yang bermakna tetap tampil ("1,5"). */
+                                months: bulan.toLocaleString("id-ID", {
+                                  maximumFractionDigits: 1,
+                                }),
+                              })}
+                            </p>
+                          );
+                        })()}
                       </>
                     )}
                     {/* Deskripsi lewat KUNCI KAMUS, bukan kolom basis data.
@@ -430,87 +475,55 @@ export async function LandingPricing() {
             ))}
           </ul>
 
-          {/* ══ YANG DIDAPAT SETIAP PAKET ═══════════════════════════════════
+          {/* ══ YANG DIDAPAT SETIAP PAKET — SATU KALIMAT, BUKAN STRIP KEDUA ══
               Kartu paket hanya menjawab "apa BEDANYA" (kuota). Yang tidak
-              dijawab siapa pun sampai perubahan ini adalah pertanyaan yang
+              dijawab siapa pun sampai kalimat ini ada adalah pertanyaan yang
               justru lebih dulu muncul: *apa yang saya dapat terlepas dari
               paket mana pun.* Tanpa itu pembaca menyimpulkan bahwa modul,
-              bahasa, dan mata uang ikut dijatah — padahal tidak.
+              bahasa, dan mata uang ikut dijatah — padahal `Plan` hanya punya
+              `maxCompanies` & `maxUsers` (`prisma/platform/schema.prisma`).
 
-              Ketiga angkanya DIHITUNG dari registri yang sama dengan strip
-              bukti di hero, bukan diketik: modul baru muncul di sini tanpa ada
-              yang perlu ingat. Ia juga mengisi ketidakseimbangan visual yang
-              lahir dari dua kartu berukuran beda isi. */}
-          <div
-            style={{
-              marginTop: "var(--ant-margin)",
-              borderRadius: "var(--sai-landing-radius)",
-              background: landingFill("indigo"),
-              padding: "var(--ant-padding)",
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: "var(--ant-font-size-sm)",
-                fontWeight: "var(--ant-font-weight-strong)",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "var(--ant-color-text-secondary)",
-              }}
-            >
-              {t("landing.pricingAllTitle")}
-            </p>
-            <dl
-              style={{
-                ...landingGrid(3, 160),
-                margin: 0,
-                marginTop: "var(--ant-margin-sm)",
-              }}
-            >
-              {[
-                {
-                  v: String(BUSINESS_MODULES.length),
-                  l: t("landing.factModules"),
-                },
-                { v: String(LOCALES.length), l: t("landing.factLanguages") },
-                { v: CURRENCIES.join(" · "), l: t("landing.factCurrencies") },
-              ].map((f) => (
-                <div
-                  key={f.l}
-                  style={{ display: "flex", flexDirection: "column-reverse" }}
-                >
-                  <dt style={{ ...LANDING_NOTE }}>{f.l}</dt>
-                  <dd
-                    style={{
-                      margin: 0,
-                      fontSize: "var(--ant-font-size-lg)",
-                      fontWeight: "var(--ant-font-weight-strong)",
-                    }}
-                  >
-                    {f.v}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
+              Sampai #397 jawabannya berbentuk `<dl>` tiga angka besar —
+              SALINAN PERSIS strip bukti di hero (`landing-stats.tsx`), yang
+              muncul dua kali identik di satu halaman. Bentuk yang tetap ada
+              di sini adalah kalimatnya: seksi harga sudah memikul tiga kartu
+              berisi nominal, dan tiga angka besar lagi di bawahnya bersaing
+              dengan harga yang seharusnya paling dibaca. Yang menjawab "apa
+              yang saya dapat" adalah KALIMAT; yang menjawab "seberapa banyak"
+              adalah strip di hero, sekali. Alasan pilihannya:
+              `pages/landing.md` §Strip fakta muncul sekali.
 
-          {/* Catatan uji coba & PPN sebagai BLOK BERPERMUKAAN, bukan kalimat
-              lepas. Keduanya mengubah angka yang baru saja dibaca orang (yang
-              tertagih = harga + PPN), dan kalimat telanjang di bawah tiga
-              kartu adalah bentuk paling mudah untuk dilewati mata. Tepinya
-              menahan mata satu ketukan lebih lama, tanpa menjadi peringatan. */}
+              Ketiga angkanya tetap DIHITUNG dari registri yang sama dengan
+              strip hero, bukan diketik: modul baru muncul di sini tanpa ada
+              yang perlu ingat. */}
           <p
             style={{
               ...LANDING_NOTE,
-              marginTop: "var(--ant-margin)",
+              marginTop: "var(--ant-margin-lg)",
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {/* Uji coba disebut DI SINI, di sebelah harganya, bukan sebagai
-                janji terpisah di hero: setiap tenant baru memang lahir di
-                paket `trial` selama TRIAL_DAYS hari, dan angkanya diambil
-                dari konstanta yang sama dengan yang menghitungnya. */}
+            {t("landing.pricingAllNote", {
+              modules: BUSINESS_MODULES.length,
+              languages: LOCALES.length,
+              currencies: CURRENCIES.join(" · "),
+            })}
+          </p>
+
+          {/* Catatan uji coba & PPN. Keduanya mengubah angka yang baru saja
+              dibaca orang (yang tertagih = harga + PPN), jadi keduanya berdiri
+              tepat di bawah kartunya. */}
+          <p
+            style={{
+              ...LANDING_NOTE,
+              marginTop: "var(--ant-margin-xs)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {/* Uji coba disebut DI SINI, di sebelah harganya — dan sejak #397
+                juga di tombol hero (`heroTrialCta`), dari konstanta yang sama:
+                setiap tenant baru memang lahir di paket `trial` selama
+                TRIAL_DAYS hari. */}
             {t("landing.pricingTrialNote", { days: TRIAL_DAYS })}
             {ppnEnabled &&
               ` ${t("landing.pricingTaxNote", { rate: DEFAULT_TAX_RATE })}`}

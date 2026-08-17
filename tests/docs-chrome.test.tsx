@@ -133,8 +133,8 @@ vi.mock("@/components/tenant/platform-shell", () => ({
   ),
 }));
 
-const { default: DocsLayout } = await import("@/app/(docs)/layout");
-const { default: DocsIndexPage } = await import("@/app/(docs)/docs/page");
+const { default: DocsLayout } = await import("@/app/(app)/(docs)/layout");
+const { default: DocsIndexPage } = await import("@/app/(app)/(docs)/docs/page");
 
 async function renderDokumentasi(): Promise<string> {
   const stream = await renderToReadableStream(

@@ -160,12 +160,23 @@ export function LandingSectionIntro({
   title,
   children,
   center = false,
+  headingLevel = "h2",
 }: {
   eyebrow?: string;
   title: string;
   children?: React.ReactNode;
   center?: boolean;
+  /**
+   * `h1` HANYA untuk seksi yang menjadi kepala HALAMANNYA sendiri — di
+   * `/harga` (#399) seksi harga adalah yang pertama, dan halaman tanpa `<h1>`
+   * tidak punya judul bagi pembaca layar maupun mesin pencari. Di `/` hero
+   * sudah memikul satu-satunya `<h1>`, jadi di sana bawaan `h2` yang berlaku.
+   * Bentuknya TIDAK berubah (`LANDING_SECTION_TITLE`): yang berganti tingkat
+   * dokumennya, bukan ukurannya — hero adalah satu-satunya teks berskala hero.
+   */
+  headingLevel?: "h1" | "h2";
 }) {
+  const Heading = headingLevel;
   return (
     <div
       style={{
@@ -174,7 +185,7 @@ export function LandingSectionIntro({
       }}
     >
       {eyebrow !== undefined && <p style={LANDING_EYEBROW}>{eyebrow}</p>}
-      <h2 style={LANDING_SECTION_TITLE}>{title}</h2>
+      <Heading style={LANDING_SECTION_TITLE}>{title}</Heading>
       {children !== undefined && (
         <p style={{ ...LANDING_BODY, marginTop: "var(--ant-margin-sm)" }}>
           {children}

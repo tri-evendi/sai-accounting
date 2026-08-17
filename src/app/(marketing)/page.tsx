@@ -16,12 +16,21 @@
  * ══ BERKAS INI MENYUSUN, TIDAK MENGGAMBAR (issue #245) ═════════════════════
  * Sampai #245 sebagian bentuk pemasaran — hero, kisi kartu, ajakan penutup,
  * kaki halaman — ditulis langsung di sini. Sekarang tidak lagi, dan itu bukan
- * kerapian: `app/page.tsx` adalah SATU-SATUNYA berkas di luar
- * `components/landing/**` yang boleh mengimpor apa pun dari sana
- * (`tests/landing-boundary.test.ts`). Selama bentuk pemasaran masih bisa
- * ditulis di sebuah `page.tsx`, "jangan tiru gaya pendaratan di app internal"
- * tetap imbauan; setelah bentuk itu hanya ada sebagai komponen di satu
- * direktori berpagar, menyalinnya menjadi impor yang GAGAL di tes.
+ * kerapian: halaman di `app/(marketing)/` (berkas ini dan `harga/page.tsx`)
+ * adalah SATU-SATUNYA berkas di luar `components/landing/**` yang boleh
+ * mengimpor apa pun dari sana (`PINTU_MASUK`, `tests/landing-boundary.test.ts`).
+ * Selama bentuk pemasaran masih bisa ditulis di sebuah `page.tsx`, "jangan
+ * tiru gaya pendaratan di app internal" tetap imbauan; setelah bentuk itu
+ * hanya ada sebagai komponen di satu direktori berpagar, menyalinnya menjadi
+ * impor yang GAGAL di tes.
+ *
+ * ══ ROOT LAYOUT SENDIRI (issue #399) ═══════════════════════════════════════
+ * Berkas ini hidup di route group `(marketing)` dengan root layout-nya
+ * sendiri (`../layout.tsx`), TERPISAH dari root layout aplikasi di `(app)`.
+ * Yang tidak ikut ke sini: `LocaleProvider` (kamus ~2.500 kunci di payload
+ * RSC) dan `CompanyIdentityProvider` (satu `GET /api/company/identity` per
+ * muatan) — keduanya milik aplikasi bersesi, bukan milik pengunjung anonim.
+ * Angka sebelum/sesudahnya di `pages/landing.md` §Layout akar pemasaran.
  *
  * ══ KENAPA HALAMAN INI BOLEH BERGAYA "LANDING" ═════════════════════════════
  * MASTER.md §Pemasaran vs App menyatakan pendaratan dalam token — skala hero,
@@ -44,11 +53,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
+import { LandingAudience } from "@/components/landing/landing-audience";
 import { LandingClosingCta } from "@/components/landing/landing-closing-cta";
 import { LandingContact } from "@/components/landing/landing-contact";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingFeatures } from "@/components/landing/landing-features";
 import { LandingHero } from "@/components/landing/landing-hero";
+import { LandingIntegrations } from "@/components/landing/landing-integrations";
 import { LandingModules } from "@/components/landing/landing-modules";
 import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingShell } from "@/components/landing/landing-shell";
@@ -149,6 +160,15 @@ export default async function Home({
           isinya. */}
       <LandingFeatures />
       <LandingModules />
+      {/* "Untuk siapa" SESUDAH daftar modul, bukan sesudah manfaat (#398):
+          kartunya menyebut modul lewat NAMANYA, jadi ia rujukan ke sesuatu
+          yang baru saja dibaca — "dari sepuluh itu, mana yang untuk saya".
+          Lalu "Integrasi & jalan keluar data" sebagai pita di antara dua
+          seksi polos berkartu nada (untuk siapa, kepercayaan): tanpa pita
+          itu halaman memajang tiga kisi kartu bernada berturut-turut. Alasan
+          lengkapnya di kepala kedua berkas komponennya. */}
+      <LandingAudience />
+      <LandingIntegrations />
       {/* Bukti SEBELUM harga, dan itu urutan yang disengaja: dua keberatan
           terbesar pada pembukuan multi-PT — "apakah data saya bisa tercampur"
           dan "apakah saya bisa keluar lagi" — muncul saat orang membayangkan

@@ -58,7 +58,7 @@
  * ══ Bukti bahwa penjaga #2 bukan hiasan ════════════════════════════════════
  *
  * Pada jalannya yang pertama ia MERAH di 13 berkas — seluruhnya di
- * `src/app/(dashboard)` dan `src/components`, yaitu potongan audit berikutnya.
+ * `src/app/(app)/(dashboard)` dan `src/components`, yaitu potongan audit berikutnya.
  * Ketiga belasnya didaftar di `SISA_AUDIT`, daftar yang hanya boleh MENGECIL;
  * potongan 2 mencabut satu barisnya, potongan 3 kedua belas sisanya.
  *
@@ -357,7 +357,7 @@ describe("penekanan tombol (#267)", () => {
   it("penjaga keeksplisitan menyentuh SETIAP berkas .tsx di kedua akar", () => {
     /*
      * Tes di atas hanya sekuat lingkupnya, dan lingkup itu sebuah konstanta yang
-     * bisa dipersempit dalam satu baris — `src/app` → `src/app/(auth)` akan
+     * bisa dipersempit dalam satu baris — `src/app` → `src/app/(app)/(auth)` akan
      * membuatnya tetap hijau sambil berhenti memeriksa sembilan per sepuluh
      * app ini. Ini yang membuat penyempitan semacam itu berisik.
      *

@@ -49,9 +49,9 @@ const berkas = sourceFiles(SRC).map((f) => ({
  */
 const FLAT_TERSAHKAN = [
   // Kartu daftar PT; cabang berisinya kisi "satu pintu per PT" di kartu yang sama.
-  "app/(tenant)/(panel)/platform/team/page.tsx",
+  "app/(app)/(tenant)/(panel)/platform/team/page.tsx",
   // Kartu baris barang; kartunya punya kepala beraksi sendiri ("Tambah baris").
-  "app/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/new/delivery-order-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/new/delivery-order-form.tsx",
 ].sort();
 
 describe("keadaan kosong menggambar permukaannya sendiri", () => {

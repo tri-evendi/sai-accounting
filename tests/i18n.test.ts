@@ -227,8 +227,18 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // "{rate}%" — satu placeholder dan tanda persen; tidak ada kata untuk
     // diterjemahkan, dan tanda persennya sama di ketiga bahasa (issue #368).
     "taxSettings.ratePercent",
+    // "Menu" — kata serapan yang ejaannya identik di kedua bahasa; label
+    // tombol menu ponsel pendaratan (#398). Bahasa Mandarin memakai 菜单.
+    "landing.navMenu",
+    // "WhatsApp" adalah nama diri (merek) — sama di semua bahasa (#398).
+    "landing.contactChannelWhatsapp",
+    // "Debit" — istilah akuntansi Latin yang ejaannya identik di kedua bahasa;
+    // kepala kolom purwarupa jurnal di galeri pendaratan (#399). Mandarin 借方.
+    "landing.mockDebit",
   ]),
   zh: new Set([
+    // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).
+    "landing.contactChannelWhatsapp",
     // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
     // memakai en-dash di antara dua tanggal, jadi tidak ada yang berubah.
     "stockMovement.periodRange",

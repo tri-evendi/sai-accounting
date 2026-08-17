@@ -20,8 +20,16 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-const APP_DIR = join(__dirname, "..", "src", "app");
-const API_DIR = join(APP_DIR, "api");
+/**
+ * `src/app` sejak #399 punya DUA root layout: `(app)` (seluruh aplikasi
+ * bersesi + dokumentasi) dan `(marketing)` (`/`, `/harga`). Semua grup rute
+ * yang dijaga di berkas ini hidup di bawah `(app)`, jadi `APP_DIR` menunjuk ke
+ * sana dan kunci-kunci relatif di bawah (`(auth)/…`, `(tenant)/…`) tidak
+ * berubah. `APP_ROOT` hanya dipakai inventaris tingkat atas dan grup pemasaran.
+ */
+const APP_ROOT = join(__dirname, "..", "src", "app");
+const APP_DIR = join(APP_ROOT, "(app)");
+const API_DIR = join(APP_ROOT, "api");
 
 /**
  * Grup rute yang halamannya WAJIB mendeklarasikan izin. Jalurnya relatif
@@ -108,6 +116,18 @@ const UNGUARDED_PAGE_GROUPS = ["(auth)"];
  * saja sudah cukup membuat halamannya tidak terbaca tanpa sesi.
  */
 const PUBLIC_PAGE_GROUPS = ["(docs)"];
+
+/**
+ * Root layout PEMASARAN (issue #399) — di luar `(app)`, langsung di bawah
+ * `src/app`. Halamannya publik dengan sifat yang sama kerasnya dengan `(docs)`
+ * (tanpa penjaga, tanpa Prisma), dan daftarnya TERTUTUP: setiap halaman
+ * dipetakan ke jalur URL persis yang wajib dilepaskan `isPublicPath`.
+ */
+const MARKETING_GROUPS = ["(marketing)"];
+const MARKETING_PAGES = new Map([
+  ["(marketing)/page.tsx", "/"],
+  ["(marketing)/harga/page.tsx", "/harga"],
+]);
 
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */
 const PAGE_EXCEPTIONS = new Set([
@@ -234,7 +254,6 @@ describe("inventaris grup rute — permukaan baru WAJIB mendaftar (issue #156)",
     // merah, dan yang mendaftarkannya wajib memilih himpunan (berpenjaga
     // perusahaan / tenant / tanpa-penjaga beralasan / describe baru miliknya).
     const known = new Set([
-      "api", // route API — cakupannya dijaga describe "cakupan penjaga API route"
       ...GUARDED_PAGE_GROUPS,
       ...TENANT_PAGE_GROUPS,
       ...OPERATOR_PAGE_GROUPS,
@@ -246,6 +265,59 @@ describe("inventaris grup rute — permukaan baru WAJIB mendaftar (issue #156)",
       .map((entry) => entry.name)
       .filter((name) => !known.has(name));
     expect(unregistered).toEqual([]);
+  });
+
+  it("tingkat atas src/app hanya berisi dua root layout + api — akar baru wajib mendaftar", () => {
+    /*
+     * Sejak #399 root layout ada dua, dan sebuah root layout KETIGA (grup baru
+     * langsung di bawah `src/app` dengan `layout.tsx` sendiri) berdiri di luar
+     * semua telusur di berkas ini — persis lubang yang ditutup tes di atas,
+     * satu tingkat lebih tinggi. Yang boleh: `(app)`, `(marketing)`, `api`.
+     */
+    const known = new Set([
+      "api", // route API — cakupannya dijaga describe "cakupan penjaga API route"
+      "(app)", // root layout aplikasi — grup-grupnya diinventarisasi tes di atas
+      ...MARKETING_GROUPS,
+    ]);
+    const unregistered = readdirSync(APP_ROOT, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => !known.has(name));
+    expect(unregistered).toEqual([]);
+  });
+});
+
+describe("permukaan PUBLIK: halaman pemasaran (issue #399)", () => {
+  const pages = MARKETING_GROUPS.flatMap((group) =>
+    existsSync(join(APP_ROOT, group)) ? filesNamed(join(APP_ROOT, group), "page.tsx") : []
+  ).map((f) => relative(APP_ROOT, f).split(sep).join("/"));
+
+  it("grup (marketing) ada dan berisi TEPAT halaman yang didaftar", () => {
+    // Daftar tertutup, bukan "apa pun di dalamnya": halaman pemasaran baru
+    // harus disebut namanya di sini DAN di `isPublicPath` (proxy.ts) — kalau
+    // tidak, proxy memantulkannya ke /login dan halaman publiknya tidak
+    // pernah publik.
+    expect(pages.sort()).toEqual([...MARKETING_PAGES.keys()].sort());
+  });
+
+  it("setiap halaman pemasaran dilepaskan proxy lewat jalur PERSISnya", () => {
+    const proxy = readFileSync(join(__dirname, "..", "src", "proxy.ts"), "utf8");
+    for (const jalur of MARKETING_PAGES.values()) {
+      expect(proxy, `isPublicPath tidak menyebut "${jalur}"`).toContain(`pathname === "${jalur}"`);
+    }
+  });
+
+  it("halaman pemasaran tidak memanggil penjaga izin mana pun dan tidak menyentuh Prisma", () => {
+    // Pembacanya BELUM punya akun. `auth()` boleh — hanya untuk memantulkan
+    // yang sudah bersesi ke /dashboard — penjaga izin tidak: ia akan
+    // memantulkan justru orang yang halaman ini dibuat untuknya.
+    for (const rel of pages) {
+      const src = readFileSync(join(APP_ROOT, rel), "utf8");
+      expect(src, `${rel} memanggil penjaga perusahaan`).not.toContain("requirePagePermission(");
+      expect(src, `${rel} memanggil penjaga tenant`).not.toContain("requireTenantPagePermission(");
+      expect(src, `${rel} memanggil penjaga operator`).not.toContain("requireOperatorPage(");
+      expect(src, `${rel} mengimpor prisma`).not.toContain("@/lib/prisma");
+    }
   });
 });
 
@@ -575,9 +647,23 @@ describe("konteks perusahaan tidak datang dari sesi (issue #156)", () => {
     "(tenant)/(panel)/companies/new/company-form.tsx",
   ]);
 
-  const readers = sourceFiles(APP_DIR)
-    .map((f) => relative(APP_DIR, f).split(sep).join("/"))
-    .filter((rel) => SESSION_COMPANY_PATTERN.test(readFileSync(join(APP_DIR, rel), "utf8")));
+  /* Seluruh `src/app`: grup-grup di bawah `(app)` (kunci relatif terhadap
+     `(app)`, seperti daftar di atas), route API, dan grup pemasaran (kunci
+     relatif terhadap `src/app`). Sejak #399 `(app)` dan `api` bertetangga,
+     jadi keduanya harus ditelusuri sendiri-sendiri. */
+  const readers = [
+    ...sourceFiles(APP_DIR).map((f) => relative(APP_DIR, f)),
+    ...MARKETING_GROUPS.flatMap((group) => sourceFiles(join(APP_ROOT, group))).map((f) =>
+      relative(APP_ROOT, f)
+    ),
+    ...sourceFiles(API_DIR).map((f) => relative(APP_ROOT, f)),
+  ]
+    .map((rel) => rel.split(sep).join("/"))
+    .filter((rel) =>
+      SESSION_COMPANY_PATTERN.test(
+        readFileSync(join(rel.startsWith("api/") || rel.startsWith("(marketing)/") ? APP_ROOT : APP_DIR, rel), "utf8")
+      )
+    );
 
   it("berkas BARU yang membaca companyId dari sesi tertangkap otomatis", () => {
     expect(readers.filter((rel) => !SESSION_COMPANY_EXCEPTIONS.has(rel))).toEqual([]);
@@ -613,19 +699,19 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     // Grup (auth): keadaan PRA-akun/PRA-sesi — /api/auth/* memang route publik
     // yang terdaftar di API_EXCEPTIONS di atas. Tidak ada perusahaan untuk
     // disebut, dan alamatnya pun tidak bertenant.
-    "app/(auth)/accept-invitation/page.tsx",
-    "app/(auth)/change-password/page.tsx",
-    "app/(auth)/forgot-password/page.tsx",
-    "app/(auth)/register/page.tsx",
-    "app/(auth)/reset-password/page.tsx",
-    "app/(auth)/verify-email/page.tsx",
+    "app/(app)/(auth)/accept-invitation/page.tsx",
+    "app/(app)/(auth)/change-password/page.tsx",
+    "app/(app)/(auth)/forgot-password/page.tsx",
+    "app/(app)/(auth)/register/page.tsx",
+    "app/(app)/(auth)/reset-password/page.tsx",
+    "app/(app)/(auth)/verify-email/page.tsx",
     // Grup (tenant): route TINGKAT TENANT (#135) — pemilik tenant tanpa satu
     // pun PT adalah pemanggil yang sah, jadi menuntut perusahaan di sini
     // justru menutup permukaan yang dibuat untuk berdiri tanpanya.
-    "app/(tenant)/(panel)/companies/new/company-form.tsx",
-    "app/(tenant)/(panel)/platform/billing-actions.tsx",
-    "app/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
-    "app/(tenant)/(panel)/platform/privacy-section.tsx",
+    "app/(app)/(tenant)/(panel)/companies/new/company-form.tsx",
+    "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
+    "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
+    "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
     // Pembungkusnya sendiri.
     "lib/api-fetch.ts",
   ]);

@@ -121,7 +121,7 @@ describe("kunci buku — rahasianya wajib", () => {
  * `enterCompanyFromRoute` sendiri WAJIB juga memanggil `requireUnlockedCompany`.
  */
 const HALAMAN_BERPENJAGA_SENDIRI = [
-  "src/app/(dashboard)/t/[tenantSlug]/[companySlug]/page.tsx",
+  "src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/page.tsx",
 ];
 
 describe("kunci buku — halaman berpenjaga-sendiri tidak boleh melewatkannya", () => {

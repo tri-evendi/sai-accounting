@@ -41,7 +41,7 @@ import {
   ProvisionProgress,
   PROVISION_STEPS,
   type ProvisionState,
-} from "@/app/(tenant)/(panel)/companies/new/provision-progress";
+} from "@/app/(app)/(tenant)/(panel)/companies/new/provision-progress";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";

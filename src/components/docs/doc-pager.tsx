@@ -10,7 +10,7 @@
  *
  * ══ Kenapa DI SINI kartu justru bentuk yang benar ══════════════════════════
  * Daftar isi baru saja meninggalkan kartu karena sepuluh kotak seragam tidak
- * bisa dipindai (lihat kepala `app/(docs)/docs/page.tsx`). Di kaki halaman
+ * bisa dipindai (lihat kepala `app/(app)/(docs)/docs/page.tsx`). Di kaki halaman
  * jumlahnya paling banyak DUA, dan keduanya pilihan setara yang berdiri
  * bersebelahan — persis keadaan yang membuat kotak bertepi berguna: ia yang
  * memisahkan "mundur" dari "maju" tanpa satu kata tambahan.

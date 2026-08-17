@@ -5,7 +5,7 @@
  *
  * Berkas ini sudah lama komponen client: pesan bawaan `PageLoader` mengikuti
  * bahasa aktif, dan itu butuh konteks kamus. Ia tetap boleh dirender dari
- * server component (mis. `app/(dashboard)/loading.tsx`) — hanya jadi batas
+ * server component (mis. `app/(app)/(dashboard)/loading.tsx`) — hanya jadi batas
  * client kecil tanpa state.
  *
  * ── Kenapa tabel mendapat KERANGKA, bukan pemutar ──────────────────────────

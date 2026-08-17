@@ -1,6 +1,7 @@
 # Halaman Pendaratan `/` — override MASTER.md
 
-> Berlaku HANYA untuk `/` (`src/app/page.tsx` + `src/components/landing/**`).
+> Berlaku HANYA untuk `/` dan `/harga` (`src/app/(marketing)/**` +
+> `src/components/landing/**`).
 > Untuk halaman lain, MASTER.md tetap berlaku apa adanya.
 
 ## Kenapa halaman ini perlu override
@@ -31,15 +32,40 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
     hero (+ purwarupa produk + strip bukti)   gradien brand → cyan
       → "Yang Anda dapatkan"           polos, kartu bernada
       → "Apa saja yang ada di dalam"   pita cyan, DAFTAR (tanpa kartu)
+          + galeri tiga layar          purwarupa dirender, di dalam pita  (#399)
+      → "Untuk siapa"                  polos, kartu bernada + pil modul   (#398)
+      → "Integrasi & jalan keluar data" pita brand, DAFTAR (tanpa kartu)  (#398)
       → "Yang menjaga pembukuan Anda"  polos, kartu bernada  ← sebelum harga
       → "Paket & harga"                pita indigo, kartu `surface` bertepi
       → FAQ                            polos, panel bernada
+      → kontak                         polos, panel bernada + daftar kanal
       → ajakan penutup                 pita accent
       → kaki                           pita indigo
 
 Perhatikan iramanya: **polos → pita → polos → pita**. Itu bukan kebetulan
 melainkan hasil aturan tepi di bawah — seksi yang kartunya bernada wajib polos,
 dan seksi yang pitanya bernada tidak boleh mewarnai kartunya.
+
+### "Untuk siapa" berdiri SESUDAH daftar modul, dan "Integrasi" adalah pita (#398)
+
+Issue #398 membebaskan pilihan antara sesudah manfaat atau sesudah modul.
+Sesudah modul, karena kartunya menyebut modul lewat NAMANYA (pil
+`MODULE_META[m].labelKey`, kunci `BusinessModule` — modul yang dihapus ditolak
+`tsc`): sebelum daftar modul kata "Perdagangan"/"Dokumen ekspor" belum
+diperkenalkan; sesudahnya seksi ini menjawab *"dari sepuluh itu, mana yang
+untuk saya"*. Dan menaruh seksi polos berkartu nada tepat di bawah seksi
+manfaat yang bentuknya sama menghasilkan dua kisi identik berturut-turut —
+persis keluhan "terlalu kaku".
+
+"Integrasi & jalan keluar data" berbentuk **pita `brand` + daftar** (bentuk
+seksi modul), bukan kartu — bukan karena selera: tanpa pita itu halaman
+memajang TIGA kisi kartu bernada berturut-turut (untuk siapa → kepercayaan).
+Enam butirnya semuanya punya sumber (`lib/efaktur.ts`, `lib/reconciliation.ts`
++ `lib/bank-statements.ts`, `lib/import/*` + `lib/coa-import.ts`,
+`app/api/v1/*` + `lib/api-token.ts`, `lib/tenant-export.ts` +
+`lib/report-export.ts`, `CURRENCIES`); yang tidak ada di kode (sinkron bank
+otomatis, marketplace) tidak ditulis, dan tautan dokumennya `DocSlug | null` —
+tanpa dokumen = tanpa tautan, bukan tautan ke topik terdekat.
 
 Dua keberatan terbesar pada pembukuan multi-PT — *"apakah data saya bisa
 tercampur"* dan *"apakah saya bisa keluar lagi"* — muncul saat orang
@@ -295,7 +321,25 @@ kirim berisi penuh akan menjadi ajakan KEDUA yang bersaing di halaman yang sama.
 
 Bilah atas terukur menuntut 685px dengan empat tautan; tautan kelima
 mendorongnya melewati titik patah 768px dan menghidupkan lagi gulungan mendatar
-yang baru saja diperbaiki.
+yang baru saja diperbaiki. (Sejak #398 ia juga ada di **panel menu ponsel** —
+di panel yang bertumpuk ke bawah, lebar bukan kendala.)
+
+### Kanal dukungan: HANYA yang ada, dan tanpa janji waktu (#398)
+
+Di bawah formulir ada daftar kanal — surel, WhatsApp, dokumentasi — dan
+daftarnya dibangun dari `lib/contact-channels.ts`: surel bila
+`PLATFORM_CONTACT_EMAIL` terisi, WhatsApp bila `PLATFORM_CONTACT_WHATSAPP`
+terisi **dan sah** (nomor internasional tanpa `+`; yang salah bentuk ditolak
+`scripts/check-env.mjs` saat mulai dan tidak dirender), dokumentasi selalu.
+Kanal yang tidak disetel **tidak dirender**, bukan dirender kelabu.
+
+- Tombol WhatsApp `outline` + `Button href` (tautan KELUAR, `target=_blank`
+  `rel=noopener`), bukan `ButtonLink`, bukan `primary` — penjaga penekanan
+  mengunci setiap primer pendaratan ke `/register`; WhatsApp jalan bertanya,
+  bukan jalan mendaftar.
+- ⚠ **Tanpa jam layanan, SLA, atau "dibalas dalam N jam".** Tak ada kode yang
+  menjaminnya (§KLAIM HARUS PUNYA SUMBER), dan janji waktu balas adalah janji
+  yang paling cepat ditagih.
 
 ## Setiap seksi harus punya JALAN KELUAR, bukan berhenti di tempat
 
@@ -312,13 +356,15 @@ memeriksa**:
   pembaca mengklik lalu menemukan topik lain, merusak persis kepercayaan yang
   sedang dibangun. Slug-nya bertipe `DocSlug`, jadi dokumen yang dihapus
   ditolak `tsc`, bukan menjadi tautan mati di halaman publik.
-- **Harga** — strip "semua paket mendapat". Kartu paket hanya menjawab *apa
+- **Harga** — kalimat "semua paket mendapat". Kartu paket hanya menjawab *apa
   bedanya* (kuota); yang lebih dulu ditanya orang adalah *apa yang saya dapat
   terlepas dari paket mana pun*. Tanpa itu pembaca menyimpulkan modul, bahasa,
   dan mata uang ikut dijatah — padahal tidak. Ketiga angkanya dihitung dari
-  registri yang sama dengan strip bukti di hero.
-- **FAQ** — enam pertanyaan tidak mungkin menutup semuanya; yang pertanyaannya
-  tidak ada di sana sebelumnya sampai di ujung tanpa jalan ke mana pun.
+  registri yang sama dengan strip bukti di hero. (Sejak #397 bentuknya SATU
+  KALIMAT, bukan strip kedua — §Strip fakta muncul sekali.)
+- **FAQ** — sebelas pertanyaan tidak mungkin menutup semuanya; yang
+  pertanyaannya tidak ada di sana sebelumnya sampai di ujung tanpa jalan ke
+  mana pun.
 - **Ajakan penutup** — satu kalimat penenang tepat di bawah tombol, tempat
   keraguan menit terakhir muncul. Angkanya dari `TRIAL_DAYS`.
   ⚠ "Tanpa kartu kredit" TIDAK ditulis — tak ada kode di repo ini yang
@@ -456,6 +502,135 @@ sesudah orang memutuskan untuk terus menggulung atau tidak — dan berbentuk
 **sama persis** dengan sepuluh kartu modul di bawahnya, sehingga terbaca sebagai
 tiga modul lagi. Sekarang: tepat sesudah hero, angka di atas label, tanpa kotak.
 
+## Copy, harga, FAQ — hasil tinjauan terhadap sembilan kompetitor (#397)
+
+Halaman ini dibandingkan dengan Jurnal, Accurate, Kledo, Zahir, Paper.id,
+Majoo, Wave, FreshBooks, dan Zoho. Yang diambil dari mereka hanya yang **punya
+sumber di kode kita**; yang tidak (jumlah pelanggan, "tanpa kartu kredit",
+SLA) tetap ditolak — §KLAIM HARUS PUNYA SUMBER tidak melunak karena
+kompetitor melakukannya.
+
+### Ajakan hero menyebut lama uji coba
+
+"Coba gratis {days} hari" (`heroTrialCta`), bukan "Buat akun". Yang dijual
+tombol itu adalah **percobaan tanpa risiko**, dan itu baru tersampaikan bila
+lamanya tertulis DI TOMBOLNYA — sebelumnya angka itu baru muncul di ajakan
+penutup, tiga layar ke bawah. Sumbernya `TRIAL_DAYS`, konstanta yang sama yang
+menghitung masa uji coba.
+
+- **Kunci baru, bukan `heroPrimary` yang diubah bunyinya.** `heroPrimary`
+  dipanggil TANPA `{days}` oleh kartu paket dan ajakan penutup; placeholder
+  yang tidak diisi mendarat sebagai teks `{days}` di halaman publik. Kedua
+  tempat itu tetap "Buat akun" — tujuannya sama (`/register`), jadi
+  `tests/button-emphasis.test.ts` tetap membacanya sebagai satu ajakan yang
+  diulang.
+- ⚠ Tetap TANPA "tanpa kartu kredit". Tidak ada kode yang menjaminnya.
+
+### Copy pembuka berorientasi hasil pembeli, kejujuran "dari kode" jadi kalimat KEDUA
+
+Empat pembuka (hero, modul, harga, kepercayaan) sebelumnya **meta** — bicara
+tentang halamannya (*"Daftar ini bukan brosur…"*, *"Harga di bawah diambil dari
+katalog…"*, *"Empat hal di bawah bukan janji pemasaran…"*), bukan tentang
+masalah pembeli. Kalimat pertama kini menyebut **pekerjaan yang selesai**
+(catat transaksi, tutup periode, laporan & PPN; satu buku besar per PT; pilih
+paket sesuai PT & pengguna; catatan yang bisa dipertanggungjawabkan kepada
+pemilik, auditor, kantor pajak) — dan kalimat "datanya dari kode" **tetap
+ada**, sebagai kalimat kedua. Ia bukan hiasan: itu satu-satunya hal yang
+membedakan halaman ini dari halaman kompetitor yang mengatakan hal serupa.
+
+Setiap klaim di kalimat pertama punya pelaksananya: penutupan periode
+(`/periods`, `form-guards.ts`), laporan (`lib/reports.ts` — neraca saldo, laba
+rugi, neraca, arus kas), PPN & e-Faktur (`lib/tax.ts`, modul `tax_id`), satu
+buku besar per PT (#104; modul tidak pernah menggerbangi buku besar —
+`business-modules.ts` aturan 1), naik paket mandiri (`lib/plan-change.ts`).
+
+**Judul hero merangkul satu PT**: "Pembukuan satu atau beberapa PT, dalam satu
+akun". Judul lama ("Pembukuan beberapa PT…") membuat pemilik satu PT — pasar
+terbesar — merasa bukan sasaran, padahal paket terkecil memang satu PT. Kalimat
+tubuhnya menutup: *"Mulai dari satu PT; PT berikutnya cukup ditambahkan."*
+Purwarupa hero (tumpukan bilah PT) tetap benar: "beberapa" masih ada di
+judulnya.
+
+### Hemat tahunan: DIHITUNG di kartu, hilang bila nol/negatif
+
+Baris "Bayar tahunan hemat Rp X (≈ N bulan)" di bawah harga tahunan. Nominal
+tahunan sendirian menuntut pembaca mengalikan 12 di kepalanya; Kledo & Zoho
+menonjolkan selisihnya, dan itu memang informasi, bukan bujukan. Angkanya
+`priceMonthly × 12 − priceYearly` dari **dua kolom katalog yang sama** yang
+merender kedua harga di atasnya (`landing-pricing.tsx`) — tidak ada angka
+diskon yang diketik.
+
+- **Nol atau negatif → baris tidak dirender.** Katalog yang menghapus diskon
+  tahunan, atau memasang tahunan lebih mahal, tidak boleh memajang "hemat
+  Rp 0" / "hemat −Rp …" — benar secara aritmetika, terbaca sebagai halaman
+  rusak.
+- Bulan ditampilkan satu desimal format `id-ID` (2,0 → "2"; 1,5 tetap "1,5").
+  `tabular-nums`, sesuai aturan angka MASTER.md.
+
+### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
+
+Tiga angka (modul · bahasa · mata uang) dulu tampil **dua kali identik**: strip
+bukti di bawah hero dan `<dl>` "Semua paket mendapat" di seksi harga. Yang
+dipertahankan sebagai STRIP adalah yang di hero, dan yang di harga menjadi
+**satu kalimat berangka** (`pricingAllNote`: *"Semua paket mendapat 10 modul,
+3 bahasa antarmuka, dan mata uang USD · CNY · IDR. Yang dijatah per paket hanya
+jumlah PT dan pengguna."*). Alasannya:
+
+1. **Kedua tempat menjawab pertanyaan yang BERBEDA.** Di hero pertanyaannya
+   *"seberapa banyak"* — itu bukti, dan bukti berbentuk angka besar. Di harga
+   pertanyaannya *"apa yang saya dapat terlepas dari paket"* — itu jaminan, dan
+   jaminan berbentuk kalimat. Tiga angka besar tidak menjawab "apakah modul
+   dijatah"; kalimatnya menjawab, sekaligus menyebut apa yang MEMANG dijatah
+   (`Plan` hanya punya `maxCompanies` & `maxUsers`).
+2. **Seksi harga sudah memikul tiga kartu berisi nominal.** Tiga angka besar
+   lagi di bawahnya bersaing dengan harga yang seharusnya paling dibaca di
+   seksi itu.
+3. Bukti yang diulang berhenti terbaca sebagai bukti dan mulai terbaca sebagai
+   pengisi. Arah sebaliknya (strip di harga, kalimat di hero) ditolak karena
+   strip di hero adalah keputusan §Strip bukti pindah ke hero, yang alasannya
+   masih berlaku: bukti terbaik halaman harus tampil SEBELUM orang memutuskan
+   menggulung.
+
+Ketiga angka di kalimatnya tetap **dihitung** dari registri yang sama
+(`BUSINESS_MODULES.length`, `LOCALES.length`, `CURRENCIES`). Kunci
+`pricingAllTitle` dihapus dari ketiga kamus (penjaga kunci yatim).
+
+### Lima FAQ pembeli — setiap jawaban diverifikasi ke kode SEBELUM ditulis
+
+Enam pertanyaan lama seluruhnya soal tagihan & isolasi; yang ditanya orang
+SEBELUM sampai ke tagihan tidak terjawab satu pun. Lima yang ditambahkan, dan
+sumber tiap jawabannya (juga tercatat di kepala `landing-faq.tsx`):
+
+| Pertanyaan | Sumber jawaban | Yang SENGAJA tidak diklaim |
+|---|---|---|
+| Cocok untuk usaha apa | `BUSINESS_CATEGORIES`/`CATEGORY_META` — daftar presetnya **dirakit dari registri** (tanpa `custom`) dan `BUSINESS_MODULES.length`; modul per PT, tidak menggerbangi buku besar | segmen/industri yang tidak punya preset |
+| Impor dari sistem lama | `coa-import.ts` (akun, kolom Accurate), `import/master.ts` (pelanggan/pemasok/barang), `import/opening-ar-ap.ts`, `import/fixed-assets.ts`, templat `import/template.ts`, kolom dikenali dari judul (`import/spec.ts`), yang sudah ada dilewati bukan ditimpa; saldo awal akun di wizard penyiapan | **riwayat jurnal** — TIDAK diimpor, dan itu ditulis apa adanya |
+| Akuntan/KAP eksternal | undangan surel + peran per PT (docs/MULTI-TENANT.md §7.2–7.3, kuota `maxUsers`), peran bawaan bisa disetel + peran kustom (docs/RBAC.md), jejak audit, pencabutan sesi (docs/RBAC.md §Sesi & pencabutan) | peran "hanya-baca" siap pakai (tidak ada; yang ada: bisa dibuat) |
+| Kanal dukungan | dokumentasi publik `/docs`; formulir kontak (`landing-contact.tsx`) | **jam layanan / SLA / telepon / obrolan** — tidak ada kodenya |
+| Tempat data & UU PDP | basis data per PT (#104), ekspor mandiri, permintaan hapus bertenggang 30 hari & bisa dibatalkan (docs/COMPLIANCE.md), tidak ada hapus otomatis, `/privacy` | **lokasi server** — data residency masih keputusan terbuka (COMPLIANCE.md §5.1) |
+
+⚠ **Jawaban dukungan BERCABANG pada sakelar yang sama dengan formulirnya.**
+Formulir kontak hanya dirender bila `PLATFORM_CONTACT_EMAIL` terisi; jawaban
+yang menyuruh "pakai formulir kontak di halaman ini" pada pemasangan tanpa
+formulir adalah penunjuk palsu. Tanpa alamat, jawabannya
+`faqSupportADocsOnly` — dokumentasi saja.
+
+Urutan lima pertanyaan mengikuti urutan orang menanyakannya: cocok untuk saya?
+→ data lama saya? → akuntan saya? → kalau macet? → data saya di mana?
+`FAQPage` JSON-LD ikut otomatis (dibangkitkan dari array yang sama).
+
+### Catatan undangan disembunyikan di bawah 576px
+
+"Sudah diundang rekan kerja? …" (`heroNote`) `display:none` di bawah 576px
+lewat `[data-landing-hero-note]` di `LANDING_STYLE`, tampil kembali di blok
+media ≥576px. Di ponsel hero SATU kolom dan setiap baris di atas purwarupa
+mendorong sisa halaman ke bawah lipatan; kalimat ini menyasar orang yang
+hampir pasti tidak sedang membaca hero — yang diundang datang lewat tautan di
+surelnya. Alternatif "pindahkan ke bawah tombol Masuk" ditolak: di ponsel
+tombol-tombol bertumpuk satu kolom, jadi "di bawah Masuk" persis tempatnya
+sekarang — tidak menghemat satu baris pun. Kalimatnya tetap di HTML dan tetap
+tampil di layar yang punya ruang.
+
 ## Gerak: CSS, tidak pernah JavaScript
 
 Scroll-reveal halus lewat `animation-timeline: view()` — nol berkas skrip, jadi
@@ -501,6 +676,21 @@ satu per satu adalah koreografi, dan koreografi adalah animasi hias.
   ukuran yang biasa ditangkap layar (1920 & 390), dan yang baru ketahuan setelah
   lebar disapu satu per satu. Jangan menambah titik patah ketiga tanpa mengukur
   lebih dulu.
+- **Menu ponsel (#398): `<details><summary>`, tanpa JavaScript.** Di bawah
+  768px tautan seksi + `#kontak` + pemilih bahasa (<576px saja — di 576–768
+  sakelar di bilah sudah tampil) hidup di panel `position:absolute` di bawah
+  bilah, dibuka tombol 40px yang ikonnya bertukar (garis tiga ↔ X) lewat
+  `[open]`. Bilah di bawah 768px berkisi **dua** kolom (`auto 1fr`), tiga
+  kolom baru mulai 768px; **teks merek disembunyikan visual di bawah 576px**
+  (lambang tetap, teks tetap di DOM untuk pembaca layar) — di 390px ia
+  terukur patah dua baris begitu tombol menu ikut ke kolom aksi. Bukan titik
+  patah 400px baru: 576px yang sudah ada cukup. Disapu 320–767px lewat CDP:
+  `scrollWidth == innerWidth` di setiap lebar, tertutup maupun terbuka; panel
+  tidak melampaui viewport.
+  ⚠ Batas jujurnya: tanpa skrip, panel **tidak menutup sendiri** saat tautan
+  seksi ditekan — ia tetap terbuka di bawah bilah menempel sampai tombol X
+  ditekan. Menutup otomatis menuntut JavaScript; itu lebih mahal daripada satu
+  ketukan.
 - **Skala pemasaran = `--sai-landing-*`**, dideklarasikan HANYA di dalam
   `[data-landing]` dan seluruhnya turunan token AntD, kecuali tiga lebar baca.
   Menyalinnya ke halaman internal tidak menghasilkan apa-apa.
@@ -728,3 +918,86 @@ tag. Sebelumnya ia hanya mencocokkan `<Button>`, sehingga seluruh aturan #267
 bisa dilewati dengan menulis `<ButtonLink variant="primary">` — termasuk batas
 "setiap primer pendaratan menuju `/register`". Diukur saat diperlebar: 0
 `<ButtonLink>` tanpa `variant`, 0 wadah yang menjadi >1 primer karenanya.
+
+## Layout akar pemasaran, `/harga`, galeri layar (#399)
+
+### Dua root layout — dan angka yang membenarkannya (diukur, bukan dikira)
+
+Sampai #399 `/` berdiri di bawah root layout aplikasi, dan halaman yang
+dokumen ini sebut "nol JavaScript sisi klien" **terukur di produksi
+(2026-08-16)** mengirim 21 `<script src>` ≈ **350 KB gzip** JS, **130 KB gzip**
+HTML, dan 333 KB skrip sebaris — bukan dari `components/landing/**`, melainkan
+dari yang dibawa `app/layout.tsx` untuk SEMUA rute: `LocaleProvider` yang
+menyerialkan kamus ±2.500 kunci ke payload RSC, dan `CompanyIdentityProvider`
+yang memanggil `/api/company/identity` pada setiap muatan.
+
+Next hanya punya satu cara memisahkan itu: dua root layout di dua route group
+tanpa `app/layout.tsx` di atasnya. Maka seluruh app pindah apa adanya ke
+`app/(app)/**` (`git mv`, riwayat terjaga), `/` dan `/harga` ke
+`app/(marketing)/**`, dan bagian yang SAMA (`<html>`, font, kelas pemikul
+token, skrip tema, `AntdRegistry`, `AntdProvider`) hidup sekali di
+`components/providers/root-document.tsx` supaya kedua akar tidak menyimpang.
+
+**Sesudah** (build produksi lokal, `next start`, tanpa cache):
+
+| | sebelum (produksi) | sesudah `/` | sesudah `/harga` |
+|---|---|---|---|
+| `<script src>` | 21 | 20 | 20 |
+| JS gzip yang dirujuk | ≈350 KB | ≈346 KB | ≈346 KB |
+| HTML gzip | ≈130 KB | **≈70 KB** | ≈35 KB |
+| skrip sebaris (RSC payload) | 333 KB | **192 KB** | 72 KB |
+| `GET /api/company/identity` per muatan | 1 | **0** | 0 |
+
+Yang turun adalah **payload dokumen** (kamus & identitas), bukan chunk JS:
+±346 KB itu AntD (`ConfigProvider` + `Button`/`Card`/`Segmented` yang dipakai
+dua daun client `LocaleToggle`/`ThemeToggle`) dan runtime Next/React —
+`AntdProvider` tetap di akar pemasaran DENGAN SENGAJA, sebab ialah yang
+menulis blok `.sai-tokens{--ant-…}` yang mewarnai seluruh pendaratan.
+Menurunkan angka JS itu berarti pendaratan tanpa satu pun komponen AntD dan
+lembar token yang dibangkitkan terpisah — pekerjaan lain, dan angkanya di
+sini supaya orang berikutnya tidak mengulang pengukurannya.
+
+⚠ Dua daun client pendaratan menerima `locale`/label sebagai **prop** dari
+komponen server (`landing-nav.tsx`, `landing-footer.tsx`): akar pemasaran
+tidak memasang `LocaleProvider`. Daun client baru yang memanggil `useT()` di
+sini mendapat KUNCInya sebagai teks — pasang propnya, jangan providernya.
+
+### `/harga` — komponen yang sama, alamat sendiri
+
+Semua situs pembukuan berbahasa Indonesia yang ditinjau di #397 punya
+`/harga`; kita hanya jangkar. `/harga` merender `LandingPricing` + `LandingFaq`
+yang PERSIS sama (judul harga menjadi `<h1>` lewat `headingLevel`), metadata &
+kanonik sendiri, masuk `sitemap.ts`, dilepaskan `isPublicPath` di `proxy.ts`,
+dan pengunjung bersesi dipantulkan ke `/dashboard` seperti `/`. Ia pintu masuk
+KEDUA ke `components/landing/**` (`PINTU_MASUK`, `tests/landing-boundary`).
+
+Konsekuensi pada bilah & kaki: keduanya kini dipakai dua halaman, jadi
+jangkar ditulis **berakar** (`/#modul`, bukan `#modul`) — di `/` peramban
+tetap menggulung dalam-dokumen, di `/harga` ia menuju seksi yang benar — dan
+"Harga" adalah `<Link href="/harga">` di kedua halaman, bukan jangkar. Satu
+perilaku, bukan bercabang per halaman. Di kaki tautan berakar itu `<Link>`,
+sebab `@next/next/no-html-link-for-pages` menolak `<a href="/#…">` harfiah.
+
+### Galeri tiga layar — purwarupa dirender, di dalam pita modul
+
+Kompetitor memperlihatkan beberapa layar produk; kita satu kartu ringkasan.
+`landing-gallery.tsx` menambah tiga purwarupa dengan pola `landing-hero-mock`:
+**jurnal umum** (debit = kredit, jumlahnya DIHITUNG dari barisnya), **faktur
+penjualan** (PPN dari `computeTax`/`DEFAULT_TAX_RATE` — karena itu berkasnya
+masuk `ALLOWED` di `tests/tax-rates.test.ts`), dan **pengalih PT** (dua PT
+contoh). Ketiga syarat §"Angkanya karangan" berlaku penuh: label "contoh
+tampilan" selalu terlihat, nama PT jelas contoh, `aria-hidden`; nominal lewat
+`formatMoney()` server. Ia hidup DI DALAM pita "Apa saja yang ada di dalam"
+(sesudah daftar modul), bukan seksi sendiri: gambar layar adalah jawaban
+visual atas "apakah pekerjaan saya ada di dalamnya", pertanyaan yang seksi
+itu jawab dengan daftar.
+
+### Ikon menu ponsel: dua rule, spesifisitas (0,2,0)
+
+Ditemukan pada build produksi (bukan `next dev`): `≡` dan `×` tampil
+**bersamaan**. `[data-landing-menu-close]{display:none}` berspesifisitas
+(0,1,0) — sama dengan `.anticon{display:inline-flex}` milik
+`@ant-design/icons`, yang di produksi disisipkan SESUDAH blok pendaratan dan
+karena itu menang. Ketiga rule ikon kini disarangkan di bawah
+`[data-landing-menu-toggle]` (≥ (0,2,0)). Pelajarannya umum: rule pendaratan
+yang menyasar elemen AntD tidak boleh mengandalkan URUTAN penyisipan.

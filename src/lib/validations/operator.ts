@@ -1,7 +1,7 @@
 /**
  * Skema AKSI TULIS konsol operator (issue #155) — SATU skema, dua sisi
  * (Konvensi Form MASTER.md): form client memvalidasi dengan skema yang sama
- * yang diurai ulang server action (`app/(operator)/operator/tenants/[id]/
+ * yang diurai ulang server action (`app/(app)/(operator)/operator/tenants/[id]/
  * actions.ts`). Pesan lewat KUNCI kamus (`vmsg`) — kalimatnya disusun di
  * batas tampilan, mengikuti bahasa pengguna.
  *

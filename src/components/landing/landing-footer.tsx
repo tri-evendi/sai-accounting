@@ -37,7 +37,7 @@ import { LANDING_NOTE } from "@/components/landing/landing-scale";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@/lib/constants";
-import { getT } from "@/lib/i18n/server";
+import { getLocale, getT } from "@/lib/i18n/server";
 
 /** Tautan kaki: warna sekunder, penuh + bergaris saat hover. */
 const FOOTER_LINK: React.CSSProperties = {
@@ -69,6 +69,10 @@ const COLUMN: React.CSSProperties = {
 
 export async function LandingFooter() {
   const t = await getT();
+  /* Bahasa & teks sakelar diteruskan sebagai PROP (#399): akar pemasaran tidak
+     memasang `LocaleProvider`, dan dua daun client di bilah bawah ini
+     (`LocaleToggle`, `ThemeToggle`) memang tidak boleh menariknya. */
+  const locale = await getLocale();
   const year = new Date().getFullYear();
 
   return (
@@ -111,23 +115,23 @@ export async function LandingFooter() {
               dan tautan seksi di bilah atas disembunyikan di layar sempit. */}
           <nav aria-label={t("landing.footerProduct")} style={COLUMN}>
             <p style={COLUMN_TITLE}>{t("landing.footerProduct")}</p>
-            <a href="#modul" data-landing-link="" style={FOOTER_LINK}>
+            <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navModules")}
-            </a>
-            <a href="#harga" data-landing-link="" style={FOOTER_LINK}>
+            </Link>
+            <Link href="/harga" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navPricing")}
-            </a>
-            <a href="#tanya" data-landing-link="" style={FOOTER_LINK}>
+            </Link>
+            <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navFaq")}
-            </a>
+            </Link>
             {/* Kontak HANYA di kaki, tidak di bilah atas. Bilah itu terukur
                 menuntut 685px dengan empat tautan; tautan kelima mendorongnya
                 melewati titik patah 768px dan menghidupkan lagi gulungan
                 mendatar yang baru saja diperbaiki. Kaki halaman justru tempat
                 orang mencari cara menghubungi. */}
-            <a href="#kontak" data-landing-link="" style={FOOTER_LINK}>
+            <Link href="/#kontak" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navContact")}
-            </a>
+            </Link>
           </nav>
 
           <nav aria-label={t("landing.footerResources")} style={COLUMN}>
@@ -163,9 +167,16 @@ export async function LandingFooter() {
             }}
           >
             <div data-landing-chrome-narrow="">
-              <LocaleToggle />
+              <LocaleToggle locale={locale} label={t("userMenu.language")} />
             </div>
-            <ThemeToggle />
+            <ThemeToggle
+              labels={{
+                label: t("theme.label"),
+                light: t("theme.light"),
+                dark: t("theme.dark"),
+                system: t("theme.system"),
+              }}
+            />
           </div>
         </div>
       </div>

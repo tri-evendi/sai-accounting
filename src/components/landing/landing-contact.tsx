@@ -22,8 +22,38 @@
  * daripada tidak punya formulir: orang menulis pesan, menekan kirim, dan
  * mengira ada yang membacanya. Dalam keadaan itu seksinya menampilkan kalimat
  * apa adanya — pola yang sama dengan kartu paket rundingan.
+ *
+ * ══ KANAL DUKUNGAN: HANYA YANG ADA (#398) ══════════════════════════════════
+ * Lima dari enam situs akuntansi Indonesia yang ditinjau memasang WhatsApp;
+ * halaman ini nol, dan tak satu kalimat pun soal dukungan. Yang ditambahkan
+ * di bawah formulir adalah DAFTAR KANAL, dan daftarnya dibangun dari
+ * `contactChannels()` (`lib/contact-channels.ts`): surel bila
+ * `PLATFORM_CONTACT_EMAIL` terisi, WhatsApp bila `PLATFORM_CONTACT_WHATSAPP`
+ * terisi & sah, dokumentasi selalu (ia publik). Kanal yang tidak disetel
+ * TIDAK dirender — bukan dirender kelabu.
+ *
+ * ⚠ TANPA jam layanan, SLA, atau "dibalas dalam N jam". Tak ada kode di repo
+ * ini yang menjaminnya (`landing.md` §KLAIM HARUS PUNYA SUMBER), dan janji
+ * waktu balas adalah janji yang paling cepat ditagih.
+ *
+ * ⚠ Tombol WhatsApp `outline` + `Button href` (bukan `ButtonLink`): ia tautan
+ * KELUAR (`https://wa.me/…`), dan ia bukan primer karena penjaga penekanan
+ * mengunci setiap primer pendaratan ke `/register` — WhatsApp adalah jalan
+ * bertanya, bukan jalan mendaftar.
  */
-import { LANDING_NOTE, landingFill } from "@/components/landing/landing-scale";
+import {
+  MailOutlined,
+  ReadOutlined,
+  WhatsAppOutlined,
+} from "@ant-design/icons";
+import Link from "next/link";
+
+import {
+  LANDING_NOTE,
+  landingChip,
+  landingFill,
+  landingGlyph,
+} from "@/components/landing/landing-scale";
 import {
   LandingSection,
   LandingSectionIntro,
@@ -31,6 +61,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { ContactOutcome } from "@/lib/contact-actions";
 import { kirimPesanKontak } from "@/lib/contact-actions";
+import { contactChannels } from "@/lib/contact-channels";
 import { getT } from "@/lib/i18n/server";
 
 /** Isian: tinggi & radius kendali aplikasi, tanpa komponen AntD. */
@@ -87,7 +118,8 @@ export async function LandingContact({
   outcome?: ContactOutcome;
 }) {
   const t = await getT();
-  const tujuanAda = Boolean(process.env.PLATFORM_CONTACT_EMAIL?.trim());
+  const kanal = contactChannels();
+  const tujuanAda = kanal.email !== undefined;
 
   const pesanHasil: Record<ContactOutcome, string> = {
     terkirim: t("landing.contactSent"),
@@ -205,6 +237,151 @@ export async function LandingContact({
           <p style={LANDING_NOTE}>{t("landing.contactUnavailable")}</p>
         )}
       </div>
+
+      {/* ══ KANAL DUKUNGAN ══════════════════════════════════════════════════
+          `<dl>`: nama kanal → keterangan + aksinya. Butir surel & WhatsApp
+          hanya ada bila env-nya terisi (lihat kepala berkas); dokumentasi
+          selalu — `/docs` publik, `proxy.ts` melepaskannya tanpa penjaga. */}
+      <div
+        style={{
+          maxWidth: "var(--sai-landing-measure-narrow)",
+          marginTop: "var(--ant-margin-lg)",
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: "var(--ant-font-size-lg)",
+            fontWeight: "var(--ant-font-weight-strong)",
+          }}
+        >
+          {t("landing.contactSupportTitle")}
+        </h3>
+        <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-xxs)" }}>
+          {t("landing.contactSupportBody")}
+        </p>
+
+        <dl
+          style={{
+            display: "grid",
+            gap: "var(--ant-margin)",
+            margin: 0,
+            marginTop: "var(--ant-margin)",
+          }}
+        >
+          {kanal.email !== undefined && (
+            <Kanal
+              icon={MailOutlined}
+              term={t("landing.contactChannelEmail")}
+              body={t("landing.contactChannelEmailBody")}
+            >
+              <a
+                href={`mailto:${kanal.email}`}
+                data-landing-link=""
+                style={{
+                  color: "var(--ant-color-link)",
+                  fontSize: "var(--ant-font-size)",
+                  textDecoration: "none",
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {kanal.email}
+              </a>
+            </Kanal>
+          )}
+
+          {kanal.whatsappUrl !== undefined && (
+            <Kanal
+              icon={WhatsAppOutlined}
+              term={t("landing.contactChannelWhatsapp")}
+              body={t("landing.contactChannelWhatsappBody")}
+            >
+              {/* `Button href` (tautan keluar, tab baru), `outline` — bukan
+                  primer; alasannya di kepala berkas. `rel` menutup
+                  `window.opener` untuk tab yang dibuka. */}
+              <Button
+                href={kanal.whatsappUrl}
+                variant="outline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("landing.contactWhatsappCta")}
+              </Button>
+            </Kanal>
+          )}
+
+          <Kanal
+            icon={ReadOutlined}
+            term={t("landing.contactChannelDocs")}
+            body={t("landing.contactChannelDocsBody")}
+          >
+            <Link
+              href="/docs"
+              data-landing-link=""
+              style={{
+                color: "var(--ant-color-link)",
+                fontSize: "var(--ant-font-size)",
+                textDecoration: "none",
+              }}
+            >
+              {t("landing.faqMoreCta")} →
+            </Link>
+          </Kanal>
+        </dl>
+      </div>
     </LandingSection>
+  );
+}
+
+/**
+ * Satu kanal: ikon + `<dt>` nama + `<dd>` keterangan & aksinya. Ikonnya
+ * `aria-hidden` — `<dt>` sudah menamai kanalnya, dan ikon WhatsApp yang
+ * dibacakan sesudah kata "WhatsApp" adalah pengulangan.
+ */
+function Kanal({
+  icon: Icon,
+  term,
+  body,
+  children,
+}: {
+  icon: typeof MailOutlined;
+  term: string;
+  body: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", gap: "var(--ant-margin-sm)" }}>
+      <span
+        aria-hidden="true"
+        style={{
+          display: "inline-flex",
+          flexShrink: 0,
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          background: landingChip("brand"),
+          color: landingGlyph("brand"),
+          fontSize: "var(--ant-font-size)",
+        }}
+      >
+        <Icon />
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <dt
+          style={{
+            fontSize: "var(--ant-font-size)",
+            fontWeight: "var(--ant-font-weight-strong)",
+          }}
+        >
+          {term}
+        </dt>
+        <dd style={{ ...LANDING_NOTE, margin: 0 }}>
+          {body}
+          <div style={{ marginTop: "var(--ant-margin-xs)" }}>{children}</div>
+        </dd>
+      </div>
+    </div>
   );
 }

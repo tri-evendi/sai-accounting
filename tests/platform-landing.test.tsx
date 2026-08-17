@@ -242,12 +242,12 @@ vi.mock("@/components/tenant/platform-shell", () => ({
   ),
 }));
 
-const { default: PlatformPage } = await import("@/app/(tenant)/(panel)/platform/page");
-const { default: PlatformLayout } = await import("@/app/(tenant)/(panel)/layout");
-const { default: TeamPage } = await import("@/app/(tenant)/(panel)/platform/team/page");
-const { default: BillingPage } = await import("@/app/(tenant)/(panel)/platform/billing/page");
-const { default: PlansPage } = await import("@/app/(tenant)/(panel)/platform/billing/plans/page");
-const { default: PrivacyPage } = await import("@/app/(tenant)/(panel)/platform/privacy/page");
+const { default: PlatformPage } = await import("@/app/(app)/(tenant)/(panel)/platform/page");
+const { default: PlatformLayout } = await import("@/app/(app)/(tenant)/(panel)/layout");
+const { default: TeamPage } = await import("@/app/(app)/(tenant)/(panel)/platform/team/page");
+const { default: BillingPage } = await import("@/app/(app)/(tenant)/(panel)/platform/billing/page");
+const { default: PlansPage } = await import("@/app/(app)/(tenant)/(panel)/platform/billing/plans/page");
+const { default: PrivacyPage } = await import("@/app/(app)/(tenant)/(panel)/platform/privacy/page");
 
 /**
  * Markup sebuah halaman, dengan entitas HTML dikembalikan ke huruf aslinya —
@@ -387,7 +387,7 @@ describe("setiap rute menjaga dirinya sendiri", () => {
     await render(PlatformPage);
     expect(state.companiesForUserId).toBe(7);
 
-    const src = readFileSync(join(SRC, "app", "(tenant)", "(panel)", "platform", "page.tsx"), "utf8");
+    const src = readFileSync(join(SRC, "app", "(app)", "(tenant)", "(panel)", "platform", "page.tsx"), "utf8");
     expect(src).toContain("companiesForUser(");
     // Membaca `tenant.companies` (atau menyentuh basis data kendali langsung)
     // akan membocorkan keberadaan PT lain kepada staf salah satu PT.
@@ -536,9 +536,10 @@ describe("katalog paket — perbandingan yang jujur, tanpa tombol yang berbohong
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/^\s*\/\/.*$/gm, "");
 
-    const page = strip(["app", "(tenant)", "(panel)", "platform", "billing", "plans", "page.tsx"]);
+    const page = strip(["app", "(app)", "(tenant)", "(panel)", "platform", "billing", "plans", "page.tsx"]);
     const actions = strip([
       "app",
+      "(app)",
       "(tenant)",
       "(panel)",
       "platform",
@@ -651,7 +652,7 @@ describe("alamat lama /tenant → /platform (307)", () => {
      * tertinggal di tingkat mana pun, sebab `/tenant` sejak #172 hanya
      * dipantulkan proxy.
      */
-    const group = join(SRC, "app", "(tenant)");
+    const group = join(SRC, "app", "(app)", "(tenant)");
     const dirs = readdirSync(group, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .map((e) => e.name);
@@ -685,7 +686,7 @@ describe("tidak ada tautan internal yang tertinggal di alamat lama", () => {
   it("dua tautan yang dulu menuju /tenant kini menuju /platform", () => {
     for (const rel of [
       "components/layout/user-menu.tsx",
-      "app/(auth)/select-company/page.tsx",
+      "app/(app)/(auth)/select-company/page.tsx",
     ]) {
       const src = readFileSync(join(SRC, rel), "utf8");
       expect(src, rel).toContain('href="/platform"');
@@ -704,7 +705,7 @@ describe("tanpa pantulan yang berputar", () => {
   it("halamannya sendiri tidak mengarahkan ke mana pun", () => {
     // Satu-satunya pantulan yang mungkin datang dari penjaga (tanpa sesi /
     // tanpa keanggotaan tenant), dan tujuannya BUKAN halaman ini.
-    const src = readFileSync(join(SRC, "app", "(tenant)", "(panel)", "platform", "page.tsx"), "utf8");
+    const src = readFileSync(join(SRC, "app", "(app)", "(tenant)", "(panel)", "platform", "page.tsx"), "utf8");
     expect(src).not.toContain("redirect(");
     const guard = readFileSync(join(SRC, "lib", "tenant-guard.ts"), "utf8");
     expect(guard).not.toContain('"/platform"');

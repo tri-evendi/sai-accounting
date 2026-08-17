@@ -307,7 +307,7 @@ body {
  * Inter — jatuh ke font CJK bawaan sistem pembaca.
  *
  * Sengaja TANPA webfont Han: alasan biaya build ada di komentar
- * `src/app/layout.tsx` (Noto Sans SC = 101 berkas woff2 diunduh saat build).
+ * `components/providers/root-document.tsx` (Noto Sans SC = 101 berkas woff2 diunduh saat build).
  * Urutan di bawah mencakup Mac/iOS, Windows, lalu Android/Linux, jadi
  * praktis setiap perangkat nyata sudah terlayani.
  */

@@ -316,7 +316,7 @@ describe("spanduk beranda — data contoh tidak boleh diam-diam ikut terhitung",
     "utf8"
   );
   const home = readFileSync(
-    join(root, "src", "app", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "page.tsx"),
+    join(root, "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]", "page.tsx"),
     "utf8"
   );
 

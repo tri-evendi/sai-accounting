@@ -19,9 +19,19 @@ paket berbayar.
 | `starter`    | Starter    |   Rp 249.000  |   Rp 2.490.000 |    1 |        3 | publik, uji coba 14 hari                  |
 | `pro`        | Pro        |   Rp 599.000  |   Rp 5.990.000 |    3 |       15 | publik, uji coba 14 hari, **disorot**     |
 | `business`   | Business   | Rp 1.199.000  |  Rp 11.990.000 |    8 |       40 | publik, uji coba 14 hari, dukungan prioritas |
-| `enterprise` | Enterprise | dirundingkan  | kontrak        |  ≥10 |      ≥50 | publik, `contact_only`; kuota bawaan 10/50 |
+| `enterprise` | Enterprise | dirundingkan  | kontrak        |  ≥10 |      ≥50 | **tidak** publik sejak #408 (`contact_only`, aktif); jalur rundingannya menumpang kartu Business; kuota bawaan 10/50 |
 | `internal`   | Internal   |          Rp 0 |              — |   10 |       50 | **tidak** publik — pemakaian penyedia     |
 | `trial`      | Trial      |          Rp 0 |              — |    1 |        3 | pensiun (`is_public=0`), tetap aktif      |
+
+**Funel publik tiga anak tangga (#408):** Starter → Pro (disorot) → Business, dan
+rundingan **hanya** bagi yang melewati kuota Business — ditawarkan sebagai satu
+kalimat + tautan kontak di kaki kartu Business ("Butuh lebih dari 8 PT atau 40
+pengguna? Kuota, migrasi data, SLA, dan masa kontrak dirundingkan"), bukan kartu
+keempat. Alasannya: dua kartu teratas bersaing untuk pembeli yang sama dan
+pembeda "kuota vs jasa" harus dijelaskan; Business tetap satu-satunya anak
+tangga swalayan di atas Pro sehingga pembeli 4–8 PT tidak kembali ke "hubungi
+kami". `enterprise` tetap paket yang **diberikan operator** (`changeTenantPlan`)
+untuk kontrak; kartu paket dalam aplikasi pun tidak memajangnya.
 
 **Yang membedakan paket HANYA kuota PT & pengguna.** Semua paket memuat seluruh
 modul (`BUSINESS_MODULES`), tiga bahasa antarmuka, dan semua mata uang — dan
@@ -75,8 +85,9 @@ sebelum dipakai di materi penjualan):
   hari kerja berikutnya lewat kanal `contactChannels()`) — janji operasional
   yang diputuskan pemilik, sumbernya #404, dan karena itu boleh menjadi butir
   di kartu (`plans.highlight.prioritySupport`).
-- **Enterprise** — dirundingkan. **Lantai internal ≈ Rp 2.500.000/bln, kontrak
-  tahunan** — pedoman penjualan, TIDAK dipajang dan TIDAK ada di katalog
+- **Enterprise** — dirundingkan, dan sejak #408 tidak dipajang sebagai kartu.
+  **Lantai internal ≈ Rp 2.500.000/bln, kontrak tahunan** — pedoman penjualan,
+  TIDAK dipajang dan TIDAK ada di katalog
   (kolom harga tetap 0 + `contact_only`, penjaga di `plan-change`). Yang
   membedakannya dari Business adalah **jasa**: migrasi data (Accurate/Excel),
   pelatihan tim, SLA tertulis, kontrak & tagihan tahunan/PO. Kuota per
@@ -104,7 +115,7 @@ sebelum dipakai di materi penjualan):
    kuota baris yang sudah ada, karena seed yang mengubah harga adalah kejutan
    penagihan setiap kali dijalankan. Migration diterapkan sekali dan
    `migrate status` bisa menjawab "sudah atau belum". Preseden:
-   `0009_plans_pricing_ladder`.
+   `0009_plans_pricing_ladder` (harga), `0010_enterprise_not_public` (bendera).
 4. `tests/pricing-ladder.test.ts` menjaga seed, migration, dan dokumen ini
    memuat angka yang sama.
 5. Langganan berjalan tidak berubah (snapshot). Kalau memang ingin memindahkan

@@ -411,6 +411,50 @@ describe("halaman pendaratan publik", () => {
     );
   });
 
+  it("jalur rundingan menumpang kartu Business (#408): satu kalimat berangka kuota + tautan kontak", async () => {
+    const BUSINESS = {
+      key: "business",
+      name: "Business",
+      description: null,
+      priceMonthly: 1199000,
+      priceYearly: 11990000,
+      currency: "IDR",
+      maxCompanies: 8,
+      maxUsers: 40,
+      contactOnly: false,
+      isRecommended: false,
+    };
+    // Katalog publik sesudah #408: Enterprise TIDAK dipajang.
+    state.plans = [PLANS[0], PLANS[1], BUSINESS];
+
+    // Tanpa alamat kontak: kalimatnya tetap, yang kurang disebut konfigurasi.
+    const prev = process.env.PLATFORM_CONTACT_EMAIL;
+    delete process.env.PLATFORM_CONTACT_EMAIL;
+    try {
+      const tanpa = await render();
+      const kalimat = T("landing.pricingNegotiateNote", { companies: 8, users: 40 });
+      expect(tanpa.match(new RegExp(kalimat.replace(/[?]/g, "\\?"), "g"))?.length).toBe(1);
+      expect(tanpa).toContain('data-landing-negotiate=""');
+      expect(tanpa).not.toContain("mailto:");
+      expect(tanpa).toContain(T("landing.pricingContactMissing"));
+      // Kisi tiga paket kembali ke `landingGrid`, bukan lembar gaya ≥4.
+      expect(tanpa).not.toContain('<ul data-landing-pricing-grid=""');
+
+      // Dengan alamat kontak: tautan teks mailto bersubjek Enterprise, dan
+      // TIDAK ada tombol kedua di kartu (satu primer per kartu).
+      process.env.PLATFORM_CONTACT_EMAIL = "sales@example.test";
+      const dengan = await render();
+      expect(dengan).toContain('href="mailto:sales@example.test?subject=Enterprise"');
+      expect(dengan).toContain(T("landing.pricingContactCta"));
+      expect(dengan).not.toContain(T("landing.pricingContactMissing"));
+      // Angka kuota di kalimat = angka di butir "termasuk" — dari kolom yang sama.
+      expect(dengan).toContain(T("platform.plansQuotaCompanies", { max: 8 }));
+    } finally {
+      if (prev === undefined) delete process.env.PLATFORM_CONTACT_EMAIL;
+      else process.env.PLATFORM_CONTACT_EMAIL = prev;
+    }
+  });
+
   it("FAQ menjawab keberatan & pertanyaan pembeli, dengan angka dari sumbernya", async () => {
     const html = await render();
 

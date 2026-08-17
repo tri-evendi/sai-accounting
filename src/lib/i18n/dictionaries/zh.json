@@ -43,6 +43,7 @@
     "pricingContactTerms": "定制条款与合同期限",
     "pricingContactCta": "联系我们",
     "pricingContactMissing": "本安装尚未配置联系地址。",
+    "pricingNegotiateNote": "需要超过 {companies} 家公司或 {users} 位用户？配额、数据迁移、SLA 与合同期限均可协商。",
     "faqHeading": "常见问题",
     "faqTrialQ": "试用期有多长？从何时开始？",
     "faqTrialA": "{days} 天，自您点击邮件中的验证链接起计算——而非提交注册表单时。",

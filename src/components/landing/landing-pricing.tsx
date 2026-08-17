@@ -45,7 +45,11 @@ import { LOCALES } from "@/lib/i18n/config";
 import { getT } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
-import { planDescriptionKey, planHighlightKeys } from "@/lib/plan-copy";
+import {
+  planCarriesNegotiation,
+  planDescriptionKey,
+  planHighlightKeys,
+} from "@/lib/plan-copy";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
@@ -540,6 +544,50 @@ export async function LandingPricing({
                           </ButtonLink>
                         )}
                       </div>
+                    )}
+                    {/* ══ JALUR RUNDINGAN DI KAKI KARTU TERATAS (#408) ══════
+                        Enterprise tidak lagi punya kartu sendiri: dua kartu
+                        teratas bersaing untuk pembeli yang sama, dan funel
+                        publik kini tiga anak tangga. Yang tersisa darinya
+                        adalah SATU kalimat + tautan kontak di sini — hanya
+                        bagi yang melewati kuota paket pemikulnya, dengan
+                        angka kuota dari kolom katalog yang sama yang dirender
+                        di butir "termasuk" di atas (bukan diketik). Tautannya
+                        tautan teks (pola `faqMoreCta`), BUKAN tombol kedua:
+                        kartu ini sudah memikul satu primer, dan dua tombol
+                        bertumpuk berarti dua ajakan yang bersaing di kartu
+                        yang justru ingin orang bayar sendiri. Tanpa alamat
+                        kontak, kalimatnya tetap dan yang kurang disebut
+                        sebagai konfigurasi (`pricingContactMissing`). */}
+                    {planCarriesNegotiation(plan.key) && !plan.contactOnly && (
+                      <p
+                        data-landing-negotiate=""
+                        style={{
+                          ...LANDING_NOTE,
+                          marginTop: "var(--ant-margin-sm)",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {t("landing.pricingNegotiateNote", {
+                          companies: plan.maxCompanies,
+                          users: plan.maxUsers,
+                        })}{" "}
+                        {contactEmail ? (
+                          <a
+                            href={`mailto:${contactEmail}?subject=${encodeURIComponent("Enterprise")}`}
+                            data-landing-link=""
+                            style={{
+                              color: "var(--ant-color-link)",
+                              textDecoration: "none",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t("landing.pricingContactCta")} →
+                          </a>
+                        ) : (
+                          t("landing.pricingContactMissing")
+                        )}
+                      </p>
                     )}
                   </CardContent>
                 </Card>

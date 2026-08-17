@@ -369,6 +369,48 @@ describe("halaman pendaratan publik", () => {
     expect(html).toContain(T("landing.pricingRecommended"));
   });
 
+  it("katalog EMPAT paket (#404): kisi bertitik-patah, butir sorotan hanya di paket yang punya sumbernya", async () => {
+    // ≤3 paket: kisi sebaris `landingGrid`, TANPA atribut lembar gaya. Yang
+    // dicari adalah ATRIBUT di `<ul>` — selektornya sendiri selalu ada di
+    // lembar gaya yang disisipkan ke halaman.
+    expect(await render()).not.toContain('<ul data-landing-pricing-grid=""');
+
+    state.plans = [
+      PLANS[0],
+      PLANS[1],
+      {
+        key: "business",
+        name: "Business",
+        description: null,
+        priceMonthly: 1199000,
+        priceYearly: 11990000,
+        currency: "IDR",
+        maxCompanies: 8,
+        maxUsers: 40,
+        contactOnly: false,
+        isRecommended: false,
+      },
+      PLANS[2],
+    ];
+    const html = await render();
+    // ≥4 paket: kisi diserahkan ke lembar gaya (1 → 2×2 → 4 kolom).
+    expect(html).toContain('<ul data-landing-pricing-grid=""');
+    // Business memikul janji dukungan prioritas — dan HANYA ia: butir itu
+    // muncul tepat sekali di seluruh halaman, bukan disalin ke kartu lain.
+    expect(html.match(new RegExp(T("plans.highlight.prioritySupport"), "g"))?.length).toBe(1);
+    // Deskripsi tiga bahasa lewat kunci kamus, bukan kolom basis data (yang
+    // di fixture ini sengaja `null`).
+    expect(html).toContain(T("plans.description.business"));
+    expect(html).toContain(T("plans.description.starter"));
+    // Kuota Business dari katalog.
+    expect(html).toContain(T("platform.plansQuotaCompanies", { max: 8 }));
+    expect(html).toContain(T("platform.plansQuotaUsers", { max: 40 }));
+    // Hemat tahunan Business dihitung: 1.199.000 × 12 − 11.990.000 = 2.398.000 ≈ 2 bulan.
+    expect(html).toContain(
+      T("landing.pricingYearlySaving", { amount: formatMoney(2398000, "IDR"), months: "2" })
+    );
+  });
+
   it("FAQ menjawab keberatan & pertanyaan pembeli, dengan angka dari sumbernya", async () => {
     const html = await render();
 

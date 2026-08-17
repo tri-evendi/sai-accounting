@@ -185,7 +185,8 @@
     "mockSwitcherHint": "一个账号，每家公司独立账套",
     "mockActive": "当前打开",
     "mockAddCompany": "添加公司",
-    "mockDashboardTitle": "仪表盘"
+    "mockDashboardTitle": "仪表盘",
+    "mockJournalMemoTwo": "收到货款 — 发票 INV-2026-0042，存入银行"
   },
   "common": {
     "save": "保存",

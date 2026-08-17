@@ -185,7 +185,8 @@
     "mockSwitcherHint": "One account, a separate ledger per company",
     "mockActive": "Open now",
     "mockAddCompany": "Add a company",
-    "mockDashboardTitle": "Dashboard"
+    "mockDashboardTitle": "Dashboard",
+    "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank"
   },
   "common": {
     "save": "Save",

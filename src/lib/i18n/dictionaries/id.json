@@ -185,7 +185,8 @@
     "mockSwitcherHint": "Satu akun, buku besar terpisah per PT",
     "mockActive": "Sedang dibuka",
     "mockAddCompany": "Tambah PT",
-    "mockDashboardTitle": "Dasbor"
+    "mockDashboardTitle": "Dasbor",
+    "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank"
   },
   "common": {
     "save": "Simpan",

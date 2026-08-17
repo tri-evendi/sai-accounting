@@ -39,7 +39,7 @@
     "pricingRecommended": "Direkomendasikan",
     "pricingContactPrice": "Harga dirundingkan",
     "pricingContactQuota": "Kuota PT & pengguna dirundingkan",
-    "pricingContactSupport": "Dukungan langsung lewat kanal kontak",
+    "pricingContactSupport": "Migrasi data, pelatihan tim, dukungan langsung",
     "pricingContactTerms": "Ketentuan & masa kontrak khusus",
     "pricingContactCta": "Hubungi kami",
     "pricingContactMissing": "Alamat kontak belum disetel pada pemasangan ini.",
@@ -3610,9 +3610,14 @@
   },
   "plans": {
     "description": {
+      "business": "Untuk grup usaha dengan beberapa PT dan tim keuangan yang lebih besar.",
       "enterprise": "Kuota, dukungan, dan ketentuan yang dirundingkan.",
       "internal": "Paket internal penyedia. Tidak ditawarkan untuk umum.",
-      "pro": "Untuk usaha yang menjalankan beberapa PT sekaligus."
+      "pro": "Untuk usaha yang menjalankan beberapa PT sekaligus.",
+      "starter": "Untuk usaha dengan satu PT."
+    },
+    "highlight": {
+      "prioritySupport": "Dukungan prioritas — dibalas hari kerja berikutnya"
     }
   },
   "companies": {

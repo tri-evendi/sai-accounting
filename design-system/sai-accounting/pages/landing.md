@@ -739,6 +739,41 @@ di atas kepala Pro **11,89 / 9,43:1**, dan kedua kepala berbeda satu sama lain
 **1,20 / 1,22:1** (kedua tema; lantai 1,05) — kini dikunci eksplisit di
 `tests/landing-colors.test.ts` §#402. Pil "Direkomendasikan" tetap netral.
 
+### Kisi harga EMPAT paket: 1 → 2×2 → 4 kolom (#404)
+
+Katalog kini **empat** paket — Starter · Pro · Business · Enterprise
+(`docs/PRICING.md` adalah sumber angkanya; kartu tetap membaca `plans`).
+`landingGrid()` di kartu paket dibatasi tiga kolom, dan empat paket di
+dalamnya berarti 3 + satu kartu yatim selebar sepertiga di baris kedua. Empat
+kolom lewat `auto-fit` juga tidak bisa — **diukur** di 992px: seksi 944px →
+kartu 224px, isi 176px (padding 24+24), sedangkan "Rp 1.199.000 /bln" pada
+24px tebal butuh ~200px; dan `auto-fit` ber-minimum 276px jatuh kembali ke
+3 + 1 di 992–1199px.
+
+Maka saat `plans.length ≥ 4` `<ul>` melepas `landingGrid` dan memasang
+`[data-landing-pricing-grid]` yang dipegang lembar gaya bertitik-patah:
+**1 kolom** (<768), **2×2** (768–1199, kartu 340–560px), **4 kolom** (≥1200,
+`LANDING_PRICING_FOUR_COLUMNS_BREAKPOINT` — seksi 1152px → kartu 276px, isi
+228px, nominal muat satu baris). Kisi ≤3 paket tidak berubah (termasuk
+pemusatan 760px di ≤2, #402): atribut dan `landingGrid` saling eksklusif,
+jadi tidak ada aturan yang saling menimpa.
+
+**Butir "termasuk" di luar kuota** hanya untuk paket yang punya sumber di luar
+tabel `plans` (§KLAIM HARUS PUNYA SUMBER): Business memikul *"Dukungan
+prioritas — dibalas hari kerja berikutnya"* (`plans.highlight.prioritySupport`,
+tiga bahasa; keputusan pemilik di #404, dicatat di `docs/PRICING.md`) —
+dipetakan di `lib/plan-copy.ts` §SOROTAN, dirender di kartu publik DAN halaman
+paket di dalam aplikasi dari daftar yang sama. Paket lain tidak diberi butir
+hiasan ("semua modul", "tiga bahasa"): itu sudah dinyatakan sekali untuk semua
+paket (`pricingAllNote`), dan mengulanginya per kartu menyiratkan paket lain
+tidak mendapatkannya. Butir kedua Enterprise kini *"Migrasi data, pelatihan
+tim, dukungan langsung"* (`pricingContactSupport`) — jasa yang memang
+membedakannya dari Business (`docs/PRICING.md` §2), tetap tanpa jam layanan.
+
+Nama paket TIDAK diterjemahkan (nama produk, `lib/plan-copy.ts`), maka
+"Starter"/"Business", bukan "Mulai"/"Bisnis": satu tangga dalam satu bahasa
+di ketiga kamus. Deskripsi tiap paket tetap lewat `plans.description.*`.
+
 ### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
 
 Tiga angka (modul · bahasa · mata uang) dulu tampil **dua kali identik**: strip

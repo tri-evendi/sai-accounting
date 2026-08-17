@@ -22,13 +22,28 @@
  * platform). Membiarkan kolomnya basi berarti dua orang yang mendaftar lewat
  * pintu berbeda mendapat masa uji coba berbeda — dan tidak ada yang berbunyi.
  *
- * ══ KATALOG YANG DIJUAL: trial · pro · enterprise ══════════════════════════
- * Paket publik lain (`starter`, `business`) DIPENSIUNKAN dari katalog dengan
- * `is_public = false`, BUKAN `is_active = false`: pelanggan yang sedang
- * berjalan di atasnya harus tetap sah — menonaktifkan paket yang masih dirujuk
- * langganan berarti menolak perpanjangannya sendiri. Pensiun = tidak
- * ditawarkan lagi; nonaktif = tidak boleh dipakai lagi. Keduanya berbeda, dan
- * hanya yang pertama yang menjadi keputusan penjualan.
+ * ══ KATALOG YANG DIJUAL: starter · pro · business · enterprise (#404) ═══════
+ * Empat anak tangga: Starter (1 PT/3 pengguna) · Pro (3/15, disorot) · Business
+ * (8/40) · Enterprise (rundingan). Pembedanya HANYA kuota PT & pengguna —
+ * semua paket memuat seluruh modul, tiga bahasa, semua mata uang — persis yang
+ * bisa dinyatakan kolom `plans` (tidak ada kolom fitur/add-on) dan persis yang
+ * sudah dijanjikan halaman harga ("Yang dijatah per paket hanya jumlah PT dan
+ * pengguna"). Alasan angkanya: `docs/PRICING.md`.
+ *
+ * `starter` dan `business` adalah kunci LAMA yang dihidupkan kembali, bukan
+ * kunci baru: dulu 150 rb (1 PT/5 pengguna) dan 450 rb (3/15), dipensiunkan
+ * saat Pro menjadi satu-satunya paket. Baris lamanya di pemasangan yang sudah
+ * berjalan TIDAK ditimpa skrip ini (aturan di atas) — angka barunya dipasang
+ * SEKALI oleh migration platform `0009_plans_pricing_ladder`, dan aman karena
+ * tidak ada langganan yang pernah menunjuk keduanya (diverifikasi di produksi
+ * 2026-08-17). Pemasangan baru mendapat angka barunya langsung dari sini.
+ *
+ * `trial` tetap DIPENSIUNKAN dari katalog dengan `is_public = false`, BUKAN
+ * `is_active = false`: pelanggan yang sedang berjalan di atasnya harus tetap
+ * sah — menonaktifkan paket yang masih dirujuk langganan berarti menolak
+ * perpanjangannya sendiri. Pensiun = tidak ditawarkan lagi; nonaktif = tidak
+ * boleh dipakai lagi. Keduanya berbeda, dan hanya yang pertama yang menjadi
+ * keputusan penjualan.
  *
  * Harga IDR `Decimal(15,2)`. Ingat pola snapshot: angka di sini adalah harga
  * PENAWARAN untuk langganan baru — langganan berjalan memegang salinannya
@@ -66,10 +81,28 @@ const DEFAULT_PLANS = [
     isPublic: false,
   },
   {
-    /* Satu-satunya paket berbayar yang dijual swalayan. Angkanya DIWARISI dari
-     * paket `business` yang digantikannya — bukan angka baru yang ditebak
-     * skrip ini: harga adalah keputusan yang sudah pernah diambil, dan seed
-     * tidak berwenang mengubahnya. Ubah lewat basis data bila memang berubah. */
+    /* Anak tangga MASUK (#404). Untuk usaha satu PT: pemilik + admin + akuntan
+     * luar. Rp 249 rb diletakkan DI ANTARA Kledo Pro (159,9 rb · 3 pengguna,
+     * fitur dipotong) dan Accurate Dasar (333 rb termasuk PPN · 1 pengguna),
+     * dan sengaja BUKAN 199 rb: pada 199 rb tiga paket ini (597 rb) sama
+     * dengan Pro (599 rb) sehingga Pro kehilangan alasan bundelnya; pada
+     * 249 rb Pro tetap 20% lebih murah per PT. Tahunan = 10 bulan, sama
+     * dengan Pro. */
+    key: "starter",
+    name: "Starter",
+    description: "Satu PT, tiga pengguna.",
+    priceMonthly: "249000.00",
+    priceYearly: "2490000.00",
+    maxCompanies: 1,
+    maxUsers: 3,
+    trialDays: 14,
+    isPublic: true,
+  },
+  {
+    /* Paket yang DISOROT — jangkar tengah tangga (#404). Angkanya DIWARISI
+     * dari paket `business` lama yang pernah digantikannya — bukan angka baru
+     * yang ditebak skrip ini: harga adalah keputusan yang sudah pernah
+     * diambil, dan seed tidak berwenang mengubahnya. */
     key: "pro",
     name: "Pro",
     description: "Sampai tiga PT, lima belas pengguna.",
@@ -92,6 +125,26 @@ const DEFAULT_PLANS = [
     trialDays: 14,
     isPublic: true,
     isRecommended: true,
+  },
+  {
+    /* Anak tangga GRUP (#404): 8 PT · 40 pengguna = Rp 150 rb per PT, untuk
+     * pemilik beberapa entitas dagang yang sampai kini harus "hubungi kami"
+     * begitu melewati tiga PT. Berhenti di 8 PT supaya Enterprise (bawaan
+     * katalog 10 PT/50 pengguna, dirundingkan) masih punya wilayah di atasnya.
+     * Yang membedakannya dari Pro BUKAN fitur — kuota, dan janji dukungan
+     * prioritas yang dipegang tanpa kode (balasan hari kerja berikutnya lewat
+     * kanal kontak yang sudah ada; keputusan pemilik di #404). Di bawah Zahir
+     * Enterprise (1,5 jt untuk SATU perusahaan · 5 pengguna) dan Jurnal Plus
+     * (899 rb · 1 entitas). */
+    key: "business",
+    name: "Business",
+    description: "Sampai delapan PT, empat puluh pengguna.",
+    priceMonthly: "1199000.00",
+    priceYearly: "11990000.00",
+    maxCompanies: 8,
+    maxUsers: 40,
+    trialDays: 14,
+    isPublic: true,
   },
   {
     /* Harganya DIRUNDINGKAN. Kolom harga tetap 0 karena skema menuntut angka —
@@ -120,13 +173,13 @@ const DEFAULT_PLANS = [
  * katalog (`is_public = false`), tidak pernah dinonaktifkan: lihat komentar
  * kepala berkas.
  *
- * `trial` ikut di sini sejak uji coba menjadi uji coba PAKET PRO: ia bukan
+ * `trial` ada di sini sejak uji coba menjadi uji coba PAKET PRO: ia bukan
  * lagi paket yang dijual melainkan KEADAAN sebuah langganan Pro. Ia tetap
  * AKTIF — tenant lama yang masih menunjuknya harus tetap sah, dan putaran
  * adopsi yatim (#152) melahirkan langganan dari `tenants.plan_key` apa pun
- * isinya.
+ * isinya. `starter` & `business` KELUAR dari daftar ini di #404 (dijual lagi).
  */
-const RETIRED_KEYS = ["trial", "starter", "business"] as const;
+const RETIRED_KEYS = ["trial"] as const;
 
 async function main() {
   const url = process.env.PLATFORM_DATABASE_URL?.trim();

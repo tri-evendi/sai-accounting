@@ -45,7 +45,7 @@ import { LOCALES } from "@/lib/i18n/config";
 import { getT } from "@/lib/i18n/server";
 import { formatMoney } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
-import { planDescriptionKey } from "@/lib/plan-copy";
+import { planDescriptionKey, planHighlightKeys } from "@/lib/plan-copy";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
@@ -165,6 +165,18 @@ export async function LandingPricing({
             }}
           />
           <ul
+            /* ══ ≥4 KARTU: KISI BERTITIK-PATAH, BUKAN auto-fit (#404) ══════
+               `landingGrid()` di bawah dibatasi tiga kolom, dan katalog kini
+               empat paket (Starter · Pro · Business · Enterprise): tiga kolom
+               + satu kartu yatim selebar sepertiga di baris kedua. Empat kolom
+               lewat auto-fit juga tidak bisa: di 992px kartu 224px terlalu
+               sempit untuk nominal "Rp 1.199.000 /bln" (diukur —
+               `LANDING_PRICING_FOUR_COLUMNS_BREAKPOINT`), dan auto-fit yang
+               diberi minimum 276px jatuh ke 3+1 lagi di 992–1199px. Maka
+               kisi ≥4 dipegang lembar gaya bertitik-patah (1 → 2×2 → 4):
+               atributnya hanya dipasang saat ≥4, dan `landingGrid` hanya
+               saat ≤3, jadi keduanya tidak pernah saling menimpa. */
+            {...(plans.length >= 4 ? { "data-landing-pricing-grid": "" } : null)}
             style={{
               /* Kolomnya DIHITUNG dari jumlah paket, bukan dipatok 3.
                  Semaian mengapalkan tiga paket dan hanya DUA yang `isPublic`
@@ -172,8 +184,9 @@ export async function LandingPricing({
                  dipatok tiga menghasilkan dua kartu setengah lebar dengan
                  rongga di dalamnya — di setiap pemasangan, bukan hanya di
                  lingkungan pengembangan. Dibatasi 3 supaya katalog berisi
-                 lima paket tidak melahirkan lima kolom sempit. */
-              ...landingGrid(Math.min(plans.length, 3), 260),
+                 lima paket tidak melahirkan lima kolom sempit — dan ≥4 paket
+                 diserahkan ke lembar gaya (atribut di atas). */
+              ...(plans.length <= 3 ? landingGrid(plans.length, 260) : null),
               /* ══ ≤2 KARTU: KISI DIPUSATKAN, MAKS 760px (#402) ═════════════
                  Dua kartu di kisi 72rem (1152px) berarti dua kartu 568px —
                  selebar dua kolom teks — dengan separuh badannya kosong.
@@ -427,7 +440,10 @@ export async function LandingPricing({
                            yang sama dengan `contactChannels()` (tanpa jam
                            layanan/SLA — §KLAIM HARUS PUNYA SUMBER), dan
                            ketentuan kontrak memang milik perundingan, bukan
-                           katalog. */
+                           katalog. Sejak #404 butir kedua menyebut jasa yang
+                           memang membedakan Enterprise dari Business —
+                           migrasi data & pelatihan tim (`docs/PRICING.md`
+                           §2) — tetap tanpa jam layanan. */
                         <>
                           <li style={QUOTA_ROW}>
                             <CheckOutlined aria-hidden="true" style={CHECK} />
@@ -464,6 +480,16 @@ export async function LandingPricing({
                               })}
                             </span>
                           </li>
+                          {/* Butir di luar kuota (#404) — hanya paket yang
+                              punya janji bersumber (`lib/plan-copy.ts`
+                              §SOROTAN); paket lain tidak mendapat butir
+                              hiasan. */}
+                          {planHighlightKeys(plan.key).map((kunci) => (
+                            <li key={kunci} style={QUOTA_ROW}>
+                              <CheckOutlined aria-hidden="true" style={CHECK} />
+                              <span>{t(kunci)}</span>
+                            </li>
+                          ))}
                         </>
                       )}
                     </ul>

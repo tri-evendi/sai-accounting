@@ -295,7 +295,8 @@ Tabel **di `sai_platform`** (basis data terpisah, §4A): `plans`,
 `subscriptions`, `payments`, `platform_invoices` (tagihan KAMI ke pelanggan —
 sengaja dinamai berbeda dari `invoices` milik buku besar pelanggan),
 `usage_counters`. Semuanya merujuk `tenant_id` sebagai **Int biasa tanpa FK**,
-persis pola `periods.closed_by_id`.
+persis pola `periods.closed_by_id`. **Isi katalog `plans`** (angka, alasan,
+cara mengubah harga) hidup di `docs/PRICING.md` (#404).
 
 Konsekuensi yang harus diikuti kode: satu generator Prisma lagi
 (`prisma/platform/schema.prisma` → `src/generated/platform`), satu

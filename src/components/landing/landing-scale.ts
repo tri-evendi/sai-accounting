@@ -394,6 +394,18 @@ export const LANDING_NAV_LINKS_BREAKPOINT = 768;
 export const LANDING_WIDE_BREAKPOINT = 992;
 
 /**
+ * Kisi harga EMPAT kolom mulai 1200px (#404) — DIUKUR, bukan screenXL AntD
+ * yang kebetulan sama. Katalog kini empat paket (Starter · Pro · Business ·
+ * Enterprise) dan `landingGrid()` yang dibatasi tiga kolom meninggalkan satu
+ * kartu yatim di baris kedua. Di 992px seksi 944px → kartu 224px, isi 176px
+ * (padding kartu 24+24), dan nominal "Rp 1.199.000 /bln" pada 24px tebal
+ * (~200px) tidak muat satu baris. Di 1200px seksi 1152px → kartu 276px, isi
+ * 228px, nominalnya muat. Di antara 768 dan 1199px kisi 2×2 (kartu 340–560px);
+ * di bawah 768px satu kolom, sama dengan kisi paket lain.
+ */
+export const LANDING_PRICING_FOUR_COLUMNS_BREAKPOINT = 1200;
+
+/**
  * Tinggi bilah atas yang menempel (`position: sticky`). Dipakai dua kali dan
  * harus sama di keduanya: oleh bilahnya sendiri, dan oleh jarak jangkar seksi
  * (`scroll-margin-top`) — tanpa itu tautan "#harga" menaruh judul seksinya
@@ -456,6 +468,11 @@ export const LANDING_STYLE = `
    di >=576px kolom identitas mendapat 2fr karena ia memikul kalimat sedangkan
    tiga sisanya hanya daftar pendek. */
 [data-landing-footer-grid]{display:grid;gap:var(--ant-margin-lg);grid-template-columns:1fr}
+/* Kisi harga saat katalog memuat >=4 paket (#404): 1 -> 2x2 -> 4 kolom. Kisi
+   <=3 paket tetap landingGrid() sebaris di landing-pricing.tsx; atribut ini
+   hanya dipasang saat empat atau lebih, jadi keduanya tidak pernah bertabrakan.
+   Alasan angkanya di LANDING_PRICING_FOUR_COLUMNS_BREAKPOINT. */
+[data-landing-pricing-grid]{display:grid;gap:var(--ant-margin);grid-template-columns:minmax(0,1fr)}
 [data-landing-footer-bar]{display:flex;flex-direction:column;align-items:flex-start;gap:var(--ant-margin);margin-top:var(--ant-margin-xl);padding-top:var(--ant-padding);border-top:1px solid var(--ant-color-border-secondary)}
 /* Hero dua kolom. Di ponsel SATU kolom dan purwarupa produk berada SESUDAH
    ajakan — bukan sebelumnya: di layar sempit gambar setinggi layar sebelum
@@ -654,6 +671,7 @@ export const LANDING_STYLE = `
      kalimat di 768px tinggal 281px. Kartu ponsel BELUM muncul di sini --
      lihat blok 992px di bawah. */
   [data-landing-hero]{grid-template-columns:minmax(0,9fr) minmax(0,11fr);gap:var(--ant-margin-xxl)}
+  [data-landing-pricing-grid]{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (min-width:${LANDING_WIDE_BREAKPOINT}px){
   /* == KARTU PONSEL MULAI 992px, BUKAN 768px -- DIUKUR (#401) ==============
@@ -673,6 +691,9 @@ export const LANDING_STYLE = `
      daripada dua kolom yang salah satunya menyusut menjadi daftar. */
   [data-landing-gallery]{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
   [data-landing-gallery-main]{grid-row:1 / span 2}
+}
+@media (min-width:${LANDING_PRICING_FOUR_COLUMNS_BREAKPOINT}px){
+  [data-landing-pricing-grid]{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){
   [data-landing-brand],[data-landing-link],[data-landing-caret],[data-landing-card]{transition:none}

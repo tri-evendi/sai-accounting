@@ -38,17 +38,25 @@ const ANCHOR_OFFSET = LANDING_NAV_HEIGHT + 16;
  * memang persis keluhan yang tercatat di issue #266: putih-hitam dengan garis.
  *
  * Nada di bawah opak (`color-mix` di atas permukaan yang sedang berlaku,
- * `landing-scale.ts`), jadi pita benar-benar bidang berwarna. `accent` dipakai
- * SATU kali — ajakan penutup — karena nada terkuat halaman kehilangan artinya
- * kalau muncul dua kali.
+ * `landing-scale.ts`), jadi pita benar-benar bidang berwarna.
+ *
+ * `solid` (#401) BUKAN tint: ia isian navy merek penuh (`--ant-color-brand-
+ * solid`) dengan teks terang — satu-satunya pita pekat halaman ini, dipakai
+ * SATU kali di ajakan penutup sebagai PUNCAK. Semua pita lain berhenti di
+ * 14% pada satu tingkat kecerahan; tanpa satu bidang pekat halaman berakhir
+ * datar. Teks di dalamnya `--sai-landing-on-solid` (putih penuh) dan
+ * `--sai-landing-on-solid-muted` (putih 92%, terukur — 85% gagal 4,5:1 di
+ * tema gelap). ⚠ Tombol `primary` DILARANG di atasnya (isian navy di atas navy
+ * = 1,00:1 di tema terang) — pakai `variant="inverse"`; dijaga
+ * `tests/landing-colors.test.ts`.
  */
-export type LandingTone = "plain" | "brand" | "cyan" | "indigo" | "accent";
+export type LandingTone = "plain" | "brand" | "cyan" | "indigo" | "solid";
 
 const TONE_BG: Record<Exclude<LandingTone, "plain">, string> = {
   brand: "var(--sai-landing-band-brand)",
   cyan: "var(--sai-landing-band-cyan)",
   indigo: "var(--sai-landing-band-indigo)",
-  accent: "var(--sai-landing-band-accent)",
+  solid: "var(--sai-landing-band-solid)",
 };
 
 export interface LandingSectionProps {
@@ -85,6 +93,10 @@ export function LandingSection({
      sebelum tepi viewport (`landing-scale.ts`). Batasnya tetap terbaca; kesan
      "kertas bergaris" hilang. */
   if (tone !== "plain") outer.background = TONE_BG[tone];
+  /* Pita pekat: seluruh teks di dalamnya terang. Diwariskan dari seksi, jadi
+     judul (`LANDING_SECTION_TITLE`, tanpa warna sendiri) ikut; kalimat
+     penjelas (`LANDING_BODY`, `colorTextSecondary`) diganti di `Intro`. */
+  if (tone === "solid") outer.color = "var(--sai-landing-on-solid)";
 
   return (
     /* `data-landing-reveal` pada SEKSI, bukan pada tiap kartu: yang ditegaskan
@@ -161,11 +173,18 @@ export function LandingSectionIntro({
   children,
   center = false,
   headingLevel = "h2",
+  onSolid = false,
 }: {
   eyebrow?: string;
   title: string;
   children?: React.ReactNode;
   center?: boolean;
+  /**
+   * Di atas pita `solid` (#401): kalimat penjelas memakai putih redup
+   * (`--sai-landing-on-solid-muted`) alih-alih `colorTextSecondary`, yang di
+   * atas navy hanya ~2,2:1. Judulnya sudah mewarisi putih dari seksinya.
+   */
+  onSolid?: boolean;
   /**
    * `h1` HANYA untuk seksi yang menjadi kepala HALAMANNYA sendiri — di
    * `/harga` (#399) seksi harga adalah yang pertama, dan halaman tanpa `<h1>`
@@ -187,7 +206,13 @@ export function LandingSectionIntro({
       {eyebrow !== undefined && <p style={LANDING_EYEBROW}>{eyebrow}</p>}
       <Heading style={LANDING_SECTION_TITLE}>{title}</Heading>
       {children !== undefined && (
-        <p style={{ ...LANDING_BODY, marginTop: "var(--ant-margin-sm)" }}>
+        <p
+          style={{
+            ...LANDING_BODY,
+            marginTop: "var(--ant-margin-sm)",
+            ...(onSolid ? { color: "var(--sai-landing-on-solid-muted)" } : null),
+          }}
+        >
           {children}
         </p>
       )}

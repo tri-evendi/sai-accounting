@@ -151,6 +151,10 @@ describe("tidak ada formulir dokumen yang kembali ke konstanta", () => {
     /* Klaim harga di halaman pemasaran — juga PPN yang dipungut SAI. */
     "src/components/landing/landing-pricing.tsx",
     "src/components/landing/landing-faq.tsx",
+    /* Potongan UI "PPN & e-Faktur" di kartu manfaat pendaratan (#402): tabel
+       DPP / PPN / total dengan angka contoh, PPN-nya dihitung `computeTax` —
+       tarif platform yang sama dengan faktur galeri di bawah. */
+    "src/components/landing/landing-features.tsx",
     /* Purwarupa faktur di galeri pendaratan (#399): angka contoh, PPN
        tingkat platform sebagai ilustrasi — bukan formulir dokumen pelanggan. */
     "src/components/landing/landing-gallery.tsx",

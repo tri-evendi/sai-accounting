@@ -62,6 +62,13 @@ const PRICE: React.CSSProperties = {
   fontWeight: "var(--ant-font-weight-strong)",
 };
 
+/**
+ * Lebar maksimum kisi paket saat katalog memuat ≤2 kartu (#402) — angkanya
+ * dari pengukuran di komentar `<ul>` di bawah, bukan selera: 760px memberi
+ * kartu 372px, selebar kartu di kisi tiga kolom penuh.
+ */
+const PRICING_GRID_MAX_WIDTH = 760;
+
 const QUOTA_ROW: React.CSSProperties = {
   display: "flex",
   alignItems: "flex-start",
@@ -167,9 +174,21 @@ export async function LandingPricing({
                  lingkungan pengembangan. Dibatasi 3 supaya katalog berisi
                  lima paket tidak melahirkan lima kolom sempit. */
               ...landingGrid(Math.min(plans.length, 3), 260),
+              /* ══ ≤2 KARTU: KISI DIPUSATKAN, MAKS 760px (#402) ═════════════
+                 Dua kartu di kisi 72rem (1152px) berarti dua kartu 568px —
+                 selebar dua kolom teks — dengan separuh badannya kosong.
+                 Dipusatkan pada 760px, DIUKUR: tiap kartu (760 − 16) / 2 =
+                 372px di ≥992px, hampir sama dengan lebar kartu saat katalog
+                 memuat TIGA paket di kisi penuh ((1152 − 32) / 3 = 373px) —
+                 jadi kartu paket berlebar sama berapa pun jumlah paketnya.
+                 Katalog ≥3 paket melebar otomatis: `maxWidth` hilang, bukan
+                 kolom mati yang menunggu. `marginInline: auto` di kedua
+                 cabang supaya kisi ≤2 berdiri di tengah kolom seksi. */
               listStyle: "none",
               margin: 0,
               marginTop: "var(--ant-margin-lg)",
+              maxWidth: plans.length <= 2 ? PRICING_GRID_MAX_WIDTH : undefined,
+              marginInline: "auto",
               padding: 0,
             }}
           >
@@ -216,6 +235,13 @@ export async function LandingPricing({
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: "var(--ant-margin-xs)",
+                      /* Kepala Pro `chip-brand` (28%), kepala lain
+                         `fill-indigo` (14%): keduanya terukur — teks
+                         11,89/9,43:1 di atas chip-brand, dan chip-brand vs
+                         fill-indigo 1,20/1,22:1 (kedua tema), jadi kepala
+                         Pro memang berbeda dari kepala Enterprise di
+                         sebelahnya (`tests/landing-colors.test.ts` §kepala
+                         kartu paket, #402). */
                       background: plan.isRecommended
                         ? landingChip("brand")
                         : landingFill("indigo"),
@@ -391,11 +417,31 @@ export async function LandingPricing({
                            bukan janji: kuota yang berlaku disalin ke tenant
                            saat paketnya dipasang, dan justru itulah yang
                            dirundingkan. Memajangnya berarti menjanjikan
-                           angka yang belum disepakati siapa pun. */
-                        <li style={QUOTA_ROW}>
-                          <CheckOutlined aria-hidden="true" style={CHECK} />
-                          <span>{t("landing.pricingContactQuota")}</span>
-                        </li>
+                           angka yang belum disepakati siapa pun.
+
+                           TIGA butir sejak #402 — kuota dirundingkan,
+                           dukungan langsung, ketentuan khusus — supaya kartu
+                           rundingan setinggi kartu Pro alih-alih separuh
+                           kosong. Ketiganya JUJUR: kuota memang dirundingkan
+                           (`plan-change-contact-only`), dukungan lewat kanal
+                           yang sama dengan `contactChannels()` (tanpa jam
+                           layanan/SLA — §KLAIM HARUS PUNYA SUMBER), dan
+                           ketentuan kontrak memang milik perundingan, bukan
+                           katalog. */
+                        <>
+                          <li style={QUOTA_ROW}>
+                            <CheckOutlined aria-hidden="true" style={CHECK} />
+                            <span>{t("landing.pricingContactQuota")}</span>
+                          </li>
+                          <li style={QUOTA_ROW}>
+                            <CheckOutlined aria-hidden="true" style={CHECK} />
+                            <span>{t("landing.pricingContactSupport")}</span>
+                          </li>
+                          <li style={QUOTA_ROW}>
+                            <CheckOutlined aria-hidden="true" style={CHECK} />
+                            <span>{t("landing.pricingContactTerms")}</span>
+                          </li>
+                        </>
                       ) : (
                         <>
                           <li style={QUOTA_ROW}>

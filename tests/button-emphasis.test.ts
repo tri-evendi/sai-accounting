@@ -192,7 +192,15 @@ const namaTag = (n: Jsx) => (ts.isJsxElement(n) ? n.openingElement.tagName : n.t
  * hari dicabut, penjaga #2 memang jadi buta terhadap tombol implisit — tetapi
  * di dunia itu tombol implisit memang sekunder, jadi butanya benar.
  */
-const NILAI_PRIMER = new Set(["primary", "default"]);
+/*
+ * `inverse` (#401) IKUT dihitung: ia tombol berisi penuh — isian putih, label
+ * navy — yang dibuat untuk berdiri di atas pita navy pekat, tempat `primary`
+ * lenyap sebagai bidang (navy di atas navy). Secara penekanan ia SETARA
+ * primer, jadi ia tunduk pada kedua aturan yang sama: satu per wadah, dan di
+ * pendaratan wajib menuju `/register`. Penjaga yang tidak mengenalnya akan
+ * membuka jalan memutar yang persis sama dengan `ButtonLink` dulu.
+ */
+const NILAI_PRIMER = new Set(["primary", "default", "inverse"]);
 
 /**
  * Nilai `variant` sebuah `<Button>`, atau `undefined` bila tidak ditulis.
@@ -208,7 +216,7 @@ function varianDari(node: Jsx): string | undefined {
     const nilai = a.initializer;
     if (nilai && ts.isStringLiteral(nilai)) return nilai.text;
     const teks = nilai ? nilai.getText() : "";
-    return /["'](?:primary|default)["']/.test(teks) ? "primary" : "__dinamis__";
+    return /["'](?:primary|default|inverse)["']/.test(teks) ? "primary" : "__dinamis__";
   }
   return undefined;
 }
@@ -427,6 +435,45 @@ describe("penekanan tombol (#267)", () => {
     expect(salahTujuan).toEqual([]);
   });
 
+  it("tombol WhatsApp melayang (#402) adalah tautan KELUAR `<Button href>`, bukan ajakan utama", () => {
+    /*
+     * Bulatan navy 48px di kanan-bawah (`landing-whatsapp.tsx`) berisi penuh
+     * seperti primer — tetapi ia jalan BERTANYA, bukan jalan mendaftar, dan
+     * penjaga #3 di atas mengunci setiap primer pendaratan ke `/register`.
+     * Yang dijaga di sini: ia ditulis sebagai `<Button href>` (tautan keluar,
+     * tab baru) dengan varian yang BUKAN primer, sehingga tidak masuk hitungan
+     * ajakan; isian navy-nya datang dari gaya varian bernama
+     * (`WHATSAPP_FAB_STYLE`), bukan dari `variant="primary"`. Kalau suatu hari
+     * ia ditulis ulang sebagai primer, penjaga #3 yang merah (href-nya
+     * `https://wa.me/…`, bukan `/register`) — dan tes ini menjelaskan kenapa
+     * itu bukan jalan keluarnya.
+     */
+    const jalur = join(ROOT, AREA_PENDARATAN, "landing-whatsapp.tsx");
+    const src = sumber(jalur);
+    const tombol: Jsx[] = [];
+    const kunjungi = (node: ts.Node) => {
+      if (isJsx(node) && TAG_PENEKANAN.has(namaTag(node))) tombol.push(node);
+      ts.forEachChild(node, kunjungi);
+    };
+    kunjungi(src);
+    expect(tombol).toHaveLength(1);
+    const [fab] = tombol;
+    expect(namaTag(fab)).toBe("Button");
+    // `href` dinamis (URL wa.me dari `contactChannels()`), bukan literal — dan
+    // karena itu bukan `ButtonLink` (rute internal).
+    const atribut = (ts.isJsxElement(fab) ? fab.openingElement : fab).attributes.properties
+      .filter(ts.isJsxAttribute)
+      .map((a) => a.name.getText());
+    expect(atribut).toContain("href");
+    expect(atribut).toContain("target");
+    expect(atribut).toContain("rel");
+    expect(atribut).toContain("aria-label");
+    expect(primer(fab)).toBe(false);
+    expect(varianDari(fab)).toBe("outline");
+    // …dan berkasnya tidak menyebut varian primer sama sekali.
+    expect(readFileSync(jalur, "utf8")).not.toMatch(/variant="(?:primary|default|inverse)"/);
+  });
+
   it("pendeteksinya benar-benar bisa merah — dibuktikan di sini, bukan diandaikan", () => {
     const uji = (kode: string) => {
       const src = ts.createSourceFile("uji.tsx", kode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -439,6 +486,8 @@ describe("penekanan tombol (#267)", () => {
     expect(uji('<div><Button variant="primary">A</Button><Button variant="primary">B</Button></div>')).toBe(2);
     // `default` adalah alias `primary` di `ui/button.tsx`, bukan "tombol biasa".
     expect(uji('<div><Button variant="default">A</Button><Button variant="primary">B</Button></div>')).toBe(2);
+    // `inverse` (#401) adalah tombol berisi penuh yang dibalik warnanya — tetap primer.
+    expect(uji('<div><ButtonLink variant="inverse" href="/x">A</ButtonLink><Button variant="primary">B</Button></div>')).toBe(2);
     // Varian berkondisi yang salah satu cabangnya primer tetap dihitung.
     expect(
       uji('<div><Button variant={x ? "primary" : "outline"}>A</Button><Button variant="primary">B</Button></div>')

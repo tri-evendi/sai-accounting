@@ -30,6 +30,7 @@
 import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LANDING_STYLE } from "@/components/landing/landing-scale";
+import { LandingWhatsappFab } from "@/components/landing/landing-whatsapp";
 import { getT } from "@/lib/i18n/server";
 
 export async function LandingShell({
@@ -69,6 +70,11 @@ export async function LandingShell({
       </main>
 
       <LandingFooter />
+
+      {/* Tombol WhatsApp melayang (#402) — di kulit, bukan di halaman, supaya
+          `/` dan `/harga` sama-sama memilikinya; ia `null` bila nomornya tidak
+          disetel/sah, dan `display:none` di bawah 576px (`landing-scale.ts`). */}
+      <LandingWhatsappFab />
     </div>
   );
 }

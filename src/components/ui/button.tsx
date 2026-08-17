@@ -226,7 +226,8 @@ type ButtonVariant =
   | "destructive"
   | "ghost"
   | "outline"
-  | "link";
+  | "link"
+  | "inverse";
 
 type ButtonSize = "sm" | "md" | "lg" | "icon";
 
@@ -255,7 +256,65 @@ const VARIANTS: Record<ButtonVariant, AntdVariant> = {
   ghost: { type: "text" },
   outline: { type: "default" },
   link: { type: "link" },
+  /* Rupa dasarnya tombol berisi (solid) — yang dibalik hanya warnanya, lewat
+     `INVERSE_BUTTON_STYLE` di bawah. */
+  inverse: PRIMARY,
 };
+
+/**
+ * `inverse` — tombol berisi TERBALIK untuk berdiri di atas isian merek
+ * (issue #401): isian putih (`colorTextLightSolid`), label navy
+ * (`colorBrandSolid`). Ini ajakan berpenekanan PENUH, sama seperti `primary`,
+ * hanya untuk permukaan yang `primary` tidak bisa pijak: isian navy di atas
+ * pita navy adalah 1,00:1 — tombolnya lenyap sebagai bidang.
+ *
+ * ══ KENAPA VARIABEL CSS ANTD, BUKAN KELAS ATAU `ConfigProvider` ════════════
+ * Button AntD v6 menggambar dirinya dari variabel per-elemen
+ * (`--ant-btn-bg-color`, `--ant-btn-text-color`, `-hover`, `-active`; lihat
+ * `antd/es/button/style/variant.js`), dan variabel yang ditulis SEBARIS
+ * menang atas deklarasi kelasnya. Jadi tidak ada kelas ber-hash yang disalin
+ * (yang akan berhenti berlaku diam-diam), dan tidak ada `ConfigProvider`
+ * bersarang (yang menuntut nilai warna mentah, bukan `var(--ant-…)`, dan
+ * membangkitkan lembar gaya kedua). Bentuk keadaan hover/aktif — menggelap
+ * saat disentuh — mengikuti tombol primer app ini (`antd-tokens.ts`).
+ *
+ * ══ ANGKANYA (tests/landing-colors.test.ts) ═══════════════════════════════
+ * Label navy di atas isian putih = kebalikan "putih di atas navy", jadi
+ * rasionya sama: 11,50:1 (terang) · 5,06:1 (gelap). Yang mengikat adalah
+ * tema GELAP: setiap persen navy yang dicampurkan ke isian saat hover/aktif
+ * memakan jarak 5,06 itu, dan label harus tetap ≥4,5:1 juga saat disentuh —
+ * 94% putih (hover) → 4,68:1, 92% (aktif) → 4,56:1; 90% sudah 4,44 (gagal).
+ * Karena itu selisih hover-nya tipis, dan itu harga yang benar: label yang
+ * masih terbaca lebih penting daripada hover yang terlihat jelas.
+ */
+export const INVERSE_BUTTON_MIX = { hover: 94, active: 92 } as const;
+
+export const INVERSE_BUTTON_STYLE = {
+  "--ant-btn-bg-color": "var(--ant-color-text-light-solid)",
+  "--ant-btn-bg-color-hover": `color-mix(in srgb, var(--ant-color-text-light-solid) ${INVERSE_BUTTON_MIX.hover}%, var(--ant-color-brand-solid))`,
+  "--ant-btn-bg-color-active": `color-mix(in srgb, var(--ant-color-text-light-solid) ${INVERSE_BUTTON_MIX.active}%, var(--ant-color-brand-solid))`,
+  "--ant-btn-text-color": "var(--ant-color-brand-solid)",
+  "--ant-btn-text-color-hover": "var(--ant-color-brand-solid)",
+  "--ant-btn-text-color-active": "var(--ant-color-brand-solid)",
+} as React.CSSProperties;
+
+/** Gaya tambahan per varian — hanya `inverse` yang punya; sisanya murni prop AntD. */
+const VARIANT_STYLE: Partial<Record<ButtonVariant, React.CSSProperties>> = {
+  inverse: INVERSE_BUTTON_STYLE,
+};
+
+/**
+ * Gaya varian + gaya pemanggil. `undefined` bila keduanya kosong, supaya
+ * tombol biasa tidak tiba-tiba membawa `style=""` di markupnya.
+ */
+function gayaVarian(
+  variant: ButtonVariant,
+  style: React.CSSProperties | undefined,
+): React.CSSProperties | undefined {
+  const dasar = VARIANT_STYLE[variant];
+  if (!dasar) return style;
+  return style ? { ...dasar, ...style } : dasar;
+}
 
 const SIZES: Record<ButtonSize, Pick<AntdButtonProps, "size" | "shape">> = {
   sm: { size: "small" },
@@ -333,12 +392,14 @@ function ButtonElement({
   size = "md",
   type,
   ref,
+  style,
   ...rest
 }: ButtonProps) {
   return (
     <AntdButton
       {...VARIANTS[variant]}
       {...SIZES[size]}
+      style={gayaVarian(variant, style)}
       htmlType={type}
       /*
        * `ref` tetap ditandatangani `HTMLButtonElement` di luar (satu pemanggil,
@@ -375,6 +436,7 @@ function ButtonAnchor({
   children,
   type,
   ref,
+  style,
   ...rest
 }: ButtonProps) {
   /*
@@ -395,6 +457,7 @@ function ButtonAnchor({
        * menavigasi — kegagalan yang terlihat, bukan yang senyap.
        */
       href={href === undefined ? undefined : scopedHref(href, pathname)}
+      style={gayaVarian(variant, style)}
       ref={ref as React.Ref<HTMLButtonElement | HTMLAnchorElement>}
       {...rest}
     >

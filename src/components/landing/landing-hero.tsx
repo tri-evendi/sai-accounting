@@ -106,8 +106,26 @@ export async function LandingHero() {
         <div data-landing-hero="">
           <div style={{ maxWidth: "var(--sai-landing-measure-copy)" }}>
             <h1 style={LANDING_HERO_TITLE}>{t("landing.heroHeading")}</h1>
+            {/* ══ KALIMAT KEDUA DISEMBUNYIKAN <576px (#402) ═══════════════
+                `heroBody` dua kalimat (#401) terukur 5 baris di 390px sebelum
+                tombol. Kalimat kedua dibungkus `[data-landing-hero-body-more]`
+                dan dikurung 1px di bawah 576px (`landing-scale.ts`) -- tetap
+                di DOM untuk pembaca layar dan tetap satu kunci kamus (yang
+                dipakai `generateMetadata`), bukan kunci kedua yang bisa
+                menyimpang. Pemisahnya tanda akhir kalimat pertama (. ! ? atau
+                。 untuk ZH); kamus tanpa kalimat kedua merender apa adanya. */}
             <p style={{ ...LANDING_LEAD, marginTop: "var(--ant-margin)" }}>
-              {t("landing.heroBody")}
+              {(() => {
+                const body = t("landing.heroBody");
+                const potong = body.match(/^(.*?[.!?。！？])\s*(\S[\s\S]*)$/);
+                if (!potong) return body;
+                return (
+                  <>
+                    {potong[1]}{" "}
+                    <span data-landing-hero-body-more="">{potong[2]}</span>
+                  </>
+                );
+              })()}
             </p>
             <div
               data-landing-actions=""
@@ -170,14 +188,13 @@ export async function LandingHero() {
             </p>
           </div>
 
-          {/* Purwarupa produk — mengisi kolom yang selama ini kosong. Di bawah
-              576px ia jatuh ke baris KEDUA (satu kolom), jadi ajakan di atas
-              tidak pernah terdorong ke bawah lipatan.
-
-              `paddingTop` memberi ruang bagi TUMPUKAN kartu yang menyembul ke
-              atas (`landing-hero-mock.tsx`); tanpa itu dua kartu belakang
-              terpotong tepi seksi di layar sempit. */}
-          <div style={{ paddingTop: "var(--ant-padding-lg)" }}>
+          {/* Purwarupa produk — komposisi kerangka aplikasi + kartu ponsel
+              (#401), mengisi kolom yang selama ini kosong. Di bawah 768px
+              hero SATU kolom (`landing-scale.ts`) dan purwarupa jatuh ke
+              baris KEDUA, jadi ajakan di atas tidak pernah terdorong ke bawah
+              lipatan; kartu ponsel menjorok 16px ke bawah kerangka, dan
+              `paddingBottom` menampungnya supaya tidak menabrak strip bukti. */}
+          <div style={{ minWidth: 0, paddingBottom: "var(--ant-padding)" }}>
             <LandingHeroMock />
           </div>
         </div>

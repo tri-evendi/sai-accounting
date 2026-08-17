@@ -31,7 +31,7 @@ import { renderToReadableStream } from "react-dom/server";
 
 import { BUSINESS_MODULES, MODULE_META } from "@/lib/business-modules";
 import { CURRENCIES } from "@/lib/constants";
-import { LOCALES } from "@/lib/i18n/config";
+import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
 import { formatMoney } from "@/lib/money-format";
@@ -114,7 +114,13 @@ vi.mock("@/lib/auth", () => ({ auth: async () => state.session }));
  * yang dipakai tetap kamus SUNGGUHAN (`id.json`), jadi kunci yang salah ketik
  * tetap terlihat sebagai teks kunci di markup, bukan tersembunyi di balik
  * tiruan yang mengembalikan apa saja. */
-vi.mock("@/lib/i18n/server", () => ({ getT: async () => T, getLocale: async () => "id" }));
+vi.mock("@/lib/i18n/server", () => ({
+  getT: async () => T,
+  getLocale: async () => "id",
+  /* Kartu manfaat (#402) membaca kamus utuh untuk `roleLabels()` — kamus
+     SUNGGUHAN yang sama, jadi nama peran yang dirender adalah nama peran. */
+  getDictionary: async () => dict,
+}));
 
 vi.mock("@/lib/plan-catalog", () => ({ activePlans: async () => state.plans }));
 
@@ -407,8 +413,9 @@ describe("halaman pendaratan publik", () => {
     const html = tanpaJsonLd(await render());
     for (const key of ["landing.mockJournalTitle", "landing.mockInvoiceTitle", "landing.mockSwitcherTitle"])
       expect(html).toContain(T(key));
-    // Label contoh tampil di hero + tiga layar galeri = empat kali.
-    expect(html.split(T("landing.mockCaption")).length - 1).toBe(4);
+    // Label contoh tampil di hero + tiga layar galeri + potongan PPN di kartu
+    // manfaat (#402: satu-satunya potongan yang memuat NOMINAL) = lima kali.
+    expect(html.split(T("landing.mockCaption")).length - 1).toBe(5);
     // PPN & total faktur dari mesin pajak yang sama dengan faktur sungguhan;
     // jurnalnya seimbang karena DIHITUNG — label "Seimbang" hanya lahir dari
     // hasil hitung, dan totalnya cocok dengan faktur di sebelahnya.
@@ -423,6 +430,45 @@ describe("halaman pendaratan publik", () => {
     const galeri = html.slice(html.indexOf(T("landing.galleryHeading")));
     expect(galeri.indexOf('aria-hidden="true"')).toBeGreaterThan(-1);
     expect(galeri.indexOf('aria-hidden="true"')).toBeLessThan(galeri.indexOf(T("landing.mockJournalTitle")));
+  });
+
+  it("potongan UI kartu manfaat & pil modul (#402): dari registri, angkanya dihitung, aria-hidden", async () => {
+    const html = tanpaJsonLd(await render());
+    // Tabel PPN: DPP contoh 12.500.000 → PPN & total dari mesin pajak yang sama.
+    const pajak = computeTax(12_500_000, DEFAULT_TAX_RATE);
+    expect(html).toContain(formatMoney(pajak.taxAmount, "IDR"));
+    expect(html).toContain(formatMoney(pajak.total, "IDR"));
+    // Lencana peran: nama peran SISTEM dari kamus yang sama dengan halaman Pengguna.
+    expect(html).toContain(T("role.finance_manager"));
+    // Pil bahasa: nama bahasa dalam bahasanya sendiri, dari registri locale.
+    for (const locale of LOCALES) expect(html).toContain(LOCALE_LABELS[locale]);
+    // Baris jejak audit (kunci baru, tiga bahasa).
+    expect(html).toContain(T("landing.snippetAuditRow"));
+    // Kartu Enterprise: tiga butir "termasuk".
+    for (const key of ["landing.pricingContactQuota", "landing.pricingContactSupport", "landing.pricingContactTerms"])
+      expect(html).toContain(T(key));
+    // Kalimat kedua body hero dibungkus penanda yang disembunyikan <576px —
+    // tetap di DOM (pembaca layar & metadata), satu kunci kamus.
+    expect(html).toContain('data-landing-hero-body-more=""');
+    expect(html).toContain(T("landing.heroBody").split(". ")[1]);
+  });
+
+  it("tombol WhatsApp melayang (#402): hanya bila nomornya sah, tautan keluar, bukan primer", async () => {
+    // Tanpa nomor → tidak dirender sama sekali (bukan dirender kelabu).
+    vi.stubEnv("PLATFORM_CONTACT_WHATSAPP", "");
+    expect(await render()).not.toContain('data-landing-fab=""');
+    // Nomor salah bentuk (dengan `+`) → tetap tidak dirender.
+    vi.stubEnv("PLATFORM_CONTACT_WHATSAPP", "+62812345678");
+    expect(await render()).not.toContain('data-landing-fab=""');
+    // Nomor sah → satu tombol `wa.me`, tab baru, berlabel, dan BUKAN primer.
+    vi.stubEnv("PLATFORM_CONTACT_WHATSAPP", "6281234567890");
+    const html = await render();
+    vi.unstubAllEnvs();
+    const fab = html.slice(html.indexOf('data-landing-fab=""'));
+    expect(fab).toContain('href="https://wa.me/6281234567890"');
+    expect(fab).toContain('target="_blank"');
+    expect(fab).toContain(`aria-label="${T("landing.contactWhatsappCta")}"`);
+    expect(fab.slice(0, fab.indexOf("</a>"))).not.toContain("ant-btn-color-primary");
   });
 
   it("navigasi menaut ke /harga (halaman), jangkar seksi berakar `/` (#399)", async () => {

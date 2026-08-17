@@ -20,7 +20,7 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
 
 | MASTER.md | Di sini |
 |---|---|
-| Tanpa hero / CTA | Hero + CTA **boleh** — itu memang tugas halaman ini. Ukurannya `--sai-landing-font-size-hero`, satu-satunya teks di aplikasi ini yang melampaui `fontSizeHeading1`. **FLUID sejak perubahan ini**: `clamp(1,1× … 4.5vw … 1,6×)` di atas `--ant-font-size-heading-1` (≈42px → ≈61px). Angka mati 1,4× sebelumnya berarti hero yang sama besarnya di 576px dan di 2560px |
+| Tanpa hero / CTA | Hero + CTA **boleh** — itu memang tugas halaman ini. Ukurannya `--sai-landing-font-size-hero`, satu-satunya teks di aplikasi ini yang melampaui `fontSizeHeading1`. **FLUID**: `clamp(1,1× … 3.6vw … 1,3×)` di atas `--ant-font-size-heading-1` (≈42px → ≈49px). Angka mati 1,4× sebelumnya berarti hero yang sama besarnya di 576px dan di 2560px. ⚠ Langit-langitnya **1,3× sejak #401** (dulu 1,6× ≈ 61px): kolom kalimat hero kini 45% (~497px di 1440px) karena kerangka aplikasi memikul 55%, dan diukur dengan metrik Inter yang terpasang setiap judul ≤8 kata patah TIGA baris pada 61px di kolom itu; pada 49px judul ID/EN/ZH yang dipilih dua baris |
 | `PageHeader` wajib untuk judul | **Tidak berlaku**: `PageHeader` membawa breadcrumb & kerangka dasbor. Halaman ini menulis `<h1>` sendiri, satu buah, di hero |
 | Density 6/10 (nyaman untuk data) | Lebih longgar — `--sai-landing-rhythm` (64px → 96px) antar-seksi. Tidak ada tabel data di sini |
 | Lebar penuh area kerja | Kolom baca dikurung: 72rem per seksi, 42rem per kolom teks, keduanya di tengah |
@@ -29,22 +29,25 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
 
 ## Susunan seksi, dan kenapa urutannya begitu
 
-    hero (+ purwarupa produk + strip bukti)   gradien brand → cyan
-      → "Yang Anda dapatkan"           polos, kartu bernada
+    hero (+ kerangka aplikasi & ponsel + strip fakta berpil)  gradien brand → cyan
+      → "Yang Anda dapatkan"           polos, kartu bernada + potongan UI (#402)
       → "Apa saja yang ada di dalam"   pita cyan, DAFTAR (tanpa kartu)
-          + galeri tiga layar          purwarupa dirender, di dalam pita  (#399)
+          + galeri tiga layar          kerangka aplikasi, 1 besar + 2 kecil (#399, #401)
       → "Untuk siapa"                  polos, kartu bernada + pil modul   (#398)
       → "Integrasi & jalan keluar data" pita brand, DAFTAR (tanpa kartu)  (#398)
       → "Yang menjaga pembukuan Anda"  polos, kartu bernada  ← sebelum harga
       → "Paket & harga"                pita indigo, kartu `surface` bertepi
       → FAQ                            polos, panel bernada
       → kontak                         polos, panel bernada + daftar kanal
-      → ajakan penutup                 pita accent
+      → ajakan penutup                 pita PEKAT navy merek — PUNCAK (#401)
       → kaki                           pita indigo
+    (+ tombol WhatsApp melayang, ≥576px, bila nomornya disetel — bukan seksi, bukan pita; #402)
 
 Perhatikan iramanya: **polos → pita → polos → pita**. Itu bukan kebetulan
 melainkan hasil aturan tepi di bawah — seksi yang kartunya bernada wajib polos,
-dan seksi yang pitanya bernada tidak boleh mewarnai kartunya.
+dan seksi yang pitanya bernada tidak boleh mewarnai kartunya. Dan iramanya
+**memuncak** sekali, di ujung: semua pita lain tint 14–18% pada satu tingkat
+kecerahan, ajakan penutup satu-satunya bidang pekat (§Pita pekat di bawah).
 
 ### "Untuk siapa" berdiri SESUDAH daftar modul, dan "Integrasi" adalah pita (#398)
 
@@ -274,6 +277,48 @@ terakhir, yang terbaca sebagai kisi yang gagal memuat — bukan sebagai
 penekanan. Irama halaman ini dipecah di daftar modul, bukan di sini. Jangan
 menghidupkannya kembali tanpa menyelesaikan yatimnya lebih dulu.
 
+### Potongan UI di kartu manfaat & pil modul berikon (#402)
+
+Sesudah hero memakai kerangka aplikasi (#401), seksi manfaat adalah yang
+pertama kembali ke "ikon + judul + paragraf" — kompetitor tidak pernah berhenti
+memperlihatkan produknya. Tiap kartu kini memuat SATU potongan UI kecil,
+dirender server, yang menggambar hal yang kalimatnya katakan
+(`landing-features.tsx`):
+
+| Kartu | Potongan | Sumbernya |
+|---|---|---|
+| Buku terpisah per PT | pengalih PT — chip yang SAMA dengan bilah kerangka (`FRAME_CHIP`, diekspor dari `landing-app-frame.tsx`) + kalimat `mockSwitcherHint` | nama PT contoh (`mockCompany*`) |
+| Peran & jejak audit | tiga lencana peran (chip indigo) + baris "siapa · kapan · apa" | `ROLES` + `roleLabels()` — penolong yang sama dengan halaman Pengguna, bukan kunci kamus yang dirakit dinamis |
+| PPN & e-Faktur | tabel tiga baris DPP / PPN / total | `computeTax(DEFAULT_TAX_RATE)` — kunci baris yang sama dengan faktur galeri; berkasnya masuk `ALLOWED` `tests/tax-rates.test.ts` |
+| Tiga bahasa | pil bahasa | `LOCALES` + `LOCALE_LABELS` (nama dalam bahasanya sendiri) |
+
+Aturan yang mengikatnya:
+
+- **Primitif kerangka, bukan bentuk baru.** Wadah potongan = `FRAME_CARD`
+  (permukaan `colorBgContainer` bertepi — tepinya WAJIB: ia berdiri di atas
+  kartu BERNADA, 1,2–1,5:1 tanpa tepi), pil = `landingChip` sehue kartu.
+- **§Angkanya karangan berlaku pada satu-satunya potongan bernominal (PPN)**:
+  label "contoh tampilan" (`mockCaption`, kunci yang sama) di dalam kartunya —
+  jadi labelnya kini tampil LIMA kali di `/` (hero + 3 galeri + 1), dikunci
+  `tests/public-landing.test.tsx`. Seluruh potongan `aria-hidden` (ilustrasi
+  kalimat di atasnya). Nama peran & bahasa bukan angka karangan.
+- **Potongan SELEBAR kartu, di bawah baris ikon+teks — DIUKUR.** Di 320px
+  kolom teks kartu hanya ±184px (kartu 288 − padding 48 − ikon 40 − jarak 16)
+  dan tabel DPP/PPN/total menuntut ±200px; di lebar kartu penuh (±240px) ia
+  muat tanpa memotong nominal. Overflow potongan terukur 0 di 320/390/576/
+  768/992/1440. Tinggi kartu tidak lagi seragam (1440: 208/208/267/267;
+  390: 232/281/314/223) — kisi `landingGrid` meregangkan per baris, jadi
+  yang berpasangan sebaris tetap sama tinggi.
+- **Tiga peran, bukan empat**: pil "Administrator Sistem" patah ke baris
+  ketiga di kartu 280px.
+- **Pil modul "Untuk siapa"** kini berikon `MODULE_ICON` (peta yang sama
+  dengan daftar modul & sidebar kerangka), 32px, `fontWeight 500`, glif anak
+  tangga -8 sehue (≥3:1 di atas chip — pasangan yang sudah diukur). Pil
+  menunjuk balik ke baris yang baru dibaca di seksi modul, bukan sekadar
+  menyebut namanya.
+- **Keterangan Integrasi dipangkas ke SATU kalimat** di ketiga bahasa
+  (`integration*Body`); klaimnya tidak berubah, hanya panjangnya.
+
 ## Formulir kontak — satu-satunya formulir di pendaratan
 
 Sebelumnya satu-satunya cara menghubungi adalah tautan `mailto:` di kartu paket
@@ -431,24 +476,72 @@ setiap pengunjung yang mungkin tidak pernah mendaftar.
 
 ### Ilustrasi harus MENGATAKAN HAL YANG SAMA dengan kalimatnya
 
-Judul hero berjanji *"beberapa PT, satu akun"* — dan purwarupanya dulu
+Judul hero berjanji *"satu PT — atau banyak"* — dan purwarupanya dulu
 memperlihatkan SATU perusahaan. Gambar yang tidak mengatakan hal yang sama
-dengan kalimat di sebelahnya adalah hiasan, bukan ilustrasi.
+dengan kalimat di sebelahnya adalah hiasan, bukan ilustrasi. Sejak #401 janji
+itu digambar oleh **pengalih PT di bilah atas kerangka** (dua PT contoh, satu
+aktif berisi nada, ikon tukar) — bentuk yang sama persis dengan penanda
+perusahaan di app — di hero MAUPUN di ketiga layar galeri. "Tumpukan map"
+versi sebelumnya (dua bilah menyembul di atas kartu) dibuang bersama kartunya:
+kerangka aplikasi sudah punya tempat yang benar untuk mengatakan "PT ini bisa
+diganti", dan itu tempat yang sama dengan di produknya.
 
-Dua bilah menyembul di atas kartu utama seperti tumpukan map: "beberapa PT"
-menjadi sesuatu yang **terlihat**, bukan hanya terbaca.
+### Kerangka aplikasi + kartu ponsel — hero sejak #401
 
-- **Bilahnya lebih SEMPIT, bukan digeser mendatar.** Menggeser ke samping
-  melebarkan kotak pembatas dan berisiko menggulung mendatar di layar sempit —
-  kegagalan yang sudah pernah terjadi di bilah atas.
-- **Tanpa nama PT di bilahnya.** Dicoba lebih dulu dan dibuang: teks di dalam
-  pita setinggi 18px terpotong kartu di depannya dan terbaca sebagai render
-  yang gagal. Perusahaan yang sedang dibuka sudah dinamai kepala kartu utama.
+Tinjauan visual terhadap tujuh kompetitor (2026-08-17): halaman kita bersih
+tetapi terlalu editorial — banyak paragraf, sedikit produk; Kledo/Zoho/Wave
+memenuhi setengah layar dengan kerangka aplikasi nyata. Hero kini komposisi
+**"dasbor + ponsel"**, dirender:
 
-### Sparkline melebar penuh
+- **`landing-app-frame.tsx`** — SATU komponen server untuk hero dan galeri:
+  bilah atas (lambang `BrandMark`, nama layar, pengalih PT, lingkaran
+  pengguna), **sidebar navy berikon** (enam modul dari `MODULE_META` +
+  `MODULE_ICON` — registri yang sama dengan daftar modul, modul yang dihapus
+  ditolak `tsc`), area kerja `colorBgLayout` berisi kartu `colorBgContainer`
+  bertepi (jenjang yang sama dengan dasbor sungguhan), dan label "contoh
+  tampilan" di kaki — dirender OLEH kerangka supaya tidak ada pemakai yang
+  lupa. Bentuk `src/components/layout/*` DIRUJUK, tidak diimpor: semuanya
+  client component.
+- **Isinya**: tiga ubin angka (kas & bank / piutang / utang — angka contoh
+  yang sama), satu grafik area (pola sparkline yang sama, 96px, tiga garis
+  bantu 8% tanpa angka sumbu), baris "buku besar tersegel per periode".
+  Selisih bersih tetap **dihitung** dari ketiganya.
+- **Kartu ponsel** (`LANDING_PHONE_WIDTH` = 168px) bertumpuk di sudut
+  kanan-bawah, menjorok 16px keluar kerangka ke kanan & bawah (masih di dalam
+  gutter seksi — terukur tanpa gulungan mendatar), memperlihatkan layar yang
+  sama versi ringkas. **Tanpa label contoh sendiri**: ia bagian komposisi
+  yang labelnya di kaki kerangka, dan kaki itu **menyisakan ruang** selebar
+  kartu ponsel (`padding-inline-end`) supaya kalimatnya tidak tertutup.
+  Disembunyikan **<992px** — issue meminta <768px; diukur di 768px kerangka
+  370px dan kartu ponsel menutupi 45%-nya (separuh grafik + ubin ketiga),
+  kaki kerangka tinggal 170px untuk kalimat contoh. Di 992px kerangka 493px,
+  kartu menutupi 34% — hanya ujung kanan grafik. Kartu "selisih bersih" karena
+  itu menumpuk label/nilai/delta di KIRI, dan baris periode rapat kiri: yang
+  boleh tertutup hanya ujung grafik, tidak pernah angka.
+- **Sidebar navy = `--ant-color-brand-solid`**, bukan `SIDER_BG_DARK` (bukan
+  variabel CSS; halaman ini hanya boleh menulis token). Glif putih di atasnya
+  11,50 / 5,06:1 (angka `BrandMark`). Ia strip di dalam gambar produk, bukan
+  pita, dan tidak memikul tombol — jadi tidak melanggar "satu pita pekat".
+- **Ubin angka `flex-wrap` basis 120px, bukan kisi `auto-fit`**: di kerangka
+  sempit tiga ubin tidak muat sebaris, dan dengan `flex-grow` ubin ketiga
+  MELEBAR memenuhi barisnya alih-alih menyisakan kotak yatim setengah lebar
+  (§Yang DICOBA lalu dibuang: kisi asimetris).
 
-132×34 yang terselip di samping nominal terbaca sebagai hiasan kecil.
-Membentang di dasar kartu ia menjadi bagian kartu itu.
+⚠ **Bentuk dalam kerangka mengikuti LEBAR KERANGKA (`@container`), bukan
+viewport.** Kerangka yang sama berdiri di 55% kolom hero, ~60% kartu galeri
+besar, dan ~40% kartu galeri kecil — tiga lebar pada satu viewport, jadi titik
+patah viewport tidak bisa menjawabnya. Aturannya di `LANDING_STYLE`: <360px
+sidebar disembunyikan (seperti app di ponsel), ≥520px PT kedua tampil di
+pengalih dan sidebar yang MEMINTA label (`data-landing-frame-nav="wide"`,
+hanya hero) menampilkannya. Peramban tanpa `@container` mendapat keadaan
+bawaan: sidebar berikon tanpa label — kerangka yang lebih sederhana, bukan
+yang rusak. Ini BUKAN titik patah keempat.
+
+### Grafik area melebar penuh
+
+Sparkline 132×34 yang terselip di samping nominal terbaca sebagai hiasan
+kecil. Membentang selebar kartunya (96px tinggi di dasbor, 40px di ponsel) ia
+menjadi bagian kartu itu.
 ⚠ `preserveAspectRatio="none"` meregangkan sumbu-x, jadi penanda periode
 berjalan berupa **garis tegak**, bukan lingkaran — lingkaran akan menjadi elips.
 
@@ -502,6 +595,33 @@ sesudah orang memutuskan untuk terus menggulung atau tidak — dan berbentuk
 **sama persis** dengan sepuluh kartu modul di bawahnya, sehingga terbaca sebagai
 tiga modul lagi. Sekarang: tepat sesudah hero, angka di atas label, tanpa kotak.
 
+### Strip fakta berpil: ikon + angka besar (#402)
+
+Tiga angka teks polos adalah bobot visual paling lemah di halaman (tinjauan
+visual 2026-08-17). Kini tiap fakta berdiri di dalam **pil `chip-brand`**
+(28%): lingkaran ikon `surface` 40px di kiri (glif `colorPrimary`), angka
+`fontSizeHeading2` `tabular-nums` + label 14px di kanan; ketiganya `flex-wrap`
+basis 200px, tepat di atas garis bawah hero.
+
+- **Nada di atas nada — DIUKUR, bukan dilarang mentah.** §"warnai pitanya ATAU
+  kartunya" lahir dari `fill` (14%) di atas pita sehue: 1,03:1. Pil ini `chip`
+  (28%), dan terhadap kedua ujung gradien hero terukur **1,22 / 1,31:1
+  (terang) · 1,31 / 1,23:1 (gelap)** — di atas lantai 1,05 "nada ini
+  benar-benar ada di layar", dan justru LEBIH terlihat daripada permukaan
+  `surface` (1,01:1 terhadap `band-brand` di tema gelap). Teks 11,89 / 9,43:1,
+  glif 7,82 / 4,16:1; pil tidak memikul tombol. Dikunci
+  `tests/landing-colors.test.ts` §#402.
+- **Baris, diukur:** 320px (288 tersedia) & 390px → tiga pil bertumpuk (71px
+  tiap); 576px → 2 + 1 (pil ketiga melebar 528px); ≥768px satu baris (232 →
+  360px per pil di 1440). Aturan bilangan vs daftar (§di atas) tetap: mata
+  uang `fontSizeHeading4` tanpa `tabular-nums`.
+- **Slot lencana PSE Komdigi**: barisnya `flex-wrap` + `flex: 1 1 200px`, jadi
+  butir keempat tinggal ditambahkan ke daftar `facts` dan barisnya patah
+  sendiri (4 × 200 + 3 × 12 = 836px < 1152px → tetap sebaris di 1440;
+  2 + 2 di 768). Lencananya SENDIRI belum ada dan TIDAK boleh dipajang sebelum
+  pendaftarannya nyata (§KLAIM HARUS PUNYA SUMBER).
+- Tetap muncul SEKALI (#397): yang di harga tetap kalimat.
+
 ## Copy, harga, FAQ — hasil tinjauan terhadap sembilan kompetitor (#397)
 
 Halaman ini dibandingkan dengan Jurnal, Accurate, Kledo, Zahir, Paper.id,
@@ -546,10 +666,36 @@ buku besar per PT (#104; modul tidak pernah menggerbangi buku besar —
 
 **Judul hero merangkul satu PT**: "Pembukuan satu atau beberapa PT, dalam satu
 akun". Judul lama ("Pembukuan beberapa PT…") membuat pemilik satu PT — pasar
-terbesar — merasa bukan sasaran, padahal paket terkecil memang satu PT. Kalimat
-tubuhnya menutup: *"Mulai dari satu PT; PT berikutnya cukup ditambahkan."*
-Purwarupa hero (tumpukan bilah PT) tetap benar: "beberapa" masih ada di
-judulnya.
+terbesar — merasa bukan sasaran, padahal paket terkecil memang satu PT.
+
+### Judul hero ≤ 8 kata, kalimat tubuh dua kalimat (#401)
+
+Judul #397 (9 kata ID / 10 EN) terukur **4 baris di 1440px** — hero yang
+judulnya sendiri sudah memakan setengah kolom. Kini `heroHeading` ≤ 8 kata di
+ketiga bahasa: *"Pembukuan rapi, satu PT atau banyak"* / *"Tidy books for one
+company — or many"* / *"一家或多家公司，账簿井井有条"* — terukur 2 baris di
+≥992px, ≤3 di 320–768px. Kandidat issue (*"Pembukuan rapi untuk satu PT — atau
+banyak"*, 42 huruf) diukur dengan metrik Inter yang terpasang dan patah TIGA
+baris di kolom 497px pada setiap ukuran ≥47,5px; yang dipilih (35 huruf) dua
+baris sampai 49,4px, langit-langit hero yang baru. Janji "buku besar sendiri
+per PT, satu akun" turun ke `heroBody`, yang dipendekkan menjadi **dua
+kalimat** (di 390px kini 5 baris, dulu 7). Kedua kunci dipakai
+`generateMetadata` (title/OG/description) dan tetap bermakna berdiri sendiri.
+"Satu PT atau banyak" tetap merangkul pemilik satu PT (§di atas), dan
+purwarupanya (pengalih PT di kerangka) mengatakan hal yang sama. `ctaBody`
+kehilangan kalimat "Tidak ada yang perlu dipasang" — di pita penutup ia
+berdiri satu baris di atas `ctaTrialNote` yang mengatakan hal yang sama.
+
+**Kalimat KEDUA `heroBody` disembunyikan di bawah 576px (#402).** Dua kalimat
+terukur 5 baris di 390px sebelum tombol. `landing-hero.tsx` memotong teks
+pada tanda akhir kalimat pertama (`. ! ?` atau `。` ZH) dan membungkus sisanya
+`[data-landing-hero-body-more]`, yang di bawah 576px **dikurung 1px** (teknik
+nama merek di bilah — BUKAN `display:none`, supaya pembaca layar tetap
+mendapat kalimat utuh) dan kembali `static` mulai 576px. Satu kunci kamus,
+tetap dipakai `generateMetadata`. **Diukur:** 320px → 3 baris, 390px → 3
+baris (dulu 5); ≥576px kalimat utuh (576: 3 baris, 992/1440: 4 baris; 768:
+5 baris — kolom hero 45% di titik patah dua kolom, keadaan #401 yang tidak
+berubah). Kamus yang kelak hanya satu kalimat dirender apa adanya.
 
 ### Hemat tahunan: DIHITUNG di kartu, hilang bila nol/negatif
 
@@ -566,6 +712,32 @@ diskon yang diketik.
   rusak.
 - Bulan ditampilkan satu desimal format `id-ID` (2,0 → "2"; 1,5 tetap "1,5").
   `tabular-nums`, sesuai aturan angka MASTER.md.
+
+### Kisi harga dipusatkan (≤2 kartu), Enterprise setinggi Pro (#402)
+
+Katalog publik memuat DUA paket (Pro + rundingan) dan kisi 72rem memberi
+masing-masing 568px — selebar dua kolom teks, separuh badan Enterprise kosong.
+Kini `<ul>` paket ber-`maxWidth` **760px** + `marginInline: auto` selama
+`plans.length ≤ 2`, dan melebar otomatis (tanpa `maxWidth`) bila katalog
+punya ≥3 paket — bukan kolom mati yang menunggu. **Diukur keduanya:** dua
+kartu di 760px = (760 − 16) / 2 = **372px** per kartu di ≥992px (`<ul>` di
+x=116 pada 992, x=340 pada 1440); tiga kartu di kisi penuh = (1152 − 32) / 3 =
+**373px** — kartu paket berlebar sama berapa pun jumlah paketnya. Di 768px
+kisi 720px (kartu 352), di ≤576px satu kolom.
+
+Kartu rundingan mendapat **tiga butir "termasuk"** (kuota dirundingkan,
+dukungan langsung lewat kanal kontak, ketentuan & masa kontrak khusus —
+`pricingContactQuota/Support/Terms`, tiga bahasa) supaya isinya setinggi Pro
+(terukur 402px keduanya di 992/1440; badannya memang diregang kisi, yang
+diisi butir adalah RUANGnya). Ketiganya jujur: kuota memang dirundingkan
+(`plan-change-contact-only`), dukungan lewat kanal `contactChannels()` yang
+sama — TANPA jam layanan/SLA (§KLAIM HARUS PUNYA SUMBER) — dan ketentuan
+kontrak memang milik perundingan.
+
+Kepala Pro `chip-brand` (28%) vs kepala Enterprise `fill-indigo` (14%): teks
+di atas kepala Pro **11,89 / 9,43:1**, dan kedua kepala berbeda satu sama lain
+**1,20 / 1,22:1** (kedua tema; lantai 1,05) — kini dikunci eksplisit di
+`tests/landing-colors.test.ts` §#402. Pil "Direkomendasikan" tetap netral.
 
 ### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
 
@@ -674,8 +846,22 @@ satu per satu adalah koreografi, dan koreografi adalah animasi hias.
   menuntut **685px**. Menampilkannya mulai 576px membuat halaman **menggulung
   mendatar di seluruh rentang 576–685px** — cacat yang tidak terlihat di dua
   ukuran yang biasa ditangkap layar (1920 & 390), dan yang baru ketahuan setelah
-  lebar disapu satu per satu. Jangan menambah titik patah ketiga tanpa mengukur
+  lebar disapu satu per satu. Jangan menambah titik patah baru tanpa mengukur
   lebih dulu.
+  ⚠ **Sejak #401 hero juga berpatah di 768px, bukan 576px** — diukur: kerangka
+  aplikasi (sidebar 40px + tiga ubin "Rp 184.500.000" ±118px + grafik) tidak
+  muat di kolom purwarupa 206px yang tersedia di 576px. Di 576–767px hero satu
+  kolom, kerangka selebar isi (528–720px); mulai 768px dua kolom **45:55**
+  (kerangka 55% — yang menjual kini gambar produknya; judulnya ≤8 kata supaya
+  muat di 45%), jarak `margin-xxl` (48px), bukan `rhythm` (96px) — dengan 96px
+  kolom kalimat di 768px tinggal 281px.
+  ⚠ **Titik patah KETIGA — 992px (`screenLG`, `LANDING_WIDE_BREAKPOINT`) —
+  untuk galeri 1 besar + 2 kecil dan kemunculan kartu ponsel hero (#401)**,
+  ditambahkan sesudah diukur:
+  pada 3fr:2fr kolom kanan baru mencapai ~360px (lebar minimum agar kerangka
+  di dalamnya masih memuat sidebar berikon) mulai 992px; di 768–991px kerangka
+  faktur kehilangan sidebarnya sementara jurnal di sebelahnya masih punya, dan
+  dua kerangka yang tidak sebentuk berdampingan terbaca sebagai bug.
 - **Menu ponsel (#398): `<details><summary>`, tanpa JavaScript.** Di bawah
   768px tautan seksi + `#kontak` + pemilih bahasa (<576px saja — di 576–768
   sakelar di bilah sudah tampil) hidup di panel `position:absolute` di bawah
@@ -691,6 +877,16 @@ satu per satu adalah koreografi, dan koreografi adalah animasi hias.
   seksi ditekan — ia tetap terbuka di bawah bilah menempel sampai tombol X
   ditekan. Menutup otomatis menuntut JavaScript; itu lebih mahal daripada satu
   ketukan.
+- **Dua penumpang baru titik patah 576px (#402):** `[data-landing-fab]`
+  (tombol WhatsApp melayang: `none` → `block`) dan
+  `[data-landing-hero-body-more]` (kalimat kedua hero: dikurung 1px →
+  `static`). Keduanya menumpang titik patah yang ADA, bukan titik patah baru.
+  ⚠ Diukur di #402 pada `develop` SEBELUM perubahan apa pun: di **tepat
+  768px** bilah atas menuntut **782px** (`[data-landing-nav-actions]` sampai
+  x=782 dengan tautan seksi + sakelar bahasa + dua tombol) — 14px gulungan
+  mendatar yang sudah ada sejak tautan bertambah di #398/#399, bukan dari
+  #402, dan di luar lingkupnya; angkanya ditulis di sini supaya orang
+  berikutnya tidak mengukurnya lagi dari nol.
 - **Skala pemasaran = `--sai-landing-*`**, dideklarasikan HANYA di dalam
   `[data-landing]` dan seluruhnya turunan token AntD, kecuali tiga lebar baca.
   Menyalinnya ke halaman internal tidak menghasilkan apa-apa.
@@ -744,17 +940,112 @@ disorot — bukan hiasan.
    jenjang kartu-vs-pita hanya 1,01–1,06:1, yang memisahkan keduanya di sana
    adalah `colorBorderSecondary`.
 
-### Nada `accent` dipakai TEPAT SEKALI — dan kini benar-benar sekali
+### Nada `accent` dipakai TEPAT SEKALI — kini di sorotan radial hero (#401)
 
-Ajakan penutup. Nada terkuat halaman kehilangan artinya kalau ia muncul dua
-kali.
+Sampai #401 `accent` (18%) adalah pita ajakan penutup, dan hero dilarang
+memakainya sebagai ujung gradien supaya penutup tidak "sebobot hero". Sejak
+#401 puncak halaman **bukan lagi tint** melainkan pita PEKAT (bagian
+berikut), sehingga `accent` kehilangan pemakai lamanya. Tokennya **tetap
+ada** karena masih dipakai tepat sekali — sorotan radial di kuadran hero
+(`landing-hero.tsx`), yang memang harus lebih pekat daripada `band-brand` di
+bawahnya agar hero punya satu sumber cahaya. Ia bukan lagi nilai `tone`
+seksi (`LandingTone` tidak mengenal `accent`; dijaga
+`tests/landing-colors.test.ts`): dua puncak = tidak ada puncak. Kadarnya tetap
+dikunci ambang tombol primer (hero memikul tombol), jadi ia tidak boleh
+dinaikkan hanya karena tidak lagi memikul ajakan penutup.
 
-⚠ **Dikoreksi.** Versi sebelumnya membolehkan hero ikut memakainya "sebagai
-UJUNG gradien, bukan sebagai bidang rata". Di layar pengecualian itu tidak
-bertahan: pita penutup terbaca sebobot hero, sehingga halaman berakhir datar
-alih-alih memuncak — yaitu persis yang aturan ini dibuat untuk mencegah. Hero
-kini mulai dari `band-brand` (10%), dan `accent` (16%) muncul di satu tempat
-saja.
+### Pita PEKAT — ajakan penutup sebagai PUNCAK (#401)
+
+Tinjauan visual terhadap kompetitor (2026-08-17): halaman ini disiplin,
+tetapi semua pitanya tint 14–18% pada SATU tingkat kecerahan — tidak ada
+puncak, dan halaman berakhir datar. Kompetitor menutup dengan satu bidang
+pekat. Sekarang: `LandingClosingCta` = `LandingSection tone="solid"`.
+
+| Peran | TERANG | rasio | GELAP | rasio |
+|---|---|---|---|---|
+| Pita `--sai-landing-band-solid` = `--ant-color-brand-solid` | `#1E3A5F` | — | `#2F6FBF` | — |
+| Judul & tombol-label: `colorTextLightSolid` di atas pita | putih | **11,50** | putih | **5,06** |
+| Catatan penenang: putih **92%** di atas pita | — | 10,84 | — | **4,56** |
+| Isian tombol `inverse` (putih) sebagai bidang vs pita | — | 11,50 | — | 5,06 |
+| Label tombol `inverse` (`brand-solid`) di atas isian putih | — | 11,50 | — | 5,06 |
+| …saat hover (isian putih 94% + navy) | — | 10,4 | — | **4,68** |
+| …saat aktif (isian putih 92% + navy) | — | 10,1 | — | **4,56** |
+| Isian tombol `primary` vs pita (DILARANG) | — | **1,00** | — | 1,00 |
+
+Semua angka dihitung ulang tiap suite berjalan (`tests/landing-colors.test.ts`
+§"pita pekat"), dari token yang terpasang dan dari kadar yang **diurai** dari
+`LANDING_STYLE` / `INVERSE_BUTTON_STYLE` — bukan diketik ulang di tes.
+
+Empat keputusan yang lahir dari angka itu:
+
+1. **Teks redup 92%, bukan 85%.** Issue meminta "putih 85%"; terukur 85% di
+   atas navy tema gelap hanya **4,14:1**, 90% → 4,44. 92% adalah kadar
+   terendah yang lolos, dan tesnya mengunci bahwa ia memang batas (90% masih
+   gagal) — bukan angka bermargin yang tidak ada yang tahu. Konsekuensinya
+   jujur: hierarki judul/kalimat di pita ini datang dari UKURAN, selisih
+   warnanya tipis.
+2. **Tombol `inverse`, bukan `primary`.** Isian primer = isian merek yang sama
+   dengan pitanya (1,00:1): tombol lenyap sebagai bidang. `variant="inverse"`
+   (`components/ui/button.tsx`) adalah varian BERNAMA — isian putih, label
+   navy — bukan gaya sebaris ad-hoc, dan penjaga penekanan
+   (`tests/button-emphasis.test.ts`) menghitungnya sebagai ajakan penuh: satu
+   per wadah, di pendaratan wajib menuju `/register`. `primary`/`default`
+   DILARANG di `landing-closing-cta.tsx` (dijaga).
+3. **Hover/aktif tombol terbalik menggelap TIPIS (94% / 92% putih).** Yang
+   mengikat adalah label navy di atas isian saat disentuh, di tema gelap:
+   90% putih sudah 4,44. Selisih hover yang nyaris tak terlihat adalah harga
+   yang benar; label yang tetap terbaca lebih penting daripada hover yang
+   jelas.
+4. **Ditulis lewat variabel CSS per-elemen AntD** (`--ant-btn-bg-color`,
+   `-hover`, `-active`, `--ant-btn-text-color*`; `antd/es/button/style/
+   variant.js`), sebaris — bukan kelas ber-hash yang disalin (berhenti
+   berlaku diam-diam) dan bukan `ConfigProvider` bersarang (menuntut warna
+   mentah, membangkitkan lembar gaya kedua).
+
+⚠ **Satu pita pekat, dan hanya satu.** Sidebar navy 40px di dalam kerangka
+aplikasi (hero & galeri) memakai token yang sama, tetapi ia strip di dalam
+GAMBAR produk, bukan pita — dan tidak memikul tombol. Pita `solid` kedua di
+halaman ini menghapus puncaknya.
+
+**Tombol WhatsApp melayang (#402) juga BUKAN pita.** Ia bulatan 48px
+`position:fixed` kanan-bawah (`bottom/right: margin-lg`), isian
+`--ant-color-brand-solid` + glif putih (11,50 / 5,06:1 — angka `BrandMark`),
+`landing-whatsapp.tsx`; yang dijaga aturan ini adalah bidang navy SELEBAR
+LAYAR yang memikul ajakan, dan ini bidang kecil yang memikul satu ikon.
+Angka & keputusannya:
+
+| | TERANG | GELAP |
+|---|---|---|
+| glif putih di atas isian diam / hover / aktif (`brand-solid`, `-hover`, `-active` — token global baru = `PRIMARY_BUTTON_*`) | 11,50 / 13,38 / 16,59 | 5,06 / 6,24 / 8,64 |
+| bidang navy vs latar halaman | 11,50 | 3,64 |
+| bidang navy vs `band-brand` / `band-cyan` (hero yang dilintasinya) | 9,55 / 10,23 | 3,22 / 3,02 |
+| bidang navy vs pita penutup (token yang SAMA) | **1,00** | **1,00** |
+| cincin 2px `colorBgContainer` vs pita penutup | 11,50 | 3,64 |
+
+- **Cincin `border` 2px `colorBgContainer`, bukan `box-shadow` tulisan tangan**:
+  tanpa cincin bulatannya lenyap tepat saat melintasi pita penutup (1,00:1);
+  di atas halaman cincin sewarna latar dan memang tak terlihat. Bayangan
+  melayangnya token `--ant-box-shadow`.
+- **BUKAN hijau WhatsApp**: hijau = uang masuk di app ini, dan
+  `tests/landing-colors.test.ts` menolak warna mentah.
+- **`Button href` `outline` + gaya varian bernama (`WHATSAPP_FAB_STYLE`),
+  bukan `primary`**: tautan KELUAR (`https://wa.me/…`, tab baru, `rel`
+  noopener), dan penjaga penekanan mengunci primer pendaratan ke `/register`
+  — dijaga eksplisit di `tests/button-emphasis.test.ts`. Sumbernya
+  `contactChannels()`, sakelar yang sama dengan seksi kontak: nomor kosong /
+  salah bentuk = tidak dirender.
+- **Hover/aktif lewat token GLOBAL baru `--ant-color-brand-solid-hover` /
+  `-active`** (`antd-tokens.ts` `brandSolidHover/Active`, nilainya =
+  `PRIMARY_BUTTON_*`): token komponen `Button` (`colorPrimaryHover`) TERUKUR
+  tidak sampai ke dokumen sebagai variabel (`getComputedStyle` →
+  `--ant-button-color-primary-hover` kosong), dan `var()` yang tak teratasi
+  membuat isian hover jatuh ke `unset`.
+- **Hanya ≥576px — DIUKUR** (issue: "kalau bertabrakan, ≥576px"). Di 320/390
+  tombol hero bertumpuk selebar isi (x 16–304 / 16–374) dan bulatan 48px
+  menempati x 248–296 / 318–366 — menutupi 48px = 17% / 13% lebar ajakan
+  utama pada setiap posisi gulungan yang menaruhnya di 72px terbawah layar.
+  Di 576px tombol hero berjajar dan berakhir di x=191, bulatan di x=504–552:
+  tidak bersentuhan. Di bawah 576px WhatsApp tetap ada di seksi kontak.
 
 ### Hijau/merah/emas/jingga: TERMASUK glif dan lencana
 
@@ -775,12 +1066,24 @@ label barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
 
 ### Yang DITOLAK karena melewati batas kepercayaan
 
-- **Pita ajakan penutup berisi biru pekat dengan teks putih.** Terukur, dan ia
-  gagal karena aritmetika, bukan selera: tangga biru membalik di tema gelap,
-  jadi tidak ada SATU anak tangga BIRU yang bisa memikul teks putih di kedua
-  tema (`blue-7` terang 6,16:1 tapi gelap 3,54:1; `blue-6` gelap 5,19:1 tapi
-  terang 4,10:1). Memaksanya berarti mencabang tema di dalam blok gaya
-  pendaratan, yaitu mekanisme tema KEDUA di satu halaman.
+> ⚠ **DIREVISI di #401.** Dua butir pertama di bawah dulu dibaca sebagai
+> "pita penutup pekat ditolak". Yang ditolak adalah DUA BAHAN tertentu —
+> tangga BIRU AntD dan `SIDER_BG_DARK` — dan alasannya tetap benar untuk
+> keduanya. **Navy MEREK (`--ant-color-brand-solid`) adalah token ketiga
+> dengan angkanya sendiri** (putih di atasnya 11,50:1 terang / 5,06:1 gelap;
+> ia satu nilai per tema yang DIPILIH, bukan anak tangga yang membalik), dan
+> dengan tombol TERBALIK — bukan `primary` — ia lolos semua ambang di kedua
+> tema. Angkanya di §Pita pekat di atas. Butir di bawah ditulis ulang supaya
+> menyebut yang ditolak dengan tepat.
+
+- **Pita ajakan penutup dari TANGGA BIRU AntD dengan teks putih.** Terukur,
+  dan ia gagal karena aritmetika, bukan selera: tangga biru membalik di tema
+  gelap, jadi tidak ada SATU anak tangga BIRU yang bisa memikul teks putih di
+  kedua tema (`blue-7` terang 6,16:1 tapi gelap 3,54:1; `blue-6` gelap 5,19:1
+  tapi terang 4,10:1). Memaksanya berarti mencabang tema di dalam blok gaya
+  pendaratan, yaitu mekanisme tema KEDUA di satu halaman. **Yang menggantikannya
+  (#401) bukan anak tangga melainkan token `colorBrandSolid`** — sudah punya
+  nilai per tema di `antd-tokens.ts`, jadi tidak ada cabang tema di halaman.
   ⚠ **Diukur ulang di #303: kalimat itu berlaku untuk BIRU, bukan untuk setiap
   hue.** `geekblue-6` memikul teks putih 5,85:1 (terang) / 7,13:1 (gelap) dan
   `purple-6` 6,94 / 8,27 — keduanya lolos 4,5:1 di kedua tema. Yang tetap
@@ -792,6 +1095,11 @@ label barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
   hanya 2,99:1 — angka yang sudah tercatat di `lib/theme/antd-tokens.ts` dan
   yang membuat `Menu` diberi tokennya sendiri. Tombol ajakan yang tidak bisa
   ditemukan sebagai bidang adalah harga yang terlalu mahal untuk sebuah pita.
+  **Tetap ditolak** — dan pelajarannya justru yang dipakai #401: di atas bidang
+  pekat, tombolnya harus TERBALIK, bukan primer.
+- **Tombol `primary` di atas pita navy merek.** Isian primer = isian pitanya:
+  1,00:1 di tema terang. Dijaga `tests/landing-colors.test.ts` (aturan
+  terbalik) — `variant="inverse"` yang sah di sana.
 - **Nada per kategori untuk kesepuluh kartu modul.** `BUSINESS_MODULES` tidak
   punya kategori; mengarangnya di halaman pemasaran adalah klaim tanpa sumber
   (§KLAIM HARUS PUNYA SUMBER), dan sepuluh hue berdampingan adalah konfeti,
@@ -800,7 +1108,9 @@ label barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
 ### Penjaganya
 
 `tests/landing-colors.test.ts` menghitung ulang setiap pasangan
-teks-di-atas-warna dari token yang benar-benar terpasang dan dari resep
+teks-di-atas-warna (sejak #402 juga: kepala Pro vs kepala Enterprise, pil
+strip fakta vs gradien hero, dan tombol WhatsApp melayang di setiap keadaan)
+dari token yang benar-benar terpasang dan dari resep
 `color-mix` yang **diurai dari `LANDING_STYLE` itu sendiri** — bukan diketik
 ulang di tes. Ia mengunci: teks ≥4,5:1 di kedua tema, isian tombol ≥3:1 pada
 setiap permukaan yang memikulnya, glif ikon ≥3:1 di atas kotaknya, dan lantai
@@ -991,6 +1301,20 @@ tampilan" selalu terlihat, nama PT jelas contoh, `aria-hidden`; nominal lewat
 (sesudah daftar modul), bukan seksi sendiri: gambar layar adalah jawaban
 visual atas "apakah pekerjaan saya ada di dalamnya", pertanyaan yang seksi
 itu jawab dengan daftar.
+
+#### Galeri memakai kerangka aplikasi, satu kartu dominan (#401)
+
+Tiga kartu "dokumen" sejajar tanpa chrome aplikasi terbaca sebagai tiga
+kartu, bukan tiga LAYAR. Kini tiap layar dibungkus **`LandingAppFrame` yang
+sama dengan hero** (bilah judul: nama layar + pengalih PT mini; sidebar 40px
+berikon, modul layar itu aktif — jurnal → pembukuan inti, faktur → penjualan),
+isinya di satu kartu area kerja (`FRAME_CARD`). Tata letak **1 besar + 2
+kecil** di ≥992px (`[data-landing-gallery]`, 3fr:2fr; jurnal `grid-row: 1 /
+span 2` di kiri), satu kolom di bawahnya — alasan titik patahnya di §Titik
+patah. Karena kartu jurnal kini dua baris tingginya, jurnalnya **dua entri**
+— penjualan kredit dan PELUNASAN faktur yang sama (kas & bank ← piutang) —
+jumlah & keseimbangan tiap entri tetap dihitung; ketiga layar tetap satu
+cerita: faktur → jurnal → pelunasan.
 
 ### Ikon menu ponsel: dua rule, spesifisitas (0,2,0)
 

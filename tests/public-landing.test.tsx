@@ -41,6 +41,14 @@ import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);
 
+/**
+ * Ubin kuota (#413): angka besar + label kata benda, bukan kalimat berjumlah.
+ * Yang dicari adalah PASANGAN angka→label di dalam satu `<li>` — bukan angka
+ * telanjang, yang bisa muncul di mana saja di halaman.
+ */
+const ubinKuota = (html: string, angka: number, labelKey: "landing.pricingQuotaCompaniesLabel" | "landing.pricingQuotaUsersLabel") =>
+  new RegExp(`<li[^>]*>(?:(?!</li>).)*?>${angka}</span>(?:(?!</li>).)*?>${T(labelKey).replace(/[()]/g, "\\$&")}</span>`, "s").test(html);
+
 const PLANS = [
   {
     key: "starter",
@@ -211,9 +219,22 @@ describe("halaman pendaratan publik", () => {
     // terpisah di bawah: nominal & kuotanya justru TIDAK boleh muncul.
     for (const plan of PLANS.filter((p) => !p.contactOnly)) {
       expect(html).toContain(formatMoney(plan.priceMonthly, plan.currency));
-      expect(html).toContain(T("platform.plansQuotaCompanies", { max: plan.maxCompanies }));
-      expect(html).toContain(T("platform.plansQuotaUsers", { max: plan.maxUsers }));
+      // Kuota sebagai UBIN angka + label (#413), dari kolom katalog yang sama.
+      expect(ubinKuota(html, plan.maxCompanies, "landing.pricingQuotaCompaniesLabel")).toBe(true);
+      expect(ubinKuota(html, plan.maxUsers, "landing.pricingQuotaUsersLabel")).toBe(true);
     }
+    // Sakelar Bulanan/Tahunan (#413): dua radio + label, TANPA JavaScript;
+    // kedua blok harga dirender (bulanan & tahunan), padanan bulanan dari
+    // tahunan dihitung (4.500.000 / 12 = 375.000), pil "Tahunan" menyebut
+    // hemat terkecil di antara paket yang punya harga tahunan (Pro saja: 2).
+    expect(html).toContain('name="sai-billing"');
+    expect(html).toContain('value="monthly"');
+    expect(html).toContain('value="yearly"');
+    expect(html).toContain('data-landing-price="monthly"');
+    expect(html).toContain('data-landing-price="yearly"');
+    expect(html).toContain(T("landing.pricingBillingMonthly"));
+    expect(html).toContain(T("landing.pricingBillingYearly"));
+    expect(html).toContain(T("landing.pricingYearlyEquivalent", { amount: formatMoney(375000, "IDR") }));
     // Harga tahunan hanya muncul untuk paket yang punya — bukan Rp 0 untuk
     // paket yang tidak dijual tahunan.
     expect(html).toContain(formatMoney(4500000, "IDR"));
@@ -224,7 +245,12 @@ describe("halaman pendaratan publik", () => {
     expect(html).toContain(
       T("landing.pricingYearlySaving", { amount: formatMoney(900000, "IDR"), months: "2" })
     );
-    expect(tanpaJsonLd(html).match(/hemat/g)?.length).toBe(1);
+    // DUA kali sejak #413 — satu di blok bulanan, satu di blok tahunan kartu
+    // Pro (sakelar memilih yang tampak); tetap hanya milik Pro. Pil "Tahunan"
+    // tidak menyebut hemat di fixture ini: Starter tidak punya harga tahunan,
+    // jadi tidak ada angka yang berlaku untuk SEMUA kartu.
+    expect(tanpaJsonLd(html).match(/hemat/g)?.length).toBe(2);
+    expect(html).not.toContain('data-landing-billing-save=""');
     // "Semua paket mendapat" kini SATU kalimat berangka (#397), bukan strip
     // kedua yang identik dengan strip bukti di hero.
     expect(html).toContain(
@@ -354,7 +380,7 @@ describe("halaman pendaratan publik", () => {
     // Kuotanya pun tidak dijanjikan: yang berlaku adalah salinan di tenant,
     // dan justru itulah yang dirundingkan.
     expect(html).toContain(T("landing.pricingContactQuota"));
-    expect(html).not.toContain(T("platform.plansQuotaUsers", { max: 50 }));
+    expect(ubinKuota(html, 50, "landing.pricingQuotaUsersLabel")).toBe(false);
   });
 
   it("paket rundingan tidak menawarkan pendaftaran swalayan", async () => {
@@ -374,6 +400,15 @@ describe("halaman pendaratan publik", () => {
     // dicari adalah ATRIBUT di `<ul>` — selektornya sendiri selalu ada di
     // lembar gaya yang disisipkan ke halaman.
     expect(await render()).not.toContain('<ul data-landing-pricing-grid=""');
+
+    // Pil "Tahunan" menyebut hemat hanya bila SEMUA paket berbayar punya
+    // harga tahunan — angka terkecilnya (#413). Dua paket, dua-duanya hemat
+    // 2 bulan (Pro 900.000/450.000; Business 2.398.000/1.199.000).
+    state.plans = [
+      PLANS[1],
+      { key: "business", name: "Business", description: null, priceMonthly: 1199000, priceYearly: 11990000, currency: "IDR", maxCompanies: 8, maxUsers: 40, contactOnly: false, isRecommended: false },
+    ];
+    expect(await render()).toContain(T("landing.pricingBillingYearlySave", { months: "2" }));
 
     state.plans = [
       PLANS[0],
@@ -403,8 +438,8 @@ describe("halaman pendaratan publik", () => {
     expect(html).toContain(T("plans.description.business"));
     expect(html).toContain(T("plans.description.starter"));
     // Kuota Business dari katalog.
-    expect(html).toContain(T("platform.plansQuotaCompanies", { max: 8 }));
-    expect(html).toContain(T("platform.plansQuotaUsers", { max: 40 }));
+    expect(ubinKuota(html, 8, "landing.pricingQuotaCompaniesLabel")).toBe(true);
+    expect(ubinKuota(html, 40, "landing.pricingQuotaUsersLabel")).toBe(true);
     // Hemat tahunan Business dihitung: 1.199.000 × 12 − 11.990.000 = 2.398.000 ≈ 2 bulan.
     expect(html).toContain(
       T("landing.pricingYearlySaving", { amount: formatMoney(2398000, "IDR"), months: "2" })
@@ -448,7 +483,7 @@ describe("halaman pendaratan publik", () => {
       expect(dengan).toContain(T("landing.pricingContactCta"));
       expect(dengan).not.toContain(T("landing.pricingContactMissing"));
       // Angka kuota di kalimat = angka di butir "termasuk" — dari kolom yang sama.
-      expect(dengan).toContain(T("platform.plansQuotaCompanies", { max: 8 }));
+      expect(ubinKuota(dengan, 8, "landing.pricingQuotaCompaniesLabel")).toBe(true);
       // Kalimatnya berdiri DI ATAS blok tombol, bukan di bawahnya: tombol
       // memakai `marginTop: auto` agar sejajar dengan tombol kartu tetangga,
       // dan paragraf sesudah tombol akan mendorong tombol Business naik
@@ -578,6 +613,14 @@ describe("halaman pendaratan publik", () => {
 });
 
 describe("halaman harga publik /harga (#399)", () => {
+  it("/pricing dialihkan PERMANEN ke /harga — kanonik tetap satu alamat (#413)", async () => {
+    // Bilah EN menyebut "Pricing"; orang yang menebak /pricing tidak boleh
+    // mendarat di 404 — tetapi jawabannya redirect, bukan halaman kedua.
+    const cfg = (await import("../next.config")).default;
+    const redirects = await cfg.redirects?.();
+    expect(redirects).toContainEqual({ source: "/pricing", destination: "/harga", permanent: true });
+  });
+
   it("pengunjung bersesi memantul — sama seperti /", async () => {
     state.session = { user: { id: "7" } };
     await expect(renderPricing()).rejects.toThrow("redirect: /dashboard");

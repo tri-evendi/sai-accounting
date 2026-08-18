@@ -600,6 +600,34 @@ export const LANDING_STYLE = `
 [data-landing-divider]::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,var(--ant-color-border-secondary) 16%,var(--ant-color-border-secondary) 84%,transparent 100%)}
 [data-landing-card]{transition:transform 220ms ease,box-shadow 220ms ease}
 [data-landing-card]:hover{transform:translateY(var(--sai-landing-lift));box-shadow:var(--ant-box-shadow)}
+/* == KARTU PAKET & SAKELAR SIKLUS TAGIHAN (#413) ============================
+   Kartu yang disarankan memikul cincin merek tetap; hover bawaan di atas
+   menimpa box-shadow dan mencabut cincinnya -- aturan berikut mengembalikan
+   cincin + bayangan hover bersama. Menaranya (margin blok negatif) hanya
+   di >=992px, blok media di bawah. */
+[data-landing-plan-recommended] [data-landing-card]:hover{box-shadow:0 0 0 1px var(--ant-color-primary),var(--ant-box-shadow)}
+/* Teks hanya untuk pembaca layar (legenda sakelar): dikurung 1px dan
+   dipotong -- teknik yang sama dengan tautan lewati-ke-isi di atas. */
+[data-landing-sr-only]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Radio sakelar: TERSEMBUNYI dari mata, tetap di DOM dan tetap fokusabel
+   (bukan display:none), supaya keyboard & pembaca layar memilihnya sebagai
+   radio biasa; fokusnya digambar di labelnya. */
+[data-landing-billing-input]{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+[data-landing-billing-switch]{display:inline-flex;align-items:center;gap:var(--ant-margin-xxs);padding:var(--ant-padding-xxs);border:1px solid var(--ant-color-border-secondary);border-radius:var(--sai-landing-radius);background:var(--sai-landing-surface)}
+[data-landing-billing-option]{display:inline-flex;align-items:baseline;gap:var(--ant-margin-xs);padding:var(--ant-padding-xs) var(--ant-padding);border-radius:calc(var(--sai-landing-radius) - var(--ant-padding-xxs));font-weight:var(--ant-font-weight-strong);line-height:1.4;color:var(--ant-color-text-secondary);cursor:pointer;user-select:none;transition:background-color 200ms ease,color 200ms ease}
+[data-landing-billing-option]:hover{color:var(--ant-color-text)}
+/* Pil terpilih = isian navy merek + teks terang: token ketiga warna merek
+   (colorBrandSolid, 11,50:1 terang / 5,06:1 gelap), BUKAN colorPrimary yang di
+   tema gelap sengaja terang (§Warna merek: tiga peran). */
+[data-landing-billing-input]:checked+[data-landing-billing-option]{background:var(--ant-color-brand-solid);color:var(--ant-color-text-light-solid)}
+[data-landing-billing-input]:focus-visible+[data-landing-billing-option]{outline:2px solid var(--ant-color-primary);outline-offset:2px}
+[data-landing-billing-save]{font-size:var(--ant-font-size-sm);font-weight:normal}
+/* Blok harga: bulanan tampak, tahunan tersembunyi -- lalu dibalik oleh
+   :has() saat radio "yearly" terpilih. Peramban tanpa :has() berhenti di
+   baris pertama: selalu bulanan, sakelar diam, tidak ada yang rusak. */
+[data-landing-price="yearly"]{display:none}
+[data-landing-pricing]:has([data-landing-billing-input][value="yearly"]:checked) [data-landing-price="monthly"]{display:none}
+[data-landing-pricing]:has([data-landing-billing-input][value="yearly"]:checked) [data-landing-price="yearly"]{display:block}
 /* Kendali di halaman ini lebih bulat daripada di app internal. Radius app
    (6px) dipilih untuk kerapatan data; pendaratan tidak memikul tabel, dan
    sudut yang lebih lunak adalah selisih terbesar antara "berwibawa" dan
@@ -691,12 +719,18 @@ export const LANDING_STYLE = `
      daripada dua kolom yang salah satunya menyusut menjadi daftar. */
   [data-landing-gallery]{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
   [data-landing-gallery-main]{grid-row:1 / span 2}
+  /* == MENARA PAKET DISARANKAN (#413) ======================================
+     Butir kisi yang stretch dengan margin blok NEGATIF menjadi lebih tinggi
+     dari barisnya (tinggi = baris + 2 x margin), jadi kartu di dalamnya
+     (height:100%) menjulur 16px di atas dan di bawah tetangganya. Hanya di
+     tiga kolom: di satu/dua kolom menara menabrak kartu di atasnya. */
+  [data-landing-plan-recommended]{margin-block:calc(-1 * var(--ant-margin))}
 }
 @media (min-width:${LANDING_PRICING_FOUR_COLUMNS_BREAKPOINT}px){
   [data-landing-pricing-grid]{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){
-  [data-landing-brand],[data-landing-link],[data-landing-caret],[data-landing-card]{transition:none}
+  [data-landing-brand],[data-landing-link],[data-landing-caret],[data-landing-card],[data-landing-billing-option]{transition:none}
   [data-landing-card]:hover{transform:none}
 }
 /* == MUNCUL SAAT DIGULUNG -- TANPA SATU BARIS JAVASCRIPT ==================

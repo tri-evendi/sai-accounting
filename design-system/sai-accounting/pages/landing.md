@@ -798,6 +798,73 @@ ingin orang bayar sendiri. Tanpa `PLATFORM_CONTACT_EMAIL` kalimatnya tetap
 dan `pricingContactMissing` menggantikan tautan (pola #397). Diuji
 `public-landing.test.tsx` §#408.
 
+### Kartu paket #413: sakelar siklus, nominal besar, ubin kuota, menara — dan `/pricing`
+
+Permintaan pemilik 2026-08-18: *"perbaiki visualisasi plan dan pricing, buat
+semenarik mungkin."* Yang ditambah adalah BENTUK; disiplinnya (badan `surface`
+bertepi, kepala bernada, satu primer per kartu, klaim bersumber, tanpa JS)
+tidak ditawar. Empat perubahan, semuanya di `landing-pricing.tsx` +
+`landing-scale.ts`:
+
+1. **Sakelar Bulanan / Tahunan — TANPA JavaScript.** Dua radio
+   (`name="sai-billing"`) tersembunyi dari mata (dikurung 1px, bukan
+   `display:none`, jadi tetap fokusabel) + dua label sebagai pil bersegmen
+   (`[data-landing-billing-switch]`). Pil terpilih berisian
+   `colorBrandSolid` + teks terang — token KETIGA warna merek (§Warna merek),
+   11,50/5,06:1. Kartu merender KEDUA blok harga
+   (`[data-landing-price="monthly"|"yearly"]`) dan lembar gaya memilih yang
+   tampak: `[data-landing-pricing]:has(radio[value=yearly]:checked)
+   [data-landing-price=monthly]{display:none}` + sebaliknya. Peramban tanpa
+   `:has()` selalu melihat bulanan; sakelarnya diam, tidak rusak. Halaman
+   tetap dokumen yang memuat kedua harga (mesin pencari, cetak, DOM pembaca
+   layar). Pil "Tahunan" menyebut hemat dalam BULAN — angka **terkecil** di
+   antara paket berbayar, dan hanya bila SEMUA punya harga tahunan
+   (`hematTahunan`, dihitung) — supaya janji di pil berlaku untuk setiap kartu
+   di bawahnya. Sakelar tidak dirender bila tak ada harga tahunan: dua pil
+   yang menampilkan hal yang sama adalah kendali palsu. Blok tahunan memajang
+   yang memang DITAGIH (harga tahunan) sebagai angka besar; padanan bulanan
+   (`priceYearly / 12`, dibulatkan `formatMoney`) kalimat kecil di bawahnya
+   (`pricingYearlyEquivalent`).
+2. **Nominal `--sai-landing-font-size-section`** (24 → 30px di ≥576px), tebal,
+   tracking `-0.02em`, tabular; satuan "/bulan" duduk di baseline dan boleh
+   turun baris sendiri (`flexWrap`). Tetap di bawah hero: angka adalah bidang
+   terbesar DI KARTUNYA, bukan di halamannya. Diukur: "Rp 1.199.000" 30px
+   ≈ 215px, muat di isi kartu 228px (kisi empat kolom #404).
+3. **Kuota = ubin angka** (`[data-landing-quota]`): dua ubin sebaris — angka
+   `heading-3` tabular + label kata benda (`pricingQuotaCompaniesLabel` "PT
+   (perusahaan)" / "Companies" / "公司", `…UsersLabel`) — nada `fill-indigo`
+   (14%) di atas badan `surface`, nada yang sama dengan kepala kartu biasa;
+   ubin tidak memikul tombol, jadi 14% sah. Alasannya §"Polos sekali":
+   kekayaan visual datang dari ISI, dan kuota adalah satu-satunya isi yang
+   membedakan paket — sampai kini ia dua baris centang sebentuk butir hiasan.
+   Label kata benda (bukan kalimat berjumlah) menutup jalan lahirnya
+   "1 companies" lagi (#404). Butir sorotan (`plan-copy.ts` §SOROTAN) tetap
+   daftar centang di bawah ubin, dan daftarnya tidak dirender kosong.
+4. **Kartu disarankan = MENARA.** `<li data-landing-plan-recommended>`
+   bermargin blok **negatif** 16px di ≥992px: butir kisi yang `stretch`
+   menjadi baris + 32px, dan kartu (`height:100%`) menjulur di atas DAN di
+   bawah tetangganya. Kartunya bercincin merek + `boxShadow-secondary` tetap;
+   hover bawaan `[data-landing-card]` menimpa `box-shadow`, jadi ada aturan
+   yang mengembalikan cincin + bayangan hover bersama. Di bawah 992px (satu/
+   dua kolom) menara menabrak kartu di atasnya, jadi di sana ia sejajar.
+   Sorotan kini EMPAT penanda: lencana berteks, nada kepala, cincin, bentuk.
+
+Urutan isi kartu: kepala → nominal (blok aktif) → deskripsi → "Termasuk" →
+ubin kuota → butir sorotan → catatan rundingan (#408) → tombol
+(`marginTop:auto`, sejajar antar-kartu — PR #411). Kartu Starter/Pro menyisakan
+ruang kosong di atas tombolnya karena Business memikul butir sorotan +
+catatan rundingan; **tidak diisi butir hiasan** ("semua modul", "3 bahasa"):
+alasan §Kisi harga EMPAT paket tetap berlaku.
+
+**`/pricing` → `/harga` (308 permanen, `next.config.ts` `redirects`).**
+`/harga` tetap alamat kanonik (#399: kueri pasar utama berbahasa Indonesia,
+setiap kompetitor lokal memakai `/harga`; `alternates.canonical`,
+`sitemap.ts`). Bilah EN menyebut "Pricing", jadi orang yang menebak
+`/pricing` tidak boleh mendarat di 404 — tetapi jawabannya redirect, bukan
+halaman kedua berisi sama. Redirect `next.config` dievaluasi sebelum sistem
+berkas dan `proxy.ts`, jadi `/pricing` tidak masuk `isPublicPath`. Diuji
+`public-landing.test.tsx` §#413.
+
 ### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
 
 Tiga angka (modul · bahasa · mata uang) dulu tampil **dua kali identik**: strip
@@ -1219,7 +1286,9 @@ angka lalu ditagih angka lain.
   dan tarif (`lib/tax.ts`) yang sama dengan yang menagih.
 - **Nominal paket tidak dibesarkan ke skala hero.** Yang paling besar di
   halaman ini adalah kalimat yang menjelaskan produknya; halaman yang angkanya
-  lebih besar dari janjinya menjual harga, bukan pekerjaan.
+  lebih besar dari janjinya menjual harga, bukan pekerjaan. (Sejak #413
+  nominal memakai `--sai-landing-font-size-section` — sebesar judul seksi,
+  tetap di bawah hero.)
 - **Lama uji coba** dari `TRIAL_DAYS`, konstanta yang sama yang menghitungnya.
 - **Nama PT tidak pernah muncul di sini.** Pemasangan multi-PT belum bisa tahu
   tenant mana yang sedang datang; nilai cadangannya nama pemasang pertama —

@@ -449,6 +449,16 @@ describe("halaman pendaratan publik", () => {
       expect(dengan).not.toContain(T("landing.pricingContactMissing"));
       // Angka kuota di kalimat = angka di butir "termasuk" — dari kolom yang sama.
       expect(dengan).toContain(T("platform.plansQuotaCompanies", { max: 8 }));
+      // Kalimatnya berdiri DI ATAS blok tombol, bukan di bawahnya: tombol
+      // memakai `marginTop: auto` agar sejajar dengan tombol kartu tetangga,
+      // dan paragraf sesudah tombol akan mendorong tombol Business naik
+      // sendirian (terlihat di produksi 2026-08-17).
+      const posNote = dengan.indexOf('data-landing-negotiate=""');
+      const posTombol = dengan.indexOf('data-landing-actions=""', posNote);
+      expect(posNote).toBeGreaterThan(-1);
+      expect(posTombol).toBeGreaterThan(posNote);
+      const antara = dengan.slice(posNote, posTombol);
+      expect(antara).not.toContain("</li>");
     } finally {
       if (prev === undefined) delete process.env.PLATFORM_CONTACT_EMAIL;
       else process.env.PLATFORM_CONTACT_EMAIL = prev;

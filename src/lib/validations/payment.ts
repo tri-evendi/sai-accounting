@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { BASE_CURRENCY, currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { vmsg } from "@/lib/i18n/validation";
 
 /**
@@ -16,7 +16,19 @@ import { vmsg } from "@/lib/i18n/validation";
 export const paymentFormFields = {
   date: z.string().min(1, vmsg("validation.dateRequired")),
   amount: z.coerce.number().positive(vmsg("validation.amountPositive")),
-  currency: currencyEnum.default("USD"),
+  /*
+   * Bawaannya IDR, bukan USD (issue #424).
+   *
+   * `default("USD")` di aplikasi pembukuan rupiah adalah ranjau yang sudah
+   * meledak: buku produksi memuat enam pembayaran tahun 2022 berlabel USD
+   * dengan nominal yang jelas rupiah (Rp88,2 juta, Rp638 juta) dan TANPA kurs —
+   * sehingga nilai IDR-nya tidak diketahui dan umur piutang tidak bisa
+   * menghitungnya sama sekali. Permintaan yang lupa menyebut mata uang kini
+   * jatuh ke mata uang dasar buku, yang benar untuk hampir setiap baris; yang
+   * benar-benar valas tetap harus menyebutkannya, dan `requireRateForForeign`
+   * tetap menuntut kursnya.
+   */
+  currency: currencyEnum.default(BASE_CURRENCY),
   // Wajib untuk valas; `requireRateForForeign` yang menegakkannya di refine.
   rate: rateField,
   note: z.string().max(500).trim().optional(),

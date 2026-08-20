@@ -288,6 +288,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.openingStockDuplicateItem": "Barang ini sudah punya baris saldo awal",
   "validation.companyNameRequired": "Nama perusahaan wajib diisi",
   "validation.fiscalYearStartRequired": "Awal tahun buku wajib diisi",
+  "validation.openingPartnerRequired":
+    "Pilih mitra dari daftar, atau sebutkan namanya bila ia belum terdaftar.",
   "validation.atLeastOneOpeningBalance": "Isi minimal satu saldo awal (kas/bank, piutang, utang, atau persediaan).",
   "validation.partnerTwice": "Partner yang sama muncul lebih dari sekali.",
   "validation.partnerPickOrCreate": "Pilih mitra dari daftar, atau isi data mitra baru.",

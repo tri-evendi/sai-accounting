@@ -40,7 +40,18 @@ export const openingCashSchema = z
  */
 export const openingPartnerSchema = z
   .object({
-    partnerId: z.coerce.number().int().positive(),
+    /**
+     * `null`/kosong = mitra ini BELUM ADA dan akan dibuat dari `partnerName`
+     * bersama saldo awalnya (issue #425).
+     *
+     * Perusahaan yang pindah dari pembukuan lain tiba di wisaya dengan nol
+     * pelanggan dan nol pemasok, dan tidak bisa membuatnya dari sana — gerbang
+     * setup memantulkan menu master kembali ke wisaya. Menuntut id di sini
+     * berarti menuntut sesuatu yang tidak mungkin ia punya.
+     */
+    partnerId: z.coerce.number().int().positive().nullish(),
+    /** Nama mitra dari berkas impor. Wajib bila `partnerId` kosong. */
+    partnerName: z.string().min(1).max(100).trim().optional(),
     currency: currencyEnum.default("IDR"),
     amount: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
     rate: rateField,
@@ -49,7 +60,18 @@ export const openingPartnerSchema = z
     documentDate: z.string().max(10).trim().optional(),
     dueDate: z.string().max(10).trim().optional(),
   })
-  .superRefine((data, ctx) => requireRateForForeign(data, ctx));
+  .superRefine((data, ctx) => {
+    requireRateForForeign(data, ctx);
+    /* Satu dari dua, dan tidak boleh keduanya kosong: baris tanpa id MAUPUN
+       nama adalah saldo yang tidak menunjuk siapa pun. */
+    if (data.partnerId == null && !data.partnerName) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["partnerId"],
+        message: vmsg("validation.openingPartnerRequired"),
+      });
+    }
+  });
 
 /**
  * Satu baris saldo awal PERSEDIAAN, per barang (issue #379).
@@ -247,17 +269,26 @@ export const setupSchema = z
      * per mitra, dan dua di antaranya tetap tak terbedakan.
      */
     for (const side of ["receivables", "payables"] as const) {
-      const seen = new Set<number>();
+      /* Kunci kekembaran: id bila mitranya sudah terdaftar, NAMA bila ia baru
+         (issue #425). Tanpa cabang kedua, dua baris untuk pelanggan baru yang
+         sama akan lolos — lalu melahirkan satu master dengan dua saldo awal
+         tanpa nomor dokumen, persis yang penjaga ini cegah untuk mitra lama. */
+      const seen = new Set<string>();
       data[side].forEach((row, i) => {
         if (row.documentNo) return;
-        if (seen.has(row.partnerId)) {
+        /* Tanpa template literal: `tests/i18n-validation` menganggap SETIAP
+           literal berspasi di berkas skema sebagai kalimat yang lupa
+           dikamuskan, dan ekspresi di dalam backtick ikut terbaca begitu. */
+        const name = (row.partnerName ?? "").trim().toLowerCase();
+        const key = row.partnerId != null ? "#" + row.partnerId : "@" + name;
+        if (seen.has(key)) {
           ctx.addIssue({
             code: "custom",
             path: [side, i, "partnerId"],
             message: vmsg("validation.partnerTwice"),
           });
         }
-        seen.add(row.partnerId);
+        seen.add(key);
       });
     }
   });

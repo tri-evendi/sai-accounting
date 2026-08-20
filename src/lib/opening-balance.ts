@@ -99,7 +99,8 @@ export interface OpeningCashInput {
  * seberapa halus rinciannya.
  */
 export interface OpeningPartnerInput {
-  partnerId: number;
+  /** `null` = mitra belum ada; ia dibuat dari `partnerName` di dalam transaksi (#425). */
+  partnerId: number | null;
   partnerName: string;
   currency: string;
   amount: number;
@@ -428,6 +429,38 @@ export async function applyOpeningBalances(
           },
         });
 
+    /*
+     * ══ MITRA YANG BELUM ADA LAHIR DI SINI (issue #425) ═══════════════════════
+     *
+     * Perusahaan yang PINDAH dari pembukuan lain tiba dengan nol pelanggan dan
+     * nol pemasok, dan tidak bisa membuatnya dari wisaya — gerbang setup
+     * memantulkan menu master kembali ke wisaya itu sendiri. Sampai issue ini,
+     * akibatnya bukan layar buntu melainkan sesuatu yang lebih sunyi: wisayanya
+     * tetap bisa diselesaikan (kas saja cukup), hanya tanpa piutang lamanya —
+     * dan karena wisaya JALAN SEKALI, piutang itu tidak akan pernah bisa
+     * dicatat sebagai dokumen pembuka. Umur piutang kosong, faktur lama tidak
+     * bisa dilunasi karena tidak ada yang bisa ditunjuk.
+     *
+     * DI DALAM transaksi yang sama, dan itu seluruh alasannya ada di sini alih-
+     * alih di route impor: mitra yang dibuat lebih dulu lalu jurnalnya gagal
+     * akan meninggalkan pelanggan yatim yang tak pernah diminta siapa pun.
+     *
+     * Nama dicocokkan ULANG ke basis data sebelum membuat — bukan hanya
+     * mengandalkan `partnerId` yang null dari route. Antara berkas diunggah dan
+     * simpan ditekan, orang yang sama bisa saja sudah membuat mitra itu lewat
+     * jalan lain; membuatnya lagi akan memecah satu pelanggan menjadi dua yang
+     * namanya sama persis.
+     */
+    const partnerIds = await resolveOpeningPartners(input, tx);
+    /* Dipakai di TIGA tempat di bawah (nomor dokumen cadangan, `customerId`,
+       `supplierId`). Sebuah fungsi, bukan payload yang ditulis ulang: saldo awal
+       yang sudah divalidasi tidak perlu disusun kedua kalinya hanya untuk
+       menempelkan satu kolom. */
+    const customerIdFor = (r: OpeningPartnerInput) =>
+      r.partnerId ?? partnerIds.customers.get(partnerKey(r.partnerName))!;
+    const supplierIdFor = (p: OpeningPartnerInput) =>
+      p.partnerId ?? partnerIds.suppliers.get(partnerKey(p.partnerName))!;
+
     const lines = await resolveOpeningLines(input, tx);
     if (lines.length === 0 && !input.allowEmpty) {
       throw new OpeningBalanceError(
@@ -506,10 +539,10 @@ export async function applyOpeningBalances(
       const date = r.documentDate ?? input.company.fiscalYearStart;
       await tx.invoice.create({
         data: {
-          invoiceNo: r.documentNo?.trim() || `SA-AR-${r.partnerId}`,
+          invoiceNo: r.documentNo?.trim() || `SA-AR-${customerIdFor(r)}`,
           date,
           dueDate: r.dueDate ?? null,
-          customerId: r.partnerId,
+          customerId: customerIdFor(r),
           currency: r.currency,
           rate: r.rate ?? null,
           baseAmount: round2(amount * rateFor(r.currency, r.rate)),
@@ -533,7 +566,7 @@ export async function applyOpeningBalances(
       if (amount <= 0) continue;
       await tx.supplierTransaction.create({
         data: {
-          supplierId: p.partnerId,
+          supplierId: supplierIdFor(p),
           date: p.documentDate ?? input.company.fiscalYearStart,
           dueDate: p.dueDate ?? null,
           type: "purchase",
@@ -649,4 +682,60 @@ export async function applyOpeningBalances(
       equityPlug,
     };
   });
+}
+
+/** Kunci pencocokan nama mitra — tanpa peduli huruf besar/kecil & spasi tepi. */
+function partnerKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+/**
+ * Id setiap mitra yang disebut saldo awal — yang sudah ada dipakai ulang, yang
+ * belum ada dibuat (issue #425).
+ *
+ * Dipanggil DI DALAM transaksi penyiapan. Nama kembar di dalam satu berkas
+ * (dua faktur untuk pelanggan yang sama) hanya melahirkan SATU baris master:
+ * peta ini dibaca sebelum setiap pembuatan.
+ */
+async function resolveOpeningPartners(
+  input: OpeningBalancesInput,
+  tx: Prisma.TransactionClient
+): Promise<{ customers: Map<string, number>; suppliers: Map<string, number> }> {
+  const wantedCustomers = input.receivables.filter((r) => r.partnerId == null);
+  const wantedSuppliers = input.payables.filter((p) => p.partnerId == null);
+
+  const customers = new Map<string, number>();
+  const suppliers = new Map<string, number>();
+
+  if (wantedCustomers.length > 0) {
+    for (const row of await tx.customer.findMany({ select: { id: true, name: true } })) {
+      customers.set(partnerKey(row.name), row.id);
+    }
+    for (const r of wantedCustomers) {
+      const key = partnerKey(r.partnerName);
+      if (customers.has(key)) continue;
+      const created = await tx.customer.create({
+        data: { name: r.partnerName.trim() },
+        select: { id: true },
+      });
+      customers.set(key, created.id);
+    }
+  }
+
+  if (wantedSuppliers.length > 0) {
+    for (const row of await tx.supplier.findMany({ select: { id: true, name: true } })) {
+      suppliers.set(partnerKey(row.name), row.id);
+    }
+    for (const p of wantedSuppliers) {
+      const key = partnerKey(p.partnerName);
+      if (suppliers.has(key)) continue;
+      const created = await tx.supplier.create({
+        data: { name: p.partnerName.trim() },
+        select: { id: true },
+      });
+      suppliers.set(key, created.id);
+    }
+  }
+
+  return { customers, suppliers };
 }

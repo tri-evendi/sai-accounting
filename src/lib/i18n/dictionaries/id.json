@@ -759,7 +759,10 @@
     "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
     "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan.",
     "selectCompanyFirst": "Pilih perusahaan terlebih dahulu.",
-    "setupAlreadyDone": "Perusahaan ini sudah selesai disiapkan."
+    "setupAlreadyDone": "Perusahaan ini sudah selesai disiapkan.",
+    "paymentCurrencyMismatch": "Mata uang pembayaran ({payment}) berbeda dari mata uang dokumennya ({document}). Catat pembayaran dalam mata uang dokumen itu — selisih kurs diurus lewat kurs pembayaran, bukan dengan mengganti mata uangnya.",
+    "paymentDocumentValueUnknown": "Nilai dokumen ini dalam IDR belum diketahui karena kursnya belum diisi, jadi sisa tagihannya tidak bisa dihitung. Isi kurs dokumen (atau kurs pembayaran yang sudah tercatat) lebih dulu.",
+    "paymentExceedsOutstanding": "Pembayaran {attempted} melebihi sisa tagihan {outstanding}. Bila ini uang yang diterima di muka, catat lewat menu Uang Muka; bila tagihannya memang bertambah, perbaiki dokumennya."
   },
   "contracts": {
     "title": "Kontrak ({count})",
@@ -2584,7 +2587,9 @@
     "fixedAssetsCount": "{count} aset dari berkas",
     "fixedAssetsCost": "Harga perolehan",
     "fixedAssetsAccumulated": "Akumulasi penyusutan",
-    "fixedAssetsBookValue": "Nilai buku"
+    "fixedAssetsBookValue": "Nilai buku",
+    "partnerWillBeCreated": "akan dibuat",
+    "newPartnersNote": "{count} mitra baru akan dibuat saat menyimpan: {names}"
   },
   "approvalDocumentType": {
     "contract": "Kontrak",
@@ -3502,6 +3507,7 @@
     "openingStockDuplicateItem": "Barang ini sudah punya baris saldo awal",
     "companyNameRequired": "Nama perusahaan wajib diisi",
     "fiscalYearStartRequired": "Awal tahun buku wajib diisi",
+    "openingPartnerRequired": "Pilih mitra dari daftar, atau sebutkan namanya bila ia belum terdaftar.",
     "atLeastOneOpeningBalance": "Isi minimal satu saldo awal (kas/bank, piutang, utang, atau persediaan).",
     "partnerTwice": "Partner yang sama muncul lebih dari sekali.",
     "partnerPickOrCreate": "Pilih mitra dari daftar, atau isi data mitra baru.",

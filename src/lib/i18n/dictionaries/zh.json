@@ -759,7 +759,10 @@
     "bookMovementOutsidePeriod": "该账簿交易不在对账单期间内。",
     "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。",
     "selectCompanyFirst": "请先选择公司。",
-    "setupAlreadyDone": "该公司已完成初始设置。"
+    "setupAlreadyDone": "该公司已完成初始设置。",
+    "paymentCurrencyMismatch": "付款币种（{payment}）与单据币种（{document}）不一致。请按单据币种记录付款——汇兑差额通过付款汇率处理，而不是改变币种。",
+    "paymentDocumentValueUnknown": "该单据尚无印尼盾金额（汇率未填），因此无法计算未结余额。请先填写单据汇率（或已记录付款的汇率）。",
+    "paymentExceedsOutstanding": "付款 {attempted} 超过未结余额 {outstanding}。如果这是预收款，请在预付款菜单中记录；如果单据金额本应更大，请修改单据。"
   },
   "contracts": {
     "title": "合同（{count}）",
@@ -2584,7 +2587,9 @@
     "fixedAssetsCount": "来自文件的 {count} 项资产",
     "fixedAssetsCost": "取得成本",
     "fixedAssetsAccumulated": "累计折旧",
-    "fixedAssetsBookValue": "账面价值"
+    "fixedAssetsBookValue": "账面价值",
+    "partnerWillBeCreated": "将被创建",
+    "newPartnersNote": "保存时将创建 {count} 个新往来单位：{names}"
   },
   "approvalDocumentType": {
     "contract": "合同",
@@ -3502,6 +3507,7 @@
     "openingStockDuplicateItem": "该商品已有期初余额行",
     "companyNameRequired": "请填写公司名称",
     "fiscalYearStartRequired": "请填写会计年度起始日",
+    "openingPartnerRequired": "请从列表中选择往来单位，若尚未登记请填写名称。",
     "atLeastOneOpeningBalance": "请至少填写一项期初余额（现金/银行、应收、应付或存货）。",
     "partnerTwice": "同一往来单位重复出现。",
     "partnerPickOrCreate": "请从列表中选择往来单位，或填写新的往来单位。",

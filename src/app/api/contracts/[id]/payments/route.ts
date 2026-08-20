@@ -66,6 +66,37 @@ export async function POST(
   const { date, contractId: cId, rate: rateInput, ...paymentData } = parsed.data;
   const { rate, baseAmount } = fxAmounts(paymentData.currency, paymentData.amount, rateInput);
 
+  /*
+   * ── MATA UANG PEMBAYARAN HARUS SAMA DENGAN MATA UANG KONTRAK (issue #424) ──
+   *
+   * Sisi faktur mendapat DUA penjaga; di sini baru satu, dan itu disengaja.
+   *
+   * Penjaga NOMINAL menuntut satu angka: berapa sisa kontrak ini. Untuk faktur
+   * jawabannya tunggal (nilai faktur − pelunasannya), tapi kontrak diselesaikan
+   * dari DUA arah — pembayaran DAN porsi yang sudah difakturkan lewat "Ambil"
+   * (`buildContractOutstanding`, dipakai laporan piutang). Penjaga yang hanya
+   * mengurangi pembayaran akan memakai definisi "sisa" yang berbeda dari yang
+   * ditampilkan laporan kepada orang yang sama, di layar sebelah. Dua angka
+   * bernama sama yang tidak pernah cocok adalah cacat tersendiri, bukan
+   * perbaikan setengah jalan — jadi ia menunggu issue-nya sendiri.
+   *
+   * Yang di bawah ini tidak menunggu apa pun: mata uang tidak punya definisi
+   * kedua. Membayar kontrak USD dengan rupiah (atau sebaliknya) selalu salah,
+   * dan justru dari situlah kerusakan terbesar #424 datang.
+   */
+  if ((paymentData.currency || "IDR") !== (contract.currency || "IDR")) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json(
+      {
+        error: t("errors.paymentCurrencyMismatch", {
+          payment: paymentData.currency,
+          document: contract.currency,
+        }),
+      },
+      { status: 422 }
+    );
+  }
+
   let payment;
   let approval;
   try {

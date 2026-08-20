@@ -162,8 +162,12 @@ export async function POST(request: Request) {
   const supplierName = new Map(suppliers.map((s) => [s.id, s.name]));
   const itemName = new Map(items.map((i) => [i.id, i.name]));
 
+  /* Yang MENYEBUT id harus benar-benar ada; yang menyebut nama saja adalah
+     mitra baru yang lahir di dalam transaksi penyiapan (issue #425), jadi tidak
+     ada yang bisa diperiksa di sini selain bahwa namanya ada — dan itu sudah
+     dijamin skema. */
   for (const r of receivables) {
-    if (!customerName.has(r.partnerId)) {
+    if (r.partnerId != null && !customerName.has(r.partnerId)) {
       const { t } = await getRequestI18n();
       return NextResponse.json(
         { error: t("errors.setupCustomerNotFound", { id: r.partnerId }) },
@@ -172,7 +176,7 @@ export async function POST(request: Request) {
     }
   }
   for (const p of payables) {
-    if (!supplierName.has(p.partnerId)) {
+    if (p.partnerId != null && !supplierName.has(p.partnerId)) {
       const { t } = await getRequestI18n();
       return NextResponse.json(
         { error: t("errors.setupSupplierNotFound", { id: p.partnerId }) },
@@ -254,8 +258,10 @@ export async function POST(request: Request) {
        teks kosong menghasilkan Invalid Date yang mendarat di basis data sebagai
        galat yang tidak menyebut kolomnya. */
     receivables: receivables.map((r) => ({
-      partnerId: r.partnerId,
-      partnerName: customerName.get(r.partnerId)!,
+      partnerId: r.partnerId ?? null,
+      /* Mitra lama memakai nama dari basis data (nama di berkas boleh berbeda
+         kapitalnya); mitra baru memakai nama dari berkas — itulah namanya. */
+      partnerName: (r.partnerId != null ? customerName.get(r.partnerId) : r.partnerName)!,
       currency: r.currency,
       amount: r.amount,
       rate: r.rate,
@@ -264,8 +270,8 @@ export async function POST(request: Request) {
       dueDate: r.dueDate ? new Date(r.dueDate) : null,
     })),
     payables: payables.map((p) => ({
-      partnerId: p.partnerId,
-      partnerName: supplierName.get(p.partnerId)!,
+      partnerId: p.partnerId ?? null,
+      partnerName: (p.partnerId != null ? supplierName.get(p.partnerId) : p.partnerName)!,
       currency: p.currency,
       amount: p.amount,
       rate: p.rate,

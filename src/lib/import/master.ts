@@ -22,7 +22,7 @@
 
 import { DuplicateGuard, RowIssues, readImportRows, type RowError } from "@/lib/import/rows";
 import { optionalText, readBoolean, requiredText } from "@/lib/import/fields";
-import type { ColumnSpec } from "@/lib/import/spec";
+import { EXAMPLE_PARTNER_NAME, type ColumnSpec } from "@/lib/import/spec";
 
 /* ── Kolom bersama pelanggan & pemasok ──────────────────────────────────── */
 
@@ -32,7 +32,7 @@ const CONTACT_COLUMNS: readonly ColumnSpec[] = [
     header: "Nama",
     aliases: ["Nama Pelanggan", "Nama Pemasok", "Nama Supplier", "Name", "Customer Name", "Supplier Name"],
     required: true,
-    example: "PT Contoh Sejahtera",
+    example: EXAMPLE_PARTNER_NAME,
     hint: "Wajib, maksimal 100 karakter. Nama yang sama dianggap satu.",
   },
   {

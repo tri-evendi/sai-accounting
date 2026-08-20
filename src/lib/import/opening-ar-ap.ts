@@ -35,7 +35,7 @@
 
 import { DuplicateGuard, RowIssues, readImportRows, type RowError } from "@/lib/import/rows";
 import { readAmount, readDate, requiredText } from "@/lib/import/fields";
-import type { ColumnSpec } from "@/lib/import/spec";
+import { EXAMPLE_PARTNER_NAME, type ColumnSpec } from "@/lib/import/spec";
 
 /** Mata uang yang dikenal app — sama dengan impor daftar akun. */
 const KNOWN_CURRENCIES = new Set(["IDR", "USD", "CNY"]);
@@ -46,7 +46,7 @@ function partnerColumn(label: string, aliases: readonly string[]): ColumnSpec {
     header: label,
     aliases: [...aliases],
     required: true,
-    example: "PT Maju Bersama",
+    example: EXAMPLE_PARTNER_NAME,
     hint: "Harus PERSIS sama dengan nama yang sudah terdaftar. Impor daftarnya lebih dulu bila belum ada.",
   };
 }

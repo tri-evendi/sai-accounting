@@ -98,7 +98,10 @@ interface CashRow {
 }
 interface PartnerRow {
   key: number;
+  /** Kosong = mitra ini BELUM terdaftar; `partnerName` yang menamainya (#425). */
   partnerId: string;
+  /** Nama mitra dari berkas impor, untuk baris yang mitranya belum ada (#425). */
+  partnerName?: string;
   currency: string;
   amount: string;
   rate: string;
@@ -453,6 +456,31 @@ export function SetupWizard({
     return { assets, liabilities, equity, unrated, hasAny };
   }, [cash, receivables, payables, inventory, fixedAssets, cashById, saldoAktif]);
 
+  /**
+   * Mitra yang akan LAHIR saat menyimpan (issue #425).
+   *
+   * Ditampilkan di layar tinjauan sebelum tombol simpan. Membuat pelanggan
+   * diam-diam dari sebuah berkas adalah harga yang harus dibayar fitur ini —
+   * satu salah ketik menjadi satu master baru — dan satu-satunya penawarnya
+   * adalah menyebutkan daftarnya lebih dulu, saat masih bisa dibatalkan.
+   */
+  const newPartners = useMemo(() => {
+    const names: string[] = [];
+    const seen = new Set<string>();
+    const collect = (rows: PartnerRow[]) => {
+      for (const r of rows) {
+        if (r.partnerId || !r.partnerName) continue;
+        const key = r.partnerName.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        names.push(r.partnerName.trim());
+      }
+    };
+    if (saldoAktif.receivables) collect(receivables);
+    if (saldoAktif.payables) collect(payables);
+    return names;
+  }, [receivables, payables, saldoAktif]);
+
   function updateCash(key: number, patch: Partial<CashRow>) {
     setCash((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
@@ -510,9 +538,14 @@ export function SetupWizard({
           };
         }),
       receivables: (saldoAktif.receivables ? receivables : [])
-        .filter((r) => r.partnerId && (Number(r.amount) || 0) > 0)
+        /* Baris yang mitranya BARU tidak punya id — yang membuatnya sah adalah
+           namanya (issue #425). Menyaring dengan `r.partnerId` saja akan diam-
+           diam membuang seluruh piutang perusahaan yang baru pindah. */
+        .filter((r) => (r.partnerId || r.partnerName) && (Number(r.amount) || 0) > 0)
         .map((r) => ({
-          partnerId: Number(r.partnerId),
+          ...(r.partnerId
+            ? { partnerId: Number(r.partnerId) }
+            : { partnerName: r.partnerName }),
           currency: r.currency,
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
@@ -524,9 +557,14 @@ export function SetupWizard({
           ...(r.dueDate ? { dueDate: r.dueDate } : {}),
         })),
       payables: (saldoAktif.payables ? payables : [])
-        .filter((r) => r.partnerId && (Number(r.amount) || 0) > 0)
+        /* Baris yang mitranya BARU tidak punya id — yang membuatnya sah adalah
+           namanya (issue #425). Menyaring dengan `r.partnerId` saja akan diam-
+           diam membuang seluruh piutang perusahaan yang baru pindah. */
+        .filter((r) => (r.partnerId || r.partnerName) && (Number(r.amount) || 0) > 0)
         .map((r) => ({
-          partnerId: Number(r.partnerId),
+          ...(r.partnerId
+            ? { partnerId: Number(r.partnerId) }
+            : { partnerName: r.partnerName }),
           currency: r.currency,
           amount: Number(r.amount),
           ...(r.currency !== "IDR" ? { rate: Number(r.rate) } : {}),
@@ -1281,6 +1319,17 @@ export function SetupWizard({
                 </Text>
               </div>
             )}
+            {newPartners.length > 0 && (
+              <Alert
+                type="info"
+                icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+                showIcon
+                message={t("setup.newPartnersNote", {
+                  count: newPartners.length,
+                  names: newPartners.join(", "),
+                })}
+              />
+            )}
             <Alert
               type="info"
               icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
@@ -1444,12 +1493,21 @@ function Section({
         {children}
       </Flex>
       {empty ? (
-        <Text
-          type="secondary"
-          style={{ display: "block", marginTop: token.marginXS, fontSize: token.fontSizeSM }}
-        >
-          {empty}
-        </Text>
+        /*
+         * Keadaan kosong TETAP membawa tindakannya (issue #425).
+         *
+         * Dulu cabang ini hanya kalimat abu-abu, dan itulah yang membuat
+         * langkah Saldo Awal jadi layar tanpa satu pun jalan keluar: bagian yang
+         * daftarnya kosong menyembunyikan bukan hanya tombol "Tambah" — yang
+         * memang tak berguna tanpa daftar — tapi juga tombol IMPOR, satu-satunya
+         * jalan yang justru tidak membutuhkan daftar itu.
+         */
+        <Flex vertical gap={token.marginXS} style={{ marginTop: token.marginXS }}>
+          <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+            {empty}
+          </Text>
+          {extraActions ? <Flex gap={token.marginXS} wrap>{extraActions}</Flex> : null}
+        </Flex>
       ) : (
         <Flex gap={token.marginXS} wrap style={{ marginTop: token.marginSM }}>
           <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
@@ -1871,7 +1929,9 @@ function PartnerSection({
         ])
       }
       extraActions={
-        parties.length > 0 ? (
+        /* TANPA syarat `parties.length > 0` (issue #425): berkas piutang awal
+           justru dibawa oleh perusahaan yang daftar pelanggannya masih kosong. */
+        (
           <OpeningImport
             kind={importKind}
             t={t}
@@ -1880,7 +1940,8 @@ function PartnerSection({
               setRows(
                 raw.map((r) => ({
                   key: nextId(),
-                  partnerId: String(r.partnerId),
+                  partnerId: r.partnerId == null ? "" : String(r.partnerId),
+                  partnerName: r.partnerName == null ? undefined : String(r.partnerName),
                   currency: String(r.currency),
                   amount: String(r.amount),
                   rate: r.rate == null ? "" : String(r.rate),
@@ -1891,7 +1952,7 @@ function PartnerSection({
               )
             }
           />
-        ) : undefined
+        )
       }
     >
       {rows.map((row) => {
@@ -1899,14 +1960,33 @@ function PartnerSection({
         return (
           <Row key={row.key} gutter={[token.marginXS, token.marginXS]} align="bottom">
             <Col xs={24} sm={8}>
-              <Select
-                id={`p-${row.key}`}
-                label={partyLabel}
-                value={row.partnerId}
-                onChange={(e) => onUpdate(row.key, { partnerId: e.target.value })}
-                placeholder={pickLabel}
-                options={parties.map((p) => ({ value: String(p.id), label: p.name }))}
-              />
+              {/* Mitra yang BELUM terdaftar tidak punya opsi di pemilih mana pun,
+                  jadi ia tampil sebagai namanya sendiri — beserta kalimat yang
+                  menyebutkan ia akan dibuat. Menyembunyikannya di balik pemilih
+                  kosong berarti mengundang orang "memperbaiki" baris yang sudah
+                  benar. */}
+              {!row.partnerId && row.partnerName ? (
+                <div>
+                  <Text strong type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                    {partyLabel}
+                  </Text>
+                  <div>
+                    <Text>{row.partnerName}</Text>{" "}
+                    <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                      · {t("setup.partnerWillBeCreated")}
+                    </Text>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  id={`p-${row.key}`}
+                  label={partyLabel}
+                  value={row.partnerId}
+                  onChange={(e) => onUpdate(row.key, { partnerId: e.target.value })}
+                  placeholder={pickLabel}
+                  options={parties.map((p) => ({ value: String(p.id), label: p.name }))}
+                />
+              )}
             </Col>
             <Col xs={24} sm={4}>
               <Select

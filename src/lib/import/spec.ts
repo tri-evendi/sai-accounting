@@ -30,6 +30,25 @@
 /** Batas baris data yang diproses. Accurate berhenti di 10.000; kita samakan. */
 export const MAX_IMPORT_ROWS = 10_000;
 
+/**
+ * Nama mitra CONTOH — satu untuk seluruh templat impor (issue #426).
+ *
+ * ══ KENAPA SEBUAH KONSTANTA, BUKAN LITERAL DI TIAP BERKAS ═══════════════════
+ * `template.ts` sudah menyatukan templat dan validator supaya "berkas yang
+ * diunduh dari aplikasi ini ditolak oleh aplikasi ini" tidak bisa terjadi. Yang
+ * belum dijaga adalah kecocokan ANTAR templat — dan dua templat yang memang
+ * dipakai berpasangan sempat menyimpang: daftar pelanggan mencontohkan
+ * "PT Contoh Sejahtera", sementara piutang awal mencontohkan "PT Maju Bersama".
+ *
+ * Pengguna baru yang berhati-hati melakukan persis yang disarankan — unduh
+ * templat pelanggan, unggah; unduh templat piutang awal, unggah — dan mendapat
+ * penolakan yang MENUDUHNYA salah menulis nama: "samakan penulisan namanya".
+ * Yang tidak sinkron adalah dua contoh milik aplikasi ini sendiri.
+ *
+ * Dijaga `tests/import-template-examples.test.ts`.
+ */
+export const EXAMPLE_PARTNER_NAME = "PT Contoh Sejahtera";
+
 export interface ColumnSpec {
   /** Kunci hasil — nama field di baris yang dipulangkan. */
   key: string;

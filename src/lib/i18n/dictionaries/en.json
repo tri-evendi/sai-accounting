@@ -2587,7 +2587,9 @@
     "fixedAssetsCount": "{count} assets from the file",
     "fixedAssetsCost": "Acquisition cost",
     "fixedAssetsAccumulated": "Accumulated depreciation",
-    "fixedAssetsBookValue": "Book value"
+    "fixedAssetsBookValue": "Book value",
+    "partnerWillBeCreated": "will be created",
+    "newPartnersNote": "{count} new partners will be created on save: {names}"
   },
   "approvalDocumentType": {
     "contract": "Contract",
@@ -3505,6 +3507,7 @@
     "openingStockDuplicateItem": "This item already has an opening balance row",
     "companyNameRequired": "Company name is required",
     "fiscalYearStartRequired": "The start of the financial year is required",
+    "openingPartnerRequired": "Pick a partner from the list, or give a name if they are not registered yet.",
     "atLeastOneOpeningBalance": "Fill in at least one opening balance (cash/bank, receivables, payables, or inventory).",
     "partnerTwice": "The same partner appears more than once.",
     "partnerPickOrCreate": "Pick a partner from the list, or fill in a new one.",

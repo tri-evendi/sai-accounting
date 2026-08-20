@@ -2587,7 +2587,9 @@
     "fixedAssetsCount": "来自文件的 {count} 项资产",
     "fixedAssetsCost": "取得成本",
     "fixedAssetsAccumulated": "累计折旧",
-    "fixedAssetsBookValue": "账面价值"
+    "fixedAssetsBookValue": "账面价值",
+    "partnerWillBeCreated": "将被创建",
+    "newPartnersNote": "保存时将创建 {count} 个新往来单位：{names}"
   },
   "approvalDocumentType": {
     "contract": "合同",
@@ -3505,6 +3507,7 @@
     "openingStockDuplicateItem": "该商品已有期初余额行",
     "companyNameRequired": "请填写公司名称",
     "fiscalYearStartRequired": "请填写会计年度起始日",
+    "openingPartnerRequired": "请从列表中选择往来单位，若尚未登记请填写名称。",
     "atLeastOneOpeningBalance": "请至少填写一项期初余额（现金/银行、应收、应付或存货）。",
     "partnerTwice": "同一往来单位重复出现。",
     "partnerPickOrCreate": "请从列表中选择往来单位，或填写新的往来单位。",

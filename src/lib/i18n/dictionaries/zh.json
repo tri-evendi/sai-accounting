@@ -758,7 +758,8 @@
     "bookMovementAlreadyReconciled": "该账簿交易已完成对账。",
     "bookMovementOutsidePeriod": "该账簿交易不在对账单期间内。",
     "matchAmountMismatch": "账簿交易与对账单行金额不一致，无法匹配。",
-    "selectCompanyFirst": "请先选择公司。"
+    "selectCompanyFirst": "请先选择公司。",
+    "setupAlreadyDone": "该公司已完成初始设置。"
   },
   "contracts": {
     "title": "合同（{count}）",
@@ -2544,7 +2545,11 @@
     "saveNoteAfter": "，其借贷平衡，并将公司标记为已完成设置。此步骤无法重复执行。",
     "next": "下一步",
     "finish": "保存并完成",
-    "errNoBalance": "请至少填写一项期初余额（现金/银行、应收、应付或存货）。",
+    "errNoBalance": "尚未填写任何期初余额。请至少填写一项（现金/银行、应收、应付或存货），或在本账套确实从零开始时勾选“不填期初余额开始”。",
+    "coaSeeding": "正在准备会计科目表…",
+    "errCoaSeed": "会计科目表暂时无法准备。请检查网络后再次点击“下一步”——期初余额需要这些科目。",
+    "noOpeningLabel": "不填期初余额开始——本账套从零开始",
+    "noOpeningHint": "不会生成期初凭证。所有金额稍后按普通交易记录。",
     "errUnrated": "存在未填汇率的外币余额。请填写汇率，以免印尼盾金额出错。",
     "errSaveFailed": "期初余额保存失败。",
     "errNetwork": "无法连接服务器。请重试。",

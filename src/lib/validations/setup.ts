@@ -137,6 +137,11 @@ export type CompanyTaxIdentityInput = z.infer<typeof companyTaxIdentitySchema>;
  * The whole wizard submission. `superRefine` enforces that SOMETHING is being
  * opened — an empty opening journal is meaningless and the poster would refuse
  * it anyway, so we say so at the field level (422 → 400).
+ *
+ * Sejak issue #416 penjaga itu punya SATU pintu keluar bernama:
+ * `noOpeningBalances`. Ia tidak melonggarkan aturannya (payload yang lupa diisi
+ * tetap ditolak) — ia memisahkan "lupa mengisi" dari "memang tidak ada", dua
+ * keadaan yang dulu dijawab dengan tombol mati yang sama.
  */
 export const setupSchema = z
   .object({
@@ -148,6 +153,23 @@ export const setupSchema = z
     inventory: z.array(openingStockSchema).max(2000).default([]),
     /** Aset tetap yang dibawa masuk (issue #381 tahap 4). */
     fixedAssets: z.array(openingFixedAssetSchema).max(2000).default([]),
+    /**
+     * "Mulai tanpa saldo awal" — pengakuan EKSPLISIT bahwa buku ini memang
+     * dimulai dari nol (issue #416).
+     *
+     * Tanpa bendera ini, aturan "minimal satu saldo" mengunci dua keadaan yang
+     * sama-sama sah: perusahaan yang benar-benar baru, dan perusahaan yang
+     * seluruh modul bersaldonya dimatikan (`cash_bank` bukan modul inti, jadi
+     * langkah Saldo Awal bisa sah-sah saja tidak menampilkan satu isian pun).
+     * Keduanya berakhir di wisaya yang tidak bisa diselesaikan — dan karena
+     * gerbang setup memantulkan halaman lain ke sana, di aplikasi yang tidak
+     * bisa dibuka sama sekali.
+     *
+     * Ia bendera, bukan pelonggaran diam-diam: payload yang lupa mengisi saldan
+     * tetap ditolak persis seperti dulu. Yang berubah hanya adanya kalimat yang
+     * bisa dipilih orangnya.
+     */
+    noOpeningBalances: z.boolean().optional(),
   })
   .superRefine((data, ctx) => {
     const hasAny =
@@ -156,7 +178,7 @@ export const setupSchema = z
       data.payables.length > 0 ||
       data.inventory.length > 0 ||
       data.fixedAssets.length > 0;
-    if (!hasAny) {
+    if (!hasAny && !data.noOpeningBalances) {
       ctx.addIssue({
         code: "custom",
         path: ["cash"],

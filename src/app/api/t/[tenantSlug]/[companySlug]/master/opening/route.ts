@@ -123,13 +123,31 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     const known = new Set(categories.map((c) => c.name.trim().toLowerCase()));
     const assetErrors = [...parsedAssets.errors];
 
+    /*
+     * ── PESANNYA MENYEBUTKAN YANG TERSEDIA (issue #416) ─────────────────────
+     *
+     * Kalimat lama — "buat kategorinya di menu Aset Tetap" — menunjuk menu yang
+     * justru TERKUNCI selama penyiapan belum selesai: gerbang setup memantulkan
+     * setiap halaman ber-izin lain kembali ke wisaya. Berkas ini paling sering
+     * diimpor DARI DALAM wisaya, jadi sarannya mengirim orang ke pintu yang
+     * tidak bisa dibuka dan memulangkannya ke layar yang sama.
+     *
+     * Menyebutkan daftar yang ADA menjawab keduanya sekaligus: bila yang
+     * dimaksud memang ada tapi beda penulisan, ia terlihat langsung; bila
+     * daftarnya bukan yang ia harapkan, ia tahu bukunya bukan buku yang ia kira
+     * (dua PT dengan nama serupa adalah keadaan yang sangat mungkin di sini).
+     */
+    const available = categories.map((c) => c.name).sort((a, b) => a.localeCompare(b, "id-ID"));
+    const hint =
+      available.length > 0
+        ? ` Kategori yang tersedia: ${available.join(", ")}.`
+        : " Buku ini belum punya satu kategori aset pun — modul Aset Tetap sepertinya tidak aktif.";
+
     parsedAssets.rows.forEach((row, i) => {
       if (!known.has(row.category.trim().toLowerCase())) {
         assetErrors.push({
           row: i + 2,
-          message:
-            `Kategori "${row.category}" belum ada. Buat kategorinya di menu ` +
-            "Aset Tetap, atau samakan penulisan namanya.",
+          message: `Kategori "${row.category}" belum ada.${hint}`,
         });
       }
     });

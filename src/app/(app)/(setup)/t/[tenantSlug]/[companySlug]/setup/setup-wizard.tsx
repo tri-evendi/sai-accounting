@@ -160,14 +160,15 @@ function StepTitle({ children, token }: { children: React.ReactNode; token: Glob
 export function SetupWizard({
   defaults,
   currencies,
-  coaCount,
-  cashAccounts,
+  coaCount: seededCoaCount,
+  cashAccounts: seededCashAccounts,
   customers,
   suppliers,
   items,
 }: {
   defaults: { name: string; address: string; baseCurrency: string };
   currencies: string[];
+  /** Jumlah akun saat halaman dirender; bisa BERTAMBAH di tengah wisaya (#416). */
   coaCount: number;
   cashAccounts: CashAccount[];
   customers: Party[];
@@ -179,6 +180,31 @@ export function SetupWizard({
   const { token } = theme.useToken();
   const router = useAppRouter();
   const { toast } = useToast();
+
+  /*
+   * ── BAGAN AKUN ADALAH STATE, BUKAN LAGI PROP MATI (issue #416) ────────────
+   *
+   * Perusahaan yang baru disediakan tiba di wisaya dengan NOL akun — bagan akun
+   * dulu baru disemai di dalam POST yang menutup wisaya. Akibatnya langkah
+   * Saldo Awal, yang berdiri sebelum POST itu, tidak punya satu akun kas/bank
+   * pun untuk ditawarkan; bagiannya menampilkan keadaan kosong dan
+   * menyembunyikan tombol "Tambah", sementara Simpan menuntut minimal satu
+   * saldo. Buntu penuh, dan gerbang setup memantulkan setiap halaman lain
+   * kembali ke sini — orangnya terkunci di luar aplikasinya sendiri.
+   *
+   * Sekarang penyemaian terjadi saat meninggalkan langkah MODUL (`seedCoa`),
+   * dan hasilnya mendarat DI SINI. Karena itu keduanya state: halaman tidak
+   * dimuat ulang di tengah wisaya, jadi prop dari server hanya benar untuk
+   * render pertama.
+   */
+  const [coaCount, setCoaCount] = useState(seededCoaCount);
+  const [cashAccounts, setCashAccounts] = useState<CashAccount[]>(seededCashAccounts);
+  const [seedingCoa, setSeedingCoa] = useState(false);
+  /** Penyemaian sudah pernah dicoba di sesi ini — penjaga anti-lingkaran (#416). */
+  const coaSeedAttempted = useRef(false);
+
+  /** "Mulai tanpa saldo awal" — jalan keluar eksplisit di langkah tinjauan (#416). */
+  const [noOpening, setNoOpening] = useState(false);
 
   /**
    * Langkah dirujuk lewat NAMA, bukan angka (issue #99 menyisipkan satu langkah
@@ -440,7 +466,11 @@ export function SetupWizard({
 
   async function handleSubmit() {
     setError(null);
-    if (!totals.hasAny) {
+    /* Tidak ada saldo terisi masih boleh lewat — tapi hanya lewat centangan
+       yang mengatakannya (#416). Tanpa centangan, pesannya kini MENUNJUK
+       centangan itu alih-alih menyuruh mengisi layar yang mungkin memang tak
+       punya isian. */
+    if (!totals.hasAny && !noOpening) {
       setError(t("setup.errNoBalance"));
       return;
     }
@@ -464,6 +494,10 @@ export function SetupWizard({
         businessCategory: category || undefined,
         modules: normalizeEnabledModules(modules),
       },
+      /* Dikirim hanya bila memang tak ada saldo terisi: bendera yang ikut
+         terkirim bersama saldo yang penuh adalah bendera yang suatu hari akan
+         dipercaya server padahal tidak dimaksudkan siapa pun. */
+      ...(!totals.hasAny && noOpening ? { noOpeningBalances: true as const } : {}),
       cash: (saldoAktif.cash ? cash : [])
         .filter((r) => r.accountId && (Number(r.amount) || 0) > 0)
         .map((r) => {
@@ -594,7 +628,76 @@ export function SetupWizard({
     return errors;
   }
 
-  function goNext() {
+  /**
+   * Semai bagan akun untuk modul terpilih — SEBELUM langkah Saldo Awal (#416).
+   *
+   * Idempoten di server (kode akun yang sudah ada tidak disentuh), jadi
+   * bolak-balik antar langkah maupun mengganti pilihan modul lalu maju lagi
+   * tidak pernah menggandakan apa pun; paling banyak menambah akun milik modul
+   * yang baru dicentang.
+   *
+   * KEGAGALANNYA TIDAK MENAHAN NAVIGASI. Langkah berikutnya masih bisa dibaca,
+   * dan penyemaian di ujung wisaya tetap ada sebagai jaring pengaman — menahan
+   * orang di langkah Modul karena satu permintaan latar gagal hanya menukar
+   * satu buntu dengan buntu yang lain. Yang kita lakukan adalah MENGATAKANNYA.
+   */
+  async function seedCoa() {
+    coaSeedAttempted.current = true;
+    setSeedingCoa(true);
+    try {
+      const res = await apiFetch("/api/setup/coa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessCategory: category || null,
+          modules: normalizeEnabledModules(modules),
+        }),
+      });
+      if (!res.ok) {
+        setError(t("setup.errCoaSeed"));
+        return;
+      }
+      const data = (await res.json()) as { coaCount?: number; cashAccounts?: CashAccount[] };
+      if (typeof data.coaCount === "number") setCoaCount(data.coaCount);
+      if (Array.isArray(data.cashAccounts)) setCashAccounts(data.cashAccounts);
+      setError(null);
+    } catch {
+      setError(t("setup.errCoaSeed"));
+    } finally {
+      setSeedingCoa(false);
+    }
+  }
+
+  /*
+   * ── JARING TERAKHIR: TIBA DI SALDO AWAL TANPA AKUN (issue #416) ───────────
+   *
+   * Penyemaian di atas digantung pada tombol "Lanjut" di langkah Modul — dan
+   * itu benar untuk orang yang berjalan lurus. Yang TIDAK berjalan lurus adalah
+   * draf yang dipulihkan: `sessionStorage` menyimpan nomor langkahnya, jadi tab
+   * yang dimuat ulang bisa mendarat langsung di langkah Saldo Awal tanpa pernah
+   * melewati tombol itu sekali pun. Bila draf itu lahir sebelum perbaikan ini
+   * terpasang, bukunya masih kosong — dan layarnya kembali tanpa isian.
+   *
+   * Itu bukan lagi kunci (centangan "mulai tanpa saldo awal" ada di langkah
+   * berikutnya), tapi ia tetap layar yang tidak bisa dijelaskan kepada orang
+   * yang menatapnya. Jadi kita tutup: begitu langkah ini terbuka tanpa satu
+   * akun kas pun, akunnya dibuat di sana juga.
+   *
+   * SEKALI saja — `coaSeedAttempted` adalah ref, bukan state, supaya percobaan
+   * yang gagal tidak berubah menjadi lingkaran permintaan yang memukuli server
+   * setiap render. Perusahaan yang modul kasnya memang mati tidak ikut disemai
+   * dari sini: bagian Kas/Bank-nya sengaja tidak dirender, jadi "tidak ada akun
+   * kas" di sana adalah keadaan yang benar, bukan yang perlu diperbaiki.
+   */
+  useEffect(() => {
+    if (current !== "balances") return;
+    if (coaSeedAttempted.current || seedingCoa) return;
+    if (!saldoAktif.cash || cashAccounts.length > 0) return;
+    void seedCoa();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, saldoAktif.cash, cashAccounts.length, seedingCoa]);
+
+  async function goNext() {
     const errors = validateStep();
     setStepErrors(errors);
     const firstInvalid = Object.keys(errors)[0];
@@ -602,6 +705,9 @@ export function SetupWizard({
       document.getElementById(firstInvalid)?.focus();
       return;
     }
+    // Modul sudah dipilih → akunnya boleh lahir. Ditunggu, supaya langkah COA
+    // berikutnya menyebut jumlah yang sudah benar alih-alih "0 akun aktif".
+    if (current === "modules") await seedCoa();
     setStep((s) => Math.min(steps.length - 1, s + 1));
   }
 
@@ -1139,6 +1245,42 @@ export function SetupWizard({
               </div>
             </dl>
             <BalancePanel totals={totals} t={t} token={token} />
+            {/*
+             * ── JALAN KELUAR, BUKAN TOMBOL MATI (issue #416) ─────────────────
+             *
+             * "Minimal satu saldo awal" adalah aturan yang benar untuk
+             * perusahaan yang PINDAH dari pembukuan lain — dan aturan yang
+             * mustahil bagi perusahaan yang memang mulai dari nol, atau yang
+             * mematikan semua modul bersaldo (`cash_bank` BUKAN modul inti,
+             * jadi seluruh bagian di langkah sebelumnya bisa sah-sah saja
+             * tersembunyi). Sampai issue ini, keduanya berakhir sama: tombol
+             * Simpan yang mati tanpa satu kalimat pun.
+             *
+             * Centangannya hanya muncul saat memang tidak ada saldo terisi —
+             * ia jalan keluar, bukan tawaran. Dan ia EKSPLISIT: buku tanpa
+             * jurnal pembuka adalah keputusan akuntansi, bukan sesuatu yang
+             * boleh bocor diam-diam dari formulir yang lupa diisi.
+             */}
+            {!totals.hasAny && (
+              <div>
+                <Checkbox
+                  id="noOpening"
+                  checked={noOpening}
+                  onCheckedChange={(v) => {
+                    setNoOpening(v === true);
+                    setError(null);
+                  }}
+                >
+                  {t("setup.noOpeningLabel")}
+                </Checkbox>
+                <Text
+                  type="secondary"
+                  style={{ display: "block", fontSize: token.fontSizeSM }}
+                >
+                  {t("setup.noOpeningHint")}
+                </Text>
+              </div>
+            )}
             <Alert
               type="info"
               icon={<InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
@@ -1218,15 +1360,33 @@ export function SetupWizard({
         </Button>
 
         {step < steps.length - 1 ? (
-          <Button type="button" variant="primary" disabled={saving} onClick={goNext}>
-            {t("setup.next")}
-            <ArrowRightOutlined aria-hidden="true" />
-          </Button>
-        ) : (
           <Button
             type="button"
             variant="primary"
-            disabled={saving || !totals.hasAny || totals.unrated > 0}
+            disabled={saving || seedingCoa}
+            onClick={goNext}
+          >
+            {seedingCoa && <Spinner size={16} />}
+            {seedingCoa ? t("setup.coaSeeding") : t("setup.next")}
+            <ArrowRightOutlined aria-hidden="true" />
+          </Button>
+        ) : (
+          /*
+           * TOMBOL HIDUP, bukan tombol mati (issue #416, doktrin yang sudah
+           * dianut `validateStep` di berkas ini). `!totals.hasAny` dulu ikut
+           * mematikannya — sehingga pengguna yang layar saldo awalnya memang
+           * tak punya isian menghadapi tombol yang tidak bereaksi dan tidak
+           * satu pun kalimat yang menyebut sebabnya. Sekarang penekanannya
+           * MENJAWAB: entah lewat pesan yang menunjuk centangan jalan keluar,
+           * entah dengan menyimpan.
+           *
+           * `unrated` tetap mematikannya: di sana ada isian yang jelas dan
+           * peringatannya sudah tampil tepat di atas tombol.
+           */
+          <Button
+            type="button"
+            variant="primary"
+            disabled={saving || totals.unrated > 0}
             onClick={handleSubmit}
           >
             {saving && <Spinner size={16} />}

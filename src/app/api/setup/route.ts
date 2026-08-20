@@ -301,6 +301,10 @@ export async function POST(request: Request) {
       quantity: row.quantity,
       unitCost: row.unitCost,
     })),
+    /* "Mulai tanpa saldo awal" (issue #416) — skema sudah menuntut bendera ini
+       ADA sebelum mengizinkan payload kosong lewat, jadi di sini ia tinggal
+       diteruskan apa adanya. */
+    allowEmpty: parsed.data.noOpeningBalances === true,
   };
 
   try {

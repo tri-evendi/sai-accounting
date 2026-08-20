@@ -180,6 +180,15 @@ export interface OpeningBalancesInput {
   inventory: OpeningStockInput[];
   /** Aset tetap yang dibawa masuk (issue #381 tahap 4). */
   fixedAssets: OpeningFixedAssetInput[];
+  /**
+   * Buku ini memang dimulai dari NOL — tidak ada jurnal pembuka (issue #416).
+   *
+   * Bawaannya `false`, dan itu penting: setiap pemanggil yang tidak menyebutnya
+   * tetap mendapat penjaga lama, yaitu galat bila tak ada satu baris pun untuk
+   * dicatat. Yang menyalakannya hanya wisaya, dan hanya setelah orangnya
+   * mencentang kalimat yang mengatakannya.
+   */
+  allowEmpty?: boolean;
 }
 
 /** Nilai IDR satu baris persediaan awal — satu rumus, dipakai jurnal & gerakan. */
@@ -364,8 +373,15 @@ export async function previewOpeningEquity(
 
 export interface ApplyResult {
   settingId: number;
-  journalId: number;
-  journalNumber: string;
+  /**
+   * NULL bila buku dimulai dari nol (issue #416) — tidak ada jurnal pembuka
+   * yang diposting, dan `company_settings.opening_journal_id` ikut kosong.
+   * Halaman ringkasan penyiapan & `/setup/done` sudah lama memagari keduanya
+   * dengan `settings.openingJournalId ? … : null`, jadi tak ada layar yang
+   * perlu berubah untuk memahaminya.
+   */
+  journalId: number | null;
+  journalNumber: string | null;
   equityPlug: number;
 }
 
@@ -413,33 +429,51 @@ export async function applyOpeningBalances(
         });
 
     const lines = await resolveOpeningLines(input, tx);
-    if (lines.length === 0) {
+    if (lines.length === 0 && !input.allowEmpty) {
       throw new OpeningBalanceError(
         "Tidak ada saldo awal untuk dicatat. Isi minimal satu saldo (kas, piutang, utang, atau persediaan)."
       );
     }
 
-    const equityAccountId = await resolveAccountId(MAPPING_KEYS.OPENING_EQUITY, "IDR", tx);
-    const equityPlug = openingEquityPlug(lines);
-    const journalLines = buildOpeningBalanceLines({
-      lines,
-      equityAccountId,
-      equityMemo: "Modal/Ekuitas — saldo awal",
-    });
+    /*
+     * ── BUKU YANG DIMULAI DARI NOL (issue #416) ─────────────────────────────
+     *
+     * Tanpa satu baris pun, tidak ada jurnal pembuka — dan itu BUKAN jurnal
+     * kosong melainkan ketiadaan jurnal. Memposting jurnal tanpa baris akan
+     * meninggalkan dokumen yang tidak menyatakan apa pun di buku besar, dan
+     * `buildOpeningBalanceLines` memang menolaknya sejak semula.
+     *
+     * Yang tetap terjadi: baris `company_settings` dibuat/diperbarui dan
+     * `is_setup` menyala. Penjaga sekali-jalan karena itu tidak melemah — POST
+     * kedua tetap ditolak `assertCanRunSetup` lewat bendera itu, persis seperti
+     * buku yang punya jurnal pembuka ditolak lewat jurnalnya.
+     */
+    let journal: Awaited<ReturnType<typeof postJournal>> | null = null;
+    let equityPlug = 0;
 
-    // Post through the same primitive as every other write: assertBalanced and
-    // the period lock (#13) both apply here, unbypassed.
-    const journal = await postJournal(
-      {
-        date: input.company.fiscalYearStart,
-        type: "general",
-        note: "Saldo Awal (jurnal pembuka)",
-        sourceType: OPENING_BALANCE_SOURCE,
-        sourceId: setting.id,
-        lines: journalLines,
-      },
-      tx
-    );
+    if (lines.length > 0) {
+      const equityAccountId = await resolveAccountId(MAPPING_KEYS.OPENING_EQUITY, "IDR", tx);
+      equityPlug = openingEquityPlug(lines);
+      const journalLines = buildOpeningBalanceLines({
+        lines,
+        equityAccountId,
+        equityMemo: "Modal/Ekuitas — saldo awal",
+      });
+
+      // Post through the same primitive as every other write: assertBalanced and
+      // the period lock (#13) both apply here, unbypassed.
+      journal = await postJournal(
+        {
+          date: input.company.fiscalYearStart,
+          type: "general",
+          note: "Saldo Awal (jurnal pembuka)",
+          sourceType: OPENING_BALANCE_SOURCE,
+          sourceId: setting.id,
+          lines: journalLines,
+        },
+        tx
+      );
+    }
 
     /*
      * ══ SISI KEDUA PIUTANG & UTANG: DOKUMENNYA (issue #381 tahap 3) ════════
@@ -604,14 +638,14 @@ export async function applyOpeningBalances(
         businessCategory: input.company.businessCategory ?? null,
         enabledModules: input.company.enabledModules ?? null,
         isSetup: true,
-        openingJournalId: journal.id,
+        openingJournalId: journal?.id ?? null,
       },
     });
 
     return {
       settingId: saved.id,
-      journalId: journal.id,
-      journalNumber: journal.number,
+      journalId: journal?.id ?? null,
+      journalNumber: journal?.number ?? null,
       equityPlug,
     };
   });

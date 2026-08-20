@@ -758,7 +758,8 @@
     "bookMovementAlreadyReconciled": "Transaksi buku ini sudah direkonsiliasi.",
     "bookMovementOutsidePeriod": "Transaksi buku ini di luar periode rekening koran.",
     "matchAmountMismatch": "Nominal transaksi buku dan baris koran tidak sama, jadi tidak bisa dicocokkan.",
-    "selectCompanyFirst": "Pilih perusahaan terlebih dahulu."
+    "selectCompanyFirst": "Pilih perusahaan terlebih dahulu.",
+    "setupAlreadyDone": "Perusahaan ini sudah selesai disiapkan."
   },
   "contracts": {
     "title": "Kontrak ({count})",
@@ -2544,7 +2545,11 @@
     "saveNoteAfter": "yang seimbang dan menandai perusahaan sudah disiapkan. Langkah ini tidak dapat diulang.",
     "next": "Lanjut",
     "finish": "Simpan & Selesai",
-    "errNoBalance": "Isi minimal satu saldo awal (kas/bank, piutang, utang, atau persediaan).",
+    "errNoBalance": "Belum ada saldo awal yang diisi. Isi minimal satu (kas/bank, piutang, utang, atau persediaan), atau centang “Mulai tanpa saldo awal” bila buku ini memang dimulai dari nol.",
+    "coaSeeding": "Menyiapkan bagan akun…",
+    "errCoaSeed": "Bagan akun belum bisa disiapkan. Periksa sambungan lalu tekan Lanjut sekali lagi — saldo awal butuh akun-akun ini.",
+    "noOpeningLabel": "Mulai tanpa saldo awal — buku ini dimulai dari nol",
+    "noOpeningHint": "Tidak ada jurnal pembuka yang dibuat. Semua nilai dicatat belakangan sebagai transaksi biasa.",
     "errUnrated": "Ada saldo mata uang asing tanpa kurs. Isi kursnya agar nilai IDR tidak salah.",
     "errSaveFailed": "Gagal menyimpan saldo awal.",
     "errNetwork": "Tidak dapat menghubungi server. Coba lagi.",

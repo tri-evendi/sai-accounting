@@ -200,6 +200,8 @@ export function SetupWizard({
   const [coaCount, setCoaCount] = useState(seededCoaCount);
   const [cashAccounts, setCashAccounts] = useState<CashAccount[]>(seededCashAccounts);
   const [seedingCoa, setSeedingCoa] = useState(false);
+  /** Penyemaian sudah pernah dicoba di sesi ini — penjaga anti-lingkaran (#416). */
+  const coaSeedAttempted = useRef(false);
 
   /** "Mulai tanpa saldo awal" — jalan keluar eksplisit di langkah tinjauan (#416). */
   const [noOpening, setNoOpening] = useState(false);
@@ -640,6 +642,7 @@ export function SetupWizard({
    * satu buntu dengan buntu yang lain. Yang kita lakukan adalah MENGATAKANNYA.
    */
   async function seedCoa() {
+    coaSeedAttempted.current = true;
     setSeedingCoa(true);
     try {
       const res = await apiFetch("/api/setup/coa", {
@@ -664,6 +667,35 @@ export function SetupWizard({
       setSeedingCoa(false);
     }
   }
+
+  /*
+   * ── JARING TERAKHIR: TIBA DI SALDO AWAL TANPA AKUN (issue #416) ───────────
+   *
+   * Penyemaian di atas digantung pada tombol "Lanjut" di langkah Modul — dan
+   * itu benar untuk orang yang berjalan lurus. Yang TIDAK berjalan lurus adalah
+   * draf yang dipulihkan: `sessionStorage` menyimpan nomor langkahnya, jadi tab
+   * yang dimuat ulang bisa mendarat langsung di langkah Saldo Awal tanpa pernah
+   * melewati tombol itu sekali pun. Bila draf itu lahir sebelum perbaikan ini
+   * terpasang, bukunya masih kosong — dan layarnya kembali tanpa isian.
+   *
+   * Itu bukan lagi kunci (centangan "mulai tanpa saldo awal" ada di langkah
+   * berikutnya), tapi ia tetap layar yang tidak bisa dijelaskan kepada orang
+   * yang menatapnya. Jadi kita tutup: begitu langkah ini terbuka tanpa satu
+   * akun kas pun, akunnya dibuat di sana juga.
+   *
+   * SEKALI saja — `coaSeedAttempted` adalah ref, bukan state, supaya percobaan
+   * yang gagal tidak berubah menjadi lingkaran permintaan yang memukuli server
+   * setiap render. Perusahaan yang modul kasnya memang mati tidak ikut disemai
+   * dari sini: bagian Kas/Bank-nya sengaja tidak dirender, jadi "tidak ada akun
+   * kas" di sana adalah keadaan yang benar, bukan yang perlu diperbaiki.
+   */
+  useEffect(() => {
+    if (current !== "balances") return;
+    if (coaSeedAttempted.current || seedingCoa) return;
+    if (!saldoAktif.cash || cashAccounts.length > 0) return;
+    void seedCoa();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, saldoAktif.cash, cashAccounts.length, seedingCoa]);
 
   async function goNext() {
     const errors = validateStep();

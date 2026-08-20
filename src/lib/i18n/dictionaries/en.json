@@ -759,7 +759,10 @@
     "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
     "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched.",
     "selectCompanyFirst": "Select a company first.",
-    "setupAlreadyDone": "This company has already completed setup."
+    "setupAlreadyDone": "This company has already completed setup.",
+    "paymentCurrencyMismatch": "The payment currency ({payment}) differs from the document's currency ({document}). Record the payment in the document's currency — an exchange difference belongs in the payment's rate, not in a different currency.",
+    "paymentDocumentValueUnknown": "This document has no IDR value yet because its rate is empty, so the outstanding amount cannot be computed. Fill in the document's rate (or the rate of the payments already recorded) first.",
+    "paymentExceedsOutstanding": "A payment of {attempted} exceeds the outstanding {outstanding}. If this is money received in advance, record it under Advance Payments; if the document itself should be larger, correct the document."
   },
   "contracts": {
     "title": "Contracts ({count})",

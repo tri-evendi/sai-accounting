@@ -27,7 +27,7 @@ import { PrismaClient as ControlClient } from "../src/generated/control/client.j
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
-import { seedDefaultAssetCategories } from "../src/lib/coa-seeding";
+import { seedDefaultAssetCategories } from "../src/lib/asset-categories";
 
 function adapterFor(raw: string, database?: string) {
   const url = new URL(raw);

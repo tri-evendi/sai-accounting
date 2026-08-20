@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ASSET_CATEGORIES,
   seedDefaultAssetCategories,
-} from "@/lib/coa-seeding";
+} from "@/lib/asset-categories";
 import { FIXED_ASSET_COLUMNS } from "@/lib/import/fixed-assets";
 import { setupSchema } from "@/lib/validations/setup";
 import { assertCanRunSetup, OpeningBalanceError } from "@/lib/opening-balance";
@@ -163,5 +163,94 @@ describe("wisaya selalu bisa diselesaikan — jalan keluar 'mulai tanpa saldo aw
     expect(() => assertCanRunSetup({ isSetup: true, liveOpeningJournals: 0 })).toThrow(
       OpeningBalanceError
     );
+  });
+});
+
+/**
+ * Keluaran PARSER impor harus bisa ditelan SKEMA penyimpanan (issue #421).
+ *
+ * Ditemukan saat menjalankan wisaya dari ujung ke ujung di produksi: berkas
+ * aset tetap terbaca (HTTP 200, dua baris), lalu menyimpannya ditolak 400 —
+ * karena parser menuliskan sel kosong sebagai `null` sementara skema hanya
+ * menerima kunci yang TIDAK ADA. Dua sisi yang bicara tentang berkas yang sama,
+ * menyimpang pada satu kata.
+ *
+ * Karena itu tesnya memberi makan skema dengan BENTUK yang sungguh dipulangkan
+ * parser, bukan dengan objek yang ditulis rapi di sini — kalau parser suatu
+ * saat menambah kolom opsional lagi, ia harus lewat pagar yang sama.
+ */
+describe("aset tetap: kolom opsional yang dikosongkan (null) tetap bisa disimpan", () => {
+  const ASSET = {
+    assetNo: "AT-002",
+    name: "Laptop Kantor",
+    category: "Komputer & Elektronik",
+    acquisitionDate: "2024-02-01",
+    cost: 15_000_000,
+    residual: 0,
+    accumulated: 5_000_000,
+  };
+
+  it("menerima baris yang setiap kolom opsionalnya null", () => {
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      fixedAssets: [
+        {
+          ...ASSET,
+          usefulLifeMonths: null,
+          lastDepreciationYear: null,
+          lastDepreciationMonth: null,
+          location: null,
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("tahun penyusutan terakhir yang kosong TIDAK menjadi tahun 0", () => {
+    /* `z.coerce.number()(null)` = 0, dan 0 lolos `.int()` — dulu sel kosong
+       diam-diam tersimpan sebagai "terakhir disusutkan tahun 0". */
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      fixedAssets: [{ ...ASSET, lastDepreciationYear: null }],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.fixedAssets[0].lastDepreciationYear).not.toBe(0);
+    }
+  });
+
+  it("tahun yang mustahil tetap ditolak", () => {
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      fixedAssets: [{ ...ASSET, lastDepreciationYear: 0 }],
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("kolom yang memang diisi tetap terbaca", () => {
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      fixedAssets: [
+        {
+          ...ASSET,
+          usefulLifeMonths: 48,
+          lastDepreciationYear: 2025,
+          lastDepreciationMonth: 12,
+          location: "Kantor",
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      const row = parsed.data.fixedAssets[0];
+      expect(row.usefulLifeMonths).toBe(48);
+      expect(row.lastDepreciationYear).toBe(2025);
+      expect(row.lastDepreciationMonth).toBe(12);
+      expect(row.location).toBe("Kantor");
+    }
   });
 });

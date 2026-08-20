@@ -84,12 +84,38 @@ export const openingFixedAssetSchema = z.object({
   acquisitionDate: z.string().min(1),
   cost: z.coerce.number().positive(vmsg("validation.openingBalancePositive")),
   residual: z.coerce.number().min(0).default(0),
+  /*
+   * ── `.nullish()`, BUKAN `.optional()` (issue #421) ────────────────────────
+   *
+   * Keempat kolom di bawah datang dari PARSER IMPOR, dan parser itu menuliskan
+   * sel kosong sebagai `null` — bukan menghilangkan kuncinya
+   * (`lib/import/fixed-assets.ts`: `number | null`, `string | null`). Wisaya
+   * meneruskan barisnya apa adanya, jadi `.optional()` — yang hanya menerima
+   * kunci yang TIDAK ADA — menolak justru berkas yang menuruti templatnya
+   * sendiri: "Opsional — kosong memakai bawaan kategorinya", "Kosong bila belum
+   * pernah", "Opsional".
+   *
+   * Ditolaknya pun di langkah TERAKHIR, sesudah seluruh wisaya diisi. Kelas
+   * yang sama dengan #416, di permukaan yang lain.
+   *
+   * ⚠ Yang paling mahal bukan yang 400. `lastDepreciationYear` dulu
+   * `.optional()` tanpa batas bawah: `z.coerce.number()(null)` = 0, dan 0 LOLOS
+   * `.int()` — sel kosong diam-diam menjadi "terakhir disusutkan tahun 0",
+   * keadaan penyusutan yang tidak pernah dimaksudkan siapa pun dan tidak
+   * meninggalkan satu galat pun. Batas `.min(1900)` menutupnya: tahun yang
+   * mustahil kini ditolak, bukan disimpan.
+   *
+   * Sisi pemakainya sudah lama siap menerima null (`api/setup/route.ts`
+   * menulis `a.usefulLifeMonths ?? category.defaultUsefulLifeMonths`,
+   * `a.lastDepreciationYear ?? null`, `a.location ?? null`) — yang kurang hanya
+   * izin lewat di sini.
+   */
   /** Kosong → bawaan kategorinya. */
-  usefulLifeMonths: z.coerce.number().int().positive().optional(),
+  usefulLifeMonths: z.coerce.number().int().positive().nullish(),
   accumulated: z.coerce.number().min(0).default(0),
-  lastDepreciationYear: z.coerce.number().int().optional(),
-  lastDepreciationMonth: z.coerce.number().int().min(1).max(12).optional(),
-  location: z.string().max(150).trim().optional(),
+  lastDepreciationYear: z.coerce.number().int().min(1900).max(2999).nullish(),
+  lastDepreciationMonth: z.coerce.number().int().min(1).max(12).nullish(),
+  location: z.string().max(150).trim().nullish(),
 });
 
 /**

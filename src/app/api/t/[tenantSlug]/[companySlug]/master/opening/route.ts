@@ -200,7 +200,8 @@ export async function POST(request: Request, ctx: TenantApiContext) {
   const byName = new Map(partners.map((p) => [p.name.trim().toLowerCase(), p.id]));
 
   const rows: {
-    partnerId: number;
+    /** `null` = mitra ini belum ada dan akan DIBUAT bersama saldo awalnya (#425). */
+    partnerId: number | null;
     partnerName: string;
     documentNo: string;
     date: string;
@@ -211,20 +212,37 @@ export async function POST(request: Request, ctx: TenantApiContext) {
   }[] = [];
   const errors: RowError[] = [...parsed.errors];
 
+  /*
+   * ── MITRA YANG BELUM ADA BUKAN LAGI GALAT (issue #425) ────────────────────
+   *
+   * Dulu baris seperti itu ditolak dengan saran "impor daftarnya lebih dulu" —
+   * saran yang MUSTAHIL dijalankan di tempat berkas ini paling sering diimpor:
+   * di dalam wisaya penyiapan, tempat gerbang setup memantulkan menu Pelanggan
+   * & Pemasok kembali ke wisaya itu sendiri. Perusahaan yang PINDAH dari
+   * pembukuan lain karena itu tidak punya satu pun jalan memasukkan piutang
+   * terbukanya — dan karena wisaya jalan sekali, kesempatannya hilang selamanya.
+   *
+   * Kini namanya dibawa apa adanya dengan `partnerId: null`, dan mitranya lahir
+   * bersama saldo awalnya di dalam transaksi yang sama (`applyOpeningBalances`).
+   * Route ini tetap TIDAK MENULIS APA PUN — lihat kepala berkas.
+   *
+   * Yang baru dikumpulkan terpisah di `newPartners` supaya layar tinjauan bisa
+   * MENYEBUTKANNYA sebelum orangnya menekan simpan: mitra yang lahir dari salah
+   * ketik adalah harga yang harus dibayar fitur ini, dan satu-satunya penawarnya
+   * adalah menampilkan daftarnya lebih dulu.
+   */
+  const newPartners: string[] = [];
+  const seenNew = new Set<string>();
+
   parsed.rows.forEach((row, i) => {
-    const id = byName.get(row.partner.trim().toLowerCase());
-    if (id === undefined) {
-      /* Nomor barisnya diturunkan dari urutan baris yang LOLOS parse, jadi ia
-         bisa meleset bila ada baris sebelumnya yang ditolak. Karena itu yang
-         disebut adalah NAMANYA — satu-satunya penunjuk yang tetap benar, dan
-         yang memang dicari orang di berkasnya. */
-      errors.push({
-        row: i + 2,
-        message:
-          `"${row.partner}" belum terdaftar. Impor daftarnya lebih dulu, ` +
-          "atau samakan penulisan namanya.",
-      });
-      return;
+    void i;
+    const id = byName.get(row.partner.trim().toLowerCase()) ?? null;
+    if (id === null) {
+      const key = row.partner.trim().toLowerCase();
+      if (!seenNew.has(key)) {
+        seenNew.add(key);
+        newPartners.push(row.partner.trim());
+      }
     }
     rows.push({
       partnerId: id,
@@ -248,7 +266,12 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     return NextResponse.json({ error: t("errors.noImportRows") }, { status: 422 });
   }
 
-  return NextResponse.json({ rows, total: rows.length, truncated: parsed.truncated });
+  return NextResponse.json({
+    rows,
+    total: rows.length,
+    newPartners,
+    truncated: parsed.truncated,
+  });
 }
 
 export async function GET(request: Request, ctx: TenantApiContext) {

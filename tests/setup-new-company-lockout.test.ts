@@ -254,3 +254,73 @@ describe("aset tetap: kolom opsional yang dikosongkan (null) tetap bisa disimpan
     }
   });
 });
+
+/**
+ * Saldo awal piutang & utang untuk perusahaan yang PINDAH (issue #425).
+ *
+ * Perusahaan baru tiba di wisaya dengan nol pelanggan dan nol pemasok, dan
+ * tidak bisa membuatnya dari sana — gerbang setup memantulkan menu master
+ * kembali ke wisaya. Sampai issue ini, satu-satunya jalan adalah menyelesaikan
+ * penyiapan TANPA piutang lama; dan karena wisaya jalan sekali, piutang itu
+ * tidak akan pernah bisa dicatat sebagai dokumen pembuka.
+ */
+describe("mitra saldo awal boleh disebut namanya, bukan hanya id-nya", () => {
+  const AR = { currency: "IDR", amount: 5_000_000 };
+
+  it("menerima baris yang menyebut NAMA mitra yang belum terdaftar", () => {
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      receivables: [{ ...AR, partnerName: "PT Pindahan Jaya" }],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("tetap menerima baris yang menyebut id mitra yang sudah ada", () => {
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      receivables: [{ ...AR, partnerId: 7 }],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("menolak baris yang tidak menyebut mitra sama sekali", () => {
+    const parsed = setupSchema.safeParse({ company: COMPANY, receivables: [{ ...AR }] });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(JSON.stringify(parsed.error.issues)).toContain("openingPartnerRequired");
+    }
+  });
+
+  it("dua baris tanpa nomor dokumen untuk mitra BARU yang sama tetap ditolak", () => {
+    /* Penjaga kembar lama hanya mengenal id; tanpa cabang nama, dua baris ini
+       akan melahirkan satu master dengan dua saldo awal tak terbedakan. */
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      receivables: [
+        { ...AR, partnerName: "PT Pindahan Jaya" },
+        { ...AR, partnerName: "pt pindahan jaya" },
+      ],
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(JSON.stringify(parsed.error.issues)).toContain("partnerTwice");
+    }
+  });
+
+  it("dua baris BERNOMOR dokumen untuk mitra baru yang sama tetap boleh", () => {
+    // Satu pelanggan pindahan yang meninggalkan dua faktur terbuka.
+    const parsed = setupSchema.safeParse({
+      company: COMPANY,
+      receivables: [
+        { ...AR, partnerName: "PT Pindahan Jaya", documentNo: "INV-001" },
+        { ...AR, partnerName: "PT Pindahan Jaya", documentNo: "INV-002" },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+});

@@ -758,7 +758,8 @@
     "bookMovementAlreadyReconciled": "This book transaction has already been reconciled.",
     "bookMovementOutsidePeriod": "This book transaction is outside the statement period.",
     "matchAmountMismatch": "The book transaction and the statement line have different amounts, so they cannot be matched.",
-    "selectCompanyFirst": "Select a company first."
+    "selectCompanyFirst": "Select a company first.",
+    "setupAlreadyDone": "This company has already completed setup."
   },
   "contracts": {
     "title": "Contracts ({count})",
@@ -2544,7 +2545,11 @@
     "saveNoteAfter": "that balances, and marks the company as set up. This step cannot be repeated.",
     "next": "Next",
     "finish": "Save & Finish",
-    "errNoBalance": "Enter at least one opening balance (cash/bank, receivable, payable, or inventory).",
+    "errNoBalance": "No opening balance has been entered. Fill in at least one (cash/bank, receivable, payable, or inventory), or tick “Start with no opening balances” if this book really starts from zero.",
+    "coaSeeding": "Preparing the chart of accounts…",
+    "errCoaSeed": "The chart of accounts could not be prepared. Check your connection and press Next again — the opening balances need these accounts.",
+    "noOpeningLabel": "Start with no opening balances — this book starts from zero",
+    "noOpeningHint": "No opening journal is created. Every figure is recorded later as an ordinary transaction.",
     "errUnrated": "There is a foreign-currency balance without a rate. Enter the rate so the IDR value is not wrong.",
     "errSaveFailed": "The opening balances could not be saved.",
     "errNetwork": "Could not reach the server. Please try again.",

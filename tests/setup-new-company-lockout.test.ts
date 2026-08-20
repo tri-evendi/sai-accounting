@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ASSET_CATEGORIES,
   seedDefaultAssetCategories,
-} from "@/lib/coa-seeding";
+} from "@/lib/asset-categories";
 import { FIXED_ASSET_COLUMNS } from "@/lib/import/fixed-assets";
 import { setupSchema } from "@/lib/validations/setup";
 import { assertCanRunSetup, OpeningBalanceError } from "@/lib/opening-balance";

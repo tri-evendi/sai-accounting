@@ -9,6 +9,10 @@ import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
+import { checkPaymentFits, type PaymentProblem } from "@/lib/document-payments";
+import { formatCurrency } from "@/lib/utils";
+import { toBase } from "@/lib/receivables";
+import { invoiceTotal } from "@/lib/validations/invoice";
 
 export async function POST(
   request: Request,
@@ -20,7 +24,13 @@ export async function POST(
   const { id } = await params;
   const invoiceId = parseInt(id);
 
-  const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+  /* `items` ikut ditarik karena NILAI faktur di aplikasi ini dihitung dari
+     barisnya, bukan dari sebuah kolom nilai (lihat kepala `receivables.ts`) —
+     dan penjaga #424 di bawah mengukur sisa tagihan terhadap nilai itu. */
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { items: true },
+  });
   if (!invoice) {
     const { t } = await getRequestI18n();
     return NextResponse.json({ error: t("errors.invoiceNotFound") }, { status: 404 });
@@ -52,8 +62,62 @@ export async function POST(
 
   let payment;
   let approval;
+  /*
+   * Penjaga #424 dilaporkan lewat variabel, bukan dilempar sebagai galat:
+   * `handlePostingError` di bawah MELEMPAR ULANG apa pun yang bukan galat
+   * posting, jadi galat penjaga akan keluar sebagai 500 — kelas jawaban yang
+   * salah untuk permintaan yang bentuknya benar tapi memang tidak boleh.
+   */
+  let problem: PaymentProblem | null = null;
   try {
     ({ payment, approval } = await prisma.$transaction(async (tx) => {
+      /*
+       * ── SISA TAGIHAN DIUKUR DI DALAM TRANSAKSI (issue #424) ──────────────
+       *
+       * Bukan sebelumnya. Dua pembayaran yang datang bersamaan akan sama-sama
+       * membaca "sisa masih cukup" bila pemeriksaannya berdiri di luar, lalu
+       * sama-sama tersimpan — dan hasil akhirnya persis kelebihan bayar yang
+       * penjaga ini ada untuk mencegahnya.
+       */
+      const existing = await tx.invoicePayment.findMany({
+        where: { invoiceId: iId },
+        select: { amount: true, currency: true, rate: true, baseAmount: true },
+      });
+      /*
+       * Nilai IDR-nya lewat `toBase`, BUKAN kolom `base_amount` mentah.
+       *
+       * Alasannya data sungguhan: faktur rupiah yang lahir dari penyemai contoh
+       * maupun dari impor lama menyimpan `base_amount` NULL — nilainya memang
+       * tidak perlu disimpan, sebab untuk IDR ia sama dengan nominalnya.
+       * Membaca kolomnya mentah-mentah akan menganggap faktur-faktur itu "tak
+       * bernilai" dan MENOLAK setiap pelunasannya: penjaga yang mengubah
+       * kelebihan bayar menjadi kelumpuhan. `toBase` menurunkannya persis
+       * seperti seluruh laporan menurunkannya.
+       */
+      const total = invoiceTotal(
+        invoice.items.map((i) => ({ quantity: Number(i.quantity), price: Number(i.price) })),
+        Number(invoice.taxAmount ?? 0)
+      );
+      problem = checkPaymentFits({
+        documentCurrency: invoice.currency,
+        documentBase: toBase({
+          amount: total,
+          currency: invoice.currency,
+          rate: invoice.rate,
+          baseAmount: invoice.baseAmount,
+        }),
+        paidBases: existing.map((p) =>
+          toBase({ amount: p.amount, currency: p.currency, rate: p.rate, baseAmount: p.baseAmount })
+        ),
+        paymentCurrency: paymentData.currency,
+        paymentBase: baseAmount,
+      });
+      if (problem) {
+        /* Membatalkan transaksi TANPA menulis apa pun. Nilai kembaliannya tak
+           pernah dipakai — `problem` yang dibaca sesudahnya. */
+        throw new PaymentRefused();
+      }
+
       const created = await tx.invoicePayment.create({
         data: {
           ...paymentData,
@@ -82,6 +146,9 @@ export async function POST(
       return { payment: created, approval: request };
     }));
   } catch (e) {
+    if (e instanceof PaymentRefused && problem) {
+      return NextResponse.json({ error: await paymentProblemMessage(problem) }, { status: 422 });
+    }
     return handlePostingError(e);
   }
 
@@ -108,4 +175,32 @@ export async function POST(
     { ...payment, approval: approvalNotice(approval, "Pembayaran") },
     { status: 201 }
   );
+}
+
+/** Penanda pembatalan transaksi penjaga #424 — tak pernah sampai ke pengguna. */
+class PaymentRefused extends Error {}
+
+/**
+ * Alasan penolakan menjadi kalimat, dalam bahasa pengguna.
+ *
+ * Nominal diformat DI SINI, bukan di penjaganya: penjaga itu murni dan tidak
+ * tahu bahasa apa pun, sementara "Rp 8.000.000.000" hanya benar setelah lokalnya
+ * diketahui.
+ */
+async function paymentProblemMessage(problem: PaymentProblem): Promise<string> {
+  const { t } = await getRequestI18n();
+  switch (problem.code) {
+    case "currency_mismatch":
+      return t("errors.paymentCurrencyMismatch", {
+        payment: problem.paymentCurrency,
+        document: problem.documentCurrency,
+      });
+    case "document_value_unknown":
+      return t("errors.paymentDocumentValueUnknown");
+    case "exceeds_outstanding":
+      return t("errors.paymentExceedsOutstanding", {
+        attempted: formatCurrency(problem.attemptedBase),
+        outstanding: formatCurrency(problem.outstandingBase),
+      });
+  }
 }

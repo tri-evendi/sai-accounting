@@ -3989,6 +3989,19 @@
         "errNoSubscription": "Tenant belum punya langganan — atur paket lebih dulu.",
         "errNotApplicable": "Mesin siklus hidup menolak: status sekarang {status}."
       },
+      "extend": {
+        "title": "Perpanjang langganan (kompensasi)",
+        "description": "Beri periode berbayar tanpa melewati gerbang pembayaran. Tagihan Rp 0 bertanda ikut terbit supaya laporan bisa membedakan pelanggan berbayar dari yang digratiskan.",
+        "cycleLabel": "Siklus",
+        "periodsLabel": "Berapa periode",
+        "cycleMonthly": "Bulanan",
+        "cycleYearly": "Tahunan",
+        "hint": "Dihitung dari akhir periode berjalan, bukan dari hari ini — sisa trial yang sudah dijanjikan tidak hilang.",
+        "submit": "Perpanjang",
+        "success": "Langganan diperpanjang sampai {to}. Tagihan kompensasi {invoice} terbit (Rp 0).",
+        "errDuplicate": "Perpanjangan ini sudah pernah dijalankan — tagihan {invoice} sudah ada.",
+        "errCancelled": "Langganan sudah dibatalkan. Bangkitkan lewat perpindahan paket lebih dulu."
+      },
       "deletion": {
         "title": "Eksekusi penghapusan akun",
         "noRequest": "Tidak ada permintaan penghapusan pending. Penghapusan HANYA berjalan atas permintaan eksplisit pemilik (UU PDP) — tidak ada jalur lain, dan memang tidak boleh ada.",

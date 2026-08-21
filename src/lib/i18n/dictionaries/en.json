@@ -3989,6 +3989,19 @@
         "errNoSubscription": "This tenant has no subscription yet — set a plan first.",
         "errNotApplicable": "The lifecycle engine refused: current status is {status}."
       },
+      "extend": {
+        "title": "Extend subscription (comped)",
+        "description": "Grant a paid period without going through the payment gateway. A marked Rp 0 invoice is issued so reports can tell paying customers from comped ones.",
+        "cycleLabel": "Cycle",
+        "periodsLabel": "How many periods",
+        "cycleMonthly": "Monthly",
+        "cycleYearly": "Yearly",
+        "hint": "Counted from the end of the current period, not from today — remaining trial days already promised are not lost.",
+        "submit": "Extend",
+        "success": "Subscription extended to {to}. Comped invoice {invoice} issued (Rp 0).",
+        "errDuplicate": "This extension has already been applied — invoice {invoice} exists.",
+        "errCancelled": "The subscription is cancelled. Revive it through a plan change first."
+      },
       "deletion": {
         "title": "Execute account deletion",
         "noRequest": "No pending deletion request. Deletion ONLY runs on the owner's explicit request (personal data protection law) — there is no other path, and there must not be.",

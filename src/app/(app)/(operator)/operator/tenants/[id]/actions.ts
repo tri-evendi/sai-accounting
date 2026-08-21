@@ -33,6 +33,7 @@ import {
   makeLatestJournalDateReader,
   recordManualPayment,
   setTenantSuspension,
+  extendSubscription,
   type OperatorActor,
   type QuotaWarning,
 } from "@/lib/operator/writes";
@@ -41,6 +42,7 @@ import {
   deletionExecuteSchema,
   manualPaymentSchema,
   suspensionSchema,
+  extendSubscriptionSchema,
 } from "@/lib/validations/operator";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { getT } from "@/lib/i18n/server";
@@ -206,6 +208,49 @@ export async function operatorSetSuspension(input: unknown): Promise<OperatorAct
           status: t(`tenantSettings.status.${result.status}` as DictionaryKey),
         }),
       };
+    default:
+      return { ok: false, message: t("operator.tenant.notFound") };
+  }
+}
+
+/* ── 3b. Perpanjangan kompensasi ───────────────────────────────────────────── */
+
+export async function operatorExtendSubscription(
+  input: unknown
+): Promise<OperatorActionResult> {
+  const gate = await guardAndTranslate();
+  if (!gate.ok) return gate.result;
+  const { t, actorName } = gate;
+
+  const parsed = extendSubscriptionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
+
+  const result = await extendSubscription(deps(), {
+    tenantRef: { id: parsed.data.tenantId },
+    cycle: parsed.data.cycle,
+    periods: parsed.data.periods,
+    actor: { operator: actorName, reason: parsed.data.reason },
+  });
+
+  switch (result.outcome) {
+    case "extended":
+      felt(parsed.data.tenantId);
+      return {
+        ok: true,
+        message: t("operator.actions.extend.success", {
+          to: result.to.toISOString().slice(0, 10),
+          invoice: result.invoiceNumber,
+        }),
+      };
+    case "duplicate":
+      return {
+        ok: false,
+        message: t("operator.actions.extend.errDuplicate", { invoice: result.invoiceNumber }),
+      };
+    case "no_subscription":
+      return { ok: false, message: t("operator.actions.suspension.errNoSubscription") };
+    case "cancelled":
+      return { ok: false, message: t("operator.actions.extend.errCancelled") };
     default:
       return { ok: false, message: t("operator.tenant.notFound") };
   }

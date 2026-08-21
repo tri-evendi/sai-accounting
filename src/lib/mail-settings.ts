@@ -52,6 +52,8 @@ export interface MailSettingsRow {
   passwordCiphertext: string | null;
   passwordIv: string | null;
   passwordTag: string | null;
+  /** Salinan senyap (BCC) surel keluar yang tidak sensitif; NULL = tidak ada. */
+  archiveAddress: string | null;
   lastTestAt: Date | null;
   lastTestTo: string | null;
   lastTestStatus: string | null;

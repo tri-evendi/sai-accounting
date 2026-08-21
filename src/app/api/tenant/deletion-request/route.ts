@@ -107,6 +107,8 @@ export async function POST(request: Request) {
       try {
         await sendMail({
           to: email,
+          /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+          sensitive: true,
           subject: "Permintaan penghapusan akun — SAI Accounting",
           text:
             "Halo,\n\n" +
@@ -170,6 +172,8 @@ export async function DELETE(request: Request) {
       try {
         await sendMail({
           to: email,
+          /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+          sensitive: true,
           subject: "Permintaan penghapusan DIBATALKAN — SAI Accounting",
           text:
             "Halo,\n\n" +

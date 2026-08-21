@@ -26,6 +26,7 @@ import { AccountantModeToggle } from "@/components/layout/accountant-mode-toggle
 import { CompanyIndicator } from "@/components/layout/company-indicator";
 import { HelpMenu } from "@/components/layout/help-menu";
 import { ApprovalBadge } from "@/components/layout/approval-badge";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
@@ -105,6 +106,7 @@ export function Navbar({
       <Flex align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
         {/* issue #25 — antrean persetujuan / kabar keputusan (sembunyi bila nol) */}
         <ApprovalBadge />
+        <NotificationBell />
         {/* issue #21 — Bantuan: Kamus Istilah + putar ulang tur panduan */}
         <HelpMenu />
         {/* issue #11 — Mode Akuntan toggle (primary surface) */}

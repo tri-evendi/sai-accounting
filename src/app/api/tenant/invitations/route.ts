@@ -169,6 +169,8 @@ export async function POST(request: Request) {
         const link = `${origin}/accept-invitation?token=${issued.token}`;
         await sendMail({
           to: email,
+          /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+          sensitive: true,
           subject: `Undangan bergabung ke ${company.name} — SAI Accounting`,
           text:
             `Halo,\n\n` +
@@ -185,6 +187,8 @@ export async function POST(request: Request) {
          * surelnya hanya kabar + pintu masuk, tanpa akun baru. */
         await sendMail({
           to: email,
+          /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+          sensitive: true,
           subject: `Anda ditambahkan ke ${company.name} — SAI Accounting`,
           text:
             `Halo,\n\n` +
@@ -203,6 +207,8 @@ export async function POST(request: Request) {
          */
         await sendMail({
           to: email,
+          /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+          sensitive: true,
           subject: "Undangan tidak dapat diproses — SAI Accounting",
           text:
             "Halo,\n\n" +

@@ -4038,6 +4038,8 @@
       "usernameHint": "Kosongkan bila relai mengautentikasi lewat alamat IP.",
       "fromAddressLabel": "Alamat pengirim (From)",
       "fromAddressHint": "Boleh berbentuk: SAI Accounting <no-reply@contoh.id>",
+      "archiveAddressLabel": "Salinan arsip (BCC)",
+      "archiveAddressHint": "Satu alamat yang menerima salinan senyap setiap surel keluar. Kosongkan untuk mencabutnya. BCC, bukan CC — alamat ini tidak pernah terlihat oleh penerima. Surel yang membawa token akses (atur ulang kata sandi, undangan, verifikasi, permintaan penghapusan) SENGAJA tidak ikut disalin.",
       "passwordLabel": "Kata sandi SMTP",
       "passwordStored": "Tersimpan terenkripsi (••••). Biarkan kosong untuk mempertahankannya.",
       "passwordHint": "Disimpan terenkripsi AES-256-GCM; kuncinya tetap di environment server, tidak pernah di basis data.",

@@ -108,6 +108,22 @@ export const mailSettingsSchema = z
     username: z.string().trim().max(191).optional(),
     /** Header From — boleh "Nama <alamat@contoh.id>", jadi bukan `z.email()`. */
     fromAddress: z.string().trim().min(1, vmsg("validation.mailFromRequired")).max(191),
+    /**
+     * Salinan senyap (BCC) setiap surel keluar yang TIDAK membawa token akses.
+     *
+     * Kosong = tidak ada salinan, dan itu cara mencabutnya — bukan tombol
+     * terpisah. Berbeda dari `fromAddress`, ia HARUS alamat telanjang: "Nama
+     * <alamat>" sah sebagai header From, tapi sebagai BCC ia hanya menambah
+     * satu bentuk yang bisa salah tanpa memberi apa pun.
+     */
+    archiveAddress: z
+      .string()
+      .trim()
+      .max(191)
+      .optional()
+      .refine((v) => !v || /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(v), {
+        message: vmsg("validation.emailInvalid"),
+      }),
     password: z.string().max(200).optional(),
     clearPassword: z.boolean().optional(),
   })

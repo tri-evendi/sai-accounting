@@ -86,3 +86,69 @@ describe("BCC, bukan CC", () => {
     expect(source).not.toMatch(/^\s*cc:/m);
   });
 });
+
+describe("isian alamat arsip di panel operator", () => {
+  const SCHEMA_SOURCE = readFileSync(
+    join(process.cwd(), "src/lib/validations/operator.ts"),
+    "utf8"
+  );
+
+  it("dialirkan menembus keempat lapisannya", () => {
+    /* Isian yang berhenti di salah satu lapisan adalah isian yang tampil di
+       layar lalu diam-diam tidak tersimpan — bentuk kegagalan yang paling lama
+       tidak ketahuan, sebab layarnya terlihat benar. */
+    const lapisan = [
+      "src/lib/validations/operator.ts",
+      "src/app/(app)/(operator)/operator/mail/actions.ts",
+      "src/lib/mail-settings.ts",
+      "src/components/operator/mail-settings-form.tsx",
+    ];
+    for (const rel of lapisan) {
+      expect(
+        readFileSync(join(process.cwd(), rel), "utf8"),
+        `${rel} tidak menyebut archiveAddress`
+      ).toContain("archiveAddress");
+    }
+  });
+
+  it("menerima alamat kosong — itulah cara mencabutnya", async () => {
+    const { mailSettingsSchema } = await import("@/lib/validations/operator");
+    const dasar = {
+      transport: "file" as const,
+      fromAddress: "SAI <no-reply@contoh.id>",
+    };
+
+    expect(mailSettingsSchema.safeParse({ ...dasar, archiveAddress: "" }).success).toBe(true);
+    expect(mailSettingsSchema.safeParse(dasar).success).toBe(true);
+  });
+
+  it("menolak yang bukan alamat telanjang", async () => {
+    const { mailSettingsSchema } = await import("@/lib/validations/operator");
+    const dasar = {
+      transport: "file" as const,
+      fromAddress: "SAI <no-reply@contoh.id>",
+    };
+
+    /* "Nama <alamat>" sah sebagai header From, tapi sebagai BCC ia hanya satu
+       bentuk lagi yang bisa salah. Begitu pula daftar berkoma. */
+    for (const buruk of ["Arsip <arsip@contoh.id>", "a@contoh.id, b@contoh.id", "bukan-email"]) {
+      expect(
+        mailSettingsSchema.safeParse({ ...dasar, archiveAddress: buruk }).success,
+        buruk
+      ).toBe(false);
+    }
+  });
+
+  it("keterangannya menyebutkan pengecualian token akses", () => {
+    /* Orang yang memasang alamat di sini berhak tahu bahwa surel atur-ulang
+       kata sandi TIDAK ikut disalin — kalau tidak, ia akan menyimpulkan
+       arsipnya bocor justru saat ia bekerja benar. */
+    void SCHEMA_SOURCE;
+    const id = JSON.parse(
+      readFileSync(join(process.cwd(), "src/lib/i18n/dictionaries/id.json"), "utf8")
+    );
+    const hint = id.operator.mail.archiveAddressHint as string;
+    expect(hint.toLowerCase()).toContain("token");
+    expect(hint.toLowerCase()).toContain("bcc");
+  });
+});

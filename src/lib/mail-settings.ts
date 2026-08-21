@@ -92,6 +92,8 @@ export interface MailSettingsView {
   port: number | null;
   username: string | null;
   fromAddress: string;
+  /** BCC arsip; `null` = tidak ada salinan. Bukan rahasia, jadi boleh ke layar. */
+  archiveAddress: string | null;
   /** Ada kata sandi tersimpan? Layar menampilkan `••••`, bukan nilainya. */
   hasPassword: boolean;
   lastTest: {
@@ -118,6 +120,7 @@ export function mailSettingsView(row: MailSettingsRow): MailSettingsView {
     port: row.port,
     username: row.username,
     fromAddress: row.fromAddress,
+    archiveAddress: row.archiveAddress,
     hasPassword: Boolean(row.passwordCiphertext && row.passwordIv && row.passwordTag),
     lastTest:
       row.lastTestAt && row.lastTestStatus
@@ -241,6 +244,8 @@ export interface SaveMailSettingsInput {
   port: number | null;
   username: string | null;
   fromAddress: string;
+  /** BCC arsip; `null` = cabut salinannya. */
+  archiveAddress: string | null;
   /** Kata sandi BARU. Kosong/undefined = pertahankan yang sudah tersimpan. */
   password?: string | null;
   /** true = hapus kata sandi tersimpan (relai tanpa autentikasi). */
@@ -298,6 +303,7 @@ export async function saveMailSettings(
     port: input.port,
     username: input.username,
     fromAddress: input.fromAddress,
+    archiveAddress: input.archiveAddress,
     updatedBy: input.updatedBy,
   };
 

@@ -4038,6 +4038,8 @@
       "usernameHint": "Leave empty if the relay authenticates by IP address.",
       "fromAddressLabel": "Sender address (From)",
       "fromAddressHint": "May take the form: SAI Accounting <no-reply@example.id>",
+      "archiveAddressLabel": "Archive copy (BCC)",
+      "archiveAddressHint": "One address that receives a silent copy of every outgoing email. Leave empty to remove it. BCC, not CC — recipients never see this address. Emails carrying access tokens (password reset, invitations, verification, deletion requests) are deliberately never copied.",
       "passwordLabel": "SMTP password",
       "passwordStored": "Stored encrypted (••••). Leave empty to keep it.",
       "passwordHint": "Stored with AES-256-GCM encryption; the key stays in the server environment, never in the database.",

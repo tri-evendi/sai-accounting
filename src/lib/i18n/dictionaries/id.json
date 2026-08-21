@@ -4160,5 +4160,14 @@
     "revokedAt": "Dicabut {at}",
     "emptyTitle": "Belum ada token",
     "emptyBody": "Terbitkan satu untuk memberi sistem luar akses baca ke buku PT ini."
+  },
+  "notifications": {
+    "title": "Pemberitahuan",
+    "description": "Kabar yang ditujukan kepada Anda.",
+    "emptyTitle": "Belum ada pemberitahuan",
+    "emptyDescription": "Kabar penting — seperti penyiapan yang belum selesai — akan muncul di sini.",
+    "open": "Buka",
+    "unread": "Belum dibaca",
+    "bell": "Pemberitahuan ({count} belum dibaca)"
   }
 }

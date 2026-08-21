@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 164;
+const AMBANG_KLIEN = 166;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -287,6 +287,10 @@ const KLIEN_TERSAHKAN = [
      diturunkan sebagai daftar, jadi yang menyeberang kendalinya, bukan
      keputusan izinnya. */
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/master/import/master-import-form.tsx",
+  // Daun penggambar daftar pemberitahuan: TANPA state dan TANPA pengambilan
+  // data — server component induknya yang mengambil & menandai terbaca. Client
+  // semata karena `Card` AntD + `theme.useToken()`.
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/notifications/notification-list.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",
@@ -326,6 +330,9 @@ const KLIEN_TERSAHKAN = [
   "components/layout/company-session-sync.tsx",
   "components/layout/help-menu.tsx",
   "components/layout/navbar.tsx",
+  // Lonceng kotak masuk: `Badge`/`theme.useToken()` AntD + penyegaran saat tab
+  // kembali fokus — dua hal yang memang menuntut client.
+  "components/layout/notification-bell.tsx",
   "components/layout/sidebar.tsx",
   "components/layout/user-menu.tsx",
   "components/operator/mail-settings-form.tsx",

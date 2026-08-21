@@ -64,6 +64,21 @@ export interface MailMessage {
   /** Isi teks polos — SELALU ada: klien tanpa HTML tetap terbaca. */
   text: string;
   html?: string;
+  /**
+   * Surel ini membawa TOKEN AKSES — jangan pernah disalin ke alamat arsip.
+   *
+   * Atur-ulang kata sandi, undangan, verifikasi pendaftaran, dan permintaan
+   * penghapusan tenant semuanya memuat tautan sekali-pakai yang MEMBUKA akun.
+   * Kotak arsip yang memuatnya berarti siapa pun yang bisa membacanya dapat
+   * mengambil alih akun mana pun — dan "hanya pemilik yang membacanya" adalah
+   * asumsi tentang kotak surel pihak ketiga yang tidak bisa dijamin kode ini.
+   *
+   * Bawaannya `false` — DAN ITU DISENGAJA: surel biasa memang layak diarsipkan,
+   * dan penanda yang harus diingat untuk MENYALAKAN pengarsipan akan membuat
+   * arsipnya bolong tanpa ada yang tahu. Yang perlu diingat justru pengecualian,
+   * dan pengecualiannya sedikit serta terdaftar di `tests/mail-archive.test.ts`.
+   */
+  sensitive?: boolean;
 }
 
 export interface MailResult {
@@ -82,6 +97,8 @@ export interface MailConfig {
   requestedTransport: MailTransport;
   source: MailConfigSource;
   from: string;
+  /** Salinan senyap (BCC) setiap surel TIDAK sensitif; `null` = tidak ada. */
+  archiveAddress: string | null;
   /** Jalur env: URL SMTP apa adanya. Jalur basis data: `null`. */
   smtpUrl: string | null;
   /** Jalur basis data: bagian-bagiannya. Jalur env: `null`. */
@@ -94,6 +111,16 @@ export interface MailConfig {
     user: string | null;
     pass: string | null;
   } | null;
+}
+
+/**
+ * Alamat arsip dari env — jalan cadangan ketika baris pengaturan belum ada.
+ * Kolom basis data tetap yang menang bila terisi (operator bisa mengubahnya
+ * tanpa rilis).
+ */
+function envArchiveAddress(): string | null {
+  const raw = process.env.MAIL_ARCHIVE_BCC?.trim();
+  return raw ? raw : null;
 }
 
 /** Bisa dialihkan lewat env — tes menulis ke direktori sementaranya sendiri. */
@@ -131,6 +158,7 @@ function configFromRow(row: MailSettingsRow): MailConfig | null {
     requestedTransport: requested,
     source: "database",
     from: row.fromAddress,
+    archiveAddress: row.archiveAddress ?? envArchiveAddress(),
     smtpUrl: null,
     smtp:
       requested === "smtp"
@@ -157,6 +185,7 @@ function configFromEnv(): MailConfig {
       requestedTransport: "file",
       source: "default",
       from: envFromAddress(),
+      archiveAddress: envArchiveAddress(),
       smtpUrl: null,
       smtp: null,
     };
@@ -167,6 +196,7 @@ function configFromEnv(): MailConfig {
     requestedTransport: requested,
     source: requested === "smtp" ? "env" : "default",
     from: envFromAddress(),
+    archiveAddress: envArchiveAddress(),
     smtpUrl: url ?? null,
     smtp: null,
   };
@@ -229,9 +259,15 @@ async function sendViaSmtp(message: MailMessage, config: MailConfig): Promise<Ma
       })
     : createTransport(config.smtpUrl ?? undefined);
 
+  /*
+   * Salinan arsip dipasang DI SINI — satu tempat, sesudah setiap pengirim.
+   * Menyerahkannya kepada pemanggil berarti tujuh pengirim yang masing-masing
+   * bisa lupa, dan arsip yang bolong tanpa ada yang tahu.
+   */
   const info = await transporter.sendMail({
     from: config.from,
     to: message.to,
+    ...(archiveFor(message, config) ? { bcc: archiveFor(message, config)! } : {}),
     subject: message.subject,
     text: message.text,
     html: message.html,
@@ -247,6 +283,16 @@ async function sendViaSmtp(message: MailMessage, config: MailConfig): Promise<Ma
  * pergi. `config` boleh disuntikkan (uji kirim konsol operator sudah
  * memegang konfigurasinya; tidak perlu diselesaikan dua kali).
  */
+/**
+ * Alamat arsip yang BERLAKU untuk pesan ini — `null` bila tidak ada, atau bila
+ * pesannya membawa token akses. Diekspor supaya aturannya bisa diuji tanpa
+ * jaringan maupun basis data.
+ */
+export function archiveFor(message: MailMessage, config: MailConfig): string | null {
+  if (message.sensitive) return null;
+  return config.archiveAddress ?? null;
+}
+
 export async function sendMail(message: MailMessage, config?: MailConfig): Promise<MailResult> {
   const effective = config ?? (await resolveMailConfig());
   return effective.transport === "smtp"

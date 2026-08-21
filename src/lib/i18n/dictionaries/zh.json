@@ -4160,5 +4160,14 @@
     "revokedAt": "已于 {at} 吊销",
     "emptyTitle": "尚无令牌",
     "emptyBody": "签发一个，让外部系统读取本公司账簿。"
+  },
+  "notifications": {
+    "title": "通知",
+    "description": "发送给您的消息。",
+    "emptyTitle": "暂无通知",
+    "emptyDescription": "重要事项（例如尚未完成的初始设置）将显示在这里。",
+    "open": "打开",
+    "unread": "未读",
+    "bell": "通知（{count} 条未读）"
   }
 }

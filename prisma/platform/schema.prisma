@@ -408,6 +408,19 @@ model MailSetting {
   passwordIv         String? @map("password_iv") @db.VarChar(64)
   passwordTag        String? @map("password_tag") @db.VarChar(64)
 
+  /// Salinan SENYAP setiap surel keluar (BCC), mis. kotak arsip pemilik.
+  ///
+  /// BCC, BUKAN CC — dan itu keputusan, bukan selera: CC menampilkan alamat ini
+  /// kepada SETIAP pelanggan yang menerima surel, dan alamat pribadi yang
+  /// tersebar begitu tidak bisa ditarik kembali.
+  ///
+  /// ⚠ Surel yang membawa TOKEN AKSES (atur-ulang kata sandi, undangan,
+  /// verifikasi, permintaan penghapusan) TIDAK PERNAH disalin ke sini — lihat
+  /// `MailMessage.sensitive` di `lib/mailer-core.ts`. Kotak arsip yang memuat
+  /// tautan atur-ulang berarti siapa pun yang bisa membukanya dapat mengambil
+  /// alih akun mana pun.
+  archiveAddress String? @map("archive_address") @db.VarChar(191)
+
   /// Hasil UJI KIRIM terakhir — konfigurasi surel yang tidak bisa diuji adalah
   /// konfigurasi yang baru ketahuan salah saat pelanggan pertama mendaftar.
   /// `last_test_status`: ok | error. Pesannya kalimat untuk manusia, TIDAK

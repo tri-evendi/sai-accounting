@@ -98,6 +98,7 @@ export default async function OperatorMailPage() {
                 port: settings.port,
                 username: settings.username,
                 fromAddress: settings.fromAddress,
+                archiveAddress: settings.archiveAddress,
                 hasPassword: settings.hasPassword,
                 updatedByLabel: t("operator.mail.updatedBy", {
                   name: settings.updatedBy,

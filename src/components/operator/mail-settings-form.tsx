@@ -96,6 +96,7 @@ export interface MailSettingsFormProps {
     port: number | null;
     username: string | null;
     fromAddress: string;
+    archiveAddress: string | null;
     hasPassword: boolean;
     updatedByLabel: string;
     lastTest: { ok: boolean; line: string; message: string | null } | null;
@@ -159,6 +160,7 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
       port: settings?.port ?? "",
       username: settings?.username ?? "",
       fromAddress: settings?.fromAddress ?? effective.from,
+      archiveAddress: settings?.archiveAddress ?? "",
       password: "",
       clearPassword: false,
     },
@@ -317,6 +319,42 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
                       />
                     </FormControl>
                     <FormDescription>{t("operator.mail.fromAddressHint")}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/*
+              * Salinan arsip — BCC, bukan CC.
+              *
+              * Kosong berarti tidak ada salinan, dan itulah cara mencabutnya;
+              * tidak ada tombol terpisah untuk sesuatu yang sudah bisa
+              * dikatakan dengan mengosongkan isiannya.
+              *
+              * Keterangannya menyebut pengecualian token akses secara EKSPLISIT.
+              * Orang yang memasang alamat di sini berhak tahu bahwa surel
+              * atur-ulang kata sandi TIDAK ikut disalin — kalau tidak, ia akan
+              * menyimpulkan arsipnya bocor justru saat ia bekerja benar.
+              */}
+            <div style={FULL_ROW}>
+              <FormField
+                control={form.control}
+                name="archiveAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("operator.mail.archiveAddressLabel")}</FormLabel>
+                    <FormControl>
+                      <TextInput
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder="arsip@contoh.id"
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={!available}
+                      />
+                    </FormControl>
+                    <FormDescription>{t("operator.mail.archiveAddressHint")}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

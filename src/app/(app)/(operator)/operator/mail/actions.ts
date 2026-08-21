@@ -88,6 +88,7 @@ export async function operatorSaveMailSettings(input: unknown): Promise<Operator
       port,
       username: orNull(data.username),
       fromAddress: data.fromAddress,
+      archiveAddress: orNull(data.archiveAddress),
       password: data.password,
       clearPassword: data.clearPassword === true,
       updatedBy: actorName,
@@ -115,6 +116,7 @@ export async function operatorSaveMailSettings(input: unknown): Promise<Operator
       port,
       username: orNull(data.username),
       fromAddress: data.fromAddress,
+      archiveAddress: orNull(data.archiveAddress),
       /* PENANDA, bukan nilainya — jejak audit tidak pernah memuat rahasia. */
       passwordChanged: result.passwordChanged,
       passwordCleared: data.clearPassword === true,

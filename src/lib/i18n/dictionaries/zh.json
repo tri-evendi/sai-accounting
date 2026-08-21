@@ -4038,6 +4038,8 @@
       "usernameHint": "若中继按 IP 地址认证，可留空。",
       "fromAddressLabel": "发件人地址（From）",
       "fromAddressHint": "可以写成：SAI Accounting <no-reply@example.id>",
+      "archiveAddressLabel": "存档副本（密送）",
+      "archiveAddressHint": "接收每封外发邮件静默副本的单一地址。留空即可取消。使用密送而非抄送——收件人永远看不到该地址。携带访问令牌的邮件（密码重置、邀请、验证、删除请求）刻意不会被复制。",
       "passwordLabel": "SMTP 密码",
       "passwordStored": "已加密保存（••••）。留空即保留原密码。",
       "passwordHint": "使用 AES-256-GCM 加密保存；密钥始终留在服务器环境变量中，绝不写入数据库。",

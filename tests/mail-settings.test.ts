@@ -47,9 +47,9 @@ function baseRow(overrides: Partial<MailSettingsRow> = {}): MailSettingsRow {
     transport: "smtp",
     host: "smtp.contoh.id",
     port: 587,
-    archiveAddress: null,
     username: "no-reply@contoh.id",
     fromAddress: "SAI Accounting <no-reply@contoh.id>",
+    archiveAddress: null,
     passwordCiphertext: null,
     passwordIv: null,
     passwordTag: null,
@@ -174,6 +174,7 @@ describe("saveMailSettings — kata sandi tidak pernah mentah", () => {
         port: 587,
         username: "no-reply@contoh.id",
         fromAddress: "SAI <no-reply@contoh.id>",
+        archiveAddress: null,
         password: PASSWORD,
         updatedBy: "vyn",
       }
@@ -208,6 +209,7 @@ describe("saveMailSettings — kata sandi tidak pernah mentah", () => {
         port: 465,
         username: "no-reply@contoh.id",
         fromAddress: "SAI <no-reply@contoh.id>",
+        archiveAddress: null,
         password: "",
         updatedBy: "vyn",
       }
@@ -239,6 +241,7 @@ describe("saveMailSettings — kata sandi tidak pernah mentah", () => {
         port: 587,
         username: null,
         fromAddress: "SAI <no-reply@contoh.id>",
+        archiveAddress: null,
         clearPassword: true,
         updatedBy: "vyn",
       }
@@ -260,6 +263,7 @@ describe("saveMailSettings — kata sandi tidak pernah mentah", () => {
         port: 587,
         username: "no-reply@contoh.id",
         fromAddress: "SAI <no-reply@contoh.id>",
+        archiveAddress: null,
         password: PASSWORD,
         updatedBy: "vyn",
       }

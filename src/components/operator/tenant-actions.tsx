@@ -83,6 +83,8 @@ import {
   deletionExecuteSchema,
   manualPaymentSchema,
   suspensionSchema,
+  extendSubscriptionSchema,
+  type ExtendSubscriptionFormInput,
   type ChangePlanFormInput,
   type DeletionExecuteFormInput,
   type ManualPaymentFormInput,
@@ -94,6 +96,7 @@ import {
   operatorExecuteDeletion,
   operatorMarkInvoicePaid,
   operatorSetSuspension,
+  operatorExtendSubscription,
 } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
 
 /* ── Bentuk data dari halaman server (serial, tanggal sudah terformat) ────── */
@@ -759,6 +762,148 @@ function SuspensionPanel({
   );
 }
 
+
+/* ══ 3b. Perpanjangan kompensasi ═══════════════════════════════════════════ */
+
+/**
+ * Beri periode berbayar tanpa gerbang pembayaran.
+ *
+ * Dua hal sengaja dikatakan di layar, bukan disimpan sebagai pengetahuan
+ * operator: bahwa perhitungannya bermula dari AKHIR periode berjalan (jadi sisa
+ * trial tidak hangus), dan bahwa tagihan Rp 0 bertanda ikut terbit. Yang kedua
+ * itulah yang membuat laporan pendapatan tetap bisa membedakan pelanggan
+ * berbayar dari yang digratiskan — dan operator berhak tahu bahwa tindakannya
+ * meninggalkan dokumen.
+ */
+function ExtendPanel({
+  tenantId,
+  tenantName,
+  subscriptionStatus,
+}: {
+  tenantId: number;
+  tenantName: string;
+  subscriptionStatus: string | null;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState<ExtendSubscriptionFormInput | null>(null);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<ExtendSubscriptionFormInput>({
+    resolver: zodResolver(extendSubscriptionSchema) as Resolver<ExtendSubscriptionFormInput>,
+    defaultValues: { tenantId, cycle: "yearly", periods: 1, reason: "" },
+  });
+
+  async function runAction(values: ExtendSubscriptionFormInput) {
+    const res = await operatorExtendSubscription(values);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      return;
+    }
+    setResult(res);
+    setOpen(false);
+    form.reset({ tenantId, cycle: "yearly", periods: 1, reason: "" });
+    router.refresh();
+  }
+
+  if (subscriptionStatus === null) {
+    return (
+      <p style={{ margin: 0, color: token.colorTextSecondary }}>
+        {t("operator.actions.suspension.errNoSubscription")}
+      </p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <Flex vertical gap={token.marginXS}>
+        <ResultNotice result={result} />
+        <Button
+          variant="secondary"
+          size="sm"
+          style={{ alignSelf: "flex-start" }}
+          onClick={() => setOpen(true)}
+        >
+          <PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+          {t("operator.actions.extend.submit")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit((values) => setConfirming(values))} noValidate>
+        <Flex vertical gap={token.marginSM}>
+          <p style={noticeBox(token)}>{t("operator.actions.extend.hint")}</p>
+
+          <FormField
+            control={form.control}
+            name="cycle"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.extend.cycleLabel")}</FormLabel>
+                <FormControl>
+                  <SelectField
+                    options={[
+                      { value: "yearly", label: t("operator.actions.extend.cycleYearly") },
+                      { value: "monthly", label: t("operator.actions.extend.cycleMonthly") },
+                    ]}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="periods"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.extend.periodsLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput type="number" min={1} max={24} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <ReasonField control={form.control} />
+
+          <RootError message={form.formState.errors.root?.message} />
+          <Flex gap={token.marginXS}>
+            <Button type="submit" variant="primary" size="sm">
+              {t("operator.actions.extend.submit")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </Flex>
+        </Flex>
+
+        <ConfirmDialog
+          open={confirming !== null}
+          onOpenChange={(next) => {
+            if (!next) setConfirming(null);
+          }}
+          title={t("operator.actions.extend.title")}
+          message={t("operator.actions.extend.description") + " — " + tenantName}
+          confirmVariant="primary"
+          confirmLabel={t("operator.actions.extend.submit")}
+          onConfirm={async () => {
+            if (confirming) await runAction(confirming);
+          }}
+        />
+      </form>
+    </Form>
+  );
+}
+
 /* ══ 4. Eksekusi penghapusan ═══════════════════════════════════════════════ */
 
 function DeletionPanel({
@@ -988,6 +1133,20 @@ export function TenantActions(props: TenantActionsProps) {
             description={t("operator.actions.suspension.description")}
           >
             <SuspensionPanel
+              tenantId={props.tenantId}
+              tenantName={props.tenantName}
+              subscriptionStatus={props.subscriptionStatus}
+            />
+          </ActionPanel>
+        )}
+
+        {props.billingAvailable && (
+          <ActionPanel
+            icon={<PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.actions.extend.title")}
+            description={t("operator.actions.extend.description")}
+          >
+            <ExtendPanel
               tenantId={props.tenantId}
               tenantName={props.tenantName}
               subscriptionStatus={props.subscriptionStatus}

@@ -93,6 +93,60 @@ services:
       - -c
       - "while true; do bun run scheduler:subscriptions || true; sleep 3600; done"
 
+  # ── PEMERIKSA KESESUAIAN DATA (mingguan) ──────────────────────────────────
+  # Penjaga zod hanya berlaku di jalur TULIS. Impor sekali-jalan, perbaikan SQL
+  # manual, dan penyemai tidak melewati satu penjaga pun — dan audit 20-21
+  # Agustus 2026 menemukan ENAM kelas cacat yang masuk lewat pintu itu di buku
+  # produksi: status kontrak di luar enum, mata uang `LC`, 609 kontrak valas
+  # tanpa kurs, 720 pembayaran salah label mata uang, faktur kelebihan bayar,
+  # dan kuantitas faktur yang termigrasi salah senilai Rp 774 juta.
+  #
+  # Semuanya ditemukan dengan menggali manual selama dua hari. Layanan ini ada
+  # supaya penggalian itu tidak perlu terulang.
+  #
+  # MINGGUAN, bukan sejam sekali seperti `scheduler`: yang dicarinya bergeser
+  # lambat. Cacat seperti ini lahir dari peristiwa jarang — impor sistem lama,
+  # perbaikan tangan — bukan dari lalu lintas harian. Memeriksanya tiap jam
+  # hanya memindahkan beban tanpa menemukan apa pun lebih cepat.
+  #
+  # LAYANAN SENDIRI, bukan disisipkan ke `scheduler`: cadensinya berbeda, dan
+  # yang lebih penting — kegagalan penagihan dan temuan kesesuaian data adalah
+  # dua kabar berbeda yang tidak boleh bercampur di satu aliran log.
+  #
+  # `|| true` dengan alasan yang sama seperti tetangganya: skrip ini SENGAJA
+  # keluar bukan-nol saat menemukan sesuatu (supaya berguna di CI), dan tanpa
+  # penjaga itu setiap temuan akan membuat container mati lalu dihidupkan ulang
+  # tanpa henti — temuan berubah jadi crash-loop.
+  #
+  # Membacanya: `docker compose logs conformance --tail 60`. Putaran pertama
+  # jalan SAAT layanan naik, bukan tujuh hari kemudian, sehingga rilis yang
+  # merusak data ketahuan di hari yang sama.
+  #
+  # Ia HANYA MEMBACA — dijaga `tests/check-data-conformance.test.ts`.
+  conformance:
+    build:
+      context: .
+      target: migrator
+    image: sai-luckyhands-migrator:latest
+    container_name: sai-conformance
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+    command:
+      - sh
+      - -c
+      # Tanggalnya dicetak sebagai perintah TERSENDIRI, bukan `$(date)` di dalam
+      # string: compose menafsirkan `$` sebagai interpolasi variabelnya sendiri,
+      # dan aturan pelolosannya adalah hal yang tidak perlu ditebak-tebak untuk
+      # sekadar sebuah stempel waktu.
+      - "while true; do echo '── kesesuaian data ──'; date -Iseconds; bun run check-data-conformance || true; sleep 604800; done"
+
   # ── CADANGAN (issue #374) ─────────────────────────────────────────────────
   # Menjual langganan atas pembukuan yang WAJIB disimpan sepuluh tahun (UU KUP)
   # tanpa cadangan otomatis bukan risiko teknis, melainkan risiko hukum.

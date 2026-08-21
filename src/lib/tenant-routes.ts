@@ -94,6 +94,7 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "ledger",
   /* Impor Data Awal (#381) — pelanggan/pemasok/barang dari berkas. */
   "master",
+  "notifications",
   "payables",
   "periods",
   "permissions",

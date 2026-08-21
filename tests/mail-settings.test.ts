@@ -47,6 +47,7 @@ function baseRow(overrides: Partial<MailSettingsRow> = {}): MailSettingsRow {
     transport: "smtp",
     host: "smtp.contoh.id",
     port: 587,
+    archiveAddress: null,
     username: "no-reply@contoh.id",
     fromAddress: "SAI Accounting <no-reply@contoh.id>",
     passwordCiphertext: null,
@@ -452,7 +453,8 @@ describe("uji kirim melaporkan hasilnya", () => {
           requestedTransport: "smtp",
           source: "database",
           from: "SAI <no-reply@contoh.id>",
-          smtpUrl: null,
+          archiveAddress: null,
+      smtpUrl: null,
           smtp: { host: "127.0.0.1", port: 1, secure: false, user: "x", pass: PASSWORD },
         }
       );

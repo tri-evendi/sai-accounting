@@ -104,6 +104,8 @@ export async function POST(request: Request) {
       if (await emailHasAccount(email)) {
         await sendMail({
           to: email,
+          /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+          sensitive: true,
           subject: "Anda sudah punya akun — SAI Accounting",
           text:
             `Halo,\n\n` +
@@ -129,6 +131,8 @@ export async function POST(request: Request) {
       const link = `${origin}/verify-email?token=${token}`;
       await sendMail({
         to: email,
+        /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+        sensitive: true,
         subject: "Verifikasi email Anda — SAI Accounting",
         text:
           `Halo ${name},\n\n` +

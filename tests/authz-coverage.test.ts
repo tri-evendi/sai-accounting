@@ -143,6 +143,11 @@ const PAGE_EXCEPTIONS = new Set([
   // belum memilih PT, yang belum punya PT, dan sesi terbitan sebelum #157
   // justru rombongan yang paling butuh jawaban benar.
   "(dashboard)/dashboard/page.tsx",
+  // Kotak masuk pemberitahuan: terbuka untuk SETIAP peran — semua orang berhak
+  // membaca kabar yang ditujukan kepadanya — jadi tak ada satu izin yang bisa
+  // ia deklarasikan. Menjaga diri dengan auth() + `enterCompanyFromRoute`, pola
+  // yang sama dengan beranda. Isinya milik PENGGUNA, bukan perusahaan.
+  "(dashboard)/t/[tenantSlug]/[companySlug]/notifications/page.tsx",
 ]);
 
 /**
@@ -210,6 +215,11 @@ const API_EXCEPTIONS = new Set([
   // kegagalan dijawab satu kalimat yang sama (anti-enumerasi).
   "company-unlock/route.ts",
   "user/accountant-mode/route.ts", // self-scoped: preferensi tampilan milik sendiri
+  // self-scoped: kotak masuk MILIK PEMANGGIL SENDIRI. `userId` selalu dari
+  // sesi, tak pernah dari permintaan. Tidak boleh memakai requireApiPermission
+  // — penjaga itu menuntut konteks perusahaan, sedangkan pemberitahuan yang
+  // paling penting justru berbicara tentang perusahaan yang belum siap dibuka.
+  "user/notifications/route.ts",
   // self-scoped (issue #73): auth() + hanya izin efektif PERAN SENDIRI, untuk
   // penyaringan menu client — tampilan saja, halaman tujuannya tetap dijaga.
   "user/permissions/route.ts",

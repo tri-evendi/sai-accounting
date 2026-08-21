@@ -4160,5 +4160,14 @@
     "revokedAt": "Revoked {at}",
     "emptyTitle": "No tokens yet",
     "emptyBody": "Issue one to give an external system read access to this company's books."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "News addressed to you.",
+    "emptyTitle": "No notifications yet",
+    "emptyDescription": "Anything important — such as an unfinished setup — will show up here.",
+    "open": "Open",
+    "unread": "Unread",
+    "bell": "Notifications ({count} unread)"
   }
 }

@@ -94,6 +94,8 @@ export async function POST(request: Request) {
       const link = `${origin}/reset-password?token=${issued.token}`;
       await sendMail({
         to: email,
+        /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
+        sensitive: true,
         subject: "Atur ulang kata sandi — SAI Accounting",
         text:
           `Halo ${issued.name ?? ""},\n\n` +

@@ -225,6 +225,8 @@ model User {
   /// Token API yang ia terbitkan (issue #389).
   apiTokensCreated    ApiToken[]
   passwordResetTokens PasswordResetToken[]
+  /// Pemberitahuan dalam aplikasi yang ditujukan kepadanya.
+  notifications       Notification[]
 
   @@index([tenantId])
   @@index([tenantId, username])
@@ -508,4 +510,56 @@ model ApiToken {
   @@index([companyId])
   @@index([revokedAt])
   @@map("api_tokens")
+}
+
+/// Pemberitahuan DALAM APLIKASI untuk satu pengguna.
+///
+/// ══ KENAPA ADA ═════════════════════════════════════════════════════════════
+/// Empat perusahaan mandek di wisaya penyiapan selama enam hari (issue #416) dan
+/// tidak ada satu pun kanal yang memberi tahu siapa pun — tidak pemiliknya,
+/// tidak operatornya. Bahkan setelah diperbaiki, satu-satunya cara mengabari
+/// mereka adalah surel yang dikirim tangan.
+///
+/// ══ KENAPA DI BASIS DATA KENDALI ═══════════════════════════════════════════
+/// Pemberitahuan milik PENGGUNA, dan pengguna hidup di kendali sejak #104.
+/// Menaruhnya di buku perusahaan berarti orang yang punya dua PT punya dua
+/// kotak masuk yang tak pernah bertemu — dan pemberitahuan yang paling penting
+/// (penyiapan belum selesai) justru lahir SEBELUM ada buku yang bisa dibaca.
+///
+/// ══ IDEMPOTEN LEWAT `dedupe_key` ═══════════════════════════════════════════
+/// `@@unique([userId, kind, dedupeKey])` — doktrin yang sama dengan
+/// `ReminderLog` (#140): produser yang berjalan dua kali MENABRAK constraint,
+/// bukan melahirkan pemberitahuan kembar. Penjadwal yang jalan tiap jam karena
+/// itu aman memanggilnya tiap jam.
+model Notification {
+  id Int @id @default(autoincrement())
+
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// enum-like: setup_incomplete | … — `String @db.VarChar` + z.enum,
+  /// konvensi docs/DATABASE.md. Menentukan ikon & pengelompokan, bukan izin.
+  kind String @db.VarChar(40)
+
+  title String @db.VarChar(150)
+  body  String @db.VarChar(1000)
+
+  /// Tautan DALAM aplikasi (mis. `/t/acme/pt-a/setup`). NULL = tidak menuju
+  /// ke mana pun — pemberitahuan yang hanya memberi kabar.
+  href String? @db.VarChar(255)
+
+  /// Kunci idempotensi milik produser. Lihat catatan di kepala model.
+  dedupeKey String @map("dedupe_key") @db.VarChar(120)
+
+  /// NULL = belum dibaca. Waktu, bukan boolean: "kapan dibaca" adalah
+  /// pertanyaan yang selalu muncul berikutnya, dan boolean tidak bisa
+  /// menjawabnya tanpa migration kedua.
+  readAt DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@unique([userId, kind, dedupeKey])
+  @@index([userId, readAt])
+  @@map("notifications")
 }

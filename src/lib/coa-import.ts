@@ -13,7 +13,13 @@
  *     internal app. Saldo normal TIDAK diminta — ia turunan dari tipe.
  */
 import { normalBalanceFor, type NormalBalance } from "@/lib/accounting";
-import { readImportRows, DuplicateGuard, RowIssues, type RowError } from "@/lib/import/rows";
+import {
+  readImportRows,
+  DuplicateGuard,
+  RowIssues,
+  type ReadRowsOptions,
+  type RowError,
+} from "@/lib/import/rows";
 import { readMapped, requiredText } from "@/lib/import/fields";
 import { MAX_IMPORT_ROWS, type ColumnSpec } from "@/lib/import/spec";
 
@@ -60,6 +66,29 @@ export const ACCURATE_TYPE_LEGEND: { code: string; label: string }[] = [
   { code: "OINC", label: "Pendapatan lain-lain" },
 ];
 
+/**
+ * Kode tipe DAN nama tipe yang ikut diterima — kunci huruf besar semua.
+ *
+ * ══ KENAPA NAMANYA IKUT, BUKAN HANYA KODENYA ═══════════════════════════════
+ * `ACCURATE_TYPE_MAP` memuat kode empat huruf (BANK, AREC, …) yang dipakai
+ * TEMPLAT impor Accurate. Tetapi berkas yang keluar dari tombol Ekspor di
+ * layar Akun Perkiraan bukan templat impor melainkan LAPORAN, dan laporan
+ * mencetak tipe akun sebagai kata yang dibaca manusia — "Kas/Bank", bukan
+ * "BANK".
+ *
+ * Tanpa kolom ini, berkas ekspor COA Accurate ditolak baris demi baris dengan
+ * `Tipe akun "Kas/Bank" tidak dikenal` — penolakan yang menyalahkan orangnya
+ * atas berkas yang sebenarnya sudah benar. Karena legendanya memang sudah kita
+ * miliki (`ACCURATE_TYPE_LEGEND`, dan ia yang dicetak di templat kita sendiri),
+ * menerimanya tidak menambah satu pun sumber kebenaran baru.
+ */
+export const ACCURATE_TYPE_LOOKUP: Record<string, string> = {
+  ...ACCURATE_TYPE_MAP,
+  ...Object.fromEntries(
+    ACCURATE_TYPE_LEGEND.map(({ code, label }) => [label.toUpperCase(), ACCURATE_TYPE_MAP[code]])
+  ),
+};
+
 /** Mata uang yang dikenal app. Kode lain ditolak agar tak memicu galat format. */
 const KNOWN_CURRENCIES = new Set(["IDR", "USD", "CNY"]);
 
@@ -79,7 +108,7 @@ export const COA_COLUMNS: readonly ColumnSpec[] = [
   {
     key: "code",
     header: "Kode",
-    aliases: ["Kode Akun", "Account Code", "No Akun"],
+    aliases: ["Kode Akun", "Account Code", "No Akun", "Kode Perkiraan", "No. Perkiraan"],
     required: true,
     example: "1101",
     hint: "Maksimal 20 karakter, unik.",
@@ -87,7 +116,7 @@ export const COA_COLUMNS: readonly ColumnSpec[] = [
   {
     key: "name",
     header: "Nama",
-    aliases: ["Nama Akun", "Account Name", "Keterangan"],
+    aliases: ["Nama Akun", "Account Name", "Keterangan", "Nama Perkiraan"],
     required: true,
     example: "Kas",
     hint: "Maksimal 150 karakter.",
@@ -95,15 +124,15 @@ export const COA_COLUMNS: readonly ColumnSpec[] = [
   {
     key: "type",
     header: "Tipe",
-    aliases: ["Tipe Akun", "Account Type", "Jenis"],
+    aliases: ["Tipe Akun", "Account Type", "Jenis", "Tipe Perkiraan"],
     required: true,
     example: "BANK",
-    hint: "Kode tipe Accurate — lihat legenda.",
+    hint: "Kode tipe Accurate (BANK) atau namanya (Kas/Bank) — lihat legenda.",
   },
   {
     key: "currency",
     header: "Mata Uang",
-    aliases: ["Currency", "Valuta"],
+    aliases: ["Currency", "Valuta", "Mata Uang Utama"],
     example: "IDR",
     hint: "Opsional; kosong berarti IDR. Pilihan: IDR, USD, CNY.",
   },
@@ -134,12 +163,15 @@ export interface CoaImportResult {
  * dikenal; mata uang opsional (default IDR). Kode ganda DI DALAM file ditolak
  * di sini; bentrok dengan kode yang SUDAH ADA di DB diperiksa saat menulis.
  */
-export function parseCoaRows(rows: unknown[][]): CoaImportResult {
+export function parseCoaRows(
+  rows: unknown[][],
+  options: ReadRowsOptions = {}
+): CoaImportResult {
   const accounts: ParsedAccount[] = [];
   const errors: RowError[] = [];
   const duplikat = new DuplicateGuard("Kode");
 
-  const { rows: dataRows, missingColumns } = readImportRows(rows, COA_COLUMNS);
+  const { rows: dataRows, missingColumns } = readImportRows(rows, COA_COLUMNS, options);
 
   /* Kolom wajib yang tidak ditemukan adalah kesalahan BERKAS, bukan baris —
      dan melaporkannya sebagai galat pada baris 1 membuat orang mencari-cari di
@@ -164,7 +196,7 @@ export function parseCoaRows(rows: unknown[][]): CoaImportResult {
 
     const code = requiredText(values.code, "Kode akun", 20, issues);
     const name = requiredText(values.name, "Nama akun", 150, issues);
-    const type = readMapped(values.type, "Tipe akun", ACCURATE_TYPE_MAP, issues, {
+    const type = readMapped(values.type, "Tipe akun", ACCURATE_TYPE_LOOKUP, issues, {
       required: true,
     });
 

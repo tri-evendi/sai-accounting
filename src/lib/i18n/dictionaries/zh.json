@@ -3989,6 +3989,19 @@
         "errNoSubscription": "该租户还没有订阅——请先设置套餐。",
         "errNotApplicable": "生命周期引擎拒绝：当前状态为 {status}。"
       },
+      "extend": {
+        "title": "延长订阅（赠送）",
+        "description": "不经支付网关授予付费周期。同时开具标记的 0 元发票，使报表能区分付费客户与赠送客户。",
+        "cycleLabel": "周期",
+        "periodsLabel": "周期数",
+        "cycleMonthly": "按月",
+        "cycleYearly": "按年",
+        "hint": "从当前周期结束日起算，而非今天——已承诺的剩余试用期不会丢失。",
+        "submit": "延长",
+        "success": "订阅已延长至 {to}。已开具赠送发票 {invoice}（0 元）。",
+        "errDuplicate": "该延长已执行过——发票 {invoice} 已存在。",
+        "errCancelled": "订阅已取消。请先通过更改套餐恢复。"
+      },
       "deletion": {
         "title": "执行账户删除",
         "noRequest": "没有待处理的删除请求。删除只在所有者明确请求下执行（个人数据保护法）——没有其他途径，也不该有。",

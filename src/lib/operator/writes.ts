@@ -644,3 +644,181 @@ export function makeLatestJournalDateReader(
     }
   };
 }
+
+/* ═════════ 5. Perpanjang langganan — KOMPENSASI, tanpa gerbang bayar ═══════ */
+
+export type ExtendSubscriptionResult =
+  | {
+      outcome: "extended";
+      from: Date;
+      to: Date;
+      invoiceNumber: string;
+      status: string;
+    }
+  /** Nomor tagihan kompensasi untuk periode ini sudah ada — perpanjangan yang
+   *  sama tidak pernah dijalankan dua kali (pola idempotensi penagihan). */
+  | { outcome: "duplicate"; invoiceNumber: string }
+  | { outcome: "tenant_not_found" }
+  | { outcome: "no_subscription" }
+  /** Langganan yang sudah dibatalkan tidak diperpanjang — ia dibangkitkan lewat
+   *  perpindahan paket, keputusan yang berbeda dan harus diambil sadar. */
+  | { outcome: "cancelled" };
+
+/**
+ * Beri sebuah tenant periode berbayar TANPA melewati gerbang pembayaran.
+ *
+ * ══ KENAPA ADA ══════════════════════════════════════════════════════════════
+ * Jalur transfer manual (#1 di berkas ini) menuntut tagihan berstatus `issued`,
+ * dan tagihan baru terbit SAAT TRIAL HABIS. Jadi tidak ada satu pun cara
+ * memberi pelanggan satu tahun hari ini — entah sebagai kompensasi atas gangguan
+ * kami sendiri, entah karena ia membayar di luar sistem. Sebelum ini jawabannya
+ * `UPDATE` SQL langsung di produksi: aksi uang, tanpa jejak, persis yang #155
+ * hapus dari alur lain.
+ *
+ * ══ KOMPENSASI: TAGIHAN Rp 0 YANG BERTANDA ═════════════════════════════════
+ * Periode yang diperpanjang SELALU menerbitkan tagihannya sendiri — bernilai
+ * nol, berstatus `paid`, bernomor berakhiran `-K`. Bukan kerapian: tanpa
+ * dokumen apa pun, laporan pendapatan tidak bisa menjelaskan kenapa sebuah
+ * tenant aktif, dan "aktif tanpa sebab" adalah bentuk selisih yang paling sulit
+ * ditelusuri berbulan-bulan kemudian. Dengan nomor bertanda, laporan bisa
+ * MEMBEDAKAN pelanggan berbayar dari yang digratiskan — sesuatu yang tidak bisa
+ * dilakukan kalau perpanjangannya tak meninggalkan apa-apa.
+ *
+ * ══ MEMPERPANJANG, BUKAN MENGGANTIKAN ══════════════════════════════════════
+ * Titik mulainya adalah yang TERJAUH antara sekarang dan akhir periode berjalan.
+ * Tenant yang masih punya sisa trial dua minggu tidak kehilangan dua minggu itu;
+ * ia mendapat setahun DI ATASNYA. "Perpanjang" yang memotong sisa yang sudah
+ * dijanjikan bukan perpanjangan.
+ *
+ * ══ DUA SISI, URUTAN #137 ══════════════════════════════════════════════════
+ * Platform dulu, kendali belakangan. Status di kedua sisi harus berpindah
+ * bersama: `platform-reconciliation` memeriksa persis keserasian itu, dan
+ * langganan `active` di platform sementara tenant masih `trialing` di kendali
+ * akan berbunyi di sana setiap putaran.
+ */
+export async function extendSubscription(
+  deps: OperatorWriteDeps,
+  input: {
+    tenantRef: { id: number } | { slug: string };
+    cycle: "monthly" | "yearly";
+    /** Berapa periode. 1 tahunan = satu tahun; 3 bulanan = tiga bulan. */
+    periods: number;
+    actor: OperatorActor;
+  },
+  now: Date = new Date()
+): Promise<ExtendSubscriptionResult> {
+  const tenant = await deps.control.tenant.findUnique({
+    where: input.tenantRef as { id: number },
+    select: { id: true, slug: true },
+  });
+  if (!tenant) return { outcome: "tenant_not_found" };
+
+  const subscription = await deps.platform.subscription.findFirst({
+    where: { tenantId: tenant.id },
+    orderBy: { id: "desc" },
+    select: { id: true, status: true, currentPeriodEnd: true, currency: true },
+  });
+  if (!subscription) return { outcome: "no_subscription" };
+  if (subscription.status === "cancelled") return { outcome: "cancelled" };
+
+  const from = extensionStart(subscription.currentPeriodEnd, now);
+  const to = extendPeriod(from, input.cycle, input.periods);
+  const invoiceNumber = compedInvoiceNumber(subscription.id, from);
+
+  /* ── 1. PLATFORM dulu ──────────────────────────────────────────────────── */
+  try {
+    await deps.platform.platformInvoice.create({
+      data: {
+        tenantId: tenant.id,
+        subscriptionId: subscription.id,
+        number: invoiceNumber,
+        /* Langsung `paid`: tidak ada yang terutang, jadi tidak ada yang bisa
+           dilunasi. Baris pembayaran pun tidak dibuat — pembayaran nol adalah
+           dokumen yang menyatakan sesuatu yang tidak pernah terjadi. */
+        status: "paid",
+        issueDate: now,
+        dueDate: now,
+        amount: "0",
+        taxAmount: "0",
+        total: "0",
+        currency: subscription.currency,
+      },
+    });
+  } catch (error) {
+    /* Nomor bertanda itu UNIK — perpanjangan yang sama, dijalankan dua kali,
+       menabrak constraint alih-alih memberi periode kedua. */
+    if ((error as { code?: string }).code === "P2002") {
+      return { outcome: "duplicate", invoiceNumber };
+    }
+    throw error;
+  }
+
+  await deps.platform.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      status: "active",
+      billingCycle: input.cycle,
+      currentPeriodStart: from,
+      currentPeriodEnd: to,
+      /* Trial selesai — ia sudah digantikan periode berbayar. Membiarkannya
+         terisi membuat penjadwal menagih "trial habis" atas periode yang baru
+         saja dibayar. */
+      trialEndsAt: null,
+      pastDueSince: null,
+    },
+  });
+
+  /* ── 2. KENDALI belakangan ─────────────────────────────────────────────── */
+  await deps.control.tenant.update({
+    where: { id: tenant.id },
+    data: { status: tenantStatusForSubscription("active") },
+  });
+
+  await writeTenantAuditLog({
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    ...auditActor(input.actor),
+    action: "tenant.extend",
+    details: {
+      reason: input.actor.reason,
+      cycle: input.cycle,
+      periods: input.periods,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      invoiceNumber,
+      fromStatus: subscription.status,
+    },
+  });
+
+  return { outcome: "extended", from, to, invoiceNumber, status: "active" };
+}
+
+/**
+ * Titik mulai perpanjangan: yang TERJAUH antara sekarang dan akhir periode
+ * berjalan. Murni, supaya aturannya bisa diuji tanpa basis data.
+ */
+export function extensionStart(currentPeriodEnd: Date, now: Date): Date {
+  return currentPeriodEnd.getTime() > now.getTime() ? currentPeriodEnd : now;
+}
+
+/** Majukan `from` sebanyak `periods` siklus. */
+export function extendPeriod(
+  from: Date,
+  cycle: "monthly" | "yearly",
+  periods: number
+): Date {
+  let end = from;
+  for (let i = 0; i < Math.max(1, Math.trunc(periods)); i++) {
+    end = nextPeriod(cycle, end).end;
+  }
+  return end;
+}
+
+/**
+ * Nomor tagihan KOMPENSASI — akhiran `-K` yang membedakannya dari nomor
+ * deterministik penjadwal untuk periode yang sama, sekaligus menjadikannya
+ * kunci idempotensi perpanjangan.
+ */
+export function compedInvoiceNumber(subscriptionId: number, periodStart: Date): string {
+  return `PINV-S${subscriptionId}-${periodStart.toISOString().slice(0, 10).replace(/-/g, "")}-K`;
+}

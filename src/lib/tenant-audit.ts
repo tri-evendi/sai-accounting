@@ -43,6 +43,10 @@ export type TenantAuditAction =
   /** Pembayaran transfer manual dicatat operator (#155) — jalur
    *  PAYMENT_GATEWAY=manual; aktornya operator, alasannya wajib. */
   | "tenant.payment.manual"
+  /** Perpanjangan KOMPENSASI oleh operator — periode berbayar diberikan tanpa
+   *  melewati gerbang pembayaran, beserta tagihan Rp 0 bertanda `-K`. Aksi
+   *  UANG: aktornya operator dan alasannya wajib, sama seperti tetangganya. */
+  | "tenant.extend"
   /** Suspensi/pemulihan MANUAL oleh operator (#155) — di luar siklus dunning. */
   | "tenant.suspend"
   | "tenant.restore"

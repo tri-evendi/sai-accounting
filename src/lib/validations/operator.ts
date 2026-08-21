@@ -62,6 +62,24 @@ export const suspensionSchema = z.object({
 });
 export type SuspensionFormInput = z.infer<typeof suspensionSchema>;
 
+/* ── 3b. Perpanjangan kompensasi ───────────────────────────────────────────── */
+
+/**
+ * Beri periode berbayar tanpa melewati gerbang pembayaran.
+ *
+ * `periods` dibatasi 1–24: setahun tahunan, dua tahun, atau dua tahun bulanan.
+ * Batas atas bukan kesopanan — perpanjangan yang salah ketik (240 bulan) adalah
+ * dua puluh tahun langganan gratis yang baru ketahuan saat seseorang membaca
+ * laporan, dan mencabutnya berarti menyentuh uang lagi.
+ */
+export const extendSubscriptionSchema = z.object({
+  tenantId: tenantIdField,
+  cycle: z.enum(["monthly", "yearly"]),
+  periods: z.coerce.number().int().min(1).max(24),
+  reason: operatorReasonField,
+});
+export type ExtendSubscriptionFormInput = z.infer<typeof extendSubscriptionSchema>;
+
 /* ── 4. Eksekusi penghapusan ───────────────────────────────────────────────── */
 
 export const deletionExecuteSchema = z.object({

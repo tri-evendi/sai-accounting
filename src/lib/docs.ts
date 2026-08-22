@@ -228,6 +228,15 @@ const SALDO_AWAL = {
   navHrefs: ["/setup", "/master/import"],
 } as const satisfies DocMeta;
 
+const COCOK_ACCURATE = {
+  slug: "cocokkan-accurate",
+  judul: "Mencocokkan buku dengan Accurate",
+  ringkas:
+    "Apa yang bisa dan tidak bisa dibaca dari ekspor Accurate, dan kenapa layar itu tidak pernah menulis ke buku Anda.",
+  cabang: "pengguna",
+  navHrefs: ["/accurate"],
+} as const satisfies DocMeta;
+
 const PERAN_IZIN = {
   slug: "peran-dan-izin",
   judul: "Peran & izin",
@@ -285,6 +294,7 @@ export const DOC_INDEX = [
   STOK,
   KAS,
   SALDO_AWAL,
+  COCOK_ACCURATE,
   PERAN_IZIN,
   PAKET,
   LAPORAN,

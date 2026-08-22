@@ -138,3 +138,73 @@ Tiap barang memetakan akun GL (dipakai auto-posting): **Akun Persediaan**, **Aku
 ## E. Status & Kontrol (dari faktur)
 - Stempel status transaksi: **DISETUJUI** (approval, issue #25) & **LUNAS** (pelunasan, issue #12).
 - Menu transaksi: Tambah ke Favorit, Transaksi Berulang, Log Aktifitas, **Histori Status**, **Rincian Jurnal** (jurnal auto-posting bisa ditinjau — dasar "Mode Akuntan" #11).
+
+---
+
+# LAMPIRAN B — Integrasi berbasis EKSPOR laporan (terpasang)
+
+> Ditulis saat integrasi tahap pertama dibangun, dari berkas ekspor nyata
+> "Rincian Buku Besar" PT SAI (5 halaman, satu akun, Jan–Des 2025). Yang
+> disimpan di sini STRUKTUR berkasnya, bukan nilainya.
+
+## B.1 Yang diekspor Accurate adalah HALAMAN CETAK, bukan tabel
+
+Ini premis yang menentukan seluruh rancangannya, dan ia berlawanan dengan
+dugaan yang wajar. Tombol Ekspor di layar laporan Accurate menghasilkan `.xlsx`
+yang isinya halaman cetak:
+
+| Ciri | Wujudnya |
+|---|---|
+| Baris judul bukan baris 1 | Judul kolom di baris **5**, diulang di tiap halaman |
+| Kepala halaman berulang | nama PT · judul laporan · periode · filter (merge `B..S`) |
+| Kaki halaman | `ACCURATE Accounting System Report` · `Tercetak pada …` · `Halaman n dari m` |
+| Sel termerge | ExcelJS menyalin nilai induk ke SETIAP sel anggota merge |
+| Kepala seksi akun | dua baris: `5100006004`, lalu `5100006004 - NAMA AKUN` |
+| Sel multi-baris | `Keterangan` = no. dokumen `\n` no. referensi |
+| **Sel terpotong ganti halaman** | baris terakhir halaman menyimpan `…\n` tanpa referensinya; referensinya jadi baris tersendiri di puncak halaman berikutnya |
+| Baris total ganda | total seksi & total laporan dicetak berturut-turut |
+| Sel tanggal | `Date` sungguhan, bukan teks |
+
+Diberikan apa adanya ke `readImportRows`, berkas semacam ini ditolak seluruhnya
+("kolom wajib tidak ditemukan") karena yang dibaca sebagai baris judul adalah
+nama PT.
+
+## B.2 Modul yang menanganinya
+
+| Modul | Tugas |
+|---|---|
+| `src/lib/accurate/report-sheet.ts` | Normalkan halaman cetak → baris berjenis (`section`/`data`), metadata, dan **sambungan sel terpotong**. `flattenAccurateReport()` meratakannya jadi matriks tabel + nomor baris ASLI |
+| `src/lib/accurate/ledger-report.ts` | Seksi per akun: saldo awal, entri, total, saldo akhir; hitung ulang & bandingkan dengan yang dicetak |
+| `src/lib/accurate/dates.ts` | Tanggal di dalam kalimat (`Dari 01 Jan 2025 s/d 31 Des 2025`), nama bulan **id + en** — berkas yang sama memakai keduanya |
+| `src/lib/accurate/reconcile.ts` | Pencocokan tiga lapis + selisih berarah `sai − accurate` |
+| `src/lib/accurate/opening-draft.ts` | Saldo akhir → rancangan saldo awal (sisi dari bagan akun KITA) |
+| `src/lib/accurate/preview.ts` | Bentuk muatan yang dipakai route & halaman |
+| `src/lib/accurate/source.ts` | Seam sumber: `file` (hidup) · `open_api` (`available: false`) |
+| `src/lib/import/sheet.ts` | Satu pintu baca berkas unggahan; meratakan laporan Accurate bila perlu |
+
+Permukaannya: halaman `/accurate` + route `POST /api/t/{tenant}/{company}/accurate/ledger`,
+keduanya dijaga `ledger.read`. **Tidak ada penulisan sama sekali.**
+
+## B.3 Batas yang tidak boleh dilanggar
+
+**Rincian buku besar hanya memuat SATU SISI tiap transaksi.** Lawan akunnya
+tidak ada di berkas dan tidak bisa disimpulkan darinya. Karena itu hasil
+parsernya tidak pernah boleh diposting sebagai jurnal — `postJournal` menolak
+jurnal timpang, jadi tebakan lawan akun akan berubah menjadi galat yang jauh
+dari sebabnya. Yang sah: mencocokkan, memeriksa, menarik saldo.
+
+Saldo awal pun berhenti sebagai **berkas rancangan**. Pintunya tetap
+`runOpeningBalanceSetup`, yang sengaja hanya bisa dilalui sekali.
+
+## B.4 Yang masih perlu dibuktikan dengan berkas nyata
+
+- **Ekspor Daftar Akun Perkiraan.** Impor COA sudah menerima berkas laporan
+  (diratakan lebih dulu) dan sudah menerima tipe akun berupa KATA ("Kas/Bank")
+  selain kode empat huruf. Judul kolomnya (`Kode Perkiraan`, `Nama Perkiraan`,
+  `Tipe Akun`, `Mata Uang`) diambil dari §2 dokumen ini, **belum diuji terhadap
+  berkas ekspor COA sungguhan.** Alias yang meleset tidak merusak apa pun — ia
+  hanya membuat kolomnya tak dikenali — tetapi perlu dikonfirmasi.
+- **Laporan berisi BANYAK akun.** Berkas contoh hanya memuat satu akun, jadi
+  pergantian seksi di tengah laporan belum pernah dilihat pada berkas nyata
+  (sudah diuji pada fixture sintetis).
+- **Accurate Open API.** Seam-nya ada (`openApiLedgerSource`), jalurnya belum.

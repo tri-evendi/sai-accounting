@@ -85,6 +85,9 @@ export async function seedCoaForModules(
         name: row.name,
         type: row.type,
         currency: row.currency ?? "IDR",
+        // Sifat beban bawaan (issue #445) — perusahaan baru langsung benar
+        // tanpa mengisi apa pun. Baris non-beban tidak punya `nature`.
+        expenseNature: row.nature ?? null,
         parentId: row.parent ? (byCode.get(row.parent) ?? null) : null,
         normalBalance: normalBalanceFor(row.type),
         isActive: true,

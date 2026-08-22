@@ -45,6 +45,23 @@ export interface ReadRowsResult {
 
 const cell = (v: unknown): string => (v == null ? "" : String(v).trim());
 
+export interface ReadRowsOptions {
+  /**
+   * Nomor baris ASLI di Excel untuk tiap baris data, sejajar `sheet.slice(1)`.
+   *
+   * Ada sejak berkas ekspor Accurate ikut diterima (integrasi Accurate). Ekspor
+   * itu adalah HALAMAN CETAK: lima blok kepala/kaki halaman dibuang dan sisanya
+   * dijahit jadi satu tabel sebelum sampai ke sini, jadi baris ke-3 tabel bisa
+   * saja baris ke-41 di berkasnya. Tanpa daftar ini galat akan menyebut nomor
+   * baris hasil penjahitan — dan janji "nomor baris adalah nomor yang dilihat
+   * orang" (lihat kepala berkas ini) berhenti berlaku persis pada berkas yang
+   * paling sulit ditelusuri orang.
+   *
+   * Kosong = berkas tabel biasa, nomornya `indeks + 2` seperti sebelumnya.
+   */
+  rowNumbers?: readonly number[];
+}
+
 /**
  * Baca matriks sel menjadi baris ber-kunci.
  *
@@ -53,7 +70,8 @@ const cell = (v: unknown): string => (v == null ? "" : String(v).trim());
  */
 export function readImportRows(
   sheet: unknown[][],
-  columns: readonly ColumnSpec[]
+  columns: readonly ColumnSpec[],
+  options: ReadRowsOptions = {}
 ): ReadRowsResult {
   const headerRow = Array.isArray(sheet[0]) ? sheet[0] : [];
   const { index, missing } = mapHeaderRow(headerRow, columns);
@@ -84,7 +102,7 @@ export function readImportRows(
        sesuatu yang tak terbaca. */
     if (!anyValue) return;
 
-    rows.push({ row: i + 2, values });
+    rows.push({ row: options.rowNumbers?.[i] ?? i + 2, values });
   });
 
   return { rows, errors: [], missingColumns: [], truncated };

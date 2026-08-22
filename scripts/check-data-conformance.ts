@@ -43,7 +43,14 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 import { CONTRACT_STATUSES, CURRENCIES } from "../src/lib/constants";
-import { ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
+import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
+import {
+  DEFAULT_CATCH_ALL_THRESHOLD,
+  assessCatchAllExpenses,
+  describeCatchAllFinding,
+  describeUntaggedExpense,
+  findUntaggedMaterialExpenses,
+} from "../src/lib/materiality";
 
 /* Konstanta di atas adalah SUMBER yang sama dengan yang dipakai zod di jalur
    tulis (`validations/contract.ts`, `validations/fx.ts`). Menyalin daftarnya ke
@@ -59,9 +66,35 @@ const BASE = (t: string) =>
 interface Check {
   key: string;
   judul: string;
-  /** Harus memulangkan kolom `label`; jumlah barisnya = jumlah pelanggaran. */
+  /**
+   * Tanpa `nilai`: harus memulangkan kolom `label`; jumlah barisnya = jumlah
+   * pelanggaran. Dengan `nilai`: SQL-nya cuma MENGUMPULKAN angka, dan
+   * keputusannya diambil di TypeScript.
+   */
   sql: string;
+  /**
+   * Aturan yang tinggal di modul MURNI, bukan di SQL.
+   *
+   * Ada karena tidak setiap aturan pantas ditulis sebagai SQL: pagar
+   * materialitas (#444) butuh membandingkan tiap akun dengan TOTAL seluruh
+   * akun, dan menuliskannya sebagai SQL berarti menaruh aturan akuntansi di
+   * tempat yang tidak bisa diuji tanpa MySQL. Yang dipulangkan tetap bentuk
+   * yang sama — daftar `label` — jadi pelapornya tidak perlu tahu bedanya.
+   */
+  nilai?: (rows: Record<string, unknown>[]) => { label: string }[];
 }
+
+/**
+ * Ambang pangsa akun penampung, dari `--ambang-penampung=<persen>`.
+ *
+ * Bisa ditimpa karena "material" bergantung pada bukunya: 5% dari beban sebuah
+ * PT dagang dan 5% dari beban sebuah PT jasa adalah dua percakapan berbeda.
+ */
+const ambangPenampung = (() => {
+  const arg = process.argv.find((a) => a.startsWith("--ambang-penampung="));
+  const persen = arg ? Number(arg.slice(arg.indexOf("=") + 1)) : NaN;
+  return Number.isFinite(persen) && persen > 0 ? persen / 100 : DEFAULT_CATCH_ALL_THRESHOLD;
+})();
 
 const CHECKS: Check[] = [
   {
@@ -154,6 +187,57 @@ const CHECKS: Check[] = [
     sql: `SELECT CONCAT(code, ' ', name, ' → ', type, '/', normal_balance) AS label FROM accounts
            WHERE type NOT IN (${list(ACCOUNT_TYPE_VALUES)}) OR normal_balance NOT IN ('debit','credit')`,
   },
+  {
+    key: "akun-penampung",
+    judul: "Akun penampung beban berskala material",
+    /* SQL-nya sengaja BODOH: ia cuma menjumlahkan beban per akun. Yang tahu
+       apa itu "penampung" dan apa itu "material" adalah `@/lib/materiality`,
+       dan di sanalah aturannya diuji — tanpa MySQL. */
+    sql: `SELECT a.code AS code, a.name AS name, a.type AS type,
+                 a.expense_nature AS nature,
+                 SUM(l.base_debit - l.base_credit) AS amount
+            FROM accounts a
+            JOIN journal_lines l ON l.account_id = a.id
+           WHERE a.type IN (${list(EXPENSE_ACCOUNT_TYPE_VALUES)})
+           GROUP BY a.id, a.code, a.name, a.type, a.expense_nature`,
+    nilai: (rows) =>
+      assessCatchAllExpenses(
+        rows.map((r) => ({
+          code: String(r.code ?? ""),
+          name: String(r.name ?? ""),
+          type: String(r.type ?? ""),
+          nature: r.nature == null ? null : String(r.nature),
+          // SUM() tiba sebagai Decimal/string lewat driver-nya, bukan number.
+          amount: Number(r.amount ?? 0),
+        })),
+        { threshold: ambangPenampung }
+      ).findings.map((f) => ({ label: describeCatchAllFinding(f) })),
+  },
+  {
+    key: "beban-tanpa-sifat",
+    judul: "Beban berskala material yang belum ditandai sifatnya",
+    /* Bukan "setiap akun beban wajib bersifat" — kosong memang jawaban yang sah
+       (#445). Yang disebut hanyalah yang benar-benar menggerakkan angka, sebab
+       daftar sepanjang bagan akun adalah daftar yang diabaikan. */
+    sql: `SELECT a.code AS code, a.name AS name, a.type AS type,
+                 a.expense_nature AS nature,
+                 SUM(l.base_debit - l.base_credit) AS amount
+            FROM accounts a
+            JOIN journal_lines l ON l.account_id = a.id
+           WHERE a.type IN (${list(EXPENSE_ACCOUNT_TYPE_VALUES)})
+           GROUP BY a.id, a.code, a.name, a.type, a.expense_nature`,
+    nilai: (rows) =>
+      findUntaggedMaterialExpenses(
+        rows.map((r) => ({
+          code: String(r.code ?? ""),
+          name: String(r.name ?? ""),
+          type: String(r.type ?? ""),
+          nature: r.nature == null ? null : String(r.nature),
+          amount: Number(r.amount ?? 0),
+        })),
+        { threshold: ambangPenampung }
+      ).findings.map((f) => ({ label: describeUntaggedExpense(f) })),
+  },
 ];
 
 function adapterFor(raw: string, database?: string) {
@@ -201,7 +285,8 @@ async function main() {
 
     try {
       for (const check of CHECKS) {
-        const rows = (await prisma.$queryRawUnsafe(check.sql)) as { label: string }[];
+        const raw = (await prisma.$queryRawUnsafe(check.sql)) as Record<string, unknown>[];
+        const rows = check.nilai ? check.nilai(raw) : (raw as unknown as { label: string }[]);
         if (rows.length > 0) temuan.push({ check, rows });
       }
     } catch (error) {

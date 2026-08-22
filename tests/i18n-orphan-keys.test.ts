@@ -178,6 +178,14 @@ const CABANG_UTUH: ReadonlyArray<{ cabang: string; alasan: string }> = [
     alasan: "labels.ts: `accountTypeLabels()` merakit peta dari ACCOUNT_TYPES (issue #68).",
   },
   {
+    cabang: "expenseNature",
+    alasan:
+      "labels.ts: `expenseNatureLabels()` merakit peta dari EXPENSE_NATURES (issue #445) — " +
+      "pola yang sama persis dengan `accountType` di atas, dan dengan alasan yang sama: " +
+      "daunnya diindeks dengan nilai runtime (`natureLabels[n.value]`), jadi parser buta " +
+      "terhadap daun mana yang benar-benar dibaca.",
+  },
+  {
     cabang: "month",
     alasan: "labels.ts: `monthNames()` mengembalikan larik 12 bulan.",
   },

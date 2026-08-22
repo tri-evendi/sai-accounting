@@ -31,7 +31,7 @@ import {
   type DocumentType,
   type SystemRole,
 } from "@/lib/constants";
-import { ACCOUNT_TYPES } from "@/lib/accounting";
+import { ACCOUNT_TYPES, EXPENSE_NATURES } from "@/lib/accounting";
 import {
   APPROVAL_DOCUMENT_TYPE_LABELS,
   APPROVAL_STATUS_LABELS,
@@ -86,6 +86,29 @@ export function accountTypeLabel(
   value: string
 ): string {
   return accountTypeLabels(dictionary)[value] ?? value;
+}
+
+/**
+ * Label SIFAT BEBAN (issue #445) — pola yang sama dengan `accountTypeLabels`:
+ * akses PROPERTI, bukan string, supaya `tsc` menolak nilai baru di
+ * `EXPENSE_NATURES` yang belum punya terjemahan di ketiga kamus.
+ */
+export function expenseNatureLabels(
+  dictionary: Dictionary | null | undefined
+): Record<string, string> {
+  if (!dictionary) return Object.fromEntries(EXPENSE_NATURES.map((n) => [n.value, n.label]));
+  const d = dictionary.expenseNature;
+  return {
+    salary: d.salary,
+    professional_services: d.professional_services,
+    rent: d.rent,
+    depreciation: d.depreciation,
+    materials: d.materials,
+    utilities: d.utilities,
+    transport: d.transport,
+    interest: d.interest,
+    levy: d.levy,
+  };
 }
 
 /**

@@ -118,19 +118,11 @@ export async function LandingFooter() {
             <Link href="/#modul" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navModules")}
             </Link>
-            <Link href="/harga" data-landing-link="" style={FOOTER_LINK}>
+            <Link href="/pricing" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navPricing")}
             </Link>
             <Link href="/#tanya" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.navFaq")}
-            </Link>
-            {/* Kontak HANYA di kaki, tidak di bilah atas. Bilah itu terukur
-                menuntut 685px dengan empat tautan; tautan kelima mendorongnya
-                melewati titik patah 768px dan menghidupkan lagi gulungan
-                mendatar yang baru saja diperbaiki. Kaki halaman justru tempat
-                orang mencari cara menghubungi. */}
-            <Link href="/#kontak" data-landing-link="" style={FOOTER_LINK}>
-              {t("landing.navContact")}
             </Link>
           </nav>
 

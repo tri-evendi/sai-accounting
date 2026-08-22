@@ -55,7 +55,6 @@ import { redirect } from "next/navigation";
 
 import { LandingAudience } from "@/components/landing/landing-audience";
 import { LandingClosingCta } from "@/components/landing/landing-closing-cta";
-import { LandingContact } from "@/components/landing/landing-contact";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LandingFeatures } from "@/components/landing/landing-features";
 import { LandingHero } from "@/components/landing/landing-hero";
@@ -65,7 +64,6 @@ import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingShell } from "@/components/landing/landing-shell";
 import { LandingTrust } from "@/components/landing/landing-trust";
 import { auth } from "@/lib/auth";
-import type { ContactOutcome } from "@/lib/contact-actions";
 import { APP_NAME } from "@/lib/constants";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { publicAppUrl } from "@/lib/public-url";
@@ -122,33 +120,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** Hasil kiriman formulir kontak yang sah muncul di `?kontak=`. */
-const HASIL_KONTAK = new Set<ContactOutcome>([
-  "terkirim",
-  "gagal",
-  "takbenar",
-  "terlalu-sering",
-]);
-
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function Home() {
   const session = await auth();
   if (session) redirect("/dashboard");
-
-  /*
-   * Hasil formulir kontak dibaca dari kueri, bukan dari state — itulah yang
-   * membuat formulirnya bekerja tanpa JavaScript (alasan lengkap di
-   * `lib/contact-actions.ts`). Nilainya DISARING terhadap daftar yang sah:
-   * `?kontak=` bisa diisi siapa saja, dan nilai sembarang tidak boleh menjadi
-   * kunci pencarian pesan.
-   */
-  const kontak = (await searchParams).kontak;
-  const hasilKontak = HASIL_KONTAK.has(kontak as ContactOutcome)
-    ? (kontak as ContactOutcome)
-    : undefined;
 
   return (
     <LandingShell>
@@ -181,11 +155,6 @@ export default async function Home({
           Menaruhnya sebelum harga berarti menjawab pertanyaan yang belum
           ditanyakan siapa pun. */}
       <LandingFaq />
-      {/* Kontak SESUDAH FAQ: enam pertanyaan menjawab keberatan umum, dan
-          yang tersisa sesudahnya memang perlu orang. Menaruhnya sebelum FAQ
-          berarti meminta orang mengetik pertanyaan yang jawabannya ada satu
-          layar di bawahnya. */}
-      <LandingContact outcome={hasilKontak} />
       <LandingClosingCta />
     </LandingShell>
   );

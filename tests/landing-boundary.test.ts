@@ -56,7 +56,7 @@ const LANDING_DIR = "components/landing/";
 
 /**
  * Berkas di luar direktori itu yang boleh mengimpor darinya — halaman-halaman
- * di route group PEMASARAN, dan hanya itu (issue #399: `/` dan `/harga`, yang
+ * di route group PEMASARAN, dan hanya itu (issue #399: `/` dan `/pricing`, yang
  * berbagi root layout pemasaran `app/(marketing)/layout.tsx`).
  *
  * Daftarnya sengaja daftar, bukan pengecualian yang ditanam di dalam kondisi
@@ -65,7 +65,7 @@ const LANDING_DIR = "components/landing/";
  * dipertanyakan seorang peninjau — dan supaya sebuah `page.tsx` yang diselipkan
  * ke grup itu tidak otomatis mewarisi izinnya.
  */
-const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/harga/page.tsx"];
+const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/pricing/page.tsx"];
 
 /**
  * Yang boleh diimpor DARI dalam `components/landing/**`.

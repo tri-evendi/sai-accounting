@@ -1,6 +1,6 @@
 # Halaman Pendaratan `/` — override MASTER.md
 
-> Berlaku HANYA untuk `/` dan `/harga` (`src/app/(marketing)/**` +
+> Berlaku HANYA untuk `/` dan `/pricing` (`src/app/(marketing)/**` +
 > `src/components/landing/**`).
 > Untuk halaman lain, MASTER.md tetap berlaku apa adanya.
 
@@ -38,7 +38,6 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
       → "Yang menjaga pembukuan Anda"  polos, kartu bernada  ← sebelum harga
       → "Paket & harga"                pita indigo, kartu `surface` bertepi
       → FAQ                            polos, panel bernada
-      → kontak                         polos, panel bernada + daftar kanal
       → ajakan penutup                 pita PEKAT navy merek — PUNCAK (#401)
       → kaki                           pita indigo
     (+ tombol WhatsApp melayang, ≥576px, bila nomornya disetel — bukan seksi, bukan pita; #402)
@@ -319,72 +318,30 @@ Aturan yang mengikatnya:
 - **Keterangan Integrasi dipangkas ke SATU kalimat** di ketiga bahasa
   (`integration*Body`); klaimnya tidak berubah, hanya panjangnya.
 
-## Formulir kontak — satu-satunya formulir di pendaratan
+## Seksi kontak — DICABUT dari pendaratan
 
-Sebelumnya satu-satunya cara menghubungi adalah tautan `mailto:` di kartu paket
-rundingan — dan itu pun mati bila `PLATFORM_CONTACT_EMAIL` belum diisi (yaitu
-bawaan setiap pemasangan).
+Pendaratan pernah punya satu seksi `#kontak`: formulir "hubungi kami" (server
+action `lib/contact-actions.ts`, tanpa JavaScript, `zod` di server, perangkap
+madu + pembatas laju persisten) ditambah daftar kanal dukungan. Keduanya
+**dihapus** — beserta komponennya (`landing-contact.tsx`), server action-nya,
+kunci kamus `landing.contact*`/`landing.navContact` (kecuali
+`contactWhatsappCta` yang dipakai tombol melayang), jatah laju `contactIp`, dan
+tautan `#kontak` di bilah/kaki/panel menu.
 
-### Server action, BUKAN komponen formulir klien
+**Jalan menghubungi yang TERSISA — dan hanya yang memang ada kodenya:**
 
-Konvensi formulir aplikasi ini `react-hook-form` + `zod` lewat `Form`, dan pola
-itu **klien**. Di halaman ini ia salah: pendaratan sengaja nol JavaScript sisi
-klien (`AMBANG_KLIEN`), sebab pengunjungnya belum tentu pernah mendaftar.
+| Jalan | Di mana | Sakelarnya |
+|---|---|---|
+| Tombol WhatsApp melayang | kulit pendaratan, ≥576px | `PLATFORM_CONTACT_WHATSAPP` sah (`contactChannels()`) |
+| `mailto:` paket rundingan | kartu Business di seksi harga | `PLATFORM_CONTACT_EMAIL` terisi |
+| Jawaban FAQ "kalau ada masalah" | `landing-faq.tsx` | menyebut alamat surel bila terisi, selain itu dokumentasi saja (`faqSupportADocsOnly`) |
 
-`<form action={serverAction}>` bekerja **tanpa JavaScript sama sekali**;
-validasi tetap `zod`, hanya pindah ke server — satu-satunya sisi yang bisa
-dipercaya untuk endpoint publik. Isiannya `<input>`/`<textarea>` telanjang yang
-digayakan token yang sama, sebab `Input`/`Textarea` milik `components/ui`
-adalah komponen AntD (klien).
-
-Hasil kiriman disampaikan lewat **parameter kueri** (`?kontak=…#kontak`), bukan
-`useActionState` — hook itu akan menyeret formulirnya menjadi komponen klien dan
-membatalkan seluruh alasan di atas. Nilainya DISARING terhadap daftar sah:
-`?kontak=` bisa diisi siapa saja.
-
-### Tiga pagar, dan kenapa masing-masing ada
-
-1. **Pembatas laju PERSISTEN per IP** (`contactIp`, 5/jam). Aturan di kepala
-   `rate-limit.ts`: endpoint terbuka-ke-internet tidak boleh memakai penghitung
-   memori. Formulir ini lebih terbuka daripada `/register` — ia tidak menuntut
-   apa pun dari pengirim dan setiap kiriman **mengirim surel**.
-2. **Perangkap madu.** Terisi = diperlakukan seolah BERHASIL, bukan ditolak:
-   penolakan memberi tahu bot bahwa perangkapnya ada. Disembunyikan lewat
-   pengurungan 1px, **bukan** `type="hidden"` — sebagian bot justru melewati
-   isian tersembunyi karena mengenalinya sebagai perangkap.
-3. **Alamat tujuan belum disetel = TANPA formulir.** Merender formulir yang
-   kiriman­nya tidak menuju ke mana pun lebih buruk daripada tidak punya
-   formulir: orang menulis pesan, menekan kirim, dan mengira ada yang membaca.
-
-### ⚠ Tombol kirim `outline`, bukan `primary`
-
-Ditemukan `tests/button-emphasis.test.ts`, dan penjaga itu benar secara desain:
-pengecualian pendaratan sah karena ajakannya **satu yang diulang**, dan tombol
-kirim berisi penuh akan menjadi ajakan KEDUA yang bersaing di halaman yang sama.
-
-### Tautannya hanya di KAKI, tidak di bilah atas
-
-Bilah atas terukur menuntut 685px dengan empat tautan; tautan kelima
-mendorongnya melewati titik patah 768px dan menghidupkan lagi gulungan mendatar
-yang baru saja diperbaiki. (Sejak #398 ia juga ada di **panel menu ponsel** —
-di panel yang bertumpuk ke bawah, lebar bukan kendala.)
-
-### Kanal dukungan: HANYA yang ada, dan tanpa janji waktu (#398)
-
-Di bawah formulir ada daftar kanal — surel, WhatsApp, dokumentasi — dan
-daftarnya dibangun dari `lib/contact-channels.ts`: surel bila
-`PLATFORM_CONTACT_EMAIL` terisi, WhatsApp bila `PLATFORM_CONTACT_WHATSAPP`
-terisi **dan sah** (nomor internasional tanpa `+`; yang salah bentuk ditolak
-`scripts/check-env.mjs` saat mulai dan tidak dirender), dokumentasi selalu.
-Kanal yang tidak disetel **tidak dirender**, bukan dirender kelabu.
-
-- Tombol WhatsApp `outline` + `Button href` (tautan KELUAR, `target=_blank`
-  `rel=noopener`), bukan `ButtonLink`, bukan `primary` — penjaga penekanan
-  mengunci setiap primer pendaratan ke `/register`; WhatsApp jalan bertanya,
-  bukan jalan mendaftar.
-- ⚠ **Tanpa jam layanan, SLA, atau "dibalas dalam N jam".** Tak ada kode yang
-  menjaminnya (§KLAIM HARUS PUNYA SUMBER), dan janji waktu balas adalah janji
-  yang paling cepat ditagih.
+⚠ Yang ikut hilang bersama seksinya: satu-satunya jalan menghubungi yang tidak
+menuntut orang punya klien surel atau WhatsApp. Kalau kelak seksi ini
+dikembalikan, alasan-alasan lamanya masih berlaku dan tercatat di riwayat git
+(`git log -- src/components/landing/landing-contact.tsx`): server action bukan
+formulir klien (pendaratan nol JS), tombol kirim `outline` bukan `primary`
+(setiap primer pendaratan menuju `/register`), dan tanpa jam layanan/SLA.
 
 ## Setiap seksi harus punya JALAN KELUAR, bukan berhenti di tempat
 
@@ -856,12 +813,11 @@ ruang kosong di atas tombolnya karena Business memikul butir sorotan +
 catatan rundingan; **tidak diisi butir hiasan** ("semua modul", "3 bahasa"):
 alasan §Kisi harga EMPAT paket tetap berlaku.
 
-**`/pricing` → `/harga` (308 permanen, `next.config.ts` `redirects`).**
-`/harga` tetap alamat kanonik (#399: kueri pasar utama berbahasa Indonesia,
-setiap kompetitor lokal memakai `/harga`; `alternates.canonical`,
-`sitemap.ts`). Bilah EN menyebut "Pricing", jadi orang yang menebak
-`/pricing` tidak boleh mendarat di 404 — tetapi jawabannya redirect, bukan
-halaman kedua berisi sama. Redirect `next.config` dievaluasi sebelum sistem
+**`/harga` → `/pricing` (308 permanen, `next.config.ts` `redirects`).**
+Alamat kanoniknya kini `/pricing` (`alternates.canonical`, `sitemap.ts`);
+`/harga` adalah alamat LAMA (#399/#413) yang sudah dibagikan & terindeks, jadi
+ia tidak boleh menjadi 404 — tetapi jawabannya redirect permanen, bukan halaman
+kedua berisi sama. Redirect `next.config` dievaluasi sebelum sistem
 berkas dan `proxy.ts`, jadi `/pricing` tidak masuk `isPublicPath`. Diuji
 `public-landing.test.tsx` §#413.
 
@@ -904,13 +860,13 @@ sumber tiap jawabannya (juga tercatat di kepala `landing-faq.tsx`):
 | Cocok untuk usaha apa | `BUSINESS_CATEGORIES`/`CATEGORY_META` — daftar presetnya **dirakit dari registri** (tanpa `custom`) dan `BUSINESS_MODULES.length`; modul per PT, tidak menggerbangi buku besar | segmen/industri yang tidak punya preset |
 | Impor dari sistem lama | `coa-import.ts` (akun, kolom Accurate), `import/master.ts` (pelanggan/pemasok/barang), `import/opening-ar-ap.ts`, `import/fixed-assets.ts`, templat `import/template.ts`, kolom dikenali dari judul (`import/spec.ts`), yang sudah ada dilewati bukan ditimpa; saldo awal akun di wizard penyiapan | **riwayat jurnal** — TIDAK diimpor, dan itu ditulis apa adanya |
 | Akuntan/KAP eksternal | undangan surel + peran per PT (docs/MULTI-TENANT.md §7.2–7.3, kuota `maxUsers`), peran bawaan bisa disetel + peran kustom (docs/RBAC.md), jejak audit, pencabutan sesi (docs/RBAC.md §Sesi & pencabutan) | peran "hanya-baca" siap pakai (tidak ada; yang ada: bisa dibuat) |
-| Kanal dukungan | dokumentasi publik `/docs`; formulir kontak (`landing-contact.tsx`) | **jam layanan / SLA / telepon / obrolan** — tidak ada kodenya |
+| Kanal dukungan | dokumentasi publik `/docs`; alamat surel `contactChannels().email` bila disetel | **jam layanan / SLA / telepon / obrolan** — tidak ada kodenya |
 | Tempat data & UU PDP | basis data per PT (#104), ekspor mandiri, permintaan hapus bertenggang 30 hari & bisa dibatalkan (docs/COMPLIANCE.md), tidak ada hapus otomatis, `/privacy` | **lokasi server** — data residency masih keputusan terbuka (COMPLIANCE.md §5.1) |
 
-⚠ **Jawaban dukungan BERCABANG pada sakelar yang sama dengan formulirnya.**
-Formulir kontak hanya dirender bila `PLATFORM_CONTACT_EMAIL` terisi; jawaban
-yang menyuruh "pakai formulir kontak di halaman ini" pada pemasangan tanpa
-formulir adalah penunjuk palsu. Tanpa alamat, jawabannya
+⚠ **Jawaban dukungan BERCABANG pada `PLATFORM_CONTACT_EMAIL`.** Sejak seksi
+kontak dicabut (§Seksi kontak — DICABUT), jawabannya menyebut ALAMAT SURELNYA
+langsung — dan hanya bila alamat itu disetel: menyuruh orang menulis ke alamat
+yang tidak ada adalah penunjuk palsu. Tanpa alamat, jawabannya
 `faqSupportADocsOnly` — dokumentasi saja.
 
 Urutan lima pertanyaan mengikuti urutan orang menanyakannya: cocok untuk saya?
@@ -989,7 +945,7 @@ satu per satu adalah koreografi, dan koreografi adalah animasi hias.
   faktur kehilangan sidebarnya sementara jurnal di sebelahnya masih punya, dan
   dua kerangka yang tidak sebentuk berdampingan terbaca sebagai bug.
 - **Menu ponsel (#398): `<details><summary>`, tanpa JavaScript.** Di bawah
-  768px tautan seksi + `#kontak` + pemilih bahasa (<576px saja — di 576–768
+  768px tautan seksi + pemilih bahasa (<576px saja — di 576–768
   sakelar di bilah sudah tampil) hidup di panel `position:absolute` di bawah
   bilah, dibuka tombol 40px yang ikonnya bertukar (garis tiga ↔ X) lewat
   `[open]`. Bilah di bawah 768px berkisi **dua** kolom (`auto 1fr`), tiga
@@ -1171,7 +1127,8 @@ Angka & keputusannya:
   menempati x 248–296 / 318–366 — menutupi 48px = 17% / 13% lebar ajakan
   utama pada setiap posisi gulungan yang menaruhnya di 72px terbawah layar.
   Di 576px tombol hero berjajar dan berakhir di x=191, bulatan di x=504–552:
-  tidak bersentuhan. Di bawah 576px WhatsApp tetap ada di seksi kontak.
+  tidak bersentuhan. Di bawah 576px WhatsApp hanya lewat jawaban FAQ
+  dukungan (seksi kontak sudah dicabut).
 
 ### Hijau/merah/emas/jingga: TERMASUK glif dan lencana
 
@@ -1357,7 +1314,7 @@ bisa dilewati dengan menulis `<ButtonLink variant="primary">` — termasuk batas
 "setiap primer pendaratan menuju `/register`". Diukur saat diperlebar: 0
 `<ButtonLink>` tanpa `variant`, 0 wadah yang menjadi >1 primer karenanya.
 
-## Layout akar pemasaran, `/harga`, galeri layar (#399)
+## Layout akar pemasaran, `/pricing`, galeri layar (#399)
 
 ### Dua root layout — dan angka yang membenarkannya (diukur, bukan dikira)
 
@@ -1371,14 +1328,14 @@ yang memanggil `/api/company/identity` pada setiap muatan.
 
 Next hanya punya satu cara memisahkan itu: dua root layout di dua route group
 tanpa `app/layout.tsx` di atasnya. Maka seluruh app pindah apa adanya ke
-`app/(app)/**` (`git mv`, riwayat terjaga), `/` dan `/harga` ke
+`app/(app)/**` (`git mv`, riwayat terjaga), `/` dan `/pricing` ke
 `app/(marketing)/**`, dan bagian yang SAMA (`<html>`, font, kelas pemikul
 token, skrip tema, `AntdRegistry`, `AntdProvider`) hidup sekali di
 `components/providers/root-document.tsx` supaya kedua akar tidak menyimpang.
 
 **Sesudah** (build produksi lokal, `next start`, tanpa cache):
 
-| | sebelum (produksi) | sesudah `/` | sesudah `/harga` |
+| | sebelum (produksi) | sesudah `/` | sesudah `/pricing` |
 |---|---|---|---|
 | `<script src>` | 21 | 20 | 20 |
 | JS gzip yang dirujuk | ≈350 KB | ≈346 KB | ≈346 KB |
@@ -1400,10 +1357,10 @@ komponen server (`landing-nav.tsx`, `landing-footer.tsx`): akar pemasaran
 tidak memasang `LocaleProvider`. Daun client baru yang memanggil `useT()` di
 sini mendapat KUNCInya sebagai teks — pasang propnya, jangan providernya.
 
-### `/harga` — komponen yang sama, alamat sendiri
+### `/pricing` — komponen yang sama, alamat sendiri
 
 Semua situs pembukuan berbahasa Indonesia yang ditinjau di #397 punya
-`/harga`; kita hanya jangkar. `/harga` merender `LandingPricing` + `LandingFaq`
+alamat harga sendiri; kita hanya jangkar. `/pricing` merender `LandingPricing` + `LandingFaq`
 yang PERSIS sama (judul harga menjadi `<h1>` lewat `headingLevel`), metadata &
 kanonik sendiri, masuk `sitemap.ts`, dilepaskan `isPublicPath` di `proxy.ts`,
 dan pengunjung bersesi dipantulkan ke `/dashboard` seperti `/`. Ia pintu masuk
@@ -1411,8 +1368,8 @@ KEDUA ke `components/landing/**` (`PINTU_MASUK`, `tests/landing-boundary`).
 
 Konsekuensi pada bilah & kaki: keduanya kini dipakai dua halaman, jadi
 jangkar ditulis **berakar** (`/#modul`, bukan `#modul`) — di `/` peramban
-tetap menggulung dalam-dokumen, di `/harga` ia menuju seksi yang benar — dan
-"Harga" adalah `<Link href="/harga">` di kedua halaman, bukan jangkar. Satu
+tetap menggulung dalam-dokumen, di `/pricing` ia menuju seksi yang benar — dan
+"Harga" adalah `<Link href="/pricing">` di kedua halaman, bukan jangkar. Satu
 perilaku, bukan bercabang per halaman. Di kaki tautan berakar itu `<Link>`,
 sebab `@next/next/no-html-link-for-pages` menolak `<a href="/#…">` harfiah.
 

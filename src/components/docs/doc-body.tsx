@@ -69,6 +69,40 @@ const CATATAN: React.CSSProperties = {
   color: "var(--ant-color-text-secondary)",
 };
 
+const KODE_KOTAK: React.CSSProperties = {
+  position: "relative",
+  borderRadius: "var(--ant-border-radius-lg)",
+  border: "1px solid var(--ant-color-border-secondary)",
+  background: "var(--ant-color-fill-quaternary)",
+};
+
+const KODE_LABEL: React.CSSProperties = {
+  display: "block",
+  padding: "var(--ant-padding-xs) var(--ant-padding)",
+  borderBottom: "1px solid var(--ant-color-border-secondary)",
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-text-tertiary)",
+};
+
+const KODE: React.CSSProperties = {
+  /*
+   * `overflow-x` DI SINI, bukan di halaman: sebuah `curl` beralamat panjang
+   * lebih lebar daripada kolom baca 768px di layar ponsel, dan kotak yang tidak
+   * bisa digulung sendiri akan menggulungkan SELURUH halaman ke samping.
+   */
+  margin: 0,
+  overflowX: "auto",
+  padding: "var(--ant-padding)",
+  /* Monospace: cuplikan ini ditempel orang, jadi setiap spasi berarti. */
+  fontFamily: "var(--ant-font-family-code)",
+  fontSize: "var(--ant-font-size-sm)",
+  lineHeight: 1.7,
+  color: "var(--ant-color-text)",
+  /* Baris panjang digulung, TIDAK dipatah: perintah yang patah di tengah
+     tanda kutip adalah perintah yang gagal saat ditempel. */
+  whiteSpace: "pre",
+};
+
 const ISTILAH_KOTAK: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -109,8 +143,15 @@ const ISTILAH_DEFINISI: React.CSSProperties = {
   color: "var(--ant-color-text-secondary)",
 };
 
-/** Satu blok. `matriks-izin` dirender pemanggilnya — lihat `DocBody`. */
-async function Blok({ blok }: { blok: Exclude<DocBlock, { kind: "matriks-izin" }> }) {
+/**
+ * Satu blok. Blok BANGKITAN (`matriks-izin`, `endpoint-api`) dirender
+ * pemanggilnya — lihat `DocBody`.
+ */
+async function Blok({
+  blok,
+}: {
+  blok: Exclude<DocBlock, { kind: "matriks-izin" } | { kind: "endpoint-api" }>;
+}) {
   const t = await getT();
 
   switch (blok.kind) {
@@ -136,6 +177,23 @@ async function Blok({ blok }: { blok: Exclude<DocBlock, { kind: "matriks-izin" }
             <li key={butir}>{butir}</li>
           ))}
         </ul>
+      );
+
+    case "kode":
+      /*
+       * `<pre>` di dalam `<figure>` berlabel: label bahasanya bukan hiasan —
+       * ia yang memberi tahu pembaca bahwa yang di bawahnya perintah shell,
+       * bukan jawaban yang ia harapkan. Tanpa pewarna sintaks (tidak ada
+       * pewarna di repo ini, dan menambah satu demi empat cuplikan adalah
+       * dependensi yang salah).
+       */
+      return (
+        <figure style={{ ...KODE_KOTAK, margin: 0 }}>
+          <figcaption style={KODE_LABEL}>{blok.bahasa}</figcaption>
+          <pre style={KODE}>
+            <code>{blok.teks}</code>
+          </pre>
+        </figure>
       );
 
     case "catatan":
@@ -183,6 +241,7 @@ async function Blok({ blok }: { blok: Exclude<DocBlock, { kind: "matriks-izin" }
 export async function DocBody({
   blok,
   matriks,
+  endpoints,
 }: {
   blok: readonly DocBlock[];
   /**
@@ -193,16 +252,21 @@ export async function DocBody({
    * hanya tahu ada satu tempat untuk menaruhnya.
    */
   matriks: React.ReactNode;
+  /**
+   * Alasan yang sama, sumber yang lain: daftar endpoint `/api/v1` dibangkitkan
+   * dari `lib/api-v1-spec.ts` oleh komponennya sendiri. Dititipkan, bukan
+   * diimpor di sini, supaya perender blok tetap tidak tahu apa-apa tentang
+   * permukaan API.
+   */
+  endpoints: React.ReactNode;
 }) {
   return (
     <>
-      {blok.map((b, i) =>
-        b.kind === "matriks-izin" ? (
-          <div key={`matriks-${i}`}>{matriks}</div>
-        ) : (
-          <Blok key={`${b.kind}-${i}`} blok={b} />
-        )
-      )}
+      {blok.map((b, i) => {
+        if (b.kind === "matriks-izin") return <div key={`matriks-${i}`}>{matriks}</div>;
+        if (b.kind === "endpoint-api") return <div key={`endpoint-${i}`}>{endpoints}</div>;
+        return <Blok key={`${b.kind}-${i}`} blok={b} />;
+      })}
     </>
   );
 }

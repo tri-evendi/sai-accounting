@@ -41,9 +41,9 @@ Model datanya memang hanya punya `max_companies` & `max_users`
 kolom baru, penjaga baru di ±35 resource izin, dan mengingkari kalimat yang
 sudah dipajang. Jangan.
 
-**Alamat halaman harga publik: `/harga`** (#399 — kueri pasar utama berbahasa
-Indonesia; kanonik + sitemap). `/pricing` dialihkan permanen (308) ke sana
-sejak #413, bukan halaman kedua. Halaman itu memajang harga bulanan DAN
+**Alamat halaman harga publik: `/pricing`** (kanonik + sitemap). `/harga` —
+alamat lamanya sejak #399, dan tujuan alias `/pricing` sejak #413 — kini
+dialihkan permanen (308) ke `/pricing`, bukan halaman kedua. Halaman itu memajang harga bulanan DAN
 tahunan (sakelar tanpa JS); tahunan = kolom `price_yearly`, hematnya dihitung
 dari kedua kolom — tidak ada angka diskon yang diketik.
 

@@ -243,7 +243,30 @@ const PERAN_IZIN = {
   ringkas:
     "Siapa boleh melihat dan mengerjakan apa — dan kenapa tabel di halaman ini hanya titik awalnya.",
   cabang: "pengguna",
-  navHrefs: ["/permissions", "/users", "/api-tokens"],
+  /*
+   * `/api-tokens` SUDAH TIDAK di sini: sejak halaman `api` ada, token dijelaskan
+   * di sana bersama cara memakainya — dan penjaga "satu modul dijelaskan paling
+   * banyak satu halaman" (`tests/docs.test.ts`) menuntut keputusan itu diambil,
+   * bukan dibiarkan ganda. Halaman ini tetap menyebut token sebagai PERAN,
+   * karena di situlah pertanyaannya lahir ("token dapat izin apa").
+   */
+  navHrefs: ["/permissions", "/users"],
+} as const satisfies DocMeta;
+
+const API = {
+  slug: "api",
+  judul: "API: membaca buku ini dari sistem lain",
+  ringkas:
+    "Cara sebuah program menarik data perusahaan Anda — token, alamatnya, bentuk jawabannya, dan apa arti setiap penolakan.",
+  cabang: "pengguna",
+  /*
+   * Halaman inilah tujuan tautan kontekstual dari layar Token API. Sampai ia
+   * ada, menu Bantuan di layar itu menunjuk `peran-dan-izin` — halaman yang
+   * menjelaskan token sebagai PERAN dan tidak menyebut satu pun alamat, header,
+   * atau bentuk jawaban. Pembacanya adalah orang yang sudah memegang token dan
+   * sedang mencari cara memakainya.
+   */
+  navHrefs: ["/api-tokens"],
 } as const satisfies DocMeta;
 
 const PAKET = {
@@ -296,6 +319,7 @@ export const DOC_INDEX = [
   SALDO_AWAL,
   COCOK_ACCURATE,
   PERAN_IZIN,
+  API,
   PAKET,
   LAPORAN,
   DATA_ANDA,

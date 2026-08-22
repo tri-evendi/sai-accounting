@@ -512,7 +512,7 @@ Keputusannya **ya**, karena alternatifnya lebih buruk: tanpa token, satu-satunya
 
 ### Penjaganya (`tests/landing-boundary.test.ts`)
 
-- **App internal tidak mengimpor apa pun dari `components/landing/**`.** Pintu masuknya halaman di `src/app/(marketing)/` (`/` dan `/harga`, #399). Menambah pintu baru = satu baris di `PINTU_MASUK` yang terlihat di diff.
+- **App internal tidak mengimpor apa pun dari `components/landing/**`.** Pintu masuknya halaman di `src/app/(marketing)/` (`/` dan `/pricing`, #399). Menambah pintu baru = satu baris di `PINTU_MASUK` yang terlihat di diff.
 - **Sebaliknya juga:** berkas pendaratan hanya boleh mengimpor `@/components/ui`, `@/lib`, dan sesama berkas pendaratan. Halaman ini dibaca tanpa sesi; setiap impor ke app internal adalah jalan bagi kode ber-`auth()`/ber-Prisma ikut ke permukaan publik.
 - **`--sai-landing-` dan `data-landing` tidak boleh muncul di satu berkas pun di luar direktori itu**, dan akarnya dipasang tepat satu berkas (`landing-shell.tsx`).
 - **Blok skalanya tidak boleh dideklarasikan pada selektor global** (`:root`/`html`/`body`/`*`) — justru pengurungan itulah yang membuat batas ini mekanisme, bukan imbauan.

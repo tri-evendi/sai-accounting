@@ -3,16 +3,16 @@
  *
  * ══ KENAPA SATU HELPER, BUKAN DUA `process.env` DI KOMPONEN ════════════════
  * `PLATFORM_CONTACT_EMAIL` sudah dibaca di tiga tempat (kartu paket rundingan,
- * formulir kontak, `lib/alert.ts`), dan setiap tempat menulis ulang
+ * jawaban FAQ dukungan, `lib/alert.ts`), dan setiap tempat menulis ulang
  * `?.trim()`-nya sendiri. Menambah kanal kedua dengan cara yang sama berarti
  * cara keempat dan kelima. Di sini keduanya dibaca sekali, dinormalkan sekali,
  * dan yang keluar sudah berbentuk siap pakai — alamat, dan URL `wa.me`.
  *
  * ══ TIDAK DIISI = TIDAK DIRENDER ═══════════════════════════════════════════
  * Keduanya opsional dan TANPA nilai bawaan. Kanal yang belum disetel tidak
- * pernah tampil sebagai tombol yang menuju ke mana pun — pola yang sama dengan
- * formulir kontak ("alamat tujuan belum disetel = tanpa formulir",
- * `landing-contact.tsx`).
+ * pernah tampil sebagai tombol yang menuju ke mana pun — pola yang sama yang
+ * dipakai jawaban FAQ dukungan (`landing-faq.tsx`: tanpa alamat, jawabannya
+ * dokumentasi saja, bukan alamat karangan).
  *
  * ══ NOMOR YANG SALAH BENTUK = TIDAK DIRENDER, DAN DISUARAKAN ═══════════════
  * `wa.me` menuntut nomor internasional TANPA `+`, tanpa spasi, tanpa nol awal

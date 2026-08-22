@@ -189,7 +189,7 @@ const CHECK: React.CSSProperties = {
 export async function LandingPricing({
   headingLevel = "h2",
 }: {
-  /** `h1` di `/harga`, tempat seksi ini menjadi kepala halamannya (#399). */
+  /** `h1` di `/pricing`, tempat seksi ini menjadi kepala halamannya (#399). */
   headingLevel?: "h1" | "h2";
 } = {}) {
   const t = await getT();

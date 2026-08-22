@@ -33,10 +33,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: url("/"), changeFrequency: "monthly", priority: 1 },
-    /* `/harga` (#399) — halaman harga berdiri sendiri; isinya katalog paket
+    /* `/pricing` (#399) — halaman harga berdiri sendiri; isinya katalog paket
        yang sama dengan seksi harga di `/`, tetapi dengan alamatnya sendiri
        supaya bisa ditemukan & dibagikan. */
-    { url: url("/harga"), changeFrequency: "monthly", priority: 0.8 },
+    { url: url("/pricing"), changeFrequency: "monthly", priority: 0.8 },
     { url: url("/docs"), changeFrequency: "monthly", priority: 0.6 },
     ...DOC_INDEX.map((doc) => ({
       url: url(docsPath(doc.slug)),

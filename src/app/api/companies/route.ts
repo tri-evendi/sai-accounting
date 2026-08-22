@@ -115,14 +115,38 @@ export async function POST(request: Request) {
             databaseName: parsed.data.databaseName,
             createdByUserId: userId,
             /*
-             * Pembuatnya menjadi Direktur Utama di perusahaan yang BARU LAHIR —
-             * bukan lagi "perannya di perusahaan yang sedang dibuka"
+             * Pembuatnya menjadi ADMINISTRATOR SISTEM di perusahaan yang BARU
+             * LAHIR — bukan "perannya di perusahaan yang sedang dibuka"
              * (`session.user.role!` yang lama): pelanggan yang membuat PT
              * pertamanya tidak punya peran per-PT sama sekali, dan tanda seru
              * itu bohong untuknya (issue #135). Nilainya dari konstanta
              * `ROLES`, bukan perbandingan string peran.
+             *
+             * BUKAN `managing_director`, meski dulu begitu. "Direktur Utama"
+             * adalah NAMA JABATAN, dan ia ikut terbaca di daftar pengguna,
+             * jejak audit, dan pilihan penyetuju — sementara yang mendaftar
+             * biasanya staf akunting, IT, atau konsultan yang menyiapkan buku.
+             * Menuliskan jabatan yang bukan miliknya membuat buku berbohong
+             * sejak baris pertama, lalu melahirkan Direktur Utama KEDUA begitu
+             * direktur aslinya dibuatkan akun. "Administrator Sistem" justru
+             * menyebut persis yang ia kerjakan di sini.
+             *
+             * Tak ada kuasa yang hilang karenanya: `administrator` memang
+             * dirancang kembar dengan `managing_director` (FULL_ACCESS_ROLES,
+             * migration 0032). Matriks izin, bawaan Mode Akuntan, dan kuasa
+             * memutuskan pengajuan mana pun mengikuti PERAN BERAKSES PENUH,
+             * bukan `managing_director` saja — dan perusahaan yang baru lahir
+             * belum punya satu pun `approval_rules` yang bisa menguncinya.
+             * Kepemilikan langganan pun tidak lewat sini sama sekali; rumahnya
+             * `tenant_memberships.role = owner` (TENANT_ROLES).
+             *
+             * Kalau pendaftarnya memang Direktur Utama, ia tinggal mengubah
+             * perannya sendiri di /users: yang dijaga di sana hanya hapus-diri,
+             * bukan ubah-peran-diri — dan administrator → managing_director
+             * adalah perpindahan antar-peran berakses penuh, jadi tak ada
+             * momen ia kehilangan pintu masuknya.
              */
-            role: ROLES.MANAGING_DIRECTOR,
+            role: ROLES.ADMINISTRATOR,
             /* Tenant pemilik = tenant PEMBUATNYA, dari penjaga — bukan input. */
             tenantId: result.tenant.tenantId,
           },

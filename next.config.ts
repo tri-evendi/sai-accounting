@@ -158,19 +158,17 @@ const nextConfig: NextConfig = {
     ];
   },
   /**
-   * `/pricing` → `/harga` (#413). Alamat halaman harga publik adalah
-   * `/harga` — keputusan #399: kueri pasar utama berbahasa Indonesia ("harga
-   * software akuntansi") dan setiap kompetitor lokal yang ditinjau memakai
-   * `/harga`. Tetapi antarmukanya tiga bahasa, dan orang yang mengetik atau
-   * menebak `/pricing` (bilah EN menyebut "Pricing") tidak boleh mendarat di
-   * 404. Pengalihan PERMANEN, bukan rewrite: kanonik tetap satu alamat
-   * (`alternates.canonical: "/harga"`, `sitemap.ts`), jadi mesin pencari
-   * tidak melihat dua halaman berisi sama. Redirect di sini dievaluasi
-   * SEBELUM sistem berkas dan sebelum `proxy.ts`, jadi `/pricing` tidak perlu
-   * masuk `isPublicPath`.
+   * `/harga` → `/pricing`. Alamat halaman harga publik kini `/pricing`;
+   * `/harga` adalah alamat LAMANYA (#399/#413) dan sudah terlanjur dibagikan
+   * serta terindeks, jadi ia tidak boleh menjadi 404. Pengalihan PERMANEN,
+   * bukan rewrite: kanonik tetap SATU alamat (`alternates.canonical:
+   * "/pricing"`, `sitemap.ts`), sehingga mesin pencari memindahkan peringkat
+   * alamat lama ke alamat baru alih-alih melihat dua halaman berisi sama.
+   * Redirect di sini dievaluasi SEBELUM sistem berkas dan sebelum `proxy.ts`,
+   * jadi `/harga` tidak perlu masuk `isPublicPath`.
    */
   async redirects() {
-    return [{ source: "/pricing", destination: "/harga", permanent: true }];
+    return [{ source: "/harga", destination: "/pricing", permanent: true }];
   },
 };
 

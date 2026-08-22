@@ -25,6 +25,7 @@ import { DocsShell } from "@/components/docs/docs-shell";
 import { PermissionMatrix } from "@/components/docs/permission-matrix";
 import { DOCS_ROOT, DOC_INDEX, docBranchAnchor, docBySlug, type DocBranch } from "@/lib/docs";
 import { DOC_BLOCKS } from "@/lib/docs-content";
+import { waktuBaca } from "@/lib/docs-text";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { Link } from "@/components/ui/app-link";
@@ -88,6 +89,12 @@ export default async function DocPage({
     <DocsShell
       judul={page.judul}
       ringkas={page.ringkas}
+      slug={page.slug}
+      /* Kolom "Di halaman ini" dibangkitkan dari blok `sub` HALAMAN INI —
+         daftar kedua yang diketik terpisah akan menyimpang dari judulnya pada
+         penyuntingan berikutnya. */
+      toc={DOC_BLOCKS[page.slug].flatMap((b) => (b.kind === "sub" ? [b.judul] : []))}
+      menitBaca={waktuBaca(DOC_BLOCKS[page.slug])}
       /*
        * Kembali ke BAGIAN-nya di daftar isi, bukan ke puncak daftar isi:
        * pembaca yang datang dari mesin pencari mendarat di tengah tanpa tahu

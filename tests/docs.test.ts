@@ -58,6 +58,7 @@ import {
 } from "@/lib/docs";
 import { DOC_BLOCKS } from "@/lib/docs-content";
 import { TERM_LIST } from "@/lib/labels";
+import { ENDPOINTS } from "@/lib/api-v1-spec";
 import { PERMISSIONS } from "@/lib/authz";
 
 const ROOT = join(__dirname, "..");
@@ -574,5 +575,79 @@ describe("peran & izin DIBANGKITKAN, bukan disalin (#73)", () => {
     expect(teks, "tidak menyebut dirinya bawaan").toContain("bawaan");
     expect(teks, "tidak menyebut override per sel").toContain("ditimpa");
     expect(teks, "tidak menyebut peran sebagai data").toContain("data");
+  });
+});
+/**
+ * Halaman API (`/docs/api`) — yang dijaga di sini BUKAN prosanya, melainkan
+ * dua hal yang diam-diam membusuk:
+ *
+ *  1. **Daftar endpointnya dibangkitkan**, sama seperti matriks izin. Endpoint
+ *     keenam harus muncul di dokumentasi tanpa siapa pun mengingatnya.
+ *  2. **Halamannya bisa DITEMUKAN dari layar Token API.** Ini kelas cacat yang
+ *     sudah pernah terjadi di sini: spesifikasi OpenAPI sudah ada sejak #389,
+ *     publik, dan lengkap — tetapi tidak satu pun permukaan menyebut
+ *     alamatnya, jadi bagi orang yang memegang token ia sama saja dengan tidak
+ *     ada. Dokumentasi yang tidak ditautkan adalah dokumentasi yang tidak ada.
+ */
+describe("dokumentasi API: dibangkitkan, dan BISA DITEMUKAN", () => {
+  const halaman = DOC_INDEX.find((p) =>
+    (p.navHrefs as readonly string[]).includes("/api-tokens")
+  );
+  const tabel = readFileSync(join(SRC, "components", "docs", "api-endpoints.tsx"), "utf8");
+  const layarToken = readFileSync(
+    join(
+      SRC,
+      "app",
+      "(app)",
+      "(dashboard)",
+      "t",
+      "[tenantSlug]",
+      "[companySlug]",
+      "api-tokens",
+      "api-tokens-client.tsx"
+    ),
+    "utf8"
+  );
+
+  it("halamannya ada dan memuat blok bangkitan", () => {
+    expect(halaman, "tidak ada halaman dokumen untuk /api-tokens").toBeDefined();
+    expect(DOC_BLOCKS[halaman!.slug].some((b) => b.kind === "endpoint-api")).toBe(true);
+  });
+
+  it("perendernya membaca `ENDPOINTS`, bukan daftar yang diketik", () => {
+    expect(tabel).toContain("ENDPOINTS");
+    for (const endpoint of ENDPOINTS) {
+      expect(tabel, `segmen ${endpoint.segment} diketik di perender`).not.toContain(
+        `"${endpoint.segment}"`
+      );
+      expect(tabel, `izin ${endpoint.permission} diketik di perender`).not.toContain(
+        `"${endpoint.permission}"`
+      );
+    }
+  });
+
+  it("prosanya tidak menyalin daftar endpoint yang sudah dibangkitkan", () => {
+    /*
+     * Satu contoh `curl` memang menyebut SATU segmen — itu contoh, bukan
+     * daftar. Yang ditolak di sini adalah prosa yang menyebut hampir semuanya:
+     * itu daftar tangan yang menyamar, dan ia akan tertinggal pada endpoint
+     * berikutnya persis seperti tabel tangan.
+     */
+    const prosa = JSON.stringify(DOC_BLOCKS[halaman!.slug]);
+    const disebut = ENDPOINTS.filter((e) => prosa.includes(`/${e.segment}`));
+    expect(
+      disebut.length,
+      `prosa menyebut ${disebut.length} dari ${ENDPOINTS.length} endpoint — pakai blok bangkitan`
+    ).toBeLessThan(ENDPOINTS.length);
+  });
+
+  it("layar Token API menautkan panduan DAN spesifikasinya", () => {
+    /*
+     * Alamatnya dirakit dari sumbernya (`docsPath`, `V1_ROOT`), jadi yang
+     * diperiksa di sini adalah pemanggilnya — bukan string jalur, yang justru
+     * TIDAK boleh diketik di sana.
+     */
+    expect(layarToken, "tidak menautkan panduan API").toContain('docsPath("api")');
+    expect(layarToken, "tidak menautkan spesifikasi OpenAPI").toContain("openapi.json");
   });
 });

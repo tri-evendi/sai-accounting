@@ -52,7 +52,26 @@ export type DocBlock =
    */
   | { kind: "istilah"; kunci: readonly TermKey[] }
   /** Matriks izin BAWAAN, dibangkitkan saat render (keputusan 4). */
-  | { kind: "matriks-izin" };
+  | { kind: "matriks-izin" }
+  /**
+   * Cuplikan yang harus dibaca KARAKTER PER KARAKTER — perintah, alamat,
+   * jawaban JSON. Dirender `<pre>` bertulisan monospace: sebuah `curl` yang
+   * dibungkus paragraf akan ikut dirapikan penyeimbang baris, dan tanda kutip
+   * yang berpindah baris adalah perintah yang gagal ditempel.
+   *
+   * `bahasa` hanya untuk pembaca manusia (label di sudut kotak); tidak ada
+   * pewarna sintaks di repo ini, dan menambahkannya demi empat cuplikan adalah
+   * harga yang salah — alasan yang sama yang menolak parser Markdown di atas.
+   */
+  | { kind: "kode"; bahasa: string; teks: string }
+  /**
+   * Daftar endpoint `/api/v1`, DIBANGKITKAN dari `lib/api-v1-spec.ts` saat
+   * render — alasan yang sama dengan `matriks-izin`: daftar endpoint yang
+   * diketik ke dalam prosa adalah daftar yang mulai berbohong pada endpoint
+   * berikutnya, dan penjaga `tests/api-v1-spec.test.ts` sudah menuntut
+   * spesifikasi itu sejalan dengan route-nya.
+   */
+  | { kind: "endpoint-api" };
 
 const MESIN_AKUNTANSI: readonly DocBlock[] = [
     {
@@ -291,6 +310,128 @@ const PERAN_IZIN: readonly DocBlock[] = [
     },
   ];
 
+/**
+ * API — halaman untuk orang yang sudah memegang token dan sedang mencari cara
+ * memakainya.
+ *
+ * ⚠ Daftar endpoint TIDAK diketik di sini: blok `endpoint-api` membangkitkannya
+ * dari `lib/api-v1-spec.ts`, sumber yang sama yang menyusun `openapi.json` dan
+ * yang dipaksa sejalan dengan route-nya oleh `tests/api-v1-spec.test.ts`.
+ * Alasannya sama dengan matriks izin: yang diketik ulang akan menyimpang, dan
+ * yang menyimpang di dokumentasi API baru ketahuan dari integrator.
+ */
+const API: readonly DocBlock[] = [
+    {
+      kind: "paragraf",
+      teks:
+        "Sebuah program lain — kasir di toko, marketplace, lembar kerja yang menarik angka setiap pagi — bisa membaca buku perusahaan ini tanpa seorang pun menyalin data dengan tangan. Jalannya API: alamat web yang mengembalikan data sebagai JSON, bukan sebagai halaman. Yang dipakai untuk masuk bukan nama pengguna dan kata sandi, melainkan TOKEN yang Anda terbitkan sendiri di layar Token API.",
+    },
+    {
+      kind: "paragraf",
+      teks:
+        "Satu hal yang perlu diketahui sebelum yang lain: API ini MEMBACA, tidak menulis. Tidak ada cara menerbitkan faktur atau memindahkan stok lewat jalur ini. Itu bukan fitur yang belum sempat dibuat, melainkan keputusan: setiap dokumen yang masuk lewat aplikasi melewati mesin akuntansi yang sama — jurnal berpasangan, ambang persetujuan, periode terkunci, kuota modul. Pintu tulis yang melewati semuanya akan menghasilkan buku yang tidak bisa dipertanggungjawabkan oleh orang yang menandatanganinya.",
+    },
+    { kind: "sub", judul: "Token BERPERAN, jadi izinnya bukan izin baru" },
+    {
+      kind: "paragraf",
+      teks:
+        "Sebuah token tidak punya daftar izinnya sendiri. Ia diterbitkan SEBAGAI salah satu peran yang ada di perusahaan ini, dan mendapat persis apa yang peran itu dapat — tidak lebih, dan ikut kehilangan akses ketika modulnya dimatikan atau izin perannya ditimpa. Karena itu pertanyaan “token ini boleh membaca apa” selalu punya satu jawaban yang sama dengan pertanyaan “peran ini boleh membaca apa”.",
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Terbitkan token untuk peran yang PALING SEDIKIT cukup. Sebuah penarik faktur tidak perlu peran yang juga boleh melihat gaji.",
+        "Satu token per sistem yang menyambung, bukan satu untuk semuanya — kalau salah satu bocor, yang dicabut hanya yang itu.",
+        "Token diperlihatkan sekali saat diterbitkan; yang tersimpan hanya sidik jarinya. Yang hilang tidak bisa dilihat lagi, hanya dicabut lalu diterbitkan ulang.",
+        "Mencabut berlaku seketika, pada permintaan berikutnya — bukan setelah tokennya kedaluwarsa, sebab token di sini memang tidak punya masa berlaku.",
+      ],
+    },
+    { kind: "sub", judul: "Perusahaannya ditentukan token, bukan alamat" },
+    {
+      kind: "paragraf",
+      teks:
+        "Alamat API tidak memuat nama tenant maupun nama PT. Sebuah token diterbitkan DI DALAM satu perusahaan dan selamanya membaca buku perusahaan itu saja. Konsekuensinya: kalau Anda memegang tiga PT, Anda memerlukan tiga token, dan sebuah program yang menarik ketiganya menyimpan ketiganya. Itu disengaja — alamat yang bisa menyebut PT lain adalah satu salah ketik antara buku yang benar dan buku tetangganya.",
+    },
+    { kind: "sub", judul: "Satu permintaan, dari awal sampai jawabannya" },
+    {
+      kind: "paragraf",
+      teks:
+        "Token dikirim di header Authorization dengan skema Bearer. Tidak ada bentuk lain: tidak lewat parameter kueri (ia tercatat di log server dan riwayat peramban), tidak lewat cookie.",
+    },
+    {
+      kind: "kode",
+      bahasa: "bash",
+      teks:
+        'curl -H "Authorization: Bearer sai_12_xxxxxxxxxxxxxxxxxxxxxxxx" \\\n  "https://buku.contoh.co.id/api/v1/customers?limit=50&offset=0"',
+    },
+    {
+      kind: "paragraf",
+      teks:
+        "Jawabannya selalu berbentuk sama: sebuah larik `data`, dan sebuah `meta` yang memberi tahu ada berapa seluruhnya dan apakah masih ada halaman berikutnya.",
+    },
+    {
+      kind: "kode",
+      bahasa: "json",
+      teks:
+        '{\n  "data": [\n    { "id": 7, "name": "PT Contoh Sejahtera", "isActive": true, "updatedAt": "2026-08-21T09:14:02.000Z" }\n  ],\n  "meta": { "total": 128, "limit": 50, "offset": 0, "hasMore": true }\n}',
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Ambil `meta.hasMore` apa adanya; jangan menghitung sendiri dari `total` dan `limit`. Yang menghitung sendiri berhenti satu halaman terlalu awal, diam-diam, dan kehilangan baris terakhir setiap kali.",
+        "Nilai kueri yang salah ditolak, bukan diperbaiki: `?limit=abc` menjawab 400, bukan diam-diam kembali ke bawaan. Parameter yang salah ketik dan tetap “berhasil” menghasilkan program yang tampak bekerja sambil menarik halaman yang salah selama berbulan-bulan.",
+        "`limit` di atas batas juga ditolak, bukan dipotong — penarik yang meminta 10.000 lalu menerima 200 tanpa diberi tahu akan menyimpulkan datanya memang cuma 200.",
+        "Tidak ada bentuk “kembalikan semuanya”. Daftar yang muat hari ini adalah daftar yang tidak muat setelah pelanggan keseratus.",
+      ],
+    },
+    { kind: "sub", judul: "Endpoint yang ada hari ini" },
+    { kind: "endpoint-api" },
+    { kind: "sub", judul: "Menarik hanya yang berubah" },
+    {
+      kind: "paragraf",
+      teks:
+        "Setiap baris membawa `updatedAt`, dan setiap daftar menerima `?updatedSince=` berisi waktu ISO-8601. Simpan `updatedAt` tertinggi yang pernah Anda terima, lalu kirimkan kembali pada penarikan berikutnya: yang datang hanya yang berubah sejak itu. Itulah selisih antara satu permintaan kecil per jam dan seluruh daftar per jam — dan pada buku yang sudah besar, selisih antara integrasi yang tetap cepat dan integrasi yang lama-lama ditinggalkan orang.",
+    },
+    {
+      kind: "kode",
+      bahasa: "bash",
+      teks:
+        'curl -H "Authorization: Bearer $SAI_TOKEN" \\\n  "https://buku.contoh.co.id/api/v1/invoices?updatedSince=2026-08-21T09:14:02Z&limit=200"',
+    },
+    {
+      kind: "paragraf",
+      teks:
+        "Urutannya `updatedAt` menaik dengan `id` sebagai pemutus seri. Itu yang membuat penarikan bertahap tidak pernah melewatkan atau menggandakan baris ketika dua dokumen berubah pada detik yang sama.",
+    },
+    { kind: "sub", judul: "Kalau jawabannya bukan 200" },
+    {
+      kind: "poin",
+      butir: [
+        "400 — permintaannya yang salah: parameter yang bukan angka, tanggal yang tidak terbaca, `limit` di luar batas. Pesannya menyebut parameter mana.",
+        "401 — kredensialnya bermasalah: tidak ada, salah, atau sudah dicabut. Ketiganya dijawab sama persis, dan itu disengaja — jawaban yang membedakannya menjadikan endpoint ini alat menebak token yang masih hidup.",
+        "403 — tokennya sah, tetapi perannya tidak berhak. Jawabannya menyebut izin yang kurang, supaya yang perlu diminta adalah token berperan lain, bukan tebakan peran satu per satu.",
+        "429 — terlalu banyak permintaan. Batasnya dihitung per TOKEN, bukan per alamat IP: dua sistem dengan tokennya masing-masing tidak saling menghabiskan jatah, dan satu program yang mengamuk tidak mematikan yang lain.",
+        "Ulangi permintaan yang gagal karena 429 atau galat jaringan dengan jeda yang membesar, bukan seketika. Penarik yang mengulang tanpa jeda adalah penarik yang menghabiskan jatahnya sendiri lalu menyalahkan servernya.",
+      ],
+    },
+    { kind: "sub", judul: "Spesifikasi mesin, untuk yang membangkitkan kode" },
+    {
+      kind: "paragraf",
+      teks:
+        "Seluruh bentuk di atas juga tersedia sebagai dokumen OpenAPI 3.1 di alamat `/api/v1/openapi.json` — setiap endpoint, setiap kolom, setiap tipe, beserta izin yang dituntutnya. Ia bisa dibuka pembangkit klien (kode penarik yang ditulis mesin), penguji API, atau alat dokumentasi apa pun yang membaca OpenAPI.",
+    },
+    {
+      kind: "catatan",
+      teks:
+        "Alamat spesifikasi itu TIDAK menuntut token, dan itu disengaja: seseorang harus bisa membaca bentuk API ini sebelum memutuskan meminta kredensial. Yang publik hanyalah BENTUKNYA — nama kolom dan tipe. Satu baris data pun tidak bisa dibaca tanpa token yang sah.",
+    },
+    {
+      kind: "paragraf",
+      teks:
+        "Yang tidak akan Anda temukan di sini: janji waktu tanggap, jaminan ketersediaan, dan versi kedua. `v1` di alamatnya adalah janji yang sudah dibuat — bentuk jawaban yang sudah terbit tidak diubah diam-diam; kolom baru boleh muncul, kolom yang ada tidak dicabut tanpa alamat versi baru.",
+    },
+  ];
+
 const PAKET: readonly DocBlock[] = [
     {
       kind: "paragraf",
@@ -453,6 +594,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "saldo-awal": SALDO_AWAL,
   "cocokkan-accurate": COCOK_ACCURATE,
   "peran-dan-izin": PERAN_IZIN,
+  "api": API,
   "paket-dan-perusahaan": PAKET,
   "membaca-laporan": LAPORAN,
   "data-anda": DATA_ANDA,

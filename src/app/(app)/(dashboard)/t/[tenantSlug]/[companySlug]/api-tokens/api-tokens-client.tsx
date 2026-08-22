@@ -13,6 +13,18 @@
  * menutup kotaknya. Sebuah peringatan yang datang terlambat adalah peringatan
  * yang menjelaskan kerugian, bukan mencegahnya.
  *
+ * ══ TOKEN TANPA PANDUAN ADALAH KREDENSIAL TANPA PINTU ══════════════════════
+ * Sampai halaman `/docs/api` ada, layar ini adalah SATU-SATUNYA tempat kata
+ * "API" muncul di aplikasi — dan ia tidak menyebut satu pun alamat, header,
+ * atau bentuk jawaban. Orang yang menerima token dari sini tidak punya jalan
+ * menemukan cara memakainya selain menebak. Karena itu dua tautan berdiri di
+ * bawah judul: panduannya (prosa, `/docs/api` — publik, bisa dikirim ke
+ * pengembang luar tanpa memberinya akun) dan spesifikasi mesinnya
+ * (`/api/v1/openapi.json`, untuk pembangkit klien).
+ *
+ * Keduanya `<Link>`/`<a>` biasa, bukan tombol: §Aksi utama per layar mengunci
+ * satu aksi utama di layar ini, dan aksi itu "Terbitkan".
+ *
  * ══ YANG DITAMPILKAN DI DAFTAR ═════════════════════════════════════════════
  * Nama, peran, TERAKHIR DIPAKAI, dan siapa yang menerbitkan. Kolom "terakhir
  * dipakai" yang paling berguna dan paling mudah dilupakan: ia satu-satunya cara
@@ -38,6 +50,9 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@/lib/i18n/client";
 import { useToast } from "@/components/ui/toast";
+import { Link } from "@/components/ui/app-link";
+import { V1_ROOT } from "@/lib/api-v1";
+import { docsPath } from "@/lib/docs";
 import { formatDateTime } from "@/lib/utils";
 
 const { Text } = Typography;
@@ -162,7 +177,26 @@ export function ApiTokensClient({
 
   return (
     <div>
-      <PageHeader title={t("apiTokens.title")} description={t("apiTokens.description")} />
+      <PageHeader
+        title={t("apiTokens.title")}
+        description={
+          <>
+            {t("apiTokens.description")}{" "}
+            {/* Alamat KEDUANYA dirakit dari sumbernya (`docsPath`, `V1_ROOT`),
+                bukan diketik: jalur yang diketik ulang adalah jalur yang
+                tertinggal saat rutenya pindah — dan tautan dokumentasi yang
+                mati lebih buruk daripada tidak ada tautan. */}
+            <Link href={docsPath("api")}>{t("apiTokens.docsLink")}</Link>
+            {" · "}
+            {/* Spesifikasi mesin: bukan halaman, melainkan berkas JSON — jadi
+                `<a>` biasa (pemuatan penuh, tab baru), bukan navigasi
+                sisi-klien yang akan mencoba merendernya sebagai rute. */}
+            <a href={`${V1_ROOT}/openapi.json`} target="_blank" rel="noopener noreferrer">
+              {t("apiTokens.specLink")}
+            </a>
+          </>
+        }
+      />
 
       <Card style={{ marginBottom: tk.marginLG }}>
         <CardHeader>

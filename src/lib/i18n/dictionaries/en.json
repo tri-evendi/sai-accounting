@@ -3658,7 +3658,7 @@
     "newTitle": "Add Company",
     "newDescription": "Create a new company with its own database.",
     "explainIsolation": "Each company keeps its own books — invoices, journals, stock and users are fully separate from every other company.",
-    "explainAdmin": "Your current account ({name}) automatically becomes Managing Director of this company — you are the first who can open its books and invite staff.",
+    "explainAdmin": "Your current account ({name}) automatically becomes System Administrator of this company — full access: you are the first who can open its books and invite staff. You can change the role any time on the Users page.",
     "explainNextStep": "Once created, open the company and run the setup wizard: identity, fiscal year, chart of accounts and opening balances.",
     "nameLabel": "Company name",
     "nameHelp": "The name shown in the company picker and on document letterheads.",

@@ -3658,7 +3658,7 @@
     "newTitle": "Tambah Perusahaan",
     "newDescription": "Membuat PT baru beserta basis datanya sendiri.",
     "explainIsolation": "Setiap perusahaan punya bukunya sendiri — faktur, jurnal, stok, dan penggunanya terpisah sepenuhnya dari perusahaan lain.",
-    "explainAdmin": "Akun Anda sekarang ({name}) otomatis menjadi Direktur Utama di perusahaan ini — Anda yang pertama bisa membuka bukunya dan mengundang staf.",
+    "explainAdmin": "Akun Anda sekarang ({name}) otomatis menjadi Administrator Sistem di perusahaan ini — akses penuh: Anda yang pertama bisa membuka bukunya dan mengundang staf. Perannya bisa Anda ubah kapan saja di halaman Pengguna.",
     "explainNextStep": "Setelah dibuat, buka perusahaannya lalu jalankan wizard penyiapan: identitas, tahun buku, bagan akun, dan saldo awal.",
     "nameLabel": "Nama perusahaan",
     "nameHelp": "Nama yang muncul di pemilih perusahaan dan di kop dokumen.",

@@ -33,6 +33,19 @@ tetap terbaca karena catatan audit menyimpan peran aktor. Keduanya berada di
 `FULL_ACCESS_ROLES` (`src/lib/constants.ts`) — SATU sumber untuk matriks izin,
 bawaan Mode Akuntan, dan sel anti-lockout.
 
+**Peran BAWAAN pembuat perusahaan = `administrator`**, bukan `managing_director`
+(`src/app/api/companies/route.ts`; `scripts/create-company.ts` untuk jalur operator).
+"Direktur Utama" adalah nama JABATAN — ia ikut terbaca di daftar pengguna, jejak audit,
+dan pilihan penyetuju — sementara yang mendaftarkan PT biasanya staf akunting, IT, atau
+konsultan, dan begitu direktur aslinya dibuatkan akun bukunya punya DUA Direktur Utama.
+Kuasanya identik (keduanya `FULL_ACCESS_ROLES`), jadi yang berubah hanya kejujuran
+namanya; yang memang Direktur Utama tinggal mengubah perannya sendiri di /users —
+perpindahan antar-peran berakses penuh, tak ada momen ia kehilangan pintu masuk.
+Kepemilikan LANGGANAN tidak lewat sini sama sekali: rumahnya `tenant_memberships.role
+= owner` (`TENANT_ROLES`, docs/MULTI-COMPANY.md). Keanggotaan LAMA sengaja TIDAK
+dimigrasi — sebagian pemilik buku lama memang direkturnya, dan menulis ulang peran
+mereka secara massal berarti mengubah fakta yang sudah terlanjur terbaca di jejak audit.
+
 Menambah peran = tambah di `ROLES`, lalu `tsc` memandu ke semua `Record` yang wajib diisi.
 Peran KUSTOM (di luar empat peran sistem) dibuat dari /permissions dan hidup sebagai
 data di tabel `roles` (migration 0031).

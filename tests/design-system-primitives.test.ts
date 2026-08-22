@@ -114,6 +114,21 @@ const RAW_BUTTON_ALLOWLIST = new Set([
    * luar aturan ini (lihat MASTER.md), jadi tidak ada pengecualian baru yang
    * menggantikannya.
    */
+  /*
+   * ── Kotak cari dokumentasi (issue #453) ─────────────────────────────────
+   * `Button` primitif adalah komponen AntD, dan komponen AntD adalah komponen
+   * KLIEN. Satu tombol kirim di sini akan menjadi modul klien PERTAMA di
+   * permukaan `/docs`, yang hari ini nol JavaScript — hidrasi yang dibayar
+   * setiap pembaca demi sebuah tombol yang pekerjaannya diselesaikan peramban
+   * (`<form method="get">` terkirim juga dengan Enter).
+   *
+   * Bukan pengecualian yang berdiri sendiri: `<input>`-nya sudah telanjang
+   * dengan alasan yang sama, dan keduanya digayakan token yang SAMA
+   * (`controlHeight`, radius, tepi, warna) sehingga rupanya sejalan dengan
+   * kendali app. Pola yang sudah dipakai formulir kontak pendaratan sebelum
+   * seksi itu dicabut. Alasan lengkapnya di kepala berkasnya.
+   */
+  "components/docs/docs-search-form.tsx",
 ]);
 
 /**

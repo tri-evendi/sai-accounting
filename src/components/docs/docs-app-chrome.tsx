@@ -26,7 +26,7 @@
  *    dimiliki keadaan 2.
  */
 
-import { KOLOM_BACA } from "@/components/docs/docs-shell";
+import { BINGKAI_DOKUMENTASI } from "@/components/docs/docs-shell";
 import { PlatformShell } from "@/components/tenant/platform-shell";
 import { navDokumentasi, type PembacaDokumentasi } from "@/lib/docs-chrome";
 import type { TranslateFn } from "@/lib/i18n/client";
@@ -48,16 +48,18 @@ export function DocsAppChrome({
       role={pembaca.tenantRole ?? ""}
     >
       {/*
-       * Kolom baca 768px DI DALAM area kerja yang lebar penuh. MASTER.md
-       * §Dokumentasi mengikat angka itu, dan ia mengikat justru di sini:
-       * membiarkan prosa ikut melebar mengikuti `Layout.Content` akan merusak
-       * persis yang sedang diperbaiki. Isian tepi TIDAK ditambahkan —
-       * `Layout.Content` milik `PlatformShell` sudah mengisinya.
+       * Bingkai dokumentasi DI DALAM area kerja yang lebar penuh: kolom baca
+       * 768px yang diikat MASTER.md §Dokumentasi hidup di dalamnya, bersama
+       * kolom kiri & kanan yang muncul HANYA kalau lebar yang tersisa memang
+       * cukup — `container-type` di konstanta itu yang mengukurnya, bukan lebar
+       * layar (`PlatformShell` sudah memakan ±240px untuk menunya). Isian tepi
+       * TIDAK ditambahkan: `Layout.Content` milik `PlatformShell` sudah
+       * mengisinya.
        *
        * `<main>` tidak ditulis di sini: `Layout.Content` AntD merendernya
        * sendiri, dan dua tengara "main" adalah markup tak sah.
        */}
-      <div data-docs style={KOLOM_BACA}>
+      <div data-docs style={BINGKAI_DOKUMENTASI}>
         {children}
       </div>
     </PlatformShell>

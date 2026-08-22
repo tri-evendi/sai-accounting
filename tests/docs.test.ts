@@ -59,6 +59,8 @@ import {
 import { DOC_BLOCKS } from "@/lib/docs-content";
 import { TERM_LIST } from "@/lib/labels";
 import { ENDPOINTS } from "@/lib/api-v1-spec";
+import { cariDokumentasi, indeksDokumentasi } from "@/lib/docs-search";
+import { waktuBaca } from "@/lib/docs-text";
 import { PERMISSIONS } from "@/lib/authz";
 
 const ROOT = join(__dirname, "..");
@@ -471,10 +473,20 @@ describe("satu halaman, DUA kulit", () => {
       .map(([berkas]) => berkas);
     expect(menulisSendiri, "Angka 768 disalin di luar `docs-shell.tsx`").toEqual([]);
 
+    /*
+     * Sejak #453 yang dipasang kedua kulit adalah BINGKAI (kolom kiri + kolom
+     * baca + kolom kanan); kolom bacanya sendiri dipasang `DocsShell` di dalam
+     * bingkai itu. Yang dijaga tetap sama: satu bentuk bersama, bukan dua yang
+     * akan bergeser sendiri — dan kulit aplikasi tetap yang paling mudah
+     * bergeser, sebab area kerjanya lebar penuh.
+     */
     for (const kulit of [KULIT_APLIKASI, "components/docs/docs-public-chrome.tsx"]) {
       const kode = BERKAS_DOKUMENTASI.get(kulit) ?? "";
-      expect(kode, `${kulit} tidak memakai kolom baca bersama`).toContain("KOLOM_BACA");
+      expect(kode, `${kulit} tidak memakai bingkai dokumentasi bersama`).toContain(
+        "BINGKAI_DOKUMENTASI"
+      );
     }
+    expect(shell, "kolom baca tidak lagi dipasang di dalam bingkai").toContain("KOLOM_BACA");
   });
 
   it("hanya SATU `<main>` di kedua kulit — `Layout.Content` sudah merendernya", () => {
@@ -649,5 +661,106 @@ describe("dokumentasi API: dibangkitkan, dan BISA DITEMUKAN", () => {
      */
     expect(layarToken, "tidak menautkan panduan API").toContain('docsPath("api")');
     expect(layarToken, "tidak menautkan spesifikasi OpenAPI").toContain("openapi.json");
+  });
+});
+/**
+ * Pencarian, kolom kiri, kolom kanan (issue #453).
+ *
+ * Yang dijaga di sini bukan tampilannya melainkan tiga janji yang diam-diam
+ * membusuk: indeks yang dibangun dari registri (bukan daftar kedua), jangkar
+ * TOC yang sama dengan jangkar perendernya, dan permukaan yang tetap NOL
+ * JavaScript — sebab satu `"use client"` di sini menghapus alasan seluruh
+ * bentuk ini dipilih.
+ */
+describe("pencarian & navigasi dokumentasi (#453)", () => {
+  it("mengindeks SETIAP halaman, dan katanya datang dari prosanya", () => {
+    const indeks = indeksDokumentasi();
+    expect(indeks.map((e) => e.slug).sort()).toEqual(DOC_INDEX.map((p) => p.slug).sort());
+    for (const entri of indeks) {
+      const kata = entri.bagian.map((b) => b.teks).join(" ").split(/\s+/).filter(Boolean);
+      expect(kata.length, `${entri.slug} terindeks tanpa satu kata pun`).toBeGreaterThan(50);
+    }
+  });
+
+  it("menemukan halaman lewat judul DAN lewat kalimat di badannya", () => {
+    /* Kueri diambil dari registri, bukan diketik: judul yang disunting tidak
+       boleh membuat penjaga ini merah karena alasan yang salah. */
+    const halaman = DOC_INDEX[0];
+    const lewatJudul = cariDokumentasi(halaman.judul.split(" ")[0]);
+    expect(lewatJudul.some((h) => h.slug === halaman.slug)).toBe(true);
+
+    /* Kata yang HANYA ada di badan, bukan di judul mana pun. */
+    const hasil = cariDokumentasi("jurnal pembalik");
+    expect(hasil.length).toBeGreaterThan(0);
+    expect(hasil[0].cuplikan.some((p) => p.cocok)).toBe(true);
+  });
+
+  it("SEMUA kata harus ada — bukan salah satu", () => {
+    /* Dua kata yang masing-masing ada, tetapi tidak pernah di halaman yang
+       sama, harus menjawab kosong. Kalau ini menjadi ATAU, setiap kueri dua
+       kata mengembalikan hampir seluruh dokumentasi. */
+    expect(cariDokumentasi("persediaan sokoguru")).toEqual([]);
+    expect(cariDokumentasi("")).toEqual([]);
+    expect(cariDokumentasi("a")).toEqual([]);
+  });
+
+  it("hasilnya menunjuk BAGIAN dengan jangkar yang benar-benar dirender", () => {
+    const berjangkar = DOC_INDEX.flatMap((halaman) =>
+      DOC_BLOCKS[halaman.slug]
+        .filter((b) => b.kind === "sub")
+        .map((b) => `/docs/${halaman.slug}#${docAnchor((b as { judul: string }).judul)}`)
+    );
+    for (const hasil of cariDokumentasi("jurnal")) {
+      if (!hasil.href.includes("#")) continue;
+      expect(berjangkar, `${hasil.href} menunjuk jangkar yang tidak ada`).toContain(hasil.href);
+    }
+  });
+
+  it("waktu baca DIHITUNG, dan bergerak mengikuti panjang halaman", () => {
+    const menit = DOC_INDEX.map((p) => waktuBaca(DOC_BLOCKS[p.slug]));
+    for (const m of menit) expect(m).toBeGreaterThanOrEqual(1);
+    /* Kalau semua halaman menghasilkan angka yang sama, yang dihitung bukan
+       panjangnya melainkan sesuatu yang konstan. */
+    expect(new Set(menit).size).toBeGreaterThan(1);
+  });
+
+  it("permukaan pencarian tetap NOL JavaScript", () => {
+    /*
+     * `docs-search.ts`/`docs-text.ts` mengimpor SELURUH prosa. Satu komponen
+     * klien yang mengimpornya menyeret puluhan kilobait dokumentasi ke bundel
+     * peramban — dan yang membuatnya berbahaya adalah ia tidak berbunyi:
+     * halamannya tetap benar, hanya lebih berat.
+     */
+    const klien = [...BERKAS_DOKUMENTASI].filter(([, kode]) => /^\s*"use client"/m.test(kode));
+    expect(klien.map(([berkas]) => berkas), "permukaan dokumentasi mulai memakai klien").toEqual([]);
+
+    const semuaSumber = sourceFiles(SRC).map((f) => [rel(f), readFileSync(f, "utf8")] as const);
+    const penyeret = semuaSumber
+      .filter(([, kode]) => /^\s*"use client"/m.test(kode))
+      .filter(([, kode]) => /@\/lib\/docs-(search|text|content)/.test(kode))
+      .map(([berkas]) => berkas);
+    expect(penyeret, "komponen klien mengimpor isi dokumentasi").toEqual([]);
+  });
+
+  it("halaman `/docs/cari` ada, dan tidak ada dokumen ber-slug `cari` yang menutupinya", () => {
+    expect([...BERKAS_DOKUMENTASI.keys()]).toContain("app/(app)/(docs)/docs/cari/page.tsx");
+    expect(DOC_INDEX.map((p) => p.slug)).not.toContain("cari");
+
+    const halaman = BERKAS_DOKUMENTASI.get("app/(app)/(docs)/docs/cari/page.tsx") ?? "";
+    /* Halaman hasil pencarian tidak boleh terindeks: isinya ditentukan
+       pengunjung, dan ribuan varian `?q=` dari satu halaman yang sama justru
+       menenggelamkan halaman dokumen yang menjawab pertanyaannya. */
+    expect(halaman).toMatch(/robots:\s*\{\s*index:\s*false/);
+  });
+
+  it("kolom kiri & kanan dibangkitkan dari registri, bukan diketik", () => {
+    const nav = BERKAS_DOKUMENTASI.get("components/docs/docs-nav.tsx") ?? "";
+    expect(nav).toContain("docsInBranch");
+    for (const halaman of DOC_INDEX) {
+      expect(nav, `judul ${halaman.slug} diketik di kolom kiri`).not.toContain(halaman.judul);
+    }
+
+    const toc = BERKAS_DOKUMENTASI.get("components/docs/docs-toc.tsx") ?? "";
+    expect(toc, "TOC memakai jangkar sendiri, bukan `docAnchor`").toContain("docAnchor");
   });
 });

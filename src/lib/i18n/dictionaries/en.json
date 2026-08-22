@@ -593,6 +593,17 @@
     "expense": "Operating Expenses",
     "other_expense": "Other Expenses"
   },
+  "expenseNature": {
+    "salary": "Salaries & employee benefits",
+    "professional_services": "Professional fees",
+    "rent": "Rent",
+    "depreciation": "Depreciation & amortisation",
+    "materials": "Materials & goods sold",
+    "utilities": "Utilities",
+    "transport": "Transport & travel",
+    "interest": "Interest & finance costs",
+    "levy": "Taxes & levies"
+  },
   "advanceType": {
     "sales": "Sales Advance",
     "purchase": "Purchase Advance"
@@ -1437,7 +1448,10 @@
       "EXPS": "Expenses",
       "OEXP": "Other expenses",
       "OINC": "Other income"
-    }
+    },
+    "expenseNatureField": "Nature of expense",
+    "expenseNatureNone": "Not set",
+    "expenseNatureHint": "What was spent on — the basis for note disclosures and withholding-tax matching. May be left empty."
   },
   "costCenters": {
     "title": "Cost Centres ({count})",

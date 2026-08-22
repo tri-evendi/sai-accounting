@@ -61,11 +61,45 @@ describe("bentuk daftar pemeriksaan", () => {
     expect(judul).toBe(keys.length);
   });
 
-  it("setiap SQL memulangkan kolom `label` yang dicetak pelapor", () => {
+  /*
+   * Setiap pemeriksaan harus menghasilkan `label` — TAPI ada dua jalan ke sana,
+   * dan keduanya sah sejak issue #444.
+   *
+   * Jalan pertama, yang lama: SQL-nya sendiri merakit `AS label`.
+   *
+   * Jalan kedua: SQL-nya cuma MENGUMPULKAN angka, dan `nilai` merakit labelnya
+   * di TypeScript. Itu ada karena tidak setiap aturan pantas ditulis sebagai
+   * SQL — pagar materialitas membandingkan tiap akun dengan TOTAL seluruh akun,
+   * dan menuliskannya sebagai SQL berarti menaruh aturan akuntansi di tempat
+   * yang tidak bisa diuji tanpa MySQL.
+   *
+   * Yang dijaga tetap sama: TIDAK ADA pemeriksaan yang diam-diam tak punya cara
+   * memberi tahu orang apa yang ditemukannya.
+   */
+  it("setiap pemeriksaan punya label — dari SQL-nya, atau dari aturan murni `nilai`", () => {
     const sqlCount = [...CODE.matchAll(/^\s*sql: `/gm)].length;
     const labelCount = [...CODE.matchAll(/AS label/g)].length;
+    const nilaiCount = [...CODE.matchAll(/^\s*nilai: /gm)].length;
     expect(sqlCount).toBe(keys.length);
-    expect(labelCount).toBeGreaterThanOrEqual(keys.length);
+    expect(labelCount + nilaiCount).toBeGreaterThanOrEqual(keys.length);
+  });
+
+  /*
+   * Pemeriksaan ber-`nilai` TIDAK BOLEH juga merakit `AS label` di SQL-nya.
+   * Label yang dirakit lalu dibuang adalah kode mati yang terbaca seperti
+   * kebenaran — dan di berkas ini ia sempat ada, ditulis semata agar penjaga di
+   * atas lulus. Itu bukan lulus, itu menyiasati.
+   */
+  /* Tanpa ini, kedua tes di atas lulus dengan daftar kosong begitu `nilai`
+     hilang dari berkasnya — "terbaca benar, tidak menjaga apa pun". */
+  it("ada pemeriksaan yang memang memakai `nilai`, jadi penjaganya tidak hampa", () => {
+    expect([...CODE.matchAll(/^\s*nilai: /gm)].length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("pemeriksaan ber-`nilai` tidak merakit label yang lalu dibuang", () => {
+    const blok = CODE.split(/^\s*\{$/gm);
+    const curang = blok.filter((b) => /^\s*nilai: /m.test(b) && /AS label/.test(b));
+    expect(curang).toEqual([]);
   });
 });
 

@@ -101,9 +101,9 @@ backups/
 /data/mail-outbox/
 /data/*.log
 
-# Berkas referensi ekspor Accurate (integrasi Accurate).
-# Isinya buku besar SUNGGUHAN milik PT pelanggan. `docs/accurate-reference.md`
+# Berkas referensi pihak ketiga (ekspor Accurate, terbitan Pajakku, dll).
+# Sebagian berisi buku besar SUNGGUHAN milik PT pelanggan. `docs/accurate-reference.md`
 # sudah menetapkan bahwa nilai spesifik PT tidak disimpan di repo — hanya
-# struktur & aturannya — dan tes integrasi ini memakai fixture SINTETIS, bukan
-# berkas ini. Sekali terdorong ke remote ia tetap ada di riwayat meski dihapus.
+# struktur & aturannya — dan fixture tes memakai data SINTETIS, bukan berkas ini.
+# Sekali terdorong ke remote ia tetap ada di riwayat meski dihapus.
 /data/referensi/

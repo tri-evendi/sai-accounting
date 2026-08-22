@@ -592,6 +592,17 @@
     "expense": "营业费用",
     "other_expense": "其他费用"
   },
+  "expenseNature": {
+    "salary": "工资与员工福利",
+    "professional_services": "专业服务费",
+    "rent": "租金",
+    "depreciation": "折旧与摊销",
+    "materials": "材料与已售商品",
+    "utilities": "水电通讯",
+    "transport": "交通与差旅",
+    "interest": "利息与融资费用",
+    "levy": "税费与规费"
+  },
   "advanceType": {
     "sales": "销售预收款",
     "purchase": "采购预付款"
@@ -1436,7 +1447,10 @@
       "EXPS": "费用",
       "OEXP": "其他费用",
       "OINC": "其他收入"
-    }
+    },
+    "expenseNatureField": "费用性质",
+    "expenseNatureNone": "尚未设定",
+    "expenseNatureHint": "支出的性质——附注披露与预扣税核对的依据。可留空。"
   },
   "costCenters": {
     "title": "成本中心（{count}）",

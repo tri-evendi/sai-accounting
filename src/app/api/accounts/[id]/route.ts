@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { accountSchema } from "@/lib/validations/account";
-import { normalBalanceFor } from "@/lib/accounting";
+import { normalBalanceFor, resolveExpenseNature } from "@/lib/accounting";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
@@ -55,7 +55,7 @@ export async function PUT(
     );
   }
 
-  const { code, name, type, currency, parentId, isActive } = parsed.data;
+  const { code, name, type, currency, parentId, expenseNature, isActive } = parsed.data;
 
   // An account cannot be its own parent.
   if (parentId === accountId) {
@@ -94,6 +94,7 @@ export async function PUT(
         currency,
         parentId: parentId ?? null,
         normalBalance: normalBalanceFor(type),
+        expenseNature: resolveExpenseNature(type, expenseNature),
         ...(isActive === undefined ? {} : { isActive }),
       },
     });

@@ -19,9 +19,9 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageLoader } from "@/components/ui/loading";
-import { ACCOUNT_TYPES } from "@/lib/accounting";
+import { ACCOUNT_TYPES, EXPENSE_NATURES, acceptsExpenseNature } from "@/lib/accounting";
 import { useDictionary, useT } from "@/lib/i18n/client";
-import { accountTypeLabels } from "@/lib/i18n/labels";
+import { accountTypeLabels, expenseNatureLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -37,6 +37,7 @@ interface AccountData {
   type: string;
   parentId: number | null;
   currency: string;
+  expenseNature: string | null;
   isActive: boolean;
 }
 
@@ -46,6 +47,7 @@ export function EditAccountForm() {
   const t = useT();
   const { token } = theme.useToken();
   const typeLabels = accountTypeLabels(useDictionary());
+  const natureLabels = expenseNatureLabels(useDictionary());
   const id = params.id;
 
   const [fetching, setFetching] = useState(true);
@@ -58,6 +60,7 @@ export function EditAccountForm() {
     type: ACCOUNT_TYPES[0].value,
     parentId: "",
     currency: "IDR",
+    expenseNature: "",
     isActive: "true",
   });
 
@@ -74,6 +77,7 @@ export function EditAccountForm() {
             type: acc.type,
             parentId: acc.parentId ? String(acc.parentId) : "",
             currency: acc.currency,
+            expenseNature: acc.expenseNature ?? "",
             isActive: acc.isActive ? "true" : "false",
           });
         }
@@ -100,6 +104,8 @@ export function EditAccountForm() {
         type: form.type,
         currency: form.currency,
         parentId: form.parentId ? Number(form.parentId) : null,
+        // "" berarti belum ditetapkan — dikirim null, bukan string kosong.
+        expenseNature: form.expenseNature || null,
         isActive: form.isActive === "true",
       }),
     });
@@ -190,6 +196,30 @@ export function EditAccountForm() {
                   options={CURRENCIES.map((c) => ({ value: c, label: c }))}
                 />
               </Col>
+              {acceptsExpenseNature(form.type) && (
+                <Col {...half}>
+                  {/* Hanya untuk akun BERKATEGORI beban (issue #445). Mengubah
+                      tipe akun menjadi bukan-beban membuang sifatnya di server
+                      (`resolveExpenseNature`), jadi tak ada sifat yatim yang
+                      tertinggal menempel dan ikut terjumlah ke rincian CALK. */}
+                  <Select
+                    id="expenseNature"
+                    label={t("accounts.expenseNatureField")}
+                    value={form.expenseNature}
+                    onChange={(e) => setForm({ ...form, expenseNature: e.target.value })}
+                    options={[
+                      { value: "", label: t("accounts.expenseNatureNone") },
+                      ...EXPENSE_NATURES.map((n) => ({
+                        value: n.value,
+                        label: natureLabels[n.value],
+                      })),
+                    ]}
+                  />
+                  <small style={{ color: token.colorTextSecondary }}>
+                    {t("accounts.expenseNatureHint")}
+                  </small>
+                </Col>
+              )}
               <Col {...half}>
                 {/* Nonaktif, BUKAN hapus — akun yang pernah dijurnal harus tetap
                     terbaca namanya selamanya. */}

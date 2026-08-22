@@ -1020,6 +1020,18 @@ model Account {
   normalBalance String   @map("normal_balance") @db.VarChar(6) // debit | credit
   parentId      Int?     @map("parent_id")
   currency      String   @default("IDR") @db.VarChar(5)
+  /// SIFAT beban akun ini (issue #445) — apa yang dibelanjakan, bukan untuk apa:
+  /// gaji, sewa, penyusutan, imbalan jasa profesional. Nilainya enum-like
+  /// snake_case, daftarnya `EXPENSE_NATURES` di src/lib/accounting.ts.
+  ///
+  /// NULLABLE dan itu bermakna: NULL = "belum ditetapkan", BUKAN data hilang —
+  /// jadi tak ada backfill, setiap akun yang sudah ada tetap sah, dan laporan
+  /// tak berubah satu rupiah pun di hari pertama. Preseden yang sama dengan
+  /// `journal_lines.cost_center_id` (issue #91).
+  ///
+  /// Hanya bermakna pada akun berkategori BEBAN; akun aset/kewajiban/ekuitas
+  /// mengabaikannya (`acceptsExpenseNature`).
+  expenseNature String?  @map("expense_nature") @db.VarChar(30)
   isActive      Boolean  @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")

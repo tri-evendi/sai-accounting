@@ -17,10 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { ACCOUNT_TYPES } from "@/lib/accounting";
+import { ACCOUNT_TYPES, EXPENSE_NATURES, acceptsExpenseNature } from "@/lib/accounting";
 import { useT } from "@/lib/i18n/client";
 import { useDictionary } from "@/lib/i18n/client";
-import { accountTypeLabels } from "@/lib/i18n/labels";
+import { accountTypeLabels, expenseNatureLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -35,6 +35,7 @@ export function NewAccountForm() {
   const t = useT();
   const { token } = theme.useToken();
   const typeLabels = accountTypeLabels(useDictionary());
+  const natureLabels = expenseNatureLabels(useDictionary());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [parents, setParents] = useState<AccountOption[]>([]);
@@ -44,6 +45,7 @@ export function NewAccountForm() {
     type: ACCOUNT_TYPES[0].value,
     parentId: "",
     currency: "IDR",
+    expenseNature: "",
   });
 
   useEffect(() => {
@@ -66,6 +68,9 @@ export function NewAccountForm() {
         name: form.name,
         type: form.type,
         currency: form.currency,
+        // "" berarti belum ditetapkan, dan itu jawaban yang sah — dikirim
+        // sebagai null, bukan sebagai string kosong yang akan ditolak enum.
+        expenseNature: form.expenseNature || null,
         parentId: form.parentId ? Number(form.parentId) : null,
       }),
     });
@@ -156,6 +161,29 @@ export function NewAccountForm() {
                   options={CURRENCIES.map((c) => ({ value: c, label: c }))}
                 />
               </Col>
+              {acceptsExpenseNature(form.type) && (
+                <Col {...half}>
+                  {/* Hanya untuk akun BERKATEGORI beban (issue #445). Pada tipe
+                      lain isian ini tidak muncul, dan servernya pun menolak
+                      menyimpannya — `resolveExpenseNature` di satu tempat. */}
+                  <Select
+                    id="expenseNature"
+                    label={t("accounts.expenseNatureField")}
+                    value={form.expenseNature}
+                    onChange={(e) => setForm({ ...form, expenseNature: e.target.value })}
+                    options={[
+                      { value: "", label: t("accounts.expenseNatureNone") },
+                      ...EXPENSE_NATURES.map((n) => ({
+                        value: n.value,
+                        label: natureLabels[n.value],
+                      })),
+                    ]}
+                  />
+                  <small style={{ color: token.colorTextSecondary }}>
+                    {t("accounts.expenseNatureHint")}
+                  </small>
+                </Col>
+              )}
             </Row>
           </CardContent>
         </Card>

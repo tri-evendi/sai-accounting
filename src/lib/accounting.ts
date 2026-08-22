@@ -39,6 +39,106 @@ export const ACCOUNT_TYPES: AccountTypeDef[] = [
 
 export const ACCOUNT_TYPE_VALUES = ACCOUNT_TYPES.map((t) => t.value) as [string, ...string[]];
 
+/**
+ * Tipe akun yang berkategori BEBAN — diturunkan, tidak diketik ulang.
+ *
+ * Ada karena penyaring di luar modul ini (pemeriksa kesesuaian data, laporan
+ * sifat beban) butuh daftarnya, dan daftar yang disalin akan menyimpang pada
+ * tipe beban berikutnya yang ditambahkan — persis kelas cacat yang pemeriksa
+ * itu sendiri dibuat untuk menemukan.
+ */
+export const EXPENSE_ACCOUNT_TYPE_VALUES: readonly string[] = ACCOUNT_TYPES.filter(
+  (t) => t.category === "expense"
+).map((t) => t.value);
+
+/**
+ * Tipe akun "Beban Lain-lain" — band di luar usaha pada Laba Rugi.
+ *
+ * Disebut sebagai konstanta karena ia PUNYA MAKNA di luar dirinya: sejak
+ * Coretax, akun "Lain-Lain" berskala material diprioritaskan sebagai target
+ * koreksi fiskal positif otomatis, sebab sifat objek pajaknya sulit
+ * diidentifikasi sistem pengawasan (issue #444). Yang membaca konstanta ini
+ * adalah pagar materialitas di `@/lib/materiality`.
+ */
+export const CATCH_ALL_EXPENSE_TYPE = "other_expense";
+
+// ─── Sifat Beban / nature of expense (issue #445) ────────────────────────────
+
+export interface ExpenseNatureDef {
+  value: string;
+  label: string;
+}
+
+/**
+ * SIFAT sebuah beban — apa yang dibelanjakan, bukan untuk apa.
+ *
+ * ══ KENAPA INI TIDAK BISA DITEBAK DARI NAMA AKUN ═══════════════════════════
+ * Bagan akun bawaan kebetulan sudah terpisah menurut sifat: "Beban Gaji &
+ * Tunjangan", "Beban Sewa", "Beban Penyusutan". Yang memisahkannya hanyalah
+ * NAMA YANG DIKETIK MANUSIA, dan setiap PT menyunting bagan akunnya. Perusahaan
+ * pertama yang menamai akunnya "Beban Personalia" memutus kaitan itu tanpa satu
+ * galat pun — dan yang berdiri di atasnya adalah dua hal yang tidak boleh
+ * meleset: rincian CALK, dan equalisasi PPh yang menyandingkan beban gaji
+ * dengan SPT Masa PPh 21.
+ *
+ * Mencocokkan dengan `LIKE '%gaji%'` bukan dasar yang pantas untuk angka yang
+ * dikirim ke DJP.
+ *
+ * ══ SENGAJA PENDEK, DAN SENGAJA TANPA "LAINNYA" ════════════════════════════
+ * Setiap nilai enum yang pernah tersimpan harus ditanggung selamanya, jadi
+ * daftar panjang yang tak dipakai siapa pun lebih buruk daripada daftar pendek
+ * yang bisa ditambah.
+ *
+ * Yang TIDAK ada di sini adalah "Lainnya", dan ketiadaannya disengaja: seluruh
+ * alasan penanda ini lahir adalah melawan penampung (#444), jadi menyediakan
+ * penampung di dalam penandanya sendiri akan membatalkan dirinya. Akun yang
+ * sungguh-sungguh tidak masuk satu pun sifat di bawah cukup dibiarkan KOSONG —
+ * dan itu pertanda daftarnya perlu entri baru, bukan pertanda ia perlu ember.
+ */
+export const EXPENSE_NATURES: ExpenseNatureDef[] = [
+  { value: "salary", label: "Gaji & Imbalan Kerja" },
+  { value: "professional_services", label: "Imbalan Jasa Profesional" },
+  { value: "rent", label: "Sewa" },
+  { value: "depreciation", label: "Penyusutan & Amortisasi" },
+  { value: "materials", label: "Bahan & Barang Terjual" },
+  { value: "utilities", label: "Utilitas" },
+  { value: "transport", label: "Transportasi & Perjalanan" },
+  { value: "interest", label: "Bunga & Biaya Keuangan" },
+  { value: "levy", label: "Pajak & Retribusi" },
+];
+
+export const EXPENSE_NATURE_VALUES = EXPENSE_NATURES.map((n) => n.value) as [string, ...string[]];
+
+const NATURE_MAP: Record<string, ExpenseNatureDef> = Object.fromEntries(
+  EXPENSE_NATURES.map((n) => [n.value, n])
+);
+
+/** Label bahasa Indonesia; kamus yang menerjemahkannya untuk layar. */
+export function expenseNatureLabel(value: string): string {
+  return NATURE_MAP[value]?.label ?? value;
+}
+
+/** Sifat beban hanya bermakna pada akun BERKATEGORI beban. */
+export function acceptsExpenseNature(type: string): boolean {
+  return accountCategoryFor(type) === "expense";
+}
+
+/**
+ * Sifat yang BOLEH tersimpan untuk sebuah tipe akun.
+ *
+ * Satu tempat, dipakai setiap jalur tulis (buat, ubah, semai). Tanpa ini,
+ * akun bank bisa membawa sifat "gaji", dan — yang jauh lebih mudah terjadi —
+ * sebuah akun beban yang KEMUDIAN diubah tipenya jadi aset akan meninggalkan
+ * sifat lamanya menempel di sana, ikut terjumlah ke rincian CALK dari sebuah
+ * baris yang bukan beban sama sekali.
+ */
+export function resolveExpenseNature(
+  type: string,
+  nature: string | null | undefined
+): string | null {
+  return acceptsExpenseNature(type) ? (nature ?? null) : null;
+}
+
 const TYPE_MAP: Record<string, AccountTypeDef> = Object.fromEntries(
   ACCOUNT_TYPES.map((t) => [t.value, t])
 );
@@ -79,6 +179,12 @@ export interface CoaTemplateRow {
    * yang sudah ada.
    */
   module?: string;
+  /**
+   * Sifat beban bawaan (issue #445). Hanya untuk baris berkategori beban;
+   * KOSONG berarti "belum ditetapkan" dan itu jawaban yang sah — lihat
+   * `EXPENSE_NATURES`.
+   */
+  nature?: string;
 }
 
 export const COA_TEMPLATE: CoaTemplateRow[] = [
@@ -135,13 +241,13 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   { code: "4102", name: "Retur Penjualan", type: "revenue", module: "sales" },
 
   // 5xxx COGS
-  { code: "5101", name: "Beban Pokok Penjualan", type: "cogs", module: "inventory" },
+  { code: "5101", name: "Beban Pokok Penjualan", type: "cogs", module: "inventory", nature: "materials" },
 
   // 6xxx EXPENSES
   { code: "6101", name: "Beban Operasional", type: "expense" },
-  { code: "610101", name: "Beban Gaji & Tunjangan", type: "expense", parent: "6101" },
-  { code: "610102", name: "Beban Sewa", type: "expense", parent: "6101" },
-  { code: "610103", name: "Beban Penyusutan", type: "expense", parent: "6101", module: "fixed_assets" },
+  { code: "610101", name: "Beban Gaji & Tunjangan", type: "expense", parent: "6101", nature: "salary" },
+  { code: "610102", name: "Beban Sewa", type: "expense", parent: "6101", nature: "rent" },
+  { code: "610103", name: "Beban Penyusutan", type: "expense", parent: "6101", module: "fixed_assets", nature: "depreciation" },
   { code: "610104", name: "Beban Administrasi & Umum", type: "expense", parent: "6101" },
   // Selisih Persediaan (issue #57) — akun tunggal untuk penyesuaian stok opname:
   // susut (fisik < sistem) mendebit sebagai kerugian; lebih (fisik > sistem)
@@ -157,5 +263,5 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   // `other_income` (normal credit) mirrors 7101; a loss simply carries a debit
   // balance, as a realised FX loss does on 7101.
   { code: "7103", name: "Laba/Rugi Pelepasan Aset Tetap", type: "other_income", module: "fixed_assets" },
-  { code: "7201", name: "Beban Bunga & Administrasi Bank", type: "other_expense" },
+  { code: "7201", name: "Beban Bunga & Administrasi Bank", type: "other_expense", nature: "interest" },
 ];

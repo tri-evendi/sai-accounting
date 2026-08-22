@@ -592,6 +592,17 @@
     "expense": "Beban Operasional",
     "other_expense": "Beban Lain-lain"
   },
+  "expenseNature": {
+    "salary": "Gaji & Imbalan Kerja",
+    "professional_services": "Imbalan Jasa Profesional",
+    "rent": "Sewa",
+    "depreciation": "Penyusutan & Amortisasi",
+    "materials": "Bahan & Barang Terjual",
+    "utilities": "Utilitas",
+    "transport": "Transportasi & Perjalanan",
+    "interest": "Bunga & Biaya Keuangan",
+    "levy": "Pajak & Retribusi"
+  },
   "advanceType": {
     "sales": "Uang Muka Penjualan",
     "purchase": "Uang Muka Pembelian"
@@ -1436,7 +1447,10 @@
       "EXPS": "Beban",
       "OEXP": "Beban lain-lain",
       "OINC": "Pendapatan lain-lain"
-    }
+    },
+    "expenseNatureField": "Sifat Beban",
+    "expenseNatureNone": "Belum ditetapkan",
+    "expenseNatureHint": "Apa yang dibelanjakan — bahan rincian CALK dan pencocokan PPh. Boleh dikosongkan."
   },
   "costCenters": {
     "title": "Pusat Biaya ({count})",

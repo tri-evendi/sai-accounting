@@ -58,6 +58,9 @@
 
 import { ReadOutlined } from "@ant-design/icons";
 
+import { DocsNav } from "@/components/docs/docs-nav";
+import { DocsSearchForm } from "@/components/docs/docs-search-form";
+import { DocsToc } from "@/components/docs/docs-toc";
 import { Link } from "@/components/ui/app-link";
 import { DOCS_ROOT } from "@/lib/docs";
 import { getLocale, getT } from "@/lib/i18n/server";
@@ -81,6 +84,35 @@ export const KOLOM_BACA: React.CSSProperties = {
   margin: "0 auto",
 };
 
+/** Kolom kiri (daftar halaman) & kolom kanan (di halaman ini). */
+const LEBAR_SISI = 220;
+const LEBAR_TOC = 200;
+
+/**
+ * Bingkai luar: kolom kiri + kolom baca + kolom kanan, beserta dua jarak 24px
+ * di antaranya. Angkanya DIHITUNG, bukan diketik — mengubah salah satu kolom
+ * tidak boleh menuntut orang menghitung ulang lebar totalnya di kepala.
+ */
+export const LEBAR_BINGKAI = LEBAR_SISI + LEBAR_BACA + LEBAR_TOC + 24 * 2;
+
+/**
+ * Yang dipasang KEDUA kulit — menggantikan `KOLOM_BACA` di sana.
+ *
+ * ⚠ `container-type: inline-size`, dan itu inti keputusannya. Titik patah
+ * permukaan ini TIDAK BOLEH mengikuti lebar layar: di kulit aplikasi,
+ * `PlatformShell` sudah memakan ±240px untuk menunya sendiri, jadi layar 1200px
+ * hanya menyisakan ±950px untuk dokumentasi. Aturan `@media` akan memasang tiga
+ * kolom di sana dan memeras kolom baca menjadi ±460px — setengah lebar yang
+ * diikat MASTER.md. `@container` menanyakan lebar yang benar-benar tersedia,
+ * jadi satu aturan melayani kedua kulit tanpa bercabang.
+ */
+export const BINGKAI_DOKUMENTASI: React.CSSProperties = {
+  containerType: "inline-size",
+  width: "100%",
+  maxWidth: LEBAR_BINGKAI,
+  margin: "0 auto",
+};
+
 /**
  * Aturan yang tak punya bentuk sebaris — lihat catatan di kepala berkas.
  *
@@ -99,6 +131,28 @@ export const KOLOM_BACA: React.CSSProperties = {
  */
 const ATURAN_DOKUMENTASI = `
 :root:has([data-docs]){scroll-behavior:smooth}
+[data-docs-grid]{display:grid;gap:var(--ant-margin-lg);grid-template-columns:minmax(0,1fr);grid-template-areas:"toc" "main"}
+[data-docs-side]{display:none;grid-area:side}
+[data-docs-toc]{grid-area:toc}
+[data-docs-main]{grid-area:main;min-width:0}
+[data-docs-topbar]{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--ant-margin-xs)}
+[data-docs-sr]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border-width:0}
+[data-docs-search] input,[data-docs-search] button{transition:border-color 150ms ease,color 150ms ease}
+[data-docs-search] input:hover,[data-docs-search] button:hover{border-color:var(--ant-color-primary-border)}
+[data-docs-search] button:hover{color:var(--ant-color-text)}
+[data-docs-search] input:focus-visible,[data-docs-search] button:focus-visible{outline:var(--ant-line-width-focus) solid var(--ant-color-primary);outline-offset:1px}
+[data-docs-nav-item]{transition:color 150ms ease,border-color 150ms ease}
+[data-docs-nav-item]:hover{color:var(--ant-color-link-hover)}
+[data-docs-nav-item]:focus-visible{outline:var(--ant-line-width-focus) solid var(--ant-color-primary);outline-offset:2px;border-radius:var(--ant-border-radius)}
+[data-docs-toc-item]{transition:color 150ms ease}
+[data-docs-toc-item]:hover{color:var(--ant-color-link-hover);text-decoration:underline}
+[data-docs-toc-item]:focus-visible{outline:var(--ant-line-width-focus) solid var(--ant-color-primary);outline-offset:2px;border-radius:var(--ant-border-radius)}
+[data-docs-hit]{transition:background-color 150ms ease,border-color 150ms ease}
+[data-docs-hit]:hover{background:var(--ant-color-fill-quaternary);border-color:var(--ant-color-primary-border)}
+[data-docs-hit]:hover [data-docs-hit-title]{color:var(--ant-color-link-hover)}
+[data-docs-hit]:focus-visible{outline:var(--ant-line-width-focus) solid var(--ant-color-primary);outline-offset:2px}
+@container (min-width:900px){[data-docs-grid]{grid-template-columns:${LEBAR_SISI}px minmax(0,1fr);grid-template-areas:"side toc" "side main"}[data-docs-side]{display:block;position:sticky;top:var(--ant-margin-lg);align-self:start}}
+@container (min-width:1160px){[data-docs-grid]{grid-template-columns:${LEBAR_SISI}px minmax(0,1fr) ${LEBAR_TOC}px;grid-template-areas:"side main toc";align-items:start}[data-docs-toc]{position:sticky;top:var(--ant-margin-lg);align-self:start}}
 [data-docs-row]{transition:color 150ms ease}
 [data-docs-row]:hover [data-docs-row-title],[data-docs-row]:focus-visible [data-docs-row-title]{color:var(--ant-color-link-hover);text-decoration:underline}
 [data-docs-row]:hover [data-docs-row-arrow],[data-docs-row]:focus-visible [data-docs-row-arrow]{color:var(--ant-color-link-hover)}
@@ -171,7 +225,14 @@ const KONTEKS: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "var(--ant-margin-xxs)",
-  marginBottom: "var(--ant-margin-xs)",
+  fontSize: "var(--ant-font-size-sm)",
+  color: "var(--ant-color-text-tertiary)",
+};
+
+/** Waktu baca — di bawah ringkasan, sekecil catatan kaki. */
+const WAKTU_BACA: React.CSSProperties = {
+  margin: 0,
+  marginTop: "var(--ant-margin-xs)",
   fontSize: "var(--ant-font-size-sm)",
   color: "var(--ant-color-text-tertiary)",
 };
@@ -181,6 +242,14 @@ export interface DocsShellProps {
   ringkas?: string;
   /** Baris konteks kecil di atas judul (dipakai halaman dokumen, bukan daftar isi). */
   konteks?: React.ReactNode;
+  /** Halaman yang sedang dibuka — menandai butir aktif di kolom kiri. */
+  slug?: string;
+  /** Sub-judul halaman ini, untuk kolom "Di halaman ini". Kosong = tanpa kolom. */
+  toc?: readonly string[];
+  /** Menit baca, DIHITUNG pemanggilnya dari blok halaman (`lib/docs-text.ts`). */
+  menitBaca?: number;
+  /** Kueri yang sedang berlaku — diisikan kembali ke kotak cari. */
+  kueri?: string;
   children: React.ReactNode;
 }
 
@@ -197,7 +266,16 @@ export interface DocsShellProps {
  * mengikuti bahasa sesi. Itu disengaja, dan tidak berubah karena chrome-nya
  * kini bisa berupa chrome aplikasi.
  */
-export async function DocsShell({ judul, ringkas, konteks, children }: DocsShellProps) {
+export async function DocsShell({
+  judul,
+  ringkas,
+  konteks,
+  slug,
+  toc,
+  menitBaca,
+  kueri,
+  children,
+}: DocsShellProps) {
   const locale = await getLocale();
   const t = await getT();
 
@@ -207,29 +285,57 @@ export async function DocsShell({ judul, ringkas, konteks, children }: DocsShell
         {ATURAN_DOKUMENTASI}
       </style>
 
-      <div>
-        {konteks && <div style={KONTEKS}>{konteks}</div>}
-        <h1 style={JUDUL}>{judul}</h1>
-        {ringkas && <p style={RINGKAS}>{ringkas}</p>}
-      </div>
-
-      {locale !== DEFAULT_LOCALE && (
-        <div style={PEMBERITAHUAN_BAHASA}>
-          <strong style={{ display: "flex", alignItems: "center", gap: "var(--ant-margin-xxs)" }}>
-            <ReadOutlined aria-hidden="true" />
-            {t("docs.languageNotice")}
-          </strong>
-          <span>{t("docs.languageNoticeWhy")}</span>
+      <div data-docs-grid="">
+        {/* Kolom kiri: daftar halaman. Tidak dirender di bawah 900px lebar
+            BINGKAI (bukan lebar layar) — lihat kepala `docs-nav.tsx`. */}
+        <div data-docs-side="">
+          <DocsNav t={t} slug={slug} />
         </div>
-      )}
 
-      {children}
+        {toc && toc.length > 0 && (
+          <div data-docs-toc="">
+            <DocsToc judul={toc} t={t} />
+          </div>
+        )}
 
-      <footer style={KAKI}>
-        <Link href={DOCS_ROOT} style={{ color: "var(--ant-color-link)" }}>
-          {t("docs.backToIndex")}
-        </Link>
-      </footer>
+        <div data-docs-main="" style={KOLOM_BACA}>
+          {/* Baris atas: konteks di kiri, kotak cari di kanan. Kotak cari
+              berdiri DI SINI dan bukan di kulit karena kulitnya dua, dan yang
+              satu (`PlatformShell`) bukan milik permukaan ini. */}
+          <div data-docs-topbar="">
+            {konteks ? <div style={KONTEKS}>{konteks}</div> : <span />}
+            <DocsSearchForm t={t} nilai={kueri} />
+          </div>
+
+          <div>
+            <h1 style={JUDUL}>{judul}</h1>
+            {ringkas && <p style={RINGKAS}>{ringkas}</p>}
+            {menitBaca !== undefined && (
+              <p style={WAKTU_BACA}>{t("docs.readingTime", { minutes: menitBaca })}</p>
+            )}
+          </div>
+
+          {locale !== DEFAULT_LOCALE && (
+            <div style={PEMBERITAHUAN_BAHASA}>
+              <strong
+                style={{ display: "flex", alignItems: "center", gap: "var(--ant-margin-xxs)" }}
+              >
+                <ReadOutlined aria-hidden="true" />
+                {t("docs.languageNotice")}
+              </strong>
+              <span>{t("docs.languageNoticeWhy")}</span>
+            </div>
+          )}
+
+          {children}
+
+          <footer style={KAKI}>
+            <Link href={DOCS_ROOT} style={{ color: "var(--ant-color-link)" }}>
+              {t("docs.backToIndex")}
+            </Link>
+          </footer>
+        </div>
+      </div>
     </>
   );
 }

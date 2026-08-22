@@ -34,7 +34,14 @@ const PARAGRAF: React.CSSProperties = {
 
 const SUB: React.CSSProperties = {
   margin: 0,
-  marginTop: "var(--ant-margin-sm)",
+  /*
+   * 32px, bukan 12px. Jarak antar-blok di kolom ini 24px (irama app), jadi
+   * sub-judul berjarak 12px justru berdiri LEBIH DEKAT ke paragraf di atasnya
+   * daripada ke paragraf miliknya sendiri — pembaca yang memindai melihat satu
+   * blok panjang, bukan bagian-bagian. Ini satu-satunya tempat irama 24px
+   * dilampaui, dan lampauannya satu anak tangga.
+   */
+  marginTop: "var(--ant-margin-xl)",
   /* Sub-judul 20px — satu anak tangga di bawah judul halaman (30px). */
   fontSize: "var(--ant-font-size-heading-4)",
   fontWeight: 600,
@@ -45,7 +52,7 @@ const SUB: React.CSSProperties = {
    * kali adalah paragraf di bawahnya — pembaca tidak pernah melihat judul yang
    * memberi tahu ia sampai di tempat yang benar.
    */
-  scrollMarginTop: "var(--ant-margin-lg)",
+  scrollMarginTop: "var(--ant-margin-xl)",
 };
 
 const DAFTAR: React.CSSProperties = {
@@ -67,6 +74,18 @@ const CATATAN: React.CSSProperties = {
   fontSize: "var(--ant-font-size)",
   lineHeight: 1.7,
   color: "var(--ant-color-text-secondary)",
+};
+
+/** Nada `peringatan` — tepi & latar peringatan, DAN kata penanda di depannya. */
+const CATATAN_PERINGATAN: React.CSSProperties = {
+  ...CATATAN,
+  border: "1px solid var(--ant-color-warning-border)",
+  background: "var(--ant-color-warning-bg)",
+};
+
+const PENANDA_PERINGATAN: React.CSSProperties = {
+  fontWeight: 600,
+  color: "var(--ant-color-text)",
 };
 
 const KODE_KOTAK: React.CSSProperties = {
@@ -98,6 +117,9 @@ const KODE: React.CSSProperties = {
   fontSize: "var(--ant-font-size-sm)",
   lineHeight: 1.7,
   color: "var(--ant-color-text)",
+  /* Perintah yang ditempel orang: tab 8 kolom bawaan peramban mematahkan
+     baris `curl` yang sudah pas di 768px. */
+  tabSize: 2,
   /* Baris panjang digulung, TIDAK dipatah: perintah yang patah di tengah
      tanda kutip adalah perintah yang gagal saat ditempel. */
   whiteSpace: "pre",
@@ -204,7 +226,19 @@ async function Blok({
        * Wajib). Catatan di dalam sebuah dokumen statis tidak mendesak apa pun;
        * ia bagian dari bacaannya.
        */
-      return <div style={CATATAN}>{blok.teks}</div>;
+      /*
+       * Kata penanda ("Perhatikan") ada di dalam kotak peringatan, bukan hanya
+       * warnanya: satu dari dua belas pembaca laki-laki tidak membedakan
+       * oranye dari abu-abu, dan sebuah peringatan yang hanya berbeda warna
+       * adalah catatan biasa bagi mereka.
+       */
+      return blok.nada === "peringatan" ? (
+        <div style={CATATAN_PERINGATAN}>
+          <strong style={PENANDA_PERINGATAN}>{t("docs.noteWarning")}</strong> {blok.teks}
+        </div>
+      ) : (
+        <div style={CATATAN}>{blok.teks}</div>
+      );
 
     case "istilah": {
       const entri = blok.kunci.map(getTerm).filter((e) => e !== undefined);

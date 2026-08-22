@@ -43,8 +43,16 @@ export type DocBlock =
   | { kind: "poin"; butir: readonly string[] }
   /** Sub-judul di dalam halaman; jangkarnya diturunkan dari judulnya. */
   | { kind: "sub"; judul: string }
-  /** Kotak "yang harus diketahui sebelum melanjutkan". */
-  | { kind: "catatan"; teks: string }
+  /**
+   * Kotak "yang harus diketahui sebelum melanjutkan".
+   *
+   * `nada` bawaannya `info`. `peringatan` untuk yang MERUGIKAN kalau
+   * dilewatkan — bukan untuk yang penting, sebab semua yang ditulis di sini
+   * penting dan kotak yang selalu oranye berhenti berarti apa-apa. Nadanya
+   * dibedakan tepi + latar DAN kata penanda di depannya: warna tidak pernah
+   * menjadi penanda tunggal (MASTER.md Prinsip Inti #2).
+   */
+  | { kind: "catatan"; teks: string; nada?: "info" | "peringatan" }
   /**
    * Istilah dari kamus (#21/#1). Definisinya TIDAK ditulis di sini — perender
    * membacanya dari `TERMS` di `lib/labels.ts`, sumber yang sama yang dipakai
@@ -133,6 +141,7 @@ const PERIODE: readonly DocBlock[] = [
       kind: "catatan",
       teks:
         "Membuka kembali periode yang sudah dikunci memang mungkin, dan sengaja dibuat merepotkan: ia kewenangan peran berakses penuh dan tercatat di jejak audit. Kalau sebuah bulan perlu dibuka dua kali, yang bermasalah biasanya bukan bulannya melainkan kapan ia ditutup.",
+      nada: "peringatan",
     },
     { kind: "istilah", kunci: ["tutup_periode", "saldo_awal"] },
   ];
@@ -208,6 +217,7 @@ const STOK: readonly DocBlock[] = [
       kind: "catatan",
       teks:
         "Barang tanpa dasar biaya muncul sebagai “—”, tidak pernah sebagai nol. Nol berarti “gratis”, dan menjumlahkannya sebagai nol menyusutkan nilai persediaan tanpa satu pun tanda di layar. Jumlah baris yang dikecualikan selalu disebut di bawah tabelnya.",
+      nada: "peringatan",
     },
     { kind: "istilah", kunci: ["persediaan", "kartu_stok", "stok_opname"] },
   ];

@@ -187,7 +187,7 @@ export function LandingSectionIntro({
   onSolid?: boolean;
   /**
    * `h1` HANYA untuk seksi yang menjadi kepala HALAMANNYA sendiri — di
-   * `/harga` (#399) seksi harga adalah yang pertama, dan halaman tanpa `<h1>`
+   * `/pricing` (#399) seksi harga adalah yang pertama, dan halaman tanpa `<h1>`
    * tidak punya judul bagi pembaca layar maupun mesin pencari. Di `/` hero
    * sudah memikul satu-satunya `<h1>`, jadi di sana bawaan `h2` yang berlaku.
    * Bentuknya TIDAK berubah (`LANDING_SECTION_TITLE`): yang berganti tingkat

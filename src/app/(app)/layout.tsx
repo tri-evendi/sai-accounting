@@ -9,7 +9,7 @@
  * (`LocaleProvider`) dan memicu `GET /api/company/identity`
  * (`CompanyIdentityProvider`) — dua hal yang hanya berguna SESUDAH masuk.
  *
- * Kini ada dua akar: `app/(marketing)/layout.tsx` untuk `/` dan `/harga`, dan
+ * Kini ada dua akar: `app/(marketing)/layout.tsx` untuk `/` dan `/pricing`, dan
  * berkas ini untuk sisanya. Keduanya berbagi `<html>`/`<body>`/font/tema/
  * registri AntD lewat `RootDocument` (`components/providers/root-document.tsx`
  * — alasan lengkapnya di kepala berkas itu); yang ditambahkan DI SINI adalah

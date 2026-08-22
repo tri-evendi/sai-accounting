@@ -293,7 +293,7 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
 
     const landingGuard = readFileSync(join(ROOT, "tests", "landing-boundary.test.ts"), "utf8");
     expect(landingGuard).toContain(
-      'const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/harga/page.tsx"];'
+      'const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/pricing/page.tsx"];'
     );
   });
 

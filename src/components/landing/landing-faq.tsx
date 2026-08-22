@@ -39,11 +39,11 @@
  *                              (`lib/audit.ts`), pencabutan sesi ≤60 dtk
  *                              (docs/RBAC.md §Sesi & pencabutan).
  *   • kanal dukungan         → HANYA yang ada: dokumentasi publik `/docs` dan
- *                              formulir kontak `landing-contact.tsx`, yang
- *                              hanya dirender bila `PLATFORM_CONTACT_EMAIL`
+ *                              alamat surel `contactChannels().email`, yang
+ *                              hanya disebut bila `PLATFORM_CONTACT_EMAIL`
  *                              terisi — maka jawabannya BERCABANG pada sakelar
- *                              yang sama (lihat `faqSupportADocsOnly`). Tanpa
- *                              jam layanan, tanpa SLA: tak ada kode yang
+ *                              itu (lihat `faqSupportADocsOnly`). Tanpa jam
+ *                              layanan, tanpa SLA: tak ada kode yang
  *                              menjaminnya.
  *   • tempat data & UU PDP   → basis data per PT (#104), ekspor mandiri,
  *                              permintaan hapus bertenggang 30 hari & bisa
@@ -80,6 +80,7 @@ import {
   BUSINESS_MODULES,
   CATEGORY_META,
 } from "@/lib/business-modules";
+import { contactChannels } from "@/lib/contact-channels";
 import { getT } from "@/lib/i18n/server";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
@@ -87,11 +88,13 @@ import { DEFAULT_TAX_RATE } from "@/lib/tax";
 export async function LandingFaq() {
   const t = await getT();
 
-  /* Formulir kontak hanya dirender bila alamat tujuannya ada
-     (`landing-contact.tsx`, sakelar yang sama). Jawaban yang menyuruh orang
-     "pakai formulir kontak di halaman ini" pada pemasangan tanpa formulir
-     adalah penunjuk palsu — jadi jawabannya mengikuti sakelar itu. */
-  const kontakAda = Boolean(process.env.PLATFORM_CONTACT_EMAIL?.trim());
+  /* Seksi kontak (dan formulirnya) sudah tidak ada di pendaratan, jadi
+     jawaban dukungan menyebut ALAMAT SURELNYA langsung — dan hanya bila
+     alamat itu memang disetel (`contactChannels()`, sakelar yang sama yang
+     menghidupkan tombol WhatsApp melayang). Tanpa alamat, jawabannya
+     dokumentasi saja: menyuruh orang menulis ke alamat yang tidak ada adalah
+     penunjuk palsu. */
+  const surelKontak = contactChannels().email;
 
   /* Preset kategori usaha DIRAKIT dari registri: `custom` bukan jenis usaha
      melainkan "pilih sendiri", dan itu disebut kalimatnya secara terpisah.
@@ -127,9 +130,10 @@ export async function LandingFaq() {
     { q: t("landing.faqAccountantQ"), a: t("landing.faqAccountantA") },
     {
       q: t("landing.faqSupportQ"),
-      a: kontakAda
-        ? t("landing.faqSupportA")
-        : t("landing.faqSupportADocsOnly"),
+      a:
+        surelKontak !== undefined
+          ? t("landing.faqSupportA", { email: surelKontak })
+          : t("landing.faqSupportADocsOnly"),
     },
     { q: t("landing.faqDataQ"), a: t("landing.faqDataA") },
   ];

@@ -1,9 +1,9 @@
 /**
- * `/harga` — HALAMAN HARGA publik (issue #399).
+ * `/pricing` — HALAMAN HARGA publik (issue #399).
  *
  * ══ KENAPA ADA, PADAHAL `/` SUDAH PUNYA SEKSI HARGA ════════════════════════
- * Semua situs pembukuan berbahasa Indonesia yang ditinjau di #397 punya alamat
- * `/harga` sendiri; kita hanya punya jangkar `/#harga`. Jangkar bukan alamat:
+ * Semua situs pembukuan yang ditinjau di #397 punya alamat harga sendiri; kita
+ * hanya punya jangkar `/#harga`. Jangkar bukan alamat:
  * kueri "harga software akuntansi" tidak punya halaman tujuan, dan tautan yang
  * ditempel orang ke WhatsApp menuju ke halaman pendaratan yang harus digulung
  * dulu. Halaman ini memberi katalog paket alamatnya sendiri — kanonik sendiri,
@@ -42,7 +42,7 @@ import { publicAppUrl } from "@/lib/public-url";
 export const dynamic = "force-dynamic";
 
 /**
- * Metadata sendiri, kanonik sendiri (`/harga`) — tanpa itu mesin pencari
+ * Metadata sendiri, kanonik sendiri (`/pricing`) — tanpa itu mesin pencari
  * membaca halaman ini sebagai salinan `/` dan tetap tidak punya alamat untuk
  * kueri harga. Judul & deskripsinya kalimat seksi harga yang SAMA dengan yang
  * dirender di bawah; gambar pratinjau (`opengraph-image.tsx`) diwarisi dari
@@ -57,13 +57,13 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: asal,
     title: judul,
     description: dictionary.landing.pricingBody,
-    alternates: { canonical: "/harga" },
+    alternates: { canonical: "/pricing" },
     openGraph: {
       type: "website",
       siteName: APP_NAME,
       title: judul,
       description: dictionary.landing.pricingBody,
-      url: new URL("/harga", asal).toString(),
+      url: new URL("/pricing", asal).toString(),
     },
     twitter: {
       card: "summary_large_image",

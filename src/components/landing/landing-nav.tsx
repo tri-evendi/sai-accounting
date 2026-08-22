@@ -32,10 +32,8 @@
  * ber-`useState` akan menyeret bilah ini menjadi komponen klien. Panelnya
  * `position:absolute` di bawah bilah (tidak mendorong isi, tidak mengubah
  * tinggi bilah yang dipakai `scroll-margin-top`), berisi tautan seksi yang
- * SAMA dengan bilah lebar + `#kontak` (di bilah lebar ia sengaja tidak ada —
- * terukur mendorong bilah melewati 768px; di panel ponsel lebar bukan
- * kendala) + pemilih bahasa untuk <576px (di 576–768 sakelar di bilah sudah
- * tampil, jadi yang di panel disembunyikan lewat pasangan
+ * SAMA dengan bilah lebar + pemilih bahasa untuk <576px (di 576–768 sakelar
+ * di bilah sudah tampil, jadi yang di panel disembunyikan lewat pasangan
  * `data-landing-chrome-narrow` yang sama dengan kaki).
  *
  * ⚠ Batas yang jujur: tanpa skrip, panel TIDAK menutup sendiri saat sebuah
@@ -101,12 +99,6 @@ interface NavLinkItem {
   label: string;
   /** Rute di dalam app (`/docs`) → `<Link>`; jangkar seksi → `<a>`. */
   internal?: boolean;
-  /**
-   * Hanya di panel ponsel. `#kontak` sengaja TIDAK di bilah lebar: terukur
-   * tautan kelima mendorong bilah melewati 768px (`landing.md` §Formulir
-   * kontak). Di panel yang bertumpuk ke bawah, lebar bukan kendala.
-   */
-  menuOnly?: boolean;
 }
 
 function NavLink({
@@ -140,23 +132,22 @@ export async function LandingNav() {
      terpisah akan berbeda pada hari salah satunya mendapat tautan baru.
 
      ══ JANGKAR BERAKAR `/`, DAN "HARGA" ADALAH HALAMAN (#399) ═══════════════
-     Bilah ini kini dipakai DUA halaman: `/` dan `/harga`. Jangkar telanjang
-     (`#modul`) di `/harga` menunjuk ke seksi yang tidak ada di halaman itu,
+     Bilah ini kini dipakai DUA halaman: `/` dan `/pricing`. Jangkar telanjang
+     (`#modul`) di `/pricing` menunjuk ke seksi yang tidak ada di halaman itu,
      jadi setiap jangkar ditulis berakar (`/#modul`): di `/` peramban tetap
-     memperlakukannya sebagai gulungan dalam-dokumen, di `/harga` ia menuju
+     memperlakukannya sebagai gulungan dalam-dokumen, di `/pricing` ia menuju
      seksi yang benar di halaman yang benar. Diputuskan SATU perilaku, bukan
      bercabang per halaman.
 
-     "Harga" TIDAK lagi jangkar melainkan `/harga` — di kedua halaman. `/harga`
-     ada justru supaya kueri "harga software akuntansi" punya alamat tujuan;
+     "Harga" TIDAK lagi jangkar melainkan `/pricing` — di kedua halaman.
+     `/pricing` ada justru supaya kueri harga punya alamat tujuan;
      tautan navigasi utamanya menuju alamat itu, bukan ke jangkar yang hanya
      ada di `/`. Rute internal ⇒ `<Link>` (navigasi sisi-klien; kedua halaman
      berbagi root layout pemasaran, jadi ini bukan pemuatan penuh). */
   const links: NavLinkItem[] = [
     { href: "/#modul", label: t("landing.navModules") },
-    { href: "/harga", label: t("landing.navPricing"), internal: true },
+    { href: "/pricing", label: t("landing.navPricing"), internal: true },
     { href: "/#tanya", label: t("landing.navFaq") },
-    { href: "/#kontak", label: t("landing.navContact"), menuOnly: true },
     { href: "/docs", label: t("landing.navDocs"), internal: true },
   ];
 
@@ -242,13 +233,11 @@ export async function LandingNav() {
             pelanggan bisa memeriksa produk ini lebih dalam sebelum membuat
             akun. Ia `<Link>`, bukan `<a>`: rute di dalam app. */}
         <ul data-landing-links="">
-          {links
-            .filter((link) => !link.menuOnly)
-            .map((link) => (
-              <li key={link.href}>
-                <NavLink link={link} style={NAV_LINK} />
-              </li>
-            ))}
+          {links.map((link) => (
+            <li key={link.href}>
+              <NavLink link={link} style={NAV_LINK} />
+            </li>
+          ))}
         </ul>
 
         <div

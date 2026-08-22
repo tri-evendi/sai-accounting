@@ -1,5 +1,5 @@
 /**
- * Root layout PEMASARAN — `/` dan `/harga`, dan tidak ada yang lain.
+ * Root layout PEMASARAN — `/` dan `/pricing`, dan tidak ada yang lain.
  *
  * ══ KENAPA AKARNYA SENDIRI (issue #399) ════════════════════════════════════
  * Halaman di grup ini dibaca orang yang BELUM punya akun. Di bawah root layout
@@ -35,7 +35,7 @@ import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { getTheme } from "@/lib/theme/server";
 
 /* Cadangan bila sebuah halaman pemasaran lupa metadata-nya sendiri; `/` dan
-   `/harga` masing-masing menimpanya dengan judul, deskripsi & kanoniknya. */
+   `/pricing` masing-masing menimpanya dengan judul, deskripsi & kanoniknya. */
 export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getDictionary(await getLocale());
   return {

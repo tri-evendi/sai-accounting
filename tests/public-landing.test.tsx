@@ -133,7 +133,7 @@ vi.mock("@/lib/i18n/server", () => ({
 vi.mock("@/lib/plan-catalog", () => ({ activePlans: async () => state.plans }));
 
 const { default: LandingPage } = await import("@/app/(marketing)/page");
-const { default: PricingPage } = await import("@/app/(marketing)/harga/page");
+const { default: PricingPage } = await import("@/app/(marketing)/pricing/page");
 
 /**
  * TANPA `LocaleProvider` — dengan sengaja (#399). Halaman pemasaran hidup di
@@ -149,7 +149,7 @@ async function renderTree(tree: React.ReactNode): Promise<string> {
 }
 
 async function render(): Promise<string> {
-  return renderTree(await LandingPage({ searchParams: Promise.resolve({}) }));
+  return renderTree(await LandingPage());
 }
 
 async function renderPricing(): Promise<string> {
@@ -602,23 +602,23 @@ describe("halaman pendaratan publik", () => {
     expect(fab.slice(0, fab.indexOf("</a>"))).not.toContain("ant-btn-color-primary");
   });
 
-  it("navigasi menaut ke /harga (halaman), jangkar seksi berakar `/` (#399)", async () => {
+  it("navigasi menaut ke /pricing (halaman), jangkar seksi berakar `/` (#399)", async () => {
     const html = await render();
-    expect(html).toContain('href="/harga"');
+    expect(html).toContain('href="/pricing"');
     expect(html).toContain('href="/#modul"');
     expect(html).toContain('href="/#tanya"');
-    expect(html).toContain('href="/#kontak"');
     expect(html).not.toContain('href="#harga"');
   });
 });
 
-describe("halaman harga publik /harga (#399)", () => {
-  it("/pricing dialihkan PERMANEN ke /harga — kanonik tetap satu alamat (#413)", async () => {
-    // Bilah EN menyebut "Pricing"; orang yang menebak /pricing tidak boleh
-    // mendarat di 404 — tetapi jawabannya redirect, bukan halaman kedua.
+describe("halaman harga publik /pricing (#399)", () => {
+  it("/harga dialihkan PERMANEN ke /pricing — kanonik tetap satu alamat", async () => {
+    // `/harga` adalah alamat LAMA halaman ini: sudah dibagikan & terindeks,
+    // jadi ia tidak boleh menjadi 404 — tetapi jawabannya redirect permanen,
+    // bukan halaman kedua berisi sama.
     const cfg = (await import("../next.config")).default;
     const redirects = await cfg.redirects?.();
-    expect(redirects).toContainEqual({ source: "/pricing", destination: "/harga", permanent: true });
+    expect(redirects).toContainEqual({ source: "/harga", destination: "/pricing", permanent: true });
   });
 
   it("pengunjung bersesi memantul — sama seperti /", async () => {
@@ -635,10 +635,9 @@ describe("halaman harga publik /harga (#399)", () => {
     for (const plan of PLANS.filter((p) => !p.contactOnly))
       expect(html).toContain(formatMoney(plan.priceMonthly, plan.currency));
     expect(html).toContain(T("landing.faqTrialQ"));
-    // Tanpa hero, tanpa galeri, tanpa kontak — hanya harga + FAQ di dalam kulit.
+    // Tanpa hero, tanpa galeri — hanya harga + FAQ di dalam kulit.
     expect(html).not.toContain(T("landing.heroHeading"));
     expect(html).not.toContain(T("landing.galleryHeading"));
-    expect(html).not.toContain(T("landing.contactHeading"));
     // Kulitnya tetap: bilah atas dengan kedua pintu.
     expect(html).toContain('href="/register"');
     expect(html).toContain('href="/login"');

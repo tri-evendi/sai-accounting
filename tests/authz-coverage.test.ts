@@ -22,7 +22,7 @@ import { join, relative, sep } from "node:path";
 
 /**
  * `src/app` sejak #399 punya DUA root layout: `(app)` (seluruh aplikasi
- * bersesi + dokumentasi) dan `(marketing)` (`/`, `/harga`). Semua grup rute
+ * bersesi + dokumentasi) dan `(marketing)` (`/`, `/pricing`). Semua grup rute
  * yang dijaga di berkas ini hidup di bawah `(app)`, jadi `APP_DIR` menunjuk ke
  * sana dan kunci-kunci relatif di bawah (`(auth)/…`, `(tenant)/…`) tidak
  * berubah. `APP_ROOT` hanya dipakai inventaris tingkat atas dan grup pemasaran.
@@ -126,7 +126,7 @@ const PUBLIC_PAGE_GROUPS = ["(docs)"];
 const MARKETING_GROUPS = ["(marketing)"];
 const MARKETING_PAGES = new Map([
   ["(marketing)/page.tsx", "/"],
-  ["(marketing)/harga/page.tsx", "/harga"],
+  ["(marketing)/pricing/page.tsx", "/pricing"],
 ]);
 
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */

@@ -36,7 +36,7 @@ function isPublicPath(pathname: string): boolean {
   // software akuntansi", berbagi root layout pemasaran dengan `/`. Jalur
   // PERSIS, bukan awalan; daftarnya dijaga `tests/authz-coverage` (grup
   // `(marketing)`).
-  if (pathname === "/harga") return true;
+  if (pathname === "/pricing") return true;
   // issue #136 — alur atur-ulang kata sandi mandiri: orang yang lupa kata
   // sandinya jelas belum punya sesi. API pasangannya sudah tercakup
   // `/api/auth/*` di bawah.

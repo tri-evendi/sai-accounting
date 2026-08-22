@@ -3,16 +3,17 @@
  *
  * ══ KENAPA ADA ═════════════════════════════════════════════════════════════
  * Lima dari enam situs akuntansi Indonesia yang ditinjau memasang tombol
- * WhatsApp yang selalu terlihat; halaman ini hanya punya kanal WhatsApp di
- * seksi kontak, empat layar ke bawah. Tombol ini bidang pekat 48px yang ikut
+ * WhatsApp yang selalu terlihat; halaman ini dulu hanya punya kanal WhatsApp
+ * di seksi kontak, empat layar ke bawah — dan sejak seksi itu dicabut, tombol
+ * ini SATU-SATUNYA jalan WhatsApp di pendaratan. Ia bidang pekat 48px yang ikut
  * menggulung — dan ia BUKAN pita: `landing.md` §"Satu pita pekat" tetap
  * berlaku, sebab yang dijaga aturan itu adalah bidang navy SELEBAR LAYAR
  * yang memikul ajakan; ini bulatan 48px yang memikul satu ikon.
  *
  * ══ HANYA DIRENDER BILA NOMORNYA SAH ═══════════════════════════════════════
- * Sumbernya `contactChannels()` (`lib/contact-channels.ts`) — sakelar yang
- * SAMA dengan kanal di seksi kontak, jadi tidak ada `process.env` kedua yang
- * bisa menyimpang: `PLATFORM_CONTACT_WHATSAPP` kosong atau salah bentuk berarti
+ * Sumbernya `contactChannels()` (`lib/contact-channels.ts`) — satu sakelar
+ * untuk seluruh app, jadi tidak ada `process.env` kedua yang bisa menyimpang:
+ * `PLATFORM_CONTACT_WHATSAPP` kosong atau salah bentuk berarti
  * `null`, bukan tombol yang membuka WhatsApp lalu berkata "nomor tidak
  * ditemukan".
  *
@@ -55,7 +56,9 @@
  * yang menaruh tombol itu di 72px terbawah layar. Issue memberi jalan
  * keluarnya: tombol melayang baru muncul di ≥576px, tempat tombol hero
  * berjajar (row, selebar isinya masing-masing — total ±350px, jauh di kiri
- * bulatan). Di bawah itu WhatsApp tetap ada di seksi kontak.
+ * bulatan). ⚠ Di bawah 576px tidak ada jalan WhatsApp sama sekali di
+ * pendaratan sejak seksi kontak dicabut — yang tersisa jawaban FAQ dukungan
+ * (alamat surel) dan `mailto:` kartu paket rundingan.
  */
 import { WhatsAppOutlined } from "@ant-design/icons";
 import type { CSSProperties } from "react";

@@ -4198,7 +4198,8 @@
     "emptyDescription": "Kabar penting — seperti penyiapan yang belum selesai — akan muncul di sini.",
     "open": "Buka",
     "unread": "Belum dibaca",
-    "bell": "Pemberitahuan ({count} belum dibaca)"
+    "bell": "Pemberitahuan ({count} belum dibaca)",
+    "bellEmpty": "Pemberitahuan (tidak ada yang baru)"
   },
   "accurate": {
     "title": "Integrasi Accurate",

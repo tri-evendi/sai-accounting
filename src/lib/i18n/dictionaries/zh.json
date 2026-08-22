@@ -4198,7 +4198,8 @@
     "emptyDescription": "重要事项（例如尚未完成的初始设置）将显示在这里。",
     "open": "打开",
     "unread": "未读",
-    "bell": "通知（{count} 条未读）"
+    "bell": "通知（{count} 条未读）",
+    "bellEmpty": "通知（暂无新消息）"
   },
   "accurate": {
     "title": "Accurate 集成",

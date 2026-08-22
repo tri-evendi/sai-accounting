@@ -73,6 +73,8 @@ export function isValidSlug(slug: string | null | undefined): slug is string {
  */
 export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "accounts",
+  /* Integrasi Accurate — cocokkan buku besar dengan ekspor Accurate. */
+  "accurate",
   "advances",
   /* Token API — kredensial mesin per PT (issue #389). */
   "api-tokens",

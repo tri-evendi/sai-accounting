@@ -381,6 +381,68 @@ const LAPORAN: readonly DocBlock[] = [
     { kind: "istilah", kunci: ["laba_rugi", "neraca", "tutup_periode"] },
   ];
 
+const COCOK_ACCURATE: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Banyak perusahaan tidak berpindah sistem dalam satu hari. Selama beberapa bulan dua buku berjalan berdampingan — yang lama di Accurate, yang baru di sini — dan pertanyaan yang benar-benar penting selama masa itu hanya satu: apakah keduanya mengatakan hal yang sama? Halaman “Cocokkan dengan Accurate” menjawab persis pertanyaan itu, dan tidak lebih.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Anda mengekspor laporan Rincian Buku Besar dari Accurate, mengunggahnya apa adanya, lalu melihat kedua buku berdampingan per akun: saldo awal, jumlah debit, jumlah kredit, saldo akhir. Di bawahnya berdiri daftar yang jauh lebih berguna daripada angka totalnya — transaksi yang hanya ada di salah satu sisi.",
+  },
+  { kind: "sub", judul: "Kenapa hasilnya tidak bisa langsung diimpor" },
+  {
+    kind: "paragraf",
+    teks:
+      "Ini batas yang paling sering mengecewakan, jadi lebih baik disebut lebih dulu: rincian buku besar TIDAK bisa diubah menjadi jurnal, dan itu bukan keterbatasan aplikasi ini melainkan sifat laporannya. Laporan itu mencetak satu akun beserta mutasinya — sisi lawan setiap transaksi tidak ada di dalamnya. Beban asuransi Rp 1,6 juta yang tercatat di sana tidak menyebutkan uangnya keluar dari mana: kas, utang usaha, atau uang muka.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Setiap catatan di buku ini punya dua sisi yang jumlahnya harus sama, dan aplikasi ini menolak jurnal yang timpang. Jadi satu-satunya cara mengimpor laporan itu sebagai jurnal adalah MENEBAK lawan akunnya — dan sebuah tebakan yang berhasil disimpan tidak akan terlihat sebagai kesalahan sampai neraca dibaca orang. Karena itu halaman ini hanya membaca. Tidak ada akun yang dibuat, tidak ada jurnal yang diposting.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Mengunggah berkas ke halaman ini tidak pernah mengubah satu angka pun di buku Anda. Kalau Anda mengunggah berkas yang salah, yang terjadi paling buruk adalah laporan pencocokan yang tidak masuk akal — bukan pembukuan yang rusak.",
+  },
+  { kind: "sub", judul: "Berkasnya jangan disunting dulu" },
+  {
+    kind: "paragraf",
+    teks:
+      "Yang keluar dari tombol Ekspor Accurate bukan tabel, melainkan halaman cetak yang kebetulan berformat Excel: nama PT dan judul laporan diulang di setiap halaman, judul kolomnya berdiri di baris kelima dan muncul lagi tiap ganti halaman, dan kolom keterangan memuat dua baris dalam satu sel. Semua itu dirapikan otomatis saat dibaca — jadi unggah apa adanya, jangan dirapikan dulu di Excel.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Satu hal yang dilakukan Accurate perlu Anda ketahui karena akibatnya terlihat di hasil: ketika sebuah baris jatuh persis di ganti halaman, selnya ikut terpotong, dan nomor referensinya terlempar sendirian ke puncak halaman berikutnya. Potongan itu disambungkan kembali ke barisnya, dan setiap sambungan dilaporkan di layar beserta nomor barisnya. Kalau sebuah potongan tidak bisa dipastikan milik baris mana, ia dibiarkan dan dilaporkan apa adanya — menempelkan nomor referensi ke transaksi yang salah jauh lebih berbahaya daripada satu baris aneh yang bisa Anda periksa sendiri.",
+  },
+  { kind: "sub", judul: "Membaca hasilnya" },
+  {
+    kind: "poin",
+    butir: [
+      "Selisih selalu berarah “di sini dikurangi Accurate”. Angka positif berarti buku ini lebih besar.",
+      "Sebuah akun bisa dinyatakan cocok meski transaksinya tidak berpasangan satu-satu — itu wajar dan bukan kesalahan: satu jurnal gabungan di sini sah menutup beberapa baris di sana. Yang menentukan cocok atau tidak adalah angkanya.",
+      "Transaksi yang cocok nominal dan referensinya tetapi berbeda tanggal ditandai tersendiri. Itu temuan, bukan sekadar kecocokan: satu transaksi yang dibukukan di dua tanggal berbeda menggeser laba dua periode sekaligus.",
+      "Nomor referensi yang sama muncul dua kali dengan nominal yang sama juga ditandai — kandidat pembukuan ganda di sisi Accurate, yang justru tidak akan pernah terlihat dari saldo akhirnya.",
+    ],
+  },
+  { kind: "sub", judul: "Rancangan saldo awal" },
+  {
+    kind: "paragraf",
+    teks:
+      "Kalau yang Anda kerjakan bukan berjalan paralel melainkan pindah seluruhnya, saldo akhir menurut Accurate bisa diunduh sebagai rancangan saldo awal: satu berkas Excel berisi akun, sisi debit atau kredit, dan nominalnya. Sisinya ditentukan dari bagan akun DI SINI, bukan dari berkasnya — laporan Accurate tidak menyebut tipe akun sama sekali, dan angka “1.000” di akun beban berarti debit sementara angka yang sama di akun utang berarti kredit. Akun yang belum ada di bagan akun ini ditandai alih-alih ditebak sisinya.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Berkas itu tidak diunggah balik ke mana pun. Ia bahan untuk diperiksa mata manusia, lalu dimasukkan lewat wisaya saldo awal — pintu yang sama yang dipakai perusahaan baru, dan yang sengaja hanya bisa dilalui sekali.",
+  },
+  { kind: "istilah", kunci: ["buku_besar", "saldo_awal", "neraca_saldo"] },
+];
+
 export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "mesin-akuntansi": MESIN_AKUNTANSI,
   "periode-terkunci": PERIODE,
@@ -389,6 +451,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "stok": STOK,
   "kas-dan-bank": KAS,
   "saldo-awal": SALDO_AWAL,
+  "cocokkan-accurate": COCOK_ACCURATE,
   "peran-dan-izin": PERAN_IZIN,
   "paket-dan-perusahaan": PAKET,
   "membaca-laporan": LAPORAN,

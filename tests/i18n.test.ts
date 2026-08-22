@@ -119,6 +119,16 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // (pasangannya "Kredit"/"Credit" memang berbeda). Bahasa Mandarin memakai
     // 借方/贷方.
     "common.debit",
+    // Layar Integrasi Accurate: "Debit" & "Total debit" mengikuti alasan yang
+    // sama persis dengan `common.debit` di atas, dan "Memo" adalah kata serapan
+    // yang ejaannya identik (bahasa Mandarin memakai 备注).
+    "accurate.colDebit",
+    "accurate.draftDebit",
+    "accurate.colMemo",
+    // "Accurate" adalah NAMA PRODUK. Menerjemahkannya justru menghasilkan
+    // layar yang salah: yang dibandingkan adalah dua sistem bernama diri, dan
+    // judul kolomnya harus menyebut namanya apa adanya di ketiga bahasa.
+    "accurate.rowAccurate",
     "contracts.advStatus",
     "invoices.totalCurrency",
     "deliveryOrders.colTotalKg",
@@ -239,6 +249,8 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).
     "landing.contactChannelWhatsapp",
+    // Nama produk yang dibandingkan — lihat catatan di daftar `en`.
+    "accurate.rowAccurate",
     // Sama seperti di atas: hanya penampung + tanda pisah. Bahasa Mandarin pun
     // memakai en-dash di antara dua tanggal, jadi tidak ada yang berubah.
     "stockMovement.periodRange",

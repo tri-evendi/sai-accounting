@@ -202,7 +202,7 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 166;
+const AMBANG_KLIEN = 167;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -236,6 +236,10 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/[id]/edit/account-edit-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/import/import-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accounts/new/account-form.tsx",
+  /* Integrasi Accurate: unggah berkas, tampilkan hasil pencocokan, unduh
+     rancangan saldo awal. Halamannya sendiri TETAP server component —
+     yang menyeberang formulir & tabel hasilnya, bukan pembacaan bukunya. */
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/accurate/accurate-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form.tsx",
   /* Token API (#389) — pulau client karena satu sebab yang tidak bisa
      dipindahkan ke server: token utuh hanya ADA sekali, di jawaban POST, dan

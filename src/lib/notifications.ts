@@ -36,7 +36,16 @@ import { controlDb } from "@/lib/control-db";
  * SENGAJA hanya menentukan ikon serta pengelompokan — tak satu pun jenis di
  * sini memberi atau mencabut izin apa pun.
  */
-export const NOTIFICATION_KINDS = ["setup_incomplete", "announcement"] as const;
+export const NOTIFICATION_KINDS = [
+  "setup_incomplete",
+  "announcement",
+  /* Faktur jatuh tempo — aturan, kosakata, dan cadensinya hidup di
+     `lib/invoice-due-digest.ts`; disalin sebagai literal di sini supaya seluruh
+     kosakata terbaca dalam satu tatapan. `tests/invoice-due-digest.test.ts`
+     menolak keduanya menyimpang. */
+  "invoice_due_soon",
+  "invoice_overdue",
+] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 /** Batas bawaan daftar — kotak masuk, bukan arsip. */

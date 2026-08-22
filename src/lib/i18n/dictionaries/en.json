@@ -4198,7 +4198,8 @@
     "emptyDescription": "Anything important — such as an unfinished setup — will show up here.",
     "open": "Open",
     "unread": "Unread",
-    "bell": "Notifications ({count} unread)"
+    "bell": "Notifications ({count} unread)",
+    "bellEmpty": "Notifications (nothing new)"
   },
   "accurate": {
     "title": "Accurate integration",

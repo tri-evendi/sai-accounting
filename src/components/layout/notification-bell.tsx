@@ -14,9 +14,22 @@
  * memang berbeda. Katanya tetap dibawa `aria-label`/`title` — warna dan bentuk
  * tak pernah jadi penanda tunggal (MASTER.md §Anti-Patterns).
  *
- * ══ HILANG SAAT KOSONG ══════════════════════════════════════════════════════
- * Doktrin yang sama dengan tetangganya: kotak masuk kosong hanyalah kebisingan
- * di navbar yang sudah padat.
+ * ══ SELALU TERLIHAT — INI PINTU, BUKAN ALARM ════════════════════════════════
+ * Dulu ia menghilang saat tak ada yang belum dibaca, meniru `ApprovalBadge` di
+ * sebelahnya. Itu keliru, dan keliru dengan cara yang sunyi: badge persetujuan
+ * adalah ALARM (nol berarti benar-benar tidak ada apa-apa untuk dikerjakan),
+ * sedangkan ini satu-satunya PINTU menuju halaman kotak masuk. Menyembunyikan
+ * pintunya saat kosong berarti kabar yang sudah dibaca — dan seluruh riwayatnya
+ * — tak bisa dibuka lagi oleh siapa pun tanpa mengetik alamatnya sendiri, sebab
+ * tak ada satu pun entri di menu samping yang menuju ke sana.
+ *
+ * Membuka halaman ini MENANDAI semuanya terbaca, jadi keadaan "nol belum
+ * dibaca" justru keadaan yang paling sering — yakni persis keadaan saat
+ * pintunya lenyap.
+ *
+ * Yang bergantung pada jumlah tinggal ANGKANYA: `Badge` AntD tidak menggambar
+ * apa pun pada nol (`showZero` bawaan `false`), jadi kosong = ikon polos, tanpa
+ * titik merah yang tak menuntut apa-apa.
  *
  * ══ TANPA INFRASTRUKTUR BARU ════════════════════════════════════════════════
  * Tidak ada websocket, tidak ada polling latar. Diambil sekali saat dipasang,
@@ -71,9 +84,10 @@ export function NotificationBell() {
     };
   }, [scope]);
 
-  if (unread === 0) return null;
-
-  const label = t("notifications.bell", { count: unread });
+  /* Katanya ikut berubah, bukan cuma angkanya: pembaca layar mendapat "tidak
+     ada yang baru" alih-alih "0 belum dibaca", dan penunjuk tetikus mendapat
+     tooltip yang sama. */
+  const label = unread > 0 ? t("notifications.bell", { count: unread }) : t("notifications.bellEmpty");
 
   return (
     <Link

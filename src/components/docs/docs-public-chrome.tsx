@@ -23,7 +23,7 @@
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/components/ui/app-link";
 import { BrandMark } from "@/components/ui/brand-mark";
-import { KOLOM_BACA, LEBAR_BACA } from "@/components/docs/docs-shell";
+import { BINGKAI_DOKUMENTASI, LEBAR_BINGKAI } from "@/components/docs/docs-shell";
 import { APP_NAME } from "@/lib/constants";
 import { DOCS_ROOT } from "@/lib/docs";
 import type { TranslateFn } from "@/lib/i18n/client";
@@ -45,7 +45,10 @@ const BILAH_ISI: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: "var(--ant-margin-sm)",
-  maxWidth: LEBAR_BACA,
+  /* Sejajar dengan BINGKAI di bawahnya, bukan dengan kolom bacanya: sejak ada
+     kolom kiri, lambang yang rata dengan kolom baca akan menggantung di tengah
+     halaman sementara daftar halaman mulai jauh di kirinya. */
+  maxWidth: LEBAR_BINGKAI,
   margin: "0 auto",
   padding: "var(--ant-padding-sm) var(--ant-padding)",
 };
@@ -59,12 +62,13 @@ const MEREK: React.CSSProperties = {
 };
 
 /**
- * Isian tepi ditambahkan DI SINI, bukan di `KOLOM_BACA`: halaman publik ini
- * telanjang — tidak ada `Layout.Content` yang sudah mengisi tepinya seperti di
- * kulit aplikasi. Menaruhnya di konstanta bersama berarti tepi ganda di sana.
+ * Isian tepi ditambahkan DI SINI, bukan di `BINGKAI_DOKUMENTASI`: halaman
+ * publik ini telanjang — tidak ada `Layout.Content` yang sudah mengisi tepinya
+ * seperti di kulit aplikasi. Menaruhnya di konstanta bersama berarti tepi ganda
+ * di sana.
  */
 const ISI: React.CSSProperties = {
-  ...KOLOM_BACA,
+  ...BINGKAI_DOKUMENTASI,
   padding: "var(--ant-padding-lg) var(--ant-padding)",
 };
 

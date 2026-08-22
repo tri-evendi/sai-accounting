@@ -34,6 +34,24 @@ export async function readFirstSheetRows(buffer: Buffer): Promise<unknown[][]> {
 function normalizeCell(v: unknown): unknown {
   if (v == null) return "";
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+  /*
+   * Sel bertipe TANGGAL — ExcelJS memulangkannya sebagai `Date`, bukan teks.
+   *
+   * Tanpa cabang ini ia jatuh ke `String(v)` di bawah dan menjadi
+   * "Sat Dec 31 2024 07:00:00 GMT+0700 (Western Indonesia Time)", yang ditolak
+   * `parseImportDate` — jadi setiap berkas yang tanggalnya sungguhan tanggal
+   * (dan bukan teks) gagal seluruhnya di kolom tanggalnya. Templat kita
+   * sendiri menuliskan tanggal sebagai TEKS, itulah sebabnya lubang ini tak
+   * pernah terlihat sampai ekspor Accurate masuk.
+   *
+   * Dibaca dengan penunjuk UTC, bukan lokal: tanggal dokumen adalah tanggal
+   * KALENDER, dan zona waktu server tidak boleh menggesernya sehari — aturan
+   * yang sama sudah dipegang `parseImportDate`.
+   */
+  if (v instanceof Date) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${v.getUTCFullYear()}-${pad(v.getUTCMonth() + 1)}-${pad(v.getUTCDate())}`;
+  }
   // Rich text / hyperlink / formula objects → gunakan teks yang terlihat.
   const obj = v as { text?: string; result?: unknown; richText?: { text: string }[] };
   if (Array.isArray(obj.richText)) return obj.richText.map((r) => r.text).join("");

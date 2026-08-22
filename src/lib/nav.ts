@@ -212,6 +212,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/tax/efaktur", label: "Ekspor e-Faktur", labelKey: "nav.items.efaktur", icon: "FileSpreadsheet", permission: "tax.read", termKey: "efaktur" },
       { href: "/journal", label: "Catatan Transaksi", labelKey: "nav.items.journal", icon: "BookText", permission: "journal.read", accountingOnly: true, termKey: "jurnal" },
       { href: "/ledger", label: "Rincian per Akun", labelKey: "nav.items.ledger", icon: "Library", permission: "ledger.read", accountingOnly: true, termKey: "buku_besar" },
+      // Integrasi Accurate — mencocokkan buku besar dengan ekspor Accurate.
+      // Berdiri tepat di bawah "Rincian per Akun" karena itulah layar yang
+      // dibandingkannya, dan memakai izin yang SAMA (`ledger.read`): yang
+      // ditampilkannya adalah isi buku besar berdampingan dengan pembandingnya.
+      { href: "/accurate", label: "Cocokkan dengan Accurate", labelKey: "nav.items.accurate", icon: "FileSpreadsheet", permission: "ledger.read", accountingOnly: true },
       { href: "/accounts", label: "Daftar Akun", labelKey: "nav.items.accounts", icon: "BookOpen", permission: "account.manage", accountingOnly: true, termKey: "akun_perkiraan" },
       // issue #91 — master dimensi pusat biaya. SENGAJA tanpa `accountingOnly`:
       // pusat biaya ditetapkan pada dokumen sehari-hari (faktur, kas,

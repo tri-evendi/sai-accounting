@@ -21,7 +21,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
-import { readFirstSheetRows } from "@/lib/xlsx-read";
+import { readImportSheet, type ImportSheet } from "@/lib/import/sheet";
 import { parseCoaRows, ACCURATE_TYPE_LEGEND, MAX_IMPORT_ROWS } from "@/lib/coa-import";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -48,10 +48,19 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     return NextResponse.json({ error: t("errors.fileTooLarge", { max: "5 MB" }) }, { status: 400 });
   }
 
-  let rows: unknown[][];
+  /*
+   * Dibaca lewat `readImportSheet`, bukan `readFirstSheetRows` (integrasi
+   * Accurate): berkas yang datang dari tombol Ekspor di layar Akun Perkiraan
+   * Accurate adalah HALAMAN CETAK — kepala/kaki halaman berulang, judul
+   * kolomnya bukan baris pertama. Pembaca itu meratakannya lebih dulu dan
+   * membawa serta nomor baris aslinya, sehingga galat tetap menyebut baris
+   * yang dilihat orang di berkasnya. Berkas dari templat kita sendiri lewat
+   * jalur yang sama persis seperti sebelumnya.
+   */
+  let sheet: ImportSheet;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    rows = await readFirstSheetRows(buffer);
+    sheet = await readImportSheet(buffer);
   } catch {
     const { t } = await getRequestI18n();
     return NextResponse.json(
@@ -60,13 +69,22 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     );
   }
 
-  const { accounts, errors } = parseCoaRows(rows);
+  const { accounts, errors } = parseCoaRows(sheet.rows, sheet.options);
+  /* Perbaikan yang dilakukan pembaca laporan (sel terpotong ganti halaman)
+     ikut dipulangkan — sebuah berkas yang diam-diam "diperbaiki" adalah berkas
+     yang tak bisa diperiksa siapa pun. */
+  const accurateRepairs = sheet.accurate?.repairs ?? [];
 
   if (errors.length > 0) {
     // Tolak seutuhnya — tak ada penulisan sebagian.
     const { t } = await getRequestI18n();
     return NextResponse.json(
-      { error: t("errors.rowsNeedFixing"), rowErrors: errors, valid: accounts.length },
+      {
+        error: t("errors.rowsNeedFixing"),
+        rowErrors: errors,
+        valid: accounts.length,
+        accurateRepairs,
+      },
       { status: 422 }
     );
   }
@@ -105,6 +123,7 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     skipped: existingSet.size,
     skippedCodes: [...existingSet],
     total: accounts.length,
+    accurateRepairs,
   });
 }
 

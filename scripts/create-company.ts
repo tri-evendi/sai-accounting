@@ -31,6 +31,7 @@ import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "../src/lib/tenant-routes";
+import { ROLES, ROLE_LABELS } from "../src/lib/constants";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
@@ -213,10 +214,20 @@ async function main() {
           `  bun run create-admin -- --username ${admin} --password '…' --email <email> --company ${slug}`
       );
     } else {
+      /*
+       * Administrator Sistem, BUKAN Direktur Utama — alasan lengkapnya di
+       * `src/app/api/companies/route.ts`, jalur yang sama untuk pelanggan:
+       * "Direktur Utama" adalah nama jabatan yang ikut terbaca di daftar
+       * pengguna dan jejak audit, sedangkan yang menyiapkan buku lewat skrip
+       * ini justru operator. Kuasanya sama persis — keduanya FULL_ACCESS_ROLES
+       * (migration 0032) — jadi yang berubah hanya kejujuran namanya.
+       */
       await control.membership.create({
-        data: { userId: user.id, companyId: company.id, role: "managing_director" },
+        data: { userId: user.id, companyId: company.id, role: ROLES.ADMINISTRATOR },
       });
-      console.log(`     "${admin}" ditambahkan sebagai Direktur Utama di ${name}`);
+      console.log(
+        `     "${admin}" ditambahkan sebagai ${ROLE_LABELS[ROLES.ADMINISTRATOR]} di ${name}`
+      );
     }
   }
 

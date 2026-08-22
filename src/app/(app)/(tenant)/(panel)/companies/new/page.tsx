@@ -83,9 +83,10 @@ export default async function NewCompanyPage() {
              * SIAPA yang menjadi administratornya — disebut SEBELUM tombolnya
              * ditekan, dan menyebut nama akunnya.
              *
-             * Ini bukan hiasan: pembuat PT otomatis menjadi Direktur Utama di
-             * PT yang baru lahir (`api/companies/route.ts` → `ROLES.
-             * MANAGING_DIRECTOR`), dan sampai kalimat ini ada, satu-satunya
+             * Ini bukan hiasan: pembuat PT otomatis menjadi Administrator
+             * Sistem di PT yang baru lahir (`api/companies/route.ts` →
+             * `ROLES.ADMINISTRATOR`, peran BERAKSES PENUH — lihat alasan
+             * pemilihannya di sana), dan sampai kalimat ini ada, satu-satunya
              * cara mengetahuinya adalah membuat PT-nya lalu melihat hasilnya.
              * Yang paling perlu tahu justru pemilik yang sedang masuk memakai
              * akun yang SALAH — mis. akun bersama, atau akun staf yang

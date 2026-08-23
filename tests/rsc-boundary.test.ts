@@ -202,7 +202,16 @@ const SRC = join(__dirname, "..", "src");
  * penanda langkah 2 → 1; tidak ada satu pun berkas yang menyeberangi batas RSC
  * karena perubahan ini.
  */
-const AMBANG_KLIEN = 167;
+/*
+ * 168 sejak #458 (2026-08-23): formulir ganti nama akun
+ * (`platform/account/account-name-form.tsx`). Ia client karena memang memikul
+ * KEADAAN — isian terkendali, keadaan menyimpan, dan `router.refresh()` supaya
+ * bilah panel yang dirender server ikut menyebut nama barunya. Versi server
+ * (`<form action>`) mungkin, tetapi ia menukar satu modul client dengan
+ * pengalihan penuh halaman pada setiap penyimpanan di layar pengaturan yang
+ * memang bersesi — harga yang salah di sisi ini.
+ */
+const AMBANG_KLIEN = 168;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -318,6 +327,8 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
   "app/(app)/(tenant)/(panel)/companies/new/company-form.tsx",
   "app/(app)/(tenant)/(panel)/companies/new/provision-progress.tsx",
+  /* #458 — lihat catatan di `AMBANG_KLIEN`. */
+  "app/(app)/(tenant)/(panel)/platform/account/account-name-form.tsx",
   "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
   "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
   "app/(app)/(tenant)/(panel)/platform/error.tsx",

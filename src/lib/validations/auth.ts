@@ -22,9 +22,16 @@ export const forgotPasswordSchema = z.object({
  * Pendaftaran mandiri (issue #138) — form §7.1: nama, email, kata sandi,
  * setuju S&K. `termsAccepted` literal `true`: tanpa persetujuan tidak ada
  * yang diproses, dan waktunya dicatat di baris pendaftaran.
+ *
+ * ⚠ DUA nama sejak #458, dan pemisahannya bukan kerapian: `name` adalah ORANG
+ * (menjadi `users.name`), `accountName` adalah AKUN (menjadi `tenants.name`
+ * dan dasar slug di setiap alamat buku). Satu isian yang mengisi keduanya
+ * membuat alamat yang dibaca staf & akuntan eksternal memuat nama pribadi
+ * pendaftarnya.
  */
 export const registerSchema = z.object({
   name: z.string().min(1, vmsg("validation.nameRequired")).max(100).trim(),
+  accountName: z.string().min(2, vmsg("validation.accountNameRequired")).max(150).trim(),
   email: z.email(vmsg("validation.emailInvalid")).max(255).trim(),
   password: z.string().min(8, vmsg("validation.passwordMin8")).max(128),
   termsAccepted: z.literal(true, vmsg("validation.termsRequired")),

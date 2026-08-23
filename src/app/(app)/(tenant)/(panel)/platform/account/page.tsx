@@ -34,6 +34,7 @@ import { bolehGantiLagi } from "@/lib/tenant-slug";
 
 import { AccountNameForm } from "./account-name-form";
 import { AccountSlugForm } from "./account-slug-form";
+import { TenantMailForm } from "./mail-form";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,18 @@ export default async function PlatformAccountPage() {
             slug={tenant.tenantSlug}
             bolehGantiPada={bolehPada ? bolehPada.toISOString() : null}
           />
+        </CardContent>
+      </Card>
+
+      {/* Server surel milik akun ini — dari mana faktur & pengingat berangkat.
+          Kartunya sendiri, sejauh mungkin dari nama & alamat: yang satu
+          identitas yang dibaca orang, yang ini kredensial yang dibaca mesin. */}
+      <Card style={{ marginTop: 24 }}>
+        <CardHeader>
+          <CardTitle level={2}>{t("tenantMail.title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TenantMailForm />
         </CardContent>
       </Card>
     </div>

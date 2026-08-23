@@ -24,6 +24,8 @@
  */
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mailer-core";
+import { mailConfigForCompany } from "@/lib/tenant-mail-settings";
+import { getCompanyContext } from "@/lib/company-context";
 import { loadDictionary } from "@/lib/i18n/load";
 import { translate } from "@/lib/i18n/dictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
@@ -242,7 +244,9 @@ export async function sendReminder(input: {
     companyName: input.companyName,
   });
 
-  await sendMail({ to: invoice.email, subject, text });
+  /* Pengingat berangkat ATAS NAMA PELANGGAN — server surelnya milik tenant itu
+     sendiri bila sudah diatur, jalur penyedia bila belum. */
+  await sendMail({ to: invoice.email, subject, text }, (await tenantMailConfig()) ?? undefined);
   return "sent";
 }
 
@@ -295,10 +299,18 @@ export async function sendReminderTest(input: {
        properti tidak terlihat oleh penjaga kunci yatim, dan kunci yang tak
        terlihat akan tercabut pada pembersihan kamus berikutnya. */
     text: `${text}\n\n---\n${translate(dictionary, "invoiceReminder.testFooter")}`,
-  });
+  }, (await tenantMailConfig()) ?? undefined);
 
   await prisma.companySetting.updateMany({ data: { reminderTestedAt: new Date() } });
 }
 
 /** Dipakai penjadwal untuk melaporkan apa yang akan/sudah terjadi. */
 export { dueKeyOf };
+
+/** Konfigurasi surel tenant untuk perusahaan yang sedang aktif; `null` = jalur
+ *  penyedia. Alasan tidak melempar: lihat catatan kembarannya di
+ *  `lib/invoice-send.ts`. */
+async function tenantMailConfig() {
+  const companyId = getCompanyContext()?.companyId;
+  return companyId ? mailConfigForCompany(companyId) : null;
+}

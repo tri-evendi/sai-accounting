@@ -76,6 +76,7 @@ model Tenant {
   memberships      TenantMembership[]
   deletionRequests TenantDeletionRequest[]
   invitations Invitation[]
+  mailSetting TenantMailSetting?
 
   @@index([status])
   @@map("tenants")
@@ -595,4 +596,80 @@ model TenantSlugHistory {
 
   @@index([tenantId])
   @@map("tenant_slug_history")
+}
+
+/// SERVER SUREL MILIK TENANT SENDIRI.
+///
+/// ══ KENAPA DI BASIS DATA KENDALI, BUKAN PLATFORM ════════════════════════════
+/// `mail_settings` di `sai_platform` adalah milik PENYEDIA: satu untuk seluruh
+/// pemasangan, dipakai surel yang datang DARI KAMI (undangan staf, atur-ulang
+/// kata sandi, verifikasi pendaftaran). Tabel ini menjawab pertanyaan yang
+/// berbeda: dari server siapa surel yang dikirim ATAS NAMA PELANGGAN keluar —
+/// faktur dan pengingat jatuh tempo kepada pelanggannya sendiri.
+///
+/// Rumahnya basis data KENDALI karena dua alasan yang saling menguatkan:
+/// tenant hidup di sini, dan doktrin #137 menyatakan platform yang mati tidak
+/// boleh mematikan surel. Menaruhnya di platform berarti penagihan yang mati
+/// ikut mematikan penagihan PELANGGAN kita — kegagalan yang menular ke arah
+/// yang paling tidak masuk akal.
+///
+/// ══ KENAPA PER TENANT, BUKAN PER PT ════════════════════════════════════════
+/// Satu kotak surel per badan usaha adalah beban administrasi yang nyata, dan
+/// tenant dengan tiga PT hampir selalu menagih dari satu alamat. Yang
+/// membedakan surat antar-PT adalah ISINYA — nama perusahaan di badan surel
+/// dan di kertas fakturnya berasal dari `company_settings`, bukan dari alamat
+/// pengirimnya.
+///
+/// ══ YANG TIDAK PERNAH LEWAT SINI ═══════════════════════════════════════════
+/// Surel yang membawa TOKEN AKSES: atur-ulang kata sandi, undangan, verifikasi
+/// pendaftaran, permintaan penghapusan tenant. Ketiganya tetap lewat pengaturan
+/// PENYEDIA, dan itu bukan kelalaian melainkan pagar: tautan yang membuka akun
+/// di aplikasi kami tidak boleh berangkat dari server surel yang dikendalikan
+/// pelanggan, dan pelanggan juga tidak boleh dibebani kegagalan pengiriman
+/// untuk surel yang bukan urusannya.
+model TenantMailSetting {
+  id       Int @id @default(autoincrement())
+  tenantId Int @unique @map("tenant_id")
+
+  /// file | smtp. `file` = ditangkap ke berkas .eml (mode aman, bawaan).
+  transport String @default("file") @db.VarChar(10)
+
+  host     String? @db.VarChar(191)
+  port     Int?
+  username String? @db.VarChar(191)
+
+  /// Alamat pengirim, mis. "PT Contoh <tagihan@contoh.co.id>". Kosong = pakai
+  /// alamat pengirim milik penyedia.
+  fromAddress String? @map("from_address") @db.VarChar(191)
+
+  /// Segel AES-256-GCM kata sandi SMTP (`lib/settings-crypto.ts`). Ketiganya
+  /// kosong = tanpa kata sandi (relai yang mengautentikasi lewat IP juga sah).
+  /// Kata sandi mentah TIDAK PERNAH keluar lewat pembacaan mana pun.
+  passwordCiphertext String? @map("password_ciphertext") @db.VarChar(512)
+  passwordIv         String? @map("password_iv") @db.VarChar(64)
+  passwordTag        String? @map("password_tag") @db.VarChar(64)
+
+  /// Salinan SENYAP (BCC) surel keluar milik tenant ini. BCC, bukan CC —
+  /// alasan yang sama dengan `MailSetting.archive_address`: CC memperlihatkan
+  /// alamat ini kepada setiap pelanggan yang menerima surelnya.
+  archiveAddress String? @map("archive_address") @db.VarChar(191)
+
+  /// Hasil UJI KIRIM terakhir. Konfigurasi surel yang tidak pernah diuji adalah
+  /// konfigurasi yang baru ketahuan salah pada faktur pertama yang gagal
+  /// terkirim — dan yang menanggungnya pelanggan kita, bukan kita.
+  lastTestAt      DateTime? @map("last_test_at")
+  lastTestTo      String?   @map("last_test_to") @db.VarChar(191)
+  /// ok | error
+  lastTestStatus  String?   @map("last_test_status") @db.VarChar(10)
+  lastTestMessage String?   @map("last_test_message") @db.Text
+
+  /// Siapa yang terakhir menyimpannya — id pengguna global, sebagai teks.
+  updatedBy String @map("updated_by") @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_mail_settings")
 }

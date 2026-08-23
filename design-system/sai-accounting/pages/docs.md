@@ -11,18 +11,34 @@
 |---|---|---|
 | Langit-langit tipografi | `fontSizeHeading2` (30px) | di BAWAH langit-langit app (38px) — permukaan yang judulnya lebih kecil dari judul app tidak akan pernah terbaca sebagai halaman jualan |
 | Tombol berisi penuh | **nol** | dokumentasi tidak memajukan apa pun (§Aksi utama per layar: "nol juga sah") |
-| Kolom baca | **768px** | angka telanjang, preseden `/terms` & `/privacy`; ditulis SEKALI di `docs-shell.tsx` |
+| Kolom baca | **lebar penuh** | batas 768px dicabut 23 Agu 2026 (keputusan pemilik) — lihat §Lebar di bawah |
 | Irama antar-blok | 24px (`--ant-margin-lg`) | irama app, bukan irama pemasaran |
 | Prosa | bahasa Indonesia, kerangka trilingual | keputusan 3 #300 — pembaca `en`/`zh` mendapat pemberitahuan dalam bahasanya sendiri |
 
+## Lebar
+
+**Dokumentasi memakai lebar penuh area yang tersedia** (keputusan pemilik,
+23 Agu 2026). Yang dicabut: batas kolom baca 768px yang berlaku sejak #300.
+
+Alasan batas lama, ditulis di sini supaya keputusannya bisa ditinjau ulang
+dengan bahan yang sama: di atas ±75 karakter per baris, mata kehilangan awal
+baris berikutnya saat kembali dari ujung kanan, dan kalimat berhenti bisa
+dipindai sekali lihat. Konsekuensi yang berlaku sekarang: di monitor lebar satu
+baris prosa bisa memuat ±200 karakter.
+
+Mengembalikannya = satu `maxWidth` di `KOLOM_BACA` (`docs-shell.tsx`) + baris
+§Dokumentasi di `MASTER.md`. Penjaga menolak lebar skala-kolom (≥600px) yang
+diketik di luar berkas itu — supaya batasnya tidak pernah hidup di satu kulit
+saja.
+
 ## Tata letak (#453)
 
-Tiga kolom, satu simpul DOM, tiga bentuk:
+Tiga kolom, satu simpul DOM, tiga bentuk (kolom baca mengisi sisa ruang):
 
 ```
-container ≥1160px   [ daftar halaman 220 ][ kolom baca 768 ][ di halaman ini 200 ]
+container ≥1160px   [ daftar halaman 220 ][ kolom baca …sisa… ][ di halaman ini 200 ]
 container ≥900px    [ daftar halaman 220 ][ di halaman ini            ]
-                    [                    ][ kolom baca               ]
+                    [                    ][ kolom baca …sisa…        ]
 container <900px    [ di halaman ini ]
                     [ kolom baca     ]
 ```
@@ -40,8 +56,8 @@ yang benar-benar tersedia, jadi satu aturan melayani keduanya tanpa bercabang.
   dikirim: markup yang tetap ada dibaca sebagai navigasi kedua oleh sebagian
   pembaca layar. Di lebar sempit jalannya tetap daftar isi `/docs` + pengalih
   Sebelumnya/Berikutnya.
-- **Bilah kepala kulit publik sejajar BINGKAI**, bukan kolom baca — sejak ada
-  kolom kiri, lambang yang rata dengan kolom baca menggantung di tengah halaman.
+- **Bilah kepala kulit publik sejajar BINGKAI** — keduanya lebar penuh, jadi
+  lambang di kiri berdiri tepat di atas daftar halaman.
 - Semua aturan hidup di SATU blok `<style href precedence>` di `docs-shell.tsx`,
   menyasar `data-docs-*`. ⚠ Properti yang berubah per titik patah **tidak boleh**
   juga ditulis sebaris — gaya sebaris mengalahkan blok itu.
@@ -79,17 +95,44 @@ kehilangan keempatnya.
 | `poin` | jarak butir 8px |
 | `catatan` | dua nada: `info` (bawaan) dan `peringatan` (tepi/latar warning **+ kata "Perhatikan:"**) — warna tidak pernah penanda tunggal |
 | `kode` | `<pre>` monospace, `tab-size:2`, bergulung sendiri, label bahasa 12px |
+| `langkah` | `<ol>`, penomoran dari peramban — dipakai HANYA untuk yang urutannya berarti; sisanya tetap `poin` |
+| `diagram` | gambar mekanisme + `<figcaption>`; lihat §Gambar mekanisme |
 | `istilah` | dibaca dari `TERMS`, tidak pernah disalin |
 | `matriks-izin`, `endpoint-api` | dibangkitkan saat render dari `authz.ts` / `api-v1-spec.ts` |
 
 **Waktu baca** dihitung dari jumlah kata bloknya (200 kata/menit, dibulatkan ke
 atas, minimum 1) — bukan diketik.
 
+## Gambar mekanisme (#453 Tahap 3)
+
+**HTML, bukan SVG — dan itu perubahan dari rencana awal berkas ini.** SVG
+ber-`viewBox` menskalakan seluruh isinya mengikuti lebar kotak, termasuk
+hurufnya: di kolom baca ponsel 320px, teks 14 satuan di dalam `viewBox` 560
+mendarat sebagai ±7px. Benar tergambar, tidak terbaca — dan tidak terlihat
+sebagai cacat di layar pengembang. Bentuk HTML (kotak + panah + kisi) mengalir
+mengikuti lebar, hurufnya tetap huruf halaman pada ukuran yang sama, warnanya
+token yang sama, tema gelap gratis, dan pembaca layar membacanya sebagai TEKS.
+
+- Setiap gambar `<figure>` + `<figcaption>`; keterangannya **prosa di
+  `docs-content.ts`**, bukan di komponennya — ia yang dibaca orang yang tidak
+  melihat gambarnya, jadi ia harus berdiri sendiri sebagai kalimat.
+- Panah `aria-hidden`; arah dibaca dari urutan teksnya. Bentuknya berganti
+  →/↓ mengikuti arah tumpukan.
+- **Gambar adalah WADAHNYA SENDIRI** (`container-type: inline-size` di
+  `<figure>`): titik patahnya menanyakan lebar gambar, bukan lebar bingkai
+  halaman — bingkai selebar 1200px memberi kolom baca ±760px saat tiga kolom
+  tampil dan ±960px saat hanya dua.
+- ⚠ Gambar TIDAK BOLEH mengklaim apa pun yang tidak dikatakan prosanya. Angka
+  contoh jurnal (100 juta · 11% · 111 juta) adalah angka yang sudah tertulis di
+  halaman `mesin-akuntansi`.
+- Tiga yang ada: `alur-jurnal`, `alur-persetujuan`, `buku-per-pt`. Nama yang
+  tidak punya perender ditolak `tsc`; perender yang tidak dipakai ditolak tes.
+
 ## Penjaga
 
 `tests/docs.test.ts` menolak: daftar impor di luar daftar-IZIN, `--sai-landing-*`,
-`fontSizeHeading1`, tombol berisi penuh, `<main>` ganda, angka 768 di luar
-`docs-shell.tsx`, definisi kamus yang disalin ke prosa, **daftar halaman/TOC yang
+`fontSizeHeading1`, tombol berisi penuh, `<main>` ganda, lebar skala-kolom
+(≥600px) yang diketik di luar `docs-shell.tsx`, definisi kamus yang disalin ke prosa, **daftar halaman/TOC yang
 diketik alih-alih dibangkitkan**, indeks pencarian yang kehilangan halaman,
 jangkar hasil cari yang tidak dirender, slug `cari` yang menutupi halaman
 pencarian, dan **satu pun `"use client"` di permukaan ini** (termasuk komponen
@@ -103,7 +146,7 @@ klien mana pun di `src/` yang mengimpor isi dokumentasi).
 - **Blok bangkitan tidak ikut terindeks** pencarian: isinya baru ada saat render,
   dan meratakannya ke indeks berarti menyalin daftar yang justru dibangkitkan
   supaya tidak pernah disalin. Halaman API tetap ditemukan lewat prosanya.
-- **Belum ada diagram** (issue #453 Tahap 3): blok `langkah` + SVG skematik untuk
-  tiga mekanisme (dokumen → jurnal → laporan, alur persetujuan, satu PT satu
-  basis data). "Tanpa tangkapan layar" tetap berlaku — aturan itu menyasar gambar
-  TOMBOL yang menua tiap rilis, bukan gambar MESIN.
+- **Gambar hanya untuk MEKANISME.** "Tanpa tangkapan layar" (keputusan 5 #300)
+  tetap berlaku penuh: aturan itu menyasar gambar TOMBOL, yang berpindah tiap
+  rilis dan membuat dokumennya berbohong tanpa satu baris pun disunting. Gambar
+  mesin tidak berubah karena tata letak halaman berubah.

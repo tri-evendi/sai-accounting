@@ -66,8 +66,21 @@ import { DOCS_ROOT } from "@/lib/docs";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { DEFAULT_LOCALE } from "@/lib/i18n/config";
 
-/** Kolom baca. Angka telanjang, seperti `/terms` & `/privacy`. */
-export const LEBAR_BACA = 768;
+/**
+ * ⚠ KOLOM BACA TIDAK LAGI DIBATASI (keputusan pemilik, 23 Agu 2026).
+ *
+ * Sampai hari ini permukaan ini mengikat 768px, dan alasannya panjang baris:
+ * di atas ±75 karakter sebuah kalimat berhenti bisa dipindai sekali lihat,
+ * sebab mata kehilangan awal baris berikutnya saat kembali dari ujung kanan.
+ * Angka itu ada di MASTER.md §Dokumentasi, dan di kulit APLIKASI ia yang
+ * menahan prosa ikut melebar mengikuti area kerja.
+ *
+ * Yang berlaku sekarang: dokumentasi memakai LEBAR PENUH area yang tersedia,
+ * seperti halaman app lainnya. Konsekuensinya dinyatakan apa adanya, bukan
+ * disembunyikan: di monitor lebar satu baris prosa bisa memuat ±200 karakter.
+ * Kalau kelak ada yang mengembalikan batasnya, angkanya tinggal dipasang lagi
+ * di `KOLOM_BACA` — dan §Dokumentasi di MASTER.md perlu ikut dikembalikan.
+ */
 
 /**
  * Bentuk kolom bacanya — DIEKSPOR, karena kedua kulit memasangnya dan angka
@@ -80,8 +93,10 @@ export const KOLOM_BACA: React.CSSProperties = {
   flexDirection: "column",
   /* Irama app (24px), bukan irama pemasaran (64–96px). */
   gap: "var(--ant-margin-lg)",
-  maxWidth: LEBAR_BACA,
-  margin: "0 auto",
+  /* Tanpa `maxWidth`: lihat catatan di atas. `minWidth: 0` tetap perlu — sebuah
+     kolom kisi yang isinya tabel lebar akan mendorong kisinya melebihi
+     wadahnya tanpa ini, dan yang menggulung mendatar menjadi HALAMAN. */
+  minWidth: 0,
 };
 
 /** Kolom kiri (daftar halaman) & kolom kanan (di halaman ini). */
@@ -89,11 +104,11 @@ const LEBAR_SISI = 220;
 const LEBAR_TOC = 200;
 
 /**
- * Bingkai luar: kolom kiri + kolom baca + kolom kanan, beserta dua jarak 24px
- * di antaranya. Angkanya DIHITUNG, bukan diketik — mengubah salah satu kolom
- * tidak boleh menuntut orang menghitung ulang lebar totalnya di kepala.
+ * Bingkai luar tidak lagi dibatasi — ia mengisi area yang diberikan kulitnya
+ * (lihat catatan `KOLOM_BACA`). Kolom kiri & kanan tetap berlebar tetap; yang
+ * memanjang adalah kolom bacanya.
  */
-export const LEBAR_BINGKAI = LEBAR_SISI + LEBAR_BACA + LEBAR_TOC + 24 * 2;
+export const LEBAR_BINGKAI = "100%" as const;
 
 /**
  * Yang dipasang KEDUA kulit — menggantikan `KOLOM_BACA` di sana.
@@ -110,7 +125,6 @@ export const BINGKAI_DOKUMENTASI: React.CSSProperties = {
   containerType: "inline-size",
   width: "100%",
   maxWidth: LEBAR_BINGKAI,
-  margin: "0 auto",
 };
 
 /**
@@ -147,6 +161,11 @@ const ATURAN_DOKUMENTASI = `
 [data-docs-toc-item]{transition:color 150ms ease}
 [data-docs-toc-item]:hover{color:var(--ant-color-link-hover);text-decoration:underline}
 [data-docs-toc-item]:focus-visible{outline:var(--ant-line-width-focus) solid var(--ant-color-primary);outline-offset:2px;border-radius:var(--ant-border-radius)}
+[data-docs-figure-flow]{flex-direction:column}
+[data-docs-arrow]{display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+[data-docs-arrow-h]{display:none}
+[data-docs-arrow-v]{display:inline}
+@container (min-width:520px){[data-docs-figure-flow]{flex-direction:row}[data-docs-arrow-h]{display:inline}[data-docs-arrow-v]{display:none}}
 [data-docs-hit]{transition:background-color 150ms ease,border-color 150ms ease}
 [data-docs-hit]:hover{background:var(--ant-color-fill-quaternary);border-color:var(--ant-color-primary-border)}
 [data-docs-hit]:hover [data-docs-hit-title]{color:var(--ant-color-link-hover)}

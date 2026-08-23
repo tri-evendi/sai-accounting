@@ -506,6 +506,7 @@
       "accountName": "账户名称",
       "accountNamePlaceholder": "示例贸易有限公司",
       "accountNameHint": "您的企业或办公室名称。它将成为每套账簿的网址：",
+      "accountNameIsPerson": "这是您本人的姓名。账户通常以企业或办公室命名——此网址会被您的员工和会计看到。如果贵企业确实叫这个名字，保留即可。",
       "submit": "注册",
       "submitting": "注册中...",
       "sentTitle": "请查收邮箱",

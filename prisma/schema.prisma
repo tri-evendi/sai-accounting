@@ -2009,3 +2009,103 @@ model TaxRate {
   @@index([effectiveFrom])
   @@map("tax_rates")
 }
+
+// ─── Transaksi berulang (issue #469) ─────────────────────
+
+/// Templat dokumen yang berulang: sewa bulanan, langganan, beban rutin.
+///
+/// ══ KENAPA MENUNJUK DOKUMEN SUMBER, BUKAN MENYALIN KOLOMNYA ═════════════════
+/// Templat ini menyimpan `source_type` + `source_id` — "ulangi faktur ini
+/// setiap bulan" — dan tiap kejadian MENYALIN sumbernya saat itu juga.
+///
+/// Alasannya bukan sekadar lebih kecil. Menyimpan muatan dokumen sebagai JSON
+/// melanggar doktrin docs/DATABASE.md (uang wajib `Decimal(15,2)`, bukan angka
+/// di dalam teks), sementara menyalinnya ke tabel anak sendiri berarti dua
+/// definisi "baris faktur" yang bisa menyimpang diam-diam. Menunjuk sumbernya
+/// tidak punya dua-duanya.
+///
+/// Konsekuensi yang DISENGAJA: menyunting dokumen sumber mengubah kejadian
+/// berikutnya — itu justru cara menyunting templatnya. Yang tidak boleh diam
+/// adalah sumber yang HILANG atau dibatalkan; kejadiannya ditahan dan
+/// dilaporkan (`held_source`), tidak pernah ditebak.
+///
+/// ══ YANG DIHASILKAN PENJADWAL BUKAN JURNAL YANG SUDAH TERPOSTING ════════════
+/// Dokumennya dibuat persis seperti manusia membuatnya, lalu SELALU menerbitkan
+/// permintaan persetujuan (#25) apa pun nilainya — jadi buku besar diam sampai
+/// seseorang menyetujuinya di /approvals. Mesin yang memposting sendiri setiap
+/// bulan berarti angka yang tidak seorang pun lihat sebelum tercatat.
+model RecurringTemplate {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(150)
+
+  /// enum-like: invoice | journal (`RECURRING_KINDS` di lib/recurring.ts).
+  kind String @db.VarChar(20)
+  /// Dokumen yang diulang. Tanpa FK: dua tipe sumber tidak bisa menunjuk satu
+  /// tabel, dan pola ini sama dengan `journals.source_type`/`source_id`.
+  sourceId Int @map("source_id")
+
+  /// enum-like: weekly | monthly | yearly (`RECURRENCE_FREQUENCIES`).
+  frequency String @db.VarChar(20)
+  /// Kejadian PERTAMA, dan JANGKAR tanggalnya. Kejadian ke-n dihitung dari
+  /// sini — bukan dari kejadian sebelumnya — supaya jadwal tanggal 31 tidak
+  /// hanyut jadi 28 selamanya (lihat lib/recurring.ts).
+  startDate DateTime @map("start_date")
+  /// Berhenti sesudah tanggal ini (inklusif). NULL = tanpa batas tanggal.
+  endDate DateTime? @map("end_date")
+  /// Berhenti setelah sekian kejadian. NULL = tanpa batas jumlah.
+  maxOccurrences Int? @map("max_occurrences")
+
+  /// Master data → dinonaktifkan, bukan dihapus. Templat yang berhenti tidak
+  /// menyentuh dokumen yang terlanjur dibuatnya.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  occurrences RecurringOccurrence[]
+
+  @@index([isActive])
+  @@index([kind])
+  @@map("recurring_templates")
+}
+
+/// Satu KEJADIAN sebuah templat — sekaligus kunci idempotensinya.
+///
+/// `@@unique([templateId, occurrenceDate])` adalah yang sesungguhnya menjaga:
+/// penjadwal yang berjalan dua kali dalam sehari menabrak constraint, bukan
+/// melahirkan dokumen kembar. Saringan di memori (`sudahTerbit`) hanya
+/// menghemat pekerjaan.
+///
+/// Barisnya ditulis BAIK saat berhasil MAUPUN saat ditahan. Kejadian yang
+/// ditahan tanpa jejak akan dicoba lagi setiap jam selama jendela susulan, dan
+/// tidak ada yang tahu ia pernah gagal.
+model RecurringOccurrence {
+  id         Int @id @default(autoincrement())
+  templateId Int @map("template_id")
+
+  /// Tanggal kejadian (bukan tanggal hari ini) — separuh kunci uniknya.
+  occurrenceDate DateTime @map("occurrence_date")
+
+  /// enum-like:
+  ///   created      — dokumennya lahir dan menunggu persetujuan;
+  ///   held_period  — jatuh di periode yang sudah DITUTUP. Tidak diselundupkan
+  ///                  dan tidak dibuang: dicatat supaya terlihat, dan seorang
+  ///                  manusia yang memutuskan apa yang terjadi sesudahnya;
+  ///   held_source  — dokumen sumbernya hilang/dibatalkan, jadi tak ada yang
+  ///                  bisa disalin. Menebak isinya lebih buruk daripada diam.
+  status String @db.VarChar(20)
+
+  /// Dokumen yang lahir. NULL untuk kejadian yang ditahan.
+  documentId Int? @map("document_id")
+  /// Kalimat apa adanya untuk manusia — sebab penahanannya.
+  note String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  template RecurringTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, occurrenceDate])
+  @@index([status])
+  @@map("recurring_occurrences")
+}

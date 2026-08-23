@@ -245,6 +245,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // "Debit" — istilah akuntansi Latin yang ejaannya identik di kedua bahasa;
     // kepala kolom purwarupa jurnal di galeri pendaratan (#399). Mandarin 借方.
     "landing.mockDebit",
+    // "WhatsApp" adalah NAMA DIRI (merek) — sama di ketiga bahasa. Ia label
+    // kanal di riwayat kirim faktur (issue #465).
+    "invoiceSend.channelWhatsapp",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).
@@ -265,6 +268,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "operator.mail.transportSmtp",
     // "{rate}%" — lihat catatan yang sama di daftar `en` (issue #368).
     "taxSettings.ratePercent",
+    // "WhatsApp" adalah NAMA DIRI (merek) — sama di ketiga bahasa. Ia label
+    // kanal di riwayat kirim faktur (issue #465).
+    "invoiceSend.channelWhatsapp",
   ]),
 };
 

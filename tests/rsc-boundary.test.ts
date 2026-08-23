@@ -213,7 +213,7 @@ const SRC = join(__dirname, "..", "src");
  * pengalihan penuh halaman pada setiap penyimpanan di layar pengaturan yang
  * memang bersesi — harga yang salah di sisi ini.
  */
-const AMBANG_KLIEN = 169;
+const AMBANG_KLIEN = 170;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -289,6 +289,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/edit/invoice-edit-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/payment-section.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/pdf-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/send-section.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/new/invoice-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",

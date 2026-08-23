@@ -117,6 +117,18 @@ export type AuditAction =
    */
   | "invoice.pull_from_contract"
   /**
+   * Faktur DIKIRIM ke pelanggan (issue #465). Tidak menyentuh buku besar sama
+   * sekali — tapi ia satu-satunya tindakan di buku ini yang akibatnya KELUAR
+   * dari perusahaan dan tidak bisa ditarik kembali, dan itulah persis kelas
+   * tindakan yang jejaknya dicari orang berikutnya ("siapa yang menagih
+   * pelanggan ini, kapan, ke alamat mana").
+   *
+   * Dua aksi, bukan satu, karena artinya berbeda: `email` benar-benar terkirim
+   * oleh kita; `whatsapp` hanya DISIAPKAN — manusia yang menekan kirim.
+   */
+  | "invoice.send.email"
+  | "invoice.send.whatsapp"
+  /**
    * Approval transaksi (issue #25). `approval.request` is raised by the document
    * route when a value crosses the ambang; `approval.approve` is the ONLY action
    * here that reaches the ledger — it releases the withheld journal through

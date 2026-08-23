@@ -32,6 +32,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { statusColumn } from "@/components/ui/status-column";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import { lastSentByInvoice } from "@/lib/invoice-send";
 import {
   parseSort,
   sortOrderBy,
@@ -80,6 +81,8 @@ interface InvoiceRow {
   total: number;
   currency: string;
   status: string;
+  /** Terakhir dikirim ke pelanggan (issue #465); `null` = belum pernah. */
+  sentAt: Date | null;
 }
 
 export default async function InvoicesPage({
@@ -133,6 +136,10 @@ export default async function InvoicesPage({
   ]);
   const totalPages = Math.ceil(totalCount / perPage);
 
+  /* Kapan tiap faktur terakhir dikirim (issue #465) — SATU query beragregat
+     untuk seluruh halaman, bukan satu per baris. */
+  const lastSent = await lastSentByInvoice(invoices.map((inv) => inv.id));
+
   const rows: InvoiceRow[] = invoices.map((inv) => ({
     id: inv.id,
     invoiceNo: inv.invoiceNo,
@@ -147,6 +154,7 @@ export default async function InvoicesPage({
       Number(inv.taxAmount ?? 0),
     currency: inv.currency || "IDR",
     status: inv.status,
+    sentAt: lastSent.get(inv.id) ?? null,
   }));
 
   /** Pencacah baris/pembayaran — kuantitas, jadi tanpa topeng rupiah. */
@@ -215,6 +223,29 @@ export default async function InvoicesPage({
       title: t("invoices.colValue"),
       currency: (row) => row.currency,
     }),
+    /*
+     * Sudah ditagih atau belum (issue #465). Kolomnya sengaja sesempit
+     * tanggal: yang dicari mata saat menyapu daftar bukan "kapan persisnya",
+     * melainkan baris mana yang masih KOSONG — dan itu terbaca dari em-dash.
+     * Tanpa `sorter`: nilainya datang dari query terpisah untuk halaman ini
+     * saja, jadi pengurutan basis data tidak bisa menjangkaunya.
+     */
+    {
+      key: "sentAt",
+      dataIndex: "sentAt",
+      title: t("invoiceSend.colSent"),
+      align: "left",
+      render: (_v, row) => (
+        <span
+          style={{
+            fontVariantNumeric: "tabular-nums",
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          {row.sentAt ? formatDateShort(row.sentAt) : "—"}
+        </span>
+      ),
+    },
     statusColumn<InvoiceRow>({
       dataIndex: "status",
       title: t("common.status"),

@@ -27,6 +27,7 @@ import { getReceivables, type ReceivableRow } from "@/lib/receivables";
 import { Card } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import { lastSentByInvoice } from "@/lib/invoice-send";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
@@ -108,6 +109,22 @@ export default async function ReceivablesPage({
     definition ? resolveColumns(definition, sp.cols) : []
   );
 
+  /*
+   * Faktur tertunggak yang TIDAK PERNAH DIKIRIM (issue #465).
+   *
+   * Penanda, bukan kolom baru: susunan kolom halaman ini juga menyusun kolom
+   * BERKAS EKSPOR-nya (`agingColumns`), jadi kolom ke-sembilan di sini akan
+   * mengubah bentuk berkas yang sudah dipakai orang. Yang ditambahkan karena
+   * itu satu kata di dalam sel nomor dokumen.
+   *
+   * Dan itu memang kalimat yang paling berguna di halaman ini: sebuah piutang
+   * yang fakturnya belum pernah sampai ke pelanggan bukan pelanggan yang
+   * menunggak — itu pekerjaan kita sendiri yang belum selesai, dan ia terbaca
+   * sama saja dengan tunggakan sungguhan sampai ada yang menuliskannya.
+   */
+  const invoiceIds = rows.filter((r) => r.kind === "invoice").map((r) => r.id);
+  const sentInvoices = await lastSentByInvoice(invoiceIds);
+
   // Susunan kolom layar = susunan kolom berkasnya. Satu penentu, tiga permukaan.
   const cols = agingColumns(payload);
   const HEADERS: Record<AgingColumnId, string> = {
@@ -140,6 +157,9 @@ export default async function ReceivablesPage({
                   ? t("receivables.docTypeInvoice")
                   : t("receivables.docTypeContract")}
               </span>
+              {r.kind === "invoice" && !sentInvoices.has(r.id) && (
+                <span style={subtleStyle}>{t("invoiceSend.neverSent")}</span>
+              )}
               {/* Free text, straight from top1/top2 — informational only. */}
               {r.terms && (
                 <span

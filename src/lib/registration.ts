@@ -110,9 +110,15 @@ export function verdictForVerification(
 export const STATUS_AFTER_VERIFICATION: TenantStatus = "trialing";
 
 /**
- * Slug tenant dari nama pendaftar: huruf kecil/angka/tanda hubung, tanpa tepi
+ * Slug tenant dari nama AKUN: huruf kecil/angka/tanda hubung, tanpa tepi
  * menggantung, maksimal 40 (menyisakan ruang akhiran anti-tabrakan di bawah
  * batas kolom 50). Nama yang tak menyisakan apa pun jatuh ke "tenant".
+ *
+ * ⚠ Sejak #458 yang masuk ke sini adalah nama AKUN, bukan nama ORANG. Alasan
+ * lengkapnya di badan issue itu; bentuk pendeknya: alamat setiap buku dibaca
+ * staf dan akuntan eksternal, dan nama pribadi di sana adalah data pribadi
+ * yang tersebar ke log, riwayat peramban, dan header `Referer` tanpa satu pun
+ * orang memutuskannya.
  */
 export function tenantSlugFrom(name: string): string {
   const slug = name
@@ -125,13 +131,49 @@ export function tenantSlugFrom(name: string): string {
 }
 
 /**
- * Kandidat slug berurutan untuk menghindari tabrakan: `budi`, `budi-2` …
- * `budi-9`, lalu akhiran acak. Deterministik di sembilan percobaan pertama
- * supaya bisa diuji; keunikan sesungguhnya tetap dijaga indeks unik DB.
+ * Abjad slug acak: TANPA huruf & angka yang saling menyamar (0/o, 1/l/i).
+ *
+ * Slug ini akan dibacakan lewat telepon dan diketik ulang dari tangkapan layar
+ * WhatsApp; sepasang karakter yang mirip di sana berarti satu pelanggan yang
+ * mendarat di 404 dan menyangka bukunya hilang.
+ */
+const ABJAD_ACAK = "abcdefghjkmnpqrstuvwxyz23456789";
+
+/**
+ * Slug acak — CADANGAN, bukan bawaan.
+ *
+ * ⚠ ACAK, bukan HASH dari email/nama. Hash bukan penyamaran: siapa pun yang
+ * tahu alamat surel target bisa menghitung hash yang sama dan membuktikan akun
+ * itu ada — pseudonim yang bisa diverifikasi, bukan rahasia. Yang di sini
+ * ditarik dari `randomBytes`, jadi ia tidak bisa dihubungkan kembali ke apa pun
+ * tanpa membaca baris tenantnya.
+ *
+ * Delapan karakter dari abjad 31 huruf ≈ 40 bit — jauh lebih dari cukup untuk
+ * ruang nama sebesar daftar pelanggan, dan tetap pendek untuk dibacakan.
+ */
+export function slugAcak(panjang = 8): string {
+  const bytes = randomBytes(panjang);
+  let keluar = "";
+  for (let i = 0; i < panjang; i += 1) {
+    keluar += ABJAD_ACAK[bytes[i] % ABJAD_ACAK.length];
+  }
+  return keluar;
+}
+
+/**
+ * Kandidat slug berurutan untuk menghindari tabrakan: `toko-maju`,
+ * `toko-maju-2` … `toko-maju-9`, lalu akhiran acak. Deterministik di sembilan
+ * percobaan pertama supaya bisa diuji; keunikan sesungguhnya tetap dijaga
+ * indeks unik DB.
+ *
+ * Nama yang tidak menyisakan satu pun huruf/angka (mis. hanya emoji) TIDAK
+ * jatuh ke "tenant", "tenant-2", "tenant-3" — deret yang tidak berarti apa-apa
+ * bagi pemiliknya dan menumpuk di ruang nama bersama. Ia jatuh ke slug ACAK.
  */
 export function tenantSlugCandidates(name: string, randomSuffix?: string): string[] {
   const base = tenantSlugFrom(name);
   const suffix = randomSuffix ?? randomBytes(3).toString("hex");
+  if (base === "tenant") return [slugAcak(), slugAcak(), slugAcak()];
   return [base, ...Array.from({ length: 8 }, (_, i) => `${base}-${i + 2}`), `${base}-${suffix}`];
 }
 

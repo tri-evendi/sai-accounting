@@ -19,6 +19,7 @@ import {
   hashVerificationToken,
   mintVerificationToken,
   refuseProvisioning,
+  slugAcak,
   tenantSlugCandidates,
   tenantSlugFrom,
   trialEndsAtFrom,
@@ -96,6 +97,37 @@ describe("slug tenant & username", () => {
     for (const c of tenantSlugCandidates("x".repeat(200), "abcdef")) {
       expect(c.length).toBeLessThanOrEqual(50);
     }
+  });
+
+  it("nama yang tak menyisakan huruf jatuh ke slug ACAK, bukan deret `tenant-2` (#458)", () => {
+    /*
+     * `tenant`, `tenant-2`, `tenant-3` tidak berarti apa-apa bagi pemiliknya
+     * DAN menumpuk di ruang nama bersama: pendaftar keenam dengan nama beremoji
+     * mendapat `tenant-6`, yang membocorkan berapa banyak orang sebelumnya
+     * mengalami hal yang sama.
+     */
+    const kandidat = tenantSlugCandidates("小明");
+    expect(kandidat[0]).not.toBe("tenant");
+    expect(kandidat).toHaveLength(3);
+    for (const c of kandidat) expect(c).toMatch(/^[a-z2-9]{8}$/);
+    /* Tiga kandidat, tiga nilai berbeda — kalau sama, ketiganya menabrak baris
+       yang sama dan "cadangan" itu tidak mencadangkan apa pun. */
+    expect(new Set(kandidat).size).toBe(3);
+  });
+
+  it("slug acak: abjad tanpa karakter yang saling menyamar, dan tidak dapat ditebak (#458)", () => {
+    /*
+     * ⚠ ACAK, bukan HASH dari email/nama: hash bisa dihitung ulang siapa pun
+     * yang tahu alamat surel target, jadi ia membuktikan keberadaan akun
+     * alih-alih menyembunyikannya. Yang diuji di sini konsekuensinya — dua
+     * panggilan tidak pernah sama.
+     */
+    const contoh = Array.from({ length: 50 }, () => slugAcak());
+    for (const s of contoh) expect(s).toMatch(/^[abcdefghjkmnpqrstuvwxyz23456789]{8}$/);
+    expect(new Set(contoh).size).toBe(contoh.length);
+    /* 0/o dan 1/l/i tidak pernah muncul: slug ini dibacakan lewat telepon dan
+       diketik ulang dari tangkapan layar. */
+    expect(contoh.join("")).not.toMatch(/[01lio]/);
   });
 
   it("username dari bagian lokal email; tak pernah kosong", () => {

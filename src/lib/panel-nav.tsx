@@ -21,6 +21,7 @@
 import {
   BookOutlined,
   HomeOutlined,
+  IdcardOutlined,
   PlusOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
@@ -44,6 +45,15 @@ export function panelNav(tenant: PanelTenant, t: TranslateFn): PlatformNavItem[]
          semuanya berawalan `/platform`. */
       exact: true,
     },
+    ...(tenantCan(tenant, "tenant.settings")
+      ? [
+          {
+            href: "/platform/account",
+            label: t("platform.accountTitle"),
+            icon: <IdcardOutlined style={{ fontSize: 16 }} />,
+          },
+        ]
+      : []),
     ...(tenantCan(tenant, "tenant.member.invite")
       ? [
           {

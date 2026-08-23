@@ -14,6 +14,7 @@ import {
   STATUS_AFTER_VERIFICATION,
   hashVerificationToken,
   mintVerificationToken,
+  slugAcak,
   tenantSlugCandidates,
   SIGNUP_MAX_COMPANIES,
   SIGNUP_MAX_USERS,
@@ -32,7 +33,10 @@ import {
  */
 export async function createRegistration(input: {
   email: string;
+  /** Nama ORANG. */
   name: string;
+  /** Nama AKUN (#458) — dasar `tenants.name` & slug-nya. */
+  accountName: string;
   passwordHash: string;
   termsAcceptedAt: Date;
   /** Versi dokumen yang TAMPIL saat kotaknya dicentang (issue #142). */
@@ -51,6 +55,7 @@ export async function createRegistration(input: {
       data: {
         email,
         name: input.name.trim(),
+        accountName: input.accountName.trim(),
         passwordHash: input.passwordHash,
         tokenHash: minted.tokenHash,
         expiresAt: minted.expiresAt,
@@ -115,6 +120,7 @@ export async function consumeVerificationToken(token: string): Promise<Verificat
         id: true,
         email: true,
         name: true,
+        accountName: true,
         passwordHash: true,
         expiresAt: true,
         usedAt: true,
@@ -137,19 +143,33 @@ export async function consumeVerificationToken(token: string): Promise<Verificat
       return { ok: false as const, reason: "already_registered" as const };
     }
 
+    /*
+     * Nama AKUN, bukan nama orang (#458).
+     *
+     * `accountName` NULL hanya pada baris yang dibuat sebelum kolomnya ada —
+     * tautan verifikasi yang sudah telanjur ada di kotak masuk seseorang.
+     * Baris itu jatuh ke perilaku LAMA dengan sengaja: mematikan tautan yang
+     * sudah dikirim demi kerapian data adalah menghukum orang yang tidak
+     * melakukan kesalahan apa pun. Pendaftaran baru selalu mengisinya.
+     */
+    const namaAkun = row.accountName?.trim() || row.name;
+
     // Slug anti-tabrakan: kandidat deterministik dulu, akhiran acak terakhir.
+    const kandidat = tenantSlugCandidates(namaAkun);
     const existing = await tx.tenant.findMany({
-      where: { slug: { in: tenantSlugCandidates(row.name) } },
+      where: { slug: { in: kandidat } },
       select: { slug: true },
     });
     const takenSlugs = new Set(existing.map((t) => t.slug));
-    const slug = tenantSlugCandidates(row.name).find((c) => !takenSlugs.has(c))!;
+    /* Ketiga kandidat acak pun tertabrak = peluang ±2^-120; kalau itu terjadi,
+       indeks unik DB yang menolak, bukan slug diam-diam kembar. */
+    const slug = kandidat.find((c) => !takenSlugs.has(c)) ?? slugAcak();
 
     const now = new Date();
     const tenant = await tx.tenant.create({
       data: {
         slug,
-        name: row.name,
+        name: namaAkun,
         status: STATUS_AFTER_VERIFICATION,
         planKey: SIGNUP_PLAN_KEY,
         trialEndsAt: trialEndsAtFrom(now),

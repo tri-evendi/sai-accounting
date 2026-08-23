@@ -34,6 +34,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
 import { sendMail, type MailAttachment } from "@/lib/mailer";
+import { mailConfigForCompany } from "@/lib/tenant-mail-settings";
+import { getCompanyContext } from "@/lib/company-context";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
@@ -195,7 +197,14 @@ export async function sendInvoiceByEmail(invoiceId: number, userId: number) {
 
   /* `sensitive` TIDAK diset: faktur memang layak diarsipkan, dan ia tidak
      membawa satu pun token yang membuka akun (aturan di `mailer-core.ts`). */
-  await sendMail({ to, subject, text, attachments: [attachment] });
+  await sendMail(
+    { to, subject, text, attachments: [attachment] },
+    /* Surel ini berangkat ATAS NAMA PELANGGAN, jadi ia memakai server surel
+       tenant itu sendiri bila ada — `undefined` berarti jalur penyedia, yang
+       memang cadangannya. Surel yang membawa token akses TIDAK PERNAH lewat
+       sini (lihat kepala `lib/tenant-mail-settings.ts`). */
+    (await tenantMailConfig()) ?? undefined
+  );
 
   return recordSend({ invoiceId, channel: "email", recipient: to, userId });
 }
@@ -295,4 +304,17 @@ export async function lastSentByInvoice(invoiceIds: number[]): Promise<Map<numbe
   return new Map(
     rows.flatMap((r) => (r._max.sentAt ? [[r.invoiceId, r._max.sentAt] as const] : []))
   );
+}
+
+/**
+ * Konfigurasi surel tenant untuk perusahaan yang sedang aktif.
+ *
+ * Konteks perusahaan yang hilang menjawab `null` — bukan melempar. Aturan
+ * "konteks hilang harus MELEMPAR" berlaku untuk yang MENULIS ke buku
+ * (docs/MULTI-COMPANY.md); di sini yang hilang hanyalah pilihan server surel,
+ * dan jatuh ke jalur penyedia adalah cadangan yang benar, bukan kebocoran.
+ */
+async function tenantMailConfig() {
+  const companyId = getCompanyContext()?.companyId;
+  return companyId ? mailConfigForCompany(companyId) : null;
 }

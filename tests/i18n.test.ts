@@ -248,6 +248,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // "WhatsApp" adalah NAMA DIRI (merek) — sama di ketiga bahasa. Ia label
     // kanal di riwayat kirim faktur (issue #465).
     "invoiceSend.channelWhatsapp",
+    // "Port" ditulis sama di bahasa Indonesia dan Inggris — isian nomor port
+    // SMTP di pengaturan surel akun (bahasa Mandarin memakai 端口).
+    "tenantMail.port",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).

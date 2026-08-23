@@ -102,7 +102,15 @@ export interface MailResult {
 }
 
 /** Dari mana konfigurasi yang benar-benar dipakai berasal. */
-export type MailConfigSource = "database" | "env" | "default";
+/**
+ * Dari mana konfigurasi ini datang.
+ *
+ * `tenant` ditambahkan bersama `lib/tenant-mail-settings.ts`: surel yang
+ * berangkat ATAS NAMA PELANGGAN (faktur, pengingat jatuh tempo) memakai server
+ * surel milik tenant itu sendiri. `database` tetap berarti pengaturan
+ * PENYEDIA — dan surel yang membawa token akses tidak pernah memakai `tenant`.
+ */
+export type MailConfigSource = "tenant" | "database" | "env" | "default";
 
 export interface MailConfig {
   /** Transport EFEKTIF — sudah memperhitungkan pengaman non-produksi. */

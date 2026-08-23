@@ -302,6 +302,8 @@ model Invoice {
   /// Retur penjualan against this invoice (issue #27). The origin document of
   /// every sales return; the total returned is capped at what was invoiced.
   salesReturns SalesReturn[]
+  /// Riwayat pengiriman faktur ini ke pelanggan (issue #465).
+  sends InvoiceSend[]
 
   @@index([customerId])
   @@index([contractId])
@@ -310,6 +312,56 @@ model Invoice {
   @@index([costCenterId])
   @@index([status])
   @@map("invoices")
+}
+
+/// Riwayat pengiriman faktur kepada PELANGGAN (issue #465).
+///
+/// ══ KENAPA DICATAT ══════════════════════════════════════════════════════════
+/// Sampai #465, faktur hanya bisa diunduh sebagai PDF — dan begitu berkasnya
+/// jatuh ke folder unduhan, aplikasi tidak tahu apa-apa lagi. Pertanyaan yang
+/// paling sering ditanyakan orang yang menagih ("faktur ini sudah saya kirim
+/// belum?") karena itu tidak punya jawaban di mana pun, dan yang terjadi
+/// bukanlah faktur yang ditolak melainkan faktur yang tidak pernah sampai.
+/// Tanpa tabel ini fiturnya hanya MEMINDAHKAN pekerjaan, tidak menghapusnya.
+///
+/// ══ APA ARTI SEBUAH BARIS — DAN APA YANG BUKAN ══════════════════════════════
+/// Satu baris = satu KALI PENGIRIMAN DIUPAYAKAN, bukan bukti bahwa manusia di
+/// ujung sana membacanya. Bedanya nyata per kanal, dan sengaja tidak dilebur:
+///
+///   • `email`    — `sendMail` sudah menerima pesannya (SMTP menerima, atau
+///                  transport `file` menuliskannya). Pantulan sesudah itu tidak
+///                  terlihat oleh kita.
+///   • `whatsapp` — pengguna MEMBUKA tautan `wa.me` berisi teks siap kirim.
+///                  Kita tidak pernah tahu ia menekan kirim. Barisnya jujur
+///                  disebut "disiapkan", bukan "terkirim", di seluruh
+///                  permukaan — dan itulah alasan `channel` disimpan apa adanya
+///                  alih-alih diringkas menjadi satu penanda `sent`.
+///
+/// Baris TIDAK PERNAH dihapus atau diperbarui; ia catatan sejarah. Mengirim
+/// ulang menambah baris baru — dua kali menagih adalah fakta yang berguna.
+model InvoiceSend {
+  id        Int    @id @default(autoincrement())
+  invoiceId Int    @map("invoice_id")
+  /// enum-like: email | whatsapp (z.enum di `@/lib/invoice-send`).
+  channel   String @db.VarChar(20)
+  /// Alamat surel atau nomor WhatsApp ternormalisasi yang DIPAKAI saat itu —
+  /// disalin, bukan dibaca ulang dari `customers`. Alamat pelanggan boleh
+  /// berubah besok, dan catatan sejarah yang ikut berubah bukan catatan.
+  recipient String @db.VarChar(190)
+  /// Pengirimnya: id pengguna GLOBAL (basis data kendali). Sengaja TANPA FK —
+  /// buku perusahaan tidak boleh menunjuk ke `users` (lihat docs/MULTI-COMPANY).
+  /// Namanya dibaca lewat `users-directory.ts` saat ditampilkan.
+  sentByUserId Int @map("sent_by_user_id")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([sentAt])
+  @@map("invoice_sends")
 }
 
 model InvoiceItem {

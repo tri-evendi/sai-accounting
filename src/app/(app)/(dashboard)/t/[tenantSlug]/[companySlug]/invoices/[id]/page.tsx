@@ -529,6 +529,7 @@ export default async function InvoiceDetailPage({
               recipient: row.recipient,
               sentAt: row.sentAt.toISOString(),
               sentBy: row.sentBy,
+              reminderKind: row.reminderKind,
             }))}
           />
         </div>

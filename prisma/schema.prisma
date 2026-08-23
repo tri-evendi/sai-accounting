@@ -354,11 +354,35 @@ model InvoiceSend {
   sentByUserId Int @map("sent_by_user_id")
   sentAt    DateTime @default(now()) @map("sent_at")
 
+  // ── issue #467 — kiriman OTOMATIS (pengingat jatuh tempo) ──────────────────
+  /// Titik pengingat yang melahirkan baris ini (`before_3` | `after_1` |
+  /// `after_7`), atau NULL untuk kiriman MANUAL yang ditekan seseorang (#465).
+  /// Satu tabel untuk dua asal, karena pembacanya satu: orang yang bertanya
+  /// "faktur ini sudah dikabari apa belum" tidak peduli siapa yang memicunya.
+  reminderKind   String? @map("reminder_kind") @db.VarChar(20)
+  /// Tanggal jatuh tempo yang menjadi acuan (ISO `YYYY-MM-DD`) — bukan tanggal
+  /// hari ini. Bentuk inilah yang menentukan cadensi, doktrin yang sama dengan
+  /// `dedupeKey` di `lib/notifications.ts`: satu titik untuk satu tanggal jatuh
+  /// tempo berbunyi TEPAT SEKALI. Kalau tanggal hari ini yang dipakai, satu
+  /// faktur akan ditagih ulang setiap hari penjadwal berjalan.
+  ///
+  /// Jatuh tempo yang DIUBAH menghasilkan kunci baru, jadi pengingatnya boleh
+  /// berbunyi lagi untuk tanggal yang baru — dan itu memang benar.
+  reminderDueKey String? @map("reminder_due_key") @db.VarChar(20)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  /// IDEMPOTENSI pengingat (issue #467): penjadwal yang berjalan dua kali
+  /// MENABRAK constraint, bukan melahirkan surel kembar ke pelanggan.
+  ///
+  /// Kiriman manual memakai NULL di kedua kolom, dan MySQL/MariaDB mengizinkan
+  /// NULL berulang di dalam kunci unik — jadi menekan "kirim" sepuluh kali
+  /// tetap menghasilkan sepuluh baris riwayat, sebagaimana mestinya. Yang
+  /// dikunci hanya yang OTOMATIS.
+  @@unique([invoiceId, reminderKind, reminderDueKey])
   @@index([invoiceId])
   @@index([sentAt])
   @@map("invoice_sends")
@@ -1412,6 +1436,24 @@ model CompanySetting {
   /// per module would make "no rows = everything on" ambiguous with "the wizard
   /// never ran".
   enabledModules String? @map("enabled_modules") @db.VarChar(255)
+  // ── issue #467 — Pengingat jatuh tempo KE PELANGGAN ────────────────────────
+  /// Sakelar induk. **Bawaannya FALSE, dan itu tidak bisa ditawar**: ini fitur
+  /// pertama yang berbicara ke orang luar atas nama pengguna, dan surel yang
+  /// terlanjur keluar tidak bisa ditarik kembali. Menyalakannya adalah tindakan
+  /// sadar oleh PT-nya, sekali.
+  reminderEnabled Boolean @default(false) @map("reminder_enabled")
+  /// Titik yang aktif — comma-separated dari `REMINDER_POINTS`
+  /// (`before_3,after_1,after_7`). NULL/kosong = SEMUA titik, mengikuti pola
+  /// `enabled_modules` di atas. Aman karena `reminder_enabled` yang menjaga
+  /// pintunya: daftar titik hanya dibaca setelah seseorang menyalakannya.
+  reminderPoints String? @map("reminder_points") @db.VarChar(100)
+  /// Kapan KIRIM-UJI KE DIRI SENDIRI terakhir berhasil.
+  ///
+  /// NULL = belum pernah, dan penjadwal MENOLAK mengirim ke pelanggan mana pun
+  /// selama ia NULL. Bukan sekadar tombol yang tersedia: seseorang harus pernah
+  /// melihat sendiri kalimat yang akan diterima pelanggannya sebelum kalimat
+  /// itu keluar dari kantor.
+  reminderTestedAt DateTime? @map("reminder_tested_at")
   /// Run-once flag: true once the wizard has completed and the opening journal is
   /// posted. Re-entry then shows a read-only summary and refuses a second run.
   isSetup Boolean @default(false) @map("is_setup")

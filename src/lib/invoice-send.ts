@@ -245,6 +245,13 @@ export interface InvoiceSendRow {
   recipient: string;
   sentAt: Date;
   sentBy: string;
+  /**
+   * Titik pengingat yang melahirkannya (issue #467), atau `null` untuk kiriman
+   * MANUAL. Dibedakan di layar, bukan dilebur: "saya yang menagih" dan "mesin
+   * yang menagih" adalah dua jawaban berbeda atas pertanyaan yang sama, dan
+   * yang kedua tidak punya nama manusia untuk disebut.
+   */
+  reminderKind: string | null;
 }
 
 /** Riwayat kirim satu faktur, terbaru dulu, dengan nama pengirim sudah dicari. */
@@ -255,13 +262,19 @@ export async function listInvoiceSends(invoiceId: number): Promise<InvoiceSendRo
   });
   if (rows.length === 0) return [];
 
-  const names = await userNamesByIds(rows.map((r) => r.sentByUserId));
+  /* Baris OTOMATIS menyimpan `sent_by_user_id = 0` — bukan pengguna mana pun,
+     dan sengaja tidak dicarikan namanya: penjadwal bukan orang. Layarnya
+     menyebutnya "otomatis". */
+  const names = await userNamesByIds(
+    rows.filter((r) => r.reminderKind == null).map((r) => r.sentByUserId)
+  );
   return rows.map((r) => ({
     id: r.id,
     channel: r.channel as InvoiceSendChannel,
     recipient: r.recipient,
     sentAt: r.sentAt,
-    sentBy: names.get(r.sentByUserId) ?? String(r.sentByUserId),
+    sentBy: names.get(r.sentByUserId) ?? "",
+    reminderKind: r.reminderKind,
   }));
 }
 

@@ -230,7 +230,15 @@ export type AuditAction =
    */
   | "company_setting.tax.pkp"
   | "company_setting.tax.rate.upsert"
-  | "company_setting.tax.rate.delete";
+  | "company_setting.tax.rate.delete"
+  /**
+   * Pengingat jatuh tempo ke pelanggan (issue #467). Dua aksi, dan yang kedua
+   * bukan formalitas: `reminders.test` adalah SATU-SATUNYA bukti bahwa seorang
+   * manusia pernah membaca sendiri kalimat yang kemudian dikirimkan mesin ke
+   * pelanggan atas nama perusahaan ini. Penjadwal menolak berjalan tanpanya.
+   */
+  | "company_setting.reminders.update"
+  | "company_setting.reminders.test";
 
 export type AuditEntity =
   /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */

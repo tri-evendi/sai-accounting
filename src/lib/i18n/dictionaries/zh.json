@@ -972,6 +972,42 @@
     "closing": "感谢您的惠顾。",
     "colSent": "已发送"
   },
+  "invoiceReminder": {
+    "subject": {
+      "before_3": "提醒：发票 {no} 即将到期",
+      "after_1": "发票 {no} 已到期",
+      "after_7": "跟进：发票 {no} 仍未收到付款"
+    },
+    "body": {
+      "before_3": "谨此提醒，发票 {no} 金额 {amount}，将于 {date} 到期。如您已付款，请忽略本邮件。",
+      "after_1": "发票 {no} 金额 {amount} 已于 {date} 到期，我们尚未收到付款。如您已付款，请忽略本邮件。",
+      "after_7": "发票 {no} 金额 {amount} 已超过 {date} 的到期日。请予确认，如有需要沟通之处请与我们联系。"
+    },
+    "greeting": "尊敬的 {name}：",
+    "closing": "感谢您的惠顾。",
+    "testFooter": "这是一封测试邮件。内容与客户将收到的完全一致；没有任何客户收到本邮件。",
+    "settingsTitle": "到期提醒",
+    "settingsDescription": "就即将到期或已到期的发票自动向客户发送邮件。每张发票一封提醒。",
+    "enable": "向客户发送提醒",
+    "pointBefore3": "到期前 3 天",
+    "pointAfter1": "到期后 1 天",
+    "pointAfter7": "到期后 7 天",
+    "testButton": "发送测试给我",
+    "testSending": "发送中…",
+    "testSent": "测试邮件已发送至 {recipient}。",
+    "testRequired": "请先给自己发送一封测试邮件。在此之前，系统不会向任何客户发送提醒。",
+    "testedAt": "最近一次测试发送：{date}",
+    "saved": "提醒设置已保存。",
+    "errSave": "提醒设置保存失败。",
+    "errNoUserEmail": "您的账户尚未设置邮箱地址，无法发送测试邮件。",
+    "automatic": "自动",
+    "channelReminder": "提醒",
+    "pointLabel": {
+      "before_3": "到期前3天",
+      "after_1": "到期后1天",
+      "after_7": "到期后7天"
+    }
+  },
   "sales": {
     "title": "录入销售",
     "descriptionA": "分步引导：客户、货物、发货，然后开票。您可以随意前后切换 —",

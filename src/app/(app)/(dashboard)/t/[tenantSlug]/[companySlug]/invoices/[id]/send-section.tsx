@@ -43,6 +43,8 @@ export interface SendHistoryRow {
   /** ISO — dirakit di server; dirender di zona waktu pembaca. */
   sentAt: string;
   sentBy: string;
+  /** Titik pengingat (#467), atau `null` bila kiriman ini ditekan seseorang. */
+  reminderKind: string | null;
 }
 
 export function InvoiceSendSection({
@@ -101,6 +103,20 @@ export function InvoiceSendSection({
     });
   }
 
+  /**
+   * Label pendek titik pengingat ("H-3"); string kosong bila kuncinya asing.
+   *
+   * Kunci ditulis UTUH di tiap cabang, bukan dirakit dari `kind`: yang dirakit
+   * tak terlihat penjaga kunci yatim, dan yang tak terlihat akan ikut tercabut
+   * pada pembersihan kamus berikutnya.
+   */
+  function pointLabel(kind: string): string {
+    if (kind === "before_3") return t("invoiceReminder.pointLabel.before_3");
+    if (kind === "after_1") return t("invoiceReminder.pointLabel.after_1");
+    if (kind === "after_7") return t("invoiceReminder.pointLabel.after_7");
+    return "";
+  }
+
   const lastSent = history[0];
 
   return (
@@ -157,12 +173,25 @@ export function InvoiceSendSection({
               <Flex vertical gap={token.marginXXS}>
                 {history.map((row) => (
                   <Text key={row.id} style={{ fontSize: token.fontSizeSM }}>
-                    {row.channel === "email"
-                      ? t("invoiceSend.channelEmail")
-                      : t("invoiceSend.channelWhatsapp")}{" "}
+                    {/* Pengingat OTOMATIS diberi namanya sendiri (#467): baris
+                        yang tampak seperti kiriman manual akan membuat orang
+                        mengira ada rekan yang sudah menagih, lalu tidak
+                        menindaklanjuti. */}
+                    {row.reminderKind
+                      ? t("invoiceReminder.channelReminder")
+                      : row.channel === "email"
+                        ? t("invoiceSend.channelEmail")
+                        : t("invoiceSend.channelWhatsapp")}{" "}
                     · {row.recipient} · {formatDateTime(row.sentAt)}{" "}
-                    <Text type="secondary">{t("invoiceSend.byUser", { name: row.sentBy })}</Text>
-                    {row.channel === "whatsapp" && (
+                    {row.reminderKind ? (
+                      <Text type="secondary">
+                        {t("invoiceReminder.automatic")}
+                        {pointLabel(row.reminderKind) ? ` · ${pointLabel(row.reminderKind)}` : ""}
+                      </Text>
+                    ) : (
+                      <Text type="secondary">{t("invoiceSend.byUser", { name: row.sentBy })}</Text>
+                    )}
+                    {!row.reminderKind && row.channel === "whatsapp" && (
                       <Text type="secondary"> · {t("invoiceSend.channelWhatsappHint")}</Text>
                     )}
                   </Text>

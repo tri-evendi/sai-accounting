@@ -5,14 +5,16 @@ import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import { isSetupDone } from "@/lib/setup-gate";
+import { headers } from "next/headers";
+
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@/lib/tenant-state";
-import { tenantPath } from "@/lib/tenant-routes";
+import { COMPANY_HOME_PATH, parseTenantPath, tenantPath } from "@/lib/tenant-routes";
 import { isCompanyUnlocked, NAMA_COOKIE_KUNCI } from "@/lib/company-unlock";
 import { cookies } from "next/headers";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 
 /**
  * SATU-SATUNYA penjaga halaman dashboard (audit RBAC fase 1–4; lihat
@@ -83,6 +85,16 @@ export async function requirePagePermission(
   });
   if (!scoped.ok) {
     if (scoped.reason === "no-session") redirect("/login");
+    /*
+     * Slug akun berganti (#458): alamatnya PINDAH, bukan hilang. Pantulan
+     * PERMANEN — bukan 307 — supaya bookmark peramban ikut memperbarui dirinya
+     * dan mesin pencari memindahkan alamat lama alih-alih menyimpan keduanya.
+     * Yang dipantulkan hanya anggota tenant itu; bukan anggota tetap 404
+     * (lihat `enterCompanyFromRoute`).
+     */
+    if (scoped.reason === "moved") {
+      permanentRedirect(await jalurPindah(scoped.tenantSlug, scoped.companySlug));
+    }
     notFound();
   }
 
@@ -111,6 +123,22 @@ export async function requirePagePermission(
     tenantSlug: scoped.tenantSlug,
     companySlug: scoped.companySlug,
   });
+}
+
+/**
+ * Alamat yang sama, di bawah slug akun yang baru (#458).
+ *
+ * Jalur dalamnya datang dari header yang dititipkan proxy (`x-sai-path`).
+ * Kalau header itu tidak ada — permintaan yang tidak lewat proxy, mis. di
+ * dalam tes — pantulannya jatuh ke beranda perusahaan: kehilangan halaman yang
+ * dituju lebih baik daripada memantulkan ke alamat yang dikarang.
+ */
+async function jalurPindah(tenantSlug: string, companySlug: string): Promise<string> {
+  const jalur = (await headers()).get("x-sai-path");
+  const terurai = jalur ? parseTenantPath(jalur) : null;
+  /* `parseTenantPath` mengembalikan `COMPANY_HOME_PATH` untuk akar buku, jadi
+     cabang cadangan di bawah hanya terpakai kalau headernya memang tidak ada. */
+  return tenantPath(tenantSlug, companySlug, terurai?.rest ?? COMPANY_HOME_PATH);
 }
 
 /**

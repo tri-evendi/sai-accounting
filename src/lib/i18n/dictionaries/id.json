@@ -3449,6 +3449,7 @@
     "tooManyOverrideRows": "Terlalu banyak baris override.",
     "companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
     "companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",
+    "slugInvalid": "Alamat hanya boleh huruf kecil, angka, dan tanda hubung.",
     "companySlugReserved": "Slug \"dashboard\" dicadangkan sistem — pilih nama lain",
     "companyDatabaseInvalid": "Nama basis data hanya boleh huruf kecil, angka, dan garis bawah",
     "itemNameRequired": "Nama barang wajib diisi",
@@ -3694,7 +3695,7 @@
     "accountIdentity": "Nama & alamat",
     "accountNameLabel": "Nama akun",
     "accountAddressLabel": "Alamat akun",
-    "accountAddressFixed": "Alamat ini TETAP. Ia sudah ada di bookmark, di surel undangan yang sudah terkirim, dan di tautan yang Anda bagikan — menggantinya akan mematikan semuanya.",
+    "accountAddressFixed": "Alamat ini dipakai di setiap tautan buku Anda. Ia bisa diganti di bawah — dan alamat lamanya tetap dipantulkan ke sini.",
     "accountSaved": "Nama akun diperbarui",
     "accountSaveFailed": "Nama akun gagal disimpan.",
     "title": "Akun & Perusahaan",
@@ -4276,5 +4277,19 @@
     "draftUnknown": "Akun ini belum ada di bagan akun: {codes}. Buat dulu lewat Daftar Akun agar sisi debit/kreditnya bisa ditentukan.",
     "downloadDraft": "Unduh rancangan (.xlsx)",
     "downloading": "Menyiapkan…"
+  },
+  "tenantSlug": {
+    "heading": "Alamat akun",
+    "hint": "Alamat ini berdiri di setiap tautan buku Anda. Menggantinya boleh — alamat lama tetap dipantulkan ke sini selamanya, dan tidak akan pernah dipakai akun lain.",
+    "warning": "Tautan lama TETAP SAMPAI, tetapi orang yang menyimpannya akan melihat alamat berubah. Bisa diganti sekali dalam 30 hari.",
+    "confirmTitle": "Ganti alamat akun?",
+    "confirmBody": "Ketik alamat baru sekali lagi untuk memastikan: {slug}",
+    "changed": "Alamat akun diganti",
+    "forbidden": "Alamat itu dicadangkan sistem. Pilih yang lain.",
+    "same": "Alamatnya sama dengan yang sekarang.",
+    "taken": "Alamat itu sudah dipakai — termasuk kalau ia pernah dipakai akun lain.",
+    "tooSoon": "Alamat baru saja diganti. Bisa diganti lagi 30 hari sesudahnya.",
+    "nextChange": "Bisa diganti lagi pada {date}.",
+    "submit": "Ganti alamat"
   }
 }

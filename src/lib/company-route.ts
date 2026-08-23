@@ -45,6 +45,7 @@ import { routeCompany, setRouteCompany } from "@/lib/current-company";
 import { controlDb } from "@/lib/control-db";
 import { membershipFor } from "@/lib/company-registry";
 import { isValidSlug } from "@/lib/tenant-routes";
+import { tenantIdUntukSlugLama } from "@/lib/tenant-slug";
 
 export type RouteCompanyResult =
   | {
@@ -56,6 +57,12 @@ export type RouteCompanyResult =
       role: string;
       accountantMode: boolean | null;
     }
+  /**
+   * Slug tenant di jalur ini adalah slug LAMA milik tenant pemanggil sendiri
+   * (#458 lingkup 3) — alamatnya pindah, bukan hilang. Pemanggil memantulkan
+   * PERMANEN ke `tenantSlug` kanonik di bawah.
+   */
+  | { ok: false; reason: "moved"; tenantSlug: string; companySlug: string }
   | { ok: false; reason: "no-session" | "not-found" };
 
 export interface TenantRouteParams {
@@ -183,7 +190,38 @@ export async function enterCompanyFromRoute(params: {
   }
 
   const ids = await resolveIds(params.tenantSlug, params.companySlug);
-  if (!ids) return { ok: false, reason: "not-found" };
+
+  /*
+   * ── Slug tenant yang SUDAH BERGANTI (#458 lingkup 3) ─────────────────────
+   *
+   * Alamat lama hidup di bookmark, di surel undangan yang sudah terkirim, dan
+   * di tautan yang dibagikan ke akuntan eksternal. Sebelum menjawab 404, jalur
+   * ini menanyakan riwayat slug.
+   *
+   * ⚠ Pantulannya hanya diberikan kepada ANGGOTA tenant itu. Tanpa syarat itu,
+   * siapa pun bisa menukar-nukar slug untuk memetakan "akun lama X kini
+   * bernama Y" — kebocoran yang tidak terlihat sebagai kebocoran, dan yang
+   * membatalkan alasan 404 di bawah ditulis seragam sejak awal. Bukan anggota
+   * = 404 yang sama persis dengan slug yang tidak pernah ada.
+   */
+  if (!ids) {
+    const tenantIdLama = await tenantIdUntukSlugLama(params.tenantSlug);
+    if (tenantIdLama !== null) {
+      const [aktor, tenant] = await Promise.all([
+        controlDb.user.findUnique({ where: { id: userId }, select: { tenantId: true } }),
+        controlDb.tenant.findUnique({ where: { id: tenantIdLama }, select: { slug: true } }),
+      ]);
+      if (aktor?.tenantId === tenantIdLama && tenant) {
+        return {
+          ok: false,
+          reason: "moved",
+          tenantSlug: tenant.slug,
+          companySlug: params.companySlug,
+        };
+      }
+    }
+    return { ok: false, reason: "not-found" };
+  }
 
   /*
    * Keanggotaan = otorisasi. `membershipFor` sudah menolak keanggotaan nonaktif

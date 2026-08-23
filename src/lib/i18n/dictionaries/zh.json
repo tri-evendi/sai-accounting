@@ -1008,6 +1008,36 @@
       "after_7": "到期后7天"
     }
   },
+  "statementImport": {
+    "issue": {
+      "emptyFile": "文件为空。",
+      "noRows": "文件只有标题行——没有任何交易记录。",
+      "missingColumns": "未找到必填列：{columns}。请检查文件的标题行。",
+      "missingAmountColumns": "没有金额列。文件需要「金额」列，或者「借方」与「贷方」两列。",
+      "dateConflict": "本文件中的日期相互矛盾：部分写作 日/月，部分写作 月/日。请统一格式，或改用 YYYY-MM-DD。",
+      "badDate": "无法识别日期「{value}」。",
+      "emptyDescription": "摘要不能为空。",
+      "longDescription": "摘要超过 {max} 个字符。",
+      "emptyAmount": "金额为空。",
+      "badAmount": "金额「{value}」不是数字。",
+      "badDirection": "无法识别方向标记「{value}」。可接受：DB/D/DR（支出）与 CR/C/K（收入）。",
+      "badDebitCredit": "借方/贷方单元格「{value}」不是数字。"
+    },
+    "previewTitle": "导入前请先核对",
+    "previewIntro": "已读取 {count} 行。请将前几行与您的文件对照——列错位在这里最容易发现，而不是一个月之后。",
+    "previewMore": "……另有 {count} 行。",
+    "assumedDate": "本文件没有任何能确定自身顺序的日期，因此按 日/月 读取。请核对下方的日期列。",
+    "colDate": "日期",
+    "colDescription": "摘要",
+    "colAmount": "发生额",
+    "totalIn": "收入",
+    "totalOut": "支出",
+    "confirm": "导入 {count} 行",
+    "cancel": "取消",
+    "rejectedIntro": "没有写入任何一行——请先修正以下问题，然后重新上传。",
+    "rowPrefix": "第 {row} 行",
+    "helpLink": "如何从您的银行获取对账单"
+  },
   "sales": {
     "title": "录入销售",
     "descriptionA": "分步引导：客户、货物、发货，然后开票。您可以随意前后切换 —",
@@ -2244,12 +2274,7 @@
     "lineAmount": "金额（+ 流入 / − 流出）",
     "addLineAction": "添加行",
     "importCsv": "导入 CSV",
-    "csvHintColumns": "列：",
-    "csvHintOr": "（或",
-    "csvHintAnd": "与",
-    "csvHintDateBefore": "）。日期格式为",
-    "csvHintDateMiddle": "或",
-    "csvHintTail": "。金额填写纯数字，正数表示流入。"
+    "csvHint": "列标题可以使用印尼语（Tanggal、Keterangan、Jumlah、DB/CR，或 Debet 与 Kredit）或英语。Cabang、Saldo 等多余的列会被忽略。日期：31/12/2026、31-12-2026 或 2026-12-31。"
   },
   "fixedAssets": {
     "title": "固定资产",

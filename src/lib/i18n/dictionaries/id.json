@@ -1008,6 +1008,36 @@
       "after_7": "H+7"
     }
   },
+  "statementImport": {
+    "issue": {
+      "emptyFile": "Berkasnya kosong.",
+      "noRows": "Berkasnya hanya berisi baris judul — tidak ada satu pun mutasi.",
+      "missingColumns": "Kolom wajib tidak ditemukan: {columns}. Periksa baris judul berkas Anda.",
+      "missingAmountColumns": "Tidak ada kolom nominal. Berkas harus punya kolom Jumlah, atau pasangan Debet dan Kredit.",
+      "dateConflict": "Tanggal di berkas ini bertentangan: sebagian ditulis HH/BB, sebagian BB/HH. Samakan dulu, atau pakai format YYYY-MM-DD.",
+      "badDate": "Tanggal \"{value}\" tidak bisa dibaca.",
+      "emptyDescription": "Keterangan tidak boleh kosong.",
+      "longDescription": "Keterangan melebihi {max} karakter.",
+      "emptyAmount": "Nominalnya kosong.",
+      "badAmount": "Nominal \"{value}\" bukan angka.",
+      "badDirection": "Penanda arah \"{value}\" tidak dikenali. Yang diterima: DB/D/DR (keluar) dan CR/C/K (masuk).",
+      "badDebitCredit": "Kolom Debet/Kredit \"{value}\" bukan angka."
+    },
+    "previewTitle": "Periksa dulu sebelum diimpor",
+    "previewIntro": "{count} baris terbaca. Cocokkan beberapa baris pertama dengan berkas Anda — kolom yang tertukar paling mudah ketahuan di sini, bukan sebulan kemudian.",
+    "previewMore": "…dan {count} baris lainnya.",
+    "assumedDate": "Berkas ini tidak memuat satu tanggal pun yang menentukan urutannya sendiri, jadi tanggalnya dibaca sebagai HARI/BULAN. Periksa kolom tanggal di bawah.",
+    "colDate": "Tanggal",
+    "colDescription": "Keterangan",
+    "colAmount": "Mutasi",
+    "totalIn": "Masuk",
+    "totalOut": "Keluar",
+    "confirm": "Impor {count} baris",
+    "cancel": "Batal",
+    "rejectedIntro": "Tidak ada satu baris pun yang ditulis — perbaiki dulu yang di bawah ini, lalu unggah lagi.",
+    "rowPrefix": "Baris {row}",
+    "helpLink": "Cara mengambil rekening koran dari bank Anda"
+  },
   "sales": {
     "title": "Catat Penjualan",
     "descriptionA": "Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa mundur-maju sesuka hati —",
@@ -2244,12 +2274,7 @@
     "lineAmount": "Nominal (+ masuk / − keluar)",
     "addLineAction": "Tambah Baris",
     "importCsv": "Impor CSV",
-    "csvHintColumns": "Kolom:",
-    "csvHintOr": "(atau",
-    "csvHintAnd": "&",
-    "csvHintDateBefore": "). Tanggal",
-    "csvHintDateMiddle": "atau",
-    "csvHintTail": ". Nominal angka polos, positif = masuk."
+    "csvHint": "Judul kolom boleh berbahasa Indonesia (Tanggal, Keterangan, Jumlah, DB/CR, atau Debet & Kredit) maupun Inggris. Kolom lain seperti Cabang dan Saldo diabaikan. Tanggal: 31/12/2026, 31-12-2026, atau 2026-12-31."
   },
   "fixedAssets": {
     "title": "Aset Tetap",

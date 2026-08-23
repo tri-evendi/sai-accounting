@@ -1008,6 +1008,36 @@
       "after_7": "D+7"
     }
   },
+  "statementImport": {
+    "issue": {
+      "emptyFile": "The file is empty.",
+      "noRows": "The file has only a header row — no transactions at all.",
+      "missingColumns": "Required columns not found: {columns}. Check the header row of your file.",
+      "missingAmountColumns": "No amount column. The file needs a Jumlah/Amount column, or a Debet and Kredit pair.",
+      "dateConflict": "The dates in this file contradict each other: some are written DD/MM, others MM/DD. Make them consistent, or use YYYY-MM-DD.",
+      "badDate": "The date \"{value}\" cannot be read.",
+      "emptyDescription": "The description cannot be empty.",
+      "longDescription": "The description exceeds {max} characters.",
+      "emptyAmount": "The amount is empty.",
+      "badAmount": "The amount \"{value}\" is not a number.",
+      "badDirection": "The direction marker \"{value}\" is not recognised. Accepted: DB/D/DR (out) and CR/C/K (in).",
+      "badDebitCredit": "The Debit/Credit cells \"{value}\" are not numbers."
+    },
+    "previewTitle": "Check before importing",
+    "previewIntro": "{count} rows were read. Compare the first rows against your file — swapped columns are easiest to catch here, not a month later.",
+    "previewMore": "…and {count} more rows.",
+    "assumedDate": "This file contains no date that settles its own order, so dates were read as DAY/MONTH. Check the date column below.",
+    "colDate": "Date",
+    "colDescription": "Description",
+    "colAmount": "Movement",
+    "totalIn": "In",
+    "totalOut": "Out",
+    "confirm": "Import {count} rows",
+    "cancel": "Cancel",
+    "rejectedIntro": "Not a single row was written — fix the items below, then upload again.",
+    "rowPrefix": "Row {row}",
+    "helpLink": "How to get a statement from your bank"
+  },
   "sales": {
     "title": "Record a Sale",
     "descriptionA": "Guided step by step: customer, goods, shipment, then the invoice. Move back and forth as you like —",
@@ -2244,12 +2274,7 @@
     "lineAmount": "Amount (+ in / − out)",
     "addLineAction": "Add Line",
     "importCsv": "Import CSV",
-    "csvHintColumns": "Columns:",
-    "csvHintOr": "(or",
-    "csvHintAnd": "&",
-    "csvHintDateBefore": "). Dates",
-    "csvHintDateMiddle": "or",
-    "csvHintTail": ". Amounts are plain numbers; positive means money in."
+    "csvHint": "Column headings may be Indonesian (Tanggal, Keterangan, Jumlah, DB/CR, or Debet & Kredit) or English. Extra columns such as Cabang and Saldo are ignored. Dates: 31/12/2026, 31-12-2026, or 2026-12-31."
   },
   "fixedAssets": {
     "title": "Fixed Assets",

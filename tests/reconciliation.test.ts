@@ -14,7 +14,6 @@ import {
   summarizeReconciliation,
   canMatch,
   movementSigned,
-  parseStatementCsv,
   assertStatementUnlocked,
   assertMovementEditable,
   isStatementLocked,
@@ -157,78 +156,12 @@ describe("lock / edit guards", () => {
   });
 });
 
-describe("parseStatementCsv — valid input", () => {
-  it("accepts a signed amount column", () => {
-    const result = parseStatementCsv(
-      ["date,description,amount", "2026-07-01,Setoran tunai,1500000.00", "2026-07-02,Biaya admin,-15000"].join("\n")
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.rows).toEqual([
-        { date: "2026-07-01", description: "Setoran tunai", amount: 1500000 },
-        { date: "2026-07-02", description: "Biaya admin", amount: -15000 },
-      ]);
-    }
-  });
-
-  it("accepts debit/credit columns (credit = money in) and DD/MM/YYYY dates", () => {
-    const result = parseStatementCsv(
-      ["date,description,debit,credit", "01/07/2026,Transfer masuk,,2000000", "02/07/2026,Tarik tunai,500000,"].join("\n")
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.rows).toEqual([
-        { date: "2026-07-01", description: "Transfer masuk", amount: 2000000 },
-        { date: "2026-07-02", description: "Tarik tunai", amount: -500000 },
-      ]);
-    }
-  });
-
-  it("honours quoted fields containing commas", () => {
-    const result = parseStatementCsv(
-      ['date,description,amount', '2026-07-03,"Bayar, PLN dan air",-250000'].join("\n")
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.rows[0].description).toBe("Bayar, PLN dan air");
-    }
-  });
-});
-
-describe("parseStatementCsv — rejects malformed input", () => {
-  it("rejects when required columns are missing", () => {
-    const result = parseStatementCsv(["date,amount", "2026-07-01,100"].join("\n"));
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors[0]).toMatch(/description/);
-  });
-
-  it("rejects an empty file", () => {
-    expect(parseStatementCsv("").ok).toBe(false);
-    expect(parseStatementCsv("date,description,amount\n").ok).toBe(false);
-  });
-
-  it("rejects a bad date, empty description and non-numeric amount, all at once", () => {
-    const result = parseStatementCsv(
-      [
-        "date,description,amount",
-        "2026-13-40,Tanggal salah,100", // impossible date
-        "2026-07-02,,100", // empty description
-        "2026-07-03,Nominal salah,1.500.000", // grouping separators not allowed
-      ].join("\n")
-    );
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors).toHaveLength(3);
-      expect(result.errors[0]).toMatch(/Baris 2/);
-      expect(result.errors[1]).toMatch(/Baris 3/);
-      expect(result.errors[2]).toMatch(/Baris 4/);
-    }
-  });
-
-  it("rejects the whole import if any single row is malformed (no partial import)", () => {
-    const result = parseStatementCsv(
-      ["date,description,amount", "2026-07-01,Baris valid,100", "bukan-tanggal,Baris rusak,200"].join("\n")
-    );
-    expect(result.ok).toBe(false);
-  });
-});
+/*
+ * Parser rekening koran PINDAH ke `tests/bank-statement-import.test.ts` (#468).
+ *
+ * Ia bukan sekadar berpindah berkas: kasus di sini dulu membuktikan parser
+ * menerima `date,description,amount` — judul yang tidak dikeluarkan bank mana
+ * pun. Penggantinya menguji berkas yang benar-benar keluar dari BCA dsb.,
+ * termasuk kedua kelas kesalahan yang tidak pernah menerbitkan galat: arah
+ * mutasi dan urutan hari/bulan. Berkas ini kembali fokus pada PENCOCOKAN.
+ */

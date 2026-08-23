@@ -33,6 +33,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DisconnectOutlined, LinkOutlined, LockOutlined, UnlockOutlined, UploadOutlined, WarningOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
+import { Link } from "@/components/ui/app-link";
+import { parseStatementCsv, type DateOrder, type ParsedStatementLine } from "@/lib/import/bank-statement";
 
 const EPSILON = 0.005;
 
@@ -117,6 +119,12 @@ export function ReconciliationWorkspace({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [rowErrors, setRowErrors] = useState<string[]>([]);
+  /** Hasil baca berkas yang MENUNGGU dikonfirmasi; `null` = tak ada. */
+  const [preview, setPreview] = useState<{
+    csv: string;
+    rows: ParsedStatementLine[];
+    dateOrder: DateOrder;
+  } | null>(null);
   const [selectedBook, setSelectedBook] = useState<number | null>(null);
   const [selectedLine, setSelectedLine] = useState<number | null>(null);
 
@@ -199,14 +207,88 @@ export function ReconciliationWorkspace({
     }
   }
 
-  async function importCsv(e: React.ChangeEvent<HTMLInputElement>) {
+  /**
+   * ══ PRATINJAU SEBELUM MENULIS (issue #468) ════════════════════════════════
+   *
+   * Berkasnya dibaca DI SINI lebih dulu, dengan parser yang SAMA yang dipakai
+   * route impor. Alasannya satu: kolom yang tertukar — tanggal masuk ke
+   * keterangan, arah terbalik — menghasilkan impor yang BERHASIL dengan nilai
+   * salah, dan tidak ada satu galat pun yang menandainya. Yang bisa
+   * menangkapnya cuma mata seseorang yang melihat beberapa baris pertama
+   * berdampingan dengan berkas aslinya, sebelum ada yang tertulis.
+   *
+   * Yang dikirim saat dikonfirmasi tetap CSV MENTAHNYA, bukan baris hasil baca
+   * di sini: server mem-parse ulang dan tetap jadi otoritasnya (lihat kepala
+   * route impornya).
+   */
+  async function chooseCsv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const csv = await file.text();
     e.target.value = "";
-    const ok = await call(`/api/reconciliation/${statement.id}/import`, "POST", { csv });
-    if (ok) router.refresh();
+    setError("");
+    setRowErrors([]);
+    setPreview(null);
+
+    const parsed = parseStatementCsv(csv);
+    if (!parsed.ok) {
+      setRowErrors(
+        parsed.issues.map((issue) => {
+          const message = t(issue.key as never, issue.params);
+          return issue.row === undefined
+            ? message
+            : `${t("statementImport.rowPrefix", { row: issue.row })}: ${message}`;
+        })
+      );
+      setError(t("statementImport.rejectedIntro"));
+      return;
+    }
+
+    setPreview({ csv, rows: parsed.rows, dateOrder: parsed.dateOrder });
   }
+
+  async function confirmImport() {
+    if (!preview) return;
+    const ok = await call(`/api/reconciliation/${statement.id}/import`, "POST", { csv: preview.csv });
+    if (ok) {
+      setPreview(null);
+      router.refresh();
+    }
+  }
+
+  /** Berapa baris pertama yang diperlihatkan — cukup untuk mengenali bentuknya,
+   *  tidak cukup untuk menggantikan berkasnya sendiri. */
+  const PREVIEW_ROWS = 5;
+
+  /** Kolom pratinjau: tiga hal yang paling mudah tertukar, dan tidak lebih. */
+  const previewColumns: SaiColumns<ParsedStatementLine & { id: number }> = [
+    {
+      key: "date",
+      dataIndex: "date",
+      title: t("statementImport.colDate"),
+      align: "left",
+      render: (_v, row) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatDateShort(row.date)}</span>
+      ),
+    },
+    {
+      key: "description",
+      dataIndex: "description",
+      title: t("statementImport.colDescription"),
+      align: "left",
+    },
+    {
+      key: "amount",
+      dataIndex: "amount",
+      title: t("statementImport.colAmount"),
+      align: "right",
+      render: (_v, row) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+          {formatCurrency(row.amount, currency)}
+        </span>
+      ),
+    },
+  ];
 
   /**
    * Kolom satu sisi pencocokan. Judulnya sengaja ADA (dulu kedua daftar tanpa
@@ -682,21 +764,112 @@ export function ReconciliationWorkspace({
                   type="file"
                   accept=".csv,text/csv"
                   data-sr-only
-                  onChange={importCsv}
+                  onChange={chooseCsv}
                   disabled={busy}
                 />
               </label>
+              {/* Petunjuknya menyebut judul BERBAHASA INDONESIA lebih dulu —
+                  itu yang tertulis di berkas yang benar-benar keluar dari bank,
+                  dan menyebut `date, description, amount` di depan (keadaan
+                  sebelum #468) menyuruh orang menyunting berkas yang sebenarnya
+                  sudah bisa diterima apa adanya. */}
               <Typography.Paragraph
                 type="secondary"
                 style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
               >
-                {t("reconciliation.csvHintColumns")} <code>date, description, amount</code>{" "}
-                {t("reconciliation.csvHintOr")} <code>debit</code> {t("reconciliation.csvHintAnd")}{" "}
-                <code>credit</code>
-                {t("reconciliation.csvHintDateBefore")} <code>YYYY-MM-DD</code>{" "}
-                {t("reconciliation.csvHintDateMiddle")} <code>DD/MM/YYYY</code>
-                {t("reconciliation.csvHintTail")}
+                {t("reconciliation.csvHint")}{" "}
+                {/* Pertanyaan yang datang SEBELUM layar ini: "rekening koran
+                    saya ambil dari mana?" — dan jawabannya memang bukan di
+                    sini, melainkan di halaman yang menjelaskan hubungan buku
+                    kas dengan rekening bank. */}
+                <Link href="/docs/kas-dan-bank" style={{ color: token.colorLink }}>
+                  {t("statementImport.helpLink")}
+                </Link>
               </Typography.Paragraph>
+
+              {preview && (
+                <div style={{ marginTop: token.margin }}>
+                  <Typography.Text strong style={{ display: "block" }}>
+                    {t("statementImport.previewTitle")}
+                  </Typography.Text>
+                  <Typography.Paragraph
+                    type="secondary"
+                    style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+                  >
+                    {t("statementImport.previewIntro", { count: preview.rows.length })}
+                  </Typography.Paragraph>
+
+                  {/* Satu-satunya asumsi yang tidak bisa dibuktikan dari
+                      berkasnya — jadi ia DIKATAKAN, tepat di atas kolom yang
+                      harus diperiksa. */}
+                  {preview.dateOrder === "assumed_dmy" && (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      style={{ marginTop: token.marginXS }}
+                      message={t("statementImport.assumedDate")}
+                    />
+                  )}
+
+                  <StaticTable
+                    columns={previewColumns}
+                    rows={preview.rows.slice(0, PREVIEW_ROWS).map((r, i) => ({ ...r, id: i }))}
+                    rowKey={(row) => row.id}
+                  />
+                  {preview.rows.length > PREVIEW_ROWS && (
+                    <Typography.Paragraph
+                      type="secondary"
+                      style={{ margin: 0, marginTop: token.marginXXS, fontSize: token.fontSizeSM }}
+                    >
+                      {t("statementImport.previewMore", {
+                        count: preview.rows.length - PREVIEW_ROWS,
+                      })}
+                    </Typography.Paragraph>
+                  )}
+
+                  <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginXS }}>
+                    <span style={{ fontSize: token.fontSizeSM }}>
+                      {t("statementImport.totalIn")}:{" "}
+                      {formatCurrency(
+                        preview.rows.filter((r) => r.amount > 0).reduce((sum, r) => sum + r.amount, 0),
+                        currency
+                      )}
+                    </span>
+                    <span style={{ fontSize: token.fontSizeSM }}>
+                      {t("statementImport.totalOut")}:{" "}
+                      {formatCurrency(
+                        preview.rows.filter((r) => r.amount < 0).reduce((sum, r) => sum + r.amount, 0),
+                        currency
+                      )}
+                    </span>
+                  </Flex>
+
+                  <Flex wrap gap={token.marginXS} style={{ marginTop: token.marginXS }}>
+                    {/* `secondary`, bukan `primary`: primer layar ini sudah
+                        dipegang "Cocokkan" — kata kerja halamannya (#267).
+                        Di dalam bloknya sendiri tombol ini tetap yang paling
+                        tegas, berdampingan dengan `ghost` "Batal". */}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={busy}
+                      onClick={confirmImport}
+                    >
+                      {t("statementImport.confirm", { count: preview.rows.length })}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => setPreview(null)}
+                    >
+                      {t("statementImport.cancel")}
+                    </Button>
+                  </Flex>
+                </div>
+              )}
             </div>
           </div>
         </Card>

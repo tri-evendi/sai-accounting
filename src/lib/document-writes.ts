@@ -89,7 +89,18 @@ export interface CreateInvoiceResult {
 export async function createInvoiceInTx(
   tx: Tx,
   input: InvoiceInput,
-  opts: { requestedById: number }
+  opts: {
+    requestedById: number;
+    /**
+     * SELALU minta persetujuan, walau tak ada aturan yang cocok (issue #469).
+     *
+     * Dipakai penjadwal dokumen berulang: dokumen yang lahir sendiri setiap
+     * bulan tidak pernah dilihat siapa pun sebelum ada, jadi ukurannya bukan
+     * nilainya melainkan asal-usulnya. Tanpa ini, perusahaan tanpa aturan
+     * persetujuan akan memposting langsung ke buku besar.
+     */
+    forceApproval?: boolean;
+  }
 ): Promise<CreateInvoiceResult> {
   const {
     items,
@@ -146,6 +157,7 @@ export async function createInvoiceInTx(
     rate: fxRate,
     baseAmount,
     requestedById: opts.requestedById,
+    force: opts.forceApproval,
   });
 
   await postForSource({ sourceType: "invoice", sourceId: invoice.id, tx });

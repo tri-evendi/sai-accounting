@@ -19,6 +19,7 @@
  * path.
  */
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { FULL_ACCESS_ROLES } from "@/lib/constants";
 import {
   blocksPosting,
   documentTypeForSource,
@@ -95,6 +96,29 @@ export interface EnsureApprovalRequestInput {
   /** `session.user.id` is a string; pass it parsed. */
   requestedById: number;
   requestNote?: string | null;
+  /**
+   * SELALU terbitkan pengajuan, walau tak ada aturan yang cocok (issue #469).
+   *
+   * ══ SATU-SATUNYA PEMAKAINYA: DOKUMEN BERULANG ═════════════════════════════
+   * Dokumen yang dibuat MESIN tidak pernah dilihat siapa pun sebelum lahir.
+   * Untuk dokumen yang diketik manusia, ambang nilai adalah ukuran yang tepat —
+   * yang kecil tidak perlu ditinjau. Untuk yang lahir sendiri setiap bulan,
+   * ukurannya bukan nilainya melainkan asal-usulnya: tak seorang pun menekan
+   * apa pun, jadi tak seorang pun melihatnya.
+   *
+   * Perusahaan yang belum punya satu aturan persetujuan pun karena itu TETAP
+   * menahan dokumen berulangnya. Tanpa ini, `rules.length === 0` membuat
+   * penjadwal memposting langsung ke buku besar — persis yang issue #469
+   * tolak.
+   *
+   * Barisnya lahir dengan `rule_id` NULL (kolomnya memang nullable) dan ambang
+   * 0: tidak ada aturan yang bisa dijadikan potret, dan mengarang satu justru
+   * akan muncul di layar Aturan Persetujuan sebagai aturan yang tak pernah
+   * dibuat siapa pun.
+   */
+  force?: boolean;
+  /** Peran penyetuju bila dipaksa tanpa aturan. Bawaan: peran berakses penuh. */
+  forcedApproverRole?: string;
 }
 
 /**
@@ -133,7 +157,11 @@ export async function ensureApprovalRequest(
     documentType,
     baseAmount: input.baseAmount ?? null,
   });
-  if (!rule) return null;
+  if (!rule && !input.force) return null;
+
+  /* Dipaksa tanpa aturan: potretnya kosong apa adanya, bukan dikarang. */
+  const approverRole = rule?.approverRole ?? input.forcedApproverRole ?? FULL_ACCESS_ROLES[0];
+  const thresholdAmount = rule ? (rule.minAmount as Prisma.Decimal) : (0 as unknown as Prisma.Decimal);
 
   const created = await client.approvalRequest.create({
     data: {
@@ -141,8 +169,8 @@ export async function ensureApprovalRequest(
       documentId,
       documentType,
       documentNo: input.documentNo ?? null,
-      ruleId: rule.id,
-      approverRole: rule.approverRole,
+      ruleId: rule?.id ?? null,
+      approverRole,
       status: "pending_approval",
       amount: input.amount,
       currency: input.currency,
@@ -150,7 +178,7 @@ export async function ensureApprovalRequest(
       // Never actually null here: a document with no IDR base matches no rule,
       // so `matchApprovalRule` returned null above and we never reached this.
       baseAmount: input.baseAmount ?? 0,
-      thresholdAmount: rule.minAmount as Prisma.Decimal,
+      thresholdAmount,
       requestedById: input.requestedById,
       requestNote: input.requestNote ?? null,
     },

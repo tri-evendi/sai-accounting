@@ -145,6 +145,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/sales/new", label: "Catat Penjualan", labelKey: "nav.items.recordSale", icon: "SquarePen", permission: "invoice.write", termKey: "faktur" },
       { href: "/contracts", label: "Kontrak", labelKey: "nav.items.contracts", icon: "FileText", permission: "contract.read", termKey: "kontrak" },
       { href: "/invoices", label: "Tagihan Penjualan", labelKey: "nav.items.invoices", icon: "Receipt", permission: "invoice.read", termKey: "faktur" },
+      // issue #469 — templat yang menerbitkan faktur sendiri menurut jadwal.
+      // Tempatnya di bawah Tagihan Penjualan karena itulah yang ia terbitkan,
+      // dan izinnya sama: yang boleh membuat faktur boleh menjadwalkannya.
+      { href: "/recurring", label: "Transaksi Berulang", labelKey: "nav.items.recurring", icon: "Repeat", permission: "invoice.read" },
       // issue #14 — Surat Jalan mengurangi stok saat terbit, tetapi alurnya milik
       // penjualan (barang keluar untuk pembeli), jadi tempatnya di sini.
       { href: "/delivery-orders", label: "Surat Jalan", labelKey: "nav.items.deliveryOrders", icon: "PackageCheck", permission: "delivery_order.read", termKey: "surat_jalan" },

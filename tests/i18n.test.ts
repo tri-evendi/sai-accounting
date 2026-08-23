@@ -251,6 +251,9 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // "Port" ditulis sama di bahasa Indonesia dan Inggris — isian nomor port
     // SMTP di pengaturan surel akun (bahasa Mandarin memakai 端口).
     "tenantMail.port",
+    // "Status" — kata serapan yang ejaannya identik, alasan yang sama persis
+    // dengan `common.status` di atas. Judul kolom daftar transaksi berulang.
+    "recurring.colStatus",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).

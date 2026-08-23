@@ -38,6 +38,7 @@ function teksBlok(blok: DocBlock): string {
     case "catatan":
       return blok.teks;
     case "poin":
+    case "langkah":
       return blok.butir.join(" ");
     /*
      * Cuplikan kode IKUT dicari: orang mencari `updatedSince` atau `Bearer`
@@ -52,6 +53,14 @@ function teksBlok(blok: DocBlock): string {
      */
     case "sub":
       return "";
+    /*
+     * Gambar mekanisme menyumbang KETERANGANNYA — kalimat yang memang ditulis
+     * di berkas prosa, dan satu-satunya bagian gambar yang berupa prosa. Label
+     * di dalam gambarnya tidak: ia hidup di komponen, dan meratakannya ke sini
+     * berarti indeks yang memuat kata yang tidak bisa dilihat penyuntingnya.
+     */
+    case "diagram":
+      return blok.keterangan;
     /* Definisi istilah dibaca dari kamus saat render; lihat kepala berkas. */
     case "istilah":
     case "matriks-izin":

@@ -23,6 +23,7 @@
  *    dibiarkan terbaca sebagai terjemahan yang tertinggal.
  */
 
+import type { NamaDiagram } from "@/components/docs/docs-figures";
 import type { DocSlug } from "@/lib/docs";
 import type { TermKey } from "@/lib/labels";
 
@@ -41,6 +42,15 @@ export type DocBlock =
   | { kind: "paragraf"; teks: string }
   /** Daftar berpoin — hal yang setara, bukan langkah berurutan. */
   | { kind: "poin"; butir: readonly string[] }
+  /**
+   * Daftar BERURUTAN — dikerjakan dari atas ke bawah, dan urutannya berarti.
+   *
+   * Sampai #453 urutan terpaksa ditulis sebagai `poin`, dan itu berbohong: daftar
+   * berpoin menyatakan hal-hal yang SETARA. Pembaca yang menganggap butir kedua
+   * bisa dikerjakan lebih dulu tidak sedang salah membaca — ia membaca persis
+   * yang ditulis bentuknya.
+   */
+  | { kind: "langkah"; butir: readonly string[] }
   /** Sub-judul di dalam halaman; jangkarnya diturunkan dari judulnya. */
   | { kind: "sub"; judul: string }
   /**
@@ -79,7 +89,23 @@ export type DocBlock =
    * berikutnya, dan penjaga `tests/api-v1-spec.test.ts` sudah menuntut
    * spesifikasi itu sejalan dengan route-nya.
    */
-  | { kind: "endpoint-api" };
+  | { kind: "endpoint-api" }
+  /**
+   * Gambar MEKANISME — bukan tangkapan layar.
+   *
+   * ⚠ Aturan "tanpa tangkapan layar" (keputusan 5, #300) TIDAK dilanggar di
+   * sini, dan bedanya bukan teknis: tangkapan layar menggambarkan TOMBOL, yang
+   * berpindah setiap rilis dan membuat dokumennya berbohong tanpa satu baris
+   * pun disunting. Gambar di sini menggambarkan MESIN — dokumen menjadi jurnal
+   * menjadi laporan — dan mesin itu tidak berubah karena tata letak halaman
+   * berubah.
+   *
+   * `nama` memilih gambarnya di `components/docs/docs-figures.tsx`; `tsc`
+   * menolak nama yang tidak punya gambar. `keterangan` adalah PROSA dan karena
+   * itu tinggal di sini bersama prosa lainnya — ia yang dibaca orang yang tidak
+   * bisa melihat gambarnya, jadi ia harus berdiri sendiri sebagai kalimat.
+   */
+  | { kind: "diagram"; nama: NamaDiagram; keterangan: string };
 
 const MESIN_AKUNTANSI: readonly DocBlock[] = [
     {
@@ -91,6 +117,12 @@ const MESIN_AKUNTANSI: readonly DocBlock[] = [
       kind: "paragraf",
       teks:
         "Konsekuensinya nyata bagi Anda: satu formulir bisa menyentuh beberapa akun sekaligus, dan Anda tidak perlu memilih akunnya. Faktur penjualan senilai Rp 100 juta dengan PPN 11% tidak menambah “pendapatan Rp 111 juta” — ia menambah piutang Rp 111 juta, pendapatan Rp 100 juta, dan utang PPN Rp 11 juta. Sebelas juta itu bukan uang perusahaan; ia dititipkan untuk negara. Mesinnya yang tahu, bukan Anda.",
+    },
+    {
+      kind: "diagram",
+      nama: "alur-jurnal",
+      keterangan:
+        "Satu faktur menjadi satu jurnal berpasangan — tiga akun sekaligus — dan laporan mana pun dibaca dari jurnal itu, bukan dari fakturnya. Angka di gambar adalah contoh di paragraf sebelumnya.",
     },
     { kind: "sub", judul: "Kenapa jurnal dibalik, bukan dihapus" },
     {
@@ -156,6 +188,12 @@ const PERSETUJUAN: readonly DocBlock[] = [
       kind: "paragraf",
       teks:
         "Yang tertahan adalah DAMPAKNYA, bukan pekerjaannya. Dokumennya tetap tersimpan, tetap bisa dibaca, tetap bisa diperbaiki. Yang belum terjadi adalah jurnalnya. Karena itu antrean yang menumpuk bukan sekadar ketidaknyamanan administratif: selama ia menumpuk, saldo yang Anda lihat belum memuat dokumen-dokumen itu.",
+    },
+    {
+      kind: "diagram",
+      nama: "alur-persetujuan",
+      keterangan:
+        "Yang bercabang di ambang bukan dokumennya melainkan JURNALNYA: dokumen selalu tersimpan, jurnalnya yang menunggu.",
     },
     {
       kind: "poin",
@@ -261,6 +299,15 @@ const SALDO_AWAL: readonly DocBlock[] = [
         "Saldo awal dimasukkan SEBELUM transaksi pertama. Sesudahnya ia masih bisa dibetulkan, tetapi setiap laporan yang sudah dicetak di antaranya salah.",
         "Piutang dan utang dimasukkan per pelanggan/pemasok, bukan sebagai satu total — kalau tidak, tidak ada yang bisa menjawab “siapa yang belum bayar”.",
         "Jumlah sisi kiri dan kanan harus sama. Selisihnya bukan untuk dibulatkan; ia berarti ada yang belum dihitung.",
+      ],
+    },
+    {
+      kind: "langkah",
+      butir: [
+        "Daftarkan dulu master-nya — pelanggan, pemasok, dan barang. Saldo awal per pihak mustahil diisi kalau pihaknya belum ada.",
+        "Isi saldonya PER pelanggan, per pemasok, dan per barang — bukan sebagai satu total.",
+        "Periksa jumlah sisi kiri dan sisi kanan sampai sama. Selisih bukan untuk dibulatkan.",
+        "Simpan sebelum transaksi pertama dicatat. Sesudahnya masih bisa dibetulkan, tetapi setiap laporan yang dicetak di antaranya salah.",
       ],
     },
     {
@@ -455,6 +502,12 @@ const PAKET: readonly DocBlock[] = [
         "Buku besar setiap PT hidup di basis datanya sendiri — bukan sebagai kolom “milik perusahaan mana” di dalam satu tabel bersama. Bedanya baru terasa pada kegagalan: dengan satu tabel bersama, sebuah kueri yang lupa menyaring perusahaan akan mengembalikan transaksi PT lain, dan tidak ada satu pun galat yang muncul. Dengan basis data terpisah, tidak ada yang bisa dikembalikan — jalur yang kehilangan konteks perusahaan GAGAL, keras, di tempat kejadiannya.",
     },
     {
+      kind: "diagram",
+      nama: "buku-per-pt",
+      keterangan:
+        "Yang dibagi bersama hanyalah akun pengguna dan keanggotaannya; angkanya tidak pernah berbagi tempat.",
+    },
+    {
       kind: "poin",
       butir: [
         "Yang berpindah saat Anda berganti perusahaan adalah seluruh buku, bukan sebuah penyaring. Nama PT yang sedang dibuka karena itu selalu terlihat di bilah atas.",
@@ -542,6 +595,15 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
     kind: "paragraf",
     teks:
       "Anda mengekspor laporan Rincian Buku Besar dari Accurate, mengunggahnya apa adanya, lalu melihat kedua buku berdampingan per akun: saldo awal, jumlah debit, jumlah kredit, saldo akhir. Di bawahnya berdiri daftar yang jauh lebih berguna daripada angka totalnya — transaksi yang hanya ada di salah satu sisi.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Ekspor laporan Rincian Buku Besar dari Accurate untuk periode yang ingin dicocokkan.",
+      "Unggah berkasnya apa adanya — tidak perlu dirapikan lebih dulu.",
+      "Baca kedua buku berdampingan per akun: saldo awal, jumlah debit, jumlah kredit, saldo akhir.",
+      "Telusuri daftar di bawahnya — transaksi yang hanya ada di salah satu sisi. Di situlah selisihnya menjelaskan dirinya.",
+    ],
   },
   { kind: "sub", judul: "Kenapa hasilnya tidak bisa langsung diimpor" },
   {

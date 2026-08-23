@@ -457,36 +457,48 @@ describe("satu halaman, DUA kulit", () => {
     expect(viewer).toContain("Promise<PembacaDokumentasi | null>");
   });
 
-  it("kolom baca 768px ditulis SEKALI dan dipakai kedua kulit", () => {
+  it("bingkai dokumentasi ditulis SEKALI dan dipakai kedua kulit", () => {
     /*
-     * MASTER.md §Dokumentasi mengikat 768. Angka yang disalin ke kulit kedua
-     * adalah angka yang akan bergeser sendiri — dan yang bergeser adalah kulit
-     * APLIKASI, tempat area kerjanya lebar penuh dan kolom yang melebar tidak
-     * terlihat salah bagi siapa pun yang tidak membaca tabelnya.
+     * ⚠ Penjaga ini DULU mengikat kolom baca 768px (MASTER.md §Dokumentasi).
+     * Batas itu dicabut atas keputusan pemilik 23 Agu 2026: dokumentasi kini
+     * memakai lebar penuh, seperti halaman app lainnya. Yang tetap dijaga
+     * adalah alasan penjaga ini ada sejak awal — SATU bentuk bersama, bukan
+     * dua yang bergeser sendiri-sendiri, dan yang paling mudah bergeser tetap
+     * kulit APLIKASI, tempat area kerjanya lebar penuh.
+     *
+     * Kalau kelak batasnya dikembalikan, angkanya kembali ke `docs-shell.tsx`
+     * dan tes ini kembali menuntutnya ditulis sekali di sana.
      */
     const shell = BERKAS_DOKUMENTASI.get("components/docs/docs-shell.tsx") ?? "";
-    expect(shell).toContain("const LEBAR_BACA = 768");
+    expect(shell).toContain("BINGKAI_DOKUMENTASI");
+    expect(shell).toContain("KOLOM_BACA");
 
-    const menulisSendiri = [...BERKAS_DOKUMENTASI]
-      .filter(([berkas]) => berkas !== "components/docs/docs-shell.tsx")
-      .filter(([, kode]) => /\b768\b/.test(kode))
-      .map(([berkas]) => berkas);
-    expect(menulisSendiri, "Angka 768 disalin di luar `docs-shell.tsx`").toEqual([]);
-
-    /*
-     * Sejak #453 yang dipasang kedua kulit adalah BINGKAI (kolom kiri + kolom
-     * baca + kolom kanan); kolom bacanya sendiri dipasang `DocsShell` di dalam
-     * bingkai itu. Yang dijaga tetap sama: satu bentuk bersama, bukan dua yang
-     * akan bergeser sendiri — dan kulit aplikasi tetap yang paling mudah
-     * bergeser, sebab area kerjanya lebar penuh.
-     */
     for (const kulit of [KULIT_APLIKASI, "components/docs/docs-public-chrome.tsx"]) {
       const kode = BERKAS_DOKUMENTASI.get(kulit) ?? "";
       expect(kode, `${kulit} tidak memakai bingkai dokumentasi bersama`).toContain(
         "BINGKAI_DOKUMENTASI"
       );
     }
-    expect(shell, "kolom baca tidak lagi dipasang di dalam bingkai").toContain("KOLOM_BACA");
+
+    /*
+     * Tidak ada lebar maksimum yang diketik DI LUAR `docs-shell.tsx`: sebuah
+     * `maxWidth` yang muncul di kulit atau di sebuah komponen isi akan
+     * mengembalikan kolom sempit di satu tempat saja, dan bedanya baru terlihat
+     * kalau dua kulit dibuka berdampingan.
+     */
+    const menulisSendiri = [...BERKAS_DOKUMENTASI]
+      .filter(([berkas]) => berkas !== "components/docs/docs-shell.tsx")
+      .filter(([, kode]) =>
+        /*
+         * ≥600px = SEKALA KOLOM, bukan skala kendali. Kotak cari yang
+         * `maxWidth: 280` adalah lebar sebuah isian — membatasinya di sana
+         * benar, dan penjaga yang ikut menolaknya akan dilonggarkan pada
+         * keluhan pertama.
+         */
+        [...kode.matchAll(/maxWidth:\s*(\d+)/g)].some((m) => Number(m[1]) >= 600)
+      )
+      .map(([berkas]) => berkas);
+    expect(menulisSendiri, "lebar kolom diketik di luar `docs-shell.tsx`").toEqual([]);
   });
 
   it("hanya SATU `<main>` di kedua kulit — `Layout.Content` sudah merendernya", () => {
@@ -762,5 +774,78 @@ describe("pencarian & navigasi dokumentasi (#453)", () => {
 
     const toc = BERKAS_DOKUMENTASI.get("components/docs/docs-toc.tsx") ?? "";
     expect(toc, "TOC memakai jangkar sendiri, bukan `docAnchor`").toContain("docAnchor");
+  });
+});
+/**
+ * Gambar mekanisme & daftar berurutan (#453 Tahap 3).
+ *
+ * Yang dijaga: gambar tidak boleh menjadi gambar TANPA teks (orang yang tidak
+ * melihatnya harus tetap mendapat isinya), dan `langkah` tidak boleh dipakai
+ * untuk hal-hal yang sebenarnya setara — sebab kalau ia dipakai untuk apa saja,
+ * bedanya dengan `poin` hilang dan bentuk ini berhenti berarti.
+ */
+describe("gambar mekanisme & langkah berurutan (#453)", () => {
+  const blokSemua = DOC_INDEX.flatMap((halaman) => DOC_BLOCKS[halaman.slug]);
+  const diagram = blokSemua.filter((b) => b.kind === "diagram");
+  const langkah = blokSemua.filter((b) => b.kind === "langkah");
+
+  it("dipakai, bukan bentuk yang lahir lalu menganggur", () => {
+    expect(diagram.length, "tidak ada satu pun gambar").toBeGreaterThan(0);
+    expect(langkah.length, "tidak ada satu pun daftar berurutan").toBeGreaterThan(0);
+  });
+
+  it("setiap gambar punya KETERANGAN yang berdiri sendiri sebagai kalimat", () => {
+    /*
+     * Gambar tanpa keterangan adalah gambar yang hilang sama sekali bagi
+     * pembaca layar, pembaca yang mematikan gambar, dan mesin pencari. Batas
+     * 40 karakter bukan angka keramat — ia menolak keterangan sepotong
+     * ("Alur jurnal") yang tidak menjelaskan apa pun.
+     */
+    for (const b of diagram) {
+      const keterangan = (b as { keterangan: string }).keterangan;
+      expect(keterangan.length, `keterangan gambar terlalu pendek: ${keterangan}`).toBeGreaterThan(40);
+      expect(keterangan.trim().endsWith("."), `keterangan bukan kalimat: ${keterangan}`).toBe(true);
+    }
+  });
+
+  it("setiap gambar punya perendernya, dan setiap perender dipakai", () => {
+    const figures = readFileSync(join(SRC, "components", "docs", "docs-figures.tsx"), "utf8");
+    const tersedia = [...figures.matchAll(/"([a-z-]+)":\s*[A-Z]/g)].map((m) => m[1]);
+    const dipakai = [...new Set(diagram.map((b) => (b as { nama: string }).nama))];
+
+    for (const nama of dipakai) {
+      expect(tersedia, `gambar \`${nama}\` tidak punya perender`).toContain(nama);
+    }
+    /* Arah kedua: gambar yang tidak dipakai halaman mana pun adalah kode mati
+       yang tetap ikut ke setiap bundel. */
+    for (const nama of tersedia) {
+      expect(dipakai, `gambar \`${nama}\` tidak dipakai halaman mana pun`).toContain(nama);
+    }
+  });
+
+  it("`langkah` memang berurutan — minimal dua, dan bukan satu kalimat panjang", () => {
+    for (const b of langkah) {
+      const butir = (b as { butir: readonly string[] }).butir;
+      expect(butir.length, "daftar berurutan berisi satu langkah").toBeGreaterThan(1);
+      /* Langkah yang dinomori sendiri di dalam kalimatnya ("1. …") akan
+         bernomor dua kali: sekali dari `<ol>`, sekali dari penulisnya. */
+      for (const teks of butir) {
+        expect(teks, `langkah menomori dirinya sendiri: ${teks}`).not.toMatch(/^\s*\d+[.)]/);
+      }
+    }
+  });
+
+  it("gambar ikut terindeks lewat keterangannya, bukan lewat label di dalamnya", () => {
+    /*
+     * Label di dalam gambar hidup di komponen, bukan di berkas prosa. Kalau ia
+     * ikut terindeks, penyuntingnya mencari kata yang tidak bisa ia temukan di
+     * tempat ia menulis — jadi yang terindeks HANYA keterangannya.
+     */
+    const contoh = diagram[0] as { keterangan: string };
+    const kata = contoh.keterangan.split(" ").find((k) => k.length > 6) ?? "";
+    const teks = indeksDokumentasi()
+      .flatMap((e) => e.bagian.map((b) => b.teks))
+      .join(" ");
+    expect(teks).toContain(kata);
   });
 });

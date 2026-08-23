@@ -20,6 +20,7 @@
  * ke sana adalah tautan yang memantul ke halaman masuk.
  */
 
+import { DocFigure } from "@/components/docs/docs-figures";
 import { docAnchor } from "@/lib/docs";
 import type { DocBlock } from "@/lib/docs-content";
 import { getTerm } from "@/lib/labels";
@@ -56,6 +57,23 @@ const SUB: React.CSSProperties = {
 };
 
 const DAFTAR: React.CSSProperties = {
+  margin: 0,
+  paddingInlineStart: "var(--ant-padding-lg)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--ant-margin-xs)",
+  fontSize: "var(--ant-font-size-lg)",
+  lineHeight: 1.7,
+  color: "var(--ant-color-text)",
+};
+
+/**
+ * Daftar BERURUTAN. Penomorannya dari peramban (`<ol>`), bukan angka yang
+ * diketik ke dalam kalimat: menyisipkan langkah di tengah tidak boleh menuntut
+ * siapa pun menomori ulang butir di bawahnya — dan penomoran yang salah nomor
+ * adalah bentuk kesalahan yang paling meyakinkan.
+ */
+const LANGKAH: React.CSSProperties = {
   margin: 0,
   paddingInlineStart: "var(--ant-padding-lg)",
   display: "flex",
@@ -200,6 +218,18 @@ async function Blok({
           ))}
         </ul>
       );
+
+    case "langkah":
+      return (
+        <ol style={LANGKAH}>
+          {blok.butir.map((butir) => (
+            <li key={butir}>{butir}</li>
+          ))}
+        </ol>
+      );
+
+    case "diagram":
+      return <DocFigure nama={blok.nama} keterangan={blok.keterangan} />;
 
     case "kode":
       /*

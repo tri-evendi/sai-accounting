@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { schedulerHealth, type SchedulerHealth } from "@/lib/scheduler-heartbeat";
+import { mailHealth } from "@/lib/mail-health";
+import { outboxCount, resolveMailConfig } from "@/lib/mailer-core";
 
 // Never cache or prerender — this must reflect live readiness.
 export const dynamic = "force-dynamic";
@@ -47,7 +49,37 @@ export const runtime = "nodejs";
  * Yang membacanya karena itu bukan Docker/Traefik melainkan pemantauan yang
  * memeriksa ISI jawabannya: `scheduler.status` bernilai `late` adalah tanda
  * untuk manusia, bukan untuk load-balancer.
+ *
+ * ══ KESIAPAN SUREL IKUT DILAPORKAN — SATU KATA SAJA (#317) ═════════════════
+ * Alasannya sekeluarga dengan denyut penjadwal: produksi yang menulis setiap
+ * surel ke cakram adalah kegagalan yang tidak merusak satu halaman pun, dan
+ * satu-satunya cara mengetahuinya sebelum ada pendaftar yang menunggu selamanya
+ * adalah menanyakannya dari luar.
+ *
+ * Yang keluar HANYA `mail.status`. Probe ini publik — tanpa kredensial — dan
+ * rambu #317 melarang membocorkan keadaan konfigurasi surel ke permukaan
+ * publik. Host, alamat pengirim, sumber konfigurasi, dan jumlah antrean
+ * (yang menyiratkan volume pemakaian) tinggal di konsol operator.
+ *
+ * Ia juga TIDAK mengubah status HTTP, alasan yang sama dengan penjadwal:
+ * surel yang belum disetel bukan alasan menghentikan lalu lintas ke aplikasi
+ * yang setiap pembukuannya masih bekerja sempurna.
  */
+
+/** Kesiapan surel. Kegagalan membacanya tidak boleh menjatuhkan probe. */
+async function mail() {
+  try {
+    const [config, count] = await Promise.all([resolveMailConfig(), outboxCount()]);
+    return mailHealth({
+      transport: config.transport,
+      source: config.source,
+      nodeEnv: process.env.NODE_ENV,
+      outboxCount: count,
+    }).public;
+  } catch {
+    return { status: "unknown" as const };
+  }
+}
 
 /** Putaran terakhir yang SELESAI. Tak terjangkau / belum ada = `null`, bukan lemparan. */
 async function lastSchedulerRun(): Promise<SchedulerHealth> {
@@ -77,5 +109,10 @@ export async function GET() {
     return NextResponse.json({ status: "error", database: "unreachable" }, { status: 503 });
   }
 
-  return NextResponse.json({ status: "ok", scheduler: await lastSchedulerRun() });
+  /* Kunci ditulis EKSPLISIT (bukan singkatan properti): `tests/scheduler-
+     heartbeat` menjaga bahwa route ini memang menyebut `scheduler:`, dan
+     penjaga itu membaca SUMBERNYA. Singkatan membuatnya merah tanpa satu pun
+     perilaku berubah — dan pelajarannya bukan "longgarkan penjaganya". */
+  const [schedulerStatus, mailStatus] = await Promise.all([lastSchedulerRun(), mail()]);
+  return NextResponse.json({ status: "ok", scheduler: schedulerStatus, mail: mailStatus });
 }

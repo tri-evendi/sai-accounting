@@ -19,13 +19,27 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useT } from "@/lib/i18n/client";
+import { tenantSlugFrom } from "@/lib/registration";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 const { Text } = Typography;
 
+/**
+ * Pratinjau slug — bentuk yang SAMA dengan yang dipakai server
+ * (`tenantSlugFrom`), bukan tiruan yang ditulis ulang di klien: dua fungsi
+ * untuk satu aturan berarti pratinjau yang menjanjikan alamat yang tidak jadi.
+ * Isian kosong menampilkan contoh, bukan string kosong yang terbaca seperti
+ * galat.
+ */
+function slugPratinjau(nama: string): string {
+  const slug = tenantSlugFrom(nama);
+  return nama.trim().length === 0 || slug === "tenant" ? "nama-akun" : slug;
+}
+
 export default function RegisterPage() {
   const t = useT();
   const { token } = theme.useToken();
+  const [accountName, setAccountName] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   /* Kenapa BUKAN tombol yang dinonaktifkan sampai kotaknya dicentang: tombol
@@ -59,6 +73,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.get("name"),
+          accountName: formData.get("accountName"),
           email: formData.get("email"),
           password: formData.get("password"),
           termsAccepted: terms,
@@ -120,6 +135,34 @@ export default function RegisterPage() {
               autoFocus
               disabled={loading}
             />
+            {/*
+              * Nama AKUN, terpisah dari nama orang (#458).
+              *
+              * Pratinjau alamatnya ditampilkan LANGSUNG di bawah isian, dan itu
+              * bukan hiasan: slug tenant tidak bisa diubah sesudah akun lahir
+              * (belum ada jalurnya — lihat #458 lingkup 3), jadi satu-satunya
+              * saat orang bisa melihat akibat ketikannya adalah SEKARANG.
+              */}
+            <div>
+              <Input
+                id="accountName"
+                name="accountName"
+                label={t("auth.register.accountName")}
+                placeholder={t("auth.register.accountNamePlaceholder")}
+                autoComplete="organization"
+                required
+                minLength={2}
+                maxLength={150}
+                disabled={loading}
+                onChange={(e) => setAccountName(e.currentTarget.value)}
+              />
+              <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                {t("auth.register.accountNameHint")}{" "}
+                <span style={{ fontFamily: "var(--ant-font-family-code)" }}>
+                  /t/{slugPratinjau(accountName)}/…
+                </span>
+              </Text>
+            </div>
             <Input
               id="email"
               name="email"

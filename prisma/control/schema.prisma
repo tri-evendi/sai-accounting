@@ -321,7 +321,13 @@ model Registration {
   /// BUKAN unik: orang boleh meminta ulang surel verifikasinya; token termuda
   /// yang menang (yang lama ditandai terpakai oleh permintaan baru).
   email String @db.VarChar(255)
+  /// Nama ORANG yang mendaftar — menjadi `users.name`.
   name  String @db.VarChar(100)
+
+  /// Nama AKUN (usaha/kantor) — menjadi `tenants.name` dan dasar slug tenant
+  /// (issue #458). NULL hanya untuk baris yang dibuat sebelum kolom ini ada;
+  /// jalur verifikasi menanganinya dengan jatuh ke perilaku lama.
+  accountName String? @map("account_name") @db.VarChar(150)
 
   /// bcrypt — kata sandi diketik sekali saat mendaftar dan langsung di-hash;
   /// nilai mentahnya tidak pernah disimpan di mana pun.

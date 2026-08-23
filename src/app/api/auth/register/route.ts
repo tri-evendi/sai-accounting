@@ -121,6 +121,7 @@ export async function POST(request: Request) {
       const { token } = await createRegistration({
         email,
         name,
+        accountName: parsed.data.accountName,
         passwordHash,
         termsAcceptedAt,
         // Versi dokumen yang TAMPIL saat mendaftar (issue #142) — bukti

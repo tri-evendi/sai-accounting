@@ -179,6 +179,12 @@ const TENANT_API_ROUTES = new Set([
   // (suspended), keadaan yang penjaga perusahaan justru tolak.
   "tenant/export/route.ts",
   "tenant/deletion-request/route.ts",
+  // Identitas akun (issue #458): mengganti NAMA TAMPILAN tenant — `tenant.settings`
+  // (owner). Bukan kewenangan sebuah PT: yang berganti nama adalah akun yang
+  // menaungi seluruh PT-nya, dan namanya tampil di layar setiap anggota.
+  // ⚠ Route ini TIDAK menyentuh slug; alamat `/t/<slug>/…` sudah terlanjur ada
+  // di bookmark & surel undangan (lihat kepala berkasnya).
+  "tenant/profile/route.ts",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */

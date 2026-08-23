@@ -38,6 +38,10 @@ export type TenantAuditAction =
   | "tenant.invitation.create"
   | "tenant.invitation.accept"
   | "tenant.invitation.revoke"
+  /** Ganti NAMA TAMPILAN akun (#458). Slug-nya TIDAK ikut berubah — alamat
+   *  yang sudah dibagikan tetap sampai; ganti slug adalah pekerjaan tersendiri
+   *  dengan pengalihan & pemesanan slug lama (lingkup 3 issue itu). */
+  | "tenant.profile.rename"
   /** Ganti paket (skrip operator #140; konsol operator #155). */
   | "tenant.plan.change"
   /** Pembayaran transfer manual dicatat operator (#155) — jalur

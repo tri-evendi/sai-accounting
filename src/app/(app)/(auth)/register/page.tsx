@@ -31,6 +31,25 @@ const { Text } = Typography;
  * Isian kosong menampilkan contoh, bukan string kosong yang terbaca seperti
  * galat.
  */
+/**
+ * Apakah "Nama akun" sebenarnya nama ORANGNYA?
+ *
+ * Kolomnya bertanya, tetapi tidak bisa memaksa — dan yang mengetik nama
+ * sendiri di situ mendapat kembali persis keadaan yang #458 perbaiki: nama
+ * pribadi berdiri di alamat yang dibaca staf dan akuntannya. Perbandingannya
+ * longgar (huruf kecil, spasi dirapikan) sebab yang dicari kemiripan, bukan
+ * kesamaan persis.
+ *
+ * ⚠ Ini PERINGATAN, bukan penolakan. Usaha perseorangan yang memang bernama
+ * pemiliknya adalah keadaan yang sah, dan memblokirnya berarti memutuskan
+ * sesuatu tentang usaha orang lain dari sebuah formulir pendaftaran.
+ */
+function samaDenganNamaOrang(namaAkun: string, namaOrang: string): boolean {
+  const rapikan = (t: string) => t.trim().toLowerCase().replace(/\s+/g, " ");
+  const akun = rapikan(namaAkun);
+  return akun.length > 0 && akun === rapikan(namaOrang);
+}
+
 function slugPratinjau(nama: string): string {
   const slug = tenantSlugFrom(nama);
   return nama.trim().length === 0 || slug === "tenant" ? "nama-akun" : slug;
@@ -40,6 +59,7 @@ export default function RegisterPage() {
   const t = useT();
   const { token } = theme.useToken();
   const [accountName, setAccountName] = useState("");
+  const [personName, setPersonName] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   /* Kenapa BUKAN tombol yang dinonaktifkan sampai kotaknya dicentang: tombol
@@ -134,6 +154,7 @@ export default function RegisterPage() {
               maxLength={100}
               autoFocus
               disabled={loading}
+              onChange={(e) => setPersonName(e.currentTarget.value)}
             />
             {/*
               * Nama AKUN, terpisah dari nama orang (#458).
@@ -162,6 +183,17 @@ export default function RegisterPage() {
                   /t/{slugPratinjau(accountName)}/…
                 </span>
               </Text>
+              {samaDenganNamaOrang(accountName, personName) && (
+                <Text
+                  /* `role` TIDAK dioper: ini bukan galat dan bukan kabar
+                     mendesak — ia catatan yang muncul di bawah isiannya, dan
+                     wilayah live yang memotong bacaan pembaca layar untuk
+                     sebuah saran adalah gangguan, bukan bantuan. */
+                  style={{ display: "block", color: "var(--ant-color-warning-text)", fontSize: token.fontSizeSM }}
+                >
+                  {t("auth.register.accountNameIsPerson")}
+                </Text>
+              )}
             </div>
             <Input
               id="email"

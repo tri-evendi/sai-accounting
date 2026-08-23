@@ -506,6 +506,7 @@
       "accountName": "Nama akun",
       "accountNamePlaceholder": "PT Contoh Sejahtera",
       "accountNameHint": "Nama usaha/kantor Anda. Ia menjadi alamat setiap buku:",
+      "accountNameIsPerson": "Ini nama Anda. Akun biasanya dinamai usaha atau kantornya — alamat ini dilihat staf dan akuntan Anda. Kalau usaha Anda memang bernama begitu, biarkan saja.",
       "submit": "Daftar",
       "submitting": "Mendaftarkan...",
       "sentTitle": "Periksa kotak masuk Anda",

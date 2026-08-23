@@ -88,15 +88,32 @@ describe("slug tenant & username", () => {
     expect(tenantSlugFrom("小明")).toBe("tenant");
   });
 
-  it("kandidat anti-tabrakan: basis, basis-2..basis-9, lalu akhiran acak — dan muat di kolom 50", () => {
-    const candidates = tenantSlugCandidates("Budi", "abc123");
+  it("kandidat anti-tabrakan: basis, lalu basis + AKHIRAN ACAK — dan muat di kolom 50", () => {
+    const candidates = tenantSlugCandidates("Budi", "abc1");
     expect(candidates[0]).toBe("budi");
-    expect(candidates[1]).toBe("budi-2");
-    expect(candidates[8]).toBe("budi-9");
-    expect(candidates[9]).toBe("budi-abc123");
-    for (const c of tenantSlugCandidates("x".repeat(200), "abcdef")) {
+    expect(candidates[1]).toBe("budi-abc1");
+    expect(candidates[2]).toMatch(/^budi-[a-z2-9]{4}$/);
+    for (const c of tenantSlugCandidates("x".repeat(200), "abcd")) {
       expect(c.length).toBeLessThanOrEqual(50);
     }
+  });
+
+  it("akhirannya TIDAK berurutan — deret `-2`,`-3` membocorkan akun lain (#458)", () => {
+    /*
+     * Dua orang bernama sama: yang kedua mendapat `budi-santoso-2` dan seketika
+     * tahu seorang Budi Santoso lain sudah menjadi pelanggan — pada `-6`, bahwa
+     * ada lima. Bukan hipotesis: `rika-mutiara-indah-2` ada di produksi saat
+     * penjaga ini ditulis.
+     */
+    for (const c of tenantSlugCandidates("Budi Santoso").slice(1)) {
+      expect(c, c).not.toMatch(/-\d$/);
+      expect(c, c).toMatch(/^budi-santoso-[a-z2-9]{4}$/);
+    }
+    /* Dua panggilan berturut-turut tidak pernah sama — kalau sama, "acak"-nya
+       hanya nama. */
+    const a = tenantSlugCandidates("Budi Santoso")[1];
+    const b = tenantSlugCandidates("Budi Santoso")[1];
+    expect(a).not.toBe(b);
   });
 
   it("nama yang tak menyisakan huruf jatuh ke slug ACAK, bukan deret `tenant-2` (#458)", () => {

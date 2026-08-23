@@ -34,6 +34,23 @@ describe("nama akun ≠ nama orang (#458)", () => {
     expect(store).toMatch(/row\.accountName\?\.trim\(\)\s*\|\|\s*row\.name/);
   });
 
+  it("formulir daftar memperingatkan (BUKAN menolak) kalau nama akun = nama orangnya", () => {
+    /*
+     * Kolom "Nama akun" bertanya, tetapi tidak bisa memaksa — dan yang mengetik
+     * namanya sendiri di situ mendapat kembali persis keadaan yang #458
+     * perbaiki. Yang dijaga di sini: peringatannya ADA, dan ia tidak memblokir
+     * (usaha perseorangan yang memang bernama pemiliknya adalah keadaan yang
+     * sah; memutuskan sebaliknya dari sebuah formulir pendaftaran berarti
+     * memutuskan sesuatu tentang usaha orang lain).
+     */
+    const form = baca("src/app/(app)/(auth)/register/page.tsx");
+    expect(form).toContain("samaDenganNamaOrang");
+    expect(form).toContain("accountNameIsPerson");
+    expect(form, "peringatan ini tidak boleh mencegah kiriman").not.toMatch(
+      /samaDenganNamaOrang\([^)]*\)\s*\)?\s*(?:return|throw)/
+    );
+  });
+
   it("formulir daftar menanyakan keduanya, dan memperlihatkan akibat ketikannya", () => {
     const form = baca("src/app/(app)/(auth)/register/page.tsx");
     expect(form).toContain('name="accountName"');

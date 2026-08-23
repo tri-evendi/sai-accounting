@@ -279,6 +279,20 @@ const KAS: readonly DocBlock[] = [
         "Biaya bank yang ditemukan saat mencocokkan tetap harus dicatat sebagai transaksi kas; ia beban, bukan penyesuaian angka.",
       ],
     },
+    {
+      kind: "paragraf",
+      teks:
+        "Mencocokkan dimulai dari rekening koran Anda sendiri. Setiap bank menyediakannya lewat internet banking — biasanya di menu Mutasi Rekening atau Riwayat Transaksi, dengan pilihan rentang tanggal lalu unduh sebagai CSV atau Excel. Ambil rentang yang sama persis dengan periode rekonsiliasi yang Anda buat; rentang yang lebih lebar menghasilkan baris di luar periode yang tidak akan pernah menemukan pasangannya.",
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Berkasnya diunggah APA ADANYA. Judul kolom boleh berbahasa Indonesia (Tanggal, Keterangan, Jumlah, DB/CR) maupun Inggris, dan kolom yang tidak dibutuhkan seperti Cabang atau Saldo diabaikan — bukan ditolak.",
+        "Sebelum satu baris pun tersimpan, aplikasi memperlihatkan hasil bacanya. Cocokkan beberapa baris pertama dengan berkas aslinya: kolom yang tertukar menghasilkan impor yang BERHASIL dengan nilai salah, dan hanya mata Anda yang bisa menangkapnya di situ.",
+        "Kalau ada satu baris yang tidak bisa dibaca, tidak ada yang disimpan sama sekali. Setiap masalah disebut beserta nomor barisnya, supaya diperbaiki sekaligus lalu diunggah ulang.",
+        "Tanggal yang ditulis 05/08/2026 bisa berarti 5 Agustus atau 8 Mei. Aplikasi memutuskannya dari seluruh berkas — satu baris bertanggal 31 sudah cukup menjelaskan sisanya — dan bila berkasnya tidak memuat petunjuk apa pun, ia mengatakannya di layar alih-alih menebak diam-diam.",
+      ],
+    },
     { kind: "istilah", kunci: ["kas_bank", "rekonsiliasi_bank"] },
   ];
 

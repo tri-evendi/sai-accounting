@@ -29,6 +29,7 @@ import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
 import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";
+import { ReminderSettingsPanel } from "@/components/settings/reminder-settings-panel";
 import {
   SampleDataPanel,
   type SampleDataCounts,
@@ -170,6 +171,15 @@ export function SettingsClient({
       {canManageModules && (
         <div id="tax" style={blockGap}>
           <TaxSettingsPanel />
+        </div>
+      )}
+
+      {/* issue #467 — pengingat jatuh tempo KE PELANGGAN. Izin yang sama dengan
+          dua kartu di atas, tapi ia satu-satunya di halaman ini yang akibatnya
+          keluar dari kantor — lihat kepala `reminder-settings-panel.tsx`. */}
+      {canManageModules && (
+        <div id="reminders" style={blockGap}>
+          <ReminderSettingsPanel />
         </div>
       )}
 

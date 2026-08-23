@@ -173,6 +173,11 @@ const TENANT_API_ROUTES = new Set([
   // (kuota, prorata, dan penolakan turun-paket ditimbang di server). Kewenangan
   // kontraktual `tenant.billing` — owner, bukan peran di sebuah PT.
   "tenant/billing/plan-change/route.ts",
+  // Server surel milik AKUN: dari mana faktur & pengingat pelanggan berangkat.
+  // Kewenangan `tenant.settings` — satu konfigurasi untuk seluruh PT di bawah
+  // tenant, jadi penjaga per-PT justru salah alat: pemegang izin di satu PT
+  // tidak boleh menyetel kredensial yang dipakai PT saudaranya.
+  "tenant/mail/route.ts",
   // Kepatuhan (issue #142): ekspor seluruh data tenant & permintaan
   // penghapusan adalah hak PELANGGAN (owner tenant), berdiri di atas semua
   // PT-nya — dan ekspor wajib tetap bekerja saat seluruh PT hanya-baca

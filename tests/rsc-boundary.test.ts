@@ -213,7 +213,7 @@ const SRC = join(__dirname, "..", "src");
  * pengalihan penuh halaman pada setiap penyimpanan di layar pengaturan yang
  * memang bersesi — harga yang salah di sisi ini.
  */
-const AMBANG_KLIEN = 169;
+const AMBANG_KLIEN = 172;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -289,6 +289,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/edit/invoice-edit-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/payment-section.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/pdf-button.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/[id]/send-section.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/new/invoice-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",
@@ -332,6 +333,7 @@ const KLIEN_TERSAHKAN = [
   /* #458 — lihat catatan di `AMBANG_KLIEN`. */
   "app/(app)/(tenant)/(panel)/platform/account/account-name-form.tsx",
   "app/(app)/(tenant)/(panel)/platform/account/account-slug-form.tsx",
+  "app/(app)/(tenant)/(panel)/platform/account/mail-form.tsx",
   "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
   "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
   "app/(app)/(tenant)/(panel)/platform/error.tsx",
@@ -364,6 +366,7 @@ const KLIEN_TERSAHKAN = [
   // Pulau client kecil: satu tombol + dialog konfirmasi + `router.refresh()`.
   // Halaman Pengaturan yang memanggilnya tetap server component; angkanya
   // dihitung di sana dan diturunkan sebagai prop.
+  "components/settings/reminder-settings-panel.tsx",
   "components/settings/sample-data-panel.tsx",
   "components/settings/tax-settings-panel.tsx",
   "components/setup/setup-shell.tsx",

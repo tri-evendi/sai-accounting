@@ -58,12 +58,26 @@ import {
   type MailTransport,
 } from "@/lib/mail-settings";
 
+/**
+ * Lampiran (issue #465) — dipakai jalur "kirim faktur ke pelanggan".
+ *
+ * `content` adalah byte mentah, bukan jalur berkas: PDF faktur dirender di
+ * memori dan tidak pernah menyentuh cakram, jadi tidak ada berkas sementara
+ * yang bisa tertinggal atau terbaca orang lain di kotak yang sama.
+ */
+export interface MailAttachment {
+  filename: string;
+  content: Uint8Array;
+  contentType: string;
+}
+
 export interface MailMessage {
   to: string;
   subject: string;
   /** Isi teks polos — SELALU ada: klien tanpa HTML tetap terbaca. */
   text: string;
   html?: string;
+  attachments?: MailAttachment[];
   /**
    * Surel ini membawa TOKEN AKSES — jangan pernah disalin ke alamat arsip.
    *
@@ -88,7 +102,15 @@ export interface MailResult {
 }
 
 /** Dari mana konfigurasi yang benar-benar dipakai berasal. */
-export type MailConfigSource = "database" | "env" | "default";
+/**
+ * Dari mana konfigurasi ini datang.
+ *
+ * `tenant` ditambahkan bersama `lib/tenant-mail-settings.ts`: surel yang
+ * berangkat ATAS NAMA PELANGGAN (faktur, pengingat jatuh tempo) memakai server
+ * surel milik tenant itu sendiri. `database` tetap berarti pengaturan
+ * PENYEDIA — dan surel yang membawa token akses tidak pernah memakai `tenant`.
+ */
+export type MailConfigSource = "tenant" | "database" | "env" | "default";
 
 export interface MailConfig {
   /** Transport EFEKTIF — sudah memperhitungkan pengaman non-produksi. */
@@ -228,12 +250,29 @@ async function sendToFile(message: MailMessage, config: MailConfig): Promise<Mai
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const file = path.join(dir, `${stamp}-${safeName(message.to)}.eml`);
 
+  /*
+   * Lampiran ditulis sebagai BERKAS TERSENDIRI di sebelah .eml, bukan
+   * di-base64 ke dalam badan multipart-nya (issue #465).
+   *
+   * Transport ini ada untuk DIBACA MATA saat mengembangkan — dan PDF yang
+   * dikodekan base64 sepanjang ratusan baris justru mengubur satu-satunya isi
+   * yang ingin diperiksa orang: kalimat pengantarnya. Sebagai berkas terpisah
+   * ia malah bisa dibuka langsung untuk memastikan kertasnya benar.
+   */
+  const attachmentNames: string[] = [];
+  for (const [index, attachment] of (message.attachments ?? []).entries()) {
+    const name = `${stamp}-${safeName(message.to)}-${index + 1}-${safeName(attachment.filename)}`;
+    await writeFile(path.join(dir, name), attachment.content);
+    attachmentNames.push(name);
+  }
+
   // RFC 5322 sederhana — cukup untuk dibuka klien surel / dibaca mata.
   const eml =
     `From: ${config.from}\r\n` +
     `To: ${message.to}\r\n` +
     `Subject: ${message.subject}\r\n` +
     `Date: ${new Date().toUTCString()}\r\n` +
+    (attachmentNames.length ? `X-Attachments: ${attachmentNames.join(", ")}\r\n` : "") +
     `Content-Type: text/plain; charset=utf-8\r\n` +
     `\r\n` +
     message.text;
@@ -271,6 +310,15 @@ async function sendViaSmtp(message: MailMessage, config: MailConfig): Promise<Ma
     subject: message.subject,
     text: message.text,
     html: message.html,
+    ...(message.attachments?.length
+      ? {
+          attachments: message.attachments.map((a) => ({
+            filename: a.filename,
+            content: Buffer.from(a.content),
+            contentType: a.contentType,
+          })),
+        }
+      : {}),
   });
   return { transport: "smtp", detail: info.messageId };
 }

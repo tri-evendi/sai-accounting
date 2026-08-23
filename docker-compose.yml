@@ -91,15 +91,21 @@ services:
     command:
       - sh
       - -c
-      # `notify:setup` dan `notify:invoice-due` menumpang putaran yang SAMA,
-      # bukan layanan sendiri-sendiri: cadensinya identik (per jam), ketiganya
-      # membaca daftar perusahaan yang sama, dan ketiganya idempoten (kunci
-      # `dedupe_key`). Layanan keempat hanya akan menambah satu container lagi
-      # yang bisa mati diam-diam di kotak yang sudah padat.
+      # `notify:setup`, `notify:invoice-due`, dan `remind:customers` menumpang
+      # putaran yang SAMA, bukan layanan sendiri-sendiri: cadensinya identik
+      # (per jam), semuanya membaca daftar perusahaan yang sama, dan semuanya
+      # idempoten (`dedupe_key`, atau kunci unik pengingat). Layanan tersendiri
+      # hanya akan menambah container yang bisa mati diam-diam di kotak yang
+      # sudah padat.
+      #
+      # `remind:customers` ditaruh TERAKHIR dengan sengaja (issue #467): ia
+      # satu-satunya mata rantai yang mengirim surel KE LUAR, dan menempatkannya
+      # di belakang berarti putaran yang mati di tengah gagal pada pekerjaan
+      # yang masih bisa diulang tanpa konsekuensi ke orang lain.
       #
       # `|| true` di tiap mata rantai disengaja: satu produser yang gagal tidak
       # boleh menelan yang berikutnya — putarannya harus tetap sampai `sleep`.
-      - "while true; do bun run scheduler:subscriptions || true; bun run notify:setup || true; bun run notify:invoice-due || true; sleep 3600; done"
+      - "while true; do bun run scheduler:subscriptions || true; bun run notify:setup || true; bun run notify:invoice-due || true; bun run remind:customers || true; sleep 3600; done"
 
   # ── PEMERIKSA KESESUAIAN DATA (mingguan) ──────────────────────────────────
   # Penjaga zod hanya berlaku di jalur TULIS. Impor sekali-jalan, perbaikan SQL

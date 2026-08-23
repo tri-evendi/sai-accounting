@@ -302,6 +302,8 @@ model Invoice {
   /// Retur penjualan against this invoice (issue #27). The origin document of
   /// every sales return; the total returned is capped at what was invoiced.
   salesReturns SalesReturn[]
+  /// Riwayat pengiriman faktur ini ke pelanggan (issue #465).
+  sends InvoiceSend[]
 
   @@index([customerId])
   @@index([contractId])
@@ -310,6 +312,80 @@ model Invoice {
   @@index([costCenterId])
   @@index([status])
   @@map("invoices")
+}
+
+/// Riwayat pengiriman faktur kepada PELANGGAN (issue #465).
+///
+/// ══ KENAPA DICATAT ══════════════════════════════════════════════════════════
+/// Sampai #465, faktur hanya bisa diunduh sebagai PDF — dan begitu berkasnya
+/// jatuh ke folder unduhan, aplikasi tidak tahu apa-apa lagi. Pertanyaan yang
+/// paling sering ditanyakan orang yang menagih ("faktur ini sudah saya kirim
+/// belum?") karena itu tidak punya jawaban di mana pun, dan yang terjadi
+/// bukanlah faktur yang ditolak melainkan faktur yang tidak pernah sampai.
+/// Tanpa tabel ini fiturnya hanya MEMINDAHKAN pekerjaan, tidak menghapusnya.
+///
+/// ══ APA ARTI SEBUAH BARIS — DAN APA YANG BUKAN ══════════════════════════════
+/// Satu baris = satu KALI PENGIRIMAN DIUPAYAKAN, bukan bukti bahwa manusia di
+/// ujung sana membacanya. Bedanya nyata per kanal, dan sengaja tidak dilebur:
+///
+///   • `email`    — `sendMail` sudah menerima pesannya (SMTP menerima, atau
+///                  transport `file` menuliskannya). Pantulan sesudah itu tidak
+///                  terlihat oleh kita.
+///   • `whatsapp` — pengguna MEMBUKA tautan `wa.me` berisi teks siap kirim.
+///                  Kita tidak pernah tahu ia menekan kirim. Barisnya jujur
+///                  disebut "disiapkan", bukan "terkirim", di seluruh
+///                  permukaan — dan itulah alasan `channel` disimpan apa adanya
+///                  alih-alih diringkas menjadi satu penanda `sent`.
+///
+/// Baris TIDAK PERNAH dihapus atau diperbarui; ia catatan sejarah. Mengirim
+/// ulang menambah baris baru — dua kali menagih adalah fakta yang berguna.
+model InvoiceSend {
+  id        Int    @id @default(autoincrement())
+  invoiceId Int    @map("invoice_id")
+  /// enum-like: email | whatsapp (z.enum di `@/lib/invoice-send`).
+  channel   String @db.VarChar(20)
+  /// Alamat surel atau nomor WhatsApp ternormalisasi yang DIPAKAI saat itu —
+  /// disalin, bukan dibaca ulang dari `customers`. Alamat pelanggan boleh
+  /// berubah besok, dan catatan sejarah yang ikut berubah bukan catatan.
+  recipient String @db.VarChar(190)
+  /// Pengirimnya: id pengguna GLOBAL (basis data kendali). Sengaja TANPA FK —
+  /// buku perusahaan tidak boleh menunjuk ke `users` (lihat docs/MULTI-COMPANY).
+  /// Namanya dibaca lewat `users-directory.ts` saat ditampilkan.
+  sentByUserId Int @map("sent_by_user_id")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  // ── issue #467 — kiriman OTOMATIS (pengingat jatuh tempo) ──────────────────
+  /// Titik pengingat yang melahirkan baris ini (`before_3` | `after_1` |
+  /// `after_7`), atau NULL untuk kiriman MANUAL yang ditekan seseorang (#465).
+  /// Satu tabel untuk dua asal, karena pembacanya satu: orang yang bertanya
+  /// "faktur ini sudah dikabari apa belum" tidak peduli siapa yang memicunya.
+  reminderKind   String? @map("reminder_kind") @db.VarChar(20)
+  /// Tanggal jatuh tempo yang menjadi acuan (ISO `YYYY-MM-DD`) — bukan tanggal
+  /// hari ini. Bentuk inilah yang menentukan cadensi, doktrin yang sama dengan
+  /// `dedupeKey` di `lib/notifications.ts`: satu titik untuk satu tanggal jatuh
+  /// tempo berbunyi TEPAT SEKALI. Kalau tanggal hari ini yang dipakai, satu
+  /// faktur akan ditagih ulang setiap hari penjadwal berjalan.
+  ///
+  /// Jatuh tempo yang DIUBAH menghasilkan kunci baru, jadi pengingatnya boleh
+  /// berbunyi lagi untuk tanggal yang baru — dan itu memang benar.
+  reminderDueKey String? @map("reminder_due_key") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  /// IDEMPOTENSI pengingat (issue #467): penjadwal yang berjalan dua kali
+  /// MENABRAK constraint, bukan melahirkan surel kembar ke pelanggan.
+  ///
+  /// Kiriman manual memakai NULL di kedua kolom, dan MySQL/MariaDB mengizinkan
+  /// NULL berulang di dalam kunci unik — jadi menekan "kirim" sepuluh kali
+  /// tetap menghasilkan sepuluh baris riwayat, sebagaimana mestinya. Yang
+  /// dikunci hanya yang OTOMATIS.
+  @@unique([invoiceId, reminderKind, reminderDueKey])
+  @@index([invoiceId])
+  @@index([sentAt])
+  @@map("invoice_sends")
 }
 
 model InvoiceItem {
@@ -1360,6 +1436,24 @@ model CompanySetting {
   /// per module would make "no rows = everything on" ambiguous with "the wizard
   /// never ran".
   enabledModules String? @map("enabled_modules") @db.VarChar(255)
+  // ── issue #467 — Pengingat jatuh tempo KE PELANGGAN ────────────────────────
+  /// Sakelar induk. **Bawaannya FALSE, dan itu tidak bisa ditawar**: ini fitur
+  /// pertama yang berbicara ke orang luar atas nama pengguna, dan surel yang
+  /// terlanjur keluar tidak bisa ditarik kembali. Menyalakannya adalah tindakan
+  /// sadar oleh PT-nya, sekali.
+  reminderEnabled Boolean @default(false) @map("reminder_enabled")
+  /// Titik yang aktif — comma-separated dari `REMINDER_POINTS`
+  /// (`before_3,after_1,after_7`). NULL/kosong = SEMUA titik, mengikuti pola
+  /// `enabled_modules` di atas. Aman karena `reminder_enabled` yang menjaga
+  /// pintunya: daftar titik hanya dibaca setelah seseorang menyalakannya.
+  reminderPoints String? @map("reminder_points") @db.VarChar(100)
+  /// Kapan KIRIM-UJI KE DIRI SENDIRI terakhir berhasil.
+  ///
+  /// NULL = belum pernah, dan penjadwal MENOLAK mengirim ke pelanggan mana pun
+  /// selama ia NULL. Bukan sekadar tombol yang tersedia: seseorang harus pernah
+  /// melihat sendiri kalimat yang akan diterima pelanggannya sebelum kalimat
+  /// itu keluar dari kantor.
+  reminderTestedAt DateTime? @map("reminder_tested_at")
   /// Run-once flag: true once the wizard has completed and the opening journal is
   /// posted. Re-entry then shows a read-only summary and refuses a second run.
   isSetup Boolean @default(false) @map("is_setup")

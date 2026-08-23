@@ -35,7 +35,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { InvoicePaymentSection } from "./payment-section";
 import { InvoicePDFButtonWrapper } from "./pdf-button";
 import { InvoiceAdvanceSection } from "./advance-section";
+import { InvoiceSendSection } from "./send-section";
 import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
+import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
+import { invoiceWhatsAppTarget, listInvoiceSends } from "@/lib/invoice-send";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +87,17 @@ export default async function InvoiceDetailPage({
       : Promise.resolve([]),
     getAdvanceTargetState("invoice", invoice.id),
   ]);
+
+  /*
+   * Kirim ke pelanggan (issue #465). Hanya dirakit untuk yang memang boleh
+   * mengirim: `invoice.write` — cermin izin yang dijaga route `/send`, dengan
+   * alasan yang sama (akibatnya KELUAR dari perusahaan dan tak bisa ditarik).
+   * Untuk yang lain, satu query pun tidak berjalan.
+   */
+  const canSend = await canEffective(session.user, "invoice.write");
+  const [whatsApp, sendHistory] = canSend
+    ? await Promise.all([invoiceWhatsAppTarget(invoice), listInvoiceSends(invoice.id)])
+    : [null, []];
 
   // Everything on this document is denominated in the invoice's own currency —
   // formatting it as IDR would misstate a USD/CNY invoice by the exchange rate.
@@ -313,33 +327,11 @@ export default async function InvoiceDetailPage({
         description={formatDate(invoice.date)}
         actions={
           <>
-          <InvoicePDFButtonWrapper
-            invoice={{
-              invoiceNo: invoice.invoiceNo,
-              date: invoice.date.toISOString(),
-              status: invoice.status,
-              currency,
-              taxAmount,
-              taxable,
-              taxRate,
-              pebNumber: invoice.pebNumber ?? null,
-              pebDate: invoice.pebDate ? invoice.pebDate.toISOString() : null,
-              exportNote: invoice.exportNote ?? null,
-              customerName: invoice.customer?.name ?? null,
-              items: invoice.items.map((i) => ({
-                itemName: i.itemName,
-                quantity: Number(i.quantity),
-                price: Number(i.price),
-                unit: i.unit,
-              })),
-              payments: invoice.payments.map((p) => ({
-                date: p.date.toISOString(),
-                amount: Number(p.amount),
-                currency: p.currency,
-                note: p.note,
-              })),
-            }}
-          />
+          {/* Objeknya dirakit `buildInvoicePdfData` — pemetaan yang SAMA dengan
+              yang dipakai pengirim surel di server (issue #465). Merakitnya di
+              sini lagi berarti dua kertas yang perlahan menyimpang untuk satu
+              nomor faktur, tanpa satu galat pun yang menandainya. */}
+          <InvoicePDFButtonWrapper invoice={buildInvoicePdfData(invoice)} />
           <ButtonLink href={`/invoices/${id}/edit`} variant="secondary">
             {t("common.edit")}
           </ButtonLink>
@@ -521,6 +513,27 @@ export default async function InvoiceDetailPage({
           <InvoicePaymentSection invoiceId={invoice.id} />
         </CardContent>
       </Card>
+
+      {/* Kirim ke pelanggan (issue #465) — berdampingan dengan pembayaran, sebab
+          keduanya menjawab pertanyaan yang sama dari dua sisi: sudah ditagih?
+          sudah dibayar? */}
+      {canSend && (
+        <div style={{ marginTop: SECTION_GAP }}>
+          <InvoiceSendSection
+            invoiceId={invoice.id}
+            email={invoice.customer?.email?.trim() || null}
+            whatsAppUrl={whatsApp?.url ?? null}
+            history={sendHistory.map((row) => ({
+              id: row.id,
+              channel: row.channel,
+              recipient: row.recipient,
+              sentAt: row.sentAt.toISOString(),
+              sentBy: row.sentBy,
+              reminderKind: row.reminderKind,
+            }))}
+          />
+        </div>
+      )}
 
       {/* Uang muka (issue #26) — the down-payment coming off this bill. */}
       <Card style={{ marginTop: SECTION_GAP }}>

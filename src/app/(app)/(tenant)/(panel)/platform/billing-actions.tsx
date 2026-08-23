@@ -97,9 +97,18 @@ function Instructions({ payment }: { payment: PendingPayment }) {
 export function PayInvoice({
   invoiceId,
   pending,
+  instantPayment,
+  manualInstructions,
 }: {
   invoiceId: number;
   pending: PendingPayment | null;
+  /**
+   * Apakah gerbangnya bisa menerbitkan VA/QRIS (`offersInstantPayment`).
+   * Diputuskan di SERVER dan dioper — `process.env` tidak terbaca dari sini.
+   */
+  instantPayment: boolean;
+  /** Isi `MANUAL_PAYMENT_INSTRUCTIONS`; kosong → kalimat cadangan kamus. */
+  manualInstructions: string | null;
 }) {
   const t = useT();
   const { token } = theme.useToken();
@@ -131,22 +140,45 @@ export function PayInvoice({
     }
   }
 
+  /* Instruksi transfer manual, dipakai dua kali: saat gerbangnya memang tidak
+     ada (di bawah), dan saat gerbang manual menjawab sebuah penekanan tombol
+     yang terlanjur terjadi. */
+  const manualBox = (text: string | null) => (
+    <div
+      style={{
+        padding: token.paddingXS,
+        borderRadius: token.borderRadius,
+        background: token.colorFillQuaternary,
+      }}
+    >
+      <Text type="secondary" style={{ lineHeight: 1.625 }}>
+        {text || t("billing.manualFallback")}
+      </Text>
+    </div>
+  );
+
+  /* Instruksi VA/QRIS yang SUDAH pernah terbit tetap ditampilkan walau
+     gerbangnya kini mati — nomornya masih hidup di sisi bank sampai
+     kedaluwarsa, dan menyembunyikannya berarti pelanggan kehilangan nomor yang
+     sudah dipegangnya. */
   if (payment?.vaNumber || payment?.qrString) return <Instructions payment={payment} />;
-  if (manualText !== null) {
-    return (
-      <div
-        style={{
-          padding: token.paddingXS,
-          borderRadius: token.borderRadius,
-          background: token.colorFillQuaternary,
-        }}
-      >
-        <Text type="secondary" style={{ lineHeight: 1.625 }}>
-          {manualText || t("billing.manualFallback")}
-        </Text>
-      </div>
-    );
-  }
+
+  /*
+   * ⚠ TANPA GERBANG, TANPA TOMBOL (23 Agu 2026, #466 ditunda).
+   *
+   * Sebelum ini halaman selalu menawarkan "Bayar via VA" dan "Bayar via QRIS",
+   * lalu — karena `PAYMENT_GATEWAY` tidak diset — menjawab setiap penekanan
+   * dengan kalimat transfer manual. Yang dijanjikan tombolnya tidak pernah
+   * datang, dan penantian beberapa detik itu membuatnya terbaca sebagai
+   * kegagalan, bukan sebagai kebijakan.
+   *
+   * Jadi ketika gerbangnya tidak bisa menerbitkan apa pun, instruksinya
+   * ditampilkan LANGSUNG. Bukan tombol yang dinonaktifkan: tombol pudar tetap
+   * menjanjikan sesuatu yang tidak ada, dan menyuruh orang menebak kenapa.
+   */
+  if (!instantPayment) return manualBox(manualInstructions);
+
+  if (manualText !== null) return manualBox(manualText);
 
   /*
    * Selama permintaan berjalan, kedua tombol hanya menjadi `disabled` — pudar,

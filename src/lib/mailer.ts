@@ -13,6 +13,7 @@ export {
   sendMail,
   type MailConfig,
   type MailConfigSource,
+  type MailAttachment,
   type MailMessage,
   type MailResult,
 } from "@/lib/mailer-core";

@@ -553,7 +553,7 @@ pemasaran, dilonggarkan.**
 | **Skala judul** | `--sai-landing-font-size-hero` ≈53px (`fontSizeHeading1 × 1,4`) | **`fontSizeHeading2` (30px)** — di BAWAH langit-langit app | langit-langit `fontSizeHeading1` (38px) |
 | **Bobot CTA** | satu ajakan diulang empat kali, primer + garis berpasangan | **NOL tombol berisi penuh**; satu tautan "masuk ke aplikasi" `secondary` | satu aksi utama, di `PageHeader.actions` |
 | **Irama antar-seksi** | `--sai-landing-rhythm` 64px → 96px | **`--ant-margin-lg` 24px** — irama app | 24px |
-| **Lebar maksimum** | kolom baca 42rem, seksi 72rem, di tengah | **kolom baca 768px** (angka telanjang, preseden `/terms` & `/privacy`) | lebar penuh area kerja |
+| **Lebar maksimum** | kolom baca 42rem, seksi 72rem, di tengah | **lebar penuh area kerja** — batas 768px DICABUT 23 Agu 2026 (keputusan pemilik); alasan batas lama & cara mengembalikannya di `pages/docs.md` | lebar penuh area kerja |
 
 Kenapa langit-langitnya lebih RENDAH daripada app internal, bukan di antara
 keduanya: sebuah permukaan yang judulnya lebih kecil daripada judul layar kerja
@@ -688,10 +688,13 @@ tidak pernah tiga.**
   ada slug di alamatnya: setiap butir menunjuk jalur lama dan bergantung pada
   pantulan 307, dan tidak satu butir pun bertanda aktif.
 
-**Kolom baca tetap 768px DI DALAM kulit aplikasi.** Baris "lebar maksimum" di
-tabel dimensi mengikat, dan ia mengikat justru di sana: area kerja dasbor lebar
-penuh, jadi prosa yang dibiarkan ikut melebar merusak persis yang diperbaiki
-#300. Angkanya hidup di SATU tempat (`docs-shell.tsx`), dipakai kedua kulit.
+**~~Kolom baca tetap 768px DI DALAM kulit aplikasi.~~ DICABUT 23 Agu 2026**
+(keputusan pemilik): dokumentasi kini memakai lebar penuh di KEDUA kulit.
+Alasan batas lama — prosa yang melewati ±75 karakter per baris berhenti bisa
+dipindai sekali lihat — tetap tercatat di `pages/docs.md` §Lebar beserta cara
+mengembalikannya (satu `maxWidth` di `KOLOM_BACA`). Yang masih mengikat:
+bentuknya ditulis SEKALI di `docs-shell.tsx` dan dipakai kedua kulit, sebab
+batas yang hidup di satu kulit saja adalah batas yang bergeser tanpa berbunyi.
 
 **Yang membuatnya mekanisme:**
 
@@ -700,7 +703,8 @@ penuh, jadi prosa yang dibiarkan ikut melebar merusak persis yang diperbaiki
   butir pun menuntut sebuah PT";
 - `tests/docs.test.ts` mengunci bahwa kulitnya dipilih di LAYOUT (kedua
   `page.tsx` tetap bersih dari sesi), bahwa jalur pemilihan kulit tidak memuat
-  satu penjaga/`redirect()` pun, bahwa 768 tidak disalin, dan bahwa daftar-IZIN
+  satu penjaga/`redirect()` pun, bahwa lebar skala-kolom (≥600px) tidak diketik
+  di luar `docs-shell.tsx`, dan bahwa daftar-IZIN
   impornya dikecualikan untuk **satu** berkas bernama;
 - `tests/authz-coverage.test.ts` tetap menuntut kedua halaman tidak menyentuh
   sesi maupun Prisma — yang tidak berubah, karena yang membaca sesi bukan
@@ -742,10 +746,11 @@ berikutnya:
   kotak bertepi justru bentuk yang benar: paling banyak dua, setara,
   bersebelahan.
 
-**Yang SENGAJA tidak dikerjakan:** kolom baca tidak dilebarkan dari 768px meski
-kanvas layar lebar terasa kosong. Melebarkannya merusak yang sedang diperbaiki —
-kalimat ringkas yang membentang melewati ±75 karakter berhenti bisa dipindai
-sekali lihat — dan baris "lebar maksimum" di tabel di atas mengikat.
+**Yang saat itu sengaja tidak dikerjakan — dan kini SUDAH dikerjakan:** kolom
+baca dulu tidak dilebarkan dari 768px meski kanvas layar lebar terasa kosong,
+dengan alasan panjang baris (±75 karakter). Batas itu dicabut 23 Agu 2026 atas
+keputusan pemilik; alasan lamanya tetap tercatat di `pages/docs.md` §Lebar,
+sebab ia yang dibutuhkan kalau keputusannya ditinjau ulang.
 
 ---
 

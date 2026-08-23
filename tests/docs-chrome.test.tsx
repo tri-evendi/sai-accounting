@@ -210,12 +210,19 @@ describe("keadaan 1: bersesi dengan PT terbuka", () => {
     expect(html).toContain(T("docs.backToBook"));
   });
 
-  it("prosanya tetap ada, dan kolom bacanya tetap 768px", async () => {
+  it("prosanya tetap ada, dan bingkainya mengisi area kerja", async () => {
     const html = await renderDokumentasi();
     expect(html).toContain(T("docs.title"));
     expect(html).toContain(T("docs.branchUser"));
-    // Area kerja dasbor lebar penuh; kolom baca TIDAK ikut melebar.
-    expect(html).toContain("max-width:768px");
+    /*
+     * ⚠ Dulu tes ini menuntut `max-width:768px`. Batas itu DICABUT 23 Agu 2026
+     * (keputusan pemilik, MASTER.md §Dokumentasi): dokumentasi memakai lebar
+     * penuh area kerja. Yang dijaga sekarang bahwa bingkainya memang terpasang
+     * — sebuah kulit yang lupa memasangnya akan merender prosa tanpa kolom
+     * kiri/kanan sama sekali, dan itu tidak terlihat sebagai galat.
+     */
+    expect(html).toContain("container-type:inline-size");
+    expect(html).toContain("data-docs-grid");
   });
 
   it("hanya SATU tengara `<main>` di seluruh halaman", async () => {
@@ -272,7 +279,8 @@ describe("keadaan 3: tanpa sesi", () => {
     expect(hrefs(html)).toContain("/login");
     expect(html).toContain(T("docs.openApp"));
     expect(html).toContain(T("docs.title"));
-    expect(html).toContain("max-width:768px");
+    expect(html).toContain("container-type:inline-size");
+    expect(html).toContain("data-docs-grid");
   });
 
   it("tidak satu pun query berjalan untuk pembaca anonim", async () => {

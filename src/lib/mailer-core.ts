@@ -46,7 +46,7 @@
  * verifikasi ingin memakai mekanisme next-auth. Murni JS, tanpa binary.
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -341,8 +341,58 @@ export function archiveFor(message: MailMessage, config: MailConfig): string | n
   return config.archiveAddress ?? null;
 }
 
+/**
+ * Berapa berkas `.eml` menumpuk di kotak keluar. `null` = tak terbaca.
+ *
+ * Dibedakan dari `0` dengan sengaja: nol berarti tidak ada yang menunggu,
+ * `null` berarti tidak tahu (lihat `lib/mail-health.ts`).
+ */
+export async function outboxCount(): Promise<number | null> {
+  try {
+    const names = await readdir(outboxDir());
+    return names.filter((n) => n.endsWith(".eml")).length;
+  } catch (error) {
+    /* Direktorinya belum pernah dibuat = belum pernah ada surel yang ditangkap,
+       dan itu memang NOL — bukan "tidak tahu". Kegagalan lain (izin, cakram)
+       adalah ketidaktahuan yang sesungguhnya. */
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return 0;
+    return null;
+  }
+}
+
+/**
+ * ⚠ PRODUKSI YANG MENULIS SUREL KE CAKRAM — diteriakkan SEKALI per proses
+ * (issue #317).
+ *
+ * Sekali, bukan tiap surel: peringatan yang berulang ratusan kali sehari
+ * mengubur baris lain yang justru perlu dibaca, dan yang perlu diketahui
+ * operator adalah KEADAANNYA, bukan berapa kali ia terjadi. Untuk hitungannya
+ * ada kotak keluar, dan untuk melihatnya tanpa masuk ke kontainer ada
+ * `/api/health` serta konsol operator.
+ */
+let sudahMemperingatkan = false;
+
+function warnIfProductionIsSilent(config: MailConfig): void {
+  if (sudahMemperingatkan) return;
+  if (config.transport !== "file") return;
+  if (process.env.NODE_ENV !== "production") return;
+  sudahMemperingatkan = true;
+  console.error(
+    "[mailer] ⚠ PRODUKSI TANPA SMTP: setiap surel ditulis ke berkas dan TIDAK " +
+      "dikirim ke siapa pun — verifikasi pendaftaran, atur-ulang kata sandi, " +
+      "undangan staf, faktur, dan pengingat. Setel di /operator/mail atau lewat " +
+      "MAIL_TRANSPORT/SMTP_URL. Lihat /api/health → mail.status."
+  );
+}
+
+/** Dipakai tes untuk mengembalikan keadaan penjaga sekali-bunyi. */
+export function resetMailWarning(): void {
+  sudahMemperingatkan = false;
+}
+
 export async function sendMail(message: MailMessage, config?: MailConfig): Promise<MailResult> {
   const effective = config ?? (await resolveMailConfig());
+  warnIfProductionIsSilent(effective);
   return effective.transport === "smtp"
     ? sendViaSmtp(message, effective)
     : sendToFile(message, effective);

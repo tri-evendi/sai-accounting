@@ -27,12 +27,7 @@ import {
   type Locale,
 } from "./config";
 import { translate, type Dictionary, type DictionaryKey, type TranslationValues } from "./dictionary";
-
-const dictionaries: Record<Locale, () => Promise<Dictionary>> = {
-  id: () => import("./dictionaries/id.json").then((m) => m.default),
-  en: () => import("./dictionaries/en.json").then((m) => m.default),
-  zh: () => import("./dictionaries/zh.json").then((m) => m.default),
-};
+import { loadDictionary } from "./load";
 
 /**
  * Bahasa aktif untuk permintaan ini.
@@ -49,9 +44,16 @@ export async function getLocale(): Promise<Locale> {
   return negotiateLocale(headerStore.get("accept-language")) ?? DEFAULT_LOCALE;
 }
 
-/** Kamus satu bahasa. Locale asing tidak mungkin lolos ke sini (`Locale`). */
+/**
+ * Kamus satu bahasa.
+ *
+ * Petanya sendiri pindah ke `./load` pada issue #467 — penjadwal `tsx` juga
+ * butuh kalimatnya dan tidak bisa memuat modul ber-`server-only`. Yang tinggal
+ * di sini adalah yang memang milik permintaan HTTP (cookie/header); peta
+ * pemuatnya satu, jadi tidak ada dua daftar kamus yang bisa menyimpang.
+ */
 export async function getDictionary(locale: Locale): Promise<Dictionary> {
-  return dictionaries[locale]();
+  return loadDictionary(locale);
 }
 
 /**

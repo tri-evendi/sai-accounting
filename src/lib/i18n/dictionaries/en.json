@@ -972,6 +972,42 @@
     "closing": "Thank you for your business.",
     "colSent": "Sent"
   },
+  "invoiceReminder": {
+    "subject": {
+      "before_3": "Reminder: invoice {no} is coming due",
+      "after_1": "Invoice {no} is now due",
+      "after_7": "Follow-up: payment for invoice {no} is still outstanding"
+    },
+    "body": {
+      "before_3": "A friendly reminder that invoice {no} for {amount} falls due on {date}. If you have already sent payment, please disregard this message.",
+      "after_1": "Invoice {no} for {amount} fell due on {date} and we have not yet received payment. If you have already paid, please disregard this message.",
+      "after_7": "Invoice {no} for {amount} is now past its due date of {date}. Please confirm, or get in touch if there is anything to discuss."
+    },
+    "greeting": "Dear {name},",
+    "closing": "Thank you for your business.",
+    "testFooter": "This is a TEST email. Its wording is exactly what your customers will receive; no customer was sent this message.",
+    "settingsTitle": "Due-date reminders",
+    "settingsDescription": "Automatic emails to customers about invoices coming due or already due. One reminder per invoice.",
+    "enable": "Send reminders to customers",
+    "pointBefore3": "3 days before the due date",
+    "pointAfter1": "1 day after the due date",
+    "pointAfter7": "7 days after the due date",
+    "testButton": "Send a test to me",
+    "testSending": "Sending…",
+    "testSent": "Test email sent to {recipient}.",
+    "testRequired": "Send yourself a test first. Until you do, no reminder goes out to any customer.",
+    "testedAt": "Last test send: {date}",
+    "saved": "Reminder settings saved.",
+    "errSave": "The reminder settings could not be saved.",
+    "errNoUserEmail": "Your account has no email address, so the test email cannot be sent.",
+    "automatic": "automatic",
+    "channelReminder": "Reminder",
+    "pointLabel": {
+      "before_3": "D-3",
+      "after_1": "D+1",
+      "after_7": "D+7"
+    }
+  },
   "sales": {
     "title": "Record a Sale",
     "descriptionA": "Guided step by step: customer, goods, shipment, then the invoice. Move back and forth as you like —",

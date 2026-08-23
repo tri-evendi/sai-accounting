@@ -972,6 +972,42 @@
     "closing": "Terima kasih atas kerja samanya.",
     "colSent": "Dikirim"
   },
+  "invoiceReminder": {
+    "subject": {
+      "before_3": "Pengingat: faktur {no} akan jatuh tempo",
+      "after_1": "Faktur {no} telah jatuh tempo",
+      "after_7": "Susulan: faktur {no} belum kami terima pembayarannya"
+    },
+    "body": {
+      "before_3": "Kami ingin mengingatkan bahwa faktur {no} senilai {amount} akan jatuh tempo pada {date}. Bila pembayarannya sudah Anda kirim, mohon abaikan pesan ini.",
+      "after_1": "Faktur {no} senilai {amount} jatuh tempo pada {date} dan sampai saat ini belum kami terima pembayarannya. Bila sudah dibayar, mohon abaikan pesan ini.",
+      "after_7": "Faktur {no} senilai {amount} telah melewati jatuh tempo {date}. Mohon konfirmasinya, atau hubungi kami bila ada yang perlu didiskusikan."
+    },
+    "greeting": "Yth. {name},",
+    "closing": "Terima kasih atas kerja samanya.",
+    "testFooter": "Ini surel UJI. Isinya sama persis dengan yang akan diterima pelanggan Anda; tidak ada pelanggan yang menerima pesan ini.",
+    "settingsTitle": "Pengingat Jatuh Tempo",
+    "settingsDescription": "Surel otomatis ke pelanggan untuk faktur yang akan atau sudah jatuh tempo. Satu pengingat per faktur.",
+    "enable": "Kirim pengingat ke pelanggan",
+    "pointBefore3": "3 hari sebelum jatuh tempo",
+    "pointAfter1": "1 hari setelah jatuh tempo",
+    "pointAfter7": "7 hari setelah jatuh tempo",
+    "testButton": "Kirim uji ke saya",
+    "testSending": "Mengirim…",
+    "testSent": "Surel uji terkirim ke {recipient}.",
+    "testRequired": "Kirim uji ke diri sendiri dulu. Selama belum, pengingat tidak akan dikirim ke satu pelanggan pun.",
+    "testedAt": "Kirim-uji terakhir: {date}",
+    "saved": "Pengaturan pengingat disimpan.",
+    "errSave": "Pengaturan pengingat gagal disimpan.",
+    "errNoUserEmail": "Akun Anda belum punya alamat surel, jadi surel uji tidak bisa dikirim.",
+    "automatic": "otomatis",
+    "channelReminder": "Pengingat",
+    "pointLabel": {
+      "before_3": "H-3",
+      "after_1": "H+1",
+      "after_7": "H+7"
+    }
+  },
   "sales": {
     "title": "Catat Penjualan",
     "descriptionA": "Dipandu langkah demi langkah: pelanggan, barang, pengiriman, lalu tagihan. Anda bisa mundur-maju sesuka hati —",

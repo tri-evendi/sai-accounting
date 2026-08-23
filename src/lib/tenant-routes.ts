@@ -102,6 +102,7 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "permissions",
   "purchases",
   "receivables",
+  "recurring",
   "reconciliation",
   "reports",
   "returns",

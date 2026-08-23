@@ -232,6 +232,20 @@ const PENJUALAN: readonly DocBlock[] = [
       ],
     },
     { kind: "istilah", kunci: ["kontrak", "faktur", "surat_jalan", "piutang", "retur"] },
+    {
+      kind: "paragraf",
+      teks:
+        "Sebagian tagihan berulang tanpa pernah berubah — sewa, langganan, retainer bulanan. Untuk itu ada Transaksi Berulang: buka faktur yang sudah benar, tekan \u201cUlangi faktur ini\u201d, lalu tentukan jadwalnya. Setiap bulan aplikasi menyalin faktur itu apa adanya.",
+    },
+    {
+      kind: "poin",
+      butir: [
+        "Yang terbit MENUNGGU PERSETUJUAN, selalu, berapa pun nilainya \u2014 dan itu disengaja: tidak ada manusia yang melihat dokumen itu pada saat ia lahir. Carilah di halaman Persetujuan, bukan langsung di laporan.",
+        "Menyunting faktur sumbernya berarti menyunting templatnya. Itu memang cara mengubah nominal sewa yang naik tahun depan.",
+        "Kejadian yang jatuh di periode yang sudah DITUTUP tidak diterbitkan, dan tidak pula digeser ke hari ini \u2014 sewa bulan Juli yang tercatat di bulan Agustus adalah beban di bulan yang salah. Ia ditahan dan disebutkan di daftar riwayatnya.",
+        "Menonaktifkan templat menghentikan penerbitan berikutnya; dokumen yang terlanjur lahir tidak tersentuh.",
+      ],
+    },
   ];
 
 const STOK: readonly DocBlock[] = [

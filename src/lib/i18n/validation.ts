@@ -194,6 +194,11 @@ export function translateIssue(
  */
 export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.dateRequired": "Tanggal wajib diisi",
+  // Templat transaksi berulang (issue #469).
+  "validation.dateInvalid": "Tanggal belum benar (gunakan format tahun-bulan-hari).",
+  "validation.sourceRequired": "Dokumen sumber wajib dipilih.",
+  "validation.maxOccurrencesPositive": "Jumlah kejadian harus lebih dari nol.",
+  "validation.endBeforeStart": "Tanggal berakhir tidak boleh mendahului tanggal mulai.",
   "validation.amountPositive": "Jumlah harus lebih besar dari 0",
   "validation.quantityPositive": "Jumlah harus lebih besar dari 0",
   "validation.emailInvalid": "Format email tidak valid",

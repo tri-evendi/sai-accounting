@@ -55,7 +55,7 @@ import { useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
-import { ApiOutlined, AccountBookOutlined, AimOutlined, AppstoreAddOutlined, AuditOutlined, BarChartOutlined, BookOutlined, BranchesOutlined, CloseOutlined, ContainerOutlined, DeliveredProcedureOutlined, DollarOutlined, FileDoneOutlined, FileExcelOutlined, FileTextOutlined, FormOutlined, GlobalOutlined, HomeOutlined, IdcardOutlined, KeyOutlined, LockOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MoneyCollectOutlined, PayCircleOutlined, ProfileOutlined, ReadOutlined, ReconciliationOutlined, RollbackOutlined, SafetyCertificateOutlined, SettingOutlined, ShopOutlined, ShoppingCartOutlined, TeamOutlined, ToolOutlined, TruckOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
+import { ApiOutlined, AccountBookOutlined, AimOutlined, AppstoreAddOutlined, AuditOutlined, BarChartOutlined, BookOutlined, BranchesOutlined, CloseOutlined, ContainerOutlined, DeliveredProcedureOutlined, DollarOutlined, FileDoneOutlined, FileExcelOutlined, FileTextOutlined, FormOutlined, GlobalOutlined, HomeOutlined, IdcardOutlined, KeyOutlined, LockOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MoneyCollectOutlined, PayCircleOutlined, ProfileOutlined, ReadOutlined, ReconciliationOutlined, RollbackOutlined, SafetyCertificateOutlined, SettingOutlined, ShopOutlined, ShoppingCartOutlined, TeamOutlined, ToolOutlined, TruckOutlined, RetweetOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
 import type { IconComponent } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Link, useAppRouter } from "@/components/ui/app-link";
@@ -162,6 +162,7 @@ const ICONS: Record<string, IconComponent> = {
   LayoutDashboard: HomeOutlined,
   FileText: FileTextOutlined,
   Receipt: FileDoneOutlined,
+  Repeat: RetweetOutlined,
   Package: ContainerOutlined,
   PackagePlus: AppstoreAddOutlined,
   ClipboardCheck: AuditOutlined,

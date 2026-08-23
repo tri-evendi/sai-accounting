@@ -506,6 +506,7 @@
       "accountName": "Account name",
       "accountNamePlaceholder": "Acme Trading Ltd",
       "accountNameHint": "Your business or office name. It becomes the address of every set of books:",
+      "accountNameIsPerson": "That is your own name. Accounts are usually named after the business or office — this address is seen by your staff and accountant. If your business really is named that, leave it.",
       "submit": "Sign Up",
       "submitting": "Signing up...",
       "sentTitle": "Check your inbox",

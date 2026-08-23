@@ -161,20 +161,41 @@ export function slugAcak(panjang = 8): string {
 }
 
 /**
- * Kandidat slug berurutan untuk menghindari tabrakan: `toko-maju`,
- * `toko-maju-2` … `toko-maju-9`, lalu akhiran acak. Deterministik di sembilan
- * percobaan pertama supaya bisa diuji; keunikan sesungguhnya tetap dijaga
- * indeks unik DB.
+ * Kandidat slug: nama akunnya, lalu nama + AKHIRAN ACAK bila sudah dipakai.
  *
- * Nama yang tidak menyisakan satu pun huruf/angka (mis. hanya emoji) TIDAK
- * jatuh ke "tenant", "tenant-2", "tenant-3" — deret yang tidak berarti apa-apa
- * bagi pemiliknya dan menumpuk di ruang nama bersama. Ia jatuh ke slug ACAK.
+ * ══ KENAPA BUKAN `-2`, `-3`, `-4` ══════════════════════════════════════════
+ * Deret berurutan MEMBOCORKAN keberadaan akun lain. Dua orang bernama "Budi
+ * Santoso" mendaftar; yang kedua mendapat `budi-santoso-2` dan seketika tahu
+ * bahwa seorang Budi Santoso lain sudah menjadi pelanggan kami — dan pada
+ * angka `-6`, bahwa ada lima. Kebocoran itu bukan hipotesis: `rika-mutiara-indah-2`
+ * ada di produksi saat kalimat ini ditulis.
+ *
+ * Akhiran ACAK menutupnya tanpa mengubah apa pun yang lain: `budi-santoso-k7f3`
+ * masih terbaca sebagai milik siapa oleh penerima tautannya, dan tidak
+ * mengatakan apa pun tentang pendaftar lain.
+ *
+ * ⚠ ACAK, bukan hashid dari `tenants.id`. Hashid tidak pernah tabrakan dan
+ * bisa dibaca balik saat dukungan — tetapi ia BISA dibaca balik: `tenants.id`
+ * autoincrement, jadi akhirannya memajang urutan pendaftaran di alamat setiap
+ * pelanggan begitu garamnya diketahui. Keunikan yang dijaminnya pun tidak
+ * menghemat apa-apa di sini: slug boleh dipilih sendiri (`/platform/account`),
+ * jadi pemeriksaan keunikan tetap harus berdiri.
+ *
+ * Nama yang tidak menyisakan satu pun huruf/angka (mis. hanya emoji) jatuh ke
+ * slug acak PENUH — bukan "tenant", "tenant-2", yang tidak berarti apa-apa bagi
+ * pemiliknya dan menumpuk di ruang nama bersama.
+ *
+ * `randomSuffix` hanya untuk pengujian; keunikan sesungguhnya tetap dijaga
+ * indeks unik DB.
  */
 export function tenantSlugCandidates(name: string, randomSuffix?: string): string[] {
   const base = tenantSlugFrom(name);
-  const suffix = randomSuffix ?? randomBytes(3).toString("hex");
   if (base === "tenant") return [slugAcak(), slugAcak(), slugAcak()];
-  return [base, ...Array.from({ length: 8 }, (_, i) => `${base}-${i + 2}`), `${base}-${suffix}`];
+  /* Tiga percobaan: satu tanpa akhiran, dua dengan akhiran acak. Peluang dua
+     akhiran 4-karakter dari 31 huruf tertabrak berturut-turut ≈ 1 : 850 juta;
+     kalau toh terjadi, indeks unik DB yang menolak — bukan slug diam-diam
+     kembar. */
+  return [base, `${base}-${randomSuffix ?? slugAcak(4)}`, `${base}-${slugAcak(4)}`];
 }
 
 /** Username tampilan dari email — bagian lokal yang disederhanakan. Tidak

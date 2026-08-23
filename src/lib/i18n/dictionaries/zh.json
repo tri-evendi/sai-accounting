@@ -3449,6 +3449,7 @@
     "tooManyOverrideRows": "覆盖规则行数过多。",
     "companyDatabasePrefix": "数据库名称必须以 \"sai_\" 开头",
     "companySlugInvalid": "标识只能包含小写字母、数字和连字符（例如 pt-bumi-baru）",
+    "slugInvalid": "网址只能包含小写字母、数字和连字符。",
     "companySlugReserved": "标识 \"dashboard\" 为系统保留 — 请另选一个",
     "companyDatabaseInvalid": "数据库名称只能包含小写字母、数字和下划线",
     "itemNameRequired": "请填写商品名称",
@@ -3694,7 +3695,7 @@
     "accountIdentity": "名称与网址",
     "accountNameLabel": "账户名称",
     "accountAddressLabel": "账户网址",
-    "accountAddressFixed": "此网址是固定的。它已存在于书签、已发送的邀请邮件以及您分享的链接中——更改它会使这些全部失效。",
+    "accountAddressFixed": "此网址出现在您账簿的每个链接中。可在下方更改——旧网址仍会重定向到这里。",
     "accountSaved": "账户名称已更新",
     "accountSaveFailed": "账户名称保存失败。",
     "title": "账户与公司",
@@ -4276,5 +4277,19 @@
     "draftUnknown": "以下科目在会计科目表中尚不存在：{codes}。请先在「会计科目」中创建，才能确定其借贷方向。",
     "downloadDraft": "下载草稿（.xlsx）",
     "downloading": "准备中…"
+  },
+  "tenantSlug": {
+    "heading": "账户网址",
+    "hint": "此网址出现在您账簿的每个链接中。可以更改——旧网址将永久重定向到此处，且绝不会分配给其他账户。",
+    "warning": "旧链接仍然有效，但保存了它们的人会看到网址变化。每 30 天可更改一次。",
+    "confirmTitle": "更改账户网址？",
+    "confirmBody": "请再次输入新网址以确认：{slug}",
+    "changed": "账户网址已更改",
+    "forbidden": "该网址为系统保留。请另选一个。",
+    "same": "这已经是当前网址。",
+    "taken": "该网址已被占用——包括曾被其他账户使用过的情况。",
+    "tooSoon": "网址刚刚更改过。30 天后可再次更改。",
+    "nextChange": "可于 {date} 再次更改。",
+    "submit": "更改网址"
   }
 }

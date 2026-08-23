@@ -205,7 +205,7 @@ export async function proxy(request: NextRequest) {
       }
     }
     // Bidang operator TIDAK menjalani alur sesi pelanggan di bawah.
-    return NextResponse.next();
+    return teruskan(request);
   }
 
   // Auth.js names the session cookie `__Secure-authjs.session-token` (and salts
@@ -252,7 +252,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    return teruskan(request);
   }
 
   if (!token) {
@@ -354,7 +354,31 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return teruskan(request);
+}
+
+/**
+ * Teruskan permintaan, dengan JALURNYA dititipkan sebagai header.
+ *
+ * ══ KENAPA HEADER, DAN KENAPA DI SINI ══════════════════════════════════════
+ * Server component tidak bisa membaca alamat yang sedang dibuka — ia hanya
+ * menerima `params`. Untuk hampir semua hal itu cukup; untuk SATU hal tidak:
+ * ketika slug akun berganti (#458), penjaga halaman harus memantulkan ke
+ * alamat yang SAMA di bawah slug baru — dan tanpa jalur dalamnya, satu-satunya
+ * pantulan yang bisa ia berikan adalah "kembali ke beranda", yang mengubah
+ * sebuah bookmark ke faktur tertentu menjadi kunjungan ke dasbor.
+ *
+ * Proxy tahu alamatnya tanpa satu query pun, jadi ia yang menitipkannya.
+ *
+ * ⚠ Header ini DITULIS ULANG di setiap permintaan, tidak pernah dipercaya dari
+ * luar: tanpa itu, penyerang bisa mengirim `x-sai-path` pilihannya sendiri dan
+ * mengubah tujuan pantulan menjadi alamat mana pun. Nilai kiriman klien
+ * ditimpa, bukan diperiksa.
+ */
+function teruskan(request: NextRequest): NextResponse {
+  const headers = new Headers(request.headers);
+  headers.set("x-sai-path", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

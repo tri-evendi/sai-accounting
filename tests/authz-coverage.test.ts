@@ -185,6 +185,11 @@ const TENANT_API_ROUTES = new Set([
   // ⚠ Route ini TIDAK menyentuh slug; alamat `/t/<slug>/…` sudah terlanjur ada
   // di bookmark & surel undangan (lihat kepala berkasnya).
   "tenant/profile/route.ts",
+  // ALAMAT akun (#458 lingkup 3) — `tenant.settings`, dan endpoint TERSENDIRI
+  // dari `tenant/profile`: dua tindakan dengan akibat yang sangat berbeda
+  // (nama hanya dipegang layar; alamat dipegang bookmark & surel undangan)
+  // tidak boleh berbagi satu endpoint yang bisa keliru dipanggil.
+  "tenant/slug/route.ts",
 ]);
 
 /** Route yang sah TANPA requireApiPermission, beserta alasannya. */

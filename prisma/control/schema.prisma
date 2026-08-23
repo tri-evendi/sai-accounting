@@ -45,6 +45,12 @@ datasource db {
 model Tenant {
   id   Int    @id @default(autoincrement())
   slug String @unique @db.VarChar(50)
+
+  /// Kapan slug terakhir diganti (#458) — dasar pagar "sekali per 30 hari".
+  /// NULL = belum pernah. Pagarnya ada karena setiap penggantian memesan satu
+  /// slug selamanya DAN memutus tautan yang belum sempat diperbarui siapa pun.
+  slugChangedAt DateTime? @map("slug_changed_at")
+
   name String @db.VarChar(150)
 
   /// pending_verification | trialing | active | past_due | suspended | cancelled
@@ -568,4 +574,25 @@ model Notification {
   @@unique([userId, kind, dedupeKey])
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+/// Slug tenant yang PERNAH dipakai (#458).
+///
+/// Alamat lama tetap hidup di bookmark, di surel undangan yang sudah terkirim,
+/// dan di tautan yang dibagikan ke akuntan eksternal. Baris di sini yang
+/// membuatnya tetap sampai: jalur masuk mencarinya lalu memantulkan permanen
+/// ke alamat kanonik.
+///
+/// `slug` UNIK dan tidak pernah dilepas: slug lama yang bisa diambil akun lain
+/// berarti tautan lama yang mendarat di buku MILIK ORANG LAIN.
+model TenantSlugHistory {
+  id       Int    @id @default(autoincrement())
+  tenantId Int    @map("tenant_id")
+  slug     String @unique @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@map("tenant_slug_history")
 }

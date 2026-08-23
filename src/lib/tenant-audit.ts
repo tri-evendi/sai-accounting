@@ -42,6 +42,11 @@ export type TenantAuditAction =
    *  yang sudah dibagikan tetap sampai; ganti slug adalah pekerjaan tersendiri
    *  dengan pengalihan & pemesanan slug lama (lingkup 3 issue itu). */
   | "tenant.profile.rename"
+  /** Ganti ALAMAT akun (#458 lingkup 3). Slug lama dipesan selamanya dan
+   *  alamat lamanya dipantulkan permanen — tetapi ia tetap peristiwa yang
+   *  paling perlu bisa ditelusuri: setiap tautan yang pernah dibagikan berdiri
+   *  di atas slug itu. */
+  | "tenant.slug.change"
   /** Ganti paket (skrip operator #140; konsol operator #155). */
   | "tenant.plan.change"
   /** Pembayaran transfer manual dicatat operator (#155) — jalur

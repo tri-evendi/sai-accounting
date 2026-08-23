@@ -24,19 +24,14 @@
  */
 
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { controlDb } from "@/lib/control-db";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
-import { vmsg } from "@/lib/i18n/validation";
+import { tenantProfileSchema } from "@/lib/validations/tenant";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { invalidateTenantState } from "@/lib/tenant-state";
-
-const schema = z.object({
-  name: z.string().min(2, vmsg("validation.accountNameRequired")).max(150).trim(),
-});
 
 export async function PATCH(request: Request) {
   const { dictionary, t } = await getRequestI18n();
@@ -45,7 +40,7 @@ export async function PATCH(request: Request) {
   if (!auth.authorized) return auth.response;
 
   const body = await request.json().catch(() => null);
-  const parsed = schema.safeParse(body);
+  const parsed = tenantProfileSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       {

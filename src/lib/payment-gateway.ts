@@ -215,12 +215,24 @@ function manualGateway(): PaymentGateway {
         gateway: "manual",
         gatewayRef: `manual-${input.invoiceNumber}`,
         method: "manual_transfer",
-        instructions:
-          process.env.MANUAL_PAYMENT_INSTRUCTIONS ??
-          "Transfer ke rekening yang tertera di tagihan, lalu konfirmasi ke pengelola platform.",
+        /* `?? undefined`: tanpa env, biarkan KOSONG — permukaannya sudah punya
+         * kalimat cadangan yang diterjemahkan (`billing.manualFallback`), dan
+         * itu lebih baik daripada satu kalimat Indonesia yang dipaku di sini
+         * dan tetap berbahasa Indonesia bagi pembaca en/zh. */
+        instructions: manualPaymentInstructions() ?? undefined,
       };
     },
   };
+}
+
+/**
+ * Kalimat instruksi transfer manual — SATU sumber, karena sejak #466 ditunda ia
+ * dibaca di dua tempat: gerbang `manual` saat seseorang menekan bayar, dan
+ * halaman penagihan yang kini menampilkannya LANGSUNG tanpa menyuruh menekan
+ * apa pun lebih dulu. Dua salinan berarti dua kalimat yang akan menyimpang.
+ */
+export function manualPaymentInstructions(): string | null {
+  return process.env.MANUAL_PAYMENT_INSTRUCTIONS ?? null;
 }
 
 /* ── Resolver — transport dipilih environment, pola mailer ─────────────────── */
@@ -255,6 +267,32 @@ export function resolvePaymentGateway(): PaymentGateway {
       return midtransCharge(input, serverKey!);
     },
   };
+}
+
+/**
+ * Apakah gerbang efektif bisa menerbitkan VA/QRIS seketika?
+ *
+ * ══ KENAPA ADA (23 Agu 2026, #466 ditunda) ══════════════════════════════════
+ * Halaman penagihan menawarkan dua tombol — "Bayar via VA" dan "Bayar via
+ * QRIS" — tanpa pernah bertanya apakah ada gerbang yang bisa menjawabnya.
+ * `PAYMENT_GATEWAY` tidak diset di produksi, jadi yang terjadi hari ini: orang
+ * menekan tombol yang menjanjikan nomor Virtual Account, menunggu, lalu
+ * menerima kalimat "transfer manual". Tombol yang ujungnya bukan yang
+ * dijanjikan lebih buruk daripada tidak ada tombol.
+ *
+ * ══ DITURUNKAN DARI GERBANGNYA, BUKAN DARI ENV ══════════════════════════════
+ * Membaca `process.env.PAYMENT_GATEWAY` lagi di sini berarti dua tempat yang
+ * memutuskan hal yang sama dan bisa menyimpang — terutama karena resolvernya
+ * punya pengaman ganda (produksi + kunci) yang mudah terlupa disalin. Yang
+ * ditanya karena itu OBJEK gerbangnya: `manual` adalah satu-satunya yang tidak
+ * pernah menghasilkan VA/QRIS. Transport `mock` TETAP dihitung bisa — ia
+ * memang menerbitkan nomor VA yang deterministik, dan itulah yang membuat
+ * seluruh alurnya bisa dilatih di laptop tanpa jaringan.
+ *
+ * Gerbangnya boleh disuntikkan supaya sifat ini bisa diuji tanpa env.
+ */
+export function offersInstantPayment(gateway: PaymentGateway = resolvePaymentGateway()): boolean {
+  return gateway.name !== "manual";
 }
 
 /** Kunci verifikasi webhook. Di produksi WAJIB MIDTRANS_SERVER_KEY (tanpa itu

@@ -17,6 +17,8 @@ import {
   MOCK_SERVER_KEY,
   mapTransactionStatus,
   midtransSignature,
+  manualPaymentInstructions,
+  offersInstantPayment,
   resolvePaymentGateway,
   verifyMidtransSignature,
   webhookServerKey,
@@ -125,6 +127,52 @@ describe("resolver gerbang — pengaman ganda transport (pola mailer)", () => {
     expect(webhookServerKey()).toBe(MOCK_SERVER_KEY); // NODE_ENV=test
     process.env.MIDTRANS_SERVER_KEY = "k";
     expect(webhookServerKey()).toBe("k");
+  });
+});
+
+describe("permukaan bayar mengikuti gerbang (#466 ditunda)", () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env.PAYMENT_GATEWAY = saved.PAYMENT_GATEWAY;
+    process.env.MANUAL_PAYMENT_INSTRUCTIONS = saved.MANUAL_PAYMENT_INSTRUCTIONS;
+  });
+
+  it("tanpa PAYMENT_GATEWAY → tidak menawarkan VA/QRIS: tombolnya tak boleh muncul", () => {
+    delete process.env.PAYMENT_GATEWAY;
+    expect(offersInstantPayment()).toBe(false);
+  });
+
+  it("transport MOCK tetap dihitung bisa — alurnya harus bisa dilatih di laptop", () => {
+    process.env.PAYMENT_GATEWAY = "midtrans";
+    // NODE_ENV=test → resolver memulangkan mock, dan mock MEMANG menerbitkan VA.
+    expect(offersInstantPayment()).toBe(true);
+  });
+
+  it("diturunkan dari objek gerbangnya, bukan dari env — jadi tak bisa menyimpang", () => {
+    expect(offersInstantPayment({ name: "manual", createCharge: async () => ({} as never) })).toBe(
+      false
+    );
+    expect(offersInstantPayment({ name: "midtrans", createCharge: async () => ({} as never) })).toBe(
+      true
+    );
+  });
+
+  it("instruksi manual: env bila ada, KOSONG bila tidak (permukaan punya kalimat terjemahannya)", () => {
+    delete process.env.MANUAL_PAYMENT_INSTRUCTIONS;
+    expect(manualPaymentInstructions()).toBeNull();
+    process.env.MANUAL_PAYMENT_INSTRUCTIONS = "Transfer ke BCA 123";
+    expect(manualPaymentInstructions()).toBe("Transfer ke BCA 123");
+  });
+
+  it("gerbang manual tidak memaku kalimat Indonesia ke dalam jawabannya", async () => {
+    delete process.env.PAYMENT_GATEWAY;
+    delete process.env.MANUAL_PAYMENT_INSTRUCTIONS;
+    const charge = await resolvePaymentGateway().createCharge({
+      invoiceNumber: "PINV-Y",
+      grossAmount: "10.00",
+      method: "virtual_account",
+    });
+    expect(charge.instructions).toBeUndefined();
   });
 });
 

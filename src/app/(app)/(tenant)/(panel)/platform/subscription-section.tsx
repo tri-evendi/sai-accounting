@@ -56,6 +56,7 @@ import {
   trialCountdown,
 } from "@/lib/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
+import { manualPaymentInstructions, offersInstantPayment } from "@/lib/payment-gateway";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
@@ -119,6 +120,11 @@ export async function SubscriptionSection({
   overview: BillingOverview | null;
 }) {
   const t = await getT();
+
+  /* Keadaan gerbang dibaca DI SINI karena `process.env` hanya ada di server;
+     `PayInvoice` adalah komponen klien dan tidak boleh menebaknya sendiri. */
+  const instantPayment = offersInstantPayment();
+  const manualInstructions = manualPaymentInstructions();
 
   if (!overview) {
     return (
@@ -206,7 +212,12 @@ export async function SubscriptionSection({
          tagih-lalu-ingatkan, bukan auto-debit. */
       render: (_v, invoice) =>
         invoice.status === "issued" ? (
-          <PayInvoice invoiceId={invoice.id} pending={invoice.pendingPayment} />
+          <PayInvoice
+            invoiceId={invoice.id}
+            pending={invoice.pendingPayment}
+            instantPayment={instantPayment}
+            manualInstructions={manualInstructions}
+          />
         ) : (
           <span
             style={{ fontSize: "var(--ant-font-size-sm)", color: "var(--ant-color-text-secondary)" }}

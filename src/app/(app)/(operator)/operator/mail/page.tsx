@@ -19,6 +19,8 @@ import { MailSettingsForm } from "@/components/operator/mail-settings-form";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { mailSettingsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
+import { mailHealth } from "@/lib/mail-health";
+import { outboxCount } from "@/lib/mailer-core";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +45,18 @@ const H1: React.CSSProperties = {
   color: "var(--ant-color-text)",
 };
 
+/** Spanduk keadaan-salah. Warnanya token AntD, bukan nilai mentah (#204). */
+const SILENT_BANNER: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  padding: "var(--ant-padding)",
+  borderRadius: "var(--ant-border-radius-lg)",
+  border: "1px solid var(--ant-color-error-border)",
+  background: "var(--ant-color-error-bg)",
+  color: "var(--ant-color-error-text)",
+};
+
 const LEAD: React.CSSProperties = {
   margin: 0,
   fontSize: 14,
@@ -55,6 +69,20 @@ export default async function OperatorMailPage() {
   const t = await getT();
 
   const data = await mailSettingsForOperator();
+
+  /*
+   * ══ SPANDUK "PRODUKSI TANPA SMTP" (issue #317) ═══════════════════════════
+   * Halaman inilah tempat orang berada ketika ia MEMANG sedang memikirkan
+   * surel — jadi di sinilah keadaan yang salah paling mungkin terbaca. Baris
+   * log tidak cukup: kejadian 9 Agustus 2026 membuktikan tidak ada yang
+   * membacanya sampai ada pendaftar yang menunggu selamanya.
+   */
+  const health = mailHealth({
+    transport: data.effective.transport,
+    source: data.effective.source,
+    nodeEnv: process.env.NODE_ENV,
+    outboxCount: await outboxCount(),
+  });
 
   const sourceLabel =
     data.effective.source === "database"
@@ -76,6 +104,20 @@ export default async function OperatorMailPage() {
         <h1 style={H1}>{t("operator.mail.heading")}</h1>
         <p style={LEAD}>{t("operator.mail.description")}</p>
       </div>
+
+      {health.status === "not_configured" && (
+        <div style={SILENT_BANNER} role="alert">
+          <strong>{t("operator.mail.silentTitle")}</strong>
+          <p style={{ margin: 0 }}>{t("operator.mail.silentBody")}</p>
+          {/* Angkanya bukan hiasan: satu berkas = satu orang yang sedang
+              menunggu surel yang tidak akan pernah datang. */}
+          {health.outboxCount !== null && health.outboxCount > 0 && (
+            <p style={{ margin: 0 }}>
+              {t("operator.mail.silentOutbox", { count: health.outboxCount })}
+            </p>
+          )}
+        </div>
+      )}
 
       <MailSettingsForm
         available={data.available}

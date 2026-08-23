@@ -4209,7 +4209,10 @@
       "lastTestError": "Gagal",
       "lastTestLine": "{date} · ke {to}",
       "lastTestNever": "Belum pernah diuji dari halaman ini.",
-      "auditNote": "Setiap penyimpanan dan setiap uji kirim tercatat di jejak audit operator — beserta nama Anda, tanpa kata sandinya."
+      "auditNote": "Setiap penyimpanan dan setiap uji kirim tercatat di jejak audit operator — beserta nama Anda, tanpa kata sandinya.",
+      "silentTitle": "Produksi berjalan TANPA SMTP",
+      "silentBody": "Setiap surel ditulis ke berkas di server dan tidak dikirim ke siapa pun — verifikasi pendaftaran, atur-ulang kata sandi, undangan staf, faktur, dan pengingat jatuh tempo. Setel SMTP di bawah.",
+      "silentOutbox": "{count} surel sudah menumpuk di kotak keluar. Setiap satu adalah orang yang sedang menunggu surel yang tidak akan datang."
     }
   },
   "docs": {

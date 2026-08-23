@@ -4209,7 +4209,10 @@
       "lastTestError": "Failed",
       "lastTestLine": "{date} · to {to}",
       "lastTestNever": "Never tested from this page.",
-      "auditNote": "Every save and every test send is written to the operator audit trail — with your name, without the password."
+      "auditNote": "Every save and every test send is written to the operator audit trail — with your name, without the password.",
+      "silentTitle": "Production is running WITHOUT SMTP",
+      "silentBody": "Every email is written to a file on the server and sent to nobody — registration verification, password resets, staff invitations, invoices, and due-date reminders. Configure SMTP below.",
+      "silentOutbox": "{count} emails have piled up in the outbox. Each one is a person waiting for a message that will never arrive."
     }
   },
   "docs": {

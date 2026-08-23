@@ -51,6 +51,11 @@ const USER_TENANT: Record<number, number | null> = { 5: 1, 9: null };
 const controlDb = vi.hoisted(() => ({
   company: { findFirst: vi.fn(), findUnique: vi.fn() },
   user: { findUnique: vi.fn() },
+  /* #458: sebelum menjawab 404, jalur masuk menanyakan RIWAYAT slug tenant —
+     alamat lama harus tetap sampai. Tiruan bawaannya "tidak ada riwayat", jadi
+     tes lintas-tenant di bawah tetap menguji 404 yang seragam. */
+  tenantSlugHistory: { findUnique: vi.fn() },
+  tenant: { findUnique: vi.fn() },
 }));
 const membershipFor = vi.hoisted(() => vi.fn());
 /**
@@ -96,6 +101,11 @@ beforeEach(() => {
         : null;
     }
   );
+
+  /* Bawaan: tidak ada riwayat slug (#458). Blok describe-nya sendiri yang
+     memasang riwayat, supaya tes lintas-tenant lain tetap menguji 404 seragam. */
+  controlDb.tenantSlugHistory.findUnique.mockResolvedValue(null);
+  controlDb.tenant.findUnique.mockResolvedValue(null);
 
   controlDb.user.findUnique.mockImplementation(async ({ where }: { where: { id: number } }) => {
     const tenantId = USER_TENANT[where.id];
@@ -191,6 +201,56 @@ describe("lintas-tenant = 404 yang IDENTIK (issue #156)", () => {
       userId: "9",
     });
     expect(result).toEqual(NOT_FOUND);
+  });
+});
+
+describe("slug akun yang SUDAH BERGANTI (#458 lingkup 3)", () => {
+  /*
+   * Alamat lama hidup di bookmark, di surel undangan yang sudah terkirim, dan
+   * di tautan yang dibagikan ke akuntan eksternal. Yang diuji di sini bukan
+   * pemantulannya saja melainkan BATASNYA: pemantulan diberikan HANYA kepada
+   * anggota akun itu — kalau tidak, siapa pun bisa menukar-nukar slug untuk
+   * memetakan "akun lama X kini bernama Y".
+   */
+  beforeEach(() => {
+    controlDb.tenantSlugHistory.findUnique.mockImplementation(
+      async ({ where }: { where: { slug: string } }) =>
+        where.slug === "nama-lama" ? { tenantId: 1 } : null
+    );
+    controlDb.tenant.findUnique.mockImplementation(
+      async ({ where }: { where: { id: number } }) =>
+        where.id === 1 ? { slug: TENANT_SLUGS[1] } : null
+    );
+  });
+
+  it("anggota akun itu → `moved` beserta slug kanoniknya, bukan 404", async () => {
+    const hasil = await enterCompanyFromRoute({
+      tenantSlug: "nama-lama",
+      companySlug: "cv-maju",
+      userId: 5,
+    });
+    expect(hasil.ok).toBe(false);
+    expect(hasil).toMatchObject({ reason: "moved", tenantSlug: TENANT_SLUGS[1], companySlug: "cv-maju" });
+  });
+
+  it("BUKAN anggota → 404 yang identik dengan slug yang tak pernah ada", async () => {
+    /* Pembanding yang membuat tes di atas bermakna: alamat lama milik akun
+       lain tidak boleh membocorkan bahwa akun itu ada, apalagi ke mana ia
+       pindah. */
+    /* Pengguna 9 tidak punya tenant sama sekali — pembanding paling tajam:
+       ia BUKAN anggota akun yang alamatnya berpindah. */
+    const lamaOrangLain = await enterCompanyFromRoute({
+      tenantSlug: "nama-lama",
+      companySlug: "cv-maju",
+      userId: 9,
+    });
+    const takPernahAda = await enterCompanyFromRoute({
+      tenantSlug: "tidak-pernah-ada",
+      companySlug: "cv-maju",
+      userId: 9,
+    });
+    expect(lamaOrangLain).toEqual(takPernahAda);
+    expect(lamaOrangLain).toEqual({ ok: false, reason: "not-found" });
   });
 });
 

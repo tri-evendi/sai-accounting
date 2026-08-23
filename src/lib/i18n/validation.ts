@@ -233,6 +233,7 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.tooManyOverrideRows": "Terlalu banyak baris override.",
   "validation.companyDatabasePrefix": "Nama basis data harus berawalan \"sai_\"",
   "validation.companySlugInvalid": "Slug hanya boleh huruf kecil, angka, dan tanda hubung (mis. pt-bumi-baru)",
+  "validation.slugInvalid": "Alamat hanya boleh huruf kecil, angka, dan tanda hubung.",
   "validation.companySlugReserved": "Slug \"dashboard\" dicadangkan sistem — pilih nama lain",
   "validation.companyDatabaseInvalid": "Nama basis data hanya boleh huruf kecil, angka, dan garis bawah",
   "validation.itemNameRequired": "Nama barang wajib diisi",

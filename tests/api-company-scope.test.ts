@@ -43,6 +43,12 @@ const USER_TENANT: Record<number, number | null> = { 5: 1 };
 const controlDb = vi.hoisted(() => ({
   company: { findFirst: vi.fn(), findUnique: vi.fn() },
   user: { findUnique: vi.fn() },
+  /* #458: jalur masuk menanyakan RIWAYAT slug tenant sebelum menjawab 404 —
+     alamat lama harus tetap sampai bagi ANGGOTA akun itu. Tiruan bawaannya
+     "tidak ada riwayat", jadi tes lintas-tenant di sini tetap menguji 404 yang
+     seragam. */
+  tenantSlugHistory: { findUnique: vi.fn().mockResolvedValue(null) },
+  tenant: { findUnique: vi.fn().mockResolvedValue(null) },
 }));
 const membershipFor = vi.hoisted(() => vi.fn());
 /*

@@ -3449,6 +3449,7 @@
     "tooManyOverrideRows": "Too many override rows.",
     "companyDatabasePrefix": "The database name must start with \"sai_\"",
     "companySlugInvalid": "Slug may contain only lowercase letters, numbers and hyphens (e.g. pt-bumi-baru)",
+    "slugInvalid": "The address may contain only lowercase letters, digits, and hyphens.",
     "companySlugReserved": "The slug \"dashboard\" is reserved by the system — please choose another",
     "companyDatabaseInvalid": "Database name may contain only lowercase letters, numbers and underscores",
     "itemNameRequired": "Item name is required",
@@ -3694,7 +3695,7 @@
     "accountIdentity": "Name & address",
     "accountNameLabel": "Account name",
     "accountAddressLabel": "Account address",
-    "accountAddressFixed": "This address is FIXED. It already lives in bookmarks, in invitation emails that were sent, and in links you shared — changing it would break all of them.",
+    "accountAddressFixed": "This address appears in every link to your books. It can be changed below — and the old address keeps redirecting here.",
     "accountSaved": "Account name updated",
     "accountSaveFailed": "The account name could not be saved.",
     "title": "Account & Companies",
@@ -4276,5 +4277,19 @@
     "draftUnknown": "These accounts do not exist in the chart of accounts yet: {codes}. Create them under Accounts first so their side can be determined.",
     "downloadDraft": "Download draft (.xlsx)",
     "downloading": "Preparing…"
+  },
+  "tenantSlug": {
+    "heading": "Account address",
+    "hint": "This address appears in every link to your books. You may change it — the old address keeps redirecting here forever, and is never given to another account.",
+    "warning": "Old links STILL WORK, but people who saved them will see the address change. Changeable once every 30 days.",
+    "confirmTitle": "Change the account address?",
+    "confirmBody": "Type the new address once more to confirm: {slug}",
+    "changed": "Account address changed",
+    "forbidden": "That address is reserved by the system. Pick another.",
+    "same": "That is already the current address.",
+    "taken": "That address is taken — including if another account used it in the past.",
+    "tooSoon": "The address was just changed. It can be changed again 30 days later.",
+    "nextChange": "Changeable again on {date}.",
+    "submit": "Change address"
   }
 }

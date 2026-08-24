@@ -53,6 +53,7 @@ import { useTheme } from "@/lib/theme/client";
 import { THEMES, type Theme } from "@/lib/theme/config";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { setLocale } from "@/lib/i18n/actions";
+import { fallbackSwitchLocale } from "@/lib/i18n/locale-cookie";
 import { useDictionary, useLocale, useT } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 import type { SystemRole } from "@/lib/constants";
@@ -181,9 +182,15 @@ export function UserMenu({
       return;
     }
     startSwitching(async () => {
-      await setLocale(next);
-      router.refresh();
-      setOpen(false);
+      try {
+        await setLocale(next);
+        router.refresh();
+        setOpen(false);
+      } catch {
+        /* Lihat catatan kembarannya di `ui/locale-toggle.tsx`: tab lama
+           sesudah deploy memegang id server action yang sudah hilang. */
+        fallbackSwitchLocale(next);
+      }
     });
   }
 

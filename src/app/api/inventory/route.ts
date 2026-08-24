@@ -85,7 +85,57 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const item = await prisma.item.create({ data: parsed.data });
+    /*
+     * ── NAMA BARANG KEMBAR: 409 YANG MENJELASKAN, BUKAN 500 (24 Agu 2026) ──
+     *
+     * Ditemukan dari produksi, bukan dibayangkan: seorang pengguna baru mencoba
+     * menyimpan barang bernama sama, `prisma.item.create()` melempar P2002
+     * tanpa penangkap, Next menjawab 500, dan formulir jatuh ke kalimat umum
+     * "Barang gagal disimpan" — tanpa satu kata pun tentang NAMANYA. Yang
+     * dilaporkan pengguna: "barang tidak bisa disimpan".
+     *
+     * Dua keadaan yang harus dibedakan, dan inilah sebab pemeriksaannya membaca
+     * barisnya alih-alih sekadar menerjemahkan kode galat:
+     *
+     *   • barang bernama sama masih AKTIF — pengguna bisa melihatnya di daftar,
+     *     jadi cukup dikatakan namanya sudah dipakai;
+     *   • barang bernama sama sudah NONAKTIF — ia TIDAK terlihat di daftar mana
+     *     pun (docs/DATABASE.md §1.3), jadi "nama sudah dipakai" terdengar
+     *     seperti aplikasi yang berbohong. Yang benar adalah menyebut bahwa ia
+     *     ada tapi nonaktif, dan mengarahkan untuk mengaktifkannya kembali —
+     *     sebab membuat barang kedua bernama sama memang tidak diinginkan
+     *     siapa pun: riwayat stoknya akan terbelah dua.
+     */
+    let item;
+    try {
+      item = await prisma.item.create({ data: parsed.data });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+
+      const existing = await prisma.item.findUnique({
+        where: { name: parsed.data.name },
+        select: { isActive: true },
+      });
+      const { t } = await getRequestI18n();
+
+      return NextResponse.json(
+        {
+          error: t("inventory.itemNameTaken"),
+          /* Sebagai galat PER ISIAN, bukan sekadar pesan: formulirnya menyorot
+             kotak Nama, dan itulah kotak yang harus diubah. */
+          details: {
+            fieldErrors: {
+              name: [
+                existing && !existing.isActive
+                  ? t("inventory.itemNameTakenInactive")
+                  : t("inventory.itemNameTaken"),
+              ],
+            },
+          },
+        },
+        { status: 409 }
+      );
+    }
 
     await writeAuditLog({
       userId: result.session.user.id,
@@ -220,4 +270,20 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json(stock, { status: 201 });
+}
+
+/**
+ * P2002 — pelanggaran kunci unik.
+ *
+ * Diperiksa lewat bentuk objeknya, bukan `instanceof`: kelas galat Prisma
+ * datang dari klien yang DIBANGKITKAN (`@/generated/prisma`), dan mengimpornya
+ * ke route hanya untuk satu perbandingan tipe membuat berkas ini bergantung
+ * pada artefak build. Kodenya sendiri stabil di seluruh versi Prisma.
+ */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2002"
+  );
 }

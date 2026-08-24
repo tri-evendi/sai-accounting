@@ -21,6 +21,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   DARK_CLASS,
   DEFAULT_THEME,
+  THEME_COOKIE,
+  THEME_COOKIE_MAX_AGE,
   colorScheme,
   type ResolvedTheme,
   type Theme,
@@ -96,10 +98,22 @@ export function ThemeProvider({
     setThemeState(next);
     setResolved(nextResolved);
     apply(nextResolved, next);
-    // Cookie menyusul; layarnya sudah berubah. Kegagalan menulis cookie hanya
-    // berarti pilihannya tidak bertahan sampai pemuatan berikutnya — bukan
-    // alasan untuk menahan perubahan yang diminta pengguna.
-    void persistTheme(next);
+    /*
+     * Cookie menyusul; layarnya sudah berubah. Kegagalan menulisnya hanya
+     * berarti pilihannya tidak bertahan sampai pemuatan berikutnya — bukan
+     * alasan menahan perubahan yang diminta pengguna.
+     *
+     * Sejak 24 Agu 2026 kegagalan itu punya sebab yang KITA tahu namanya: tab
+     * yang terbuka sejak sebelum sebuah deploy memegang id server action yang
+     * server barunya tidak kenali lagi. Jadi cookienya ditulis sendiri —
+     * tanpa muat ulang, sebab di sini layarnya memang sudah berpindah.
+     * (Kembarannya di `i18n/locale-cookie.ts` HARUS memuat ulang, karena
+     * kamusnya dipilih di server.)
+     */
+    void persistTheme(next).catch(() => {
+      document.cookie =
+        `${THEME_COOKIE}=${next}; path=/; max-age=${THEME_COOKIE_MAX_AGE}; samesite=lax`;
+    });
   }, []);
 
   const value = useMemo(

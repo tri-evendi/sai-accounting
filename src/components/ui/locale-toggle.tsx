@@ -42,6 +42,7 @@ import { Segmented } from "antd";
 
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { setLocale } from "@/lib/i18n/actions";
+import { fallbackSwitchLocale } from "@/lib/i18n/locale-cookie";
 import { useLocale, useT } from "@/lib/i18n/client";
 
 /** Singkatan sesudut-layar. Sengaja bukan bendera: bahasa bukan negara. */
@@ -99,13 +100,22 @@ export function LocaleToggle({
       disabled={switching}
       onChange={(locale) =>
         startSwitching(async () => {
-          await setLocale(locale);
-          /*
-           * `refresh`, bukan `location.reload()`: server merender ulang dengan
-           * kamus yang baru tanpa memuat ulang halaman penuh, sehingga apa
-           * yang sudah diketik di formulir masuk tidak hilang.
-           */
-          router.refresh();
+          try {
+            await setLocale(locale);
+            /*
+             * `refresh`, bukan `location.reload()`: server merender ulang dengan
+             * kamus yang baru tanpa memuat ulang halaman penuh, sehingga apa
+             * yang sudah diketik di formulir masuk tidak hilang.
+             */
+            router.refresh();
+          } catch {
+            /* Tab yang terbuka sejak sebelum sebuah deploy memegang id server
+               action yang sudah tidak dikenali server — sakelarnya lalu MATI
+               tanpa satu pun tanda (dilaporkan pengguna, 24 Agu 2026).
+               Cookienya ditulis sendiri lalu halaman dimuat ulang penuh;
+               muat ulang itu sekaligus menyembuhkan penyebabnya. */
+            fallbackSwitchLocale(locale);
+          }
         })
       }
       options={LOCALES.map((locale) => ({

@@ -2649,7 +2649,9 @@
     "opnameConfirmLabel": "是，保存调整",
     "opnameSubmit": "保存调整",
     "opnameFailed": "盘点保存失败。请重试。",
-    "opnameSaved": "盘点已保存——共调整 {count} 项货物。"
+    "opnameSaved": "盘点已保存——共调整 {count} 项货物。",
+    "itemNameTaken": "该物料名称已被使用。请换一个名称，或直接为现有物料增加库存。",
+    "itemNameTakenInactive": "同名物料已存在但处于「停用」状态，因此不会出现在任何列表中。请重新启用它，而不是再建一个——否则库存历史会被拆成两份。"
   },
   "setup": {
     "shellSubtitle": "公司首次设置",

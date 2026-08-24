@@ -2649,7 +2649,9 @@
     "opnameConfirmLabel": "Ya, simpan penyesuaian",
     "opnameSubmit": "Simpan Penyesuaian",
     "opnameFailed": "Gagal menyimpan opname. Coba lagi.",
-    "opnameSaved": "Opname tersimpan — {count} barang disesuaikan."
+    "opnameSaved": "Opname tersimpan — {count} barang disesuaikan.",
+    "itemNameTaken": "Nama barang itu sudah dipakai. Pakai nama lain, atau tambahkan stok ke barang yang sudah ada.",
+    "itemNameTakenInactive": "Barang dengan nama itu sudah ada tetapi sedang NONAKTIF, jadi ia tidak muncul di daftar. Aktifkan kembali barang itu daripada membuat yang kedua — riwayat stoknya akan terbelah dua."
   },
   "setup": {
     "shellSubtitle": "Penyiapan awal perusahaan",

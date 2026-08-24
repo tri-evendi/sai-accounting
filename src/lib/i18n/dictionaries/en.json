@@ -2649,7 +2649,9 @@
     "opnameConfirmLabel": "Yes, save the adjustment",
     "opnameSubmit": "Save Adjustment",
     "opnameFailed": "The stock count could not be saved. Please try again.",
-    "opnameSaved": "Stock count saved — {count} items adjusted."
+    "opnameSaved": "Stock count saved — {count} items adjusted.",
+    "itemNameTaken": "That item name is already taken. Use another name, or add stock to the existing item.",
+    "itemNameTakenInactive": "An item with that name exists but is INACTIVE, so it does not appear in any list. Reactivate it rather than creating a second one — its stock history would be split in two."
   },
   "setup": {
     "shellSubtitle": "First-time company setup",

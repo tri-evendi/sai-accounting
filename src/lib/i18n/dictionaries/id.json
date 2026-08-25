@@ -849,7 +849,13 @@
     "updateFailed": "Gagal menyimpan perubahan kontrak",
     "loadingContract": "Memuat data kontrak...",
     "notFound": "Kontrak tidak ditemukan",
-    "unlinkedItemName": "Tercatat sebagai “{name}” dan belum tertaut ke master barang. Pilih barangnya untuk menautkan."
+    "unlinkedItemName": "Tercatat sebagai “{name}” dan belum tertaut ke master barang. Pilih barangnya untuk menautkan.",
+    "stockNotDeducted": "Stok belum dipotong untuk kontrak ini — {qty} kg sudah difakturkan tetapi belum ada surat jalannya.",
+    "stockNotDeductedWhy": "Stok berkurang lewat surat jalan, saat barang keluar gudang — bukan saat pembayaran lunas. Kalau barangnya memang belum dikirim, keadaan ini sudah benar.",
+    "deductStockAction": "Potong stok sekarang",
+    "deductStockTitle": "Buat surat jalan untuk memotong stok?",
+    "deductStockMessage": "Stok tidak dipotong dari layar ini. Yang akan dibuka adalah formulir surat jalan dengan kontrak ini sudah terpilih, berisi {qty} kg — jumlah, kendaraan, dan tanggalnya tetap Anda periksa sebelum disimpan. Stok baru berkurang saat surat jalan itu tersimpan.",
+    "deductStockConfirm": "Ya, buka surat jalan"
   },
   "invoices": {
     "title": "Tagihan Penjualan ({count})",
@@ -947,7 +953,8 @@
     "vatNotTaxable": "(tidak kena)",
     "totalLine": "Total tagihan ({currency})",
     "baseUnknown": "— isi kurs dulu",
-    "pebDate": "Tanggal PEB"
+    "pebDate": "Tanggal PEB",
+    "itemNamePlaceholder": "Ketik nama, atau pilih dari persediaan"
   },
   "invoiceSend": {
     "sectionTitle": "Kirim ke Pelanggan",

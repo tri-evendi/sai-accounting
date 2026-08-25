@@ -412,20 +412,31 @@ model InvoiceSend {
 
 model InvoiceItem {
   id        Int     @id @default(autoincrement())
+
+  /// Barang dari master (issue #503). NULLABLE, dan akan SERING null — itu
+  /// bukan data yang belum lengkap melainkan bentuk yang sah.
+  ///
+  /// Baris faktur tidak selalu barang persediaan: ongkos kirim dan selisih
+  /// timbang adalah baris yang benar-benar ada di faktur nyata dan TIDAK boleh
+  /// punya baris di master barang. `document-chain.ts` sudah menyatakannya —
+  /// "a faktur may legitimately add a line the contract has no promise for".
+  /// Karena itu isian barangnya kotak teks bersaran, bukan pemilih wajib.
+  itemId    Int?    @map("item_id")
   invoiceId Int     @map("invoice_id")
   itemName  String  @map("item_name") @db.VarChar(100)
   quantity  Decimal @default(0) @db.Decimal(15, 3)
   price     Decimal @default(0) @db.Decimal(15, 2)
   unit      String? @db.VarChar(20)
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   /// Retur penjualan lines that reference THIS invoice line (issue #27). Used to
   /// sum how much of this line has already been returned, per source line.
   salesReturnItems SalesReturnItem[]
+  /// RESTRICT: barang yang pernah difakturkan dinonaktifkan, tak pernah dihapus.
+  item      Item?   @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
+  @@index([itemId])
   @@map("invoice_items")
 }
 
@@ -490,6 +501,8 @@ model Item {
   deliveryOrderItems  DeliveryOrderItem[]
   /// Baris kontrak yang menyebut barang ini (issue #491).
   contractItems       ContractItem[]
+  /// Baris faktur yang menyebut barang ini (issue #503).
+  invoiceItems        InvoiceItem[]
 
   @@index([isActive])
   /// Nama masih dicari & diurutkan meski bukan lagi kunci — tanpa ini

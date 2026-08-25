@@ -849,7 +849,13 @@
     "updateFailed": "保存合同更改失败",
     "loadingContract": "正在加载合同数据...",
     "notFound": "未找到合同",
-    "unlinkedItemName": "记录为「{name}」，尚未关联到货物主档。请选择货物以建立关联。"
+    "unlinkedItemName": "记录为「{name}」，尚未关联到货物主档。请选择货物以建立关联。",
+    "stockNotDeducted": "本合同的库存尚未扣减——已开票 {qty} 公斤，但还没有出库单。",
+    "stockNotDeductedWhy": "库存在出库单保存时扣减，即货物离开仓库时，而不是货款结清时。如果货物确实尚未发出，当前状态是正确的。",
+    "deductStockAction": "立即扣减库存",
+    "deductStockTitle": "创建出库单以扣减库存？",
+    "deductStockMessage": "本页面不会直接扣减库存。将打开的是已选中该合同的出库单表单，含 {qty} 公斤——数量、车辆与日期仍由您核对后保存。库存在该出库单保存后才会减少。",
+    "deductStockConfirm": "好，打开出库单"
   },
   "invoices": {
     "title": "销售发票（{count}）",
@@ -947,7 +953,8 @@
     "vatNotTaxable": "（不征税）",
     "totalLine": "发票合计（{currency}）",
     "baseUnknown": "— 请先填写汇率",
-    "pebDate": "PEB 日期"
+    "pebDate": "PEB 日期",
+    "itemNamePlaceholder": "输入名称，或从库存中选择"
   },
   "invoiceSend": {
     "sectionTitle": "发送给客户",

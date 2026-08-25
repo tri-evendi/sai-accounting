@@ -6,6 +6,12 @@ import { paymentFormFields } from "./payment";
 import { vmsg } from "@/lib/i18n/validation";
 
 export const invoiceItemSchema = z.object({
+  /**
+   * Barang dari master (issue #503). Opsional dan akan SERING kosong — itu
+   * bentuk yang sah, bukan data yang belum lengkap: ongkos kirim & selisih
+   * timbang adalah baris faktur nyata yang tidak punya baris di master barang.
+   */
+  itemId: z.coerce.number().int().positive().nullish(),
   itemName: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   quantity: z.coerce.number().min(0),
   price: z.coerce.number().min(0),

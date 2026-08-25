@@ -22,6 +22,8 @@ export type SerializedStockMovement = {
 
 export type ItemWithStock = {
   id: number;
+  /** Kode barang (#493) — identitas barang sejak nama berhenti jadi kunci. */
+  code: string;
   name: string;
   unit: string | null;
   stockMovements: StockMovement[];
@@ -29,6 +31,9 @@ export type ItemWithStock = {
 
 export type InventorySummary = {
   id: number;
+  /** Kode barang (#493) — ikut ke laporan & pemilih, sebab dua barang boleh
+   *  bernama sama dan hanya kodenya yang membedakan. */
+  code: string;
   name: string;
   unit: string | null;
   totalIn: number;
@@ -49,6 +54,9 @@ export type InventorySummary = {
 /** Subset passed to client-side PDF/export components. */
 export type ClientInventoryItem = {
   id: number;
+  /** Ikut dicetak (#493): dua baris bernama sama pada satu lembar laporan
+   *  tidak bisa dibedakan pembacanya tanpa kode. */
+  code: string;
   name: string;
   unit: string | null;
   totalIn: number;
@@ -87,8 +95,20 @@ function serializeMovement(movement: StockMovement): SerializedStockMovement {
 /** Strip non-serializable fields before passing inventory to Client Components. */
 export function toClientInventory(items: InventorySummary[]): ClientInventoryItem[] {
   return items.map(
-    ({ id, name, unit, totalIn, totalOut, currentStock, movementCount, unitCost, stockValue }) => ({
+    ({
       id,
+      code,
+      name,
+      unit,
+      totalIn,
+      totalOut,
+      currentStock,
+      movementCount,
+      unitCost,
+      stockValue,
+    }) => ({
+      id,
+      code,
       name,
       unit,
       totalIn,
@@ -160,6 +180,7 @@ export function summarizeInventoryItem(item: ItemWithStock): InventorySummary {
 
   return {
     id: item.id,
+    code: item.code,
     name: item.name,
     unit: item.unit,
     ...totals,

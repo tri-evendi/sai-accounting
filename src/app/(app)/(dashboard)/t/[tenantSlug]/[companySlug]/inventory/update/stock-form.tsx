@@ -77,6 +77,8 @@ const FIELD_GAP = 16;
 const CONTROL_GAP = 12;
 /** `w-28` lama — lebar kotak satuan pada formulir barang baru. */
 const UNIT_WIDTH = 112;
+/** Kotak kode barang (#493) — sesempit satuan; isinya pendek dan berpola. */
+const CODE_WIDTH = 128;
 const EMPTY_ICON_SIZE = 48;
 const ICON_SIZE = 16;
 const SMALL_ICON_SIZE = 14;
@@ -118,6 +120,8 @@ const NUMERIC_FIELD: React.CSSProperties = {
 
 export interface StockItemOption {
   id: number;
+  /** Kode barang (#493) — yang membedakan dua barang bernama sama di pemilih. */
+  code: string;
   name: string;
   unit: string | null;
   currentStock: number;
@@ -151,7 +155,7 @@ interface StockFormValues {
 /** Isian gerakan stok yang ada di layar — sisanya naik jadi galat formulir. */
 const STOCK_FIELDS = ["itemId", "type", "quantity", "unitCost", "date", "note"] as const;
 /** Isian barang baru yang ada di layar. */
-const ITEM_FIELDS = ["name", "unit"] as const;
+const ITEM_FIELDS = ["code", "name", "unit"] as const;
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -206,8 +210,20 @@ export function StockUpdateForm({
 
   const itemForm = useForm<ItemInput>({
     resolver: zodResolver(itemSchema) as Resolver<ItemInput>,
-    defaultValues: { name: "", unit: "kg" },
+    defaultValues: { code: "", name: "", unit: "kg", confirmDuplicateName: false },
   });
+
+  /*
+   * Pertanyaan "nama ini sudah dipakai — barang terpisah?" (#493). Server yang
+   * mengajukannya (409 + `needsConfirmation: "duplicate_name"`), layar ini
+   * hanya menampilkannya lalu MENGIRIM ULANG muatan yang sama dengan
+   * `confirmDuplicateName: true`. Muatannya disimpan apa adanya supaya jawaban
+   * "ya" tidak pernah mengirim isian yang sudah berubah di layar.
+   */
+  const [duplicateName, setDuplicateName] = useState<{
+    payload: ItemInput;
+    message: string;
+  } | null>(null);
 
   /* `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
      memoisasi komponen ini. */
@@ -227,11 +243,17 @@ export function StockUpdateForm({
     // (issue #104); saldo & riwayatnya tetap tampil di laporan stok.
     const res = await apiFetch("/api/inventory?active=1");
     if (!res.ok) return;
-    const data: { id: number; name: string; unit: string | null; currentStock: number }[] =
-      await res.json();
+    const data: {
+      id: number;
+      code: string;
+      name: string;
+      unit: string | null;
+      currentStock: number;
+    }[] = await res.json();
     setItems(
       data.map((i) => ({
         id: i.id,
+        code: i.code,
         name: i.name,
         unit: i.unit,
         currentStock: i.currentStock ?? 0,
@@ -249,13 +271,29 @@ export function StockUpdateForm({
     if (res.ok) {
       itemForm.reset();
       setShowNewItem(false);
+      setDuplicateName(null);
       await refreshItems();
       setSuccess(t("inventory.itemSaved"));
       setTimeout(() => setSuccess(""), 3000);
-    } else {
-      const data = await res.json().catch(() => null);
-      applyServerFieldErrors(itemForm.setError, data ?? {}, ITEM_FIELDS, t("inventory.itemSaveFailed"));
+      return;
     }
+
+    const data = await res.json().catch(() => null);
+
+    /*
+     * Nama kembar BUKAN penolakan — ia pertanyaan (#493). Dibedakan lewat
+     * penanda mesin, bukan dengan mencocokkan kalimat: kalimatnya berganti
+     * mengikuti bahasa, penandanya tidak.
+     */
+    if (data?.needsConfirmation === "duplicate_name") {
+      setDuplicateName({
+        payload: { ...values, confirmDuplicateName: true },
+        message: [data.error, data.hint].filter(Boolean).join(" "),
+      });
+      return;
+    }
+
+    applyServerFieldErrors(itemForm.setError, data ?? {}, ITEM_FIELDS, t("inventory.itemSaveFailed"));
   }
 
   async function send(body: StockPayload) {
@@ -422,6 +460,23 @@ export function StockUpdateForm({
                 noValidate
                 style={{ display: "flex", alignItems: "flex-end", gap: CONTROL_GAP }}
               >
+                {/* Kode DI DEPAN nama: sejak #493 ia yang menjadi identitas
+                    barang, dan urutan isian sebaiknya mencerminkan itu. */}
+                <div style={{ width: CODE_WIDTH }}>
+                  <FormField
+                    control={itemForm.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("common.itemCode")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   <FormField
                     control={itemForm.control}
@@ -516,9 +571,14 @@ export function StockUpdateForm({
                         <FormControl>
                           <SelectField
                             placeholder={t("inventory.pickItemPlaceholder")}
+                            /* Kode di depan (#493): dua barang bernama sama —
+                               `LONG PEPPER` 100006 & 100010 di berkas saldo
+                               awal pengguna — hanya bisa dibedakan mata lewat
+                               kodenya. Tanpa ini pemilihnya menampilkan dua
+                               baris yang tampak identik. */
                             options={items.map((item) => ({
                               value: String(item.id),
-                              label: `${item.name}${item.unit ? ` (${item.unit})` : ""}`,
+                              label: `${item.code} — ${item.name}${item.unit ? ` (${item.unit})` : ""}`,
                             }))}
                             {...field}
                           />
@@ -703,6 +763,30 @@ export function StockUpdateForm({
           )}
         </div>
       </Card>
+
+      {/*
+        Konfirmasi NAMA BARANG KEMBAR (#493). Bukan penolakan: dua barang
+        bernama sama memang sah selama kodenya berbeda — berkas saldo awal 2024
+        pengguna memuat dua `LONG PEPPER`. Yang dijaga adalah nama kembar yang
+        TIDAK disengaja, sebab ia membelah riwayat stok satu barang jadi dua dan
+        pembelahan itu tak terlihat sampai laporannya tidak mau cocok.
+
+        `variant` bawaan, BUKAN `danger`: menyimpan barang terpisah adalah
+        tindakan yang sah dan sering benar. Merah akan menakuti pengguna dari
+        jalan yang justru diminta pekerjaannya.
+      */}
+      <ConfirmDialog
+        title={t("inventory.duplicateNameTitle")}
+        message={duplicateName?.message ?? ""}
+        confirmLabel={t("inventory.duplicateNameConfirm")}
+        open={duplicateName != null}
+        onOpenChange={(o) => {
+          if (!o) setDuplicateName(null);
+        }}
+        onConfirm={async () => {
+          if (duplicateName) await onCreateItem(duplicateName.payload);
+        }}
+      />
 
       {/* Konfirmasi pengeluaran stok besar (issue #6). */}
       <ConfirmDialog

@@ -267,7 +267,8 @@
     "notFilledIn": "Not filled in",
     "overdueDocs": "{count} documents are past their due date.",
     "actions": "Actions",
-    "monthOfYear": "{month} {year}"
+    "monthOfYear": "{month} {year}",
+    "itemCode": "Item Code"
   },
   "nav": {
     "groups": {
@@ -2650,8 +2651,13 @@
     "opnameSubmit": "Save Adjustment",
     "opnameFailed": "The stock count could not be saved. Please try again.",
     "opnameSaved": "Stock count saved — {count} items adjusted.",
-    "itemNameTaken": "That item name is already taken. Use another name, or add stock to the existing item.",
-    "itemNameTakenInactive": "An item with that name exists but is INACTIVE, so it does not appear in any list. Reactivate it rather than creating a second one — its stock history would be split in two."
+    "itemCodeTaken": "That item code is already taken. Use another code, or add stock to the existing item.",
+    "itemCodeTakenInactive": "An item with that code exists but is INACTIVE, so it does not appear in any list. Reactivate it rather than creating a second one — its stock history would be split in two.",
+    "duplicateNameQuestion": "An item named {name} already exists (code {code}). Save this as a separate item?",
+    "duplicateNameActive": "Their stock history and balances will not be merged. If you meant the same item, cancel and add stock to it instead.",
+    "duplicateNameInactive": "That same-named item is INACTIVE, so it does not appear in any list. If you meant the same item, cancel and reactivate it instead.",
+    "duplicateNameTitle": "Item name already in use",
+    "duplicateNameConfirm": "Yes, separate item"
   },
   "setup": {
     "shellSubtitle": "First-time company setup",
@@ -3700,6 +3706,7 @@
     "amountTooLarge": "Amount is too large",
     "categoryRequired": "Please choose a category",
     "taxRateOutOfRange": "The PPN rate must be between 0 and 100 percent",
+    "itemCodeRequired": "Item code is required",
     "taxRateDateInvalid": "The effective date must be a real date (YYYY-MM-DD)"
   },
   "taxSettings": {

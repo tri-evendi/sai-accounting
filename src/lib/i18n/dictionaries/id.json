@@ -953,7 +953,8 @@
     "vatNotTaxable": "(tidak kena)",
     "totalLine": "Total tagihan ({currency})",
     "baseUnknown": "— isi kurs dulu",
-    "pebDate": "Tanggal PEB"
+    "pebDate": "Tanggal PEB",
+    "itemNamePlaceholder": "Ketik nama, atau pilih dari persediaan"
   },
   "invoiceSend": {
     "sectionTitle": "Kirim ke Pelanggan",

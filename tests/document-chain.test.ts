@@ -183,9 +183,11 @@ describe("pullInvoiceLines", () => {
 
   it("pulls the contract remainder, priced from the contract", () => {
     const pulled = pullInvoiceLines(outstanding, "contract");
+    /* `itemId: null` — baris kontrak di perlengkapan uji ini belum tertaut ke
+       master, dan tarikannya mewarisi keadaan itu apa adanya (#503). */
     expect(pulled).toEqual([
-      { itemName: "Kopi Arabika", quantity: 3_500, price: 90_000, unit: "kg" },
-      { itemName: "Kopi Robusta", quantity: 1_000, price: 60_000, unit: "kg" },
+      { itemId: null, itemName: "Kopi Arabika", quantity: 3_500, price: 90_000, unit: "kg" },
+      { itemId: null, itemName: "Kopi Robusta", quantity: 1_000, price: 60_000, unit: "kg" },
     ]);
   });
 
@@ -193,7 +195,7 @@ describe("pullInvoiceLines", () => {
     const pulled = pullInvoiceLines(outstanding, "delivery");
     // Robusta has shipped nothing, so it is not offered at all.
     expect(pulled).toEqual([
-      { itemName: "Kopi Arabika", quantity: 1_500, price: 90_000, unit: "kg" },
+      { itemId: null, itemName: "Kopi Arabika", quantity: 1_500, price: 90_000, unit: "kg" },
     ]);
   });
 

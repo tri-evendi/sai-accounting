@@ -953,7 +953,8 @@
     "vatNotTaxable": "（不征税）",
     "totalLine": "发票合计（{currency}）",
     "baseUnknown": "— 请先填写汇率",
-    "pebDate": "PEB 日期"
+    "pebDate": "PEB 日期",
+    "itemNamePlaceholder": "输入名称，或从库存中选择"
   },
   "invoiceSend": {
     "sectionTitle": "发送给客户",

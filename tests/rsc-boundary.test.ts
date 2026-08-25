@@ -214,7 +214,18 @@ const SRC = join(__dirname, "..", "src");
  * memang bersesi — harga yang salah di sisi ini.
  */
 /*
- * 174 sejak #491 lingkup 2 (2026-08-25):
+ * 174 sejak #503 (2026-08-25): `components/ui/item-name-input.tsx`.
+ *
+ * Client karena ia memang memikul KEADAAN interaktif — daftar saran yang
+ * disaring saat mengetik, dan sepasang nilai (`itemName` + `itemId`) yang harus
+ * berubah bersamaan. Tidak ada bentuk servernya.
+ *
+ * Yang dibeli dengan satu modul ini: baris faktur bisa menunjuk barang di
+ * master TANPA memaksa setiap baris menjadi barang persediaan. Pemilih wajib
+ * akan lebih murah di hitungan ini dan mematahkan ongkos kirim & selisih
+ * timbang — dua baris faktur yang sah dan tidak punya baris di master barang.
+ *
+ * 175 sejak #491 lingkup 2 (2026-08-25, hari yang sama):
  * `contracts/[id]/deduct-stock-notice.tsx`.
  *
  * Client karena ia memikul satu dialog konfirmasi — keadaan buka/tutup dan
@@ -224,8 +235,13 @@ const SRC = join(__dirname, "..", "src");
  * dijawab TANPA membuat kontrak ikut memotong stok. Kontrak yang ikut memotong
  * akan membuat satu pengiriman terpotong dua kali; yang kurang sebenarnya
  * hanyalah KABAR bahwa stoknya belum berkurang, beserta jalan keluarnya.
+ *
+ * Dua kenaikan di hari yang sama, dan keduanya ditulis: ambang ini hanya
+ * berguna selama setiap angkanya bisa ditelusuri ke satu modul dengan satu
+ * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
+ * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 174;
+const AMBANG_KLIEN = 175;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -418,6 +434,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/empty-state.tsx",
   "components/ui/form.tsx",
   "components/ui/input.tsx",
+  "components/ui/item-name-input.tsx",
   "components/ui/learn-more.tsx",
   "components/ui/loading.tsx",
   "components/ui/locale-toggle.tsx",

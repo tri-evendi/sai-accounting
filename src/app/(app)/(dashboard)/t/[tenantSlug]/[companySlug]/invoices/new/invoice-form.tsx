@@ -72,6 +72,8 @@ import {
 } from "@/lib/form-guards";
 import { useT } from "@/lib/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
+import { normalizeItemName, resolveChainKey } from "@/lib/document-chain";
+import { ItemNameInput, type ItemSuggestion } from "@/components/ui/item-name-input";
 import { DeleteOutlined, DownloadOutlined, InfoCircleOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
@@ -93,6 +95,8 @@ const twoColumnGrid = (gap: number): React.CSSProperties => ({
 const QTY_COL_BASIS = 96;
 
 interface InvoiceItem {
+  /** Barang dari master (#503). `null` = baris teks bebas, dan itu SAH. */
+  itemId: number | null;
   itemName: string;
   quantity: number;
   price: number;
@@ -107,7 +111,13 @@ interface OutstandingResponse {
   pull: { contract: PulledInvoiceLine[]; delivery: PulledInvoiceLine[] };
 }
 
-const emptyItem = (): InvoiceItem => ({ itemName: "", quantity: 0, price: 0, unit: "kg" });
+const emptyItem = (): InvoiceItem => ({
+  itemId: null,
+  itemName: "",
+  quantity: 0,
+  price: 0,
+  unit: "kg",
+});
 
 /** Is the item list still the untouched default? Then a pull replaces it silently. */
 const isPristine = (items: InvoiceItem[]) =>
@@ -116,7 +126,10 @@ const isPristine = (items: InvoiceItem[]) =>
 export function NewInvoiceForm({
   initialContract,
   closedPeriods,
+  itemSuggestions,
 }: {
+  /** Barang aktif dari master (#503) — saran, bukan daftar yang mengikat. */
+  itemSuggestions: ItemSuggestion[];
   /** Kontrak yang sudah terpilih lewat `?contractId=` — label + hint-nya dibaca
    *  server supaya pemilih tidak menunggu halaman hasil memuatnya. */
   initialContract: PickerOption | null;
@@ -267,6 +280,10 @@ export function NewInvoiceForm({
       return;
     }
     const pulled: InvoiceItem[] = lines.map((l) => ({
+      /* Diwarisi dari baris kontraknya (#503): baris yang ditarik sudah
+         tertaut tanpa pengguna memilih apa pun — termasuk pada kontrak yang
+         memuat dua barang bernama sama. */
+      itemId: l.itemId,
       itemName: l.itemName,
       quantity: l.quantity,
       price: l.price,
@@ -641,9 +658,26 @@ export function NewInvoiceForm({
               {items.map((item, i) => {
                 // Remainder hint for a line drawn from the contract, so an
                 // over-invoice is visible before the server refuses it.
-                const line = outstanding?.lines.find(
-                  (l) => l.key === item.itemName.trim().toLowerCase().replace(/\s+/g, " ")
-                );
+                /* Dijodohkan dengan aturan yang SAMA dengan server (#503):
+                   id dulu, lalu nama yang menunjuk tepat satu baris kontrak.
+                   Sebelumnya baris ini hanya mencocokkan nama, jadi baris yang
+                   sudah tertaut ke `#6` tidak pernah menemukan pagunya dan
+                   peringatan "melebihi sisa" diam-diam berhenti muncul. */
+                const line = outstanding
+                  ? (() => {
+                      const key = resolveChainKey(
+                        item,
+                        new Set(outstanding.lines.map((l) => l.key)),
+                        outstanding.lines.reduce((m, l) => {
+                          const n = normalizeItemName(l.itemName);
+                          const list = m.get(n) ?? [];
+                          if (!list.includes(l.key)) list.push(l.key);
+                          return m.set(n, list);
+                        }, new Map<string, string[]>())
+                      );
+                      return outstanding.lines.find((l) => l.key === key);
+                    })()
+                  : undefined;
                 const over = line != null && item.quantity > line.remainingKg;
                 return (
                   <div
@@ -659,11 +693,20 @@ export function NewInvoiceForm({
                     <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
                       <Col xs={24} md={8} style={{ minWidth: 0 }}>
                         {itemLabel(`itemName-${i}`, t("common.itemName"))}
-                        <TextInput
+                        {/* Kotak teks BERSARAN, bukan pemilih wajib (#503):
+                            ongkos kirim & selisih timbang adalah baris faktur
+                            yang sah dan tidak punya baris di master barang. */}
+                        <ItemNameInput
                           id={`itemName-${i}`}
                           value={item.itemName}
-                          onChange={(e) => updateItem(i, "itemName", e.target.value)}
-                          required
+                          itemId={item.itemId}
+                          suggestions={itemSuggestions}
+                          placeholder={t("invoices.itemNamePlaceholder")}
+                          onChange={(next) =>
+                            setItems((prev) =>
+                              prev.map((row, idx) => (idx === i ? { ...row, ...next } : row))
+                            )
+                          }
                         />
                       </Col>
                       <Col flex={`1 1 ${QTY_COL_BASIS}px`}>

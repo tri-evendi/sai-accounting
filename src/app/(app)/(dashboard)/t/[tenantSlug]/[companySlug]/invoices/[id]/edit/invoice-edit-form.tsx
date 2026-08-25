@@ -39,6 +39,7 @@ import {
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { ItemNameInput, type ItemSuggestion } from "@/components/ui/item-name-input";
 
 /**
  * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti
@@ -56,6 +57,8 @@ const twoColumnGrid = (gap: number): React.CSSProperties => ({
 const QTY_COL_BASIS = 96;
 
 interface InvoiceItem {
+  /** Barang dari master (#503). `null` = baris teks bebas, dan itu SAH. */
+  itemId: number | null;
   itemName: string;
   quantity: number;
   price: number;
@@ -63,6 +66,10 @@ interface InvoiceItem {
 }
 
 export function EditInvoiceForm() {
+  /* Saran barang (#503). Layar ini memang sudah menjemput fakturnya sendiri
+     lewat `apiFetch`, jadi daftarnya ikut dijemput di sini alih-alih
+     diturunkan sebagai prop dari server component. */
+  const [itemSuggestions, setItemSuggestions] = useState<ItemSuggestion[]>([]);
   const router = useAppRouter();
   const params = useParams();
   const t = useT();
@@ -141,6 +148,9 @@ export function EditInvoiceForm() {
         });
         setItems(
           data.items.map((item: InvoiceItem & { id?: number }) => ({
+            /* Dibawa PULANG apa adanya: menyunting faktur tidak boleh
+               diam-diam memutus tautan barangnya (#503). */
+            itemId: item.itemId ?? null,
             itemName: item.itemName,
             quantity: Number(item.quantity),
             price: Number(item.price),
@@ -155,8 +165,21 @@ export function EditInvoiceForm() {
       });
   }, [params.id, t]);
 
+  useEffect(() => {
+    /* `active=1` — barang nonaktif tidak ditawarkan lagi (#104); baris faktur
+       lama yang menyebutnya tetap terbaca lewat `itemName`-nya. */
+    apiFetch("/api/inventory?active=1")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: ItemSuggestion[]) =>
+        setItemSuggestions(
+          data.map((i) => ({ id: i.id, code: i.code, name: i.name, unit: i.unit }))
+        )
+      )
+      .catch(() => setItemSuggestions([]));
+  }, []);
+
   function addItem() {
-    setItems([...items, { itemName: "", quantity: 0, price: 0, unit: "kg" }]);
+    setItems([...items, { itemId: null, itemName: "", quantity: 0, price: 0, unit: "kg" }]);
   }
 
   function removeItem(index: number) {
@@ -310,11 +333,20 @@ export function EditInvoiceForm() {
                   <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
                     <Col xs={24} md={8} style={{ minWidth: 0 }}>
                       {itemLabel(`itemName-${i}`, t("common.itemName"))}
-                      <TextInput
+                      {/* Cerminan layar Buat Faktur (#503). Kalau layar ini
+                          tetap kotak teks polos, menyunting faktur yang sudah
+                          tertaut akan memutus tautannya diam-diam. */}
+                      <ItemNameInput
                         id={`itemName-${i}`}
                         value={item.itemName}
-                        onChange={(e) => updateItem(i, "itemName", e.target.value)}
-                        required
+                        itemId={item.itemId}
+                        suggestions={itemSuggestions}
+                        placeholder={t("invoices.itemNamePlaceholder")}
+                        onChange={(next) =>
+                          setItems((prev) =>
+                            prev.map((row, idx) => (idx === i ? { ...row, ...next } : row))
+                          )
+                        }
                       />
                     </Col>
                     <Col flex={`1 1 ${QTY_COL_BASIS}px`}>

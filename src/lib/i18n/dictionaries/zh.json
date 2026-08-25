@@ -2667,7 +2667,11 @@
     "colClosingQty": "期末数量",
     "colClosingValue": "期末金额",
     "revaluationNote": "估值差异 {amount}：本期平均成本发生变动，因此期末金额与「期初＋入库−出库」不完全相等。资产负债表采用的是期末金额。",
-    "periodValueTitle": "本期存货金额及其进出明细"
+    "periodValueTitle": "本期存货金额及其进出明细",
+    "movementShrinkage": "加工结果（损耗）",
+    "shrinkageValueLabel": "损耗金额（Rp）",
+    "shrinkageValueHint": "损耗货物的金额。手工填写，不按平均成本推算。",
+    "shrinkageAccountHint": "该损耗计入「加工损耗费用」科目，而非销货成本——因为并没有货物售出。"
   },
   "setup": {
     "shellSubtitle": "公司首次设置",
@@ -3717,6 +3721,8 @@
     "categoryRequired": "请选择类别",
     "taxRateOutOfRange": "增值税税率必须介于 0 至 100 之间",
     "itemCodeRequired": "请填写货物编号",
+    "shrinkageValuePositive": "损耗金额必须大于零",
+    "shrinkageValueRequired": "「加工结果」必须填写损耗金额",
     "taxRateDateInvalid": "生效日期必须是有效日期（YYYY-MM-DD）"
   },
   "taxSettings": {

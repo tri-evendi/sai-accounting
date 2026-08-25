@@ -2667,7 +2667,11 @@
     "colClosingQty": "Closing Qty",
     "colClosingValue": "Closing Value",
     "revaluationNote": "Valuation difference {amount}: the average cost shifted during this period, so the closing value does not exactly equal opening + in − out. The closing value is the one the balance sheet uses.",
-    "periodValueTitle": "Inventory value over the period, with its movements"
+    "periodValueTitle": "Inventory value over the period, with its movements",
+    "movementShrinkage": "Process Result (shrinkage)",
+    "shrinkageValueLabel": "Shrinkage value (Rp)",
+    "shrinkageValueHint": "The rupiah value of the goods lost. Typed in, not derived from the average cost.",
+    "shrinkageAccountHint": "This shrinkage is charged to Process Shrinkage Expense — not COGS, since nothing was sold."
   },
   "setup": {
     "shellSubtitle": "First-time company setup",
@@ -3717,6 +3721,8 @@
     "categoryRequired": "Please choose a category",
     "taxRateOutOfRange": "The PPN rate must be between 0 and 100 percent",
     "itemCodeRequired": "Item code is required",
+    "shrinkageValuePositive": "Shrinkage value must be greater than zero",
+    "shrinkageValueRequired": "Shrinkage value is required for Process Result",
     "taxRateDateInvalid": "The effective date must be a real date (YYYY-MM-DD)"
   },
   "taxSettings": {

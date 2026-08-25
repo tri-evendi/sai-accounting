@@ -2667,7 +2667,11 @@
     "colClosingQty": "Kts Akhir",
     "colClosingValue": "Nilai Akhir",
     "revaluationNote": "Selisih penilaian {amount}: harga rata-rata bergeser selama periode ini, jadi nilai akhir tidak sama persis dengan awal + masuk − keluar. Nilai akhir yang dipakai neraca.",
-    "periodValueTitle": "Nilai persediaan sepanjang periode, beserta mutasinya"
+    "periodValueTitle": "Nilai persediaan sepanjang periode, beserta mutasinya",
+    "movementShrinkage": "Hasil Proses (susut)",
+    "shrinkageValueLabel": "Nilai susut (Rp)",
+    "shrinkageValueHint": "Berapa rupiah nilai barang yang susut. Diketik, bukan dihitung dari harga rata-rata.",
+    "shrinkageAccountHint": "Susut ini dibebankan ke akun Beban Susut Proses — bukan HPP, sebab tidak ada barang yang terjual."
   },
   "setup": {
     "shellSubtitle": "Penyiapan awal perusahaan",
@@ -3717,6 +3721,8 @@
     "categoryRequired": "Kategori wajib dipilih",
     "taxRateOutOfRange": "Tarif PPN harus antara 0 dan 100 persen",
     "itemCodeRequired": "Kode barang wajib diisi",
+    "shrinkageValuePositive": "Nilai susut harus lebih dari nol",
+    "shrinkageValueRequired": "Nilai susut wajib diisi untuk Hasil Proses",
     "taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)"
   },
   "taxSettings": {

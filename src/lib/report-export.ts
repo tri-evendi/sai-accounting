@@ -623,22 +623,45 @@ function buildStockValueSheet(
 ): SheetModel {
   const cols = stockValueColumns(p);
   const WIDTHS: Record<StockValueColumnId, number> = {
+    code: 14,
     name: 34,
     unit: 12,
-    currentStock: 16,
-    unitCost: 20,
-    stockValue: 22,
+    openingQty: 14,
+    openingValue: 20,
+    inQty: 14,
+    inValue: 20,
+    outQty: 14,
+    outValue: 20,
+    closingQty: 14,
+    closingValue: 22,
   };
   // Saldo adalah KUANTITAS `Decimal(15,3)`; biaya & nilai adalah uang. Dua
   // format berbeda di satu tabel, dan meminjamkan topeng rupiah ke saldo akan
   // membulatkan 12,5 kg menjadi Rp 13.
+  const qtyOf: Partial<Record<StockValueColumnId, (r: (typeof p.rows)[number]) => number>> = {
+    openingQty: (r) => r.openingQty,
+    inQty: (r) => r.inQty,
+    outQty: (r) => r.outQty,
+    closingQty: (r) => r.closingQty,
+  };
+  const valueOf: Partial<
+    Record<StockValueColumnId, (r: (typeof p.rows)[number]) => number | null>
+  > = {
+    openingValue: (r) => r.openingValue,
+    inValue: (r) => r.inValue,
+    outValue: (r) => r.outValue,
+    closingValue: (r) => r.closingValue,
+  };
+
   const cell = (r: (typeof p.rows)[number], c: StockValueColumnId): SheetCell => {
+    if (c === "code") return text(r.code);
     if (c === "name") return text(r.name);
     if (c === "unit") return text(r.unit || "-");
-    if (c === "currentStock") return { value: r.currentStock, format: "quantity", align: "right" };
-    const value = c === "unitCost" ? r.unitCost : r.stockValue;
+    const q = qtyOf[c];
+    if (q) return { value: q(r), format: "quantity", align: "right" };
     // Tanpa dasar biaya: sel KOSONG, bukan nol — nol menyatakan "tidak
     // bernilai" tentang barang yang ada wujudnya.
+    const value = valueOf[c]?.(r) ?? null;
     return value == null ? text(null) : money(value);
   };
 
@@ -650,7 +673,7 @@ function buildStockValueSheet(
     cols.map((c) =>
       c === "name"
         ? text("Total Nilai Persediaan", true)
-        : c === "stockValue"
+        : c === "closingValue"
           ? money(p.totalValue, true)
           : text(null)
     )

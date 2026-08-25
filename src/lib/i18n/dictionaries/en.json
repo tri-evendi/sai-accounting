@@ -2657,7 +2657,17 @@
     "duplicateNameActive": "Their stock history and balances will not be merged. If you meant the same item, cancel and add stock to it instead.",
     "duplicateNameInactive": "That same-named item is INACTIVE, so it does not appear in any list. If you meant the same item, cancel and reactivate it instead.",
     "duplicateNameTitle": "Item name already in use",
-    "duplicateNameConfirm": "Yes, separate item"
+    "duplicateNameConfirm": "Yes, separate item",
+    "colOpeningQty": "Opening Qty",
+    "colOpeningValue": "Opening Value",
+    "colInQty": "In Qty",
+    "colInValue": "In Value",
+    "colOutQty": "Out Qty",
+    "colOutValue": "Out Value",
+    "colClosingQty": "Closing Qty",
+    "colClosingValue": "Closing Value",
+    "revaluationNote": "Valuation difference {amount}: the average cost shifted during this period, so the closing value does not exactly equal opening + in − out. The closing value is the one the balance sheet uses.",
+    "periodValueTitle": "Inventory value over the period, with its movements"
   },
   "setup": {
     "shellSubtitle": "First-time company setup",

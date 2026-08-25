@@ -2657,7 +2657,17 @@
     "duplicateNameActive": "Riwayat & saldo stok keduanya tidak akan digabung. Kalau yang Anda maksud barang yang sama, batalkan lalu tambahkan stok ke barang itu.",
     "duplicateNameInactive": "Barang bernama sama itu sedang NONAKTIF, jadi ia tidak muncul di daftar mana pun. Kalau yang Anda maksud barang yang sama, batalkan lalu aktifkan kembali barang itu.",
     "duplicateNameTitle": "Nama barang sudah dipakai",
-    "duplicateNameConfirm": "Ya, barang terpisah"
+    "duplicateNameConfirm": "Ya, barang terpisah",
+    "colOpeningQty": "Kts Awal",
+    "colOpeningValue": "Nilai Awal",
+    "colInQty": "Kts Masuk",
+    "colInValue": "Nilai Masuk",
+    "colOutQty": "Kts Keluar",
+    "colOutValue": "Nilai Keluar",
+    "colClosingQty": "Kts Akhir",
+    "colClosingValue": "Nilai Akhir",
+    "revaluationNote": "Selisih penilaian {amount}: harga rata-rata bergeser selama periode ini, jadi nilai akhir tidak sama persis dengan awal + masuk − keluar. Nilai akhir yang dipakai neraca.",
+    "periodValueTitle": "Nilai persediaan sepanjang periode, beserta mutasinya"
   },
   "setup": {
     "shellSubtitle": "Penyiapan awal perusahaan",

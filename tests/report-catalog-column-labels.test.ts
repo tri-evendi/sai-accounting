@@ -102,8 +102,12 @@ const KERTAS: Record<string, Kertas> = {
  * kertasnya berbunyi "Mutasi (IDR)".
  */
 const KAMUS_IDR = new Set([
-  "stock-value.unitCost",
-  "stock-value.stockValue",
+  // Nilai Persediaan berperiode (#492) — empat kolom uang, semuanya menyebut
+  // satuannya di kertas dan tidak di layar.
+  "stock-value.openingValue",
+  "stock-value.inValue",
+  "stock-value.outValue",
+  "stock-value.closingValue",
   "cash-bank.opening",
   "cash-bank.net",
   "cash-bank.closing",
@@ -159,15 +163,6 @@ const BEDA: Record<string, Beda> = {
     kamus: "Jumlah Dokumen",
     kertas: "Dokumen",
     sebab: "Sama dengan Penjualan per Pelanggan — satu kunci kamus, dua laporan.",
-  },
-  "stock-value.currentStock": {
-    kamus: "Sisa Stok",
-    kertas: "Saldo",
-    sebab:
-      "Kolomnya KUANTITAS sementara \"Saldo\" di laporan lain berarti uang, jadi " +
-      "\"Sisa Stok\" yang lebih jujur — tapi `inventory.colCurrentStock` juga " +
-      "judul kolom halaman Persediaan. Mendamaikannya berarti kertas yang ikut " +
-      "(#309).",
   },
 };
 

@@ -603,28 +603,56 @@ describe("umur piutang / utang", () => {
 });
 
 describe("nilai persediaan", () => {
+  /* Berperiode sejak #492: empat pasang kuantitas & nilai, dan kode barang yang
+     membedakan dua barang bernama sama (#493). */
   const base = {
     kind: "stock-value" as const,
-    period: "Per 5 Agustus 2026",
+    period: "1 Januari 2024 — 31 Desember 2024",
     rows: [
-      { name: "Kopi Arabika", unit: "kg", currentStock: 1200.5, unitCost: 45_000, stockValue: 54_022_500 },
-      { name: "Karung bekas", unit: "pcs", currentStock: 40, unitCost: null, stockValue: null },
+      {
+        code: "100003",
+        name: "Kopi Arabika",
+        unit: "kg",
+        openingQty: 0,
+        openingValue: 0,
+        inQty: 1200.5,
+        inValue: 54_022_500,
+        outQty: 0,
+        outValue: 0,
+        closingQty: 1200.5,
+        closingValue: 54_022_500,
+      },
+      {
+        code: "100004",
+        name: "Karung bekas",
+        unit: "pcs",
+        openingQty: 0,
+        openingValue: null,
+        inQty: 40,
+        inValue: null,
+        outQty: 0,
+        outValue: null,
+        closingQty: 40,
+        closingValue: null,
+      },
     ],
     totalValue: 54_022_500,
+    revaluation: 0,
     uncostedCount: 1,
   };
 
   it("membiarkan barang tanpa dasar biaya KOSONG, bukan Rp 0", () => {
     const sheet = buildReportSheet(base);
-    expect(sheet.rows[1][3].value).toBeNull();
-    expect(sheet.rows[1][4].value).toBeNull();
+    /* Kolom terakhir = Nilai Akhir; barisnya barang tanpa dasar biaya. */
+    expect(sheet.rows[1][sheet.rows[1].length - 1].value).toBeNull();
   });
 
-  it("saldo tetap kuantitas — tidak dibulatkan topeng rupiah", () => {
-    const sheet = buildReportSheet(base);
-    expect(sheet.rows[0][2].value).toBe(1200.5);
-    expect(sheet.rows[0][2].format).toBe("quantity");
-    expect(sheet.rows[0][4].format).toBe("money");
+  it("kuantitas tetap kuantitas — tidak dibulatkan topeng rupiah", () => {
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["closingQty", "closingValue"] });
+    /* [0] Barang (tetap ikut), [1] Kts Akhir, [2] Nilai Akhir. */
+    expect(sheet.rows[0][1].value).toBe(1200.5);
+    expect(sheet.rows[0][1].format).toBe("quantity");
+    expect(sheet.rows[0][2].format).toBe("money");
   });
 
   it("menyebutkan barang bersaldo yang nilainya tidak ikut dijumlahkan", () => {
@@ -633,13 +661,18 @@ describe("nilai persediaan", () => {
   });
 
   it("mengikuti pilihan kolom, nama barang tetap ikut", () => {
-    const sheet = buildReportSheet({ ...base, visibleColumns: ["stockValue"] });
-    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Nilai (IDR)"]);
+    const sheet = buildReportSheet({ ...base, visibleColumns: ["closingValue"] });
+    expect(sheet.columns.map((c) => c.header)).toEqual(["Barang", "Nilai Akhir (IDR)"]);
   });
 
   it("skema ekspor menerimanya dengan nilai null utuh", () => {
     const parsed = statementPayloadSchema.parse(base);
-    if (parsed.kind === "stock-value") expect(parsed.rows[1].stockValue).toBeNull();
+    if (parsed.kind === "stock-value") expect(parsed.rows[1].closingValue).toBeNull();
+  });
+
+  it("selisih penilaian boleh negatif — ia memang sering negatif", () => {
+    const parsed = statementPayloadSchema.parse({ ...base, revaluation: -250_000 });
+    if (parsed.kind === "stock-value") expect(parsed.revaluation).toBe(-250_000);
   });
 });
 

@@ -20,7 +20,7 @@
  * unduh yang menjawab 500.
  */
 import { getBalanceSheet, getCashFlow, getIncomeStatement, getTrialBalance } from "@/lib/reports";
-import { getOpnameHistory, getStockMovementReport, getStockValueReport } from "@/lib/stock-report";
+import { getOpnameHistory, getStockMovementReport, getStockValuePeriodReport } from "@/lib/stock-report";
 import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
 import type { VarianceStatus } from "@/lib/budget";
@@ -401,17 +401,22 @@ export async function buildReportPayload(
     }
 
     case "stock-value": {
-      // Tanpa parameter tanggal: nilai persediaan adalah POSISI SAAT INI —
-      // biaya rata-rata tertimbang dihitung dari seluruh riwayat gerakan, dan
-      // memotongnya di satu tanggal akan menghasilkan biaya yang berbeda dari
-      // yang dipakai HPP. Laporan "per tanggal" yang jujur menuntut mesin
-      // costing bertanggal, bukan sekadar saringan di sini.
-      const r = await getStockValueReport();
+      /*
+       * BERPERIODE sejak #492. Alasan penundaannya dulu — "menuntut mesin
+       * costing bertanggal" — sudah tidak berlaku: mesin itu ada dan sudah
+       * dipakai jalur posting (`averageUnitCostForItem`), dan `stock-value-report`
+       * memakai fungsi yang SAMA alih-alih menulis aturan costing kedua.
+       */
+      const { from, to } = resolvePeriod(params.from, params.to);
+      const r = await getStockValuePeriodReport(from, to);
       return {
         kind: "stock-value",
-        period: `Per ${formatDate(new Date())}`,
+        period: `${formatDate(from)} — ${formatDate(to)}`,
         rows: r.rows,
-        totalValue: r.totalValue,
+        /* Nilai pada AKHIR periode — angka yang dicocokkan ke neraca per
+           tanggal itu, bukan penjumlahan mutasi. */
+        totalValue: r.totalClosingValue,
+        revaluation: r.totalRevaluation,
         uncostedCount: r.uncostedCount,
         visibleColumns: resolveColumns(report, params.cols),
       };

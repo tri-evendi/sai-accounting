@@ -19,6 +19,7 @@ import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { Input, TextInput } from "@/components/ui/input";
+import { SelectField } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,8 @@ const twoColumnGrid = (gap: number): React.CSSProperties => ({
 });
 
 interface ContractItem {
+  /** Barang dari master (#491). `null` pada baris kontrak lama yang tak tertaut. */
+  itemId: number | null;
   itemName: string;
   bags: number;
   kgPerBag: number;
@@ -96,6 +99,11 @@ export function EditContractForm() {
   const [rate, setRate] = useState("");
   // Master consignee link (issue #22); prefilled from the contract, free text kept.
   const [consigneeId, setConsigneeId] = useState<number | null>(null);
+  /* Pilihan barang (#491). Dibaca di sini, bukan diserahkan ke server component:
+     layar ini memang sudah menjemput kontraknya sendiri lewat `apiFetch`. */
+  const [itemOptions, setItemOptions] = useState<
+    { id: number; code: string; name: string; unit: string | null }[]
+  >([]);
 
   useEffect(() => {
     apiFetch(`/api/contracts/${params.id}`)
@@ -110,6 +118,11 @@ export function EditContractForm() {
         setConsigneeId(data.consigneeId ?? null);
         setItems(
           data.items.map((item: ContractItem & { id?: number }) => ({
+            /* Dibawa PULANG apa adanya: menyunting kontrak tidak boleh diam-diam
+               memutus tautan barangnya. Baris lama yang memang belum tertaut
+               tetap `null`, dan perhitungan sisanya jatuh ke pencocokan nama —
+               persis seperti sebelum #491. */
+            itemId: item.itemId ?? null,
             itemName: item.itemName,
             bags: Number(item.bags),
             kgPerBag: Number(item.kgPerBag),
@@ -124,8 +137,19 @@ export function EditContractForm() {
       });
   }, [params.id, t]);
 
+  /* `active=1` — barang nonaktif tidak ditawarkan untuk baris BARU (#104);
+     baris lama yang menyebutnya tetap terbaca lewat `itemName`-nya. */
+  useEffect(() => {
+    apiFetch("/api/inventory?active=1")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { id: number; code: string; name: string; unit: string | null }[]) =>
+        setItemOptions(data.map((i) => ({ id: i.id, code: i.code, name: i.name, unit: i.unit })))
+      )
+      .catch(() => setItemOptions([]));
+  }, []);
+
   function addItem() {
-    setItems([...items, { itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 }]);
+    setItems([...items, { itemId: null, itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 }]);
   }
 
   function removeItem(index: number) {
@@ -324,12 +348,48 @@ export function EditContractForm() {
                   <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
                     <Col xs={24} md={10} style={{ minWidth: 0 }}>
                       {itemLabel(`itemName-${i}`, t("common.itemName"))}
-                      <TextInput
+                      {/* Dipilih dari persediaan (#491) — cerminan layar Buat
+                          Kontrak. Kalau layar ini tetap teks bebas, menyunting
+                          kontrak yang sudah tertaut akan diam-diam memutus
+                          tautannya, dan sisa kontraknya kembali dijodohkan
+                          lewat nama. */}
+                      <SelectField
                         id={`itemName-${i}`}
-                        value={item.itemName}
-                        onChange={(e) => updateItem(i, "itemName", e.target.value)}
-                        required
+                        placeholder={t("inventory.pickItemPlaceholder")}
+                        value={item.itemId == null ? "" : String(item.itemId)}
+                        onChange={(e) => {
+                          const picked = itemOptions.find(
+                            (o) => String(o.id) === e.target.value
+                          );
+                          if (!picked) return;
+                          setItems((prev) =>
+                            prev.map((row, idx) =>
+                              idx === i
+                                ? { ...row, itemId: picked.id, itemName: picked.name }
+                                : row
+                            )
+                          );
+                        }}
+                        options={itemOptions.map((o) => ({
+                          value: String(o.id),
+                          label: `${o.code} — ${o.name}${o.unit ? ` (${o.unit})` : ""}`,
+                        }))}
                       />
+                      {/* Baris LAMA yang belum tertaut: namanya tetap terbaca
+                          meski pemilih di atasnya masih kosong. Menyembunyikannya
+                          akan membuat kontrak lama tampak kehilangan barangnya. */}
+                      {item.itemId == null && item.itemName && (
+                        <p
+                          style={{
+                            margin: 0,
+                            marginTop: token.marginXXS,
+                            fontSize: token.fontSizeSM,
+                            color: token.colorTextSecondary,
+                          }}
+                        >
+                          {t("contracts.unlinkedItemName", { name: item.itemName })}
+                        </p>
+                      )}
                     </Col>
                     <Col flex={`1 1 ${QTY_COL_BASIS}px`}>
                       {itemLabel(`bags-${i}`, t("common.bags"))}

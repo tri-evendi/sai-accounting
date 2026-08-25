@@ -848,7 +848,8 @@
     "loadFailed": "加载合同数据失败",
     "updateFailed": "保存合同更改失败",
     "loadingContract": "正在加载合同数据...",
-    "notFound": "未找到合同"
+    "notFound": "未找到合同",
+    "unlinkedItemName": "记录为「{name}」，尚未关联到货物主档。请选择货物以建立关联。"
   },
   "invoices": {
     "title": "销售发票（{count}）",

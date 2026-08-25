@@ -59,15 +59,33 @@ import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/ui/select";
 
 interface ContractItem {
+  /** Barang dari master (#491). `null` sampai dipilih. */
+  itemId: number | null;
+  /** Nama sebagaimana akan tercetak di kontrak — snapshot dari master. */
   itemName: string;
   bags: number;
   kgPerBag: number;
   pricePerKg: number;
 }
 
-const emptyItem = (): ContractItem => ({ itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 });
+/** Pilihan barang untuk pemilih — dibaca server, tanpa perjalanan tambahan. */
+export interface ContractItemOption {
+  id: number;
+  code: string;
+  name: string;
+  unit: string | null;
+}
+
+const emptyItem = (): ContractItem => ({
+  itemId: null,
+  itemName: "",
+  bags: 0,
+  kgPerBag: 0,
+  pricePerKg: 0,
+});
 
 /** Label status kontrak dalam bahasa tugas — dipakai pilihan & ringkasan lipatan. */
 const statusLabels = (t: TranslateFn): Record<string, string> => ({
@@ -101,7 +119,14 @@ const twoColumnGrid = (gap: number): React.CSSProperties => ({
   gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
 });
 
-export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[] }) {
+export function NewContractForm({
+  closedPeriods,
+  itemOptions,
+}: {
+  closedPeriods: ClosedPeriodRef[];
+  /** Barang aktif dari master (#491) — dibaca server, tanpa perjalanan tambahan. */
+  itemOptions: ContractItemOption[];
+}) {
   const router = useAppRouter();
   const t = useT();
   const { token } = theme.useToken();
@@ -352,11 +377,39 @@ export function NewContractForm({ closedPeriods }: { closedPeriods: ClosedPeriod
                 <Row gutter={[token.marginSM, token.marginSM]} align="bottom">
                   <Col xs={24} md={10} style={{ minWidth: 0 }}>
                     {itemLabel(`itemName-${i}`, t("common.itemName"))}
-                    <TextInput
+                    {/*
+                      Dipilih dari persediaan, tidak lagi diketik (#491).
+                      Bukan sekadar kenyamanan: sejak #493 dua barang boleh
+                      bernama sama persis selama kodenya berbeda, jadi teks
+                      bebas tidak bisa lagi menyatakan barang MANA yang
+                      dimaksud. Label menampilkan `kode — nama` karena itulah
+                      satu-satunya yang membedakan keduanya di mata pengguna.
+
+                      `itemName` ikut disimpan sebagai SNAPSHOT: kontrak yang
+                      sudah ditandatangani tidak boleh berubah bunyinya karena
+                      seseorang mengganti nama barang di master.
+                    */}
+                    <SelectField
                       id={`itemName-${i}`}
-                      value={item.itemName}
-                      onChange={(e) => updateItem(i, "itemName", e.target.value)}
-                      required
+                      placeholder={t("inventory.pickItemPlaceholder")}
+                      value={item.itemId == null ? "" : String(item.itemId)}
+                      /* `SelectField` memulangkan event SINTETIS (agar cocok
+                         dengan react-hook-form), bukan nilai mentah — lihat
+                         `selectChangeEvent` di `components/ui/select.tsx`. */
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const picked = itemOptions.find((o) => String(o.id) === value);
+                        if (!picked) return;
+                        setItems((prev) =>
+                          prev.map((row, idx) =>
+                            idx === i ? { ...row, itemId: picked.id, itemName: picked.name } : row
+                          )
+                        );
+                      }}
+                      options={itemOptions.map((o) => ({
+                        value: String(o.id),
+                        label: `${o.code} — ${o.name}${o.unit ? ` (${o.unit})` : ""}`,
+                      }))}
                     />
                   </Col>
                   <Col flex={`1 1 ${QTY_COL_BASIS}px`}>

@@ -224,8 +224,24 @@ const SRC = join(__dirname, "..", "src");
  * master TANPA memaksa setiap baris menjadi barang persediaan. Pemilih wajib
  * akan lebih murah di hitungan ini dan mematahkan ongkos kirim & selisih
  * timbang — dua baris faktur yang sah dan tidak punya baris di master barang.
+ *
+ * 175 sejak #491 lingkup 2 (2026-08-25, hari yang sama):
+ * `contracts/[id]/deduct-stock-notice.tsx`.
+ *
+ * Client karena ia memikul satu dialog konfirmasi — keadaan buka/tutup dan
+ * sebuah `router.push`. Tidak ada bentuk servernya.
+ *
+ * Yang dibeli dengan satu modul ini: permintaan "kontrak done → potong stok"
+ * dijawab TANPA membuat kontrak ikut memotong stok. Kontrak yang ikut memotong
+ * akan membuat satu pengiriman terpotong dua kali; yang kurang sebenarnya
+ * hanyalah KABAR bahwa stoknya belum berkurang, beserta jalan keluarnya.
+ *
+ * Dua kenaikan di hari yang sama, dan keduanya ditulis: ambang ini hanya
+ * berguna selama setiap angkanya bisa ditelusuri ke satu modul dengan satu
+ * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
+ * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 174;
+const AMBANG_KLIEN = 175;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -276,6 +292,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/budget/targets/sales-target-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/edit/consignee-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/new/consignee-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/deduct-stock-notice.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/edit/contract-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/payment-section.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/pdf-buttons.tsx",

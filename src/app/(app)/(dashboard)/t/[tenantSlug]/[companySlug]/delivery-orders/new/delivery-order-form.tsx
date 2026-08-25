@@ -88,6 +88,13 @@ interface LineState {
 
 interface Props {
   contracts: ContractOption[];
+  /**
+   * Kontrak yang sudah terpilih lewat `?contractId=` (issue #491) — jalan yang
+   * ditempuh tombol "Potong stok sekarang" di halaman kontrak. Formulirnya
+   * tetap formulir biasa: yang diwariskan hanya pilihan awalnya, dan pengguna
+   * tetap memeriksa kuantitas & kendaraan sebelum menyimpan.
+   */
+  initialContractId?: number | null;
   invoices: InvoiceOption[];
   consignees: ConsigneeOption[];
   items: ItemOption[];
@@ -113,6 +120,7 @@ const lineKg = (l: LineState) => (l.bags || 0) * (l.kgPerBag || 0);
 
 export function DeliveryOrderForm({
   contracts,
+  initialContractId = null,
   invoices,
   consignees,
   items,
@@ -125,8 +133,18 @@ export function DeliveryOrderForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [consigneeId, setConsigneeId] = useState<number | null>(null);
-  const [contractId, setContractId] = useState<number | null>(null);
+  /*
+   * Kontrak yang datang dari `?contractId=` mewarisi consignee-nya sama seperti
+   * kalau dipilih tangan (#491). Tanpa ini, dua jalan masuk ke layar yang sama
+   * menghasilkan formulir yang berbeda isinya — dan yang lewat tautan terasa
+   * setengah terisi tanpa sebab yang bisa dilihat pengguna.
+   */
+  const [consigneeId, setConsigneeId] = useState<number | null>(
+    initialContractId == null
+      ? null
+      : (contracts.find((c) => c.id === initialContractId)?.consigneeId ?? null)
+  );
+  const [contractId, setContractId] = useState<number | null>(initialContractId);
   const [invoiceId, setInvoiceId] = useState<number | null>(null);
   const [lines, setLines] = useState<LineState[]>([{ itemId: null, bags: 0, kgPerBag: 0 }]);
   const [date, setDate] = useState("");

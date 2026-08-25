@@ -388,7 +388,80 @@ export interface PurchaseDraft {
      * dari rilis sebelum kolom ini ada tidak membawanya; keduanya berarti null.
      */
     costCenterId?: string;
+    /**
+     * Ongkos sampai gudang (issue #510) — freight/ekspedisi, asuransi,
+     * penanganan — dalam mata uang dokumen, SEBELUM PPN.
+     *
+     * Lingkupnya sengaja sempit: ongkos yang ditagihkan PEMASOK YANG SAMA pada
+     * faktur pembelian ini. Itu yang membuatnya tidak butuh mesin jurnal baru —
+     * ia masuk ke `amount`, dan jurnal pembelian yang sudah ada mendebet
+     * Persediaan sebesar itu (lihat `buildSupplierTransactionEntry`).
+     *
+     * Tagihan ekspedisi yang datang BELAKANGAN dari vendor lain TIDAK ditangani
+     * di sini, dan itu keputusan: menyebarnya ke belakang berarti mengubah
+     * `unit_cost` gerakan yang HPP-nya sudah diposting — yaitu mengubah jurnal
+     * yang sudah terbit.
+     */
+    additionalCost?: number;
+    /**
+     * Dasar penyebaran ongkos itu ke baris barang (issue #510).
+     *
+     * Wajib bisa dipilih, bukan ditetapkan diam-diam: untuk rempah yang harga
+     * per kg-nya berselisih empat kali lipat (`LONG PEPPER` Rp 50.000 vs
+     * Rp 13.500 di data pengguna), "menurut nilai" dan "menurut berat"
+     * memberi harga pokok yang sangat berbeda. Yang dipilih ikut tercatat di
+     * catatan pembelian, supaya angkanya bisa dipertanggungjawabkan.
+     */
+    additionalCostBasis?: AdditionalCostBasis;
   };
+}
+
+/**
+ * Dasar penyebaran ongkos sampai gudang (issue #510).
+ *
+ * `value` — sebanding NILAI baris. Bawaan, dan lazim di ERP.
+ * `weight` — sebanding KUANTITAS yang diterima. Lebih dekat ke sebabnya untuk
+ *            ongkos angkut, yang memang ditentukan berat, bukan harga.
+ */
+export type AdditionalCostBasis = "value" | "weight";
+
+/** Satu baris yang menerima sebaran: nilai dan kuantitasnya. */
+export interface AllocatableLine {
+  /** Nilai baris dalam mata uang dokumen (kuantitas dibeli × harga). */
+  value: number;
+  /** Kuantitas yang MASUK GUDANG — bukan yang dibeli. */
+  quantity: number;
+}
+
+/**
+ * Sebar `total` ke baris-baris, sebanding dasar yang dipilih (issue #510).
+ *
+ * MURNI, dan dua sifatnya yang dijaga tes:
+ *
+ *  • Jumlah hasilnya SAMA PERSIS dengan `total`. Pembagian tiga rupiah ke tiga
+ *    baris tidak boleh melahirkan atau menguapkan satu sen; sisa pembulatan
+ *    ditempelkan ke baris TERAKHIR alih-alih dibiarkan hilang di pembulatan
+ *    masing-masing.
+ *  • Dasar yang jumlahnya nol (semua baris bernilai/berkuantitas nol) tidak
+ *    membagi dengan nol — ia memulangkan nol untuk semua, dan pemanggilnya yang
+ *    memutuskan apakah itu keadaan yang sah.
+ */
+export function allocateAdditionalCost(
+  lines: AllocatableLine[],
+  total: number,
+  basis: AdditionalCostBasis
+): number[] {
+  if (lines.length === 0 || total <= 0) return lines.map(() => 0);
+
+  const weightOf = (l: AllocatableLine) => (basis === "weight" ? l.quantity : l.value);
+  const sum = lines.reduce((s, l) => s + Math.max(0, weightOf(l)), 0);
+  if (sum <= 0) return lines.map(() => 0);
+
+  const shares = lines.map((l) => round2((total * Math.max(0, weightOf(l))) / sum));
+  /* Sisa pembulatan ke baris terakhir — lihat catatan di atas. */
+  const drift = round2(total - shares.reduce((s, v) => s + v, 0));
+  if (drift !== 0) shares[shares.length - 1] = round2(shares[shares.length - 1] + drift);
+  return shares;
 }
 
 export function emptyPurchaseDraft(today: string): PurchaseDraft {
@@ -442,9 +515,27 @@ export function purchaseValue(draft: PurchaseDraft): number {
   return round2(draft.lines.reduce((s, l) => s + l.quantity * l.price, 0));
 }
 
+/** Ongkos sampai gudang pada faktur ini (issue #510), 0 bila tak diisi. */
+export function purchaseAdditionalCost(draft: PurchaseDraft): number {
+  const v = draft.purchase.additionalCost || 0;
+  return v > 0 ? round2(v) : 0;
+}
+
+/**
+ * Nilai yang MASUK BUKU sebagai pembelian — barang + ongkos sampai gudang,
+ * sebelum PPN (issue #510).
+ *
+ * Ongkosnya ikut ke sini dengan sengaja: jurnal pembelian mendebet Persediaan
+ * sebesar `amount`, jadi memasukkannya di sinilah yang membuat ongkos itu
+ * menempel di persediaan alih-alih jatuh ke laba rugi.
+ */
+export function purchaseBookedValue(draft: PurchaseDraft): number {
+  return round2(purchaseValue(draft) + purchaseAdditionalCost(draft));
+}
+
 /** Nilai pembelian termasuk PPN Masukan. */
 export function purchaseTotal(draft: PurchaseDraft): number {
-  return round2(purchaseValue(draft) + (draft.purchase.taxAmount || 0));
+  return round2(purchaseBookedValue(draft) + (draft.purchase.taxAmount || 0));
 }
 
 /**
@@ -947,7 +1038,21 @@ export function purchaseNote(draft: PurchaseDraft): string {
     .map((l) => `${trimmed(l.itemName)} ${l.quantity} ${trimmed(l.unit) || "kg"} × ${l.price}`)
     .join("; ");
   const own = trimmed(draft.purchase.note);
-  return [own, detail].filter(Boolean).join(" — ").slice(0, 500);
+  /*
+   * Ongkos sampai gudang & DASAR penyebarannya ikut tercatat (issue #510).
+   * `supplier_transactions` tidak punya tabel baris, jadi catatan ini adalah
+   * satu-satunya tempat angkanya bertahan — dan tanpa dasar yang tertulis,
+   * harga pokok yang dihasilkan tidak bisa dipertanggungjawabkan belakangan:
+   * "menurut nilai" dan "menurut berat" memberi angka yang sangat berbeda.
+   */
+  const extra = purchaseAdditionalCost(draft);
+  const cost =
+    extra > 0
+      ? `Ongkos sampai gudang ${extra} (dibagi menurut ${
+          (draft.purchase.additionalCostBasis ?? "value") === "weight" ? "berat" : "nilai"
+        })`
+      : "";
+  return [own, detail, cost].filter(Boolean).join(" — ").slice(0, 500);
 }
 
 export function buildPurchasePayload(draft: PurchaseDraft): PurchaseWizardPayload {
@@ -958,13 +1063,29 @@ export function buildPurchasePayload(draft: PurchaseDraft): PurchaseWizardPayloa
   // rata-rata), jadi harga beli valas dikalikan kursnya lebih dulu.
   const toIdr = draft.purchase.currency === "IDR" ? 1 : draft.purchase.rate || 0;
 
+  /*
+   * Ongkos sampai gudang disebar ke baris yang BENAR-BENAR masuk gudang
+   * (issue #510). Baris yang tidak diterima tidak menerima sebaran: ia tidak
+   * punya `unit_cost` untuk ditempeli, dan menempelkannya ke baris lain akan
+   * membuat harga pokok barang yang diterima menanggung ongkos barang yang
+   * tidak pernah datang.
+   */
+  const basis: AdditionalCostBasis = draft.purchase.additionalCostBasis ?? "value";
+  const shares = allocateAdditionalCost(
+    received.map((l) => ({ value: l.quantity * l.price, quantity: l.receiveQuantity })),
+    purchaseAdditionalCost(draft),
+    basis
+  );
+
   return {
     supplier: partnerPayload(draft.supplier, false),
     purchase: {
       date: draft.purchase.date,
       dueDate: draft.purchase.dueDate,
       type: "purchase",
-      amount: purchaseValue(draft),
+      /* Barang + ongkos sampai gudang: jurnalnya mendebet Persediaan sebesar
+         ini, dan itulah yang membuat ongkosnya menempel (issue #510). */
+      amount: purchaseBookedValue(draft),
       currency: draft.purchase.currency,
       rate: draft.purchase.rate > 0 ? draft.purchase.rate : undefined,
       taxAmount: draft.purchase.taxAmount || 0,
@@ -977,11 +1098,19 @@ export function buildPurchasePayload(draft: PurchaseDraft): PurchaseWizardPayloa
       draft.receipt.include && received.length > 0
         ? {
             date: draft.receipt.date,
-            items: received.map((l) => ({
+            items: received.map((l, i) => ({
               itemId: l.itemId as number,
               itemName: trimmed(l.itemName),
               quantity: l.receiveQuantity,
-              unitCost: round2(l.price * toIdr),
+              /*
+               * Harga beli + bagian ongkosnya, per unit YANG DITERIMA — lalu
+               * baru dikalikan kurs. Dibagi `receiveQuantity` (bukan
+               * `quantity`) sebab yang dinilai adalah barang yang masuk
+               * gudang; sisa yang belum datang tidak menanggung apa pun.
+               */
+              unitCost: round2(
+                (l.price + (l.receiveQuantity > 0 ? shares[i] / l.receiveQuantity : 0)) * toIdr
+              ),
             })),
           }
         : null,

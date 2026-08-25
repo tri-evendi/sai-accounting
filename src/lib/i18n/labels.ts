@@ -169,11 +169,13 @@ export function documentTypeLabels(
 ): Record<DocumentType, string> {
   if (!dictionary) return DOCUMENT_TYPE_LABELS;
   return {
+    contract: dictionary.documentType.contract,
+    packing_list: dictionary.documentType.packing_list,
+    peb: dictionary.documentType.peb,
     bl: dictionary.documentType.bl,
-    invoice: dictionary.documentType.invoice,
     coo: dictionary.documentType.coo,
     fumigation: dictionary.documentType.fumigation,
-    contract: dictionary.documentType.contract,
+    invoice: dictionary.documentType.invoice,
     other: dictionary.documentType.other,
   };
 }

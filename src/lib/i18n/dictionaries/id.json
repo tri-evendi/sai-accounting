@@ -541,6 +541,8 @@
     }
   },
   "documentType": {
+    "packing_list": "Packing List",
+    "peb": "Pemberitahuan Ekspor Barang (PEB)",
     "bl": "Bill of Lading (B/L)",
     "invoice": "Tagihan (Invoice)",
     "coo": "Surat Keterangan Asal (COO)",
@@ -1245,7 +1247,13 @@
     "summaryNew": "{name} (baru)",
     "summaryGoods": "Barang",
     "receiptSummaryHint": "Tanggal {date} — stok bertambah, tanpa jurnal tambahan.",
-    "purchaseDateHint": "Tanggal {date}"
+    "purchaseDateHint": "Tanggal {date}",
+    "additionalCostLabel": "Ongkos sampai gudang ({currency})",
+    "additionalCostHint": "Freight/ekspedisi, asuransi, penanganan yang ditagihkan pemasok ini pada faktur yang sama. Ongkos ini menempel di harga pokok barang, bukan jadi beban langsung — jadi ia keluar sebagai HPP saat barangnya terjual.",
+    "additionalCostBasisLabel": "Dibagi ke barang menurut",
+    "additionalCostBasisHint": "Pilihan ini ikut tercatat di catatan pembelian. Untuk ongkos angkut, \"berat\" biasanya lebih mendekati sebabnya; \"nilai\" adalah kelaziman.",
+    "basisValue": "Nilai barang",
+    "basisWeight": "Berat (kuantitas)"
   },
   "deliveryOrders": {
     "title": "Surat Jalan",

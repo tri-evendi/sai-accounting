@@ -2657,7 +2657,17 @@
     "duplicateNameActive": "两者的库存历史与结余不会合并。如果指的是同一货物，请取消并为其增加库存。",
     "duplicateNameInactive": "该同名货物处于「停用」状态，不会出现在任何列表中。如果指的是同一货物，请取消并重新启用它。",
     "duplicateNameTitle": "货物名称已被使用",
-    "duplicateNameConfirm": "是，单独的货物"
+    "duplicateNameConfirm": "是，单独的货物",
+    "colOpeningQty": "期初数量",
+    "colOpeningValue": "期初金额",
+    "colInQty": "入库数量",
+    "colInValue": "入库金额",
+    "colOutQty": "出库数量",
+    "colOutValue": "出库金额",
+    "colClosingQty": "期末数量",
+    "colClosingValue": "期末金额",
+    "revaluationNote": "估值差异 {amount}：本期平均成本发生变动，因此期末金额与「期初＋入库−出库」不完全相等。资产负债表采用的是期末金额。",
+    "periodValueTitle": "本期存货金额及其进出明细"
   },
   "setup": {
     "shellSubtitle": "公司首次设置",

@@ -26,6 +26,10 @@ import {
 } from "@/lib/stock-movement";
 import { buildOpnameHistory, type OpnameHistory } from "@/lib/opname-history";
 import { summarizeInventory } from "@/lib/inventory";
+import {
+  buildStockValuePeriodReport,
+  type StockValuePeriodReport,
+} from "@/lib/stock-value-report";
 import { round2 } from "@/lib/reconciliation";
 
 type Client = typeof prisma;
@@ -125,6 +129,59 @@ export async function getOpnameHistory(
  * terpisah lewat `uncostedCount`, supaya totalnya tidak diam-diam menganggap
  * barang yang ada wujudnya bernilai nol.
  */
+/**
+ * Nilai Persediaan PER PERIODE (issue #492) — pembacanya.
+ *
+ * Tipis dengan sengaja, pola yang sama dengan `getStockMovementReport`: satu
+ * kueri, lalu seluruh aritmetikanya diserahkan ke `buildStockValuePeriodReport`
+ * yang murni dan teruji tanpa basis data.
+ *
+ * Memuat SETIAP gerakan beserta biaya & tanggalnya, dan itu bukan kelalaian —
+ * alasannya sama persis dengan `getStockValueReport` di bawah: rata-rata
+ * tertimbang hanya bisa dihitung dari gerakan `in` satu per satu. Menuliskannya
+ * ulang sebagai agregat SQL berarti punya DUA implementasi aturan costing, dan
+ * saat keduanya berselisih neraca dan HPP menyebut angka berbeda untuk barang
+ * yang sama.
+ *
+ * `from` & `to` dipakai APA ADANYA; pemanggil yang mengambilnya dari URL wajib
+ * menormalkan jamnya lebih dulu (`periodBounds`), sebab jendela yang berhenti
+ * di tengah hari memotong gerakan yang tercatat sore itu.
+ */
+export async function getStockValuePeriodReport(
+  from: Date,
+  to: Date,
+  client: Client = prisma
+): Promise<StockValuePeriodReport> {
+  const items = await client.item.findMany({
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      unit: true,
+      /* Hanya gerakan sampai UJUNG periode: apa yang terjadi sesudahnya tidak
+         boleh ikut menggeser rata-rata pada laporan bertanggal — itu justru
+         yang membuat laporan "per 31 Des" berubah angkanya bulan depan. */
+      stockMovements: {
+        where: { date: { lte: to } },
+        select: { quantity: true, type: true, date: true, unitCost: true },
+      },
+    },
+    orderBy: [{ name: "asc" }, { code: "asc" }],
+  });
+
+  return buildStockValuePeriodReport(
+    items.map((i) => ({
+      id: i.id,
+      code: i.code,
+      name: i.name,
+      unit: i.unit,
+      movements: i.stockMovements,
+    })),
+    from,
+    to
+  );
+}
+
 export async function getStockValueReport(client = prisma) {
   const items = await client.item.findMany({
     include: { stockMovements: { select: { quantity: true, type: true, date: true, unitCost: true } } },
@@ -132,7 +189,10 @@ export async function getStockValueReport(client = prisma) {
   });
 
   const summary = summarizeInventory(items);
-  const rows = summary.map(({ name, unit, currentStock, unitCost, stockValue }) => ({
+  const rows = summary.map(({ code, name, unit, currentStock, unitCost, stockValue }) => ({
+    /* Ikut sejak #493: nama sudah boleh kembar, jadi ia tak bisa lagi menjadi
+       kunci baris maupun pembeda di mata pembaca laporan. */
+    code,
     name,
     unit,
     currentStock,

@@ -1322,23 +1322,42 @@ export function partyRecapColumns(report: { visibleColumns?: string[] }): PartyR
 
 // ─── Kolom Nilai Persediaan ──────────────────────────────────────────────────
 
+/*
+ * Urutannya MENGIKUTI cara membacanya, bukan abjad (#492): kode & nama, lalu
+ * saldo awal → masuk → keluar → akhir, tiap pasangan kuantitas berdampingan
+ * dengan nilainya. Bentuk ini disalin dari laporan "Rincian Nilai Persediaan"
+ * Accurate yang dikirim pengguna, supaya orang yang selama ini membaca laporan
+ * itu tidak perlu belajar membaca laporan baru.
+ */
 export const STOCK_VALUE_COLUMNS = [
+  "code",
   "name",
   "unit",
-  "currentStock",
-  "unitCost",
-  "stockValue",
+  "openingQty",
+  "openingValue",
+  "inQty",
+  "inValue",
+  "outQty",
+  "outValue",
+  "closingQty",
+  "closingValue",
 ] as const;
 
 export type StockValueColumnId = (typeof STOCK_VALUE_COLUMNS)[number];
 
 /** Judul kolom untuk DOKUMEN CETAK — bahasa Indonesia; layar memakai kamus. */
 export const STOCK_VALUE_HEADERS: Record<StockValueColumnId, string> = {
+  code: "Kode Barang",
   name: "Barang",
   unit: "Satuan",
-  currentStock: "Saldo",
-  unitCost: "Biaya/Unit (IDR)",
-  stockValue: "Nilai (IDR)",
+  openingQty: "Kts Awal",
+  openingValue: "Nilai Awal (IDR)",
+  inQty: "Kts Masuk",
+  inValue: "Nilai Masuk (IDR)",
+  outQty: "Kts Keluar",
+  outValue: "Nilai Keluar (IDR)",
+  closingQty: "Kts Akhir",
+  closingValue: "Nilai Akhir (IDR)",
 };
 
 export function stockValueColumns(report: { visibleColumns?: string[] }): StockValueColumnId[] {

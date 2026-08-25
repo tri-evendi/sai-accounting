@@ -217,23 +217,36 @@ const aging = z.object({
 });
 
 /**
- * Nilai Persediaan. `unitCost`/`stockValue` boleh null — barang tanpa dasar
- * biaya tidak punya nilai yang jujur, dan Rp 0 menyatakan bahwa barang yang ada
- * wujudnya tidak bernilai apa-apa. Saldo adalah KUANTITAS, bukan uang.
+ * Nilai Persediaan PER PERIODE (#492). Setiap nilai boleh null — barang tanpa
+ * dasar biaya tidak punya nilai yang jujur, dan Rp 0 menyatakan bahwa barang
+ * yang ada wujudnya tidak bernilai apa-apa. Kuantitas adalah KUANTITAS, bukan
+ * uang, jadi ia memakai `quantity` (3 desimal), bukan `money`.
+ *
+ * `revaluation` boleh negatif dan memang sering negatif: ia selisih penilaian
+ * akibat rata-rata tertimbang yang bergeser selama periode. Dicetak apa adanya,
+ * sebab selisih yang disembunyikan akan ditemukan berbulan-bulan kemudian oleh
+ * orang yang mencocokkan laporan ini dengan neraca.
  */
 const stockValue = z.object({
   kind: z.literal("stock-value"),
   period: z.string(),
   rows: z.array(
     z.object({
+      code: z.string(),
       name: z.string(),
       unit: z.string().nullable(),
-      currentStock: quantity,
-      unitCost: money.nullable(),
-      stockValue: money.nullable(),
+      openingQty: quantity,
+      openingValue: money.nullable(),
+      inQty: quantity,
+      inValue: money.nullable(),
+      outQty: quantity,
+      outValue: money.nullable(),
+      closingQty: quantity,
+      closingValue: money.nullable(),
     })
   ),
   totalValue: money,
+  revaluation: money,
   uncostedCount: z.number().int().nonnegative(),
   visibleColumns: columnSelection,
 });

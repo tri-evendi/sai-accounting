@@ -13,6 +13,18 @@
  * dengan mesin HPP (`weightedAverageUnitCost`), jadi neraca dan laporan ini
  * tidak bisa memakai biaya berbeda untuk barang yang sama.
  *
+ * ── BERPERIODE sejak issue #492 ─────────────────────────────────────────────
+ * Halaman ini dulu hanya bisa menjawab "per hari ini": periodenya ditulis mati
+ * sebagai `new Date()`. Maka pertanyaan yang paling sering ditanyakan akuntan
+ * pada akhir tahun — "berapa nilai persediaan saya per 31 Desember?" — tidak
+ * punya jawaban, dan angkanya berubah setiap kali tanggal berganti sehingga tak
+ * ada yang bisa dilampirkan ke SPT.
+ *
+ * Alasan penundaannya dulu ("'per tanggal' yang jujur menuntut mesin costing
+ * bertanggal") sudah tidak berlaku: mesin itu ADA dan sudah dipakai jalur
+ * posting — `averageUnitCostForItem(itemId, asOf)`. Modul `stock-value-report`
+ * memakai fungsi yang sama, bukan menulis aturan costing kedua.
+ *
  * ── Konversi ke `StaticTable` + token AntD (issue #198) ────────────────────
  * **Tetap server component.** Kolomnya disusun dari daftar id `stockValueColumns()`
  * (penentu yang sama dengan PDF & lembar sebarnya), satu id → satu kolom lewat
@@ -27,7 +39,9 @@
  */
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { getStockValueReport } from "@/lib/stock-report";
+import { getStockValuePeriodReport } from "@/lib/stock-report";
+import { PeriodFilter } from "../report-filters";
+import { resolvePeriod } from "@/lib/report-catalog";
 import { Card } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
@@ -40,7 +54,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layout";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
@@ -50,14 +64,14 @@ const EMPTY_ICON_SIZE = 48;
 const ICON_SIZE = 16;
 
 /** Satu baris laporan — bentuk yang dibaca kolom di bawah. */
-type StockValueRow = Awaited<ReturnType<typeof getStockValueReport>>["rows"][number];
+type StockValueRow = Awaited<ReturnType<typeof getStockValuePeriodReport>>["rows"][number];
 
 export default async function StockValueReportPage({
   params,
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ cols?: string }>;
+  searchParams: Promise<{ cols?: string; from?: string; to?: string }>;
 }) {
   // Izin PERSEDIAAN, bukan `report.read`: isinya data stok, dan sebuah laporan
   // tidak melonggarkan siapa yang boleh melihat datanya.
@@ -65,34 +79,50 @@ export default async function StockValueReportPage({
   const t = await getT();
   const sp = await searchParams;
 
-  const report = await getStockValueReport();
+  const { from, to, fromISO, toISO } = resolvePeriod(sp.from, sp.to);
+  const report = await getStockValuePeriodReport(from, to);
   const definition = reportById("stock-value");
   const visibleColumns = definition ? resolveColumns(definition, sp.cols) : [];
 
   const payload: StatementPayload = {
     kind: "stock-value",
-    // Tanpa parameter tanggal: ini POSISI SAAT INI. Biaya rata-rata tertimbang
-    // dihitung dari seluruh riwayat gerakan, jadi "per tanggal" yang jujur
-    // menuntut mesin costing bertanggal — bukan sekadar saringan di layar ini.
-    period: `Per ${formatDate(new Date())}`,
+    period: `${formatDate(from)} — ${formatDate(to)}`,
     rows: report.rows,
-    totalValue: report.totalValue,
+    /* Nilai pada AKHIR periode: angka yang dicocokkan ke neraca per tanggal itu,
+       bukan penjumlahan mutasi. */
+    totalValue: report.totalClosingValue,
+    revaluation: report.totalRevaluation,
     uncostedCount: report.uncostedCount,
     visibleColumns,
   };
 
   const cols = stockValueColumns(payload);
   const HEADERS: Record<StockValueColumnId, string> = {
+    code: t("common.itemCode"),
     name: t("common.item"),
     unit: t("common.unit"),
-    currentStock: t("inventory.colCurrentStock"),
-    unitCost: t("inventory.colUnitCost"),
-    stockValue: t("inventory.colValue"),
+    openingQty: t("inventory.colOpeningQty"),
+    openingValue: t("inventory.colOpeningValue"),
+    inQty: t("inventory.colInQty"),
+    inValue: t("inventory.colInValue"),
+    outQty: t("inventory.colOutQty"),
+    outValue: t("inventory.colOutValue"),
+    closingQty: t("inventory.colClosingQty"),
+    closingValue: t("inventory.colClosingValue"),
   };
 
   /** Satu id kolom -> satu kolom tabel. Tidak ada id yang tak punya bentuk. */
   function columnFor(id: StockValueColumnId): SaiColumns<StockValueRow>[number] {
     switch (id) {
+      case "code":
+        /* Kode di kolomnya sendiri (#493): dua barang boleh bernama sama, dan
+           tanpa kode dua barisnya tampak identik bagi pembaca laporan. */
+        return {
+          ...textColumn<StockValueRow>({ dataIndex: "code", title: HEADERS.code }),
+          render: (raw) => (
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{String(raw)}</span>
+          ),
+        };
       case "unit":
         return {
           ...textColumn<StockValueRow>({ dataIndex: "unit", title: HEADERS.unit }),
@@ -104,19 +134,34 @@ export default async function StockValueReportPage({
             </span>
           ),
         };
-      case "currentStock":
-        return qtyColumn<StockValueRow>({
-          dataIndex: "currentStock",
-          title: HEADERS.currentStock,
+      case "openingQty":
+        return qtyColumn<StockValueRow>({ dataIndex: "openingQty", title: HEADERS.openingQty });
+      case "inQty":
+        return qtyColumn<StockValueRow>({ dataIndex: "inQty", title: HEADERS.inQty });
+      case "outQty":
+        return qtyColumn<StockValueRow>({ dataIndex: "outQty", title: HEADERS.outQty });
+      case "closingQty":
+        return qtyColumn<StockValueRow>({ dataIndex: "closingQty", title: HEADERS.closingQty });
+      case "openingValue":
+        return moneyColumn<StockValueRow>({
+          dataIndex: "openingValue",
+          title: HEADERS.openingValue,
         });
-      case "unitCost":
-        return moneyColumn<StockValueRow>({ dataIndex: "unitCost", title: HEADERS.unitCost });
-      case "stockValue":
+      case "inValue":
+        return moneyColumn<StockValueRow>({ dataIndex: "inValue", title: HEADERS.inValue });
+      case "outValue":
+        return moneyColumn<StockValueRow>({ dataIndex: "outValue", title: HEADERS.outValue });
+      case "closingValue":
+        /* Ditebalkan: dari sebelas kolom, INI angka yang dicari orang, dan ini
+           pula yang harus sama dengan persediaan di neraca per tanggal itu. */
         return {
-          ...moneyColumn<StockValueRow>({ dataIndex: "stockValue", title: HEADERS.stockValue }),
+          ...moneyColumn<StockValueRow>({
+            dataIndex: "closingValue",
+            title: HEADERS.closingValue,
+          }),
           render: (_v, r) => (
             <Money
-              value={r.stockValue}
+              value={r.closingValue}
               currency="IDR"
               style={{ fontWeight: "var(--ant-font-weight-strong)" }}
             />
@@ -139,7 +184,7 @@ export default async function StockValueReportPage({
   // pilihan kolom pengguna dan tak bisa meleset satu kolom.
   const summary: Record<string, React.ReactNode> = {
     name: t("common.total"),
-    stockValue: <Money value={report.totalValue} currency="IDR" />,
+    closingValue: <Money value={report.totalClosingValue} currency="IDR" />,
   };
 
   return (
@@ -152,7 +197,9 @@ export default async function StockValueReportPage({
         title={
           <TermTooltip term="persediaan">{t("reports.catalogReport.stock_value.title")}</TermTooltip>
         }
-        description={t("inventory.stockValueTitle")}
+        /* Deskripsinya ikut berubah bersama isinya (#492): laporan ini bukan
+           lagi potret "saat ini" melainkan sepanjang periode, beserta mutasinya. */
+        description={t("inventory.periodValueTitle")}
         actions={
           <>
             <StatementPDFButton payload={payload} />
@@ -161,6 +208,8 @@ export default async function StockValueReportPage({
         }
       />
 
+      <PeriodFilter basePath="/reports/stock-value" from={fromISO} to={toISO} />
+
       <Card>
         {/* `StaticTable`: laporan ini hanya MENAMPILKAN — tak ada satu pun
             kendali di dalam tabelnya, jadi tidak ada yang dibeli dengan
@@ -168,7 +217,9 @@ export default async function StockValueReportPage({
         <StaticTable<StockValueRow>
           columns={columns}
           rows={report.rows}
-          rowKey={(r) => r.name}
+            /* KODE, bukan nama (#493): nama sudah boleh kembar, dan dua baris
+             berkunci sama membuat React salah memasangkan barisnya. */
+          rowKey={(r) => r.code}
           summary={summary}
           empty={
             <EmptyState
@@ -182,6 +233,30 @@ export default async function StockValueReportPage({
 
       {/* Barang bersaldo tanpa dasar biaya tidak ikut dijumlahkan; mengatakannya
           adalah yang menjaga total ini jujur, bukan membuatnya tampak lengkap. */}
+      {/* Selisih penilaian (#492): ditampakkan, bukan diratakan. Nilai akhir
+          sengaja dihitung dari saldo × rata-rata supaya SAMA dengan neraca —
+          konsekuensinya `awal + masuk − keluar` tidak selalu menutup, dan
+          selisih itulah yang dijelaskan di sini alih-alih disembunyikan. */}
+      {report.totalRevaluation !== 0 && (
+        <p
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 6,
+            marginTop: 12,
+            marginBottom: 0,
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          <InfoCircleOutlined aria-hidden="true" style={{ fontSize: ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
+          <span>
+            {t("inventory.revaluationNote", {
+              amount: formatCurrency(report.totalRevaluation, "IDR"),
+            })}
+          </span>
+        </p>
+      )}
+
       {report.uncostedCount > 0 && (
         <p
           style={{

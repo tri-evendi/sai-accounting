@@ -848,7 +848,8 @@
     "loadFailed": "Gagal memuat data kontrak",
     "updateFailed": "Gagal menyimpan perubahan kontrak",
     "loadingContract": "Memuat data kontrak...",
-    "notFound": "Kontrak tidak ditemukan"
+    "notFound": "Kontrak tidak ditemukan",
+    "unlinkedItemName": "Tercatat sebagai “{name}” dan belum tertaut ke master barang. Pilih barangnya untuk menautkan."
   },
   "invoices": {
     "title": "Tagihan Penjualan ({count})",

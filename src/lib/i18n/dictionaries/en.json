@@ -848,7 +848,8 @@
     "loadFailed": "Failed to load the contract",
     "updateFailed": "Failed to save the contract changes",
     "loadingContract": "Loading the contract...",
-    "notFound": "Contract not found"
+    "notFound": "Contract not found",
+    "unlinkedItemName": "Recorded as “{name}” and not linked to an item yet. Pick the item to link it."
   },
   "invoices": {
     "title": "Sales Invoices ({count})",

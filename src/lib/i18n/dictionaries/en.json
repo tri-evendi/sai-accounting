@@ -319,7 +319,8 @@
       "settings": "Settings",
       "selectCompany": "Switch Company",
       "masterImport": "Import Starting Data",
-      "apiTokens": "API Tokens"
+      "apiTokens": "API Tokens",
+      "recurring": "Recurring"
     }
   },
   "quickActions": {
@@ -1007,6 +1008,50 @@
       "after_1": "D+1",
       "after_7": "D+7"
     }
+  },
+  "recurring": {
+    "title": "Recurring transactions",
+    "description": "Documents that issue themselves on a schedule — rent, subscriptions, routine expenses. What is created awaits approval; it does not reach the ledger straight away.",
+    "addNew": "+ New template",
+    "newTitle": "New recurring template",
+    "editTitle": "Edit recurring template",
+    "notFound": "Recurring template not found.",
+    "colName": "Name",
+    "colKind": "Kind",
+    "colFrequency": "Repeats",
+    "colSource": "Source document",
+    "colNext": "Next issue",
+    "colStatus": "Status",
+    "kindInvoice": "Invoice",
+    "kindJournal": "Journal",
+    "freqWeekly": "Weekly",
+    "freqMonthly": "Monthly",
+    "freqYearly": "Yearly",
+    "fieldName": "Template name",
+    "fieldFrequency": "Repeats",
+    "fieldStart": "Starts",
+    "fieldEnd": "Ends (optional)",
+    "fieldMax": "Stop after this many occurrences (optional)",
+    "fieldActive": "Active",
+    "startHint": "This date is also the anchor. A monthly template starting on the 31st still fires 31 Jan, 28 Feb, 31 Mar — it does not drift down to the 28th.",
+    "endHint": "Leave empty for no end date.",
+    "maxHint": "Leave empty for no limit.",
+    "sourceHint": "Every occurrence copies this document as it stands. Editing it edits this template — that is the way to do it.",
+    "activeHint": "A deactivated template issues nothing further. Documents already created are untouched.",
+    "save": "Save",
+    "saved": "Recurring template saved.",
+    "errSave": "The recurring template could not be saved.",
+    "emptyTitle": "No recurring templates yet",
+    "emptyDescription": "Open an invoice that repeats every month, then press \"Repeat this invoice\".",
+    "nextNone": "Finished",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "historyTitle": "Occurrence history",
+    "statusCreated": "Issued",
+    "statusHeldPeriod": "Held — period closed",
+    "statusHeldSource": "Held — source problem",
+    "repeatInvoice": "Repeat this invoice",
+    "approvalNote": "Documents issued from a template ALWAYS wait for approval on the Approvals page, whatever their value — because no human saw them as they were created."
   },
   "statementImport": {
     "issue": {
@@ -2604,7 +2649,9 @@
     "opnameConfirmLabel": "Yes, save the adjustment",
     "opnameSubmit": "Save Adjustment",
     "opnameFailed": "The stock count could not be saved. Please try again.",
-    "opnameSaved": "Stock count saved — {count} items adjusted."
+    "opnameSaved": "Stock count saved — {count} items adjusted.",
+    "itemNameTaken": "That item name is already taken. Use another name, or add stock to the existing item.",
+    "itemNameTakenInactive": "An item with that name exists but is INACTIVE, so it does not appear in any list. Reactivate it rather than creating a second one — its stock history would be split in two."
   },
   "setup": {
     "shellSubtitle": "First-time company setup",
@@ -3534,6 +3581,10 @@
   },
   "validation": {
     "dateRequired": "Date is required",
+    "dateInvalid": "The date is not valid (use year-month-day).",
+    "sourceRequired": "A source document must be chosen.",
+    "maxOccurrencesPositive": "The number of occurrences must be greater than zero.",
+    "endBeforeStart": "The end date cannot precede the start date.",
     "amountPositive": "Amount must be greater than 0",
     "quantityPositive": "Quantity must be greater than 0",
     "emailInvalid": "That email address does not look right",

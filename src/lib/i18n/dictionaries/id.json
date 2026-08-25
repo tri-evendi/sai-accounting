@@ -319,7 +319,8 @@
       "settings": "Pengaturan",
       "selectCompany": "Pilih Perusahaan",
       "masterImport": "Impor Data Awal",
-      "apiTokens": "Token API"
+      "apiTokens": "Token API",
+      "recurring": "Transaksi Berulang"
     }
   },
   "quickActions": {
@@ -1007,6 +1008,50 @@
       "after_1": "H+1",
       "after_7": "H+7"
     }
+  },
+  "recurring": {
+    "title": "Transaksi Berulang",
+    "description": "Dokumen yang terbit sendiri menurut jadwal — sewa, langganan, beban rutin. Yang lahir menunggu persetujuan, tidak langsung masuk buku besar.",
+    "addNew": "+ Buat Templat",
+    "newTitle": "Templat Berulang Baru",
+    "editTitle": "Ubah Templat Berulang",
+    "notFound": "Templat berulang tidak ditemukan.",
+    "colName": "Nama",
+    "colKind": "Jenis",
+    "colFrequency": "Pengulangan",
+    "colSource": "Dokumen sumber",
+    "colNext": "Terbit berikutnya",
+    "colStatus": "Status",
+    "kindInvoice": "Faktur",
+    "kindJournal": "Jurnal",
+    "freqWeekly": "Mingguan",
+    "freqMonthly": "Bulanan",
+    "freqYearly": "Tahunan",
+    "fieldName": "Nama templat",
+    "fieldFrequency": "Pengulangan",
+    "fieldStart": "Mulai",
+    "fieldEnd": "Berakhir (opsional)",
+    "fieldMax": "Berhenti setelah sekian kejadian (opsional)",
+    "fieldActive": "Aktif",
+    "startHint": "Tanggal ini juga jangkarnya. Templat bulanan yang mulai tanggal 31 tetap berbunyi 31 Jan, 28 Feb, 31 Mar — tidak merosot jadi 28.",
+    "endHint": "Kosongkan bila tidak ada batas tanggal.",
+    "maxHint": "Kosongkan bila tidak ada batas jumlah.",
+    "sourceHint": "Setiap kejadian menyalin dokumen ini apa adanya. Menyuntingnya berarti menyunting templat ini — itu memang caranya.",
+    "activeHint": "Templat yang dinonaktifkan berhenti menerbitkan apa pun. Dokumen yang terlanjur lahir tidak tersentuh.",
+    "save": "Simpan",
+    "saved": "Templat berulang disimpan.",
+    "errSave": "Templat berulang gagal disimpan.",
+    "emptyTitle": "Belum ada templat berulang",
+    "emptyDescription": "Buka sebuah faktur yang berulang setiap bulan, lalu tekan \"Ulangi faktur ini\".",
+    "nextNone": "Sudah habis",
+    "statusActive": "Aktif",
+    "statusInactive": "Nonaktif",
+    "historyTitle": "Riwayat kejadian",
+    "statusCreated": "Terbit",
+    "statusHeldPeriod": "Ditahan — periode tertutup",
+    "statusHeldSource": "Ditahan — sumber bermasalah",
+    "repeatInvoice": "Ulangi faktur ini",
+    "approvalNote": "Dokumen yang terbit dari templat SELALU menunggu persetujuan di halaman Persetujuan, apa pun nilainya — sebab tidak ada manusia yang melihatnya saat ia lahir."
   },
   "statementImport": {
     "issue": {
@@ -2604,7 +2649,9 @@
     "opnameConfirmLabel": "Ya, simpan penyesuaian",
     "opnameSubmit": "Simpan Penyesuaian",
     "opnameFailed": "Gagal menyimpan opname. Coba lagi.",
-    "opnameSaved": "Opname tersimpan — {count} barang disesuaikan."
+    "opnameSaved": "Opname tersimpan — {count} barang disesuaikan.",
+    "itemNameTaken": "Nama barang itu sudah dipakai. Pakai nama lain, atau tambahkan stok ke barang yang sudah ada.",
+    "itemNameTakenInactive": "Barang dengan nama itu sudah ada tetapi sedang NONAKTIF, jadi ia tidak muncul di daftar. Aktifkan kembali barang itu daripada membuat yang kedua — riwayat stoknya akan terbelah dua."
   },
   "setup": {
     "shellSubtitle": "Penyiapan awal perusahaan",
@@ -3534,6 +3581,10 @@
   },
   "validation": {
     "dateRequired": "Tanggal wajib diisi",
+    "dateInvalid": "Tanggal belum benar (gunakan format tahun-bulan-hari).",
+    "sourceRequired": "Dokumen sumber wajib dipilih.",
+    "maxOccurrencesPositive": "Jumlah kejadian harus lebih dari nol.",
+    "endBeforeStart": "Tanggal berakhir tidak boleh mendahului tanggal mulai.",
     "amountPositive": "Jumlah harus lebih besar dari 0",
     "quantityPositive": "Jumlah harus lebih besar dari 0",
     "emailInvalid": "Format email tidak valid",

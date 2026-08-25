@@ -194,6 +194,9 @@ const PENJUALAN = {
   navHrefs: [
     "/sales/new",
     "/contracts",
+    // issue #469 — templat berulang menerbitkan FAKTUR, jadi ia bagian dari
+    // alur ini, bukan modul yang berdiri sendiri.
+    "/recurring",
     "/invoices",
     "/delivery-orders",
     "/receivables",

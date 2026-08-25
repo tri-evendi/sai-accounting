@@ -335,6 +335,14 @@ export default async function InvoiceDetailPage({
           <ButtonLink href={`/invoices/${id}/edit`} variant="secondary">
             {t("common.edit")}
           </ButtonLink>
+          {/* Pintu masuk satu-satunya ke templat berulang (#469): sebuah templat
+              selalu lahir DARI faktur yang sudah ada, jadi tombolnya berada di
+              faktur itu — bukan di form kosong yang tak punya isi untuk disalin. */}
+          {canSend && (
+            <ButtonLink href={`/recurring/new?invoiceId=${invoice.id}`} variant="secondary">
+              {t("recurring.repeatInvoice")}
+            </ButtonLink>
+          )}
           {/* Cermin izin `invoice.delete` yang dicek route DELETE-nya (issue #6). */}
           {(await canEffective(session.user, "invoice.delete")) && (
             <DeleteDocumentButton

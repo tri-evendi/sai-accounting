@@ -319,7 +319,8 @@
       "settings": "设置",
       "selectCompany": "切换公司",
       "masterImport": "导入初始数据",
-      "apiTokens": "API 令牌"
+      "apiTokens": "API 令牌",
+      "recurring": "周期性交易"
     }
   },
   "quickActions": {
@@ -1007,6 +1008,50 @@
       "after_1": "到期后1天",
       "after_7": "到期后7天"
     }
+  },
+  "recurring": {
+    "title": "周期性交易",
+    "description": "按计划自动生成的单据——租金、订阅、日常费用。生成的单据需等待审批，不会直接进入总账。",
+    "addNew": "+ 新建模板",
+    "newTitle": "新建周期性模板",
+    "editTitle": "编辑周期性模板",
+    "notFound": "未找到该周期性模板。",
+    "colName": "名称",
+    "colKind": "类型",
+    "colFrequency": "重复",
+    "colSource": "源单据",
+    "colNext": "下次生成",
+    "colStatus": "状态",
+    "kindInvoice": "发票",
+    "kindJournal": "凭证",
+    "freqWeekly": "每周",
+    "freqMonthly": "每月",
+    "freqYearly": "每年",
+    "fieldName": "模板名称",
+    "fieldFrequency": "重复",
+    "fieldStart": "开始",
+    "fieldEnd": "结束（可选）",
+    "fieldMax": "达到该次数后停止（可选）",
+    "fieldActive": "启用",
+    "startHint": "该日期同时是锚点。每月模板若从 31 日开始，仍按 1月31日、2月28日、3月31日 生成——不会一路退到 28 日。",
+    "endHint": "留空表示没有结束日期。",
+    "maxHint": "留空表示不限次数。",
+    "sourceHint": "每次生成都会照原样复制该单据。修改它即等于修改本模板——这正是修改的方式。",
+    "activeHint": "停用的模板不再生成任何单据。已生成的单据不受影响。",
+    "save": "保存",
+    "saved": "周期性模板已保存。",
+    "errSave": "周期性模板保存失败。",
+    "emptyTitle": "尚无周期性模板",
+    "emptyDescription": "打开一张每月重复的发票，然后点击「重复此发票」。",
+    "nextNone": "已结束",
+    "statusActive": "启用",
+    "statusInactive": "停用",
+    "historyTitle": "生成记录",
+    "statusCreated": "已生成",
+    "statusHeldPeriod": "已暂停——账期已关闭",
+    "statusHeldSource": "已暂停——源单据有问题",
+    "repeatInvoice": "重复此发票",
+    "approvalNote": "由模板生成的单据无论金额多少都必须在「审批」页面等待审批——因为它生成时没有任何人看到。"
   },
   "statementImport": {
     "issue": {
@@ -2604,7 +2649,9 @@
     "opnameConfirmLabel": "是，保存调整",
     "opnameSubmit": "保存调整",
     "opnameFailed": "盘点保存失败。请重试。",
-    "opnameSaved": "盘点已保存——共调整 {count} 项货物。"
+    "opnameSaved": "盘点已保存——共调整 {count} 项货物。",
+    "itemNameTaken": "该物料名称已被使用。请换一个名称，或直接为现有物料增加库存。",
+    "itemNameTakenInactive": "同名物料已存在但处于「停用」状态，因此不会出现在任何列表中。请重新启用它，而不是再建一个——否则库存历史会被拆成两份。"
   },
   "setup": {
     "shellSubtitle": "公司首次设置",
@@ -3534,6 +3581,10 @@
   },
   "validation": {
     "dateRequired": "请填写日期",
+    "dateInvalid": "日期无效（请使用 年-月-日 格式）。",
+    "sourceRequired": "必须选择源单据。",
+    "maxOccurrencesPositive": "发生次数必须大于零。",
+    "endBeforeStart": "结束日期不能早于开始日期。",
     "amountPositive": "金额必须大于 0",
     "quantityPositive": "数量必须大于 0",
     "emailInvalid": "电子邮箱格式不正确",

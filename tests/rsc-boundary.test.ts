@@ -213,7 +213,7 @@ const SRC = join(__dirname, "..", "src");
  * pengalihan penuh halaman pada setiap penyimpanan di layar pengaturan yang
  * memang bersesi — harga yang salah di sisi ini.
  */
-const AMBANG_KLIEN = 172;
+const AMBANG_KLIEN = 173;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -313,6 +313,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/purchases/new/purchase-wizard.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/[id]/reconciliation-workspace.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/new/reconciliation-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/recurring/recurring-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reports/report-filters.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/returns/new/return-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/returns/pdf-button.tsx",

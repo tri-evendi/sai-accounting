@@ -129,6 +129,13 @@ export type AuditAction =
   | "invoice.send.email"
   | "invoice.send.whatsapp"
   /**
+   * Templat transaksi berulang (issue #469). Tidak menyentuh buku besar —
+   * tapi ia menentukan dokumen apa yang akan LAHIR SENDIRI setiap bulan, dan
+   * pertanyaan "siapa yang menyalakan ini" tidak punya jawaban lain.
+   */
+  | "recurring.template.create"
+  | "recurring.template.update"
+  /**
    * Approval transaksi (issue #25). `approval.request` is raised by the document
    * route when a value crosses the ambang; `approval.approve` is the ONLY action
    * here that reaches the ledger — it releases the withheld journal through
@@ -284,7 +291,9 @@ export type AuditEntity =
   /** Izin khusus per pengguna (issue #75). */
   | "user_permission_override"
   /** Dokumen unggahan (lampiran). */
-  | "document";
+  | "document"
+  /** Templat transaksi berulang (issue #469). */
+  | "recurring_template";
 
 /**
  * Satu baris jejak, sebagaimana dibaca layar Audit.

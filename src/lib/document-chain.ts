@@ -85,12 +85,8 @@ export interface DeliveredLineInput {
 
 /** One `invoice_items` row of a faktur that names this contract. */
 export interface InvoicedLineInput {
-  /**
-   * Barang dari master (#491). `InvoiceItem` BELUM punya kolomnya — faktur
-   * masih berjodoh lewat nama, dan itu tertulis di badan PR sebagai lanjutan.
-   * Dideklarasikan di sini supaya jalur yang suatu saat mengisinya tidak perlu
-   * mengubah bentuk fungsi ini lagi.
-   */
+  /** Barang dari master (#503). Sering `null` — ongkos kirim & selisih timbang
+   *  memang tidak punya baris di master barang. */
   itemId?: number | null;
   itemName: string;
   /** Invoiced quantity, read as kg (see the unit assumption above). */
@@ -121,6 +117,8 @@ export function chainStatus(done: number, target: number, grain: 2 | 3 = 3): Cha
 export interface ContractLineOutstanding {
   /** Normalised item name — the join key. */
   key: string;
+  /** Barang dari master (#491/#503), atau `null` bila barisnya belum tertaut. */
+  itemId: number | null;
   /** Display name, as written on the contract. */
   itemName: string;
   contractedBags: number;
@@ -263,7 +261,10 @@ export function buildContractOutstanding(input: {
    * diketahui baris kontrak apa saja yang ada dan nama mana yang bercabang.
    */
   const order: string[] = [];
-  const merged = new Map<string, { itemName: string; bags: number; kg: number; value: number }>();
+  const merged = new Map<
+    string,
+    { itemId: number | null; itemName: string; bags: number; kg: number; value: number }
+  >();
   for (const l of lines) {
     const key = chainLineKey(l);
     const kg = num(l.bags) * num(l.kgPerBag);
@@ -275,7 +276,13 @@ export function buildContractOutstanding(input: {
       existing.value += value;
     } else {
       order.push(key);
-      merged.set(key, { itemName: l.itemName.trim(), bags: num(l.bags), kg, value });
+      merged.set(key, {
+        itemId: l.itemId ?? null,
+        itemName: l.itemName.trim(),
+        bags: num(l.bags),
+        kg,
+        value,
+      });
     }
   }
 
@@ -311,6 +318,7 @@ export function buildContractOutstanding(input: {
     const remainingKg = clamp(contractedKg - invoicedKg);
     return {
       key,
+      itemId: c.itemId,
       itemName: c.itemName,
       contractedBags: c.bags,
       contractedKg,
@@ -359,6 +367,13 @@ export type PullSource = "contract" | "delivery";
 
 /** A draft invoice line produced by "Ambil" — the shape `invoiceItemSchema` takes. */
 export interface PulledInvoiceLine {
+  /**
+   * Diwarisi dari baris kontraknya (#503) — dan inilah bagian yang paling
+   * berharga dari penautan faktur: pengguna yang menekan "Ambil dari Kontrak"
+   * mendapat baris yang SUDAH tertaut tanpa memilih apa pun, termasuk pada
+   * kontrak yang memuat dua barang bernama sama.
+   */
+  itemId: number | null;
   itemName: string;
   quantity: number;
   price: number;
@@ -380,6 +395,7 @@ export function pullInvoiceLines(
 ): PulledInvoiceLine[] {
   return lines
     .map((l) => ({
+      itemId: l.itemId,
       itemName: l.itemName,
       quantity: source === "delivery" ? l.readyToInvoiceKg : l.remainingKg,
       price: l.pricePerKg,
@@ -703,7 +719,10 @@ export async function contractOutstandingForInvoice(
         status: { not: "canceled" },
         ...(excludeInvoiceId != null ? { id: { not: excludeInvoiceId } } : {}),
       },
-      select: { items: { select: { itemName: true, quantity: true, price: true } } },
+      /* `itemId` ikut (#503): begitu baris faktur tertaut, ia berjodoh dengan
+         baris kontrak lewat id — dan inilah kaki yang menentukan, sebab
+         `remainingKg` dihitung dari yang DIFAKTURKAN. */
+      select: { items: { select: { itemId: true, itemName: true, quantity: true, price: true } } },
     }),
   ]);
 

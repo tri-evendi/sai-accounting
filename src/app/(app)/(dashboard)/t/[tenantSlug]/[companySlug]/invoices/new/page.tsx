@@ -49,7 +49,7 @@ export default async function NewInvoicePage({
   // kontrak lama mustahil dipilih (audit). Pemilihnya mencari ke server
   // (`/api/contracts?picker=1`); yang dibaca di sini hanya kontrak yang sudah
   // terpilih lewat `?contractId=`, supaya labelnya langsung tampil.
-  const [preselectedContract, closedPeriods, taxProfile] = await Promise.all([
+  const [preselectedContract, closedPeriods, taxProfile, itemSuggestions] = await Promise.all([
     preselected != null
       ? prisma.contract.findUnique({
           where: { id: preselected },
@@ -65,6 +65,15 @@ export default async function NewInvoicePage({
      * 11% karena satu jendela waktu selebar satu permintaan.
      */
     readCompanyTaxProfile(),
+    /* Saran barang (#503). Aktif saja (#104): yang dinonaktifkan tidak lagi
+       ditawarkan, tetapi faktur lama yang menyebutnya tetap terbaca lewat
+       `itemName`-nya. Dibaca di server — daftarnya kecil dan tidak berubah
+       selama formulir terbuka. */
+    prisma.item.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }, { code: "asc" }],
+      select: { id: true, code: true, name: true, unit: true },
+    })
   ]);
 
   return (
@@ -102,6 +111,7 @@ export default async function NewInvoicePage({
       </div>
       <TaxProfileProvider profile={taxProfile}>
         <NewInvoiceForm
+          itemSuggestions={itemSuggestions}
           initialContract={
             preselectedContract
               ? {

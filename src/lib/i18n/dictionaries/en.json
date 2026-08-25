@@ -947,7 +947,8 @@
     "vatNotTaxable": "(not taxed)",
     "totalLine": "Invoice total ({currency})",
     "baseUnknown": "— enter the rate first",
-    "pebDate": "PEB Date"
+    "pebDate": "PEB Date",
+    "itemNamePlaceholder": "Type a name, or pick from inventory"
   },
   "invoiceSend": {
     "sectionTitle": "Send to customer",

@@ -17,8 +17,11 @@ const LEARN_MORE_GAP = 24;
 
 export default async function NewDeliveryOrderPage({
   params,
+  searchParams,
 }: {
   params: Promise<TenantScopedParams>;
+  /** `?contractId=` — jalan masuk dari tombol "Potong stok sekarang" (#491). */
+  searchParams: Promise<{ contractId?: string }>;
 }) {
   const session = await requirePagePermission("delivery_order.write", params);
   /*
@@ -30,6 +33,11 @@ export default async function NewDeliveryOrderPage({
    */
   const canUpdateStock = await canOpenPage(session.user, "inventory.write");
   const t = await getT();
+  /* Angka yang tidak sah diabaikan diam-diam: sebuah query string karangan
+     tidak boleh menjadi galat halaman — formulirnya cukup terbuka tanpa
+     kontrak terpilih, persis seperti dibuka dari menu. */
+  const raw = (await searchParams).contractId;
+  const preselectedContractId = raw && /^\d+$/.test(raw) ? Number(raw) : null;
 
   const [contracts, invoices, consignees, items, closedPeriods] = await Promise.all([
     prisma.contract.findMany({
@@ -76,6 +84,7 @@ export default async function NewDeliveryOrderPage({
       </div>
       <DeliveryOrderForm
         canUpdateStock={canUpdateStock}
+        initialContractId={preselectedContractId}
         contracts={contracts.map((c) => ({
           id: c.id,
           contractNo: c.contractNo,

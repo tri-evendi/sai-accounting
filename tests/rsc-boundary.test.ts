@@ -213,7 +213,19 @@ const SRC = join(__dirname, "..", "src");
  * pengalihan penuh halaman pada setiap penyimpanan di layar pengaturan yang
  * memang bersesi — harga yang salah di sisi ini.
  */
-const AMBANG_KLIEN = 173;
+/*
+ * 174 sejak #491 lingkup 2 (2026-08-25):
+ * `contracts/[id]/deduct-stock-notice.tsx`.
+ *
+ * Client karena ia memikul satu dialog konfirmasi — keadaan buka/tutup dan
+ * sebuah `router.push`. Tidak ada bentuk servernya.
+ *
+ * Yang dibeli dengan satu modul ini: permintaan "kontrak done → potong stok"
+ * dijawab TANPA membuat kontrak ikut memotong stok. Kontrak yang ikut memotong
+ * akan membuat satu pengiriman terpotong dua kali; yang kurang sebenarnya
+ * hanyalah KABAR bahwa stoknya belum berkurang, beserta jalan keluarnya.
+ */
+const AMBANG_KLIEN = 174;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -264,6 +276,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/budget/targets/sales-target-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/edit/consignee-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/new/consignee-form.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/deduct-stock-notice.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/edit/contract-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/payment-section.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/contracts/[id]/pdf-buttons.tsx",

@@ -849,7 +849,13 @@
     "updateFailed": "Failed to save the contract changes",
     "loadingContract": "Loading the contract...",
     "notFound": "Contract not found",
-    "unlinkedItemName": "Recorded as “{name}” and not linked to an item yet. Pick the item to link it."
+    "unlinkedItemName": "Recorded as “{name}” and not linked to an item yet. Pick the item to link it.",
+    "stockNotDeducted": "Stock has not been reduced for this contract — {qty} kg is invoiced but has no delivery order yet.",
+    "stockNotDeductedWhy": "Stock drops through the delivery order, when goods leave the warehouse — not when payment clears. If the goods genuinely have not shipped, this state is correct.",
+    "deductStockAction": "Reduce stock now",
+    "deductStockTitle": "Create a delivery order to reduce stock?",
+    "deductStockMessage": "Stock is not reduced from this screen. What opens is the delivery order form with this contract already selected, holding {qty} kg — you still check the quantity, vehicle and date before saving. Stock drops only once that delivery order is saved.",
+    "deductStockConfirm": "Yes, open the delivery order"
   },
   "invoices": {
     "title": "Sales Invoices ({count})",

@@ -36,6 +36,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { DeductStockNotice } from "./deduct-stock-notice";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
 import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -446,6 +447,21 @@ export default async function ContractDetailPage({
           </>
         }
       />
+
+      {/*
+        Stok belum dipotong (issue #491). Muncul HANYA saat kontraknya sudah
+        difakturkan penuh tetapi masih ada kilo yang belum bersurat jalan —
+        keadaan yang dikeluhkan pengguna: kontrak selesai, stok masih utuh, dan
+        tak ada satu pun tanda yang mengatakan kenapa.
+
+        Yang ditawarkan BUKAN pemotongan otomatis: stok tetap dipotong surat
+        jalan, sebab kontrak yang ikut memotong akan membuat satu pengiriman
+        terpotong dua kali. Keputusannya diserahkan ke pengguna, lewat jalur
+        yang sudah teruji.
+      */}
+      {totals.remainingKg === 0 && totals.undeliveredKg > 0 && (
+        <DeductStockNotice contractId={contract.id} undeliveredKg={totals.undeliveredKg} />
+      )}
 
       {/* Rantai Dokumen — Kontrak → Surat Jalan → Faktur → Pembayaran (issue #15) */}
       <Card style={{ marginBottom: SECTION_GAP }}>

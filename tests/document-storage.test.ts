@@ -124,6 +124,24 @@ describe("contentTypeFor", () => {
 
 describe("documentFileHref", () => {
   it("satu rumus alamat, dipakai daftar maupun pratinjau", () => {
-    expect(documentFileHref(41)).toBe("/api/documents/41/file");
+    expect(documentFileHref("acme", "cv-maju", 41)).toBe(
+      "/api/t/acme/cv-maju/documents/41/file"
+    );
+  });
+
+  /*
+   * Inti issue #489. Alamat ini dipakai `<iframe src>`, `<img src>`, dan
+   * `<a href download>` — tiga hal yang tidak melewati `apiFetch()` dan karena
+   * itu tidak bisa membawa header `x-tenant-slug`/`x-company-slug`. Alamat
+   * tanpa perusahaan di JALURNYA tiba di penjaga tanpa lingkup sama sekali dan
+   * dijawab 409, yang di layar terlihat sebagai pratinjau kosong + tombol
+   * Unduh yang diam. Jadi yang diuji di sini bukan kerapian string, melainkan
+   * bahwa perusahaannya memang ikut terbawa.
+   */
+  it("perusahaannya ada di JALUR — bukan diserahkan ke header", () => {
+    const href = documentFileHref("acme", "cv-maju", 41);
+    expect(href.startsWith("/api/t/")).toBe(true);
+    expect(href).toContain("/acme/cv-maju/");
+    expect(href).not.toBe("/api/documents/41/file");
   });
 });

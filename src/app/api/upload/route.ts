@@ -6,7 +6,8 @@
  * BERSAMA seluruh PT seluruh tenant — dengan nama yang mempertahankan nama asli
  * pengguna, lalu disajikan sebagai berkas statis yang tidak melewati satu pun
  * penjaga. Sekarang ia mendarat di `data/documents/<companyId>/<uuid>.<ext>`,
- * di luar `public/`, dan hanya bisa diambil lewat `/api/documents/[id]/file`
+ * di luar `public/`, dan hanya bisa diambil lewat route bertenant
+ * `/api/t/[tenantSlug]/[companySlug]/documents/[id]/file` (#489)
  * yang menuntut `document.read` DAN menemukan barisnya di basis data PT aktif.
  * Alasan lengkapnya di kepala `lib/document-storage.ts`.
  *

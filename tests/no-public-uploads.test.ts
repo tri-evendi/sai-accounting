@@ -116,7 +116,7 @@ describe("tidak ada berkas yang ditulis ke public/ (#367)", () => {
     expect(
       offenders,
       "Berkas dokumen tinggal di `data/documents/<companyId>/` dan hanya keluar " +
-        "lewat `/api/documents/[id]/file` yang menuntut izin. Apa pun di `public/` " +
+        "lewat route dokumen bertenant yang menuntut izin. Apa pun di `public/` " +
         "disajikan sebagai berkas statis TANPA penjaga — lihat lib/document-storage.ts."
     ).toEqual([]);
   });

@@ -30,7 +30,8 @@ export function DocumentPreviewButton({
 }: {
   filename: string;
   /**
-   * Alamat pengambilan berkasnya (`/api/documents/<id>/file`, issue #367) —
+   * Alamat pengambilan berkasnya
+   * (`/api/t/<tenant>/<pt>/documents/<id>/file`, issue #367 & #489) —
    * BUKAN `documents.filepath`. Sejak berkasnya keluar dari `public/`, kolom
    * itu adalah kunci penyimpanan internal dan tidak pernah bisa dipasang di
    * `href` maupun `src`.

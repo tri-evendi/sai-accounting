@@ -111,18 +111,44 @@ describe("baris lama tetap terhitung persis seperti sebelumnya", () => {
     expect(out.lines[0].remainingKg).toBe(600);
   });
 
-  it("kontrak tertaut vs surat jalan belum tertaut TIDAK berjodoh — dan itu jujur", () => {
+  it("kontrak TERTAUT + dokumen lama yang cuma bernama tetap berjodoh", () => {
     /*
-     * Sengaja tidak "dipintarkan" dengan mencoba nama sebagai cadangan: sebuah
-     * baris yang menunjuk barang 6 dan sebuah baris yang cuma bertuliskan
-     * "LONG PEPPER" memang tidak bisa dipastikan barang yang sama — ada dua
-     * kandidat. Menebaknya berarti mengurangi pagu kontrak yang salah.
+     * ── REGRESI YANG PERNAH LOLOS, DAN INILAH PENJAGANYA ──────────────────
+     *
+     * Migrasi 0052 menautkan baris KONTRAK ke `items`, tetapi faktur & surat
+     * jalan yang sudah terlanjur ada tetap hanya bernama. Pada versi pertama
+     * #491 kontrak berkunci `#6` sementara fakturnya berkunci `clove`, jadi
+     * keduanya berhenti berjodoh — `invoicedKg` jatuh ke 0, `remainingKg`
+     * melompat kembali ke penuh, dan `assertWithinContract` berhenti menahan
+     * apa pun. Diam-diam, pada SELURUH kontrak lama sekaligus, tepat sesudah
+     * migrasi yang dimaksudkan memperbaiki keadaan.
      */
     const out = buildContractOutstanding({
-      lines: [{ itemId: 6, itemName: "LONG PEPPER", bags: 10, kgPerBag: 100, pricePerKg: 50_000 }],
-      delivered: [{ itemName: "LONG PEPPER", quantity: 400 }],
+      lines: [{ itemId: 6, itemName: "CLOVE", bags: 10, kgPerBag: 100, pricePerKg: 85_000 }],
+      delivered: [{ itemName: "clove", quantity: 400 }],
+      invoiced: [{ itemName: "CLOVE", quantity: 400, price: 85_000 }],
     });
-    expect(out.lines[0].deliveredKg).toBe(0);
+    expect(out.lines[0].deliveredKg).toBe(400);
+    expect(out.lines[0].invoicedKg).toBe(400);
+    expect(out.lines[0].remainingKg).toBe(600);
+  });
+
+  it("nama yang BERCABANG tidak ditebak — ia dilaporkan sebagai tak berjodoh", () => {
+    /*
+     * Dua baris kontrak bernama sama dengan id berbeda: sebuah faktur lama yang
+     * cuma bertuliskan "LONG PEPPER" memang tidak bisa dipastikan miliknya yang
+     * mana. Menebak salah satu berarti mengurangi pagu yang salah, jadi ia
+     * jatuh ke `unmatched*` — terlihat, bukan dibebankan ngawur.
+     */
+    const out = buildContractOutstanding({
+      lines: [
+        { itemId: 6, itemName: "LONG PEPPER", bags: 10, kgPerBag: 100, pricePerKg: 50_000 },
+        { itemId: 10, itemName: "LONG PEPPER", bags: 10, kgPerBag: 100, pricePerKg: 13_500 },
+      ],
+      invoiced: [{ itemName: "LONG PEPPER", quantity: 400, price: 50_000 }],
+    });
+    expect(out.lines.every((l) => l.invoicedKg === 0)).toBe(true);
+    expect(out.totals.unmatchedInvoicedKg).toBe(400);
   });
 });
 

@@ -29,7 +29,20 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Prisma generate
-        run: bunx prisma generate
+        # `bun run db:generate`, BUKAN `bunx prisma generate`.
+        #
+        # Repo ini punya TIGA skema Prisma sejak #104 (basis data perusahaan)
+        # dan #137 (platform): `prisma/schema.prisma`, `prisma/control/`, dan
+        # `prisma/platform/`. `bunx prisma generate` hanya membangkitkan yang
+        # pertama, jadi `@/generated/control/client` dan
+        # `@/generated/platform/client` tidak pernah ada — dan `next build`
+        # gagal dengan "Module not found" pada `lib/control-db.ts` &
+        # `lib/platform-db.ts`.
+        #
+        # Tidak terlihat di lokal karena `src/generated/` sudah terlanjur ada
+        # di mesin siapa pun yang pernah menjalankan `bun run db:generate`
+        # sekali; ia gitignored, jadi hanya CI yang memulai dari nol.
+        run: bun run db:generate
 
       - name: Build standalone
         run: bun run package:standalone

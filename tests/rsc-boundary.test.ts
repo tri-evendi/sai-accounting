@@ -213,7 +213,19 @@ const SRC = join(__dirname, "..", "src");
  * pengalihan penuh halaman pada setiap penyimpanan di layar pengaturan yang
  * memang bersesi — harga yang salah di sisi ini.
  */
-const AMBANG_KLIEN = 173;
+/*
+ * 174 sejak #503 (2026-08-25): `components/ui/item-name-input.tsx`.
+ *
+ * Client karena ia memang memikul KEADAAN interaktif — daftar saran yang
+ * disaring saat mengetik, dan sepasang nilai (`itemName` + `itemId`) yang harus
+ * berubah bersamaan. Tidak ada bentuk servernya.
+ *
+ * Yang dibeli dengan satu modul ini: baris faktur bisa menunjuk barang di
+ * master TANPA memaksa setiap baris menjadi barang persediaan. Pemilih wajib
+ * akan lebih murah di hitungan ini dan mematahkan ongkos kirim & selisih
+ * timbang — dua baris faktur yang sah dan tidak punya baris di master barang.
+ */
+const AMBANG_KLIEN = 174;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -405,6 +417,7 @@ const KLIEN_TERSAHKAN = [
   "components/ui/empty-state.tsx",
   "components/ui/form.tsx",
   "components/ui/input.tsx",
+  "components/ui/item-name-input.tsx",
   "components/ui/learn-more.tsx",
   "components/ui/loading.tsx",
   "components/ui/locale-toggle.tsx",

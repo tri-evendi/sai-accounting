@@ -67,7 +67,9 @@ interface DocumentRow {
   id: number;
   filename: string;
   /**
-   * Alamat PENGAMBILAN berkasnya — `/api/documents/<id>/file`, bukan lagi
+   * Alamat PENGAMBILAN berkasnya — `/api/t/<tenant>/<pt>/documents/<id>/file`
+   * (#489, jalurnya bertenant supaya `<iframe>`/`<a download>` yang tak bisa
+   * membawa header lingkup tetap terjawab), bukan
    * `documents.filepath` (issue #367). Kolom itu kini menyimpan kunci
    * penyimpanan di dalam `data/documents/`, dan ia sengaja bukan sesuatu yang
    * bisa dipasang sebagai `href`: berkasnya hanya keluar lewat route ber-izin.
@@ -86,6 +88,9 @@ export default async function DocumentsPage({
   searchParams: Promise<{ search?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   await requirePagePermission("document.read", params);
+  /* Slug dipakai menyusun alamat berkas: sejak #489 route-nya bertenant,
+     karena `<iframe>`/`<a download>` tak bisa membawa header lingkup. */
+  const { tenantSlug, companySlug } = await params;
   const t = await getT();
   const typeLabels = documentTypeLabels(await getDictionary(await getLocale()));
   const filters = await searchParams;
@@ -124,7 +129,7 @@ export default async function DocumentsPage({
   const rows: DocumentRow[] = documents.map((doc) => ({
     id: doc.id,
     filename: doc.filename,
-    href: documentFileHref(doc.id),
+    href: documentFileHref(tenantSlug, companySlug, doc.id),
     type: doc.type,
     contractNo: doc.contract ? doc.contract.contractNo : null,
     uploadedAt: formatDate(doc.createdAt),

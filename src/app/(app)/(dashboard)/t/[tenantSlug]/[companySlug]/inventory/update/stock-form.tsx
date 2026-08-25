@@ -77,6 +77,8 @@ const FIELD_GAP = 16;
 const CONTROL_GAP = 12;
 /** `w-28` lama — lebar kotak satuan pada formulir barang baru. */
 const UNIT_WIDTH = 112;
+/** Kotak kode barang (#493) — sesempit satuan; isinya pendek dan berpola. */
+const CODE_WIDTH = 128;
 const EMPTY_ICON_SIZE = 48;
 const ICON_SIZE = 16;
 const SMALL_ICON_SIZE = 14;
@@ -118,6 +120,8 @@ const NUMERIC_FIELD: React.CSSProperties = {
 
 export interface StockItemOption {
   id: number;
+  /** Kode barang (#493) — yang membedakan dua barang bernama sama di pemilih. */
+  code: string;
   name: string;
   unit: string | null;
   currentStock: number;
@@ -126,9 +130,13 @@ export interface StockItemOption {
 interface StockPayload {
   itemId: number;
   quantity: number;
-  type: "in" | "out";
+  /** Tiga PILIHAN di layar; `shrinkage` menjadi gerakan `out` bertanda di
+   *  server (issue #490). */
+  type: "in" | "out" | "shrinkage";
   date: string;
   unitCost?: number;
+  /** Nilai rupiah yang susut — hanya pada "Hasil Proses" (issue #490). */
+  shrinkageValue?: number;
   note: string;
   /** issue #98 — dimensi HPP gerakan ini. `null` = belum ditetapkan. */
   costCenterId: number | null;
@@ -140,18 +148,28 @@ interface StockPayload {
  */
 interface StockFormValues {
   itemId: string;
-  type: "in" | "out";
+  type: "in" | "out" | "shrinkage";
   quantity: string;
   /** `undefined` saat kosong: harga pokok yang tak diisi BUKAN harga nol. */
   unitCost?: string;
+  /** Idem — nilai susut yang tak diisi BUKAN nol. */
+  shrinkageValue?: string;
   date: string;
   note: string;
 }
 
 /** Isian gerakan stok yang ada di layar — sisanya naik jadi galat formulir. */
-const STOCK_FIELDS = ["itemId", "type", "quantity", "unitCost", "date", "note"] as const;
+const STOCK_FIELDS = [
+  "itemId",
+  "type",
+  "quantity",
+  "unitCost",
+  "shrinkageValue",
+  "date",
+  "note",
+] as const;
 /** Isian barang baru yang ada di layar. */
-const ITEM_FIELDS = ["name", "unit"] as const;
+const ITEM_FIELDS = ["code", "name", "unit"] as const;
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -199,6 +217,7 @@ export function StockUpdateForm({
       type: "in",
       quantity: "",
       unitCost: undefined,
+      shrinkageValue: undefined,
       date: todayISO(),
       note: "",
     },
@@ -206,8 +225,20 @@ export function StockUpdateForm({
 
   const itemForm = useForm<ItemInput>({
     resolver: zodResolver(itemSchema) as Resolver<ItemInput>,
-    defaultValues: { name: "", unit: "kg" },
+    defaultValues: { code: "", name: "", unit: "kg", confirmDuplicateName: false },
   });
+
+  /*
+   * Pertanyaan "nama ini sudah dipakai — barang terpisah?" (#493). Server yang
+   * mengajukannya (409 + `needsConfirmation: "duplicate_name"`), layar ini
+   * hanya menampilkannya lalu MENGIRIM ULANG muatan yang sama dengan
+   * `confirmDuplicateName: true`. Muatannya disimpan apa adanya supaya jawaban
+   * "ya" tidak pernah mengirim isian yang sudah berubah di layar.
+   */
+  const [duplicateName, setDuplicateName] = useState<{
+    payload: ItemInput;
+    message: string;
+  } | null>(null);
 
   /* `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
      memoisasi komponen ini. */
@@ -219,19 +250,27 @@ export function StockUpdateForm({
   const selected = items.find((i) => String(i.id) === itemId) ?? null;
   const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal pergerakan stok");
   const qtyValue = Number(quantity) || 0;
-  const overStock =
-    movementType === "out" && selected != null && qtyValue > selected.currentStock;
+  /* Dua pilihan yang MENGURANGI stok, dan keduanya tunduk pada penjaga yang
+     sama: saldo tak boleh negatif (#490). */
+  const reducesStock = movementType === "out" || movementType === "shrinkage";
+  const overStock = reducesStock && selected != null && qtyValue > selected.currentStock;
 
   async function refreshItems() {
     // `active=1`: barang yang dinonaktifkan tidak ditawarkan untuk gerakan BARU
     // (issue #104); saldo & riwayatnya tetap tampil di laporan stok.
     const res = await apiFetch("/api/inventory?active=1");
     if (!res.ok) return;
-    const data: { id: number; name: string; unit: string | null; currentStock: number }[] =
-      await res.json();
+    const data: {
+      id: number;
+      code: string;
+      name: string;
+      unit: string | null;
+      currentStock: number;
+    }[] = await res.json();
     setItems(
       data.map((i) => ({
         id: i.id,
+        code: i.code,
         name: i.name,
         unit: i.unit,
         currentStock: i.currentStock ?? 0,
@@ -249,13 +288,29 @@ export function StockUpdateForm({
     if (res.ok) {
       itemForm.reset();
       setShowNewItem(false);
+      setDuplicateName(null);
       await refreshItems();
       setSuccess(t("inventory.itemSaved"));
       setTimeout(() => setSuccess(""), 3000);
-    } else {
-      const data = await res.json().catch(() => null);
-      applyServerFieldErrors(itemForm.setError, data ?? {}, ITEM_FIELDS, t("inventory.itemSaveFailed"));
+      return;
     }
+
+    const data = await res.json().catch(() => null);
+
+    /*
+     * Nama kembar BUKAN penolakan — ia pertanyaan (#493). Dibedakan lewat
+     * penanda mesin, bukan dengan mencocokkan kalimat: kalimatnya berganti
+     * mengikuti bahasa, penandanya tidak.
+     */
+    if (data?.needsConfirmation === "duplicate_name") {
+      setDuplicateName({
+        payload: { ...values, confirmDuplicateName: true },
+        message: [data.error, data.hint].filter(Boolean).join(" "),
+      });
+      return;
+    }
+
+    applyServerFieldErrors(itemForm.setError, data ?? {}, ITEM_FIELDS, t("inventory.itemSaveFailed"));
   }
 
   async function send(body: StockPayload) {
@@ -300,7 +355,8 @@ export function StockUpdateForm({
     }
 
     const item = items.find((i) => i.id === values.itemId);
-    if (values.type === "out" && item) {
+    const reduces = values.type === "out" || values.type === "shrinkage";
+    if (reduces && item) {
       // Penjaga yang sama dengan surat jalan & `/api/inventory`: stok tidak
       // pernah boleh negatif.
       const shortfall = stockShortfallMessage(
@@ -321,11 +377,12 @@ export function StockUpdateForm({
       type: values.type,
       date: values.date,
       unitCost: values.type === "in" ? values.unitCost : undefined,
+      shrinkageValue: values.type === "shrinkage" ? values.shrinkageValue : undefined,
       note: values.note ?? "",
       costCenterId: costCenterPayload(costCenterId),
     };
 
-    if (values.type === "out" && item && isLargeStockOut(values.quantity, item.currentStock)) {
+    if (reduces && item && isLargeStockOut(values.quantity, item.currentStock)) {
       setConfirmMessage(
         largeStockOutMessage(item.name, values.quantity, item.currentStock, item.unit || "kg")
       );
@@ -422,6 +479,23 @@ export function StockUpdateForm({
                 noValidate
                 style={{ display: "flex", alignItems: "flex-end", gap: CONTROL_GAP }}
               >
+                {/* Kode DI DEPAN nama: sejak #493 ia yang menjadi identitas
+                    barang, dan urutan isian sebaiknya mencerminkan itu. */}
+                <div style={{ width: CODE_WIDTH }}>
+                  <FormField
+                    control={itemForm.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("common.itemCode")}</FormLabel>
+                        <FormControl>
+                          <TextInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <div style={{ flex: 1 }}>
                   <FormField
                     control={itemForm.control}
@@ -516,9 +590,14 @@ export function StockUpdateForm({
                         <FormControl>
                           <SelectField
                             placeholder={t("inventory.pickItemPlaceholder")}
+                            /* Kode di depan (#493): dua barang bernama sama —
+                               `LONG PEPPER` 100006 & 100010 di berkas saldo
+                               awal pengguna — hanya bisa dibedakan mata lewat
+                               kodenya. Tanpa ini pemilihnya menampilkan dua
+                               baris yang tampak identik. */
                             options={items.map((item) => ({
                               value: String(item.id),
-                              label: `${item.name}${item.unit ? ` (${item.unit})` : ""}`,
+                              label: `${item.code} — ${item.name}${item.unit ? ` (${item.unit})` : ""}`,
                             }))}
                             {...field}
                           />
@@ -544,8 +623,12 @@ export function StockUpdateForm({
                       <FormLabel>{t("inventory.movementTypeLabel")}</FormLabel>
                       <FormControl>
                         <SelectField
+                          /* Urutannya MENGIKUTI alur pengguna, bukan abjad:
+                             Tambah → Hasil Proses → Kurang Stok. Barang masuk,
+                             diolah (menyusut), lalu keluar terjual (#490). */
                           options={[
                             { value: "in", label: t("inventory.movementIn") },
+                            { value: "shrinkage", label: t("inventory.movementShrinkage") },
                             { value: "out", label: t("inventory.movementOut") },
                           ]}
                           {...field}
@@ -590,6 +673,37 @@ export function StockUpdateForm({
                     </p>
                   )}
                 </div>
+                {movementType === "shrinkage" && (
+                  /* Nilai rupiah yang susut — angka KEDUA yang disebut pengguna,
+                     terpisah dari kuantitasnya ("35 kilo susut, nominalnya 1
+                     juta"). Ia yang dibebankan ke Beban Susut Proses; tanpa ia,
+                     barangnya hilang dari gudang tanpa muncul sebagai ongkos
+                     di mana pun (#490). */
+                  <FormField
+                    control={form.control}
+                    name="shrinkageValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("inventory.shrinkageValueLabel")}</FormLabel>
+                        <FormControl>
+                          <TextInput
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            style={NUMERIC_FIELD}
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(e.target.value === "" ? undefined : e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormDescription>{t("inventory.shrinkageValueHint")}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 {movementType === "in" ? (
                   /* Wajib HANYA di arah ini — sama persis dengan yang dituntut
                      `superRefine` pada `stockUpdateSchema`. */
@@ -638,7 +752,16 @@ export function StockUpdateForm({
                     }}
                   >
                     <InfoCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-                    <span>{t("inventory.cogsAutoHint")}</span>
+                    {/* Dua kalimat berbeda karena dua jurnal berbeda: keluar
+                        biasa membebani HPP pada rata-rata tertimbang, susut
+                        proses membebani Beban Susut Proses pada nilai yang
+                        diketik (#490). Satu kalimat untuk keduanya akan
+                        menjanjikan yang salah pada salah satunya. */}
+                    <span>
+                      {movementType === "shrinkage"
+                        ? t("inventory.shrinkageAccountHint")
+                        : t("inventory.cogsAutoHint")}
+                    </span>
                   </p>
                 )}
                 <div>
@@ -703,6 +826,30 @@ export function StockUpdateForm({
           )}
         </div>
       </Card>
+
+      {/*
+        Konfirmasi NAMA BARANG KEMBAR (#493). Bukan penolakan: dua barang
+        bernama sama memang sah selama kodenya berbeda — berkas saldo awal 2024
+        pengguna memuat dua `LONG PEPPER`. Yang dijaga adalah nama kembar yang
+        TIDAK disengaja, sebab ia membelah riwayat stok satu barang jadi dua dan
+        pembelahan itu tak terlihat sampai laporannya tidak mau cocok.
+
+        `variant` bawaan, BUKAN `danger`: menyimpan barang terpisah adalah
+        tindakan yang sah dan sering benar. Merah akan menakuti pengguna dari
+        jalan yang justru diminta pekerjaannya.
+      */}
+      <ConfirmDialog
+        title={t("inventory.duplicateNameTitle")}
+        message={duplicateName?.message ?? ""}
+        confirmLabel={t("inventory.duplicateNameConfirm")}
+        open={duplicateName != null}
+        onOpenChange={(o) => {
+          if (!o) setDuplicateName(null);
+        }}
+        onConfirm={async () => {
+          if (duplicateName) await onCreateItem(duplicateName.payload);
+        }}
+      />
 
       {/* Konfirmasi pengeluaran stok besar (issue #6). */}
       <ConfirmDialog

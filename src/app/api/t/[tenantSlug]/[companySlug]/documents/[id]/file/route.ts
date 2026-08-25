@@ -2,6 +2,27 @@
  * Mengambil BYTE sebuah dokumen (issue #367) — satu-satunya jalan keluar
  * berkas unggahan.
  *
+ * ══ PERUSAHAAN DATANG DARI JALUR, BUKAN HEADER (issue #489) ════════════════
+ * Route ini hidup di `/api/t/{tenant}/{company}/…`, dan itu BUKAN gaya:
+ * berkasnya diambil oleh `<iframe src>`, `<img src>`, dan `<a href download>`
+ * — tiga hal yang tidak melewati `apiFetch()` dan karena itu TIDAK BISA
+ * membawa sepasang header `x-tenant-slug`/`x-company-slug`.
+ *
+ * Sampai #489 alamatnya bertengger di bawah /api/documents (tanpa tenant), jadi
+ * setiap permintaan tiba tanpa lingkup sama sekali: `enterCompanyFromRequest`
+ * memulangkan `no-scope` dan penjaga menjawab 409 SEBELUM izin sempat
+ * diperiksa. Yang dilihat pengguna bukan pesan galat melainkan pratinjau kosong
+ * dan tombol Unduh yang diam — dua gejala dari satu permintaan yang sama.
+ * `lib/company-scope.ts` sudah menyebut jalur ini sebagai jawabannya sejak
+ * #158; route inilah yang belum ikut pindah.
+ *
+ * Alamat lama sengaja disebut tanpa tanda kutip di komentar ini: ia SEJARAH,
+ * bukan alamat yang berlaku, dan `tests/document-file-route-tenant.test.ts`
+ * memang menolak bentuk terkutipnya di mana pun di dalam `src/`.
+ *
+ * Jalur MENGALAHKAN header (`lib/company-request.ts`): alamat unduhan tidak
+ * boleh bisa dibelokkan oleh header yang kebetulan ikut terbawa peramban.
+ *
  * ══ KEPEMILIKAN DIBUKTIKAN BASIS DATANYA, BUKAN NAMA BERKAS ════════════════
  * Sampai issue ini berkasnya adalah berkas STATIS di `public/uploads/`: yang
  * memisahkan dokumen satu tenant dari tenant lain hanyalah ketidaktahuan akan
@@ -25,6 +46,7 @@ import { readFile, stat } from "node:fs/promises";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { contentTypeFor, resolveDocumentPath } from "@/lib/document-storage";
+import type { TenantScopedParams } from "@/lib/tenant-routes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,11 +61,18 @@ function contentDisposition(filename: string): string {
   return `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const result = await requireApiPermission("document.read");
+export async function GET(
+  _request: Request,
+  context: { params: Promise<TenantScopedParams & { id: string }> }
+) {
+  /* Diurai SEKALI: `id` dan sepasang slug datang dari promise yang sama, dan
+     penjaga menerima objek yang sudah jadi (`ApiRouteParams`). */
+  const params = await context.params;
+
+  const result = await requireApiPermission("document.read", params);
   if (!result.authorized) return result.response;
 
-  const raw = (await context.params).id;
+  const raw = params.id;
   if (!/^\d+$/.test(raw)) return new Response(null, { status: 404 });
 
   const document = await prisma.document.findUnique({

@@ -63,8 +63,17 @@ interface KindSpec {
   /** Nama berkas templat — tanpa spasi, supaya unduhannya rapi di mana pun. */
   fileName: string;
   parse: (sheet: unknown[][]) => MasterImportResult<{ name: string }>;
-  /** Nama yang SUDAH ADA di basis data (huruf kecil, untuk membandingkan). */
-  existingNames: () => Promise<Set<string>>;
+  /**
+   * Penanda yang SUDAH ADA di basis data (huruf kecil, untuk membandingkan).
+   *
+   * Sengaja bukan selalu "nama" sejak #493: identitas sebuah BARANG adalah
+   * kodenya, dan menyaring barang menurut nama akan membuang baris kedua dari
+   * dua barang yang memang sah bernama sama (`LONG PEPPER` 100006 & 100010 di
+   * berkas saldo awal pengguna) — diam-diam, dilaporkan sebagai "dilewati".
+   */
+  existingKeys: () => Promise<Set<string>>;
+  /** Penanda sebuah baris hasil parse, sepadan dengan isi `existingKeys`. */
+  identityOf: (row: { name: string }) => string;
   /** Tulis baris baru. Menerima hasil parse yang sudah disaring. */
   create: (rows: { name: string }[]) => Promise<number>;
 }
@@ -76,12 +85,13 @@ const KINDS: Record<Kind, KindSpec> = {
     sheetName: "Pelanggan",
     fileName: "templat-pelanggan.xlsx",
     parse: (sheet) => parseCustomerRows(sheet),
-    existingNames: async () =>
+    existingKeys: async () =>
       new Set(
         (await prisma.customer.findMany({ select: { name: true } })).map((c) =>
           c.name.toLowerCase()
         )
       ),
+    identityOf: (row) => row.name.toLowerCase(),
     create: async (rows) => {
       const data = rows as ReturnType<typeof parseCustomerRows>["rows"];
       const result = await prisma.customer.createMany({
@@ -104,12 +114,13 @@ const KINDS: Record<Kind, KindSpec> = {
     sheetName: "Pemasok",
     fileName: "templat-pemasok.xlsx",
     parse: (sheet) => parseSupplierRows(sheet),
-    existingNames: async () =>
+    existingKeys: async () =>
       new Set(
         (await prisma.supplier.findMany({ select: { name: true } })).map((s) =>
           s.name.toLowerCase()
         )
       ),
+    identityOf: (row) => row.name.toLowerCase(),
     create: async (rows) => {
       const data = rows as ReturnType<typeof parseSupplierRows>["rows"];
       const result = await prisma.supplier.createMany({
@@ -129,14 +140,24 @@ const KINDS: Record<Kind, KindSpec> = {
     sheetName: "Barang",
     fileName: "templat-barang.xlsx",
     parse: (sheet) => parseItemRows(sheet),
-    existingNames: async () =>
+    /* KODE, bukan nama (#493) — lihat catatan pada `existingKeys` di atas. */
+    existingKeys: async () =>
       new Set(
-        (await prisma.item.findMany({ select: { name: true } })).map((i) => i.name.toLowerCase())
+        (await prisma.item.findMany({ select: { code: true } })).map((i) => i.code.toLowerCase())
       ),
+    /*
+     * Cast-nya sama persis dengan yang sudah dipakai `create` di bawah, dan sah
+     * karena alasan yang sama: `parse`, `identityOf`, dan `create` di dalam SATU
+     * entri `KINDS` selalu berbicara tentang bentuk baris yang sama. Yang
+     * dilonggarkan hanyalah tipe pembungkus `KindSpec`, yang sengaja ditulis
+     * seminimal mungkin (`{ name: string }`) supaya ketiga jenis muat.
+     */
+    identityOf: (row) =>
+      (row as ReturnType<typeof parseItemRows>["rows"][number]).code.toLowerCase(),
     create: async (rows) => {
       const data = rows as ReturnType<typeof parseItemRows>["rows"];
       const result = await prisma.item.createMany({
-        data: data.map((r) => ({ name: r.name, unit: r.unit })),
+        data: data.map((r) => ({ code: r.code, name: r.name, unit: r.unit })),
       });
       return result.count;
     },
@@ -198,8 +219,8 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     return NextResponse.json({ error: t("errors.noImportRows") }, { status: 422 });
   }
 
-  const existing = await spec.existingNames();
-  const toCreate = parsed.rows.filter((r) => !existing.has(r.name.toLowerCase()));
+  const existing = await spec.existingKeys();
+  const toCreate = parsed.rows.filter((r) => !existing.has(spec.identityOf(r)));
   const skipped = parsed.rows.length - toCreate.length;
 
   const created = toCreate.length > 0 ? await spec.create(toCreate) : 0;

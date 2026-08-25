@@ -66,6 +66,8 @@ export function normalizeItemName(name: string): string {
 
 /** One `contract_items` row (bags/kg/price shape). */
 export interface ContractLineInput {
+  /** Barang dari master (#491). `null`/tak ada = baris lama, berkunci nama. */
+  itemId?: number | null;
   itemName: string;
   bags: number | string;
   kgPerBag: number | string;
@@ -74,6 +76,8 @@ export interface ContractLineInput {
 
 /** One `delivery_order_items` row of a surat jalan that names this contract. */
 export interface DeliveredLineInput {
+  /** Barang dari master (#491) — surat jalan sudah menyimpannya sejak #14. */
+  itemId?: number | null;
   itemName: string;
   /** Kg issued from stock (`delivery_order_items.quantity`). */
   quantity: number | string;
@@ -81,6 +85,13 @@ export interface DeliveredLineInput {
 
 /** One `invoice_items` row of a faktur that names this contract. */
 export interface InvoicedLineInput {
+  /**
+   * Barang dari master (#491). `InvoiceItem` BELUM punya kolomnya — faktur
+   * masih berjodoh lewat nama, dan itu tertulis di badan PR sebagai lanjutan.
+   * Dideklarasikan di sini supaya jalur yang suatu saat mengisinya tidak perlu
+   * mengubah bentuk fungsi ini lagi.
+   */
+  itemId?: number | null;
   itemName: string;
   /** Invoiced quantity, read as kg (see the unit assumption above). */
   quantity: number | string;
@@ -156,11 +167,78 @@ export interface ContractOutstanding {
   totals: ContractOutstandingTotals;
 }
 
-/** Sum a set of amounts per normalised item name. */
-function sumByKey<T>(rows: T[], amount: (row: T) => number, name: (row: T) => string) {
+/**
+ * Kunci penggabungan sebuah baris rantai (issue #491).
+ *
+ * `itemId` bila ada, nama yang dinormalkan bila tidak. Dua alasan, dan yang
+ * pertama lahir kemarin:
+ *
+ *   • Sejak #493 dua barang boleh bernama sama persis selama kodenya berbeda
+ *     (`LONG PEPPER` 100006 & 100010, harga satuannya berselisih hampir empat
+ *     kali lipat). Berkunci nama, keduanya digabung menjadi SATU baris sisa
+ *     kontrak — dan berbagi satu pagu. Berkunci id, keduanya tetap terpisah.
+ *   • Salah ketik sungguhan (`CLOVE` vs `CLOVES`) berhenti memecah baris.
+ *
+ * Prefiks `#` mustahil muncul dari `normalizeItemName` (ia tak pernah menambah
+ * karakter), jadi kunci-id dan kunci-nama tidak bisa bertabrakan.
+ *
+ * Baris LAMA ber-`itemId` NULL tetap berkunci nama, jadi kontrak yang belum
+ * tertaut terhitung PERSIS seperti sebelum #491 — tidak ada angka laporan yang
+ * bergeser karena migrasi ini.
+ */
+export function chainLineKey(row: { itemId?: number | null; itemName: string }): string {
+  return row.itemId != null ? `#${row.itemId}` : normalizeItemName(row.itemName);
+}
+
+/**
+ * Menjodohkan baris HILIR (surat jalan / faktur) ke baris KONTRAK (issue #491).
+ *
+ * ══ Kenapa tidak cukup `chainLineKey` di kedua sisi ════════════════════════
+ * Karena kedua sisi tidak berpindah bersamaan. Migrasi 0052 menautkan baris
+ * KONTRAK ke `items`, tetapi faktur & surat jalan yang sudah terlanjur ada
+ * tetap hanya bernama. Kalau kontrak berkunci `#6` sementara fakturnya berkunci
+ * `clove`, keduanya berhenti berjodoh — dan `remainingKg` (yang dihitung dari
+ * yang DIFAKTURKAN) melompat kembali ke nilai penuh.
+ *
+ * Akibatnya bukan angka yang sedikit meleset melainkan PAGU YANG MATI:
+ * `assertWithinContract` tidak lagi menemukan barisnya, jadi faktur melebihi
+ * isi kontrak berhenti tertahan. Diam-diam, dan justru pada seluruh kontrak
+ * lama sekaligus — tepat sesudah migrasi yang dimaksudkan memperbaiki keadaan.
+ *
+ * ══ Urutan penyelesaiannya ═════════════════════════════════════════════════
+ *   1. `itemId` yang cocok dengan sebuah baris kontrak — jawaban yang pasti.
+ *   2. Nama yang menunjuk TEPAT SATU baris kontrak — jawaban yang masih pasti,
+ *      dan inilah yang menyelamatkan seluruh dokumen lama.
+ *   3. Nama yang menunjuk LEBIH DARI SATU baris kontrak: TIDAK ditebak. Ia
+ *      jatuh ke kuncinya sendiri dan muncul sebagai `unmatched*` — terlihat,
+ *      bukan diam-diam dibebankan ke baris yang salah. Ini persis kasus dua
+ *      `LONG PEPPER` yang melahirkan #491.
+ */
+export function resolveChainKey(
+  row: { itemId?: number | null; itemName: string },
+  contractKeys: Set<string>,
+  keysByName: Map<string, string[]>
+): string {
+  if (row.itemId != null) {
+    const idKey = `#${row.itemId}`;
+    if (contractKeys.has(idKey)) return idKey;
+  }
+  const name = normalizeItemName(row.itemName);
+  const candidates = keysByName.get(name);
+  if (candidates && candidates.length === 1) return candidates[0];
+  return name;
+}
+
+/** Sum a set of amounts per resolved chain key. */
+function sumByKey<T extends { itemId?: number | null; itemName: string }>(
+  rows: T[],
+  amount: (row: T) => number,
+  contractKeys: Set<string>,
+  keysByName: Map<string, string[]>
+) {
   const map = new Map<string, number>();
   for (const row of rows) {
-    const key = normalizeItemName(name(row));
+    const key = resolveChainKey(row, contractKeys, keysByName);
     map.set(key, num(map.get(key)) + amount(row));
   }
   return map;
@@ -180,19 +258,14 @@ export function buildContractOutstanding(input: {
 }): ContractOutstanding {
   const { lines, delivered = [], invoiced = [] } = input;
 
-  const deliveredByKey = sumByKey(delivered, (r) => num(r.quantity), (r) => r.itemName);
-  const invoicedKgByKey = sumByKey(invoiced, (r) => num(r.quantity), (r) => r.itemName);
-  const invoicedValueByKey = sumByKey(
-    invoiced,
-    (r) => num(r.quantity) * num(r.price),
-    (r) => r.itemName
-  );
-
-  // Merge contract lines that name the same item, keeping contract order.
+  /*
+   * Baris kontrak disusun LEBIH DAHULU — hilirnya baru bisa dijodohkan setelah
+   * diketahui baris kontrak apa saja yang ada dan nama mana yang bercabang.
+   */
   const order: string[] = [];
   const merged = new Map<string, { itemName: string; bags: number; kg: number; value: number }>();
   for (const l of lines) {
-    const key = normalizeItemName(l.itemName);
+    const key = chainLineKey(l);
     const kg = num(l.bags) * num(l.kgPerBag);
     const value = kg * num(l.pricePerKg);
     const existing = merged.get(key);
@@ -205,6 +278,27 @@ export function buildContractOutstanding(input: {
       merged.set(key, { itemName: l.itemName.trim(), bags: num(l.bags), kg, value });
     }
   }
+
+  const contractKeys = new Set(order);
+  /* Nama → baris kontrak yang memakainya. Lebih dari satu = bercabang, dan
+     baris hilir yang cuma bernama tidak akan ditebak ke salah satunya. */
+  const keysByName = new Map<string, string[]>();
+  for (const l of lines) {
+    const name = normalizeItemName(l.itemName);
+    const key = chainLineKey(l);
+    const list = keysByName.get(name) ?? [];
+    if (!list.includes(key)) list.push(key);
+    keysByName.set(name, list);
+  }
+
+  const deliveredByKey = sumByKey(delivered, (r) => num(r.quantity), contractKeys, keysByName);
+  const invoicedKgByKey = sumByKey(invoiced, (r) => num(r.quantity), contractKeys, keysByName);
+  const invoicedValueByKey = sumByKey(
+    invoiced,
+    (r) => num(r.quantity) * num(r.price),
+    contractKeys,
+    keysByName
+  );
 
   const out: ContractLineOutstanding[] = order.map((key) => {
     const c = merged.get(key)!;
@@ -337,10 +431,23 @@ export class OverInvoiceError extends Error {
  */
 export function findOverInvoiced(
   outstanding: ContractLineOutstanding[],
-  requested: { itemName: string; quantity: number | string }[]
+  requested: { itemId?: number | null; itemName: string; quantity: number | string }[]
 ): OverInvoiceDetail[] {
   const byKey = new Map(outstanding.map((l) => [l.key, l]));
-  const requestedByKey = sumByKey(requested, (r) => num(r.quantity), (r) => r.itemName);
+  /*
+   * Penyelesaian yang SAMA dengan `buildContractOutstanding` — kalau pagar ini
+   * memakai aturan penjodohan yang berbeda, ia akan menahan baris yang berbeda
+   * dari yang dihitung laporannya (#491).
+   */
+  const contractKeys = new Set(outstanding.map((l) => l.key));
+  const keysByName = new Map<string, string[]>();
+  for (const l of outstanding) {
+    const name = normalizeItemName(l.itemName);
+    const list = keysByName.get(name) ?? [];
+    if (!list.includes(l.key)) list.push(l.key);
+    keysByName.set(name, list);
+  }
+  const requestedByKey = sumByKey(requested, (r) => num(r.quantity), contractKeys, keysByName);
 
   const over: OverInvoiceDetail[] = [];
   for (const [key, qty] of requestedByKey) {
@@ -515,6 +622,7 @@ export async function loadContractChain(
 
   const outstanding = buildContractOutstanding({
     lines: items.map((i) => ({
+      itemId: i.itemId,
       itemName: i.itemName,
       bags: num(i.bags),
       kgPerBag: num(i.kgPerBag),
@@ -585,7 +693,9 @@ export async function contractOutstandingForInvoice(
     client.contractItem.findMany({ where: { contractId }, orderBy: { id: "asc" } }),
     client.deliveryOrder.findMany({
       where: { contractId, status: { not: "canceled" } },
-      select: { items: { select: { itemName: true, quantity: true } } },
+      /* `itemId` ikut (#491): surat jalan SUDAH menyimpannya sejak #14, jadi
+         begitu baris kontraknya tertaut, keduanya berjodoh lewat id. */
+      select: { items: { select: { itemId: true, itemName: true, quantity: true } } },
     }),
     client.invoice.findMany({
       where: {

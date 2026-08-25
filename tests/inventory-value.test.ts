@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest";
 import { calculateStockTotals, stockLevelsFromTotals, summarizeInventoryItem, type ItemWithStock } from "@/lib/inventory";
 
 function item(stockMovements: ItemWithStock["stockMovements"]): ItemWithStock {
-  return { id: 1, name: "Kopi", unit: "kg", stockMovements };
+  return { id: 1, code: "ITM-0001", name: "Kopi", unit: "kg", stockMovements };
 }
 
 describe("summarizeInventoryItem — nilai persediaan", () => {

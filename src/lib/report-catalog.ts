@@ -431,15 +431,27 @@ export const REPORTS: ReportDefinition[] = [
     // tempat bekerja — berkartu, bergrafik, terpaginasi sepuluh baris — dan
     // sepuluh baris pertama bukan laporan nilai persediaan.
     href: "/reports/stock-value",
-    paramKind: "none",
+    /*
+     * BERPERIODE sejak #492. Sebelumnya `"none"` — laporan hanya bisa menjawab
+     * "per hari ini", sehingga pertanyaan yang paling sering ditanyakan akuntan
+     * ("berapa nilai persediaan per 31 Desember?") tak punya jawaban, dan
+     * angkanya berubah setiap kali tanggal berganti.
+     */
+    paramKind: "period",
     icon: "Package",
     payloadKind: "stock-value",
     columns: [
+      { id: "code", labelKey: "common.itemCode" },
       { id: "name", labelKey: "common.item", fixed: true },
       { id: "unit", labelKey: "common.unit" },
-      { id: "currentStock", labelKey: "inventory.colCurrentStock" },
-      { id: "unitCost", labelKey: "inventory.colUnitCost" },
-      { id: "stockValue", labelKey: "inventory.colValue" },
+      { id: "openingQty", labelKey: "inventory.colOpeningQty" },
+      { id: "openingValue", labelKey: "inventory.colOpeningValue" },
+      { id: "inQty", labelKey: "inventory.colInQty" },
+      { id: "inValue", labelKey: "inventory.colInValue" },
+      { id: "outQty", labelKey: "inventory.colOutQty" },
+      { id: "outValue", labelKey: "inventory.colOutValue" },
+      { id: "closingQty", labelKey: "inventory.colClosingQty" },
+      { id: "closingValue", labelKey: "inventory.colClosingValue" },
     ],
   },
   {

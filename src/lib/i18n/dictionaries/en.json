@@ -267,7 +267,8 @@
     "notFilledIn": "Not filled in",
     "overdueDocs": "{count} documents are past their due date.",
     "actions": "Actions",
-    "monthOfYear": "{month} {year}"
+    "monthOfYear": "{month} {year}",
+    "itemCode": "Item Code"
   },
   "nav": {
     "groups": {
@@ -847,7 +848,8 @@
     "loadFailed": "Failed to load the contract",
     "updateFailed": "Failed to save the contract changes",
     "loadingContract": "Loading the contract...",
-    "notFound": "Contract not found"
+    "notFound": "Contract not found",
+    "unlinkedItemName": "Recorded as “{name}” and not linked to an item yet. Pick the item to link it."
   },
   "invoices": {
     "title": "Sales Invoices ({count})",
@@ -1606,7 +1608,10 @@
     },
     "expenseNatureField": "Nature of expense",
     "expenseNatureNone": "Not set",
-    "expenseNatureHint": "What was spent on — the basis for note disclosures and withholding-tax matching. May be left empty."
+    "expenseNatureHint": "What was spent on — the basis for note disclosures and withholding-tax matching. May be left empty.",
+    "linkedParents": "{count} accounts linked to their parent.",
+    "missingParents": "These parents were not found, so the accounts were created without one: {pairs}. Import the parent accounts first, then retry.",
+    "ignoredColumns": "These columns are in the file but were not imported: {columns}"
   },
   "costCenters": {
     "title": "Cost Centres ({count})",
@@ -2650,8 +2655,27 @@
     "opnameSubmit": "Save Adjustment",
     "opnameFailed": "The stock count could not be saved. Please try again.",
     "opnameSaved": "Stock count saved — {count} items adjusted.",
-    "itemNameTaken": "That item name is already taken. Use another name, or add stock to the existing item.",
-    "itemNameTakenInactive": "An item with that name exists but is INACTIVE, so it does not appear in any list. Reactivate it rather than creating a second one — its stock history would be split in two."
+    "itemCodeTaken": "That item code is already taken. Use another code, or add stock to the existing item.",
+    "itemCodeTakenInactive": "An item with that code exists but is INACTIVE, so it does not appear in any list. Reactivate it rather than creating a second one — its stock history would be split in two.",
+    "duplicateNameQuestion": "An item named {name} already exists (code {code}). Save this as a separate item?",
+    "duplicateNameActive": "Their stock history and balances will not be merged. If you meant the same item, cancel and add stock to it instead.",
+    "duplicateNameInactive": "That same-named item is INACTIVE, so it does not appear in any list. If you meant the same item, cancel and reactivate it instead.",
+    "duplicateNameTitle": "Item name already in use",
+    "duplicateNameConfirm": "Yes, separate item",
+    "colOpeningQty": "Opening Qty",
+    "colOpeningValue": "Opening Value",
+    "colInQty": "In Qty",
+    "colInValue": "In Value",
+    "colOutQty": "Out Qty",
+    "colOutValue": "Out Value",
+    "colClosingQty": "Closing Qty",
+    "colClosingValue": "Closing Value",
+    "revaluationNote": "Valuation difference {amount}: the average cost shifted during this period, so the closing value does not exactly equal opening + in − out. The closing value is the one the balance sheet uses.",
+    "periodValueTitle": "Inventory value over the period, with its movements",
+    "movementShrinkage": "Process Result (shrinkage)",
+    "shrinkageValueLabel": "Shrinkage value (Rp)",
+    "shrinkageValueHint": "The rupiah value of the goods lost. Typed in, not derived from the average cost.",
+    "shrinkageAccountHint": "This shrinkage is charged to Process Shrinkage Expense — not COGS, since nothing was sold."
   },
   "setup": {
     "shellSubtitle": "First-time company setup",
@@ -3700,6 +3724,9 @@
     "amountTooLarge": "Amount is too large",
     "categoryRequired": "Please choose a category",
     "taxRateOutOfRange": "The PPN rate must be between 0 and 100 percent",
+    "itemCodeRequired": "Item code is required",
+    "shrinkageValuePositive": "Shrinkage value must be greater than zero",
+    "shrinkageValueRequired": "Shrinkage value is required for Process Result",
     "taxRateDateInvalid": "The effective date must be a real date (YYYY-MM-DD)"
   },
   "taxSettings": {

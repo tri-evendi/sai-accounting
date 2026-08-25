@@ -241,14 +241,28 @@ export type StatementPayload =
       kind: "stock-value";
       period: string;
       rows: {
+        code: string;
         name: string;
         unit: string | null;
-        currentStock: number;
-        unitCost: number | null;
-        stockValue: number | null;
+        openingQty: number;
+        openingValue: number | null;
+        inQty: number;
+        inValue: number | null;
+        outQty: number;
+        outValue: number | null;
+        closingQty: number;
+        closingValue: number | null;
       }[];
+      /** Nilai persediaan pada AKHIR periode — angka yang dicocokkan ke neraca. */
       totalValue: number;
       uncostedCount: number;
+      /**
+       * Selisih penilaian (#492): `akhir − (awal + masuk − keluar)`. Di bawah
+       * rata-rata tertimbang ia tidak selalu nol, dan dicetak justru supaya
+       * bisa ditanyakan — bukan diratakan dengan menurunkan nilai akhir dari
+       * ketiga angka lain, yang akan membuat laporan ini tak sama dengan neraca.
+       */
+      revaluation: number;
       visibleColumns?: string[];
     }
   /**
@@ -830,13 +844,24 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
   if (payload.kind === "stock-value") {
     const cols = stockValueColumns(payload);
     const cell = (r: (typeof payload.rows)[number], c: StockValueColumnId) => {
+      if (c === "code") return r.code;
       if (c === "name") return r.name;
       if (c === "unit") return r.unit || "-";
-      if (c === "currentStock") return qty(r.currentStock);
+      if (c === "openingQty") return qty(r.openingQty);
+      if (c === "inQty") return qty(r.inQty);
+      if (c === "outQty") return qty(r.outQty);
+      if (c === "closingQty") return qty(r.closingQty);
       // Barang tanpa dasar biaya: garis, bukan Rp 0. Nol menyatakan "tidak
       // bernilai", dan itu bukan yang buku besar katakan tentang barang yang
       // ada wujudnya — ia hanya belum punya biaya perolehan tercatat.
-      const value = c === "unitCost" ? r.unitCost : r.stockValue;
+      const value =
+        c === "openingValue"
+          ? r.openingValue
+          : c === "inValue"
+            ? r.inValue
+            : c === "outValue"
+              ? r.outValue
+              : r.closingValue;
       return value == null ? "—" : rp(value);
     };
 
@@ -852,8 +877,14 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
         ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
         : [["Belum ada barang.", ...Array(cols.length - 1).fill("")]],
       foot: [
+        /* Total DIPETAKAN per kunci kolom, jadi ia ikut menyusut bersama pilihan
+           kolom pengguna dan tak bisa meleset satu kolom (#492). */
         cols.map((c) =>
-          c === "name" ? "Total Nilai Persediaan" : c === "stockValue" ? rp(payload.totalValue) : ""
+          c === "name"
+            ? "Total Nilai Persediaan"
+            : c === "closingValue"
+              ? rp(payload.totalValue)
+              : ""
         ),
       ],
       styles: { fontSize: 9 },

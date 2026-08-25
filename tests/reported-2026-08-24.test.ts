@@ -22,34 +22,67 @@ import zh from "@/lib/i18n/dictionaries/zh.json";
 
 const src = (...parts: string[]) => readFileSync(join(__dirname, "..", "src", ...parts), "utf8");
 
-describe("nama barang kembar dijawab, bukan diruntuhkan", () => {
+describe("barang kembar dijawab, bukan diruntuhkan", () => {
   const route = src("app", "api", "inventory", "route.ts");
 
+  /*
+   * Keluhan aslinya (24 Agu 2026): "barang tidak bisa disimpan" — P2002 tanpa
+   * penangkap menjadi 500, dan formulir jatuh ke kalimat umum tanpa satu kata
+   * pun tentang sebabnya.
+   *
+   * #493 memindahkan `@unique` dari NAMA ke KODE, jadi bentrokan yang menolak
+   * kini bentrokan kode. Yang dijaga di sini tidak berubah: bentrokan dijawab
+   * dengan 409 yang MENJELASKAN, per isian, dan keadaan nonaktif punya
+   * kalimatnya sendiri. Yang berpindah hanya isian mana yang tersorot.
+   */
   it("P2002 DITANGKAP — tidak lagi menjadi 500 yang tak menjelaskan apa pun", () => {
     expect(route).toMatch(/isUniqueViolation/);
     expect(route).toMatch(/status: 409/);
   });
 
-  it("jawabannya galat PER ISIAN pada `name`, supaya kotaknya tersorot", () => {
+  it("jawabannya galat PER ISIAN pada `code`, supaya kotaknya tersorot", () => {
     /* `applyServerFieldErrors` di formulirnya hanya menyorot isian bila
        galatnya datang sebagai `details.fieldErrors.<nama isian>`. Pesan biasa
        akan kembali menjadi kalimat umum — persis yang dikeluhkan. */
-    expect(route).toMatch(/fieldErrors:\s*\{\s*\n\s*name:/);
+    expect(route).toMatch(/fieldErrors:\s*\{\s*\n\s*code:/);
   });
 
   it("barang NONAKTIF punya kalimatnya sendiri", () => {
     /* Barang nonaktif tidak muncul di daftar mana pun (DATABASE.md §1.3), jadi
-       "nama sudah dipakai" terdengar seperti aplikasi yang berbohong. */
-    expect(route).toMatch(/itemNameTakenInactive/);
+       "kode sudah dipakai" terdengar seperti aplikasi yang berbohong. */
+    expect(route).toMatch(/itemCodeTakenInactive/);
     expect(route).toMatch(/isActive/);
   });
 
   it("kalimatnya ada di ketiga bahasa, dan yang nonaktif menyebut sebabnya", () => {
     for (const dict of [id, en, zh]) {
-      expect(dict.inventory.itemNameTaken.length).toBeGreaterThan(10);
-      expect(dict.inventory.itemNameTakenInactive.length).toBeGreaterThan(10);
+      expect(dict.inventory.itemCodeTaken.length).toBeGreaterThan(10);
+      expect(dict.inventory.itemCodeTakenInactive.length).toBeGreaterThan(10);
     }
-    expect(id.inventory.itemNameTakenInactive).toMatch(/NONAKTIF/);
+    expect(id.inventory.itemCodeTakenInactive).toMatch(/NONAKTIF/);
+  });
+
+  /*
+   * Sisi LAIN dari #493, dan alasan kenapa perlindungan 24 Agu tidak sekadar
+   * dihapus: nama kembar kini SAH (dua `LONG PEPPER` berkode berbeda di berkas
+   * saldo awal 2024 pengguna), tetapi tidak diterima diam-diam. Nama kembar
+   * yang TIDAK disengaja membelah riwayat stok sebuah barang menjadi dua, dan
+   * pembelahan itu tak pernah terlihat sampai laporannya tidak mau cocok.
+   */
+  it("nama kembar DITAHAN dengan pertanyaan, bukan ditolak dan bukan didiamkan", () => {
+    expect(route).toMatch(/needsConfirmation/);
+    expect(route).toMatch(/duplicate_name/);
+    expect(route).toMatch(/confirmDuplicateName/);
+  });
+
+  it("pertanyaannya dijawab di SERVER — bukan hanya di layar", () => {
+    /* `/api/v1` dan token API memanggil jalur ini tanpa melewati formulir mana
+       pun. Pemanggil yang tidak menjawab dianggap BELUM menjawab, bukan setuju. */
+    expect(route).toMatch(/if \(!confirmDuplicateName\)/);
+    for (const dict of [id, en, zh]) {
+      expect(dict.inventory.duplicateNameQuestion).toMatch(/\{name\}/);
+      expect(dict.inventory.duplicateNameQuestion).toMatch(/\{code\}/);
+    }
   });
 });
 

@@ -31,6 +31,7 @@ export default async function StockUpdatePage({
       orderBy: { name: "asc" },
       select: {
         id: true,
+        code: true,
         name: true,
         unit: true,
         stockMovements: { select: { quantity: true, type: true, date: true } },
@@ -43,6 +44,7 @@ export default async function StockUpdatePage({
     <StockUpdateForm
       items={items.map((it) => ({
         id: it.id,
+        code: it.code,
         name: it.name,
         unit: it.unit,
         currentStock: calculateStockTotals(it.stockMovements).currentStock,

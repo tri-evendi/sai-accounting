@@ -267,7 +267,8 @@
     "notFilledIn": "Belum diisi",
     "overdueDocs": "{count} dokumen sudah lewat jatuh tempo.",
     "actions": "Aksi",
-    "monthOfYear": "{month} {year}"
+    "monthOfYear": "{month} {year}",
+    "itemCode": "Kode Barang"
   },
   "nav": {
     "groups": {
@@ -847,7 +848,8 @@
     "loadFailed": "Gagal memuat data kontrak",
     "updateFailed": "Gagal menyimpan perubahan kontrak",
     "loadingContract": "Memuat data kontrak...",
-    "notFound": "Kontrak tidak ditemukan"
+    "notFound": "Kontrak tidak ditemukan",
+    "unlinkedItemName": "Tercatat sebagai “{name}” dan belum tertaut ke master barang. Pilih barangnya untuk menautkan."
   },
   "invoices": {
     "title": "Tagihan Penjualan ({count})",
@@ -1606,7 +1608,10 @@
     },
     "expenseNatureField": "Sifat Beban",
     "expenseNatureNone": "Belum ditetapkan",
-    "expenseNatureHint": "Apa yang dibelanjakan — bahan rincian CALK dan pencocokan PPh. Boleh dikosongkan."
+    "expenseNatureHint": "Apa yang dibelanjakan — bahan rincian CALK dan pencocokan PPh. Boleh dikosongkan.",
+    "linkedParents": "{count} akun tertaut ke akun induknya.",
+    "missingParents": "Induk berikut tidak ditemukan, jadi akunnya dibuat tanpa induk: {pairs}. Impor akun induknya lebih dulu, lalu ulangi.",
+    "ignoredColumns": "Kolom ini ada di berkas tetapi tidak diimpor: {columns}"
   },
   "costCenters": {
     "title": "Pusat Biaya ({count})",
@@ -2650,8 +2655,27 @@
     "opnameSubmit": "Simpan Penyesuaian",
     "opnameFailed": "Gagal menyimpan opname. Coba lagi.",
     "opnameSaved": "Opname tersimpan — {count} barang disesuaikan.",
-    "itemNameTaken": "Nama barang itu sudah dipakai. Pakai nama lain, atau tambahkan stok ke barang yang sudah ada.",
-    "itemNameTakenInactive": "Barang dengan nama itu sudah ada tetapi sedang NONAKTIF, jadi ia tidak muncul di daftar. Aktifkan kembali barang itu daripada membuat yang kedua — riwayat stoknya akan terbelah dua."
+    "itemCodeTaken": "Kode barang itu sudah dipakai. Pakai kode lain, atau tambahkan stok ke barang yang sudah ada.",
+    "itemCodeTakenInactive": "Barang dengan kode itu sudah ada tetapi sedang NONAKTIF, jadi ia tidak muncul di daftar. Aktifkan kembali barang itu daripada membuat yang kedua — riwayat stoknya akan terbelah dua.",
+    "duplicateNameQuestion": "Sudah ada barang bernama {name} (kode {code}). Simpan sebagai barang terpisah?",
+    "duplicateNameActive": "Riwayat & saldo stok keduanya tidak akan digabung. Kalau yang Anda maksud barang yang sama, batalkan lalu tambahkan stok ke barang itu.",
+    "duplicateNameInactive": "Barang bernama sama itu sedang NONAKTIF, jadi ia tidak muncul di daftar mana pun. Kalau yang Anda maksud barang yang sama, batalkan lalu aktifkan kembali barang itu.",
+    "duplicateNameTitle": "Nama barang sudah dipakai",
+    "duplicateNameConfirm": "Ya, barang terpisah",
+    "colOpeningQty": "Kts Awal",
+    "colOpeningValue": "Nilai Awal",
+    "colInQty": "Kts Masuk",
+    "colInValue": "Nilai Masuk",
+    "colOutQty": "Kts Keluar",
+    "colOutValue": "Nilai Keluar",
+    "colClosingQty": "Kts Akhir",
+    "colClosingValue": "Nilai Akhir",
+    "revaluationNote": "Selisih penilaian {amount}: harga rata-rata bergeser selama periode ini, jadi nilai akhir tidak sama persis dengan awal + masuk − keluar. Nilai akhir yang dipakai neraca.",
+    "periodValueTitle": "Nilai persediaan sepanjang periode, beserta mutasinya",
+    "movementShrinkage": "Hasil Proses (susut)",
+    "shrinkageValueLabel": "Nilai susut (Rp)",
+    "shrinkageValueHint": "Berapa rupiah nilai barang yang susut. Diketik, bukan dihitung dari harga rata-rata.",
+    "shrinkageAccountHint": "Susut ini dibebankan ke akun Beban Susut Proses — bukan HPP, sebab tidak ada barang yang terjual."
   },
   "setup": {
     "shellSubtitle": "Penyiapan awal perusahaan",
@@ -3700,6 +3724,9 @@
     "amountTooLarge": "Jumlah terlalu besar",
     "categoryRequired": "Kategori wajib dipilih",
     "taxRateOutOfRange": "Tarif PPN harus antara 0 dan 100 persen",
+    "itemCodeRequired": "Kode barang wajib diisi",
+    "shrinkageValuePositive": "Nilai susut harus lebih dari nol",
+    "shrinkageValueRequired": "Nilai susut wajib diisi untuk Hasil Proses",
     "taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)"
   },
   "taxSettings": {

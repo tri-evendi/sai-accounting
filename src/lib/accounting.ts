@@ -253,6 +253,14 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   // susut (fisik < sistem) mendebit sebagai kerugian; lebih (fisik > sistem)
   // mengkredit (kontra). Bertipe expense agar tampil di Laba/Rugi.
   { code: "610105", name: "Selisih Persediaan", type: "expense", parent: "6101", module: "inventory" },
+  // Beban Susut Proses (issue #490) — susut yang lahir dari MENGOLAH barang
+  // (menyortir, mengeringkan, mengupas), bukan dari salah hitung. Akun sendiri,
+  // terpisah dari Selisih Persediaan: yang satu kerugian pencatatan, yang lain
+  // ongkos produksi yang wajar dan memang diharapkan. Menggabungkannya membuat
+  // "seberapa akurat gudang kami" dan "berapa rendemen proses kami" jadi satu
+  // angka yang tak menjawab keduanya. Bagan akun pengguna pertama menamainya
+  // 5100002 BEBAN SUSUT PROSES.
+  { code: "610106", name: "Beban Susut Proses", type: "expense", parent: "6101", module: "inventory" },
 
   // 7xxx OTHER INCOME / EXPENSE
   { code: "7101", name: "Laba/Rugi Selisih Kurs", type: "other_income" },

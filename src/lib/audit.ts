@@ -51,6 +51,10 @@ export type AuditAction =
   | "finance.create"
   | "stock.in"
   | "stock.out"
+  /** Susut hasil proses (issue #490) — gerakan `out` yang membebani Beban
+   *  Susut Proses, bukan HPP. Dibedakan di jejak audit karena ia keputusan
+   *  yang berbeda: barang berkurang tanpa ada yang terjual. */
+  | "stock.shrinkage"
   | "item.create"
   /// Barang dinonaktifkan/diaktifkan lagi — bukan dihapus (docs/DATABASE.md §1.3).
   | "item.activate"

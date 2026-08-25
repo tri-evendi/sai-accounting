@@ -12,7 +12,14 @@ export const stockUpdateSchema = z
      */
     itemId: z.coerce.number().int().positive(vmsg("validation.pickStockItem")),
     quantity: z.coerce.number().positive(vmsg("validation.quantityPositive")),
-    type: z.enum(["in", "out"]),
+    /*
+     * Tiga PILIHAN di layar, dua ARAH di basis data (issue #490).
+     * `shrinkage` adalah pilihan formulir, bukan nilai `stock_movements.type`:
+     * route menuliskannya sebagai gerakan `out` bertanda, sebab stoknya memang
+     * berkurang persis seperti pengeluaran lain. Yang berbeda hanya jurnalnya.
+     * Lihat `PROCESS_SHRINKAGE_NOTE` di `lib/constants.ts`.
+     */
+    type: z.enum(["in", "out", "shrinkage"]),
     date: z.string().min(1, vmsg("validation.dateRequired")),
     /**
      * IDR cost per unit. Required on `in` movements: it is the only input to the
@@ -21,6 +28,17 @@ export const stockUpdateSchema = z
      * silently overstated. Ignored on `out` (cost is derived, never re-entered).
      */
     unitCost: z.coerce.number().positive(vmsg("validation.unitCostPositive")).optional(),
+    /**
+     * Nilai rupiah yang susut (issue #490) — WAJIB pada "Hasil Proses", dan
+     * hanya di sana. Pengguna menyebutnya sebagai angka TERPISAH dari
+     * kuantitasnya ("35 kilo susut, nominalnya 1 juta"), jadi ia diketik, bukan
+     * diturunkan dari rata-rata tertimbang. Inilah yang dibebankan ke akun
+     * Beban Susut Proses.
+     */
+    shrinkageValue: z.coerce
+      .number()
+      .positive(vmsg("validation.shrinkageValuePositive"))
+      .optional(),
     note: z.string().max(500).trim().optional(),
     /**
      * Pusat biaya gerakan ini (issue #98). Pengeluaran stok MANUAL adalah satu-
@@ -39,11 +57,38 @@ export const stockUpdateSchema = z
         message: vmsg("validation.unitCostRequiredForStockIn"),
       });
     }
+    /*
+     * Tanpa nilai, "Hasil Proses" hanya mengurangi stok tanpa membebankan
+     * apa pun — barangnya hilang dari gudang dan tidak muncul sebagai ongkos
+     * di mana pun. Itu bukan pencatatan yang setengah jadi, itu pencatatan
+     * yang salah, jadi ia ditolak di sini alih-alih diposting sebagian.
+     */
+    if (data.type === "shrinkage" && !data.shrinkageValue) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["shrinkageValue"],
+        message: vmsg("validation.shrinkageValueRequired"),
+      });
+    }
   });
 
 export const itemSchema = z.object({
+  /*
+   * Kode barang (#493) — identitas sebuah barang sejak nama berhenti jadi
+   * kunci. Di-trim SEBELUM diperiksa panjang minimalnya supaya spasi tidak
+   * pernah lolos sebagai kode.
+   */
+  code: z.string().trim().min(1, vmsg("validation.itemCodeRequired")).max(20),
   name: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   unit: z.string().max(20).trim().optional(),
+  /*
+   * Pengakuan SADAR bahwa nama kembar memang disengaja (#493). Bukan bagian
+   * dari data barang — ia tidak disimpan ke mana pun — melainkan jawaban atas
+   * pertanyaan yang diajukan server saat namanya bentrok. Bawaannya `false`:
+   * pemanggil yang tidak menyebutnya sama sekali dianggap BELUM menjawab, dan
+   * itu benar untuk pemanggil API di luar layar kita.
+   */
+  confirmDuplicateName: z.boolean().optional().default(false),
 });
 
 /**

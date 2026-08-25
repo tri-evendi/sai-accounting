@@ -1,6 +1,7 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { listClosedPeriods } from "@/lib/period";
+import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/page-header";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -33,7 +34,16 @@ export default async function NewContractPage({
   await requirePagePermission("contract.write", params);
   const t = await getT();
 
-  const closedPeriods = await listClosedPeriods();
+  const [closedPeriods, items] = await Promise.all([
+    listClosedPeriods(),
+    /* Barang AKTIF saja (#104): yang dinonaktifkan tidak ditawarkan untuk
+       kontrak BARU, tetapi kontrak lama yang menyebutnya tetap terbaca. */
+    prisma.item.findMany({
+      where: { isActive: true },
+      orderBy: [{ name: "asc" }, { code: "asc" }],
+      select: { id: true, code: true, name: true, unit: true },
+    }),
+  ]);
 
   return (
     <div>
@@ -52,7 +62,7 @@ export default async function NewContractPage({
       <div style={{ marginBottom: LEARN_MORE_GAP }}>
         <LearnMore term="kontrak" label={t("contracts.learnMoreNew")} />
       </div>
-      <NewContractForm closedPeriods={closedPeriods} />
+      <NewContractForm closedPeriods={closedPeriods} itemOptions={items} />
     </div>
   );
 }

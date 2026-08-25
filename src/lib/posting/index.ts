@@ -90,6 +90,15 @@ export type PostingSourceType =
    * dinilai pada biaya rata-rata tertimbang.
    */
   | "stock_adjustment"
+  /**
+   * Susut HASIL PROSES (issue #490). Source ROW-nya juga baris `stock_movements`,
+   * dan juga `out` — sebab stoknya memang berkurang. Yang berbeda dari
+   * `stock_movement` (HPP barang terjual) dan `stock_adjustment` (selisih
+   * hitung-fisik) adalah AKUN LAWANNYA dan dari mana nilainya datang:
+   * susut proses dibebankan ke Beban Susut Proses, dan nilainya DIKETIK
+   * pengguna — bukan diturunkan dari rata-rata tertimbang.
+   */
+  | "stock_shrinkage"
   /** Uang muka received/paid before any invoice exists (issue #26). */
   | "advance_payment"
   /** One compensation of an advance into an invoice/purchase (issue #26). */
@@ -1107,6 +1116,76 @@ async function buildStockAdjustmentEntry(
   };
 }
 
+/**
+ * Susut HASIL PROSES (issue #490) — membukukan ongkos mengolah barang ke akun
+ * Beban Susut Proses, BUKAN HPP dan BUKAN Selisih Persediaan.
+ *
+ * ══ Kenapa akunnya sendiri ═════════════════════════════════════════════════
+ * Tiga susut yang tampak mirip dan menjawab tiga pertanyaan berbeda:
+ *   • HPP            — barang TERJUAL. Lawan dari pendapatan.
+ *   • Selisih Persediaan — gudang tidak akurat. Kerugian pencatatan.
+ *   • Susut Proses   — ongkos MENGOLAH yang wajar dan memang diharapkan.
+ * Menggabungkan yang ketiga ke salah satu dari dua pertama membuat marjin
+ * penjualan atau akurasi gudang terlihat lebih buruk daripada kenyataannya,
+ * sementara rendemen proses — satu-satunya angka yang sedang ditanyakan —
+ * tidak muncul di mana pun.
+ *
+ * ══ NILAINYA DIKETIK, BUKAN DITURUNKAN ═════════════════════════════════════
+ * Pengguna menyebut dua angka terpisah: berapa kilo yang susut dan berapa
+ * rupiah nilainya ("35 kilo susut, nominalnya 1 juta"). Route menyimpan rupiah
+ * itu sebagai `unit_cost` baris ini — nilai per kilo, sehingga `qty × unitCost`
+ * memulangkan angka yang persis diketik.
+ *
+ * Menaruhnya di `unit_cost` aman bagi mesin costing: `weightedAverageUnitCost`
+ * hanya membaca baris `in`, jadi baris `out` bercosting tidak pernah menggeser
+ * rata-rata barang mana pun. Pola yang sama dipakai opname untuk baris `in`-nya.
+ */
+async function buildStockShrinkageEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const movement = await client.stockMovement.findUnique({
+    where: { id: ctx.sourceId },
+    include: { item: true },
+  });
+  if (!movement) throw new SourceNotFoundError("stock_shrinkage", ctx.sourceId);
+
+  const qty = Math.abs(num(movement.quantity));
+  /* Nilai yang tidak diketik = tidak ada yang bisa dibukukan. Membukukan nol
+     atau menebak rata-rata akan menyatakan bahwa mengolah barang ini tidak
+     berongkos apa-apa — persis kebalikan dari yang sedang dicatat. */
+  const unitCost = movement.unitCost == null ? 0 : num(movement.unitCost);
+  if (qty <= 0 || unitCost <= 0) return null;
+
+  const value = costOfMovement(qty, unitCost);
+  if (value <= 0) return null;
+
+  const acc = await resolveAccountIds(
+    [MAPPING_KEYS.PROCESS_SHRINKAGE, MAPPING_KEYS.INVENTORY],
+    "IDR",
+    client
+  );
+
+  return {
+    date: movement.date,
+    type: "adjustment",
+    note: `Susut hasil proses ${movement.item.name}`,
+    sourceType: "stock_shrinkage",
+    sourceId: movement.id,
+    /* Bentuknya identik dengan susut opname — D: beban, K: persediaan — jadi
+       ia memakai pembangun baris yang SAMA dengan `direction: "shrink"`.
+       Menyalinnya menjadi fungsi kedua berarti dua tempat yang bisa berselisih
+       soal sisi mana yang didebit. */
+    lines: buildInventoryAdjustmentLines({
+      adjustmentAccountId: acc[MAPPING_KEYS.PROCESS_SHRINKAGE],
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      value,
+      direction: "shrink",
+      memo: movement.item.name,
+    }),
+  };
+}
+
 // ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
 
 /**
@@ -1204,6 +1283,8 @@ async function buildEntry(
       return buildSupplierTransactionEntry(client, ctx);
     case "cash_movement":
       return buildCashMovementEntry(client, ctx);
+    case "stock_shrinkage":
+      return buildStockShrinkageEntry(client, ctx);
     case "stock_movement":
       return buildStockMovementEntry(client, ctx);
     case "stock_adjustment":
@@ -1334,6 +1415,7 @@ const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
    * membiarkan pembacanya menebak.
    */
   stock_movement: own((c) => c.stockMovement),
+  stock_shrinkage: own((c) => c.stockMovement),
   /**
    * Selisih stok opname — BARIS yang sama, jadi KOLOM yang sama. Penyesuaian
    * opname tak lahir dari formulir berdimensi, sehingga praktisnya selalu NULL;

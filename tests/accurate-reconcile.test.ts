@@ -278,14 +278,25 @@ describe("impor Daftar Akun dari ekspor LAPORAN Accurate", () => {
     const flat = flattenAccurateReport(coaReport())!;
     const { accounts, errors } = parseCoaRows(flat.rows, { rowNumbers: flat.rowNumbers });
     expect(errors).toEqual([]);
+    /* `parentCode: null` — laporan Accurate yang diratakan tidak membawa kolom
+       Akun Induk sama sekali (#494); hierarkinya hanya ada di ekspor bagan akun,
+       bukan di laporan ini. Null di sini berarti "tidak disebut", dan itu benar. */
     expect(accounts).toEqual([
-      { code: "1101001", name: "KAS KECIL", type: "cash_bank", normalBalance: "debit", currency: "IDR" },
+      {
+        code: "1101001",
+        name: "KAS KECIL",
+        type: "cash_bank",
+        normalBalance: "debit",
+        currency: "IDR",
+        parentCode: null,
+      },
       {
         code: "110201",
         name: "PIUTANG USAHA",
         type: "account_receivable",
         normalBalance: "debit",
         currency: "IDR",
+        parentCode: null,
       },
     ]);
   });

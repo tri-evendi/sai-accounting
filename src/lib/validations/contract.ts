@@ -6,6 +6,12 @@ import { paymentFormFields } from "./payment";
 import { vmsg } from "@/lib/i18n/validation";
 
 export const contractItemSchema = z.object({
+  /**
+   * Barang dari master (issue #491). Opsional di SKEMA supaya kontrak lama yang
+   * disunting tanpa memilih ulang barangnya tidak ditolak — formulir baru
+   * selalu mengirimnya.
+   */
+  itemId: z.coerce.number().int().positive().nullish(),
   itemName: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   bags: z.coerce.number().int().min(0, vmsg("validation.bagsMin0")),
   kgPerBag: z.coerce.number().min(0, vmsg("validation.kgPerBagMin0")),

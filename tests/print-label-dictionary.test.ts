@@ -266,10 +266,19 @@ const PADANAN: Padanan[] = [
   { di: "STOCK_MOVEMENT_HEADERS.closing", cetak: STOCK_MOVEMENT_HEADERS.closing, kunci: "stockMovement.colClosing" },
 
   // ── Nilai Persediaan ──────────────────────────────────────────────────────
+  { di: "STOCK_VALUE_HEADERS.code", cetak: STOCK_VALUE_HEADERS.code, kunci: "common.itemCode" },
   { di: "STOCK_VALUE_HEADERS.name", cetak: STOCK_VALUE_HEADERS.name, kunci: "common.item" },
   { di: "STOCK_VALUE_HEADERS.unit", cetak: STOCK_VALUE_HEADERS.unit, kunci: "common.unit" },
-  { di: "STOCK_VALUE_HEADERS.unitCost", cetak: STOCK_VALUE_HEADERS.unitCost, kunci: "inventory.colUnitCost", bentuk: "kamus+IDR" },
-  { di: "STOCK_VALUE_HEADERS.stockValue", cetak: STOCK_VALUE_HEADERS.stockValue, kunci: "inventory.colValue", bentuk: "kamus+IDR" },
+  // Berperiode sejak #492: empat pasang kuantitas & nilai menggantikan saldo
+  // tunggal + biaya/unit.
+  { di: "STOCK_VALUE_HEADERS.openingQty", cetak: STOCK_VALUE_HEADERS.openingQty, kunci: "inventory.colOpeningQty" },
+  { di: "STOCK_VALUE_HEADERS.openingValue", cetak: STOCK_VALUE_HEADERS.openingValue, kunci: "inventory.colOpeningValue", bentuk: "kamus+IDR" },
+  { di: "STOCK_VALUE_HEADERS.inQty", cetak: STOCK_VALUE_HEADERS.inQty, kunci: "inventory.colInQty" },
+  { di: "STOCK_VALUE_HEADERS.inValue", cetak: STOCK_VALUE_HEADERS.inValue, kunci: "inventory.colInValue", bentuk: "kamus+IDR" },
+  { di: "STOCK_VALUE_HEADERS.outQty", cetak: STOCK_VALUE_HEADERS.outQty, kunci: "inventory.colOutQty" },
+  { di: "STOCK_VALUE_HEADERS.outValue", cetak: STOCK_VALUE_HEADERS.outValue, kunci: "inventory.colOutValue", bentuk: "kamus+IDR" },
+  { di: "STOCK_VALUE_HEADERS.closingQty", cetak: STOCK_VALUE_HEADERS.closingQty, kunci: "inventory.colClosingQty" },
+  { di: "STOCK_VALUE_HEADERS.closingValue", cetak: STOCK_VALUE_HEADERS.closingValue, kunci: "inventory.colClosingValue", bentuk: "kamus+IDR" },
 
   // ── Kas & Bank ────────────────────────────────────────────────────────────
   // Didamaikan di #309: layar dulu memakai `reports.perCashAccountTitle` —
@@ -366,25 +375,6 @@ interface Beda {
  * memindahkan konstanta yang sama.
  */
 const BEDA_HARI_INI: Beda[] = [
-  {
-    di: "STOCK_VALUE_HEADERS.currentStock",
-    cetak: STOCK_VALUE_HEADERS.currentStock,
-    patok: "Saldo",
-    kunci: "inventory.colCurrentStock",
-    kamus: "Sisa Stok",
-    sebab:
-      "Kertas menulis \"Saldo\", layar \"Sisa Stok\" — dua nama untuk satu kolom, " +
-      "dan keduanya benar menurut sumbernya sendiri. #309: kolomnya KUANTITAS, " +
-      "sementara \"Saldo\" di seluruh laporan lain berarti uang (Saldo Awal / " +
-      "Saldo Akhir Kas & Bank) — jadi \"Sisa Stok\" yang lebih jujur. Tapi " +
-      "keduanya tidak bisa didamaikan dari sisi layar: `inventory.colCurrentStock` " +
-      "juga judul kolom halaman Persediaan, permukaan awam yang justru butuh " +
-      "kata biasa. Mendamaikannya berarti KERTAS yang ikut — yaitu mengubah " +
-      "berkas yang sudah dikirim. (Label pemilih kolom sudah tidak ikut sejak " +
-      "#316: ia membaca kunci kamus ini, jadi dialognya menyebut \"Sisa Stok\" " +
-      "seperti layarnya; lihat tests/report-catalog-column-labels.test.ts.) " +
-      "Menunggu keputusan pemilik laporan.",
-  },
   {
     di: "AGING_HEADERS.total",
     cetak: AGING_HEADERS.total,

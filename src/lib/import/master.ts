@@ -86,12 +86,26 @@ export const SUPPLIER_COLUMNS: readonly ColumnSpec[] = CONTACT_COLUMNS;
 
 export const ITEM_COLUMNS: readonly ColumnSpec[] = [
   {
+    key: "code",
+    header: "Kode",
+    aliases: ["Kode Barang", "Item Code", "Kode", "SKU", "No Barang"],
+    required: true,
+    example: "100003",
+    hint: "Wajib, maksimal 20 karakter. UNIK — inilah yang membedakan dua barang.",
+  },
+  {
     key: "name",
     header: "Nama",
     aliases: ["Nama Barang", "Item Name", "Deskripsi", "Description"],
     required: true,
     example: "Kopi Arabika Gayo",
-    hint: "Wajib, maksimal 100 karakter. UNIK — dua barang tidak boleh senama.",
+    /*
+     * Sejak #493 nama BOLEH kembar — berkas saldo awal 2024 pengguna memuat
+     * dua `LONG PEPPER` berkode berbeda. Petunjuknya wajib mengatakan itu:
+     * petunjuk yang masih menjanjikan keunikan akan membuat pengguna mengarang
+     * nama pembeda ("LONG PEPPER 2") untuk masalah yang sudah tidak ada.
+     */
+    hint: "Wajib, maksimal 100 karakter. Boleh sama dengan barang lain asal kodenya beda.",
   },
   {
     key: "unit",
@@ -118,6 +132,8 @@ export interface ParsedCustomer extends ParsedContact {
 }
 
 export interface ParsedItem {
+  /** Identitas barang (#493) — yang dipakai impor untuk mengenali duplikat. */
+  code: string;
   name: string;
   unit: string | null;
 }
@@ -179,11 +195,26 @@ function readContact(values: Record<string, string>, issues: RowIssues): ParsedC
  *
  * Kembar diperiksa SESUDAH bentuknya sah — melaporkan "nama ganda" untuk dua
  * baris yang namanya sama-sama kosong tidak menolong siapa pun.
+ *
+ * ══ APA yang dianggap kembar berbeda per jenis (#493) ══════════════════════
+ * Pelanggan & pemasok dikenali NAMANYA. Barang TIDAK: sejak #493 identitasnya
+ * kode, dan dua barang boleh bernama sama — berkas saldo awal 2024 pengguna
+ * memuat `LONG PEPPER` 100006 dan 100010, dua mutu berbeda yang harga
+ * satuannya berselisih hampir empat kali lipat. Menjaga kembar menurut nama di
+ * sini akan menolak baris kedua sebagai "nama ganda", yaitu menolak justru
+ * berkas yang menjadi alasan #493 ada.
+ *
+ * Karena itu penandanya disuntikkan pemanggil (`identity`), bukan ditebak.
+ * `label` ikut supaya galatnya menyebut kolom yang benar-benar bentrok.
  */
 function parseMaster<T extends { name: string }>(
   sheet: unknown[][],
   columns: readonly ColumnSpec[],
-  build: (values: Record<string, string>, issues: RowIssues) => T
+  build: (values: Record<string, string>, issues: RowIssues) => T,
+  identity: { label: string; of: (row: T) => string } = {
+    label: "Nama",
+    of: (row) => row.name,
+  }
 ): MasterImportResult<T> {
   const { rows: dataRows, missingColumns, truncated } = readImportRows(sheet, columns);
   if (missingColumns.length > 0) {
@@ -197,13 +228,13 @@ function parseMaster<T extends { name: string }>(
 
   const rows: T[] = [];
   const errors: RowError[] = [];
-  const duplikat = new DuplicateGuard("Nama");
+  const duplikat = new DuplicateGuard(identity.label);
 
   for (const { row, values } of dataRows) {
     const issues = new RowIssues(row);
     const parsed = build(values, issues);
 
-    if (!issues.failed) duplikat.check(parsed.name.toLowerCase(), row, issues);
+    if (!issues.failed) duplikat.check(identity.of(parsed).toLowerCase(), row, issues);
 
     const error = issues.toError();
     if (error) errors.push(error);
@@ -230,8 +261,15 @@ export function parseSupplierRows(sheet: unknown[][]): MasterImportResult<Parsed
 }
 
 export function parseItemRows(sheet: unknown[][]): MasterImportResult<ParsedItem> {
-  return parseMaster(sheet, ITEM_COLUMNS, (values, issues) => ({
-    name: requiredText(values.name, "Nama barang", 100, issues),
-    unit: optionalText(values.unit, "Satuan", 20, issues),
-  }));
+  return parseMaster(
+    sheet,
+    ITEM_COLUMNS,
+    (values, issues) => ({
+      code: requiredText(values.code, "Kode barang", 20, issues),
+      name: requiredText(values.name, "Nama barang", 100, issues),
+      unit: optionalText(values.unit, "Satuan", 20, issues),
+    }),
+    /* KODE, bukan nama (#493) — lihat catatan pada `parseMaster` di atas. */
+    { label: "Kode", of: (row) => row.code }
+  );
 }

@@ -98,6 +98,19 @@ export const MAPPING_KEYS = {
    * dipetakan, seperti mapping lain — tidak menebak.
    */
   INVENTORY_ADJUSTMENT: "inventory_adjustment",
+  /**
+   * Beban Susut Proses (issue #490) — akun lawan untuk susut yang lahir dari
+   * MENGOLAH barang, bukan dari salah hitung. Selalu DEBIT (ongkos); lawannya
+   * Persediaan lewat mapping `inventory`. IDR — biaya persediaan dicatat dalam
+   * IDR base. Default 610106. Fail-loud bila belum dipetakan, seperti mapping
+   * lain — tidak menebak.
+   *
+   * Sengaja BUKAN `inventory_adjustment`: susut opname adalah kerugian
+   * pencatatan (gudang tidak akurat), susut proses adalah ongkos produksi yang
+   * wajar. Satu akun untuk keduanya membuat dua pertanyaan berbeda hanya punya
+   * satu angka, dan angka itu tidak menjawab satu pun di antaranya.
+   */
+  PROCESS_SHRINKAGE: "process_shrinkage",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -127,6 +140,7 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   depreciation_expense: "Beban Penyusutan",
   disposal_gain_loss: "Laba/Rugi Pelepasan Aset Tetap",
   inventory_adjustment: "Selisih Persediaan",
+  process_shrinkage: "Beban Susut Proses",
 };
 
 /**
@@ -146,6 +160,7 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.INVENTORY, code: "1104" },
   { key: MAPPING_KEYS.COGS, code: "5101" },
   { key: MAPPING_KEYS.INVENTORY_ADJUSTMENT, code: "610105" },
+  { key: MAPPING_KEYS.PROCESS_SHRINKAGE, code: "610106" },
   { key: MAPPING_KEYS.PURCHASE_EXPENSE, code: "610104" },
   // 7101 Laba/Rugi Selisih Kurs. The live Accurate books use 720103 "Laba/Rugi
   // Terealisasi (CNY)"; this seeds the equivalent slot in the template COA, and a

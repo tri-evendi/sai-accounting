@@ -240,6 +240,23 @@ export function isStockMovementType(value: string): value is StockMovementType {
  */
 export const OPNAME_ADJUSTMENT_NOTE = "Penyesuaian stok opname";
 
+/**
+ * Penanda gerakan stok yang lahir dari HASIL PROSES (issue #490).
+ *
+ * Alasannya sama persis dengan `OPNAME_ADJUSTMENT_NOTE`, dan pola ini memang
+ * disalin darinya: susut proses ditulis sebagai gerakan `out` BIASA — sebab
+ * stoknya memang berkurang seperti pengeluaran lain — dan satu-satunya yang
+ * membedakannya dari pengeluaran manual adalah catatan ini.
+ *
+ * Kenapa bukan nilai `type` baru: `type` adalah dasar SELURUH aritmetika saldo
+ * (`calculateStockTotals`, Kartu Stok, nilai persediaan). Nilai baru di sana
+ * berarti setiap penjumlahan harus diajari mengenalnya, dan yang terlewat tidak
+ * bersuara — ia hanya menghasilkan saldo yang salah. `out` yang bertanda
+ * membuat saldonya benar sejak baris pertama; yang berbeda hanya JURNALnya,
+ * dan itu ditentukan `sourceType` saat memposting (pola `stock_adjustment`).
+ */
+export const PROCESS_SHRINKAGE_NOTE = "Susut hasil proses";
+
 export const CASH_TYPES = ["bank", "kas_besar", "kas_kecil"] as const;
 export type CashType = (typeof CASH_TYPES)[number];
 

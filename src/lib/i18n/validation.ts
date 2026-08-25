@@ -318,5 +318,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.taxRateOutOfRange": "Tarif PPN harus antara 0 dan 100 persen",
   // Kode barang (issue #493) — identitas barang sejak nama berhenti jadi kunci.
   "validation.itemCodeRequired": "Kode barang wajib diisi",
+  // Hasil Proses (issue #490).
+  "validation.shrinkageValuePositive": "Nilai susut harus lebih dari nol",
+  "validation.shrinkageValueRequired": "Nilai susut wajib diisi untuk Hasil Proses",
   "validation.taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)",
 };

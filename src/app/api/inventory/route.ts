@@ -8,6 +8,7 @@ import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
+import { PROCESS_SHRINKAGE_NOTE } from "@/lib/constants";
 
 /**
  * Ringkasan stok per barang. `?active=1` membuang barang yang dinonaktifkan —
@@ -263,9 +264,26 @@ export async function POST(request: Request) {
     );
   }
 
-  const { date, unitCost, ...stockData } = parsed.data;
+  const { date, unitCost, shrinkageValue, ...stockData } = parsed.data;
 
-  if (stockData.type === "out") {
+  /*
+   * ── "Hasil Proses" adalah PILIHAN LAYAR, bukan nilai `type` (issue #490) ──
+   *
+   * Stoknya berkurang persis seperti pengeluaran lain, jadi barisnya ditulis
+   * sebagai `out` biasa dan SELURUH aritmetika saldo yang sudah ada tetap
+   * benar tanpa diajari apa pun. Yang membedakannya cuma dua hal, dan keduanya
+   * di luar kolom `type`: catatan bertanda `PROCESS_SHRINKAGE_NOTE`, dan
+   * `sourceType` yang dipakai memposting jurnalnya.
+   *
+   * Nilai rupiah yang diketik pengguna disimpan sebagai `unit_cost` — nilai per
+   * kilo, sehingga `qty × unitCost` memulangkan angka yang persis ia sebut.
+   * Aman bagi mesin costing: `weightedAverageUnitCost` hanya membaca baris
+   * `in`, jadi baris `out` bercosting tak pernah menggeser rata-rata.
+   */
+  const isShrinkage = stockData.type === "shrinkage";
+  const movementType = isShrinkage ? "out" : stockData.type;
+
+  if (movementType === "out") {
     const item = await prisma.item.findUnique({
       where: { id: stockData.itemId },
       include: { stockMovements: true },
@@ -295,16 +313,36 @@ export async function POST(request: Request) {
       const created = await tx.stockMovement.create({
         data: {
           ...stockData,
+          type: movementType,
           date: new Date(date),
-          // Cost is captured on the way in and derived on the way out.
-          unitCost: stockData.type === "in" ? unitCost : null,
+          // Cost is captured on the way in and derived on the way out — kecuali
+          // susut proses, yang nilainya DIKETIK (issue #490).
+          unitCost: isShrinkage
+            ? shrinkageValue! / stockData.quantity
+            : stockData.type === "in"
+              ? unitCost
+              : null,
+          /* Penanda yang membuat susut proses bisa dikenali kembali — pola yang
+             sama dengan opname. Catatan pengguna tetap ikut di belakangnya
+             supaya tidak ada yang hilang. */
+          note: isShrinkage
+            ? [PROCESS_SHRINKAGE_NOTE, stockData.note?.trim()].filter(Boolean).join(" — ")
+            : stockData.note,
         },
         include: { item: { select: { name: true } } },
       });
 
-      // Only `out` movements post (D: HPP / K: Persediaan); incoming stock is
-      // capitalised by the purchase entry. The engine returns null for the rest.
-      await postForSource({ sourceType: "stock_movement", sourceId: created.id, tx });
+      /*
+       * `stock_shrinkage` → Beban Susut Proses; `stock_movement` → HPP. Dua
+       * aturan jurnal atas satu tabel, dipilih di sini — pola yang sama dengan
+       * opname (`stock_adjustment`). Barang MASUK tidak memposting apa pun:
+       * ia sudah dikapitalisasi oleh jurnal pembeliannya.
+       */
+      await postForSource({
+        sourceType: isShrinkage ? "stock_shrinkage" : "stock_movement",
+        sourceId: created.id,
+        tx,
+      });
       return created;
     });
   } catch (e) {
@@ -314,7 +352,7 @@ export async function POST(request: Request) {
   await writeAuditLog({
     userId: result.session.user.id,
     username: result.session.user.email,
-    action: stockData.type === "in" ? "stock.in" : "stock.out",
+    action: isShrinkage ? "stock.shrinkage" : stockData.type === "in" ? "stock.in" : "stock.out",
     entity: "stock",
     entityId: stock.id,
     details: {

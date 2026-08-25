@@ -130,9 +130,13 @@ export interface StockItemOption {
 interface StockPayload {
   itemId: number;
   quantity: number;
-  type: "in" | "out";
+  /** Tiga PILIHAN di layar; `shrinkage` menjadi gerakan `out` bertanda di
+   *  server (issue #490). */
+  type: "in" | "out" | "shrinkage";
   date: string;
   unitCost?: number;
+  /** Nilai rupiah yang susut — hanya pada "Hasil Proses" (issue #490). */
+  shrinkageValue?: number;
   note: string;
   /** issue #98 — dimensi HPP gerakan ini. `null` = belum ditetapkan. */
   costCenterId: number | null;
@@ -144,16 +148,26 @@ interface StockPayload {
  */
 interface StockFormValues {
   itemId: string;
-  type: "in" | "out";
+  type: "in" | "out" | "shrinkage";
   quantity: string;
   /** `undefined` saat kosong: harga pokok yang tak diisi BUKAN harga nol. */
   unitCost?: string;
+  /** Idem — nilai susut yang tak diisi BUKAN nol. */
+  shrinkageValue?: string;
   date: string;
   note: string;
 }
 
 /** Isian gerakan stok yang ada di layar — sisanya naik jadi galat formulir. */
-const STOCK_FIELDS = ["itemId", "type", "quantity", "unitCost", "date", "note"] as const;
+const STOCK_FIELDS = [
+  "itemId",
+  "type",
+  "quantity",
+  "unitCost",
+  "shrinkageValue",
+  "date",
+  "note",
+] as const;
 /** Isian barang baru yang ada di layar. */
 const ITEM_FIELDS = ["code", "name", "unit"] as const;
 
@@ -203,6 +217,7 @@ export function StockUpdateForm({
       type: "in",
       quantity: "",
       unitCost: undefined,
+      shrinkageValue: undefined,
       date: todayISO(),
       note: "",
     },
@@ -235,8 +250,10 @@ export function StockUpdateForm({
   const selected = items.find((i) => String(i.id) === itemId) ?? null;
   const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal pergerakan stok");
   const qtyValue = Number(quantity) || 0;
-  const overStock =
-    movementType === "out" && selected != null && qtyValue > selected.currentStock;
+  /* Dua pilihan yang MENGURANGI stok, dan keduanya tunduk pada penjaga yang
+     sama: saldo tak boleh negatif (#490). */
+  const reducesStock = movementType === "out" || movementType === "shrinkage";
+  const overStock = reducesStock && selected != null && qtyValue > selected.currentStock;
 
   async function refreshItems() {
     // `active=1`: barang yang dinonaktifkan tidak ditawarkan untuk gerakan BARU
@@ -338,7 +355,8 @@ export function StockUpdateForm({
     }
 
     const item = items.find((i) => i.id === values.itemId);
-    if (values.type === "out" && item) {
+    const reduces = values.type === "out" || values.type === "shrinkage";
+    if (reduces && item) {
       // Penjaga yang sama dengan surat jalan & `/api/inventory`: stok tidak
       // pernah boleh negatif.
       const shortfall = stockShortfallMessage(
@@ -359,11 +377,12 @@ export function StockUpdateForm({
       type: values.type,
       date: values.date,
       unitCost: values.type === "in" ? values.unitCost : undefined,
+      shrinkageValue: values.type === "shrinkage" ? values.shrinkageValue : undefined,
       note: values.note ?? "",
       costCenterId: costCenterPayload(costCenterId),
     };
 
-    if (values.type === "out" && item && isLargeStockOut(values.quantity, item.currentStock)) {
+    if (reduces && item && isLargeStockOut(values.quantity, item.currentStock)) {
       setConfirmMessage(
         largeStockOutMessage(item.name, values.quantity, item.currentStock, item.unit || "kg")
       );
@@ -604,8 +623,12 @@ export function StockUpdateForm({
                       <FormLabel>{t("inventory.movementTypeLabel")}</FormLabel>
                       <FormControl>
                         <SelectField
+                          /* Urutannya MENGIKUTI alur pengguna, bukan abjad:
+                             Tambah → Hasil Proses → Kurang Stok. Barang masuk,
+                             diolah (menyusut), lalu keluar terjual (#490). */
                           options={[
                             { value: "in", label: t("inventory.movementIn") },
+                            { value: "shrinkage", label: t("inventory.movementShrinkage") },
                             { value: "out", label: t("inventory.movementOut") },
                           ]}
                           {...field}
@@ -650,6 +673,37 @@ export function StockUpdateForm({
                     </p>
                   )}
                 </div>
+                {movementType === "shrinkage" && (
+                  /* Nilai rupiah yang susut — angka KEDUA yang disebut pengguna,
+                     terpisah dari kuantitasnya ("35 kilo susut, nominalnya 1
+                     juta"). Ia yang dibebankan ke Beban Susut Proses; tanpa ia,
+                     barangnya hilang dari gudang tanpa muncul sebagai ongkos
+                     di mana pun (#490). */
+                  <FormField
+                    control={form.control}
+                    name="shrinkageValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel required>{t("inventory.shrinkageValueLabel")}</FormLabel>
+                        <FormControl>
+                          <TextInput
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            style={NUMERIC_FIELD}
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) =>
+                              field.onChange(e.target.value === "" ? undefined : e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormDescription>{t("inventory.shrinkageValueHint")}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 {movementType === "in" ? (
                   /* Wajib HANYA di arah ini — sama persis dengan yang dituntut
                      `superRefine` pada `stockUpdateSchema`. */
@@ -698,7 +752,16 @@ export function StockUpdateForm({
                     }}
                   >
                     <InfoCircleOutlined aria-hidden="true" style={{ fontSize: SMALL_ICON_SIZE, flexShrink: 0, marginTop: 2 }} />
-                    <span>{t("inventory.cogsAutoHint")}</span>
+                    {/* Dua kalimat berbeda karena dua jurnal berbeda: keluar
+                        biasa membebani HPP pada rata-rata tertimbang, susut
+                        proses membebani Beban Susut Proses pada nilai yang
+                        diketik (#490). Satu kalimat untuk keduanya akan
+                        menjanjikan yang salah pada salah satunya. */}
+                    <span>
+                      {movementType === "shrinkage"
+                        ? t("inventory.shrinkageAccountHint")
+                        : t("inventory.cogsAutoHint")}
+                    </span>
                   </p>
                 )}
                 <div>

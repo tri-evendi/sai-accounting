@@ -541,6 +541,8 @@
     }
   },
   "documentType": {
+    "packing_list": "装箱单",
+    "peb": "出口报关单（PEB）",
     "bl": "提单（B/L）",
     "invoice": "发票",
     "coo": "原产地证书（COO）",

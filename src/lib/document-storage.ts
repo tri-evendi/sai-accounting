@@ -25,7 +25,7 @@
  *
  *   • DI LUAR `public/`. Tidak ada perender berkas statis yang bisa
  *     menjangkaunya; satu-satunya jalan keluar adalah route handler ber-izin
- *     (`/api/documents/[id]/file`).
+ *     (`/api/t/{tenant}/{company}/documents/[id]/file`).
  *   • Nama di disk UUID — TANPA satu byte pun masukan pengguna. Nama asli tetap
  *     hidup di kolom `documents.filename`, tempatnya sejak awal, dan dipulangkan
  *     lewat `Content-Disposition`. Nama yang tidak bisa ditebak bukan pengganti
@@ -62,6 +62,8 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { rm } from "node:fs/promises";
+
+import { tenantApiPath } from "@/lib/tenant-routes";
 
 /** Akar penyimpanan dokumen. Sejajar `data/audit`, dan sama-sama volume. */
 export const DOCUMENTS_ROOT = path.join(process.cwd(), "data", "documents");
@@ -126,9 +128,21 @@ export function contentTypeFor(filename: string): string {
  * Alamat pengambilan sebuah dokumen. SATU tempat rumus ini ditulis — halaman
  * daftar, tombol pratinjau, dan jawaban unggah semuanya memakainya, jadi jalur
  * route-nya tidak punya salinan yang bisa menyimpang.
+ *
+ * Sepasang slug WAJIB, dan itu bukan kerepotan yang bisa dihemat (issue #489):
+ * alamat ini mendarat di `<iframe src>`, `<img src>`, dan `<a href download>`
+ * — tiga hal yang tidak melewati `apiFetch()` dan tidak bisa membawa header
+ * lingkup. Perusahaannya karena itu HARUS ada di jalurnya. Menjadikan slug
+ * opsional berarti menghidupkan kembali alamat yang dijawab 409, dan
+ * menjadikannya parameter WAJIB berarti yang lupa mengirimnya gugur di `tsc`,
+ * bukan di layar pengguna.
  */
-export function documentFileHref(id: number): string {
-  return `/api/documents/${id}/file`;
+export function documentFileHref(
+  tenantSlug: string,
+  companySlug: string,
+  id: number
+): string {
+  return tenantApiPath(tenantSlug, companySlug, `/documents/${id}/file`);
 }
 
 /**

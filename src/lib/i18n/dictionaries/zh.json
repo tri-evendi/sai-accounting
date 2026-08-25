@@ -1607,7 +1607,10 @@
     },
     "expenseNatureField": "费用性质",
     "expenseNatureNone": "尚未设定",
-    "expenseNatureHint": "支出的性质——附注披露与预扣税核对的依据。可留空。"
+    "expenseNatureHint": "支出的性质——附注披露与预扣税核对的依据。可留空。",
+    "linkedParents": "{count} 个科目已关联到上级科目。",
+    "missingParents": "未找到以下上级科目，因此这些科目在创建时没有上级：{pairs}。请先导入上级科目再重试。",
+    "ignoredColumns": "文件中存在但未导入的列：{columns}"
   },
   "costCenters": {
     "title": "成本中心（{count}）",

@@ -22,7 +22,12 @@ import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { readImportSheet, type ImportSheet } from "@/lib/import/sheet";
-import { parseCoaRows, ACCURATE_TYPE_LEGEND, MAX_IMPORT_ROWS } from "@/lib/coa-import";
+import {
+  parseCoaRows,
+  ignoredColumnsIn,
+  ACCURATE_TYPE_LEGEND,
+  MAX_IMPORT_ROWS,
+} from "@/lib/coa-import";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { getRequestI18n } from "@/lib/i18n/server";
 
@@ -118,12 +123,79 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     });
   }
 
+  /*
+   * ── LINTASAN KEDUA: memasang induknya (issue #494) ────────────────────────
+   *
+   * Wajib terpisah dari `createMany` di atas, dan bukan demi kerapian: berkas
+   * Accurate urut ABJAD NAMA, bukan urut hierarki — `5100008` ada di baris 1
+   * sedangkan induknya `5100` baru di baris 95. Satu lintasan akan gagal di FK
+   * pada baris pertama yang induknya belum sempat lahir.
+   *
+   * Induk dicari di SELURUH bagan akun, bukan cuma di berkasnya: mengimpor
+   * sebagian bagan akun ke perusahaan yang sudah punya akun induknya adalah hal
+   * yang wajar, dan menolaknya berarti menolak pemakaian yang sah.
+   */
+  const withParent = accounts.filter((a) => a.parentCode !== null);
+  const parentCodes = [...new Set(withParent.map((a) => a.parentCode!))];
+
+  let linked = 0;
+  const missingParents: string[] = [];
+
+  if (parentCodes.length > 0) {
+    const known = await prisma.account.findMany({
+      where: { code: { in: [...parentCodes, ...codes] } },
+      select: { id: true, code: true },
+    });
+    const idByCode = new Map(known.map((a) => [a.code, a.id]));
+
+    /* Dikelompokkan per induk supaya satu `updateMany` melayani seluruh
+       anaknya — 180 akun menjadi belasan perjalanan, bukan 180. */
+    const childrenByParent = new Map<string, string[]>();
+    for (const a of withParent) {
+      const parentId = idByCode.get(a.parentCode!);
+      if (parentId == null) {
+        /* Induk yang tak ditemukan di berkas MAUPUN di basis data: akunnya
+           tetap dibuat, tetapi hubungannya DILAPORKAN alih-alih diam-diam
+           dibiarkan NULL. Induk yang hilang tanpa kabar adalah pengelompokan
+           laporan yang diam-diam salah. */
+        missingParents.push(`${a.code} → ${a.parentCode}`);
+        continue;
+      }
+      const list = childrenByParent.get(a.parentCode!) ?? [];
+      list.push(a.code);
+      childrenByParent.set(a.parentCode!, list);
+    }
+
+    for (const [parentCode, children] of childrenByParent) {
+      const parentId = idByCode.get(parentCode)!;
+      const res = await prisma.account.updateMany({
+        /* `not: parentId` — sebuah akun tidak boleh menjadi induk dirinya
+           sendiri. `parentIssues` sudah menolaknya saat mengurai; ini pagar
+           kedua di tempat yang benar-benar menulis. */
+        where: { code: { in: children }, id: { not: parentId } },
+        data: { parentId },
+      });
+      linked += res.count;
+    }
+  }
+
   return NextResponse.json({
     created: toCreate.length,
     skipped: existingSet.size,
     skippedCodes: [...existingSet],
     total: accounts.length,
     accurateRepairs,
+    /** Berapa akun yang berhasil ditautkan ke induknya (#494). */
+    linkedParents: linked,
+    /** Hubungan induk yang TIDAK bisa dipasang, beserta kode induk yang dicari. */
+    missingParents,
+    /**
+     * Kolom yang DIKENALI tetapi tidak diimpor. Dilaporkan, bukan dibuang
+     * diam-diam: impor yang berhasil sambil membuang data adalah impor yang
+     * paling mahal untuk ditemukan salahnya — pengguna baru sadar berbulan-bulan
+     * kemudian, saat laporannya tidak mau cocok.
+     */
+    ignoredColumns: ignoredColumnsIn(sheet.rows[0] ?? []),
   });
 }
 

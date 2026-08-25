@@ -1607,7 +1607,10 @@
     },
     "expenseNatureField": "Sifat Beban",
     "expenseNatureNone": "Belum ditetapkan",
-    "expenseNatureHint": "Apa yang dibelanjakan — bahan rincian CALK dan pencocokan PPh. Boleh dikosongkan."
+    "expenseNatureHint": "Apa yang dibelanjakan — bahan rincian CALK dan pencocokan PPh. Boleh dikosongkan.",
+    "linkedParents": "{count} akun tertaut ke akun induknya.",
+    "missingParents": "Induk berikut tidak ditemukan, jadi akunnya dibuat tanpa induk: {pairs}. Impor akun induknya lebih dulu, lalu ulangi.",
+    "ignoredColumns": "Kolom ini ada di berkas tetapi tidak diimpor: {columns}"
   },
   "costCenters": {
     "title": "Pusat Biaya ({count})",

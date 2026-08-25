@@ -185,7 +185,23 @@ export const STATUS_FILTER_LABELS: Record<string, string> = {
   ...CONTRACT_STATUS_LABELS,
 };
 
-export const DOCUMENT_TYPES = ["bl", "invoice", "coo", "fumigation", "contract", "other"] as const;
+/*
+ * Urutannya mengikuti ALUR EKSPOR, bukan abjad (issue #511): kontrak lahir
+ * lebih dulu, packing list disusun saat memuat, PEB diurus sebelum berangkat,
+ * B/L terbit dari pelayaran, COO & fumigasi menyusul, invoice menutupnya.
+ * Pengguna memilih sambil menyusun berkasnya — daftar yang urut abjad memaksa
+ * ia mencari, daftar yang urut alur cukup diikuti.
+ */
+export const DOCUMENT_TYPES = [
+  "contract",
+  "packing_list",
+  "peb",
+  "bl",
+  "coo",
+  "fumigation",
+  "invoice",
+  "other",
+] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 /**
@@ -194,11 +210,13 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
  * dokumen, supaya nilai mentah ("bl", "coo") tak pernah tampil di layar.
  */
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  contract: "Kontrak",
+  packing_list: "Packing List",
+  peb: "Pemberitahuan Ekspor Barang (PEB)",
   bl: "Bill of Lading (B/L)",
-  invoice: "Tagihan (Invoice)",
   coo: "Surat Keterangan Asal (COO)",
   fumigation: "Sertifikat Fumigasi",
-  contract: "Kontrak",
+  invoice: "Tagihan (Invoice)",
   other: "Lainnya",
 };
 

@@ -541,6 +541,8 @@
     }
   },
   "documentType": {
+    "packing_list": "Packing List",
+    "peb": "Pemberitahuan Ekspor Barang (PEB)",
     "bl": "Bill of Lading (B/L)",
     "invoice": "Tagihan (Invoice)",
     "coo": "Surat Keterangan Asal (COO)",

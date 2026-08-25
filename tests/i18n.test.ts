@@ -89,6 +89,11 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // Istilah dagang internasional; "Bill of Lading" memang dipakai apa adanya
     // di dokumen ekspor berbahasa Indonesia.
     "documentType.bl",
+    // Idem (issue #511): "Packing List" dipakai apa adanya di dokumen ekspor
+    // berbahasa Indonesia — "Daftar Kemasan" justru tidak akan dikenali orang
+    // yang mengurus berkasnya. PEB TIDAK di sini: singkatannya memang tetap,
+    // tetapi kepanjangannya diterjemahkan ("Export Declaration").
+    "documentType.packing_list",
     // Nama jenis kas; kata yang sama di kedua bahasa.
     "cashType.bank",
     // Istilah teknis yang dipakai apa adanya dalam bahasa Indonesia — sama

@@ -541,6 +541,8 @@
     }
   },
   "documentType": {
+    "packing_list": "Packing List",
+    "peb": "Export Declaration (PEB)",
     "bl": "Bill of Lading (B/L)",
     "invoice": "Invoice",
     "coo": "Certificate of Origin (COO)",

@@ -1245,7 +1245,13 @@
     "summaryNew": "{name} (new)",
     "summaryGoods": "Goods",
     "receiptSummaryHint": "Dated {date} — stock goes up, with no extra journal.",
-    "purchaseDateHint": "Dated {date}"
+    "purchaseDateHint": "Dated {date}",
+    "additionalCostLabel": "Cost to warehouse ({currency})",
+    "additionalCostHint": "Freight, insurance and handling billed by this supplier on the same invoice. It attaches to the goods' cost rather than becoming an immediate expense — so it leaves as COGS when the goods are sold.",
+    "additionalCostBasisLabel": "Allocate across items by",
+    "additionalCostBasisHint": "This choice is recorded on the purchase note. For freight, \"weight\" is usually closer to the cause; \"value\" is the convention.",
+    "basisValue": "Item value",
+    "basisWeight": "Weight (quantity)"
   },
   "deliveryOrders": {
     "title": "Delivery Orders",

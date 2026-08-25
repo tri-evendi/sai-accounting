@@ -867,6 +867,81 @@ export function PurchaseWizard({
                   </Typography.Text>
                 </div>
               )}
+              {/*
+                Ongkos sampai gudang (issue #510) — freight/ekspedisi, asuransi,
+                penanganan yang DITAGIHKAN PEMASOK INI pada faktur yang sama.
+                Ia masuk ke nilai pembelian, jadi jurnalnya mendebet Persediaan
+                sebesar itu; bagiannya lalu menempel di harga pokok per unit dan
+                keluar lagi sebagai HPP saat barang terjual — bukan jatuh ke
+                laba rugi pada tanggal pembelian.
+              */}
+              <div>
+                <Label htmlFor="additionalCost" style={{ marginBottom: token.marginXXS }}>
+                  {t("purchases.additionalCostLabel", { currency })}
+                </Label>
+                <TextInput
+                  id="additionalCost"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  style={numberStyle}
+                  value={draft.purchase.additionalCost ?? 0}
+                  onChange={(e) =>
+                    patch((d) => ({
+                      ...d,
+                      purchase: { ...d.purchase, additionalCost: Number(e.target.value) },
+                    }))
+                  }
+                />
+                <Typography.Text
+                  type="secondary"
+                  style={{
+                    display: "block",
+                    marginTop: token.marginXXS,
+                    fontSize: token.fontSizeSM,
+                  }}
+                >
+                  {t("purchases.additionalCostHint")}
+                </Typography.Text>
+              </div>
+              {(draft.purchase.additionalCost ?? 0) > 0 && (
+                <div>
+                  <Label htmlFor="additionalCostBasis" style={{ marginBottom: token.marginXXS }}>
+                    {t("purchases.additionalCostBasisLabel")}
+                  </Label>
+                  {/* Dasarnya DIPILIH, tidak ditetapkan diam-diam: untuk rempah
+                      yang harga per kg-nya berselisih empat kali lipat, "menurut
+                      nilai" dan "menurut berat" memberi harga pokok yang sangat
+                      berbeda. Pilihannya ikut tercatat di catatan pembelian. */}
+                  <SelectField
+                    id="additionalCostBasis"
+                    value={draft.purchase.additionalCostBasis ?? "value"}
+                    options={[
+                      { value: "value", label: t("purchases.basisValue") },
+                      { value: "weight", label: t("purchases.basisWeight") },
+                    ]}
+                    onChange={(e) =>
+                      patch((d) => ({
+                        ...d,
+                        purchase: {
+                          ...d.purchase,
+                          additionalCostBasis: e.target.value as "value" | "weight",
+                        },
+                      }))
+                    }
+                  />
+                  <Typography.Text
+                    type="secondary"
+                    style={{
+                      display: "block",
+                      marginTop: token.marginXXS,
+                      fontSize: token.fontSizeSM,
+                    }}
+                  >
+                    {t("purchases.additionalCostBasisHint")}
+                  </Typography.Text>
+                </div>
+              )}
               <div>
                 <Label htmlFor="taxAmount" style={{ marginBottom: token.marginXXS }}>
                   {t("purchases.inputVatCurrency", { currency })}

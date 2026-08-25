@@ -1245,7 +1245,13 @@
     "summaryNew": "{name}（新建）",
     "summaryGoods": "货物",
     "receiptSummaryHint": "日期 {date} — 库存增加，不产生额外凭证。",
-    "purchaseDateHint": "日期 {date}"
+    "purchaseDateHint": "日期 {date}",
+    "additionalCostLabel": "入库前费用（{currency}）",
+    "additionalCostHint": "由本供应商在同一张发票上开具的运费、保险与装卸费。该费用计入货物成本而非当期费用——货物售出时再作为销货成本结转。",
+    "additionalCostBasisLabel": "分摊依据",
+    "additionalCostBasisHint": "该选择会记入采购备注。运费通常按「重量」更贴近成因；按「金额」则是惯例。",
+    "basisValue": "货物金额",
+    "basisWeight": "重量（数量）"
   },
   "deliveryOrders": {
     "title": "送货单",

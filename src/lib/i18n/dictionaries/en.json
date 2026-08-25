@@ -1607,7 +1607,10 @@
     },
     "expenseNatureField": "Nature of expense",
     "expenseNatureNone": "Not set",
-    "expenseNatureHint": "What was spent on — the basis for note disclosures and withholding-tax matching. May be left empty."
+    "expenseNatureHint": "What was spent on — the basis for note disclosures and withholding-tax matching. May be left empty.",
+    "linkedParents": "{count} accounts linked to their parent.",
+    "missingParents": "These parents were not found, so the accounts were created without one: {pairs}. Import the parent accounts first, then retry.",
+    "ignoredColumns": "These columns are in the file but were not imported: {columns}"
   },
   "costCenters": {
     "title": "Cost Centres ({count})",

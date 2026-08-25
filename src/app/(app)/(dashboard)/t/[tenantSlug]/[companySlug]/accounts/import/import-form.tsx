@@ -59,6 +59,12 @@ interface ImportResult {
   skipped: number;
   skippedCodes: string[];
   total: number;
+  /** Berapa akun yang tertaut ke induknya (#494). */
+  linkedParents?: number;
+  /** Hubungan induk yang tidak bisa dipasang: "5100008 → 5100". */
+  missingParents?: string[];
+  /** Kolom yang dikenali tetapi memang tidak diimpor, beserta sebabnya. */
+  ignoredColumns?: { header: string; why: string }[];
 }
 
 /**
@@ -319,6 +325,40 @@ export function ImportAccountsForm() {
                       <p style={{ margin: 0, marginTop: token.marginXXS }}>
                         <small>
                           {t("accounts.skippedCodes", { codes: result.skippedCodes.join(", ") })}
+                        </small>
+                      </p>
+                    )}
+                    {/* Hierarki (#494): tanpa kalimat ini, "180 akun terimpor"
+                        terbaca seolah pengelompokannya ikut — padahal sampai
+                        #494 seluruhnya masuk sebagai daftar rata. */}
+                    {(result.linkedParents ?? 0) > 0 && (
+                      <p style={{ margin: 0, marginTop: token.marginXXS }}>
+                        <small>
+                          {t("accounts.linkedParents", { count: result.linkedParents ?? 0 })}
+                        </small>
+                      </p>
+                    )}
+                    {(result.missingParents?.length ?? 0) > 0 && (
+                      <p style={{ margin: 0, marginTop: token.marginXXS }}>
+                        <small>
+                          {t("accounts.missingParents", {
+                            pairs: (result.missingParents ?? []).join(", "),
+                          })}
+                        </small>
+                      </p>
+                    )}
+                    {/* Kolom yang dibuang DIKATAKAN. Impor yang berhasil sambil
+                        membuang data adalah yang paling mahal ditemukan
+                        salahnya — pengguna baru sadar berbulan-bulan kemudian,
+                        saat laporannya tidak mau cocok. */}
+                    {(result.ignoredColumns?.length ?? 0) > 0 && (
+                      <p style={{ margin: 0, marginTop: token.marginXXS }}>
+                        <small>
+                          {t("accounts.ignoredColumns", {
+                            columns: (result.ignoredColumns ?? [])
+                              .map((c) => `${c.header} (${c.why})`)
+                              .join("; "),
+                          })}
                         </small>
                       </p>
                     )}

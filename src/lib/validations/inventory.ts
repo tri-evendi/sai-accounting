@@ -42,8 +42,22 @@ export const stockUpdateSchema = z
   });
 
 export const itemSchema = z.object({
+  /*
+   * Kode barang (#493) — identitas sebuah barang sejak nama berhenti jadi
+   * kunci. Di-trim SEBELUM diperiksa panjang minimalnya supaya spasi tidak
+   * pernah lolos sebagai kode.
+   */
+  code: z.string().trim().min(1, vmsg("validation.itemCodeRequired")).max(20),
   name: z.string().min(1, vmsg("validation.itemNameRequired")).max(100).trim(),
   unit: z.string().max(20).trim().optional(),
+  /*
+   * Pengakuan SADAR bahwa nama kembar memang disengaja (#493). Bukan bagian
+   * dari data barang — ia tidak disimpan ke mana pun — melainkan jawaban atas
+   * pertanyaan yang diajukan server saat namanya bentrok. Bawaannya `false`:
+   * pemanggil yang tidak menyebutnya sama sekali dianggap BELUM menjawab, dan
+   * itu benar untuk pemanggil API di luar layar kita.
+   */
+  confirmDuplicateName: z.boolean().optional().default(false),
 });
 
 /**

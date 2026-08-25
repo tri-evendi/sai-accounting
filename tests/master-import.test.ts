@@ -102,20 +102,27 @@ describe("impor pemasok", () => {
 });
 
 describe("impor barang", () => {
-  const HEADER = ["Nama", "Satuan"];
+  /* Kode ikut sejak #493 — ia yang menjadi identitas barang, dan wajib. */
+  const HEADER = ["Kode", "Nama", "Satuan"];
 
-  it("nama + satuan", () => {
-    const { rows } = parseItemRows([HEADER, ["Kopi Arabika", "kg"]]);
-    expect(rows[0]).toEqual({ name: "Kopi Arabika", unit: "kg" });
+  it("kode + nama + satuan", () => {
+    const { rows } = parseItemRows([HEADER, ["100001", "Kopi Arabika", "kg"]]);
+    expect(rows[0]).toEqual({ code: "100001", name: "Kopi Arabika", unit: "kg" });
   });
 
   it("satuan opsional", () => {
-    expect(parseItemRows([HEADER, ["Jasa Angkut"]]).rows[0].unit).toBeNull();
+    expect(parseItemRows([HEADER, ["100002", "Jasa Angkut"]]).rows[0].unit).toBeNull();
   });
 
   it("satuan lebih dari 20 karakter ditolak — kolomnya memang sesempit itu", () => {
-    const { errors } = parseItemRows([HEADER, ["Kopi", "x".repeat(21)]]);
+    const { errors } = parseItemRows([HEADER, ["100003", "Kopi", "x".repeat(21)]]);
     expect(errors[0].message).toContain("20 karakter");
+  });
+
+  it("kode WAJIB — baris tanpa kode tidak bisa dibedakan dari barang lain", () => {
+    const { rows, errors } = parseItemRows([HEADER, ["", "Kopi", "kg"]]);
+    expect(rows).toEqual([]);
+    expect(errors).toHaveLength(1);
   });
 });
 
@@ -131,8 +138,8 @@ describe("sifat yang berlaku untuk ketiganya", () => {
   it("kolom asing diabaikan, bukan ditolak", () => {
     // Berkas ekspor dari aplikasi lain hampir selalu membawa kolom tambahan.
     const { rows, errors } = parseItemRows([
-      ["ID Lama", "Nama", "Kategori"],
-      ["X-99", "Kopi", "Minuman"],
+      ["ID Lama", "Kode", "Nama", "Kategori"],
+      ["X-99", "100001", "Kopi", "Minuman"],
     ]);
     expect(errors).toEqual([]);
     expect(rows[0].name).toBe("Kopi");
@@ -146,29 +153,55 @@ describe("sifat yang berlaku untuk ketiganya", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0].row).toBe(1);
     expect(errors[0].message).toContain("Nama");
+    expect(errors[0].message).toContain("Kode");
   });
 
-  it("nama kembar di dalam berkas ditolak, menyebut baris pertamanya", () => {
+  it("KODE kembar di dalam berkas ditolak, menyebut baris pertamanya", () => {
+    /* Sejak #493 yang kembar diperiksa adalah kode, bukan nama — lihat catatan
+       pada `parseMaster`. Nama kembar justru harus LOLOS (uji berikutnya). */
     const { rows, errors, duplicateNamesInFile } = parseItemRows([
-      ["Nama"],
-      ["Kopi"],
-      ["Teh"],
-      ["Kopi"],
+      ["Kode", "Nama"],
+      ["100001", "Kopi"],
+      ["100002", "Teh"],
+      ["100001", "Kopi Lain"],
     ]);
-    expect(rows.map((r) => r.name)).toEqual(["Kopi", "Teh"]);
+    expect(rows.map((r) => r.code)).toEqual(["100001", "100002"]);
     expect(errors[0].message).toContain("baris 2");
-    expect(duplicateNamesInFile).toEqual(["kopi"]);
+    expect(duplicateNamesInFile).toEqual(["100001"]);
+  });
+
+  it("NAMA kembar berkode beda justru LOLOS — kasus nyata #493", () => {
+    /* `LONG PEPPER` 100006 & 100010 di berkas saldo awal 2024 pengguna: dua
+       mutu berbeda yang harga satuannya berselisih hampir empat kali lipat.
+       Menolaknya berarti menolak berkas yang menjadi alasan #493 ada. */
+    const { rows, errors } = parseItemRows([
+      ["Kode", "Nama"],
+      ["100006", "LONG PEPPER"],
+      ["100010", "LONG PEPPER"],
+    ]);
+    expect(errors).toEqual([]);
+    expect(rows).toHaveLength(2);
   });
 
   it("kembar tidak peka huruf besar-kecil", () => {
-    // "Kopi" dan "KOPI" adalah satu barang bagi manusia, dan `items.name` unik
-    // di basis data — menerima keduanya hanya menunda galatnya ke saat menulis.
-    const { errors } = parseItemRows([["Nama"], ["Kopi"], ["KOPI"]]);
+    // "a1" dan "A1" adalah satu kode bagi manusia, dan `items.code` unik di
+    // basis data — menerima keduanya hanya menunda galatnya ke saat menulis.
+    const { errors } = parseItemRows([
+      ["Kode", "Nama"],
+      ["a1", "Kopi"],
+      ["A1", "Teh"],
+    ]);
     expect(errors).toHaveLength(1);
   });
 
   it("baris kosong dilewati", () => {
-    const { rows, errors } = parseItemRows([["Nama"], ["Kopi"], [""], [], ["Teh"]]);
+    const { rows, errors } = parseItemRows([
+      ["Kode", "Nama"],
+      ["100001", "Kopi"],
+      [""],
+      [],
+      ["100002", "Teh"],
+    ]);
     expect(errors).toEqual([]);
     expect(rows).toHaveLength(2);
   });

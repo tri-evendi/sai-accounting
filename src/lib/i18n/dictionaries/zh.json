@@ -267,7 +267,8 @@
     "notFilledIn": "未填写",
     "overdueDocs": "有 {count} 张单据已过期。",
     "actions": "操作",
-    "monthOfYear": "{year}年{month}"
+    "monthOfYear": "{year}年{month}",
+    "itemCode": "货物编号"
   },
   "nav": {
     "groups": {
@@ -2650,8 +2651,13 @@
     "opnameSubmit": "保存调整",
     "opnameFailed": "盘点保存失败。请重试。",
     "opnameSaved": "盘点已保存——共调整 {count} 项货物。",
-    "itemNameTaken": "该物料名称已被使用。请换一个名称，或直接为现有物料增加库存。",
-    "itemNameTakenInactive": "同名物料已存在但处于「停用」状态，因此不会出现在任何列表中。请重新启用它，而不是再建一个——否则库存历史会被拆成两份。"
+    "itemCodeTaken": "该货物编号已被使用。请换一个编号，或直接为现有货物增加库存。",
+    "itemCodeTakenInactive": "该编号的货物已存在但处于「停用」状态，因此不会出现在任何列表中。请重新启用它，而不是再建一个——否则库存历史会被拆成两份。",
+    "duplicateNameQuestion": "已存在名为 {name} 的货物（编号 {code}）。要另存为一个单独的货物吗？",
+    "duplicateNameActive": "两者的库存历史与结余不会合并。如果指的是同一货物，请取消并为其增加库存。",
+    "duplicateNameInactive": "该同名货物处于「停用」状态，不会出现在任何列表中。如果指的是同一货物，请取消并重新启用它。",
+    "duplicateNameTitle": "货物名称已被使用",
+    "duplicateNameConfirm": "是，单独的货物"
   },
   "setup": {
     "shellSubtitle": "公司首次设置",
@@ -3700,6 +3706,7 @@
     "amountTooLarge": "金额过大",
     "categoryRequired": "请选择类别",
     "taxRateOutOfRange": "增值税税率必须介于 0 至 100 之间",
+    "itemCodeRequired": "请填写货物编号",
     "taxRateDateInvalid": "生效日期必须是有效日期（YYYY-MM-DD）"
   },
   "taxSettings": {

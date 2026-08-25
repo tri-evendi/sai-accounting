@@ -69,7 +69,12 @@ export async function POST(request: Request) {
 
   // Create new item
   if (body.action === "create_item") {
-    const parsed = itemSchema.safeParse({ name: body.name, unit: body.unit });
+    const parsed = itemSchema.safeParse({
+      code: body.code,
+      name: body.name,
+      unit: body.unit,
+      confirmDuplicateName: body.confirmDuplicateName,
+    });
     if (!parsed.success) {
       // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
       // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
@@ -86,49 +91,101 @@ export async function POST(request: Request) {
       );
     }
     /*
-     * ── NAMA BARANG KEMBAR: 409 YANG MENJELASKAN, BUKAN 500 (24 Agu 2026) ──
+     * ── KODE KEMBAR: 409 YANG MENJELASKAN, BUKAN 500 (24 Agu 2026, #493) ──
      *
      * Ditemukan dari produksi, bukan dibayangkan: seorang pengguna baru mencoba
-     * menyimpan barang bernama sama, `prisma.item.create()` melempar P2002
+     * menyimpan barang yang bentrok, `prisma.item.create()` melempar P2002
      * tanpa penangkap, Next menjawab 500, dan formulir jatuh ke kalimat umum
-     * "Barang gagal disimpan" — tanpa satu kata pun tentang NAMANYA. Yang
+     * "Barang gagal disimpan" — tanpa satu kata pun tentang SEBABNYA. Yang
      * dilaporkan pengguna: "barang tidak bisa disimpan".
      *
-     * Dua keadaan yang harus dibedakan, dan inilah sebab pemeriksaannya membaca
-     * barisnya alih-alih sekadar menerjemahkan kode galat:
+     * Sejak #493 yang `@unique` adalah KODE, bukan nama, jadi inilah satu-satunya
+     * bentrokan yang masih menolak. Dua keadaan tetap harus dibedakan, dan
+     * inilah sebab pemeriksaannya membaca barisnya alih-alih sekadar
+     * menerjemahkan kode galat:
      *
-     *   • barang bernama sama masih AKTIF — pengguna bisa melihatnya di daftar,
-     *     jadi cukup dikatakan namanya sudah dipakai;
-     *   • barang bernama sama sudah NONAKTIF — ia TIDAK terlihat di daftar mana
-     *     pun (docs/DATABASE.md §1.3), jadi "nama sudah dipakai" terdengar
+     *   • barang berkode sama masih AKTIF — pengguna bisa melihatnya di daftar,
+     *     jadi cukup dikatakan kodenya sudah dipakai;
+     *   • barang berkode sama sudah NONAKTIF — ia TIDAK terlihat di daftar mana
+     *     pun (docs/DATABASE.md §1.3), jadi "kode sudah dipakai" terdengar
      *     seperti aplikasi yang berbohong. Yang benar adalah menyebut bahwa ia
-     *     ada tapi nonaktif, dan mengarahkan untuk mengaktifkannya kembali —
-     *     sebab membuat barang kedua bernama sama memang tidak diinginkan
-     *     siapa pun: riwayat stoknya akan terbelah dua.
+     *     ada tapi nonaktif, dan mengarahkan untuk mengaktifkannya kembali.
      */
+    const { code, name, unit, confirmDuplicateName } = parsed.data;
+
+    /*
+     * ── NAMA KEMBAR: DITAHAN SEKALI, BUKAN DITOLAK (#493) ──────────────────
+     *
+     * Sampai #493 nama adalah kunci, jadi nama kembar mustahil. Berkas saldo
+     * awal 2024 pengguna pertama membantah asumsi itu — ia memuat dua
+     * `LONG PEPPER` yang berbeda (kode 100006 & 100010, harga satuannya
+     * berselisih hampir empat kali lipat).
+     *
+     * Tapi kalimat yang ditulis 24 Agustus tetap benar untuk kasus yang LAIN:
+     * nama kembar yang TIDAK disengaja membelah riwayat stok sebuah barang
+     * menjadi dua, dan pembelahan itu tidak pernah terlihat sampai laporannya
+     * tidak mau cocok. Jadi perlindungannya berubah BENTUK, bukan hilang:
+     * pertanyaan sekali, bukan penolakan.
+     *
+     * Penjaganya di SERVER, bukan hanya di layar, dan itu disengaja: `/api/v1`
+     * dan token API memanggil jalur ini tanpa melewati formulir mana pun.
+     * Pemanggil yang tidak menyebut `confirmDuplicateName` dianggap BELUM
+     * menjawab — bukan dianggap setuju.
+     */
+    if (!confirmDuplicateName) {
+      const sameName = await prisma.item.findFirst({
+        where: { name },
+        select: { code: true, name: true, isActive: true },
+        orderBy: { id: "asc" },
+      });
+
+      if (sameName) {
+        const { t } = await getRequestI18n();
+        return NextResponse.json(
+          {
+            error: t("inventory.duplicateNameQuestion", {
+              name: sameName.name,
+              code: sameName.code,
+            }),
+            /*
+             * Penanda MESIN, bukan pesan yang diurai ulang: formulir memakainya
+             * untuk membedakan "jawab dulu pertanyaan ini" dari penolakan biasa.
+             * Mencocokkan kalimat akan pecah begitu bahasanya berganti.
+             */
+            needsConfirmation: "duplicate_name",
+            duplicate: sameName,
+            hint: sameName.isActive
+              ? t("inventory.duplicateNameActive")
+              : t("inventory.duplicateNameInactive"),
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     let item;
     try {
-      item = await prisma.item.create({ data: parsed.data });
+      item = await prisma.item.create({ data: { code, name, unit } });
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
 
       const existing = await prisma.item.findUnique({
-        where: { name: parsed.data.name },
+        where: { code },
         select: { isActive: true },
       });
       const { t } = await getRequestI18n();
 
       return NextResponse.json(
         {
-          error: t("inventory.itemNameTaken"),
+          error: t("inventory.itemCodeTaken"),
           /* Sebagai galat PER ISIAN, bukan sekadar pesan: formulirnya menyorot
-             kotak Nama, dan itulah kotak yang harus diubah. */
+             kotak Kode, dan itulah kotak yang harus diubah. */
           details: {
             fieldErrors: {
-              name: [
+              code: [
                 existing && !existing.isActive
-                  ? t("inventory.itemNameTakenInactive")
-                  : t("inventory.itemNameTaken"),
+                  ? t("inventory.itemCodeTakenInactive")
+                  : t("inventory.itemCodeTaken"),
               ],
             },
           },
@@ -143,7 +200,7 @@ export async function POST(request: Request) {
       action: "item.create",
       entity: "item",
       entityId: item.id,
-      details: { name: item.name, unit: item.unit },
+      details: { code: item.code, name: item.name, unit: item.unit },
       request,
     });
 

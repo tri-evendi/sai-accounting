@@ -267,7 +267,8 @@
     "notFilledIn": "Belum diisi",
     "overdueDocs": "{count} dokumen sudah lewat jatuh tempo.",
     "actions": "Aksi",
-    "monthOfYear": "{month} {year}"
+    "monthOfYear": "{month} {year}",
+    "itemCode": "Kode Barang"
   },
   "nav": {
     "groups": {
@@ -2650,8 +2651,13 @@
     "opnameSubmit": "Simpan Penyesuaian",
     "opnameFailed": "Gagal menyimpan opname. Coba lagi.",
     "opnameSaved": "Opname tersimpan — {count} barang disesuaikan.",
-    "itemNameTaken": "Nama barang itu sudah dipakai. Pakai nama lain, atau tambahkan stok ke barang yang sudah ada.",
-    "itemNameTakenInactive": "Barang dengan nama itu sudah ada tetapi sedang NONAKTIF, jadi ia tidak muncul di daftar. Aktifkan kembali barang itu daripada membuat yang kedua — riwayat stoknya akan terbelah dua."
+    "itemCodeTaken": "Kode barang itu sudah dipakai. Pakai kode lain, atau tambahkan stok ke barang yang sudah ada.",
+    "itemCodeTakenInactive": "Barang dengan kode itu sudah ada tetapi sedang NONAKTIF, jadi ia tidak muncul di daftar. Aktifkan kembali barang itu daripada membuat yang kedua — riwayat stoknya akan terbelah dua.",
+    "duplicateNameQuestion": "Sudah ada barang bernama {name} (kode {code}). Simpan sebagai barang terpisah?",
+    "duplicateNameActive": "Riwayat & saldo stok keduanya tidak akan digabung. Kalau yang Anda maksud barang yang sama, batalkan lalu tambahkan stok ke barang itu.",
+    "duplicateNameInactive": "Barang bernama sama itu sedang NONAKTIF, jadi ia tidak muncul di daftar mana pun. Kalau yang Anda maksud barang yang sama, batalkan lalu aktifkan kembali barang itu.",
+    "duplicateNameTitle": "Nama barang sudah dipakai",
+    "duplicateNameConfirm": "Ya, barang terpisah"
   },
   "setup": {
     "shellSubtitle": "Penyiapan awal perusahaan",
@@ -3700,6 +3706,7 @@
     "amountTooLarge": "Jumlah terlalu besar",
     "categoryRequired": "Kategori wajib dipilih",
     "taxRateOutOfRange": "Tarif PPN harus antara 0 dan 100 persen",
+    "itemCodeRequired": "Kode barang wajib diisi",
     "taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)"
   },
   "taxSettings": {

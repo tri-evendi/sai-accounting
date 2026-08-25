@@ -9,6 +9,10 @@ import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
+import { checkPaymentFits, type PaymentProblem } from "@/lib/document-payments";
+import { PaymentRefused, paymentProblemMessage } from "@/lib/payment-refusal";
+import { toBase } from "@/lib/receivables";
+import { contractSubtotal } from "@/lib/validations/contract";
 
 export async function GET(
   _request: Request,
@@ -37,7 +41,10 @@ export async function POST(
   const contractId = parseInt(id);
 
   // Verify contract exists
-  const contract = await prisma.contract.findUnique({ where: { id: contractId } });
+  const contract = await prisma.contract.findUnique({
+    where: { id: contractId },
+    include: { items: true },
+  });
   if (!contract) {
     const { t } = await getRequestI18n();
     return NextResponse.json({ error: t("errors.contractNotFound") }, { status: 404 });
@@ -67,40 +74,84 @@ export async function POST(
   const { rate, baseAmount } = fxAmounts(paymentData.currency, paymentData.amount, rateInput);
 
   /*
-   * ── MATA UANG PEMBAYARAN HARUS SAMA DENGAN MATA UANG KONTRAK (issue #424) ──
+   * ── PEMBAYARAN KONTRAK TIDAK BOLEH MELEBIHI NILAI KONTRAKNYA (issue #483) ──
    *
-   * Sisi faktur mendapat DUA penjaga; di sini baru satu, dan itu disengaja.
+   * Penjaga ini pernah DITUNDA, dan alasannya ditulis di sini: "sisa kontrak"
+   * belum punya satu definisi, jadi pagar yang memakai satu definisi akan
+   * berselisih dengan laporan yang memakai definisi lain — dua angka bernama
+   * sama yang tidak pernah cocok.
    *
-   * Penjaga NOMINAL menuntut satu angka: berapa sisa kontrak ini. Untuk faktur
-   * jawabannya tunggal (nilai faktur − pelunasannya), tapi kontrak diselesaikan
-   * dari DUA arah — pembayaran DAN porsi yang sudah difakturkan lewat "Ambil"
-   * (`buildContractOutstanding`, dipakai laporan piutang). Penjaga yang hanya
-   * mengurangi pembayaran akan memakai definisi "sisa" yang berbeda dari yang
-   * ditampilkan laporan kepada orang yang sama, di layar sebelah. Dua angka
-   * bernama sama yang tidak pernah cocok adalah cacat tersendiri, bukan
-   * perbaikan setengah jalan — jadi ia menunggu issue-nya sendiri.
+   * Penghalang itu hilang di #491 → #502 → #503: `buildContractOutstanding`
+   * sekarang SATU definisi yang dipakai bersama laporan dan pagar fakturnya.
    *
-   * Yang di bawah ini tidak menunggu apa pun: mata uang tidak punya definisi
-   * kedua. Membayar kontrak USD dengan rupiah (atau sebaliknya) selalu salah,
-   * dan justru dari situlah kerusakan terbesar #424 datang.
+   * ══ YANG DIUKUR DI SINI: NILAI KONTRAK, BUKAN YANG SUDAH DIFAKTURKAN ══════
+   * Dan itu BUKAN angka yang sama dengan "sisa" di layar kontrak — keduanya
+   * menjawab pertanyaan yang berbeda, jadi keduanya memang boleh berbeda:
+   *
+   *   • Layar kontrak: sisa yang belum DIFAKTURKAN (kontrak − faktur).
+   *   • Pagar ini:     sisa yang belum DIBAYAR    (kontrak − pembayaran).
+   *
+   * Memakai nilai yang sudah difakturkan sebagai pagar akan menolak UANG MUKA —
+   * pembayaran yang sah dan memang datang SEBELUM ada faktur, dan yang aplikasi
+   * ini dukung lewat `advance_sales`. Pagar yang menolak alur yang didukungnya
+   * sendiri lebih buruk daripada tidak ada pagar.
+   *
+   * Aturannya `checkPaymentFits` — fungsi yang SAMA dengan pagar pembayaran
+   * faktur (#424), bukan salinan kedua. Mata uang diperiksa lebih dulu di
+   * dalamnya, jadi pemeriksaan mata uang yang dulu berdiri sendiri di sini
+   * ikut lebur ke situ.
+   *
+   * Dijalankan DI DALAM transaksi, seperti sisi faktur: membaca pembayaran yang
+   * sudah ada di luar transaksi berarti dua permintaan bersamaan bisa sama-sama
+   * lolos dan bersama-sama melewati batas.
    */
-  if ((paymentData.currency || "IDR") !== (contract.currency || "IDR")) {
-    const { t } = await getRequestI18n();
-    return NextResponse.json(
-      {
-        error: t("errors.paymentCurrencyMismatch", {
-          payment: paymentData.currency,
-          document: contract.currency,
-        }),
-      },
-      { status: 422 }
-    );
-  }
+  let problem: PaymentProblem | null = null;
 
   let payment;
   let approval;
   try {
     ({ payment, approval } = await prisma.$transaction(async (tx) => {
+      const existing = await tx.contractPayment.findMany({
+        where: { contractId },
+        select: { amount: true, currency: true, rate: true, baseAmount: true },
+      });
+
+      /*
+       * Nilai kontrak DITURUNKAN dari barisnya, bukan dibaca dari
+       * `contract.baseAmount` mentah-mentah — alasan yang sama dengan sisi
+       * faktur: kontrak rupiah dari penyemai contoh maupun impor lama menyimpan
+       * `base_amount` NULL, sebab untuk IDR ia sama dengan nominalnya. Membaca
+       * kolomnya apa adanya akan menganggap kontrak-kontrak itu "tak bernilai"
+       * dan MENOLAK setiap pembayarannya — penjaga yang berubah jadi kelumpuhan.
+       */
+      const total = contractSubtotal(
+        contract.items.map((i) => ({
+          bags: Number(i.bags),
+          kgPerBag: Number(i.kgPerBag),
+          pricePerKg: Number(i.pricePerKg),
+        }))
+      );
+
+      problem = checkPaymentFits({
+        documentCurrency: contract.currency,
+        documentBase: toBase({
+          amount: total,
+          currency: contract.currency,
+          rate: contract.rate,
+          baseAmount: contract.baseAmount,
+        }),
+        paidBases: existing.map((p) =>
+          toBase({ amount: p.amount, currency: p.currency, rate: p.rate, baseAmount: p.baseAmount })
+        ),
+        paymentCurrency: paymentData.currency,
+        paymentBase: baseAmount,
+      });
+      if (problem) {
+        /* Membatalkan transaksi TANPA menulis apa pun. Nilai kembaliannya tak
+           pernah dipakai — `problem` yang dibaca sesudahnya. */
+        throw new PaymentRefused();
+      }
+
       const created = await tx.contractPayment.create({
         data: {
           ...paymentData,
@@ -129,6 +180,9 @@ export async function POST(
       return { payment: created, approval: request };
     }));
   } catch (e) {
+    if (e instanceof PaymentRefused && problem) {
+      return NextResponse.json({ error: await paymentProblemMessage(problem) }, { status: 422 });
+    }
     return handlePostingError(e);
   }
 

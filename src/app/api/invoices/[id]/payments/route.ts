@@ -10,6 +10,9 @@ import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 import { checkPaymentFits, type PaymentProblem } from "@/lib/document-payments";
+/* Dibagi pakai dengan jalur pembayaran KONTRAK sejak #483 — dua salinan
+   kalimat penolakan bisa menyimpang tanpa ada yang melihatnya. */
+import { PaymentRefused, paymentProblemMessage } from "@/lib/payment-refusal";
 import { formatCurrency } from "@/lib/utils";
 import { toBase } from "@/lib/receivables";
 import { invoiceTotal } from "@/lib/validations/invoice";
@@ -175,32 +178,4 @@ export async function POST(
     { ...payment, approval: approvalNotice(approval, "Pembayaran") },
     { status: 201 }
   );
-}
-
-/** Penanda pembatalan transaksi penjaga #424 — tak pernah sampai ke pengguna. */
-class PaymentRefused extends Error {}
-
-/**
- * Alasan penolakan menjadi kalimat, dalam bahasa pengguna.
- *
- * Nominal diformat DI SINI, bukan di penjaganya: penjaga itu murni dan tidak
- * tahu bahasa apa pun, sementara "Rp 8.000.000.000" hanya benar setelah lokalnya
- * diketahui.
- */
-async function paymentProblemMessage(problem: PaymentProblem): Promise<string> {
-  const { t } = await getRequestI18n();
-  switch (problem.code) {
-    case "currency_mismatch":
-      return t("errors.paymentCurrencyMismatch", {
-        payment: problem.paymentCurrency,
-        document: problem.documentCurrency,
-      });
-    case "document_value_unknown":
-      return t("errors.paymentDocumentValueUnknown");
-    case "exceeds_outstanding":
-      return t("errors.paymentExceedsOutstanding", {
-        attempted: formatCurrency(problem.attemptedBase),
-        outstanding: formatCurrency(problem.outstandingBase),
-      });
-  }
 }

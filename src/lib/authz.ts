@@ -99,6 +99,12 @@ export const PERMISSION_ROLES = {
   "advance.delete": OFFICE, // koreksi kerja harian — sengaja bukan akses-penuh-saja
   "purchase.write": OFFICE, // wizard pembelian + transaksi pemasok
   "purchase.delete": FULL, // hapus transaksi pemasok = hapus master, akses penuh saja
+  // issue #495 butir 1 — menyebar bea masuk / freight ke harga pokok barang.
+  // OFFICE, sama dengan `purchase.write`: yang mencatat tagihannya adalah yang
+  // menyebarnya, dan memisahkan keduanya cuma melahirkan tagihan tercatat yang
+  // tak pernah sampai ke harga pokok karena orangnya berbeda.
+  "landed_cost.read": OFFICE,
+  "landed_cost.write": OFFICE,
 
   // ── Kas & Bank ───────────────────────────────────────────────────────
   "cash.read": OFFICE,

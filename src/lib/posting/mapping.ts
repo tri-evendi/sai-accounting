@@ -111,6 +111,20 @@ export const MAPPING_KEYS = {
    * satu angka, dan angka itu tidak menjawab satu pun di antaranya.
    */
   PROCESS_SHRINKAGE: "process_shrinkage",
+  /**
+   * Selisih Harga Pokok (issue #495 butir 1) — tempat mendaratnya bagian biaya
+   * impor yang jatuh pada barang yang SUDAH TERJUAL.
+   *
+   * Selalu DEBIT; lawannya Persediaan lewat mapping `inventory`. Sengaja BUKAN
+   * `cogs`: HPP penjualannya sudah diposting per dokumen, dan menambahkannya ke
+   * akun yang sama membuat "berapa HPP faktur ini" tidak lagi bisa ditelusuri
+   * balik ke fakturnya. Sengaja BUKAN `inventory_adjustment` juga: ini bukan
+   * gudang yang salah hitung, ini biaya yang datang terlambat.
+   *
+   * IDR — biaya persediaan dicatat dalam IDR base. Default 5102. Fail-loud bila
+   * belum dipetakan, seperti mapping lain — tidak menebak.
+   */
+  COGS_VARIANCE: "cogs_variance",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -141,6 +155,7 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   disposal_gain_loss: "Laba/Rugi Pelepasan Aset Tetap",
   inventory_adjustment: "Selisih Persediaan",
   process_shrinkage: "Beban Susut Proses",
+  cogs_variance: "Selisih Harga Pokok",
 };
 
 /**
@@ -161,6 +176,7 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.COGS, code: "5101" },
   { key: MAPPING_KEYS.INVENTORY_ADJUSTMENT, code: "610105" },
   { key: MAPPING_KEYS.PROCESS_SHRINKAGE, code: "610106" },
+  { key: MAPPING_KEYS.COGS_VARIANCE, code: "5102" },
   { key: MAPPING_KEYS.PURCHASE_EXPENSE, code: "610104" },
   // 7101 Laba/Rugi Selisih Kurs. The live Accurate books use 720103 "Laba/Rugi
   // Terealisasi (CNY)"; this seeds the equivalent slot in the template COA, and a

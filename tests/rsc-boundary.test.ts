@@ -241,7 +241,7 @@ const SRC = join(__dirname, "..", "src");
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 175;
+const AMBANG_KLIEN = 176;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -322,6 +322,9 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/invoices/new/invoice-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/[id]/reverse-button.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/journal/new/journal-form.tsx",
+  /* Biaya impor (#495 butir 1) — pulau client karena pratinjau pembagiannya
+     dihitung SEBELUM disimpan, dengan mesin yang sama dengan servernya. */
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/landed-costs/new/landed-cost-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/ledger/ledger-filter.tsx",
   /* Impor Data Awal (#381 tahap 2) — pulau client karena alasan yang sama
      dengan impor daftar akun: pemilih berkas, unggah, dan tabel galat

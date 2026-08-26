@@ -99,6 +99,22 @@ export type PostingSourceType =
    * pengguna — bukan diturunkan dari rata-rata tertimbang.
    */
   | "stock_shrinkage"
+  /**
+   * Dokumen biaya impor (issue #495 butir 1). Source ROW-nya baris
+   * `landed_cost_documents`. Ia TIDAK menerbitkan hutang — tagihannya sudah
+   * tercatat sebagai `supplier_transaction` bertipe purchase, yang jurnalnya
+   * sudah mendebet Persediaan penuh. Yang tersisa dan hanya inilah yang
+   * diposting di sini: memindahkan bagian yang jatuh pada barang yang SUDAH
+   * TERJUAL keluar dari Persediaan ke Selisih Harga Pokok.
+   *
+   * Bagian yang MASIH DI GUDANG tidak punya jurnal sama sekali — ia sudah
+   * berada di Persediaan sejak jurnal pembeliannya, dan yang perlu menyusul
+   * cuma sisi GERAKAN-nya (baris `cost_adjust`), yang ditulis route.
+   *
+   * Karena itu dokumen tanpa bagian terjual memposting `null`, dan itu bukan
+   * kegagalan: tidak ada yang perlu dipindahkan.
+   */
+  | "landed_cost"
   /** Uang muka received/paid before any invoice exists (issue #26). */
   | "advance_payment"
   /** One compensation of an advance into an invoice/purchase (issue #26). */
@@ -1186,6 +1202,67 @@ async function buildStockShrinkageEntry(
   };
 }
 
+/**
+ * Dokumen biaya impor (issue #495 butir 1) — SATU jurnal, dan hanya untuk
+ * bagian yang tidak bisa lagi menempel.
+ *
+ * ══ APA YANG SUDAH TERJADI SEBELUM FUNGSI INI DIPANGGIL ════════════════════
+ * Tagihan bea masuk / freight / asuransinya dicatat seperti pembelian lain:
+ * `buildSupplierTransactionEntry` sudah menerbitkan D: Persediaan, K: Hutang
+ * Usaha sebesar seluruh nilainya. Jadi di buku besar, SELURUH biaya itu sudah
+ * berada di Persediaan.
+ *
+ * ══ YANG TERSISA, DAN KENAPA HANYA ITU ═════════════════════════════════════
+ * Bagian yang jatuh pada barang yang masih di gudang memang seharusnya berada
+ * di Persediaan — tidak ada yang perlu dijurnal, yang perlu menyusul cuma sisi
+ * GERAKAN-nya supaya laporan Nilai Persediaan (diturunkan dari gerakan) ikut
+ * naik. Baris `cost_adjust` itu ditulis route, bukan di sini.
+ *
+ * Bagian yang jatuh pada barang yang SUDAH TERJUAL tidak boleh tinggal di
+ * Persediaan: barangnya tidak ada lagi. Ia dipindahkan ke Selisih Harga Pokok,
+ * di periode berjalan — bukan dengan menulis ulang HPP yang sudah terbit.
+ *
+ * Bentuknya persis susut opname (D: akun selisih, K: Persediaan), jadi ia
+ * memakai pembangun baris yang SAMA. Fungsi kedua yang "cuma menyalin" adalah
+ * tempat kedua yang suatu hari berselisih soal sisi mana yang didebit.
+ */
+async function buildLandedCostEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const doc = await client.landedCostDocument.findUnique({
+    where: { id: ctx.sourceId },
+    include: { purchase: { include: { supplier: true } } },
+  });
+  if (!doc) throw new SourceNotFoundError("landed_cost", ctx.sourceId);
+
+  /* Tak ada bagian terjual = tak ada yang dipindahkan = tak ada jurnal. Sama
+     sahnya dengan barang masuk yang tidak memposting HPP. */
+  const expensed = num(doc.expensedAmount);
+  if (expensed <= 0) return null;
+
+  const acc = await resolveAccountIds(
+    [MAPPING_KEYS.COGS_VARIANCE, MAPPING_KEYS.INVENTORY],
+    "IDR",
+    client
+  );
+
+  return {
+    date: doc.date,
+    type: "adjustment",
+    note: `Biaya impor ${doc.number} — bagian barang yang sudah terjual`,
+    sourceType: "landed_cost",
+    sourceId: doc.id,
+    lines: buildInventoryAdjustmentLines({
+      adjustmentAccountId: acc[MAPPING_KEYS.COGS_VARIANCE],
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      value: expensed,
+      direction: "shrink",
+      memo: doc.purchase.supplier.name,
+    }),
+  };
+}
+
 // ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
 
 /**
@@ -1289,6 +1366,8 @@ async function buildEntry(
       return buildStockMovementEntry(client, ctx);
     case "stock_adjustment":
       return buildStockAdjustmentEntry(client, ctx);
+    case "landed_cost":
+      return buildLandedCostEntry(client, ctx);
     case "advance_payment":
       return buildAdvancePaymentEntry(client, ctx);
     case "advance_application":
@@ -1378,6 +1457,20 @@ const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
         select: { invoice: { select: { costCenterId: true } } },
       })
     )?.invoice?.costCenterId ?? null,
+  /**
+   * Dokumen biaya impor → pusat biaya PEMBELIAN yang disebarnya (issue #495).
+   * Jurnalnya memindahkan sebagian nilai yang dibawa jurnal pembelian itu, jadi
+   * membiarkannya tanpa dimensi akan memindahkan biaya KELUAR dari cabang yang
+   * menanggungnya dan menaruhnya di "belum ditetapkan" — laba cabang itu naik
+   * tepat sebesar bagian yang sudah terjual, tanpa satu pun galat.
+   */
+  landed_cost: async (client, sourceId) =>
+    (
+      await client.landedCostDocument.findUnique({
+        where: { id: sourceId },
+        select: { purchase: { select: { costCenterId: true } } },
+      })
+    )?.purchase?.costCenterId ?? null,
   /** Retur pembelian → pusat biaya pembelian asalnya. */
   purchase_return: async (client, sourceId) =>
     (

@@ -242,6 +242,16 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
 
   // 5xxx COGS
   { code: "5101", name: "Beban Pokok Penjualan", type: "cogs", module: "inventory", nature: "materials" },
+  // Selisih Harga Pokok (issue #495 butir 1) — biaya impor yang datang
+  // BELAKANGAN dan jatuh pada barang yang SUDAH TERJUAL. HPP baris penjualannya
+  // sudah terbit dan tidak ditulis ulang (itu akan mengubah jurnal yang sudah
+  // dilaporkan), jadi bagian itu mendarat di sini, di periode berjalan.
+  //
+  // Bertipe `cogs`, bukan `expense`: yang sedang dicatat adalah harga pokok
+  // barang yang benar-benar terjual — hanya terlambat diketahui. Menaruhnya di
+  // Beban Operasional akan membuat marjin kotor tampak lebih baik daripada
+  // kenyataannya, tepat sebesar bea masuk yang telat datang.
+  { code: "5102", name: "Selisih Harga Pokok", type: "cogs", module: "inventory" },
 
   // 6xxx EXPENSES
   { code: "6101", name: "Beban Operasional", type: "expense" },

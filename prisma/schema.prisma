@@ -503,6 +503,8 @@ model Item {
   contractItems       ContractItem[]
   /// Baris faktur yang menyebut barang ini (issue #503).
   invoiceItems        InvoiceItem[]
+  /// Baris dokumen biaya impor yang menempelkan biaya ke barang ini (#495).
+  landedCostItems     LandedCostItem[]
 
   @@index([isActive])
   /// Nama masih dicari & diurutkan meski bukan lagi kunci — tanpa ini
@@ -558,6 +560,14 @@ model StockMovement {
 
   item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
   costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+
+  /// Baris dokumen biaya impor yang menyebut gerakan ini sebagai PENERIMAAN yang
+  /// ditumpangi biayanya (issue #495 butir 1) — asal-usul, bukan akibat.
+  landedCostReceipts   LandedCostItem[] @relation("landed_cost_receipt")
+  /// Baris dokumen biaya impor yang MELAHIRKAN gerakan ini — yaitu baris
+  /// `cost_adjust` di sisi seberangnya. Dua relasi terpisah karena keduanya
+  /// menunjuk tabel yang sama dengan arti yang berlawanan.
+  landedCostAdjustments LandedCostItem[] @relation("landed_cost_adjustment")
 
   @@index([costCenterId])
   /// Penilaian persediaan & HPP selalu membaca gerakan SATU barang urut waktu —
@@ -633,11 +643,134 @@ model SupplierTransaction {
   /// row — only a `purchase` is a document goods can be returned against.
   purchaseReturns PurchaseReturn[]
 
+  /// Dokumen biaya impor yang MENYEBAR tagihan ini ke harga pokok barang
+  /// (issue #495 butir 1). Paling banyak satu — lihat `@unique` di sana.
+  landedCost LandedCostDocument?
+
   @@index([supplierId, type])
   @@index([dueDate])
   @@index([costCenterId])
   @@index([date])
   @@map("supplier_transactions")
+}
+
+/// DOKUMEN BIAYA IMPOR (issue #495 butir 1) — menyebar tagihan bea masuk /
+/// freight / asuransi yang datang BELAKANGAN ke harga pokok barangnya.
+///
+/// ══ IA TIDAK MENERBITKAN HUTANG, DAN ITU YANG MEMBUATNYA AMAN ═════════════
+/// Tagihannya sendiri dicatat seperti pembelian lain: satu baris
+/// `supplier_transactions` bertipe `purchase`, yang jurnalnya sudah mendebet
+/// Persediaan dan mengkredit Hutang Usaha. Dokumen ini MENUNJUK baris itu
+/// (`purchase_id`), tidak menggantikannya.
+///
+/// Kenapa bukan dokumen yang mengkredit Hutang sendiri: daftar Utang
+/// (`getPayables`) diturunkan dari `supplier_transactions`, BUKAN dari jurnal.
+/// Sebuah dokumen yang mengkredit 2101 tanpa meninggalkan baris di sana akan
+/// menaikkan saldo buku besar sementara daftar utangnya diam — persis bentuk
+/// putusnya rekonsiliasi yang dijaga sejak #58, hanya di sisi utang.
+///
+/// ══ YANG DIKERJAKANNYA ═════════════════════════════════════════════════════
+/// Jurnal pembelian sudah menaruh SELURUH biaya di Persediaan. Yang belum benar
+/// tinggal dua hal, dan dokumen ini mengerjakan keduanya:
+///
+///  1. Bagian yang jatuh pada barang yang MASIH DI GUDANG harus sampai ke
+///     penilaian persediaan yang diturunkan dari GERAKAN — lewat baris
+///     `cost_adjust` (`stock_movements.value_adjustment`).
+///  2. Bagian yang jatuh pada barang yang SUDAH TERJUAL tidak boleh tinggal di
+///     Persediaan: HPP-nya sudah terbit dan tidak ditulis ulang, jadi ia
+///     direklasifikasi ke Selisih Harga Pokok — D: 5102, K: Persediaan.
+///
+/// Sesudah keduanya: saldo buku besar Persediaan = nilai persediaan menurut
+/// laporan Nilai Persediaan. Itu invariannya, dan itu yang diuji.
+model LandedCostDocument {
+  id     Int      @id @default(autoincrement())
+  /// BIM.YYYY.MM.NNNNN — pola penomoran yang sama dengan retur (#27).
+  number String   @unique @db.VarChar(30)
+  date   DateTime
+
+  /// Tagihan vendornya. `@unique`: satu tagihan disebar SEKALI. Menyebarnya dua
+  /// kali menggandakan harga pokok tanpa satu pun galat, dan constraint ini
+  /// adalah satu-satunya penjaga yang tetap berlaku ketika dua permintaan
+  /// datang bersamaan.
+  purchaseId Int @unique @map("purchase_id")
+
+  /// `value` (sebanding nilai baris) atau `weight` (sebanding kuantitas).
+  /// Disimpan, bukan disimpulkan: "menurut nilai" dan "menurut berat" memberi
+  /// angka yang sangat berbeda, dan hasilnya harus bisa dipertanggungjawabkan
+  /// belakangan.
+  basis String @db.VarChar(10)
+
+  /// Nilai IDR yang disebar — disalin dari pembelian SAAT dokumen dibuat.
+  /// Salinan, bukan bacaan ulang: kalau pembeliannya disunting kemudian, angka
+  /// yang sudah menempel di harga pokok tidak ikut berubah diam-diam.
+  ///
+  /// SENGAJA TANPA `currency`/`rate`/`base_amount` (deviasi sadar dari
+  /// docs/DATABASE.md §Valas). Dokumen ini tidak punya mata uang sendiri: ia
+  /// menyebar nilai RUPIAH sebuah tagihan yang valasnya sudah diselesaikan di
+  /// baris `supplier_transactions`-nya, dan harga pokok stok (`unit_cost`,
+  /// `value_adjustment`) memang selalu IDR. Menyalin kurs ke sini akan
+  /// melahirkan tempat KEDUA yang bisa menjawab "berapa rupiahnya" — dan dua
+  /// jawaban atas satu tagihan adalah persis cacat yang dihindari seluruh
+  /// rancangan ini.
+  amount Decimal @db.Decimal(15, 2)
+  /// Σ bagian yang menempel di persediaan.
+  capitalizedAmount Decimal @map("capitalized_amount") @db.Decimal(15, 2)
+  /// Σ bagian yang jatuh ke Selisih Harga Pokok.
+  expensedAmount Decimal @map("expensed_amount") @db.Decimal(15, 2)
+
+  note String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  purchase SupplierTransaction @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  items    LandedCostItem[]
+
+  @@index([date])
+  @@map("landed_cost_documents")
+}
+
+/// Satu barang yang menanggung sebagian biaya impor (issue #495 butir 1).
+///
+/// SETIAP ANGKA HASIL HITUNGAN DISIMPAN, tidak dihitung ulang saat ditampilkan.
+/// `onHandQuantity` — saldo barang pada saat dokumen dibuat — bergerak setiap
+/// hari; menghitung ulang pembagiannya bulan depan akan memberi jawaban lain
+/// daripada yang sudah masuk buku, dan layar yang berselisih dengan jurnalnya
+/// adalah layar yang membuat orang berhenti percaya pada keduanya.
+model LandedCostItem {
+  id         Int @id @default(autoincrement())
+  documentId Int @map("document_id")
+  itemId     Int @map("item_id")
+
+  /// Gerakan MASUK yang ditumpangi biayanya — asal `quantity` & `value`.
+  receiptMovementId Int? @map("receipt_movement_id")
+  /// Baris `cost_adjust` yang lahir dari baris ini. NULL bila tak ada yang
+  /// menempel (seluruh barangnya sudah terjual).
+  adjustmentMovementId Int? @map("adjustment_movement_id")
+
+  /// Kuantitas yang MASUK dari penerimaan itu.
+  quantity Decimal @db.Decimal(15, 3)
+  /// Nilai baris penerimaan itu (kuantitas × unit_cost), IDR — dasar sebar.
+  value    Decimal @db.Decimal(15, 2)
+  /// Saldo barang ini saat dokumen dibuat. Lihat catatan di kepala model.
+  onHandQuantity Decimal @map("on_hand_quantity") @db.Decimal(15, 3)
+
+  /// Bagian biaya yang jatuh ke baris ini = capitalized + expensed, selalu.
+  allocated   Decimal @db.Decimal(15, 2)
+  capitalized Decimal @db.Decimal(15, 2)
+  expensed    Decimal @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  document           LandedCostDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  item               Item               @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  receiptMovement    StockMovement?     @relation("landed_cost_receipt", fields: [receiptMovementId], references: [id], onDelete: SetNull)
+  adjustmentMovement StockMovement?     @relation("landed_cost_adjustment", fields: [adjustmentMovementId], references: [id], onDelete: SetNull)
+
+  @@index([documentId])
+  @@index([itemId])
+  @@map("landed_cost_items")
 }
 
 /// Links a supplier `payment` row to the `purchase` row(s) it settles (issue #37).

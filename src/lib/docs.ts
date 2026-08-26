@@ -213,6 +213,15 @@ const STOK = {
   navHrefs: ["/inventory", "/inventory/movement", "/inventory/update", "/inventory/opname"],
 } as const satisfies DocMeta;
 
+const BIAYA_IMPOR = {
+  slug: "biaya-impor",
+  judul: "Biaya yang datang setelah barangnya sudah di gudang",
+  ringkas:
+    "Kenapa bea masuk dan freight yang tagihannya telat tidak bisa sekadar ditambahkan ke harga beli, dan ke mana bagian barang yang sudah terjual pergi.",
+  cabang: "pengguna",
+  navHrefs: ["/landed-costs"],
+} as const satisfies DocMeta;
+
 const KAS = {
   slug: "kas-dan-bank",
   judul: "Buku kas Anda dan rekening koran bank",
@@ -318,6 +327,7 @@ export const DOC_INDEX = [
   PERSETUJUAN,
   PENJUALAN,
   STOK,
+  BIAYA_IMPOR,
   KAS,
   SALDO_AWAL,
   COCOK_ACCURATE,

@@ -35,6 +35,7 @@ export const RESOURCE_LABELS: Record<PermissionResource, string> = {
   payable: "Tagihan Harus Dibayar (Utang)",
   advance: "Uang Muka",
   purchase: "Pencatatan Pembelian",
+  landed_cost: "Biaya Impor",
   cash: "Buku Kas & Bank",
   reconciliation: "Cocokkan Rekening Koran",
   inventory: "Stok Barang",
@@ -95,6 +96,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "advance.delete": "Membatalkan uang muka",
   "purchase.write": "Mencatat pembelian & transaksi pemasok (termasuk wizard)",
   "purchase.delete": "Menghapus transaksi pemasok",
+  "landed_cost.read": "Melihat dokumen biaya impor",
+  "landed_cost.write": "Menyebar biaya impor ke harga pokok barang",
 
   "cash.read": "Melihat buku kas & bank",
   "cash.write": "Mencatat uang masuk / keluar",

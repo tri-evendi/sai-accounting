@@ -137,6 +137,12 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
 
   // ── inventory — stok barang.
   inventory: "inventory",
+  // Biaya impor (#495 butir 1) digerbangi `inventory`, bukan `purchasing`.
+  // Pekerjaannya memang pembelian, tetapi yang dihasilkannya NILAI PERSEDIAAN —
+  // dan akun yang dibutuhkannya (Persediaan 1104, Selisih Harga Pokok 5102)
+  // ikut disemai modul inventory. Buku tanpa stok tidak punya apa pun untuk
+  // ditempeli, jadi menunya pun tak punya arti di sana.
+  landed_cost: "inventory",
 
   // ── cash_bank — buku kas/bank + pencocokan rekening koran.
   cash: "cash_bank",

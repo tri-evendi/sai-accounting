@@ -274,6 +274,51 @@ const STOK: readonly DocBlock[] = [
     { kind: "istilah", kunci: ["persediaan", "kartu_stok", "stok_opname"] },
   ];
 
+const BIAYA_IMPOR: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Barang impor jarang datang bersama seluruh biayanya. Kontainernya masuk gudang minggu ini; bea masuk ditagih Bea Cukai, freight dan asuransi ditagih forwarder, dan tagihan-tagihan itu tiba berminggu-minggu kemudian — dari pihak yang berbeda, dengan tanggal yang berbeda. Padahal harga pokok barang itu, menurut akuntansi mana pun, termasuk seluruh biaya sampai barangnya siap dijual.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Jalan yang tampak paling mudah adalah membuka kembali pembelian lamanya dan menaikkan harga belinya. Itu justru yang tidak boleh dilakukan. Sebagian barang itu mungkin sudah terjual, dan harga pokok penjualannya sudah masuk jurnal — jurnal yang mungkin sudah dicetak, ditandatangani, bahkan dilaporkan pajaknya. Mengubahnya sekarang bukan koreksi; itu membuat laporan yang sudah keluar diam-diam berbeda dari basis datanya.",
+  },
+  { kind: "sub", judul: "Yang masih di gudang menempel, yang sudah terjual tidak" },
+  {
+    kind: "paragraf",
+    teks:
+      "Karena itu biayanya dibagi dua menurut satu pertanyaan sederhana: apakah barangnya masih ada. Bagian yang jatuh pada barang yang MASIH DI GUDANG boleh menempel di harga pokoknya — harga pokok penjualannya belum lahir, jadi tidak ada yang ditulis ulang. Bagian yang jatuh pada barang yang SUDAH TERJUAL tidak bisa lagi mengubah angka yang sudah terbit; ia dibukukan ke akun Selisih Harga Pokok pada bulan berjalan.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Tagihannya dicatat lebih dulu seperti pembelian biasa — dari Bea Cukai, dari forwarder, dari siapa pun yang menagih. Utangnya lahir di sana, dan muncul di daftar Tagihan Harus Dibayar seperti tagihan lain.",
+      "Dokumen Biaya Impor tidak menerbitkan utang kedua. Ia hanya membagi nilai tagihan yang sudah tercatat itu ke barang-barang yang menanggungnya.",
+      "Satu tagihan hanya bisa disebar sekali. Menyebarnya dua kali akan menggandakan harga pokok tanpa satu pun tanda di layar, jadi tagihan yang sudah disebar tidak lagi muncul di pemilihnya.",
+    ],
+  },
+  { kind: "sub", judul: "Menurut nilai atau menurut berat" },
+  {
+    kind: "paragraf",
+    teks:
+      "Satu tagihan menanggung beberapa barang sekaligus, dan pembagiannya harus punya dasar yang bisa dipertanggungjawabkan. Dua dasar yang tersedia menjawab dua sebab yang berbeda: bea masuk umumnya mengikuti NILAI barang, sedangkan ongkos angkut umumnya mengikuti BERAT. Dasar yang dipilih ikut disimpan bersama dokumennya — tanpa itu, angka yang dihasilkan tidak bisa dijelaskan lagi enam bulan kemudian.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Pembagiannya PROPORSI, bukan penelusuran per lot. Buku ini menilai persediaan dengan rata-rata tertimbang, dan di bawah metode itu tidak ada cara jujur untuk mengatakan “180 kg dari pembelian inilah yang terjual” — unit-unitnya memang sudah bercampur. Yang dipakai adalah berapa bagian dari yang dibeli itu yang masih tersisa di saldo barangnya. Perkiraannya tepat ketika tidak ada pembelian lain di antaranya, dan itulah kasus yang paling lazim untuk satu kontainer.",
+    nada: "peringatan",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Setelah dokumennya disimpan, dua hal terjadi sekaligus dan keduanya bisa diperiksa. Nilai persediaan barang yang masih di gudang naik — terlihat di Kartu Stok sebagai baris penyesuaian nilai yang TIDAK menambah kuantitas apa pun. Dan bagian yang sudah terjual berpindah dari Persediaan ke Selisih Harga Pokok di laporan laba/rugi bulan itu.",
+  },
+  { kind: "istilah", kunci: ["persediaan", "kartu_stok", "hpp"] },
+];
+
 const KAS: readonly DocBlock[] = [
     {
       kind: "paragraf",
@@ -690,6 +735,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "persetujuan": PERSETUJUAN,
   "alur-penjualan": PENJUALAN,
   "stok": STOK,
+  "biaya-impor": BIAYA_IMPOR,
   "kas-dan-bank": KAS,
   "saldo-awal": SALDO_AWAL,
   "cocokkan-accurate": COCOK_ACCURATE,

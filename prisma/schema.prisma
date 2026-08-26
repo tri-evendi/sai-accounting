@@ -1524,6 +1524,38 @@ model CompanySetting {
 
   @@index([isSetup])
   @@map("company_settings")
+  // ── issue #466 (butir 5 & 6) — kredensial gerbang pembayaran MILIK PT ──────
+  //
+  // Uangnya harus mendarat di rekening PT-nya sendiri, jadi kredensialnya
+  // miliknya sendiri. Kolomnya duduk DI SINI — di basis data PT itu — dan itu
+  // yang membuat lingkupnya bukan sebuah klausa `where` yang bisa terlupa,
+  // melainkan batas basis data (docs/MULTI-COMPANY.md). Tidak ada `companyId`
+  // di baris ini karena seluruh basis datanya adalah perusahaan itu.
+  //
+  // ⚠ NULL = fitur MATI, bukan "pakai kredensial platform". Jatuh ke
+  // MIDTRANS_SERVER_KEY milik kita berarti tagihan pelanggan PT A dibayar ke
+  // rekening KITA — kelas kegagalan yang sama dengan konteks perusahaan yang
+  // hilang, dan sama diamnya.
+
+  /// midtrans | NULL. NULL = PT ini tidak menerbitkan VA/QRIS.
+  paymentGateway String? @map("payment_gateway") @db.VarChar(20)
+
+  /// Client key Midtrans — BUKAN rahasia (ia memang dikirim ke peramban),
+  /// jadi tidak disegel. Disimpan supaya sepasang dengan server key-nya.
+  paymentClientKey String? @map("payment_client_key") @db.VarChar(120)
+
+  /// Server key Midtrans, TERSEGEL (`lib/settings-crypto.ts`, AES-256-GCM).
+  /// Tiga kolom karena GCM menuntut ketiganya; pola yang sama dengan kata
+  /// sandi SMTP di `mail_settings`.
+  paymentServerKeyCiphertext String? @map("payment_server_key_ciphertext") @db.Text
+  paymentServerKeyIv         String? @map("payment_server_key_iv") @db.VarChar(32)
+  paymentServerKeyTag        String? @map("payment_server_key_tag") @db.VarChar(32)
+
+  /// Sandbox atau produksi. EKSPLISIT dan berbawaan `false`: kunci sandbox yang
+  /// dipakai di produksi tidak pernah gagal dengan berisik — ia menerbitkan VA
+  /// yang tampak sah dan tidak pernah menerima satu rupiah pun.
+  paymentIsProduction Boolean @default(false) @map("payment_is_production")
+
 }
 
 // ─── Aset Tetap / Fixed Assets (issue #28) ───────────────

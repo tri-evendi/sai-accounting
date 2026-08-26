@@ -66,6 +66,11 @@ import {
   type StockValueColumnId,
   type TrialBalanceColumnId,
   type TrialBalanceLayoutRow,
+  EXPORT_EMPTY,
+  EXPORT_TOTALS,
+  AGING_UNDATED_NOTE,
+  unratedNote,
+  unresolvedNote,
 } from "@/lib/statement-layout";
 
 /**
@@ -370,7 +375,7 @@ function buildStockMovementSheet(
           c === "name" ? text(r.name) : c === "unit" ? text(r.unit || "-") : q(r[c])
         )
       )
-    : [[text("Tidak ada mutasi pada periode ini."), ...columns.slice(1).map(() => text(null))]];
+    : [[text(EXPORT_EMPTY.stockMovement), ...columns.slice(1).map(() => text(null))]];
 
   const totals: Record<StockMovementColumnId, SheetCell> = {
     name: text("Total", true),
@@ -421,7 +426,7 @@ function buildOpnameHistorySheet(
     }
   }
   if (rows.length === 0) {
-    rows.push([text("Tidak ada hitung ulang stok pada periode ini."), text(null), text(null), text(null)]);
+    rows.push([text(EXPORT_EMPTY.opnameHistory), text(null), text(null), text(null)]);
   }
   rows.push([
     text(
@@ -491,14 +496,14 @@ function buildPartyRecapSheet(
         const c = cells(r, null);
         return cols.map((id) => c[id]);
       })
-    : [[text("Tidak ada dokumen pada periode ini."), ...cols.slice(1).map(() => text(null))]];
+    : [[text(EXPORT_EMPTY.documents), ...cols.slice(1).map(() => text(null))]];
 
   const totals = cells(p.totals, "Total", true);
   rows.push(cols.map((id) => totals[id]));
 
   if (p.totals.unratedCount > 0) {
     rows.push([
-      text(`Catatan: ${p.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`),
+      text(unratedNote(p.totals.unratedCount)),
       ...cols.slice(1).map(() => text(null)),
     ]);
   }
@@ -558,7 +563,7 @@ function buildAgingSheet(
 
   rows.push(pad([text("Rincian dokumen", true)]));
   if (p.rows.length === 0) {
-    rows.push(pad([text("Tidak ada dokumen yang belum lunas.")]));
+    rows.push(pad([text(EXPORT_EMPTY.unpaidDocuments)]));
   }
   const cell = (r: (typeof p.rows)[number], c: AgingColumnId): SheetCell => {
     switch (c) {
@@ -594,11 +599,11 @@ function buildAgingSheet(
 
   const notes: string[] = [];
   if (p.rows.some((r) => r.ageFromIssue)) {
-    notes.push("* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.");
+    notes.push(AGING_UNDATED_NOTE);
   }
   if (p.unresolved > 0) {
     notes.push(
-      `${p.unresolved} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`
+      unresolvedNote(p.unresolved)
     );
   }
   if (notes.length > 0) {
@@ -667,12 +672,12 @@ function buildStockValueSheet(
 
   const rows: SheetCell[][] = p.rows.length
     ? p.rows.map((r) => cols.map((c) => cell(r, c)))
-    : [[text("Belum ada barang."), ...cols.slice(1).map(() => text(null))]];
+    : [[text(EXPORT_EMPTY.items), ...cols.slice(1).map(() => text(null))]];
 
   rows.push(
     cols.map((c) =>
       c === "name"
-        ? text("Total Nilai Persediaan", true)
+        ? text(EXPORT_TOTALS.stockValue, true)
         : c === "closingValue"
           ? money(p.totalValue, true)
           : text(null)
@@ -712,7 +717,7 @@ function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>)
       )
     : [
         [
-          text("Tidak ada akun kas & bank yang bergerak pada periode ini."),
+          text(EXPORT_EMPTY.cashBank),
           ...cols.slice(1).map(() => text(null)),
         ],
       ];
@@ -775,7 +780,7 @@ function buildBudgetSheet(
 
   const rows: SheetCell[][] = p.rows.length
     ? p.rows.map((r) => cols.map((c) => cell(r, c)))
-    : [[text("Belum ada anggaran untuk periode ini."), ...cols.slice(1).map(() => text(null))]];
+    : [[text(EXPORT_EMPTY.budget), ...cols.slice(1).map(() => text(null))]];
 
   rows.push(
     cols.map((c) =>
@@ -797,13 +802,13 @@ function buildBudgetSheet(
 
   if (p.salesTarget) {
     rows.push(cols.map(() => text(null)));
-    rows.push([text("Target Penjualan", true), ...cols.slice(1).map(() => text(null))]);
+    rows.push([text(EXPORT_TOTALS.salesTarget, true), ...cols.slice(1).map(() => text(null))]);
     rows.push(
       cols.map((c) =>
         cell(
           {
             code: "",
-            name: "Total penjualan periode ini",
+            name: EXPORT_TOTALS.periodSales,
             budget: p.salesTarget!.target,
             actual: p.salesTarget!.actual,
             variance: p.salesTarget!.variance,

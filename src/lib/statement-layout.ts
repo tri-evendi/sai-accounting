@@ -1576,3 +1576,70 @@ export const SHEET_NAMES: Record<StatementKind, string> = {
   "cash-bank": "Kas & Bank",
   "budget-realization": "Realisasi vs Anggaran",
 };
+
+// ─── Kalimat bersama cetakan & lembar sebar (issue #330) ────────────────────
+
+/**
+ * Kalimat yang DULU punya dua salinan — satu di `pdf/statement-pdf.ts`, satu di
+ * `report-export.ts` (issue #330).
+ *
+ * ══ KENAPA INI BUKAN KERAPIAN ══════════════════════════════════════════════
+ * Keduanya adalah dua penerjemah dari SATU payload. Ketika kalimatnya ditulis
+ * dua kali di dalam badan fungsi masing-masing, tidak ada satu pun penjaga yang
+ * bisa melihat bahwa keduanya harus sama — dan menyimpangnya tidak akan
+ * terlihat sampai seseorang kebetulan membuka PDF dan lembar sebar dari laporan
+ * yang sama, berdampingan, pada hari yang sama.
+ *
+ * Diukur saat #330 dikerjakan: SEBELAS kalimat identik berdiri di kedua berkas.
+ * Yang membuat itu bukan hipotesis: #492 menyunting KEDUA berkas ini untuk satu
+ * laporan yang sama, dan hanya kebetulan yang membuat kalimatnya tidak ikut
+ * bergeser di salah satunya.
+ *
+ * ══ RUMAHNYA DI SINI, BUKAN DI KAMUS ═══════════════════════════════════════
+ * `statement-layout.ts` memang rumah kosakata CETAKAN — `STATEMENT_TITLES`,
+ * `SHEET_NAMES`, dan seluruh `*_HEADERS` sudah tinggal di sini, semuanya bahasa
+ * Indonesia dan bukan kunci kamus. Dokumen yang dicetak tidak mengikuti bahasa
+ * pembacanya (lihat catatan pada `*_HEADERS`), jadi memindahkannya ke kamus
+ * akan menjanjikan sesuatu yang tidak berlaku.
+ */
+export const EXPORT_EMPTY = {
+  stockMovement: "Tidak ada mutasi pada periode ini.",
+  opnameHistory: "Tidak ada hitung ulang stok pada periode ini.",
+  documents: "Tidak ada dokumen pada periode ini.",
+  unpaidDocuments: "Tidak ada dokumen yang belum lunas.",
+  items: "Belum ada barang.",
+  cashBank: "Tidak ada akun kas & bank yang bergerak pada periode ini.",
+  budget: "Belum ada anggaran untuk periode ini.",
+} as const;
+
+/** Label total yang dicetak di kaki tabel — dipakai kedua penerjemah. */
+export const EXPORT_TOTALS = {
+  stockValue: "Total Nilai Persediaan",
+  periodSales: "Total penjualan periode ini",
+  salesTarget: "Target Penjualan",
+} as const;
+
+/**
+ * Catatan kaki umur piutang/utang: dokumen tanpa tanggal jatuh tempo diumurkan
+ * dari tanggal dokumennya. Dikatakan, bukan didiamkan — umur yang dihitung dari
+ * dasar yang berbeda tanpa disebut adalah angka yang tidak bisa dibandingkan.
+ */
+export const AGING_UNDATED_NOTE =
+  "* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.";
+
+/**
+ * Catatan dokumen valas tanpa kurs. Angka yang diam-diam kehilangan sebagian
+ * dokumennya adalah cara termudah sebuah rekap dipercaya padahal salah — jadi
+ * cetakan mengatakannya, sama seperti layar.
+ */
+export function unratedNote(count: number): string {
+  return `Catatan: ${count} dokumen valas tanpa kurs tidak ikut dijumlahkan.`;
+}
+
+/**
+ * Idem, bentuk panjang yang dipakai rekap mitra — menyebut SEBABNYA (tak punya
+ * nilai IDR), bukan hanya akibatnya.
+ */
+export function unresolvedNote(count: number): string {
+  return `${count} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`;
+}

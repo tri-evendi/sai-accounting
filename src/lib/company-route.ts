@@ -40,7 +40,6 @@
 
 import "server-only";
 
-import { enterCompanyContext } from "@/lib/company-context";
 import { routeCompany, setRouteCompany } from "@/lib/current-company";
 import { controlDb } from "@/lib/control-db";
 import { membershipFor } from "@/lib/company-registry";
@@ -252,7 +251,29 @@ export async function enterCompanyFromRoute(params: {
     slug: membership.company.slug,
     databaseName: membership.company.databaseName,
   };
-  enterCompanyContext(context);
+  /*
+   * `enterCompanyContext()` DICABUT di sini (issue #336).
+   *
+   * Ia beban mati sejak #333, dan itu terukur bukan diduga: `als.enterWith()`
+   * hanya merambat ke pemanggil bila dipanggil SEBELUM `await` apa pun, dan
+   * baris ini berdiri sesudah tiga pembacaan basis data kendali. Diprobe dua
+   * kali oleh dua pihak, hasilnya `null` di badan route maupun di komponen
+   * halaman.
+   *
+   * Mencabutnya lebih jujur daripada menjelaskan kenapa ia dibiarkan: sebuah
+   * baris yang TAMPAK bekerja padahal tidak adalah bentuk yang membuat #333
+   * hidup delapan bulan tanpa terlihat.
+   *
+   * Dibuktikan tidak ada yang bergantung padanya di jalur permintaan: pembaca
+   * ALS yang tersisa adalah `company-identity.ts`, `invoice-send.ts`, dan
+   * `invoice-reminder-mail.ts` — ketiganya menoleransi `null` secara TERTULIS
+   * (mereka jatuh ke konfigurasi penyedia, bukan melempar), dan ketiganya sudah
+   * menerima `null` di jalur permintaan hari ini justru karena baris ini mati.
+   * `after()` tidak dipakai di mana pun di repo ini.
+   *
+   * `runWithCompany()` TIDAK disentuh — ia memakai `als.run` (bukan
+   * `enterWith`), ia yang melayani skrip/cron/seed/tes, dan ia bekerja.
+   */
   await setRouteCompany(context);
 
   /*

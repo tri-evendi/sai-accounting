@@ -59,6 +59,8 @@ import { getReceivables, getPayables } from "@/lib/receivables";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { cashTypeLabels } from "@/lib/i18n/labels";
+import { buildDashboardInsights } from "@/lib/dashboard-insights";
+import { InsightPanel } from "@/components/dashboard/insight-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -458,6 +460,31 @@ export default async function DashboardPage({
 
   const incomeStatementHref = `/reports/income-statement?from=${period.fromISO}&to=${period.toISO}`;
 
+  /*
+   * ── KALIMAT DASBOR (issue #472) ───────────────────────────────────────────
+   *
+   * Lapisan DI ATAS angka yang sudah ada — tidak menghitung ulang apa pun, dan
+   * tidak menambah satu kueri pun: ketiga angkanya diturunkan dari
+   * `receivables.rows` yang memang sudah dimuat kartu di sebelahnya. Itu yang
+   * membuat kalimat dan kartunya mustahil menyebut angka berbeda.
+   *
+   * Aturannya (ambang, urutan, dan kapan DIAM) hidup di
+   * `lib/dashboard-insights.ts` dan diuji di sana tanpa basis data.
+   */
+  const overdueRows = receivables?.rows.filter((r) => r.status === "overdue") ?? [];
+  const insights = buildDashboardInsights({
+    overdue: receivables
+      ? {
+          count: receivables.overdueCount,
+          amountBase: overdueRows.reduce((sum, r) => sum + (r.outstandingBase ?? 0), 0),
+          /* `ageDays` sudah menghitung "sejak jatuh tempo bila diketahui, sejak
+             tanggal dokumen bila tidak" — aturan yang sama dengan halaman
+             Piutang, jadi umurnya tak bisa berbeda dari yang dibuka tautannya. */
+          oldestDays: overdueRows.reduce((max, r) => Math.max(max, r.ageDays), 0),
+        }
+      : undefined,
+  });
+
   // Saldo per barang dari hasil GROUP BY — aturan yang sama dengan
   // `calculateStockTotals`, dibuktikan tes (tests/inventory-value.test.ts).
   const stockLevels = stockLevelsFromTotals(
@@ -722,6 +749,13 @@ export default async function DashboardPage({
       <WorkflowGuide workflows={workflows} t={t} />
 
       {canViewInventory && <StockAlertBanner items={lowStockItems} />}
+
+      {/* ─── Kalimat dasbor (issue #472) ───
+          TEPAT DI ATAS kartunya, dan itu bukan selera tata letak: kalimatnya
+          menjelaskan angka yang ada di kartu berikutnya, jadi ia harus terbaca
+          sebelum angkanya — sama alasannya dengan spanduk data contoh. Diam
+          sendiri (merender `null`) pada bulan yang tak punya berita. */}
+      <InsightPanel insights={insights} />
 
       {/* ─── Ringkasan bahasa awam (issue #3) ───
           Sits above the standard reports on purpose: an owner should get the

@@ -2581,7 +2581,15 @@
     "workflowOptional": "可选",
     "sampleBannerTitle": "本账簿仍包含示例数据。",
     "sampleBannerBody": "标记为 [CONTOH] 的金额会计入损益表、资产负债表和现金流量表——因此下方的摘要尚未反映您自己的业务。",
-    "sampleBannerAction": "在设置中清除"
+    "sampleBannerAction": "在设置中清除",
+    "insightOverdue": "有 {count} 张发票、合计 {amount} 已逾期，最长逾期 {days} 天。",
+    "insightBudgetOver": "本月费用超出预算 {amount}，比计划高出 {percent}%。",
+    "insightCashDrop": "本月现金减少 {amount}，比上月低 {percent}%。",
+    "insightCashRise": "本月现金增加 {amount}，比上月高 {percent}%。",
+    "insightCustomerConcentration": "{name} 占本月销售的 {percent}%——收入集中于单一客户。",
+    "insightSupplierConcentration": "{name} 占本月采购的 {percent}%——供应集中于单一供应商。",
+    "insightsTitle": "值得关注",
+    "insightsMore": "查看明细"
   },
   "stockMovement": {
     "title": "库存变动记录",

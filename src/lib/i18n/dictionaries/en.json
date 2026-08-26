@@ -2581,7 +2581,15 @@
     "workflowOptional": "optional",
     "sampleBannerTitle": "This book still contains sample data.",
     "sampleBannerBody": "Figures marked [CONTOH] are included in the Income Statement, Balance Sheet, and Cash Flow — so the summary below does not yet describe your own business.",
-    "sampleBannerAction": "Remove in Settings"
+    "sampleBannerAction": "Remove in Settings",
+    "insightOverdue": "{count} invoices worth {amount} are past due; the oldest by {days} days.",
+    "insightBudgetOver": "Expenses are {amount} over budget this month — {percent}% higher than planned.",
+    "insightCashDrop": "Cash fell {amount} this month, {percent}% lower than last month.",
+    "insightCashRise": "Cash rose {amount} this month, {percent}% higher than last month.",
+    "insightCustomerConcentration": "{name} accounts for {percent}% of this month's sales — your revenue rests on one customer.",
+    "insightSupplierConcentration": "{name} accounts for {percent}% of this month's purchases — your supply rests on one supplier.",
+    "insightsTitle": "Worth your attention",
+    "insightsMore": "See the detail"
   },
   "stockMovement": {
     "title": "Stock History",

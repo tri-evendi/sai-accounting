@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
+import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@/lib/scheduler-heartbeat";
 import { mailHealth } from "@/lib/mail-health";
 import { outboxCount, resolveMailConfig } from "@/lib/mailer-core";
@@ -101,6 +102,80 @@ async function lastSchedulerRun(): Promise<SchedulerHealth> {
   }
 }
 
+/**
+ * Basis data PLATFORM terjangkau? (issue #374 · F-5)
+ *
+ * DILAPORKAN, TIDAK IKUT MEMUTUSKAN — doktrin #137. Platform memikul penagihan
+ * dan penjadwal langganan; ia BUKAN prasyarat aplikasi pelanggan bekerja.
+ * Membuat probe menjawab 503 karena platform mati berarti Traefik berhenti
+ * mengirim lalu lintas ke container yang sebenarnya melayani seluruh
+ * pembukuan pelanggan dengan baik — kegagalan penagihan diubah menjadi
+ * pemadaman layanan.
+ *
+ * Jadi jawabannya `"unknown"`, bukan lemparan: sama seperti denyut penjadwal.
+ */
+async function platform(): Promise<{ status: "ok" | "unknown" }> {
+  try {
+    await platformDb.$queryRaw`SELECT 1`;
+    return { status: "ok" };
+  } catch {
+    return { status: "unknown" };
+  }
+}
+
+/**
+ * Satu basis data PT contoh terjangkau? (issue #374 · F-5)
+ *
+ * Kendali yang terjangkau membuktikan orang bisa masuk dan perusahaannya bisa
+ * DITEMUKAN — ia tidak membuktikan bukunya bisa DIBUKA. Kredensial yang salah,
+ * migrasi yang belum jalan, atau basis data PT yang tidak dibuat akan lolos
+ * probe lama sepenuhnya: `sai_control` sehat, dan setiap halaman pembukuan
+ * gagal.
+ *
+ * ══ SATU, DAN CUKUP SATU ═══════════════════════════════════════════════════
+ * Bukan semua PT. Jumlahnya tumbuh seiring pelanggan, dan sebuah probe yang
+ * biayanya tumbuh adalah probe yang suatu hari menjadi beban yang ia ukur.
+ * Satu PT membuktikan yang ingin dibuktikan: kredensial, jaringan, dan bentuk
+ * skemanya benar.
+ *
+ * ══ DILAPORKAN, TIDAK IKUT MEMUTUSKAN ══════════════════════════════════════
+ * Alasan yang sama dengan platform, tetapi lebih tajam: satu PT yang bukunya
+ * bermasalah TIDAK boleh menarik seluruh container keluar dari rotasi dan
+ * mematikan layanan bagi seluruh pelanggan lain. Yang menjatuhkan probe hanya
+ * kendali — sebab tanpa kendali tidak ada satu pun halaman yang berguna.
+ */
+async function sampleCompany(): Promise<{ status: "ok" | "unknown" | "error" }> {
+  let databaseName: string | null = null;
+  try {
+    /* PT mana pun, asal deterministik — `id` menaik supaya jawabannya tidak
+       berpindah-pindah antar-panggilan dan sebuah kegagalan bisa ditelusuri. */
+    const company = await controlDb.company.findFirst({
+      orderBy: { id: "asc" },
+      select: { databaseName: true },
+    });
+    databaseName = company?.databaseName ?? null;
+  } catch {
+    return { status: "unknown" };
+  }
+
+  /* Belum ada satu PT pun — pemasangan baru. Itu bukan kegagalan, dan
+     menyebutnya `error` akan membuat setiap pemasangan segar terlihat sakit. */
+  if (!databaseName) return { status: "unknown" };
+
+  try {
+    await getCompanyClient(databaseName).$queryRaw`SELECT 1`;
+    return { status: "ok" };
+  } catch {
+    /*
+     * DI SINI `error`, bukan `unknown`: kendali menyebut basis data ini ADA,
+     * jadi tak terjangkaunya adalah kabar yang pasti — bukan ketidaktahuan.
+     * Statusnya tetap `ok` di tingkat atas; yang ini untuk mata manusia dan
+     * pemantauan, bukan untuk Traefik.
+     */
+    return { status: "error" };
+  }
+}
+
 export async function GET() {
   try {
     // Round-trip ringan untuk memastikan basis data kendali terjangkau.
@@ -113,6 +188,23 @@ export async function GET() {
      heartbeat` menjaga bahwa route ini memang menyebut `scheduler:`, dan
      penjaga itu membaca SUMBERNYA. Singkatan membuatnya merah tanpa satu pun
      perilaku berubah — dan pelajarannya bukan "longgarkan penjaganya". */
-  const [schedulerStatus, mailStatus] = await Promise.all([lastSchedulerRun(), mail()]);
-  return NextResponse.json({ status: "ok", scheduler: schedulerStatus, mail: mailStatus });
+  const [schedulerStatus, mailStatus, platformStatus, companyStatus] = await Promise.all([
+    lastSchedulerRun(),
+    mail(),
+    platform(),
+    sampleCompany(),
+  ]);
+  /*
+   * `status: "ok"` walau `platform` atau `company` bermasalah — lihat catatan
+   * pada masing-masing fungsi. Yang menjatuhkan probe hanya basis data kendali,
+   * dan itu diputuskan di atas sebelum sampai ke sini.
+   */
+  return NextResponse.json({
+    status: "ok",
+    control: { status: "ok" },
+    platform: platformStatus,
+    company: companyStatus,
+    scheduler: schedulerStatus,
+    mail: mailStatus,
+  });
 }

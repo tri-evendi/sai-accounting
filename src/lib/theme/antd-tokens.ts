@@ -207,6 +207,32 @@ export function moneyTokens(resolved: ResolvedTheme): MoneyTokens {
 }
 
 /* ------------------------------------------------------------------------ */
+/* Warna untuk permukaan DI LUAR CSS (issue #471)                            */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Manifest aplikasi dan `<meta name="theme-color">` tidak bisa memakai
+ * `var(--ant-…)`: keduanya dibaca peramban SEBELUM satu byte CSS mana pun
+ * diterapkan — manifest bahkan dibaca sistem operasi saat ikonnya dipasang ke
+ * layar depan, jauh setelah tab-nya ditutup.
+ *
+ * Karena itu keduanya membutuhkan hex harfiah, dan menurut aturan repo ini
+ * (`sai/warna-token-antd`) satu-satunya tempat hex harfiah boleh hidup adalah
+ * berkas ini. Nilainya sama dengan `colorPrimary` bawaan AntD yang dibahas di
+ * §Warna merek di atas — bukan warna baru, hanya warna yang sama yang harus
+ * ditulis dalam bentuk yang bisa dibaca tanpa CSS.
+ *
+ * ⚠ Ia dipakai sebagai LATAR bilah status, bukan sebagai teks. Kegagalan 4,10:1
+ * yang dicatat di §Warna merek tidak berlaku di sini: teks bilah status digambar
+ * sistem operasi, yang memilih hitam atau putihnya sendiri menurut terang
+ * latar ini.
+ */
+export const BRAND_HEX = "#1677ff";
+
+/** Latar layar pembuka aplikasi terpasang. Light-first, sesuai MASTER.md. */
+export const APP_BACKGROUND_HEX = "#ffffff";
+
+/* ------------------------------------------------------------------------ */
 /* Warna merek sebagai TEKS dan sebagai ISIAN TOMBOL                          */
 /* ------------------------------------------------------------------------ */
 

@@ -530,7 +530,7 @@ export default async function DashboardPage({
    * sudah jadi, untuk tampilan yang identik. Lihat kepala `static-table.tsx`.
    */
   const movementColumns: SaiColumns<(typeof recentMovements)[number]> = [
-    textColumn({ dataIndex: "itemName", title: t("common.item") }),
+    { ...textColumn({ dataIndex: "itemName", title: t("common.item") }), card: "title" },
     {
       key: "type",
       dataIndex: "type",
@@ -591,6 +591,7 @@ export default async function DashboardPage({
       key: "type",
       dataIndex: "type",
       title: t("common.account"),
+      card: "title",
       render: (_value, b) => cashTypeLabels(dictionary)[b.type as CashType] || b.type,
     },
     {
@@ -632,6 +633,7 @@ export default async function DashboardPage({
   const contractColumns: SaiColumns<(typeof contractRows)[number]> = [
     {
       key: "contractNo",
+      card: "title",
       dataIndex: "contractNo",
       title: <TermTooltip term="kontrak">{t("contracts.colNo")}</TermTooltip>,
       render: (_value, c) => (
@@ -892,6 +894,7 @@ export default async function DashboardPage({
             </CardTitle>
           </CardHeader>
           <StaticTable
+            cards
             columns={movementColumns}
             rows={recentMovements}
             rowKey={(_row, index) => index ?? 0}
@@ -993,6 +996,7 @@ export default async function DashboardPage({
                 </CardTitle>
               </CardHeader>
               <StaticTable
+                cards
                 columns={balanceColumns}
                 rows={financeBalances}
                 rowKey={(b) => `${b.type}_${b.currency}`}
@@ -1039,6 +1043,7 @@ export default async function DashboardPage({
               </CardTitle>
             </CardHeader>
             <StaticTable
+              cards
               columns={contractColumns}
               rows={contractRows}
               rowKey={(c) => c.id}

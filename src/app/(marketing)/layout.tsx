@@ -29,6 +29,8 @@
  */
 import type { Metadata } from "next";
 
+export { viewport } from "@/lib/viewport";
+
 import { RootDocument } from "@/components/providers/root-document";
 import { APP_NAME } from "@/lib/constants";
 import { getDictionary, getLocale } from "@/lib/i18n/server";

@@ -95,6 +95,18 @@ interface Dipendekkan {
  * dokumennya — jadi tidak satu pun bisa bergeser, atau diam-diam didamaikan,
  * tanpa terlihat di diff.
  */
+/*
+ * ── EMPAT ENTRI DICABUT DI #331 ────────────────────────────────────────────
+ * `cash-flow`, `receivables`, `payables`, dan `cash-bank` dulu berdiri di sini
+ * dengan sebab yang berbunyi "pilihan penamaan" — yaitu tanpa sebab teknis
+ * sama sekali. Tes ini sendiri yang menyuruh mencabutnya begitu pengecualiannya
+ * berhenti mengecualikan apa pun.
+ *
+ * #331 menyamakan keempatnya dengan judul dokumennya. Yang TERSISA di bawah
+ * berbeda karena judulnya memang MUSTAHIL jadi nama tab — dan itu kini
+ * diturunkan dari aturannya di `tests/sheet-name-follows-title`, bukan
+ * didaftar. Daftar ini tinggal menjaga bunyinya tidak berubah diam-diam.
+ */
 const NAMA_LEMBAR_DIPENDEKKAN: Dipendekkan[] = [
   {
     kind: "income-statement",
@@ -103,14 +115,6 @@ const NAMA_LEMBAR_DIPENDEKKAN: Dipendekkan[] = [
       'Judulnya "Laporan Laba / Rugi" memuat garis miring — huruf yang TERLARANG ' +
       "di nama tab Excel. Nama lembar ini tidak bisa disamakan dengan judul " +
       "dokumennya tanpa membuang tandanya.",
-  },
-  {
-    kind: "cash-flow",
-    patok: "Arus Kas",
-    sebab:
-      'Judulnya "Laporan Arus Kas" sah sebagai nama tab (16 huruf), jadi bedanya ' +
-      "pilihan penamaan: tab menyebut laporannya, bukan berkasnya — kata " +
-      '"Laporan" mubazir di tab yang memang isinya laporan.',
   },
   {
     kind: "stock-movement",
@@ -125,25 +129,6 @@ const NAMA_LEMBAR_DIPENDEKKAN: Dipendekkan[] = [
     sebab:
       'Judulnya "Riwayat Hitung Ulang Stok (Stok Opname)" 39 huruf — melewati ' +
       "batas 31, jadi Excel akan memenggalnya di tengah kata.",
-  },
-  {
-    kind: "receivables",
-    patok: "Umur Piutang",
-    sebab:
-      'Judulnya "Piutang & Umur Piutang" sah sebagai nama tab (22 huruf); ' +
-      'tabnya memakai nama pendek yang tidak mengulang kata "Piutang" dua kali.',
-  },
-  {
-    kind: "payables",
-    patok: "Umur Utang",
-    sebab: "Sama dengan Umur Piutang — satu bentuk laporan, dua sisi buku.",
-  },
-  {
-    kind: "cash-bank",
-    patok: "Kas & Bank",
-    sebab:
-      'Judulnya "Laporan Kas & Bank" sah sebagai nama tab (18 huruf); bedanya ' +
-      "pilihan penamaan yang sama dengan Arus Kas.",
   },
 ];
 

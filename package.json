@@ -29,6 +29,8 @@
     "db:migrate:companies": "tsx scripts/migrate-all-companies.ts",
     "db:migrate:all": "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies",
     "migrate:audit": "tsx scripts/migrate-audit.ts",
+    "_migrate_tenant_audit_note": "LANGKAH RILIS #484. Memindahkan `data/audit/tenants/<slug>/audit.jsonl` ke tabel `tenant_audit_logs` di basis data KENDALI, lalu MENGGANTI NAMA berkasnya jadi `.dipindahkan`. Idempoten lewat `legacy_id` UNIK + skipDuplicates. WAJIB sesudah `db:migrate:all`. Tabelnya SENGAJA tanpa FK ke `tenants`: jejak ini mencatat penghapusan tenant, jadi ia harus selamat dari penghapusan itu.",
+    "migrate:tenant-audit": "tsx scripts/migrate-tenant-audit.ts",
     "_migrate_audit_note": "LANGKAH RILIS #370. Memindahkan `data/audit/<slug>/audit.jsonl` ke tabel `audit_logs` di basis data PT masing-masing, lalu MENGGANTI NAMA berkasnya jadi `.dipindahkan` (tidak menghapus — menghapus jejak audit secara otomatis adalah kebalikan dari alasan jejak itu ada). Dibaca baris demi baris, disisipkan per 500, idempoten lewat `legacy_id` UNIK + skipDuplicates. WAJIB dijalankan sesudah `db:migrate:all`: tabelnya lahir dari migration 0044, isinya dari skrip ini. Sebelum dijalankan, halaman Audit tampak KOSONG — jejaknya belum pindah, bukan hilang.",
     "prove-scheduler-alive": "tsx scripts/prove-scheduler-alive.ts",
     "prove-backup-restore": "tsx scripts/prove-backup-restore.ts",

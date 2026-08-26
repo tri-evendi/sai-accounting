@@ -10,18 +10,30 @@
  * dibuka" (siasat lama api/companies) salah alamat dan, untuk pelanggan baru
  * tanpa PT, mustahil.
  *
- * Rumahnya karena itu terpisah: `data/audit/tenants/<slug-tenant>/audit.jsonl`.
- * Pemisahan per-tenant mengikuti alasan pemisahan per-PT (#104): pembaca yang
- * lupa menyaring tidak punya apa-apa untuk bocor.
+ * ══ RUMAHNYA: TABEL DI BASIS DATA KENDALI (issue #484) ═════════════════════
+ * Sampai #484 ia `appendFile` ke `data/audit/tenants/<slug>/audit.jsonl` —
+ * dibaca UTUH setiap kali, tidak ter-paginasi, tidak ikut cadangan, dan tidak
+ * ikut ke mana pun. Masalah yang sama persis dengan #370, yang memindahkan
+ * jejak per-PT ke tabel dan mengecualikan jejak ini secara eksplisit.
+ *
+ * ══ TANPA FOREIGN KEY, DAN ITU INTI ISUNYA ═════════════════════════════════
+ * Jejak inilah yang mencatat PENGHAPUSAN sebuah tenant. Menaruhnya di tempat
+ * yang ikut mati bersama yang dicatatnya membuat catatan itu tidak ada
+ * artinya. Karena itu `tenant_audit_logs.tenant_id` hanyalah angka dan
+ * `tenant_slug` DISALIN — sesudah tenant-nya tiada, slug itu satu-satunya yang
+ * membuat barisnya masih bisa dibaca manusia.
+ *
+ * Perhatikan bahwa ini KEBALIKAN dari #370, di mana "mati bersama bukunya"
+ * justru salah satu kriteria selesainya. Jejak PT adalah bagian dari buku PT
+ * itu; jejak tenant adalah catatan TENTANG tenant, termasuk tentang akhirnya.
  *
  * SENGAJA TANPA `server-only` (pola `mailer-core.ts`): penulis terbesarnya
  * justru skrip — penjadwal langganan menulis transisi status dari luar Next.
- * Modul ini fs murni, tanpa Prisma/next; slug & id tenant diberikan pemanggil
- * secara eksplisit — tidak ada konteks tersirat yang bisa salah tebak.
+ * Slug & id tenant diberikan pemanggil secara eksplisit; tidak ada konteks
+ * tersirat yang bisa salah tebak.
  */
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import path from "node:path";
+import { controlDb } from "@/lib/control-db";
 import { clientIpFrom } from "@/lib/client-ip";
 
 /**
@@ -86,20 +98,6 @@ export interface TenantAuditEntry {
   createdAt: string;
 }
 
-/** Bisa dialihkan lewat env — tes menulis ke direktori sementaranya sendiri
- *  (pola MAIL_OUTBOX_DIR). Dievaluasi per panggilan, bukan saat impor. */
-function tenantAuditRoot(): string {
-  return process.env.TENANT_AUDIT_DIR ?? path.join(process.cwd(), "data", "audit", "tenants");
-}
-
-function fileFor(tenantSlug: string): { dir: string; file: string } {
-  // Slug tervalidasi saat tenant lahir (huruf kecil/angka/hubung) — tetapi
-  // jejak audit tidak boleh bergantung pada itu untuk keamanan jalur berkas.
-  const safe = tenantSlug.replace(/[^a-z0-9-]/g, "_");
-  const dir = path.join(tenantAuditRoot(), safe);
-  return { dir, file: path.join(dir, "audit.jsonl") };
-}
-
 /**
  * Tulis satu peristiwa tenant. Gagal menulis TIDAK menggagalkan operasinya
  * (pola `writeAuditLog`): jejak adalah catatan tentang yang terjadi, bukan
@@ -115,54 +113,111 @@ export async function writeTenantAuditLog(params: {
   details?: Record<string, unknown>;
   request?: Request;
 }): Promise<void> {
-  const { dir, file } = fileFor(params.tenantSlug);
-  const entry: TenantAuditEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    tenantId: params.tenantId,
-    tenantSlug: params.tenantSlug,
-    userId: params.userId === undefined ? "system" : String(params.userId),
-    username: (params.username ?? "system").slice(0, 100),
-    tenantRole: params.tenantRole,
-    action: params.action,
-    details: params.details,
-    /* Entri ke-N dari KANAN (issue #372). Jejak yang mencatat alamat pilihan
-       penyerang menyesatkan penyelidikan yang membacanya — dan jejak tenant
-       adalah tempat pendaftaran, penghapusan akun, dan tindakan operator
-       tercatat. */
-    ipAddress: params.request ? clientIpFrom(params.request.headers) : null,
-    createdAt: new Date().toISOString(),
-  };
-
   try {
-    await mkdir(dir, { recursive: true });
-    await appendFile(file, `${JSON.stringify(entry)}\n`, "utf8");
+    await controlDb.tenantAuditLog.create({
+      data: {
+        tenantId: params.tenantId,
+        tenantSlug: params.tenantSlug,
+        userId: params.userId === undefined ? "system" : String(params.userId),
+        username: (params.username ?? "system").slice(0, 100),
+        tenantRole: params.tenantRole ?? null,
+        action: params.action,
+        /* Rincian sebagai TEKS: skema kendali belum punya satu pun kolom
+           `Json`, dan di MariaDB `JSON` toh alias `LONGTEXT`. */
+        details: params.details === undefined ? null : JSON.stringify(params.details),
+        /* Entri ke-N dari KANAN (issue #372). Jejak yang mencatat alamat
+           pilihan penyerang menyesatkan penyelidikan yang membacanya — dan
+           jejak tenant adalah tempat pendaftaran, penghapusan akun, dan
+           tindakan operator tercatat. */
+        ipAddress: params.request ? clientIpFrom(params.request.headers) : null,
+      },
+    });
   } catch (error) {
     console.error("[tenant-audit] gagal menulis jejak:", error);
   }
 }
 
-/** Baca jejak sebuah tenant, terbaru dulu. Berkas belum ada = daftar kosong. */
+/**
+ * Baca jejak sebuah tenant, terbaru dulu — DIPAGINASI DI SQL (issue #484).
+ *
+ * Bentuk lamanya membaca SELURUH berkas ke memori lalu memotongnya di
+ * JavaScript; jejak tenant yang aktif bertahun-tahun akan membuat pembacaan
+ * pertama menjadi pembacaan terakhir. Sekarang `skip`/`take` dikerjakan basis
+ * data, dan `total` dipulangkan supaya pemanggilnya bisa menampilkan paginasi
+ * tanpa menebak.
+ *
+ * `tenantSlug`, bukan `tenantId`: jejak sebuah tenant yang SUDAH DIHAPUS tetap
+ * harus terbaca, dan sesudah barisnya tiada slug itulah satu-satunya pegangan
+ * yang tersisa. Index `[tenantSlug, createdAt]` memang dibuat untuk bentuk ini.
+ */
 export async function readTenantAuditLogs(
   tenantSlug: string,
-  options: { limit?: number } = {}
+  options: { limit?: number; skip?: number } = {}
 ): Promise<TenantAuditEntry[]> {
-  const limit = Math.min(500, Math.max(1, options.limit ?? 100));
-  let raw: string;
-  try {
-    raw = await readFile(fileFor(tenantSlug).file, "utf8");
-  } catch {
-    return [];
-  }
+  return (await readTenantAuditPage(tenantSlug, options)).entries;
+}
 
-  const entries: TenantAuditEntry[] = [];
-  for (const line of raw.trim().split("\n").reverse()) {
-    if (!line) continue;
-    try {
-      entries.push(JSON.parse(line) as TenantAuditEntry);
-    } catch {
-      // baris korup dilewati — jejak lain tetap terbaca
-    }
-    if (entries.length >= limit) break;
+/** Sehalaman jejak + totalnya. */
+export async function readTenantAuditPage(
+  tenantSlug: string,
+  options: { limit?: number; skip?: number } = {}
+): Promise<{ entries: TenantAuditEntry[]; total: number }> {
+  const take = Math.min(500, Math.max(1, options.limit ?? 100));
+  const skip = Math.max(0, options.skip ?? 0);
+
+  const where = { tenantSlug };
+  const [rows, total] = await Promise.all([
+    controlDb.tenantAuditLog.findMany({
+      where,
+      /* `id` sebagai pemutus seri: beberapa peristiwa bisa berbagi milidetik
+         `createdAt` yang sama, dan tanpa urutan total sebuah baris bisa
+         berpindah halaman antar-permintaan. */
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take,
+    }),
+    controlDb.tenantAuditLog.count({ where }),
+  ]);
+
+  return { entries: rows.map(toEntry), total };
+}
+
+/** Baris tabel menjadi bentuk yang sudah dikenal pemanggil. */
+function toEntry(row: {
+  id: number;
+  tenantId: number;
+  tenantSlug: string;
+  userId: string;
+  username: string;
+  tenantRole: string | null;
+  action: string;
+  details: string | null;
+  ipAddress: string | null;
+  createdAt: Date;
+}): TenantAuditEntry {
+  return {
+    id: String(row.id),
+    tenantId: row.tenantId,
+    tenantSlug: row.tenantSlug,
+    userId: row.userId,
+    username: row.username,
+    tenantRole: row.tenantRole ?? undefined,
+    action: row.action as TenantAuditAction,
+    /* Rincian yang tidak bisa diurai TIDAK menggagalkan pembacaan: satu baris
+       rusak tidak boleh menyembunyikan seluruh jejak di sekitarnya — aturan
+       yang sama dengan pembaca JSONL yang digantikannya. */
+    details: parseDetails(row.details),
+    ipAddress: row.ipAddress,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function parseDetails(raw: string | null): Record<string, unknown> | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
   }
-  return entries;
 }

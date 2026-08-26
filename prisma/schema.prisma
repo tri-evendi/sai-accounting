@@ -518,11 +518,24 @@ model StockMovement {
   id       Int      @id @default(autoincrement())
   itemId   Int      @map("item_id")
   quantity Decimal  @db.Decimal(15, 3)
-  type     String   @db.VarChar(10) // enum-like: in, out
+  type     String   @db.VarChar(15) // enum-like: in, out, process, cost_adjust
   date     DateTime
   /// IDR cost per unit for `in` movements — the input to weighted-average COGS.
   /// Nullable: legacy rows carry no cost and are skipped by the average.
   unitCost Decimal? @map("unit_cost") @db.Decimal(15, 2)
+
+  /// Penyesuaian NILAI persediaan tanpa kuantitas (issue #495 butir 1).
+  ///
+  /// Dipakai baris bertipe `cost_adjust`: biaya impor yang datang belakangan
+  /// (bea masuk, freight forwarder) menaikkan nilai persediaan barang yang
+  /// MASIH DI GUDANG, tanpa menyentuh `unit_cost` gerakan lama — sebab gerakan
+  /// lama HPP-nya sudah diposting, dan mengubahnya berarti menulis ulang jurnal
+  /// yang sudah terbit.
+  ///
+  /// `weightedAverageUnitCost` menambahkannya ke sisi NILAI dan tidak pernah ke
+  /// sisi kuantitas, jadi rata-ratanya naik tepat sebesar (nilai ÷ kuantitas)
+  /// untuk gerakan MASUK sesudahnya. Saldo barang tidak bergerak sedikit pun.
+  valueAdjustment Decimal? @map("value_adjustment") @db.Decimal(15, 2)
   note     String?  @db.Text
   /// Pusat biaya gerakan ini (issue #98) — cabang/unit yang menanggung HPP-nya.
   ///

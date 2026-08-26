@@ -32,6 +32,11 @@ export interface CostingMovement {
   quantity: number | string | { toString(): string };
   type: string;
   unitCost?: number | string | { toString(): string } | null;
+  /**
+   * Penyesuaian NILAI tanpa kuantitas (issue #495 butir 1) — baris
+   * `cost_adjust`. Ditambahkan ke sisi NILAI, tidak pernah ke sisi kuantitas.
+   */
+  valueAdjustment?: number | string | { toString(): string } | null;
 }
 
 const num = (v: CostingMovement["quantity"] | null | undefined): number =>
@@ -47,6 +52,27 @@ export function weightedAverageUnitCost(movements: CostingMovement[]): number {
   let value = 0;
 
   for (const m of movements) {
+    /*
+     * ── Penyesuaian NILAI tanpa kuantitas (issue #495 butir 1) ─────────────
+     *
+     * Biaya impor yang datang belakangan — bea masuk, freight forwarder —
+     * menempel pada barang yang MASIH DI GUDANG. Ia menaikkan sisi nilai dan
+     * TIDAK menyentuh sisi kuantitas, jadi rata-ratanya naik tepat sebesar
+     * (nilai ÷ kuantitas) untuk setiap gerakan keluar SESUDAHNYA.
+     *
+     * Alternatifnya — mengubah `unitCost` gerakan masuk yang lama — akan
+     * menulis ulang HPP yang sudah diposting, yaitu mengubah jurnal yang sudah
+     * terbit. Lihat `lib/landed-cost.ts` untuk alasan lengkapnya.
+     *
+     * Diperiksa LEBIH DULU, dan dengan `continue`: sebuah baris `cost_adjust`
+     * berkuantitas nol akan tersaring `q <= 0` di bawah dan nilainya hilang
+     * tanpa satu pun galat.
+     */
+    if (m.type === "cost_adjust") {
+      value += m.valueAdjustment == null ? 0 : num(m.valueAdjustment);
+      continue;
+    }
+
     if (m.type !== "in") continue;
     const unitCost = m.unitCost == null ? null : num(m.unitCost);
     if (unitCost == null) continue; // limitation 3: uncosted rows are excluded
@@ -74,9 +100,20 @@ export async function averageUnitCostForItem(
   asOf: Date,
   client: Client
 ): Promise<number> {
+  /*
+   * DUA jenis diambil, bukan satu — dan ini persis tempat cacatnya bersembunyi
+   * (issue #495 butir 1). Menyaring `type: "in"` saja akan MELEWATKAN baris
+   * `cost_adjust`, sehingga fungsi ini menjawab lebih rendah daripada
+   * `weightedAverageUnitCost` atas barang yang sama: dua permukaan, satu
+   * barang, dua angka — dan yang satu dipakai memposting HPP.
+   *
+   * `valueAdjustment` wajib ikut di `select`. Kolom yang tidak diambil datang
+   * sebagai `undefined`, dan mesinnya menjumlahkan `undefined` sebagai nol —
+   * yaitu diam-diam mengabaikan seluruh penyesuaiannya.
+   */
   const movements = await client.stockMovement.findMany({
-    where: { itemId, type: "in", date: { lte: asOf } },
-    select: { quantity: true, type: true, unitCost: true },
+    where: { itemId, type: { in: ["in", "cost_adjust"] }, date: { lte: asOf } },
+    select: { quantity: true, type: true, unitCost: true, valueAdjustment: true },
   });
   return weightedAverageUnitCost(movements);
 }

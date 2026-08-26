@@ -9,6 +9,13 @@ export type StockMovement = {
   date: Date | string;
   /** IDR cost per unit on `in` rows — dasar nilai persediaan (issue #58). */
   unitCost?: number | string | { toString(): string } | null;
+  /**
+   * Penyesuaian NILAI tanpa kuantitas pada baris `cost_adjust` (#495 butir 1).
+   * Ikut di sini supaya nilai persediaan di neraca dan HPP memakai dasar yang
+   * SAMA — dua angka yang berbeda atas barang yang sama adalah cacat yang
+   * dijaga sejak #58.
+   */
+  valueAdjustment?: number | string | { toString(): string } | null;
   note?: string | null;
 };
 

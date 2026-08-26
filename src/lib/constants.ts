@@ -236,7 +236,17 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
  * tidak dikenal DITOLAK saat masuk alih-alih diam-diam menjadi angka yang
  * salah.
  */
-export const STOCK_MOVEMENT_TYPES = ["in", "out", "process"] as const;
+/*
+ * `cost_adjust` (issue #495 butir 1) — penyesuaian NILAI tanpa kuantitas.
+ *
+ * Ia bukan barang masuk dan bukan barang keluar: saldo tidak bergerak sedikit
+ * pun. Yang berubah hanya nilai persediaan, ketika biaya impor yang datang
+ * belakangan (bea masuk, freight forwarder) menempel pada barang yang masih di
+ * gudang. Perlakuannya karena itu SAMA dengan `process`: setiap penjumlah saldo
+ * menyebut `in` dan `out` secara eksplisit, dan yang bukan keduanya tidak
+ * dihitung — bukan jatuh ke `else` yang mengurangi.
+ */
+export const STOCK_MOVEMENT_TYPES = ["in", "out", "process", "cost_adjust"] as const;
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number];
 
 export function isStockMovementType(value: string): value is StockMovementType {

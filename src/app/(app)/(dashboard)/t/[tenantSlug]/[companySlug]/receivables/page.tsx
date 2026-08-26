@@ -269,7 +269,32 @@ export default async function ReceivablesPage({
     }
   }
 
-  const columns: SaiColumns<ReceivableRow> = cols.map(columnFor);
+  /*
+   * ── Bentuk KARTU di ponsel (issue #471) ─────────────────────────────────
+   *
+   * Pemilik usaha membuka halaman ini di jalan untuk satu pertanyaan: *siapa
+   * yang belum bayar.* Empat nilai menjawabnya — mitra, jatuh tempo, status,
+   * sisa — dengan nomor dokumen sebagai subjek kartunya.
+   *
+   * Tiga kolom lain DISEMBUNYIKAN di kartu, bukan dibuang dari tabelnya:
+   * tanggal dokumen, umur, dan nilai penuh tetap ada di layar lebar dan tetap
+   * ikut ke PDF/Excel. Umur tidak hilang maknanya — tanggal jatuh temponya ada
+   * di kartu, dan statusnya menyebut lewat-temponya dengan kata.
+   *
+   * Perannya ditulis SEBAGAI PETA di sini, bukan disebar ke `columnFor`:
+   * keputusan "apa yang penting di layar sempit" adalah satu keputusan tentang
+   * halaman ini, dan ia harus bisa dibaca sekali pandang.
+   */
+  const CARD_ROLE: Partial<Record<AgingColumnId, "title" | "hide">> = {
+    documentNo: "title",
+    date: "hide",
+    age: "hide",
+    total: "hide",
+  };
+  const columns: SaiColumns<ReceivableRow> = cols.map((id) => ({
+    ...columnFor(id),
+    card: CARD_ROLE[id],
+  }));
 
   return (
     <div>
@@ -318,6 +343,7 @@ export default async function ReceivablesPage({
 
       <Card>
         <StaticTable<ReceivableRow>
+          cards
           columns={columns}
           rows={rows}
           rowKey={(r) => `${r.kind}-${r.id}`}

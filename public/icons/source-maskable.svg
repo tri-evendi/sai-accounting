@@ -1,0 +1,19 @@
+<!--
+  Varian MASKABLE (issue #471).
+
+  Android memotong ikon menjadi lingkaran/rounded-square dan hanya menjamin
+  lingkaran berdiameter 80% di tengah tetap terlihat. Varian "any" yang dipakai
+  apa adanya di sana akan terpotong sudutnya.
+
+  Karena itu lambang yang sama diperkecil ke ~62% dan diletakkan di tengah latar
+  yang penuh sampai tepi — bukan berkas berbeda dengan gambar berbeda.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#1677ff"/>
+  <g fill="#ffffff" transform="translate(256 256) scale(0.62) translate(-256 -256)">
+    <rect x="128" y="288" width="64" height="96" rx="12"/>
+    <rect x="224" y="224" width="64" height="160" rx="12"/>
+    <rect x="320" y="128" width="64" height="256" rx="12"/>
+    <rect x="112" y="404" width="288" height="20" rx="10" opacity="0.72"/>
+  </g>
+</svg>

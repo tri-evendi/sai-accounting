@@ -86,6 +86,50 @@
  */
 
 /**
+ * ── BARIS MENJADI KARTU DI PONSEL (issue #471) ─────────────────────────────
+ *
+ * Sebuah tabel bermata sepuluh kolom yang digulir menyamping di layar 390px
+ * bukan "bisa dipakai"; ia hanya "tidak rusak". Di bawah ambang, setiap baris
+ * dilipat menjadi satu kartu bertumpuk dengan nama medan di kiri dan nilainya
+ * di kanan.
+ *
+ * OPT-IN, lewat `<Table cards>`. Tabel neraca dan buku besar TIDAK boleh ikut:
+ * di sana yang dibaca justru KOLOMnya — angka yang berbaris tegak lurus supaya
+ * bisa dijumlah dengan mata. Melipatnya jadi kartu menghancurkan justru hal
+ * yang membuatnya laporan.
+ *
+ * ── Harga yang dibayar, dan penawarnya ─────────────────────────────────────
+ * `display:block` di atas elemen tabel MENGHAPUS semantik tabel dari pohon
+ * aksesibilitas: pembaca layar berhenti mengumumkan "kolom Jatuh Tempo" saat
+ * fokus pindah. Itu bukan efek samping yang bisa didiamkan — itu sebabnya
+ * setiap sel WAJIB membawa `label`, yang dicetak `::before` sebagai teks NYATA
+ * di dalam sel. Namanya tidak hilang; ia berpindah dari judul kolom ke dalam
+ * selnya sendiri, dan justru di layar sempit itulah bentuk yang lebih berguna.
+ *
+ * Judul kolomnya sendiri disembunyikan dengan `clip-path`, bukan
+ * `display:none` — jarak yang sama, tetapi ia tetap ada bagi mesin pencari dan
+ * bagi peramban yang tidak menerapkan `@media` ini.
+ *
+ * Ambangnya `40em` (640px): telepon terbesar di orientasi tegak masih di
+ * bawahnya, tablet terkecil di atasnya. Satuan `em`, bukan `px`, supaya
+ * pengguna yang memperbesar huruf bawaan peramban ikut mendapat bentuk kartu.
+ */
+const CARD_RULES = `
+@media (max-width:40em){
+[data-slot="table-container"][data-cards="on"]{overflow-x:visible}
+[data-cards="on"] [data-slot="table-header"]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+[data-cards="on"] [data-slot="table"],[data-cards="on"] [data-slot="table-body"],[data-cards="on"] [data-slot="table-footer"],[data-cards="on"] [data-slot="table-row"],[data-cards="on"] [data-slot="table-cell"]{display:block;width:auto}
+[data-cards="on"] [data-slot="table-body"] > [data-slot="table-row"]{border:var(--ant-line-width) solid var(--ant-color-border-secondary);border-radius:var(--ant-border-radius-lg);margin-block-end:var(--ant-margin-xs);padding:var(--ant-padding-sm)}
+[data-cards="on"] [data-slot="table-body"] > [data-slot="table-row"]:last-child{margin-block-end:0;border-bottom-width:var(--ant-line-width)}
+[data-cards="on"] [data-slot="table-cell"]{display:flex;justify-content:space-between;align-items:baseline;gap:var(--ant-margin-sm);padding-inline:0;padding-block:var(--ant-padding-xxs);text-align:end}
+[data-cards="on"] [data-slot="table-cell"][data-label]::before{content:attr(data-label);color:var(--ant-color-text-secondary);font-size:var(--ant-font-size-sm);text-align:start;flex:0 1 auto}
+[data-cards="on"] [data-slot="table-cell"][data-card="hide"]{display:none}
+[data-cards="on"] [data-slot="table-cell"][data-card="title"]{font-weight:600;padding-block-end:var(--ant-padding-xs)}
+[data-cards="on"] [data-slot="table-cell"][data-card="title"]::before{content:none}
+}
+`;
+
+/**
  * Aturan yang tidak punya bentuk sebaris — lihat catatan di kepala berkas.
  *
  * Hover DIBATASI ke baris di dalam `<tbody>`: baris judul dan baris kaki tidak
@@ -106,7 +150,7 @@ const TABLE_RULES = `
 [data-slot="table-footer"] > [data-slot="table-row"]{border-bottom-width:0}
 [data-slot="table-sort"]{transition:color 150ms}
 [data-slot="table-sort"]:hover{color:var(--ant-color-text)}
-`;
+${CARD_RULES}`;
 
 /** Pembungkus geser: tabel lebar menggulung DI DALAM kotaknya (MASTER.md). */
 const CONTAINER_STYLE: React.CSSProperties = {
@@ -220,9 +264,18 @@ interface TableProps extends React.ComponentProps<"table"> {
   stickyHeadBackground?: string;
   /** Warna garis pemisah judul–isi saat judulnya menempel. */
   stickyHeadBorderColor?: string;
+  /**
+   * Di bawah 40em, lipat tiap baris menjadi kartu — lihat §CARD_RULES.
+   *
+   * Menyalakannya menuntut setiap `TableCell` membawa `label`; tanpa itu
+   * nilainya berdiri di kartu tanpa nama. Dijaga
+   * `tests/mobile-card-tables.test.ts`.
+   */
+  cards?: boolean;
 }
 
 function Table({
+  cards,
   maxHeight,
   containerStyle,
   stickyHeadBackground,
@@ -245,7 +298,7 @@ function Table({
   }
 
   return (
-    <div data-slot="table-container" style={wrapper}>
+    <div data-slot="table-container" data-cards={cards ? "on" : undefined} style={wrapper}>
       <style href="sai-table" precedence="default">
         {TABLE_RULES}
       </style>
@@ -363,18 +416,43 @@ function TableHead({
  */
 function TableCell({
   scope,
+  label,
+  card,
   style,
   ...props
-}: React.ComponentProps<"td"> & { scope?: "row" | "col" | "rowgroup" | "colgroup" }) {
+}: React.ComponentProps<"td"> & {
+  scope?: "row" | "col" | "rowgroup" | "colgroup";
+  /**
+   * Nama medan yang dicetak di kiri nilainya saat barisnya menjadi kartu
+   * (`<Table cards>`). Tidak berpengaruh apa pun di atas 40em — judul kolomnya
+   * yang berbicara di sana.
+   */
+  label?: string;
+  /**
+   * `"title"` — baris pertama kartu, dicetak tebal tanpa label (nama pelanggan
+   * atau nomor dokumen tidak butuh dinamai; ia SUBJEK kartunya).
+   * `"hide"` — sembunyikan di kartu. Untuk kolom yang berguna saat sepuluh
+   * kolom berbaris tetapi hanya menambah baris di layar sempit.
+   */
+  card?: "title" | "hide";
+}) {
   if (scope === undefined) {
     return (
-      <td data-slot="table-cell" style={{ ...CELL_STYLE, ...style }} {...props} />
+      <td
+        data-slot="table-cell"
+        data-label={label}
+        data-card={card}
+        style={{ ...CELL_STYLE, ...style }}
+        {...props}
+      />
     );
   }
 
   return (
     <th
       data-slot="table-cell"
+      data-label={label}
+      data-card={card}
       scope={scope}
       style={{
         ...CELL_STYLE,

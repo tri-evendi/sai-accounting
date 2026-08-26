@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate, formatNumber } from "@/lib/utils";
-import { reportById, resolveColumns } from "@/lib/report-catalog";
+import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
 import { getT } from "@/lib/i18n/server";
 import { TermTooltip } from "@/components/ui/term-tooltip";
@@ -96,15 +96,9 @@ export default async function StockMovementPage({
   // ekspor mulai berbeda kolom, bug yang baru saja ditutup dan yang dikunci
   // `tests/report-export.test.ts`.
   const cols = stockMovementColumns(payload);
-  const HEADERS: Record<StockMovementColumnId, string> = {
-    name: t("common.item"),
-    unit: t("common.unit"),
-    opening: t("stockMovement.colOpening"),
-    movedIn: t("stockMovement.colIn"),
-    movedOut: t("stockMovement.colOut"),
-    processed: t("stockMovement.colProcessed"),
-    closing: t("stockMovement.colClosing"),
-  };
+  /* Judul kolom DITURUNKAN dari katalog (#324): pilihan kuncinya hidup di
+     satu tempat, jadi tidak ada kunci kedua yang bisa menyimpang. */
+  const HEADERS = columnLabels<StockMovementColumnId>("stock-movement", t);
   // Masuk hijau / keluar merah mengikuti semantik uang app ini, dan angkanya
   // sendiri tetap penanda non-warna. Token UANG (`--ant-color-money-*`, #186),
   // bukan `colorSuccess`/`colorError` bawaan: ini sel tabel 14px, yang menuntut

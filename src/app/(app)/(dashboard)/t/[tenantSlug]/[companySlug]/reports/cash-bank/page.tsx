@@ -31,7 +31,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
-import { reportById, resolvePeriod } from "@/lib/report-catalog";
+import { reportById, resolvePeriod, columnLabels } from "@/lib/report-catalog";
 import { cashBankPayload } from "@/lib/report-payload";
 import { cashBankColumns, type CashBankColumnId } from "@/lib/statement-layout";
 import { formatDate } from "@/lib/utils";
@@ -75,16 +75,9 @@ export default async function CashBankReportPage({
   const payload = cashBankPayload(definition, from, to, cf, sp.cols);
 
   const cols = cashBankColumns(payload);
-  const HEADERS: Record<CashBankColumnId, string> = {
-    // Judul KOLOM, bukan judul kartu. Sampai #309 baris ini membaca
-    // `reports.perCashAccountTitle` — kunci milik kartu "Rincian per Akun Kas &
-    // Bank" di halaman Arus Kas — sehingga kolomnya berbunyi "Rincian per …"
-    // sementara PDF & lembar sebarnya menulis "Akun Kas & Bank".
-    account: t("reports.colCashBankAccount"),
-    opening: t("reports.colOpeningBalance"),
-    net: t("reports.colChange"),
-    closing: t("reports.colClosingBalance"),
-  };
+  /* Judul kolom DITURUNKAN dari katalog (#324): pilihan kuncinya hidup di
+     satu tempat, jadi tidak ada kunci kedua yang bisa menyimpang. */
+  const HEADERS = columnLabels<CashBankColumnId>("cash-bank", t);
 
   /** Satu id kolom -> satu kolom tabel. Tidak ada id yang tak punya bentuk. */
   function columnFor(id: CashBankColumnId): SaiColumns<CashBankRow>[number] {

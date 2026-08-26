@@ -41,7 +41,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getStockValuePeriodReport } from "@/lib/stock-report";
 import { PeriodFilter } from "../report-filters";
-import { resolvePeriod } from "@/lib/report-catalog";
+import { resolvePeriod, columnLabels } from "@/lib/report-catalog";
 import { Card } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
@@ -97,19 +97,9 @@ export default async function StockValueReportPage({
   };
 
   const cols = stockValueColumns(payload);
-  const HEADERS: Record<StockValueColumnId, string> = {
-    code: t("common.itemCode"),
-    name: t("common.item"),
-    unit: t("common.unit"),
-    openingQty: t("inventory.colOpeningQty"),
-    openingValue: t("inventory.colOpeningValue"),
-    inQty: t("inventory.colInQty"),
-    inValue: t("inventory.colInValue"),
-    outQty: t("inventory.colOutQty"),
-    outValue: t("inventory.colOutValue"),
-    closingQty: t("inventory.colClosingQty"),
-    closingValue: t("inventory.colClosingValue"),
-  };
+  /* Judul kolom DITURUNKAN dari katalog (#324): pilihan kuncinya hidup di
+     satu tempat, jadi tidak ada kunci kedua yang bisa menyimpang. */
+  const HEADERS = columnLabels<StockValueColumnId>("stock-value", t);
 
   /** Satu id kolom -> satu kolom tabel. Tidak ada id yang tak punya bentuk. */
   function columnFor(id: StockValueColumnId): SaiColumns<StockValueRow>[number] {

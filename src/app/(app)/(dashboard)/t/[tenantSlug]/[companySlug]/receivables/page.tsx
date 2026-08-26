@@ -39,7 +39,7 @@ import { formatDateShort } from "@/lib/utils";
 import { FileDoneOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
-import { reportById, resolveColumns } from "@/lib/report-catalog";
+import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
@@ -127,16 +127,9 @@ export default async function ReceivablesPage({
 
   // Susunan kolom layar = susunan kolom berkasnya. Satu penentu, tiga permukaan.
   const cols = agingColumns(payload);
-  const HEADERS: Record<AgingColumnId, string> = {
-    party: t("common.customer"),
-    documentNo: t("common.document"),
-    date: t("common.date"),
-    dueDate: t("common.dueDate"),
-    age: t("common.age"),
-    status: t("common.status"),
-    total: t("receivables.colDocumentValue"),
-    outstanding: t("common.remainingIdr"),
-  };
+  /* Judul kolom DITURUNKAN dari katalog (#324): pilihan kuncinya hidup di
+     satu tempat, jadi tidak ada kunci kedua yang bisa menyimpang. */
+  const HEADERS = columnLabels<AgingColumnId>("receivables", t);
 
   /** Satu id kolom -> satu kolom tabel; tidak ada daftar kolom kedua. */
   function columnFor(id: AgingColumnId): SaiColumns<ReceivableRow>[number] {

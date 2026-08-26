@@ -365,6 +365,41 @@ export const REPORTS: ReportDefinition[] = [
     filters: ["costCenter"],
   },
   {
+    /*
+     * LABA RUGI PER PROYEK (issue #495, butir 2 — job costing untuk jasa).
+     *
+     * Berdampingan dengan Laba Rugi, bukan menggantikannya: yang ini menjawab
+     * "proyek mana yang menghasilkan", yang itu menjawab "berapa laba
+     * perusahaan". Keduanya berjumlah sama — sifat yang dipaksakan `groupBy`
+     * tunggal di `project-profit-report.ts` dan diuji sebagai rekonsiliasi.
+     *
+     * TANPA `filters: ["costCenter"]`, dan itu bukan kelalaian: laporan ini
+     * MEMBELAH menurut pusat biaya, jadi menyaringnya menurut pusat biaya
+     * berarti menyisakan satu baris — yaitu halaman Laba Rugi yang sudah ada,
+     * dengan tampilan yang lebih buruk.
+     *
+     * Tanpa `payloadKind`: belum ada cetakan/lembar sebarnya, preseden yang
+     * sama dengan `expense-by-nature`. Kartu yang jujur tentang apa yang
+     * disediakannya lebih baik daripada tombol unduh yang memulangkan berkas
+     * kosong.
+     */
+    id: "project-profit",
+    category: "keuangan",
+    permission: "report.read",
+    status: "available",
+    href: "/reports/project-profit",
+    paramKind: "period",
+    icon: "Layers",
+    /*
+     * TANPA `columns`, dan itu konsekuensi dari tidak punya `payloadKind`.
+     * Daftar `columns` di katalog adalah kontrak dialog "pilih kolom" ↔ berkas
+     * cetak (#316); mendeklarasikannya untuk laporan yang belum punya bentuk
+     * kertas berarti menjanjikan pilihan kolom yang tidak pernah mendarat di
+     * berkas mana pun. Judul kolomnya karena itu diambil halaman langsung dari
+     * kamus — satu sumber, sama seperti `expense-by-nature`.
+     */
+  },
+  {
     id: "balance-sheet",
     category: "keuangan",
     permission: "report.read",

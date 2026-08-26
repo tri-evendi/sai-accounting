@@ -86,7 +86,11 @@ const TRANSLATED_LOCALES = LOCALES.filter((locale) => locale !== DEFAULT_LOCALE)
  */
 const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
   en: new Set([
-    // Istilah dagang internasional; "Bill of Lading" memang dipakai apa adanya
+    /* "Margin" adalah kata yang sama di Indonesia dan Inggris — ia serapan
+       langsung, dan menerjemahkannya jadi sesuatu yang lain justru membuat
+       judul kolomnya salah (issue #495). */
+    "reports.colMargin",
+    // Istilah dagang internasi
     // di dokumen ekspor berbahasa Indonesia.
     "documentType.bl",
     // Idem (issue #511): "Packing List" dipakai apa adanya di dokumen ekspor

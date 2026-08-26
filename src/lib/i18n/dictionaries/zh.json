@@ -2118,6 +2118,10 @@
       "efaktur": {
         "title": "电子发票（e-Faktur）导出（DJP/CTAS）",
         "description": "将销项税务发票导出为 DJP 导入格式。"
+      },
+      "project_profit": {
+        "title": "项目损益",
+        "description": "并排显示各项目/成本中心的利润——哪个盈利，哪个亏损。所有项目加上未分配行等于公司损益表。"
       }
     },
     "waterfallTitle": "从销售到净利润",
@@ -2129,7 +2133,11 @@
     "expenseNaturePeriod": "期间 {period}",
     "expenseNatureUnassignedNote": "部分费用尚未标注性质，因此单独成行。请先在会计科目表中标注科目性质，再将本表用作附注。",
     "expenseNatureEmptyTitle": "本期间没有费用",
-    "expenseNatureEmptyDescription": "当该日期范围内存在费用凭证时，此处将显示其归集结果。"
+    "expenseNatureEmptyDescription": "当该日期范围内存在费用凭证时，此处将显示其归集结果。",
+    "colProject": "项目",
+    "colMargin": "利润率",
+    "unassignedProject": "未分配项目",
+    "projectProfitReconcileNote": "所有行合计等于同期损益表中的净利润／亏损。"
   },
   "budget": {
     "title": "预算与目标",

@@ -61,6 +61,11 @@ import {
   type StockMovementColumnId,
   type StockValueColumnId,
   type TrialBalanceLayoutRow,
+  EXPORT_EMPTY,
+  EXPORT_TOTALS,
+  AGING_UNDATED_NOTE,
+  unratedNote,
+  unresolvedNote,
 } from "@/lib/statement-layout";
 
 /** A plain, serialisable line — server components pass these to the client button. */
@@ -627,7 +632,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       head: [head],
       body: payload.rows.length
         ? payload.rows.map(row)
-        : [["Tidak ada mutasi pada periode ini.", ...Array(head.length - 1).fill("")]],
+        : [[EXPORT_EMPTY.stockMovement, ...Array(head.length - 1).fill("")]],
       foot: [footer],
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },
@@ -661,7 +666,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
             ],
             ...s.adjustments.map((a) => ["", `   ${a.itemName}`, a.unit || "-", signedQty(a.variance)]),
           ])
-        : [["", "Tidak ada hitung ulang stok pada periode ini.", "", ""]],
+        : [["", EXPORT_EMPTY.opnameHistory, "", ""]],
       foot: [
         [
           `${payload.sessionCount} kali hitung ulang`,
@@ -714,7 +719,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
             const values = cell(r);
             return cols.map((c) => values[c]);
           })
-        : [["Tidak ada dokumen pada periode ini.", ...Array(cols.length - 1).fill("")]],
+        : [[EXPORT_EMPTY.documents, ...Array(cols.length - 1).fill("")]],
       foot: [
         cols.map((c) => (c === "party" ? "Total" : cell({ ...payload.totals, partyName: "" })[c])),
       ],
@@ -731,7 +736,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `Catatan: ${payload.totals.unratedCount} dokumen valas tanpa kurs tidak ikut dijumlahkan.`,
+        unratedNote(payload.totals.unratedCount),
         14,
         afterTable(doc) + 6
       );
@@ -780,7 +785,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       head: [cols.map((c) => BUDGET_HEADERS[c])],
       body: payload.rows.length
         ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
-        : [["Belum ada anggaran untuk periode ini.", ...Array(cols.length - 1).fill("")]],
+        : [[EXPORT_EMPTY.budget, ...Array(cols.length - 1).fill("")]],
       foot: [cols.map((c) => totals[c])],
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },
@@ -794,10 +799,10 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     if (payload.salesTarget) {
       autoTable(doc, {
         startY: afterTable(doc) + 6,
-        head: [["Target Penjualan", "Target", "Realisasi", "Selisih"]],
+        head: [[EXPORT_TOTALS.salesTarget, "Target", "Realisasi", "Selisih"]],
         body: [
           [
-            "Total penjualan periode ini",
+            EXPORT_TOTALS.periodSales,
             rp(payload.salesTarget.target),
             rp(payload.salesTarget.actual),
             `${payload.salesTarget.variance > 0 ? "+" : ""}${rp(payload.salesTarget.variance)}`,
@@ -832,7 +837,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       head: [cols.map((c) => CASH_BANK_HEADERS[c])],
       body: payload.rows.length
         ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
-        : [["Tidak ada akun kas & bank yang bergerak pada periode ini.", ...Array(cols.length - 1).fill("")]],
+        : [[EXPORT_EMPTY.cashBank, ...Array(cols.length - 1).fill("")]],
       foot: [cols.map((c) => totals[c])],
       styles: { fontSize: 9 },
       headStyles: { fillColor: BRAND },
@@ -875,13 +880,13 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       head: [cols.map((c) => STOCK_VALUE_HEADERS[c])],
       body: payload.rows.length
         ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
-        : [["Belum ada barang.", ...Array(cols.length - 1).fill("")]],
+        : [[EXPORT_EMPTY.items, ...Array(cols.length - 1).fill("")]],
       foot: [
         /* Total DIPETAKAN per kunci kolom, jadi ia ikut menyusut bersama pilihan
            kolom pengguna dan tak bisa meleset satu kolom (#492). */
         cols.map((c) =>
           c === "name"
-            ? "Total Nilai Persediaan"
+            ? EXPORT_TOTALS.stockValue
             : c === "closingValue"
               ? rp(payload.totalValue)
               : ""
@@ -958,7 +963,7 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
       head: [cols.map((c) => headers[c])],
       body: payload.rows.length
         ? payload.rows.map((r) => cols.map((c) => cell(r, c)))
-        : [["Tidak ada dokumen yang belum lunas.", ...Array(cols.length - 1).fill("")]],
+        : [[EXPORT_EMPTY.unpaidDocuments, ...Array(cols.length - 1).fill("")]],
       styles: { fontSize: 8 },
       headStyles: { fillColor: BRAND },
       columnStyles,
@@ -966,11 +971,11 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
 
     const notes: string[] = [];
     if (payload.rows.some((r) => r.ageFromIssue)) {
-      notes.push("* Umur dihitung dari tanggal dokumen karena tanggal jatuh temponya tidak ada.");
+      notes.push(AGING_UNDATED_NOTE);
     }
     if (payload.unresolved > 0) {
       notes.push(
-        `${payload.unresolved} dokumen valas tanpa kurs tidak punya nilai IDR, jadi tidak ikut dijumlahkan.`
+        unresolvedNote(payload.unresolved)
       );
     }
     if (notes.length > 0) {

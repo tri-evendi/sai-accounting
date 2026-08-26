@@ -37,10 +37,11 @@ import {
   parseOpeningDocuments,
 } from "@/lib/import/opening-ar-ap";
 import { FIXED_ASSET_COLUMNS, parseFixedAssetRows } from "@/lib/import/fixed-assets";
+import { OPENING_STOCK_COLUMNS, parseOpeningStockRows } from "@/lib/import/opening-stock";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-type Kind = "receivables" | "payables" | "fixed-assets";
+type Kind = "receivables" | "payables" | "fixed-assets" | "stock";
 
 const KINDS = {
   receivables: {
@@ -71,11 +72,27 @@ const KINDS = {
     fileName: "templat-aset-tetap.xlsx",
     partners: () => Promise.resolve([]),
   },
+  /*
+   * Saldo stok awal (issue #381, berkas terakhir dari enam). Alasan
+   * penempatannya sama dengan aset tetap: nilainya masuk ke JURNAL PEMBUKA,
+   * jadi ia milik jalur `opening`, bukan `master/import` yang menulis langsung.
+   *
+   * `partners` tidak dipakai — yang dicocokkan BARANG lewat kodenya, dan
+   * cabangnya terpisah di POST.
+   */
+  stock: {
+    columns: OPENING_STOCK_COLUMNS,
+    sheetName: "Stok Awal",
+    fileName: "templat-stok-awal.xlsx",
+    partners: () => Promise.resolve([]),
+  },
 } as const;
 
 function kindOf(request: Request): Kind | null {
   const raw = new URL(request.url).searchParams.get("kind");
-  return raw === "receivables" || raw === "payables" || raw === "fixed-assets" ? raw : null;
+  return raw === "receivables" || raw === "payables" || raw === "fixed-assets" || raw === "stock"
+    ? raw
+    : null;
 }
 
 export async function POST(request: Request, ctx: TenantApiContext) {
@@ -108,6 +125,86 @@ export async function POST(request: Request, ctx: TenantApiContext) {
     sheet = await readFirstSheetRows(Buffer.from(await file.arrayBuffer()));
   } catch {
     return NextResponse.json({ error: t("errors.excelUnreadable") }, { status: 400 });
+  }
+
+  if (kind === "stock") {
+    const parsedStock = parseOpeningStockRows(sheet);
+
+    /*
+     * Barang dicocokkan DI SINI, bukan di parser (yang murni) — dan lewat
+     * KODE, bukan nama. Sejak #493 dua barang boleh bernama sama persis
+     * (`LONG PEPPER` 100006 & 100010 di data pengguna, harga satuannya
+     * berselisih hampir empat kali lipat); berkas yang dicocokkan namanya
+     * tidak bisa menyatakan barang MANA yang dimaksud, dan menebaknya berarti
+     * menaruh ratusan juta di barang yang salah pada hari pertama buku dibuka.
+     */
+    const items = await prisma.item.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, name: true },
+    });
+    const byCode = new Map(items.map((i) => [i.code.trim().toLowerCase(), i]));
+    const stockErrors = [...parsedStock.errors];
+
+    /*
+     * Pesannya menyebutkan yang TERSEDIA — pola #416 yang sudah dipakai aset
+     * tetap. Berkas ini paling sering diimpor DARI DALAM wisaya, tempat menu
+     * Barang justru terkunci; menyuruh "buat barangnya dulu" mengirim orang ke
+     * pintu yang tidak bisa dibuka. Menyebut kode yang ada menjawab keduanya:
+     * bila yang dimaksud memang ada tapi beda penulisan, ia terlihat langsung.
+     */
+    const available = items
+      .map((i) => i.code)
+      .sort((a, b) => a.localeCompare(b, "id-ID"))
+      .slice(0, 30);
+    const hint =
+      items.length > 0
+        ? ` Kode yang tersedia: ${available.join(", ")}${items.length > 30 ? ", …" : ""}.`
+        : " Buku ini belum punya satu barang pun — impor Daftar Barang lebih dulu.";
+
+    parsedStock.rows.forEach((row, i) => {
+      if (!byCode.has(row.code.trim().toLowerCase())) {
+        stockErrors.push({
+          row: i + 2,
+          message: `Kode barang "${row.code}" belum ada.${hint}`,
+        });
+      }
+    });
+
+    if (stockErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: t("errors.rowsNeedFixing"),
+          rowErrors: stockErrors,
+          valid: parsedStock.rows.length,
+        },
+        { status: 422 }
+      );
+    }
+    if (parsedStock.rows.length === 0) {
+      return NextResponse.json({ error: t("errors.noImportRows") }, { status: 422 });
+    }
+
+    /* Dipulangkan sebagai `itemId` — bentuk yang SAMA dengan `openingStockSchema`
+       yang dipakai wisaya. Route ini tidak menulis apa pun: nilainya masuk ke
+       buku bersama jurnal pembukanya di `applyOpeningBalances`, satu transaksi
+       sekali-jalan. */
+    return NextResponse.json({
+      rows: parsedStock.rows.map((r) => {
+        const item = byCode.get(r.code.trim().toLowerCase())!;
+        return {
+          itemId: item.id,
+          code: item.code,
+          /* Nama dari MASTER, bukan dari berkas: berkas boleh menuliskannya
+             sekenanya, dan yang dilihat pengguna saat meninjau harus nama yang
+             benar-benar akan dipakai bukunya. */
+          name: item.name,
+          quantity: r.quantity,
+          unitCost: r.unitCost,
+        };
+      }),
+      total: parsedStock.rows.length,
+      truncated: parsedStock.truncated,
+    });
   }
 
   if (kind === "fixed-assets") {

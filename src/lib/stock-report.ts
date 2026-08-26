@@ -163,7 +163,11 @@ export async function getStockValuePeriodReport(
          yang membuat laporan "per 31 Des" berubah angkanya bulan depan. */
       stockMovements: {
         where: { date: { lte: to } },
-        select: { quantity: true, type: true, date: true, unitCost: true },
+        /* `valueAdjustment` WAJIB ikut (#495 butir 1). Kolom yang tidak diambil
+           datang sebagai `undefined`, dan `weightedAverageUnitCost`
+           menjumlahkan `undefined` sebagai nol — yaitu diam-diam membuang
+           seluruh biaya impor yang menempel. Dijaga `tests/landed-cost-costing`. */
+        select: { quantity: true, type: true, date: true, unitCost: true, valueAdjustment: true },
       },
     },
     orderBy: [{ name: "asc" }, { code: "asc" }],
@@ -184,7 +188,12 @@ export async function getStockValuePeriodReport(
 
 export async function getStockValueReport(client = prisma) {
   const items = await client.item.findMany({
-    include: { stockMovements: { select: { quantity: true, type: true, date: true, unitCost: true } } },
+    include: {
+      /* `valueAdjustment` ikut — lihat catatan pada kueri berperiode di atas. */
+      stockMovements: {
+        select: { quantity: true, type: true, date: true, unitCost: true, valueAdjustment: true },
+      },
+    },
     orderBy: { name: "asc" },
   });
 

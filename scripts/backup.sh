@@ -46,7 +46,41 @@ DRY_RUN=0
 [ "${1:-}" = "--dry-run" ] && DRY_RUN=1
 
 log() { echo "[backup] $*"; }
-die() { echo "[backup] GAGAL: $*" >&2; exit 1; }
+
+# ── Merekam putaran ini (issue #374) ───────────────────────────────────────
+#
+# Sampai #374, `die` hanya menulis ke stderr. Layanannya dibungkus `|| true` di
+# docker-compose — sengaja, supaya satu putaran yang gagal tidak mematikan
+# jadwal berikutnya — jadi kegagalan itu tidur 24 jam lalu terulang persis sama
+# besok. Produksi berjalan 26 hari tanpa satu pun salinan dengan cara ini, dan
+# tidak ada yang berbunyi ke luar sekali pun.
+#
+# Sekarang tiap putaran meninggalkan jejak yang bisa DITANYAI dari luar
+# (`/api/health` → `backup`), bukan hanya baris log yang harus ditemukan
+# seseorang lebih dulu.
+#
+# `|| true` pada perekamnya bukan pengulangan cacat yang sama, melainkan
+# kebalikannya: mencatat tidak boleh menggagalkan mencadangkan. Yang hilang saat
+# platform tak terjangkau cuma satu baris riwayat, dan denyutnya memulangkan
+# `unknown` untuk ketiadaan itu — bukan `ok`.
+BACKUP_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+export BACKUP_STARTED_AT
+
+rekam() {
+  # `if`, bukan `[ … ] && return 0`: di bawah `set -e` bentuk kedua memulangkan
+  # status 1 ketika tesnya salah, dan itu bisa menghentikan skrip di tengah
+  # cadangan yang sedang berhasil.
+  if [ "$DRY_RUN" = "1" ]; then
+    return 0
+  fi
+  ( cd /app 2>/dev/null && bun run record:backup "$@" ) >/dev/null 2>&1 || true
+}
+
+die() {
+  echo "[backup] GAGAL: $*" >&2
+  rekam gagal "$*"
+  exit 1
+}
 
 # ── Konfigurasi ────────────────────────────────────────────────────────────
 : "${DB_HOST:=db}"
@@ -163,6 +197,15 @@ if [ "$DRY_RUN" = "0" ]; then
   done
 else
   log "  (dry-run) tidak menghapus apa pun"
+fi
+
+# ── 7. Tinggalkan jejak yang bisa ditanyai dari LUAR ───────────────────────
+# Ukurannya ikut dicatat: sebuah cadangan yang "berhasil" tapi 0 byte adalah
+# kegagalan yang paling meyakinkan bentuknya, dan satu-satunya angka yang bisa
+# membantahnya adalah ukurannya sendiri.
+if [ "$DRY_RUN" = "0" ]; then
+  UKURAN="$(wc -c < "$SEALED" 2>/dev/null | tr -d ' ' || echo '')"
+  rekam ok "$(basename "$SEALED")" "$UKURAN"
 fi
 
 log "selesai — ${NAME}"

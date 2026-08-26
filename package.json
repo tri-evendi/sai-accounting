@@ -19,6 +19,7 @@
     "_test_note": "WAJIB `bun run test`, JANGAN `bun test`. `bun test` memanggil test runner bawaan Bun — ia mengabaikan vitest.config.ts, tidak mengenal alias `@/` dari vite-tsconfig-paths, dan akan melaporkan 'no tests found' atau gagal impor, seolah-olah suite-nya rusak. Perintah `bun run test` menjalankan skrip di bawah ini, yaitu vitest yang sebenarnya.",
     "test": "vitest run",
     "test:watch": "vitest",
+    "record:backup": "bun scripts/record-backup-run.ts",
     "db:generate": "prisma generate && bun run db:generate:control && bun run db:generate:platform",
     "db:generate:control": "prisma generate --config prisma.control.config.ts",
     "db:generate:platform": "prisma generate --config prisma.platform.config.ts",

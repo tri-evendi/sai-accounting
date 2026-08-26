@@ -37,9 +37,30 @@ const controlFake = vi.hoisted(() => ({
     trialEndsAt: null as Date | null,
   },
 }));
+/*
+ * Sejak #484 jejak tenant hidup di TABEL basis data kendali, bukan berkas —
+ * jadi tiruan `controlDb` di berkas ini ikut memikulnya. Penyimpannya dalam
+ * memori dan berperilaku seperti tabelnya: urut sisip, dibaca terbaru-dulu,
+ * disaring per slug.
+ */
+const tenantAuditRows: Record<string, unknown>[] = [];
 vi.mock("@/lib/control-db", () => ({
   controlDb: {
     company: { findUnique: async () => ({ tenant: controlFake.tenant }) },
+    tenantAuditLog: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        tenantAuditRows.push({
+          ...data,
+          id: tenantAuditRows.length + 1,
+          createdAt: new Date(2026, 0, tenantAuditRows.length + 1),
+        });
+        return data;
+      },
+      findMany: async ({ where }: { where: { tenantSlug: string } }) =>
+        tenantAuditRows.filter((r) => r.tenantSlug === where.tenantSlug).reverse(),
+      count: async ({ where }: { where: { tenantSlug: string } }) =>
+        tenantAuditRows.filter((r) => r.tenantSlug === where.tenantSlug).length,
+    },
   },
 }));
 
@@ -311,14 +332,10 @@ function makeWorld() {
   };
 }
 
-let auditDir: string;
-beforeEach(async () => {
-  auditDir = await mkdtemp(join(tmpdir(), "operator-writes-audit-"));
-  process.env.TENANT_AUDIT_DIR = auditDir;
-});
-afterEach(async () => {
-  delete process.env.TENANT_AUDIT_DIR;
-  await rm(auditDir, { recursive: true, force: true });
+/* Jejaknya sekarang di tabel (#484), jadi yang perlu dikosongkan tiap tes
+   adalah penyimpan tiruannya — bukan sebuah direktori sementara. */
+beforeEach(() => {
+  tenantAuditRows.length = 0;
 });
 
 const NOW = new Date("2026-08-02T03:00:00Z");

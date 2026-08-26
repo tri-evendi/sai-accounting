@@ -136,7 +136,31 @@ export async function routeCompany(): Promise<CompanyContext | null> {
   return (await requestHolder(false))?.value ?? null;
 }
 
-/** Konteks perusahaan yang berlaku sekarang — atau melempar. */
+/**
+ * Konteks perusahaan yang berlaku sekarang — atau melempar.
+ *
+ * ══ URUTANNYA TETAP ALS → JALUR, DAN ITU DIPUTUSKAN ULANG DI #336 ══════════
+ * #336 mengusulkan membaliknya (jalur dulu), supaya konteks ALS yang BASI tidak
+ * bisa mengalahkan konteks yang benar untuk sebuah permintaan. Usul itu DICOBA
+ * dan DITOLAK, dan alasannya bukan selera:
+ *
+ * Membaliknya melanggar jaminan yang disengaja dan sudah diuji —
+ * `tests/current-company-route.test.ts`: *"konteks ALS tetap menang atas jalur
+ * — skrip yang membungkus dirinya tidak bisa dibajak"*. `runWithCompany(PT_A)`
+ * adalah pernyataan paling eksplisit yang bisa dibuat kode tentang buku mana
+ * yang sedang dikerjakan; nilai dari jalur tidak boleh menggesernya.
+ *
+ * Dan kedua keadaan itu TIDAK BISA dibedakan dari urutannya saja: "ALS basi
+ * yang mengalahkan permintaan" dan "skrip yang membungkus dirinya lalu
+ * menyentuh jalur permintaan" adalah konfigurasi yang sama persis — kedua
+ * penyimpan terisi — dengan jawaban benar yang berlawanan. Membalik urutan
+ * hanya menukar cacat yang satu dengan cacat yang lain.
+ *
+ * Yang benar-benar menutup risiko #336 karena itu bukan urutannya melainkan
+ * SUMBERNYA: sesudah `enterCompanyContext()` dicabut dari `company-route.ts`,
+ * satu-satunya yang mengisi ALS adalah `runWithCompany()` — dan itu selalu
+ * pernyataan yang disengaja, tidak pernah sisa yang basi.
+ */
 export async function currentCompany(): Promise<CompanyContext> {
   const fromContext = getCompanyContext();
   if (fromContext) return fromContext;

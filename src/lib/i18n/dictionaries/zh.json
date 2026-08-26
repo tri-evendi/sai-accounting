@@ -2063,6 +2063,10 @@
         "title": "利润表",
         "description": "多步式：营业收入 − 营业成本 = 毛利，再减去费用得出净利润，并附通俗易懂的说明。"
       },
+      "expense_by_nature": {
+        "title": "按性质列示的费用",
+        "description": "按性质（薪酬、租金、折旧……）归集的费用，用于财务报表附注。合计数与利润表的费用合计一致。"
+      },
       "balance_sheet": {
         "title": "资产负债表",
         "description": "某一日期的资产 = 负债 + 所有者权益状况。"
@@ -2117,7 +2121,15 @@
       }
     },
     "waterfallTitle": "从销售到净利润",
-    "waterfallDesc": "向上为增加，向下为减少；从基线起的柱形为阶段结果。"
+    "waterfallDesc": "向上为增加，向下为减少；从基线起的柱形为阶段结果。",
+    "colExpenseNature": "费用性质",
+    "colAccountCount": "科目数",
+    "colAmount": "金额",
+    "expenseNatureUnassigned": "尚未归类",
+    "expenseNaturePeriod": "期间 {period}",
+    "expenseNatureUnassignedNote": "部分费用尚未标注性质，因此单独成行。请先在会计科目表中标注科目性质，再将本表用作附注。",
+    "expenseNatureEmptyTitle": "本期间没有费用",
+    "expenseNatureEmptyDescription": "当该日期范围内存在费用凭证时，此处将显示其归集结果。"
   },
   "budget": {
     "title": "预算与目标",

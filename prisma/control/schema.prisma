@@ -673,3 +673,68 @@ model TenantMailSetting {
 
   @@map("tenant_mail_settings")
 }
+
+/// Jejak audit tingkat TENANT (issue #484) — pendaftaran, ganti slug, permintaan
+/// penghapusan, ekspor, undangan, dan tindakan operator.
+///
+/// ══ KENAPA DI BASIS DATA KENDALI ═══════════════════════════════════════════
+/// Karena yang dicatatnya adalah peristiwa TENANT, bukan peristiwa sebuah PT.
+/// Sampai #484 ia `appendFile` ke `data/audit/tenants/<slug>/audit.jsonl`:
+/// dibaca utuh setiap kali, tidak ter-paginasi, tidak ikut cadangan, dan tidak
+/// ikut ke mana pun.
+///
+/// ══ TANPA FOREIGN KEY KE `tenants`, DAN ITU INTI SELURUH ISU ═══════════════
+/// Jejak inilah yang mencatat PENGHAPUSAN sebuah tenant. Menaruhnya di tempat
+/// yang ikut mati bersama yang dicatatnya membuat catatan itu tidak ada
+/// artinya — `ON DELETE CASCADE` di sini akan menghapus justru baris yang
+/// paling perlu dibaca sesudahnya.
+///
+/// Perhatikan bahwa ini KEBALIKAN dari #370, di mana "mati bersama bukunya"
+/// justru salah satu kriteria selesainya. Bedanya bukan selera: jejak PT adalah
+/// bagian dari buku PT itu, sedangkan jejak tenant adalah catatan TENTANG
+/// tenant — termasuk tentang akhirnya.
+///
+/// Karena itu `tenantId` hanyalah angka, dan `tenantSlug` DISALIN: sesudah
+/// tenant-nya tiada, slug itu satu-satunya yang membuat barisnya masih bisa
+/// dibaca manusia. Pola yang sama dengan `AuditLog.userId` + `username` di
+/// basis data perusahaan.
+model TenantAuditLog {
+  id Int @id @default(autoincrement())
+
+  /// Id entri di berkas JSONL lama (`<epoch>-<acak>`), diisi HANYA oleh
+  /// `bun run migrate:tenant-audit`. Inilah yang membuat pemindahan idempoten
+  /// lewat CONSTRAINT alih-alih periksa-lalu-tulis — doktrin yang sama dengan
+  /// `AuditLog.legacyId`. Baris yang lahir dari aplikasi mengisinya NULL, dan
+  /// MySQL mengizinkan NULL berulang pada kolom unik.
+  legacyId String? @unique @map("legacy_id") @db.VarChar(40)
+
+  /// Angka, BUKAN relasi — lihat catatan di atas.
+  tenantId   Int    @map("tenant_id")
+  /// Disalin supaya barisnya tetap terbaca sesudah tenant-nya tiada.
+  tenantSlug String @map("tenant_slug") @db.VarChar(63)
+
+  /// Id GLOBAL pengguna, sebagai teks; `"system"` untuk yang tanpa aktor.
+  userId     String  @map("user_id") @db.VarChar(64)
+  username   String  @db.VarChar(100)
+  /// Peran tenant aktor SAAT beraksi. Peran bisa berubah; jejak tidak.
+  tenantRole String? @map("tenant_role") @db.VarChar(50)
+
+  /// enum-like `TenantAuditAction` di `lib/tenant-audit.ts`.
+  action String @db.VarChar(50)
+
+  /// Rincian sebagai JSON dalam TEKS — alasan yang sama dengan
+  /// `AuditLog.details`: skema ini belum punya satu pun kolom `Json`.
+  details String? @db.Text
+
+  /// Entri ke-N dari KANAN pada rantai proksi (issue #372). Jejak yang mencatat
+  /// alamat pilihan penyerang menyesatkan penyelidikan yang membacanya.
+  ipAddress String? @map("ip_address") @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Pembacaan selalu "jejak SATU tenant, terbaru dulu" — index gabungan,
+  /// bukan dua index terpisah.
+  @@index([tenantSlug, createdAt])
+  @@index([tenantId])
+  @@map("tenant_audit_logs")
+}

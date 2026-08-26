@@ -4,10 +4,7 @@
  * tanggal ISO, uang sebagai teks desimal (tidak pernah lewat float), dan
  * jejak audit tenant yang bisa dibaca ulang.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { csvEscape, csvValue, toCsv } from "@/lib/export-csv";
 
@@ -44,19 +41,36 @@ describe("toCsv", () => {
 });
 
 describe("jejak audit tenant — tulis lalu baca ulang", () => {
-  let dir: string;
+  /*
+   * Sejak #484 jejak tenant hidup di TABEL basis data kendali, bukan berkas.
+   * `controlDb` dipalsukan dengan penyimpan dalam memori yang berperilaku
+   * seperti tabelnya: menyimpan urut sisip, memulangkan terbaru-dulu, dan
+   * menyaring per slug. Yang diuji tetap SIFAT yang sama seperti sebelumnya —
+   * hanya rumahnya yang berpindah.
+   */
+  const rows: Record<string, unknown>[] = [];
 
-  beforeEach(async () => {
-    dir = await mkdtemp(path.join(tmpdir(), "sai-tenant-audit-"));
-    process.env.TENANT_AUDIT_DIR = dir;
+  beforeEach(() => {
+    rows.length = 0;
   });
 
-  afterEach(async () => {
-    delete process.env.TENANT_AUDIT_DIR;
-    await rm(dir, { recursive: true, force: true });
-  });
+  it("entri tersimpan dan terbaca terbaru-dulu, terpisah per tenant", async () => {
+    vi.doMock("@/lib/control-db", () => ({
+      controlDb: {
+        tenantAuditLog: {
+          create: async ({ data }: { data: Record<string, unknown> }) => {
+            rows.push({ ...data, id: rows.length + 1, createdAt: new Date(2026, 0, rows.length + 1) });
+            return data;
+          },
+          findMany: async ({ where }: { where: { tenantSlug: string } }) =>
+            rows.filter((r) => r.tenantSlug === where.tenantSlug).reverse(),
+          count: async ({ where }: { where: { tenantSlug: string } }) =>
+            rows.filter((r) => r.tenantSlug === where.tenantSlug).length,
+        },
+      },
+    }));
+    vi.resetModules();
 
-  it("entri masuk ke data/audit/tenants/<slug>/ dan terbaca terbaru-dulu", async () => {
     const { readTenantAuditLogs, writeTenantAuditLog } = await import("@/lib/tenant-audit");
     await writeTenantAuditLog({
       tenantId: 1,
@@ -79,7 +93,14 @@ describe("jejak audit tenant — tulis lalu baca ulang", () => {
     expect(entries[0].userId).toBe("system"); // penulis tanpa aktor = system
     expect(entries[1].action).toBe("tenant.register");
     expect(entries[1].userId).toBe("7");
+    /* Rincian disimpan sebagai TEKS lalu diurai kembali — bentuk yang dilihat
+       pemanggil tidak berubah karena rumahnya berubah. */
+    expect(entries[1].details).toEqual({ email: "budi@contoh.co.id" });
     // jejak tenant lain kosong — pemisahan per-tenant, bukan penyaring
     expect(await readTenantAuditLogs("pt-lain")).toEqual([]);
+
+    vi.doUnmock("@/lib/control-db");
+    vi.resetModules();
   });
 });
+

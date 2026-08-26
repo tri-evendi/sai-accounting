@@ -7,20 +7,27 @@
  * membuat dua proses saling menimpa baris. Ketiganya tidak terlihat saat
  * kodenya ditulis — mereka terlihat berbulan-bulan kemudian, di data orang lain.
  *
- * ⚠ DUA jejak lain SENGAJA dikecualikan, dan keduanya bukan kelalaian:
+ * ⚠ SATU jejak lain masih dikecualikan, dan itu bukan kelalaian:
  *
- *   • `lib/tenant-audit.ts` — jejak TENANT. Ia mencatat peristiwa yang terjadi
- *     SEBELUM PT pertama ada (pendaftaran, verifikasi surel), dan harus SELAMAT
- *     dari penghancuran buku — ia yang mencatat penghancuran itu. Rumahnya
- *     karena itu basis data KENDALI, bukan basis data PT.
  *   • `lib/operator/audit.ts` — jejak BIDANG OPERATOR. Ia hidup di luar
  *     ketenantan pelanggan sama sekali (host sendiri, sesi sendiri, #154), dan
  *     doktrin #137 melarang kode penagihan/operator diseret ke penjaga
  *     pelanggan. Ia tidak punya basis data PT untuk ditinggali.
  *
- * Keduanya pantas pindah ke basis data kendali di issue tersendiri. Sampai itu,
+ * Ia pantas pindah ke basis data kendali di issue tersendiri. Sampai itu,
  * pengecualiannya ditulis DI SINI — sebuah pengecualian yang harus disebut
  * namanya tidak bisa diam-diam terlupakan.
+ *
+ * ══ `lib/tenant-audit.ts` SUDAH TIDAK DIKECUALIKAN (issue #484) ════════════
+ * Ia dulu di daftar ini dengan alasan yang benar: jejak tenant harus SELAMAT
+ * dari penghancuran buku — ia yang mencatat penghancuran itu — jadi ia tidak
+ * boleh tinggal di basis data PT. Yang tidak disebut alasan itu adalah bahwa
+ * berkas juga bukan jawabannya.
+ *
+ * #484 memindahkannya ke tabel `tenant_audit_logs` di basis data KENDALI,
+ * TANPA foreign key ke `tenants` — sehingga ia tetap selamat dari penghapusan
+ * tenant, sekaligus ikut cadangan dan bisa dipaginasi. Pengecualiannya karena
+ * itu dicabut, bukan dilonggarkan.
  */
 import { describe, expect, it } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
@@ -30,8 +37,6 @@ const SRC = path.join(process.cwd(), "src");
 
 /** Berkas yang BOLEH menyentuh `data/audit` — beserta alasannya. */
 const ALLOWED = new Set([
-  // Jejak TENANT — rumahnya basis data kendali, bukan basis data PT.
-  path.join(SRC, "lib", "tenant-audit.ts"),
   // Jejak BIDANG OPERATOR — di luar ketenantan pelanggan (#154/#137).
   path.join(SRC, "lib", "operator", "audit.ts"),
 ]);

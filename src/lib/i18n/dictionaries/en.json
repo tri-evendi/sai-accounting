@@ -2063,6 +2063,10 @@
         "title": "Income Statement",
         "description": "Multi-step: sales − COGS = gross profit, less expenses to net profit, plus a plain-language summary."
       },
+      "expense_by_nature": {
+        "title": "Expenses by Nature",
+        "description": "Expenses grouped by their nature (salaries, rent, depreciation, …) — the note-disclosure material. The total matches total expenses on the Income Statement."
+      },
       "balance_sheet": {
         "title": "Balance Sheet",
         "description": "The Assets = Liabilities + Equity position on one date."
@@ -2117,7 +2121,15 @@
       }
     },
     "waterfallTitle": "From sales to net profit",
-    "waterfallDesc": "Bars up add, bars down subtract; bars from the baseline are running results."
+    "waterfallDesc": "Bars up add, bars down subtract; bars from the baseline are running results.",
+    "colExpenseNature": "Expense Nature",
+    "colAccountCount": "Accounts",
+    "colAmount": "Amount",
+    "expenseNatureUnassigned": "Not yet classified",
+    "expenseNaturePeriod": "Period {period}",
+    "expenseNatureUnassignedNote": "Some expenses have no nature assigned yet, so they stand as their own row. Tag the accounts in the Chart of Accounts before using this as a disclosure.",
+    "expenseNatureEmptyTitle": "No expenses in this period",
+    "expenseNatureEmptyDescription": "Once expense journals fall in this date range, their grouping appears here."
   },
   "budget": {
     "title": "Budget & Targets",

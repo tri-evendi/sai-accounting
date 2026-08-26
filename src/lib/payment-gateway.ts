@@ -147,15 +147,32 @@ function mockCharge(input: CreateChargeInput, now: Date): ChargeResult {
   return { ...base, method: "virtual_account", bank, vaNumber: `88${digits}` };
 }
 
-function midtransBaseUrl(): string {
-  return process.env.MIDTRANS_IS_PRODUCTION === "true"
-    ? "https://api.midtrans.com"
-    : "https://api.sandbox.midtrans.com";
+/**
+ * Titik ujung Midtrans.
+ *
+ * `isProduction` DITERUSKAN, tidak dibaca dari env di dalam sini: sejak #466
+ * setiap PT membawa kredensial dan sakelar sandbox/produksinya sendiri
+ * (`company-payment-settings.ts`), dan sebuah fungsi yang diam-diam bertanya
+ * pada env akan mengirim kunci produksi milik satu PT ke titik ujung sandbox —
+ * kegagalan yang tidak berisik: ia menerbitkan VA yang tampak sah dan tidak
+ * pernah menerima satu rupiah pun.
+ *
+ * Bawaannya tetap membaca env supaya alur langganan SaaS yang sudah jalan
+ * tidak berubah sedikit pun.
+ */
+function midtransBaseUrl(
+  isProduction: boolean = process.env.MIDTRANS_IS_PRODUCTION === "true"
+): string {
+  return isProduction ? "https://api.midtrans.com" : "https://api.sandbox.midtrans.com";
 }
 
 /** Transport real: Midtrans Core API `/v2/charge`. Hanya hidup di produksi
  *  dengan kredensial — lihat `resolvePaymentGateway`. */
-async function midtransCharge(input: CreateChargeInput, serverKey: string): Promise<ChargeResult> {
+async function midtransCharge(
+  input: CreateChargeInput,
+  serverKey: string,
+  isProduction?: boolean
+): Promise<ChargeResult> {
   const payload: Record<string, unknown> = {
     transaction_details: {
       order_id: input.invoiceNumber,
@@ -171,7 +188,7 @@ async function midtransCharge(input: CreateChargeInput, serverKey: string): Prom
         }),
   };
 
-  const response = await fetch(`${midtransBaseUrl()}/v2/charge`, {
+  const response = await fetch(`${midtransBaseUrl(isProduction)}/v2/charge`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -267,6 +284,38 @@ export function resolvePaymentGateway(): PaymentGateway {
       return midtransCharge(input, serverKey!);
     },
   };
+}
+
+/**
+ * Bangun gerbang Midtrans dari kredensial yang DIBERIKAN — bukan dari env.
+ *
+ * Dipakai jalur per-PT (#466 butir 5): kredensialnya milik pengguna, dibuka
+ * dari basis data PT itu sendiri, dan tidak pernah bersinggungan dengan
+ * `MIDTRANS_SERVER_KEY` milik platform.
+ *
+ * `transport: "mock"` menerbitkan nomor VA deterministik tanpa menyentuh
+ * jaringan — itu yang membuat seluruh alurnya bisa dilatih di laptop, dan yang
+ * membuat penjaganya tidak butuh Midtrans hidup.
+ */
+export function midtransGatewayWith(credentials: {
+  serverKey: string;
+  isProduction: boolean;
+  transport?: "real" | "mock";
+}): PaymentGateway {
+  const mock = credentials.transport === "mock";
+  return {
+    name: "midtrans",
+    async createCharge(input) {
+      return mock
+        ? mockCharge(input, new Date())
+        : midtransCharge(input, credentials.serverKey, credentials.isProduction);
+    },
+  };
+}
+
+/** Gerbang cadangan tanpa gerbang — instruksi transfer manual. */
+export function manualPaymentGateway(): PaymentGateway {
+  return manualGateway();
 }
 
 /**

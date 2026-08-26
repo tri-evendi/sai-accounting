@@ -2581,7 +2581,15 @@
     "workflowOptional": "opsional",
     "sampleBannerTitle": "Buku ini masih memuat data contoh.",
     "sampleBannerBody": "Angka bertanda [CONTOH] ikut terhitung di Laba/Rugi, Neraca, dan Arus Kas — jadi ringkasan di bawah belum menggambarkan usaha Anda sendiri.",
-    "sampleBannerAction": "Buang di Pengaturan"
+    "sampleBannerAction": "Buang di Pengaturan",
+    "insightOverdue": "Ada {count} faktur senilai {amount} yang sudah lewat jatuh tempo; yang terlama {days} hari.",
+    "insightBudgetOver": "Beban bulan ini {amount} di atas anggaran — {percent}% lebih tinggi dari yang direncanakan.",
+    "insightCashDrop": "Kas turun {amount} bulan ini, {percent}% lebih rendah dibanding bulan lalu.",
+    "insightCashRise": "Kas naik {amount} bulan ini, {percent}% lebih tinggi dibanding bulan lalu.",
+    "insightCustomerConcentration": "{name} menyumbang {percent}% penjualan bulan ini — pendapatan Anda bertumpu pada satu pelanggan.",
+    "insightSupplierConcentration": "{name} menyumbang {percent}% pembelian bulan ini — pasokan Anda bertumpu pada satu pemasok.",
+    "insightsTitle": "Yang perlu diperhatikan",
+    "insightsMore": "Lihat rinciannya"
   },
   "stockMovement": {
     "title": "Riwayat Stok",

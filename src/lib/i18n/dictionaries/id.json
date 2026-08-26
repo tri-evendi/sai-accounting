@@ -2063,6 +2063,10 @@
         "title": "Laba / Rugi",
         "description": "Bertingkat: penjualan − HPP = laba kotor, dikurangi beban jadi laba bersih, plus ringkasan bahasa awam."
       },
+      "expense_by_nature": {
+        "title": "Beban menurut Sifat",
+        "description": "Beban dikelompokkan menurut sifatnya (gaji, sewa, penyusutan, …) — bahan Catatan atas Laporan Keuangan. Totalnya sama dengan total beban di Laba Rugi."
+      },
       "balance_sheet": {
         "title": "Neraca",
         "description": "Posisi Aset = Liabilitas + Ekuitas pada satu tanggal."
@@ -2117,7 +2121,15 @@
       }
     },
     "waterfallTitle": "Dari penjualan ke laba bersih",
-    "waterfallDesc": "Batang naik menambah, batang turun mengurangi; batang dari dasar adalah hasil antara."
+    "waterfallDesc": "Batang naik menambah, batang turun mengurangi; batang dari dasar adalah hasil antara.",
+    "colExpenseNature": "Sifat Beban",
+    "colAccountCount": "Jumlah Akun",
+    "colAmount": "Nilai",
+    "expenseNatureUnassigned": "Belum ditetapkan",
+    "expenseNaturePeriod": "Periode {period}",
+    "expenseNatureUnassignedNote": "Sebagian beban belum ditandai sifatnya, jadi ia berdiri sebagai barisnya sendiri. Tandai sifat akunnya di Daftar Akun agar laporan ini bisa dipakai sebagai lampiran.",
+    "expenseNatureEmptyTitle": "Belum ada beban pada periode ini",
+    "expenseNatureEmptyDescription": "Begitu ada jurnal beban di rentang tanggal ini, pengelompokannya muncul di sini."
   },
   "budget": {
     "title": "Anggaran & Target",

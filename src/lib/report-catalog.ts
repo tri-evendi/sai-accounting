@@ -297,6 +297,30 @@ export const REPORTS: ReportDefinition[] = [
     filters: ["costCenter"],
   },
   {
+    /*
+     * Bahan CALK PSAK 118 (issue #446): beban dikelompokkan menurut SIFATNYA,
+     * BERDAMPINGAN dengan Laba Rugi — bukan menggantikannya. Mengubah seksi
+     * Laba Rugi ke lima kategori PSAK 118 masih diblokir di #443; ia satu-
+     * satunya perubahan yang menggeser angka yang sudah dilihat orang.
+     *
+     * Tanpa `payloadKind`: belum ada cetakan/lembar sebarnya, dan preseden
+     * laporan katalog layar-saja sudah ada (`budget-realization` sebelum
+     * cetakannya menyusul). Kartu yang jujur tentang apa yang disediakannya
+     * lebih baik daripada tombol unduh yang memulangkan berkas kosong.
+     */
+    id: "expense-by-nature",
+    category: "keuangan",
+    permission: "report.read",
+    status: "available",
+    href: "/reports/expense-by-nature",
+    paramKind: "period",
+    icon: "Layers",
+    /* Sama dengan Laba Rugi, dan wajib sama: angkanya adalah baris beban Laba
+       Rugi yang dikelompokkan ulang, jadi penyaring yang berbeda akan membuat
+       kedua laporan menyebut total yang berbeda. */
+    filters: ["costCenter"],
+  },
+  {
     id: "balance-sheet",
     category: "keuangan",
     permission: "report.read",

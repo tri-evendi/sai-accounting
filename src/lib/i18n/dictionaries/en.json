@@ -2118,6 +2118,10 @@
       "efaktur": {
         "title": "e-Faktur Export (DJP/CTAS)",
         "description": "Export output tax invoices to the DJP import format."
+      },
+      "project_profit": {
+        "title": "Profit by Project",
+        "description": "Profit per project/cost centre side by side — which earns, which loses. All projects plus the unassigned row equal the company income statement."
       }
     },
     "waterfallTitle": "From sales to net profit",
@@ -2129,7 +2133,11 @@
     "expenseNaturePeriod": "Period {period}",
     "expenseNatureUnassignedNote": "Some expenses have no nature assigned yet, so they stand as their own row. Tag the accounts in the Chart of Accounts before using this as a disclosure.",
     "expenseNatureEmptyTitle": "No expenses in this period",
-    "expenseNatureEmptyDescription": "Once expense journals fall in this date range, their grouping appears here."
+    "expenseNatureEmptyDescription": "Once expense journals fall in this date range, their grouping appears here.",
+    "colProject": "Project",
+    "colMargin": "Margin",
+    "unassignedProject": "No project",
+    "projectProfitReconcileNote": "All rows together equal Net Profit / Loss in the income statement for the same period."
   },
   "budget": {
     "title": "Budget & Targets",

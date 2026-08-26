@@ -2118,6 +2118,10 @@
       "efaktur": {
         "title": "Ekspor e-Faktur (DJP/CTAS)",
         "description": "Ekspor faktur pajak keluaran ke format impor DJP."
+      },
+      "project_profit": {
+        "title": "Laba Rugi per Proyek",
+        "description": "Laba tiap proyek/pusat biaya berdampingan — mana yang menghasilkan, mana yang merugi. Jumlah seluruh proyek ditambah baris tanpa proyek sama dengan Laba Rugi perusahaan."
       }
     },
     "waterfallTitle": "Dari penjualan ke laba bersih",
@@ -2129,7 +2133,11 @@
     "expenseNaturePeriod": "Periode {period}",
     "expenseNatureUnassignedNote": "Sebagian beban belum ditandai sifatnya, jadi ia berdiri sebagai barisnya sendiri. Tandai sifat akunnya di Daftar Akun agar laporan ini bisa dipakai sebagai lampiran.",
     "expenseNatureEmptyTitle": "Belum ada beban pada periode ini",
-    "expenseNatureEmptyDescription": "Begitu ada jurnal beban di rentang tanggal ini, pengelompokannya muncul di sini."
+    "expenseNatureEmptyDescription": "Begitu ada jurnal beban di rentang tanggal ini, pengelompokannya muncul di sini.",
+    "colProject": "Proyek",
+    "colMargin": "Margin",
+    "unassignedProject": "Tanpa proyek",
+    "projectProfitReconcileNote": "Jumlah seluruh baris sama dengan Laba / Rugi Bersih di Laba Rugi untuk periode yang sama."
   },
   "budget": {
     "title": "Anggaran & Target",

@@ -98,6 +98,26 @@ export function PartyRecapTable({
   };
 }) {
   const { rows, totals } = result;
+  /*
+   * ── KEPEMILIKAN KUNCI UNTUK REKAP MITRA (issue #324) ──────────────────────
+   *
+   * Tabel ini BUKAN pemilik pilihan kuncinya, dan karena itu ia sengaja TIDAK
+   * ikut menurun dari katalog seperti lima laporan lain di #324.
+   *
+   * Ia perender BERSAMA dua laporan yang judul kolomnya memang berbeda —
+   * "Pelanggan" untuk Penjualan per Pelanggan, "Pemasok" untuk Pembelian per
+   * Pemasok. Kunci mana yang dipakai karena itu hanya bisa diputuskan
+   * PEMANGGILNYA, dan memang di sanalah ia hidup (`labels={{ … }}`).
+   *
+   * Yang di bawah ini bukan pilihan kunci kedua melainkan PEMETAAN BENTUK: dari
+   * nama prop (`documents`) ke id kolom (`docCount`). Menghapusnya tidak
+   * menghapus duplikasi apa pun — ia hanya memindahkan pemetaan itu ke tempat
+   * yang lebih jauh dari tabel yang memakainya.
+   *
+   * Duplikasi yang TERSISA di wilayah ini karena itu ada di kedua halaman
+   * pemanggil, bukan di sini — dan menutupnya menuntut `labels` berhenti
+   * menjadi prop, yaitu perubahan bentuk komponen. Itu keputusan tersendiri.
+   */
   const HEADERS: Record<PartyRecapColumnId, string> = {
     party: labels.party,
     docCount: labels.documents,

@@ -259,6 +259,50 @@ export function reportById(id: string): ReportDefinition | undefined {
  * kolom pun adalah halaman kosong, dan itu tak pernah yang dimaksud pengguna
  * yang baru saja menekan Pratinjau.
  */
+/**
+ * Judul kolom sebuah laporan, DITURUNKAN dari katalog (issue #324).
+ *
+ * ══ SATU PILIHAN KUNCI, BUKAN DUA ══════════════════════════════════════════
+ * Sebelum ini setiap halaman menyatakan tabel judulnya sendiri
+ * (`HEADERS: Record<ColumnId, string>`), sementara katalog menyimpan
+ * `labelKey` untuk kolom yang sama. Jadi PILIHAN KUNCI tertulis dua kali.
+ *
+ * Yang sudah terjaga: BUNYINYA. #319 memaku label katalog ke kunci kamus, dan
+ * #298 memaku kunci kamus ke judul kertas — selama kedua sisi menunjuk kunci
+ * yang SAMA, ketiga permukaan bergerak bersama.
+ *
+ * Yang TIDAK terjaga: halaman yang berpindah ke kunci LAIN. Mengganti
+ * `receivables.colDocumentValue` menjadi `common.total` — dua kunci yang
+ * sama-sama sah dan sama-sama ada di kamus — membuat layar dan dialog berhenti
+ * sepakat, tanpa satu pun tes merah. Bunyinya kebetulan mirip; maknanya tidak.
+ *
+ * Menurunkannya di sini menutup itu dengan KONSTRUKSI, bukan dengan tes
+ * pencocokan: tidak ada lagi kunci kedua yang bisa menyimpang.
+ *
+ * ══ ATURAN `kamus+IDR` TIDAK TERSENTUH (#298) ══════════════════════════════
+ * Lima judul memang WAJIB berbeda antara layar dan kertas — kertas menyebut
+ * satuannya ("Nilai Akhir (IDR)"), layar tidak. Fungsi ini hanya menyentuh sisi
+ * LAYAR; judul kertas tetap milik `statement-layout.ts` dan tetap terpisah.
+ * Penyatuan yang tidak memahami itu akan menyeret "(IDR)" ke layar.
+ */
+export function columnLabels<Id extends string>(
+  reportId: ReportId,
+  t: (key: DictionaryKey) => string
+): Record<Id, string> {
+  const definition = reportById(reportId);
+  const labels = {} as Record<Id, string>;
+  for (const column of definition?.columns ?? []) {
+    labels[column.id as Id] = t(column.labelKey);
+  }
+  /*
+   * Kelengkapannya dijamin `tests/report-catalog-column-labels.test.ts`, yang
+   * sudah memaku daftar kolom katalog ke daftar kolom penentu bentuknya. Laporan
+   * yang menambah kolom di satu sisi saja gugur DI SANA — bukan di sini sebagai
+   * sel kosong yang diam.
+   */
+  return labels;
+}
+
 export function resolveColumns(report: ReportDefinition, raw: string | undefined): string[] {
   const specs = report.columns ?? [];
   if (specs.length === 0) return [];

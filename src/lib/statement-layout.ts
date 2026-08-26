@@ -1544,38 +1544,63 @@ export const STATEMENT_TITLES: Record<StatementKind, string> = {
 };
 
 /**
- * Nama LEMBAR — tulisan di tab bawah jendela Excel. Bukan nama dokumen, dan
- * tidak boleh disamakan dengannya (issue #323).
+ * Nama tab lembar sebar (issue #331).
  *
- * ── Kenapa ia tabel TERSENDIRI, bukan turunan `STATEMENT_TITLES` ────────────
- * Nama tab punya aturan yang judul dokumen tidak punya: maksimal 31 huruf, dan
- * `[ ] : * ? / \` terlarang. Tiga dari tiga belas judul melanggarnya —
- * "Laporan Laba / Rugi" dan "Kartu Stok / Mutasi Persediaan" memuat garis
- * miring, dan "Riwayat Hitung Ulang Stok (Stok Opname)" 39 huruf. Menyamakan
- * kedua tabel bukan perapian melainkan pemotongan diam-diam oleh
- * `buildWorkbookBuffer()`, yang memenggal di huruf ke-31.
+ * ══ MENGIKUTI JUDUL DOKUMEN, KECUALI BILA MUSTAHIL ═════════════════════════
+ * Sampai #331 tabel ini berisi tujuh nama yang berbeda dari judul dokumennya,
+ * tanpa satu pun alasan tertulis — dan sejak #328 perbedaan itu dipatok tes,
+ * jadi ia menjadi keputusan yang tak pernah diambil siapa pun tetapi tak bisa
+ * lagi berubah.
  *
- * Empat sisanya (Arus Kas, Umur Piutang, Umur Utang, Kas & Bank) sah sebagai
- * nama tab tapi tetap dipendekkan — dan itu pilihan penamaan yang sudah dipakai
- * orang di berkas yang sudah dikirim, bukan kelalaian. Ketujuh perbedaannya
- * DIPATOK di `tests/statement-title-shape.test.ts`, jadi tidak satu pun bisa
- * bergeser — atau diam-diam didamaikan — tanpa terlihat di diff.
+ * Aturannya sekarang ditulis: **nama tab SAMA dengan judul dokumennya**, dan
+ * boleh berbeda HANYA bila judul itu tidak sah sebagai nama tab Excel.
+ *
+ * Excel menolak dua hal, dan keduanya diukur — bukan ditaksir:
+ *   • lebih dari 31 huruf;
+ *   • memuat salah satu dari `/ \ ? * [ ] :`
+ *
+ * Empat nama karena itu DISAMAKAN di #331 (Arus Kas, Umur Piutang, Umur Utang,
+ * Kas & Bank), dan tiga tetap berbeda karena judulnya memang mustahil:
+ *
+ *   • "Laporan Laba / Rugi"                     → memuat `/`
+ *   • "Kartu Stok / Mutasi Persediaan"          → memuat `/`
+ *   • "Riwayat Hitung Ulang Stok (Stok Opname)" → 39 huruf
+ *
+ * Ketiganya bukan pengecualian yang didaftar melainkan AKIBAT dari aturan di
+ * atas — `tests/sheet-name-follows-title` menurunkannya kembali dari aturannya,
+ * jadi daftar ini tidak bisa menyimpang diam-diam. Judul yang suatu hari
+ * dipendekkan akan membuat tabnya WAJIB ikut berubah, dan penjaganya yang
+ * menagih.
  */
 export const SHEET_NAMES: Record<StatementKind, string> = {
   "trial-balance": "Neraca Saldo",
+  /* Judulnya memuat `/` — mustahil jadi nama tab. */
   "income-statement": "Laba Rugi",
   "balance-sheet": "Neraca",
-  "cash-flow": "Arus Kas",
+  "cash-flow": "Laporan Arus Kas",
+  /* Judulnya memuat `/`. */
   "stock-movement": "Kartu Stok",
+  /* Judulnya 39 huruf — batas Excel 31. */
   "opname-history": "Riwayat Opname",
   "sales-by-customer": "Penjualan per Pelanggan",
   "purchases-by-supplier": "Pembelian per Pemasok",
-  receivables: "Umur Piutang",
-  payables: "Umur Utang",
+  receivables: "Piutang & Umur Piutang",
+  payables: "Utang & Umur Utang",
   "stock-value": "Nilai Persediaan",
-  "cash-bank": "Kas & Bank",
+  "cash-bank": "Laporan Kas & Bank",
   "budget-realization": "Realisasi vs Anggaran",
 };
+
+/** Batas Excel untuk nama tab — diukur, bukan ditaksir. */
+export const SHEET_NAME_MAX = 31;
+/** Karakter yang ditolak Excel di nama tab. */
+export const SHEET_NAME_FORBIDDEN = /[/\\?*[\]:]/;
+
+/** Bisakah judul ini dipakai apa adanya sebagai nama tab? */
+export function titleFitsSheetName(title: string): boolean {
+  return title.length <= SHEET_NAME_MAX && !SHEET_NAME_FORBIDDEN.test(title);
+}
+
 
 // ─── Kalimat bersama cetakan & lembar sebar (issue #330) ────────────────────
 

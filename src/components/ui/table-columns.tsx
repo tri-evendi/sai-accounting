@@ -99,6 +99,27 @@ export interface SaiColumn<T> {
    * lembar gaya mana pun tidak akan pernah gagal — ia hanya berhenti mewarnai.
    */
   cellStyle?: React.CSSProperties;
+  /**
+   * Perannya saat barisnya dilipat menjadi KARTU di ponsel (issue #471,
+   * `<StaticTable cards>`). Tidak berpengaruh apa pun di atas 40em.
+   *
+   *  • `"title"` — subjek kartunya (nama pelanggan, nomor dokumen). Dicetak
+   *    tebal di baris pertama, TANPA label: sebuah nama yang didahului kata
+   *    "Nama" hanya menghabiskan lebar yang justru paling langka di sini.
+   *  • `"hide"` — dibuang dari kartu. Untuk kolom yang berguna ketika sepuluh
+   *    kolom berbaris sejajar tetapi di layar sempit hanya menambah baris.
+   *
+   * Bawaannya: tampil, dengan judul kolomnya sebagai label.
+   */
+  card?: "title" | "hide";
+  /**
+   * Label kartu, bila `title` kolomnya bukan teks biasa (mis. memuat ikon).
+   *
+   * `data-label` dicetak lewat `content: attr(...)`, yang hanya bisa membawa
+   * STRING — sebuah `title` berbentuk elemen akan mendarat sebagai label kosong
+   * tanpa satu pun galat. Dijaga `tests/mobile-card-tables.test.ts`.
+   */
+  cardLabel?: string;
 }
 
 export type SaiColumns<T> = SaiColumn<T>[];

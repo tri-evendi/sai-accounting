@@ -293,6 +293,18 @@ interface StaticTableProps<T> {
   columns: SaiColumns<T>;
   rows: readonly T[];
   /**
+   * Di bawah 40em, lipat tiap baris menjadi kartu (issue #471).
+   *
+   * Labelnya DITURUNKAN dari `column.title` — tidak diketik ulang di sisi sel.
+   * Itu yang membuat label kartu dan judul kolom mustahil menyimpang: keduanya
+   * satu nilai, bukan dua salinan yang kebetulan sama hari ini.
+   *
+   * JANGAN nyalakan untuk neraca dan buku besar: di sana yang dibaca justru
+   * KOLOMnya — angka yang berbaris tegak lurus supaya bisa dijumlah dengan
+   * mata. Melipatnya jadi kartu menghancurkan hal yang membuatnya laporan.
+   */
+  cards?: boolean;
+  /**
    * Kunci React per baris. Wajib dan bukan indeks: baris yang diurutkan ulang
    * atau disaring di server akan bertukar isi kalau kuncinya posisi.
    *
@@ -437,6 +449,20 @@ function mergedCell(cell: SummaryCell | undefined) {
  *    alih-alih halaman menulis ulang aturan uang di sisi `rowCells`. Peta yang
  *    memaksa sel kosong tetap bisa dibuat: sebut kuncinya dengan isi kosong.
  */
+/**
+ * Label kartu untuk sebuah kolom.
+ *
+ * `content: attr(data-label)` hanya bisa membawa STRING, jadi `title` yang
+ * berbentuk elemen (kolom berikon) harus menyebut `cardLabel` sendiri. Yang
+ * dipulangkan `undefined` — bukan string kosong — supaya atributnya tidak ada
+ * sama sekali dan `[data-label]::before` tidak menyala dengan label hampa.
+ */
+function cardLabel<T>(column: SaiColumns<T>[number]): string | undefined {
+  if (column.card === "title") return undefined;
+  if (column.cardLabel !== undefined) return column.cardLabel;
+  return typeof column.title === "string" ? column.title : undefined;
+}
+
 function spannedCells<T>(
   columns: SaiColumns<T>,
   cells: Record<string, SummaryCell>,
@@ -486,6 +512,7 @@ function spannedCells<T>(
 export function StaticTable<T>({
   columns,
   rows,
+  cards,
   rowKey,
   empty,
   summary,
@@ -506,7 +533,7 @@ export function StaticTable<T>({
   const foot = summaryRows(summary);
 
   return (
-    <Table style={style} maxHeight={maxHeight}>
+    <Table cards={cards} style={style} maxHeight={maxHeight}>
       <TableHeader>
         <TableRow>
           {columns.map((column) => {
@@ -591,6 +618,8 @@ export function StaticTable<T>({
                   ? columns.map((column) => (
                       <TableCell
                         key={column.key}
+                        label={cards ? cardLabel(column) : undefined}
+                        card={cards ? column.card : undefined}
                         style={{
                           ...density,
                           ...alignStyle(column.align),

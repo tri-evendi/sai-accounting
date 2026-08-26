@@ -3,6 +3,7 @@ import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@/lib/scheduler-heartbeat";
+import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { mailHealth } from "@/lib/mail-health";
 import { outboxCount, resolveMailConfig } from "@/lib/mailer-core";
 
@@ -103,6 +104,55 @@ async function lastSchedulerRun(): Promise<SchedulerHealth> {
 }
 
 /**
+ * DENYUT CADANGAN (issue #374).
+ *
+ * ── Kenapa DUA kueri, bukan satu ──────────────────────────────────────────
+ * Yang dicari bukan "putaran terakhir" melainkan DUA fakta yang berbeda:
+ * keberhasilan terakhir (yang menentukan umurnya) dan percobaan terakhir (yang
+ * menentukan apakah ia sedang gagal SEKARANG). Satu kueri hanya bisa menjawab
+ * salah satunya — dan justru perbedaan keduanya yang menjadi inti issue ini:
+ * dua puluh enam kegagalan berturut-turut punya percobaan harian yang tepat
+ * waktu, dan nol keberhasilan.
+ *
+ * ── DILAPORKAN, TIDAK IKUT MEMUTUSKAN ─────────────────────────────────────
+ * Doktrin #137, sama seperti tetangganya: cadangan yang mati TIDAK boleh
+ * membuat probe menjawab 503. Traefik akan berhenti mengirim lalu lintas ke
+ * container yang sebenarnya melayani seluruh pembukuan pelanggan dengan baik —
+ * masalah cadangan diubah menjadi pemadaman layanan, yang justru membuat
+ * cadangannya lebih dibutuhkan.
+ *
+ * Yang membaca `backup.status` adalah pemantauan luar, dan itu memang seluruh
+ * maksudnya: mengubah kegagalan yang tidur diam-diam menjadi keadaan yang bisa
+ * DITANYAI dari luar mesin.
+ */
+async function lastBackup(): Promise<BackupHealth> {
+  try {
+    const [sukses, percobaan] = await Promise.all([
+      platformDb.backupRun.findFirst({
+        where: { status: "ok" },
+        orderBy: { finishedAt: "desc" },
+        select: { finishedAt: true },
+      }),
+      platformDb.backupRun.findFirst({
+        orderBy: { finishedAt: "desc" },
+        select: { finishedAt: true, status: true, error: true },
+      }),
+    ]);
+    return backupHealth(
+      sukses?.finishedAt ?? null,
+      percobaan
+        ? { at: percobaan.finishedAt, ok: percobaan.status === "ok", error: percobaan.error }
+        : null
+    );
+  } catch {
+    /* Platform tak terjangkau, atau migration 0012 belum diterapkan — pola yang
+       sama dengan `lastSchedulerRun`. Keduanya berarti probe ini tidak tahu, dan
+       jawaban yang jujur untuk tidak tahu adalah `unknown`, bukan `ok`. */
+    return backupHealth(null, null);
+  }
+}
+
+/**
  * Basis data PLATFORM terjangkau? (issue #374 · F-5)
  *
  * DILAPORKAN, TIDAK IKUT MEMUTUSKAN — doktrin #137. Platform memikul penagihan
@@ -188,12 +238,8 @@ export async function GET() {
      heartbeat` menjaga bahwa route ini memang menyebut `scheduler:`, dan
      penjaga itu membaca SUMBERNYA. Singkatan membuatnya merah tanpa satu pun
      perilaku berubah — dan pelajarannya bukan "longgarkan penjaganya". */
-  const [schedulerStatus, mailStatus, platformStatus, companyStatus] = await Promise.all([
-    lastSchedulerRun(),
-    mail(),
-    platform(),
-    sampleCompany(),
-  ]);
+  const [schedulerStatus, mailStatus, platformStatus, companyStatus, backupStatus] =
+    await Promise.all([lastSchedulerRun(), mail(), platform(), sampleCompany(), lastBackup()]);
   /*
    * `status: "ok"` walau `platform` atau `company` bermasalah — lihat catatan
    * pada masing-masing fungsi. Yang menjatuhkan probe hanya basis data kendali,
@@ -205,6 +251,7 @@ export async function GET() {
     platform: platformStatus,
     company: companyStatus,
     scheduler: schedulerStatus,
+    backup: backupStatus,
     mail: mailStatus,
   });
 }

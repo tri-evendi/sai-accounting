@@ -439,3 +439,41 @@ model MailSetting {
 
   @@map("mail_settings")
 }
+
+/// Satu baris per PUTARAN cadangan — berhasil maupun gagal (issue #374).
+///
+/// Kegagalan ikut dicatat, dan itu inti tabelnya. Sampai #374 sebuah putaran
+/// yang gagal hanya menulis ke log lalu tidur 24 jam dan mengulangi kegagalan
+/// yang sama; produksi berjalan 26 hari tanpa satu pun salinan tanpa ada yang
+/// berbunyi. Tabel yang hanya menyimpan keberhasilan tidak bisa membedakan
+/// "belum pernah dicoba" dari "dicoba tiap hari dan gagal tiap hari" — dua
+/// keadaan yang menuntut tindakan sangat berbeda.
+model BackupRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | error — konvensi String + union TS, lihat docs/DATABASE.md.
+  status String @db.VarChar(10)
+
+  /// Sebab kegagalan, apa adanya dari `backup.sh`. Null saat berhasil.
+  ///
+  /// TIDAK memuat kredensial: yang ditulis skripnya adalah kalimat sebab
+  /// ("BACKUP_ENCRYPTION_KEY belum diset"), bukan nilainya.
+  error String? @db.Text
+
+  /// Nama objek yang dikirim, saat berhasil. Bukti yang bisa dicari kembali.
+  artifact String? @db.VarChar(255)
+
+  /// Ukuran terkirim dalam byte. Cadangan yang "berhasil" tapi 0 byte adalah
+  /// kegagalan yang paling meyakinkan bentuknya.
+  sizeBytes BigInt? @map("size_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("backup_runs")
+}

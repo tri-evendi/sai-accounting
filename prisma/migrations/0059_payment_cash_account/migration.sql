@@ -1,0 +1,32 @@
+-- Pembayaran menyebut kas/bank mana yang dipakai.
+--
+-- ══ KENAPA ═════════════════════════════════════════════════════════════════
+-- Setiap pelunasan — faktur, kontrak, dan pembayaran ke pemasok — memposting ke
+-- slot `cash_default`. Slot itu punya baris per mata uang (110103 IDR / 110104
+-- USD / 110105 CNY), jadi MATA UANGNYA memang sudah mendarat di akun yang benar
+-- dengan sendirinya. Yang tidak pernah bisa dipilih adalah AKUNNYA: perusahaan
+-- yang menerima uang tunai di konter, atau membayar pemasok dari kas kecil,
+-- tidak punya cara menyatakannya. Satu-satunya jalan yang tersedia adalah
+-- mengubah baris pemetaan `cash_default` — yang berlaku untuk SEMUA dokumen
+-- sekaligus, dan karena itu bukan jawaban.
+--
+-- ══ NULL = PERILAKU LAMA, PERSIS ═══════════════════════════════════════════
+-- Kolomnya nullable dan TIDAK di-backfill. `cashKeyForType(NULL)` memulangkan
+-- `cash_default` — slot yang sama yang dipakai sebelum kolom ini ada. Jadi
+-- setiap baris yang sudah ada memposting persis seperti kemarin, dan tidak ada
+-- satu pun jurnal lama yang perlu dibalik atau diposting ulang.
+--
+-- Menebak nilainya justru berbahaya: sebuah pelunasan lama yang ditandai
+-- `kas_besar` akan MENGUBAH jurnalnya pada repost berikutnya, memindahkan uang
+-- antar akun kas atas dasar tebakan. NULL berarti "tidak diketahui", dan itu
+-- yang memang benar.
+--
+-- ══ KENAPA TEKS, BUKAN FK KE `accounts` ════════════════════════════════════
+-- Kosakatanya sengaja SAMA dengan `cash_movements.type` (`bank` | `kas_besar` |
+-- `kas_kecil`), sehingga `cashKeyForType` yang sudah ada menerjemahkannya ke
+-- slot pemetaan — dan akun sungguhannya tetap ditentukan di satu tempat, yaitu
+-- pemetaan akun. FK langsung ke `accounts` akan melewati lapisan itu dan
+-- membuat dokumen menunjuk akun yang pemetaannya sudah dipindahkan.
+ALTER TABLE `invoice_payments`      ADD COLUMN `cash_type` VARCHAR(20) NULL AFTER `base_amount`;
+ALTER TABLE `contract_payments`     ADD COLUMN `cash_type` VARCHAR(20) NULL AFTER `base_amount`;
+ALTER TABLE `supplier_transactions` ADD COLUMN `cash_type` VARCHAR(20) NULL AFTER `base_amount`;

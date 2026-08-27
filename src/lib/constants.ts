@@ -294,5 +294,20 @@ export const CASH_TYPE_LABELS: Record<CashType, string> = {
   kas_kecil: "Kas Kecil",
 };
 
+/**
+ * Kunci kamus label kas/bank — DITULIS UTUH, bukan dirangkai `cashType.${v}`.
+ *
+ * Bentuk yang dirangkai lolos `tsc` tetapi membuat kuncinya tak terlihat oleh
+ * pemindai kunci yatim (`tests/i18n-orphan-keys.test.ts`): kunci yang dihapus
+ * dari kamus tidak akan ketahuan, dan kunci yang tak terpakai tidak bisa
+ * dibersihkan. Satu peta di sini membuat ketiganya terbaca mesin, dan tetap
+ * satu sumber untuk semua pemakainya.
+ */
+export const CASH_TYPE_KEYS = {
+  bank: "cashType.bank",
+  kas_besar: "cashType.kas_besar",
+  kas_kecil: "cashType.kas_kecil",
+} as const satisfies Record<CashType, string>;
+
 /** Items at or below this quantity (same unit as stock) are flagged as low stock. */
 export const LOW_STOCK_THRESHOLD = 100;

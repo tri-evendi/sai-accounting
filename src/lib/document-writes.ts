@@ -301,6 +301,11 @@ export interface StockInLine {
   /** Harga pokok per unit dalam IDR — satu-satunya masukan HPP rata-rata. */
   unitCost: number;
   note?: string | null;
+  /**
+   * Pemasok pengirim (migrasi 0058). NULL = tidak diketahui, keadaan yang SAH:
+   * penerimaan bisa datang tanpa dokumen pembelian sama sekali.
+   */
+  supplierId?: number | null;
 }
 
 /**
@@ -326,6 +331,7 @@ export async function createStockInMovementsInTx(
         date,
         unitCost: line.unitCost,
         note: line.note || null,
+        supplierId: line.supplierId ?? null,
       },
     });
     await postForSource({ sourceType: "stock_movement", sourceId: movement.id, tx });

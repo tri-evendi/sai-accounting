@@ -2,7 +2,7 @@ import { z } from "zod";
 import { round2 } from "@/lib/posting/rules";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
-import { paymentFormFields } from "./payment";
+import { paymentFormFields, requireBankForForeignCash } from "./payment";
 import { vmsg } from "@/lib/i18n/validation";
 
 export const invoiceItemSchema = z.object({
@@ -104,7 +104,10 @@ export const invoicePaymentSchema = z
     // dipersistkan ke invoice_payments.rate dan menggerakkan base_amount.
     ...paymentFormFields,
   })
-  .superRefine(requireRateForForeign);
+  .superRefine((data, ctx) => {
+    requireRateForForeign(data, ctx);
+    requireBankForForeignCash(data, ctx);
+  });
 
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
 export type InvoiceItemInput = z.infer<typeof invoiceItemSchema>;

@@ -44,6 +44,8 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
+import { CASH_TYPES, CASH_TYPE_KEYS, type CashType } from "@/lib/constants";
+import { SelectField } from "@/components/ui/select";
 import { BASE_CURRENCY, type CurrencyCode } from "@/lib/validations/fx";
 import { DollarOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
@@ -74,7 +76,7 @@ interface ServerErrorBody {
  * TIDAK punya isian di layar — dan menaruh galatnya di sana berarti pesan yang
  * tak pernah terlihat siapa pun.
  */
-const PAYMENT_FIELDS = ["date", "amount", "currency", "rate", "note"] as const;
+const PAYMENT_FIELDS = ["date", "amount", "currency", "rate", "cashType", "note"] as const;
 
 function isPaymentField(name: string): name is (typeof PAYMENT_FIELDS)[number] {
   return (PAYMENT_FIELDS as readonly string[]).includes(name);
@@ -151,6 +153,11 @@ export function PaymentForm({
        */
       currency: documentCurrency,
       rate: undefined,
+      /* Kosong = "tidak disebut", dan itu memposting lewat `cash_default`
+         persis seperti sebelum migrasi 0059. Sengaja BUKAN "bank": memilihkan
+         akun untuk pengguna yang tidak menyebutkannya akan mengubah arti
+         setiap pembayaran yang selama ini dibiarkan kosong. */
+      cashType: null,
       note: "",
     },
   });
@@ -163,6 +170,20 @@ export function PaymentForm({
    */
   const currency = documentCurrency;
   const isForeign = currency !== BASE_CURRENCY;
+
+  /*
+   * Kas fisik hanya ditawarkan untuk dokumen RUPIAH.
+   *
+   * Slot pemetaan `cash_kas_besar`/`cash_kas_kecil` tidak punya baris per mata
+   * uang, jadi pembayaran USD yang memilihnya akan mendarat di akun kas rupiah
+   * — cacat warisan yang catatan di `posting/mapping.ts` peringatkan. Skemanya
+   * menolaknya (`requireBankForForeignCash`); daftar ini tidak menawarkannya
+   * sejak awal, supaya penolakannya tidak perlu terjadi.
+   */
+  const cashOptions = (isForeign ? (["bank"] as const) : CASH_TYPES).map((value) => ({
+    value,
+    label: t(CASH_TYPE_KEYS[value]),
+  }));
 
   async function onSubmit(values: PaymentFormInput) {
     const res = await apiFetch(`/api/${entityType}/${entityId}/payments`, {
@@ -288,6 +309,36 @@ export function PaymentForm({
                   {t("payments.currencyFollowsDocument", { currency })}
                 </FormDescription>
               </FormItem>
+            </Col>
+
+            <Col xs={24} sm={12}>
+              <FormField
+                control={form.control}
+                name="cashType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("payments.cashAccount")}</FormLabel>
+                    <FormControl>
+                      <SelectField
+                        options={cashOptions}
+                        placeholder={t("payments.cashAccountUnset")}
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange((e.target.value || null) as CashType | null)
+                        }
+                        onBlur={field.onBlur}
+                        name={field.name}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {isForeign
+                        ? t("payments.cashAccountForeignHint", { currency })
+                        : t("payments.cashAccountHint")}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </Col>
 
             {/* Progressive disclosure: kurs hanya muncul untuk mata uang asing.

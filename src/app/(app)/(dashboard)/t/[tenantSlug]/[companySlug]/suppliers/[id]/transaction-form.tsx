@@ -38,6 +38,7 @@ import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { ArrowDownOutlined, ArrowUpOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { CASH_TYPES, CASH_TYPE_KEYS, type CashType } from "@/lib/constants";
 
 const BASE_CURRENCY = "IDR";
 
@@ -72,6 +73,11 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   const [error, setError] = useState("");
   const [type, setType] = useState<"purchase" | "payment">("purchase");
   const [currency, setCurrency] = useState(BASE_CURRENCY);
+  /* Kas/bank yang dipakai (migrasi 0059). Kosong = tidak disebut, dan itu
+     memposting lewat akun kas bawaan persis seperti sebelumnya. Hanya berarti
+     pada PEMBAYARAN: sebuah pembelian melahirkan utang, ia tidak mengeluarkan
+     uang dari mana pun. */
+  const [cashType, setCashType] = useState<CashType | "">("");
   // Controlled so the allocation prefill can cap itself at the payment amount
   // (the same `Math.min` the allocation editor applies).
   const [amount, setAmount] = useState("");
@@ -161,6 +167,8 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
       allocations: !isPurchase && allocEntries.length > 0 ? allocEntries : undefined,
       // Tak dipilih = null = "belum ditetapkan / seluruh perusahaan" (issue #98).
       costCenterId: costCenterPayload(costCenterId),
+      // Dihilangkan sama sekali pada pembelian — skemanya menolaknya di sana.
+      cashType: !isPurchase && cashType ? cashType : null,
     };
 
     const res = await apiFetch(`/api/suppliers/${supplierId}/transactions`, {
@@ -319,6 +327,31 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
                 required
               />
               {hint(t("common.rateRequiredHint"))}
+            </Col>
+          )}
+
+          {!isPurchase && (
+            <Col {...half}>
+              <Select
+                id="trx-cash-type"
+                name="cashType"
+                label={t("payments.cashAccount")}
+                placeholder={t("payments.cashAccountUnset")}
+                value={cashType}
+                onChange={(e) => setCashType(e.target.value as CashType | "")}
+                /* Kas fisik hanya untuk rupiah — slot pemetaannya tidak punya
+                   baris per mata uang, jadi valas di situ mendarat di akun kas
+                   rupiah. Skemanya menolaknya; daftar ini tidak menawarkannya. */
+                options={(isForeign ? (["bank"] as const) : CASH_TYPES).map((v) => ({
+                  value: v,
+                  label: t(CASH_TYPE_KEYS[v]),
+                }))}
+              />
+              {hint(
+                isForeign
+                  ? t("payments.cashAccountForeignHint", { currency })
+                  : t("payments.cashAccountHint")
+              )}
             </Col>
           )}
 

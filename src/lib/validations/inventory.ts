@@ -48,8 +48,25 @@ export const stockUpdateSchema = z
      * Nullish: tak dipilih = "belum ditetapkan / seluruh perusahaan".
      */
     costCenterId: z.coerce.number().int().positive().nullish(),
+    /**
+     * Pemasok pengirim (migrasi 0058). Hanya berarti pada gerakan MASUK: yang
+     * KELUAR tidak punya pengirim, dan susut proses tidak datang dari siapa pun.
+     *
+     * Opsional dengan sengaja — barang bisa masuk tanpa pemasok yang tercatat
+     * (koreksi hitung, kiriman contoh, pengembalian dari gudang lain). Yang
+     * dituntut hanyalah: kalau disebut, ia tidak boleh disebut pada arah yang
+     * membuatnya mustahil.
+     */
+    supplierId: z.coerce.number().int().positive().nullish(),
   })
   .superRefine((data, ctx) => {
+    if (data.type !== "in" && data.supplierId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["supplierId"],
+        message: vmsg("validation.supplierOnStockInOnly"),
+      });
+    }
     if (data.type === "in" && !data.unitCost) {
       ctx.addIssue({
         code: "custom",

@@ -828,7 +828,10 @@ export default async function ContractDetailPage({
         />
         {/* Add Payment Form */}
         <CardContent>
-          <ContractPaymentSection contractId={contract.id} />
+          <ContractPaymentSection
+            contractId={contract.id}
+            documentCurrency={contract.currency || "IDR"}
+          />
         </CardContent>
       </Card>
     </div>

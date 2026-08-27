@@ -518,7 +518,10 @@ export default async function InvoiceDetailPage({
           }
         />
         <CardContent>
-          <InvoicePaymentSection invoiceId={invoice.id} />
+          <InvoicePaymentSection
+            invoiceId={invoice.id}
+            documentCurrency={invoice.currency || "IDR"}
+          />
         </CardContent>
       </Card>
 

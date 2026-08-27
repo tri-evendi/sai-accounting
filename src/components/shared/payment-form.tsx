@@ -27,11 +27,10 @@
 
 import { useState } from "react";
 import { Alert, Col, Flex, Row, theme, Typography } from "antd";
-import { useForm, useWatch, type Resolver, type UseFormSetError } from "react-hook-form";
+import { useForm, type Resolver, type UseFormSetError } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
 import { MoneyInput } from "@/components/ui/money-input";
 import {
   Form,
@@ -45,13 +44,21 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
-import { BASE_CURRENCY, CURRENCY_VALUES } from "@/lib/validations/fx";
+import { BASE_CURRENCY, type CurrencyCode } from "@/lib/validations/fx";
 import { DollarOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 
 interface PaymentFormProps {
   entityType: "contracts" | "invoices";
   entityId: number;
+  /**
+   * Mata uang dokumen yang dibayar — kontraknya atau fakturnya.
+   *
+   * WAJIB, bukan opsional dengan bawaan: sebuah bawaan di sini hanyalah tempat
+   * cacat lama bersembunyi lagi. Pemanggilnya SELALU memegang dokumen itu, jadi
+   * tidak ada pemanggil yang dirugikan oleh keharusan menyebutkannya.
+   */
+  documentCurrency: CurrencyCode;
   onSuccess?: () => void;
 }
 
@@ -111,7 +118,12 @@ export function applyPaymentServerErrors(
   }
 }
 
-export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProps) {
+export function PaymentForm({
+  entityType,
+  entityId,
+  documentCurrency,
+  onSuccess,
+}: PaymentFormProps) {
   const [open, setOpen] = useState(false);
   const t = useT();
   const { token } = theme.useToken();
@@ -126,16 +138,30 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
     defaultValues: {
       date: "",
       amount: undefined,
-      currency: "USD",
+      /*
+       * Mata uang DOKUMEN, bukan "USD".
+       *
+       * Bawaan mati "USD" di sini adalah sisa yang selamat dari #424: bawaan
+       * SKEMA sudah dipindahkan ke IDR di sana justru karena kelas cacat ini,
+       * tapi formulirnya menimpanya kembali setiap kali dialog dibuka. Dan
+       * sejak #483 server MENOLAK pembayaran yang mata uangnya tidak sama
+       * dengan dokumennya (`checkPaymentFits` → `currency_mismatch`) — jadi
+       * bawaan yang salah bukan sekadar merepotkan: pada kontrak CNY atau
+       * rupiah, tombol Simpan pertama SELALU gagal.
+       */
+      currency: documentCurrency,
       rate: undefined,
       note: "",
     },
   });
 
-  // Field kurs hanya relevan (dan hanya divalidasi) untuk mata uang asing.
-  // `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
-  // memoisasi komponen ini.
-  const currency = useWatch({ control: form.control, name: "currency" });
+  /*
+   * Mata uang pembayaran = mata uang dokumen, TITIK. Tidak ada lagi `useWatch`
+   * di sini karena tidak ada lagi yang bisa mengubahnya: menawarkan pilihan
+   * yang setiap opsi lainnya pasti ditolak server bukan kebebasan, melainkan
+   * jebakan yang berbentuk seperti kebebasan.
+   */
+  const currency = documentCurrency;
   const isForeign = currency !== BASE_CURRENCY;
 
   async function onSubmit(values: PaymentFormInput) {
@@ -247,22 +273,21 @@ export function PaymentForm({ entityType, entityId, onSuccess }: PaymentFormProp
             </Col>
 
             <Col xs={24} sm={12}>
-              <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel required>{t("common.currency")}</FormLabel>
-                    <FormControl>
-                      <SelectField
-                        options={CURRENCY_VALUES.map((c) => ({ value: c, label: c }))}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Bukan kendali: pernyataan. Nilainya tetap ikut terkirim lewat
+                  `defaultValues`, dan `FormMessage` untuk `currency` tidak
+                  diperlukan — tidak ada cara pengguna membuatnya salah. */}
+              <FormItem>
+                <FormLabel>{t("common.currency")}</FormLabel>
+                <Typography.Text
+                  strong
+                  style={{ display: "block", paddingBlock: token.paddingXXS }}
+                >
+                  {currency}
+                </Typography.Text>
+                <FormDescription>
+                  {t("payments.currencyFollowsDocument", { currency })}
+                </FormDescription>
+              </FormItem>
             </Col>
 
             {/* Progressive disclosure: kurs hanya muncul untuk mata uang asing.

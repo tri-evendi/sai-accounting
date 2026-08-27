@@ -105,7 +105,15 @@ interface InvoiceItem {
 
 /** Shape of GET /api/contracts/[id]/outstanding. */
 interface OutstandingResponse {
-  contract: { id: number; contractNo: string; buyer: string; currency: string; status: string };
+  contract: {
+    id: number;
+    contractNo: string;
+    buyer: string;
+    /** Tautan master pembeli (migrasi 0057); NULL pada kontrak warisan. */
+    customerId: number | null;
+    currency: string;
+    status: string;
+  };
   lines: ContractLineOutstanding[];
   totals: { remainingKg: number; remainingValue: number; readyToInvoiceKg: number };
   pull: { contract: PulledInvoiceLine[]; delivery: PulledInvoiceLine[] };
@@ -235,6 +243,27 @@ export function NewInvoiceForm({
     });
   }, [taxProfile]);
 
+  /*
+   * Pelanggan faktur MENGIKUTI pembeli kontraknya (migrasi 0057).
+   *
+   * Bukan kenyamanan: `createInvoiceInTx` MENOLAK faktur yang pelanggannya
+   * berbeda dari pembeli kontraknya. Layar yang membiarkan pemilih ini kosong
+   * hanya memindahkan penolakan itu ke detik terakhir, sesudah seluruh baris
+   * barang diisi — dan pengguna tidak punya cara menebak jawabannya, sebab
+   * kontraknya menyebut pembeli dengan nama, bukan dengan pilihan di daftar ini.
+   *
+   * Menimpa pilihan yang sudah dibuat pengguna DISENGAJA: begitu kontraknya
+   * dipilih, pihaknya bukan lagi pilihan bebas. `chooseContract` di bawah
+   * mengosongkannya kembali saat kontraknya dilepas.
+   */
+  const adoptedCustomerRef = useRef<string | null>(null);
+  const adoptCustomer = useCallback((customerId: number | null) => {
+    if (customerId == null) return;
+    const next = String(customerId);
+    adoptedCustomerRef.current = next;
+    setFx((prev) => (prev.customerId === next ? prev : { ...prev, customerId: next }));
+  }, []);
+
   // Fetch the picked contract's outstanding — an external system, so an effect is
   // the right home. All state changes happen in the async callback (the reset on
   // selection lives in the change handler below), never synchronously in the body.
@@ -253,11 +282,12 @@ export function NewInvoiceForm({
       if (cancelled) return;
       setOutstanding(data);
       adoptCurrency(data.contract.currency);
+      adoptCustomer(data.contract.customerId);
     })();
     return () => {
       cancelled = true;
     };
-  }, [contractId, adoptCurrency, t]);
+  }, [contractId, adoptCurrency, adoptCustomer, t]);
 
   /** Picking (or clearing) the source contract resets everything derived from it. */
   function chooseContract(id: number | null) {
@@ -266,6 +296,17 @@ export function NewInvoiceForm({
     setPullNote("");
     setError("");
     setLoadingOutstanding(id != null);
+    /*
+     * Melepaskan kontrak melepaskan pelanggan yang DATANG DARINYA — tetapi
+     * hanya itu. Kalau nilainya sudah bukan yang kita adopsi, ia pilihan
+     * pengguna sendiri (dibuat sebelum kontraknya dipilih), dan menghapusnya
+     * berarti membuang ketikan orang karena tindakan yang tak ada hubungannya.
+     */
+    if (id == null && adoptedCustomerRef.current != null) {
+      const adopted = adoptedCustomerRef.current;
+      adoptedCustomerRef.current = null;
+      setFx((prev) => (prev.customerId === adopted ? { ...prev, customerId: "" } : prev));
+    }
   }
 
   function pull(source: "contract" | "delivery") {
@@ -636,6 +677,15 @@ export function NewInvoiceForm({
                 value={fx}
                 onChange={(patch) => setFx((prev) => ({ ...prev, ...patch }))}
                 documentDate={date}
+                /* Terkunci HANYA bila kontraknya benar-benar menyebut pembeli
+                   (migrasi 0057). Kontrak warisan yang `customerId`-nya masih
+                   NULL tidak menentukan apa pun, jadi pilihannya tetap bebas —
+                   sama seperti penjaga servernya, yang juga diam di situ. */
+                lockedToContractNo={
+                  outstanding?.contract.customerId != null
+                    ? outstanding.contract.contractNo
+                    : null
+                }
               />
               <InvoiceTotalsSummary value={fx} subtotal={subtotal} />
             </div>

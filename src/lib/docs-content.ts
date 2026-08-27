@@ -319,6 +319,44 @@ const BIAYA_IMPOR: readonly DocBlock[] = [
   { kind: "istilah", kunci: ["persediaan", "kartu_stok", "hpp"] },
 ];
 
+const MODUL: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Tidak semua perusahaan membutuhkan hal yang sama. Perusahaan jasa tidak punya stok; perusahaan dagang lokal tidak menerbitkan dokumen ekspor; sebagian tidak pernah mencatat aset tetap. Modul usaha adalah cara mengatakan bidang usaha Anda sekali, lalu membiarkan aplikasinya menampilkan yang memang Anda pakai.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Akibatnya nyata, dan itu sebabnya halaman ini ada. Modul yang dimatikan MENGHILANGKAN menunya dari layar semua orang, berhenti menyemai akun-akun miliknya ke bagan akun, dan mengubah halamannya menjadi pemberitahuan bahwa fitur itu sedang tidak aktif. Ini bukan preferensi tampilan seperti bahasa atau tema — ini keputusan yang dirasakan seluruh kantor.",
+  },
+  { kind: "sub", judul: "Modul bukan hak akses, dan perbedaannya penting" },
+  {
+    kind: "paragraf",
+    teks:
+      "Hak akses menjawab “siapa boleh apa”: seorang staf gudang boleh mengubah stok, seorang direktur boleh membuka laporan. Modul menjawab pertanyaan yang sama sekali berbeda — “perusahaan ini mengerjakan apa”. Mematikan sebuah modul tidak mencabut izin siapa pun, dan menyalakannya kembali tidak memberi izin baru kepada siapa pun.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Data yang sudah tercatat TIDAK hilang saat modulnya dimatikan. Ia berhenti ditampilkan, bukan berhenti ada — dan kembali utuh begitu modulnya dinyalakan lagi.",
+      "Akun yang sudah terpakai di jurnal tetap di bagan akun. Yang berhenti hanyalah PENYEMAIAN akun baru milik modul itu.",
+      "Laporan keuangan tidak berubah angkanya. Neraca dan laba/rugi dihitung dari jurnal, dan jurnal tidak peduli menu mana yang sedang tampil.",
+    ],
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Kalau sebuah menu yang Anda cari tidak ada, kemungkinan besar modulnya sedang dimatikan — bukan aplikasinya yang tidak bisa. Halaman Pengaturan menyebut daftar modul yang sedang mati kepada semua orang, termasuk yang tidak berhak menyalakannya, supaya Anda tahu ada yang bisa dimintai.",
+    nada: "peringatan",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Mengubahnya adalah kewenangan yang sama dengan mengubah profil perusahaan, dan hanya pemegang kewenangan itu yang melihat menunya. Perubahannya dicatat di jejak audit — sebuah menu yang hilang tanpa ada yang mengaku mematikannya adalah kebingungan yang mahal.",
+  },
+];
+
 const KAS: readonly DocBlock[] = [
     {
       kind: "paragraf",
@@ -736,6 +774,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "alur-penjualan": PENJUALAN,
   "stok": STOK,
   "biaya-impor": BIAYA_IMPOR,
+  "modul-usaha": MODUL,
   "kas-dan-bank": KAS,
   "saldo-awal": SALDO_AWAL,
   "cocokkan-accurate": COCOK_ACCURATE,

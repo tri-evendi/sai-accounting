@@ -222,6 +222,15 @@ const BIAYA_IMPOR = {
   navHrefs: ["/landed-costs"],
 } as const satisfies DocMeta;
 
+const MODUL = {
+  slug: "modul-usaha",
+  judul: "Kenapa sebuah menu bisa hilang",
+  ringkas:
+    "Apa yang sebenarnya terjadi saat sebuah modul dimatikan — dan kenapa itu bukan soal hak akses.",
+  cabang: "pengguna",
+  navHrefs: ["/modules"],
+} as const satisfies DocMeta;
+
 const KAS = {
   slug: "kas-dan-bank",
   judul: "Buku kas Anda dan rekening koran bank",
@@ -328,6 +337,7 @@ export const DOC_INDEX = [
   PENJUALAN,
   STOK,
   BIAYA_IMPOR,
+  MODUL,
   KAS,
   SALDO_AWAL,
   COCOK_ACCURATE,

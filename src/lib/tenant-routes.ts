@@ -98,6 +98,8 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "ledger",
   /* Impor Data Awal (#381) — pelanggan/pemasok/barang dari berkas. */
   "master",
+  /* Modul Usaha (#99) — halamannya sendiri, bukan lagi kartu di Pengaturan. */
+  "modules",
   "notifications",
   "payables",
   "periods",

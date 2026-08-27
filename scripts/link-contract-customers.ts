@@ -45,10 +45,14 @@ import { controlDb } from "../src/lib/control-db";
 import { runWithCompany } from "../src/lib/company-context";
 import { prisma } from "../src/lib/prisma";
 import {
+  aliasTakTerpakai,
   kunciPembeli,
   namaMasterDariTeks,
   punyaEntitasHtml,
+  susunAliasIndex,
+  type AliasIndex,
 } from "../src/lib/contract-buyer-match";
+import { CONTRACT_BUYER_ALIASES } from "./data/contract-buyer-aliases";
 
 const TAUTKAN = process.argv.includes("--tautkan");
 const BUAT = process.argv.includes("--buat-pelanggan");
@@ -70,10 +74,14 @@ interface Ringkasan {
   ambigu: { nama: string; kontrak: number; calon: string[] }[];
   belumAda: { nama: string; kontrak: number }[];
   entitas: { nama: string; kontrak: number; bersih: string }[];
+  /** Ejaan yang DISATUKAN berkas alias — dilaporkan supaya keputusannya terlihat. */
+  aliasDipakai: { kanonik: string; ejaan: number; kontrak: number }[];
+  /** Alias yang tak cocok ke satu teks pun — berkasnya mulai membusuk. */
+  aliasYatim: string[];
   sisaNull: number;
 }
 
-async function kerjakanSatuBuku(slug: string): Promise<Ringkasan> {
+async function kerjakanSatuBuku(slug: string, alias: AliasIndex): Promise<Ringkasan> {
   const r: Ringkasan = {
     slug,
     kontrak: 0,
@@ -84,6 +92,8 @@ async function kerjakanSatuBuku(slug: string): Promise<Ringkasan> {
     ambigu: [],
     belumAda: [],
     entitas: [],
+    aliasDipakai: [],
+    aliasYatim: [],
     sisaNull: 0,
   };
 
@@ -101,23 +111,37 @@ async function kerjakanSatuBuku(slug: string): Promise<Ringkasan> {
      ditebak, dan ia hanya terlihat kalau keduanya disimpan. */
   const masterByKunci = new Map<string, number[]>();
   for (const p of pelanggan) {
-    const k = kunciPembeli(p.name);
+    const k = kunciPembeli(p.name, alias);
     masterByKunci.set(k, [...(masterByKunci.get(k) ?? []), p.id]);
   }
 
   // Kelompokkan kontrak yang belum tertaut menurut kunci pembelinya.
-  const perKunci = new Map<string, { contoh: string; ids: number[] }>();
+  const perKunci = new Map<string, { contoh: string; ids: number[]; ejaan: Set<string> }>();
   for (const c of kontrak) {
     if (c.customerId != null) continue;
-    const k = kunciPembeli(c.buyer);
-    const slot = perKunci.get(k) ?? { contoh: c.buyer, ids: [] };
+    const k = kunciPembeli(c.buyer, alias);
+    const slot = perKunci.get(k) ?? { contoh: c.buyer, ids: [], ejaan: new Set<string>() };
     slot.ids.push(c.id);
+    slot.ejaan.add(c.buyer);
     perKunci.set(k, slot);
   }
 
+  // Ejaan yang RUNTUH jadi satu adalah kerja berkas alias — dilaporkan supaya
+  // keputusan manusia itu terlihat di keluaran, bukan hanya terjadi diam-diam.
+  for (const [, slot] of perKunci) {
+    if (slot.ejaan.size > 1) {
+      r.aliasDipakai.push({
+        kanonik: namaMasterDariTeks(slot.contoh, alias),
+        ejaan: slot.ejaan.size,
+        kontrak: slot.ids.length,
+      });
+    }
+  }
+  r.aliasYatim = aliasTakTerpakai(alias, kontrak.map((c) => c.buyer));
+
   for (const [k, { contoh, ids }] of perKunci) {
     if (punyaEntitasHtml(contoh)) {
-      r.entitas.push({ nama: contoh, kontrak: ids.length, bersih: namaMasterDariTeks(contoh) });
+      r.entitas.push({ nama: contoh, kontrak: ids.length, bersih: namaMasterDariTeks(contoh, alias) });
     }
 
     let calon = masterByKunci.get(k) ?? [];
@@ -140,7 +164,7 @@ async function kerjakanSatuBuku(slug: string): Promise<Ringkasan> {
       /* Nama yang DIBUAT adalah versi bersihnya, bukan teks mentahnya: master
          data yang lahir hari ini tidak punya alasan membawa `&amp;` warisan.
          Teks di kontraknya sendiri tetap apa adanya. */
-      const nama = namaMasterDariTeks(contoh);
+      const nama = namaMasterDariTeks(contoh, alias);
       const dibuat = await prisma.customer.create({ data: { name: nama } });
       r.pelangganDibuat += 1;
       calon = [dibuat.id];
@@ -177,6 +201,12 @@ function laporkan(r: Ringkasan): void {
         : `akan tertaut ${r.akanTertaut} · `) +
       `belum tertaut ${r.sisaNull}`
   );
+  for (const a of r.aliasDipakai) {
+    console.log(`  ⋈ alias: ${a.ejaan} ejaan → "${a.kanonik}" (${a.kontrak} kontrak)`);
+  }
+  for (const y of r.aliasYatim) {
+    console.log(`  ⚠ alias tak terpakai (data mungkin sudah bersih): "${y}"`);
+  }
   for (const a of r.ambigu) {
     console.log(`  ⚠ ambigu: "${a.nama}" (${a.kontrak} kontrak) → ${a.calon.join(" | ")}`);
   }
@@ -208,6 +238,30 @@ async function main() {
     select: { id: true, slug: true, databaseName: true },
     orderBy: { id: "asc" },
   });
+
+  /*
+   * Berkas alias disusun & DIPERIKSA lebih dulu, sebelum satu baris pun dibaca.
+   * Sebuah ejaan yang terdaftar di dua nama kanonik tidak punya jawaban yang
+   * benar, dan menjalankannya setengah jalan berarti sebagian kontrak tertaut
+   * menurut tafsir yang kemudian dibatalkan. Berhenti sekarang lebih murah.
+   */
+  const aliasPerBuku = new Map<string, AliasIndex>();
+  let konflikAda = false;
+  for (const [slug, peta] of Object.entries(CONTRACT_BUYER_ALIASES)) {
+    const { index, konflik } = susunAliasIndex(peta);
+    for (const k of konflik) {
+      konflikAda = true;
+      console.error(
+        `Berkas alias bertentangan di "${slug}": ejaan "${k.alias}" didaftarkan ` +
+          `pada ${k.kanonik.length} nama kanonik — ${k.kanonik.join(" | ")}`
+      );
+    }
+    aliasPerBuku.set(slug, index);
+  }
+  if (konflikAda) {
+    console.error("Perbaiki scripts/data/contract-buyer-aliases.ts lebih dulu.");
+    process.exit(1);
+  }
   if (companies.length === 0) {
     console.error(SLUG ? `Perusahaan "${SLUG}" tidak ditemukan.` : "Tidak ada perusahaan aktif.");
     process.exit(1);
@@ -221,7 +275,7 @@ async function main() {
       // sama dengan `run-recurring.ts`.
       const r = await runWithCompany(
         { companyId: c.id, slug: c.slug, databaseName: c.databaseName },
-        () => kerjakanSatuBuku(c.slug)
+        () => kerjakanSatuBuku(c.slug, aliasPerBuku.get(c.slug) ?? new Map())
       );
       if (r.kontrak > 0) laporkan(r);
       sisa += r.sisaNull;

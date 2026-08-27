@@ -233,6 +233,21 @@ model ContractPayment {
   // rate for foreign currency — it demands an explicit one instead (issue #9).
   rate       Decimal? @db.Decimal(18, 6)
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// Kas/bank yang benar-benar dipakai (migrasi 0059): `bank` | `kas_besar` |
+  /// `kas_kecil`. Kosakata yang SAMA dengan `cash_movements.type`, bukan daftar
+  /// kedua — `cashKeyForType` menerjemahkan ketiganya ke slot pemetaan akun.
+  ///
+  /// NULL berarti "tidak disebut", dan memposting lewat `cash_default` PERSIS
+  /// seperti sebelum kolom ini ada (`cashKeyForType(null)` memang memulangkan
+  /// slot itu). Karena itu tidak ada satu pun jurnal lama yang berubah, dan
+  /// tidak ada repost massal yang perlu dijalankan.
+  ///
+  /// Hanya `bank` yang punya baris pemetaan per mata uang; `kas_besar`/
+  /// `kas_kecil` sengaja tetap agnostik (catatan panjang di posting/mapping.ts).
+  /// Keduanya karena itu DITOLAK untuk dokumen valas di `cashTypeField` —
+  /// membiarkannya lolos berarti mengkredit akun kas rupiah dengan nominal USD,
+  /// yaitu persis cacat warisan yang catatan itu peringatkan.
+  cashType   String?  @map("cash_type") @db.VarChar(20)
   note       String?  @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -471,6 +486,21 @@ model InvoicePayment {
   currency   String   @default("USD") @db.VarChar(5)
   rate       Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// Kas/bank yang benar-benar dipakai (migrasi 0059): `bank` | `kas_besar` |
+  /// `kas_kecil`. Kosakata yang SAMA dengan `cash_movements.type`, bukan daftar
+  /// kedua — `cashKeyForType` menerjemahkan ketiganya ke slot pemetaan akun.
+  ///
+  /// NULL berarti "tidak disebut", dan memposting lewat `cash_default` PERSIS
+  /// seperti sebelum kolom ini ada (`cashKeyForType(null)` memang memulangkan
+  /// slot itu). Karena itu tidak ada satu pun jurnal lama yang berubah, dan
+  /// tidak ada repost massal yang perlu dijalankan.
+  ///
+  /// Hanya `bank` yang punya baris pemetaan per mata uang; `kas_besar`/
+  /// `kas_kecil` sengaja tetap agnostik (catatan panjang di posting/mapping.ts).
+  /// Keduanya karena itu DITOLAK untuk dokumen valas di `cashTypeField` —
+  /// membiarkannya lolos berarti mengkredit akun kas rupiah dengan nominal USD,
+  /// yaitu persis cacat warisan yang catatan itu peringatkan.
+  cashType   String?  @map("cash_type") @db.VarChar(20)
   note       String?  @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -578,11 +608,31 @@ model StockMovement {
   /// SELURUH baris historis (tak ada backfill).
   costCenterId Int? @map("cost_center_id")
 
+  /// Pemasok pengirim barang pada gerakan MASUK (migrasi 0058).
+  ///
+  /// Riwayat Stok dulu tidak bisa menyebut siapa yang mengirim: satu-satunya
+  /// jejaknya teks bebas di `note` ("Pembelian PT Anu — TRX-42"), dan teks
+  /// tidak bisa disaring, dijumlahkan, atau ditautkan. Kolom ini memberi
+  /// jejaknya bentuk.
+  ///
+  /// NULL pada gerakan KELUAR (tidak ada pengirim), pada penyesuaian stok
+  /// opname, dan pada penerimaan yang memang tidak berasal dari pemasok
+  /// mana pun — semuanya keadaan yang SAH, bukan isian yang terlewat.
+  ///
+  /// TIDAK menggantikan `supplier_transactions`: pembelian tetap dokumen yang
+  /// melahirkan utangnya. Ini hanya menyebut dari siapa BARANGNYA datang, yang
+  /// pada penerimaan tanpa pembelian (kiriman contoh, retur masuk dari
+  /// gudang pemasok) tidak punya dokumen untuk ditanyai.
+  supplierId Int? @map("supplier_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   item       Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
   costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  // RESTRICT, sejalan dengan Consignee/Customer: pemasok yang sudah menyentuh
+  // kartu stok DINONAKTIFKAN, tidak pernah dihapus keras.
+  supplier   Supplier?   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
 
   /// Baris dokumen biaya impor yang menyebut gerakan ini sebagai PENERIMAAN yang
   /// ditumpangi biayanya (issue #495 butir 1) — asal-usul, bukan akibat.
@@ -593,6 +643,7 @@ model StockMovement {
   landedCostAdjustments LandedCostItem[] @relation("landed_cost_adjustment")
 
   @@index([costCenterId])
+  @@index([supplierId])
   /// Penilaian persediaan & HPP selalu membaca gerakan SATU barang urut waktu —
   /// index gabungan, bukan dua index terpisah (issue #104).
   @@index([itemId, date])
@@ -616,6 +667,8 @@ model Supplier {
   createdAt    DateTime              @default(now()) @map("created_at")
   updatedAt    DateTime              @updatedAt @map("updated_at")
   transactions SupplierTransaction[]
+  /// Gerakan stok MASUK yang menyebut pemasok ini sebagai pengirim (migrasi 0058).
+  stockMovements StockMovement[]
   advances     AdvancePayment[]
   purchaseReturns PurchaseReturn[]
 
@@ -639,6 +692,21 @@ model SupplierTransaction {
   currency   String   @default("IDR") @db.VarChar(5)
   rate       Decimal? @db.Decimal(18, 6) // nullable: legacy rows have none (see ContractPayment)
   baseAmount Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// Kas/bank yang benar-benar dipakai (migrasi 0059) — hanya berarti pada `type = payment`: `bank` | `kas_besar` |
+  /// `kas_kecil`. Kosakata yang SAMA dengan `cash_movements.type`, bukan daftar
+  /// kedua — `cashKeyForType` menerjemahkan ketiganya ke slot pemetaan akun.
+  ///
+  /// NULL berarti "tidak disebut", dan memposting lewat `cash_default` PERSIS
+  /// seperti sebelum kolom ini ada (`cashKeyForType(null)` memang memulangkan
+  /// slot itu). Karena itu tidak ada satu pun jurnal lama yang berubah, dan
+  /// tidak ada repost massal yang perlu dijalankan.
+  ///
+  /// Hanya `bank` yang punya baris pemetaan per mata uang; `kas_besar`/
+  /// `kas_kecil` sengaja tetap agnostik (catatan panjang di posting/mapping.ts).
+  /// Keduanya karena itu DITOLAK untuk dokumen valas di `cashTypeField` —
+  /// membiarkannya lolos berarti mengkredit akun kas rupiah dengan nominal USD,
+  /// yaitu persis cacat warisan yang catatan itu peringatkan.
+  cashType   String?  @map("cash_type") @db.VarChar(20)
   taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(15, 2) // PPN Masukan portion
   note       String?  @db.Text
   /// Pusat biaya pembelian/pembayaran ini (issue #91) — cabang/unit yang

@@ -207,6 +207,14 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.rateRequiredUsd": "Kurs ke IDR wajib diisi untuk mata uang USD.",
   "validation.rateRequiredCny": "Kurs ke IDR wajib diisi untuk mata uang CNY.",
   "validation.rateRequiredForeign": "Kurs ke IDR wajib diisi untuk mata uang asing.",
+  // Kas fisik hanya rupiah (migrasi 0059) — slot `cash_kas_besar`/`cash_kas_kecil`
+  // tidak punya baris per mata uang, jadi valas di situ mendarat di akun rupiah.
+  "validation.cashPhysicalIdrOnly":
+    "Kas Besar / Kas Kecil hanya untuk dokumen rupiah. Untuk mata uang asing, pilih Bank.",
+  "validation.cashOnPaymentOnly":
+    "Kas/bank hanya diisi pada pembayaran, bukan pada pembelian.",
+  // Pemasok pada kartu stok (migrasi 0058) — hanya arah MASUK yang punya pengirim.
+  "validation.supplierOnStockInOnly": "Pemasok hanya diisi pada barang masuk.",
   "validation.accountCodeRequired": "Kode perkiraan wajib diisi",
   "validation.accountNameRequired": "Nama akun wajib diisi",
   "validation.costCenterCodeRequired": "Kode pusat biaya wajib diisi",

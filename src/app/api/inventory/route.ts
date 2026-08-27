@@ -322,6 +322,11 @@ export async function POST(request: Request) {
             : stockData.type === "in"
               ? unitCost
               : null,
+          /* Eksplisit, SESUDAH sebaran: pemasok hanya melekat pada gerakan
+             MASUK. Skemanya sudah menolak yang sebaliknya, tetapi menuliskannya
+             di sini juga membuat baris yang tersimpan benar walau suatu saat
+             ada pemanggil lain yang melewati skema itu. */
+          supplierId: stockData.type === "in" ? (stockData.supplierId ?? null) : null,
           /* Penanda yang membuat susut proses bisa dikenali kembali — pola yang
              sama dengan opname. Catatan pengguna tetap ikut di belakangnya
              supaya tidak ada yang hilang. */

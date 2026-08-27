@@ -30,12 +30,12 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { formatDate } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FileDoneOutlined } from "@ant-design/icons";
+import { FileDoneOutlined, InboxOutlined } from "@ant-design/icons";
 import { SupplierTransactionForm } from "./transaction-form";
 import { AllocationEditor } from "./allocation-editor";
 import { SupplierAdvancePanel } from "./advance-panel";
@@ -55,6 +55,9 @@ export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 — token AntD sebagai angka (tanpa hook di berkas server). */
 const SECTION_GAP = 24;
+
+/** Panel ringkas, bukan kartu stok — batasnya disebutkan di layar (migrasi 0058). */
+const RECEIPT_LIMIT = 50;
 /** Lebar dasar satu pasang istilah–nilai. */
 const INFO_BASIS = 240;
 /** Jarak antar pasangan pada daftar info. */
@@ -112,7 +115,8 @@ export default async function SupplierDetailPage({
   // paid to this supplier with their balances, every purchase valued as a
   // compensation target, and the compensations already recorded against those
   // purchases (so each can be undone from where it is shown).
-  const [purchaseAdvances, purchaseTargets, applications, contracts] = await Promise.all([
+  const [purchaseAdvances, purchaseTargets, applications, contracts, receipts] =
+    await Promise.all([
     getAdvances({ type: "purchase", supplierId: supplier.id }),
     getSupplierPurchaseTargets(supplier.id),
     prisma.advanceApplication.findMany({
@@ -125,6 +129,30 @@ export default async function SupplierDetailPage({
       orderBy: { date: "desc" },
       select: { id: true, contractNo: true, buyer: true },
       take: 200,
+    }),
+    /*
+     * Barang yang PERNAH DIKIRIM pemasok ini (migrasi 0058).
+     *
+     * Ini pembacaan pertama atas `stock_movements.supplier_id`, dan ia menjawab
+     * pertanyaan yang sebelumnya hanya bisa dijawab dengan membaca teks bebas
+     * satu per satu: "apa saja yang datang dari sini". Berbeda dari daftar
+     * transaksi di bawahnya, yang menjawab "berapa kita berutang".
+     *
+     * Dibatasi 50 dan urut terbaru: ini panel ringkas pada halaman profil,
+     * bukan kartu stok. Batasnya DISEBUTKAN di layar supaya tidak ada yang
+     * mengira daftarnya lengkap.
+     */
+    prisma.stockMovement.findMany({
+      where: { supplierId: parseInt(id), type: "in" },
+      orderBy: [{ date: "desc" }, { id: "desc" }],
+      take: RECEIPT_LIMIT,
+      select: {
+        id: true,
+        date: true,
+        quantity: true,
+        unitCost: true,
+        item: { select: { name: true, unit: true } },
+      },
     }),
   ]);
 
@@ -198,6 +226,35 @@ export default async function SupplierDetailPage({
     })),
     autoOpen: autoOpenPaymentId === tx.id,
   }));
+
+  /* Penerimaan dari pemasok ini. Kuantitas `Decimal(15,3)` — lewat `qtyColumn`,
+     bukan topeng rupiah; hanya NILAI-nya yang uang (harga pokok × kuantitas,
+     dan itu selalu IDR: `stock_movements.unit_cost` memang IDR). */
+  const receiptRows = receipts.map((m) => ({
+    id: m.id,
+    date: formatDate(m.date),
+    item: m.item.name,
+    quantity: Number(m.quantity),
+    unit: m.item.unit || "kg",
+    // Harga pokok yang belum diisi BUKAN nilai nol — baris warisan memang tak
+    // punya, dan menuliskannya "Rp 0" akan mengarang fakta.
+    value: m.unitCost == null ? null : Number(m.unitCost) * Number(m.quantity),
+  }));
+
+  type ReceiptRow = (typeof receiptRows)[number];
+
+  const receiptColumns: SaiColumns<ReceiptRow> = [
+    { key: "date", dataIndex: "date", title: t("common.date"), align: "left" },
+    textColumn<ReceiptRow>({ dataIndex: "item", title: t("suppliers.colItem") }),
+    qtyColumn<ReceiptRow>({ dataIndex: "quantity", title: t("common.quantity") }),
+    textColumn<ReceiptRow>({ dataIndex: "unit", title: t("common.unit") }),
+    moneyColumn<ReceiptRow>({
+      dataIndex: "value",
+      title: t("suppliers.colReceiptValue"),
+      sorter: false,
+      currency: () => "IDR",
+    }),
+  ];
 
   const transactionColumns: SaiColumns<TransactionRow> = [
     { key: "date", dataIndex: "date", title: t("common.date"), align: "left" },
@@ -349,6 +406,31 @@ export default async function SupplierDetailPage({
             appliedByPurchase={appliedByPurchase}
           />
         </CardContent>
+      </Card>
+
+      {/* Barang yang dikirim pemasok ini (migrasi 0058) — pembacaan pertama atas
+          `stock_movements.supplier_id`. Menjawab "apa saja yang datang dari
+          sini", yang sebelumnya hanya terbaca sebagai teks bebas di catatan. */}
+      <Card style={{ marginBottom: SECTION_GAP }}>
+        <CardHeader>
+          <CardTitle level={2}>{t("suppliers.receiptsTitle")}</CardTitle>
+        </CardHeader>
+        <StaticTable
+          columns={receiptColumns}
+          rows={receiptRows}
+          rowKey={(row) => row.id}
+          empty={
+            <EmptyState
+              icon={<InboxOutlined style={{ fontSize: EMPTY_ICON_SIZE }} />}
+              title={t("suppliers.emptyReceiptsTitle")}
+              /* Kalimatnya menyebut SEBABNYA. Kolom pemasok baru ada sejak
+                 migrasi 0058 dan tidak di-backfill — penerimaan lama memang
+                 tidak menyebut siapa pun, dan tanpa penjelasan ini panel kosong
+                 akan terbaca sebagai "pemasok ini belum pernah mengirim". */
+              description={t("suppliers.emptyReceiptsDescription")}
+            />
+          }
+        />
       </Card>
 
       {/* Transactions */}

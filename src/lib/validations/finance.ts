@@ -3,6 +3,7 @@ import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 import { normalizeConsigneeName } from "@/lib/consignee";
 import { CASH_TYPES } from "@/lib/constants";
+import { cashTypeField, requireBankForForeignCash } from "./payment";
 import { vissue, vmsg } from "@/lib/i18n/validation";
 
 export const cashTransactionSchema = z
@@ -179,9 +180,23 @@ export const supplierTransactionSchema = z
      * / seluruh perusahaan", nilai yang SAH — bukan isian yang terlewat.
      */
     costCenterId: z.coerce.number().int().positive().nullish(),
+    /**
+     * Kas/bank yang dipakai (migrasi 0059). Hanya berarti pada `type =
+     * payment`: sebuah PEMBELIAN melahirkan utang, ia tidak mengeluarkan uang
+     * dari mana pun, jadi menyebut kasnya di situ tidak punya arti.
+     */
+    cashType: cashTypeField,
   })
   .superRefine((data, ctx) => {
     requireRateForForeign(data, ctx);
+    requireBankForForeignCash(data, ctx);
+    if (data.type === "purchase" && data.cashType) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cashType"],
+        message: vmsg("validation.cashOnPaymentOnly"),
+      });
+    }
     if (data.type === "payment" && data.taxAmount > 0) {
       ctx.addIssue({
         code: "custom",

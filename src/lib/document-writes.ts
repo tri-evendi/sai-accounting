@@ -36,7 +36,11 @@ import { fxAmounts } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { postForSource } from "@/lib/posting";
 import { ensureApprovalRequest, type ApprovalRequestRow } from "@/lib/approval-requests";
-import { assertWithinContract, contractOutstandingForInvoice } from "@/lib/document-chain";
+import {
+  assertWithinContract,
+  contractOutstandingForInvoice,
+  resolveInvoiceCustomerForContract,
+} from "@/lib/document-chain";
 import {
   assertStockAvailable,
   lineStockKg,
@@ -123,14 +127,23 @@ export async function createInvoiceInTx(
 
   // Penjaga sisa kontrak (#15) — di dalam transaksi, jadi angkanya adalah angka
   // yang benar-benar akan tersimpan.
+  //
+  // Penjaga PIHAK berdiri di sebelahnya: kontrak membatasi BERAPA yang boleh
+  // difakturkan, dan sejak migrasi 0057 juga KEPADA SIAPA. Keduanya di sini,
+  // bukan di route, supaya wizard dan formulir biasa tidak bisa menyimpang.
+  let customerId = invoiceData.customerId ?? null;
   if (contractId != null) {
     const { lines } = await contractOutstandingForInvoice(tx, contractId);
     assertWithinContract(lines, items);
+    customerId = await resolveInvoiceCustomerForContract(tx, contractId, customerId);
   }
 
   const invoice = await tx.invoice.create({
     data: {
       ...invoiceData,
+      // Eksplisit, SESUDAH sebaran: yang tersimpan adalah hasil penjaga di atas,
+      // bukan nilai mentah dari peramban.
+      customerId,
       contractId: contractId ?? null,
       currency,
       taxable: tax.taxable,

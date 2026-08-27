@@ -28,6 +28,10 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { ConsigneeSelect } from "@/components/shared/consignee-select";
+import {
+  CustomerSelect,
+  type ContractCustomerRef,
+} from "@/components/shared/customer-select";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
@@ -68,6 +72,9 @@ interface ContractData {
   date: string;
   dueDate: string | null;
   buyer: string;
+  /** Tautan master pembeli (migrasi 0057). NULL pada kontrak warisan. */
+  customerId: number | null;
+  customerRef: ContractCustomerRef | null;
   consignee: string | null;
   consigneeId: number | null;
   consigneeRef: { id: number; name: string; country: string | null; contact: string | null } | null;
@@ -99,6 +106,12 @@ export function EditContractForm() {
   const [rate, setRate] = useState("");
   // Master consignee link (issue #22); prefilled from the contract, free text kept.
   const [consigneeId, setConsigneeId] = useState<number | null>(null);
+  /* Pembeli (migrasi 0057). TIDAK diwajibkan di layar ini: sebagian besar
+     kontrak yang ada masuk ke sini dengan `customerId` NULL, dan memaksa
+     tautannya sebelum menyimpan berarti sebuah perbaikan ejaan pun menuntut
+     seseorang lebih dulu menebak pembelinya. Yang tertaut tetap tertaut. */
+  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [buyer, setBuyer] = useState("");
   /* Pilihan barang (#491). Dibaca di sini, bukan diserahkan ke server component:
      layar ini memang sudah menjemput kontraknya sendiri lewat `apiFetch`. */
   const [itemOptions, setItemOptions] = useState<
@@ -116,6 +129,10 @@ export function EditContractForm() {
         setCurrency(data.currency);
         setRate(data.rate == null ? "" : String(data.rate));
         setConsigneeId(data.consigneeId ?? null);
+        /* Dibawa PULANG apa adanya, alasan yang sama dengan `itemId` di bawah:
+           menyunting kontrak tidak boleh diam-diam memutus tautan pembelinya. */
+        setCustomerId(data.customerId ?? null);
+        setBuyer(data.buyer ?? "");
         setItems(
           data.items.map((item: ContractItem & { id?: number }) => ({
             /* Dibawa PULANG apa adanya: menyunting kontrak tidak boleh diam-diam
@@ -172,7 +189,8 @@ export function EditContractForm() {
       contractNo: formData.get("contractNo"),
       date: formData.get("date"),
       dueDate: formData.get("dueDate"),
-      buyer: formData.get("buyer"),
+      buyer,
+      customerId,
       consignee: formData.get("consignee"),
       consigneeId,
       packaging: formData.get("packaging"),
@@ -266,8 +284,17 @@ export function EditContractForm() {
               <Col xs={24} sm={12}>
                 <DueDateField defaultValue={dueDateStr} />
               </Col>
-              <Col xs={24} sm={12}>
-                <Input id="buyer" name="buyer" label={t("contracts.buyerField")} defaultValue={contract.buyer} required />
+              {/* Baris PENUH, sama dengan formulir kontrak baru: isian ini tiga
+                  bagian (pemilih master, kalimat "belum ada di daftar?", nama
+                  tercetak), bukan satu kotak teks seperti sebelum migrasi 0057. */}
+              <Col span={24}>
+                <CustomerSelect
+                  customerId={customerId}
+                  onCustomerIdChange={setCustomerId}
+                  buyer={buyer}
+                  onBuyerChange={setBuyer}
+                  current={contract.customerRef}
+                />
               </Col>
               <Col xs={24} sm={12}>
                 <ConsigneeSelect

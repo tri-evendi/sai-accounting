@@ -16,6 +16,8 @@ import {
 } from "@/lib/approval-requests";
 import {
   assertWithinContract,
+  ContractBuyerMismatchError,
+  resolveInvoiceCustomerForContract,
   contractOutstandingForInvoice,
   OverInvoiceError,
 } from "@/lib/document-chain";
@@ -126,9 +128,19 @@ export async function PUT(
       // Outstanding guard (issue #15), inside the transaction — an edit can
       // overdraw a contract just as a new faktur can. THIS invoice's own lines are
       // excluded from "already invoiced", or every save would collide with itself.
+      // Penjaga PIHAK (migrasi 0057) berdiri di sebelahnya, dan dengan alasan
+      // yang sama: sebuah SUNTINGAN bisa memindahkan faktur ke pelanggan lain
+      // sementara tautan kontraknya tetap. Tanpa baris ini, penjaga di jalur
+      // pembuatan tinggal dilewati dengan "simpan dulu, lalu sunting".
+      let resolvedCustomerId = invoiceData.customerId ?? null;
       if (contractId != null) {
         const { lines } = await contractOutstandingForInvoice(tx, contractId, invoiceId);
         assertWithinContract(lines, items);
+        resolvedCustomerId = await resolveInvoiceCustomerForContract(
+          tx,
+          contractId,
+          resolvedCustomerId
+        );
       }
 
       await tx.invoiceItem.deleteMany({ where: { invoiceId } });
@@ -137,6 +149,9 @@ export async function PUT(
         where: { id: invoiceId },
         data: {
           ...invoiceData,
+          // Eksplisit, SESUDAH sebaran — hasil penjaga pihak di atas, bukan
+          // nilai mentah dari peramban.
+          customerId: resolvedCustomerId,
           contractId: contractId ?? null,
           // Eksplisit, BUKAN lewat `...invoiceData`: pada `update`, `undefined`
           // berarti "jangan sentuh kolomnya", jadi pengguna yang MENGOSONGKAN
@@ -210,7 +225,7 @@ export async function PUT(
             : null,
     });
   } catch (e) {
-    if (e instanceof OverInvoiceError) {
+    if (e instanceof OverInvoiceError || e instanceof ContractBuyerMismatchError) {
       return NextResponse.json({ error: e.message, saved: false }, { status: 400 });
     }
     return handlePostingError(e);

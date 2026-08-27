@@ -241,7 +241,7 @@ const SRC = join(__dirname, "..", "src");
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 176;
+const AMBANG_KLIEN = 177;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -407,6 +407,9 @@ const KLIEN_TERSAHKAN = [
   "components/shared/consignee-select.tsx",
   "components/shared/cost-center-field.tsx",
   "components/shared/currency-rate-fields.tsx",
+  /* Migrasi 0057 — pemilih pembeli kontrak. Client karena isinya memang
+     interaksi: memilih master mengisi nama tercetak lalu menguncinya. */
+  "components/shared/customer-select.tsx",
   "components/shared/dashboard-charts.tsx",
   "components/shared/delete-document-button.tsx",
   "components/shared/document-preview.tsx",

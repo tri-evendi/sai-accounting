@@ -74,7 +74,8 @@ interface Ringkasan {
   ambigu: { nama: string; kontrak: number; calon: string[] }[];
   belumAda: { nama: string; kontrak: number }[];
   entitas: { nama: string; kontrak: number; bersih: string }[];
-  /** Ejaan yang DISATUKAN berkas alias — dilaporkan supaya keputusannya terlihat. */
+  /** Kelompok yang HANYA bisa menyatu karena berkas alias — bukan yang sudah
+   *  disatukan aturan dasar. Lihat catatan panjang di tempat pengisiannya. */
   aliasDipakai: { kanonik: string; ejaan: number; kontrak: number }[];
   /** Alias yang tak cocok ke satu teks pun — berkasnya mulai membusuk. */
   aliasYatim: string[];
@@ -126,10 +127,24 @@ async function kerjakanSatuBuku(slug: string, alias: AliasIndex): Promise<Ringka
     perKunci.set(k, slot);
   }
 
-  // Ejaan yang RUNTUH jadi satu adalah kerja berkas alias — dilaporkan supaya
-  // keputusan manusia itu terlihat di keluaran, bukan hanya terjadi diam-diam.
+  /*
+   * Yang dilaporkan di sini HANYA yang benar-benar dikerjakan berkas alias.
+   *
+   * Versi pertama melaporkan setiap kelompok yang berisi lebih dari satu ejaan
+   * — dan itu MENYESATKAN: sebagian besar penggabungan dilakukan aturan dasar
+   * (beda huruf besar/kecil, spasi berlebih, entitas HTML), bukan oleh
+   * keputusan manusia di berkas alias. Di buku `pt-sai` selisihnya tujuh lawan
+   * satu: pembacanya akan mengira berkas alias menggabungkan tujuh perusahaan
+   * padahal ia menggabungkan satu.
+   *
+   * Ukurannya sekarang tepat: sebuah kelompok disebut kerja alias bila
+   * ejaan-ejaannya punya LEBIH DARI SATU kunci menurut aturan DASAR — artinya
+   * aturan dasar memang menahannya terpisah, dan berkas aliaslah yang
+   * menyatukannya.
+   */
   for (const [, slot] of perKunci) {
-    if (slot.ejaan.size > 1) {
+    const kunciDasar = new Set([...slot.ejaan].map((e) => kunciPembeli(e)));
+    if (kunciDasar.size > 1) {
       r.aliasDipakai.push({
         kanonik: namaMasterDariTeks(slot.contoh, alias),
         ejaan: slot.ejaan.size,

@@ -4,6 +4,10 @@ import { contractFx, contractSchema, contractSubtotal } from "@/lib/validations/
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { repostForSource, unpostForSource } from "@/lib/posting";
+import {
+  assertContractCustomerFitsInvoices,
+  ContractCustomerConflictError,
+} from "@/lib/document-chain";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import {
@@ -25,7 +29,16 @@ export async function GET(
   const { id } = await params;
   const contract = await prisma.contract.findUnique({
     where: { id: parseInt(id) },
-    include: { items: true, payments: true, documents: true, consigneeRef: true },
+    include: {
+      items: true,
+      payments: true,
+      documents: true,
+      consigneeRef: true,
+      // Dibaca formulir sunting supaya pelanggan yang sudah DINONAKTIFKAN tetap
+      // tampil sebagai pilihan yang sedang berlaku — daftar aktif-saja akan
+      // menjatuhkannya, dan menyimpan ulang akan diam-diam memutus tautannya.
+      customerRef: true,
+    },
   });
 
   if (!contract) {
@@ -72,6 +85,17 @@ export async function PUT(
     // menitipkannya ke variabel luar: penugasan dari dalam closure tidak terbaca
     // oleh penyempitan tipe TypeScript.
     const { contract, reapproval } = await prisma.$transaction(async (tx) => {
+      /* Penjaga pihak, arah sebaliknya (migrasi 0057). Penjaga di jalur faktur
+         mencegah sebuah faktur menyimpang dari kontraknya; ini mencegah
+         KONTRAKNYA yang menyimpang dari faktur-faktur yang sudah terbit
+         atasnya. Di dalam transaksi, sebelum baris kontraknya disentuh. */
+      await assertContractCustomerFitsInvoices(
+        tx,
+        contractId,
+        contractData.contractNo,
+        contractData.customerId
+      );
+
       await tx.contractItem.deleteMany({ where: { contractId } });
 
       const updated = await tx.contract.update({
@@ -138,6 +162,9 @@ export async function PUT(
             : null,
     });
   } catch (e) {
+    if (e instanceof ContractCustomerConflictError) {
+      return NextResponse.json({ error: e.message, saved: false }, { status: 400 });
+    }
     return handlePostingError(e);
   }
 }

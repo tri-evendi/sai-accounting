@@ -115,7 +115,26 @@ model Contract {
   /// `top1`/`top2` are free-text commercial terms, never parsed into a date.
   /// A contract with no due date is aged from `date` and never flagged overdue.
   dueDate     DateTime? @map("due_date")
+  /// Nama pembeli sebagaimana TERCETAK di kontrak. Sejak tautan `customerId` di
+  /// bawah, ini adalah SNAPSHOT nama master saat kontrak dibuat — bukan cermin
+  /// yang ikut berubah kalau pelanggannya kemudian berganti nama, sama seperti
+  /// `contract_items.item_name` terhadap master barang. Pada baris lama yang
+  /// tidak tertaut ke master, teks inilah satu-satunya identitas pembeli, dan
+  /// karena itu ia TIDAK PERNAH dikosongkan.
   buyer       String   @db.VarChar(100)
+  /// Tautan ke master Pelanggan. NULLABLE, dan itu disengaja: kontrak lama hanya
+  /// punya teks `buyer` di atas, dan migrasi 0057 hanya menautkan yang cocok ke
+  /// TEPAT SATU pelanggan — nama yang menunjuk dua baris master tidak punya
+  /// jawaban yang benar, dan menebak salah satunya berarti mengubah lawan
+  /// transaksi sebuah kontrak yang sudah ditandatangani. Pola yang sama persis
+  /// dengan `consigneeId` (#22).
+  ///
+  /// Inilah kaki yang membuat rantai Kontrak → Faktur menyebut SATU pihak:
+  /// `createInvoiceInTx` menolak faktur yang pelanggannya berbeda dari pembeli
+  /// kontraknya, dan mengisi pelanggan faktur dari sini bila dikirim kosong.
+  /// Selama nilainya NULL, penjaga itu tidak punya apa-apa untuk dibandingkan
+  /// dan faktur lama tetap lewat — persis seperti sebelum tautan ini ada.
+  customerId  Int?     @map("customer_id")
   // ─── issue #22 — Master Consignee ──────────────────────
   /// Legacy free-text consignee. Kept as a FALLBACK: when a contract resolves to
   /// a `Consignee` master row it also carries `consigneeId`, but rows whose text
@@ -154,10 +173,14 @@ model Contract {
   // issue #22 — master consignee relation (RESTRICT: a consignee in use is
   // deactivated, never hard-deleted; see Consignee).
   consigneeRef Consignee? @relation(fields: [consigneeId], references: [id], onDelete: Restrict)
+  // Master pelanggan (RESTRICT, sama dengan Consignee): pelanggan yang dipakai
+  // sebuah kontrak DINONAKTIFKAN, tidak pernah dihapus keras.
+  customerRef  Customer?  @relation(fields: [customerId], references: [id], onDelete: Restrict)
 
   @@index([dueDate])
   @@index([date])
   @@index([consigneeId])
+  @@index([customerId])
   @@index([status])
   @@map("contracts")
 }
@@ -863,6 +886,8 @@ model Customer {
   invoices Invoice[]
   advances AdvancePayment[]
   salesReturns SalesReturn[]
+  /// Kontrak yang menyebut pelanggan ini sebagai pembeli (migrasi 0057).
+  contracts Contract[]
 
   @@index([isActive])
   @@map("customers")

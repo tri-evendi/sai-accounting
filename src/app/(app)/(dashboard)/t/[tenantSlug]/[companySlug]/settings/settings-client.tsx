@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/button";
 import { APP_NAME, type SystemRole } from "@/lib/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
-import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
 import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";
 import { ReminderSettingsPanel } from "@/components/settings/reminder-settings-panel";
 import {
@@ -35,6 +34,7 @@ import {
   type SampleDataCounts,
 } from "@/components/settings/sample-data-panel";
 import { PageHeader } from "@/components/ui/page-header";
+import { Link } from "@/components/ui/app-link";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { CloseSquareOutlined, ReadOutlined } from "@ant-design/icons";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
@@ -116,9 +116,12 @@ export function SettingsClient({
                 count: inactiveModules.length,
                 list: inactiveModules.map((m) => t(MODULE_META[m].labelKey)).join(", "),
               })}{" "}
+              {/* Dulu jangkar `#modules` di halaman ini juga; sejak kartunya
+                  punya halaman sendiri, ia tautan sungguhan — `Link` supaya
+                  navigasinya tetap sisi-klien dan bisa dibuka di tab baru. */}
               {canManageModules ? (
-                <a
-                  href="#modules"
+                <Link
+                  href="/modules"
                   style={{
                     color: token.colorLink,
                     fontWeight: token.fontWeightStrong,
@@ -126,7 +129,7 @@ export function SettingsClient({
                   }}
                 >
                   {t("modules.inactiveSummaryManage")}
-                </a>
+                </Link>
               ) : (
                 <span>{t("modules.inactiveSummaryAsk")}</span>
               )}
@@ -157,13 +160,6 @@ export function SettingsClient({
           </Flex>
         </CardContent>
       </Card>
-
-      {/* issue #99 — modul usaha: fitur mana yang dipakai perusahaan ini. */}
-      {canManageModules && (
-        <div id="modules">
-          <ModuleSettingsPanel />
-        </div>
-      )}
 
       {/* issue #368 — PPN: status PKP + tarif ber-efektif-tanggal. Izinnya
           sama (`company_setting.manage`): keduanya profil perusahaan, dan

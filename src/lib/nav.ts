@@ -303,6 +303,20 @@ export const NAV_GROUPS: NavGroup[] = [
        * Perusahaan" berdiri bersama saudara-saudaranya yang juga tingkat akun
        * (Tim, Langganan, Data & Privasi).
        */
+      /*
+       * MODUL USAHA — item sendiri, bukan lagi kartu di dalam Pengaturan.
+       *
+       * Ia MENGUBAH BENTUK APLIKASI: menu hilang, akun berhenti disemai,
+       * halaman berubah jadi `/feature-inactive`. Sebuah keputusan sebesar itu
+       * yang hanya bisa ditemukan dengan menggulir melewati profil pengguna dan
+       * ganti kata sandi adalah keputusan yang tidak punya alamat.
+       *
+       * Izinnya `company_setting.manage`, sama dengan halaman & API-nya — jadi
+       * yang tidak berhak mengubah modul tidak melihat menunya sama sekali.
+       * Mereka tetap diberi tahu apa yang sedang mati, lewat ringkasan di
+       * Pengaturan yang memang terbaca semua orang (#103).
+       */
+      { href: "/modules", label: "Modul Usaha", labelKey: "nav.items.modules", icon: "Split", permission: "company_setting.manage" },
       { href: "/settings", label: "Pengaturan", labelKey: "nav.items.settings", icon: "Settings", permission: "settings.view" },
     ],
   },

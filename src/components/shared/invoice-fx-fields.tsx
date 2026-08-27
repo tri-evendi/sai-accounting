@@ -140,12 +140,24 @@ export function InvoiceCustomerField({
   value,
   onChange,
   documentDate,
+  lockedToContractNo,
 }: {
   customers: CustomerOption[];
   value: InvoiceFxValues;
   onChange: Patch;
   /** Tanggal dokumen (`YYYY-MM-DD`) — lihat `InvoiceFxAdvancedFields`. */
   documentDate: string;
+  /**
+   * Nomor kontrak yang MENENTUKAN pelanggan faktur ini (migrasi 0057), atau
+   * null bila pilihannya masih bebas.
+   *
+   * Dikunci, bukan sekadar diisi: sejak penjaga di `createInvoiceInTx`, faktur
+   * yang pihaknya berbeda dari pembeli kontraknya DITOLAK server. Membiarkan
+   * daftar ini bisa dibuka berarti menawarkan puluhan pilihan yang semuanya
+   * berakhir sebagai penolakan — bentuk kebebasan yang tidak ada isinya.
+   * Lepaskan kontraknya kalau memang perlu menagih pihak lain.
+   */
+  lockedToContractNo?: string | null;
 }) {
   const t = useT();
   const { token } = theme.useToken();
@@ -167,6 +179,7 @@ export function InvoiceCustomerField({
         label={<TermTooltip term="pelanggan">{t("invoices.customerFieldFx")}</TermTooltip>}
         placeholder={t("invoices.customerPickPlaceholder")}
         value={value.customerId}
+        disabled={Boolean(lockedToContractNo)}
         onChange={(e) => handleCustomerChange(e.target.value)}
         options={customers.map((c) => ({
           value: String(c.id),
@@ -178,7 +191,9 @@ export function InvoiceCustomerField({
       <Flex align="flex-start" gap={token.marginXXS} style={{ marginTop: token.marginXXS }}>
         <TeamOutlined aria-hidden="true" style={{ fontSize: token.fontSize, flexShrink: 0 }} />
         <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-          {t("invoices.customerHint")}
+          {lockedToContractNo
+            ? t("invoices.customerFromContract", { contractNo: lockedToContractNo })
+            : t("invoices.customerHint")}
         </Typography.Text>
       </Flex>
     </div>

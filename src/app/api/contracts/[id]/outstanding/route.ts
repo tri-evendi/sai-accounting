@@ -57,6 +57,12 @@ export async function GET(
       id: contract.id,
       contractNo: contract.contractNo,
       buyer: contract.buyer,
+      /* Tautan master pembeli (migrasi 0057). Dipakai formulir faktur & wisaya
+         untuk MENGISI pemilih pelanggannya — bukan sekadar hiasan: penjaga di
+         `createInvoiceInTx` menolak faktur yang pihaknya berbeda, jadi layar
+         yang tidak mengisinya hanya memindahkan penolakan itu ke detik terakhir.
+         NULL pada kontrak warisan yang belum tertaut. */
+      customerId: contract.customerId,
       currency: contract.currency || "IDR",
       status: contract.status,
     },

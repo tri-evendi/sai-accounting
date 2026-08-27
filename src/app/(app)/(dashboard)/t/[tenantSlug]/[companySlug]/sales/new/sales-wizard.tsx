@@ -94,7 +94,14 @@ export interface ItemOption {
 
 /** Bentuk `GET /api/contracts/[id]/outstanding` — sama dengan formulir faktur. */
 interface OutstandingResponse {
-  contract: { id: number; contractNo: string; buyer: string; currency: string };
+  contract: {
+    id: number;
+    contractNo: string;
+    buyer: string;
+    /** Tautan master pembeli (migrasi 0057); NULL pada kontrak warisan. */
+    customerId: number | null;
+    currency: string;
+  };
   lines: ContractLineOutstanding[];
   pull: { contract: { itemName: string; quantity: number; price: number; unit: string }[] };
 }
@@ -175,6 +182,8 @@ export function SalesWizard({
   /** Pelanggan yang BARU dipilih dan defaults pajaknya masih menunggu detail
    *  bebas-PPN — draf yang dipulihkan tidak boleh ikut ditimpa. */
   const pendingTaxCustomerId = useRef<number | null>(null);
+  /** Pelanggan yang DIADOPSI dari kontrak — lihat efek sisa kontrak di bawah. */
+  const adoptedCustomerRef = useRef<number | null>(null);
 
   const itemById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const stockByItem = useMemo(() => new Map(items.map((i) => [i.id, i.currentStock])), [items]);
@@ -211,7 +220,18 @@ export function SalesWizard({
     // sendiri tidak pernah memanggil setState (lihat `/invoices/new`).
     (async () => {
       if (contractId == null) {
-        if (!cancelled) setOutstanding(null);
+        if (cancelled) return;
+        setOutstanding(null);
+        /* Hanya pelanggan yang KITA adopsi yang ikut lepas. Kalau nilainya
+           sudah bukan itu, ia pilihan pengguna sendiri, dan membuangnya berarti
+           menghapus ketikan orang karena tindakan yang tak berhubungan. */
+        const adopted = adoptedCustomerRef.current;
+        if (adopted != null) {
+          adoptedCustomerRef.current = null;
+          patch((d) =>
+            d.customer.id === adopted ? { ...d, customer: { ...d.customer, id: null } } : d
+          );
+        }
         return;
       }
       const res = await apiFetch(`/api/contracts/${contractId}/outstanding`);
@@ -221,12 +241,32 @@ export function SalesWizard({
         return;
       }
       const data = (await res.json()) as OutstandingResponse;
-      if (!cancelled) setOutstanding(data);
+      if (cancelled) return;
+      setOutstanding(data);
+      /*
+       * Kontraknya MENJAWAB pelanggannya (migrasi 0057).
+       *
+       * Bukan kenyamanan: `createInvoiceInTx` menolak faktur yang pihaknya
+       * berbeda dari pembeli kontraknya, dan wisaya ini menulis fakturnya di
+       * langkah TERAKHIR — jadi pilihan yang salah di langkah pertama baru
+       * terbongkar sesudah barang, surat jalan, dan tagihan selesai diisi.
+       *
+       * Mata uangnya ikut, dengan alasan yang sama seperti "Ambil": harga di
+       * kontrak dikutip dalam mata uang kontrak itu.
+       */
+      if (data.contract.customerId != null) {
+        adoptedCustomerRef.current = data.contract.customerId;
+        patch((d) => ({
+          ...d,
+          customer: { ...d.customer, mode: "existing", id: data.contract.customerId },
+          invoice: { ...d.invoice, currency: data.contract.currency },
+        }));
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [draft.contractId, t]);
+  }, [draft.contractId, patch, t]);
 
   // Detail pelanggan terpilih — nama untuk label/ringkasan, bebas-PPN untuk
   // default pajak. Saat cache siap DAN pemilihan baru saja terjadi, default
@@ -543,6 +583,42 @@ export function SalesWizard({
     return <Typography.Text type="secondary">{t("common.preparingForm")}</Typography.Text>;
   }
 
+  /*
+   * SATU pemilih kontrak, dirender di langkah 1 ("Pelanggan") maupun langkah 2
+   * ("Barang & Harga") — keduanya tidak pernah tampil bersamaan, dan keduanya
+   * membaca `draft.contractId` yang sama. Ditulis sekali, bukan dua kali:
+   * dua salinan kendali untuk satu nilai adalah tempat perilaku menyimpang
+   * tanpa ada yang menyadarinya.
+   */
+  /** Pembeli yang ditetapkan kontrak sumber, bila kontraknya memang menyebutnya. */
+  const contractCustomerId = outstanding?.contract.customerId ?? null;
+
+  const contractPicker = (
+    <ServerSearchableSelect
+      id="contractId"
+      label={t("sales.contractSource")}
+      placeholder={t("invoices.pickContract")}
+      emptyText={t("invoices.noContractMatch")}
+      fetchUrl="/api/contracts?picker=1"
+      initialOption={
+        outstanding != null &&
+        draft.contractId != null &&
+        outstanding.contract.id === draft.contractId
+          ? {
+              value: String(outstanding.contract.id),
+              label: outstanding.contract.contractNo,
+              hint: `${outstanding.contract.buyer} · ${outstanding.contract.currency}`,
+            }
+          : null
+      }
+      value={draft.contractId != null ? String(draft.contractId) : null}
+      onChange={(v) => {
+        setPullNote("");
+        patch((d) => ({ ...d, contractId: v == null ? null : Number(v) }));
+      }}
+    />
+  );
+
   return (
     <Wizard
       steps={SALES_STEPS}
@@ -561,6 +637,33 @@ export function SalesWizard({
     >
       {/* ── 1. Pelanggan ──────────────────────────────────────────────── */}
       {stepId === "pelanggan" && (
+        <>
+        {/*
+         * Kontrak sumber DITANYAKAN LEBIH DULU, sebelum pelanggannya.
+         *
+         * Dulu pemilih ini hidup di langkah "Barang & Harga", jadi urutan
+         * layarnya menuntut jawaban yang sudah ditentukan pertanyaan
+         * berikutnya: pengguna memilih pelanggan, lalu memilih kontrak yang
+         * pembelinya orang lain, dan servernya menolak seluruh wisaya di
+         * langkah terakhir. Kini kontraknya menjawab pelanggannya.
+         *
+         * Tetap OPSIONAL — penjualan tanpa kontrak sumber adalah jalur yang sah
+         * dan tidak boleh berubah menjadi lebih panjang karena perbaikan ini.
+         */}
+        <Card style={{ marginBottom: token.marginLG }}>
+          <CardHeader>
+            <CardTitle>
+              <TermTooltip term="kontrak">{t("sales.contractFirstTitle")}</TermTooltip>
+            </CardTitle>
+            <Typography.Text
+              type="secondary"
+              style={{ display: "block", marginTop: token.marginXXS }}
+            >
+              {t("sales.contractFirstDescription")}
+            </Typography.Text>
+          </CardHeader>
+          <CardContent>{contractPicker}</CardContent>
+        </Card>
         <WizardPartnerStep
           kind="customer"
           fetchUrl="/api/customers?active=1&picker=1"
@@ -601,7 +704,13 @@ export function SalesWizard({
               };
             });
           }}
+          lockedNotice={
+            contractCustomerId != null && outstanding
+              ? t("sales.customerFromContract", { contractNo: outstanding.contract.contractNo })
+              : null
+          }
         />
+        </>
       )}
 
       {/* ── 2. Barang & harga ─────────────────────────────────────────── */}
@@ -621,32 +730,7 @@ export function SalesWizard({
             </CardHeader>
             <CardContent>
               <div style={twoColumnGrid(token.margin)}>
-                {/* Mencari ke server (audit: daftar statis `take: 300`).
-                    Sisa & label kontrak terpilih datang dari endpoint
-                    `outstanding` yang sama seperti sebelumnya. */}
-                <ServerSearchableSelect
-                  id="contractId"
-                  label={t("sales.contractSource")}
-                  placeholder={t("invoices.pickContract")}
-                  emptyText={t("invoices.noContractMatch")}
-                  fetchUrl="/api/contracts?picker=1"
-                  initialOption={
-                    outstanding != null &&
-                    draft.contractId != null &&
-                    outstanding.contract.id === draft.contractId
-                      ? {
-                          value: String(outstanding.contract.id),
-                          label: outstanding.contract.contractNo,
-                          hint: `${outstanding.contract.buyer} · ${outstanding.contract.currency}`,
-                        }
-                      : null
-                  }
-                  value={draft.contractId != null ? String(draft.contractId) : null}
-                  onChange={(v) => {
-                    setPullNote("");
-                    patch((d) => ({ ...d, contractId: v == null ? null : Number(v) }));
-                  }}
-                />
+                {contractPicker}
                 {/* Ukuran bawaan, bukan `sm`: `align="flex-end"` menyejajarkan
                     tombol ini dengan dasar `ServerSearchableSelect` di kolom
                     kisi sebelahnya (40px) — kembar dari baris yang sama di

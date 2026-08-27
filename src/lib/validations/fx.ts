@@ -12,6 +12,23 @@ export type CurrencyCode = (typeof CURRENCY_VALUES)[number];
 export const BASE_CURRENCY: CurrencyCode = "IDR";
 
 /**
+ * Mata uang yang TERSIMPAN (kolom `VarChar(5)`) menjadi mata uang yang DIKENAL.
+ *
+ * Kolomnya teks, dan enumnya hidup di zod — jadi sebuah baris warisan bisa saja
+ * membawa kode di luar ketiganya. Yang begitu jatuh ke mata uang dasar buku,
+ * bukan dilemparkan: fungsi ini dipakai untuk MENAMPILKAN dan untuk memberi
+ * bawaan formulir, dan halaman yang meledak karena satu baris lama berkode aneh
+ * jauh lebih buruk daripada satu label yang berbunyi IDR.
+ *
+ * Bukan pengganti validasi: jalur TULIS tetap lewat `currencyEnum`.
+ */
+export function asCurrency(value: string | null | undefined): CurrencyCode {
+  return (CURRENCY_VALUES as readonly string[]).includes(value ?? "")
+    ? (value as CurrencyCode)
+    : BASE_CURRENCY;
+}
+
+/**
  * Exchange rate to IDR. Optional in the schema, but `requireRateForForeign`
  * makes it mandatory whenever the currency isn't IDR — the posting engine
  * refuses to guess a rate, and booking USD at 1:1 would silently wreck the

@@ -54,12 +54,14 @@ import {
   FinanceExportAction,
 } from "@/components/dashboard/dashboard-export-actions";
 import type { FinanceBalanceRow } from "@/lib/pdf/finance-report-pdf";
-import { getIncomeStatement } from "@/lib/reports";
+import { getIncomeStatement, getCashBalanceBase } from "@/lib/reports";
 import { getReceivables, getPayables } from "@/lib/receivables";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { cashTypeLabels } from "@/lib/i18n/labels";
 import { buildDashboardInsights } from "@/lib/dashboard-insights";
+import { getBudgetReport } from "@/lib/budget-report";
+import { getSalesByCustomer, getPurchasesBySupplier } from "@/lib/party-recap";
 import { InsightPanel } from "@/components/dashboard/insight-panel";
 
 export const dynamic = "force-dynamic";
@@ -452,10 +454,49 @@ export default async function DashboardPage({
   const arAsOf = new Date(`${toISODate(new Date())}T23:59:59.999`);
   const canViewReports = allowed.has("report.read");
 
-  const [incomeStatement, receivables, payables] = await Promise.all([
+  /*
+   * Bulan LALU, untuk kalimat arah kas (#472). Hari ke-0 sebuah bulan adalah
+   * hari terakhir bulan sebelumnya — jadi ini akhir bulan lalu, bukan awalnya.
+   */
+  const lastMonthEnd = new Date(
+    `${toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 0))}T23:59:59.999`
+  );
+
+  const [
+    incomeStatement,
+    receivables,
+    payables,
+    cashThisMonth,
+    cashLastMonth,
+    budgetReport,
+    salesByCustomer,
+    purchasesBySupplier,
+  ] = await Promise.all([
     canViewReports ? getIncomeStatement(period.from, period.to) : Promise.resolve(null),
     canViewFinance ? getReceivables({ asOf: arAsOf }) : Promise.resolve(null),
     canViewFinance ? getPayables({ asOf: arAsOf }) : Promise.resolve(null),
+    /*
+     * ── Bahan tiga kalimat sisanya (#472) ───────────────────────────────────
+     *
+     * Semuanya dimuat DI SINI, bersama angka kartunya — bukan di dekat tempat
+     * kalimatnya dirakit. Itu bukan gaya: satu sumber yang dimuat sekali adalah
+     * satu-satunya bentuk yang membuat kalimat dan kartu mustahil menyimpang,
+     * dan penjaga `dashboard-insight-wiring` menegakkannya.
+     *
+     * Ketiganya digerbangi `canViewReports`, izin yang SAMA dengan halaman yang
+     * dituju tautannya. Kalimat yang menyebut angka yang tidak boleh dibuka
+     * pembacanya melanggar kriteria "setiap angka bisa ditelusuri" alih-alih
+     * melayaninya — dan staf tidak membayar satu kueri pun untuknya.
+     */
+    canViewReports ? getCashBalanceBase(period.to) : Promise.resolve(null),
+    canViewReports ? getCashBalanceBase(lastMonthEnd) : Promise.resolve(null),
+    /* `hasBudgets: false` adalah jawaban "modul anggaran belum dipakai" — dan
+       kueri pertamanya memang berhenti di situ, tanpa membaca laba/rugi. */
+    canViewReports
+      ? getBudgetReport(period.from.getFullYear(), period.from.getMonth() + 1)
+      : Promise.resolve(null),
+    canViewReports ? getSalesByCustomer(period.from, period.to) : Promise.resolve(null),
+    canViewReports ? getPurchasesBySupplier(period.from, period.to) : Promise.resolve(null),
   ]);
 
   const incomeStatementHref = `/reports/income-statement?from=${period.fromISO}&to=${period.toISO}`;
@@ -472,6 +513,34 @@ export default async function DashboardPage({
    * `lib/dashboard-insights.ts` dan diuji di sana tanpa basis data.
    */
   const overdueRows = receivables?.rows.filter((r) => r.status === "overdue") ?? [];
+  /*
+   * Mitra terbesar bulan ini. `rows` sudah TERURUT menurun oleh
+   * `summarizeParties`, jadi yang pertama memang yang terbesar — tidak ada
+   * pengurutan kedua di sini yang bisa menjawab berbeda dari halamannya.
+   *
+   * Ember "tanpa mitra" (`partyId: null`) ikut terurut bersama yang lain dan
+   * DIBUANG: "belum ditetapkan menyumbang 60% penjualan" bukan konsentrasi
+   * pelanggan, itu data yang belum lengkap — dan menyebutnya sebagai risiko
+   * mitra adalah kalimat yang salah, bukan kalimat yang kurang tepat.
+   */
+  const topParty = (recap: { rows: { partyId: number | null; partyName: string | null; netBase: number }[]; totals: { netBase: number } } | null) => {
+    if (!recap || recap.totals.netBase <= 0) return null;
+    const top = recap.rows.find((r) => r.partyId != null && r.partyName != null);
+    if (!top || top.netBase <= 0) return null;
+    return { name: top.partyName as string, share: top.netBase / recap.totals.netBase };
+  };
+  const topCustomer = topParty(salesByCustomer);
+  const topSupplier = topParty(purchasesBySupplier);
+  /* Yang disebut hanya SATU — sisi yang porsinya lebih besar. Dua kalimat
+     konsentrasi berdampingan memakan jatah tiga baris panel untuk mengatakan
+     satu jenis hal, dan yang kedua selalu yang kurang mendesak. */
+  const concentration =
+    topCustomer && (!topSupplier || topCustomer.share >= topSupplier.share)
+      ? { partyName: topCustomer.name, share: topCustomer.share, kind: "customer" as const }
+      : topSupplier
+        ? { partyName: topSupplier.name, share: topSupplier.share, kind: "supplier" as const }
+        : undefined;
+
   const insights = buildDashboardInsights({
     overdue: receivables
       ? {
@@ -483,6 +552,22 @@ export default async function DashboardPage({
           oldestDays: overdueRows.reduce((max, r) => Math.max(max, r.ageDays), 0),
         }
       : undefined,
+    /* Saldo akhir bulan ini vs akhir bulan lalu, IDR base. Selisih keduanya
+       identik dengan `netChange` Arus Kas — halaman yang dibuka tautannya. */
+    cash:
+      cashThisMonth != null && cashLastMonth != null
+        ? { thisMonth: cashThisMonth, lastMonth: cashLastMonth }
+        : undefined,
+    /* `hasBudgets` false = modul anggaran belum dipakai buku ini. Medannya
+       dibiarkan kosong, dan aturannya diam — bukan melaporkan "0% dari 0". */
+    budget:
+      budgetReport?.hasBudgets && budgetReport.report.totals.budget > 0
+        ? {
+            plannedBase: budgetReport.report.totals.budget,
+            actualBase: budgetReport.report.totals.actual,
+          }
+        : undefined,
+    concentration,
   });
 
   // Saldo per barang dari hasil GROUP BY — aturan yang sama dengan

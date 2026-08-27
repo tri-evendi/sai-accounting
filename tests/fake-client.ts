@@ -417,7 +417,17 @@ export function createFakeReportClient(seed: {
 
   const client = {
     account: {
-      findMany: async () => [...accounts].sort((a, b) => a.code.localeCompare(b.code)),
+      /*
+       * `where.type` DIHORMATI (issue #472). Sebelumnya penyaringnya diabaikan
+       * diam-diam, dan itu bukan penyederhanaan yang aman: sebuah fungsi yang
+       * meminta "akun kas saja" lalu menjumlahkan SELURUH akun memulangkan nol
+       * untuk jurnal yang seimbang — jawaban yang terlihat masuk akal dan
+       * seluruhnya salah.
+       */
+      findMany: async ({ where }: { where?: { type?: string } } = {}) =>
+        [...accounts]
+          .filter((a) => where?.type === undefined || a.type === where.type)
+          .sort((a, b) => a.code.localeCompare(b.code)),
       findUnique: async ({ where }: { where: { id: number } }) =>
         accounts.find((a) => a.id === where.id) ?? null,
     },

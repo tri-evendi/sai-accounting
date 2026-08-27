@@ -95,5 +95,66 @@ export const CONTRACT_BUYER_ALIASES: ContractBuyerAliases = {
       // Tanpa akhiran badan hukum (1 kontrak).
       "FOSHAN TASTE IMPORT & EXPORT",
     ],
+
+    /*
+     * ── Varian TANDA BACA ────────────────────────────────────────────────
+     *
+     * Dua belas entri di bawah semuanya satu kelas cacat yang sama, dan
+     * karena itu alasannya ditulis SEKALI di sini alih-alih diulang dua belas
+     * kali: nama perusahaannya identik huruf demi huruf, dan yang berbeda
+     * hanyalah spasi setelah koma, titik di ujung, atau huruf besar/kecil.
+     *
+     * `kunciPembeli` sengaja TIDAK menghapus tanda baca — "PT Anu, Tbk" dan
+     * "PT Anu Tbk" bisa saja dua badan hukum, dan aturan yang berjalan sendiri
+     * tidak boleh memutuskan itu. Jadi selisih setipis ini tetap sampai ke sini.
+     *
+     * Bukti untuk seluruh dua belas kelompok dikumpulkan dengan cara yang sama
+     * dengan Foshan Taste di atas, dari buku `pt-sai` (2026-08-27): setiap
+     * kelompok memakai consignee yang sama pada seluruh variannya. Consignee
+     * adalah kolom LAIN, jadi buktinya tidak melingkar pada teks pembeli itu
+     * sendiri.
+     *
+     * Nama kanonik selalu ejaan yang paling banyak dipakai di dokumen.
+     */
+    "FANGCHENGGANG HAILUTONG SUPPLY CHAIN MANAGEMENT CO.LTD.": [
+      "FANGCHENGGANG HAILUTONG SUPPLY CHAIN MANAGEMENT CO.LTD",
+    ],
+    "GUANGXI KANGWEI PHARMACEUTICAL CO., LTD": [
+      "GUANGXI KANGWEI PHARMACEUTICAL CO.,LTD",
+      "GUANGXI KANGWEI PHARMACEUTICAL CO. LTD",
+    ],
+    "GUANGXI TIANQIN INTERNATIONAL FREIGHT CO., LTD": [
+      "GUANGXI TIANQIN INTERNATIONAL FREIGHT CO.,LTD",
+    ],
+    "YULIN FUDA INTERNATIONAL SPICE TRADING CO., LTD": [
+      "YULIN FUDA INTERNATIONAL SPICE TRADING CO.,LTD",
+    ],
+    "Longwell (Foshan) Import and Export Co., LTD": [
+      "LONGWELL (FOSHAN) IMPORT AND EXPORT CO.,LTD",
+    ],
+    "FOSHAN WEIXUN IMPORT AND EXPORT CO., LTD": [
+      "Foshan Weixun Import and Export Co.,LTD",
+    ],
+    "DONGXING CITY XINGBIAN IMPORT AND EXPORT CO., LTD.": [
+      "DONGXING CITY XINGBIAN IMPORT AND EXPORT CO., LTD",
+    ],
+    "FOSHAN HUIQUAN TRADING CO., LTD": ["FOSHAN HUIQUAN TRADING CO.,LTD"],
+    "GUANGDONG DEXINYIJIA TRADE CO., LTD": ["GUANGDONG DEXINYIJIA TRADE CO. LTD"],
+    "GUANGZHOU RONGHUI FUXIN SUPPLY CHAIN CO.LTD": [
+      "Guangzhou Ronghui Fuxin Supply Chain Co. LTD",
+    ],
+    "Foshan Flavor Imton Supply Chain Management Co., Ltd": [
+      "FOSHAN FLAVOR IMTON SUPPLY CHAIN MANAGEMENT CO.,LTD",
+    ],
+    /*
+     * MOJIBAKE, bukan salah ketik. `Â` di sini adalah spasi-tanpa-pemisah UTF-8
+     * (U+00A0 = 0xC2 0xA0) yang pernah dibaca sebagai latin-1, sehingga byte
+     * 0xC2 muncul sebagai huruf tersendiri. Ia tidak akan pernah cocok dengan
+     * aturan mana pun yang berurusan dengan spasi biasa, jadi satu-satunya
+     * tempatnya memang di sini.
+     */
+    "GUANGZHOU SHENG HONG TRADE CO., LTD.": [
+      "GUANGZHOU SHENG HONG TRADE\u00c2 CO., LTD.",
+    ],
   },
 };

@@ -319,6 +319,7 @@
       "users": "Pengguna",
       "permissions": "Hak Akses",
       "settings": "Pengaturan",
+      "modules": "Modul Usaha",
       "selectCompany": "Pilih Perusahaan",
       "masterImport": "Impor Data Awal",
       "apiTokens": "Token API",
@@ -3850,6 +3851,8 @@
     "loadFailed": "Gagal memuat pengaturan PPN."
   },
   "modules": {
+    "pageTitle": "Modul Usaha",
+    "pageDescription": "Fitur mana yang dipakai perusahaan ini. Modul yang dimatikan menghilangkan menunya dan berhenti menyemai akunnya — dan tidak pernah mencabut izin siapa pun.",
     "sectionTitle": "Modul Usaha",
     "auditAction": "Mengubah modul usaha",
     "sectionDescription": "Nyalakan hanya fitur yang dipakai perusahaan Anda. Modul yang dimatikan hilang dari menu dan tidak bisa dipakai membuat transaksi baru.",

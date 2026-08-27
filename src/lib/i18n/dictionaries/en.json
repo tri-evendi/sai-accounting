@@ -319,6 +319,7 @@
       "users": "Users",
       "permissions": "Access Rights",
       "settings": "Settings",
+      "modules": "Business Modules",
       "selectCompany": "Switch Company",
       "masterImport": "Import Starting Data",
       "apiTokens": "API Tokens",
@@ -3850,6 +3851,8 @@
     "loadFailed": "Could not load the PPN settings."
   },
   "modules": {
+    "pageTitle": "Business Modules",
+    "pageDescription": "Which features this company uses. A module turned off hides its menu and stops seeding its accounts — it never grants or removes anyone’s permissions.",
     "sectionTitle": "Business Modules",
     "auditAction": "Changed the business modules",
     "sectionDescription": "Turn on only the features your company uses. A module that is off disappears from the menu and can no longer be used to record new transactions.",

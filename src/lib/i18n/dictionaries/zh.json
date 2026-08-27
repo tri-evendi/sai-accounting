@@ -319,6 +319,7 @@
       "users": "用户",
       "permissions": "访问权限",
       "settings": "设置",
+      "modules": "业务模块",
       "selectCompany": "切换公司",
       "masterImport": "导入初始数据",
       "apiTokens": "API 令牌",
@@ -3850,6 +3851,8 @@
     "loadFailed": "增值税设置加载失败。"
   },
   "modules": {
+    "pageTitle": "业务模块",
+    "pageDescription": "本公司使用哪些功能。关闭的模块会隐藏其菜单并停止创建相关科目，但绝不会授予或撤销任何人的权限。",
     "sectionTitle": "业务模块",
     "auditAction": "修改业务模块",
     "sectionDescription": "只开启贵公司实际使用的功能。关闭的模块会从菜单中消失，也无法再用于录入新交易。",

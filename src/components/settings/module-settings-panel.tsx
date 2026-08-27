@@ -1,21 +1,23 @@
 "use client";
 
 /**
- * Kartu "Modul Usaha" di halaman Pengaturan (issue #99) — permukaan pengelolaan
- * modul setelah penyiapan.
+ * "Modul Usaha" (issue #99) — permukaan pengelolaan modul setelah penyiapan.
  *
- * Kenapa DI SINI, bukan di /permissions: modul menjawab "perusahaan ini
- * bidangnya apa" — satu keluarga dengan profil & identitas pajak perusahaan —
+ * Sejak halaman `/modules` ada, panel ini TIDAK lagi satu kartu di tengah
+ * Pengaturan. Alasannya ada di kepala halamannya: modul mengubah bentuk
+ * aplikasi bagi semua orang, dan keputusan sebesar itu tidak boleh hanya
+ * ditemukan oleh yang menggulir melewati profil & ganti kata sandi.
+ *
+ * Kenapa BUKAN di /permissions: modul menjawab "perusahaan ini bidangnya apa",
  * sedangkan /permissions menjawab "siapa boleh apa". Menaruhnya di matriks izin
  * akan mengaburkan justru perbedaan yang paling penting dijaga fitur ini: modul
  * TIDAK memberi atau mencabut izin siapa pun. Halaman /permissions tetap ikut
  * berubah — baris untuk modul non-aktif disembunyikan di sana, dengan tautan
- * kembali ke kartu ini.
+ * kembali ke sini.
  *
- * Panel hanya dirender bila server menilai penggunanya memegang
- * `company_setting.manage` (dihitung di `settings/page.tsx` terhadap matriks
- * EFEKTIF, pola panel Audit). API-nya ber-gate izin yang sama — pertahanan
- * berlapis, bukan tampilan yang menjaga dirinya sendiri.
+ * Halamannya ber-gate `company_setting.manage` terhadap matriks EFEKTIF, dan
+ * API-nya ber-gate izin yang sama — pertahanan berlapis, bukan tampilan yang
+ * menjaga dirinya sendiri.
  */
 
 import { useCallback, useEffect, useState } from "react";

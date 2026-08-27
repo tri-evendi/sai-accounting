@@ -93,6 +93,8 @@ export interface FakeSeed {
   /** Retur penjualan & pembelian (issue #27). */
   salesReturns?: Record<number, unknown>;
   purchaseReturns?: Record<number, unknown>;
+  /** Dokumen biaya impor (issue #495 butir 1) — sumber jurnal reklasifikasinya. */
+  landedCostDocuments?: Record<number, unknown>;
   /** Aset tetap (issue #28). Disposal reads the asset; depreciation reads a
    *  fixed_asset_depreciations row with its asset nested inline. */
   fixedAssets?: Record<number, unknown>;
@@ -243,6 +245,10 @@ export function createFakeClient(seed: FakeSeed = {}) {
     purchaseReturn: {
       findUnique: async ({ where }: { where: { id: number } }) =>
         findOne(seed.purchaseReturns, where.id),
+    },
+    landedCostDocument: {
+      findUnique: async ({ where }: { where: { id: number } }) =>
+        findOne(seed.landedCostDocuments, where.id),
     },
     fixedAsset: {
       findUnique: async ({ where }: { where: { id: number } }) =>

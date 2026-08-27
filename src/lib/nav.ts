@@ -174,6 +174,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/suppliers", label: "Pemasok", labelKey: "nav.items.suppliers", icon: "Truck", permission: "supplier.read", termKey: "pemasok" },
       { href: "/payables", label: "Tagihan Harus Dibayar", labelKey: "nav.items.payables", icon: "Wallet", permission: "payable.read", termKey: "utang" },
       { href: "/advances", label: "Uang Muka", labelKey: "nav.items.advances", icon: "Coins", permission: "advance.read", termKey: "uang_muka" },
+      // issue #495 butir 1 — bea masuk & freight yang datang BELAKANGAN, disebar
+      // ke harga pokok barangnya. Tempatnya di Pembelian, bukan di Stok: yang
+      // disebar adalah TAGIHAN, dan yang mengerjakannya orang yang mencatat
+      // tagihan itu. Akibatnya memang mendarat di stok — tapi menu mengikuti
+      // pekerjaannya, bukan akibatnya.
+      { href: "/landed-costs", label: "Biaya Impor", labelKey: "nav.items.landedCosts", icon: "Import", permission: "landed_cost.read" },
     ],
   },
   {

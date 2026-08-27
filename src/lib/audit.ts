@@ -104,6 +104,13 @@ export type AuditAction =
   /** Retur penjualan & pembelian (issue #27). Each posts its own journal. */
   | "sales_return.create"
   | "purchase_return.create"
+  /**
+   * Dokumen biaya impor (issue #495 butir 1). `create` menulis baris
+   * `cost_adjust` DAN memposting reklasifikasi ke Selisih Harga Pokok;
+   * `delete` membalik jurnalnya dan menghapus baris hitungannya.
+   */
+  | "landed_cost.create"
+  | "landed_cost.delete"
   /** Setup perusahaan + saldo awal (issue #20). Posts the opening journal, once. */
   | "setup.create"
   /** Aset tetap (issue #28). Depreciation & disposal post journals; the rest don't. */
@@ -280,6 +287,8 @@ export type AuditEntity =
   | "bank_statement_line"
   | "sales_return"
   | "purchase_return"
+  /** Dokumen biaya impor (issue #495 butir 1). */
+  | "landed_cost"
   | "company_settings"
   /** Bukan sebuah tabel — kumpulan baris bertanda `[CONTOH]` di banyak tabel. */
   | "sample_data"

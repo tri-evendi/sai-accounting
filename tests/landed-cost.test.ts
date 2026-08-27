@@ -1,242 +1,180 @@
 /**
- * ONGKOS SAMPAI GUDANG (issue #510).
+ * PENJAGA #495 butir 1 — biaya impor yang datang belakangan tidak boleh
+ * menulis ulang jurnal yang sudah terbit.
  *
- * == Yang salah sebelum ini =================================================
- * Wisaya pembelian sudah menulis `stock_movements.unit_cost`, tetapi ongkos
- * yang membuat barang SAMPAI di gudang tidak ikut ke sana. Bagan akun pengguna
- * memuat `5100015 FREIGHT / EKSPEDISI PEMBELIAN` bertipe COGS, jadi ongkos itu
- * mendarat di laba rugi pada tanggal pembelian — bukan menempel pada barangnya.
+ * == Kegagalan yang dijaga =================================================
+ * Cara termudah menyebar bea masuk yang datang tiga minggu kemudian adalah
+ * mengubah `unit_cost` gerakan stok pembeliannya. Ia bekerja, angkanya jadi
+ * "benar", dan ia menulis ulang HPP yang sudah diposting — sehingga laporan
+ * yang sudah dicetak, ditandatangani, dan mungkin sudah dilaporkan pajaknya
+ * diam-diam berbeda dari basis datanya.
  *
- * Dua akibatnya berlawanan arah: nilai persediaan di neraca terlalu rendah, dan
- * HPP jatuh di periode yang salah (beban saat beli, pendapatan saat jual —
- * berbulan-bulan kemudian untuk rempah yang menunggu kontainer).
+ * #510 sudah menolak jalan itu dengan kalimat yang eksplisit. Berkas ini
+ * menjaga penggantinya benar: yang masih di gudang menempel, yang sudah
+ * terjual jatuh ke selisih HPP.
  *
- * == Kenapa tidak butuh mesin jurnal baru ===================================
- * Gerakan stok `in` TIDAK menghasilkan jurnal; persediaan didebet oleh jurnal
- * PEMBELIAN sebesar `amount`. Jadi memasukkan ongkosnya ke `amount` sudah
- * mendebet Persediaan dengan benar, dan yang tersisa hanyalah menempelkannya ke
- * `unit_cost` supaya ia keluar lagi sebagai HPP saat barang terjual.
+ * == Yang TIDAK diklaim berkas ini =========================================
+ * Ini proporsi tingkat barang, bukan identitas lot. Di bawah rata-rata
+ * tertimbang tidak ada cara jujur mengatakan "180 kg dari pembelian ini yang
+ * terjual". Tes di bawah karena itu menguji proporsinya, bukan sesuatu yang
+ * berpura-pura tahu lot mana yang keluar.
  */
 import { describe, expect, it } from "vitest";
-import {
-  allocateAdditionalCost,
-  buildPurchasePayload,
-  emptyPurchaseDraft,
-  purchaseBookedValue,
-  purchaseTotal,
-  purchaseValue,
-  type PurchaseDraft,
-} from "@/lib/wizard";
 
-function draft(over: (d: PurchaseDraft) => void): PurchaseDraft {
-  const d = emptyPurchaseDraft("2026-08-25");
-  d.supplier.name = "PT Rempah Jaya";
-  d.receipt.include = true;
-  d.receipt.date = "2026-08-25";
-  over(d);
-  return d;
-}
+import { onHandShare, planLandedCost, type LandedCostLine } from "@/lib/landed-cost";
 
-/** Satu baris draf pembelian yang diterima penuh. */
-function line(itemId: number, name: string, qty: number, price: number) {
-  return {
-    itemId,
-    itemName: name,
-    quantity: qty,
-    price,
-    unit: "kg",
-    receive: true,
-    receiveQuantity: qty,
-  } as PurchaseDraft["lines"][number];
-}
+const baris = (itemId: number, value: number, quantity: number, onHand: number): LandedCostLine => ({
+  itemId,
+  value,
+  quantity,
+  onHand,
+});
 
-describe("penyebaran: jumlahnya harus utuh", () => {
-  it("sebanding NILAI baris", () => {
-    const shares = allocateAdditionalCost(
-      [
-        { value: 750_000, quantity: 50 },
-        { value: 250_000, quantity: 50 },
-      ],
-      100_000,
-      "value"
-    );
-    expect(shares).toEqual([75_000, 25_000]);
+describe("berapa yang masih boleh menempel", () => {
+  it("semuanya masih di gudang → seluruhnya menempel", () => {
+    /* Keadaan paling lazim ketika biaya impornya datang cepat. */
+    expect(onHandShare(1000, 1000)).toBe(1);
   });
 
-  it("sebanding BERAT — jawaban yang berbeda, dan itulah sebabnya bisa dipilih", () => {
+  it("saldo LEBIH besar dari yang dibeli → tetap 1, tidak >1", () => {
+    /* Ada pembelian lain sesudahnya. Tidak satu pun unit dari pembelian INI
+       yang bisa sudah terjual, tapi biayanya juga tidak boleh berlipat. */
+    expect(onHandShare(1000, 2500)).toBe(1);
+  });
+
+  it("habis terjual → nol menempel", () => {
+    expect(onHandShare(1000, 0)).toBe(0);
+  });
+
+  it("saldo negatif tidak melahirkan bagian negatif", () => {
+    /* Stok minus terjadi di buku nyata (barang keluar sebelum penerimaan
+       dicatat). Ia tidak boleh menjadi biaya yang MENGURANGI persediaan. */
+    expect(onHandShare(1000, -50)).toBe(0);
+  });
+
+  it("dibeli nol tidak membagi dengan nol", () => {
+    expect(onHandShare(0, 100)).toBe(0);
+    expect(Number.isFinite(onHandShare(0, 100))).toBe(true);
+  });
+
+  it("sebagian terjual → proporsional", () => {
+    expect(onHandShare(1000, 820)).toBeCloseTo(0.82, 10);
+  });
+});
+
+describe("tidak ada satu sen pun yang menguap", () => {
+  it("menempel + jatuh ke selisih = yang dialokasikan, per baris", () => {
+    /* Satu sen yang tidak ke mana-mana adalah jurnal yang tidak seimbang. */
+    const plan = planLandedCost(
+      [baris(1, 50_000_000, 1000, 820), baris(2, 13_500_000, 700, 0), baris(3, 9_000_000, 300, 300)],
+      25_750_000,
+      "value"
+    );
+    for (const line of plan.lines) {
+      expect(line.capitalized + line.expensed).toBeCloseTo(line.allocated, 10);
+    }
+  });
+
+  it("jumlah seluruh alokasi = total biayanya", () => {
+    const plan = planLandedCost(
+      [baris(1, 50_000_000, 1000, 820), baris(2, 13_500_000, 700, 0)],
+      25_750_000,
+      "value"
+    );
+    expect(plan.totalAllocated).toBe(25_750_000);
+    expect(plan.totalCapitalized + plan.totalExpensed).toBeCloseTo(plan.totalAllocated, 10);
+  });
+
+  it("angka yang tidak habis dibagi tetap berjumlah utuh", () => {
+    /* Tiga baris sama rata atas 100 adalah tempat pembulatan paling mudah
+       kehilangan satu sen. */
+    const plan = planLandedCost(
+      [baris(1, 100, 10, 10), baris(2, 100, 10, 10), baris(3, 100, 10, 10)],
+      100,
+      "value"
+    );
+    expect(plan.totalAllocated).toBe(100);
+  });
+});
+
+describe("yang sudah terjual TIDAK menempel — inti aturannya", () => {
+  it("barang yang habis terjual: seluruh biayanya ke selisih HPP", () => {
+    const plan = planLandedCost([baris(1, 10_000_000, 500, 0)], 4_000_000, "value");
+    expect(plan.lines[0].capitalized).toBe(0);
+    expect(plan.lines[0].expensed).toBe(4_000_000);
+  });
+
+  it("barang yang utuh di gudang: seluruh biayanya menempel", () => {
+    const plan = planLandedCost([baris(1, 10_000_000, 500, 500)], 4_000_000, "value");
+    expect(plan.lines[0].capitalized).toBe(4_000_000);
+    expect(plan.lines[0].expensed).toBe(0);
+  });
+
+  it("82% tersisa → 82% menempel, 18% ke selisih", () => {
+    const plan = planLandedCost([baris(1, 10_000_000, 1000, 820)], 25_750_000, "value");
+    expect(plan.lines[0].capitalized).toBeCloseTo(21_115_000, 2);
+    expect(plan.lines[0].expensed).toBeCloseTo(4_635_000, 2);
+  });
+});
+
+describe("dasar sebarnya benar-benar berbeda, dan itu sebabnya ia wajib dipilih", () => {
+  /* Rempah yang harga per kg-nya berselisih empat kali lipat: "menurut nilai"
+     dan "menurut berat" memberi harga pokok yang sangat berbeda. */
+  const lines = [baris(1, 50_000_000, 1000, 1000), baris(2, 13_500_000, 1000, 1000)];
+
+  it("menurut NILAI mengikuti harga", () => {
+    const plan = planLandedCost(lines, 6_350_000, "value");
+    expect(plan.lines[0].allocated).toBeGreaterThan(plan.lines[1].allocated);
+  });
+
+  it("menurut BERAT membagi rata saat kuantitasnya sama", () => {
+    const plan = planLandedCost(lines, 6_350_000, "weight");
+    expect(plan.lines[0].allocated).toBeCloseTo(plan.lines[1].allocated, 2);
+  });
+
+  it("dasarnya ikut dilaporkan, bukan disimpan diam-diam", () => {
+    /* Yang dipilih harus bisa dipertanggungjawabkan belakangan. */
+    expect(planLandedCost(lines, 1_000, "weight").basis).toBe("weight");
+  });
+});
+
+describe("bentuk yang tak masuk akal tidak melahirkan angka", () => {
+  it("tanpa baris → rencana kosong, bukan lemparan", () => {
+    const plan = planLandedCost([], 5_000_000, "value");
+    expect(plan.lines).toEqual([]);
+    expect(plan.totalAllocated).toBe(0);
+  });
+
+  it("total nol atau negatif → tidak ada yang disebar", () => {
+    for (const total of [0, -1_000_000]) {
+      const plan = planLandedCost([baris(1, 100, 10, 10)], total, "value");
+      expect(plan.totalAllocated).toBe(0);
+      expect(plan.totalCapitalized).toBe(0);
+    }
+  });
+
+  it("seluruh dasar nol → tidak membagi dengan nol", () => {
+    const plan = planLandedCost([baris(1, 0, 0, 0)], 5_000_000, "value");
+    expect(plan.lines.every((l) => Number.isFinite(l.allocated))).toBe(true);
+    expect(plan.totalAllocated).toBe(0);
+  });
+});
+
+describe("memakai penyebar #510, bukan salinannya", () => {
+  it("hasilnya identik dengan `allocateAdditionalCost` untuk masukan yang sama", async () => {
     /*
-     * Baris yang sama, dasar yang lain: yang mahal menanggung lebih sedikit
-     * karena beratnya sama. Untuk ongkos ANGKUT ini justru lebih dekat ke
-     * sebabnya — kontainer dibayar per berat, bukan per harga.
+     * Dua penyebar yang "sama" adalah dua penyebar yang suatu hari membulatkan
+     * berbeda — lalu dua dokumen atas kontainer yang sama menghasilkan harga
+     * pokok yang berbeda, dan tidak ada yang bisa mengatakan mana yang benar.
      */
-    const shares = allocateAdditionalCost(
-      [
-        { value: 750_000, quantity: 50 },
-        { value: 250_000, quantity: 50 },
-      ],
-      100_000,
-      "weight"
-    );
-    expect(shares).toEqual([50_000, 50_000]);
-  });
-
-  it("pembagian yang tidak habis tidak melahirkan atau menguapkan rupiah", () => {
-    /* 10 dibagi tiga sama rata = 3,33 + 3,33 + 3,33 = 9,99. Satu sen yang
-       hilang di situ adalah satu sen yang membuat neraca tidak seimbang. */
-    const total = 10;
-    const shares = allocateAdditionalCost(
-      [
-        { value: 1, quantity: 1 },
-        { value: 1, quantity: 1 },
-        { value: 1, quantity: 1 },
-      ],
-      total,
+    const { allocateAdditionalCost } = await import("@/lib/wizard");
+    const lines = [baris(1, 333, 7, 7), baris(2, 667, 11, 11), baris(3, 1000, 3, 3)];
+    const langsung = allocateAdditionalCost(
+      lines.map((l) => ({ value: l.value, quantity: l.quantity })),
+      1_234_567,
       "value"
     );
-    expect(shares.reduce((s, v) => s + v, 0)).toBe(total);
-  });
-
-  it("dasar yang jumlahnya nol tidak membagi dengan nol", () => {
-    const shares = allocateAdditionalCost(
-      [
-        { value: 0, quantity: 0 },
-        { value: 0, quantity: 0 },
-      ],
-      100_000,
-      "value"
-    );
-    expect(shares).toEqual([0, 0]);
-    expect(shares.every((v) => Number.isFinite(v))).toBe(true);
-  });
-
-  it("tanpa ongkos, tak ada yang disebar", () => {
-    expect(allocateAdditionalCost([{ value: 100, quantity: 1 }], 0, "value")).toEqual([0]);
-  });
-});
-
-describe("ongkosnya masuk buku sebagai persediaan, bukan beban", () => {
-  const d = draft((x) => {
-    x.lines = [line(1, "BLACK PEPPER", 100, 10_000)];
-    x.purchase.additionalCost = 500_000;
-  });
-
-  it("nilai yang dibukukan = barang + ongkos", () => {
-    expect(purchaseValue(d)).toBe(1_000_000);
-    expect(purchaseBookedValue(d)).toBe(1_500_000);
-  });
-
-  it("`amount` yang dikirim ke server membawa ongkosnya", () => {
-    /* Inilah yang mendebet Persediaan: jurnal pembelian memakai `amount`.
-       Kalau ongkosnya tidak di sini, ia tidak pernah menempel di neraca. */
-    expect(buildPurchasePayload(d).purchase.amount).toBe(1_500_000);
-  });
-
-  it("PPN dihitung DI ATAS nilai yang sudah termasuk ongkos", () => {
-    const withTax = draft((x) => {
-      x.lines = [line(1, "BLACK PEPPER", 100, 10_000)];
-      x.purchase.additionalCost = 500_000;
-      x.purchase.taxAmount = 165_000;
-    });
-    expect(purchaseTotal(withTax)).toBe(1_665_000);
-  });
-});
-
-describe("harga pokok per unit membawa bagian ongkosnya", () => {
-  it("100 kg @10.000 + ongkos 500.000 → unit_cost 15.000", () => {
-    const d = draft((x) => {
-      x.lines = [line(1, "BLACK PEPPER", 100, 10_000)];
-      x.purchase.additionalCost = 500_000;
-    });
-    const payload = buildPurchasePayload(d);
-    expect(payload.receipt?.items[0].unitCost).toBe(15_000);
-  });
-
-  it("dua barang, dasar NILAI: yang mahal menanggung lebih banyak", () => {
-    const d = draft((x) => {
-      x.lines = [line(6, "LONG PEPPER", 10, 50_000), line(10, "LONG PEPPER", 10, 13_500)];
-      x.purchase.additionalCost = 127_000;
-      x.purchase.additionalCostBasis = "value";
-    });
-    const items = buildPurchasePayload(d).receipt!.items;
-    /* 500.000 : 135.000 → 100.000 : 27.000 */
-    expect(items[0].unitCost).toBe(60_000);
-    expect(items[1].unitCost).toBe(16_200);
-  });
-
-  it("dua barang, dasar BERAT: keduanya menanggung sama", () => {
-    const d = draft((x) => {
-      x.lines = [line(6, "LONG PEPPER", 10, 50_000), line(10, "LONG PEPPER", 10, 13_500)];
-      x.purchase.additionalCost = 127_000;
-      x.purchase.additionalCostBasis = "weight";
-    });
-    const items = buildPurchasePayload(d).receipt!.items;
-    expect(items[0].unitCost).toBe(56_350);
-    expect(items[1].unitCost).toBe(19_850);
-  });
-
-  it("bawaannya NILAI bila tidak disebut", () => {
-    const d = draft((x) => {
-      x.lines = [line(6, "A", 10, 50_000), line(10, "B", 10, 13_500)];
-      x.purchase.additionalCost = 127_000;
-    });
-    const items = buildPurchasePayload(d).receipt!.items;
-    expect(items[0].unitCost).toBe(60_000);
-  });
-});
-
-describe("hanya barang yang MASUK GUDANG yang menanggung", () => {
-  it("baris yang tidak diterima tidak menerima sebaran", () => {
-    /* Menempelkannya ke baris lain akan membuat harga pokok barang yang
-       diterima menanggung ongkos barang yang tidak pernah datang. */
-    const d = draft((x) => {
-      x.lines = [
-        line(1, "BLACK PEPPER", 100, 10_000),
-        { ...line(2, "CLOVE", 100, 10_000), receive: false, receiveQuantity: 0 },
-      ];
-      x.purchase.additionalCost = 500_000;
-    });
-    const items = buildPurchasePayload(d).receipt!.items;
-    expect(items).toHaveLength(1);
-    expect(items[0].unitCost).toBe(15_000);
-  });
-
-  it("diterima SEBAGIAN: yang dinilai hanya yang datang", () => {
-    const d = draft((x) => {
-      x.lines = [{ ...line(1, "BLACK PEPPER", 100, 10_000), receiveQuantity: 40 }];
-      x.purchase.additionalCost = 400_000;
-    });
-    const items = buildPurchasePayload(d).receipt!.items;
-    /* Seluruh ongkos menempel pada 40 kg yang benar-benar masuk gudang:
-       10.000 + 400.000/40 = 20.000. */
-    expect(items[0].quantity).toBe(40);
-    expect(items[0].unitCost).toBe(20_000);
-  });
-});
-
-describe("valas: ongkos ikut dikurskan, sekali", () => {
-  it("harga + ongkos dikalikan kurs bersama-sama", () => {
-    const d = draft((x) => {
-      x.lines = [line(1, "BLACK PEPPER", 100, 10)];
-      x.purchase.currency = "USD";
-      x.purchase.rate = 16_000;
-      x.purchase.additionalCost = 500; // USD
-    });
-    const payload = buildPurchasePayload(d);
-    /* (10 + 500/100) × 16.000 = 15 × 16.000 = 240.000 */
-    expect(payload.receipt?.items[0].unitCost).toBe(240_000);
-    /* `amount` tetap dalam mata uang DOKUMEN — kursnya dibawa terpisah. */
-    expect(payload.purchase.amount).toBe(1_500);
-    expect(payload.purchase.rate).toBe(16_000);
-  });
-});
-
-describe("tanpa ongkos, tidak ada yang berubah", () => {
-  it("angkanya sama persis dengan sebelum #510", () => {
-    const d = draft((x) => {
-      x.lines = [line(1, "BLACK PEPPER", 100, 10_000)];
-    });
-    const payload = buildPurchasePayload(d);
-    expect(payload.purchase.amount).toBe(1_000_000);
-    expect(payload.receipt?.items[0].unitCost).toBe(10_000);
+    const plan = planLandedCost(lines, 1_234_567, "value");
+    expect(plan.lines.map((l) => l.allocated)).toEqual(langsung);
   });
 });

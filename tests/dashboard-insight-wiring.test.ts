@@ -43,7 +43,7 @@ const page = readFileSync(
  * yang menentukan angkanya berasal dari mana.
  */
 const MULAI = "const overdueRows =";
-const blok = page.slice(page.indexOf(MULAI), page.indexOf(MULAI) + 1200);
+const blok = page.slice(page.indexOf(MULAI), page.indexOf(MULAI) + 3600);
 
 describe("faktanya diturunkan dari angka yang SUDAH dimuat kartunya", () => {
   it("halaman merakit faktanya, bukan modulnya yang membaca basis data", () => {
@@ -67,6 +67,65 @@ describe("faktanya diturunkan dari angka yang SUDAH dimuat kartunya", () => {
        membuat kalimat dan kartu menyimpang. */
     expect(blok).not.toMatch(/prisma\./);
     expect(blok).not.toMatch(/await get(Receivables|Payables)/);
+  });
+
+  it("keempat kalimatnya punya faktanya, bukan hanya piutang", () => {
+    /*
+     * Sampai #472 lanjutan, tiga dari empat kalimat tidak pernah bisa muncul:
+     * aturannya ada, faktanya tidak. Sebuah aturan tanpa fakta adalah kode mati
+     * yang terlihat seperti fitur — ia lolos setiap tinjauan dan tidak pernah
+     * menghasilkan satu kalimat pun di layar siapa pun.
+     */
+    expect(blok).toMatch(/cash:/);
+    expect(blok).toMatch(/budget:/);
+    expect(blok).toMatch(/concentration,?/);
+  });
+
+  it("angka kasnya diturunkan dari JURNAL, sumber yang sama dengan Arus Kas", () => {
+    /*
+     * Kartu kas beranda menjumlah `cash_movements` per mata uang tanpa batas
+     * tanggal — sebuah SALDO. Kalimatnya menyebut SELISIH dua akhir bulan dalam
+     * IDR base. Keduanya besaran berbeda, jadi keduanya tidak bisa saling
+     * membantah; yang harus benar adalah bahwa selisihnya sama dengan
+     * `netChange` di halaman yang dibuka tautannya, dan itu dijamin dengan
+     * memakai rumus `getCashFlow` sendiri lewat `getCashBalanceBase`.
+     */
+    expect(page).toMatch(/getCashBalanceBase\(period\.to\)/);
+    expect(page).toMatch(/getCashBalanceBase\(lastMonthEnd\)/);
+    const reports = readFileSync(
+      join(__dirname, "..", "src", "lib", "reports.ts"),
+      "utf8"
+    );
+    /* Rumusnya harus tetap `accountNets` atas akun `cash_bank` — persis yang
+       dipakai `openingCash`/`closingCash`. Salinan rumus kedua di sini akan
+       menghasilkan kalimat yang membantah halamannya sendiri. */
+    const fn = reports.slice(
+      reports.indexOf("export async function getCashBalanceBase"),
+      reports.indexOf("export async function getCashFlow")
+    );
+    expect(fn).toMatch(/accountNets\(\{ lte: asOf \}/);
+    expect(fn).toMatch(/type: CASH_TYPE/);
+  });
+
+  it("ember mitra `null` tidak pernah menjadi kalimat konsentrasi", () => {
+    /*
+     * "Belum ditetapkan menyumbang 60% penjualan" bukan konsentrasi pelanggan —
+     * itu data yang belum lengkap, dan menyebutnya sebagai risiko mitra adalah
+     * kalimat yang SALAH, bukan kalimat yang kurang tepat.
+     */
+    expect(blok).toMatch(/partyId != null/);
+  });
+
+  it("hanya SATU sisi konsentrasi yang disebut, yang porsinya lebih besar", () => {
+    /* Dua kalimat konsentrasi berdampingan memakan jatah tiga baris panel
+       untuk mengatakan satu jenis hal. */
+    expect(blok).toMatch(/topCustomer\.share >= topSupplier\.share/);
+  });
+
+  it("anggaran diam ketika modulnya belum dipakai", () => {
+    /* `hasBudgets: false` berarti buku ini tidak punya satu baris anggaran pun.
+       Melaporkan "0% di atas anggaran nol" adalah berita yang dikarang. */
+    expect(blok).toMatch(/hasBudgets/);
   });
 
   it("kartu piutang tetap membaca medan yang sama", () => {

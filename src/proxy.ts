@@ -67,6 +67,26 @@ function isPublicPath(pathname: string): boolean {
    * ini lalu diam-diam berhenti cocok setelah pemutakhiran.
    */
   if (pathname === "/robots.txt" || pathname === "/sitemap.xml") return true;
+  /*
+   * MANIFEST PWA (issue #471). Bukan sekadar kembaran robots/sitemap — ia
+   * TIDAK PERNAH terambil tanpa baris ini, bahkan oleh pengguna yang sudah
+   * masuk.
+   *
+   * Peramban mengambil manifest sebagai permintaan `no-cors` TANPA kredensial,
+   * kecuali tag-nya ditandai `crossorigin="use-credentials"` — dan Next
+   * menyisipkan `<link rel="manifest">` polos. Jadi cookie sesi tidak pernah
+   * ikut, proxy memantulkannya ke `/login`, dan yang diterima peramban adalah
+   * HTML halaman masuk dengan status 307.
+   *
+   * Akibatnya persis membatalkan pekerjaan #471: tidak ada ajakan "Pasang
+   * aplikasi", tidak ada ikon layar utama, tidak ada nama aplikasi — dan
+   * TANPA satu pun galat, sebab manifest yang tidak terbaca bukan kegagalan
+   * yang diumumkan peramban ke siapa pun.
+   *
+   * Isinya memang publik: nama aplikasi, warna, dan ikon. Tidak ada satu pun
+   * data perusahaan di dalamnya.
+   */
+  if (pathname === "/manifest.webmanifest") return true;
   if (pathname === "/opengraph-image" || pathname.startsWith("/opengraph-image/")) return true;
   /*
    * issue #300 — dokumentasi sistem. SATU-SATUNYA pelepasan berbentuk SUBPOHON

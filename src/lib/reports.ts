@@ -454,6 +454,43 @@ export interface CashFlowReport {
  *      an exact allocation, no proportional estimate, and it always adds back up.
  *   4. That amount is filed under the counter-account's category (see above).
  */
+/**
+ * Saldo kas & bank dalam IDR base, per sebuah tanggal (issue #472).
+ *
+ * ══ KENAPA ADA, PADAHAL BERANDA SUDAH PUNYA KARTU KAS ══════════════════════
+ * Kartu kas beranda menjumlahkan `cash_movements` PER MATA UANG dan TANPA batas
+ * tanggal — ia menjawab "berapa yang saya punya, dalam mata uang apa". Kalimat
+ * dasbor menanyakan hal yang berbeda: "berapa kas BERGERAK bulan ini". Sebuah
+ * saldo dan sebuah selisih bukan besaran yang sama, jadi keduanya tidak pernah
+ * bisa saling membantah.
+ *
+ * Yang HARUS dijaga bukan "angkanya sama dengan kartu" melainkan "angkanya sama
+ * dengan halaman yang dibuka tautannya". Karena itu fungsi ini diturunkan dari
+ * JURNAL dengan rumus yang persis dipakai `getCashFlow` untuk `openingCash` /
+ * `closingCash` — sehingga selisih dua tanggal di sini identik dengan
+ * `netChange` yang dipajang Arus Kas untuk periode yang sama. Sifat itu bukan
+ * kebetulan: `getCashFlow` sendiri menegaskannya lewat medan `reconciled`.
+ *
+ * Satu `groupBy`, bukan pemindaian baris — beranda memanggilnya dua kali
+ * (akhir bulan ini, akhir bulan lalu) dan tidak boleh menjadi lebih lambat
+ * karena sebuah kalimat.
+ */
+export async function getCashBalanceBase(asOf: Date, client = prisma): Promise<number> {
+  const cashAccounts = await client.account.findMany({
+    where: { type: CASH_TYPE },
+    select: { id: true },
+  });
+  if (cashAccounts.length === 0) return 0;
+
+  const nets = await accountNets({ lte: asOf }, client);
+  let total = 0;
+  for (const a of cashAccounts) {
+    const n = nets.get(a.id);
+    if (n) total += n.debit - n.credit;
+  }
+  return total;
+}
+
 export async function getCashFlow(from?: Date, to?: Date, client = prisma) {
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });
   const cashIds = new Set(accounts.filter((a) => a.type === CASH_TYPE).map((a) => a.id));

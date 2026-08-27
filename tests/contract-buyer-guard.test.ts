@@ -23,10 +23,13 @@ import {
 } from "@/lib/document-chain";
 import { contractSchema } from "@/lib/validations/contract";
 import {
+  aliasTakTerpakai,
   kunciPembeli,
   namaMasterDariTeks,
   punyaEntitasHtml,
+  susunAliasIndex,
 } from "@/lib/contract-buyer-match";
+import { CONTRACT_BUYER_ALIASES } from "../scripts/data/contract-buyer-aliases";
 
 const TERTAUT: ContractBuyerRef = {
   contractNo: "SC-2026-001",
@@ -250,5 +253,116 @@ describe("punyaEntitasHtml / namaMasterDariTeks", () => {
 
   it("memotong di 100 karakter — lebar `customers.name`", () => {
     expect(namaMasterDariTeks("A".repeat(150))).toHaveLength(100);
+  });
+});
+
+// ─── Berkas alias pembeli ──────────────────────────────────────────────────
+
+describe("susunAliasIndex", () => {
+  it("membuat nama kanonik menjadi aliasnya sendiri", () => {
+    // Supaya menuliskannya di daftar alias tidak wajib — dan menuliskannya juga
+    // tidak merusak apa pun.
+    const { index, konflik } = susunAliasIndex({ "PT Maju Jaya": [] });
+    expect(konflik).toEqual([]);
+    expect(kunciPembeli("PT  MAJU   JAYA", index)).toBe(kunciPembeli("PT Maju Jaya"));
+  });
+
+  it("meruntuhkan setiap ejaan ke kunci nama kanoniknya", () => {
+    const { index } = susunAliasIndex({
+      "Foshan Taste Import & Export Co., Ltd": [
+        "Foshan Taste Import &amp; Export Co.,Ltd",
+        "FOSHAN TASTE IMPORT & EXPORT",
+      ],
+    });
+    const kanonik = kunciPembeli("Foshan Taste Import & Export Co., Ltd", index);
+    for (const ejaan of [
+      "Foshan Taste Import & Export Co., Ltd",
+      "Foshan Taste Import &amp; Export Co., Ltd",
+      "Foshan Taste Import &amp; Export Co.,Ltd",
+      "FOSHAN TASTE IMPORT & EXPORT",
+    ]) {
+      expect(kunciPembeli(ejaan, index), ejaan).toBe(kanonik);
+    }
+  });
+
+  it("MELAPORKAN ejaan yang didaftarkan pada dua nama kanonik, dan tidak memetakannya", () => {
+    // Tidak melempar: skrip harus bisa mencetak seluruh daftarnya sekaligus,
+    // bukan mati pada konflik pertama dan menyembunyikan sisanya.
+    const { index, konflik } = susunAliasIndex({
+      "PT Maju Jaya": ["Maju Jaya"],
+      "CV Maju Jaya": ["MAJU  JAYA"],
+    });
+    expect(konflik).toHaveLength(1);
+    expect(konflik[0].kanonik).toEqual(["CV Maju Jaya", "PT Maju Jaya"]);
+    // Yang bertentangan tidak ikut dipetakan — ia jatuh ke aturan kaku biasa.
+    expect(index.has(kunciPembeli("Maju Jaya"))).toBe(false);
+  });
+
+  it("tidak menyentuh nama di luar daftar", () => {
+    const { index } = susunAliasIndex({ "PT A": ["A"] });
+    expect(kunciPembeli("PT Lain Sekali", index)).toBe(kunciPembeli("PT Lain Sekali"));
+  });
+});
+
+describe("namaMasterDariTeks dengan alias", () => {
+  const { index } = susunAliasIndex({
+    "Foshan Taste Import & Export Co., Ltd": ["FOSHAN TASTE IMPORT & EXPORT"],
+  });
+
+  it("memakai nama KANONIK, bukan teks kontraknya", () => {
+    // Di berkas aliaslah seseorang sudah memilih bentuk mana yang benar muncul
+    // di master; teks kontraknya tetap apa adanya di dokumen.
+    expect(namaMasterDariTeks("FOSHAN TASTE IMPORT & EXPORT", index)).toBe(
+      "Foshan Taste Import & Export Co., Ltd"
+    );
+  });
+
+  it("jatuh ke perilaku lama untuk nama tanpa alias", () => {
+    expect(namaMasterDariTeks("PT Anu &amp; Rekan", index)).toBe("PT Anu & Rekan");
+  });
+});
+
+describe("aliasTakTerpakai", () => {
+  it("menyebut alias yang tak cocok ke satu teks pun", () => {
+    // Entri yang datanya sudah dibersihkan akan duduk di sana selamanya,
+    // terbaca seolah masih menjelaskan sesuatu.
+    const { index } = susunAliasIndex({ "PT A": ["A Lama", "A Sekarang"] });
+    expect(aliasTakTerpakai(index, ["A Sekarang", "PT A"])).toEqual([kunciPembeli("A Lama")]);
+  });
+
+  it("diam ketika semuanya terpakai", () => {
+    const { index } = susunAliasIndex({ "PT A": ["A"] });
+    expect(aliasTakTerpakai(index, ["PT A", "A"])).toEqual([]);
+  });
+});
+
+describe("berkas alias yang benar-benar dikirim", () => {
+  it("tidak mengandung satu pun konflik", () => {
+    // Penjaga atas DATANYA, bukan atas mesinnya: berkas itu ditulis tangan, dan
+    // entri baru yang bertentangan harus gagal di sini — bukan pada malam rilis.
+    for (const [slug, peta] of Object.entries(CONTRACT_BUYER_ALIASES)) {
+      const { konflik } = susunAliasIndex(peta);
+      expect(konflik, slug).toEqual([]);
+    }
+  });
+
+  it("menyatukan keempat ejaan Foshan Taste di buku pt-sai", () => {
+    // Kasus sungguhan yang melahirkan berkas ini: 77 + 40 + 4 + 1 kontrak.
+    const { index } = susunAliasIndex(CONTRACT_BUYER_ALIASES["pt-sai"]);
+    const kunci = [
+      "Foshan Taste Import & Export Co., Ltd",
+      "Foshan Taste Import &amp; Export Co., Ltd",
+      "Foshan Taste Import &amp; Export Co.,Ltd",
+      "FOSHAN TASTE IMPORT & EXPORT",
+    ].map((e) => kunciPembeli(e, index));
+    expect(new Set(kunci).size).toBe(1);
+  });
+
+  it("tidak menyeret importir Guangxi/Guangdong yang memang berbeda", () => {
+    const { index } = susunAliasIndex(CONTRACT_BUYER_ALIASES["pt-sai"]);
+    const a = kunciPembeli("GUANGXI XINGUIYU PHARMACEUTICAL CO., LTD", index);
+    const b = kunciPembeli("GUANGDONG SUNWING LOGISTICS CO., LTD", index);
+    const c = kunciPembeli("Foshan Taste Import & Export Co., Ltd", index);
+    expect(new Set([a, b, c]).size).toBe(3);
   });
 });

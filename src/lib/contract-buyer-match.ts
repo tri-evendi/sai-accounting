@@ -49,15 +49,94 @@ export function normalkanNama(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-/** Kunci penjodohan skrip: normalisasi migrasi, lalu entitas HTML dibuka. */
-export function kunciPembeli(nama: string): string {
-  return normalkanNama(bukaEntitasHtml(nama));
+/**
+ * Peta alias terpakai: kunci ejaan mana pun → NAMA KANONIK-nya.
+ *
+ * Dibangun dari `scripts/data/contract-buyer-aliases.ts`, yang ditulis dan
+ * ditinjau manusia. Ia hidup DI LUAR aturan kaku di atas dengan sengaja:
+ * `kunciPembeli` tidak boleh dilonggarkan (setiap pelonggaran yang masuk akal
+ * juga mulai menyamakan perusahaan yang berbeda), sementara "keempat ejaan ini
+ * satu importir" adalah pengetahuan yang hanya dimiliki orang.
+ */
+export type AliasIndex = Map<string, string>;
+
+/** Alias yang didaftarkan pada LEBIH DARI SATU nama kanonik. */
+export interface AliasConflict {
+  alias: string;
+  kanonik: string[];
+}
+
+/**
+ * Susun peta alias, dan laporkan yang saling bertentangan.
+ *
+ * Konflik TIDAK dilempar melainkan dipulangkan: pemanggilnya adalah skrip yang
+ * harus bisa mencetak seluruh daftarnya sekaligus lalu berhenti, bukan mati
+ * pada konflik pertama dan menyembunyikan sisanya.
+ *
+ * Sebuah nama kanonik otomatis menjadi aliasnya sendiri — supaya menuliskannya
+ * di daftar alias tidak wajib, dan menuliskannya juga tidak merusak apa pun.
+ */
+export function susunAliasIndex(
+  aliases: Record<string, string[]>
+): { index: AliasIndex; konflik: AliasConflict[] } {
+  const pemilik = new Map<string, Set<string>>();
+
+  const daftarkan = (ejaan: string, kanonik: string) => {
+    const k = kunciPembeli(ejaan);
+    const set = pemilik.get(k) ?? new Set<string>();
+    set.add(kanonik);
+    pemilik.set(k, set);
+  };
+
+  for (const [kanonik, ejaanLain] of Object.entries(aliases)) {
+    daftarkan(kanonik, kanonik);
+    for (const ejaan of ejaanLain) daftarkan(ejaan, kanonik);
+  }
+
+  const index: AliasIndex = new Map();
+  const konflik: AliasConflict[] = [];
+  for (const [k, pemilikNya] of pemilik) {
+    const daftar = [...pemilikNya];
+    if (daftar.length > 1) {
+      konflik.push({ alias: k, kanonik: daftar.sort() });
+      continue; // Yang bertentangan TIDAK masuk peta — skrip berhenti sebelum menulis.
+    }
+    index.set(k, daftar[0]);
+  }
+  return { index, konflik };
+}
+
+/** Kunci penjodohan skrip: normalisasi migrasi, lalu entitas HTML dibuka.
+ *
+ *  Dengan `index`, seluruh ejaan satu perusahaan runtuh ke kunci nama
+ *  kanoniknya — sehingga keempatnya menautkan ke SATU baris master, bukan empat.
+ *  Tanpa `index`, bunyinya sama persis dengan migrasi 0057. */
+export function kunciPembeli(nama: string, index?: AliasIndex): string {
+  const dasar = normalkanNama(bukaEntitasHtml(nama));
+  const kanonik = index?.get(dasar);
+  return kanonik ? normalkanNama(bukaEntitasHtml(kanonik)) : dasar;
 }
 
 /** Nama yang layak DIBUAT sebagai baris master dari teks kontrak. */
-export function namaMasterDariTeks(teks: string): string {
-  // Bersih dari entitas, tetapi ejaan & huruf besarnya dibiarkan apa adanya:
-  // "GUANGXI ... CO., LTD" memang begitu tertulis di dokumennya, dan merapikan
-  // huruf besar adalah selera, bukan koreksi. Dipotong 100 = VarChar(100).
+export function namaMasterDariTeks(teks: string, index?: AliasIndex): string {
+  // Nama kanonik menang, dan ditulis PERSIS seperti di berkas alias: di situlah
+  // seseorang sudah memilih bentuk mana yang benar untuk muncul di master.
+  const kanonik = index?.get(normalkanNama(bukaEntitasHtml(teks)));
+  if (kanonik) return kanonik.trim().slice(0, 100);
+  // Tanpa alias: bersih dari entitas, tetapi ejaan & huruf besarnya dibiarkan
+  // apa adanya — "GUANGXI ... CO., LTD" memang begitu tertulis di dokumennya,
+  // dan merapikan huruf besar adalah selera, bukan koreksi. 100 = VarChar(100).
   return bukaEntitasHtml(teks).trim().slice(0, 100);
+}
+
+/**
+ * Alias yang TIDAK cocok ke satu teks pembeli pun di buku ini.
+ *
+ * Dilaporkan supaya berkas aliasnya tidak diam-diam membusuk: entri yang datanya
+ * sudah dibersihkan akan tetap duduk di sana selamanya, terbaca seolah masih
+ * menjelaskan sesuatu, dan orang berikutnya akan mempercayainya.
+ */
+export function aliasTakTerpakai(index: AliasIndex, teksPembeli: string[]): string[] {
+  const ada = new Set(teksPembeli.map((t) => normalkanNama(bukaEntitasHtml(t))));
+  return [...index.keys()].filter((k) => !ada.has(k)).sort();
 }

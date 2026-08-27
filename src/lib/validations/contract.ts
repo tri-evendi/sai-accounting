@@ -2,7 +2,7 @@ import { z } from "zod";
 import { round2 } from "@/lib/posting/rules";
 import { BASE_CURRENCY, currencyEnum, fxAmounts, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
-import { paymentFormFields } from "./payment";
+import { paymentFormFields, requireBankForForeignCash } from "./payment";
 import { vmsg } from "@/lib/i18n/validation";
 
 export const contractItemSchema = z.object({
@@ -28,7 +28,30 @@ export const contractSchema = z
      * because "30% advance, 70% on B/L" is not a date and must not be guessed at.
      */
     dueDate: dueDateField,
+    /**
+     * Nama pembeli sebagaimana tercetak di kontrak. TETAP wajib walau
+     * `customerId` di bawah sudah ada: ia adalah snapshot yang ikut tercetak,
+     * dan pada kontrak lama yang tidak tertaut ke master ia satu-satunya
+     * identitas pembeli. Sama seperti `consignee` terhadap `consigneeId` (#22).
+     */
     buyer: z.string().min(1, vmsg("validation.buyerRequired")).max(100).trim(),
+    /**
+     * FK ke master Pelanggan (migrasi 0057). Nullable, dan sengaja TIDAK
+     * diwajibkan di skema: skema ini dipakai bersama oleh POST dan PUT, dan
+     * mewajibkannya di sini akan membuat 609 kontrak warisan yang belum
+     * tertaut MUSTAHIL disunting — sebuah perbaikan ejaan pun akan ditolak
+     * sampai seseorang lebih dulu menebak pembelinya. Kewajiban itu hidup di
+     * formulir kontrak BARU, tempat pilihannya memang selalu bisa dibuat.
+     *
+     * Ini pula yang dibaca penjaga rantai: selama NULL, faktur atas kontrak itu
+     * tidak diperiksa pihaknya (lihat `resolveInvoiceCustomer`).
+     */
+    customerId: z
+      .preprocess(
+        (v) => (v === "" || v === null || v === undefined ? null : v),
+        z.coerce.number().int().positive().nullable()
+      )
+      .default(null),
     /**
      * Legacy free-text consignee, kept as a FALLBACK for un-migrated rows
      * (issue #22). When `consigneeId` points at a master row the text is
@@ -106,7 +129,10 @@ export const contractPaymentSchema = z
     // sama persis dengan pembayaran faktur. `rate` -> contract_payments.rate.
     ...paymentFormFields,
   })
-  .superRefine(requireRateForForeign);
+  .superRefine((data, ctx) => {
+    requireRateForForeign(data, ctx);
+    requireBankForForeignCash(data, ctx);
+  });
 
 export type ContractInput = z.infer<typeof contractSchema>;
 export type ContractItemInput = z.infer<typeof contractItemSchema>;

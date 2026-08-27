@@ -495,6 +495,174 @@ export function assertWithinContract(
   if (over.length > 0) throw new OverInvoiceError(over);
 }
 
+// ─── Guard: faktur sebuah kontrak menyebut PIHAK yang sama ──
+
+/**
+ * Raised when a faktur drawn on a contract is billed to a different party than
+ * the contract's buyer.
+ *
+ * Kenapa ini sekeras `OverInvoiceError`, bukan peringatan: memfakturkan kontrak
+ * PT A kepada PT B mengurangi sisa kontrak PT A sambil mencatat piutang atas
+ * PT B. Kedua sisinya tersimpan, keduanya konsisten sendiri-sendiri, dan tidak
+ * ada satu pun laporan yang akan menyebutnya salah — umur piutang menagih pihak
+ * yang tidak pernah berjanji, dan sisa kontrak yang benar-benar terutang hilang
+ * dari pandangan. Kesalahan yang tidak menghasilkan galat adalah kesalahan yang
+ * ditemukan bertahun-tahun kemudian, oleh orang yang tidak tahu apa-apa
+ * tentangnya.
+ */
+export class ContractBuyerMismatchError extends Error {
+  readonly contractNo: string;
+  readonly contractCustomerId: number;
+  readonly invoiceCustomerId: number;
+  constructor(
+    contract: ContractBuyerRef,
+    /* Dioper terpisah, bukan dibaca dari `contract.customerId`: di tipe itu ia
+       `number | null`, dan menuliskannya sebagai `as number` di sini adalah
+       janji yang tidak dijaga siapa pun. Pemanggilnya sudah menyempitkannya. */
+    contractCustomerId: number,
+    invoiceCustomerId: number
+  ) {
+    super(
+      `Pelanggan faktur bukan pembeli pada kontrak ${contract.contractNo} ` +
+        `(${contract.buyer}). Faktur yang ditarik dari sebuah kontrak harus ` +
+        `ditagihkan kepada pihak yang sama dengan pembelinya. ` +
+        `Faktur tidak disimpan dan jurnal tidak diposting.`
+    );
+    this.name = "ContractBuyerMismatchError";
+    this.contractNo = contract.contractNo;
+    this.contractCustomerId = contractCustomerId;
+    this.invoiceCustomerId = invoiceCustomerId;
+  }
+}
+
+/** Yang perlu diketahui tentang pembeli sebuah kontrak untuk menjaga rantainya. */
+export interface ContractBuyerRef {
+  contractNo: string;
+  /** Teks pembeli — dipakai di pesan galat, sebab nomor id tidak berarti apa-apa
+   *  bagi orang yang membacanya. */
+  buyer: string;
+  /** NULL pada kontrak yang belum tertaut ke master (migrasi 0057). */
+  customerId: number | null;
+}
+
+/**
+ * Pelanggan yang harus tersimpan pada faktur yang ditarik dari `contract`.
+ *
+ * Tiga keadaan, dan hanya satu di antaranya menolak:
+ *
+ *  1. **Kontrak belum tertaut** (`customerId` NULL) — tidak ada yang bisa
+ *     dibandingkan, jadi apa pun yang diminta pemanggil dipakai apa adanya.
+ *     Inilah keadaan SELURUH kontrak lama sesaat setelah migrasi 0057, dan
+ *     karena itu tidak ada satu pun dokumen lama yang mendadak ditolak.
+ *  2. **Faktur tidak menyebut pelanggan** — diisi dari kontraknya. Ini bukan
+ *     menimpa pilihan pengguna: `customerId` faktur nullable (baris warisan
+ *     #35), sehingga "kosong" adalah kelalaian, bukan keputusan. Menyimpannya
+ *     kosong berarti faktur tercetak tanpa nama pembeli (`invoice-pdf-data.ts`
+ *     memulangkan `null`) dan umur piutangnya kehilangan lawan transaksi —
+ *     padahal jawabannya ada, tepat di kontrak yang sedang ditarik.
+ *  3. **Keduanya ada dan berbeda** — dilempar. Lihat `ContractBuyerMismatchError`.
+ *
+ * Murni: tidak menyentuh basis data, jadi aturannya bisa diuji tanpa MySQL —
+ * sikap yang sama dengan `findOverInvoiced` di atas.
+ */
+export function resolveInvoiceCustomer(
+  contract: ContractBuyerRef,
+  requestedCustomerId: number | null | undefined
+): number | null {
+  const requested = requestedCustomerId ?? null;
+  if (contract.customerId == null) return requested;
+  if (requested == null) return contract.customerId;
+  if (requested !== contract.customerId) {
+    throw new ContractBuyerMismatchError(contract, contract.customerId, requested);
+  }
+  return requested;
+}
+
+/**
+ * Bentuk async dari `resolveInvoiceCustomer` — membaca kontraknya sendiri.
+ *
+ * Ada supaya KETIGA jalur tulis faktur (POST /api/invoices, POST
+ * /api/wizard/sales lewat `createInvoiceInTx`, dan PUT /api/invoices/[id])
+ * memanggil satu fungsi, bukan menyalin tiga kali kueri kecil yang sama lalu
+ * menyimpang. Ini persis alasan `document-writes.ts` ada.
+ *
+ * Dipanggil DI DALAM transaksi pemanggil, seperti `assertWithinContract`:
+ * yang dijaga harus keadaan yang benar-benar akan tersimpan.
+ */
+export async function resolveInvoiceCustomerForContract(
+  client: Client,
+  contractId: number,
+  requestedCustomerId: number | null | undefined
+): Promise<number | null> {
+  const contract = await client.contract.findUnique({
+    where: { id: contractId },
+    select: { contractNo: true, buyer: true, customerId: true },
+  });
+  // Kontrak yang hilang bukan urusan fungsi ini: pemanggil sudah memeriksanya
+  // lebih dulu dan menjawab 400 yang ramah, dan FK-nya menjaga sisanya.
+  if (!contract) return requestedCustomerId ?? null;
+  return resolveInvoiceCustomer(contract, requestedCustomerId);
+}
+
+/** Raised when a contract is re-pointed at a party its own faktur do not name. */
+export class ContractCustomerConflictError extends Error {
+  readonly invoiceNos: string[];
+  constructor(contractNo: string, invoiceNos: string[]) {
+    super(
+      `Kontrak ${contractNo} tidak bisa dipindahkan ke pembeli lain: ` +
+        `faktur yang sudah terbit atasnya ditagihkan kepada pihak yang sekarang ` +
+        `(${invoiceNos.join(", ")}). Ubah dulu faktur-faktur itu, atau batalkan, ` +
+        `baru pembeli kontraknya bisa diganti. Kontrak tidak diubah.`
+    );
+    this.name = "ContractCustomerConflictError";
+    this.invoiceNos = invoiceNos;
+  }
+}
+
+/**
+ * Pintu KETIGA menuju rantai yang menyebut dua pihak, dan yang paling mudah
+ * terlewat.
+ *
+ * `resolveInvoiceCustomer` di atas menjaga sisi faktur: sebuah faktur tidak bisa
+ * menyimpang dari kontraknya. Tetapi arahnya bisa dibalik — biarkan fakturnya,
+ * lalu SUNTING KONTRAKNYA menunjuk pembeli lain. Hasil akhirnya identik dengan
+ * yang ditolak penjaga pertama, hanya dicapai lewat layar yang berbeda, dan
+ * tanpa penjaga ini ia lolos tanpa sepatah galat pun.
+ *
+ * Yang dituntut: setiap faktur hidup atas kontrak ini harus menyebut pelanggan
+ * yang sama, atau belum menyebut siapa pun. Faktur BATAL tidak dihitung — ia
+ * tidak lagi menagih siapa-siapa. Faktur ber-`customerId` NULL juga tidak: ia
+ * baris warisan (#35) yang memang belum menyatakan pihak, dan menolak suntingan
+ * kontrak karenanya berarti menghukum data lama atas kekurangan yang bukan
+ * urusan suntingan itu.
+ *
+ * Kontrak yang DILEPAS tautannya (menjadi NULL) selalu boleh: itu mengurangi
+ * klaim, bukan menambahnya.
+ */
+export async function assertContractCustomerFitsInvoices(
+  client: Client,
+  contractId: number,
+  contractNo: string,
+  nextCustomerId: number | null
+): Promise<void> {
+  if (nextCustomerId == null) return;
+  const bentrok = await client.invoice.findMany({
+    where: {
+      contractId,
+      status: { not: "canceled" },
+      customerId: { not: null, notIn: [nextCustomerId] },
+    },
+    select: { invoiceNo: true },
+    orderBy: { id: "asc" },
+  });
+  if (bentrok.length > 0) {
+    throw new ContractCustomerConflictError(
+      contractNo,
+      bentrok.map((i) => i.invoiceNo)
+    );
+  }
+}
+
 // ─── Timeline dokumen ────────────────────────────────────
 
 /** One stage of Kontrak → Surat Jalan → Faktur → Pembayaran. */

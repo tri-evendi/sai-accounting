@@ -11,7 +11,7 @@
  * Itulah sebabnya membatalkan di langkah 2 tidak meninggalkan mitra yatim.
  */
 
-import { Col, Flex, Row, theme, Typography } from "antd";
+import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,6 +57,17 @@ interface Props {
   withCustomerFields?: boolean;
   /** Halaman tempat mitra dikelola, untuk empty state. */
   manageHref: string;
+  /**
+   * Kalimat yang menjelaskan kenapa mitranya TIDAK BISA dipilih di layar ini —
+   * dipakai wisaya penjualan ketika kontrak sumbernya sudah menyebut pembeli
+   * (migrasi 0057).
+   *
+   * Saat terisi, langkah ini berhenti menjadi pilihan: pemilih mitra baru
+   * ("pelanggan baru") ikut hilang bersamanya, sebab pelanggan yang baru dibuat
+   * PASTI bukan pembeli kontrak yang sudah ada dan servernya pasti menolak.
+   * Menyisakan tombolnya berarti menawarkan jalan yang berujung buntu.
+   */
+  lockedNotice?: string | null;
 }
 
 export function WizardPartnerStep({
@@ -68,10 +79,15 @@ export function WizardPartnerStep({
   onChange,
   withCustomerFields = false,
   manageHref,
+  lockedNotice,
 }: Props) {
   const t = useT();
   const { token } = theme.useToken();
-  const isNew = value.mode === "new";
+  const locked = Boolean(lockedNotice);
+  // Terkunci berarti SELALU "mitra yang sudah ada" — draf yang kebetulan
+  // tersimpan dalam mode "baru" tidak boleh menghidupkan kembali isian yang
+  // tidak lagi punya jalan keluar.
+  const isNew = !locked && value.mode === "new";
   const noun =
     kind === "customer" ? t("wizard.partner.nounCustomer") : t("wizard.partner.nounSupplier");
   const per = <T,>(customer: T, supplier: T): T => (kind === "customer" ? customer : supplier);
@@ -82,6 +98,9 @@ export function WizardPartnerStep({
           dulu ditulis ulang sebagai `py-4`. Jarak antar-blok pindah ke `Flex`. */}
       <CardContent>
         <Flex vertical gap={token.margin}>
+          {locked ? (
+            <Alert type="info" showIcon message={lockedNotice} />
+          ) : (
           <fieldset>
             <legend
               style={{ marginBottom: token.marginXS, fontWeight: token.fontWeightStrong }}
@@ -138,6 +157,7 @@ export function WizardPartnerStep({
               })}
             </Row>
           </fieldset>
+          )}
 
         {!isNew &&
           (fetchUrl ? (
@@ -148,6 +168,7 @@ export function WizardPartnerStep({
               emptyText={t("wizard.partner.emptyText", { noun })}
               fetchUrl={fetchUrl}
               initialOption={initialOption}
+              disabled={locked}
               value={value.id != null ? String(value.id) : null}
               onChange={(v) => onChange({ id: v == null ? null : Number(v) })}
             />
@@ -166,6 +187,7 @@ export function WizardPartnerStep({
               placeholder={t("wizard.partner.pickPlaceholder", { noun })}
               emptyText={t("wizard.partner.emptyText", { noun })}
               options={options}
+              disabled={locked}
               value={value.id != null ? String(value.id) : null}
               onChange={(v) => onChange({ id: v == null ? null : Number(v) })}
             />

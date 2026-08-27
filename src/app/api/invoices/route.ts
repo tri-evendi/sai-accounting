@@ -25,7 +25,7 @@ import { translateFieldErrors } from "@/lib/i18n/validation";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { createInvoiceInTx } from "@/lib/document-writes";
-import { OverInvoiceError } from "@/lib/document-chain";
+import { ContractBuyerMismatchError, OverInvoiceError } from "@/lib/document-chain";
 import { approvalNotice } from "@/lib/approval-requests";
 import { pickerParams, type PickerOption } from "@/lib/picker";
 
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       })
     ));
   } catch (e) {
-    if (e instanceof OverInvoiceError) {
+    if (e instanceof OverInvoiceError || e instanceof ContractBuyerMismatchError) {
       return NextResponse.json({ error: e.message, saved: false }, { status: 400 });
     }
     return handlePostingError(e);

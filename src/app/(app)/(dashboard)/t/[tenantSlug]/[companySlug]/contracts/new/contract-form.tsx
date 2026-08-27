@@ -48,6 +48,7 @@ import {
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
 import { ConsigneeSelect } from "@/components/shared/consignee-select";
+import { CustomerSelect } from "@/components/shared/customer-select";
 import { formatCurrency } from "@/lib/utils";
 import { resolveSubmitFailure } from "@/lib/form-sections";
 import {
@@ -138,6 +139,10 @@ export function NewContractForm({
   const [rate, setRate] = useState("");
   // Master consignee link (issue #22); the free text stays a fallback.
   const [consigneeId, setConsigneeId] = useState<number | null>(null);
+  /* Pembeli (migrasi 0057). Tautan master + nama tercetak, dikendalikan di sini
+     karena `SearchableSelect` sengaja TIDAK ikut `new FormData(form)` (#263). */
+  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [buyer, setBuyer] = useState("");
   const [date, setDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
@@ -183,6 +188,20 @@ export function NewContractForm({
       reportFailure(periodIssue, "date", false);
       return;
     }
+    /*
+     * Pembeli WAJIB dari master pada kontrak BARU (migrasi 0057), dan penjaganya
+     * di sini — bukan di `contractSchema`, yang dipakai bersama dengan jalur
+     * SUNTING. Kontrak warisan yang belum tertaut harus tetap bisa disunting;
+     * kontrak yang lahir hari ini tidak punya alasan untuk lahir tanpa tautan.
+     *
+     * Tanpa ini, rantai Kontrak → Faktur berhenti bekerja untuk setiap kontrak
+     * baru: penjaga pihak membaca `customers.id`, dan NULL berarti tidak ada
+     * yang bisa dibandingkan.
+     */
+    if (customerId == null) {
+      reportFailure(t("contracts.buyerMasterRequired"), "customerId", false);
+      return;
+    }
     const negative = negativeValueIssue([
       { field: "rate", value: Number(rate) },
       ...items.flatMap((item, i) => [
@@ -203,7 +222,8 @@ export function NewContractForm({
       contractNo: formData.get("contractNo"),
       date: formData.get("date"),
       dueDate: formData.get("dueDate"),
-      buyer: formData.get("buyer"),
+      buyer,
+      customerId,
       consignee: formData.get("consignee"),
       consigneeId,
       packaging: formData.get("packaging"),
@@ -316,14 +336,22 @@ export function NewContractForm({
                 </Typography.Paragraph>
               )}
             </Col>
-            <Col xs={24} sm={12}>
-              <Input id="buyer" name="buyer" label={t("contracts.buyerField")} required />
+            {/* Pembeli menempati BARIS PENUH sejak migrasi 0057: ia bukan lagi
+                satu kotak teks melainkan pemilih master + nama tercetak +
+                kalimat "belum ada di daftar?". Memerasnya ke setengah lebar
+                membuat ketiganya bertumpuk di 375px tanpa alasan — dan sel
+                kosong yang dulu menyeimbangkan barisnya jadi tak diperlukan,
+                sebab baris penuh sudah mengembalikan mata uang/kurs ke kolom
+                kiri dengan sendirinya. */}
+            <Col span={24}>
+              <CustomerSelect
+                customerId={customerId}
+                onCustomerIdChange={setCustomerId}
+                buyer={buyer}
+                onBuyerChange={setBuyer}
+                requireMaster
+              />
             </Col>
-            {/* Sel kosong yang dulu `hidden sm:block` — ia menjaga pasangan
-                mata uang/kurs tetap mulai di kolom kiri. `Col` kosong
-                melakukan hal yang sama tanpa kelas, dan di 375px ia tak
-                memakan tinggi karena isinya nihil. */}
-            <Col xs={0} sm={12} aria-hidden="true" />
             {/* Valas: `CurrencyRateFields` memunculkan isian kurs HANYA saat
                 mata uangnya bukan IDR (pasangan client dari
                 `requireRateForForeign` di skema server). Ia memberi DUA sel

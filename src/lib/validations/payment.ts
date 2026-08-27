@@ -1,6 +1,49 @@
 import { z } from "zod";
 import { BASE_CURRENCY, currencyEnum, rateField, requireRateForForeign } from "./fx";
+import { CASH_TYPES } from "@/lib/constants";
 import { vmsg } from "@/lib/i18n/validation";
+
+/**
+ * Kas/bank yang dipakai sebuah pelunasan (migrasi 0059).
+ *
+ * NULL = tidak disebut, dan itu bukan isian yang terlewat melainkan perilaku
+ * LAMA yang dipertahankan: `cashKeyForType(null)` memulangkan slot
+ * `cash_default`, persis yang dipakai setiap pembayaran sebelum kolom ini ada.
+ */
+export const cashTypeField = z
+  .preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : v),
+    z.enum(CASH_TYPES).nullable()
+  )
+  .default(null);
+
+/**
+ * Kas fisik hanya untuk dokumen RUPIAH.
+ *
+ * Slot pemetaan `cash_kas_besar`/`cash_kas_kecil` sengaja TIDAK punya baris per
+ * mata uang — lihat catatan panjang di `posting/mapping.ts`. Karena
+ * `resolveAccountIds` jatuh ke baris agnostik bila tak ada yang cocok, membiarkan
+ * pembayaran USD memilih "kas besar" akan MENGKREDIT akun kas rupiah dengan
+ * nominal dolar: bukan galat, bukan penolakan, hanya angka yang salah tempat.
+ *
+ * Itu persis cacat warisan yang catatan di mapping.ts peringatkan ("foreign
+ * payments already posted into 110102 Kas Besar"). Penjaga ini menutup pintu
+ * yang melahirkannya, alih-alih menambah satu generasi lagi baris yang harus
+ * diperbaiki satu per satu di kemudian hari.
+ *
+ * `bank` tetap boleh untuk mata uang apa pun: slot itu MEMANG punya baris IDR,
+ * USD, dan CNY sendiri.
+ */
+export function requireBankForForeignCash(
+  data: { currency?: string; cashType?: string | null },
+  ctx: z.RefinementCtx,
+  path: (string | number)[] = ["cashType"]
+) {
+  const cashType = data.cashType;
+  if (!cashType || cashType === "bank") return;
+  if ((data.currency || BASE_CURRENCY) === BASE_CURRENCY) return;
+  ctx.addIssue({ code: "custom", path, message: vmsg("validation.cashPhysicalIdrOnly") });
+}
 
 /**
  * Field yang muncul di FORM pembayaran — sama persis untuk pembayaran kontrak
@@ -32,6 +75,7 @@ export const paymentFormFields = {
   // Wajib untuk valas; `requireRateForForeign` yang menegakkannya di refine.
   rate: rateField,
   note: z.string().max(500).trim().optional(),
+  cashType: cashTypeField,
 };
 
 /**
@@ -40,6 +84,9 @@ export const paymentFormFields = {
  */
 export const paymentFormSchema = z
   .object(paymentFormFields)
-  .superRefine(requireRateForForeign);
+  .superRefine((data, ctx) => {
+    requireRateForForeign(data, ctx);
+    requireBankForForeignCash(data, ctx);
+  });
 
 export type PaymentFormInput = z.infer<typeof paymentFormSchema>;

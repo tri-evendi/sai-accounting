@@ -24,7 +24,8 @@
  */
 
 import { useState } from "react";
-import { Flex } from "antd";
+import { Flex, Typography } from "antd";
+import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAppRouter } from "@/components/ui/app-link";
@@ -140,6 +141,8 @@ interface StockPayload {
   note: string;
   /** issue #98 — dimensi HPP gerakan ini. `null` = belum ditetapkan. */
   costCenterId: number | null;
+  /** Pemasok pengirim (migrasi 0058). `null` pada arah selain MASUK. */
+  supplierId: number | null;
 }
 
 /**
@@ -198,6 +201,11 @@ export function StockUpdateForm({
    * disatukan ke muatan saat dikirim.
    */
   const [costCenterId, setCostCenterId] = useState("");
+  /* Pemasok pengirim (migrasi 0058). Hanya untuk arah MASUK, dan OPSIONAL:
+     barang bisa masuk tanpa pemasok yang tercatat — koreksi hitung, kiriman
+     contoh, pengembalian dari gudang lain. Di luar RHF karena payload-nya
+     memang dirakit tangan di bawah, sama seperti `costCenterId`. */
+  const [supplierId, setSupplierId] = useState<number | null>(null);
   const [confirmMessage, setConfirmMessage] = useState("");
 
   // New item form
@@ -380,6 +388,8 @@ export function StockUpdateForm({
       shrinkageValue: values.type === "shrinkage" ? values.shrinkageValue : undefined,
       note: values.note ?? "",
       costCenterId: costCenterPayload(costCenterId),
+      // Hanya arah MASUK yang punya pengirim — skema server menolak sisanya.
+      supplierId: values.type === "in" ? supplierId : null,
     };
 
     if (reduces && item && isLargeStockOut(values.quantity, item.currentStock)) {
@@ -763,6 +773,27 @@ export function StockUpdateForm({
                         : t("inventory.cogsAutoHint")}
                     </span>
                   </p>
+                )}
+                {movementType === "in" && (
+                  <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
+                    {/* Mencari ke server, bukan daftar statis: pemasok yang
+                        lama tidak boleh hilang di balik potongan daftar. */}
+                    <ServerSearchableSelect
+                      id="supplierId"
+                      label={t("inventory.supplierLabel")}
+                      placeholder={t("inventory.supplierPlaceholder")}
+                      emptyText={t("inventory.supplierNoMatch")}
+                      fetchUrl="/api/suppliers?active=1&picker=1"
+                      value={supplierId != null ? String(supplierId) : null}
+                      onChange={(v) => setSupplierId(v == null ? null : Number(v))}
+                    />
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: "var(--ant-font-size-sm)" }}
+                    >
+                      {t("inventory.supplierHint")}
+                    </Typography.Text>
+                  </div>
                 )}
                 <div>
                   <FormField

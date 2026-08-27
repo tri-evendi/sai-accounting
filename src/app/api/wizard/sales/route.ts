@@ -48,7 +48,7 @@ import {
   createInvoiceInTx,
   loadItemNames,
 } from "@/lib/document-writes";
-import { OverInvoiceError } from "@/lib/document-chain";
+import { ContractBuyerMismatchError, OverInvoiceError } from "@/lib/document-chain";
 import { OverIssueError } from "@/lib/delivery-orders";
 import { approvalNotice } from "@/lib/approval-requests";
 
@@ -198,6 +198,13 @@ export async function POST(request: Request) {
   } catch (e) {
     if (e instanceof OverInvoiceError) {
       return stepError("faktur", { text: e.message });
+    }
+    /* Ketidakcocokan pihak dikembalikan ke langkah PELANGGAN, bukan "faktur":
+       di situlah pemilihnya berada, dan wisaya melompat ke langkah yang
+       disebut `step`. Menyebut "faktur" akan membuang pengguna ke layar yang
+       tidak memuat satu pun isian yang bisa memperbaikinya. */
+    if (e instanceof ContractBuyerMismatchError) {
+      return stepError("pelanggan", { text: e.message });
     }
     if (e instanceof OverIssueError) {
       return stepError("pengiriman", { text: e.message });

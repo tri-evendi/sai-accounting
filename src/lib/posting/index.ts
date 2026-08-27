@@ -305,18 +305,25 @@ async function resolveSettlementAccounts(
   docKey: MappingKey,
   docCurrency: string,
   payCurrency: string,
-  needFx: boolean
+  needFx: boolean,
+  /**
+   * Kas/bank yang DISEBUT dokumen pembayarannya (migrasi 0059) — `bank`,
+   * `kas_besar`, `kas_kecil`, atau NULL.
+   *
+   * NULL memulangkan `cash_default` lewat `cashKeyForType`, yaitu slot yang
+   * dipakai setiap pelunasan sebelum kolom itu ada. Karena itu memposting ulang
+   * dokumen lama menghasilkan jurnal yang sama persis: perubahan ini menambah
+   * kemampuan memilih, bukan mengubah bawaan.
+   */
+  cashType?: string | null
 ): Promise<{ cash: number; doc: number; fx?: number }> {
   const fxKeys = needFx ? [MAPPING_KEYS.FX_GAIN_LOSS] : [];
+  const cashKey = cashKeyForType(cashType);
 
   if (docCurrency === payCurrency) {
-    const acc = await resolveAccountIds(
-      [MAPPING_KEYS.CASH_DEFAULT, docKey, ...fxKeys],
-      payCurrency,
-      client
-    );
+    const acc = await resolveAccountIds([cashKey, docKey, ...fxKeys], payCurrency, client);
     return {
-      cash: acc[MAPPING_KEYS.CASH_DEFAULT],
+      cash: acc[cashKey],
       doc: acc[docKey],
       fx: needFx ? acc[MAPPING_KEYS.FX_GAIN_LOSS] : undefined,
     };
@@ -324,10 +331,10 @@ async function resolveSettlementAccounts(
 
   // fx_gain_loss is currency-agnostic (the difference is already an IDR amount),
   // so it rides along with whichever batch; the cash one is always present.
-  const pay = await resolveAccountIds([MAPPING_KEYS.CASH_DEFAULT, ...fxKeys], payCurrency, client);
+  const pay = await resolveAccountIds([cashKey, ...fxKeys], payCurrency, client);
   const docAccountId = await resolveAccountId(docKey, docCurrency, client);
   return {
-    cash: pay[MAPPING_KEYS.CASH_DEFAULT],
+    cash: pay[cashKey],
     doc: docAccountId,
     fx: needFx ? pay[MAPPING_KEYS.FX_GAIN_LOSS] : undefined,
   };
@@ -558,7 +565,8 @@ async function buildInvoicePaymentEntry(
     MAPPING_KEYS.AR_DEFAULT,
     docCurrency,
     currency,
-    !!settles
+    !!settles,
+    payment.cashType
   );
 
   return {
@@ -610,7 +618,8 @@ async function buildContractPaymentEntry(
     MAPPING_KEYS.AR_DEFAULT,
     docCurrency,
     currency,
-    !!settles
+    !!settles,
+    payment.cashType
   );
 
   return {
@@ -686,8 +695,11 @@ async function buildSupplierTransactionEntry(
       client,
       memo
     );
+    // Kas/bank yang disebut pembayarannya (migrasi 0059); NULL → `cash_default`,
+    // slot yang sama seperti sebelum kolom itu ada.
+    const cashKey = cashKeyForType(trx.cashType);
     const acc = await resolveAccountIds(
-      withFxKey([MAPPING_KEYS.AP_DEFAULT, MAPPING_KEYS.CASH_DEFAULT], settles),
+      withFxKey([MAPPING_KEYS.AP_DEFAULT, cashKey], settles),
       currency,
       client
     );
@@ -699,7 +711,7 @@ async function buildSupplierTransactionEntry(
       sourceId: trx.id,
       lines: buildSupplierPaymentLines({
         apAccountId: acc[MAPPING_KEYS.AP_DEFAULT],
-        cashAccountId: acc[MAPPING_KEYS.CASH_DEFAULT],
+        cashAccountId: acc[cashKey],
         fxAccountId: acc[MAPPING_KEYS.FX_GAIN_LOSS],
         amount,
         settles,

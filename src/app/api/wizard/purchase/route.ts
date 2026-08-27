@@ -164,6 +164,10 @@ export async function POST(request: Request) {
               quantity: i.quantity,
               unitCost: i.unitCost,
               note: `Pembelian ${supplierName} — TRX-${transaction.id}`.slice(0, 500),
+              /* Pemasoknya DISTEMPEL, bukan disimpulkan dari `note` (migrasi
+                 0058). Teks di atas tetap ada untuk dibaca manusia; kolomnya
+                 yang membuat Riwayat Stok bisa menyaring dan menjumlahkan. */
+              supplierId,
             }))
           )
         : [];

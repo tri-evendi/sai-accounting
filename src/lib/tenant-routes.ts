@@ -95,6 +95,7 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   // sini apa pun keadaan modulnya, sebab daftar ini soal BENTUK RUTE, bukan
   // soal siapa yang boleh membukanya.
   "work-centers",
+  "boms",
   "invoices",
   "journal",
   /* Dokumen biaya impor (#495 butir 1). */

@@ -22,6 +22,7 @@ import { getT } from "@/lib/i18n/server";
 import { formatNumber } from "@/lib/utils";
 import { averageUnitCostForItem } from "@/lib/posting/cogs";
 import { biayaStandar, explodeBom, type BomInput } from "@/lib/manufacturing/bom";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -141,7 +142,7 @@ export default async function BomDetailPage({
     <div>
       <PageHeader
         breadcrumbs={[{ label: t("boms.breadcrumb"), href: "/boms" }, { label: bom.code }]}
-        title={bom.code}
+        title={<TermTooltip term="resep_produksi">{bom.code}</TermTooltip>}
         description={`${bom.outputItem.name} · ${formatNumber(outputQty)} ${unit}`}
         actions={
           bom.isActive ? (
@@ -166,7 +167,7 @@ export default async function BomDetailPage({
           <>
             <CardContent>
               <p style={{ margin: 0, marginBottom: 8, color: "var(--ant-color-text-secondary)" }}>
-                {t("boms.intermediateTitle")}
+                <TermTooltip term="barang_dalam_proses">{t("boms.intermediateTitle")}</TermTooltip>
               </p>
             </CardContent>
             <StaticTable columns={bahanColumns} rows={antara} rowKey={(r) => `a-${r.itemId}`} />

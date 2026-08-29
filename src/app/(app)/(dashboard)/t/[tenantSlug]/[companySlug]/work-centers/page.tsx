@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { ToolOutlined } from "@ant-design/icons";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,7 @@ export default async function WorkCentersPage({
     {
       key: "overheadRate",
       dataIndex: "overheadRate",
-      title: t("workCenters.colOverhead"),
+      title: <TermTooltip term="overhead_pabrik">{t("workCenters.colOverhead")}</TermTooltip>,
       align: "right",
       render: (_v, row) => <Money value={row.overheadRate} currency="IDR" />,
     },

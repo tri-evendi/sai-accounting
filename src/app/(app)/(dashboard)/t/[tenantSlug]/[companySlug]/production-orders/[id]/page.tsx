@@ -20,6 +20,7 @@ import { formatDate, formatNumber } from "@/lib/utils";
 import { variansPerintahProduksi } from "@/lib/manufacturing/variance-report";
 import { ProductionOrderActions } from "./actions";
 import { statusLabelKey, statusVariant } from "../status";
+import { TermTooltip } from "@/components/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 
@@ -124,13 +125,27 @@ export default async function ProductionOrderDetailPage({
     },
   ];
 
-  /** Arah varians disebut dengan KATA — warna hanya penanda kedua. */
-  const arahLabel = (arah: string) =>
+  /*
+   * Arah selisih disebut dengan KALIMAT, dan DUA kalimat yang berbeda untuk dua
+   * sumbu yang berbeda.
+   *
+   * Pada BIAYA, memakai lebih banyak itu boros. Pada HASIL, menghasilkan lebih
+   * banyak justru bagus. Satu pasangan kata untuk keduanya adalah cara paling
+   * mudah melaporkan kerugian sebagai penghematan — jadi keduanya tidak berbagi
+   * kalimat sama sekali, bukan sekadar dibalik tandanya di satu tempat.
+   */
+  const arahBiaya = (arah: string) =>
     arah === "menguntungkan"
       ? t("productionOrders.favourable")
       : arah === "merugikan"
         ? t("productionOrders.unfavourable")
         : t("productionOrders.onTarget");
+  const arahHasil = (arah: string) =>
+    arah === "menguntungkan"
+      ? t("productionOrders.yieldMore")
+      : arah === "merugikan"
+        ? t("productionOrders.yieldLess")
+        : t("productionOrders.yieldExact");
 
   return (
     <div>
@@ -139,7 +154,7 @@ export default async function ProductionOrderDetailPage({
           { label: t("productionOrders.breadcrumb"), href: "/production-orders" },
           { label: order.orderNo },
         ]}
-        title={order.orderNo}
+        title={<TermTooltip term="perintah_produksi">{order.orderNo}</TermTooltip>}
         description={`${order.outputItem.name} · ${formatNumber(Number(order.plannedQuantity))} ${unit} · ${formatDate(order.date)}`}
         actions={
           <Badge variant={statusVariant(order.status)}>{t(statusLabelKey(order.status))}</Badge>
@@ -204,7 +219,7 @@ export default async function ProductionOrderDetailPage({
                   </dt>
                   <dd style={{ margin: 0 }}>
                     {formatNumber(laporan.varians.hasil.selisih)} {unit} —{" "}
-                    {arahLabel(laporan.varians.hasil.arah)}
+                    {arahHasil(laporan.varians.hasil.arah)}
                   </dd>
                 </div>
               )}
@@ -217,7 +232,7 @@ export default async function ProductionOrderDetailPage({
                 color: "var(--ant-color-text-secondary)",
               }}
             >
-              {t("productionOrders.varianceNote")} — {arahLabel(laporan.varians.arah)}
+              {t("productionOrders.varianceNote")} — {arahBiaya(laporan.varians.arah)}
             </p>
           </CardContent>
         </Card>

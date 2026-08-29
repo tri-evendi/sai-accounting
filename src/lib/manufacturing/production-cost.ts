@@ -136,3 +136,27 @@ export function bagianPenyerapan(
   if (biaya.overhead > 0) bagian.push({ jenis: "overhead", nilai: biaya.overhead });
   return bagian;
 }
+
+// ─── Invarian jurnal ────────────────────────────────────────────────────────
+
+/**
+ * Apakah jurnal gerakan stok ini DIMILIKI perintah produksi?
+ *
+ * Ditulis sebagai fungsi bernama, bukan sebagai satu perbandingan di dalam
+ * `buildStockMovementEntry`, karena ia adalah INVARIAN dan bukan detail: bahan
+ * yang keluar ke produksi menjadi Barang Dalam Proses, bukan Beban Pokok
+ * Penjualan, dan jurnalnya terbit sekali dari perintahnya.
+ *
+ * Kalau invarian ini rusak, kerusakannya tidak mengumumkan diri: nilai bahannya
+ * dibebankan DUA kali — sekali sebagai HPP lewat jalur gerakan, sekali sebagai
+ * WIP lewat jalur perintah — dan kedua jurnal itu seimbang, sehingga tak satu
+ * pun penjaga jurnal akan mengeluh. Yang terlihat hanya laba yang terlalu
+ * rendah dan persediaan yang terlalu kecil, berbulan-bulan kemudian.
+ *
+ * Punya nama berarti punya tes.
+ */
+export function jurnalnyaMilikPerintahProduksi(movement: {
+  productionOrderId: number | null;
+}): boolean {
+  return movement.productionOrderId != null;
+}

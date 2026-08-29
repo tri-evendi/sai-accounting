@@ -899,6 +899,104 @@ export function buildInventoryAdjustmentLines(
   ];
 }
 
+// ─── Manufaktur (issue #495 butir 3) ─────────────────────
+
+export interface ProductionIssueInput {
+  wipAccountId: number;
+  inventoryAccountId: number;
+  /** Nilai bahan yang dikeluarkan, IDR, pada rata-rata tertimbang saat keluar. */
+  value: number;
+  memo: string;
+}
+
+/**
+ * Bahan keluar ke produksi: D Barang Dalam Proses, K Persediaan.
+ *
+ * BUKAN HPP. Barangnya belum terjual — ia hanya berpindah bentuk, dan masih
+ * aset perusahaan. Yang membuat kekeliruan ini mahal: kalau ia dibebankan
+ * sebagai HPP, laba periode ini turun oleh barang yang belum menghasilkan
+ * pendapatan apa pun, dan persediaannya lenyap dari neraca lebih awal.
+ */
+export function buildProductionIssueLines(input: ProductionIssueInput): JournalLineInput[] {
+  const value = round2(input.value);
+  if (value <= 0) {
+    throw new PostingRuleError("Nilai bahan yang dikeluarkan ke produksi harus lebih besar dari nol.");
+  }
+  const base = { currency: "IDR", rate: 1, memo: input.memo } as const;
+  return [
+    { accountId: input.wipAccountId, debit: value, ...base },
+    { accountId: input.inventoryAccountId, credit: value, ...base },
+  ];
+}
+
+export interface ProductionAbsorptionInput {
+  wipAccountId: number;
+  directLaborAccountId: number;
+  factoryOverheadAccountId: number;
+  labor: number;
+  overhead: number;
+  memo: string;
+}
+
+/**
+ * Penyerapan upah & overhead: D Barang Dalam Proses, K beban masing-masing.
+ *
+ * Mengkredit AKUN BEBANNYA SENDIRI, bukan akun kontra "diserap". Yang tersisa
+ * di akun beban itu karena itu persis varians penyerapannya — dan ia terbaca
+ * langsung di Laba Rugi tanpa laporan tambahan.
+ *
+ * Baris bernilai nol TIDAK diterbitkan: jurnal berbaris nol tetap seimbang dan
+ * tetap lolos setiap penjaga, tapi ia memenuhi buku besar dengan baris yang tak
+ * pernah berarti apa pun bagi pembacanya.
+ */
+export function buildProductionAbsorptionLines(
+  input: ProductionAbsorptionInput
+): JournalLineInput[] {
+  const labor = round2(input.labor);
+  const overhead = round2(input.overhead);
+  const total = round2(labor + overhead);
+  if (total <= 0) {
+    throw new PostingRuleError("Tidak ada upah maupun overhead yang diserap.");
+  }
+  const base = { currency: "IDR", rate: 1, memo: input.memo } as const;
+  const lines: JournalLineInput[] = [
+    { accountId: input.wipAccountId, debit: total, ...base },
+  ];
+  if (labor > 0) lines.push({ accountId: input.directLaborAccountId, credit: labor, ...base });
+  if (overhead > 0) {
+    lines.push({ accountId: input.factoryOverheadAccountId, credit: overhead, ...base });
+  }
+  return lines;
+}
+
+export interface ProductionReceiptInput {
+  inventoryAccountId: number;
+  wipAccountId: number;
+  /** Isi WIP yang dipindahkan ke barang jadi, IDR. */
+  value: number;
+  memo: string;
+}
+
+/**
+ * Barang jadi diterima: D Persediaan, K Barang Dalam Proses.
+ *
+ * Memindahkan SELURUH isi WIP perintah itu. WIP karena itu kembali nol setiap
+ * kali sebuah perintah selesai — dan saldo WIP yang tersisa di neraca selalu
+ * berarti "ada perintah yang belum selesai", bukan sisa yang tak bisa
+ * dijelaskan.
+ */
+export function buildProductionReceiptLines(input: ProductionReceiptInput): JournalLineInput[] {
+  const value = round2(input.value);
+  if (value <= 0) {
+    throw new PostingRuleError("Nilai barang jadi yang diterima harus lebih besar dari nol.");
+  }
+  const base = { currency: "IDR", rate: 1, memo: input.memo } as const;
+  return [
+    { accountId: input.inventoryAccountId, debit: value, ...base },
+    { accountId: input.wipAccountId, credit: value, ...base },
+  ];
+}
+
 // ─── Aset tetap: penyusutan & pelepasan (issue #28) ──────
 
 export interface DepreciationInput {

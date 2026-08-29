@@ -47,9 +47,16 @@ import {
 } from "./mapping";
 import { resolveSettlementRate } from "./rates";
 import {
+  akumulasiBiaya,
+  jurnalnyaMilikPerintahProduksi,
+} from "@/lib/manufacturing/production-cost";
+import {
   PostingRuleError,
   buildAdvanceCompensationLines,
   buildAdvanceLines,
+  buildProductionAbsorptionLines,
+  buildProductionIssueLines,
+  buildProductionReceiptLines,
   buildAssetDisposalLines,
   buildCashTransactionLines,
   buildCogsLines,
@@ -115,6 +122,21 @@ export type PostingSourceType =
    * kegagalan: tidak ada yang perlu dipindahkan.
    */
   | "landed_cost"
+  /**
+   * Manufaktur (#495 butir 3). Source ROW ketiganya adalah `production_orders`,
+   * bukan gerakan stoknya — satu jurnal per PERINTAH, bukan per gerakan.
+   *
+   *   • `production_issue`      bahan keluar   → D WIP,        K Persediaan
+   *   • `production_absorption` upah+overhead  → D WIP,        K beban masing-masing
+   *   • `production_receipt`    barang jadi    → D Persediaan, K WIP
+   *
+   * Gerakan stoknya sendiri ditandai `production_order_id`, dan
+   * `buildStockMovementEntry` menolak mempostingnya — kalau tidak, HPP-nya
+   * terbit di ATAS nilai yang sudah pindah ke WIP.
+   */
+  | "production_issue"
+  | "production_absorption"
+  | "production_receipt"
   /** Uang muka received/paid before any invoice exists (issue #26). */
   | "advance_payment"
   /** One compensation of an advance into an invoice/purchase (issue #26). */
@@ -1068,7 +1090,7 @@ async function buildStockMovementEntry(
    * `postForSource` dengan sourceType lama — akan membebankan HPP di atas nilai
    * yang sudah pindah ke WIP. Dua kali, seimbang, dan tanpa satu pun galat.
    */
-  if (movement.productionOrderId != null) return null;
+  if (jurnalnyaMilikPerintahProduksi(movement)) return null;
 
   const unitCost = await averageUnitCostForItem(movement.itemId, movement.date, client);
   // No costed purchase history yet → nothing meaningful to post. Posting a zero
@@ -1109,6 +1131,129 @@ async function buildStockMovementEntry(
  * Tanpa dasar biaya (item belum pernah punya biaya masuk) → tak ada yang
  * diposting; kuantitasnya tetap terkoreksi, konsisten dengan perilaku HPP.
  */
+/**
+ * Muat perintah produksi beserta yang dibutuhkan ketiga jurnalnya.
+ *
+ * Satu pembaca untuk tiga aturan: kalau tiap aturan memuat sendiri, ketiganya
+ * suatu hari akan membaca kolom yang berbeda atas perintah yang sama.
+ */
+async function loadProductionOrder(client: Client, id: number, sourceType: PostingSourceType) {
+  const order = await client.productionOrder.findUnique({
+    where: { id },
+    include: { outputItem: true, components: true, operations: true },
+  });
+  if (!order) throw new SourceNotFoundError(sourceType, id);
+  return order;
+}
+
+async function buildProductionIssueEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const order = await loadProductionOrder(client, ctx.sourceId, "production_issue");
+  const value = round2(
+    order.components.reduce((s, c) => s + (c.issuedCost == null ? 0 : num(c.issuedCost)), 0)
+  );
+  // Belum ada bahan yang dikeluarkan → belum ada yang berpindah ke WIP.
+  if (value <= 0) return null;
+
+  const acc = await resolveAccountIds([MAPPING_KEYS.WIP, MAPPING_KEYS.INVENTORY], "IDR", client);
+  return {
+    date: order.date,
+    type: "adjustment",
+    note: `Bahan ke produksi ${order.orderNo}`,
+    sourceType: "production_issue",
+    sourceId: order.id,
+    lines: buildProductionIssueLines({
+      wipAccountId: acc[MAPPING_KEYS.WIP],
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      value,
+      memo: `${order.orderNo} — ${order.outputItem.name}`,
+    }),
+  };
+}
+
+async function buildProductionAbsorptionEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const order = await loadProductionOrder(client, ctx.sourceId, "production_absorption");
+  const biaya = akumulasiBiaya(
+    [],
+    order.operations.map((op) => ({
+      sequence: op.sequence,
+      name: op.name,
+      standardHours: num(op.standardHours),
+      actualHours: op.actualHours == null ? null : num(op.actualHours),
+      laborRate: num(op.laborRate),
+      overheadRate: num(op.overheadRate),
+    }))
+  );
+  // Tak ada jam yang dilaporkan → tak ada yang diserap. Bukan galat: perintah
+  // tanpa operasi (proses yang seluruhnya bahan) memang sah.
+  if (biaya.tenagaKerja + biaya.overhead <= 0) return null;
+
+  const acc = await resolveAccountIds(
+    [MAPPING_KEYS.WIP, MAPPING_KEYS.DIRECT_LABOR, MAPPING_KEYS.FACTORY_OVERHEAD],
+    "IDR",
+    client
+  );
+  return {
+    date: order.date,
+    type: "adjustment",
+    note: `Penyerapan upah & overhead ${order.orderNo}`,
+    sourceType: "production_absorption",
+    sourceId: order.id,
+    lines: buildProductionAbsorptionLines({
+      wipAccountId: acc[MAPPING_KEYS.WIP],
+      directLaborAccountId: acc[MAPPING_KEYS.DIRECT_LABOR],
+      factoryOverheadAccountId: acc[MAPPING_KEYS.FACTORY_OVERHEAD],
+      labor: biaya.tenagaKerja,
+      overhead: biaya.overhead,
+      memo: `${order.orderNo} — ${order.outputItem.name}`,
+    }),
+  };
+}
+
+async function buildProductionReceiptEntry(
+  client: Client,
+  ctx: PostingContext
+): Promise<JournalEntryInput | null> {
+  const order = await loadProductionOrder(client, ctx.sourceId, "production_receipt");
+  const biaya = akumulasiBiaya(
+    order.components.map((c) => ({
+      itemId: c.itemId,
+      itemName: c.itemName,
+      issuedQuantity: c.issuedQuantity == null ? 0 : num(c.issuedQuantity),
+      issuedCost: c.issuedCost == null ? 0 : num(c.issuedCost),
+    })),
+    order.operations.map((op) => ({
+      sequence: op.sequence,
+      name: op.name,
+      standardHours: num(op.standardHours),
+      actualHours: op.actualHours == null ? null : num(op.actualHours),
+      laborRate: num(op.laborRate),
+      overheadRate: num(op.overheadRate),
+    }))
+  );
+  if (biaya.total <= 0) return null;
+
+  const acc = await resolveAccountIds([MAPPING_KEYS.INVENTORY, MAPPING_KEYS.WIP], "IDR", client);
+  return {
+    date: order.date,
+    type: "adjustment",
+    note: `Barang jadi ${order.orderNo}`,
+    sourceType: "production_receipt",
+    sourceId: order.id,
+    lines: buildProductionReceiptLines({
+      inventoryAccountId: acc[MAPPING_KEYS.INVENTORY],
+      wipAccountId: acc[MAPPING_KEYS.WIP],
+      value: biaya.total,
+      memo: `${order.orderNo} — ${order.outputItem.name}`,
+    }),
+  };
+}
+
 async function buildStockAdjustmentEntry(
   client: Client,
   ctx: PostingContext
@@ -1392,6 +1537,12 @@ async function buildEntry(
       return buildStockAdjustmentEntry(client, ctx);
     case "landed_cost":
       return buildLandedCostEntry(client, ctx);
+    case "production_issue":
+      return buildProductionIssueEntry(client, ctx);
+    case "production_absorption":
+      return buildProductionAbsorptionEntry(client, ctx);
+    case "production_receipt":
+      return buildProductionReceiptEntry(client, ctx);
     case "advance_payment":
       return buildAdvancePaymentEntry(client, ctx);
     case "advance_application":
@@ -1459,6 +1610,17 @@ const own =
 const none: CostCenterLookup = async () => null;
 
 const COST_CENTER_OF: Record<PostingSourceType, CostCenterLookup> = {
+  /*
+   * Manufaktur (#495 butir 3): kolomnya ada di kepala perintah produksi, dan
+   * KETIGA jurnalnya membacanya dari sana. Bahan yang keluar, upah yang
+   * diserap, dan barang jadi yang diterima adalah satu peristiwa produksi —
+   * membiarkan salah satunya berdimensi berbeda akan memecah harga pokok satu
+   * batch ke dua cabang.
+   */
+  production_issue: own((c) => c.productionOrder),
+  production_absorption: own((c) => c.productionOrder),
+  production_receipt: own((c) => c.productionOrder),
+
   // ── Dokumen sumber fase 1: kolomnya ada di kepala dokumen itu sendiri.
   invoice: own((c) => c.invoice),
   supplier_transaction: own((c) => c.supplierTransaction),

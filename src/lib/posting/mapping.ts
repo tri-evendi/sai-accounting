@@ -111,6 +111,12 @@ export const MAPPING_KEYS = {
    * satu angka, dan angka itu tidak menjawab satu pun di antaranya.
    */
   PROCESS_SHRINKAGE: "process_shrinkage",
+  /** Barang Dalam Proses — nilai yang sedang diolah (#495 butir 3). */
+  WIP: "wip",
+  /** Beban Upah Langsung. Dikredit saat produksi menyerapnya; sisanya varians. */
+  DIRECT_LABOR: "direct_labor",
+  /** Beban Overhead Pabrik. Dikredit saat diserap; sisanya varians penyerapan. */
+  FACTORY_OVERHEAD: "factory_overhead",
   /**
    * Selisih Harga Pokok (issue #495 butir 1) — tempat mendaratnya bagian biaya
    * impor yang jatuh pada barang yang SUDAH TERJUAL.
@@ -140,6 +146,9 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   ap_default: "Hutang Usaha",
   inventory: "Persediaan",
   cogs: "Beban Pokok Penjualan",
+  wip: "Barang Dalam Proses",
+  direct_labor: "Beban Upah Langsung",
+  factory_overhead: "Beban Overhead Pabrik",
   cash_default: "Kas/Bank (default)",
   cash_bank: "Bank",
   cash_kas_besar: "Kas Besar",
@@ -177,6 +186,11 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.INVENTORY_ADJUSTMENT, code: "610105" },
   { key: MAPPING_KEYS.PROCESS_SHRINKAGE, code: "610106" },
   { key: MAPPING_KEYS.COGS_VARIANCE, code: "5102" },
+  // Manufaktur (#495 butir 3). Agnostik mata uang: produksi dinilai dari harga
+  // pokok persediaan, yang di buku ini selalu IDR.
+  { key: MAPPING_KEYS.WIP, code: "1106" },
+  { key: MAPPING_KEYS.DIRECT_LABOR, code: "5103" },
+  { key: MAPPING_KEYS.FACTORY_OVERHEAD, code: "5104" },
   { key: MAPPING_KEYS.PURCHASE_EXPENSE, code: "610104" },
   // 7101 Laba/Rugi Selisih Kurs. The live Accurate books use 720103 "Laba/Rugi
   // Terealisasi (CNY)"; this seeds the equivalent slot in the template COA, and a

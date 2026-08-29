@@ -1058,6 +1058,18 @@ async function buildStockMovementEntry(
   // so only outgoing movements produce a COGS journal here.
   if (movement.type !== "out") return null;
 
+  /*
+   * Bahan yang keluar KE PRODUKSI tidak menjadi HPP — ia menjadi Barang Dalam
+   * Proses, dan jurnalnya diterbitkan SEKALI oleh perintah produksinya
+   * (`production_issue`), bukan sekali per gerakan.
+   *
+   * Tanpa penolakan ini, memposting ulang gerakan itu lewat jalur biasa —
+   * `repostForSource`, penyemaian ulang, atau sekadar seseorang yang memanggil
+   * `postForSource` dengan sourceType lama — akan membebankan HPP di atas nilai
+   * yang sudah pindah ke WIP. Dua kali, seimbang, dan tanpa satu pun galat.
+   */
+  if (movement.productionOrderId != null) return null;
+
   const unitCost = await averageUnitCostForItem(movement.itemId, movement.date, client);
   // No costed purchase history yet → nothing meaningful to post. Posting a zero
   // or guessed cost would understate COGS silently.

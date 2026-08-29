@@ -547,6 +547,10 @@ model Item {
 
   /// Pergerakan stok barang ini — SATU baris = satu masuk/keluar, bukan saldo.
   stockMovements      StockMovement[]
+  /// Resep yang MENGHASILKAN barang ini (#495 butir 3).
+  bomOutputs          BillOfMaterial[] @relation("bom_output")
+  /// Baris resep yang MEMAKAI barang ini sebagai bahan.
+  bomComponents       BomComponent[]   @relation("bom_component")
   /// Return lines that move THIS item back in/out of stock (issue #27).
   salesReturnItems    SalesReturnItem[]
   purchaseReturnItems PurchaseReturnItem[]
@@ -2437,4 +2441,122 @@ model RecurringOccurrence {
   @@unique([templateId, occurrenceDate])
   @@index([status])
   @@map("recurring_occurrences")
+}
+
+// ─── Manufaktur (issue #495 butir 3) ────────────────────────────────────────
+//
+// ══ URUTANNYA SENGAJA: MESIN DULU, AKUN MENYUSUL ═══════════════════════════
+// `coa-seeding.ts` memperingatkan akun yang lahir tanpa mekanisme pengisi:
+// ia bersaldo nol selamanya sambil tetap memenuhi setiap pemilih akun. Karena
+// itu tahap ini HANYA data induk + aritmetika — belum ada akun WIP, belum ada
+// aturan posting. Keduanya menyusul ketika perintah produksi bisa menulis.
+//
+// ══ TIDAK ADA MESIN PERSEDIAAN KEDUA ═══════════════════════════════════════
+// Produksi nanti mengeluarkan & memasukkan barang lewat `stock_movements` yang
+// sudah ada, dengan rata-rata tertimbang yang sudah ada. Tabel di bawah
+// menyimpan RESEP dan RENCANA; ia tidak pernah menyimpan saldo.
+
+/// Resep produksi: satu barang keluaran, sekumpulan bahan, dan urutan kerjanya.
+///
+/// BERTINGKAT lewat data, bukan lewat kolom: sebuah bahan boleh merupakan
+/// keluaran resep lain, dan `explodeBom` menurunkannya sampai daun. Tidak ada
+/// kolom "level" — level adalah sifat pohonnya saat dihitung, bukan fakta yang
+/// disimpan, dan menyimpannya berarti ia bisa basi terhadap resepnya sendiri.
+model BillOfMaterial {
+  id             Int      @id @default(autoincrement())
+  code           String   @unique @db.VarChar(30)
+  /// Barang yang DIHASILKAN sekali jalan resep ini.
+  outputItemId   Int      @map("output_item_id")
+  /// Berapa banyak yang dihasilkan sekali jalan. `Decimal(15,3)` — sama dengan
+  /// grain kuantitas stok, supaya tak ada pembulatan di perbatasan.
+  outputQuantity Decimal  @map("output_quantity") @db.Decimal(15, 3)
+  notes          String?  @db.Text
+  /// Master data dinonaktifkan, bukan dihapus (docs/DATABASE.md §1.3).
+  isActive       Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  outputItem Item             @relation("bom_output", fields: [outputItemId], references: [id], onDelete: Restrict)
+  components BomComponent[]
+  operations BomOperation[]
+
+  @@index([outputItemId])
+  @@index([isActive])
+  @@map("bills_of_material")
+}
+
+/// Satu bahan yang dipakai sebuah resep.
+model BomComponent {
+  id       Int     @id @default(autoincrement())
+  bomId    Int     @map("bom_id")
+  itemId   Int     @map("item_id")
+  /// Kebutuhan BERSIH sekali jalan resep, sebelum susut.
+  quantity Decimal @db.Decimal(15, 3)
+  /// Susut yang DIHARAPKAN, dalam persen. Kebutuhan kotornya
+  /// `quantity / (1 - scrap/100)` — lihat `kebutuhanKotor` di lib/manufacturing.
+  ///
+  /// Ditolak pada 100 ke atas: pada 100 pembaginya nol, dan "seluruhnya susut"
+  /// bukan resep melainkan pembuangan.
+  scrapPercent Decimal @default(0) @map("scrap_percent") @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bom  BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  item Item           @relation("bom_component", fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([bomId])
+  @@index([itemId])
+  @@map("bom_components")
+}
+
+/// Stasiun kerja — tempat sebuah operasi dikerjakan, beserta tarifnya.
+///
+/// Dua tarif TERPISAH, bukan satu tarif gabungan: tenaga kerja langsung dan
+/// overhead mendarat di akun yang berbeda, dan variansnya dihitung terhadap
+/// dasar yang berbeda. Menggabungkannya di sini berarti memisahkannya kembali
+/// dengan tebakan di hilir.
+model WorkCenter {
+  id           Int     @id @default(autoincrement())
+  code         String  @unique @db.VarChar(20)
+  name         String  @db.VarChar(100)
+  /// Tarif tenaga kerja langsung per jam, IDR.
+  laborRate    Decimal @default(0) @map("labor_rate") @db.Decimal(15, 2)
+  /// Tarif overhead yang DISERAP per jam, IDR. Penyerapan, bukan beban
+  /// sesungguhnya — selisihnya adalah varians overhead.
+  overheadRate Decimal @default(0) @map("overhead_rate") @db.Decimal(15, 2)
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  operations BomOperation[]
+
+  @@index([isActive])
+  @@map("work_centers")
+}
+
+/// Satu langkah kerja pada sebuah resep (routing).
+model BomOperation {
+  id            Int     @id @default(autoincrement())
+  bomId         Int     @map("bom_id")
+  /// Urutan langkah. Unik per resep — dua langkah bernomor sama tidak punya
+  /// urutan yang bisa ditentukan, dan laporan varians membacanya berurutan.
+  sequence      Int
+  workCenterId  Int     @map("work_center_id")
+  name          String  @db.VarChar(100)
+  /// Jam STANDAR sekali jalan resep. Dasar penyerapan tenaga kerja & overhead,
+  /// dan pembanding varians efisiensi.
+  standardHours Decimal @map("standard_hours") @db.Decimal(15, 3)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bom        BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  workCenter WorkCenter     @relation(fields: [workCenterId], references: [id], onDelete: Restrict)
+
+  @@unique([bomId, sequence])
+  @@index([workCenterId])
+  @@map("bom_operations")
 }

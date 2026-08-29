@@ -304,6 +304,7 @@
       "inventoryMovement": "Stock History",
       "inventoryUpdate": "Add / Remove Stock",
       "inventoryOpname": "Stock Count",
+      "workCenters": "Work Centres",
       "fixedAssets": "Company-Owned Assets",
       "reports": "Report Centre",
       "budget": "Plans & Targets",
@@ -1408,6 +1409,20 @@
     "updateFailed": "Could not save the consignee changes",
     "loading": "Loading consignee...",
     "activeHint": "An inactive consignee no longer appears in the Contract picker, but existing contracts stay linked."
+  },
+  "workCenters": {
+    "title": "Work Centres",
+    "addNew": "Add work centre",
+    "codeTaken": "That work centre code is already in use.",
+    "colCode": "Code",
+    "colLabor": "Labour rate / hour",
+    "colOverhead": "Overhead rate / hour",
+    "emptyTitle": "No work centres yet",
+    "emptyDescription": "A work centre is where a production step happens, with its labour and overhead rate per hour. Those rates are what absorb cost into work in progress.",
+    "createTitle": "New work centre",
+    "rateHint": "Per hour, in rupiah. May be zero when nothing is charged.",
+    "breadcrumb": "Work Centres",
+    "saveFailed": "The work centre could not be saved."
   },
   "customers": {
     "activeHint": "An inactive customer no longer appears in the Invoice picker, but existing documents stay linked.",
@@ -3869,7 +3884,15 @@
     "itemCodeRequired": "Item code is required",
     "shrinkageValuePositive": "Shrinkage value must be greater than zero",
     "shrinkageValueRequired": "Shrinkage value is required for Process Result",
-    "taxRateDateInvalid": "The effective date must be a real date (YYYY-MM-DD)"
+    "taxRateDateInvalid": "The effective date must be a real date (YYYY-MM-DD)",
+    "codeRequired": "Code is required",
+    "rateNotNegative": "A rate cannot be negative",
+    "scrapNotNegative": "Scrap cannot be negative",
+    "scrapBelow100": "Scrap must be below 100% — at 100% no output is left.",
+    "hoursNotNegative": "Hours cannot be negative",
+    "pickWorkCenter": "Choose a work centre",
+    "pickBom": "Choose a bill of materials",
+    "producedPositive": "Output must be more than zero. Materials consumed with no output are recorded as process shrinkage."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",

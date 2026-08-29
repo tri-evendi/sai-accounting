@@ -304,6 +304,7 @@
       "inventoryMovement": "Riwayat Stok",
       "inventoryUpdate": "Tambah / Kurangi Stok",
       "inventoryOpname": "Hitung Ulang Stok",
+      "workCenters": "Stasiun Kerja",
       "fixedAssets": "Barang Milik Perusahaan",
       "reports": "Pusat Laporan",
       "budget": "Rencana & Target",
@@ -1408,6 +1409,20 @@
     "updateFailed": "Gagal menyimpan perubahan penerima barang",
     "loading": "Memuat data penerima barang...",
     "activeHint": "Penerima barang nonaktif tidak muncul di pilihan Kontrak, tetapi kontrak lama tetap tertaut."
+  },
+  "workCenters": {
+    "title": "Stasiun Kerja",
+    "addNew": "Tambah Stasiun Kerja",
+    "codeTaken": "Kode stasiun kerja itu sudah dipakai.",
+    "colCode": "Kode",
+    "colLabor": "Tarif Upah / jam",
+    "colOverhead": "Tarif Overhead / jam",
+    "emptyTitle": "Belum ada stasiun kerja",
+    "emptyDescription": "Stasiun kerja adalah tempat sebuah langkah produksi dikerjakan, beserta tarif upah dan overhead per jamnya. Tarifnya dipakai menyerap biaya ke Barang Dalam Proses.",
+    "createTitle": "Stasiun Kerja Baru",
+    "rateHint": "Per jam, dalam rupiah. Boleh nol bila memang tidak dibebankan.",
+    "breadcrumb": "Stasiun Kerja",
+    "saveFailed": "Stasiun kerja gagal disimpan."
   },
   "customers": {
     "activeHint": "Pelanggan nonaktif tidak muncul di pilihan Tagihan, tetapi dokumen lama tetap tertaut.",
@@ -3869,7 +3884,15 @@
     "itemCodeRequired": "Kode barang wajib diisi",
     "shrinkageValuePositive": "Nilai susut harus lebih dari nol",
     "shrinkageValueRequired": "Nilai susut wajib diisi untuk Hasil Proses",
-    "taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)"
+    "taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)",
+    "codeRequired": "Kode wajib diisi",
+    "rateNotNegative": "Tarif tidak boleh negatif",
+    "scrapNotNegative": "Susut tidak boleh negatif",
+    "scrapBelow100": "Susut harus di bawah 100% — pada 100% tidak ada keluaran yang tersisa.",
+    "hoursNotNegative": "Jam tidak boleh negatif",
+    "pickWorkCenter": "Pilih stasiun kerja",
+    "pickBom": "Pilih resep produksi",
+    "producedPositive": "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses."
   },
   "taxSettings": {
     "sectionTitle": "PPN",

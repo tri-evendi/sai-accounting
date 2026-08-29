@@ -241,7 +241,7 @@ const SRC = join(__dirname, "..", "src");
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 177;
+const AMBANG_KLIEN = 178;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -359,6 +359,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/seller-identity-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/work-centers/new/work-center-form.tsx",
   "app/(app)/(operator)/operator/login/login-form.tsx",
   "app/(app)/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
   "app/(app)/(tenant)/(panel)/companies/new/company-form.tsx",

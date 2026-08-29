@@ -207,6 +207,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/inventory/movement", label: "Riwayat Stok", labelKey: "nav.items.inventoryMovement", icon: "PackageOpen", permission: "inventory.read", termKey: "kartu_stok" },
       { href: "/inventory/update", label: "Tambah / Kurangi Stok", labelKey: "nav.items.inventoryUpdate", icon: "PackagePlus", permission: "inventory.write", termKey: "persediaan" },
       { href: "/inventory/opname", label: "Hitung Ulang Stok", labelKey: "nav.items.inventoryOpname", icon: "ClipboardCheck", permission: "inventory.write", termKey: "stok_opname" },
+      /* Manufaktur (#495 butir 3) — di bawah "Stok & Aset" karena ia mengubah
+         barang menjadi barang, bukan menjual atau membelinya. Modulnya OPT-IN:
+         ketiga menu ini tidak muncul sampai seseorang menyalakannya sengaja. */
+      { href: "/work-centers", label: "Stasiun Kerja", labelKey: "nav.items.workCenters", icon: "Wrench", permission: "work_center.manage" },
       { href: "/fixed-assets", label: "Barang Milik Perusahaan", labelKey: "nav.items.fixedAssets", icon: "Building2", permission: "fixed_asset.read", termKey: "aset_tetap" },
     ],
   },

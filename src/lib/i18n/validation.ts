@@ -330,4 +330,18 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.shrinkageValuePositive": "Nilai susut harus lebih dari nol",
   "validation.shrinkageValueRequired": "Nilai susut wajib diisi untuk Hasil Proses",
   "validation.taxRateDateInvalid": "Tanggal mulai berlaku harus tanggal yang sah (YYYY-MM-DD)",
+  // Manufaktur (#495 butir 3). Urutannya CERMIN `id.json` — penjaganya
+  // (`tests/i18n-validation`) menuntut kunci yang sama pada urutan yang sama,
+  // supaya kamus dan sumbernya tidak bisa menyimpang diam-diam.
+  // `nameRequired` dipakai ulang dari atas.
+  "validation.codeRequired": "Kode wajib diisi",
+  "validation.rateNotNegative": "Tarif tidak boleh negatif",
+  "validation.scrapNotNegative": "Susut tidak boleh negatif",
+  "validation.scrapBelow100":
+    "Susut harus di bawah 100% — pada 100% tidak ada keluaran yang tersisa.",
+  "validation.hoursNotNegative": "Jam tidak boleh negatif",
+  "validation.pickWorkCenter": "Pilih stasiun kerja",
+  "validation.pickBom": "Pilih resep produksi",
+  "validation.producedPositive":
+    "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses.",
 };

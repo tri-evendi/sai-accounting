@@ -304,6 +304,7 @@
       "inventoryMovement": "库存变动记录",
       "inventoryUpdate": "增加 / 减少库存",
       "inventoryOpname": "库存盘点",
+      "workCenters": "工作中心",
       "fixedAssets": "公司资产",
       "reports": "报表中心",
       "budget": "计划与目标",
@@ -1408,6 +1409,20 @@
     "updateFailed": "保存收货人修改失败",
     "loading": "正在加载收货人资料...",
     "activeHint": "已停用的收货人不再出现在合同的选择列表中，但既有合同的关联仍然保留。"
+  },
+  "workCenters": {
+    "title": "工作中心",
+    "addNew": "新增工作中心",
+    "codeTaken": "该工作中心编码已被使用。",
+    "colCode": "编码",
+    "colLabor": "人工费率／小时",
+    "colOverhead": "制造费用费率／小时",
+    "emptyTitle": "尚无工作中心",
+    "emptyDescription": "工作中心是生产步骤发生的场所，并带有每小时的人工与制造费用费率。这些费率用于将成本吸收进在制品。",
+    "createTitle": "新建工作中心",
+    "rateHint": "每小时，以印尼盾计。若不计费可填零。",
+    "breadcrumb": "工作中心",
+    "saveFailed": "工作中心保存失败。"
   },
   "customers": {
     "activeHint": "已停用的客户不再出现在发票的选择列表中，但既有单据的关联仍然保留。",
@@ -3778,7 +3793,7 @@
     "compensationExceedsAdvance": "抵扣金额（{amount} {currency}）超过预付款余额（{remaining} {currency}）。",
     "rejectionNoteRequired": "请填写拒绝理由（至少 5 个字符）。",
     "identifierRequired": "请输入邮箱或用户名",
-    "nameRequired": "请输入姓名",
+    "nameRequired": "名称为必填",
     "termsRequired": "您必须同意条款与条件",
     "passwordRequired": "请填写密码",
     "currentPasswordRequired": "请填写当前密码",
@@ -3869,7 +3884,15 @@
     "itemCodeRequired": "请填写货物编号",
     "shrinkageValuePositive": "损耗金额必须大于零",
     "shrinkageValueRequired": "「加工结果」必须填写损耗金额",
-    "taxRateDateInvalid": "生效日期必须是有效日期（YYYY-MM-DD）"
+    "taxRateDateInvalid": "生效日期必须是有效日期（YYYY-MM-DD）",
+    "codeRequired": "编码为必填",
+    "rateNotNegative": "费率不能为负",
+    "scrapNotNegative": "损耗不能为负",
+    "scrapBelow100": "损耗须低于 100%——在 100% 时没有产出剩余。",
+    "hoursNotNegative": "工时不能为负",
+    "pickWorkCenter": "请选择工作中心",
+    "pickBom": "请选择物料清单",
+    "producedPositive": "产出须大于零。耗用物料而无产出的，应记为过程损耗。"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",

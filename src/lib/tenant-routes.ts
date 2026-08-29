@@ -91,6 +91,10 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   "fixed-assets",
   "glossary",
   "inventory",
+  // Manufaktur (#495 butir 3) — modul opt-in; segmennya tetap terdaftar di
+  // sini apa pun keadaan modulnya, sebab daftar ini soal BENTUK RUTE, bukan
+  // soal siapa yang boleh membukanya.
+  "work-centers",
   "invoices",
   "journal",
   /* Dokumen biaya impor (#495 butir 1). */

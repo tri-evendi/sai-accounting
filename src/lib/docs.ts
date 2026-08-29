@@ -395,6 +395,8 @@ export const NAV_TANPA_DOKUMEN: Readonly<Record<string, string>> = {
     "Gelombang berikutnya. Uang muka adalah kelas kesalahan tersendiri (uang berpindah sebelum kewajibannya ada) dan pantas mendapat halamannya sendiri, bukan satu paragraf.",
   "/fixed-assets":
     "Gelombang berikutnya. Penyusutan adalah contoh terbaik “kenapa mesinnya begitu” yang tersisa: biaya yang tidak pernah menjadi pengeluaran kas.",
+  "/work-centers":
+    "Gelombang berikutnya — bersama Resep Produksi & Perintah Produksi (#495 butir 3). Stasiun kerja sendirian tidak bisa dijelaskan: halamannya hanya akan menerangkan dua isian tarif tanpa bisa menyebut apa yang menyerapnya, kapan, dan ke akun mana. Ceritanya (“kenapa jam sungguhan, bukan jam standar”; “kenapa menyerap dengan mengkredit akun bebannya sendiri”) baru berdiri setelah perintah produksi punya layarnya.",
   "/tax/efaktur":
     "Gelombang berikutnya. Menyentuh aturan DJP yang berubah di luar kendali aplikasi ini; dokumen yang salah di sini lebih mahal daripada tidak ada dokumen.",
   "/customers":

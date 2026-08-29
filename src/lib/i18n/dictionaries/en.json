@@ -4074,12 +4074,14 @@
       "commodity_trading": "Commodity Trading / Export",
       "distribution": "Distribution / Wholesale",
       "services": "Services / Agency",
+      "manufacturing": "Manufacturing",
       "custom": "Choose Yourself"
     },
     "categoryDesc": {
       "commodity_trading": "Trading goods with contracts, delivery orders, and export documents. Every module on.",
       "distribution": "Trading warehoused goods, without forward contracts or export documents.",
       "services": "No goods at all: no stock and no trading layer.",
+      "manufacturing": "Buys materials, turns them into other goods, then sells them. Everything trading has, plus recipes and production orders.",
       "custom": "Start minimal — core bookkeeping only. Switch on the modules you use whenever you like; their accounts are created at that moment."
     }
   },

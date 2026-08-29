@@ -87,9 +87,19 @@ export const CORE_MODULE: BusinessModule = "core_accounting";
  * Manufaktur — resep, stasiun kerja, perintah produksi — adalah permukaan besar
  * bagi eksportir rempah yang tidak pernah menyusun BOM.
  *
- * Ia karena itu dinyalakan SENGAJA di Pengaturan, dan tidak pernah menyala
- * sendiri. Modul biasa tetap seperti dulu: yang ditambahkan ke daftar utama ikut
- * menyala untuk perusahaan yang tak pernah mematikan apa pun.
+ * Ia karena itu dinyalakan SENGAJA, dan tidak pernah menyala sendiri. Modul
+ * biasa tetap seperti dulu: yang ditambahkan ke daftar utama ikut menyala untuk
+ * perusahaan yang tak pernah mematikan apa pun.
+ *
+ * ══ "SENGAJA" TERMASUK MEMILIH KATEGORINYA ═════════════════════════════════
+ * Aturan ini semula berbunyi "tidak pernah ikut preset MANA PUN", dan itu
+ * terlalu lebar. Seseorang yang memilih kategori usaha bernama "Manufaktur" di
+ * penyiapan SEDANG MEMINTA modul manufaktur — menolaknya di situ berarti
+ * menyuruhnya menyalakan sendiri hal yang baru saja ia sebutkan.
+ *
+ * Bunyi yang benar: modul opt-in tidak ikut preset yang TIDAK MENYEBUTNYA.
+ * Preset yang memang tentang dirinya boleh memuatnya, dan hanya itu.
+ * `presetTanpaOptIn` di bawah menegakkan sisi pertamanya.
  */
 export const OPT_IN_MODULES: readonly BusinessModule[] = ["manufacturing"];
 
@@ -102,6 +112,15 @@ const DEFAULT_MODULES: ReadonlySet<BusinessModule> = new Set(
 
 /** Modul ini harus dinyalakan sengaja? */
 export const isOptInModule = (module: BusinessModule): boolean => OPT_IN_SET.has(module);
+
+/**
+ * Seluruh modul BAWAAN — dipakai preset yang tidak menyebut modul opt-in.
+ *
+ * Diturunkan dari daftarnya, bukan diketik ulang: modul BIASA yang ditambahkan
+ * kemudian ikut sendiri ke setiap preset yang memakai pembantu ini.
+ */
+const presetTanpaOptIn = (): BusinessModule[] =>
+  BUSINESS_MODULES.filter((m) => !OPT_IN_SET.has(m));
 
 const MODULE_SET: ReadonlySet<string> = new Set(BUSINESS_MODULES);
 
@@ -313,6 +332,18 @@ export const BUSINESS_CATEGORIES = [
   "commodity_trading",
   "distribution",
   "services",
+  /*
+   * Manufaktur (#495 butir 3) — satu-satunya kategori yang MENYEBUT modul
+   * opt-in, dan karena itu satu-satunya yang boleh menyalakannya lewat preset.
+   *
+   * Ia bukan kategori kosmetik: ia membawa perilaku sendiri (resep, perintah
+   * produksi, penyerapan upah & overhead) DAN akun sendiri (1106 Barang Dalam
+   * Proses, 5103, 5104). Kategori yang tidak membawa keduanya jatuh ke rambu
+   * #495 — "menu yang disembunyikan bukan modul" — dan itu sebabnya Impor &
+   * Ekspor TIDAK menjadi kategori tersendiri: himpunan modulnya persis sama
+   * dengan perdagangan komoditas.
+   */
+  "manufacturing",
   "custom",
 ] as const;
 
@@ -331,7 +362,7 @@ export const CATEGORY_MODULES: Record<BusinessCategory, readonly BusinessModule[
    * mana pun — kalau ia ikut, "opt-in" hanya berlaku bagi buku lama dan
    * perusahaan baru tetap mendapatkannya tanpa meminta.
    */
-  commodity_trading: BUSINESS_MODULES.filter((m) => !OPT_IN_SET.has(m)),
+  commodity_trading: presetTanpaOptIn(),
   // Distributor / grosir: jual-beli barang bergudang, tanpa kontrak berjangka,
   // surat jalan ekspor, maupun arsip dokumen pelabuhan.
   distribution: [
@@ -344,7 +375,19 @@ export const CATEGORY_MODULES: Record<BusinessCategory, readonly BusinessModule[
     "tax_id",
   ],
   // Jasa / agensi: tak ada barang sama sekali — tanpa stok, tanpa lapisan dagang.
+  //
+  // Retur IKUT sejak koreksi pemetaan (ia milik `sales`): perusahaan jasa pun
+  // menerbitkan nota kredit atas fakturnya. Surat jalan TIDAK ikut, dan itu
+  // benar — ia milik `inventory`, dan jasa memang tak punya barang.
   services: ["sales", "purchasing", "cash_bank", "fixed_assets", "approvals", "tax_id"],
+  /*
+   * Manufaktur: seluruh modul bawaan DITAMBAH manufaktur.
+   *
+   * Sebuah pabrik tetap membeli, menjual, bergudang, dan mengekspor — yang
+   * membedakannya adalah ia MENGUBAH barang di antaranya. Karena itu presetnya
+   * bukan himpunan yang lebih sempit melainkan yang lebih luas.
+   */
+  manufacturing: [...presetTanpaOptIn(), "manufacturing"],
   /*
    * Pilih sendiri: mulai MINIMAL — hanya inti — lalu nyalakan yang dipakai.
    *
@@ -377,6 +420,10 @@ export const CATEGORY_META: Record<
   services: {
     labelKey: "modules.category.services",
     descriptionKey: "modules.categoryDesc.services",
+  },
+  manufacturing: {
+    labelKey: "modules.category.manufacturing",
+    descriptionKey: "modules.categoryDesc.manufacturing",
   },
   custom: { labelKey: "modules.category.custom", descriptionKey: "modules.categoryDesc.custom" },
 };

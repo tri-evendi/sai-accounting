@@ -304,6 +304,50 @@ describe("preset kategori usaha: hanya NILAI AWAL", () => {
     }
   });
 
+  it("HANYA kategori manufaktur yang menyalakan modul opt-in", () => {
+    /*
+     * Dua sisi, dan keduanya penting.
+     *
+     * Aturannya semula "opt-in tidak ikut preset MANA PUN" — terlalu lebar:
+     * orang yang memilih kategori bernama "Manufaktur" SEDANG MEMINTA modulnya,
+     * dan menolaknya di situ berarti menyuruhnya menyalakan sendiri hal yang
+     * baru saja ia sebutkan.
+     *
+     * Bunyi yang benar: opt-in tidak ikut preset yang TIDAK MENYEBUTNYA.
+     */
+    for (const kategori of ["commodity_trading", "distribution", "services", "custom"] as const) {
+      expect(modulesForCategory(kategori), kategori).not.toContain("manufacturing");
+    }
+    expect(modulesForCategory("manufacturing")).toContain("manufacturing");
+  });
+
+  it("kategori manufaktur adalah SUPERSET perdagangan, bukan himpunan yang lebih sempit", () => {
+    // Pabrik tetap membeli, menjual, bergudang, dan mengekspor — yang
+    // membedakannya adalah ia MENGUBAH barang di antaranya.
+    const dagang = modulesForCategory("commodity_trading");
+    const pabrik = modulesForCategory("manufacturing");
+    for (const m of dagang) expect(pabrik, m).toContain(m);
+    expect(pabrik.length).toBe(dagang.length + 1);
+  });
+
+  it("jasa kini bisa mencatat retur — ia milik `sales`, bukan `trading`", () => {
+    // Koreksi pemetaan: perusahaan jasa pun menerbitkan nota kredit atas
+    // fakturnya. Surat jalan TETAP tidak ikut — ia milik `inventory`.
+    const jasa = new Set(normalizeEnabledModules(modulesForCategory("services")));
+    expect(isPermissionEnabled("return.write" as Permission, jasa)).toBe(true);
+    expect(isPermissionEnabled("delivery_order.read" as Permission, jasa)).toBe(false);
+  });
+
+  it("distribusi kini bisa mengirim DAN menerima retur", () => {
+    // Cacat yang diperbaiki: grosir bisa menerbitkan faktur tetapi tidak bisa
+    // mengirim barangnya maupun mencatat yang dikembalikan pelanggannya.
+    const grosir = new Set(normalizeEnabledModules(modulesForCategory("distribution")));
+    expect(isPermissionEnabled("delivery_order.write" as Permission, grosir)).toBe(true);
+    expect(isPermissionEnabled("return.write" as Permission, grosir)).toBe(true);
+    // Kontrak berjangka & penerima barang pelabuhan tetap khas `trading`.
+    expect(isPermissionEnabled("contract.read" as Permission, grosir)).toBe(false);
+  });
+
   it("perdagangan komoditas menyalakan semua BAWAAN; jasa mematikan lapisan barang", () => {
     // Modul opt-in tidak pernah ikut preset mana pun: kalau ia ikut, "opt-in"
     // hanya berlaku bagi buku lama dan perusahaan baru tetap mendapatkannya

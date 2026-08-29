@@ -4074,12 +4074,14 @@
       "commodity_trading": "大宗商品贸易 / 出口",
       "distribution": "分销 / 批发",
       "services": "服务 / 代理",
+      "manufacturing": "生产制造",
       "custom": "自行选择"
     },
     "categoryDesc": {
       "commodity_trading": "以合同、出库单和出口单证经营货物贸易。全部模块开启。",
       "distribution": "经营带仓储的货物买卖，不含远期合同与出口单证。",
       "services": "完全不涉及货物：无库存，也无贸易层。",
+      "manufacturing": "采购物料、加工成其他货品后销售。具备贸易所有功能，另加配方与生产工单。",
       "custom": "从最小配置开始——仅核心记账。可随时启用所需模块，届时会自动创建对应科目。"
     }
   },

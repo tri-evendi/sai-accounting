@@ -51,6 +51,14 @@ export type AuditAction =
   | "finance.create"
   | "stock.in"
   | "stock.out"
+  /**
+   * Manufaktur (#495 butir 3). DUA tindakan, bukan satu "production.*": yang
+   * mengeluarkan bahan dan yang menerima barang jadi terjadi pada hari yang
+   * berbeda dan sering oleh orang yang berbeda. Satu nama untuk keduanya akan
+   * membuat jejaknya tidak bisa menjawab "siapa yang mengeluarkan bahan itu".
+   */
+  | "production.release"
+  | "production.finish"
   /** Susut hasil proses (issue #490) — gerakan `out` yang membebani Beban
    *  Susut Proses, bukan HPP. Dibedakan di jejak audit karena ia keputusan
    *  yang berbeda: barang berkurang tanpa ada yang terjual. */
@@ -265,6 +273,8 @@ export type AuditEntity =
   /** Tabel tarif PPN ber-efektif-tanggal (issue #368). */
   | "tax_rates"
   | "stock"
+  /// Perintah produksi (#495 butir 3).
+  | "production_order"
   | "item"
   /**
    * Mitra dagang sebagai ENTITAS jejak (issue #381). Sebelum ini hanya

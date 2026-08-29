@@ -96,6 +96,7 @@ export const MIGRATED_ROOT_SEGMENTS: readonly string[] = [
   // soal siapa yang boleh membukanya.
   "work-centers",
   "boms",
+  "production-orders",
   "invoices",
   "journal",
   /* Dokumen biaya impor (#495 butir 1). */

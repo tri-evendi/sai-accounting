@@ -211,6 +211,7 @@ export const NAV_GROUPS: NavGroup[] = [
          barang menjadi barang, bukan menjual atau membelinya. Modulnya OPT-IN:
          ketiga menu ini tidak muncul sampai seseorang menyalakannya sengaja. */
       { href: "/boms", label: "Resep Produksi", labelKey: "nav.items.boms", icon: "FlaskConical", permission: "bill_of_material.read" },
+      { href: "/production-orders", label: "Perintah Produksi", labelKey: "nav.items.productionOrders", icon: "Factory", permission: "production_order.read" },
       { href: "/work-centers", label: "Stasiun Kerja", labelKey: "nav.items.workCenters", icon: "Wrench", permission: "work_center.manage" },
       { href: "/fixed-assets", label: "Barang Milik Perusahaan", labelKey: "nav.items.fixedAssets", icon: "Building2", permission: "fixed_asset.read", termKey: "aset_tetap" },
     ],

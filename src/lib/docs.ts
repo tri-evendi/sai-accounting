@@ -399,6 +399,8 @@ export const NAV_TANPA_DOKUMEN: Readonly<Record<string, string>> = {
     "Gelombang berikutnya — bersama Resep Produksi & Perintah Produksi (#495 butir 3). Stasiun kerja sendirian tidak bisa dijelaskan: halamannya hanya akan menerangkan dua isian tarif tanpa bisa menyebut apa yang menyerapnya, kapan, dan ke akun mana. Ceritanya (“kenapa jam sungguhan, bukan jam standar”; “kenapa menyerap dengan mengkredit akun bebannya sendiri”) baru berdiri setelah perintah produksi punya layarnya.",
   "/boms":
     "Gelombang berikutnya — bersama Perintah Produksi (#495 butir 3). Resep punya satu cerita yang memang pantas ditulis (\u201csusut MEMBAGI, bukan mengalikan\u201d; \u201cbahan yang keluaran resep lain diturunkan lagi, bukan diambil dari gudang\u201d), tetapi keduanya baru berarti setelah pembaca melihat apa yang terjadi ketika resep itu DIJALANKAN.",
+  "/production-orders":
+    "Gelombang berikutnya, dan halaman inilah yang paling pantas ditulis dari seluruh modul manufaktur (#495 butir 3): ia satu-satunya layar yang MENULIS ke buku besar dua kali untuk satu batch — sekali saat bahan keluar ke Barang Dalam Proses, sekali saat barang jadi masuk. Ceritanya (\u201ckenapa bahan produksi bukan HPP\u201d; \u201ckenapa varians di sini informasi dan bukan jurnal\u201d) baru bisa ditulis jujur setelah sebuah perusahaan sungguhan menjalankannya.",
   "/tax/efaktur":
     "Gelombang berikutnya. Menyentuh aturan DJP yang berubah di luar kendali aplikasi ini; dokumen yang salah di sini lebih mahal daripada tidak ada dokumen.",
   "/customers":

@@ -27,6 +27,7 @@ import {
   ALL_MODULES,
   BUSINESS_CATEGORIES,
   BUSINESS_MODULES,
+  isOptInModule,
   CORE_MODULE,
   ENABLED_MODULES_TTL_MS,
   MODULE_META,
@@ -79,9 +80,13 @@ describe("peta modul: lengkap, kasar, tanpa tumpang tindih", () => {
     }
   });
 
-  it("kasar, bukan halus: 8–10 modul untuk seluruh matriks izin", () => {
+  it("kasar, bukan halus: 8–11 modul untuk seluruh matriks izin", () => {
+    // Batas atas dinaikkan dari 10 ke 11 SEKALI, untuk `manufacturing` (#495
+    // butir 3). Ia dinaikkan dengan sadar, bukan dilonggarkan: modul ke-12
+    // harus menabrak penjaga ini lagi dan menjelaskan dirinya lagi, sebab
+    // modul yang terlalu halus hanya jadi labirin konfigurasi.
     expect(BUSINESS_MODULES.length).toBeGreaterThanOrEqual(8);
-    expect(BUSINESS_MODULES.length).toBeLessThanOrEqual(10);
+    expect(BUSINESS_MODULES.length).toBeLessThanOrEqual(11);
   });
 
   it("setiap modul punya teks (kunci kamus), termasuk yang baru ditambahkan", () => {
@@ -186,16 +191,30 @@ describe("keputusan: modul menggerbangi permukaan, bukan buku besar", () => {
 });
 
 describe("penyimpanan: kosong = semua aktif", () => {
-  it("NULL / kosong / spasi berarti SEMUA modul aktif (tanpa backfill)", () => {
+  it("NULL / kosong / spasi berarti modul BAWAAN — semua kecuali yang opt-in", () => {
+    /*
+     * Dulu ini berbunyi "SEMUA modul aktif". Maksudnya tidak berubah: kolom
+     * yang tak pernah disentuh berarti aplikasi persis seperti kemarin, tanpa
+     * backfill. Yang berubah adalah bahwa modul OPT-IN (#495 butir 3) tidak
+     * ikut bawaan itu — kalau ia ikut, "persis seperti kemarin" justru
+     * dilanggar: 14 buku yang tak satu pun memintanya akan mendapat tiga menu
+     * manufaktur pada rilis berikutnya.
+     */
     for (const raw of [null, undefined, "", "   "]) {
-      expect(parseEnabledModules(raw)).toEqual(ALL_MODULES);
+      const parsed = parseEnabledModules(raw);
+      for (const m of BUSINESS_MODULES) {
+        expect(parsed.has(m), `${m} pada kolom kosong`).toBe(!isOptInModule(m));
+      }
     }
   });
 
-  it("nilai rusak (tak satu pun token dikenal) juga berarti semua aktif", () => {
-    // Gagal-tertutup di sini berarti seluruh aplikasi di luar inti lenyap gara-gara
-    // satu baris data yang salah ketik.
-    expect(parseEnabledModules("gudang,laundry")).toEqual(ALL_MODULES);
+  it("nilai rusak jatuh ke BAWAAN, bukan ke kosong dan bukan ke semua", () => {
+    // Gagal-tertutup berarti seluruh aplikasi di luar inti lenyap gara-gara satu
+    // baris salah ketik. Gagal-terbuka penuh berarti data rusak MENGHADIAHKAN
+    // modul yang tak pernah dinyalakan siapa pun. Bawaan adalah keduanya bukan.
+    const parsed = parseEnabledModules("gudang,laundry");
+    expect(parsed.has("sales")).toBe(true);
+    expect(parsed.has("manufacturing")).toBe(false);
   });
 
   it("token tak dikenal diabaikan, sisanya tetap berlaku, inti selalu ikut", () => {
@@ -210,10 +229,19 @@ describe("penyimpanan: kosong = semua aktif", () => {
     expect(parseEnabledModules(stored)).toEqual(new Set(["core_accounting", ...chosen]));
   });
 
-  it("himpunan lengkap disimpan sebagai NULL — 'kosong = semua' tetap jujur", () => {
-    expect(serializeEnabledModules(BUSINESS_MODULES)).toBeNull();
-    // …dan modul yang ditambahkan ke kode belakangan ikut menyala sendiri.
-    expect(parseEnabledModules(serializeEnabledModules(BUSINESS_MODULES))).toEqual(ALL_MODULES);
+  it("himpunan BAWAAN disimpan sebagai NULL — 'kosong = bawaan' tetap jujur", () => {
+    const bawaan = BUSINESS_MODULES.filter((m) => !isOptInModule(m));
+    expect(serializeEnabledModules(bawaan)).toBeNull();
+    // Modul BIASA yang ditambahkan ke kode belakangan tetap ikut menyala sendiri.
+    expect(parseEnabledModules(serializeEnabledModules(bawaan))).toEqual(new Set(bawaan));
+  });
+
+  it("menyalakan modul opt-in tersimpan EKSPLISIT, bukan NULL", () => {
+    // Pilihannya adalah keputusan, bukan ketiadaan keputusan — dan NULL berarti
+    // ketiadaan keputusan.
+    const stored = serializeEnabledModules([...BUSINESS_MODULES]);
+    expect(stored).not.toBeNull();
+    expect(stored).toContain("manufacturing");
   });
 
   it("normalisasi: urut deklarasi, tanpa kembar, inti dipaksa ikut", () => {
@@ -258,8 +286,14 @@ describe("preset kategori usaha: hanya NILAI AWAL", () => {
     }
   });
 
-  it("perdagangan komoditas menyalakan semuanya; jasa mematikan lapisan barang", () => {
-    expect(modulesForCategory("commodity_trading")).toEqual([...BUSINESS_MODULES]);
+  it("perdagangan komoditas menyalakan semua BAWAAN; jasa mematikan lapisan barang", () => {
+    // Modul opt-in tidak pernah ikut preset mana pun: kalau ia ikut, "opt-in"
+    // hanya berlaku bagi buku lama dan perusahaan baru tetap mendapatkannya
+    // tanpa pernah meminta.
+    expect(modulesForCategory("commodity_trading")).toEqual(
+      BUSINESS_MODULES.filter((m) => !isOptInModule(m))
+    );
+    expect(modulesForCategory("commodity_trading")).not.toContain("manufacturing");
 
     const services = modulesForCategory("services");
     expect(services).not.toContain("trading");

@@ -3040,7 +3040,10 @@
     "authz": "Hak Akses",
     "glossary": "Kamus Istilah",
     "settings": "Pengaturan",
-    "sample": "Data Contoh"
+    "sample": "Data Contoh",
+    "bill_of_material": "Resep Produksi",
+    "work_center": "Stasiun Kerja",
+    "production_order": "Perintah Produksi"
   },
   "permission": {
     "approval_view": "Melihat antrean persetujuan",
@@ -3103,7 +3106,12 @@
     "authz_manage": "Mengatur hak akses (halaman ini)",
     "glossary_read": "Membuka kamus istilah",
     "settings_view": "Membuka halaman pengaturan",
-    "sample_clear": "Membuang seluruh data contoh dari buku ini"
+    "sample_clear": "Membuang seluruh data contoh dari buku ini",
+    "bill_of_material_read": "Melihat resep produksi",
+    "bill_of_material_write": "Menyusun & mengubah resep produksi",
+    "work_center_manage": "Mengelola stasiun kerja & tarifnya",
+    "production_order_read": "Melihat perintah produksi",
+    "production_order_write": "Menerbitkan & menyelesaikan perintah produksi"
   },
   "users": {
     "title": "Manajemen Pengguna",
@@ -3918,6 +3926,7 @@
       "sales": "Penjualan",
       "purchasing": "Pembelian",
       "trading": "Perdagangan Barang",
+      "manufacturing": "Manufaktur",
       "inventory": "Stok Barang",
       "cash_bank": "Kas & Bank",
       "fixed_assets": "Aset Tetap",
@@ -3930,6 +3939,7 @@
       "sales": "Tagihan penjualan, pelanggan, dan daftar pelanggan yang belum bayar.",
       "purchasing": "Pemasok, pencatatan pembelian, dan tagihan yang harus dibayar.",
       "trading": "Kontrak, surat jalan, penerima barang, retur, dan uang muka — lapisan khas perdagangan barang.",
+      "manufacturing": "Mengubah barang menjadi barang lain: resep, stasiun kerja, dan perintah produksi.",
       "inventory": "Stok barang: menambah, mengurangi, menghitung ulang, dan nilai persediaannya.",
       "cash_bank": "Buku kas & bank serta pencocokan rekening koran.",
       "fixed_assets": "Barang milik perusahaan dan penyusutannya.",
@@ -3942,6 +3952,7 @@
       "sales": "tagihan penjualan & pelanggan",
       "purchasing": "tagihan pembelian, pemasok & uang muka",
       "trading": "kontrak berjangka, surat jalan, penerima barang, retur",
+      "manufacturing": "membuat barang dari bahan",
       "inventory": "stok barang",
       "cash_bank": "buku kas & bank",
       "fixed_assets": "aset tetap & penyusutan",

@@ -3040,7 +3040,10 @@
     "authz": "访问权限",
     "glossary": "术语表",
     "settings": "设置",
-    "sample": "示例数据"
+    "sample": "示例数据",
+    "bill_of_material": "物料清单",
+    "work_center": "工作中心",
+    "production_order": "生产工单"
   },
   "permission": {
     "approval_view": "查看审批队列",
@@ -3103,7 +3106,12 @@
     "authz_manage": "配置访问权限（本页）",
     "glossary_read": "打开术语表",
     "settings_view": "打开设置页面",
-    "sample_clear": "清除本账簿中的所有示例数据"
+    "sample_clear": "清除本账簿中的所有示例数据",
+    "bill_of_material_read": "查看物料清单",
+    "bill_of_material_write": "创建与修改物料清单",
+    "work_center_manage": "管理工作中心及其费率",
+    "production_order_read": "查看生产工单",
+    "production_order_write": "下达与完成生产工单"
   },
   "users": {
     "title": "用户管理",
@@ -3918,6 +3926,7 @@
       "sales": "销售",
       "purchasing": "采购",
       "trading": "货物贸易",
+      "manufacturing": "生产制造",
       "inventory": "库存",
       "cash_bank": "现金与银行",
       "fixed_assets": "固定资产",
@@ -3930,6 +3939,7 @@
       "sales": "销售发票、客户，以及尚未付款的客户清单。",
       "purchasing": "供应商、采购记录，以及应付账单。",
       "trading": "合同、出库单、收货人、退货与预付款——货物贸易专属层。",
+      "manufacturing": "将物料转化为其他货品：配方、工作中心与生产工单。",
       "inventory": "库存管理：入库、出库、盘点与存货金额。",
       "cash_bank": "现金与银行账簿，以及银行对账。",
       "fixed_assets": "公司自有资产及其折旧。",
@@ -3942,6 +3952,7 @@
       "sales": "销售发票与客户",
       "purchasing": "采购账单、供应商与预付款",
       "trading": "远期合同、送货单、收货人、退货",
+      "manufacturing": "用物料制造货品",
       "inventory": "库存",
       "cash_bank": "现金与银行账簿",
       "fixed_assets": "固定资产与折旧",

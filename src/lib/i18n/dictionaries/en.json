@@ -3040,7 +3040,10 @@
     "authz": "Access Rights",
     "glossary": "Glossary",
     "settings": "Settings",
-    "sample": "Sample Data"
+    "sample": "Sample Data",
+    "bill_of_material": "Bill of Materials",
+    "work_center": "Work Centre",
+    "production_order": "Production Order"
   },
   "permission": {
     "approval_view": "View the approval queue",
@@ -3103,7 +3106,12 @@
     "authz_manage": "Configure access rights (this page)",
     "glossary_read": "Open the glossary",
     "settings_view": "Open the settings page",
-    "sample_clear": "Remove all sample data from this book"
+    "sample_clear": "Remove all sample data from this book",
+    "bill_of_material_read": "View bills of materials",
+    "bill_of_material_write": "Create and change bills of materials",
+    "work_center_manage": "Manage work centres and their rates",
+    "production_order_read": "View production orders",
+    "production_order_write": "Release and finish production orders"
   },
   "users": {
     "title": "User Management",
@@ -3918,6 +3926,7 @@
       "sales": "Sales",
       "purchasing": "Purchasing",
       "trading": "Goods Trading",
+      "manufacturing": "Manufacturing",
       "inventory": "Inventory",
       "cash_bank": "Cash & Bank",
       "fixed_assets": "Fixed Assets",
@@ -3930,6 +3939,7 @@
       "sales": "Sales invoices, customers, and the list of customers who have not paid.",
       "purchasing": "Suppliers, recorded purchases, and the bills you have to pay.",
       "trading": "Contracts, delivery orders, consignees, returns, and advances — the goods-trading layer.",
+      "manufacturing": "Turning goods into other goods: recipes, work centres, and production orders.",
       "inventory": "Stock on hand: additions, deductions, stock counts, and inventory value.",
       "cash_bank": "The cash & bank book plus bank statement reconciliation.",
       "fixed_assets": "Company-owned assets and their depreciation.",
@@ -3942,6 +3952,7 @@
       "sales": "sales invoices & customers",
       "purchasing": "purchase bills, suppliers & advances",
       "trading": "forward contracts, delivery orders, consignees, returns",
+      "manufacturing": "make goods from materials",
       "inventory": "stock levels",
       "cash_bank": "cash & bank book",
       "fixed_assets": "fixed assets & depreciation",

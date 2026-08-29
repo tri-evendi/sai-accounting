@@ -63,12 +63,45 @@ export const BUSINESS_MODULES = [
   "approvals",
   "tax_id",
   "documents",
+  "manufacturing",
 ] as const;
 
 export type BusinessModule = (typeof BUSINESS_MODULES)[number];
 
 /** Modul inti — selalu aktif, tak bisa dimatikan (anti-lockout). */
 export const CORE_MODULE: BusinessModule = "core_accounting";
+
+/**
+ * Modul yang TIDAK ikut bawaan "kosong = semua aktif" (issue #495 butir 3).
+ *
+ * ══ KENAPA PENGECUALIAN INI ADA ════════════════════════════════════════════
+ * Aturan "NULL = semua" ditulis supaya modul mendarat TANPA backfill dan tanpa
+ * satu pun perubahan perilaku pada pemasangan yang sudah berjalan. Tujuannya
+ * itu — bukan kalimatnya. Modul ke-11 yang datang bertahun kemudian justru
+ * MELANGGAR tujuan itu kalau ia mewarisi bawaannya: ia menyalakan menu di 14
+ * buku yang tak satu pun memintanya.
+ *
+ * Dan itu bertentangan dengan alasan modul ada sejak awal (#99): menyusutkan
+ * permukaan bagi perusahaan yang tidak memakainya, sebab "tiap menu yang tak
+ * terpakai adalah beban belajar bagi pengguna yang memang bukan akuntan".
+ * Manufaktur — resep, stasiun kerja, perintah produksi — adalah permukaan besar
+ * bagi eksportir rempah yang tidak pernah menyusun BOM.
+ *
+ * Ia karena itu dinyalakan SENGAJA di Pengaturan, dan tidak pernah menyala
+ * sendiri. Modul biasa tetap seperti dulu: yang ditambahkan ke daftar utama ikut
+ * menyala untuk perusahaan yang tak pernah mematikan apa pun.
+ */
+export const OPT_IN_MODULES: readonly BusinessModule[] = ["manufacturing"];
+
+const OPT_IN_SET: ReadonlySet<BusinessModule> = new Set(OPT_IN_MODULES);
+
+/** Modul yang menyala ketika kolomnya kosong — semua KECUALI yang opt-in. */
+const DEFAULT_MODULES: ReadonlySet<BusinessModule> = new Set(
+  BUSINESS_MODULES.filter((m) => !OPT_IN_SET.has(m))
+);
+
+/** Modul ini harus dinyalakan sengaja? */
+export const isOptInModule = (module: BusinessModule): boolean => OPT_IN_SET.has(module);
 
 const MODULE_SET: ReadonlySet<string> = new Set(BUSINESS_MODULES);
 
@@ -125,6 +158,14 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
   // mematikan `trading` tetap membayar uang muka; ikut menghilangkannya akan
   // memaksa mereka mencatat pembayaran itu sebagai sesuatu yang bukan dirinya.
   advance: "purchasing",
+
+  // ── manufacturing — mengubah barang menjadi barang lain (#495 butir 3).
+  // Resep, stasiun kerja, dan perintah produksi. Modul OPT-IN: ia tidak pernah
+  // menyala sendiri (lihat `OPT_IN_MODULES`), sebab eksportir rempah yang tak
+  // pernah menyusun BOM tidak perlu melihat tiga menu yang tak dipakainya.
+  bill_of_material: "manufacturing",
+  work_center: "manufacturing",
+  production_order: "manufacturing",
 
   // ── trading — lapisan khas perdagangan barang (issue #99 menyebutnya
   // "lapisan khas komoditas"): kontrak jual-beli berjangka, surat jalan,
@@ -208,6 +249,11 @@ export const MODULE_META: Record<BusinessModule, BusinessModuleMeta> = {
     taskKey: "modules.task.purchasing",
   },
   trading: { labelKey: "modules.name.trading", descriptionKey: "modules.description.trading", taskKey: "modules.task.trading" },
+  manufacturing: {
+    labelKey: "modules.name.manufacturing",
+    descriptionKey: "modules.description.manufacturing",
+    taskKey: "modules.task.manufacturing",
+  },
   inventory: {
     labelKey: "modules.name.inventory",
     descriptionKey: "modules.description.inventory",
@@ -258,8 +304,15 @@ export const isBusinessCategory = (value: string): value is BusinessCategory =>
 
 /** Modul awal per kategori. Inti tidak perlu ditulis — selalu ditambahkan. */
 export const CATEGORY_MODULES: Record<BusinessCategory, readonly BusinessModule[]> = {
-  // Perdagangan komoditas / ekspor (SAI sendiri): semuanya dipakai.
-  commodity_trading: BUSINESS_MODULES,
+  /*
+   * Perdagangan komoditas / ekspor (SAI sendiri): semua modul BAWAAN.
+   *
+   * Diturunkan dari daftarnya, bukan diketik ulang, supaya modul biasa yang
+   * ditambahkan kemudian ikut sendiri. Modul opt-in sengaja TIDAK ikut preset
+   * mana pun — kalau ia ikut, "opt-in" hanya berlaku bagi buku lama dan
+   * perusahaan baru tetap mendapatkannya tanpa meminta.
+   */
+  commodity_trading: BUSINESS_MODULES.filter((m) => !OPT_IN_SET.has(m)),
   // Distributor / grosir: jual-beli barang bergudang, tanpa kontrak berjangka,
   // surat jalan ekspor, maupun arsip dokumen pelabuhan.
   distribution: [
@@ -332,26 +385,41 @@ export function modulesForCategory(category: BusinessCategory): BusinessModule[]
  * Inti selalu ditambahkan, apa pun isi kolomnya.
  */
 export function parseEnabledModules(raw: string | null | undefined): ReadonlySet<BusinessModule> {
-  if (raw == null || raw.trim() === "") return ALL_MODULES;
+  // Kosong = semua KECUALI modul opt-in (lihat `OPT_IN_MODULES`). Perusahaan
+  // yang tak pernah menyentuh pengaturan ini karena itu tidak pernah mendapat
+  // manufaktur tanpa memintanya.
+  if (raw == null || raw.trim() === "") return DEFAULT_MODULES;
   const known = raw
     .split(",")
     .map((token) => token.trim())
     .filter(isBusinessModule);
-  if (known.length === 0) return ALL_MODULES;
+  // Nilai rusak tidak boleh menyembunyikan aplikasi — tapi ia juga tidak boleh
+  // MENGHADIAHKAN modul yang tak pernah dinyalakan siapa pun.
+  if (known.length === 0) return DEFAULT_MODULES;
   return new Set<BusinessModule>([CORE_MODULE, ...known]);
 }
 
 /**
- * Nilai yang disimpan untuk sebuah himpunan modul. Himpunan yang berisi SEMUA
- * modul disimpan sebagai NULL, bukan daftar lengkap: "kosong = semua" tetap
- * jujur, dan modul yang ditambahkan ke kode di kemudian hari ikut menyala
- * sendiri untuk perusahaan yang memang tidak pernah mematikan apa pun.
+ * Nilai yang disimpan untuk sebuah himpunan modul.
+ *
+ * NULL disimpan ketika himpunannya PERSIS sama dengan bawaan — yaitu semua
+ * modul kecuali yang opt-in. Dengan begitu "kosong = bawaan" tetap jujur, dan
+ * modul BIASA yang ditambahkan ke kode kemudian tetap ikut menyala sendiri
+ * untuk perusahaan yang tak pernah mematikan apa pun.
+ *
+ * Yang berubah sejak #495 hanyalah: modul OPT-IN tidak ikut bawaan itu. Sebuah
+ * perusahaan yang menyalakan manufaktur karena itu tersimpan sebagai daftar
+ * eksplisit, bukan NULL — dan memang harus begitu, sebab pilihannya adalah
+ * keputusan, bukan ketiadaan keputusan.
  */
 export function serializeEnabledModules(
   modules: Iterable<BusinessModule>
 ): string | null {
   const normalized = normalizeEnabledModules(modules);
-  if (normalized.length === BUSINESS_MODULES.length) return null;
+  const samaDenganBawaan =
+    normalized.length === DEFAULT_MODULES.size &&
+    normalized.every((m) => DEFAULT_MODULES.has(m));
+  if (samaDenganBawaan) return null;
   return normalized.join(",");
 }
 

@@ -44,6 +44,7 @@ import {
   ShopOutlined,
   ShoppingCartOutlined,
   SwapOutlined,
+  ToolOutlined,
 } from "@ant-design/icons";
 import { LandingGallery } from "@/components/landing/landing-gallery";
 import {
@@ -92,6 +93,7 @@ export const MODULE_ICON: Record<BusinessModule, typeof BookOutlined> = {
   sales: ShopOutlined,
   purchasing: ShoppingCartOutlined,
   trading: SwapOutlined,
+  manufacturing: ToolOutlined,
   inventory: InboxOutlined,
   cash_bank: BankOutlined,
   fixed_assets: GoldOutlined,

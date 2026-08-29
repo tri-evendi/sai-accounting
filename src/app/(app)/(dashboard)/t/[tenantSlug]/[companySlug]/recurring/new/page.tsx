@@ -23,7 +23,7 @@ export default async function NewRecurringPage({
   params: Promise<TenantScopedParams>;
   searchParams: Promise<{ invoiceId?: string }>;
 }) {
-  await requirePagePermission("invoice.write", params);
+  await requirePagePermission("journal.write", params);
   const { invoiceId } = await searchParams;
   const { tenantSlug, companySlug } = await params;
 

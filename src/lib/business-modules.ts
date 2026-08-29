@@ -146,6 +146,18 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
   invoice: "sales",
   customer: "sales",
   receivable: "sales",
+  /*
+   * Retur PENJUALAN ada di sini, bukan di `trading` (koreksi pemetaan).
+   *
+   * Buktinya di skema: `sales_returns.invoice_id` WAJIB — sebuah retur selalu
+   * menunjuk faktur, dan faktur milik modul ini. Menaruhnya di `trading` berarti
+   * fiturnya bergantung pada satu modul tetapi digerbangi modul lain, dan
+   * akibatnya nyata: perusahaan DISTRIBUSI (yang presetnya memang tanpa
+   * `trading`) bisa menerbitkan faktur tetapi tidak bisa mencatat barang yang
+   * dikembalikan pelanggannya. Barang kembali adalah bagian biasa dari menjual
+   * barang, bukan kekhasan perdagangan komoditas berjangka.
+   */
+  return: "sales",
 
   // ── purchasing — membeli dari pemasok & membayarnya.
   supplier: "purchasing",
@@ -172,11 +184,18 @@ export const RESOURCE_MODULE: Record<PermissionResource, BusinessModule> = {
   // penerima barang di pelabuhan tujuan, dan retur fisik. Perusahaan jasa
   // mematikan ini dan setengah menu hilang.
   contract: "trading",
-  delivery_order: "trading",
   consignee: "trading",
-  return: "trading",
-
   // ── inventory — stok barang.
+  /*
+   * Surat jalan ada di sini, bukan di `trading` (koreksi pemetaan).
+   *
+   * `delivery_orders.contract_id` NULLABLE — surat jalan tidak pernah menuntut
+   * kontrak, jadi ia bukan kekhasan perdagangan berjangka melainkan tindakan
+   * biasa "barang keluar gudang". Ia juga MENULIS gerakan stok dan memposting
+   * HPP, yang keduanya milik modul ini; menggerbanginya dari modul lain berarti
+   * sebuah distributor bisa punya stok tetapi tidak bisa mengirimkannya.
+   */
+  delivery_order: "inventory",
   inventory: "inventory",
   // Biaya impor (#495 butir 1) digerbangi `inventory`, bukan `purchasing`.
   // Pekerjaannya memang pembelian, tetapi yang dihasilkannya NILAI PERSEDIAAN —

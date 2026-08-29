@@ -131,18 +131,36 @@ describe("modul inti: pintu yang tak pernah bisa ditutup", () => {
 });
 
 describe("keputusan: modul menggerbangi permukaan, bukan buku besar", () => {
-  it("mematikan `trading` menutup kontrak/surat jalan tapi TIDAK jurnal & laporan", () => {
+  it("mematikan `trading` menutup kontrak & penerima barang tapi TIDAK jurnal & laporan", () => {
     const enabled = allExcept("trading");
 
     for (const permission of [
       "contract.read",
       "contract.write",
-      "delivery_order.read",
       "consignee.read",
-      "return.write",
     ] as Permission[]) {
       expect(isPermissionEnabled(permission, enabled), permission).toBe(false);
     }
+
+    /*
+     * Surat jalan & retur SENGAJA BERTAHAN sejak koreksi pemetaan — dan ini
+     * bukan pelonggaran melainkan perbaikan cacat fungsional yang terukur.
+     *
+     * Sebelumnya keduanya milik `trading`, sehingga preset DISTRIBUSI (grosir,
+     * yang memang tanpa `trading`) bisa menerbitkan faktur tetapi tidak bisa
+     * mengirim barangnya maupun mencatat barang yang dikembalikan pelanggannya.
+     *
+     * Buktinya ada di skema, bukan di selera:
+     *   • `sales_returns.invoice_id` WAJIB — retur menunjuk FAKTUR (`sales`);
+     *   • `delivery_orders.contract_id` NULLABLE — surat jalan tidak pernah
+     *     menuntut kontrak, dan ia menulis gerakan stok + memposting HPP
+     *     (`inventory`).
+     *
+     * Yang tersisa di `trading` adalah yang memang khas perdagangan berjangka
+     * ekspor: kontrak dan penerima barang di pelabuhan tujuan.
+     */
+    expect(isPermissionEnabled("delivery_order.read" as Permission, enabled)).toBe(true);
+    expect(isPermissionEnabled("return.write" as Permission, enabled)).toBe(true);
 
     // Uang muka SENGAJA bertahan — ia hidup di `purchasing`, bukan `trading`.
     expect(isPermissionEnabled("advance.read" as Permission, enabled)).toBe(true);

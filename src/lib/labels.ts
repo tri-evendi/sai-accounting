@@ -262,6 +262,60 @@ export const TERMS = {
     alias: ["inventory", "stok", "gudang"],
     href: "/inventory",
   },
+  // ─── Manufaktur (issue #495 butir 3) ───
+  //
+  // Empat istilah yang TIDAK BISA dihindari di layar, karena tiga di antaranya
+  // adalah nama akun sungguhan di bagan akun. Yang bisa dilakukan bukan
+  // mengganti namanya, melainkan MENJELASKANNYA di tempat ia muncul —
+  // "permukaan sederhana, mesin baku".
+  resep_produksi: {
+    key: "resep_produksi",
+    label: "Resep Produksi",
+    term: "Resep Produksi (Bill of Materials / BOM)",
+    definisi:
+      "Daftar bahan dan langkah kerja untuk membuat satu barang. Ia menyebut: menghasilkan apa, sebanyak berapa sekali jalan, dari bahan apa saja, dan lewat langkah kerja mana. Resep belum berarti ada yang diproduksi — ia baru rencananya.",
+    contoh:
+      "Resep LADA-BERSIH: 1.000 kg lada mentah + 20 karung menghasilkan 950 kg lada bersih, lewat langkah Sortir 8 jam.",
+    kategori: "stok",
+    alias: ["bom", "bill of materials", "formula", "komposisi"],
+    href: "/boms",
+  },
+  perintah_produksi: {
+    key: "perintah_produksi",
+    label: "Perintah Produksi",
+    term: "Perintah Produksi (Production Order)",
+    definisi:
+      "Satu kali menjalankan sebuah resep. Bahannya keluar dari gudang, upah dan biaya pabrik ikut dihitung, lalu barang jadinya masuk gudang dengan harga pokoknya sendiri. Berbeda dari resep: resep adalah rencananya, perintah adalah kejadiannya.",
+    contoh:
+      "PO.2026.08.00001 menjalankan resep LADA-BERSIH untuk 1.900 kg — dua kali takaran resepnya.",
+    kategori: "stok",
+    alias: ["production order", "work order", "spk produksi"],
+    href: "/production-orders",
+  },
+  barang_dalam_proses: {
+    key: "barang_dalam_proses",
+    label: "Barang Setengah Jadi",
+    term: "Barang Dalam Proses (Work in Progress / WIP)",
+    definisi:
+      "Nilai barang yang sudah keluar dari gudang bahan tetapi belum menjadi barang jadi. Ia tetap kekayaan perusahaan — hanya berpindah bentuk, bukan hilang. Karena itu bahan yang masuk produksi BUKAN biaya: ia baru menjadi biaya saat barang jadinya terjual.",
+    contoh:
+      "1.000 kg lada mentah senilai Rp 45 juta sudah turun ke lantai produksi tetapi belum jadi — nilainya duduk di Barang Dalam Proses.",
+    kategori: "stok",
+    alias: ["wip", "work in progress", "barang setengah jadi"],
+    href: "/production-orders",
+  },
+  overhead_pabrik: {
+    key: "overhead_pabrik",
+    label: "Biaya Pabrik Lain",
+    term: "Overhead Pabrik (Factory Overhead)",
+    definisi:
+      "Biaya produksi yang tidak bisa ditunjuk ke satu barang tertentu: listrik mesin, perawatan, sewa gudang produksi. Karena tak bisa ditunjuk langsung, ia dibagi lewat tarif per jam kerja mesin atau orang.",
+    contoh:
+      "Tarif overhead Rp 10.000/jam × 10 jam sortir = Rp 100.000 ikut menempel pada harga pokok batch itu.",
+    kategori: "stok",
+    alias: ["overhead", "factory overhead", "biaya pabrik"],
+    href: "/work-centers",
+  },
   stok_opname: {
     key: "stok_opname",
     label: "Hitung Ulang Stok",

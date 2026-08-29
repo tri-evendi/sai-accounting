@@ -151,9 +151,18 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/recurring", label: "Transaksi Berulang", labelKey: "nav.items.recurring", icon: "Repeat", permission: "invoice.read" },
       // issue #14 — Surat Jalan mengurangi stok saat terbit, tetapi alurnya milik
       // penjualan (barang keluar untuk pembeli), jadi tempatnya di sini.
-      { href: "/delivery-orders", label: "Surat Jalan", labelKey: "nav.items.deliveryOrders", icon: "PackageCheck", permission: "delivery_order.read", termKey: "surat_jalan" },
       // Arsip dokumen ekspor (B/L, COO, fumigasi) menyertai kontrak & surat
       // jalan — ini pekerjaan penjualan, bukan pengaturan aplikasi.
+      /*
+       * MODUL ≠ KELOMPOK MENU. Sejak koreksi pemetaan, surat jalan digerbangi
+       * modul `inventory` (ia menulis gerakan stok & memposting HPP, dan
+       * `contract_id`-nya nullable). Tetapi TEMPATNYA di menu tetap di sini:
+       * modul menjawab "siapa boleh memakainya", kelompok menjawab "di mana
+       * orang mencarinya" — dan orang mencari surat jalan di alur menjual,
+       * bukan di alur gudang. Dua pertanyaan berbeda, dua jawaban yang boleh
+       * berbeda.
+       */
+      { href: "/delivery-orders", label: "Surat Jalan", labelKey: "nav.items.deliveryOrders", icon: "PackageCheck", permission: "delivery_order.read", termKey: "surat_jalan" },
       { href: "/documents", label: "Dokumen", labelKey: "nav.items.documents", icon: "Upload", permission: "document.read" },
       { href: "/receivables", label: "Pelanggan Belum Bayar", labelKey: "nav.items.receivables", icon: "HandCoins", permission: "receivable.read", termKey: "piutang" },
       // Retur mencakup retur penjualan & pembelian; ditaruh di satu tempat agar
@@ -207,6 +216,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/inventory/movement", label: "Riwayat Stok", labelKey: "nav.items.inventoryMovement", icon: "PackageOpen", permission: "inventory.read", termKey: "kartu_stok" },
       { href: "/inventory/update", label: "Tambah / Kurangi Stok", labelKey: "nav.items.inventoryUpdate", icon: "PackagePlus", permission: "inventory.write", termKey: "persediaan" },
       { href: "/inventory/opname", label: "Hitung Ulang Stok", labelKey: "nav.items.inventoryOpname", icon: "ClipboardCheck", permission: "inventory.write", termKey: "stok_opname" },
+      /* Manufaktur (#495 butir 3) — di bawah "Stok & Aset" karena ia mengubah
+         barang menjadi barang, bukan menjual atau membelinya. Modulnya OPT-IN:
+         ketiga menu ini tidak muncul sampai seseorang menyalakannya sengaja. */
+      { href: "/boms", label: "Resep Produksi", labelKey: "nav.items.boms", icon: "FlaskConical", permission: "bill_of_material.read" },
+      { href: "/production-orders", label: "Perintah Produksi", labelKey: "nav.items.productionOrders", icon: "Factory", permission: "production_order.read" },
+      { href: "/work-centers", label: "Stasiun Kerja", labelKey: "nav.items.workCenters", icon: "Wrench", permission: "work_center.manage" },
       { href: "/fixed-assets", label: "Barang Milik Perusahaan", labelKey: "nav.items.fixedAssets", icon: "Building2", permission: "fixed_asset.read", termKey: "aset_tetap" },
     ],
   },
@@ -227,13 +242,11 @@ export const NAV_GROUPS: NavGroup[] = [
       // dibandingkannya, dan memakai izin yang SAMA (`ledger.read`): yang
       // ditampilkannya adalah isi buku besar berdampingan dengan pembandingnya.
       { href: "/accurate", label: "Cocokkan dengan Accurate", labelKey: "nav.items.accurate", icon: "FileSpreadsheet", permission: "ledger.read", accountingOnly: true },
-      { href: "/accounts", label: "Daftar Akun", labelKey: "nav.items.accounts", icon: "BookOpen", permission: "account.manage", accountingOnly: true, termKey: "akun_perkiraan" },
       // issue #91 — master dimensi pusat biaya. SENGAJA tanpa `accountingOnly`:
       // pusat biaya ditetapkan pada dokumen sehari-hari (faktur, kas,
       // pembelian), bukan hanya dibaca akuntan, jadi menyembunyikannya saat
       // Mode Akuntan mati berarti menyembunyikan satu-satunya pintu untuk
       // menyusun daftar yang dipakai form-form itu.
-      { href: "/cost-centers", label: "Pusat Biaya", labelKey: "nav.items.costCenters", icon: "Split", permission: "cost_center.manage" },
     ],
   },
   // Label grup ≠ label item mana pun di dalamnya ("Pengaturan" berisi
@@ -246,6 +259,12 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.groups.settings",
     icon: "Settings",
     items: [
+      /* DATA INDUK, bukan laporan (koreksi penempatan). Daftar Akun & Pusat
+         Biaya adalah yang DISIAPKAN sebelum mencatat, bukan yang dibaca
+         sesudahnya — menaruhnya di grup Laporan membuat orang mencarinya di
+         tempat yang salah. */
+      { href: "/accounts", label: "Daftar Akun", labelKey: "nav.items.accounts", icon: "BookOpen", permission: "account.manage", accountingOnly: true, termKey: "akun_perkiraan" },
+      { href: "/cost-centers", label: "Pusat Biaya", labelKey: "nav.items.costCenters", icon: "Split", permission: "cost_center.manage" },
       { href: "/glossary", label: "Kamus Istilah", labelKey: "nav.items.glossary", icon: "BookMarked", permission: "glossary.read" },
       { href: "/periods", label: "Kunci Bulan", labelKey: "nav.items.periods", icon: "Lock", permission: "period.manage", termKey: "tutup_periode" },
       { href: "/setup", label: "Setup & Saldo Awal", labelKey: "nav.items.setup", icon: "Wand2", permission: "setup.manage", termKey: "saldo_awal" },

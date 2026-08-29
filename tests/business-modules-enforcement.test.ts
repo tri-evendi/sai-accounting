@@ -26,6 +26,11 @@ import {
 } from "@/lib/company-context";
 import { ROLES } from "@/lib/constants";
 import { PERMISSIONS, type Permission } from "@/lib/authz";
+import {
+  BUSINESS_MODULES,
+  isOptInModule,
+  moduleForPermission,
+} from "@/lib/business-modules";
 
 const db = vi.hoisted(() => ({
   overrides: [] as Array<{ role: string; permission: string; allowed: boolean }>,
@@ -77,9 +82,30 @@ describe("kolom kosong = semua modul aktif (perilaku hari ini, tanpa backfill)",
 
   it("set izin efektif sama persis dengan sebelum modul diperkenalkan", async () => {
     const all = await effectivePermissionsFor(MD);
-    // Direktur Utama memegang SEMUA izin, dan tanpa modul yang dimatikan tak
-    // satu pun boleh hilang dari sidebar.
-    expect(all).toEqual([...PERMISSIONS]);
+    /*
+     * Direktur Utama memegang SEMUA izin, dan tanpa modul yang dimatikan tak
+     * satu pun boleh hilang dari sidebar.
+     *
+     * Kecuali izin modul OPT-IN (#495 butir 3), dan justru itulah yang MENJAGA
+     * maksud tes ini: "sama persis dengan sebelum modul diperkenalkan" berarti
+     * kolom yang tak pernah disentuh tidak mengubah apa pun. Manufaktur yang
+     * ikut menyala di sini akan MELANGGAR kalimat itu — ia menambahkan tiga
+     * permukaan yang sebelumnya tidak ada.
+     */
+    const bawaan = PERMISSIONS.filter(
+      (permission) => !isOptInModule(moduleForPermission(permission))
+    );
+    expect(all).toEqual(bawaan);
+    expect(all).not.toContain("production_order.read");
+  });
+
+  it("izin manufaktur muncul begitu modulnya DINYALAKAN sengaja", async () => {
+    // Sisi lain dari tes di atas: opt-in berarti tersembunyi sampai diminta,
+    // bukan tersembunyi selamanya.
+    setDb({ enabledModules: [...BUSINESS_MODULES].join(",") });
+    const all = await effectivePermissionsFor(MD);
+    expect(all).toContain("production_order.read");
+    expect(all).toContain("bill_of_material.write");
   });
 });
 

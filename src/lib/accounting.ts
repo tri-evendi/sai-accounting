@@ -212,6 +212,17 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
 
   { code: "1104", name: "Persediaan Barang Dagang", type: "inventory", module: "inventory" },
   { code: "1105", name: "PPN Masukan", type: "other_current_asset", module: "tax_id" },
+  /*
+   * Barang Dalam Proses (#495 butir 3). Bertipe `inventory` karena memang
+   * persediaan — barang yang sudah keluar dari gudang bahan tetapi belum
+   * menjadi barang jadi masih milik perusahaan dan masih aset.
+   *
+   * Modulnya `inventory`, BUKAN modul manufaktur tersendiri: `enabled_modules`
+   * yang kosong berarti "semua aktif", jadi modul baru akan menyalakan menu
+   * manufaktur di setiap buku yang sudah ada sekaligus. Presedennya Beban Susut
+   * Proses (610106, #490), yang juga potongan manufaktur di bawah `inventory`.
+   */
+  { code: "1106", name: "Barang Dalam Proses", type: "inventory", module: "inventory" },
 
   { code: "1201", name: "Aktiva Tetap", type: "fixed_asset", module: "fixed_assets" },
   { code: "120101", name: "Peralatan & Mesin", type: "fixed_asset", parent: "1201", module: "fixed_assets" },
@@ -252,6 +263,22 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
   // Beban Operasional akan membuat marjin kotor tampak lebih baik daripada
   // kenyataannya, tepat sebesar bea masuk yang telat datang.
   { code: "5102", name: "Selisih Harga Pokok", type: "cogs", module: "inventory" },
+  /*
+   * Penyerapan produksi (#495 butir 3) — DUA akun beban biasa, bukan akun
+   * kontra "diserap" tersendiri.
+   *
+   * Alurnya: membayar upah mendebet akun ini; produksi yang menyerapnya
+   * MENGKREDIT akun yang sama sambil mendebet Barang Dalam Proses. Yang tersisa
+   * di akun ini karena itu PERSIS varians penyerapannya — lebih diserap
+   * (kredit) atau kurang diserap (debit) — tanpa satu pun tipe akun baru dan
+   * tanpa akun kontra yang harus dijelaskan kepada pengguna awam.
+   *
+   * Akun kontra bersaldo-normal-kredit di band beban akan menuntut tipe akun
+   * baru, dan tipe akun baru berarti setiap laporan harus memutuskan lagi di
+   * band mana ia jatuh.
+   */
+  { code: "5103", name: "Beban Upah Langsung", type: "cogs", module: "inventory", nature: "salary" },
+  { code: "5104", name: "Beban Overhead Pabrik", type: "cogs", module: "inventory" },
 
   // 6xxx EXPENSES
   { code: "6101", name: "Beban Operasional", type: "expense" },

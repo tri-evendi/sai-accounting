@@ -1,68 +1,45 @@
 # Riwayat Perubahan
 
+<!-- DIBANGKITKAN dari src/lib/changelog.ts — jangan sunting berkas ini.
+     Ubah sumbernya, lalu jalankan: bun run changelog:build -->
+
 Perubahan yang **terlihat oleh pengguna**, per rilis ke produksi.
 
-Bukan `git log`. Log mencatat setiap commit; berkas ini mencatat apa yang berubah
-bagi orang yang memakai aplikasinya — dan sengaja diam soal refactor, penjaga,
-serta pekerjaan dalam yang tidak mengubah apa pun di layar.
+Bukan `git log`. Log mencatat setiap commit; berkas ini mencatat apa yang
+berubah bagi orang yang memakai aplikasinya — dan sengaja diam soal refactor,
+penjaga, serta pekerjaan dalam yang tidak mengubah apa pun di layar.
 
-**Nomor versinya berarti.** Ia tampil di kaki menu samping, dan itulah yang
-disebut orang ketika melaporkan masalah ("saya di v0.2.0"). `package.json`
-memegang nomornya, `next.config.ts` menyuntikkannya saat build, dan
-`tests/changelog.test.ts` menolak nomor yang tidak cocok dengan judul teratas di
-bawah — jadi rilis tanpa catatan tidak bisa lolos gerbang.
+Isi yang sama dibaca pengguna di dalam aplikasi lewat halaman **Apa yang
+Baru** (`/docs/apa-yang-baru`), yang dijangkau dari nomor versi di kaki menu
+samping.
 
-Format: `## <versi> — <tanggal> (<sha main>)`. Versi naik di **minor** untuk
-kemampuan baru, **patch** untuk perbaikan saja.
+**Nomor versinya berarti.** `package.json` memegang nomornya,
+`next.config.ts` menyuntikkannya saat build, dan `tests/changelog.test.ts`
+menolak nomor yang tidak cocok dengan rilis teratas di bawah — jadi rilis
+tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.2.0 — 2026-08-30 (db7f748)
+## 0.2.0 — 2026-08-30 (8ac0d9c)
 
-### Modul Manufaktur — baru
+Modul Manufaktur, dan panduan untuk setiap modul — termasuk delapan yang selama ini tidak punya.
 
-Modul produksi utuh, dari resep sampai jurnalnya. **Tidak menyala sendiri:**
-ia modul opt-in pertama, dinyalakan per perusahaan di halaman Modul Usaha —
-sebab perusahaan dagang tidak boleh tiba-tiba menemukan tiga menu yang tak
-pernah dimintanya.
+### Baru
 
-- **Stasiun Kerja** — tempat kerja beserta tarif upah dan overhead per jam.
-- **Resep Produksi** — bahan dan tahapan sebuah produk. Susut bahan
-  **membagi**, bukan mengalikan. Resep boleh bertingkat: layar resep menurunkan
-  rakitan antara sampai bahan daun untuk memperlihatkan biaya standarnya —
-  tetapi perintah produksi tetap mengambil komponen **langsung** dari gudang,
-  jadi rakitan antara dibuat lewat perintah produksinya sendiri.
-- **Perintah Produksi** — satu batch dari mulai sampai selesai. Dua tindakan
-  menulis ke buku besar: bahan keluar ke Barang Dalam Proses, lalu barang jadi
-  masuk dengan harga pokok yang benar-benar terpakai.
-- **Varians** — rencana lawan kenyataan (bahan, efisiensi, hasil). **Informasi,
-  bukan jurnal:** ia tidak menyentuh buku besar.
-- Tiga akun baru saat modul dinyalakan: `1106` Barang Dalam Proses,
-  `5103` Beban Upah Langsung, `5104` Beban Overhead Pabrik.
-- Kategori usaha baru **Manufaktur** di wisaya setup.
+- Modul Manufaktur: resep produksi, stasiun kerja, dan perintah produksi. Ia tidak menyala sendiri — dinyalakan per perusahaan di halaman Modul Usaha, atau dengan memilih kategori usaha Manufaktur saat setup.
+- Perintah produksi menghitung harga pokok barang jadi dari biaya yang sungguhan terpakai: bahan, upah, dan overhead pabrik. Selisih rencana lawan kenyataan ditampilkan sebagai informasi, dan tidak pernah menjadi jurnal.
+- Panduan Alur Kerja di Beranda bertambah tujuh: Stok, Kas & Bank, Produksi, Kontrak & Dokumen Ekspor, Aset Tetap, Persetujuan, dan Pajak. Sebelumnya hanya ada tiga, sehingga delapan dari sebelas modul tidak punya panduan urutan sama sekali.
+- Halaman bantuan baru tentang manufaktur, dan tur berpandu di layar Perintah Produksi.
+- Halaman ini sendiri — riwayat perubahan yang bisa dibaca dari dalam aplikasi. Nomor versi di kaki menu samping kini menuju ke sini.
 
-### Panduan
+### Berubah
 
-- **Tujuh alur kerja baru** di panel Alur Kerja Beranda — Stok, Kas & Bank,
-  Produksi, Kontrak & Dokumen Ekspor, Aset Tetap, Persetujuan, dan Pajak.
-  Sebelumnya hanya ada tiga (Penjualan, Pembelian, Tutup Buku), jadi delapan
-  dari sebelas modul tidak punya panduan urutan sama sekali. Sekarang
-  **kesebelasnya punya**.
-- **Tur baru** di layar Perintah Produksi.
-- **Halaman dokumen Manufaktur** — resep, stasiun kerja, dan perintah produksi
-  dalam satu cerita.
+- Nomor versi di kaki menu samping kini benar-benar berganti tiap rilis. Sebelumnya ia menampilkan angka yang sama untuk setiap rilis yang pernah ada, sehingga tidak berguna ketika Anda menyebutnya dalam laporan masalah.
 
-### Perbaikan letak menu
+### Perbaikan
 
-- **Retur Penjualan** dan **Surat Jalan** pindah ke modul yang sebenarnya
-  memilikinya — sebelumnya keduanya ikut mati saat modul yang salah dimatikan.
-- **Transaksi Berulang** berhenti digerbangi izin faktur; ia punya izinnya
-  sendiri.
-
-### Bahasa
-
-Layar manufaktur ditulis ulang dengan kalimat yang dipahami pemilik usaha,
-bukan terjemahan jargon ERP.
+- Retur Penjualan dan Surat Jalan sebelumnya ikut menghilang ketika modul yang salah dimatikan. Keduanya kini berada di modul yang benar-benar memilikinya.
+- Transaksi Berulang tidak lagi menuntut izin faktur; ia memakai izinnya sendiri.
 
 ---
 

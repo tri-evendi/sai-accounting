@@ -184,13 +184,17 @@ const ISTILAH_DEFINISI: React.CSSProperties = {
 };
 
 /**
- * Satu blok. Blok BANGKITAN (`matriks-izin`, `endpoint-api`) dirender
+ * Satu blok. Blok BANGKITAN (`matriks-izin`, `endpoint-api`, `riwayat-rilis`)
+ * dirender
  * pemanggilnya — lihat `DocBody`.
  */
 async function Blok({
   blok,
 }: {
-  blok: Exclude<DocBlock, { kind: "matriks-izin" } | { kind: "endpoint-api" }>;
+  blok: Exclude<
+    DocBlock,
+    { kind: "matriks-izin" } | { kind: "endpoint-api" } | { kind: "riwayat-rilis" }
+  >;
 }) {
   const t = await getT();
 
@@ -306,6 +310,7 @@ export async function DocBody({
   blok,
   matriks,
   endpoints,
+  riwayat,
 }: {
   blok: readonly DocBlock[];
   /**
@@ -323,12 +328,18 @@ export async function DocBody({
    * permukaan API.
    */
   endpoints: React.ReactNode;
+  /**
+   * Alasan yang sama, sumber yang lain: riwayat rilis dibangkitkan dari
+   * `lib/changelog.ts` oleh komponennya sendiri.
+   */
+  riwayat: React.ReactNode;
 }) {
   return (
     <>
       {blok.map((b, i) => {
         if (b.kind === "matriks-izin") return <div key={`matriks-${i}`}>{matriks}</div>;
         if (b.kind === "endpoint-api") return <div key={`endpoint-${i}`}>{endpoints}</div>;
+        if (b.kind === "riwayat-rilis") return <div key={`riwayat-${i}`}>{riwayat}</div>;
         return <Blok key={`${b.kind}-${i}`} blok={b} />;
       })}
     </>

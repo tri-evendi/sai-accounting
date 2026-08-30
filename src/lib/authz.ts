@@ -115,6 +115,20 @@ export const PERMISSION_ROLES = {
   // ── Stok & Aset ──────────────────────────────────────────────────────
   "inventory.read": ALL,
   "inventory.write": ALL,
+
+  // ── Manufaktur (issue #495 butir 3) ──────────────────────────────────
+  // Resep & stasiun kerja adalah DATA INDUK: yang mengubahnya menetapkan
+  // harga pokok setiap batch sesudahnya, jadi ia dijaga seketat master lain
+  // (OFFICE), bukan seluas pencatatan harian.
+  //
+  // Perintah produksi MENCATAT apa yang terjadi di lantai produksi, jadi
+  // menulisnya seluas mencatat gerakan stok (ALL) — orang yang menimbang
+  // bahan bukan orang yang menyusun resepnya.
+  "bill_of_material.read": ALL,
+  "bill_of_material.write": OFFICE,
+  "work_center.manage": OFFICE,
+  "production_order.read": ALL,
+  "production_order.write": ALL,
   "fixed_asset.read": OFFICE,
   "fixed_asset.write": OFFICE,
 

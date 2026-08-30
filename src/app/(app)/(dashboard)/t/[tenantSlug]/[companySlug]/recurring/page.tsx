@@ -52,7 +52,7 @@ export default async function RecurringPage({
 }: {
   params: Promise<TenantScopedParams>;
 }) {
-  await requirePagePermission("invoice.read", params);
+  await requirePagePermission("journal.read", params);
   const t = await getT();
 
   const templates = await prisma.recurringTemplate.findMany({

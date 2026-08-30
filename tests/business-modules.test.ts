@@ -27,6 +27,7 @@ import {
   ALL_MODULES,
   BUSINESS_CATEGORIES,
   BUSINESS_MODULES,
+  isOptInModule,
   CORE_MODULE,
   ENABLED_MODULES_TTL_MS,
   MODULE_META,
@@ -79,9 +80,13 @@ describe("peta modul: lengkap, kasar, tanpa tumpang tindih", () => {
     }
   });
 
-  it("kasar, bukan halus: 8–10 modul untuk seluruh matriks izin", () => {
+  it("kasar, bukan halus: 8–11 modul untuk seluruh matriks izin", () => {
+    // Batas atas dinaikkan dari 10 ke 11 SEKALI, untuk `manufacturing` (#495
+    // butir 3). Ia dinaikkan dengan sadar, bukan dilonggarkan: modul ke-12
+    // harus menabrak penjaga ini lagi dan menjelaskan dirinya lagi, sebab
+    // modul yang terlalu halus hanya jadi labirin konfigurasi.
     expect(BUSINESS_MODULES.length).toBeGreaterThanOrEqual(8);
-    expect(BUSINESS_MODULES.length).toBeLessThanOrEqual(10);
+    expect(BUSINESS_MODULES.length).toBeLessThanOrEqual(11);
   });
 
   it("setiap modul punya teks (kunci kamus), termasuk yang baru ditambahkan", () => {
@@ -126,18 +131,36 @@ describe("modul inti: pintu yang tak pernah bisa ditutup", () => {
 });
 
 describe("keputusan: modul menggerbangi permukaan, bukan buku besar", () => {
-  it("mematikan `trading` menutup kontrak/surat jalan tapi TIDAK jurnal & laporan", () => {
+  it("mematikan `trading` menutup kontrak & penerima barang tapi TIDAK jurnal & laporan", () => {
     const enabled = allExcept("trading");
 
     for (const permission of [
       "contract.read",
       "contract.write",
-      "delivery_order.read",
       "consignee.read",
-      "return.write",
     ] as Permission[]) {
       expect(isPermissionEnabled(permission, enabled), permission).toBe(false);
     }
+
+    /*
+     * Surat jalan & retur SENGAJA BERTAHAN sejak koreksi pemetaan — dan ini
+     * bukan pelonggaran melainkan perbaikan cacat fungsional yang terukur.
+     *
+     * Sebelumnya keduanya milik `trading`, sehingga preset DISTRIBUSI (grosir,
+     * yang memang tanpa `trading`) bisa menerbitkan faktur tetapi tidak bisa
+     * mengirim barangnya maupun mencatat barang yang dikembalikan pelanggannya.
+     *
+     * Buktinya ada di skema, bukan di selera:
+     *   • `sales_returns.invoice_id` WAJIB — retur menunjuk FAKTUR (`sales`);
+     *   • `delivery_orders.contract_id` NULLABLE — surat jalan tidak pernah
+     *     menuntut kontrak, dan ia menulis gerakan stok + memposting HPP
+     *     (`inventory`).
+     *
+     * Yang tersisa di `trading` adalah yang memang khas perdagangan berjangka
+     * ekspor: kontrak dan penerima barang di pelabuhan tujuan.
+     */
+    expect(isPermissionEnabled("delivery_order.read" as Permission, enabled)).toBe(true);
+    expect(isPermissionEnabled("return.write" as Permission, enabled)).toBe(true);
 
     // Uang muka SENGAJA bertahan — ia hidup di `purchasing`, bukan `trading`.
     expect(isPermissionEnabled("advance.read" as Permission, enabled)).toBe(true);
@@ -186,16 +209,30 @@ describe("keputusan: modul menggerbangi permukaan, bukan buku besar", () => {
 });
 
 describe("penyimpanan: kosong = semua aktif", () => {
-  it("NULL / kosong / spasi berarti SEMUA modul aktif (tanpa backfill)", () => {
+  it("NULL / kosong / spasi berarti modul BAWAAN — semua kecuali yang opt-in", () => {
+    /*
+     * Dulu ini berbunyi "SEMUA modul aktif". Maksudnya tidak berubah: kolom
+     * yang tak pernah disentuh berarti aplikasi persis seperti kemarin, tanpa
+     * backfill. Yang berubah adalah bahwa modul OPT-IN (#495 butir 3) tidak
+     * ikut bawaan itu — kalau ia ikut, "persis seperti kemarin" justru
+     * dilanggar: 14 buku yang tak satu pun memintanya akan mendapat tiga menu
+     * manufaktur pada rilis berikutnya.
+     */
     for (const raw of [null, undefined, "", "   "]) {
-      expect(parseEnabledModules(raw)).toEqual(ALL_MODULES);
+      const parsed = parseEnabledModules(raw);
+      for (const m of BUSINESS_MODULES) {
+        expect(parsed.has(m), `${m} pada kolom kosong`).toBe(!isOptInModule(m));
+      }
     }
   });
 
-  it("nilai rusak (tak satu pun token dikenal) juga berarti semua aktif", () => {
-    // Gagal-tertutup di sini berarti seluruh aplikasi di luar inti lenyap gara-gara
-    // satu baris data yang salah ketik.
-    expect(parseEnabledModules("gudang,laundry")).toEqual(ALL_MODULES);
+  it("nilai rusak jatuh ke BAWAAN, bukan ke kosong dan bukan ke semua", () => {
+    // Gagal-tertutup berarti seluruh aplikasi di luar inti lenyap gara-gara satu
+    // baris salah ketik. Gagal-terbuka penuh berarti data rusak MENGHADIAHKAN
+    // modul yang tak pernah dinyalakan siapa pun. Bawaan adalah keduanya bukan.
+    const parsed = parseEnabledModules("gudang,laundry");
+    expect(parsed.has("sales")).toBe(true);
+    expect(parsed.has("manufacturing")).toBe(false);
   });
 
   it("token tak dikenal diabaikan, sisanya tetap berlaku, inti selalu ikut", () => {
@@ -210,10 +247,19 @@ describe("penyimpanan: kosong = semua aktif", () => {
     expect(parseEnabledModules(stored)).toEqual(new Set(["core_accounting", ...chosen]));
   });
 
-  it("himpunan lengkap disimpan sebagai NULL — 'kosong = semua' tetap jujur", () => {
-    expect(serializeEnabledModules(BUSINESS_MODULES)).toBeNull();
-    // …dan modul yang ditambahkan ke kode belakangan ikut menyala sendiri.
-    expect(parseEnabledModules(serializeEnabledModules(BUSINESS_MODULES))).toEqual(ALL_MODULES);
+  it("himpunan BAWAAN disimpan sebagai NULL — 'kosong = bawaan' tetap jujur", () => {
+    const bawaan = BUSINESS_MODULES.filter((m) => !isOptInModule(m));
+    expect(serializeEnabledModules(bawaan)).toBeNull();
+    // Modul BIASA yang ditambahkan ke kode belakangan tetap ikut menyala sendiri.
+    expect(parseEnabledModules(serializeEnabledModules(bawaan))).toEqual(new Set(bawaan));
+  });
+
+  it("menyalakan modul opt-in tersimpan EKSPLISIT, bukan NULL", () => {
+    // Pilihannya adalah keputusan, bukan ketiadaan keputusan — dan NULL berarti
+    // ketiadaan keputusan.
+    const stored = serializeEnabledModules([...BUSINESS_MODULES]);
+    expect(stored).not.toBeNull();
+    expect(stored).toContain("manufacturing");
   });
 
   it("normalisasi: urut deklarasi, tanpa kembar, inti dipaksa ikut", () => {
@@ -258,8 +304,58 @@ describe("preset kategori usaha: hanya NILAI AWAL", () => {
     }
   });
 
-  it("perdagangan komoditas menyalakan semuanya; jasa mematikan lapisan barang", () => {
-    expect(modulesForCategory("commodity_trading")).toEqual([...BUSINESS_MODULES]);
+  it("HANYA kategori manufaktur yang menyalakan modul opt-in", () => {
+    /*
+     * Dua sisi, dan keduanya penting.
+     *
+     * Aturannya semula "opt-in tidak ikut preset MANA PUN" — terlalu lebar:
+     * orang yang memilih kategori bernama "Manufaktur" SEDANG MEMINTA modulnya,
+     * dan menolaknya di situ berarti menyuruhnya menyalakan sendiri hal yang
+     * baru saja ia sebutkan.
+     *
+     * Bunyi yang benar: opt-in tidak ikut preset yang TIDAK MENYEBUTNYA.
+     */
+    for (const kategori of ["commodity_trading", "distribution", "services", "custom"] as const) {
+      expect(modulesForCategory(kategori), kategori).not.toContain("manufacturing");
+    }
+    expect(modulesForCategory("manufacturing")).toContain("manufacturing");
+  });
+
+  it("kategori manufaktur adalah SUPERSET perdagangan, bukan himpunan yang lebih sempit", () => {
+    // Pabrik tetap membeli, menjual, bergudang, dan mengekspor — yang
+    // membedakannya adalah ia MENGUBAH barang di antaranya.
+    const dagang = modulesForCategory("commodity_trading");
+    const pabrik = modulesForCategory("manufacturing");
+    for (const m of dagang) expect(pabrik, m).toContain(m);
+    expect(pabrik.length).toBe(dagang.length + 1);
+  });
+
+  it("jasa kini bisa mencatat retur — ia milik `sales`, bukan `trading`", () => {
+    // Koreksi pemetaan: perusahaan jasa pun menerbitkan nota kredit atas
+    // fakturnya. Surat jalan TETAP tidak ikut — ia milik `inventory`.
+    const jasa = new Set(normalizeEnabledModules(modulesForCategory("services")));
+    expect(isPermissionEnabled("return.write" as Permission, jasa)).toBe(true);
+    expect(isPermissionEnabled("delivery_order.read" as Permission, jasa)).toBe(false);
+  });
+
+  it("distribusi kini bisa mengirim DAN menerima retur", () => {
+    // Cacat yang diperbaiki: grosir bisa menerbitkan faktur tetapi tidak bisa
+    // mengirim barangnya maupun mencatat yang dikembalikan pelanggannya.
+    const grosir = new Set(normalizeEnabledModules(modulesForCategory("distribution")));
+    expect(isPermissionEnabled("delivery_order.write" as Permission, grosir)).toBe(true);
+    expect(isPermissionEnabled("return.write" as Permission, grosir)).toBe(true);
+    // Kontrak berjangka & penerima barang pelabuhan tetap khas `trading`.
+    expect(isPermissionEnabled("contract.read" as Permission, grosir)).toBe(false);
+  });
+
+  it("perdagangan komoditas menyalakan semua BAWAAN; jasa mematikan lapisan barang", () => {
+    // Modul opt-in tidak pernah ikut preset mana pun: kalau ia ikut, "opt-in"
+    // hanya berlaku bagi buku lama dan perusahaan baru tetap mendapatkannya
+    // tanpa pernah meminta.
+    expect(modulesForCategory("commodity_trading")).toEqual(
+      BUSINESS_MODULES.filter((m) => !isOptInModule(m))
+    );
+    expect(modulesForCategory("commodity_trading")).not.toContain("manufacturing");
 
     const services = modulesForCategory("services");
     expect(services).not.toContain("trading");

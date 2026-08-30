@@ -241,7 +241,7 @@ const SRC = join(__dirname, "..", "src");
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 177;
+const AMBANG_KLIEN = 181;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -288,6 +288,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/api-tokens/api-tokens-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/approval-queue-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/rules/approval-rules-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/boms/new/bom-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/budget/accounts/budget-accounts-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/budget/targets/sales-target-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/consignees/[id]/edit/consignee-form.tsx",
@@ -342,6 +343,8 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/production-orders/[id]/actions.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/production-orders/new/production-order-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/purchases/new/purchase-wizard.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/[id]/reconciliation-workspace.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/reconciliation/new/reconciliation-form.tsx",
@@ -359,6 +362,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/tax/efaktur/seller-identity-form.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/work-centers/new/work-center-form.tsx",
   "app/(app)/(operator)/operator/login/login-form.tsx",
   "app/(app)/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
   "app/(app)/(tenant)/(panel)/companies/new/company-form.tsx",

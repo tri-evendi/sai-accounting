@@ -68,7 +68,7 @@ describe("matriks izin", () => {
     expect(can({ role: "warehouse_head" }, "advance.delete")).toBe(false);
   });
 
-  it("warehouse_head (Gudang) HANYA stok + halaman bersama — tidak pernah dokumen uang", () => {
+  it("warehouse_head (Gudang) HANYA stok, lantai produksi & halaman bersama — tidak pernah dokumen uang", () => {
     const ptgPermissions = PERMISSIONS.filter((p) => can({ role: "warehouse_head" }, p));
     expect(ptgPermissions.sort()).toEqual(
       [
@@ -76,10 +76,28 @@ describe("matriks izin", () => {
         "approval.decide",
         "inventory.read",
         "inventory.write",
+        /*
+         * Manufaktur (#495 butir 3) — dan ini MEMPERTEGAS maksud tes ini, bukan
+         * melonggarkannya. Kepala Gudang adalah orang lantai produksi: ia yang
+         * menimbang bahan dan melaporkan barang jadi, jadi perintah produksi
+         * memang pekerjaannya. Ia MEMBACA resep untuk menjalankannya, tetapi
+         * tidak boleh MENYUSUNNYA — yang mengubah resep menetapkan harga pokok
+         * setiap batch sesudahnya, dan itu keputusan kantor.
+         *
+         * Tak satu pun dari ketiganya dokumen uang: tidak ada nominal yang
+         * diketik, tidak ada pihak yang ditagih. Nilainya seluruhnya diturunkan
+         * dari harga pokok persediaan yang sudah ada.
+         */
+        "bill_of_material.read",
+        "production_order.read",
+        "production_order.write",
         "glossary.read",
         "settings.view",
       ].sort()
     );
+    // Yang TIDAK boleh dipegangnya, dan alasannya ada di komentar di atas.
+    expect(can({ role: "warehouse_head" }, "bill_of_material.write")).toBe(false);
+    expect(can({ role: "warehouse_head" }, "work_center.manage")).toBe(false);
   });
 
   it("finance_manager tidak menyentuh laporan, anggaran, jurnal, atau administrasi", () => {

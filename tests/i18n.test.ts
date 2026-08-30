@@ -100,6 +100,13 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "documentType.packing_list",
     // Nama jenis kas; kata yang sama di kedua bahasa.
     "cashType.bank",
+    /* Manufaktur (#495 butir 3). "Status" dan "Overhead" adalah kata yang sama
+       di kedua bahasa: "Overhead" bahkan serapan langsung yang sudah dipakai di
+       nama akunnya sendiri (5104 Beban Overhead Pabrik), dan menerjemahkannya
+       menjadi sesuatu yang lain akan membuat judul kolomnya tidak lagi cocok
+       dengan akun yang dirujuknya. */
+    "productionOrders.colStatus",
+    "productionOrders.varianceOverhead",
     // Istilah teknis yang dipakai apa adanya dalam bahasa Indonesia — sama
     // seperti "slug" di dunia URL berbahasa Inggris.
     "companies.slugLabel",

@@ -26,8 +26,20 @@ import { nextOccurrence, type RecurrenceRule } from "@/lib/recurring";
 
 export const dynamic = "force-dynamic";
 
+/*
+ * ══ GERBANGNYA `journal.*`, BUKAN `invoice.*` (koreksi pemetaan) ═══════════
+ * `RECURRING_KINDS` memuat DUA jenis: `invoice` dan `journal`. Menggerbangi
+ * seluruh permukaan dengan `invoice.read` berarti perusahaan yang mematikan
+ * modul penjualan kehilangan JURNAL berulang juga — padahal jurnal ada di modul
+ * inti dan tidak pernah boleh digerbangi modul mana pun.
+ *
+ * Membacanya karena itu butuh izin inti. MENULIS diperiksa per JENIS di bawah:
+ * menjadwalkan faktur tetap menuntut `invoice.write`. Tanpa pemeriksaan kedua
+ * itu, memindahkan gerbangnya ke inti justru akan menghadiahkan penjadwalan
+ * faktur kepada orang yang tidak boleh membuat faktur.
+ */
 export async function GET() {
-  const result = await requireApiPermission("invoice.read");
+  const result = await requireApiPermission("journal.read");
   if (!result.authorized) return result.response;
 
   const templates = await prisma.recurringTemplate.findMany({
@@ -47,7 +59,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const result = await requireApiPermission("invoice.write");
+  const result = await requireApiPermission("journal.write");
   if (!result.authorized) return result.response;
   const { t, dictionary } = await getRequestI18n();
 
@@ -66,6 +78,17 @@ export async function POST(request: Request) {
      faktur yang tak pernah ada hanya akan menahan dirinya sendiri setiap bulan
      (`held_source`) — kegagalan yang lahir pada saat pembuatan tapi baru
      terlihat sebulan kemudian. */
+  /*
+   * Pemeriksaan KEDUA, per jenis. Gerbang di atas hanya memastikan orangnya
+   * boleh menjadwalkan sesuatu; yang menentukan boleh menjadwalkan APA adalah
+   * izin dokumen yang akan dilahirkannya. Menjadwalkan faktur setiap bulan
+   * adalah membuat faktur — hanya saja belakangan.
+   */
+  if (parsed.data.kind === "invoice") {
+    const boleh = await requireApiPermission("invoice.write");
+    if (!boleh.authorized) return boleh.response;
+  }
+
   if (parsed.data.kind === "invoice") {
     const source = await prisma.invoice.findUnique({
       where: { id: parsed.data.sourceId },

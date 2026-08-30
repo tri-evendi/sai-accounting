@@ -19,7 +19,9 @@ import { recurringTemplateSchema } from "@/lib/validations/recurring";
 export const dynamic = "force-dynamic";
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const result = await requireApiPermission("invoice.write");
+  // Inti untuk menyunting templat; jenis `invoice` diperiksa lagi di bawah —
+  // alasannya sama dengan route pembuatan.
+  const result = await requireApiPermission("journal.write");
   if (!result.authorized) return result.response;
   const { t, dictionary } = await getRequestI18n();
 
@@ -37,6 +39,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       },
       { status: 400 }
     );
+  }
+
+  /* Menyunting templat faktur adalah menyentuh faktur yang akan lahir darinya. */
+  if (parsed.data.kind === "invoice") {
+    const boleh = await requireApiPermission("invoice.write");
+    if (!boleh.authorized) return boleh.response;
   }
 
   const existing = await prisma.recurringTemplate.findUnique({ where: { id } });

@@ -20,7 +20,18 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.3.0 — 2026-08-30 — belum digelar
+## 0.4.0 — 2026-08-30 — belum digelar
+
+Halaman bantuan baru yang memperlihatkan alur kerja lengkap untuk tiap jenis usaha, lengkap dengan gambarnya.
+
+### Baru
+
+- Halaman bantuan “Alur kerja untuk jenis usaha Anda” — urutan ujung-ke-ujung untuk perdagangan ekspor, distribusi, jasa, dan manufaktur, masing-masing dengan gambar tahapannya dan modul yang mengerjakan tiap tahap.
+- Empat gambar alur baru menjelaskan perbedaan tiap jenis usaha secara langsung: mana yang mulai dari kontrak, mana yang tak punya surat jalan sama sekali, dan di mana tahap produksi menyisip.
+
+---
+
+## 0.3.0 — 2026-08-30 (978687f)
 
 Riwayat perubahan kini bisa dibaca dari dalam aplikasi — halaman yang sedang Anda buka ini.
 

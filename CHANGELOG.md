@@ -20,6 +20,20 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.3.0 — 2026-08-30 — belum digelar
+
+Riwayat perubahan kini bisa dibaca dari dalam aplikasi — halaman yang sedang Anda buka ini.
+
+### Baru
+
+- Halaman “Apa yang Baru” — halaman ini sendiri. Sebelumnya catatan perubahan hanya ada di tempat yang dibaca pengembang, jadi menu yang tiba-tiba muncul tidak pernah punya penjelasan yang bisa Anda buka sendiri.
+
+### Berubah
+
+- Nomor versi di kaki menu samping kini bisa diklik dan membawa Anda ke halaman ini. Sebelumnya ia hanya angka yang tidak menuju ke mana-mana.
+
+---
+
 ## 0.2.0 — 2026-08-30 (8ac0d9c)
 
 Modul Manufaktur, dan panduan untuk setiap modul — termasuk delapan yang selama ini tidak punya.
@@ -30,7 +44,6 @@ Modul Manufaktur, dan panduan untuk setiap modul — termasuk delapan yang selam
 - Perintah produksi menghitung harga pokok barang jadi dari biaya yang sungguhan terpakai: bahan, upah, dan overhead pabrik. Selisih rencana lawan kenyataan ditampilkan sebagai informasi, dan tidak pernah menjadi jurnal.
 - Panduan Alur Kerja di Beranda bertambah tujuh: Stok, Kas & Bank, Produksi, Kontrak & Dokumen Ekspor, Aset Tetap, Persetujuan, dan Pajak. Sebelumnya hanya ada tiga, sehingga delapan dari sebelas modul tidak punya panduan urutan sama sekali.
 - Halaman bantuan baru tentang manufaktur, dan tur berpandu di layar Perintah Produksi.
-- Halaman ini sendiri — riwayat perubahan yang bisa dibaca dari dalam aplikasi. Nomor versi di kaki menu samping kini menuju ke sini.
 
 ### Berubah
 

@@ -28,7 +28,14 @@ const URUT: ButirRilis["jenis"][] = ["baru", "ubah", "perbaikan"];
 
 export function bangunChangelog(): string {
   const bagian = RILIS.map((r) => {
-    const baris = [`## ${r.versi} — ${r.tanggal} (${r.sha})`, "", r.ringkas, ""];
+    /*
+     * Sha hanya ikut bila sudah ada. Rilis yang catatannya ditulis tetapi
+     * belum digelar ditandai apa adanya — menuliskan sha kosong atau tanda
+     * hubung akan terbaca seperti commit yang hilang, bukan seperti rilis yang
+     * memang belum berangkat.
+     */
+    const jangkar = r.sha ? ` (${r.sha})` : " — belum digelar";
+    const baris = [`## ${r.versi} — ${r.tanggal}${jangkar}`, "", r.ringkas, ""];
     for (const jenis of URUT) {
       const butir = r.butir.filter((b) => b.jenis === jenis);
       if (butir.length === 0) continue;

@@ -353,6 +353,22 @@ const APA_YANG_BARU = {
   navHrefs: [],
 } as const satisfies DocMeta;
 
+const ALUR_USAHA = {
+  slug: "alur-per-jenis-usaha",
+  judul: "Alur kerja untuk jenis usaha Anda",
+  ringkas:
+    "Urutan ujung-ke-ujung untuk perdagangan ekspor, distribusi, jasa, dan manufaktur — beserta modul yang mengerjakan tiap tahapnya.",
+  cabang: "pengguna",
+  /*
+   * `navHrefs` KOSONG. Halaman /modules sudah dijelaskan `modul-usaha`
+   * ("kenapa sebuah menu bisa hilang"), dan sebuah href hanya bisa menunjuk
+   * satu halaman dokumen — mengklaimnya di sini akan MENCURI tautan bantuan
+   * kontekstual milik halaman itu. Yang ini dijangkau dari daftar isi dan dari
+   * rujukan silang di halaman modul.
+   */
+  navHrefs: [],
+} as const satisfies DocMeta;
+
 export const DOC_INDEX = [
   MESIN_AKUNTANSI,
   PERIODE,
@@ -362,6 +378,7 @@ export const DOC_INDEX = [
   BIAYA_IMPOR,
   MANUFAKTUR,
   MODUL,
+  ALUR_USAHA,
   KAS,
   SALDO_AWAL,
   COCOK_ACCURATE,

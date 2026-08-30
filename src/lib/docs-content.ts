@@ -913,6 +913,93 @@ const APA_YANG_BARU: readonly DocBlock[] = [
   { kind: "riwayat-rilis" },
 ];
 
+const ALUR_USAHA: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Saat perusahaan Anda disiapkan, Anda memilih satu jenis usaha. Pilihan itu menyalakan sekumpulan modul — dan modul itulah yang menentukan menu apa yang muncul di layar. Halaman ini memperlihatkan urutan kerjanya dari ujung ke ujung untuk tiap jenis usaha, supaya Anda tahu tahap mana yang dikerjakan di mana.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Jenis usaha hanya menentukan TITIK AWAL, bukan batas permanen. Modul bisa dinyalakan atau dimatikan kapan saja di halaman Modul Usaha, dan alur Anda ikut berubah. Kalau sebuah menu yang disebut di bawah tidak ada di layar Anda, kemungkinan besar modulnya sedang mati — bukan aplikasinya yang tidak bisa.",
+  },
+  { kind: "sub", judul: "Perdagangan komoditas & ekspor" },
+  {
+    kind: "paragraf",
+    teks:
+      "Alur terpanjang, dan satu-satunya yang dimulai dari kontrak. Kontraknya bukan formalitas: ia yang memegang pembeli, jumlah, harga, dan mata uang — dan setiap dokumen sesudahnya mewarisi keempatnya. Faktur sebuah kontrak karena itu tidak bisa menagih pihak lain.",
+  },
+  {
+    kind: "diagram",
+    nama: "alur-komoditas",
+    keterangan:
+      "Enam tahap: kontrak, beli & terima stok, kirim dengan surat jalan, arsipkan dokumen ekspor, tagih dengan faktur dan e-Faktur, lalu terima uang dan tutup buku. Seluruh modul bawaan menyala.",
+  },
+  { kind: "sub", judul: "Distribusi & grosir" },
+  {
+    kind: "paragraf",
+    teks:
+      "Sama-sama bergudang, tetapi tanpa lapisan ekspor: tidak ada kontrak berjangka, tidak ada penerima barang di pelabuhan tujuan, dan tidak ada arsip dokumen pelabuhan. Kesepakatannya adalah fakturnya sendiri, jadi alurnya mulai dari barang masuk gudang.",
+  },
+  {
+    kind: "diagram",
+    nama: "alur-distribusi",
+    keterangan:
+      "Empat tahap: beli & terima stok, jual dengan faktur dan surat jalan, terima uang, lalu tutup buku. Modul Perdagangan dan Dokumen tidak menyala.",
+  },
+  { kind: "sub", judul: "Jasa & agensi" },
+  {
+    kind: "paragraf",
+    teks:
+      "Tidak ada barang sama sekali, dan itu memendekkan alurnya paling banyak: tanpa stok, tanpa surat jalan, tanpa harga pokok persediaan. Yang dijual adalah pekerjaan, jadi tahap pertamanya langsung faktur. Biayanya datang dari sisi lain — jasa pihak ketiga, barang habis pakai, dan penyusutan peralatan.",
+  },
+  {
+    kind: "diagram",
+    nama: "alur-jasa",
+    keterangan:
+      "Empat tahap: tagih pekerjaan dengan faktur, catat biaya dan penyusutan, terima uang, lalu tutup buku. Modul Stok, Perdagangan, dan Dokumen tidak menyala.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Retur tetap ada pada usaha jasa. Nota kredit atas faktur yang salah adalah hal biasa, dan retur memang milik modul Penjualan — bukan milik stok. Yang tidak ada hanyalah surat jalan, sebab tidak ada barang yang berpindah.",
+  },
+  { kind: "sub", judul: "Manufaktur" },
+  {
+    kind: "paragraf",
+    teks:
+      "Alur perdagangan, dengan satu tahap tambahan di tengahnya: mengubah barang menjadi barang lain. Sebuah pabrik tetap membeli, menjual, bergudang, dan mengekspor — jadi modulnya bukan himpunan yang lebih sempit, melainkan yang lebih luas.",
+  },
+  {
+    kind: "diagram",
+    nama: "alur-manufaktur",
+    keterangan:
+      "Enam tahap: beli bahan, siapkan stasiun kerja dan resep, jalankan perintah produksi, jual dan kirim barang jadi, terima uang, lalu tutup buku. Seluruh modul bawaan ditambah Manufaktur.",
+  },
+  {
+    kind: "catatan",
+    nada: "peringatan",
+    teks:
+      "Manufaktur adalah satu-satunya modul yang tidak pernah menyala sendiri. Memilih jenis usaha Manufaktur saat setup menyalakannya; jenis usaha lain harus menyalakannya sendiri di halaman Modul Usaha. Saat dinyalakan, tiga akun ikut lahir: Barang Dalam Proses, Beban Upah Langsung, dan Beban Overhead Pabrik.",
+  },
+  { kind: "sub", judul: "Kalau tidak satu pun cocok" },
+  {
+    kind: "paragraf",
+    teks:
+      "Ada pilihan Kustom, dan ia sengaja tidak menyalakan modul apa pun selain inti akuntansi. Alasannya arah: menyalakan semuanya lalu meminta Anda mematikan yang tak dipakai akan meninggalkan sisa yang tidak bisa dibersihkan — akun yang terlanjur tersemai tetap tinggal, sebab akun yang pernah dipakai adalah dasar angka yang sudah terbit.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Arah sebaliknya aman dan lengkap: menyalakan sebuah modul kemudian membuat akun-akunnya lahir saat itu juga. Jadi mulailah dari yang Anda yakini, lalu tambahkan begitu kebutuhannya muncul.",
+  },
+  {
+    kind: "istilah",
+    kunci: ["kontrak", "surat_jalan", "faktur", "persediaan", "perintah_produksi"],
+  },
+];
+
 export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "mesin-akuntansi": MESIN_AKUNTANSI,
   "periode-terkunci": PERIODE,
@@ -922,6 +1009,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "biaya-impor": BIAYA_IMPOR,
   "manufaktur": MANUFAKTUR,
   "modul-usaha": MODUL,
+  "alur-per-jenis-usaha": ALUR_USAHA,
   "kas-dan-bank": KAS,
   "saldo-awal": SALDO_AWAL,
   "cocokkan-accurate": COCOK_ACCURATE,

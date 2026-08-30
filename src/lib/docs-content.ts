@@ -91,6 +91,14 @@ export type DocBlock =
    */
   | { kind: "endpoint-api" }
   /**
+   * Riwayat rilis, DIBANGKITKAN dari `lib/changelog.ts` saat render — alasan
+   * yang sama dengan `matriks-izin` dan `endpoint-api`. Daftar versi yang
+   * diketik ke dalam prosa adalah daftar yang mulai berbohong pada rilis
+   * berikutnya, dan riwayat rilis adalah kasus terburuknya: ia SELALU salah
+   * satu rilis setelah ditulis.
+   */
+  | { kind: "riwayat-rilis" }
+  /**
    * Gambar MEKANISME — bukan tangkapan layar.
    *
    * ⚠ Aturan "tanpa tangkapan layar" (keputusan 5, #300) TIDAK dilanggar di
@@ -886,6 +894,25 @@ const MANUFAKTUR: readonly DocBlock[] = [
   },
 ];
 
+const APA_YANG_BARU: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Halaman ini mencatat apa yang berubah di aplikasi, per pembaruan. Yang ditulis di sini hanya yang TERLIHAT saat Anda bekerja — menu baru, perilaku yang berganti, kesalahan yang diperbaiki. Pekerjaan di balik layar yang tidak mengubah apa pun bagi Anda sengaja tidak dicatat: catatan yang memuat segalanya berhenti dibaca.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Nomor versi yang sedang Anda jalankan tertera di kaki menu samping. Sebutkan nomor itu ketika melaporkan masalah — ia yang memberi tahu kami persis versi mana yang Anda lihat, dan sering kali itu perbedaan antara masalah yang sudah diperbaiki dan yang belum pernah kami temui.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Pembaruan berlaku untuk semua perusahaan sekaligus, dan tidak pernah mengubah data yang sudah Anda catat. Menu yang muncul atau hilang bagi Anda juga bergantung pada modul yang dipakai perusahaan Anda dan pada hak akses Anda — jadi tidak semua yang tertulis di bawah otomatis tampak di layar Anda.",
+  },
+  { kind: "riwayat-rilis" },
+];
+
 export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "mesin-akuntansi": MESIN_AKUNTANSI,
   "periode-terkunci": PERIODE,
@@ -903,4 +930,5 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "paket-dan-perusahaan": PAKET,
   "membaca-laporan": LAPORAN,
   "data-anda": DATA_ANDA,
+  "apa-yang-baru": APA_YANG_BARU,
 };

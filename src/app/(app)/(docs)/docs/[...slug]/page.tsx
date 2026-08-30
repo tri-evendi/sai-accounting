@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 import { LeftOutlined } from "@ant-design/icons";
 
 import { ApiEndpointTable } from "@/components/docs/api-endpoints";
+import { ReleaseHistory } from "@/components/docs/release-history";
 import { DocBody } from "@/components/docs/doc-body";
 import { DocPager } from "@/components/docs/doc-pager";
 import { DocsShell } from "@/components/docs/docs-shell";
@@ -112,6 +113,7 @@ export default async function DocPage({
         blok={DOC_BLOCKS[page.slug]}
         matriks={<PermissionMatrix />}
         endpoints={<ApiEndpointTable />}
+        riwayat={<ReleaseHistory />}
       />
       <DocPager slug={page.slug} />
     </DocsShell>

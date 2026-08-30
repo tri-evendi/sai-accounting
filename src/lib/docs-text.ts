@@ -65,6 +65,13 @@ function teksBlok(blok: DocBlock): string {
     case "istilah":
     case "matriks-izin":
     case "endpoint-api":
+    /*
+     * Riwayat rilis dibangkitkan dari `lib/changelog.ts`, jadi teksnya tidak
+     * ada di berkas prosa. Ia sengaja TIDAK diindeks: isinya berganti tiap
+     * rilis, dan indeks pencarian yang memuatnya akan menjawab "faktur" dengan
+     * catatan rilis lama alih-alih dengan halaman yang menjelaskan faktur.
+     */
+    case "riwayat-rilis":
       return "";
     default: {
       const belumDitangani: never = blok;

@@ -373,6 +373,34 @@ export type DocSlug = (typeof DOC_INDEX)[number]["slug"];
 export type DocEntry = (typeof DOC_INDEX)[number];
 
 /**
+ * Halaman yang dijangkau dari CHROME, bukan dari menu — beserta sebabnya.
+ *
+ * ══ Kenapa daftar ini perlu ada ════════════════════════════════════════════
+ * `NAV_TANPA_DOKUMEN` menjaga cakupan dengan mengukur ITEM MENU. Itu ukuran
+ * yang tepat untuk modul, tetapi ia punya titik buta yang tidak terlihat dari
+ * dalam: halaman yang memang bukan item menu tidak pernah masuk hitungan — ia
+ * tidak berdokumen DAN tidak tercatat sebagai utang. Ia hanya tidak ada.
+ *
+ * Hari ini isinya satu, dan satu itu ternyata baik-baik saja: kotak masuk
+ * pemberitahuan dijangkau dari lonceng di bilah atas, terbuka untuk SETIAP
+ * peran (jadi tak punya izin untuk dideklarasikan — lihat kepala halamannya
+ * dan `tests/authz-coverage.test.ts`), dan isinya milik PENGGUNA, bukan
+ * perusahaan. Ia chrome, sekerabat dengan menu Bantuan — bukan modul yang
+ * kelewat didaftarkan. Yang salah bukan keadaannya, melainkan bahwa keadaan
+ * itu tidak pernah ditulis di mana pun.
+ *
+ * Dijaga `tests/panduan-cakupan.test.ts` dua arah: rutenya wajib benar-benar
+ * ada (daftar yang menyebut halaman yang sudah dihapus adalah daftar yang
+ * berbohong), dan ia wajib BUKAN item menu. Yang kedua itu intinya — begitu
+ * sebuah halaman di sini masuk ke `NAV_GROUPS`, ia berhenti menjadi chrome dan
+ * aturan biasa berlaku lagi: berdokumen, atau tercatat sebagai utang.
+ */
+export const PERMUKAAN_LUAR_NAVIGASI: Readonly<Record<string, string>> = {
+  "/notifications":
+    "Chrome, bukan modul. Dijangkau dari lonceng di bilah atas; terbuka untuk setiap peran; isinya milik pengguna, bukan perusahaan. Satu-satunya perilakunya yang layak diceritakan — membuka halaman ini menandai seluruh isinya terbaca, sebab kotak masuk yang menuntut klik tambahan hanya menumpuk angka merah yang berhenti berarti — sudah tertulis di kepala halamannya, tempat orang yang mengubahnya akan membacanya.",
+};
+
+/**
  * Modul navigasi yang SENGAJA belum/tidak punya halaman dokumen, beserta
  * sebabnya (kriteria selesai issue #300).
  *

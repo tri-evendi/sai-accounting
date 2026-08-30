@@ -3510,6 +3510,140 @@
           "description": "Profit & loss, balance sheet, cash flow."
         }
       }
+    },
+    "stok": {
+      "label": "Inventory Flow",
+      "description": "From goods arriving in the warehouse to their value in the reports.",
+      "steps": {
+        "masuk": {
+          "label": "Record Stock In",
+          "description": "Record newly received goods along with their purchase cost."
+        },
+        "keluar": {
+          "label": "Create Delivery Order",
+          "description": "Goods leave the warehouse — stock drops and its cost is recorded."
+        },
+        "opname": {
+          "label": "Count Physical Stock",
+          "description": "Reconcile the records against the physical count in the warehouse."
+        },
+        "nilai": {
+          "label": "View Inventory Value",
+          "description": "How much money is currently tied up in the warehouse."
+        }
+      }
+    },
+    "kas": {
+      "label": "Cash & Bank Flow",
+      "description": "Recording money in and out, then making sure it matches the bank.",
+      "steps": {
+        "catat": {
+          "label": "Record a Cash Entry",
+          "description": "Money in or out, whether from petty cash or a bank account."
+        },
+        "buku": {
+          "label": "Review the Cash Book",
+          "description": "Every cash and bank transaction in a single list."
+        },
+        "cocokkan": {
+          "label": "Reconcile the Account",
+          "description": "Match your records against the bank statement."
+        },
+        "laporan": {
+          "label": "View the Cash Report",
+          "description": "Where the money went during this period."
+        }
+      }
+    },
+    "produksi": {
+      "label": "Production Flow",
+      "description": "From recipe to finished goods entering the warehouse at their true cost.",
+      "steps": {
+        "stasiun": {
+          "label": "Set Up Work Centers",
+          "description": "Each workplace with its hourly labour and overhead rates."
+        },
+        "resep": {
+          "label": "Build the Recipe",
+          "description": "The materials and operations needed for a given output quantity."
+        },
+        "jalankan": {
+          "label": "Run a Production Order",
+          "description": "One batch: materials go out, then finished goods come in."
+        },
+        "pantau": {
+          "label": "Track Work in Progress",
+          "description": "Which batches are unfinished, and how much cost sits in them."
+        }
+      }
+    },
+    "perdagangan": {
+      "label": "Contract & Export Document Flow",
+      "description": "The agreement, the destination, and the paperwork the buyer asks for.",
+      "steps": {
+        "penerima": {
+          "label": "Register the Consignee",
+          "description": "The party at the destination port that receives the shipment."
+        },
+        "kontrak": {
+          "label": "Create the Contract",
+          "description": "The agreed quantity, price, and currency."
+        },
+        "unggah": {
+          "label": "Upload Export Documents",
+          "description": "B/L, COO, fumigation certificate — stored attached to the contract."
+        },
+        "arsip": {
+          "label": "Browse the Archive",
+          "description": "Every export file, searchable by contract number."
+        }
+      }
+    },
+    "aset": {
+      "label": "Fixed Asset Flow",
+      "description": "Registering high-value items and depreciating them each month.",
+      "steps": {
+        "kategori": {
+          "label": "Set Up Asset Categories",
+          "description": "Asset groups and their useful life — the basis of the depreciation figure."
+        },
+        "daftar": {
+          "label": "Register an Asset",
+          "description": "Vehicles, machinery, buildings — with the date they were acquired."
+        },
+        "susut": {
+          "label": "Track Depreciation",
+          "description": "A cost that appears every month without any cash leaving."
+        }
+      }
+    },
+    "persetujuan": {
+      "label": "Approval Flow",
+      "description": "Deciding what needs sign-off, then signing off on it.",
+      "steps": {
+        "aturan": {
+          "label": "Set the Approval Rules",
+          "description": "The amount thresholds and document types that need sign-off first."
+        },
+        "putuskan": {
+          "label": "Clear the Queue",
+          "description": "Documents held back until you decide on them."
+        }
+      }
+    },
+    "pajak": {
+      "label": "Tax Flow",
+      "description": "From the sales invoice to the file uploaded to the tax office.",
+      "steps": {
+        "faktur": {
+          "label": "Check the Sales Invoices",
+          "description": "Make sure the VAT and buyer details are right before exporting."
+        },
+        "efaktur": {
+          "label": "Export e-Faktur",
+          "description": "The file to upload into the tax application."
+        }
+      }
     }
   },
   "consignee": {
@@ -3841,6 +3975,25 @@
       "s3": {
         "title": "What each term means",
         "body": "Report names use everyday language; the formal term can be opened through the \"?\" icon or in the Glossary from the Help menu."
+      }
+    },
+    "produksi": {
+      "title": "How production orders work",
+      "s1": {
+        "title": "Why this page exists",
+        "body": "Goods you make yourself have no purchase price. This page works out what a batch actually cost — materials, labour and factory overhead — and uses that as the cost of the finished goods."
+      },
+      "s2": {
+        "title": "Two actions, three journal entries",
+        "body": "When a batch starts, materials leave the warehouse and their value moves into Work in Progress. When it finishes, labour and overhead join them there, then the whole amount leaves as finished goods."
+      },
+      "s3": {
+        "title": "A leftover balance means unfinished work",
+        "body": "A completed production order leaves Work in Progress at zero. A remaining balance is not a discrepancy to hunt down — it is simply a batch nobody has finished yet."
+      },
+      "s4": {
+        "title": "Variance informs; it does not post",
+        "body": "Once finished, plan is compared with reality: materials, hours and yield. The differences are shown for you to read — none of them becomes a journal entry, because your cost already uses what was actually consumed."
       }
     }
   },

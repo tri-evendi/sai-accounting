@@ -41,6 +41,17 @@ pernah dimintanya.
   `5103` Beban Upah Langsung, `5104` Beban Overhead Pabrik.
 - Kategori usaha baru **Manufaktur** di wisaya setup.
 
+### Panduan
+
+- **Tujuh alur kerja baru** di panel Alur Kerja Beranda — Stok, Kas & Bank,
+  Produksi, Kontrak & Dokumen Ekspor, Aset Tetap, Persetujuan, dan Pajak.
+  Sebelumnya hanya ada tiga (Penjualan, Pembelian, Tutup Buku), jadi delapan
+  dari sebelas modul tidak punya panduan urutan sama sekali. Sekarang
+  **kesebelasnya punya**.
+- **Tur baru** di layar Perintah Produksi.
+- **Halaman dokumen Manufaktur** — resep, stasiun kerja, dan perintah produksi
+  dalam satu cerita.
+
 ### Perbaikan letak menu
 
 - **Retur Penjualan** dan **Surat Jalan** pindah ke modul yang sebenarnya

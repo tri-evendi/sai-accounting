@@ -3510,6 +3510,140 @@
           "description": "利润表、资产负债表、现金流量表。"
         }
       }
+    },
+    "stok": {
+      "label": "库存流程",
+      "description": "从货物入库到其在报表中的价值。",
+      "steps": {
+        "masuk": {
+          "label": "登记入库",
+          "description": "登记新收到的货物及其采购成本。"
+        },
+        "keluar": {
+          "label": "创建送货单",
+          "description": "货物出库——库存减少并记录其成本。"
+        },
+        "opname": {
+          "label": "盘点实物库存",
+          "description": "将账面记录与仓库实际盘点结果核对一致。"
+        },
+        "nilai": {
+          "label": "查看库存价值",
+          "description": "目前有多少资金滞留在仓库中。"
+        }
+      }
+    },
+    "kas": {
+      "label": "现金与银行流程",
+      "description": "记录资金收支，并确保与银行记录一致。",
+      "steps": {
+        "catat": {
+          "label": "登记现金交易",
+          "description": "现金或银行账户的收入与支出。"
+        },
+        "buku": {
+          "label": "查看现金账簿",
+          "description": "在一个列表中查看所有现金和银行交易。"
+        },
+        "cocokkan": {
+          "label": "核对银行账户",
+          "description": "将您的记录与银行对账单核对一致。"
+        },
+        "laporan": {
+          "label": "查看现金报表",
+          "description": "本期资金的去向。"
+        }
+      }
+    },
+    "produksi": {
+      "label": "生产流程",
+      "description": "从配方到成品按实际成本入库。",
+      "steps": {
+        "stasiun": {
+          "label": "设置工作中心",
+          "description": "各工作场所及其每小时工资和间接费用费率。"
+        },
+        "resep": {
+          "label": "编制生产配方",
+          "description": "生产一定数量产品所需的物料和工序。"
+        },
+        "jalankan": {
+          "label": "执行生产订单",
+          "description": "一个批次：物料领出，成品入库。"
+        },
+        "pantau": {
+          "label": "跟踪在制品",
+          "description": "哪些批次尚未完成，以及其中已投入多少成本。"
+        }
+      }
+    },
+    "perdagangan": {
+      "label": "合同与出口单证流程",
+      "description": "协议、收货目的地，以及买方所需的单证。",
+      "steps": {
+        "penerima": {
+          "label": "登记收货人",
+          "description": "在目的港接收货物的一方。"
+        },
+        "kontrak": {
+          "label": "创建合同",
+          "description": "约定的数量、价格和币种。"
+        },
+        "unggah": {
+          "label": "上传出口单证",
+          "description": "提单、原产地证、熏蒸证书——附于对应合同存档。"
+        },
+        "arsip": {
+          "label": "浏览单证档案",
+          "description": "所有出口文件，可按合同编号检索。"
+        }
+      }
+    },
+    "aset": {
+      "label": "固定资产流程",
+      "description": "登记高价值资产并按月计提折旧。",
+      "steps": {
+        "kategori": {
+          "label": "设置资产类别",
+          "description": "资产分组及其使用年限——折旧计算的依据。"
+        },
+        "daftar": {
+          "label": "登记资产",
+          "description": "车辆、机器、建筑物——及其取得日期。"
+        },
+        "susut": {
+          "label": "跟踪折旧",
+          "description": "每月产生但不发生现金流出的费用。"
+        }
+      }
+    },
+    "persetujuan": {
+      "label": "审批流程",
+      "description": "确定哪些事项需要审批，然后进行审批。",
+      "steps": {
+        "aturan": {
+          "label": "设置审批规则",
+          "description": "需要先行审批的金额门槛和单据类型。"
+        },
+        "putuskan": {
+          "label": "处理待办审批",
+          "description": "在您做出决定前被暂缓的单据。"
+        }
+      }
+    },
+    "pajak": {
+      "label": "税务流程",
+      "description": "从销售发票到上传至税务局的文件。",
+      "steps": {
+        "faktur": {
+          "label": "核对销售发票",
+          "description": "导出前确认增值税和买方信息无误。"
+        },
+        "efaktur": {
+          "label": "导出电子发票",
+          "description": "用于上传至税务应用程序的文件。"
+        }
+      }
     }
   },
   "consignee": {
@@ -3841,6 +3975,25 @@
       "s3": {
         "title": "各术语的含义",
         "body": "报表名称使用日常用语；正式术语可通过“?”图标或帮助菜单中的术语表查看。"
+      }
+    },
+    "produksi": {
+      "title": "生产订单的运作方式",
+      "s1": {
+        "title": "本页的用途",
+        "body": "自制产品没有采购价。本页计算一个批次的实际成本——物料、人工和制造费用——并将其作为成品成本。"
+      },
+      "s2": {
+        "title": "两个操作，三笔分录",
+        "body": "批次开始时，物料出库，其价值转入在制品。批次完成时，人工和间接费用一并计入，随后全部转出为成品。"
+      },
+      "s3": {
+        "title": "余额表示尚未完工",
+        "body": "已完成的生产订单，其在制品余额为零。若仍有余额，那并非需要追查的差异，而是尚未完工的批次。"
+      },
+      "s4": {
+        "title": "差异用于提示，而非记账",
+        "body": "完工后，将计划与实际进行比较：物料、工时和产出。差异仅供查阅——不会生成任何分录，因为成本已按实际消耗计算。"
       }
     }
   },

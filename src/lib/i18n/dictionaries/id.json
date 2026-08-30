@@ -3510,6 +3510,140 @@
           "description": "Laba/rugi, neraca, arus kas."
         }
       }
+    },
+    "stok": {
+      "label": "Alur Stok",
+      "description": "Dari barang masuk gudang sampai nilainya di laporan.",
+      "steps": {
+        "masuk": {
+          "label": "Tambah Stok Masuk",
+          "description": "Catat barang yang baru diterima beserta harga belinya."
+        },
+        "keluar": {
+          "label": "Buat Surat Jalan",
+          "description": "Barang keluar gudang — stok turun dan harga pokoknya tercatat."
+        },
+        "opname": {
+          "label": "Hitung Stok Opname",
+          "description": "Samakan catatan dengan hitungan fisik di gudang."
+        },
+        "nilai": {
+          "label": "Lihat Nilai Persediaan",
+          "description": "Berapa rupiah yang sedang tertahan di gudang."
+        }
+      }
+    },
+    "kas": {
+      "label": "Alur Kas & Bank",
+      "description": "Mencatat uang keluar-masuk lalu memastikannya cocok dengan bank.",
+      "steps": {
+        "catat": {
+          "label": "Catat Transaksi Kas",
+          "description": "Uang masuk atau keluar, dari kas maupun rekening bank."
+        },
+        "buku": {
+          "label": "Periksa Buku Kas",
+          "description": "Semua transaksi kas dan bank dalam satu daftar."
+        },
+        "cocokkan": {
+          "label": "Cocokkan Rekening",
+          "description": "Samakan catatan Anda dengan rekening koran bank."
+        },
+        "laporan": {
+          "label": "Lihat Laporan Kas",
+          "description": "Ke mana uang pergi selama periode ini."
+        }
+      }
+    },
+    "produksi": {
+      "label": "Alur Produksi",
+      "description": "Dari resep sampai barang jadi masuk gudang dengan harga pokoknya.",
+      "steps": {
+        "stasiun": {
+          "label": "Siapkan Stasiun Kerja",
+          "description": "Tempat kerja beserta tarif upah dan overhead per jamnya."
+        },
+        "resep": {
+          "label": "Susun Resep Produksi",
+          "description": "Bahan dan tahapan untuk sekian unit keluaran."
+        },
+        "jalankan": {
+          "label": "Jalankan Perintah Produksi",
+          "description": "Satu batch: bahan keluar, lalu barang jadi masuk."
+        },
+        "pantau": {
+          "label": "Pantau Barang Dalam Proses",
+          "description": "Batch yang belum selesai dan berapa biaya yang sudah tertanam."
+        }
+      }
+    },
+    "perdagangan": {
+      "label": "Alur Kontrak & Dokumen Ekspor",
+      "description": "Kesepakatan, tujuan pengiriman, dan berkas yang diminta pembeli.",
+      "steps": {
+        "penerima": {
+          "label": "Daftarkan Penerima Barang",
+          "description": "Pihak di pelabuhan tujuan yang menerima kiriman."
+        },
+        "kontrak": {
+          "label": "Buat Kontrak",
+          "description": "Kesepakatan jumlah, harga, dan mata uangnya."
+        },
+        "unggah": {
+          "label": "Unggah Dokumen Ekspor",
+          "description": "B/L, COO, sertifikat fumigasi — disimpan menempel pada kontraknya."
+        },
+        "arsip": {
+          "label": "Buka Arsip Dokumen",
+          "description": "Semua berkas ekspor, dicari dari nomor kontraknya."
+        }
+      }
+    },
+    "aset": {
+      "label": "Alur Aset Tetap",
+      "description": "Mendaftar barang bernilai besar dan menyusutkannya tiap bulan.",
+      "steps": {
+        "kategori": {
+          "label": "Siapkan Kategori Aset",
+          "description": "Kelompok aset beserta umur pakainya — dasar hitungan penyusutan."
+        },
+        "daftar": {
+          "label": "Daftarkan Aset",
+          "description": "Kendaraan, mesin, bangunan — beserta tanggal perolehannya."
+        },
+        "susut": {
+          "label": "Pantau Penyusutan",
+          "description": "Biaya yang muncul tiap bulan tanpa uang yang keluar."
+        }
+      }
+    },
+    "persetujuan": {
+      "label": "Alur Persetujuan",
+      "description": "Menentukan apa yang perlu izin, lalu memutuskannya.",
+      "steps": {
+        "aturan": {
+          "label": "Atur Aturan Persetujuan",
+          "description": "Batas nominal dan jenis dokumen yang harus disetujui dulu."
+        },
+        "putuskan": {
+          "label": "Putuskan yang Menunggu",
+          "description": "Antrean dokumen yang tertahan sampai Anda memutuskannya."
+        }
+      }
+    },
+    "pajak": {
+      "label": "Alur Pajak",
+      "description": "Dari faktur penjualan sampai berkas yang diunggah ke DJP.",
+      "steps": {
+        "faktur": {
+          "label": "Periksa Faktur Penjualan",
+          "description": "Pastikan PPN dan identitas pembeli sudah benar sebelum diekspor."
+        },
+        "efaktur": {
+          "label": "Ekspor e-Faktur",
+          "description": "Berkas untuk diunggah ke aplikasi pajak."
+        }
+      }
     }
   },
   "consignee": {
@@ -3841,6 +3975,25 @@
       "s3": {
         "title": "Arti tiap istilah",
         "body": "Nama laporan memakai bahasa sehari-hari; istilah bakunya bisa dibuka lewat ikon \"?\" atau di Kamus Istilah dari menu Bantuan."
+      }
+    },
+    "produksi": {
+      "title": "Cara kerja perintah produksi",
+      "s1": {
+        "title": "Kenapa ada halaman ini",
+        "body": "Barang yang Anda buat sendiri tidak punya harga beli. Halaman ini menghitung berapa sebenarnya biaya satu batch — bahan, upah, dan overhead pabrik — lalu memakainya sebagai harga pokok barang jadi."
+      },
+      "s2": {
+        "title": "Dua tindakan, tiga jurnal",
+        "body": "Saat batch dimulai, bahan keluar gudang dan nilainya pindah ke Barang Dalam Proses. Saat batch selesai, upah dan overhead ikut masuk ke sana, lalu seluruh isinya keluar menjadi barang jadi."
+      },
+      "s3": {
+        "title": "Saldo yang tersisa adalah pekerjaan yang belum selesai",
+        "body": "Perintah produksi yang sudah selesai menyisakan Barang Dalam Proses nol. Kalau masih ada saldonya, itu bukan selisih yang perlu dicari — itu batch yang memang belum diselesaikan."
+      },
+      "s4": {
+        "title": "Varians memberi tahu, bukan mencatat",
+        "body": "Setelah selesai, rencana dibandingkan dengan kenyataan: bahan, jam kerja, dan hasil. Selisihnya ditampilkan untuk dibaca — tidak satu pun menjadi jurnal, sebab harga pokok Anda sudah memakai biaya yang sungguhan terpakai."
       }
     }
   },

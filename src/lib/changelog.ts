@@ -73,24 +73,6 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
-    versi: "0.4.0",
-    tanggal: "2026-08-30",
-    ringkas:
-      "Halaman bantuan baru yang memperlihatkan alur kerja lengkap untuk tiap jenis usaha, lengkap dengan gambarnya.",
-    butir: [
-      {
-        jenis: "baru",
-        teks:
-          "Halaman bantuan \u201cAlur kerja untuk jenis usaha Anda\u201d — urutan ujung-ke-ujung untuk perdagangan ekspor, distribusi, jasa, dan manufaktur, masing-masing dengan gambar tahapannya dan modul yang mengerjakan tiap tahap.",
-      },
-      {
-        jenis: "baru",
-        teks:
-          "Empat gambar alur baru menjelaskan perbedaan tiap jenis usaha secara langsung: mana yang mulai dari kontrak, mana yang tak punya surat jalan sama sekali, dan di mana tahap produksi menyisip.",
-      },
-    ],
-  },
-  {
     versi: "0.3.0",
     tanggal: "2026-08-30",
     sha: "978687f",

@@ -48,8 +48,19 @@ export interface Rilis {
   versi: string;
   /** ISO `YYYY-MM-DD`, tanggal ia benar-benar melayani pengguna. */
   tanggal: string;
-  /** Commit `main` yang digelar — jangkar bagi yang perlu menelusurinya. */
-  sha: string;
+  /**
+   * Commit `main` yang digelar — jangkar bagi yang perlu menelusurinya.
+   *
+   * OPSIONAL, dan itu bukan kelonggaran melainkan urutan: entri sebuah rilis
+   * ditulis SEBELUM ia digelar (penjaga menuntut catatannya ada saat versi
+   * dinaikkan), sedangkan sha-nya baru lahir ketika PR promosi digabungkan.
+   * Menuntutnya terisi lebih dulu berarti menuntut nomor yang belum ada.
+   *
+   * Tidak pernah tampil ke pengguna — halaman "Apa yang Baru" merender versi,
+   * tanggal, ringkasan, dan butirnya saja. Ia untuk pembaca `CHANGELOG.md`
+   * yang perlu menelusuri sampai ke commit.
+   */
+  sha?: string;
   /** Satu kalimat: kenapa rilis ini ada. Muncul sebagai ringkasan. */
   ringkas: string;
   butir: readonly ButirRilis[];
@@ -61,6 +72,24 @@ export interface Rilis {
  * arah bagi satu-satunya pertanyaan yang paling sering dibawa pembacanya.
  */
 export const RILIS: readonly Rilis[] = [
+  {
+    versi: "0.3.0",
+    tanggal: "2026-08-30",
+    ringkas:
+      "Riwayat perubahan kini bisa dibaca dari dalam aplikasi — halaman yang sedang Anda buka ini.",
+    butir: [
+      {
+        jenis: "baru",
+        teks:
+          "Halaman \u201cApa yang Baru\u201d — halaman ini sendiri. Sebelumnya catatan perubahan hanya ada di tempat yang dibaca pengembang, jadi menu yang tiba-tiba muncul tidak pernah punya penjelasan yang bisa Anda buka sendiri.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Nomor versi di kaki menu samping kini bisa diklik dan membawa Anda ke halaman ini. Sebelumnya ia hanya angka yang tidak menuju ke mana-mana.",
+      },
+    ],
+  },
   {
     versi: "0.2.0",
     tanggal: "2026-08-30",
@@ -87,11 +116,6 @@ export const RILIS: readonly Rilis[] = [
         jenis: "baru",
         teks:
           "Halaman bantuan baru tentang manufaktur, dan tur berpandu di layar Perintah Produksi.",
-      },
-      {
-        jenis: "baru",
-        teks:
-          "Halaman ini sendiri — riwayat perubahan yang bisa dibaca dari dalam aplikasi. Nomor versi di kaki menu samping kini menuju ke sini.",
       },
       {
         jenis: "perbaikan",

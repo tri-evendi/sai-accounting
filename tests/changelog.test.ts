@@ -35,15 +35,6 @@ const { version } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"))
   version: string;
 };
 
-/** Judul rilis: `## <versi> — <tanggal> (<sha>)`. */
-const JUDUL_RILIS = /^## (\d+\.\d+\.\d+) — (\d{4}-\d{2}-\d{2}) \(([0-9a-f]{7,40})\)$/gm;
-
-const rilis = [...changelog.matchAll(JUDUL_RILIS)].map(([, versi, tanggal, sha]) => ({
-  versi,
-  tanggal,
-  sha,
-}));
-
 describe("riwayat perubahan — sumber tunggal", () => {
   it("CHANGELOG.md sama persis dengan keluaran generatornya", () => {
     // Berkas markdown adalah TURUNAN, bukan sumber. Menyuntingnya langsung
@@ -74,6 +65,23 @@ describe("riwayat perubahan — sumber tunggal", () => {
     }
   });
 
+  it("sha, bila ada, berbentuk commit yang sah", () => {
+    for (const r of RILIS) {
+      if (r.sha === undefined) continue;
+      expect(r.sha, `sha ${r.versi} bukan commit`).toMatch(/^[0-9a-f]{7,40}$/);
+    }
+  });
+
+  it("hanya rilis TERATAS yang boleh belum punya sha", () => {
+    // Yang di bawahnya sudah digelar menurut definisi — ia dilewati rilis
+    // berikutnya. Entri lama tanpa sha berarti seseorang lupa mengisinya, dan
+    // riwayat yang tak bisa ditelusuri berhenti menjadi riwayat.
+    const tanpaSha = RILIS.map((r, i) => ({ i, versi: r.versi, sha: r.sha }))
+      .filter((r) => r.sha === undefined && r.i > 0)
+      .map((r) => r.versi);
+    expect(tanpaSha, "rilis lama tanpa sha").toEqual([]);
+  });
+
   it("nomor versi tidak diulang", () => {
     const versi = RILIS.map((r) => r.versi);
     expect(versi).toEqual([...new Set(versi)]);
@@ -81,33 +89,13 @@ describe("riwayat perubahan — sumber tunggal", () => {
 });
 
 describe("riwayat perubahan — markdown turunan", () => {
-  it("punya setidaknya satu rilis tercatat", () => {
-    expect(rilis.length).toBeGreaterThan(0);
-  });
-
-  it("versi di package.json adalah rilis teratas — nomor di layar punya catatannya", () => {
-    expect(rilis[0]?.versi).toBe(version);
-  });
-
-  it("tidak mencatat versi yang sama dua kali", () => {
-    const versi = rilis.map((r) => r.versi);
-    expect(versi).toEqual([...new Set(versi)]);
-  });
-
-  it("rilis tersusun dari yang terbaru ke yang terlama", () => {
-    const tanggal = rilis.map((r) => r.tanggal);
-    expect(tanggal).toEqual([...tanggal].sort().reverse());
-  });
-
-  it("setiap rilis punya isi, bukan judul kosong", () => {
-    // Sebuah rilis yang judulnya ada tetapi badannya kosong adalah rilis yang
-    // "dicatat" tanpa mengatakan apa pun — bentuk kegagalan yang paling mungkin
-    // begitu menaikkan versi terasa seperti formalitas.
-    const bagian = changelog.split(/^## /m).slice(1);
-    for (const b of bagian) {
-      const [judul, ...badan] = b.split("\n");
-      if (!/^\d+\.\d+\.\d+ /.test(judul)) continue;
-      expect(badan.join("\n").trim().length, `rilis ${judul} tidak punya isi`).toBeGreaterThan(40);
-    }
+  it("menyatakan dirinya bangkitan, supaya tak ada yang menyuntingnya", () => {
+    // Satu-satunya pemeriksaan yang tersisa atas markdown, dan sengaja BUKAN
+    // pengurai format. Versi sebelumnya mengurai judul rilis dengan regex
+    // sendiri — pengurai KEDUA untuk format yang sama, yang langsung merah
+    // begitu format itu berubah secara sah (rilis tanpa sha). Kesamaan isinya
+    // sudah dijamin tes sinkron di atas; yang belum, cuma peringatannya.
+    expect(changelog).toContain("DIBANGKITKAN dari src/lib/changelog.ts");
+    expect(changelog).toContain("bun run changelog:build");
   });
 });

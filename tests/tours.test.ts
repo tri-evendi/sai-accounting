@@ -9,13 +9,15 @@ import { describe, expect, it } from "vitest";
 import { TOURS, tourForPath, tourStorageKey } from "@/lib/tours";
 
 describe("definisi tur", () => {
-  it("tersedia untuk beranda, persetujuan, buat tagihan, dan pusat laporan", () => {
-    expect(TOURS.map((t) => t.path)).toEqual([
-      "/dashboard",
-      "/approvals",
-      "/invoices/new",
-      "/reports",
-    ]);
+  it("keempat tur dasar tetap ada", () => {
+    // `arrayContaining`, bukan `toEqual`, dan bedanya penting. Versi lama
+    // memaku daftarnya persis empat, sehingga ia merah ketika tur DITAMBAH dan
+    // diam ketika sebuah modul lahir tanpa tur sama sekali — potret keadaan
+    // yang menyamar sebagai penjaga. Yang layak dijaga di sini cuma regresi:
+    // keempat ini tidak boleh hilang. Cakupannya di `panduan-cakupan.test.ts`.
+    expect(TOURS.map((t) => t.path)).toEqual(
+      expect.arrayContaining(["/dashboard", "/approvals", "/invoices/new", "/reports"])
+    );
   });
 
   it("tur persetujuan menjelaskan antrean, pengajuan, dan riwayat", () => {

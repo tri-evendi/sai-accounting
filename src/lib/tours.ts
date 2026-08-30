@@ -33,6 +33,7 @@
  */
 
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { BUSINESS_MODULES, type BusinessModule } from "@/lib/business-modules";
 
 import { appPath } from "@/lib/tenant-routes";
 export interface TourStep {
@@ -50,6 +51,21 @@ export interface TourStep {
 
 export interface TourDef {
   id: string;
+  /**
+   * Modul usaha yang dilayani tur ini — dasar penjaga cakupan
+   * (`tests/panduan-cakupan.test.ts`).
+   *
+   * `null` untuk tur yang memang tidak milik satu modul: tur Beranda
+   * menjelaskan KERANGKA aplikasi (Aksi Cepat, menu samping, menu Bantuan),
+   * dan memaksanya mengaku milik `core_accounting` akan membuat modul itu
+   * terhitung "sudah ada turnya" oleh tur yang tidak mengajarkan pembukuan
+   * sama sekali.
+   *
+   * Ini BUKAN medan `permission` per langkah yang sengaja ditolak di kepala
+   * berkas ini: yang itu mesin penyaring saat render, yang ini pembukuan
+   * cakupan yang hanya dibaca penjaga.
+   */
+  modul: BusinessModule | null;
   /** Path halaman tempat tur ini berjalan (cocok persis). */
   path: string;
   /** Judul tur dalam bahasa sumber. */
@@ -59,9 +75,39 @@ export interface TourDef {
   steps: TourStep[];
 }
 
+/**
+ * Modul yang SENGAJA tidak punya tur, beserta sebabnya. Dijaga DUA ARAH oleh
+ * `tests/panduan-cakupan.test.ts` — bentuk yang sama dengan
+ * `NAV_TANPA_DOKUMEN` (#300) dan `MODUL_TANPA_ALUR`.
+ *
+ * Peta ini akan selalu lebih panjang daripada kembarannya di `workflows.ts`,
+ * dan itu memang benar: sebuah tur menyorot elemen NYATA di satu halaman, jadi
+ * ia jauh lebih mahal dan jauh lebih cepat basi daripada daftar langkah. Alur
+ * kerja adalah bawaan yang wajar untuk sebuah modul; tur adalah pilihan yang
+ * harus dibayar. Yang dijaga tetap sama: tak ada modul yang lewat tanpa ada
+ * yang memutuskan.
+ */
+export const MODUL_TANPA_TUR: Readonly<Partial<Record<BusinessModule, string>>> = {
+  purchasing:
+    "Alur Pembelian sudah menuntun urutannya, dan ketiga layarnya (catat pembelian, bayar, pantau utang) adalah cermin dari sisi penjualan yang SUDAH punya tur `buat_penjualan`. Tur kedua yang mengulang gerakan yang sama dengan kata benda yang berbeda mengajarkan lebih sedikit daripada yang dibacanya.",
+  trading:
+    "Kontrak dan penerima barang adalah formulir pendataan: isinya jelas dari labelnya sendiri, dan tidak ada mesin tersembunyi yang perlu diperlihatkan. Yang memang butuh penjelasan — kenapa faktur sebuah kontrak tak bisa menagih pihak lain — sudah ditulis sebagai prosa di halaman dokumen, tempat yang bisa memuat alasannya utuh.",
+  inventory:
+    "Halaman dokumen “Kenapa stok tidak bisa diketik langsung” sudah memikul cerita yang paling mudah salah dipahami di modul ini. Tur menyorot ELEMEN di layar; keberatan yang dijawabnya di sini bukan “tombol mana”, melainkan “kenapa saya tidak boleh mengetik angkanya” — dan itu paragraf, bukan sorotan.",
+  cash_bank:
+    "Layarnya sudah menyerupai buku kas yang dikenal siapa pun yang pernah memegangnya, dan Alur Kas & Bank menuntun urutannya. Yang sulit di modul ini bukan layarnya melainkan pencocokan rekening koran, dan itu sudah punya halaman dokumennya sendiri.",
+  fixed_assets:
+    "Modul ini justru pantas mendapat tur, dan ketiadaannya adalah utang yang diakui — bukan keputusan bahwa ia tak perlu. Penyusutan adalah contoh terbaik “biaya yang muncul tanpa uang keluar”, dan itu memang lebih baik ditunjukkan di layar daripada dibaca. Menunggu halaman dokumennya lebih dulu, supaya tur dan prosa tidak menjelaskan hal yang sama dengan dua kalimat berbeda.",
+  tax_id:
+    "Isinya mengikuti aturan DJP yang berubah di luar kendali aplikasi ini. Tur adalah bentuk panduan yang paling mahal diperbarui — ia menyorot elemen nyata di layar — jadi ia yang paling cepat menjadi salah ketika bentuk berkasnya berganti. Alasan yang sama menahan halaman dokumennya.",
+  documents:
+    "Arsip berkas: unggah, cari, unduh. Tidak ada mesin akuntansi di baliknya dan tidak ada urutan yang bisa keliru — aturannya lebih banyak milik pembeli dan bea cukai daripada milik aplikasi ini.",
+};
+
 export const TOURS: TourDef[] = [
   {
     id: "beranda",
+    modul: null,
     path: "/dashboard",
     title: "Kenalan dengan Beranda",
     titleKey: "tours.beranda.title",
@@ -109,6 +155,7 @@ export const TOURS: TourDef[] = [
   },
   {
     id: "persetujuan",
+    modul: "approvals",
     path: "/approvals",
     title: "Cara kerja persetujuan",
     titleKey: "tours.persetujuan.title",
@@ -148,6 +195,7 @@ export const TOURS: TourDef[] = [
   },
   {
     id: "buat_penjualan",
+    modul: "sales",
     path: "/invoices/new",
     title: "Cara membuat tagihan",
     titleKey: "tours.buat_penjualan.title",
@@ -187,6 +235,7 @@ export const TOURS: TourDef[] = [
   },
   {
     id: "laporan",
+    modul: "core_accounting",
     path: "/reports",
     title: "Cara membaca laporan",
     titleKey: "tours.laporan.title",
@@ -217,6 +266,39 @@ export const TOURS: TourDef[] = [
       },
     ],
   },
+  {
+    id: "produksi",
+    modul: "manufacturing",
+    path: "/production-orders",
+    title: "Cara kerja perintah produksi",
+    titleKey: "tours.produksi.title",
+    steps: [
+      {
+        title: "Kenapa ada halaman ini",
+        body: "Barang yang Anda buat sendiri tidak punya harga beli. Halaman ini menghitung berapa sebenarnya biaya satu batch — bahan, upah, dan overhead pabrik — lalu memakainya sebagai harga pokok barang jadi.",
+        titleKey: "tours.produksi.s1.title",
+        bodyKey: "tours.produksi.s1.body",
+      },
+      {
+        title: "Dua tindakan, tiga jurnal",
+        body: "Saat batch dimulai, bahan keluar gudang dan nilainya pindah ke Barang Dalam Proses. Saat batch selesai, upah dan overhead ikut masuk ke sana, lalu seluruh isinya keluar menjadi barang jadi.",
+        titleKey: "tours.produksi.s2.title",
+        bodyKey: "tours.produksi.s2.body",
+      },
+      {
+        title: "Saldo yang tersisa adalah pekerjaan yang belum selesai",
+        body: "Perintah produksi yang sudah selesai menyisakan Barang Dalam Proses nol. Kalau masih ada saldonya, itu bukan selisih yang perlu dicari — itu batch yang memang belum diselesaikan.",
+        titleKey: "tours.produksi.s3.title",
+        bodyKey: "tours.produksi.s3.body",
+      },
+      {
+        title: "Varians memberi tahu, bukan mencatat",
+        body: "Setelah selesai, rencana dibandingkan dengan kenyataan: bahan, jam kerja, dan hasil. Selisihnya ditampilkan untuk dibaca — tidak satu pun menjadi jurnal, sebab harga pokok Anda sudah memakai biaya yang sungguhan terpakai.",
+        titleKey: "tours.produksi.s4.title",
+        bodyKey: "tours.produksi.s4.body",
+      },
+    ],
+  },
 ];
 
 /** Tur untuk sebuah path, atau `null` bila halaman itu belum punya tur. */
@@ -234,4 +316,15 @@ export function tourForPath(pathname: string): TourDef | null {
  */
 export function tourStorageKey(tourId: string): string {
   return `sai:tour-seen:${tourId}`;
+}
+
+/** Modul yang diklaim setidaknya satu tur. */
+export function modulBertur(): ReadonlySet<BusinessModule> {
+  return new Set(TOURS.map((t) => t.modul).filter((m): m is BusinessModule => m !== null));
+}
+
+/** Modul tanpa tur DAN tanpa alasan tertulis — yang ditolak penjaga. */
+export function modulTanpaTur(): BusinessModule[] {
+  const ada = modulBertur();
+  return BUSINESS_MODULES.filter((m) => !ada.has(m) && !(m in MODUL_TANPA_TUR));
 }

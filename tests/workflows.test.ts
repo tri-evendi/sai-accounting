@@ -15,8 +15,12 @@ describe("visibleWorkflows", () => {
   });
 
   it("dengan semua izin → semua alur, semua langkah utuh", () => {
+    // Daftar id-nya DITURUNKAN, bukan diketik. Versi lama memakunya ke tiga
+    // alur yang ada saat itu, jadi ia merah setiap kali sebuah alur DITAMBAH —
+    // persis kebalikan dari yang ingin dijaga. Cakupan modulnya milik
+    // `tests/panduan-cakupan.test.ts`; yang diuji di sini penyaringannya.
     const wf = visibleWorkflows("managing_director", ALL);
-    expect(wf.map((w) => w.id)).toEqual(["penjualan", "pembelian", "tutup_buku"]);
+    expect(wf.map((w) => w.id)).toEqual(WORKFLOWS.map((w) => w.id));
     for (const w of wf) {
       const original = WORKFLOWS.find((x) => x.id === w.id)!;
       expect(w.steps).toHaveLength(original.steps.length);

@@ -20,7 +20,7 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.3.0 — 2026-08-30 — belum digelar
+## 0.3.0 — 2026-08-30 (978687f)
 
 Riwayat perubahan kini bisa dibaca dari dalam aplikasi — halaman yang sedang Anda buka ini.
 

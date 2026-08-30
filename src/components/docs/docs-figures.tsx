@@ -28,7 +28,14 @@
  */
 
 /** Nama gambar yang ada. `tsc` menolak `kind: "diagram"` bernama lain. */
-export type NamaDiagram = "alur-jurnal" | "alur-persetujuan" | "buku-per-pt";
+export type NamaDiagram =
+  | "alur-jurnal"
+  | "alur-persetujuan"
+  | "buku-per-pt"
+  | "alur-komoditas"
+  | "alur-distribusi"
+  | "alur-jasa"
+  | "alur-manufaktur";
 
 const KOTAK: React.CSSProperties = {
   flex: "1 1 0",
@@ -197,10 +204,210 @@ function BukuPerPt() {
   );
 }
 
+
+/**
+ * Alur ujung-ke-ujung sebuah jenis usaha — beberapa BARIS tahapan.
+ *
+ * Kenapa dipecah per baris dan bukan satu deret panjang: `docs-shell`
+ * membariskan `data-docs-figure-flow` hanya di atas 520px, dan enam kotak
+ * sederet di lebar itu menyisakan ±80px per kotak — cukup untuk judulnya,
+ * tidak untuk kalimat yang menjelaskannya. Tiga adalah batas yang masih
+ * terbaca, dan alur yang lebih panjang turun ke baris berikutnya dengan
+ * penghubung menurun di antaranya.
+ *
+ * Penghubungnya `aria-hidden` seperti panah lainnya: urutannya sudah terbaca
+ * dari urutan teks, dan "panah bawah" yang dibacakan di antara setiap tahap
+ * hanya kebisingan.
+ */
+function Tahapan({
+  baris,
+}: {
+  baris: readonly (readonly { judul: string; isi: React.ReactNode; utama?: boolean }[])[];
+}) {
+  /*
+   * Larik DIRATAKAN, bukan dibungkus `React.Fragment`: berkas ini sengaja
+   * tanpa satu pun impor (lihat kepalanya), dan `Fragment` adalah NILAI yang
+   * menuntut impor — beda dari `React.CSSProperties` yang cuma tipe global.
+   */
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin-xs)" }}>
+      {baris.flatMap((deret, i) => [
+        ...(i > 0
+          ? [
+              <span
+                key={`turun-${i}`}
+                aria-hidden="true"
+                style={{ color: "var(--ant-color-text-quaternary)", textAlign: "center" }}
+              >
+                ↓
+              </span>,
+            ]
+          : []),
+        <div key={`baris-${i}`} data-docs-figure-flow="" style={BARIS}>
+          {deret.flatMap((k, j) => [
+            ...(j > 0 ? [<Panah key={`panah-${k.judul}`} />] : []),
+            <Kotak key={k.judul} judul={k.judul} isi={k.isi} utama={k.utama} />,
+          ])}
+        </div>,
+      ])}
+    </div>
+  );
+}
+
+/*
+ * ⚠ Nama modul di dalam kotak-kotak berikut adalah nama yang DILIHAT pengguna
+ * di halaman Modul Usaha, bukan kunci teknisnya (`trading`, `cash_bank`).
+ * Pembacanya sedang mencocokkan gambar ini dengan sakelar di layarnya.
+ */
+
+/** Perdagangan komoditas / ekspor — seluruh modul bawaan menyala. */
+function AlurKomoditas() {
+  return (
+    <Tahapan
+      baris={[
+        [
+          {
+            judul: "1 · Kontrak",
+            utama: true,
+            isi: "Perdagangan — pembeli, jumlah, harga, dan MATA UANG disepakati di sini. Seluruh dokumen sesudahnya mewarisinya.",
+          },
+          {
+            judul: "2 · Beli & terima",
+            isi: "Pembelian + Stok — barang masuk gudang. Bea masuk dan freight yang tagihannya menyusul menempel ke nilai persediaan.",
+          },
+          {
+            judul: "3 · Kirim",
+            isi: "Stok — surat jalan. Stok turun dan harga pokok penjualannya terbit saat itu juga.",
+          },
+        ],
+        [
+          {
+            judul: "4 · Dokumen ekspor",
+            isi: "Dokumen — B/L, COO, sertifikat fumigasi; tersimpan menempel pada kontraknya.",
+          },
+          {
+            judul: "5 · Tagih",
+            isi: "Penjualan + Pajak — faktur mengikuti pihak dan mata uang kontraknya, lalu diekspor sebagai e-Faktur.",
+          },
+          {
+            judul: "6 · Terima uang",
+            isi: "Kas & Bank + Inti — pelunasan, cocokkan rekening, kunci bulan, laporan.",
+          },
+        ],
+      ]}
+    />
+  );
+}
+
+/** Distribusi / grosir — bergudang, tanpa lapisan ekspor. */
+function AlurDistribusi() {
+  return (
+    <Tahapan
+      baris={[
+        [
+          {
+            judul: "1 · Beli & terima",
+            isi: "Pembelian + Stok — barang masuk gudang beserta harga belinya.",
+          },
+          {
+            judul: "2 · Jual & kirim",
+            utama: true,
+            isi: "Penjualan + Stok — faktur dan surat jalan. Tanpa kontrak berjangka: kesepakatannya adalah fakturnya sendiri.",
+          },
+          {
+            judul: "3 · Terima uang",
+            isi: "Kas & Bank — pelunasan, lalu pantau piutang yang belum masuk.",
+          },
+        ],
+        [
+          {
+            judul: "4 · Tutup buku",
+            isi: "Inti + Pajak — cocokkan rekening, kunci bulan, e-Faktur, laporan.",
+          },
+        ],
+      ]}
+    />
+  );
+}
+
+/** Jasa / agensi — tak ada barang sama sekali. */
+function AlurJasa() {
+  return (
+    <Tahapan
+      baris={[
+        [
+          {
+            judul: "1 · Tagih pekerjaan",
+            utama: true,
+            isi: "Penjualan — langsung faktur. Tidak ada surat jalan sebab tidak ada barang yang berpindah.",
+          },
+          {
+            judul: "2 · Catat biaya",
+            isi: "Pembelian + Aset Tetap — jasa pihak ketiga, barang habis pakai, dan penyusutan peralatan.",
+          },
+          {
+            judul: "3 · Terima uang",
+            isi: "Kas & Bank — pelunasan dan pemantauan piutang.",
+          },
+        ],
+        [
+          {
+            judul: "4 · Tutup buku",
+            isi: "Inti + Pajak — cocokkan rekening, kunci bulan, e-Faktur, laporan.",
+          },
+        ],
+      ]}
+    />
+  );
+}
+
+/** Manufaktur — seluruh modul bawaan DITAMBAH mengubah barang di tengahnya. */
+function AlurManufaktur() {
+  return (
+    <Tahapan
+      baris={[
+        [
+          {
+            judul: "1 · Beli bahan",
+            isi: "Pembelian + Stok — bahan baku masuk gudang.",
+          },
+          {
+            judul: "2 · Siapkan resep",
+            isi: "Manufaktur — stasiun kerja beserta tarif upah & overhead per jam, lalu resep produksinya.",
+          },
+          {
+            judul: "3 · Produksi",
+            utama: true,
+            isi: "Manufaktur — bahan keluar ke Barang Dalam Proses, upah & overhead menyusul, lalu barang jadi masuk dengan harga pokok yang sungguhan terpakai.",
+          },
+        ],
+        [
+          {
+            judul: "4 · Jual & kirim",
+            isi: "Penjualan + Stok — faktur dan surat jalan atas barang jadinya.",
+          },
+          {
+            judul: "5 · Terima uang",
+            isi: "Kas & Bank — pelunasan dan pemantauan piutang.",
+          },
+          {
+            judul: "6 · Tutup buku",
+            isi: "Inti + Pajak — cocokkan rekening, kunci bulan, laporan.",
+          },
+        ],
+      ]}
+    />
+  );
+}
+
 const GAMBAR: Record<NamaDiagram, () => React.ReactElement> = {
   "alur-jurnal": AlurJurnal,
   "alur-persetujuan": AlurPersetujuan,
   "buku-per-pt": BukuPerPt,
+  "alur-komoditas": AlurKomoditas,
+  "alur-distribusi": AlurDistribusi,
+  "alur-jasa": AlurJasa,
+  "alur-manufaktur": AlurManufaktur,
 };
 
 const FIGURE: React.CSSProperties = {

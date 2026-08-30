@@ -75,6 +75,7 @@ export const RILIS: readonly Rilis[] = [
   {
     versi: "0.3.0",
     tanggal: "2026-08-30",
+    sha: "978687f",
     ringkas:
       "Riwayat perubahan kini bisa dibaca dari dalam aplikasi — halaman yang sedang Anda buka ini.",
     butir: [

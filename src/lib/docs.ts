@@ -339,6 +339,20 @@ const LAPORAN = {
   navHrefs: ["/reports", "/budget"],
 } as const satisfies DocMeta;
 
+const APA_YANG_BARU = {
+  slug: "apa-yang-baru",
+  judul: "Apa yang baru",
+  ringkas: "Apa yang berubah di aplikasi ini, per pembaruan — dan nomor versi mana yang sedang Anda jalankan.",
+  cabang: "pelanggan",
+  /*
+   * `navHrefs` KOSONG, dan itu disengaja: halaman ini tidak menjelaskan satu
+   * modul pun. Ia dijangkau dari nomor versi di kaki menu samping — tempat
+   * pertanyaan "versi apa yang saya pakai?" benar-benar muncul. Pola yang sama
+   * dengan halaman "Data Anda".
+   */
+  navHrefs: [],
+} as const satisfies DocMeta;
+
 export const DOC_INDEX = [
   MESIN_AKUNTANSI,
   PERIODE,
@@ -356,6 +370,7 @@ export const DOC_INDEX = [
   PAKET,
   LAPORAN,
   DATA_ANDA,
+  APA_YANG_BARU,
 ] as const satisfies readonly DocMeta[];
 
 /**

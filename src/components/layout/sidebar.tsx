@@ -103,6 +103,7 @@ import { Link, useAppRouter } from "@/components/ui/app-link";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { docsPath } from "@/lib/docs";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
 import {
@@ -546,8 +547,20 @@ function PanelMenu({
           {!terlipat && <span>{APP_NAME}</span>}
           {/* Dari `package.json` saat build, bukan literal — nomor yang
               diketik tangan tidak pernah ikut naik saat rilis, dan justru
-              dibaca orang ketika sedang melaporkan masalah. */}
-          <span>v{APP_VERSION}</span>
+              dibaca orang ketika sedang melaporkan masalah.
+
+              MENUJU halaman "Apa yang Baru": pertanyaan "versi apa yang saya
+              pakai?" dan "apa yang berubah?" adalah pertanyaan yang sama,
+              ditanyakan berurutan, dan ini satu-satunya tempat nomor itu
+              muncul. `/docs` publik dan di luar pohon bertenant, jadi
+              `scopedHref` meneruskannya apa adanya. */}
+          <Link
+            href={docsPath("apa-yang-baru")}
+            style={{ color: "inherit", textDecoration: "underline dotted" }}
+            title="Lihat apa yang berubah di versi ini"
+          >
+            v{APP_VERSION}
+          </Link>
         </Flex>
       </Flex>
     </Layout.Sider>

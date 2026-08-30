@@ -767,6 +767,125 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
   { kind: "istilah", kunci: ["buku_besar", "saldo_awal", "neraca_saldo"] },
 ];
 
+const MANUFAKTUR: readonly DocBlock[] = [
+  {
+    kind: "paragraf",
+    teks:
+      "Sebuah perusahaan dagang menjual barang yang ia beli, jadi harga pokoknya adalah harga belinya. Perusahaan yang MEMBUAT barang tidak punya angka semudah itu: yang keluar dari pabrik tidak pernah ada harga belinya. Ia berharga sebanyak yang dihabiskan untuk membuatnya — bahan, upah orang yang mengerjakannya, dan biaya pabrik yang menempel pada jam kerja itu (listrik, mesin, sewa). Modul Manufaktur ada untuk menghitung ketiganya dan menaruh hasilnya sebagai harga pokok barang jadi.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Kuncinya satu gagasan: selama batch dikerjakan, bahannya sudah keluar dari gudang tetapi barang jadinya belum ada. Nilainya harus menunggu di suatu tempat, dan tempat itu adalah Barang Dalam Proses. Ia bukan gudang dan tidak bisa dilihat isinya di rak — ia ruang tunggu di neraca. Saat batch selesai, seluruh isinya berpindah menjadi harga pokok barang jadi, dan saldonya kembali nol.",
+  },
+  {
+    kind: "istilah",
+    kunci: ["resep_produksi", "perintah_produksi", "barang_dalam_proses", "overhead_pabrik"],
+  },
+  { kind: "sub", judul: "Tiga layar, satu urutan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Ketiga layar modul ini bukan tiga fitur terpisah; ia satu urutan, dan yang belakangan tidak bisa dipakai sebelum yang di depannya ada.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Stasiun Kerja — tempat pekerjaan dilakukan, beserta tarif upah dan tarif overhead per jam. Ini yang mengubah “3 jam di penggilingan” menjadi rupiah.",
+      "Resep Produksi — bahan apa saja dan tahapan apa saja untuk sekian unit keluaran. Ini rencananya.",
+      "Perintah Produksi — satu batch yang benar-benar dijalankan. Ini satu-satunya dari ketiganya yang menulis ke buku besar.",
+    ],
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Stasiun Kerja dan Resep Produksi tidak pernah menyentuh buku besar. Menyunting tarif atau mengganti resep tidak mengubah satu angka pun di laporan; yang berubah hanyalah perhitungan batch BERIKUTNYA. Batch yang sudah berjalan memakai angka yang berlaku saat ia dijalankan.",
+  },
+  { kind: "sub", judul: "Susut MEMBAGI, bukan mengalikan" },
+  {
+    kind: "paragraf",
+    teks:
+      "Sebuah bahan bisa diberi persentase susut: bagian yang hilang dalam proses — menguap, tercecer, terpotong. Yang mudah keliru adalah arah hitungnya. Kalau resep butuh 1.000 kg BERSIH dan susutnya 5%, yang harus disiapkan bukan 1.050 kg. Menambah 5% dari kebutuhan bersih memberi 1.050 kg, lalu 5% darinya hilang dan tersisa 997,5 kg — kurang. Yang benar adalah membagi: jumlah yang setelah kehilangan 5% masih menyisakan tepat 1.000 kg.",
+  },
+  {
+    kind: "kode",
+    bahasa: "hitung",
+    teks: "kotor = bersih ÷ (1 − susut)\n     = 1.000 ÷ (1 − 0,05)\n     = 1.052,632 kg",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Selisihnya kecil pada satu bahan dan berlipat pada resep panjang, dan ia selalu ke arah yang sama: kurang, bukan lebih. Aplikasi ini selalu membagi. Susut 100% ditolak — tidak ada jumlah yang bisa disiapkan supaya tersisa sesuatu ketika semuanya hilang.",
+  },
+  { kind: "sub", judul: "Resep bertingkat: yang dihitung dan yang diambil" },
+  {
+    kind: "paragraf",
+    teks:
+      "Sebuah bahan bisa saja bukan barang yang dibeli, melainkan barang yang perusahaan ini buat sendiri dan punya resepnya. Halaman rincian resep menurunkan yang seperti itu sampai ke bahan yang benar-benar dibeli, supaya biaya standarnya lengkap sampai ke dasar. Yang ditelusuri itu ditandai sebagai rakitan antara; yang tidak punya resep adalah bahan daun.",
+  },
+  {
+    kind: "catatan",
+    nada: "peringatan",
+    teks:
+      "Penurunan itu hanya untuk MENGHITUNG BIAYA. Perintah produksi tidak ikut menurunkannya: ia mengambil komponen langsung resepnya dari gudang, apa adanya. Jadi rakitan antara harus sudah ada stoknya — dibuat lewat perintah produksinya sendiri lebih dulu. Kalau belum ada, batchnya ditolak karena stok kurang, bukan diam-diam menggantinya dengan bahan-bahan penyusunnya.",
+  },
+  { kind: "sub", judul: "Tiga jurnal untuk satu batch" },
+  {
+    kind: "paragraf",
+    teks:
+      "Satu perintah produksi punya dua tindakan yang Anda lakukan — mulai dan selesai — tetapi ia menulis tiga jurnal. Tahu ketiganya membuat saldo Barang Dalam Proses bisa dibaca kapan saja.",
+  },
+  {
+    kind: "langkah",
+    butir: [
+      "Saat dimulai: bahan keluar dari gudang dan nilainya masuk ke Barang Dalam Proses. Stok bahan turun; belum ada barang jadi.",
+      "Saat selesai, langkah pertama: jam kerja yang dilaporkan dikalikan tarif stasiunnya, lalu upah dan overhead ikut masuk ke Barang Dalam Proses.",
+      "Saat selesai, langkah kedua: seluruh isi Barang Dalam Proses keluar dan menjadi nilai barang jadi yang masuk gudang.",
+    ],
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Urutan dua langkah terakhir tidak boleh dibalik, dan aplikasi ini tidak membalikkannya: upah dan overhead harus sudah berada di dalam ruang tunggu sebelum isinya dihitung, kalau tidak barang jadinya lahir dengan harga pokok yang hanya berisi bahan. Kalau semuanya benar, saldo Barang Dalam Proses sebuah perintah produksi yang sudah selesai adalah nol. Saldo yang tersisa di sana berarti ada batch yang belum diselesaikan — bukan selisih yang perlu dicari.",
+  },
+  {
+    kind: "catatan",
+    teks:
+      "Bahan yang keluar untuk produksi TIDAK menjadi harga pokok penjualan. Ia belum terjual; ia berpindah bentuk. Harga pokok penjualan baru lahir ketika barang jadinya benar-benar dijual, dan angkanya adalah yang dihitung batch ini. Inilah sebabnya mutasi stok milik perintah produksi tidak ikut membuat jurnal sendiri seperti mutasi stok biasa.",
+  },
+  { kind: "sub", judul: "Kenapa jam sungguhan, bukan jam standar" },
+  {
+    kind: "paragraf",
+    teks:
+      "Resep menyebut berapa jam SEHARUSNYA sebuah tahapan memakan waktu. Yang menentukan berapa rupiah upah dan overhead yang masuk ke Barang Dalam Proses bukan angka itu, melainkan jam yang benar-benar dilaporkan. Alasannya sederhana: jam standar adalah rencana, dan membiayai barang jadi dengan rencana berarti setiap batch terlihat persis sesuai rencana selamanya — mesin yang macet setengah hari tidak akan pernah muncul di angka mana pun.",
+  },
+  {
+    kind: "paragraf",
+    teks:
+      "Tahapan yang jamnya belum dilaporkan menyerap nol, dan itu berbeda dari dikerjakan dalam waktu nol. “Belum dilaporkan” adalah keadaan yang bisa diperbaiki; kalau ia diperlakukan sebagai nol jam, batchnya akan selesai dengan harga pokok yang kurang tanpa ada yang menandainya.",
+  },
+  { kind: "sub", judul: "Varians adalah informasi, bukan jurnal" },
+  {
+    kind: "paragraf",
+    teks:
+      "Setelah batch selesai, aplikasi membandingkan rencana dengan kenyataan: bahan yang dipakai lawan bahan yang diresepkan, jam sungguhan lawan jam standar, keluaran yang jadi lawan keluaran yang dijanjikan. Selisih-selisih itu ditampilkan, dan hanya itu — tidak satu pun menjadi jurnal.",
+  },
+  {
+    kind: "poin",
+    butir: [
+      "Harga pokok barang jadi Anda adalah biaya yang SUNGGUHAN terpakai; tidak ada selisih yang tersisa untuk dijurnal.",
+      "Varians di sini menjawab “kenapa batch ini lebih mahal”, bukan “berapa yang harus dicatat”.",
+      "Karena itu memperbaiki resep yang ternyata terlalu optimistis tidak pernah mengubah laporan keuangan yang sudah terbit — ia hanya membuat pembandingnya lebih berguna.",
+    ],
+  },
+  { kind: "sub", judul: "Modul ini tidak menyala sendiri" },
+  {
+    kind: "paragraf",
+    teks:
+      "Berbeda dari modul lain, Manufaktur harus dinyalakan sendiri di halaman Modul Usaha, dan memilih kategori usaha Manufaktur saat setup sudah menyalakannya. Perusahaan dagang tidak akan pernah menemukannya muncul begitu saja. Saat dinyalakan, tiga akun ditambahkan ke Daftar Akun bila belum ada: Barang Dalam Proses, Beban Upah Langsung, dan Beban Overhead Pabrik — tanpa ketiganya jurnal di atas tidak punya tempat mendarat.",
+  },
+];
+
 export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "mesin-akuntansi": MESIN_AKUNTANSI,
   "periode-terkunci": PERIODE,
@@ -774,6 +893,7 @@ export const DOC_BLOCKS: Record<DocSlug, readonly DocBlock[]> = {
   "alur-penjualan": PENJUALAN,
   "stok": STOK,
   "biaya-impor": BIAYA_IMPOR,
+  "manufaktur": MANUFAKTUR,
   "modul-usaha": MODUL,
   "kas-dan-bank": KAS,
   "saldo-awal": SALDO_AWAL,

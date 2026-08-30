@@ -222,6 +222,15 @@ const BIAYA_IMPOR = {
   navHrefs: ["/landed-costs"],
 } as const satisfies DocMeta;
 
+const MANUFAKTUR = {
+  slug: "manufaktur",
+  judul: "Kenapa barang jadi lebih mahal daripada bahannya",
+  ringkas:
+    "Ke mana bahan pergi sebelum menjadi barang jadi, kenapa satu batch menulis tiga jurnal, dan kenapa selisih rencana lawan kenyataan tidak pernah menjadi jurnal.",
+  cabang: "pengguna",
+  navHrefs: ["/work-centers", "/boms", "/production-orders"],
+} as const satisfies DocMeta;
+
 const MODUL = {
   slug: "modul-usaha",
   judul: "Kenapa sebuah menu bisa hilang",
@@ -337,6 +346,7 @@ export const DOC_INDEX = [
   PENJUALAN,
   STOK,
   BIAYA_IMPOR,
+  MANUFAKTUR,
   MODUL,
   KAS,
   SALDO_AWAL,
@@ -361,6 +371,34 @@ export type DocSlug = (typeof DOC_INDEX)[number]["slug"];
  * `DOC_BLOCKS[page.slug]` sah tanpa satu pun penegasan tipe di halamannya.
  */
 export type DocEntry = (typeof DOC_INDEX)[number];
+
+/**
+ * Halaman yang dijangkau dari CHROME, bukan dari menu — beserta sebabnya.
+ *
+ * ══ Kenapa daftar ini perlu ada ════════════════════════════════════════════
+ * `NAV_TANPA_DOKUMEN` menjaga cakupan dengan mengukur ITEM MENU. Itu ukuran
+ * yang tepat untuk modul, tetapi ia punya titik buta yang tidak terlihat dari
+ * dalam: halaman yang memang bukan item menu tidak pernah masuk hitungan — ia
+ * tidak berdokumen DAN tidak tercatat sebagai utang. Ia hanya tidak ada.
+ *
+ * Hari ini isinya satu, dan satu itu ternyata baik-baik saja: kotak masuk
+ * pemberitahuan dijangkau dari lonceng di bilah atas, terbuka untuk SETIAP
+ * peran (jadi tak punya izin untuk dideklarasikan — lihat kepala halamannya
+ * dan `tests/authz-coverage.test.ts`), dan isinya milik PENGGUNA, bukan
+ * perusahaan. Ia chrome, sekerabat dengan menu Bantuan — bukan modul yang
+ * kelewat didaftarkan. Yang salah bukan keadaannya, melainkan bahwa keadaan
+ * itu tidak pernah ditulis di mana pun.
+ *
+ * Dijaga `tests/panduan-cakupan.test.ts` dua arah: rutenya wajib benar-benar
+ * ada (daftar yang menyebut halaman yang sudah dihapus adalah daftar yang
+ * berbohong), dan ia wajib BUKAN item menu. Yang kedua itu intinya — begitu
+ * sebuah halaman di sini masuk ke `NAV_GROUPS`, ia berhenti menjadi chrome dan
+ * aturan biasa berlaku lagi: berdokumen, atau tercatat sebagai utang.
+ */
+export const PERMUKAAN_LUAR_NAVIGASI: Readonly<Record<string, string>> = {
+  "/notifications":
+    "Chrome, bukan modul. Dijangkau dari lonceng di bilah atas; terbuka untuk setiap peran; isinya milik pengguna, bukan perusahaan. Satu-satunya perilakunya yang layak diceritakan — membuka halaman ini menandai seluruh isinya terbaca, sebab kotak masuk yang menuntut klik tambahan hanya menumpuk angka merah yang berhenti berarti — sudah tertulis di kepala halamannya, tempat orang yang mengubahnya akan membacanya.",
+};
 
 /**
  * Modul navigasi yang SENGAJA belum/tidak punya halaman dokumen, beserta
@@ -395,12 +433,6 @@ export const NAV_TANPA_DOKUMEN: Readonly<Record<string, string>> = {
     "Gelombang berikutnya. Uang muka adalah kelas kesalahan tersendiri (uang berpindah sebelum kewajibannya ada) dan pantas mendapat halamannya sendiri, bukan satu paragraf.",
   "/fixed-assets":
     "Gelombang berikutnya. Penyusutan adalah contoh terbaik “kenapa mesinnya begitu” yang tersisa: biaya yang tidak pernah menjadi pengeluaran kas.",
-  "/work-centers":
-    "Gelombang berikutnya — bersama Resep Produksi & Perintah Produksi (#495 butir 3). Stasiun kerja sendirian tidak bisa dijelaskan: halamannya hanya akan menerangkan dua isian tarif tanpa bisa menyebut apa yang menyerapnya, kapan, dan ke akun mana. Ceritanya (“kenapa jam sungguhan, bukan jam standar”; “kenapa menyerap dengan mengkredit akun bebannya sendiri”) baru berdiri setelah perintah produksi punya layarnya.",
-  "/boms":
-    "Gelombang berikutnya — bersama Perintah Produksi (#495 butir 3). Resep punya satu cerita yang memang pantas ditulis (\u201csusut MEMBAGI, bukan mengalikan\u201d; \u201cbahan yang keluaran resep lain diturunkan lagi, bukan diambil dari gudang\u201d), tetapi keduanya baru berarti setelah pembaca melihat apa yang terjadi ketika resep itu DIJALANKAN.",
-  "/production-orders":
-    "Gelombang berikutnya, dan halaman inilah yang paling pantas ditulis dari seluruh modul manufaktur (#495 butir 3): ia satu-satunya layar yang MENULIS ke buku besar dua kali untuk satu batch — sekali saat bahan keluar ke Barang Dalam Proses, sekali saat barang jadi masuk. Ceritanya (\u201ckenapa bahan produksi bukan HPP\u201d; \u201ckenapa varians di sini informasi dan bukan jurnal\u201d) baru bisa ditulis jujur setelah sebuah perusahaan sungguhan menjalankannya.",
   "/tax/efaktur":
     "Gelombang berikutnya. Menyentuh aturan DJP yang berubah di luar kendali aplikasi ini; dokumen yang salah di sini lebih mahal daripada tidak ada dokumen.",
   "/customers":

@@ -100,9 +100,43 @@ describe("template mengikuti modul", () => {
     expect(codes).not.toContain("610105"); // Selisih Persediaan
   });
 
-  it("perdagangan komoditas tetap mendapat template penuh", () => {
-    expect(coaTemplateFor(modulesForCategory("commodity_trading"))).toHaveLength(
-      COA_TEMPLATE.length
+  it("perdagangan komoditas mendapat template penuh KECUALI akun modul opt-in", () => {
+    /*
+     * Dulu ini menuntut SELURUH template. Yang berubah bukan kelengkapannya
+     * melainkan apa artinya "penuh": sejak #495 butir 3 ada modul OPT-IN, dan
+     * akun miliknya (1106 Barang Dalam Proses, 5103, 5104) memang tidak boleh
+     * lahir di perusahaan yang tidak memproduksi apa pun — tiga akun bersaldo
+     * nol selamanya adalah persis yang diperingatkan `coa-seeding.ts`.
+     *
+     * Maksud tesnya tetap: perdagangan komoditas adalah preset TERLUAS, dan
+     * tidak boleh kehilangan satu akun pun yang memang miliknya.
+     */
+    const dagang = coaTemplateFor(modulesForCategory("commodity_trading"));
+    const pabrik = coaTemplateFor(modulesForCategory("manufacturing"));
+
+    expect(dagang).toHaveLength(pabrik.length - 3);
+    for (const kode of ["1106", "5103", "5104"]) {
+      expect(dagang.map((r) => r.code), kode).not.toContain(kode);
+      expect(pabrik.map((r) => r.code), kode).toContain(kode);
+    }
+    // Selain ketiganya, keduanya identik — pabrik adalah superset.
+    for (const row of dagang) expect(pabrik.map((r) => r.code)).toContain(row.code);
+  });
+
+  it("akun manufaktur lahir TEPAT saat modulnya dinyalakan, bukan sebelumnya", () => {
+    /*
+     * Cacat yang ini perbaiki, ditemukan saat hendak menyalakan modulnya di
+     * buku produksi sungguhan: ketiga akun semula ditandai `inventory`, jadi
+     * `seedCoaForModules(["manufacturing"])` tidak menyemai satu pun — dan
+     * perintah produksi PERTAMA akan berhenti dengan `MissingMappingError`,
+     * di tengah pekerjaan orang alih-alih di layar tempat ia menyalakannya.
+     */
+    const hanyaStok = coaTemplateFor(["inventory"]).map((r) => r.code);
+    for (const kode of ["1106", "5103", "5104"]) {
+      expect(hanyaStok, kode).not.toContain(kode);
+    }
+    expect(coaTemplateFor(["manufacturing"]).map((r) => r.code)).toEqual(
+      expect.arrayContaining(["1106", "5103", "5104"])
     );
   });
 

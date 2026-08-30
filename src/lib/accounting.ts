@@ -217,12 +217,27 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
    * persediaan — barang yang sudah keluar dari gudang bahan tetapi belum
    * menjadi barang jadi masih milik perusahaan dan masih aset.
    *
-   * Modulnya `inventory`, BUKAN modul manufaktur tersendiri: `enabled_modules`
-   * yang kosong berarti "semua aktif", jadi modul baru akan menyalakan menu
-   * manufaktur di setiap buku yang sudah ada sekaligus. Presedennya Beban Susut
-   * Proses (610106, #490), yang juga potongan manufaktur di bawah `inventory`.
+   * MODULNYA `manufacturing`, dan ini KOREKSI atas penandaan pertamanya.
+   *
+   * Semula ia ditandai `inventory` dengan alasan "modul baru akan menyalakan
+   * menu manufaktur di setiap buku sekaligus". Alasan itu benar, tetapi
+   * masalahnya diselesaikan di tempat lain — `manufacturing` dibuat modul
+   * OPT-IN, sehingga ia memang tidak pernah menyala sendiri. Yang tersisa dari
+   * penandaan lama hanyalah akibat buruknya: kolom `module` di sini TIDAK
+   * mengatur menu, ia mengatur PENYEMAIAN — dan `seedCoaForModules` hanya
+   * menyemai untuk modul yang BARU dinyalakan.
+   *
+   * Akibatnya terukur: menyalakan manufaktur pada perusahaan yang modul
+   * `inventory`-nya sudah lama aktif tidak menyemai satu pun dari ketiga akun
+   * ini, dan perintah produksi PERTAMA berhenti dengan `MissingMappingError` —
+   * persis kegagalan "di tengah pekerjaan orang, bukan di layar tempat ia
+   * menyalakan modulnya" yang diperingatkan `coa-seeding.ts`.
+   *
+   * Ditandai `manufacturing`, ketiganya lahir tepat saat modulnya dinyalakan —
+   * dan perusahaan yang tidak memproduksi apa pun tidak mendapat tiga akun
+   * bersaldo nol selamanya.
    */
-  { code: "1106", name: "Barang Dalam Proses", type: "inventory", module: "inventory" },
+  { code: "1106", name: "Barang Dalam Proses", type: "inventory", module: "manufacturing" },
 
   { code: "1201", name: "Aktiva Tetap", type: "fixed_asset", module: "fixed_assets" },
   { code: "120101", name: "Peralatan & Mesin", type: "fixed_asset", parent: "1201", module: "fixed_assets" },
@@ -277,8 +292,8 @@ export const COA_TEMPLATE: CoaTemplateRow[] = [
    * baru, dan tipe akun baru berarti setiap laporan harus memutuskan lagi di
    * band mana ia jatuh.
    */
-  { code: "5103", name: "Beban Upah Langsung", type: "cogs", module: "inventory", nature: "salary" },
-  { code: "5104", name: "Beban Overhead Pabrik", type: "cogs", module: "inventory" },
+  { code: "5103", name: "Beban Upah Langsung", type: "cogs", module: "manufacturing", nature: "salary" },
+  { code: "5104", name: "Beban Overhead Pabrik", type: "cogs", module: "manufacturing" },
 
   // 6xxx EXPENSES
   { code: "6101", name: "Beban Operasional", type: "expense" },

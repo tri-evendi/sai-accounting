@@ -67,8 +67,21 @@ vi.mock("@/lib/platform-db", () => ({
         id: 5,
         price: "450000.00",
         currency: "IDR",
-        currentPeriodStart: new Date("2026-08-01T00:00:00Z"),
-        currentPeriodEnd: new Date("2026-08-31T00:00:00Z"),
+        /*
+         * Periode langganan RELATIF terhadap hari ini, bukan tanggal keras.
+         *
+         * Sebelumnya `2026-08-01` … `2026-08-31`, dan itu bom waktu: tesnya
+         * hijau setiap hari sampai 31 Agustus 2026 lalu merah sejak 1
+         * September, sebab langganannya kedaluwarsa dan pindah paket dijawab
+         * 409 alih-alih 200/201. Kegagalannya tidak menunjuk apa pun yang
+         * rusak di kode — hanya kalender yang berjalan.
+         *
+         * Yang diuji berkas ini adalah PENJAGA PAKET (rundingan ditolak,
+         * publik diterima), dan penjaga itu tidak peduli tanggal. Jadi
+         * fixture-nya tidak boleh peduli juga.
+         */
+        currentPeriodStart: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+        currentPeriodEnd: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
         plan: { key: "pro" },
       }),
     },

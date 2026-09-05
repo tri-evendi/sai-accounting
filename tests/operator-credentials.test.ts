@@ -2,6 +2,9 @@
  * Kredensial operator (issue #154) — penyimpanan kredensial sendiri (env),
  * MFA WAJIB tanpa pengecualian, jawaban gagal seragam.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { hash } from "bcrypt";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -211,5 +214,49 @@ describe("saklar OPERATOR_MFA", () => {
         `OPERATOR_MFA="${nilai}" seharusnya mematikan MFA`
       ).not.toBeNull();
     }
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Sakelar dan FORMULIR harus sepakat                                        */
+/* ────────────────────────────────────────────────────────────────────────── */
+describe("OPERATOR_MFA=off — formulirnya ikut, bukan hanya servernya", () => {
+  const form = readFileSync(
+    join(process.cwd(), "src/app/(app)/(operator)/operator/login/login-form.tsx"),
+    "utf8"
+  );
+  const page = readFileSync(
+    join(process.cwd(), "src/app/(app)/(operator)/operator/login/page.tsx"),
+    "utf8"
+  );
+
+  it("medan TOTP dirender bersyarat, tidak selalu", () => {
+    /*
+     * Cacat yang ditemukan 5 Sep 2026: sakelar `OPERATOR_MFA=off` melewati
+     * verifikasi di SERVER, tetapi medan TOTP tetap `required` +
+     * `pattern="[0-9]{6}"` — jadi PERAMBAN menolak mengirim formulirnya
+     * sampai enam angka diisi. MFA "sudah dimatikan" dan tetap tidak ada yang
+     * bisa masuk, tanpa satu baris pun di log server: permintaannya memang
+     * tidak pernah sampai ke sana.
+     *
+     * Kelas cacatnya umum — penjaga sisi-server dilonggarkan sementara
+     * validasi sisi-klien tertinggal — dan sunyi justru karena kedua sisi
+     * "benar" menurut dirinya sendiri.
+     */
+    expect(form).toContain("mfaOff");
+    expect(form).toMatch(/\{!mfaOff &&/);
+  });
+
+  it("halaman meneruskan keadaan sakelarnya dari server", () => {
+    // Tanpa ini medannya bersyarat pada sesuatu yang tak pernah berubah.
+    expect(page).toContain("operatorMfaOff");
+    expect(page).toMatch(/mfaOff=\{operatorMfaOff\(\)\}/);
+  });
+
+  it("sakelarnya dibaca di server — bukan diseberangkan sebagai NEXT_PUBLIC", () => {
+    // `NEXT_PUBLIC_` akan menjahit keadaan MFA ke setiap bundel yang dikirim
+    // ke SEMUA orang, bukan cuma pengunjung halaman login operator.
+    expect(form).not.toContain("NEXT_PUBLIC_OPERATOR");
+    expect(form).not.toContain("process.env.OPERATOR_MFA");
   });
 });

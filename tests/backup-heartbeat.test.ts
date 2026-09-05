@@ -160,11 +160,15 @@ describe("rantainya utuh: direkam, lalu ditanyai dari luar", () => {
   });
 
   it("probe kesehatan menyebut `backup:`", () => {
-    /* Kunci ditulis eksplisit di route-nya justru supaya penjaga ini bisa
-       membacanya — catatan yang sama sudah berdiri untuk `scheduler:`. */
-    const route = baca("src/app/api/health/route.ts");
-    expect(route).toMatch(/^\s+backup: backupStatus,$/m);
-    expect(route).toMatch(/backupHealth\(/);
+    /* Kunci ditulis eksplisit justru supaya penjaga ini bisa membacanya —
+       catatan yang sama sudah berdiri untuk `scheduler:`.
+
+       Berkasnya `lib/health-report.ts` sejak #374: pengumpul bidangnya pindah
+       ke sana ketika pembacanya menjadi dua (probe + halaman status publik).
+       Penjaga ini pindah bersama subjeknya. */
+    const laporan = baca("src/lib/health-report.ts");
+    expect(laporan).toMatch(/^\s+backup: backupStatus,$/m);
+    expect(laporan).toMatch(/backupHealth\(/);
   });
 
   it("probe TIDAK menjatuhkan dirinya karena cadangan bermasalah", () => {
@@ -174,11 +178,16 @@ describe("rantainya utuh: direkam, lalu ditanyai dari luar", () => {
      * cadangan diubah menjadi pemadaman layanan, yang justru membuat cadangannya
      * lebih dibutuhkan.
      */
+    /* Satu-satunya 503 ada di route, dan ia hanya lahir dari bentuk `error` —
+       yang di `healthReport()` diputuskan oleh basis data KENDALI, sebelum
+       denyut mana pun dibaca. Dua berkas, satu rantai; keduanya diperiksa. */
     const route = baca("src/app/api/health/route.ts");
     const g = route.slice(route.indexOf("export async function GET()"));
-    /* Satu-satunya 503 di GET adalah basis data KENDALI, dan ia diputuskan
-       sebelum denyut mana pun dibaca. */
     expect((g.match(/status: 503/g) ?? []).length).toBe(1);
-    expect(g.indexOf("status: 503")).toBeLessThan(g.indexOf("lastBackup()"));
+    expect(g).not.toContain("lastBackup");
+
+    const laporan = baca("src/lib/health-report.ts");
+    const h = laporan.slice(laporan.indexOf("export async function healthReport()"));
+    expect(h.indexOf('database: "unreachable"')).toBeLessThan(h.indexOf("lastBackup()"));
   });
 });

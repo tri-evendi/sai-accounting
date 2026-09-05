@@ -65,7 +65,14 @@ const LANDING_DIR = "components/landing/";
  * dipertanyakan seorang peninjau — dan supaya sebuah `page.tsx` yang diselipkan
  * ke grup itu tidak otomatis mewarisi izinnya.
  */
-const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/pricing/page.tsx"];
+const PINTU_MASUK = [
+  "app/(marketing)/page.tsx",
+  "app/(marketing)/pricing/page.tsx",
+  // `/status` (#374) memakai `LandingShell` supaya bilah, kaki, dan skala
+  // pemasarannya identik dengan halaman publik lain — orang yang mendarat di
+  // sini dari kaki halaman tidak boleh merasa berpindah situs.
+  "app/(marketing)/status/page.tsx",
+];
 
 /**
  * Yang boleh diimpor DARI dalam `components/landing/**`.

@@ -294,10 +294,26 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
       .map(([berkas]) => berkas);
     expect(pelanggar).toEqual([]);
 
+    /*
+     * Sanity check-nya menguji SIFAT daftarnya, bukan bunyinya. Bentuk lama
+     * mencocokkan seluruh baris `PINTU_MASUK` apa adanya, jadi ia memerah
+     * setiap kali sebuah halaman pemasaran BARU ditambahkan — merah yang tidak
+     * menunjukkan satu pun cacat, dan yang pelajarannya selalu "tempel
+     * literal baru ke sini". Penjaga yang memerah untuk perubahan yang sah
+     * adalah penjaga yang akhirnya dilonggarkan tanpa dibaca.
+     *
+     * Yang benar-benar harus benar cuma dua: setiap pintu masuk adalah halaman
+     * PEMASARAN, dan tidak satu pun berkas dokumentasi ada di dalamnya.
+     */
     const landingGuard = readFileSync(join(ROOT, "tests", "landing-boundary.test.ts"), "utf8");
-    expect(landingGuard).toContain(
-      'const PINTU_MASUK = ["app/(marketing)/page.tsx", "app/(marketing)/pricing/page.tsx"];'
+    const daftar = landingGuard.slice(
+      landingGuard.indexOf("const PINTU_MASUK"),
+      landingGuard.indexOf("];", landingGuard.indexOf("const PINTU_MASUK"))
     );
+    const jalur = [...daftar.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(jalur.length).toBeGreaterThan(0);
+    expect(jalur.filter((j) => !j.startsWith("app/(marketing)/"))).toEqual([]);
+    expect(jalur.filter((j) => j.includes("docs"))).toEqual([]);
   });
 
   it("tidak mengimpor chrome app internal — sisi yang belum dijaga siapa pun", () => {

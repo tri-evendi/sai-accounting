@@ -131,6 +131,12 @@ export async function LandingFooter() {
             <Link href="/docs" data-landing-link="" style={FOOTER_LINK}>
               {t("landing.footerDocs")}
             </Link>
+            {/* Status layanan (#374) — "diumumkan" dalam kriteria issue itu
+                berarti punya jalan masuk yang tetap, bukan sekadar ada. Kaki
+                halaman adalah tempat orang mencarinya di setiap situs lain. */}
+            <Link href="/status" data-landing-link="" style={FOOTER_LINK}>
+              {t("landing.footerStatus")}
+            </Link>
           </nav>
 
           <nav aria-label={t("landing.footerLegal")} style={COLUMN}>

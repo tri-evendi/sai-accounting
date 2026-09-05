@@ -146,11 +146,21 @@ describe("penjadwal sebagai layanan (#373)", () => {
 });
 
 describe("/api/health menyebut penjadwal tanpa ikut memutuskan (#373 · doktrin #137)", () => {
-  const route = readFileSync(
-    join(process.cwd(), "src", "app", "api", "health", "route.ts"),
-    "utf8"
+  /*
+   * Pengumpul bidangnya pindah ke `lib/health-report.ts` (#374) sebab
+   * pembacanya kini dua — probe ini dan halaman status publik. Penjaga ini ikut
+   * pindah bersama subjeknya; tidak satu pun tuntutan di bawah dilonggarkan.
+   * Yang tersisa di route hanyalah satu-satunya hal yang memang milik lapisan
+   * HTTP: penerjemahan "kendali tak terjangkau" menjadi 503.
+   */
+  const bersih = (isi: string) =>
+    isi.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const code = bersih(
+    readFileSync(join(process.cwd(), "src", "lib", "health-report.ts"), "utf8")
   );
-  const code = route.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const route = bersih(
+    readFileSync(join(process.cwd(), "src", "app", "api", "health", "route.ts"), "utf8")
+  );
 
   it("melaporkan denyutnya", () => {
     expect(code).toContain("scheduler:");
@@ -161,17 +171,25 @@ describe("/api/health menyebut penjadwal tanpa ikut memutuskan (#373 · doktrin 
     // Penagihan mati ≠ aplikasi mati. Kalau probe ini gagal karena penjadwal
     // telat, Traefik berhenti mengirim lalu lintas ke container yang masih
     // melayani setiap pembukuan pelanggan dengan sempurna.
-    const failures = [...code.matchAll(/status:\s*503/g)];
+    const failures = [...route.matchAll(/status:\s*503/g)];
     expect(failures).toHaveLength(1);
 
-    // Yang diperiksa adalah BADAN handler-nya, bukan seluruh berkas: `platformDb`
-    // memang diimpor di atas, dan yang menentukan bukan keberadaan impornya
-    // melainkan apakah ia ikut menjaga gerbang 503.
-    const body = code.slice(code.indexOf("export async function GET()"));
-    const gate = body.slice(0, body.indexOf("status: 503"));
+    // Yang diperiksa adalah GERBANGNYA — bagian `healthReport()` yang berjalan
+    // sebelum keputusan "belum siap" diambil. `platformDb` memang diimpor di
+    // atas, dan yang menentukan bukan keberadaan impornya melainkan apakah ia
+    // ikut menjaga gerbang itu.
+    const body = code.slice(code.indexOf("export async function healthReport()"));
+    const gate = body.slice(0, body.indexOf('database: "unreachable"'));
     expect(gate).toContain("controlDb");
     expect(gate).not.toContain("platformDb");
     expect(gate).not.toContain("lastSchedulerRun");
+
+    // Dan di route: 503 hanya untuk bentuk `error`, yang cuma lahir dari
+    // gerbang kendali di atas — tidak ada bidang lain yang bisa mencapainya.
+    const handler = route.slice(route.indexOf("export async function GET()"));
+    expect(handler.indexOf('report.status === "error"')).toBeLessThan(
+      handler.indexOf("status: 503")
+    );
   });
 
   it("platform tak terjangkau dijawab `unknown`, bukan lemparan", () => {

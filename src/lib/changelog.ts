@@ -73,8 +73,47 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.5.0",
+    tanggal: "2026-09-05",
+    ringkas:
+      "Daftar yang gagal dimuat berhenti tampil sebagai daftar kosong, stok masuk bisa langsung memotong kas, dan kontrak menyebut sendiri apakah ia kena PPN.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks:
+          "Pemilih pemasok, pelanggan, akun, dan pusat biaya sempat menampilkan \u201ctidak ada pilihan\u201d padahal datanya ada — yang gagal dimuat terbaca sama persis dengan yang memang kosong. Kini kegagalan dikatakan sebagai kegagalan, dan daftar kosong hanya muncul kalau memang tidak ada isinya.",
+      },
+      {
+        jenis: "baru",
+        teks:
+          "Saat menambah stok masuk, Anda bisa memilih kas atau bank yang uangnya keluar untuk barang itu. Nilainya dihitung dari jumlah kali harga pokok dan tampil sebelum disimpan. Bawaannya tetap tidak memotong apa pun — barang yang masuk lewat layar Pembelian sudah punya hutang dan pelunasannya sendiri.",
+      },
+      {
+        jenis: "baru",
+        teks:
+          "Kontrak kini menyebut sendiri apakah ia kena PPN, dan faktur yang ditarik darinya mewarisi jawaban itu. Sebelumnya PPN baru muncul di faktur dengan bawaan yang disimpulkan dari mata uang dan pelanggan, sehingga kontrak rupiah tanpa PPN harus dibetulkan dengan tangan pada setiap fakturnya.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Kontrak lama tidak berubah perilakunya: selama PPN-nya belum dinyatakan, fakturnya tetap memakai bawaan yang sama seperti sebelumnya. Tarifnya tetap mengikuti profil pajak perusahaan pada tanggal faktur — perusahaan non-PKP tetap tidak memungut.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Jawaban \u201ctidak\u201d pada beberapa isian ya/tidak bisa tersimpan terbalik menjadi \u201cya\u201d bila dikirim dari luar aplikasi. Menyangkut status PKP serta penonaktifan resep produksi dan stasiun kerja. Nilai yang tidak dikenali kini ditolak, bukan ditebak.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Beberapa tugas terjadwal di latar bisa macet dan menahan seluruh tugas berikutnya tanpa tanda apa pun. Kini tugas yang macet dihentikan sendiri dan yang berikutnya tetap berjalan.",
+      },
+    ],
+  },
+  {
     versi: "0.4.0",
     tanggal: "2026-08-30",
+    sha: "f990c44",
     ringkas:
       "Halaman bantuan baru yang memperlihatkan alur kerja lengkap untuk tiap jenis usaha, lengkap dengan gambarnya.",
     butir: [

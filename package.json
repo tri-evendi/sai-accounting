@@ -1,6 +1,6 @@
 {
   "name": "sai-luckyhands",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "scripts": {
     "_runtime_note": "PEMBAGIAN TUGAS (sejak pindah dari npm): Bun adalah PEMASANG PAKET dan PELUNCUR SKRIP; Node tetap RUNTIME yang menjalankan build, tsc, Prisma, dan skrip tsx. Itu disengaja. `bun run` menghormati shebang `#!/usr/bin/env node` pada binary di node_modules/.bin, jadi `next`, `tsc`, `prisma`, dan `tsx` tetap dieksekusi Node — dan dengan begitu `NODE_OPTIONS=--max-old-space-size=...` di bawah TETAP BERLAKU (terukur: batas 333 MB menghasilkan heap limit 525 MB, sama persis seperti di bawah npm). Bun memakai JavaScriptCore, yang MENGABAIKAN --max-old-space-size; kalau ada yang mengubah perintah ini menjadi `bun --bun ...` atau `bun scripts/x.ts`, pagar memori itu lenyap diam-diam dan kegagalan berubah dari galat V8 yang terbaca menjadi OOM-killer kernel (exit 137). Jangan lakukan itu tanpa mengganti pagarnya lebih dulu.",

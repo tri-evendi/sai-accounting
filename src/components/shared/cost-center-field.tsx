@@ -29,7 +29,7 @@ import { Flex, theme, Typography } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { Select } from "@/components/ui/select";
 import { useT } from "@/lib/i18n/client";
-import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 /** Pusat biaya aktif, sebagaimana dikembalikan `GET /api/cost-centers`. */
 export interface CostCenterOption {
@@ -42,28 +42,44 @@ export interface CostCenterOption {
  * Muat daftar pusat biaya AKTIF. Yang nonaktif sengaja tak ditawarkan: ia masih
  * harus terbaca di laporan lama, tetapi tak boleh dipilih untuk dokumen baru.
  */
-export function useCostCenters(): CostCenterOption[] {
+export function useCostCenters(): {
+  costCenters: CostCenterOption[];
+  /** Permintaannya GAGAL — bukan "perusahaan ini tidak punya pusat biaya". */
+  loadFailed: boolean;
+} {
   const [costCenters, setCostCenters] = useState<CostCenterOption[]>([]);
+  /*
+   * Dibedakan dari daftar kosong, dan di sini akibatnya paling sunyi dari
+   * semuanya: `CostCenterField` MENGHILANG saat daftarnya kosong (lihat di
+   * bawah), jadi permintaan yang gagal tidak menampilkan kolom yang kosong —
+   * ia menghapus kolomnya dari layar. Dokumennya lalu tersimpan dengan
+   * `cost_center_id` NULL, yang merupakan nilai yang SAH, sehingga tidak ada
+   * satu pun galat di mana pun; yang hilang cuma harga pokok cabang di
+   * Laba/Rugi per pusat biaya, berbulan-bulan kemudian.
+   */
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      const res = await apiFetch("/api/cost-centers?activeOnly=1");
-      if (!res.ok || cancelled) return;
-      const data = (await res.json()) as CostCenterOption[];
-      if (!cancelled) setCostCenters(data);
-    }
-    void load();
+    void (async () => {
+      const data = await fetchOptionList<CostCenterOption>("/api/cost-centers?activeOnly=1");
+      if (cancelled) return;
+      setLoadFailed(data == null);
+      setCostCenters(data ?? []);
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return costCenters;
+  return { costCenters, loadFailed };
 }
 
 export interface CostCenterFieldProps {
   costCenters: CostCenterOption[];
+  /** Dari `useCostCenters()`. Tanpa ini, kegagalan memuat tak terbedakan dari
+   *  perusahaan yang memang belum memakai pusat biaya. */
+  loadFailed?: boolean;
   /** `""` = belum ditetapkan. */
   value: string;
   onChange: (value: string) => void;
@@ -83,12 +99,31 @@ export interface CostCenterFieldProps {
  */
 export function CostCenterField({
   costCenters,
+  loadFailed = false,
   value,
   onChange,
   hint,
 }: CostCenterFieldProps) {
   const t = useT();
   const { token } = theme.useToken();
+  /*
+   * Kosong karena GAGAL: kolomnya tetap tidak bisa dirender (tak ada pilihan
+   * untuk ditawarkan), tapi kepergiannya harus disebutkan. Menghilang diam-diam
+   * adalah satu-satunya bentuk yang tidak boleh: pengguna yang biasa mengisi
+   * pusat biaya akan menyimpulkan dokumen ini memang tidak memerlukannya.
+   */
+  if (costCenters.length === 0 && loadFailed) {
+    return (
+      <Typography.Text
+        role="alert"
+        style={{ fontSize: token.fontSizeSM, color: token.colorError }}
+      >
+        {t("common.optionsLoadFailed")}
+      </Typography.Text>
+    );
+  }
+  // Kosong karena memang belum ada: perusahaan yang tidak memakai dimensi ini
+  // tidak perlu melihat isian yang selamanya tak punya pilihan.
   if (costCenters.length === 0) return null;
 
   return (

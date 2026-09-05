@@ -175,7 +175,7 @@ export function AdvanceCompensationSection({
     setBusyId(applicationId);
     setError(null);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/advances/applications?id=${applicationId}`,
         { method: "DELETE" }
       );

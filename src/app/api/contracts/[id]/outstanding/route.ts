@@ -65,6 +65,11 @@ export async function GET(
       customerId: contract.customerId,
       currency: contract.currency || "IDR",
       status: contract.status,
+      /* PPN yang disepakati di kontrak (migrasi 0062). Formulir faktur
+         memakainya sebagai BAWAAN, menggantikan tebakan `defaultInvoiceTax`
+         yang hanya tahu mata uang dan tanda bebas-PPN pelanggan — dua hal yang
+         sama-sama bukan isi kontrak. */
+      taxable: contract.taxable,
     },
     lines: chain.outstanding.lines,
     totals: chain.outstanding.totals,

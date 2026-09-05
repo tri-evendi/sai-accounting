@@ -31,6 +31,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SelectField } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -53,7 +54,9 @@ import {
   costCenterPayload,
   useCostCenters,
 } from "@/components/shared/cost-center-field";
-import { formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@/lib/utils";
+import { CASH_TYPES, type CashType } from "@/lib/constants";
+import { cashTypeLabels } from "@/lib/i18n/labels";
 import {
   closedPeriodIssue,
   isLargeStockOut,
@@ -62,7 +65,7 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { findStockShortfalls } from "@/lib/delivery-orders";
-import { useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
 import {
@@ -143,6 +146,9 @@ interface StockPayload {
   costCenterId: number | null;
   /** Pemasok pengirim (migrasi 0058). `null` pada arah selain MASUK. */
   supplierId: number | null;
+  /** Kas/bank yang dipotong senilai `quantity × unitCost`. `null` = tidak ada
+   *  uang yang keluar di layar ini, yaitu perilaku sebelum 5 Sep 2026. */
+  cashType: CashType | null;
 }
 
 /**
@@ -186,6 +192,9 @@ export function StockUpdateForm({
   closedPeriods: ClosedPeriodRef[];
 }) {
   const t = useT();
+  /* Label kas/bank datang dari kamus yang SAMA dengan halaman Kas & Bank —
+     bukan daftar kedua yang bisa berselisih kata dengannya. */
+  const dictionary = useDictionary();
   const router = useAppRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -193,7 +202,7 @@ export function StockUpdateForm({
   const [pending, setPending] = useState<StockPayload | null>(null);
   // issue #98 — pengeluaran stok MANUAL adalah satu-satunya jalur HPP tanpa
   // dokumen sumber untuk diwarisi, jadi dimensinya hanya bisa datang dari sini.
-  const costCenters = useCostCenters();
+  const { costCenters, loadFailed: costCentersFailed } = useCostCenters();
   /*
    * Pusat biaya sengaja TIDAK ikut ke dalam state formulir: ia tidak pernah
    * wajib ("belum ditetapkan" adalah nilai yang sah, lihat `cost-center-field`),
@@ -206,6 +215,14 @@ export function StockUpdateForm({
      contoh, pengembalian dari gudang lain. Di luar RHF karena payload-nya
      memang dirakit tangan di bawah, sama seperti `costCenterId`. */
   const [supplierId, setSupplierId] = useState<number | null>(null);
+  /*
+   * Kas/bank yang dipotong (5 Sep 2026). `""` = tidak memotong apa pun, dan itu
+   * BAWAANNYA: barang yang datang lewat Pembelian sudah punya pelunasannya
+   * sendiri, jadi memotong kas di sini akan mencatat uang keluar dua kali.
+   * Di luar RHF karena alasan yang sama dengan `supplierId` — muatannya dirakit
+   * tangan di bawah.
+   */
+  const [cashType, setCashType] = useState<CashType | "">("");
   const [confirmMessage, setConfirmMessage] = useState("");
 
   // New item form
@@ -250,14 +267,19 @@ export function StockUpdateForm({
 
   /* `useWatch` (bukan `form.watch()`) supaya React Compiler tetap bisa
      memoisasi komponen ini. */
-  const [itemId, movementType, quantity, date] = useWatch({
+  const [itemId, movementType, quantity, date, unitCost] = useWatch({
     control: form.control,
-    name: ["itemId", "type", "quantity", "date"],
+    name: ["itemId", "type", "quantity", "date", "unitCost"],
   });
 
   const selected = items.find((i) => String(i.id) === itemId) ?? null;
   const periodIssue = closedPeriodIssue(date, closedPeriods, "Tanggal pergerakan stok");
   const qtyValue = Number(quantity) || 0;
+  /* Nominal yang akan dipotong dari kas — perkalian yang SAMA dengan yang
+     dihitung ulang server, ditampilkan lebih dulu supaya tak ada yang menekan
+     Simpan sambil menebak berapa uang yang keluar. */
+  const cashOutValue = qtyValue * (Number(unitCost) || 0);
+  const cashLabels = cashTypeLabels(dictionary);
   /* Dua pilihan yang MENGURANGI stok, dan keduanya tunduk pada penjaga yang
      sama: saldo tak boleh negatif (#490). */
   const reducesStock = movementType === "out" || movementType === "shrinkage";
@@ -390,6 +412,8 @@ export function StockUpdateForm({
       costCenterId: costCenterPayload(costCenterId),
       // Hanya arah MASUK yang punya pengirim — skema server menolak sisanya.
       supplierId: values.type === "in" ? supplierId : null,
+      // Idem untuk uangnya: yang keluar dan yang susut tidak dibayar siapa pun.
+      cashType: values.type === "in" && cashType !== "" ? cashType : null,
     };
 
     if (reduces && item && isLargeStockOut(values.quantity, item.currentStock)) {
@@ -795,6 +819,43 @@ export function StockUpdateForm({
                     </Typography.Text>
                   </div>
                 )}
+                {/* ── Uangnya, kalau memang keluar hari ini (5 Sep 2026) ──────
+                    Bawaannya "tidak memotong", dan itu bukan kehati-hatian
+                    kosong: barang yang masuk lewat Pembelian sudah punya hutang
+                    dan pelunasannya sendiri, jadi memotong kas di sini akan
+                    mencatat uang keluar dua kali. Yang dibeli tunai di gudang —
+                    yang tidak pernah melewati layar Pembelian — memilih kasnya
+                    di sini, dan nominalnya muncul SEBELUM Simpan ditekan. */}
+                {movementType === "in" && (
+                  <div>
+                    {/* `Label` + `SelectField` telanjang, BUKAN pemilih
+                        komposit ber-label: `form-client-validation.test.tsx`
+                        melarang komposit itu di berkas ini sejak #216, karena
+                        atribut `required`-nya tidak divalidasi siapa pun dan
+                        tandanya jadi berbohong. Isian ini memang tak wajib. */}
+                    <Label htmlFor="cashType">{t("inventory.cashTypeLabel")}</Label>
+                    <SelectField
+                      id="cashType"
+                      value={cashType}
+                      onChange={(e) => setCashType(e.target.value as CashType | "")}
+                      options={[
+                        { value: "", label: t("inventory.cashTypeNone") },
+                        ...CASH_TYPES.map((type) => ({
+                          value: type,
+                          label: cashLabels[type],
+                        })),
+                      ]}
+                    />
+                    <p style={HINT}>
+                      {cashType === ""
+                        ? t("inventory.cashTypeHint")
+                        : t("inventory.cashTypeAmountHint", {
+                            amount: formatCurrency(cashOutValue, "IDR"),
+                            cash: cashLabels[cashType],
+                          })}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <FormField
                     control={form.control}
@@ -834,6 +895,7 @@ export function StockUpdateForm({
                     `costCenterId` di atas. */}
                 <CostCenterField
                   costCenters={costCenters}
+                  loadFailed={costCentersFailed}
                   value={costCenterId}
                   onChange={setCostCenterId}
                   hint={t("costCenters.stockPickerHint")}

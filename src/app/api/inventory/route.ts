@@ -5,6 +5,9 @@ import { stockUpdateSchema, itemSchema, itemActiveSchema } from "@/lib/validatio
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
+import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
+import { round2 } from "@/lib/posting/rules";
+import { BASE_CURRENCY } from "@/lib/validations/fx";
 import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
@@ -264,7 +267,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { date, unitCost, shrinkageValue, ...stockData } = parsed.data;
+  const { date, unitCost, shrinkageValue, cashType, ...stockData } = parsed.data;
 
   /*
    * ── "Hasil Proses" adalah PILIHAN LAYAR, bukan nilai `type` (issue #490) ──
@@ -307,9 +310,38 @@ export async function POST(request: Request) {
     }
   }
 
+  /*
+   * ── UANGNYA IKUT KELUAR, KALAU MEMANG BEGITU (5 Sep 2026) ────────────────
+   *
+   * Barang yang dibeli tunai di gudang tidak melewati layar Pembelian: tidak
+   * ada hutang yang terbit, tidak ada pelunasan yang menutupnya, dan sampai
+   * sekarang tidak ada satu pun baris yang mengatakan kasnya berkurang. Stoknya
+   * bertambah, uangnya diam — dan selisih itu baru terlihat saat kas fisik
+   * dihitung.
+   *
+   * Karena itu kolom `cashType` di sini menulis SATU baris `cash_movements`
+   * yang diposting D: Persediaan / K: Kas. Bukan pembelian pemasok: yang itu
+   * menerbitkan hutang lalu melunasinya pada detik yang sama, dan halaman
+   * Kas & Bank — yang membaca `cash_movements`, bukan buku besar — tetap tidak
+   * akan menampilkannya.
+   *
+   * Izinnya DUA, karena perbuatannya dua. `inventory.write` saja tidak pernah
+   * berarti "boleh mengeluarkan uang perusahaan". Yang dipanggil adalah
+   * PENJAGA yang sama dengan `/api/finance`, bukan pemeriksaan tulis tangan:
+   * jawabannya karena itu tidak bisa berbeda antara dua pintu menuju perbuatan
+   * yang sama, dan ia ikut membawa lapisan modul serta override per-pengguna
+   * yang sebuah `if` tidak akan pernah ingat untuk ditiru.
+   */
+  const paysCash = stockData.type === "in" && cashType != null;
+  if (paysCash) {
+    const cashGate = await requireApiPermission("cash.write");
+    if (!cashGate.authorized) return cashGate.response;
+  }
+
   let stock;
+  let cashMovementId: number | null = null;
   try {
-    stock = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => {
       const created = await tx.stockMovement.create({
         data: {
           ...stockData,
@@ -348,8 +380,71 @@ export async function POST(request: Request) {
         sourceId: created.id,
         tx,
       });
-      return created;
+
+      /*
+       * Nilainya `quantity × unitCost` — angka yang SAMA dengan yang masuk ke
+       * persediaan, jadi kedua sisi jurnal lahir dari satu perkalian dan tidak
+       * bisa berselisih. Akun lawannya diselesaikan lewat slot `inventory`,
+       * bukan id yang dititipkan pemanggil: `cash_movement` adalah satu-satunya
+       * aturan posting yang menuntut akun lawan dari LUAR, dan membiarkan
+       * peramban menyebutnya berarti membiarkan kas dilawankan ke akun mana pun.
+       */
+      if (!paysCash) return { movement: created, cash: null };
+
+      const amount = round2(stockData.quantity * unitCost!);
+      const supplier = stockData.supplierId
+        ? await tx.supplier.findUnique({
+            where: { id: stockData.supplierId },
+            select: { name: true },
+          })
+        : null;
+      const inventoryAccountId = await resolveAccountId(
+        MAPPING_KEYS.INVENTORY,
+        BASE_CURRENCY,
+        tx
+      );
+
+      const cash = await tx.cashMovement.create({
+        data: {
+          type: cashType!,
+          date: new Date(date),
+          description: [
+            `Pembelian tunai ${created.item.name}`,
+            supplier?.name,
+          ]
+            .filter(Boolean)
+            .join(" — ")
+            .slice(0, 255),
+          currency: BASE_CURRENCY,
+          debit: 0,
+          credit: amount,
+          /* Rupiah lawan rupiah: kurs 1 dan `base_amount` = nominalnya sendiri,
+             persis yang dipulangkan `fxAmounts` untuk mata uang dasar. */
+          rate: 1,
+          baseAmount: amount,
+          /* Dimensi yang sama dengan gerakan stoknya — satu perbuatan, satu
+             cabang. Tanpa ini, Laba/Rugi cabang menerima persediaannya tetapi
+             tidak menerima kas yang membayarnya. */
+          costCenterId: stockData.costCenterId ?? null,
+          /* Jejak balik ke gerakannya. `cash_movements` tidak punya FK ke
+             `stock_movements` dan tidak dibuatkan satu: nomor di catatan sudah
+             cukup untuk ditelusuri manusia, sedangkan kolom baru menuntut
+             migrasi pada tabel yang dibaca setiap laporan kas. */
+          note: `Gerakan stok #${created.id}`,
+        },
+      });
+
+      await postForSource({
+        sourceType: "cash_movement",
+        sourceId: cash.id,
+        tx,
+        counterAccountId: inventoryAccountId,
+      });
+
+      return { movement: created, cash };
     });
+    stock = outcome.movement;
+    cashMovementId = outcome.cash?.id ?? null;
   } catch (e) {
     return handlePostingError(e);
   }
@@ -365,6 +460,9 @@ export async function POST(request: Request) {
       itemName: stock.item.name,
       quantity: Number(stock.quantity),
       type: stock.type,
+      /* Hanya pada gerakan yang benar-benar memotong kas — baris audit gerakan
+         biasa tidak berubah bentuk. */
+      ...(cashMovementId != null ? { cashType, cashMovementId } : {}),
     },
     request,
   });

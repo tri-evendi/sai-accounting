@@ -101,6 +101,9 @@ interface OutstandingResponse {
     /** Tautan master pembeli (migrasi 0057); NULL pada kontrak warisan. */
     customerId: number | null;
     currency: string;
+    /** PPN yang disepakati di kontraknya (migrasi 0062); NULL = belum
+     *  dinyatakan, dan faktur memakai bawaannya sendiri. */
+    taxable: boolean | null;
   };
   lines: ContractLineOutstanding[];
   pull: { contract: { itemName: string; quantity: number; price: number; unit: string }[] };
@@ -262,11 +265,34 @@ export function SalesWizard({
           invoice: { ...d.invoice, currency: data.contract.currency },
         }));
       }
+
+      /*
+       * PPN-nya juga (migrasi 0062), dan TERPISAH dari cabang di atas: sebuah
+       * kontrak warisan tanpa tautan pelanggan tetap boleh menyatakan PPN-nya,
+       * dan menyembunyikan pernyataan itu di dalam `if` pelanggan berarti
+       * kontrak yang menyebut "Non-PPN" tetap difakturkan dengan PPN 11%.
+       *
+       * NULL sengaja tidak melakukan apa-apa — bawaan mata uang/pelanggan tetap
+       * berlaku, persis seperti sebelum kolom itu ada. Tarifnya dari profil
+       * pajak PERUSAHAAN pada tanggal faktur: yang disepakati di kontrak adalah
+       * "kena PPN", sedangkan berapa persennya aturan negara saat faktur
+       * terbit. Perusahaan non-PKP tetap tidak memungut apa pun.
+       */
+      if (data.contract.taxable != null) {
+        patch((d) => {
+          const companyRate = companyRateFor(d.invoice.date);
+          const taxable = data.contract.taxable === true && companyRate > 0;
+          return {
+            ...d,
+            invoice: { ...d.invoice, taxable, taxRate: taxable ? companyRate : 0 },
+          };
+        });
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [draft.contractId, patch, t]);
+  }, [draft.contractId, patch, companyRateFor, t]);
 
   // Detail pelanggan terpilih — nama untuk label/ringkasan, bebas-PPN untuk
   // default pajak. Saat cache siap DAN pemilihan baru saja terjadi, default

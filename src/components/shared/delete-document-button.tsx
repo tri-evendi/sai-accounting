@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { humanizeFieldMessage } from "@/lib/form-guards";
+import { apiFetch } from "@/lib/api-fetch";
 import { DeleteOutlined } from "@ant-design/icons";
 interface DeleteDocumentButtonProps {
   /** Endpoint DELETE, mis. `/api/contracts/12`. */
@@ -58,7 +59,7 @@ export function DeleteDocumentButton({
   async function onConfirm() {
     setBusy(true);
     try {
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await apiFetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         toast(

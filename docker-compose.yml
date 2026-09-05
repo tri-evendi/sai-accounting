@@ -105,7 +105,46 @@ services:
       #
       # `|| true` di tiap mata rantai disengaja: satu produser yang gagal tidak
       # boleh menelan yang berikutnya — putarannya harus tetap sampai `sleep`.
-      - "while true; do bun run scheduler:subscriptions || true; bun run notify:setup || true; bun run notify:invoice-due || true; bun run remind:customers || true; bun run recurring:run || true; sleep 3600; done"
+      #
+      # ⚠ `|| true` TIDAK cukup, dan itu terbukti di produksi 30 Agu 2026.
+      # Ia melindungi dari langkah yang GAGAL, bukan dari yang MENGGANTUNG:
+      # `scheduler:subscriptions` menggantung dua jam dengan CPU 0,09%, putaran
+      # itu tak pernah sampai ke `sleep`, dan SELURUH putaran berikutnya
+      # tertahan selamanya. Gejalanya menyesatkan — container "Up", log
+      # terakhir "✓ selesai tanpa masalah", nol galat di mana pun; yang
+      # menyingkapkannya cuma `/api/health` → `scheduler: late` dan
+      # `docker top`.
+      #
+      # Karena itu tiap langkah dibungkus `timeout`. 600 detik dipilih dari
+      # cadensinya: lima langkah × 10 menit = 50 menit, masih di bawah selang
+      # satu jam, jadi putaran terburuk sekalipun tidak menumpuk. `-k 30`
+      # mengirim KILL 30 detik setelah TERM untuk proses yang membandel —
+      # Prisma yang menahan event loop tidak selalu pergi karena TERM saja.
+      #
+      # Yang dibunuh BERBUNYI di log beserta nama langkahnya. Timeout yang
+      # diam adalah cacat yang sama dengan `|| true` yang diam: pekerjaan
+      # berhenti dikerjakan tanpa ada yang tahu.
+      - |
+        langkah() {
+          nama="$$1"; shift
+          timeout -k 30 "$$BATAS" "$$@"
+          kode=$$?
+          if [ "$$kode" = 124 ] || [ "$$kode" = 137 ]; then
+            echo "[penjadwal] ⏱ '$$nama' DIBUNUH setelah $${BATAS}s — putaran lanjut."
+          elif [ "$$kode" != 0 ]; then
+            echo "[penjadwal] ✗ '$$nama' gagal (kode $$kode) — putaran lanjut."
+          fi
+          return 0
+        }
+        BATAS=600
+        while true; do
+          langkah scheduler:subscriptions bun run scheduler:subscriptions
+          langkah notify:setup bun run notify:setup
+          langkah notify:invoice-due bun run notify:invoice-due
+          langkah remind:customers bun run remind:customers
+          langkah recurring:run bun run recurring:run
+          sleep 3600
+        done
 
   # ── PEMERIKSA KESESUAIAN DATA (mingguan) ──────────────────────────────────
   # Penjaga zod hanya berlaku di jalur TULIS. Impor sekali-jalan, perbaikan SQL
@@ -159,7 +198,21 @@ services:
       # string: compose menafsirkan `$` sebagai interpolasi variabelnya sendiri,
       # dan aturan pelolosannya adalah hal yang tidak perlu ditebak-tebak untuk
       # sekadar sebuah stempel waktu.
-      - "while true; do echo '── kesesuaian data ──'; date -Iseconds; bun run check-data-conformance || true; sleep 604800; done"
+      # `timeout` dengan alasan yang sama dengan penjadwal: pemeriksaan yang
+      # menggantung menahan pemeriksaan MINGGU-MINGGU berikutnya, dan pada
+      # cadensi mingguan cacat itu bisa berumur berbulan-bulan sebelum ada yang
+      # menyadarinya. 1800 detik longgar untuk pemeriksaan yang menyapu seluruh
+      # buku setiap perusahaan.
+      - |
+        while true; do
+          echo '── kesesuaian data ──'
+          date -Iseconds
+          timeout -k 30 1800 bun run check-data-conformance
+          kode=$$?
+          [ "$$kode" = 124 ] || [ "$$kode" = 137 ] \
+            && echo "[kesesuaian] ⏱ DIBUNUH setelah 1800s — dicoba lagi minggu depan."
+          sleep 604800
+        done
 
   # ── CADANGAN (issue #374) ─────────────────────────────────────────────────
   # Menjual langganan atas pembukuan yang WAJIB disimpan sepuluh tahun (UU KUP)
@@ -196,7 +249,19 @@ services:
     command:
       - sh
       - -c
-      - "while true; do sh scripts/backup.sh || true; sleep 86400; done"
+      # `timeout` 2 jam — longgar, dan sengaja: cadangan yang sah memang lama
+      # (dump seluruh basis data → tar → enkripsi → unggah). Yang dijaga bukan
+      # kelambatan melainkan kemacetan; tanpa ini satu unggahan yang menggantung
+      # menahan cadangan SETIAP HARI berikutnya, dan itu persis bentuk kegagalan
+      # yang paling mahal — ketiadaan cadangan yang tidak berbunyi.
+      - |
+        while true; do
+          timeout -k 60 7200 sh scripts/backup.sh
+          kode=$$?
+          [ "$$kode" = 124 ] || [ "$$kode" = 137 ] \
+            && echo "[backup] ⏱ DIBUNUH setelah 7200s — dicoba lagi besok."
+          sleep 86400
+        done
 
   web:
     build:

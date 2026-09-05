@@ -741,6 +741,20 @@ export default async function ContractDetailPage({
               </span>
             )}
             {infoItem(t("common.currency"), contract.currency)}
+            {/* PPN kontrak (migrasi 0062). Tiga keadaan yang ditulis apa adanya
+                — "belum dinyatakan" TIDAK dibulatkan menjadi "Non-PPN": kontrak
+                warisan tidak pernah menyatakan apa pun, dan menampilkannya
+                seolah-olah pernah adalah mengarang isi dokumen. */}
+            {infoItem(
+              t("contracts.taxableLabel"),
+              contract.taxable == null ? (
+                <span style={{ color: "var(--ant-color-text-secondary)" }}>
+                  {t("contracts.taxableUnset")}
+                </span>
+              ) : (
+                t(contract.taxable ? "contracts.taxableYes" : "contracts.taxableNo")
+              )
+            )}
             {infoItem(t("contracts.packaging"), contract.packaging || "-")}
             {infoItem(t("contracts.shipment"), contract.shipment || "-")}
             {infoItem(t("contracts.top1"), contract.top1 || "-")}

@@ -146,6 +146,19 @@ export function NewContractForm({
   const [date, setDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState("pending");
+  /*
+   * PPN kontrak (migrasi 0062). Disimpan sebagai STRING karena `<select>` hanya
+   * mengenal string; skema server yang mengubahnya jadi boolean — dan ia
+   * memakai `preprocess`, bukan `z.coerce.boolean()`, sebab `Boolean("false")`
+   * bernilai true dan akan membalik jawaban "Non-PPN" tanpa satu pun galat.
+   *
+   * Bawaannya `""` = belum dinyatakan, dan itu bukan kemalasan: memilihkan
+   * "Kena PPN" akan menyatakan sesuatu atas nama pengguna pada kontrak ekspor,
+   * dan memilihkan "Non-PPN" akan mematikan PPN 11% pada kontrak rupiah biasa —
+   * dua-duanya salah pada separuh kontrak. Selama `""`, fakturnya mengambil
+   * bawaan dari mata uang & pelanggannya, persis seperti sebelum kolom ini ada.
+   */
+  const [taxable, setTaxable] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [advancedInvalid, setAdvancedInvalid] = useState(false);
 
@@ -232,6 +245,7 @@ export function NewContractForm({
       top2: formData.get("top2"),
       ...currencyRatePayload(currency, rate),
       status: formData.get("status"),
+      taxable,
       items,
     };
 
@@ -371,6 +385,36 @@ export function NewContractForm({
                   rateHint={t("contracts.rateHintNew")}
                 />
               </div>
+            </Col>
+            {/* PPN kontrak (migrasi 0062) — sebuah PILIHAN, bukan kotak centang.
+                "Kena PPN / Non-PPN" adalah dua keadaan yang sama sahihnya dan
+                sama-sama harus terbaca sekali lihat; kotak centang yang tidak
+                tercentang tak pernah bisa dibedakan dari kotak centang yang
+                belum sempat dibaca. Jurnal kontraknya TIDAK berubah karena
+                pilihan ini — PPN Keluaran terbit di faktur. */}
+            <Col xs={24} sm={12}>
+              <Select
+                id="taxable"
+                name="taxable"
+                label={t("contracts.taxableLabel")}
+                value={taxable}
+                onChange={(e) => setTaxable(e.target.value)}
+                options={[
+                  { value: "", label: t("contracts.taxableUnset") },
+                  { value: "true", label: t("contracts.taxableYes") },
+                  { value: "false", label: t("contracts.taxableNo") },
+                ]}
+              />
+              <Typography.Text
+                type="secondary"
+                style={{
+                  display: "block",
+                  marginTop: token.marginXXS,
+                  fontSize: token.fontSizeSM,
+                }}
+              >
+                {t("contracts.taxableHint")}
+              </Typography.Text>
             </Col>
           </Row>
         </CardContent>

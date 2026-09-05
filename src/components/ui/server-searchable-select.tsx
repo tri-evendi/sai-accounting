@@ -30,6 +30,18 @@
  *     berikutnya datang, dan spinner TIDAK dimatikan oleh permintaan yang
  *     dibatalkan — kalau tidak, kolom berkedip "kosong" di antara dua ketikan.
  *
+ *  4. **`apiFetch`, BUKAN `fetch`** (5 Sep 2026). Ini yang paling mudah
+ *     dikembalikan tanpa sengaja, dan yang paling sunyi ketika kembali: tanpa
+ *     header lingkup dari `apiFetch`, penjaga API menjawab 409
+ *     `company_required` (#158), `res.ok` bernilai false, dan cabang di bawah
+ *     memasang daftar KOSONG. Layar tidak menampilkan galat apa pun — ia
+ *     menampilkan "tidak ada hasil", yaitu kalimat yang berbohong tentang isi
+ *     basis data. Dilaporkan sebagai "nama pemasok tidak terbaca" padahal
+ *     pemasoknya ada; SETIAP pemilih cari-ke-server di aplikasi ini ikut
+ *     tersangkut. Penjaganya `tests/authz-coverage.test.ts` — yang sejak hari
+ *     itu juga menolak `fetch` telanjang ber-URL VARIABEL, sebab bentuk itulah
+ *     yang membuatnya lolos selama berbulan-bulan.
+ *
  * ── Dua hal yang dibereskan di #263 ───────────────────────────────────────
  * `searchPlaceholder` dicabut (alasannya sama dengan `SearchableSelect`: yang
  * diketik sekarang pemicunya sendiri, jadi prop itu inert sejak #188), dan
@@ -43,6 +55,7 @@ import { useEffect, useRef, useState } from "react";
 import { Select, Spin } from "antd";
 
 import { Label } from "@/components/ui/label";
+import { apiFetch } from "@/lib/api-fetch";
 import type { NameTidakDiterima } from "@/components/ui/searchable-select";
 import { useT } from "@/lib/i18n/client";
 import type { PickerOption } from "@/lib/picker";
@@ -102,6 +115,14 @@ export function ServerSearchableSelect({
   const [picked, setPicked] = useState<PickerOption | null>(initialOption ?? null);
   /** Muatan pertama langsung; setelah itu tiap ketikan menunggu debounce. */
   const loadedOnce = useRef(false);
+  /*
+   * Permintaan terakhir GAGAL — dibedakan dari "tidak ada hasil", karena
+   * keduanya membuat daftar kosong tetapi menuntut tindakan yang berlawanan:
+   * yang satu "ketik kata lain", yang satu "muat ulang halaman". Sampai 5 Sep
+   * 2026 kolom ini menampilkan kalimat pertama untuk kedua-duanya, dan itulah
+   * bentuk bug yang dilaporkan sebagai "nama pemasok tidak terbaca".
+   */
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -111,21 +132,27 @@ export function ServerSearchableSelect({
       async () => {
         try {
           const sep = fetchUrl.includes("?") ? "&" : "?";
-          const res = await fetch(
+          const res = await apiFetch(
             `${fetchUrl}${sep}${searchParam}=${encodeURIComponent(query.trim())}&take=${PAGE_SIZE}`,
             { signal: controller.signal }
           );
           if (res.ok) {
             const data = (await res.json()) as { options?: PickerOption[] };
             setOptions(Array.isArray(data.options) ? data.options : []);
+            setFailed(false);
             loadedOnce.current = true;
           } else {
             setOptions([]);
+            setFailed(true);
           }
         } catch {
           // Dibatalkan (ketikan berikutnya) atau jaringan putus — hasil
           // sebelumnya dibiarkan; `finally` di bawah tidak mematikan spinner
           // pada pembatalan karena permintaan penggantinya sedang berjalan.
+          // Pembatalan BUKAN kegagalan: penggantinya sedang berjalan, dan
+          // menandainya gagal akan mengedipkan pesan galat di antara dua
+          // ketikan yang keduanya berhasil.
+          if (!controller.signal.aborted) setFailed(true);
         } finally {
           if (!controller.signal.aborted) setLoading(false);
         }
@@ -191,6 +218,13 @@ export function ServerSearchableSelect({
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <Spin size="small" />
               {t("common.loading")}
+            </span>
+          ) : failed ? (
+            /* Kalimat yang BERBEDA, dan sengaja: "tidak ada yang cocok"
+               menyuruh pengguna mengetik kata lain — nasihat yang mustahil
+               berhasil ketika permintaannya sendiri yang ditolak. */
+            <span style={{ color: "var(--ant-color-error)" }}>
+              {t("common.optionsLoadFailed")}
             </span>
           ) : (
             (emptyText ?? t("searchableSelect.empty"))

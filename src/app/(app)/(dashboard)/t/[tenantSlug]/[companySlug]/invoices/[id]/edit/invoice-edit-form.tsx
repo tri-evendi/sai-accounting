@@ -39,6 +39,7 @@ import {
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 import { ItemNameInput, type ItemSuggestion } from "@/components/ui/item-name-input";
 
 /**
@@ -88,7 +89,7 @@ export function EditInvoiceForm() {
   const [items, setItems] = useState<InvoiceItem[]>([]);
   // issue #98 — pusat biaya faktur. Dimuat dari fakturnya supaya sebuah edit tak
   // pernah diam-diam melepas tag yang sudah ada, dan bisa dipindah cabang.
-  const costCenters = useCostCenters();
+  const { costCenters, loadFailed: costCentersFailed } = useCostCenters();
   const [costCenterId, setCostCenterId] = useState("");
   const [fx, setFx] = useState<InvoiceFxValues>({
     customerId: "",
@@ -168,15 +169,17 @@ export function EditInvoiceForm() {
   useEffect(() => {
     /* `active=1` — barang nonaktif tidak ditawarkan lagi (#104); baris faktur
        lama yang menyebutnya tetap terbaca lewat `itemName`-nya. */
-    apiFetch("/api/inventory?active=1")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ItemSuggestion[]) =>
-        setItemSuggestions(
-          data.map((i) => ({ id: i.id, code: i.code, name: i.name, unit: i.unit }))
-        )
-      )
-      .catch(() => setItemSuggestions([]));
-  }, []);
+    /* Gagal memuat ≠ master barang kosong. Baris faktur yang kehilangan
+       tautannya ke master tetap tersimpan sebagai teks, dan teks itulah yang
+       kemudian membelah riwayat stok satu barang menjadi dua (#493). */
+    void fetchOptionList<ItemSuggestion>("/api/inventory?active=1").then((data) => {
+      if (data == null) {
+        setError(t("common.optionsLoadFailed"));
+        return;
+      }
+      setItemSuggestions(data.map((i) => ({ id: i.id, code: i.code, name: i.name, unit: i.unit })));
+    });
+  }, [t]);
 
   function addItem() {
     setItems([...items, { itemId: null, itemName: "", quantity: 0, price: 0, unit: "kg" }]);
@@ -300,6 +303,7 @@ export function EditInvoiceForm() {
               <div style={{ gridColumn: "1 / -1" }}>
                 <CostCenterField
                   costCenters={costCenters}
+                  loadFailed={costCentersFailed}
                   value={costCenterId}
                   onChange={setCostCenterId}
                 />

@@ -24,6 +24,7 @@ import { useDictionary, useT } from "@/lib/i18n/client";
 import { accountTypeLabels, expenseNatureLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 interface AccountOption {
   id: number;
@@ -65,29 +66,40 @@ export function EditAccountForm() {
   });
 
   useEffect(() => {
-    Promise.all([
-      apiFetch(`/api/accounts/${id}`).then((r) => (r.ok ? r.json() : null)),
-      apiFetch("/api/accounts").then((r) => (r.ok ? r.json() : [])),
-    ])
-      .then(([acc, all]: [AccountData | null, AccountOption[]]) => {
-        if (acc) {
-          setForm({
-            code: acc.code,
-            name: acc.name,
-            type: acc.type,
-            parentId: acc.parentId ? String(acc.parentId) : "",
-            currency: acc.currency,
-            expenseNature: acc.expenseNature ?? "",
-            isActive: acc.isActive ? "true" : "false",
-          });
-        }
-        setParents(all.filter((p) => String(p.id) !== String(id)));
-        setFetching(false);
-      })
-      .catch(() => {
+    /*
+     * Dua permintaan, dan sampai 5 Sep 2026 KEDUANYA menelan kegagalannya.
+     *
+     * Yang pertama paling berbahaya: akun yang gagal dibaca meninggalkan
+     * `form` pada nilai awalnya — kode kosong, nama kosong, tipe pertama,
+     * `isActive: "true"` — dan layarnya tampak seperti formulir sunting yang
+     * baru selesai dimuat. Menekan Simpan di situ MENIMPA akun yang sungguhan
+     * dengan isian kosong itu, dan mengaktifkan kembali akun yang justru baru
+     * dinonaktifkan. Sekarang kegagalannya berhenti di galat, sebelum satu
+     * isian pun ditampilkan sebagai fakta.
+     */
+    void (async () => {
+      const [accRes, all] = await Promise.all([
+        apiFetch(`/api/accounts/${id}`).then((r) => (r.ok ? r.json() : null)),
+        fetchOptionList<AccountOption>("/api/accounts"),
+      ]);
+      const acc = accRes as AccountData | null;
+      if (!acc || all == null) {
         setError(t("accounts.loadFailed"));
         setFetching(false);
+        return;
+      }
+      setForm({
+        code: acc.code,
+        name: acc.name,
+        type: acc.type,
+        parentId: acc.parentId ? String(acc.parentId) : "",
+        currency: acc.currency,
+        expenseNature: acc.expenseNature ?? "",
+        isActive: acc.isActive ? "true" : "false",
       });
+      setParents(all.filter((p) => String(p.id) !== String(id)));
+      setFetching(false);
+    })();
   }, [id, t]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

@@ -743,12 +743,39 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
   ]);
 
   const SRC_DIR = join(__dirname, "..", "src");
-  /** `fetch("/api/…")` / `fetch(`/api/…`)` — TIDAK cocok dengan `apiFetch(`. */
-  const BARE_FETCH = /(?<![\w.])fetch\(["`]\/api\//;
+  /**
+   * `fetch("/api/…")` / `fetch(`/api/…`)` — TIDAK cocok dengan `apiFetch(`.
+   *
+   * `\s*` bukan hiasan: `await fetch(` yang argumennya turun satu baris —
+   * bentuk yang dipakai Prettier begitu URL-nya panjang — pernah lolos penjaga
+   * ini selama berbulan-bulan. Yang lolos bersamanya adalah kompensasi uang
+   * muka, yang gagal 409 tanpa satu pun tes berbunyi.
+   */
+  const BARE_FETCH_LITERAL = /(?<![\w.])fetch\(\s*["`]\/api\//;
+
+  /**
+   * Lubang KEDUA, dan yang lebih mahal: URL yang datang sebagai VARIABEL.
+   * `fetch(url, …)` / `fetch(endpoint)` / `fetch(`${fetchUrl}…`)` tidak memuat
+   * "/api/" satu huruf pun, jadi pola di atas buta terhadapnya — dan justru di
+   * sanalah `ServerSearchableSelect` menyembunyikan kegagalannya: SETIAP
+   * pemilih cari-ke-server di aplikasi ini menjawab "tidak ada hasil" karena
+   * permintaannya ditolak 409, bukan karena datanya tidak ada.
+   *
+   * Karena itu di dua permukaan yang SELALU hidup di dalam alamat bertenant —
+   * halaman `(dashboard)` dan komponen bersama — `fetch` telanjang APA PUN
+   * dianggap pelanggaran. Yang benar-benar perlu memanggil host luar dari sana
+   * mendaftar di `BARE_FETCH_EXCEPTIONS` dengan alasannya, seperti yang lain.
+   */
+  const BARE_FETCH_ANY = /(?<![\w.])fetch\(/;
+  const SCOPED_SURFACES = ["app/(app)/(dashboard)/", "components/"];
 
   const offenders = sourceFiles(SRC_DIR)
     .map((f) => relative(SRC_DIR, f).split(sep).join("/"))
-    .filter((rel) => BARE_FETCH.test(readFileSync(join(SRC_DIR, rel), "utf8")));
+    .filter((rel) => {
+      const source = readFileSync(join(SRC_DIR, rel), "utf8");
+      if (BARE_FETCH_LITERAL.test(source)) return true;
+      return SCOPED_SURFACES.some((dir) => rel.startsWith(dir)) && BARE_FETCH_ANY.test(source);
+    });
 
   it("tidak ada fetch() telanjang ke /api di luar daftar pengecualian", () => {
     expect(offenders.filter((rel) => !BARE_FETCH_EXCEPTIONS.has(rel))).toEqual([]);
@@ -761,6 +788,62 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
         `${rel} tidak lagi memanggil fetch() telanjang ke /api — hapus dari BARE_FETCH_EXCEPTIONS`
       ).toContain(rel);
     }
+  });
+});
+
+/**
+ * Kegagalan TIDAK BOLEH menyamar sebagai "tidak ada data" (5 Sep 2026).
+ *
+ * Saudara kembar penjaga di atas, dan lahir dari laporan yang sama. Setelah
+ * `apiFetch` menutup 409-nya, yang tersisa adalah KEBOHONGANNYA: sembilan
+ * pemuat daftar menulis
+ *
+ *     apiFetch(url).then((r) => (r.ok ? r.json() : [])).catch(() => setX([]))
+ *
+ * sehingga setiap kegagalan — jaringan putus, 500, izin dicabut di tengah sesi —
+ * mendarat di layar sebagai daftar kosong. Pengguna lalu bertindak atas
+ * kebohongan itu: menambahkan pemasok yang sudah ada, atau menyimpan dokumen
+ * tanpa pusat biaya karena isiannya lenyap.
+ *
+ * Doktrinnya sendiri sudah lama ada di repo — `suppliers/[id]/transaction-form`
+ * menuliskannya sejak awal ("it must SAY it failed rather than render as
+ * 'nothing outstanding'"). Tes ini yang membuatnya berlaku untuk semua, lewat
+ * `fetchOptionList` di `lib/option-list.ts` yang memulangkan `null` untuk gagal
+ * dan `[]` HANYA untuk daftar yang memang kosong.
+ */
+describe("kegagalan memuat daftar tidak boleh terbaca sebagai daftar kosong", () => {
+  const SRC_DIR = join(__dirname, "..", "src");
+
+  /** `r.ok ? r.json() : []` — kegagalan ditukar dengan daftar kosong. */
+  const OK_TERNARY_TO_EMPTY = /\.ok\s*\?[^;]*?:\s*\[\]/;
+  /** `.catch(() => setSesuatu([]))` — idem, lewat pintu yang lain. */
+  const CATCH_TO_EMPTY = /catch\(\s*\(\s*\)\s*=>\s*set[A-Za-z]*\(\s*\[\s*\]\s*\)/;
+
+  const offenders = sourceFiles(SRC_DIR)
+    .map((f) => relative(SRC_DIR, f).split(sep).join("/"))
+    /*
+     * Hanya permukaan yang DIRENDER. Sebuah route handler yang memulangkan `[]`
+     * sering kali sedang menyatakan keputusan otorisasi, bukan menelan
+     * kegagalan — `/api/user/permissions` memberi daftar kosong kepada yang
+     * bukan anggota, dan itu justru jawaban yang benar. Kebohongan yang dijaga
+     * di sini lahir di layar, bukan di kabel.
+     */
+    .filter((rel) => !rel.startsWith("app/api/"))
+    // Modul penjelasnya sendiri MENGUTIP pola itu di komentar kepala.
+    .filter((rel) => rel !== "lib/option-list.ts")
+    .filter((rel) => {
+      const source = readFileSync(join(SRC_DIR, rel), "utf8");
+      return OK_TERNARY_TO_EMPTY.test(source) || CATCH_TO_EMPTY.test(source);
+    });
+
+  it("tidak ada pemuat daftar yang menukar kegagalan dengan []", () => {
+    expect(
+      offenders,
+      "Berkas berikut memulangkan daftar KOSONG saat permintaannya gagal, sehingga " +
+        'layar berbunyi "tidak ada data" atas data yang sebenarnya ada. Pakai ' +
+        "`fetchOptionList()` dari `@/lib/option-list` — ia memulangkan `null` untuk " +
+        "gagal — lalu tampilkan kegagalannya (`common.optionsLoadFailed`)."
+    ).toEqual([]);
   });
 });
 

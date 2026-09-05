@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { vmsg } from "@/lib/i18n/validation";
+import { booleanField } from "./common";
 
 /**
  * Skema manufaktur (issue #495 butir 3).
@@ -21,7 +22,10 @@ export const workCenterSchema = z.object({
    */
   laborRate: z.coerce.number().min(0, vmsg("validation.rateNotNegative")).default(0),
   overheadRate: z.coerce.number().min(0, vmsg("validation.rateNotNegative")).default(0),
-  isActive: z.coerce.boolean().default(true),
+  /* `booleanField`, bukan `coerce` — `Boolean("false")` bernilai TRUE, jadi
+     "nonaktifkan" yang dikirim sebagai string justru mengaktifkan. Lihat
+     catatan panjang di `validations/common.ts`. */
+  isActive: booleanField(true),
 });
 
 export const bomComponentSchema = z.object({
@@ -48,7 +52,10 @@ export const bomSchema = z.object({
   /** Harus > 0: nol adalah pembagi yang tidak ada saat resep diturunkan. */
   outputQuantity: z.coerce.number().positive(vmsg("validation.quantityPositive")),
   notes: z.string().max(500).trim().optional(),
-  isActive: z.coerce.boolean().default(true),
+  /* `booleanField`, bukan `coerce` — `Boolean("false")` bernilai TRUE, jadi
+     "nonaktifkan" yang dikirim sebagai string justru mengaktifkan. Lihat
+     catatan panjang di `validations/common.ts`. */
+  isActive: booleanField(true),
   components: z.array(bomComponentSchema).min(1, vmsg("validation.atLeastOneItem")).max(50),
   operations: z.array(bomOperationSchema).max(20).default([]),
 });

@@ -215,6 +215,7 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
     "Kas/bank hanya diisi pada pembayaran, bukan pada pembelian.",
   // Pemasok pada kartu stok (migrasi 0058) — hanya arah MASUK yang punya pengirim.
   "validation.supplierOnStockInOnly": "Pemasok hanya diisi pada barang masuk.",
+  "validation.cashTypeOnStockInOnly": "Pemotongan kas hanya berlaku pada barang masuk.",
   "validation.accountCodeRequired": "Kode perkiraan wajib diisi",
   "validation.accountNameRequired": "Nama akun wajib diisi",
   "validation.costCenterCodeRequired": "Kode pusat biaya wajib diisi",

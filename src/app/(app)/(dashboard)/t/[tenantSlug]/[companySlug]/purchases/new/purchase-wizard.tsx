@@ -122,7 +122,7 @@ export function PurchaseWizard({
   // issue #91/#98 — dimensi pusat biaya, pemilih yang sama dengan formulir di
   // halaman pemasok. Perusahaan tanpa pusat biaya mendapat daftar kosong dan
   // pemilihnya tidak dirender sama sekali.
-  const costCenters = useCostCenters();
+  const { costCenters, loadFailed: costCentersFailed } = useCostCenters();
   const guardContext = useMemo(() => ({ closedPeriods }), [closedPeriods]);
   const blockers = validatePurchaseStep(draft, stepId, guardContext);
 
@@ -765,6 +765,7 @@ export function PurchaseWizard({
               <div style={{ marginTop: token.margin }}>
                 <CostCenterField
                   costCenters={costCenters}
+                  loadFailed={costCentersFailed}
                   value={draft.purchase.costCenterId ?? ""}
                   onChange={(v) =>
                     patch((d) => ({ ...d, purchase: { ...d.purchase, costCenterId: v } }))

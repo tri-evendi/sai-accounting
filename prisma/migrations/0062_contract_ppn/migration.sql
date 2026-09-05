@@ -1,0 +1,37 @@
+-- Kontrak menyebut sendiri apakah ia kena PPN.
+--
+-- ══ KENAPA ═════════════════════════════════════════════════════════════════
+-- Sampai sekarang PPN baru muncul di FAKTUR, dan bawaannya disimpulkan dari dua
+-- hal yang keduanya bukan isi kontrak: mata uang dokumen dan tanda "bebas PPN"
+-- pada pelanggannya (`defaultInvoiceTax`). Untuk penjualan rupiah kepada
+-- pelanggan biasa, kesimpulannya SELALU "kena PPN" — padahal kontrak rupiah yang
+-- disepakati tanpa PPN memang ada, dan satu-satunya cara membetulkannya adalah
+-- mematikan tanda itu dengan tangan pada SETIAP faktur yang ditarik dari
+-- kontrak tersebut. Yang terlewat sekali menerbitkan PPN Keluaran atas kontrak
+-- yang tidak memungutnya.
+--
+-- Kolom ini memindahkan kesepakatan itu ke tempat ia dibuat: di kontraknya,
+-- sekali, lalu diwarisi setiap faktur yang ditarik darinya.
+--
+-- ══ APA YANG *TIDAK* BERUBAH ═══════════════════════════════════════════════
+-- Jurnal kontrak TIDAK tersentuh. `buildContractEntry` tetap membukukan
+-- D: Piutang Usaha / K: Penjualan sebesar nilai barangnya, tanpa baris PPN —
+-- PPN Keluaran terbit pada FAKTUR, tempat ia memang dipungut, dan menambahkan
+-- baris kedua di sini akan mengkredit Hutang PPN Keluaran dua kali untuk satu
+-- penjualan yang sama.
+--
+-- ══ KENAPA NULLABLE, DAN KENAPA TANPA BACKFILL ═════════════════════════════
+-- Kolomnya bernilai TIGA, bukan dua: `true` kena PPN, `false` Non-PPN, NULL
+-- belum dinyatakan. Sebuah boolean NOT NULL akan memaksa dua keadaan yang
+-- berbeda memakai satu nilai, dan akibatnya langsung terasa di dua arah:
+--
+--   • 600+ kontrak warisan akan seketika berbunyi "Non-PPN" — pernyataan yang
+--     tidak pernah dibuat siapa pun;
+--   • kontrak rupiah yang MEMANG Non-PPN tidak akan pernah bisa mematikan
+--     bawaan 11% pada fakturnya, sebab jawabannya tak terbedakan dari diam.
+--
+-- Karena itu tanpa DEFAULT dan tanpa backfill: baris lama tetap NULL, dan
+-- berperilaku PERSIS seperti sebelum kolom ini ada — fakturnya mengambil bawaan
+-- dari mata uang dan pelanggannya, dan pengguna tetap bisa mengubahnya di
+-- formulir faktur.
+ALTER TABLE `contracts` ADD COLUMN `taxable` BOOLEAN NULL AFTER `status`;

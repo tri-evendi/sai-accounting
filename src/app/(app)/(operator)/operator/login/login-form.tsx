@@ -35,7 +35,7 @@ const { Title, Text } = Typography;
 
 const INITIAL_STATE: OperatorLoginState = { error: null };
 
-export function OperatorLoginForm() {
+export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
   const t = useT();
   const { token } = theme.useToken();
   const [state, formAction, pending] = useActionState(operatorLogin, INITIAL_STATE);
@@ -73,20 +73,37 @@ export function OperatorLoginForm() {
                 autoComplete="current-password"
                 required
               />
-              <Flex vertical gap={token.marginXXS}>
-                <Input
-                  name="totp"
-                  label={t("operator.login.totp")}
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  autoComplete="one-time-code"
-                  required
-                />
-                <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-                  {t("operator.login.totpHint")}
-                </Text>
-              </Flex>
+              {/*
+                * Medan TOTP HILANG sepenuhnya saat `OPERATOR_MFA=off`, bukan
+                * sekadar tidak `required`.
+                *
+                * Sebabnya cacat sungguhan: sakelar itu melewati verifikasi di
+                * SERVER, tetapi medan ini `required` + `pattern="[0-9]{6}"`,
+                * jadi peramban menolak mengirim formulirnya sampai enam angka
+                * diisi. Akibatnya MFA "sudah dimatikan" tetapi tidak ada yang
+                * bisa masuk — dan penyebabnya tak terlihat di log mana pun,
+                * sebab permintaannya tidak pernah sampai ke server.
+                *
+                * Medan opsional yang diabaikan akan lebih buruk lagi: ia
+                * meminta sesuatu yang tidak berarti apa-apa, dan orang yang
+                * mengisinya salah akan mengira ITU sebab gagalnya.
+                */}
+              {!mfaOff && (
+                <Flex vertical gap={token.marginXXS}>
+                  <Input
+                    name="totp"
+                    label={t("operator.login.totp")}
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    required
+                  />
+                  <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                    {t("operator.login.totpHint")}
+                  </Text>
+                </Flex>
+              )}
 
               {state.error && (
                 /* `Alert` AntD sudah `role="alert"` sendiri; pembungkus tak menambah apa pun — lihat /forgot-password. */

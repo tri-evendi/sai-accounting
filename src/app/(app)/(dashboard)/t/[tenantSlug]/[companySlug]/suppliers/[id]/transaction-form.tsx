@@ -92,7 +92,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
   const [alloc, setAlloc] = useState<Record<number, string>>({});
   // issue #98 — cabang/unit yang menanggung pembelian (atau membayarnya). Retur
   // pembeliannya mewarisi dimensi ini.
-  const costCenters = useCostCenters();
+  const { costCenters, loadFailed: costCentersFailed } = useCostCenters();
   const [costCenterId, setCostCenterId] = useState("");
 
   const isForeign = currency !== BASE_CURRENCY;
@@ -374,6 +374,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           <Col span={24}>
             <CostCenterField
               costCenters={costCenters}
+              loadFailed={costCentersFailed}
               value={costCenterId}
               onChange={setCostCenterId}
             />

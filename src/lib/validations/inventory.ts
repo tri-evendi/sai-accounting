@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { vmsg } from "@/lib/i18n/validation";
+import { cashTypeField } from "./payment";
 
 export const stockUpdateSchema = z
   .object({
@@ -58,8 +59,32 @@ export const stockUpdateSchema = z
      * membuatnya mustahil.
      */
     supplierId: z.coerce.number().int().positive().nullish(),
+    /**
+     * Kas/bank yang UANGNYA KELUAR untuk barang ini (permintaan pengguna,
+     * 5 Sep 2026). NULL = perilaku lama, dan itu tetap yang paling sering
+     * benar: barang yang masuk lewat jalur Pembelian sudah punya hutang dan
+     * pelunasannya sendiri, dan memotong kas di sini akan mencatat uang keluar
+     * dua kali.
+     *
+     * Disebut → route menulis SATU baris `cash_movements` bernilai
+     * `quantity × unitCost` dan mempostingnya D: Persediaan / K: Kas. Jurnal
+     * itu tidak menabrak apa pun: gerakan `in` sendiri memang tidak memposting
+     * apa-apa (lihat `buildStockMovementEntry`), justru karena ia biasanya
+     * sudah dikapitalisasi jurnal pembelian yang di sini tidak ada.
+     *
+     * Hanya pada arah MASUK: yang keluar tidak dibayar siapa pun, dan susut
+     * proses adalah pembebanan, bukan pengeluaran uang.
+     */
+    cashType: cashTypeField,
   })
   .superRefine((data, ctx) => {
+    if (data.type !== "in" && data.cashType) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cashType"],
+        message: vmsg("validation.cashTypeOnStockInOnly"),
+      });
+    }
     if (data.type !== "in" && data.supplierId) {
       ctx.addIssue({
         code: "custom",

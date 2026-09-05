@@ -11,6 +11,7 @@
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { businessModulesPayloadSchema } from "./modules";
+import { booleanField } from "./common";
 import { vmsg } from "@/lib/i18n/validation";
 
 /** One opening cash/bank balance — the user picks a concrete cash_bank account. */
@@ -154,7 +155,10 @@ export const companyTaxIdentitySchema = z.object({
    * `true`: perilaku setiap perusahaan yang sudah ada hari ini, jadi wisaya
    * yang dilewati begitu saja tidak mengubah apa pun.
    */
-  isPkp: z.coerce.boolean().default(true),
+  /* `booleanField`, bukan `coerce`: `Boolean("false")` bernilai TRUE, dan
+     perusahaan non-PKP yang menjawab `"false"` akan tersimpan sebagai PKP —
+     lalu memungut PPN 11% pada setiap fakturnya. Lihat `common.ts`. */
+  isPkp: booleanField(true),
   taxName: z.string().max(150).trim().optional(),
   taxAddress: z.string().max(1000).trim().optional(),
 });

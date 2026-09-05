@@ -132,8 +132,21 @@ export async function verifyOperatorLogin(params: {
  * kembali tidak menuntut kredensial dibuat ulang — cukup cabut env-nya dan
  * buat ulang kontainernya.
  */
+export function operatorMfaOff(): boolean {
+  return process.env.OPERATOR_MFA?.trim().toLowerCase() === "off";
+}
+
+/**
+ * Sama dengan `operatorMfaOff()`, tetapi BERTERIAK di log tiap kali dipakai.
+ *
+ * Dipisah karena keduanya dipanggil dari tempat yang berbeda maksudnya:
+ * verifikasi login memakai yang ini (tiap percobaan masuk layak dicatat),
+ * sedangkan formulir memakai yang senyap — halaman login digambar ulang setiap
+ * kali orang membukanya, dan peringatan yang muncul karena seseorang MELIHAT
+ * halaman akan menenggelamkan peringatan yang muncul karena seseorang MASUK.
+ */
 function mfaDisabled(): boolean {
-  const off = process.env.OPERATOR_MFA?.trim().toLowerCase() === "off";
+  const off = operatorMfaOff();
   if (off) {
     console.warn(
       "[operator] ⚠ OPERATOR_MFA=off — kode TOTP TIDAK diperiksa. Konsol operator " +

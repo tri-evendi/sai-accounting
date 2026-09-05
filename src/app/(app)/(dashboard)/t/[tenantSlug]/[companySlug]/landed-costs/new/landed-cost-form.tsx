@@ -106,6 +106,8 @@ export function LandedCostForm() {
   const [onHand, setOnHand] = useState<Record<string, number>>({});
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
+  /** Daftar kandidat GAGAL dimuat — dibedakan dari "tidak ada kandidat". */
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,14 +128,30 @@ export function LandedCostForm() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    apiFetch(`/api/landed-costs?to=${date}&asOf=${date}`)
-      .then((res) => (res.ok ? res.json() : { candidates: [], onHand: {} }))
-      .then((data) => {
+    /*
+     * Gagal memuat ≠ tidak ada tagihan yang bisa disebar. Kandidat kosong di
+     * layar ini terbaca sebagai "biaya impornya belum masuk" — kesimpulan yang
+     * membuat orang menunggu dokumen yang sebenarnya sudah ada, lalu menutup
+     * bulan tanpa menyebarkan biaya yang seharusnya menempel di harga pokok.
+     */
+    void (async () => {
+      try {
+        const res = await apiFetch(`/api/landed-costs?to=${date}&asOf=${date}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
         if (!alive) return;
         setCandidates(data.candidates ?? []);
         setOnHand(data.onHand ?? {});
-      })
-      .finally(() => alive && setLoading(false));
+        setLoadFailed(false);
+      } catch {
+        if (!alive) return;
+        setCandidates([]);
+        setOnHand({});
+        setLoadFailed(true);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
     return () => {
       alive = false;
     };
@@ -438,6 +456,12 @@ export function LandedCostForm() {
           </Typography.Paragraph>
           {loading ? (
             <Spin />
+          ) : loadFailed ? (
+            /* Kalimat yang BERBEDA dari "belum ada penerimaan": yang satu
+               menyuruh menunggu dokumen, yang satu menyuruh memuat ulang. */
+            <Typography.Text role="alert" style={{ color: token.colorError }}>
+              {t("common.optionsLoadFailed")}
+            </Typography.Text>
           ) : candidates.length === 0 ? (
             <Typography.Text type="secondary">{t("landedCosts.receiptsEmpty")}</Typography.Text>
           ) : (

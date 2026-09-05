@@ -16,6 +16,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { operatorPlaneViolation, optionalOperatorSession } from "@/lib/operator/guard";
+import { operatorMfaOff } from "@/lib/operator/credentials";
 import { OperatorLoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,10 @@ export default async function OperatorLoginPage() {
 
   return (
     <div style={{ width: "100%", maxWidth: 384, margin: "0 auto", padding: "40px 0" }}>
-      <OperatorLoginForm />
+      {/* Sakelar dibaca DI SERVER: `OPERATOR_MFA` tidak ber-prefix
+          NEXT_PUBLIC, jadi ia memang tak terbaca dari komponen client — dan
+          itu benar. Yang menyeberang cuma satu boolean. */}
+      <OperatorLoginForm mfaOff={operatorMfaOff()} />
     </div>
   );
 }

@@ -57,6 +57,7 @@ import { CURRENCIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 interface AccountOption {
   id: number;
@@ -127,17 +128,31 @@ export function NewJournalForm() {
   const [lines, setLines] = useState<LineRow[]>([emptyLine(), emptyLine()]);
 
   useEffect(() => {
-    apiFetch("/api/accounts")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: AccountOption[]) => setAccounts(data.filter((a) => a.isActive)))
-      .catch(() => setAccounts([]));
+    /*
+     * Gagal memuat ≠ bagan akun kosong, dan di layar INI selisihnya paling
+     * mahal: tanpa satu pun akun, jurnal manual tidak bisa ditulis sama sekali
+     * — pemilihnya kosong, dan tak ada apa pun yang mengatakan kenapa.
+     */
+    void fetchOptionList<AccountOption>("/api/accounts").then((data) => {
+      if (data == null) {
+        setError(t("common.optionsLoadFailed"));
+        return;
+      }
+      setAccounts(data.filter((a) => a.isActive));
+    });
     // Hanya yang aktif: yang sudah dinonaktifkan tak boleh bisa DIPILIH lagi,
     // walau namanya tetap terbaca pada jurnal lama yang menyebutnya.
-    apiFetch("/api/cost-centers?activeOnly=1")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: CostCenterOption[]) => setCostCenters(data))
-      .catch(() => setCostCenters([]));
-  }, []);
+    void fetchOptionList<CostCenterOption>("/api/cost-centers?activeOnly=1").then((data) => {
+      // Pusat biaya TIDAK pernah wajib, jadi kegagalannya tidak menghalangi
+      // jurnal — tetapi ia tetap harus terbaca, sebab isiannya menghilang
+      // ketika daftarnya kosong (lihat `CostCenterField`).
+      if (data == null) {
+        setError(t("common.optionsLoadFailed"));
+        return;
+      }
+      setCostCenters(data);
+    });
+  }, [t]);
 
   const accountOptions = [
     { value: "", label: t("common.pickAccount") },

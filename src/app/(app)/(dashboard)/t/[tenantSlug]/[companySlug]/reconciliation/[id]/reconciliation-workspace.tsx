@@ -35,6 +35,7 @@ import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DisconnectOutl
 import { useT } from "@/lib/i18n/client";
 import { Link } from "@/components/ui/app-link";
 import { parseStatementCsv, type DateOrder, type ParsedStatementLine } from "@/lib/import/bank-statement";
+import { apiFetch } from "@/lib/api-fetch";
 
 const EPSILON = 0.005;
 
@@ -147,7 +148,7 @@ export function ReconciliationWorkspace({
     setError("");
     setRowErrors([]);
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: body != null ? JSON.stringify(body) : undefined,

@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { costCenterSchema, type CostCenterInput } from "@/lib/validations/cost-center";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 export interface CostCenterFormValues extends CostCenterInput {
   id?: number;
@@ -74,14 +75,20 @@ export function CostCenterForm({ initial }: { initial?: CostCenterFormValues }) 
   useEffect(() => {
     // Hanya yang AKTIF yang boleh jadi induk baru — cabang yang sudah
     // dipensiunkan tidak menerima anak baru (pola journal-form).
-    apiFetch("/api/cost-centers?activeOnly=1")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: ParentOption[]) => setParents(data))
-      .catch(() => setParents([]));
-  }, []);
+    /* Gagal memuat ≠ belum ada induk — sama seperti bagan akun, hierarki yang
+       terlanjur datar hanya bisa dibetulkan dengan memindahkan pusat biaya
+       yang sudah menempel di dokumen. */
+    void fetchOptionList<ParentOption>("/api/cost-centers?activeOnly=1").then((data) => {
+      if (data == null) {
+        form.setError("root", { message: t("common.optionsLoadFailed") });
+        return;
+      }
+      setParents(data);
+    });
+  }, [form, t]);
 
   async function onSubmit(values: CostCenterInput) {
-    const res = await fetch(
+    const res = await apiFetch(
       editing ? `/api/cost-centers/${initial!.id}` : "/api/cost-centers",
       {
         method: editing ? "PUT" : "POST",

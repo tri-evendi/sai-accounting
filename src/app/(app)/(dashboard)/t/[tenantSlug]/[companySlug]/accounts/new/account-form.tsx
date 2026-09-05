@@ -23,6 +23,7 @@ import { useDictionary } from "@/lib/i18n/client";
 import { accountTypeLabels, expenseNatureLabels } from "@/lib/i18n/labels";
 import { CURRENCIES } from "@/lib/constants";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 interface AccountOption {
   id: number;
@@ -49,11 +50,18 @@ export function NewAccountForm() {
   });
 
   useEffect(() => {
-    apiFetch("/api/accounts")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: AccountOption[]) => setParents(data))
-      .catch(() => setParents([]));
-  }, []);
+    /* Gagal memuat ≠ belum ada akun induk. Daftar induk yang kosong membuat
+       akun baru terpaksa lahir di akar bagan — struktur yang salah, dan yang
+       memperbaikinya belakangan berarti memindahkan akun yang sudah dipakai
+       jurnal. */
+    void fetchOptionList<AccountOption>("/api/accounts").then((data) => {
+      if (data == null) {
+        setError(t("common.optionsLoadFailed"));
+        return;
+      }
+      setParents(data);
+    });
+  }, [t]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

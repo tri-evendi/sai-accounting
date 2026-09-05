@@ -77,10 +77,66 @@ describe("penjadwal sebagai layanan (#373)", () => {
     expect(compose).toContain("restart: unless-stopped");
   });
 
+  /** Badan layanan `scheduler` saja, tanpa baris komentar. */
+  const badanPenjadwal = () => {
+    const mulai = compose.indexOf("\n  scheduler:");
+    const habis = compose.indexOf("\n  conformance:");
+    return compose
+      .slice(mulai, habis)
+      .split("\n")
+      .filter((b) => !b.trim().startsWith("#"))
+      .join("\n");
+  };
+
   it("satu putaran gagal tidak mematikan putaran berikutnya", () => {
     // Loop yang mati karena satu galat mengembalikan kita persis ke kegagalan
     // senyap yang layanan ini ada untuk menutupnya.
-    expect(compose).toContain("bun run scheduler:subscriptions || true");
+    //
+    // Diuji sebagai SIFAT, bukan sebagai string. Versi lama menuntut harfiah
+    // `bun run scheduler:subscriptions || true`, jadi ia merah ketika
+    // mekanismenya diperbaiki — penelannya kini sebuah fungsi yang selalu
+    // `return 0` DAN menyebutkan langkah mana yang gagal. Tes yang memaku
+    // implementasi menghalangi perbaikan yang justru memperkuat sifatnya.
+    expect(badanPenjadwal()).toContain("return 0");
+  });
+
+  it("langkah yang MENGGANTUNG dibunuh, tidak menahan putaran berikutnya", () => {
+    // Ditemukan di produksi 30 Agu 2026: `scheduler:subscriptions` menggantung
+    // dua jam dengan CPU 0,09%; putaran itu tak pernah sampai ke `sleep`, dan
+    // SELURUH putaran berikutnya tertahan. `|| true` melindungi dari langkah
+    // yang GAGAL, bukan dari yang MENGGANTUNG — dan bedanya tidak terlihat di
+    // log mana pun.
+    const badan = badanPenjadwal();
+    expect(badan).toMatch(/timeout -k \d+ /);
+    expect(badan).toMatch(/BATAS=\d+/);
+  });
+
+  it("tiap langkah lewat pembungkus — tak ada yang dipanggil telanjang", () => {
+    // Penjaga yang sebenarnya menahan kambuhnya: langkah keenam yang
+    // ditambahkan tanpa pembungkus mengembalikan cacatnya utuh, dan tidak ada
+    // yang akan menyadarinya sampai sesuatu menggantung lagi berbulan-bulan
+    // kemudian.
+    const telanjang = badanPenjadwal()
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.startsWith("bun run "));
+    expect(telanjang, "panggil lewat `langkah <nama> bun run …`").toEqual([]);
+  });
+
+  it("setiap loop layanan punya timeout — bukan hanya penjadwal", () => {
+    // Kelas cacatnya milik BENTUK `while true; do … sleep N; done`, bukan milik
+    // penjadwal. Cadangan harian dan pemeriksaan mingguan punya bentuk yang
+    // sama, dan pada cadensi itu satu kemacetan bisa berumur berbulan-bulan.
+    const loop = compose.split("\n").filter((b) => b.includes("while true"));
+    expect(loop.length).toBeGreaterThan(0);
+    for (const layanan of ["conformance", "backup"] as const) {
+      const mulai = compose.indexOf(`\n  ${layanan}:`);
+      expect(mulai, `layanan ${layanan} tidak ada`).toBeGreaterThan(-1);
+      const potong = compose.slice(mulai);
+      const habis = potong.indexOf("\n  ", 1) > 0 ? potong.indexOf("\n\n  ") : potong.length;
+      const badan = potong.slice(0, habis > 0 ? habis : potong.length);
+      expect(badan, `loop ${layanan} tanpa timeout`).toContain("timeout -k");
+    }
   });
 
   it("menunggu migration selesai — tabelnya harus ada sebelum putaran pertama", () => {

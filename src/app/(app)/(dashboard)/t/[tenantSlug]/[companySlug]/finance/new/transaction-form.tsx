@@ -173,7 +173,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   // issue #91/#98 — pemilih bersama dengan faktur, pembelian dan gerakan stok.
-  const costCenters = useCostCenters();
+  const { costCenters, loadFailed: costCentersFailed } = useCostCenters();
   /*
    * Pusat biaya sengaja TIDAK ikut ke dalam state formulir: ia tidak pernah
    * wajib ("belum ditetapkan" adalah nilai yang SAH, issue #91), jadi tidak ada
@@ -619,6 +619,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
               <div style={FULL_ROW}>
                 <CostCenterField
                   costCenters={costCenters}
+                  loadFailed={costCentersFailed}
                   value={costCenterId}
                   onChange={setCostCenterId}
                 />

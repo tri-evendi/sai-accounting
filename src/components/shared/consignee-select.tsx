@@ -6,7 +6,7 @@ import { Link } from "@/components/ui/app-link";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { useT } from "@/lib/i18n/client";
-import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 interface ConsigneeOption {
   id: number;
@@ -49,17 +49,20 @@ export function ConsigneeSelect({
   const t = useT();
   const { token } = theme.useToken();
   const [consignees, setConsignees] = useState<ConsigneeOption[]>([]);
+  /* Gagal memuat ≠ master kosong — lihat `customer-select.tsx`. Di sini
+     akibatnya lebih halus dan karena itu lebih tahan lama: penerima barang
+     boleh dikosongkan, jadi kontraknya TETAP tersimpan — tanpa tautan master,
+     dengan hanya teks bebas warisan. */
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch("/api/consignees?active=1")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: ConsigneeOption[]) => {
-        if (!cancelled) setConsignees(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setConsignees([]);
-      });
+    void (async () => {
+      const data = await fetchOptionList<ConsigneeOption>("/api/consignees?active=1");
+      if (cancelled) return;
+      setLoadFailed(data == null);
+      setConsignees(data ?? []);
+    })();
     return () => {
       cancelled = true;
     };
@@ -98,6 +101,17 @@ export function ConsigneeSelect({
         value={consigneeId != null ? String(consigneeId) : null}
         onChange={(v) => onConsigneeIdChange(v == null ? null : Number(v))}
       />
+      {loadFailed && (
+        /* Kegagalan yang MENYEBUT dirinya. Tanpa baris ini, daftar kosong
+           terbaca sebagai "belum ada satu pun di master" — dan pengguna
+           menambahkan yang sebenarnya sudah ada. */
+        <Typography.Text
+          role="alert"
+          style={{ fontSize: token.fontSizeSM, color: token.colorError }}
+        >
+          {t("common.optionsLoadFailed")}
+        </Typography.Text>
+      )}
       <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
         {t("consignee.notInMaster")}{" "}
         {/*

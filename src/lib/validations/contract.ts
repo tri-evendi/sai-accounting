@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { round2 } from "@/lib/posting/rules";
 import { BASE_CURRENCY, currencyEnum, fxAmounts, rateField, requireRateForForeign } from "./fx";
-import { dueDateField } from "./common";
+import { dueDateField, nullableBooleanField } from "./common";
 import { paymentFormFields, requireBankForForeignCash } from "./payment";
 import { vmsg } from "@/lib/i18n/validation";
 
@@ -82,6 +82,20 @@ export const contractSchema = z
      */
     rate: rateField,
     status: z.enum(["signed", "pending", "canceled"]).default("pending"),
+    /**
+     * Kena PPN, Non-PPN, atau belum dinyatakan (migrasi 0062) — kesepakatan yang
+     * dibuat SEKALI di kontrak, lalu diwarisi setiap faktur yang ditarik
+     * darinya. NULL adalah keadaan yang SAH, bukan isian yang terlewat: ia
+     * berarti "biarkan faktur memakai bawaannya sendiri", yaitu perilaku
+     * sebelum kolom ini ada.
+     *
+     * `nullableBooleanField`, bukan `z.coerce.boolean()`: `Boolean("false")`
+     * bernilai TRUE, jadi kontrak Non-PPN yang dikirim sebuah `<select>` — yang
+     * selalu mengirim string — akan tersimpan sebagai kontrak ber-PPN tanpa satu
+     * pun galat. Jebakan yang sama ditutup di `setup.ts` dan `manufacturing.ts`
+     * lewat helper yang SAMA, bukan tiga salinan yang bisa berselisih.
+     */
+    taxable: nullableBooleanField,
     items: z.array(contractItemSchema).min(1, vmsg("validation.atLeastOneItem")).max(50),
   })
   .superRefine((data, ctx) => {

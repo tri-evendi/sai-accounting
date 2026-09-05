@@ -157,6 +157,28 @@ model Contract {
   /// Contract value (sum of items) in IDR base, at `rate`.
   baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
   status      String   @default("pending") @db.VarChar(20)
+  /// Kesepakatan PPN kontrak ini (migrasi 0062). TIGA keadaan, dan NULL bukan
+  /// salah satu yang bisa dihapus: `true` = kena PPN, `false` = Non-PPN,
+  /// NULL = belum dinyatakan.
+  ///
+  /// Boolean dua-nilai TIDAK cukup, dan itu ketahuan begitu ia dipakai: dengan
+  /// `false` yang merangkap "Non-PPN" dan "belum disebut", 600+ kontrak warisan
+  /// akan seketika berbunyi "Non-PPN" — dan sebuah kontrak rupiah yang MEMANG
+  /// Non-PPN tidak akan pernah bisa mematikan bawaan 11% pada fakturnya, sebab
+  /// jawabannya tak terbedakan dari diam. NULL mengembalikan diam itu sebagai
+  /// keadaan tersendiri, dan hanya itulah yang dipunyai baris lama: tak satu
+  /// pun kolomnya menyimpan kesepakatan PPN, jadi menebaknya dari mata uang
+  /// berarti mengarang isi dokumen yang sudah ditandatangani.
+  ///
+  /// Ia TIDAK menyentuh jurnal kontrak: `buildContractEntry` tetap membukukan
+  /// D: Piutang / K: Penjualan tanpa baris PPN, sebab PPN Keluaran terbit di
+  /// FAKTUR — memungutnya di dua tempat mengkredit hutang pajak dua kali untuk
+  /// satu penjualan. Yang dilakukannya satu: menjadi BAWAAN pada faktur yang
+  /// ditarik dari kontrak ini, mengalahkan tebakan `defaultInvoiceTax` yang
+  /// hanya tahu mata uang dan tanda bebas-PPN pelanggan — dua hal yang
+  /// sama-sama bukan isi kontrak. Pengguna tetap bisa mengubahnya di formulir
+  /// faktur; NULL membiarkan tebakan itu berlaku persis seperti sebelumnya.
+  taxable     Boolean?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

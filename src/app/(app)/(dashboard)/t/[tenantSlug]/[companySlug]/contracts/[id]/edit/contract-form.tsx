@@ -38,6 +38,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 /** Lebar dasar kolom kuantitas pada baris barang (`w-20`/`w-24`/`w-28` lama). */
 const QTY_COL_BASIS = 96;
@@ -86,6 +87,9 @@ interface ContractData {
   /** Stored since issue #36; null on contracts created before migration 0008. */
   rate: string | number | null;
   status: string;
+  /** Kena PPN / Non-PPN / belum dinyatakan (migrasi 0062). NULL pada kontrak
+   *  warisan — "belum disebut", yang BUKAN hal yang sama dengan "bebas PPN". */
+  taxable: boolean | null;
   items: ContractItem[];
 }
 
@@ -157,13 +161,19 @@ export function EditContractForm() {
   /* `active=1` — barang nonaktif tidak ditawarkan untuk baris BARU (#104);
      baris lama yang menyebutnya tetap terbaca lewat `itemName`-nya. */
   useEffect(() => {
-    apiFetch("/api/inventory?active=1")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: { id: number; code: string; name: string; unit: string | null }[]) =>
-        setItemOptions(data.map((i) => ({ id: i.id, code: i.code, name: i.name, unit: i.unit })))
-      )
-      .catch(() => setItemOptions([]));
-  }, []);
+    /* Gagal memuat ≠ master barang kosong — catatan yang sama ada di
+       `invoices/[id]/edit`. Di kontrak akibatnya satu langkah lebih jauh:
+       baris yang tak tertaut tidak bisa "diambil" ke faktur dengan benar. */
+    void fetchOptionList<{ id: number; code: string; name: string; unit: string | null }>(
+      "/api/inventory?active=1"
+    ).then((data) => {
+      if (data == null) {
+        setError(t("common.optionsLoadFailed"));
+        return;
+      }
+      setItemOptions(data.map((i) => ({ id: i.id, code: i.code, name: i.name, unit: i.unit })));
+    });
+  }, [t]);
 
   function addItem() {
     setItems([...items, { itemId: null, itemName: "", bags: 0, kgPerBag: 0, pricePerKg: 0 }]);
@@ -199,6 +209,7 @@ export function EditContractForm() {
       top2: formData.get("top2"),
       ...currencyRatePayload(currency, rate),
       status: formData.get("status"),
+      taxable: formData.get("taxable"),
       items,
     };
 
@@ -343,6 +354,23 @@ export function EditContractForm() {
                     { value: "pending", label: t("status.contract.pending") },
                     { value: "signed", label: t("status.contract.signed") },
                     { value: "canceled", label: t("status.contract.canceled") },
+                  ]}
+                />
+              </Col>
+              {/* PPN kontrak (migrasi 0062). Mengubahnya di sini TIDAK menyentuh
+                  faktur yang sudah terbit — pewarisannya terjadi saat faktur
+                  DIBUAT, dan faktur yang sudah ada punya `taxable`-nya sendiri
+                  beserta jurnal yang sudah terposting di atasnya. */}
+              <Col xs={24} sm={12}>
+                <Select
+                  id="taxable"
+                  name="taxable"
+                  label={t("contracts.taxableLabel")}
+                  defaultValue={contract.taxable == null ? "" : String(contract.taxable)}
+                  options={[
+                    { value: "", label: t("contracts.taxableUnset") },
+                    { value: "true", label: t("contracts.taxableYes") },
+                    { value: "false", label: t("contracts.taxableNo") },
                   ]}
                 />
               </Col>

@@ -36,7 +36,7 @@ import { SearchableSelect, type SearchableOption } from "@/components/ui/searcha
 import { Input } from "@/components/ui/input";
 import { Label, RequiredMark } from "@/components/ui/label";
 import { useT } from "@/lib/i18n/client";
-import { apiFetch } from "@/lib/api-fetch";
+import { fetchOptionList } from "@/lib/option-list";
 
 interface CustomerOption {
   id: number;
@@ -90,17 +90,20 @@ export function CustomerSelect({
   const t = useT();
   const { token } = theme.useToken();
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  /* Gagal memuat ≠ master kosong. Formulir kontrak MEWAJIBKAN pelanggan dari
+     master, jadi daftar yang kosong karena kegagalan tidak sekadar
+     membingungkan — ia membuat kontraknya mustahil disimpan, tanpa satu kata
+     pun tentang sebabnya. */
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch("/api/customers?active=1")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: CustomerOption[]) => {
-        if (!cancelled) setCustomers(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setCustomers([]);
-      });
+    void (async () => {
+      const data = await fetchOptionList<CustomerOption>("/api/customers?active=1");
+      if (cancelled) return;
+      setLoadFailed(data == null);
+      setCustomers(data ?? []);
+    })();
     return () => {
       cancelled = true;
     };
@@ -153,6 +156,17 @@ export function CustomerSelect({
           onChange={handlePick}
         />
       </div>
+      {loadFailed && (
+        /* Kegagalan yang MENYEBUT dirinya. Tanpa baris ini, daftar kosong
+           terbaca sebagai "belum ada satu pun di master" — dan pengguna
+           menambahkan yang sebenarnya sudah ada. */
+        <Typography.Text
+          role="alert"
+          style={{ fontSize: token.fontSizeSM, color: token.colorError }}
+        >
+          {t("common.optionsLoadFailed")}
+        </Typography.Text>
+      )}
       <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
         {t("contracts.buyerNotInMaster")}{" "}
         {/* Garis bawahnya TETAP, bukan hanya saat hover: tautan di tengah

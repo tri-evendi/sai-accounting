@@ -113,6 +113,9 @@ interface OutstandingResponse {
     customerId: number | null;
     currency: string;
     status: string;
+    /** PPN yang disepakati di kontraknya (migrasi 0062); NULL = belum
+     *  dinyatakan, dan faktur memakai bawaannya sendiri. */
+    taxable: boolean | null;
   };
   lines: ContractLineOutstanding[];
   totals: { remainingKg: number; remainingValue: number; readyToInvoiceKg: number };
@@ -173,7 +176,7 @@ export function NewInvoiceForm({
   const [status, setStatus] = useState("pending");
   // issue #98 — dimensi cabang/unit faktur ini. Ikut diwarisi surat jalan yang
   // menyebutnya, sehingga HPP-nya mendarat di cabang yang sama.
-  const costCenters = useCostCenters();
+  const { costCenters, loadFailed: costCentersFailed } = useCostCenters();
   const [costCenterId, setCostCenterId] = useState("");
 
   // ── Pola "Ambil" ──
@@ -244,6 +247,37 @@ export function NewInvoiceForm({
   }, [taxProfile]);
 
   /*
+   * PPN MENGIKUTI KONTRAKNYA (migrasi 0062), bila kontraknya menyatakannya.
+   *
+   * Dijalankan SESUDAH `adoptCurrency` — dan urutan itu penting: mengadopsi
+   * mata uang kontrak akan menghitung ulang bawaan pajak dari mata uang itu,
+   * jadi pernyataan kontraknya harus datang belakangan supaya tidak ditimpa
+   * oleh tebakan yang justru hendak digantikannya (kontrak USD ber-PPN adalah
+   * kasus yang membedakan keduanya).
+   *
+   * `null` sengaja TIDAK melakukan apa-apa: kontrak yang belum menyatakan
+   * PPN-nya — seluruh kontrak warisan — meninggalkan bawaan mata uang/pelanggan
+   * berlaku persis seperti sebelum kolom itu ada. Tarifnya diambil dari profil
+   * pajak PERUSAHAAN pada tanggal faktur, bukan dari kontrak: yang disepakati
+   * di kontrak adalah "kena PPN", sedangkan berapa persennya adalah aturan
+   * negara pada hari faktur terbit.
+   */
+  const adoptContractTax = useCallback((contractTaxable: boolean | null) => {
+    if (contractTaxable == null) return;
+    setFx((prev) => {
+      const companyRate = companyTaxRateOn(dateRef.current, taxProfile);
+      /* Perusahaan non-PKP tidak memungut PPN sekalipun kontraknya menyebut
+         demikian — tarifnya 0, dan faktur "PPN 0" adalah dokumen yang salah. */
+      const taxable = contractTaxable && companyRate > 0;
+      return {
+        ...prev,
+        taxable,
+        taxRate: String(taxable ? companyRate : 0),
+      };
+    });
+  }, [taxProfile]);
+
+  /*
    * Pelanggan faktur MENGIKUTI pembeli kontraknya (migrasi 0057).
    *
    * Bukan kenyamanan: `createInvoiceInTx` MENOLAK faktur yang pelanggannya
@@ -282,12 +316,13 @@ export function NewInvoiceForm({
       if (cancelled) return;
       setOutstanding(data);
       adoptCurrency(data.contract.currency);
+      adoptContractTax(data.contract.taxable);
       adoptCustomer(data.contract.customerId);
     })();
     return () => {
       cancelled = true;
     };
-  }, [contractId, adoptCurrency, adoptCustomer, t]);
+  }, [contractId, adoptCurrency, adoptContractTax, adoptCustomer, t]);
 
   /** Picking (or clearing) the source contract resets everything derived from it. */
   function chooseContract(id: number | null) {
@@ -879,6 +914,7 @@ export function NewInvoiceForm({
               <div style={{ gridColumn: "1 / -1" }}>
                 <CostCenterField
                   costCenters={costCenters}
+                  loadFailed={costCentersFailed}
                   value={costCenterId}
                   onChange={setCostCenterId}
                 />

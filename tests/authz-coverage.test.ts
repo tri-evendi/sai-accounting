@@ -127,6 +127,18 @@ const MARKETING_GROUPS = ["(marketing)"];
 const MARKETING_PAGES = new Map([
   ["(marketing)/page.tsx", "/"],
   ["(marketing)/pricing/page.tsx", "/pricing"],
+  /*
+   * `/status` (issue #374). Ia BERBEDA dari kedua tetangganya dalam satu hal
+   * yang harus ditulis, bukan disimpulkan: halaman ini MEMBACA KEADAAN HIDUP
+   * (`lib/health-report.ts`), sedangkan `/` dan `/pricing` murni statis.
+   *
+   * Yang tetap berlaku penuh untuknya adalah larangan yang benar-benar
+   * mengikat di grup ini — tanpa penjaga izin dan tanpa `@/lib/prisma`, sebab
+   * pembacanya justru orang yang tidak bisa masuk. Yang ia baca adalah probe
+   * kesiapan yang sudah dipersempit `lib/public-status.ts`, dan penjaga
+   * redaksinya `tests/public-status.test.ts`.
+   */
+  ["(marketing)/status/page.tsx", "/status"],
 ]);
 
 /** Halaman yang sah TANPA requirePagePermission, beserta alasannya. */

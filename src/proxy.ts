@@ -52,6 +52,17 @@ function isPublicPath(pathname: string): boolean {
   // issue #142 — dokumen hukum: harus terbaca SEBELUM orang menyetujuinya.
   if (pathname === "/terms" || pathname === "/privacy") return true;
   /*
+   * issue #374 — halaman status publik. Pembacanya justru orang yang sedang
+   * TIDAK bisa memakai aplikasinya, dan sebagian di antaranya tidak bisa masuk
+   * sama sekali. Memantulkannya ke `/login` berarti menjawab "apakah layanannya
+   * jalan?" dengan layar yang hanya berguna kalau layanannya jalan.
+   *
+   * Isinya sudah dipersempit `lib/public-status.ts` menjadi tiga keadaan tanpa
+   * nama basis data, angka, maupun kalimat galat — publik di sini adalah SIFAT
+   * halamannya, bukan kelonggaran proxy.
+   */
+  if (pathname === "/status") return true;
+  /*
    * Berkas metadata halaman pendaratan. Ketiganya dibangkitkan Next dari
    * `app/robots.ts`, `app/sitemap.ts`, dan `app/(marketing)/opengraph-image.tsx`, dan
    * ketiganya HANYA berguna kalau bisa diambil TANPA sesi — pembacanya perayap

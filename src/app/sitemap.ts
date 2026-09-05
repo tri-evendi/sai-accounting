@@ -37,6 +37,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
        yang sama dengan seksi harga di `/`, tetapi dengan alamatnya sendiri
        supaya bisa ditemukan & dibagikan. */
     { url: url("/pricing"), changeFrequency: "monthly", priority: 0.8 },
+    /* `/status` (#374) — alamat yang dicari orang justru ketika aplikasinya
+       tidak bisa dibuka, jadi ia harus bisa ditemukan tanpa akun. Halamannya
+       sendiri `robots: { index: false }`: yang berguna adalah ALAMATNYA, bukan
+       cuplikan keadaan kemarin yang dibekukan perayap. `daily` karena isinya
+       memang berubah tiap kali diminta. */
+    { url: url("/status"), changeFrequency: "daily", priority: 0.5 },
     { url: url("/docs"), changeFrequency: "monthly", priority: 0.6 },
     ...DOC_INDEX.map((doc) => ({
       url: url(docsPath(doc.slug)),

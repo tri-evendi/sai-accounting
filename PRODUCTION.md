@@ -165,6 +165,44 @@ server is the quarterly drill a human runs, with a target they typed themselves.
 > deleted. Until it runs, the Audit page looks empty — the trail has not moved
 > yet, it is not lost.
 
+### Public status page (issue #374)
+
+`/status` is public — no session, no permission guard — because the people who
+need it most are the ones who cannot sign in. It reads the *same*
+`healthReport()` that `/api/health` reads, then narrows it in
+`src/lib/public-status.ts` to three components (bookkeeping, subscriptions &
+billing, email delivery) with no database names, no heartbeat ages, and no error
+strings. That narrowing is a pure function so it can be proven by test rather
+than reviewed by eye: `tests/public-status.test.ts`.
+
+Backup health is deliberately **not** on it. Backups are operator recovery
+posture, not a service the reader consumes; "backups failing" published to the
+anonymous internet gives a customer no decision they can act on, and gives
+someone else one they can. The on-duty answer lives in `/api/health`, in
+`backup_runs`, and in `docker compose logs backup`.
+
+> ⚠ Fixed on 2026-09-05, same issue: `/api/health` is in `isPublicPath` (Docker
+> and Traefik call it without credentials), so everything in it is world
+> readable — and `backup.lastError` was passing the backup script's own message
+> straight through. Production was publishing *"BACKUP_S3_BUCKET belum diset —
+> cadangan yang tinggal di mesin yang sama bukan cadangan"* to anyone who asked.
+> The field is now stripped; `backup.status` stays, because removing that would
+> restore exactly the silence issue #374 exists to end.
+
+To announce a maintenance window, set both halves in `.env` and restart `web`:
+
+```bash
+MAINTENANCE_FROM=2026-09-14T22:00:00+07:00
+MAINTENANCE_UNTIL=2026-09-15T01:00:00+07:00
+```
+
+Both are required — half a window is not a window, and the page stays silent
+rather than guessing the other end. A window that has passed disappears on its
+own, so a notice nobody remembered to remove does not sit there for weeks.
+There is no free-text field on purpose: the app speaks three languages, and a
+sentence typed into an environment variable is only correct in the one that
+typed it. The sentence comes from the dictionary; only the dates come from here.
+
 ## 7. Post-deploy checklist
 
 - [ ] `AUTH_SECRET` is unique and not in git

@@ -53,6 +53,24 @@ export const fxRevaluationSchema = z.object({
 
 export type FxRevaluationInput = z.infer<typeof fxRevaluationSchema>;
 
+
+/**
+ * Tutup buku TAHUNAN (issue #555).
+ *
+ * `year` adalah tahun KALENDER tempat tahun buku itu DIMULAI — sumbu yang sama
+ * dengan `fiscalYearBounds` dan kolom `year_closes.year`. Untuk tahun buku yang
+ * mulai 1 April, tahun buku 2026 berakhir 31 Maret 2027.
+ */
+export const yearCloseSchema = z.object({
+  year: z.coerce
+    .number()
+    .int()
+    .min(2000, vmsg("validation.yearInvalid"))
+    .max(2100, vmsg("validation.yearInvalid")),
+});
+
+export type YearCloseInput = z.infer<typeof yearCloseSchema>;
+
 export type PeriodQueryInput = z.infer<typeof periodQuerySchema>;
 export type PeriodCloseInput = z.infer<typeof periodCloseSchema>;
 export type PeriodReopenInput = z.infer<typeof periodReopenSchema>;

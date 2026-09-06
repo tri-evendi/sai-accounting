@@ -66,7 +66,7 @@ export const MONETARY_ACCOUNT_TYPES = [
  * dengan dua tambahan yang memang tidak dibutuhkan neraca: dikelompokkan juga
  * per MATA UANG, dan ikut menjumlahkan nilai mata uang aslinya.
  */
-export async function monetaryBalances(
+async function monetaryBalances(
   asOf: Date,
   client: Client = prisma
 ): Promise<MonetaryBalance[]> {

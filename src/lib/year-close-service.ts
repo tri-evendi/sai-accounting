@@ -61,7 +61,7 @@ async function fiscalYearStart(client: Client): Promise<Date> {
  * "berhasil" tanpa memindahkan apa pun. Aturannya sama dengan yang dipakai
  * Laba Rugi, dan penyaringnya diimpor dari sana — bukan ditulis ulang.
  */
-export async function profitAndLossBalances(
+async function profitAndLossBalances(
   year: number,
   client: Client = prisma
 ): Promise<ClosingBalance[]> {

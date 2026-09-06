@@ -375,7 +375,15 @@ export interface BalanceSheetShape {
   totalAssets: number;
   totalLiabilities: number;
   totalEquity: number;
+  /** Hasil yang BELUM ditutup ke Laba Ditahan, seluruhnya. */
   netIncome: number;
+  /**
+   * Pecahan `netIncome` (issue #555). OPSIONAL, dan itu bermakna: buku yang
+   * belum menyetel awal tahun bukunya tidak bisa dipecah, dan menebaknya akan
+   * memisahkan laba pada tanggal yang salah. Keduanya berjumlah `netIncome`.
+   */
+  currentYearIncome?: number;
+  priorUnclosedIncome?: number;
   totalLiabilitiesEquity: number;
   balanced: boolean;
 }
@@ -434,8 +442,16 @@ export interface BalanceSheetLabels {
   equity: string;
   /** Subtotal seksi — bentuk fungsi karena susunan katanya berbeda per bahasa. */
   sectionTotal: (section: string) => string;
-  /** Hasil periode berjalan, sebagai baris akun di dalam blok ekuitas. */
+  /** Hasil yang BELUM ditutup, sebagai baris akun di dalam blok ekuitas. */
   currentNetIncome: string;
+  /**
+   * Laba tahun buku BERJALAN — dipakai menggantikan `currentNetIncome` ketika
+   * ada laba tahun lalu yang belum ditutup, sehingga keduanya bisa berdiri
+   * sebagai dua baris yang berbeda (issue #555).
+   */
+  currentYearIncome: string;
+  /** Laba tahun buku yang sudah lewat tetapi belum ditutup (issue #555). */
+  priorUnclosedIncome: string;
   empty: string;
   totalAssets: string;
   totalLiabilitiesEquity: string;
@@ -457,6 +473,8 @@ export const BALANCE_SHEET_PRINT_LABELS: BalanceSheetLabels = {
   equity: "Ekuitas",
   sectionTotal: (section) => `Total ${section}`,
   currentNetIncome: "Akumulasi Laba/Rugi",
+  currentYearIncome: "Laba/Rugi Tahun Berjalan",
+  priorUnclosedIncome: "Laba/Rugi Tahun Lalu (belum ditutup)",
   empty: "Tidak ada akun bersaldo pada bagian ini.",
   totalAssets: "Total Aset",
   totalLiabilitiesEquity: "Total Liabilitas + Ekuitas",
@@ -557,7 +575,39 @@ export function balanceSheetLayout(
   section(
     "equity",
     labels.equity,
-    [...statement.equity, { code: "", name: labels.currentNetIncome, amount: statement.netIncome }],
+    /*
+     * SATU baris atau DUA (issue #555).
+     *
+     * Selama tidak ada tahun buku yang terlewat ditutup, `priorUnclosedIncome`
+     * nol dan barisnya tetap satu — persis seperti sebelum #555, sehingga buku
+     * yang tidak memakai tutup buku tahunan tidak melihat perubahan apa pun.
+     *
+     * Begitu ia TIDAK nol, ia kabar penting: ada tahun buku yang belum ditutup.
+     * Melipatnya ke dalam "tahun berjalan" akan menyembunyikan justru keadaan
+     * yang paling perlu diketahui — jadi ia diberi barisnya sendiri, dengan
+     * namanya sendiri.
+     *
+     * Keduanya berjumlah `netIncome`, dan `balanceSheetEquityTotal` tetap
+     * membaca `netIncome` — jadi tidak ada penjumlahan kedua yang bisa
+     * menyimpang dari yang pertama.
+     */
+    [
+      ...statement.equity,
+      ...(statement.priorUnclosedIncome
+        ? [
+            {
+              code: "",
+              name: labels.priorUnclosedIncome,
+              amount: statement.priorUnclosedIncome,
+            },
+            {
+              code: "",
+              name: labels.currentYearIncome,
+              amount: statement.currentYearIncome ?? 0,
+            },
+          ]
+        : [{ code: "", name: labels.currentNetIncome, amount: statement.netIncome }]),
+    ],
     balanceSheetEquityTotal(statement)
   );
 

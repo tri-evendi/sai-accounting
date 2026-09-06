@@ -158,6 +158,24 @@ export function planYearClose(
 }
 
 /**
+ * Tahun buku mana yang memuat `date`.
+ *
+ * Memulangkan tahun KALENDER tempat tahun buku itu dimulai — sumbu yang sama
+ * dengan `fiscalYearBounds` dan dengan kolom `year_closes.year`. Untuk tahun
+ * buku yang mulai 1 April, tanggal 15 Februari 2027 ada di dalam tahun buku
+ * **2026**, bukan 2027; menjawab 2027 akan memisahkan laba tahun berjalan pada
+ * tanggal yang salah selama tiga bulan setiap tahunnya.
+ */
+export function fiscalYearOf(fiscalYearStart: Date, date: Date): number {
+  const tahun = date.getFullYear();
+  /* Kalau tanggalnya mendahului awal tahun buku pada tahun kalender yang sama,
+     ia masih milik tahun buku sebelumnya. */
+  return date.getTime() < fiscalYearBounds(fiscalYearStart, tahun).start.getTime()
+    ? tahun - 1
+    : tahun;
+}
+
+/**
  * Nilai `journals.type` untuk jurnal penutup tahunan.
  *
  * ══ KENAPA IA JENIS TERSENDIRI, BUKAN `adjustment` ═════════════════════════

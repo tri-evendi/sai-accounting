@@ -168,3 +168,100 @@ describe("penjaganya benar-benar bisa merah", () => {
     expect(neraca.netIncome).not.toBe(labaRugi.netIncome);
   });
 });
+
+/**
+ * PEMISAHAN EKUITAS (issue #555, langkah 4).
+ *
+ * Baris "Akumulasi Laba/Rugi" menjawab satu pertanyaan sampai #555, dan dua
+ * sesudahnya: berapa laba TAHUN BERJALAN, dan berapa yang tertinggal dari tahun
+ * buku yang terlewat ditutup. Yang kedua biasanya nol — dan ketika tidak, ia
+ * justru kabar yang paling perlu diketahui.
+ */
+describe("pemisahan Laba Tahun Berjalan dari tahun lalu yang belum ditutup", () => {
+  const AWAL_TAHUN_BUKU = new Date(2020, 0, 1); // tahun buku kalender
+
+  /** 2025 menghasilkan 100 jt, 2026 menghasilkan 600 jt. Tak satu pun ditutup. */
+  const DUA_TAHUN = [
+    {
+      date: new Date(2025, 4, 5),
+      lines: [
+        { accountId: KAS, debit: 100_000_000 },
+        { accountId: PENJUALAN, credit: 100_000_000 },
+      ],
+    },
+    ...OPERASIONAL,
+  ];
+
+  const bukuDuaTahun = () =>
+    createFakeReportClient({
+      accounts: ACCOUNTS,
+      journals: DUA_TAHUN,
+      fiscalYearStart: AWAL_TAHUN_BUKU,
+    });
+
+  it("memisahkan keduanya, dan keduanya berjumlah `netIncome`", async () => {
+    const neraca = await getBalanceSheet(AKHIR, bukuDuaTahun() as never);
+
+    expect(neraca.currentYearIncome).toBe(600_000_000);
+    expect(neraca.priorUnclosedIncome).toBe(100_000_000);
+    /* Invarian yang menjaga `balanceSheetEquityTotal` (#258) tetap satu rumus:
+       pecahannya tidak boleh menjadi penjumlahan kedua yang menyimpang. */
+    expect(neraca.currentYearIncome! + neraca.priorUnclosedIncome!).toBe(neraca.netIncome);
+  });
+
+  it("tahun buku NON-kalender memindahkan batasnya", async () => {
+    /* Tahun buku mulai 1 April. Penjualan 5 Mei 2025 ada di tahun buku 2025;
+       transaksi Maret 2026 dan Juni 2026 jatuh di sisi yang BERBEDA. */
+    const buku = createFakeReportClient({
+      accounts: ACCOUNTS,
+      journals: DUA_TAHUN,
+      fiscalYearStart: new Date(2020, 3, 1),
+    });
+    const neraca = await getBalanceSheet(AKHIR, buku as never);
+
+    /* Penjualan 10 Maret 2026 masih tahun buku 2025; beban 20 Juni 2026 sudah
+       tahun buku 2026. Jadi tahun berjalan hanya memikul bebannya. */
+    expect(neraca.currentYearIncome).toBe(-400_000_000);
+    expect(neraca.currentYearIncome! + neraca.priorUnclosedIncome!).toBe(neraca.netIncome);
+  });
+
+  it("tanpa awal tahun buku, TIDAK ada yang dipecah — dan itu bukan nol", async () => {
+    /*
+     * Buku yang belum menyetel awal tahun bukunya tidak bisa dipecah, dan
+     * menebaknya akan memisahkan laba pada tanggal yang salah. Yang benar:
+     * seluruh `netIncome` tetap menjadi satu baris, persis seperti sebelum
+     * #555 — bukan `currentYearIncome: 0`, yang akan menampilkan laba nol untuk
+     * buku yang jelas menghasilkan.
+     */
+    const neraca = await getBalanceSheet(
+      AKHIR,
+      createFakeReportClient({ accounts: ACCOUNTS, journals: DUA_TAHUN }) as never
+    );
+
+    expect(neraca.currentYearIncome).toBe(neraca.netIncome);
+    expect(neraca.priorUnclosedIncome).toBe(0);
+  });
+
+  it("sesudah 2025 ditutup, sisa tahun lalu menjadi nol", async () => {
+    const penutup2025 = {
+      date: new Date(2025, 11, 31, 23, 59, 59, 999),
+      type: CLOSING_JOURNAL_TYPE,
+      lines: [
+        { accountId: PENJUALAN, debit: 100_000_000 },
+        { accountId: LABA_DITAHAN, credit: 100_000_000 },
+      ],
+    };
+    const neraca = await getBalanceSheet(
+      AKHIR,
+      createFakeReportClient({
+        accounts: ACCOUNTS,
+        journals: [...DUA_TAHUN, penutup2025],
+        fiscalYearStart: AWAL_TAHUN_BUKU,
+      }) as never
+    );
+
+    expect(neraca.priorUnclosedIncome).toBe(0);
+    expect(neraca.currentYearIncome).toBe(600_000_000);
+    expect(neraca.equity.find((l) => l.code === "3102")?.amount).toBe(100_000_000);
+  });
+});

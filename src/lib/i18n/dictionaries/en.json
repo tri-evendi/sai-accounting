@@ -2174,6 +2174,8 @@
     "sectionEquity": "Equity",
     "sectionTotal": "Total {section}",
     "currentNetIncome": "Accumulated Profit / Loss",
+    "currentYearIncome": "Current-Year Profit/Loss",
+    "priorUnclosedIncome": "Prior-Year Profit/Loss (not yet closed)",
     "noAccountsInSection": "No account carries a balance in this section.",
     "totalAssets": "Total Assets",
     "totalLiabilitiesEquity": "Total Liabilities + Equity",

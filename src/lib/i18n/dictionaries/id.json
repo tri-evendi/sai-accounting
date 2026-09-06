@@ -2174,6 +2174,8 @@
     "sectionEquity": "Ekuitas",
     "sectionTotal": "Total {section}",
     "currentNetIncome": "Akumulasi Laba/Rugi",
+    "currentYearIncome": "Laba/Rugi Tahun Berjalan",
+    "priorUnclosedIncome": "Laba/Rugi Tahun Lalu (belum ditutup)",
     "noAccountsInSection": "Tidak ada akun bersaldo pada bagian ini.",
     "totalAssets": "Total Aset",
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",

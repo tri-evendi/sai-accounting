@@ -21,7 +21,7 @@ import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 import { balanceSheetEquityTotal } from "@/lib/statement-layout";
-import { NOT_CLOSING } from "@/lib/year-close";
+import { fiscalYearBounds, fiscalYearOf, NOT_CLOSING } from "@/lib/year-close";
 
 type Nets = Map<number, { debit: number; credit: number }>;
 
@@ -306,7 +306,55 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
     }
   }
 
-  const netIncome = revenue - expense; // current-period earnings, folded into equity side
+  const netIncome = revenue - expense; // laba yang BELUM ditutup, dilipat ke sisi ekuitas
+
+  /*
+   * ── PEMISAHAN EKUITAS (issue #555) ────────────────────────────────────────
+   *
+   * `netIncome` di atas adalah seluruh laba yang BELUM ditutup ke Laba Ditahan.
+   * Sebelum #555 tidak ada tutup buku sama sekali, jadi ia selalu berarti
+   * "akumulasi sejak buku dibuka" — dan labelnya, `Akumulasi Laba/Rugi`,
+   * memang mengatakannya dengan jujur.
+   *
+   * Sesudah sebuah tahun ditutup, angka yang sama berubah artinya: yang tersisa
+   * hanyalah tahun-tahun yang belum ditutup. Yang dipecah di bawah ini adalah
+   * pertanyaan berikutnya, yang tidak bisa dijawab satu baris:
+   *
+   *   • LABA TAHUN BERJALAN — sejak awal tahun buku yang memuat `asOf`;
+   *   • laba tahun LALU yang belum ditutup — sisanya.
+   *
+   * Baris kedua biasanya nol, dan ketika TIDAK nol ia justru kabar penting:
+   * ada tahun buku yang terlewat ditutup. Melipatnya ke dalam "tahun berjalan"
+   * akan menyembunyikan persis keadaan yang paling perlu diketahui.
+   *
+   * ⚠ `netIncome` SENGAJA tidak berubah nilainya, dan `balanceSheetEquityTotal`
+   * (#258) tetap satu-satunya rumus ekuitas. Kedua medan baru menjumlah tepat
+   * menjadi `netIncome`, jadi tidak ada penjumlahan kedua yang bisa menyimpang.
+   */
+  let currentYearIncome = netIncome;
+  let priorUnclosedIncome = 0;
+
+  const setting = await client.companySetting.findFirst({ select: { fiscalYearStart: true } });
+  if (setting && asOf) {
+    const { start } = fiscalYearBounds(
+      setting.fiscalYearStart,
+      fiscalYearOf(setting.fiscalYearStart, asOf)
+    );
+    const currentNets = await accountNets({ gte: start, lte: asOf }, client);
+    let curRevenue = 0;
+    let curExpense = 0;
+    for (const a of accounts) {
+      const cat = accountCategoryFor(a.type);
+      if (cat !== "revenue" && cat !== "expense") continue;
+      const n = currentNets.get(a.id) ?? { debit: 0, credit: 0 };
+      if (cat === "revenue") curRevenue += n.credit - n.debit;
+      else curExpense += n.debit - n.credit;
+    }
+    currentYearIncome = curRevenue - curExpense;
+    /* Diturunkan, bukan dihitung sendiri: dua penjumlahan atas hal yang sama
+       adalah dua angka yang suatu hari tidak lagi berjumlah `netIncome`. */
+    priorUnclosedIncome = netIncome - currentYearIncome;
+  }
   // Sisi kanan neraca memakai penjumlahan ekuitas yang SAMA dengan yang dibaca
   // orang di baris "Total Ekuitas" (issue #258) — kalau keduanya dua rumus
   // terpisah, ada hari di mana laporan menyebut dirinya seimbang sementara dua
@@ -321,6 +369,10 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
     totalLiabilities,
     totalEquity,
     netIncome,
+    /** Bagian `netIncome` yang lahir di tahun buku yang memuat `asOf`. */
+    currentYearIncome,
+    /** Sisanya: tahun buku yang sudah lewat tetapi belum ditutup. */
+    priorUnclosedIncome,
     totalLiabilitiesEquity,
     balanced: eq(totalAssets, totalLiabilitiesEquity),
   };

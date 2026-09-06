@@ -214,6 +214,11 @@ const PADANAN: Padanan[] = [
     nilai: { section: SEKSI },
   },
   { di: "BALANCE_SHEET_PRINT_LABELS.currentNetIncome", cetak: BALANCE_SHEET_PRINT_LABELS.currentNetIncome, kunci: "reports.currentNetIncome" },
+  // ── Pemisahan ekuitas (#555): dua baris yang menggantikan yang di atas ketika
+  //    ada tahun buku yang terlewat ditutup. Keduanya PADANAN — kalimat cetak
+  //    dan kalimat layar memang harus berbunyi sama.
+  { di: "BALANCE_SHEET_PRINT_LABELS.currentYearIncome", cetak: BALANCE_SHEET_PRINT_LABELS.currentYearIncome, kunci: "reports.currentYearIncome" },
+  { di: "BALANCE_SHEET_PRINT_LABELS.priorUnclosedIncome", cetak: BALANCE_SHEET_PRINT_LABELS.priorUnclosedIncome, kunci: "reports.priorUnclosedIncome" },
   { di: "BALANCE_SHEET_PRINT_LABELS.empty", cetak: BALANCE_SHEET_PRINT_LABELS.empty, kunci: "reports.noAccountsInSection" },
   { di: "BALANCE_SHEET_PRINT_LABELS.totalAssets", cetak: BALANCE_SHEET_PRINT_LABELS.totalAssets, kunci: "reports.totalAssets" },
   { di: "BALANCE_SHEET_PRINT_LABELS.totalLiabilitiesEquity", cetak: BALANCE_SHEET_PRINT_LABELS.totalLiabilitiesEquity, kunci: "reports.totalLiabilitiesEquity" },

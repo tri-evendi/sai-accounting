@@ -380,6 +380,8 @@ type LineWhere = {
 export function createFakeReportClient(seed: {
   accounts: FakeAccount[];
   journals: FakeSeedJournal[];
+  /** Awal tahun buku (issue #555). Dihilangkan = buku belum menyetelnya. */
+  fiscalYearStart?: Date;
 }) {
   const accounts = seed.accounts.map((a) => ({
     normalBalance: "debit",
@@ -436,6 +438,20 @@ export function createFakeReportClient(seed: {
     );
 
   const client = {
+    /**
+     * Setelan perusahaan (issue #555). Hanya `fiscal_year_start` yang dibaca
+     * pembaca laporan, dan hanya untuk memisahkan Laba Tahun Berjalan dari laba
+     * tahun-tahun lalu yang belum ditutup.
+     *
+     * `null` bila seed tidak menyebutnya — dan itu keadaan yang SAH, bukan
+     * lubang: buku yang awal tahun bukunya tidak diketahui tidak boleh ditebak,
+     * jadi Neraca-nya tidak memisahkan apa pun dan tetap menampilkan satu baris
+     * akumulasi seperti sebelum #555.
+     */
+    companySetting: {
+      findFirst: async () =>
+        seed.fiscalYearStart ? { fiscalYearStart: seed.fiscalYearStart } : null,
+    },
     account: {
       /*
        * `where.type` DIHORMATI (issue #472). Sebelumnya penyaringnya diabaikan

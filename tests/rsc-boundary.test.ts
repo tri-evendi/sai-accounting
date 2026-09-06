@@ -241,7 +241,7 @@ const SRC = join(__dirname, "..", "src");
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 182;
+const AMBANG_KLIEN = 183;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -348,6 +348,12 @@ const KLIEN_TERSAHKAN = [
      angkanya baru diminta ketika pemakainya mengetik sebuah kurs. */
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/fx-revaluation-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
+  /* #555 — panel tutup buku tahunan. Pulau client dengan alasan yang sama
+     dengan tetangganya: dua langkah berurutan (pratinjau lalu tutup) yang
+     keadaannya harus bertahan di antara keduanya, dan alur yang MEMINDAHKAN
+     seluruh laba setahun ke ekuitas tidak berbagi bendera "sedang sibuk"
+     dengan alur yang tidak. */
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/year-close-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/production-orders/[id]/actions.tsx",

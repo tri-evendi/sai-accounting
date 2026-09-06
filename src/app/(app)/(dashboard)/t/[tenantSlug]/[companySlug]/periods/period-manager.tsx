@@ -40,6 +40,7 @@ import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { FxRevaluationPanel } from "./fx-revaluation-panel";
+import { YearClosePanel } from "./year-close-panel";
 
 interface PeriodRow {
   year: number;
@@ -521,6 +522,18 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
           Ia hanya muncul ketika sebuah periode dipilih; tanpa itu ia tidak punya
           bulan untuk direvaluasi. `onPosted` menyegarkan ringkasan di sebelah,
           sebab pemeriksaan revaluasi di sana baru saja berubah keadaannya. */}
+      {/* ── Tutup buku TAHUNAN (issue #555) ──
+          Lebar penuh, di bawah panel revaluasi. Urutannya disengaja: revaluasi
+          adalah langkah AKHIR PERIODE yang dilakukan tiap bulan, tutup buku
+          tahunan dilakukan sekali setahun DAN sesudahnya — menaruhnya di atas
+          akan menyarankan urutan yang terbalik.
+
+          Ia TIDAK bergantung pada `selected`: yang dipilih di daftar sebelah
+          adalah BULAN, sedangkan panel ini bekerja atas TAHUN BUKU, dan
+          menautkan keduanya membuat pemakainya menyangka menutup tahun berarti
+          menutup bulan yang sedang disorot. */}
+      <YearClosePanel defaultYear={new Date().getFullYear() - 1} />
+
       {selected && (
         <FxRevaluationPanel
           key={`${selected.year}-${selected.month}`}

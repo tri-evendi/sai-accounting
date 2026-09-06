@@ -1950,7 +1950,9 @@
     "yearLoadFailed": "无法加载年度结账预览。",
     "yearCloseFailed": "年度结账失败。",
     "yearClosedOk": "会计年度 {year} 已结账。",
-    "yearReopenedOk": "会计年度 {year} 的结账已撤销。"
+    "yearReopenedOk": "会计年度 {year} 的结账已撤销。",
+    "yearNotEnded": "会计年度 {year} 要到 {date} 才结束，因此尚不能结账。上方预览仍可作为截至目前的损益查看。",
+    "yearNotEndedNote": "该会计年度于 {date} 结束。年度结账只能在该日期之后进行——上方数字为截至目前的损益，并非全年损益。"
   },
   "receivables": {
     "title": "客户欠款",

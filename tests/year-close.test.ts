@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   fiscalYearBounds,
+  fiscalYearHasEnded,
   planYearClose,
   type ClosingBalance,
 } from "@/lib/year-close";
@@ -147,5 +148,59 @@ describe("jurnal penutup", () => {
     const pendapatan = 900_000 + 100_000;
     const beban = 250_000 + 50_000;
     expect(planYearClose(balances, RE).netIncome).toBe(pendapatan - beban);
+  });
+});
+
+/**
+ * TAHUN BUKU HARUS SUDAH BERAKHIR (issue #565).
+ *
+ * ══ Bentuk kegagalan yang dijaga ═══════════════════════════════════════════
+ * Menutup tahun yang belum berakhir menerbitkan jurnal bertanggal MASA DEPAN,
+ * memindahkan laba sampai hari ini ke Laba Ditahan, lalu meninggalkan setiap
+ * transaksi antara hari ini dan tanggal itu DI LUAR jurnal penutupnya —
+ * padahal semuanya jatuh di DALAM tahun yang sudah dinyatakan tertutup.
+ *
+ * Akun laba rugi tidak nol pada akhir tahun, `year_closes` menyatakan
+ * sebaliknya, dan neracanya tetap seimbang di setiap langkah. Nol galat.
+ *
+ * Luput dari 19 tes #555 karena semuanya memberi `fiscalYearStart` dan `year`
+ * sebagai angka, dan tidak satu pun menanyakan hubungan tahun itu dengan
+ * HARI INI. Aritmetikanya memang benar untuk tahun mana pun; yang hilang adalah
+ * pertanyaan apakah tahun itu boleh ditutup SEKARANG.
+ */
+describe("tahun buku harus sudah berakhir sebelum boleh ditutup", () => {
+  const KALENDER = new Date(2026, 0, 1);
+
+  it("tahun BERJALAN belum berakhir — kasus yang melahirkan #565", () => {
+    /* Keadaan nyata buku demo pada 6 September 2026. */
+    expect(fiscalYearHasEnded(KALENDER, 2026, new Date(2026, 8, 6))).toBe(false);
+  });
+
+  it("tahun LALU sudah berakhir", () => {
+    expect(fiscalYearHasEnded(KALENDER, 2025, new Date(2026, 8, 6))).toBe(true);
+  });
+
+  it("tepat pada milidetik terakhir tahun buku, ia BELUM berakhir", () => {
+    /* Batasnya `>` bukan `>=`: pada 31 Des 23:59:59.999 tahun itu masih
+       berjalan, dan transaksi hari itu masih boleh masuk. */
+    const { end } = fiscalYearBounds(KALENDER, 2026);
+    expect(fiscalYearHasEnded(KALENDER, 2026, end)).toBe(false);
+    expect(fiscalYearHasEnded(KALENDER, 2026, new Date(end.getTime() + 1))).toBe(true);
+  });
+
+  it("tahun buku NON-kalender memakai batasnya sendiri", () => {
+    /* Tahun buku mulai 1 April. Pada 1 Februari 2027, tahun buku 2026 (yang
+       berakhir 31 Maret 2027) BELUM berakhir — sementara kalender sudah
+       berganti tahun. Menyamakan keduanya akan mengizinkan penutupan dua bulan
+       terlalu awal, tiap tahun. */
+    const APRIL = new Date(2020, 3, 1);
+    expect(fiscalYearHasEnded(APRIL, 2026, new Date(2027, 1, 1))).toBe(false);
+    expect(fiscalYearHasEnded(APRIL, 2026, new Date(2027, 3, 1))).toBe(true);
+  });
+
+  it("`now` disuntikkan, bukan dibaca dari jam sistem", () => {
+    /* Penjaga yang membaca jamnya sendiri hanya bisa diuji pada hari tertentu,
+       dan tesnya akan memerah suatu hari tanpa ada yang berubah. */
+    expect(fiscalYearHasEnded.length).toBe(3);
   });
 });

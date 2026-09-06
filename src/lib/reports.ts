@@ -22,6 +22,7 @@ import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 import { balanceSheetEquityTotal } from "@/lib/statement-layout";
 import { fiscalYearBounds, fiscalYearOf, NOT_CLOSING } from "@/lib/year-close";
+import { buildEquityStatement, type EquityStatement } from "@/lib/equity-statement";
 
 type Nets = Map<number, { debit: number; credit: number }>;
 
@@ -665,4 +666,65 @@ export async function getCashFlow(from?: Date, to?: Date, client = prisma) {
     reconciled: eq(netChange, closingCash - openingCash),
     suspectUnrated,
   } satisfies CashFlowReport;
+}
+
+// ─── Laporan Perubahan Ekuitas (issue #555 · PSAK) ──────────────────────────
+
+/**
+ * Baca Laporan Perubahan Ekuitas untuk satu rentang.
+ *
+ * ══ ANGKANYA DIAMBIL DARI PEMBACA YANG SAMA DENGAN NERACA ══════════════════
+ * Saldo awal dan akhir diturunkan dari `getBalanceSheet()` pada dua tanggal,
+ * bukan dari kueri tersendiri. Itu yang membuat rekonsiliasinya sifat
+ * KONSTRUKSI, bukan kebetulan: kalau laporan ini menghitung ekuitas dengan
+ * caranya sendiri, ia akan cocok hari ini dan berbeda pada aturan berikutnya
+ * yang berubah di salah satunya.
+ *
+ * Yang butuh kueri sendiri hanyalah MUTASI per akun ekuitas — Neraca hanya
+ * menyebut saldo, dan "berapa yang disetor" tidak bisa diturunkan dari selisih
+ * dua saldo bila pada periode yang sama ada juga penarikan.
+ */
+export async function getEquityStatement(
+  from: Date,
+  to: Date,
+  client = prisma
+): Promise<EquityStatement> {
+  const sebelum = new Date(from.getTime() - 1);
+
+  const [awal, akhir, accounts, mutasi] = await Promise.all([
+    getBalanceSheet(sebelum, client),
+    getBalanceSheet(to, client),
+    client.account.findMany({
+      where: { type: "equity" },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: "asc" },
+    }),
+    client.journalLine.groupBy({
+      by: ["accountId"],
+      _sum: { baseDebit: true, baseCredit: true },
+      where: { journal: { date: { gte: from, lte: to } }, account: { type: "equity" } },
+    }),
+  ]);
+
+  const mutasiById = new Map(mutasi.map((g) => [g.accountId, g]));
+  const openingById = new Map(awal.equity.map((l) => [l.code, l.amount]));
+
+  return buildEquityStatement({
+    components: accounts.map((a) => {
+      const g = mutasiById.get(a.id);
+      return {
+        code: a.code,
+        name: a.name,
+        /* `getBalanceSheet` sudah memulangkan ekuitas dalam TANDA AKUNTANSI
+           (kredit positif); `buildEquityStatement` menerima positif-debit,
+           jadi tandanya dibalik di sini — satu tempat, bukan di dalam modul
+           murninya yang tidak tahu dari mana angkanya datang. */
+        openingRaw: -(openingById.get(a.code) ?? 0),
+        periodDebit: Number(g?._sum.baseDebit ?? 0),
+        periodCredit: Number(g?._sum.baseCredit ?? 0),
+      };
+    }),
+    openingUnclosedIncome: awal.netIncome,
+    closingUnclosedIncome: akhir.netIncome,
+  });
 }

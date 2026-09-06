@@ -987,6 +987,8 @@ export interface IncomeStatementShape extends IncomeStatementBandShape {
   netIncome: number;
 }
 
+import { compareLines, percentChange } from "@/lib/statement-compare";
+
 export type IncomeStatementRowKind =
   | "section"
   | "line"
@@ -1019,6 +1021,17 @@ export interface IncomeStatementLayoutRow {
   note?: string;
   /** `null` = kolom nominal TIDAK BERLAKU (judul band, kalimat band kosong). */
   amount: number | null;
+  /**
+   * Nilai periode PEMBANDING (issue #557). `undefined` = laporan ini tidak
+   * komparatif; `null` = kolomnya tidak berlaku untuk baris ini.
+   *
+   * OPSIONAL dengan sengaja: laporan satu-kolom tidak berubah bentuknya sama
+   * sekali, jadi layar, PDF, dan lembar sebar yang belum tahu apa-apa tentang
+   * pembanding tetap menggambar apa yang selalu mereka gambar.
+   */
+  prior?: number | null;
+  /** Perubahan persen; `null` bila pembandingnya nol — lihat `percentChange`. */
+  percent?: number | null;
 }
 
 /**
@@ -1122,28 +1135,72 @@ export function splitIncomeStatementRows(rows: readonly IncomeStatementLayoutRow
  */
 export function incomeStatementLayout(
   statement: IncomeStatementShape,
-  labels: IncomeStatementLabels = INCOME_STATEMENT_PRINT_LABELS
+  labels: IncomeStatementLabels = INCOME_STATEMENT_PRINT_LABELS,
+  /**
+   * Laporan periode PEMBANDING (issue #557). Dihilangkan = laporan satu kolom,
+   * dan bentuknya tidak berubah satu baris pun.
+   *
+   * Ia masuk DI SINI, bukan di tiap permukaan, dengan alasan yang sama yang
+   * membuat `incomeStatementLayout` lahir di #274: layar, PDF, dan lembar sebar
+   * harus sepakat. Menambahkan kolom pembanding hanya di layar akan
+   * menghasilkan cetakan yang diam-diam kehilangan separuh laporannya — cacat
+   * yang sudah pernah terjadi di repo ini (#241).
+   */
+  prior?: IncomeStatementShape
 ): IncomeStatementLayoutRow[] {
   const bands = incomeStatementBands(statement);
   const rows: IncomeStatementLayoutRow[] = [];
 
+  /**
+   * Baris yang kolom nominalnya TIDAK BERLAKU (judul band, kalimat band
+   * kosong). Pembandingnya `null`, bukan `0`: nol adalah angka, dan sebuah
+   * judul band yang membawa "0" di kolom tahun lalu mengundang pembacanya
+   * menjumlahkannya.
+   */
+  const tanpaNilai = () => (prior === undefined ? {} : { prior: null, percent: null });
+
+  /** Baris bernilai: bawa pembandingnya sekaligus persennya. */
+  const nilai = (amount: number, priorAmount: number | undefined) =>
+    prior === undefined
+      ? { amount }
+      : { amount, prior: priorAmount ?? 0, percent: percentChange(amount, priorAmount ?? 0) };
+
   const section = (
     id: IncomeStatementSectionId,
     title: string,
-    band: IncomeStatementSectionShape
+    band: IncomeStatementSectionShape,
+    priorBand?: IncomeStatementSectionShape
   ) => {
-    rows.push({ kind: "section", section: id, label: title, amount: null });
-    if (band.lines.length === 0) {
-      rows.push({ kind: "empty", section: id, label: labels.empty, amount: null });
+    rows.push({ kind: "section", section: id, label: title, amount: null, ...tanpaNilai() });
+
+    /*
+     * Ketika komparatif, barisnya adalah GABUNGAN kedua periode — akun yang
+     * hanya bersaldo di periode pembanding tetap muncul dengan nol di sisi
+     * berjalan. Tanpa itu kolom pembanding berhenti berjumlah subtotalnya
+     * sendiri, dan laporan yang tidak menjumlahkan dirinya jauh lebih sulit
+     * terlihat daripada total yang salah.
+     */
+    const baris =
+      prior === undefined
+        ? band.lines.map((l) => ({ code: l.code, name: l.name, current: l.amount, prior: 0 }))
+        : compareLines(band.lines, priorBand?.lines ?? []).map((l) => ({
+            code: l.code,
+            name: l.name,
+            current: l.current,
+            prior: l.prior,
+          }));
+
+    if (baris.length === 0) {
+      rows.push({ kind: "empty", section: id, label: labels.empty, amount: null, ...tanpaNilai() });
     } else {
-      for (const l of band.lines) {
+      for (const l of baris) {
         rows.push({
           kind: "line",
           section: id,
           label: `${l.code}  ${l.name}`.trim(),
           code: l.code,
           name: l.name,
-          amount: l.amount,
+          ...nilai(l.current, prior === undefined ? undefined : l.prior),
         });
       }
     }
@@ -1151,12 +1208,12 @@ export function incomeStatementLayout(
       kind: "subtotal",
       section: id,
       label: labels.sectionTotal(title),
-      amount: band.total,
+      ...nilai(band.total, priorBand?.total),
     });
   };
 
-  section("sales", labels.sales, statement.sales);
-  if (bands.showCogs) section("cogs", labels.cogs, statement.cogs);
+  section("sales", labels.sales, statement.sales, prior?.sales);
+  if (bands.showCogs) section("cogs", labels.cogs, statement.cogs, prior?.cogs);
   if (bands.showGrossProfit) {
     const pct = grossMarginPct(statement.grossProfit, statement.sales.total);
     rows.push({
@@ -1164,20 +1221,22 @@ export function incomeStatementLayout(
       step: "grossProfit",
       label: labels.grossProfit,
       note: pct === null ? undefined : labels.grossMargin(roundedMarginPct(pct)),
-      amount: statement.grossProfit,
+      ...nilai(statement.grossProfit, prior?.grossProfit),
     });
   }
-  section("operatingExpense", labels.operatingExpense, statement.operatingExpense);
+  section("operatingExpense", labels.operatingExpense, statement.operatingExpense, prior?.operatingExpense);
   if (bands.showOperatingProfit) {
     rows.push({
       kind: "step",
       step: "operatingProfit",
       label: labels.operatingProfit,
-      amount: statement.operatingProfit,
+      ...nilai(statement.operatingProfit, prior?.operatingProfit),
     });
   }
-  if (bands.showOtherIncome) section("otherIncome", labels.otherIncome, statement.otherIncome);
-  if (bands.showOtherExpense) section("otherExpense", labels.otherExpense, statement.otherExpense);
+  if (bands.showOtherIncome)
+    section("otherIncome", labels.otherIncome, statement.otherIncome, prior?.otherIncome);
+  if (bands.showOtherExpense)
+    section("otherExpense", labels.otherExpense, statement.otherExpense, prior?.otherExpense);
 
   rows.push({
     kind: "total",
@@ -1186,7 +1245,7 @@ export function incomeStatementLayout(
     // `>= 0` supaya periode impas terbaca "Laba", sama seperti di layar sejak
     // #123: nol bukan kerugian.
     note: labels.result(statement.netIncome >= 0),
-    amount: statement.netIncome,
+    ...nilai(statement.netIncome, prior?.netIncome),
   });
 
   return rows;

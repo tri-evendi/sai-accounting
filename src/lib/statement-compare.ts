@@ -27,6 +27,29 @@
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
+/**
+ * Perubahan dalam persen, atau `null` bila tidak bermakna — **satu-satunya
+ * tempat aturan ini ditulis.**
+ *
+ * Dipakai baris akun, subtotal, anak tangga, dan baris penutup di layar, PDF,
+ * dan lembar sebar. Sebuah aturan persen yang punya lima salinan punya lima
+ * tempat untuk menyimpang, dan yang menyimpang selalu yang paling jarang
+ * dilihat orang.
+ *
+ * Dua keputusan yang ada di dalamnya:
+ *   • pembanding NOL → `null`, bukan `Infinity` dan bukan "100%". Dari nol,
+ *     kenaikan berapa pun tak punya persentase.
+ *   • dasarnya NILAI MUTLAK pembanding: rugi 100 → rugi 50 adalah PERBAIKAN
+ *     50%; membaginya dengan −100 apa adanya memberi −50%, yang terbaca
+ *     sebagai memburuk.
+ */
+export function percentChange(current: number, prior: number): number | null {
+  const c = round2(current);
+  const p = round2(prior);
+  if (p === 0) return null;
+  return Math.round(((c - p) / Math.abs(p)) * 1000) / 10;
+}
+
 /** Baris laporan apa adanya — bentuk yang sudah dipakai Neraca & Laba Rugi. */
 export interface ComparableLine {
   code: string;
@@ -86,7 +109,7 @@ export function compareLines(
       /* Dibulatkan ke satu desimal DI SINI, bukan saat diformat: dua permukaan
          yang membulatkan di tempat berbeda menghasilkan "19,4%" di satu baris
          dan "19,45%" di baris totalnya. */
-      percent: p === 0 ? null : Math.round(((c - p) / Math.abs(p)) * 1000) / 10,
+      percent: percentChange(c, p),
     });
   };
 

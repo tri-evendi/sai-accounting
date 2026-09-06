@@ -56,6 +56,37 @@ export function fiscalYearBounds(
   return { start, end };
 }
 
+/**
+ * Sudahkah tahun buku `year` BERAKHIR pada `now`? (issue #565)
+ *
+ * ══ KENAPA PERTANYAAN INI PERLU DITANYAKAN SAMA SEKALI ═════════════════════
+ * Aritmetika tutup buku benar untuk tahun mana pun — dan justru itu masalahnya.
+ * Menutup tahun yang belum berakhir menerbitkan jurnal bertanggal MASA DEPAN
+ * (akhir tahun buku), memindahkan laba sampai hari ini ke Laba Ditahan, lalu
+ * meninggalkan setiap transaksi antara hari ini dan tanggal itu **di luar**
+ * jurnal penutupnya — padahal semuanya jatuh DI DALAM tahun yang sudah
+ * dinyatakan tertutup.
+ *
+ * Hasilnya: akun laba rugi tidak nol pada akhir tahun, `year_closes` menyatakan
+ * tahun itu sudah ditutup, dan Laba Ditahan memuat angka yang bukan laba
+ * setahun. Neracanya tetap seimbang di setiap langkah, dan tidak ada satu galat
+ * pun.
+ *
+ * `assertPeriodOpen` tidak menahannya: bulan Desember memang terbuka.
+ *
+ * ⚠ MURNI, dan `now` DISUNTIKKAN — bukan `new Date()` di dalam. Sebuah penjaga
+ * yang membaca jam sendiri hanya bisa diuji pada hari tertentu, dan penjaga
+ * yang tesnya bergantung pada tanggal berjalan adalah penjaga yang suatu hari
+ * memerah tanpa ada yang berubah.
+ */
+export function fiscalYearHasEnded(
+  fiscalYearStart: Date,
+  year: number,
+  now: Date
+): boolean {
+  return now.getTime() > fiscalYearBounds(fiscalYearStart, year).end.getTime();
+}
+
 /** Saldo satu akun laba rugi pada akhir tahun buku, POSITIF-DEBIT. */
 export interface ClosingBalance {
   accountId: number;

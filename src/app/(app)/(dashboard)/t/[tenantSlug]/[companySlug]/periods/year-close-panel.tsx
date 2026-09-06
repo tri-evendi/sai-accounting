@@ -28,7 +28,7 @@ import { Spinner } from "@/components/ui/loading";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@/lib/i18n/client";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { YearClosePlan } from "@/lib/year-close";
 
 interface Muatan {
@@ -36,6 +36,10 @@ interface Muatan {
   plan: YearClosePlan;
   closed: boolean;
   reversedAt: string | null;
+  /** Tahun bukunya sudah berakhir? (issue #565) */
+  ended: boolean;
+  /** Kapan ia berakhir — dipakai mengatakan KAPAN boleh ditutup. */
+  endsAt: string | null;
 }
 
 export function YearClosePanel({ defaultYear }: { defaultYear: number }) {
@@ -144,6 +148,21 @@ export function YearClosePanel({ defaultYear }: { defaultYear: number }) {
             <Alert type="warning" showIcon message={t("periods.yearReversedNote")} />
           )}
 
+          {/* Tahun buku BELUM berakhir (issue #565).
+              Tombolnya tidak ditawarkan sama sekali, dan alasannya disebut
+              beserta TANGGAL-nya: "belum boleh" tanpa "kapan boleh" hanya
+              memindahkan pertanyaannya. Pratinjaunya tetap terbaca — ia hanya
+              membaca, dan "berapa laba tahun ini sejauh ini" pertanyaan yang
+              sah — jadi angkanya tetap tampil, dengan keterangan bahwa ia laba
+              SEMENTARA. */}
+          {data && !data.closed && !data.ended && data.endsAt && (
+            <Alert
+              type="info"
+              showIcon
+              message={t("periods.yearNotEndedNote", { date: formatDate(data.endsAt) })}
+            />
+          )}
+
           {data && !data.closed && data.plan.lines.length > 0 && (
             <>
               <p style={{ margin: 0 }}>
@@ -165,6 +184,7 @@ export function YearClosePanel({ defaultYear }: { defaultYear: number }) {
                 {t("periods.yearAccounts", { count: data.plan.closedAccounts })}
               </p>
 
+              {data.ended && (
               <div>
                 {/* Dikonfirmasi, sebab ia memindahkan seluruh laba setahun ke
                     ekuitas. Pembatalannya ada, tetapi tindakan yang bisa
@@ -181,6 +201,7 @@ export function YearClosePanel({ defaultYear }: { defaultYear: number }) {
                   }
                 />
               </div>
+              )}
             </>
           )}
 

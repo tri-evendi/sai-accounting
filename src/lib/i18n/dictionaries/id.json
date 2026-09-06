@@ -1950,7 +1950,9 @@
     "yearLoadFailed": "Pratinjau tutup buku tahunan gagal dimuat.",
     "yearCloseFailed": "Tutup buku tahunan gagal.",
     "yearClosedOk": "Tahun buku {year} sudah ditutup.",
-    "yearReopenedOk": "Penutupan tahun buku {year} sudah dibatalkan."
+    "yearReopenedOk": "Penutupan tahun buku {year} sudah dibatalkan.",
+    "yearNotEnded": "Tahun buku {year} baru berakhir {date}, jadi belum bisa ditutup. Pratinjau di atas tetap boleh dibaca sebagai laba sementara.",
+    "yearNotEndedNote": "Tahun buku ini berakhir {date}. Tutup buku baru bisa dijalankan sesudah tanggal itu — angka di atas laba sementara, bukan laba setahun."
   },
   "receivables": {
     "title": "Pelanggan Belum Bayar",

@@ -14,6 +14,7 @@ import { resolveAccountId, MAPPING_KEYS } from "@/lib/posting/mapping";
 import {
   CLOSING_JOURNAL_TYPE,
   fiscalYearBounds,
+  fiscalYearHasEnded,
   NOT_CLOSING,
   planYearClose,
   type ClosingBalance,
@@ -27,6 +28,19 @@ export class AlreadyClosedError extends Error {
   constructor(readonly year: number) {
     super(`Tahun buku ${year} sudah ditutup.`);
     this.name = "AlreadyClosedError";
+  }
+}
+
+/**
+ * Tahun bukunya BELUM berakhir (issue #565).
+ *
+ * Membawa tanggal berakhirnya, supaya pemanggil bisa mengatakan KAPAN ia boleh
+ * ditutup — bukan sekadar bahwa sekarang belum boleh.
+ */
+export class FiscalYearNotEndedError extends Error {
+  constructor(readonly year: number, readonly endsAt: Date) {
+    super(`Tahun buku ${year} baru berakhir ${endsAt.toISOString()}.`);
+    this.name = "FiscalYearNotEndedError";
   }
 }
 
@@ -141,7 +155,21 @@ export async function closeYear(
     const existing = await tx.yearClose.findUnique({ where: { year } });
     if (existing && existing.reversedAt === null) throw new AlreadyClosedError(year);
 
-    const { end } = fiscalYearBounds(await fiscalYearStart(tx), year);
+    const awal = await fiscalYearStart(tx);
+    const { end } = fiscalYearBounds(awal, year);
+
+    /*
+     * ── Tahun buku harus SUDAH BERAKHIR (issue #565) ──────────────────────
+     * Diperiksa SEBELUM satu baris pun ditulis, dan sebelum rencananya
+     * disusun: menutup tahun berjalan menerbitkan jurnal bertanggal masa depan
+     * dan meninggalkan sisa tahunnya di luar penutupan — dengan neraca yang
+     * tetap seimbang dan tanpa satu galat pun. `assertPeriodOpen` tidak
+     * menahannya, sebab bulan Desember memang terbuka.
+     */
+    if (!fiscalYearHasEnded(awal, year, new Date())) {
+      throw new FiscalYearNotEndedError(year, end);
+    }
+
     const plan = await previewYearClose(year, tx);
 
     /*

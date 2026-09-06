@@ -1950,7 +1950,9 @@
     "yearLoadFailed": "Could not load the annual-close preview.",
     "yearCloseFailed": "The annual close failed.",
     "yearClosedOk": "Fiscal year {year} has been closed.",
-    "yearReopenedOk": "The close of fiscal year {year} has been undone."
+    "yearReopenedOk": "The close of fiscal year {year} has been undone.",
+    "yearNotEnded": "Fiscal year {year} does not end until {date}, so it cannot be closed yet. The preview above is still readable as profit so far.",
+    "yearNotEndedNote": "This fiscal year ends on {date}. The annual close can only run after that date — the figures above are profit so far, not the full year."
   },
   "receivables": {
     "title": "Unpaid by Customers",

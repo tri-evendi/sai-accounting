@@ -21,6 +21,8 @@ import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 import { balanceSheetEquityTotal } from "@/lib/statement-layout";
+import { fiscalYearBounds, fiscalYearOf, NOT_CLOSING } from "@/lib/year-close";
+import { buildEquityStatement, type EquityStatement } from "@/lib/equity-statement";
 
 type Nets = Map<number, { debit: number; credit: number }>;
 
@@ -43,10 +45,24 @@ interface DateRange {
 async function accountNets(
   range: DateRange | undefined,
   client = prisma,
-  costCenter?: CostCenterFilter
+  costCenter?: CostCenterFilter,
+  /**
+   * Buang jurnal penutup tahunan (issue #555).
+   *
+   * Bawaannya `false`, dan itu disengaja: NERACA dan NERACA SALDO harus
+   * MEMASUKKANNYA — di situlah Laba Ditahan memperoleh saldonya dan akun laba
+   * rugi menjadi nol. Hanya pembaca yang menyusun LABA RUGI yang
+   * mengecualikannya, sebab hanya ia yang akan menjumlahkan penutupnya sendiri
+   * lalu melaporkan nol.
+   */
+  excludeClosing = false
 ) {
   const cc = costCenterLineWhere(costCenter);
-  const where = { ...(range ? { journal: { date: range } } : {}), ...cc };
+  const journal = {
+    ...(range ? { date: range } : {}),
+    ...(excludeClosing ? NOT_CLOSING : {}),
+  };
+  const where = { ...(Object.keys(journal).length > 0 ? { journal } : {}), ...cc };
   const grouped = await client.journalLine.groupBy({
     by: ["accountId"],
     _sum: { baseDebit: true, baseCredit: true },
@@ -195,7 +211,11 @@ export async function getIncomeStatement(
   const range: DateRange = {};
   if (from) range.gte = from;
   if (to) range.lte = to;
-  const nets = await accountNets(from || to ? range : undefined, client, costCenter);
+  /* Jurnal penutup DIKECUALIKAN (#555). Tanpa ini, tahun yang baru ditutup
+     melaporkan laba NOL — laporannya terbit, seimbang, rapi, dan seluruhnya
+     salah. Anggaran vs Realisasi dan Sifat Beban ikut terlindungi: keduanya
+     memanggil fungsi ini, tidak menirunya. */
+  const nets = await accountNets(from || to ? range : undefined, client, costCenter, true);
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });
 
   const empty = (): IncomeStatementSection => ({ lines: [], total: 0 });
@@ -287,7 +307,55 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
     }
   }
 
-  const netIncome = revenue - expense; // current-period earnings, folded into equity side
+  const netIncome = revenue - expense; // laba yang BELUM ditutup, dilipat ke sisi ekuitas
+
+  /*
+   * ── PEMISAHAN EKUITAS (issue #555) ────────────────────────────────────────
+   *
+   * `netIncome` di atas adalah seluruh laba yang BELUM ditutup ke Laba Ditahan.
+   * Sebelum #555 tidak ada tutup buku sama sekali, jadi ia selalu berarti
+   * "akumulasi sejak buku dibuka" — dan labelnya, `Akumulasi Laba/Rugi`,
+   * memang mengatakannya dengan jujur.
+   *
+   * Sesudah sebuah tahun ditutup, angka yang sama berubah artinya: yang tersisa
+   * hanyalah tahun-tahun yang belum ditutup. Yang dipecah di bawah ini adalah
+   * pertanyaan berikutnya, yang tidak bisa dijawab satu baris:
+   *
+   *   • LABA TAHUN BERJALAN — sejak awal tahun buku yang memuat `asOf`;
+   *   • laba tahun LALU yang belum ditutup — sisanya.
+   *
+   * Baris kedua biasanya nol, dan ketika TIDAK nol ia justru kabar penting:
+   * ada tahun buku yang terlewat ditutup. Melipatnya ke dalam "tahun berjalan"
+   * akan menyembunyikan persis keadaan yang paling perlu diketahui.
+   *
+   * ⚠ `netIncome` SENGAJA tidak berubah nilainya, dan `balanceSheetEquityTotal`
+   * (#258) tetap satu-satunya rumus ekuitas. Kedua medan baru menjumlah tepat
+   * menjadi `netIncome`, jadi tidak ada penjumlahan kedua yang bisa menyimpang.
+   */
+  let currentYearIncome = netIncome;
+  let priorUnclosedIncome = 0;
+
+  const setting = await client.companySetting.findFirst({ select: { fiscalYearStart: true } });
+  if (setting && asOf) {
+    const { start } = fiscalYearBounds(
+      setting.fiscalYearStart,
+      fiscalYearOf(setting.fiscalYearStart, asOf)
+    );
+    const currentNets = await accountNets({ gte: start, lte: asOf }, client);
+    let curRevenue = 0;
+    let curExpense = 0;
+    for (const a of accounts) {
+      const cat = accountCategoryFor(a.type);
+      if (cat !== "revenue" && cat !== "expense") continue;
+      const n = currentNets.get(a.id) ?? { debit: 0, credit: 0 };
+      if (cat === "revenue") curRevenue += n.credit - n.debit;
+      else curExpense += n.debit - n.credit;
+    }
+    currentYearIncome = curRevenue - curExpense;
+    /* Diturunkan, bukan dihitung sendiri: dua penjumlahan atas hal yang sama
+       adalah dua angka yang suatu hari tidak lagi berjumlah `netIncome`. */
+    priorUnclosedIncome = netIncome - currentYearIncome;
+  }
   // Sisi kanan neraca memakai penjumlahan ekuitas yang SAMA dengan yang dibaca
   // orang di baris "Total Ekuitas" (issue #258) — kalau keduanya dua rumus
   // terpisah, ada hari di mana laporan menyebut dirinya seimbang sementara dua
@@ -302,6 +370,10 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
     totalLiabilities,
     totalEquity,
     netIncome,
+    /** Bagian `netIncome` yang lahir di tahun buku yang memuat `asOf`. */
+    currentYearIncome,
+    /** Sisanya: tahun buku yang sudah lewat tetapi belum ditutup. */
+    priorUnclosedIncome,
     totalLiabilitiesEquity,
     balanced: eq(totalAssets, totalLiabilitiesEquity),
   };
@@ -594,4 +666,65 @@ export async function getCashFlow(from?: Date, to?: Date, client = prisma) {
     reconciled: eq(netChange, closingCash - openingCash),
     suspectUnrated,
   } satisfies CashFlowReport;
+}
+
+// ─── Laporan Perubahan Ekuitas (issue #555 · PSAK) ──────────────────────────
+
+/**
+ * Baca Laporan Perubahan Ekuitas untuk satu rentang.
+ *
+ * ══ ANGKANYA DIAMBIL DARI PEMBACA YANG SAMA DENGAN NERACA ══════════════════
+ * Saldo awal dan akhir diturunkan dari `getBalanceSheet()` pada dua tanggal,
+ * bukan dari kueri tersendiri. Itu yang membuat rekonsiliasinya sifat
+ * KONSTRUKSI, bukan kebetulan: kalau laporan ini menghitung ekuitas dengan
+ * caranya sendiri, ia akan cocok hari ini dan berbeda pada aturan berikutnya
+ * yang berubah di salah satunya.
+ *
+ * Yang butuh kueri sendiri hanyalah MUTASI per akun ekuitas — Neraca hanya
+ * menyebut saldo, dan "berapa yang disetor" tidak bisa diturunkan dari selisih
+ * dua saldo bila pada periode yang sama ada juga penarikan.
+ */
+export async function getEquityStatement(
+  from: Date,
+  to: Date,
+  client = prisma
+): Promise<EquityStatement> {
+  const sebelum = new Date(from.getTime() - 1);
+
+  const [awal, akhir, accounts, mutasi] = await Promise.all([
+    getBalanceSheet(sebelum, client),
+    getBalanceSheet(to, client),
+    client.account.findMany({
+      where: { type: "equity" },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: "asc" },
+    }),
+    client.journalLine.groupBy({
+      by: ["accountId"],
+      _sum: { baseDebit: true, baseCredit: true },
+      where: { journal: { date: { gte: from, lte: to } }, account: { type: "equity" } },
+    }),
+  ]);
+
+  const mutasiById = new Map(mutasi.map((g) => [g.accountId, g]));
+  const openingById = new Map(awal.equity.map((l) => [l.code, l.amount]));
+
+  return buildEquityStatement({
+    components: accounts.map((a) => {
+      const g = mutasiById.get(a.id);
+      return {
+        code: a.code,
+        name: a.name,
+        /* `getBalanceSheet` sudah memulangkan ekuitas dalam TANDA AKUNTANSI
+           (kredit positif); `buildEquityStatement` menerima positif-debit,
+           jadi tandanya dibalik di sini — satu tempat, bukan di dalam modul
+           murninya yang tidak tahu dari mana angkanya datang. */
+        openingRaw: -(openingById.get(a.code) ?? 0),
+        periodDebit: Number(g?._sum.baseDebit ?? 0),
+        periodCredit: Number(g?._sum.baseCredit ?? 0),
+      };
+    }),
+    openingUnclosedIncome: awal.netIncome,
+    closingUnclosedIncome: akhir.netIncome,
+  });
 }

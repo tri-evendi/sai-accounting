@@ -41,6 +41,7 @@
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { incomeStatementSectionFor } from "@/lib/reports";
+import { NOT_CLOSING } from "@/lib/year-close";
 
 /** Satu baris hasil `groupBy([accountId, costCenterId])`. */
 export interface ProjectProfitInput {
@@ -210,7 +211,20 @@ export async function getProjectProfit(
     client.journalLine.groupBy({
       by: ["accountId", "costCenterId"],
       _sum: { baseDebit: true, baseCredit: true },
-      where: from || to ? { journal: { date: range } } : undefined,
+      /*
+       * Jurnal penutup tahunan DIKECUALIKAN (#555), alasan yang sama dengan
+       * `getIncomeStatement` — dan penyaringnya diimpor dari sana, bukan
+       * ditulis ulang. Laporan ini menjalankan kuerinya SENDIRI (ia butuh
+       * dimensi pusat biaya, yang `accountNets` tidak kelompokkan), jadi ia
+       * satu-satunya permukaan laba rugi yang tidak ikut terlindungi dengan
+       * sendirinya. Tanpa baris ini, laba tiap proyek untuk tahun yang sudah
+       * ditutup akan terbaca NOL sementara Laba Rugi perusahaan di sebelahnya
+       * menyebut angka yang benar — dua laporan yang saling membantah.
+       *
+       * ⚠ Penyaring tanggalnya OPSIONAL, penyaring penutupnya TIDAK: rentang
+       * yang tak disebut tetap harus membuang jurnal penutup.
+       */
+      where: { journal: { ...(from || to ? { date: range } : {}), ...NOT_CLOSING } },
     }),
     client.account.findMany({ select: { id: true, type: true } }),
     client.costCenter.findMany({

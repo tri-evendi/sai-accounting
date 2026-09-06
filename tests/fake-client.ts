@@ -320,6 +320,16 @@ export interface FakeSeedJournal {
   id?: number;
   number?: string;
   date: Date;
+  /**
+   * `journals.type` — bawaannya `"general"` (issue #555).
+   *
+   * Ada di sini karena Laba Rugi kini MENGECUALIKAN jurnal penutup tahunan,
+   * dan penyaring yang tidak dimengerti fake ini akan diabaikan diam-diam:
+   * tesnya lulus, penyaringnya tidak pernah teruji. Kelas cacat yang sama
+   * sudah pernah terjadi di sini — `account.findMany` yang mengabaikan
+   * `where` dan memulangkan seluruh akun (dicatat di #472).
+   */
+  type?: string;
   note?: string | null;
   lines: FakeSeedLine[];
 }
@@ -336,7 +346,7 @@ interface ResolvedLine {
   baseCredit: number;
   memo: string | null;
   costCenterId: number | null;
-  journal: { id: number; number: string; date: Date; note: string | null };
+  journal: { id: number; number: string; date: Date; type: string; note: string | null };
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -360,12 +370,18 @@ type LineWhere = {
    * rekonsiliasi lulus padahal salah.
    */
   costCenterId?: number | null;
-  journal?: { date?: { gte?: Date; lte?: Date; lt?: Date } };
+  journal?: {
+    date?: { gte?: Date; lte?: Date; lt?: Date };
+    /** Issue #555 — dipakai Laba Rugi untuk membuang jurnal penutup tahunan. */
+    type?: { not?: string };
+  };
 };
 
 export function createFakeReportClient(seed: {
   accounts: FakeAccount[];
   journals: FakeSeedJournal[];
+  /** Awal tahun buku (issue #555). Dihilangkan = buku belum menyetelnya. */
+  fiscalYearStart?: Date;
 }) {
   const accounts = seed.accounts.map((a) => ({
     normalBalance: "debit",
@@ -381,6 +397,7 @@ export function createFakeReportClient(seed: {
       id: journalId,
       number: j.number ?? `JV.TEST.${String(journalId).padStart(5, "0")}`,
       date: j.date,
+      type: j.type ?? "general",
       note: j.note ?? null,
     };
     for (const l of j.lines) {
@@ -412,10 +429,29 @@ export function createFakeReportClient(seed: {
         // `in` (bukan `!== undefined`): `costCenterId: null` adalah penyaring
         // yang SAH ("belum ditetapkan"), bukan ketiadaan penyaring.
         (!where || !("costCenterId" in where) || l.costCenterId === where.costCenterId) &&
-        dateMatches(l.journal.date, where?.journal?.date)
+        dateMatches(l.journal.date, where?.journal?.date) &&
+        /* Issue #555. Penyaring yang TIDAK dimengerti fake akan diabaikan
+           diam-diam, dan tes yang mengandalkannya lulus tanpa menguji apa pun —
+           jadi ia dimengerti di sini, bukan diasumsikan di sana. */
+        (where?.journal?.type?.not === undefined ||
+          l.journal.type !== where.journal.type.not)
     );
 
   const client = {
+    /**
+     * Setelan perusahaan (issue #555). Hanya `fiscal_year_start` yang dibaca
+     * pembaca laporan, dan hanya untuk memisahkan Laba Tahun Berjalan dari laba
+     * tahun-tahun lalu yang belum ditutup.
+     *
+     * `null` bila seed tidak menyebutnya — dan itu keadaan yang SAH, bukan
+     * lubang: buku yang awal tahun bukunya tidak diketahui tidak boleh ditebak,
+     * jadi Neraca-nya tidak memisahkan apa pun dan tetap menampilkan satu baris
+     * akumulasi seperti sebelum #555.
+     */
+    companySetting: {
+      findFirst: async () =>
+        seed.fiscalYearStart ? { fiscalYearStart: seed.fiscalYearStart } : null,
+    },
     account: {
       /*
        * `where.type` DIHORMATI (issue #472). Sebelumnya penyaringnya diabaikan

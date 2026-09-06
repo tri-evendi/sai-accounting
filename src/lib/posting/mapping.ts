@@ -131,6 +131,21 @@ export const MAPPING_KEYS = {
    * belum dipetakan, seperti mapping lain — tidak menebak.
    */
   COGS_VARIANCE: "cogs_variance",
+  /**
+   * LABA DITAHAN (issue #555) — ke mana laba tahun buku dipindahkan saat tutup
+   * buku tahunan.
+   *
+   * Slot tersendiri, bukan "cari akun bertipe `equity`": sebuah buku bisa punya
+   * beberapa akun ekuitas (Modal, Modal Disetor, Laba Ditahan, Prive), dan
+   * menebak yang mana di antaranya berarti memindahkan seluruh laba tahun itu
+   * ke akun yang salah — kesalahan yang tetap menghasilkan neraca seimbang dan
+   * baru ketahuan saat seseorang membaca komposisi ekuitasnya.
+   *
+   * IDR. Default 3102. Fail-loud bila belum dipetakan: buku lama yang belum
+   * punya barisnya akan MENOLAK menutup tahun, dan itu jawaban yang benar —
+   * menebak akun ekuitas lebih mahal daripada meminta orang memilihnya.
+   */
+  RETAINED_EARNINGS: "retained_earnings",
 } as const;
 
 export type MappingKey = (typeof MAPPING_KEYS)[keyof typeof MAPPING_KEYS];
@@ -165,6 +180,7 @@ export const MAPPING_KEY_LABELS: Record<MappingKey, string> = {
   inventory_adjustment: "Selisih Persediaan",
   process_shrinkage: "Beban Susut Proses",
   cogs_variance: "Selisih Harga Pokok",
+  retained_earnings: "Laba Ditahan",
 };
 
 /**
@@ -186,6 +202,8 @@ export const DEFAULT_MAPPINGS: { key: MappingKey; code: string; currency?: strin
   { key: MAPPING_KEYS.INVENTORY_ADJUSTMENT, code: "610105" },
   { key: MAPPING_KEYS.PROCESS_SHRINKAGE, code: "610106" },
   { key: MAPPING_KEYS.COGS_VARIANCE, code: "5102" },
+  /* Issue #555 — templat bagan akun sudah menyemai 3102; ini yang menunjuknya. */
+  { key: MAPPING_KEYS.RETAINED_EARNINGS, code: "3102" },
   // Manufaktur (#495 butir 3). Agnostik mata uang: produksi dinilai dari harga
   // pokok persediaan, yang di buku ini selalu IDR.
   { key: MAPPING_KEYS.WIP, code: "1106" },

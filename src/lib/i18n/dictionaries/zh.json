@@ -2194,6 +2194,15 @@
     "sectionEquity": "所有者权益",
     "sectionTotal": "{section}合计",
     "currentNetIncome": "累计利润",
+    "currentYearIncome": "本年度损益",
+    "priorUnclosedIncome": "以前年度损益（尚未结转）",
+    "colEquityComponent": "权益项目",
+    "colOpening": "期初余额",
+    "colAdditions": "增加",
+    "colReductions": "减少",
+    "colClosing": "期末余额",
+    "unclosedIncomeRow": "尚未结转的损益",
+    "equityReconcileNote": "本表期末合计等于同一日期资产负债表中的权益。",
     "noAccountsInSection": "本节没有余额科目。",
     "totalAssets": "资产合计",
     "totalLiabilitiesEquity": "负债与所有者权益合计",
@@ -2353,6 +2362,10 @@
       "project_profit": {
         "title": "项目损益",
         "description": "并排显示各项目/成本中心的利润——哪个盈利，哪个亏损。所有项目加上未分配行等于公司损益表。"
+      },
+      "equity_changes": {
+        "title": "权益变动表",
+        "description": "权益如何变成现在的余额：期初余额、投入、提取、本期损益，以及年度结转所转出的部分。其期末合计等于同一日期资产负债表中的权益。"
       }
     },
     "waterfallTitle": "从销售到净利润",

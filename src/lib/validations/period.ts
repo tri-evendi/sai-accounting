@@ -28,6 +28,31 @@ export const periodReopenSchema = z.object({
     .max(1000),
 });
 
+
+/**
+ * Revaluasi valas (issue #554).
+ *
+ * `closingRate` positif dan berhingga — nol/negatif bukan kasus tepi yang boleh
+ * lewat lalu ditolak modul aritmetikanya: ia menilai setiap saldo valas menjadi
+ * NOL dan akan menerbitkan jurnal sebesar seluruh piutang perusahaan. Ditolak
+ * di pintu, dua kali (di sini dan di `planRevaluation`), sebab jalur masuknya
+ * juga dua: layar dan pemanggil kode.
+ */
+export const fxRevaluationSchema = z.object({
+  ...yearMonth,
+  currency: z
+    .string()
+    .trim()
+    .min(1, vmsg("validation.currencyInvalid"))
+    .max(5, vmsg("validation.currencyInvalid")),
+  closingRate: z.coerce
+    .number()
+    .positive(vmsg("validation.closingRateInvalid"))
+    .finite(vmsg("validation.closingRateInvalid")),
+});
+
+export type FxRevaluationInput = z.infer<typeof fxRevaluationSchema>;
+
 export type PeriodQueryInput = z.infer<typeof periodQuerySchema>;
 export type PeriodCloseInput = z.infer<typeof periodCloseSchema>;
 export type PeriodReopenInput = z.infer<typeof periodReopenSchema>;

@@ -94,6 +94,16 @@ export type AuditAction =
   | "master.import"
   | "sample_data.clear"
   | "period.close"
+  /**
+   * Revaluasi valas (issue #554) — dibedakan dari `period.close` walau keduanya
+   * langkah tutup buku dan keduanya berizin sama. Alasannya bukan kerapian:
+   * revaluasi menerbitkan JURNAL yang menggeser nilai setiap saldo valas
+   * sekaligus, sedangkan menutup periode tidak memindahkan satu rupiah pun.
+   * Satu nama untuk keduanya membuat jejaknya tidak bisa menjawab pertanyaan
+   * yang paling mungkin ditanyakan: "kurs berapa yang dipakai bulan itu, dan
+   * siapa yang memilihnya".
+   */
+  | "fx_revaluation.run"
   | "period.reopen"
   /** Recording uang muka received/paid before any invoice exists (issue #26). */
   | "advance.create"
@@ -291,6 +301,8 @@ export type AuditEntity =
   | "invitation"
   | "role"
   | "period"
+  /** Baris `fx_revaluations` (issue #554) — satu per (periode, mata uang). */
+  | "fx_revaluation"
   | "advance_payment"
   | "advance_application"
   | "bank_statement"

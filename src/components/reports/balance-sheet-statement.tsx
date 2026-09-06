@@ -84,6 +84,8 @@ function screenLabels(t: T): BalanceSheetLabels {
     equity: t("reports.sectionEquity"),
     sectionTotal: (section) => t("reports.sectionTotal", { section }),
     currentNetIncome: t("reports.currentNetIncome"),
+    currentYearIncome: t("reports.currentYearIncome"),
+    priorUnclosedIncome: t("reports.priorUnclosedIncome"),
     empty: t("reports.noAccountsInSection"),
     totalAssets: t("reports.totalAssets"),
     totalLiabilitiesEquity: t("reports.totalLiabilitiesEquity"),

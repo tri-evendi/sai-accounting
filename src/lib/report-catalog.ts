@@ -400,6 +400,39 @@ export const REPORTS: ReportDefinition[] = [
      */
   },
   {
+    /*
+     * LAPORAN PERUBAHAN EKUITAS (issue #555 · PSAK).
+     *
+     * Satu dari lima laporan yang dituntut PSAK, dan satu-satunya yang sampai
+     * #555 MUSTAHIL dibuat — ia justru laporan yang memisahkan hasil tahun
+     * berjalan dari tahun-tahun sebelumnya, dan tanpa tutup buku tahunan
+     * pemisahan itu tidak pernah ada.
+     *
+     * Berdampingan dengan Neraca, bukan menggantikannya: Neraca menyebut
+     * ekuitas pada SATU tanggal, yang ini menyebut bagaimana ia sampai ke sana.
+     * Saldo akhirnya WAJIB sama dengan ekuitas di Neraca tanggal yang sama —
+     * sifat yang dipaksakan dengan menurunkan kedua ujungnya dari
+     * `getBalanceSheet()` dan diuji sebagai rekonsiliasi.
+     *
+     * Tanpa `payloadKind` dan tanpa `columns`: belum ada cetakan/lembar
+     * sebarnya, preseden yang sama dengan `project-profit` dan
+     * `expense-by-nature`. Kartu yang jujur tentang apa yang disediakannya
+     * lebih baik daripada tombol unduh yang memulangkan berkas kosong.
+     *
+     * TANPA `filters: ["costCenter"]`: ekuitas milik perusahaan, bukan milik
+     * proyek. Menyaringnya per pusat biaya akan memulangkan potongan yang tidak
+     * berjumlah ekuitas mana pun — dan laporan yang tidak berekonsiliasi
+     * dengan Neraca kehilangan seluruh nilainya.
+     */
+    id: "equity-changes",
+    category: "keuangan",
+    permission: "report.read",
+    status: "available",
+    href: "/reports/equity-changes",
+    paramKind: "period",
+    icon: "Layers",
+  },
+  {
     id: "balance-sheet",
     category: "keuangan",
     permission: "report.read",

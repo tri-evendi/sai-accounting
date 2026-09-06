@@ -289,6 +289,9 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.opnameMinOneItem": "Isi minimal satu barang untuk dihitung",
   "validation.yearInvalid": "Tahun tidak valid",
   "validation.monthInvalid": "Bulan tidak valid",
+  // Revaluasi valas (issue #554).
+  "validation.currencyInvalid": "Mata uang tidak sah.",
+  "validation.closingRateInvalid": "Kurs penutup harus angka lebih besar dari nol.",
   "validation.reopenReasonRequired": "Alasan buka kembali wajib diisi (minimal 5 karakter)",
   "validation.periodStartRequired": "Tanggal awal periode wajib diisi",
   "validation.periodEndRequired": "Tanggal akhir periode wajib diisi",

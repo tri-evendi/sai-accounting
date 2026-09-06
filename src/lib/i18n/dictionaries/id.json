@@ -2176,6 +2176,13 @@
     "currentNetIncome": "Akumulasi Laba/Rugi",
     "currentYearIncome": "Laba/Rugi Tahun Berjalan",
     "priorUnclosedIncome": "Laba/Rugi Tahun Lalu (belum ditutup)",
+    "colEquityComponent": "Komponen Ekuitas",
+    "colOpening": "Saldo Awal",
+    "colAdditions": "Penambahan",
+    "colReductions": "Pengurangan",
+    "colClosing": "Saldo Akhir",
+    "unclosedIncomeRow": "Laba/Rugi Belum Ditutup",
+    "equityReconcileNote": "Saldo akhir laporan ini sama dengan Ekuitas di Neraca pada tanggal yang sama.",
     "noAccountsInSection": "Tidak ada akun bersaldo pada bagian ini.",
     "totalAssets": "Total Aset",
     "totalLiabilitiesEquity": "Total Liabilitas + Ekuitas",
@@ -2335,6 +2342,10 @@
       "project_profit": {
         "title": "Laba Rugi per Proyek",
         "description": "Laba tiap proyek/pusat biaya berdampingan — mana yang menghasilkan, mana yang merugi. Jumlah seluruh proyek ditambah baris tanpa proyek sama dengan Laba Rugi perusahaan."
+      },
+      "equity_changes": {
+        "title": "Perubahan Ekuitas",
+        "description": "Bagaimana ekuitas sampai ke saldonya sekarang: saldo awal, setoran, penarikan, laba yang masuk, dan yang dipindahkan tutup buku. Saldo akhirnya sama dengan Ekuitas di Neraca pada tanggal yang sama."
       }
     },
     "waterfallTitle": "Dari penjualan ke laba bersih",

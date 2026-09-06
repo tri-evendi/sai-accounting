@@ -1598,9 +1598,6 @@ model JournalLine {
 
 // ─── Accounting: Period lock (tutup buku) ────────────────
 
-/// One row per calendar month that has ever been closed or explicitly opened.
-/// A month with no row is treated as open — closing is opt-in, so the lock can
-/// be introduced on an existing database without freezing history.
 /// TUTUP BUKU TAHUNAN (issue #555) — satu baris per tahun buku yang ditutup.
 ///
 /// ── Kenapa sebuah TABEL, padahal jurnalnya sendiri sudah menjadi buktinya ──
@@ -1645,6 +1642,56 @@ model YearClose {
   @@map("year_closes")
 }
 
+/// REVALUASI POS MONETER VALAS (issue #554) — satu baris per (periode, mata uang).
+///
+/// PSAK 10 menuntut pos moneter valas dijabarkan ulang pada kurs penutup setiap
+/// tanggal pelaporan. Buku ini hampir seluruhnya CNY/USD, jadi selisihnya
+/// material — dan sampai #554 ia tidak pernah dihitung sebelum uangnya bergerak.
+///
+/// ── Yang TIDAK disimpan di sini, dan itu disengaja ─────────────────────────
+/// Rincian per akun. Ia sudah menjadi baris jurnal, dan menyimpannya kedua kali
+/// melahirkan dua sumber untuk satu angka yang suatu hari berbeda. Jurnalnya
+/// ditemukan lewat `source_type`/`source_id`, pola yang sama dengan setiap
+/// dokumen lain di buku ini.
+///
+/// ── DUA jurnal, bukan satu yang dibalik ────────────────────────────────────
+/// `fx_revaluation` bertanggal akhir periode, `fx_revaluation_reversal`
+/// bertanggal hari pertama periode berikutnya. Keduanya jurnal BIASA.
+/// `reverseJournal()` sengaja TIDAK dipakai: ia menandai jurnal asal
+/// `is_reversed` — semantik KOREKSI, yaitu "yang ini keliru". Pembalikan
+/// revaluasi bukan koreksi; ia peristiwa akuntansi yang memang direncanakan
+/// sejak jurnal pertamanya dibuat, dan menandainya keliru akan berbohong
+/// kepada siapa pun yang membaca buku besarnya nanti.
+model FxRevaluation {
+  id       Int    @id @default(autoincrement())
+  year     Int
+  month    Int // 1-12
+  currency String @db.VarChar(5)
+
+  /// Kurs penutup yang DIPAKAI, disimpan apa adanya. Ia bukti: laporan yang
+  /// terbit atas dasar angka ini harus bisa ditelusuri sampai ke angkanya.
+  closingRate Decimal @map("closing_rate") @db.Decimal(18, 6)
+
+  /// Nilai IDR seluruh pos moneter mata uang ini SEBELUM revaluasi.
+  carryingBase Decimal @map("carrying_base") @db.Decimal(15, 2)
+  /// Nilai IDR sesudah dijabarkan ulang pada `closing_rate`.
+  revaluedBase Decimal @map("revalued_base") @db.Decimal(15, 2)
+  /// `revalued_base − carrying_base`. Positif = untung revaluasi.
+  difference Decimal @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Satu revaluasi per mata uang per periode. Jalan kedua kali menabrak
+  /// constraint ini, bukan melahirkan jurnal kembar — pola `dedupeKey`.
+  @@unique([year, month, currency])
+  @@index([year, month])
+  @@map("fx_revaluations")
+}
+
+/// One row per calendar month that has ever been closed or explicitly opened.
+/// A month with no row is treated as open — closing is opt-in, so the lock can
+/// be introduced on an existing database without freezing history.
 model Period {
   id       Int       @id @default(autoincrement())
   year     Int

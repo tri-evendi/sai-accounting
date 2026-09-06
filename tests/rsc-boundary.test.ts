@@ -241,7 +241,7 @@ const SRC = join(__dirname, "..", "src");
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
  */
-const AMBANG_KLIEN = 181;
+const AMBANG_KLIEN = 182;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -340,6 +340,13 @@ const KLIEN_TERSAHKAN = [
   // data — server component induknya yang mengambil & menandai terbaca. Client
   // semata karena `Card` AntD + `theme.useToken()`.
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/notifications/notification-list.tsx",
+  /* #554 — panel revaluasi valas. Pulau client yang disengaja: ia memikul dua
+     langkah berurutan (pratinjau lalu posting) yang keadaannya harus bertahan
+     di antara keduanya, dan sengaja TIDAK dilebur ke `period-manager` supaya
+     alur yang MENERBITKAN JURNAL tidak berbagi bendera "sedang sibuk" dengan
+     alur yang tidak. Nol data buku besar menyeberang saat halaman dimuat —
+     angkanya baru diminta ketika pemakainya mengetik sebuah kurs. */
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/fx-revaluation-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/periods/period-manager.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/permissions-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/permissions/role-manager.tsx",

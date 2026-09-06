@@ -39,6 +39,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { FxRevaluationPanel } from "./fx-revaluation-panel";
 
 interface PeriodRow {
   year: number;
@@ -510,6 +511,25 @@ export function PeriodManager({ periods }: { periods: PeriodRow[] }) {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Revaluasi valas (issue #554) ──
+          Lebar PENUH di bawah kedua kartu, bukan kolom ketiga: barisnya membawa
+          empat kolom angka, dan memerasnya ke dalam basis 420px membuat nilai
+          tercatat dan selisihnya membungkus — dua angka yang justru harus
+          dibandingkan sekilas.
+
+          Ia hanya muncul ketika sebuah periode dipilih; tanpa itu ia tidak punya
+          bulan untuk direvaluasi. `onPosted` menyegarkan ringkasan di sebelah,
+          sebab pemeriksaan revaluasi di sana baru saja berubah keadaannya. */}
+      {selected && (
+        <FxRevaluationPanel
+          key={`${selected.year}-${selected.month}`}
+          year={selected.year}
+          month={selected.month}
+          closed={summary?.status === "closed"}
+          onPosted={() => loadSummary(selected.year, selected.month)}
+        />
+      )}
     </Flex>
   );
 }

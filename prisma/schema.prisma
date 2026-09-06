@@ -1601,6 +1601,50 @@ model JournalLine {
 /// One row per calendar month that has ever been closed or explicitly opened.
 /// A month with no row is treated as open — closing is opt-in, so the lock can
 /// be introduced on an existing database without freezing history.
+/// TUTUP BUKU TAHUNAN (issue #555) — satu baris per tahun buku yang ditutup.
+///
+/// ── Kenapa sebuah TABEL, padahal jurnalnya sendiri sudah menjadi buktinya ──
+/// Tiga hal yang tidak bisa ditanyakan kepada jurnal: SIAPA yang menutup, KAPAN
+/// (tanggal jurnalnya akhir tahun buku, bukan hari ia dijalankan), dan laba yang
+/// dipindahkan sebagai angka yang berdiri sendiri. Ketiganya justru yang
+/// ditanyakan orang setahun kemudian.
+///
+/// Dan `@@unique([year])` adalah penjaga idempotensinya: menutup tahun dua kali
+/// menabrak constraint, bukan bergantung pada pemeriksaan aplikasi yang bisa
+/// kalah balapan dengan klik kedua.
+///
+/// ── Pembatalan TIDAK menghapus baris ini ───────────────────────────────────
+/// `reversed_at` diisi, barisnya tetap. Menghapusnya berarti menghapus jejak
+/// bahwa tahun itu pernah ditutup dan dibuka lagi — dan pertanyaan "kenapa laba
+/// ditahan kami berubah bulan lalu" tidak akan punya jawaban.
+model YearClose {
+  id   Int @id @default(autoincrement())
+  /// Tahun KALENDER tempat tahun buku itu DIMULAI (tahun buku yang mulai
+  /// 1 April 2026 dan berakhir 31 Maret 2027 disimpan sebagai 2026).
+  year Int
+
+  /// Laba (positif) / rugi (negatif) yang dipindahkan ke Laba Ditahan.
+  netIncome Decimal @map("net_income") @db.Decimal(15, 2)
+  /// Jumlah akun laba rugi yang benar-benar bersaldo dan karena itu ditutup.
+  closedAccounts Int @map("closed_accounts")
+
+  /// Id pengguna GLOBAL di basis data kendali (issue #104), tanpa foreign key —
+  /// FK tidak bisa menyeberangi basis data. Pola yang sama dengan
+  /// `periods.closed_by_id`.
+  closedById Int?      @map("closed_by_id")
+  /// Kapan tombolnya ditekan — BUKAN tanggal jurnalnya.
+  closedAt   DateTime  @default(now()) @map("closed_at")
+  /// Terisi bila penutupan ini dibatalkan. Barisnya tidak pernah dihapus.
+  reversedAt DateTime? @map("reversed_at")
+  reversedById Int?    @map("reversed_by_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([year])
+  @@map("year_closes")
+}
+
 model Period {
   id       Int       @id @default(autoincrement())
   year     Int

@@ -5,12 +5,14 @@ import { writeAuditLog } from "@/lib/audit";
 import {
   AlreadyClosedError,
   closeYear,
+  FiscalYearNotEndedError,
   NothingToCloseError,
   previewYearClose,
   reverseYearClose,
 } from "@/lib/year-close-service";
 import { MissingMappingError } from "@/lib/posting/mapping";
 import { ClosedPeriodError } from "@/lib/period";
+import { fiscalYearBounds, fiscalYearHasEnded } from "@/lib/year-close";
 import { prisma } from "@/lib/prisma";
 import { yearCloseSchema } from "@/lib/validations/period";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -47,13 +49,26 @@ export async function GET(request: Request) {
 
   const { year } = parsed.data;
   try {
-    const [plan, existing] = await Promise.all([
+    const [plan, existing, setting] = await Promise.all([
       previewYearClose(year),
       prisma.yearClose.findUnique({ where: { year } }),
+      prisma.companySetting.findFirst({ select: { fiscalYearStart: true } }),
     ]);
+
+    /*
+     * Pratinjau TETAP dijalankan untuk tahun berjalan (issue #565): ia hanya
+     * membaca, dan "berapa laba tahun ini sejauh ini" adalah pertanyaan yang
+     * sah. Yang ditolak hanya MENUTUPnya — dan layar perlu tahu itu sebelum
+     * tombolnya ditekan, bukan sesudah.
+     */
+    const endsAt = setting ? fiscalYearBounds(setting.fiscalYearStart, year).end : null;
+    const ended = setting ? fiscalYearHasEnded(setting.fiscalYearStart, year, new Date()) : false;
+
     return NextResponse.json({
       year,
       plan,
+      ended,
+      endsAt,
       /* `reversedAt` yang terisi berarti pernah ditutup lalu dibatalkan —
          keadaan yang BERBEDA dari belum pernah ditutup, dan layarnya harus
          bisa membedakannya. */
@@ -154,6 +169,19 @@ async function knownError(e: unknown) {
 
   if (e instanceof AlreadyClosedError) {
     return NextResponse.json({ error: t("periods.yearAlreadyClosed") }, { status: 409 });
+  }
+  /* Tahun buku belum berakhir: 409, dan kalimatnya menyebut TANGGAL-nya —
+     "belum boleh" tanpa "kapan boleh" hanya memindahkan pertanyaannya. */
+  if (e instanceof FiscalYearNotEndedError) {
+    return NextResponse.json(
+      {
+        error: t("periods.yearNotEnded", {
+          year: e.year,
+          date: e.endsAt.toISOString().slice(0, 10),
+        }),
+      },
+      { status: 409 }
+    );
   }
   if (e instanceof NothingToCloseError) {
     return NextResponse.json({ error: t("periods.yearNothingToClose") }, { status: 409 });

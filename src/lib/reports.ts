@@ -21,6 +21,7 @@ import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 import { balanceSheetEquityTotal } from "@/lib/statement-layout";
+import { NOT_CLOSING } from "@/lib/year-close";
 
 type Nets = Map<number, { debit: number; credit: number }>;
 
@@ -43,10 +44,24 @@ interface DateRange {
 async function accountNets(
   range: DateRange | undefined,
   client = prisma,
-  costCenter?: CostCenterFilter
+  costCenter?: CostCenterFilter,
+  /**
+   * Buang jurnal penutup tahunan (issue #555).
+   *
+   * Bawaannya `false`, dan itu disengaja: NERACA dan NERACA SALDO harus
+   * MEMASUKKANNYA — di situlah Laba Ditahan memperoleh saldonya dan akun laba
+   * rugi menjadi nol. Hanya pembaca yang menyusun LABA RUGI yang
+   * mengecualikannya, sebab hanya ia yang akan menjumlahkan penutupnya sendiri
+   * lalu melaporkan nol.
+   */
+  excludeClosing = false
 ) {
   const cc = costCenterLineWhere(costCenter);
-  const where = { ...(range ? { journal: { date: range } } : {}), ...cc };
+  const journal = {
+    ...(range ? { date: range } : {}),
+    ...(excludeClosing ? NOT_CLOSING : {}),
+  };
+  const where = { ...(Object.keys(journal).length > 0 ? { journal } : {}), ...cc };
   const grouped = await client.journalLine.groupBy({
     by: ["accountId"],
     _sum: { baseDebit: true, baseCredit: true },
@@ -195,7 +210,11 @@ export async function getIncomeStatement(
   const range: DateRange = {};
   if (from) range.gte = from;
   if (to) range.lte = to;
-  const nets = await accountNets(from || to ? range : undefined, client, costCenter);
+  /* Jurnal penutup DIKECUALIKAN (#555). Tanpa ini, tahun yang baru ditutup
+     melaporkan laba NOL — laporannya terbit, seimbang, rapi, dan seluruhnya
+     salah. Anggaran vs Realisasi dan Sifat Beban ikut terlindungi: keduanya
+     memanggil fungsi ini, tidak menirunya. */
+  const nets = await accountNets(from || to ? range : undefined, client, costCenter, true);
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });
 
   const empty = (): IncomeStatementSection => ({ lines: [], total: 0 });

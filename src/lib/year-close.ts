@@ -156,3 +156,34 @@ export function planYearClose(
 
   return { lines, netIncome, closedAccounts };
 }
+
+/**
+ * Nilai `journals.type` untuk jurnal penutup tahunan.
+ *
+ * ══ KENAPA IA JENIS TERSENDIRI, BUKAN `adjustment` ═════════════════════════
+ * Laporan Laba Rugi HARUS mengecualikannya. Tanpa itu, tahun yang baru saja
+ * ditutup akan melaporkan laba NOL — sebab jurnal penutup memang menolkan
+ * setiap akun laba rugi, dan laporan yang menjumlahkan seluruh baris akan
+ * menjumlahkan penutupnya juga.
+ *
+ * Itu bentuk kegagalan yang paling meyakinkan: laporannya terbit, seimbang,
+ * rapi, dan seluruhnya nol — dan pembacanya akan menyimpulkan perusahaannya
+ * tidak menghasilkan apa-apa tahun itu.
+ *
+ * Menyaring lewat `source_type` bisa saja, tetapi `type` yang tepat: ia sudah
+ * menjadi sumbu yang dipakai buku besar untuk membedakan asal jurnal, dan
+ * pembalikan (`reversal`) sudah lebih dulu memakainya begitu.
+ */
+export const CLOSING_JOURNAL_TYPE = "closing";
+
+/**
+ * Klausa `where` Prisma yang mengecualikan jurnal penutup, ditulis SEKALI.
+ *
+ * Dua tempat memakainya: `getIncomeStatement` (yang melayani Laba Rugi,
+ * Anggaran vs Realisasi, dan Sifat Beban — ketiganya memanggilnya, tidak
+ * menirunya) dan `project-profit-report`, yang menjalankan kuerinya sendiri.
+ * Dua penyaring yang "sama" adalah dua penyaring yang suatu hari berbeda, dan
+ * yang tertinggal akan melaporkan nol untuk tahun yang sudah ditutup sementara
+ * tetangganya melaporkan angka yang benar.
+ */
+export const NOT_CLOSING = { type: { not: CLOSING_JOURNAL_TYPE } } as const;

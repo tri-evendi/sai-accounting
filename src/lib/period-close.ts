@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { userDisplayName, userNamesByIds } from "@/lib/users-directory";
 import { getBalanceSheet, getTrialBalance } from "@/lib/reports";
 import { type PeriodStatus, periodBounds } from "@/lib/period";
+import { openForeignCurrencies } from "@/lib/fx-revaluation-service";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
@@ -182,6 +183,56 @@ export async function getPeriodSummary(year: number, month: number): Promise<Per
             more: negativeAssets.length > 5 ? t("periodClose.andOthers") : "",
           }),
         }
+  );
+
+  /*
+   * ── Revaluasi valas (issue #554) ────────────────────────────────────────
+   *
+   * PERINGATAN, bukan penghalang — dan itu keputusan, bukan kelonggaran.
+   * Perusahaan boleh SADAR memilih tidak merevaluasi sebuah bulan (nilainya
+   * tidak material, kursnya belum terbit, akuntannya memutuskan lain). Yang
+   * tidak boleh adalah menutup bulan tanpa TAHU bahwa ada saldo valas yang
+   * masih berdiri di kurs pembukuannya.
+   *
+   * Menjadikannya `blocker` akan menghentikan penutupan buku setiap bulan bagi
+   * setiap perusahaan yang memegang satu saja saldo valas — termasuk yang
+   * selisihnya nol rupiah — dan penghalang yang berbunyi untuk hal normal
+   * adalah penghalang yang akhirnya dimatikan orang.
+   */
+  const [foreignCurrencies, revaluedRows] = await Promise.all([
+    openForeignCurrencies(end),
+    prisma.fxRevaluation.findMany({ where: { year, month }, select: { currency: true } }),
+  ]);
+  const revalued = new Set(revaluedRows.map((r) => r.currency));
+  const unrevalued = foreignCurrencies.filter((c) => !revalued.has(c));
+  checks.push(
+    foreignCurrencies.length === 0
+      ? {
+          id: "fx_revaluation",
+          label: t("periodClose.checkFxRevaluation"),
+          status: "ok",
+          /* Tidak ada saldo valas sama sekali. Dikatakan apa adanya, bukan
+             dibiarkan tampil seperti "sudah direvaluasi" — keduanya hijau, dan
+             hanya satu di antaranya yang berarti ada pekerjaan yang selesai. */
+          detail: t("periodClose.checkFxRevaluationNone"),
+        }
+      : unrevalued.length === 0
+        ? {
+            id: "fx_revaluation",
+            label: t("periodClose.checkFxRevaluation"),
+            status: "ok",
+            detail: t("periodClose.checkFxRevaluationOk", {
+              list: foreignCurrencies.join(", "),
+            }),
+          }
+        : {
+            id: "fx_revaluation",
+            label: t("periodClose.checkFxRevaluation"),
+            status: "warning",
+            detail: t("periodClose.checkFxRevaluationWarn", {
+              list: unrevalued.join(", "),
+            }),
+          }
   );
 
   // A gap in the sequence usually means a month was skipped by accident.

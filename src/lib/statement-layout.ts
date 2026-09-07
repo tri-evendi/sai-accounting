@@ -1096,6 +1096,46 @@ export const INCOME_STATEMENT_PRINT_LABELS: IncomeStatementLabels = {
  * berbunyi identik hanya menciptakan dua tempat yang bisa berbeda bunyi besok
  * (#276), jadi ia dipakai ULANG.
  */
+/**
+ * Kolom cetak Laba Rugi KOMPARATIF (issue #557) — empat, bukan dua.
+ *
+ * Terpisah dari `INCOME_STATEMENT_COLUMNS` supaya laporan satu kolom tidak
+ * berubah bentuknya sama sekali. Judul kolom periodenya datang dari PAYLOAD
+ * (tanggalnya sendiri), bukan dari konstanta: pembandingnya bisa periode
+ * sebelumnya ATAU tahun lalu, dan judul tetap yang berbohong tentang mana yang
+ * dipakai lebih buruk daripada judul yang panjang.
+ */
+export const INCOME_STATEMENT_COMPARE_COLUMNS = [
+  "item",
+  "amount",
+  "prior",
+  "percent",
+] as const;
+export type IncomeStatementCompareColumnId =
+  (typeof INCOME_STATEMENT_COMPARE_COLUMNS)[number];
+
+/**
+ * Satu baris komparatif menjadi empat sel teks — dipakai PDF dan lembar sebar.
+ *
+ * Persennya diformat DI SINI, sekali, supaya kertas dan lembar sebar tidak
+ * membulatkannya di tempat yang berbeda. Pembanding nol tampil sebagai tanda
+ * pisah, sama seperti di layar.
+ */
+export function incomeStatementCompareCells(
+  row: IncomeStatementLayoutRow,
+  rp: (n: number) => string
+): [string, string, string, string] {
+  return [
+    (row.kind === "line" ? `   ${row.label}` : row.label) +
+      (row.note === undefined ? "" : ` (${row.note})`),
+    row.amount === null ? "" : rp(row.amount),
+    row.prior === null || row.prior === undefined ? "" : rp(row.prior),
+    row.percent === null || row.percent === undefined
+      ? "—"
+      : `${row.percent > 0 ? "+" : ""}${row.percent.toLocaleString("id-ID")}%`,
+  ];
+}
+
 export const INCOME_STATEMENT_COLUMNS = BALANCE_SHEET_COLUMNS;
 export type IncomeStatementColumnId = BalanceSheetColumnId;
 export const INCOME_STATEMENT_HEADERS = BALANCE_SHEET_HEADERS;

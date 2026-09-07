@@ -26,6 +26,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import { PlainSummary } from "@/components/reports/plain-summary";
 import { IncomeStatementTable } from "@/components/reports/income-statement-table";
 import { resolvePeriod } from "@/lib/report-catalog";
+import { comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { incomeStatementSummary } from "@/lib/report-summary";
@@ -45,7 +46,7 @@ export default async function IncomeStatementPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ from?: string; to?: string; costCenter?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; costCenter?: string; compare?: string }>;
 }) {
   await requirePagePermission("report.read", params);
   const t = await getT();
@@ -59,6 +60,25 @@ export default async function IncomeStatementPage({
     costCenterFilterLabel(sp.costCenter),
   ]);
   const is = await getIncomeStatement(from, to, undefined, costCenter);
+
+  /*
+   * ── Kolom pembanding (issue #557) ─────────────────────────────────────────
+   *
+   * Dibaca dari `?compare=`, dan BAWAANNYA MATI. Laporan yang tiba-tiba
+   * bertambah dua kolom bagi setiap pembacanya adalah perubahan yang tidak
+   * diminta siapa pun; yang menginginkannya memilihnya, dan pilihannya ikut ke
+   * tautan sehingga bisa dibagikan dan dicetak apa adanya.
+   *
+   * Periode pembandingnya dibaca lewat `getIncomeStatement` yang SAMA, dengan
+   * saringan pusat biaya yang SAMA. Saringan yang berbeda antara dua kolom
+   * menghasilkan perbandingan antara dua populasi yang berbeda — angkanya
+   * benar sendiri-sendiri dan perbandingannya tak berarti apa-apa.
+   */
+  const compare = parseComparison(sp.compare);
+  const priorRange = compare === null ? null : comparisonRange(from, to, compare);
+  const prior = priorRange
+    ? await getIncomeStatement(priorRange.from, priorRange.to, undefined, costCenter)
+    : null;
   // Saringan AKTIF tapi labelnya tak ditemukan (pusat biaya terhapus / id
   // salah ketik namun lolos parse): laporan tetap tersaring, jadi tandanya
   // tidak boleh hilang — tanpa nama, pusat biayanya disebut `#<id>`.
@@ -77,6 +97,21 @@ export default async function IncomeStatementPage({
   const payload: StatementPayload = {
     kind: "income-statement",
     period: periodLabel,
+    ...(prior && priorRange
+      ? {
+          priorPeriod: `${formatDate(priorRange.from)} – ${formatDate(priorRange.to)}`,
+          prior: {
+            sales: prior.sales,
+            cogs: prior.cogs,
+            grossProfit: prior.grossProfit,
+            operatingExpense: prior.operatingExpense,
+            operatingProfit: prior.operatingProfit,
+            otherIncome: prior.otherIncome,
+            otherExpense: prior.otherExpense,
+            netIncome: prior.netIncome,
+          },
+        }
+      : {}),
     sales: is.sales,
     cogs: is.cogs,
     grossProfit: is.grossProfit,
@@ -114,6 +149,8 @@ export default async function IncomeStatementPage({
         to={toISO}
         costCenterOptions={costCenterOptions}
         costCenter={sp.costCenter ?? ""}
+        compare={sp.compare}
+        showCompare
       />
 
       {/* Dua kalimat, dan keduanya perlu (issue #98). Yang pertama menjanjikan

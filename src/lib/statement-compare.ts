@@ -200,3 +200,15 @@ export function comparisonDate(asOf: Date, mode: ComparisonMode, from?: Date): D
      menebak "sebulan" akan salah untuk rentang panjang mana pun. */
   return from ? new Date(from.getTime() - 1) : comparisonDate(asOf, "previous_year");
 }
+
+/**
+ * Baca `?compare=` menjadi mode, atau `null` bila tidak diminta.
+ *
+ * Nilai yang tidak dikenal DIABAIKAN (jadi `null`), bukan ditolak dengan galat:
+ * ini parameter TAMPILAN pada laporan yang hanya membaca. Sebuah tautan lama
+ * atau salah ketik harus memulangkan laporan biasa, bukan halaman galat —
+ * pembacanya datang untuk angkanya, bukan untuk dikoreksi soal query string.
+ */
+export function parseComparison(raw: string | undefined | null): ComparisonMode | null {
+  return raw === "preceding" || raw === "previous_year" ? raw : null;
+}

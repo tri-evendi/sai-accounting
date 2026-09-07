@@ -91,12 +91,23 @@ export function PeriodFilter({
   to,
   costCenterOptions,
   costCenter,
+  compare,
+  showCompare,
 }: {
   basePath: string;
   from: string;
   to: string;
   costCenterOptions?: { value: string; label: string }[];
   costCenter?: string;
+  /** Nilai `?compare=` yang sedang aktif (issue #557). */
+  compare?: string;
+  /**
+   * Tampilkan pemilih pembanding. OPT-IN per laporan: kolom pembanding baru
+   * ada di Laba Rugi, dan pemilih yang muncul di laporan yang mengabaikannya
+   * adalah kendali yang tidak melakukan apa-apa — bentuk kebohongan kecil yang
+   * membuat pemakainya berhenti mempercayai kendali lain di halaman yang sama.
+   */
+  showCompare?: boolean;
 }) {
   const router = useRouter();
   // `t` sudah dipakai untuk tanggal "sampai" di komponen ini.
@@ -104,12 +115,17 @@ export function PeriodFilter({
   const [f, setF] = useState(from);
   const [t, setT] = useState(to);
   const [cc, setCc] = useState(costCenter ?? "");
+  const [cmp, setCmp] = useState(compare ?? "");
   function submit(e: React.FormEvent<HTMLElement>) {
     e.preventDefault();
     const p = new URLSearchParams();
     if (f) p.set("from", f);
     if (t) p.set("to", t);
     if (cc) p.set("costCenter", cc);
+    /* Kosong = tanpa pembanding, dan parameternya TIDAK ditulis — tautan
+       laporan biasa tetap sependek sebelumnya, dan yang dibagikan orang tidak
+       diam-diam membawa mode yang tidak ia pilih. */
+    if (cmp) p.set("compare", cmp);
     router.push(`${basePath}?${p.toString()}`);
   }
   return (
@@ -147,6 +163,21 @@ export function PeriodFilter({
             value={cc}
             onChange={(e) => setCc(e.target.value)}
             options={costCenterOptions}
+          />
+        </div>
+      )}
+      {showCompare && (
+        <div style={{ minWidth: SELECT_MIN_WIDTH }}>
+          <Select
+            id="compare"
+            label={translate("reports.compareLabel")}
+            value={cmp}
+            onChange={(e) => setCmp(e.target.value)}
+            options={[
+              { value: "", label: translate("reports.compareNone") },
+              { value: "preceding", label: translate("reports.comparePreceding") },
+              { value: "previous_year", label: translate("reports.comparePreviousYear") },
+            ]}
           />
         </div>
       )}

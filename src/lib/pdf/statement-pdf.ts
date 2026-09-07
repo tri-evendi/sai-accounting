@@ -17,6 +17,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
+  incomeStatementCompareCells,
+  INCOME_STATEMENT_COMPARE_COLUMNS,
   agingColumns,
   agingHeaders,
   balanceSheetBalanceNote,
@@ -108,6 +110,26 @@ export type StatementPayload =
   | {
       kind: "income-statement";
       period: string;
+      /**
+       * Periode PEMBANDING (issue #557). Dihilangkan = laporan satu kolom, dan
+       * ketiga permukaan menggambar persis seperti sebelumnya.
+       *
+       * Ia hidup di PAYLOAD, bukan di layar, karena layar/PDF/lembar sebar
+       * memakan payload yang sama dan `income-statement-shape` membandingkan
+       * ketiganya baris demi baris. Kolom yang hanya ada di layar menghasilkan
+       * cetakan yang diam-diam kehilangan separuh laporannya (#241).
+       */
+      priorPeriod?: string;
+      prior?: {
+        sales: StatementSectionPayload;
+        cogs: StatementSectionPayload;
+        grossProfit: number;
+        operatingExpense: StatementSectionPayload;
+        operatingProfit: number;
+        otherIncome: StatementSectionPayload;
+        otherExpense: StatementSectionPayload;
+        netIncome: number;
+      };
       sales: StatementSectionPayload;
       cogs: StatementSectionPayload;
       grossProfit: number;
@@ -502,7 +524,15 @@ export function trialBalancePrintRows(
 export function incomeStatementPrintRows(
   payload: Extract<StatementPayload, { kind: "income-statement" }>
 ): { body: string[][]; foot: string[][]; bodyKinds: IncomeStatementRowKind[] } {
-  const { body, foot } = splitIncomeStatementRows(incomeStatementLayout(payload));
+  const { body, foot } = splitIncomeStatementRows(
+    incomeStatementLayout(payload, undefined, payload.prior)
+  );
+  /* Komparatif → empat sel, lewat penulis yang SAMA dengan lembar sebar, supaya
+     keduanya tidak membulatkan persennya di tempat yang berbeda. */
+  if (payload.prior !== undefined) {
+    const c = (r: IncomeStatementLayoutRow) => incomeStatementCompareCells(r, rp);
+    return { body: body.map(c), foot: foot.map(c), bodyKinds: body.map((r) => r.kind) };
+  }
   const cell = (r: IncomeStatementLayoutRow): string[] => [
     // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
     // `paddingInlineStart`. Anotasi (marjin kotor, arah hasil) dalam tanda
@@ -559,7 +589,18 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     const { body, foot, bodyKinds } = incomeStatementPrintRows(payload);
     autoTable(doc, {
       startY: y,
-      head: [INCOME_STATEMENT_COLUMNS.map((c) => INCOME_STATEMENT_HEADERS[c])],
+      /* Komparatif: judul kolom periodenya datang dari payload — tanggalnya
+         sendiri, bukan "Tahun Lalu" yang belum tentu benar. */
+      head: [
+        payload.prior === undefined
+          ? INCOME_STATEMENT_COLUMNS.map((c) => INCOME_STATEMENT_HEADERS[c])
+          : [
+              INCOME_STATEMENT_HEADERS.item,
+              payload.period,
+              payload.priorPeriod ?? "",
+              "Perubahan",
+            ],
+      ],
       body,
       foot,
       styles: { fontSize: 9 },

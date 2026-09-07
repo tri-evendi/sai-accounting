@@ -2400,7 +2400,12 @@
     "colProject": "Proyek",
     "colMargin": "Margin",
     "unassignedProject": "Tanpa proyek",
-    "projectProfitReconcileNote": "Jumlah seluruh baris sama dengan Laba / Rugi Bersih di Laba Rugi untuk periode yang sama."
+    "projectProfitReconcileNote": "Jumlah seluruh baris sama dengan Laba / Rugi Bersih di Laba Rugi untuk periode yang sama.",
+    "colPriorPeriod": "Periode Pembanding",
+    "comparePreceding": "Periode sebelumnya",
+    "comparePreviousYear": "Tahun lalu",
+    "compareNone": "Tanpa pembanding",
+    "compareLabel": "Pembanding"
   },
   "budget": {
     "title": "Anggaran & Target",

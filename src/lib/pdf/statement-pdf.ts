@@ -142,6 +142,26 @@ export type StatementPayload =
   | {
       kind: "balance-sheet";
       period: string;
+      /**
+       * Neraca pada TANGGAL pembanding (issue #557). Dihilangkan = satu kolom.
+       *
+       * ⚠ Sumbunya TANGGAL, bukan rentang — beda dari Laba Rugi. `priorPeriod`
+       * karena itu berisi satu tanggal, bukan "dari–sampai".
+       */
+      priorPeriod?: string;
+      prior?: {
+        assets: StatementRow[];
+        liabilities: StatementRow[];
+        equity: StatementRow[];
+        totalAssets: number;
+        totalLiabilities: number;
+        totalEquity: number;
+        netIncome: number;
+        currentYearIncome?: number;
+        priorUnclosedIncome?: number;
+        totalLiabilitiesEquity: number;
+        balanced: boolean;
+      };
       assets: StatementRow[];
       liabilities: StatementRow[];
       equity: StatementRow[];
@@ -459,16 +479,25 @@ export function cashFlowPrintRows(payload: Extract<StatementPayload, { kind: "ca
 export function balanceSheetPrintRows(
   payload: Extract<StatementPayload, { kind: "balance-sheet" }>
 ): { body: string[][]; foot: string[][]; bodyKinds: BalanceSheetRowKind[] } {
-  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(payload));
-  const cell = (r: BalanceSheetLayoutRow, label: string): string[] => [
-    // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
-    // `paddingInlineStart`.
-    r.kind === "line" ? `   ${label}` : label,
+  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(payload, undefined, payload.prior));
+  const komparatif = payload.prior !== undefined;
+  const cell = (r: BalanceSheetLayoutRow, label: string): string[] => {
+    const teks = r.kind === "line" ? `   ${label}` : label;
     // Kolom yang tidak berlaku tetap KOSONG, tak pernah "Rp 0" (Prinsip Inti
     // MASTER.md). Nol yang memang nol tertulis apa adanya — di neraca ia
     // pernyataan posisi, bukan ketiadaan arus.
-    r.amount === null ? "" : rp(r.amount),
-  ];
+    const nominal = r.amount === null ? "" : rp(r.amount);
+    if (!komparatif) return [teks, nominal];
+    /* Persennya lewat penulis yang SAMA dengan Laba Rugi & lembar sebar. */
+    return [
+      teks,
+      nominal,
+      r.prior === null || r.prior === undefined ? "" : rp(r.prior),
+      r.percent === null || r.percent === undefined
+        ? "—"
+        : `${r.percent > 0 ? "+" : ""}${r.percent.toLocaleString("id-ID")}%`,
+    ];
+  };
   return {
     body: body.map((r) => cell(r, r.label)),
     // Keseimbangan adalah ANOTASI pada baris penutup terakhir — lencana di
@@ -628,7 +657,11 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     const { body, foot, bodyKinds } = balanceSheetPrintRows(payload);
     autoTable(doc, {
       startY: y,
-      head: [BALANCE_SHEET_COLUMNS.map((c) => BALANCE_SHEET_HEADERS[c])],
+      head: [
+        payload.prior === undefined
+          ? BALANCE_SHEET_COLUMNS.map((c) => BALANCE_SHEET_HEADERS[c])
+          : [BALANCE_SHEET_HEADERS.item, payload.period, payload.priorPeriod ?? "", "Perubahan"],
+      ],
       body,
       foot,
       styles: { fontSize: 9 },

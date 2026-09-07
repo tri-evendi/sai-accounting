@@ -428,6 +428,17 @@ export interface BalanceSheetLayoutRow {
    * tidak ada divergensi yang perlu dimenangkan siapa pun di sini.
    */
   amount: number | null;
+  /**
+   * Nilai periode PEMBANDING (issue #557). `undefined` = neraca ini tidak
+   * komparatif; `null` = kolomnya tidak berlaku untuk baris ini.
+   *
+   * OPSIONAL dengan sengaja, sama seperti pada Laba Rugi: neraca satu kolom
+   * tidak berubah bentuknya, jadi konsumen yang belum tahu apa-apa tentang
+   * pembanding menggambar persis apa yang selalu mereka gambar.
+   */
+  prior?: number | null;
+  /** Perubahan persen; `null` bila pembandingnya nol — lihat `percentChange`. */
+  percent?: number | null;
 }
 
 /**
@@ -531,30 +542,104 @@ export function splitBalanceSheetRows(rows: readonly BalanceSheetLayoutRow[]): {
  * ada satu pun keputusan bentuk, dan tidak satu pun penjumlahan, di luar
  * fungsi ini.
  */
+/**
+ * Baris blok EKUITAS — akun ekuitas ditambah hasil yang belum ditutup.
+ *
+ * Diangkat menjadi fungsi sendiri (issue #557) supaya periode PEMBANDING bisa
+ * menyusun bloknya dengan aturan yang persis sama. Sebelumnya ia rangkaian
+ * literal di dalam `balanceSheetLayout`, dan menyalinnya untuk periode kedua
+ * akan melahirkan dua aturan ekuitas yang suatu hari berbeda — cacat yang
+ * `balanceSheetEquityTotal` (#258) dibuat untuk mencegahnya.
+ */
+function equityLines(
+  statement: BalanceSheetShape,
+  labels: BalanceSheetLabels
+): BalanceSheetLineShape[] {
+  return [
+    ...statement.equity,
+    ...(statement.priorUnclosedIncome
+      ? [
+          { code: "", name: labels.priorUnclosedIncome, amount: statement.priorUnclosedIncome },
+          { code: "", name: labels.currentYearIncome, amount: statement.currentYearIncome ?? 0 },
+        ]
+      : [{ code: "", name: labels.currentNetIncome, amount: statement.netIncome }]),
+  ];
+}
+
 export function balanceSheetLayout(
   statement: BalanceSheetShape,
-  labels: BalanceSheetLabels = BALANCE_SHEET_PRINT_LABELS
+  labels: BalanceSheetLabels = BALANCE_SHEET_PRINT_LABELS,
+  /**
+   * Neraca periode PEMBANDING (issue #557). Dihilangkan = laporan satu kolom,
+   * dan bentuknya tidak berubah satu baris pun.
+   *
+   * ⚠ Ia neraca pada TANGGAL lain, bukan rentang lain — lihat `comparisonDate`.
+   * Menyamakannya dengan sumbu Laba Rugi menghasilkan neraca pembanding yang
+   * salah tanggal, dan neraca yang salah tanggal tetap SEIMBANG, jadi tidak ada
+   * yang berbunyi.
+   */
+  prior?: BalanceSheetShape
 ): BalanceSheetLayoutRow[] {
   const rows: BalanceSheetLayoutRow[] = [];
+
+  /** Baris yang kolom nominalnya tidak berlaku; `null`, bukan 0. */
+  const tanpaNilai = () => (prior === undefined ? {} : { prior: null, percent: null });
+  const nilai = (amount: number, priorAmount: number | undefined) =>
+    prior === undefined
+      ? { amount }
+      : { amount, prior: priorAmount ?? 0, percent: percentChange(amount, priorAmount ?? 0) };
 
   const section = (
     id: BalanceSheetSectionId,
     title: string,
     lines: readonly BalanceSheetLineShape[],
-    total: number
+    total: number,
+    priorLines?: readonly BalanceSheetLineShape[],
+    priorTotal?: number
   ) => {
-    rows.push({ kind: "section", section: id, label: title, amount: null });
-    if (lines.length === 0) {
-      rows.push({ kind: "empty", section: id, label: labels.empty, amount: null });
+    rows.push({ kind: "section", section: id, label: title, amount: null, ...tanpaNilai() });
+
+    /*
+     * ⚠ Baris ekuitas SINTETIS ("Akumulasi Laba/Rugi" dan saudaranya) berkode
+     * KOSONG, jadi penyandingan berbasis kode akan menabrakkan keduanya menjadi
+     * satu. Karena itu yang disandingkan hanya baris BERKODE; yang berkode
+     * kosong dipasangkan menurut URUTAN, yang untuk blok ini deterministik —
+     * `equityLines` menyusunnya dengan aturan yang sama untuk kedua periode.
+     */
+    const berkode = lines.filter((l) => l.code !== "");
+    const sintetis = lines.filter((l) => l.code === "");
+    const priorBerkode = (priorLines ?? []).filter((l) => l.code !== "");
+    const priorSintetis = (priorLines ?? []).filter((l) => l.code === "");
+
+    const baris =
+      prior === undefined
+        ? lines.map((l) => ({ code: l.code, name: l.name, current: l.amount, prior: 0 }))
+        : [
+            ...compareLines(berkode, priorBerkode).map((l) => ({
+              code: l.code,
+              name: l.name,
+              current: l.current,
+              prior: l.prior,
+            })),
+            ...sintetis.map((l, i) => ({
+              code: l.code,
+              name: l.name,
+              current: l.amount,
+              prior: priorSintetis[i]?.amount ?? 0,
+            })),
+          ];
+
+    if (baris.length === 0) {
+      rows.push({ kind: "empty", section: id, label: labels.empty, amount: null, ...tanpaNilai() });
     } else {
-      for (const l of lines) {
+      for (const l of baris) {
         rows.push({
           kind: "line",
           section: id,
           label: `${l.code}  ${l.name}`.trim(),
           code: l.code,
           name: l.name,
-          amount: l.amount,
+          ...nilai(l.current, prior === undefined ? undefined : l.prior),
         });
       }
     }
@@ -562,12 +647,19 @@ export function balanceSheetLayout(
       kind: "subtotal",
       section: id,
       label: labels.sectionTotal(title),
-      amount: total,
+      ...nilai(total, priorTotal),
     });
   };
 
-  section("assets", labels.assets, statement.assets, statement.totalAssets);
-  section("liabilities", labels.liabilities, statement.liabilities, statement.totalLiabilities);
+  section("assets", labels.assets, statement.assets, statement.totalAssets, prior?.assets, prior?.totalAssets);
+  section(
+    "liabilities",
+    labels.liabilities,
+    statement.liabilities,
+    statement.totalLiabilities,
+    prior?.liabilities,
+    prior?.totalLiabilities
+  );
   // Hasil periode berjalan adalah komponen ekuitas, jadi ia baris akun DI DALAM
   // bloknya — lihat keputusan 4 di kepala bagian ini. Karena itu pula blok
   // ekuitas tak pernah kosong: paling tidak angka periode berjalan selalu ada,
@@ -591,31 +683,21 @@ export function balanceSheetLayout(
      * membaca `netIncome` — jadi tidak ada penjumlahan kedua yang bisa
      * menyimpang dari yang pertama.
      */
-    [
-      ...statement.equity,
-      ...(statement.priorUnclosedIncome
-        ? [
-            {
-              code: "",
-              name: labels.priorUnclosedIncome,
-              amount: statement.priorUnclosedIncome,
-            },
-            {
-              code: "",
-              name: labels.currentYearIncome,
-              amount: statement.currentYearIncome ?? 0,
-            },
-          ]
-        : [{ code: "", name: labels.currentNetIncome, amount: statement.netIncome }]),
-    ],
-    balanceSheetEquityTotal(statement)
+    equityLines(statement, labels),
+    balanceSheetEquityTotal(statement),
+    prior ? equityLines(prior, labels) : undefined,
+    prior ? balanceSheetEquityTotal(prior) : undefined
   );
 
-  rows.push({ kind: "total", label: labels.totalAssets, amount: statement.totalAssets });
+  rows.push({
+    kind: "total",
+    label: labels.totalAssets,
+    ...nilai(statement.totalAssets, prior?.totalAssets),
+  });
   rows.push({
     kind: "total",
     label: labels.totalLiabilitiesEquity,
-    amount: statement.totalLiabilitiesEquity,
+    ...nilai(statement.totalLiabilitiesEquity, prior?.totalLiabilitiesEquity),
   });
 
   return rows;

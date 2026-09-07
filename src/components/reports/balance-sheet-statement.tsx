@@ -33,6 +33,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Money } from "@/components/ui/money";
 import { moneyColumn } from "@/components/ui/money-column";
+import { formatNumber } from "@/lib/utils";
 import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -93,7 +94,14 @@ function screenLabels(t: T): BalanceSheetLabels {
 }
 
 export function BalanceSheetStatement({ payload, t }: { payload: BalanceSheetPayload; t: T }) {
-  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(payload, screenLabels(t)));
+  const { body, foot } = splitBalanceSheetRows(
+    balanceSheetLayout(payload, screenLabels(t), payload.prior)
+  );
+
+  /* Komparatif ditentukan PAYLOAD, bukan oleh baris yang kebetulan membawa
+     medannya — kalau tidak, tabelnya berubah lebar tergantung isi. */
+  const komparatif = payload.prior !== undefined;
+  const RENTANG = komparatif ? 4 : 2;
 
   const columns: SaiColumns<BalanceSheetLayoutRow> = [
     {
@@ -112,8 +120,41 @@ export function BalanceSheetStatement({ payload, t }: { payload: BalanceSheetPay
     },
     moneyColumn<BalanceSheetLayoutRow>({
       dataIndex: "amount",
-      title: t("reports.colStatementAmount"),
+      title: komparatif ? payload.period : t("reports.colStatementAmount"),
     }),
+    /* Judul kolom pembanding adalah TANGGALNYA sendiri: neraca dibandingkan
+       pada tanggal, bukan rentang, dan judul tetap yang berbohong tentang
+       tanggal mana yang dipakai lebih buruk daripada judul yang panjang. */
+    ...(komparatif
+      ? [
+          moneyColumn<BalanceSheetLayoutRow>({
+            dataIndex: "prior",
+            title: payload.priorPeriod ?? t("reports.colPriorPeriod"),
+          }),
+          {
+            key: "percent",
+            title: t("reports.colChange"),
+            align: "right" as const,
+            render: (_raw: unknown, row: BalanceSheetLayoutRow) =>
+              row.percent === null || row.percent === undefined ? (
+                <span style={{ color: "var(--ant-color-text-tertiary)" }}>—</span>
+              ) : (
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    color:
+                      row.percent < 0
+                        ? "var(--ant-color-error-text)"
+                        : "var(--ant-color-success-text)",
+                  }}
+                >
+                  {row.percent > 0 ? "+" : ""}
+                  {formatNumber(row.percent)}%
+                </span>
+              ),
+          },
+        ]
+      : []),
   ];
 
   /*
@@ -124,10 +165,10 @@ export function BalanceSheetStatement({ payload, t }: { payload: BalanceSheetPay
    */
   const rowCells = (row: BalanceSheetLayoutRow): Record<string, SummaryCell> | undefined => {
     if (row.kind === "section") {
-      return { item: { content: row.label, colSpan: 2, scope: "colgroup" } };
+      return { item: { content: row.label, colSpan: RENTANG, scope: "colgroup" } };
     }
     if (row.kind === "empty") {
-      return { item: { content: <span style={LINE_INDENT}>{row.label}</span>, colSpan: 2 } };
+      return { item: { content: <span style={LINE_INDENT}>{row.label}</span>, colSpan: RENTANG } };
     }
     if (row.kind === "subtotal") {
       return { item: { content: row.label, scope: "row" } };

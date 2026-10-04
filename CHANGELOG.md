@@ -20,7 +20,29 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.5.0 — 2026-09-05 — belum digelar
+## 0.6.0 — 2026-10-04 — belum digelar
+
+Tahun buku bisa ditutup, saldo mata uang asing dinilai ulang pada kurs penutup, laporan bisa menyandingkan dua periode, dan ada halaman status yang bisa dibuka tanpa masuk.
+
+### Baru
+
+- Laba Rugi dan Neraca bisa menampilkan kolom pembanding: pilih “Periode sebelumnya” atau “Tahun lalu” di penyaring laporan, atau “Tanpa pembanding” seperti sebelumnya. Selisih dan persen perubahannya ikut dihitung per baris. Pembanding yang bernilai nol menampilkan tanda pisah, bukan persentase — dari nol, kenaikan berapa pun tidak punya persen. Kolomnya ikut terbawa ke PDF dan ke lembar sebar.
+- Tahun buku kini bisa ditutup dari halaman Tutup Periode. Penutupan memindahkan laba tahun itu ke ekuitas lewat jurnal penutup, dan bisa dibatalkan. Laba Rugi mengecualikan jurnal penutup supaya tahun yang sudah ditutup tidak terbaca nol, dan Neraca memisahkan Laba Tahun Berjalan dari laba tahun lalu yang belum ditutup.
+- Ada laporan Perubahan Ekuitas: saldo awal, laba tahun berjalan, penutupan, lalu saldo akhir — beserta rekonsiliasinya terhadap Neraca.
+- Saldo piutang, utang, dan kas bermata uang asing bisa dinilai ulang pada kurs akhir bulan, dengan pratinjau sebelum diposting. Tutup Periode menyebutkan bila masih ada saldo valas yang belum dinilai ulang, jadi bulan tidak tertutup di atas kurs yang sudah usang.
+- Halaman Status Layanan di alamat /status menyebutkan keadaan pembukuan, langganan & tagihan, serta pengiriman surel pada saat Anda membukanya. Ia sengaja bisa dibuka tanpa masuk — yang paling membutuhkannya adalah orang yang sedang tidak bisa masuk — dan tertaut dari kaki setiap halaman. Pemeliharaan yang dijadwalkan diumumkan di sana sebelum berlangsung, beserta jamnya.
+
+### Berubah
+
+- Halaman bantuan di /docs ditulis ulang dengan kalimat yang lebih pendek. Isinya tidak berubah — angka, contoh, dan aturannya sama persis — hanya lebih enak dibaca.
+
+### Perbaikan
+
+- Tahun buku yang belum berakhir tidak bisa lagi ditutup. Sebelumnya penutupan menerima tahun yang masih berjalan, dan jurnal penutupnya memindahkan laba yang belum lengkap ke ekuitas.
+
+---
+
+## 0.5.0 — 2026-09-05 (f86e86b)
 
 Daftar yang gagal dimuat berhenti tampil sebagai daftar kosong, stok masuk bisa langsung memotong kas, dan kontrak menyebut sendiri apakah ia kena PPN.
 

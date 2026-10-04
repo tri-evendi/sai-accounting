@@ -2400,7 +2400,12 @@
     "colProject": "Project",
     "colMargin": "Margin",
     "unassignedProject": "No project",
-    "projectProfitReconcileNote": "All rows together equal Net Profit / Loss in the income statement for the same period."
+    "projectProfitReconcileNote": "All rows together equal Net Profit / Loss in the income statement for the same period.",
+    "colPriorPeriod": "Comparative Period",
+    "comparePreceding": "Preceding period",
+    "comparePreviousYear": "Previous year",
+    "compareNone": "No comparison",
+    "compareLabel": "Compare with"
   },
   "budget": {
     "title": "Budget & Targets",
@@ -4035,7 +4040,7 @@
       },
       "s4": {
         "title": "Decision History",
-        "body": "Every decision your role has ever made is recorded here — and it can be sorted, so questions like “the largest decision this month” are easy to answer."
+        "body": "Every decision your role has ever made is recorded here, and the list can be sorted — to see this month's largest decision, for example."
       }
     },
     "buat_penjualan": {

@@ -150,7 +150,6 @@ export default async function FinancePage({
     credit: Number(tx.credit),
   }));
 
-  // Generate filter options
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = monthNames(dictionary);

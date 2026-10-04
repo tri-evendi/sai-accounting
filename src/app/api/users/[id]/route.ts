@@ -107,7 +107,6 @@ export async function DELETE(
   const { id } = await params;
   const userId = parseInt(id);
 
-  // Prevent self-deletion
   if (result.session.user.id === String(userId)) {
     const { t } = await getRequestI18n();
     return NextResponse.json({ error: t("errors.cannotDeleteSelf") }, { status: 400 });

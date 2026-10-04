@@ -59,7 +59,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("errors.noFileSelected") }, { status: 400 });
   }
 
-  // Validate file size
   if (file.size > MAX_SIZE) {
     const { t } = await getRequestI18n();
     return NextResponse.json(
@@ -68,7 +67,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate extension
   const ext = path.extname(file.name).toLowerCase();
   if (!ALLOWED_FILES[ext]) {
     const { t } = await getRequestI18n();
@@ -96,7 +94,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("validation.invalidInput") }, { status: 400 });
   }
 
-  // Validate contractId exists if provided
   if (contractId) {
     // `parseInt("abc")` = NaN dan Prisma melemparnya sebagai 500 — id wajib
     // murni digit sebelum menyentuh kueri.

@@ -2400,7 +2400,12 @@
     "colProject": "项目",
     "colMargin": "利润率",
     "unassignedProject": "未分配项目",
-    "projectProfitReconcileNote": "所有行合计等于同期损益表中的净利润／亏损。"
+    "projectProfitReconcileNote": "所有行合计等于同期损益表中的净利润／亏损。",
+    "colPriorPeriod": "比较期间",
+    "comparePreceding": "上一期间",
+    "comparePreviousYear": "上年同期",
+    "compareNone": "不比较",
+    "compareLabel": "比较对象"
   },
   "budget": {
     "title": "预算与目标",
@@ -4035,7 +4040,7 @@
       },
       "s4": {
         "title": "决定历史",
-        "body": "您所属角色作出的每一项决定都记录在此——并且可以排序，因此“本月最大的一笔决定”之类的问题很容易回答。"
+        "body": "您的角色做出的每一项决定都记录在此，并可排序——例如查看本月金额最大的决定。"
       }
     },
     "buat_penjualan": {

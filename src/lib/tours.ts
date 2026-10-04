@@ -187,7 +187,7 @@ export const TOURS: TourDef[] = [
         title: "Riwayat Keputusan",
         titleKey: "tours.persetujuan.s4.title",
         body:
-          "Semua keputusan yang pernah dibuat peran Anda tercatat di sini — bisa diurutkan, jadi mudah menjawab pertanyaan seperti “keputusan terbesar bulan ini”.",
+          "Semua keputusan yang pernah dibuat peran Anda tercatat di sini, dan bisa diurutkan — misalnya untuk melihat keputusan terbesar bulan ini.",
         bodyKey: "tours.persetujuan.s4.body",
         target: "persetujuan-riwayat",
       },

@@ -70,7 +70,6 @@ node scripts/validate-tokens.cjs --dir src/
 | Component Tokens | `references/component-tokens.md` |
 | Component Specs | `references/component-specs.md` |
 | States & Variants | `references/states-and-variants.md` |
-| Tailwind Integration | `references/tailwind-integration.md` |
 
 ## Component Spec Pattern
 
@@ -100,9 +99,9 @@ node scripts/validate-tokens.cjs --dir src/
 ## Integration
 
 **With brand:** Extract primitives from brand colors/typography
-**With ui-styling:** Component tokens → Tailwind config
+**With AntD tokens:** Component tokens → `src/lib/theme/antd-tokens.ts`
 
-**Skill Dependencies:** brand, ui-styling
+**Skill Dependencies:** brand
 **Primary Agents:** ui-ux-designer, frontend-developer
 
 ## Slide System

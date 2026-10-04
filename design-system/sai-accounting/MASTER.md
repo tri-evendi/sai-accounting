@@ -468,9 +468,9 @@ karena itu menulis ulang setiap impor **bernama** menjadi jalur dalam paket,
 sehingga barrel-nya tak pernah dimuat; ikonnya sendiri tetap aman sebagai daun
 client. Penulisan ulang itu hanya mengenali `{ … }`:
 
-- ✅ `import { PlusOutlined, SaveOutlined } from "@ant-design/icons";`
-- ❌ `import Icon from "@ant-design/icons";` · ❌ `import * as Icons from "@ant-design/icons";`
-- ❌ `IconProvider` / `getTwoToneColor` / `createFromIconfontCN` — bukan ikon, tidak
+- BENAR: `import { PlusOutlined, SaveOutlined } from "@ant-design/icons";`
+- JANGAN: `import Icon from "@ant-design/icons";` · JANGAN: `import * as Icons from "@ant-design/icons";`
+- JANGAN: `IconProvider` / `getTwoToneColor` / `createFromIconfontCN` — bukan ikon, tidak
   punya berkasnya sendiri, dan lolos `tsc` sebelum menggagalkan build.
 
 `tests/icon-rsc-boundary.test.ts` menolak ketiga bentuk itu; alasan lengkapnya di
@@ -755,19 +755,19 @@ sebab ia yang dibutuhkan kalau keputusannya ditinjau ulang.
 ---
 
 ## Anti-Patterns (JANGAN)
-- ❌ Emoji sebagai ikon → pakai `@ant-design/icons`.
-- ❌ Dua paket ikon di satu layar; ❌ prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
-- ❌ `className` di mana pun (satu pengecualian: `<html>` di `components/providers/root-document.tsx`, dipakai kedua root layout) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
-- ❌ Nilai warna mentah (hex, `rgb()`, nama warna CSS) di luar `lib/theme/antd-tokens.ts` → ditolak ESLint `sai/warna-token-antd`.
-- ❌ Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
-- ❌ Angka rata-kiri / tanpa tabular-nums di tabel keuangan; ❌ **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.
-- ❌ Placeholder sebagai pengganti label.
-- ❌ Lebih dari satu tombol berisi penuh terlihat sekaligus di satu layar (**kecuali pendaratan `/`**, yang memang mengulang SATU ajakan — §Aksi utama per layar → "Pendaratan `/` DIKECUALIKAN"); ❌ menyeragamkannya dengan menurunkan SEMUA tombol jadi sekunder — itu menukar satu hierarki rata dengan hierarki rata yang lain. Lihat §Aksi utama per layar.
-- ❌ Teks < 14px untuk data penting; kontras di bawah ambang §Ambang kontras per ukuran teks.
-- ❌ Fokus keyboard tak terlihat; hover yang menggeser layout.
-- ❌ Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
-- ❌ Jargon akuntansi mentah di permukaan tanpa tooltip/penjelasan.
-- ❌ Nilai enum DB tampil mentah di UI (`purchase`, `bl`, `coo`, …) — selalu lewat peta label bahasa tugas (`Record<Type, string>` seperti `CONTRACT_STATUS_LABELS`/`DOCUMENT_TYPE_LABELS` di `src/lib/constants.ts`); `Record` bertipe penuh membuat nilai baru tanpa label ditolak `tsc` (issue #68).
+- Emoji sebagai ikon → pakai `@ant-design/icons`.
+- Dua paket ikon di satu layar; prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
+- `className` di mana pun (satu pengecualian: `<html>` di `components/providers/root-document.tsx`, dipakai kedua root layout) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
+- Nilai warna mentah (hex, `rgb()`, nama warna CSS) di luar `lib/theme/antd-tokens.ts` → ditolak ESLint `sai/warna-token-antd`.
+- Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
+- Angka rata-kiri / tanpa tabular-nums di tabel keuangan; **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.
+- Placeholder sebagai pengganti label.
+- Lebih dari satu tombol berisi penuh terlihat sekaligus di satu layar (**kecuali pendaratan `/`**, yang memang mengulang SATU ajakan — §Aksi utama per layar → "Pendaratan `/` DIKECUALIKAN"); menyeragamkannya dengan menurunkan SEMUA tombol jadi sekunder — itu menukar satu hierarki rata dengan hierarki rata yang lain. Lihat §Aksi utama per layar.
+- Teks < 14px untuk data penting; kontras di bawah ambang §Ambang kontras per ukuran teks.
+- Fokus keyboard tak terlihat; hover yang menggeser layout.
+- Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
+- Jargon akuntansi mentah di permukaan tanpa tooltip/penjelasan.
+- Nilai enum DB tampil mentah di UI (`purchase`, `bl`, `coo`, …) — selalu lewat peta label bahasa tugas (`Record<Type, string>` seperti `CONTRACT_STATUS_LABELS`/`DOCUMENT_TYPE_LABELS` di `src/lib/constants.ts`); `Record` bertipe penuh membuat nilai baru tanpa label ditolak `tsc` (issue #68).
 
 ---
 

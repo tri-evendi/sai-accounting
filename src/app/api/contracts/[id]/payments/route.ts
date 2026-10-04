@@ -40,7 +40,6 @@ export async function POST(
   const { id } = await params;
   const contractId = parseInt(id);
 
-  // Verify contract exists
   const contract = await prisma.contract.findUnique({
     where: { id: contractId },
     include: { items: true },

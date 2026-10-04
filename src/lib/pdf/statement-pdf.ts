@@ -17,6 +17,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   incomeStatementLayout,
+  incomeStatementCompareCells,
+  INCOME_STATEMENT_COMPARE_COLUMNS,
   agingColumns,
   agingHeaders,
   balanceSheetBalanceNote,
@@ -108,6 +110,26 @@ export type StatementPayload =
   | {
       kind: "income-statement";
       period: string;
+      /**
+       * Periode PEMBANDING (issue #557). Dihilangkan = laporan satu kolom, dan
+       * ketiga permukaan menggambar persis seperti sebelumnya.
+       *
+       * Ia hidup di PAYLOAD, bukan di layar, karena layar/PDF/lembar sebar
+       * memakan payload yang sama dan `income-statement-shape` membandingkan
+       * ketiganya baris demi baris. Kolom yang hanya ada di layar menghasilkan
+       * cetakan yang diam-diam kehilangan separuh laporannya (#241).
+       */
+      priorPeriod?: string;
+      prior?: {
+        sales: StatementSectionPayload;
+        cogs: StatementSectionPayload;
+        grossProfit: number;
+        operatingExpense: StatementSectionPayload;
+        operatingProfit: number;
+        otherIncome: StatementSectionPayload;
+        otherExpense: StatementSectionPayload;
+        netIncome: number;
+      };
       sales: StatementSectionPayload;
       cogs: StatementSectionPayload;
       grossProfit: number;
@@ -120,6 +142,26 @@ export type StatementPayload =
   | {
       kind: "balance-sheet";
       period: string;
+      /**
+       * Neraca pada TANGGAL pembanding (issue #557). Dihilangkan = satu kolom.
+       *
+       * ⚠ Sumbunya TANGGAL, bukan rentang — beda dari Laba Rugi. `priorPeriod`
+       * karena itu berisi satu tanggal, bukan "dari–sampai".
+       */
+      priorPeriod?: string;
+      prior?: {
+        assets: StatementRow[];
+        liabilities: StatementRow[];
+        equity: StatementRow[];
+        totalAssets: number;
+        totalLiabilities: number;
+        totalEquity: number;
+        netIncome: number;
+        currentYearIncome?: number;
+        priorUnclosedIncome?: number;
+        totalLiabilitiesEquity: number;
+        balanced: boolean;
+      };
       assets: StatementRow[];
       liabilities: StatementRow[];
       equity: StatementRow[];
@@ -437,16 +479,25 @@ export function cashFlowPrintRows(payload: Extract<StatementPayload, { kind: "ca
 export function balanceSheetPrintRows(
   payload: Extract<StatementPayload, { kind: "balance-sheet" }>
 ): { body: string[][]; foot: string[][]; bodyKinds: BalanceSheetRowKind[] } {
-  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(payload));
-  const cell = (r: BalanceSheetLayoutRow, label: string): string[] => [
-    // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
-    // `paddingInlineStart`.
-    r.kind === "line" ? `   ${label}` : label,
+  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(payload, undefined, payload.prior));
+  const komparatif = payload.prior !== undefined;
+  const cell = (r: BalanceSheetLayoutRow, label: string): string[] => {
+    const teks = r.kind === "line" ? `   ${label}` : label;
     // Kolom yang tidak berlaku tetap KOSONG, tak pernah "Rp 0" (Prinsip Inti
     // MASTER.md). Nol yang memang nol tertulis apa adanya — di neraca ia
     // pernyataan posisi, bukan ketiadaan arus.
-    r.amount === null ? "" : rp(r.amount),
-  ];
+    const nominal = r.amount === null ? "" : rp(r.amount);
+    if (!komparatif) return [teks, nominal];
+    /* Persennya lewat penulis yang SAMA dengan Laba Rugi & lembar sebar. */
+    return [
+      teks,
+      nominal,
+      r.prior === null || r.prior === undefined ? "" : rp(r.prior),
+      r.percent === null || r.percent === undefined
+        ? "—"
+        : `${r.percent > 0 ? "+" : ""}${r.percent.toLocaleString("id-ID")}%`,
+    ];
+  };
   return {
     body: body.map((r) => cell(r, r.label)),
     // Keseimbangan adalah ANOTASI pada baris penutup terakhir — lencana di
@@ -502,7 +553,15 @@ export function trialBalancePrintRows(
 export function incomeStatementPrintRows(
   payload: Extract<StatementPayload, { kind: "income-statement" }>
 ): { body: string[][]; foot: string[][]; bodyKinds: IncomeStatementRowKind[] } {
-  const { body, foot } = splitIncomeStatementRows(incomeStatementLayout(payload));
+  const { body, foot } = splitIncomeStatementRows(
+    incomeStatementLayout(payload, undefined, payload.prior)
+  );
+  /* Komparatif → empat sel, lewat penulis yang SAMA dengan lembar sebar, supaya
+     keduanya tidak membulatkan persennya di tempat yang berbeda. */
+  if (payload.prior !== undefined) {
+    const c = (r: IncomeStatementLayoutRow) => incomeStatementCompareCells(r, rp);
+    return { body: body.map(c), foot: foot.map(c), bodyKinds: body.map((r) => r.kind) };
+  }
   const cell = (r: IncomeStatementLayoutRow): string[] => [
     // Takuk baris akun adalah tampilan, bukan bentuk — kertas tidak punya
     // `paddingInlineStart`. Anotasi (marjin kotor, arah hasil) dalam tanda
@@ -559,7 +618,18 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     const { body, foot, bodyKinds } = incomeStatementPrintRows(payload);
     autoTable(doc, {
       startY: y,
-      head: [INCOME_STATEMENT_COLUMNS.map((c) => INCOME_STATEMENT_HEADERS[c])],
+      /* Komparatif: judul kolom periodenya datang dari payload — tanggalnya
+         sendiri, bukan "Tahun Lalu" yang belum tentu benar. */
+      head: [
+        payload.prior === undefined
+          ? INCOME_STATEMENT_COLUMNS.map((c) => INCOME_STATEMENT_HEADERS[c])
+          : [
+              INCOME_STATEMENT_HEADERS.item,
+              payload.period,
+              payload.priorPeriod ?? "",
+              "Perubahan",
+            ],
+      ],
       body,
       foot,
       styles: { fontSize: 9 },
@@ -587,7 +657,11 @@ export function generateStatementPDF(payload: StatementPayload, company: { name:
     const { body, foot, bodyKinds } = balanceSheetPrintRows(payload);
     autoTable(doc, {
       startY: y,
-      head: [BALANCE_SHEET_COLUMNS.map((c) => BALANCE_SHEET_HEADERS[c])],
+      head: [
+        payload.prior === undefined
+          ? BALANCE_SHEET_COLUMNS.map((c) => BALANCE_SHEET_HEADERS[c])
+          : [BALANCE_SHEET_HEADERS.item, payload.period, payload.priorPeriod ?? "", "Perubahan"],
+      ],
       body,
       foot,
       styles: { fontSize: 9 },

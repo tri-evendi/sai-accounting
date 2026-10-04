@@ -25,6 +25,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import { PlainSummary } from "@/components/reports/plain-summary";
 import { BalanceSheetStatement } from "@/components/reports/balance-sheet-statement";
 import { resolveAsOf } from "@/lib/report-catalog";
+import { comparisonDate, parseComparison } from "@/lib/statement-compare";
 import { balanceSheetSummary } from "@/lib/report-summary";
 import { formatDate } from "@/lib/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -37,13 +38,27 @@ export default async function BalanceSheetPage({
   searchParams,
 }: {
   params: Promise<TenantScopedParams>;
-  searchParams: Promise<{ asOf?: string }>;
+  searchParams: Promise<{ asOf?: string; compare?: string }>;
 }) {
   await requirePagePermission("report.read", params);
   const t = await getT();
   const sp = await searchParams;
   const { asOf, asOfISO } = resolveAsOf(sp.asOf);
   const bs = await getBalanceSheet(asOf);
+
+  /*
+   * ── Kolom pembanding (issue #557) ─────────────────────────────────────────
+   *
+   * ⚠ Neraca dibandingkan pada TANGGAL, bukan rentang. `comparisonDate`
+   * memikul bedanya: tanpa `from`, "periode sebelumnya" tidak punya arti untuk
+   * laporan bersaldo, jadi ia jatuh ke tanggal yang sama TAHUN LALU — bukan
+   * menebak "sebulan", yang akan salah untuk rentang panjang mana pun.
+   *
+   * Bawaannya MATI, sama seperti Laba Rugi.
+   */
+  const compare = parseComparison(sp.compare);
+  const priorAsOf = compare === null ? null : comparisonDate(asOf, compare);
+  const prior = priorAsOf ? await getBalanceSheet(priorAsOf) : null;
   // Judul periode untuk dokumen cetak & ringkasan bahasa awam — keduanya
   // masih berbahasa Indonesia (lib/pdf, lib/report-summary).
   const asOfLabel = `Per ${formatDate(asOf)}`;
@@ -51,6 +66,9 @@ export default async function BalanceSheetPage({
   const payload: StatementPayload = {
     kind: "balance-sheet",
     period: asOfLabel,
+    ...(prior && priorAsOf
+      ? { priorPeriod: `Per ${formatDate(priorAsOf)}`, prior }
+      : {}),
     assets: bs.assets,
     liabilities: bs.liabilities,
     equity: bs.equity,
@@ -80,7 +98,9 @@ export default async function BalanceSheetPage({
         }
       />
 
-      <AsOfFilter basePath="/reports/balance-sheet" asOf={asOfISO} />
+      <AsOfFilter basePath="/reports/balance-sheet" asOf={asOfISO} compare={sp.compare}
+        showCompare
+      />
 
       <PlainSummary summary={summary} />
 

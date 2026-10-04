@@ -166,7 +166,8 @@ function buildIncomeStatementSheet(
   // Bentuknya seluruhnya milik `incomeStatementLayout()` — band mana yang
   // tampil, urutan barisnya, kalimat band kosong, label anak tangganya, dan
   // anotasinya (issue #274).
-  const { body, foot } = splitIncomeStatementRows(incomeStatementLayout(p));
+  const { body, foot } = splitIncomeStatementRows(incomeStatementLayout(p, undefined, p.prior));
+  const komparatif = p.prior !== undefined;
   const cell = (r: IncomeStatementLayoutRow): SheetCell[] => {
     const bold = r.kind !== "line";
     // Anotasi (marjin kotor, arah hasil) dalam tanda kurung — di layar ia span
@@ -178,16 +179,41 @@ function buildIncomeStatementSheet(
      * Yang TIDAK BERLAKU (judul band, kalimat band kosong) tetap sel kosong,
      * bukan nol.
      */
-    return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+    if (!komparatif) {
+      return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+    }
+    /*
+     * Komparatif: nominalnya tetap ANGKA (kolomnya harus bisa dijumlah), tetapi
+     * persennya TEKS — ia bukan uang, dan menaruhnya sebagai angka di kolom
+     * yang bertetangga dengan rupiah mengundang `SUM` yang tak berarti apa-apa.
+     */
+    return [
+      text(label, bold),
+      r.amount === null ? text(null) : money(r.amount, bold),
+      r.prior === null || r.prior === undefined ? text(null) : money(r.prior, bold),
+      text(
+        r.percent === null || r.percent === undefined
+          ? null
+          : `${r.percent > 0 ? "+" : ""}${r.percent.toLocaleString("id-ID")}%`,
+        bold
+      ),
+    ];
   };
   return {
     name: SHEET_NAMES[p.kind],
     title: STATEMENT_TITLES[p.kind],
     period: p.period,
-    columns: INCOME_STATEMENT_COLUMNS.map((c) => ({
-      header: INCOME_STATEMENT_HEADERS[c],
-      width: INCOME_STATEMENT_WIDTHS[c],
-    })),
+    columns: komparatif
+      ? [
+          { header: INCOME_STATEMENT_HEADERS.item, width: INCOME_STATEMENT_WIDTHS.item },
+          { header: p.period, width: INCOME_STATEMENT_WIDTHS.amount },
+          { header: p.priorPeriod ?? "", width: INCOME_STATEMENT_WIDTHS.amount },
+          { header: "Perubahan", width: 14 },
+        ]
+      : INCOME_STATEMENT_COLUMNS.map((c) => ({
+          header: INCOME_STATEMENT_HEADERS[c],
+          width: INCOME_STATEMENT_WIDTHS[c],
+        })),
     rows: [...body.map(cell), ...foot.map(cell)],
   };
 }
@@ -208,7 +234,8 @@ function buildBalanceSheetSheet(
   // Bentuknya seluruhnya milik `balanceSheetLayout()` — urutan barisnya, tempat
   // "Akumulasi Laba/Rugi" duduk, kalimat seksi kosong, dan penjumlahan
   // ekuitasnya (issue #258).
-  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(p));
+  const { body, foot } = splitBalanceSheetRows(balanceSheetLayout(p, undefined, p.prior));
+  const komparatif = p.prior !== undefined;
   const cell = (r: BalanceSheetLayoutRow, label: string): SheetCell[] => {
     const bold = r.kind !== "line";
     /*
@@ -217,7 +244,21 @@ function buildBalanceSheetSheet(
      * Yang TIDAK BERLAKU (judul seksi, kalimat "tidak ada akun") tetap sel
      * kosong, bukan nol.
      */
-    return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+    if (!komparatif) {
+      return [text(label, bold), r.amount === null ? text(null) : money(r.amount, bold)];
+    }
+    /* Nominal tetap ANGKA (kolomnya harus bisa dijumlah), persen TEKS. */
+    return [
+      text(label, bold),
+      r.amount === null ? text(null) : money(r.amount, bold),
+      r.prior === null || r.prior === undefined ? text(null) : money(r.prior, bold),
+      text(
+        r.percent === null || r.percent === undefined
+          ? null
+          : `${r.percent > 0 ? "+" : ""}${r.percent.toLocaleString("id-ID")}%`,
+        bold
+      ),
+    ];
   };
   const rows: SheetCell[][] = [
     ...body.map((r) => cell(r, r.label)),
@@ -231,10 +272,17 @@ function buildBalanceSheetSheet(
     name: SHEET_NAMES[p.kind],
     title: STATEMENT_TITLES[p.kind],
     period: p.period,
-    columns: BALANCE_SHEET_COLUMNS.map((c) => ({
-      header: BALANCE_SHEET_HEADERS[c],
-      width: BALANCE_SHEET_WIDTHS[c],
-    })),
+    columns: komparatif
+      ? [
+          { header: BALANCE_SHEET_HEADERS.item, width: BALANCE_SHEET_WIDTHS.item },
+          { header: p.period, width: BALANCE_SHEET_WIDTHS.amount },
+          { header: p.priorPeriod ?? "", width: BALANCE_SHEET_WIDTHS.amount },
+          { header: "Perubahan", width: 14 },
+        ]
+      : BALANCE_SHEET_COLUMNS.map((c) => ({
+          header: BALANCE_SHEET_HEADERS[c],
+          width: BALANCE_SHEET_WIDTHS[c],
+        })),
     rows,
   };
 }

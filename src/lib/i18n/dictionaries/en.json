@@ -2400,7 +2400,12 @@
     "colProject": "Project",
     "colMargin": "Margin",
     "unassignedProject": "No project",
-    "projectProfitReconcileNote": "All rows together equal Net Profit / Loss in the income statement for the same period."
+    "projectProfitReconcileNote": "All rows together equal Net Profit / Loss in the income statement for the same period.",
+    "colPriorPeriod": "Comparative Period",
+    "comparePreceding": "Preceding period",
+    "comparePreviousYear": "Previous year",
+    "compareNone": "No comparison",
+    "compareLabel": "Compare with"
   },
   "budget": {
     "title": "Budget & Targets",

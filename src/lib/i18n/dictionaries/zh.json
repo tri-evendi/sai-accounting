@@ -2400,7 +2400,12 @@
     "colProject": "项目",
     "colMargin": "利润率",
     "unassignedProject": "未分配项目",
-    "projectProfitReconcileNote": "所有行合计等于同期损益表中的净利润／亏损。"
+    "projectProfitReconcileNote": "所有行合计等于同期损益表中的净利润／亏损。",
+    "colPriorPeriod": "比较期间",
+    "comparePreceding": "上一期间",
+    "comparePreviousYear": "上年同期",
+    "compareNone": "不比较",
+    "compareLabel": "比较对象"
   },
   "budget": {
     "title": "预算与目标",

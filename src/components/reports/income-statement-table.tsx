@@ -127,9 +127,19 @@ function Note({ text, color }: { text: string; color?: string }) {
 
 export function IncomeStatementTable({ payload, t }: { payload: IncomeStatementPayload; t: T }) {
   const { body, foot } = splitIncomeStatementRows(
-    incomeStatementLayout(payload, screenLabels(t))
+    incomeStatementLayout(payload, screenLabels(t), payload.prior)
   );
   const profit = payload.netIncome >= 0;
+
+  /*
+   * Komparatif atau tidak ditentukan PAYLOAD, bukan oleh baris yang kebetulan
+   * membawa medannya: sebuah laporan komparatif yang seluruh barisnya
+   * berpembanding `null` (band kosong) tetap laporan komparatif, dan kolomnya
+   * tetap harus digambar — kalau tidak, tabelnya berubah lebar tergantung isi.
+   */
+  const komparatif = payload.prior !== undefined;
+  /** Lebar rentang baris judul band — ikut jumlah kolom, tidak dipatok 2. */
+  const RENTANG = komparatif ? 4 : 2;
 
   const columns: SaiColumns<IncomeStatementLayoutRow> = [
     {
@@ -148,8 +158,44 @@ export function IncomeStatementTable({ payload, t }: { payload: IncomeStatementP
     },
     moneyColumn<IncomeStatementLayoutRow>({
       dataIndex: "amount",
-      title: t("reports.colStatementAmount"),
+      title: komparatif ? payload.period : t("reports.colStatementAmount"),
     }),
+    /* Kolom pembanding hanya ada bila laporannya memang komparatif. Judulnya
+       PERIODE-nya sendiri, bukan "Tahun Lalu": pembandingnya bisa periode
+       sebelumnya ATAU tahun lalu, dan judul yang berbohong tentang mana yang
+       dipakai lebih buruk daripada judul yang panjang. */
+    ...(komparatif
+      ? [
+          moneyColumn<IncomeStatementLayoutRow>({
+            dataIndex: "prior",
+            title: payload.priorPeriod ?? t("reports.colPriorPeriod"),
+          }),
+          {
+            key: "percent",
+            title: t("reports.colChange"),
+            align: "right" as const,
+            render: (_raw: unknown, row: IncomeStatementLayoutRow) =>
+              /* Pembanding NOL → tanda pisah, bukan "0%" maupun "∞". Dari nol,
+                 kenaikan berapa pun tak punya persentase. */
+              row.percent === null || row.percent === undefined ? (
+                <span style={{ color: "var(--ant-color-text-tertiary)" }}>—</span>
+              ) : (
+                <span
+                  style={{
+                    fontVariantNumeric: "tabular-nums",
+                    color:
+                      row.percent < 0
+                        ? "var(--ant-color-error-text)"
+                        : "var(--ant-color-success-text)",
+                  }}
+                >
+                  {row.percent > 0 ? "+" : ""}
+                  {formatNumber(row.percent)}%
+                </span>
+              ),
+          },
+        ]
+      : []),
   ];
 
   /*
@@ -159,10 +205,10 @@ export function IncomeStatementTable({ payload, t }: { payload: IncomeStatementP
    */
   const rowCells = (row: IncomeStatementLayoutRow): Record<string, SummaryCell> | undefined => {
     if (row.kind === "section") {
-      return { item: { content: row.label, colSpan: 2, scope: "colgroup" } };
+      return { item: { content: row.label, colSpan: RENTANG, scope: "colgroup" } };
     }
     if (row.kind === "empty") {
-      return { item: { content: <span style={LINE_INDENT}>{row.label}</span>, colSpan: 2 } };
+      return { item: { content: <span style={LINE_INDENT}>{row.label}</span>, colSpan: RENTANG } };
     }
     if (row.kind === "subtotal" || row.kind === "step") {
       return {

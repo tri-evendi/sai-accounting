@@ -312,14 +312,25 @@ services:
       - "traefik.docker.network=traefik_default"
       # HTTP -> HTTPS redirect
       - "traefik.http.routers.sai.entrypoints=web"
-      - "traefik.http.routers.sai.rule=Host(`${APP_DOMAIN:-inventory.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai.rule=Host(`${APP_DOMAIN:-saiaccounting.id}`)"
       - "traefik.http.routers.sai.middlewares=sai-https"
       - "traefik.http.middlewares.sai-https.redirectscheme.scheme=https"
       # HTTPS router with the existing Let's Encrypt resolver
       - "traefik.http.routers.sai-secure.entrypoints=websecure"
-      - "traefik.http.routers.sai-secure.rule=Host(`${APP_DOMAIN:-inventory.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai-secure.rule=Host(`${APP_DOMAIN:-saiaccounting.id}`)"
       - "traefik.http.routers.sai-secure.tls=true"
       - "traefik.http.routers.sai-secure.tls.certresolver=le"
+      - "traefik.http.routers.sai-www.entrypoints=web"
+      - "traefik.http.routers.sai-www.rule=Host(`www.${APP_DOMAIN:-saiaccounting.id}`)"
+      - "traefik.http.routers.sai-www.middlewares=sai-www-apex"
+      - "traefik.http.routers.sai-www-secure.entrypoints=websecure"
+      - "traefik.http.routers.sai-www-secure.rule=Host(`www.${APP_DOMAIN:-saiaccounting.id}`)"
+      - "traefik.http.routers.sai-www-secure.middlewares=sai-www-apex"
+      - "traefik.http.routers.sai-www-secure.tls=true"
+      - "traefik.http.routers.sai-www-secure.tls.certresolver=le"
+      - "traefik.http.middlewares.sai-www-apex.redirectregex.regex=^https?://www\\.([^/]+)(.*)"
+      - "traefik.http.middlewares.sai-www-apex.redirectregex.replacement=https://$${1}$${2}"
+      - "traefik.http.middlewares.sai-www-apex.redirectregex.permanent=true"
       # ── Bidang OPERATOR (issue #154) — HOSTNAME SENDIRI ────────────────────
       # Container-nya sama; yang memisahkan adalah HOST. Cookie berlingkup host,
       # jadi sesi pelanggan yang bocor tidak pernah bisa menjangkau konsol
@@ -346,10 +357,10 @@ services:
       # klien yang ikut dipercaya. Rantai yang lebih pendek dari angka ini
       # ditolak (gagal-tertutup), bukan ditebak.
       - "traefik.http.routers.sai-ops.entrypoints=web"
-      - "traefik.http.routers.sai-ops.rule=Host(`${OPERATOR_DOMAIN:-ops.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai-ops.rule=Host(`${OPERATOR_DOMAIN:-ops.saiaccounting.id}`)"
       - "traefik.http.routers.sai-ops.middlewares=sai-https"
       - "traefik.http.routers.sai-ops-secure.entrypoints=websecure"
-      - "traefik.http.routers.sai-ops-secure.rule=Host(`${OPERATOR_DOMAIN:-ops.suburanugerahindonesia.com}`)"
+      - "traefik.http.routers.sai-ops-secure.rule=Host(`${OPERATOR_DOMAIN:-ops.saiaccounting.id}`)"
       - "traefik.http.routers.sai-ops-secure.tls=true"
       - "traefik.http.routers.sai-ops-secure.tls.certresolver=le"
       # Which container port Traefik forwards to

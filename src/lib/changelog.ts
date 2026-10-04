@@ -73,8 +73,52 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.6.0",
+    tanggal: "2026-10-04",
+    ringkas:
+      "Tahun buku bisa ditutup, saldo mata uang asing dinilai ulang pada kurs penutup, laporan bisa menyandingkan dua periode, dan ada halaman status yang bisa dibuka tanpa masuk.",
+    butir: [
+      {
+        jenis: "baru",
+        teks:
+          "Laba Rugi dan Neraca bisa menampilkan kolom pembanding: pilih \u201cPeriode sebelumnya\u201d atau \u201cTahun lalu\u201d di penyaring laporan, atau \u201cTanpa pembanding\u201d seperti sebelumnya. Selisih dan persen perubahannya ikut dihitung per baris. Pembanding yang bernilai nol menampilkan tanda pisah, bukan persentase \u2014 dari nol, kenaikan berapa pun tidak punya persen. Kolomnya ikut terbawa ke PDF dan ke lembar sebar.",
+      },
+      {
+        jenis: "baru",
+        teks:
+          "Tahun buku kini bisa ditutup dari halaman Tutup Periode. Penutupan memindahkan laba tahun itu ke ekuitas lewat jurnal penutup, dan bisa dibatalkan. Laba Rugi mengecualikan jurnal penutup supaya tahun yang sudah ditutup tidak terbaca nol, dan Neraca memisahkan Laba Tahun Berjalan dari laba tahun lalu yang belum ditutup.",
+      },
+      {
+        jenis: "baru",
+        teks:
+          "Ada laporan Perubahan Ekuitas: saldo awal, laba tahun berjalan, penutupan, lalu saldo akhir \u2014 beserta rekonsiliasinya terhadap Neraca.",
+      },
+      {
+        jenis: "baru",
+        teks:
+          "Saldo piutang, utang, dan kas bermata uang asing bisa dinilai ulang pada kurs akhir bulan, dengan pratinjau sebelum diposting. Tutup Periode menyebutkan bila masih ada saldo valas yang belum dinilai ulang, jadi bulan tidak tertutup di atas kurs yang sudah usang.",
+      },
+      {
+        jenis: "baru",
+        teks:
+          "Halaman Status Layanan di alamat /status menyebutkan keadaan pembukuan, langganan & tagihan, serta pengiriman surel pada saat Anda membukanya. Ia sengaja bisa dibuka tanpa masuk \u2014 yang paling membutuhkannya adalah orang yang sedang tidak bisa masuk \u2014 dan tertaut dari kaki setiap halaman. Pemeliharaan yang dijadwalkan diumumkan di sana sebelum berlangsung, beserta jamnya.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Tahun buku yang belum berakhir tidak bisa lagi ditutup. Sebelumnya penutupan menerima tahun yang masih berjalan, dan jurnal penutupnya memindahkan laba yang belum lengkap ke ekuitas.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Halaman bantuan di /docs ditulis ulang dengan kalimat yang lebih pendek. Isinya tidak berubah \u2014 angka, contoh, dan aturannya sama persis \u2014 hanya lebih enak dibaca.",
+      },
+    ],
+  },
+  {
     versi: "0.5.0",
     tanggal: "2026-09-05",
+    sha: "f86e86b",
     ringkas:
       "Daftar yang gagal dimuat berhenti tampil sebagai daftar kosong, stok masuk bisa langsung memotong kas, dan kontrak menyebut sendiri apakah ia kena PPN.",
     butir: [

@@ -54,9 +54,9 @@
  * bila belum ada store". Yang benar lebih sempit, dan selisihnya menentukan:
  *
  *   • `enterWith` yang dipanggil SEBELUM `await` apa pun di fungsi itu →
- *     merambat ke pemanggil. ✅
+ *     merambat ke pemanggil.
  *   • `enterWith` yang dipanggil SESUDAH sebuah `await` → **tidak** merambat;
- *     pemanggil melihat store lamanya (atau tidak sama sekali). ❌
+ *     pemanggil melihat store lamanya (atau tidak sama sekali).
  *
  * Penjaga SELALU berada di kasus kedua — ia menanam konteks setelah membaca
  * basis data kendali. Karena itu `enterCompanyContext()` di penjaga tidak

@@ -84,11 +84,11 @@ Diukur terhadap kode, 29 Agustus 2026.
 
 | Jenis | Keadaan |
 |---|---|
-| **Trading** | ✅ Lengkap. Wisaya pembelian menulis `stock_movements` `in` ber-`unit_cost`; HPP rata-rata tertimbang. |
-| **Export** | ✅ Lengkap. Multi-currency + `rate`/`base_amount`, `fx_gain_loss`, dan jenis dokumen `packing_list`/`peb`/`bl`/`coo` (#511). |
-| **Import** | ✅ Biaya impor (landed cost) mendarat di #510/#533 — `/landed-costs`, aturan posting `landed_cost`, migrasi 0056, tiga berkas tes. ⚠ Belum pernah dipakai di produksi (0 dokumen). |
-| **Jasa** | ✅ Job costing sederhana: `CostCenter` (#98) + Laba Rugi per Proyek (#531). |
-| **Manufaktur** | ✅ Lengkap sejak #543/#544: resep bertingkat, stasiun kerja & routing, perintah produksi, Barang Dalam Proses (1106), penyerapan upah (5103) & overhead (5104), dan laporan selisih. Modul **opt-in** — tidak pernah menyala sendiri. |
+| **Trading** | Lengkap. Wisaya pembelian menulis `stock_movements` `in` ber-`unit_cost`; HPP rata-rata tertimbang. |
+| **Export** | Lengkap. Multi-currency + `rate`/`base_amount`, `fx_gain_loss`, dan jenis dokumen `packing_list`/`peb`/`bl`/`coo` (#511). |
+| **Import** | Biaya impor (landed cost) mendarat di #510/#533 — `/landed-costs`, aturan posting `landed_cost`, migrasi 0056, tiga berkas tes. ⚠ Belum pernah dipakai di produksi (0 dokumen). |
+| **Jasa** | Job costing sederhana: `CostCenter` (#98) + Laba Rugi per Proyek (#531). |
+| **Manufaktur** | Lengkap sejak #543/#544: resep bertingkat, stasiun kerja & routing, perintah produksi, Barang Dalam Proses (1106), penyerapan upah (5103) & overhead (5104), dan laporan selisih. Modul **opt-in** — tidak pernah menyala sendiri. |
 
 ## Manufaktur: urutan yang dipakai membangunnya
 

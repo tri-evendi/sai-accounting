@@ -185,9 +185,9 @@ issue #333 (Node 22.22, dan di dalam route handler & render Next 16.2.1 yang
 sungguhan), batasnya ternyata bukan soal lingkungan melainkan soal `await`:
 
 - `enterWith` yang dipanggil **sebelum** `await` apa pun di fungsi itu →
-  merambat ke kelanjutan pemanggilnya. ✅
+  merambat ke kelanjutan pemanggilnya.
 - `enterWith` yang dipanggil **sesudah** sebuah `await` → tidak merambat;
-  pemanggil melihat store lamanya, atau tidak sama sekali. ❌
+  pemanggil melihat store lamanya, atau tidak sama sekali.
 
 Sebuah penjaga selalu berada di kasus kedua — ia membaca basis data kendali
 lebih dulu, baru menanam. Karena itu konteks yang ditanam `enterCompanyContext()`

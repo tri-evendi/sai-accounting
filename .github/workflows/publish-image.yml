@@ -1,0 +1,114 @@
+# Membangun image Docker produksi di runner GitHub, lalu mendorongnya ke GHCR.
+#
+# ══ Kenapa ada ══════════════════════════════════════════════════════════════
+# Sebelum ini penggelaran berarti `docker compose build` DI SERVER PRODUKSI.
+# Kotak itu 3,6 GB RAM dan juga melayani empat aplikasi lain, jadi `next build`
+# di sana menghabiskan ~19 menit dengan iowait 58–92% — bukan karena kompilasi
+# berat, melainkan karena kompilernya dihalaman masuk-keluar swap. Diukur saat
+# menggelar 0.6.0. AGENTS.md bahkan melarang agent latar membangun di sana
+# sebab dua build bersamaan sudah pernah menghasilkan OOM (exit 137).
+#
+# Runner GitHub punya RAM yang cukup dan tidak sedang melayani siapa pun.
+# Dengan image jadi di registry, penggelaran menjadi `pull` + `up -d`: detik,
+# bukan belasan menit, dan produksi tidak pernah bersaing dengan kompilernya.
+#
+# ══ Dua image, bukan satu ═══════════════════════════════════════════════════
+# `docker compose build web` TIDAK membangun image `migrate` — pelajaran yang
+# terulang beberapa rilis: `scheduler` dan `conformance` berjalan di atas image
+# migrator, yang ikut memuat kode aplikasi, jadi melewatkannya berarti dua
+# layanan menjalankan kode basi tanpa satu pun tanda. Matriks di bawah
+# membangun KEDUANYA setiap kali, sehingga keduanya tidak bisa lagi menyimpang.
+name: Publish production images
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Tanpa ini `docker push` ke GHCR dijawab 403 meski login berhasil:
+      # GITHUB_TOKEN bawaan hanya punya izin baca.
+      packages: write
+
+    strategy:
+      # Satu target gagal TIDAK membatalkan yang lain — kalau `migrator` rusak,
+      # kita masih ingin tahu apakah `runner` sehat.
+      fail-fast: false
+      matrix:
+        include:
+          - target: runner
+            suffix: ""
+          - target: migrator
+            suffix: "-migrator"
+          # `backup` ikut, meski jarang berubah dan tidak ada di jalur
+          # penggelaran. Justru itu sebabnya: image yang tidak pernah dibangun
+          # ulang adalah image yang membasi tanpa ada yang menyadarinya, dan
+          # layanan cadangan sudah pernah mati berbulan-bulan karena akar
+          # seperti itu.
+          - target: backup
+            suffix: "-backup"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baca versi dari package.json
+        id: meta
+        # Dipakai sebagai tag `0.6.0`. Dibaca dengan jq, bukan grep, supaya
+        # tidak ikut menangkap "version" milik dependensi.
+        run: |
+          echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          # Nama paket GHCR wajib huruf kecil; nama repo bisa tidak.
+          echo "repo_lc=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login ke GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push ${{ matrix.target }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/amd64
+          push: true
+          # Tiga tag, dan yang kedua yang menggantikan ritual lama.
+          #
+          # Sebelum ini rollback menuntut `docker tag sai-luckyhands:latest
+          # sai-luckyhands:rollback-<sha>` SEBELUM membangun, sebab build
+          # menimpa `:latest` dan image lamanya langsung tak terjangkau di
+          # containerd. Lupa satu kali berarti rollback berubah dari 30 detik
+          # menjadi build 10 menit di tengah insiden.
+          #
+          # Dengan `sha-<pendek>` di registry, setiap rilis punya jangkarnya
+          # sendiri secara otomatis. Tidak ada lagi langkah yang bisa dilupakan.
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:latest
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:sha-${{ steps.meta.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:${{ steps.meta.outputs.version }}
+          # Cache antar-jalan: tanpa ini setiap build mengulang `bun install`
+          # dan `prisma generate` dari nol.
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          provenance: false
+
+      - name: Sebutkan yang terdorong
+        run: |
+          echo "### ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:sha-${{ steps.meta.outputs.sha_short }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

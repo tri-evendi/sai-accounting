@@ -217,13 +217,66 @@ typed it. The sentence comes from the dictionary; only the dates come from here.
 
 ## Updates (new release)
 
+Images are built by GitHub Actions (`.github/workflows/publish-image.yml`) on
+every push to `main` and pushed to GHCR. **Do not build on the production
+server.** That box has 3.6 GB of RAM and also serves four other apps; building
+0.6.0 there took ~19 minutes at 58-92% iowait, because the compiler was being
+paged through swap rather than because compiling is slow. Two concurrent builds
+have produced an OOM (exit 137) before now.
+
 ```bash
-git pull
-bun install --frozen-lockfile
-bunx prisma migrate deploy
-NODE_ENV=production bun run build
-pm2 restart sai-management   # or restart your process manager
+git pull                                  # compose file + migrations only
+docker compose pull web migrate scheduler conformance
+docker compose run --rm migrate bun run db:migrate   # ONLY if there are new migrations
+docker compose up -d --no-deps web scheduler conformance
 ```
+
+**Order matters when a release carries migrations:** pull, then migrate, then
+swap. A single `docker compose up --build -d` is wrong — it swaps the container
+before migrations run, so the new code briefly meets the old schema.
+
+Check whether a release has migrations before deciding:
+
+```bash
+git diff --name-only <previous-main-sha>..HEAD -- prisma/
+```
+
+### Rollback
+
+Every push tags `sha-<short>` and the version number alongside `latest`, so each
+release keeps its own anchor. No pre-build tagging ritual is needed any more.
+
+```bash
+SAI_TAG=sha-573d9cf docker compose up -d --no-deps web
+```
+
+`SAI_IMAGE` overrides the registry prefix, which also makes the legacy local
+images reachable - the suffixes match the old naming exactly:
+
+```bash
+SAI_IMAGE=sai-luckyhands SAI_TAG=rollback-12ddc59 docker compose up -d --no-deps web
+```
+
+Put both in `.env` to make a pin survive across commands.
+
+### One-time: package visibility
+
+GHCR packages are created **private** even for a public repo. Either make the
+three packages public once (GitHub -> Packages -> each package -> Package
+settings -> Change visibility), or authenticate the server:
+
+```bash
+echo <read:packages-PAT> | docker login ghcr.io -u <user> --password-stdin
+```
+
+Until that is done, `docker compose pull` answers `denied`.
+
+### Legacy: PM2 (no longer used)
+
+The pre-Docker flow was `git pull && bun install && bunx prisma migrate deploy
+&& bun run build && pm2 restart`. It is kept here only to explain
+`ecosystem.config.cjs`; production has run on Docker Compose since the
+multi-company release.
 
 ## Development vs production
 

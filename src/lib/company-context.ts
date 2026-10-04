@@ -38,9 +38,9 @@
  * soal lingkungan melainkan soal `await`:
  *
  *   • `enterWith` yang dipanggil SEBELUM `await` apa pun di fungsi itu →
- *     merambat ke kelanjutan pemanggilnya. ✅
+ *     merambat ke kelanjutan pemanggilnya.
  *   • `enterWith` yang dipanggil SESUDAH sebuah `await` → **tidak** merambat.
- *     Pemanggil melihat store lamanya, atau tidak sama sekali. ❌
+ *     Pemanggil melihat store lamanya, atau tidak sama sekali.
  *
  * Sebuah penjaga selalu berada di kasus kedua: ia membaca basis data kendali
  * lebih dulu, baru menanam. Jadi konteks yang ditanam `enterCompanyContext()`

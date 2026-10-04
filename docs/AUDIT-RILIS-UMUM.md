@@ -324,9 +324,9 @@ keberatan penjualan pertama.
 | Kode | Temuan | Bukti |
 |---|---|---|
 | **F-11** | Ekspor e-Faktur **bukan** reproduksi byte-exact skema impor DJP/Coretax — dinyatakan jujur di kepala berkasnya sendiri, dan harus divalidasi terhadap skema berjalan sebelum dipakai melapor. Untuk rilis umum ini harus jadi janji yang **dinyatakan di UI**, atau dipenuhi. | `lib/efaktur.ts:17–27` |
-| **F-12** ([#368](https://github.com/tri-evendi/sai-accounting/issues/368)) | **✅ SELESAI.** PPN adalah **konstanta kompilasi 11%**, tanpa efektif-tanggal dan tanpa penanda PKP/non-PKP per PT. Perubahan tarif menuntut redeploy; PT non-PKP tetap mendapat bawaan 11%. Dokumen tersimpan membawa `taxRate` sendiri, jadi riwayat aman — yang tidak aman adalah **bawaannya**. → Kini tabel `tax_rates` ber-efektif-tanggal + kolom `company_settings.is_pkp`, dikelola di **Pengaturan → PPN** dan ditanyakan wisaya penyiapan; setiap formulir dokumen memakai tarif perusahaan **pada tanggal dokumen itu**. Konstantanya tetap ada — ia masih benar sebagai benih perusahaan baru dan sebagai PPN tingkat **platform** (tagihan langganan kami sendiri) — dan `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali. | `lib/tax.ts:29` |
+| **F-12** ([#368](https://github.com/tri-evendi/sai-accounting/issues/368)) | **SELESAI.** PPN adalah **konstanta kompilasi 11%**, tanpa efektif-tanggal dan tanpa penanda PKP/non-PKP per PT. Perubahan tarif menuntut redeploy; PT non-PKP tetap mendapat bawaan 11%. Dokumen tersimpan membawa `taxRate` sendiri, jadi riwayat aman — yang tidak aman adalah **bawaannya**. → Kini tabel `tax_rates` ber-efektif-tanggal + kolom `company_settings.is_pkp`, dikelola di **Pengaturan → PPN** dan ditanyakan wisaya penyiapan; setiap formulir dokumen memakai tarif perusahaan **pada tanggal dokumen itu**. Konstantanya tetap ada — ia masih benar sebagai benih perusahaan baru dan sebagai PPN tingkat **platform** (tagihan langganan kami sendiri) — dan `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali. | `lib/tax.ts:29` |
 | **F-13** | Ekspor mandiri tenant menyusun seluruh ZIP **di dalam permintaan HTTP**. Sudah dibaca ber-potongan 1000 baris, tetapi ZIP-nya utuh di memori. Tenant besar × kotak 3,6 GB = risiko OOM yang dipicu pengguna. | `lib/tenant-export.ts` |
-| **F-14** | **✅ TIDAK BERLAKU LAGI.** Formulir kontak pendaratan (yang diam-diam gagal tanpa `PLATFORM_CONTACT_EMAIL`) sudah dicabut bersama seksinya. Yang tersisa hanya kanal yang dirender **bila** env-nya terisi, jadi tidak ada lagi kiriman yang gagal diam-diam. | — |
+| **F-14** | **TIDAK BERLAKU LAGI.** Formulir kontak pendaratan (yang diam-diam gagal tanpa `PLATFORM_CONTACT_EMAIL`) sudah dicabut bersama seksinya. Yang tersisa hanya kanal yang dirender **bila** env-nya terisi, jadi tidak ada lagi kiriman yang gagal diam-diam. | — |
 | **F-15** | Tidak ada persetujuan-ulang saat S&K naik versi — pengguna lama dianggap menyetujui versi baru. Sudah dicatat sebagai keputusan sadar, tetapi untuk rilis umum ia menjadi risiko hukum, bukan lagi catatan. | `lib/legal.ts:11` |
 
 ---
@@ -424,10 +424,10 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Cadangan** | ✅ Layanan `backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
-| **Pemulihan** | ⬜ **Latihan pemulihan yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
-| **Pemantauan** | ✅ Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut penjadwal (#373). ⬜ Belum: pemeriksaan platform & satu PT contoh di probe yang sama. |
-| **Penjadwal** | ✅ Layanan `scheduler` di compose (#373) — bukan lagi cron host. |
+| **Cadangan** | SUDAH: Layanan `backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
+| **Pemulihan** | BELUM: **Latihan pemulihan yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
+| **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut penjadwal (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
+| **Penjadwal** | SUDAH: Layanan `scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
 | **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Pelanggan yang membayar berhak tahu sebelum bertanya. |
 

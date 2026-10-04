@@ -136,7 +136,6 @@ export function generateContractPDF(contract: ContractData, company: { name: str
     margin: { left: 14, right: 14 },
   });
 
-  // Get current Y after table
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   y = (doc as any).lastAutoTable.finalY + 10;
 

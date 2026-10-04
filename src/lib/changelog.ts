@@ -75,6 +75,7 @@ export const RILIS: readonly Rilis[] = [
   {
     versi: "0.6.0",
     tanggal: "2026-10-04",
+    sha: "260f208",
     ringkas:
       "Tahun buku bisa ditutup, saldo mata uang asing dinilai ulang pada kurs penutup, laporan bisa menyandingkan dua periode, dan ada halaman status yang bisa dibuka tanpa masuk.",
     butir: [

@@ -20,7 +20,7 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.6.0 — 2026-10-04 — belum digelar
+## 0.6.0 — 2026-10-04 (260f208)
 
 Tahun buku bisa ditutup, saldo mata uang asing dinilai ulang pada kurs penutup, laporan bisa menyandingkan dua periode, dan ada halaman status yang bisa dibuka tanpa masuk.
 

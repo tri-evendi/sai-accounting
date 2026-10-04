@@ -66,7 +66,26 @@ docker-compose*.yml
 !prisma/migrations/**/*.sql
 !prisma/control/migrations/**/*.sql
 !prisma/platform/migrations/**/*.sql
+
+# ⚠️ `backups/` DI SINI TIDAK SAMA DENGAN `backups/` DI `.gitignore`.
+# Pola git tanpa garis miring depan cocok di KEDALAMAN MANA PUN; pola
+# `.dockerignore` DIPATOK ke akar konteks. Jadi `.gitignore:backups/` menangkap
+# `data/backups/`, sementara baris di bawah ini hanya menangkap `./backups/`.
+#
+# Selisih itu sudah memakan korban: dump pra-penggelaran 0.6.0 ditulis ke
+# `data/backups/*.sql.gz`, lolos DUA kali — dipatoknya `backups/` melewatkan
+# direktorinya, dan `**/*.sql` melewatkan berkasnya sebab ekstensinya `.gz`,
+# bukan `.sql`. Hasilnya seluruh basis data produksi (25 basis data, termasuk
+# hash kata sandi setiap pengguna) terbangun ke dalam image yang digelar.
+# Tertangkap sebelum image itu didorong ke registry publik, bukan sesudah.
+#
+# Karena itu: direktori cadangan di kedalaman mana pun, dan setiap TURUNAN
+# `.sql` (`.gz`, `.zst`, `.bz2`, `.enc`) — bukan hanya `.sql` telanjang.
 backups/
+**/backups/
+**/*.sql.*
+**/*.dump
+**/*.dump.*
 
 # Worktree agent & artefak alat (issue: konteks build 375 MB)
 # `.claude/worktrees/` berisi salinan pohon kerja LENGKAP — masing-masing dengan

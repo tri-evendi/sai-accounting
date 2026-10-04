@@ -36,7 +36,7 @@ services:
     build:
       context: .
       target: migrator
-    image: sai-luckyhands-migrator:latest
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
     env_file: .env
     restart: "no"
     depends_on:
@@ -77,7 +77,7 @@ services:
     build:
       context: .
       target: migrator
-    image: sai-luckyhands-migrator:latest
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
     container_name: sai-scheduler
     restart: unless-stopped
     env_file: .env
@@ -180,7 +180,7 @@ services:
     build:
       context: .
       target: migrator
-    image: sai-luckyhands-migrator:latest
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
     container_name: sai-conformance
     restart: unless-stopped
     env_file: .env
@@ -231,7 +231,7 @@ services:
     build:
       context: .
       target: backup
-    image: sai-luckyhands-backup:latest
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-backup:${SAI_TAG:-latest}
     container_name: sai-backup
     restart: unless-stopped
     env_file: .env
@@ -267,7 +267,7 @@ services:
     build:
       context: .
       target: runner
-    image: sai-luckyhands:latest
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}:${SAI_TAG:-latest}
     container_name: sai-web
     restart: unless-stopped
     expose:

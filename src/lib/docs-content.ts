@@ -141,7 +141,7 @@ const MESIN_AKUNTANSI: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Alasannya bukan kehati-hatian yang berlebihan, melainkan aritmetika. Setiap laporan yang pernah Anda cetak, kirim ke bank, atau lampirkan ke SPT dihitung dari jurnal pada hari itu. Kalau jurnalnya bisa hilang, laporan yang sudah keluar kehilangan sumbernya: tidak ada cara membuktikan angka yang Anda kirim bulan lalu pernah benar. Membalik menyimpan kedua kenyataan — yang pernah tercatat, dan yang berlaku sekarang.",
+        "Setiap laporan yang pernah Anda cetak, kirim ke bank, atau lampirkan ke SPT dihitung dari jurnal pada hari itu. Kalau jurnalnya bisa hilang, laporan yang sudah keluar kehilangan sumbernya, dan angka yang Anda kirim bulan lalu tidak bisa lagi dibuktikan. Membalik menyimpan dua-duanya: yang pernah tercatat, dan yang berlaku sekarang.",
     },
     {
       kind: "poin",
@@ -155,7 +155,7 @@ const MESIN_AKUNTANSI: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Daftar Akun (bagan akun) menentukan bentuk setiap laporan. Menambah akun berarti menambah baris di neraca atau laba/rugi; memindahkan sebuah akun ke tipe yang lain memindahkan angkanya antar-laporan. Karena itu halaman ini hanya terbuka untuk peran berakses penuh, dan hanya saat Mode Akuntan menyala — bukan karena isinya rahasia, melainkan karena kesalahan di sini tidak pernah tampak sebagai kesalahan; ia tampak sebagai laporan yang wajar dengan angka di tempat yang salah.",
+        "Daftar Akun (bagan akun) menentukan bentuk setiap laporan. Menambah akun berarti menambah baris di neraca atau laba/rugi; memindahkan sebuah akun ke tipe yang lain memindahkan angkanya antar-laporan. Karena itu halaman ini hanya terbuka untuk peran berakses penuh, dan hanya saat Mode Akuntan menyala. Kesalahan di sini tidak tampak sebagai kesalahan: hasilnya laporan yang wajar dengan angka di tempat yang salah.",
     },
     { kind: "istilah", kunci: ["jurnal", "buku_besar", "akun_perkiraan"] },
   ];
@@ -169,7 +169,7 @@ const PERIODE: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Kenapa perlu: laporan bulanan diberikan kepada pihak luar — bank, pemegang saham, kantor pajak. Sekali angka itu keluar, ia menjadi janji. Tanpa kunci, sebuah faktur yang disimpan hari ini dengan tanggal dua bulan lalu akan mengubah laporan yang sudah dikirim, tanpa satu pun tanda di layar. Yang menemukannya bukan Anda, melainkan orang yang membandingkan dua salinan laporan yang seharusnya sama.",
+        "Kenapa perlu: laporan bulanan diberikan kepada pihak luar — bank, pemegang saham, kantor pajak. Tanpa kunci periode, sebuah faktur yang disimpan hari ini dengan tanggal dua bulan lalu akan mengubah laporan yang sudah dikirim, tanpa satu pun tanda di layar. Biasanya bukan Anda yang menemukannya, melainkan orang yang membandingkan dua salinan laporan yang seharusnya sama.",
     },
     { kind: "sub", judul: "Kalau ternyata ada yang salah di bulan terkunci" },
     {
@@ -180,7 +180,7 @@ const PERIODE: readonly DocBlock[] = [
     {
       kind: "catatan",
       teks:
-        "Membuka kembali periode yang sudah dikunci memang mungkin, dan sengaja dibuat merepotkan: ia kewenangan peran berakses penuh dan tercatat di jejak audit. Kalau sebuah bulan perlu dibuka dua kali, yang bermasalah biasanya bukan bulannya melainkan kapan ia ditutup.",
+        "Membuka kembali periode yang sudah dikunci memang mungkin, dan sengaja dibuat merepotkan: ia kewenangan peran berakses penuh dan tercatat di jejak audit. Kalau sebuah bulan perlu dibuka dua kali, biasanya yang bermasalah adalah waktu penutupannya, bukan bulannya.",
       nada: "peringatan",
     },
     { kind: "istilah", kunci: ["tutup_periode", "saldo_awal"] },
@@ -190,7 +190,7 @@ const PERSETUJUAN: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Aturan Persetujuan menetapkan ambang: di atas nominal tertentu, sebuah dokumen tidak langsung berlaku melainkan masuk antrean dan menunggu peran tertentu memutuskannya. Ambang dan peran penyetujunya di-SNAPSHOT saat pengajuan dibuat — mengubah aturan hari ini tidak mengubah siapa yang harus memutuskan pengajuan yang sudah berjalan.",
+        "Aturan Persetujuan menetapkan ambang: di atas nominal tertentu, sebuah dokumen tidak langsung berlaku. Ia masuk antrean dan menunggu peran tertentu memutuskannya. Ambang dan peran penyetujunya di-SNAPSHOT saat pengajuan dibuat, jadi mengubah aturan hari ini tidak mengubah siapa yang harus memutuskan pengajuan yang sudah berjalan.",
     },
     {
       kind: "paragraf",
@@ -201,7 +201,7 @@ const PERSETUJUAN: readonly DocBlock[] = [
       kind: "diagram",
       nama: "alur-persetujuan",
       keterangan:
-        "Yang bercabang di ambang bukan dokumennya melainkan JURNALNYA: dokumen selalu tersimpan, jurnalnya yang menunggu.",
+        "Yang menunggu di ambang adalah JURNALNYA, bukan dokumennya: dokumen selalu tersimpan.",
     },
     {
       kind: "poin",
@@ -265,13 +265,13 @@ const STOK: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Alasannya bukan kerapian: persediaan adalah UANG di neraca. Menaikkan stok 10 ton berarti menaikkan aset perusahaan sebesar nilai 10 ton itu, dan nilai itu harus datang dari suatu tempat — pembelian, atau pengakuan bahwa sebelumnya kurang catat. Kartu Stok adalah tempat pertanyaan “dari mana angka ini” dijawab, baris per baris.",
+        "Persediaan adalah UANG di neraca. Menaikkan stok 10 ton berarti menaikkan aset perusahaan sebesar nilai 10 ton itu, dan nilai itu harus datang dari suatu tempat: pembelian, atau pengakuan bahwa sebelumnya kurang catat. Kartu Stok menunjukkan asal setiap angka, baris per baris.",
     },
     { kind: "sub", judul: "Hitung ulang stok (opname) adalah pengakuan, bukan penimpaan" },
     {
       kind: "paragraf",
       teks:
-        "Saat Anda menghitung fisik gudang dan hasilnya berbeda dari catatan, aplikasi tidak menimpa catatan dengan hasil hitungan. Ia mencatat SELISIHNYA sebagai penyesuaian berjurnal: stok bertambah atau berkurang, dan lawannya adalah akun selisih persediaan yang masuk ke laba/rugi. Selisih persediaan adalah biaya — barang yang susut, rusak, atau tidak pernah tercatat keluar — dan menyembunyikannya sebagai “koreksi angka” berarti menyembunyikan biaya.",
+        "Saat Anda menghitung fisik gudang dan hasilnya berbeda dari catatan, aplikasi tidak menimpa catatan dengan hasil hitungan. Ia mencatat SELISIHNYA sebagai penyesuaian berjurnal: stok bertambah atau berkurang, dan lawannya adalah akun selisih persediaan yang masuk ke laba/rugi. Selisih persediaan adalah biaya: barang yang susut, rusak, atau tidak pernah tercatat keluar. Mencatatnya sebagai koreksi angka berarti menyembunyikan biaya itu.",
     },
     {
       kind: "catatan",
@@ -291,7 +291,7 @@ const BIAYA_IMPOR: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Jalan yang tampak paling mudah adalah membuka kembali pembelian lamanya dan menaikkan harga belinya. Itu justru yang tidak boleh dilakukan. Sebagian barang itu mungkin sudah terjual, dan harga pokok penjualannya sudah masuk jurnal — jurnal yang mungkin sudah dicetak, ditandatangani, bahkan dilaporkan pajaknya. Mengubahnya sekarang bukan koreksi; itu membuat laporan yang sudah keluar diam-diam berbeda dari basis datanya.",
+      "Jalan yang tampak paling mudah adalah membuka kembali pembelian lamanya dan menaikkan harga belinya. Jangan lakukan itu. Sebagian barang itu mungkin sudah terjual, dan harga pokok penjualannya sudah masuk jurnal — jurnal yang mungkin sudah dicetak, ditandatangani, bahkan dilaporkan pajaknya. Mengubahnya sekarang membuat laporan yang sudah keluar berbeda dari basis datanya, tanpa jejak koreksi.",
   },
   { kind: "sub", judul: "Yang masih di gudang menempel, yang sudah terjual tidak" },
   {
@@ -342,7 +342,7 @@ const MODUL: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Hak akses menjawab “siapa boleh apa”: seorang staf gudang boleh mengubah stok, seorang direktur boleh membuka laporan. Modul menjawab pertanyaan yang sama sekali berbeda — “perusahaan ini mengerjakan apa”. Mematikan sebuah modul tidak mencabut izin siapa pun, dan menyalakannya kembali tidak memberi izin baru kepada siapa pun.",
+      "Hak akses menentukan siapa boleh apa: seorang staf gudang boleh mengubah stok, seorang direktur boleh membuka laporan. Modul menentukan hal lain, yaitu perusahaan ini mengerjakan apa. Mematikan sebuah modul tidak mencabut izin siapa pun, dan menyalakannya kembali tidak memberi izin baru kepada siapa pun.",
   },
   {
     kind: "poin",
@@ -374,7 +374,7 @@ const KAS: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Rekonsiliasi bukan menyamakan dua angka dengan mengubah salah satunya. Ia mencocokkan baris per baris, lalu menyisakan daftar hal yang belum bertemu pasangannya. Daftar sisa itulah hasil sebenarnya: setiap barisnya adalah pertanyaan yang punya jawaban — dan sebuah selisih yang tidak bisa dijelaskan baris per baris adalah selisih yang belum selesai, berapa pun kecilnya.",
+        "Rekonsiliasi tidak menyamakan dua angka dengan mengubah salah satunya. Ia mencocokkan baris per baris, lalu menyisakan daftar hal yang belum bertemu pasangannya. Daftar sisa itulah hasilnya, dan setiap barisnya adalah pertanyaan yang punya jawaban. Selisih yang tidak bisa dijelaskan baris per baris belum selesai, berapa pun kecilnya.",
     },
     {
       kind: "poin",
@@ -410,13 +410,13 @@ const SALDO_AWAL: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Kalau dilewati, tidak ada yang gagal — dan itu justru masalahnya. Aplikasi akan bekerja dengan sempurna di atas asumsi bahwa perusahaan Anda dimulai dari nol: laba bulan pertama akan terlihat luar biasa (karena penerimaan piutang lama tercatat sebagai pendapatan baru), neraca tidak akan seimbang dengan kenyataan, dan yang menemukannya adalah akuntan Anda beberapa bulan kemudian.",
+        "Kalau dilewati, tidak ada yang gagal, dan itulah masalahnya. Aplikasi akan bekerja di atas asumsi bahwa perusahaan Anda dimulai dari nol: laba bulan pertama terlihat luar biasa karena penerimaan piutang lama tercatat sebagai pendapatan baru, dan neraca tidak seimbang dengan kenyataan. Biasanya akuntan Anda yang menemukannya, beberapa bulan kemudian.",
     },
     {
       kind: "poin",
       butir: [
         "Saldo awal dimasukkan SEBELUM transaksi pertama. Sesudahnya ia masih bisa dibetulkan, tetapi setiap laporan yang sudah dicetak di antaranya salah.",
-        "Piutang dan utang dimasukkan per pelanggan/pemasok, bukan sebagai satu total — kalau tidak, tidak ada yang bisa menjawab “siapa yang belum bayar”.",
+        "Piutang dan utang dimasukkan per pelanggan/pemasok, bukan sebagai satu total. Tanpa rinciannya, tidak ada yang bisa menjawab siapa yang belum bayar.",
         "Jumlah sisi kiri dan kanan harus sama. Selisihnya bukan untuk dibulatkan; ia berarti ada yang belum dihitung.",
       ],
     },
@@ -450,19 +450,19 @@ const PERAN_IZIN: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Akses di aplikasi ini tidak ditentukan oleh jabatan melainkan oleh IZIN: kalimat kecil seperti “melihat tagihan penjualan” atau “menulis jurnal manual”. Setiap peran memegang sekumpulan izin, dan setiap halaman maupun titik API menyebut izin yang dituntutnya. Itu sebabnya menyembunyikan sebuah menu tidak pernah dianggap pengamanan: yang menolak adalah server, pada permintaannya, bukan menu yang tidak digambar.",
+        "Akses di aplikasi ini ditentukan oleh IZIN, bukan oleh jabatan. Satu izin adalah kalimat kecil seperti “melihat tagihan penjualan” atau “menulis jurnal manual”. Setiap peran memegang sekumpulan izin, dan setiap halaman maupun titik API menyebut izin yang dituntutnya. Menyembunyikan sebuah menu karena itu bukan pengamanan: yang menolak permintaan adalah server, bukan menu yang tidak digambar.",
     },
     {
       kind: "catatan",
       teks:
-        "Tabel di bawah adalah BAWAAN — titik awal yang dibawa aplikasi, bukan keadaan perusahaan Anda. Dua hal membuatnya bergerak: setiap sel bisa ditimpa dari halaman Hak Akses (peran boleh diberi atau dicabut izin di luar bawaan ini), dan peran itu sendiri adalah data — Direktur Utama bisa membuat peran yang belum ada saat halaman ini ditulis. Yang berlaku di perusahaan Anda hanya terbaca dari dalam aplikasi, di halaman Hak Akses.",
+        "Tabel di bawah adalah BAWAAN: titik awal yang dibawa aplikasi, bukan keadaan perusahaan Anda. Dua hal membuatnya bergerak. Setiap sel bisa ditimpa dari halaman Hak Akses, jadi sebuah peran boleh diberi atau dicabut izin di luar bawaan ini. Dan peran itu sendiri adalah data: Direktur Utama bisa membuat peran yang belum ada saat halaman ini ditulis. Yang berlaku di perusahaan Anda hanya terbaca di halaman Hak Akses.",
     },
     { kind: "matriks-izin" },
     { kind: "sub", judul: "Dua lingkup yang tidak pernah bercampur" },
     {
       kind: "paragraf",
       teks:
-        "Izin PERUSAHAAN menjawab “boleh apa di dalam buku PT ini” dan datang dari keanggotaan Anda di PT itu. Izin AKUN (tenant) menjawab pertanyaan yang harus terjawab justru ketika Anda belum punya satu pun PT: boleh membuat perusahaan baru, boleh menyentuh langganan, boleh mengundang orang. Keduanya sengaja tidak pernah dicampur — memaksa “boleh membuat perusahaan” lewat keanggotaan di sebuah perusahaan melahirkan ayam-dan-telur yang membuat pelanggan baru tidak pernah bisa mulai.",
+        "Izin PERUSAHAAN menentukan apa yang boleh Anda lakukan di dalam buku PT ini, dan datang dari keanggotaan Anda di PT itu. Izin AKUN (tenant) berlaku bahkan ketika Anda belum punya satu pun PT: boleh membuat perusahaan baru, boleh menyentuh langganan, boleh mengundang orang. Keduanya tidak pernah dicampur. Kalau izin membuat perusahaan harus datang dari keanggotaan di sebuah perusahaan, pelanggan baru tidak akan pernah bisa mulai.",
     },
     { kind: "sub", judul: "Mode Akuntan bukan peran" },
     {
@@ -473,7 +473,7 @@ const PERAN_IZIN: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Aturan yang sama berlaku bagi MESIN. Sebuah sistem luar — kasir, marketplace, laporan otomatis — membaca buku Anda lewat TOKEN API, dan token itu tidak punya izinnya sendiri: ia BERPERAN sebagai salah satu peran di atas, dan mendapat persis apa yang peran itu dapat, termasuk kehilangan akses ke modul yang Anda matikan.",
+        "Aturan yang sama berlaku bagi MESIN. Sebuah sistem luar seperti kasir, marketplace, atau laporan otomatis membaca buku Anda lewat TOKEN API. Token itu tidak punya izinnya sendiri: ia BERPERAN sebagai salah satu peran di atas dan mendapat persis apa yang peran itu dapat, termasuk kehilangan akses ke modul yang Anda matikan.",
     },
     {
       kind: "poin",
@@ -500,18 +500,18 @@ const API: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Sebuah program lain — kasir di toko, marketplace, lembar kerja yang menarik angka setiap pagi — bisa membaca buku perusahaan ini tanpa seorang pun menyalin data dengan tangan. Jalannya API: alamat web yang mengembalikan data sebagai JSON, bukan sebagai halaman. Yang dipakai untuk masuk bukan nama pengguna dan kata sandi, melainkan TOKEN yang Anda terbitkan sendiri di layar Token API.",
+        "Sebuah program lain — kasir di toko, marketplace, lembar kerja yang menarik angka setiap pagi — bisa membaca buku perusahaan ini tanpa seorang pun menyalin data dengan tangan. Jalannya API: alamat web yang mengembalikan data sebagai JSON, bukan sebagai halaman. Untuk masuk, API memakai TOKEN yang Anda terbitkan sendiri di layar Token API — bukan nama pengguna dan kata sandi.",
     },
     {
       kind: "paragraf",
       teks:
-        "Satu hal yang perlu diketahui sebelum yang lain: API ini MEMBACA, tidak menulis. Tidak ada cara menerbitkan faktur atau memindahkan stok lewat jalur ini. Itu bukan fitur yang belum sempat dibuat, melainkan keputusan: setiap dokumen yang masuk lewat aplikasi melewati mesin akuntansi yang sama — jurnal berpasangan, ambang persetujuan, periode terkunci, kuota modul. Pintu tulis yang melewati semuanya akan menghasilkan buku yang tidak bisa dipertanggungjawabkan oleh orang yang menandatanganinya.",
+        "API ini MEMBACA, tidak menulis. Tidak ada cara menerbitkan faktur atau memindahkan stok lewat jalur ini, dan itu disengaja. Setiap dokumen yang masuk lewat aplikasi melewati mesin akuntansi yang sama: jurnal berpasangan, ambang persetujuan, periode terkunci, kuota modul. Pintu tulis yang melewati semuanya akan menghasilkan buku yang tidak bisa dipertanggungjawabkan oleh orang yang menandatanganinya.",
     },
     { kind: "sub", judul: "Token BERPERAN, jadi izinnya bukan izin baru" },
     {
       kind: "paragraf",
       teks:
-        "Sebuah token tidak punya daftar izinnya sendiri. Ia diterbitkan SEBAGAI salah satu peran yang ada di perusahaan ini, dan mendapat persis apa yang peran itu dapat — tidak lebih, dan ikut kehilangan akses ketika modulnya dimatikan atau izin perannya ditimpa. Karena itu pertanyaan “token ini boleh membaca apa” selalu punya satu jawaban yang sama dengan pertanyaan “peran ini boleh membaca apa”.",
+        "Sebuah token tidak punya daftar izinnya sendiri. Ia diterbitkan SEBAGAI salah satu peran yang ada di perusahaan ini dan mendapat persis apa yang peran itu dapat, tidak lebih. Ia juga ikut kehilangan akses ketika modulnya dimatikan atau izin perannya ditimpa. Jadi apa yang boleh dibaca sebuah token selalu sama dengan apa yang boleh dibaca perannya.",
     },
     {
       kind: "poin",
@@ -555,7 +555,7 @@ const API: readonly DocBlock[] = [
       kind: "poin",
       butir: [
         "Ambil `meta.hasMore` apa adanya; jangan menghitung sendiri dari `total` dan `limit`. Yang menghitung sendiri berhenti satu halaman terlalu awal, diam-diam, dan kehilangan baris terakhir setiap kali.",
-        "Nilai kueri yang salah ditolak, bukan diperbaiki: `?limit=abc` menjawab 400, bukan diam-diam kembali ke bawaan. Parameter yang salah ketik dan tetap “berhasil” menghasilkan program yang tampak bekerja sambil menarik halaman yang salah selama berbulan-bulan.",
+        "Nilai kueri yang salah ditolak, bukan diperbaiki: `?limit=abc` menjawab 400, bukan diam-diam kembali ke bawaan. Parameter yang salah ketik tetapi tetap dijawab “berhasil” menghasilkan program yang tampak bekerja sambil menarik halaman yang salah selama berbulan-bulan.",
         "`limit` di atas batas juga ditolak, bukan dipotong — penarik yang meminta 10.000 lalu menerima 200 tanpa diberi tahu akan menyimpulkan datanya memang cuma 200.",
         "Tidak ada bentuk “kembalikan semuanya”. Daftar yang muat hari ini adalah daftar yang tidak muat setelah pelanggan keseratus.",
       ],
@@ -584,7 +584,7 @@ const API: readonly DocBlock[] = [
       kind: "poin",
       butir: [
         "400 — permintaannya yang salah: parameter yang bukan angka, tanggal yang tidak terbaca, `limit` di luar batas. Pesannya menyebut parameter mana.",
-        "401 — kredensialnya bermasalah: tidak ada, salah, atau sudah dicabut. Ketiganya dijawab sama persis, dan itu disengaja — jawaban yang membedakannya menjadikan endpoint ini alat menebak token yang masih hidup.",
+        "401 — kredensialnya bermasalah: tidak ada, salah, atau sudah dicabut. Ketiganya dijawab sama persis, dan itu disengaja. Jawaban yang membedakan ketiganya akan menjadikan endpoint ini alat untuk menebak token yang masih hidup.",
         "403 — tokennya sah, tetapi perannya tidak berhak. Jawabannya menyebut izin yang kurang, supaya yang perlu diminta adalah token berperan lain, bukan tebakan peran satu per satu.",
         "429 — terlalu banyak permintaan. Batasnya dihitung per TOKEN, bukan per alamat IP: dua sistem dengan tokennya masing-masing tidak saling menghabiskan jatah, dan satu program yang mengamuk tidak mematikan yang lain.",
         "Ulangi permintaan yang gagal karena 429 atau galat jaringan dengan jeda yang membesar, bukan seketika. Penarik yang mengulang tanpa jeda adalah penarik yang menghabiskan jatahnya sendiri lalu menyalahkan servernya.",
@@ -612,13 +612,13 @@ const PAKET: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Satu akun pelanggan boleh memegang beberapa perusahaan (PT). Yang membedakan paket bukan “fitur mana yang dinyalakan” melainkan kuota: berapa perusahaan dan berapa pengguna yang boleh ada di dalamnya. Kuota diperiksa saat Anda menambah, bukan sebagai tagihan kejutan di akhir bulan.",
+        "Satu akun pelanggan boleh memegang beberapa perusahaan (PT). Yang membedakan paket adalah kuota, bukan fitur mana yang dinyalakan: berapa perusahaan dan berapa pengguna yang boleh ada di dalamnya. Kuota diperiksa saat Anda menambah, bukan sebagai tagihan kejutan di akhir bulan.",
     },
     { kind: "sub", judul: "Kenapa setiap PT punya buku yang benar-benar terpisah" },
     {
       kind: "paragraf",
       teks:
-        "Buku besar setiap PT hidup di basis datanya sendiri — bukan sebagai kolom “milik perusahaan mana” di dalam satu tabel bersama. Bedanya baru terasa pada kegagalan: dengan satu tabel bersama, sebuah kueri yang lupa menyaring perusahaan akan mengembalikan transaksi PT lain, dan tidak ada satu pun galat yang muncul. Dengan basis data terpisah, tidak ada yang bisa dikembalikan — jalur yang kehilangan konteks perusahaan GAGAL, keras, di tempat kejadiannya.",
+        "Buku besar setiap PT hidup di basis datanya sendiri, bukan sebagai kolom penanda perusahaan di dalam satu tabel bersama. Bedanya terlihat saat terjadi kesalahan. Dengan satu tabel bersama, sebuah kueri yang lupa menyaring perusahaan akan mengembalikan transaksi PT lain tanpa memunculkan galat. Dengan basis data terpisah, tidak ada yang bisa dikembalikan: jalur yang kehilangan konteks perusahaan langsung GAGAL di tempat kejadiannya.",
     },
     {
       kind: "diagram",
@@ -648,7 +648,7 @@ const DATA_ANDA: readonly DocBlock[] = [
       butir: [
         "Ekspor tetap bekerja ketika langganan sedang tertunggak dan seluruh PT dalam keadaan hanya-baca. Justru dalam keadaan itulah ia paling dibutuhkan.",
         "Permintaan penghapusan akun adalah permintaan, bukan tombol yang langsung menghapus — ia mengakhiri kontrak, dan pelaksanaannya berjalan sebagai proses dengan tenggang waktu.",
-        "Sebagian jejak audit tidak ikut terhapus melainkan dianonimkan. Catatan “siapa menyetujui pembayaran ini” adalah bagian dari pembukuan pihak lain juga, dan menghapusnya berarti melubangi buku yang masih harus dipertanggungjawabkan.",
+        "Sebagian jejak audit dianonimkan, tidak ikut terhapus. Catatan tentang siapa menyetujui sebuah pembayaran adalah bagian dari pembukuan pihak lain juga, dan menghapusnya melubangi buku yang masih harus dipertanggungjawabkan.",
       ],
     },
     {
@@ -663,7 +663,7 @@ const LAPORAN: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Hampir setiap laporan di aplikasi ini menanyakan tanggal sebelum menampilkan satu angka pun, dan itu bukan formalitas. Buku besar bukan daftar saldo melainkan daftar KEJADIAN, masing-masing bertanggal. “Berapa laba saya” tidak punya jawaban sampai Anda menyebutkan sejak kapan sampai kapan — sama seperti “berapa jarak yang saya tempuh” tidak punya jawaban tanpa menyebut dari kapan dihitung.",
+        "Hampir setiap laporan di aplikasi ini menanyakan tanggal sebelum menampilkan satu angka pun, dan itu bukan formalitas. Buku besar adalah daftar KEJADIAN yang masing-masing bertanggal, bukan daftar saldo. Pertanyaan berapa laba perusahaan baru punya jawaban setelah Anda menyebut sejak kapan sampai kapan, sama seperti jarak tempuh yang perlu titik awal.",
     },
     {
       kind: "paragraf",
@@ -674,7 +674,7 @@ const LAPORAN: readonly DocBlock[] = [
     {
       kind: "paragraf",
       teks:
-        "Kalau laporan yang Anda buka hari ini berbeda dengan salinan yang dicetak minggu lalu untuk periode yang sama, biasanya bukan aplikasinya yang berubah pikiran. Tiga sebab yang paling sering, semuanya wajar: ada transaksi baru yang dicatat mundur ke periode itu; ada dokumen yang tadinya menunggu persetujuan lalu jurnalnya terbit; atau periodenya memang belum ditutup, sehingga isinya memang masih boleh bertambah.",
+        "Laporan yang Anda buka hari ini bisa berbeda dengan salinan yang dicetak minggu lalu untuk periode yang sama. Tiga sebab yang paling sering, dan semuanya wajar: ada transaksi baru yang dicatat mundur ke periode itu; ada dokumen yang tadinya menunggu persetujuan lalu jurnalnya terbit; atau periodenya belum ditutup, sehingga isinya masih boleh bertambah.",
     },
     {
       kind: "paragraf",
@@ -699,7 +699,7 @@ const LAPORAN: readonly DocBlock[] = [
     {
       kind: "catatan",
       teks:
-        "Laporan tidak pernah menghitung ulang apa pun sendiri. Ia menjumlahkan jurnal yang sudah ada. Kalau sebuah angka terasa salah, yang perlu dicari bukan “rumusnya di mana” melainkan transaksi mana yang menyusunnya — dan setiap laporan bisa ditelusuri sampai ke barisnya.",
+        "Laporan tidak pernah menghitung ulang apa pun sendiri. Ia menjumlahkan jurnal yang sudah ada. Kalau sebuah angka terasa salah, yang perlu dicari adalah transaksi mana yang menyusunnya, bukan rumusnya. Setiap laporan bisa ditelusuri sampai ke barisnya.",
     },
     { kind: "istilah", kunci: ["laba_rugi", "neraca", "tutup_periode"] },
   ];
@@ -708,7 +708,7 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Banyak perusahaan tidak berpindah sistem dalam satu hari. Selama beberapa bulan dua buku berjalan berdampingan — yang lama di Accurate, yang baru di sini — dan pertanyaan yang benar-benar penting selama masa itu hanya satu: apakah keduanya mengatakan hal yang sama? Halaman “Cocokkan dengan Accurate” menjawab persis pertanyaan itu, dan tidak lebih.",
+      "Banyak perusahaan tidak berpindah sistem dalam satu hari. Selama beberapa bulan dua buku berjalan berdampingan: yang lama di Accurate, yang baru di sini. Yang penting selama masa itu adalah memastikan keduanya mengatakan hal yang sama. Halaman “Cocokkan dengan Accurate” mengerjakan itu, dan tidak lebih.",
   },
   {
     kind: "paragraf",
@@ -728,7 +728,7 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Ini batas yang paling sering mengecewakan, jadi lebih baik disebut lebih dulu: rincian buku besar TIDAK bisa diubah menjadi jurnal, dan itu bukan keterbatasan aplikasi ini melainkan sifat laporannya. Laporan itu mencetak satu akun beserta mutasinya — sisi lawan setiap transaksi tidak ada di dalamnya. Beban asuransi Rp 1,6 juta yang tercatat di sana tidak menyebutkan uangnya keluar dari mana: kas, utang usaha, atau uang muka.",
+      "Rincian buku besar TIDAK bisa diubah menjadi jurnal. Itu sifat laporannya, bukan keterbatasan aplikasi ini: laporan itu mencetak satu akun beserta mutasinya, dan sisi lawan setiap transaksi tidak ada di dalamnya. Beban asuransi Rp 1,6 juta yang tercatat di sana tidak menyebutkan uangnya keluar dari mana: kas, utang usaha, atau uang muka.",
   },
   {
     kind: "paragraf",
@@ -744,12 +744,12 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Yang keluar dari tombol Ekspor Accurate bukan tabel, melainkan halaman cetak yang kebetulan berformat Excel: nama PT dan judul laporan diulang di setiap halaman, judul kolomnya berdiri di baris kelima dan muncul lagi tiap ganti halaman, dan kolom keterangan memuat dua baris dalam satu sel. Semua itu dirapikan otomatis saat dibaca — jadi unggah apa adanya, jangan dirapikan dulu di Excel.",
+      "Tombol Ekspor Accurate menghasilkan halaman cetak berformat Excel, bukan tabel: nama PT dan judul laporan diulang di setiap halaman, judul kolomnya berdiri di baris kelima dan muncul lagi tiap ganti halaman, dan kolom keterangan memuat dua baris dalam satu sel. Semua itu dirapikan otomatis saat dibaca — jadi unggah apa adanya, jangan dirapikan dulu di Excel.",
   },
   {
     kind: "paragraf",
     teks:
-      "Satu hal yang dilakukan Accurate perlu Anda ketahui karena akibatnya terlihat di hasil: ketika sebuah baris jatuh persis di ganti halaman, selnya ikut terpotong, dan nomor referensinya terlempar sendirian ke puncak halaman berikutnya. Potongan itu disambungkan kembali ke barisnya, dan setiap sambungan dilaporkan di layar beserta nomor barisnya. Kalau sebuah potongan tidak bisa dipastikan milik baris mana, ia dibiarkan dan dilaporkan apa adanya — menempelkan nomor referensi ke transaksi yang salah jauh lebih berbahaya daripada satu baris aneh yang bisa Anda periksa sendiri.",
+      "Ada satu perilaku Accurate yang akibatnya terlihat di hasil. Ketika sebuah baris jatuh persis di ganti halaman, selnya ikut terpotong dan nomor referensinya terlempar sendirian ke puncak halaman berikutnya. Potongan itu disambungkan kembali ke barisnya, dan setiap sambungan dilaporkan di layar beserta nomor barisnya. Potongan yang tidak bisa dipastikan milik baris mana dibiarkan dan dilaporkan apa adanya, sebab menempelkan nomor referensi ke transaksi yang salah lebih berbahaya daripada satu baris aneh yang bisa Anda periksa sendiri.",
   },
   { kind: "sub", judul: "Membaca hasilnya" },
   {
@@ -758,14 +758,14 @@ const COCOK_ACCURATE: readonly DocBlock[] = [
       "Selisih selalu berarah “di sini dikurangi Accurate”. Angka positif berarti buku ini lebih besar.",
       "Sebuah akun bisa dinyatakan cocok meski transaksinya tidak berpasangan satu-satu — itu wajar dan bukan kesalahan: satu jurnal gabungan di sini sah menutup beberapa baris di sana. Yang menentukan cocok atau tidak adalah angkanya.",
       "Transaksi yang cocok nominal dan referensinya tetapi berbeda tanggal ditandai tersendiri. Itu temuan, bukan sekadar kecocokan: satu transaksi yang dibukukan di dua tanggal berbeda menggeser laba dua periode sekaligus.",
-      "Nomor referensi yang sama muncul dua kali dengan nominal yang sama juga ditandai — kandidat pembukuan ganda di sisi Accurate, yang justru tidak akan pernah terlihat dari saldo akhirnya.",
+      "Nomor referensi yang sama muncul dua kali dengan nominal yang sama juga ditandai: kandidat pembukuan ganda di sisi Accurate. Hal seperti ini tidak terlihat dari saldo akhirnya.",
     ],
   },
   { kind: "sub", judul: "Rancangan saldo awal" },
   {
     kind: "paragraf",
     teks:
-      "Kalau yang Anda kerjakan bukan berjalan paralel melainkan pindah seluruhnya, saldo akhir menurut Accurate bisa diunduh sebagai rancangan saldo awal: satu berkas Excel berisi akun, sisi debit atau kredit, dan nominalnya. Sisinya ditentukan dari bagan akun DI SINI, bukan dari berkasnya — laporan Accurate tidak menyebut tipe akun sama sekali, dan angka “1.000” di akun beban berarti debit sementara angka yang sama di akun utang berarti kredit. Akun yang belum ada di bagan akun ini ditandai alih-alih ditebak sisinya.",
+      "Kalau Anda pindah seluruhnya alih-alih berjalan paralel, saldo akhir menurut Accurate bisa diunduh sebagai rancangan saldo awal: satu berkas Excel berisi akun, sisi debit atau kredit, dan nominalnya. Sisinya ditentukan dari bagan akun DI SINI, bukan dari berkasnya. Laporan Accurate tidak menyebut tipe akun sama sekali, sehingga angka 1.000 di akun beban berarti debit sementara angka yang sama di akun utang berarti kredit. Akun yang belum ada di bagan akun ini ditandai, bukan ditebak sisinya.",
   },
   {
     kind: "paragraf",
@@ -829,7 +829,7 @@ const MANUFAKTUR: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Sebuah bahan bisa saja bukan barang yang dibeli, melainkan barang yang perusahaan ini buat sendiri dan punya resepnya. Halaman rincian resep menurunkan yang seperti itu sampai ke bahan yang benar-benar dibeli, supaya biaya standarnya lengkap sampai ke dasar. Yang ditelusuri itu ditandai sebagai rakitan antara; yang tidak punya resep adalah bahan daun.",
+      "Sebuah bahan bisa saja bukan barang yang dibeli, tetapi barang yang perusahaan ini buat sendiri dan punya resepnya. Halaman rincian resep menurunkan yang seperti itu sampai ke bahan yang benar-benar dibeli, supaya biaya standarnya lengkap sampai ke dasar. Yang ditelusuri itu ditandai sebagai rakitan antara; yang tidak punya resep adalah bahan daun.",
   },
   {
     kind: "catatan",
@@ -854,7 +854,7 @@ const MANUFAKTUR: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Urutan dua langkah terakhir tidak boleh dibalik, dan aplikasi ini tidak membalikkannya: upah dan overhead harus sudah berada di dalam ruang tunggu sebelum isinya dihitung, kalau tidak barang jadinya lahir dengan harga pokok yang hanya berisi bahan. Kalau semuanya benar, saldo Barang Dalam Proses sebuah perintah produksi yang sudah selesai adalah nol. Saldo yang tersisa di sana berarti ada batch yang belum diselesaikan — bukan selisih yang perlu dicari.",
+      "Urutan dua langkah terakhir tidak boleh dibalik, dan aplikasi ini tidak membalikkannya: upah dan overhead harus sudah berada di dalam ruang tunggu sebelum isinya dihitung, kalau tidak barang jadinya lahir dengan harga pokok yang hanya berisi bahan. Kalau semuanya benar, saldo Barang Dalam Proses sebuah perintah produksi yang sudah selesai adalah nol. Saldo yang tersisa di sana berarti ada batch yang belum diselesaikan, bukan selisih yang perlu dicari.",
   },
   {
     kind: "catatan",
@@ -865,7 +865,7 @@ const MANUFAKTUR: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Resep menyebut berapa jam SEHARUSNYA sebuah tahapan memakan waktu. Yang menentukan berapa rupiah upah dan overhead yang masuk ke Barang Dalam Proses bukan angka itu, melainkan jam yang benar-benar dilaporkan. Alasannya sederhana: jam standar adalah rencana, dan membiayai barang jadi dengan rencana berarti setiap batch terlihat persis sesuai rencana selamanya — mesin yang macet setengah hari tidak akan pernah muncul di angka mana pun.",
+      "Resep menyebut berapa jam SEHARUSNYA sebuah tahapan memakan waktu. Upah dan overhead yang masuk ke Barang Dalam Proses dihitung dari jam yang benar-benar dilaporkan, bukan dari angka itu. Jam standar adalah rencana, dan membiayai barang jadi dengan rencana membuat setiap batch terlihat persis sesuai rencana selamanya: mesin yang macet setengah hari tidak akan muncul di angka mana pun.",
   },
   {
     kind: "paragraf",
@@ -882,7 +882,7 @@ const MANUFAKTUR: readonly DocBlock[] = [
     kind: "poin",
     butir: [
       "Harga pokok barang jadi Anda adalah biaya yang SUNGGUHAN terpakai; tidak ada selisih yang tersisa untuk dijurnal.",
-      "Varians di sini menjawab “kenapa batch ini lebih mahal”, bukan “berapa yang harus dicatat”.",
+      "Varians di sini menjelaskan kenapa batch ini lebih mahal. Ia tidak menentukan berapa yang harus dicatat.",
       "Karena itu memperbaiki resep yang ternyata terlalu optimistis tidak pernah mengubah laporan keuangan yang sudah terbit — ia hanya membuat pembandingnya lebih berguna.",
     ],
   },
@@ -969,7 +969,7 @@ const ALUR_USAHA: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Alur perdagangan, dengan satu tahap tambahan di tengahnya: mengubah barang menjadi barang lain. Sebuah pabrik tetap membeli, menjual, bergudang, dan mengekspor — jadi modulnya bukan himpunan yang lebih sempit, melainkan yang lebih luas.",
+      "Alur perdagangan, dengan satu tahap tambahan di tengahnya: mengubah barang menjadi barang lain. Sebuah pabrik tetap membeli, menjual, bergudang, dan mengekspor, jadi modulnya lebih luas daripada perdagangan, bukan lebih sempit.",
   },
   {
     kind: "diagram",
@@ -987,7 +987,7 @@ const ALUR_USAHA: readonly DocBlock[] = [
   {
     kind: "paragraf",
     teks:
-      "Ada pilihan Kustom, dan ia sengaja tidak menyalakan modul apa pun selain inti akuntansi. Alasannya arah: menyalakan semuanya lalu meminta Anda mematikan yang tak dipakai akan meninggalkan sisa yang tidak bisa dibersihkan — akun yang terlanjur tersemai tetap tinggal, sebab akun yang pernah dipakai adalah dasar angka yang sudah terbit.",
+      "Ada pilihan Kustom, dan ia sengaja tidak menyalakan modul apa pun selain inti akuntansi. Menyalakan semuanya lalu meminta Anda mematikan yang tak dipakai akan meninggalkan sisa yang tidak bisa dibersihkan: akun yang terlanjur tersemai tetap tinggal, sebab akun yang pernah dipakai menjadi dasar angka yang sudah terbit.",
   },
   {
     kind: "paragraf",

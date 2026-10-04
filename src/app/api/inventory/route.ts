@@ -71,7 +71,6 @@ export async function POST(request: Request) {
 
   const body = await request.json();
 
-  // Create new item
   if (body.action === "create_item") {
     const parsed = itemSchema.safeParse({
       code: body.code,
@@ -249,7 +248,6 @@ export async function POST(request: Request) {
     return NextResponse.json(item);
   }
 
-  // Stock update
   const parsed = stockUpdateSchema.safeParse(body);
   if (!parsed.success) {
     // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──

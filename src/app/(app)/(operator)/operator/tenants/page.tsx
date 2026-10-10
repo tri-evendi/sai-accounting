@@ -39,6 +39,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import {
+  ConsolePanel,
+  CONSOLE_PAGE,
+} from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { StaticTable } from "@/components/ui/static-table";
@@ -59,6 +63,7 @@ const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
 /** Teks sekunder di dalam sel — token AntD, lihat catatan kepala berkas. */
 const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+
 const MUTED_TABULAR: React.CSSProperties = {
   ...MUTED,
   fontVariantNumeric: "tabular-nums",
@@ -165,11 +170,24 @@ export default async function OperatorTenantsPage({
         description={t("operator.tenants.description")}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={CONSOLE_PAGE}>
+      {/* Saringan dan tabelnya SATU panel, bukan dua wilayah yang kebetulan
+          bertetangga: saringan tanpa hasilnya di bawah tidak berarti apa-apa,
+          dan memberinya kartu sendiri menghasilkan dua tepi yang memisahkan
+          sebab dari akibatnya. `flush` — `StaticTable` sudah membawa tepi dan
+          nada kepalanya sendiri (#266). */}
+      <ConsolePanel flush>
       <form
         method="get"
         action="/operator/tenants"
-        style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "flex-end",
+          gap: "var(--ant-margin-sm)",
+          padding: "var(--ant-padding-lg)",
+          paddingBottom: "var(--ant-padding)",
+        }}
       >
         <div style={{ width: "100%", maxWidth: 320 }}>
           <Input
@@ -207,6 +225,7 @@ export default async function OperatorTenantsPage({
           />
         }
       />
+      </ConsolePanel>
       </div>
     </div>
   );

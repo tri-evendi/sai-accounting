@@ -54,7 +54,14 @@ describe("CardTitle bisa memilih tingkat headingnya", () => {
     const offenders: string[] = [];
     for (const file of FILES) {
       const src = read(file);
-      if (!src.includes("DashboardSection")) continue;
+      /* `<DashboardSection`, bukan sebutan namanya di mana pun: berkas yang
+         MENJELASKAN kenapa ia tidak memakai komponen itu (mis.
+         `components/operator/console-ui.tsx`, yang menulis alasannya di
+         komentar kepala) bukan berkas yang kartunya bersarang di dalamnya.
+         Menghitung sebutan membuat penjaga ini merah pada berkas yang justru
+         sedang patuh — dan tekanan untuk menghijaukannya akan jatuh pada
+         komentarnya, bukan pada kodenya. */
+      if (!src.includes("<DashboardSection")) continue;
       if (src.includes("CardTitle level={2}")) offenders.push(file.replace(SRC, "src"));
     }
     // Di dalam DashboardSection urutannya sudah h1 → h2 → h3; menaikkannya ke

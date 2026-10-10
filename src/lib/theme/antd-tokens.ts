@@ -226,8 +226,39 @@ export function moneyTokens(resolved: ResolvedTheme): MoneyTokens {
  * yang dicatat di §Warna merek tidak berlaku di sini: teks bilah status digambar
  * sistem operasi, yang memilih hitam atau putihnya sendiri menurut terang
  * latar ini.
+ *
+ * ══ NILAINYA BERUBAH: `#1677ff` → NAVY, DAN INI PERLU DIBACA ═══════════════
+ * Sampai perombakan merek (Okt 2026) konstanta ini `#1677ff`, biru bawaan
+ * AntD, sementara SETIAP lambang yang dilihat orang di dalam aplikasi —
+ * `BrandMark`, tombol primer, panel merek layar masuk — sudah navy `#1E3A5F`
+ * lewat `PRIMARY_BUTTON_LIGHT`. Keduanya memikul peran yang sama persis
+ * ("bidang merek di belakang isi terang"), jadi yang tersisa bukan dua
+ * keputusan melainkan satu keputusan yang hanya setengah diterapkan: biru
+ * tertinggal di dua tempat yang tidak punya tes dan tidak pernah dilihat
+ * berdampingan dengan yang lain — bilah status ponsel dan `theme_color`
+ * manifest.
+ *
+ * Akibatnya terukur pada aplikasi yang DIPASANG ke layar depan: ikonnya navy
+ * (sejak `scripts/build-brand-icons.ts`), bilah statusnya biru terang. Dua
+ * merek pada satu layar, dan yang terlihat justru pada permukaan paling
+ * permanen yang dimiliki produk ini.
+ *
+ * ⚠ Kalau pemilik memang menghendaki bilah status biru AntD sementara seluruh
+ * aplikasinya navy, nilai di bawah yang dikembalikan — bukan warna lambangnya
+ * yang diubah.
  */
-export const BRAND_HEX = "#1677ff";
+/**
+ * Navy merek sebagai HEX HARFIAH.
+ *
+ * Dibutuhkan di tempat yang dibaca SEBELUM CSS ada — `theme_color` manifest,
+ * bilah status, dan generator ikon raster (yang merender ke PNG, bukan ke
+ * dokumen). Ia nilai yang SAMA dengan `PRIMARY_BUTTON_LIGHT.colorPrimary` di
+ * bawah, dan ditulis sekali di sini supaya tidak ada salinan kedua yang bisa
+ * menyimpang.
+ */
+export const BRAND_SOLID_LIGHT_HEX = "#1E3A5F";
+
+export const BRAND_HEX = BRAND_SOLID_LIGHT_HEX;
 
 /** Latar layar pembuka aplikasi terpasang. Light-first, sesuai MASTER.md. */
 export const APP_BACKGROUND_HEX = "#ffffff";
@@ -351,7 +382,7 @@ export interface PrimaryButtonTokens {
 }
 
 export const PRIMARY_BUTTON_LIGHT: PrimaryButtonTokens = {
-  colorPrimary: "#1E3A5F", // navy · label putih 11,50:1
+  colorPrimary: BRAND_SOLID_LIGHT_HEX, // navy · label putih 11,50:1
   colorPrimaryHover: "#16304F", // 13,38:1
   colorPrimaryActive: "#101F33", // 16,59:1
 };

@@ -31,6 +31,7 @@
  *     keputusan dari `.env`.
  */
 
+import { ConsoleNotice, ConsolePanel } from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { SiteSettingsForm } from "@/components/operator/site-settings-form";
 import { getT } from "@/lib/i18n/server";
@@ -47,18 +48,6 @@ import {
 } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-/** "Platform tidak terjangkau" — kalimat jujur, bukan galat. */
-const NOTICE: React.CSSProperties = {
-  margin: 0,
-  padding: "var(--ant-padding)",
-  borderRadius: "var(--ant-border-radius-lg)",
-  border: "1px solid var(--ant-color-border-secondary)",
-  background: "var(--ant-color-fill-quaternary)",
-  fontSize: "var(--ant-font-size)",
-  lineHeight: 1.625,
-  color: "var(--ant-color-text-secondary)",
-};
 
 /** `null` → "ikut pengaturan server"; `true`/`false` → keputusan konsol. */
 function gateValue(v: boolean | null | undefined): "env" | "on" | "off" {
@@ -79,7 +68,7 @@ export default async function OperatorSettingsPage() {
           title={t("operator.settings.heading")}
           description={t("operator.settings.description")}
         />
-        <p style={NOTICE}>{t("operator.tenant.billingUnavailable")}</p>
+        <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
       </div>
     );
   }
@@ -128,6 +117,7 @@ export default async function OperatorSettingsPage() {
         title={t("operator.settings.heading")}
         description={t("operator.settings.description")}
       />
+      <ConsolePanel>
       <SiteSettingsForm
         initial={initial}
         fromDb={fromDb}
@@ -136,6 +126,7 @@ export default async function OperatorSettingsPage() {
         save={operatorSaveSiteSettings}
         reset={operatorResetSiteSettings}
       />
+      </ConsolePanel>
     </div>
   );
 }

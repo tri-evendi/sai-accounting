@@ -740,7 +740,10 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     "app/(app)/(auth)/accept-invitation/page.tsx",
     "app/(app)/(auth)/change-password/page.tsx",
     "app/(app)/(auth)/forgot-password/page.tsx",
-    "app/(app)/(auth)/register/page.tsx",
+    /* Pendaftaran: halamannya kini SERVER component (ia memutuskan apakah
+       pendaftaran mandiri dibuka — `SELF_SERVE_SIGNUP`); yang memanggil
+       `/api/auth/register` adalah formulirnya. */
+    "app/(app)/(auth)/register/register-form.tsx",
     "app/(app)/(auth)/reset-password/page.tsx",
     "app/(app)/(auth)/verify-email/page.tsx",
     // Grup (tenant): route TINGKAT TENANT (#135) — pemilik tenant tanpa satu

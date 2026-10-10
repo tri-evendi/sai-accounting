@@ -38,6 +38,7 @@ import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { clientIpFrom } from "@/lib/client-ip";
+import { selfServeSignupOpen } from "@/lib/registration";
 
 function appOrigin(request: Request): string {
   return process.env.AUTH_URL?.replace(/\/$/, "") ?? new URL(request.url).origin;
@@ -60,6 +61,24 @@ function clientIp(request: Request): string {
 
 export async function POST(request: Request) {
   const { dictionary, t } = await getRequestI18n();
+
+  /*
+   * GERBANG PENDAFTARAN MANDIRI — sebelum pembatas laju, sebelum validasi,
+   * sebelum basis data disentuh.
+   *
+   * Ia berdiri DI SINI dan bukan hanya di halamannya: halaman yang
+   * menyembunyikan formulir bukan gerbang — route ini bisa dipanggil langsung,
+   * dan yang dibuatnya bukan sekadar baris pendaftaran melainkan satu tenant,
+   * satu basis data perusahaan, dan satu langganan uji coba. Alasan lengkap +
+   * kenapa gagal-tertutup: `lib/registration.ts` `selfServeSignupOpen`.
+   *
+   * 403, bukan 404: permukaannya memang ada dan memang akan dibuka kembali;
+   * yang ditolak adalah tindakannya, dan jawabannya menyebutkan jalan lain
+   * (kanal kontak) lewat kalimat di kamus.
+   */
+  if (!selfServeSignupOpen()) {
+    return NextResponse.json({ error: t("auth.register.closedBody") }, { status: 403 });
+  }
 
   const perIp = await checkPersistentRateLimit(
     `register:ip:${clientIp(request)}`,

@@ -536,7 +536,12 @@
       "termsPrefix": "Saya menyetujui",
       "termsLinkLabel": "syarat & ketentuan",
       "termsAnd": "dan",
-      "privacyLinkLabel": "kebijakan privasi"
+      "privacyLinkLabel": "kebijakan privasi",
+      "closedTitle": "Pendaftaran mandiri sedang ditutup",
+      "closedBody": "Akun baru saat ini dibuka lewat penawaran, bukan swalayan — supaya kuota, migrasi data, dan cara pembayarannya disepakati dulu. Hubungi kami dan akunnya kami siapkan.",
+      "closedWhatsapp": "Hubungi lewat WhatsApp",
+      "closedEmail": "Kirim surel ke {email}",
+      "closedSignIn": "Sudah punya akun? Masuk"
     }
   },
   "status": {
@@ -4722,7 +4727,8 @@
         "submit": "Perpanjang",
         "success": "Langganan diperpanjang sampai {to}. Tagihan kompensasi {invoice} terbit (Rp 0).",
         "errDuplicate": "Perpanjangan ini sudah pernah dijalankan — tagihan {invoice} sudah ada.",
-        "errCancelled": "Langganan sudah dibatalkan. Bangkitkan lewat perpindahan paket lebih dulu."
+        "errCancelled": "Langganan sudah dibatalkan. Bangkitkan lewat perpindahan paket lebih dulu.",
+        "errUnpriced": "Paket tenant ini tidak punya harga untuk siklus {cycle} di katalog, jadi perpanjangan ditolak — langganan tahunan berharga bulanan akan kurang tagih sepuluh kali lipat. Tetapkan harganya di katalog, atau perpanjang pada siklus yang sama."
       },
       "deletion": {
         "title": "Eksekusi penghapusan akun",

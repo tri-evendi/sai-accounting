@@ -67,6 +67,7 @@ vi.mock("@/lib/control-db", () => ({
 import {
   changeTenantPlan,
   executeTenantDeletion,
+  extendSubscription,
   recordManualPayment,
   setTenantSuspension,
 } from "@/lib/operator/writes";
@@ -101,6 +102,9 @@ function makeWorld() {
         key: "starter",
         isActive: true,
         priceMonthly: dec("150000.00"),
+        /* Tahunan = 10 bulan (`PRICING.md` §1) — kolom tersendiri, bukan
+           hitungan. Dipakai penjaga potret-ulang harga `extendSubscription`. */
+        priceYearly: dec("1500000.00") as ReturnType<typeof dec> | null,
         currency: "IDR",
         maxCompanies: 3,
         maxUsers: 10,
@@ -111,6 +115,10 @@ function makeWorld() {
         key: "lite",
         isActive: true,
         priceMonthly: dec("50000.00"),
+        /* SENGAJA tanpa harga tahunan — bentuk paket rundingan, dan satu-satunya
+           cara menguji bahwa perpanjangan tahunan atas paket seperti itu
+           DITOLAK alih-alih ditebak. */
+        priceYearly: null as ReturnType<typeof dec> | null,
         currency: "IDR",
         maxCompanies: 1,
         maxUsers: 3,
@@ -122,6 +130,8 @@ function makeWorld() {
         id: 3,
         tenantId: 7,
         planId: 1,
+        billingCycle: "monthly",
+        currentPeriodEnd: new Date("2026-08-31T00:00:00Z"),
         status: "past_due",
         pastDueSince: new Date("2026-07-20T00:00:00Z") as Date | null,
         trialEndsAt: null as Date | null,
@@ -180,12 +190,28 @@ function makeWorld() {
   };
 
   let nextPaymentId = 41;
+  let nextInvoiceId = 61;
   let nextSubscriptionId = 4;
 
   const platform = {
     platformInvoice: {
       findUnique: async ({ where }: { where: { number: string } }) =>
         state.invoices.find((inv) => inv.number === where.number) ?? null,
+      /* Tagihan KOMPENSASI (`extendSubscription`): nomornya UNIK, jadi
+         perpanjangan yang sama dijalankan dua kali menabrak constraint alih-alih
+         memberi periode kedua — perilaku itu yang ditiru di sini. */
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        if (state.invoices.some((inv) => inv.number === data.number)) {
+          throw Object.assign(new Error("Unique constraint"), { code: "P2002" });
+        }
+        state.ops.push("platform:invoice.create");
+        const row = {
+          id: nextInvoiceId++,
+          ...(data as object),
+        } as unknown as (typeof state.invoices)[number];
+        state.invoices.push(row);
+        return row;
+      },
       update: async ({ where, data }: { where: { id: number }; data: { status: string } }) => {
         state.ops.push("platform:invoice.update");
         const invoice = state.invoices.find((inv) => inv.id === where.id)!;
@@ -250,8 +276,12 @@ function makeWorld() {
       },
     },
     plan: {
-      findUnique: async ({ where }: { where: { key: string } }) =>
-        state.plans.find((p) => p.key === where.key) ?? null,
+      findUnique: async ({ where }: { where: { key?: string; id?: number } }) =>
+        state.plans.find(
+          (p) =>
+            (where.key !== undefined && p.key === where.key) ||
+            (where.id !== undefined && p.id === where.id)
+        ) ?? null,
     },
   };
 
@@ -514,6 +544,88 @@ describe("changeTenantPlan — ganti paket (aksi #2)", () => {
     );
     expect(result.outcome).toBe("plan_not_found");
     expect(state.ops).toHaveLength(0);
+  });
+});
+
+describe("extendSubscription — kompensasi (aksi #5): HARGA dipotret ulang", () => {
+  /**
+   * ══ Kenapa penjaga ini ada ════════════════════════════════════════════════
+   * Versi pertama fungsi ini mengubah `billing_cycle` ke siklus yang diminta
+   * dan MEMBIARKAN `price` apa adanya. Akibatnya nyata di produksi: satu
+   * langganan bersiklus `yearly` dengan `price` 599.000 — harga BULANAN paket
+   * Pro. Saat periode kompensasinya habis (9 Sep 2027), siklus tagih
+   * berikutnya akan menagih Rp 599.000 untuk SETAHUN: kurang tagih sepuluh
+   * kali lipat, tanpa galat, tanpa peringatan, setahun kemudian.
+   *
+   * Itulah bentuk cacat yang paling mahal di kode penagihan — yang salah
+   * hitung dalam diam. `docs/KOMERSIALISASI.md` §11.
+   */
+  it("bulanan → tahunan: harga diambil dari KOLOM TAHUNAN katalog, bukan dikalikan", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.tenant.status = "active";
+
+    const result = await extendSubscription(
+      deps,
+      { tenantRef: { id: 7 }, cycle: "yearly", periods: 1, actor: ACTOR },
+      NOW
+    );
+
+    expect(result.outcome).toBe("extended");
+    expect(state.subscriptions[0].billingCycle).toBe("yearly");
+    /* 1.500.000 = `price_yearly` katalog (10 bulan), BUKAN 150.000 yang lama
+       dan BUKAN 1.800.000 (12 × bulanan) — dua angka yang akan muncul kalau
+       harganya dihitung di sini alih-alih dibaca dari katalognya. */
+    expect(state.subscriptions[0].price.toString()).toBe("1500000.00");
+
+    const logs = await readTenantAuditLogs("contoh");
+    expect(logs[0]).toMatchObject({ action: "tenant.extend" });
+    /* Perubahan UANG harus terbaca di jejak, bukan hanya di baris basis data. */
+    expect(logs[0].details).toMatchObject({ priceFrom: "150000.00", priceTo: "1500000.00" });
+  });
+
+  it("siklus SAMA: harga TIDAK disentuh — snapshot pelanggan berjalan tetap utuh", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.tenant.status = "active";
+    /* Katalog sudah naik sejak pelanggan ini berlangganan. */
+    state.plans[0].priceMonthly = dec("999000.00");
+
+    const result = await extendSubscription(
+      deps,
+      { tenantRef: { id: 7 }, cycle: "monthly", periods: 3, actor: ACTOR },
+      NOW
+    );
+
+    expect(result.outcome).toBe("extended");
+    /* `PRICING.md` §3: perubahan katalog TIDAK menyentuh langganan berjalan.
+       Perpanjangan bukan pintu belakang untuk memindahkan harga. */
+    expect(state.subscriptions[0].price.toString()).toBe("150000.00");
+    const logs = await readTenantAuditLogs("contoh");
+    expect(logs[0].details).not.toHaveProperty("priceTo");
+  });
+
+  it("siklus TANPA harga di katalog → ditolak, dan tidak satu pun tulisan terjadi", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.subscriptions[0].planId = 2; // `lite` — sengaja tanpa `price_yearly`
+    state.tenant.status = "active";
+
+    const result = await extendSubscription(
+      deps,
+      { tenantRef: { id: 7 }, cycle: "yearly", periods: 1, actor: ACTOR },
+      NOW
+    );
+
+    expect(result).toEqual({ outcome: "cycle_unpriced", cycle: "yearly" });
+    /* Ditolak SEBELUM apa pun ditulis: tidak ada tagihan kompensasi, tidak ada
+       pembaruan langganan, tidak ada jejak audit — sebab tidak ada yang
+       terjadi. Menebak angkanya adalah cara paling halus untuk menagih sesuatu
+       yang tidak pernah disepakati siapa pun. */
+    expect(state.ops).toHaveLength(0);
+    expect(state.invoices.some((i) => i.number.endsWith("-K"))).toBe(false);
+    expect(await readTenantAuditLogs("contoh")).toHaveLength(0);
+    expect(state.subscriptions[0].billingCycle).toBe("monthly");
   });
 });
 

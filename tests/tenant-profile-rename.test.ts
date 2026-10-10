@@ -43,7 +43,7 @@ describe("nama akun ≠ nama orang (#458)", () => {
      * sah; memutuskan sebaliknya dari sebuah formulir pendaftaran berarti
      * memutuskan sesuatu tentang usaha orang lain).
      */
-    const form = baca("src/app/(app)/(auth)/register/page.tsx");
+    const form = baca("src/app/(app)/(auth)/register/register-form.tsx");
     expect(form).toContain("samaDenganNamaOrang");
     expect(form).toContain("accountNameIsPerson");
     expect(form, "peringatan ini tidak boleh mencegah kiriman").not.toMatch(
@@ -52,7 +52,7 @@ describe("nama akun ≠ nama orang (#458)", () => {
   });
 
   it("formulir daftar menanyakan keduanya, dan memperlihatkan akibat ketikannya", () => {
-    const form = baca("src/app/(app)/(auth)/register/page.tsx");
+    const form = baca("src/app/(app)/(auth)/register/register-form.tsx");
     expect(form).toContain('name="accountName"');
     expect(form).toContain('name="name"');
     /* Pratinjau slug memakai fungsi SERVER, bukan tiruan di klien: dua aturan

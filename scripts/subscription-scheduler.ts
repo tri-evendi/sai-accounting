@@ -265,6 +265,12 @@ async function main() {
       tenantId: true,
       status: true,
       billingCycle: true,
+      /* Gerbang #1: mode penagihan. Tanpa field ini `planTrialExpiries`,
+         `planDunning`, dan `planGraceExpiries` tidak bisa dipanggil sama sekali
+         — `PlannableSubscription` menuntutnya, dan itu memang bentuk yang
+         dipilih supaya gerbangnya tak bisa terlupa di salah satu dari tiga
+         langkah (alasan lengkap di `lib/subscription-lifecycle.ts`). */
+      billingMode: true,
       price: true,
       currency: true,
       trialEndsAt: true,
@@ -382,7 +388,12 @@ async function main() {
       where: { status: "issued", targetPlanId: null },
       select: { id: true, subscriptionId: true, status: true, dueDate: true },
     });
-    const statusById = new Map(subscriptions.map((s) => [s.id, s.status]));
+    /* Peta berisi OBJEK, bukan status telanjang: `planDunning` menuntut mode
+       penagihannya ikut, jadi langkah ini tidak bisa diam-diam menagih akun
+       yang tidak boleh ditagih. */
+    const statusById = new Map(
+      subscriptions.map((s) => [s.id, { status: s.status, billingMode: s.billingMode }])
+    );
     for (const subId of new Set(planDunning(issued, statusById, now))) {
       const sub = subscriptions.find((s) => s.id === subId);
       if (!sub) continue;

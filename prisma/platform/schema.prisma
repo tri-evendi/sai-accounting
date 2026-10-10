@@ -126,6 +126,20 @@ model Subscription {
   /// monthly | yearly
   billingCycle String @default("monthly") @map("billing_cycle") @db.VarChar(10)
 
+  /// none | manual | auto — BOLEH ditagih otomatis? (migration 0014)
+  ///
+  /// `none` tidak pernah ditagih (internal, penguji, pilot); `manual` ditagih
+  /// di luar sistem (faktur dari buku PT penyedia); `auto` siklus penuh
+  /// penjadwal. HANYA `auto` yang bisa menerbitkan tagihan, mendorong ke
+  /// `past_due`, dan menangguhkan — lihat `billingModeIsAutomatic`.
+  ///
+  /// ⚠ Bawaannya `none`, dan arah itu disengaja: baris yang dibuat image lama
+  /// mendapat bawaan basis data, dan kurang tagih bisa diperbaiki dengan satu
+  /// faktur — sedangkan buku pelanggan yang terkunci karena tagihan yang tidak
+  /// pernah ia setujui tidak bisa ditarik kembali. Daftar nilainya +
+  /// alasan lengkapnya di `lib/platform-constants.ts`.
+  billingMode String @default("none") @map("billing_mode") @db.VarChar(10)
+
   /// Harga yang DISEPAKATI saat berlangganan — snapshot dari `plans`, bukan
   /// dibaca ulang saat menagih. Alasannya sama dengan snapshot kuota di atas.
   price    Decimal @db.Decimal(15, 2)
@@ -161,6 +175,7 @@ model Subscription {
   @@index([tenantId])
   @@index([status])
   @@index([currentPeriodEnd])
+  @@index([billingMode])
   @@map("subscriptions")
 }
 

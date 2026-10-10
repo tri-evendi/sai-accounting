@@ -236,7 +236,15 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
     prefixes: ["pricing", "eyebrowPricing"],
   },
   { id: "faq", labelKey: "operator.content.sectionFaq", prefixes: ["faq", "eyebrowFaq"] },
-  { id: "cta", labelKey: "operator.content.sectionCta", prefixes: ["cta"] },
+  {
+    id: "cta",
+    labelKey: "operator.content.sectionCta",
+    /* `quote*` ikut ke sini: ia ajakan yang dipakai hero, kartu paket, DAN
+       penutup saat pendaftaran mandiri ditutup (`lib/landing-ask.ts`). Satu
+       kalimat yang muncul di tiga tempat paling masuk akal disunting di satu
+       bagian bernama "Ajakan", bukan dititipkan ke salah satu dari ketiganya. */
+    prefixes: ["cta", "quote"],
+  },
   {
     id: "footer",
     labelKey: "operator.content.sectionFooter",

@@ -177,7 +177,10 @@
     "mockActive": "当前打开",
     "mockAddCompany": "添加公司",
     "mockDashboardTitle": "仪表盘",
-    "mockJournalMemoTwo": "收到货款 — 发票 INV-2026-0042，存入银行"
+    "mockJournalMemoTwo": "收到货款 — 发票 INV-2026-0042，存入银行",
+    "quoteCta": "获取报价",
+    "quoteNote": "账户通过报价开通：先就公司配额、数据迁移和付款方式达成一致。上述价格为起始价。",
+    "faqTrialAQuote": "自助试用目前已关闭。开通需通过报价——我们会先就公司数量、数据迁移和付款方式达成一致，必要时也包含试用期。"
   },
   "common": {
     "save": "保存",
@@ -4866,7 +4869,7 @@
       "sectionTrust": "信任保障",
       "sectionPricing": "价格",
       "sectionFaq": "常见问题",
-      "sectionCta": "结尾号召",
+      "sectionCta": "号召与报价",
       "sectionFooter": "页脚",
       "sectionMock": "产品示意文案",
       "sectionOther": "其他"

@@ -187,6 +187,19 @@ function jsonLdBlocks(html: string): Record<string, unknown>[] {
 beforeEach(() => {
   state.session = null;
   state.plans = PLANS;
+  /*
+   * PENDAFTARAN MANDIRI TERBUKA — dinyatakan, bukan diwarisi.
+   *
+   * Sejak Fase A komersialisasi, `selfServeSignupOpen` gagal-TERTUTUP: tanpa
+   * `SELF_SERVE_SIGNUP=open` halaman pendaratan berhenti menjanjikan uji coba
+   * dan menjanjikan PENAWARAN (`lib/landing-ask.ts`). Blok-blok di bawah
+   * menguji bunyi keadaan TERBUKA, jadi keadaan itu harus dipasang di sini —
+   * kalau tidak, ia menguji halaman yang kebetulan sedang berbunyi lain.
+   *
+   * Keadaan TERTUTUP punya bloknya sendiri di bawah; keduanya nyata di
+   * produksi, jadi keduanya diuji.
+   */
+  vi.stubEnv("SELF_SERVE_SIGNUP", "open");
 });
 
 describe("halaman pendaratan publik", () => {
@@ -647,5 +660,55 @@ describe("halaman harga publik /pricing (#399)", () => {
     const html = tanpaJsonLd(await render());
     expect(html).toMatch(new RegExp(`<h2[^>]*>${T("landing.pricingHeading")}</h2>`));
     expect(html.match(/<h1[\s>]/g)?.length).toBe(1);
+  });
+});
+
+/**
+ * ══ PENDAFTARAN MANDIRI TERTUTUP — keadaan BAWAAN di produksi ══════════════
+ *
+ * `selfServeSignupOpen` gagal-tertutup (Fase A), jadi inilah halaman yang
+ * benar-benar dilihat pengunjung hari ini. Yang dijaga: ia berhenti
+ * menjanjikan uji coba, mulai menjanjikan penawaran, dan TIDAK kehilangan
+ * pintunya — tombolnya tetap menuju `/register`, yang kini menjelaskan jalan
+ * penawarannya (`tests/button-emphasis` mengunci tujuan itu).
+ */
+describe("halaman pendaratan saat pendaftaran mandiri DITUTUP", () => {
+  beforeEach(() => {
+    vi.stubEnv("SELF_SERVE_SIGNUP", "");
+  });
+
+  it("tidak satu pun janji uji coba tersisa di halamannya", async () => {
+    const html = await render();
+
+    expect(html).not.toContain(T("landing.heroTrialCta", { days: TRIAL_DAYS }));
+    expect(html).not.toContain(T("landing.pricingTrialNote", { days: TRIAL_DAYS }));
+    expect(html).not.toContain(T("landing.ctaTrialNote", { days: TRIAL_DAYS }));
+    /* Dan tidak ada placeholder yang lolos mentah ke halaman publik. */
+    expect(html).not.toContain("{days}");
+  });
+
+  it("menjanjikan PENAWARAN — di hero, kartu paket, dan penutup", async () => {
+    const html = await render();
+
+    expect(html).toContain(T("landing.quoteCta"));
+    expect(html).toContain(T("landing.quoteNote"));
+    /* Ajakan hero + kartu + penutup = tiga kemunculan minimal dari satu
+       kalimat ajakan yang sama (jumlah kartu paket bisa berubah). */
+    const kemunculan = html.split(T("landing.quoteCta")).length - 1;
+    expect(kemunculan).toBeGreaterThanOrEqual(3);
+  });
+
+  it("FAQ menjawab pertanyaan uji coba dengan jawaban yang benar, bukan menghapusnya", async () => {
+    const html = await render();
+
+    expect(html).toContain(T("landing.faqTrialQ"));
+    expect(html).toContain(T("landing.faqTrialAQuote"));
+    expect(html).not.toContain(T("landing.faqTrialA", { days: TRIAL_DAYS }));
+  });
+
+  it("pintunya TIDAK hilang — tombol tetap menuju /register, yang menjelaskan jalannya", async () => {
+    const html = await render();
+    expect(html).toContain('href="/register"');
+    expect(html).toContain('href="/login"');
   });
 });

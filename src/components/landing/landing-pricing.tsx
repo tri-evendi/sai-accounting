@@ -50,7 +50,8 @@ import {
   planDescriptionKey,
   planHighlightKeys,
 } from "@/lib/plan-copy";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { askValues, landingAsk } from "@/lib/landing-ask";
+import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
 /**
@@ -195,6 +196,8 @@ export async function LandingPricing({
   const t = await getT();
   const plans = await activePlans();
   const ppnEnabled = process.env.PLATFORM_PPN_DISABLED !== "true";
+  /* Uji coba, atau penawaran — satu keputusan, satu tempat. */
+  const ask = landingAsk(selfServeSignupOpen());
   /* Alamat penjualan untuk paket berharga rundingan. Tidak diset = kartunya
    * tetap tampil (paketnya memang ada) tetapi TANPA tombol yang menuju
    * ke mana-mana — tombol `mailto:` kosong adalah jalan buntu, dan kalimat
@@ -783,7 +786,7 @@ export async function LandingPricing({
                                tujuannya `mailto:`, yaitu justru tautan KELUAR
                                yang tidak boleh dinavigasi sisi-klien. */
                             <ButtonLink href="/register" variant="primary">
-                              {t("landing.heroPrimary")}
+                              {t(ask.cardCta, askValues(ask, TRIAL_DAYS))}
                             </ButtonLink>
                           )}
                         </div>
@@ -842,10 +845,14 @@ export async function LandingPricing({
             }}
           >
             {/* Uji coba disebut DI SINI, di sebelah harganya — dan sejak #397
-                juga di tombol hero (`heroTrialCta`), dari konstanta yang sama:
-                setiap tenant baru memang lahir di paket `trial` selama
-                TRIAL_DAYS hari. */}
-            {t("landing.pricingTrialNote", { days: TRIAL_DAYS })}
+                juga di tombol hero, dari konstanta yang sama: setiap tenant
+                baru memang lahir di paket `trial` selama TRIAL_DAYS hari.
+
+                ⚠ KECUALI saat pendaftaran mandiri ditutup: kalimatnya berganti
+                menjadi jalan penawaran, sebab menyebut uji coba yang tidak bisa
+                dimulai siapa pun adalah janji yang halaman ini tidak bisa
+                tepati (`lib/landing-ask.ts`). */}
+            {t(ask.priceNote, askValues(ask, TRIAL_DAYS))}
             {ppnEnabled &&
               ` ${t("landing.pricingTaxNote", { rate: DEFAULT_TAX_RATE })}`}
           </p>

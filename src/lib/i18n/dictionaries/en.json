@@ -177,7 +177,10 @@
     "mockActive": "Open now",
     "mockAddCompany": "Add a company",
     "mockDashboardTitle": "Dashboard",
-    "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank"
+    "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank",
+    "quoteCta": "Request a quote",
+    "quoteNote": "Accounts are opened through a quote: company quota, data migration, and payment terms are agreed first. The prices above are the starting point.",
+    "faqTrialAQuote": "Self-serve trials are closed for now. Access is granted through a quote — we agree on the number of companies, the data migration, and payment terms first, including a trial period where one is needed."
   },
   "common": {
     "save": "Save",
@@ -4866,7 +4869,7 @@
       "sectionTrust": "Trust",
       "sectionPricing": "Pricing",
       "sectionFaq": "FAQ",
-      "sectionCta": "Closing call to action",
+      "sectionCta": "Calls to action",
       "sectionFooter": "Footer",
       "sectionMock": "Product mock-up text",
       "sectionOther": "Other"

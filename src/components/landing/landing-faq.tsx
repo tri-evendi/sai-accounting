@@ -82,11 +82,14 @@ import {
 } from "@/lib/business-modules";
 import { contactChannels } from "@/lib/contact-channels";
 import { getT } from "@/lib/i18n/server";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { askValues, landingAsk } from "@/lib/landing-ask";
+import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
 export async function LandingFaq() {
   const t = await getT();
+  /* Uji coba, atau penawaran — satu keputusan, satu tempat. */
+  const ask = landingAsk(selfServeSignupOpen());
 
   /* Seksi kontak (dan formulirnya) sudah tidak ada di pendaratan, jadi
      jawaban dukungan menyebut ALAMAT SURELNYA langsung — dan hanya bila
@@ -106,7 +109,10 @@ export async function LandingFaq() {
   const items = [
     {
       q: t("landing.faqTrialQ"),
-      a: t("landing.faqTrialA", { days: TRIAL_DAYS }),
+      /* Pertanyaannya tetap sah ditanyakan saat pendaftaran mandiri ditutup —
+         yang berubah JAWABANNYA, bukan ada-tidaknya pertanyaan. Menghapus
+         butirnya hanya membuat orang menebak. */
+      a: t(ask.faqTrialAnswer, askValues(ask, TRIAL_DAYS)),
     },
     { q: t("landing.faqAfterTrialQ"), a: t("landing.faqAfterTrialA") },
     { q: t("landing.faqQuotaQ"), a: t("landing.faqQuotaA") },

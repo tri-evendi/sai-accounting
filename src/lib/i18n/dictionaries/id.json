@@ -177,7 +177,10 @@
     "mockActive": "Sedang dibuka",
     "mockAddCompany": "Tambah PT",
     "mockDashboardTitle": "Dasbor",
-    "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank"
+    "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank",
+    "quoteCta": "Minta penawaran",
+    "quoteNote": "Akun dibuka lewat penawaran: kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Harga di atas adalah titik mulainya.",
+    "faqTrialAQuote": "Uji coba swalayan sedang ditutup. Akses diberikan lewat penawaran — kami sepakati dulu jumlah PT, migrasi datanya, dan cara pembayaran, termasuk masa percobaan bila memang dibutuhkan."
   },
   "common": {
     "save": "Simpan",
@@ -4866,7 +4869,7 @@
       "sectionTrust": "Kepercayaan",
       "sectionPricing": "Harga",
       "sectionFaq": "Tanya jawab",
-      "sectionCta": "Ajakan penutup",
+      "sectionCta": "Ajakan & penawaran",
       "sectionFooter": "Kaki halaman",
       "sectionMock": "Teks purwarupa produk",
       "sectionOther": "Lain-lain"

@@ -20,6 +20,7 @@ import {
   FileTextOutlined,
   HistoryOutlined,
   MailOutlined,
+  SettingOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
 
@@ -63,6 +64,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/operator/content",
       label: t("operator.nav.content"),
       icon: <FileTextOutlined style={UKURAN_IKON} />,
+      group: situs,
+    },
+    {
+      href: "/operator/settings",
+      label: t("operator.nav.settings"),
+      icon: <SettingOutlined style={UKURAN_IKON} />,
       group: situs,
     },
     {

@@ -64,7 +64,7 @@ import { WhatsAppOutlined } from "@ant-design/icons";
 import type { CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
-import { contactChannels } from "@/lib/contact-channels";
+import { resolveContactChannels } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 
 /** Diameter tombol — 48px (permintaan issue; ≥40px target sentuh MASTER.md). */
@@ -88,7 +88,7 @@ export const WHATSAPP_FAB_STYLE = {
 } as CSSProperties;
 
 export async function LandingWhatsappFab() {
-  const kanal = contactChannels();
+  const kanal = await resolveContactChannels();
   if (kanal.whatsappUrl === undefined) return null;
   const t = await getT();
 

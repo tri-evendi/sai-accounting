@@ -4250,7 +4250,8 @@
     "pickWorkCenter": "Pilih stasiun kerja",
     "pickBom": "Pilih resep produksi",
     "producedPositive": "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses.",
-    "siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan."
+    "siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan.",
+    "whatsappDigitsOnly": "Nomor WhatsApp hanya angka, tanpa + atau spasi (mis. 628123456789)."
   },
   "taxSettings": {
     "sectionTitle": "PPN",
@@ -4558,6 +4559,7 @@
       "tenants": "Tenant",
       "reconciliation": "Rekonsiliasi",
       "content": "Isi Pendaratan",
+      "settings": "Pengaturan Situs",
       "scheduler": "Penjadwal",
       "mail": "Surel",
       "audit": "Jejak Audit",
@@ -4886,6 +4888,11 @@
       "description": "Ganti kalimat di halaman publik tanpa rilis. Isian yang dibiarkan kosong memakai kalimat bawaan dari aplikasi.",
       "localeLabel": "Bahasa",
       "sectionLabel": "Bagian halaman",
+      "defaultIs": "Bawaan: “{text}”",
+      "searchLabel": "Cari kalimat",
+      "searchPlaceholder": "Potongan kalimat atau nama kunci…",
+      "searchFound": "{count} kalimat memuat “{q}” — dari semua bagian.",
+      "searchEmpty": "Tidak ada kalimat yang memuat “{q}”. Coba potongan yang lebih pendek.",
       "unavailable": "Basis data platform sedang tidak terjangkau, jadi suntingan tidak bisa dibaca maupun disimpan sekarang. Halaman pendaratan tetap tampil utuh dengan kalimat bawaan.",
       "saved": "Tersimpan: {updated} kalimat diganti, {reset} dikembalikan ke bawaan.",
       "savedNothing": "Tidak ada yang berubah.",
@@ -4907,6 +4914,24 @@
       "sectionFooter": "Kaki halaman",
       "sectionMock": "Teks purwarupa produk",
       "sectionOther": "Lain-lain"
+    },
+    "settings": {
+      "heading": "Pengaturan Situs",
+      "description": "Tiga nilai yang dilihat & dihubungi orang luar. Disetel dari sini, bukan lewat SSH ke server.",
+      "whatsappLabel": "Nomor WhatsApp penjualan",
+      "whatsappHint": "Hanya angka, tanpa + atau spasi. Dipakai tombol WhatsApp di halaman depan dan layar penawaran.",
+      "emailLabel": "Alamat surel penjualan",
+      "emailHint": "Dipakai jawaban FAQ, kaki kartu paket rundingan, dan layar penawaran.",
+      "paymentLabel": "Instruksi transfer manual",
+      "paymentHint": "Ditampilkan apa adanya ke pelanggan di halaman tagihan. Sebut bank, nomor rekening, dan nama pemiliknya.",
+      "emptyMeans": "Isian yang dikosongkan lalu disimpan berarti kanalnya DICABUT — tombolnya hilang dari halaman publik. Untuk menyerahkannya kembali ke pengaturan server, pakai tombol di sebelah.",
+      "fromDb": "disetel dari konsol",
+      "fromEnv": "dari pengaturan server",
+      "saved": "Pengaturan tersimpan. Halaman publik ikut berubah sekarang.",
+      "errSave": "Pengaturan gagal disimpan — basis data platform tidak terjangkau. Halaman publik tetap memakai pengaturan server.",
+      "resetSubmit": "Kembalikan ke pengaturan server",
+      "resetConfirm": "Ketiga nilai di layar ini akan dihapus dari basis data, dan halaman publik kembali memakai nilai di pengaturan server (.env). Kalau pengaturan server kosong, kanal kontaknya hilang sampai diisi lagi.",
+      "resetDone": "Dikembalikan. Ketiganya kini memakai pengaturan server."
     },
     "audit": {
       "heading": "Jejak Audit Operator",

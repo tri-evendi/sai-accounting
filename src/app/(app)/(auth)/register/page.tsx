@@ -55,7 +55,7 @@ import { MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/ico
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { contactChannels } from "@/lib/contact-channels";
+import { resolveContactChannels } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import { selfServeSignupOpen } from "@/lib/registration";
 import { RegisterForm } from "./register-form";
@@ -73,7 +73,7 @@ export default async function RegisterPage() {
   if (selfServeSignupOpen()) return <RegisterForm />;
 
   const t = await getT();
-  const kanal = contactChannels();
+  const kanal = await resolveContactChannels();
 
   return (
     <AuthShell

@@ -73,6 +73,29 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.8.0",
+    tanggal: "2026-10-10",
+    ringkas:
+      "Halaman harga menghitung sendiri apakah lebih murah naik paket atau menumpuk paket kecil, dan halaman depan dibuat lebih tenang \u2014 satu warna, perpindahan antar-bagian yang melembut.",
+    butir: [
+      {
+        jenis: "baru",
+        teks:
+          "Halaman harga menyebutkan hitungannya: untuk jumlah PT yang sama, menumpuk beberapa paket kecil dibandingkan dengan satu paket yang lebih besar, beserta selisihnya per bulan. Angkanya dihitung dari katalog paket yang sedang berlaku \u2014 bukan ditulis di kalimatnya \u2014 jadi ia ikut berubah sendiri bila harga berubah, dan baris yang kebetulan TIDAK lebih hemat tidak ditampilkan.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Halaman depan dibuat lebih tenang: seluruh bidang berwarnanya kini satu warna alih-alih empat, dan warnanya melembut di batas antar-bagian alih-alih berhenti di satu garis. Isi, urutan, dan angkanya tidak berubah sedikit pun.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Halaman yang muncul setelah menekan \u201cMinta penawaran\u201d kini berjudul sama dengan tombolnya dan menyebutkan tiga langkah prosesnya \u2014 apa yang Anda kirim, apa yang Anda terima, dan apa yang terjadi setelah disetujui. Sebelumnya ia berjudul \u201cpendaftaran mandiri sedang ditutup\u201d, yang benar tetapi terbaca sebagai penolakan.",
+      },
+    ],
+  },
+  {
     versi: "0.7.0",
     tanggal: "2026-10-10",
     sha: "7198187",

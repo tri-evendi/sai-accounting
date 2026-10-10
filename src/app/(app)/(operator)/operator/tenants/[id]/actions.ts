@@ -32,6 +32,7 @@ import {
   executeTenantDeletion,
   makeLatestJournalDateReader,
   recordManualPayment,
+  setBillingMode,
   setTenantSuspension,
   extendSubscription,
   type OperatorActor,
@@ -43,7 +44,9 @@ import {
   manualPaymentSchema,
   suspensionSchema,
   extendSubscriptionSchema,
+  billingModeActionSchema,
 } from "@/lib/validations/operator";
+import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-constants";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -261,6 +264,70 @@ export async function operatorExtendSubscription(
         ok: false,
         message: t("operator.actions.extend.errUnpriced", { cycle: result.cycle }),
       };
+    default:
+      return { ok: false, message: t("operator.tenant.notFound") };
+  }
+}
+
+/* ── 3c. Mode penagihan ───────────────────────────────────────────────────── */
+
+/**
+ * Satu-satunya pintu di LAYAR menuju penagihan otomatis.
+ *
+ * Sebelum aksi ini, `billing_mode` hanya bisa disetel `bun run billing:pause`
+ * (yang justru hanya menyetel `none`) atau SQL langsung — artinya pada hari
+ * pelanggan berbayar pertama masuk, tidak ada tombol untuk menyalakan
+ * penagihannya. Alasan penolakan `price_zero` ada di kepala `setBillingMode`:
+ * nol rupiah yang ditagih otomatis mengunci buku pelanggan karena tidak
+ * membayar nol.
+ */
+export async function operatorSetBillingMode(input: unknown): Promise<OperatorActionResult> {
+  const gate = await guardAndTranslate();
+  if (!gate.ok) return gate.result;
+  const { t, actorName } = gate;
+
+  const parsed = billingModeActionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("validation.invalidInput") };
+
+  const result = await setBillingMode(deps(), {
+    tenantRef: { id: parsed.data.tenantId },
+    mode: parsed.data.mode,
+    actor: { operator: actorName, reason: parsed.data.reason },
+  });
+
+  /* Nama mode datang dari peta bertipe di `platform-constants.ts` — bukan
+     dirakit dari nilainya, yang akan membuat kuncinya tak terlihat penjaga
+     kunci yatim. */
+  const label = (mode: BillingMode) => t(BILLING_MODE_LABEL_KEYS[mode]);
+
+  switch (result.outcome) {
+    case "changed":
+      felt(parsed.data.tenantId);
+      return {
+        ok: true,
+        message: t("operator.actions.billingMode.success", {
+          from: label(result.from),
+          to: label(result.to),
+        }),
+        /* Peringatan yang TIDAK menggagalkan: `auto` menyalakan dunning &
+           penangguhan, tetapi TIDAK memulai penagihan perpanjangan — yang
+           terakhir belum ada di kode mana pun. Operator yang menandai `auto`
+           lalu menunggu tagihan bulan depan akan menunggu selamanya, dan
+           kalimat ini yang menahannya. */
+        warning:
+          result.to === "auto" ? t("operator.actions.billingMode.autoNoRenewal") : null,
+      };
+    case "not_applicable":
+      return {
+        ok: false,
+        message: t("operator.actions.billingMode.errSame", { mode: label(result.mode) }),
+      };
+    case "price_zero":
+      return { ok: false, message: t("operator.actions.billingMode.errPriceZero") };
+    case "cancelled":
+      return { ok: false, message: t("operator.actions.extend.errCancelled") };
+    case "no_subscription":
+      return { ok: false, message: t("operator.actions.suspension.errNoSubscription") };
     default:
       return { ok: false, message: t("operator.tenant.notFound") };
   }

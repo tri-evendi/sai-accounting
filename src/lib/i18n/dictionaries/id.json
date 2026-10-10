@@ -4764,6 +4764,24 @@
         "errCancelled": "Langganan sudah dibatalkan. Bangkitkan lewat perpindahan paket lebih dulu.",
         "errUnpriced": "Paket tenant ini tidak punya harga untuk siklus {cycle} di katalog, jadi perpanjangan ditolak — langganan tahunan berharga bulanan akan kurang tagih sepuluh kali lipat. Tetapkan harganya di katalog, atau perpanjang pada siklus yang sama."
       },
+      "billingMode": {
+        "heading": "Mode penagihan",
+        "description": "Siapa yang boleh ditagih penjadwal. Akun baru lahir `none` — penagihan otomatis hanya menyala lewat keputusan di layar ini, dan keputusannya tercatat.",
+        "label": "Mode",
+        "modeNone": "Tidak ditagih",
+        "modeManual": "Ditagih di luar sistem",
+        "modeAuto": "Ditagih otomatis",
+        "hintNone": "Internal, penguji, pilot, demo. Penjadwal tidak menerbitkan tagihan, tidak menagih, dan tidak menangguhkan.",
+        "hintManual": "Hak pakai penuh, tagihannya dari buku PT penyedia sendiri. Penjadwal tetap tidak menyentuhnya.",
+        "hintAuto": "Penjadwal boleh menerbitkan tagihan pertama saat uji coba habis, mendorong menunggak, lalu MENANGGUHKAN buku pelanggan.",
+        "submit": "Setel mode",
+        "success": "Mode penagihan: {from} → {to}.",
+        "autoNoRenewal": "Catatan: penagihan PERPANJANGAN belum ada di kode mana pun. Mode otomatis hanya menerbitkan tagihan pertama saat masa uji coba habis, lalu menagih & menangguhkan tagihan yang sudah terbit — ia tidak akan menerbitkan tagihan bulan depan dengan sendirinya.",
+        "errSame": "Akun ini sudah bermode {mode}.",
+        "errPriceZero": "Harga langganannya nol, jadi mode otomatis ditolak: tagihan Rp 0 akan lewat jatuh tempo (tidak ada yang bisa dibayar), lalu bukunya ditangguhkan karena tidak membayar nol. Ganti paketnya dulu.",
+        "currentLabel": "Mode penagihan",
+        "railWarning": "Belum ada rel pembayaran terpasang (tanpa gerbang pembayaran dan tanpa instruksi transfer), jadi tagihan yang terbit tidak bisa dibayar siapa pun."
+      },
       "deletion": {
         "title": "Eksekusi penghapusan akun",
         "noRequest": "Tidak ada permintaan penghapusan pending. Penghapusan HANYA berjalan atas permintaan eksplisit pemilik (UU PDP) — tidak ada jalur lain, dan memang tidak boleh ada.",

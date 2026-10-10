@@ -69,12 +69,14 @@ import {
   executeTenantDeletion,
   extendSubscription,
   recordManualPayment,
+  setBillingMode,
   setTenantSuspension,
 } from "@/lib/operator/writes";
 import {
   PLATFORM_INVOICE_STATUSES,
   platformInvoiceIsRevenue,
 } from "@/lib/platform-constants";
+import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { readTenantAuditLogs } from "@/lib/tenant-audit";
 import { readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { invalidateTenantState, tenantStateForCompany } from "@/lib/tenant-state";
@@ -135,6 +137,7 @@ function makeWorld() {
         tenantId: 7,
         planId: 1,
         billingCycle: "monthly",
+        billingMode: "none",
         currentPeriodEnd: new Date("2026-08-31T00:00:00Z"),
         status: "past_due",
         pastDueSince: new Date("2026-07-20T00:00:00Z") as Date | null,
@@ -918,11 +921,16 @@ describe("server action konsol — sapuan sumber (aturan #155 no. 4)", () => {
     expect(src).not.toMatch(/subscription\.update|tenant\.update/);
   });
 
-  it("keempat aksi punya server action-nya sendiri — tidak ada aksi yatim", () => {
+  it("setiap aksi punya server action-nya sendiri — tidak ada aksi yatim", () => {
     for (const name of [
       "operatorMarkInvoicePaid",
       "operatorChangePlan",
       "operatorSetSuspension",
+      "operatorExtendSubscription",
+      /* Mode penagihan (Fase A komersialisasi): satu-satunya pintu di layar
+         menuju penagihan otomatis. Tanpa aksi ini, pada hari pelanggan
+         berbayar pertama masuk satu-satunya jalan adalah SQL langsung. */
+      "operatorSetBillingMode",
       "operatorExecuteDeletion",
     ]) {
       expect(src, name).toContain(`export async function ${name}(`);
@@ -953,9 +961,39 @@ describe("panel tindakan benar-benar TERPASANG di layar rincian tenant", () => {
       "issuedInvoices=",
       "deletionRequest=",
       "billingAvailable=",
+      /* Mode penagihan (Fase A): nilai awal panelnya + peringatan rel bayar.
+         Keduanya dihitung di SERVER — `paymentRailReady` diturunkan sebagai
+         boolean, jadi nilai environment-nya tidak pernah menyeberang ke
+         peramban. */
+      "billingMode=",
+      "paymentRailReady=",
     ]) {
       expect(page, prop).toContain(prop);
     }
+  });
+
+  it("panel mode penagihan BENAR-BENAR dirender, bukan hanya ditulis", () => {
+    /* Penjaga yang sama alasannya dengan kepala blok ini: `setBillingMode`
+       lengkap + teruji tetap tidak berguna selama tidak ada layar yang
+       memanggilnya. Dan pada hari pelanggan berbayar pertama masuk, layar
+       itulah satu-satunya jalan selain SQL langsung. */
+    const panel = readFileSync(
+      join(__dirname, "..", "src", "components", "operator", "tenant-actions.tsx"),
+      "utf8"
+    );
+    expect(panel).toContain("function BillingModePanel(");
+    expect(panel).toContain("<BillingModePanel");
+    expect(panel).toContain("operatorSetBillingMode");
+    /* `auto` lewat konfirmasi yang menyebut AKIBATNYA — ia satu-satunya
+       pilihan di panel itu yang bisa berakhir dengan buku pelanggan terkunci
+       (MASTER.md §Form). */
+    expect(panel).toMatch(/ConfirmDialog[\s\S]*hintAuto/);
+  });
+
+  it("mode penagihan tampil sebagai FAKTA, bukan hanya nilai awal panel", () => {
+    /* "Apakah akun ini akan ditagih?" harus terjawab dengan MEMBACA halaman,
+       bukan dengan membuka panel atau basis data. */
+    expect(page).toContain("billingMode.currentLabel");
   });
 
   it("halamannya tetap dijaga penjaga bidang operator", () => {
@@ -1054,5 +1092,125 @@ describe("tagihan kompensasi: `comped`, bukan `paid`", () => {
     expect(sql).toMatch(/platform_invoice_id/i);
     /* Dan ia TIDAK menghapus apa pun: dokumen bernomor tidak pernah dihapus. */
     expect(sql).not.toMatch(/DELETE|DROP/i);
+  });
+});
+
+/**
+ * ══ MODE PENAGIHAN — satu-satunya pintu menuju tagih OTOMATIS ══════════════
+ *
+ * `billing_mode` bawaannya `none`: akun baru tidak boleh bisa ditagih oleh
+ * berakhirnya waktu (migration 0014). Yang memindahkannya ke `auto` karena itu
+ * harus tindakan MANUSIA dengan alasan tercatat — dan `auto` adalah
+ * satu-satunya tindakan di konsol yang memberi penjadwal izin menagih,
+ * mendorong `past_due`, lalu MENANGGUHKAN buku pelanggan.
+ */
+describe("setBillingMode — aksi #6", () => {
+  it("none → auto: tersimpan, dan jejaknya memuat harga saat keputusan diambil", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.subscriptions[0].billingMode = "none";
+
+    const result = await setBillingMode(deps, {
+      tenantRef: { id: 7 },
+      mode: "auto",
+      actor: ACTOR,
+    });
+
+    expect(result).toEqual({ outcome: "changed", from: "none", to: "auto" });
+    expect(state.subscriptions[0].billingMode).toBe("auto");
+
+    const logs = await readTenantAuditLogs("contoh");
+    expect(logs[0]).toMatchObject({ action: "tenant.billing_mode", username: "operator:vyn" });
+    expect(logs[0].details).toMatchObject({
+      reason: ACTOR.reason,
+      from: "none",
+      to: "auto",
+      /* Harga ikut: ia yang menentukan boleh-tidaknya `auto`, jadi peninjau
+         jejak tidak perlu menebak keadaan saat keputusannya diambil. */
+      price: "150000.00",
+    });
+  });
+
+  it("HARGA NOL → `auto` DITOLAK, dan tidak satu pun tulisan terjadi", async () => {
+    /* Tanpa penolakan ini, langganan berharga nol yang bermode `auto` akan —
+       saat masa uji cobanya habis — menerbitkan tagihan Rp 0, lalu tagihan itu
+       lewat jatuh tempo (tak ada yang bisa dibayar), lalu dunning mendorongnya
+       `past_due`, lalu BUKU PELANGGAN TERKUNCI karena tidak membayar nol. */
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.subscriptions[0].billingMode = "none";
+    state.subscriptions[0].price = dec("0.00");
+
+    const result = await setBillingMode(deps, {
+      tenantRef: { id: 7 },
+      mode: "auto",
+      actor: ACTOR,
+    });
+
+    expect(result).toEqual({ outcome: "price_zero" });
+    expect(state.subscriptions[0].billingMode).toBe("none");
+    expect(state.ops).toHaveLength(0);
+    expect(await readTenantAuditLogs("contoh")).toHaveLength(0);
+  });
+
+  it("harga nol TIDAK menghalangi `manual` — ia tidak menagih apa pun", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].billingMode = "none";
+    state.subscriptions[0].price = dec("0.00");
+
+    const result = await setBillingMode(deps, {
+      tenantRef: { id: 7 },
+      mode: "manual",
+      actor: ACTOR,
+    });
+
+    expect(result).toEqual({ outcome: "changed", from: "none", to: "manual" });
+    expect(state.subscriptions[0].billingMode).toBe("manual");
+  });
+
+  it("langganan `cancelled` tidak bisa dijadikan `auto`", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "cancelled";
+    state.subscriptions[0].billingMode = "none";
+
+    expect(
+      await setBillingMode(deps, { tenantRef: { id: 7 }, mode: "auto", actor: ACTOR })
+    ).toEqual({ outcome: "cancelled" });
+    expect(state.ops).toHaveLength(0);
+  });
+
+  it("mode yang SAMA = idempoten, bukan tulisan kedua", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].billingMode = "manual";
+
+    expect(
+      await setBillingMode(deps, { tenantRef: { slug: "contoh" }, mode: "manual", actor: ACTOR })
+    ).toEqual({ outcome: "not_applicable", mode: "manual" });
+    expect(state.ops).toHaveLength(0);
+    expect(await readTenantAuditLogs("contoh")).toHaveLength(0);
+  });
+
+  it("TIDAK menyentuh basis data kendali — mode penagihan bukan status tenant", async () => {
+    /* Menambah salinan di `tenants` berarti dua kebenaran yang bisa menyimpang,
+       dan status tenant memang tidak berubah karena mode penagihannya berubah. */
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.tenant.status = "active";
+    state.subscriptions[0].billingMode = "none";
+
+    await setBillingMode(deps, { tenantRef: { id: 7 }, mode: "auto", actor: ACTOR });
+
+    expect(state.tenant.status).toBe("active");
+    expect(state.ops).not.toContain("control:tenant.update");
+  });
+
+  it("rel pembayaran: gerbang ATAU instruksi transfer — keduanya kosong = belum siap", () => {
+    expect(paymentRailConfigured({})).toBe(false);
+    expect(paymentRailConfigured({ PAYMENT_GATEWAY: "midtrans" })).toBe(false);
+    expect(paymentRailConfigured({ MANUAL_PAYMENT_INSTRUCTIONS: "   " })).toBe(false);
+    expect(
+      paymentRailConfigured({ PAYMENT_GATEWAY: "midtrans", MIDTRANS_SERVER_KEY: "SB-x" })
+    ).toBe(true);
+    expect(paymentRailConfigured({ MANUAL_PAYMENT_INSTRUCTIONS: "Transfer BCA 123" })).toBe(true);
   });
 });

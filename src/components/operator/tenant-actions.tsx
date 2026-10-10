@@ -79,11 +79,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/i18n/client";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import {
+  BILLING_MODES,
+  BILLING_MODE_LABEL_KEYS,
+  type BillingMode,
+} from "@/lib/platform-constants";
+import {
   changePlanSchema,
   deletionExecuteSchema,
   manualPaymentSchema,
   suspensionSchema,
   extendSubscriptionSchema,
+  billingModeActionSchema,
+  type BillingModeFormInput,
   type ExtendSubscriptionFormInput,
   type ChangePlanFormInput,
   type DeletionExecuteFormInput,
@@ -97,6 +104,7 @@ import {
   operatorMarkInvoicePaid,
   operatorSetSuspension,
   operatorExtendSubscription,
+  operatorSetBillingMode,
 } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
 
 /* ── Bentuk data dari halaman server (serial, tanggal sudah terformat) ────── */
@@ -113,6 +121,19 @@ export interface TenantActionsProps {
   currentPlanKey: string;
   /** false = `sai_platform` tak terjangkau → aksi penagihan dimatikan. */
   billingAvailable: boolean;
+  /** `none` | `manual` | `auto`; `null` = belum ada langganan / platform mati. */
+  billingMode: string | null;
+  /**
+   * Apakah pemasangan ini punya REL PEMBAYARAN (gerbang pembayaran atau
+   * instruksi transfer). Dihitung di server dari environment, dioper sebagai
+   * boolean — nilai envnya sendiri tidak pernah menyeberang ke peramban.
+   *
+   * Dipakai sebagai PERINGATAN, bukan gerbang: menyalakan penagihan otomatis
+   * tanpa satu pun cara membayar adalah persis jalur yang mengunci lima buku
+   * pelanggan (`docs/KOMERSIALISASI.md` §1), dan operator berhak diberi tahu
+   * sebelum menekan — bukan ditolak oleh layar yang tidak menjelaskan apa pun.
+   */
+  paymentRailReady: boolean;
   issuedInvoices: {
     number: string;
     total: string;
@@ -906,6 +927,159 @@ function ExtendPanel({
 
 /* ══ 4. Eksekusi penghapusan ═══════════════════════════════════════════════ */
 
+/* ══ 3c. Mode penagihan ════════════════════════════════════════════════════ */
+
+/**
+ * SATU-SATUNYA pintu di layar menuju penagihan otomatis.
+ *
+ * ══ Kenapa panel ini ada ══════════════════════════════════════════════════
+ * `billing_mode` bawaannya `none` — akun baru tidak boleh bisa ditagih oleh
+ * berakhirnya waktu (migration 0014). Konsekuensinya: pada hari pelanggan
+ * berbayar PERTAMA masuk, tidak ada tombol untuk menyalakan penagihannya, dan
+ * satu-satunya jalan adalah SQL langsung. Panel ini jalan itu.
+ *
+ * ══ Tiga hal dikatakan DI LAYAR, bukan disimpan sebagai pengetahuan ═══════
+ *   1. apa yang masing-masing mode LAKUKAN — termasuk bahwa `auto` berakhir
+ *      dengan MENANGGUHKAN buku pelanggan bila tagihannya tak dibayar;
+ *   2. bahwa `auto` TIDAK memulai penagihan perpanjangan, sebab penagihan
+ *      perpanjangan belum ada di kode mana pun. Operator yang menandai `auto`
+ *      lalu menunggu tagihan bulan depan akan menunggu selamanya;
+ *   3. bila pemasangan ini belum punya rel pembayaran, bahwa tagihan yang
+ *      terbit tidak bisa dibayar siapa pun.
+ *
+ * `auto` memakai `ConfirmDialog` dan `variant="danger"` — ia satu-satunya
+ * pilihan di panel ini yang bisa berakhir dengan buku pelanggan terkunci
+ * (MASTER.md §Form: destruktif = merah + konfirmasi yang menyebut AKIBATNYA).
+ */
+function BillingModePanel({
+  tenantId,
+  tenantName,
+  billingMode,
+  paymentRailReady,
+}: {
+  tenantId: number;
+  tenantName: string;
+  billingMode: string | null;
+  paymentRailReady: boolean;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [confirming, setConfirming] = useState<BillingModeFormInput | null>(null);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<BillingModeFormInput>({
+    resolver: zodResolver(billingModeActionSchema) as Resolver<BillingModeFormInput>,
+    /* Bawaan = mode SEKARANG, jadi menyimpan tanpa mengubah apa pun dijawab
+       "sudah bermode itu" alih-alih diam-diam menulis ulang nilai yang sama. */
+    defaultValues: { tenantId, mode: (billingMode ?? "none") as BillingMode, reason: "" },
+  });
+
+  const dipilih = useWatch({ control: form.control, name: "mode" }) ?? "none";
+
+  async function runAction(values: BillingModeFormInput) {
+    const res = await operatorSetBillingMode(values);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      return;
+    }
+    setResult(res);
+    form.reset({ tenantId, mode: values.mode, reason: "" });
+    router.refresh();
+  }
+
+  if (billingMode === null) {
+    return (
+      <p style={{ margin: 0, color: token.colorTextSecondary }}>
+        {t("operator.actions.suspension.errNoSubscription")}
+      </p>
+    );
+  }
+
+  const HINT: Record<BillingMode, string> = {
+    none: t("operator.actions.billingMode.hintNone"),
+    manual: t("operator.actions.billingMode.hintManual"),
+    auto: t("operator.actions.billingMode.hintAuto"),
+  };
+
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit((values) =>
+          /* `auto` lewat konfirmasi; dua mode lain tidak bisa mengunci buku
+             siapa pun, jadi gesekan tambahan di sana hanya biaya tanpa
+             manfaat. */
+          values.mode === "auto" ? setConfirming(values) : runAction(values)
+        )}
+        noValidate
+      >
+        <Flex vertical gap={token.marginSM}>
+          <ResultNotice result={result} />
+
+          {!paymentRailReady && dipilih === "auto" && (
+            <Alert
+              type="warning"
+              showIcon
+              message={t("operator.actions.billingMode.railWarning")}
+            />
+          )}
+
+          <FormField
+            control={form.control}
+            name="mode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel required>{t("operator.actions.billingMode.label")}</FormLabel>
+                <FormControl>
+                  <SelectField
+                    {...field}
+                    options={BILLING_MODES.map((mode) => ({
+                      value: mode,
+                      label: t(BILLING_MODE_LABEL_KEYS[mode]),
+                    }))}
+                  />
+                </FormControl>
+                {/* Penjelasan mengikuti pilihan yang sedang disorot — bukan
+                    daftar tiga kalimat yang semuanya harus dibaca dulu. */}
+                <FormDescription>{HINT[dipilih as BillingMode]}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <ReasonField control={form.control} />
+
+          <RootError message={form.formState.errors.root?.message} />
+          <Button
+            type="submit"
+            variant={dipilih === "auto" ? "danger" : "primary"}
+            size="sm"
+            style={{ alignSelf: "flex-start" }}
+          >
+            {t("operator.actions.billingMode.submit")}
+          </Button>
+        </Flex>
+
+        <ConfirmDialog
+          open={confirming !== null}
+          onOpenChange={(next) => {
+            if (!next) setConfirming(null);
+          }}
+          title={t("operator.actions.billingMode.heading")}
+          /* Pesan konfirmasi menyebut AKIBATNYA, bukan "Anda yakin?" —
+             MASTER.md §Form. */
+          message={`${t("operator.actions.billingMode.hintAuto")} (${tenantName})`}
+          confirmVariant="danger"
+          confirmLabel={t("operator.actions.billingMode.submit")}
+          onConfirm={async () => {
+            if (confirming) await runAction(confirming);
+          }}
+        />
+      </form>
+    </Form>
+  );
+}
+
 function DeletionPanel({
   tenantId,
   tenantSlug,
@@ -1150,6 +1324,21 @@ export function TenantActions(props: TenantActionsProps) {
               tenantId={props.tenantId}
               tenantName={props.tenantName}
               subscriptionStatus={props.subscriptionStatus}
+            />
+          </ActionPanel>
+        )}
+
+        {props.billingAvailable && (
+          <ActionPanel
+            icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.actions.billingMode.heading")}
+            description={t("operator.actions.billingMode.description")}
+          >
+            <BillingModePanel
+              tenantId={props.tenantId}
+              tenantName={props.tenantName}
+              billingMode={props.billingMode}
+              paymentRailReady={props.paymentRailReady}
             />
           </ActionPanel>
         )}

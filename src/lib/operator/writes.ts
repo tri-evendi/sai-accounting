@@ -45,7 +45,8 @@ import {
   transition,
   type SubscriptionEvent,
 } from "@/lib/subscription-lifecycle";
-import type { SubscriptionStatus } from "@/lib/platform-constants";
+import type { BillingMode, SubscriptionStatus } from "@/lib/platform-constants";
+import { billingModeIsAutomatic } from "@/lib/platform-constants";
 import {
   anonymizedUserFields,
   executionVerdict,
@@ -643,6 +644,112 @@ export function makeLatestJournalDateReader(
       await pool.end();
     }
   };
+}
+
+/* ═══════ 6. Mode penagihan — satu-satunya pintu menuju tagih OTOMATIS ══════ */
+
+export type SetBillingModeResult =
+  | { outcome: "changed"; from: BillingMode; to: BillingMode }
+  /** Sudah bermode itu — idempoten, bukan galat. */
+  | { outcome: "not_applicable"; mode: BillingMode }
+  | { outcome: "tenant_not_found" }
+  | { outcome: "no_subscription" }
+  /**
+   * `auto` DITOLAK karena harga langganannya NOL.
+   *
+   * Lihat ⚠ di kepala fungsi: ini satu-satunya penolakan berbasis data di sini,
+   * dan ia menutup jalur yang pasti berakhir buruk.
+   */
+  | { outcome: "price_zero" }
+  /** `auto` ditolak: langganannya sudah `cancelled` — tidak ada yang ditagih. */
+  | { outcome: "cancelled" };
+
+/**
+ * Setel MODE PENAGIHAN sebuah tenant: `none` → `manual` → `auto`.
+ *
+ * ══ KENAPA INI AKSI OPERATOR, BUKAN EFEK SAMPING ═══════════════════════════
+ * `billing_mode` bawaannya `none` (migration 0014), dan itu disengaja: akun
+ * baru TIDAK boleh bisa ditagih oleh berakhirnya waktu. Yang memindahkannya ke
+ * `auto` karena itu harus TINDAKAN MANUSIA, dengan alasan yang tercatat — dan
+ * sebelum fungsi ini ada, satu-satunya jalan adalah `bun run billing:pause`
+ * (yang justru hanya bisa menyetel `none`) atau SQL langsung.
+ *
+ * ⚠ `auto` DITOLAK bila harganya NOL, dan penolakan itu bukan kehati-hatian
+ * berlebihan — ia menutup jalur yang pasti berakhir buruk: langganan berharga
+ * nol yang bermode `auto` akan, saat masa uji cobanya habis, menerbitkan
+ * tagihan Rp 0 + PPN Rp 0, lalu tagihan itu lewat jatuh tempo (tak ada yang
+ * bisa dibayar), lalu dunning mendorongnya `past_due`, lalu masa tenggang
+ * habis dan BUKU PELANGGAN TERKUNCI — karena tidak membayar nol rupiah.
+ * Pakai `changeTenantPlan` dulu bila memang akan ditagih.
+ *
+ * ══ YANG `auto` BENAR-BENAR LAKUKAN HARI INI ═══════════════════════════════
+ * Dan ini harus dinyatakan, sebab namanya menyiratkan lebih: penjadwal hanya
+ * punya TIGA tindakan — menerbitkan tagihan PERTAMA saat masa uji coba habis,
+ * mendorong `past_due` atas tagihan yang lewat jatuh tempo, dan menangguhkan
+ * setelah masa tenggang. **TIDAK ADA penagihan PERPANJANGAN sama sekali**
+ * (`platformInvoice.create` hanya ada di tiga tempat, dan tak satu pun
+ * dipicu oleh `current_period_end`). Jadi menandai `auto` sebuah akun yang
+ * sudah `active` tanpa tanggal uji coba TIDAK akan menagih apa pun — ia hanya
+ * membuka pintu dunning untuk tagihan yang dibuat jalur lain.
+ * Lihat `docs/KOMERSIALISASI.md` §11.
+ *
+ * Urutan tulis: PLATFORM saja. Tidak ada salinan mode ini di basis data
+ * kendali — status tenant tidak berubah karena mode penagihannya berubah, dan
+ * menambah salinan berarti dua kebenaran yang bisa menyimpang.
+ */
+export async function setBillingMode(
+  deps: OperatorWriteDeps,
+  input: {
+    tenantRef: { id: number } | { slug: string };
+    mode: BillingMode;
+    actor: OperatorActor;
+  }
+): Promise<SetBillingModeResult> {
+  const tenant = await deps.control.tenant.findUnique({
+    where: input.tenantRef as { id: number },
+    select: { id: true, slug: true },
+  });
+  if (!tenant) return { outcome: "tenant_not_found" };
+
+  const subscription = await deps.platform.subscription.findFirst({
+    where: { tenantId: tenant.id },
+    orderBy: { id: "desc" },
+    select: { id: true, status: true, billingMode: true, price: true },
+  });
+  if (!subscription) return { outcome: "no_subscription" };
+
+  const from = subscription.billingMode as BillingMode;
+  if (from === input.mode) return { outcome: "not_applicable", mode: from };
+
+  if (billingModeIsAutomatic(input.mode)) {
+    if (subscription.status === "cancelled") return { outcome: "cancelled" };
+    /* Lihat ⚠ di kepala fungsi — nol rupiah yang ditagih otomatis mengunci
+       buku pelanggan karena tidak membayar nol. */
+    if (Number(subscription.price) <= 0) return { outcome: "price_zero" };
+  }
+
+  await deps.platform.subscription.update({
+    where: { id: subscription.id },
+    data: { billingMode: input.mode },
+  });
+
+  await writeTenantAuditLog({
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    ...auditActor(input.actor),
+    action: "tenant.billing_mode",
+    details: {
+      reason: input.actor.reason,
+      from,
+      to: input.mode,
+      /* Harga ikut dicatat: ia yang menentukan boleh-tidaknya `auto`, jadi
+         peninjau jejak tidak perlu menebak keadaan saat keputusan diambil. */
+      price: subscription.price.toString(),
+      subscriptionStatus: subscription.status,
+    },
+  });
+
+  return { outcome: "changed", from, to: input.mode };
 }
 
 /* ═════════ 5. Perpanjang langganan — KOMPENSASI, tanpa gerbang bayar ═══════ */

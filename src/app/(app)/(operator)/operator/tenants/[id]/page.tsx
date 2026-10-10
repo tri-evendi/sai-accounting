@@ -40,10 +40,15 @@ import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
+import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listPlansForOperator, tenantDetailForOperator } from "@/lib/operator/store";
 import { executionVerdict } from "@/lib/tenant-deletion";
-import { platformInvoiceIsRevenue } from "@/lib/platform-constants";
+import {
+  BILLING_MODE_LABEL_KEYS,
+  platformInvoiceIsRevenue,
+  type BillingMode,
+} from "@/lib/platform-constants";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -353,6 +358,18 @@ export default async function OperatorTenantDetailPage({
                       : t("operator.tenant.cycleMonthly")
                   }`}
                 />
+                {/* MODE PENAGIHAN sebagai fakta, bukan hanya nilai awal panel
+                    di bawah: ia menjawab "apakah akun ini akan ditagih?" —
+                    pertanyaan yang sebelumnya hanya bisa dijawab dengan
+                    membuka basis data. */}
+                <Fact
+                  label={t("operator.actions.billingMode.currentLabel")}
+                  value={t(
+                    BILLING_MODE_LABEL_KEYS[
+                      (billing.subscription.billingMode as BillingMode) ?? "none"
+                    ] ?? BILLING_MODE_LABEL_KEYS.none
+                  )}
+                />
                 <Fact
                   label={t("operator.tenant.periodEnd")}
                   value={formatDate(billing.subscription.currentPeriodEnd)}
@@ -433,6 +450,11 @@ export default async function OperatorTenantDetailPage({
         tenantName={tenant.name}
         tenantStatus={tenant.status}
         subscriptionStatus={billing?.subscription?.status ?? null}
+        billingMode={billing?.subscription?.billingMode ?? null}
+        /* Dihitung di SERVER dari environment; yang menyeberang hanya boolean.
+           Dipakai panel mode penagihan sebagai peringatan sebelum menyalakan
+           penagihan otomatis tanpa satu pun cara membayar. */
+        paymentRailReady={paymentRailConfigured()}
         usage={usage}
         currentPlanKey={tenant.planKey}
         billingAvailable={billing !== null}

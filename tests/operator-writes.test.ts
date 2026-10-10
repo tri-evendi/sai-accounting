@@ -71,6 +71,10 @@ import {
   recordManualPayment,
   setTenantSuspension,
 } from "@/lib/operator/writes";
+import {
+  PLATFORM_INVOICE_STATUSES,
+  platformInvoiceIsRevenue,
+} from "@/lib/platform-constants";
 import { readTenantAuditLogs } from "@/lib/tenant-audit";
 import { readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { invalidateTenantState, tenantStateForCompany } from "@/lib/tenant-state";
@@ -960,5 +964,95 @@ describe("panel tindakan benar-benar TERPASANG di layar rincian tenant", () => {
 
   it("hanya tagihan TERBIT yang ditawarkan untuk dilunasi", () => {
     expect(page).toMatch(/status === "issued"/);
+  });
+});
+
+/**
+ * ══ KOMPENSASI BUKAN PENDAPATAN ════════════════════════════════════════════
+ *
+ * Kompensasi memakai satu baris tagihan sebagai kunci idempotensi — nomornya
+ * deterministik + UNIK, jadi perpanjangan yang sama dijalankan dua kali
+ * menabrak constraint alih-alih memberi periode kedua. Trik itu benar.
+ *
+ * Yang pernah salah adalah STATUSNYA: baris itu ditulis `paid` dengan total
+ * Rp 0, dan akibatnya terukur di produksi 10 Okt 2026 — KELIMA tagihan
+ * berstatus `paid` bernilai NOL rupiah, sehingga "berapa pendapatan kita?"
+ * tidak bisa dijawab dari tabel mana pun tanpa lebih dulu tahu bahwa sebagian
+ * "lunas" bukan uang (`docs/KOMERSIALISASI.md` §8).
+ *
+ * Penjaga ini menahan angka itu agar tidak bisa berbohong lagi.
+ */
+describe("tagihan kompensasi: `comped`, bukan `paid`", () => {
+  it("perpanjangan menulis status `comped` dengan total nol dan TANPA baris pembayaran", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.tenant.status = "active";
+
+    const result = await extendSubscription(
+      deps,
+      { tenantRef: { id: 7 }, cycle: "monthly", periods: 1, actor: ACTOR },
+      NOW
+    );
+    expect(result.outcome).toBe("extended");
+
+    const comp = state.invoices.find((inv) => inv.number.endsWith("-K"));
+    expect(comp, "tagihan kompensasi tidak terbit").toBeDefined();
+    expect(comp!.status).toBe("comped");
+    expect(Number(comp!.total)).toBe(0);
+    /* Pembayaran nol adalah dokumen yang menyatakan sesuatu yang tidak pernah
+       terjadi — jadi tidak satu pun baris `payments` dibuat. */
+    expect(state.ops).not.toContain("platform:payment.create");
+  });
+
+  it("`comped` TIDAK dihitung sebagai pendapatan, `paid` dihitung", () => {
+    expect(platformInvoiceIsRevenue("paid")).toBe(true);
+    for (const status of ["comped", "issued", "draft", "void", "", "PAID"]) {
+      expect(platformInvoiceIsRevenue(status), status).toBe(false);
+    }
+  });
+
+  it("`comped` ada di daftar status sah — kolom VARCHAR tidak menolak apa pun", () => {
+    expect(PLATFORM_INVOICE_STATUSES).toContain("comped");
+    /* Dan ia bukan pengganti `void`: dibatalkan dan diberi-gratis adalah dua
+       peristiwa berbeda — yang pertama tidak memberi hak pakai apa pun. */
+    expect(PLATFORM_INVOICE_STATUSES).toContain("void");
+  });
+
+  it("tagihan `comped` TIDAK menerima pelunasan manual — tidak ada yang terutang", async () => {
+    const { state, deps } = makeWorld();
+    state.invoices[0].status = "comped";
+
+    const result = await recordManualPayment(
+      deps,
+      {
+        invoiceNumber: state.invoices[0].number,
+        /* `amount` string & `transferDate` Date — bentuk yang sama dengan
+           pemanggil nyata (server action mengurainya dari form). */
+        amount: "166500",
+        transferDate: new Date("2026-08-05T00:00:00Z"),
+        bankRef: "TRF-COMPED",
+        actor: ACTOR,
+      },
+      NOW
+    );
+
+    expect(result).toEqual({ outcome: "not_issued", status: "comped" });
+    expect(state.ops).toHaveLength(0);
+  });
+
+  it("migration 0015 memperbaiki DATA lama dengan syarat yang sempit", () => {
+    const sql = readFileSync(
+      join(__dirname, "..", "prisma", "platform", "migrations", "0015_comped_invoice_status", "migration.sql"),
+      "utf8"
+    );
+    /* Ketiganya harus benar bersamaan — tanpa salah satu pun, migration ini
+       bisa menyentuh pelunasan sungguhan. Yang terakhir yang paling penting:
+       bukti bahwa tidak ada uang yang pernah lewat. */
+    expect(sql).toMatch(/status`?\s*=\s*'paid'/i);
+    expect(sql).toMatch(/total`?\s*=\s*0/i);
+    expect(sql).toMatch(/NOT EXISTS/i);
+    expect(sql).toMatch(/platform_invoice_id/i);
+    /* Dan ia TIDAK menghapus apa pun: dokumen bernomor tidak pernah dihapus. */
+    expect(sql).not.toMatch(/DELETE|DROP/i);
   });
 });

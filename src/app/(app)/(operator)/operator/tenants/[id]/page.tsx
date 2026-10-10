@@ -43,6 +43,7 @@ import { TenantActions } from "@/components/operator/tenant-actions";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listPlansForOperator, tenantDetailForOperator } from "@/lib/operator/store";
 import { executionVerdict } from "@/lib/tenant-deletion";
+import { platformInvoiceIsRevenue } from "@/lib/platform-constants";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -180,8 +181,12 @@ export default async function OperatorTenantDetailPage({
       key: "status",
       title: t("operator.tenant.colStatus"),
       align: "left",
+      /* `success` HANYA untuk uang yang BENAR-BENAR masuk: tagihan kompensasi
+         (`comped`) bernilai nol rupiah dan tidak boleh terbaca sebagai
+         pendapatan dari warnanya. Satu fungsi yang memutuskannya, dipakai
+         setiap permukaan — `platformInvoiceIsRevenue`. */
       render: (_v, invoice) => (
-        <Badge variant={invoice.status === "paid" ? "success" : "default"}>
+        <Badge variant={platformInvoiceIsRevenue(invoice.status) ? "success" : "default"}>
           {t(`tenantSettings.invoiceStatus.${invoice.status}` as DictionaryKey)}
         </Badge>
       ),

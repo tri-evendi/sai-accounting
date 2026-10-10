@@ -15,6 +15,19 @@
  *   • "Kembalikan ke environment" = tombol TERSENDIRI yang menghapus barisnya.
  *
  * Keduanya dinyatakan di layar, bukan disimpan sebagai pengetahuan operator.
+ *
+ * ══ DUA GERBANG DI BAWAH ISIAN, DAN KENAPA BENTUKNYA BUKAN SAKELAR ═════════
+ * Pendaftaran mandiri dan PPN adalah PILIHAN TIGA KEADAAN, bukan dua:
+ * *ikut pengaturan server* · *nyala* · *mati*. Sebuah sakelar dua posisi akan
+ * memaksa layar ini menjawab pertanyaan yang belum ditanyakan siapa pun —
+ * sekali ia dirender dalam keadaan "mati", menyimpan formulir kontak akan ikut
+ * merampas keputusan dari `.env` tanpa ada yang memintanya.
+ *
+ * Keduanya lewat KONFIRMASI yang menyebut akibatnya, bukan "Anda yakin?":
+ * yang pertama membuka corong komersial kepada publik, yang kedua mengubah
+ * NOMINAL yang benar-benar ditagih — termasuk oleh penjadwal di luar Next.
+ * Konfirmasinya muncul HANYA bila salah satu gerbang berubah; menyunting nomor
+ * WhatsApp tidak perlu melewati dialog tentang pajak.
  */
 
 import { useState } from "react";
@@ -35,6 +48,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { TextInput } from "@/components/ui/input";
+import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/i18n/client";
 import { siteSettingsSchema, type SiteSettingsFormInput } from "@/lib/validations/operator";
@@ -45,6 +59,14 @@ export interface SiteSettingsFormProps {
   initial: SiteSettingsFormInput;
   /** Per medan: apakah nilainya datang dari basis data atau dari environment. */
   fromDb: { whatsapp: boolean; email: boolean; payment: boolean };
+  /**
+   * Nilai gerbang yang BERLAKU bila pilihannya "ikut pengaturan server".
+   *
+   * Dihitung di server dari `.env` — tidak bisa dihitung di sini: client tidak
+   * melihat environment, dan menebaknya berarti layar yang mengatakan
+   * "pendaftaran terbuka" pada kotak yang sesungguhnya menutupnya.
+   */
+  envGates: { signupOpen: boolean; ppnEnabled: boolean };
   /** Ada barisnya di basis data — menentukan perlu-tidaknya tombol kembalikan. */
   rowExists: boolean;
   save: (input: SiteSettingsFormInput) => Promise<OperatorSettingsResult>;
@@ -54,6 +76,7 @@ export interface SiteSettingsFormProps {
 export function SiteSettingsForm({
   initial,
   fromDb,
+  envGates,
   rowExists,
   save,
   reset,
@@ -63,6 +86,8 @@ export function SiteSettingsForm({
   const router = useRouter();
   const [result, setResult] = useState<OperatorSettingsResult | null>(null);
   const [confirming, setConfirming] = useState(false);
+  /** Nilai yang menunggu konfirmasi gerbang — `null` = tidak ada yang menunggu. */
+  const [pendingGates, setPendingGates] = useState<SiteSettingsFormInput | null>(null);
 
   const form = useForm<SiteSettingsFormInput>({
     resolver: zodResolver(siteSettingsSchema) as Resolver<SiteSettingsFormInput>,
@@ -73,7 +98,29 @@ export function SiteSettingsForm({
   const sumber = (db: boolean) =>
     db ? t("operator.settings.fromDb") : t("operator.settings.fromEnv");
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  /** Tiga pilihan yang sama untuk kedua gerbang. */
+  const gateOptions = (envValue: boolean) => [
+    {
+      value: "env",
+      label: `${t("operator.settings.gateEnv")} — ${
+        envValue ? t("operator.settings.gateOn") : t("operator.settings.gateOff")
+      }`,
+    },
+    { value: "on", label: t("operator.settings.gateOn") },
+    { value: "off", label: t("operator.settings.gateOff") },
+  ];
+
+  /** Kalimat akibat untuk gerbang yang BERUBAH — kosong bila tak ada. */
+  const gateWarnings = (values: SiteSettingsFormInput): string[] => {
+    const out: string[] = [];
+    if (values.selfServeSignup !== initial.selfServeSignup) {
+      out.push(t("operator.settings.signupConfirm"));
+    }
+    if (values.ppn !== initial.ppn) out.push(t("operator.settings.ppnConfirm"));
+    return out;
+  };
+
+  const simpan = async (values: SiteSettingsFormInput) => {
     setResult(null);
     const res = await save(values);
     if (!res.ok) {
@@ -84,6 +131,16 @@ export function SiteSettingsForm({
     /* Dibaca ULANG dari server: label "dari basis data / dari environment"
        berubah setelah simpan, dan menebaknya di client berarti dua kebenaran. */
     router.refresh();
+  };
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    /* Gerbang berubah → konfirmasi lebih dulu. Menyunting nomor telepon tidak
+       pernah melewati dialog tentang pajak; lihat kepala berkas. */
+    if (gateWarnings(values).length > 0) {
+      setPendingGates(values);
+      return;
+    }
+    await simpan(values);
   });
 
   return (
@@ -147,6 +204,62 @@ export function SiteSettingsForm({
             {t("operator.settings.emptyMeans")}
           </p>
 
+          {/* ══ GERBANG ══ Dipisah dari isian di atas oleh judulnya sendiri:
+              yang di atas adalah ISI yang dipajang, yang di bawah MENGUBAH
+              perilaku — pendaftaran dan nominal tagihan. */}
+          <div>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: token.fontSizeLG,
+                fontWeight: 600,
+                color: token.colorText,
+              }}
+            >
+              {t("operator.settings.gatesHeading")}
+            </h2>
+            <p
+              style={{
+                margin: `${token.marginXXS}px 0 0`,
+                fontSize: token.fontSize,
+                color: token.colorTextSecondary,
+                lineHeight: 1.625,
+              }}
+            >
+              {t("operator.settings.gatesIntro")}
+            </p>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="selfServeSignup"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.settings.signupLabel")}</FormLabel>
+                <FormControl>
+                  <SelectField {...field} options={gateOptions(envGates.signupOpen)} />
+                </FormControl>
+                <FormDescription>{t("operator.settings.signupHint")}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="ppn"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.settings.ppnLabel")}</FormLabel>
+                <FormControl>
+                  <SelectField {...field} options={gateOptions(envGates.ppnEnabled)} />
+                </FormControl>
+                <FormDescription>{t("operator.settings.ppnHint")}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           {result && <Alert type="success" showIcon message={result.message} />}
           {form.formState.errors.root?.message && (
             <Alert type="error" showIcon message={form.formState.errors.root.message} />
@@ -167,6 +280,24 @@ export function SiteSettingsForm({
             )}
           </Flex>
         </Flex>
+
+        {/* Gerbang yang berubah disebut AKIBATNYA, satu kalimat per gerbang —
+            bukan "Anda yakin?" (MASTER.md §Form). Keduanya bisa berubah dalam
+            satu simpan, jadi pesannya digabung alih-alih dua dialog berurutan. */}
+        <ConfirmDialog
+          open={pendingGates !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingGates(null);
+          }}
+          title={t("operator.settings.gateConfirmTitle")}
+          message={pendingGates ? gateWarnings(pendingGates).join(" ") : ""}
+          confirmLabel={t("common.save")}
+          onConfirm={async () => {
+            const values = pendingGates;
+            setPendingGates(null);
+            if (values) await simpan(values);
+          }}
+        />
 
         {/* Mengembalikan ke environment MENGHAPUS barisnya — pesannya menyebut
             akibatnya, bukan "Anda yakin?" (MASTER.md §Form). */}

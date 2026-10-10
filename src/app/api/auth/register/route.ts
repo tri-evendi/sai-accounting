@@ -38,7 +38,7 @@ import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { clientIpFrom } from "@/lib/client-ip";
-import { selfServeSignupOpen } from "@/lib/registration";
+import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 
 function appOrigin(request: Request): string {
   return process.env.AUTH_URL?.replace(/\/$/, "") ?? new URL(request.url).origin;
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
    * yang ditolak adalah tindakannya, dan jawabannya menyebutkan jalan lain
    * (kanal kontak) lewat kalimat di kamus.
    */
-  if (!selfServeSignupOpen()) {
+  if (!(await resolveSelfServeSignupOpen())) {
     return NextResponse.json({ error: t("auth.register.closedBody") }, { status: 403 });
   }
 

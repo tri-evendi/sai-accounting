@@ -86,11 +86,41 @@ describe("keempat permukaan memakai keputusan itu", () => {
     "landing-faq.tsx",
   ];
 
-  it("masing-masing memanggil `landingAsk(selfServeSignupOpen())`", () => {
+  it("masing-masing memanggil `landingAsk(await resolveSelfServeSignupOpen())`", () => {
     for (const nama of BERKAS) {
       const src = baca(nama);
-      expect(src, nama).toContain("landingAsk(selfServeSignupOpen())");
+      expect(src, nama).toContain("landingAsk(await resolveSelfServeSignupOpen())");
     }
+  });
+
+  it("TIDAK ada yang membaca environment langsung — konsol harus didengar", () => {
+    /*
+     * Dulu keempatnya memanggil `selfServeSignupOpen(process.env)` langsung, dan
+     * itu benar selama sakelarnya hanya hidup di `.env`. Sejak gerbangnya bisa
+     * disetel dari `/operator/settings` (migration 0017), pembacaan langsung
+     * menjadi kelas bug yang paling sulit dilihat: halamannya tetap benar
+     * menurut dirinya sendiri, tetapi pemilik yang MEMBUKA pendaftaran dari
+     * panel akan melihat halaman depan tetap menutupnya — tanpa galat, tanpa
+     * jejak, dan tanpa apa pun yang bisa dicurigai.
+     *
+     * `resolveSelfServeSignupOpen()` yang memikul presedensi basis-data→env
+     * (dan gagal-lunaknya), jadi di permukaan pendaratan hanya ia yang sah.
+     */
+    const pelanggar: string[] = [];
+    for (const nama of BERKAS) {
+      const src = baca(nama);
+      if (/selfServeSignupOpen\s*\(\s*process\.env/.test(src)) {
+        pelanggar.push(`${nama} — selfServeSignupOpen(process.env…)`);
+      }
+    }
+    expect(
+      pelanggar,
+      pelanggar.length === 0
+        ? ""
+        : "Gerbang pendaftaran dibaca dari environment, melewati konsol:\n\n  " +
+            pelanggar.join("\n  ") +
+            "\n\nPakai `resolveSelfServeSignupOpen()` (lib/site-settings.ts)."
+    ).toEqual([]);
   });
 
   it("tidak ada lagi yang memanggil kunci janji uji coba SECARA LANGSUNG", () => {

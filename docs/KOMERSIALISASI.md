@@ -266,7 +266,10 @@ apa yang paling mudah dibangun.
   terbit memuat PPN 11% dan mendahului keputusan itu. Sakelarnya sudah ada di
   kode dan memang dibuat untuk ini: `PLATFORM_PPN_DISABLED`, yang komentarnya
   menyebut dirinya *"mekanisme untuk jawaban penasihat pajak, bukan kebijakan
-  yang kami tetapkan"*.
+  yang kami tetapkan"*. Sejak migration 0017 sakelar itu bisa dibalik dari
+  **`/operator/settings`** tanpa SSH — dan keputusan konsol dibaca juga oleh
+  **penjadwal**, jadi yang berubah bukan hanya nominal yang dipajang melainkan
+  nominal yang benar-benar ditagih.
 
 ---
 
@@ -337,8 +340,8 @@ yang tidak punya perjanjian komersial.
 | Pulihkan 5 tenant `suspended` + 1 `past_due` | `setTenantSuspension` (konsol) |
 | Batalkan/void 6 tagihan fiktif Rp 3,98 jt | tindakan operator (butuh status `void`, §11) |
 | Tandai seluruh akun uji coba & internal sebagai **tidak boleh ditagih** | **belum ada** — §3.3, satu kolom |
-| Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **belum ada** sakelarnya — §11 |
-| Matikan PPN di tagihan platform sampai status PKP diputuskan | `PLATFORM_PPN_DISABLED=true` |
+| Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **`/operator/settings` → Gerbang → Pendaftaran mandiri** (env `SELF_SERVE_SIGNUP` tetap jadi bawaannya) |
+| Matikan PPN di tagihan platform sampai status PKP diputuskan | **`/operator/settings` → Gerbang → PPN** (env `PLATFORM_PPN_DISABLED=true` tetap jadi bawaannya) |
 | Ubah CTA harga dari "Coba gratis" → **"Minta penawaran"** untuk ≥4 PT | kanal kontak sudah ada (`contactChannels()`) |
 
 **Keluar dari Fase A bila:** tidak ada akun non-komersial yang bisa menerima
@@ -498,8 +501,9 @@ jawabannya bisa langsung dipasang. Yang harus dijawab sebelum tagihan berbayar
 pertama:
 
 1. **Status PKP penyedia** — menentukan boleh/tidaknya PPN muncul di tagihan.
-   Sakelarnya: `PLATFORM_PPN_DISABLED`. Enam tagihan yang sudah terbit memuat
-   PPN 11% dan perlu ditinjau.
+   Sakelarnya: **`/operator/settings` → Gerbang → PPN** (bawaannya tetap env
+   `PLATFORM_PPN_DISABLED`). Enam tagihan yang sudah terbit memuat PPN 11% dan
+   perlu ditinjau.
 2. **Tarif & dasar pengenaan PPN yang berlaku saat penerbitan** — `lib/tax.ts`
    memegang satu tarif (`DEFAULT_TAX_RATE`); kalau dasar pengenaannya tidak lagi
    100% dari harga, bentuk perhitungannya yang berubah, bukan hanya angkanya.
@@ -529,6 +533,7 @@ pertama:
 | K-5 | PPN platform dimatikan sampai status PKP dijawab | **usulan** | §9.1 |
 | K-6 | Fase C bergerbang 6 syarat terukur | **usulan** | §5 |
 | K-7 | Harga 249/599/1.199 + pembeda kuota | **sudah diputuskan (#404/#408)** | `PRICING.md` |
+| K-8 | Gerbang pendaftaran mandiri & PPN dipindah dari `.env` ke `/operator/settings` | **sudah diputuskan (pemilik, 11 Okt 2026)** | §9.1 · migration 0017 |
 
 ### Pertanyaan yang hanya pemilik bisa jawab
 

@@ -75,6 +75,12 @@ export async function operatorSaveSiteSettings(
   const sebelum = await siteSettingsForOperator();
   const lama = sebelum === "unreachable" || sebelum === null ? null : sebelum;
 
+  /* `env` → `null` (serahkan ke pengaturan server); `on`/`off` → keputusan
+     konsol. Pemetaan ini satu baris dan ia yang menjaga tiga keadaan tetap
+     tiga — lihat kepala `siteSettingsSchema`. */
+  const triState = (v: "env" | "on" | "off"): boolean | null =>
+    v === "env" ? null : v === "on";
+
   try {
     await saveSiteSettings({
       /* Kosong = CABUT kanalnya, bukan "pakai environment" — kedua maksud itu
@@ -82,6 +88,8 @@ export async function operatorSaveSiteSettings(
       contactWhatsapp: data.contactWhatsapp,
       contactEmail: data.contactEmail,
       manualPaymentInstructions: data.manualPaymentInstructions,
+      selfServeSignupOpen: triState(data.selfServeSignup),
+      ppnEnabled: triState(data.ppn),
       actor: session.operator.name,
     });
   } catch (error) {
@@ -106,6 +114,13 @@ export async function operatorSaveSiteSettings(
       paymentInstructionsLength: data.manualPaymentInstructions.length,
       paymentInstructionsSet: data.manualPaymentInstructions.length > 0,
       previousRowExisted: lama !== null,
+      /* DUA GERBANG — nilai lama DAN baru, sebab keduanya mengubah hal yang
+         dilihat/dibayar orang luar: yang pertama membuka corong komersial,
+         yang kedua mengubah NOMINAL yang ditagih. */
+      signupFrom: lama?.selfServeSignupOpen ?? null,
+      signupTo: triState(data.selfServeSignup),
+      ppnFrom: lama?.ppnEnabled ?? null,
+      ppnTo: triState(data.ppn),
     },
   });
 

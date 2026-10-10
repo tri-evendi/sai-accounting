@@ -43,6 +43,7 @@ import { quotePlanChange } from "@/lib/plan-change";
 import { platformInvoiceAmounts } from "@/lib/subscription-lifecycle";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { invalidateTenantState } from "@/lib/tenant-state";
+import { resolvePpnEnabled } from "@/lib/site-settings";
 
 const planChangeSchema = z.object({
   planKey: z.string().min(1).max(30),
@@ -202,7 +203,9 @@ export async function POST(request: Request) {
   }
 
   /* ── invoice_required: tagihan selisih prorata ──────────────────────────── */
-  const taxable = process.env.PLATFORM_PPN_DISABLED !== "true";
+  /* Sakelar EFEKTIF (basis data → env): sejak migration 0017 ia bisa disetel
+     dari panel operator, dan ini JALUR UANG — nominal prorata ikut berubah. */
+  const taxable = await resolvePpnEnabled();
   const amounts = platformInvoiceAmounts(quote.chargeable, taxable);
   const number = `PUPG-S${subscription.id}-${target.id}-${now
     .toISOString()

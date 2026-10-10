@@ -55,9 +55,9 @@ import { MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/ico
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { resolveContactChannels } from "@/lib/site-settings";
+import { resolveContactChannels, resolveSelfServeSignupOpen } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
-import { selfServeSignupOpen } from "@/lib/registration";
+
 import { RegisterForm } from "./register-form";
 
 export const dynamic = "force-dynamic";
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RegisterPage() {
-  if (selfServeSignupOpen()) return <RegisterForm />;
+  if (await resolveSelfServeSignupOpen()) return <RegisterForm />;
 
   const t = await getT();
   const kanal = await resolveContactChannels();

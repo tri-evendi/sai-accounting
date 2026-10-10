@@ -91,6 +91,7 @@ import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@/lib/tenant-routes";
+import { resolvePpnEnabled } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -269,7 +270,7 @@ export default async function PlatformPage() {
     subscription && subscription.status !== "cancelled"
       ? formatMoney(
           Number(
-            platformInvoiceAmounts(subscription.price, process.env.PLATFORM_PPN_DISABLED !== "true")
+            platformInvoiceAmounts(subscription.price, await resolvePpnEnabled())
               .total
           ),
           subscription.currency

@@ -83,13 +83,14 @@ import {
 import { resolveContactChannels } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
+import { TRIAL_DAYS } from "@/lib/registration";
+import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
 export async function LandingFaq() {
   const t = await getT();
   /* Uji coba, atau penawaran — satu keputusan, satu tempat. */
-  const ask = landingAsk(selfServeSignupOpen());
+  const ask = landingAsk(await resolveSelfServeSignupOpen());
 
   /* Seksi kontak (dan formulirnya) sudah tidak ada di pendaratan, jadi
      jawaban dukungan menyebut ALAMAT SURELNYA langsung — dan hanya bila

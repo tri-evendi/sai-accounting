@@ -139,6 +139,17 @@ export const siteSettingsSchema = z.object({
     }),
   /** Ditampilkan APA ADANYA ke pelanggan; batasnya kewarasan, bukan kolom. */
   manualPaymentInstructions: z.string().trim().max(2000),
+  /**
+   * Dua GERBANG, masing-masing TIGA keadaan (migration 0017):
+   * `env` = serahkan ke pengaturan server · `on` · `off`.
+   *
+   * Tiga keadaan, bukan boolean, sebab "belum pernah disetel dari konsol" HARUS
+   * bisa dibedakan dari "sengaja dimatikan" — tanpa pembedaan itu, satu kali
+   * menyimpan formulir ini akan merampas keputusan dari `.env` selamanya tanpa
+   * ada yang memintanya.
+   */
+  selfServeSignup: z.enum(["env", "on", "off"]),
+  ppn: z.enum(["env", "on", "off"]),
 });
 export type SiteSettingsFormInput = z.infer<typeof siteSettingsSchema>;
 

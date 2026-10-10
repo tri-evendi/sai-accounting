@@ -564,6 +564,23 @@ model SiteSetting {
   /// pemilik rekening.
   manualPaymentInstructions String? @map("manual_payment_instructions") @db.Text
 
+  /// Pendaftaran mandiri terbuka? `null` = pakai `SELF_SERVE_SIGNUP` (migration
+  /// 0017).
+  ///
+  /// ⚠ Tetap GAGAL-TERTUTUP di setiap jalur: `null` jatuh ke environment, dan
+  /// environment hanya terbuka bila ditulis persis `open`. Basis data tak
+  /// terjangkau juga jatuh ke environment. Tidak ada jalan di mana kehilangan
+  /// informasi MEMBUKA corong komersial.
+  selfServeSignupOpen Boolean? @map("self_serve_signup_open")
+
+  /// PPN di tagihan platform? `null` = pakai `PLATFORM_PPN_DISABLED` (yang
+  /// bawaannya PPN AKTIF).
+  ///
+  /// ⚠ Kolom ini dibaca JALUR UANG — tagihan akhir uji coba (penjadwal) dan
+  /// tagihan prorata pindah paket. Mengubahnya mengubah nominal yang ditagih,
+  /// jadi setiap perubahannya tercatat di jejak audit beserta nilai lamanya.
+  ppnEnabled Boolean? @map("ppn_enabled")
+
   /// Nama akun operator yang terakhir menyimpan.
   updatedBy String @map("updated_by") @db.VarChar(100)
 

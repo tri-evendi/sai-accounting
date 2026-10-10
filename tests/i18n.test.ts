@@ -281,6 +281,12 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
        IDENTIK di kedua bahasa, alasan yang sama persis dengan `common.status`
        dan `tenantMail.port` di atas. Bahasa Mandarin memakai 模式. */
     "operator.actions.billingMode.label",
+    /* "{count} × {small} {stacked} → {large} {upgrade}," — lima penampung, satu
+       tanda kali, satu panah, satu koma. Tidak ada satu kata pun untuk
+       diterjemahkan; nama paket & nominalnya sudah terformat sebelum masuk.
+       Alasan yang sama dengan `tenantSettings.price`. Bahasa Mandarin berbeda
+       (ia memakai koma lebar ，). */
+    "landing.compareRow",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).

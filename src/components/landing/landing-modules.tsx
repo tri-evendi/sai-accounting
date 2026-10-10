@@ -106,7 +106,7 @@ export async function LandingModules() {
   const t = await getT();
 
   return (
-    <LandingSection id="modul" tone="cyan">
+    <LandingSection id="modul" tone="brand">
       <LandingSectionIntro
         eyebrow={t("landing.eyebrowModules")}
         title={t("landing.modulesHeading")}

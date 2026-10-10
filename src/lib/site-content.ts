@@ -233,7 +233,9 @@ export const SITE_CONTENT_SECTIONS: readonly SiteContentSection[] = [
   {
     id: "pricing",
     labelKey: "operator.content.sectionPricing",
-    prefixes: ["pricing", "eyebrowPricing"],
+    /* `compare*` = pembanding "menumpuk vs naik paket", yang hidup DI DALAM
+       seksi harga — jadi ia disunting di bagian yang sama dengan harganya. */
+    prefixes: ["pricing", "eyebrowPricing", "compare"],
   },
   { id: "faq", labelKey: "operator.content.sectionFaq", prefixes: ["faq", "eyebrowFaq"] },
   {

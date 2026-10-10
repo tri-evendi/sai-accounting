@@ -157,6 +157,8 @@ export interface OperatorTenantDetail {
   billing: {
     subscription: {
       status: string;
+      /** `none` | `manual` | `auto` — siapa yang boleh ditagih penjadwal. */
+      billingMode: string;
       billingCycle: string;
       price: string;
       currency: string;
@@ -245,6 +247,9 @@ export async function tenantDetailForOperator(
       select: {
         status: true,
         billingCycle: true,
+        /* Mode penagihan ikut: halaman rincian memajangnya sebagai fakta DAN
+           panel tindakan memakainya sebagai nilai awal pilihan. */
+        billingMode: true,
         price: true,
         currency: true,
         currentPeriodStart: true,
@@ -304,6 +309,7 @@ export async function tenantDetailForOperator(
       subscription: subscription
         ? {
             status: subscription.status,
+            billingMode: subscription.billingMode,
             billingCycle: subscription.billingCycle,
             price: subscription.price.toString(),
             currency: subscription.currency,
@@ -547,4 +553,143 @@ export async function schedulerRunsForOperator(
     console.error("[operator-store] riwayat penjadwal tak terbaca:", error);
     return null;
   }
+}
+
+/* ───────────────────────────── Ringkasan konsol ──────────────────────────── */
+
+export interface OperatorOverviewControl {
+  /** Jumlah tenant per status — kunci = nilai `tenants.status`. */
+  byStatus: Record<string, number>;
+  total: number;
+  /** Tenant yang uji cobanya berakhir dalam 7 hari ke depan (belum berbayar). */
+  trialsEndingSoon: number;
+  /** Tenant yang uji cobanya SUDAH lewat tapi statusnya masih `trialing`. */
+  trialsExpired: number;
+  companies: number;
+  users: number;
+  /** Tenant terbaru — "siapa yang masuk hari ini", bukan daftar lengkap. */
+  newest: { id: number; name: string; slug: string; status: string; createdAt: Date }[];
+}
+
+export interface OperatorOverviewPlatform {
+  /** Langganan per status — kunci = nilai `subscriptions.status`. */
+  subscriptionsByStatus: Record<string, number>;
+  /** Tagihan `issued` yang sudah lewat jatuh tempo, beserta totalnya (IDR). */
+  overdueInvoices: number;
+  overdueTotal: number;
+  /** Tagihan `issued` yang belum jatuh tempo. */
+  openInvoices: number;
+  openTotal: number;
+  lastRun: { finishedAt: Date; status: string; errorCount: number } | null;
+}
+
+export interface OperatorOverview {
+  control: OperatorOverviewControl;
+  /** `null` = `sai_platform` tak terjangkau. Bagian kendali tetap benar. */
+  platform: OperatorOverviewPlatform | null;
+}
+
+/** Ambang "uji coba hampir berakhir" — tujuh hari, satu minggu kerja operator. */
+const AMBANG_UJI_COBA_HARI = 7;
+
+/**
+ * Angka pembuka konsol — SATU bacaan untuk halaman ringkasan.
+ *
+ * ══ KENAPA BUKAN `listTenantsForOperator().length` ═════════════════════════
+ * Karena itu menarik SELURUH baris tenant beserta dua `groupBy` pemakaian ke
+ * memori hanya untuk menghitungnya. Halaman ringkasan adalah halaman pertama
+ * yang dibuka setiap sesi operator; ia harus menjadi yang paling murah, bukan
+ * yang paling mahal. Yang dihitung di sini dihitung oleh basis data.
+ *
+ * ══ DUA BIDANG, SATU HALAMAN, SATU YANG BOLEH MATI ═════════════════════════
+ * Pola `billingOverviewForTenant` persis: bagian KENDALI (jumlah tenant, PT,
+ * pengguna, uji coba) SELALU tampil — ia yang menjawab "apakah platformnya
+ * hidup"; bagian PLATFORM jatuh ke `null` dengan tenang saat `sai_platform`
+ * mati, dan halaman mengatakannya sebagai kalimat, bukan sebagai 500.
+ *
+ * Kegagalan bagian kendali TIDAK ditangkap: kalau basis data kendali mati,
+ * konsol operator memang tidak punya apa pun untuk diperlihatkan — dan
+ * menyembunyikannya di balik "0 tenant" adalah angka yang berbohong.
+ */
+export async function operatorOverview(
+  deps: { control: ControlClient; platform: PlatformClient } = {
+    control: controlDb,
+    platform: platformDb,
+  },
+  now: Date = new Date()
+): Promise<OperatorOverview> {
+  const batasUjiCoba = new Date(now.getTime() + AMBANG_UJI_COBA_HARI * 24 * 60 * 60 * 1000);
+
+  const [statusRows, trialsEndingSoon, trialsExpired, companies, users, newest] =
+    await Promise.all([
+      deps.control.tenant.groupBy({ by: ["status"], _count: { _all: true } }),
+      deps.control.tenant.count({
+        where: { status: "trialing", trialEndsAt: { gte: now, lte: batasUjiCoba } },
+      }),
+      deps.control.tenant.count({ where: { status: "trialing", trialEndsAt: { lt: now } } }),
+      deps.control.company.count({ where: { isActive: true } }),
+      deps.control.user.count(),
+      deps.control.tenant.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, name: true, slug: true, status: true, createdAt: true },
+      }),
+    ]);
+
+  const byStatus: Record<string, number> = {};
+  let total = 0;
+  for (const row of statusRows) {
+    byStatus[row.status] = row._count._all;
+    total += row._count._all;
+  }
+
+  const control: OperatorOverviewControl = {
+    byStatus,
+    total,
+    trialsEndingSoon,
+    trialsExpired,
+    companies,
+    users,
+    newest,
+  };
+
+  let platform: OperatorOverviewPlatform | null = null;
+  try {
+    const [subRows, overdue, open, lastRun] = await Promise.all([
+      deps.platform.subscription.groupBy({ by: ["status"], _count: { _all: true } }),
+      deps.platform.platformInvoice.aggregate({
+        where: { status: "issued", dueDate: { lt: now } },
+        _count: { _all: true },
+        _sum: { total: true },
+      }),
+      deps.platform.platformInvoice.aggregate({
+        where: { status: "issued", dueDate: { gte: now } },
+        _count: { _all: true },
+        _sum: { total: true },
+      }),
+      deps.platform.schedulerRun.findFirst({
+        orderBy: { id: "desc" },
+        select: { finishedAt: true, status: true, errorCount: true },
+      }),
+    ]);
+
+    const subscriptionsByStatus: Record<string, number> = {};
+    for (const row of subRows) subscriptionsByStatus[row.status] = row._count._all;
+
+    platform = {
+      subscriptionsByStatus,
+      overdueInvoices: overdue._count._all,
+      /* `Decimal` → `number` DI SINI, sekali — pola `plan-catalog.ts`. Jumlah
+         tagihan platform tidak pernah mendekati batas presisi `number`, dan
+         angka ini dipajang, tidak dipakai menghitung apa pun. */
+      overdueTotal: Number(overdue._sum.total ?? 0),
+      openInvoices: open._count._all,
+      openTotal: Number(open._sum.total ?? 0),
+      lastRun,
+    };
+  } catch (error) {
+    console.error("[operator-store] ringkasan platform tak terbaca:", error);
+  }
+
+  return { control, platform };
 }

@@ -27,6 +27,31 @@ sebagai token** dan **dipagari tes** — lihat MASTER.md §Pemasaran vs App.
 | Permukaan netral: halaman `colorBgLayout`, kartu `colorBgContainer` | **Bidang berwarna** — pita seksi & kartu berisi nada pekat `--sai-landing-band-*` / `-fill-*` / `-chip-*`. Lihat §Nada pekat di bawah |
 | Satu aksi utama per layar (#267) | **Tidak berlaku**: halaman ini merender empat tombol berisi penuh sekaligus — bilah atas, hero, tiap kartu paket, penutup — dan itu memang bentuknya. **Batasnya**: keempatnya harus menuju tempat yang SAMA (`/register`), sebab yang sah adalah satu ajakan yang diulang, bukan empat ajakan yang bersaing. Dijaga `tests/button-emphasis.test.ts`; alasan lengkapnya di MASTER.md §Aksi utama per layar |
 
+## ⚠ KALIMATNYA BISA DITIMPA DARI KONSOL OPERATOR
+
+Sejak konsol punya halaman `/operator/content`, **setiap kunci `landing.*` bisa
+diganti dari basis data** tanpa rilis. Yang perlu diketahui sebelum menyunting
+kamus atau menyimpulkan apa yang terbaca di produksi:
+
+- **Kamus tetap sumber BAWAAN.** `site_contents` (basis data platform) hanya
+  memuat kalimat yang sudah diganti; baris yang tidak ada berarti "pakai
+  bawaan". Platform mati → pendaratan tampil utuh dengan kalimat kamus.
+- **Jadi `id.json` bukan lagi jawaban pasti atas "apa yang terbaca orang di
+  `/` hari ini".** Kalau sebuah kalimat di produksi tidak cocok dengan kamus,
+  periksa `/operator/content` (bahasa + bagian) sebelum mencari bug render.
+- **Penimpaan hanya berlaku di `/`, `/pricing`, `/status`** (`SITE_CONTENT_PATHS`)
+  — dipasang satu kali di `getDictionary`, bukan per komponen, jadi komponen
+  pendaratan baru ikut tanpa tambahan apa pun. Di luar ketiga jalur itu tidak
+  ada query sama sekali.
+- **Kunci baru otomatis bisa disunting**: daftarnya DITURUNKAN dari kamus
+  (`siteContentDefaults`), tidak ditulis tangan. Yang perlu diurus hanyalah
+  menaruhnya di bagian yang benar — `SITE_CONTENT_SECTIONS` mencocokkan awalan
+  NAMA kunci, dan `tests/site-content.test.ts` menolak kunci yang jatuh ke
+  penampung terakhir.
+- **Namanya ikut terbaca manusia.** Label baris di konsol adalah nama kuncinya,
+  jadi kunci baru sebaiknya diberi nama yang menyebut bagiannya
+  (`pricingYearlySaving`, bukan `note3`).
+
 ## Susunan seksi, dan kenapa urutannya begitu
 
     hero (+ kerangka aplikasi & ponsel + strip fakta berpil)  gradien brand → cyan

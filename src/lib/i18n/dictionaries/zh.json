@@ -177,7 +177,10 @@
     "mockActive": "当前打开",
     "mockAddCompany": "添加公司",
     "mockDashboardTitle": "仪表盘",
-    "mockJournalMemoTwo": "收到货款 — 发票 INV-2026-0042，存入银行"
+    "mockJournalMemoTwo": "收到货款 — 发票 INV-2026-0042，存入银行",
+    "quoteCta": "获取报价",
+    "quoteNote": "账户通过报价开通：先就公司配额、数据迁移和付款方式达成一致。上述价格为起始价。",
+    "faqTrialAQuote": "自助试用目前已关闭。开通需通过报价——我们会先就公司数量、数据迁移和付款方式达成一致，必要时也包含试用期。"
   },
   "common": {
     "save": "保存",
@@ -536,7 +539,12 @@
       "termsPrefix": "我同意",
       "termsLinkLabel": "条款与条件",
       "termsAnd": "及",
-      "privacyLinkLabel": "隐私政策"
+      "privacyLinkLabel": "隐私政策",
+      "closedTitle": "自助注册已关闭",
+      "closedBody": "新账户目前通过报价开通，而非自助注册，以便先就配额、数据迁移和付款方式达成一致。请联系我们，我们会为您开通账户。",
+      "closedWhatsapp": "通过 WhatsApp 联系我们",
+      "closedEmail": "发送邮件至 {email}",
+      "closedSignIn": "已有账户？登录"
     }
   },
   "status": {
@@ -4235,7 +4243,8 @@
     "hoursNotNegative": "工时不能为负",
     "pickWorkCenter": "请选择工作中心",
     "pickBom": "请选择物料清单",
-    "producedPositive": "产出须大于零。耗用物料而无产出的，应记为过程损耗。"
+    "producedPositive": "产出须大于零。耗用物料而无产出的，应记为过程损耗。",
+    "siteContentTooLong": "这句文案对着陆页来说过长。"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",
@@ -4495,6 +4504,7 @@
       "draft": "草稿",
       "issued": "已开具",
       "paid": "已付款",
+      "comped": "赠送",
       "void": "作废"
     },
     "privacyHeading": "数据与隐私",
@@ -4538,10 +4548,40 @@
     "consoleTitle": "运营控制台",
     "auditedBadge": "操作留痕",
     "nav": {
+      "overview": "概览",
       "tenants": "租户",
       "reconciliation": "对账",
+      "content": "着陆页内容",
       "scheduler": "调度器",
-      "mail": "邮件"
+      "mail": "邮件",
+      "audit": "审计记录",
+      "groupSummary": "概览",
+      "groupCustomers": "客户",
+      "groupSite": "网站",
+      "groupSystem": "系统"
+    },
+    "overview": {
+      "heading": "平台概览",
+      "description": "今天需要处理的数字——即将结束的试用、已逾期的账单，以及最近一次调度运行。",
+      "openTenants": "打开租户列表",
+      "controlHeading": "客户与用量",
+      "platformHeading": "订阅与账单",
+      "tenantsTotal": "租户总数",
+      "tenantsActive": "使用中",
+      "tenantsTrialing": "试用中",
+      "trialHint": "{soon} 个将在 7 天内结束 · {expired} 个已过期",
+      "tenantsPastDue": "已逾期",
+      "tenantsSuspended": "已暂停与已取消",
+      "companies": "公司",
+      "users": "用户",
+      "invoicesOverdue": "已逾期账单",
+      "invoicesOpen": "未到期账单",
+      "subscriptionsActive": "使用中的订阅",
+      "subscriptionsPastDue": "逾期的订阅",
+      "schedulerLastRun": "最近一次调度运行",
+      "schedulerNever": "尚未运行过",
+      "schedulerHint": "状态 {status} · {errors} 个错误",
+      "newestHeading": "最新注册"
     },
     "signedInAs": "当前登录：{name}",
     "logout": "退出",
@@ -4575,7 +4615,6 @@
     },
     "tenant": {
       "notFound": "未找到该租户。",
-      "back": "返回租户列表",
       "planHeading": "套餐与配额（控制数据库）",
       "planLabel": "套餐",
       "statusLabel": "状态",
@@ -4722,7 +4761,26 @@
         "submit": "延长",
         "success": "订阅已延长至 {to}。已开具赠送发票 {invoice}（0 元）。",
         "errDuplicate": "该延长已执行过——发票 {invoice} 已存在。",
-        "errCancelled": "订阅已取消。请先通过更改套餐恢复。"
+        "errCancelled": "订阅已取消。请先通过更改套餐恢复。",
+        "errUnpriced": "该租户的套餐在价目表中没有{cycle}价格，因此已拒绝延期——按月价格记录的年度订阅会少收十倍费用。请先在价目表中设置价格，或按原周期延期。"
+      },
+      "billingMode": {
+        "heading": "计费模式",
+        "description": "调度器可以向谁开账单。新账户默认为 `none`——自动计费只能通过本页面上的决定开启，且该决定会被记录。",
+        "label": "模式",
+        "modeNone": "不计费",
+        "modeManual": "在系统外开票",
+        "modeAuto": "自动计费",
+        "hintNone": "内部、测试人员、试点、演示。调度器不会开账单、不会催收，也不会暂停。",
+        "hintManual": "拥有完整使用权，由服务商自有账簿开票。调度器仍不会触碰它。",
+        "hintAuto": "试用结束时调度器可开出首张账单、将账户标记为逾期，随后暂停客户的账簿。",
+        "submit": "设置模式",
+        "success": "计费模式：{from} → {to}。",
+        "autoNoRenewal": "注意：代码中尚不存在续订计费。自动模式只会在试用结束时开出首张账单，然后催收并暂停已开出的账单——它不会自行开出下个月的账单。",
+        "errSame": "该账户已处于{mode}模式。",
+        "errPriceZero": "订阅价格为零，因此已拒绝自动模式：Rp 0 的账单会逾期（没有可支付的金额），随后账簿会因未支付零元而被暂停。请先更换套餐。",
+        "currentLabel": "计费模式",
+        "railWarning": "尚未配置收款通道（既无支付网关也无转账说明），因此已开出的账单无人能够支付。"
       },
       "deletion": {
         "title": "执行账户删除",
@@ -4806,6 +4864,44 @@
       "silentTitle": "生产环境未配置 SMTP",
       "silentBody": "每一封邮件都只写入服务器上的文件，不会发送给任何人——注册验证、密码重置、员工邀请、发票以及到期提醒。请在下方配置 SMTP。",
       "silentOutbox": "发件箱中已积压 {count} 封邮件。每一封都代表一个人在等待永远不会到达的邮件。"
+    },
+    "content": {
+      "heading": "着陆页内容",
+      "description": "无需发版即可修改公开页面的文案。留空的字段将使用应用内置的句子。",
+      "localeLabel": "语言",
+      "sectionLabel": "页面区块",
+      "unavailable": "平台数据库当前无法连接，因此暂时无法读取或保存修改。着陆页仍会使用内置文案完整显示。",
+      "saved": "已保存：{updated} 句已修改，{reset} 句已恢复默认。",
+      "savedNothing": "没有任何改动。",
+      "errSave": "修改未能保存——平台数据库无法连接。着陆页将继续使用内置文案。",
+      "changedBy": "由 {who} 修改于 {when}",
+      "usingDefault": "使用内置文案",
+      "reset": "恢复默认",
+      "preview": "查看着陆页",
+      "sectionNav": "顶栏",
+      "sectionHero": "主视觉与数据条",
+      "sectionFeatures": "核心优势",
+      "sectionModules": "模块与截图",
+      "sectionAudience": "适用对象",
+      "sectionIntegrations": "集成与数据",
+      "sectionTrust": "信任保障",
+      "sectionPricing": "价格",
+      "sectionFaq": "常见问题",
+      "sectionCta": "号召与报价",
+      "sectionFooter": "页脚",
+      "sectionMock": "产品示意文案",
+      "sectionOther": "其他"
+    },
+    "audit": {
+      "heading": "操作员审计记录",
+      "description": "登录、退出以及平台设置变更——何人、来自哪个 IP、何时。针对租户的操作记录在该租户自己的页面上。",
+      "colTime": "时间",
+      "colOperator": "操作员",
+      "colAction": "操作",
+      "colIp": "IP 地址",
+      "colDetails": "详情",
+      "empty": "尚无记录。",
+      "emptyHint": "自首次登录本控制台起即开始记录。"
     }
   },
   "docs": {

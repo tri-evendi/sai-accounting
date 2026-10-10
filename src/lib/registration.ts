@@ -66,6 +66,45 @@ export const TRIAL_DAYS = 14;
  * dua sumber yang diam-diam berbeda berarti kuota yang dijanjikan halaman
  * harga bukan kuota yang benar-benar diberikan.
  */
+/**
+ * PENDAFTARAN MANDIRI terbuka? — gerbang Fase A komersialisasi.
+ *
+ * ══ KENAPA GERBANG INI ADA ═════════════════════════════════════════════════
+ * Sampai ia ada, siapa pun yang mendarat di halaman pendaratan bisa: mendaftar
+ * → uji coba Pro 14 hari → ditagih Rp 664.890 + PPN → **tidak bisa membayar**,
+ * sebab tidak ada gerbang pembayaran terpasang (`MIDTRANS_SERVER_KEY` kosong)
+ * dan instruksi transfer manual pun kosong — tombol "Bayar" menghasilkan
+ * referensi tanpa nomor rekening (`lib/payment-gateway.ts`) → lalu bukunya
+ * ditangguhkan menjadi hanya-baca.
+ *
+ * Itu bukan hipotesis: sembilan akun uji coba menempuh jalur itu, lima di
+ * antaranya berakhir tertangguhkan (`docs/KOMERSIALISASI.md` §1).
+ *
+ * ══ GAGAL-TERTUTUP, DAN ITU DISENGAJA ══════════════════════════════════════
+ * Pendaftaran terbuka HANYA bila `SELF_SERVE_SIGNUP=open` ditulis eksplisit.
+ * Tidak diset, kosong, atau salah ketik → TERTUTUP. Pola yang sama persis
+ * dengan `OPERATOR_IP_ALLOWLIST` (`lib/operator/plane.ts`): permukaan yang
+ * punya konsekuensi di luar aplikasi harus dibuka dengan pilihan yang terlihat
+ * di berkas konfigurasi, bukan diwarisi dari bawaan.
+ *
+ * Arahnya dipilih karena akibat kedua kesalahan tidak setara: pendaftaran yang
+ * tertutup padahal mestinya terbuka adalah satu baris env yang hilang dan
+ * seorang calon pelanggan yang menghubungi lewat WhatsApp; pendaftaran yang
+ * terbuka padahal rel bayarnya belum ada adalah buku orang yang terkunci oleh
+ * tagihan yang tidak pernah ia setujui.
+ *
+ * ⚠ Membukanya kembali bukan keputusan teknis. Syaratnya ada di
+ * `docs/KOMERSIALISASI.md` §5 (gerbang Fase C) — rel pembayaran hidup dan
+ * pernah diuji dengan uang sungguhan, di antara lima syarat lainnya.
+ *
+ * MURNI: menerima `env` supaya bisa diuji tanpa menyentuh `process.env`.
+ */
+export function selfServeSignupOpen(
+  env: Record<string, string | undefined> = process.env
+): boolean {
+  return env.SELF_SERVE_SIGNUP?.trim() === "open";
+}
+
 export const SIGNUP_PLAN_KEY = "pro";
 export const SIGNUP_MAX_COMPANIES = 3;
 export const SIGNUP_MAX_USERS = 15;

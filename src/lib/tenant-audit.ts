@@ -71,6 +71,19 @@ export type TenantAuditAction =
   /** Suspensi/pemulihan MANUAL oleh operator (#155) — di luar siklus dunning. */
   | "tenant.suspend"
   | "tenant.restore"
+  /**
+   * MODE PENAGIHAN disetel operator: `none` | `manual` | `auto` (Fase A
+   * komersialisasi, migration 0014).
+   *
+   * Peristiwa yang WAJIB bisa ditelusuri, dan bukan karena uangnya langsung
+   * berpindah: memindahkan sebuah akun ke `auto` adalah satu-satunya tindakan
+   * yang memberi penjadwal izin menagih, mendorong `past_due`, lalu
+   * MENANGGUHKAN buku pelanggan. Sembilan akun uji coba pernah menempuh jalur
+   * itu tanpa ada satu pun keputusan manusia di belakangnya; sejak kolomnya
+   * ada, jalur itu hanya terbuka lewat aksi ini — dan aksi ini meninggalkan
+   * nama, alasan, serta harga langganan saat keputusannya diambil.
+   */
+  | "tenant.billing_mode"
   /** Langganan yatim diadopsikan penjadwal / adopt-tenant (#152) — tenant
    *  berbayar yang belum punya baris `subscriptions` dilahirkan langganannya. */
   | "tenant.subscription.adopt"

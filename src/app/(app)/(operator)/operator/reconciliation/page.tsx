@@ -24,19 +24,12 @@ import { CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { reconciliationForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
-
-const H1: React.CSSProperties = {
-  margin: 0,
-  fontSize: 24,
-  fontWeight: 700,
-  letterSpacing: "-0.025em",
-  color: "var(--ant-color-text)",
-};
 
 const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" };
 
@@ -93,11 +86,12 @@ export default async function OperatorReconciliationPage() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <h1 style={H1}>{t("operator.reconciliation.heading")}</h1>
-        <p style={MUTED}>{t("operator.reconciliation.description")}</p>
-      </div>
+    /* Kepala di luar kolom berjarak: `PageHeader` membawa jarak bawahnya
+       sendiri, jadi menaruhnya DI DALAM kolom ber-`gap` menjumlahkan
+       keduanya — pola yang sama dengan halaman dasbor. */
+    <div>
+      <PageHeader title={t("operator.reconciliation.heading")} description={t("operator.reconciliation.description")} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
       {report === null ? (
         <p style={NOTICE}>{t("operator.reconciliation.unavailable")}</p>
@@ -155,6 +149,7 @@ export default async function OperatorReconciliationPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

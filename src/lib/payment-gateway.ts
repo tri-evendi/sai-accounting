@@ -252,6 +252,28 @@ export function manualPaymentInstructions(): string | null {
   return process.env.MANUAL_PAYMENT_INSTRUCTIONS ?? null;
 }
 
+/**
+ * Apakah pemasangan ini punya REL PEMBAYARAN — satu jalan pun?
+ *
+ * Dua yang dihitung: gerbang sungguhan (`PAYMENT_GATEWAY=midtrans` dengan
+ * kunci servernya terisi) ATAU instruksi transfer manual yang benar-benar
+ * ditulis. Keduanya kosong berarti tagihan yang terbit TIDAK BISA DIBAYAR
+ * SIAPA PUN — dan itu bukan hipotesis: itu keadaan produksi pada 10 Okt 2026,
+ * dan jalur yang mengunci lima buku pelanggan (`docs/KOMERSIALISASI.md` §1).
+ *
+ * Dipakai konsol operator sebagai PERINGATAN sebelum menyalakan penagihan
+ * otomatis, bukan sebagai gerbang: keputusannya tetap milik manusia, tetapi ia
+ * tidak boleh diambil tanpa tahu hal ini. Jawabannya diturunkan sebagai boolean
+ * — nilai envnya sendiri tidak pernah menyeberang ke peramban.
+ */
+export function paymentRailConfigured(
+  env: Record<string, string | undefined> = process.env
+): boolean {
+  const gatewayReady = env.PAYMENT_GATEWAY === "midtrans" && Boolean(env.MIDTRANS_SERVER_KEY?.trim());
+  const manualReady = Boolean(env.MANUAL_PAYMENT_INSTRUCTIONS?.trim());
+  return gatewayReady || manualReady;
+}
+
 /* ── Resolver — transport dipilih environment, pola mailer ─────────────────── */
 
 /**

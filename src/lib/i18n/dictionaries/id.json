@@ -177,7 +177,10 @@
     "mockActive": "Sedang dibuka",
     "mockAddCompany": "Tambah PT",
     "mockDashboardTitle": "Dasbor",
-    "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank"
+    "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank",
+    "quoteCta": "Minta penawaran",
+    "quoteNote": "Akun dibuka lewat penawaran: kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Harga di atas adalah titik mulainya.",
+    "faqTrialAQuote": "Uji coba swalayan sedang ditutup. Akses diberikan lewat penawaran — kami sepakati dulu jumlah PT, migrasi datanya, dan cara pembayaran, termasuk masa percobaan bila memang dibutuhkan."
   },
   "common": {
     "save": "Simpan",
@@ -536,7 +539,12 @@
       "termsPrefix": "Saya menyetujui",
       "termsLinkLabel": "syarat & ketentuan",
       "termsAnd": "dan",
-      "privacyLinkLabel": "kebijakan privasi"
+      "privacyLinkLabel": "kebijakan privasi",
+      "closedTitle": "Pendaftaran mandiri sedang ditutup",
+      "closedBody": "Akun baru saat ini dibuka lewat penawaran, bukan swalayan — supaya kuota, migrasi data, dan cara pembayarannya disepakati dulu. Hubungi kami dan akunnya kami siapkan.",
+      "closedWhatsapp": "Hubungi lewat WhatsApp",
+      "closedEmail": "Kirim surel ke {email}",
+      "closedSignIn": "Sudah punya akun? Masuk"
     }
   },
   "status": {
@@ -4235,7 +4243,8 @@
     "hoursNotNegative": "Jam tidak boleh negatif",
     "pickWorkCenter": "Pilih stasiun kerja",
     "pickBom": "Pilih resep produksi",
-    "producedPositive": "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses."
+    "producedPositive": "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses.",
+    "siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan."
   },
   "taxSettings": {
     "sectionTitle": "PPN",
@@ -4495,6 +4504,7 @@
       "draft": "Draf",
       "issued": "Terbit",
       "paid": "Lunas",
+      "comped": "Kompensasi",
       "void": "Batal"
     },
     "privacyHeading": "Data & Privasi",
@@ -4538,10 +4548,40 @@
     "consoleTitle": "Konsol Operator",
     "auditedBadge": "Tindakan tercatat",
     "nav": {
+      "overview": "Ringkasan",
       "tenants": "Tenant",
       "reconciliation": "Rekonsiliasi",
+      "content": "Isi Pendaratan",
       "scheduler": "Penjadwal",
-      "mail": "Surel"
+      "mail": "Surel",
+      "audit": "Jejak Audit",
+      "groupSummary": "Ringkasan",
+      "groupCustomers": "Pelanggan",
+      "groupSite": "Situs",
+      "groupSystem": "Sistem"
+    },
+    "overview": {
+      "heading": "Ringkasan Platform",
+      "description": "Angka yang menuntut tindakan hari ini — uji coba yang hampir berakhir, tagihan yang lewat jatuh tempo, dan putaran penjadwal terakhir.",
+      "openTenants": "Buka daftar tenant",
+      "controlHeading": "Pelanggan & Pemakaian",
+      "platformHeading": "Langganan & Tagihan",
+      "tenantsTotal": "Total tenant",
+      "tenantsActive": "Aktif",
+      "tenantsTrialing": "Uji coba",
+      "trialHint": "{soon} berakhir ≤7 hari · {expired} sudah lewat",
+      "tenantsPastDue": "Menunggak",
+      "tenantsSuspended": "Ditangguhkan & berhenti",
+      "companies": "Perusahaan (PT)",
+      "users": "Pengguna",
+      "invoicesOverdue": "Tagihan lewat jatuh tempo",
+      "invoicesOpen": "Tagihan belum jatuh tempo",
+      "subscriptionsActive": "Langganan aktif",
+      "subscriptionsPastDue": "Langganan menunggak",
+      "schedulerLastRun": "Putaran penjadwal terakhir",
+      "schedulerNever": "Belum pernah berjalan",
+      "schedulerHint": "status {status} · {errors} galat",
+      "newestHeading": "Pendaftar Terbaru"
     },
     "signedInAs": "Masuk sebagai {name}",
     "logout": "Keluar",
@@ -4575,7 +4615,6 @@
     },
     "tenant": {
       "notFound": "Tenant tidak ditemukan.",
-      "back": "Kembali ke daftar tenant",
       "planHeading": "Paket & Kuota (basis data kendali)",
       "planLabel": "Paket",
       "statusLabel": "Status",
@@ -4722,7 +4761,26 @@
         "submit": "Perpanjang",
         "success": "Langganan diperpanjang sampai {to}. Tagihan kompensasi {invoice} terbit (Rp 0).",
         "errDuplicate": "Perpanjangan ini sudah pernah dijalankan — tagihan {invoice} sudah ada.",
-        "errCancelled": "Langganan sudah dibatalkan. Bangkitkan lewat perpindahan paket lebih dulu."
+        "errCancelled": "Langganan sudah dibatalkan. Bangkitkan lewat perpindahan paket lebih dulu.",
+        "errUnpriced": "Paket tenant ini tidak punya harga untuk siklus {cycle} di katalog, jadi perpanjangan ditolak — langganan tahunan berharga bulanan akan kurang tagih sepuluh kali lipat. Tetapkan harganya di katalog, atau perpanjang pada siklus yang sama."
+      },
+      "billingMode": {
+        "heading": "Mode penagihan",
+        "description": "Siapa yang boleh ditagih penjadwal. Akun baru lahir `none` — penagihan otomatis hanya menyala lewat keputusan di layar ini, dan keputusannya tercatat.",
+        "label": "Mode",
+        "modeNone": "Tidak ditagih",
+        "modeManual": "Ditagih di luar sistem",
+        "modeAuto": "Ditagih otomatis",
+        "hintNone": "Internal, penguji, pilot, demo. Penjadwal tidak menerbitkan tagihan, tidak menagih, dan tidak menangguhkan.",
+        "hintManual": "Hak pakai penuh, tagihannya dari buku PT penyedia sendiri. Penjadwal tetap tidak menyentuhnya.",
+        "hintAuto": "Penjadwal boleh menerbitkan tagihan pertama saat uji coba habis, mendorong menunggak, lalu MENANGGUHKAN buku pelanggan.",
+        "submit": "Setel mode",
+        "success": "Mode penagihan: {from} → {to}.",
+        "autoNoRenewal": "Catatan: penagihan PERPANJANGAN belum ada di kode mana pun. Mode otomatis hanya menerbitkan tagihan pertama saat masa uji coba habis, lalu menagih & menangguhkan tagihan yang sudah terbit — ia tidak akan menerbitkan tagihan bulan depan dengan sendirinya.",
+        "errSame": "Akun ini sudah bermode {mode}.",
+        "errPriceZero": "Harga langganannya nol, jadi mode otomatis ditolak: tagihan Rp 0 akan lewat jatuh tempo (tidak ada yang bisa dibayar), lalu bukunya ditangguhkan karena tidak membayar nol. Ganti paketnya dulu.",
+        "currentLabel": "Mode penagihan",
+        "railWarning": "Belum ada rel pembayaran terpasang (tanpa gerbang pembayaran dan tanpa instruksi transfer), jadi tagihan yang terbit tidak bisa dibayar siapa pun."
       },
       "deletion": {
         "title": "Eksekusi penghapusan akun",
@@ -4806,6 +4864,44 @@
       "silentTitle": "Produksi berjalan TANPA SMTP",
       "silentBody": "Setiap surel ditulis ke berkas di server dan tidak dikirim ke siapa pun — verifikasi pendaftaran, atur-ulang kata sandi, undangan staf, faktur, dan pengingat jatuh tempo. Setel SMTP di bawah.",
       "silentOutbox": "{count} surel sudah menumpuk di kotak keluar. Setiap satu adalah orang yang sedang menunggu surel yang tidak akan datang."
+    },
+    "content": {
+      "heading": "Isi Halaman Pendaratan",
+      "description": "Ganti kalimat di halaman publik tanpa rilis. Isian yang dibiarkan kosong memakai kalimat bawaan dari aplikasi.",
+      "localeLabel": "Bahasa",
+      "sectionLabel": "Bagian halaman",
+      "unavailable": "Basis data platform sedang tidak terjangkau, jadi suntingan tidak bisa dibaca maupun disimpan sekarang. Halaman pendaratan tetap tampil utuh dengan kalimat bawaan.",
+      "saved": "Tersimpan: {updated} kalimat diganti, {reset} dikembalikan ke bawaan.",
+      "savedNothing": "Tidak ada yang berubah.",
+      "errSave": "Suntingan gagal disimpan — basis data platform tidak terjangkau. Halaman pendaratan tetap memakai kalimat bawaan.",
+      "changedBy": "Diganti oleh {who}, {when}",
+      "usingDefault": "Memakai kalimat bawaan",
+      "reset": "Kembalikan ke bawaan",
+      "preview": "Lihat halaman pendaratan",
+      "sectionNav": "Bilah atas",
+      "sectionHero": "Hero & strip bukti",
+      "sectionFeatures": "Keunggulan",
+      "sectionModules": "Modul & galeri",
+      "sectionAudience": "Untuk siapa",
+      "sectionIntegrations": "Integrasi & data",
+      "sectionTrust": "Kepercayaan",
+      "sectionPricing": "Harga",
+      "sectionFaq": "Tanya jawab",
+      "sectionCta": "Ajakan & penawaran",
+      "sectionFooter": "Kaki halaman",
+      "sectionMock": "Teks purwarupa produk",
+      "sectionOther": "Lain-lain"
+    },
+    "audit": {
+      "heading": "Jejak Audit Operator",
+      "description": "Masuk, keluar, dan perubahan setelan platform — siapa, dari IP mana, kapan. Tindakan terhadap tenant tercatat di halaman tenant masing-masing.",
+      "colTime": "Waktu",
+      "colOperator": "Operator",
+      "colAction": "Tindakan",
+      "colIp": "IP",
+      "colDetails": "Rincian",
+      "empty": "Belum ada jejak tercatat.",
+      "emptyHint": "Jejak tertulis sejak masuk pertama ke konsol ini."
     }
   },
   "docs": {

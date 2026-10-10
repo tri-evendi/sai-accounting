@@ -348,4 +348,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.pickBom": "Pilih resep produksi",
   "validation.producedPositive":
     "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses.",
+  // Isi halaman pendaratan dari konsol operator — batasnya kewarasan, bukan
+  // penyimpanan: kolomnya `TEXT`, tapi kalimat pemasaran 4.000 karakter adalah
+  // tempelan yang salah sasaran (lihat `SITE_CONTENT_VALUE_MAX`).
+  "validation.siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan.",
 };

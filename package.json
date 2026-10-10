@@ -1,6 +1,6 @@
 {
   "name": "sai-luckyhands",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
     "_runtime_note": "PEMBAGIAN TUGAS (sejak pindah dari npm): Bun adalah PEMASANG PAKET dan PELUNCUR SKRIP; Node tetap RUNTIME yang menjalankan build, tsc, Prisma, dan skrip tsx. Itu disengaja. `bun run` menghormati shebang `#!/usr/bin/env node` pada binary di node_modules/.bin, jadi `next`, `tsc`, `prisma`, dan `tsx` tetap dieksekusi Node — dan dengan begitu `NODE_OPTIONS=--max-old-space-size=...` di bawah TETAP BERLAKU (terukur: batas 333 MB menghasilkan heap limit 525 MB, sama persis seperti di bawah npm). Bun memakai JavaScriptCore, yang MENGABAIKAN --max-old-space-size; kalau ada yang mengubah perintah ini menjadi `bun --bun ...` atau `bun scripts/x.ts`, pagar memori itu lenyap diam-diam dan kegagalan berubah dari galat V8 yang terbaca menjadi OOM-killer kernel (exit 137). Jangan lakukan itu tanpa mengganti pagarnya lebih dulu.",
@@ -57,6 +57,8 @@
     "_db_seed_demo_note": "Mengisi SATU perusahaan (slug wajib disebut) dengan tiga bulan transaksi contoh yang BENAR-BENAR diposting lewat mesin posting yang sama dengan formulir sungguhan — jadi Neraca-nya seimbang dan Laba/Rugi-nya terisi. Berbeda dari prisma/seed.ts, yang menulis baris TANPA jurnal dan karena itu fixture pengembangan, bukan buku. Menolak berjalan bila perusahaannya sudah punya transaksi; setiap baris ditandai [CONTOH]. Lihat kepala scripts/seed-demo.ts.",
     "efaktur:platform": "tsx scripts/efaktur-platform.ts",
     "change-plan": "tsx scripts/change-tenant-plan.ts",
+    "billing:pause": "tsx scripts/pause-platform-billing.ts",
+    "_billing_pause_note": "FASE A komersialisasi. Hentikan penagihan otomatis terhadap akun tanpa perjanjian komersial: billing_mode=none, tagihan terbit tanpa pembayaran di-void, trial_ends_at dibersihkan, tenant tertangguhkan dipulihkan lewat setTenantSuspension (berjejak). KERING secara bawaan; --apply menuntut --reason. Idempoten. Alasan & gerbang membuka kembali: docs/KOMERSIALISASI.md.",
     "bootstrap": "tsx scripts/bootstrap.ts",
     "operator-code": "tsx scripts/operator-code.ts",
     "db:seed": "tsx prisma/seed.ts",

@@ -34,10 +34,14 @@ import {
 import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@/components/ui/button";
 import { getT } from "@/lib/i18n/server";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { askValues, landingAsk } from "@/lib/landing-ask";
+import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
 
 export async function LandingHero() {
   const t = await getT();
+  /* Apa yang boleh dijanjikan tombol di bawah — uji coba, atau penawaran.
+     Satu keputusan, satu tempat (`lib/landing-ask.ts`). */
+  const ask = landingAsk(selfServeSignupOpen());
 
   return (
     <section
@@ -158,8 +162,12 @@ export async function LandingHero() {
                   (`tests/button-emphasis.test.ts`), hanya bunyinya berbeda.
                   ⚠ "Tanpa kartu kredit" TIDAK ditulis; tak ada kode yang
                   menjaminnya. */}
+              {/* ⚠ Tujuannya TETAP `/register` di kedua keadaan — satu ajakan
+                  yang diulang, dijaga `tests/button-emphasis.test.ts`. Yang
+                  berubah hanya BUNYINYA, dan saat pendaftaran ditutup halaman
+                  itulah yang menjelaskan jalan penawarannya. */}
               <ButtonLink href="/register" size="lg" variant="primary">
-                {t("landing.heroTrialCta", { days: TRIAL_DAYS })}
+                {t(ask.heroCta, askValues(ask, TRIAL_DAYS))}
               </ButtonLink>
               <ButtonLink href="/login" size="lg" variant="outline">
                 {t("landing.heroSecondary")}

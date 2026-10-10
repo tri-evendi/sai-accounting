@@ -48,10 +48,13 @@ import {
 } from "@/components/landing/landing-section";
 import { ButtonLink } from "@/components/ui/button";
 import { getT } from "@/lib/i18n/server";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { askValues, landingAsk } from "@/lib/landing-ask";
+import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
 
 export async function LandingClosingCta() {
   const t = await getT();
+  /* Uji coba, atau penawaran — satu keputusan, satu tempat. */
+  const ask = landingAsk(selfServeSignupOpen());
 
   return (
     <LandingSection center tone="solid">
@@ -60,7 +63,7 @@ export async function LandingClosingCta() {
       </LandingSectionIntro>
       <div style={{ marginTop: "var(--sai-landing-cta-space)" }}>
         <ButtonLink href="/register" size="lg" variant="inverse">
-          {t("landing.heroPrimary")}
+          {t(ask.cardCta, askValues(ask, TRIAL_DAYS))}
         </ButtonLink>
       </div>
 
@@ -80,7 +83,7 @@ export async function LandingClosingCta() {
           color: "var(--sai-landing-on-solid-muted)",
         }}
       >
-        {t("landing.ctaTrialNote", { days: TRIAL_DAYS })}
+        {t(ask.ctaNote, askValues(ask, TRIAL_DAYS))}
       </p>
     </LandingSection>
   );

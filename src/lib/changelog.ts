@@ -73,6 +73,34 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.7.0",
+    tanggal: "2026-10-10",
+    ringkas:
+      "Akun baru dibuka lewat penawaran, bukan pendaftaran mandiri \u2014 dan penagihan otomatis berhenti menyentuh akun yang tidak pernah setuju membeli apa pun.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks:
+          "Pendaftaran mandiri di halaman pendaratan ditutup sementara. Tombolnya kini berbunyi \u201cMinta penawaran\u201d, dan halaman pendaftaran menjelaskan jalannya beserta kanal kontak \u2014 kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Harga di halaman harga tetap dipajang sebagai titik mulainya.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Tagihan langganan tidak lagi terbit untuk akun yang tidak punya perjanjian komersial. Akun uji coba dan internal sebelumnya ikut ditagih, ditagih ulang lewat surel pengingat, lalu bukunya ditangguhkan menjadi hanya-baca; buku yang tertutup karena itu sudah dibuka kembali dan tagihannya dibatalkan.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Tagihan yang digratiskan penyedia berhenti muncul sebagai \u201cLunas\u201d di riwayat tagihan. Ia kini bertanda \u201cKompensasi\u201d \u2014 nilainya memang nol, dan menampilkannya sebagai lunas membuat riwayat pembayaran terbaca seperti ada uang yang pernah masuk.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Perpanjangan langganan yang berganti siklus (bulanan ke tahunan, atau sebaliknya) kini mengambil harga dari siklus yang baru. Sebelumnya harganya tertinggal di siklus lama, sehingga langganan tahunan bisa membawa harga bulanan.",
+      },
+    ],
+  },
+  {
     versi: "0.6.0",
     tanggal: "2026-10-04",
     sha: "260f208",

@@ -16,6 +16,7 @@
  */
 
 import { MailSettingsForm } from "@/components/operator/mail-settings-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { mailSettingsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
@@ -37,14 +38,6 @@ function formatDateTime(d: Date): string {
  * oleh #203. Formulirnya sendiri (`MailSettingsForm`) adalah komponen client dan
  * mewarnai dirinya.
  */
-const H1: React.CSSProperties = {
-  margin: 0,
-  fontSize: 24,
-  fontWeight: 700,
-  letterSpacing: "-0.025em",
-  color: "var(--ant-color-text)",
-};
-
 /** Spanduk keadaan-salah. Warnanya token AntD, bukan nilai mentah (#204). */
 const SILENT_BANNER: React.CSSProperties = {
   display: "flex",
@@ -55,13 +48,6 @@ const SILENT_BANNER: React.CSSProperties = {
   border: "1px solid var(--ant-color-error-border)",
   background: "var(--ant-color-error-bg)",
   color: "var(--ant-color-error-text)",
-};
-
-const LEAD: React.CSSProperties = {
-  margin: 0,
-  fontSize: 14,
-  lineHeight: 1.625,
-  color: "var(--ant-color-text-secondary)",
 };
 
 export default async function OperatorMailPage() {
@@ -99,11 +85,12 @@ export default async function OperatorMailPage() {
   const settings = data.settings;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <h1 style={H1}>{t("operator.mail.heading")}</h1>
-        <p style={LEAD}>{t("operator.mail.description")}</p>
-      </div>
+    /* Kepala di luar kolom berjarak: `PageHeader` membawa jarak bawahnya
+       sendiri, jadi menaruhnya DI DALAM kolom ber-`gap` menjumlahkan
+       keduanya — pola yang sama dengan halaman dasbor. */
+    <div>
+      <PageHeader title={t("operator.mail.heading")} description={t("operator.mail.description")} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
       {health.status === "not_configured" && (
         <div style={SILENT_BANNER} role="alert">
@@ -160,6 +147,7 @@ export default async function OperatorMailPage() {
             : null
         }
       />
+      </div>
     </div>
   );
 }

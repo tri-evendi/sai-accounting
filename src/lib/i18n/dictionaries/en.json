@@ -177,7 +177,10 @@
     "mockActive": "Open now",
     "mockAddCompany": "Add a company",
     "mockDashboardTitle": "Dashboard",
-    "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank"
+    "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank",
+    "quoteCta": "Request a quote",
+    "quoteNote": "Accounts are opened through a quote: company quota, data migration, and payment terms are agreed first. The prices above are the starting point.",
+    "faqTrialAQuote": "Self-serve trials are closed for now. Access is granted through a quote — we agree on the number of companies, the data migration, and payment terms first, including a trial period where one is needed."
   },
   "common": {
     "save": "Save",
@@ -536,7 +539,12 @@
       "termsPrefix": "I agree to the",
       "termsLinkLabel": "terms & conditions",
       "termsAnd": "and the",
-      "privacyLinkLabel": "privacy policy"
+      "privacyLinkLabel": "privacy policy",
+      "closedTitle": "Self-serve sign-up is closed",
+      "closedBody": "New accounts are opened through a quote rather than self-serve, so that quota, data migration, and payment terms are agreed first. Contact us and we will set the account up for you.",
+      "closedWhatsapp": "Contact us on WhatsApp",
+      "closedEmail": "Email us at {email}",
+      "closedSignIn": "Already have an account? Sign in"
     }
   },
   "status": {
@@ -4235,7 +4243,8 @@
     "hoursNotNegative": "Hours cannot be negative",
     "pickWorkCenter": "Choose a work centre",
     "pickBom": "Choose a bill of materials",
-    "producedPositive": "Output must be more than zero. Materials consumed with no output are recorded as process shrinkage."
+    "producedPositive": "Output must be more than zero. Materials consumed with no output are recorded as process shrinkage.",
+    "siteContentTooLong": "This sentence is too long for the landing page."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -4495,6 +4504,7 @@
       "draft": "Draft",
       "issued": "Issued",
       "paid": "Paid",
+      "comped": "Comped",
       "void": "Void"
     },
     "privacyHeading": "Data & Privacy",
@@ -4538,10 +4548,40 @@
     "consoleTitle": "Operator Console",
     "auditedBadge": "Actions are logged",
     "nav": {
+      "overview": "Overview",
       "tenants": "Tenants",
       "reconciliation": "Reconciliation",
+      "content": "Landing content",
       "scheduler": "Scheduler",
-      "mail": "Email"
+      "mail": "Email",
+      "audit": "Audit trail",
+      "groupSummary": "Overview",
+      "groupCustomers": "Customers",
+      "groupSite": "Website",
+      "groupSystem": "System"
+    },
+    "overview": {
+      "heading": "Platform overview",
+      "description": "The numbers that need action today — trials about to end, invoices past due, and the last scheduler run.",
+      "openTenants": "Open tenant list",
+      "controlHeading": "Customers & usage",
+      "platformHeading": "Subscriptions & invoices",
+      "tenantsTotal": "Total tenants",
+      "tenantsActive": "Active",
+      "tenantsTrialing": "On trial",
+      "trialHint": "{soon} ending in ≤7 days · {expired} already past",
+      "tenantsPastDue": "Past due",
+      "tenantsSuspended": "Suspended & cancelled",
+      "companies": "Companies",
+      "users": "Users",
+      "invoicesOverdue": "Invoices past due",
+      "invoicesOpen": "Invoices not yet due",
+      "subscriptionsActive": "Active subscriptions",
+      "subscriptionsPastDue": "Past-due subscriptions",
+      "schedulerLastRun": "Last scheduler run",
+      "schedulerNever": "Has never run",
+      "schedulerHint": "status {status} · {errors} errors",
+      "newestHeading": "Newest sign-ups"
     },
     "signedInAs": "Signed in as {name}",
     "logout": "Sign out",
@@ -4575,7 +4615,6 @@
     },
     "tenant": {
       "notFound": "Tenant not found.",
-      "back": "Back to tenant list",
       "planHeading": "Plan & Quota (control database)",
       "planLabel": "Plan",
       "statusLabel": "Status",
@@ -4722,7 +4761,26 @@
         "submit": "Extend",
         "success": "Subscription extended to {to}. Comped invoice {invoice} issued (Rp 0).",
         "errDuplicate": "This extension has already been applied — invoice {invoice} exists.",
-        "errCancelled": "The subscription is cancelled. Revive it through a plan change first."
+        "errCancelled": "The subscription is cancelled. Revive it through a plan change first.",
+        "errUnpriced": "This tenant's plan has no {cycle} price in the catalogue, so the extension was refused — a yearly subscription carrying a monthly price would under-bill tenfold. Set the price in the catalogue, or extend on the same cycle."
+      },
+      "billingMode": {
+        "heading": "Billing mode",
+        "description": "Who the scheduler may bill. New accounts are born `none` — automatic billing is only switched on by a decision made on this screen, and that decision is recorded.",
+        "label": "Mode",
+        "modeNone": "Never billed",
+        "modeManual": "Billed outside the system",
+        "modeAuto": "Billed automatically",
+        "hintNone": "Internal, testers, pilots, demos. The scheduler does not issue invoices, does not chase them, and does not suspend.",
+        "hintManual": "Full entitlement, invoiced from the provider's own books. The scheduler still does not touch it.",
+        "hintAuto": "The scheduler may issue the first invoice when the trial ends, push the account past due, then SUSPEND the customer's books.",
+        "submit": "Set mode",
+        "success": "Billing mode: {from} → {to}.",
+        "autoNoRenewal": "Note: renewal billing does not exist in the code yet. Automatic mode only issues the first invoice when a trial ends, then chases and suspends invoices that already exist — it will not issue next month's invoice on its own.",
+        "errSame": "This account is already set to {mode}.",
+        "errPriceZero": "The subscription price is zero, so automatic mode was refused: a Rp 0 invoice would fall past due (there is nothing to pay), and the books would then be suspended for not paying zero. Change the plan first.",
+        "currentLabel": "Billing mode",
+        "railWarning": "No payment rail is configured (no payment gateway and no transfer instructions), so an invoice that goes out cannot be paid by anyone."
       },
       "deletion": {
         "title": "Execute account deletion",
@@ -4806,6 +4864,44 @@
       "silentTitle": "Production is running WITHOUT SMTP",
       "silentBody": "Every email is written to a file on the server and sent to nobody — registration verification, password resets, staff invitations, invoices, and due-date reminders. Configure SMTP below.",
       "silentOutbox": "{count} emails have piled up in the outbox. Each one is a person waiting for a message that will never arrive."
+    },
+    "content": {
+      "heading": "Landing page content",
+      "description": "Change the wording on the public page without a release. A field left empty uses the sentence built into the app.",
+      "localeLabel": "Language",
+      "sectionLabel": "Page section",
+      "unavailable": "The platform database is unreachable, so edits cannot be read or saved right now. The landing page still renders in full using its built-in wording.",
+      "saved": "Saved: {updated} sentences changed, {reset} reverted to default.",
+      "savedNothing": "Nothing changed.",
+      "errSave": "The edit could not be saved — the platform database is unreachable. The landing page keeps using its built-in wording.",
+      "changedBy": "Changed by {who}, {when}",
+      "usingDefault": "Using the built-in wording",
+      "reset": "Revert to default",
+      "preview": "View the landing page",
+      "sectionNav": "Top bar",
+      "sectionHero": "Hero & proof strip",
+      "sectionFeatures": "Benefits",
+      "sectionModules": "Modules & gallery",
+      "sectionAudience": "Who it is for",
+      "sectionIntegrations": "Integrations & data",
+      "sectionTrust": "Trust",
+      "sectionPricing": "Pricing",
+      "sectionFaq": "FAQ",
+      "sectionCta": "Calls to action",
+      "sectionFooter": "Footer",
+      "sectionMock": "Product mock-up text",
+      "sectionOther": "Other"
+    },
+    "audit": {
+      "heading": "Operator audit trail",
+      "description": "Sign-ins, sign-outs, and platform setting changes — who, from which IP, when. Actions against a tenant are recorded on that tenant's own page.",
+      "colTime": "Time",
+      "colOperator": "Operator",
+      "colAction": "Action",
+      "colIp": "IP",
+      "colDetails": "Details",
+      "empty": "No entries recorded yet.",
+      "emptyHint": "Entries are written from the first sign-in to this console onwards."
     }
   },
   "docs": {

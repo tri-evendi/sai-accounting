@@ -449,18 +449,45 @@ hanya merangkai dua fungsi yang sudah dipanggil manusia hari ini.
 
 ## 8. Metrik yang harus mulai diukur
 
-Hari ini "pendapatan" tidak bisa dibaca dari tabel mana pun: `payments` kosong,
-dan tagihan comp berstatus `paid` bercampur dengan penjualan. Yang perlu
-didefinisikan sebelum rupiah pertama:
+**Status 10 Okt 2026: empat dari enam SUDAH berdiri di konsol** (seksi
+"Pendapatan" di halaman ringkasan `/operator`), definisinya di
+`lib/platform-revenue.ts` dan dijaga `tests/platform-revenue.test.ts`. Dua
+sisanya sengaja tidak ada, dan ketiadaannya ikut tertulis di layar.
+
+Tiga aturan yang membentuk setiap angkanya:
+
+1. **UANG = baris `payments` berstatus `paid`** — bukan tagihan lunas, bukan
+   langganan aktif. Comp tidak pernah melahirkan baris pembayaran, jadi hadiah
+   terpisah dari penjualan SECARA KONSTRUKSI, bukan lewat saringan yang bisa
+   terlupa.
+2. **MRR hanya dari langganan yang BOLEH ditagih** (`billing_mode ≠ none`).
+   Harga di baris akun internal/penguji adalah snapshot katalog, bukan uang
+   yang akan masuk; memasukkannya membuat MRR tumbuh setiap kali seseorang
+   membuat akun demo.
+3. **Tahunan dibagi DUA BELAS, bukan sepuluh.** Katalog menjual setahun seharga
+   sepuluh bulan, tetapi MRR menjawab "per bulan KALENDER". Membaginya sepuluh
+   melaporkan MRR 20% lebih tinggi daripada kas yang benar-benar masuk.
+
+⚠ Dua metrik yang TIDAK dihitung, beserta sebabnya:
+
+- **Waktu ke nilai pertama** menuntut membuka BUKU pelanggan, dan
+  `lib/operator/store.ts` menyatakannya terlarang ("konsol melihat METADATA
+  langganan, bukan pembukuan pelanggan"). Melanggarnya demi sebuah angka
+  dasbor adalah harga yang salah; ia butuh keputusan tersendiri.
+- **Konversi per KOHORT** menuntut riwayat peristiwa langganan, dan tabel
+  peristiwa itu tidak ada. Yang dipajang karena itu konversi **sejak awal**,
+  dan ia dinamai demikian — bukan kohort yang bukan kohort.
+
+Yang perlu didefinisikan sebelum rupiah pertama:
 
 | Metrik | Definisi yang diusulkan | Kenapa |
 | --- | --- | --- |
-| Pelanggan berbayar | tenant dengan ≥1 pembayaran **bukan comp** | memisahkan penjualan dari hadiah |
-| MRR/ARR | jumlah harga langganan mode `otomatis`+`manual` yang berbayar, tanpa comp | satu angka yang boleh disebut ke luar |
-| Konversi uji coba → berbayar | per kohort pendaftaran | mengukur §1.2, bukan menebaknya |
-| Waktu ke nilai pertama | hari dari daftar sampai tutup bulan pertama | menentukan panjang uji coba |
-| DSO / tagihan menggantung | umur tagihan belum lunas | Fase B dijalankan manusia; ini bebannya |
-| Ekspansi per grup | PT per tenant dari waktu ke waktu | jalur pertumbuhan utama (§2) |
+| Pelanggan berbayar ✅ | tenant dengan ≥1 pembayaran `paid` (comp tak punya baris pembayaran) | memisahkan penjualan dari hadiah |
+| MRR/ARR ✅ | jumlah ekuivalen-bulanan langganan bermode `manual`+`auto` yang belum `cancelled` (tahunan ÷ 12) | satu angka yang boleh disebut ke luar |
+| Konversi uji coba → berbayar ⚠ | **sejak awal**, bukan per kohort (tak ada riwayat peristiwa) | mengukur §1.2, bukan menebaknya |
+| Waktu ke nilai pertama ⛔ | **tidak dihitung** — menuntut membuka buku pelanggan | menentukan panjang uji coba |
+| Tagihan menggantung ✅ | jumlah + nominal + umur TERTUA sejak jatuh tempo (bukan rata-rata: di bawah sepuluh tagihan, rata-rata disetir satu pencilan) | Fase B dijalankan manusia; ini bebannya |
+| Ekspansi per grup ⚠ | jumlah PT & pengguna ADA di ringkasan, tetapi tanpa dimensi waktu (tak ada potret historis) | jalur pertumbuhan utama (§2) |
 
 ---
 

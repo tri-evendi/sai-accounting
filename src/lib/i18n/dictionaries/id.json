@@ -4501,6 +4501,7 @@
       "draft": "Draf",
       "issued": "Terbit",
       "paid": "Lunas",
+      "comped": "Kompensasi",
       "void": "Batal"
     },
     "privacyHeading": "Data & Privasi",

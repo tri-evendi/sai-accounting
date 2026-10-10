@@ -4501,6 +4501,7 @@
       "draft": "Draft",
       "issued": "Issued",
       "paid": "Paid",
+      "comped": "Comped",
       "void": "Void"
     },
     "privacyHeading": "Data & Privacy",

@@ -785,10 +785,19 @@ export async function extendSubscription(
         tenantId: tenant.id,
         subscriptionId: subscription.id,
         number: invoiceNumber,
-        /* Langsung `paid`: tidak ada yang terutang, jadi tidak ada yang bisa
-           dilunasi. Baris pembayaran pun tidak dibuat — pembayaran nol adalah
-           dokumen yang menyatakan sesuatu yang tidak pernah terjadi. */
-        status: "paid",
+        /*
+         * `comped`, BUKAN `paid`. Tidak ada yang terutang, jadi tidak ada yang
+         * bisa dilunasi — dan baris pembayaran pun tidak dibuat, sebab
+         * pembayaran nol adalah dokumen yang menyatakan sesuatu yang tidak
+         * pernah terjadi.
+         *
+         * Dulu baris ini `paid`, dan akibatnya terukur: lima dari lima tagihan
+         * "lunas" di produksi bernilai Rp 0, sehingga pendapatan tidak bisa
+         * dibaca dari tabel mana pun tanpa tahu lebih dulu bahwa sebagian
+         * "lunas" bukan uang. Alasan penuh di `platform-constants.ts`
+         * (`PLATFORM_INVOICE_STATUSES`).
+         */
+        status: "comped",
         issueDate: now,
         dueDate: now,
         amount: "0",

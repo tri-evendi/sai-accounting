@@ -87,11 +87,50 @@ export const BILLING_CYCLES = ["monthly", "yearly"] as const;
 export const billingCycleSchema = z.enum(BILLING_CYCLES);
 export type BillingCycle = z.infer<typeof billingCycleSchema>;
 
-/** Tagihan KAMI ke pelanggan (`platform_invoices`). `void` = dibatalkan tanpa
- *  dihapus — dokumen bernomor tidak pernah dihapus. */
-export const PLATFORM_INVOICE_STATUSES = ["draft", "issued", "paid", "void"] as const;
+/**
+ * Tagihan KAMI ke pelanggan (`platform_invoices`).
+ *
+ *   `draft`   belum terbit.
+ *   `issued`  terbit dan terutang — satu-satunya keadaan yang menerima
+ *             pembayaran, dan satu-satunya yang masuk dunning.
+ *   `paid`    ADA UANG yang masuk. Inilah satu-satunya status yang boleh
+ *             dijumlahkan sebagai pendapatan.
+ *   `comped`  periode diberikan TANPA tagihan — kompensasi operator
+ *             (`extendSubscription`). Lihat ⚠ di bawah.
+ *   `void`    dibatalkan tanpa dihapus — dokumen bernomor tidak pernah dihapus.
+ *
+ * ══ ⚠ KENAPA `comped` ADA, DAN KENAPA IA BUKAN `paid` ══════════════════════
+ * Kompensasi memakai sebuah baris tagihan sebagai KUNCI IDEMPOTENSI: nomornya
+ * deterministik + UNIK, jadi perpanjangan yang sama dijalankan dua kali
+ * menabrak constraint alih-alih memberi periode kedua. Triknya benar dan tetap
+ * dipakai.
+ *
+ * Yang salah adalah statusnya. Sampai status ini ada, baris itu ditulis `paid`
+ * dengan total Rp 0 — dan akibatnya terukur di produksi 10 Okt 2026: lima dari
+ * lima tagihan "lunas" bernilai NOL, sehingga pertanyaan "berapa pendapatan
+ * kita?" tidak bisa dijawab dari tabel mana pun tanpa lebih dulu tahu bahwa
+ * sebagian "lunas" bukan uang (`docs/KOMERSIALISASI.md` §8). Angka yang
+ * menuntut pengetahuan rahasia untuk dibaca benar adalah angka yang suatu hari
+ * dibaca salah.
+ *
+ * `void` TIDAK dipakai untuk ini: dibatalkan dan diberi-gratis adalah dua
+ * peristiwa berbeda — yang pertama tidak memberi hak pakai apa pun, yang kedua
+ * justru memberinya.
+ */
+export const PLATFORM_INVOICE_STATUSES = ["draft", "issued", "paid", "comped", "void"] as const;
 export const platformInvoiceStatusSchema = z.enum(PLATFORM_INVOICE_STATUSES);
 export type PlatformInvoiceStatus = z.infer<typeof platformInvoiceStatusSchema>;
+
+/**
+ * Apakah status ini berarti UANG MASUK?
+ *
+ * Satu fungsi, dipakai setiap tempat yang menjumlahkan atau mewarnai pendapatan
+ * — supaya "comp bukan pendapatan" tidak perlu diingat ulang di setiap
+ * pemanggil. Hanya `paid`, dan daftar itu memang hanya boleh berisi satu.
+ */
+export function platformInvoiceIsRevenue(status: string): boolean {
+  return status === "paid";
+}
 
 export const PLATFORM_PAYMENT_STATUSES = [
   "pending",

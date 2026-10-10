@@ -4501,6 +4501,7 @@
       "draft": "草稿",
       "issued": "已开具",
       "paid": "已付款",
+      "comped": "赠送",
       "void": "作废"
     },
     "privacyHeading": "数据与隐私",

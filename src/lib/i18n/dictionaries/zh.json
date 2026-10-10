@@ -4568,6 +4568,26 @@
       "groupSite": "网站",
       "groupSystem": "系统"
     },
+    "attention": {
+      "heading": "需要处理",
+      "description": "只列出今天需要采取行动的情况，最紧急的在最上面。",
+      "allClear": "今天没有需要处理的事项。",
+      "open": "打开",
+      "schedulerNever": "调度器从未运行过",
+      "schedulerNeverWhy": "只要它沉默，就不会开出账单，试用状态也不会变动——下面的数字看起来平静，实际并非如此。",
+      "schedulerFailing": "上一轮调度出现问题（{count} 个错误）",
+      "schedulerFailingWhy": "请先查这里：堆积的过期试用和始终未出现的账单，几乎都源于此，而非客户一方。",
+      "trialsExpired": "{count} 个试用已过期但状态仍未变动",
+      "trialsExpiredWhy": "他们仍在以本应结束的试用状态使用账簿。",
+      "invoicesOverdue": "{count} 张账单已逾期",
+      "invoicesOverdueWhy": "已开出且未付款；若不处理，接下来动手的将是催收流程。",
+      "tenantsPastDue": "{count} 位客户欠费",
+      "tenantsPastDueWhy": "订阅仍在运行，账单尚未付清——在账簿被锁定之前联系他们。",
+      "tenantsSuspended": "{count} 本账簿对客户已锁定",
+      "tenantsSuspendedWhy": "已暂停或已取消：客户只能查看。打开该租户以恢复。",
+      "trialsEndingSoon": "{count} 个试用将在 7 天内结束",
+      "trialsEndingSoonWhy": "在试用到期之前致电，而不是之后。"
+    },
     "overview": {
       "heading": "平台概览",
       "description": "今天需要处理的数字——即将结束的试用、已逾期的账单，以及最近一次调度运行。",

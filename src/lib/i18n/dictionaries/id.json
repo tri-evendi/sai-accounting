@@ -4568,6 +4568,26 @@
       "groupSite": "Situs",
       "groupSystem": "Sistem"
     },
+    "attention": {
+      "heading": "Perlu ditangani",
+      "description": "Hanya keadaan yang menuntut tindakan hari ini, yang paling mendesak di atas.",
+      "allClear": "Tidak ada yang menuntut tindakan hari ini.",
+      "open": "Buka",
+      "schedulerNever": "Penjadwal belum pernah berjalan",
+      "schedulerNeverWhy": "Selama ia diam, tidak ada tagihan yang terbit dan tidak ada uji coba yang berpindah status — angka di bawah akan terbaca tenang padahal bukan.",
+      "schedulerFailing": "Putaran penjadwal terakhir bermasalah ({count} galat)",
+      "schedulerFailingWhy": "Periksa ini lebih dulu: uji coba kedaluwarsa yang menumpuk dan tagihan yang tak pernah terbit hampir selalu berasal dari sini, bukan dari pelanggannya.",
+      "trialsExpired": "{count} uji coba sudah lewat tapi statusnya belum bergerak",
+      "trialsExpiredWhy": "Mereka masih memakai buku dengan status uji coba yang seharusnya sudah berakhir.",
+      "invoicesOverdue": "{count} tagihan lewat jatuh tempo",
+      "invoicesOverdueWhy": "Tagihan yang terbit dan tidak dibayar; tanpa ditindak, dunning yang akan menindaknya.",
+      "tenantsPastDue": "{count} pelanggan menunggak",
+      "tenantsPastDueWhy": "Langganannya masih berjalan, tagihannya tertunggak — hubungi sebelum bukunya terkunci.",
+      "tenantsSuspended": "{count} buku terkunci bagi pelanggannya",
+      "tenantsSuspendedWhy": "Ditangguhkan atau dibatalkan: pelanggannya hanya bisa membaca. Buka tenantnya untuk memulihkan.",
+      "trialsEndingSoon": "{count} uji coba berakhir dalam 7 hari",
+      "trialsEndingSoonWhy": "Menelepon sebelum uji coba habis, bukan sesudah."
+    },
     "overview": {
       "heading": "Ringkasan Platform",
       "description": "Angka yang menuntut tindakan hari ini — uji coba yang hampir berakhir, tagihan yang lewat jatuh tempo, dan putaran penjadwal terakhir.",

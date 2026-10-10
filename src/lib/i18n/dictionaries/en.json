@@ -4568,6 +4568,26 @@
       "groupSite": "Website",
       "groupSystem": "System"
     },
+    "attention": {
+      "heading": "Needs attention",
+      "description": "Only what asks for action today, most urgent first.",
+      "allClear": "Nothing asks for action today.",
+      "open": "Open",
+      "schedulerNever": "The scheduler has never run",
+      "schedulerNeverWhy": "While it stays silent no invoice is issued and no trial changes status — the figures below will read calm when they are not.",
+      "schedulerFailing": "The last scheduler run had trouble ({count} errors)",
+      "schedulerFailingWhy": "Check this first: piled-up expired trials and invoices that never appeared almost always start here, not with the customer.",
+      "trialsExpired": "{count} trials are past their end date but have not moved",
+      "trialsExpiredWhy": "They are still using their books on a trial that should have ended.",
+      "invoicesOverdue": "{count} invoices are past due",
+      "invoicesOverdueWhy": "Issued and unpaid; left alone, dunning is what acts on them next.",
+      "tenantsPastDue": "{count} customers are in arrears",
+      "tenantsPastDueWhy": "The subscription still runs, the invoice is unpaid — reach them before the books lock.",
+      "tenantsSuspended": "{count} books are locked for their customers",
+      "tenantsSuspendedWhy": "Suspended or cancelled: the customer can only read. Open the tenant to restore it.",
+      "trialsEndingSoon": "{count} trials end within 7 days",
+      "trialsEndingSoonWhy": "Call before the trial runs out, not after."
+    },
     "overview": {
       "heading": "Platform overview",
       "description": "The numbers that need action today — trials about to end, invoices past due, and the last scheduler run.",

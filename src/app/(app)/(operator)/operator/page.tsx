@@ -2,18 +2,34 @@
  * `/operator` — RINGKASAN konsol operator.
  *
  * ══ KENAPA HALAMAN INI ADA ═════════════════════════════════════════════════
- * Sampai sekarang pendaratan konsol adalah DAFTAR TENANT: satu tabel tujuh
- * kolom berisi setiap pelanggan platform. Tabel itu benar dan tetap ada
+ * Sampai `/operator` ada, pendaratan konsol adalah DAFTAR TENANT: satu tabel
+ * tujuh kolom berisi setiap pelanggan platform. Tabel itu benar dan tetap ada
  * (`./tenants`), tetapi ia bukan jawaban atas pertanyaan yang dibawa seseorang
  * ketika ia membuka `ops.` — "apakah ada yang perlu saya tangani hari ini?".
- * Menjawabnya dari tabel itu berarti membaca empat belas baris status satu per
- * satu dan menjumlahkannya di kepala sendiri.
  *
- * Yang dipajang di sini karena itu bukan "angka yang menarik" melainkan angka
- * yang MENUNTUT TINDAKAN: uji coba yang hampir berakhir (menelepon sebelum,
- * bukan sesudah), uji coba yang sudah lewat tapi statusnya belum bergerak
- * (penjadwal tidak jalan — lihat ubin putaran terakhir), tagihan yang lewat
- * jatuh tempo, dan tenant yang baru masuk.
+ * ══ KENAPA HALAMAN INI DITULIS ULANG ═══════════════════════════════════════
+ * Karena jawaban pertamanya ternyata bentuk lain dari pertanyaan yang sama.
+ * Sebelum perombakan ini halaman memajang **enam belas ubin berbobot sama**
+ * dalam empat kisi yang serupa: "9 uji coba kedaluwarsa" berdiri dengan ukuran
+ * angka, tebal huruf, dan tepi yang persis sama dengan "41 pengguna terdaftar".
+ * Yang satu menuntut telepon hari ini; yang lain tidak pernah menuntut apa pun.
+ * Enam belas angka setara tidak menjawab "apa yang perlu ditangani" — ia
+ * memindahkan penyaringannya ke kepala orang yang membuka halaman, yaitu
+ * pekerjaan yang ia buka konsol untuk hindari.
+ *
+ * Bentuknya sekarang punya SATU hal yang dibaca lebih dulu:
+ *
+ *   1. **Perlu ditangani** — hanya keadaan yang menuntut tindakan, berurut
+ *      menurut mendesaknya, masing-masing bertaut ke tempat tindakannya.
+ *      Kosong = satu kalimat tenang, bukan enam baris nol. Penyaringnya murni
+ *      dan teruji (`lib/operator/attention.ts`).
+ *   2. **Pendapatan** (§8) — pertanyaan kedua yang selalu dibawa ke layar ini.
+ *   3. **Pelanggan** dan **Kesehatan platform** — angka latar yang menjawab
+ *      "seberapa besar" dan "apakah mesinnya jalan", bukan "apa yang harus
+ *      saya lakukan".
+ *   4. **Pendaftar terbaru**.
+ *
+ * Angkanya tidak satu pun berubah; yang berubah urutan membacanya.
  *
  * ══ DUA BIDANG, SATU YANG BOLEH MATI ═══════════════════════════════════════
  * Bagian KENDALI selalu tampil; bagian PLATFORM (`sai_platform`) jatuh ke satu
@@ -34,9 +50,27 @@
  */
 
 import Link from "next/link";
-import { TeamOutlined } from "@ant-design/icons";
+import {
+  ArrowRightOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  FieldTimeOutlined,
+  LockOutlined,
+  TeamOutlined,
+  WarningOutlined,
+} from "@ant-design/icons";
 
 import { StatCard } from "@/components/dashboard/stat-card";
+import {
+  ConsoleNotice,
+  ConsolePanel,
+  ConsoleSection,
+  CONSOLE_MUTED,
+  CONSOLE_PAGE,
+  CONSOLE_TILES,
+} from "@/components/operator/console-ui";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -44,6 +78,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
+import { attentionItems, type AttentionItem } from "@/lib/operator/attention";
 import { operatorOverview, type OperatorOverview } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
@@ -62,46 +97,93 @@ function formatDateTime(d: Date): string {
 /** Status tenant yang berarti "buku terkunci" — sama dengan daftar tenant. */
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
-/** Teks sekunder di bawah ubin — sama dengan daftar tenant. */
-const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+type NewestRow = OperatorOverview["control"]["newest"][number];
 
-/** "Penagihan tidak terjangkau" — kalimat jujur, bukan galat. */
-const NOTICE: React.CSSProperties = {
-  margin: 0,
-  padding: "var(--ant-padding)",
-  borderRadius: "var(--ant-border-radius-lg)",
-  background: "var(--ant-color-fill-quaternary)",
-  fontSize: "var(--ant-font-size)",
-  color: "var(--ant-color-text-secondary)",
-};
-
-const SECTION_HEADING: React.CSSProperties = {
-  margin: 0,
-  fontSize: "var(--ant-font-size-lg)",
-  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
-  color: "var(--ant-color-text)",
+/**
+ * Ikon per baris "perlu ditangani".
+ *
+ * Ikonnya BUKAN hiasan dan bukan pula penanda tunggal: tiap baris tetap
+ * membawa teksnya sendiri (MASTER.md — warna & bentuk tak pernah sendirian).
+ * Yang ia kerjakan adalah membuat daftar berurut bisa dipindai tanpa dibaca —
+ * jam untuk waktu, gembok untuk buku terkunci, seru untuk uang.
+ */
+const ATTENTION_ICON: Record<AttentionItem["key"], React.ReactNode> = {
+  schedulerNever: <CloseCircleOutlined aria-hidden="true" />,
+  schedulerFailing: <WarningOutlined aria-hidden="true" />,
+  trialsExpired: <FieldTimeOutlined aria-hidden="true" />,
+  invoicesOverdue: <ExclamationCircleOutlined aria-hidden="true" />,
+  tenantsPastDue: <ExclamationCircleOutlined aria-hidden="true" />,
+  tenantsSuspended: <LockOutlined aria-hidden="true" />,
+  trialsEndingSoon: <ClockCircleOutlined aria-hidden="true" />,
 };
 
 /**
- * Kisi ubin — `auto-fit` + `minmax`, bukan jumlah kolom tetap.
+ * Kunci kamus per baris — DITULIS UTUH, bukan dirakit.
  *
- * Jumlah ubinnya BERUBAH menurut data (status langganan yang benar-benar ada),
- * jadi kolom tetap akan meninggalkan sel kosong pada sebagian pemasangan. Dan
- * sesuai catatan `PlatformShell`: yang menjaga keterbacaan di monitor lebar
- * adalah kisi yang menambah kolom, bukan wadah yang dikurung di tengah.
+ * `t(`operator.attention.${item.key}`)` akan jauh lebih pendek dan ia yang
+ * ditulis lebih dulu; `tests/i18n-orphan-keys.test.ts` menolaknya, dan
+ * penolakannya benar. Kunci yang hanya ada sebagai potongan string membuat
+ * penjaga kunci yatim buta terhadap empat belas kunci sekaligus — sehingga
+ * kalau kelak satu baris dihapus dari `lib/operator/attention.ts`, dua kunci
+ * kamusnya akan tinggal di tiga berkas kamus selamanya tanpa ada yang
+ * memberitahu. Tabel di bawah membuat keempat belasnya terlihat parser, dan
+ * `Record<…>` membuat baris baru tidak bisa lupa membawa kalimat sebabnya.
  */
-const TILE_GRID: React.CSSProperties = {
-  display: "grid",
-  gap: "var(--ant-margin)",
-  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+const ATTENTION_TEXT: Record<
+  AttentionItem["key"],
+  { label: DictionaryKey; why: DictionaryKey }
+> = {
+  schedulerNever: {
+    label: "operator.attention.schedulerNever",
+    why: "operator.attention.schedulerNeverWhy",
+  },
+  schedulerFailing: {
+    label: "operator.attention.schedulerFailing",
+    why: "operator.attention.schedulerFailingWhy",
+  },
+  trialsExpired: {
+    label: "operator.attention.trialsExpired",
+    why: "operator.attention.trialsExpiredWhy",
+  },
+  invoicesOverdue: {
+    label: "operator.attention.invoicesOverdue",
+    why: "operator.attention.invoicesOverdueWhy",
+  },
+  tenantsPastDue: {
+    label: "operator.attention.tenantsPastDue",
+    why: "operator.attention.tenantsPastDueWhy",
+  },
+  tenantsSuspended: {
+    label: "operator.attention.tenantsSuspended",
+    why: "operator.attention.tenantsSuspendedWhy",
+  },
+  trialsEndingSoon: {
+    label: "operator.attention.trialsEndingSoon",
+    why: "operator.attention.trialsEndingSoonWhy",
+  },
 };
 
-type NewestRow = OperatorOverview["control"]["newest"][number];
+/** Warna baris — `tone` dari modul murni, dipetakan ke token di sini. */
+const ATTENTION_COLOR: Record<AttentionItem["tone"], string> = {
+  danger: "var(--ant-color-error)",
+  warning: "var(--ant-color-warning)",
+  info: "var(--ant-color-text-secondary)",
+};
+
+const ATTENTION_ROW: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "var(--ant-margin-sm)",
+  padding: "var(--ant-padding-sm) var(--ant-padding-lg)",
+  borderTop: "1px solid var(--ant-color-split)",
+};
 
 export default async function OperatorOverviewPage() {
   await requireOperatorPage();
   const t = await getT();
   const { control, revenue, platform } = await operatorOverview();
+  const perluDitangani = attentionItems({ control, platform });
 
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
 
@@ -175,70 +257,89 @@ export default async function OperatorOverviewPage() {
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-        {/* ── Bidang KENDALI: selalu benar, bahkan saat penagihan mati ───── */}
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 style={SECTION_HEADING}>{t("operator.overview.controlHeading")}</h2>
-          <div style={TILE_GRID}>
-            <StatCard
-              title={t("operator.overview.tenantsTotal")}
-              value={control.total}
-              href="/operator/tenants"
-            />
-            <StatCard
-              title={t("operator.overview.tenantsActive")}
-              value={aktif}
-              tone="success"
-              href="/operator/tenants?status=active"
-            />
-            <StatCard
-              title={t("operator.overview.tenantsTrialing")}
-              value={ujiCoba}
-              href="/operator/tenants?status=trialing"
-              /* Dua angka yang MENUNTUT TINDAKAN, dan keduanya ada di baris
-                 kedua ubin ini supaya "15 uji coba" tidak terbaca sebagai
-                 kabar baik ketika sembilan di antaranya sudah kedaluwarsa. */
-              hint={t("operator.overview.trialHint", {
-                soon: control.trialsEndingSoon,
-                expired: control.trialsExpired,
-              })}
-              tone={control.trialsExpired > 0 ? "warning" : "neutral"}
-            />
-            <StatCard
-              title={t("operator.overview.tenantsPastDue")}
-              value={menunggak}
-              tone={menunggak > 0 ? "warning" : "neutral"}
-              href="/operator/tenants?status=past_due"
-            />
-            {/* TANPA `href`, dan itu disengaja: ubin ini menjumlahkan DUA
-                status (`suspended` + `cancelled`), sementara saringan daftar
-                tenant hanya menerima satu. Tautan ke `?status=suspended` akan
-                mendarat di daftar yang jumlahnya BERBEDA dari angka yang baru
-                saja ditekan orangnya — bentuk kebohongan kecil yang membuat
-                orang berhenti memercayai ubin lain di baris yang sama. */}
-            <StatCard
-              title={t("operator.overview.tenantsSuspended")}
-              value={ditangguhkan}
-              tone={ditangguhkan > 0 ? "danger" : "neutral"}
-            />
-            <StatCard title={t("operator.overview.companies")} value={control.companies} />
-            <StatCard title={t("operator.overview.users")} value={control.users} />
-          </div>
-        </section>
+      <div style={CONSOLE_PAGE}>
+        {/* ══ 1. PERLU DITANGANI ══════════════════════════════════════════
+            Satu-satunya bagian yang boleh membaca seluruh layar; `flush` sebab
+            barisnya menggambar pemisahnya sendiri sampai ke tepi kartu. */}
+        <ConsolePanel
+          title={t("operator.attention.heading")}
+          description={t("operator.attention.description")}
+          flush
+        >
+          {perluDitangani.length === 0 ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--ant-margin-xs)",
+                padding: "var(--ant-padding-sm) var(--ant-padding-lg)",
+                color: "var(--ant-color-success)",
+              }}
+            >
+              <CheckCircleOutlined aria-hidden="true" />
+              {/* Keadaan tenang dikatakan SEKALI. Enam baris "0" adalah enam
+                  pembacaan yang menghasilkan nol keputusan. */}
+              <span style={{ color: "var(--ant-color-text)" }}>
+                {t("operator.attention.allClear")}
+              </span>
+            </div>
+          ) : (
+            perluDitangani.map((item) => {
+              const teks = ATTENTION_TEXT[item.key];
+              const label = t(teks.label, { count: item.count });
+              const reason = t(teks.why);
+              return (
+                <div key={item.key} style={ATTENTION_ROW}>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: "inline-flex",
+                      flexShrink: 0,
+                      fontSize: 18,
+                      color: ATTENTION_COLOR[item.tone],
+                    }}
+                  >
+                    {ATTENTION_ICON[item.key]}
+                  </span>
+                  <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>{label}</div>
+                    <div style={{ ...CONSOLE_MUTED, fontSize: "var(--ant-font-size-sm)" }}>
+                      {reason}
+                    </div>
+                  </div>
+                  {/* Tautan, bukan tombol: baris ini membawa ke suatu tempat.
+                      Yang tanpa `href` memang tidak punya tujuan yang jumlahnya
+                      cocok — alasannya di `lib/operator/attention.ts`. */}
+                  {item.href && (
+                    <Link
+                      href={item.href}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "var(--ant-margin-xxs)",
+                        flexShrink: 0,
+                        fontWeight: 500,
+                        color: "var(--ant-color-link)",
+                      }}
+                    >
+                      {t("operator.attention.open")}
+                      <ArrowRightOutlined aria-hidden="true" style={{ fontSize: 12 }} />
+                    </Link>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </ConsolePanel>
 
-        {/* ── PENDAPATAN (§8) ────────────────────────────────────────────
-             Berdiri SEBELUM bidang platform, dan itu urutan yang disengaja:
-             "berapa pendapatan kita" adalah pertanyaan pertama yang dibawa
-             seseorang ke layar ini, dan sampai hari ini ia tidak punya jawaban
-             di tabel mana pun. Definisi setiap angkanya di
-             `lib/platform-revenue.ts`. ── */}
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 style={SECTION_HEADING}>{t("operator.overview.revenueHeading")}</h2>
+        {/* ══ 2. PENDAPATAN (§8) ══════════════════════════════════════════
+            Definisi setiap angkanya di `lib/platform-revenue.ts`. */}
+        <ConsoleSection title={t("operator.overview.revenueHeading")}>
           {revenue === null ? (
-            <p style={NOTICE}>{t("operator.tenant.billingUnavailable")}</p>
+            <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
           ) : (
             <>
-              <div style={TILE_GRID}>
+              <div style={CONSOLE_TILES}>
                 <StatCard
                   title={t("operator.overview.payingTenants")}
                   value={revenue.payingTenants}
@@ -284,20 +385,73 @@ export default async function OperatorOverviewPage() {
               {/* Apa yang TIDAK dihitung, dikatakan di layar: angka pendapatan
                   yang definisinya hanya hidup di kepala seseorang adalah angka
                   yang suatu hari dibaca salah oleh orang lain. */}
-              <p style={{ margin: 0, fontSize: 14, ...MUTED }}>
+              <p style={{ ...CONSOLE_MUTED, fontSize: "var(--ant-font-size-sm)" }}>
                 {t("operator.overview.revenueNote")}
               </p>
             </>
           )}
-        </section>
+        </ConsoleSection>
 
-        {/* ── Bidang PLATFORM: boleh mati, dan mengatakannya sebagai kalimat ─ */}
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 style={SECTION_HEADING}>{t("operator.overview.platformHeading")}</h2>
+        {/* ══ 3. PELANGGAN — "seberapa besar", bukan "apa yang harus saya
+               lakukan". Ia turun ke bawah pendapatan dengan sengaja. ══════ */}
+        <ConsoleSection title={t("operator.overview.controlHeading")}>
+          <div style={CONSOLE_TILES}>
+            <StatCard
+              title={t("operator.overview.tenantsTotal")}
+              value={control.total}
+              href="/operator/tenants"
+            />
+            <StatCard
+              title={t("operator.overview.tenantsActive")}
+              value={aktif}
+              tone="success"
+              href="/operator/tenants?status=active"
+            />
+            <StatCard
+              title={t("operator.overview.tenantsTrialing")}
+              value={ujiCoba}
+              href="/operator/tenants?status=trialing"
+              /* Dua angka yang MENUNTUT TINDAKAN, dan keduanya ada di baris
+                 kedua ubin ini supaya "15 uji coba" tidak terbaca sebagai
+                 kabar baik ketika sembilan di antaranya sudah kedaluwarsa.
+                 Keduanya juga punya barisnya sendiri di "Perlu ditangani" —
+                 pengulangan yang disengaja: ubin ini menjawab "berapa", baris
+                 di atas menjawab "lakukan apa". */
+              hint={t("operator.overview.trialHint", {
+                soon: control.trialsEndingSoon,
+                expired: control.trialsExpired,
+              })}
+              tone={control.trialsExpired > 0 ? "warning" : "neutral"}
+            />
+            <StatCard
+              title={t("operator.overview.tenantsPastDue")}
+              value={menunggak}
+              tone={menunggak > 0 ? "warning" : "neutral"}
+              href="/operator/tenants?status=past_due"
+            />
+            {/* TANPA `href`, dan itu disengaja: ubin ini menjumlahkan DUA
+                status (`suspended` + `cancelled`), sementara saringan daftar
+                tenant hanya menerima satu. Tautan ke `?status=suspended` akan
+                mendarat di daftar yang jumlahnya BERBEDA dari angka yang baru
+                saja ditekan orangnya — bentuk kebohongan kecil yang membuat
+                orang berhenti memercayai ubin lain di baris yang sama. */}
+            <StatCard
+              title={t("operator.overview.tenantsSuspended")}
+              value={ditangguhkan}
+              tone={ditangguhkan > 0 ? "danger" : "neutral"}
+            />
+            <StatCard title={t("operator.overview.companies")} value={control.companies} />
+            <StatCard title={t("operator.overview.users")} value={control.users} />
+          </div>
+        </ConsoleSection>
+
+        {/* ══ 4. KESEHATAN PLATFORM — boleh mati, dan mengatakannya sebagai
+               kalimat ════════════════════════════════════════════════════ */}
+        <ConsoleSection title={t("operator.overview.platformHeading")}>
           {platform === null ? (
-            <p style={NOTICE}>{t("operator.tenant.billingUnavailable")}</p>
+            <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
           ) : (
-            <div style={TILE_GRID}>
+            <div style={CONSOLE_TILES}>
               <StatCard
                 title={t("operator.overview.invoicesOverdue")}
                 value={platform.overdueInvoices}
@@ -350,11 +504,18 @@ export default async function OperatorOverviewPage() {
               />
             </div>
           )}
-        </section>
+        </ConsoleSection>
 
-        {/* ── Pendaftar terbaru ──────────────────────────────────────────── */}
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 style={SECTION_HEADING}>{t("operator.overview.newestHeading")}</h2>
+        {/* ══ 5. PENDAFTAR TERBARU ═══════════════════════════════════════ */}
+        <ConsolePanel
+          title={t("operator.overview.newestHeading")}
+          actions={
+            <ButtonLink href="/operator/tenants" variant="ghost" size="sm">
+              {t("operator.overview.openTenants")}
+            </ButtonLink>
+          }
+          flush
+        >
           <StaticTable
             columns={columns}
             rows={control.newest}
@@ -366,7 +527,7 @@ export default async function OperatorOverviewPage() {
               />
             }
           />
-        </section>
+        </ConsolePanel>
       </div>
     </div>
   );

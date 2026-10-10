@@ -102,6 +102,12 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         consoleTitle: t("operator.consoleTitle"),
         auditedBadge: t("operator.auditedBadge"),
         signedInAs: t("operator.signedInAs", { name: session.operator.name }),
+        operatorName: session.operator.name,
+        /* Host dibaca dari environment di SERVER — kulit client tidak membaca
+           `process.env` (ia tidak akan menemukannya di peramban) dan tidak
+           boleh menyimpulkannya dari `location.host`, yang akan memajang apa
+           pun yang diketik orang di bilah alamat. */
+        host: process.env.OPERATOR_HOST ?? "",
         mainMenu: t("sidebar.mainMenu"),
         closeMenu: t("sidebar.closeMenu"),
       }}

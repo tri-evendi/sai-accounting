@@ -30,6 +30,7 @@ import { HistoryOutlined } from "@ant-design/icons";
 
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConsolePanel } from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -134,18 +135,20 @@ export default async function OperatorAuditPage() {
         description={t("operator.audit.description")}
       />
 
-      <StaticTable
-        columns={columns}
-        rows={entries}
-        rowKey={(row) => row.id}
-        empty={
-          <EmptyState
-            icon={<HistoryOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
-            title={t("operator.audit.empty")}
-            description={t("operator.audit.emptyHint")}
-          />
-        }
-      />
+      <ConsolePanel flush>
+        <StaticTable
+          columns={columns}
+          rows={entries}
+          rowKey={(row) => row.id}
+          empty={
+            <EmptyState
+              icon={<HistoryOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
+              title={t("operator.audit.empty")}
+              description={t("operator.audit.emptyHint")}
+            />
+          }
+        />
+      </ConsolePanel>
     </div>
   );
 }

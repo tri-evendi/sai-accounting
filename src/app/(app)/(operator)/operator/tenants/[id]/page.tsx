@@ -35,6 +35,12 @@
 
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import {
+  ConsoleNotice,
+  ConsolePanel,
+  CONSOLE_MUTED,
+  CONSOLE_PAGE,
+} from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable } from "@/components/ui/static-table";
@@ -61,52 +67,46 @@ function formatDate(d: Date): string {
 
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
-const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" };
+const MUTED = CONSOLE_MUTED;
 
-const H2: React.CSSProperties = {
-  margin: 0,
-  fontSize: 16,
-  fontWeight: 600,
-  color: "var(--ant-color-text)",
-};
-
+/** Sub-judul DI DALAM panel (h3): tagihan & pajak di bawah langganan. */
 const H3: React.CSSProperties = {
   margin: 0,
-  paddingTop: 8,
-  fontSize: 14,
-  fontWeight: 600,
+  fontSize: "var(--ant-font-size)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
   color: "var(--ant-color-text)",
-};
-
-const SECTION: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
 };
 
 /**
- * Kisi fakta yang membagi lebarnya sendiri — pengganti
- * `grid-cols-2 lg:grid-cols-4`. Satu kolom di 375px tanpa media query.
+ * Kisi fakta yang membagi lebarnya sendiri — satu kolom di 375px tanpa media
+ * query.
  */
 const FACT_GRID: React.CSSProperties = {
   display: "grid",
-  gap: 12,
+  gap: "var(--ant-margin-sm)",
   margin: 0,
   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
 };
 
-const NOTICE: React.CSSProperties = {
-  ...MUTED,
-  padding: 12,
-  borderRadius: 8,
-  border: "1px solid var(--ant-color-border-secondary)",
-  background: "var(--ant-color-fill-quaternary)",
-  lineHeight: 1.625,
-};
-
+/**
+ * Satu fakta — BERISIAN, bukan bertepi, dan itu berubah bersama panelnya.
+ *
+ * Sampai halaman ini duduk di dalam kartu, tiap fakta menggambar tepinya
+ * sendiri; itu benar selama tidak ada bingkai lain di sekelilingnya. Begitu
+ * panelnya punya tepi, dua belas kotak bertepi di dalam satu kotak bertepi
+ * menghasilkan tiga belas garis pada satu wilayah — "outline saja", persis
+ * keluhan yang #266 ukur. Isian `fill-quaternary` memisahkan sel dari kartunya
+ * tanpa menambah satu garis pun.
+ */
 function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div style={{ padding: 12, borderRadius: 8, border: "1px solid var(--ant-color-border-secondary)" }}>
+    <div
+      style={{
+        padding: "var(--ant-padding-sm)",
+        borderRadius: "var(--ant-border-radius)",
+        background: "var(--ant-color-fill-quaternary)",
+      }}
+    >
       <dt style={{ fontSize: 14, color: "var(--ant-color-text-secondary)" }}>{label}</dt>
       <dd
         style={{
@@ -276,7 +276,7 @@ export default async function OperatorTenantDetailPage({
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+    <div style={CONSOLE_PAGE}>
       {/* Kepala halaman = `PageHeader`, sama dengan halaman dasbor di bawah
           tingkat-1 — bukan `<h1>` + tombol "kembali" tulisan tangan. Breadcrumb
           yang menyebut daftar tenant ADALAH jalan pulangnya, dan ia menyebut
@@ -304,8 +304,7 @@ export default async function OperatorTenantDetailPage({
       />
 
       {/* ── Kendali: paket ter-snapshot, kuota, pemakaian — selalu tampil ── */}
-      <section style={SECTION}>
-        <h2 style={H2}>{t("operator.tenant.planHeading")}</h2>
+      <ConsolePanel title={t("operator.tenant.planHeading")}>
         <dl style={FACT_GRID}>
           <Fact label={t("operator.tenant.planLabel")} value={tenant.planKey} />
           <Fact label={t("operator.tenant.signupDate")} value={formatDate(tenant.createdAt)} />
@@ -326,13 +325,12 @@ export default async function OperatorTenantDetailPage({
             {t("operator.tenant.trialEndsAt")}: {formatDate(tenant.trialEndsAt)}
           </p>
         )}
-      </section>
+      </ConsolePanel>
 
       {/* ── Platform: langganan & tagihan — boleh "mati" dengan tenang ───── */}
-      <section style={SECTION}>
-        <h2 style={H2}>{t("operator.tenant.subscriptionHeading")}</h2>
+      <ConsolePanel title={t("operator.tenant.subscriptionHeading")}>
         {billing === null ? (
-          <p style={NOTICE}>{t("operator.tenant.billingUnavailable")}</p>
+          <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
         ) : (
           <>
             {billing.subscription === null ? (
@@ -421,11 +419,13 @@ export default async function OperatorTenantDetailPage({
             )}
           </>
         )}
-      </section>
+      </ConsolePanel>
 
       {/* ── Registry PT — kendali; bukunya TIDAK PERNAH dibuka dari sini ─── */}
-      <section style={SECTION}>
-        <h2 style={H2}>{t("operator.tenant.companiesHeading")}</h2>
+      <ConsolePanel
+        title={t("operator.tenant.companiesHeading")}
+        footnote={t("operator.tenant.booksNote")}
+      >
         {companies.length === 0 ? (
           <p style={MUTED}>{t("operator.tenant.noCompanies")}</p>
         ) : (
@@ -435,10 +435,7 @@ export default async function OperatorTenantDetailPage({
             rowKey={(company) => company.id}
           />
         )}
-        <p style={{ ...MUTED, fontSize: 12, lineHeight: 1.625 }}>
-          {t("operator.tenant.booksNote")}
-        </p>
-      </section>
+      </ConsolePanel>
 
       {/* ── Tindakan tulis (#155) — SENGAJA paling bawah: fakta dibaca dulu,
           tombolnya belakangan; yang paling merusak paling jauh dari jalur

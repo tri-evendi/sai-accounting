@@ -423,6 +423,33 @@ Tanda wajib `*` tetap digambar aplikasi ini (di BELAKANG teks label, sama sepert
 
 ---
 
+## Lambang produk (perombakan merek Okt 2026)
+
+**Geometrinya hidup di `src/lib/brand/mark.ts`, dan hanya di sana.** Tiga
+permukaan membacanya: komponen `BrandMark`, kartu pratinjau sosial
+(`opengraph-image`), dan generator ikon raster. Menyalin `<path>`-nya ke tempat
+keempat ditolak `tests/brand-mark.test.ts`.
+
+Sebabnya terukur: sebelum perombakan ini produk punya **tiga** lambang — buku
+besar navy di dalam aplikasi, **diagram batang biru** (warna merek lama) di
+favicon/ikon layar depan, dan **huruf "S"** di kartu pratinjau. Tak satu pun
+gagal ketika menyimpang, jadi ketiganya bertahan berbulan-bulan.
+
+- **Ikon raster adalah TURUNAN.** `bun run brand:icons` membangkitkan
+  `favicon.ico` (16/32/48), `apple-icon.png`, dan ketiga ikon manifest dari
+  lambang yang sama. Jangan menyunting PNG-nya; ubah lambangnya lalu jalankan
+  skripnya dan komit hasilnya.
+- **Warnanya satu: navy `#1E3A5F`** (`BRAND_SOLID_LIGHT`) — peran "bidang merek
+  di belakang isi terang", sama dengan tombol primer. `BRAND_HEX` (bilah status
+  & `theme_color` manifest) kini nilai yang sama; sampai Okt 2026 ia `#1677ff`,
+  sehingga aplikasi yang dipasang ke layar depan memperlihatkan ikon navy di
+  bawah bilah status biru.
+- **Pertahankan ujinya pada ukuran sebenarnya.** Rancangan lambang dinilai
+  dengan dirender 16/20/24/32/64px lalu DILIHAT. Empat alternatif gagal di sana
+  (dua buku bertumpuk, sudut terpotong, undak, garis halaman); yang bertahan
+  bidang pejal dengan SATU takik, dan takik itu harus ≥2,5 unit pada kanvas 24
+  unit agar tidak jatuh di bawah satu piksel pada favicon.
+
 ## Ikon (issue #201)
 
 **Satu paket, satu bahasa bentuk: `@ant-design/icons`.** Dua set ikon berdampingan

@@ -24,6 +24,11 @@ import { CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import {
+  ConsoleNotice,
+  ConsolePanel,
+  CONSOLE_PAGE,
+} from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { reconciliationForOperator } from "@/lib/operator/store";
@@ -31,18 +36,7 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" };
-
 /** "Penagihan tidak terjangkau" — kalimat jujur, bukan galat. */
-const NOTICE: React.CSSProperties = {
-  ...MUTED,
-  padding: 12,
-  borderRadius: 8,
-  border: "1px solid var(--ant-color-border-secondary)",
-  background: "var(--ant-color-fill-quaternary)",
-  lineHeight: 1.625,
-};
-
 /** Dua pita hasil: ikon + kalimat; warnanya penanda kedua, bukan satu-satunya. */
 function banner(tone: "clean" | "findings"): React.CSSProperties {
   return {
@@ -91,16 +85,16 @@ export default async function OperatorReconciliationPage() {
        keduanya — pola yang sama dengan halaman dasbor. */
     <div>
       <PageHeader title={t("operator.reconciliation.heading")} description={t("operator.reconciliation.description")} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={CONSOLE_PAGE}>
 
       {report === null ? (
-        <p style={NOTICE}>{t("operator.reconciliation.unavailable")}</p>
+        <ConsoleNotice>{t("operator.reconciliation.unavailable")}</ConsoleNotice>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <p style={{ ...MUTED, fontVariantNumeric: "tabular-nums" }}>
-            {t("operator.reconciliation.checked", { count: report.subscriptionsChecked })}
-          </p>
-
+        <ConsolePanel
+          description={t("operator.reconciliation.checked", {
+            count: report.subscriptionsChecked,
+          })}
+        >
           {report.findings.length === 0 ? (
             <div role="status" style={banner("clean")}>
               <CheckCircleOutlined aria-hidden="true" style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }} />
@@ -126,12 +120,19 @@ export default async function OperatorReconciliationPage() {
           )}
 
           {report.skipped.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <h2
-                style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--ant-color-text)" }}
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin-xxs)" }}>
+              {/* `<h3>`: ia sub-judul DI DALAM panel, dan panelnya sudah
+                  memakai `<h2>` lewat kepalanya. */}
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: "var(--ant-font-size)",
+                  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+                  color: "var(--ant-color-text)",
+                }}
               >
                 {t("operator.reconciliation.skippedHeading")}
-              </h2>
+              </h3>
               <ul
                 style={{
                   listStyle: "disc",
@@ -147,7 +148,7 @@ export default async function OperatorReconciliationPage() {
               </ul>
             </div>
           )}
-        </div>
+        </ConsolePanel>
       )}
       </div>
     </div>

@@ -129,12 +129,30 @@ function RootError({ message }: { message?: string }) {
 }
 
 /** Kotak panel — `rounded-xl border bg-card p-4` sebelum migrasi. */
+/**
+ * Permukaan panel — RESEPNYA SATU dengan `ConsolePanel`, dan harus tetap satu.
+ *
+ * Berkas ini client component dengan tiga panel yang disusun sendiri (bukan
+ * `Card`), dan sampai perombakan konsol ia menggambar permukaannya dengan resep
+ * KETIGA: tepi + latar kartu, tanpa bayangan, padding 16px. Di layar hasilnya
+ * panel yang duduk sedikit lebih "rata" daripada setiap kartu lain di konsol —
+ * cacat yang tak pernah bisa ditunjuk pada satu baris, karena tiap bagiannya
+ * masuk akal sendiri-sendiri.
+ *
+ * Dua nilainya karena itu disamakan dengan `components/ui/card.tsx`:
+ *   • `boxShadowTertiary` — "lift halus", jawaban #266 di sisi `Card`;
+ *   • `paddingLG` (24px) — sesumbu dengan padding sel tabel, sama dengan `BOX`.
+ *
+ * Mengubah salah satunya di sini tanpa mengubahnya di sana mengembalikan
+ * ketiga panel ini menjadi keluarga permukaan kedua.
+ */
 function panelBox(token: GlobalToken): React.CSSProperties {
   return {
-    padding: token.padding,
+    padding: token.paddingLG,
     borderRadius: token.borderRadiusLG,
     border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
     background: token.colorBgContainer,
+    boxShadow: token.boxShadowTertiary,
   };
 }
 

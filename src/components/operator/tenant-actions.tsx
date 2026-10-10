@@ -205,12 +205,18 @@ function ActionPanel({
 }) {
   const { token } = theme.useToken();
   return (
+    /* Permukaan panel tindakan = resep `components/ui/card.tsx` PERSIS
+       (`paddingLG` + `boxShadowTertiary`), bukan tepi telanjang: di halaman
+       rincian tenant panel-panel ini berdiri tepat di bawah tiga `ConsolePanel`,
+       dan permukaan yang kehilangan bayangannya di tengah halaman terbaca
+       sebagai bagian yang belum selesai dirender. */
     <div
       style={{
-        padding: token.padding,
+        padding: token.paddingLG,
         borderRadius: token.borderRadiusLG,
         border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
         background: token.colorBgContainer,
+        boxShadow: token.boxShadowTertiary,
       }}
     >
       <Flex align="center" gap={token.marginXS}>

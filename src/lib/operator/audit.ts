@@ -34,7 +34,19 @@ export type OperatorAuditAction =
    * kiriman menyebut kunci di luar `landing.*`, yaitu kiriman yang tidak datang
    * dari layar yang dirender server. */
   | "operator.content.update"
-  | "operator.content.rejected";
+  | "operator.content.rejected"
+  /**
+   * PENGATURAN SITUS (migration 0016): nomor WhatsApp, surel penjualan,
+   * instruksi transfer manual. `details` memuat nilai LAMA dan BARU untuk dua
+   * yang pertama — keduanya memang dipajang di halaman publik, jadi bukan
+   * rahasia — dan untuk instruksi transfer hanya PANJANG + apakah ia terisi.
+   *
+   * Dicatat karena ia mengubah apa yang dilihat & dihubungi ORANG LUAR: nomor
+   * yang salah ketik memutus seluruh corong penawaran tanpa satu pun galat.
+   * `reset` = barisnya dihapus, ketiganya kembali ke environment.
+   */
+  | "operator.settings.update"
+  | "operator.settings.reset";
 
 export interface OperatorAuditEntry {
   id: string;

@@ -57,7 +57,8 @@ import {
   trialCountdown,
 } from "@/lib/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
-import { manualPaymentInstructions, offersInstantPayment } from "@/lib/payment-gateway";
+import { offersInstantPayment } from "@/lib/payment-gateway";
+import { resolveManualPaymentInstructions } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
@@ -125,7 +126,7 @@ export async function SubscriptionSection({
   /* Keadaan gerbang dibaca DI SINI karena `process.env` hanya ada di server;
      `PayInvoice` adalah komponen klien dan tidak boleh menebaknya sendiri. */
   const instantPayment = offersInstantPayment();
-  const manualInstructions = manualPaymentInstructions();
+  const manualInstructions = await resolveManualPaymentInstructions();
 
   if (!overview) {
     return (

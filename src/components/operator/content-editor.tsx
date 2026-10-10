@@ -36,7 +36,7 @@
  * Form); `FormMessage` yang menerjemahkan kunci pesannya di batas tampilan.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -118,6 +118,31 @@ export function ContentEditor({ locale, section, rows, save }: ContentEditorProp
     }
   });
 
+  /*
+   * PERINGATAN PEKERJAAN BELUM TERSIMPAN.
+   *
+   * Pemilih bahasa & bagian di halaman induknya adalah form GET — menekannya
+   * BERPINDAH HALAMAN, dan sampai sekarang itu membuang setiap isian yang baru
+   * diketik tanpa satu kata pun. Mengetik lima kalimat lalu berganti bagian
+   * untuk "melihat sebentar" berarti mengulang lima kalimat itu.
+   *
+   * `beforeunload` adalah satu-satunya tempat peramban mengizinkan pertanyaan
+   * itu, dan ia hanya dipasang SELAMA ada yang kotor — jadi menjelajah tanpa
+   * mengetik tidak pernah bertemu dialog apa pun.
+   */
+  const kotor = form.formState.isDirty;
+  useEffect(() => {
+    if (!kotor) return;
+    const tanya = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      /* Sebagian peramban masih menuntut `returnValue` diisi; kalimatnya
+         sendiri diabaikan semua peramban modern dan diganti teks bawaan. */
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", tanya);
+    return () => window.removeEventListener("beforeunload", tanya);
+  }, [kotor]);
+
   const kembalikan = (name: string) => {
     /* `shouldDirty` supaya tombol simpan tahu ada yang berubah; nilainya string
        kosong, yang di server berarti "hapus barisnya". */
@@ -163,6 +188,24 @@ export function ContentEditor({ locale, section, rows, save }: ContentEditorProp
                     )}
                   </FormControl>
                   <FormDescription>
+                    {/* ══ KALIMAT BAWAAN TERLIHAT, BUKAN HANYA `placeholder` ══
+                        Versi pertama editor ini menaruh kalimat bawaan HANYA di
+                        `placeholder`, dan placeholder lenyap begitu orang
+                        mengetik. Akibatnya: operator yang sudah mengganti satu
+                        kalimat TIDAK BISA LAGI melihat aslinya tanpa
+                        mengosongkan isiannya — yaitu tanpa membuang
+                        pekerjaannya sendiri dulu. Di alat yang seluruh modelnya
+                        "timpa dengan bawaan di belakangnya", itu bukan
+                        ketidaknyamanan; itu menghapus separuh informasinya. */}
+                    <span
+                      style={{
+                        display: "block",
+                        marginBottom: token.marginXXS,
+                        color: token.colorTextTertiary,
+                      }}
+                    >
+                      {t("operator.content.defaultIs", { text: row.fallback })}
+                    </span>
                     <Flex wrap align="center" gap={token.marginXS}>
                       <span>
                         {diubah

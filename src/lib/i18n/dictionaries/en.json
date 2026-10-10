@@ -4250,7 +4250,8 @@
     "pickWorkCenter": "Choose a work centre",
     "pickBom": "Choose a bill of materials",
     "producedPositive": "Output must be more than zero. Materials consumed with no output are recorded as process shrinkage.",
-    "siteContentTooLong": "This sentence is too long for the landing page."
+    "siteContentTooLong": "This sentence is too long for the landing page.",
+    "whatsappDigitsOnly": "The WhatsApp number must be digits only, without + or spaces (e.g. 628123456789)."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -4558,6 +4559,7 @@
       "tenants": "Tenants",
       "reconciliation": "Reconciliation",
       "content": "Landing content",
+      "settings": "Site settings",
       "scheduler": "Scheduler",
       "mail": "Email",
       "audit": "Audit trail",
@@ -4886,6 +4888,11 @@
       "description": "Change the wording on the public page without a release. A field left empty uses the sentence built into the app.",
       "localeLabel": "Language",
       "sectionLabel": "Page section",
+      "defaultIs": "Default: “{text}”",
+      "searchLabel": "Search wording",
+      "searchPlaceholder": "A phrase or a key name…",
+      "searchFound": "{count} sentences contain “{q}” — across every section.",
+      "searchEmpty": "No sentence contains “{q}”. Try a shorter phrase.",
       "unavailable": "The platform database is unreachable, so edits cannot be read or saved right now. The landing page still renders in full using its built-in wording.",
       "saved": "Saved: {updated} sentences changed, {reset} reverted to default.",
       "savedNothing": "Nothing changed.",
@@ -4907,6 +4914,24 @@
       "sectionFooter": "Footer",
       "sectionMock": "Product mock-up text",
       "sectionOther": "Other"
+    },
+    "settings": {
+      "heading": "Site settings",
+      "description": "Three values that outsiders see and use to reach you. Set here, not over SSH into the server.",
+      "whatsappLabel": "Sales WhatsApp number",
+      "whatsappHint": "Digits only, no + or spaces. Used by the WhatsApp button on the landing page and the quote screen.",
+      "emailLabel": "Sales email address",
+      "emailHint": "Used by the FAQ answer, the negotiated-plan card footer, and the quote screen.",
+      "paymentLabel": "Manual transfer instructions",
+      "paymentHint": "Shown verbatim to customers on the billing page. Name the bank, the account number, and the account holder.",
+      "emptyMeans": "Clearing a field and saving means the channel is REMOVED — its button disappears from the public page. To hand it back to the server configuration, use the button beside it.",
+      "fromDb": "set from the console",
+      "fromEnv": "from server configuration",
+      "saved": "Settings saved. The public pages change now.",
+      "errSave": "The settings could not be saved — the platform database is unreachable. The public pages keep using the server configuration.",
+      "resetSubmit": "Hand back to server configuration",
+      "resetConfirm": "All three values on this screen will be deleted from the database, and the public pages will go back to the values in the server configuration (.env). If the server configuration is empty, the contact channels disappear until they are filled in again.",
+      "resetDone": "Handed back. All three now use the server configuration."
     },
     "audit": {
       "heading": "Operator audit trail",

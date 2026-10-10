@@ -4250,7 +4250,8 @@
     "pickWorkCenter": "请选择工作中心",
     "pickBom": "请选择物料清单",
     "producedPositive": "产出须大于零。耗用物料而无产出的，应记为过程损耗。",
-    "siteContentTooLong": "这句文案对着陆页来说过长。"
+    "siteContentTooLong": "这句文案对着陆页来说过长。",
+    "whatsappDigitsOnly": "WhatsApp 号码只能是数字，不含 + 或空格（例如 628123456789）。"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",
@@ -4558,6 +4559,7 @@
       "tenants": "租户",
       "reconciliation": "对账",
       "content": "着陆页内容",
+      "settings": "站点设置",
       "scheduler": "调度器",
       "mail": "邮件",
       "audit": "审计记录",
@@ -4886,6 +4888,11 @@
       "description": "无需发版即可修改公开页面的文案。留空的字段将使用应用内置的句子。",
       "localeLabel": "语言",
       "sectionLabel": "页面区块",
+      "defaultIs": "默认：“{text}”",
+      "searchLabel": "搜索文案",
+      "searchPlaceholder": "一段文字或键名…",
+      "searchFound": "有 {count} 句包含“{q}”——来自所有区块。",
+      "searchEmpty": "没有句子包含“{q}”。请尝试更短的片段。",
       "unavailable": "平台数据库当前无法连接，因此暂时无法读取或保存修改。着陆页仍会使用内置文案完整显示。",
       "saved": "已保存：{updated} 句已修改，{reset} 句已恢复默认。",
       "savedNothing": "没有任何改动。",
@@ -4907,6 +4914,24 @@
       "sectionFooter": "页脚",
       "sectionMock": "产品示意文案",
       "sectionOther": "其他"
+    },
+    "settings": {
+      "heading": "站点设置",
+      "description": "外部人员看到并用来联系您的三个值。在此设置，无需通过 SSH 登录服务器。",
+      "whatsappLabel": "销售 WhatsApp 号码",
+      "whatsappHint": "只能是数字，不含 + 或空格。用于首页的 WhatsApp 按钮和报价页面。",
+      "emailLabel": "销售邮箱地址",
+      "emailHint": "用于常见问题解答、议价套餐卡片底部以及报价页面。",
+      "paymentLabel": "手动转账说明",
+      "paymentHint": "在账单页面原样展示给客户。请写明银行、账号和账户持有人。",
+      "emptyMeans": "清空字段并保存意味着该渠道被移除——其按钮将从公开页面消失。若要交回服务器配置，请使用旁边的按钮。",
+      "fromDb": "由控制台设置",
+      "fromEnv": "来自服务器配置",
+      "saved": "设置已保存。公开页面现已更新。",
+      "errSave": "设置未能保存——平台数据库无法连接。公开页面将继续使用服务器配置。",
+      "resetSubmit": "交回服务器配置",
+      "resetConfirm": "本页的三个值将从数据库中删除，公开页面将恢复使用服务器配置（.env）中的值。如果服务器配置为空，联系渠道将消失，直至重新填写。",
+      "resetDone": "已交回。三者现均使用服务器配置。"
     },
     "audit": {
       "heading": "操作员审计记录",

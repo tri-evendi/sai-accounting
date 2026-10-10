@@ -33,6 +33,7 @@
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ContentEditor, type ContentEditorRow } from "@/components/operator/content-editor";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
@@ -70,7 +71,7 @@ function formatDateTime(d: Date): string {
 export default async function OperatorContentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ locale?: string; section?: string }>;
+  searchParams: Promise<{ locale?: string; section?: string; q?: string }>;
 }) {
   await requireOperatorPage();
   const t = await getT();
@@ -82,6 +83,17 @@ export default async function OperatorContentPage({
      di bahasa yang tidak dibaca siapa pun. */
   const locale: Locale = isSiteContentLocale(params.locale) ? params.locale : await getLocale();
   const section = resolveSection(params.section);
+  /*
+   * PENCARIAN LINTAS BAGIAN — jawaban atas pertanyaan yang sebenarnya dibawa
+   * orang ke layar ini: *"di mana kalimat yang berbunyi … ?"*.
+   *
+   * Tanpa ini, memperbaiki satu typo menuntut menebak bagiannya lebih dulu dari
+   * 13 pilihan, dan nama kunci seperti `mockJournalMemoTwo` tidak bisa ditebak
+   * siapa pun. Dicari di DUA tempat sekaligus — nama kunci DAN kalimat
+   * bawaannya — sebab operator datang dari salah satunya: dari tangkapan layar
+   * (ia tahu kalimatnya) atau dari laporan/jejak audit (ia tahu kuncinya).
+   */
+  const cari = params.q?.trim().toLowerCase() ?? "";
 
   const [dictionary, stored] = await Promise.all([
     getDictionary(locale),
@@ -93,7 +105,15 @@ export default async function OperatorContentPage({
 
   const rows: ContentEditorRow[] = [];
   for (const [key, fallback] of defaults) {
-    if (sectionOf(key).id !== section.id) continue;
+    /* Saat mencari, BAGIAN diabaikan: hasil yang disaring dua kali adalah hasil
+       yang menyembunyikan apa yang baru saja diminta orangnya. */
+    if (cari) {
+      const cocok =
+        key.toLowerCase().includes(cari) || fallback.toLowerCase().includes(cari);
+      if (!cocok) continue;
+    } else if (sectionOf(key).id !== section.id) {
+      continue;
+    }
     const row = overrides.get(key);
     rows.push({
       name: key.slice(SITE_CONTENT_PREFIX.length),
@@ -168,6 +188,15 @@ export default async function OperatorContentPage({
               options={sectionOptions}
             />
           </div>
+          <div style={{ width: "100%", maxWidth: 320 }}>
+            <Input
+              name="q"
+              label={t("operator.content.searchLabel")}
+              placeholder={t("operator.content.searchPlaceholder")}
+              aria-label={t("operator.content.searchPlaceholder")}
+              defaultValue={cari}
+            />
+          </div>
           {/* Tombol kirim form GET — `variant="outline"`, sama dengan saringan
               daftar tenant: ia membaca ulang, tidak menulis apa pun (MASTER.md
               §Aksi utama per layar). Aksi utama halaman ini adalah "Simpan" di
@@ -179,12 +208,23 @@ export default async function OperatorContentPage({
 
         {stored === null && <p style={NOTICE}>{t("operator.content.unavailable")}</p>}
 
+        {/* Saat mencari, katakan BERAPA yang cocok — daftar hasil tanpa jumlah
+            membuat orang menebak apakah ia sudah melihat semuanya. Nol hasil
+            dijawab kalimat, bukan editor kosong yang terbaca seperti rusak. */}
+        {cari && (
+          <p style={{ margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" }}>
+            {rows.length === 0
+              ? t("operator.content.searchEmpty", { q: cari })
+              : t("operator.content.searchFound", { count: rows.length, q: cari })}
+          </p>
+        )}
+
         <ContentEditor
           /* `key` memaksa editor dibangun ULANG saat bahasa/bagian berganti:
              tanpa itu react-hook-form mempertahankan `defaultValues` dari
              render pertama, dan isian akan memperlihatkan nilai bagian
              SEBELUMNYA di bawah label bagian yang baru. */
-          key={`${locale}:${section.id}`}
+          key={`${locale}:${section.id}:${cari}`}
           locale={locale}
           section={section.id}
           rows={rows}

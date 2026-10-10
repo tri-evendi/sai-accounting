@@ -75,6 +75,7 @@ export const RILIS: readonly Rilis[] = [
   {
     versi: "0.8.0",
     tanggal: "2026-10-10",
+    sha: "45fcb23",
     ringkas:
       "Halaman harga menghitung sendiri apakah lebih murah naik paket atau menumpuk paket kecil, dan halaman depan dibuat lebih tenang \u2014 satu warna, perpindahan antar-bagian yang melembut.",
     butir: [

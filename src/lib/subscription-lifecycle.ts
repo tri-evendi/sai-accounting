@@ -18,7 +18,7 @@
  * Ditambah dua event OPERATOR (issue #155, di luar siklus dunning):
  *
  *   trialing/active/past_due ──(operator_suspend)──> suspended
- *   suspended ──(operator_restore)──> active
+ *   suspended/past_due ──(operator_restore)──> active
  *
  * "Trial habis → active" bukan hadiah: aktif berarti SIKLUS TAGIH DIMULAI —
  * tagihan pertama terbit pada saat itu juga, dan bila tidak dibayar, jalur
@@ -80,6 +80,25 @@ const TRANSITIONS: Record<
     payment_received: "active",
     grace_expired: "suspended",
     operator_suspend: "suspended",
+    /*
+     * Pemulihan manual DARI MENUNGGAK — ditambahkan Fase A komersialisasi, dan
+     * ia menutup lubang yang baru terlihat saat dipakai sungguhan.
+     *
+     * Sebelum ini `operator_restore` hanya sah dari `suspended`, sebab #155
+     * hanya membutuhkan "buka kembali buku yang terkunci". Tetapi operator yang
+     * MEMBATALKAN sebuah tagihan — tagihan yang memang tidak pernah disetujui
+     * siapa pun — meninggalkan akun bertanda `past_due` tanpa satu pun jalan
+     * sah untuk mencabut tandanya: satu-satunya event yang mengarah ke `active`
+     * adalah `payment_received`, dan memakainya berarti menulis pembayaran yang
+     * tidak pernah terjadi ke dalam jejak.
+     *
+     * Jadi yang kurang bukan event baru melainkan satu baris di baris ini.
+     * Maknanya tidak berubah — "operator mengembalikan akun ke keadaan baik" —
+     * dan `setTenantSuspension` sudah membersihkan `past_due_since` pada
+     * pemulihan, yang justru PERSIS yang dibutuhkan akun menunggak (komentarnya
+     * di sana sudah menyebut paritas itu sejak awal).
+     */
+    operator_restore: "active",
   },
   suspended: {
     payment_received: "active",

@@ -240,6 +240,7 @@ async function main() {
   let nominalDibatalkan = 0;
   let trialDibersihkan = 0;
   let dipulihkan = 0;
+  let gagalPulih = 0;
 
   for (const sub of sasaran) {
     const tenant = tenantById.get(sub.tenantId);
@@ -307,11 +308,21 @@ async function main() {
             actor: { operator: `cli:${process.env.USER ?? "unknown"}`, reason },
           }
         );
-        if (hasil.outcome !== "done") {
-          baris.push(`  ⚠ pemulihan tidak berlaku: ${hasil.outcome}`);
+        if (hasil.outcome === "done") {
+          dipulihkan += 1;
+        } else {
+          /* Dihitung sebagai TIDAK dipulihkan, dan itu penting: ringkasan di
+             bawah adalah yang dibaca manusia untuk memutuskan "sudah beres
+             atau belum". Penghitung yang mencatat PERCOBAAN alih-alih HASIL
+             pernah melaporkan "6 tenant dipulihkan" ketika satu di antaranya
+             ditolak mesin siklus hidup — satu akun tertinggal menunggak dengan
+             laporan yang mengatakan sebaliknya. */
+          baris.push(`  ⚠ pemulihan TIDAK berlaku: ${hasil.outcome} — masih ${sub.status}`);
+          gagalPulih += 1;
         }
+      } else {
+        dipulihkan += 1;
       }
-      dipulihkan += 1;
     }
 
     if (baris.length === 0) {
@@ -332,6 +343,9 @@ async function main() {
   console.log(`  tagihan dibatalkan (void)  : ${dibatalkan} (${rp(nominalDibatalkan)})`);
   console.log(`  trial_ends_at dibersihkan  : ${trialDibersihkan}`);
   console.log(`  tenant dipulihkan          : ${dipulihkan}`);
+  if (gagalPulih > 0) {
+    console.log(`  ⚠ pemulihan DITOLAK mesin   : ${gagalPulih} — periksa baris di atas`);
+  }
   if (!apply) {
     console.log(
       "\n⚑ Belum ada yang ditulis. Jalankan ulang dengan:\n" +

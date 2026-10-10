@@ -62,7 +62,12 @@ describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfia
       grace_expired: "suspended",
       cancel: null,
       operator_suspend: "suspended", // manual #155 — tanpa menunggu tenggang
-      operator_restore: null,
+      /* Fase A komersialisasi: operator yang MEMBATALKAN tagihan yang tidak
+         pernah disetujui siapa pun harus punya jalan sah mencabut tanda
+         menunggaknya. Sebelum ini satu-satunya event menuju `active` dari sini
+         adalah `payment_received` — memakainya berarti menulis pembayaran yang
+         tidak pernah terjadi ke dalam jejak audit. */
+      operator_restore: "active",
     },
     suspended: {
       payment_received: "active", // bayar = pulih penuh

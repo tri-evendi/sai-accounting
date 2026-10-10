@@ -75,6 +75,7 @@ export const RILIS: readonly Rilis[] = [
   {
     versi: "0.7.0",
     tanggal: "2026-10-10",
+    sha: "7198187",
     ringkas:
       "Akun baru dibuka lewat penawaran, bukan pendaftaran mandiri \u2014 dan penagihan otomatis berhenti menyentuh akun yang tidak pernah setuju membeli apa pun.",
     butir: [

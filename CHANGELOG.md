@@ -20,7 +20,7 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.8.0 — 2026-10-10 — belum digelar
+## 0.8.0 — 2026-10-10 (45fcb23)
 
 Halaman harga menghitung sendiri apakah lebih murah naik paket atau menumpuk paket kecil, dan halaman depan dibuat lebih tenang — satu warna, perpindahan antar-bagian yang melembut.
 

@@ -20,7 +20,7 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.7.0 — 2026-10-10 — belum digelar
+## 0.7.0 — 2026-10-10 (7198187)
 
 Akun baru dibuka lewat penawaran, bukan pendaftaran mandiri — dan penagihan otomatis berhenti menyentuh akun yang tidak pernah setuju membeli apa pun.
 

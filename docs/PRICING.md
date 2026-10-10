@@ -1,5 +1,12 @@
 # Paket & harga — sumber kebenaran katalog
 
+> **Satu lapis di atas dokumen ini: `docs/KOMERSIALISASI.md`** — strategi
+> go-to-market, fase, dan gerbang kapan mesin langganan otomatis boleh
+> dinyalakan. Dokumen INI tetap sumber kebenaran **katalognya** (angka, kuota,
+> aturan main yang hidup di kode); dokumen itu menjawab *kepada siapa dan
+> bagaimana* katalog ini dijual. Kalau keduanya berbeda soal angka, dokumen ini
+> yang benar.
+>
 > Dokumen ini adalah tempat **keputusan komersial** dicatat: angka, alasan,
 > dan aturan mainnya. Kode tidak boleh menyimpan angka yang tidak ada di sini,
 > dan halaman harga tidak boleh memajang angka yang tidak datang dari tabel

@@ -265,7 +265,11 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(auth)/forgot-password/page.tsx",
   "app/(app)/(auth)/layout.tsx",
   "app/(app)/(auth)/login/page.tsx",
-  "app/(app)/(auth)/register/page.tsx",
+  /* Pendaftaran: halamannya kini SERVER component (ia memutuskan apakah
+     pendaftaran mandiri dibuka — `SELF_SERVE_SIGNUP`, environment server);
+     yang client hanyalah formulirnya. Jumlahnya tidak bergeser: satu berkas
+     berhenti jadi client, satu berkas baru menjadi client. */
+  "app/(app)/(auth)/register/register-form.tsx",
   "app/(app)/(auth)/reset-password/page.tsx",
   "app/(app)/(auth)/select-company/company-choices.tsx",
   "app/(app)/(auth)/unlock/unlock-form.tsx",

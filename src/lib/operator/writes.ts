@@ -662,7 +662,17 @@ export type ExtendSubscriptionResult =
   | { outcome: "no_subscription" }
   /** Langganan yang sudah dibatalkan tidak diperpanjang — ia dibangkitkan lewat
    *  perpindahan paket, keputusan yang berbeda dan harus diambil sadar. */
-  | { outcome: "cancelled" };
+  | { outcome: "cancelled" }
+  /**
+   * Siklus yang diminta TIDAK PUNYA HARGA di katalog paket ini (mis. tahunan
+   * pada paket rundingan, yang `price_yearly`-nya NULL).
+   *
+   * Ditolak, bukan ditambal: lihat ⚠ "HARGA DIPOTRET ULANG" di
+   * `extendSubscription`. Memperpanjang tanpa memotret harga meninggalkan
+   * langganan tahunan berharga bulanan — kurang tagih 10× yang baru bersuara
+   * setahun kemudian.
+   */
+  | { outcome: "cycle_unpriced"; cycle: "monthly" | "yearly" };
 
 /**
  * Beri sebuah tenant periode berbayar TANPA melewati gerbang pembayaran.
@@ -716,10 +726,53 @@ export async function extendSubscription(
   const subscription = await deps.platform.subscription.findFirst({
     where: { tenantId: tenant.id },
     orderBy: { id: "desc" },
-    select: { id: true, status: true, currentPeriodEnd: true, currency: true },
+    select: {
+      id: true,
+      status: true,
+      currentPeriodEnd: true,
+      currency: true,
+      /* Ketiganya dibaca untuk SATU hal: memotret ulang harga saat siklusnya
+         berubah — lihat ⚠ di kepala fungsi. */
+      billingCycle: true,
+      price: true,
+      planId: true,
+    },
   });
   if (!subscription) return { outcome: "no_subscription" };
   if (subscription.status === "cancelled") return { outcome: "cancelled" };
+
+  /*
+   * ══ HARGA DIPOTRET ULANG SAAT SIKLUSNYA BERUBAH ══════════════════════════
+   *
+   * Sampai perbaikan ini, fungsi ini mengubah `billing_cycle` menjadi siklus
+   * yang diminta dan **membiarkan `price` apa adanya**. Akibatnya terukur di
+   * produksi: satu langganan kini bersiklus `yearly` dengan `price` 599.000 —
+   * harga BULANAN paket Pro. Saat periode kompensasinya habis (9 Sep 2027),
+   * siklus tagih berikutnya menagih Rp 599.000 untuk SETAHUN, bukan
+   * Rp 5.990.000. Kurang tagih sepuluh kali lipat, dan ia tidak bersuara:
+   * tidak ada galat, tidak ada peringatan, hanya satu angka yang salah
+   * setahun kemudian (`docs/KOMERSIALISASI.md` §11).
+   *
+   * Sumber harganya KATALOG (`plans`), bukan hitungan di sini: `price_yearly`
+   * adalah kolom tersendiri — tahunan = 10 bulan, bukan 12 (`PRICING.md` §1) —
+   * jadi mengalikan harga bulanan dengan 12 maupun dengan 10 akan menjadi
+   * aturan harga KEDUA yang bisa menyimpang dari katalognya.
+   *
+   * Siklus yang tidak punya harga di katalog DITOLAK, tidak ditambal: paket
+   * rundingan menyimpan `price_yearly = NULL` dengan sengaja, dan menebak
+   * angkanya adalah cara paling halus untuk menagih sesuatu yang tidak pernah
+   * disepakati siapa pun.
+   */
+  let hargaBaru: string | null = null;
+  if (subscription.billingCycle !== input.cycle) {
+    const plan = await deps.platform.plan.findUnique({
+      where: { id: subscription.planId },
+      select: { priceMonthly: true, priceYearly: true },
+    });
+    const katalog = input.cycle === "yearly" ? plan?.priceYearly ?? null : plan?.priceMonthly ?? null;
+    if (katalog === null) return { outcome: "cycle_unpriced", cycle: input.cycle };
+    hargaBaru = katalog.toString();
+  }
 
   const from = extensionStart(subscription.currentPeriodEnd, now);
   const to = extendPeriod(from, input.cycle, input.periods);
@@ -758,6 +811,11 @@ export async function extendSubscription(
     data: {
       status: "active",
       billingCycle: input.cycle,
+      /* Hanya ditulis bila siklusnya BERUBAH — perpanjangan pada siklus yang
+         sama tidak boleh diam-diam memindahkan pelanggan ke harga katalog
+         terbaru (snapshot, `PRICING.md` §3: "perubahan katalog TIDAK menyentuh
+         langganan berjalan"). */
+      ...(hargaBaru !== null ? { price: hargaBaru } : {}),
       currentPeriodStart: from,
       currentPeriodEnd: to,
       /* Trial selesai — ia sudah digantikan periode berbayar. Membiarkannya
@@ -787,6 +845,11 @@ export async function extendSubscription(
       to: to.toISOString(),
       invoiceNumber,
       fromStatus: subscription.status,
+      /* Harga yang berubah adalah perubahan UANG — ia harus terbaca di jejak,
+         bukan hanya di baris basis datanya. */
+      ...(hargaBaru !== null
+        ? { priceFrom: subscription.price.toString(), priceTo: hargaBaru }
+        : {}),
     },
   });
 

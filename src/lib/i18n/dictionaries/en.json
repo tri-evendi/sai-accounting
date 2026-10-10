@@ -536,7 +536,12 @@
       "termsPrefix": "I agree to the",
       "termsLinkLabel": "terms & conditions",
       "termsAnd": "and the",
-      "privacyLinkLabel": "privacy policy"
+      "privacyLinkLabel": "privacy policy",
+      "closedTitle": "Self-serve sign-up is closed",
+      "closedBody": "New accounts are opened through a quote rather than self-serve, so that quota, data migration, and payment terms are agreed first. Contact us and we will set the account up for you.",
+      "closedWhatsapp": "Contact us on WhatsApp",
+      "closedEmail": "Email us at {email}",
+      "closedSignIn": "Already have an account? Sign in"
     }
   },
   "status": {
@@ -4722,7 +4727,8 @@
         "submit": "Extend",
         "success": "Subscription extended to {to}. Comped invoice {invoice} issued (Rp 0).",
         "errDuplicate": "This extension has already been applied — invoice {invoice} exists.",
-        "errCancelled": "The subscription is cancelled. Revive it through a plan change first."
+        "errCancelled": "The subscription is cancelled. Revive it through a plan change first.",
+        "errUnpriced": "This tenant's plan has no {cycle} price in the catalogue, so the extension was refused — a yearly subscription carrying a monthly price would under-bill tenfold. Set the price in the catalogue, or extend on the same cycle."
       },
       "deletion": {
         "title": "Execute account deletion",

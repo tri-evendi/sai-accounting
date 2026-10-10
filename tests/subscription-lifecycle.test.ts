@@ -31,6 +31,7 @@ import {
   type SubscriptionEvent,
 } from "@/lib/subscription-lifecycle";
 import type { SubscriptionStatus } from "@/lib/platform-constants";
+import { DEFAULT_BILLING_MODE, billingModeIsAutomatic } from "@/lib/platform-constants";
 import { PERMISSIONS } from "@/lib/authz";
 
 describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfiah", () => {
@@ -159,9 +160,9 @@ describe("perencana penjadwal — IDEMPOTEN: putaran kedua kosong", () => {
 
   it("trial habis: terpilih sekali; setelah statusnya berpindah, putaran kedua kosong", () => {
     const subs = [
-      { id: 1, status: "trialing", trialEndsAt: daysAgo(1), pastDueSince: null },
-      { id: 2, status: "trialing", trialEndsAt: daysAhead(3), pastDueSince: null },
-      { id: 3, status: "active", trialEndsAt: daysAgo(1), pastDueSince: null },
+      { id: 1, status: "trialing", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: "auto" },
+      { id: 2, status: "trialing", trialEndsAt: daysAhead(3), pastDueSince: null, billingMode: "auto" },
+      { id: 3, status: "active", trialEndsAt: daysAgo(1), pastDueSince: null, billingMode: "auto" },
     ];
     expect(planTrialExpiries(subs, now)).toEqual([1]);
 
@@ -172,8 +173,8 @@ describe("perencana penjadwal — IDEMPOTEN: putaran kedua kosong", () => {
 
   it("tenggang habis: hanya past_due yang melewati GRACE_PERIOD_DAYS; putaran kedua kosong", () => {
     const subs = [
-      { id: 1, status: "past_due", trialEndsAt: null, pastDueSince: daysAgo(GRACE_PERIOD_DAYS + 1) },
-      { id: 2, status: "past_due", trialEndsAt: null, pastDueSince: daysAgo(GRACE_PERIOD_DAYS - 1) },
+      { id: 1, status: "past_due", trialEndsAt: null, pastDueSince: daysAgo(GRACE_PERIOD_DAYS + 1), billingMode: "auto" },
+      { id: 2, status: "past_due", trialEndsAt: null, pastDueSince: daysAgo(GRACE_PERIOD_DAYS - 1), billingMode: "auto" },
     ];
     expect(planGraceExpiries(subs, now)).toEqual([1]);
 
@@ -188,13 +189,13 @@ describe("perencana penjadwal — IDEMPOTEN: putaran kedua kosong", () => {
       { id: 12, subscriptionId: 3, status: "paid", dueDate: daysAgo(9) },
     ];
     const statusById = new Map([
-      [1, "active"],
-      [2, "active"],
-      [3, "active"],
+      [1, { status: "active", billingMode: "auto" }],
+      [2, { status: "active", billingMode: "auto" }],
+      [3, { status: "active", billingMode: "auto" }],
     ]);
     expect(planDunning(invoices, statusById, now)).toEqual([1]);
 
-    statusById.set(1, transition("active", "payment_failed")!);
+    statusById.set(1, { status: transition("active", "payment_failed")!, billingMode: "auto" });
     expect(planDunning(invoices, statusById, now)).toEqual([]);
   });
 
@@ -244,5 +245,120 @@ describe("tidak ada penghapusan data pada keadaan mana pun (AC #140)", () => {
       "utf8"
     );
     expect(src).not.toMatch(/\.delete\(|\.deleteMany\(|DROP DATABASE/i);
+  });
+});
+
+/**
+ * ══ GERBANG MODE PENAGIHAN (Fase A komersialisasi) ═════════════════════════
+ *
+ * Yang dijaga di sini adalah satu aturan: **penjadwal hanya boleh menyentuh
+ * langganan bermode `auto`.** Ia tidak lahir dari desain melainkan dari
+ * kejadian: sembilan akun UJI COBA di paket `pro` ditagih Rp 664.890, ditagih
+ * ulang lewat 40 surel pengingat, lalu lima di antaranya ditangguhkan menjadi
+ * hanya-baca — padahal tidak satu pun pernah setuju membeli apa pun. Dua
+ * tenant internal selamat BUKAN karena dilindungi, tetapi karena kebetulan
+ * tidak pernah melewati jalur `trialing → habis`.
+ *
+ * Rincian lengkapnya: `docs/KOMERSIALISASI.md` §1.1 dan §3.3.
+ *
+ * ⚠ Ketiga langkah diuji TERPISAH dengan sengaja. Gerbang yang hanya dipasang
+ * di satu dari tiga perencana justru bentuk kegagalan yang paling mungkin —
+ * ia menghentikan penerbitan tagihan sambil tetap menangguhkan buku orang.
+ */
+describe("gerbang mode penagihan: hanya `auto` yang boleh ditagih", () => {
+  const now = new Date("2026-10-10T10:00:00Z");
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+
+  /** Keadaan yang, pada mode `auto`, PASTI terpilih di ketiga langkah. */
+  const trialHabis = (mode: string) => ({
+    id: 1,
+    status: "trialing",
+    trialEndsAt: daysAgo(1),
+    pastDueSince: null,
+    billingMode: mode,
+  });
+  const tenggangHabis = (mode: string) => ({
+    id: 1,
+    status: "past_due",
+    trialEndsAt: null,
+    pastDueSince: daysAgo(GRACE_PERIOD_DAYS + 1),
+    billingMode: mode,
+  });
+  const tagihanLewatTempo = [
+    { id: 10, subscriptionId: 1, status: "issued", dueDate: daysAgo(3) },
+  ];
+
+  it("`auto` tetap ditagih — penjaga ini TIDAK mematikan penagihan yang sah", () => {
+    expect(planTrialExpiries([trialHabis("auto")], now)).toEqual([1]);
+    expect(planGraceExpiries([tenggangHabis("auto")], now)).toEqual([1]);
+    expect(
+      planDunning(
+        tagihanLewatTempo,
+        new Map([[1, { status: "active", billingMode: "auto" }]]),
+        now
+      )
+    ).toEqual([1]);
+  });
+
+  for (const mode of ["none", "manual"]) {
+    it(`\`${mode}\`: tidak diterbitkan tagihan, tidak didorong past_due, tidak ditangguhkan`, () => {
+      expect(planTrialExpiries([trialHabis(mode)], now)).toEqual([]);
+      expect(planGraceExpiries([tenggangHabis(mode)], now)).toEqual([]);
+      expect(
+        planDunning(tagihanLewatTempo, new Map([[1, { status: "active", billingMode: mode }]]), now)
+      ).toEqual([]);
+    });
+  }
+
+  it("mode yang TIDAK DIKENAL diperlakukan sebagai tidak-boleh-ditagih (gagal-tertutup)", () => {
+    /* Kolomnya `VARCHAR`; basis data tidak menolak apa pun (konvensi
+       docs/DATABASE.md §2). Nilai asing — salah ketik, migrasi separuh, baris
+       hasil impor — tidak boleh berarti "tagih saja". */
+    for (const asing of ["", "AUTO", "automatic", "otomatis", "null"]) {
+      expect(planTrialExpiries([trialHabis(asing)], now), asing).toEqual([]);
+      expect(planGraceExpiries([tenggangHabis(asing)], now), asing).toEqual([]);
+      expect(
+        planDunning(
+          tagihanLewatTempo,
+          new Map([[1, { status: "active", billingMode: asing }]]),
+          now
+        ),
+        asing
+      ).toEqual([]);
+    }
+  });
+
+  it("bawaan basis data adalah mode yang TIDAK menagih", () => {
+    /* Baris yang dibuat image LAMA — yang belum tahu kolom ini ada — mendapat
+       bawaan basis data. Kalau bawaannya `auto`, seluruh penjaga di atas
+       berhenti melindungi akun yang paling baru. Migration 0014 dan model
+       Prisma harus menyatakan bawaan yang sama. */
+    expect(billingModeIsAutomatic(DEFAULT_BILLING_MODE)).toBe(false);
+
+    const migrasi = readFileSync(
+      join(__dirname, "..", "prisma", "platform", "migrations", "0014_subscription_billing_mode", "migration.sql"),
+      "utf8"
+    );
+    expect(migrasi).toMatch(/DEFAULT\s+'none'/i);
+
+    const skema = readFileSync(
+      join(__dirname, "..", "prisma", "platform", "schema.prisma"),
+      "utf8"
+    );
+    expect(skema).toMatch(/billingMode\s+String\s+@default\("none"\)/);
+  });
+
+  it("penjadwal benar-benar MEMBACA kolomnya — gerbang tanpa data adalah gerbang terbuka", () => {
+    /* `tsc` sudah menuntut `billingMode` ada di tipe yang dioper, tetapi tidak
+       bisa menuntut `select` Prisma mengambilnya: field yang hilang di `select`
+       membuat querynya gagal di runtime, bukan di compile. Di penjadwal yang
+       berjalan tiap jam dan `|| true`-nya menelan galat, kegagalan runtime
+       adalah kegagalan yang tidak bersuara. */
+    const src = readFileSync(
+      join(__dirname, "..", "scripts", "subscription-scheduler.ts"),
+      "utf8"
+    );
+    expect(src).toMatch(/billingMode:\s*true/);
+    expect(src).toMatch(/billingMode:\s*s\.billingMode/);
   });
 });

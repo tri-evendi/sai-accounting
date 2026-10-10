@@ -35,6 +35,54 @@ export const SUBSCRIPTION_STATUSES = [
 export const subscriptionStatusSchema = z.enum(SUBSCRIPTION_STATUSES);
 export type SubscriptionStatus = z.infer<typeof subscriptionStatusSchema>;
 
+/**
+ * MODE PENAGIHAN sebuah langganan — menjawab "akun ini boleh ditagih OTOMATIS?",
+ * pertanyaan yang sampai sekarang tidak pernah ditanyakan siapa pun.
+ *
+ * ══ KENAPA KOLOM INI ADA ═══════════════════════════════════════════════════
+ * Sampai ia ada, penjadwal menerbitkan tagihan untuk SETIAP langganan yang masa
+ * uji cobanya habis — tanpa satu pun pemeriksaan, dan harga nol pun tidak
+ * dilewati (`scripts/subscription-scheduler.ts`). Dua tenant internal selamat
+ * BUKAN karena dilindungi, melainkan karena kebetulan tidak pernah melewati
+ * jalur `trialing → habis`.
+ *
+ * Akibatnya terjadi dua kali di produksi: sembilan akun UJI COBA di paket `pro`
+ * ditagih Rp 664.890, ditagih ulang lewat 40 surel pengingat, lalu lima di
+ * antaranya ditangguhkan menjadi hanya-baca — padahal tidak satu pun pernah
+ * setuju membeli apa pun. Rinciannya di `docs/KOMERSIALISASI.md` §1.1.
+ *
+ * Preseden bentuknya ada di penjadwal itu sendiri: dunning SENGAJA mengecualikan
+ * tagihan perpindahan paket (`targetPlanId: null`) karena "tagihan selisih
+ * naik-paket adalah tawaran, bukan kewajiban". Sistem ini sudah tahu sebagian
+ * TAGIHAN tidak boleh memicu penagihan; yang kurang pengetahuan yang sama
+ * tentang AKUN.
+ *
+ *   `none`    tidak pernah ditagih — internal, penguji, pilot, demo.
+ *   `manual`  ditagih DI LUAR sistem (faktur dari buku PT penyedia sendiri,
+ *             `docs/KOMERSIALISASI.md` §3.4). Hak pakainya penuh; penjadwal
+ *             tidak menerbitkan, tidak menagih, dan tidak menangguhkan.
+ *   `auto`    siklus penuh penjadwal — satu-satunya mode yang bisa menerbitkan
+ *             tagihan, mendorong ke `past_due`, dan menangguhkan.
+ *
+ * ⚠ BAWAANNYA `none`, DAN ITU ARAH YANG DISENGAJA. Baris baru yang dibuat kode
+ * LAMA (image yang belum tahu kolom ini) mendapat bawaan basis data, jadi
+ * bawaannya harus yang paling tidak merugikan orang: kurang tagih bisa
+ * diperbaiki dengan satu faktur, sedangkan buku pelanggan yang terkunci karena
+ * tagihan yang tidak pernah ia setujui tidak bisa ditarik kembali. Akun menjadi
+ * `auto` lewat tindakan manusia — tidak pernah lewat berakhirnya waktu.
+ */
+export const BILLING_MODES = ["none", "manual", "auto"] as const;
+export const billingModeSchema = z.enum(BILLING_MODES);
+export type BillingMode = z.infer<typeof billingModeSchema>;
+
+/** Bawaan untuk langganan baru — lihat ⚠ di atas. */
+export const DEFAULT_BILLING_MODE: BillingMode = "none";
+
+/** SATU-SATUNYA mode yang boleh disentuh penjadwal penagihan. */
+export function billingModeIsAutomatic(mode: string): boolean {
+  return mode === "auto";
+}
+
 export const BILLING_CYCLES = ["monthly", "yearly"] as const;
 export const billingCycleSchema = z.enum(BILLING_CYCLES);
 export type BillingCycle = z.infer<typeof billingCycleSchema>;

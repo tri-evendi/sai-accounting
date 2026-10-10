@@ -34,7 +34,7 @@
  */
 
 import type { SubscriptionStatus } from "@/lib/platform-constants";
-import { SUBSCRIPTION_STATUSES } from "@/lib/platform-constants";
+import { SUBSCRIPTION_STATUSES, billingModeIsAutomatic } from "@/lib/platform-constants";
 import { computeTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 
 export const SUBSCRIPTION_EVENTS = [
@@ -392,11 +392,35 @@ export function planOrphanSubscriptionAdoptions(
     });
 }
 
+/*
+ * ══ GERBANG MODE PENAGIHAN — berdiri di TIGA perencana sekaligus ═══════════
+ *
+ * Ketiga fungsi di bawah adalah satu-satunya tempat penjadwal memutuskan
+ * SIAPA yang ditagih, didorong ke `past_due`, dan ditangguhkan. Sampai gerbang
+ * ini ada, jawabannya "semua yang keadaannya cocok" — dan itu menagih sembilan
+ * akun uji coba lalu menangguhkan lima buku (`docs/KOMERSIALISASI.md` §1.1).
+ *
+ * Gerbangnya dipasang DI SINI, di fungsi murni, bukan di `WHERE` query
+ * penjadwal, karena dua alasan:
+ *
+ *   • satu `WHERE` yang terlupa di salah satu dari tiga langkah akan lolos
+ *     tanpa bersuara; sebuah field wajib pada tipe `PlannableSubscription`
+ *     TIDAK BISA dilupakan — `tsc` menolak pemanggil yang tidak mengopernya;
+ *   • keputusannya jadi bisa diuji habis-habisan tanpa basis data
+ *     (`tests/subscription-lifecycle.test.ts`).
+ *
+ * `planDunning` karena itu menerima peta berisi OBJEK, bukan sekadar status:
+ * mengubah tipenya memaksa setiap pemanggil lama memperlihatkan dari mana ia
+ * mengambil mode penagihannya.
+ */
+
 export interface PlannableSubscription {
   id: number;
   status: string;
   trialEndsAt: Date | null;
   pastDueSince: Date | null;
+  /** `none` | `manual` | `auto` — lihat `billingModeIsAutomatic`. WAJIB. */
+  billingMode: string;
 }
 
 /** Langganan trialing yang trial-nya sudah habis → mulai siklus tagih. */
@@ -406,7 +430,11 @@ export function planTrialExpiries(
 ): number[] {
   return subscriptions
     .filter(
-      (s) => s.status === "trialing" && s.trialEndsAt !== null && s.trialEndsAt.getTime() <= now.getTime()
+      (s) =>
+        billingModeIsAutomatic(s.billingMode) &&
+        s.status === "trialing" &&
+        s.trialEndsAt !== null &&
+        s.trialEndsAt.getTime() <= now.getTime()
     )
     .map((s) => s.id);
 }
@@ -420,6 +448,7 @@ export function planGraceExpiries(
   return subscriptions
     .filter(
       (s) =>
+        billingModeIsAutomatic(s.billingMode) &&
         s.status === "past_due" &&
         s.pastDueSince !== null &&
         now.getTime() >= s.pastDueSince.getTime() + graceDays * DAY_MS
@@ -430,16 +459,20 @@ export function planGraceExpiries(
 /** Tagihan terbit yang lewat jatuh tempo pada langganan aktif → gagal bayar. */
 export function planDunning(
   invoices: readonly { id: number; subscriptionId: number; status: string; dueDate: Date }[],
-  subscriptionStatusById: ReadonlyMap<number, string>,
+  subscriptionById: ReadonlyMap<number, { status: string; billingMode: string }>,
   now: Date
 ): number[] {
   return invoices
-    .filter(
-      (inv) =>
-        inv.status === "issued" &&
-        inv.dueDate.getTime() < now.getTime() &&
-        subscriptionStatusById.get(inv.subscriptionId) === "active"
-    )
+    .filter((inv) => {
+      if (inv.status !== "issued") return false;
+      if (inv.dueDate.getTime() >= now.getTime()) return false;
+      const sub = subscriptionById.get(inv.subscriptionId);
+      /* Langganan yang tidak dikenal TIDAK ditagih — gagal-tertutup ke arah
+         yang tidak merugikan orang (bandingkan: dulu `undefined !== "active"`
+         juga menolak, jadi perilakunya tidak berubah untuk kasus ini). */
+      if (!sub) return false;
+      return billingModeIsAutomatic(sub.billingMode) && sub.status === "active";
+    })
     .map((inv) => inv.subscriptionId);
 }
 

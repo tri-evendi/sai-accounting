@@ -251,6 +251,16 @@ export async function operatorExtendSubscription(
       return { ok: false, message: t("operator.actions.suspension.errNoSubscription") };
     case "cancelled":
       return { ok: false, message: t("operator.actions.extend.errCancelled") };
+    /* Siklus yang diminta tidak punya harga di katalog paket ini. Ditolak di
+       inti (`extendSubscription`) supaya tidak ada langganan tahunan yang
+       membawa harga bulanan — kurang tagih 10× yang baru bersuara setahun
+       kemudian. Kalimatnya menyebut SEBABNYA; `default` di bawah akan
+       menjawabnya dengan "tenant tidak ditemukan", yang tidak benar. */
+    case "cycle_unpriced":
+      return {
+        ok: false,
+        message: t("operator.actions.extend.errUnpriced", { cycle: result.cycle }),
+      };
     default:
       return { ok: false, message: t("operator.tenant.notFound") };
   }

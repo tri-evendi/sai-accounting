@@ -59,6 +59,55 @@ const TONE_BG: Record<Exclude<LandingTone, "plain">, string> = {
   solid: "var(--sai-landing-band-solid)",
 };
 
+/**
+ * Latar pita — nadanya MELELEH di kedua tepi, bukan berhenti di satu garis.
+ *
+ * ══ KENAPA ═════════════════════════════════════════════════════════════════
+ * Keluhan pemilik: *"terlalu warna warni"* dan *"transisi antar seksi tidak
+ * smooth"*. Keduanya punya satu sebab yang sama dan satu obat yang berurutan.
+ *
+ * Sebab pertama — PERGANTIAN HUE — sudah dicabut: seluruh pita, isian, dan
+ * chip pendaratan kini satu hue (`brand`); empat hue sebelumnya (brand · cyan ·
+ * indigo · violet) membuat pembaca melewati gradien → cyan → brand → indigo →
+ * pekat sambil menuruni satu halaman, dan pergantian itulah yang terbaca
+ * sebagai patah, bukan garis pemisahnya.
+ *
+ * Sebab kedua ada di sini: dengan satu hue, batas pita menjadi perpindahan
+ * KEKUATAN nada yang sama — dan perpindahan seperti itu tidak perlu terjadi
+ * dalam satu piksel. Nadanya kini naik dari nol di tepi atas, penuh di
+ * sepanjang isi, lalu turun ke nol lagi di tepi bawah.
+ *
+ * ⚠ TIDAK menghapus pemisahnya. Selisih pita terhadap latar halaman hanya
+ * 1,09:1 (terang) / 1,14:1 (gelap) — terukur — jadi yang menggambar BATAS
+ * WILAYAH memang `::before` bergradien, bukan warnanya. Yang dilembutkan di
+ * sini isian atmosfernya; batasnya tetap berdiri.
+ *
+ * ⚠ Jaraknya `--sai-landing-rhythm` (64→96px), yaitu padding seksi itu sendiri.
+ * Jadi pelelehan terjadi di ruang yang memang kosong: tidak ada satu baris teks
+ * pun yang pernah berdiri di atas bagian yang sedang memudar.
+ *
+ * ⚠ `solid` DIKECUALIKAN, dan itu bukan kelalaian: pita itu memikul TEKS
+ * PUTIH (`--sai-landing-on-solid`). Memudarkan tepinya berarti teks putih
+ * mendarat di atas permukaan terang di tepi atas & bawah — kegagalan kontras
+ * yang dibuat oleh perbaikan kosmetik. Puncak halaman tetap bidang rata.
+ *
+ * Melelehnya ke `colorBgContainer` — BUKAN ke `transparent`: nada pita memang
+ * `color-mix(hue … over container)` (`landing-scale.ts`), jadi container
+ * adalah "nada 0%"-nya yang sesungguhnya. Memudar ke sana mustahil
+ * meninggalkan halo di tema mana pun, sedangkan `transparent` menyerahkan
+ * hasilnya pada ruang interpolasi alfa peramban.
+ */
+function bandBackground(tone: Exclude<LandingTone, "plain">): string {
+  if (tone === "solid") return TONE_BG[tone];
+  const nada = TONE_BG[tone];
+  const dasar = "var(--ant-color-bg-container)";
+  const jarak = "var(--sai-landing-rhythm)";
+  return (
+    `linear-gradient(180deg, ${dasar} 0%, ${nada} ${jarak}, ` +
+    `${nada} calc(100% - ${jarak}), ${dasar} 100%)`
+  );
+}
+
 export interface LandingSectionProps {
   /** Jangkar untuk tautan bilah atas (`#modul`, `#harga`, `#tanya`). */
   id?: string;
@@ -92,7 +141,7 @@ export function LandingSection({
      melainkan `::before` bergradien yang pekat di kolom isi lalu meleleh
      sebelum tepi viewport (`landing-scale.ts`). Batasnya tetap terbaca; kesan
      "kertas bergaris" hilang. */
-  if (tone !== "plain") outer.background = TONE_BG[tone];
+  if (tone !== "plain") outer.background = bandBackground(tone);
   /* Pita pekat: seluruh teks di dalamnya terang. Diwariskan dari seksi, jadi
      judul (`LANDING_SECTION_TITLE`, tanpa warna sendiri) ikut; kalimat
      penjelas (`LANDING_BODY`, `colorTextSecondary`) diganti di `Intro`. */

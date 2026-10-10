@@ -1,44 +1,53 @@
 /**
- * Daftar TENANT — konsol operator (issue #154).
+ * `/operator` — RINGKASAN konsol operator.
  *
- * Sebelum halaman ini, TIDAK ADA satu pun UI yang membaca daftar tenant:
- * setiap pertanyaan dukungan pelanggan berarti sesi SSH. Datanya murni dari
- * basis data KENDALI (`listTenantsForOperator`), jadi halaman ini tetap hidup
- * saat `sai_platform` mati — rincian penagihan menyusul di halaman detail.
+ * ══ KENAPA HALAMAN INI ADA ═════════════════════════════════════════════════
+ * Sampai sekarang pendaratan konsol adalah DAFTAR TENANT: satu tabel tujuh
+ * kolom berisi setiap pelanggan platform. Tabel itu benar dan tetap ada
+ * (`./tenants`), tetapi ia bukan jawaban atas pertanyaan yang dibawa seseorang
+ * ketika ia membuka `ops.` — "apakah ada yang perlu saya tangani hari ini?".
+ * Menjawabnya dari tabel itu berarti membaca empat belas baris status satu per
+ * satu dan menjumlahkannya di kepala sendiri.
  *
- * Pencarian & saringan status lewat form GET biasa: hasilnya URL yang bisa
- * disalin ke tiket dukungan, tanpa satu pun byte JS tambahan.
+ * Yang dipajang di sini karena itu bukan "angka yang menarik" melainkan angka
+ * yang MENUNTUT TINDAKAN: uji coba yang hampir berakhir (menelepon sebelum,
+ * bukan sesudah), uji coba yang sudah lewat tapi statusnya belum bergerak
+ * (penjadwal tidak jalan — lihat ubin putaran terakhir), tagihan yang lewat
+ * jatuh tempo, dan tenant yang baru masuk.
  *
- * ── Perender tabel & warna setelah AntD (issue #200) ──────────────────────
- * `StaticTable`, bukan `DataTable`, dan alasannya aturan #189: daftar ini sudah
- * disaring & dicari DI SERVER lewat form GET di atasnya, jadi rc-table hanya
- * akan menyalin ulang seluruh baris ke peramban (±80 KB gzip) untuk sortir yang
- * URL-nya justru lebih berguna dipakai.
+ * ══ DUA BIDANG, SATU YANG BOLEH MATI ═══════════════════════════════════════
+ * Bagian KENDALI selalu tampil; bagian PLATFORM (`sai_platform`) jatuh ke satu
+ * kalimat saat tak terjangkau — pola `billingOverviewForTenant`, dan alasannya
+ * ada di `lib/operator/store.ts`. Halaman yang menjawab "apakah platformnya
+ * sehat?" tidak boleh menjadi halaman pertama yang mati bersamanya.
  *
- * Warnanya variabel token AntD `var(--ant-…)` (#203). Konsol ini memang tidak
- * punya satu pun komponen AntD di atas isinya — kerangkanya sengaja tanpa impor
- * apa pun dari sisi pelanggan — tapi itu tidak lagi menghalangi: sejak #227
- * kelas `ANTD_CSS_VAR_KEY` dipikul `<html>` oleh root layout, bukan oleh elemen
- * yang digambar komponen AntD, jadi variabelnya teratasi di seluruh dokumen.
- * Token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css` oleh
- * #203. Yang mewarnai dirinya sendiri — `Badge`, `Button`, `EmptyState` — tetap
- * memakai token AntD karena masing-masing dirender sebagai daun client.
+ * ══ `StatCard` DIPAKAI APA ADANYA, DAN ITU DISENGAJA ═══════════════════════
+ * Ia tinggal di `components/dashboard/`, dan bidang operator memang dijaga
+ * bersih dari chrome pelanggan — tetapi yang dilarang di sana adalah MENU,
+ * SESI, dan IZIN pelanggan (lihat kepala `(operator)/layout.tsx`). `StatCard`
+ * tidak memuat satu pun dari ketiganya: ia server component yang hanya
+ * mengimpor `components/ui` dan tidak pernah menyentuh `auth()`, Prisma,
+ * maupun modul bertenant. Menyalinnya ke `components/operator/` akan
+ * menghasilkan ubin kedua dengan padding, ukuran, dan anak tangga warnanya
+ * sendiri — yaitu persis keluhan yang `components/ui/stat-tile.ts` lahir untuk
+ * mengakhiri.
  */
 
 import Link from "next/link";
 import { TeamOutlined } from "@ant-design/icons";
+
+import { StatCard } from "@/components/dashboard/stat-card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { listTenantsForOperator } from "@/lib/operator/store";
-import { TENANT_STATUSES } from "@/lib/constants";
+import { operatorOverview, type OperatorOverview } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { formatMoney } from "@/lib/money-format";
 
 export const dynamic = "force-dynamic";
 
@@ -46,45 +55,54 @@ function formatDate(d: Date): string {
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
 }
 
+function formatDateTime(d: Date): string {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
+}
+
+/** Status tenant yang berarti "buku terkunci" — sama dengan daftar tenant. */
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
-/** Teks sekunder di dalam sel — token AntD, lihat catatan kepala berkas. */
-const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
-const MUTED_TABULAR: React.CSSProperties = {
-  ...MUTED,
-  fontVariantNumeric: "tabular-nums",
+const SECTION_HEADING: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size-lg)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
 };
 
-type TenantRow = Awaited<ReturnType<typeof listTenantsForOperator>>[number];
+/**
+ * Kisi ubin — `auto-fit` + `minmax`, bukan jumlah kolom tetap.
+ *
+ * Jumlah ubinnya BERUBAH menurut data (status langganan yang benar-benar ada),
+ * jadi kolom tetap akan meninggalkan sel kosong pada sebagian pemasangan. Dan
+ * sesuai catatan `PlatformShell`: yang menjaga keterbacaan di monitor lebar
+ * adalah kisi yang menambah kolom, bukan wadah yang dikurung di tengah.
+ */
+const TILE_GRID: React.CSSProperties = {
+  display: "grid",
+  gap: "var(--ant-margin)",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+};
 
-export default async function OperatorTenantsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; status?: string }>;
-}) {
+type NewestRow = OperatorOverview["control"]["newest"][number];
+
+export default async function OperatorOverviewPage() {
   await requireOperatorPage();
   const t = await getT();
-  const params = await searchParams;
+  const { control, platform } = await operatorOverview();
 
-  const q = params.q?.trim() ?? "";
-  const status = (TENANT_STATUSES as readonly string[]).includes(params.status ?? "")
-    ? params.status
-    : "";
-
-  const tenants = await listTenantsForOperator({ q, status });
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
 
-  const columns: SaiColumns<TenantRow> = [
+  const columns: SaiColumns<NewestRow> = [
     {
       key: "name",
       title: t("operator.tenants.colName"),
       align: "left",
-      render: (_v, tenant) => (
+      render: (_v, row) => (
         <Link
-          href={`/operator/tenants/${tenant.id}`}
+          href={`/operator/tenants/${row.id}`}
           style={{ color: "var(--ant-color-link)", fontWeight: 500 }}
         >
-          {tenant.name}
+          {row.name}
         </Link>
       ),
     },
@@ -92,115 +110,197 @@ export default async function OperatorTenantsPage({
       key: "slug",
       title: t("operator.tenants.colSlug"),
       align: "left",
-      render: (_v, tenant) => <span style={MUTED}>{tenant.slug}</span>,
+      render: (_v, row) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{row.slug}</span>
+      ),
     },
     {
       key: "status",
       title: t("operator.tenants.colStatus"),
       align: "left",
-      render: (_v, tenant) => (
+      render: (_v, row) => (
         <Badge
           variant={
-            READ_ONLY_STATUSES.has(tenant.status)
+            READ_ONLY_STATUSES.has(row.status)
               ? "danger"
-              : tenant.status === "active"
+              : row.status === "active"
                 ? "success"
                 : "warning"
           }
         >
-          {statusLabel(tenant.status)}
+          {statusLabel(row.status)}
         </Badge>
       ),
-    },
-    {
-      key: "plan",
-      title: t("operator.tenants.colPlan"),
-      align: "left",
-      render: (_v, tenant) => tenant.planKey,
     },
     {
       key: "created",
       title: t("operator.tenants.colCreated"),
       align: "left",
-      render: (_v, tenant) => <span style={MUTED}>{formatDate(tenant.createdAt)}</span>,
-    },
-    {
-      key: "usage",
-      title: t("operator.tenants.colUsage"),
-      align: "left",
-      render: (_v, tenant) => (
-        <span style={MUTED_TABULAR}>
-          {t("operator.tenants.usageValue", {
-            companies: tenant.usage.companies,
-            maxCompanies: tenant.maxCompanies,
-            users: tenant.usage.users,
-            maxUsers: tenant.maxUsers,
-          })}
+      render: (_v, row) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>
+          {formatDate(row.createdAt)}
         </span>
       ),
     },
   ];
 
+  const aktif = control.byStatus.active ?? 0;
+  const ujiCoba = control.byStatus.trialing ?? 0;
+  const menunggak = control.byStatus.past_due ?? 0;
+  const ditangguhkan =
+    (control.byStatus.suspended ?? 0) + (control.byStatus.cancelled ?? 0);
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: "-0.025em",
-            color: "var(--ant-color-text)",
-          }}
-        >
-          {t("operator.tenants.heading")} ({tenants.length})
-        </h1>
-        <p style={{ margin: 0, fontSize: 14, ...MUTED }}>
-          {t("operator.tenants.description")}
-        </p>
-      </div>
-
-      <form
-        method="get"
-        action="/operator"
-        style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}
-      >
-        <div style={{ width: "100%", maxWidth: 320 }}>
-          <Input
-            name="q"
-            label={t("operator.tenants.searchLabel")}
-            placeholder={t("operator.tenants.searchPlaceholder")}
-            aria-label={t("operator.tenants.searchPlaceholder")}
-            defaultValue={q}
-          />
-        </div>
-        <div style={{ width: "100%", maxWidth: 192 }}>
-          <Select
-            name="status"
-            label={t("operator.tenants.statusLabel")}
-            defaultValue={status}
-            options={[
-              { value: "", label: t("operator.tenants.statusAll") },
-              ...TENANT_STATUSES.map((value) => ({ value, label: statusLabel(value) })),
-            ]}
-          />
-        </div>
-        <Button type="submit" variant="outline">
-          {t("operator.tenants.filter")}
-        </Button>
-      </form>
-
-      <StaticTable
-        columns={columns}
-        rows={tenants}
-        rowKey={(tenant) => tenant.id}
-        empty={
-          <EmptyState
-            icon={<TeamOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
-            title={t("operator.tenants.empty")}
-          />
+    <div>
+      <PageHeader
+        title={t("operator.overview.heading")}
+        description={t("operator.overview.description")}
+        actions={
+          <ButtonLink href="/operator/tenants" variant="outline" size="sm">
+            {t("operator.overview.openTenants")}
+          </ButtonLink>
         }
       />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+        {/* ── Bidang KENDALI: selalu benar, bahkan saat penagihan mati ───── */}
+        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h2 style={SECTION_HEADING}>{t("operator.overview.controlHeading")}</h2>
+          <div style={TILE_GRID}>
+            <StatCard
+              title={t("operator.overview.tenantsTotal")}
+              value={control.total}
+              href="/operator/tenants"
+            />
+            <StatCard
+              title={t("operator.overview.tenantsActive")}
+              value={aktif}
+              tone="success"
+              href="/operator/tenants?status=active"
+            />
+            <StatCard
+              title={t("operator.overview.tenantsTrialing")}
+              value={ujiCoba}
+              href="/operator/tenants?status=trialing"
+              /* Dua angka yang MENUNTUT TINDAKAN, dan keduanya ada di baris
+                 kedua ubin ini supaya "15 uji coba" tidak terbaca sebagai
+                 kabar baik ketika sembilan di antaranya sudah kedaluwarsa. */
+              hint={t("operator.overview.trialHint", {
+                soon: control.trialsEndingSoon,
+                expired: control.trialsExpired,
+              })}
+              tone={control.trialsExpired > 0 ? "warning" : "neutral"}
+            />
+            <StatCard
+              title={t("operator.overview.tenantsPastDue")}
+              value={menunggak}
+              tone={menunggak > 0 ? "warning" : "neutral"}
+              href="/operator/tenants?status=past_due"
+            />
+            {/* TANPA `href`, dan itu disengaja: ubin ini menjumlahkan DUA
+                status (`suspended` + `cancelled`), sementara saringan daftar
+                tenant hanya menerima satu. Tautan ke `?status=suspended` akan
+                mendarat di daftar yang jumlahnya BERBEDA dari angka yang baru
+                saja ditekan orangnya — bentuk kebohongan kecil yang membuat
+                orang berhenti memercayai ubin lain di baris yang sama. */}
+            <StatCard
+              title={t("operator.overview.tenantsSuspended")}
+              value={ditangguhkan}
+              tone={ditangguhkan > 0 ? "danger" : "neutral"}
+            />
+            <StatCard title={t("operator.overview.companies")} value={control.companies} />
+            <StatCard title={t("operator.overview.users")} value={control.users} />
+          </div>
+        </section>
+
+        {/* ── Bidang PLATFORM: boleh mati, dan mengatakannya sebagai kalimat ─ */}
+        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h2 style={SECTION_HEADING}>{t("operator.overview.platformHeading")}</h2>
+          {platform === null ? (
+            <p
+              style={{
+                margin: 0,
+                padding: "var(--ant-padding)",
+                borderRadius: "var(--ant-border-radius-lg)",
+                background: "var(--ant-color-fill-quaternary)",
+                fontSize: "var(--ant-font-size)",
+                color: "var(--ant-color-text-secondary)",
+              }}
+            >
+              {t("operator.tenant.billingUnavailable")}
+            </p>
+          ) : (
+            <div style={TILE_GRID}>
+              <StatCard
+                title={t("operator.overview.invoicesOverdue")}
+                value={platform.overdueInvoices}
+                tone={platform.overdueInvoices > 0 ? "danger" : "neutral"}
+                hint={formatMoney(platform.overdueTotal)}
+              />
+              <StatCard
+                title={t("operator.overview.invoicesOpen")}
+                value={platform.openInvoices}
+                hint={formatMoney(platform.openTotal)}
+              />
+              <StatCard
+                title={t("operator.overview.subscriptionsActive")}
+                value={platform.subscriptionsByStatus.active ?? 0}
+                tone="success"
+              />
+              <StatCard
+                title={t("operator.overview.subscriptionsPastDue")}
+                value={platform.subscriptionsByStatus.past_due ?? 0}
+                tone={(platform.subscriptionsByStatus.past_due ?? 0) > 0 ? "warning" : "neutral"}
+              />
+              {/* Putaran penjadwal terakhir — ubin yang menjelaskan ubin lain:
+                  uji coba kedaluwarsa yang menumpuk dan tagihan yang tidak
+                  pernah terbit hampir selalu BERARTI penjadwalnya tidak jalan,
+                  bukan pelanggannya yang diam. */}
+              <StatCard
+                title={t("operator.overview.schedulerLastRun")}
+                value={
+                  platform.lastRun
+                    ? formatDateTime(platform.lastRun.finishedAt)
+                    : t("operator.overview.schedulerNever")
+                }
+                size="phrase"
+                tone={
+                  platform.lastRun === null
+                    ? "warning"
+                    : platform.lastRun.status === "ok" && platform.lastRun.errorCount === 0
+                      ? "success"
+                      : "danger"
+                }
+                hint={
+                  platform.lastRun
+                    ? t("operator.overview.schedulerHint", {
+                        status: platform.lastRun.status,
+                        errors: platform.lastRun.errorCount,
+                      })
+                    : undefined
+                }
+                href="/operator/scheduler"
+              />
+            </div>
+          )}
+        </section>
+
+        {/* ── Pendaftar terbaru ──────────────────────────────────────────── */}
+        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h2 style={SECTION_HEADING}>{t("operator.overview.newestHeading")}</h2>
+          <StaticTable
+            columns={columns}
+            rows={control.newest}
+            rowKey={(row) => row.id}
+            empty={
+              <EmptyState
+                icon={<TeamOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
+                title={t("operator.tenants.empty")}
+              />
+            }
+          />
+        </section>
+      </div>
     </div>
   );
 }

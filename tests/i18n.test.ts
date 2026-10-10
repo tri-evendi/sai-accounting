@@ -270,6 +270,13 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // "Status" — kata serapan yang ejaannya identik, alasan yang sama persis
     // dengan `common.status` di atas. Judul kolom daftar transaksi berulang.
     "recurring.colStatus",
+    // Jejak audit konsol operator: "Operator" dan "IP" ditulis sama di bahasa
+    // Indonesia dan Inggris. "Operator" serapan langsung (ia bahkan nama
+    // BIDANGNYA di repo ini — `OPERATOR_HOST`, `lib/operator/*`), dan "IP"
+    // singkatan dari nama protokol, jadi keduanya hanya bisa "diterjemahkan"
+    // menjadi kata yang sama. Bahasa Mandarin memakai 操作员 dan IP 地址.
+    "operator.audit.colOperator",
+    "operator.audit.colIp",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).

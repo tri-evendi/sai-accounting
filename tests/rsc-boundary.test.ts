@@ -240,8 +240,29 @@ const SRC = join(__dirname, "..", "src");
  * berguna selama setiap angkanya bisa ditelusuri ke satu modul dengan satu
  * alasan. Menggabungkannya jadi "+2 karena #503 & #491" akan menghapus justru
  * yang membuatnya menahan sesuatu.
+ *
+ * 184 sejak panel admin konsol operator + CMS pendaratan (2026-10-10), dan
+ * angkanya NETTO dari tiga perubahan — bukan satu:
+ *
+ *   + `components/operator/operator-shell.tsx` — kulit panel admin konsol.
+ *     Client karena `Grid.useBreakpoint()` (kolom tetap vs laci),
+ *     `Drawer`, dan penandaan butir aktif lewat `usePathname`. Halaman
+ *     operator di dalamnya TETAP server component: tabel tenant, ringkasan,
+ *     dan jejak audit semuanya dirender di server seperti sebelumnya.
+ *   + `components/operator/content-editor.tsx` — editor isi pendaratan.
+ *     Client karena ia memang formulir: react-hook-form + hasil simpan yang
+ *     muncul tanpa memuat ulang + tombol "kembalikan ke bawaan" per baris.
+ *     Halaman pemanggilnya menghitung bawaan & nilai tersimpan di server dan
+ *     menurunkannya sebagai daftar.
+ *   − `components/operator/operator-nav.tsx` — DIHAPUS. Bilah tab mendatar
+ *     yang digantikan menu samping; satu-satunya isinya adalah penandaan tab
+ *     aktif, yang sekarang hidup di dalam kulitnya.
+ *
+ * Jadi +2 −1 = +1. Ditulis sebagai tiga baris dan bukan "+1": ambang ini hanya
+ * menahan sesuatu selama setiap pergerakannya bisa ditelusuri ke modul yang
+ * menyebabkannya.
  */
-const AMBANG_KLIEN = 183;
+const AMBANG_KLIEN = 184;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -409,8 +430,19 @@ const KLIEN_TERSAHKAN = [
   "components/layout/notification-bell.tsx",
   "components/layout/sidebar.tsx",
   "components/layout/user-menu.tsx",
+  /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
+     satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
+     tombol "kembalikan ke bawaan" per baris. Halamannya TETAP server component:
+     nilai bawaan + nilai tersimpan dihitung di server dan diturunkan sebagai
+     daftar. */
+  "components/operator/content-editor.tsx",
   "components/operator/mail-settings-form.tsx",
-  "components/operator/operator-nav.tsx",
+  /* Kulit panel admin konsol operator: menu samping + laci + kepala. Client
+     karena `Grid.useBreakpoint()`, `Drawer`, dan penandaan butir aktif lewat
+     `usePathname` — tiga hal yang semuanya menuntut peramban. Kalimat, ikon,
+     dan formulir keluarnya DIOPER dari layout server; berkas itu tidak
+     mengimpor satu pun modul autentikasi. */
+  "components/operator/operator-shell.tsx",
   "components/operator/tenant-actions.tsx",
   "components/providers/antd-provider.tsx",
   "components/reports/report-launch-dialog.tsx",

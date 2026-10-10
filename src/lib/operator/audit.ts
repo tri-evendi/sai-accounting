@@ -26,7 +26,15 @@ export type OperatorAuditAction =
    * memuat host/port/nama pengguna/alamat pengirim dan penanda "kata sandi
    * berganti", TIDAK PERNAH kata sandinya sendiri. */
   | "operator.mail.update"
-  | "operator.mail.test";
+  | "operator.mail.test"
+  /* Isi halaman pendaratan (CMS). `details` memuat bahasa, bagian, dan DAFTAR
+   * KUNCI yang berubah beserta panjang nilainya — tidak pernah nilainya
+   * sendiri: jejak yang memuat setiap kalimat pemasaran yang pernah diketik
+   * berhenti bisa dibaca sebagai jejak. `rejected` dicatat ketika sebuah
+   * kiriman menyebut kunci di luar `landing.*`, yaitu kiriman yang tidak datang
+   * dari layar yang dirender server. */
+  | "operator.content.update"
+  | "operator.content.rejected";
 
 export interface OperatorAuditEntry {
   id: string;

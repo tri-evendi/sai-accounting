@@ -492,3 +492,47 @@ model BackupRun {
   @@index([status, finishedAt])
   @@map("backup_runs")
 }
+
+/// ISI HALAMAN PENDARATAN yang bisa disunting operator — PENIMPA, bukan kamus
+/// kedua.
+///
+/// Satu baris = satu penimpa atas satu kunci kamus dalam satu bahasa. Kamus di
+/// `src/lib/i18n/dictionaries/*.json` tetap sumber BAWAAN, tetap satu-satunya
+/// yang diketik `tsc`, dan tetap yang dirender ketika baris di sini tidak ada.
+/// Baris yang TIDAK ADA karena itu bukan keadaan kosong yang harus diisi — ia
+/// berarti "pakai bawaannya", dan itu keadaan normal untuk sebagian besar
+/// kunci.
+///
+/// ⚠ Rumahnya `sai_platform` dan bukan basis data kendali, dengan sebab yang
+/// sama seperti `MailSetting`: ia setelan PENYEDIA, bukan data pelanggan, dan
+/// layarnya konsol operator. Konsekuensinya dinyatakan apa adanya — platform
+/// yang mati berarti halaman pendaratan kembali ke kalimat BAWAAN, bukan
+/// halaman pendaratan yang mati (`lib/site-content-store.ts` gagal-lunak).
+///
+/// `content_key`, bukan `key`: `KEY` kata kunci MySQL (lihat migration 0013).
+model SiteContent {
+  id Int @id @default(autoincrement())
+
+  /// `id` | `en` | `zh` — kode bahasa aplikasi (`lib/i18n/config.ts`).
+  /// Enum-like `String @db.VarChar` + `z.enum`, konvensi docs/DATABASE.md.
+  locale String @db.VarChar(5)
+
+  /// Jalur-titik kunci kamus, mis. `landing.heroHeading`. Kunci di luar daftar
+  /// yang boleh disunting ditolak di aplikasi (`lib/site-content.ts`), bukan di
+  /// sini: daftarnya diturunkan DARI kamus, jadi ia berubah bersama kamusnya.
+  key String @map("content_key") @db.VarChar(120)
+
+  /// TEXT: badan FAQ pendaratan sudah melewati 255 karakter.
+  value String @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan — jejak lengkapnya di jejak
+  /// audit operator; kolom ini yang tampil di layar.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([locale, key])
+  @@index([locale])
+  @@map("site_contents")
+}

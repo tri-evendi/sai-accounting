@@ -34,9 +34,8 @@
  */
 
 import { notFound } from "next/navigation";
-import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
@@ -268,25 +267,18 @@ export default async function OperatorTenantDetailPage({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-      <div style={SECTION}>
-        <div>
-          <Button href="/operator" variant="ghost" size="sm">
-            <ArrowLeftOutlined aria-hidden="true" />
-            {t("operator.tenant.back")}
-          </Button>
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 24,
-              fontWeight: 700,
-              letterSpacing: "-0.025em",
-              color: "var(--ant-color-text)",
-            }}
-          >
-            {tenant.name}
-          </h1>
+      {/* Kepala halaman = `PageHeader`, sama dengan halaman dasbor di bawah
+          tingkat-1 — bukan `<h1>` + tombol "kembali" tulisan tangan. Breadcrumb
+          yang menyebut daftar tenant ADALAH jalan pulangnya, dan ia menyebut
+          lokasinya sekaligus; tombol kembali hanya menyebut arah. */}
+      <PageHeader
+        breadcrumbs={[
+          { label: t("operator.nav.tenants"), href: "/operator/tenants" },
+          { label: tenant.name },
+        ]}
+        title={tenant.name}
+        description={tenant.slug}
+        badge={
           <Badge
             variant={
               READ_ONLY_STATUSES.has(tenant.status)
@@ -298,9 +290,8 @@ export default async function OperatorTenantDetailPage({
           >
             {statusLabel(tenant.status)}
           </Badge>
-          <span style={{ fontSize: 14, color: "var(--ant-color-text-secondary)" }}>{tenant.slug}</span>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Kendali: paket ter-snapshot, kuota, pemakaian — selalu tampil ── */}
       <section style={SECTION}>

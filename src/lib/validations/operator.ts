@@ -18,7 +18,9 @@
  */
 
 import { z } from "zod";
+import { LOCALES } from "@/lib/i18n/config";
 import { vmsg } from "@/lib/i18n/validation";
+import { SITE_CONTENT_VALUE_MAX } from "@/lib/site-content";
 
 /** Alasan yang diketik operator — masuk ke jejak audit apa adanya. */
 export const operatorReasonField = z
@@ -171,3 +173,40 @@ export const mailTestSchema = z.object({
   to: z.email(vmsg("validation.emailInvalid")).max(191).trim(),
 });
 export type MailTestFormInput = z.infer<typeof mailTestSchema>;
+
+/* ── 6. Isi halaman pendaratan (CMS) ──────────────────────────────────────── */
+
+/**
+ * Penimpa isi pendaratan untuk SATU bahasa dan SATU bagian halaman.
+ *
+ * ══ KUNCINYA NAMA TELANJANG, BUKAN JALUR-TITIK ═════════════════════════════
+ * `entries` berkunci nama tanpa awalan (`heroHeading`), bukan jalur-titik penuh
+ * (`landing.heroHeading`), dan itu bukan kerapian: react-hook-form memperlakukan
+ * titik di dalam nama field sebagai JALUR BERSARANG, jadi field bernama
+ * `entries.landing.heroHeading` akan tersimpan sebagai objek tiga tingkat dan
+ * tidak pernah cocok dengan skema ini. Awalannya ditambahkan kembali di satu
+ * tempat — server action, lewat `SITE_CONTENT_PREFIX` — sehingga client dan
+ * server tidak bisa menyimpang soal bentuk kuncinya.
+ *
+ * `reason` TIDAK diminta, sama seperti pengaturan surel di atas: ini isi milik
+ * penyedia sendiri, bukan tindakan terhadap data pelanggan. Jejaknya tetap
+ * tercatat lengkap — aktor, bahasa, kunci mana saja yang berubah, dan
+ * panjangnya — di jejak audit operator.
+ *
+ * NILAI KOSONG SAH, dan ia punya arti: "kembalikan ke kalimat bawaan"
+ * (`saveSiteContent` menghapus barisnya). Karena itu TIDAK ada `.min(1)` di
+ * sini — menambahkannya akan mencabut satu-satunya jalan untuk membatalkan
+ * sebuah suntingan.
+ */
+export const siteContentSchema = z.object({
+  locale: z.enum(LOCALES),
+  /** Bagian halaman yang sedang disunting — ikut supaya jawaban server bisa
+   *  menyebutkan apa yang disimpan, dan supaya satu simpanan tidak pernah
+   *  menyentuh kunci di luar layar yang terbuka. */
+  section: z.string().trim().min(1).max(40),
+  entries: z.record(
+    z.string(),
+    z.string().max(SITE_CONTENT_VALUE_MAX, vmsg("validation.siteContentTooLong"))
+  ),
+});
+export type SiteContentFormInput = z.infer<typeof siteContentSchema>;

@@ -94,7 +94,7 @@ export async function LandingHero() {
            primer — di atas itu isian tombol jatuh di bawah 3:1 di tema gelap.
            Kisi titik tidak menggeser angka itu: ia butiran 1px, bukan bidang. */
         backgroundImage:
-          "radial-gradient(color-mix(in srgb, var(--ant-color-text) 7%, transparent) 1px, transparent 1.5px), radial-gradient(120% 90% at 78% 8%, var(--sai-landing-band-accent) 0%, transparent 62%), linear-gradient(135deg, var(--sai-landing-band-brand) 0%, var(--sai-landing-band-cyan) 100%)",
+          "radial-gradient(color-mix(in srgb, var(--ant-color-text) 7%, transparent) 1px, transparent 1.5px), radial-gradient(120% 90% at 78% 8%, var(--sai-landing-band-accent) 0%, transparent 62%), linear-gradient(135deg, var(--sai-landing-band-brand) 0%, transparent 100%)",
         backgroundSize: "22px 22px, auto, auto",
         paddingBlock: "var(--sai-landing-rhythm)",
       }}

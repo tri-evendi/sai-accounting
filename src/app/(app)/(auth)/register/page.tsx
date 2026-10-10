@@ -16,17 +16,31 @@
  * orang.
  *
  * ══ KENAPA PENJELASAN, BUKAN 404 ATAU PANTULAN ═════════════════════════════
- * Orang yang mendarat di sini datang dari tombol "Coba gratis" di halaman
- * pendaratan — satu-satunya alasan halaman pendaratan itu ada. Memulangkan 404
- * atau memantulkannya ke `/login` mengubah calon pelanggan yang paling
- * bersemangat menjadi pengunjung yang bingung.
+ * Orang yang mendarat di sini datang dari tombol ajakan halaman pendaratan —
+ * satu-satunya alasan halaman itu ada. Memulangkan 404 atau memantulkannya ke
+ * `/login` mengubah calon pelanggan yang paling bersemangat menjadi pengunjung
+ * yang bingung.
  *
- * Yang dipajang karena itu: kalimat yang menyebut keadaannya apa adanya
- * ("pendaftaran mandiri sedang ditutup"), lalu **jalan yang masih terbuka** —
- * kanal kontak yang sudah ada (`contactChannels()`), yaitu persis jalur
- * penawaran yang dipilih Fase B (`docs/KOMERSIALISASI.md` §7). Jadi sakelar
- * yang menutup pendaftaran tidak menutup penjualan; ia memindahkannya ke
- * meja manusia.
+ * ══ PINTU MASUK PENAWARAN, BUKAN PEMBERITAHUAN PENOLAKAN ═══════════════════
+ * Versi pertama layar ini benar secara fakta dan salah secara bentuk: ia
+ * menyambut orang yang BARU MENEKAN "Minta penawaran" dengan judul
+ * "Pendaftaran mandiri sedang ditutup". Pengunjung itu tidak sedang ditolak —
+ * ia sedang berada di langkah pertama jalur yang memang dipilih (`Fase B`,
+ * `docs/KOMERSIALISASI.md` §7). Judul yang mengabarkan sebuah PINTU TERTUTUP
+ * kepada orang yang baru saja mengetuk pintu yang BENAR adalah cara kehilangan
+ * dia di langkah terakhir.
+ *
+ * Karena itu yang dipajang sekarang: judul yang sama dengan tombol yang ia
+ * tekan ("Minta penawaran"), lalu **tiga langkah prosesnya** — apa yang ia
+ * kirim, apa yang ia terima, dan apa yang terjadi sesudah disetujui — lalu
+ * kanal kontak yang memang ada (`contactChannels()`). Riset pola pendaratan
+ * untuk produk yang dijual lewat penawaran (*Trust & Authority*, *Enterprise
+ * Gateway*) menempatkan jalur kontak sebagai AJAKAN UTAMA, bukan sebagai
+ * catatan di balik pemberitahuan.
+ *
+ * ⚠ Tiga langkah itu BUKAN janji waktu. Tidak ada SLA, jam layanan, maupun
+ * "dibalas dalam 1×24 jam" — tak ada kode maupun kebijakan tertulis di repo ini
+ * yang menjaminnya (§KLAIM HARUS PUNYA SUMBER berlaku di luar pendaratan juga).
  *
  * ⚠ Tombol di halaman pendaratan TIDAK diubah, dan itu disengaja: setiap tombol
  * berisi penuh di `components/landing/**` wajib menuju `/register`
@@ -68,6 +82,27 @@ export default async function RegisterPage() {
       description={t("auth.register.closedBody")}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
+        {/* TIGA LANGKAH — bernomor, sebab yang ditanya orang di titik ini
+            bukan "apa itu penawaran" melainkan "lalu apa yang terjadi".
+            `<ol>` sungguhan: urutannya bagian dari maknanya, jadi ia struktur
+            dokumen, bukan tiga baris yang kebetulan berurutan. */}
+        <ol
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--ant-margin-xs)",
+            margin: 0,
+            paddingInlineStart: "var(--ant-padding-lg)",
+            fontSize: "var(--ant-font-size)",
+            lineHeight: 1.625,
+            color: "var(--ant-color-text-secondary)",
+          }}
+        >
+          <li>{t("auth.register.quoteStep1")}</li>
+          <li>{t("auth.register.quoteStep2")}</li>
+          <li>{t("auth.register.quoteStep3")}</li>
+        </ol>
+
         {/* Kanal yang BENAR-BENAR terpasang saja — `contactChannels()`
             memulangkan hanya yang nilainya sah, jadi tidak ada tombol yang
             menjanjikan jalan yang tidak ada. */}

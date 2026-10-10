@@ -239,7 +239,7 @@ export async function LandingFeatures() {
     },
     {
       icon: SafetyCertificateOutlined,
-      hue: "indigo",
+      hue: "brand",
       title: t("landing.featureRolesTitle"),
       body: t("landing.featureRolesBody"),
       /* Lencana peran (chip indigo) + baris jejak audit. */
@@ -255,10 +255,10 @@ export async function LandingFeatures() {
             {peran.map((nama) => (
               <span
                 key={nama}
-                style={{ ...PIL, background: landingChip("indigo") }}
+                style={{ ...PIL, background: landingChip("brand") }}
               >
                 <SafetyCertificateOutlined
-                  style={{ color: landingGlyph("indigo") }}
+                  style={{ color: landingGlyph("brand") }}
                 />
                 {nama}
               </span>
@@ -281,7 +281,7 @@ export async function LandingFeatures() {
     },
     {
       icon: FileTextOutlined,
-      hue: "cyan",
+      hue: "brand",
       title: t("landing.featureTaxTitle"),
       body: t("landing.featureTaxBody"),
       /* Tabel tiga baris DPP / PPN / total — nominal DIHITUNG, label contoh
@@ -319,7 +319,7 @@ export async function LandingFeatures() {
     },
     {
       icon: TranslationOutlined,
-      hue: "violet",
+      hue: "brand",
       title: t("landing.featureLanguageTitle"),
       body: t("landing.featureLanguageBody"),
       /* Pil bahasa dari `LOCALES` — nama dalam bahasanya sendiri
@@ -336,9 +336,9 @@ export async function LandingFeatures() {
           {LOCALES.map((locale) => (
             <span
               key={locale}
-              style={{ ...PIL, background: landingChip("violet") }}
+              style={{ ...PIL, background: landingChip("brand") }}
             >
-              <TranslationOutlined style={{ color: landingGlyph("violet") }} />
+              <TranslationOutlined style={{ color: landingGlyph("brand") }} />
               {LOCALE_LABELS[locale]}
             </span>
           ))}

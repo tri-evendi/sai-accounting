@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.7.0 — 2026-10-10 — belum digelar
+## 0.8.0 — 2026-10-10 — belum digelar
+
+Halaman harga menghitung sendiri apakah lebih murah naik paket atau menumpuk paket kecil, dan halaman depan dibuat lebih tenang — satu warna, perpindahan antar-bagian yang melembut.
+
+### Baru
+
+- Halaman harga menyebutkan hitungannya: untuk jumlah PT yang sama, menumpuk beberapa paket kecil dibandingkan dengan satu paket yang lebih besar, beserta selisihnya per bulan. Angkanya dihitung dari katalog paket yang sedang berlaku — bukan ditulis di kalimatnya — jadi ia ikut berubah sendiri bila harga berubah, dan baris yang kebetulan TIDAK lebih hemat tidak ditampilkan.
+
+### Berubah
+
+- Halaman depan dibuat lebih tenang: seluruh bidang berwarnanya kini satu warna alih-alih empat, dan warnanya melembut di batas antar-bagian alih-alih berhenti di satu garis. Isi, urutan, dan angkanya tidak berubah sedikit pun.
+- Halaman yang muncul setelah menekan “Minta penawaran” kini berjudul sama dengan tombolnya dan menyebutkan tiga langkah prosesnya — apa yang Anda kirim, apa yang Anda terima, dan apa yang terjadi setelah disetujui. Sebelumnya ia berjudul “pendaftaran mandiri sedang ditutup”, yang benar tetapi terbaca sebagai penolakan.
+
+---
+
+## 0.7.0 — 2026-10-10 (7198187)
 
 Akun baru dibuka lewat penawaran, bukan pendaftaran mandiri — dan penagihan otomatis berhenti menyentuh akun yang tidak pernah setuju membeli apa pun.
 

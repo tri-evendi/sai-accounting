@@ -277,6 +277,25 @@ Yang diubah bentuknya: bukan lagi `border-top` selebar viewport melainkan
 `::before` bergradien — pekat di kolom tempat isi berdiri, meleleh menjadi nol
 sebelum tepi layar. Batasnya tetap terbaca; kesan "kertas bergaris" hilang.
 
+**Dan sejak 10 Okt 2026 isian pitanya ikut MELELEH di kedua tepi** (keluhan
+pemilik: *"transisi antar seksi tidak smooth"*). Nadanya naik dari nol di tepi
+atas, penuh sepanjang isi, lalu turun ke nol lagi di tepi bawah
+(`bandBackground()` di `landing-section.tsx`). Tiga hal yang membuatnya aman:
+
+- **jaraknya `--sai-landing-rhythm`** — padding seksi itu sendiri, jadi
+  pelelehan terjadi di ruang yang memang kosong: tidak ada satu baris teks pun
+  yang pernah berdiri di atas bagian yang memudar;
+- **melelehnya ke `colorBgContainer`, bukan ke `transparent`** — nada pita
+  memang `color-mix(hue … over container)`, jadi container adalah "nada 0%"
+  yang sesungguhnya; `transparent` akan menyerahkan hasilnya pada ruang
+  interpolasi alfa peramban;
+- **`solid` DIKECUALIKAN.** Pita itu memikul teks putih; memudarkan tepinya
+  menaruh teks putih di atas permukaan terang — kegagalan kontras yang
+  dilahirkan oleh perbaikan kosmetik. Puncak halaman tetap bidang rata.
+
+⚠ Ini melembutkan ISIAN, bukan mencabut BATAS. Angka 1,09:1 / 1,14:1 di atas
+tetap berlaku, jadi `::before`-nya tetap satu-satunya yang menggambar wilayah.
+
 ### Tepi hanya wajib untuk kartu DI ATAS PITA
 
 Kartu manfaat bernada dan berdiri di seksi **polos**: nadanya sendiri yang
@@ -846,6 +865,43 @@ kedua berisi sama. Redirect `next.config` dievaluasi sebelum sistem
 berkas dan `proxy.ts`, jadi `/pricing` tidak masuk `isPublicPath`. Diuji
 `public-landing.test.tsx` §#413.
 
+### Pembanding "menumpuk vs naik paket" — hitungan, bukan klaim (10 Okt 2026)
+
+Pertanyaan PERTAMA pembeli grup multi-PT bukan "paket mana yang paling murah"
+melainkan **"saya punya tiga PT — lebih murah tiga paket kecil atau satu paket
+besar?"**. Sampai sekarang seksi harga membiarkannya menghitung sendiri dari
+tiga kartu nominal.
+
+Jawabannya sudah menjadi keputusan komersial tercatat (`docs/PRICING.md` §1:
+*3 × Starter = Rp 747.000 > Pro; 3 × Pro = Rp 1.797.000 > Business*), jadi yang
+ditambahkan di layar hanya **penurunannya dari katalog** —
+`lib/plan-stacking.ts`, pasangan paket BERURUTAN, `Math.ceil` pada kuota PT.
+
+Empat aturan yang mengikatnya:
+
+- **Nol angka diketik.** Hemat dihitung `count × small − large`; harga yang
+  berubah mengubah tabelnya tanpa ada yang perlu ingat (§KLAIM HARUS PUNYA
+  SUMBER).
+- **Baris yang TIDAK hemat dijatuhkan.** Tangga hari ini membuat menumpuk
+  selalu lebih mahal, tetapi itu sifat ANGKANYA: Starter pada Rp 199.000
+  membuat 3 × Starter (597.000) lebih murah daripada Pro — persis angka yang
+  `PRICING.md` tolak. Pada keadaan itu klaimnya salah, jadi barisnya hilang;
+  halaman pemasaran yang membantah dirinya sendiri lebih buruk daripada yang
+  diam. Dijaga `tests/plan-stacking.test.ts`.
+- **Permukaan NETRAL, tanpa nada.** Seksi harga sudah memikul tiga kartu
+  bernominal; bidang berwarna keempat menambah warna tanpa menambah arti.
+  `colorFillQuaternary` memisahkannya tanpa memperkenalkan hue.
+- **`<table>` sungguhan — satu-satunya di direktori ini.** Seluruh pendaratan
+  digambar `div` dan itu benar, sebab tak satu pun bagiannya data bertabel. Yang
+  ini dua baris × tiga kolom DENGAN judul kolom yang memberi arti pada selnya:
+  dengan `div`, pembaca layar menerima enam angka tanpa tahu mana "menumpuk" dan
+  mana "naik paket". `StaticTable` tidak dipakai — ia primitif tabel APLIKASI
+  dan di halaman pemasaran terbaca sebagai layar kerja.
+
+Satu-satunya angka berwarna di panel itu adalah hematnya
+(`colorMoneyPositive`, token uang #186 yang lolos 4,5:1 sebagai teks —
+`colorSuccess` AntD tidak).
+
 ### Strip fakta muncul SEKALI — di hero; di harga tinggal kalimatnya
 
 Tiga angka (modul · bahasa · mata uang) dulu tampil **dua kali identik**: strip
@@ -1016,9 +1072,27 @@ disorot — bukan hiasan.
 
 ### Empat aturan yang membuat izin ini tidak berkembang jadi palet sendiri
 
-1. **Empat hue, dan keempatnya tanpa arti di app ini**: biru merek, cyan,
-   indigo (`geekblue`), violet (`purple`). **Hijau, merah, emas, jingga tidak
-   dipakai sebagai nada dekoratif** — keempatnya sudah menjadi bahasa uang &
+1. **SATU hue sejak 10 Okt 2026 — keempatnya tetap SAH, tiga tidak lagi
+   dipakai di halaman ini.** Izin palet ini dulu berbunyi "empat hue, dan
+   keempatnya tanpa arti di app ini": biru merek, cyan, indigo (`geekblue`),
+   violet (`purple`). Diukur di layar, izin itu termakan habis: menuruni satu
+   halaman pembaca melewati **gradien brand→cyan (hero) → kartu manfaat
+   indigo/cyan/violet → pita cyan (modul) → kartu "untuk siapa"
+   indigo/violet/cyan → pita brand (integrasi) → pita indigo (harga) → pita
+   pekat → kaki indigo**. Keluhan pemilik — *"terlalu warna warni"* — punya
+   sebab yang bisa dihitung: **empat hue di sembilan permukaan**.
+
+   Yang dicabut bukan aturannya melainkan PEMAKAIANNYA: seluruh pita, `fill`,
+   dan `chip` pendaratan kini **`brand`**. Tidak ada informasi yang hilang —
+   kartu sudah dibedakan ikon + judulnya, argumen yang sama yang sudah dipakai
+   §"Daftar modul: satu ikon per baris, SATU warna". Yang hilang hanya
+   kesan palet sampler pada produk yang menjual ketelitian angka.
+
+   `cyan`/`indigo`/`violet` TETAP dideklarasikan (`LANDING_HUES`, dipakai juga
+   `/platform`) dan tetap lolos ukuran kontrasnya; menghidupkannya kembali di
+   pendaratan menuntut alasan yang menyebut apa yang dibedakannya — bukan
+   selera irama. **Hijau, merah, emas, jingga tidak dipakai sebagai nada
+   dekoratif** — keempatnya sudah menjadi bahasa uang &
    status (`colorMoney*`, `colorSuccess`, `colorWarning`, `colorError`), dan
    pita hijau selebar layar di halaman yang menjual pembukuan terbaca sebagai
    pernyataan tentang angka.

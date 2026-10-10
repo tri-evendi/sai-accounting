@@ -94,7 +94,7 @@ export async function LandingAudience() {
     },
     {
       icon: ApartmentOutlined,
-      hue: "indigo",
+      hue: "brand",
       title: t("landing.audienceHoldingTitle"),
       body: t("landing.audienceHoldingBody"),
       /* Buku terpisah per PT adalah sifat PLATFORM (#104), bukan modul; yang
@@ -104,7 +104,7 @@ export async function LandingAudience() {
     },
     {
       icon: TranslationOutlined,
-      hue: "violet",
+      hue: "brand",
       title: t("landing.audienceLanguageTitle"),
       body: t("landing.audienceLanguageBody"),
       /* Bahasa dipilih per orang (`lib/i18n/config.ts`, cookie) — modul yang
@@ -114,7 +114,7 @@ export async function LandingAudience() {
     },
     {
       icon: SolutionOutlined,
-      hue: "cyan",
+      hue: "brand",
       title: t("landing.audienceServicesTitle"),
       body: t("landing.audienceServicesBody"),
       /* Preset `services` di `CATEGORY_MODULES` — tanpa stok, tanpa lapisan

@@ -180,7 +180,10 @@
     "mockJournalMemoTwo": "Payment received — invoice INV-2026-0042, into bank",
     "quoteCta": "Request a quote",
     "quoteNote": "Accounts are opened through a quote: company quota, data migration, and payment terms are agreed first. The prices above are the starting point.",
-    "faqTrialAQuote": "Self-serve trials are closed for now. Access is granted through a quote — we agree on the number of companies, the data migration, and payment terms first, including a trial period where one is needed."
+    "faqTrialAQuote": "Self-serve trials are closed for now. Access is granted through a quote — we agree on the number of companies, the data migration, and payment terms first, including a trial period where one is needed.",
+    "compareHeading": "Upgrading costs less than stacking smaller plans",
+    "compareRow": "{count} × {small} {stacked} → {large} {upgrade},",
+    "compareSaving": "saves {amount}/month"
   },
   "common": {
     "save": "Save",
@@ -540,8 +543,11 @@
       "termsLinkLabel": "terms & conditions",
       "termsAnd": "and the",
       "privacyLinkLabel": "privacy policy",
-      "closedTitle": "Self-serve sign-up is closed",
-      "closedBody": "New accounts are opened through a quote rather than self-serve, so that quota, data migration, and payment terms are agreed first. Contact us and we will set the account up for you.",
+      "closedTitle": "Request a quote",
+      "closedBody": "Accounts are opened through a quote rather than self-serve sign-up, so that company quota, data migration, and payment terms are agreed first. Three steps, and the first one is a single message.",
+      "quoteStep1": "You send one message: how many companies, how many users, and which system the data comes from.",
+      "quoteStep2": "We reply with a quote: quota, price, contract term, and payment terms — in writing.",
+      "quoteStep3": "Once approved, we set the account up along with the data migration. You sign in to books that are already filled.",
       "closedWhatsapp": "Contact us on WhatsApp",
       "closedEmail": "Email us at {email}",
       "closedSignIn": "Already have an account? Sign in"

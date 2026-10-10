@@ -180,7 +180,10 @@
     "mockJournalMemoTwo": "Pelunasan faktur INV-2026-0042 — masuk ke bank",
     "quoteCta": "Minta penawaran",
     "quoteNote": "Akun dibuka lewat penawaran: kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Harga di atas adalah titik mulainya.",
-    "faqTrialAQuote": "Uji coba swalayan sedang ditutup. Akses diberikan lewat penawaran — kami sepakati dulu jumlah PT, migrasi datanya, dan cara pembayaran, termasuk masa percobaan bila memang dibutuhkan."
+    "faqTrialAQuote": "Uji coba swalayan sedang ditutup. Akses diberikan lewat penawaran — kami sepakati dulu jumlah PT, migrasi datanya, dan cara pembayaran, termasuk masa percobaan bila memang dibutuhkan.",
+    "compareHeading": "Naik paket lebih murah daripada menumpuk paket kecil",
+    "compareRow": "{count} × {small} {stacked} → {large} {upgrade},",
+    "compareSaving": "hemat {amount}/bulan"
   },
   "common": {
     "save": "Simpan",
@@ -540,8 +543,11 @@
       "termsLinkLabel": "syarat & ketentuan",
       "termsAnd": "dan",
       "privacyLinkLabel": "kebijakan privasi",
-      "closedTitle": "Pendaftaran mandiri sedang ditutup",
-      "closedBody": "Akun baru saat ini dibuka lewat penawaran, bukan swalayan — supaya kuota, migrasi data, dan cara pembayarannya disepakati dulu. Hubungi kami dan akunnya kami siapkan.",
+      "closedTitle": "Minta penawaran",
+      "closedBody": "Akun dibuka lewat penawaran, bukan pendaftaran mandiri — supaya kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Prosesnya tiga langkah, dan langkah pertamanya satu pesan.",
+      "quoteStep1": "Anda kirim satu pesan: berapa PT, berapa pengguna, dan dari sistem apa datanya dipindahkan.",
+      "quoteStep2": "Kami balas dengan penawaran: kuota, harga, masa kontrak, dan syarat bayar — hitam di atas putih.",
+      "quoteStep3": "Setelah disetujui, akunnya kami siapkan beserta migrasi datanya. Anda masuk ke buku yang sudah terisi.",
       "closedWhatsapp": "Hubungi lewat WhatsApp",
       "closedEmail": "Kirim surel ke {email}",
       "closedSignIn": "Sudah punya akun? Masuk"

@@ -84,7 +84,7 @@ export async function LandingFooter() {
            sebagai ekor abu-abu. `colorFillQuaternary` yang berdiri di sini
            sebelumnya translusen 2–4%: di layar ia praktis tidak ada, yaitu
            persis keluhan "outline saja" yang tercatat di issue #266. */
-        background: "var(--sai-landing-band-indigo)",
+        background: "var(--sai-landing-band-brand)",
       }}
     >
       <div

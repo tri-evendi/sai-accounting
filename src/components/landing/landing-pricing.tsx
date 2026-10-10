@@ -43,8 +43,9 @@ import { BUSINESS_MODULES } from "@/lib/business-modules";
 import { APP_NAME, CURRENCIES } from "@/lib/constants";
 import { LOCALES } from "@/lib/i18n/config";
 import { getT } from "@/lib/i18n/server";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
+import { stackingComparisons, type StackingComparison } from "@/lib/plan-stacking";
 import {
   planCarriesNegotiation,
   planDescriptionKey,
@@ -105,7 +106,7 @@ const PRICE_ROW: React.CSSProperties = {
  * menangkap bahwa "3 PT · 15 pengguna" adalah pokok bedanya. Ubin berangka
  * meminjam bentuk *stat tile* hero (§"Polos sekali": kekayaan visual datang
  * dari ISI): angkanya besar, tabular, labelnya di bawah. Nadanya
- * `fill-indigo` (14%) di atas badan `surface` — nada yang sama dengan kepala
+ * `fill-brand` (14%) di atas badan `surface` — nada yang sama dengan kepala
  * kartu biasa, jadi ubinnya terbaca sebagai bagian kartu, bukan lencana; dan
  * ia bukan bidang yang memikul tombol, jadi kadar 14% sah (§Nada pekat).
  */
@@ -115,7 +116,7 @@ const QUOTA_TILE: React.CSSProperties = {
   gap: 0,
   padding: "var(--ant-padding-xs) var(--ant-padding-sm)",
   borderRadius: "var(--sai-landing-radius-control)",
-  background: landingFill("indigo"),
+  background: landingFill("brand"),
   minWidth: 0,
 };
 
@@ -187,6 +188,111 @@ const CHECK: React.CSSProperties = {
   fontSize: "var(--ant-font-size-lg)",
 };
 
+/* ── Pembanding "menumpuk vs naik paket" ───────────────────────────────────── */
+
+/**
+ * Hitungan "menumpuk paket kecil vs naik paket" — jawaban atas pertanyaan
+ * PERTAMA pembeli grup multi-PT (`lib/plan-stacking.ts`).
+ *
+ * ══ DUA BARIS KALIMAT, BUKAN TABEL — DAN ITU DUA ALASAN ════════════════════
+ * Versi pertama panel ini sebuah TABEL HTML tiga kolom. Dua hal menolaknya:
+ *
+ *   1. `tests/design-system-primitives` melarang elemen tabel mentah — tabel
+ *      lewat `StaticTable`/`DataTable`. (⚠ Penjaga itu memindai TEKS, jadi
+ *      menyebut tag-nya secara literal di komentar pun ikut tertangkap; itu
+ *      sebabnya paragraf ini menuliskannya sebagai kata.) Dan primitif itu memang tidak cocok di sini:
+ *      ia tabel APLIKASI (rapat, bertepi, pembungkus geser mendatar), yang di
+ *      halaman pemasaran terbaca sebagai layar kerja — persis batas yang dijaga
+ *      `tests/landing-boundary`.
+ *   2. Permintaan pemilik yang datang di hari yang sama: halaman ini harus
+ *      lebih TENANG. Kisi bergaris di bawah tiga kartu bernominal menambah
+ *      struktur untuk dua baris data — dan dua baris tidak butuh tabel untuk
+ *      bisa dibaca.
+ *
+ * Yang dipakai: `<ul>` dua butir, masing-masing satu kalimat. Hematnya
+ * ditegaskan terpisah supaya ia tetap bisa diwarnai — satu-satunya angka
+ * berwarna di panel ini.
+ *
+ * ══ PERMUKAAN NETRAL, TANPA NADA ═══════════════════════════════════════════
+ * Seksi harga sudah memikul tiga kartu bernominal; bidang berwarna keempat di
+ * bawahnya menambah warna tanpa menambah arti. `colorFillQuaternary`
+ * memisahkannya dari kartu di atasnya tanpa memperkenalkan hue baru.
+ */
+function PembandingTumpukan({
+  rows,
+  t,
+}: {
+  rows: readonly StackingComparison[];
+  t: Awaited<ReturnType<typeof getT>>;
+}) {
+  const uang = (nilai: number, mata: string) =>
+    formatMoney(nilai, mata as CurrencyCode);
+
+  return (
+    <div
+      style={{
+        marginTop: "var(--ant-margin-lg)",
+        padding: "var(--ant-padding)",
+        borderRadius: "var(--sai-landing-radius)",
+        background: "var(--ant-color-fill-quaternary)",
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontSize: "var(--ant-font-size)",
+          fontWeight: "var(--ant-font-weight-strong)",
+          color: "var(--ant-color-text)",
+        }}
+      >
+        {t("landing.compareHeading")}
+      </p>
+      <ul
+        style={{
+          margin: 0,
+          marginTop: "var(--ant-margin-xs)",
+          paddingInlineStart: "var(--ant-padding-lg)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "var(--ant-margin-xxs)",
+          fontSize: "var(--ant-font-size)",
+          lineHeight: 1.625,
+          color: "var(--ant-color-text-secondary)",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {rows.map((row) => (
+          <li key={`${row.small.key}-${row.large.key}`}>
+            {/* Nama paket dipakai APA ADANYA: ia nama produk dan tidak
+                diterjemahkan (`PRICING.md` §1, alasan yang sama dengan
+                `APP_NAME`). */}
+            {t("landing.compareRow", {
+              count: row.count,
+              small: row.small.name,
+              stacked: uang(row.stacked, row.small.currency),
+              large: row.large.name,
+              upgrade: uang(row.upgrade, row.large.currency),
+            })}{" "}
+            {/* Satu-satunya angka berwarna di panel ini: ia menyatakan ARAH
+                (hemat), dan `colorMoneyPositive` adalah token uang #186 yang
+                lolos 4,5:1 sebagai teks — `colorSuccess` AntD tidak. */}
+            <strong
+              style={{
+                color: "var(--ant-color-money-positive)",
+                fontWeight: "var(--ant-font-weight-strong)",
+              }}
+            >
+              {t("landing.compareSaving", {
+                amount: uang(row.saving, row.large.currency),
+              })}
+            </strong>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export async function LandingPricing({
   headingLevel = "h2",
 }: {
@@ -198,6 +304,11 @@ export async function LandingPricing({
   const ppnEnabled = process.env.PLATFORM_PPN_DISABLED !== "true";
   /* Uji coba, atau penawaran — satu keputusan, satu tempat. */
   const ask = landingAsk(selfServeSignupOpen());
+  /* "Tiga PT: tiga paket kecil atau satu paket besar?" — pertanyaan PERTAMA
+     pembeli grup, dan sampai sekarang halaman ini membiarkannya menghitung
+     sendiri dari tiga kartu nominal. Angkanya DITURUNKAN dari katalog; baris
+     yang tidak hemat dijatuhkan (`lib/plan-stacking.ts`). */
+  const tumpukan = plans ? stackingComparisons(plans) : [];
   /* Alamat penjualan untuk paket berharga rundingan. Tidak diset = kartunya
    * tetap tampil (paketnya memang ada) tetapi TANPA tombol yang menuju
    * ke mana-mana — tombol `mailto:` kosong adalah jalan buntu, dan kalimat
@@ -206,7 +317,7 @@ export async function LandingPricing({
   const contactEmail = process.env.PLATFORM_CONTACT_EMAIL?.trim();
 
   return (
-    <LandingSection id="harga" tone="indigo">
+    <LandingSection id="harga" tone="brand">
       <LandingSectionIntro
         eyebrow={t("landing.eyebrowPricing")}
         title={t("landing.pricingHeading")}
@@ -454,7 +565,7 @@ export async function LandingPricing({
                         justifyContent: "space-between",
                         gap: "var(--ant-margin-xs)",
                         /* Kepala Pro `chip-brand` (28%), kepala lain
-                           `fill-indigo` (14%): keduanya terukur — teks
+                           `fill-brand` (14%): keduanya terukur — teks
                            11,89/9,43:1 di atas chip-brand, dan chip-brand vs
                            fill-indigo 1,20/1,22:1 (kedua tema), jadi kepala
                            Pro memang berbeda dari kepala di sebelahnya
@@ -820,6 +931,8 @@ export async function LandingPricing({
               Ketiga angkanya tetap DIHITUNG dari registri yang sama dengan
               strip hero, bukan diketik: modul baru muncul di sini tanpa ada
               yang perlu ingat. */}
+          {tumpukan.length > 0 && <PembandingTumpukan rows={tumpukan} t={t} />}
+
           <p
             style={{
               ...LANDING_NOTE,

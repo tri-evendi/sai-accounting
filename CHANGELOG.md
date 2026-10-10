@@ -20,6 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.7.0 — 2026-10-10 — belum digelar
+
+Akun baru dibuka lewat penawaran, bukan pendaftaran mandiri — dan penagihan otomatis berhenti menyentuh akun yang tidak pernah setuju membeli apa pun.
+
+### Berubah
+
+- Pendaftaran mandiri di halaman pendaratan ditutup sementara. Tombolnya kini berbunyi “Minta penawaran”, dan halaman pendaftaran menjelaskan jalannya beserta kanal kontak — kuota PT, migrasi data, dan cara pembayaran disepakati lebih dulu. Harga di halaman harga tetap dipajang sebagai titik mulainya.
+
+### Perbaikan
+
+- Tagihan langganan tidak lagi terbit untuk akun yang tidak punya perjanjian komersial. Akun uji coba dan internal sebelumnya ikut ditagih, ditagih ulang lewat surel pengingat, lalu bukunya ditangguhkan menjadi hanya-baca; buku yang tertutup karena itu sudah dibuka kembali dan tagihannya dibatalkan.
+- Tagihan yang digratiskan penyedia berhenti muncul sebagai “Lunas” di riwayat tagihan. Ia kini bertanda “Kompensasi” — nilainya memang nol, dan menampilkannya sebagai lunas membuat riwayat pembayaran terbaca seperti ada uang yang pernah masuk.
+- Perpanjangan langganan yang berganti siklus (bulanan ke tahunan, atau sebaliknya) kini mengambil harga dari siklus yang baru. Sebelumnya harganya tertinggal di siklus lama, sehingga langganan tahunan bisa membawa harga bulanan.
+
+---
+
 ## 0.6.0 — 2026-10-04 (260f208)
 
 Tahun buku bisa ditutup, saldo mata uang asing dinilai ulang pada kurs penutup, laporan bisa menyandingkan dua periode, dan ada halaman status yang bisa dibuka tanpa masuk.

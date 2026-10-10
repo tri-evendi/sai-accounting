@@ -43,6 +43,7 @@ import {
 } from "@/lib/mail-settings";
 import { resolveMailConfig, type MailConfigSource } from "@/lib/mailer-core";
 import { encryptionKeyAvailable } from "@/lib/settings-crypto";
+import { summarizeRevenue, type RevenueSummary } from "@/lib/platform-revenue";
 
 export type { ReconciliationReport };
 export type { MailSettingsView };
@@ -585,6 +586,11 @@ export interface OperatorOverviewPlatform {
 
 export interface OperatorOverview {
   control: OperatorOverviewControl;
+  /**
+   * Angka PENDAPATAN (`docs/KOMERSIALISASI.md` §8). `null` bersama `platform`
+   * di bawah — ia dihitung dari tabel yang sama, jadi ia mati bersamanya.
+   */
+  revenue: RevenueSummary | null;
   /** `null` = `sai_platform` tak terjangkau. Bagian kendali tetap benar. */
   platform: OperatorOverviewPlatform | null;
 }
@@ -654,8 +660,10 @@ export async function operatorOverview(
   };
 
   let platform: OperatorOverviewPlatform | null = null;
+  let revenue: RevenueSummary | null = null;
   try {
-    const [subRows, overdue, open, lastRun] = await Promise.all([
+    const [subRows, overdue, open, lastRun, subsForMrr, paidPayments, issuedInvoices] =
+      await Promise.all([
       deps.platform.subscription.groupBy({ by: ["status"], _count: { _all: true } }),
       deps.platform.platformInvoice.aggregate({
         where: { status: "issued", dueDate: { lt: now } },
@@ -670,6 +678,27 @@ export async function operatorOverview(
       deps.platform.schedulerRun.findFirst({
         orderBy: { id: "desc" },
         select: { finishedAt: true, status: true, errorCount: true },
+      }),
+      /* ── Bahan §8. Ketiganya dibaca di putaran yang SAMA: angka pendapatan
+         tidak boleh punya batas gagal sendiri — "MRR tak terjangkau sementara
+         jumlah tagihan terbaca" adalah dasbor yang separuh benar, dan separuh
+         benar pada angka uang lebih buruk daripada kosong. ── */
+      deps.platform.subscription.findMany({
+        select: {
+          tenantId: true,
+          status: true,
+          billingMode: true,
+          billingCycle: true,
+          price: true,
+        },
+      }),
+      /* UANG = baris `payments` berstatus `paid`. Comp tidak pernah melahirkan
+         baris pembayaran, jadi hadiah terpisah dari penjualan SECARA
+         KONSTRUKSI (`lib/platform-revenue.ts`). */
+      deps.platform.payment.groupBy({ by: ["tenantId"], where: { status: "paid" } }),
+      deps.platform.platformInvoice.findMany({
+        where: { status: "issued" },
+        select: { tenantId: true, dueDate: true, total: true },
       }),
     ]);
 
@@ -687,9 +716,32 @@ export async function operatorOverview(
       openTotal: Number(open._sum.total ?? 0),
       lastRun,
     };
+
+    revenue = summarizeRevenue({
+      subscriptions: subsForMrr.map((sub) => ({
+        tenantId: sub.tenantId,
+        status: sub.status,
+        billingMode: sub.billingMode,
+        billingCycle: sub.billingCycle,
+        /* `Decimal` → `number` DI SINI, sekali — pola `plan-catalog.ts`. */
+        price: Number(sub.price),
+      })),
+      payingTenantIds: paidPayments.map((row) => row.tenantId),
+      /* Penyebut konversi = SELURUH pendaftar, dari basis data kendali yang
+         sudah dibaca di atas. Memakai jumlah langganan akan mengecualikan
+         tenant yang belum pernah punya baris langganan — yaitu justru yang
+         gagal dikonversi. */
+      totalTenants: total,
+      outstanding: issuedInvoices.map((inv) => ({
+        tenantId: inv.tenantId,
+        dueDate: inv.dueDate,
+        total: Number(inv.total),
+      })),
+      now,
+    });
   } catch (error) {
     console.error("[operator-store] ringkasan platform tak terbaca:", error);
   }
 
-  return { control, platform };
+  return { control, revenue, platform };
 }

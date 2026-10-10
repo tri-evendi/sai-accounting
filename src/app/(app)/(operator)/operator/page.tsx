@@ -62,6 +62,19 @@ function formatDateTime(d: Date): string {
 /** Status tenant yang berarti "buku terkunci" — sama dengan daftar tenant. */
 const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
+/** Teks sekunder di bawah ubin — sama dengan daftar tenant. */
+const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
+
+/** "Penagihan tidak terjangkau" — kalimat jujur, bukan galat. */
+const NOTICE: React.CSSProperties = {
+  margin: 0,
+  padding: "var(--ant-padding)",
+  borderRadius: "var(--ant-border-radius-lg)",
+  background: "var(--ant-color-fill-quaternary)",
+  fontSize: "var(--ant-font-size)",
+  color: "var(--ant-color-text-secondary)",
+};
+
 const SECTION_HEADING: React.CSSProperties = {
   margin: 0,
   fontSize: "var(--ant-font-size-lg)",
@@ -88,7 +101,7 @@ type NewestRow = OperatorOverview["control"]["newest"][number];
 export default async function OperatorOverviewPage() {
   await requireOperatorPage();
   const t = await getT();
-  const { control, platform } = await operatorOverview();
+  const { control, revenue, platform } = await operatorOverview();
 
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
 
@@ -213,22 +226,76 @@ export default async function OperatorOverviewPage() {
           </div>
         </section>
 
+        {/* ── PENDAPATAN (§8) ────────────────────────────────────────────
+             Berdiri SEBELUM bidang platform, dan itu urutan yang disengaja:
+             "berapa pendapatan kita" adalah pertanyaan pertama yang dibawa
+             seseorang ke layar ini, dan sampai hari ini ia tidak punya jawaban
+             di tabel mana pun. Definisi setiap angkanya di
+             `lib/platform-revenue.ts`. ── */}
+        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h2 style={SECTION_HEADING}>{t("operator.overview.revenueHeading")}</h2>
+          {revenue === null ? (
+            <p style={NOTICE}>{t("operator.tenant.billingUnavailable")}</p>
+          ) : (
+            <>
+              <div style={TILE_GRID}>
+                <StatCard
+                  title={t("operator.overview.payingTenants")}
+                  value={revenue.payingTenants}
+                  tone={revenue.payingTenants > 0 ? "success" : "neutral"}
+                  /* Konversi `null` = belum ada pendaftar sama sekali; itu
+                     BEDA dari 0% dan ditulis sebagai tanda pisah, bukan nol
+                     (Prinsip Inti #4). */
+                  hint={
+                    revenue.conversionAllTime === null
+                      ? undefined
+                      : t("operator.overview.conversionHint", {
+                          percent: (revenue.conversionAllTime * 100).toFixed(0),
+                          total: control.total,
+                        })
+                  }
+                />
+                <StatCard
+                  title={t("operator.overview.mrr")}
+                  value={formatMoney(revenue.mrr)}
+                  size="phrase"
+                  tone={revenue.mrr > 0 ? "success" : "neutral"}
+                  hint={t("operator.overview.arrHint", { amount: formatMoney(revenue.arr) })}
+                />
+                <StatCard
+                  title={t("operator.overview.billableSubs")}
+                  value={revenue.billableSubscriptions}
+                  hint={t("operator.overview.billableHint")}
+                />
+                <StatCard
+                  title={t("operator.overview.outstanding")}
+                  value={revenue.outstandingCount}
+                  tone={revenue.outstandingCount > 0 ? "warning" : "neutral"}
+                  hint={
+                    revenue.outstandingCount === 0
+                      ? formatMoney(0)
+                      : t("operator.overview.outstandingHint", {
+                          amount: formatMoney(revenue.outstandingTotal),
+                          days: revenue.oldestOutstandingDays ?? 0,
+                        })
+                  }
+                />
+              </div>
+              {/* Apa yang TIDAK dihitung, dikatakan di layar: angka pendapatan
+                  yang definisinya hanya hidup di kepala seseorang adalah angka
+                  yang suatu hari dibaca salah oleh orang lain. */}
+              <p style={{ margin: 0, fontSize: 14, ...MUTED }}>
+                {t("operator.overview.revenueNote")}
+              </p>
+            </>
+          )}
+        </section>
+
         {/* ── Bidang PLATFORM: boleh mati, dan mengatakannya sebagai kalimat ─ */}
         <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h2 style={SECTION_HEADING}>{t("operator.overview.platformHeading")}</h2>
           {platform === null ? (
-            <p
-              style={{
-                margin: 0,
-                padding: "var(--ant-padding)",
-                borderRadius: "var(--ant-border-radius-lg)",
-                background: "var(--ant-color-fill-quaternary)",
-                fontSize: "var(--ant-font-size)",
-                color: "var(--ant-color-text-secondary)",
-              }}
-            >
-              {t("operator.tenant.billingUnavailable")}
-            </p>
+            <p style={NOTICE}>{t("operator.tenant.billingUnavailable")}</p>
           ) : (
             <div style={TILE_GRID}>
               <StatCard

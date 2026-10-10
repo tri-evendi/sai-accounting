@@ -536,3 +536,39 @@ model SiteContent {
   @@index([locale])
   @@map("site_contents")
 }
+
+/// PENGATURAN SITUS yang bisa disetel operator (migration 0016) — menggantikan
+/// SSH untuk tiga nilai yang bukan keputusan teknis: nomor WhatsApp, alamat
+/// surel penjualan, dan instruksi transfer manual.
+///
+/// Rumahnya `sai_platform` dengan sebab yang sama seperti `MailSetting`: ia
+/// setelan PENYEDIA, bukan data pelanggan, dan layarnya konsol operator.
+/// Platform mati → resolvernya jatuh ke environment, bukan menghilangkan
+/// kanal kontak dari halaman publik (`lib/site-settings.ts`, gagal-lunak).
+///
+/// ⚠ NULL ≠ string kosong. NULL = "tidak diatur dari sini, pakai env"; string
+/// kosong = "operator SENGAJA mencabutnya". Resolvernya menegakkan bedanya.
+model SiteSetting {
+  id Int @id @default(autoincrement())
+
+  /// Penanda SINGLETON — selalu 1. Dua baris = dua kebenaran tentang satu
+  /// nomor telepon; constraint UNIQUE-lah yang menjaminnya, dan `upsert`
+  /// memakainya sebagai kunci.
+  singleton Int @unique @default(1)
+
+  /// Digit saja, bentuk yang sama yang diterima `parseWhatsappNumber`.
+  contactWhatsapp String? @map("contact_whatsapp") @db.VarChar(30)
+  contactEmail    String? @map("contact_email") @db.VarChar(191)
+
+  /// Ditampilkan APA ADANYA ke pelanggan: nama bank, nomor rekening, nama
+  /// pemilik rekening.
+  manualPaymentInstructions String? @map("manual_payment_instructions") @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

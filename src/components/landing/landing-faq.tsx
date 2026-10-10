@@ -80,7 +80,7 @@ import {
   BUSINESS_MODULES,
   CATEGORY_META,
 } from "@/lib/business-modules";
-import { contactChannels } from "@/lib/contact-channels";
+import { resolveContactChannels } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
@@ -97,7 +97,9 @@ export async function LandingFaq() {
      menghidupkan tombol WhatsApp melayang). Tanpa alamat, jawabannya
      dokumentasi saja: menyuruh orang menulis ke alamat yang tidak ada adalah
      penunjuk palsu. */
-  const surelKontak = contactChannels().email;
+  /* Kanal EFEKTIF: basis data di atas environment, jadi nomor/alamat bisa
+     disetel dari konsol tanpa SSH (`lib/site-settings.ts`). */
+  const surelKontak = (await resolveContactChannels()).email;
 
   /* Preset kategori usaha DIRAKIT dari registri: `custom` bukan jenis usaha
      melainkan "pilih sendiri", dan itu disebut kalimatnya secara terpisah.

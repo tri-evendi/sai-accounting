@@ -352,4 +352,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   // penyimpanan: kolomnya `TEXT`, tapi kalimat pemasaran 4.000 karakter adalah
   // tempelan yang salah sasaran (lihat `SITE_CONTENT_VALUE_MAX`).
   "validation.siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan.",
+  // Pengaturan situs (migration 0016) — bentuk yang sama yang diterima
+  // `parseWhatsappNumber`: `wa.me` menolak + dan spasi.
+  "validation.whatsappDigitsOnly":
+    "Nomor WhatsApp hanya angka, tanpa + atau spasi (mis. 628123456789).",
 };

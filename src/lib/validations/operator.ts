@@ -104,6 +104,44 @@ export const billingModeActionSchema = z.object({
 });
 export type BillingModeFormInput = z.infer<typeof billingModeActionSchema>;
 
+/* ── 3d. Pengaturan situs (migration 0016) ─────────────────────────────────── */
+
+/**
+ * Tiga nilai yang berhenti menuntut SSH: nomor WhatsApp, surel penjualan, dan
+ * instruksi transfer manual.
+ *
+ * ⚠ ISIAN KOSONG BERARTI "CABUT KANALNYA", bukan "pakai environment".
+ * Formulir HTML tidak bisa mengirim `null`, jadi kedua maksud itu tidak bisa
+ * dibedakan dari satu kotak teks — dan menebaknya berarti satu dari dua
+ * maksud dilakukan secara diam-diam. Karena itu "kembali ke environment"
+ * punya jalannya sendiri (aksi `resetToEnv`, satu tombol), dan kotak kosong
+ * di sini selalu berarti yang satu lagi.
+ *
+ * `reason` TIDAK diminta, sama seperti pengaturan surel #169: ini konfigurasi
+ * milik penyedia sendiri, bukan tindakan terhadap data pelanggan. Jejaknya
+ * tetap tercatat lengkap dengan aktornya.
+ */
+export const siteSettingsSchema = z.object({
+  /** Digit saja — bentuk yang sama yang diterima `parseWhatsappNumber`. */
+  contactWhatsapp: z
+    .string()
+    .trim()
+    .max(30)
+    .refine((v) => v.length === 0 || /^[0-9]{8,}$/.test(v), {
+      message: vmsg("validation.whatsappDigitsOnly"),
+    }),
+  contactEmail: z
+    .string()
+    .trim()
+    .max(191)
+    .refine((v) => v.length === 0 || /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(v), {
+      message: vmsg("validation.emailInvalid"),
+    }),
+  /** Ditampilkan APA ADANYA ke pelanggan; batasnya kewarasan, bukan kolom. */
+  manualPaymentInstructions: z.string().trim().max(2000),
+});
+export type SiteSettingsFormInput = z.infer<typeof siteSettingsSchema>;
+
 /* ── 4. Eksekusi penghapusan ───────────────────────────────────────────────── */
 
 export const deletionExecuteSchema = z.object({

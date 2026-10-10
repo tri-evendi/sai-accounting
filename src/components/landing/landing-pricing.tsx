@@ -46,6 +46,7 @@ import { getT } from "@/lib/i18n/server";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
 import { stackingComparisons, type StackingComparison } from "@/lib/plan-stacking";
+import { resolveContactChannels } from "@/lib/site-settings";
 import {
   planCarriesNegotiation,
   planDescriptionKey,
@@ -314,7 +315,9 @@ export async function LandingPricing({
    * ke mana-mana — tombol `mailto:` kosong adalah jalan buntu, dan kalimat
    * penggantinya memberi tahu pemasang bahwa yang kurang adalah konfigurasi,
    * bukan paketnya. */
-  const contactEmail = process.env.PLATFORM_CONTACT_EMAIL?.trim();
+  /* Alamat EFEKTIF, bukan env telanjang: sejak migration 0016 ia bisa disetel
+     dari konsol operator (`lib/site-settings.ts`). */
+  const contactEmail = (await resolveContactChannels()).email;
 
   return (
     <LandingSection id="harga" tone="brand">

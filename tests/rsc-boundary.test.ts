@@ -261,8 +261,15 @@ const SRC = join(__dirname, "..", "src");
  * Jadi +2 −1 = +1. Ditulis sebagai tiga baris dan bukan "+1": ambang ini hanya
  * menahan sesuatu selama setiap pergerakannya bisa ditelusuri ke modul yang
  * menyebabkannya.
+ *
+ * 185 sejak halaman Pengaturan Situs (2026-10-10):
+ * `components/operator/site-settings-form.tsx` — formulir tiga medan yang
+ * menggantikan SSH untuk nomor WhatsApp, surel penjualan, dan instruksi
+ * transfer manual. Client karena ia memang formulir; halamannya tetap server
+ * component dan hanya menurunkan boolean "dari basis data / dari environment",
+ * jadi nilai environment-nya tidak pernah menyeberang ke peramban.
  */
-const AMBANG_KLIEN = 184;
+const AMBANG_KLIEN = 185;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -443,6 +450,13 @@ const KLIEN_TERSAHKAN = [
      dan formulir keluarnya DIOPER dari layout server; berkas itu tidak
      mengimpor satu pun modul autentikasi. */
   "components/operator/operator-shell.tsx",
+  /* Pengaturan situs (migration 0016): formulir tiga medan — client karena ia
+     memang formulir (RHF + zod, hasil simpan tanpa muat ulang, dialog
+     konfirmasi untuk "kembalikan ke pengaturan server"). Halamannya TETAP
+     server component: ia membaca barisnya, menghitung nilai yang BERLAKU, dan
+     menurunkan "dari basis data / dari environment" sebagai boolean — nilai
+     env-nya sendiri tidak pernah menyeberang ke peramban. */
+  "components/operator/site-settings-form.tsx",
   "components/operator/tenant-actions.tsx",
   "components/providers/antd-provider.tsx",
   "components/reports/report-launch-dialog.tsx",

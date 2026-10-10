@@ -58,7 +58,7 @@ import {
 } from "@/lib/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
 import { offersInstantPayment } from "@/lib/payment-gateway";
-import { resolveManualPaymentInstructions } from "@/lib/site-settings";
+import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 
@@ -127,6 +127,9 @@ export async function SubscriptionSection({
      `PayInvoice` adalah komponen klien dan tidak boleh menebaknya sendiri. */
   const instantPayment = offersInstantPayment();
   const manualInstructions = await resolveManualPaymentInstructions();
+  /* Sakelar PPN EFEKTIF (basis data → env, migration 0017): satu bacaan untuk
+     seluruh seksi, bukan `process.env` yang diulang di dalam JSX. */
+  const ppnEnabled = await resolvePpnEnabled();
 
   if (!overview) {
     return (
@@ -156,7 +159,7 @@ export async function SubscriptionSection({
           Number(
             platformInvoiceAmounts(
               subscriptionPrice,
-              process.env.PLATFORM_PPN_DISABLED !== "true"
+              ppnEnabled
             ).total
           ),
           overview.billing?.subscription?.currency ?? "IDR"

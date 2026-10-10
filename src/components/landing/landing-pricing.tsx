@@ -46,14 +46,15 @@ import { getT } from "@/lib/i18n/server";
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { activePlans } from "@/lib/plan-catalog";
 import { stackingComparisons, type StackingComparison } from "@/lib/plan-stacking";
-import { resolveContactChannels } from "@/lib/site-settings";
+import { resolveContactChannels, resolvePpnEnabled } from "@/lib/site-settings";
 import {
   planCarriesNegotiation,
   planDescriptionKey,
   planHighlightKeys,
 } from "@/lib/plan-copy";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
+import { TRIAL_DAYS } from "@/lib/registration";
+import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 import { DEFAULT_TAX_RATE } from "@/lib/tax";
 
 /**
@@ -302,9 +303,9 @@ export async function LandingPricing({
 } = {}) {
   const t = await getT();
   const plans = await activePlans();
-  const ppnEnabled = process.env.PLATFORM_PPN_DISABLED !== "true";
+  const ppnEnabled = await resolvePpnEnabled();
   /* Uji coba, atau penawaran — satu keputusan, satu tempat. */
-  const ask = landingAsk(selfServeSignupOpen());
+  const ask = landingAsk(await resolveSelfServeSignupOpen());
   /* "Tiga PT: tiga paket kecil atau satu paket besar?" — pertanyaan PERTAMA
      pembeli grup, dan sampai sekarang halaman ini membiarkannya menghitung
      sendiri dari tiga kartu nominal. Angkanya DITURUNKAN dari katalog; baris

@@ -8,18 +8,39 @@
  * bukan keputusan teknis — dan satu di antaranya memikul SELURUH corong
  * penawaran Fase B (`docs/KOMERSIALISASI.md` §7, langkah 1).
  *
- * ⚠ Yang TIDAK ada di sini, dan ketiadaannya disengaja: `SELF_SERVE_SIGNUP`
- * (membuka/menutup pendaftaran) dan `PLATFORM_PPN_DISABLED` (PPN di tagihan).
- * Keduanya bukan "isi" melainkan GERBANG: yang pertama gagal-tertutup dan
- * membuka corong komersial, yang kedua punya akibat pajak. Memindahkannya ke
- * tombol web adalah keputusan pemilik — bukan efek samping halaman pengaturan.
+ * ══ DUA GERBANG, DIPINDAHKAN ATAS PERMINTAAN PEMILIK ═══════════════════════
+ * `SELF_SERVE_SIGNUP` dan `PLATFORM_PPN_DISABLED` dulu SENGAJA tidak ada di
+ * sini — keduanya bukan "isi" melainkan gerbang, dan memindahkannya ke tombol
+ * web disebut sebagai keputusan pemilik, bukan efek samping halaman
+ * pengaturan. Keputusan itu kini diambil, jadi keduanya ada di bawah.
+ *
+ * Yang TIDAK berubah karena pemindahan ini, dan harus tetap begitu:
+ *
+ *   • **Gagal-tertutup pendaftaran.** Platform tak terjangkau → barisnya tak
+ *     terbaca → `signupOpenFrom(null, env)` jatuh ke environment, yang
+ *     bawaannya TERTUTUP. Basis data yang mati tidak pernah membuka corong.
+ *   • **Penjadwal ikut membacanya.** PPN dipakai di JALUR UANG oleh
+ *     `scripts/subscription-scheduler.ts` — proses `tsx` di luar Next. Kalau ia
+ *     tidak ikut, menyalakan PPN di sini akan mengubah apa yang DIPAJANG
+ *     halaman harga tanpa mengubah nominal yang benar-benar ditagih; itu panel
+ *     yang berbohong tentang uang. Jalannya: `lib/site-settings-core.ts`,
+ *     inti tanpa `server-only` yang menerima klien dari pemanggil.
+ *   • **Tiga keadaan, bukan dua.** "Belum pernah disetel dari konsol" tetap
+ *     bisa dibedakan dari "sengaja dimatikan" (kolom `TINYINT(1) NULL`,
+ *     migration 0017) — tanpa itu, satu kali menyimpan formulir ini merampas
+ *     keputusan dari `.env`.
  */
 
 import { PageHeader } from "@/components/ui/page-header";
 import { SiteSettingsForm } from "@/components/operator/site-settings-form";
 import { getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { effectiveSetting, siteSettingsForOperator } from "@/lib/site-settings";
+import {
+  effectiveSetting,
+  ppnEnabledFrom,
+  signupOpenFrom,
+  siteSettingsForOperator,
+} from "@/lib/site-settings";
 import {
   operatorResetSiteSettings,
   operatorSaveSiteSettings,
@@ -38,6 +59,13 @@ const NOTICE: React.CSSProperties = {
   lineHeight: 1.625,
   color: "var(--ant-color-text-secondary)",
 };
+
+/** `null` → "ikut pengaturan server"; `true`/`false` → keputusan konsol. */
+function gateValue(v: boolean | null | undefined): "env" | "on" | "off" {
+  if (v === true) return "on";
+  if (v === false) return "off";
+  return "env";
+}
 
 export default async function OperatorSettingsPage() {
   await requireOperatorPage();
@@ -69,6 +97,21 @@ export default async function OperatorSettingsPage() {
         row?.manualPaymentInstructions,
         process.env.MANUAL_PAYMENT_INSTRUCTIONS
       ) ?? "",
+    /* `null` di baris = "ikut pengaturan server", dan ia DIPILIH sebagai nilai
+       awal — bukan diterjemahkan lebih dulu menjadi on/off. Kalau layar ini
+       merender `off` untuk baris yang masih `null`, menyimpan perubahan nomor
+       telepon akan ikut menuliskan keputusan gerbang yang tak pernah diambil. */
+    selfServeSignup: gateValue(row?.selfServeSignupOpen),
+    ppn: gateValue(row?.ppnEnabled),
+  };
+
+  /* Yang BERLAKU bila pilihannya "ikut pengaturan server" — dihitung di sini
+     sebab hanya server melihat `.env`; keduanya memakai fungsi presedensi yang
+     sama dengan pembaca sungguhan, dipanggil dengan baris KOSONG supaya yang
+     dijawab benar-benar "apa kata environment". */
+  const envGates = {
+    signupOpen: signupOpenFrom(null, process.env),
+    ppnEnabled: ppnEnabledFrom(null, process.env),
   };
 
   /* Dari mana nilainya datang — dikatakan per medan di layar. `null` di baris
@@ -88,6 +131,7 @@ export default async function OperatorSettingsPage() {
       <SiteSettingsForm
         initial={initial}
         fromDb={fromDb}
+        envGates={envGates}
         rowExists={row !== null}
         save={operatorSaveSiteSettings}
         reset={operatorResetSiteSettings}

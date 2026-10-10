@@ -59,6 +59,7 @@ import {
   transition,
   type SubscriptionEvent,
 } from "../src/lib/subscription-lifecycle";
+import { ppnEnabledFrom, readSiteSettingsRow } from "../src/lib/site-settings-core";
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
@@ -258,6 +259,32 @@ async function main() {
     errors.push(`adopsi-yatim: ${e}`);
   }
 
+  /*
+   * ══ SAKELAR PPN: BASIS DATA → ENVIRONMENT (migration 0017) ═══════════════
+   * Dibaca SEKALI per putaran, bukan per tagihan: dua tagihan di satu putaran
+   * yang lahir di sisi berbeda dari satu perubahan sakelar akan menjadi dua
+   * tagihan yang tidak bisa dijelaskan kepada siapa pun.
+   *
+   * ⚠ Dibaca lewat `site-settings-core` — INTI tanpa `server-only`/`next/cache`
+   * — dengan klien yang SUDAH dipegang skrip ini. Mengimpor pembungkus Next-nya
+   * akan menggagalkan skrip; mengimpor `lib/platform-db` akan membuka pool
+   * kedua di proses yang sengaja dibatasi satu koneksi.
+   *
+   * Gagal baca TIDAK menggagalkan putaran: ia jatuh ke environment (yang
+   * bawaannya PPN AKTIF), lalu disebut di log. Arah itu dipilih sadar — tagihan
+   * yang terbit tanpa PPN karena basis data sekejap tak terbaca adalah tagihan
+   * yang harus dibetulkan dengan nota, sedangkan PPN yang ikut terbit saat
+   * mestinya tidak adalah angka yang bisa dikoreksi sebelum dibayar.
+   */
+  let ppnAktif = process.env.PLATFORM_PPN_DISABLED !== "true";
+  try {
+    ppnAktif = ppnEnabledFrom(await readSiteSettingsRow(platform), process.env);
+  } catch (e) {
+    console.warn(
+      `[penjadwal] sakelar PPN tak terbaca dari basis data — memakai environment (PPN ${ppnAktif ? "aktif" : "mati"}): ${e}`
+    );
+  }
+
   const subscriptions = await platform.subscription.findMany({
     where: { status: { not: "cancelled" } },
     select: {
@@ -297,10 +324,7 @@ async function main() {
        * diketik ulang; sakelar PLATFORM_PPN_DISABLED = mekanisme untuk
        * jawaban penasihat pajak, bukan kebijakan yang kami tetapkan. */
       const number = invoiceNumberFor(sub.id, period.start);
-      const amounts = platformInvoiceAmounts(
-        sub.price.toString(),
-        process.env.PLATFORM_PPN_DISABLED !== "true"
-      );
+      const amounts = platformInvoiceAmounts(sub.price.toString(), ppnAktif);
       try {
         const invoice = await platform.platformInvoice.create({
           data: {

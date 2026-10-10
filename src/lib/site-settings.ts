@@ -37,6 +37,19 @@ import { unstable_cache, updateTag } from "next/cache";
 
 import { contactChannels, type ContactChannels } from "@/lib/contact-channels";
 import { platformDb } from "@/lib/platform-db";
+import {
+  effectiveSetting,
+  ppnEnabledFrom,
+  readSiteSettingsRow,
+  signupOpenFrom,
+  type SiteSettingsRow,
+} from "@/lib/site-settings-core";
+
+/* Di-ekspor ulang supaya pemanggil lama tidak perlu tahu pemecahannya; INTI-nya
+ * hidup di `site-settings-core.ts` sebab penjadwal (`tsx`, di luar Next) juga
+ * membacanya dan tidak bisa memuat modul ber-`server-only`. */
+export { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@/lib/site-settings-core";
+export type { SiteSettingsRow } from "@/lib/site-settings-core";
 
 /** Tag revalidasi — satu untuk barisnya; penulisnya memanggil ini. */
 export const SITE_SETTINGS_TAG = "site-settings";
@@ -44,25 +57,8 @@ export const SITE_SETTINGS_TAG = "site-settings";
 /** Jaring untuk perubahan di luar jalur konsol. Lima menit, sama dengan katalog. */
 const UMUR_CACHE_DETIK = 300;
 
-export interface SiteSettingsRow {
-  contactWhatsapp: string | null;
-  contactEmail: string | null;
-  manualPaymentInstructions: string | null;
-  updatedBy: string;
-  updatedAt: Date;
-}
-
 async function ambilBaris(): Promise<SiteSettingsRow | null> {
-  return platformDb.siteSetting.findUnique({
-    where: { singleton: 1 },
-    select: {
-      contactWhatsapp: true,
-      contactEmail: true,
-      manualPaymentInstructions: true,
-      updatedBy: true,
-      updatedAt: true,
-    },
-  });
+  return readSiteSettingsRow(platformDb);
 }
 
 const barisTersimpan = unstable_cache(async () => ambilBaris(), ["site-settings", "row"], {
@@ -99,26 +95,6 @@ export async function siteSettingsForOperator(): Promise<SiteSettingsRow | null 
 }
 
 /**
- * Nilai yang BERLAKU dari satu setelan: `null`/tidak ada → pakai env;
- * `""`/hanya spasi → operator SENGAJA mencabutnya (env TIDAK dipakai); selain
- * itu → nilai dari basis data.
- *
- * Diekspor supaya aturan ini bisa diuji tanpa basis data: ia satu baris dengan
- * tiga cabang, dan cabang tengahnya — "dicabut, jadi JANGAN jatuh ke env" —
- * adalah yang paling mudah hilang saat seseorang menyederhanakannya menjadi
- * `db || env`. Hilangnya akan menghidupkan kembali nomor lama di `.env` pada
- * hari operator mencabut nomor barunya.
- */
-export function effectiveSetting(
-  dbValue: string | null | undefined,
-  envValue: string | undefined
-): string | undefined {
-  if (dbValue === null || dbValue === undefined) return envValue;
-  const trimmed = dbValue.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-/**
  * Kanal kontak EFEKTIF — basis data di atas environment.
  *
  * Bentuk & validasinya tetap milik `contactChannels()` yang murni dan teruji
@@ -147,6 +123,9 @@ export interface SaveSiteSettingsInput {
   contactWhatsapp: string | null;
   contactEmail: string | null;
   manualPaymentInstructions: string | null;
+  /** `null` = pakai environment; `true`/`false` = keputusan dari konsol. */
+  selfServeSignupOpen: boolean | null;
+  ppnEnabled: boolean | null;
   actor: string;
 }
 
@@ -163,6 +142,8 @@ export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<vo
     contactWhatsapp: input.contactWhatsapp,
     contactEmail: input.contactEmail,
     manualPaymentInstructions: input.manualPaymentInstructions,
+    selfServeSignupOpen: input.selfServeSignupOpen,
+    ppnEnabled: input.ppnEnabled,
     updatedBy: input.actor,
   };
   await platformDb.siteSetting.upsert({
@@ -184,4 +165,27 @@ export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<vo
 export async function resetSiteSettings(): Promise<void> {
   await platformDb.siteSetting.deleteMany({ where: { singleton: 1 } });
   updateTag(SITE_SETTINGS_TAG);
+}
+
+/**
+ * Pendaftaran mandiri terbuka? — EFEKTIF (basis data di atas environment).
+ *
+ * ⚠ GAGAL-TERTUTUP tetap utuh: `siteSettings()` memulangkan `null` saat platform
+ * tak terjangkau, dan `signupOpenFrom(null, env)` jatuh ke environment — yang
+ * bawaannya TERTUTUP. Jadi basis data yang mati tidak pernah membuka corong,
+ * dan juga tidak menutup corong yang sengaja dibuka lewat `.env`.
+ */
+export async function resolveSelfServeSignupOpen(): Promise<boolean> {
+  return signupOpenFrom(await siteSettings(), process.env);
+}
+
+/**
+ * PPN aktif di tagihan platform? — EFEKTIF.
+ *
+ * ⚠ Dipakai JALUR UANG (tagihan prorata pindah paket) dan permukaan yang
+ * memajang nominal. Penjadwal memakai `ppnEnabledFrom` dari INTI dengan
+ * kliennya sendiri — lihat kepala `site-settings-core.ts`.
+ */
+export async function resolvePpnEnabled(): Promise<boolean> {
+  return ppnEnabledFrom(await siteSettings(), process.env);
 }

@@ -35,13 +35,14 @@ import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@/components/ui/button";
 import { getT } from "@/lib/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS, selfServeSignupOpen } from "@/lib/registration";
+import { TRIAL_DAYS } from "@/lib/registration";
+import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 
 export async function LandingHero() {
   const t = await getT();
   /* Apa yang boleh dijanjikan tombol di bawah — uji coba, atau penawaran.
      Satu keputusan, satu tempat (`lib/landing-ask.ts`). */
-  const ask = landingAsk(selfServeSignupOpen());
+  const ask = landingAsk(await resolveSelfServeSignupOpen());
 
   return (
     <section

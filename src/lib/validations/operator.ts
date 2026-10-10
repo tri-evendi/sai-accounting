@@ -19,6 +19,7 @@
 
 import { z } from "zod";
 import { LOCALES } from "@/lib/i18n/config";
+import { BILLING_MODES } from "@/lib/platform-constants";
 import { vmsg } from "@/lib/i18n/validation";
 import { SITE_CONTENT_VALUE_MAX } from "@/lib/site-content";
 
@@ -81,6 +82,27 @@ export const extendSubscriptionSchema = z.object({
   reason: operatorReasonField,
 });
 export type ExtendSubscriptionFormInput = z.infer<typeof extendSubscriptionSchema>;
+
+/* ── 3c. Mode penagihan (Fase A komersialisasi) ────────────────────────────── */
+
+/**
+ * Setel mode penagihan: `none` | `manual` | `auto`.
+ *
+ * Nilainya dari `BILLING_MODES` — daftar yang sama yang dipakai basis data &
+ * penjadwal, diimpor bukan disalin: mode yang salah ketik di sini akan menjadi
+ * akun yang diam-diam TIDAK ditagih (gerbangnya gagal-tertutup), yaitu
+ * kegagalan yang paling sulit terlihat.
+ *
+ * `reason` WAJIB, seperti seluruh aksi tulis #155 — dan di sini ia paling
+ * berarti: `auto` adalah satu-satunya tindakan yang memberi penjadwal izin
+ * menagih lalu MENANGGUHKAN buku pelanggan.
+ */
+export const billingModeActionSchema = z.object({
+  tenantId: tenantIdField,
+  mode: z.enum(BILLING_MODES),
+  reason: operatorReasonField,
+});
+export type BillingModeFormInput = z.infer<typeof billingModeActionSchema>;
 
 /* ── 4. Eksekusi penghapusan ───────────────────────────────────────────────── */
 

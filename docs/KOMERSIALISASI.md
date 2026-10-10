@@ -221,7 +221,9 @@ Hari ini keduanya menyatu, dan §1.1 menunjukkan harganya. Aturannya ke depan:
 - penerbitan tagihan, dunning, dan penangguhan **hanya** menyentuh mode
   `otomatis`;
 - bawaan untuk akun baru adalah mode yang **tidak** menagih. Akun menjadi
-  `otomatis` lewat tindakan manusia, bukan lewat berakhirnya waktu;
+  `auto` lewat tindakan manusia, bukan lewat berakhirnya waktu — satu panel di
+  konsol operator (rincian tenant), beralasan dan berjejak, yang MENOLAK `auto`
+  pada langganan berharga nol dan memperingatkan bila belum ada rel pembayaran;
 - `plans.key = "internal"` **bukan** pengganti bendera ini: paket menjawab
   "kuota berapa", bukan "boleh ditagih atau tidak". Sembilan akun uji coba di
   paket `pro` adalah buktinya.
@@ -371,9 +373,15 @@ terbukti berulang.
 
 ### Fase C — swalayan untuk Starter/Pro *(dipicu volume, bukan kesiapan kode)*
 
+- **Penagihan PERPANJANGAN harus dibangun lebih dulu** — dan ini bukan
+  penyetelan melainkan fitur yang belum ada sama sekali: hari ini penjadwal
+  hanya menerbitkan tagihan PERTAMA (saat uji coba habis) dan tidak pernah
+  menagih periode berikutnya (§11). Tanpa itu, "langganan swalayan" berarti
+  pelanggan membayar sekali lalu memakai produk gratis selamanya — dan tidak
+  ada yang akan menyadarinya sampai seseorang menjumlahkan pendapatan.
 - Checkout swalayan dengan **metode pembayaran diambil di muka**; uji coba
   tanpa kartu berakhir dengan **beku, bukan tagihan** (§1.2).
-- Dunning + auto-suspend dinyalakan **hanya** untuk mode `otomatis`.
+- Dunning + auto-suspend dinyalakan **hanya** untuk mode `auto`.
 - Business/Enterprise **tetap** di jalur penawaran (§4.1).
 - Pemicu sebenarnya: pelanggan kecil baru per bulan melebihi kapasitas tangan —
   praktiknya di sekitar **20–30 pelanggan berbayar**. Di bawah itu, otomasi
@@ -512,6 +520,7 @@ pertama:
 
 | Temuan | Akibat | Tempat |
 | --- | --- | --- |
+| **TIDAK ADA penagihan PERPANJANGAN sama sekali** | `platformInvoice.create` hanya ada di tiga tempat — trial habis, comp operator, prorata pindah paket — dan tak satu pun dipicu `current_period_end`. Jadi langganan "aktif" tidak pernah menagih bulan/tahun berikutnya; mesin pendapatan BERULANG belum ada. Ditemukan saat membangun panel mode penagihan | `scripts/subscription-scheduler.ts` |
 | **Tidak ada bendera "boleh ditagih"**; harga nol pun tidak dilewati | akun internal/uji coba ditagih lalu ditangguhkan — sudah terjadi 2× | `scripts/subscription-scheduler.ts` langkah 1 |
 | `extendSubscription` mengubah `billing_cycle` **tanpa memotret ulang harga** | tenant 3 kini `yearly` berharga Rp 599.000 → saat comp habis 9 Sep 2027 ditagih **Rp 599rb untuk setahun**, kurang tagih 10×, tanpa bersuara | `lib/operator/writes.ts` |
 | Comp menghasilkan tagihan `paid` Rp 0 | "pendapatan" tak bisa dibaca tanpa menyaring comp; butuh status/penanda tersendiri | `extendSubscription`, `platform_invoices.status` |

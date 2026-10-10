@@ -277,6 +277,10 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     // menjadi kata yang sama. Bahasa Mandarin memakai 操作员 dan IP 地址.
     "operator.audit.colOperator",
     "operator.audit.colIp",
+    /* Label isian "Mode" di panel mode penagihan — kata serapan yang ejaannya
+       IDENTIK di kedua bahasa, alasan yang sama persis dengan `common.status`
+       dan `tenantMail.port` di atas. Bahasa Mandarin memakai 模式. */
+    "operator.actions.billingMode.label",
   ]),
   zh: new Set([
     // Nama diri (merek) — lihat catatan yang sama di daftar `en` (#398).

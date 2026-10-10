@@ -4764,6 +4764,24 @@
         "errCancelled": "The subscription is cancelled. Revive it through a plan change first.",
         "errUnpriced": "This tenant's plan has no {cycle} price in the catalogue, so the extension was refused — a yearly subscription carrying a monthly price would under-bill tenfold. Set the price in the catalogue, or extend on the same cycle."
       },
+      "billingMode": {
+        "heading": "Billing mode",
+        "description": "Who the scheduler may bill. New accounts are born `none` — automatic billing is only switched on by a decision made on this screen, and that decision is recorded.",
+        "label": "Mode",
+        "modeNone": "Never billed",
+        "modeManual": "Billed outside the system",
+        "modeAuto": "Billed automatically",
+        "hintNone": "Internal, testers, pilots, demos. The scheduler does not issue invoices, does not chase them, and does not suspend.",
+        "hintManual": "Full entitlement, invoiced from the provider's own books. The scheduler still does not touch it.",
+        "hintAuto": "The scheduler may issue the first invoice when the trial ends, push the account past due, then SUSPEND the customer's books.",
+        "submit": "Set mode",
+        "success": "Billing mode: {from} → {to}.",
+        "autoNoRenewal": "Note: renewal billing does not exist in the code yet. Automatic mode only issues the first invoice when a trial ends, then chases and suspends invoices that already exist — it will not issue next month's invoice on its own.",
+        "errSame": "This account is already set to {mode}.",
+        "errPriceZero": "The subscription price is zero, so automatic mode was refused: a Rp 0 invoice would fall past due (there is nothing to pay), and the books would then be suspended for not paying zero. Change the plan first.",
+        "currentLabel": "Billing mode",
+        "railWarning": "No payment rail is configured (no payment gateway and no transfer instructions), so an invoice that goes out cannot be paid by anyone."
+      },
       "deletion": {
         "title": "Execute account deletion",
         "noRequest": "No pending deletion request. Deletion ONLY runs on the owner's explicit request (personal data protection law) — there is no other path, and there must not be.",

@@ -13,6 +13,8 @@
 
 import { z } from "zod";
 
+import type { DictionaryKey } from "@/lib/i18n/dictionary";
+
 /**
  * Siklus hidup langganan (docs/MULTI-TENANT.md §7.4, issue #140):
  *
@@ -77,6 +79,22 @@ export type BillingMode = z.infer<typeof billingModeSchema>;
 
 /** Bawaan untuk langganan baru — lihat ⚠ di atas. */
 export const DEFAULT_BILLING_MODE: BillingMode = "none";
+
+/**
+ * Nama setiap mode untuk MANUSIA — kunci kamus, bukan kalimat.
+ *
+ * Petanya di sini, bersebelahan dengan daftar modenya, karena dua lapisan
+ * membutuhkannya (server action yang menjawab hasil, dan panel konsol yang
+ * menawarkan pilihannya) dan `Record<BillingMode, …>` membuat `tsc` menolak
+ * mode baru yang belum punya nama. Kuncinya ditulis UTUH sebagai literal, bukan
+ * dirakit dari nilai modenya: kunci yang dirakit tidak terlihat
+ * `tests/i18n-orphan-keys` dan akan dilaporkan yatim di tiga bahasa sekaligus.
+ */
+export const BILLING_MODE_LABEL_KEYS: Record<BillingMode, DictionaryKey> = {
+  none: "operator.actions.billingMode.modeNone",
+  manual: "operator.actions.billingMode.modeManual",
+  auto: "operator.actions.billingMode.modeAuto",
+};
 
 /** SATU-SATUNYA mode yang boleh disentuh penjadwal penagihan. */
 export function billingModeIsAutomatic(mode: string): boolean {

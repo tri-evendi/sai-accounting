@@ -157,6 +157,8 @@ export interface OperatorTenantDetail {
   billing: {
     subscription: {
       status: string;
+      /** `none` | `manual` | `auto` — siapa yang boleh ditagih penjadwal. */
+      billingMode: string;
       billingCycle: string;
       price: string;
       currency: string;
@@ -245,6 +247,9 @@ export async function tenantDetailForOperator(
       select: {
         status: true,
         billingCycle: true,
+        /* Mode penagihan ikut: halaman rincian memajangnya sebagai fakta DAN
+           panel tindakan memakainya sebagai nilai awal pilihan. */
+        billingMode: true,
         price: true,
         currency: true,
         currentPeriodStart: true,
@@ -304,6 +309,7 @@ export async function tenantDetailForOperator(
       subscription: subscription
         ? {
             status: subscription.status,
+            billingMode: subscription.billingMode,
             billingCycle: subscription.billingCycle,
             price: subscription.price.toString(),
             currency: subscription.currency,

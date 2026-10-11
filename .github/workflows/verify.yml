@@ -1,0 +1,115 @@
+# GERBANG TIPE, LINT, DAN TES — dijalankan OTOMATIS, bukan diingat manusia.
+#
+# ══ KENAPA BERKAS INI ADA (temuan asesmen 11 Okt 2026) ══════════════════════
+# Sampai berkas ini lahir, repo ini punya 270 berkas tes (4.559 tes) dan NOL
+# otomasi yang
+# menjalankannya. Tidak ada workflow berpemicu `pull_request`, dan `main` tidak
+# punya satu pun required status check.
+#
+# Gabungkan itu dengan `next.config.ts` yang SENGAJA mematikan pemeriksaan tipe
+# di dalam `next build` (mesin produksi tidak sanggup menjalankannya — alasan
+# lengkapnya di berkas itu), dan yang tersisa adalah: satu-satunya yang berdiri
+# antara sebuah galat tipe dan image produksi yang terbit adalah seorang manusia
+# yang ingat menjalankan sebuah perintah.
+#
+# Jalurnya bukan hipotesis. PR #599 di-merge ke `main`, tiga image terbit ke
+# GHCR, dan nol pemeriksaan pernah berjalan. Diff-nya memang Markdown murni
+# sehingga tidak bisa merusak apa pun — tetapi MEKANISMENYA tidak membedakan
+# Markdown dari perubahan `src/`.
+#
+# Gerbangnya sendiri tidak baru: `AGENTS.md` sudah menuntut `bun run verify`
+# sejak lama, dan ia memang dipatuhi. Yang hilang bukan disiplinnya melainkan
+# tempatnya — berkas ini memindahkan gerbang yang sudah berlaku ke tempat yang
+# TIDAK BISA LUPA.
+#
+# ══ KENAPA DI RUNNER, BUKAN DI SERVER ══════════════════════════════════════
+# `bun run typecheck` menuntut `--max-old-space-size=1536`. Kotak produksi
+# punya ~3,6 GB yang dibagi enam aplikasi; saat berkas ini ditulis, memori
+# tersedia di sana 604 MB dengan 3 GB swap SUDAH terpakai. Menjalankan typecheck
+# di sana berarti GC berputar di swap, di sebelah produksi yang sedang melayani.
+# Runner GitHub punya memori yang cukup dan tidak sedang melayani siapa pun —
+# alasan yang sama yang sudah memindahkan `docker build` ke runner (#160).
+#
+# ══ YANG SENGAJA TIDAK ADA DI SINI: `bun run build` ════════════════════════
+# Gerbangnya tetap DUA (lihat AGENTS.md), dan yang kedua tetap milik sesi utama
+# di atas `develop` hasil gabungan — bukan per-cabang. Itu justru lebih kuat:
+# satu-satunya build yang pernah gagal di repo ini gagal di HASIL GABUNGAN,
+# sementara setiap cabangnya hijau sendiri-sendiri. Menambahkannya di sini akan
+# memberi rasa aman yang salah, bukan jaminan tambahan.
+name: Verify
+
+on:
+  pull_request:
+  push:
+    # `develop` supaya merge-ke-develop tetap terperiksa walau lewat jalur yang
+    # tidak membuka PR. `main` supaya promosi ikut terperiksa — ia memang
+    # sesudah merge, tapi sebuah kegagalan di sana adalah kabar yang tetap kita
+    # mau dengar (dan `publish-image.yml` berjalan di commit yang sama).
+    branches: [develop, main]
+
+# Dorongan beruntun ke cabang yang sama membatalkan jalan yang masih berjalan.
+# Tanpa ini, lima commit dalam sepuluh menit memakai lima kali waktu runner
+# untuk empat hasil yang sudah tidak dibaca siapa pun.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # Gerbang yang menggantung adalah gerbang yang akhirnya dilewati orang.
+    # Suite ini selesai dalam hitungan menit; 20 menit sudah sangat longgar.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node TETAP runtime-nya meski paket dipasang bun: `tsc`, `prisma`, dan
+      # `vitest` dijalankan Node lewat shebang binary-nya — dan karena itulah
+      # `NODE_OPTIONS=--max-old-space-size=1536` di skrip `typecheck` MASIH
+      # BERLAKU. Bun memakai JavaScriptCore, yang mengabaikan flag itu.
+      # Versinya wajib >= 20.19/22.12/24: skrip preinstall Prisma 7 menolak
+      # yang lebih tua, dan bun tidak menyuntikkan Node-nya sendiri ke PATH
+      # untuk skrip lifecycle.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        # Padanan `npm ci`: menolak bila `bun.lock` tidak cocok dengan
+        # `package.json`, bukan diam-diam menyelesaikan ulang versinya.
+        run: bun install --frozen-lockfile
+
+      - name: Prisma generate
+        # `bun run db:generate`, BUKAN `bunx prisma generate` — pelajaran yang
+        # sudah tercatat di `build-standalone.yml` dan berlaku persis di sini.
+        #
+        # Repo ini punya TIGA skema sejak #104 (perusahaan) dan #137 (platform).
+        # `bunx prisma generate` hanya membangkitkan yang pertama, sehingga
+        # `@/generated/control/client` dan `@/generated/platform/client` tidak
+        # pernah ada — dan `tsc` gagal dengan "Cannot find module" pada
+        # `lib/control-db.ts` & `lib/platform-db.ts`.
+        #
+        # Tidak terlihat di lokal karena `src/generated/` sudah terlanjur ada
+        # di mesin siapa pun yang pernah menjalankannya sekali; ia gitignored,
+        # jadi HANYA CI yang memulai dari nol.
+        run: bun run db:generate
+
+      - name: Verify (typecheck + lint + test)
+        # SATU langkah, bukan tiga, dan itu disengaja: `bun run verify` adalah
+        # nama gerbang yang ditulis `AGENTS.md`. Memecahnya di sini berarti ada
+        # dua definisi "verify" yang bisa menyimpang — dan yang di CI akan
+        # menang tanpa ada yang memutuskan begitu.
+        #
+        # ⚠ JANGAN menambahkan `| tail` atau pipa apa pun. Pipa menutupi kode
+        # keluar langkah ini, dan gerbang yang selalu hijau lebih buruk daripada
+        # tidak ada gerbang: ia terasa seperti perlindungan.
+        #
+        # Env tidak diperlukan: `tsc` dan `eslint` tidak mengeksekusi kode, dan
+        # vitest menyediakan kredensial contohnya sendiri lewat `test.env` di
+        # `vitest.config.mts`.
+        run: bun run verify

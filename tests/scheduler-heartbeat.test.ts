@@ -71,16 +71,16 @@ describe("schedulerHealth", () => {
 describe("penjadwal sebagai layanan (#373)", () => {
   const compose = readFileSync(join(process.cwd(), "docker-compose.yml"), "utf8");
 
-  it("ada layanan `scheduler` yang lahir bersama deploy", () => {
-    expect(compose).toMatch(/^ {2}scheduler:$/m);
+  it("ada layanan `job-scheduler` yang lahir bersama deploy", () => {
+    expect(compose).toMatch(/^ {2}job-scheduler:$/m);
     expect(compose).toContain("scheduler:subscriptions");
     expect(compose).toContain("restart: unless-stopped");
   });
 
-  /** Badan layanan `scheduler` saja, tanpa baris komentar. */
+  /** Badan layanan `job-scheduler` saja, tanpa baris komentar. */
   const badanPenjadwal = () => {
-    const mulai = compose.indexOf("\n  scheduler:");
-    const habis = compose.indexOf("\n  conformance:");
+    const mulai = compose.indexOf("\n  job-scheduler:");
+    const habis = compose.indexOf("\n  job-conformance:");
     return compose
       .slice(mulai, habis)
       .split("\n")
@@ -129,7 +129,7 @@ describe("penjadwal sebagai layanan (#373)", () => {
     // sama, dan pada cadensi itu satu kemacetan bisa berumur berbulan-bulan.
     const loop = compose.split("\n").filter((b) => b.includes("while true"));
     expect(loop.length).toBeGreaterThan(0);
-    for (const layanan of ["conformance", "backup"] as const) {
+    for (const layanan of ["job-conformance", "job-backup"] as const) {
       const mulai = compose.indexOf(`\n  ${layanan}:`);
       expect(mulai, `layanan ${layanan} tidak ada`).toBeGreaterThan(-1);
       const potong = compose.slice(mulai);
@@ -140,7 +140,10 @@ describe("penjadwal sebagai layanan (#373)", () => {
   });
 
   it("menunggu migration selesai — tabelnya harus ada sebelum putaran pertama", () => {
-    const service = compose.slice(compose.indexOf("\n  scheduler:"), compose.indexOf("\n  web:"));
+    const service = compose.slice(
+      compose.indexOf("\n  job-scheduler:"),
+      compose.indexOf("\n  job-conformance:")
+    );
     expect(service).toContain("service_completed_successfully");
   });
 });

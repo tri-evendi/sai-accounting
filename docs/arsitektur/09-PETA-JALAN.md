@@ -17,8 +17,11 @@ arsitektur: bentuk sistemnya sehat, dan bukti dari potret ini mengarah ke
 | Jadikan basis data perusahaan bertenant-baris | Membatalkan isolasi fisik, janji inti #104 |
 | Hidupkan pemeriksaan tipe di `next build` | Terukur tidak sanggup di mesin ini. Gerbangnya sudah pindah, bukan hilang |
 | Kembalikan Tailwind / `className` | Dicabut #203; dijaga ESLint & tes |
-| Replika `web` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
+| Replika `app-customer` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
 | Lingkungan staging penuh | 🔶 Mungkin belum sepadan pada 11 tenant. Keputusan pemilik, bukan teknis |
+| **Pindah ke PostgreSQL** | 98 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| **Pisahkan container pemasaran** | Batasnya memotong funnel: `/register` ada di `(auth)`, bukan `(marketing)`. Nol beban terukur (162–185 ms). [Dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| **Mulai DC/DRC dari replikasi** | Replika yang menyalin basis data tak tercadangkan melipatgandakan satu titik kegagalan jadi dua yang berkorelasi. [Dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 
 ---
 
@@ -37,16 +40,16 @@ mengubah arsitektur.
 #    (AWS_DEFAULT_REGION bila penyedianya menuntutnya)
 
 # 2. Satu putaran kering — tidak menulis/menghapus apa pun
-docker compose run --rm backup sh scripts/backup.sh --dry-run
+docker compose run --rm job-backup sh scripts/backup.sh --dry-run
 
 # 3. Satu putaran sungguhan
-docker compose run --rm backup sh scripts/backup.sh
+docker compose run --rm job-backup sh scripts/backup.sh
 
 # 4. BUKTIKAN — bukan "lihat log lalu percaya"
-docker compose run --rm backup bun run prove-backup-restore
+docker compose run --rm job-backup bun run prove-backup-restore
 
 # 5. Periksa jejaknya dari luar
-docker exec sai-web node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>console.log(j.backup))"
+docker exec sai-app-customer node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>console.log(j.backup))"
 ```
 
 **Selesai bila** `lastSuccessAt` **tidak** `null` **dan**
@@ -87,7 +90,52 @@ langsung dari shell — **periksa dulu** sebelum merencanakan.
 melaporkan dirinya. Kanal kedua layak dipertimbangkan nanti — tetapi **jangan
 jadikan prasyarat**. Satu kanal jauh lebih baik daripada nol.
 
-### 0.4 Rapikan dokumen penggelaran → P1-3
+### 0.4 ✅ CI yang menjalankan gerbang → P0-3 — **SELESAI & TERBUKTI HIJAU**
+
+**Temuan terpenting yang lahir SESUDAH set dokumen ini pertama ditulis.** Tidak
+ada satu pun workflow yang berpemicu `pull_request`, tidak ada yang menjalankan
+`verify`/`test`/`typecheck`/`lint`, dan `main` tidak punya *required status
+check* maupun syarat review. 270 berkas tes (4.559 tes), nol otomasi.
+
+```yaml
+# .github/workflows/verify.yml
+name: Verify
+on:
+  pull_request:
+  push:
+    branches: [develop]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate     # TIGA klien, bukan `bunx prisma generate`
+      - run: bun run verify
+```
+
+`.github/workflows/verify.yml` sudah ada, dan **jalan pertamanya hijau** (PR
+#600, `conclusion: success` — install → `db:generate` → `verify`, semuanya
+lulus).
+
+> ⚠ **SATU LANGKAH MANUAL YANG BELUM DILAKUKAN:** jadikan job `verify` sebagai
+> **required status check** pada `main` (dan sebaiknya `develop`) lewat
+> **Settings → Branches**. Sampai itu dilakukan, workflow-nya berjalan tetapi
+> **tidak memblokir** merge — jadi gerbangnya informatif, belum menegakkan.
+>
+> Urutannya memang begitu dengan sengaja: menjadikannya wajib **sebelum** jalan
+> pertamanya terbukti hijau akan memblokir setiap merge dengan check yang belum
+> pernah berhasil. Sekarang ia sudah terbukti, jadi langkah itu aman.
+
+Dikerjakan **lebih dulu** dari 0.1–0.3 kalau bisa, karena ia yang mencegah
+ketiganya regresi diam-diam bulan depan. `bun run build` **tidak** ikut di CI
+PR — ia tetap tanggung jawab sesi utama di atas hasil gabungan (`AGENTS.md`).
+
+### 0.5 ✅ Rapikan dokumen penggelaran → P1-3 — **SELESAI 11 Okt 2026**
 
 Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 
@@ -103,6 +151,24 @@ Nol perubahan kode. Dampak langsung saat insiden berikutnya.
   server), §Security (jejak audit sudah pindah dari `data/audit/audit.jsonl` ke
   tabel), §Scripts (`db:migrate` tanpa peringatan multi-PT).
 
+**Yang SUDAH dikerjakan 11 Okt 2026:**
+
+- `PRODUCTION.md`: banner "pergi langsung ke §Updates" + tabel *"saya mau apa →
+  ke mana"*; §2, §4, §5 ditandai **LEGACY di tempatnya** beserta alasan
+  terukurnya.
+- `HOSTING.md`, `HOSTING-LOW-MEMORY.md`, `HOSTING-NO-NODE.md`: penanda warisan
+  di kepala masing-masing. **Tidak dihapus** — `scripts/package-standalone.sh`
+  masih menyalin `ecosystem.config.low-memory.cjs` dan merujuk
+  `HOSTING-LOW-MEMORY.md`.
+- `DOCKER.md`: penunjuk ke jalur yang hidup.
+- `README.md`: berhenti menyebut `HOSTING.md` sebagai *"easier path"*.
+- **`docs/README.md` lahir** — indeks tunggal untuk seluruh dokumentasi, plus
+  lima aturan pemeliharaan. Sebelumnya `docs/` tidak punya indeks sama sekali.
+- Satu PNG yatim 1,03 MB dihapus (tangkapan layar localhost, nol rujukan).
+
+**Yang MASIH terbuka di butir ini:** nasib `build-standalone.yml`, dan tiga
+klaim basi di `README.md` di atas (§Production/§Security/§Scripts).
+
 **Gerbang keluar Fase 0:** `/api/health` → `backup.status: "ok"` ·
 `prove-backup-restore` lulus · kunci tersimpan di luar mesin · satu kegagalan
 buatan menghasilkan satu surel · satu jalur penggelaran di dokumentasi.
@@ -114,9 +180,31 @@ buatan menghasilkan satu surel · satu jalur penggelaran di dokumentasi.
 **Gerbang keluar: setiap layanan latar meninggalkan jejak yang bisa ditanyai
 dari luar.**
 
-### 1.1 Jejak kesesuaian data → P1-2
+### 1.1 ✅ Pisahkan container operator → dok 10 §3 — **SELESAI**
 
-Menutup asimetri: `scheduler` dan `backup` punya tabel jejak, `conformance`
+**Nol perubahan kode.** Dua container dari image yang SAMA, beda `OPERATOR_HOST`
++ label Traefik. Terukur sebelum pemisahan: `sai-web` = 57,6 MiB dengan headroom
+719 MB, jadi container kedua ≈ **8% headroom**. Rinciannya beserta jebakan
+pertahanan-berlapisnya di [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
+
+Sudah ada di `docker-compose.yml`; **belum digelar**. Langkah sekali-jalan
+(termasuk `--remove-orphans` yang WAJIB, plus dua `curl` yang membuktikan
+pemisahan bidang masih tegak) ada di `PRODUCTION.md` §One-time.
+
+⚠ Ini perubahan **infrastruktur produksi**: butuh persetujuan pemilik, dan
+sebaiknya dilatih di luar produksi lebih dulu. Di sinilah ketiadaan staging
+(§Keputusan terbuka #8) mulai berbiaya nyata.
+
+### 1.2 Pindahkan pemantulan `/` ke proxy → P3-4
+
+Satu baris: tambahkan `pathname === "/"` ke kondisi di `src/proxy.ts:269`,
+cabut `auth()` dari halaman pendaratan, perbaiki komentar yang kedaluwarsa.
+Pengguna bersesi mendarat di bukunya, bukan memantul dua kali lewat
+`/dashboard`. **Bukan** perbaikan performa — lihat dok 10 §4.
+
+### 1.3 Jejak kesesuaian data → P1-2
+
+Menutup asimetri: `job-scheduler` dan `job-backup` punya tabel jejak, `job-conformance`
 tidak.
 
 1. Migration platform `00NN_conformance_runs` — sepola `scheduler_runs`
@@ -130,7 +218,7 @@ tidak.
 **Mengikuti [`docs/DATABASE.md`](../DATABASE.md)** — migration ditulis tangan,
 lewati Checklist tabel baru.
 
-### 1.2 Tutup celah uji proxy → P3-2
+### 1.4 Tutup celah uji proxy → P3-2
 
 Satu tes: `proxy()` dengan `Authorization: Bearer …` → **tidak** dipantulkan.
 Menutup kelas cacat yang sudah pernah hidup di produksi tiga pekan.
@@ -138,9 +226,9 @@ Menutup kelas cacat yang sudah pernah hidup di produksi tiga pekan.
 🔶 Kemungkinan cukup tes unit terhadap fungsi keputusan proxy; server sungguhan
 mungkin tidak perlu.
 
-### 1.3 Pemangkasan tabel jejak → P2-5
+### 1.5 Pemangkasan tabel jejak → P2-5
 
-Di layanan `scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
+Di layanan `job-scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
 setiap baris `error` tanpa batas waktu** — kegagalan adalah baris yang paling
 berharga, dan memangkasnya berarti kehilangan satu-satunya catatan masa lalu
 yang berguna.
@@ -250,13 +338,17 @@ lebih awal berarti membayar ongkos tanpa pembeli.
 | Pekerjaan | Pemicu terukur | Prasyarat | Rujukan |
 |---|---|---|---|
 | **Antrean pekerjaan** | Satu putaran penjadwal tidak muat dalam 1 jam, **atau** satu produser butuh *retry* < 1 jam | Pilihan antrean + penyimpanan | P2-2 |
-| **Replika `web`** | CPU/memori `web` jadi pembatas, **atau** butuh penggelaran tanpa henti | Cache bersama (atau cabut cache dalam-memori) **dan** tinjau `max_connections` | P2-3 |
+| **Replika `app-customer`** | CPU/memori `app-customer` jadi pembatas, **atau** butuh penggelaran tanpa henti | Cache bersama (atau cabut cache dalam-memori) **dan** tinjau `max_connections` | P2-3 |
 | **Replika baca MariaDB** | Laporan mulai memperlambat tulisan | Pemantauan yang bisa **menunjukkan** itu (Fase 1) | SPOF-1 |
 | **Mesin kedua / HA** | RTO yang dapat diterima < waktu bangun ulang manual | ❓ RTO dari pemilik | SPOF-3 |
 | **Staging** | Perubahan skema mulai butuh latihan sebelum produksi | Keputusan ongkos | P2-1 |
 | **Metrik/dasbor** | "Apakah ini melambat?" ditanyakan dan tak terjawab | — | Dok 07 §9 |
 | **Pecah berkas besar** | `typecheck` > 1536 MB | — | P3-1 |
 | **Kanal peringatan kedua** | Satu kegagalan surel membuat P1-1 terulang | 0.3 selesai | P1-1 |
+| **Pisahkan bidang akuisisi** (`(marketing)`+`(auth)` BERSAMA) | Lalu lintas perayap terukur bersaing dengan permintaan pelanggan | — | Dok 10 §4 |
+| **Binlog/PITR** | RPO 24 jam tidak lagi dapat diterima pemilik | 0.1 selesai | Dok 10 §5 |
+| **VM kedua sebagai target restore DINGIN** | Butuh jalan pulang dari kehilangan mesin | 0.1 + 0.2 | Dok 10 §5 |
+| **Replikasi → DRC** | RTO menuntutnya, DAN restore dingin sudah terbukti | VM kedua | Dok 10 §5 |
 
 **Kenapa dibingkai sebagai pemicu.** Setiap butir di tabel ini adalah jawaban
 benar untuk masalah yang **belum dimiliki sistem ini**. Mengerjakannya sekarang
@@ -312,7 +404,7 @@ kepatuhan yang masih terbuka ada di
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
 dan platform (penagihan). ~342.800 baris TypeScript, 141 halaman, 126 rute API,
-88 model, 98 migration, 243 berkas tes.
+88 model, 98 migration, 270 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang
@@ -331,21 +423,37 @@ berbunyi ke siapa pun** — modul peringatan ada dan dirancang baik, tetapi hany
 dipanggil dari dua route pendaftaran. Temuan ketiga mengikuti pola yang sama:
 temuan kesesuaian data mingguan hanya ada di stdout.
 
-Pengamatan yang mengikat ketiganya: **empat temuan teratas semuanya soal
-dapat-diamati, bukan soal arsitektur.** Sistem ini tahu cara gagal dengan
-benar; yang belum ia bisa adalah **memberi tahu kita** bahwa ia sedang gagal.
+Dan temuan keempat, yang lahir **sesudah** set dokumen ini pertama ditulis dan
+melingkupi ketiganya: **tidak ada apa pun yang menjalankan 270 berkas tes itu.**
+Nol workflow berpemicu `pull_request`, nol *required status check* pada `main`,
+nol syarat review — sementara `next build` sengaja tidak memeriksa tipe. Jadi
+satu-satunya yang berdiri antara galat tipe dan image produksi adalah seorang
+manusia yang ingat menjalankan sebuah perintah. Jalurnya bukan hipotesis: PR
+#599 terbit ke GHCR tanpa satu pun pemeriksaan berjalan.
+
+Pengamatan yang mengikat keempatnya: **tak satu pun soal arsitektur.** Tiga di
+antaranya soal *dapat-diamati* — sistem ini tahu cara gagal dengan benar, yang
+belum ia bisa adalah **memberi tahu kita** bahwa ia sedang gagal. Yang keempat
+soal *gerbang* — tidak ada yang memeriksa kode sebelum ia terbit. Bentuk
+arsitekturnya sendiri sehat, dan tidak satu pun dari keempatnya diperbaiki
+dengan memecah layanan.
 
 **Lima langkah berikutnya, berurutan.**
 
 | # | Langkah | Usaha | Rujukan |
 |---|---|---|---|
-| 1 | Setel 3 env S3, jalankan cadangan, **buktikan** dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
-| 2 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
-| 3 | Sambungkan `alert()` ke cadangan, penjadwal, kesesuaian, kesehatan PT | Rendah | 0.3 / P1-1 |
-| 4 | Satukan dokumentasi penggelaran jadi satu jalur hidup | Rendah, **nol risiko** | 0.4 / P1-3 |
-| 5 | Tabel `conformance_runs` + medan kesehatan + halaman operator | Sedang | 1.1 / P1-2 |
+| 1 | **`.github/workflows/verify.yml` + jadikan required check** | **Rendah** | 0.4 / P0-3 |
+| 2 | Setel 3 env S3, jalankan cadangan, **buktikan** dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
+| 3 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
+| 4 | Sambungkan `alert()` ke cadangan, penjadwal, kesesuaian, kesehatan PT | Rendah | 0.3 / P1-1 |
+| 5 | Satukan dokumentasi penggelaran jadi satu jalur hidup | Rendah, **nol risiko** | 0.5 / P1-3 |
 
-Tiga yang pertama adalah **pekerjaan sore hari** yang menghapus satu-satunya
-risiko kehilangan data permanen di sistem ini. Kerjakan berurutan — dan jangan
-melewati langkah "buktikan" pada nomor 1, karena doktrin repo ini sendiri sudah
-menuliskan kenapa laporan skrip bukan bukti.
+Keempat yang pertama adalah **pekerjaan sore hari** yang memasang gerbang
+otomatis dan menghapus satu-satunya risiko kehilangan data permanen di sistem
+ini. Kerjakan berurutan: nomor 1 lebih dulu justru supaya nomor 2–5 tidak bisa
+regresi diam-diam sesudahnya.
+
+Dan jangan melewati langkah **"buktikan"** pada nomor 2 — doktrin repo ini
+sendiri sudah menuliskan kenapa laporan skrip bukan bukti. Gerbangnya
+`lastSuccessAt != null` **dan** `prove-backup-restore` lulus, bukan "skripnya
+bilang sukses".

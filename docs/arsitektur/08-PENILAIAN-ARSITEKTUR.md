@@ -58,7 +58,8 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-243 berkas tes, dan yang menarik bukan jumlahnya melainkan **jenisnya**: banyak
+270 berkas tes berisi 4.559 tes, dan yang menarik bukan jumlahnya melainkan
+**jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
 `authz-coverage` (rute tanpa izin = merah) · `business-modules-ledger` (laporan
@@ -137,7 +138,7 @@ unggahan sukses**, jadi tidak ada yang dihapus. Kegagalannya pun **tercatat**
 kemungkinan besar **hanya tiga variabel lingkungan**.
 
 **Perbaikan.** Setel ketiga env, jalankan satu putaran manual, lalu
-`docker compose run --rm backup bun run prove-backup-restore`.
+`docker compose run --rm job-backup bun run prove-backup-restore`.
 
 **Yang mengubah penilaian ini:** `lastSuccessAt` tidak lagi `null` **dan**
 `prove-backup-restore` lulus.
@@ -163,6 +164,88 @@ P0-2 menghasilkan rasa aman yang salah.
 
 ---
 
+### 🔴 P0-3 — Tidak ada apa pun yang menjalankan tes sebelum kode mencapai produksi
+
+**Bukti.** Diperiksa langsung di `.github/workflows/` dan API proteksi cabang:
+
+| Yang dicari | Hasil |
+|---|---|
+| Workflow dengan pemicu `pull_request` | **tidak ada** |
+| Workflow yang menjalankan `verify` / `test` / `typecheck` / `lint` | **tidak ada** |
+| `required_status_checks` pada `main` | **tidak ada** |
+| `required_approving_review_count` pada `main` | **0** |
+| Berkas tes yang ada di repo | **270** (4.559 tes) |
+
+Dua workflow yang ada (`publish-image.yml`, `build-standalone.yml`) keduanya
+hanya memicu pada `push` ke `main` — dan keduanya **membangun**, tidak satu pun
+**memeriksa**.
+
+**Dampak.** `AGENTS.md` menjadikan `bun run verify` gerbang WAJIB, dan
+`next.config.ts` mematikan pemeriksaan tipe di dalam `next build`. Gabungan
+keduanya berarti:
+
+> **Satu-satunya yang berdiri antara sebuah galat tipe dan image produksi yang
+> terbit adalah seorang manusia yang ingat menjalankan sebuah perintah.**
+
+Dan jalurnya bukan hipotesis — ia ditempuh saat dokumen ini disusun: PR #599
+di-merge ke `main`, lalu **tiga image terbit ke GHCR**, tanpa satu pun
+pemeriksaan pernah berjalan. Diff-nya memang Markdown murni sehingga tidak bisa
+merusak apa pun, tetapi **mekanismenya tidak membedakan** diff Markdown dari
+perubahan `src/`.
+
+Proteksi `main` melindungi dari force-push dan penghapusan (`enforce_admins`
+aktif), tetapi **tidak** dari merge kode yang belum diuji.
+
+**Kenapa ini P0 dan bukan P1.** Tiga alasan:
+
+1. **Ia gerbang yang melindungi setiap perbaikan lain di dokumen ini.** Tanpa
+   CI, P0-1 dan P1-1 bisa diperbaiki hari ini lalu regresi diam-diam bulan
+   depan, dan tidak ada yang akan tahu.
+2. **Usahanya paling rendah dari semua temuan di sini** — satu berkas workflow
+   ~20 baris, plus satu setelan proteksi cabang.
+3. **Gerbangnya sudah ada, sudah ditulis, dan sudah dipatuhi manusia.** Yang
+   hilang bukan disiplinnya melainkan otomasinya — jadi ini bukan perubahan
+   proses, hanya memindahkan gerbang yang sudah berlaku ke tempat yang tidak
+   bisa lupa.
+
+**Perbaikan.**
+
+```yaml
+# .github/workflows/verify.yml
+name: Verify
+on:
+  pull_request:
+  push:
+    branches: [develop]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate     # TIGA klien — lihat build-standalone.yml
+      - run: bun run verify
+```
+
+Lalu jadikan job `verify` sebagai **required status check** pada `main`
+(dan sebaiknya pada `develop`).
+
+⚠ Dua jebakan yang sudah terdokumentasi di repo ini dan berlaku di sini:
+`bun run db:generate`, **bukan** `bunx prisma generate` — ada tiga skema, dan
+`src/generated/` gitignored sehingga hanya CI yang mulai dari nol. Dan
+**jangan** pakai `| tail`, yang menutupi kode keluar.
+
+🔶 Catatan ongkos: runner GitHub punya memori yang cukup, jadi batas heap
+`typecheck` (1536 MB) bukan masalah di sana — berbeda dari kotak produksi.
+`bun run build` **tidak** perlu ikut di CI PR; ia tetap tanggung jawab sesi
+utama di atas hasil gabungan, sesuai `AGENTS.md`.
+
+---
+
 ### 🟠 P1-1 — Kegagalan latar tidak berbunyi ke siapa pun
 
 **Bukti.** `lib/alert.ts` dipanggil dari **tepat dua berkas**:
@@ -172,7 +255,7 @@ P0-2 menghasilkan rasa aman yang salah.
 
 - cadangan gagal — **54 kali berturut-turut**
 - putaran penjadwal `error` atau dibunuh `timeout`
-- temuan `conformance` mingguan
+- temuan `job-conformance` mingguan
 - basis data perusahaan tak terjangkau
 
 Ini **persis bentuk kegagalan yang seluruh repo ini dirancang menghindari**, dan
@@ -200,12 +283,12 @@ lebih baik daripada nol.
 
 ### 🟠 P1-2 — Temuan kesesuaian data hanya ada di stdout
 
-**Bukti.** Layanan `conformance` menulis ke stdout. Tidak ada tabel setara
+**Bukti.** Layanan `job-conformance` menulis ke stdout. Tidak ada tabel setara
 `scheduler_runs`/`backup_runs`, tidak ada medan di `/api/health`, tidak ada
 halaman operator.
 
 **Dampak.** Satu-satunya cara mengetahui temuan adalah **mengingat** untuk
-menjalankan `docker compose logs conformance` dalam jendela retensi log
+menjalankan `docker compose logs job-conformance` dalam jendela retensi log
 container. Pada kadens **mingguan**, sebuah cacat bisa berumur berbulan-bulan.
 
 Yang membuat ini pantas P1 dan bukan P2: layanan ini **sudah menemukan** enam
@@ -221,7 +304,7 @@ medan di `/api/health` + panggilan `alert()`. Bisa dikerjakan bersama P1-1.
 
 ---
 
-### 🟠 P1-3 — Dokumentasi penggelaran saling bertentangan
+### ✅ P1-3 — Dokumentasi penggelaran saling bertentangan — **DITUTUP 11 Okt 2026**
 
 **Bukti.** Lima berkas menjelaskan cara menggelar, dan mereka tidak sepakat.
 `PRODUCTION.md` §2 menyarankan `bun run setup:prod` (yang menjalankan
@@ -252,6 +335,22 @@ atau tandai ketiga `HOSTING*.md`; putuskan nasib `build-standalone.yml`; dan
 perbaiki tiga klaim basi di `README.md` di atas.
 
 **Murah dan berdampak langsung** — tidak ada kode yang berubah.
+
+> ✅ **DITUTUP 11 Oktober 2026.** Yang dikerjakan: `PRODUCTION.md` mendapat
+> banner "pergi langsung ke §Updates" + tabel "saya mau apa → ke mana", dan §2,
+> §4, §5 ditandai **LEGACY di tempatnya** beserta alasan terukurnya (~19 menit,
+> iowait 58-92%, OOM pada dua build bersamaan). Ketiga `HOSTING*.md` mendapat
+> penanda warisan di kepalanya. `DOCKER.md` mendapat penunjuk ke jalur yang
+> hidup. `README.md` berhenti menyebut `HOSTING.md` sebagai "easier path".
+> `docs/README.md` lahir sebagai indeks tunggal — sebelumnya `docs/` tidak punya
+> indeks sama sekali. Dan satu PNG yatim 1,03 MB (tangkapan layar localhost,
+> nol rujukan) dihapus.
+>
+> `HOSTING*.md` dan `ecosystem.config*.cjs` **tidak dihapus**, dan itu keputusan
+> berdasar bukti: `scripts/package-standalone.sh` masih menyalin
+> `ecosystem.config.low-memory.cjs` dan merujuk `HOSTING-LOW-MEMORY.md`.
+> Menghapus dokumennya akan meninggalkan skrip yang tidak dijelaskan apa pun.
+> Keduanya ikut dicabut kalau kelak skrip itu dicabut.
 
 ---
 
@@ -319,9 +418,9 @@ butuh *retry* lebih cepat dari sejam. Keduanya belum terjadi.
 
 ---
 
-### 🟡 P2-3 — Satu container `web`, tanpa jalur penskalaan
+### 🟡 P2-3 — Satu container `app-customer`, tanpa jalur penskalaan
 
-**Bukti.** Satu `web` tanpa replika. Cache dalam-memori: pengaturan surel
+**Bukti.** Satu `app-customer` tanpa replika. Cache dalam-memori: pengaturan surel
 (TTL 60s), kolam klien LRU, penyimpan konteks per-permintaan.
 
 **Dampak.** Restart mengosongkan setiap cache (murah, benar). Tetapi menambah
@@ -330,7 +429,7 @@ replika hari ini akan menghasilkan dua kolam LRU dan dua cache surel yang
 sulit didiagnosis.
 
 **Yang sudah benar.** Anggaran koneksi sudah dihitung eksplisit (8+2+1 = 11 dari
-`web`), jadi batas skala **diketahui**, bukan ditemukan saat tumbang.
+`app-customer`), jadi batas skala **diketahui**, bukan ditemukan saat tumbang.
 
 **Perbaikan.** Tidak ada sekarang. Sebelum replika pertama, dibutuhkan cache
 bersama (atau pencabutan cache dalam-memori) **dan** peninjauan ulang
@@ -371,7 +470,7 @@ ada pemangkasan yang terlihat untuk ketiganya.
 **Dampak.** Hari ini sepele. Tetapi `scheduler_runs` tumbuh **~8.760 baris per
 tahun** selamanya, dan ia ikut dalam setiap dump cadangan.
 
-**Perbaikan.** Pemangkasan di layanan `scheduler` (mis. pertahankan 90 hari,
+**Perbaikan.** Pemangkasan di layanan `job-scheduler` (mis. pertahankan 90 hari,
 plus **semua** baris `error` tanpa batas waktu — kegagalan adalah yang paling
 berharga). Tunda sampai P0/P1 selesai.
 
@@ -434,6 +533,52 @@ pertahankan disiplin menulis alasan.
 
 ---
 
+### 🟢 P3-4 — Pemantulan `/` memakai tujuan yang dipaku, dan pembenarannya sudah kedaluwarsa
+
+**Bukti.** `src/app/(marketing)/page.tsx:124`:
+
+```ts
+const session = await auth();
+if (session) redirect("/dashboard");     // ← dipaku
+```
+
+`src/proxy.ts:269` sudah melakukan hal yang **sama tetapi lebih baik** untuk dua
+jalur lain:
+
+```ts
+if ((pathname === "/login" || pathname === "/register") && token) {
+  const destination = resolvePostLoginPath(…token…);   // tahu tenant & PT
+  return NextResponse.redirect(new URL(destination, request.url));
+}
+```
+
+Dan `src/proxy.ts` baris ~30 memuat pembenaran kenapa `/` **tidak** ikut:
+
+> *"Pemantulan untuk yang SUDAH bersesi tetap ada, tapi di halamannya sendiri:
+> ia yang tahu tujuan pasca-masuk, dan proxy tidak boleh menduanya."*
+
+**Pembenaran itu sudah dibatalkan oleh pekerjaan #172 sendiri.** Proxy kini
+*memang* menghitung tujuan pasca-masuk — lewat `resolvePostLoginPath`, fungsi
+**murni dan aman-edge** (tanpa Prisma, tanpa `node:*`), dari JWT. Sementara
+halamannya memakai `/dashboard` yang dipaku, yaitu versi yang **lebih kasar**
+dan satu hop lebih panjang bagi pengguna.
+
+**Dampak.** Kecil tapi nyata: pengguna bersesi yang membuka `/` memantul ke
+`/dashboard`, lalu `/dashboard` memantul lagi ke bukunya. Dua pantulan di tempat
+yang seharusnya satu.
+
+**Perbaikan.** Tambahkan `pathname === "/"` ke kondisi yang sudah ada di
+`src/proxy.ts:269`, lalu cabut `auth()` dari halaman pendaratan dan perbaiki
+komentar yang kedaluwarsa itu.
+
+⚠ **Ini perbaikan KEBENARAN, bukan performa.** Mencabut `auth()` **tidak**
+membuat halaman pendaratan menjadi statis: `getLocale()` membaca cookie (dan
+`Accept-Language`) pada setiap permintaan, jadi ketiga halaman pemasaran
+per-permintaan **secara konstruksi**. Lihat
+[dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md).
+
+---
+
 ### ❓ Yang perlu dipastikan sebelum bisa dinilai
 
 | Pertanyaan | Kenapa penting |
@@ -442,6 +587,8 @@ pertahankan disiplin menulis alasan.
 | Apakah latihan pemulihan kuartalan pernah dijalankan? | Diwajibkan `package.json`; tanpa bukti, RTO tak diketahui |
 | Mana dari 17 buku yang **uji** dan mana yang **produksi**? | Menentukan apa yang dikecualikan dari laporan kesesuaian |
 | Apakah `build-standalone.yml` masih dipakai? | Menentukan apakah ia dihapus atau ditandai |
+| Berapa RPO yang dapat diterima pemilik? | Menentukan apakah binlog/PITR masuk Tier 2 atau Tier 4 ([dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
+| Setuju memisahkan container operator di produksi? | Perubahan infrastruktur; nol kode, ~60 MB ([dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
 | Apakah `HOSTING*.md` masih berlaku? | Sama |
 | Berapa RTO yang dapat diterima pemilik? | Menentukan apakah RPO 24 jam cukup |
 | `inventory.suburanugerahindonesia.com` masih aktif? | Host uji di `DOCKER.md` |
@@ -454,16 +601,18 @@ pertahankan disiplin menulis alasan.
 |---|---|---|---|---|
 | **P0-1** | Cadangan belum pernah berhasil | **Kehilangan data + risiko hukum** | **Rendah** (3 env) | Rendah |
 | **P0-2** | Kunci cadangan 🔶 di mesin yang sama | Pemulihan yang terasa ada padahal tidak | Rendah | Rendah |
+| **P0-3** | **Nol CI — tak ada yang menjalankan 270 berkas tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
 | **P1-2** | Temuan kesesuaian hanya di stdout | Cacat data tak terlihat berbulan-bulan | Sedang | Rendah |
-| **P1-3** | Dokumen penggelaran bertentangan | Nasihat salah saat insiden | **Rendah** | **Nol** |
+| ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ **ditutup 11 Okt 2026** | — | — |
 | **P2-1** | Basis data uji di produksi | Cadangan & laporan tercemar; 1 DB tak terdaftar | Sedang | Sedang |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
-| **P2-3** | Satu `web`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
+| **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
 | **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |
 | **P2-5** | Tabel jejak tanpa pemangkasan | Pertumbuhan lambat | Rendah | Rendah |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |
 | **P3-2** | Proxy tak teruji ujung-ke-ujung | Kelas cacat bisa terulang | Rendah | Rendah |
+| **P3-4** | Pemantulan `/` dipaku; pembenaran kedaluwarsa | Dua pantulan, dan komentar menyesatkan | **Rendah** | Rendah |
 | **P3-3** | Tanpa kepemilikan tercatat | *Bus factor* 1 | Rendah | Nol |
 
 **Pengamatan yang layak dinyatakan:** empat temuan teratas semuanya **soal

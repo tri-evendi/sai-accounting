@@ -48,7 +48,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
 import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { listPlansForOperator, tenantDetailForOperator } from "@/lib/operator/store";
+import { listPlansForOperator, tenantDetailForOperator, tenantStatusVariant } from "@/lib/operator/store";
 import { executionVerdict } from "@/lib/tenant-deletion";
 import {
   BILLING_MODE_LABEL_KEYS,
@@ -58,14 +58,9 @@ import {
 import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { formatDateMedium as formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
-}
-
-const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
 const MUTED = CONSOLE_MUTED;
 
@@ -290,13 +285,7 @@ export default async function OperatorTenantDetailPage({
         description={tenant.slug}
         badge={
           <Badge
-            variant={
-              READ_ONLY_STATUSES.has(tenant.status)
-                ? "danger"
-                : tenant.status === "active"
-                  ? "success"
-                  : "warning"
-            }
+            variant={tenantStatusVariant(tenant.status)}
           >
             {statusLabel(tenant.status)}
           </Badge>

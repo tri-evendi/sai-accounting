@@ -23,12 +23,9 @@ import { mailSettingsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import { mailHealth } from "@/lib/mail-health";
 import { outboxCount } from "@/lib/mailer-core";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function formatDateTime(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
-}
 
 /*
  * Warna di berkas ini memakai variabel token AntD `var(--ant-…)` (#203). Konsol

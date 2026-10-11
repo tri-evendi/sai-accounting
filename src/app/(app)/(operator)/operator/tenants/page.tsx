@@ -48,18 +48,13 @@ import { Select } from "@/components/ui/select";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { listTenantsForOperator } from "@/lib/operator/store";
+import { listTenantsForOperator, tenantStatusVariant } from "@/lib/operator/store";
 import { TENANT_STATUSES } from "@/lib/constants";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { formatDateMedium as formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
-}
-
-const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
 /** Teks sekunder di dalam sel — token AntD, lihat catatan kepala berkas. */
 const MUTED: React.CSSProperties = { color: "var(--ant-color-text-secondary)" };
@@ -114,13 +109,7 @@ export default async function OperatorTenantsPage({
       align: "left",
       render: (_v, tenant) => (
         <Badge
-          variant={
-            READ_ONLY_STATUSES.has(tenant.status)
-              ? "danger"
-              : tenant.status === "active"
-                ? "success"
-                : "warning"
-          }
+          variant={tenantStatusVariant(tenant.status)}
         >
           {statusLabel(tenant.status)}
         </Badge>

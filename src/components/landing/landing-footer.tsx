@@ -34,6 +34,7 @@
 import Link from "next/link";
 
 import { LANDING_NOTE } from "@/components/landing/landing-scale";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@/lib/constants";
@@ -100,12 +101,15 @@ export async function LandingFooter() {
           {/* Kolom identitas lebih lebar daripada kolom tautan — ia memikul
               kalimat, bukan daftar. */}
           <div>
-            <p
-              style={{ margin: 0, fontWeight: "var(--ant-font-weight-strong)" }}
-            >
-              {APP_NAME}
-            </p>
-            <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-xxs)" }}>
+            {/* LAMBANGNYA ikut di sini, dan itu bukan hiasan: kaki halaman
+                adalah tempat merek menandatangani halamannya, dan sampai
+                perombakan ini ia satu-satunya tempat di seluruh pendaratan
+                yang menyebut nama produk TANPA lambangnya — sementara bilah
+                atas, gambar produk, dan tombol WhatsApp semuanya membawanya.
+                Bentuknya `BrandLockup` yang sama, jadi nama di kaki dan nama
+                di bilah atas tidak bisa berbeda ukuran. */}
+            <BrandLockup />
+            <p style={{ ...LANDING_NOTE, marginTop: "var(--ant-margin-xs)" }}>
               {t("landing.footerTagline")}
             </p>
           </div>

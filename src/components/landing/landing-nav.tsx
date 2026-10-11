@@ -56,7 +56,7 @@ import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 import Link from "next/link";
 
 import { LANDING_NAV_HEIGHT } from "@/components/landing/landing-scale";
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { ButtonLink } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { APP_NAME } from "@/lib/constants";
@@ -204,18 +204,10 @@ export async function LandingNav() {
             textDecoration: "none",
           }}
         >
-          <BrandMark size="sm" />
-          {/* Disembunyikan visual di <576px, `nowrap` di atasnya — keduanya
-              di `[data-landing-brand-name]`, blok gaya `landing-scale.ts`. */}
-          <span
-            data-landing-brand-name=""
-            style={{
-              fontSize: "var(--ant-font-size-lg)",
-              fontWeight: "var(--ant-font-weight-strong)",
-            }}
-          >
-            {APP_NAME}
-          </span>
+          {/* Nama DISEMBUNYIKAN visual di <576px (lambangnya tetap) lewat
+              `[data-landing-brand-name]` di blok gaya `landing-scale.ts` —
+              karena itu atributnya dioper, bukan disusun ulang di sini. */}
+          <BrandLockup nameProps={{ "data-landing-brand-name": "" }} />
         </Link>
 
         {/* ══ TAUTAN SEKSI — mesin yang sudah dibangun, akhirnya dipasang ═══

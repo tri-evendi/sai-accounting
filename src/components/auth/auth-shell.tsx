@@ -48,6 +48,7 @@ import Link from "next/link";
 import { Alert, Col, Flex, Layout, Row, theme } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -294,25 +295,7 @@ export function AuthShell({
                   borderBottom: `${token.lineWidth}px solid ${BORDER_TOKENS_DARK.colorSplit}`,
                 }}
               >
-                <BrandMark size="md" />
-                <div style={{ minWidth: 0 }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontSize: token.fontSizeLG,
-                      fontWeight: token.fontWeightStrong,
-                      color: token.colorTextLightSolid,
-                    }}
-                  >
-                    {APP_NAME}
-                  </p>
-                  <p style={{ margin: 0, color: NEUTRAL_TEXT_DARK.colorTextTertiary }}>
-                    {t("auth.brandTagline")}
-                  </p>
-                </div>
+                <BrandLockup size="md" tone="onDark" subtitle={t("auth.brandTagline")} />
               </Layout.Header>
             </Col>
           </Row>

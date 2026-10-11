@@ -100,7 +100,7 @@ import {
 import type { IconComponent } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Link, useAppRouter } from "@/components/ui/app-link";
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { docsPath } from "@/lib/docs";
@@ -454,15 +454,10 @@ function PanelMenu({
               color: token.colorTextLightSolid,
             }}
           >
-            <BrandMark size="sm" />
             {/* Nama aplikasi menghilang saat terlipat; lambangnya tetap, dan
                 ia tetap tautan ke beranda. `aria-label` di `Link` menjaga
                 tautannya tetap punya nama yang bisa dibacakan tanpa teks. */}
-            <span
-              style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-            >
-              {APP_NAME}
-            </span>
+            <BrandLockup tone="onDark" />
           </Link>
           )}
           {/*

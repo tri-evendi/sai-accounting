@@ -19,6 +19,9 @@ arsitektur: bentuk sistemnya sehat, dan bukti dari potret ini mengarah ke
 | Kembalikan Tailwind / `className` | Dicabut #203; dijaga ESLint & tes |
 | Replika `web` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
 | Lingkungan staging penuh | 🔶 Mungkin belum sepadan pada 11 tenant. Keputusan pemilik, bukan teknis |
+| **Pindah ke PostgreSQL** | 98 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| **Pisahkan container pemasaran** | Batasnya memotong funnel: `/register` ada di `(auth)`, bukan `(marketing)`. Nol beban terukur (162–185 ms). [Dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| **Mulai DC/DRC dari replikasi** | Replika yang menyalin basis data tak tercadangkan melipatgandakan satu titik kegagalan jadi dua yang berkorelasi. [Dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 
 ---
 
@@ -87,7 +90,42 @@ langsung dari shell — **periksa dulu** sebelum merencanakan.
 melaporkan dirinya. Kanal kedua layak dipertimbangkan nanti — tetapi **jangan
 jadikan prasyarat**. Satu kanal jauh lebih baik daripada nol.
 
-### 0.4 Rapikan dokumen penggelaran → P1-3
+### 0.4 CI yang menjalankan gerbang → P0-3
+
+**Temuan terpenting yang lahir SESUDAH set dokumen ini pertama ditulis.** Tidak
+ada satu pun workflow yang berpemicu `pull_request`, tidak ada yang menjalankan
+`verify`/`test`/`typecheck`/`lint`, dan `main` tidak punya *required status
+check* maupun syarat review. 243 berkas tes, nol otomasi.
+
+```yaml
+# .github/workflows/verify.yml
+name: Verify
+on:
+  pull_request:
+  push:
+    branches: [develop]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
+      - run: bun run db:generate     # TIGA klien, bukan `bunx prisma generate`
+      - run: bun run verify
+```
+
+Lalu: **jadikan job `verify` required status check** pada `main` (dan sebaiknya
+`develop`) lewat Settings → Branches.
+
+Dikerjakan **lebih dulu** dari 0.1–0.3 kalau bisa, karena ia yang mencegah
+ketiganya regresi diam-diam bulan depan. `bun run build` **tidak** ikut di CI
+PR — ia tetap tanggung jawab sesi utama di atas hasil gabungan (`AGENTS.md`).
+
+### 0.5 Rapikan dokumen penggelaran → P1-3
 
 Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 
@@ -114,7 +152,25 @@ buatan menghasilkan satu surel · satu jalur penggelaran di dokumentasi.
 **Gerbang keluar: setiap layanan latar meninggalkan jejak yang bisa ditanyai
 dari luar.**
 
-### 1.1 Jejak kesesuaian data → P1-2
+### 1.1 Pisahkan container operator → dok 10 §3
+
+**Nol perubahan kode.** Dua container dari image yang SAMA, beda `OPERATOR_HOST`
++ label Traefik. Terukur: `sai-web` = 57,6 MiB, headroom 719 MB, jadi container
+kedua ≈ **8% headroom**. Rinciannya beserta jebakan pertahanan-berlapisnya di
+[dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
+
+⚠ Ini perubahan **infrastruktur produksi**: butuh persetujuan pemilik, dan
+sebaiknya dilatih di luar produksi lebih dulu. Di sinilah ketiadaan staging
+(§Keputusan terbuka #8) mulai berbiaya nyata.
+
+### 1.2 Pindahkan pemantulan `/` ke proxy → P3-4
+
+Satu baris: tambahkan `pathname === "/"` ke kondisi di `src/proxy.ts:269`,
+cabut `auth()` dari halaman pendaratan, perbaiki komentar yang kedaluwarsa.
+Pengguna bersesi mendarat di bukunya, bukan memantul dua kali lewat
+`/dashboard`. **Bukan** perbaikan performa — lihat dok 10 §4.
+
+### 1.3 Jejak kesesuaian data → P1-2
 
 Menutup asimetri: `scheduler` dan `backup` punya tabel jejak, `conformance`
 tidak.
@@ -130,7 +186,7 @@ tidak.
 **Mengikuti [`docs/DATABASE.md`](../DATABASE.md)** — migration ditulis tangan,
 lewati Checklist tabel baru.
 
-### 1.2 Tutup celah uji proxy → P3-2
+### 1.4 Tutup celah uji proxy → P3-2
 
 Satu tes: `proxy()` dengan `Authorization: Bearer …` → **tidak** dipantulkan.
 Menutup kelas cacat yang sudah pernah hidup di produksi tiga pekan.
@@ -138,7 +194,7 @@ Menutup kelas cacat yang sudah pernah hidup di produksi tiga pekan.
 🔶 Kemungkinan cukup tes unit terhadap fungsi keputusan proxy; server sungguhan
 mungkin tidak perlu.
 
-### 1.3 Pemangkasan tabel jejak → P2-5
+### 1.5 Pemangkasan tabel jejak → P2-5
 
 Di layanan `scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
 setiap baris `error` tanpa batas waktu** — kegagalan adalah baris yang paling
@@ -257,6 +313,10 @@ lebih awal berarti membayar ongkos tanpa pembeli.
 | **Metrik/dasbor** | "Apakah ini melambat?" ditanyakan dan tak terjawab | — | Dok 07 §9 |
 | **Pecah berkas besar** | `typecheck` > 1536 MB | — | P3-1 |
 | **Kanal peringatan kedua** | Satu kegagalan surel membuat P1-1 terulang | 0.3 selesai | P1-1 |
+| **Pisahkan bidang akuisisi** (`(marketing)`+`(auth)` BERSAMA) | Lalu lintas perayap terukur bersaing dengan permintaan pelanggan | — | Dok 10 §4 |
+| **Binlog/PITR** | RPO 24 jam tidak lagi dapat diterima pemilik | 0.1 selesai | Dok 10 §5 |
+| **VM kedua sebagai target restore DINGIN** | Butuh jalan pulang dari kehilangan mesin | 0.1 + 0.2 | Dok 10 §5 |
+| **Replikasi → DRC** | RTO menuntutnya, DAN restore dingin sudah terbukti | VM kedua | Dok 10 §5 |
 
 **Kenapa dibingkai sebagai pemicu.** Setiap butir di tabel ini adalah jawaban
 benar untuk masalah yang **belum dimiliki sistem ini**. Mengerjakannya sekarang
@@ -331,21 +391,37 @@ berbunyi ke siapa pun** — modul peringatan ada dan dirancang baik, tetapi hany
 dipanggil dari dua route pendaftaran. Temuan ketiga mengikuti pola yang sama:
 temuan kesesuaian data mingguan hanya ada di stdout.
 
-Pengamatan yang mengikat ketiganya: **empat temuan teratas semuanya soal
-dapat-diamati, bukan soal arsitektur.** Sistem ini tahu cara gagal dengan
-benar; yang belum ia bisa adalah **memberi tahu kita** bahwa ia sedang gagal.
+Dan temuan keempat, yang lahir **sesudah** set dokumen ini pertama ditulis dan
+melingkupi ketiganya: **tidak ada apa pun yang menjalankan 243 berkas tes itu.**
+Nol workflow berpemicu `pull_request`, nol *required status check* pada `main`,
+nol syarat review — sementara `next build` sengaja tidak memeriksa tipe. Jadi
+satu-satunya yang berdiri antara galat tipe dan image produksi adalah seorang
+manusia yang ingat menjalankan sebuah perintah. Jalurnya bukan hipotesis: PR
+#599 terbit ke GHCR tanpa satu pun pemeriksaan berjalan.
+
+Pengamatan yang mengikat keempatnya: **tak satu pun soal arsitektur.** Tiga di
+antaranya soal *dapat-diamati* — sistem ini tahu cara gagal dengan benar, yang
+belum ia bisa adalah **memberi tahu kita** bahwa ia sedang gagal. Yang keempat
+soal *gerbang* — tidak ada yang memeriksa kode sebelum ia terbit. Bentuk
+arsitekturnya sendiri sehat, dan tidak satu pun dari keempatnya diperbaiki
+dengan memecah layanan.
 
 **Lima langkah berikutnya, berurutan.**
 
 | # | Langkah | Usaha | Rujukan |
 |---|---|---|---|
-| 1 | Setel 3 env S3, jalankan cadangan, **buktikan** dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
-| 2 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
-| 3 | Sambungkan `alert()` ke cadangan, penjadwal, kesesuaian, kesehatan PT | Rendah | 0.3 / P1-1 |
-| 4 | Satukan dokumentasi penggelaran jadi satu jalur hidup | Rendah, **nol risiko** | 0.4 / P1-3 |
-| 5 | Tabel `conformance_runs` + medan kesehatan + halaman operator | Sedang | 1.1 / P1-2 |
+| 1 | **`.github/workflows/verify.yml` + jadikan required check** | **Rendah** | 0.4 / P0-3 |
+| 2 | Setel 3 env S3, jalankan cadangan, **buktikan** dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
+| 3 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
+| 4 | Sambungkan `alert()` ke cadangan, penjadwal, kesesuaian, kesehatan PT | Rendah | 0.3 / P1-1 |
+| 5 | Satukan dokumentasi penggelaran jadi satu jalur hidup | Rendah, **nol risiko** | 0.5 / P1-3 |
 
-Tiga yang pertama adalah **pekerjaan sore hari** yang menghapus satu-satunya
-risiko kehilangan data permanen di sistem ini. Kerjakan berurutan — dan jangan
-melewati langkah "buktikan" pada nomor 1, karena doktrin repo ini sendiri sudah
-menuliskan kenapa laporan skrip bukan bukti.
+Keempat yang pertama adalah **pekerjaan sore hari** yang memasang gerbang
+otomatis dan menghapus satu-satunya risiko kehilangan data permanen di sistem
+ini. Kerjakan berurutan: nomor 1 lebih dulu justru supaya nomor 2–5 tidak bisa
+regresi diam-diam sesudahnya.
+
+Dan jangan melewati langkah **"buktikan"** pada nomor 2 — doktrin repo ini
+sendiri sudah menuliskan kenapa laporan skrip bukan bukti. Gerbangnya
+`lastSuccessAt != null` **dan** `prove-backup-restore` lulus, bukan "skripnya
+bilang sukses".

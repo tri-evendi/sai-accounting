@@ -11,6 +11,63 @@ unit penyebaran**, bukan mikrolayanan.
 - **Pemilik:** Tri Evendi — ❓ tidak ada berkas `CODEOWNERS`; pemilik per-komponen **belum dipastikan**
 - **Registry:** `ghcr.io/tri-evendi/sai-accounting`
 
+## 0. Berapa layanan yang dipelihara?
+
+Pertanyaan ini sering salah dijawab, dan selisihnya menentukan cara berpikir
+soal penggelaran, penskalaan, dan blast radius. **Jawabannya: enam layanan
+didefinisikan, lima berjalan terus-menerus** — dan ketujuh permukaan web ada di
+**satu** proses di antaranya.
+
+| Layanan | Container | Peran | Kadens |
+|---|---|---|---|
+| `web` | `sai-web` | **Seluruh permukaan web** — 141 halaman, 126 rute API | selalu hidup |
+| `db` | `sai-db` | 17 buku PT + kendali + platform | selalu hidup |
+| `scheduler` | `sai-scheduler` | 5 produser: tagihan, kabar, pengingat, berulang | tiap jam |
+| `conformance` | `sai-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
+| `backup` | `sai-backup` | dump → tar → sandi → S3 | harian |
+| `migrate` | — | Migration, lalu **keluar** (`restart: "no"`) | sekali per gelar |
+
+Plus **`traefik`**, berbagi dengan lima aplikasi lain di mesin ini — **bukan**
+bagian dari `docker-compose.yml` repo ini.
+
+Dan hanya **tiga image** menopang semuanya: `scheduler` + `conformance`
+**sengaja memakai ulang** image `migrator`.
+
+### ⚠ Tujuh PERMUKAAN, satu PROSES
+
+Yang sering disebut sebagai "layanan" sebenarnya **grup rute** di dalam
+container `web` yang sama, dipisahkan oleh *hostname* dan grup rute — bukan oleh
+proses:
+
+```
+sai-web  (SATU container Next.js)
+├── APP_DOMAIN
+│   ├── (marketing)         3 halaman   /  ·  /pricing  ·  /status
+│   ├── (auth)             13 halaman   login, daftar, undangan, unlock…
+│   ├── (tenant)/(panel)    7 halaman   /platform/*  akun, tagihan, tim
+│   ├── (dashboard)       103 halaman   /t/{tenant}/{company}/*  ← buku besar
+│   ├── (setup)             2 halaman   wisaya penyiapan
+│   └── (docs)              3 halaman   /docs/**  (publik, tanpa sesi)
+└── OPERATOR_DOMAIN
+    └── (operator)         10 halaman   /operator/*
+```
+
+**Konsekuensi yang harus diketahui:**
+
+- **Satu penggelaran memindahkan ketujuhnya.** Halaman pendaratan tidak bisa
+  dirilis tanpa ikut merilis buku besar.
+- **Satu restart mengosongkan setiap cache** — pengaturan surel (TTL 60s), kolam
+  klien LRU per-PT.
+- **`web` adalah titik gagal tunggal untuk ketujuhnya sekaligus**, hanya
+  diredam `restart: unless-stopped` + healthcheck.
+- **Pemisahan operator/pelanggan ditegakkan HOSTNAME, bukan proses.** Itulah
+  batas keamanannya, dan itulah sebabnya ia gagal-tertutup.
+
+Apakah ketujuhnya **sebaiknya** dipisah jadi beberapa container dinilai di
+[dok 10](./10-PORTABILITAS-DAN-PEMISAHAN.md) — ringkasnya: **operator ya**
+(ada alasan keamanan, nol perubahan kode), **pemasaran tidak** (batasnya
+memotong funnel pendaftaran).
+
 ## 1. Peta container
 
 ```mermaid

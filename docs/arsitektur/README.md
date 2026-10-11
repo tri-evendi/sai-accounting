@@ -20,6 +20,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | Insinyur baru | [01](./01-RINGKASAN-PLATFORM.md) → [02](./02-ARSITEKTUR.md) → [06](./06-ALIRAN-DATA.md) |
 | Mengambil keputusan teknis | [01](./01-RINGKASAN-PLATFORM.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) → [09](./09-PETA-JALAN.md) |
 | Bertugas jaga / menggelar rilis | [07](./07-INFRASTRUKTUR-DEPLOY.md) → [03](./03-INVENTARIS-LAYANAN.md) |
+| Merencanakan VM baru / DC-DRC / ganti basis data | [10](./10-PORTABILITAS-DAN-PEMISAHAN.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) |
 
 ## Isi
 
@@ -34,6 +35,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | 07 | [INFRASTRUKTUR-DEPLOY.md](./07-INFRASTRUKTUR-DEPLOY.md) | Container, domain, port, volume, alur rilis, variabel lingkungan |
 | 08 | [PENILAIAN-ARSITEKTUR.md](./08-PENILAIAN-ARSITEKTUR.md) | Kekuatan, utang teknis, risiko — diprioritaskan dengan bukti |
 | 09 | [PETA-JALAN.md](./09-PETA-JALAN.md) | Rekomendasi berurutan, prasyarat, pertanyaan yang belum terjawab |
+| 10 | [PORTABILITAS-DAN-PEMISAHAN.md](./10-PORTABILITAS-DAN-PEMISAHAN.md) | Asesmen: portabilitas VM · PostgreSQL · pemisahan container operator & pemasaran · prasyarat DC/DRC |
 
 ## Dokumen domain yang TIDAK digantikan dokumen ini
 
@@ -75,6 +77,9 @@ Dokumen ini membusuk seperti dokumen mana pun. Yang membuatnya membusuk
 4. Rezim autentikasi baru (selain sesi/Bearer/operator) → perbarui **05**.
 5. Temuan di **08** yang sudah ditutup → **pindahkan ke riwayat, jangan hapus**;
    temuan yang hilang tanpa jejak akan ditemukan ulang oleh orang berikutnya.
+6. Putusan di **10** (PostgreSQL, pemisahan container) → bila **pemicunya**
+   terjadi, perbarui putusannya **beserta pemicu yang terpenuhi**. Putusan yang
+   berubah tanpa menyebut apa yang berubah tidak bisa ditinjau siapa pun.
 
 Angka runtime (jumlah tenant, status cadangan, nomor migration) **sengaja
 dicantumkan beserta tanggal pengambilannya**. Angka tanpa tanggal adalah angka

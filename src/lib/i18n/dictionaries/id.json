@@ -3139,7 +3139,7 @@
     "inboxTitle": "Menunggu Keputusan Anda",
     "docCount": "{count} dokumen",
     "inboxEmpty": "Tidak ada dokumen yang menunggu persetujuan Anda.",
-    "inboxEmptyHint": "Ambang dan peran penyetuju diatur di",
+    "inboxEmptyHint": "Ambang nilai dan peran penyetuju diatur di halaman aturan persetujuan.",
     "submittedBy": "Diajukan {name} · {date}",
     "requestNote": "Catatan pemohon: {note}",
     "resubmittedBadge": "Diajukan ulang.",

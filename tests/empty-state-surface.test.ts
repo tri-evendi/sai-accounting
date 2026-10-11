@@ -52,6 +52,21 @@ const FLAT_TERSAHKAN = [
   "app/(app)/(tenant)/(panel)/platform/team/page.tsx",
   // Kartu baris barang; kartunya punya kepala beraksi sendiri ("Tambah baris").
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/delivery-orders/new/delivery-order-form.tsx",
+  /*
+   * Dua kartu antrean persetujuan (kotak masuk & "milik saya") dan kartu daftar
+   * aturan. Ketiganya kasus yang SAMA dengan dua di atas: cabang berisinya
+   * tabel di dalam kartu yang itu juga, lengkap dengan kepala berjudul &
+   * berlencana jumlah.
+   *
+   * Ketiganya baru masuk daftar ini Okt 2026 — sebelumnya mereka TIDAK memakai
+   * `EmptyState` sama sekali melainkan menyusun sendiri "ikon + teks sekunder +
+   * petunjuk" dengan ikon `fontSizeHeading3` dan padding `paddingXL +
+   * paddingSM`, dua angka yang tidak dipakai satu pun dari 53 keadaan-kosong
+   * lain. Jadi pertambahan daftar ini adalah tiga pemanggil yang BERHENTI
+   * menyimpang, bukan tiga permukaan yang baru hilang.
+   */
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/approval-queue-client.tsx",
+  "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/approvals/rules/approval-rules-client.tsx",
 ].sort();
 
 describe("keadaan kosong menggambar permukaannya sendiri", () => {

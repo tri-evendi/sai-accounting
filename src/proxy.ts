@@ -28,9 +28,18 @@ function isPublicPath(pathname: string): boolean {
   // Halaman pendaratan: pembacanya justru orang yang BELUM punya akun. Tanpa
   // baris ini proxy memantulkannya ke `/login` sebelum halamannya sempat
   // dirender — yaitu persis keadaan yang halaman itu dibuat untuk mengakhiri
-  // (orang asing disambut formulir kata sandi). Pemantulan untuk yang SUDAH
-  // bersesi tetap ada, tapi di halamannya sendiri: ia yang tahu tujuan
-  // pasca-masuk, dan proxy tidak boleh menduanya.
+  // (orang asing disambut formulir kata sandi).
+  //
+  // Pemantulan bagi yang SUDAH bersesi kini DUA LAPIS, dan pembagiannya
+  // mengikuti siapa yang mampu menjawab:
+  //   • token yang sudah membawa KEDUA slug → dipotong di proxy (lihat blok
+  //     "jalan pintas halaman pendaratan" di bawah), sebab jawabannya bisa
+  //     disusun tanpa menyentuh basis data;
+  //   • sisanya — sesi lama, banyak PT yang belum dipilih, belum punya PT —
+  //     tetap diputuskan HALAMANNYA, yang memantul ke `/dashboard`. Jawaban
+  //     benar bagi mereka menuntut satu query yang runtime Edge tidak punya.
+  // Jadi proxy tidak menduai aturannya; ia hanya mengambil kasus yang memang
+  // bisa dijawabnya.
   if (pathname === "/") return true;
   // issue #399 — halaman harga publik: alamat tujuan untuk kueri "harga
   // software akuntansi", berbagi root layout pemasaran dengan `/`. Jalur
@@ -280,6 +289,53 @@ export async function proxy(request: NextRequest) {
       null
     );
     return NextResponse.redirect(new URL(destination, request.url));
+  }
+
+  /*
+   * ── Jalan pintas HALAMAN PENDARATAN bagi sesi yang sudah lengkap ──────────
+   *
+   * Hari ini `/` yang dibuka pengguna bersesi menempuh DUA pantulan dan satu
+   * render: halaman pendaratan dirender, memanggil `auth()`, lalu memantul ke
+   * `/dashboard`, yang baru kemudian dipantulkan blok "jalur lama" di bawah
+   * menjadi `/t/{tenant}/{company}`. Blok ini memotong langkah pertama ketika
+   * — dan HANYA ketika — tokennya sudah membawa kedua slug.
+   *
+   * ⚠ TUJUANNYA SENGAJA `tenantPath(...COMPANY_HOME_PATH)`, BUKAN
+   * `resolvePostLoginPath`. Keduanya menjawab pertanyaan yang BERBEDA:
+   *   • `resolvePostLoginPath` menjawab "sesi baru sah, ke mana?" — dan sejak
+   *     #172 jawabannya `/platform` bagi pemegang urusan akun.
+   *   • `/` yang diketik pengguna yang SUDAH masuk bukan pendaratan pasca-masuk
+   *     melainkan permintaan eksplisit "bawa saya ke aplikasinya", dan hari ini
+   *     ia berakhir di BUKU (lewat `/dashboard`). Memakai
+   *     `resolvePostLoginPath` di sini akan melempar setiap pemilik akun ke
+   *     panel akun — perubahan perilaku, bukan penghematan pantulan.
+   * Blok ini karena itu mendarat di alamat yang SAMA PERSIS dengan hari ini;
+   * yang hilang hanya satu pantulan dan satu render.
+   *
+   * ⚠ TANPA KEDUA SLUG, TIDAK ADA PANTULAN DI SINI — dan itu syarat yang tidak
+   * boleh dilonggarkan. Doktrin yang sama sudah ditulis di blok "jalur lama" di
+   * bawah: sesi lama, pengguna dengan banyak PT yang belum memilih, dan
+   * pelanggan yang belum punya PT sama sekali TIDAK boleh diputuskan di proxy.
+   * Jawaban benar bagi mereka menuntut satu query (`routeForCompany`) yang
+   * runtime Edge tidak punya aksesnya, dan satu-satunya tempat aturan itu
+   * ditulis adalah `app/(app)/(dashboard)/dashboard/page.tsx`. Melonggarkan
+   * syarat ini akan mengirim mereka ke `/platform` alih-alih ke bukunya.
+   *
+   * Karena itu halaman pendaratan TETAP memanggil `auth()`: ia jalur cadangan
+   * untuk justru rombongan itu, bukan sisa yang lupa dicabut.
+   *
+   * 307, bukan 308/301 — alasan yang sama dengan pantulan jalur lama: PT tujuan
+   * bergantung pada SESI, dan pantulan permanen yang tersimpan di cache akan
+   * membawa pengguna ke buku PT lain berbulan-bulan sesudahnya.
+   */
+  if (request.method === "GET" && pathname === "/" && token) {
+    const tenantSlug = typeof token.tenantSlug === "string" ? token.tenantSlug : null;
+    const companySlug = typeof token.companySlug === "string" ? token.companySlug : null;
+    if (tenantSlug && companySlug && token.mustChangePassword !== true) {
+      const target = request.nextUrl.clone();
+      target.pathname = tenantPath(tenantSlug, companySlug, COMPANY_HOME_PATH);
+      return NextResponse.redirect(target, 307);
+    }
   }
 
   if (isPublicPath(pathname)) {

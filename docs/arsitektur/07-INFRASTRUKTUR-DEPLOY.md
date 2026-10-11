@@ -431,7 +431,7 @@ aktif.
 | `GET /status` | Versi untuk manusia — komponen dengan **empat keadaan** (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`lib/public-status.ts`) |
 | Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `db` tiap 10s |
 | Healthcheck Traefik | `/api/health` tiap 30s |
-| `scheduler_runs` | 1.246 baris — status per putaran |
+| `scheduler_runs` | 1.251 baris — status per putaran; **dipangkas** > 90 hari (baris `error`, terakhir, & `ok` terakhir ditahan selamanya) |
 | `conformance_runs` | Status + jumlah temuan per sapuan mingguan (**baru**, migration platform 0018) |
 | `backup_runs` | 54 baris — status per percobaan |
 | `/operator/scheduler` | Denyut penjadwal di layar |

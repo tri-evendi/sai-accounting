@@ -254,16 +254,25 @@ dicabut diam-diam, yang lebih kuat daripada resep semula. Butir ini **tidak
 perlu dikerjakan**; koreksi lengkapnya di
 [dok 08 P3-2](./08-PENILAIAN-ARSITEKTUR.md).
 
-### 1.5 Pemangkasan tabel jejak → P2-5
+### 1.5 ✅ Pemangkasan tabel jejak → P2-5 — **SELESAI 11 Okt 2026**
 
-Di layanan `job-scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
-setiap baris `error` tanpa batas waktu** — kegagalan adalah baris yang paling
-berharga, dan memangkasnya berarti kehilangan satu-satunya catatan masa lalu
-yang berguna.
+Resep semula menyebut dua aturan (90 hari + semua `error` selamanya). Saat
+dikerjakan, **dua lagi** ternyata menanggung beban — dan keduanya justru
+berlaku ketika ambang 90 hari **tidak lagi melindungi apa pun**: baris
+**terakhir** dan baris **`ok` terakhir** harus selalu tinggal. Tanpa yang
+pertama, layanan yang mati 100 hari lalu kehilangan seluruh jejaknya dan tabel
+kosongnya terbaca "belum pernah jalan". Tanpa yang kedua, `/api/health`
+kehilangan "kapan terakhir berhasil". Koreksi lengkapnya di
+[dok 08 P2-5](./08-PENILAIAN-ARSITEKTUR.md).
 
-Sekaligus: pangkas `data/mail-outbox/` (hanya artefak pengembangan).
+Lingkupnya diperluas ke **ketiga** tabel jejak. Aturannya fungsi murni
+(`lib/run-trail-retention.ts`), dijaga `tests/run-trail-retention.test.ts`
+(21 tes). Dipanggil `job-scheduler` sebagai langkah **ke-6 dan terakhir** — ia
+satu-satunya yang menghapus.
 
-**Prasyarat:** 1.1 selesai (supaya pola tabel jejak sudah mapan).
+**Tidak ikut dikerjakan:** `data/mail-outbox/` — artefak pengembangan
+(transport surel `file`), tidak tumbuh di produksi yang memakai SMTP, dan tidak
+ikut dalam cadangan basis data.
 
 ---
 
@@ -432,7 +441,7 @@ kepatuhan yang masih terbuka ada di
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
 dan platform (penagihan). ~342.800 baris TypeScript, 142 halaman, 126 rute API,
-88 model, 99 migration, 273 berkas tes.
+88 model, 99 migration, 274 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang

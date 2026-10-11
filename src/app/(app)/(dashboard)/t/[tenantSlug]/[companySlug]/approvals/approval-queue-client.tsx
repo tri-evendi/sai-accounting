@@ -43,6 +43,7 @@ import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils";
 import { wasResubmitted } from "@/lib/approvals";
 import type { SystemRole } from "@/lib/constants";
@@ -461,29 +462,21 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
         </CardHeader>
         <CardContent style={flushBody}>
           {inbox.length === 0 ? (
-            <Flex
-              vertical
-              align="center"
-              gap={token.marginXS}
-              style={{
-                paddingInline: token.paddingLG,
-                paddingBlock: token.paddingXL + token.paddingSM,
-                textAlign: "center",
-              }}
-            >
-              <InboxOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading3, color: token.colorTextSecondary }} />
-              <Typography.Text type="secondary">{t("approvals.inboxEmpty")}</Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-                {t("approvals.inboxEmptyHint")}{" "}
-                <Link
-                  href="/approvals/rules"
-                  style={{ color: token.colorLink, textDecoration: "underline" }}
-                >
-                  {t("nav.items.approvalRules")}
-                </Link>
-                {t("common.fullStop")}
-              </Typography.Text>
-            </Flex>
+            /* `EmptyState`, bukan susunan sendiri: bentuk ini dulu memakai ikon
+               `fontSizeHeading3` dan padding `paddingXL + paddingSM` — dua
+               angka yang tidak dipakai satu pun dari 53 keadaan-kosong lain di
+               app. `flat` karena ia sudah berada di dalam `<Card>` antrean.
+               Tautan ke halaman aturan menjadi AKSI, bukan tautan yang
+               menyambung kalimat: dengan begitu ia jadi target sentuh penuh
+               dan kalimat petunjuknya berdiri utuh sendiri. */
+            <EmptyState
+              flat
+              icon={<InboxOutlined aria-hidden="true" style={{ fontSize: 40 }} />}
+              title={t("approvals.inboxEmpty")}
+              description={t("approvals.inboxEmptyHint")}
+              actionLabel={t("nav.items.approvalRules")}
+              actionHref="/approvals/rules"
+            />
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
               {inbox.map((row, index) => (
@@ -646,17 +639,7 @@ export function ApprovalQueue({ inbox, mine, decided, currentUserId }: Props) {
         </CardHeader>
         <CardContent style={flushBody}>
           {mine.length === 0 ? (
-            <Typography.Paragraph
-              type="secondary"
-              style={{
-                margin: 0,
-                paddingInline: token.paddingLG,
-                paddingBlock: token.paddingXL,
-                textAlign: "center",
-              }}
-            >
-              {t("approvals.mineEmpty")}
-            </Typography.Paragraph>
+            <EmptyState flat title={t("approvals.mineEmpty")} />
           ) : (
             /*
              * Penanda "belum dibaca" adalah LATAR BARIS, dan itu satu-satunya

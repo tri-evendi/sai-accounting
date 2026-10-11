@@ -172,11 +172,25 @@ services:
   # penjaga itu setiap temuan akan membuat container mati lalu dihidupkan ulang
   # tanpa henti — temuan berubah jadi crash-loop.
   #
-  # Membacanya: `docker compose logs job-conformance --tail 60`. Putaran pertama
-  # jalan SAAT layanan naik, bukan tujuh hari kemudian, sehingga rilis yang
-  # merusak data ketahuan di hari yang sama.
+  # Membacanya ADA DUA, dan yang kedua baru:
+  #   • `docker compose logs job-conformance --tail 60` — rincian lengkapnya;
+  #   • `/api/health` → `conformance` — PUTUSAN denyutnya (ok | findings | late
+  #     | unknown) beserta jumlah temuan terakhir, dari tabel `conformance_runs`
+  #     (migration platform 0018).
   #
-  # Ia HANYA MEMBACA — dijaga `tests/check-data-conformance.test.ts`.
+  # Yang kedua ada karena yang pertama saja sudah terbukti tidak cukup: pada
+  # cadensi MINGGUAN, temuan yang hanya hidup di log container bisa berumur
+  # berbulan-bulan sebelum ada yang membukanya. Dua layanan latar lain
+  # (`job-scheduler`, `job-backup`) sudah punya jejak yang bisa DITANYAI; yang
+  # ini dulu satu-satunya yang tidak.
+  #
+  # Putaran pertama jalan SAAT layanan naik, bukan tujuh hari kemudian,
+  # sehingga rilis yang merusak data ketahuan di hari yang sama.
+  #
+  # Ia tidak mengubah satu angka akuntansi pun: buku PT hanya DIBACA, dan
+  # satu-satunya tulisannya adalah satu baris jejak ke basis data PLATFORM.
+  # Dijaga `tests/check-data-conformance.test.ts`, yang kini menuntut sifat itu
+  # secara presisi — bukan sekadar ketiadaan kata SQL.
   job-conformance:
     build:
       context: .

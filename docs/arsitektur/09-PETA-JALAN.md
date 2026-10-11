@@ -281,7 +281,22 @@ ikut dalam cadangan basis data.
 **Gerbang keluar: setiap basis data di instans produksi diketahui, terdaftar, dan
 terklasifikasi.**
 
-### 2.1 Klasifikasikan 17 buku → P2-1
+### 2.1 ✅ Klasifikasikan 17 buku → P2-1 — **SELESAI 11 Okt 2026**
+
+Hasilnya: **2 dari 17 buku** punya data yang temuan kesesuaiannya layak
+dipercaya sebagai data sungguhan. Satu `produksi` (`sai_production` — 66
+pelanggan + 609 kontrak nyata), satu `dipakai-ringan`, sisanya semai/kosong.
+
+Dibangkitkan **skrip**, bukan kueri tangan: `bun run classify:books`
+(hanya-baca). Aturannya fungsi murni `lib/book-classification.ts`, dijaga
+`tests/book-classification.test.ts` (19 tes) — termasuk satu yang menuntut tak
+satu pun alasan menyebut **nama** basis datanya.
+
+Hasil lengkap + dua pertanyaan yang ikut terjawab (`is_demo` bukan penanda yang
+dicari; cadangan JANGAN dikecualikan — 78,1 MB total) ada di
+[dok 12](./12-KLASIFIKASI-BUKU.md).
+
+### 2.1-lanjutan — kueri manual yang dipakai semula
 
 Daftar buku di produksi memuat empat nama yang berpola uji
 (`sai_t11_data_dummy`, `sai_t1_uji_wisaya_416`, `sai_t1_uji_pindahan_425`,
@@ -441,7 +456,7 @@ kepatuhan yang masih terbuka ada di
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
 dan platform (penagihan). ~342.800 baris TypeScript, 142 halaman, 126 rute API,
-88 model, 99 migration, 274 berkas tes.
+88 model, 99 migration, 275 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang

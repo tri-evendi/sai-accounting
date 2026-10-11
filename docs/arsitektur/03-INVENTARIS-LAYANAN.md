@@ -466,7 +466,7 @@ keputusan** — bukan daftar lengkap.
 | `changelog.ts` | Sumber `CHANGELOG.md` (**dibangkitkan**, jangan disunting) |
 | `accurate/*` | Rekonsiliasi terhadap ekspor Accurate Online |
 
-## 4. Skrip operasional (52 berkas)
+## 4. Skrip operasional (53 berkas)
 
 Dijalankan **manual** atau oleh layanan `job-scheduler`. Semua lewat `bun run <nama>`.
 
@@ -498,6 +498,7 @@ Kelas skrip yang khas repo ini: ia **membuktikan**, bukan melaporkan.
 | `prove-company-slug-immutable.ts` | Slug PT tidak bisa berubah |
 | `prove-company-slug-scope.ts` | Lingkup slug benar |
 | `check-data-conformance.ts` | Data patuh aturan yang ditegakkan kode |
+| `classify-books.ts` | Buku mana **produksi**, mana **uji** — dari isinya, bukan namanya ([dok 12](./12-KLASIFIKASI-BUKU.md)) |
 | `verify-local-setup.ts` | Pemasangan lokal lengkap |
 | `rehearse-billing-webhook.ts` | Webhook penagihan bisa dilatih tanpa Midtrans |
 

@@ -58,7 +58,7 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-273 berkas tes berisi 4.603 tes, dan yang menarik bukan jumlahnya melainkan
+274 berkas tes berisi 4.624 tes, dan yang menarik bukan jumlahnya melainkan
 **jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
@@ -517,7 +517,7 @@ ini. Jawaban "tidak bisa, karena X" yang tertulis sudah merupakan kemajuan.
 
 ---
 
-### 🟡 P2-5 — Tabel jejak tumbuh tanpa kebijakan pemangkasan
+### ✅ P2-5 — Tabel jejak tumbuh tanpa kebijakan pemangkasan — **DITUTUP 11 Okt 2026**
 
 **Bukti.** `scheduler_runs` = **1.246** baris (kadens per jam).
 `backup_runs` = 54. `data/mail-outbox/` menyimpan `.eml` sejak Agustus. Tidak
@@ -526,9 +526,49 @@ ada pemangkasan yang terlihat untuk ketiganya.
 **Dampak.** Hari ini sepele. Tetapi `scheduler_runs` tumbuh **~8.760 baris per
 tahun** selamanya, dan ia ikut dalam setiap dump cadangan.
 
-**Perbaikan.** Pemangkasan di layanan `job-scheduler` (mis. pertahankan 90 hari,
-plus **semua** baris `error` tanpa batas waktu — kegagalan adalah yang paling
-berharga). Tunda sampai P0/P1 selesai.
+**Perbaikan.**
+
+> ✅ **DIKERJAKAN 11 Oktober 2026** — dan dua cacat yang tidak ada di resep
+> semula ikut tertutup.
+>
+> Resep semula menyebut dua aturan: 90 hari + semua `error` selamanya. Saat
+> mengerjakannya, **dua lagi** ternyata menanggung beban, dan keduanya justru
+> berlaku ketika ambang 90 hari **tidak lagi melindungi apa pun**:
+>
+> | # | Aturan | Cacat yang ditutupnya |
+> |---|---|---|
+> | 1 | Baris lebih baru dari ambang | — (resep semula) |
+> | 2 | Status **bukan `ok`** disimpan tanpa batas | — (resep semula) |
+> | 3 | **Baris TERAKHIR** selalu disimpan | Layanan yang mati 100 hari lalu kehilangan **seluruh** jejaknya. Tabel kosong terbaca `unknown` ("belum pernah jalan") alih-alih "berhenti pada tanggal X" — **pemangkasan yang menyembunyikan kegagalan** |
+> | 4 | **Baris `ok` TERAKHIR** selalu disimpan | `health-report.ts` membaca baris `ok` terakhir **secara terpisah** (`where: { status: "ok" }`). Memangkasnya mengubah "berhasil terakhir 4 bulan lalu" menjadi "tidak pernah berhasil" — menghapus satu-satunya petunjuk bahwa mekanismenya pernah bekerja |
+>
+> Cacat 4 bukan hipotesis: `backup_runs` per 11 Okt 2026 berisi **54 baris,
+> semuanya `error`**. Begitu satu cadangan berhasil lalu gagal 90 hari
+> berturut-turut, pemangkasan naif akan menghapus justru bukti keberhasilan itu.
+>
+> **Lingkupnya diperluas ke ketiga tabel** — `scheduler_runs`, `backup_runs`,
+> `conformance_runs` — bukan hanya yang disebut resepnya.
+>
+> Aturannya **fungsi murni** (`lib/run-trail-retention.ts`, nol impor), dijaga
+> `tests/run-trail-retention.test.ts` (**21 tes**). Sebuah `DELETE` yang salah
+> tidak punya langkah balik, dan satu-satunya yang tahu apakah aturannya benar
+> adalah tesnya — jadi yang paling penting di berkas itu bukan tes yang
+> membuktikan sesuatu **terpangkas**, melainkan empat yang membuktikan sesuatu
+> **tertahan**. Dua di antaranya mengunci keadaan produksi hari ini: 1.251 baris
+> penjadwal dan 54 baris cadangan → **nol** dipangkas.
+>
+> Dipanggil `job-scheduler` tiap jam sebagai langkah **ke-6 dan TERAKHIR**: ia
+> satu-satunya mata rantai yang **menghapus**, jadi putaran yang mati di tengah
+> berhenti pada pekerjaan yang masih bisa diulang — bukan pada satu-satunya yang
+> tidak punya langkah balik.
+>
+> ⚠ `BATAS` timeout per langkah ditinjau ikut: enam langkah × 10 menit = 60
+> menit, **tepat** di selang putarannya. Langkah ketujuh menuntut `BATAS`
+> diturunkan.
+
+**Yang TIDAK ikut dikerjakan:** pemangkasan `data/mail-outbox/` — ia artefak
+pengembangan (transport surel `file`), tidak tumbuh di produksi yang memakai
+SMTP, dan tidak ikut dalam cadangan basis data.
 
 ---
 
@@ -739,7 +779,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
 | **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
 | **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |
-| **P2-5** | Tabel jejak tanpa pemangkasan | Pertumbuhan lambat | Rendah | Rendah |
+| ~~P2-5~~ | ~~Tabel jejak tanpa pemangkasan~~ | ✅ **ditutup 11 Okt 2026** — 4 aturan, 2 di antaranya tidak ada di resep semula | — | — |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |
 | ~~P3-2~~ | ~~Proxy tak teruji ujung-ke-ujung~~ | ✅ **sudah tertutup** sebelum temuan ditulis — `tests/proxy-bearer-api.test.ts` | — | — |
 | ~~P3-4~~ | ~~Pemantulan `/` menempuh dua pantulan~~ | ✅ **ditutup 11 Okt 2026** — resep semula dikoreksi, lihat temuannya | — | — |

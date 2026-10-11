@@ -1,5 +1,18 @@
 # Audit Kesiapan Rilis Umum — Perjalanan Pelanggan Ujung-ke-Ujung
 
+> ⏳ **POTRET BERTANGGAL — 15 Agustus 2026. Jangan dibaca sebagai keadaan
+> sekarang.** Dokumen ini disimpan sebagai **riwayat**: metodenya jelas dan
+> setiap temuannya menyebut `berkas:baris`, jadi ia masih berguna untuk
+> menelusuri *kenapa* sesuatu dulu diputuskan. Tapi hampir dua bulan rilis
+> sudah lewat di atasnya, dan sebagian temuannya sudah ditutup.
+>
+> **Untuk keadaan arsitektur yang berlaku, baca
+> [`docs/arsitektur/08-PENILAIAN-ARSITEKTUR.md`](./arsitektur/08-PENILAIAN-ARSITEKTUR.md)**
+> (temuan aktif P0–P3 beserta statusnya) dan
+> [`docs/arsitektur/09-PETA-JALAN.md`](./arsitektur/09-PETA-JALAN.md).
+> Angka di dokumen ini pun sudah bergerak — mis. "169 berkas uji" di §0 kini
+> **270+**.
+
 > Ditulis 15 Agustus 2026, terhadap `main` (= `develop`, nol commit selisih).
 > Cakupan: pendaratan pemasaran → pendaftaran/masuk → pembuatan PT →
 > penyiapan → pemakaian fitur → integrasi & impor data dari sistem luar.

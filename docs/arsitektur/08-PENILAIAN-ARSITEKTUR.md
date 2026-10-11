@@ -164,7 +164,7 @@ P0-2 menghasilkan rasa aman yang salah.
 
 ---
 
-### 🔴 P0-3 — Tidak ada apa pun yang menjalankan tes sebelum kode mencapai produksi
+### ✅ P0-3 — Tidak ada apa pun yang menjalankan tes sebelum kode mencapai produksi — **DITUTUP 11 Okt 2026**
 
 **Bukti.** Diperiksa langsung di `.github/workflows/` dan API proteksi cabang:
 
@@ -231,8 +231,58 @@ jobs:
       - run: bun run verify
 ```
 
-Lalu jadikan job `verify` sebagai **required status check** pada `main`
-(dan sebaiknya pada `develop`).
+> ✅ **DITUTUP 11 Oktober 2026 — dua langkah, keduanya selesai.**
+>
+> **(1) Workflow-nya ada** (`.github/workflows/verify.yml`) dan sudah terbukti
+> hijau belasan kali di ketiga pemicunya (`pull_request`, push `develop`, push
+> `main`).
+>
+> **(2) `verify` kini REQUIRED STATUS CHECK pada `main`:**
+>
+> ```
+> required_status_checks.strict   : false
+> required_status_checks.checks   : [{ context: "verify", app_id: 15368 }]
+> enforce_admins                  : true
+> ```
+>
+> Dipasang lewat `gh api -X PUT …/branches/main/protection`. ⚠ Endpoint itu
+> **mengganti SELURUH objek** proteksi, jadi setiap setelan lama disertakan
+> ulang di payload dan diverifikasi satu per satu sesudahnya — `enforce_admins`,
+> jumlah review, `allow_force_pushes`, `allow_deletions`,
+> `required_linear_history`, `lock_branch`, `required_signatures` semuanya
+> cocok dengan nilai sebelumnya. Satu setelan yang terlewat di payload = satu
+> perlindungan yang hilang diam-diam.
+>
+> **`app_id` disertakan, bukan hanya nama konteks.** Tanpa itu, aplikasi pihak
+> ketiga mana pun yang melaporkan konteks bernama `verify` bisa memuaskan
+> gerbangnya. Dengan `app_id: 15368` hanya GitHub Actions yang bisa.
+>
+> **Dan `strict: false`, dengan sengaja.** `strict: true` berarti "cabang harus
+> UP TO DATE sebelum merge" — dan di repo ini `main` **selalu** di depan
+> `develop` karena merge bubble promosi (6 commit saat ini). Dengan `strict:
+> true`, setiap PR `develop` → `main` akan diblokir *"out of date"* sampai
+> `develop` merge `main` balik: alur promosi yang dipakai enam kali hari ini
+> akan patah. Ini bukan penyetelan kosmetik — ia pilihan yang menentukan
+> apakah gerbangnya bisa dipakai.
+
+#### ⚠ Dua hal yang perlu diketahui tentang gerbang ini
+
+**`enforce_admins: true` berlaku juga untuk pemilik repo.** Itu memang
+tujuannya — tetapi artinya kalau CI mati atau GitHub Actions sedang gangguan,
+`main` **terkunci** sampai `verify` bisa hijau lagi. Jalan keluarnya: matikan
+`enforce_admins` sementara (atau cabut checknya), merge, lalu **pasang kembali
+pada perubahan yang sama**. Yang berbahaya bukan mematikannya, melainkan lupa
+menyalakannya lagi.
+
+**`develop` TIDAK diproteksi** (API menjawab `404 Branch not protected`). Jadi
+cabang fitur → `develop` masih bisa di-merge walau `verify` merah — workflow-nya
+tetap **berjalan dan terlihat** di PR, tetapi tidak **memblokir**.
+
+Itu celah yang nyata, dan dibiarkan dengan sadar: menambahkannya berarti
+**membuat proteksi dari nol** di `develop`, keputusan yang lebih besar daripada
+menambah satu check ke proteksi yang sudah ada. Yang menanggung risiko paling
+besar — `main`, satu-satunya cabang yang menerbitkan image produksi — sudah
+tertutup.
 
 ⚠ Dua jebakan yang sudah terdokumentasi di repo ini dan berlaku di sini:
 `bun run db:generate`, **bukan** `bunx prisma generate` — ada tiga skema, dan
@@ -863,7 +913,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 |---|---|---|---|---|
 | **P0-1** | Cadangan belum pernah berhasil | **Kehilangan data + risiko hukum** | **Rendah** (3 env) | Rendah |
 | **P0-2** | Kunci cadangan 🔶 di mesin yang sama | Pemulihan yang terasa ada padahal tidak | Rendah | Rendah |
-| **P0-3** | **Nol CI — tak ada yang menjalankan 270 berkas tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
+| ~~P0-3~~ | ~~Nol CI — tak ada yang menjalankan tes~~ | ✅ **ditutup 11 Okt 2026** — workflow + `verify` required pada `main`. `develop` masih tanpa proteksi (sadar) | — | — |
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
 | ~~P1-2~~ | ~~Temuan kesesuaian hanya di stdout~~ | ✅ **ditutup 11 Okt 2026** — jejak + `/api/health` + halaman operator | — | — |
 | ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ **ditutup 11 Okt 2026** | — | — |

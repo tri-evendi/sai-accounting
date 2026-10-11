@@ -18,13 +18,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { variansPerintahProduksi } from "@/lib/manufacturing/variance-report";
+import { SECTION_GAP } from "@/lib/layout-scale";
 import { ProductionOrderActions } from "./actions";
 import { statusLabelKey, statusVariant } from "../status";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 
-const SECTION_GAP = 24;
 
 export default async function ProductionOrderDetailPage({
   params,

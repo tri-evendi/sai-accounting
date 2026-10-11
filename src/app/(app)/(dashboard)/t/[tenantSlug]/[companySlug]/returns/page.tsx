@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { InfoCircleOutlined, PlusOutlined, RollbackOutlined, WarningOutlined } from "@ant-design/icons";
 import { ReturnPdfButton } from "./pdf-button";
 
@@ -29,8 +30,7 @@ export const dynamic = "force-dynamic";
  * Berkas ini server component — tanpa `antd`, tanpa `theme.useToken()`. Angka
  * di bawah SAMA dengan tokennya (`marginLG` 24, `marginXS` 8, `marginXXS` 4).
  */
-const SECTION_GAP = 24;
-const CONTROL_GAP = 8;
+const CONTROL_GAP = SPACE_XS;
 const TIGHT_GAP = 4;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;

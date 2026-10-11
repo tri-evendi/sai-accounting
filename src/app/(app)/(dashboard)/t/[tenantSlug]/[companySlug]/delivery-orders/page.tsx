@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatNumber, formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { InfoCircleOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,7 @@ export const dynamic = "force-dynamic";
  * Angka di bawah SAMA dengan tokennya (`marginLG` 24, `marginXS` 8), ditulis
  * di satu tempat supaya #203 bisa menukarnya tanpa menebak.
  */
-const SECTION_GAP = 24;
-const CONTROL_GAP = 8;
+const CONTROL_GAP = SPACE_XS;
 /** Lebar nyaman kotak pencarian (`max-w-md` lama = 28rem). */
 const SEARCH_MAX_WIDTH = 448;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */

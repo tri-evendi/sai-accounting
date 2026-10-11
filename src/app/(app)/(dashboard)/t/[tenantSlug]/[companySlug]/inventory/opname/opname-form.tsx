@@ -25,10 +25,11 @@ import { formatNumber } from "@/lib/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
+import { SPACE_MD, SPACE_SM } from "@/lib/layout-scale";
 
 /** `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
-const SECTION_GAP = 16;
-const CONTROL_GAP = 12;
+const SECTION_GAP = SPACE_MD;
+const CONTROL_GAP = SPACE_SM;
 /** `w-56` / `w-28` lama — lebar kotak cari & kotak hitungan fisik. */
 const SEARCH_WIDTH = 224;
 const COUNT_WIDTH = 112;

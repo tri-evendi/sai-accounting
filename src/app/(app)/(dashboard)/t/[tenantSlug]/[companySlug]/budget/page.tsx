@@ -10,11 +10,11 @@ import { AimOutlined, DashboardOutlined, OrderedListOutlined } from "@ant-design
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
+import { CARD_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
 /** `margin` AntD (16) — angka, karena berkas ini server component. */
-const CARD_GAP = 16;
 /** Lebar dasar satu kartu permukaan: tiga berjajar di 1440px, satu di 375px. */
 const SURFACE_BASIS = 260;
 

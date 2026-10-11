@@ -13,6 +13,7 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP } from "@/lib/layout-scale";
 import { AuditOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,6 @@ export const dynamic = "force-dynamic";
  */
 
 /** `marginLG` 24 — jarak antar kartu sesi. */
-const SECTION_GAP = 24;
 const EMPTY_ICON_SIZE = 48;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
 

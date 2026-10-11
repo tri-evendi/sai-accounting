@@ -19,12 +19,12 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatNumber } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP } from "@/lib/layout-scale";
 import { DeliveryOrderPdfButton } from "./pdf-button";
 
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `marginSM` 12 — token AntD sebagai angka (server component). */
-const SECTION_GAP = 24;
 const INFO_GAP = 12;
 /** Lebar dasar satu pasang istilah–nilai pada daftar info. */
 const INFO_BASIS = 240;

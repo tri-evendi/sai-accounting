@@ -16,6 +16,7 @@ import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statemen
 import { getT } from "@/lib/i18n/server";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { HistoryOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { SPACE_XS } from "@/lib/layout-scale";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -231,7 +232,7 @@ export default async function StockMovementPage({
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: 6,
+            gap: SPACE_XS,
             marginTop: 12,
             marginBottom: 0,
             color: "var(--ant-color-text-secondary)",

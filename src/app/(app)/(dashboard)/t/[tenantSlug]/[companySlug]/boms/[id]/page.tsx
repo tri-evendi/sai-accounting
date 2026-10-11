@@ -22,12 +22,12 @@ import { getT } from "@/lib/i18n/server";
 import { formatNumber } from "@/lib/utils";
 import { averageUnitCostForItem } from "@/lib/posting/cogs";
 import { biayaStandar, explodeBom, type BomInput } from "@/lib/manufacturing/bom";
+import { SECTION_GAP } from "@/lib/layout-scale";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 
 /** Jarak antar-kartu (= `marginLG` AntD). Server component: tak boleh useToken. */
-const SECTION_GAP = 24;
 
 export default async function BomDetailPage({
   params,

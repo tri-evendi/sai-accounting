@@ -41,13 +41,13 @@ import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `margin` 16 · `marginXS` 8 · `marginXXS` 4, ditulis sebagai
  *  angka karena berkas ini tak boleh memanggil `theme.useToken()`. */
-const SECTION_GAP = 24;
 const BLOCK_GAP = 16;
 const LINK_GAP_X = 20;
 const LINK_GAP_Y = 8;
@@ -340,7 +340,7 @@ export default async function PayablesPage({
                   margin: 0,
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: SPACE_XS,
                   color: "var(--ant-color-text-secondary)",
                 }}
               >

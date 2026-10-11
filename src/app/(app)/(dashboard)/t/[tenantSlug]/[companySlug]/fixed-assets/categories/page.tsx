@@ -16,10 +16,10 @@ import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-co
 import { TagsOutlined } from "@ant-design/icons";
 import { CategoryForm } from "./category-form";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
-const SECTION_GAP = 24;
 const EMPTY_ICON_SIZE = 48;
 
 const codeToId = (accounts: { id: number; code: string }[], code: string) =>

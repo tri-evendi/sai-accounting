@@ -43,12 +43,12 @@ import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `margin` 16 · `marginXS` 8 — token AntD sebagai angka. */
-const SECTION_GAP = 24;
-const CONTROL_GAP = 8;
+const CONTROL_GAP = SPACE_XS;
 const EMPTY_ICON_SIZE = 48;
 
 /**

@@ -33,6 +33,7 @@ import { TextInput } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ApartmentOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
@@ -42,8 +43,7 @@ export const dynamic = "force-dynamic";
 
 /** `marginXS` 8 · `marginLG` 24 — token AntD sebagai angka, karena berkas ini
  *  tak boleh memanggil `theme.useToken()`. */
-const CONTROL_GAP = 8;
-const SECTION_GAP = 24;
+const CONTROL_GAP = SPACE_XS;
 /** Lebar nyaman kotak pencarian (`max-w-xs` lama = 20rem). */
 const SEARCH_MAX_WIDTH = 320;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */

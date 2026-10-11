@@ -22,12 +22,11 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
+import { INLINE_GAP, SECTION_GAP } from "@/lib/layout-scale";
 import { TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `marginXS` 8 — token AntD sebagai angka (tanpa hook di sini). */
-const SECTION_GAP = 24;
-const INLINE_GAP = 8;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;
 

@@ -68,6 +68,7 @@ import { findStockShortfalls } from "@/lib/delivery-orders";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
+import { SECTION_GAP, SPACE_SM, SPACE_XS } from "@/lib/layout-scale";
 import {
   itemSchema,
   stockUpdateSchema,
@@ -76,9 +77,8 @@ import {
 } from "@/lib/validations/inventory";
 
 /** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
-const SECTION_GAP = 24;
 const FIELD_GAP = 16;
-const CONTROL_GAP = 12;
+const CONTROL_GAP = SPACE_SM;
 /** `w-28` lama — lebar kotak satuan pada formulir barang baru. */
 const UNIT_WIDTH = 112;
 /** Kotak kode barang (#493) — sesempit satuan; isinya pendek dan berpola. */
@@ -776,7 +776,7 @@ export function StockUpdateForm({
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: 6,
+                      gap: SPACE_XS,
                       margin: 0,
                       padding: "8px 12px",
                       borderRadius: "var(--ant-border-radius)",

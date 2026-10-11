@@ -41,6 +41,7 @@ import { Progress } from "@/components/ui/progress";
 import { useT } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import type { ProvisionPhase } from "@/lib/company-provisioning-shared";
+import { SPACE_XS } from "@/lib/layout-scale";
 
 const { Text } = Typography;
 
@@ -146,7 +147,7 @@ export function ProvisionProgress({ state }: { state: ProvisionState }) {
           return (
             <li
               key={phase}
-              style={{ display: "flex", alignItems: "flex-start", gap: 10 }}
+              style={{ display: "flex", alignItems: "flex-start", gap: SPACE_XS }}
             >
               <StepIcon status={status} token={token} />
               <Flex vertical gap={6} style={{ minWidth: 0, flex: 1 }}>

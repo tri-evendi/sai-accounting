@@ -273,6 +273,17 @@ satuannya** (`--ant-padding` = `16px`, jadi ditulis apa adanya, bukan `${}px`):
 | Gap besar | `--ant-margin-xl` | 32px |
 | Jarak antar-seksi besar | `--ant-margin-xxl` | 48px |
 
+**Yang menuntut ANGKA, bukan `var(--ant-…)`**, ambil dari
+`src/lib/layout-scale.ts` — prop `gap` milik `<Flex>`/`<Space>` bertipe
+`number`, dan di situ variabel CSS tidak berlaku. Anak tangganya dinamai
+menurut tokennya (`SPACE_MD` = `margin` = 16), plus tiga peran yang dipakai
+banyak halaman (`SECTION_GAP`, `CARD_GAP`, `INLINE_GAP`). Sebelum berkas itu
+ada, ketiga peran itu dideklarasikan **60 kali** sebagai angka telanjang dan
+dua di antaranya sudah bercabang. Dijaga `tests/layout-scale.test.ts`, yang
+juga membandingkan setiap anak tangga dengan token AntD sungguhan — berkas itu
+satu-satunya salinan nilai token di repo ini, dan salinan yang tidak
+dibandingkan adalah salinan yang akan berbeda.
+
 Radius: `--ant-border-radius` 6px (kendali & kartu) · `--ant-border-radius-lg`
 8px (permukaan besar) · `--ant-border-radius-sm` 4px (balok kerangka, tag).
 Angka 8/12/16px yang dulu tertulis di sini adalah skala shadcn dan **sudah

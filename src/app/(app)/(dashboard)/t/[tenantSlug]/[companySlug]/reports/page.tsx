@@ -12,6 +12,7 @@ import { reportsByCategory, reportTextKey, type ReportDefinition } from "@/lib/r
 import { PageHeader } from "@/components/ui/page-header";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import type { Dictionary } from "@/lib/i18n/dictionary";
+import { CARD_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,6 @@ export const dynamic = "force-dynamic";
 /** `padding` 20 ≈ `p-5` lama · lebar minimum kartu sebelum kisi turun sebaris. */
 const CARD_PADDING = 20;
 const CARD_MIN_WIDTH = 280;
-const CARD_GAP = 16;
 const GROUP_GAP = 40;
 const ICON_SIZE = 24;
 const ARROW_SIZE = 16;

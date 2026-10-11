@@ -45,6 +45,7 @@ import { Money, MoneyCell } from "@/components/ui/money";
 import { CheckCircleOutlined, ClockCircleOutlined, MinusCircleOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { AGING_BUCKETS, type AgingBucket, type PaymentStatus } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 /* `ChartCard` server, `AgingChart` client — batas RSC-nya sama persis dengan
    pemakaian grafik lain (beranda, /inventory, /reports/cash-flow), jadi berkas
    ini TETAP server component. Dijaga `tests/rsc-boundary.test.ts`. */
@@ -64,8 +65,7 @@ const BUCKET_BASIS = 180;
  * seharusnya dipakai, dan disebut di komentar supaya #203 bisa menukarnya
  * tanpa menebak: `marginLG` 24, `marginSM` 12, `marginXXS` 4.
  */
-const SECTION_GAP = 24;
-const CARD_GAP = 12;
+const CARD_GAP = SPACE_SM;
 const ICON_GAP = 4;
 /** `leading-tight` = 1,25. Dua baris umur harus rapat agar terbaca satu satuan. */
 const TIGHT_LEADING = 1.25;

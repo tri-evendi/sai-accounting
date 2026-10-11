@@ -3139,7 +3139,7 @@
     "inboxTitle": "Waiting for Your Decision",
     "docCount": "{count} documents",
     "inboxEmpty": "No documents are waiting for your approval.",
-    "inboxEmptyHint": "Thresholds and approver roles are configured in",
+    "inboxEmptyHint": "Thresholds and approver roles are configured on the approval rules page.",
     "submittedBy": "Submitted by {name} · {date}",
     "requestNote": "Requester's note: {note}",
     "resubmittedBadge": "Resubmitted.",

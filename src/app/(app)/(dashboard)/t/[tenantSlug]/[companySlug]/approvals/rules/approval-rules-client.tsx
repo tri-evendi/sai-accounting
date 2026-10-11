@@ -32,6 +32,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { type SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
 import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ROLE_LABELS, ROLES } from "@/lib/constants";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
@@ -218,24 +219,15 @@ export function ApprovalRules({
           </CardHeader>
           <CardContent style={{ padding: 0 }}>
             {rules.length === 0 ? (
-              <Flex
-                vertical
-                align="center"
-                gap={token.marginXS}
-                style={{
-                  paddingInline: token.paddingLG,
-                  paddingBlock: token.paddingXL + token.paddingSM,
-                  textAlign: "center",
-                }}
-              >
-                <SafetyCertificateOutlined aria-hidden="true" style={{ fontSize: token.fontSizeHeading3, color: token.colorTextSecondary }} />
-                <Typography.Text type="secondary">
-                  {t("approvals.rulesEmptyTitle")}
-                </Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-                  {t("approvals.rulesEmptyHint")}
-                </Typography.Text>
-              </Flex>
+              /* `flat` — ia di dalam `<Card>` daftar aturan. Lihat catatan di
+                 `approval-queue-client.tsx`: bentuk tulisan tangan ini memakai
+                 dua angka yang tidak dipakai keadaan-kosong lain mana pun. */
+              <EmptyState
+                flat
+                icon={<SafetyCertificateOutlined aria-hidden="true" style={{ fontSize: 40 }} />}
+                title={t("approvals.rulesEmptyTitle")}
+                description={t("approvals.rulesEmptyHint")}
+              />
             ) : (
               <StaticTable columns={ruleColumns} rows={rules} rowKey={(rule) => rule.id} />
             )}

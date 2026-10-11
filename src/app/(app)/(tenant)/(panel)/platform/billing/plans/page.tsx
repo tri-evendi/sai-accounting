@@ -63,6 +63,7 @@ import { platformChip, platformHead } from "@/components/tenant/platform-tone";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { activePlans } from "@/lib/plan-catalog";
 import { planDescriptionKey, planHighlightKeys } from "@/lib/plan-copy";
 import { periodDaysFor } from "@/lib/plan-change";
@@ -177,11 +178,10 @@ export default async function PlatformPlansPage() {
             </CardContent>
           </Card>
         ) : plans.length === 0 ? (
-          <Card>
-            <CardContent>
-              <p style={BODY}>{t("platform.plansEmpty")}</p>
-            </CardContent>
-          </Card>
+          /* `EmptyState` menggambar permukaannya SENDIRI (anatomi `Card` +
+             tinggi minimum), jadi membungkusnya lagi dengan `<Card>` akan
+             menghasilkan dua tepi berjarak 24px — kartu di dalam kartu. */
+          <EmptyState title={t("platform.plansEmpty")} />
         ) : (
           <ul style={PLAN_GRID}>
             {plans.map((plan) => {

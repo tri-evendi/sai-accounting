@@ -3139,7 +3139,7 @@
     "inboxTitle": "等待您的决定",
     "docCount": "{count} 张单据",
     "inboxEmpty": "没有等待您审批的单据。",
-    "inboxEmptyHint": "阈值与审批角色可在",
+    "inboxEmptyHint": "阈值与审批角色在审批规则页面中设置。",
     "submittedBy": "由 {name} 提交 · {date}",
     "requestNote": "申请人备注：{note}",
     "resubmittedBadge": "已重新提交。",

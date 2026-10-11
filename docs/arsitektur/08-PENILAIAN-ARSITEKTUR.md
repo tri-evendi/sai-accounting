@@ -533,7 +533,7 @@ pertahankan disiplin menulis alasan.
 
 ---
 
-### 🟢 P3-4 — Pemantulan `/` memakai tujuan yang dipaku, dan pembenarannya sudah kedaluwarsa
+### ✅ P3-4 — Pemantulan `/` menempuh dua pantulan — **DITUTUP 11 Okt 2026, dengan koreksi**
 
 **Bukti.** `src/app/(marketing)/page.tsx:124`:
 
@@ -567,14 +567,60 @@ dan satu hop lebih panjang bagi pengguna.
 `/dashboard`, lalu `/dashboard` memantul lagi ke bukunya. Dua pantulan di tempat
 yang seharusnya satu.
 
-**Perbaikan.** Tambahkan `pathname === "/"` ke kondisi yang sudah ada di
-`src/proxy.ts:269`, lalu cabut `auth()` dari halaman pendaratan dan perbaiki
-komentar yang kedaluwarsa itu.
+> ## ⚠ KOREKSI — resep di atas SALAH, dan akan menyebabkan regresi
+>
+> Resep semula berbunyi: *"tambahkan `pathname === "/"` ke kondisi yang sudah
+> ada di `src/proxy.ts:269`, lalu cabut `auth()` dari halaman pendaratan."*
+> Diperiksa lebih dalam saat mengerjakannya, **keduanya salah** — dan
+> pembenaran yang saya sebut "kedaluwarsa" itu ternyata sebagian besar masih
+> benar.
+>
+> **Yang terlewat:** `redirect("/dashboard")` **bukan** hop yang sia-sia. Berkas
+> `app/(app)/(dashboard)/dashboard/page.tsx` mengerjakan sesuatu yang proxy
+> **tidak bisa** — ia menjalankan `routeForCompany(companyId)`, satu **query
+> basis data**, untuk melayani rombongan yang tokennya belum membawa slug:
+> sesi lama pra-#157, pemegang banyak PT yang belum memilih, dan pelanggan yang
+> belum punya PT. Runtime Edge tidak punya akses Prisma.
+>
+> Dan `resolvePostLoginPath` **bukan** versi yang lebih baik untuk jalur ini: ia
+> menjawab pertanyaan lain ("sesi baru sah, ke mana?") dan sejak #172
+> menjawab `/platform` bagi pemegang urusan akun. Memakainya di `/` akan
+> melempar **setiap pemilik akun** ke panel akun alih-alih ke bukunya —
+> perubahan perilaku, bukan penghematan pantulan.
+>
+> Jadi resep semula akan: (a) mengirim sesi tanpa slug ke `/platform` alih-alih
+> ke bukunya, dan (b) memindahkan setiap pemilik akun dari buku ke panel. Dua
+> regresi, keduanya senyap.
 
-⚠ **Ini perbaikan KEBENARAN, bukan performa.** Mencabut `auth()` **tidak**
-membuat halaman pendaratan menjadi statis: `getLocale()` membaca cookie (dan
-`Accept-Language`) pada setiap permintaan, jadi ketiga halaman pemasaran
-per-permintaan **secara konstruksi**. Lihat
+**Yang DIKERJAKAN sebagai gantinya** — jalan pintas sempit, nol perubahan
+perilaku:
+
+Proxy memotong `/` **hanya** ketika tokennya sudah membawa **kedua slug** (dan
+tidak sedang wajib ganti sandi), dan tujuannya
+`tenantPath(tenantSlug, companySlug, COMPANY_HOME_PATH)` — **alamat yang sama
+persis** dengan yang dicapai hari ini lewat `/dashboard`. Tanpa kedua slug,
+proxy **menyerah** dan halamannya tetap memutuskan; karena itu `auth()` di
+halaman pendaratan **dipertahankan** — ia jalur cadangan untuk rombongan itu,
+bukan sisa yang lupa dicabut.
+
+Doktrin itu bukan baru: blok "jalur lama" di `proxy.ts` sudah menuliskannya —
+*"Tanpa slug di token … TIDAK ada pantulan: penjaga halaman yang
+mengarahkannya, satu-satunya tempat aturan itu ditulis."*
+
+Hasilnya: dua pantulan + satu render → **satu pantulan, nol render**, dengan
+alamat akhir identik.
+
+**Penjaganya** `tests/proxy-landing-shortcut.test.ts` — 9 tes yang memanggil
+`proxy()` sungguhan, dan **enam di antaranya menguji kasus yang TIDAK boleh
+dipantulkan** (tanpa sesi, companyId tanpa slug, tanpa perusahaan, slug
+separuh, wajib ganti sandi, dan `/pricing`). Yang terakhir mengunci lingkupnya:
+`/pricing` memantulkan dengan cara yang sama, tetapi **apakah ia seharusnya**
+adalah pertanyaan produk — pelanggan yang ingin naik paket justru datang untuk
+melihat harga — jadi ia sengaja dibiarkan sampai pertanyaan itu diputuskan.
+
+⚠ **Dan ini tetap BUKAN perbaikan performa yang membuat pendaratan statis.**
+`getLocale()` membaca cookie (dan `Accept-Language`) pada setiap permintaan,
+jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 [dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md).
 
 ---
@@ -612,7 +658,7 @@ per-permintaan **secara konstruksi**. Lihat
 | **P2-5** | Tabel jejak tanpa pemangkasan | Pertumbuhan lambat | Rendah | Rendah |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |
 | **P3-2** | Proxy tak teruji ujung-ke-ujung | Kelas cacat bisa terulang | Rendah | Rendah |
-| **P3-4** | Pemantulan `/` dipaku; pembenaran kedaluwarsa | Dua pantulan, dan komentar menyesatkan | **Rendah** | Rendah |
+| ~~P3-4~~ | ~~Pemantulan `/` menempuh dua pantulan~~ | ✅ **ditutup 11 Okt 2026** — resep semula dikoreksi, lihat temuannya | — | — |
 | **P3-3** | Tanpa kepemilikan tercatat | *Bus factor* 1 | Rendah | Nol |
 
 **Pengamatan yang layak dinyatakan:** empat temuan teratas semuanya **soal

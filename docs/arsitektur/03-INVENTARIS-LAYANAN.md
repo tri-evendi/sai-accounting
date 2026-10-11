@@ -14,33 +14,35 @@ unit penyebaran**, bukan mikrolayanan.
 ## 0. Berapa layanan yang dipelihara?
 
 Pertanyaan ini sering salah dijawab, dan selisihnya menentukan cara berpikir
-soal penggelaran, penskalaan, dan blast radius. **Jawabannya: enam layanan
-didefinisikan, lima berjalan terus-menerus** — dan ketujuh permukaan web ada di
-**satu** proses di antaranya.
+soal penggelaran, penskalaan, dan blast radius. **Jawabannya: tujuh layanan
+didefinisikan, enam berjalan terus-menerus** — dan ketujuh permukaan web dibagi
+ke **dua** proses di antaranya.
 
 | Layanan | Container | Peran | Kadens |
 |---|---|---|---|
-| `web` | `sai-web` | **Seluruh permukaan web** — 141 halaman, 126 rute API | selalu hidup |
+| `app-customer` | `sai-app-customer` | **Enam grup rute pelanggan** — pemasaran, auth, panel tenant, buku besar, setup, docs | selalu hidup |
+| `app-operator` | `sai-app-operator` | Konsol operator — **image SAMA**, beda `OPERATOR_HOST` | selalu hidup |
 | `db` | `sai-db` | 17 buku PT + kendali + platform | selalu hidup |
-| `scheduler` | `sai-scheduler` | 5 produser: tagihan, kabar, pengingat, berulang | tiap jam |
-| `conformance` | `sai-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
-| `backup` | `sai-backup` | dump → tar → sandi → S3 | harian |
-| `migrate` | — | Migration, lalu **keluar** (`restart: "no"`) | sekali per gelar |
+| `job-scheduler` | `sai-job-scheduler` | 5 produser: tagihan, kabar, pengingat, berulang | tiap jam |
+| `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
+| `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 | harian |
+| `migrate` | `sai-migrate` | Migration, lalu **keluar** (`restart: "no"`) | sekali per gelar |
 
 Plus **`traefik`**, berbagi dengan lima aplikasi lain di mesin ini — **bukan**
 bagian dari `docker-compose.yml` repo ini.
 
-Dan hanya **tiga image** menopang semuanya: `scheduler` + `conformance`
+Dan hanya **tiga image** menopang semuanya: `app-operator` memakai image yang
+SAMA dengan `app-customer`, sementara `job-scheduler` + `job-conformance`
 **sengaja memakai ulang** image `migrator`.
 
-### ⚠ Tujuh PERMUKAAN, satu PROSES
+### ⚠ Tujuh PERMUKAAN, dua PROSES
 
 Yang sering disebut sebagai "layanan" sebenarnya **grup rute** di dalam
-container `web` yang sama, dipisahkan oleh *hostname* dan grup rute — bukan oleh
-proses:
+image yang sama. Sejak pemisahan bidang, mereka dibagi ke **dua** proses —
+dipisahkan *hostname* di Traefik dan `OPERATOR_HOST` di dalam aplikasi:
 
 ```
-sai-web  (SATU container Next.js)
+sai-app-customer  (container #1)
 ├── APP_DOMAIN
 │   ├── (marketing)         3 halaman   /  ·  /pricing  ·  /status
 │   ├── (auth)             13 halaman   login, daftar, undangan, unlock…
@@ -48,25 +50,33 @@ sai-web  (SATU container Next.js)
 │   ├── (dashboard)       103 halaman   /t/{tenant}/{company}/*  ← buku besar
 │   ├── (setup)             2 halaman   wisaya penyiapan
 │   └── (docs)              3 halaman   /docs/**  (publik, tanpa sesi)
+
+sai-app-operator  (container #2 — IMAGE SAMA)
 └── OPERATOR_DOMAIN
     └── (operator)         10 halaman   /operator/*
 ```
 
 **Konsekuensi yang harus diketahui:**
 
-- **Satu penggelaran memindahkan ketujuhnya.** Halaman pendaratan tidak bisa
-  dirilis tanpa ikut merilis buku besar.
-- **Satu restart mengosongkan setiap cache** — pengaturan surel (TTL 60s), kolam
-  klien LRU per-PT.
-- **`web` adalah titik gagal tunggal untuk ketujuhnya sekaligus**, hanya
-  diredam `restart: unless-stopped` + healthcheck.
-- **Pemisahan operator/pelanggan ditegakkan HOSTNAME, bukan proses.** Itulah
-  batas keamanannya, dan itulah sebabnya ia gagal-tertutup.
+- **Satu image, dua proses.** Tidak ada image ketiga — `app-operator` hanya
+  berbeda `OPERATOR_HOST` dan label Traefik.
+- **Satu penggelaran masih memindahkan keenam permukaan pelanggan.** Halaman
+  pendaratan tidak bisa dirilis tanpa ikut merilis buku besar; pemisahan
+  operator tidak mengubah itu.
+- **Restart kini mengosongkan cache container itu SAJA** — pengaturan surel
+  (TTL 60s), kolam klien LRU per-PT. Me-restart konsol operator tidak lagi
+  mengosongkan cache pelanggan.
+- **`app-customer` masih titik gagal tunggal bagi keenam permukaan pelanggan**,
+  diredam `restart: unless-stopped` + healthcheck. Yang berubah: ia tidak lagi
+  menjatuhkan konsol operator bersamanya.
+- **Pemisahan bidang tetap ditegakkan HOSTNAME, bukan proses.** Batas proses
+  adalah lapis KEDUA, bukan penggantinya — dan `OPERATOR_HOST: ""` pada
+  `app-customer` membuat `/operator` 404 di sana bahkan bila Host operator
+  dikirim langsung ke container itu, melewati Traefik.
 
-Apakah ketujuhnya **sebaiknya** dipisah jadi beberapa container dinilai di
-[dok 10](./10-PORTABILITAS-DAN-PEMISAHAN.md) — ringkasnya: **operator ya**
-(ada alasan keamanan, nol perubahan kode), **pemasaran tidak** (batasnya
-memotong funnel pendaftaran).
+Alasan lengkapnya — beserta apa yang pemisahan ini **tidak** berikan — di
+[dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md). Pemasaran **tidak** dipisah:
+batasnya memotong funnel pendaftaran ([dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md)).
 
 ## 1. Peta container
 
@@ -77,32 +87,37 @@ graph TB
     end
 
     subgraph net_internal["jaringan: internal (bridge)"]
-        WEB["<b>sai-web</b><br/>image: …sai-accounting:latest<br/>target: runner · :3000 (expose)<br/>restart: unless-stopped"]
-        MIG["<b>migrate</b><br/>…-migrator:latest<br/>restart: no — sekali-jalan"]
-        SCH["<b>sai-scheduler</b><br/>…-migrator:latest<br/>loop 3600s"]
-        CON["<b>sai-conformance</b><br/>…-migrator:latest<br/>loop 604800s"]
-        BAK["<b>sai-backup</b><br/>…-backup:latest<br/>loop 86400s"]
+        WEBC["<b>sai-app-customer</b><br/>…sai-accounting:latest<br/>target: runner · :3000<br/>OPERATOR_HOST kosong"]
+        WEBO["<b>sai-app-operator</b><br/>IMAGE SAMA · :3000<br/>OPERATOR_HOST diset"]
+        MIG["<b>sai-migrate</b><br/>…-migrator:latest<br/>restart: no — sekali-jalan"]
+        SCH["<b>sai-job-scheduler</b><br/>…-migrator:latest<br/>loop 3600s"]
+        CON["<b>sai-job-conformance</b><br/>…-migrator:latest<br/>loop 604800s"]
+        BAK["<b>sai-job-backup</b><br/>…-backup:latest<br/>loop 86400s"]
         DB[("<b>sai-db</b><br/>mariadb:11<br/>:3306 — TIDAK dipublikasikan")]
     end
 
-    TR -->|"HTTP :3000"| WEB
-    WEB --> DB
+    TR -->|"Host: APP_DOMAIN"| WEBC
+    TR -->|"Host: OPERATOR_DOMAIN"| WEBO
+    WEBC --> DB
+    WEBO --> DB
     MIG --> DB
     SCH --> DB
     CON --> DB
     BAK -->|hanya-baca| DB
 
     style TR fill:#fff4e6,stroke:#c9873d
-    style WEB fill:#e8f0ff,stroke:#4a6fa5
+    style WEBC fill:#e8f0ff,stroke:#4a6fa5
+    style WEBO fill:#ffeaea,stroke:#b55
     style DB fill:#eef7ee,stroke:#5a8f5a
 ```
 
-`web` adalah **satu-satunya** container di dua jaringan sekaligus. Sisanya
+`app-customer` dan `app-operator` adalah satu-satunya container di dua
+jaringan sekaligus. Sisanya
 hanya di `internal` dan karena itu tidak terjangkau dari luar mesin sama sekali.
 
 ## 2. Katalog layanan
 
-### 2.1 `web` — aplikasi (`sai-web`)
+### 2.1 `app-customer` — bidang pelanggan (`sai-app-customer`)
 
 | | |
 |---|---|
@@ -112,14 +127,18 @@ hanya di `internal` dan karena itu tidak terjangkau dari luar mesin sama sekali.
 | **Pengguna** | `node` (**bukan root**) |
 | **Port** | `3000` — `expose`, bukan `ports`. Tidak terbit ke host |
 | **Jaringan** | `traefik_default` + `internal` |
-| **Domain** | `APP_DOMAIN` + `www.` (dialihkan ke apex) + `OPERATOR_DOMAIN` |
+| **Domain** | `APP_DOMAIN` + `www.` (dialihkan ke apex). **BUKAN** `OPERATOR_DOMAIN` |
 | **Bergantung pada** | `db` (healthy), `migrate` (selesai sukses) |
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` tiap 30s, 3 kali coba, start 20s |
 | **Volume** | `documents:/app/data/documents` (RW) · `audit:/app/data/audit` (RW) |
 
-**Tanggung jawab:** seluruh permukaan HTTP — halaman pemasaran, aplikasi
-pelanggan, panel tenant, dokumentasi, konsol operator, 126 rute API,
-pembuatan PDF/Excel, pengiriman surel transaksional.
+**Tanggung jawab:** enam grup rute pelanggan — pemasaran, autentikasi, panel
+tenant, buku besar, wisaya penyiapan, dokumentasi — plus 126 rute API,
+pembuatan PDF/Excel, dan pengiriman surel transaksional.
+
+`OPERATOR_HOST` **dikosongkan** di container ini lewat `environment:` (yang
+menimpa `env_file:`), sehingga `/operator` menjawab 404 di sini bahkan bila
+Host operator dikirim langsung ke container ini.
 
 **Masukan:** permintaan HTTP dari Traefik · webhook Midtrans · kueri
 MariaDB · berkas di dua volume.
@@ -129,10 +148,45 @@ SMTP keluar · HTTP keluar ke Midtrans Core API.
 **Yang perlu diketahui:** satu container, **tanpa replika**. Pemulaian ulang
 mengosongkan setiap cache dalam-memori (pengaturan surel TTL 60s, kolam klien
 LRU, konteks per-permintaan). Itu benar dan murah hari ini, tapi ia juga alasan
-`web` tidak bisa diskalakan horizontal tanpa pekerjaan tambahan —
+`app-customer` tidak bisa diskalakan horizontal tanpa pekerjaan tambahan —
 lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-### 2.2 `db` — MariaDB (`sai-db`)
+### 2.2 `app-operator` — bidang operator (`sai-app-operator`)
+
+| | |
+|---|---|
+| **Image** | **SAMA** dengan `app-customer` — tidak ada image keempat |
+| **Perintah** | `node server.js` |
+| **Port** | `3000` — `expose` |
+| **Jaringan** | `traefik_default` + `internal` |
+| **Domain** | `OPERATOR_DOMAIN` **saja**; tidak punya router `APP_DOMAIN` |
+| **Bergantung pada** | `db` (healthy), `migrate` (selesai sukses) |
+| **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — lolos sebagai jalur publik karena `127.0.0.1` ≠ `OPERATOR_HOST` |
+| **Volume** | `audit:/app/data/audit` (RW) — **TANPA `documents`** |
+
+**Tanggung jawab:** 10 halaman konsol penyedia — tenant, audit, surel,
+penjadwal, isi situs, pengaturan, rekonsiliasi.
+
+**Kenapa hanya volume `audit`.** Bidang operator menulis
+`data/audit/operators/audit.jsonl` (`lib/operator/audit.ts`), jadi volume itu
+dibutuhkan. Ia **tidak pernah** menyentuh `data/documents` — diperiksa di
+seluruh `app/(app)/(operator)` dan `lib/operator/` saat pemisahan dibuat. Tidak
+memasang volume yang tidak dibutuhkan adalah **pengurangan hak**, bukan
+penghematan: berkas dokumen setiap pelanggan berada di luar jangkauan proses
+konsol operator.
+
+**Apa yang pemisahan ini TIDAK berikan.** Image-nya sama, jadi ia **tetap
+memuat seluruh kode pelanggan** — grup rute Next.js tidak bisa dieksklusi saat
+build. Ini isolasi **proses**, bukan eliminasi kode.
+
+⚠ **Jangan beri container ini router `APP_DOMAIN`.** Dengan `OPERATOR_HOST`
+diset, `decideOperatorRouting` menjawab `customer` untuk Host yang tak dikenal
+— jadi label `APP_DOMAIN` akan membuatnya ikut melayani rute pelanggan dan
+membatalkan pemisahan ini.
+
+Rinciannya: [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
+
+### 2.3 `db` — MariaDB (`sai-db`)
 
 | | |
 |---|---|
@@ -148,7 +202,7 @@ data perusahaan (termasuk `sai_production`), dan 4 skema sistem MySQL.
 **Satu instans tunggal, tanpa replika.** Ini titik gagal tunggal yang paling
 berat di sistem; lihat [dok 04 §5](./04-DEPENDENSI-INTEGRASI.md).
 
-### 2.3 `migrate` — migrator sekali-jalan
+### 2.4 `migrate` — migrator sekali-jalan
 
 | | |
 |---|---|
@@ -176,7 +230,7 @@ menanggung build itu (~10 menit, *thrashing* sampai setengah jam di mesin
 1,9 GB). Image yang paling butuh berkas migration jadi image yang paling mahal
 dibuat — persis terbalik.
 
-### 2.4 `scheduler` — penjadwal langganan (`sai-scheduler`)
+### 2.5 `job-scheduler` — penjadwal langganan (`sai-job-scheduler`)
 
 | | |
 |---|---|
@@ -225,7 +279,7 @@ dan terlihat di `docker compose ps`.
 **Status 11 Okt 2026:** 1.246 putaran, terakhir 7 menit sebelum potret,
 `status: ok`.
 
-### 2.5 `conformance` — pemeriksa kesesuaian data (`sai-conformance`)
+### 2.6 `job-conformance` — pemeriksa kesesuaian data (`sai-job-conformance`)
 
 | | |
 |---|---|
@@ -258,10 +312,10 @@ berbeda yang tidak boleh bercampur** di satu aliran log.
 saat menemukan sesuatu (supaya berguna di CI), jadi tanpa penjaga itu setiap
 temuan jadi *crash-loop*.
 
-**Membacanya:** `docker compose logs conformance --tail 60`.
+**Membacanya:** `docker compose logs job-conformance --tail 60`.
 ❓ Tidak ada kanal keluar — temuan hanya ada di log. Dinilai di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-### 2.6 `backup` — cadangan (`sai-backup`)
+### 2.7 `job-backup` — cadangan (`sai-job-backup`)
 
 | | |
 |---|---|
@@ -303,7 +357,7 @@ kelas kecelakaan di mana skrip cadangan justru merusak yang dicadangkannya.
 `BACKUP_S3_PREFIX` ada). Dump manual adalah satu-satunya jaring yang tersisa.
 Prioritas **P0** di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-**Pembuktian:** `docker compose run --rm backup bun run prove-backup-restore` —
+**Pembuktian:** `docker compose run --rm job-backup bun run prove-backup-restore` —
 memeriksa sidik jari cocok, sandi benar, dan **setiap** basis data terdaftar ada
 di dalamnya. Ia **tidak** memuat dump ke basis data mana pun: satu `mariadb <`
 yang salah sasaran menimpa produksi dengan data lama, dan tidak ada nilai
@@ -311,7 +365,7 @@ pembuktian yang sepadan dengan risiko itu. Pemuatan sungguhan ke server
 **bayangan** adalah latihan **kuartalan yang dijalankan manusia** —
 ❓ belum dipastikan apakah latihan itu pernah dijalankan.
 
-### 2.7 `traefik` — proxy (di luar compose ini)
+### 2.8 `traefik` — proxy (di luar compose ini)
 
 Bersama dengan **5 aplikasi lain** di mesin yang sama (`movin-pwa`,
 `movin-landing`, `movin-budget-web`, `movin-wedding`, `movin-partner`).
@@ -320,7 +374,7 @@ Satu-satunya yang mengikat `:80`/`:443` di host.
 
 Rinciannya: [dok 07 §2](./07-INFRASTRUKTUR-DEPLOY.md).
 
-## 3. Modul aplikasi (di dalam `web`)
+## 3. Modul aplikasi (di dalam kedua container `app-*`)
 
 `src/lib` punya 299 berkas. Yang di bawah ini adalah **modul yang memegang
 keputusan** — bukan daftar lengkap.
@@ -414,7 +468,7 @@ keputusan** — bukan daftar lengkap.
 
 ## 4. Skrip operasional (51 berkas)
 
-Dijalankan **manual** atau oleh layanan `scheduler`. Semua lewat `bun run <nama>`.
+Dijalankan **manual** atau oleh layanan `job-scheduler`. Semua lewat `bun run <nama>`.
 
 ### 4.1 Migration & adopsi
 
@@ -447,7 +501,7 @@ Kelas skrip yang khas repo ini: ia **membuktikan**, bukan melaporkan.
 | `verify-local-setup.ts` | Pemasangan lokal lengkap |
 | `rehearse-billing-webhook.ts` | Webhook penagihan bisa dilatih tanpa Midtrans |
 
-### 4.3 Dipanggil `scheduler` tiap jam
+### 4.3 Dipanggil `job-scheduler` tiap jam
 
 `subscription-scheduler.ts` · `notify-pending-setup.ts` ·
 `notify-invoice-due.ts` · `remind-customers.ts` · `run-recurring.ts`
@@ -482,8 +536,8 @@ menuntut `--reason`) · `change-tenant-plan.ts` · `operator-code.ts` ·
 | Volume | Dipasang di | Isi | Dicadangkan? |
 |---|---|---|---|
 | `db_data` | `db:/var/lib/mysql` | 23 skema: 17 buku PT + kendali + platform + 4 skema sistem | Ya — lewat `mariadb-dump --all-databases` |
-| `documents` | `web` (RW), `backup` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — di `tar` |
-| `audit` | `web` (RW), `backup` (RO) | Jejak tenant & operator | Ya — di `tar` |
+| `documents` | `app-customer` (RW), `job-backup` (RO) — **BUKAN** `app-operator` | `data/documents/<companyId>/<uuid>.<ext>` | Ya — di `tar` |
+| `audit` | `app-customer` (RW), `app-operator` (RW), `job-backup` (RO) | Jejak tenant & operator | Ya — di `tar` |
 
 Volume `uploads` (`public/`) **dicabut** 16 Agustus 2026 setelah pemindahan
 melaporkan 0 dipindahkan / 0 yatim atas tabel `documents` yang berisi 0 baris
@@ -525,7 +579,7 @@ harus ditemukan seseorang lebih dulu:
 
 - cadangan yang gagal (54 kali, berturut-turut)
 - putaran penjadwal yang `error` atau dibunuh `timeout`
-- temuan `conformance` mingguan
+- temuan `job-conformance` mingguan
 - basis data perusahaan yang tak terjangkau
 
 Penerimanya `PLATFORM_ALERT_EMAIL`, dengan cadangan `PLATFORM_CONTACT_EMAIL`

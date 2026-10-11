@@ -1,4 +1,21 @@
 #!/usr/bin/env bash
+# ⚠️  WARISAN — JANGAN DIPAKAI UNTUK PENGGELARAN BIASA.
+#
+# Skrip ini MEMBANGUN IMAGE DI SERVER (`docker compose build …`), dan itu sudah
+# dilarang: kotak produksi ~3,6 GB berbagi dengan lima aplikasi lain, build
+# 0.6.0 di sana menghabiskan ~19 menit dengan iowait 58-92%, dan dua build
+# bersamaan pernah menghasilkan OOM (exit 137). Lihat AGENTS.md dan
+# PRODUCTION.md §Updates.
+#
+# Jalur yang HIDUP sejak 2026-10-04 adalah: image dibangun di runner GitHub
+# (`.github/workflows/publish-image.yml`), lalu di server cukup
+# `docker compose pull` + `up -d`. Lihat PRODUCTION.md §Updates.
+#
+# Dipertahankan hanya karena logika jendela-swap + EXIT trap di bawah masih
+# menjelaskan KENAPA urutan pull → migrate → swap itu penting. Nama service di
+# dalamnya sudah diikutkan saat pemisahan bidang (app-customer/app-operator)
+# supaya ia tidak menjadi skrip yang rusak diam-diam — bukan karena ia
+# direkomendasikan.
 # Deploy: BUILD FIRST, stop `web` only at the swap.
 #
 # WHY THIS SHAPE. On this 1.9 GB box `next build` thrashes, so the habit had
@@ -37,12 +54,12 @@ restore() {
   local code=$?
   if [[ $SWAP_STARTED -eq 1 ]]; then
     local state
-    state="$(docker inspect sai-web --format '{{.State.Status}}' 2>/dev/null || echo missing)"
+    state="$(docker inspect sai-app-customer --format '{{.State.Status}}' 2>/dev/null || echo missing)"
     if [[ "$state" != "running" ]]; then
       echo
       log "!! DEPLOY LEFT web $state — attempting to bring it back"
-      docker compose up -d web 2>&1 | tail -5 || true
-      log "!! state now: $(docker inspect sai-web --format '{{.State.Status}}' 2>/dev/null || echo missing)"
+      docker compose up -d app-customer app-operator 2>&1 | tail -5 || true
+      log "!! state now: $(docker inspect sai-app-customer --format '{{.State.Status}}' 2>/dev/null || echo missing)"
       log "!! if this says anything but 'running', production is DOWN — fix by hand"
     fi
   fi
@@ -68,7 +85,7 @@ log "disk ${FREE_GB}GB free · $(mem)"
 # ── 1. Build, with the old container still serving ─────────────────────────
 log "building web + migrate (production stays UP)"
 BUILD_START=$SECONDS
-docker compose build web migrate
+docker compose build app-customer app-operator migrate
 log "build ok in $(( (SECONDS - BUILD_START) / 60 ))m$(( (SECONDS - BUILD_START) % 60 ))s · $(mem)"
 
 # ── 2. Swap ────────────────────────────────────────────────────────────────
@@ -95,8 +112,8 @@ log "migrations applied:"
 docker logs "$MIG_ID" 2>&1 | grep -E 'Applying migration|No pending migrations|Ringkasan' | sed 's/^/    /'
 
 log "waiting for web to report healthy (timeout ${HEALTH_TIMEOUT}s)"
-until [[ "$(docker inspect sai-web --format '{{.State.Health.Status}}' 2>/dev/null)" == "healthy" ]]; do
-  (( SECONDS - SWAP_START > HEALTH_TIMEOUT )) && { log "!! web never became healthy"; docker logs --tail 30 sai-web; exit 1; }
+until [[ "$(docker inspect sai-app-customer --format '{{.State.Health.Status}}' 2>/dev/null)" == "healthy" ]]; do
+  (( SECONDS - SWAP_START > HEALTH_TIMEOUT )) && { log "!! web never became healthy"; docker logs --tail 30 sai-app-customer; exit 1; }
   sleep 3
 done
 

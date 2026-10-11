@@ -424,10 +424,10 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Cadangan** | SUDAH: Layanan `backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
+| **Cadangan** | SUDAH: Layanan `job-backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
 | **Pemulihan** | BELUM: **Latihan pemulihan yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
 | **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut penjadwal (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
-| **Penjadwal** | SUDAH: Layanan `scheduler` di compose (#373) — bukan lagi cron host. |
+| **Penjadwal** | SUDAH: Layanan `job-scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
 | **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Pelanggan yang membayar berhak tahu sebelum bertanya. |
 

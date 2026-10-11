@@ -17,7 +17,7 @@ arsitektur: bentuk sistemnya sehat, dan bukti dari potret ini mengarah ke
 | Jadikan basis data perusahaan bertenant-baris | Membatalkan isolasi fisik, janji inti #104 |
 | Hidupkan pemeriksaan tipe di `next build` | Terukur tidak sanggup di mesin ini. Gerbangnya sudah pindah, bukan hilang |
 | Kembalikan Tailwind / `className` | Dicabut #203; dijaga ESLint & tes |
-| Replika `web` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
+| Replika `app-customer` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
 | Lingkungan staging penuh | 🔶 Mungkin belum sepadan pada 11 tenant. Keputusan pemilik, bukan teknis |
 | **Pindah ke PostgreSQL** | 98 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 | **Pisahkan container pemasaran** | Batasnya memotong funnel: `/register` ada di `(auth)`, bukan `(marketing)`. Nol beban terukur (162–185 ms). [Dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
@@ -40,16 +40,16 @@ mengubah arsitektur.
 #    (AWS_DEFAULT_REGION bila penyedianya menuntutnya)
 
 # 2. Satu putaran kering — tidak menulis/menghapus apa pun
-docker compose run --rm backup sh scripts/backup.sh --dry-run
+docker compose run --rm job-backup sh scripts/backup.sh --dry-run
 
 # 3. Satu putaran sungguhan
-docker compose run --rm backup sh scripts/backup.sh
+docker compose run --rm job-backup sh scripts/backup.sh
 
 # 4. BUKTIKAN — bukan "lihat log lalu percaya"
-docker compose run --rm backup bun run prove-backup-restore
+docker compose run --rm job-backup bun run prove-backup-restore
 
 # 5. Periksa jejaknya dari luar
-docker exec sai-web node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>console.log(j.backup))"
+docker exec sai-app-customer node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>console.log(j.backup))"
 ```
 
 **Selesai bila** `lastSuccessAt` **tidak** `null` **dan**
@@ -95,7 +95,7 @@ jadikan prasyarat**. Satu kanal jauh lebih baik daripada nol.
 **Temuan terpenting yang lahir SESUDAH set dokumen ini pertama ditulis.** Tidak
 ada satu pun workflow yang berpemicu `pull_request`, tidak ada yang menjalankan
 `verify`/`test`/`typecheck`/`lint`, dan `main` tidak punya *required status
-check* maupun syarat review. 243 berkas tes, nol otomasi.
+check* maupun syarat review. 270 berkas tes (4.559 tes), nol otomasi.
 
 ```yaml
 # .github/workflows/verify.yml
@@ -152,12 +152,16 @@ buatan menghasilkan satu surel · satu jalur penggelaran di dokumentasi.
 **Gerbang keluar: setiap layanan latar meninggalkan jejak yang bisa ditanyai
 dari luar.**
 
-### 1.1 Pisahkan container operator → dok 10 §3
+### 1.1 ✅ Pisahkan container operator → dok 10 §3 — **SELESAI**
 
 **Nol perubahan kode.** Dua container dari image yang SAMA, beda `OPERATOR_HOST`
-+ label Traefik. Terukur: `sai-web` = 57,6 MiB, headroom 719 MB, jadi container
-kedua ≈ **8% headroom**. Rinciannya beserta jebakan pertahanan-berlapisnya di
-[dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
++ label Traefik. Terukur sebelum pemisahan: `sai-web` = 57,6 MiB dengan headroom
+719 MB, jadi container kedua ≈ **8% headroom**. Rinciannya beserta jebakan
+pertahanan-berlapisnya di [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
+
+Sudah ada di `docker-compose.yml`; **belum digelar**. Langkah sekali-jalan
+(termasuk `--remove-orphans` yang WAJIB, plus dua `curl` yang membuktikan
+pemisahan bidang masih tegak) ada di `PRODUCTION.md` §One-time.
 
 ⚠ Ini perubahan **infrastruktur produksi**: butuh persetujuan pemilik, dan
 sebaiknya dilatih di luar produksi lebih dulu. Di sinilah ketiadaan staging
@@ -172,7 +176,7 @@ Pengguna bersesi mendarat di bukunya, bukan memantul dua kali lewat
 
 ### 1.3 Jejak kesesuaian data → P1-2
 
-Menutup asimetri: `scheduler` dan `backup` punya tabel jejak, `conformance`
+Menutup asimetri: `job-scheduler` dan `job-backup` punya tabel jejak, `job-conformance`
 tidak.
 
 1. Migration platform `00NN_conformance_runs` — sepola `scheduler_runs`
@@ -196,7 +200,7 @@ mungkin tidak perlu.
 
 ### 1.5 Pemangkasan tabel jejak → P2-5
 
-Di layanan `scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
+Di layanan `job-scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
 setiap baris `error` tanpa batas waktu** — kegagalan adalah baris yang paling
 berharga, dan memangkasnya berarti kehilangan satu-satunya catatan masa lalu
 yang berguna.
@@ -306,7 +310,7 @@ lebih awal berarti membayar ongkos tanpa pembeli.
 | Pekerjaan | Pemicu terukur | Prasyarat | Rujukan |
 |---|---|---|---|
 | **Antrean pekerjaan** | Satu putaran penjadwal tidak muat dalam 1 jam, **atau** satu produser butuh *retry* < 1 jam | Pilihan antrean + penyimpanan | P2-2 |
-| **Replika `web`** | CPU/memori `web` jadi pembatas, **atau** butuh penggelaran tanpa henti | Cache bersama (atau cabut cache dalam-memori) **dan** tinjau `max_connections` | P2-3 |
+| **Replika `app-customer`** | CPU/memori `app-customer` jadi pembatas, **atau** butuh penggelaran tanpa henti | Cache bersama (atau cabut cache dalam-memori) **dan** tinjau `max_connections` | P2-3 |
 | **Replika baca MariaDB** | Laporan mulai memperlambat tulisan | Pemantauan yang bisa **menunjukkan** itu (Fase 1) | SPOF-1 |
 | **Mesin kedua / HA** | RTO yang dapat diterima < waktu bangun ulang manual | ❓ RTO dari pemilik | SPOF-3 |
 | **Staging** | Perubahan skema mulai butuh latihan sebelum produksi | Keputusan ongkos | P2-1 |
@@ -372,7 +376,7 @@ kepatuhan yang masih terbuka ada di
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
 dan platform (penagihan). ~342.800 baris TypeScript, 141 halaman, 126 rute API,
-88 model, 98 migration, 243 berkas tes.
+88 model, 98 migration, 270 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang
@@ -392,7 +396,7 @@ dipanggil dari dua route pendaftaran. Temuan ketiga mengikuti pola yang sama:
 temuan kesesuaian data mingguan hanya ada di stdout.
 
 Dan temuan keempat, yang lahir **sesudah** set dokumen ini pertama ditulis dan
-melingkupi ketiganya: **tidak ada apa pun yang menjalankan 243 berkas tes itu.**
+melingkupi ketiganya: **tidak ada apa pun yang menjalankan 270 berkas tes itu.**
 Nol workflow berpemicu `pull_request`, nol *required status check* pada `main`,
 nol syarat review — sementara `next build` sengaja tidak memeriksa tipe. Jadi
 satu-satunya yang berdiri antara galat tipe dan image produksi adalah seorang

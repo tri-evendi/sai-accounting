@@ -31,47 +31,59 @@ graph TB
     DNS -->|A| HOST["Host :80 · :443"]
     HOST --> TR["traefik<br/>SATU-SATUNYA yang mengikat :80/:443"]
 
-    TR -->|"Host(APP_DOMAIN)"| W1["web :3000"]
+    TR -->|"Host(APP_DOMAIN)"| W1["app-customer :3000<br/>OPERATOR_HOST kosong"]
     TR -->|"Host(www.APP_DOMAIN)"| RD["redirectregex → apex (301)"]
-    TR -->|"Host(OPERATOR_DOMAIN)"| W1
+    TR -->|"Host(OPERATOR_DOMAIN)"| W2["app-operator :3000<br/>IMAGE SAMA"]
     TR -->|"5 aplikasi lain"| OTHER["movin-*"]
 
     RD --> W1
 
     subgraph nets["Jaringan Docker"]
-        N1["traefik_default (eksternal)<br/>— traefik + web"]
-        N2["internal (bridge)<br/>— web, db, migrate, scheduler, conformance, backup"]
+        N1["traefik_default (eksternal)<br/>— traefik + app-customer + app-operator"]
+        N2["internal (bridge)<br/>— app-customer, app-operator, db,<br/>migrate, job-scheduler, job-conformance, job-backup"]
     end
 
     style TR fill:#fff4e6,stroke:#c9873d
     style W1 fill:#e8f0ff,stroke:#4a6fa5
+    style W2 fill:#ffeaea,stroke:#b55
 ```
 
 ### Router Traefik (dari label `docker-compose.yml`)
 
-| Router | Entrypoint | Aturan | Middleware |
-|---|---|---|---|
-| `sai` | `web` (80) | `Host(APP_DOMAIN)` | `sai-https` → redirect ke HTTPS |
-| `sai-secure` | `websecure` (443) | `Host(APP_DOMAIN)` | — · TLS `le` |
-| `sai-www` | `web` | `Host(www.APP_DOMAIN)` | `sai-www-apex` → 301 ke apex |
-| `sai-www-secure` | `websecure` | `Host(www.APP_DOMAIN)` | `sai-www-apex` · TLS `le` |
-| `sai-ops` | `web` | `Host(OPERATOR_DOMAIN)` | `sai-https` |
-| `sai-ops-secure` | `websecure` | `Host(OPERATOR_DOMAIN)` | — · TLS `le` |
+| Router | Container | Entrypoint | Aturan | Middleware |
+|---|---|---|---|---|
+| `sai-app` | `app-customer` | `web` (80) | `Host(APP_DOMAIN)` | `sai-https` → redirect ke HTTPS |
+| `sai-app-secure` | `app-customer` | `websecure` (443) | `Host(APP_DOMAIN)` | — · TLS `le` |
+| `sai-www` | `app-customer` | `web` | `Host(www.APP_DOMAIN)` | `sai-www-apex` → 301 ke apex |
+| `sai-www-secure` | `app-customer` | `websecure` | `Host(www.APP_DOMAIN)` | `sai-www-apex` · TLS `le` |
+| `sai-ops` | **`app-operator`** | `web` | `Host(OPERATOR_DOMAIN)` | `sai-https` |
+| `sai-ops-secure` | **`app-operator`** | `websecure` | `Host(OPERATOR_DOMAIN)` | — · TLS `le` |
 
-Layanan: `sai.loadbalancer.server.port=3000`, probe kesehatan
+Dua **service** Traefik, bukan satu: `sai-app.loadbalancer.server.port=3000`
+dan `sai-ops.loadbalancer.server.port=3000`, masing-masing dengan probe
 `/api/health` tiap 30s (timeout 5s).
+
+> ⚠ **Nama service-nya WAJIB berbeda.** Kalau kedua container memakai nama
+> service Traefik yang sama, Traefik menganggapnya SATU service dengan dua
+> backend lalu menyeimbangkan beban di antaranya — dan permintaan operator bisa
+> mendarat di container pelanggan. Itu membatalkan seluruh alasan pemisahan
+> bidang, tanpa satu pun galat.
+
+`entrypoints=web` / `websecure` adalah nama **entrypoint Traefik**, bukan nama
+service compose — keduanya tidak ikut berubah saat service di-rename.
 
 ### Port
 
 | Port | Terbit ke | Catatan |
 |---|---|---|
 | `80`, `443` | **Host** | Hanya Traefik |
-| `3000` | **Tidak** (`expose`) | `web`, hanya di jaringan Docker |
+| `3000` | **Tidak** (`expose`) | `app-customer` & `app-operator`, hanya di jaringan Docker |
 | `3306` | **Tidak** | `db`, hanya di `internal` |
 
 **Tidak ada satu pun port basis data yang terbit ke host.** Itu juga alasan
-`scheduler`, `conformance`, dan `backup` memakai ulang image `migrator`: itulah
-satu-satunya cara menjangkau `db` yang tidak memublikasikan port.
+`job-scheduler`, `job-conformance`, dan `job-backup` memakai ulang image
+`migrator`: itulah satu-satunya cara menjangkau `db` yang tidak memublikasikan
+port.
 
 ### Domain
 
@@ -118,14 +130,14 @@ graph TD
 
 | Image | Tahap | Dipakai layanan |
 |---|---|---|
-| `ghcr.io/tri-evendi/sai-accounting` | `runner` | `web` |
-| `…-migrator` | `migrator` | `migrate`, **`scheduler`**, **`conformance`** |
-| `…-backup` | `backup` | `backup` |
+| `ghcr.io/tri-evendi/sai-accounting` | `runner` | **`app-customer`** + **`app-operator`** |
+| `…-migrator` | `migrator` | `migrate`, **`job-scheduler`**, **`job-conformance`** |
+| `…-backup` | `backup` (tahap) | `job-backup` |
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>` (dari `package.json`).
 
 > ⚠ **`docker compose build web` TIDAK membangun image `migrate`.**
-> Ini pelajaran yang **terulang beberapa rilis**: `scheduler` dan `conformance`
+> Ini pelajaran yang **terulang beberapa rilis**: `job-scheduler` dan `job-conformance`
 > berjalan di atas image migrator, yang ikut memuat kode aplikasi — jadi
 > melewatkannya berarti **dua layanan menjalankan kode basi tanpa satu pun
 > tanda**. Matriks CI sekarang membangun **ketiganya setiap kali**, sehingga
@@ -232,22 +244,22 @@ sequenceDiagram
 
     Note over S: di server — TANPA membangun
     S->>S: git pull (compose + migration saja)
-    S->>R: docker compose pull web migrate scheduler conformance
+    S->>R: docker compose pull app-customer app-operator migrate job-scheduler job-conformance
     S->>S: ada migration baru?
     alt ada
         S->>S: docker compose run --rm migrate bun run db:migrate
     end
-    S->>S: docker compose up -d --no-deps web scheduler conformance
+    S->>S: docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance
 ```
 
 ### Perintahnya
 
 ```bash
 git pull
-docker compose pull web migrate scheduler conformance
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance
 # HANYA bila ada migration baru:
 docker compose run --rm migrate bun run db:migrate
-docker compose up -d --no-deps web scheduler conformance
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance
 ```
 
 **Urutan menentukan bila rilis membawa migration: pull → migrate → swap.**
@@ -266,7 +278,7 @@ Setiap push menandai `sha-<pendek>` dan nomor versi di samping `latest`, jadi
 setiap rilis punya jangkarnya sendiri **secara otomatis**:
 
 ```bash
-SAI_TAG=sha-573d9cf docker compose up -d --no-deps web
+SAI_TAG=sha-573d9cf docker compose up -d --no-deps app-customer app-operator
 ```
 
 Ritual lama — `docker tag … :rollback-<sha>` **sebelum** membangun, karena
@@ -382,9 +394,11 @@ Pemeriksa: `bun run check:env` (`scripts/check-env.mjs`).
 | Buku PT (LRU) | 2 | maks 4 klien | **8** |
 | Kendali | 2 | 1 | **2** |
 | Platform | 1 | 1 | **1** |
-| | | | **11 dari `web`** |
+| | | | **11 dari `app-customer`** |
 
-Plus `scheduler`, `conformance`, `backup` saat berjalan. Angka-angka ini
+Plus `app-operator`, `job-scheduler`, `job-conformance`, dan `job-backup` saat
+berjalan — pemisahan bidang menambah satu klien lagi ke anggaran ini.
+Angka-angka ini
 **sengaja kecil**: setiap koneksi yang dipesan kendali adalah koneksi yang tidak
 bisa dipakai buku PT, dan `max_connections` MariaDB di mesin ini adalah
 anggaran yang benar-benar terbatas.
@@ -415,7 +429,7 @@ aktif.
 |---|---|
 | `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), `mail`. **503 hanya bila kendali tak terjangkau** |
 | `GET /status` | Versi untuk manusia — komponen dengan **empat keadaan** (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`lib/public-status.ts`) |
-| Healthcheck Docker | `web` tiap 30s · `db` tiap 10s |
+| Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `db` tiap 10s |
 | Healthcheck Traefik | `/api/health` tiap 30s |
 | `scheduler_runs` | 1.246 baris — status per putaran |
 | `backup_runs` | 54 baris — status per percobaan |
@@ -444,15 +458,15 @@ komentarnya biasa dipercaya seakurat kodenya.
 | Pelacakan galat (Sentry dsb.) | Galat runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; **pembacanya belum dipastikan** |
 | Peringatan tersambung | `lib/alert.ts` tidak dipanggil dari cadangan/penjadwal/kesesuaian |
-| Temuan `conformance` yang bisa ditanyai | **Hanya stdout** |
+| Temuan `job-conformance` yang bisa ditanyai | **Hanya stdout** |
 
 Membaca log, dari `PRODUCTION.md §Reading the logs`:
 
 ```bash
-docker compose logs web --tail 200
-docker compose logs scheduler --tail 60
-docker compose logs conformance --tail 60
-docker compose logs backup --tail 60
+docker compose logs app-customer --tail 200
+docker compose logs job-scheduler --tail 60
+docker compose logs job-conformance --tail 60
+docker compose logs job-backup --tail 60
 ```
 
 ## 10. ⚠ Kebusukan dokumentasi penggelaran

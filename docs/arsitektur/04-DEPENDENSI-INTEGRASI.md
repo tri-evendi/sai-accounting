@@ -283,7 +283,7 @@ tombol yang mengirim ratusan surel ke tunggakan lama sekaligus.
 ```mermaid
 graph TD
     SPOF1["<b>MariaDB — satu instans</b><br/>tanpa replika · tanpa failover<br/>17 buku PT + kendali + platform<br/>di satu volume"]
-    SPOF2["<b>web — satu container</b><br/>tanpa replika"]
+    SPOF2["<b>app-customer — satu container</b><br/>tanpa replika<br/>(app-operator kini terpisah)"]
     SPOF3["<b>Mesin tunggal</b><br/>~3,6 GB RAM · 6 aplikasi"]
     SPOF4["<b>Traefik — satu instans</b><br/>dipakai 6 aplikasi"]
     SPOF5["<b>Cadangan GAGAL</b><br/>tidak ada salinan luar-mesin"]
@@ -305,7 +305,7 @@ graph TD
 | 1 | **MariaDB tunggal** | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk SPOF 5 |
 | 2 | **Cadangan gagal** | Tidak ada jalan pulang dari apa pun | Tidak ada. Dump manual hanya bila diingat | **Kritis — P0** |
 | 3 | **Mesin tunggal** | Kehilangan semuanya | Tidak ada | Diterima sadar pada skala ini |
-| 4 | **`web` tunggal** | Pemadaman sampai restart | `restart: unless-stopped` + healthcheck | Dapat diterima |
+| 4 | **`app-customer` tunggal** | Pemadaman enam permukaan pelanggan sampai restart — **konsol operator tidak lagi ikut jatuh** | `restart: unless-stopped` + healthcheck | Dapat diterima |
 | 5 | **Traefik tunggal** | 6 aplikasi | Di luar repo ini | Di luar lingkup |
 | 6 | **`AUTH_SECRET` tunggal** | Rotasi = seluruh sesi batal | Masa sesi 24 jam | Dapat diterima |
 | 7 | **`BACKUP_ENCRYPTION_KEY`** | Kunci hilang = cadangan **tidak bisa dibuka** | ❓ Penyimpanan kunci di luar mesin belum dipastikan | **Perlu dipastikan** |
@@ -318,14 +318,14 @@ kalau kuncinya hanya ada di `.env` mesin yang hilang bersama datanya.
 
 | Kopling | Ketat? | Catatan |
 |---|---|---|
-| `web` ↔ MariaDB | **Ketat** | Benar — ini aplikasi basis data |
-| `web` ↔ kolam klien PT | **Ketat** | `prisma` Proxy menyembunyikan ini dari 120 berkas |
-| `scheduler`/`conformance` ↔ image `migrator` | **Ketat, sengaja** | Image sama = env & `node_modules` sama. **Harganya:** `docker compose build web` TIDAK membangun `migrate` → 2 layanan menjalankan kode basi **tanpa satu pun tanda**. Pelajaran yang terulang beberapa rilis; sekarang CI membangun ketiganya tiap kali |
+| `app-customer` ↔ MariaDB | **Ketat** | Benar — ini aplikasi basis data |
+| `app-customer` ↔ kolam klien PT | **Ketat** | `prisma` Proxy menyembunyikan ini dari 120 berkas |
+| `job-scheduler`/`job-conformance` ↔ image `migrator` | **Ketat, sengaja** | Image sama = env & `node_modules` sama. **Harganya:** `docker compose build web` TIDAK membangun `migrate` → 2 layanan menjalankan kode basi **tanpa satu pun tanda**. Pelajaran yang terulang beberapa rilis; sekarang CI membangun ketiganya tiap kali |
 | Kendali ↔ platform | **Longgar, sengaja** | Tanpa FK. Harganya: butuh rekonsiliasi (`reconcile:platform`) |
 | Kendali ↔ buku PT | **Longgar, sengaja** | `database_name` menunjuk, bukan FK |
 | Aplikasi ↔ Midtrans | **Longgar** | `PaymentGateway` punya transport MOCK & `manual` |
 | Aplikasi ↔ SMTP | **Longgar** | Tiga lapis + transport `file` |
-| Aplikasi ↔ S3 | **Longgar** | Hanya `backup` yang bicara S3 |
+| Aplikasi ↔ S3 | **Longgar** | Hanya `job-backup` yang bicara S3 |
 | UI ↔ Ant Design v6 | **Ketat** | Diperketat sengaja #203 (Tailwind dicabut) |
 
 ## 7. Tanggung jawab yang terduplikasi

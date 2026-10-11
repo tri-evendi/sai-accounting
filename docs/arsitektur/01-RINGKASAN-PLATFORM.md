@@ -81,10 +81,11 @@ graph TB
     TR["Traefik<br/>TLS · Let's Encrypt<br/>:80 · :443"]
 
     subgraph compose["docker compose — jaringan internal"]
-        WEB["<b>web</b> · sai-web<br/>Next.js 16 standalone<br/>:3000"]
-        SCH["<b>scheduler</b><br/>5 produser · tiap jam"]
-        CON["<b>conformance</b><br/>pemeriksa data · mingguan"]
-        BAK["<b>backup</b><br/>dump+sandi+unggah · harian"]
+        WEBC["<b>app-customer</b> · sai-app-customer<br/>Next.js 16 standalone<br/>:3000"]
+        WEBO["<b>app-operator</b> · sai-app-operator<br/>image SAMA · :3000"]
+        SCH["<b>job-scheduler</b><br/>5 produser · tiap jam"]
+        CON["<b>job-conformance</b><br/>pemeriksa data · mingguan"]
+        BAK["<b>job-backup</b><br/>dump+sandi+unggah · harian"]
         MIG["<b>migrate</b><br/>sekali-jalan"]
         DB[("<b>db</b> · MariaDB 11<br/>:3306 — tidak dipublikasikan")]
     end
@@ -96,25 +97,28 @@ graph TB
     OPS -->|HTTPS| TR
     INT -->|HTTPS| TR
     MT -->|HTTPS| TR
-    TR --> WEB
+    TR -->|"Host: APP_DOMAIN"| WEBC
+    TR -->|"Host: OPERATOR_DOMAIN"| WEBO
 
-    WEB --> DB
+    WEBC --> DB
+    WEBO --> DB
     SCH --> DB
     CON --> DB
     BAK --> DB
     MIG --> DB
 
     BAK --> S3
-    WEB --> SMTP
+    WEBC --> SMTP
     SCH --> SMTP
-    WEB -->|Core API| MT
+    WEBC -->|Core API| MT
 
     style TR fill:#fff4e6,stroke:#c9873d
-    style WEB fill:#e8f0ff,stroke:#4a6fa5
+    style WEBC fill:#e8f0ff,stroke:#4a6fa5
+    style WEBO fill:#ffeaea,stroke:#b55
     style DB fill:#eef7ee,stroke:#5a8f5a
 ```
 
-Satu mesin, lima container aplikasi, satu MariaDB — dan **tidak ada**
+Satu mesin, enam container aplikasi, satu MariaDB — dan **tidak ada**
 antrean pesan, *cache* bersama, *service mesh*, maupun layanan HTTP kedua.
 Seluruh pekerjaan latar berjalan sebagai *loop shell yang tidur*, bukan sebagai
 pekerja yang mengambil dari antrean. Itu pilihan sadar yang dibenarkan panjang
@@ -212,7 +216,7 @@ cadangan otomatis.
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |
 | Surel | **Nodemailer 7** | Konfigurasi tiga lapis — lihat dok 04 |
-| Uji | **Vitest 3** — **243 berkas tes** | Gerbangnya `bun run verify` |
+| Uji | **Vitest 3** — **270 berkas tes · 4.559 tes** | Gerbangnya `bun run verify` |
 | Proxy | **Traefik** (bersama 5 aplikasi lain di mesin yang sama) | TLS Let's Encrypt, resolver `le` |
 | Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 3 image dibangun CI; **jangan pernah build di server** |
 
@@ -227,7 +231,7 @@ cadangan otomatis.
 | Model Prisma | 61 (perusahaan) + 15 (kendali) + 12 (platform) = **88** |
 | Migration | 64 (perusahaan) + 17 (kendali) + 17 (platform) = **98** |
 | Modul `src/lib` | 299 berkas |
-| Berkas tes | 243 |
+| Berkas tes | 270 (4.559 tes) |
 | Skrip operasional | 51 |
 | Izin RBAC | 66 (perusahaan) + 6 (tenant) |
 
@@ -239,7 +243,7 @@ pada 11 Oktober 2026:
 | | |
 |---|---|
 | Image yang melayani | `ghcr.io/tri-evendi/sai-accounting:latest` — v0.9.0 |
-| Container naik | `sai-web` (healthy), `sai-scheduler`, `sai-conformance`, `sai-backup`, `sai-db` (healthy) |
+| Container naik | `sai-web` (healthy), `sai-scheduler`, `sai-conformance`, `sai-backup`, `sai-db` (healthy) — **nama pra-pemisahan**; potret ini diambil sebelum bidang dipisah |
 | Tenant | 11 |
 | Perusahaan terdaftar | **17** — dan **17** basis data perusahaan di MariaDB (cocok, tidak ada yang tak terdaftar) |
 | Pengguna | 13 |

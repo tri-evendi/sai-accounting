@@ -58,7 +58,8 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-243 berkas tes, dan yang menarik bukan jumlahnya melainkan **jenisnya**: banyak
+270 berkas tes berisi 4.559 tes, dan yang menarik bukan jumlahnya melainkan
+**jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
 `authz-coverage` (rute tanpa izin = merah) · `business-modules-ledger` (laporan
@@ -137,7 +138,7 @@ unggahan sukses**, jadi tidak ada yang dihapus. Kegagalannya pun **tercatat**
 kemungkinan besar **hanya tiga variabel lingkungan**.
 
 **Perbaikan.** Setel ketiga env, jalankan satu putaran manual, lalu
-`docker compose run --rm backup bun run prove-backup-restore`.
+`docker compose run --rm job-backup bun run prove-backup-restore`.
 
 **Yang mengubah penilaian ini:** `lastSuccessAt` tidak lagi `null` **dan**
 `prove-backup-restore` lulus.
@@ -173,7 +174,7 @@ P0-2 menghasilkan rasa aman yang salah.
 | Workflow yang menjalankan `verify` / `test` / `typecheck` / `lint` | **tidak ada** |
 | `required_status_checks` pada `main` | **tidak ada** |
 | `required_approving_review_count` pada `main` | **0** |
-| Berkas tes yang ada di repo | **243** |
+| Berkas tes yang ada di repo | **270** (4.559 tes) |
 
 Dua workflow yang ada (`publish-image.yml`, `build-standalone.yml`) keduanya
 hanya memicu pada `push` ke `main` — dan keduanya **membangun**, tidak satu pun
@@ -254,7 +255,7 @@ utama di atas hasil gabungan, sesuai `AGENTS.md`.
 
 - cadangan gagal — **54 kali berturut-turut**
 - putaran penjadwal `error` atau dibunuh `timeout`
-- temuan `conformance` mingguan
+- temuan `job-conformance` mingguan
 - basis data perusahaan tak terjangkau
 
 Ini **persis bentuk kegagalan yang seluruh repo ini dirancang menghindari**, dan
@@ -282,12 +283,12 @@ lebih baik daripada nol.
 
 ### 🟠 P1-2 — Temuan kesesuaian data hanya ada di stdout
 
-**Bukti.** Layanan `conformance` menulis ke stdout. Tidak ada tabel setara
+**Bukti.** Layanan `job-conformance` menulis ke stdout. Tidak ada tabel setara
 `scheduler_runs`/`backup_runs`, tidak ada medan di `/api/health`, tidak ada
 halaman operator.
 
 **Dampak.** Satu-satunya cara mengetahui temuan adalah **mengingat** untuk
-menjalankan `docker compose logs conformance` dalam jendela retensi log
+menjalankan `docker compose logs job-conformance` dalam jendela retensi log
 container. Pada kadens **mingguan**, sebuah cacat bisa berumur berbulan-bulan.
 
 Yang membuat ini pantas P1 dan bukan P2: layanan ini **sudah menemukan** enam
@@ -401,9 +402,9 @@ butuh *retry* lebih cepat dari sejam. Keduanya belum terjadi.
 
 ---
 
-### 🟡 P2-3 — Satu container `web`, tanpa jalur penskalaan
+### 🟡 P2-3 — Satu container `app-customer`, tanpa jalur penskalaan
 
-**Bukti.** Satu `web` tanpa replika. Cache dalam-memori: pengaturan surel
+**Bukti.** Satu `app-customer` tanpa replika. Cache dalam-memori: pengaturan surel
 (TTL 60s), kolam klien LRU, penyimpan konteks per-permintaan.
 
 **Dampak.** Restart mengosongkan setiap cache (murah, benar). Tetapi menambah
@@ -412,7 +413,7 @@ replika hari ini akan menghasilkan dua kolam LRU dan dua cache surel yang
 sulit didiagnosis.
 
 **Yang sudah benar.** Anggaran koneksi sudah dihitung eksplisit (8+2+1 = 11 dari
-`web`), jadi batas skala **diketahui**, bukan ditemukan saat tumbang.
+`app-customer`), jadi batas skala **diketahui**, bukan ditemukan saat tumbang.
 
 **Perbaikan.** Tidak ada sekarang. Sebelum replika pertama, dibutuhkan cache
 bersama (atau pencabutan cache dalam-memori) **dan** peninjauan ulang
@@ -453,7 +454,7 @@ ada pemangkasan yang terlihat untuk ketiganya.
 **Dampak.** Hari ini sepele. Tetapi `scheduler_runs` tumbuh **~8.760 baris per
 tahun** selamanya, dan ia ikut dalam setiap dump cadangan.
 
-**Perbaikan.** Pemangkasan di layanan `scheduler` (mis. pertahankan 90 hari,
+**Perbaikan.** Pemangkasan di layanan `job-scheduler` (mis. pertahankan 90 hari,
 plus **semua** baris `error` tanpa batas waktu — kegagalan adalah yang paling
 berharga). Tunda sampai P0/P1 selesai.
 
@@ -584,13 +585,13 @@ per-permintaan **secara konstruksi**. Lihat
 |---|---|---|---|---|
 | **P0-1** | Cadangan belum pernah berhasil | **Kehilangan data + risiko hukum** | **Rendah** (3 env) | Rendah |
 | **P0-2** | Kunci cadangan 🔶 di mesin yang sama | Pemulihan yang terasa ada padahal tidak | Rendah | Rendah |
-| **P0-3** | **Nol CI — tak ada yang menjalankan 243 tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
+| **P0-3** | **Nol CI — tak ada yang menjalankan 270 berkas tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
 | **P1-2** | Temuan kesesuaian hanya di stdout | Cacat data tak terlihat berbulan-bulan | Sedang | Rendah |
 | **P1-3** | Dokumen penggelaran bertentangan | Nasihat salah saat insiden | **Rendah** | **Nol** |
 | **P2-1** | Basis data uji di produksi | Cadangan & laporan tercemar; 1 DB tak terdaftar | Sedang | Sedang |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
-| **P2-3** | Satu `web`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
+| **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
 | **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |
 | **P2-5** | Tabel jejak tanpa pemangkasan | Pertumbuhan lambat | Rendah | Rendah |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |

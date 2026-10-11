@@ -16,7 +16,7 @@
 
 | Pertanyaan | Putusan | Dasar |
 |---|---|---|
-| Pisahkan container **operator** | ✅ **Ya — tanpa satu baris kode berubah** | `decideOperatorRouting` memutuskan bidang murni dari env + Host |
+| Pisahkan container **operator** | ✅ **SUDAH DIKERJAKAN** — tanpa satu baris kode berubah | `decideOperatorRouting` memutuskan bidang murni dari env + Host |
 | Pisahkan container **pemasaran** | ❌ **Jangan** | Batasnya memotong funnel; nol beban terukur; tanpa alasan keamanan |
 | Pindah ke **PostgreSQL** | ❌ **Jangan** | 98 migration + 25 titik raw SQL + arsitektur koneksi; nol masalah terukur yang diselesaikannya |
 | **Portabilitas VM** | 🟢 **Sudah ~80% siap** | Image di registry, named volume, skema deklaratif |
@@ -48,7 +48,7 @@ supaya tidak ada yang membatalkannya tanpa sadar:
 | Skema **deklaratif**, `db:migrate:all` idempoten | VM baru bisa dibangun dari nol, berulang |
 | `.env.docker.example` ada | Inventaris variabel terdokumentasi |
 | Traefik lewat **label**, bukan berkas konfigurasi | Routing ikut pindah bersama `docker-compose.yml` |
-| `web`/`scheduler`/`conformance`/`backup` **stateless** | Seluruh state ada di `db` + dua volume |
+| `app-*` dan `job-*` **stateless** | Seluruh state ada di `db` + dua volume |
 | Kredensial basis data **dari environment**, bukan dari tabel | Satu `.env` baru cukup; tidak ada URL tertanam di data |
 
 ### Yang menghalangi
@@ -173,7 +173,7 @@ web-operator:                 # bidang operator — IMAGE SAMA
 
 | | |
 |---|---|
-| `sai-web` sekarang | **57,6 MiB** |
+| `sai-web` **sebelum** pemisahan | **57,6 MiB** (terukur 11 Okt 2026) |
 | Memori tersedia di kotak | **719 MB** |
 | Tambahan satu container web | **~60 MB ≈ 8% headroom** |
 | Image baru | **0** — tetap tiga |
@@ -187,7 +187,7 @@ web-operator:                 # bidang operator — IMAGE SAMA
 - **Restart independen** — menggelar perbaikan konsol tidak memutus pembukuan.
 - **Batas sumber daya per bidang** (`mem_limit`), sehingga satu laporan berat
   tidak bisa menghabiskan memori yang dibutuhkan konsol.
-- **Log terpisah** — `docker compose logs web-operator` hanya berisi operator.
+- **Log terpisah** — `docker compose logs app-operator` hanya berisi operator.
 - Latihan nyata memisahkan bidang **sebelum** ada DC/DRC.
 
 ### Yang TIDAK didapat — harus jujur
@@ -205,7 +205,16 @@ operator label router `APP_DOMAIN`, dan pertimbangkan jaringan Docker terpisah.
 
 ### Putusan
 
-✅ **Lakukan — Tier 1.** Rasio manfaat/biaya terbaik di dokumen ini: nol kode,
+✅ **SUDAH DIKERJAKAN** (`docker-compose.yml`, Tier 1).
+
+Bentuk yang digelar: service `app-customer` + `app-operator`, container
+`sai-app-customer` + `sai-app-operator`, image SAMA, `OPERATOR_HOST` dikosongkan
+lewat `environment:` pada bidang pelanggan, dan nama service Traefik dipisah
+(`sai-app` vs `sai-ops`). Volume `documents` **tidak** dipasang di operator.
+Langkah penggelaran sekali-jalan — termasuk `--remove-orphans` yang WAJIB —
+ada di `PRODUCTION.md` §One-time.
+
+Alasan aslinya tetap berlaku: Rasio manfaat/biaya terbaik di dokumen ini: nol kode,
 ~60 MB, dan satu-satunya opsi pemisahan di sini yang punya **alasan keamanan**
 (pemisahan hak istimewa), bukan sekadar performa.
 
@@ -312,7 +321,7 @@ langkah berikutnya tidak pernah datang.
 | Pekerjaan | Putusan | Tier | Biaya |
 |---|---|---|---|
 | Cadangan jalan + kunci keluar mesin | ✅ | **0** | Rendah (3 env) |
-| Pisahkan container operator | ✅ | **1** | ~60 MB, nol kode |
+| Pisahkan container operator | ✅ **selesai** | **1** | ~60 MB, nol kode |
 | Pindahkan pemantulan `/` ke proxy | ✅ | **1** | Satu baris — lihat dok 08 P3-4 |
 | Binlog/PITR | ✅ | 2 | Sedang |
 | VM kedua sebagai target restore dingin | ✅ | 2–4 | Sedang |

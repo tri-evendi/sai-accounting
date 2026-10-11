@@ -54,15 +54,12 @@ import {
   SITE_CONTENT_SECTIONS,
 } from "@/lib/site-content";
 import { siteContentForOperator } from "@/lib/site-content-store";
+import { formatDateTime } from "@/lib/utils";
 import { operatorSaveSiteContent } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 /** "Penagihan/platform tidak terjangkau" — kalimat jujur, bukan galat. */
-function formatDateTime(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
-}
-
 export default async function OperatorContentPage({
   searchParams,
 }: {

@@ -79,23 +79,13 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { attentionItems, type AttentionItem } from "@/lib/operator/attention";
-import { operatorOverview, type OperatorOverview } from "@/lib/operator/store";
+import { operatorOverview, type OperatorOverview, tenantStatusVariant } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import { formatMoney } from "@/lib/money-format";
+import { formatDateMedium as formatDate, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(d);
-}
-
-function formatDateTime(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
-}
-
-/** Status tenant yang berarti "buku terkunci" — sama dengan daftar tenant. */
-const READ_ONLY_STATUSES = new Set(["suspended", "cancelled"]);
 
 type NewestRow = OperatorOverview["control"]["newest"][number];
 
@@ -215,13 +205,7 @@ export default async function OperatorOverviewPage() {
       align: "left",
       render: (_v, row) => (
         <Badge
-          variant={
-            READ_ONLY_STATUSES.has(row.status)
-              ? "danger"
-              : row.status === "active"
-                ? "success"
-                : "warning"
-          }
+          variant={tenantStatusVariant(row.status)}
         >
           {statusLabel(row.status)}
         </Badge>

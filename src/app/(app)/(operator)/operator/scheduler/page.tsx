@@ -34,6 +34,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { schedulerRunsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
+import { formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +46,6 @@ const NOWRAP_MUTED: React.CSSProperties = {
   whiteSpace: "nowrap",
   color: "var(--ant-color-text-secondary)",
 };
-
-function formatDateTime(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
-}
 
 function RunList({
   heading,

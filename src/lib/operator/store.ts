@@ -745,3 +745,32 @@ export async function operatorOverview(
 
   return { control, revenue, platform };
 }
+
+/**
+ * Warna lencana untuk STATUS TENANT — satu peta, tiga layar.
+ *
+ * Sampai ini ada, tiga halaman konsol masing-masing menulis
+ * `READ_ONLY_STATUSES` + ternari tiga cabang yang sama persis: ringkasan,
+ * daftar tenant, dan rincian tenant. Ketiganya memajang status tenant yang
+ * SAMA, sering untuk tenant yang sama dalam satu sesi — dan tiga salinan
+ * berarti hari ketika seseorang menambahkan status keempat, satu dari tiga
+ * layar akan memberinya warna "warning" tanpa ada yang gagal.
+ *
+ * ⚠ Bukan `StatusBadge` (`components/shared/status-badge.tsx`): peta di sana
+ * hanya mengenal status KONTRAK (`signed`/`pending`/`canceled`) dan memulangkan
+ * `default` untuk apa pun di luarnya — jadi memakainya di sini akan membuat
+ * setiap tenant berlencana abu-abu. Dua domain, dua peta; yang salah adalah
+ * membiarkan salah satunya tidak punya rumah.
+ */
+export const TENANT_READ_ONLY_STATUSES: ReadonlySet<string> = new Set([
+  "suspended",
+  "cancelled",
+]);
+
+export function tenantStatusVariant(status: string): "success" | "warning" | "danger" {
+  /* Buku terkunci bagi pelanggannya = `danger`, bukan `warning`: ia keadaan
+     yang menghentikan pekerjaan orang, bukan yang memperingatkannya. */
+  if (TENANT_READ_ONLY_STATUSES.has(status)) return "danger";
+  if (status === "active") return "success";
+  return "warning";
+}

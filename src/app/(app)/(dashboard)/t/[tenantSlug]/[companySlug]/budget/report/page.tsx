@@ -34,12 +34,11 @@ import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@/lib/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
+import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
 import { DashboardOutlined, WarningOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
-const SECTION_GAP = 24;
-const CARD_GAP = 16;
 const STAT_BASIS = 220;
 const EMPTY_ICON_SIZE = 48;
 

@@ -37,15 +37,14 @@ import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
 /** `marginXL` 32 · `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD
  *  sebagai angka, karena berkas ini tak boleh memanggil `theme.useToken()`. */
-const SECTION_GAP = 24;
 const BALANCE_SECTION_GAP = 32;
-const CARD_GAP = 16;
-const CONTROL_GAP = 12;
+const CONTROL_GAP = SPACE_SM;
 const EMPTY_ICON_SIZE = 48;
 /** Lebar dasar satu kartu saldo: tiga berjajar di 1440px, satu di 375px. */
 const BALANCE_BASIS = 260;

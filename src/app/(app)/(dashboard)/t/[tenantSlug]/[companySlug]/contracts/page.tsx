@@ -41,6 +41,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
@@ -53,8 +54,7 @@ export const dynamic = "force-dynamic";
  * disebut supaya #203 bisa menukarnya tanpa menebak: `marginLG` 24,
  * `marginXS` 8, `marginXXS` 4.
  */
-const SECTION_GAP = 24;
-const CONTROL_GAP = 8;
+const CONTROL_GAP = SPACE_XS;
 /** Lebar nyaman kotak pencarian (`max-w-md` lama = 28rem). */
 const SEARCH_MAX_WIDTH = 448;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */

@@ -31,6 +31,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
+import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,6 @@ export const dynamic = "force-dynamic";
  */
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
-const SECTION_GAP = 24;
-const CARD_GAP = 16;
 const STAT_BASIS = 160;
 const CHART_BASIS = 320;
 const EMPTY_ICON_SIZE = 48;

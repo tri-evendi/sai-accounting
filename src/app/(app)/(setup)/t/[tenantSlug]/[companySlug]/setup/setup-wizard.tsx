@@ -42,6 +42,7 @@ import { formatCurrency } from "@/lib/utils";
 import { DownloadOutlined, UploadOutlined, ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { SPACE_XS } from "@/lib/layout-scale";
 import { ModulePicker } from "@/components/settings/module-picker";
 import {
   BUSINESS_MODULES,
@@ -1631,7 +1632,7 @@ function StockSection({
 const IMPORT_LABEL: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 6,
+  gap: SPACE_XS,
   height: 24,
   padding: "0 8px",
   borderRadius: "var(--ant-border-radius-sm)",

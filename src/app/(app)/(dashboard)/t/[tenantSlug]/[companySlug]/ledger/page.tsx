@@ -30,6 +30,7 @@ import { accountTypeLabel } from "@/lib/i18n/labels";
 import { LedgerFilter } from "./ledger-filter";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
+import { SECTION_GAP } from "@/lib/layout-scale";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BookOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";
@@ -38,7 +39,6 @@ import { Link } from "@/components/ui/app-link";
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 — token AntD sebagai angka (tanpa hook di berkas server). */
-const SECTION_GAP = 24;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;
 

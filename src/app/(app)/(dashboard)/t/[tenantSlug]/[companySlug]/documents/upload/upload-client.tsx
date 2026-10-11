@@ -12,11 +12,11 @@ import { UploadOutlined } from "@ant-design/icons";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
+import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 
 /** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
-const SECTION_GAP = 24;
 const FIELD_GAP = 16;
-const CONTROL_GAP = 12;
+const CONTROL_GAP = SPACE_SM;
 /** Tinggi area jatuhkan-berkas — `h-32` lama. */
 const DROPZONE_HEIGHT = 128;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];

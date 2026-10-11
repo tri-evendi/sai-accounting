@@ -47,6 +47,7 @@ import {
 } from "@/lib/document-chain";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
+import { INLINE_GAP, SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 import { ContainerOutlined, DollarCircleOutlined, FileDoneOutlined, TruckOutlined, WarningOutlined } from "@ant-design/icons";
 import { ContractPaymentSection } from "./payment-section";
 import { ContractPDFButtons } from "./pdf-buttons";
@@ -58,9 +59,7 @@ export const dynamic = "force-dynamic";
  * dengan tokennya, disebut supaya #203 bisa menukarnya tanpa menebak:
  * `marginLG` 24, `marginSM` 12, `marginXS` 8, `marginXXS` 4.
  */
-const SECTION_GAP = 24;
-const CARD_GAP = 12;
-const INLINE_GAP = 8;
+const CARD_GAP = SPACE_SM;
 const TIGHT_GAP = 4;
 /** Lebar dasar satu kartu di baris "surat jalan & faktur". */
 const PAIR_BASIS = 320;

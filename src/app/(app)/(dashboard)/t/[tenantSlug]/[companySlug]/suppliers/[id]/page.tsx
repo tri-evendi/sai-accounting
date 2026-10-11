@@ -47,6 +47,7 @@ import {
 import type { AppliedAdvance } from "@/components/shared/advance-compensation";
 import { toBase } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP } from "@/lib/layout-scale";
 
 /** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
 const EPSILON = 0.005;
@@ -54,7 +55,6 @@ const EPSILON = 0.005;
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 — token AntD sebagai angka (tanpa hook di berkas server). */
-const SECTION_GAP = 24;
 
 /** Panel ringkas, bukan kartu stok — batasnya disebutkan di layar (migrasi 0058). */
 const RECEIPT_LIMIT = 50;

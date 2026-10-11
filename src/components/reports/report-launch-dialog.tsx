@@ -73,6 +73,7 @@ import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { useT } from "@/lib/i18n/client";
 import { downloadStatementPdf, downloadStatementWorkbook, fetchReportPayload } from "@/lib/report-files";
 import type { ReportDefinition } from "@/lib/report-catalog";
+import { SPACE_SM } from "@/lib/layout-scale";
 
 /** `padding` 20 · `paddingLG` 16 di kaki — jarak kepala/badan/kaki dialog. */
 const PANE_PADDING = 20;
@@ -80,7 +81,7 @@ const FOOTER_PADDING = 16;
 /** Ruang untuk tombol tutup (X) di pojok kanan atas. */
 const CLOSE_GUTTER = 48;
 const FIELD_GAP = 20;
-const CONTROL_GAP = 12;
+const CONTROL_GAP = SPACE_SM;
 /** Lebar minimum satu kolom isian sebelum kisinya turun sebaris (breakpoint `sm`). */
 const FIELD_MIN_WIDTH = 200;
 /** Target sentuh satu baris pilihan — `min-h-10` lama. */

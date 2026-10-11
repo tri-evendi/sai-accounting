@@ -46,6 +46,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { getTerm, glossaryHref } from "@/lib/labels";
+import { SPACE_XXS } from "@/lib/layout-scale";
 
 /**
  * Tiga hal yang tidak punya bentuk sebaris, dan ketiganya bukan hiasan:
@@ -221,7 +222,7 @@ export function TermTooltip({ term, children, style, hideGlossaryLink }: TermToo
           <span
             style={{
               display: "block",
-              marginTop: 6,
+              marginTop: SPACE_XXS,
               fontSize: "var(--ant-font-size)",
               lineHeight: 1.625,
               color: "var(--ant-color-text-secondary)",

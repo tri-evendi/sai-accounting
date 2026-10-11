@@ -33,6 +33,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { reconciliationForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
+import { SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ function banner(tone: "clean" | "findings"): React.CSSProperties {
   return {
     display: "flex",
     alignItems: "flex-start",
-    gap: 10,
+    gap: SPACE_XS,
     padding: 16,
     borderRadius: 8,
     fontSize: 14,

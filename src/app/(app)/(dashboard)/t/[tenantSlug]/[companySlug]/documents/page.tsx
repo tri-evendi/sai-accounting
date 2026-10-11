@@ -23,6 +23,7 @@ import { formatDate, parsePageParam } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { documentTypeLabels } from "@/lib/i18n/labels";
+import { SPACE_MD, SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,8 @@ export const dynamic = "force-dynamic";
  */
 
 /** `margin` 16 · `marginXS` 8 — token AntD sebagai angka (berkas ini server). */
-const CONTROL_GAP = 8;
-const SECTION_GAP = 16;
+const CONTROL_GAP = SPACE_XS;
+const SECTION_GAP = SPACE_MD;
 /** Lebar nyaman kotak pencarian (`max-w-md` lama = 28rem). */
 const SEARCH_MAX_WIDTH = 448;
 const EMPTY_ICON_SIZE = 48;

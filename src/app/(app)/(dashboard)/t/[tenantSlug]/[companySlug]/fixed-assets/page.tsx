@@ -35,14 +35,13 @@ import { formatDateShort } from "@/lib/utils";
 import { EnvironmentOutlined, GoldOutlined, InfoCircleOutlined, PlusOutlined, TagsOutlined } from "@ant-design/icons";
 import { RunDepreciation } from "./run-depreciation";
 import { getT } from "@/lib/i18n/server";
+import { CARD_GAP, SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `margin` 16 · `marginXS` 8 — token AntD sebagai angka,
  *  karena berkas ini tak boleh memanggil `theme.useToken()`. */
-const SECTION_GAP = 24;
-const CARD_GAP = 16;
-const CONTROL_GAP = 8;
+const CONTROL_GAP = SPACE_XS;
 const EMPTY_ICON_SIZE = 48;
 /** Lebar dasar satu kartu angka: empat berjajar di 1440px, satu di 375px. */
 const STAT_BASIS = 220;

@@ -40,13 +40,12 @@ import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { invoiceWhatsAppTarget, listInvoiceSends } from "@/lib/invoice-send";
 import { getT } from "@/lib/i18n/server";
+import { INLINE_GAP, SECTION_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `marginXS` 8 · `marginXXS` 4 — token AntD sebagai angka,
  *  karena berkas ini tak boleh memanggil `theme.useToken()`. */
-const SECTION_GAP = 24;
-const INLINE_GAP = 8;
 const TIGHT_GAP = 4;
 /** Lebar dasar satu pasang istilah–nilai pada daftar info faktur. */
 const INFO_BASIS = 240;

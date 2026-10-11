@@ -47,6 +47,7 @@
  */
 
 import { SIDER_BG_DARK } from "@/lib/theme/antd-tokens";
+import { SPACE_LG } from "@/lib/layout-scale";
 
 /** Balok kerangka: satu bentuk, dipakai belasan kali dengan ukuran berbeda.
  *  Warnanya `fillSecondary`, bukan `fillQuaternary`: yang terakhir itu latar
@@ -151,7 +152,7 @@ export default function AuthLoading() {
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: 20,
+                  gap: SPACE_LG,
                   padding: 32,
                   borderRadius: 8,
                   border: "1px solid var(--ant-color-border-secondary)",

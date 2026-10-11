@@ -73,6 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.9.0",
+    tanggal: "2026-10-11",
+    ringkas:
+      "Lambang produk dirapikan dan dipakai di semua tempat \u2014 ikon tab, ikon layar depan, dan gambar pratinjau kini gambar yang sama dengan yang ada di dalam aplikasi.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks:
+          "Ikon aplikasi berganti. Sebelumnya ikon di tab peramban dan di layar depan ponsel menampilkan diagram batang biru \u2014 gambar lama yang tidak pernah ikut berubah ketika lambang produk berganti menjadi buku besar. Keduanya kini memakai lambang yang sama dengan yang Anda lihat di pojok kiri atas aplikasi, dalam warna yang sama. Kalau aplikasi ini sudah dipasang ke layar depan, ikonnya ikut berganti setelah ponsel menyegarkannya.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Gambar yang muncul saat alamat aplikasi ditempel ke WhatsApp atau LinkedIn kini menampilkan lambang produk, bukan huruf awal namanya.",
+      },
+    ],
+  },
+  {
     versi: "0.8.0",
     tanggal: "2026-10-10",
     sha: "45fcb23",

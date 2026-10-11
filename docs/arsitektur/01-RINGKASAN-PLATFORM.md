@@ -216,7 +216,7 @@ cadangan otomatis.
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |
 | Surel | **Nodemailer 7** | Konfigurasi tiga lapis — lihat dok 04 |
-| Uji | **Vitest 3** — **274 berkas tes · 4.624 tes** | Gerbangnya `bun run verify` |
+| Uji | **Vitest 3** — **275 berkas tes · 4.643 tes** | Gerbangnya `bun run verify` |
 | Proxy | **Traefik** (bersama 5 aplikasi lain di mesin yang sama) | TLS Let's Encrypt, resolver `le` |
 | Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 3 image dibangun CI; **jangan pernah build di server** |
 
@@ -231,7 +231,7 @@ cadangan otomatis.
 | Model Prisma | 61 (perusahaan) + 15 (kendali) + 12 (platform) = **88** |
 | Migration | 64 (perusahaan) + 17 (kendali) + 18 (platform) = **99** |
 | Modul `src/lib` | 299 berkas |
-| Berkas tes | 274 (4.624 tes) |
+| Berkas tes | 275 (4.643 tes) |
 | Skrip operasional | 51 |
 | Izin RBAC | 66 (perusahaan) + 6 (tenant) |
 

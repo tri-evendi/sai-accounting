@@ -62,6 +62,7 @@ import { cashTypeLabels } from "@/lib/i18n/labels";
 import { buildDashboardInsights } from "@/lib/dashboard-insights";
 import { getBudgetReport } from "@/lib/budget-report";
 import { getSalesByCustomer, getPurchasesBySupplier } from "@/lib/party-recap";
+import { CARD_GAP } from "@/lib/layout-scale";
 import { InsightPanel } from "@/components/dashboard/insight-panel";
 
 export const dynamic = "force-dynamic";
@@ -89,10 +90,18 @@ export const dynamic = "force-dynamic";
  *     nilainya sama dengan token yang seharusnya dipakai, dan token itu disebut
  *     namanya supaya #203 bisa menukarnya tanpa menebak.
  */
-/** `space-y-10` antar-seksi beranda. Bukan token AntD: `marginXXL` hanya 48. */
+/**
+ * `space-y-10` (40) antar-seksi beranda — SATU-SATUNYA jarak di app ini yang
+ * sengaja di luar skala, dan ia terdaftar sebagai pengecualian di
+ * `tests/layout-scale.test.ts` beserta alasannya.
+ *
+ * Anak tangga AntD melompat 32 → 48. Menaikkannya ke 48 mengubah irama beranda
+ * — halaman dengan seksi terbanyak di app — tanpa ada yang memintanya;
+ * menurunkannya ke 32 merapatkannya. Warisan migrasi #203 yang dibiarkan
+ * dengan sadar, bukan angka yang terlewat.
+ */
 const SECTION_GAP = 40;
 /** `gap-4` di dalam seksi = `margin` (16). */
-const CARD_GAP = 16;
 /** `pb-3` kepala kartu tabel = `paddingSM` (12). */
 const CARD_HEADER_BOTTOM = 12;
 /** `pb-1` kepala kartu saldo = `paddingXXS` (4). */

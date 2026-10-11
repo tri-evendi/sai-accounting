@@ -43,12 +43,11 @@ import {
 } from "@/lib/labels";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { termCategoryLabels } from "@/lib/i18n/labels";
+import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 
 /** `marginLG` 24 · `marginSM` 12 · `margin` 16 — token AntD sebagai angka. */
-const SECTION_GAP = 24;
 const GROUP_GAP = 32;
-const CONTROL_GAP = 12;
-const CARD_GAP = 16;
+const CONTROL_GAP = SPACE_SM;
 /** Lebar nyaman kotak pencarian (`max-w-md` lama) & lebar minimum satu kartu. */
 const SEARCH_MAX_WIDTH = 448;
 const CARD_MIN_WIDTH = 320;

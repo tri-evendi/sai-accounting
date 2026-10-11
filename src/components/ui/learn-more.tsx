@@ -35,6 +35,7 @@ import { Link } from "@/components/ui/app-link";
 import { BookOutlined } from "@ant-design/icons";
 import { getTerm, glossaryHref } from "@/lib/labels";
 import { useT } from "@/lib/i18n/client";
+import { SPACE_XS } from "@/lib/layout-scale";
 
 /**
  * Dua keadaan yang tidak punya bentuk sebaris — garis bawah saat disorot dan
@@ -76,7 +77,7 @@ export function LearnMore({ term, label }: LearnMoreProps) {
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: 6,
+          gap: SPACE_XS,
           borderRadius: "var(--ant-border-radius)",
           fontSize: "var(--ant-font-size)",
           fontWeight: 500,

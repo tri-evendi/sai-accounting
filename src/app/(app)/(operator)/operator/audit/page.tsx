@@ -46,6 +46,16 @@ const BATAS = 200;
 /** Tindakan yang berarti SESUATU GAGAL — satu-satunya yang diberi warna. */
 const GAGAL = new Set(["operator.login.failed"]);
 
+/**
+ * Jam SAMPAI DETIK, dan karena itu BUKAN `formatDateTime` bersama.
+ *
+ * `lib/utils.ts` memformat `timeStyle: "short"` (tanpa detik) — benar untuk
+ * tenggat dan tanggal tagihan, salah untuk jejak audit: dua tindakan operator
+ * yang terjadi dalam satu menit yang sama akan tampil berjam sama persis,
+ * sehingga URUTANNYA hanya bisa dipercaya dari urutan barisnya. Jejak yang
+ * dibaca orang justru ketika ada yang perlu dipertanggungjawabkan tidak boleh
+ * menyembunyikan selisih detik.
+ */
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;

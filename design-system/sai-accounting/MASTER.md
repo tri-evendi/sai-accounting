@@ -222,6 +222,29 @@ Karena lapisan token buntu, jenjangnya dibuat di dalam bidang yang sudah ada —
 Semua angka di atas dihitung ulang setiap kali suite berjalan —
 `tests/antd-tokens.test.ts` → "jenjang perender (#266)".
 
+### Permukaan bersarang: isian, bukan kartu kedua (#266, ditegakkan Okt 2026)
+
+Jawaban #266 — angkat `boxShadowTertiary` pada `ui/card.tsx` — hanya mengenai
+kotak yang dirender `Card`. Diukur Okt 2026: **17 blok gaya** di luar berkas itu
+menggambar resep yang sama (`colorBgContainer` + `colorBorderSecondary` +
+`borderRadiusLG`), **9 tanpa angkat**. Memeriksanya satu per satu memperlihatkan
+masalahnya DUA, bukan satu:
+
+| Kotaknya | Resep yang benar |
+|---|---|
+| **berdiri di atas latar halaman** | tepi + `--ant-box-shadow-tertiary` — sama dengan `Card` |
+| **bersarang DI DALAM kartu** | `--ant-color-fill-quaternary`, **tanpa tepi** |
+| **bagian dari GAMBAR** (diagram) | tepi saja, tanpa angkat — terdaftar di penjaga |
+
+Baris kedua yang paling mudah terlewat: kotak bersarang yang memakai
+`colorBgContainer` berdiri **sewarna persis** dengan kartu yang menampungnya,
+sehingga yang memisahkannya tinggal garis — "outline saja" dalam bentuk kecil,
+di dalam wilayah yang sudah bergaris. Dua tempat sudah diperbaiki begitu (rantai
+dokumen di `/contracts/[id]`, kelompok isian di `/suppliers/[id]`), dan kisi
+fakta `/operator/tenants/[id]` memakai pola yang sama.
+
+Dijaga `tests/card-surface.test.ts`.
+
 ### Token AntD di server component: `var(--ant-…)`, di mana pun (issue #227)
 
 **Server component boleh memakai warna token, dan tidak perlu menyeberang jadi client untuk itu.** `AntdProvider` memberi `cssVar` sebuah kunci tetap (`ANTD_CSS_VAR_KEY` di `src/lib/theme/antd-tokens.ts`) dan root layout memasang kunci itu sebagai kelas di `<html>`, jadi blok `.sai-tokens{--ant-…}` berdiri di `<head>` pada HTML pertama dan diwarisi seluruh dokumen — juga oleh pohon yang tidak punya satu pun komponen AntD di atasnya.
@@ -272,6 +295,17 @@ satuannya** (`--ant-padding` = `16px`, jadi ditulis apa adanya, bukan `${}px`):
 | Padding kartu, jarak antar-bagian (Density 6/10) | `--ant-padding-lg` / `--ant-margin-lg` | 24px |
 | Gap besar | `--ant-margin-xl` | 32px |
 | Jarak antar-seksi besar | `--ant-margin-xxl` | 48px |
+
+**Yang menuntut ANGKA, bukan `var(--ant-…)`**, ambil dari
+`src/lib/layout-scale.ts` — prop `gap` milik `<Flex>`/`<Space>` bertipe
+`number`, dan di situ variabel CSS tidak berlaku. Anak tangganya dinamai
+menurut tokennya (`SPACE_MD` = `margin` = 16), plus tiga peran yang dipakai
+banyak halaman (`SECTION_GAP`, `CARD_GAP`, `INLINE_GAP`). Sebelum berkas itu
+ada, ketiga peran itu dideklarasikan **60 kali** sebagai angka telanjang dan
+dua di antaranya sudah bercabang. Dijaga `tests/layout-scale.test.ts`, yang
+juga membandingkan setiap anak tangga dengan token AntD sungguhan — berkas itu
+satu-satunya salinan nilai token di repo ini, dan salinan yang tidak
+dibandingkan adalah salinan yang akan berbeda.
 
 Radius: `--ant-border-radius` 6px (kendali & kartu) · `--ant-border-radius-lg`
 8px (permukaan besar) · `--ant-border-radius-sm` 4px (balok kerangka, tag).

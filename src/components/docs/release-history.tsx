@@ -41,6 +41,7 @@ export function ReleaseHistory() {
             borderRadius: "var(--ant-border-radius-lg)",
             padding: "var(--ant-padding)",
             background: "var(--ant-color-bg-container)",
+            boxShadow: "var(--ant-box-shadow-tertiary)",
           }}
         >
           <header

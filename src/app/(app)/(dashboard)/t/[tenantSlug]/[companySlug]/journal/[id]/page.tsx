@@ -34,11 +34,11 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Link } from "@/components/ui/app-link";
 import { ReverseButton } from "./reverse-button";
 import { getT } from "@/lib/i18n/server";
+import { INLINE_GAP } from "@/lib/layout-scale";
 import { RollbackOutlined, UndoOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 
 /** `marginXS` 8 · `marginXXS` 4 — token AntD sebagai angka (tanpa hook di sini). */
-const INLINE_GAP = 8;
 const TIGHT_GAP = 4;
 /** Jarak antar pemberitahuan di atas kartu. */
 const NOTICE_GAP = 16;

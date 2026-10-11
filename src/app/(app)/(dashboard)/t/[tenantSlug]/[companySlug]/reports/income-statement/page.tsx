@@ -33,12 +33,12 @@ import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatDate } from "@/lib/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { IncomeWaterfallChart } from "@/components/shared/dashboard-charts";
 
 /** Jarak antar-blok halaman — sama dengan `marginLG` yang dipakai laporan lain. */
-const SECTION_GAP = 24;
 export const dynamic = "force-dynamic";
 
 export default async function IncomeStatementPage({
@@ -175,7 +175,7 @@ export default async function IncomeStatementPage({
           }}
         >
           <p style={{ margin: 0 }}>{t("costCenters.filterNote")}</p>
-          <p style={{ display: "flex", alignItems: "flex-start", gap: 6, margin: 0 }}>
+          <p style={{ display: "flex", alignItems: "flex-start", gap: SPACE_XS, margin: 0 }}>
             <InfoCircleOutlined aria-hidden="true" style={{ fontSize: 16, flexShrink: 0, marginTop: 2 }} />
             <span>{t("costCenters.filterScopeNote")}</span>
           </p>

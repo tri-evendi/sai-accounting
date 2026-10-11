@@ -1,3 +1,4 @@
+import { SPACE_LG } from "@/lib/layout-scale";
 /**
  * Kerangka muat untuk grup rute `(setup)`.
  *
@@ -63,7 +64,7 @@ export default function SetupLoading() {
       >
         <div style={bar(160, 20)} />
         <div
-          style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 24 }}
+          style={{ display: "flex", flexDirection: "column", gap: SPACE_LG, marginTop: 24 }}
         >
           <div style={bar("100%", 40)} />
           <div style={bar("100%", 40)} />

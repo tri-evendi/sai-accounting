@@ -35,10 +35,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/client";
+import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 
 /** `margin` 16 · `marginLG` 24 — jarak antar kendali & jarak ke tabel di bawah. */
-const CONTROL_GAP = 12;
-const SECTION_GAP = 24;
+const CONTROL_GAP = SPACE_SM;
 /** Lebar nyaman pemilih pusat biaya (`min-w-[220px]` lama). */
 const SELECT_MIN_WIDTH = 220;
 

@@ -19,10 +19,10 @@ import { qtyColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { EnvironmentOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
-const SECTION_GAP = 24;
 const EMPTY_ICON_SIZE = 48;
 
 export default async function AssetsByLocationPage({

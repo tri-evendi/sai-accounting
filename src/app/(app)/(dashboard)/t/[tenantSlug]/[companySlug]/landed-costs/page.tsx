@@ -20,13 +20,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { ImportOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 
 export const dynamic = "force-dynamic";
 
 /** Server component — angkanya sama dengan token (`marginLG`, `marginXS`). */
-const SECTION_GAP = 24;
-const CONTROL_GAP = 8;
+const CONTROL_GAP = SPACE_XS;
 const EMPTY_ICON_SIZE = 48;
 
 interface LandedCostRow {

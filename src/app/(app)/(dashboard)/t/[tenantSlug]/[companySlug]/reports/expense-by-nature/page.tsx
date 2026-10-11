@@ -32,13 +32,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodFilter } from "../report-filters";
 import { formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { InfoCircleOutlined, ProfileOutlined } from "@ant-design/icons";
 
 export const dynamic = "force-dynamic";
 
 const EMPTY_ICON_SIZE = 48;
 const ICON_SIZE = 16;
-const SECTION_GAP = 24;
 
 type Row = Awaited<ReturnType<typeof getExpenseByNature>>["rows"][number];
 
@@ -152,7 +152,7 @@ export default async function ExpenseByNaturePage({
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: 6,
+            gap: SPACE_XS,
             marginTop: 12,
             marginBottom: 0,
             color: "var(--ant-color-text-secondary)",

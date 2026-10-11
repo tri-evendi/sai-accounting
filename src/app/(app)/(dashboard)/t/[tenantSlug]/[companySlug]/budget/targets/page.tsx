@@ -12,11 +12,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { SalesTargetClient } from "./sales-target-client";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
 /** `marginLG` AntD (24) — angka, karena berkas ini server component. */
-const SECTION_GAP = 24;
 
 export default async function SalesTargetsPage({
   params,

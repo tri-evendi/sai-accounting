@@ -50,6 +50,7 @@ import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-consta
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { formatDateMedium } from "@/lib/utils";
 
 export interface OperatorActionResult {
   ok: boolean;
@@ -371,7 +372,7 @@ export async function operatorExecuteDeletion(input: unknown): Promise<OperatorA
         message: t("operator.actions.deletion.success", {
           companies: result.companiesDeactivated,
           users: result.usersAnonymized,
-          date: new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
+          date: formatDateMedium(
             result.retentionUntil
           ),
         }),
@@ -380,7 +381,7 @@ export async function operatorExecuteDeletion(input: unknown): Promise<OperatorA
       return {
         ok: false,
         message: t("operator.actions.deletion.errGrace", {
-          date: new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(
+          date: formatDateMedium(
             result.graceEndsAt
           ),
         }),

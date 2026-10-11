@@ -41,6 +41,7 @@ import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
+import { SECTION_GAP } from "@/lib/layout-scale";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,6 @@ export const dynamic = "force-dynamic";
  * disebut supaya #203 bisa menukarnya tanpa menebak: `marginLG` 24,
  * `marginXS` 8, `margin` 16.
  */
-const SECTION_GAP = 24;
 const LINK_GAP_X = 20;
 const LINK_GAP_Y = 8;
 /** Ikon keadaan kosong — `h-12 w-12` lama. */

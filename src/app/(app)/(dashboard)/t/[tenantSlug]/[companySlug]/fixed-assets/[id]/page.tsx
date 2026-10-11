@@ -28,6 +28,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@/lib/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
+import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
 import { AssetActions } from "./asset-actions";
 
 export const dynamic = "force-dynamic";
@@ -35,8 +36,6 @@ export const dynamic = "force-dynamic";
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
-const SECTION_GAP = 24;
-const CARD_GAP = 16;
 /** Lebar dasar kolom kartu angka / definisi. */
 const STAT_BASIS = 220;
 const DEF_BASIS = 200;

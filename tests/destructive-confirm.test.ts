@@ -338,7 +338,7 @@ describe("tombol destruktif berpasangan dengan ConfirmDialog (#308)", () => {
     expect(telanjang("<Button>Hapus</Button>")).toBe(0);
   });
 
-  it("⚠ `Badge variant=\"danger\"` TIDAK pernah dituduh — 14 di antaranya sah hari ini", () => {
+  it("⚠ `Badge variant=\"danger\"` TIDAK pernah dituduh — 13 di antaranya sah hari ini", () => {
     /*
      * Kegagalan yang paling mungkin dari penjaga ini, dan alasan ia memakai
      * parser: `variant="danger"` di app ini jauh lebih sering berarti LENCANA
@@ -353,9 +353,19 @@ describe("tombol destruktif berpasangan dengan ConfirmDialog (#308)", () => {
     // Lencana dan tombol berdampingan: hanya tombolnya yang dihitung.
     expect(uji('<div><Badge variant="danger">Batal</Badge><Button variant="danger">Hapus</Button></div>')).toBe(1);
 
-    // Dan di repo sungguhan lencana merah memang banyak — kalau angka ini
-    // jatuh ke nol, `bisaDestruktif()` berhenti mengenali sesuatu.
-    expect(hitungDestruktif("Badge")).toBeGreaterThanOrEqual(14);
+    /*
+     * Dan di repo sungguhan lencana merah memang banyak — kalau angka ini
+     * jatuh ke nol, `bisaDestruktif()` berhenti mengenali sesuatu.
+     *
+     * Lantainya turun 14 → 13 (Okt 2026) dan ITU BUKAN tanda penjaga melemah:
+     * tiga halaman konsol operator dulu menulis ternari status→warna yang sama
+     * persis; ketiganya kini memanggil `tenantStatusVariant()`, jadi satu
+     * `variant="danger"` harfiah memang hilang dari sumber tanpa satu lencana
+     * pun hilang dari layar. Lantai ini KANARI, bukan kuota — menaikkannya
+     * kembali demi angka bulat akan memerahkan tes pada hari seseorang
+     * merapikan salinan berikutnya.
+     */
+    expect(hitungDestruktif("Badge")).toBeGreaterThanOrEqual(13);
     expect(hitungDestruktif("Button")).toBeGreaterThanOrEqual(12);
   });
 

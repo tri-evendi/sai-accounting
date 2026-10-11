@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ContainerOutlined } from "@ant-design/icons";
 import { OpnameForm } from "./opname-form";
 import { getT } from "@/lib/i18n/server";
+import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +28,6 @@ export const dynamic = "force-dynamic";
  */
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
-const SECTION_GAP = 24;
-const CARD_GAP = 16;
 const STAT_BASIS = 160;
 const EMPTY_ICON_SIZE = 48;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];

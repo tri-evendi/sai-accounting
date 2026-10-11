@@ -72,6 +72,7 @@ import { PlanAction } from "./plan-actions";
 import { getT } from "@/lib/i18n/server";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
+import { SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -288,7 +289,7 @@ export default async function PlatformPlansPage() {
                             listStyle: "none",
                             display: "flex",
                             flexDirection: "column",
-                            gap: 6,
+                            gap: SPACE_XS,
                             margin: 0,
                             padding: 0,
                             fontSize: "var(--ant-font-size)",

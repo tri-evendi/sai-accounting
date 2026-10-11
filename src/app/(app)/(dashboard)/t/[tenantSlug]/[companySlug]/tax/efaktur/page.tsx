@@ -28,6 +28,7 @@ import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DownloadOutlined, FileDoneOutlined, FileTextOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
+import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,6 @@ export const dynamic = "force-dynamic";
  */
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
-const SECTION_GAP = 24;
 const EMPTY_ICON_SIZE = 48;
 const ICON_SIZE = 16;
 const STRONG = "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"];
@@ -306,7 +306,7 @@ export default async function EfakturPage({
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 6,
+                gap: SPACE_XS,
                 padding: "8px 12px",
                 borderRadius: "var(--ant-border-radius)",
                 background: "var(--ant-color-fill-quaternary)",

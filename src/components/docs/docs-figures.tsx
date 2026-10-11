@@ -37,6 +37,20 @@ export type NamaDiagram =
   | "alur-jasa"
   | "alur-manufaktur";
 
+/**
+ * Kotak diagram — SENGAJA TANPA bayangan kartu, dan itu bukan kelalaian.
+ *
+ * Resepnya memang resep kartu (tepi + latar wadah + radius besar), dan setiap
+ * kotak lain di `/docs` yang berdiri di atas latar halaman sudah diberi angkat
+ * `boxShadowTertiary` (#266). Yang ini tidak: ia bukan WILAYAH ISI melainkan
+ * BENTUK di dalam sebuah gambar — tiga sampai lima di antaranya berjajar untuk
+ * menyusun satu diagram. Memberi lima bentuk itu bayangan tidak membuat
+ * diagramnya lebih terbaca; ia membuatnya terbaca sebagai tumpukan kartu.
+ *
+ * Aturannya, supaya yang berikutnya tidak perlu menebak: kotak yang memuat isi
+ * yang dibaca mendapat angkat kartu; kotak yang menjadi bagian dari GAMBAR
+ * tidak. Terdaftar di `tests/card-surface.test.ts` beserta alasan ini.
+ */
 const KOTAK: React.CSSProperties = {
   flex: "1 1 0",
   minWidth: 0,

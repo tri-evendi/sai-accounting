@@ -34,6 +34,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { schedulerRunsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
+import { formatDateTime } from "@/lib/utils";
+import { SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +48,6 @@ const NOWRAP_MUTED: React.CSSProperties = {
   color: "var(--ant-color-text-secondary)",
 };
 
-function formatDateTime(d: Date): string {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
-}
-
 function RunList({
   heading,
   items,
@@ -60,7 +58,7 @@ function RunList({
   emptyLabel: string;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
       <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--ant-color-text)" }}>
         {heading}
       </h3>

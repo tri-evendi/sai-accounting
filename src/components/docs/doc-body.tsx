@@ -89,6 +89,7 @@ const CATATAN: React.CSSProperties = {
   borderRadius: "var(--ant-border-radius-lg)",
   border: "1px solid var(--ant-color-border-secondary)",
   background: "var(--ant-color-bg-container)",
+  boxShadow: "var(--ant-box-shadow-tertiary)",
   fontSize: "var(--ant-font-size)",
   lineHeight: 1.7,
   color: "var(--ant-color-text-secondary)",
@@ -151,6 +152,7 @@ const ISTILAH_KOTAK: React.CSSProperties = {
   borderRadius: "var(--ant-border-radius-lg)",
   border: "1px solid var(--ant-color-border-secondary)",
   background: "var(--ant-color-bg-container)",
+  boxShadow: "var(--ant-box-shadow-tertiary)",
 };
 
 const ISTILAH_JUDUL: React.CSSProperties = {

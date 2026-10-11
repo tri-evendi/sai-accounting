@@ -48,6 +48,7 @@ const KOTAK: React.CSSProperties = {
   borderRadius: "var(--ant-border-radius-lg)",
   border: "1px solid var(--ant-color-border-secondary)",
   background: "var(--ant-color-bg-container)",
+  boxShadow: "var(--ant-box-shadow-tertiary)",
   color: "inherit",
   textDecoration: "none",
 };

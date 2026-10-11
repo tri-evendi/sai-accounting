@@ -57,6 +57,7 @@ import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layo
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getT } from "@/lib/i18n/server";
 import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { SPACE_XS } from "@/lib/layout-scale";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
@@ -232,7 +233,7 @@ export default async function StockValueReportPage({
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: 6,
+            gap: SPACE_XS,
             marginTop: 12,
             marginBottom: 0,
             color: "var(--ant-color-text-secondary)",
@@ -252,7 +253,7 @@ export default async function StockValueReportPage({
           style={{
             display: "flex",
             alignItems: "flex-start",
-            gap: 6,
+            gap: SPACE_XS,
             marginTop: 12,
             marginBottom: 0,
             color: "var(--ant-color-text-secondary)",

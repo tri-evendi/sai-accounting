@@ -35,6 +35,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
+import { INLINE_GAP } from "@/lib/layout-scale";
 import { TeamOutlined } from "@ant-design/icons";
 import {
   parseSort,
@@ -56,7 +57,6 @@ const SORTABLE: SortSpec<Prisma.CustomerOrderByWithRelationInput[]> = {
 /** Ikon keadaan kosong — `h-12 w-12` lama. */
 const EMPTY_ICON_SIZE = 48;
 /** `marginXS` 8 — token AntD sebagai angka (tanpa hook di berkas server). */
-const INLINE_GAP = 8;
 
 interface CustomerRow {
   id: number;

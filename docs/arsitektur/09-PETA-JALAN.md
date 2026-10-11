@@ -90,7 +90,7 @@ langsung dari shell — **periksa dulu** sebelum merencanakan.
 melaporkan dirinya. Kanal kedua layak dipertimbangkan nanti — tetapi **jangan
 jadikan prasyarat**. Satu kanal jauh lebih baik daripada nol.
 
-### 0.4 ✅ CI yang menjalankan gerbang → P0-3 — **SELESAI & TERBUKTI HIJAU**
+### 0.4 ✅ CI yang menjalankan gerbang → P0-3 — **SELESAI, TERBUKTI, DAN MENEGAKKAN**
 
 **Temuan terpenting yang lahir SESUDAH set dokumen ini pertama ditulis.** Tidak
 ada satu pun workflow yang berpemicu `pull_request`, tidak ada yang menjalankan
@@ -122,14 +122,24 @@ jobs:
 #600, `conclusion: success` — install → `db:generate` → `verify`, semuanya
 lulus).
 
-> ⚠ **SATU LANGKAH MANUAL YANG BELUM DILAKUKAN:** jadikan job `verify` sebagai
-> **required status check** pada `main` (dan sebaiknya `develop`) lewat
-> **Settings → Branches**. Sampai itu dilakukan, workflow-nya berjalan tetapi
-> **tidak memblokir** merge — jadi gerbangnya informatif, belum menegakkan.
+> ✅ **Langkah manual terakhir SUDAH dilakukan 11 Okt 2026.** `verify` kini
+> **required status check** pada `main`:
 >
-> Urutannya memang begitu dengan sengaja: menjadikannya wajib **sebelum** jalan
-> pertamanya terbukti hijau akan memblokir setiap merge dengan check yang belum
-> pernah berhasil. Sekarang ia sudah terbukti, jadi langkah itu aman.
+> ```
+> strict : false        ← WAJIB begini; lihat alasannya di dok 08 P0-3
+> checks : [{ context: "verify", app_id: 15368 }]
+> ```
+>
+> Urutannya memang disengaja: menjadikannya wajib **sebelum** jalan pertamanya
+> terbukti hijau akan memblokir setiap merge dengan check yang belum pernah
+> berhasil. Ia sudah terbukti belasan kali lebih dulu, jadi langkah ini aman.
+>
+> **Dua hal yang perlu diketahui**, rinciannya di
+> [dok 08 P0-3](./08-PENILAIAN-ARSITEKTUR.md):
+> `enforce_admins: true` berlaku juga untuk pemilik repo — kalau CI mati,
+> `main` terkunci; dan **`develop` masih tanpa proteksi**, jadi cabang fitur →
+> `develop` belum digerbangi (sadar: menambahkannya berarti membuat proteksi
+> dari nol di sana).
 
 Dikerjakan **lebih dulu** dari 0.1–0.3 kalau bisa, karena ia yang mencegah
 ketiganya regresi diam-diam bulan depan. `bun run build` **tidak** ikut di CI
@@ -488,45 +498,48 @@ tanggalnya** di dekat kodenya — itu tidak biasa, dan ia aset nyata. Skema
 sepenuhnya termigrasi tanpa drift; penjadwal sehat; alur rilis lewat registry
 dengan jangkar rollback otomatis.
 
-**Apa yang tidak.** **Cadangan belum pernah berhasil sekali pun** — 54
-percobaan, `lastSuccessAt: null`, karena tiga variabel lingkungan tidak ada.
-Untuk pembukuan yang wajib disimpan sepuluh tahun, itu risiko **hukum**. Dan
-alasan ia bisa bertahan 54 kali adalah temuan kedua: **kegagalan latar tidak
-berbunyi ke siapa pun** — modul peringatan ada dan dirancang baik, tetapi hanya
-dipanggil dari dua route pendaftaran. Temuan ketiga mengikuti pola yang sama:
-temuan kesesuaian data mingguan hanya ada di stdout.
+**Apa yang ditemukan, dan apa yang sudah ditutup.** Empat temuan teratas
+semuanya **bukan** soal arsitektur — tiga soal *dapat-diamati* (sistem ini tahu
+cara gagal dengan benar; yang belum ia bisa adalah **memberi tahu kita**), dan
+satu soal *gerbang* (tidak ada yang memeriksa kode sebelum ia terbit). Tidak
+satu pun diperbaiki dengan memecah layanan.
 
-Dan temuan keempat, yang lahir **sesudah** set dokumen ini pertama ditulis dan
-melingkupi ketiganya: **tidak ada apa pun yang menjalankan 270 berkas tes itu.**
-Nol workflow berpemicu `pull_request`, nol *required status check* pada `main`,
-nol syarat review — sementara `next build` sengaja tidak memeriksa tipe. Jadi
-satu-satunya yang berdiri antara galat tipe dan image produksi adalah seorang
-manusia yang ingat menjalankan sebuah perintah. Jalurnya bukan hipotesis: PR
-#599 terbit ke GHCR tanpa satu pun pemeriksaan berjalan.
+Keadaannya per **11 Oktober 2026 sore**:
 
-Pengamatan yang mengikat keempatnya: **tak satu pun soal arsitektur.** Tiga di
-antaranya soal *dapat-diamati* — sistem ini tahu cara gagal dengan benar, yang
-belum ia bisa adalah **memberi tahu kita** bahwa ia sedang gagal. Yang keempat
-soal *gerbang* — tidak ada yang memeriksa kode sebelum ia terbit. Bentuk
-arsitekturnya sendiri sehat, dan tidak satu pun dari keempatnya diperbaiki
-dengan memecah layanan.
+| Temuan | Keadaan |
+|---|---|
+| **P0-3** Nol CI — nol workflow `pull_request`, nol *required status check*, sementara `next build` sengaja tidak memeriksa tipe | ✅ **DITUTUP** — `verify.yml` + `verify` required pada `main` (`strict: false`, `app_id` dipin) |
+| **P1-2** Temuan kesesuaian mingguan hanya di stdout | ✅ **DITUTUP** — `conformance_runs` + `/api/health` + `/operator/conformance` |
+| **P1-3** Lima berkas penggelaran saling bertentangan | ✅ **DITUTUP** — satu jalur hidup, warisan ditandai, `docs/README.md` lahir |
+| **P2-5** Tabel jejak tumbuh tanpa pemangkasan | ✅ **DITUTUP** — 4 aturan, 2 di antaranya tidak ada di resep semula |
+| **P2-4** CSP `unsafe-inline`/`eval` | 🟡 `unsafe-eval` **dicabut di produksi**; `style-src` terbukti struktural; jalur nonce terdokumentasi |
+| **P2-1** Basis data uji di produksi | 🟡 **terklasifikasi** — 2 dari 17 buku relevan; dua keputusan menunggu pemilik |
+| **P0-1** Cadangan belum pernah berhasil — 54 percobaan, `lastSuccessAt: null`, tiga env tidak ada | 🔴 **terbuka** |
+| **P0-2** Kunci cadangan 🔶 di mesin yang sama dengan datanya | 🔴 **terbuka** |
+| **P1-1** Kegagalan latar tidak berbunyi — `lib/alert.ts` dipanggil dari dua route saja | 🟠 **terbuka** |
 
-**Lima langkah berikutnya, berurutan.**
+Dan satu hal yang layak dicatat tentang **cara** temuan-temuan itu ditutup:
+**tiga resep di dokumen ini ternyata salah**, dan ketiganya dikoreksi di
+tempatnya alih-alih dihapus — P3-4 akan menyebabkan dua regresi senyap, P3-2
+sudah tertutup sebelum temuannya ditulis, dan P2-5 menyebut dua aturan padahal
+empat yang menanggung beban. Resep salah yang hilang tanpa jejak akan ditulis
+ulang orang berikutnya.
+
+**Langkah berikutnya, berurutan.**
 
 | # | Langkah | Usaha | Rujukan |
 |---|---|---|---|
-| 1 | **`.github/workflows/verify.yml` + jadikan required check** | **Rendah** | 0.4 / P0-3 |
-| 2 | Setel 3 env S3, jalankan cadangan, **buktikan** dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
-| 3 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
-| 4 | Sambungkan `alert()` ke cadangan, penjadwal, kesesuaian, kesehatan PT | Rendah | 0.3 / P1-1 |
-| 5 | Satukan dokumentasi penggelaran jadi satu jalur hidup | Rendah, **nol risiko** | 0.5 / P1-3 |
+| 1 | Setel 3 env S3, jalankan cadangan, **buktikan** dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
+| 2 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
+| 3 | Sambungkan `alert()` ke cadangan, penjadwal, kesesuaian, kesehatan PT | Rendah | 0.3 / P1-1 |
+| 4 | **Gelar** — dua hal menumpuk & belum pernah digelar: penamaan ulang service (`--remove-orphans`) dan migration platform 0018 (`db:migrate:all`) | Rendah | `PRODUCTION.md` §One-time |
+| 5 | Jawab dua keputusan pemilik di butir 2.2 | — | [dok 12 §6](./12-KLASIFIKASI-BUKU.md) |
 
-Keempat yang pertama adalah **pekerjaan sore hari** yang memasang gerbang
-otomatis dan menghapus satu-satunya risiko kehilangan data permanen di sistem
-ini. Kerjakan berurutan: nomor 1 lebih dulu justru supaya nomor 2–5 tidak bisa
-regresi diam-diam sesudahnya.
+Tiga yang pertama adalah **pekerjaan sore hari**, dan ketiganya berusaha rendah.
+Nomor 1 dan 2 harus dikerjakan **bersama**: yang pertama tanpa yang kedua
+menghasilkan cadangan yang **terasa** ada padahal tidak bisa dibuka.
 
-Dan jangan melewati langkah **"buktikan"** pada nomor 2 — doktrin repo ini
+Dan jangan melewati langkah **"buktikan"** pada nomor 1 — doktrin repo ini
 sendiri sudah menuliskan kenapa laporan skrip bukan bukti. Gerbangnya
 `lastSuccessAt != null` **dan** `prove-backup-restore` lulus, bukan "skripnya
 bilang sukses".

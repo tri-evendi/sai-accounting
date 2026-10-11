@@ -88,7 +88,7 @@ import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 import { APP_NAME, APP_VERSION } from "@/lib/constants";
 import { PLATFORM_STYLE } from "@/components/tenant/platform-tone";
 import { UserMenu } from "@/components/layout/user-menu";
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { Button } from "@/components/ui/button";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
@@ -237,8 +237,7 @@ function PanelMenu({
               color: token.colorTextLightSolid,
             }}
           >
-            <BrandMark size="sm" />
-            <span style={TRUNCATE}>{APP_NAME}</span>
+            <BrandLockup tone="onDark" />
           </Flex>
           {tampilkanTutup && (
             <Button

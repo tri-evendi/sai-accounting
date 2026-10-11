@@ -22,9 +22,8 @@
 
 import { ButtonLink } from "@/components/ui/button";
 import { Link } from "@/components/ui/app-link";
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { BINGKAI_DOKUMENTASI, LEBAR_BINGKAI } from "@/components/docs/docs-shell";
-import { APP_NAME } from "@/lib/constants";
 import { DOCS_ROOT } from "@/lib/docs";
 import type { TranslateFn } from "@/lib/i18n/client";
 
@@ -84,14 +83,18 @@ export function DocsPublicChrome({
       <header style={BILAH}>
         <div style={BILAH_ISI}>
           <Link href={DOCS_ROOT} style={MEREK}>
-            <BrandMark size="sm" />
-            <span>{APP_NAME}</span>
-            <span style={{ color: "var(--ant-color-text-tertiary)" }} aria-hidden="true">
-              ·
-            </span>
-            <span style={{ color: "var(--ant-color-text-secondary)", fontWeight: 400 }}>
-              {t("docs.title")}
-            </span>
+            <BrandLockup
+              suffix={
+                <>
+                  <span style={{ color: "var(--ant-color-text-tertiary)" }} aria-hidden="true">
+                    {" · "}
+                  </span>
+                  <span style={{ color: "var(--ant-color-text-secondary)", fontWeight: 400 }}>
+                    {t("docs.title")}
+                  </span>
+                </>
+              }
+            />
           </Link>
           <ButtonLink variant="secondary" href="/login">
             {t("docs.openApp")}

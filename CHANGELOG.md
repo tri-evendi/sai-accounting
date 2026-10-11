@@ -20,7 +20,7 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.9.0 — 2026-10-11 — belum digelar
+## 0.9.0 — 2026-10-11 (400698c)
 
 Lambang produk dirapikan dan dipakai di semua tempat — ikon tab, ikon layar depan, dan gambar pratinjau kini gambar yang sama dengan yang ada di dalam aplikasi.
 

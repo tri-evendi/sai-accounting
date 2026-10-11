@@ -75,6 +75,7 @@ export const RILIS: readonly Rilis[] = [
   {
     versi: "0.9.0",
     tanggal: "2026-10-11",
+    sha: "400698c",
     ringkas:
       "Lambang produk dirapikan dan dipakai di semua tempat \u2014 ikon tab, ikon layar depan, dan gambar pratinjau kini gambar yang sama dengan yang ada di dalam aplikasi.",
     butir: [

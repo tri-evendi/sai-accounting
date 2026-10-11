@@ -61,22 +61,14 @@
 import { signOut, useSession } from "next-auth/react";
 import { Flex, Layout, theme } from "antd";
 
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandLockup } from "@/components/ui/brand-lockup";
 import { UserMenu } from "@/components/layout/user-menu";
 import { PageLoader } from "@/components/ui/loading";
-import { APP_NAME } from "@/lib/constants";
-import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
+import { BORDER_TOKENS_DARK } from "@/lib/theme/antd-tokens";
 import { useT } from "@/lib/i18n/client";
 
 /** `max-w-5xl` — lebar isi wizard, sama untuk kepala dan badannya. */
 const MAX_WIDTH = 1024;
-
-const TRUNCATE: React.CSSProperties = {
-  display: "block",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
 
 export function SetupShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -115,27 +107,7 @@ export function SetupShell({ children }: { children: React.ReactNode }) {
           }}
         >
           <Flex align="center" gap={token.marginSM} style={{ minWidth: 0 }}>
-            <BrandMark size="sm" />
-            <span style={{ minWidth: 0 }}>
-              <span
-                style={{
-                  ...TRUNCATE,
-                  fontWeight: token.fontWeightStrong,
-                  color: token.colorTextLightSolid,
-                }}
-              >
-                {APP_NAME}
-              </span>
-              <span
-                style={{
-                  ...TRUNCATE,
-                  fontSize: token.fontSizeSM,
-                  color: NEUTRAL_TEXT_DARK.colorTextTertiary,
-                }}
-              >
-                {t("setup.shellSubtitle")}
-              </span>
-            </span>
+            <BrandLockup tone="onDark" subtitle={t("setup.shellSubtitle")} />
           </Flex>
 
           <UserMenu

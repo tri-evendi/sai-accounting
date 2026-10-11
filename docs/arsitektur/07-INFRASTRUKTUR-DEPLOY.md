@@ -477,12 +477,12 @@ cara menggelar, dan mereka tidak sepakat:
 | Berkas | Keadaan |
 |---|---|
 | `PRODUCTION.md` §Updates, §Rollback | **MUTAKHIR** — registry pull + compose up |
-| `PRODUCTION.md` §2 Install and build, §4 Start the server | **BASI** — `bun run setup:prod`, `start:prod`, PM2 |
-| `PRODUCTION.md` §5 Reverse proxy (nginx) | **BASI** — produksi memakai Traefik |
+| `PRODUCTION.md` §2, §4 | ✅ **DITANDAI WARISAN** di tempatnya (11 Okt 2026) |
+| `PRODUCTION.md` §5 (nginx) | ✅ **DITANDAI WARISAN** di tempatnya |
 | `PRODUCTION.md` §Legacy: PM2 | Ditandai warisan — **benar** |
-| `HOSTING.md`, `HOSTING-LOW-MEMORY.md`, `HOSTING-NO-NODE.md` | 🔶 **Tampak warisan** — belum ditandai |
-| `DOCKER.md` | ❓ Tumpang tindih dengan `PRODUCTION.md`; belum dipastikan mana yang menang |
-| `ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs` | Konfigurasi PM2 — **PM2 tidak dipakai** |
+| `HOSTING.md`, `HOSTING-LOW-MEMORY.md`, `HOSTING-NO-NODE.md` | ✅ **DITANDAI WARISAN** — dipertahankan karena `package-standalone.sh` + `ecosystem.config*.cjs` masih merujuknya |
+| `DOCKER.md` | ✅ Diberi penunjuk ke `PRODUCTION.md` §Updates sebagai jalur yang hidup |
+| `ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs` | PM2 tidak dipakai, **tetapi `package-standalone.sh` menyalinnya** — jadi dipertahankan, dijelaskan di `HOSTING*.md` |
 | `.github/workflows/build-standalone.yml` | 🔶 Alur bundel zip; tampak warisan di samping `publish-image.yml` |
 
 Bahayanya **konkret**: `PRODUCTION.md` §2 masih menyarankan

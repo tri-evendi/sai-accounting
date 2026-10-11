@@ -1,6 +1,24 @@
 # Production deployment — SAI Accounting
 
-> **Easier path:** see **[HOSTING.md](./HOSTING.md)** — full project on the server, `bun run setup:prod`, `bun run start:prod` (no standalone zip).
+> ## 👉 Deploying a new release? Go straight to [§Updates](#updates-new-release).
+>
+> That is the **only live deployment path**: images are built by GitHub Actions
+> and the server runs `docker compose pull` + `up -d`. **Never build on the
+> server** — see `AGENTS.md`.
+>
+> **Sections 1-7 below describe the FIRST install.** Of those, §2, §4 and §5 are
+> **legacy** (PM2 / `next start` / nginx) and are marked as such in place. They
+> are kept to explain `scripts/package-standalone.sh`, `ecosystem.config*.cjs`
+> and the pre-Docker installs, not because they are recommended.
+>
+> | I want to… | Go to |
+> |---|---|
+> | Ship a new release | [§Updates](#updates-new-release) |
+> | Roll back | [§Rollback](#rollback) |
+> | Deploy the service rename / operator split | [§One-time](#-one-time-the-service-rename--operator-split) |
+> | Set up backups | [§Automated backups](#automated-backups-issue-374) |
+> | Read the logs | [§Reading the logs](#reading-the-logs-issue-374) |
+> | Install on a brand-new box | §1 → §3 → §6 → §Updates |
 
 ## Prerequisites
 
@@ -30,6 +48,13 @@ Edit `.env`:
 
 ## 2. Install and build
 
+> ⚠️ **LEGACY — builds on the server.** Production runs on Docker Compose; see
+> [§Updates](#updates-new-release). This section is kept only to explain the
+> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
+> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
+> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
+> and two concurrent builds have produced an OOM (exit 137).
+
 ```bash
 bun run setup:prod
 ```
@@ -48,6 +73,13 @@ bun run create-admin -- --username admin --password 'YourSecurePassword12!' --na
 - Add more users from **Settings → Users** (manager role only).
 
 ## 4. Start the server
+
+> ⚠️ **LEGACY — PM2 / `next start`, not used.** Production runs on Docker Compose; see
+> [§Updates](#updates-new-release). This section is kept only to explain the
+> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
+> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
+> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
+> and two concurrent builds have produced an OOM (exit 137).
 
 ```bash
 bun run start:prod
@@ -73,6 +105,13 @@ pm2 save
 ```
 
 ## 5. Reverse proxy (nginx example)
+
+> ⚠️ **LEGACY — production is fronted by Traefik, configured via Docker labels.** Production runs on Docker Compose; see
+> [§Updates](#updates-new-release). This section is kept only to explain the
+> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
+> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
+> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
+> and two concurrent builds have produced an OOM (exit 137).
 
 ```nginx
 server {

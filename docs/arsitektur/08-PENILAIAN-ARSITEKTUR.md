@@ -304,7 +304,7 @@ medan di `/api/health` + panggilan `alert()`. Bisa dikerjakan bersama P1-1.
 
 ---
 
-### 🟠 P1-3 — Dokumentasi penggelaran saling bertentangan
+### ✅ P1-3 — Dokumentasi penggelaran saling bertentangan — **DITUTUP 11 Okt 2026**
 
 **Bukti.** Lima berkas menjelaskan cara menggelar, dan mereka tidak sepakat.
 `PRODUCTION.md` §2 menyarankan `bun run setup:prod` (yang menjalankan
@@ -335,6 +335,22 @@ atau tandai ketiga `HOSTING*.md`; putuskan nasib `build-standalone.yml`; dan
 perbaiki tiga klaim basi di `README.md` di atas.
 
 **Murah dan berdampak langsung** — tidak ada kode yang berubah.
+
+> ✅ **DITUTUP 11 Oktober 2026.** Yang dikerjakan: `PRODUCTION.md` mendapat
+> banner "pergi langsung ke §Updates" + tabel "saya mau apa → ke mana", dan §2,
+> §4, §5 ditandai **LEGACY di tempatnya** beserta alasan terukurnya (~19 menit,
+> iowait 58-92%, OOM pada dua build bersamaan). Ketiga `HOSTING*.md` mendapat
+> penanda warisan di kepalanya. `DOCKER.md` mendapat penunjuk ke jalur yang
+> hidup. `README.md` berhenti menyebut `HOSTING.md` sebagai "easier path".
+> `docs/README.md` lahir sebagai indeks tunggal — sebelumnya `docs/` tidak punya
+> indeks sama sekali. Dan satu PNG yatim 1,03 MB (tangkapan layar localhost,
+> nol rujukan) dihapus.
+>
+> `HOSTING*.md` dan `ecosystem.config*.cjs` **tidak dihapus**, dan itu keputusan
+> berdasar bukti: `scripts/package-standalone.sh` masih menyalin
+> `ecosystem.config.low-memory.cjs` dan merujuk `HOSTING-LOW-MEMORY.md`.
+> Menghapus dokumennya akan meninggalkan skrip yang tidak dijelaskan apa pun.
+> Keduanya ikut dicabut kalau kelak skrip itu dicabut.
 
 ---
 
@@ -588,7 +604,7 @@ per-permintaan **secara konstruksi**. Lihat
 | **P0-3** | **Nol CI — tak ada yang menjalankan 270 berkas tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
 | **P1-2** | Temuan kesesuaian hanya di stdout | Cacat data tak terlihat berbulan-bulan | Sedang | Rendah |
-| **P1-3** | Dokumen penggelaran bertentangan | Nasihat salah saat insiden | **Rendah** | **Nol** |
+| ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ **ditutup 11 Okt 2026** | — | — |
 | **P2-1** | Basis data uji di produksi | Cadangan & laporan tercemar; 1 DB tak terdaftar | Sedang | Sedang |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
 | **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |

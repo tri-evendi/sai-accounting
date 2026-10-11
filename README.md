@@ -6,6 +6,8 @@ Bookkeeping and accounting system for businesses in Indonesia — double-entry j
 
 ## Dokumentasi
 
+**Indeks lengkap: [`docs/README.md`](./docs/README.md).**
+
 **Arsitektur & peta layanan:** [`docs/arsitektur/`](./docs/arsitektur/) — potret
 keadaan yang berjalan (komponen, layanan, dependensi, API, aliran data,
 infrastruktur, penilaian, peta jalan). Mulai dari
@@ -52,7 +54,7 @@ alias/fungsi shell nvm — periksa dengan `env node -v`.
 cp .env.example .env
 # Edit DATABASE_URL and AUTH_SECRET
 
-**Server deploy:** see [HOSTING.md](./HOSTING.md) (simple VPS hosting).
+**Server deploy:** see [PRODUCTION.md](./PRODUCTION.md) §Updates — Docker Compose + image dari GHCR. (`HOSTING*.md` adalah jalur **warisan** pra-Docker.)
 
 bun run setup          # install, migrate, seed demo data, build
 bun run dev            # http://localhost:3000

@@ -100,12 +100,12 @@ pernah berhasil sekali pun**.
 | Yang harus diubah | Jumlah |
 |---|---|
 | `provider = "mysql"` di skema Prisma | **3** (perusahaan, kendali, platform) |
-| Berkas `migration.sql` tulisan tangan | **98** — **semuanya** memakai identifier backtick |
+| Berkas `migration.sql` tulisan tangan | **98** — **semuanya** memakai identifier backtick; **14** di antaranya memuat `INSERT`/`UPDATE` data sungguhan |
 | …di antaranya memakai `AUTO_INCREMENT` | **48** |
 | …di antaranya memakai `ENGINE=InnoDB` | **5** |
 | Titik raw SQL tulisan tangan | **25** |
 | Kueri `information_schema` | **7 tempat** — nama kolom & semantik PG berbeda |
-| Pemeriksaan SQL di `check-data-conformance` | **12** — derived table tanpa alias **gagal** di PG |
+| Pemeriksaan SQL di `check-data-conformance` | **12** — ✅ **ternyata PORTABEL apa adanya** (diverifikasi 11 Okt: derived table-nya BERALIAS `x`, `CONCAT`/`UNION ALL`/`NOT IN` semuanya ada di PG) |
 | `CREATE DATABASE … utf8mb4 COLLATE utf8mb4_unicode_ci` | provisioning + `create-company.ts` — sintaks beda total |
 | `DROP DATABASE` penghapusan tenant | 1 |
 | Trigger immutability slug | PG butuh function + trigger terpisah |
@@ -127,7 +127,12 @@ pernah berhasil sekali pun**.
 ### Apa yang PostgreSQL berikan di sini?
 
 Jujur: sangat sedikit. MariaDB 11 sudah punya CTE, window function, fungsi JSON,
-PITR lewat binlog, dan replikasi. Aplikasi ini memakai uang `Decimal(15,2)`
+PITR lewat binlog, dan replikasi.
+
+(Koreksi 11 Okt 2026: dua angka di tabel atas semula dilaporkan lebih buruk
+daripada kenyataannya — SQL kesesuaian ternyata portabel, dan migration berisi
+data ada 14, bukan 56. Biayanya **turun**, tetapi putusannya tidak berubah,
+karena yang menentukan bukan biayanya melainkan ketiadaan pembelinya.) Aplikasi ini memakai uang `Decimal(15,2)`
 tanpa kueri eksotis. **Tidak ada satu pun keluhan terukur di repo ini yang
 PostgreSQL selesaikan.**
 
@@ -139,6 +144,10 @@ anggaran rekayasa yang seharusnya menutup P0 cadangan.
 **Pemicu yang akan mengubah jawaban:** butuh fitur yang MariaDB tidak punya
 (JSONB terindeks, partial index, extension seperti PostGIS), atau menemukan
 batas MVCC MariaDB yang **terukur** di beban nyata.
+
+**Rencana pelaksanaannya — bila pemicu itu datang — ada di
+[dok 11](./11-RENCANA-POSTGRESQL.md).** Ia disusun atas permintaan pemilik;
+putusan di atas tetap "jangan sekarang", dan dok 11 menyebut gerbangnya.
 
 ## 3. Pemisahan container operator
 

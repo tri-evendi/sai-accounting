@@ -90,7 +90,7 @@ langsung dari shell — **periksa dulu** sebelum merencanakan.
 melaporkan dirinya. Kanal kedua layak dipertimbangkan nanti — tetapi **jangan
 jadikan prasyarat**. Satu kanal jauh lebih baik daripada nol.
 
-### 0.4 CI yang menjalankan gerbang → P0-3
+### 0.4 ✅ CI yang menjalankan gerbang → P0-3 — **SELESAI & TERBUKTI HIJAU**
 
 **Temuan terpenting yang lahir SESUDAH set dokumen ini pertama ditulis.** Tidak
 ada satu pun workflow yang berpemicu `pull_request`, tidak ada yang menjalankan
@@ -118,14 +118,24 @@ jobs:
       - run: bun run verify
 ```
 
-Lalu: **jadikan job `verify` required status check** pada `main` (dan sebaiknya
-`develop`) lewat Settings → Branches.
+`.github/workflows/verify.yml` sudah ada, dan **jalan pertamanya hijau** (PR
+#600, `conclusion: success` — install → `db:generate` → `verify`, semuanya
+lulus).
+
+> ⚠ **SATU LANGKAH MANUAL YANG BELUM DILAKUKAN:** jadikan job `verify` sebagai
+> **required status check** pada `main` (dan sebaiknya `develop`) lewat
+> **Settings → Branches**. Sampai itu dilakukan, workflow-nya berjalan tetapi
+> **tidak memblokir** merge — jadi gerbangnya informatif, belum menegakkan.
+>
+> Urutannya memang begitu dengan sengaja: menjadikannya wajib **sebelum** jalan
+> pertamanya terbukti hijau akan memblokir setiap merge dengan check yang belum
+> pernah berhasil. Sekarang ia sudah terbukti, jadi langkah itu aman.
 
 Dikerjakan **lebih dulu** dari 0.1–0.3 kalau bisa, karena ia yang mencegah
 ketiganya regresi diam-diam bulan depan. `bun run build` **tidak** ikut di CI
 PR — ia tetap tanggung jawab sesi utama di atas hasil gabungan (`AGENTS.md`).
 
-### 0.5 Rapikan dokumen penggelaran → P1-3
+### 0.5 ✅ Rapikan dokumen penggelaran → P1-3 — **SELESAI 11 Okt 2026**
 
 Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 
@@ -140,6 +150,24 @@ Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 - `README.md`: perbaiki tiga klaim basi — §Production (`setup:prod` membangun di
   server), §Security (jejak audit sudah pindah dari `data/audit/audit.jsonl` ke
   tabel), §Scripts (`db:migrate` tanpa peringatan multi-PT).
+
+**Yang SUDAH dikerjakan 11 Okt 2026:**
+
+- `PRODUCTION.md`: banner "pergi langsung ke §Updates" + tabel *"saya mau apa →
+  ke mana"*; §2, §4, §5 ditandai **LEGACY di tempatnya** beserta alasan
+  terukurnya.
+- `HOSTING.md`, `HOSTING-LOW-MEMORY.md`, `HOSTING-NO-NODE.md`: penanda warisan
+  di kepala masing-masing. **Tidak dihapus** — `scripts/package-standalone.sh`
+  masih menyalin `ecosystem.config.low-memory.cjs` dan merujuk
+  `HOSTING-LOW-MEMORY.md`.
+- `DOCKER.md`: penunjuk ke jalur yang hidup.
+- `README.md`: berhenti menyebut `HOSTING.md` sebagai *"easier path"*.
+- **`docs/README.md` lahir** — indeks tunggal untuk seluruh dokumentasi, plus
+  lima aturan pemeliharaan. Sebelumnya `docs/` tidak punya indeks sama sekali.
+- Satu PNG yatim 1,03 MB dihapus (tangkapan layar localhost, nol rujukan).
+
+**Yang MASIH terbuka di butir ini:** nasib `build-standalone.yml`, dan tiga
+klaim basi di `README.md` di atas (§Production/§Security/§Scripts).
 
 **Gerbang keluar Fase 0:** `/api/health` → `backup.status: "ok"` ·
 `prove-backup-restore` lulus · kunci tersimpan di luar mesin · satu kegagalan

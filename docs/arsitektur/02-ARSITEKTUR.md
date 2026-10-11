@@ -17,8 +17,8 @@
 | **Izin terpusat sebagai matriks** | `lib/authz.ts` + `authz-effective.ts` | Halaman & API pasangannya tidak bisa menyimpang diam-diam |
 | **Mesin posting terpusat** | `lib/posting/` | Setiap dokumen → jurnal lewat **satu** pintu; penjaga periode & persetujuan tak bisa dilewati dengan menambah route |
 | **Snapshot lintas-basis-data** | Status tenant & kuota disalin dari platform ke kendali | Jalur panas tidak boleh menyentuh basis data penagihan |
-| **Fungsi murni + penjaga tes** | 243 berkas tes | Aturan diuji sebagai fungsi, bukan lewat basis data |
-| **Pekerja loop-tidur** | `scheduler`, `conformance`, `backup` | Tanpa antrean, tanpa daemon cron — satu proses shell yang tidur tidak memakan apa pun |
+| **Fungsi murni + penjaga tes** | 270 berkas tes | Aturan diuji sebagai fungsi, bukan lewat basis data |
+| **Pekerja loop-tidur** | `job-scheduler`, `job-conformance`, `job-backup` | Tanpa antrean, tanpa daemon cron — satu proses shell yang tidur tidak memakan apa pun |
 
 ### Yang sengaja TIDAK dipakai
 
@@ -31,7 +31,7 @@ Penting dicatat, karena ketiadaannya sering disalahartikan sebagai kelalaian:
 | Layanan HTTP kedua | Konsol operator berbagi proses dengan aplikasi pelanggan; dipisahkan host, bukan proses |
 | Tailwind / `className` | Dicabut di #203 — gaya **sebaris** + token `var(--ant-…)`, dijaga ESLint `sai/warna-token-antd` |
 | Pemeriksaan tipe di `next build` | Dimatikan sengaja; `bun run typecheck` jadi satu-satunya gerbang tipe |
-| Penskalaan horizontal | Satu container `web`; `AsyncLocalStorage` & kolam LRU per-proses tetap benar, tapi cache tidak dibagikan |
+| Penskalaan horizontal | Satu container `app-customer`; `AsyncLocalStorage` & kolam LRU per-proses tetap benar, tapi cache tidak dibagikan |
 
 ## 2. Batas sistem
 

@@ -103,7 +103,16 @@ describe("skrip cadangan: kredensial tidak pernah terlihat", () => {
 });
 
 describe("layanan cadangan di compose (#374)", () => {
-  const service = compose.slice(compose.indexOf("\n  backup:"), compose.indexOf("\n  web:"));
+  // Nama layanan di-rename saat pemisahan bidang: `backup` → `job-backup`,
+  // dan `web` → `app-customer` + `app-operator`. Potongan diambil sampai
+  // layanan BERIKUTNYA, bukan sampai nama yang dipaku — supaya rename
+  // berikutnya tidak memecahkan tes ini lagi.
+  const service = (() => {
+    const mulai = compose.indexOf("\n  job-backup:");
+    const sisa = compose.slice(mulai + 1);
+    const habis = sisa.search(/\n {2}[a-z][a-z0-9-]*:$/m);
+    return habis > 0 ? sisa.slice(0, habis) : sisa;
+  })();
 
   it("ada, dan hidup lagi setelah restart mesin", () => {
     expect(service).toContain("restart: unless-stopped");

@@ -1,5 +1,15 @@
 # Running SAI LuckyHands with Docker (Traefik-fronted)
 
+> ⚠ **Jalur penggelaran yang HIDUP ada di [PRODUCTION.md](./PRODUCTION.md)
+> §Updates** — image dibangun di runner GitHub, lalu di server cukup
+> `docker compose pull` + `up -d`. Berkas INI menjelaskan susunan compose dan
+> boot PERTAMA; perintah `--build` di bawah membangun DI SERVER, yang untuk
+> rilis biasa sudah tidak dipakai (alasannya: AGENTS.md).
+>
+> Nama service berubah saat pemisahan bidang: `web` → **`app-customer`** +
+> **`app-operator`**, dan `scheduler`/`conformance`/`backup` →
+> **`job-*`**. Langkah sekali-jalan: PRODUCTION.md §One-time.
+
 Full stack: **MariaDB** + automatic **Prisma migrations** + the **Next.js** app,
 fronted by an **existing Traefik** instance (same convention as movin-partner /
 wedding-movin). Traefik terminates TLS and routes
@@ -39,7 +49,7 @@ docker compose up --build -d
 Startup order is automatic:
 1. `db` (MariaDB) starts and becomes healthy.
 2. `migrate` runs `prisma migrate deploy` once, then exits.
-3. `web` starts only after migrations succeed, and registers with Traefik.
+3. `app-customer` and `app-operator` start only after migrations succeed, and registers with Traefik.
 
 Traefik picks up the container via labels and serves it at
 `https://inventory.suburanugerahindonesia.com` (HTTP is redirected to HTTPS).
@@ -53,17 +63,17 @@ version onto a live instance, use:
 setsid nohup ./scripts/deploy.sh > /tmp/deploy.log 2>&1 &
 ```
 
-It builds `web` + `migrate` **while the old container keeps serving**, and stops
+It builds `app-customer` + `app-operator` + `migrate` **while the old container keeps serving**, and stops
 it only once a new image exists. Downtime is the swap (recreate + migrations),
 not the compile — measured at **18s**, against ~12–23 minutes for the
 build-with-production-down habit it replaces. A build that fails or is killed
-costs nothing, because `web` was never touched.
+costs nothing, because the app containers were never touched.
 
 Two reasons not to hand-roll it:
 
-- **The restart is guaranteed.** Once `web` is down, an EXIT trap brings it back
+- **The restart is guaranteed.** Once `app-customer` is down, an EXIT trap brings it back
   on any failure — bad migration, dead shell, hung image — and says so loudly if
-  it cannot. On 2026-08-03 a session stopped `web` to free RAM, started a build,
+  it cannot. On 2026-08-03 a session stopped the app container to free RAM, started a build,
   and ended a minute later; nothing restarted it and the app was down 14 hours.
   `restart: unless-stopped` will not rescue you, because a deliberate `stop`
   **is** the "unless" — Docker keeps it down, across reboots included.
@@ -71,7 +81,7 @@ Two reasons not to hand-roll it:
   agent session that dies must not be able to orphan the swap halfway.
 
 Migrations deliberately run **inside** the downtime window: the
-`service_completed_successfully` gate holds the new `web` until the schema is
+`service_completed_successfully` gate holds the new app containers until the schema is
 ready, and the old code must never serve against a schema it was not built for.
 
 ### Known limit on a small box
@@ -103,7 +113,7 @@ docker compose run --rm --entrypoint "bunx tsx scripts/create-admin.ts" migrate
 
 ```bash
 ./scripts/deploy.sh                 # ship a new version (see "Redeploying")
-docker compose logs -f web          # tail app logs
+docker compose logs -f app-customer # tail app logs
 docker compose ps                   # service status
 docker compose restart web          # restart just the app
 docker compose run --rm migrate     # re-run migrations manually
@@ -131,8 +141,8 @@ Named volumes survive `docker compose down`:
 
 ## Networks
 
-- `traefik` (external `traefik_default`) — ingress from Traefik to `web` only.
-- `internal` (bridge) — private link between `web`, `migrate`, and `db`. The
+- `traefik` (external `traefik_default`) — ingress from Traefik to `app-customer` and `app-operator` only.
+- `internal` (bridge) — private link between the app containers, the jobs, `migrate`, and `db`. The
   database is never exposed to Traefik or the host.
 
 ## Notes

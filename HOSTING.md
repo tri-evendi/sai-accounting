@@ -1,5 +1,18 @@
 # Simple server hosting (recommended)
 
+> ## ⚠️ WARISAN — BUKAN JALUR PENGGELARAN YANG HIDUP
+>
+> Berkas ini menjelaskan penggelaran **pra-Docker** (PM2 / `next start` / bundel
+> standalone). Produksi berjalan di **Docker Compose** sejak rilis multi-PT, dan
+> sejak 2026-10-04 image dibangun di **runner GitHub** lalu digelar dengan
+> `docker compose pull` + `up -d`.
+>
+> **Jalur yang hidup: [PRODUCTION.md](./PRODUCTION.md) §Updates.**
+>
+> Dipertahankan hanya untuk pemasangan lama dan untuk menjelaskan
+> `scripts/package-standalone.sh` + `ecosystem.config*.cjs`, yang masih ada.
+> Jangan ikuti langkah di bawah untuk server produksi yang sekarang.
+
 Use this when you have a **VPS or shared hosting with SSH** (cPanel, CyberPanel, etc.).  
 You deploy the **full project on the server** and run `next start` — no standalone zip, no `node --env-file`.
 

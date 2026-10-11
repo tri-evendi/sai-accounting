@@ -10,10 +10,10 @@ Daftarnya pendek, dan itu disengaja:
 |---|---|---|
 | **HTTPS** | Semua lalu lintas masuk | Traefik terminasi TLS; HTTP → 301 |
 | **HTTP** | Traefik → `web:3000` | Di dalam jaringan Docker `traefik_default` |
-| **MySQL** | `web`/`scheduler`/`conformance`/`backup` → `db:3306` | Lewat `@prisma/adapter-mariadb` |
-| **SMTP** | `web`/`scheduler` → penyedia surel | `nodemailer` |
-| **HTTPS keluar** | `web` → Midtrans Core API | **Satu-satunya** panggilan HTTP keluar di seluruh aplikasi |
-| **S3 (HTTPS)** | `backup` → penyimpanan objek | `awscli` |
+| **MySQL** | `app-customer`/`app-operator`/`job-scheduler`/`job-conformance`/`job-backup` → `db:3306` | Lewat `@prisma/adapter-mariadb` |
+| **SMTP** | `app-customer`/`job-scheduler` → penyedia surel | `nodemailer` |
+| **HTTPS keluar** | `app-customer` → Midtrans Core API | **Satu-satunya** panggilan HTTP keluar di seluruh aplikasi |
+| **S3 (HTTPS)** | `job-backup` → penyimpanan objek | `awscli` |
 
 **Tidak ada** gRPC, GraphQL, WebSocket, Server-Sent Events, atau antrean pesan.
 Komunikasi antar-"layanan" terjadi **lewat basis data bersama**, bukan lewat
@@ -339,16 +339,16 @@ sequenceDiagram
     W->>CDB: baca notifikasi
     W-->>U: halaman
 
-    Note over W,PDB: `scheduler` dan `web` tidak pernah<br/>berbicara langsung — hanya lewat tabel
+    Note over W,PDB: `job-scheduler` dan `app-customer` tidak pernah<br/>berbicara langsung — hanya lewat tabel
 ```
 
 | Jalur | Mekanisme | Jejaknya di |
 |---|---|---|
-| `scheduler` → `web` | Tabel (`notifications`, `platform_invoices`, `scheduler_runs`) | `/operator/scheduler`, `/api/health` |
-| `conformance` → manusia | **Hanya stdout** | `docker compose logs conformance` |
-| `backup` → `web` | Tabel `backup_runs` (lewat `record-backup-run.ts`) | `/api/health` → `backup` |
+| `job-scheduler` → `app-customer` | Tabel (`notifications`, `platform_invoices`, `scheduler_runs`) | `/operator/scheduler`, `/api/health` |
+| `job-conformance` → manusia | **Hanya stdout** | `docker compose logs job-conformance` |
+| `job-backup` → `app-customer` | Tabel `backup_runs` (lewat `record-backup-run.ts`) | `/api/health` → `backup` |
 | `migrate` → semua | `depends_on: service_completed_successfully` | Keluaran container |
-| Midtrans → `web` | Webhook HTTP | `payments`, `platform_invoices` |
+| Midtrans → `app-customer` | Webhook HTTP | `payments`, `platform_invoices` |
 
 Konsekuensi yang harus diterima: **tidak ada *retry* per-pekerjaan, tidak ada
 *dead-letter*, tidak ada *backpressure*.** Yang menggantikannya adalah
@@ -356,7 +356,7 @@ Konsekuensi yang harus diterima: **tidak ada *retry* per-pekerjaan, tidak ada
 putaran berikutnya menyembuhkan yang tertinggal. Dinilai di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-Dan satu asimetri yang nyata: `conformance` adalah **satu-satunya** layanan
+Dan satu asimetri yang nyata: `job-conformance` adalah **satu-satunya** layanan
 yang temuannya **tidak** meninggalkan jejak yang bisa ditanyai dari luar.
 
 ## 7. Header keamanan

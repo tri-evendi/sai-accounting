@@ -283,7 +283,7 @@ langkah 3.
 > docker compose run --rm migrate bun run <skrip>
 > ```
 >
-> Service `migrate` memakai image yang sama dengan `web`, `env_file: .env` yang
+> Service `migrate` memakai image yang sama dengan `app-customer`, `env_file: .env` yang
 > sama, dan berdiri di jaringan yang sama — jadi yang dijalankan benar-benar
 > kode dan konfigurasi yang akan naik. Image-nya harus sudah dibangun:
 > `docker compose build`.
@@ -357,7 +357,7 @@ basis data yang ditunjuk `DATABASE_URL`, jadi menaikkan container sebelum
 langkah 2 akan menghapus seluruh akun beserta hash kata sandinya. `db:migrate:all`
 hanya menyentuh perusahaan yang **sudah terdaftar**; registry yang masih kosong
 membuatnya berhenti dengan kode bukan-nol dan menyebutkan perintah yang harus
-dijalankan lebih dulu, sehingga `web` pun tidak ikut naik.
+dijalankan lebih dulu, sehingga `app-customer` pun tidak ikut naik.
 
 ### Bila pemasangannya masih di bawah 0032, PERIKSA `memberships.role`
 

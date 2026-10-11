@@ -1,6 +1,24 @@
 # Production deployment — SAI Accounting
 
-> **Easier path:** see **[HOSTING.md](./HOSTING.md)** — full project on the server, `bun run setup:prod`, `bun run start:prod` (no standalone zip).
+> ## 👉 Deploying a new release? Go straight to [§Updates](#updates-new-release).
+>
+> That is the **only live deployment path**: images are built by GitHub Actions
+> and the server runs `docker compose pull` + `up -d`. **Never build on the
+> server** — see `AGENTS.md`.
+>
+> **Sections 1-7 below describe the FIRST install.** Of those, §2, §4 and §5 are
+> **legacy** (PM2 / `next start` / nginx) and are marked as such in place. They
+> are kept to explain `scripts/package-standalone.sh`, `ecosystem.config*.cjs`
+> and the pre-Docker installs, not because they are recommended.
+>
+> | I want to… | Go to |
+> |---|---|
+> | Ship a new release | [§Updates](#updates-new-release) |
+> | Roll back | [§Rollback](#rollback) |
+> | Deploy the service rename / operator split | [§One-time](#-one-time-the-service-rename--operator-split) |
+> | Set up backups | [§Automated backups](#automated-backups-issue-374) |
+> | Read the logs | [§Reading the logs](#reading-the-logs-issue-374) |
+> | Install on a brand-new box | §1 → §3 → §6 → §Updates |
 
 ## Prerequisites
 
@@ -30,6 +48,13 @@ Edit `.env`:
 
 ## 2. Install and build
 
+> ⚠️ **LEGACY — builds on the server.** Production runs on Docker Compose; see
+> [§Updates](#updates-new-release). This section is kept only to explain the
+> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
+> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
+> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
+> and two concurrent builds have produced an OOM (exit 137).
+
 ```bash
 bun run setup:prod
 ```
@@ -48,6 +73,13 @@ bun run create-admin -- --username admin --password 'YourSecurePassword12!' --na
 - Add more users from **Settings → Users** (manager role only).
 
 ## 4. Start the server
+
+> ⚠️ **LEGACY — PM2 / `next start`, not used.** Production runs on Docker Compose; see
+> [§Updates](#updates-new-release). This section is kept only to explain the
+> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
+> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
+> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
+> and two concurrent builds have produced an OOM (exit 137).
 
 ```bash
 bun run start:prod
@@ -73,6 +105,13 @@ pm2 save
 ```
 
 ## 5. Reverse proxy (nginx example)
+
+> ⚠️ **LEGACY — production is fronted by Traefik, configured via Docker labels.** Production runs on Docker Compose; see
+> [§Updates](#updates-new-release). This section is kept only to explain the
+> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
+> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
+> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
+> and two concurrent builds have produced an OOM (exit 137).
 
 ```nginx
 server {
@@ -119,8 +158,8 @@ That is deliberate: an unencrypted backup, or one that never leaves this
 machine, only looks like a backup. See `.env.docker.example` for every variable.
 
 ```bash
-docker compose run --rm backup sh scripts/backup.sh --dry-run   # print, write nothing
-docker compose run --rm backup bun run prove-backup-restore     # prove the newest one opens
+docker compose run --rm job-backup sh scripts/backup.sh --dry-run   # print, write nothing
+docker compose run --rm job-backup bun run prove-backup-restore     # prove the newest one opens
 ```
 
 > ⚠ **Losing `BACKUP_ENCRYPTION_KEY` means losing every backup, permanently.**
@@ -179,7 +218,7 @@ Backup health is deliberately **not** on it. Backups are operator recovery
 posture, not a service the reader consumes; "backups failing" published to the
 anonymous internet gives a customer no decision they can act on, and gives
 someone else one they can. The on-duty answer lives in `/api/health`, in
-`backup_runs`, and in `docker compose logs backup`.
+`backup_runs`, and in `docker compose logs job-backup`.
 
 > ⚠ Fixed on 2026-09-05, same issue: `/api/health` is in `isPublicPath` (Docker
 > and Traefik call it without credentials), so everything in it is world
@@ -189,7 +228,7 @@ someone else one they can. The on-duty answer lives in `/api/health`, in
 > The field is now stripped; `backup.status` stays, because removing that would
 > restore exactly the silence issue #374 exists to end.
 
-To announce a maintenance window, set both halves in `.env` and restart `web`:
+To announce a maintenance window, set both halves in `.env` and restart `app-customer`:
 
 ```bash
 MAINTENANCE_FROM=2026-09-14T22:00:00+07:00
@@ -215,6 +254,70 @@ typed it. The sentence comes from the dictionary; only the dates come from here.
 - [ ] File upload works (test a small PDF)
 - [ ] Audit log appears in Settings (manager account)
 
+## ⚠ One-time: the service rename + operator split
+
+The compose services were renamed and the app was split into two containers.
+**The first deploy after this change needs one extra flag, and one check.**
+
+| Old service | Old container | New service | New container |
+|---|---|---|---|
+| `web` | `sai-web` | **`app-customer`** | `sai-app-customer` |
+| — | — | **`app-operator`** (new) | `sai-app-operator` |
+| `scheduler` | `sai-scheduler` | **`job-scheduler`** | `sai-job-scheduler` |
+| `conformance` | `sai-conformance` | **`job-conformance`** | `sai-job-conformance` |
+| `backup` | `sai-backup` | **`job-backup`** | `sai-job-backup` |
+| `migrate` | *(unnamed)* | `migrate` | `sai-migrate` |
+| `db` | `sai-db` | `db` | `sai-db` *(unchanged)* |
+
+**Volumes are deliberately unchanged** — `db_data`, `documents`, `audit`. Renaming
+a volume would orphan the data behind it, so none were touched. Verify before and
+after:
+
+```bash
+docker volume ls | grep sai-accounting   # expect db_data, documents, audit
+```
+
+**The renamed services leave the old containers behind as orphans.** Compose
+tracks containers by service name, so `sai-web`, `sai-scheduler`,
+`sai-conformance` and `sai-backup` are no longer claimed by any service — and an
+orphaned `sai-web` keeps running and keeps answering Traefik. Remove them in the
+same command:
+
+```bash
+git pull
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup
+docker compose run --rm migrate bun run db:migrate   # ONLY if there are new migrations
+docker compose up -d --remove-orphans                # ← --remove-orphans is REQUIRED here, once
+```
+
+Then confirm both planes answer, and that the split actually holds:
+
+```bash
+docker compose ps                        # expect sai-app-customer AND sai-app-operator
+docker ps -a | grep -E 'sai-web|sai-scheduler|sai-conformance|sai-backup'   # expect EMPTY
+
+# customer host serves the app, and 404s the console
+curl -sS -o /dev/null -w '%{http_code}\n' https://$APP_DOMAIN/
+curl -sS -o /dev/null -w '%{http_code}\n' https://$APP_DOMAIN/operator        # expect 404
+
+# operator host serves the console, and 404s customer routes
+curl -sS -o /dev/null -w '%{http_code}\n' https://$OPERATOR_DOMAIN/operator/login
+curl -sS -o /dev/null -w '%{http_code}\n' https://$OPERATOR_DOMAIN/login       # expect 404
+```
+
+The last two lines are the ones worth running: they prove the host-plane
+separation survived the split rather than assuming it did.
+
+**Memory.** The second app container adds roughly the footprint of the first
+(measured 57.6 MiB for `sai-web` on 2026-10-11, against ~600-720 MB available).
+Check headroom before the swap: `free -m`.
+
+**Rollback.** Re-pin the tag on both app containers:
+
+```bash
+SAI_TAG=sha-<previous> docker compose up -d --no-deps app-customer app-operator
+```
+
 ## Updates (new release)
 
 Images are built by GitHub Actions (`.github/workflows/publish-image.yml`) on
@@ -226,9 +329,9 @@ have produced an OOM (exit 137) before now.
 
 ```bash
 git pull                                  # compose file + migrations only
-docker compose pull web migrate scheduler conformance
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance
 docker compose run --rm migrate bun run db:migrate   # ONLY if there are new migrations
-docker compose up -d --no-deps web scheduler conformance
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance
 ```
 
 **Order matters when a release carries migrations:** pull, then migrate, then
@@ -247,14 +350,14 @@ Every push tags `sha-<short>` and the version number alongside `latest`, so each
 release keeps its own anchor. No pre-build tagging ritual is needed any more.
 
 ```bash
-SAI_TAG=sha-573d9cf docker compose up -d --no-deps web
+SAI_TAG=sha-573d9cf docker compose up -d --no-deps app-customer app-operator
 ```
 
 `SAI_IMAGE` overrides the registry prefix, which also makes the legacy local
 images reachable - the suffixes match the old naming exactly:
 
 ```bash
-SAI_IMAGE=sai-luckyhands SAI_TAG=rollback-12ddc59 docker compose up -d --no-deps web
+SAI_IMAGE=sai-luckyhands SAI_TAG=rollback-12ddc59 docker compose up -d --no-deps app-customer app-operator
 ```
 
 Put both in `.env` to make a pin survive across commands.
@@ -325,10 +428,10 @@ aggregated without a dashboard:
 
 ```bash
 # what is failing, and how often
-docker compose logs web | grep '"level":"error"' | jq -r .event | sort | uniq -c | sort -rn
+docker compose logs app-customer | grep '"level":"error"' | jq -r .event | sort | uniq -c | sort -rn
 
 # everything about one event
-docker compose logs web | grep '"event":"register.verification_mail_failed"' | jq .
+docker compose logs app-customer | grep '"event":"register.verification_mail_failed"' | jq .
 ```
 
 Set `PLATFORM_ALERT_EMAIL` and those same errors also knock on the door —

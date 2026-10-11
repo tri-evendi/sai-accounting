@@ -37,6 +37,7 @@ services:
       context: .
       target: migrator
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
+    container_name: sai-migrate
     env_file: .env
     restart: "no"
     depends_on:
@@ -73,12 +74,12 @@ services:
   # Tidur 3600 detik, BUKAN cron di dalam container: satu proses shell yang
   # tidur tidak memakan apa pun, dan menambah daemon cron ke image berarti satu
   # hal lagi yang bisa mati diam-diam di kotak yang sudah padat.
-  scheduler:
+  job-scheduler:
     build:
       context: .
       target: migrator
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
-    container_name: sai-scheduler
+    container_name: sai-job-scheduler
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -162,7 +163,7 @@ services:
   # perbaikan tangan — bukan dari lalu lintas harian. Memeriksanya tiap jam
   # hanya memindahkan beban tanpa menemukan apa pun lebih cepat.
   #
-  # LAYANAN SENDIRI, bukan disisipkan ke `scheduler`: cadensinya berbeda, dan
+  # LAYANAN SENDIRI, bukan disisipkan ke `job-scheduler`: cadensinya berbeda, dan
   # yang lebih penting — kegagalan penagihan dan temuan kesesuaian data adalah
   # dua kabar berbeda yang tidak boleh bercampur di satu aliran log.
   #
@@ -171,17 +172,17 @@ services:
   # penjaga itu setiap temuan akan membuat container mati lalu dihidupkan ulang
   # tanpa henti — temuan berubah jadi crash-loop.
   #
-  # Membacanya: `docker compose logs conformance --tail 60`. Putaran pertama
+  # Membacanya: `docker compose logs job-conformance --tail 60`. Putaran pertama
   # jalan SAAT layanan naik, bukan tujuh hari kemudian, sehingga rilis yang
   # merusak data ketahuan di hari yang sama.
   #
   # Ia HANYA MEMBACA — dijaga `tests/check-data-conformance.test.ts`.
-  conformance:
+  job-conformance:
     build:
       context: .
       target: migrator
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
-    container_name: sai-conformance
+    container_name: sai-job-conformance
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -227,12 +228,12 @@ services:
   # pekerjaan berat di kotak ini, dan RPO satu hari adalah janji yang jujur untuk
   # skala sekarang. Menaikkannya berarti menaikkan ongkosnya juga — putuskan
   # sadar-sadar, jangan diam-diam.
-  backup:
+  job-backup:
     build:
       context: .
       target: backup
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-backup:${SAI_TAG:-latest}
-    container_name: sai-backup
+    container_name: sai-job-backup
     restart: unless-stopped
     env_file: .env
     depends_on:
@@ -243,7 +244,7 @@ services:
       - audit:/app/data/audit:ro
     networks:
       - internal
-    # `|| true` — alasan yang sama dengan layanan `scheduler`: satu cadangan
+    # `|| true` — alasan yang sama dengan layanan `job-scheduler`: satu cadangan
     # gagal tidak boleh mematikan seluruh jadwal cadangan berikutnya. Yang
     # gagal berbunyi di log; yang mati diam-diam tidak berbunyi sama sekali.
     command:
@@ -263,12 +264,45 @@ services:
           sleep 86400
         done
 
-  web:
+  # ══ DUA BIDANG, DUA CONTAINER, SATU IMAGE ═══════════════════════════════════
+  #
+  # Sampai pemisahan ini, `web` adalah SATU container yang melayani ketujuh
+  # permukaan sekaligus — pemasaran, autentikasi, panel tenant, buku besar,
+  # dokumentasi, wisaya, DAN konsol operator. Yang memisahkan bidang operator
+  # hanyalah pemeriksaan HOST di dalam aplikasi (`lib/operator/plane.ts`).
+  #
+  # Pemeriksaan itu TETAP menjadi batas keamanannya dan tidak berubah sedikit
+  # pun. Yang ditambahkan di sini adalah batas KEDUA yang berbeda jenis: batas
+  # PROSES. Kebocoran memori, crash, atau OOM di permukaan pelanggan tidak lagi
+  # menjatuhkan konsol operator, dan sebaliknya; log keduanya terpisah; dan
+  # keduanya bisa di-restart sendiri-sendiri.
+  #
+  # IMAGE-nya SAMA. Tidak ada image baru, tidak ada build tambahan, dan tidak
+  # satu baris kode pun berubah — `decideOperatorRouting` sudah memutuskan
+  # bidang murni dari env + Host header, jadi yang membedakan kedua container
+  # hanyalah `OPERATOR_HOST` dan label Traefik-nya.
+  #
+  # ⚠ YANG PEMISAHAN INI TIDAK BERIKAN, supaya tidak ada yang keliru
+  # mengandalkannya: image operator TETAP MEMUAT SELURUH KODE PELANGGAN. Grup
+  # rute Next.js tidak bisa dieksklusi saat build, jadi ini isolasi PROSES,
+  # bukan eliminasi kode. Satu kerentanan di dependensi tetap ada di keduanya.
+  #
+  # ⚠ NAMA SERVICE TRAEFIK HARUS BERBEDA (`sai-app` vs `sai-ops`). Kalau
+  # keduanya memakai nama service yang sama, Traefik menganggapnya SATU service
+  # dengan dua backend lalu menyeimbangkan beban di antaranya — dan permintaan
+  # operator bisa mendarat di container pelanggan. Itu membatalkan seluruh
+  # alasan pemisahan ini ada, tanpa satu pun galat.
+
+  # ── BIDANG PELANGGAN ────────────────────────────────────────────────────────
+  # Enam grup rute: (marketing), (auth), (tenant)/(panel), (dashboard), (setup),
+  # (docs). Inilah container yang melayani pembukuan, jadi ia yang memegang
+  # volume `documents`.
+  app-customer:
     build:
       context: .
       target: runner
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}:${SAI_TAG:-latest}
-    container_name: sai-web
+    container_name: sai-app-customer
     restart: unless-stopped
     expose:
       - "3000"
@@ -276,6 +310,18 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      # ⚠ DIKOSONGKAN DENGAN SENGAJA — ini penjaga, bukan kelalaian.
+      #
+      # `environment:` menimpa `env_file:` di Compose, jadi walau `.env` memuat
+      # OPERATOR_HOST (dan ia HARUS memuatnya, untuk container di bawah),
+      # container INI menerimanya kosong. `configuredOperatorHost()` lalu
+      # menjawab null, dan `decideOperatorRouting` menjawab `blocked` untuk
+      # setiap /operator — 404.
+      #
+      # Artinya konsol operator tidak terjangkau di sini BAHKAN BILA seseorang
+      # berhasil mengirim Host operator langsung ke container ini, melewati
+      # Traefik. Itu lapis yang tidak dimiliki susunan satu-container.
+      OPERATOR_HOST: ""
     env_file: .env
     depends_on:
       db:
@@ -311,15 +357,15 @@ services:
       # Attach routing to the shared Traefik network (not `internal`).
       - "traefik.docker.network=traefik_default"
       # HTTP -> HTTPS redirect
-      - "traefik.http.routers.sai.entrypoints=web"
-      - "traefik.http.routers.sai.rule=Host(`${APP_DOMAIN:-saiaccounting.id}`)"
-      - "traefik.http.routers.sai.middlewares=sai-https"
+      - "traefik.http.routers.sai-app.entrypoints=web"
+      - "traefik.http.routers.sai-app.rule=Host(`${APP_DOMAIN:-saiaccounting.id}`)"
+      - "traefik.http.routers.sai-app.middlewares=sai-https"
       - "traefik.http.middlewares.sai-https.redirectscheme.scheme=https"
       # HTTPS router with the existing Let's Encrypt resolver
-      - "traefik.http.routers.sai-secure.entrypoints=websecure"
-      - "traefik.http.routers.sai-secure.rule=Host(`${APP_DOMAIN:-saiaccounting.id}`)"
-      - "traefik.http.routers.sai-secure.tls=true"
-      - "traefik.http.routers.sai-secure.tls.certresolver=le"
+      - "traefik.http.routers.sai-app-secure.entrypoints=websecure"
+      - "traefik.http.routers.sai-app-secure.rule=Host(`${APP_DOMAIN:-saiaccounting.id}`)"
+      - "traefik.http.routers.sai-app-secure.tls=true"
+      - "traefik.http.routers.sai-app-secure.tls.certresolver=le"
       - "traefik.http.routers.sai-www.entrypoints=web"
       - "traefik.http.routers.sai-www.rule=Host(`www.${APP_DOMAIN:-saiaccounting.id}`)"
       - "traefik.http.routers.sai-www.middlewares=sai-www-apex"
@@ -331,31 +377,100 @@ services:
       - "traefik.http.middlewares.sai-www-apex.redirectregex.regex=^https?://www\\.([^/]+)(.*)"
       - "traefik.http.middlewares.sai-www-apex.redirectregex.replacement=https://$${1}$${2}"
       - "traefik.http.middlewares.sai-www-apex.redirectregex.permanent=true"
-      # ── Bidang OPERATOR (issue #154) — HOSTNAME SENDIRI ────────────────────
-      # Container-nya sama; yang memisahkan adalah HOST. Cookie berlingkup host,
-      # jadi sesi pelanggan yang bocor tidak pernah bisa menjangkau konsol
-      # operator, dan sebaliknya — itulah seluruh alasan pemisahan ini ada, dan
-      # kenapa konsol ini TIDAK boleh menumpang di domain aplikasi.
-      # Penjaga aplikasi menegakkan hal yang sama dari sisi kode: di host
-      # operator setiap rute pelanggan 404, di host pelanggan setiap /operator
-      # 404. Tanpa OPERATOR_HOST di .env, /operator 404 di MANA PUN.
+      # Which container port Traefik forwards to
+      - "traefik.http.services.sai-app.loadbalancer.server.port=3000"
+      # Traefik-side health probe
+      - "traefik.http.services.sai-app.loadbalancer.healthcheck.path=/api/health"
+      - "traefik.http.services.sai-app.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.sai-app.loadbalancer.healthcheck.timeout=5s"
+
+  # ── BIDANG OPERATOR (issue #154) — HOSTNAME SENDIRI ─────────────────────────
+  # Container-nya kini TERPISAH; yang memisahkan BIDANG-nya tetap HOST. Cookie
+  # berlingkup host, jadi sesi pelanggan yang bocor tidak pernah bisa menjangkau
+  # konsol operator, dan sebaliknya — itulah seluruh alasan pemisahan ini ada,
+  # dan kenapa konsol ini TIDAK boleh menumpang di domain aplikasi.
+  # Penjaga aplikasi menegakkan hal yang sama dari sisi kode: di host operator
+  # setiap rute pelanggan 404, di host pelanggan setiap /operator 404. Tanpa
+  # OPERATOR_HOST di .env, /operator 404 di MANA PUN.
+  #
+  # ⚠️  MENAMBAH PROXY DI DEPAN TRAEFIK? BACA INI DULU (issue #162).
+  # Daftar IP operator (OPERATOR_IP_ALLOWLIST) membandingkan alamat klien
+  # yang dibaca dari `x-forwarded-for`. Aplikasi mengambil entri ke-N dari
+  # KANAN, dengan N = OPERATOR_TRUSTED_PROXY_HOPS (bawaan 1 = Traefik saja,
+  # yaitu susunan sekarang). Entri paling kanan adalah satu-satunya yang
+  # ditulis Traefik sendiri; yang di kirinya bisa saja diketik klien.
+  #
+  # Menaruh Cloudflare, CDN, atau load-balancer kedua DI DEPAN Traefik
+  # menambah satu hop: setel OPERATOR_TRUSTED_PROXY_HOPS=2 di .env pada
+  # perubahan yang SAMA. Kalau lupa, yang terbaca adalah alamat CDN — dan
+  # seluruh dunia yang lewat CDN itu tampak sebagai satu IP.
+  #
+  # Sebaliknya, JANGAN menurunkan angkanya di bawah jumlah proxy yang
+  # sebenarnya: setiap hop yang tidak dihitung adalah satu entri kiriman
+  # klien yang ikut dipercaya. Rantai yang lebih pendek dari angka ini
+  # ditolak (gagal-tertutup), bukan ditebak.
+  app-operator:
+    build:
+      context: .
+      target: runner
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}:${SAI_TAG:-latest}
+    container_name: sai-app-operator
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    # `OPERATOR_HOST` datang dari `.env` apa adanya — TIDAK ditimpa di sini.
+    # Tanpa nilainya, `decideOperatorRouting` menjawab `blocked` untuk setiap
+    # /operator dan container ini tidak melayani apa pun yang berguna. Itu
+    # gagal-tertutup: konsol yang salah konfigurasi menjadi 404, bukan terbuka.
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # Dihubungi lewat 127.0.0.1, yaitu host yang BUKAN OPERATOR_HOST. Di sana
+      # `decideOperatorRouting` menjawab `customer`, lalu `/api/health` lolos
+      # sebagai jalur publik — jadi probe ini tetap 200 dan tidak menuntut
+      # kelonggaran khusus di penjaga.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    volumes:
+      # HANYA `audit` — dan itu hasil pemeriksaan, bukan dugaan.
       #
-      # ⚠️  MENAMBAH PROXY DI DEPAN TRAEFIK? BACA INI DULU (issue #162).
-      # Daftar IP operator (OPERATOR_IP_ALLOWLIST) membandingkan alamat klien
-      # yang dibaca dari `x-forwarded-for`. Aplikasi mengambil entri ke-N dari
-      # KANAN, dengan N = OPERATOR_TRUSTED_PROXY_HOPS (bawaan 1 = Traefik saja,
-      # yaitu susunan sekarang). Entri paling kanan adalah satu-satunya yang
-      # ditulis Traefik sendiri; yang di kirinya bisa saja diketik klien.
+      # Bidang operator menulis `data/audit/operators/audit.jsonl`
+      # (`lib/operator/audit.ts`, lewat `OPERATOR_AUDIT_DIR`), jadi volume
+      # `audit` memang dibutuhkan. Ia TIDAK PERNAH menyentuh `data/documents`
+      # — diperiksa di seluruh `app/(app)/(operator)` dan `lib/operator/`
+      # saat pemisahan ini dibuat.
       #
-      # Menaruh Cloudflare, CDN, atau load-balancer kedua DI DEPAN Traefik
-      # menambah satu hop: setel OPERATOR_TRUSTED_PROXY_HOPS=2 di .env pada
-      # perubahan yang SAMA. Kalau lupa, yang terbaca adalah alamat CDN — dan
-      # seluruh dunia yang lewat CDN itu tampak sebagai satu IP.
-      #
-      # Sebaliknya, JANGAN menurunkan angkanya di bawah jumlah proxy yang
-      # sebenarnya: setiap hop yang tidak dihitung adalah satu entri kiriman
-      # klien yang ikut dipercaya. Rantai yang lebih pendek dari angka ini
-      # ditolak (gagal-tertutup), bukan ditebak.
+      # Tidak memasang volume yang tidak dibutuhkan adalah pengurangan HAK,
+      # bukan penghematan: berkas dokumen setiap pelanggan kini berada di luar
+      # jangkauan proses konsol operator.
+      - audit:/app/data/audit
+    networks:
+      - traefik
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_default"
+      # ⚠ TIDAK ADA router untuk APP_DOMAIN di sini — dan itu disengaja.
+      # Container ini hanya boleh dijangkau lewat OPERATOR_DOMAIN. Menambahkan
+      # router APP_DOMAIN akan membuatnya ikut melayani rute pelanggan, yang
+      # membatalkan pemisahan ini.
       - "traefik.http.routers.sai-ops.entrypoints=web"
       - "traefik.http.routers.sai-ops.rule=Host(`${OPERATOR_DOMAIN:-ops.saiaccounting.id}`)"
       - "traefik.http.routers.sai-ops.middlewares=sai-https"
@@ -363,13 +478,11 @@ services:
       - "traefik.http.routers.sai-ops-secure.rule=Host(`${OPERATOR_DOMAIN:-ops.saiaccounting.id}`)"
       - "traefik.http.routers.sai-ops-secure.tls=true"
       - "traefik.http.routers.sai-ops-secure.tls.certresolver=le"
-      # Which container port Traefik forwards to
-      - "traefik.http.services.sai.loadbalancer.server.port=3000"
-      # Traefik-side health probe
-      - "traefik.http.services.sai.loadbalancer.healthcheck.path=/api/health"
-      - "traefik.http.services.sai.loadbalancer.healthcheck.interval=30s"
-      - "traefik.http.services.sai.loadbalancer.healthcheck.timeout=5s"
-
+      # Nama service SENDIRI — lihat peringatan di kepala blok ini.
+      - "traefik.http.services.sai-ops.loadbalancer.server.port=3000"
+      - "traefik.http.services.sai-ops.loadbalancer.healthcheck.path=/api/health"
+      - "traefik.http.services.sai-ops.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.sai-ops.loadbalancer.healthcheck.timeout=5s"
 networks:
   traefik:
     name: traefik_default

@@ -195,12 +195,18 @@ pemisahan bidang masih tegak) ada di `PRODUCTION.md` §One-time.
 sebaiknya dilatih di luar produksi lebih dulu. Di sinilah ketiadaan staging
 (§Keputusan terbuka #8) mulai berbiaya nyata.
 
-### 1.2 Pindahkan pemantulan `/` ke proxy → P3-4
+### 1.2 ✅ Jalan pintas pendaratan di proxy → P3-4 — **SELESAI 11 Okt 2026**
 
-Satu baris: tambahkan `pathname === "/"` ke kondisi di `src/proxy.ts:269`,
-cabut `auth()` dari halaman pendaratan, perbaiki komentar yang kedaluwarsa.
-Pengguna bersesi mendarat di bukunya, bukan memantul dua kali lewat
-`/dashboard`. **Bukan** perbaikan performa — lihat dok 10 §4.
+⚠ **Resep semula di butir ini SALAH** dan akan menyebabkan dua regresi senyap;
+koreksi lengkapnya di [dok 08 P3-4](./08-PENILAIAN-ARSITEKTUR.md).
+
+Yang dikerjakan: proxy memotong `/` **hanya** bila token sudah membawa kedua
+slug, dengan tujuan yang **identik** dengan hari ini. Tanpa kedua slug proxy
+menyerah — `auth()` di halaman pendaratan **dipertahankan** sebagai jalur
+cadangan, sebab jawaban benar bagi sesi tanpa slug menuntut satu query yang
+Edge tidak punya aksesnya. Dua pantulan + satu render → satu pantulan, nol
+render. Dijaga `tests/proxy-landing-shortcut.test.ts` (9 tes, enam di antaranya
+menguji yang TIDAK boleh dipantulkan).
 
 ### 1.3 Jejak kesesuaian data → P1-2
 

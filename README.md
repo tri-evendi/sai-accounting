@@ -4,6 +4,21 @@ Bookkeeping and accounting system for businesses in Indonesia — double-entry j
 
 > The first installation was **PT Subur Anugerah Indonesia**; that name survives only as the fallback in `src/lib/constants.ts` and must never be printed for another tenant — see `docs/MULTI-COMPANY.md` and `tests/company-identity.test.ts`.
 
+## Dokumentasi
+
+**Arsitektur & peta layanan:** [`docs/arsitektur/`](./docs/arsitektur/) — potret
+keadaan yang berjalan (komponen, layanan, dependensi, API, aliran data,
+infrastruktur, penilaian, peta jalan). Mulai dari
+[indeksnya](./docs/arsitektur/README.md).
+
+Dokumen domain: [`docs/MULTI-COMPANY.md`](./docs/MULTI-COMPANY.md) ·
+[`docs/MULTI-TENANT.md`](./docs/MULTI-TENANT.md) ·
+[`docs/RBAC.md`](./docs/RBAC.md) · [`docs/DATABASE.md`](./docs/DATABASE.md) ·
+[`docs/MODUL-USAHA.md`](./docs/MODUL-USAHA.md) ·
+[`docs/KOMERSIALISASI.md`](./docs/KOMERSIALISASI.md) ·
+[`docs/PRICING.md`](./docs/PRICING.md) ·
+[`docs/COMPLIANCE.md`](./docs/COMPLIANCE.md). Aturan kerja: [`AGENTS.md`](./AGENTS.md).
+
 ## Stack
 
 - Next.js 16 (App Router)

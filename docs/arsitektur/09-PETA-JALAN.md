@@ -208,7 +208,24 @@ Edge tidak punya aksesnya. Dua pantulan + satu render → satu pantulan, nol
 render. Dijaga `tests/proxy-landing-shortcut.test.ts` (9 tes, enam di antaranya
 menguji yang TIDAK boleh dipantulkan).
 
-### 1.3 Jejak kesesuaian data → P1-2
+### 1.3 ✅ Jejak kesesuaian data → P1-2 — **JEJAK + KESEHATAN SELESAI 11 Okt 2026**
+
+Migration platform **0018** (`conformance_runs`), model `ConformanceRun`,
+putusan denyut murni `lib/conformance-heartbeat.ts`, skrip menulis jejaknya
+(satu baris, **platform saja**), dan medan `/api/health` → `conformance`.
+Dijaga `tests/conformance-heartbeat.test.ts` (17 tes); penjaga hanya-baca
+skripnya **diperketat**, bukan dilonggarkan. Migration dibuktikan di basis data
+sekali-pakai. Rincian & yang masih terbuka:
+[dok 08 P1-2](./08-PENILAIAN-ARSITEKTUR.md).
+
+⚠ **Langkah rilis:** ini migration PLATFORM pertama sejak 0017 —
+`bun run db:migrate:all` wajib sebelum `app-customer` naik, atau
+`/api/health` menjawab `conformance: unknown` (ditelan, tidak melempar).
+
+**Masih terbuka:** halaman operator (butuh ~20 kunci i18n × 3 bahasa) dan
+panggilan `alert()` (bagian P1-1).
+
+### 1.3-lanjutan — rencana semula butir ini
 
 Menutup asimetri: `job-scheduler` dan `job-backup` punya tabel jejak, `job-conformance`
 tidak.
@@ -224,13 +241,13 @@ tidak.
 **Mengikuti [`docs/DATABASE.md`](../DATABASE.md)** — migration ditulis tangan,
 lewati Checklist tabel baru.
 
-### 1.4 Tutup celah uji proxy → P3-2
+### 1.4 ✅ Tutup celah uji proxy → P3-2 — **TERNYATA SUDAH TERTUTUP**
 
-Satu tes: `proxy()` dengan `Authorization: Bearer …` → **tidak** dipantulkan.
-Menutup kelas cacat yang sudah pernah hidup di produksi tiga pekan.
-
-🔶 Kemungkinan cukup tes unit terhadap fungsi keputusan proxy; server sungguhan
-mungkin tidak perlu.
+Diperiksa 11 Okt 2026: `tests/proxy-bearer-api.test.ts` sudah ada dan memanggil
+`proxy()` sungguhan — termasuk satu tes yang menuntut kabelnya tidak bisa
+dicabut diam-diam, yang lebih kuat daripada resep semula. Butir ini **tidak
+perlu dikerjakan**; koreksi lengkapnya di
+[dok 08 P3-2](./08-PENILAIAN-ARSITEKTUR.md).
 
 ### 1.5 Pemangkasan tabel jejak → P2-5
 

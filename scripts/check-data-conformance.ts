@@ -260,8 +260,67 @@ function companyTemplate(): string {
   );
 }
 
+/**
+ * Mencatat putaran ini ke `conformance_runs` (basis data PLATFORM).
+ *
+ * ⚠ INI SATU-SATUNYA TULISAN DI SELURUH BERKAS, dan sasarannya PLATFORM —
+ * bukan buku PT mana pun. Pemeriksa ini tidak boleh, dan tidak pernah,
+ * mengubah satu angka akuntansi: keputusan "angka mana yang benar" hampir
+ * selalu butuh dokumen fisik atau pemilik datanya, dan yang boleh
+ * diotomatiskan hanya MENEMUKANNYA. Penjaganya
+ * `tests/check-data-conformance.test.ts`.
+ *
+ * MENELAN galatnya, dengan sengaja: jejak yang gagal ditulis tidak boleh
+ * membatalkan pemeriksaan yang sudah selesai, dan tidak boleh mengubah kode
+ * keluar yang dipakai CI. Platform yang tak terjangkau berarti `/api/health`
+ * menjawab `unknown` — jawaban jujur — bukan berarti sapuannya gagal.
+ *
+ * Impornya DINAMIS: berkas ini dijalankan `tsx` di luar Next, dan klien Prisma
+ * platform yang belum dibangkitkan tidak boleh meruntuhkan pemeriksaannya
+ * (doktrin #137 — penagihan mati ≠ aplikasi mati, diperluas ke perkakas).
+ */
+async function rekam(hasil: {
+  startedAt: Date;
+  status: "ok" | "findings" | "error";
+  companiesChecked: number;
+  companiesFailed: number;
+  findingCount: number;
+  findings: string[];
+  failures: string[];
+}) {
+  try {
+    const { platformDb } = await import("../src/lib/platform-db");
+    await platformDb.conformanceRun.create({
+      data: {
+        startedAt: hasil.startedAt,
+        finishedAt: new Date(),
+        status: hasil.status,
+        companiesChecked: hasil.companiesChecked,
+        companiesFailed: hasil.companiesFailed,
+        findingCount: hasil.findingCount,
+        /* Dipangkas: satu putaran bisa menghasilkan ribuan baris temuan, dan
+           jejak ini dibaca untuk tahu APA yang harus diperiksa orang — bukan
+           untuk menggantikan pemeriksaannya. Jumlah utuhnya ada di
+           `findingCount`. */
+        details: JSON.stringify({
+          findings: hasil.findings.slice(0, 200),
+          failures: hasil.failures,
+        }),
+      },
+    });
+  } catch (error) {
+    console.error(
+      `\n⚠ jejak putaran tidak tercatat (${error instanceof Error ? error.message : String(error)}).` +
+        "\n  Pemeriksaannya sendiri TIDAK terpengaruh — lihat hasil di atas."
+    );
+  }
+}
+
 async function main() {
   const detail = process.argv.includes("--detail");
+  const startedAt = new Date();
+  /* Baris laporan yang dulu HANYA tercetak ke stdout — kini ikut ke jejak. */
+  const barisTemuan: string[] = [];
 
   const controlUrl = process.env.CONTROL_DATABASE_URL;
   if (!controlUrl) {
@@ -305,6 +364,7 @@ async function main() {
     for (const { check, rows } of temuan) {
       totalTemuan += rows.length;
       console.log(`   ${check.judul}: ${rows.length}`);
+      for (const r of rows) barisTemuan.push(`${company.slug} · ${check.judul}: ${r.label}`);
       /* Tiga contoh, bukan semuanya: daftar 609 baris di terminal menyembunyikan
          justru pemeriksaan lain yang ikut berbunyi. `--detail` untuk seluruhnya. */
       const tampil = detail ? rows : rows.slice(0, 3);
@@ -323,6 +383,21 @@ async function main() {
     console.error(`\n${gagal.length} perusahaan gagal diperiksa:`);
     for (const g of gagal) console.error(`   ${g}`);
   }
+
+  /*
+   * Jejaknya ditulis SEBELUM `process.exit` — `exit` tidak menunggu promise
+   * yang masih berjalan, jadi mencatat sesudahnya berarti jejak yang hilang
+   * tepat pada putaran yang paling perlu dicatat.
+   */
+  await rekam({
+    startedAt,
+    status: gagal.length > 0 ? "error" : totalTemuan > 0 ? "findings" : "ok",
+    companiesChecked: companies.length,
+    companiesFailed: gagal.length,
+    findingCount: totalTemuan,
+    findings: barisTemuan,
+    failures: gagal,
+  });
 
   /* Kode keluar BUKAN NOL bila ada temuan ATAU ada buku yang gagal diperiksa —
      buku yang tidak terperiksa bukan buku yang bersih. */

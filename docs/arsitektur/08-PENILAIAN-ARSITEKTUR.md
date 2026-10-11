@@ -281,7 +281,7 @@ lebih baik daripada nol.
 
 ---
 
-### 🟠 P1-2 — Temuan kesesuaian data hanya ada di stdout
+### 🟡 P1-2 — Temuan kesesuaian data hanya ada di stdout — **SEBAGIAN BESAR DITUTUP 11 Okt 2026**
 
 **Bukti.** Layanan `job-conformance` menulis ke stdout. Tidak ada tabel setara
 `scheduler_runs`/`backup_runs`, tidak ada medan di `/api/health`, tidak ada
@@ -299,8 +299,51 @@ paling mudah tidak terlihat.
 Ia juga asimetri yang jelas: dua layanan latar lain **punya** jejak yang bisa
 ditanyai; yang ini tidak.
 
-**Perbaikan.** Tabel `conformance_runs` di platform (sepola `scheduler_runs`) +
-medan di `/api/health` + panggilan `alert()`. Bisa dikerjakan bersama P1-1.
+**Perbaikan.**
+
+> ✅ **DIKERJAKAN 11 Oktober 2026 — jejak + putusan denyut.**
+>
+> | Bagian | Keadaan |
+> |---|---|
+> | Tabel `conformance_runs` | ✅ migration platform **0018** |
+> | Model `ConformanceRun` | ✅ sepola `SchedulerRun`/`BackupRun` |
+> | Putusan denyut | ✅ `lib/conformance-heartbeat.ts` — **murni**, nol impor |
+> | Skrip menulis jejaknya | ✅ satu baris, ke **platform** saja |
+> | Medan `/api/health` → `conformance` | ✅ dilaporkan, **tidak** ikut memutuskan 503 (doktrin #137) |
+> | Halaman operator | ❌ **belum** — lihat di bawah |
+> | Panggilan `alert()` | ❌ **belum** — bagian dari P1-1 |
+>
+> Statusnya **empat** nilai, bukan dua, dan pembedaannya yang paling penting:
+> `ok` (berjalan & bersih) · `findings` (berjalan & **menemukan** sesuatu —
+> bukan kegagalan layanan) · `late` (basi, **atau** ada buku yang gagal
+> diperiksa — buku yang tidak terperiksa bukan buku yang bersih) · `unknown`
+> (tak terjangkau / belum pernah jalan — sengaja dibedakan dari `late`, supaya
+> pemasangan baru tidak berbunyi seperti pemasangan rusak).
+>
+> **Penjaganya** `tests/conformance-heartbeat.test.ts` (17 tes) — termasuk tiga
+> yang menuntut kabelnya tidak bisa dicabut diam-diam, dan satu yang menuntut
+> modulnya tetap **murni** (nol impor) supaya ambangnya bisa diuji sebagai
+> fungsi di tiga dunia pemakainya.
+>
+> **Dan penjaga hanya-baca skripnya DIPERKETAT, bukan dilonggarkan.** Jejaknya
+> memang sebuah tulisan, dan penjaga lama (yang memindai lima kata SQL) tidak
+> akan melihatnya — `platformDb.conformanceRun.create()` tidak memuat kata
+> `INSERT`. Lolos secara huruf bukan jawabannya: tesnya sekarang menuntut
+> sifat yang sebenarnya harus dijaga — buku PT hanya boleh **dibaca**
+> (`$queryRawUnsafe` ada, `$executeRaw*` **tidak boleh ada**), dan **tepat
+> satu** tulisan Prisma yang sasarannya **wajib** `platformDb.conformanceRun`.
+> Plus satu tes yang menuntut jejaknya ditulis **sebelum** `process.exit` —
+> `exit` tidak menunggu promise, jadi mencatat sesudahnya berarti kehilangan
+> jejak tepat pada putaran yang paling perlu dicatat.
+>
+> **Migration-nya dibuktikan**, bukan diasumsikan: diterapkan ke basis data
+> sekali-pakai, lalu kolom nyatanya dibandingkan dengan `@map` di model —
+> cocok persis, nol kolom hilang, nol kolom tak terpakai. Scratch-nya dihapus.
+
+**Yang MASIH terbuka di butir ini:** halaman/bagian operator yang menampilkan
+sepuluh sapuan terakhir (sepola `/operator/scheduler`). Ditunda karena ia
+menuntut ~20 kunci i18n × 3 bahasa, dan nilai terbesarnya — *temuan bisa
+ditanyai dari luar* — sudah didapat lewat `/api/health`.
 
 ---
 
@@ -494,7 +537,7 @@ lagi. Saat itu, memecah **kamus** lebih berdampak daripada memecah modul domain
 
 ---
 
-### 🟢 P3-2 — Tes token API tidak menembus proxy
+### ✅ P3-2 — Tes token API tidak menembus proxy — **SUDAH TERTUTUP SEBELUM TEMUAN INI DITULIS**
 
 **Bukti.** Tercatat di `lib/api-v1.ts`: seluruh tes token memanggil
 `requireApiToken` **langsung**, jadi tak satu pun bisa melihat penolakan satu
@@ -508,9 +551,37 @@ dengan cara yang sama.
 **Yang sudah benar.** Kejadiannya dicatat lengkap beserta mengapa ia lolos —
 itu sendiri sudah mitigasi, karena orang berikutnya diperingatkan.
 
-**Perbaikan.** Satu tes yang memanggil `proxy()` dengan permintaan ber-`Bearer`
-dan menuntut ia **tidak** dipantulkan. 🔶 Mungkin cukup satu tes unit terhadap
-fungsi keputusan proxy — tidak perlu server sungguhan.
+> ## ⚠ KOREKSI — temuan ini menggambarkan keadaan HISTORIS, bukan sekarang
+>
+> Diperiksa 11 Okt 2026: **`tests/proxy-bearer-api.test.ts` sudah ada**, dan ia
+> melakukan persis apa yang resep di bawah minta — bahkan lebih. Temuan ini
+> disusun dari komentar di `lib/api-v1.ts`, yang menceritakan regresinya; yang
+> tidak saya periksa adalah apakah penjaganya ikut lahir bersama perbaikannya.
+> Ia ikut.
+>
+> Cakupan yang sudah ada, dan semuanya memanggil `proxy()` **sungguhan**:
+>
+> | Tes | Menuntut |
+> |---|---|
+> | setiap route v1 yang benar-benar ada | **tidak** dijawab 401 oleh proxy |
+> | `openapi.json` | lolos (sengaja publik) |
+> | permukaan API **sesi** | **tetap dijaga** — pelepasannya tidak melebar |
+> | `isBearerApiPath` | bentuknya, bukan `startsWith` telanjang |
+> | kabelnya | proxy benar-benar **memanggil** `isBearerApiPath` sebagai KODE, bukan komentar |
+>
+> Baris terakhir itu lebih kuat daripada yang saya resepkan: ia mencegah
+> kabelnya dicabut diam-diam, bukan hanya menguji perilakunya hari ini.
+>
+> **Resep di bawah karena itu tidak perlu dikerjakan.** Dibiarkan tertulis
+> supaya jelas apa yang diperiksa dan kenapa kesimpulannya berubah.
+
+**Resep semula (TIDAK perlu dikerjakan).** Satu tes yang memanggil `proxy()`
+dengan permintaan ber-`Bearer` dan menuntut ia **tidak** dipantulkan.
+
+Catatan: celah KELAS yang disebut temuan ini memang nyata, dan sejak 11 Okt
+2026 ia punya penjaga kedua — `tests/proxy-landing-shortcut.test.ts` (P3-4),
+yang juga menembus `proxy()` sungguhan. Jadi dua jalur proxy yang paling mudah
+salah kini teruji ujung-ke-ujung.
 
 ---
 
@@ -657,7 +728,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |
 | **P2-5** | Tabel jejak tanpa pemangkasan | Pertumbuhan lambat | Rendah | Rendah |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |
-| **P3-2** | Proxy tak teruji ujung-ke-ujung | Kelas cacat bisa terulang | Rendah | Rendah |
+| ~~P3-2~~ | ~~Proxy tak teruji ujung-ke-ujung~~ | ✅ **sudah tertutup** sebelum temuan ditulis — `tests/proxy-bearer-api.test.ts` | — | — |
 | ~~P3-4~~ | ~~Pemantulan `/` menempuh dua pantulan~~ | ✅ **ditutup 11 Okt 2026** — resep semula dikoreksi, lihat temuannya | — | — |
 | **P3-3** | Tanpa kepemilikan tercatat | *Bus factor* 1 | Rendah | Nol |
 

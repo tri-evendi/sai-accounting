@@ -383,10 +383,14 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
           {!isPurchase && (
             <Col span={24}>
               <fieldset
+                /* Kelompok isian ini berdiri DI DALAM `<Card>` halaman
+                   pemasok; `colorBgContainer` membuatnya sewarna kartu yang
+                   menampungnya, sehingga hanya garisnya yang memisahkan (#266).
+                   `fillQuaternary` memisahkan dengan bidang — pola yang sama
+                   dengan kisi fakta di halaman rincian tenant. */
                 style={{
                   borderRadius: token.borderRadiusLG,
-                  border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
-                  background: token.colorBgContainer,
+                  background: token.colorFillQuaternary,
                   padding: token.paddingSM,
                 }}
               >

@@ -28,6 +28,10 @@ const PANEL: React.CSSProperties = {
   borderRadius: "var(--ant-border-radius-lg)",
   border: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
   background: "var(--ant-color-bg-container)",
+  /* Angkat yang SAMA dengan `ui/card.tsx` (#266). Panel ini berdiri di atas
+     latar halaman persis seperti kartu di sebelahnya; tanpa baris ini ia satu-
+     satunya wilayah beranda yang dipisahkan oleh garis saja. */
+  boxShadow: "var(--ant-box-shadow-tertiary)",
   paddingInline: "var(--ant-padding)",
   paddingBlock: "var(--ant-padding-sm)",
   display: "flex",

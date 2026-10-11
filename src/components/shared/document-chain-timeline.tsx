@@ -165,8 +165,16 @@ export async function DocumentChainTimeline({
                 height: "100%",
                 padding: "var(--ant-padding)",
                 borderRadius: "var(--ant-border-radius-lg)",
-                border: "var(--ant-line-width) solid var(--ant-color-border-secondary)",
-                background: "var(--ant-color-bg-container)",
+                /*
+                 * ISIAN, bukan permukaan kedua. Rantai ini dirender DI DALAM
+                 * `<Card>` (`contracts/[id]/page.tsx`), dan sampai sekarang tiap
+                 * tahapnya memakai `colorBgContainer` — warna yang SAMA PERSIS
+                 * dengan kartu yang menampungnya. Yang memisahkan tahap dari
+                 * kartunya karena itu hanya garis: "outline saja", persis yang
+                 * diukur #266. `fillQuaternary` memisahkannya dengan BIDANG,
+                 * tanpa menambah satu garis pun ke wilayah yang sudah bergaris.
+                 */
+                background: "var(--ant-color-fill-quaternary)",
               }}
             >
               <div

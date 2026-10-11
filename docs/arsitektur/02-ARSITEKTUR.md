@@ -17,7 +17,7 @@
 | **Izin terpusat sebagai matriks** | `lib/authz.ts` + `authz-effective.ts` | Halaman & API pasangannya tidak bisa menyimpang diam-diam |
 | **Mesin posting terpusat** | `lib/posting/` | Setiap dokumen → jurnal lewat **satu** pintu; penjaga periode & persetujuan tak bisa dilewati dengan menambah route |
 | **Snapshot lintas-basis-data** | Status tenant & kuota disalin dari platform ke kendali | Jalur panas tidak boleh menyentuh basis data penagihan |
-| **Fungsi murni + penjaga tes** | 275 berkas tes | Aturan diuji sebagai fungsi, bukan lewat basis data |
+| **Fungsi murni + penjaga tes** | 276 berkas tes | Aturan diuji sebagai fungsi, bukan lewat basis data |
 | **Pekerja loop-tidur** | `job-scheduler`, `job-conformance`, `job-backup` | Tanpa antrean, tanpa daemon cron — satu proses shell yang tidur tidak memakan apa pun |
 
 ### Yang sengaja TIDAK dipakai

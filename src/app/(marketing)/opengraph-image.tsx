@@ -24,6 +24,7 @@
  */
 import { ImageResponse } from "next/og";
 
+import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@/lib/brand/mark";
 import { APP_NAME } from "@/lib/constants";
 import {
   OG_BG as LATAR,
@@ -63,16 +64,27 @@ export default async function Image() {
             justifyContent: "center",
             borderRadius: 16,
             background: MEREK,
-            color: LATAR,
-            fontSize: 40,
-            fontWeight: 700,
           }}
         >
-          {/* Lambang `BrandMark` adalah `<svg>` ber-`currentColor`; Satori
-                mendukung SVG tetapi bukan komponen React app ini (ia server
-                component ber-`aria-hidden`, bukan elemen murni). Huruf awal
-                produk sudah cukup untuk kartu 1200×630. */}
-          {APP_NAME.slice(0, 1)}
+          {/*
+           * LAMBANG SUNGGUHAN, bukan huruf awal produk.
+           *
+           * Sampai perombakan merek ini, kotak ini memuat "S" — dan itu berarti
+           * kartu yang muncul di WhatsApp/LinkedIn adalah satu-satunya
+           * permukaan yang memperlihatkan "lambang" yang tidak pernah ada di
+           * dalam produk. Alasan lama ("Satori mendukung SVG tetapi bukan
+           * komponen React app ini") benar dan sudah tidak mengikat: yang
+           * dibutuhkan hanya PATH-nya, dan sejak `lib/brand/mark.ts` ada,
+           * path itu bisa dibaca tanpa merender komponennya.
+           */}
+          <svg
+            width={44}
+            height={44}
+            viewBox={BRAND_MARK_VIEWBOX}
+            fill={LATAR}
+          >
+            <path fillRule="evenodd" clipRule="evenodd" d={BRAND_MARK_PATH} />
+          </svg>
         </div>
         <div
           style={{

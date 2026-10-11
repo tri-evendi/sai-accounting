@@ -24,6 +24,12 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
+import {
+  ConsoleNotice,
+  ConsolePanel,
+  CONSOLE_MUTED,
+  CONSOLE_PAGE,
+} from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { schedulerRunsForOperator } from "@/lib/operator/store";
@@ -31,16 +37,7 @@ import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-const MUTED: React.CSSProperties = { margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" };
-
-const NOTICE: React.CSSProperties = {
-  ...MUTED,
-  padding: 12,
-  borderRadius: 8,
-  border: "1px solid var(--ant-color-border-secondary)",
-  background: "var(--ant-color-fill-quaternary)",
-  lineHeight: 1.625,
-};
+const MUTED = CONSOLE_MUTED;
 
 const TABULAR: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
 
@@ -164,42 +161,34 @@ export default async function OperatorSchedulerPage() {
        keduanya — pola yang sama dengan halaman dasbor. */
     <div>
       <PageHeader title={t("operator.scheduler.heading")} description={t("operator.scheduler.description")} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={CONSOLE_PAGE}>
 
       {runs === null ? (
-        <p style={NOTICE}>{t("operator.scheduler.unavailable")}</p>
+        <ConsoleNotice>{t("operator.scheduler.unavailable")}</ConsoleNotice>
       ) : runs.length === 0 ? (
         <EmptyState
           icon={<CalendarOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
           title={t("operator.scheduler.empty")}
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <StaticTable columns={columns} rows={runs} rowKey={(run) => run.id} />
+        <div style={CONSOLE_PAGE}>
+          {/* Tabel putaran tanpa judul panel: `<h1>` halaman sudah menyebutnya
+              ("Penjadwal"), dan judul kedua yang mengulangnya memberi pembaca
+              layar dua simpul untuk satu wilayah. */}
+          <ConsolePanel flush>
+            <StaticTable columns={columns} rows={runs} rowKey={(run) => run.id} />
+          </ConsolePanel>
 
           {latest && (
-            <section
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 16,
-                padding: 16,
-                borderRadius: 12,
-                border: "1px solid var(--ant-color-border-secondary)",
-                background: "var(--ant-color-bg-container)",
-              }}
+            <ConsolePanel
+              title={t("operator.scheduler.lastRunHeading", {
+                date: formatDateTime(latest.startedAt),
+              })}
             >
-              <h2
-                style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--ant-color-text)" }}
-              >
-                {t("operator.scheduler.lastRunHeading", {
-                  date: formatDateTime(latest.startedAt),
-                })}
-              </h2>
               <div
                 style={{
                   display: "grid",
-                  gap: 16,
+                  gap: "var(--ant-margin)",
                   gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
                 }}
               >
@@ -229,7 +218,7 @@ export default async function OperatorSchedulerPage() {
                 items={latest.details?.errors ?? []}
                 emptyLabel={t("operator.scheduler.listEmpty")}
               />
-            </section>
+            </ConsolePanel>
           )}
         </div>
       )}

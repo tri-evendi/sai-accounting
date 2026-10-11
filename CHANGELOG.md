@@ -20,6 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.9.0 — 2026-10-11 — belum digelar
+
+Lambang produk dirapikan dan dipakai di semua tempat — ikon tab, ikon layar depan, dan gambar pratinjau kini gambar yang sama dengan yang ada di dalam aplikasi.
+
+### Berubah
+
+- Ikon aplikasi berganti. Sebelumnya ikon di tab peramban dan di layar depan ponsel menampilkan diagram batang biru — gambar lama yang tidak pernah ikut berubah ketika lambang produk berganti menjadi buku besar. Keduanya kini memakai lambang yang sama dengan yang Anda lihat di pojok kiri atas aplikasi, dalam warna yang sama. Kalau aplikasi ini sudah dipasang ke layar depan, ikonnya ikut berganti setelah ponsel menyegarkannya.
+- Gambar yang muncul saat alamat aplikasi ditempel ke WhatsApp atau LinkedIn kini menampilkan lambang produk, bukan huruf awal namanya.
+
+---
+
 ## 0.8.0 — 2026-10-10 (45fcb23)
 
 Halaman harga menghitung sendiri apakah lebih murah naik paket atau menumpuk paket kecil, dan halaman depan dibuat lebih tenang — satu warna, perpindahan antar-bagian yang melembut.

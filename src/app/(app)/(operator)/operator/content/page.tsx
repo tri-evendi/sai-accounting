@@ -32,6 +32,12 @@
  */
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import {
+  ConsoleNotice,
+  ConsolePanel,
+  CONSOLE_MUTED,
+  CONSOLE_PAGE,
+} from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -53,17 +59,6 @@ import { operatorSaveSiteContent } from "./actions";
 export const dynamic = "force-dynamic";
 
 /** "Penagihan/platform tidak terjangkau" — kalimat jujur, bukan galat. */
-const NOTICE: React.CSSProperties = {
-  margin: 0,
-  padding: "var(--ant-padding)",
-  borderRadius: "var(--ant-border-radius-lg)",
-  border: "1px solid var(--ant-color-border-secondary)",
-  background: "var(--ant-color-fill-quaternary)",
-  fontSize: "var(--ant-font-size)",
-  lineHeight: 1.625,
-  color: "var(--ant-color-text-secondary)",
-};
-
 function formatDateTime(d: Date): string {
   return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
@@ -162,11 +157,21 @@ export default async function OperatorContentPage({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={CONSOLE_PAGE}>
+        {/* Saringan dalam panelnya sendiri: di halaman ini ia bukan pelengkap
+            satu tabel melainkan PEMILIH — bahasa & bagian mana yang sedang
+            disunting — dan editor di bawahnya berganti isi seluruhnya
+            karenanya. Dua wilayah, dua permukaan. */}
+        <ConsolePanel>
         <form
           method="get"
           action="/operator/content"
-          style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 12 }}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            gap: "var(--ant-margin-sm)",
+          }}
         >
           <div style={{ width: "100%", maxWidth: 192 }}>
             <Select
@@ -205,20 +210,25 @@ export default async function OperatorContentPage({
             {t("operator.tenants.filter")}
           </Button>
         </form>
+        </ConsolePanel>
 
-        {stored === null && <p style={NOTICE}>{t("operator.content.unavailable")}</p>}
+        {stored === null && <ConsoleNotice>{t("operator.content.unavailable")}</ConsoleNotice>}
 
         {/* Saat mencari, katakan BERAPA yang cocok — daftar hasil tanpa jumlah
             membuat orang menebak apakah ia sudah melihat semuanya. Nol hasil
             dijawab kalimat, bukan editor kosong yang terbaca seperti rusak. */}
         {cari && (
-          <p style={{ margin: 0, fontSize: 14, color: "var(--ant-color-text-secondary)" }}>
+          <p style={CONSOLE_MUTED}>
             {rows.length === 0
               ? t("operator.content.searchEmpty", { q: cari })
               : t("operator.content.searchFound", { count: rows.length, q: cari })}
           </p>
         )}
 
+        {/* `ContentEditor` menyusun formulirnya sendiri; ia dibungkus panel di
+            sini supaya isian suntingan berdiri di atas permukaan yang sama
+            dengan pemilih di atasnya. */}
+        <ConsolePanel>
         <ContentEditor
           /* `key` memaksa editor dibangun ULANG saat bahasa/bagian berganti:
              tanpa itu react-hook-form mempertahankan `defaultValues` dari
@@ -230,6 +240,7 @@ export default async function OperatorContentPage({
           rows={rows}
           save={operatorSaveSiteContent}
         />
+        </ConsolePanel>
       </div>
     </div>
   );

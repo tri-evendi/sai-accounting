@@ -16,6 +16,7 @@
  */
 
 import { MailSettingsForm } from "@/components/operator/mail-settings-form";
+import { CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { mailSettingsForOperator } from "@/lib/operator/store";
@@ -90,7 +91,10 @@ export default async function OperatorMailPage() {
        keduanya — pola yang sama dengan halaman dasbor. */
     <div>
       <PageHeader title={t("operator.mail.heading")} description={t("operator.mail.description")} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Formulir surel menyusun PANELNYA SENDIRI (tiga, lewat `panelBox`),
+          jadi halaman ini tidak membungkusnya lagi — kartu di dalam kartu.
+          Yang dipakai dari konsol tinggal jarak antar-bagiannya. */}
+      <div style={CONSOLE_PAGE}>
 
       {health.status === "not_configured" && (
         <div style={SILENT_BANNER} role="alert">

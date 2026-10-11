@@ -62,7 +62,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
-import { CloseOutlined, MenuOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import {
+  CloseOutlined,
+  GlobalOutlined,
+  MenuOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -103,6 +109,19 @@ export interface OperatorShellLabels {
   auditedBadge: string;
   /** "Masuk sebagai {name}" — sudah terformat di server. */
   signedInAs: string;
+  /** Nama operator apa adanya, untuk kelompok identitas di kepala. */
+  operatorName: string;
+  /**
+   * Host yang sedang dibuka (`OPERATOR_HOST`).
+   *
+   * Dipajang di kepala, dan itu bukan hiasan: konsol ini menulis ke data
+   * SUNGGUHAN pelanggan, dan satu-satunya petunjuk bahwa seseorang sedang
+   * berada di konsol produksi — bukan di salinan uji — selama ini hanya URL di
+   * bilah alamat peramban, yang tidak terlihat di layar penuh. Ia berdiri di
+   * sebelah lencana "tindakan tercatat" karena keduanya menjawab pertanyaan
+   * yang sama: apa akibat klik berikutnya, dan pada siapa.
+   */
+  host: string;
   mainMenu: string;
   closeMenu: string;
 }
@@ -332,6 +351,14 @@ export function OperatorShell({ children, nav, labels, logout }: OperatorShellPr
             borderBottom: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
           }}
         >
+          {/* ══ KIRI: apa akibat klik berikutnya, dan pada siapa ══════════
+              Sampai perombakan ini sisi kiri kepala hanya memuat satu lencana
+              kuning, sendirian di bilah selebar layar — dan satu elemen
+              berwarna yang mengambang di bidang kosong 64px terbaca sebagai
+              sisa render, bukan sebagai peringatan. Ia kini berpasangan dengan
+              HOST yang sedang dibuka: dua keterangan yang menjawab pertanyaan
+              yang sama, jadi keduanya menjadi satu kelompok dan bukan dua
+              benda yang kebetulan berada di sisi yang sama. */}
           <Flex align="center" gap={token.marginXS} style={{ minWidth: 0 }}>
             {!lebar && (
               <Button
@@ -343,18 +370,58 @@ export function OperatorShell({ children, nav, labels, logout }: OperatorShellPr
                 <MenuOutlined aria-hidden="true" style={{ fontSize: 20 }} />
               </Button>
             )}
-            {/* Penanda "tindakan tercatat" pindah dari bilah gelap ke kepala
-                area kerja, dan ia tetap di urutan BACA pertama: ia peringatan,
-                bukan hiasan merek — setiap tindakan di sini terekam atas nama
-                operator yang sedang masuk (#155). */}
+            {/* Penanda "tindakan tercatat" tetap di urutan BACA pertama: ia
+                peringatan, bukan hiasan merek — setiap tindakan di sini terekam
+                atas nama operator yang sedang masuk (#155). */}
             <Badge variant="warning">{labels.auditedBadge}</Badge>
+            {/* Host menyusut lebih dulu di layar sempit (`TRUNCATE` + `title`),
+                sementara lencana dan target sentuh di kanan tidak — aturan yang
+                sama dengan `CompanyIndicator` di chrome pelanggan. */}
+            {lebar && (
+              <Flex
+                align="center"
+                gap={token.marginXXS}
+                style={{
+                  minWidth: 0,
+                  fontSize: token.fontSizeSM,
+                  color: token.colorTextSecondary,
+                }}
+                title={labels.host}
+              >
+                <GlobalOutlined aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }} />
+                <span style={TRUNCATE}>{labels.host}</span>
+              </Flex>
+            )}
           </Flex>
-          <Flex align="center" gap={token.marginSM} style={{ flexShrink: 0 }}>
-            <span
-              style={{ ...TRUNCATE, fontSize: token.fontSizeSM, color: token.colorTextSecondary }}
+
+          {/* ══ KANAN: siapa yang sedang masuk ════════════════════════════
+              Satu kelompok berisian, bukan kalimat abu-abu yang menggantung di
+              sebelah tombol. Isian `colorFillQuaternary` memberi identitas itu
+              batasnya sendiri tanpa menambah garis ke bilah yang sudah bergaris
+              bawah — dan membuat tombol "Keluar" berhenti terbaca seperti
+              lanjutan kalimat di sebelahnya. */}
+          <Flex align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
+            <Flex
+              align="center"
+              gap={token.marginXXS}
+              style={{
+                maxWidth: 200,
+                minWidth: 0,
+                paddingInline: token.paddingXS,
+                paddingBlock: token.paddingXXS,
+                borderRadius: token.borderRadius,
+                background: token.colorFillQuaternary,
+                fontSize: token.fontSizeSM,
+                color: token.colorText,
+              }}
+              /* Judulnya kalimat penuh ("Masuk sebagai …"): yang dipajang hanya
+                 namanya, dan nama tanpa konteks di pojok layar bisa terbaca
+                 sebagai nama tenant yang sedang dibuka — bukan nama pembukanya. */
+              title={labels.signedInAs}
             >
-              {labels.signedInAs}
-            </span>
+              <UserOutlined aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }} />
+              <span style={TRUNCATE}>{labels.operatorName}</span>
+            </Flex>
             {logout}
           </Flex>
         </Layout.Header>

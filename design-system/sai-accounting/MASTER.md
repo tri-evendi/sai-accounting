@@ -444,6 +444,14 @@ gagal ketika menyimpang, jadi ketiganya bertahan berbulan-bulan.
   & `theme_color` manifest) kini nilai yang sama; sampai Okt 2026 ia `#1677ff`,
   sehingga aplikasi yang dipasang ke layar depan memperlihatkan ikon navy di
   bawah bilah status biru.
+- **Lambang + nama = `BrandLockup`, bukan disusun per-chrome.** Enam chrome
+  dulu menyusunnya sendiri dan hasilnya nama produk 16px di empat tempat dan
+  14px di dua lainnya, celah 8px di lima dan 12px di satu, bobot token di lima
+  dan angka `600` di satu — tak satu pun pernah diputuskan. `components/ui/
+  brand-lockup.tsx` memikul tipografinya; pembungkusnya (`Link`, lebar, apakah
+  namanya disembunyikan di layar sempit) tetap milik chrome masing-masing.
+  Dijaga `tests/brand-lockup.test.ts`, yang menolak `<BrandMark` di luar
+  daftar-izin pendek beralasan.
 - **Pertahankan ujinya pada ukuran sebenarnya.** Rancangan lambang dinilai
   dengan dirender 16/20/24/32/64px lalu DILIHAT. Empat alternatif gagal di sana
   (dua buku bertumpuk, sudut terpotong, undak, garis halaman); yang bertahan

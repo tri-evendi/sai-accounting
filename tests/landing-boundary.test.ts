@@ -208,8 +208,18 @@ describe("skala pemasaran tidak bisa dipanggil dari luar", () => {
   });
 
   it("atribut `data-landing` hanya dipasang di dalam direktorinya", () => {
+    /*
+     * Yang dicari PEMASANGAN, bukan sebutan: `data-landing-x=` (atribut JSX)
+     * atau `"data-landing-x":` (kunci objek props). Bentuk ketiga —
+     * `[data-landing-x]` di dalam komentar atau selektor CSS — BUKAN
+     * pemasangan, dan memerahkannya berarti satu-satunya cara menghijaukan
+     * penjaga ini adalah menyunting prosa yang menjelaskan kenapa sebuah
+     * berkas justru patuh. Pelajaran yang sama sudah dibayar dua kali di sesi
+     * ini (`heading-structure`, `brand-lockup`).
+     */
+    const PEMASANGAN = /data-landing[\w-]*\s*(?:=|":)/;
     const pelanggar = [...files]
-      .filter(([file, code]) => !isLanding(file) && code.includes("data-landing"))
+      .filter(([file, code]) => !isLanding(file) && PEMASANGAN.test(code))
       .map(([file]) => file);
 
     expect(

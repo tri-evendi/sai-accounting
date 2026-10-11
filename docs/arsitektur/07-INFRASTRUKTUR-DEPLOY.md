@@ -440,6 +440,7 @@ aktif.
 | `bun run prove-backup-restore` | Pembuktian cadangan bisa dibuka |
 | `lib/alert.ts` | Peringatan surel berperedam — **hanya 2 pemanggil** |
 | `docker compose logs <layanan>` | Log mentah |
+| **CI `Verify`** | `typecheck + lint + test` pada setiap PR & push `develop`/`main`; **required status check** pada `main` sejak 11 Okt 2026 |
 
 🔶 **Satu ketidakcocokan kecil komentar-vs-kode.** `src/proxy.ts` baris 60
 menyebut `/status` "dipersempit menjadi **tiga** keadaan", sementara

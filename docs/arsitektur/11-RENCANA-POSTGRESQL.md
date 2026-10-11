@@ -89,7 +89,7 @@ Diverifikasi langsung di repo pada 11 Oktober 2026.
 | Hal | Jumlah | Catatan |
 |---|---|---|
 | `provider = "mysql"` | **3** | perusahaan, kendali, platform |
-| Berkas `migration.sql` | **98** | semuanya pakai identifier backtick |
+| Berkas `migration.sql` | **99** | semuanya pakai identifier backtick |
 | …memuat `INSERT`/`UPDATE` data | **14** | perlu triage satu-satu |
 | `COLLATE utf8mb4_unicode_ci` | **62 berkas** | ⚠ lihat §4 — ini jebakan terbesar |
 | `@db.VarChar` | 246 | → `varchar` (langsung) |
@@ -100,7 +100,7 @@ Diverifikasi langsung di repo pada 11 Oktober 2026.
 **Strategi migration: BASELINE, bukan tulis-ulang 98 berkas.** Riwayat 98
 migration tidak punya nilai di mesin basis data baru; yang punya nilai adalah
 **skema akhir**. Jadi: bangkitkan satu migration awal PG dari skema Prisma,
-tandai sebagai applied (`migrate resolve`), lalu simpan 98 migration MySQL
+tandai sebagai applied (`migrate resolve`), lalu simpan 99 migration MySQL
 sebagai arsip hanya-baca. **14 migration berisi data** ditriage terpisah:
 mana yang backfill historis (tidak perlu diulang — datanya ikut bermigrasi) dan
 mana yang penyemaian yang masih dibutuhkan PT baru.

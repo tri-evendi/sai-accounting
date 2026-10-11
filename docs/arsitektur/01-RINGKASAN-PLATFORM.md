@@ -216,7 +216,7 @@ cadangan otomatis.
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |
 | Surel | **Nodemailer 7** | Konfigurasi tiga lapis — lihat dok 04 |
-| Uji | **Vitest 3** — **270 berkas tes · 4.559 tes** | Gerbangnya `bun run verify` |
+| Uji | **Vitest 3** — **274 berkas tes · 4.624 tes** | Gerbangnya `bun run verify` |
 | Proxy | **Traefik** (bersama 5 aplikasi lain di mesin yang sama) | TLS Let's Encrypt, resolver `le` |
 | Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 3 image dibangun CI; **jangan pernah build di server** |
 
@@ -226,12 +226,12 @@ cadangan otomatis.
 |---|---|
 | Berkas TypeScript/TSX | 939 |
 | Baris kode (`src/`) | ~342.800 |
-| Halaman (`page.tsx`) | 141 |
+| Halaman (`page.tsx`) | 142 |
 | Rute API (`route.ts`) | 126 |
 | Model Prisma | 61 (perusahaan) + 15 (kendali) + 12 (platform) = **88** |
-| Migration | 64 (perusahaan) + 17 (kendali) + 17 (platform) = **98** |
+| Migration | 64 (perusahaan) + 17 (kendali) + 18 (platform) = **99** |
 | Modul `src/lib` | 299 berkas |
-| Berkas tes | 270 (4.559 tes) |
+| Berkas tes | 274 (4.624 tes) |
 | Skrip operasional | 51 |
 | Izin RBAC | 66 (perusahaan) + 6 (tenant) |
 
@@ -254,7 +254,7 @@ pada 11 Oktober 2026:
 | Token API aktif | 0 |
 | Putaran penjadwal | 1.246 — terakhir 7 menit sebelum potret, **sehat** |
 | Putaran cadangan | 54 — **`lastSuccessAt: null`** ⚠ |
-| Migration diterapkan | kendali 17/17 · platform 17/17 · perusahaan 64/64 — **tidak ada drift** |
+| Migration diterapkan | kendali 17/17 · platform 17/17 · perusahaan 64/64 — **tidak ada drift** *(platform 0018 ditambahkan 11 Okt sore, BELUM diterapkan)* |
 
 Dua hal dari tabel itu adalah temuan, bukan statistik, dan keduanya dinilai di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md):

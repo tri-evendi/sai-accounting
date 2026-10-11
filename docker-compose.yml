@@ -104,6 +104,18 @@ services:
       # di belakang berarti putaran yang mati di tengah gagal pada pekerjaan
       # yang masih bisa diulang tanpa konsekuensi ke orang lain.
       #
+      # `prune:trails` ditaruh PALING AKHIR, dan bukan karena ia paling tidak
+      # penting: ia satu-satunya mata rantai yang MENGHAPUS. Menempatkannya di
+      # belakang berarti putaran yang mati di tengah berhenti pada pekerjaan
+      # yang masih bisa diulang — bukan pada satu-satunya yang tidak punya
+      # langkah balik. Alasan yang sama yang menaruh `remind:customers` di
+      # belakang, hanya dengan risiko yang berbeda bentuknya.
+      #
+      # Per jam jauh lebih sering daripada yang dibutuhkan ambang 90 hari, dan
+      # itu disengaja: putaran yang tidak menemukan apa pun berhenti pada satu
+      # `SELECT` per tabel — lebih murah daripada satu cadensi lagi yang harus
+      # dijaga seseorang.
+      #
       # `|| true` di tiap mata rantai disengaja: satu produser yang gagal tidak
       # boleh menelan yang berikutnya — putarannya harus tetap sampai `sleep`.
       #
@@ -117,8 +129,11 @@ services:
       # `docker top`.
       #
       # Karena itu tiap langkah dibungkus `timeout`. 600 detik dipilih dari
-      # cadensinya: lima langkah × 10 menit = 50 menit, masih di bawah selang
-      # satu jam, jadi putaran terburuk sekalipun tidak menumpuk. `-k 30`
+      # cadensinya: ENAM langkah × 10 menit = 60 menit — tepat di selang satu
+      # jam, jadi putaran terburuk sekalipun tidak menumpuk lebih dari satu.
+      # (Sebelum `prune:trails` ikut, angkanya lima × 10 = 50 menit. Kalau
+      # langkah KETUJUH ditambahkan, turunkan `BATAS` — jangan biarkan jumlah
+      # langkah × batas melewati selang putarannya.) `-k 30`
       # mengirim KILL 30 detik setelah TERM untuk proses yang membandel —
       # Prisma yang menahan event loop tidak selalu pergi karena TERM saja.
       #
@@ -144,6 +159,7 @@ services:
           langkah notify:invoice-due bun run notify:invoice-due
           langkah remind:customers bun run remind:customers
           langkah recurring:run bun run recurring:run
+          langkah prune:trails bun run prune:trails
           sleep 3600
         done
 
@@ -172,11 +188,25 @@ services:
   # penjaga itu setiap temuan akan membuat container mati lalu dihidupkan ulang
   # tanpa henti — temuan berubah jadi crash-loop.
   #
-  # Membacanya: `docker compose logs job-conformance --tail 60`. Putaran pertama
-  # jalan SAAT layanan naik, bukan tujuh hari kemudian, sehingga rilis yang
-  # merusak data ketahuan di hari yang sama.
+  # Membacanya ADA DUA, dan yang kedua baru:
+  #   • `docker compose logs job-conformance --tail 60` — rincian lengkapnya;
+  #   • `/api/health` → `conformance` — PUTUSAN denyutnya (ok | findings | late
+  #     | unknown) beserta jumlah temuan terakhir, dari tabel `conformance_runs`
+  #     (migration platform 0018).
   #
-  # Ia HANYA MEMBACA — dijaga `tests/check-data-conformance.test.ts`.
+  # Yang kedua ada karena yang pertama saja sudah terbukti tidak cukup: pada
+  # cadensi MINGGUAN, temuan yang hanya hidup di log container bisa berumur
+  # berbulan-bulan sebelum ada yang membukanya. Dua layanan latar lain
+  # (`job-scheduler`, `job-backup`) sudah punya jejak yang bisa DITANYAI; yang
+  # ini dulu satu-satunya yang tidak.
+  #
+  # Putaran pertama jalan SAAT layanan naik, bukan tujuh hari kemudian,
+  # sehingga rilis yang merusak data ketahuan di hari yang sama.
+  #
+  # Ia tidak mengubah satu angka akuntansi pun: buku PT hanya DIBACA, dan
+  # satu-satunya tulisannya adalah satu baris jejak ke basis data PLATFORM.
+  # Dijaga `tests/check-data-conformance.test.ts`, yang kini menuntut sifat itu
+  # secara presisi — bukan sekadar ketiadaan kata SQL.
   job-conformance:
     build:
       context: .

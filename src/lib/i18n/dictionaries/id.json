@@ -4566,7 +4566,8 @@
       "groupSummary": "Ringkasan",
       "groupCustomers": "Pelanggan",
       "groupSite": "Situs",
-      "groupSystem": "Sistem"
+      "groupSystem": "Sistem",
+      "conformance": "Kesesuaian Data"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -4727,6 +4728,27 @@
       "listAdoptions": "Adopsi langganan yatim",
       "listErrors": "Masalah",
       "listEmpty": "tidak ada"
+    },
+    "conformance": {
+      "heading": "Kesesuaian Data",
+      "description": "Sapuan mingguan atas setiap buku PT — status di luar enum, valas tanpa kurs, jurnal timpang, akun penampung beban. Penjaga zod hanya berlaku di jalur tulis; sapuan ini menangkap yang masuk lewat impor, perbaikan SQL manual, dan penyemai.",
+      "unavailable": "Riwayat sapuan belum bisa dibaca — basis data platform tak terjangkau, atau migrasi 0018 belum diterapkan.",
+      "empty": "Belum ada sapuan yang tercatat. Layanan `job-conformance` menyapu sekali seminggu, dan putaran pertamanya jalan saat layanan naik.",
+      "colStarted": "Mulai",
+      "colFinished": "Selesai",
+      "colStatus": "Status",
+      "colChecked": "Buku disapu",
+      "colFailed": "Gagal diperiksa",
+      "colFindings": "Temuan",
+      "statusOk": "Bersih",
+      "statusFindings": "Ada temuan",
+      "statusError": "Gagal",
+      "lastRunHeading": "Sapuan terakhir — {date}",
+      "listFindings": "Temuan",
+      "listFailures": "Buku yang gagal diperiksa",
+      "listEmpty": "Tidak ada.",
+      "findingsTruncated": "Menampilkan {shown} dari {total} temuan. Sisanya ada di `docker compose logs job-conformance`.",
+      "failuresWhy": "Buku yang tidak terperiksa bukan buku yang bersih — sapuan dengan kegagalan ditandai perlu ditindak, walau nol temuan."
     },
     "actions": {
       "heading": "Tindakan operator",

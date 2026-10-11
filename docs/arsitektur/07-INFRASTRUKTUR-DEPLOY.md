@@ -427,11 +427,12 @@ aktif.
 
 | Mekanisme | Isi |
 |---|---|
-| `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), `mail`. **503 hanya bila kendali tak terjangkau** |
+| `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), **`conformance`** (+umur, jumlah temuan), `mail`. **503 hanya bila kendali tak terjangkau** |
 | `GET /status` | Versi untuk manusia — komponen dengan **empat keadaan** (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`lib/public-status.ts`) |
 | Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `db` tiap 10s |
 | Healthcheck Traefik | `/api/health` tiap 30s |
-| `scheduler_runs` | 1.246 baris — status per putaran |
+| `scheduler_runs` | 1.251 baris — status per putaran; **dipangkas** > 90 hari (baris `error`, terakhir, & `ok` terakhir ditahan selamanya) |
+| `conformance_runs` | Status + jumlah temuan per sapuan mingguan (**baru**, migration platform 0018) |
 | `backup_runs` | 54 baris — status per percobaan |
 | `/operator/scheduler` | Denyut penjadwal di layar |
 | `audit_logs` / `tenant_audit_logs` | Jejak tindakan |
@@ -458,7 +459,7 @@ komentarnya biasa dipercaya seakurat kodenya.
 | Pelacakan galat (Sentry dsb.) | Galat runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; **pembacanya belum dipastikan** |
 | Peringatan tersambung | `lib/alert.ts` tidak dipanggil dari cadangan/penjadwal/kesesuaian |
-| Temuan `job-conformance` yang bisa ditanyai | **Hanya stdout** |
+| ~~Temuan `job-conformance` yang bisa ditanyai~~ | ✅ **ditutup** — `conformance_runs` + `/api/health` → `conformance` |
 
 Membaca log, dari `PRODUCTION.md §Reading the logs`:
 

@@ -58,7 +58,7 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-270 berkas tes berisi 4.559 tes, dan yang menarik bukan jumlahnya melainkan
+274 berkas tes berisi 4.624 tes, dan yang menarik bukan jumlahnya melainkan
 **jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
@@ -174,7 +174,7 @@ P0-2 menghasilkan rasa aman yang salah.
 | Workflow yang menjalankan `verify` / `test` / `typecheck` / `lint` | **tidak ada** |
 | `required_status_checks` pada `main` | **tidak ada** |
 | `required_approving_review_count` pada `main` | **0** |
-| Berkas tes yang ada di repo | **270** (4.559 tes) |
+| Berkas tes yang ada di repo | **270** (4.559 tes) — *angka saat temuan ini ditulis; 273 per 11 Okt 2026 sore* |
 
 Dua workflow yang ada (`publish-image.yml`, `build-standalone.yml`) keduanya
 hanya memicu pada `push` ke `main` — dan keduanya **membangun**, tidak satu pun
@@ -281,7 +281,7 @@ lebih baik daripada nol.
 
 ---
 
-### 🟠 P1-2 — Temuan kesesuaian data hanya ada di stdout
+### ✅ P1-2 — Temuan kesesuaian data hanya ada di stdout — **DITUTUP 11 Okt 2026**
 
 **Bukti.** Layanan `job-conformance` menulis ke stdout. Tidak ada tabel setara
 `scheduler_runs`/`backup_runs`, tidak ada medan di `/api/health`, tidak ada
@@ -299,8 +299,64 @@ paling mudah tidak terlihat.
 Ia juga asimetri yang jelas: dua layanan latar lain **punya** jejak yang bisa
 ditanyai; yang ini tidak.
 
-**Perbaikan.** Tabel `conformance_runs` di platform (sepola `scheduler_runs`) +
-medan di `/api/health` + panggilan `alert()`. Bisa dikerjakan bersama P1-1.
+**Perbaikan.**
+
+> ✅ **DIKERJAKAN 11 Oktober 2026 — jejak + putusan denyut.**
+>
+> | Bagian | Keadaan |
+> |---|---|
+> | Tabel `conformance_runs` | ✅ migration platform **0018** |
+> | Model `ConformanceRun` | ✅ sepola `SchedulerRun`/`BackupRun` |
+> | Putusan denyut | ✅ `lib/conformance-heartbeat.ts` — **murni**, nol impor |
+> | Skrip menulis jejaknya | ✅ satu baris, ke **platform** saja |
+> | Medan `/api/health` → `conformance` | ✅ dilaporkan, **tidak** ikut memutuskan 503 (doktrin #137) |
+> | Halaman operator `/operator/conformance` | ✅ + entri nav + 19 kunci i18n × 3 bahasa |
+> | Panggilan `alert()` | ❌ **belum** — bagian dari P1-1 |
+>
+> Statusnya **empat** nilai, bukan dua, dan pembedaannya yang paling penting:
+> `ok` (berjalan & bersih) · `findings` (berjalan & **menemukan** sesuatu —
+> bukan kegagalan layanan) · `late` (basi, **atau** ada buku yang gagal
+> diperiksa — buku yang tidak terperiksa bukan buku yang bersih) · `unknown`
+> (tak terjangkau / belum pernah jalan — sengaja dibedakan dari `late`, supaya
+> pemasangan baru tidak berbunyi seperti pemasangan rusak).
+>
+> **Penjaganya** `tests/conformance-heartbeat.test.ts` (17 tes) — termasuk tiga
+> yang menuntut kabelnya tidak bisa dicabut diam-diam, dan satu yang menuntut
+> modulnya tetap **murni** (nol impor) supaya ambangnya bisa diuji sebagai
+> fungsi di tiga dunia pemakainya.
+>
+> **Dan penjaga hanya-baca skripnya DIPERKETAT, bukan dilonggarkan.** Jejaknya
+> memang sebuah tulisan, dan penjaga lama (yang memindai lima kata SQL) tidak
+> akan melihatnya — `platformDb.conformanceRun.create()` tidak memuat kata
+> `INSERT`. Lolos secara huruf bukan jawabannya: tesnya sekarang menuntut
+> sifat yang sebenarnya harus dijaga — buku PT hanya boleh **dibaca**
+> (`$queryRawUnsafe` ada, `$executeRaw*` **tidak boleh ada**), dan **tepat
+> satu** tulisan Prisma yang sasarannya **wajib** `platformDb.conformanceRun`.
+> Plus satu tes yang menuntut jejaknya ditulis **sebelum** `process.exit` —
+> `exit` tidak menunggu promise, jadi mencatat sesudahnya berarti kehilangan
+> jejak tepat pada putaran yang paling perlu dicatat.
+>
+> **Migration-nya dibuktikan**, bukan diasumsikan: diterapkan ke basis data
+> sekali-pakai, lalu kolom nyatanya dibandingkan dengan `@map` di model —
+> cocok persis, nol kolom hilang, nol kolom tak terpakai. Scratch-nya dihapus.
+
+**Halaman operatornya ikut selesai.** `/operator/conformance` meniru
+`/operator/scheduler` (StaticTable, `ConsolePanel`, token `var(--ant-…)`), dan
+merender **ketiga** status — jaminan terpentingnya: halaman yang hanya mengenal
+ok/error akan menampilkan `findings` sebagai **kegagalan** (salah —
+pemeriksanya bekerja) atau sebagai **bersih** (lebih buruk — temuannya hilang
+dari layar). Kolom "gagal diperiksa" berubah penanda saat bukan-nol sekeras
+kolom temuan, sebab sapuan yang melewatkan satu buku akan terbaca hijau
+selamanya kalau kegagalannya jadi catatan pinggir. Dan daftar temuannya
+**menyebut jumlah utuh** saat dipangkas — 200 dari 3.000 yang terlihat seperti
+200 total adalah kabar menyesatkan justru pada putaran terburuk.
+
+Dijaga `tests/operator-conformance-page.test.ts` (15 tes) — membaca SUMBER
+alih-alih merender, sebab merendernya berarti memalsukan penjaga operator,
+sesi, dan Prisma sekaligus: tiga tiruan untuk menguji satu hal. Yang benar-benar
+bisa salah di sini adalah kabelnya, dan kabel terbaca dari sumber.
+
+**Yang MASIH terbuka:** panggilan `alert()` — bagian P1-1, bukan butir ini.
 
 ---
 
@@ -461,7 +517,7 @@ ini. Jawaban "tidak bisa, karena X" yang tertulis sudah merupakan kemajuan.
 
 ---
 
-### 🟡 P2-5 — Tabel jejak tumbuh tanpa kebijakan pemangkasan
+### ✅ P2-5 — Tabel jejak tumbuh tanpa kebijakan pemangkasan — **DITUTUP 11 Okt 2026**
 
 **Bukti.** `scheduler_runs` = **1.246** baris (kadens per jam).
 `backup_runs` = 54. `data/mail-outbox/` menyimpan `.eml` sejak Agustus. Tidak
@@ -470,9 +526,49 @@ ada pemangkasan yang terlihat untuk ketiganya.
 **Dampak.** Hari ini sepele. Tetapi `scheduler_runs` tumbuh **~8.760 baris per
 tahun** selamanya, dan ia ikut dalam setiap dump cadangan.
 
-**Perbaikan.** Pemangkasan di layanan `job-scheduler` (mis. pertahankan 90 hari,
-plus **semua** baris `error` tanpa batas waktu — kegagalan adalah yang paling
-berharga). Tunda sampai P0/P1 selesai.
+**Perbaikan.**
+
+> ✅ **DIKERJAKAN 11 Oktober 2026** — dan dua cacat yang tidak ada di resep
+> semula ikut tertutup.
+>
+> Resep semula menyebut dua aturan: 90 hari + semua `error` selamanya. Saat
+> mengerjakannya, **dua lagi** ternyata menanggung beban, dan keduanya justru
+> berlaku ketika ambang 90 hari **tidak lagi melindungi apa pun**:
+>
+> | # | Aturan | Cacat yang ditutupnya |
+> |---|---|---|
+> | 1 | Baris lebih baru dari ambang | — (resep semula) |
+> | 2 | Status **bukan `ok`** disimpan tanpa batas | — (resep semula) |
+> | 3 | **Baris TERAKHIR** selalu disimpan | Layanan yang mati 100 hari lalu kehilangan **seluruh** jejaknya. Tabel kosong terbaca `unknown` ("belum pernah jalan") alih-alih "berhenti pada tanggal X" — **pemangkasan yang menyembunyikan kegagalan** |
+> | 4 | **Baris `ok` TERAKHIR** selalu disimpan | `health-report.ts` membaca baris `ok` terakhir **secara terpisah** (`where: { status: "ok" }`). Memangkasnya mengubah "berhasil terakhir 4 bulan lalu" menjadi "tidak pernah berhasil" — menghapus satu-satunya petunjuk bahwa mekanismenya pernah bekerja |
+>
+> Cacat 4 bukan hipotesis: `backup_runs` per 11 Okt 2026 berisi **54 baris,
+> semuanya `error`**. Begitu satu cadangan berhasil lalu gagal 90 hari
+> berturut-turut, pemangkasan naif akan menghapus justru bukti keberhasilan itu.
+>
+> **Lingkupnya diperluas ke ketiga tabel** — `scheduler_runs`, `backup_runs`,
+> `conformance_runs` — bukan hanya yang disebut resepnya.
+>
+> Aturannya **fungsi murni** (`lib/run-trail-retention.ts`, nol impor), dijaga
+> `tests/run-trail-retention.test.ts` (**21 tes**). Sebuah `DELETE` yang salah
+> tidak punya langkah balik, dan satu-satunya yang tahu apakah aturannya benar
+> adalah tesnya — jadi yang paling penting di berkas itu bukan tes yang
+> membuktikan sesuatu **terpangkas**, melainkan empat yang membuktikan sesuatu
+> **tertahan**. Dua di antaranya mengunci keadaan produksi hari ini: 1.251 baris
+> penjadwal dan 54 baris cadangan → **nol** dipangkas.
+>
+> Dipanggil `job-scheduler` tiap jam sebagai langkah **ke-6 dan TERAKHIR**: ia
+> satu-satunya mata rantai yang **menghapus**, jadi putaran yang mati di tengah
+> berhenti pada pekerjaan yang masih bisa diulang — bukan pada satu-satunya yang
+> tidak punya langkah balik.
+>
+> ⚠ `BATAS` timeout per langkah ditinjau ikut: enam langkah × 10 menit = 60
+> menit, **tepat** di selang putarannya. Langkah ketujuh menuntut `BATAS`
+> diturunkan.
+
+**Yang TIDAK ikut dikerjakan:** pemangkasan `data/mail-outbox/` — ia artefak
+pengembangan (transport surel `file`), tidak tumbuh di produksi yang memakai
+SMTP, dan tidak ikut dalam cadangan basis data.
 
 ---
 
@@ -494,7 +590,7 @@ lagi. Saat itu, memecah **kamus** lebih berdampak daripada memecah modul domain
 
 ---
 
-### 🟢 P3-2 — Tes token API tidak menembus proxy
+### ✅ P3-2 — Tes token API tidak menembus proxy — **SUDAH TERTUTUP SEBELUM TEMUAN INI DITULIS**
 
 **Bukti.** Tercatat di `lib/api-v1.ts`: seluruh tes token memanggil
 `requireApiToken` **langsung**, jadi tak satu pun bisa melihat penolakan satu
@@ -508,9 +604,37 @@ dengan cara yang sama.
 **Yang sudah benar.** Kejadiannya dicatat lengkap beserta mengapa ia lolos —
 itu sendiri sudah mitigasi, karena orang berikutnya diperingatkan.
 
-**Perbaikan.** Satu tes yang memanggil `proxy()` dengan permintaan ber-`Bearer`
-dan menuntut ia **tidak** dipantulkan. 🔶 Mungkin cukup satu tes unit terhadap
-fungsi keputusan proxy — tidak perlu server sungguhan.
+> ## ⚠ KOREKSI — temuan ini menggambarkan keadaan HISTORIS, bukan sekarang
+>
+> Diperiksa 11 Okt 2026: **`tests/proxy-bearer-api.test.ts` sudah ada**, dan ia
+> melakukan persis apa yang resep di bawah minta — bahkan lebih. Temuan ini
+> disusun dari komentar di `lib/api-v1.ts`, yang menceritakan regresinya; yang
+> tidak saya periksa adalah apakah penjaganya ikut lahir bersama perbaikannya.
+> Ia ikut.
+>
+> Cakupan yang sudah ada, dan semuanya memanggil `proxy()` **sungguhan**:
+>
+> | Tes | Menuntut |
+> |---|---|
+> | setiap route v1 yang benar-benar ada | **tidak** dijawab 401 oleh proxy |
+> | `openapi.json` | lolos (sengaja publik) |
+> | permukaan API **sesi** | **tetap dijaga** — pelepasannya tidak melebar |
+> | `isBearerApiPath` | bentuknya, bukan `startsWith` telanjang |
+> | kabelnya | proxy benar-benar **memanggil** `isBearerApiPath` sebagai KODE, bukan komentar |
+>
+> Baris terakhir itu lebih kuat daripada yang saya resepkan: ia mencegah
+> kabelnya dicabut diam-diam, bukan hanya menguji perilakunya hari ini.
+>
+> **Resep di bawah karena itu tidak perlu dikerjakan.** Dibiarkan tertulis
+> supaya jelas apa yang diperiksa dan kenapa kesimpulannya berubah.
+
+**Resep semula (TIDAK perlu dikerjakan).** Satu tes yang memanggil `proxy()`
+dengan permintaan ber-`Bearer` dan menuntut ia **tidak** dipantulkan.
+
+Catatan: celah KELAS yang disebut temuan ini memang nyata, dan sejak 11 Okt
+2026 ia punya penjaga kedua — `tests/proxy-landing-shortcut.test.ts` (P3-4),
+yang juga menembus `proxy()` sungguhan. Jadi dua jalur proxy yang paling mudah
+salah kini teruji ujung-ke-ujung.
 
 ---
 
@@ -649,15 +773,15 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | **P0-2** | Kunci cadangan 🔶 di mesin yang sama | Pemulihan yang terasa ada padahal tidak | Rendah | Rendah |
 | **P0-3** | **Nol CI — tak ada yang menjalankan 270 berkas tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
-| **P1-2** | Temuan kesesuaian hanya di stdout | Cacat data tak terlihat berbulan-bulan | Sedang | Rendah |
+| ~~P1-2~~ | ~~Temuan kesesuaian hanya di stdout~~ | ✅ **ditutup 11 Okt 2026** — jejak + `/api/health` + halaman operator | — | — |
 | ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ **ditutup 11 Okt 2026** | — | — |
 | **P2-1** | Basis data uji di produksi | Cadangan & laporan tercemar; 1 DB tak terdaftar | Sedang | Sedang |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
 | **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
 | **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |
-| **P2-5** | Tabel jejak tanpa pemangkasan | Pertumbuhan lambat | Rendah | Rendah |
+| ~~P2-5~~ | ~~Tabel jejak tanpa pemangkasan~~ | ✅ **ditutup 11 Okt 2026** — 4 aturan, 2 di antaranya tidak ada di resep semula | — | — |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |
-| **P3-2** | Proxy tak teruji ujung-ke-ujung | Kelas cacat bisa terulang | Rendah | Rendah |
+| ~~P3-2~~ | ~~Proxy tak teruji ujung-ke-ujung~~ | ✅ **sudah tertutup** sebelum temuan ditulis — `tests/proxy-bearer-api.test.ts` | — | — |
 | ~~P3-4~~ | ~~Pemantulan `/` menempuh dua pantulan~~ | ✅ **ditutup 11 Okt 2026** — resep semula dikoreksi, lihat temuannya | — | — |
 | **P3-3** | Tanpa kepemilikan tercatat | *Bus factor* 1 | Rendah | Nol |
 

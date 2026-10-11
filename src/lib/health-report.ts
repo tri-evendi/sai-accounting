@@ -28,6 +28,7 @@ import { platformDb } from "@/lib/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@/lib/scheduler-heartbeat";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
+import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
 import { mailHealth, type MailHealthStatus } from "@/lib/mail-health";
 import { outboxCount, resolveMailConfig } from "@/lib/mailer-core";
 
@@ -88,6 +89,7 @@ export type HealthReport =
       company: CompanyStatus;
       scheduler: SchedulerHealth;
       backup: PublicBackupHealth;
+      conformance: ConformanceHealth;
       mail: MailStatus;
     };
 
@@ -130,6 +132,33 @@ async function lastSchedulerRun(): Promise<SchedulerHealth> {
      * jawaban yang jujur untuk tidak tahu adalah `unknown`.
      */
     return schedulerHealth(null);
+  }
+}
+
+/**
+ * Putaran PEMERIKSA KESESUAIAN terakhir yang selesai.
+ *
+ * Pola yang sama persis dengan `lastSchedulerRun` — termasuk menelan galat
+ * menjadi `unknown` alih-alih melempar. Doktrin #137: platform yang tak
+ * terjangkau TIDAK boleh membuat probe ini 503; ia dilaporkan, bukan ikut
+ * memutuskan.
+ *
+ * `findingCount` dan `companiesFailed` ikut dibaca karena putusannya
+ * membutuhkan keduanya: temuan membedakan `ok` dari `findings`, dan buku yang
+ * gagal diperiksa membuatnya `late` — buku yang tidak terperiksa bukan buku
+ * yang bersih.
+ */
+async function lastConformanceRun(): Promise<ConformanceHealth> {
+  try {
+    const run = await platformDb.conformanceRun.findFirst({
+      orderBy: { id: "desc" },
+      select: { finishedAt: true, findingCount: true, companiesFailed: true },
+    });
+    return conformanceHealth(run);
+  } catch {
+    /* Platform tak terjangkau, atau migration 0018 belum diterapkan. Keduanya
+       "belum ada yang bisa dilaporkan" — alasan yang sama dengan di atas. */
+    return conformanceHealth(null);
   }
 }
 
@@ -266,8 +295,21 @@ export async function healthReport(): Promise<HealthReport> {
     return { status: "error", database: "unreachable" };
   }
 
-  const [schedulerStatus, mailStatus, platformStatus, companyStatus, backupStatus] =
-    await Promise.all([lastSchedulerRun(), mail(), platform(), sampleCompany(), lastBackup()]);
+  const [
+    schedulerStatus,
+    mailStatus,
+    platformStatus,
+    companyStatus,
+    backupStatus,
+    conformanceStatus,
+  ] = await Promise.all([
+    lastSchedulerRun(),
+    mail(),
+    platform(),
+    sampleCompany(),
+    lastBackup(),
+    lastConformanceRun(),
+  ]);
 
   /*
    * `status: "ok"` walau `platform` atau `company` bermasalah — lihat catatan
@@ -285,6 +327,7 @@ export async function healthReport(): Promise<HealthReport> {
     company: companyStatus,
     scheduler: schedulerStatus,
     backup: backupStatus,
+    conformance: conformanceStatus,
     mail: mailStatus,
   };
 }

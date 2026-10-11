@@ -529,6 +529,77 @@ function parseRunDetails(raw: string | null): SchedulerRunDetails | null {
  * terjangkau ATAU tabelnya belum dimigrasikan — keduanya keadaan "belum ada
  * yang bisa dilaporkan", bukan 500.
  */
+/** Isi `details` jejak kesesuaian, sesudah diurai & disaring. */
+export interface ConformanceRunDetails {
+  /** Baris temuan: `"<slug> · <judul pemeriksaan>: <label>"`. Dipangkas 200 di sumbernya. */
+  findings: string[];
+  /** Buku yang GAGAL diperiksa, beserta sebabnya. */
+  failures: string[];
+}
+
+export interface OperatorConformanceRun {
+  id: number;
+  startedAt: Date;
+  finishedAt: Date;
+  /** ok | findings | error */
+  status: string;
+  companiesChecked: number;
+  companiesFailed: number;
+  findingCount: number;
+  details: ConformanceRunDetails | null;
+}
+
+/**
+ * `details` kesesuaian — pola `parseRunDetails`, dan alasan yang sama: isi lama
+ * tidak bermigrasi saat bentuk barisnya berubah, jadi yang sampai ke layar
+ * harus disaring per-elemen, bukan dipercaya karena JSON-nya terurai.
+ */
+function parseConformanceDetails(raw: string | null): ConformanceRunDetails | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<ConformanceRunDetails>;
+    const list = (value: unknown): string[] =>
+      Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+    return { findings: list(parsed.findings), failures: list(parsed.failures) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sapuan kesesuaian data terakhir — `conformance_runs` (migration platform
+ * 0018), ditulis `scripts/check-data-conformance.ts` di akhir setiap putaran.
+ *
+ * `null` = platform tak terjangkau ATAU migration 0018 belum diterapkan.
+ * Keduanya sengaja TIDAK dibedakan, pola yang sama dengan
+ * `schedulerRunsForOperator`: halaman mengatakan "belum bisa dibaca", bukan
+ * mengarang sebab yang ia tidak tahu.
+ */
+export async function conformanceRunsForOperator(
+  limit = 10,
+  deps: { platform: PlatformClient } = { platform: platformDb }
+): Promise<OperatorConformanceRun[] | null> {
+  try {
+    const runs = await deps.platform.conformanceRun.findMany({
+      orderBy: { id: "desc" },
+      take: Math.min(50, Math.max(1, limit)),
+    });
+    return runs.map((run) => ({
+      id: run.id,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+      status: run.status,
+      companiesChecked: run.companiesChecked,
+      companiesFailed: run.companiesFailed,
+      findingCount: run.findingCount,
+      details: parseConformanceDetails(run.details),
+    }));
+  } catch (error) {
+    console.error("[operator-store] riwayat kesesuaian data tak terbaca:", error);
+    return null;
+  }
+}
+
 export async function schedulerRunsForOperator(
   limit = 10,
   deps: { platform: PlatformClient } = { platform: platformDb }

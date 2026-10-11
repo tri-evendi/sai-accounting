@@ -463,6 +463,46 @@ model MailSetting {
 /// berbunyi. Tabel yang hanya menyimpan keberhasilan tidak bisa membedakan
 /// "belum pernah dicoba" dari "dicoba tiap hari dan gagal tiap hari" — dua
 /// keadaan yang menuntut tindakan sangat berbeda.
+/// JEJAK PEMERIKSA KESESUAIAN DATA — lihat migration 0018.
+///
+/// Menutup asimetri: `scheduler_runs` dan `backup_runs` punya jejak yang bisa
+/// ditanyai dari luar (`/api/health`), pemeriksa kesesuaian tidak. Pada cadensi
+/// MINGGUAN, temuan yang hanya ada di stdout bisa berumur berbulan-bulan.
+model ConformanceRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | findings | error — TIGA nilai, dan bedanya menentukan:
+  /// `ok` = berjalan & bersih; `findings` = berjalan & menemukan sesuatu (bukan
+  /// kegagalan layanan); `error` = ada buku yang GAGAL diperiksa, dan buku yang
+  /// tidak terperiksa bukan buku yang bersih. Konvensi String + union TS.
+  status String @db.VarChar(12)
+
+  /// Berapa buku disapu, dan berapa yang gagal diperiksa. Yang pertama membuat
+  /// "apakah sapuannya melewatkan buku baru?" bisa dijawab tanpa menebak.
+  companiesChecked Int @default(0) @map("companies_checked")
+  companiesFailed  Int @default(0) @map("companies_failed")
+
+  /// Total baris temuan di seluruh buku. Nol = bersih.
+  findingCount Int @default(0) @map("finding_count")
+
+  /// JSON `{findings, failures}` — daftar baris laporan, persis kalimat yang
+  /// dulu hanya tercetak ke stdout. Text: isi lama tidak perlu bermigrasi saat
+  /// bentuk barisnya berubah (alasan yang sama dengan `SchedulerRun.details`).
+  ///
+  /// Memuat LABEL temuan, bukan nilai uang dan bukan baris datanya.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("conformance_runs")
+}
+
 model BackupRun {
   id Int @id @default(autoincrement())
 

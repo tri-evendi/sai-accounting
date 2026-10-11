@@ -4566,7 +4566,8 @@
       "groupSummary": "Overview",
       "groupCustomers": "Customers",
       "groupSite": "Website",
-      "groupSystem": "System"
+      "groupSystem": "System",
+      "conformance": "Data Conformance"
     },
     "attention": {
       "heading": "Needs attention",
@@ -4727,6 +4728,27 @@
       "listAdoptions": "Orphan subscription adoptions",
       "listErrors": "Issues",
       "listEmpty": "none"
+    },
+    "conformance": {
+      "heading": "Data Conformance",
+      "description": "Weekly sweep across every company ledger — statuses outside the enum, foreign currency without a rate, unbalanced journals, catch-all expense accounts. Zod guards only apply on write paths; this sweep catches what arrives via imports, manual SQL fixes, and seeding.",
+      "unavailable": "Sweep history cannot be read yet — the platform database is unreachable, or migration 0018 has not been applied.",
+      "empty": "No sweep recorded yet. The `job-conformance` service sweeps once a week, and its first run happens when the service comes up.",
+      "colStarted": "Started",
+      "colFinished": "Finished",
+      "colStatus": "Status",
+      "colChecked": "Books swept",
+      "colFailed": "Failed to check",
+      "colFindings": "Findings",
+      "statusOk": "Clean",
+      "statusFindings": "Findings",
+      "statusError": "Failed",
+      "lastRunHeading": "Latest sweep — {date}",
+      "listFindings": "Findings",
+      "listFailures": "Books that failed to be checked",
+      "listEmpty": "None.",
+      "findingsTruncated": "Showing {shown} of {total} findings. The rest are in `docker compose logs job-conformance`.",
+      "failuresWhy": "A book that was not checked is not a clean book — a sweep with failures is flagged for action even at zero findings."
     },
     "actions": {
       "heading": "Operator actions",

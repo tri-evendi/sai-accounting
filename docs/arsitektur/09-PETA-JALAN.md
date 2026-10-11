@@ -19,7 +19,7 @@ arsitektur: bentuk sistemnya sehat, dan bukti dari potret ini mengarah ke
 | Kembalikan Tailwind / `className` | Dicabut #203; dijaga ESLint & tes |
 | Replika `app-customer` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
 | Lingkungan staging penuh | 🔶 Mungkin belum sepadan pada 11 tenant. Keputusan pemilik, bukan teknis |
-| **Pindah ke PostgreSQL** | 98 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| **Pindah ke PostgreSQL** | 99 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 | **Pisahkan container pemasaran** | Batasnya memotong funnel: `/register` ada di `(auth)`, bukan `(marketing)`. Nol beban terukur (162–185 ms). [Dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 | **Mulai DC/DRC dari replikasi** | Replika yang menyalin basis data tak tercadangkan melipatgandakan satu titik kegagalan jadi dua yang berkorelasi. [Dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 
@@ -208,7 +208,29 @@ Edge tidak punya aksesnya. Dua pantulan + satu render → satu pantulan, nol
 render. Dijaga `tests/proxy-landing-shortcut.test.ts` (9 tes, enam di antaranya
 menguji yang TIDAK boleh dipantulkan).
 
-### 1.3 Jejak kesesuaian data → P1-2
+### 1.3 ✅ Jejak kesesuaian data → P1-2 — **SELESAI 11 Okt 2026**
+
+Migration platform **0018** (`conformance_runs`), model `ConformanceRun`,
+putusan denyut murni `lib/conformance-heartbeat.ts`, skrip menulis jejaknya
+(satu baris, **platform saja**), dan medan `/api/health` → `conformance`.
+Dijaga `tests/conformance-heartbeat.test.ts` (17 tes); penjaga hanya-baca
+skripnya **diperketat**, bukan dilonggarkan. Migration dibuktikan di basis data
+sekali-pakai. Rincian & yang masih terbuka:
+[dok 08 P1-2](./08-PENILAIAN-ARSITEKTUR.md).
+
+⚠ **Langkah rilis:** ini migration PLATFORM pertama sejak 0017 —
+`bun run db:migrate:all` wajib sebelum `app-customer` naik, atau
+`/api/health` menjawab `conformance: unknown` (ditelan, tidak melempar).
+
+Halaman operatornya ikut selesai: `/operator/conformance` + entri nav + 19
+kunci i18n × 3 bahasa, dijaga `tests/operator-conformance-page.test.ts` (15
+tes). Ketiga status dirender — halaman yang hanya mengenal ok/error akan
+menampilkan `findings` sebagai kegagalan atau sebagai bersih, dan keduanya
+salah.
+
+**Masih terbuka:** panggilan `alert()` — bagian P1-1, bukan butir ini.
+
+### 1.3-lanjutan — rencana semula butir ini
 
 Menutup asimetri: `job-scheduler` dan `job-backup` punya tabel jejak, `job-conformance`
 tidak.
@@ -224,24 +246,33 @@ tidak.
 **Mengikuti [`docs/DATABASE.md`](../DATABASE.md)** — migration ditulis tangan,
 lewati Checklist tabel baru.
 
-### 1.4 Tutup celah uji proxy → P3-2
+### 1.4 ✅ Tutup celah uji proxy → P3-2 — **TERNYATA SUDAH TERTUTUP**
 
-Satu tes: `proxy()` dengan `Authorization: Bearer …` → **tidak** dipantulkan.
-Menutup kelas cacat yang sudah pernah hidup di produksi tiga pekan.
+Diperiksa 11 Okt 2026: `tests/proxy-bearer-api.test.ts` sudah ada dan memanggil
+`proxy()` sungguhan — termasuk satu tes yang menuntut kabelnya tidak bisa
+dicabut diam-diam, yang lebih kuat daripada resep semula. Butir ini **tidak
+perlu dikerjakan**; koreksi lengkapnya di
+[dok 08 P3-2](./08-PENILAIAN-ARSITEKTUR.md).
 
-🔶 Kemungkinan cukup tes unit terhadap fungsi keputusan proxy; server sungguhan
-mungkin tidak perlu.
+### 1.5 ✅ Pemangkasan tabel jejak → P2-5 — **SELESAI 11 Okt 2026**
 
-### 1.5 Pemangkasan tabel jejak → P2-5
+Resep semula menyebut dua aturan (90 hari + semua `error` selamanya). Saat
+dikerjakan, **dua lagi** ternyata menanggung beban — dan keduanya justru
+berlaku ketika ambang 90 hari **tidak lagi melindungi apa pun**: baris
+**terakhir** dan baris **`ok` terakhir** harus selalu tinggal. Tanpa yang
+pertama, layanan yang mati 100 hari lalu kehilangan seluruh jejaknya dan tabel
+kosongnya terbaca "belum pernah jalan". Tanpa yang kedua, `/api/health`
+kehilangan "kapan terakhir berhasil". Koreksi lengkapnya di
+[dok 08 P2-5](./08-PENILAIAN-ARSITEKTUR.md).
 
-Di layanan `job-scheduler`: pangkas `scheduler_runs` > 90 hari, **tetapi pertahankan
-setiap baris `error` tanpa batas waktu** — kegagalan adalah baris yang paling
-berharga, dan memangkasnya berarti kehilangan satu-satunya catatan masa lalu
-yang berguna.
+Lingkupnya diperluas ke **ketiga** tabel jejak. Aturannya fungsi murni
+(`lib/run-trail-retention.ts`), dijaga `tests/run-trail-retention.test.ts`
+(21 tes). Dipanggil `job-scheduler` sebagai langkah **ke-6 dan terakhir** — ia
+satu-satunya yang menghapus.
 
-Sekaligus: pangkas `data/mail-outbox/` (hanya artefak pengembangan).
-
-**Prasyarat:** 1.1 selesai (supaya pola tabel jejak sudah mapan).
+**Tidak ikut dikerjakan:** `data/mail-outbox/` — artefak pengembangan
+(transport surel `file`), tidak tumbuh di produksi yang memakai SMTP, dan tidak
+ikut dalam cadangan basis data.
 
 ---
 
@@ -409,8 +440,8 @@ kepatuhan yang masih terbuka ada di
 **11 tenant / 17 perusahaan / 13 pengguna** di produksi. Satu monolit Next.js 16
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
-dan platform (penagihan). ~342.800 baris TypeScript, 141 halaman, 126 rute API,
-88 model, 98 migration, 270 berkas tes.
+dan platform (penagihan). ~342.800 baris TypeScript, 142 halaman, 126 rute API,
+88 model, 99 migration, 274 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang

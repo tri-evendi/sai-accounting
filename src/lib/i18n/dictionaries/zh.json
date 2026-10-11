@@ -4566,7 +4566,8 @@
       "groupSummary": "概览",
       "groupCustomers": "客户",
       "groupSite": "网站",
-      "groupSystem": "系统"
+      "groupSystem": "系统",
+      "conformance": "数据一致性"
     },
     "attention": {
       "heading": "需要处理",
@@ -4727,6 +4728,27 @@
       "listAdoptions": "孤儿订阅认领",
       "listErrors": "问题",
       "listEmpty": "无"
+    },
+    "conformance": {
+      "heading": "数据一致性",
+      "description": "每周扫描每一套公司账簿——枚举之外的状态、缺少汇率的外币、不平衡的日记账、笼统的费用科目。Zod 校验只作用于写入路径；本扫描捕捉经由导入、手工 SQL 修复和种子数据进入的问题。",
+      "unavailable": "暂时无法读取扫描历史——平台数据库不可达，或迁移 0018 尚未应用。",
+      "empty": "尚无扫描记录。`job-conformance` 服务每周扫描一次，首次运行在服务启动时发生。",
+      "colStarted": "开始",
+      "colFinished": "结束",
+      "colStatus": "状态",
+      "colChecked": "已扫账簿",
+      "colFailed": "检查失败",
+      "colFindings": "发现",
+      "statusOk": "干净",
+      "statusFindings": "有发现",
+      "statusError": "失败",
+      "lastRunHeading": "最近一次扫描 — {date}",
+      "listFindings": "发现",
+      "listFailures": "检查失败的账簿",
+      "listEmpty": "无。",
+      "findingsTruncated": "显示 {total} 条发现中的 {shown} 条。其余见 `docker compose logs job-conformance`。",
+      "failuresWhy": "未被检查的账簿不等于干净的账簿——即使发现为零，存在检查失败的扫描也需要处理。"
     },
     "actions": {
       "heading": "运营者操作",

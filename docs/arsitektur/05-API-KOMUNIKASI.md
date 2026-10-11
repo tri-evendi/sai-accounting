@@ -191,7 +191,7 @@ kredensial; yang diterima peramban adalah HTML halaman masuk dengan status 307.
 
 | Permukaan | Jumlah | Autentikasi |
 |---|---|---|
-| Halaman | **141** | Campuran — lihat §4 |
+| Halaman | **142** | Campuran — lihat §4 |
 | Rute API | **126** | Campuran — lihat §5 |
 | Berkas metadata | 4 (`robots`, `sitemap`, `manifest`, `opengraph-image`) | Publik |
 
@@ -205,7 +205,7 @@ kredensial; yang diterima peramban adalah HTML halaman masuk dengan status 307.
 | `(app)/(setup)` | 2 | `/t/{t}/{c}/setup`, `/setup/done` | `setup.manage` |
 | `(app)/(tenant)/(panel)` | 7 | `/platform/…`, `/companies/new` | Matriks **tenant** |
 | `(app)/(docs)` | 3 | `/docs`, `/docs/cari`, `/docs/[...slug]` | **Tanpa** — dijaga tes |
-| `(app)/(operator)` | 10 | `/operator/…` | Bidang operator |
+| `(app)/(operator)` | 11 | `/operator/…` | Bidang operator |
 
 ### Pola jalur bertenant
 
@@ -345,7 +345,7 @@ sequenceDiagram
 | Jalur | Mekanisme | Jejaknya di |
 |---|---|---|
 | `job-scheduler` → `app-customer` | Tabel (`notifications`, `platform_invoices`, `scheduler_runs`) | `/operator/scheduler`, `/api/health` |
-| `job-conformance` → manusia | **Hanya stdout** | `docker compose logs job-conformance` |
+| `job-conformance` → `app-customer` | Tabel `conformance_runs` | `/api/health` → `conformance`, plus `docker compose logs job-conformance` |
 | `job-backup` → `app-customer` | Tabel `backup_runs` (lewat `record-backup-run.ts`) | `/api/health` → `backup` |
 | `migrate` → semua | `depends_on: service_completed_successfully` | Keluaran container |
 | Midtrans → `app-customer` | Webhook HTTP | `payments`, `platform_invoices` |
@@ -356,8 +356,10 @@ Konsekuensi yang harus diterima: **tidak ada *retry* per-pekerjaan, tidak ada
 putaran berikutnya menyembuhkan yang tertinggal. Dinilai di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-Dan satu asimetri yang nyata: `job-conformance` adalah **satu-satunya** layanan
-yang temuannya **tidak** meninggalkan jejak yang bisa ditanyai dari luar.
+Asimetri yang dulu ada di sini — `job-conformance` satu-satunya layanan yang
+temuannya tidak meninggalkan jejak — **ditutup 11 Okt 2026** (migration platform
+0018, tabel `conformance_runs`). Ketiga layanan latar sekarang punya jejak yang
+bisa ditanyai lewat `/api/health`.
 
 ## 7. Header keamanan
 

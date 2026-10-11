@@ -20,6 +20,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | Insinyur baru | [01](./01-RINGKASAN-PLATFORM.md) → [02](./02-ARSITEKTUR.md) → [06](./06-ALIRAN-DATA.md) |
 | Mengambil keputusan teknis | [01](./01-RINGKASAN-PLATFORM.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) → [09](./09-PETA-JALAN.md) |
 | Bertugas jaga / menggelar rilis | [07](./07-INFRASTRUKTUR-DEPLOY.md) → [03](./03-INVENTARIS-LAYANAN.md) |
+| Membaca laporan kesesuaian data | [12](./12-KLASIFIKASI-BUKU.md) *(buku mana yang temuannya nyata)* |
 | Merencanakan VM baru / DC-DRC | [10](./10-PORTABILITAS-DAN-PEMISAHAN.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) |
 | Mempertimbangkan ganti basis data | [10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(putusan)* → [11](./11-RENCANA-POSTGRESQL.md) *(rencana)* |
 
@@ -38,6 +39,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | 09 | [PETA-JALAN.md](./09-PETA-JALAN.md) | Rekomendasi berurutan, prasyarat, pertanyaan yang belum terjawab |
 | 10 | [PORTABILITAS-DAN-PEMISAHAN.md](./10-PORTABILITAS-DAN-PEMISAHAN.md) | Asesmen: portabilitas VM · PostgreSQL · pemisahan container operator & pemasaran · prasyarat DC/DRC |
 | 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | **Rencana pelaksanaan** migrasi MariaDB → PostgreSQL — fase, gerbang, jebakan collation, kewajiban pembuktian |
+| 12 | [KLASIFIKASI-BUKU.md](./12-KLASIFIKASI-BUKU.md) | Buku mana **produksi**, mana **uji** — dengan dasar isinya, bukan namanya. Dibangkitkan `bun run classify:books` |
 
 ## Dokumen domain yang TIDAK digantikan dokumen ini
 

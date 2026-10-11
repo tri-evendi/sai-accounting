@@ -58,7 +58,7 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-274 berkas tes berisi 4.624 tes, dan yang menarik bukan jumlahnya melainkan
+275 berkas tes berisi 4.643 tes, dan yang menarik bukan jumlahnya melainkan
 **jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
@@ -410,7 +410,7 @@ perbaiki tiga klaim basi di `README.md` di atas.
 
 ---
 
-### 🟡 P2-1 — Basis data uji/demo hidup di instans produksi
+### 🟡 P2-1 — Basis data uji/demo hidup di instans produksi — **TERKLASIFIKASI 11 Okt 2026**
 
 **Bukti.** Empat dari 17 buku di instans produksi bernama seperti buku uji:
 `sai_t11_data_dummy`, `sai_t1_uji_wisaya_416`, `sai_t1_uji_pindahan_425`,
@@ -439,8 +439,42 @@ jumlah buku di MariaDB (**17**) **sama** dengan jumlah yang terdaftar di
 terlewat `db:migrate:all`. `sai_production` — satu-satunya yang tidak berpola
 `sai_t<N>_…` — **terdaftar**; 🔶 kemungkinan buku pra-#104 yang diadopsi.
 
-**Perbaikan.** Tandai buku uji (kolom atau konvensi nama yang dibaca skrip),
-lalu kecualikan dari laporan kesesuaian; putuskan apakah staging terpisah
+**Perbaikan.**
+
+> ✅ **DIKLASIFIKASIKAN 11 Oktober 2026** — dengan dasar **isi** bukunya, bukan
+> namanya. Hasil lengkapnya di [dok 12](./12-KLASIFIKASI-BUKU.md); skripnya
+> `bun run classify:books` (hanya-baca, bisa dijalankan ulang).
+>
+> **Angka yang menentukan: 2 dari 17 buku** punya data yang temuan
+> kesesuaiannya layak dipercaya sebagai data sungguhan.
+>
+> | Kelas | n |
+> |---|---|
+> | `produksi` | **1** (`sai_production` — 66 pelanggan + 609 kontrak nyata) |
+> | `dipakai-ringan` | 1 |
+> | `semai-saja` | 2 |
+> | `semai-dibersihkan` | 4 |
+> | `nyaris-kosong` | 6 |
+> | `kosong` | 3 |
+>
+> **Dua pertanyaan ikut terjawab:**
+>
+> 1. **`is_demo` BUKAN penanda yang dicari.** Ia mengubah perilaku —
+>    `demoWriteRefusal` di **kedua** penjaga membuat bukunya **hanya-baca**,
+>    plus banner, perlakuan langganan, dan pengecualian dari 4 produser
+>    penjadwal. Menandai buku uji sebagai `is_demo` akan **menolak tulisan** di
+>    buku yang mungkin masih dipakai seseorang.
+> 2. **Pengecualian dari cadangan: JANGAN.** Diukur — seluruh `sai_*` **78,1
+>    MB**, dan 16 dari 17 buku tepat **4,0 MB** masing-masing, yaitu overhead
+>    struktural InnoDB untuk 62 tabel, bukan data. Menukar jaminan
+>    `--all-databases` dengan ~60 MB adalah pertukaran yang buruk.
+>
+> **Yang MASIH butuh pemilik:** apakah buku uji dikecualikan dari laporan
+> kesesuaian (mengecualikan berarti berhenti memeriksanya), dan apakah 3 buku
+> `kosong` + 4 `semai-dibersihkan` dirapikan (menghapus basis data **tidak
+> bisa dibalik**).
+
+**Dan satu keputusan yang masih terbuka terpisah:** apakah staging terpisah
 sepadan harganya pada skala ini (🔶 mungkin belum).
 
 ⚠ **Jangan menghapus berdasarkan nama.** `sai_t4_sai`, `sai_t4_selamat`, dan
@@ -775,7 +809,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
 | ~~P1-2~~ | ~~Temuan kesesuaian hanya di stdout~~ | ✅ **ditutup 11 Okt 2026** — jejak + `/api/health` + halaman operator | — | — |
 | ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ **ditutup 11 Okt 2026** | — | — |
-| **P2-1** | Basis data uji di produksi | Cadangan & laporan tercemar; 1 DB tak terdaftar | Sedang | Sedang |
+| **P2-1** | Basis data uji di produksi | 🟡 **terklasifikasi** — 2/17 buku relevan; dua pertanyaan terjawab, dua butuh pemilik | Rendah (sisanya) | Rendah |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
 | **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
 | **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |

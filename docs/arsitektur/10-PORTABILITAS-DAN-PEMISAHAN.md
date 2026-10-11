@@ -18,7 +18,7 @@
 |---|---|---|
 | Pisahkan container **operator** | ✅ **SUDAH DIKERJAKAN** — tanpa satu baris kode berubah | `decideOperatorRouting` memutuskan bidang murni dari env + Host |
 | Pisahkan container **pemasaran** | ❌ **Jangan** | Batasnya memotong funnel; nol beban terukur; tanpa alasan keamanan |
-| Pindah ke **PostgreSQL** | ❌ **Jangan** | 98 migration + 25 titik raw SQL + arsitektur koneksi; nol masalah terukur yang diselesaikannya |
+| Pindah ke **PostgreSQL** | ❌ **Jangan** | 99 migration + 25 titik raw SQL + arsitektur koneksi; nol masalah terukur yang diselesaikannya |
 | **Portabilitas VM** | 🟢 **Sudah ~80% siap** | Image di registry, named volume, skema deklaratif |
 | **DC/DRC** | ⏸ **Belum bisa dibicarakan** | Prasyaratnya cadangan terverifikasi + PITR + secret di luar kotak |
 
@@ -100,7 +100,7 @@ pernah berhasil sekali pun**.
 | Yang harus diubah | Jumlah |
 |---|---|
 | `provider = "mysql"` di skema Prisma | **3** (perusahaan, kendali, platform) |
-| Berkas `migration.sql` tulisan tangan | **98** — **semuanya** memakai identifier backtick; **14** di antaranya memuat `INSERT`/`UPDATE` data sungguhan |
+| Berkas `migration.sql` tulisan tangan | **99** — **semuanya** memakai identifier backtick; **14** di antaranya memuat `INSERT`/`UPDATE` data sungguhan |
 | …di antaranya memakai `AUTO_INCREMENT` | **48** |
 | …di antaranya memakai `ENGINE=InnoDB` | **5** |
 | Titik raw SQL tulisan tangan | **25** |

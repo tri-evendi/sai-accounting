@@ -58,7 +58,7 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-270 berkas tes berisi 4.559 tes, dan yang menarik bukan jumlahnya melainkan
+273 berkas tes berisi 4.603 tes, dan yang menarik bukan jumlahnya melainkan
 **jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
@@ -174,7 +174,7 @@ P0-2 menghasilkan rasa aman yang salah.
 | Workflow yang menjalankan `verify` / `test` / `typecheck` / `lint` | **tidak ada** |
 | `required_status_checks` pada `main` | **tidak ada** |
 | `required_approving_review_count` pada `main` | **0** |
-| Berkas tes yang ada di repo | **270** (4.559 tes) |
+| Berkas tes yang ada di repo | **270** (4.559 tes) — *angka saat temuan ini ditulis; 273 per 11 Okt 2026 sore* |
 
 Dua workflow yang ada (`publish-image.yml`, `build-standalone.yml`) keduanya
 hanya memicu pada `push` ke `main` — dan keduanya **membangun**, tidak satu pun
@@ -281,7 +281,7 @@ lebih baik daripada nol.
 
 ---
 
-### 🟡 P1-2 — Temuan kesesuaian data hanya ada di stdout — **SEBAGIAN BESAR DITUTUP 11 Okt 2026**
+### ✅ P1-2 — Temuan kesesuaian data hanya ada di stdout — **DITUTUP 11 Okt 2026**
 
 **Bukti.** Layanan `job-conformance` menulis ke stdout. Tidak ada tabel setara
 `scheduler_runs`/`backup_runs`, tidak ada medan di `/api/health`, tidak ada
@@ -310,7 +310,7 @@ ditanyai; yang ini tidak.
 > | Putusan denyut | ✅ `lib/conformance-heartbeat.ts` — **murni**, nol impor |
 > | Skrip menulis jejaknya | ✅ satu baris, ke **platform** saja |
 > | Medan `/api/health` → `conformance` | ✅ dilaporkan, **tidak** ikut memutuskan 503 (doktrin #137) |
-> | Halaman operator | ❌ **belum** — lihat di bawah |
+> | Halaman operator `/operator/conformance` | ✅ + entri nav + 19 kunci i18n × 3 bahasa |
 > | Panggilan `alert()` | ❌ **belum** — bagian dari P1-1 |
 >
 > Statusnya **empat** nilai, bukan dua, dan pembedaannya yang paling penting:
@@ -340,10 +340,23 @@ ditanyai; yang ini tidak.
 > sekali-pakai, lalu kolom nyatanya dibandingkan dengan `@map` di model —
 > cocok persis, nol kolom hilang, nol kolom tak terpakai. Scratch-nya dihapus.
 
-**Yang MASIH terbuka di butir ini:** halaman/bagian operator yang menampilkan
-sepuluh sapuan terakhir (sepola `/operator/scheduler`). Ditunda karena ia
-menuntut ~20 kunci i18n × 3 bahasa, dan nilai terbesarnya — *temuan bisa
-ditanyai dari luar* — sudah didapat lewat `/api/health`.
+**Halaman operatornya ikut selesai.** `/operator/conformance` meniru
+`/operator/scheduler` (StaticTable, `ConsolePanel`, token `var(--ant-…)`), dan
+merender **ketiga** status — jaminan terpentingnya: halaman yang hanya mengenal
+ok/error akan menampilkan `findings` sebagai **kegagalan** (salah —
+pemeriksanya bekerja) atau sebagai **bersih** (lebih buruk — temuannya hilang
+dari layar). Kolom "gagal diperiksa" berubah penanda saat bukan-nol sekeras
+kolom temuan, sebab sapuan yang melewatkan satu buku akan terbaca hijau
+selamanya kalau kegagalannya jadi catatan pinggir. Dan daftar temuannya
+**menyebut jumlah utuh** saat dipangkas — 200 dari 3.000 yang terlihat seperti
+200 total adalah kabar menyesatkan justru pada putaran terburuk.
+
+Dijaga `tests/operator-conformance-page.test.ts` (15 tes) — membaca SUMBER
+alih-alih merender, sebab merendernya berarti memalsukan penjaga operator,
+sesi, dan Prisma sekaligus: tiga tiruan untuk menguji satu hal. Yang benar-benar
+bisa salah di sini adalah kabelnya, dan kabel terbaca dari sumber.
+
+**Yang MASIH terbuka:** panggilan `alert()` — bagian P1-1, bukan butir ini.
 
 ---
 
@@ -720,7 +733,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | **P0-2** | Kunci cadangan 🔶 di mesin yang sama | Pemulihan yang terasa ada padahal tidak | Rendah | Rendah |
 | **P0-3** | **Nol CI — tak ada yang menjalankan 270 berkas tes** | Kode belum teruji bisa terbit ke produksi | **Rendah** | Rendah |
 | **P1-1** | Kegagalan latar tidak berbunyi | Kegagalan sunyi berumur panjang | Rendah | Rendah |
-| **P1-2** | Temuan kesesuaian hanya di stdout | Cacat data tak terlihat berbulan-bulan | Sedang | Rendah |
+| ~~P1-2~~ | ~~Temuan kesesuaian hanya di stdout~~ | ✅ **ditutup 11 Okt 2026** — jejak + `/api/health` + halaman operator | — | — |
 | ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ **ditutup 11 Okt 2026** | — | — |
 | **P2-1** | Basis data uji di produksi | Cadangan & laporan tercemar; 1 DB tak terdaftar | Sedang | Sedang |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |

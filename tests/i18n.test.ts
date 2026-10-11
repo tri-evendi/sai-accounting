@@ -246,6 +246,12 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
     "operator.tenant.colCompanySlug",
     "operator.tenant.colCompanyActive",
     "operator.scheduler.colStatus",
+    /* Idem di halaman Kesesuaian Data: "Status" serapan identik, sama persis
+       alasannya dengan `operator.scheduler.colStatus` sebaris di atas. Nilai
+       lain di blok itu MEMANG berbeda di kedua bahasa — "Temuan"/"Findings",
+       "Buku disapu"/"Books swept", "Bersih"/"Clean" — jadi yang satu ini
+       benar-benar kata yang sama, bukan terjemahan yang terlewat. */
+    "operator.conformance.colStatus",
     // "SMTP" adalah nama protokol, dan "Port" adalah serapan yang ejaannya
     // identik di kedua bahasa — sama seperti "Status" di atas (issue #169).
     "operator.mail.transportSmtp",

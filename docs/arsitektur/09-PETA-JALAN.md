@@ -19,7 +19,7 @@ arsitektur: bentuk sistemnya sehat, dan bukti dari potret ini mengarah ke
 | Kembalikan Tailwind / `className` | Dicabut #203; dijaga ESLint & tes |
 | Replika `app-customer` sekarang | Prasyaratnya belum ada — cache dalam-memori akan menyimpang |
 | Lingkungan staging penuh | 🔶 Mungkin belum sepadan pada 11 tenant. Keputusan pemilik, bukan teknis |
-| **Pindah ke PostgreSQL** | 98 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| **Pindah ke PostgreSQL** | 99 migration + 25 titik raw SQL + arsitektur koneksi (PG = proses per koneksi, butuh PgBouncer), demi nol masalah terukur. [Dok 10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 | **Pisahkan container pemasaran** | Batasnya memotong funnel: `/register` ada di `(auth)`, bukan `(marketing)`. Nol beban terukur (162–185 ms). [Dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 | **Mulai DC/DRC dari replikasi** | Replika yang menyalin basis data tak tercadangkan melipatgandakan satu titik kegagalan jadi dua yang berkorelasi. [Dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 
@@ -208,7 +208,7 @@ Edge tidak punya aksesnya. Dua pantulan + satu render → satu pantulan, nol
 render. Dijaga `tests/proxy-landing-shortcut.test.ts` (9 tes, enam di antaranya
 menguji yang TIDAK boleh dipantulkan).
 
-### 1.3 ✅ Jejak kesesuaian data → P1-2 — **JEJAK + KESEHATAN SELESAI 11 Okt 2026**
+### 1.3 ✅ Jejak kesesuaian data → P1-2 — **SELESAI 11 Okt 2026**
 
 Migration platform **0018** (`conformance_runs`), model `ConformanceRun`,
 putusan denyut murni `lib/conformance-heartbeat.ts`, skrip menulis jejaknya
@@ -222,8 +222,13 @@ sekali-pakai. Rincian & yang masih terbuka:
 `bun run db:migrate:all` wajib sebelum `app-customer` naik, atau
 `/api/health` menjawab `conformance: unknown` (ditelan, tidak melempar).
 
-**Masih terbuka:** halaman operator (butuh ~20 kunci i18n × 3 bahasa) dan
-panggilan `alert()` (bagian P1-1).
+Halaman operatornya ikut selesai: `/operator/conformance` + entri nav + 19
+kunci i18n × 3 bahasa, dijaga `tests/operator-conformance-page.test.ts` (15
+tes). Ketiga status dirender — halaman yang hanya mengenal ok/error akan
+menampilkan `findings` sebagai kegagalan atau sebagai bersih, dan keduanya
+salah.
+
+**Masih terbuka:** panggilan `alert()` — bagian P1-1, bukan butir ini.
 
 ### 1.3-lanjutan — rencana semula butir ini
 
@@ -426,8 +431,8 @@ kepatuhan yang masih terbuka ada di
 **11 tenant / 17 perusahaan / 13 pengguna** di produksi. Satu monolit Next.js 16
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
-dan platform (penagihan). ~342.800 baris TypeScript, 141 halaman, 126 rute API,
-88 model, 98 migration, 270 berkas tes.
+dan platform (penagihan). ~342.800 baris TypeScript, 142 halaman, 126 rute API,
+88 model, 99 migration, 273 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang

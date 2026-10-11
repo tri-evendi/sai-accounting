@@ -191,7 +191,7 @@ kredensial; yang diterima peramban adalah HTML halaman masuk dengan status 307.
 
 | Permukaan | Jumlah | Autentikasi |
 |---|---|---|
-| Halaman | **141** | Campuran — lihat §4 |
+| Halaman | **142** | Campuran — lihat §4 |
 | Rute API | **126** | Campuran — lihat §5 |
 | Berkas metadata | 4 (`robots`, `sitemap`, `manifest`, `opengraph-image`) | Publik |
 
@@ -205,7 +205,7 @@ kredensial; yang diterima peramban adalah HTML halaman masuk dengan status 307.
 | `(app)/(setup)` | 2 | `/t/{t}/{c}/setup`, `/setup/done` | `setup.manage` |
 | `(app)/(tenant)/(panel)` | 7 | `/platform/…`, `/companies/new` | Matriks **tenant** |
 | `(app)/(docs)` | 3 | `/docs`, `/docs/cari`, `/docs/[...slug]` | **Tanpa** — dijaga tes |
-| `(app)/(operator)` | 10 | `/operator/…` | Bidang operator |
+| `(app)/(operator)` | 11 | `/operator/…` | Bidang operator |
 
 ### Pola jalur bertenant
 

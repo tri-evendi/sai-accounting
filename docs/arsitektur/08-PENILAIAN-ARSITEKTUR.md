@@ -58,7 +58,7 @@ Ditambah: jurnal **imutabel** (koreksi = pembalikan), posting **idempoten**, dan
 
 ### 1.4 Penjaga sebagai tes, bukan sebagai konvensi
 
-275 berkas tes berisi 4.643 tes, dan yang menarik bukan jumlahnya melainkan
+276 berkas tes berisi 4.654 tes, dan yang menarik bukan jumlahnya melainkan
 **jenisnya**: banyak
 di antaranya menjaga **aturan arsitektural**, bukan perilaku.
 
@@ -527,7 +527,7 @@ bersama (atau pencabutan cache dalam-memori) **dan** peninjauan ulang
 
 ---
 
-### 🟡 P2-4 — CSP memakai `unsafe-inline` + `unsafe-eval`
+### 🟡 P2-4 — CSP memakai `unsafe-inline` + `unsafe-eval` — **`unsafe-eval` DICABUT 11 Okt 2026**
 
 **Bukti.** `next.config.ts`:
 `script-src 'self' 'unsafe-inline' 'unsafe-eval'`.
@@ -545,9 +545,47 @@ menunjukkan ini **belum pernah ditinjau** alih-alih sudah ditimbang.
 `object-src` dibatasi, HSTS dengan preload, `form-action 'self'`,
 `X-Frame-Options: DENY`.
 
-**Perbaikan.** Tinjau apakah `nonce` + `strict-dynamic` layak. Kalau tidak,
-**tulis alasannya di `next.config.ts`** — sepola setiap keputusan lain di repo
-ini. Jawaban "tidak bisa, karena X" yang tertulis sudah merupakan kemajuan.
+**Perbaikan.**
+
+> ✅ **DITINJAU 11 Oktober 2026** — dan hasilnya terbagi tiga, bukan satu.
+>
+> **(a) `'unsafe-eval'` DICABUT di produksi.** Dokumentasi Next sendiri
+> menyatakannya:
+>
+> > *"`unsafe-eval` is not required for production. Neither React nor Next.js
+> > use `eval` in production by default."*
+>
+> Dan diperiksa di repo ini, bukan sekadar dipercaya: **nol** `eval(` /
+> `new Function(` di seluruh `src/`, dan dari **204** berkas js di
+> `.next/static` **tepat satu** memuat `eval(` — shim `vm` milik dependensi
+> Next sendiri (`vm-browserify`), berisi *definisi*
+> `Script.prototype.runInThisContext` **tanpa satu pun tempat pemanggilan**.
+> Tetap diizinkan di pengembangan, karena tanpa itu React berhenti bisa
+> merekonstruksi jejak galat sisi-server di peramban.
+>
+> **(b) `style-src 'unsafe-inline'` WAJIB tinggal — dan itu STRUKTURAL, bukan
+> kelalaian.** Sejak #203 seluruh gaya repo ini ditulis **sebaris** — terukur
+> **2.618 kemunculan `style={{` di 305 berkas**. Di CSP, `style-src` mengatur
+> **dua** hal yang sering tertukar: elemen `<style>` **dan atribut
+> `style="..."`**. Nonce hanya bisa menandai yang pertama; atribut gaya tidak
+> punya tempat untuk membawa nonce. Jadi mencabutnya menuntut **pembatalan
+> #203**, bukan penyetelan CSP.
+>
+> **(c) `script-src 'unsafe-inline'` → nonce + `strict-dynamic`: MUNGKIN, tapi
+> proyek tersendiri.** Yang dituntutnya, ditulis di `next.config.ts` supaya
+> pembaca berikutnya tahu ini sudah ditinjau: CSP pindah dari `headers()` ke
+> `proxy.ts` (nonce lahir ulang per permintaan) · setiap halaman dirender
+> dinamis · `StyleProvider` AntD diberi nonce yang sama · dan
+> `strict-dynamic` **diuji terhadap Recharts dan pratinjau PDF blob** —
+> keduanya permukaan yang kerusakannya **halus**: grafik kosong dan pratinjau
+> gagal tidak menjatuhkan halaman.
+>
+> **Dan satu celah yang ikut ketemu:** sebelum ini **tidak ada satu pun tes**
+> yang menyentuh header keamanan. Seluruh CSP bisa dilemahkan atau dihapus
+> tanpa satu pun tes merah — dan kelemahan CSP **tidak punya gejala**.
+> `tests/security-headers.test.ts` (11 tes) menutupnya, termasuk dua yang
+> menuntut sesuatu **tetap tidak ada** di produksi dan satu yang menuntut
+> `style-src 'unsafe-inline'` **tetap ada** walau terlihat seperti kelalaian.
 
 ---
 
@@ -606,7 +644,7 @@ SMTP, dan tidak ikut dalam cadangan basis data.
 
 ---
 
-### 🟢 P3-1 — Berkas besar di lapisan domain
+### 🟢 P3-1 — Berkas besar di lapisan domain — **GARIS DASAR DIUKUR 11 Okt 2026**
 
 **Bukti.** `statement-layout.ts` 79 KB · `docs-content.ts` 68 KB ·
 `posting/index.ts` 1.867 baris · `wizard.ts` 44 KB · `receivables.ts` 39 KB.
@@ -618,9 +656,29 @@ dot-path bertipe) sudah memaksa batas heap `typecheck` dari 768 ke 1536 MB.
 benar (satu pintu), dan bagian murninya **sudah** dipisah ke `rules.ts`,
 `mapping.ts`, `rates.ts`, `cogs.ts`.
 
-**Perbaikan.** Tidak ada yang mendesak. Pemicunya: `typecheck` menembus 1536 MB
-lagi. Saat itu, memecah **kamus** lebih berdampak daripada memecah modul domain
-— dan `next.config.ts` sudah menyebut itu sebagai kandidat.
+**Perbaikan.** Tidak ada yang mendesak — tetapi pemicunya **lebih dekat
+daripada yang tertulis sebelumnya**, dan sekarang ada angkanya.
+
+> **Diukur 11 Oktober 2026** (`/usr/bin/time -v bun run typecheck`):
+>
+> | Jalan | RSS puncak | Waktu |
+> |---|---|---|
+> | Inkremental (`tsconfig.tsbuildinfo` ada) | **908 MB** | **13 s** |
+> | **DINGIN** (tsbuildinfo disingkirkan) | **1.556 MB** | **82 s** |
+>
+> Jalan **dingin** adalah yang dialami **CI** dan setiap mesin baru —
+> `tsconfig.tsbuildinfo` gitignored, jadi tidak pernah ikut.
+>
+> ⚠ **Bacanya hati-hati:** 1.556 MB itu **RSS total proses**, bukan heap V8.
+> Batas `--max-old-space-size=1536` mengatur *old space*-nya saja, dan jalan
+> dingin itu **lulus** (exit 0) — jadi heapnya tidak menembus batas. Tetapi
+> jarak antara RSS 1.556 MB dan batas 1.536 MB berarti **marginnya tipis**, dan
+> di kotak dengan 600-1.000 MB tersedia ia berjalan **di dalam swap**: 82 detik
+> vs 13 detik adalah harga itu.
+>
+> **Pemicu yang sekarang bisa diperiksa:** jalan dingin yang keluar dengan
+> `FatalProcessOutOfMemory` (exit 134), atau waktunya melewati beberapa menit.
+> Saat itu naikkan batasnya **dan** pecah kamus i18n — jangan salah satu saja.
 
 ---
 
@@ -812,7 +870,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | **P2-1** | Basis data uji di produksi | 🟡 **terklasifikasi** — 2/17 buku relevan; dua pertanyaan terjawab, dua butuh pemilik | Rendah (sisanya) | Rendah |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | Perbaikan tertunda sejam | Tinggi | Sedang |
 | **P2-3** | Satu `app-customer`, tanpa jalur skala | Batas skala diketahui, belum tercapai | Tinggi | Sedang |
-| **P2-4** | CSP `unsafe-inline`/`eval` | Pertahanan XSS lemah | Sedang | **Tinggi** (bisa merusak UI) |
+| **P2-4** | CSP `unsafe-inline`/`eval` | 🟡 `unsafe-eval` **dicabut di produksi**; `style-src` terbukti struktural; jalur nonce terdokumentasi | Rendah (sisanya) | **Tinggi** (sisanya) |
 | ~~P2-5~~ | ~~Tabel jejak tanpa pemangkasan~~ | ✅ **ditutup 11 Okt 2026** — 4 aturan, 2 di antaranya tidak ada di resep semula | — | — |
 | **P3-1** | Berkas besar | Beban baca & tipe | Tinggi | Sedang |
 | ~~P3-2~~ | ~~Proxy tak teruji ujung-ke-ujung~~ | ✅ **sudah tertutup** sebelum temuan ditulis — `tests/proxy-bearer-api.test.ts` | — | — |

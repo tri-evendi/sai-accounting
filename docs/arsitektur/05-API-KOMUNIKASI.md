@@ -377,7 +377,7 @@ Dipasang `next.config.ts` untuk **setiap** jalur (`/:path*`):
 
 ```
 default-src 'self'
-script-src  'self' 'unsafe-inline' 'unsafe-eval'
+script-src  'self' 'unsafe-inline'                 ← 'unsafe-eval' hanya di DEV
 style-src   'self' 'unsafe-inline'
 img-src     'self' data: blob:
 connect-src 'self'
@@ -393,12 +393,19 @@ form-action 'self'
 (faktur/kontrak) yang dirender sebagai blob di dalam `<iframe>`/`<embed>` —
 **tanpa** membuka sumber luar apa pun.
 
-🔶 **Catatan:** `'unsafe-inline'` + `'unsafe-eval'` pada `script-src`
-melemahkan CSP cukup banyak. Keduanya **tersimpulkan** sebagai tuntutan
-Next.js + runtime CSS-in-JS Ant Design; tidak ada komentar di repo yang
-menjelaskan apakah nonce pernah dicoba. Dicatat di
-[dok 08](./08-PENILAIAN-ARSITEKTUR.md) sebagai hal yang perlu diputuskan,
-bukan sebagai cacat yang terbukti.
+**Ditinjau 11 Okt 2026**, dan hasilnya terbagi tiga — catatan 🔶 di versi
+sebelumnya (*"tersimpulkan sebagai tuntutan Next.js + AntD; tidak ada komentar
+yang menjelaskan apakah nonce pernah dicoba"*) kini terjawab:
+
+| Arahan | Keadaan |
+|---|---|
+| `'unsafe-eval'` | ✅ **dicabut di produksi** — dokumentasi Next menyatakannya tidak dibutuhkan, dan diperiksa: nol `eval(` di `src/`, satu-satunya di `.next/static` adalah shim `vm` tanpa tempat pemanggilan |
+| `style-src 'unsafe-inline'` | **struktural** — 2.618 `style={{` di 305 berkas (#203), dan nonce **tidak** mencakup atribut `style` |
+| `script-src 'unsafe-inline'` | jalur nonce + `strict-dynamic` **didokumentasikan** di `next.config.ts`; proyek tersendiri |
+
+Dijaga `tests/security-headers.test.ts` (11 tes) — sebelumnya **tidak ada satu
+pun** tes yang menyentuh header keamanan. Rinciannya
+[dok 08 P2-4](./08-PENILAIAN-ARSITEKTUR.md).
 
 ## 8. Format jawaban
 

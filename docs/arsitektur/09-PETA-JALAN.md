@@ -353,32 +353,53 @@ uji. Pastikan lewat `sai_control` dan isi bukunya, bukan lewat nama.
 
 **Tidak ada gerbang.** Dikerjakan saat ada ruang.
 
-### 3.1 Tinjau CSP → P2-4
+### 3.1 ✅ Tinjau CSP → P2-4 — **DITINJAU 11 Okt 2026**, hasilnya terbagi tiga
 
-🔶 **Risiko mengubah: TINGGI** — bisa merusak UI secara halus (runtime
-CSS-in-JS AntD, Recharts, pratinjau PDF blob).
+| | Hasil |
+|---|---|
+| `'unsafe-eval'` | ✅ **DICABUT di produksi** (tetap di pengembangan) |
+| `style-src 'unsafe-inline'` | ✅ terbukti **STRUKTURAL** — 2.618 `style={{` di 305 berkas; nonce tidak mencakup atribut `style` |
+| `script-src 'unsafe-inline'` | 📝 jalur nonce + `strict-dynamic` **didokumentasikan** di `next.config.ts`; proyek tersendiri |
 
-Urutan yang disarankan:
+Urutan yang disarankan di versi sebelumnya dijalankan apa adanya: jawabannya
+ditulis di `next.config.ts`, dan yang bisa dibuktikan dikerjakan. Rinciannya
+[dok 08 P2-4](./08-PENILAIAN-ARSITEKTUR.md).
 
-1. **Tulis dulu jawabannya**, apa pun hasilnya. Ketiadaan catatan di repo yang
-   mencatat segalanya adalah petunjuk bahwa ini belum pernah **ditinjau**,
-   bukan bahwa sudah ditimbang.
-2. Uji nonce + `strict-dynamic` di lokal; periksa setiap halaman bergrafik dan
-   setiap pratinjau PDF.
-3. Bila tidak bisa — **tulis alasannya di `next.config.ts`**, sepola setiap
-   keputusan lain di berkas itu. Jawaban "tidak bisa, karena X" yang tertulis
-   sudah kemajuan.
+**Dan satu celah yang ikut ketemu:** tidak ada satu pun tes yang menyentuh
+header keamanan — seluruh CSP bisa dilemahkan tanpa satu pun tes merah, dan
+kelemahan CSP **tidak punya gejala**. `tests/security-headers.test.ts` (11 tes)
+menutupnya.
 
-### 3.2 `CODEOWNERS` → P3-3
+### 3.2 `CODEOWNERS` → P3-3 — **SENGAJA TIDAK DIKERJAKAN**
 
-Hanya bermakna bila ada lebih dari satu orang. Sampai itu, mitigasi *bus
-factor* yang nyata adalah disiplin menulis alasan — yang sudah dijalankan.
+Hanya bermakna bila ada lebih dari satu orang. `CODEOWNERS` berisi satu nama
+tidak menambah satu pun jaminan; ia hanya menambah berkas yang harus diperbarui
+saat namanya berubah.
 
-### 3.3 Pantau beban tipe → P3-1
+Mitigasi *bus factor* yang **nyata** di repo ini adalah disiplin menulis alasan
+di dekat keputusannya — yang sudah dijalankan, dan yang set dokumen ini
+menambah satu lapis lagi. Kerjakan `CODEOWNERS` pada hari orang kedua masuk,
+bukan sebelumnya.
 
-Pemicu: `bun run typecheck` menembus 1536 MB. Saat itu, **pecah kamus i18n**
-lebih berdampak daripada memecah modul domain — `next.config.ts` sudah menyebut
-itu sebagai kandidat, dan ~2.500 kunci dot-path bertipe adalah sumber bebannya.
+### 3.3 ✅ Pantau beban tipe → P3-1 — **GARIS DASAR DIUKUR 11 Okt 2026**
+
+Pemicunya dulu tertulis tanpa angka pembanding, jadi tidak bisa diperiksa
+siapa pun. Sekarang ada:
+
+| Jalan | RSS puncak | Waktu |
+|---|---|---|
+| Inkremental | **908 MB** | **13 s** |
+| **DINGIN** — yang dialami CI | **1.556 MB** | **82 s** |
+
+`tsconfig.tsbuildinfo` gitignored, jadi CI dan setiap mesin baru **selalu**
+dingin. Jalan dingin itu **lulus**, tetapi jarak antara RSS 1.556 MB dan batas
+heap 1.536 MB berarti marginnya **tipis** — dan di kotak ini ia berjalan di
+dalam swap (82 s vs 13 s adalah harganya).
+
+**Pemicu yang kini bisa diperiksa:** jalan dingin yang keluar dengan
+`FatalProcessOutOfMemory` (exit 134), atau waktunya melewati beberapa menit.
+Saat itu naikkan batasnya **DAN** pecah kamus i18n — jangan salah satu saja.
+Rinciannya [dok 08 P3-1](./08-PENILAIAN-ARSITEKTUR.md).
 
 ---
 
@@ -456,7 +477,7 @@ kepatuhan yang masih terbuka ada di
 di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
 per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
 dan platform (penagihan). ~342.800 baris TypeScript, 142 halaman, 126 rute API,
-88 model, 99 migration, 275 berkas tes.
+88 model, 99 migration, 276 berkas tes.
 
 **Apa yang sehat.** Bentuk arsitekturnya. Mode kegagalan **dipilih, bukan
 diwarisi**: konteks perusahaan yang hilang melempar alih-alih menebak, bidang

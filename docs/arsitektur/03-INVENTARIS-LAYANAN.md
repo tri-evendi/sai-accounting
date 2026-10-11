@@ -53,7 +53,7 @@ sai-app-customer  (container #1)
 
 sai-app-operator  (container #2 — IMAGE SAMA)
 └── OPERATOR_DOMAIN
-    └── (operator)         10 halaman   /operator/*
+    └── (operator)         11 halaman   /operator/*
 ```
 
 **Konsekuensi yang harus diketahui:**
@@ -164,8 +164,8 @@ lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — lolos sebagai jalur publik karena `127.0.0.1` ≠ `OPERATOR_HOST` |
 | **Volume** | `audit:/app/data/audit` (RW) — **TANPA `documents`** |
 
-**Tanggung jawab:** 10 halaman konsol penyedia — tenant, audit, surel,
-penjadwal, isi situs, pengaturan, rekonsiliasi.
+**Tanggung jawab:** 11 halaman konsol penyedia — tenant, audit, surel,
+penjadwal, **kesesuaian data**, isi situs, pengaturan, rekonsiliasi.
 
 **Kenapa hanya volume `audit`.** Bidang operator menulis
 `data/audit/operators/audit.jsonl` (`lib/operator/audit.ts`), jadi volume itu

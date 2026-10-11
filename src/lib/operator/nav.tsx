@@ -22,6 +22,7 @@ import {
   MailOutlined,
   SettingOutlined,
   TeamOutlined,
+  FileSearchOutlined,
 } from "@ant-design/icons";
 
 import type { OperatorShellNavItem } from "@/components/operator/operator-shell";
@@ -77,6 +78,11 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       label: t("operator.nav.scheduler"),
       icon: <ClockCircleOutlined style={UKURAN_IKON} />,
       group: sistem,
+    },
+    {
+      href: "/operator/conformance",
+      label: t("operator.nav.conformance"),
+      icon: <FileSearchOutlined style={UKURAN_IKON} />,
     },
     {
       href: "/operator/mail",

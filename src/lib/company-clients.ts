@@ -134,6 +134,33 @@ export function getCompanyClient(databaseName: string): PrismaClient {
   return client;
 }
 
+/**
+ * Lepaskan SATU klien perusahaan dari kolam, dan tutup koneksinya.
+ *
+ * ══ KENAPA INI ADA — ditemukan 12 Okt 2026 saat menguji PostgreSQL ═════════
+ * PostgreSQL MENOLAK `DROP DATABASE` selama masih ada koneksi, jadi
+ * `db-server.ts#hapus` memutus koneksi lain lebih dulu dengan
+ * `pg_terminate_backend`. Dan koneksi yang diputus dari sisi server membuat
+ * klien `pg` memancarkan event `error` — yang kalau tidak ada yang
+ * mendengarnya, MENJATUHKAN PROSESNYA.
+ *
+ * Terbukti di percobaan pertama: proses mati dengan "Connection terminated
+ * unexpectedly" tepat setelah penghapusan berhasil. Di penghapusan tenant yang
+ * punya beberapa buku, itu berarti buku pertama terhapus lalu skripnya mati —
+ * meninggalkan tenant separuh terhapus, keadaan yang paling sulit dibaca orang
+ * berikutnya.
+ *
+ * Maka urutan yang benar: lepaskan klien DULU, baru hapus basis datanya. Di
+ * MariaDB langkah ini tidak dibutuhkan, tetapi tidak merugikan — dan satu urutan
+ * untuk kedua mesin lebih mudah dipercaya daripada dua.
+ */
+export async function releaseCompanyClient(databaseName: string): Promise<void> {
+  const entry = pool.get(databaseName);
+  if (!entry) return;
+  pool.delete(databaseName);
+  await entry.client.$disconnect().catch(() => {});
+}
+
 /** Untuk tes & pematian proses: putus semuanya dan kosongkan peta. */
 export async function disconnectAllCompanyClients(): Promise<void> {
   const entries = [...pool.values()];

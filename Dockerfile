@@ -169,8 +169,31 @@ CMD ["bun", "run", "db:migrate:all"]
 # berbeda — pada hari kita mencoba MEMULIHKAN. Protokol yang sudah dipakai
 # jutaan orang tidak layak ditulis ulang demi menghemat satu paket.
 FROM migrator AS backup
+# ⚠ `postgresql-client` Debian bookworm adalah versi **15**, dan `pg_dump`
+# MENOLAK server yang lebih baru daripada dirinya. Service `pg` di compose
+# adalah PostgreSQL **17**, jadi klien bawaan Debian akan gagal dengan
+#
+#   pg_dumpall: error: aborting because of server version mismatch
+#   detail: server version: 17.11; pg_dumpall version: 15.19
+#
+# Itu DIUKUR, bukan dibaca dari dokumentasi — dan kegagalannya akan terjadi pada
+# cadangan PERTAMA sesudah penukaran, waktu terburuk yang mungkin.
+#
+# Maka klien diambil dari repositori resmi PostgreSQL (PGDG) dan DIPATOK ke 17,
+# sejajar dengan `PG_CLIENT_MAJOR` di `docker-compose.yml`. Klien yang lebih baru
+# bisa mendump server yang lebih tua, jadi arah ini aman; kebalikannya tidak.
+# `tests/pg-client-version.test.ts` menolak kalau keduanya menyimpang.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends mariadb-client postgresql-client awscli \
+    && apt-get install -y --no-install-recommends mariadb-client awscli curl gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+         https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+         > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && apt-get purge -y gnupg \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 CMD ["sh", "scripts/backup.sh"]
 

@@ -608,19 +608,36 @@ yang tidak portabel. Yang sudah: adapter `@prisma/adapter-pg@7.5.0` + `pg`
 terpasang sebagai dependensi produksi, dipatok sama persis dengan
 `@prisma/client`.
 
-**Yang TERSISA, dengan berkas:baris — daftar kerjanya, bukan perkiraan:**
+| # | Titik | Perubahan | Status |
+|---|---|---|---|
+| 1 | `src/lib/control-db.ts`, `platform-db.ts`, `company-clients.ts` | pilih adapter dari skema URL | ✅ **SELESAI** — `db-engine.ts` + `db-adapter.ts`; ketiganya kini memanggil `buatAdapter(url, …)` |
+| 2 | `src/lib/rate-limit-persistent.ts` | `ON DUPLICATE KEY UPDATE` → `ON CONFLICT` | ✅ **SELESAI** — dua pernyataan berdampingan, bukan satu abstraksi |
+| 3 | `prisma/control/migrations/0010_…` | trigger → `CREATE FUNCTION … RETURNS trigger` | ✅ **SELESAI & TERBUKTI** — `prisma/postgresql/control/0002_slug_permanen` |
+| 4 | `src/lib/company-provisioning.ts:199,232` | `information_schema.SCHEMATA` → `pg_database`; sintaksis `CREATE DATABASE` | ❌ **tersisa — yang terbesar** |
+| 5 | `src/lib/tenant-export.ts:90,99` | `table_schema` berarti **skema**, bukan basis data | ❌ tersisa |
+| 6 | `scripts/subscription-scheduler.ts:569,589` | `SHOW DATABASES` → `pg_database` | ❌ tersisa |
+| 7 | `scripts/execute-tenant-deletion.ts:136` | `DROP DATABASE` menuntut `pg_terminate_backend` lebih dulu | ❌ tersisa |
+| 8 | `scripts/backup.sh` | `mariadb-dump` → `pg_dump`/`pg_dumpall` | ❌ tersisa |
+| 9 | `docker-compose.yml` | `postgres:17` + **PgBouncer** (§9.5 — bukan opsional) | ❌ tersisa |
 
-| # | Titik | Perubahan |
-|---|---|---|
-| 1 | `src/lib/control-db.ts`, `platform-db.ts`, `company-clients.ts` | pilih adapter dari skema URL (`mysql:` vs `postgres:`) |
-| 2 | `src/lib/rate-limit-persistent.ts:120` | `ON DUPLICATE KEY UPDATE` → `ON CONFLICT (key) DO UPDATE` |
-| 3 | `src/lib/company-provisioning.ts:199,232` | `information_schema.SCHEMATA` → `pg_database`; sintaksis `CREATE DATABASE` |
-| 4 | `src/lib/tenant-export.ts:90,99` | `table_schema` berarti **skema**, bukan basis data |
-| 5 | `scripts/subscription-scheduler.ts:569,589` | `SHOW DATABASES` → `pg_database` |
-| 6 | `scripts/execute-tenant-deletion.ts:136` | `DROP DATABASE` menuntut `pg_terminate_backend` lebih dulu |
-| 7 | `prisma/control/migrations/0010_…:48` + `scripts/prove-company-slug-immutable.ts:62` | trigger → `CREATE FUNCTION … RETURNS trigger` |
-| 8 | `scripts/backup.sh` | `mariadb-dump` → `pg_dump`/`pg_dumpall` |
-| 9 | `docker-compose.yml` | `postgres:17` + **PgBouncer** (lihat §9.5 — bukan opsional) |
+**Kenapa butir 4 yang terbesar:** `company-provisioning.ts` adalah satu-satunya
+tempat yang memakai driver `mariadb` **langsung** (bukan lewat Prisma), sebab ia
+bekerja di tingkat SERVER — membuat basis data, lalu menjalankan berkas migration
+utuh dengan `multipleStatements`. Memindahkannya menuntut abstraksi koneksi
+tingkat-server untuk kedua mesin, bukan sekadar mengganti satu pernyataan.
+
+**Temuan saat mengerjakan butir 3, dan ia menggeneralisasi:** baseline PostgreSQL
+**dibangkitkan Prisma**, dan Prisma tidak tahu apa pun tentang trigger — baseline
+yang dihasilkan memuat **nol** trigger. Tanpa padanan tulis-tangan, pindah mesin
+akan MENGHAPUS penjaga keabadian slug tanpa satu pun galat. Padanannya sudah
+ditulis dan **dibuktikan di PostgreSQL bayangan**: mengubah slug ditolak dengan
+pesan yang sama persis, menulis ulang slug dengan nilai yang sama tetap lolos.
+`tests/pg-trigger-parity.test.ts` menolak trigger berikutnya yang tak punya
+padanan.
+
+Aturan umumnya: **apa pun yang tidak hidup di skema Prisma tidak akan ikut
+terbangkitkan** — trigger, fungsi, view, grant. Daftar itu harus diperiksa manual
+setiap kali, dan trigger adalah satu-satunya yang ada hari ini.
 
 ### Fase E — penukaran ❌ BELUM, dan menuntut keputusan
 

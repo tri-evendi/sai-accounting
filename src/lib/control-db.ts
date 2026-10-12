@@ -12,7 +12,7 @@
  */
 
 import { PrismaClient } from "@/generated/control/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "@/lib/db-adapter";
 
 const globalForControl = globalThis as unknown as {
   controlPrisma: PrismaClient | undefined;
@@ -37,15 +37,10 @@ function createControlClient(): PrismaClient {
     );
   }
 
-  const url = new URL(databaseUrl);
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: url.pathname.slice(1),
-    connectionLimit: CONTROL_CONNECTION_LIMIT,
-  });
+  /* Mesinnya diputuskan dari URL, bukan dari sakelar terpisah — lihat
+     `db-engine.ts`. Penukaran ke PostgreSQL = mengubah URL-nya, dan tidak ada
+     tempat kedua yang bisa ketinggalan. */
+  const adapter = buatAdapter(databaseUrl, { batasKoneksi: CONTROL_CONNECTION_LIMIT });
 
   return new PrismaClient({ adapter });
 }

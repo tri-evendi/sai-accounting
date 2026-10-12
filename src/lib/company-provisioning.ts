@@ -48,7 +48,11 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import { createPool, type Pool } from "mariadb";
+/* Driver `mariadb` TIDAK diimpor lagi di sini. Operasi tingkat server kini
+   hidup di `db-server.ts`, yang menjawab untuk KEDUA mesin — jadi berkas ini
+   tidak bisa lagi memegang SQL yang hanya benar di salah satunya. */
+import { bukaServer, bukaBasisData, ddlPembukuan, direktoriMigration } from "@/lib/db-server";
+import type { DbEngine } from "@/lib/db-engine";
 
 import { controlDb } from "@/lib/control-db";
 import { invalidateCompany } from "@/lib/company-registry";
@@ -63,17 +67,36 @@ import {
   type ProvisionPhase,
 } from "@/lib/company-provisioning-shared";
 
-/** Direktori migration di dalam image produksi maupun saat pengembangan. */
-const MIGRATIONS_DIR = join(process.cwd(), "prisma", "migrations");
+/**
+ * Direktori migration, PER MESIN.
+ *
+ * ⚠ PostgreSQL TIDAK memakai 65 migration MariaDB: ia memakai **baseline** yang
+ * dibangkitkan dari skema (`bun run pg:baseline`) plus migration tambahan
+ * tulis-tangan. 5.241 baris SQL MariaDB tidak punya nilai di mesin baru, dan
+ * menjalankannya di sana akan gagal pada pernyataan pertama.
+ *
+ * Perusahaan BARU yang disediakan sesudah penukaran mendapat baseline itu — dan
+ * karena baseline diturunkan dari skema yang SAMA, hasilnya identik dengan buku
+ * yang bermigrasi lewat 65 langkah.
+ */
+function akarMigration(mesin: DbEngine): string {
+  return join(process.cwd(), ...direktoriMigration(mesin)[0]!.split("/"));
+}
 
 /** Checksum yang DICOCOKKAN Prisma: sha256 atas isi berkas migration.sql. */
 export function migrationChecksum(sql: string | Buffer): string {
   return createHash("sha256").update(sql).digest("hex");
 }
 
-/** Nama migration terurut — urutannya menentukan hasil akhir skema. */
-export async function migrationNames(): Promise<string[]> {
-  const entries = await readdir(MIGRATIONS_DIR, { withFileTypes: true });
+/**
+ * Nama migration terurut — urutannya menentukan hasil akhir skema.
+ *
+ * `mesin` opsional dan bawaannya `mariadb`, jadi pemanggil lama (tes, skrip)
+ * mendapat perilaku yang sama persis — penambahan ini tidak bisa mengubah apa
+ * pun di jalur yang berjalan hari ini.
+ */
+export async function migrationNames(mesin: DbEngine = "mariadb"): Promise<string[]> {
+  const entries = await readdir(akarMigration(mesin), { withFileTypes: true });
   return entries
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
@@ -96,21 +119,6 @@ function provisioningUrl(): URL {
     );
   }
   return new URL(raw);
-}
-
-function poolFor(url: URL, database?: string): Pool {
-  return createPool({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    ...(database ? { database } : {}),
-    connectionLimit: 1,
-    // Satu berkas migration = banyak pernyataan. Menjalankannya sebagai satu
-    // perintah jauh lebih jujur daripada memecah teks SQL sendiri — pemecah
-    // buatan tangan akan tersandung titik koma di dalam string atau komentar.
-    multipleStatements: true,
-  });
 }
 
 export interface ProvisionInput {
@@ -186,7 +194,10 @@ export async function provisionCompany(
   }
 
   const url = provisioningUrl();
-  const server = poolFor(url);
+  /* Mesinnya diputuskan dari URL (`db-engine.ts`). Penyediaan tidak pernah tahu
+     mesin apa yang dipakainya, dan itu disengaja: satu pemanggil yang tahu akan
+     segera punya cabang `if` yang kelak menyimpang dari yang lain. */
+  const server = await bukaServer(url.toString());
 
   let companyId: number;
   /* Tahap yang sedang berjalan — dipakai jaring pengaman di `catch` bawah. */
@@ -195,29 +206,23 @@ export async function provisionCompany(
     // ── 2. Basis data ────────────────────────────────────────
     await emit({ phase: "create_database", message: `Membuat basis data ${databaseName}…` });
 
-    const already = await server.query(
-      "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?",
-      [databaseName]
-    );
-    if (already.length > 0) {
+    const already = await server.adakah(databaseName);
+    if (already) {
       /*
        * Basis data sudah ada tapi TIDAK terdaftar. Ini justru jalur yang
        * dipakai pemasangan yang penggunanya tidak boleh `CREATE DATABASE`:
        * administrator membuatnya manual, lalu penyediaan tinggal mengisi.
        * Yang tidak boleh: menimpa basis data yang sudah ada isinya.
        */
-      const tables = await server.query(
-        "SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?",
-        [databaseName]
-      );
-      if (Number(tables[0].n) > 0) {
+      const tables = await server.jumlahTabel(databaseName);
+      if (tables > 0) {
         throw new ProvisionError(
-          `Basis data "${databaseName}" sudah ada DAN sudah berisi ${tables[0].n} tabel. ` +
+          `Basis data "${databaseName}" sudah ada DAN sudah berisi ${tables} tabel. ` +
             "Penyediaan dihentikan supaya tidak menimpa data yang mungkin masih dipakai.",
           "create_database",
           {
             code: "database_not_empty",
-            values: { database: databaseName, tables: Number(tables[0].n) },
+            values: { database: databaseName, tables },
           }
         );
       }
@@ -227,10 +232,11 @@ export async function provisionCompany(
       });
     } else {
       try {
-        // Nama tidak bisa jadi parameter; keamanannya dari assertSafeDatabaseName.
-        await server.query(
-          `CREATE DATABASE \`${databaseName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-        );
+        /* Nama tidak bisa jadi parameter di mesin mana pun; keamanannya dari
+           `assertSafeDatabaseName` di sini DAN pemeriksaan kedua di
+           `db-server.ts`. Sintaksis per mesin hidup di sana — penyediaan ini
+           tidak lagi menulis satu baris SQL pun. */
+        await server.buat(databaseName);
       } catch (error) {
         /*
          * ── KEGAGALAN YANG PALING SERING, DAN SATU-SATUNYA YANG BUKAN BUG ───
@@ -260,10 +266,10 @@ export async function provisionCompany(
 
     // ── 3. Skema ─────────────────────────────────────────────
     phase = "migrate";
-    const names = await migrationNames();
-    const db = poolFor(url, databaseName);
+    const names = await migrationNames(server.mesin);
+    const db = await bukaBasisData(url.toString(), databaseName);
     try {
-      await db.query(BOOKKEEPING_TABLE_DDL);
+      await db.jalankan(ddlPembukuan(db.mesin));
 
       for (const [index, migration] of names.entries()) {
         await emit({
@@ -273,19 +279,20 @@ export async function provisionCompany(
           progress: (index + 1) / names.length,
         });
 
-        const file = join(MIGRATIONS_DIR, migration, "migration.sql");
+        const file = join(akarMigration(server.mesin), migration, "migration.sql");
         const sql = await readFile(file);
         const startedAt = new Date();
-        await db.query(sql.toString("utf8"));
-        await db.query(
-          "INSERT INTO `_prisma_migrations` " +
-            "(`id`, `checksum`, `migration_name`, `started_at`, `finished_at`, `applied_steps_count`) " +
-            "VALUES (?, ?, ?, ?, ?, 1)",
-          [randomUUID(), migrationChecksum(sql), migration, startedAt, new Date()]
-        );
+        await db.jalankan(sql.toString("utf8"));
+        await db.catatMigration({
+          id: randomUUID(),
+          checksum: migrationChecksum(sql),
+          nama: migration,
+          mulai: startedAt,
+          selesai: new Date(),
+        });
       }
     } finally {
-      await db.end();
+      await db.tutup();
     }
 
     // ── 4. Registry — PALING AKHIR ───────────────────────────
@@ -329,7 +336,7 @@ export async function provisionCompany(
     }
     throw error;
   } finally {
-    await server.end();
+    await server.tutup();
   }
 
   await emit({

@@ -32,6 +32,83 @@ services:
     networks:
       - internal
 
+  # ══ PostgreSQL — LAHIR TIDAK AKTIF, dan itu disengaja ═══════════════════════
+  #
+  # Kedua service di bawah memakai `profiles:`, jadi `docker compose up -d` TIDAK
+  # menyalakannya. Hanya `--profile postgres` yang melakukannya.
+  #
+  # Alasannya bukan kehati-hatian kosong: produksi hari ini berjalan di MariaDB,
+  # dan dua mesin basis data yang hidup bersamaan di kotak 3,6 GB berarti dua
+  # kali memori basis data untuk nol manfaat. Lebih buruk: sebuah PostgreSQL
+  # yang hidup dan KOSONG di sebelah MariaDB yang berisi adalah cara termudah
+  # menukar `DATABASE_URL` ke basis data kosong dan mengira aplikasinya rusak.
+  #
+  # Definisinya ada di sini — bukan di cabang, bukan di dokumen — supaya
+  # penukaran kelak tidak dimulai dengan menulis ulang compose di bawah tekanan.
+  # Lihat docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase E.
+  #
+  #   docker compose --profile postgres up -d pg pgbouncer
+  pg:
+    profiles: ["postgres"]
+    image: postgres:17-alpine
+    container_name: sai-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-sai}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-}
+      POSTGRES_DB: postgres
+      TZ: ${TZ:-Asia/Jakarta}
+      # `--data-checksums` TIDAK bisa dinyalakan setelah inisialisasi. Satu-satunya
+      # kesempatan memasangnya adalah sekarang, dan tanpa itu kerusakan halaman
+      # cakram terbaca sebagai data yang sah.
+      POSTGRES_INITDB_ARGS: "--data-checksums --encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-sai} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - internal
+
+  # ══ PgBouncer — WAJIB, bukan penyetelan ═══════════════════════════════════
+  #
+  # MariaDB memakai THREAD per koneksi; PostgreSQL memakai PROSES. Puncak koneksi
+  # di kotak ini TERUKUR 62 (`MAX_USED_CONNECTIONS`), dan 62 proses backend pada
+  # mesin 3,6 GB yang dibagi lima aplikasi lain bukan hal sepele.
+  #
+  # Dan pola klien per-perusahaan memperbesarnya: jumlah koneksi tumbuh mengikuti
+  # jumlah BUKU yang aktif bersamaan, bukan jumlah pengguna.
+  #
+  # `transaction` pooling, bukan `session`: dengan `session` satu koneksi aplikasi
+  # memegang satu backend selama hidupnya, dan seluruh manfaatnya hilang.
+  # ⚠ Konsekuensinya nyata — `transaction` mode TIDAK mendukung pernyataan
+  # bersiap lintas-transaksi. Prisma 7 memakai driver adapter, jadi ini aman,
+  # TETAPI menukar mode ke `session` kelak akan mengembalikan soal memori yang
+  # justru hendak dipecahkan di sini.
+  pgbouncer:
+    profiles: ["postgres"]
+    image: edoburu/pgbouncer:latest
+    container_name: sai-pgbouncer
+    restart: unless-stopped
+    environment:
+      DB_HOST: pg
+      DB_PORT: "5432"
+      DB_USER: ${PG_USER:-sai}
+      DB_PASSWORD: ${PG_PASSWORD:-}
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: "200"
+      DEFAULT_POOL_SIZE: "20"
+      TZ: ${TZ:-Asia/Jakarta}
+    depends_on:
+      pg:
+        condition: service_healthy
+    networks:
+      - internal
+
   migrate:
     build:
       context: .
@@ -549,4 +626,9 @@ volumes:
   # `docker compose down` dan tidak boleh ikut masuk ke konteks build — satu
   # dump produksi pernah terpanggang ke dalam image yang digelar karena
   # `backups/` di pohon repo (lihat .dockerignore §anchor).
+  # Dipakai HANYA oleh service `pg` (profile `postgres`). Volume yang
+  # dideklarasikan tapi belum terpakai tidak memakan apa pun — dan
+  # mendeklarasikannya sekarang berarti penukaran tidak perlu menyentuh daftar
+  # volume, satu-satunya bagian compose yang kesalahannya membuat data yatim.
+  pg_data:
   cadangan:

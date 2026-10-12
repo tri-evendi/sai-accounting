@@ -63,6 +63,7 @@ import { ppnEnabledFrom, readSiteSettingsRow } from "../src/lib/site-settings-co
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
+import { mesinKendali } from "../src/lib/db-engine-runtime";
 import { resolvePaymentGateway } from "../src/lib/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
@@ -565,9 +566,27 @@ async function main() {
    * basis data `sai_*` yang tidak dikenal registry. LAPOR SAJA — percobaan
    * ulang/pembersihan adalah keputusan orang; skrip tidak menghapus apa pun. */
   try {
-    const rows = await control.$queryRaw<Array<{ name: string }>>`
-      SELECT SCHEMA_NAME AS name FROM information_schema.SCHEMATA
-      WHERE SCHEMA_NAME LIKE 'sai\\_%'`;
+    /*
+     * ══ `SCHEMATA` MENIPU DI PostgreSQL ══════════════════════════════════════
+     * Query ini mencari BASIS DATA bernama `sai_*`. Di MySQL
+     * `information_schema.SCHEMATA` memang daftar basis data. Di PostgreSQL
+     * tabel itu ADA dengan nama yang sama tetapi berisi **skema di dalam satu
+     * basis data** — jadi query-nya BERHASIL dan memulangkan daftar yang hampir
+     * selalu kosong.
+     *
+     * Akibatnya deteksi penyediaan yatim diam-diam berhenti bekerja: basis data
+     * yang dibuat lalu gagal didaftarkan tidak akan pernah dilaporkan lagi.
+     * Tidak ada galat, tidak ada baris log — hanya penjaga yang berhenti
+     * menjaga. `pg_database` adalah katalog yang benar di sana.
+     */
+    const rows =
+      mesinKendali() === "postgresql"
+        ? await control.$queryRaw<Array<{ name: string }>>`
+            SELECT datname AS name FROM pg_database
+            WHERE datname LIKE 'sai\\_%' AND NOT datistemplate`
+        : await control.$queryRaw<Array<{ name: string }>>`
+            SELECT SCHEMA_NAME AS name FROM information_schema.SCHEMATA
+            WHERE SCHEMA_NAME LIKE 'sai\\_%'`;
     const registered = new Set(
       (await control.company.findMany({ select: { databaseName: true } })).map(
         (c) => c.databaseName
@@ -586,7 +605,7 @@ async function main() {
       );
     }
   } catch {
-    console.log("⏭ deteksi basis data yatim dilewati (tak berhak SHOW DATABASES)");
+    console.log("⏭ deteksi basis data yatim dilewati (tak berhak membaca daftar basis data)");
   }
 
   /* ── 7. Rekonsiliasi platform ↔ kendali (inti #137, kini terjadwal) ────── */

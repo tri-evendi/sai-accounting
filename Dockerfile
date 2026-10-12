@@ -151,11 +151,17 @@ CMD ["bun", "run", "db:migrate:all"]
 # sudah lahir di sana, dan membangunnya dua kali berarti dua kali waktu build
 # di mesin yang sudah sempit.
 #
-# Dua perkakas yang belum ada di image mana pun: `mariadb-client` (untuk
-# `mariadb-dump`) dan `awscli` (untuk `aws s3`, yang berbicara ke penyedia
-# S3-compatible mana pun lewat `--endpoint-url`). `openssl` sudah ada dari
-# tahap `base` — ia dipasang di sana untuk Prisma, dan dipakai ulang di sini
-# untuk menyandikan arsipnya.
+# Tiga perkakas yang belum ada di image mana pun: `mariadb-client` (untuk
+# `mariadb-dump`), `postgresql-client` (untuk `pg_dumpall`), dan `awscli` (untuk
+# `aws s3`, yang berbicara ke penyedia S3-compatible mana pun lewat
+# `--endpoint-url`). `openssl` sudah ada dari tahap `base` — ia dipasang di sana
+# untuk Prisma, dan dipakai ulang di sini untuk menyandikan arsipnya.
+#
+# ⚠ KEDUA klien dipasang, bukan salah satunya. Alasannya bukan ragu-ragu:
+# `prove-backup-restore` harus bisa memeriksa artefak dari mesin SEBELUMNYA
+# sesudah penukaran — dan image yang hanya punya klien mesin sekarang akan
+# menolak cadangan terakhir dari mesin lama, justru pada hari ia paling
+# dibutuhkan. Biayanya ~30 MB; harga kehilangan jalan mundur tidak terukur.
 #
 # ⚠ awscli DIPAKAI, BUKAN SigV4 buatan sendiri. Menandatangani permintaan S3
 # sendiri hanya butuh ~60 baris, dan itulah jebakannya: ia akan terlihat benar
@@ -164,7 +170,7 @@ CMD ["bun", "run", "db:migrate:all"]
 # jutaan orang tidak layak ditulis ulang demi menghemat satu paket.
 FROM migrator AS backup
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends mariadb-client awscli \
+    && apt-get install -y --no-install-recommends mariadb-client postgresql-client awscli \
     && rm -rf /var/lib/apt/lists/*
 CMD ["sh", "scripts/backup.sh"]
 

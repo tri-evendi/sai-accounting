@@ -86,7 +86,8 @@ jobs:
 
       - name: Prisma generate
         # `bun run db:generate`, BUKAN `bunx prisma generate` — pelajaran yang
-        # sudah tercatat di `build-standalone.yml` dan berlaku persis di sini.
+        # sudah tercatat di `publish-image.yml` dan berlaku persis di sini.
+        # (dulu rujukannya `build-standalone.yml`, dicabut 12 Okt 2026.)
         #
         # Repo ini punya TIGA skema sejak #104 (perusahaan) dan #137 (platform).
         # `bunx prisma generate` hanya membangkitkan yang pertama, sehingga

@@ -483,18 +483,29 @@ cara menggelar, dan mereka tidak sepakat:
 | `PRODUCTION.md` §2, §4 | ✅ **DITANDAI WARISAN** di tempatnya (11 Okt 2026) |
 | `PRODUCTION.md` §5 (nginx) | ✅ **DITANDAI WARISAN** di tempatnya |
 | `PRODUCTION.md` §Legacy: PM2 | Ditandai warisan — **benar** |
-| ~~`HOSTING.md` ×3~~ | ✅ **DIGABUNG** 12 Okt 2026 → `docs/warisan/PENGGELARAN-STANDALONE.md` (12,4 KB → 3,0 KB) |
+| ~~`HOSTING.md` ×3~~ | ✅ **DIHAPUS** 12 Okt 2026 — digabung dulu jadi `docs/warisan/PENGGELARAN-STANDALONE.md`, lalu ikut tercabut bersama perkakasnya di hari yang sama |
 | ~~`DOCKER.md`~~ | ✅ **DIHAPUS** 12 Okt 2026 — tumpang tindih `PRODUCTION.md` + dok 07; §Redeploying-nya mengajarkan build di server. Satu pengukurannya diselamatkan ke `PRODUCTION.md` §Updates |
-| `ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs` | PM2 tidak dipakai, **tetapi `package-standalone.sh` menyalinnya** — jadi dipertahankan, dijelaskan di `HOSTING*.md` |
-| `.github/workflows/build-standalone.yml` | 🔶 Alur bundel zip; tampak warisan di samping `publish-image.yml` |
+| ~~`ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs`~~ | ✅ **DIHAPUS** 12 Okt 2026 bersama `package-standalone.sh` yang menyalinnya |
+| ~~`.github/workflows/build-standalone.yml`~~ | ✅ **DIHAPUS** 12 Okt 2026 — artefak 43 MB tiap dorongan ke `main`, nol pemakai |
 
-Bahayanya **konkret**: `PRODUCTION.md` §2 masih menyarankan
+Bahayanya dulu **konkret**: `PRODUCTION.md` §2 menyarankan
 `bun run setup:prod`, yang menjalankan `next build` **di server** — persis yang
 dilarang §Updates dan `AGENTS.md`, dan yang sudah terukur menghabiskan ~19
 menit dengan iowait 58–92%. Seseorang yang membaca dari atas akan menemukan
 nasihat yang salah **sebelum** menemukan yang benar.
 
-Ditangani di [dok 09](./09-PETA-JALAN.md).
+✅ **Ditutup 12 Okt 2026.** Nasihat itu tidak bisa diikuti lagi karena
+**perkakasnya tidak ada**: `setup-production.sh`, `start-production.sh`,
+`start-low-memory.sh`, `package-standalone.sh`, `deploy-on-server.sh`, kedua
+`ecosystem.config*.cjs`, dan `build-standalone.yml` dicabut, beserta enam skrip
+`package.json` yang memanggilnya. §2/§4/§5 `PRODUCTION.md` kini **nisan** yang
+menunjuk ke §Updates — judulnya dipertahankan supaya penomoran dan tautan masuk
+tidak rusak.
+
+Satu jebakan ikut ketemu saat mencabutnya: `bun run deploy` menunjuk
+`scripts/deploy-on-server.sh` — jalur build-di-server — bukan `scripts/deploy.sh`.
+Jalan pintas itu dicabut. `scripts/deploy.sh` sendiri **tinggal** (kepalanya sudah
+menyatakan dirinya terlarang) sebagai pecah-kaca kalau GHCR tak terjangkau.
 
 ## 11. Pemulihan bencana
 

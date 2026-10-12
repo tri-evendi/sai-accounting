@@ -41,6 +41,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
+import { irisanStatusKontrak } from "@/lib/contract-status-chart";
 import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
@@ -149,13 +150,19 @@ export default async function ContractsPage({
 
   const countByStatus = new Map(statusCounts.map((s) => [s.status, s._count._all]));
   const contractStatusLabel = contractStatusLabels(dictionary);
-  // Urutan sah → menunggu → dibatalkan MENENTUKAN warna irisannya
-  // (hijau/kuning/merah dipasangkan per POSISI di `ContractStatusChart`).
-  const contractStatusData = [
-    { name: contractStatusLabel.signed, value: countByStatus.get("signed") ?? 0 },
-    { name: contractStatusLabel.pending, value: countByStatus.get("pending") ?? 0 },
-    { name: contractStatusLabel.canceled, value: countByStatus.get("canceled") ?? 0 },
-  ];
+  /*
+   * Urutan sah → menunggu → dibatalkan MENENTUKAN warna irisannya
+   * (hijau/kuning/merah dipasangkan per POSISI di `ContractStatusChart`), dan
+   * `irisanStatusKontrak` mempertahankannya.
+   *
+   * ⚠ Daftar ini dulu DIPAKU pada tiga status itu, dan akibatnya terukur: di
+   * buku produksi 609 kontrak, 508 masuk grafik, **101 hilang** — semuanya
+   * berstatus `completed`, nilai dari impor warisan yang tidak ada di kosakata
+   * mana pun. Grafiknya tidak terlihat salah: tiga irisan rapi, jumlah tampak
+   * masuk akal, 16,6% kontrak tidak ada di mana pun. Sementara tabel di halaman
+   * yang SAMA menampilkannya dengan benar.
+   */
+  const contractStatusData = irisanStatusKontrak(countByStatus, contractStatusLabel);
   const monthlyData = monthlyActivitySeries(recentContracts, recentInvoices, now);
 
   const rows: ContractRow[] = contracts.map((contract) => ({

@@ -212,6 +212,81 @@ ini; yang tidak ada adalah sesuatu yang **mencegahnya**.
 Itu konsisten dengan `signed` yang nol — kosakata aplikasi dan kosakata data
 warisan tidak pernah dipertemukan.
 
+### 4.0 Dari mana `completed` datang — ditelusuri 12 Okt 2026
+
+Keputusan kosakata butuh bukti, bukan dugaan. Ini buktinya.
+
+**Ia datang dari impor warisan, bukan dari pemakaian aplikasi.** Ketiga status di
+buku pt-sai lahir dalam jendela **dua detik yang sama**:
+
+| status | baris | pertama | terakhir |
+|---|---|---|---|
+| `pending` | 469 | 2026-07-18 11:42:45.130 | 11:42:46.835 |
+| `completed` | 101 | 2026-07-18 11:42:45.139 | 11:42:46.509 |
+| `canceled` | 39 | 2026-07-18 11:42:45.093 | 11:42:45.921 |
+
+**Dan status di aplikasi lama berupa ANGKA.** Di dump warisan
+(`subt5236_sai_prod_18july.sql`), `tb_trans_contract.status` adalah
+`varchar(40) DEFAULT '0'` dengan nilai `'0'` (1.297×), `'2'` (646×), `'7'`
+(180×), `'30'`, `'1'`, dan seterusnya. Jadi **pengimpor yang memetakan angka
+menjadi kata**, dan ia memakai kosakata yang lebih kaya daripada yang dimiliki
+aplikasi.
+
+**`completed` tidak ada di kode mana pun.** Disapu seluruh `src/`: nol
+kemunculan sebagai status kontrak — bukan di `CONTRACT_STATUSES`, bukan di
+query, bukan di UI.
+
+**Tapi `signed` BUKAN kosakata mati.** Ia bisa dipilih di form pembuatan
+kontrak (`contract-form.tsx:94`). Ia nol baris karena pengimpor tidak pernah
+menghasilkannya dan belum ada pengguna yang menyetelnya di buku ini.
+
+#### Jadi pertanyaannya menjadi tajam, dan ia bukan pertanyaan teknis
+
+**Apakah bisnis ini membedakan kontrak yang DITANDATANGANI dari kontrak yang
+SELESAI DIKERJAKAN?**
+
+| Kalau YA | Kalau TIDAK |
+|---|---|
+| `completed` adalah status keempat yang sah, dan pengimpor benar | 101 baris itu dipetakan ke `signed`, dan `completed` dihapus |
+| Tambahkan ke `CONTRACT_STATUSES` + label 3 bahasa + posisi warna + tombol saringan | Satu migration `UPDATE`, nol perubahan kode |
+| Nol data berubah | Informasi "sudah selesai" HILANG dari 101 kontrak, tanpa jalan balik |
+
+🔶 **Rekomendasi saya: YA** — untuk kontrak, "ditandatangani" dan "selesai
+dikerjakan" memang dua keadaan berbeda, dan memetakan 101 baris ke `signed`
+membuang informasi yang tidak bisa dipulihkan. Tapi ini **semantik akuntansi
+pemilik**, bukan keputusan teknis, jadi saya tidak mengambilnya.
+
+### 4.0.1 Yang SUDAH diperbaiki tanpa menunggu keputusan itu
+
+Penelusuran di atas menemukan cacat yang **tidak** bergantung pada keputusan
+kosakata — dan karena itu dikerjakan sekarang.
+
+**Donat status di halaman kontrak dibangun dari tiga status yang DIPAKU:**
+
+```ts
+{ name: sah,        value: countByStatus.get("signed")   ?? 0 },
+{ name: menunggu,   value: countByStatus.get("pending")  ?? 0 },
+{ name: dibatalkan, value: countByStatus.get("canceled") ?? 0 },
+```
+
+Diukur di produksi: **609 kontrak · 508 masuk grafik · 101 HILANG** — 16,6%.
+
+Yang membuatnya berbahaya: **grafiknya tidak terlihat salah.** Ia menggambar
+tiga irisan rapi dengan jumlah yang tampak masuk akal. Dan tabel di halaman yang
+SAMA justru benar — `StatusBadge` punya cadangan dan menampilkan "Completed" —
+jadi dua permukaan di satu halaman menjawab berbeda tentang data yang sama.
+
+Diperbaiki lewat `src/lib/contract-status-chart.ts`: tiga yang dikenal tetap di
+posisi 0-1-2 (warna dipasangkan per POSISI, bukan per nama), lalu status di luar
+kosakata menyusul dan mendapat `unknownTone` yang memang sudah jadi cadangan di
+`dashboard-charts.tsx`.
+
+`tests/contract-status-chart.test.ts` menegakkan invariannya: **jumlah irisan =
+jumlah kontrak**, apa pun statusnya. Dan ia menolak kembalinya daftar yang dipaku.
+
+Efek sampingnya berguna: **grafiknya sekarang menjadi bukti untuk keputusan
+§4.0** — irisan "Completed" terlihat, dengan jumlahnya.
+
 ### 4.1 Urutan perbaikan yang tidak boleh dibalik
 
 1. **Putuskan kosakatanya** (keputusan pemilik): apakah `completed` sah dan harus

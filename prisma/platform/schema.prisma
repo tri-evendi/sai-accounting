@@ -176,6 +176,7 @@ model Subscription {
   @@index([status])
   @@index([currentPeriodEnd])
   @@index([billingMode])
+  @@index([planId])
   @@map("subscriptions")
 }
 
@@ -226,6 +227,8 @@ model PlatformInvoice {
   @@index([tenantId])
   @@index([status])
   @@index([dueDate])
+  @@index([subscriptionId])
+  @@index([targetPlanId])
   @@map("platform_invoices")
 }
 
@@ -275,6 +278,7 @@ model Payment {
 
   @@index([tenantId])
   @@index([status])
+  @@index([platformInvoiceId])
   @@map("payments")
 }
 

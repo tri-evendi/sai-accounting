@@ -29,7 +29,7 @@
  */
 
 import { PrismaClient } from "@/generated/platform/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "@/lib/db-adapter";
 
 const globalForPlatform = globalThis as unknown as {
   platformPrisma: PrismaClient | undefined;
@@ -55,15 +55,7 @@ function createPlatformClient(): PrismaClient {
     );
   }
 
-  const url = new URL(databaseUrl);
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: url.pathname.slice(1),
-    connectionLimit: PLATFORM_CONNECTION_LIMIT,
-  });
+  const adapter = buatAdapter(databaseUrl, { batasKoneksi: PLATFORM_CONNECTION_LIMIT });
 
   return new PrismaClient({ adapter });
 }

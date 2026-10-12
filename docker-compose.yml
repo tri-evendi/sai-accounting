@@ -50,6 +50,11 @@ services:
   #   docker compose --profile postgres up -d pg pgbouncer
   pg:
     profiles: ["postgres"]
+    # ⚠ Versi mayor di sini HARUS sejajar dengan `postgresql-client-17` di
+    # `Dockerfile` tahap `backup`. `pg_dump` menolak server yang lebih baru
+    # daripada dirinya — terukur: klien 15 menolak server 17.11 dengan
+    # "aborting because of server version mismatch". Dijaga
+    # `tests/pg-client-version.test.ts`.
     image: postgres:17-alpine
     container_name: sai-pg
     restart: unless-stopped

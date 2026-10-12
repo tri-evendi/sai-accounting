@@ -619,7 +619,7 @@ terpasang sebagai dependensi produksi, dipatok sama persis dengan
 | 5 | `src/lib/tenant-export.ts` | `DATABASE()` → `current_schema()`, penanda `?` → `$1` | ✅ SELESAI |
 | 6 | `scripts/subscription-scheduler.ts` | `information_schema.SCHEMATA` → `pg_database` | ✅ SELESAI |
 | 7 | `scripts/execute-tenant-deletion.ts` | lepaskan klien → `pg_terminate_backend` → `DROP DATABASE` | ✅ SELESAI & TERBUKTI |
-| 8 | `scripts/backup.sh` + `Dockerfile` | `pg_dumpall` bila URL `postgres://`; `postgresql-client` masuk image | ✅ SELESAI |
+| 8 | `scripts/backup.sh` + `Dockerfile` | `pg_dumpall` bila URL `postgres://`; **`postgresql-client-17` dari PGDG** | ✅ SELESAI — lihat koreksi di bawah |
 | 9 | `docker-compose.yml` | `pg` + `pgbouncer`, **`profiles: ["postgres"]`** — lahir TIDAK aktif | ✅ SELESAI & TERBUKTI |
 
 **Butir 4 — kenapa ia menuntut abstraksi, bukan tambalan.** Perbedaannya bukan
@@ -657,6 +657,31 @@ menghapus. Di MariaDB langkah itu tidak dibutuhkan tetapi tidak merugikan, dan
 satu urutan untuk kedua mesin lebih mudah dipercaya daripada dua.
 
 > `tsc` tidak akan pernah menemukan ini. Hanya menjalankannya yang bisa.
+
+#### Koreksi butir 8 — klien PostgreSQL yang terlalu tua
+
+Butir 8 mula-mula memasang `postgresql-client` apa adanya. Di Debian bookworm itu
+versi **15**, sementara service `pg` adalah **17** — dan `pg_dump` **menolak**
+server yang lebih baru daripada dirinya. Diukur di image yang baru dibangun:
+
+```
+pg_dumpall: error: aborting because of server version mismatch
+detail: server version: 17.11; pg_dumpall version: 15.19
+```
+
+Yang membuatnya berbahaya bukan kesalahannya, melainkan **waktunya**: nol gagal
+saat membangun image, nol gagal di `verify`, dan nol gagal selama produksi masih
+MariaDB. Ia akan gagal pada cadangan **PERTAMA sesudah penukaran** — hari ketika
+cadangan paling dibutuhkan dan paling sedikit diperiksa.
+
+Diperbaiki: klien diambil dari repositori resmi PostgreSQL (PGDG) dan **dipatok
+`postgresql-client-17`**. Dibuktikan di container bersih —
+`pg_dumpall (PostgreSQL) 17.11`, sejajar dengan servernya.
+
+Arahnya penting: klien yang lebih **baru** bisa mendump server yang lebih tua,
+jadi aturannya bukan "harus sama" melainkan **klien ≥ server**.
+`tests/pg-client-version.test.ts` menegakkannya dengan membaca kedua berkas dan
+membandingkan versi mayornya — dan sudah dilihat merah lebih dulu.
 
 **Temuan saat mengerjakan butir 3, dan ia menggeneralisasi:** baseline PostgreSQL
 **dibangkitkan Prisma**, dan Prisma tidak tahu apa pun tentang trigger — baseline

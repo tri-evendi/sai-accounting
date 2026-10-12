@@ -46,20 +46,35 @@ sendiri.
 | [`../README.md`](../README.md) | Pintu masuk repo, quick start | Aktif |
 | [`../AGENTS.md`](../AGENTS.md) | **Aturan kerja** — gerbang verify/build, UI, otorisasi, DB | Aktif · WAJIB |
 | [`../PRODUCTION.md`](../PRODUCTION.md) | **Runbook penggelaran** — §Updates adalah jalur yang hidup | Aktif |
-| [`../DOCKER.md`](../DOCKER.md) | Susunan compose & boot pertama | Aktif (sebagian) |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Perubahan yang terlihat pengguna | **Dibangkitkan** — jangan sunting |
 | [`../CLAUDE.md`](../CLAUDE.md) | Penerus ke `AGENTS.md` | Aktif |
-| [`../HOSTING.md`](../HOSTING.md) | VPS + PM2 | ⚠️ **Warisan** |
-| [`../HOSTING-LOW-MEMORY.md`](../HOSTING-LOW-MEMORY.md) | VPS memori kecil | ⚠️ **Warisan** |
-| [`../HOSTING-NO-NODE.md`](../HOSTING-NO-NODE.md) | Hosting tanpa Node | ⚠️ **Warisan** |
+| [`warisan/PENGGELARAN-STANDALONE.md`](./warisan/PENGGELARAN-STANDALONE.md) | Jalur standalone/PM2 pra-Docker | ⚠️ **Warisan** |
 
-### Kenapa `HOSTING*.md` dipertahankan, bukan dihapus
+### Apa yang dirapikan 12 Okt 2026, dan kenapa
 
-Ketiganya menjelaskan jalur **pra-Docker** dan sudah diberi penanda warisan di
-kepalanya masing-masing. Dipertahankan karena `scripts/package-standalone.sh`
-dan `ecosystem.config*.cjs` **masih ada di repo** dan masih merujuknya — menghapus
-dokumennya akan meninggalkan skrip yang tidak dijelaskan apa pun. Kalau kelak
-skrip itu dicabut, ketiga berkas ini ikut.
+**Tiga `HOSTING*.md` → satu** `warisan/PENGGELARAN-STANDALONE.md`. Ketiganya
+menjelaskan satu jalur yang sudah tidak dipakai dari tiga sudut; tiga berkas di
+akar untuk itu adalah tiga tempat yang bisa membusuk. 12,4 KB → 3,0 KB.
+
+**`DOCKER.md` dihapus.** Isinya tumpang tindih dengan `PRODUCTION.md` (boot
+pertama, perintah, admin pertama) dan dengan `arsitektur/07` (jaringan,
+volume, probe) — dan §Redeploying-nya justru mengajarkan jalur **build di
+server** yang sekarang dilarang. Satu pengukurannya yang berharga
+(*"separuh health probe 503, memori bebas ~41 MB saat rebuild"*)
+**diselamatkan** ke `PRODUCTION.md` §Updates, sebab itu bukti terkuat aturan
+"jangan build di server".
+
+**`README.md` diperbaiki di tiga tempat** yang sudah terlanjur basi: §Production
+mengajarkan `setup:prod` (membangun di server), §Scripts menyebut `db:migrate`
+tanpa peringatan multi-PT, dan §Security menyebut `data/audit/audit.jsonl`
+padahal jejak audit sudah pindah ke tabel.
+
+**Yang TIDAK dihapus, dan kenapa:** perkakas standalone
+(`scripts/package-standalone.sh`, `ecosystem.config*.cjs`,
+`.github/workflows/build-standalone.yml`) **masih ada**. Menghapus perkakas yang
+masih berjalan adalah keputusan pemilik, bukan pembersihan dokumentasi — dan
+dokumen warisannya menyebut klaster itu secara eksplisit supaya keduanya bisa
+dicabut bersama kelak.
 
 `CHANGELOG.md` **dibangkitkan** dari `src/lib/changelog.ts`
 (`bun run changelog:build`); menyuntingnya langsung akan tertimpa.

@@ -152,14 +152,14 @@ Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 - `PRODUCTION.md`: beri bagian §2/§4/§5 penanda warisan yang **sama** dengan
   §PM2 yang sudah ada. Pindahkan §Updates ke atas.
 - `HOSTING.md`, `HOSTING-LOW-MEMORY.md`, `HOSTING-NO-NODE.md`: tandai warisan
-  atau hapus — ❓ butuh keputusan apakah masih dipakai.
+  atau hapus.
 - `DOCKER.md`: tegaskan hubungannya dengan `PRODUCTION.md` (mana yang menang).
 - `ecosystem.config*.cjs`: biarkan, tetapi rujuk §PM2 yang sudah menjelaskan
   kenapa keduanya masih ada.
 - `build-standalone.yml`: ❓ putuskan nasibnya.
-- `README.md`: perbaiki tiga klaim basi — §Production (`setup:prod` membangun di
-  server), §Security (jejak audit sudah pindah dari `data/audit/audit.jsonl` ke
-  tabel), §Scripts (`db:migrate` tanpa peringatan multi-PT).
+- `README.md`: perbaiki tiga klaim basi — §Production (`setup:prod` membangun
+  di server), §Security (jejak audit sudah pindah dari `data/audit/audit.jsonl`
+  ke tabel), §Scripts (`db:migrate` tanpa peringatan multi-PT).
 
 **Yang SUDAH dikerjakan 11 Okt 2026:**
 
@@ -176,8 +176,30 @@ Nol perubahan kode. Dampak langsung saat insiden berikutnya.
   lima aturan pemeliharaan. Sebelumnya `docs/` tidak punya indeks sama sekali.
 - Satu PNG yatim 1,03 MB dihapus (tangkapan layar localhost, nol rujukan).
 
-**Yang MASIH terbuka di butir ini:** nasib `build-standalone.yml`, dan tiga
-klaim basi di `README.md` di atas (§Production/§Security/§Scripts).
+**Lanjutannya, 12 Okt 2026 — sisa butir ini ditutup:**
+
+- Tiga `HOSTING*.md` **digabung** jadi satu `docs/warisan/PENGGELARAN-STANDALONE.md`
+  (12,4 KB → 3,0 KB). Penanda warisan saja ternyata tidak cukup: ketiganya tetap
+  tiga pintu masuk ke jalur yang sama.
+- `DOCKER.md` **dihapus**. Alasannya bukan tumpang tindih saja — §Redeploying-nya
+  mengajarkan `up --build -d` **di server**, jalur yang justru dilarang. Satu
+  pengukurannya yang berharga (separuh health probe 503, memori bebas ~41 MB saat
+  rebuild di tempat) **diselamatkan** ke `PRODUCTION.md` §Updates, karena itu bukti
+  terkuat aturan tersebut.
+- Tiga klaim basi `README.md` **diperbaiki**: §Production kini menunjuk jalur
+  `pull` → `db:migrate:all` → `up -d`; §Security menyebut tabel `audit_logs` /
+  `tenant_audit_logs`, bukan `data/audit/audit.jsonl`; §Scripts menyebut
+  `db:migrate:all` beserta bahaya `db:migrate` tunggal (migrasi 0042 men-*drop*
+  `users`).
+- `docs/README.md`: tabel status diperbarui + bagian *"Apa yang dirapikan 12 Okt
+  2026, dan kenapa"*.
+
+**Yang MASIH terbuka:** nasib **klaster perkakas standalone** —
+`scripts/package-standalone.sh`, `ecosystem.config*.cjs`, dan
+`build-standalone.yml` (yang menghasilkan artefak 43 MB tiap dorongan ke `main`).
+Perkakasnya **berjalan**, jadi mencabutnya adalah keputusan pemilik, bukan
+pembersihan dokumentasi. Dokumen warisannya menyebut klaster itu eksplisit
+supaya ketiganya bisa dicabut bersama dalam satu langkah.
 
 **Gerbang keluar Fase 0:** `/api/health` → `backup.status: "ok"` ·
 `prove-backup-restore` lulus · kunci tersimpan di luar mesin · satu kegagalan

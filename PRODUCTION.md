@@ -334,6 +334,20 @@ docker compose run --rm migrate bun run db:migrate   # ONLY if there are new mig
 docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance
 ```
 
+> ### Why "never build on the server" is a measurement, not a preference
+>
+> Folded in from the former `DOCKER.md` so it is not lost with that file.
+>
+> On this host a full in-place rebuild **starved the container that was still
+> serving**: roughly **half the health probes came back 503 or timed out**, with
+> free memory down to **~41 MB**. Traefik pulls a container that fails its probe
+> out of rotation, so users saw 503s for several minutes.
+>
+> Building first and swapping later turns a long hard outage into a short one
+> plus a degraded window — it does **not** make deploys invisible. The actual
+> fix is headroom, and that is what the registry flow buys: **build on CI, pull
+> here**, so production only ever experiences the swap.
+
 **Order matters when a release carries migrations:** pull, then migrate, then
 swap. A single `docker compose up --build -d` is wrong — it swaps the container
 before migrations run, so the new code briefly meets the old schema.

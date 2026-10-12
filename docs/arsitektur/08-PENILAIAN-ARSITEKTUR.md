@@ -418,7 +418,8 @@ bisa salah di sini adalah kabelnya, dan kabel terbaca dari sumber.
 itu didukung ukuran: ~19 menit, iowait 58–92%, dua build bersamaan pernah OOM.
 
 Ditambah `HOSTING.md` / `HOSTING-LOW-MEMORY.md` / `HOSTING-NO-NODE.md`
-(🔶 tampak warisan, **belum ditandai**), `DOCKER.md` (tumpang tindih),
+(🔶 tampak warisan, **belum ditandai**) dan `DOCKER.md` (tumpang tindih) —
+**keenamnya sudah dirapikan, lihat blok di bawah**,
 dua `ecosystem.config*.cjs` untuk PM2 yang tidak dipakai, dan
 `build-standalone.yml` di samping `publish-image.yml`.
 
@@ -452,11 +453,23 @@ perbaiki tiga klaim basi di `README.md` di atas.
 > indeks sama sekali. Dan satu PNG yatim 1,03 MB (tangkapan layar localhost,
 > nol rujukan) dihapus.
 >
-> `HOSTING*.md` dan `ecosystem.config*.cjs` **tidak dihapus**, dan itu keputusan
-> berdasar bukti: `scripts/package-standalone.sh` masih menyalin
-> `ecosystem.config.low-memory.cjs` dan merujuk `HOSTING-LOW-MEMORY.md`.
-> Menghapus dokumennya akan meninggalkan skrip yang tidak dijelaskan apa pun.
-> Keduanya ikut dicabut kalau kelak skrip itu dicabut.
+> **Lanjutannya, 12 Okt 2026:** tiga `HOSTING*.md` **digabung** menjadi satu
+> `docs/warisan/PENGGELARAN-STANDALONE.md` (12,4 KB → 3,0 KB), dan `DOCKER.md`
+> **dihapus** — isinya tumpang tindih `PRODUCTION.md` + dok 07, dan
+> §Redeploying-nya justru mengajarkan jalur **build di server** yang dilarang.
+> Satu pengukurannya yang berharga (*separuh health probe 503, memori bebas
+> ~41 MB saat rebuild*) **diselamatkan** ke `PRODUCTION.md` §Updates, sebab itu
+> bukti terkuat aturan "jangan build di server".
+>
+> **Perkakas** standalone (`package-standalone.sh`, `ecosystem.config*.cjs`,
+> `build-standalone.yml`) **tetap ada** — menghapus perkakas yang masih
+> berjalan adalah keputusan pemilik, bukan pembersihan dokumentasi. Dokumen
+> warisannya menyebut klaster itu eksplisit supaya keduanya bisa dicabut
+> bersama kelak.
+>
+> Dan **tiga klaim basi di `README.md`** yang butir ini sebut sebagai masih
+> terbuka — §Production, §Security, §Scripts — sudah **diperbaiki** pada
+> tanggal yang sama.
 
 ---
 
@@ -901,9 +914,9 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | Apakah `build-standalone.yml` masih dipakai? | Menentukan apakah ia dihapus atau ditandai |
 | Berapa RPO yang dapat diterima pemilik? | Menentukan apakah binlog/PITR masuk Tier 2 atau Tier 4 ([dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
 | Setuju memisahkan container operator di produksi? | Perubahan infrastruktur; nol kode, ~60 MB ([dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
-| Apakah `HOSTING*.md` masih berlaku? | Sama |
+| ~~Apakah `HOSTING*.md` masih berlaku?~~ | ✅ **terjawab 12 Okt 2026** — digabung jadi satu dokumen warisan; perkakasnya yang menentukan kapan ia dicabut |
 | Berapa RTO yang dapat diterima pemilik? | Menentukan apakah RPO 24 jam cukup |
-| `inventory.suburanugerahindonesia.com` masih aktif? | Host uji di `DOCKER.md` |
+| ~~`inventory.suburanugerahindonesia.com` masih aktif?~~ | ✅ **tidak relevan lagi** — satu-satunya penyebutnya `DOCKER.md`, yang sudah dihapus 12 Okt 2026 |
 
 ---
 

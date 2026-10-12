@@ -95,15 +95,25 @@ pernah berhasil sekali pun**.
 
 ## 2. PostgreSQL — asesmen
 
+> **Audit kompatibilitas penuh (F1) DIJALANKAN 12 Okt 2026** —
+> [dok 11 §9](./11-RENCANA-POSTGRESQL.md#9-audit-kompatibilitas-f1--dijalankan-12-okt-2026).
+> Putusan "jangan sekarang" **tidak berubah**, tetapi **alasannya berubah**:
+> pekerjaan kodenya ternyata lebih kecil dari yang ditaksir di sini (78 MB data,
+> empat tipe native, jebakan collation satu baris), sementara biaya yang nyata
+> pindah ke tempat lain — **koneksi**: puncak 62 pada mesin 3,6 GB berarti
+> PgBouncer menjadi wajib, bukan opsional. Angka di tabel bawah yang sudah
+> dikoreksi diberi penanda.
+
+
 ### Biaya migrasi, terukur
 
 | Yang harus diubah | Jumlah |
 |---|---|
 | `provider = "mysql"` di skema Prisma | **3** (perusahaan, kendali, platform) |
-| Berkas `migration.sql` tulisan tangan | **99** — **semuanya** memakai identifier backtick; **14** di antaranya memuat `INSERT`/`UPDATE` data sungguhan |
-| …di antaranya memakai `AUTO_INCREMENT` | **48** |
+| Berkas `migration.sql` tulisan tangan | **99** — **semuanya** memakai identifier backtick; **21** di antaranya memuat `INSERT`/`UPDATE` data sungguhan *(dikoreksi 12 Okt: sebelumnya 14)* |
+| …di antaranya memakai `AUTO_INCREMENT` | **49** *(dihitung ulang 12 Okt: sebelumnya 48)* |
 | …di antaranya memakai `ENGINE=InnoDB` | **5** |
-| Titik raw SQL tulisan tangan | **25** |
+| Titik raw SQL tulisan tangan | **29** *(dikoreksi 12 Okt: sebelumnya 25; sapuan yang memasukkan `src/generated/` melebihkan jadi 65)* |
 | Kueri `information_schema` | **7 tempat** — nama kolom & semantik PG berbeda |
 | Pemeriksaan SQL di `check-data-conformance` | **12** — ✅ **ternyata PORTABEL apa adanya** (diverifikasi 11 Okt: derived table-nya BERALIAS `x`, `CONCAT`/`UNION ALL`/`NOT IN` semuanya ada di PG) |
 | `CREATE DATABASE … utf8mb4 COLLATE utf8mb4_unicode_ci` | provisioning + `create-company.ts` — sintaks beda total |

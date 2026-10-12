@@ -18,8 +18,20 @@
  * `ok`.
  *
  * Dipanggil `scripts/backup.sh`:
- *     bun run record:backup ok   "<artifact>" "<bytes>"
+ *     bun run record:backup ok    "<artifact>" "<bytes>"
+ *     bun run record:backup lokal "<artifact>" "<bytes>"
  *     bun run record:backup gagal "<sebab>"
+ *
+ * ══ `lokal` BUKAN VARIAN DARI `ok` ═════════════════════════════════════════
+ * `ok` berarti artefaknya pergi ke LUAR mesin ini. `lokal` berarti ia dibuat,
+ * tersandi, lalu menginap di cakram yang sama dengan basis datanya — yang
+ * terjadi bila `BACKUP_S3_BUCKET` belum disetel.
+ *
+ * Keduanya ditulis ke kolom `status` dengan nilai yang BERBEDA (`ok` vs
+ * `local`) justru supaya tidak bisa tertukar: `backupHealth` mencari keberhasilan
+ * terakhir dengan `where: { status: "ok" }`, jadi satu putaran lokal tidak akan
+ * pernah mengisi `lastSuccessAt` dan membuat permukaan kesehatan berkata
+ * terlindungi.
  */
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
@@ -42,6 +54,12 @@ function clientFor(rawUrl: string) {
 async function main() {
   const [hasil, kedua, ketiga] = process.argv.slice(2);
   const ok = hasil === "ok";
+  const lokal = hasil === "lokal";
+  /* Artefak ADA pada `ok` maupun `lokal`; yang membedakan hanya ke mana ia
+     pergi. Kalau ukuran & nama artefak hanya dicatat untuk `ok`, satu-satunya
+     angka yang bisa membantah "cadangan berhasil tapi 0 byte" hilang justru di
+     jalur yang paling butuh diperiksa. */
+  const adaArtefak = ok || lokal;
 
   const rawUrl = process.env.PLATFORM_DATABASE_URL;
   if (!rawUrl) {
@@ -66,10 +84,10 @@ async function main() {
       data: {
         startedAt: Number.isNaN(startedAt.getTime()) ? new Date() : startedAt,
         finishedAt: new Date(),
-        status: ok ? "ok" : "error",
-        error: ok ? null : (kedua ?? "sebab tidak disebutkan"),
-        artifact: ok ? (kedua ?? null) : null,
-        sizeBytes: ok && ketiga ? BigInt(ketiga) : null,
+        status: ok ? "ok" : lokal ? "local" : "error",
+        error: adaArtefak ? null : (kedua ?? "sebab tidak disebutkan"),
+        artifact: adaArtefak ? (kedua ?? null) : null,
+        sizeBytes: adaArtefak && ketiga ? BigInt(ketiga) : null,
       },
     });
   } finally {

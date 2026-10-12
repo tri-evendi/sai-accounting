@@ -176,6 +176,7 @@ model Subscription {
   @@index([status])
   @@index([currentPeriodEnd])
   @@index([billingMode])
+  @@index([planId])
   @@map("subscriptions")
 }
 
@@ -226,6 +227,8 @@ model PlatformInvoice {
   @@index([tenantId])
   @@index([status])
   @@index([dueDate])
+  @@index([subscriptionId])
+  @@index([targetPlanId])
   @@map("platform_invoices")
 }
 
@@ -275,6 +278,7 @@ model Payment {
 
   @@index([tenantId])
   @@index([status])
+  @@index([platformInvoiceId])
   @@map("payments")
 }
 
@@ -509,7 +513,13 @@ model BackupRun {
   startedAt  DateTime @map("started_at")
   finishedAt DateTime @map("finished_at")
 
-  /// ok | error — konvensi String + union TS, lihat docs/DATABASE.md.
+  /// ok | local | error — konvensi String + union TS, lihat docs/DATABASE.md.
+  ///
+  /// `local` (12 Okt 2026): artefak terenkripsi DIBUAT tapi tetap di mesin ini,
+  /// sebab `BACKUP_S3_BUCKET` belum disetel. Sengaja BUKAN `ok` — `backupHealth`
+  /// mencari keberhasilan dengan `where: { status: "ok" }`, jadi nilai terpisah
+  /// inilah yang mencegah salinan lokal mengisi `lastSuccessAt`.
+  /// Tanpa migrasi: kolomnya sudah `VarChar(10)`, dan `local` lima karakter.
   status String @db.VarChar(10)
 
   /// Sebab kegagalan, apa adanya dari `backup.sh`. Null saat berhasil.

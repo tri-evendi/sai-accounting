@@ -28,7 +28,7 @@
  */
 
 import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "@/lib/db-adapter";
 
 /** Berapa klien perusahaan boleh hidup bersamaan. */
 const POOL_MAX = Number(process.env.COMPANY_CLIENT_POOL_MAX) || 4;
@@ -88,15 +88,11 @@ function createClient(databaseName: string): PrismaClient {
     throw new Error(`Nama basis data tidak sah: ${JSON.stringify(databaseName)}`);
   }
 
+  /* URL template dipakai untuk kredensial & host; nama basis datanya DIGANTI
+     per perusahaan — itu inti model satu-basis-data-per-PT (#104). */
   const url = templateUrl();
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: databaseName,
-    connectionLimit: CONNECTION_LIMIT,
-  });
+  url.pathname = `/${databaseName}`;
+  const adapter = buatAdapter(url.toString(), { batasKoneksi: CONNECTION_LIMIT });
 
   return new PrismaClient({ adapter });
 }

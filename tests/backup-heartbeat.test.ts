@@ -191,3 +191,94 @@ describe("rantainya utuh: direkam, lalu ditanyai dari luar", () => {
     expect(h.indexOf('database: "unreachable"')).toBeLessThan(h.indexOf("lastBackup()"));
   });
 });
+
+describe("denyut cadangan: salinan LOKAL tidak boleh terbaca sebagai terlindungi (12 Okt 2026)", () => {
+  /*
+   * Jalur lokal lahir karena penolakan "tanpa S3 jangan jalan" membuat produksi
+   * berjalan 54 putaran dengan NOL artefak. Yang ditambahkan adalah artefaknya;
+   * yang TIDAK boleh ikut tertambah adalah klaim bahwa ia salinan di luar mesin.
+   */
+  const sekarang = new Date("2026-10-12T12:00:00.000Z");
+
+  it("putaran lokal → `local_only`, bukan `ok`", () => {
+    const h = backupHealth(
+      null,
+      { at: new Date("2026-10-12T11:00:00.000Z"), ok: false, localOnly: true },
+      sekarang
+    );
+    expect(h.status).toBe("local_only");
+  });
+
+  it("putaran lokal TIDAK mengisi lastSuccessAt — itu yang mencegah kebohongannya", () => {
+    const h = backupHealth(
+      null,
+      { at: new Date("2026-10-12T11:00:00.000Z"), ok: false, localOnly: true },
+      sekarang
+    );
+    expect(h.lastSuccessAt).toBeNull();
+    expect(h.ageHours).toBeNull();
+    // Percobaannya tetap tercatat: ada sesuatu yang berjalan, dan itu fakta.
+    expect(h.lastAttemptAt).toBe("2026-10-12T11:00:00.000Z");
+  });
+
+  it("`local_only` tidak dilebur ke `failing` — ada bedanya yang nyata", () => {
+    const lokal = backupHealth(
+      null,
+      { at: sekarang, ok: false, localOnly: true },
+      sekarang
+    );
+    const gagal = backupHealth(
+      null,
+      { at: sekarang, ok: false, error: "unggah gagal" },
+      sekarang
+    );
+    expect(lokal.status).not.toBe(gagal.status);
+    expect(gagal.status).toBe("failing");
+  });
+
+  it("lokal MENDAHULUI `late`: turun dari S3 ke cakram harus terlihat SEKARANG", () => {
+    /* Ada salinan luar-mesin yang sudah basi (80 jam), lalu putaran hari ini
+       hanya lokal. Kalau `late` yang menang, sebab sesungguhnya ("tujuannya
+       hilang") tersembunyi di balik gejala ("salinannya tua"). */
+    const h = backupHealth(
+      new Date("2026-10-09T04:00:00.000Z"),
+      { at: new Date("2026-10-12T11:00:00.000Z"), ok: false, localOnly: true },
+      sekarang
+    );
+    expect(h.status).toBe("local_only");
+    // Umur salinan luar-mesin tetap dilaporkan — ia masih fakta yang berguna.
+    expect(h.ageHours).toBe(80);
+  });
+
+  it("kembali ke S3 memulangkan `ok` lagi tanpa sisa", () => {
+    const h = backupHealth(
+      new Date("2026-10-12T11:00:00.000Z"),
+      { at: new Date("2026-10-12T11:00:00.000Z"), ok: true },
+      sekarang
+    );
+    expect(h.status).toBe("ok");
+  });
+
+  it("masukan yang KONTRADIKTIF (`ok` sekaligus `localOnly`) memilih yang berbunyi", () => {
+    /*
+     * Kombinasi yang tidak akan pernah ditulis `backup.sh` — ia menulis satu
+     * kata saja, `ok` atau `lokal`. Tapi "tidak akan pernah" bukan jaminan, dan
+     * pertanyaannya tetap harus dijawab: kalau dua sumber tidak sepakat, mana
+     * yang menang?
+     *
+     * Yang menang adalah yang TIDAK MELEBIHKAN perlindungan. Salah berbunyi
+     * membuat seseorang memeriksa dan menemukan semuanya baik — biayanya satu
+     * surel. Salah diam membuat seseorang percaya ada salinan di luar mesin
+     * ketika tidak ada — biayanya seluruh pembukuan.
+     *
+     * Versi pertama tes ini menuntut `ok` yang menang. Itu preferensi yang
+     * salah, dan kodenya yang benar.
+     */
+    const h = backupHealth(
+      new Date("2026-10-12T11:00:00.000Z"),
+      { at: new Date("2026-10-12T11:00:00.000Z"), ok: true, localOnly: true },
+      sekarang
+    );
+    expect(h.status).toBe("local_only");
+  });
+});

@@ -32,7 +32,21 @@ arsitektur: bentuk sistemnya sehat, dan bukti dari potret ini mengarah ke
 Semua di fase ini berusaha **rendah** dan risiko **rendah**. Tidak ada yang
 mengubah arsitektur.
 
-### 0.1 Hidupkan cadangan → P0-1
+### 0.1 Hidupkan cadangan → P0-1 — **JARING TERPASANG 12 Okt 2026, S3 masih kurang**
+
+> **Apa yang sudah berjalan.** Tanpa `BACKUP_S3_BUCKET`, `backup.sh` kini tetap
+> dump → sandikan → simpan ke volume `cadangan`, dan merekam putarannya
+> **`local`, bukan `ok`**. `watch:backup` berbunyi tiap hari dari
+> `job-scheduler` sampai bucket diisi.
+>
+> Dibuktikan di produksi: artefak **1,7 MB** (`600`) + `.sha256`; baris pertama
+> `backup_runs` yang bukan `error`; dan `prove-backup-restore` **lulus** —
+> sidik jari cocok, dekripsi berhasil, **19 basis data di dalam dump (17 buku
+> PT)**. Itu kali pertama satu cadangan di repo ini dibuktikan bisa dipulihkan.
+>
+> **Yang masih kurang tetap kurang:** satu kebakaran / cakram mati / akun hilang
+> menghapus data DAN salinannya sekaligus. Langkah di bawah ini yang menutupnya.
+
 
 ```bash
 # 1. Lengkapi .env — tiga yang hilang
@@ -57,6 +71,10 @@ docker exec sai-app-customer node -e "fetch('http://127.0.0.1:3000/api/health').
 **bukan** bukti — doktrin repo ini sendiri: buktikan lewat angka, bukan lewat
 laporan skrip.
 
+⚠ `status: "local_only"` **bukan** gerbang yang lulus. Ia berarti artefaknya ada
+tapi tidak pergi ke mana-mana; `lastSuccessAt` tetap `null` dengan sengaja,
+justru supaya gerbang ini tidak bisa lolos lewat jaring sementara.
+
 ### 0.2 Amankan kunci enkripsi → P0-2
 
 Harus **bersama** 0.1, bukan sesudahnya: 0.1 tanpa 0.2 menghasilkan cadangan
@@ -68,7 +86,21 @@ yang terasa ada padahal tidak bisa dibuka.
 
 **Prasyarat:** ❓ keputusan pemilik soal pengelola rahasia mana.
 
-### 0.3 Sambungkan peringatan → P1-1
+### 0.3 Sambungkan peringatan → P1-1 — **CADANGAN ✅ 12 Okt 2026, dua lagi**
+
+> `watch:backup` (`src/lib/backup-watchdog.ts` + `scripts/watch-backup-health.ts`)
+> berjalan tiap jam dari `job-scheduler`, satu surel per status per 24 jam lewat
+> `rate_limit_counters` di basis data kendali.
+>
+> **Kenapa di penjadwal, bukan di layanan cadangan** — ini bagian yang mudah
+> salah: bentuk kegagalan termahal adalah *tidak ada putaran sama sekali*
+> (container mati, loop menggantung, image basi sehingga perekamnya sendiri
+> galat), dan penjaga yang hidup di dalam layanan cadangan ikut mati bersamanya.
+> `backup_runs` memang pernah 0 baris berbulan-bulan karena sebab terakhir itu.
+>
+> **Sisa butir ini:** denyut **penjadwal** dan temuan **kesesuaian** belum
+> berkabel. Polanya sudah ada — tinggal diikuti.
+
 
 Empat pemanggilan `alert()`. Modulnya sudah ada, benar, dan berperedam:
 

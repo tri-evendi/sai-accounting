@@ -31,6 +31,7 @@
 import "server-only";
 
 import { controlDb } from "@/lib/control-db";
+import { mesinKendali } from "@/lib/db-engine-runtime";
 
 export interface PersistentRateLimitOptions {
   windowMs: number;
@@ -114,17 +115,43 @@ export async function checkPersistentRateLimit(
    * diputuskan di server basis data. NOW(3) dipakai di kedua sisi supaya jam
    * aplikasi tidak ikut bermain.
    */
-  await controlDb.$executeRaw`
-    INSERT INTO rate_limit_counters (\`key\`, window_started_at, count, created_at, updated_at)
-    VALUES (${key}, NOW(3), 1, NOW(3), NOW(3))
-    ON DUPLICATE KEY UPDATE
-      count = IF(window_started_at <= NOW(3) - INTERVAL ${windowSeconds} SECOND, 1, count + 1),
-      window_started_at = IF(
-        window_started_at <= NOW(3) - INTERVAL ${windowSeconds} SECOND,
-        NOW(3),
-        window_started_at
-      ),
-      updated_at = NOW(3)`;
+  /*
+   * ══ DUA MESIN, SATU PERILAKU ═════════════════════════════════════════════
+   * Pernyataannya berbeda karena sintaksisnya memang berbeda — `ON DUPLICATE
+   * KEY UPDATE` milik MySQL, `ON CONFLICT … DO UPDATE` milik standar SQL — tapi
+   * yang dijaga sama persis: SATU perjalanan atomik yang mereset jendela
+   * kedaluwarsa atau menambah satu, diputuskan di server.
+   *
+   * Dibelah di sini, bukan disembunyikan di balik ORM: pembatas laju adalah
+   * pagar keamanan, dan pagar yang perilakunya "kurang lebih sama" di dua mesin
+   * bukan pagar. Dua pernyataan yang dibaca berdampingan bisa diperiksa mata;
+   * satu abstraksi yang menyembunyikan keduanya tidak bisa.
+   */
+  if (mesinKendali() === "postgresql") {
+    await controlDb.$executeRaw`
+      INSERT INTO rate_limit_counters ("key", window_started_at, count, created_at, updated_at)
+      VALUES (${key}, NOW(), 1, NOW(), NOW())
+      ON CONFLICT ("key") DO UPDATE SET
+        count = CASE
+          WHEN rate_limit_counters.window_started_at <= NOW() - MAKE_INTERVAL(secs => ${windowSeconds})
+          THEN 1 ELSE rate_limit_counters.count + 1 END,
+        window_started_at = CASE
+          WHEN rate_limit_counters.window_started_at <= NOW() - MAKE_INTERVAL(secs => ${windowSeconds})
+          THEN NOW() ELSE rate_limit_counters.window_started_at END,
+        updated_at = NOW()`;
+  } else {
+    await controlDb.$executeRaw`
+      INSERT INTO rate_limit_counters (\`key\`, window_started_at, count, created_at, updated_at)
+      VALUES (${key}, NOW(3), 1, NOW(3), NOW(3))
+      ON DUPLICATE KEY UPDATE
+        count = IF(window_started_at <= NOW(3) - INTERVAL ${windowSeconds} SECOND, 1, count + 1),
+        window_started_at = IF(
+          window_started_at <= NOW(3) - INTERVAL ${windowSeconds} SECOND,
+          NOW(3),
+          window_started_at
+        ),
+        updated_at = NOW(3)`;
+  }
 
   const row = await controlDb.rateLimitCounter.findUnique({
     where: { key },

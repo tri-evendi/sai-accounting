@@ -38,10 +38,57 @@ describe("skrip cadangan: syarat yang menolak berjalan (#374)", () => {
     expect(script).toMatch(/BACKUP_ENCRYPTION_KEY[\s\S]{0,200}die/);
   });
 
-  it("menolak berjalan tanpa tujuan di luar mesin ini", () => {
-    // Cadangan yang tinggal di mesin yang sama bukan cadangan — mesin itu juga
-    // yang bisa mati.
-    expect(script).toMatch(/BACKUP_S3_BUCKET[\s\S]{0,200}die/);
+  it("tanpa tujuan di luar mesin ia TETAP mencadangkan — ke cakram, dan berkata apa adanya", () => {
+    // ══ TES INI DULU MENUNTUT YANG SEBALIKNYA ════════════════════════════════
+    // Sampai 12 Okt 2026 ia menuntut `BACKUP_S3_BUCKET[\s\S]{0,200}die` — tanpa
+    // bucket, skripnya harus MENOLAK berjalan. Niatnya benar ("cadangan yang
+    // tinggal di mesin yang sama bukan cadangan") tapi akibatnya terukur dan
+    // buruk: produksi menjalankan 54 putaran dengan NOL artefak, dan satu-satunya
+    // jaring adalah dump tangan yang kebetulan diambil saat rilis.
+    //
+    // Penolakan itu melindungi dari SATU bentuk kegagalan — kehilangan mesin —
+    // dengan membiarkan kita tanpa pertahanan terhadap semua bentuk lain:
+    // `DROP TABLE` keliru, migrasi yang merusak, kerusakan logis. Itu mayoritas
+    // kejadian yang sungguh terjadi.
+    //
+    // Yang dijaga SEKARANG bukan lagi "menolak", melainkan "tidak pernah
+    // mengklaim lebih dari yang benar".
+    expect(script).toMatch(/MODE=lokal/);
+    expect(script).toMatch(/BACKUP_LOCAL_DIR/);
+  });
+
+  it("putaran lokal dicatat `lokal`, BUKAN `ok` — satu kata yang menentukan kejujurannya", () => {
+    // `backupHealth` mencari keberhasilan dengan `where: { status: "ok" }`.
+    // Kalau putaran lokal ikut menulis `ok`, `lastSuccessAt` terisi, umurnya
+    // terhitung segar, dan permukaan kesehatan berkata TERLINDUNGI untuk keadaan
+    // yang satu kehilangan mesin saja sudah cukup menghapus data dan salinannya
+    // sekaligus. Ini satu-satunya baris yang mencegah itu.
+    expect(script).toMatch(/rekam lokal/);
+    expect(script).toMatch(/MODE" = "s3"[\s\S]{0,120}rekam ok/);
+  });
+
+  it("mode lokal berbunyi di log, tidak menyelinap", () => {
+    // Jaring sementara yang dipasang diam-diam adalah jaring yang dilupakan
+    // sebagai permanen.
+    expect(script).toMatch(/BACKUP_S3_BUCKET belum diset[\s\S]{0,200}TIDAK menyelamatkan/);
+  });
+
+  it("salinan lokal ditulis lewat berkas sementara, lalu dipindahkan", () => {
+    // `cp` yang terputus di tengah meninggalkan berkas setengah yang NAMANYA
+    // tampak sah — dan nama yang tampak sah itulah yang akan dipercaya pada hari
+    // pemulihan. `mv` dalam satu filesystem bersifat atomik.
+    expect(script).toMatch(/\.partial/);
+    expect(script).toMatch(/mv "\$\{DEST\}\/\.\$\(basename "\$SEALED"\)\.partial"/);
+  });
+
+  it("pemangkasan lokal TIDAK PERNAH membuang salinan terbaru", () => {
+    // Aturan yang tidak ada di jalur S3, dan harus ada di sini: di S3 retensi 30
+    // hari tanpa pengecualian aman karena sumber lain masih ada; di cakram ini
+    // direktori itu satu-satunya yang ada. Sebuah mesin yang mati sebulan lalu
+    // hidup kembali tidak boleh menyalakan pemangkas yang menghapus salinan
+    // terakhirnya sendiri.
+    expect(script).toMatch(/TERBARU=/);
+    expect(script).toMatch(/\[ "\$base" = "\$TERBARU" \] && continue/);
   });
 
   it("mencadangkan SELURUH basis data, bukan daftar yang diketik tangan", () => {
@@ -118,15 +165,64 @@ describe("layanan cadangan di compose (#374)", () => {
     expect(service).toContain("restart: unless-stopped");
   });
 
-  it("volumenya HANYA-BACA", () => {
+  it("volume yang DICADANGKAN tetap hanya-baca", () => {
     // Layanan yang tugasnya menyalin tidak punya satu alasan pun untuk bisa
-    // menulis — dan bendera ini menghapus seluruh kelas kecelakaan di mana
-    // skrip cadangan justru merusak yang dicadangkannya.
+    // menulis ke SUMBERNYA — dan bendera ini menghapus seluruh kelas kecelakaan
+    // di mana skrip cadangan justru merusak yang dicadangkannya.
+    //
+    // Sejak 12 Okt 2026 ia punya satu mount yang bisa ditulis (`cadangan`), dan
+    // justru karena itu tes ini menjadi lebih penting, bukan kurang: yang boleh
+    // ditulis hanya TUJUAN, tidak pernah sumbernya.
     expect(service).toContain("/app/data/documents:ro");
     expect(service).toContain("/app/data/audit:ro");
   });
 
+  it("punya tepat SATU mount yang bisa ditulis, dan itu tujuannya sendiri", () => {
+    const mounts = service
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => /^- \w+:\/app\//.test(l));
+    const bisaDitulis = mounts.filter((l) => !l.endsWith(":ro"));
+    expect(bisaDitulis).toEqual(["- cadangan:/app/data/cadangan"]);
+  });
+
   it("satu cadangan gagal tidak mematikan jadwal berikutnya", () => {
     expect(service).toContain("|| true");
+  });
+});
+
+describe("pembukti pemulihan: harus bisa membaca artefak yang BENAR-BENAR ada (12 Okt 2026)", () => {
+  const prover = readFileSync(join(process.cwd(), "scripts/prove-backup-restore.ts"), "utf8");
+
+  it("tidak lagi berhenti hanya karena BACKUP_S3_BUCKET kosong", () => {
+    /*
+     * Cacat yang hampir lolos: `backup.sh` belajar menyimpan ke cakram, tapi
+     * pembuktinya masih menuntut bucket. Hasilnya jaring yang TIDAK BISA
+     * dibuktikan — dan aturan repo ini jelas, cadangan yang belum pernah dibuka
+     * bukan cadangan. Pembuktian yang tidak bisa membaca satu-satunya artefak
+     * yang ada tidak membuktikan apa pun.
+     */
+    expect(prover).not.toMatch(/if \(!bucket\) fail/);
+    expect(prover).toContain("BACKUP_LOCAL_DIR");
+    expect(prover).toContain("sumberLokal");
+  });
+
+  it("artefak lokal DISALIN ke direktori kerja, tidak dibuka di tempatnya", () => {
+    // Dekripsi menulis hasilnya di sebelah berkas sumbernya, dan direktori
+    // cadangan adalah satu-satunya tempat artefak itu ada. Pembuktian tidak
+    // boleh menyentuh apa yang dibuktikannya.
+    expect(prover).toContain("copyFileSync");
+  });
+
+  it("langkah pembuktiannya SAMA untuk kedua sumber — yang diuji artefaknya", () => {
+    // Satu sidik jari, satu dekripsi, satu pemeriksaan kelengkapan basis data.
+    // Dua jalur pembuktian akan menyimpang, dan yang menyimpang akan dipercaya
+    // justru pada hari ia salah.
+    expect(prover.match(/createHash\("sha256"\)/g) ?? []).toHaveLength(1);
+    expect(prover.match(/"enc", "-d"/g) ?? []).toHaveLength(1);
+  });
+
+  it("mode lokal MENGUMUMKAN batasnya, bukan lulus diam-diam", () => {
+    expect(prover).toMatch(/TIDAK menyelamatkan dari kehilangan mesin/);
   });
 });

@@ -242,6 +242,7 @@ model ContractItem {
   item     Item?     @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([itemId])
+  @@index([contractId])
   @@map("contract_items")
 }
 
@@ -278,6 +279,7 @@ model ContractPayment {
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([date])
+  @@index([contractId])
   @@map("contract_payments")
 }
 
@@ -467,6 +469,7 @@ model InvoiceSend {
   @@unique([invoiceId, reminderKind, reminderDueKey])
   @@index([invoiceId])
   @@index([sentAt])
+  @@index([sentByUserId])
   @@map("invoice_sends")
 }
 
@@ -497,6 +500,7 @@ model InvoiceItem {
   item      Item?   @relation(fields: [itemId], references: [id], onDelete: Restrict)
 
   @@index([itemId])
+  @@index([invoiceId])
   @@map("invoice_items")
 }
 
@@ -531,6 +535,7 @@ model InvoicePayment {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([date])
+  @@index([invoiceId])
   @@map("invoice_payments")
 }
 
@@ -903,6 +908,8 @@ model LandedCostItem {
 
   @@index([documentId])
   @@index([itemId])
+  @@index([receiptMovementId])
+  @@index([adjustmentMovementId])
   @@map("landed_cost_items")
 }
 
@@ -1563,6 +1570,7 @@ model Journal {
   @@index([type])
   @@index([sourceType, sourceId])
   @@index([costCenterId])
+  @@index([reversalOfId])
   @@map("journals")
 }
 
@@ -1639,6 +1647,8 @@ model YearClose {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([year])
+  @@index([closedById])
+  @@index([reversedById])
   @@map("year_closes")
 }
 
@@ -1731,6 +1741,7 @@ model Document {
 
   contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
+  @@index([contractId])
   @@map("documents")
 }
 
@@ -1979,6 +1990,9 @@ model FixedAssetCategory {
   assets FixedAsset[]
 
   @@index([isActive])
+  @@index([assetAccountId])
+  @@index([accumulatedAccountId])
+  @@index([expenseAccountId])
   @@map("fixed_asset_categories")
 }
 
@@ -2027,6 +2041,9 @@ model FixedAsset {
   @@index([categoryId])
   @@index([status])
   @@index([acquisitionDate])
+  @@index([assetAccountId])
+  @@index([accumulatedAccountId])
+  @@index([expenseAccountId])
   @@map("fixed_assets")
 }
 
@@ -2354,6 +2371,8 @@ model ApprovalRequest {
   @@index([requestedById])
   @@index([documentType])
   @@index([createdAt])
+  @@index([ruleId])
+  @@index([decidedById])
   @@map("approval_requests")
 }
 
@@ -2420,6 +2439,7 @@ model AuditLog {
   /// "Apa saja yang pernah terjadi pada faktur ini" — pertanyaan yang selama
   /// jejaknya berupa berkas hanya bisa dijawab dengan membaca seluruhnya.
   @@index([entity, entityId])
+  @@index([userId])
   @@map("audit_logs")
 }
 
@@ -2530,6 +2550,7 @@ model RecurringTemplate {
 
   @@index([isActive])
   @@index([kind])
+  @@index([sourceId])
   @@map("recurring_templates")
 }
 
@@ -2571,6 +2592,7 @@ model RecurringOccurrence {
 
   @@unique([templateId, occurrenceDate])
   @@index([status])
+  @@index([documentId])
   @@map("recurring_occurrences")
 }
 
@@ -2738,6 +2760,7 @@ model ProductionOrder {
   @@index([outputItemId])
   @@index([status])
   @@index([date])
+  @@index([costCenterId])
   @@map("production_orders")
 }
 

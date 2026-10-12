@@ -184,6 +184,7 @@ model Company {
   @@unique([tenantId, slug])
   @@index([isActive])
   @@index([tenantId])
+  @@index([isDemo])
   @@map("companies")
 }
 
@@ -309,6 +310,7 @@ model Invitation {
   @@index([companyId])
   @@index([email])
   @@index([expiresAt])
+  @@index([invitedByUserId])
   @@map("invitations")
 }
 
@@ -405,6 +407,7 @@ model TenantDeletionRequest {
 
   @@index([tenantId])
   @@index([status])
+  @@index([requestedByUserId])
   @@map("tenant_deletion_requests")
 }
 
@@ -522,6 +525,7 @@ model ApiToken {
 
   @@index([companyId])
   @@index([revokedAt])
+  @@index([createdByUserId])
   @@map("api_tokens")
 }
 
@@ -736,5 +740,6 @@ model TenantAuditLog {
   /// bukan dua index terpisah.
   @@index([tenantSlug, createdAt])
   @@index([tenantId])
+  @@index([userId])
   @@map("tenant_audit_logs")
 }

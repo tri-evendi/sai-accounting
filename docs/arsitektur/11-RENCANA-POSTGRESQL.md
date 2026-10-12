@@ -15,15 +15,22 @@ dan supaya kalau pemicunya datang, pekerjaannya tidak dimulai dari nol.
 
 **Gerbang untuk mulai mengerjakan (§1 harus terjawab "ya"):**
 
-| | |
-|---|---|
-| Ada fitur PG yang MariaDB tidak punya DAN produk membutuhkannya | ❓ |
-| P0-1 & P0-2 (cadangan + kunci) sudah **ditutup** | ❌ belum |
-| Ada lingkungan non-produksi untuk melatihnya | ❌ belum ada |
-| `verify` sudah menjadi *required status check* | ❌ belum |
+| | | per 12 Okt 2026 |
+|---|---|---|
+| Ada fitur PG yang MariaDB tidak punya DAN produk membutuhkannya | ❓ | belum dijawab |
+| P0-1 & P0-2 (cadangan + kunci) sudah **ditutup** | 🟡 | **berubah** — jaring + alarm terpasang dan satu cadangan sudah **DIBUKTIKAN bisa dipulihkan**; S3 & kunci di luar mesin masih kurang |
+| Ada lingkungan non-produksi untuk melatihnya | ❌ | belum ada |
+| `verify` sudah menjadi *required status check* | ✅ | **SUDAH** sejak 11 Okt 2026 |
 
-Tiga dari empat masih merah. **Mengerjakan migrasi basis data tanpa cadangan
-yang terbukti adalah bentuk risiko yang paling tidak perlu diambil siapa pun.**
+Dua dari empat masih merah, satu kuning. **Mengerjakan migrasi basis data tanpa
+cadangan yang terbukti adalah risiko yang paling tidak perlu diambil siapa pun**
+— dan baris kedua baru saja bergerak ke arah yang benar: per 12 Okt 2026 ada
+artefak harian terenkripsi yang sudah lulus `prove-backup-restore` (19 basis data
+di dalam dump). Yang belum ada tetap belum ada: salinan **di luar mesin ini**.
+
+> **Audit kompatibilitas (F1) SUDAH DIJALANKAN** 12 Okt 2026 — hasilnya di
+> [§9](#9-audit-kompatibilitas-f1--dijalankan-12-okt-2026). Tiga taksiran di
+> dokumen ini berubah karenanya, dan dua di antaranya ke arah yang lebih murah.
 
 ## 1. Pertanyaan yang harus dijawab lebih dulu
 
@@ -90,22 +97,27 @@ Diverifikasi langsung di repo pada 11 Oktober 2026.
 |---|---|---|
 | `provider = "mysql"` | **3** | perusahaan, kendali, platform |
 | Berkas `migration.sql` | **99** | semuanya pakai identifier backtick |
-| …memuat `INSERT`/`UPDATE` data | **14** | perlu triage satu-satu |
-| `COLLATE utf8mb4_unicode_ci` | **62 berkas** | ⚠ lihat §4 — ini jebakan terbesar |
+| …memuat `INSERT`/`UPDATE` data | **21** | *dikoreksi 12 Okt (sebelumnya 14)* — perlu triage satu-satu; dua berkas memuat 29 dari seluruh pernyataannya |
+| `COLLATE utf8mb4_unicode_ci` | **50 berkas** | *dikoreksi 12 Okt (sebelumnya 62)* — lihat §4, dan §9.3: diukur, dampaknya SATU baris |
 | `@db.VarChar` | 246 | → `varchar` (langsung) |
 | `@db.Decimal` | 116 | → `numeric` (langsung, presisi utuh) |
 | `@db.Text` | 42 | → `text` |
 | `@db.Date` | 2 | → `date` |
 
-**Strategi migration: BASELINE, bukan tulis-ulang 98 berkas.** Riwayat 98
+**Strategi migration: BASELINE, bukan tulis-ulang 99 berkas.** Riwayat
 migration tidak punya nilai di mesin basis data baru; yang punya nilai adalah
 **skema akhir**. Jadi: bangkitkan satu migration awal PG dari skema Prisma,
 tandai sebagai applied (`migrate resolve`), lalu simpan 99 migration MySQL
-sebagai arsip hanya-baca. **14 migration berisi data** ditriage terpisah:
+sebagai arsip hanya-baca. **21 migration berisi data** ditriage terpisah:
 mana yang backfill historis (tidak perlu diulang — datanya ikut bermigrasi) dan
 mana yang penyemaian yang masih dibutuhkan PT baru.
 
 ### 3.2 Raw SQL — 25 titik
+
+> ⚠ **Dikoreksi 12 Okt 2026:** **29** titik, bukan 25 — dan angka mana pun yang
+> dihitung dengan menyapu seluruh `src/` akan melebihkan dua kali lipat, sebab
+> `src/generated/` memuat 36 penyebutan yang bukan pemanggilan kita. Lihat
+> [§9.4](#94-yang-benar-benar-harus-ditulis-ulang--dengan-berkasbaris).
 
 Kabar baiknya lebih baik dari dugaan awal:
 
@@ -147,11 +159,23 @@ tingkat, jadi kueri yang mencari *database* tidak boleh menanyai `SCHEMATA`.
 | Healthcheck compose | `healthcheck.sh --connect` | `pg_isready` |
 | PITR | binlog | **WAL archiving** (lebih matang — satu-satunya keuntungan operasional yang nyata) |
 
-## 4. ⚠ Jebakan terbesar: collation case-INSENSITIVE → case-SENSITIVE
+## 4. ⚠ Jebakan: collation case-INSENSITIVE → case-SENSITIVE
+
+> **DIUKUR 12 Okt 2026, dan judul bagian ini salah.** Ia ditulis "jebakan
+> TERBESAR" sebelum ada angka. Hasil pengukurannya: **nol** varian huruf besar di
+> seluruh data yang ada, **lima** jalur pencarian email semuanya sudah dinormalkan
+> di aplikasi, dan sisanya **tepat satu baris** (`src/lib/auth.ts:116`, cabang
+> username). Jebakan terbesar yang sesungguhnya adalah **koneksi** —
+> [§9.5](#95-koneksi-biaya-operasional-yang-terukur-bukan-dugaan).
+>
+> Analisis di bawah tetap berlaku sebagai penjelasan **mekanismenya**; yang
+> berubah hanya ukurannya. Rinciannya di
+> [§9.3](#93--jebakan-collation-4-nyata-tapi-satu-baris--bukan-terbesar).
 
 **Ini bukan masalah sintaksis, ini perubahan PERILAKU — dan ia senyap.**
 
-62 berkas migration memakai `utf8mb4_unicode_ci`. Sufiks `_ci` =
+50 berkas migration memakai `utf8mb4_unicode_ci` (*dihitung ulang 12 Okt:
+sebelumnya tertulis 62*). Sufiks `_ci` =
 *case-insensitive*. Artinya di MariaDB hari ini:
 
 - `WHERE email = 'Budi@x.com'` **cocok** dengan baris `budi@x.com`
@@ -230,7 +254,7 @@ Jawab §1 tertulis. Tutup P0-1 & P0-2. Sediakan lingkungan non-produksi.
 ### F1 — Audit kompatibilitas (hanya-baca, nol risiko)
 1. Skrip yang menjalankan **12 kueri kesesuaian** apa adanya di PG kosong →
    buktikan klaim "portabel" di §3.2.
-2. Enumerasi 25 titik raw SQL; tandai portabel / perlu ubah.
+2. ✅ **DIJALANKAN 12 Okt 2026** — 29 titik (bukan 25) dienumerasi; tujuh butir yang tidak portabel ada di §9.4 beserta berkas:baris.
 3. **Audit collation §4** atas data produksi (kueri `HAVING COUNT(*) > 1`).
 4. Triage 14 migration berisi data.
 
@@ -325,3 +349,168 @@ Kalau tujuan sebenarnya **bukan** fitur PostgreSQL:
 Kalimat yang paling penting di dokumen ini: **migrasi basis data tanpa cadangan
 yang terbukti bisa dipulihkan adalah risiko yang tidak perlu diambil siapa
 pun.** Tutup P0-1 dan P0-2 lebih dulu — dan keduanya berusaha **rendah**.
+
+---
+
+## 9. Audit kompatibilitas (F1) — DIJALANKAN 12 Okt 2026
+
+Fase F1 di §5 adalah "audit kompatibilitas, hanya-baca, nol risiko". Ia
+dijalankan. Semua angka di bawah berasal dari basis data produksi dan pohon
+kode, bukan dari taksiran — dan **tiga kesimpulan di dokumen ini berubah**.
+
+### 9.1 Volume: soalnya bukan memindahkan data
+
+| | |
+|---|---|
+| Basis data | **19** (kendali + platform + 17 buku PT) |
+| Tabel | **1.084** (62 per buku × 17, + 16 kendali, + 14 platform) |
+| Besar data+indeks | **≈78 MB** seluruhnya — buku terbesar `sai_production` 12 MB |
+| Artefak cadangan | **1,7 MB** terenkripsi (dump + dokumen + jejak) |
+
+Ini mengubah bentuk soalnya. Rencana ini — dan dok 10 — menimbang migrasi
+seolah pemindahan datanya besar. Tidak. `pg_restore` atas 78 MB adalah
+pekerjaan **menit**, bukan jam, dan jendela henti bukan lagi variabel yang
+menentukan (§1 pertanyaan 4 jadi jauh lebih mudah dijawab).
+
+Yang mahal adalah **kode dan kompetensi operasional**, dan hanya itu. Jangan
+pakai argumen "datanya sudah terlalu besar untuk dipindah" ke arah mana pun:
+angkanya tidak mendukungnya.
+
+### 9.2 Paritas skema: jauh lebih murah dari yang ditakutkan
+
+Seluruh tiga skema hanya memakai **empat** keluarga tipe native:
+
+| Tipe | Jumlah | Di PostgreSQL |
+|---|---|---|
+| `@db.VarChar` | 247 | `varchar(n)` — setara |
+| `@db.Decimal` | 116 | `numeric(p,s)` — setara, dan **lebih ketat** soal pembulatan |
+| `@db.Text` | 43 | `text` — setara |
+| `@db.Date` | 2 | `date` — setara |
+
+**Nol** `@db.TinyInt`, **nol** `Json`, **nol** `Bytes`, **nol** enum native.
+Disiplin `docs/DATABASE.md` ("enum-like = `String @db.VarChar` + `z.enum`") yang
+dulu terasa bertele-tele ternyata membayar tepat di sini: tidak ada satu pun tipe
+yang menuntut keputusan desain ulang saat berpindah.
+
+**Dan 5.241 baris SQL di 99 berkas migration tidak perlu diport.** Skema Prisma
+adalah sumber kebenarannya; PostgreSQL mendapat **baseline baru** yang
+dibangkitkan dari skema itu. Yang perlu diperiksa manual hanya **21 migration
+yang memuat pernyataan DATA** (`INSERT`/`UPDATE`/`DELETE`, komentar dibuang
+sebelum dihitung) — bukan untuk dijalankan ulang, melainkan untuk memastikan
+transformasi yang pernah mereka terapkan memang sudah terbaca di datanya.
+
+Dua di antaranya memuat hampir separuh pernyataannya:
+`0032_standard_role_positions` (17) dan `0037_add_missing_timestamps` (12).
+Keduanya menanam **data baku**, bukan menambal data pelanggan — jadi di
+PostgreSQL ia menjadi bagian dari *seeding* baseline, bukan migrasi.
+
+### 9.3 ⚠ Jebakan collation (§4): nyata, tapi SATU BARIS — bukan "terbesar"
+
+§4 menyebutnya "jebakan terbesar". Diukur, ia jauh lebih kecil — dan ini contoh
+kenapa audit dijalankan alih-alih diperkirakan.
+
+**Data yang ada sekarang tidak akan patah sama sekali:**
+
+| Kolom | Baris | Varian huruf besar |
+|---|---|---|
+| `users.email` | 13 | **0** |
+| `companies.slug` | 17 | **0** |
+| `tenants.slug` | 11 | **0** |
+| `accounts.code` (pt-sai) | 48 | **0** |
+
+**Dan pencariannya sudah dinormalkan di lapisan aplikasi**, diperiksa satu per
+satu:
+
+| Jalur | Berkas | Normalisasi |
+|---|---|---|
+| Login | `src/lib/auth.ts:57` | ✅ `parsed.data.identifier.toLowerCase()` |
+| Direktori pengguna | `src/lib/users-directory.ts:199` | ✅ `.trim().toLowerCase()` |
+| Pendaftaran | `src/lib/registration-store.ts:51` | ✅ |
+| Undangan | `src/lib/invitation-store.ts:66` | ✅ |
+| Atur-ulang sandi | `src/lib/password-reset-store.ts:26` | ✅ |
+
+**Sisanya tepat satu titik:** cabang **username** di `src/lib/auth.ts:116`
+memakai `parsed.data.identifier` yang **belum** di-`toLowerCase()`, berbeda dari
+cabang email di baris 113. Hari ini tak terlihat — collation
+`utf8mb4_unicode_ci` memaafkannya, dan dibuktikan: mencari dengan email
+huruf-besar masih menemukan barisnya. Di PostgreSQL, pengguna warisan pt-sai yang
+masuk dengan `Budi` alih-alih `budi` akan ditolak sebagai **kredensial salah** —
+kegagalan yang pesannya menyesatkan.
+
+Yang tersisa sesudah itu bukan kerusakan melainkan **perubahan semantik ke
+depan**: `@unique` di PostgreSQL akan mengizinkan `FOO` dan `foo` hidup
+bersamaan. Kalau perilaku case-insensitive memang diinginkan, jawabannya
+`citext` atau indeks `lower(...)` — keputusan per kolom, bukan satu sakelar.
+
+### 9.4 Yang benar-benar harus ditulis ulang — dengan berkas:baris
+
+Hasil sapuan **tanpa kode bangkitan**: **21 `$queryRaw`** + **8 `$executeRaw`**
+= **29 titik** di 12 berkas. Mayoritas SQL biasa yang berpindah tanpa diubah.
+
+> Sapuan pertama saya memulangkan 39 + 26. Selisihnya **18 + 18 dari
+> `src/generated/`** — definisi metode di klien yang dibangkitkan Prisma, bukan
+> pemanggilan kita. Taksiran permukaan port yang memasukkannya akan melebihkan
+> pekerjaan lebih dari dua kali. (Angka "25 titik" di §3.2 ditulis sebelum
+> pemisahan ini; **29** yang benar.)
+
+Yang TIDAK berpindah apa adanya:
+
+| # | Apa | Di mana | Kenapa |
+|---|---|---|---|
+| 1 | `information_schema.SCHEMATA` → `pg_database` | `src/lib/company-provisioning.ts:199`, `scripts/subscription-scheduler.ts:569` | Di PostgreSQL `SCHEMATA` berisi **skema di dalam satu basis data**, bukan daftar basis data. Query-nya *berhasil* dan memulangkan jawaban yang salah — bentuk kegagalan terburuk |
+| 2 | `SHOW DATABASES` | `scripts/subscription-scheduler.ts:589` | Tidak ada di PostgreSQL |
+| 3 | `CREATE DATABASE … CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` | `src/lib/company-provisioning.ts:232`, `scripts/create-company.ts:174` | Sintaksis & opsi berbeda (`TEMPLATE`, `ENCODING`, `LC_COLLATE`) |
+| 4 | `DROP DATABASE IF EXISTS` | `scripts/execute-tenant-deletion.ts:136` | Ada, tapi PostgreSQL menolak bila masih ada koneksi — butuh `pg_terminate_backend` lebih dulu |
+| 5 | `INSERT … ON DUPLICATE KEY UPDATE` | `src/lib/rate-limit-persistent.ts:120` | → `ON CONFLICT (key) DO UPDATE`. Keatomikan jendelanya harus dipertahankan, bukan sekadar sintaksisnya diterjemahkan |
+| 6 | **Trigger** `companies_slug_immutable` | `prisma/control/migrations/0010_companies_slug_immutable/migration.sql:48` + `scripts/prove-company-slug-immutable.ts:62` | PostgreSQL menuntut `CREATE FUNCTION … RETURNS trigger` lalu `CREATE TRIGGER` — bukan terjemahan, penulisan ulang. **Satu-satunya trigger** di seluruh pemasangan (dihitung di produksi: 1) |
+| 7 | `information_schema.tables/columns` di ekspor & adopsi | `src/lib/tenant-export.ts:90,99`, `scripts/adopt-existing-company.ts:139,190` | Ada di PostgreSQL dengan nama sama, tapi `table_schema` berarti **skema**, bukan basis data — semantiknya bergeser mengikuti keputusan §2 |
+
+**Yang BUKAN masalah, dan sudah diperiksa:** `CREATE DATABASE` tidak pernah
+berada di dalam `$transaction` (`company-provisioning.ts` memuat **nol**
+`$transaction`). PostgreSQL melarang `CREATE DATABASE` di dalam transaksi, jadi
+ini akan menjadi jebakan diam — ternyata tidak ada.
+
+### 9.5 Koneksi: biaya operasional yang terukur, bukan dugaan
+
+Ini angka yang paling menentukan, dan baru ada sekarang:
+
+| | |
+|---|---|
+| Koneksi aktif saat diukur | **13** |
+| **Puncak sejak server hidup** | **62** |
+| `max_connections` MariaDB | 151 |
+
+MariaDB memakai **thread** per koneksi; PostgreSQL memakai **proses**. 62 proses
+backend pada kotak **3,6 GB yang dibagi dengan lima aplikasi lain** bukan hal
+sepele — dan itulah yang membuat **PgBouncer menjadi wajib, bukan opsional**.
+
+Artinya satu komponen baru yang harus dioperasikan, dipantau, dan dipahami, di
+kotak yang **penjadwalnya saja pernah menggantung dua jam tanpa ada yang tahu**.
+Itu jawaban terukur untuk §1 pertanyaan 3, dan jawabannya tidak nyaman.
+
+Perbesarnya ikut terbawa bentuk multi-tenant: pola klien per-perusahaan
+(`POOL_MAX=4`, `connectionLimit` per klien) berarti jumlah koneksi tumbuh
+mengikuti **jumlah buku yang aktif bersamaan**, bukan jumlah pengguna.
+
+### 9.6 Putusan yang berubah, dan yang tidak
+
+**Lebih murah dari yang ditulis sebelumnya:**
+
+1. Volume data tidak relevan (78 MB) — jendela henti bukan lagi kendala.
+2. Paritas skema mekanis — empat tipe, semuanya setara; 5.241 baris SQL
+   migration tidak perlu diport.
+3. Jebakan collation **satu baris** di kode, nol kerusakan data.
+
+**Tidak berubah, dan ini yang menentukan:** PgBouncer + `autovacuum` + WAL
+archiving adalah kompetensi operasional baru yang nyata, dan **§1 pertanyaan 1
+masih belum terjawab** — tidak ada satu pun keluhan terukur yang PostgreSQL
+selesaikan.
+
+**Putusannya tetap: jangan sekarang.** Yang berubah adalah alasannya. Ia bukan
+"terlalu mahal dan berisiko" lagi — pekerjaan kodenya ternyata sedang dan
+terbatas. Ia **belum punya alasan**: migrasi yang berhasil sempurna pun tidak
+akan membuat satu pun pengguna mendapat apa pun, sementara dua P0 cadangan masih
+terbuka dan belum ada satu lingkungan pun untuk melatihnya.
+
+Kalau pemicunya datang, §9.4 adalah daftar kerjanya — tujuh butir, berkas:baris,
+sudah diverifikasi ada.

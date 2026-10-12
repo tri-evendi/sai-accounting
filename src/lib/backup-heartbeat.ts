@@ -54,6 +54,27 @@ export type BackupHealthStatus =
   /** Ada riwayat berhasil, tapi sudah terlalu lama — inilah yang paling gawat. */
   | "late"
   /**
+   * Putaran terakhir BERHASIL membuat artefak terenkripsi, tetapi artefak itu
+   * tidak pergi ke mana-mana: ia tersimpan di mesin yang sama dengan basis
+   * datanya, sebab `BACKUP_S3_BUCKET` belum disetel.
+   *
+   * ══ KENAPA INI BUKAN `ok`, DAN KENAPA JUGA BUKAN `failing` ═══════════════
+   * Bukan `ok`, sebab satu kehilangan mesin menghapus data DAN salinannya
+   * sekaligus — dan status yang berbunyi `ok` untuk keadaan itu adalah kebohongan
+   * yang paling mahal yang bisa dilaporkan berkas ini.
+   *
+   * Tapi juga bukan `failing`, sebab ada BEDANYA yang nyata dengan tidak punya
+   * apa pun: salinan harian ini memulihkan `DROP TABLE` yang keliru, migrasi yang
+   * merusak, dan kerusakan logis — yaitu mayoritas kejadian yang sungguh-sungguh
+   * terjadi. Melebur keduanya menjadi `failing` membuat kemajuan dari "nol
+   * salinan" ke "salinan lokal harian" tak terlihat, dan yang tak terlihat tidak
+   * akan pernah diselesaikan.
+   *
+   * Ia tetap **berbunyi** (lihat `backup-watchdog.ts`) sampai tujuan di luar
+   * mesin disetel.
+   */
+  | "local_only"
+  /**
    * TIDAK DIKETAHUI: platform tak terjangkau, tabelnya belum dimigrasikan, atau
    * belum pernah ada putaran sama sekali (pemasangan yang baru lahir).
    *
@@ -82,6 +103,15 @@ export interface BackupAttempt {
   at: Date | null | undefined;
   ok: boolean;
   error?: string | null;
+  /**
+   * Putaran ini menghasilkan artefak, tetapi HANYA di mesin ini.
+   *
+   * Dipisahkan dari `ok` dengan sengaja: `ok` berarti "ada salinan di luar
+   * mesin". Memakai `ok: true` untuk salinan lokal akan membuat `lastSuccessAt`
+   * terisi dan umurnya terhitung segar — dan permukaan kesehatan akan berkata
+   * terlindungi padahal satu kehilangan mesin menghapus keduanya.
+   */
+  localOnly?: boolean;
 }
 
 function usia(at: Date, now: Date): number {
@@ -102,13 +132,20 @@ function sah(at: Date | null | undefined): at is Date {
  *
  *   1. Belum pernah ada percobaan sama sekali → `unknown`, tidak pernah `late`.
  *   2. Percobaan terakhir GAGAL → `failing`, apa pun umur salinan terakhir.
- *   3. Ada salinan berhasil, umurnya lewat ambang → `late`.
- *   4. Sisanya → `ok`.
+ *   3. Percobaan terakhir hanya LOKAL → `local_only`, apa pun umur salinan
+ *      terakhir di luar mesin.
+ *   4. Ada salinan berhasil (di luar mesin), umurnya lewat ambang → `late`.
+ *   5. Sisanya → `ok`.
  *
- * Langkah 2 mendahului langkah 3 dengan sengaja. Kalau urutannya dibalik,
+ * Langkah 2 mendahului langkah 4 dengan sengaja. Kalau urutannya dibalik,
  * kegagalan hari pertama tersembunyi di balik salinan kemarin yang masih segar
  * — dan yang tersisa hanyalah `late` dua hari kemudian, yaitu peringatan yang
  * datang tepat setelah ia berhenti berguna.
+ *
+ * Langkah 3 mendahului langkah 4 dengan alasan yang SAMA, dan satu tambahan:
+ * sebuah pemasangan yang baru turun dari S3 ke lokal-saja harus terlihat SEKARANG
+ * — bukan 48 jam kemudian lewat `late`, yang akan menyembunyikan sebab
+ * sesungguhnya ("tujuannya hilang") di balik gejala ("salinannya tua").
  */
 export function backupHealth(
   lastSuccessAt: Date | null | undefined,
@@ -128,7 +165,10 @@ export function backupHealth(
   };
 
   if (!percobaan && !sukses) return { status: "unknown", ...dasar };
-  if (percobaan && !percobaan.ok) return { status: "failing", ...dasar };
+  if (percobaan && !percobaan.ok && !percobaan.localOnly) {
+    return { status: "failing", ...dasar };
+  }
+  if (percobaan?.localOnly) return { status: "local_only", ...dasar };
   if (!sukses) return { status: "unknown", ...dasar };
 
   return { status: dasar.ageHours! > staleAfterHours ? "late" : "ok", ...dasar };

@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "record:backup": "bun scripts/record-backup-run.ts",
+    "watch:backup": "bun scripts/watch-backup-health.ts",
     "db:generate": "prisma generate && bun run db:generate:control && bun run db:generate:platform",
     "db:generate:control": "prisma generate --config prisma.control.config.ts",
     "db:generate:platform": "prisma generate --config prisma.platform.config.ts",

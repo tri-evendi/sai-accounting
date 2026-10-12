@@ -201,7 +201,19 @@ async function lastBackup(): Promise<PublicBackupHealth> {
       backupHealth(
         sukses?.finishedAt ?? null,
         percobaan
-          ? { at: percobaan.finishedAt, ok: percobaan.status === "ok", error: percobaan.error }
+          ? {
+              at: percobaan.finishedAt,
+              /* `ok` HANYA untuk salinan yang pergi ke LUAR mesin. Status
+                 `local` ditulis `backup.sh` ketika `BACKUP_S3_BUCKET` belum
+                 disetel: artefaknya ada dan tersandi, tapi menginap di mesin
+                 yang sama dengan basis datanya. Memetakannya ke `ok` akan
+                 mengisi `lastSuccessAt` — dan permukaan ini berkata
+                 terlindungi untuk keadaan yang satu kehilangan mesin saja
+                 sudah cukup menghapus semuanya. */
+              ok: percobaan.status === "ok",
+              localOnly: percobaan.status === "local",
+              error: percobaan.error,
+            }
           : null
       )
     );

@@ -36,7 +36,7 @@
 import "dotenv/config";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -60,20 +60,45 @@ const s3Args = process.env.BACKUP_S3_ENDPOINT
 function main(): void {
   const bucket = process.env.BACKUP_S3_BUCKET;
   const key = process.env.BACKUP_ENCRYPTION_KEY;
-  if (!bucket) fail("BACKUP_S3_BUCKET belum diset — tidak tahu di mana cadangannya.");
   if (!key) fail("BACKUP_ENCRYPTION_KEY belum diset — tanpa sandinya tidak ada yang bisa dibuka.");
 
+  /*
+   * ══ DUA SUMBER, SATU PEMBUKTIAN ═════════════════════════════════════════
+   * Sampai 12 Okt 2026 skrip ini menuntut `BACKUP_S3_BUCKET` dan berhenti tanpa
+   * itu. Lalu `backup.sh` belajar menyimpan ke cakram ketika bucket belum ada —
+   * dan pembuktian yang tidak bisa membaca satu-satunya artefak yang ADA adalah
+   * pembuktian yang tidak membuktikan apa pun. Sebuah cadangan yang belum pernah
+   * dibuka bukan cadangan, dan itu berlaku untuk artefak lokal persis seperti
+   * untuk artefak di S3.
+   *
+   * Yang TIDAK berubah: seluruh langkah sesudah ini. Sidik jari, dekripsi, dan
+   * pemeriksaan "apakah setiap basis data terdaftar ada di dalam dump" sama kata
+   * per kata untuk kedua sumber — sebab yang diuji adalah artefaknya, bukan
+   * tempat ia menginap.
+   */
+  const lokalDir = process.env.BACKUP_LOCAL_DIR ?? "/app/data/cadangan";
+  const sumberLokal = !bucket;
   const prefix = process.env.BACKUP_S3_PREFIX ?? "cadangan";
-  const base = `s3://${bucket}/${prefix}`;
+  const base = sumberLokal ? lokalDir : `s3://${bucket}/${prefix}`;
   const work = mkdtempSync(path.join(tmpdir(), "prove-restore-"));
+
+  if (sumberLokal) {
+    console.log(`⚠ BACKUP_S3_BUCKET belum diset — menguji artefak LOKAL di ${lokalDir}`);
+    console.log("⚠ Artefak ini TIDAK menyelamatkan dari kehilangan mesin.");
+  }
 
   /* ── 1. Pilih cadangan ──────────────────────────────────────────────── */
   let name = argValue("--key");
   if (!name) {
-    const listing = run("aws", ["s3", "ls", ...s3Args, `${base}/`]);
-    const names = listing
-      .split("\n")
-      .map((line) => line.trim().split(/\s+/).pop() ?? "")
+    const names = (
+      sumberLokal
+        ? readdirSync(lokalDir, { withFileTypes: true })
+            .filter((d) => d.isFile())
+            .map((d) => d.name)
+        : run("aws", ["s3", "ls", ...s3Args, `${base}/`])
+            .split("\n")
+            .map((line) => line.trim().split(/\s+/).pop() ?? "")
+    )
       .filter((n) => n.endsWith(".tar.gz.enc"))
       .sort();
     if (names.length === 0) {
@@ -83,10 +108,19 @@ function main(): void {
   }
   console.log(`Cadangan yang diuji: ${name}`);
 
-  /* ── 2. Unduh + cocokkan sidik jari ─────────────────────────────────── */
+  /* ── 2. Ambil + cocokkan sidik jari ─────────────────────────────────── */
   const sealed = path.join(work, name);
-  run("aws", ["s3", "cp", ...s3Args, `${base}/${name}`, sealed]);
-  run("aws", ["s3", "cp", ...s3Args, `${base}/${name}.sha256`, `${sealed}.sha256`]);
+  if (sumberLokal) {
+    /* DISALIN ke direktori kerja, tidak dibaca di tempat: langkah dekripsi
+       menulis hasilnya di sebelah berkas sumbernya, dan direktori cadangan
+       adalah satu-satunya tempat artefak itu ada. Pembuktian tidak boleh
+       menyentuh apa yang dibuktikannya. */
+    copyFileSync(path.join(lokalDir, name), sealed);
+    copyFileSync(path.join(lokalDir, `${name}.sha256`), `${sealed}.sha256`);
+  } else {
+    run("aws", ["s3", "cp", ...s3Args, `${base}/${name}`, sealed]);
+    run("aws", ["s3", "cp", ...s3Args, `${base}/${name}.sha256`, `${sealed}.sha256`]);
+  }
 
   const expected = readFileSync(`${sealed}.sha256`, "utf8").trim().split(/\s+/)[0];
   const actual = createHash("sha256").update(readFileSync(sealed)).digest("hex");

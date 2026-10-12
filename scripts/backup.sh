@@ -92,11 +92,39 @@ die() {
 
 [ -n "${DB_ROOT_PASSWORD:-}" ] || die "DB_ROOT_PASSWORD belum diset — dump seluruh basis data menuntut root."
 [ -n "${BACKUP_ENCRYPTION_KEY:-}" ] || die "BACKUP_ENCRYPTION_KEY belum diset. Cadangan TIDAK PERNAH dikirim tanpa sandi: isinya seluruh pembukuan setiap pelanggan."
-[ -n "${BACKUP_S3_BUCKET:-}" ] || die "BACKUP_S3_BUCKET belum diset — cadangan yang tinggal di mesin yang sama bukan cadangan."
-
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 NAME="${BACKUP_PREFIX}-${STAMP}"
-DEST="s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-cadangan}"
+
+# ── Tujuan: S3 bila disetel, kalau tidak LOKAL-SAJA ────────────────────────
+#
+# ══ KENAPA JALUR LOKAL ADA, SETELAH SKRIP INI DULU MENOLAK BERJALAN TANPA S3
+# Sampai 12 Okt 2026 ketiadaan `BACKUP_S3_BUCKET` membuat skrip ini `die`
+# SEBELUM dump pertama. Niatnya benar — "cadangan yang tinggal di mesin yang
+# sama bukan cadangan" — tapi akibatnya terukur dan buruk: produksi berjalan
+# 54 putaran dengan NOL artefak, sementara satu-satunya jaring adalah dump
+# tangan yang kebetulan diambil saat rilis.
+#
+# Penolakan itu melindungi dari SATU bentuk kegagalan (kehilangan mesin) dengan
+# membiarkan kita tanpa pertahanan apa pun terhadap semua bentuk lainnya:
+# `DROP TABLE` yang keliru, migrasi yang merusak, kerusakan logis, berkas
+# terhapus. Itu mayoritas kejadian yang sungguh terjadi.
+#
+# Maka sekarang: tanpa S3 ia TETAP mencadangkan, tersandi, ke cakram — dan
+# merekam putarannya sebagai `lokal`, BUKAN `ok`. Bedanya penting dan bukan
+# kosmetik: `/api/health` memulangkan `local_only`, dan `watch:backup` tetap
+# mengirim surel tiap hari sampai tujuan di luar mesin disetel. Jaringnya
+# dipasang tanpa satu pun klaim yang tidak benar.
+if [ -n "${BACKUP_S3_BUCKET:-}" ]; then
+  MODE=s3
+  DEST="s3://${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-cadangan}"
+else
+  MODE=lokal
+  : "${BACKUP_LOCAL_DIR:=/app/data/cadangan}"
+  DEST="$BACKUP_LOCAL_DIR"
+  log "⚠ BACKUP_S3_BUCKET belum diset — menyalin ke ${DEST} SAJA."
+  log "⚠ Salinan di mesin yang sama TIDAK menyelamatkan dari kehilangan mesin."
+  log "⚠ Putaran ini akan dicatat 'lokal', dan kesehatan tetap berbunyi."
+fi
 
 # `--endpoint-url` hanya diteruskan bila diisi: kosong = AWS S3 sungguhan,
 # terisi = penyedia S3-compatible mana pun (B2, Wasabi, IDCloudHost).
@@ -168,12 +196,27 @@ fi
 # ── 5. Kirim KELUAR dari mesin ini ─────────────────────────────────────────
 log "kirim ke ${DEST}/"
 if [ "$DRY_RUN" = "0" ]; then
-  # shellcheck disable=SC2086
-  aws s3 cp $S3_ARGS "$SEALED" "${DEST}/$(basename "$SEALED")" \
-    || die "unggah gagal — cadangan lama TIDAK dipangkas."
-  # shellcheck disable=SC2086
-  aws s3 cp $S3_ARGS "${SEALED}.sha256" "${DEST}/$(basename "$SEALED").sha256" \
-    || die "unggah sidik jari gagal — cadangan lama TIDAK dipangkas."
+  if [ "$MODE" = "s3" ]; then
+    # shellcheck disable=SC2086
+    aws s3 cp $S3_ARGS "$SEALED" "${DEST}/$(basename "$SEALED")" \
+      || die "unggah gagal — cadangan lama TIDAK dipangkas."
+    # shellcheck disable=SC2086
+    aws s3 cp $S3_ARGS "${SEALED}.sha256" "${DEST}/$(basename "$SEALED").sha256" \
+      || die "unggah sidik jari gagal — cadangan lama TIDAK dipangkas."
+  else
+    # `mkdir -p` tiap putaran: volume yang baru dibuat datang kosong, dan satu
+    # direktori yang hilang tidak boleh menjadi alasan nol cadangan.
+    mkdir -p "$DEST" || die "tidak bisa membuat ${DEST} — cadangan TIDAK disalin."
+    # Salin lalu pindahkan: `cp` yang terputus di tengah meninggalkan berkas
+    # setengah yang namanya tampak sah, dan nama yang tampak sah itulah yang akan
+    # dipercaya pada hari pemulihan.
+    cp "$SEALED" "${DEST}/.$(basename "$SEALED").partial" \
+      || die "salin ke cakram gagal — cadangan lama TIDAK dipangkas."
+    mv "${DEST}/.$(basename "$SEALED").partial" "${DEST}/$(basename "$SEALED")" \
+      || die "memindahkan salinan gagal — cadangan lama TIDAK dipangkas."
+    cp "${SEALED}.sha256" "${DEST}/$(basename "$SEALED").sha256" \
+      || die "salin sidik jari gagal — cadangan lama TIDAK dipangkas."
+  fi
 else
   log "  (dry-run) tidak mengunggah apa pun"
 fi
@@ -186,15 +229,34 @@ CUTOFF="$(date -u -d "${BACKUP_RETENTION_DAYS} days ago" +%Y%m%d 2>/dev/null \
   || date -u -v-"${BACKUP_RETENTION_DAYS}"d +%Y%m%d)"
 log "pangkas yang lebih tua dari ${CUTOFF} (retensi ${BACKUP_RETENTION_DAYS} hari)"
 if [ "$DRY_RUN" = "0" ]; then
-  # shellcheck disable=SC2086
-  aws s3 ls $S3_ARGS "${DEST}/" | awk '{print $4}' | grep -E "^${BACKUP_PREFIX}-[0-9]{8}T" | while read -r key; do
-    keydate="$(echo "$key" | sed -E "s/^${BACKUP_PREFIX}-([0-9]{8})T.*/\1/")"
-    if [ "$keydate" -lt "$CUTOFF" ]; then
-      log "  buang $key"
-      # shellcheck disable=SC2086
-      aws s3 rm $S3_ARGS "${DEST}/${key}" || log "  ⚠ gagal membuang $key (dilewati)"
-    fi
-  done
+  if [ "$MODE" = "s3" ]; then
+    # shellcheck disable=SC2086
+    aws s3 ls $S3_ARGS "${DEST}/" | awk '{print $4}' | grep -E "^${BACKUP_PREFIX}-[0-9]{8}T" | while read -r key; do
+      keydate="$(echo "$key" | sed -E "s/^${BACKUP_PREFIX}-([0-9]{8})T.*/\1/")"
+      if [ "$keydate" -lt "$CUTOFF" ]; then
+        log "  buang $key"
+        # shellcheck disable=SC2086
+        aws s3 rm $S3_ARGS "${DEST}/${key}" || log "  ⚠ gagal membuang $key (dilewati)"
+      fi
+    done
+  else
+    # Pemangkasan lokal, dan SATU aturan tambahan yang tidak ada di jalur S3:
+    # **yang paling baru tidak pernah dibuang**, berapa pun umurnya. Di S3 retensi
+    # 30 hari tanpa pengecualian itu aman karena sumber lain masih ada; di sini
+    # direktori ini adalah satu-satunya yang ada. Sebuah mesin yang mati sebulan
+    # lalu hidup kembali tidak boleh menyalakan pemangkas yang menghapus salinan
+    # terakhirnya sendiri — kegagalan yang bentuknya persis seperti keberhasilan.
+    TERBARU="$(ls -1 "$DEST" 2>/dev/null | grep -E "^${BACKUP_PREFIX}-[0-9]{8}T.*\.enc$" | sort | tail -1 || true)"
+    ls -1 "$DEST" 2>/dev/null | grep -E "^${BACKUP_PREFIX}-[0-9]{8}T" | while read -r key; do
+      base="$(echo "$key" | sed -E 's/\.sha256$//')"
+      [ "$base" = "$TERBARU" ] && continue
+      keydate="$(echo "$key" | sed -E "s/^${BACKUP_PREFIX}-([0-9]{8})T.*/\1/")"
+      if [ "$keydate" -lt "$CUTOFF" ]; then
+        log "  buang $key"
+        rm -f "${DEST}/${key}" || log "  ⚠ gagal membuang $key (dilewati)"
+      fi
+    done
+  fi
 else
   log "  (dry-run) tidak menghapus apa pun"
 fi
@@ -205,7 +267,13 @@ fi
 # membantahnya adalah ukurannya sendiri.
 if [ "$DRY_RUN" = "0" ]; then
   UKURAN="$(wc -c < "$SEALED" 2>/dev/null | tr -d ' ' || echo '')"
-  rekam ok "$(basename "$SEALED")" "$UKURAN"
+  if [ "$MODE" = "s3" ]; then
+    rekam ok "$(basename "$SEALED")" "$UKURAN"
+  else
+    # `lokal`, bukan `ok`. Satu kata ini yang menentukan apakah permukaan
+    # kesehatan berkata benar: `ok` berarti ada salinan DI LUAR mesin ini.
+    rekam lokal "$(basename "$SEALED")" "$UKURAN"
+  fi
 fi
 
-log "selesai — ${NAME}"
+log "selesai — ${NAME} (mode=${MODE})"

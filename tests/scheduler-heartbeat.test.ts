@@ -111,6 +111,42 @@ describe("penjadwal sebagai layanan (#373)", () => {
     expect(badan).toMatch(/BATAS=\d+/);
   });
 
+  it("jumlah langkah × batas tetap DI BAWAH selang putarannya", () => {
+    /*
+     * Invarian yang sampai 12 Okt 2026 hanya hidup sebagai KOMENTAR di
+     * `docker-compose.yml` ("kalau langkah ketujuh ditambahkan, turunkan
+     * BATAS") — dan komentar tidak menghentikan siapa pun.
+     *
+     * Kalau jumlahnya melewati selang putaran, putaran berikutnya mulai sebelum
+     * yang sekarang selesai: langkah bertumpuk, dua `scheduler:subscriptions`
+     * bisa berjalan bersamaan, dan gejalanya bukan galat melainkan pekerjaan
+     * ganda. Pada cadensi satu jam itu bisa berumur berbulan-bulan sebelum ada
+     * yang menghitungnya.
+     *
+     * Diuji sebagai ARITMATIKA atas berkasnya, bukan sebagai angka yang diketik
+     * ulang di sini: angka yang diketik ulang menyimpang dari compose pada hari
+     * pertama seseorang menyentuhnya.
+     */
+    const badan = badanPenjadwal();
+
+    const batas = Number(/BATAS=(\d+)/.exec(badan)?.[1]);
+    const selang = Number(/sleep (\d+)/.exec(badan)?.[1]);
+    const langkah = badan
+      .split("\n")
+      .map((b) => b.trim())
+      .filter((b) => b.startsWith("langkah ")).length;
+
+    expect(Number.isFinite(batas), "BATAS=<angka> tidak ditemukan").toBe(true);
+    expect(Number.isFinite(selang), "sleep <angka> tidak ditemukan").toBe(true);
+    expect(langkah).toBeGreaterThan(0);
+
+    expect(
+      langkah * batas,
+      `${langkah} langkah × ${batas}s = ${langkah * batas}s, melewati selang ${selang}s — ` +
+        "turunkan BATAS atau panjangkan sleep"
+    ).toBeLessThan(selang);
+  });
+
   it("tiap langkah lewat pembungkus — tak ada yang dipanggil telanjang", () => {
     // Penjaga yang sebenarnya menahan kambuhnya: langkah keenam yang
     // ditambahkan tanpa pembungkus mengembalikan cacatnya utuh, dan tidak ada

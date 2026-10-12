@@ -178,7 +178,8 @@ P0-2 menghasilkan rasa aman yang salah.
 
 Dua workflow yang ada (`publish-image.yml`, `build-standalone.yml`) keduanya
 hanya memicu pada `push` ke `main` — dan keduanya **membangun**, tidak satu pun
-**memeriksa**.
+**memeriksa**. *(Sejak 11 Okt ada `verify.yml` yang memeriksa;
+`build-standalone.yml` dicabut 12 Okt.)*
 
 **Dampak.** `AGENTS.md` menjadikan `bun run verify` gerbang WAJIB, dan
 `next.config.ts` mematikan pemeriksaan tipe di dalam `next build`. Gabungan
@@ -421,7 +422,8 @@ Ditambah `HOSTING.md` / `HOSTING-LOW-MEMORY.md` / `HOSTING-NO-NODE.md`
 (🔶 tampak warisan, **belum ditandai**) dan `DOCKER.md` (tumpang tindih) —
 **keenamnya sudah dirapikan, lihat blok di bawah**,
 dua `ecosystem.config*.cjs` untuk PM2 yang tidak dipakai, dan
-`build-standalone.yml` di samping `publish-image.yml`.
+`build-standalone.yml` di samping `publish-image.yml` — **semuanya sudah
+dicabut, lihat blok di bawah**.
 
 `README.md` ikut membusuk di tiga tempat yang terbukti:
 
@@ -461,11 +463,29 @@ perbaiki tiga klaim basi di `README.md` di atas.
 > ~41 MB saat rebuild*) **diselamatkan** ke `PRODUCTION.md` §Updates, sebab itu
 > bukti terkuat aturan "jangan build di server".
 >
-> **Perkakas** standalone (`package-standalone.sh`, `ecosystem.config*.cjs`,
-> `build-standalone.yml`) **tetap ada** — menghapus perkakas yang masih
-> berjalan adalah keputusan pemilik, bukan pembersihan dokumentasi. Dokumen
-> warisannya menyebut klaster itu eksplisit supaya keduanya bisa dicabut
-> bersama kelak.
+> **Perkakas** standalone **ikut dicabut pada hari yang sama**, atas keputusan
+> pemilik — dan ternyata klasternya lebih besar daripada yang butir ini sebut.
+> Yang hilang: `scripts/package-standalone.sh`, `scripts/setup-production.sh`,
+> `scripts/start-production.sh`, `scripts/start-low-memory.sh`,
+> `scripts/deploy-on-server.sh`, `ecosystem.config.cjs`,
+> `ecosystem.config.low-memory.cjs`, `.github/workflows/build-standalone.yml`,
+> `docs/warisan/PENGGELARAN-STANDALONE.md`, dan **enam** skrip `package.json`
+> (`setup:prod`, `start:prod`, `start:low-mem`, `build:upload`,
+> `package:standalone`, `deploy`).
+>
+> **Satu jebakan ketemu saat mencabutnya**, dan ini yang paling berharga dari
+> seluruh pembersihan: **`bun run deploy` menunjuk ke
+> `scripts/deploy-on-server.sh`** — skrip yang `bun install` + `next build` **di
+> server** — bukan ke `scripts/deploy.sh`. Jadi perintah dengan nama paling
+> wajar di repo ini menjalankan jalur yang dilarang. Jalan pintas itu dicabut.
+>
+> `scripts/deploy.sh` **tinggal**: ia juga membangun di server, tapi kepalanya
+> sudah menyatakan dirinya terlarang, logika swap tanpa-mati di dalamnya masih
+> menjelaskan kenapa urutan pull → migrate → swap penting, dan ia satu-satunya
+> pecah-kaca kalau GHCR tak terjangkau.
+>
+> `PRODUCTION.md` §2/§4/§5 kini **nisan** — judulnya dipertahankan supaya
+> penomoran dan tautan masuk tidak rusak, isinya menunjuk §Updates.
 >
 > Dan **tiga klaim basi di `README.md`** yang butir ini sebut sebagai masih
 > terbuka — §Production, §Security, §Scripts — sudah **diperbaiki** pada
@@ -911,7 +931,7 @@ jadi ketiga halaman pemasaran per-permintaan **secara konstruksi**. Lihat
 | Apakah ada yang **membaca** `/api/health`? | Menentukan apakah P1-1 adalah lubang tunggal atau salah satu dari dua |
 | Apakah latihan pemulihan kuartalan pernah dijalankan? | Diwajibkan `package.json`; tanpa bukti, RTO tak diketahui |
 | Mana dari 17 buku yang **uji** dan mana yang **produksi**? | Menentukan apa yang dikecualikan dari laporan kesesuaian |
-| Apakah `build-standalone.yml` masih dipakai? | Menentukan apakah ia dihapus atau ditandai |
+| ~~Apakah `build-standalone.yml` masih dipakai?~~ | ✅ **terjawab 12 Okt 2026** — nol pemakai, dicabut |
 | Berapa RPO yang dapat diterima pemilik? | Menentukan apakah binlog/PITR masuk Tier 2 atau Tier 4 ([dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
 | Setuju memisahkan container operator di produksi? | Perubahan infrastruktur; nol kode, ~60 MB ([dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
 | ~~Apakah `HOSTING*.md` masih berlaku?~~ | ✅ **terjawab 12 Okt 2026** — digabung jadi satu dokumen warisan; perkakasnya yang menentukan kapan ia dicabut |

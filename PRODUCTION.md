@@ -6,10 +6,11 @@
 > and the server runs `docker compose pull` + `up -d`. **Never build on the
 > server** — see `AGENTS.md`.
 >
-> **Sections 1-7 below describe the FIRST install.** Of those, §2, §4 and §5 are
-> **legacy** (PM2 / `next start` / nginx) and are marked as such in place. They
-> are kept to explain `scripts/package-standalone.sh`, `ecosystem.config*.cjs`
-> and the pre-Docker installs, not because they are recommended.
+> **Sections 1-7 below describe the FIRST install**, and a brand-new box only
+> needs **§1 → §3 → §6 → §Updates**. §2, §4 and §5 are **tombstones**: the
+> PM2 / `next start` / nginx tooling they described was deleted on 12 Oct 2026,
+> and the headings remain only so the numbering and the links into them keep
+> working.
 >
 > | I want to… | Go to |
 > |---|---|
@@ -25,7 +26,7 @@
 - Node.js 20.19+ / 22.12+ / 24+ (Prisma 7 menolak yang lebih tua)
 - Bun 1.2+ — `curl -fsSL https://bun.sh/install | bash` (pemasang paket & peluncur skrip; Node tetap runtime-nya)
 - MySQL 8+ / MariaDB (private network, not public)
-- HTTPS reverse proxy (nginx, Caddy, or cloud LB)
+- HTTPS reverse proxy — **Traefik** in this deployment, configured via the Docker labels in `docker-compose.yml`
 - Domain pointed at your server
 
 ## 1. Configure environment
@@ -41,25 +42,32 @@ Edit `.env`:
 | `DATABASE_URL` | Real MySQL connection string |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `AUTH_URL` | `https://your-domain.com` (HTTPS, no trailing slash) |
-| `NODE_ENV` | `production` (set by `start:prod`) |
+| `NODE_ENV` | `production` (set in the image) |
 | `PORT` | Optional, default `3000` |
 
 **Never set `ALLOW_SEED=true` in production.**
 
 ## 2. Install and build
 
-> ⚠️ **LEGACY — builds on the server.** Production runs on Docker Compose; see
-> [§Updates](#updates-new-release). This section is kept only to explain the
-> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
-> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
-> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
-> and two concurrent builds have produced an OOM (exit 137).
+> 🪦 **REMOVED 12 Oct 2026 — the tooling this section described no longer
+> exists.** It ran `next build` **on the server**, which `AGENTS.md` forbids:
+> that box has 3.6 GB of RAM shared with five other apps, building 0.6.0 there
+> took ~19 minutes at 58-92% iowait, and two concurrent builds have produced an
+> OOM (exit 137).
+>
+> Deleted with it: `scripts/setup-production.sh`, `scripts/package-standalone.sh`,
+> `scripts/start-production.sh`, `scripts/start-low-memory.sh`,
+> `scripts/deploy-on-server.sh`, both `ecosystem.config*.cjs`,
+> `.github/workflows/build-standalone.yml`, and the `setup:prod` /
+> `start:prod` / `start:low-mem` / `build:upload` / `package:standalone` /
+> `deploy` scripts in `package.json`.
+>
+> **A brand-new box goes §1 → §3 → §6 → [§Updates](#updates-new-release).**
+> There is no build step on the server at all: images come from GHCR.
 
-```bash
-bun run setup:prod
-```
-
-This runs: `bun install --frozen-lockfile` → Prisma generate → migrations → creates `data/audit`, `data/documents` & `public/uploads` → production build.
+The directories it used to create (`data/audit`, `data/documents`,
+`public/uploads`) are now volumes — see [§6](#6-writable-directories).
+Migrations are a deliberate, separate step: [§Updates](#updates-new-release).
 
 **Do not run** `bun run db:seed` on production.
 
@@ -74,65 +82,26 @@ bun run create-admin -- --username admin --password 'YourSecurePassword12!' --na
 
 ## 4. Start the server
 
-> ⚠️ **LEGACY — PM2 / `next start`, not used.** Production runs on Docker Compose; see
-> [§Updates](#updates-new-release). This section is kept only to explain the
-> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
-> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
-> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
-> and two concurrent builds have produced an OOM (exit 137).
+> 🪦 **REMOVED 12 Oct 2026 — PM2, `next start` and the standalone bundle are
+> gone**, tooling and all (listed in [§2](#2-install-and-build)).
+>
+> The app is started by Docker Compose: `app-customer` and `app-operator` run
+> the **same image** from GHCR and are told apart by `OPERATOR_HOST` plus their
+> Traefik labels. See [§Updates](#updates-new-release) and
+> `docs/arsitektur/07-INFRASTRUKTUR-DEPLOY.md`.
 
-```bash
-bun run start:prod
-```
+## 5. Reverse proxy
 
-This sets `NODE_ENV=production`, loads `.env`, checks required variables, then starts Next.js.
-
-**Standalone bundle** (after `bun run package:standalone`):
-
-```bash
-cd /var/www/sai
-cp .env.example .env   # edit DATABASE_URL, AUTH_SECRET, AUTH_URL
-bash scripts/start-production.sh
-```
-
-Or with PM2:
-
-```bash
-mkdir -p logs
-bun run build
-pm2 start ecosystem.config.cjs
-pm2 save
-```
-
-## 5. Reverse proxy (nginx example)
-
-> ⚠️ **LEGACY — production is fronted by Traefik, configured via Docker labels.** Production runs on Docker Compose; see
-> [§Updates](#updates-new-release). This section is kept only to explain the
-> pre-Docker installs and the standalone bundle. **`bun run setup:prod` builds
-> ON THE SERVER**, which `AGENTS.md` forbids: that box has 3.6 GB of RAM shared
-> with five other apps, building 0.6.0 there took ~19 minutes at 58-92% iowait,
-> and two concurrent builds have produced an OOM (exit 137).
-
-```nginx
-server {
-  listen 443 ssl http2;
-  server_name your-domain.com;
-
-  ssl_certificate     /path/to/fullchain.pem;
-  ssl_certificate_key /path/to/privkey.pem;
-
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-
-  client_max_body_size 12M;
-}
-```
+> 🪦 **REMOVED 12 Oct 2026 — the nginx example is gone.** Production is
+> fronted by **Traefik**, configured entirely through the Docker labels in
+> `docker-compose.yml` (routers `sai-app`, `sai-www`, `sai-ops`). There is no
+> hand-written proxy config to keep in sync any more.
+>
+> The two label rules that must never be "tidied": the customer and operator
+> routers need **distinct Traefik service names** (`sai-app` vs `sai-ops`) or
+> Traefik load-balances between them, and `app-customer` must keep
+> `OPERATOR_HOST: ""`. Both are explained in
+> [§One-time](#-one-time-the-service-rename--operator-split).
 
 ## 6. Writable directories
 
@@ -388,21 +357,23 @@ echo <read:packages-PAT> | docker login ghcr.io -u <user> --password-stdin
 
 Until that is done, `docker compose pull` answers `denied`.
 
-### Legacy: PM2 (no longer used)
+### Legacy: PM2 (removed 12 Oct 2026)
 
 The pre-Docker flow was `git pull && bun install && bunx prisma migrate deploy
-&& bun run build && pm2 restart`. It is kept here only to explain
-`ecosystem.config.cjs`; production has run on Docker Compose since the
-multi-company release.
+&& bun run build && pm2 restart` — it built on the server, so it is exactly what
+[§Updates](#updates-new-release) replaced. Production has run on Docker Compose
+since the multi-company release, and on **registry images** since 4 Oct 2026.
+The PM2 config files are gone; this note stays so the flow is recognisable if it
+turns up in an old runbook or shell history.
 
 ## Development vs production
 
 | Task | Development | Production |
 |------|-------------|------------|
-| Setup | `bun run setup` | `bun run setup:prod` |
+| Setup | `bun run setup` | `docker compose up -d` (§Updates) |
 | Demo data | `ALLOW_SEED=true bun run db:seed` | **Never** |
 | First user | Seed or create-admin | `bun run create-admin` only |
-| Start | `bun run dev` | `bun run start:prod` |
+| Start | `bun run dev` | `docker compose up -d` (§Updates) |
 
 ## Troubleshooting
 
@@ -423,7 +394,7 @@ node --env-file=.env scripts/check-env.mjs
 node --env-file=.env server.js
 ```
 
-If you use PM2 without `--env-file`, export variables in `ecosystem.config.cjs` or use `env_file`. Check server logs for `[auth][error]` — `MissingSecret` or `UntrustedHost`.
+Check the container logs for `[auth][error]` — `MissingSecret` means `AUTH_SECRET` never reached the container (`docker compose exec app-customer printenv AUTH_SECRET`), `UntrustedHost` means `AUTH_URL` does not match the host the browser used.
 
 **Redirect loop after login** — `AUTH_URL` must exactly match the URL in the browser (scheme + host).
 
@@ -433,7 +404,7 @@ If you use PM2 without `--env-file`, export variables in `ecosystem.config.cjs` 
 table, not a file: check that migration `0044_audit_logs` was applied to that
 company's database, and that `bun run migrate:audit --apply` has run.
 
-**Upload fails** — Check `data/documents/` permissions and `client_max_body_size` in nginx.
+**Upload fails** — Check the `documents` volume's permissions, and Traefik's body-size limit (`traefik.http.middlewares.*.buffering.maxRequestBodyBytes`) if the file is large.
 
 ### Reading the logs (issue #374)
 

@@ -48,13 +48,15 @@ sendiri.
 | [`../PRODUCTION.md`](../PRODUCTION.md) | **Runbook penggelaran** — §Updates adalah jalur yang hidup | Aktif |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Perubahan yang terlihat pengguna | **Dibangkitkan** — jangan sunting |
 | [`../CLAUDE.md`](../CLAUDE.md) | Penerus ke `AGENTS.md` | Aktif |
-| [`warisan/PENGGELARAN-STANDALONE.md`](./warisan/PENGGELARAN-STANDALONE.md) | Jalur standalone/PM2 pra-Docker | ⚠️ **Warisan** |
 
 ### Apa yang dirapikan 12 Okt 2026, dan kenapa
 
-**Tiga `HOSTING*.md` → satu** `warisan/PENGGELARAN-STANDALONE.md`. Ketiganya
-menjelaskan satu jalur yang sudah tidak dipakai dari tiga sudut; tiga berkas di
-akar untuk itu adalah tiga tempat yang bisa membusuk. 12,4 KB → 3,0 KB.
+**Tiga `HOSTING*.md` → satu, lalu nol.** Ketiganya menjelaskan satu jalur yang
+sudah tidak dipakai dari tiga sudut, jadi mula-mula digabung jadi
+`warisan/PENGGELARAN-STANDALONE.md` (12,4 KB → 3,0 KB). Beberapa jam kemudian
+**perkakas** yang dijelaskannya ikut dicabut — dan dokumen yang menjelaskan
+perkakas yang tidak ada tidak punya alasan hidup, jadi ia pergi juga. Urutannya
+sengaja: digabung dulu supaya terlihat utuh isinya apa, baru diputuskan.
 
 **`DOCKER.md` dihapus.** Isinya tumpang tindih dengan `PRODUCTION.md` (boot
 pertama, perintah, admin pertama) dan dengan `arsitektur/07` (jaringan,
@@ -69,12 +71,24 @@ mengajarkan `setup:prod` (membangun di server), §Scripts menyebut `db:migrate`
 tanpa peringatan multi-PT, dan §Security menyebut `data/audit/audit.jsonl`
 padahal jejak audit sudah pindah ke tabel.
 
-**Yang TIDAK dihapus, dan kenapa:** perkakas standalone
-(`scripts/package-standalone.sh`, `ecosystem.config*.cjs`,
-`.github/workflows/build-standalone.yml`) **masih ada**. Menghapus perkakas yang
-masih berjalan adalah keputusan pemilik, bukan pembersihan dokumentasi — dan
-dokumen warisannya menyebut klaster itu secara eksplisit supaya keduanya bisa
-dicabut bersama kelak.
+**Klaster perkakas standalone dicabut** (keputusan pemilik, hari yang sama):
+lima skrip (`package-standalone.sh`, `setup-production.sh`,
+`start-production.sh`, `start-low-memory.sh`, `deploy-on-server.sh`), dua
+`ecosystem.config*.cjs`, `.github/workflows/build-standalone.yml` — yang
+menghasilkan artefak **43 MB tiap dorongan ke `main`** tanpa satu pun pemakai —
+dan enam skrip `package.json`. `PRODUCTION.md` §2/§4/§5 jadi **nisan**:
+judulnya dipertahankan supaya penomoran dan tautan masuk tidak rusak.
+
+**Jebakan yang ketemu saat mencabutnya**, dan ini yang paling berharga:
+`bun run deploy` menunjuk ke `scripts/deploy-on-server.sh` — `bun install` +
+`next build` **di server** — bukan ke `scripts/deploy.sh`. Perintah dengan nama
+paling wajar di repo ini menjalankan jalur yang dilarang, dan tidak ada dokumen
+yang pernah menyebutnya. Jalan pintasnya dicabut; `scripts/deploy.sh` tinggal
+sebagai pecah-kaca kalau GHCR tak terjangkau.
+
+**Yang TIDAK dihapus, dan kenapa:** `AUDIT-RILIS-UMUM.md` — potret 15 Agustus
+dengan metode jelas dan kutipan `berkas:baris`. Itu riwayat, bukan sampah; ia
+hanya diberi penanda kesegaran yang menunjuk ke `arsitektur/08` dan `09`.
 
 `CHANGELOG.md` **dibangkitkan** dari `src/lib/changelog.ts`
 (`bun run changelog:build`); menyuntingnya langsung akan tertimpa.

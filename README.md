@@ -54,7 +54,7 @@ alias/fungsi shell nvm — periksa dengan `env node -v`.
 cp .env.example .env
 # Edit DATABASE_URL and AUTH_SECRET
 
-**Server deploy:** see [PRODUCTION.md](./PRODUCTION.md) §Updates — Docker Compose + image dari GHCR. (`HOSTING*.md` adalah jalur **warisan** pra-Docker.)
+**Server deploy:** see [PRODUCTION.md](./PRODUCTION.md) §Updates — Docker Compose + image dari GHCR. (Jalur standalone/PM2 pra-Docker: [`docs/warisan/`](./docs/warisan/PENGGELARAN-STANDALONE.md).)
 
 bun run setup          # install, migrate, seed demo data, build
 bun run dev            # http://localhost:3000
@@ -78,31 +78,47 @@ ALLOW_SEED=true bun run db:seed
 
 ## Production
 
-See **[PRODUCTION.md](./PRODUCTION.md)** for the full deployment guide.
+Produksi berjalan di **Docker Compose**, dan image-nya dibangun di **runner
+GitHub** — bukan di server.
+
+**Menggelar rilis baru:** [PRODUCTION.md](./PRODUCTION.md) **§Updates**. Itu
+satu-satunya jalur yang hidup.
 
 ```bash
-cp .env.example .env
-# Set DATABASE_URL, AUTH_SECRET, AUTH_URL=https://your-domain.com
-
-bun run setup:prod
-bun run create-admin -- --username admin --password 'YourSecurePassword12!'
-bun run start:prod
+git pull
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup
+docker compose run --rm migrate bun run db:migrate:all   # bila rilisnya membawa migration
+docker compose up -d
 ```
 
-**Never run `db:seed` on production.**
+> ⚠ **Jangan membangun di server.** Kotak produksi ~3,6 GB berbagi dengan lima
+> aplikasi lain; `next build` di sana pernah menghabiskan ~19 menit dengan
+> iowait 58–92%, dan separuh health probe menjawab 503 selama rebuild. Lihat
+> `AGENTS.md`.
+
+**Jangan pernah** menjalankan `db:seed` di produksi.
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
 | `bun run dev` | Development server |
+| `bun run verify` | **Gerbang**: typecheck + lint + test. Wajib hijau sebelum merge |
 | `bun run build` | Production build |
-| `bun run start:prod` | Run production server |
+| `bun run db:migrate:all` | **Terapkan migration ke SEMUA basis data** (kendali → platform → setiap PT) |
+| `bun run db:generate` | Bangkitkan ketiga klien Prisma |
 | `bun run setup` | Dev setup (includes demo seed) |
-| `bun run setup:prod` | Production setup (migrate + build, no seed) |
-| `bun run create-admin` | Create first user (production) |
-| `bun run db:migrate` | Apply Prisma migrations |
+| `bun run create-admin` | Create first user |
 | `bun run db:seed` | Demo data (requires `ALLOW_SEED=true`) |
+
+> ⚠ **`bun run db:migrate` (tunggal) berbahaya di pemasangan multi-PT.** Ia
+> menerapkan migration ke **satu** basis data — yang ditunjuk `DATABASE_URL` —
+> dan **migration 0042 menghapus tabel `users` dari basis data perusahaan**.
+> Pakai **`db:migrate:all`**, yang aman terhadap urutan. Alasan lengkapnya di
+> `package.json` dan `docs/arsitektur/07-INFRASTRUKTUR-DEPLOY.md` §6.
+
+Daftar lengkap (53 skrip) ada di `package.json`, masing-masing dengan catatan
+alasannya.
 
 ## Roles
 
@@ -121,11 +137,19 @@ Users with `status = 0` use their password as-is. `status = 1` forces a password
 
 ## Security
 
-- JWT sessions, bcrypt passwords, role-based routes
-- Rate-limited login and password change
-- File upload validation (type, size, magic bytes)
-- Audit log: `data/audit/audit.jsonl` (finance, stock, password changes)
-- Security headers + HSTS in production
+- JWT sessions (24 jam), bcrypt passwords, otorisasi berbasis **izin** (bukan
+  perbandingan string peran) — `docs/RBAC.md`
+- Rate-limited login dan ganti sandi
+- Validasi unggahan berkas (tipe, ukuran, magic bytes); berkas disajikan lewat
+  route berpenjaga, **bukan** sebagai statis
+- **Jejak audit di TABEL**, bukan berkas: `audit_logs` di tiap buku PT, dan
+  `tenant_audit_logs` di basis data kendali. (Sebelumnya
+  `data/audit/audit.jsonl`; dipindahkan oleh migration 0044 +
+  `bun run migrate:audit`.)
+- Header keamanan + HSTS di produksi; CSP **tanpa `unsafe-eval`** di produksi —
+  `tests/security-headers.test.ts` menjaganya
+- Konsol operator di **hostname terpisah**, gagal-tertutup: tanpa
+  `OPERATOR_HOST`, `/operator` 404 di mana pun
 
 ## License
 

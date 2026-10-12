@@ -338,7 +338,7 @@ Diamati, bukan ditebak:
 | **Dua pembatas laju** | `rate-limit.ts` (memori) + `rate-limit-persistent.ts` (tabel kendali) | Rendah — yang persisten sengaja dipakai ulang `lib/alert.ts` alih-alih menulis peredam kedua |
 | **Tiga sumber pengaturan surel** | tenant → platform → env | Rendah — urutannya eksplisit dan diuji |
 | **Dua alur rilis di CI** | `publish-image.yml` (dipakai) + `build-standalone.yml` (bundel zip) | **Sedang** — alur standalone tampak warisan; ❓ masih dipakai atau tidak **belum dipastikan** |
-| **Runbook rilis ganda** | `PRODUCTION.md` §Updates (mutakhir) vs §4/§5 (PM2 + nginx, ditandai warisan) + `HOSTING*.md` (3 berkas) | **Sedang** — 4 berkas hosting di akar repo; orang berikutnya bisa mengikuti yang salah. Lihat dok 07 §7 |
+| ~~Runbook rilis ganda~~ | ✅ **ditutup 12 Okt 2026** — `DOCKER.md` dihapus, 3 `HOSTING*.md` digabung jadi satu di `docs/warisan/`. Yang tersisa di akar: `PRODUCTION.md` (§Updates hidup, §2/§4/§5 ditandai warisan) |
 | **Dua definisi migration-apply** | `db:migrate` (satu DB) vs `db:migrate:all` (semua) | Rendah — `db:migrate` **sengaja** dipertahankan & bahayanya ditulis di `package.json` |
 
 Lanjut: [05 API & Komunikasi](./05-API-KOMUNIKASI.md)

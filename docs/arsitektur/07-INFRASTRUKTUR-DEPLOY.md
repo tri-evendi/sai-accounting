@@ -417,9 +417,10 @@ anggaran yang benar-benar terbatas.
 staging membuat itu masuk akal. Dinilai di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-`DOCKER.md` menyebut host `inventory.suburanugerahindonesia.com` sebagai
-contoh — host **uji**, bukan `ops.*`. ❓ Belum dipastikan apakah host itu masih
-aktif.
+`DOCKER.md` (dihapus 12 Okt 2026) menyebut host
+`inventory.suburanugerahindonesia.com` sebagai contoh — host **uji**, bukan
+`ops.*`. Dicatat di sini karena berkasnya sudah tidak ada; ❓ keaktifan host itu
+tetap belum dipastikan.
 
 ## 9. Pemantauan & dapat-diamati
 
@@ -482,8 +483,8 @@ cara menggelar, dan mereka tidak sepakat:
 | `PRODUCTION.md` §2, §4 | ✅ **DITANDAI WARISAN** di tempatnya (11 Okt 2026) |
 | `PRODUCTION.md` §5 (nginx) | ✅ **DITANDAI WARISAN** di tempatnya |
 | `PRODUCTION.md` §Legacy: PM2 | Ditandai warisan — **benar** |
-| `HOSTING.md`, `HOSTING-LOW-MEMORY.md`, `HOSTING-NO-NODE.md` | ✅ **DITANDAI WARISAN** — dipertahankan karena `package-standalone.sh` + `ecosystem.config*.cjs` masih merujuknya |
-| `DOCKER.md` | ✅ Diberi penunjuk ke `PRODUCTION.md` §Updates sebagai jalur yang hidup |
+| ~~`HOSTING.md` ×3~~ | ✅ **DIGABUNG** 12 Okt 2026 → `docs/warisan/PENGGELARAN-STANDALONE.md` (12,4 KB → 3,0 KB) |
+| ~~`DOCKER.md`~~ | ✅ **DIHAPUS** 12 Okt 2026 — tumpang tindih `PRODUCTION.md` + dok 07; §Redeploying-nya mengajarkan build di server. Satu pengukurannya diselamatkan ke `PRODUCTION.md` §Updates |
 | `ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs` | PM2 tidak dipakai, **tetapi `package-standalone.sh` menyalinnya** — jadi dipertahankan, dijelaskan di `HOSTING*.md` |
 | `.github/workflows/build-standalone.yml` | 🔶 Alur bundel zip; tampak warisan di samping `publish-image.yml` |
 

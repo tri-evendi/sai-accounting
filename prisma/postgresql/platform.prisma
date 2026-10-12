@@ -1,0 +1,652 @@
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  DIBANGKITKAN — JANGAN DISUNTING                                     ║
+// ║  Sumber : prisma/platform/schema.prisma                             ║
+// ║  Perintah: bun run pg:baseline                                       ║
+// ║                                                                      ║
+// ║  Satu-satunya perbedaan dari sumbernya adalah baris `provider`.       ║
+// ║  Kalau kelak dibutuhkan lebih dari itu, klaim portabilitas skema      ║
+// ║  (docs/arsitektur/13-AUDIT-SKEMA.md §1.5) sudah tidak benar lagi —    ║
+// ║  dan yang harus diperbaiki adalah skema kanoniknya, bukan berkas ini. ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BASIS DATA PLATFORM (`sai_platform`) — issue #137, epik multi-tenant #133
+//
+// Lapisan ketiga di samping kendali (`prisma/control`) dan perusahaan
+// (`prisma/schema.prisma`). Isinya adalah data BISNIS KAMI sebagai penyedia
+// SaaS: paket, langganan, pembayaran, tagihan platform, dan penghitung
+// pemakaian. TIDAK ADA satu pun angka akuntansi PELANGGAN di sini — buku besar
+// mereka tetap di basis data perusahaannya masing-masing.
+//
+// KENAPA DIPISAH DARI KENDALI (docs/MULTI-TENANT.md §4A):
+//   • Radius ledakan — migration/bug penagihan tidak boleh mengancam tabel yang
+//     mengautentikasi semua orang. Penagihan mati = orang tetap bisa masuk.
+//   • Retensi & cadangan catatan pembayaran berbeda dari buku pelanggan.
+//   • Hak akses berbeda — pengguna basis data aplikasi TIDAK menyentuh
+//     `sai_platform` di jalur permintaan biasa (lihat docs/DATABASE.md §11).
+//
+// ATURAN LINTAS-BASIS-DATA (tidak boleh dilanggar):
+//   FK tidak bisa menyeberangi basis data, dan transaksi juga tidak. Karena itu
+//   `tenant_id` di sini adalah Int BIASA TANPA FK — persis pola
+//   `periods.closed_by_id`. Konsistensi ditegakkan oleh URUTAN TULIS, bukan
+//   transaksi:
+//
+//       Tulis di `sai_platform` DULU, baru tandai di `sai_control`.
+//
+//   Arah kegagalan yang benar: lebih baik pembayaran tercatat tanpa tenant naik
+//   kelas (bisa direkonsiliasi — `npm run reconcile:platform`) daripada tenant
+//   naik kelas tanpa pembayaran (tidak akan pernah ketahuan).
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/platform"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Paket berlangganan — master data (nonaktifkan, jangan hapus: langganan lama
+/// masih menunjuknya). Harga dalam IDR, `Decimal(15,2)` sesuai docs/DATABASE.md.
+model Plan {
+  id  Int    @id @default(autoincrement())
+  /// Kunci stabil yang dipakai kode & disalin ke `tenants.plan_key` di basis
+  /// data kendali (mis. `trial`, `starter`, `business`). snake_case lowercase.
+  key String @unique @db.VarChar(30)
+
+  name        String  @db.VarChar(100)
+  description String? @db.VarChar(255)
+
+  /// Harga langganan per siklus, dalam `currency` (IDR). JANGAN Float.
+  priceMonthly Decimal  @map("price_monthly") @db.Decimal(15, 2)
+  priceYearly  Decimal? @map("price_yearly") @db.Decimal(15, 2)
+  currency     String   @default("IDR") @db.VarChar(5)
+
+  /// Kuota paket. Saat paket sebuah tenant berubah, angka-angka ini DISALIN ke
+  /// `tenants.max_companies`/`max_users` di basis data kendali (pola snapshot,
+  /// docs/MULTI-TENANT.md §5) — penjaga kuota TIDAK membaca tabel ini di jalur
+  /// permintaan. Menaikkan harga/kuota paket tidak boleh diam-diam mengubah
+  /// pelanggan yang sudah berjalan.
+  maxCompanies Int @default(1) @map("max_companies")
+  maxUsers     Int @default(3) @map("max_users")
+
+  /// Lama masa uji-coba untuk langganan baru pada paket ini. 0 = tanpa trial.
+  trialDays Int @default(14) @map("trial_days")
+
+  isActive  Boolean  @default(true) @map("is_active")
+
+  /// DIJUAL atau tidak — terpisah dari `isActive` (issue katalog #179).
+  /// `internal` adalah paket pemakaian penyedia sendiri: ia WAJIB aktif supaya
+  /// putaran adopsi yatim (#152) bisa menyembuhkan tenant internal, tetapi
+  /// memajangnya di halaman harga berarti menawarkan "Rp 0, 10 PT" kepada
+  /// publik. Aktif = sah dipakai; publik = ditawarkan.
+  isPublic Boolean @default(true) @map("is_public")
+
+  /// Harganya DIRUNDINGKAN, bukan dipajang (Enterprise). Dibaca kartu harga
+  /// DAN penjaga pindah paket: harga 0 pada paket seperti ini berarti prorata
+  /// dihitung dari nol — yaitu naik paket gratis lewat tombol swalayan.
+  contactOnly Boolean @default(false) @map("contact_only")
+
+  /// Paket yang disorot di halaman harga. Keputusan penjualan, bukan aturan
+  /// yang ditebak kode ("yang tengah") — dan bukan pula variabel environment
+  /// yang menuntut penggelaran ulang untuk mengubahnya.
+  isRecommended Boolean @default(false) @map("is_recommended")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  /// Tagihan PERPINDAHAN PAKET yang menuju paket ini (swalayan). Lihat
+  /// `PlatformInvoice.targetPlanId`.
+  planChangeInvoices PlatformInvoice[]
+
+  @@index([isActive])
+  /// Katalog publik selalu menyaring keduanya sekaligus.
+  @@index([isActive, isPublic])
+  @@map("plans")
+}
+
+/// Langganan sebuah tenant pada sebuah paket. Siklus hidup (issue #140):
+///
+///   trialing ──(bayar)──> active ──(gagal bayar)──> past_due
+///       │                    ↑                          │
+///       └──(trial habis)─────┘                          └─(tenggang habis)─> suspended
+///
+///   suspended ──(bayar)──> active
+///   suspended ──(berhenti)──> cancelled   [buku besar TIDAK PERNAH dihapus]
+model Subscription {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data KENDALI (`tenants.id`, issue #134) — Int biasa
+  /// TANPA FK, persis pola `periods.closed_by_id`. FK tidak bisa menyeberangi
+  /// basis data; konsistensinya dijaga urutan tulis (platform dulu, kendali
+  /// belakangan) + `npm run reconcile:platform`.
+  tenantId Int @map("tenant_id")
+
+  /// FK di DALAM basis data yang sama — ini boleh. Restrict: paket yang masih
+  /// dirujuk langganan tidak boleh dihapus (nonaktifkan lewat `is_active`).
+  planId Int  @map("plan_id")
+  plan   Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  /// trialing | active | past_due | suspended | cancelled
+  /// String + z.enum (`src/lib/platform-constants.ts`) — konvensi docs/DATABASE.md.
+  status String @db.VarChar(20)
+
+  /// monthly | yearly
+  billingCycle String @default("monthly") @map("billing_cycle") @db.VarChar(10)
+
+  /// none | manual | auto — BOLEH ditagih otomatis? (migration 0014)
+  ///
+  /// `none` tidak pernah ditagih (internal, penguji, pilot); `manual` ditagih
+  /// di luar sistem (faktur dari buku PT penyedia); `auto` siklus penuh
+  /// penjadwal. HANYA `auto` yang bisa menerbitkan tagihan, mendorong ke
+  /// `past_due`, dan menangguhkan — lihat `billingModeIsAutomatic`.
+  ///
+  /// ⚠ Bawaannya `none`, dan arah itu disengaja: baris yang dibuat image lama
+  /// mendapat bawaan basis data, dan kurang tagih bisa diperbaiki dengan satu
+  /// faktur — sedangkan buku pelanggan yang terkunci karena tagihan yang tidak
+  /// pernah ia setujui tidak bisa ditarik kembali. Daftar nilainya +
+  /// alasan lengkapnya di `lib/platform-constants.ts`.
+  billingMode String @default("none") @map("billing_mode") @db.VarChar(10)
+
+  /// Harga yang DISEPAKATI saat berlangganan — snapshot dari `plans`, bukan
+  /// dibaca ulang saat menagih. Alasannya sama dengan snapshot kuota di atas.
+  price    Decimal @db.Decimal(15, 2)
+  currency String  @default("IDR") @db.VarChar(5)
+
+  /// Periode tagih yang sedang berjalan. Penjadwal (#140) menagih saat
+  /// `current_period_end` lewat.
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd   DateTime @map("current_period_end")
+
+  trialEndsAt DateTime? @map("trial_ends_at")
+  /// Sejak kapan menunggak — dasar penghitungan masa tenggang menuju `suspended`.
+  pastDueSince DateTime? @map("past_due_since")
+  cancelledAt  DateTime? @map("cancelled_at")
+
+  /// Penanda "langganan PERTAMA tenant ini" (issue #152) — kunci idempotensi
+  /// KELAHIRAN langganan. Diisi `tenant_id` oleh setiap jalur yang melahirkan
+  /// langganan pertama sebuah tenant (verifikasi email, putaran adopsi
+  /// penjadwal, adopt-tenant, change-plan tanpa langganan lama); NULL untuk
+  /// langganan lanjutan (berlangganan ulang setelah `cancelled`). UNIQUE +
+  /// nullable (MySQL mengizinkan banyak NULL): dua penulis yang berlomba
+  /// menabrak constraint (P2002) dan mundur — bukan melahirkan langganan
+  /// kembar. Pola yang sama dengan nomor tagihan deterministik (#140):
+  /// idempotensi ditegakkan basis data, bukan periksa-lalu-tulis.
+  initialForTenantId Int? @unique @map("initial_for_tenant_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoices     PlatformInvoice[]
+  reminderLogs ReminderLog[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@index([billingMode])
+  @@index([planId])
+  @@map("subscriptions")
+}
+
+/// Tagihan KAMI ke pelanggan — sengaja dinamai `platform_invoices`, berbeda
+/// dari `invoices` milik buku besar pelanggan di basis data perusahaan.
+/// PPN & e-Faktur atas tagihan ini menyusul di issue #141.
+model PlatformInvoice {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data kendali — Int biasa TANPA FK (lihat Subscription).
+  tenantId Int @map("tenant_id")
+
+  subscriptionId Int          @map("subscription_id")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  /// Nomor dokumen, unik (mis. `PINV-2026-00001`).
+  number String @unique @db.VarChar(30)
+
+  /// draft | issued | paid | void
+  status String @default("draft") @db.VarChar(20)
+
+  issueDate DateTime @map("issue_date")
+  dueDate   DateTime @map("due_date")
+
+  /// `total = amount + tax_amount`. IDR, Decimal(15,2) — JANGAN Float.
+  amount    Decimal @db.Decimal(15, 2)
+  taxAmount Decimal @default(0) @map("tax_amount") @db.Decimal(15, 2)
+  total     Decimal @db.Decimal(15, 2)
+  currency  String  @default("IDR") @db.VarChar(5)
+
+  /// Paket tujuan sebuah tagihan PERPINDAHAN PAKET swalayan — dipasang setelah
+  /// tagihan ini LUNAS, oleh `payment-webhook`. `null` = tagihan langganan biasa
+  /// dari penjadwal, yang tidak memindahkan paket apa pun.
+  ///
+  /// Niatnya disimpan DI TAGIHAN, bukan di tabel permintaan tersendiri, karena
+  /// yang menentukan perpindahan adalah pelunasan tagihan ini — dan dua tempat
+  /// yang menyimpan niat yang sama akan berbeda pada hari salah satunya gagal
+  /// ditulis. `onDelete: Restrict`: paket yang masih ditunggu pembayarannya
+  /// tidak boleh lenyap dari katalog.
+  targetPlanId Int?  @map("target_plan_id")
+  targetPlan   Plan? @relation(fields: [targetPlanId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  payments Payment[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([subscriptionId])
+  @@index([targetPlanId])
+  @@map("platform_invoices")
+}
+
+/// Pembayaran atas tagihan platform. Gateway Indonesia (Midtrans/Xendit/Doku —
+/// VA, QRIS, kartu) menyusul di issue #141; skema ini sudah menyediakan
+/// tempatnya. SATU pembayaran = SATU catatan gateway; `gateway_ref` unik supaya
+/// webhook yang diputar ulang tidak mencatat pembayaran dua kali.
+model Payment {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data kendali — Int biasa TANPA FK (lihat Subscription).
+  tenantId Int @map("tenant_id")
+
+  platformInvoiceId Int             @map("platform_invoice_id")
+  platformInvoice   PlatformInvoice @relation(fields: [platformInvoiceId], references: [id], onDelete: Restrict)
+
+  /// pending | paid | failed | expired | refunded
+  status String @default("pending") @db.VarChar(20)
+
+  /// virtual_account | qris | card | manual_transfer (issue #141)
+  method String? @db.VarChar(30)
+  /// midtrans | xendit | doku | manual (issue #141)
+  gateway String? @db.VarChar(30)
+  /// Id transaksi di sisi gateway — kunci idempotensi webhook.
+  gatewayRef String? @unique @map("gateway_ref") @db.VarChar(100)
+
+  amount   Decimal @db.Decimal(15, 2)
+  currency String  @default("IDR") @db.VarChar(5)
+
+  /// ══ Instruksi bayar (issue #141) — yang DITAMPILKAN ke pelanggan ══════════
+  /// Berlangganan lewat VA = tagih-lalu-ingatkan: nomor VA/string QR dibuat
+  /// saat tagihan terbit atau saat pelanggan menekan "bayar", lalu ditampilkan
+  /// ulang sampai lunas/kedaluwarsa. TIDAK PERNAH ada data kartu di sini —
+  /// kartu murni urusan gerbang (PCI-DSS tidak diseret masuk).
+  /// Bank VA (bca | bni | bri | permata | …) — kosong untuk QRIS/manual.
+  bank     String? @db.VarChar(20)
+  vaNumber String? @map("va_number") @db.VarChar(40)
+  /// Payload QRIS (string EMV yang dirender jadi kode QR di layar).
+  qrString String? @map("qr_string") @db.Text
+  /// Batas bayar instruksi ini menurut gerbang.
+  expiresAt DateTime? @map("expires_at")
+
+  paidAt DateTime? @map("paid_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([platformInvoiceId])
+  @@map("payments")
+}
+
+/// Profil PENAGIHAN sebuah tenant (issue #141) — identitas lawan transaksi
+/// untuk Faktur Pajak KAMI: NPWP, nama & alamat sesuai NPWP. Hidup di
+/// PLATFORM (data penagihan bisnis kami), bukan di `tenants` kendali — jalur
+/// panas tidak membutuhkannya, dan e-Faktur membacanya dari sini.
+/// `tenant_id` Int biasa TANPA FK (pola #137).
+model TenantBillingProfile {
+  id Int @id @default(autoincrement())
+
+  tenantId Int @unique @map("tenant_id")
+
+  /// NPWP lawan transaksi — WAJIB untuk faktur keluaran domestik; barisnya
+  /// boleh ada tanpa NPWP, tapi ekspor e-Faktur akan menandainya sebagai
+  /// masalah (mesin `buildEfaktur` yang menegakkan, bukan kolom ini).
+  npwp    String? @db.VarChar(25)
+  name    String? @db.VarChar(150)
+  address String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("tenant_billing_profiles")
+}
+
+/// Jejak pengingat yang SUDAH terkirim (issue #140) — kunci idempotensi
+/// penjadwal: `@@unique([subscriptionId, kind, dueKey])` membuat penjadwal
+/// yang berjalan dua kali menabrak constraint, bukan mengirim surel dua kali.
+/// `due_key` bentuknya `H-<offset>:<tanggal-target>` (lihat `pendingReminder`
+/// di src/lib/subscription-lifecycle.ts).
+model ReminderLog {
+  id Int @id @default(autoincrement())
+
+  subscriptionId Int          @map("subscription_id")
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  /// trial_ending | invoice_due
+  kind   String @db.VarChar(30)
+  dueKey String @map("due_key") @db.VarChar(40)
+
+  sentAt DateTime @default(now()) @map("sent_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([subscriptionId, kind, dueKey])
+  @@map("reminder_logs")
+}
+
+/// Ringkasan SATU putaran penjadwal langganan (issue #154) — sebelum ini hasil
+/// putaran hanya hidup di stdout cron, dan "apa yang terjadi pada putaran
+/// terakhir?" menuntut sesi SSH. Ditulis `scripts/subscription-scheduler.ts`
+/// di akhir setiap putaran; dibaca konsol operator (`lib/operator/store.ts`).
+/// Gagal MENCATAT tidak menggagalkan putarannya — ringkasan adalah laporan
+/// tentang yang terjadi, bukan gerbang.
+model SchedulerRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | error — `error` = ada butir yang menuntut tindakan orang
+  /// (rinciannya di `details.errors`). String + union TS, konvensi
+  /// docs/DATABASE.md.
+  status String @db.VarChar(10)
+
+  invoicesIssued Int @default(0) @map("invoices_issued")
+  remindersSent  Int @default(0) @map("reminders_sent")
+  statusChanges  Int @default(0) @map("status_changes")
+  adoptions      Int @default(0)
+  errorCount     Int @default(0) @map("error_count")
+
+  /// JSON `{issued, reminders, transitions, adoptions, errors}` — masing-masing
+  /// daftar string BARIS LAPORAN (bukan struktur yang di-query), persis kalimat
+  /// yang dulu hanya tercetak di stdout. Dibiarkan Text: isi lama tidak perlu
+  /// bermigrasi saat bentuk barisnya berubah.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startedAt])
+  @@map("scheduler_runs")
+}
+
+/// Penghitung pemakaian per tenant — dasar penegakan kuota & penagihan berbasis
+/// pemakaian. SATU baris per (tenant, kunci); nilainya disinkronkan dari basis
+/// data kendali oleh pekerjaan berkala (#140), BUKAN sumber kebenaran — sumber
+/// kebenarannya tetap tabel aslinya (registry perusahaan, keanggotaan).
+model UsageCounter {
+  id Int @id @default(autoincrement())
+
+  /// Id tenant di basis data kendali — Int biasa TANPA FK (lihat Subscription).
+  tenantId Int @map("tenant_id")
+
+  /// companies | users — daftar sah di `src/lib/platform-constants.ts`.
+  key   String @db.VarChar(30)
+  value Int    @default(0)
+
+  /// Kapan terakhir disinkronkan dari sumber kebenarannya.
+  syncedAt DateTime? @map("synced_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, key])
+  @@map("usage_counters")
+}
+
+/// PENGATURAN SUREL PENYEDIA (issue #169) — SATU baris untuk seluruh pemasangan
+/// (singleton, dikunci `singleton UNIQUE = 1`).
+///
+/// KENAPA DI SINI, BUKAN DI `company_settings`: surel dipakai justru ketika
+/// TIDAK ADA konteks perusahaan — verifikasi pendaftaran, undangan staf, atur
+/// ulang kata sandi. Menaruhnya di basis data perusahaan berarti setiap
+/// pelanggan mengonfigurasi server surel MILIK PENYEDIA. Ini urusan penyedia,
+/// sama seperti penagihan, jadi rumahnya `sai_platform` dan layarnya konsol
+/// operator.
+///
+/// KATA SANDI TIDAK PERNAH TERSIMPAN MENTAH: hanya sandi-teks AES-256-GCM +
+/// IV + tag (`lib/settings-crypto.ts`); kuncinya tetap di environment
+/// (`SETTINGS_ENCRYPTION_KEY`). Kunci hilang → penyimpanan kata sandi DITOLAK.
+model MailSetting {
+  id Int @id @default(autoincrement())
+
+  /// Penanda SINGLETON — selalu 1. Constraint UNIQUE-lah yang menjamin tidak
+  /// pernah lahir baris kedua (dua baris = dua kebenaran tentang server surel
+  /// yang sama); `upsert` memakainya sebagai kunci.
+  singleton Int @unique @default(1)
+
+  /// file | smtp — enum-like `String @db.VarChar` + `z.enum`, konvensi
+  /// docs/DATABASE.md. `file` = surel ditangkap ke berkas .eml (mode aman).
+  transport String @db.VarChar(10)
+
+  host     String? @db.VarChar(191)
+  port     Int?
+  username String? @db.VarChar(191)
+
+  /// Alamat pengirim (header From) — mis. "SAI Accounting <no-reply@contoh.id>".
+  fromAddress String @map("from_address") @db.VarChar(191)
+
+  /// Segel AES-256-GCM kata sandi SMTP. Ketiganya kosong = tidak ada kata sandi
+  /// tersimpan (relai yang mengautentikasi lewat IP juga sah).
+  passwordCiphertext String? @map("password_ciphertext") @db.VarChar(512)
+  passwordIv         String? @map("password_iv") @db.VarChar(64)
+  passwordTag        String? @map("password_tag") @db.VarChar(64)
+
+  /// Salinan SENYAP setiap surel keluar (BCC), mis. kotak arsip pemilik.
+  ///
+  /// BCC, BUKAN CC — dan itu keputusan, bukan selera: CC menampilkan alamat ini
+  /// kepada SETIAP pelanggan yang menerima surel, dan alamat pribadi yang
+  /// tersebar begitu tidak bisa ditarik kembali.
+  ///
+  /// ⚠ Surel yang membawa TOKEN AKSES (atur-ulang kata sandi, undangan,
+  /// verifikasi, permintaan penghapusan) TIDAK PERNAH disalin ke sini — lihat
+  /// `MailMessage.sensitive` di `lib/mailer-core.ts`. Kotak arsip yang memuat
+  /// tautan atur-ulang berarti siapa pun yang bisa membukanya dapat mengambil
+  /// alih akun mana pun.
+  archiveAddress String? @map("archive_address") @db.VarChar(191)
+
+  /// Hasil UJI KIRIM terakhir — konfigurasi surel yang tidak bisa diuji adalah
+  /// konfigurasi yang baru ketahuan salah saat pelanggan pertama mendaftar.
+  /// `last_test_status`: ok | error. Pesannya kalimat untuk manusia, TIDAK
+  /// pernah memuat kata sandi.
+  lastTestAt      DateTime? @map("last_test_at")
+  lastTestTo      String?   @map("last_test_to") @db.VarChar(191)
+  lastTestStatus  String?   @map("last_test_status") @db.VarChar(10)
+  lastTestMessage String?   @map("last_test_message") @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan — jejaknya sendiri ada di
+  /// `data/audit/operators/audit.jsonl`; kolom ini yang tampil di layar.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("mail_settings")
+}
+
+/// Satu baris per PUTARAN cadangan — berhasil maupun gagal (issue #374).
+///
+/// Kegagalan ikut dicatat, dan itu inti tabelnya. Sampai #374 sebuah putaran
+/// yang gagal hanya menulis ke log lalu tidur 24 jam dan mengulangi kegagalan
+/// yang sama; produksi berjalan 26 hari tanpa satu pun salinan tanpa ada yang
+/// berbunyi. Tabel yang hanya menyimpan keberhasilan tidak bisa membedakan
+/// "belum pernah dicoba" dari "dicoba tiap hari dan gagal tiap hari" — dua
+/// keadaan yang menuntut tindakan sangat berbeda.
+/// JEJAK PEMERIKSA KESESUAIAN DATA — lihat migration 0018.
+///
+/// Menutup asimetri: `scheduler_runs` dan `backup_runs` punya jejak yang bisa
+/// ditanyai dari luar (`/api/health`), pemeriksa kesesuaian tidak. Pada cadensi
+/// MINGGUAN, temuan yang hanya ada di stdout bisa berumur berbulan-bulan.
+model ConformanceRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | findings | error — TIGA nilai, dan bedanya menentukan:
+  /// `ok` = berjalan & bersih; `findings` = berjalan & menemukan sesuatu (bukan
+  /// kegagalan layanan); `error` = ada buku yang GAGAL diperiksa, dan buku yang
+  /// tidak terperiksa bukan buku yang bersih. Konvensi String + union TS.
+  status String @db.VarChar(12)
+
+  /// Berapa buku disapu, dan berapa yang gagal diperiksa. Yang pertama membuat
+  /// "apakah sapuannya melewatkan buku baru?" bisa dijawab tanpa menebak.
+  companiesChecked Int @default(0) @map("companies_checked")
+  companiesFailed  Int @default(0) @map("companies_failed")
+
+  /// Total baris temuan di seluruh buku. Nol = bersih.
+  findingCount Int @default(0) @map("finding_count")
+
+  /// JSON `{findings, failures}` — daftar baris laporan, persis kalimat yang
+  /// dulu hanya tercetak ke stdout. Text: isi lama tidak perlu bermigrasi saat
+  /// bentuk barisnya berubah (alasan yang sama dengan `SchedulerRun.details`).
+  ///
+  /// Memuat LABEL temuan, bukan nilai uang dan bukan baris datanya.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("conformance_runs")
+}
+
+model BackupRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | local | error — konvensi String + union TS, lihat docs/DATABASE.md.
+  ///
+  /// `local` (12 Okt 2026): artefak terenkripsi DIBUAT tapi tetap di mesin ini,
+  /// sebab `BACKUP_S3_BUCKET` belum disetel. Sengaja BUKAN `ok` — `backupHealth`
+  /// mencari keberhasilan dengan `where: { status: "ok" }`, jadi nilai terpisah
+  /// inilah yang mencegah salinan lokal mengisi `lastSuccessAt`.
+  /// Tanpa migrasi: kolomnya sudah `VarChar(10)`, dan `local` lima karakter.
+  status String @db.VarChar(10)
+
+  /// Sebab kegagalan, apa adanya dari `backup.sh`. Null saat berhasil.
+  ///
+  /// TIDAK memuat kredensial: yang ditulis skripnya adalah kalimat sebab
+  /// ("BACKUP_ENCRYPTION_KEY belum diset"), bukan nilainya.
+  error String? @db.Text
+
+  /// Nama objek yang dikirim, saat berhasil. Bukti yang bisa dicari kembali.
+  artifact String? @db.VarChar(255)
+
+  /// Ukuran terkirim dalam byte. Cadangan yang "berhasil" tapi 0 byte adalah
+  /// kegagalan yang paling meyakinkan bentuknya.
+  sizeBytes BigInt? @map("size_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("backup_runs")
+}
+
+/// ISI HALAMAN PENDARATAN yang bisa disunting operator — PENIMPA, bukan kamus
+/// kedua.
+///
+/// Satu baris = satu penimpa atas satu kunci kamus dalam satu bahasa. Kamus di
+/// `src/lib/i18n/dictionaries/*.json` tetap sumber BAWAAN, tetap satu-satunya
+/// yang diketik `tsc`, dan tetap yang dirender ketika baris di sini tidak ada.
+/// Baris yang TIDAK ADA karena itu bukan keadaan kosong yang harus diisi — ia
+/// berarti "pakai bawaannya", dan itu keadaan normal untuk sebagian besar
+/// kunci.
+///
+/// ⚠ Rumahnya `sai_platform` dan bukan basis data kendali, dengan sebab yang
+/// sama seperti `MailSetting`: ia setelan PENYEDIA, bukan data pelanggan, dan
+/// layarnya konsol operator. Konsekuensinya dinyatakan apa adanya — platform
+/// yang mati berarti halaman pendaratan kembali ke kalimat BAWAAN, bukan
+/// halaman pendaratan yang mati (`lib/site-content-store.ts` gagal-lunak).
+///
+/// `content_key`, bukan `key`: `KEY` kata kunci MySQL (lihat migration 0013).
+model SiteContent {
+  id Int @id @default(autoincrement())
+
+  /// `id` | `en` | `zh` — kode bahasa aplikasi (`lib/i18n/config.ts`).
+  /// Enum-like `String @db.VarChar` + `z.enum`, konvensi docs/DATABASE.md.
+  locale String @db.VarChar(5)
+
+  /// Jalur-titik kunci kamus, mis. `landing.heroHeading`. Kunci di luar daftar
+  /// yang boleh disunting ditolak di aplikasi (`lib/site-content.ts`), bukan di
+  /// sini: daftarnya diturunkan DARI kamus, jadi ia berubah bersama kamusnya.
+  key String @map("content_key") @db.VarChar(120)
+
+  /// TEXT: badan FAQ pendaratan sudah melewati 255 karakter.
+  value String @db.Text
+
+  /// Nama akun operator yang terakhir menyimpan — jejak lengkapnya di jejak
+  /// audit operator; kolom ini yang tampil di layar.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([locale, key])
+  @@index([locale])
+  @@map("site_contents")
+}
+
+/// PENGATURAN SITUS yang bisa disetel operator (migration 0016) — menggantikan
+/// SSH untuk tiga nilai yang bukan keputusan teknis: nomor WhatsApp, alamat
+/// surel penjualan, dan instruksi transfer manual.
+///
+/// Rumahnya `sai_platform` dengan sebab yang sama seperti `MailSetting`: ia
+/// setelan PENYEDIA, bukan data pelanggan, dan layarnya konsol operator.
+/// Platform mati → resolvernya jatuh ke environment, bukan menghilangkan
+/// kanal kontak dari halaman publik (`lib/site-settings.ts`, gagal-lunak).
+///
+/// ⚠ NULL ≠ string kosong. NULL = "tidak diatur dari sini, pakai env"; string
+/// kosong = "operator SENGAJA mencabutnya". Resolvernya menegakkan bedanya.
+model SiteSetting {
+  id Int @id @default(autoincrement())
+
+  /// Penanda SINGLETON — selalu 1. Dua baris = dua kebenaran tentang satu
+  /// nomor telepon; constraint UNIQUE-lah yang menjaminnya, dan `upsert`
+  /// memakainya sebagai kunci.
+  singleton Int @unique @default(1)
+
+  /// Digit saja, bentuk yang sama yang diterima `parseWhatsappNumber`.
+  contactWhatsapp String? @map("contact_whatsapp") @db.VarChar(30)
+  contactEmail    String? @map("contact_email") @db.VarChar(191)
+
+  /// Ditampilkan APA ADANYA ke pelanggan: nama bank, nomor rekening, nama
+  /// pemilik rekening.
+  manualPaymentInstructions String? @map("manual_payment_instructions") @db.Text
+
+  /// Pendaftaran mandiri terbuka? `null` = pakai `SELF_SERVE_SIGNUP` (migration
+  /// 0017).
+  ///
+  /// ⚠ Tetap GAGAL-TERTUTUP di setiap jalur: `null` jatuh ke environment, dan
+  /// environment hanya terbuka bila ditulis persis `open`. Basis data tak
+  /// terjangkau juga jatuh ke environment. Tidak ada jalan di mana kehilangan
+  /// informasi MEMBUKA corong komersial.
+  selfServeSignupOpen Boolean? @map("self_serve_signup_open")
+
+  /// PPN di tagihan platform? `null` = pakai `PLATFORM_PPN_DISABLED` (yang
+  /// bawaannya PPN AKTIF).
+  ///
+  /// ⚠ Kolom ini dibaca JALUR UANG — tagihan akhir uji coba (penjadwal) dan
+  /// tagihan prorata pindah paket. Mengubahnya mengubah nominal yang ditagih,
+  /// jadi setiap perubahannya tercatat di jejak audit beserta nilai lamanya.
+  ppnEnabled Boolean? @map("ppn_enabled")
+
+  /// Nama akun operator yang terakhir menyimpan.
+  updatedBy String @map("updated_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

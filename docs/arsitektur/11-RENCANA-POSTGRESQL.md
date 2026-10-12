@@ -514,3 +514,150 @@ terbuka dan belum ada satu lingkungan pun untuk melatihnya.
 
 Kalau pemicunya datang, §9.4 adalah daftar kerjanya — tujuh butir, berkas:baris,
 sudah diverifikasi ada.
+
+---
+
+## 10. Rencana implementasi — dan apa yang SUDAH dikerjakan (12 Okt 2026)
+
+§5 adalah fase konseptual. Bagian ini adalah **runbook**, dan sebagian besarnya
+sudah dijalankan: seluruh data platform sudah pernah berpindah ke PostgreSQL
+sungguhan dan dibuktikan identik. Yang belum adalah port kode aplikasi dan
+penukaran.
+
+> **Status ringkas.** Fase A–C **SELESAI & TERBUKTI**. Fase D (port kode)
+> **sebagian**. Fase E (penukaran) **BELUM**, dan sengaja: ia menuntut
+> keputusan pemilik pada saatnya.
+
+### Fase A — paritas skema ✅ SELESAI
+
+**Masalah yang ditutup lebih dulu:** 18 kolom FK yang indeksnya dibuat MySQL
+secara implisit, yang di PostgreSQL **tidak akan ada** (242 indeks di 17 buku).
+Lihat [dok 13 §S1](./13-AUDIT-SKEMA.md). Dikerjakan **sebelum** pindah mesin
+supaya teruji produksi lebih dulu — migration `0065` / `0018` / `0019`.
+
+```bash
+bun run pg:baseline      # turunkan skema PG + baseline SQL dari skema kanonik
+```
+
+Skema PostgreSQL **bukan berkas tulisan tangan**: ia diturunkan dari
+`prisma/*.prisma` dengan **satu** perubahan — baris `provider`.
+`tests/pg-baseline-parity.test.ts` membangkitkannya ulang di memori dan menolak
+kalau yang ter-commit berbeda, jadi dua skema tidak bisa menyimpang diam-diam.
+
+**Terbukti:** himpunan indeks PostgreSQL **identik** dengan MariaDB —
+perusahaan 257, kendali 59, platform 44; nol hilang, nol tambahan. Dibandingkan
+sebagai *himpunan kolom*, bukan sebagai jumlah.
+
+### Fase B — pemindahan data ✅ SELESAI & TERBUKTI
+
+```bash
+bun run pg:data  --source mysql://…/<db> --target postgres://…/<db>
+bun run pg:prove --source mysql://…/<db> --target postgres://…/<db>
+```
+
+Migratornya **generik**: daftar tabel dan kolom dibaca dari `information_schema`,
+bukan diketik. 1.084 tabel membuat kode per-tabel pasti tertinggal pada tabel
+berikutnya — aturan yang sama dengan `--all-databases` di `backup.sh`.
+
+Tiga keputusan yang menentukan benarnya:
+
+1. **FK ditunda, bukan dilewati.** `SET session_replication_role = replica`
+   selama pemuatan — sebab `journals.reversal_of_id` menunjuk `journals` sendiri,
+   jadi urutan topologis tidak ada. Sesudahnya dikembalikan ke `origin` dan
+   **setiap FK dihitung baris yatimnya**; satu saja menggagalkan skripnya.
+2. **Uang tidak pernah melewati `Number`.** `Decimal` dibaca sebagai string dan
+   dikirim sebagai string. Pembulatan diam di atas 2^53 adalah kerusakan yang
+   jumlah barisnya tetap cocok.
+3. **Boolean disesuaikan eksplisit.** MySQL memulangkan `0`/`1`; `"0"` bernilai
+   **benar** di JavaScript. Tanpa langkah ini setiap master data nonaktif hidup
+   kembali — tanpa galat, dengan jumlah baris sempurna.
+
+**Dijalankan terhadap seluruh produksi, ke PostgreSQL 17 bayangan:**
+
+| | |
+|---|---|
+| Basis data dipindahkan | **19 / 19** (kendali + platform + 17 buku) |
+| Baris | 27.452 di `sai_production` saja |
+| FK diperiksa | semuanya, **nol baris yatim** |
+| Sequence digeser | 15 + 13 + 61 per buku |
+| **`pg:prove`** | **6.310 pembandingan · 19 identik · 0 beda** |
+
+`pg:prove` membandingkan empat hal yang kerusakannya **tidak mengubah jumlah
+baris**: jumlah baris per tabel, **jumlah setiap kolom uang sebagai teks**,
+benar/salah/null setiap boolean, dan rentang min–maks setiap kolom waktu.
+
+Contoh yang paling meyakinkan: `cash_movements` 18.689 baris —
+debit `81.360.154.872,21` dan kredit `1.548.932.904.858,88` **sama sampai sen**
+di kedua mesin; `supplier_transactions.is_opening` **0/4.893** di keduanya
+(kalau jebakan boolean menyala, PostgreSQL akan menjawab 4.893/0).
+
+### Fase C — PostgreSQL bayangan ✅ SELESAI
+
+```bash
+docker run -d --name sai-pg-bayangan --network sai-accounting_internal \
+  -e POSTGRES_USER=sai -e POSTGRES_PASSWORD=… --memory 512m postgres:17-alpine
+```
+
+PostgreSQL 17.11, 512 MB, di jaringan internal yang sama. Migrator dijalankan
+**di dalam** jaringan itu (host tidak bisa meresolusi `db`).
+
+### Fase D — port kode aplikasi 🔶 SEBAGIAN
+
+Permukaannya **29 titik** raw SQL (bukan 65 — lihat §9.4), dan hanya **tujuh**
+yang tidak portabel. Yang sudah: adapter `@prisma/adapter-pg@7.5.0` + `pg`
+terpasang sebagai dependensi produksi, dipatok sama persis dengan
+`@prisma/client`.
+
+**Yang TERSISA, dengan berkas:baris — daftar kerjanya, bukan perkiraan:**
+
+| # | Titik | Perubahan |
+|---|---|---|
+| 1 | `src/lib/control-db.ts`, `platform-db.ts`, `company-clients.ts` | pilih adapter dari skema URL (`mysql:` vs `postgres:`) |
+| 2 | `src/lib/rate-limit-persistent.ts:120` | `ON DUPLICATE KEY UPDATE` → `ON CONFLICT (key) DO UPDATE` |
+| 3 | `src/lib/company-provisioning.ts:199,232` | `information_schema.SCHEMATA` → `pg_database`; sintaksis `CREATE DATABASE` |
+| 4 | `src/lib/tenant-export.ts:90,99` | `table_schema` berarti **skema**, bukan basis data |
+| 5 | `scripts/subscription-scheduler.ts:569,589` | `SHOW DATABASES` → `pg_database` |
+| 6 | `scripts/execute-tenant-deletion.ts:136` | `DROP DATABASE` menuntut `pg_terminate_backend` lebih dulu |
+| 7 | `prisma/control/migrations/0010_…:48` + `scripts/prove-company-slug-immutable.ts:62` | trigger → `CREATE FUNCTION … RETURNS trigger` |
+| 8 | `scripts/backup.sh` | `mariadb-dump` → `pg_dump`/`pg_dumpall` |
+| 9 | `docker-compose.yml` | `postgres:17` + **PgBouncer** (lihat §9.5 — bukan opsional) |
+
+### Fase E — penukaran ❌ BELUM, dan menuntut keputusan
+
+```
+1. Umumkan jendela henti (menit, bukan jam — 78 MB, lihat §9.1)
+2. Hentikan app-customer & app-operator        (bukan db — ia masih dibaca)
+3. bun run pg:data  untuk 19 basis data
+4. bun run pg:prove untuk 19 basis data        ← GERBANG: harus 0 beda
+5. Tukar DATABASE_URL / CONTROL_ / PLATFORM_ ke postgres://
+6. Naikkan app-*; periksa /api/health
+7. MariaDB DIBIARKAN HIDUP minimal 7 hari      ← jalan mundur
+```
+
+Langkah 7 yang membuat ini bisa dibatalkan: selama MariaDB masih utuh dan tidak
+ditulisi, kembali berarti menukar `DATABASE_URL` balik — **detik, bukan
+pemulihan**.
+
+**Prasyarat yang BELUM terpenuhi:**
+
+| | |
+|---|---|
+| Cadangan **di luar mesin** | ❌ `BACKUP_S3_BUCKET` masih kosong (jaring lokal + alarm sudah ada sejak 12 Okt) |
+| Kunci enkripsi di luar server | ❌ `BACKUP_ENCRYPTION_KEY` masih hanya di `.env` |
+| Lingkungan non-produksi | ❌ belum ada |
+| Fase D | 🔶 sembilan butir tersisa |
+
+### 10.1 Yang berubah dari §0 sesudah ini dijalankan
+
+§0 menilai migrasinya "mahal dan berisiko". Sesudah A–C dijalankan, penilaian itu
+tidak lagi akurat dalam dua hal, dan **tetap akurat** dalam satu:
+
+- **Pemindahan datanya tidak berisiko lagi** — ia sudah dilakukan, 19/19,
+  6.310 pembandingan, nol beda. Dan ia **dapat diulang**: dua perintah.
+- **Paritas skema tidak perlu dipercaya** — ia dibangkitkan dan diuji.
+- **Tetap akurat:** PgBouncer, `autovacuum`, dan WAL archiving adalah kompetensi
+  operasional baru. **Dan §1 pertanyaan 1 masih belum terjawab.**
+
+Jadi putusan §0 tidak berubah sebagai *rekomendasi*. Yang berubah: kalau pemilik
+memutuskan pindah, pekerjaannya kini **diketahui, terbukti, dan dapat diulang** —
+bukan diperkirakan.

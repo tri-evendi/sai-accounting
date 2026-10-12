@@ -337,7 +337,7 @@ Diamati, bukan ditebak:
 | **Dua jalur penyemaian** | `prisma/seed.ts` (baris tanpa jurnal) vs `scripts/seed-demo.ts` (diposting lewat mesin sungguhan) | Rendah — pembedaannya **didokumentasikan** di `package.json` |
 | **Dua pembatas laju** | `rate-limit.ts` (memori) + `rate-limit-persistent.ts` (tabel kendali) | Rendah — yang persisten sengaja dipakai ulang `lib/alert.ts` alih-alih menulis peredam kedua |
 | **Tiga sumber pengaturan surel** | tenant → platform → env | Rendah — urutannya eksplisit dan diuji |
-| **Dua alur rilis di CI** | `publish-image.yml` (dipakai) + `build-standalone.yml` (bundel zip) | **Sedang** — alur standalone tampak warisan; ❓ masih dipakai atau tidak **belum dipastikan** |
+| ~~Dua alur rilis di CI~~ | ✅ **ditutup 12 Okt 2026** — `build-standalone.yml` dicabut. Tinggal `publish-image.yml` + `verify.yml` |
 | ~~Runbook rilis ganda~~ | ✅ **ditutup 12 Okt 2026** — `DOCKER.md` dihapus, 3 `HOSTING*.md` digabung jadi satu di `docs/warisan/`. Yang tersisa di akar: `PRODUCTION.md` (§Updates hidup, §2/§4/§5 ditandai warisan) |
 | **Dua definisi migration-apply** | `db:migrate` (satu DB) vs `db:migrate:all` (semua) | Rendah — `db:migrate` **sengaja** dipertahankan & bahayanya ditulis di `package.json` |
 

@@ -180,7 +180,10 @@ Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 
 - Tiga `HOSTING*.md` **digabung** jadi satu `docs/warisan/PENGGELARAN-STANDALONE.md`
   (12,4 KB → 3,0 KB). Penanda warisan saja ternyata tidak cukup: ketiganya tetap
-  tiga pintu masuk ke jalur yang sama.
+  tiga pintu masuk ke jalur yang sama. *(Dokumen gabungan itu sendiri ikut
+  dicabut beberapa jam kemudian bersama perkakasnya — lihat blok berikutnya.
+  Urutannya memang begitu: digabung dulu supaya terlihat utuh isinya apa, baru
+  diputuskan.)*
 - `DOCKER.md` **dihapus**. Alasannya bukan tumpang tindih saja — §Redeploying-nya
   mengajarkan `up --build -d` **di server**, jalur yang justru dilarang. Satu
   pengukurannya yang berharga (separuh health probe 503, memori bebas ~41 MB saat
@@ -194,12 +197,31 @@ Nol perubahan kode. Dampak langsung saat insiden berikutnya.
 - `docs/README.md`: tabel status diperbarui + bagian *"Apa yang dirapikan 12 Okt
   2026, dan kenapa"*.
 
-**Yang MASIH terbuka:** nasib **klaster perkakas standalone** —
-`scripts/package-standalone.sh`, `ecosystem.config*.cjs`, dan
-`build-standalone.yml` (yang menghasilkan artefak 43 MB tiap dorongan ke `main`).
-Perkakasnya **berjalan**, jadi mencabutnya adalah keputusan pemilik, bukan
-pembersihan dokumentasi. Dokumen warisannya menyebut klaster itu eksplisit
-supaya ketiganya bisa dicabut bersama dalam satu langkah.
+**Butir ini DITUTUP PENUH 12 Okt 2026** — klaster perkakas standalone dicabut
+atas keputusan pemilik, dan klasternya ternyata lebih besar dari yang tercatat:
+
+| Dicabut | |
+|---|---|
+| Skrip | `package-standalone.sh`, `setup-production.sh`, `start-production.sh`, `start-low-memory.sh`, `deploy-on-server.sh` |
+| PM2 | `ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs` |
+| CI | `.github/workflows/build-standalone.yml` — artefak **43 MB** tiap dorongan ke `main`, nol pemakai |
+| Dokumen | `docs/warisan/PENGGELARAN-STANDALONE.md` — alasannya hidup sudah ikut hilang |
+| `package.json` | `setup:prod`, `start:prod`, `start:low-mem`, `build:upload`, `package:standalone`, `deploy` |
+
+**Satu jebakan ketemu saat mencabutnya, dan ini temuan paling berharga dari
+pembersihan ini:** `bun run deploy` menunjuk ke `scripts/deploy-on-server.sh` —
+`bun install` + `next build` **di server** — bukan ke `scripts/deploy.sh`.
+Perintah dengan nama paling wajar di repo ini menjalankan jalur yang dilarang,
+dan tidak ada dokumen yang menyebutnya. Jalan pintasnya dicabut.
+
+`scripts/deploy.sh` **tinggal** sebagai pecah-kaca: ia juga membangun di server,
+tapi kepalanya sudah menyatakan dirinya terlarang, dan logika swap tanpa-mati di
+dalamnya satu-satunya tempat yang menjelaskan kenapa urutan pull → migrate →
+swap penting.
+
+Diperiksa sebelum dicabut: nol rujukan dari `Dockerfile`, `docker-compose.yml`,
+dan `publish-image.yml`; nol tes menyentuhnya; nol skrip `package.json` sisa yang
+menunjuk berkas yang hilang.
 
 **Gerbang keluar Fase 0:** `/api/health` → `backup.status: "ok"` ·
 `prove-backup-restore` lulus · kunci tersimpan di luar mesin · satu kegagalan
@@ -489,7 +511,7 @@ Dibawa ke setiap rencana di atas:
 | 2 | RTO yang dapat diterima? | Penilaian SPOF, Fase 4 |
 | 3 | Latihan pemulihan kuartalan — siapa, kapan? | Kredibilitas pemulihan |
 | 4 | Basis data uji di produksi: tandai, pindahkan, atau buang? | 2.2 |
-| 5 | `HOSTING*.md` & `build-standalone.yml` masih dipakai? | 0.4 |
+| ~~5~~ | ~~`HOSTING*.md` & `build-standalone.yml` masih dipakai?~~ ✅ terjawab 12 Okt: tidak — keduanya dicabut | 0.4 |
 | 6 | Siapa/apa yang **membaca** `/api/health`? | Lingkup Fase 1 |
 | 7 | Kapan `billing_mode` dibuka dari `none`? | Lihat [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md) |
 | 8 | Staging sepadan pada skala ini? | 2.1, Fase 4 |

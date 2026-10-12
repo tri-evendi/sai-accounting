@@ -54,7 +54,7 @@ alias/fungsi shell nvm — periksa dengan `env node -v`.
 cp .env.example .env
 # Edit DATABASE_URL and AUTH_SECRET
 
-**Server deploy:** see [PRODUCTION.md](./PRODUCTION.md) §Updates — Docker Compose + image dari GHCR. (Jalur standalone/PM2 pra-Docker: [`docs/warisan/`](./docs/warisan/PENGGELARAN-STANDALONE.md).)
+**Server deploy:** see [PRODUCTION.md](./PRODUCTION.md) §Updates — Docker Compose + image dari GHCR. Itu **satu-satunya** jalur: perkakas standalone/PM2 pra-Docker dicabut 12 Okt 2026, dan tidak ada langkah build di server lagi.
 
 bun run setup          # install, migrate, seed demo data, build
 bun run dev            # http://localhost:3000

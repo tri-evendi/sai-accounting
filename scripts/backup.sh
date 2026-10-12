@@ -84,7 +84,23 @@ die() {
 
 # ── Konfigurasi ────────────────────────────────────────────────────────────
 : "${DB_HOST:=db}"
-: "${DB_PORT:=3306}"
+
+# ── Mesin basis data: DITURUNKAN dari URL, bukan sakelar terpisah ──────────
+#
+# Sakelar sendiri (`DB_ENGINE=postgres`) bisa menyimpang dari URL-nya — satu
+# disetel, satunya lupa — dan cadangan yang memakai perkakas mesin yang SALAH
+# gagal dengan pesan yang tidak menyebut sebabnya. URL-nya sudah menyatakan
+# mesinnya; satu sumber kebenaran.
+case "${DATABASE_URL:-}" in
+  postgres://*|postgresql://*) MESIN=postgres ;;
+  *) MESIN=mariadb ;;
+esac
+
+if [ "$MESIN" = "postgres" ]; then
+  : "${DB_PORT:=5432}"
+else
+  : "${DB_PORT:=3306}"
+fi
 : "${BACKUP_RETENTION_DAYS:=30}"
 : "${BACKUP_PREFIX:=sai}"
 : "${BACKUP_DATA_DIR:=/app/data}"
@@ -151,13 +167,28 @@ trap cleanup EXIT INT TERM
 # produksi tetap melayani permintaan selama dump berjalan.
 # `--routines --events --triggers` supaya yang dipulihkan benar-benar sama.
 DUMP="${BACKUP_WORK_DIR}/semua-basis-data.sql"
-log "dump seluruh basis data → $(basename "$DUMP")"
+log "dump seluruh basis data (${MESIN}) → $(basename "$DUMP")"
 if [ "$DRY_RUN" = "0" ]; then
-  mariadb-dump --defaults-extra-file="$OPTFILE" \
-    --all-databases --single-transaction --quick \
-    --routines --events --triggers \
-    --default-character-set=utf8mb4 > "$DUMP" \
-    || die "mariadb-dump gagal — cadangan TIDAK dikirim."
+  if [ "$MESIN" = "postgres" ]; then
+    # `pg_dumpall` dan BUKAN `pg_dump`: yang dibutuhkan SELURUH basis data —
+    # kendali, platform, dan setiap buku PT — persis alasan `--all-databases`
+    # dipakai di jalur MariaDB. `pg_dump` hanya satu basis data, dan daftar
+    # yang diketik tangan pasti tertinggal saat pelanggan baru mendaftar.
+    #
+    # `--clean --if-exists` supaya hasilnya bisa dipulihkan ke server yang sudah
+    # berisi, bukan hanya ke server kosong — pada hari pemulihan, menuntut
+    # server kosong adalah syarat yang mahal.
+    PGPASSWORD="$DB_ROOT_PASSWORD" pg_dumpall \
+      --host="$DB_HOST" --port="$DB_PORT" --username=postgres \
+      --clean --if-exists > "$DUMP" \
+      || die "pg_dumpall gagal — cadangan TIDAK dikirim."
+  else
+    mariadb-dump --defaults-extra-file="$OPTFILE" \
+      --all-databases --single-transaction --quick \
+      --routines --events --triggers \
+      --default-character-set=utf8mb4 > "$DUMP" \
+      || die "mariadb-dump gagal — cadangan TIDAK dikirim."
+  fi
 else
   log "  (dry-run) dilewati"
   : > "$DUMP"

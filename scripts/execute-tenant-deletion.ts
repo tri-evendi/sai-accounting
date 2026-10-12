@@ -37,6 +37,8 @@
 import "dotenv/config";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { bukaServer } from "../src/lib/db-server";
+import { releaseCompanyClient } from "../src/lib/company-clients";
 
 import { removeCompanyDocuments } from "../src/lib/document-storage";
 import { ledgerDropVerdict } from "../src/lib/tenant-deletion";
@@ -133,7 +135,29 @@ async function main() {
         process.exit(1);
       }
       console.log(`  menghancurkan buku ${company.slug} (${company.databaseName})…`);
-      await control.$executeRawUnsafe(`DROP DATABASE IF EXISTS \`${company.databaseName}\``);
+      /*
+       * ══ `DROP DATABASE` TIDAK SAMA DI KEDUA MESIN ════════════════════════
+       * PostgreSQL MENOLAK menghapus basis data selama masih ada satu koneksi
+       * ke sana; MySQL tidak peduli. Di jalur ini penolakan itu berbahaya: ia
+       * terjadi SETELAH gerbang persetujuan dilewati dan setelah beberapa buku
+       * lain sudah dihancurkan — jadi kegagalan di tengah meninggalkan tenant
+       * separuh terhapus, keadaan yang paling sulit dibaca orang berikutnya.
+       *
+       * `db-server.ts#hapus` memutus koneksi lain lebih dulu di PostgreSQL dan
+       * tidak menambah apa pun di MariaDB, jadi pemanggil di sini berhenti
+       * peduli mesinnya apa.
+       */
+      /* Klien dilepaskan DULU: PostgreSQL menolak `DROP DATABASE` selama ada
+         koneksi, dan koneksi yang diputus dari sisi server menjatuhkan proses
+         ini lewat event `error` yang tak terdengar. Lihat
+         `company-clients.ts#releaseCompanyClient`. */
+      await releaseCompanyClient(company.databaseName);
+      const server = await bukaServer(controlUrl);
+      try {
+        await server.hapus(company.databaseName);
+      } finally {
+        await server.tutup();
+      }
       /*
        * Berkas dokumennya ikut, DI GERBANG INI dan bukan di gerbang pertama
        * (issue #367). Dokumen unggahan — kontrak, B/L, faktur pindaian — adalah

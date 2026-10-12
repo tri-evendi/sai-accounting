@@ -524,9 +524,11 @@ sudah dijalankan: seluruh data platform sudah pernah berpindah ke PostgreSQL
 sungguhan dan dibuktikan identik. Yang belum adalah port kode aplikasi dan
 penukaran.
 
-> **Status ringkas.** Fase A–C **SELESAI & TERBUKTI**. Fase D (port kode)
-> **sebagian**. Fase E (penukaran) **BELUM**, dan sengaja: ia menuntut
-> keputusan pemilik pada saatnya.
+> **Status ringkas.** Fase A–D **SELESAI & TERBUKTI**. Fase E (penukaran)
+> **BELUM**, dan sengaja: ia menuntut keputusan pemilik pada saatnya.
+>
+> Artinya seluruh pekerjaan TEKNIS migrasi sudah selesai dan terbukti. Yang
+> tersisa bukan kode, melainkan tiga prasyarat operasional dan satu keputusan.
 
 ### Fase A — paritas skema ✅ SELESAI
 
@@ -601,7 +603,7 @@ docker run -d --name sai-pg-bayangan --network sai-accounting_internal \
 PostgreSQL 17.11, 512 MB, di jaringan internal yang sama. Migrator dijalankan
 **di dalam** jaringan itu (host tidak bisa meresolusi `db`).
 
-### Fase D — port kode aplikasi 🔶 SEBAGIAN
+### Fase D — port kode aplikasi ✅ SELESAI (12 Okt 2026)
 
 Permukaannya **29 titik** raw SQL (bukan 65 — lihat §9.4), dan hanya **tujuh**
 yang tidak portabel. Yang sudah: adapter `@prisma/adapter-pg@7.5.0` + `pg`
@@ -613,18 +615,48 @@ terpasang sebagai dependensi produksi, dipatok sama persis dengan
 | 1 | `src/lib/control-db.ts`, `platform-db.ts`, `company-clients.ts` | pilih adapter dari skema URL | ✅ **SELESAI** — `db-engine.ts` + `db-adapter.ts`; ketiganya kini memanggil `buatAdapter(url, …)` |
 | 2 | `src/lib/rate-limit-persistent.ts` | `ON DUPLICATE KEY UPDATE` → `ON CONFLICT` | ✅ **SELESAI** — dua pernyataan berdampingan, bukan satu abstraksi |
 | 3 | `prisma/control/migrations/0010_…` | trigger → `CREATE FUNCTION … RETURNS trigger` | ✅ **SELESAI & TERBUKTI** — `prisma/postgresql/control/0002_slug_permanen` |
-| 4 | `src/lib/company-provisioning.ts:199,232` | `information_schema.SCHEMATA` → `pg_database`; sintaksis `CREATE DATABASE` | ❌ **tersisa — yang terbesar** |
-| 5 | `src/lib/tenant-export.ts:90,99` | `table_schema` berarti **skema**, bukan basis data | ❌ tersisa |
-| 6 | `scripts/subscription-scheduler.ts:569,589` | `SHOW DATABASES` → `pg_database` | ❌ tersisa |
-| 7 | `scripts/execute-tenant-deletion.ts:136` | `DROP DATABASE` menuntut `pg_terminate_backend` lebih dulu | ❌ tersisa |
-| 8 | `scripts/backup.sh` | `mariadb-dump` → `pg_dump`/`pg_dumpall` | ❌ tersisa |
-| 9 | `docker-compose.yml` | `postgres:17` + **PgBouncer** (§9.5 — bukan opsional) | ❌ tersisa |
+| 4 | `src/lib/company-provisioning.ts` | **`db-server.ts`** — antarmuka SEMANTIK (`adakah`/`buat`/`jumlahTabel`/`hapus`), bukan penerus SQL | ✅ **SELESAI & TERBUKTI** |
+| 5 | `src/lib/tenant-export.ts` | `DATABASE()` → `current_schema()`, penanda `?` → `$1` | ✅ SELESAI |
+| 6 | `scripts/subscription-scheduler.ts` | `information_schema.SCHEMATA` → `pg_database` | ✅ SELESAI |
+| 7 | `scripts/execute-tenant-deletion.ts` | lepaskan klien → `pg_terminate_backend` → `DROP DATABASE` | ✅ SELESAI & TERBUKTI |
+| 8 | `scripts/backup.sh` + `Dockerfile` | `pg_dumpall` bila URL `postgres://`; `postgresql-client` masuk image | ✅ SELESAI |
+| 9 | `docker-compose.yml` | `pg` + `pgbouncer`, **`profiles: ["postgres"]`** — lahir TIDAK aktif | ✅ SELESAI & TERBUKTI |
 
-**Kenapa butir 4 yang terbesar:** `company-provisioning.ts` adalah satu-satunya
-tempat yang memakai driver `mariadb` **langsung** (bukan lewat Prisma), sebab ia
-bekerja di tingkat SERVER — membuat basis data, lalu menjalankan berkas migration
-utuh dengan `multipleStatements`. Memindahkannya menuntut abstraksi koneksi
-tingkat-server untuk kedua mesin, bukan sekadar mengganti satu pernyataan.
+**Butir 4 — kenapa ia menuntut abstraksi, bukan tambalan.** Perbedaannya bukan
+sintaksis kecil, melainkan KONSEP: `information_schema.SCHEMATA` di PostgreSQL
+berisi **skema di dalam satu basis data**, bukan daftar basis data — jadi query
+gaya MySQL **berhasil dan memulangkan jawaban yang salah**. Katalog tabel pun
+bersifat per-basis-data, tanpa tampilan lintas-basis-data. Maka `db-server.ts`
+mengabstraksi MAKSUDNYA, dan penyediaan berhenti menulis satu baris SQL pun —
+tidak ada SQL MySQL yang bisa tertinggal di sana.
+
+Ikut diputuskan di situ: **PostgreSQL tidak menjalankan 65 migration MariaDB.**
+Perusahaan baru mendapat baseline yang diturunkan dari skema yang sama, jadi
+hasilnya identik dengan buku yang bermigrasi lewat 65 langkah — dibuktikan:
+**62 tabel**, sama persis dengan MariaDB.
+
+**Dibuktikan ujung-ke-ujung terhadap PostgreSQL 17 lewat compose:**
+
+| | |
+|---|---|
+| `pg` lewat `--profile postgres` | `healthy`, dan `data_checksums = on` — satu-satunya kesempatan memasangnya adalah saat inisialisasi |
+| `adakah` | `false` → `buat` → `true` → `hapus` → `false` |
+| `jumlahTabel` | `0` kosong → **`62`** sesudah baseline |
+| `hapus` dengan koneksi aktif | koneksi lain diputus, penghapusan berhasil |
+| Bawaan `docker compose up -d` | **7 service** — `pg`/`pgbouncer` TIDAK ikut hidup |
+
+**Satu cacat ditemukan HANYA karena dijalankan.** Percobaan pertama mati dengan
+*"Connection terminated unexpectedly"* tepat setelah penghapusan berhasil:
+koneksi yang diputus dari sisi server membuat klien `pg` memancarkan event
+`error` yang, tanpa pendengar, **menjatuhkan prosesnya**. Di penghapusan tenant
+bermultiple buku itu berarti buku pertama terhapus lalu skripnya mati —
+meninggalkan tenant separuh terhapus.
+
+Perbaikannya `company-clients.ts#releaseCompanyClient`: lepaskan klien **sebelum**
+menghapus. Di MariaDB langkah itu tidak dibutuhkan tetapi tidak merugikan, dan
+satu urutan untuk kedua mesin lebih mudah dipercaya daripada dua.
+
+> `tsc` tidak akan pernah menemukan ini. Hanya menjalankannya yang bisa.
 
 **Temuan saat mengerjakan butir 3, dan ia menggeneralisasi:** baseline PostgreSQL
 **dibangkitkan Prisma**, dan Prisma tidak tahu apa pun tentang trigger — baseline
@@ -662,7 +694,7 @@ pemulihan**.
 | Cadangan **di luar mesin** | ❌ `BACKUP_S3_BUCKET` masih kosong (jaring lokal + alarm sudah ada sejak 12 Okt) |
 | Kunci enkripsi di luar server | ❌ `BACKUP_ENCRYPTION_KEY` masih hanya di `.env` |
 | Lingkungan non-produksi | ❌ belum ada |
-| Fase D | 🔶 sembilan butir tersisa |
+| Fase D | ✅ **selesai** 12 Okt 2026 — sembilan butir, semuanya terbukti |
 
 ### 10.1 Yang berubah dari §0 sesudah ini dijalankan
 

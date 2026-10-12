@@ -198,9 +198,24 @@ function main(): void {
       ...companies.map((c) => c.databaseName),
     ];
 
-    const missing = expectedDbs.filter(
-      (db) => !sql.includes(`CREATE DATABASE /*!32312 IF NOT EXISTS*/ \`${db}\``) && !sql.includes(`USE \`${db}\``)
-    );
+    /*
+     * == DUA MESIN MENULIS DUMP DENGAN BENTUK YANG BERBEDA ==================
+     * `mariadb-dump --all-databases` menandai tiap basis data dengan
+     * `CREATE DATABASE ... `nama`` lalu `USE `nama``. `pg_dumpall` memakai
+     * `CREATE DATABASE "nama"` lalu `\connect nama`.
+     *
+     * Pemeriksaan ini SENGAJA menerima keduanya alih-alih bercabang pada mesin
+     * yang sedang dipakai: yang diperiksa adalah ARTEFAKNYA. Pembukti yang hanya
+     * mengerti dump mesin sekarang akan menolak cadangan terakhir dari mesin
+     * sebelumnya — justru pada hari ia paling dibutuhkan.
+     */
+    const adaDiDump = (db: string): boolean =>
+      sql.includes("CREATE DATABASE /*!32312 IF NOT EXISTS*/ `" + db + "`") ||
+      sql.includes("USE `" + db + "`") ||
+      sql.includes('CREATE DATABASE "' + db + '"') ||
+      new RegExp("^\\\\connect " + db + "\\s*$", "m").test(sql);
+
+    const missing = expectedDbs.filter((db) => !adaDiDump(db));
 
     if (missing.length > 0) {
       fail(

@@ -411,6 +411,51 @@ bisa salah di sini adalah kabelnya, dan kabel terbaca dari sumber.
 
 ---
 
+### ✅ Sebagian P0-1 & P1-1 — jaring cadangan + alarmnya — **12 Okt 2026**
+
+Kredensial S3 masih belum ada, jadi **P0-1 belum tertutup**. Yang berubah: dua
+hal yang tidak menunggu kredensial siapa pun.
+
+**1. Cadangan berhenti menolak berjalan.** `backup.sh` dulu `die` tanpa
+`BACKUP_S3_BUCKET` — niatnya benar, akibatnya **54 putaran dengan nol artefak**.
+Penolakan itu melindungi dari SATU bentuk kegagalan (kehilangan mesin) dengan
+membiarkan kita tanpa pertahanan terhadap semua bentuk lain: `DROP TABLE` keliru,
+migrasi yang merusak, kerusakan logis. Sekarang tanpa bucket ia tetap dump →
+sandikan → simpan ke volume `cadangan`, dan merekam putarannya **`local`, bukan
+`ok`** — jadi `/api/health` memulangkan `local_only` dan klaimnya tetap benar.
+
+**2. Kegagalan berhenti diam.** `watch:backup` berjalan tiap jam dari
+`job-scheduler` — bukan dari `job-backup`, dan itu intinya: bentuk kegagalan
+termahal adalah **tidak ada putaran sama sekali** (container mati, loop
+menggantung, image basi), dan penjaga di dalam layanan cadangan ikut mati
+bersamanya. `backup_runs` memang pernah 0 baris berbulan-bulan karena sebab
+terakhir itu.
+
+**Dibuktikan di produksi, bukan diklaim:**
+
+| Bukti | Hasil |
+|---|---|
+| Artefak | `sai-20261012T104507Z.tar.gz.enc` — **1,7 MB**, izin `600`, + `.sha256` |
+| Baris `backup_runs` | `status=local`, artefak & ukuran terisi — **baris pertama yang bukan `error`** |
+| `prove-backup-restore` | sidik jari cocok · dekripsi berhasil · 30 entri · **19 basis data di dalam dump (17 buku PT)** |
+| `watch:backup --dry-run` | membaca keadaan nyata, memilih penerima nyata, menyusun sebab nyata |
+
+Baris ketiga itu yang paling berarti: sejauh catatan repo ini, **ini kali pertama
+satu cadangan di sini dibuktikan bisa dipulihkan.** Sebelumnya
+`prove-backup-restore` ada tapi belum pernah dijalankan — dan ia hanya bisa S3,
+jadi ia tidak akan pernah bisa menguji satu-satunya artefak yang ada. Itu ikut
+diperbaiki.
+
+**Yang MASIH terbuka, dan tidak boleh dibaca sebagai tertutup:**
+
+- `BACKUP_S3_BUCKET` + kredensialnya. Sampai diisi, satu kebakaran / cakram mati
+  / akun hilang menghapus data **dan** salinannya sekaligus. Alarm harian akan
+  terus berbunyi — itu disengaja.
+- `BACKUP_ENCRYPTION_KEY` masih hanya hidup di `.env` server ini. Cadangan yang
+  tersandi dengan kunci yang hanya ada di mesin yang hilang tidak bisa
+  dipulihkan. Simpan di pengelola kata sandi di luar server.
+- P1-1 untuk **penjadwal** dan **kesesuaian** belum berkabel — baru cadangan.
+
 ### ✅ P1-3 — Dokumentasi penggelaran saling bertentangan — **DITUTUP 11 Okt 2026**
 
 **Bukti.** Lima berkas menjelaskan cara menggelar, dan mereka tidak sepakat.

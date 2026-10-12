@@ -122,14 +122,38 @@ database (`--all-databases`, so a newly registered company is never missed) plus
 `data/documents` and `data/audit` → encrypt → upload to S3-compatible object
 storage → prune past the retention window.
 
-It **refuses to start** without `BACKUP_ENCRYPTION_KEY` and `BACKUP_S3_BUCKET`.
-That is deliberate: an unencrypted backup, or one that never leaves this
-machine, only looks like a backup. See `.env.docker.example` for every variable.
+It still **refuses to start** without `BACKUP_ENCRYPTION_KEY` — an unencrypted
+archive of every customer's ledger is a leak we would be scheduling ourselves.
+
+**Without `BACKUP_S3_BUCKET` it no longer refuses** (changed 12 Oct 2026). It
+dumps, encrypts, and writes the artifact to the `cadangan` volume
+(`/app/data/cadangan`) instead, and records the run as **`local`, not `ok`** —
+so `/api/health` answers `backup.status: "local_only"` and `watch:backup` emails
+every day until a bucket is set.
+
+> **Why that guard was removed, in one measurement.** The refusal protected
+> against exactly one failure — losing the machine — by leaving us defenceless
+> against every other one. Production ran **54 rounds with zero artifacts**
+> while the only net was a hand-run dump that happened to be taken at release
+> time. A daily encrypted local copy restores a mistaken `DROP TABLE`, a bad
+> migration, logical corruption, a deleted file: the failures that actually
+> happen. It does nothing for fire, dead disk, or a lost account — which is why
+> the status is not `ok` and the alert does not stop.
 
 ```bash
 docker compose run --rm job-backup sh scripts/backup.sh --dry-run   # print, write nothing
 docker compose run --rm job-backup bun run prove-backup-restore     # prove the newest one opens
+docker compose run --rm job-scheduler bun run watch:backup --dry-run  # what the alert would say
+docker compose run --rm job-backup ls -lh /app/data/cadangan        # local artifacts, if any
 ```
+
+**Who notices when it breaks.** `job-scheduler` runs `watch:backup` hourly; it
+reads the state (not the event) and emails `PLATFORM_ALERT_EMAIL`, falling back
+to `PLATFORM_CONTACT_EMAIL`, with one mail per status per 24 h. It lives in the
+*scheduler*, not in the backup service, on purpose: the costliest failure shape
+is **no runs at all** — a dead container, a hung loop, a stale image whose
+recorder itself errors — and a watchdog inside the backup service dies with it.
+`backup_runs` really was empty for months for that last reason.
 
 > ⚠ **Losing `BACKUP_ENCRYPTION_KEY` means losing every backup, permanently.**
 > Store it somewhere that is not this server. Rotating it does not re-encrypt

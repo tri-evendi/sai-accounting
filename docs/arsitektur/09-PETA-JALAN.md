@@ -98,8 +98,25 @@ yang terasa ada padahal tidak bisa dibuka.
 > galat), dan penjaga yang hidup di dalam layanan cadangan ikut mati bersamanya.
 > `backup_runs` memang pernah 0 baris berbulan-bulan karena sebab terakhir itu.
 >
-> **Sisa butir ini:** denyut **penjadwal** dan temuan **kesesuaian** belum
-> berkabel. Polanya sudah ada — tinggal diikuti.
+> **✅ DITUTUP PENUH 12 Okt 2026.** Ketiga denyut kini berkabel dalam SATU
+> langkah penjadwal: `watch:backup` menjadi **`watch:health`**, yang memeriksa
+> cadangan, penjadwal, dan kesesuaian sekaligus. Jumlah langkah tidak bertambah,
+> jadi `BATAS` tidak perlu turun lagi.
+>
+> **Peredamnya PER KOMPONEN**, dan itu bukan detail: kalau kuncinya satu untuk
+> semua, cadangan yang gagal sebulan akan **menyembunyikan** penjadwal yang baru
+> macet hari ini — alarm yang meredam alarm lain adalah bentuk kegagalan yang
+> paling sulit disadari.
+>
+> Dibuktikan terhadap keadaan produksi (`--dry-run`):
+> `cadangan=backup:local_only · penjadwal=ok · kesesuaian=conformance:findings` —
+> dua berbunyi, dan **penjadwal diam karena ia memang sehat**.
+>
+> Satu keputusan yang mudah salah dan sengaja diambil begini: **`findings`
+> BERBUNYI** meski 1.439 temuan bisa bertahan berbulan-bulan. Temuan yang tidak
+> pernah diketuk ke pintu siapa pun sama saja dengan tidak diperiksa — dan itulah
+> bagaimana angka itu bisa berumur tanpa ada yang tahu. Peredam 24 jam yang
+> membuatnya tertahankan, bukan mendiamkannya.
 
 
 Empat pemanggilan `alert()`. Modulnya sudah ada, benar, dan berperedam:

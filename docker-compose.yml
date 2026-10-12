@@ -217,7 +217,11 @@ services:
       #
       #   5 langkah × 600s = 50 menit   (sebelum `prune:trails`)
       #   6 langkah × 600s = 60 menit   (tepat di batas — nol ruang sisa)
-      #   7 langkah × 480s = 56 menit   ← sekarang, setelah `watch:backup` ikut
+      #   7 langkah × 480s = 56 menit   ← sekarang, setelah `watch:health` ikut
+      #
+      # `watch:backup` menjadi `watch:health` 12 Okt 2026 — ia kini memeriksa
+      # TIGA denyut (cadangan, penjadwal, kesesuaian) dalam satu langkah. Jumlah
+      # langkah TIDAK bertambah, jadi BATAS tidak perlu turun lagi.
       #
       # `prune:trails` TETAP paling akhir, dan `watch:backup` disisipkan SEBELUM
       # ia — bukan sesudahnya. Alasannya bukan selera: `prune:trails` satu-satunya
@@ -254,7 +258,7 @@ services:
           langkah notify:invoice-due bun run notify:invoice-due
           langkah remind:customers bun run remind:customers
           langkah recurring:run bun run recurring:run
-          langkah watch:backup bun run watch:backup
+          langkah watch:health bun run watch:health
           langkah prune:trails bun run prune:trails
           sleep 3600
         done

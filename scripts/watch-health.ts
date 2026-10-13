@@ -129,9 +129,12 @@ async function main() {
     });
 
     /* ── 2. Penjadwal ─────────────────────────────────────────────────────── */
+    /* `status` dan `errorCount` ikut dibaca: denyut menjawab "apakah penjadwal
+       hidup", baris putarannya menjawab "apakah pekerjaannya berhasil". Dua
+       pertanyaan, dan versi pertama penjaga ini hanya menanyakan yang pertama. */
     const putaran = await platform.schedulerRun.findFirst({
       orderBy: { id: "desc" },
-      select: { finishedAt: true },
+      select: { finishedAt: true, status: true, errorCount: true },
     });
     const penjadwal = schedulerHealth(putaran?.finishedAt ?? null);
     komponen.push({
@@ -141,6 +144,8 @@ async function main() {
         lastRunAt: penjadwal.lastRunAt,
         ageMinutes: penjadwal.ageMinutes,
         staleAfterMinutes: penjadwal.staleAfterMinutes,
+        statusPutaran: putaran?.status === "error" ? "error" : putaran ? "ok" : null,
+        jumlahGalat: putaran?.errorCount ?? null,
       }),
     });
 

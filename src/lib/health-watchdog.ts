@@ -49,6 +49,27 @@ export interface SchedulerWatchdogInput {
   lastRunAt: string | null;
   ageMinutes: number | null;
   staleAfterMinutes: number;
+  /**
+   * Status yang DIREKAM putaran terakhir di `scheduler_runs` — bukan hasil
+   * denyut. `null` bila tidak ada putaran.
+   *
+   * ══ KENAPA INI TERPISAH DARI `status` DI ATAS ═══════════════════════════
+   * `schedulerHealth()` menjawab satu pertanyaan: **apakah penjadwalnya hidup**
+   * (ada putaran yang selesai dalam ambang). Itu kontrak `/api/health`, dan ia
+   * benar untuk pertanyaan itu.
+   *
+   * Tapi ada pertanyaan KEDUA yang jawabannya berbeda: **apakah pekerjaannya
+   * berhasil**. Sebuah putaran bisa selesai tepat waktu sambil merekam
+   * `status = "error"` — dan denyutnya akan tetap berkata `ok`, sebab dari
+   * sudut pandangnya penjadwalnya memang hidup.
+   *
+   * Diukur di produksi: 5 putaran berstatus `error` (Agu 2026) yang semuanya
+   * dilaporkan `ok` oleh denyut. Dan penjaga yang saya kirim pagi ini hanya
+   * membaca `finishedAt` — jadi ia mewarisi titik buta yang sama.
+   */
+  statusPutaran?: "ok" | "error" | null;
+  /** `error_count` putaran terakhir. */
+  jumlahGalat?: number | null;
 }
 
 /**
@@ -60,6 +81,38 @@ export interface SchedulerWatchdogInput {
  * bukan hanya log: langkah yang menggantung tidak meninggalkan baris log.
  */
 export function decideSchedulerAlert(input: SchedulerWatchdogInput): WatchdogDecision {
+  /*
+   * Penjadwal HIDUP tapi pekerjaannya GAGAL — diperiksa SEBELUM `ok` dipulangkan
+   * diam, sebab inilah keadaan yang paling mudah lolos: semua tampak normal dari
+   * luar, dan satu-satunya yang berbeda ada di dalam barisnya sendiri.
+   */
+  if (input.status === "ok" && input.statusPutaran === "error") {
+    const n = input.jumlahGalat ?? 0;
+    return {
+      alert: true,
+      subject: "[SAI] penjadwal: putaran selesai dengan galat",
+      body: badan(
+        "PENJADWAL BERJALAN TEPAT WAKTU, TETAPI PUTARAN TERAKHIR MEREKAM GALAT.\n\n" +
+          "Denyutnya berkata `ok` — dan itu BENAR untuk pertanyaan yang ia jawab:\n" +
+          "penjadwalnya hidup. Yang gagal adalah PEKERJAANNYA, dan itu pertanyaan\n" +
+          "yang berbeda.\n\n" +
+          "Jadi tidak ada yang akan terlihat salah dari luar: container `Up`,\n" +
+          "putaran tepat waktu, `/api/health` menjawab `scheduler: ok`.\n\n" +
+          "Rinciannya ada di kolom `details` baris terakhir `scheduler_runs`, dan\n" +
+          "di log:  docker compose logs --tail=120 job-scheduler",
+        [
+          ["status denyut", input.status],
+          ["status putaran", "error"],
+          ["jumlah galat", String(n)],
+          ["putaran terakhir", input.lastRunAt ?? "(belum pernah)"],
+        ]
+      ),
+      /* Sidik jari TERPISAH dari `scheduler:late`: keduanya menuntut tindakan
+         yang berbeda, dan satu tidak boleh meredam yang lain. */
+      fingerprint: "scheduler:errors",
+    };
+  }
+
   if (input.status === "ok") return DIAM;
 
   const pesan =

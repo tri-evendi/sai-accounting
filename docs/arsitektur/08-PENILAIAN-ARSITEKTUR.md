@@ -297,7 +297,34 @@ utama di atas hasil gabungan, sesuai `AGENTS.md`.
 
 ---
 
-### 🟠 P1-1 — Kegagalan latar tidak berbunyi ke siapa pun
+### ✅ P1-1 — Kegagalan latar tidak berbunyi ke siapa pun — **DITUTUP 12–13 Okt 2026**
+
+> **Ketiga denyut kini berbunyi** lewat `watch:health`, satu langkah
+> `job-scheduler` dengan peredam **per komponen**. Terbukti di produksi:
+> `cadangan=backup:local_only · penjadwal=ok · kesesuaian=conformance:findings`
+> — dua berbunyi, satu diam karena memang sehat.
+>
+> **Dan satu titik buta di versi pertamanya ikut ditutup, 13 Okt.** Penjaga
+> penjadwal mula-mula hanya membaca `finishedAt`, jadi putaran yang selesai
+> tepat waktu sambil merekam `status = "error"` dilaporkan **`ok`**. Itu bukan
+> kemungkinan teoretis: produksi punya **5 putaran berstatus `error`** (Agu
+> 2026) yang semuanya `ok` menurut denyut.
+>
+> Dibuktikan terhadap baris sungguhan — putaran `2026-08-16 07:55:03`,
+> `status=error`, `galat=1`: versi pertama **berbunyi=false**, versi sekarang
+> **berbunyi=true** dengan sidik jari terpisah `scheduler:errors`.
+>
+> Pembedaannya penting: `schedulerHealth()` menjawab *"apakah penjadwalnya
+> hidup"* — dan untuk pertanyaan itu `ok` memang BENAR. *"Apakah pekerjaannya
+> berhasil"* adalah pertanyaan kedua, dan ia dijawab di penjaga, bukan dengan
+> mengubah kontrak `/api/health`.
+>
+> **Residunya, dinyatakan bukan didiamkan:** hanya langkah
+> `scheduler:subscriptions` yang menulis ke `scheduler_runs`. Enam langkah lain
+> (`notify:setup`, `notify:invoice-due`, `remind:customers`, `recurring:run`,
+> `watch:health`, `prune:trails`) tidak meninggalkan jejak apa pun — satu di
+> antaranya bisa gagal setiap jam dan hanya terlihat di log container. Lihat
+> P2-2.
 
 **Bukti.** `lib/alert.ts` dipanggil dari **tepat dua berkas**:
 `api/auth/register/route.ts` dan `api/auth/verify-email/route.ts`.
@@ -633,6 +660,29 @@ langkah menggantung dua jam menahan **seluruh** putaran berikutnya selamanya.
 **Perbaikan.** **Jangan tambah antrean sekarang.** Pemicunya: (a) jumlah tenant
 naik sampai satu putaran tidak muat dalam satu jam, atau (b) satu produser mulai
 butuh *retry* lebih cepat dari sejam. Keduanya belum terjadi.
+
+> **Yang SUDAH diperbaiki dari butir ini, 13 Okt 2026.** Kalimat *"pekerjaan yang
+> selalu gagal akan gagal selamanya — terlihat di log, tetapi tanpa kabar
+> keluar"* kini **separuh tidak benar lagi**: putaran yang merekam
+> `status = "error"` berbunyi lewat `watch:health` (sidik jari
+> `scheduler:errors`). Lihat P1-1.
+>
+> **Separuh yang MASIH benar, dan ini residunya:** hanya
+> `scheduler:subscriptions` yang menulis baris `scheduler_runs`. Enam langkah
+> lain tidak meninggalkan jejak apa pun, jadi salah satunya bisa gagal **setiap
+> jam** sementara putarannya tetap tercatat `ok`.
+>
+> **Kenapa itu tidak ditutup sekarang.** Menutupnya berarti setiap langkah
+> menulis hasilnya sendiri — tabel baru atau kolom baru, migration, dan
+> pembungkus `langkah` di compose yang harus mengumpulkan nama langkah yang
+> gagal lalu memanggil perekam. Itu pekerjaan yang masuk akal, tetapi ia
+> **mendekati antrean** yang justru diputuskan belum perlu — dan separuh antrean
+> lebih sulit dipercaya daripada tidak ada antrean.
+>
+> Jaring yang ada sementara ini: pembungkus `langkah` MENCETAK nama langkah yang
+> gagal (`✗ '<nama>' gagal (kode N)`), jadi jejaknya ada di log — dan `|| true`
+> memastikan satu langkah gagal tidak menjatuhkan enam lainnya. Yang hilang
+> hanya kabar ke luar untuk enam langkah itu.
 
 ---
 

@@ -77,6 +77,60 @@ describe("penjaga penjadwal", () => {
   });
 });
 
+describe("penjadwal HIDUP tapi pekerjaannya GAGAL — titik buta versi pertama", () => {
+  /*
+   * Keadaan yang paling mudah lolos, dan ia ADA di produksi: 5 putaran berstatus
+   * `error` (Agu 2026) yang semuanya dilaporkan `ok` oleh denyut. Sebab denyut
+   * menjawab "apakah penjadwalnya hidup" — dan jawabannya memang `ok`.
+   *
+   * Versi pertama penjaga ini hanya membaca `finishedAt`, jadi ia mewarisi titik
+   * buta yang sama persis. Tes ini yang menahannya kembali.
+   */
+  it("denyut `ok` + putaran `error` → BERBUNYI", () => {
+    const putusan = decideSchedulerAlert(
+      sched({ status: "ok", statusPutaran: "error", jumlahGalat: 3 })
+    );
+    expect(putusan.alert).toBe(true);
+    expect(putusan.body).toContain("3");
+    expect(putusan.body, "harus menjelaskan kenapa denyutnya tetap ok").toMatch(
+      /BENAR untuk pertanyaan yang ia jawab/
+    );
+  });
+
+  it("sidik jarinya TERPISAH dari `scheduler:late`", () => {
+    /* Keduanya menuntut tindakan berbeda — macet vs pekerjaan gagal — dan satu
+       tidak boleh meredam yang lain lewat kunci peredam yang sama. */
+    const galat = decideSchedulerAlert(sched({ status: "ok", statusPutaran: "error" }));
+    const telat = decideSchedulerAlert(sched({ status: "late" }));
+    expect(galat.fingerprint).toBe("scheduler:errors");
+    expect(telat.fingerprint).toBe("scheduler:late");
+  });
+
+  it("denyut `ok` + putaran `ok` tetap DIAM", () => {
+    expect(
+      decideSchedulerAlert(sched({ status: "ok", statusPutaran: "ok", jumlahGalat: 0 })).alert
+    ).toBe(false);
+  });
+
+  it("belum ada putaran sama sekali tidak dilaporkan sebagai galat", () => {
+    /* `statusPutaran: null` berarti "tidak ada barisnya" — itu `unknown`, bukan
+       `error`. Melebur keduanya membuat pemasangan baru berbunyi seperti
+       pemasangan yang rusak. */
+    const putusan = decideSchedulerAlert(
+      sched({ status: "unknown", lastRunAt: null, ageMinutes: null, statusPutaran: null })
+    );
+    expect(putusan.fingerprint).toBe("scheduler:unknown");
+  });
+
+  it("putaran `error` pada denyut yang TELAT tetap dilaporkan sebagai telat", () => {
+    /* Kalau keduanya salah, yang lebih mendesak adalah penjadwal yang tidak
+       berjalan — pekerjaan yang gagal tidak relevan kalau putarannya sendiri
+       sudah tidak sampai. */
+    const putusan = decideSchedulerAlert(sched({ status: "late", statusPutaran: "error" }));
+    expect(putusan.fingerprint).toBe("scheduler:late");
+  });
+});
+
 describe("penjaga kesesuaian data", () => {
   it("`ok` diam", () => {
     expect(decideConformanceAlert(conf({ status: "ok" })).alert).toBe(false);

@@ -31,21 +31,14 @@ import "dotenv/config";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 
 /** Tahap pengingat, dalam hari sejak perusahaan dibuat. */
 const TAHAP = [1, 3, 7, 14] as const;
 
 function adapterFor(raw: string, database?: string) {
   const url = new URL(raw);
-  return new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: database ?? url.pathname.slice(1),
-    connectionLimit: 2,
-  });
+  return buatAdapter(url.toString(), { batasKoneksi: 2, database: database ?? url.pathname.slice(1) });
 }
 
 function companyTemplate(): string {

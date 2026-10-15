@@ -17,7 +17,7 @@ import "dotenv/config";
 import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "../src/lib/constants";
 import { userQuotaExceeded } from "../src/lib/invitations";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import bcrypt from "bcrypt";
 
 function parseArgs(argv: string[]) {
@@ -76,13 +76,7 @@ async function main() {
   }
 
   const url = new URL(process.env.CONTROL_DATABASE_URL);
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: url.pathname.slice(1),
-  });
+  const adapter = buatAdapter(url.toString(), { batasKoneksi: 1 });
   const controlDb = new PrismaClient({ adapter });
 
   /*

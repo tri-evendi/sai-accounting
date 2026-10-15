@@ -41,7 +41,7 @@ import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import {
   isFullAccessRole,
   TENANT_ROLES,
@@ -112,14 +112,7 @@ async function main() {
 
   const url = new URL(controlUrl);
   const control = new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 2,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 2 }),
   });
 
   const users = await control.user.findMany({
@@ -273,14 +266,7 @@ async function main() {
   } else {
     const purl = new URL(platformUrl);
     const platform = new PlatformClient({
-      adapter: new PrismaMariaDb({
-        host: purl.hostname,
-        port: Number(purl.port) || 3306,
-        user: decodeURIComponent(purl.username),
-        password: decodeURIComponent(purl.password),
-        database: purl.pathname.slice(1),
-        connectionLimit: 1,
-      }),
+      adapter: buatAdapter(purl.toString(), { batasKoneksi: 1 }),
     });
     try {
       const now = new Date();

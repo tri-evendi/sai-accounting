@@ -35,19 +35,12 @@
  */
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 
 function clientFor(rawUrl: string) {
   const url = new URL(rawUrl);
   return new PlatformClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 1,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 1 }),
   });
 }
 

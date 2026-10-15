@@ -28,7 +28,7 @@
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "../src/lib/tenant-routes";
 import { ROLES, ROLE_LABELS } from "../src/lib/constants";
@@ -50,14 +50,7 @@ const DB_NAME = /^[A-Za-z0-9_]{1,64}$/;
 function controlClient(raw: string) {
   const url = new URL(raw);
   return new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 2,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 2 }),
   });
 }
 

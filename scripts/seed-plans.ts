@@ -55,7 +55,7 @@
 
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import {
   SIGNUP_MAX_COMPANIES,
   SIGNUP_MAX_USERS,
@@ -202,14 +202,7 @@ async function main() {
 
   const parsed = new URL(url);
   const platform = new PlatformClient({
-    adapter: new PrismaMariaDb({
-      host: parsed.hostname,
-      port: Number(parsed.port) || 3306,
-      user: decodeURIComponent(parsed.username),
-      password: decodeURIComponent(parsed.password),
-      database: parsed.pathname.slice(1),
-      connectionLimit: 1,
-    }),
+    adapter: buatAdapter(parsed.toString(), { batasKoneksi: 1 }),
   });
 
   /* Kuota Pro hidup di DUA tempat: baris katalog di bawah dan konstanta

@@ -19,11 +19,22 @@
  */
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { uraikanUrl, type DbEngine } from "@/lib/db-engine";
+/* Impor RELATIF, bukan `@/lib/...`: berkas ini dipakai 28 skrip di luar Next,
+   dan sebagian dijalankan `tsx` yang tidak selalu menyelesaikan alias tsconfig.
+   Alias yang gagal di sana muncul sebagai "Cannot find module" saat berjalan —
+   bukan saat `tsc`. */
+import { uraikanUrl, type DbEngine } from "./db-engine";
 
 export interface OpsiAdapter {
   /** Batas koneksi per klien. */
   batasKoneksi: number;
+  /**
+   * Nama basis data yang MENIMPA yang ada di URL.
+   *
+   * Dipakai pola satu-template-banyak-buku: satu URL membawa kredensial & host,
+   * lalu tiap perusahaan menyambung ke basis datanya sendiri (#104).
+   */
+  database?: string;
 }
 
 /**
@@ -46,7 +57,7 @@ export function buatAdapter(url: string, opsi: OpsiAdapter) {
       port: b.port,
       user: b.user,
       password: b.password,
-      database: b.database,
+      database: opsi.database ?? b.database,
       max: opsi.batasKoneksi,
     });
   }
@@ -56,10 +67,20 @@ export function buatAdapter(url: string, opsi: OpsiAdapter) {
     port: b.port,
     user: b.user,
     password: b.password,
-    database: b.database,
+    database: opsi.database ?? b.database,
     connectionLimit: opsi.batasKoneksi,
   });
 }
+
+/**
+ * Tipe adapter yang dipulangkan `buatAdapter` — union kedua mesin.
+ *
+ * Dibutuhkan skrip yang menuliskan tanda tangan generik seperti
+ * `new (args: { adapter: AdapterBasisData }) => T`. Sebelumnya mereka menulis
+ * `PrismaMariaDb` di situ, yang MEMAKU mesin di tingkat TIPE — dan tipe yang
+ * memaku mesin akan menolak adapter yang benar saat mesinnya berganti.
+ */
+export type AdapterBasisData = ReturnType<typeof buatAdapter>;
 
 /** Mesin yang dituju URL — diekspor ulang supaya pemanggil tidak perlu dua impor. */
 export function mesinDari(url: string): DbEngine {

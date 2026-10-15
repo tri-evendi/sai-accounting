@@ -24,7 +24,7 @@
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import { proveCompanySlugScope } from "../src/lib/company-slug-proof";
 
 async function main() {
@@ -36,14 +36,7 @@ async function main() {
 
   const url = new URL(controlUrl);
   const control = new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 2,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 2 }),
   });
 
   const companies = await control.company.findMany({

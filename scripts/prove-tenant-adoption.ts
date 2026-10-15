@@ -25,7 +25,7 @@
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import { TENANT_ROLES, TENANT_ROLE_VALUES } from "../src/lib/constants";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,14 +39,7 @@ async function main() {
 
   const url = new URL(controlUrl);
   const control = new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 2,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 2 }),
   });
 
   const failures: string[] = [];

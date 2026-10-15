@@ -5,7 +5,7 @@
  * Run: bunx tsx scripts/seed-coa.ts
  */
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
 import { seedCoaForModules } from "../src/lib/coa-seeding";
 import { BUSINESS_MODULES, type BusinessModule } from "../src/lib/business-modules";
 
@@ -13,14 +13,7 @@ function createClient() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is not set.");
   const url = new URL(databaseUrl);
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: url.username,
-    password: url.password,
-    database: url.pathname.slice(1),
-    connectionLimit: 3,
-  });
+  const adapter = buatAdapter(url.toString(), { batasKoneksi: 3 });
   return new PrismaClient({ adapter });
 }
 

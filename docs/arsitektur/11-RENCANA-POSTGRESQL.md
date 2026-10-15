@@ -696,7 +696,79 @@ Aturan umumnya: **apa pun yang tidak hidup di skema Prisma tidak akan ikut
 terbangkitkan** — trigger, fungsi, view, grant. Daftar itu harus diperiksa manual
 setiap kali, dan trigger adalah satu-satunya yang ada hari ini.
 
-### Fase E — penukaran ❌ BELUM, dan menuntut keputusan
+### Fase E — penukaran: GAGAL 15 Okt, lalu akar sebabnya diperbaiki
+
+> **Penukaran pertama GAGAL, dan produksi mati ±9 menit.** Ditulis di sini apa
+> adanya, sebab kegagalan yang tidak dicatat akan diulang.
+
+#### Apa yang terjadi
+
+Seluruh persiapan lolos: 19 basis data pindah, **6.310 pembandingan nol beda**,
+skema dan trigger terpasang. Lalu URL ditukar, aplikasi dinaikkan — dan
+`/api/health` menjawab `{"status":"error","database":"unreachable"}`.
+
+Dua sebab, dan yang kedua mendasar:
+
+1. **Port PgBouncer.** Image `edoburu/pgbouncer` mendengarkan di **5432**, bukan
+   6432 yang ditulis di URL. Cepat diperbaiki.
+
+2. **Klien Prisma dibangkitkan dari skema `provider = "mysql"`.** Adapter driver
+   (`db-adapter.ts`) memilih SAMBUNGAN-nya dengan benar — tetapi mesin kueri
+   Prisma mengeluarkan SQL dialek **MySQL**. Image yang berjalan secara
+   fundamental tidak bisa bicara ke PostgreSQL, betapa pun benar adapternya.
+
+   `migrate` gagal karena alasan yang sama (menjalankan migration MariaDB
+   terhadap PostgreSQL), dan karena `app-*` bergantung padanya lewat
+   `depends_on`, aplikasinya tidak naik sama sekali — itu yang memperpanjang
+   matinya.
+
+#### Kenapa ini lolos dari semua pembuktian sebelumnya
+
+Fase D diuji berlapis: adapter, skema, paritas indeks, migrasi data, trigger,
+`db-server` terhadap PostgreSQL sungguhan. Semuanya lolos.
+
+**Tidak satu pun menguji hal yang menentukan: klien Prisma yang DIBANGKITKAN
+menjalankan kueri model terhadap PostgreSQL.** Setiap pembuktian berhenti satu
+lapis sebelum lapisan yang sebenarnya memutuskan dialek.
+
+Pelajarannya bukan "uji lebih banyak" melainkan **uji lapisan yang akan
+dipakai produksi**, bukan lapisan di bawahnya.
+
+#### Jalan mundur bekerja — dan itu yang membuat ini bisa dipulihkan
+
+MariaDB dibiarkan hidup dan **tidak pernah ditulisi**. Pemulihan = menukar URL
+balik + merekreasi container: `status=ok`, 609 kontrak utuh, Σdebit = Σkredit.
+
+#### Perbaikan: PostgreSQL menjadi KANONIK (15 Okt 2026)
+
+Bukan tambalan — pembalikan arah:
+
+| | |
+|---|---|
+| `prisma/*.prisma` | `provider = "postgresql"` |
+| `prisma*.config.ts` | `migrations.path` → `prisma/postgresql/<db>` |
+| `prisma/<db>/migrations` | tetap ada sebagai **ARSIP** MariaDB hanya-baca |
+| `prisma/postgresql/*.prisma` + `pg:baseline` | **dicabut** — turunan kehilangan alasan hidup saat sumbernya sudah PostgreSQL |
+| compose | `pg` + `pgbouncer` keluar dari `profiles` (kini wajib); enam `depends_on` pindah dari `db` ke `pg` |
+
+**Dibuktikan dengan pembuktian yang kemarin tidak ada** — klien Prisma hasil
+pembangkitan, terhadap PostgreSQL berisi data produksi:
+
+```
+users.count             : 13
+companies.count         : 17
+company + relasi tenant : pt-sai/pt-sai        ← JOIN
+journal_lines           : 13 baris debit=16570000 kredit=16570000   ← agregasi Decimal
+contracts per status    : canceled=39 completed=101 pending=469     ← groupBy
+cash_movements terbesar : id=18541 credit=280000000000              ← where+orderBy+take
+```
+
+⚠ **Konsekuensi yang tidak boleh dilupakan:** image yang dibangun dari skema ini
+**tidak bisa** dipakai dengan URL `mysql://`. Jalan mundur ke MariaDB sekarang
+berarti **menggelar image lama** (tag `sha-` di GHCR) **dan** menukar URL —
+bukan sekadar menukar URL.
+
+### Fase E — langkah penukaran (versi yang diperbaiki)
 
 ```
 1. Umumkan jendela henti (menit, bukan jam — 78 MB, lihat §9.1)

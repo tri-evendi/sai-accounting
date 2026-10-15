@@ -353,6 +353,11 @@ export async function bukaBasisData(url: string, nama: string): Promise<KoneksiB
  * yang bermigrasi lewat 65 langkah.
  */
 export function direktoriMigration(mesin: DbEngine): string[] {
+  /* Jalur `mariadb` menunjuk ARSIP. Sejak 15 Okt 2026 ia tidak lagi terjangkau
+     lewat jalur normal — klien Prisma dibangkitkan untuk PostgreSQL, jadi
+     `uraikanUrl` pada URL produksi selalu memulangkan `postgresql`. Ia
+     dipertahankan supaya fungsi ini tetap jujur tentang kedua mesin, bukan
+     karena ada yang memakainya. */
   return mesin === "postgresql"
     ? ["prisma/postgresql/company"]
     : ["prisma/migrations"];

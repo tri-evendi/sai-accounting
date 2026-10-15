@@ -152,7 +152,26 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+/*
+ * Dijalankan HANYA sebagai perintah, bukan saat diimpor.
+ *
+ * `tests/notifications.test.ts` mengimpor berkas ini untuk menguji fungsi
+ * murninya. Tanpa penjaga ini, mengimpornya MENJALANKAN `main()` — yang mencoba
+ * menyambung ke basis data, gagal, lalu memanggil `process.exit(1)` di tengah
+ * proses vitest.
+ *
+ * Akibatnya bukan sekadar berisik: `bun run test` keluar dengan kode 1 meski
+ * SELURUH 4.772 uji lolos, sehingga gerbangnya menolak kode yang benar. Dan
+ * sebaliknya ia bisa membuat tes lain memulangkan hasil palsu, sebab prosesnya
+ * mati di tengah jalan.
+ *
+ * Pola yang sama dipakai `scripts/pg-*.ts`.
+ */
+const dijalankanLangsung = Boolean((import.meta as unknown as { main?: boolean }).main);
+
+if (dijalankanLangsung) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

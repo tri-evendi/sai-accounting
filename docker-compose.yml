@@ -32,24 +32,25 @@ services:
     networks:
       - internal
 
-  # ══ PostgreSQL — LAHIR TIDAK AKTIF, dan itu disengaja ═══════════════════════
+  # ══ PostgreSQL — MESIN UTAMA sejak 15 Okt 2026 ═════════════════════════════
   #
-  # Kedua service di bawah memakai `profiles:`, jadi `docker compose up -d` TIDAK
-  # menyalakannya. Hanya `--profile postgres` yang melakukannya.
+  # Keduanya kini service BAWAAN — `profiles:` dicabut 15 Okt 2026 saat
+  # PostgreSQL menjadi mesin kanonik. Skema Prisma memakai
+  # `provider = "postgresql"`, jadi klien yang dibangkitkan hanya bisa bicara ke
+  # mesin ini; menjadikannya opsional berarti aplikasi yang naik tanpa basis
+  # data sama sekali.
   #
-  # Alasannya bukan kehati-hatian kosong: produksi hari ini berjalan di MariaDB,
-  # dan dua mesin basis data yang hidup bersamaan di kotak 3,6 GB berarti dua
-  # kali memori basis data untuk nol manfaat. Lebih buruk: sebuah PostgreSQL
-  # yang hidup dan KOSONG di sebelah MariaDB yang berisi adalah cara termudah
-  # menukar `DATABASE_URL` ke basis data kosong dan mengira aplikasinya rusak.
+  # ⚠ `db` (MariaDB) SENGAJA MASIH HIDUP, dan itu bukan kelalaian: ia jalan
+  # mundur selama jendela transisi. Datanya tidak ditulisi siapa pun sejak
+  # penukaran — aplikasi hanya bicara ke `pgbouncer`. Mencabutnya adalah langkah
+  # terpisah yang dilakukan setelah beberapa hari tenang, dan dengan dump
+  # terakhir disimpan di luar mesin ini lebih dulu.
   #
-  # Definisinya ada di sini — bukan di cabang, bukan di dokumen — supaya
-  # penukaran kelak tidak dimulai dengan menulis ulang compose di bawah tekanan.
-  # Lihat docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase E.
-  #
-  #   docker compose --profile postgres up -d pg pgbouncer
+  # Jalan mundurnya BUKAN sekadar menukar URL: image yang dibangun dari skema
+  # PostgreSQL tidak bisa memakai `mysql://`. Kembali berarti menggelar image
+  # lama (tag `sha-` di GHCR) DAN menukar URL. Lihat
+  # docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase E.
   pg:
-    profiles: ["postgres"]
     # ⚠ Versi mayor di sini HARUS sejajar dengan `postgresql-client-17` di
     # `Dockerfile` tahap `backup`. `pg_dump` menolak server yang lebih baru
     # daripada dirinya — terukur: klien 15 menolak server 17.11 dengan
@@ -94,7 +95,6 @@ services:
   # TETAPI menukar mode ke `session` kelak akan mengembalikan soal memori yang
   # justru hendak dipecahkan di sini.
   pgbouncer:
-    profiles: ["postgres"]
     image: edoburu/pgbouncer:latest
     container_name: sai-pgbouncer
     restart: unless-stopped
@@ -123,8 +123,10 @@ services:
     env_file: .env
     restart: "no"
     depends_on:
-      db:
+      pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
     networks:
       - internal
 
@@ -165,8 +167,10 @@ services:
     restart: unless-stopped
     env_file: .env
     depends_on:
-      db:
+      pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     networks:
@@ -316,8 +320,10 @@ services:
     restart: unless-stopped
     env_file: .env
     depends_on:
-      db:
+      pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     networks:
@@ -367,8 +373,10 @@ services:
     restart: unless-stopped
     env_file: .env
     depends_on:
-      db:
+      pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
     volumes:
       - documents:/app/data/documents:ro
       - audit:/app/data/audit:ro
@@ -460,8 +468,10 @@ services:
       OPERATOR_HOST: ""
     env_file: .env
     depends_on:
-      db:
+      pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -564,8 +574,10 @@ services:
     # gagal-tertutup: konsol yang salah konfigurasi menjadi 404, bukan terbuka.
     env_file: .env
     depends_on:
-      db:
+      pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     healthcheck:

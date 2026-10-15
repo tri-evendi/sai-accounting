@@ -19,7 +19,6 @@
     "record:backup": "bun scripts/record-backup-run.ts",
     "watch:health": "bun scripts/watch-health.ts",
     "db:generate": "prisma generate && bun run db:generate:control && bun run db:generate:platform",
-    "pg:baseline": "bun scripts/pg-baseline.ts",
     "pg:data": "bun scripts/pg-migrate-data.ts",
     "pg:prove": "bun scripts/pg-prove-parity.ts",
     "db:generate:control": "prisma generate --config prisma.control.config.ts",

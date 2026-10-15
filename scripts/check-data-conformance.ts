@@ -156,11 +156,11 @@ const CHECKS: Check[] = [
        aturan yang sama dipakai seluruh aplikasi (lihat kepala receivables.ts).
        Faktur yang punya pembayaran tanpa nilai IDR dilewati: sisanya memang
        tidak bisa dihitung, dan menganggapnya nol akan mengarang tuduhan. */
-    sql: `SELECT CONCAT(i.invoice_no, ': dibayar ', FORMAT(pay.terbayar, 0), ' atas nilai ', FORMAT(nilai.total, 0)) AS label
+    sql: `SELECT CONCAT(i.invoice_no, ': dibayar ', ROUND(pay.terbayar, 0), ' atas nilai ', ROUND(nilai.total, 0)) AS label
             FROM invoices i
             JOIN (SELECT invoice_id, SUM(quantity * price) AS total FROM invoice_items GROUP BY invoice_id) nilai
               ON nilai.invoice_id = i.id
-            JOIN (SELECT p.invoice_id, SUM(${BASE("p")}) AS terbayar, SUM(${BASE("p")} IS NULL) AS tak_terukur
+            JOIN (SELECT p.invoice_id, SUM(${BASE("p")}) AS terbayar, COUNT(*) FILTER (WHERE ${BASE("p")} IS NULL) AS tak_terukur
                     FROM invoice_payments p GROUP BY p.invoice_id) pay
               ON pay.invoice_id = i.id
            WHERE pay.tak_terukur = 0
@@ -171,9 +171,9 @@ const CHECKS: Check[] = [
     judul: "Jurnal yang debit ≠ kredit",
     /* Kalau yang ini pernah berbunyi, berhenti dan cari sebabnya sebelum apa
        pun yang lain: seluruh laporan berdiri di atasnya. */
-    sql: `SELECT CONCAT(j.number, ': debit ', FORMAT(SUM(l.base_debit), 2), ' vs kredit ', FORMAT(SUM(l.base_credit), 2)) AS label
+    sql: `SELECT CONCAT(j.number, ': debit ', ROUND(SUM(l.base_debit), 2), ' vs kredit ', ROUND(SUM(l.base_credit), 2)) AS label
             FROM journals j JOIN journal_lines l ON l.journal_id = j.id
-           GROUP BY j.id HAVING ABS(SUM(l.base_debit) - SUM(l.base_credit)) > 0.005`,
+           GROUP BY j.id, j.number HAVING ABS(SUM(l.base_debit) - SUM(l.base_credit)) > 0.005`,
   },
   {
     key: "jurnal-tanpa-baris",

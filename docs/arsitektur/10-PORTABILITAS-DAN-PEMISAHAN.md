@@ -215,6 +215,13 @@ web-operator:                 # bidang operator — IMAGE SAMA
 tidak bisa dieksklusi saat build, jadi ini isolasi **proses**, bukan eliminasi
 kode. Satu kerentanan di dependensi tetap ada di kedua container.
 
+> Menutup celah ini menuntut pemisahan **kode**, bukan container — dan itu
+> dibahas tersendiri di [14 — Rencana Monorepo](14-RENCANA-MONOREPO.md).
+> Ringkasnya: porsi khas-operator hanya **2,9 %** dari `src/` (diukur 15 Okt
+> 2026), jadi pemisahan memindahkan hampir tidak ada apa-apa sambil menambah
+> satu kelas bug baru — pergeseran versi antara dua binari di atas satu skema.
+> Putusannya **belum sekarang**, dengan pemicu yang dapat diamati.
+
 ⚠ **Pertahanan berlapis yang perlu diperhatikan.** Container operator dengan
 `OPERATOR_HOST` diset akan **melayani rute pelanggan** bila dihubungi dengan
 `Host:` lain (`decideOperatorRouting` menjawab `{kind:"customer"}` untuk host

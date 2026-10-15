@@ -61,7 +61,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import { SIGNUP_MAX_COMPANIES, SIGNUP_MAX_USERS } from "../src/lib/registration";
 
 /* ── Argumen ─────────────────────────────────────────────────────────────── */
@@ -292,13 +292,7 @@ async function main() {
 
   const controlUrl = new URL(process.env.CONTROL_DATABASE_URL!);
   const control = new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: controlUrl.hostname,
-      port: Number(controlUrl.port) || 3306,
-      user: decodeURIComponent(controlUrl.username),
-      password: decodeURIComponent(controlUrl.password),
-      database: controlUrl.pathname.slice(1),
-    }),
+    adapter: buatAdapter(controlUrl.toString(), { batasKoneksi: 1 }),
   });
 
   try {

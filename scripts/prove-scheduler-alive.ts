@@ -24,7 +24,7 @@
 
 import "dotenv/config";
 
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
 
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { schedulerHealth } from "../src/lib/scheduler-heartbeat";
@@ -41,14 +41,7 @@ async function main() {
 
   const parsed = new URL(url);
   const platform = new PlatformClient({
-    adapter: new PrismaMariaDb({
-      host: parsed.hostname,
-      port: Number(parsed.port) || 3306,
-      user: decodeURIComponent(parsed.username),
-      password: decodeURIComponent(parsed.password),
-      database: parsed.pathname.replace(/^\//, ""),
-      connectionLimit: 1,
-    }),
+    adapter: buatAdapter(parsed.toString(), { batasKoneksi: 1 }),
   });
 
   let health;

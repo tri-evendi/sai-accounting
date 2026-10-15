@@ -40,7 +40,7 @@ import "dotenv/config";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 
 import { CONTRACT_STATUSES, CURRENCIES } from "../src/lib/constants";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
@@ -242,14 +242,7 @@ const CHECKS: Check[] = [
 
 function adapterFor(raw: string, database?: string) {
   const url = new URL(raw);
-  return new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: database ?? url.pathname.slice(1),
-    connectionLimit: 2,
-  });
+  return buatAdapter(url.toString(), { batasKoneksi: 2, database: database ?? url.pathname.slice(1) });
 }
 
 function companyTemplate(): string {

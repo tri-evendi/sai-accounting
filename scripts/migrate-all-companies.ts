@@ -30,7 +30,7 @@
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 
 function controlClient(): PrismaClient {
   const raw = process.env.CONTROL_DATABASE_URL;
@@ -40,14 +40,7 @@ function controlClient(): PrismaClient {
   }
   const url = new URL(raw);
   return new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 2,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 2 }),
   });
 }
 

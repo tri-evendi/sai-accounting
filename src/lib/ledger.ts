@@ -141,6 +141,16 @@ function runInTx<T>(
  * (protokol teks) LOLOS, dan hanya lewat `execute()` yang gagal. Opsi
  * `collation`/`charset` di tingkat pool TIDAK menolong.
  *
+ * ── Sesudah pindah ke PostgreSQL (15 Okt 2026) ────────────────────────────
+ * Bug kolasi di atas khas MariaDB dan TIDAK berlaku lagi di produksi. Bentuk
+ * rentang ini tetap dipertahankan, dan bukan karena malas menggantinya:
+ * `gte`/`lte` atas kolom terindeks adalah pemindaian RENTANG indeks di kedua
+ * mesin, sementara `startsWith` menjadi `LIKE 'x%'` yang bergantung pada
+ * dukungan pola-awalan — di PostgreSQL itu menuntut indeks `text_pattern_ops`
+ * bila kolasinya bukan `C`.
+ *
+ * Jadi: alasan ASLINYA sudah hilang, alasan untuk tetap begini belum.
+ *
  * Fungsi ini dipanggil `postJournal()` — satu-satunya primitif pembuat jurnal —
  * jadi kegagalannya bukan "satu halaman rusak" melainkan SETIAP pembukuan
  * berhenti, termasuk jurnal saldo awal yang menutup wisaya penyiapan.

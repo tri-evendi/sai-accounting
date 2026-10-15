@@ -29,7 +29,7 @@
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 
 const TRIGGER = "companies_slug_immutable";
 /** Dilempar untuk memaksa rollback — bukan penanda kegagalan. */
@@ -45,14 +45,7 @@ async function main() {
   const url = new URL(controlUrl);
   const schema = url.pathname.slice(1);
   const control = new PrismaClient({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: schema,
-      connectionLimit: 2,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 2, database: schema }),
   });
 
   const failures: string[] = [];

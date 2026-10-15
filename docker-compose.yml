@@ -396,6 +396,19 @@ services:
     container_name: sai-job-backup
     restart: unless-stopped
     env_file: .env
+    # ══ CADANGAN MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ═══════════
+    #
+    # `pg_dumpall` harus MENDAFTAR seluruh basis data lebih dulu (`pg_database`)
+    # lalu menyambung ke tiap-tiap basis data itu satu per satu. PgBouncer hanya
+    # mengekspos basis data yang terdaftar di konfigurasinya, jadi lewat pooler
+    # dump "seluruh basis data" akan memulangkan sebagian — dan sebagian itulah
+    # bentuk cadangan yang paling berbahaya: ia ADA, ia tampak berhasil, dan ia
+    # baru ketahuan kurang pada hari pemulihan.
+    #
+    # `scripts/backup.sh` menurunkan host, port, peran, dan sandi dari URL ini,
+    # jadi satu baris mengatur keempatnya sekaligus.
+    environment:
+      DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/${DB_NAME:-sai_production}
     depends_on:
       pg:
         condition: service_healthy

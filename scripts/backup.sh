@@ -83,7 +83,6 @@ die() {
 }
 
 # ── Konfigurasi ────────────────────────────────────────────────────────────
-: "${DB_HOST:=db}"
 
 # ── Mesin basis data: DITURUNKAN dari URL, bukan sakelar terpisah ──────────
 #
@@ -96,17 +95,67 @@ case "${DATABASE_URL:-}" in
   *) MESIN=mariadb ;;
 esac
 
+# ── Host, port, dan kredensial: dari URL YANG SAMA ────────────────────────
+#
+# == CACAT YANG DIPERBAIKI DI SINI ========================================
+# Mesinnya sudah diturunkan dari URL (di atas), tetapi HOST-nya tidak — ia
+# berdiri sendiri sebagai `: "${DB_HOST:=db}"`. Sesudah penukaran PostgreSQL
+# 15 Okt 2026, skrip ini memakai perkakas yang BENAR terhadap host yang SALAH:
+#
+#   pg_dumpall: error: connection to server at "db" (172.19.0.2), port 5432
+#   failed: Connection refused
+#
+# Persis bentuk yang diperingatkan komentar tepat di atas. Dan akibatnya tidak
+# terlihat di mana pun kecuali di `/api/health`: tidak ada cadangan otomatis
+# yang berhasil sejak penukaran, sementara container `job-backup` tetap "Up"
+# dan penjadwalnya tetap melapor `ok`.
+#
+# == KENAPA KREDENSIALNYA JUGA DARI URL ===================================
+# `DB_ROOT_PASSWORD` adalah sandi root MariaDB. Memakainya untuk PostgreSQL
+# berarti dua rahasia berbeda dipaksa menjadi satu, dan rotasi salah satunya
+# akan mematahkan yang lain tanpa menyebutkannya.
+uri_decode() {
+  # Kredensial di URL ter-persen-encode. Dua skrip di repo ini pernah lupa
+  # men-decode-nya dan gagal hanya ketika sandinya kebetulan memuat `@` / `%`.
+  printf '%b' "$(printf '%s' "$1" | sed 's/+/ /g; s/%\(..\)/\\x\1/g')"
+}
+
 if [ "$MESIN" = "postgres" ]; then
-  : "${DB_PORT:=5432}"
+  _netloc=${DATABASE_URL#*://}
+  _netloc=${_netloc%%/*}
+  case "$_netloc" in
+    *@*) _userinfo=${_netloc%@*} ; _hostport=${_netloc##*@} ;;
+    *)   _userinfo=""            ; _hostport=$_netloc ;;
+  esac
+  case "$_hostport" in
+    *:*) _host=${_hostport%:*} ; _port=${_hostport##*:} ;;
+    *)   _host=$_hostport      ; _port=5432 ;;
+  esac
+  case "$_userinfo" in
+    *:*) _user=${_userinfo%%:*} ; _pass=${_userinfo#*:} ;;
+    *)   _user=$_userinfo       ; _pass="" ;;
+  esac
+  : "${DB_HOST:=$_host}"
+  : "${DB_PORT:=$_port}"
+  : "${DB_USER:=$(uri_decode "$_user")}"
+  DB_SANDI=$(uri_decode "$_pass")
 else
+  : "${DB_HOST:=db}"
   : "${DB_PORT:=3306}"
+  : "${DB_USER:=root}"
+  DB_SANDI=${DB_ROOT_PASSWORD:-}
 fi
 : "${BACKUP_RETENTION_DAYS:=30}"
 : "${BACKUP_PREFIX:=sai}"
 : "${BACKUP_DATA_DIR:=/app/data}"
 : "${BACKUP_WORK_DIR:=/tmp/backup}"
 
-[ -n "${DB_ROOT_PASSWORD:-}" ] || die "DB_ROOT_PASSWORD belum diset — dump seluruh basis data menuntut root."
+if [ "$MESIN" = "postgres" ]; then
+  [ -n "$DB_SANDI" ] || die "DATABASE_URL tidak memuat sandi — dump seluruh basis data menuntut kredensial."
+  [ -n "$DB_HOST" ] || die "DATABASE_URL tidak memuat host."
+else
+  [ -n "$DB_SANDI" ] || die "DB_ROOT_PASSWORD belum diset — dump seluruh basis data menuntut root."
+fi
 [ -n "${BACKUP_ENCRYPTION_KEY:-}" ] || die "BACKUP_ENCRYPTION_KEY belum diset. Cadangan TIDAK PERNAH dikirim tanpa sandi: isinya seluruh pembukuan setiap pelanggan."
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 NAME="${BACKUP_PREFIX}-${STAMP}"
@@ -156,8 +205,10 @@ SEALED="${ARCHIVE}.enc"
 # terbaca siapa pun yang bisa menjalankan `ps` di dalam container.
 OPTFILE="${BACKUP_WORK_DIR}/my.cnf"
 umask 077
-printf '[client]\nhost=%s\nport=%s\nuser=root\npassword=%s\n' \
-  "$DB_HOST" "$DB_PORT" "$DB_ROOT_PASSWORD" > "$OPTFILE"
+if [ "$MESIN" = "mariadb" ]; then
+  printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword=%s\n' \
+    "$DB_HOST" "$DB_PORT" "$DB_USER" "$DB_SANDI" > "$OPTFILE"
+fi
 
 cleanup() { rm -rf "$BACKUP_WORK_DIR"; }
 trap cleanup EXIT INT TERM
@@ -178,8 +229,12 @@ if [ "$DRY_RUN" = "0" ]; then
     # `--clean --if-exists` supaya hasilnya bisa dipulihkan ke server yang sudah
     # berisi, bukan hanya ke server kosong — pada hari pemulihan, menuntut
     # server kosong adalah syarat yang mahal.
-    PGPASSWORD="$DB_ROOT_PASSWORD" pg_dumpall \
-      --host="$DB_HOST" --port="$DB_PORT" --username=postgres \
+    #
+    # Perannya diambil dari URL, BUKAN dipaku `postgres`. Peran yang dipaku
+    # akan gagal di pemasangan mana pun yang memberi nama lain pada peran
+    # super-nya — dan di sini namanya memang bukan `postgres`.
+    PGPASSWORD="$DB_SANDI" pg_dumpall \
+      --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
       --clean --if-exists > "$DUMP" \
       || die "pg_dumpall gagal — cadangan TIDAK dikirim."
   else

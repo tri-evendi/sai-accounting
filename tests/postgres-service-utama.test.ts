@@ -126,6 +126,26 @@ describe("PostgreSQL sebagai mesin utama", () => {
     }
   });
 
+  it("`job-backup` juga menyambung LANGSUNG — pooler memulangkan cadangan SEBAGIAN", () => {
+    /*
+     * Alasannya berbeda dari migrate, dan lebih berbahaya. `pg_dumpall`
+     * mendaftar seluruh basis data lewat `pg_database` lalu menyambung ke
+     * tiap-tiap basis data itu. PgBouncer hanya mengekspos basis data yang
+     * terdaftar di konfigurasinya — jadi lewat pooler, dump "seluruh basis
+     * data" memulangkan sebagian.
+     *
+     * Cadangan sebagian tidak berbunyi. Ia ada, ukurannya masuk akal,
+     * pencatatnya menulis `ok`, dan ia baru ketahuan kurang pada hari
+     * pemulihan — satu-satunya hari yang tidak boleh ada kejutan.
+     */
+    const baris = service("job-backup")
+      .split("\n")
+      .find((b) => b.trim().startsWith("DATABASE_URL:"));
+    expect(baris, "DATABASE_URL harus ditimpa di service job-backup").toBeDefined();
+    expect(baris).toContain("@pg:5432");
+    expect(baris).not.toContain("pgbouncer");
+  });
+
   it("aplikasi TETAP lewat pooler — penimpaan itu hanya untuk migrate", () => {
     /* Kalau penimpaannya menyebar ke `app-*`, seluruh alasan PgBouncer ada
        (puncak 62 koneksi pada kotak 3,6 GB) hilang tanpa satu pun tanda. */

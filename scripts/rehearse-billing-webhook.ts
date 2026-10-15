@@ -18,7 +18,7 @@
  */
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
 import {
   midtransSignature,
   verifyMidtransSignature,
@@ -27,17 +27,10 @@ import {
 } from "../src/lib/payment-gateway";
 import { processPaymentNotification } from "../src/lib/payment-webhook";
 
-function clientFor<T>(Ctor: new (args: { adapter: PrismaMariaDb }) => T, rawUrl: string): T {
+function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);
   return new Ctor({
-    adapter: new PrismaMariaDb({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: url.pathname.slice(1),
-      connectionLimit: 3,
-    }),
+    adapter: buatAdapter(url.toString(), { batasKoneksi: 3 }),
   });
 }
 

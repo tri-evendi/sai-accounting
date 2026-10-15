@@ -35,7 +35,7 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import { backupHealth } from "../src/lib/backup-heartbeat";
 import { decideBackupAlert } from "../src/lib/backup-watchdog";
 import { decideSchedulerAlert, decideConformanceAlert } from "../src/lib/health-watchdog";
@@ -54,14 +54,7 @@ function log(...pesan: unknown[]) {
 
 function adapterFor(rawUrl: string) {
   const url = new URL(rawUrl);
-  return new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: url.pathname.slice(1),
-    connectionLimit: 1,
-  });
+  return buatAdapter(url.toString(), { batasKoneksi: 1 });
 }
 
 /**

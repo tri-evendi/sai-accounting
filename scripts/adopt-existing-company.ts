@@ -39,7 +39,7 @@ import { readFile, rename, mkdir, access } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter } from "../src/lib/db-adapter";
 import { isReservedCompanySlug } from "../src/lib/tenant-routes";
 
 interface LegacyUser {
@@ -72,14 +72,7 @@ function parseArgs(argv: string[]) {
 
 function clientFor(rawUrl: string, Ctor: typeof ControlClient | typeof CompanyClient) {
   const url = new URL(rawUrl);
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: url.pathname.slice(1),
-    connectionLimit: 2,
-  });
+  const adapter = buatAdapter(url.toString(), { batasKoneksi: 2 });
   // Dua kelas klien yang berbeda skema; konstruktornya sama bentuknya.
   return new (Ctor as typeof ControlClient)({ adapter });
 }

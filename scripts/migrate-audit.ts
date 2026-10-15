@@ -35,7 +35,7 @@ import { createInterface } from "node:readline";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";
@@ -45,15 +45,11 @@ const AUDIT_ROOT = path.join(process.cwd(), "data", "audit");
 /** Sisipkan per potongan — bukan satu `createMany` raksasa di akhir. */
 const BATCH = 500;
 
-function adapterFor(rawUrl: string, database?: string): PrismaMariaDb {
+function adapterFor(rawUrl: string, database?: string): AdapterBasisData {
   const url = new URL(rawUrl);
-  return new PrismaMariaDb({
-    host: url.hostname,
-    port: Number(url.port) || 3306,
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    database: database ?? url.pathname.replace(/^\//, ""),
-    connectionLimit: 2,
+  return buatAdapter(url.toString(), {
+    batasKoneksi: 2,
+    ...(database ? { database } : {}),
   });
 }
 

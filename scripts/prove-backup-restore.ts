@@ -40,7 +40,7 @@ import { copyFileSync, mkdtempSync, readdirSync, readFileSync, statSync } from "
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 
@@ -174,14 +174,7 @@ function main(): void {
     }
     const url = new URL(controlUrl);
     const control = new ControlClient({
-      adapter: new PrismaMariaDb({
-        host: url.hostname,
-        port: Number(url.port) || 3306,
-        user: decodeURIComponent(url.username),
-        password: decodeURIComponent(url.password),
-        database: url.pathname.replace(/^\//, ""),
-        connectionLimit: 1,
-      }),
+      adapter: buatAdapter(url.toString(), { batasKoneksi: 1 }),
     });
 
     const companies = await control.company.findMany({

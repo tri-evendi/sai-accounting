@@ -1,3 +1,20 @@
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  MESIN KANONIK: PostgreSQL (sejak 15 Okt 2026)                           ║
+// ║                                                                          ║
+// ║  Sebelumnya MariaDB. Pembalikan ini BUKAN kosmetik: klien Prisma yang    ║
+// ║  dibangkitkan TERIKAT pada `provider`, dan mesin kuerinya mengeluarkan   ║
+// ║  SQL dialek itu. Adapter driver (`db-adapter.ts`) memilih SAMBUNGANnya,  ║
+// ║  bukan DIALEKnya — jadi klien yang dibangkitkan untuk mysql tidak bisa   ║
+// ║  bicara ke PostgreSQL, betapa pun benar adapternya.                      ║
+// ║                                                                          ║
+// ║  Itu terbukti mahal: penukaran 15 Okt 2026 gagal persis di titik ini,    ║
+// ║  dan produksi mati +-9 menit sebelum dikembalikan.                       ║
+// ║                                                                          ║
+// ║  KONSEKUENSI: image yang dibangun dari skema ini TIDAK BISA dipakai      ║
+// ║  dengan URL `mysql://`. Jalan mundur ke MariaDB berarti menggelar IMAGE  ║
+// ║  LAMA (tag `sha-` di GHCR), bukan sekadar menukar URL.                   ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
 // ─────────────────────────────────────────────────────────────────────────────
 // BASIS DATA KENDALI (control database) — issue #104
 //
@@ -32,7 +49,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
 }
 
 /// PELANGGAN platform (issue #134, epik #133) — pihak yang berlangganan dan

@@ -99,6 +99,41 @@ describe("PostgreSQL sebagai mesin utama", () => {
     expect(compose).toMatch(/^ {2}pg_data:$/m);
   });
 
+  it("`migrate` menyambung LANGSUNG ke `pg`, melewati PgBouncer", () => {
+    /*
+     * Prisma Migrate mengambil `pg_advisory_lock` supaya dua proses tidak
+     * memigrasikan satu basis data bersamaan. Kunci itu terikat SESI; PgBouncer
+     * `transaction` pooling memberi backend berbeda tiap transaksi. Jadi kunci
+     * diambil lalu lepas bersama transaksinya, dan percobaan berikutnya
+     * menunggu kunci yang tidak punya pemilik:
+     *
+     *   P1002 — Timed out trying to acquire a postgres advisory lock
+     *
+     * Terukur 15 Okt 2026: `migrate` gagal, dan karena `app-*` bergantung
+     * padanya lewat `depends_on`, aplikasi tidak naik sama sekali.
+     *
+     * Yang dijaga bukan sekadar "ada @pg:" — melainkan bahwa service ini tidak
+     * menyisakan satu pun sambungan lewat pooler. Satu dari tiga yang tertinggal
+     * akan menggantung hanya untuk basis data itu, dan gejalanya terbaca seperti
+     * migrasi yang lambat, bukan migrasi yang salah sambung.
+     */
+    const s = service("migrate");
+    for (const v of ["DATABASE_URL", "CONTROL_DATABASE_URL", "PLATFORM_DATABASE_URL"]) {
+      const baris = s.split("\n").find((b) => b.trim().startsWith(`${v}:`));
+      expect(baris, `${v} harus ditimpa di service migrate`).toBeDefined();
+      expect(baris).toContain("@pg:5432");
+      expect(baris).not.toContain("pgbouncer");
+    }
+  });
+
+  it("aplikasi TETAP lewat pooler — penimpaan itu hanya untuk migrate", () => {
+    /* Kalau penimpaannya menyebar ke `app-*`, seluruh alasan PgBouncer ada
+       (puncak 62 koneksi pada kotak 3,6 GB) hilang tanpa satu pun tanda. */
+    for (const nama of ["app-customer", "app-operator"]) {
+      expect(service(nama)).not.toMatch(/DATABASE_URL:.*@pg:5432/);
+    }
+  });
+
   it("volume MariaDB `db_data` TIDAK dihapus", () => {
     /* Membuang volumenya membuang jalan mundurnya, dan itu tidak bisa dibatalkan. */
     expect(compose).toMatch(/^ {2}db_data:$/m);

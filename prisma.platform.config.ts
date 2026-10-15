@@ -18,7 +18,18 @@ import { defineConfig } from "prisma/config";
 export default defineConfig({
   schema: "prisma/platform/schema.prisma",
   migrations: {
-    path: "prisma/platform/migrations",
+    /*
+     * == JALUR MIGRATION PINDAH KE PostgreSQL (15 Okt 2026) ==============
+     * Riwayat MariaDB TIDAK dihapus — ia tetap di `prisma/<db>/migrations`
+     * sebagai ARSIP hanya-baca. Di sana tercatat transformasi data yang
+     * pernah diterapkan, dan itu riwayat yang akan dicari orang saat
+     * menelusuri kenapa sebuah nilai berbentuk begitu.
+     *
+     * Yang TIDAK boleh: menjalankannya terhadap PostgreSQL. Ia akan gagal di
+     * pernyataan pertama — dan itu justru kabar baik dibanding setengah
+     * berhasil. Karena itu JALURNYA yang dipindah, bukan isinya diterjemahkan.
+     */
+    path: "prisma/postgresql/platform",
   },
   datasource: {
     url: process.env["PLATFORM_DATABASE_URL"],

@@ -91,11 +91,12 @@ export function migrationChecksum(sql: string | Buffer): string {
 /**
  * Nama migration terurut — urutannya menentukan hasil akhir skema.
  *
- * `mesin` opsional dan bawaannya `mariadb`, jadi pemanggil lama (tes, skrip)
- * mendapat perilaku yang sama persis — penambahan ini tidak bisa mengubah apa
- * pun di jalur yang berjalan hari ini.
+ * `mesin` opsional dan bawaannya `postgresql` sejak 15 Okt 2026 — mesin
+ * kanonik. Bawaan `mariadb` yang lama akan menunjuk ARSIP (65 migration MySQL)
+ * dan menghasilkan basis data yang gagal dibuat; bawaan harus menunjuk yang
+ * benar, bukan yang historis.
  */
-export async function migrationNames(mesin: DbEngine = "mariadb"): Promise<string[]> {
+export async function migrationNames(mesin: DbEngine = "postgresql"): Promise<string[]> {
   const entries = await readdir(akarMigration(mesin), { withFileTypes: true });
   return entries
     .filter((e) => e.isDirectory())

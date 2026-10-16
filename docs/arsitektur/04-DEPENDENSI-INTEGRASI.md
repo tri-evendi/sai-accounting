@@ -10,11 +10,11 @@ graph LR
         WEB["web"]
         SCH["scheduler"]
         BAK["backup"]
-        DB[("MariaDB")]
+        DB[("PostgreSQL")]
     end
 
     subgraph wajib["WAJIB — tanpa ini aplikasi tidak melayani"]
-        MARIA["MariaDB 11<br/>(container sendiri)"]
+        MARIA["PostgreSQL 17 + PgBouncer<br/>(container sendiri)"]
         TRAEFIK["Traefik<br/>TLS + routing"]
         LE["Let's Encrypt<br/>penerbitan sertifikat"]
         DNS["DNS<br/>APP_DOMAIN · OPERATOR_DOMAIN"]
@@ -30,7 +30,7 @@ graph LR
         GH["GitHub Actions"]
         GHCR["GHCR<br/>registry image"]
         NPM["npm registry<br/>(lewat bun)"]
-        DH["Docker Hub<br/>node:22 · mariadb:11 · oven/bun"]
+        DH["Docker Hub<br/>node:22 · postgres:17 · pgbouncer · oven/bun"]
     end
 
     WEB --> MARIA
@@ -61,7 +61,7 @@ graph LR
 
 | Dependensi | Dipakai oleh | Bila mati | Konfigurasi |
 |---|---|---|---|
-| **MariaDB 11** | semua | **Pemadaman total.** `/api/health` → 503 `database: unreachable`, Traefik berhenti mengirim lalu lintas | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL` |
+| **PostgreSQL 17** (+ **PgBouncer**) | semua | **Pemadaman total.** PgBouncer mati = sama dengan basis data mati bagi `app-*` dan job; hanya `migrate`/`job-backup` yang langsung ke `pg`. `/api/health` → 503 `database: unreachable`, Traefik berhenti mengirim lalu lintas | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL` |
 | **Traefik** | web | Tidak ada akses dari luar. Container tetap sehat | Label Docker di `docker-compose.yml` |
 | **Let's Encrypt** (resolver `le`) | Traefik | Sertifikat kedaluwarsa → peramban menolak. 🔶 Pembaruan ditangani Traefik, **tidak ada pemantauan di repo ini** | `certresolver=le` |
 | **DNS** | semua | `APP_DOMAIN` tak terselesaikan = tak terjangkau. `OPERATOR_DOMAIN` salah = konsol **404 dengan sengaja** (gagal-tertutup) | `APP_DOMAIN`, `OPERATOR_DOMAIN`, `OPERATOR_HOST` |
@@ -161,7 +161,7 @@ dampak hari ini **nol**.
 | **GitHub Actions** | Membangun 3 image (`runner`, `migrator`, `backup`) | Tidak bisa rilis. Produksi tetap jalan. ⚠ Jangan membangun di server — lihat dok 07 |
 | **GHCR** | Menyimpan image + tag `sha-<pendek>` | Tidak bisa `pull`; **rollback juga ikut hilang** |
 | **npm registry** (lewat bun) | `bun install --frozen-lockfile` | Build gagal |
-| **Docker Hub** | `node:22-bookworm-slim`, `mariadb:11`, `oven/bun:1.3` | Build gagal; container berjalan tak terpengaruh |
+| **Docker Hub** | `node:22-bookworm-slim`, `postgres:17-alpine`, `edoburu/pgbouncer`, `oven/bun:1.3` (+ `mariadb:11` sampai #636) | Build gagal; container berjalan tak terpengaruh |
 
 ### 2.4 Integrasi yang TIDAK dipanggil runtime
 
@@ -282,7 +282,7 @@ tombol yang mengirim ratusan surel ke tunggakan lama sekaligus.
 
 ```mermaid
 graph TD
-    SPOF1["<b>MariaDB — satu instans</b><br/>tanpa replika · tanpa failover<br/>17 buku PT + kendali + platform<br/>di satu volume"]
+    SPOF1["<b>PostgreSQL — satu instans</b><br/>+ satu PgBouncer<br/>tanpa replika · tanpa failover<br/>17 buku PT + kendali + platform<br/>di satu volume"]
     SPOF2["<b>app-customer — satu container</b><br/>tanpa replika<br/>(app-operator kini terpisah)"]
     SPOF3["<b>Mesin tunggal</b><br/>~3,6 GB RAM · 6 aplikasi"]
     SPOF4["<b>Traefik — satu instans</b><br/>dipakai 6 aplikasi"]
@@ -302,7 +302,7 @@ graph TD
 
 | # | Titik | Dampak | Mitigasi hari ini | Penilaian |
 |---|---|---|---|---|
-| 1 | **MariaDB tunggal** | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk SPOF 5 |
+| 1 | **PostgreSQL tunggal** (+ PgBouncer tunggal) | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk SPOF 5 |
 | 2 | **Cadangan gagal** | Tidak ada jalan pulang dari apa pun | Tidak ada. Dump manual hanya bila diingat | **Kritis — P0** |
 | 3 | **Mesin tunggal** | Kehilangan semuanya | Tidak ada | Diterima sadar pada skala ini |
 | 4 | **`app-customer` tunggal** | Pemadaman enam permukaan pelanggan sampai restart — **konsol operator tidak lagi ikut jatuh** | `restart: unless-stopped` + healthcheck | Dapat diterima |
@@ -318,7 +318,7 @@ kalau kuncinya hanya ada di `.env` mesin yang hilang bersama datanya.
 
 | Kopling | Ketat? | Catatan |
 |---|---|---|
-| `app-customer` ↔ MariaDB | **Ketat** | Benar — ini aplikasi basis data |
+| `app-customer` ↔ PostgreSQL | **Ketat** | Benar — ini aplikasi basis data |
 | `app-customer` ↔ kolam klien PT | **Ketat** | `prisma` Proxy menyembunyikan ini dari 120 berkas |
 | `job-scheduler`/`job-conformance` ↔ image `migrator` | **Ketat, sengaja** | Image sama = env & `node_modules` sama. **Harganya:** `docker compose build web` TIDAK membangun `migrate` → 2 layanan menjalankan kode basi **tanpa satu pun tanda**. Pelajaran yang terulang beberapa rilis; sekarang CI membangun ketiganya tiap kali |
 | Kendali ↔ platform | **Longgar, sengaja** | Tanpa FK. Harganya: butuh rekonsiliasi (`reconcile:platform`) |

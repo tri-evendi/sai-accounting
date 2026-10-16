@@ -2,6 +2,13 @@
 
 > Disusun 11 Oktober 2026 atas permintaan pemilik · [indeks](./README.md)
 
+> **⚑ STATUS 16 Okt 2026 — DOKUMEN INI SUDAH DIJALANKAN.** Produksi berjalan di
+> PostgreSQL sejak **15 Okt 2026** (`main@1057bc0f`, 19/19 basis data). Bagian
+> §0–§9 di bawah adalah **catatan sejarah** keputusan dan rencananya, dibiarkan
+> apa adanya. Keadaan sekarang ada di
+> [§10.2 Validasi pasca-penukaran](#102-validasi-pasca-penukaran-16-okt-2026),
+> dan pembersihan MariaDB dilacak di issue **#636**.
+
 ## 0. Status rencana ini
 
 Dokumen ini **rencana pelaksanaan**, bukan rekomendasi untuk mengerjakannya
@@ -524,11 +531,15 @@ sudah dijalankan: seluruh data platform sudah pernah berpindah ke PostgreSQL
 sungguhan dan dibuktikan identik. Yang belum adalah port kode aplikasi dan
 penukaran.
 
-> **Status ringkas.** Fase A–D **SELESAI & TERBUKTI**. Fase E (penukaran)
-> **BELUM**, dan sengaja: ia menuntut keputusan pemilik pada saatnya.
+> **Status ringkas (diperbarui 16 Okt 2026).** Fase A–D **SELESAI & TERBUKTI**.
+> Fase E (penukaran) **DIJALANKAN 15 Okt 2026**: percobaan pertama gagal
+> (±9 menit henti), lalu berhasil sesudah skema menjadi kanonik PostgreSQL.
+> MariaDB masih hidup sebagai jalan mundur; pencabutannya adalah issue **#636**.
+> Validasi sehari sesudahnya menemukan pemblokir yang **sudah diperbaiki di
+> `develop` tetapi belum dirilis**, lihat [§10.2](#102-validasi-pasca-penukaran-16-okt-2026).
 >
-> Artinya seluruh pekerjaan TEKNIS migrasi sudah selesai dan terbukti. Yang
-> tersisa bukan kode, melainkan tiga prasyarat operasional dan satu keputusan.
+> *(Teks lama, 12 Okt: "Fase E BELUM, dan sengaja: ia menuntut keputusan
+> pemilik pada saatnya." Keputusan itu sudah diambil.)*
 
 ### Fase A — paritas skema ✅ SELESAI
 
@@ -807,3 +818,90 @@ tidak lagi akurat dalam dua hal, dan **tetap akurat** dalam satu:
 Jadi putusan §0 tidak berubah sebagai *rekomendasi*. Yang berubah: kalau pemilik
 memutuskan pindah, pekerjaannya kini **diketahui, terbukti, dan dapat diulang** —
 bukan diperkirakan.
+
+### 10.2 Validasi pasca-penukaran (16 Okt 2026)
+
+Pertanyaannya: *apakah PostgreSQL siap dipakai produksi?* Jawabannya: **mesinnya
+siap, datanya utuh, tapi image yang sedang berjalan belum.** Dua dari tiga
+pemblokir sudah diperbaiki di `develop` dan tinggal dirilis.
+
+#### Yang LULUS (diperiksa langsung di produksi)
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `/api/health` `app-customer` & `app-operator` | `control`, `platform`, `company`, `scheduler`, `mail` = `ok` |
+| `DATABASE_URL` / `CONTROL_DATABASE_URL` di container | `postgres://…@pgbouncer:5432/…`, tidak ada `mysql://` |
+| Migrasi `_prisma_migrations` | 19/19 basis data bersih, nol gagal/rollback; kendali di `0002_slug_permanen`, sisanya di `0001_baseline` |
+| **Sequence autoincrement** (jebakan klasik salin data) | Semua kolom serial di 19 basis data (15 + 13 + 17×61) berada **≥ `MAX(id)`**, nol bermasalah |
+| Email pengguna | 13/13 sudah huruf kecil, nol duplikat bila dibandingkan tanpa huruf besar-kecil. Login menormalkan pengenal (`auth.ts:57`), jadi kepekaan huruf PostgreSQL tidak mematahkan login |
+| Hak membuat basis data (pendaftaran PT baru) | role `sai` punya `CREATEDB`; jalur `ServerPostgres` ada di `db-server.ts` |
+| PgBouncer | `pool_mode = transaction`, `default_pool_size = 20`, `max_client_conn = 200`; `migrate` & `job-backup` langsung ke `pg` |
+| SQL mentah yang bergantung mesin | `rate-limit-persistent.ts` (`ON CONFLICT`), `tenant-export.ts`, `subscription-scheduler.ts` (`pg_database`) bercabang per mesin dengan benar |
+
+#### Pemblokir — SUDAH diperbaiki di `develop`, BELUM di produksi
+
+Per 16 Okt `main` tertinggal 5 commit dari `develop`. Image yang berjalan
+(dibangun 15 Okt 05:10 UTC) masih membawa kedua bug ini:
+
+1. **Cadangan otomatis: nol berhasil sejak penukaran.** `pg_dumpall` masih menuju
+   host `db` (MariaDB) → `Connection refused`. `/api/health` →
+   `backup.status = "failing"`, `lastSuccessAt = null`. Diperbaiki `53c3f458`
+   (tujuan dump diturunkan dari URL). **Ini yang paling mendesak:** buku besar
+   PostgreSQL saat ini tidak punya cadangan sama sekali.
+2. **Pemeriksaan kesesuaian data gagal untuk 17 perusahaan**: `function
+   sum(boolean) does not exist` (`SUM(x IS NULL)`, `FORMAT()`, `GROUP BY` longgar).
+   `/api/health` → `conformance.status = "late"`, `companiesFailed = 17`.
+   Diperbaiki `449796e5`, yang juga membuat `migrate` langsung ke `pg` (advisory
+   lock tidak bertahan di pooling `transaction`).
+
+**Tindakan:** promosikan `develop` → `main`, lalu sesudah rilis buktikan dengan
+`/api/health`: `backup.lastSuccessAt` terisi dan `conformance.companiesFailed = 0`.
+
+#### Pemblokir — BELUM diperbaiki
+
+3. **Pembaca jangkar retensi hapus-tenant masih memakai driver `mariadb`**
+   (`src/lib/operator/writes.ts:620`, `makeLatestJournalDateReader`). Ia membuka
+   `createPool` MariaDB ke host dari `CONTROL_DATABASE_URL` (port bawaan 3306,
+   SQL ber-backtick), tidak pernah tersambung, lalu memulangkan `null`. Akibatnya
+   retensi UU KUP dihitung dari *sekarang*, bukan dari jurnal terakhir buku itu.
+   Arahnya konservatif (tidak ada data terhapus lebih awal), tetapi tanggal
+   retensi yang tercatat salah, dan tidak ada galat yang terlihat. Dilacak di **#636**.
+
+#### Risiko — tidak memblokir, tapi perilakunya BERUBAH diam-diam
+
+4. **Aplikasi tersambung sebagai SUPERUSER.** Role `sai` adalah `rolsuper = t`.
+   Di MariaDB hak membuat buku dibatasi pola `sai\_t%`
+   ([MULTI-COMPANY.md](../MULTI-COMPANY.md)); di PostgreSQL pembatasan itu hilang.
+   Superuser bisa membaca `pg_authid` dan menjalankan `COPY … TO PROGRAM`
+   (eksekusi perintah di container `pg`). Jadi satu injeksi SQL di jalur
+   `$queryRawUnsafe` mana pun berubah dari "membaca data" menjadi "menguasai
+   server basis data". Usul: role aplikasi `NOSUPERUSER CREATEDB`, superuser
+   hanya untuk `migrate`/`job-backup`.
+5. **Pencarian kini peka huruf besar-kecil.** 20 filter Prisma `contains`
+   (ditambah 15 `startsWith`), nol `mode: "insensitive"` di seluruh `src/`. Di MariaDB
+   (`utf8mb4_unicode_ci`) mengetik `abadi` menemukan `PT ABADI`; di PostgreSQL
+   tidak lagi. Yang terdampak adalah pencarian pengguna: pelanggan, pemasok,
+   penerima, kontrak, faktur, BOM, pusat kerja, dokumen, surat jalan, retur
+   pembelian, biaya pendaratan, dan pencarian tenant di konsol operator. Filter
+   `startsWith: prefix` untuk penomoran dokumen **tidak** terdampak (prefiksnya
+   dibangkitkan sistem, hurufnya pasti).
+6. **Collation `C` di 19/19 basis data.** `ORDER BY name` kini mengurutkan per
+   byte: semua huruf besar sebelum huruf kecil, dan huruf beraksen di ujung.
+   Indeks `@unique` pada kode/nomor juga kini peka huruf besar-kecil: `ABC` dan
+   `abc` bisa hidup berdampingan, padahal MariaDB menolaknya.
+7. **Skrip operator yang masih khusus MySQL** dan akan gagal bila dijalankan:
+   `billing:pause` (`scripts/pause-platform-billing.ts`, `DATABASE()`),
+   `adopt-company` (`scripts/adopt-existing-company.ts`, `DATABASE()`), dan
+   `scripts/prove-company-slug-immutable.ts` (placeholder `?`,
+   `trigger_schema = <nama db>` yang di PostgreSQL bernilai `public`). Ketiganya
+   tidak dijalankan otomatis, jadi tidak ada yang rusak hari ini. Yang rusak
+   adalah alat yang akan diraih orang saat dibutuhkan.
+
+#### Putusan
+
+| | |
+|---|---|
+| Mesin & data | ✅ siap: utuh, sequence benar, migrasi bersih |
+| Image produksi | ❌ **belum**: rilis `develop` → `main` (butir 1–2) |
+| Kode | 🟡 butir 3 wajib sebelum ada penghapusan tenant berikutnya; butir 4–7 sebaiknya sebelum MariaDB dicabut (#636) |
+

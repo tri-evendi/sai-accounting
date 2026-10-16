@@ -222,12 +222,31 @@ function main(): void {
   })();
 }
 
+/**
+ * Perintah pemulihan untuk mesin yang SEDANG dipakai.
+ *
+ * Ini dulu dipaku `mariadb -h … -u root -p <`. Sesudah penukaran PostgreSQL
+ * 15 Okt 2026 kalimat itu menjadi lebih buruk daripada tidak ada: ia tetap
+ * terbaca seperti instruksi resmi, dan orang yang mengikutinya pada hari
+ * pemulihan akan menjalankan perkakas yang tidak bisa membaca dumpnya —
+ * sambil percaya ia sedang memulihkan.
+ *
+ * Diturunkan dari `DATABASE_URL`, sumber kebenaran yang sama dengan yang
+ * dipakai `scripts/backup.sh` untuk memilih perkakas dumpnya.
+ */
+function perintahPulih(dump: string): string {
+  const url = process.env.DATABASE_URL ?? "";
+  return /^postgres(ql)?:\/\//.test(url)
+    ? `psql -h <host-bayangan> -p 5432 -U <peran> -d postgres -f ${dump}`
+    : `mariadb -h <host-bayangan> -u root -p < ${dump}`;
+}
+
 function finish(work: string, archive: string): void {
   console.log(
     `\n✓ CADANGAN INI BISA DIPULIHKAN.\n\n` +
       `Hasil dekripsi ditinggalkan untuk latihan pemulihan:\n  ${archive}\n\n` +
       `Latihan penuh (KUARTALAN, ke server BAYANGAN — jangan pernah ke produksi):\n` +
-      `  mariadb -h <host-bayangan> -u root -p < ${path.join(work, "semua-basis-data.sql")}\n` +
+      `  ${perintahPulih(path.join(work, "semua-basis-data.sql"))}\n` +
       `lalu buka satu PT dan cocokkan Neraca Saldonya.\n\n` +
       `Buang setelah selesai:  rm -rf ${work}`
   );

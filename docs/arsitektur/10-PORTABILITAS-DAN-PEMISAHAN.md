@@ -148,6 +148,13 @@ PostgreSQL selesaikan.**
 
 ### Putusan
 
+> **⚑ Dilampaui 15 Okt 2026.** Pemilik memutuskan pindah, dan produksi kini
+> berjalan di PostgreSQL 17 (19/19 basis data). Analisis di bagian ini dibiarkan
+> sebagai catatan keputusan; pelaksanaan dan validasinya ada di
+> [dok 11 §10](./11-RENCANA-POSTGRESQL.md). Satu taksiran di sini terbukti
+> tepat: PgBouncer memang wajib. Isolasi fisik #104 **dipertahankan**:
+> satu basis data PostgreSQL per PT, bukan *schema-per-tenant*.
+
 ❌ **Jangan.** Ini migrasi mahal tanpa pembeli, dan ia akan memakan seluruh
 anggaran rekayasa yang seharusnya menutup P0 cadangan.
 
@@ -214,6 +221,13 @@ web-operator:                 # bidang operator — IMAGE SAMA
 **Image operator tetap memuat seluruh kode pelanggan.** Route group Next.js
 tidak bisa dieksklusi saat build, jadi ini isolasi **proses**, bukan eliminasi
 kode. Satu kerentanan di dependensi tetap ada di kedua container.
+
+> Menutup celah ini menuntut pemisahan **kode**, bukan container — dan itu
+> dibahas tersendiri di [14 — Rencana Monorepo](14-RENCANA-MONOREPO.md).
+> Ringkasnya: porsi khas-operator hanya **2,9 %** dari `src/` (diukur 15 Okt
+> 2026), jadi pemisahan memindahkan hampir tidak ada apa-apa sambil menambah
+> satu kelas bug baru — pergeseran versi antara dua binari di atas satu skema.
+> Putusannya **belum sekarang**, dengan pemicu yang dapat diamati.
 
 ⚠ **Pertahanan berlapis yang perlu diperhatikan.** Container operator dengan
 `OPERATOR_HOST` diset akan **melayani rute pelanggan** bila dihubungi dengan
@@ -319,10 +333,10 @@ DC/DRC belum bisa dibicarakan sebelum tiga hal ini ada:
 | # | Prasyarat | Kenapa | Tier |
 |---|---|---|---|
 | 1 | **Cadangan terverifikasi** | DRC tanpa cadangan terbukti hanyalah VM kedua yang kosong | 0 |
-| 2 | **PITR (binlog MariaDB)** | RPO harian = kehilangan sampai 24 jam pembukuan. Untuk data retensi 10 tahun, binlog shipping lebih murah daripada replika penuh dan sudah cukup | 2 |
+| 2 | **PITR (WAL archiving PostgreSQL)** | RPO harian = kehilangan sampai 24 jam pembukuan. Untuk data retensi 10 tahun, pengiriman WAL (`archive_command`, mis. wal-g/pgBackRest) lebih murah daripada replika penuh dan sudah cukup. *(Sebelum 15 Okt: binlog MariaDB)* | 2 |
 | 3 | **Secret di luar kotak** | Dua VM = dua `.env`; menyalin rahasia dengan tangan adalah cara kebocoran lahir | 2–3 |
 
-Baru sesudah itu: replikasi MariaDB asinkron ke DRC → **promosi manual**.
+Baru sesudah itu: *streaming replication* PostgreSQL asinkron ke DRC → **promosi manual** (`pg_promote()`).
 
 > ⚠ **Jangan mulai dari replikasi.** Replika yang menyalin basis data yang tidak
 > pernah dicadangkan hanya melipatgandakan satu titik kegagalan menjadi dua yang

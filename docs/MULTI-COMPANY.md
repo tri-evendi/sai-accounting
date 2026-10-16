@@ -288,6 +288,13 @@ langkah 3.
 > kode dan konfigurasi yang akan naik. Image-nya harus sudah dibangun:
 > `docker compose build`.
 >
+> **⚑ ARSIP MariaDB.** Runbook ini dijalankan sekali, 2026-07-28, saat mesinnya
+> masih MariaDB. Sejak 15 Okt 2026 mesinnya PostgreSQL: container `sai-db` hanya
+> jalan mundur dan akan dicabut (#636). Perintah di bawah **tidak berlaku** untuk
+> produksi sekarang; padanan PostgreSQL-nya `docker exec sai-pg psql -U sai …` /
+> `pg_dump`. Dibiarkan sebagai catatan karena temuan-temuannya masih mengajarkan
+> sesuatu.
+>
 > Perintah `mariadb`/`mariadb-dump` dijalankan di dalam container `sai-db`
 > (image `mariadb:11` **tidak** memasang `mysql`/`mysqldump`; keduanya bernama
 > `mariadb`/`mariadb-dump`). Sandi root diambil dari environment container,
@@ -397,7 +404,15 @@ skrip di bawah — buat basis data, terapkan skema, daftarkan — sambil
 mengalirkan kemajuannya tahap demi tahap.
 
 Syaratnya satu: pengguna basis data aplikasi harus boleh membuat basis data.
-Hak itu dibatasi **pola nama**, bukan diberikan menyeluruh:
+
+> **⚑ PostgreSQL (sejak 15 Okt 2026).** Hak itu kini `CREATEDB` pada role
+> aplikasi. **Peringatan:** per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi
+> pembatasan pola nama di bawah **tidak punya padanan yang berlaku**. Aplikasi
+> berhak atas seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk
+> aplikasi; lihat [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026)
+> butir 4. Blok di bawah adalah konfigurasi MariaDB lama.
+
+Di MariaDB hak itu dibatasi **pola nama**, bukan diberikan menyeluruh:
 
 ```bash
 docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
@@ -570,9 +585,11 @@ begitu, ia sudah menemukan dua hal yang tidak terlihat dari membaca kode: hak
 akses yang kurang (`P1010`) dan skrip adopsi yang menyebut kolom yang belum ada.
 
 ```bash
-mysqldump --single-transaction sai_production > /tmp/full.sql
-mysql -e "CREATE DATABASE sai_gladi; CREATE DATABASE sai_gladi_control"
-mysql sai_gladi < /tmp/full.sql
+# PostgreSQL (sejak 15 Okt 2026), di dalam container `sai-pg`:
+pg_dump -U sai -Fc sai_production > /tmp/full.dump
+createdb -U sai -T template0 sai_gladi && createdb -U sai -T template0 sai_gladi_control
+pg_restore -U sai -d sai_gladi --no-owner /tmp/full.dump
+# (MariaDB lama: mysqldump --single-transaction … / mysql sai_gladi < …)
 # arahkan DATABASE_URL & CONTROL_DATABASE_URL ke kedua salinan itu, lalu
 # jalankan langkah 1-3. Bandingkan jumlah baris & Σ debit dengan produksi.
 # Setelah yakin: DROP kedua basis data salinan dan hapus dump-nya.

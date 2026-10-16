@@ -129,6 +129,77 @@ describe("skrip cadangan: urutan yang membuat kegagalan tidak berbahaya", () => 
   });
 });
 
+describe("skrip cadangan: tujuan diturunkan dari URL, bukan sakelar sendiri", () => {
+  /*
+   * == CACAT YANG DIJAGA DI SINI, DAN IA SUDAH TERJADI ======================
+   * Mesinnya sudah diturunkan dari `DATABASE_URL`; HOST-nya tidak — ia berdiri
+   * sendiri sebagai `: "${DB_HOST:=db}"`. Sesudah penukaran PostgreSQL 15 Okt
+   * 2026, skrip ini memakai perkakas yang BENAR terhadap host yang SALAH:
+   *
+   *   pg_dumpall: error: connection to server at "db" (172.19.0.2), port 5432
+   *   failed: Connection refused
+   *
+   * Yang membuatnya mahal bukan galatnya — galatnya jelas. Yang mahal adalah
+   * ia tidak terlihat di mana pun kecuali di `/api/health`: container tetap
+   * "Up", penjadwal tetap `ok`, dan tidak ada satu pun cadangan otomatis yang
+   * berhasil selama berjam-jam.
+   */
+  /*
+   * ⚠ Komentar DIBUANG lebih dulu. Komentar yang menjelaskan cacat ini
+   * mengutip `DB_HOST:=db` apa adanya, dan tes yang memindai mentah akan
+   * membaca penjelasannya sebagai pelanggaran. Pola ini sudah menggigit EMPAT
+   * kali di repo ini — tes yang menghukum dokumentasi yang baik akan membuat
+   * orang menghapus dokumentasinya.
+   */
+  const kode = script
+    .split("\n")
+    .filter((b) => !/^\s*#/.test(b))
+    .join("\n");
+
+  /** Cabang `then` dan `else` dari percabangan mesin, terpisah. */
+  const cabang = (() => {
+    const mulai = kode.indexOf('if [ "$MESIN" = "postgres" ]');
+    const sisa = kode.slice(mulai);
+    const iElse = sisa.indexOf("\nelse\n");
+    const iFi = sisa.indexOf("\nfi\n");
+    return { pg: sisa.slice(0, iElse), maria: sisa.slice(iElse, iFi) };
+  })();
+
+  it("percabangan mesinnya ketemu — penjaga atas tes ini sendiri", () => {
+    expect(cabang.pg.length).toBeGreaterThan(50);
+    expect(cabang.maria.length).toBeGreaterThan(20);
+  });
+
+  it("host, port, peran, dan sandi PostgreSQL diambil dari DATABASE_URL", () => {
+    expect(kode).toMatch(/DATABASE_URL#\*:\/\//);
+    expect(cabang.pg).toMatch(/DB_HOST:=\$_host/);
+    expect(cabang.pg).toMatch(/DB_PORT:=\$_port/);
+  });
+
+  it("`db` hanya boleh menjadi bawaan di cabang MariaDB", () => {
+    /* Bawaan `db` yang berdiri di luar percabangan berlaku untuk KEDUA mesin —
+       itulah bentuk persis cacat yang sudah terjadi. */
+    expect(cabang.pg, "cabang PostgreSQL tidak boleh menyebut host `db`").not.toMatch(
+      /DB_HOST:=db/
+    );
+    expect(cabang.maria).toMatch(/DB_HOST:=db/);
+  });
+
+  it("peran PostgreSQL TIDAK dipaku `postgres`", () => {
+    /* Peran super di pemasangan ini bernama `sai`. Nama yang dipaku gagal di
+       setiap pemasangan yang menamainya lain — termasuk yang ini. */
+    expect(kode).not.toMatch(/--username=postgres\b/);
+    expect(kode).toMatch(/--username="\$DB_USER"/);
+  });
+
+  it("kredensial di URL di-decode sebelum dipakai", () => {
+    /* Sandi ter-persen-encode gagal hanya ketika ia kebetulan memuat `@`
+       atau `%` — yaitu gagal belakangan, pada sandi yang berbeda, jauh dari
+       perubahan yang menyebabkannya. Dua skrip di repo ini sudah kena. */
+    expect(kode).toMatch(/uri_decode/);
+  });
+});
+
 describe("skrip cadangan: kredensial tidak pernah terlihat", () => {
   it("kata sandi basis data lewat berkas opsi, bukan argumen", () => {
     // Argumen baris perintah terbaca siapa pun yang bisa menjalankan `ps` di

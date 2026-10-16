@@ -407,21 +407,22 @@ Daftar buku di produksi memuat empat nama yang berpola uji
 
 ```bash
 # daftar terdaftar + keaktifan
-docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -N \
-  -e "SELECT database_name, is_active FROM sai_control.companies ORDER BY 1;"'
+# (PostgreSQL sejak 15 Okt 2026; padanan MariaDB lama ada di riwayat git)
+docker exec sai-pg psql -U sai -d sai_control -Atc \
+  "SELECT database_name, is_active FROM companies ORDER BY 1"
 
 # ukuran per buku — untuk memutuskan apakah perlu dikecualikan dari cadangan
-docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -N -e "
-  SELECT table_schema, ROUND(SUM(data_length+index_length)/1024/1024,1) AS mb
-  FROM information_schema.TABLES WHERE table_schema LIKE \"sai%\"
-  GROUP BY 1 ORDER BY 2 DESC;"'
+docker exec sai-pg psql -U sai -d postgres -Atc \
+  "SELECT datname, pg_size_pretty(pg_database_size(datname)) FROM pg_database
+   WHERE datname LIKE 'sai%' ORDER BY pg_database_size(datname) DESC"
 
-# apakah bukunya benar-benar dipakai? (ada jurnal?)
-# jalankan per buku: SELECT COUNT(*) FROM <buku>.journals;
+# apakah bukunya benar-benar dipakai? (ada jurnal?) — PostgreSQL tidak bisa
+# menyeberangi basis data, jadi per buku:
+# docker exec sai-pg psql -U sai -d <buku> -Atc "SELECT COUNT(*) FROM journals"
 ```
 
 **Tidak perlu dicari basis data yatim** — sudah diperiksa saat menyusun dokumen
-ini: 17 di MariaDB = 17 terdaftar. `sai_production` **terdaftar**.
+ini: 17 basis data buku = 17 terdaftar (diperiksa ulang di PostgreSQL 16 Okt 2026). `sai_production` **terdaftar**.
 
 Keluaran yang diinginkan: satu daftar yang menyatakan tiap buku **produksi**
 atau **uji**, dengan dasar yang bukan namanya.
@@ -515,7 +516,7 @@ lebih awal berarti membayar ongkos tanpa pembeli.
 |---|---|---|---|
 | **Antrean pekerjaan** | Satu putaran penjadwal tidak muat dalam 1 jam, **atau** satu produser butuh *retry* < 1 jam | Pilihan antrean + penyimpanan | P2-2 |
 | **Replika `app-customer`** | CPU/memori `app-customer` jadi pembatas, **atau** butuh penggelaran tanpa henti | Cache bersama (atau cabut cache dalam-memori) **dan** tinjau `max_connections` | P2-3 |
-| **Replika baca MariaDB** | Laporan mulai memperlambat tulisan | Pemantauan yang bisa **menunjukkan** itu (Fase 1) | SPOF-1 |
+| **Replika baca PostgreSQL** (streaming replication) | Laporan mulai memperlambat tulisan | Pemantauan yang bisa **menunjukkan** itu (Fase 1) | SPOF-1 |
 | **Mesin kedua / HA** | RTO yang dapat diterima < waktu bangun ulang manual | ❓ RTO dari pemilik | SPOF-3 |
 | **Staging** | Perubahan skema mulai butuh latihan sebelum produksi | Keputusan ongkos | P2-1 |
 | **Metrik/dasbor** | "Apakah ini melambat?" ditanyakan dan tak terjawab | — | Dok 07 §9 |
@@ -540,7 +541,7 @@ Dibawa ke setiap rencana di atas:
 | Kendala | Akibatnya pada rencana |
 |---|---|
 | **RAM ~3,6 GB, 6 aplikasi** | Tidak ada proses jangka-panjang baru tanpa mengukur. Tidak ada build di server |
-| **`max_connections` MariaDB** | Setiap klien baru mengurangi anggaran yang lain |
+| **`max_connections` PostgreSQL (100) + kolam PgBouncer** | Setiap klien baru mengurangi anggaran yang lain; tiap koneksi backend adalah satu proses |
 | **Tanpa FK lintas basis data** | Setiap alur multi-lapis butuh urutan tulis + rekonsiliasi |
 | **Konteks PT wajib eksplisit** | Setiap pekerjaan latar baru **wajib** `runWithCompany()` |
 | **Platform tak boleh di jalur panas** | Keputusan jalur panas dibaca dari **snapshot** di kendali |
@@ -577,8 +578,8 @@ kepatuhan yang masih terbuka ada di
 
 **Apa yang ada.** Aplikasi akuntansi SaaS berbahasa Indonesia, v0.9.0, melayani
 **11 tenant / 17 perusahaan / 13 pengguna** di produksi. Satu monolit Next.js 16
-di lima container Docker di belakang Traefik, dengan **satu basis data MariaDB
-per PT** untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
+di lima container Docker di belakang Traefik, dengan **satu basis data PostgreSQL
+per PT** (MariaDB sampai 15 Okt 2026) untuk isolasi fisik buku besar, ditambah basis data kendali (identitas)
 dan platform (penagihan). ~342.800 baris TypeScript, 142 halaman, 126 rute API,
 88 model, 99 migration, 276 berkas tes.
 

@@ -13,7 +13,7 @@
 | **Shared-database** (kendali & platform) | `sai_control`, `sai_platform` | Identitas & penagihan memang lintas-tenant |
 | **Ambient context** | `AsyncLocalStorage` + penyimpan per-permintaan | Agar 120 berkas yang `import { prisma }` tidak perlu diubah tanda tangannya |
 | **Proxy klien basis data** | `lib/prisma.ts`, `control-db.ts`, `platform-db.ts` | Klien diselesaikan **saat kueri dipanggil**, bukan saat modul dimuat |
-| **Kolam klien LRU** | `lib/company-clients.ts` | `max_connections` MariaDB adalah anggaran terbatas; 17 klien permanen = kehabisan koneksi |
+| **Kolam klien LRU** | `lib/company-clients.ts` | `max_connections` adalah anggaran terbatas (PostgreSQL: 100, satu **proses** per koneksi; di depannya PgBouncer `transaction`); 17 klien permanen = kehabisan koneksi |
 | **Izin terpusat sebagai matriks** | `lib/authz.ts` + `authz-effective.ts` | Halaman & API pasangannya tidak bisa menyimpang diam-diam |
 | **Mesin posting terpusat** | `lib/posting/` | Setiap dokumen → jurnal lewat **satu** pintu; penjaga periode & persetujuan tak bisa dilewati dengan menambah route |
 | **Snapshot lintas-basis-data** | Status tenant & kuota disalin dari platform ke kendali | Jalur panas tidak boleh menyentuh basis data penagihan |

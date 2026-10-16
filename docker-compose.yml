@@ -1,7 +1,8 @@
 # SAI LuckyHands — fronted by Traefik (same convention as movin-partner /
 # wedding-movin). Traefik terminates TLS and routes ${APP_DOMAIN} to the app
 # over the shared external `traefik` network; the app is NOT published on the
-# host directly. MariaDB + one-shot Prisma migrations run on a private network.
+# host directly. PostgreSQL (`pg`, via `pgbouncer`) + one-shot Prisma migrations
+# run on a private network. `db` (MariaDB) is a read-only fallback until #636.
 #
 #   cp .env.docker.example .env      # set APP_DOMAIN, AUTH_*, DB_* / DATABASE_URL
 #   docker compose up --build -d
@@ -121,6 +122,30 @@ services:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
     container_name: sai-migrate
     env_file: .env
+    # ══ MIGRATE MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ═════════════
+    #
+    # Bukan pilihan gaya — Prisma Migrate memakai `pg_advisory_lock` untuk
+    # memastikan hanya satu proses memigrasikan satu basis data pada satu saat.
+    # Advisory lock terikat SESI, sedangkan PgBouncer `transaction` pooling
+    # memberi backend yang BERBEDA tiap transaksi. Jadi kunci diambil di satu
+    # backend lalu dilepas bersama transaksinya, dan percobaan berikutnya
+    # menunggu kunci yang tidak pernah ada pemiliknya:
+    #
+    #   Error: P1002 — Timed out trying to acquire a postgres advisory lock
+    #   (SELECT pg_advisory_lock(72707369)). Timeout: 10000ms.
+    #
+    # Terukur di penukaran 15 Okt 2026. `environment:` menimpa `env_file:`,
+    # jadi tiga baris di bawah ini mengalahkan URL PgBouncer di `.env` — dan
+    # HANYA untuk service ini. Aplikasi tetap lewat PgBouncer, yang memang
+    # alasan PgBouncer ada.
+    #
+    # `DATABASE_URL` juga menjadi TEMPLATE untuk 17 buku PT
+    # (`migrate-all-companies.ts` mengganti nama basis datanya), jadi satu baris
+    # ini membuat seluruh buku ikut dimigrasikan lewat koneksi langsung.
+    environment:
+      DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/${DB_NAME:-sai_production}
+      CONTROL_DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+      PLATFORM_DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_platform
     restart: "no"
     depends_on:
       pg:
@@ -372,6 +397,19 @@ services:
     container_name: sai-job-backup
     restart: unless-stopped
     env_file: .env
+    # ══ CADANGAN MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ═══════════
+    #
+    # `pg_dumpall` harus MENDAFTAR seluruh basis data lebih dulu (`pg_database`)
+    # lalu menyambung ke tiap-tiap basis data itu satu per satu. PgBouncer hanya
+    # mengekspos basis data yang terdaftar di konfigurasinya, jadi lewat pooler
+    # dump "seluruh basis data" akan memulangkan sebagian — dan sebagian itulah
+    # bentuk cadangan yang paling berbahaya: ia ADA, ia tampak berhasil, dan ia
+    # baru ketahuan kurang pada hari pemulihan.
+    #
+    # `scripts/backup.sh` menurunkan host, port, peran, dan sandi dari URL ini,
+    # jadi satu baris mengatur keempatnya sekaligus.
+    environment:
+      DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/${DB_NAME:-sai_production}
     depends_on:
       pg:
         condition: service_healthy
@@ -642,14 +680,14 @@ volumes:
   db_data:
   documents:
   audit:
+  # Data PostgreSQL, mesin kanonik sejak 15 Okt 2026 (dulu dideklarasikan lebih
+  # awal, saat `pg` masih di belakang profile, supaya penukaran tidak perlu
+  # menyentuh daftar volume: satu-satunya bagian compose yang kesalahannya
+  # membuat data yatim). `db_data` di atas = MariaDB beku, dicabut di #636.
+  pg_data:
   # Artefak cadangan terenkripsi saat `BACKUP_S3_BUCKET` belum disetel. Volume
   # BERNAMA, bukan bind mount ke pohon repo: ia harus bertahan melewati
   # `docker compose down` dan tidak boleh ikut masuk ke konteks build — satu
   # dump produksi pernah terpanggang ke dalam image yang digelar karena
   # `backups/` di pohon repo (lihat .dockerignore §anchor).
-  # Dipakai HANYA oleh service `pg` (profile `postgres`). Volume yang
-  # dideklarasikan tapi belum terpakai tidak memakan apa pun — dan
-  # mendeklarasikannya sekarang berarti penukaran tidak perlu menyentuh daftar
-  # volume, satu-satunya bagian compose yang kesalahannya membuat data yatim.
-  pg_data:
   cadangan:

@@ -101,7 +101,7 @@ vi.mock("@/lib/control-db", () => ({
   },
 }));
 
-vi.mock("@/lib/operator/writes", () => ({
+vi.mock("@/lib/billing/change-tenant-plan", () => ({
   changeTenantPlan: async () => {
     state.plansApplied += 1;
     return { outcome: "applied" };

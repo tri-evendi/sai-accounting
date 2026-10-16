@@ -2,7 +2,7 @@
  * Perpindahan paket ATAS PERMINTAAN PELANGGAN — aritmetikanya, murni.
  *
  * Sampai sekarang perpindahan paket hanya bisa dikerjakan operator
- * (`changeTenantPlan` di `lib/operator/writes.ts`, ber-audit). Berkas ini
+ * (`changeTenantPlan` di `lib/billing/change-tenant-plan.ts`, ber-audit). Berkas ini
  * menambahkan yang hilang untuk menjadikannya swalayan: JAWABAN ATAS "berapa
  * yang harus saya bayar sekarang", dan "boleh tidak saya turun paket".
  *

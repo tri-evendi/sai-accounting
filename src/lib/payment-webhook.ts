@@ -47,11 +47,12 @@ export interface WebhookDeps {
    * setelah tagihan ber-`targetPlanId` LUNAS.
    *
    * ⚠ DIOPER, BUKAN DIIMPOR. Mesinnya (`changeTenantPlan`) tinggal di
-   * `lib/operator/writes.ts`, dan berkas itu sudah mengimpor berkas INI —
-   * penyelesaian transfer manual memakai inti yang sama. Mengimpornya balik
-   * menjadikan keduanya lingkaran. Arah ketergantungan yang sudah ada
-   * mengatakan webhook adalah lapisan bawah; menyuntikkan pemasangnya
-   * mempertahankan arah itu, alih-alih membaliknya.
+   * `lib/billing/change-tenant-plan.ts` (sebelum Fase 0 di
+   * `lib/operator/writes.ts`, yang mengimpor berkas INI untuk penyelesaian
+   * transfer manual, jadi mengimpornya balik waktu itu berarti lingkaran).
+   * Sekarang lingkarannya sudah tidak ada, tetapi arahnya tetap dipertahankan:
+   * webhook adalah lapisan bawah yang tidak perlu tahu mesin perpindahan paket,
+   * dan pemanggil yang memutuskan aktornya (`self-service:` vs operator).
    *
    * Tidak dipasang + ada tagihan perpindahan yang lunas = MELEMPAR, bukan
    * dilewati diam-diam: pelanggan yang sudah membayar tapi paketnya tidak naik

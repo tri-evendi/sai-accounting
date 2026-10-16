@@ -5,8 +5,9 @@
  *   bun run change-plan -- --tenant <id|slug> --plan <key> --reason "<alasan>"
  *
  * ══ PEMBUNGKUS, BUKAN IMPLEMENTASI KEDUA ════════════════════════════════════
- * Sejak #155 logikanya hidup di `src/lib/operator/writes.ts` dan dipakai
- * BERSAMA oleh konsol operator. Skrip ini tinggal tiga hal: merakit klien,
+ * Sejak #155 logikanya hidup di satu inti — kini
+ * `src/lib/billing/change-tenant-plan.ts` (Fase 0, dok arsitektur 14 §3) —
+ * dan dipakai BERSAMA oleh konsol operator dan dua rute swalayan pelanggan. Skrip ini tinggal tiga hal: merakit klien,
  * membaca argumen, mencetak hasil. Kalau kedua jalur punya salinan logikanya
  * sendiri, salah satunya akan menyimpang diam-diam — dan yang menyimpang
  * selalu ketahuan terlambat, dari tenant yang kuotanya salah.
@@ -19,7 +20,7 @@
  *
  * Urutan tulis #137 (platform DULU, kendali BELAKANGAN), snapshot harga &
  * kuota, dan jejak audit tenant beraktor+beralasan semuanya milik inti — lihat
- * dokumentasinya di `writes.ts`.
+ * dokumentasinya di `lib/billing/change-tenant-plan.ts`.
  */
 
 import "dotenv/config";
@@ -27,7 +28,7 @@ import { PrismaClient as PlatformClient } from "../src/generated/platform/client
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
 
-import { changeTenantPlan } from "../src/lib/operator/writes";
+import { changeTenantPlan } from "../src/lib/billing/change-tenant-plan";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

@@ -62,7 +62,7 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 
-import { StatCard } from "@/components/dashboard/stat-card";
+import { StatCard } from "@/components/ui/stat-card";
 import {
   ConsoleNotice,
   ConsolePanel,

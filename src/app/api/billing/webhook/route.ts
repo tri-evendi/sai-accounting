@@ -25,7 +25,7 @@ import {
   webhookServerKey,
   type MidtransNotification,
 } from "@/lib/payment-gateway";
-import { planChangeApplier } from "@/lib/operator/writes";
+import { planChangeApplier } from "@/lib/billing/change-tenant-plan";
 import { processPaymentNotification } from "@/lib/payment-webhook";
 import { invalidateTenantState } from "@/lib/tenant-state";
 

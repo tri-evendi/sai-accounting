@@ -68,7 +68,7 @@
  * punya arti tidak pernah dipakai ulang sebagai hiasan (#186/#187).
  */
 import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
-import { StatCard } from "@/components/dashboard/stat-card";
+import { StatCard } from "@/components/ui/stat-card";
 import {
   platformChip,
   platformGlyph,

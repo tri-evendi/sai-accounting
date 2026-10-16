@@ -1,8 +1,13 @@
 # 14 — Konsol Operator & Platform Pelanggan: satu kode, dan apa yang terjadi bila dipisah
 
-> **Status:** asesmen + rencana. **Belum dikerjakan, dan rekomendasinya: jangan
-> dikerjakan sekarang.** Rencananya ditulis lengkap supaya ia siap pada hari
-> pemicunya muncul, bukan supaya ia dikerjakan hari ini.
+> **Status:** asesmen + rencana. **Fase 0 SELESAI 17 Okt 2026** (§4): arah
+> dependensi kini ditegakkan `tests/operator-dependency-direction.test.ts`, dan
+> dua penyeberangan dibereskan. **Fase 1–4 belum dikerjakan, dan
+> rekomendasinya: jangan dikerjakan sekarang.** Rencananya ditulis lengkap
+> supaya ia siap pada hari pemicunya muncul, bukan supaya ia dikerjakan hari ini.
+>
+> **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
+> Penyebut lama ikut menghitung `src/generated/`. Putusannya tidak berubah.
 >
 > **Diukur:** 15 Oktober 2026, di produksi. Setiap angka di dokumen ini adalah
 > **potret bertanggal** — ia akan bergerak.
@@ -59,15 +64,29 @@ app-operator  →  ghcr.io/tri-evendi/sai-accounting:latest   (729 MB)   ← SAM
 
 | Bagian | Berkas | Baris |
 |---|---:|---:|
-| `src/app/(app)/(operator)` | 18 | 3.838 |
-| `src/lib/operator` | 10 | 2.911 |
+| `src/app/(app)/(operator)` | 18 | 3.837 |
+| `src/lib/operator` | 10 | 2.710 |
 | `src/components/operator` | 6 | 3.455 |
-| **Jumlah khas-operator** | **34** | **≈ 10.200** |
-| Seluruh `src/` | 952 | 357.104 |
-| **Porsi operator** | 3,6 % | **2,9 %** |
+| **Jumlah khas-operator** | **34** | **10.002** |
+| `src/` tulisan tangan (tanpa `src/generated/`) | 840 | 179.835 |
+| **Porsi operator** | 4,0 % | **5,6 %** |
+
+*Diukur ulang 17 Okt 2026, sesudah Fase 0 (`lib/operator` turun ~200 baris
+karena `changeTenantPlan` pindah ke `lib/billing`).*
+
+> **⚠ Koreksi.** Potret 15 Okt menulis 952 berkas / 357.104 baris / **2,9 %**.
+> Penyebut itu ikut menghitung `src/generated/`: klien Prisma hasil bangkitan,
+> 113 berkas dan 177.335 baris, yang bahkan tidak ada di git. Itu bukan kode
+> yang ditulis, dibaca, atau dipindahkan siapa pun, jadi ia tidak boleh masuk
+> penyebut porsi. Angka yang benar hampir **dua kali lipat**. Putusannya tetap,
+> karena pemicu §6 ada di ~15 %, tetapi jaraknya ke pemicu separuh dari yang
+> dikira.
+>
+> Ukur ulang dengan:
+> `find src -path src/generated -prune -o \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 cat | wc -l`
 
 Angka inilah yang membentuk seluruh putusan di dokumen ini. **Yang dipisah
-adalah 2,9 % dari kode, dan 97,1 % sisanya harus dibawa ke kedua sisi** — karena
+adalah 5,6 % dari kode, dan 94,4 % sisanya harus dibawa ke kedua sisi** — karena
 yang dipakai bersama bukan fitur, melainkan fondasi: i18n, tema, format uang,
 basis data kendali, konstanta.
 
@@ -139,7 +158,28 @@ properti terkuat arsitektur ini hari ini.
 
 ## 3. Satu temuan yang tidak boleh ikut menunggu
 
-Dua berkas di permukaan **pelanggan** mengimpor dari `lib/operator`:
+> **✅ DIBERESKAN 17 Okt 2026 (Fase 0).** `changeTenantPlan`, `planChangeApplier`,
+> `QuotaWarning`, `ChangePlanResult`, tipe deps/aktor, dan `auditActor` pindah ke
+> **`src/lib/billing/change-tenant-plan.ts`**. Nama berkasnya sengaja BUKAN
+> `plan-change.ts` seperti usulan di bawah: `src/lib/plan-change.ts` sudah ada
+> dengan tugas lain (kuotasi murni, tanpa I/O), dan dua berkas bernama sama
+> dengan tugas berbeda adalah persis kebingungan yang hendak dihapus di sini.
+> `writes.ts` tidak mengekspor ulang. Semua pemanggil (konsol, skrip
+> `change-plan`, dua rute, tes) mengimpor dari sumbernya, dan `OperatorWriteDeps`
+> / `OperatorActor` tinggal sebagai alias tipe untuk aksi operator lainnya.
+> Tanpa perubahan perilaku, tanpa migration.
+>
+> ⚠ Satu jebakan yang ikut diperbaiki: `tests/plan-change-contact-only.test.ts`
+> me-*mock* `@/lib/operator/writes`. Kalau hanya rutenya yang diubah, mock itu
+> diam-diam berhenti berlaku dan tesnya memanggil `changeTenantPlan` asli.
+>
+> **Temuan kedua yang tidak tercatat di sini sebelumnya:** konsol operator
+> (`operator/page.tsx`) mengimpor `components/dashboard/stat-card`, komponen
+> generik (hanya bergantung pada `components/ui/*`) yang tinggal di folder milik
+> buku besar. Pola yang sama, arah sebaliknya. Dipindah ke
+> **`components/ui/stat-card.tsx`**.
+
+Dua berkas di permukaan **pelanggan** mengimpor dari `lib/operator` *(keadaan 15 Okt)*:
 
 ```
 src/app/api/billing/webhook/route.ts:28        import { planChangeApplier } from "@/lib/operator/writes";
@@ -165,7 +205,23 @@ mengekspor-ulang bila perlu. Tanpa perubahan perilaku, tanpa migration.
 
 ---
 
-## 4. Fase 0 — yang dikerjakan sekarang
+## 4. Fase 0 — ✅ SELESAI 17 Okt 2026
+
+| Butir | Hasil |
+|---|---|
+| 0.1 Penjaga arah dependensi | `tests/operator-dependency-direction.test.ts`: tiga aturan + daftar putih satu entri (`proxy.ts → plane`). Impor diselesaikan sebagai **path** (alias dan relatif), komentar dibuang. Entri daftar putih yang tak terpakai membuat tes merah. **Dibuktikan merah**: mengembalikan impor lama (lewat path relatif `../../../../lib/operator/writes`) dan impor `components/dashboard/*` dari konsol, keduanya tertangkap |
+| 0.2 Pindahkan `changeTenantPlan` | Ke `lib/billing/change-tenant-plan.ts` (lihat §3 untuk kenapa namanya berbeda) |
+| 0.3 Catat porsinya | Di [README arsitektur](./README.md), dengan angka yang dikoreksi: 5,6 % |
+| Tambahan | `StatCard` → `components/ui/stat-card.tsx` (temuan kedua §3) |
+
+Aturan yang ditegakkan, sedikit lebih luas daripada sketsa di bawah: **apa pun**
+di luar permukaan operator dilarang mengimpor ke dalamnya (bukan hanya
+`(dashboard)` dan bukan hanya delapan modul), dan permukaan operator hanya boleh
+memakai `components/ui/*` + `components/operator/*`. Daftar putih yang pendek
+lebih mudah dijaga daripada daftar hitam yang harus diingat diperbarui.
+`scripts/` di luar cakupan: skrip CLI adalah jalur pemulihan operator.
+
+*Rancangan aslinya (15 Okt), dibiarkan sebagai catatan:*
 
 Dua hari kerja. Mengambil manfaat 3 seluruhnya, dan menyiapkan manfaat 1–2
 tanpa membayar satu pun biayanya.
@@ -298,7 +354,7 @@ Semuanya dapat diamati. Satu saja cukup.
 | **Kewajiban kepatuhan** yang menuntut binari operator tidak memuat data/kode penyewa | Manfaat 1 berhenti menjadi "lebih baik" dan menjadi **syarat**. |
 | **Deployable operator ketiga** (mis. halaman status publik, portal audit) | Biaya *package* terbayar oleh tiga konsumen, bukan dua. |
 | **Dua tim menggelar dengan irama berbeda** | Hari ini satu orang menggelar keduanya; biaya 3 ditanggung oleh orang yang sama yang tahu konteksnya. Dua tim mematahkan asumsi itu. |
-| **Porsi operator melewati ~15 % kode** | Pada 2,9 % (15 Okt 2026) pemisahan memindahkan hampir tidak ada apa-apa. Pada 15 % ia memindahkan sesuatu yang nyata. |
+| **Porsi operator melewati ~15 % kode** | Pada 5,6 % (17 Okt 2026; potret 15 Okt menulis 2,9 % karena salah penyebut, lihat §1) pemisahan memindahkan sedikit sekali. Pada 15 % ia memindahkan sesuatu yang nyata. |
 | **Waktu build melewati ~20 menit** | Sudah menyakitkan dengan satu aplikasi; dua aplikasi yang bisa dibangun **paralel** mulai menang, bukan kalah. |
 
 **Yang BUKAN pemicu:** "monorepo itu praktik yang baik". Ia bukan praktik, ia
@@ -312,7 +368,7 @@ merugikan.
 | | |
 |---|---|
 | Pemisahan operator **sudah ada** | host + env + sesi + TOTP + proses + volume |
-| Yang belum | eliminasi kode — image operator memuat 97,1 % kode yang tidak ia pakai |
-| Dikerjakan sekarang | **Fase 0** — penjaga arah dependensi, pindahkan `changeTenantPlan` |
+| Yang belum | eliminasi kode — image operator memuat 94,4 % kode yang tidak ia pakai |
+| Fase 0 | ✅ **selesai 17 Okt 2026**: penjaga arah dependensi, `changeTenantPlan` → `lib/billing`, `StatCard` → `components/ui` |
 | Ditunda | Fase 1–4, ≈ 14 hari kerja, menunggu pemicu |
 | Tidak akan dilakukan | dua repo terpisah |

@@ -27,8 +27,8 @@ import { revalidatePath } from "next/cache";
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
+import { changeTenantPlan, type QuotaWarning } from "@/lib/billing/change-tenant-plan";
 import {
-  changeTenantPlan,
   executeTenantDeletion,
   makeLatestJournalDateReader,
   recordManualPayment,
@@ -36,7 +36,6 @@ import {
   setTenantSuspension,
   extendSubscription,
   type OperatorActor,
-  type QuotaWarning,
 } from "@/lib/operator/writes";
 import {
   changePlanSchema,

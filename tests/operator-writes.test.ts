@@ -64,8 +64,8 @@ vi.mock("@/lib/control-db", () => ({
   },
 }));
 
+import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";
 import {
-  changeTenantPlan,
   executeTenantDeletion,
   extendSubscription,
   recordManualPayment,

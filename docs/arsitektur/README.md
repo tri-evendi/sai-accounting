@@ -40,7 +40,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | 08 | [PENILAIAN-ARSITEKTUR.md](./08-PENILAIAN-ARSITEKTUR.md) | Kekuatan, utang teknis, risiko — diprioritaskan dengan bukti |
 | 09 | [PETA-JALAN.md](./09-PETA-JALAN.md) | Rekomendasi berurutan, prasyarat, pertanyaan yang belum terjawab |
 | 10 | [PORTABILITAS-DAN-PEMISAHAN.md](./10-PORTABILITAS-DAN-PEMISAHAN.md) | Asesmen: portabilitas VM · PostgreSQL · pemisahan container operator & pemasaran · prasyarat DC/DRC |
-| 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | **Rencana pelaksanaan** migrasi MariaDB → PostgreSQL — fase, gerbang, jebakan collation, kewajiban pembuktian |
+| 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | Migrasi MariaDB → PostgreSQL — **DIJALANKAN 15 Okt 2026**; fase, gerbang, kegagalan penukaran pertama, dan **validasi pasca-penukaran (§10.2)** |
 | 12 | [KLASIFIKASI-BUKU.md](./12-KLASIFIKASI-BUKU.md) | Buku mana **produksi**, mana **uji** — dengan dasar isinya, bukan namanya. Dibangkitkan `bun run classify:books` |
 | 13 | [AUDIT-SKEMA.md](./13-AUDIT-SKEMA.md) | **Audit desain skema** — apa yang sudah benar dan harus dijaga, tiga temuan (S1/S2 **ditutup**, S3 menunggu keputusan kosakata), dan keputusan desain yang harus diambil saat pindah mesin |
 | 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Kenapa konsol operator masih satu kode dengan platform pelanggan (porsinya **2,9 %**), apa yang dibeli & dibayar pemisahan, **Fase 0 diusulkan** — sisanya menunggu pemicu yang dapat diamati |

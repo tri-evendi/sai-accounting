@@ -2,6 +2,12 @@
 
 > Potret 11 Oktober 2026 · v0.9.0 · [indeks](./README.md)
 
+> **⚑ Mesin basis data BERUBAH sesudah potret ini.** Sejak 15 Okt 2026 produksi
+> berjalan di **PostgreSQL 17** (`sai-pg`, lewat `sai-pgbouncer`); MariaDB
+> (`sai-db`) hanya jalan mundur, tidak ditulisi, dan akan dicabut (#636). Setiap
+> rujukan MariaDB/MySQL di bawah menggambarkan 11 Okt. Lihat
+> [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
+
 Katalog setiap hal yang berjalan, tersimpan, atau dipanggil. Satu repositori,
 satu mesin, satu berkas compose — "layanan" di sini berarti **container atau
 unit penyebaran**, bukan mikrolayanan.

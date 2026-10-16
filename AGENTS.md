@@ -48,5 +48,5 @@ Setiap perubahan model Prisma / migration / tabel **wajib** mengikuti `docs/DATA
 - **Uang = `Decimal(15,2)`, kuantitas `Decimal(15,3)`, kurs `Decimal(18,6)` — JANGAN Float/Int.**
 - Valas simpan `currency` + `rate` + `base_amount` (IDR).
 - Enum-like = `String @db.VarChar` + `z.enum` (nilai `snake_case`); `@unique` untuk code/number; `@@index` untuk FK/date/status.
-- Migration **ditulis tangan** `prisma/migrations/NNNN_<nama>/migration.sql`, diterapkan `bun run db:migrate` (`migrate deploy`); jalankan `bun run db:generate` setelahnya.
+- **Mesinnya PostgreSQL sejak 15 Okt 2026.** Migration **ditulis tangan** di `prisma/postgresql/<company|control|platform>/NNNN_<nama>/migration.sql` (dialek PostgreSQL), diterapkan `bun run db:migrate:all` (`migrate deploy`); jalankan `bun run db:generate` setelahnya. `prisma/migrations/` dan `prisma/{control,platform}/migrations/` adalah **ARSIP MariaDB hanya-baca**: migration yang ditulis di sana tidak akan pernah diterapkan.
 - Lewati **Checklist tabel baru** di `docs/DATABASE.md` sebelum commit.

@@ -2,6 +2,12 @@
 
 > Potret 11 Oktober 2026 · v0.9.0 (`origin/main@a2eecf7c`) · [indeks](./README.md)
 
+> **⚑ Mesin basis data BERUBAH sesudah potret ini.** Sejak 15 Okt 2026 produksi
+> berjalan di **PostgreSQL 17** (`sai-pg`, lewat `sai-pgbouncer`); MariaDB
+> (`sai-db`) hanya jalan mundur, tidak ditulisi, dan akan dicabut (#636). Setiap
+> rujukan MariaDB/MySQL di bawah menggambarkan 11 Okt. Lihat
+> [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
+
 ## 1. Apa yang dijual
 
 **SAI Accounting** adalah aplikasi akuntansi berbahasa Indonesia yang dijual
@@ -210,8 +216,8 @@ cadangan otomatis.
 | Kerangka | **Next.js 16.2.1** (App Router, `output: standalone`) | Pemeriksaan tipe **dimatikan** di `next build` — sengaja, lihat dok 07 |
 | Runtime | **Node 22** (bookworm-slim) | Node yang menjalankan; **Bun 1.3** hanya pemasang paket & peluncur skrip |
 | UI | **React 19.2.4** + **Ant Design v6** | Tanpa Tailwind & tanpa `className` sejak #203; gaya sebaris + token |
-| ORM | **Prisma 7.5** + `@prisma/adapter-mariadb` | **Tiga** klien dibangkitkan dari tiga skema |
-| Basis data | **MariaDB 11** | Uang `Decimal(15,2)`, kuantitas `(15,3)`, kurs `(18,6)` |
+| ORM | **Prisma 7.5** + `@prisma/adapter-pg` *(MariaDB sampai 15 Okt 2026)* | **Tiga** klien dibangkitkan dari tiga skema |
+| Basis data | **PostgreSQL 17** + PgBouncer (`transaction`) *(MariaDB 11 sampai 15 Okt 2026)* | Uang `Decimal(15,2)`, kuantitas `(15,3)`, kurs `(18,6)` |
 | Autentikasi | **NextAuth v5 beta** (Credentials, JWT 24 jam) | Plus dua rezim lain — lihat dok 05 |
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |

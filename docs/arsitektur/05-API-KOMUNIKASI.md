@@ -10,7 +10,7 @@ Daftarnya pendek, dan itu disengaja:
 |---|---|---|
 | **HTTPS** | Semua lalu lintas masuk | Traefik terminasi TLS; HTTP → 301 |
 | **HTTP** | Traefik → `web:3000` | Di dalam jaringan Docker `traefik_default` |
-| **MySQL** | `app-customer`/`app-operator`/`job-scheduler`/`job-conformance`/`job-backup` → `db:3306` | Lewat `@prisma/adapter-mariadb` |
+| **PostgreSQL** | `app-customer`/`app-operator`/`job-scheduler`/`job-conformance` → `pgbouncer:5432`; `migrate`/`job-backup` → `pg:5432` langsung | Lewat `@prisma/adapter-pg` (MySQL/`adapter-mariadb` sampai 15 Okt 2026) |
 | **SMTP** | `app-customer`/`job-scheduler` → penyedia surel | `nodemailer` |
 | **HTTPS keluar** | `app-customer` → Midtrans Core API | **Satu-satunya** panggilan HTTP keluar di seluruh aplikasi |
 | **S3 (HTTPS)** | `job-backup` → penyimpanan objek | `awscli` |

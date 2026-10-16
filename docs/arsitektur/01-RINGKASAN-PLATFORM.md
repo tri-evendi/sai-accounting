@@ -2,6 +2,13 @@
 
 > Potret 11 Oktober 2026 · v0.9.0 (`origin/main@a2eecf7c`) · [indeks](./README.md)
 
+> **⚑ Diperbarui 17 Okt 2026: mesin basis data.** Sejak 15 Okt 2026 produksi
+> berjalan di **PostgreSQL 17** (`sai-pg`, lewat `sai-pgbouncer`). Diagram,
+> tumpukan teknologi, dan §9.1 di bawah sudah mencerminkannya; angka lain tetap
+> potret 11 Okt. MariaDB (`sai-db`) hanya jalan mundur, tidak ditulisi, dan akan
+> dicabut (#636). Lihat
+> [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
+
 ## 1. Apa yang dijual
 
 **SAI Accounting** adalah aplikasi akuntansi berbahasa Indonesia yang dijual
@@ -61,8 +68,8 @@ graph TD
 
 - **Tenant** = pelanggan yang berlangganan. Ia yang punya paket, tagihan, dan
   kuota. Hidup di basis data **kendali** + **platform**.
-- **Perusahaan (PT)** = satu buku besar. **Satu basis data MySQL sendiri per
-  PT** (issue #104). Satu tenant boleh punya banyak PT.
+- **Perusahaan (PT)** = satu buku besar. **Satu basis data PostgreSQL sendiri per
+  PT** (issue #104; MariaDB sampai 15 Okt 2026). Satu tenant boleh punya banyak PT.
 
 Rinciannya di [`docs/MULTI-TENANT.md §2`](../MULTI-TENANT.md) dan
 [`docs/MULTI-COMPANY.md`](../MULTI-COMPANY.md).
@@ -87,7 +94,8 @@ graph TB
         CON["<b>job-conformance</b><br/>pemeriksa data · mingguan"]
         BAK["<b>job-backup</b><br/>dump+sandi+unggah · harian"]
         MIG["<b>migrate</b><br/>sekali-jalan"]
-        DB[("<b>db</b> · MariaDB 11<br/>:3306 — tidak dipublikasikan")]
+        PGB["<b>pgbouncer</b><br/>pooling transaction · :5432"]
+        DB[("<b>pg</b> · PostgreSQL 17<br/>:5432 — tidak dipublikasikan")]
     end
 
     S3["Penyimpanan S3<br/>(cadangan luar-mesin)"]
@@ -100,12 +108,13 @@ graph TB
     TR -->|"Host: APP_DOMAIN"| WEBC
     TR -->|"Host: OPERATOR_DOMAIN"| WEBO
 
-    WEBC --> DB
-    WEBO --> DB
-    SCH --> DB
-    CON --> DB
-    BAK --> DB
-    MIG --> DB
+    WEBC --> PGB
+    WEBO --> PGB
+    SCH --> PGB
+    CON --> PGB
+    PGB --> DB
+    BAK -->|langsung| DB
+    MIG -->|langsung| DB
 
     BAK --> S3
     WEBC --> SMTP
@@ -118,7 +127,7 @@ graph TB
     style DB fill:#eef7ee,stroke:#5a8f5a
 ```
 
-Satu mesin, enam container aplikasi, satu MariaDB — dan **tidak ada**
+Satu mesin, enam container aplikasi, satu PostgreSQL di belakang PgBouncer — dan **tidak ada**
 antrean pesan, *cache* bersama, *service mesh*, maupun layanan HTTP kedua.
 Seluruh pekerjaan latar berjalan sebagai *loop shell yang tidur*, bukan sebagai
 pekerja yang mengambil dari antrean. Itu pilihan sadar yang dibenarkan panjang
@@ -210,8 +219,8 @@ cadangan otomatis.
 | Kerangka | **Next.js 16.2.1** (App Router, `output: standalone`) | Pemeriksaan tipe **dimatikan** di `next build` — sengaja, lihat dok 07 |
 | Runtime | **Node 22** (bookworm-slim) | Node yang menjalankan; **Bun 1.3** hanya pemasang paket & peluncur skrip |
 | UI | **React 19.2.4** + **Ant Design v6** | Tanpa Tailwind & tanpa `className` sejak #203; gaya sebaris + token |
-| ORM | **Prisma 7.5** + `@prisma/adapter-mariadb` | **Tiga** klien dibangkitkan dari tiga skema |
-| Basis data | **MariaDB 11** | Uang `Decimal(15,2)`, kuantitas `(15,3)`, kurs `(18,6)` |
+| ORM | **Prisma 7.5** + `@prisma/adapter-pg` *(MariaDB sampai 15 Okt 2026)* | **Tiga** klien dibangkitkan dari tiga skema |
+| Basis data | **PostgreSQL 17** + PgBouncer (`transaction`) *(MariaDB 11 sampai 15 Okt 2026)* | Uang `Decimal(15,2)`, kuantitas `(15,3)`, kurs `(18,6)` |
 | Autentikasi | **NextAuth v5 beta** (Credentials, JWT 24 jam) | Plus dua rezim lain — lihat dok 05 |
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |
@@ -254,6 +263,19 @@ pada 11 Oktober 2026:
 | Token API aktif | 0 |
 | Putaran penjadwal | 1.246 — terakhir 7 menit sebelum potret, **sehat** |
 | Putaran cadangan | 54 — **`lastSuccessAt: null`** ⚠ |
+
+### 9.1 Potret 16 Okt 2026 — sesudah penukaran ke PostgreSQL
+
+Dibaca dari `docker ps`, `/api/health` (dari dalam container), dan kueri
+langsung ke `sai-pg`:
+
+| | |
+|---|---|
+| Container naik | `sai-app-customer` (healthy), `sai-app-operator` (healthy), `sai-job-scheduler`, `sai-job-conformance`, `sai-job-backup`, `sai-pgbouncer`, `sai-pg` (healthy), `sai-db` (jalan mundur, tidak ditulisi) |
+| Basis data | **19** di PostgreSQL 17.11: kendali + platform + **17** buku PT, cocok dengan 17 terdaftar. Total 227 MB |
+| Tenant / perusahaan / pengguna / keanggotaan | 11 / 17 / 13 / 17 (sama dengan potret 11 Okt) |
+| Langganan | 11: 10 `active`, 1 `trialing`; mode penagihan 11/11 `none`; 0 pembayaran |
+| Kesehatan | `control`, `platform`, `company`, `scheduler`, `mail` = `ok` · **`backup` = `failing`** (nol cadangan sejak penukaran) · **`conformance` = `late`** (17 PT gagal). Keduanya sudah diperbaiki di `develop`; lihat [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026) |
 | Migration diterapkan | kendali 17/17 · platform 17/17 · perusahaan 64/64 — **tidak ada drift** *(platform 0018 ditambahkan 11 Okt sore, BELUM diterapkan)* |
 
 Dua hal dari tabel itu adalah temuan, bukan statistik, dan keduanya dinilai di

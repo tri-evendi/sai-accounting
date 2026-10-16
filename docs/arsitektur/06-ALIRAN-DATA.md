@@ -182,7 +182,7 @@ sequenceDiagram
     participant TA as tenant-authz
     participant CP as company-provisioning
     participant CDB as sai_control
-    participant MY as MariaDB
+    participant MY as PostgreSQL
     participant NEW as basis data PT baru
     participant SU as Wisaya /setup
 
@@ -196,8 +196,8 @@ sequenceDiagram
     W->>CP: provisionCompany(nama, tenantId)
     CP->>CP: susun slug + nama basis data
     CP->>CP: saring /^[A-Za-z0-9_]{1,64}$/
-    CP->>MY: CREATE DATABASE sai_t<N>_<slug>
-    CP->>NEW: prisma migrate deploy (64 migration)
+    CP->>MY: CREATE DATABASE "sai_t<N>_<slug>" (collation C)
+    CP->>NEW: prisma migrate deploy (prisma/postgresql/company)
     CP->>CDB: INSERT companies (database_name = NAMA saja)
     CP->>CDB: INSERT memberships (pembuat)
     Note over CP,CDB: Kredensial TIDAK ikut tersimpan —<br/>host/user/sandi selalu dari environment
@@ -294,14 +294,14 @@ Penghentiannya dilakukan `scripts/pause-platform-billing.ts` —
 sequenceDiagram
     autonumber
     participant B as backup (harian)
-    participant DB as MariaDB
+    participant DB as PostgreSQL (langsung, bukan PgBouncer)
     participant V as volume documents + audit (:ro)
     participant FS as BACKUP_WORK_DIR
     participant S3 as penyimpanan S3
     participant PDB as sai_platform
 
-    B->>DB: mariadb-dump --all-databases
-    Note over B,DB: sandi lewat BERKAS OPSI,<br/>bukan argumen (argumen terbaca `ps`)
+    B->>DB: pg_dumpall
+    Note over B,DB: sandi lewat PGPASSWORD,<br/>bukan argumen (argumen terbaca `ps`)
     alt dump gagal
         B->>PDB: INSERT backup_runs (error)
         B-->>B: BERHENTI — tidak mengirim apa pun

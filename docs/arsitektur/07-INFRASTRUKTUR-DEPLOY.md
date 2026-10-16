@@ -78,7 +78,8 @@ service compose — keduanya tidak ikut berubah saat service di-rename.
 |---|---|---|
 | `80`, `443` | **Host** | Hanya Traefik |
 | `3000` | **Tidak** (`expose`) | `app-customer` & `app-operator`, hanya di jaringan Docker |
-| `3306` | **Tidak** | `db`, hanya di `internal` |
+| `5432` | **Tidak** | `pg` dan `pgbouncer`, hanya di `internal` |
+| `3306` | **Tidak** | `db` (MariaDB jalan mundur, sampai #636), hanya di `internal` |
 
 **Tidak ada satu pun port basis data yang terbit ke host.** Itu juga alasan
 `job-scheduler`, `job-conformance`, dan `job-backup` memakai ulang image
@@ -110,7 +111,7 @@ graph TD
     DEPS["<b>deps</b><br/>bun install --frozen-lockfile<br/>(termasuk devDeps)"]
     BUILD["<b>builder</b><br/>3× prisma generate<br/>+ next build<br/>heap 768 MB"]
     MIGR["<b>migrator</b><br/>3× prisma generate<br/>heap 512 MB<br/>CMD: db:migrate:all"]
-    BAK["<b>backup</b><br/>+ mariadb-client + awscli<br/>CMD: scripts/backup.sh"]
+    BAK["<b>backup</b><br/>+ postgresql-client-17 + awscli<br/>(+ mariadb-client sampai #636)<br/>CMD: scripts/backup.sh"]
     RUN["<b>runner</b><br/>standalone + static + public<br/>USER node · CMD: node server.js"]
 
     BASE --> BUN --> DEPS
@@ -400,8 +401,10 @@ Plus `app-operator`, `job-scheduler`, `job-conformance`, dan `job-backup` saat
 berjalan — pemisahan bidang menambah satu klien lagi ke anggaran ini.
 Angka-angka ini
 **sengaja kecil**: setiap koneksi yang dipesan kendali adalah koneksi yang tidak
-bisa dipakai buku PT, dan `max_connections` MariaDB di mesin ini adalah
-anggaran yang benar-benar terbatas.
+bisa dipakai buku PT, dan `max_connections` di mesin ini adalah anggaran yang
+benar-benar terbatas. Sejak PostgreSQL (15 Okt 2026) anggaran itu dua lapis:
+`max_client_conn = 200` di PgBouncer dan `max_connections = 100` di `pg`,
+dengan `default_pool_size = 20` per pasangan basis data/pengguna.
 
 ## 8. Lingkungan
 

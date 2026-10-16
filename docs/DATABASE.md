@@ -67,6 +67,13 @@ Kenapa tak pernah berbunyi: collation `utf8mb4_unicode_ci` membuat
 JavaScript **tidak** — dan saldo dihitung di JavaScript. Setiap pemeriksaan
 lewat SQL akan bilang "bersih".
 
+> **Sejak PostgreSQL (15 Okt 2026) arahnya terbalik.** Collation basis data kini
+> `C`: perbandingan SQL **peka** huruf besar-kecil, sama seperti JavaScript. Jadi
+> jebakan di atas hilang, tetapi muncul jebakan baru: filter Prisma `contains`
+> tanpa `mode: "insensitive"` tidak lagi menemukan `PT ABADI` saat pengguna
+> mengetik `abadi`, dan `@unique` pada kode/nomor menerima `ABC` dan `abc`
+> sekaligus. Lihat [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
+
 Aturannya:
 - Daftar nilai hidup di **satu tempat** (`src/lib/constants.ts`), dipakai
   `z.enum(...)` maupun penjaga impor — jangan diketik ulang.
@@ -148,15 +155,17 @@ Aturannya:
 ---
 
 ## 7. Migrations (workflow proyek ini)
-- **Tidak** memakai `prisma migrate dev`. Migration **ditulis tangan** sebagai folder berurutan: `prisma/migrations/NNNN_<nama>/migration.sql` (mis. `0002_add_accounts`).
-- Diterapkan via **`prisma migrate deploy`** (lihat `package.json`: `db:migrate`).
-- Gaya DDL (ikuti `0001_init`): `DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`, `DATETIME(3)`, FK ditambahkan via `ALTER TABLE ... ADD CONSTRAINT ... ON DELETE ... ON UPDATE ...`.
+> **Mesin: PostgreSQL 17 sejak 15 Okt 2026.** Riwayat MariaDB (`prisma/migrations/` 0001–0065, `prisma/control/migrations/`, `prisma/platform/migrations/`) adalah **ARSIP hanya-baca**. Jangan menambah berkas di sana, karena tidak akan diterapkan. Latar dan validasinya: [`arsitektur/11-RENCANA-POSTGRESQL.md` §10](./arsitektur/11-RENCANA-POSTGRESQL.md).
+
+- **Tidak** memakai `prisma migrate dev`. Migration **ditulis tangan** sebagai folder berurutan di `prisma/postgresql/<db>/NNNN_<nama>/migration.sql`, dengan `<db>` = `company` (buku tiap PT), `control`, atau `platform`. Contoh: `prisma/postgresql/control/0002_slug_permanen`.
+- Diterapkan via **`prisma migrate deploy`**: `bun run db:migrate:all` (kendali → platform → setiap PT). Di produksi `migrate` menyambung **langsung ke `pg`**, bukan lewat PgBouncer, karena advisory lock Prisma terikat sesi.
+- Gaya DDL (ikuti `prisma/postgresql/company/0001_baseline`): identifier ber-kutip ganda (`"created_at"`), `SERIAL` untuk `id`, `TIMESTAMP(3)`, `DECIMAL(15,2)`, FK ditambahkan via `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... ON DELETE ... ON UPDATE ...`. **Trigger** tidak dibangkitkan Prisma: tulis tangan, dan `tests/pg-trigger-parity.test.ts` menjaganya.
 - Setelah menulis model + SQL: jalankan `bun run db:generate` (Prisma client). Update `prisma/seed.ts` bila perlu data awal.
 
 ---
 
 ## 8. Prisma (konvensi teknis)
-- Generator: `provider = "prisma-client"`, output `src/generated/prisma`. Datasource `mysql`, **tanpa `url`** (koneksi via `@prisma/adapter-mariadb`).
+- Generator: `provider = "prisma-client"`, output `src/generated/prisma`. Datasource `postgresql`, **tanpa `url`** (koneksi via `@prisma/adapter-pg`, dipilih dari skema URL di `src/lib/db-engine.ts`). Klien yang dibangkitkan **terikat dialek `provider`**: image ini tidak bisa bicara ke `mysql://`.
 - Import client **selalu**: `import { prisma } from "@/lib/prisma"` (singleton). Class dari `@/generated/prisma/client`.
 - Field opsional pakai `?`; default via `@default(...)`.
 
@@ -171,7 +180,7 @@ Aturannya:
 - [ ] Enum-like = `String @db.VarChar` + `z.enum` di Zod; nilai `snake_case` lowercase.
 - [ ] `@unique` untuk code/number; `@@index` untuk FK/date/status.
 - [ ] `onDelete`: Cascade (lines), Restrict (master).
-- [ ] Migration `NNNN_<nama>/migration.sql` ditulis (gaya utf8mb4/DATETIME(3)/ALTER FK).
+- [ ] Migration `prisma/postgresql/<db>/NNNN_<nama>/migration.sql` ditulis (dialek PostgreSQL: kutip ganda/`TIMESTAMP(3)`/ALTER FK).
 - [ ] Skema Zod mencerminkan constraint DB (panjang, required, enum).
 - [ ] `bun run db:generate` dijalankan.
 
@@ -213,12 +222,15 @@ Lapisan ketiga di samping kendali dan perusahaan (rancangan & alasannya:
 **Menyediakannya (opsional — pemasangan multi-PT satu grup usaha tidak butuh):**
 
 ```sql
-CREATE DATABASE sai_platform DEFAULT CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-CREATE USER 'sai_billing'@'%' IDENTIFIED BY '<sandi-tersendiri>';
-GRANT ALL PRIVILEGES ON `sai_platform`.* TO 'sai_billing'@'%';
-FLUSH PRIVILEGES;
+-- PostgreSQL (mesin sejak 15 Okt 2026), dijalankan sebagai superuser di `pg`:
+CREATE ROLE sai_billing LOGIN PASSWORD '<sandi-tersendiri>';
+CREATE DATABASE sai_platform OWNER sai_billing
+  TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C';
 ```
+
+*(Padanan MariaDB lama: `CREATE DATABASE … utf8mb4_unicode_ci` + `GRANT ALL
+PRIVILEGES ON \`sai_platform\`.*`. Collation `C` disamakan dengan yang dipakai
+`ServerPostgres` di `src/lib/db-server.ts` untuk buku PT.)*
 
 lalu set `PLATFORM_DATABASE_URL` di `.env` (lihat `.env.docker.example`) dan
 jalankan `bun run db:migrate:platform` (atau `db:migrate:all`, yang sudah

@@ -2,6 +2,11 @@
 
 > Potret 11 Oktober 2026 · v0.9.0 · [indeks](./README.md)
 
+> **⚑ Diperbarui 17 Okt 2026: lapisan basis data.** Sejak 15 Okt 2026 produksi
+> berjalan di **PostgreSQL 17** (`pg`) di belakang **PgBouncer** (`pgbouncer`).
+> Tabel layanan, diagram, §2.3, §2.7, dan §5 sudah mencerminkannya. MariaDB
+> (`db`) tetap terdaftar sebagai jalan mundur sampai #636.
+
 Katalog setiap hal yang berjalan, tersimpan, atau dipanggil. Satu repositori,
 satu mesin, satu berkas compose — "layanan" di sini berarti **container atau
 unit penyebaran**, bukan mikrolayanan.
@@ -22,7 +27,9 @@ ke **dua** proses di antaranya.
 |---|---|---|---|
 | `app-customer` | `sai-app-customer` | **Enam grup rute pelanggan** — pemasaran, auth, panel tenant, buku besar, setup, docs | selalu hidup |
 | `app-operator` | `sai-app-operator` | Konsol operator — **image SAMA**, beda `OPERATOR_HOST` | selalu hidup |
-| `db` | `sai-db` | 17 buku PT + kendali + platform | selalu hidup |
+| `pg` | `sai-pg` | **PostgreSQL 17**: 17 buku PT + kendali + platform | selalu hidup |
+| `pgbouncer` | `sai-pgbouncer` | Kolam koneksi `transaction` di depan `pg` | selalu hidup |
+| `db` | `sai-db` | MariaDB 11, **jalan mundur** sejak 15 Okt, tidak ditulisi; dicabut di #636 | selalu hidup (sementara) |
 | `job-scheduler` | `sai-job-scheduler` | 5 produser: tagihan, kabar, pengingat, berulang | tiap jam |
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
 | `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 | harian |
@@ -93,17 +100,20 @@ graph TB
         SCH["<b>sai-job-scheduler</b><br/>…-migrator:latest<br/>loop 3600s"]
         CON["<b>sai-job-conformance</b><br/>…-migrator:latest<br/>loop 604800s"]
         BAK["<b>sai-job-backup</b><br/>…-backup:latest<br/>loop 86400s"]
-        DB[("<b>sai-db</b><br/>mariadb:11<br/>:3306 — TIDAK dipublikasikan")]
+        PGB["<b>sai-pgbouncer</b><br/>edoburu/pgbouncer<br/>transaction · :5432"]
+        DB[("<b>sai-pg</b><br/>postgres:17-alpine<br/>:5432 — TIDAK dipublikasikan")]
+        OLD[("<b>sai-db</b><br/>mariadb:11 · jalan mundur<br/>tidak ditulisi (#636)")]
     end
 
     TR -->|"Host: APP_DOMAIN"| WEBC
     TR -->|"Host: OPERATOR_DOMAIN"| WEBO
-    WEBC --> DB
-    WEBO --> DB
-    MIG --> DB
-    SCH --> DB
-    CON --> DB
-    BAK -->|hanya-baca| DB
+    WEBC --> PGB
+    WEBO --> PGB
+    SCH --> PGB
+    CON --> PGB
+    PGB --> DB
+    MIG -->|"langsung (advisory lock)"| DB
+    BAK -->|"langsung, hanya-baca"| DB
 
     style TR fill:#fff4e6,stroke:#c9873d
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
@@ -128,7 +138,7 @@ hanya di `internal` dan karena itu tidak terjangkau dari luar mesin sama sekali.
 | **Port** | `3000` — `expose`, bukan `ports`. Tidak terbit ke host |
 | **Jaringan** | `traefik_default` + `internal` |
 | **Domain** | `APP_DOMAIN` + `www.` (dialihkan ke apex). **BUKAN** `OPERATOR_DOMAIN` |
-| **Bergantung pada** | `db` (healthy), `migrate` (selesai sukses) |
+| **Bergantung pada** | `pg` (healthy), `pgbouncer` (berjalan), `migrate` (selesai sukses) |
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` tiap 30s, 3 kali coba, start 20s |
 | **Volume** | `documents:/app/data/documents` (RW) · `audit:/app/data/audit` (RW) |
 
@@ -141,7 +151,7 @@ menimpa `env_file:`), sehingga `/operator` menjawab 404 di sini bahkan bila
 Host operator dikirim langsung ke container ini.
 
 **Masukan:** permintaan HTTP dari Traefik · webhook Midtrans · kueri
-MariaDB · berkas di dua volume.
+PostgreSQL (lewat PgBouncer) · berkas di dua volume.
 **Keluaran:** HTML/JSON/PDF/XLSX · tulisan ke ketiga lapis basis data ·
 SMTP keluar · HTTP keluar ke Midtrans Core API.
 
@@ -186,21 +196,51 @@ membatalkan pemisahan ini.
 
 Rinciannya: [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
 
-### 2.3 `db` — MariaDB (`sai-db`)
+### 2.3 `pg` — PostgreSQL 17 (`sai-pg`)
 
 | | |
 |---|---|
-| **Image** | `mariadb:11` |
-| **Port** | `3306` — hanya di jaringan `internal`, **tidak** dipublikasikan ke host |
-| **Volume** | `db_data:/var/lib/mysql` |
-| **Healthcheck** | `healthcheck.sh --connect --innodb_initialized` tiap 10s, 12 kali, start 20s |
+| **Image** | `postgres:17-alpine` (17.11). Versi mayor **dipatok sejajar** dengan `postgresql-client-17` di tahap `backup`, dijaga `tests/pg-client-version.test.ts` |
+| **Port** | `5432`, hanya di jaringan `internal`, **tidak** dipublikasikan ke host |
+| **Volume** | `pg_data:/var/lib/postgresql/data` |
+| **Inisialisasi** | `--data-checksums --encoding=UTF8 --lc-collate=C --lc-ctype=C`. Checksum **tidak bisa** dinyalakan sesudahnya |
+| **Healthcheck** | `pg_isready` tiap 10s, 12 kali, start 20s |
+| **Batas** | `max_connections = 100`; tanpa batas memori container |
 | **Zona waktu** | `TZ` (bawaan `Asia/Jakarta`) |
 
-**Isi (11 Okt 2026):** 23 skema — `sai_control`, `sai_platform`, **17** basis
-data perusahaan (termasuk `sai_production`), dan 4 skema sistem MySQL.
+**Isi (16 Okt 2026):** 19 basis data: `sai_control`, `sai_platform`, dan **17**
+buku perusahaan (termasuk `sai_production`). Total 227 MB.
+
+**Siapa menyambung lewat mana:** `app-*`, `job-scheduler`, `job-conformance`
+lewat `pgbouncer`. `migrate` dan `job-backup` **langsung** ke `pg`: Prisma
+Migrate memakai `pg_advisory_lock` yang terikat sesi, dan pooler `transaction`
+memulangkan dump sebagian.
+
+⚠ **Collation `C`**: perbandingan teks peka huruf besar-kecil dan sortir per
+byte, berbeda dari `utf8mb4_unicode_ci` MariaDB. ⚠ Role aplikasi `sai` adalah
+**SUPERUSER**. Keduanya di [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
 
 **Satu instans tunggal, tanpa replika.** Ini titik gagal tunggal yang paling
 berat di sistem; lihat [dok 04 §5](./04-DEPENDENSI-INTEGRASI.md).
+
+### 2.3a `pgbouncer` — kolam koneksi (`sai-pgbouncer`)
+
+| | |
+|---|---|
+| **Image** | `edoburu/pgbouncer:latest`. Mendengarkan di **5432**, bukan 6432; salah port inilah sebab pertama penukaran 15 Okt gagal |
+| **Mode** | `POOL_MODE=transaction`, `MAX_CLIENT_CONN=200`, `DEFAULT_POOL_SIZE=20`, `AUTH_TYPE=scram-sha-256` |
+| **Bergantung pada** | `pg` (healthy) |
+
+**Kenapa wajib:** PostgreSQL memakai **proses** per koneksi; puncak terukur 62
+koneksi di mesin 3,6 GB, dan jumlahnya tumbuh mengikuti buku yang aktif
+bersamaan. Mode `session` akan menghapus seluruh manfaatnya.
+
+### 2.3b `db` — MariaDB 11 (`sai-db`), jalan mundur
+
+Masih hidup sejak penukaran 15 Okt 2026, **tidak ditulisi** siapa pun. Image yang
+berjalan dibangun dari skema `provider = "postgresql"` dan **tidak bisa**
+memakai `mysql://`; kembali ke sini berarti menggelar image `sha-` lama **dan**
+menukar URL. Pencabutan: issue **#636**, paling cepat 22 Okt 2026.
 
 ### 2.4 `migrate` — migrator sekali-jalan
 
@@ -319,13 +359,13 @@ temuan jadi *crash-loop*.
 
 | | |
 |---|---|
-| **Image** | `…-backup:latest` (tahap `backup` = `migrator` + `mariadb-client` + `awscli`) |
+| **Image** | `…-backup:latest` (tahap `backup` = `migrator` + `postgresql-client-17` + `awscli`; `mariadb-client` masih terpasang sampai #636) |
 | **Perintah** | `sh scripts/backup.sh` |
 | **Kadens** | `sleep 86400` — harian (RPO 1 hari, disengaja) |
 | **Batas** | `timeout -k 60 7200` — 2 jam, longgar |
 | **Volume** | `documents:…:ro` · `audit:…:ro` — **hanya-baca** |
 
-**Urutan:** `mariadb-dump --all-databases` → `tar -czf` → `openssl enc
+**Urutan:** `pg_dumpall` langsung ke `pg` (mesin dan tujuan diturunkan dari `DATABASE_URL`; MariaDB: `mariadb-dump --all-databases`) → `tar -czf` → `openssl enc
 -aes-256-cbc -pbkdf2 -iter 200000 -salt` → SHA-256 atas **ciphertext** →
 `aws s3 cp` (arsip + `.sha256`) → pangkas yang kedaluwarsa (**hanya** bila
 unggahan sukses).
@@ -349,6 +389,10 @@ Volume dipasang `:ro` dengan sengaja: layanan yang tugasnya menyalin tidak
 punya satu alasan pun untuk bisa menulis, dan bendera itu menghapus seluruh
 kelas kecelakaan di mana skrip cadangan justru merusak yang dicadangkannya.
 
+**⚠ STATUS 16 OKT 2026: NOL CADANGAN SEJAK PENUKARAN.** Image yang berjalan
+masih mengarahkan `pg_dumpall` ke host `db` (MariaDB) → `Connection refused`.
+Diperbaiki `53c3f458` di `develop`; berlaku sesudah rilis berikutnya.
+
 **⚠ STATUS 11 OKT 2026: BELUM PERNAH BERHASIL SEKALI PUN.**
 `/api/health` → `backup.status: "failing"`, `lastSuccessAt: null`, setelah
 **54 percobaan** tercatat di `backup_runs`. Akar terbukti dari `.env`:
@@ -359,7 +403,7 @@ Prioritas **P0** di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 **Pembuktian:** `docker compose run --rm job-backup bun run prove-backup-restore` —
 memeriksa sidik jari cocok, sandi benar, dan **setiap** basis data terdaftar ada
-di dalamnya. Ia **tidak** memuat dump ke basis data mana pun: satu `mariadb <`
+di dalamnya. Ia **tidak** memuat dump ke basis data mana pun: satu `psql <`
 yang salah sasaran menimpa produksi dengan data lama, dan tidak ada nilai
 pembuktian yang sepadan dengan risiko itu. Pemuatan sungguhan ke server
 **bayangan** adalah latihan **kuartalan yang dijalankan manusia** —
@@ -537,7 +581,8 @@ menuntut `--reason`) · `change-tenant-plan.ts` · `operator-code.ts` ·
 
 | Volume | Dipasang di | Isi | Dicadangkan? |
 |---|---|---|---|
-| `db_data` | `db:/var/lib/mysql` | 23 skema: 17 buku PT + kendali + platform + 4 skema sistem | Ya — lewat `mariadb-dump --all-databases` |
+| `pg_data` | `pg:/var/lib/postgresql/data` | 19 basis data: 17 buku PT + kendali + platform | Ya, lewat `pg_dumpall` |
+| `db_data` | `db:/var/lib/mysql` | MariaDB jalan mundur, beku sejak 15 Okt 2026 | Tidak lagi; arsipkan dump terakhir sebelum dihapus (#636) |
 | `documents` | `app-customer` (RW), `job-backup` (RO) — **BUKAN** `app-operator` | `data/documents/<companyId>/<uuid>.<ext>` | Ya — di `tar` |
 | `audit` | `app-customer` (RW), `app-operator` (RW), `job-backup` (RO) | Jejak tenant & operator | Ya — di `tar` |
 

@@ -24,7 +24,7 @@ Dokumen domain: [`docs/MULTI-COMPANY.md`](./docs/MULTI-COMPANY.md) ·
 ## Stack
 
 - Next.js 16 (App Router)
-- MySQL / MariaDB + Prisma
+- PostgreSQL 17 + PgBouncer + Prisma (`@prisma/adapter-pg`), sejak 15 Okt 2026; sebelumnya MariaDB
 - NextAuth (credentials)
 - Ant Design v6 (tanpa Tailwind sejak issue #203 — gaya sebaris di atas token AntD)
 - **Bun** sebagai pemasang paket & peluncur skrip; **Node** tetap runtime-nya

@@ -39,7 +39,7 @@ dibangun ulang** kalau seseorang melonggarkannya demi kenyamanan.
 
 ### 1.2 Isolasi buku besar yang nyata, bukan berupa filter
 
-Satu basis data MySQL per PT berarti kueri yang lupa `WHERE company_id` **tidak
+Satu basis data per PT (PostgreSQL sejak 15 Okt 2026, sebelumnya MariaDB) berarti kueri yang lupa `WHERE company_id` **tidak
 bisa** mengembalikan baris PT lain — tidak ada baris PT lain **di sana**. Itu
 jaminan yang berbeda kelas dari jaminan baris-bertenant, dan untuk perangkat
 lunak akuntansi ia sepadan dengan harganya.
@@ -589,7 +589,7 @@ jadi pengujian terjadi di produksi.
    di permukaan mana pun yang menghitung perusahaan.
 
 **Yang TERBUKTI TIDAK bermasalah** (diperiksa saat menyusun dokumen ini):
-jumlah buku di MariaDB (**17**) **sama** dengan jumlah yang terdaftar di
+jumlah buku di basis data (**17**, diperiksa ulang di PostgreSQL 16 Okt 2026) **sama** dengan jumlah yang terdaftar di
 `sai_control` (**17**). Tidak ada basis data yatim, jadi tidak ada yang
 terlewat `db:migrate:all`. `sai_production` — satu-satunya yang tidak berpola
 `sai_t<N>_…` — **terdaftar**; 🔶 kemungkinan buku pra-#104 yang diadopsi.

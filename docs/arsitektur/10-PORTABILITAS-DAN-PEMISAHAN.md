@@ -148,6 +148,13 @@ PostgreSQL selesaikan.**
 
 ### Putusan
 
+> **⚑ Dilampaui 15 Okt 2026.** Pemilik memutuskan pindah, dan produksi kini
+> berjalan di PostgreSQL 17 (19/19 basis data). Analisis di bagian ini dibiarkan
+> sebagai catatan keputusan; pelaksanaan dan validasinya ada di
+> [dok 11 §10](./11-RENCANA-POSTGRESQL.md). Satu taksiran di sini terbukti
+> tepat: PgBouncer memang wajib. Isolasi fisik #104 **dipertahankan**:
+> satu basis data PostgreSQL per PT, bukan *schema-per-tenant*.
+
 ❌ **Jangan.** Ini migrasi mahal tanpa pembeli, dan ia akan memakan seluruh
 anggaran rekayasa yang seharusnya menutup P0 cadangan.
 
@@ -326,10 +333,10 @@ DC/DRC belum bisa dibicarakan sebelum tiga hal ini ada:
 | # | Prasyarat | Kenapa | Tier |
 |---|---|---|---|
 | 1 | **Cadangan terverifikasi** | DRC tanpa cadangan terbukti hanyalah VM kedua yang kosong | 0 |
-| 2 | **PITR (binlog MariaDB)** | RPO harian = kehilangan sampai 24 jam pembukuan. Untuk data retensi 10 tahun, binlog shipping lebih murah daripada replika penuh dan sudah cukup | 2 |
+| 2 | **PITR (WAL archiving PostgreSQL)** | RPO harian = kehilangan sampai 24 jam pembukuan. Untuk data retensi 10 tahun, pengiriman WAL (`archive_command`, mis. wal-g/pgBackRest) lebih murah daripada replika penuh dan sudah cukup. *(Sebelum 15 Okt: binlog MariaDB)* | 2 |
 | 3 | **Secret di luar kotak** | Dua VM = dua `.env`; menyalin rahasia dengan tangan adalah cara kebocoran lahir | 2–3 |
 
-Baru sesudah itu: replikasi MariaDB asinkron ke DRC → **promosi manual**.
+Baru sesudah itu: *streaming replication* PostgreSQL asinkron ke DRC → **promosi manual** (`pg_promote()`).
 
 > ⚠ **Jangan mulai dari replikasi.** Replika yang menyalin basis data yang tidak
 > pernah dicadangkan hanya melipatgandakan satu titik kegagalan menjadi dua yang

@@ -281,8 +281,15 @@ const SRC = join(__dirname, "..", "src");
  * atur-ulang, kirim ulang undangan, masing-masing dengan alasan yang diketik.
  * Client karena formulir alasannya; daftar pengguna & undangan dibaca server
  * dan turun sudah berlabel.
+ *
+ * 189 sejak pengumuman status (2026-10-17, migration platform 0004), DUA:
+ *   + `components/layout/status-banner.tsx` — banner di seluruh aplikasi,
+ *     dibaca di PERAMBAN lewat `/api/status/notices` karena root layout
+ *     sengaja tidak menyentuh basis data (ia ikut berjalan saat `next build`).
+ *   + `components/operator/status-notices-panel.tsx` — formulir pengumuman
+ *     dengan pratinjau kalimat yang dirakit dari kamus saat operator memilih.
  */
-const AMBANG_KLIEN = 187;
+const AMBANG_KLIEN = 189;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -449,6 +456,8 @@ const KLIEN_TERSAHKAN = [
   // kembali fokus — dua hal yang memang menuntut client.
   "components/layout/notification-bell.tsx",
   "components/layout/sidebar.tsx",
+  /* Pengumuman status — lihat `AMBANG_KLIEN`. */
+  "components/layout/status-banner.tsx",
   "components/layout/user-menu.tsx",
   /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
      satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
@@ -473,6 +482,8 @@ const KLIEN_TERSAHKAN = [
      menurunkan "dari basis data / dari environment" sebagai boolean — nilai
      env-nya sendiri tidak pernah menyeberang ke peramban. */
   "components/operator/site-settings-form.tsx",
+  /* Pengumuman status — lihat `AMBANG_KLIEN`. */
+  "components/operator/status-notices-panel.tsx",
   "components/operator/tenant-actions.tsx",
   /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
   "components/operator/tenant-user-support.tsx",

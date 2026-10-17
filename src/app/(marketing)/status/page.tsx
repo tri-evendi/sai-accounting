@@ -61,6 +61,14 @@ import {
   type ComponentState,
 } from "@/lib/public-status";
 import { formatDateTime } from "@/lib/utils";
+import { platformDb } from "@/lib/platform-db";
+import { readStatusNoticeRecords } from "@/lib/status-notices-store";
+import {
+  COMPONENT_LABEL as NOTICE_COMPONENT_LABEL,
+  NOTICE_SENTENCE,
+  visibleOnStatusPage,
+  type PublicStatusNotice,
+} from "@/lib/status-notices";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -177,6 +185,15 @@ export default async function StatusPage() {
     process.env.MAINTENANCE_FROM,
     process.env.MAINTENANCE_UNTIL
   );
+  /* Pengumuman operator (migration platform 0004) — dibaca SEGAR, tanpa cache
+     modul: halaman ini sengaja tidak pernah disajikan dari cache. Platform
+     mati → tanpa pengumuman; angka mesin di atas tetap terjawab. */
+  let notices: PublicStatusNotice[] = [];
+  try {
+    notices = visibleOnStatusPage(await readStatusNoticeRecords({ platform: platformDb }, now), now);
+  } catch (error) {
+    console.error("[status] pengumuman tak terbaca:", error);
+  }
 
   return (
     <LandingShell>
@@ -203,6 +220,41 @@ export default async function StatusPage() {
             <StatePill state={status.overall} label={t(OVERALL_LABEL[status.overall])} />
             <p style={LANDING_NOTE}>{t("statusPage.checkedAt", { time: formatDateTime(now) })}</p>
           </section>
+
+          {notices.map((n) => {
+            const kunci = NOTICE_SENTENCE[n.kind]?.[n.phase];
+            if (!kunci) return null;
+            return (
+              <section
+                key={n.id}
+                style={{
+                  ...CARD,
+                  display: "grid",
+                  gap: "var(--ant-margin-xxs)",
+                  borderColor:
+                    n.resolvedAt !== null
+                      ? "var(--ant-color-success-border)"
+                      : n.kind === "incident"
+                        ? "var(--ant-color-error-border)"
+                        : "var(--ant-color-warning-border)",
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: "var(--ant-font-size-lg)", fontWeight: "var(--ant-font-weight-strong)" }}>
+                  {t(n.kind === "incident" ? "statusNotice.incidentHeading" : "statusPage.maintenanceHeading")}
+                </h2>
+                <p style={LANDING_BODY}>
+                  {t(kunci, {
+                    component: t(NOTICE_COMPONENT_LABEL[n.component]),
+                    from: formatDateTime(n.startsAt),
+                    until: n.endsAt ? formatDateTime(n.endsAt) : "—",
+                  })}
+                </p>
+                {n.resolvedAt && (
+                  <p style={LANDING_NOTE}>{t("statusNotice.resolvedAt", { time: formatDateTime(n.resolvedAt) })}</p>
+                )}
+              </section>
+            );
+          })}
 
           {maintenance ? (
             <section

@@ -138,6 +138,9 @@ function isPublicPath(pathname: string): boolean {
   if (isDocsPath(pathname)) return true;
   // Unauthenticated health probe for container / Traefik load-balancer checks.
   if (pathname === "/api/health") return true;
+  // Pengumuman status untuk banner (migration platform 0004) — publik, isinya
+  // persis yang dipajang `/status`; tampil juga di halaman masuk. JALUR PERSIS.
+  if (pathname === "/api/status/notices") return true;
   // issue #141 — webhook gerbang pembayaran: pengirimnya server Midtrans,
   // tanpa sesi. JALUR PERSIS, bukan prefix; kredensialnya tanda tangan
   // SHA-512 yang diverifikasi di route-nya (fail-closed tanpa kunci).

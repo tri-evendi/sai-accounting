@@ -749,3 +749,43 @@ model SubscriptionEvent {
   @@index([occurredAt])
   @@map("subscription_events")
 }
+
+/// PENGUMUMAN STATUS (migration platform 0004) — pemeliharaan terjadwal dan
+/// insiden yang diumumkan operator, terbaca di `/status` dan sebagai banner
+/// di aplikasi.
+///
+/// ══ TANPA SATU PUN KOLOM TEKS BEBAS — dengan sengaja ═══════════════════════
+/// Aturan yang sama dengan `maintenanceWindow` (#374): aplikasi ini berbicara
+/// tiga bahasa, dan kalimat yang diketik operator hanya benar di bahasa yang
+/// mengetiknya. Yang disimpan hanya JENIS, KOMPONEN, FASE, dan WAKTU; kalimatnya
+/// dirakit dari kamus berparameter. `tests/status-notices.test.ts` menolak
+/// kolom teks bebas di model ini.
+model StatusNotice {
+  id Int @id @default(autoincrement())
+
+  /// maintenance | incident — `STATUS_NOTICE_KINDS`; CHECK di migration.
+  kind String @db.VarChar(20)
+
+  /// application | billing | email — `ComponentId` di `lib/public-status.ts`.
+  component String @db.VarChar(20)
+
+  /// scheduled | investigating | identified | monitoring | resolved.
+  phase String @db.VarChar(20)
+
+  startsAt DateTime  @map("starts_at")
+  /// Akhir yang DIRENCANAKAN (pemeliharaan). Insiden boleh tanpa akhir.
+  endsAt   DateTime? @map("ends_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  /// Tampil sebagai banner di dalam aplikasi (selain di `/status`).
+  showInApp Boolean @default(true) @map("show_in_app")
+
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([resolvedAt])
+  @@index([startsAt])
+  @@map("status_notices")
+}

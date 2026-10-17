@@ -174,7 +174,7 @@ lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — lolos sebagai jalur publik karena `127.0.0.1` ≠ `OPERATOR_HOST` |
 | **Volume** | `audit:/app/data/audit` (RW) — **TANPA `documents`** |
 
-**Tanggung jawab:** 17 halaman konsol penyedia (+ 1 rute unduhan) — tenant, audit (operator + jejak tenant), cadangan & versi skema, akun operator, permintaan hapus, katalog paket, e-Faktur platform, surel,
+**Tanggung jawab:** 18 halaman konsol penyedia (+ 1 rute unduhan) — tenant, audit (operator + jejak tenant), cadangan & versi skema, akun operator, permintaan hapus, katalog paket, e-Faktur platform, pengumuman status, surel,
 penjadwal, **kesesuaian data**, isi situs, pengaturan, rekonsiliasi.
 
 **Kenapa hanya volume `audit` — dan kenapa ia akan dicabut.** Sampai

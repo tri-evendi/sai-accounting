@@ -4572,7 +4572,8 @@
       "accounts": "Akun",
       "deletions": "Permintaan hapus",
       "plans": "Katalog paket",
-      "efaktur": "e-Faktur platform"
+      "efaktur": "e-Faktur platform",
+      "statusNotices": "Pengumuman status"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -5219,6 +5220,40 @@
       "hidden": "Tersembunyi",
       "unavailable": "Katalog belum bisa dibaca: sai_platform tak terjangkau.",
       "readOnly": "Hanya-baca. Harga dijaga docs/PRICING.md dan tests/pricing-ladder.test.ts, ditulis lewat bun run db:seed:plans — menyunting di sini akan membuat basis data dan dokumen itu menyimpang."
+    },
+    "statusNotices": {
+      "heading": "Pengumuman Status",
+      "description": "Umumkan pemeliharaan terjadwal dan insiden. Tampil di /status dan, bila dipilih, sebagai banner di seluruh aplikasi.",
+      "unavailable": "Pengumuman belum bisa dibaca: sai_platform tak terjangkau.",
+      "note": "Kalimatnya dirakit dari kamus tiga bahasa — tidak ada teks bebas, supaya pembaca bahasa mana pun membaca kalimat yang utuh. Jendela pemeliharaan dari env (MAINTENANCE_FROM/UNTIL) tetap berlaku.",
+      "kindLabel": "Jenis",
+      "componentLabel": "Komponen",
+      "phaseLabel": "Fase",
+      "startsLabel": "Mulai",
+      "endsLabel": "Selesai (rencana)",
+      "showInApp": "Tampilkan sebagai banner di aplikasi",
+      "previewLabel": "Yang akan dibaca pelanggan",
+      "create": "Umumkan",
+      "empty": "Belum ada pengumuman dalam 7 hari terakhir.",
+      "colNotice": "Pengumuman",
+      "colPhase": "Fase",
+      "colNext": "Pindah ke",
+      "inApp": "banner aplikasi + /status",
+      "statusOnly": "hanya /status",
+      "created": "Pengumuman terbit.",
+      "updated": "Fase pengumuman diperbarui.",
+      "errInvalid": "Isian tidak sah: periksa fase untuk jenisnya dan pastikan selesai sesudah mulai.",
+      "kind": {
+        "maintenance": "Pemeliharaan",
+        "incident": "Insiden"
+      },
+      "phase": {
+        "scheduled": "Terjadwal",
+        "investigating": "Diselidiki",
+        "identified": "Penyebab ditemukan",
+        "monitoring": "Dipantau",
+        "resolved": "Selesai"
+      }
     }
   },
   "docs": {
@@ -5423,5 +5458,27 @@
     "tooSoon": "Alamat baru saja diganti. Bisa diganti lagi 30 hari sesudahnya.",
     "nextChange": "Bisa diganti lagi pada {date}.",
     "submit": "Ganti alamat"
+  },
+  "statusNotice": {
+    "regionLabel": "Pengumuman status",
+    "details": "Rincian",
+    "incidentHeading": "Gangguan",
+    "resolvedAt": "Pulih pada {time}.",
+    "component": {
+      "application": "aplikasi pembukuan",
+      "billing": "langganan & tagihan",
+      "email": "pengiriman surel"
+    },
+    "maintenance": {
+      "scheduled": "Pemeliharaan terjadwal pada {component}: {from} sampai {until}. Layanan bisa tidak tersedia selama jendela itu.",
+      "monitoring": "Pemeliharaan pada {component} sudah selesai dikerjakan; kami memantau hasilnya.",
+      "resolved": "Pemeliharaan pada {component} ({from} – {until}) sudah selesai."
+    },
+    "incident": {
+      "investigating": "Kami sedang menyelidiki gangguan pada {component} sejak {from}.",
+      "identified": "Penyebab gangguan pada {component} sudah ditemukan dan sedang diperbaiki.",
+      "monitoring": "Perbaikan gangguan pada {component} sudah diterapkan; kami memantau hasilnya.",
+      "resolved": "Gangguan pada {component} yang dimulai {from} sudah teratasi."
+    }
   }
 }

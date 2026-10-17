@@ -257,6 +257,7 @@ const API_EXCEPTIONS = new Set([
   // saat perusahaan BELUM dipilih.
   "user/companies/route.ts",
   "health/route.ts", // health probe publik (container/load-balancer)
+  "status/notices/route.ts", // banner pengumuman status — publik, isinya = /status
   // publik: hanya NAMA & ALAMAT perusahaan — keduanya sudah tercetak di halaman
   // masuk sebelum siapa pun log in, dan di setiap dokumen yang dikirim ke
   // pelanggan. Identitas pajak (NPWP dll.) TIDAK di sini; itu tetap lewat
@@ -761,6 +762,9 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     "app/(app)/(tenant)/(panel)/platform/billing-actions.tsx",
     "app/(app)/(tenant)/(panel)/platform/billing/plans/plan-actions.tsx",
     "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
+    // Banner pengumuman status (migration platform 0004): endpoint PUBLIK
+    // tanpa perusahaan — tampil juga di halaman masuk, sebelum ada sesi.
+    "components/layout/status-banner.tsx",
     // Pembungkusnya sendiri.
     "lib/api-fetch.ts",
   ]);

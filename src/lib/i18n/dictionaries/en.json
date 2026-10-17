@@ -4572,7 +4572,8 @@
       "accounts": "Accounts",
       "deletions": "Deletion requests",
       "plans": "Plan catalog",
-      "efaktur": "Platform e-Faktur"
+      "efaktur": "Platform e-Faktur",
+      "statusNotices": "Status notices"
     },
     "attention": {
       "heading": "Needs attention",
@@ -5219,6 +5220,40 @@
       "hidden": "Hidden",
       "unavailable": "The catalog cannot be read yet: sai_platform is unreachable.",
       "readOnly": "Read only. Prices are guarded by docs/PRICING.md and tests/pricing-ladder.test.ts and written through bun run db:seed:plans — editing here would make the database and that document diverge."
+    },
+    "statusNotices": {
+      "heading": "Status Notices",
+      "description": "Announce scheduled maintenance and incidents. Shown on /status and, if chosen, as a banner across the app.",
+      "unavailable": "Notices cannot be read yet: sai_platform is unreachable.",
+      "note": "The sentences are assembled from the three-language dictionary — no free text, so readers of every language read a complete sentence. The env maintenance window (MAINTENANCE_FROM/UNTIL) still applies.",
+      "kindLabel": "Type",
+      "componentLabel": "Component",
+      "phaseLabel": "Phase",
+      "startsLabel": "Starts",
+      "endsLabel": "Ends (planned)",
+      "showInApp": "Show as a banner in the app",
+      "previewLabel": "What customers will read",
+      "create": "Announce",
+      "empty": "No notices in the last 7 days.",
+      "colNotice": "Notice",
+      "colPhase": "Phase",
+      "colNext": "Move to",
+      "inApp": "app banner + /status",
+      "statusOnly": "/status only",
+      "created": "Notice published.",
+      "updated": "Notice phase updated.",
+      "errInvalid": "Invalid input: check the phase for its type and make sure the end is after the start.",
+      "kind": {
+        "maintenance": "Maintenance",
+        "incident": "Incident"
+      },
+      "phase": {
+        "scheduled": "Scheduled",
+        "investigating": "Investigating",
+        "identified": "Cause identified",
+        "monitoring": "Monitoring",
+        "resolved": "Resolved"
+      }
     }
   },
   "docs": {
@@ -5423,5 +5458,27 @@
     "tooSoon": "The address was just changed. It can be changed again 30 days later.",
     "nextChange": "Changeable again on {date}.",
     "submit": "Change address"
+  },
+  "statusNotice": {
+    "regionLabel": "Status notices",
+    "details": "Details",
+    "incidentHeading": "Incident",
+    "resolvedAt": "Resolved at {time}.",
+    "component": {
+      "application": "the bookkeeping app",
+      "billing": "subscriptions & billing",
+      "email": "email delivery"
+    },
+    "maintenance": {
+      "scheduled": "Scheduled maintenance on {component}: {from} to {until}. The service may be unavailable during that window.",
+      "monitoring": "Maintenance on {component} is complete; we are monitoring the result.",
+      "resolved": "Maintenance on {component} ({from} – {until}) is finished."
+    },
+    "incident": {
+      "investigating": "We are investigating a disruption to {component} since {from}.",
+      "identified": "The cause of the disruption to {component} has been found and is being fixed.",
+      "monitoring": "A fix for the disruption to {component} has been applied; we are monitoring the result.",
+      "resolved": "The disruption to {component} that began {from} has been resolved."
+    }
   }
 }

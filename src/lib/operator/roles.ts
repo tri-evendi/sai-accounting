@@ -37,6 +37,8 @@ export const OPERATOR_PERMISSIONS = [
   "site.settings",
   /** Pengaturan surel penyedia (kredensial SMTP). */
   "platform.mail",
+  /** Pengumuman status: pemeliharaan & insiden di `/status` dan banner aplikasi. */
+  "platform.status",
   /** Membuat, mengubah, menonaktifkan akun operator & mencabut sesinya. */
   "operator.accounts",
 ] as const;
@@ -52,7 +54,7 @@ export type OperatorPermission = (typeof OPERATOR_PERMISSIONS)[number];
 const MATRIKS: Record<OperatorRole, readonly OperatorPermission[]> = {
   owner: OPERATOR_PERMISSIONS,
   billing: ["tenant.billing"],
-  support: ["tenant.lifecycle", "tenant.users", "site.content"],
+  support: ["tenant.lifecycle", "tenant.users", "site.content", "platform.status"],
   viewer: [],
 };
 

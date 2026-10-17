@@ -441,12 +441,18 @@ percakapan.
 | 6 | Pembayaran masuk, dicocokkan | keuangan | aplikasi ini (piutang) |
 | 7 | **Aktifkan hak pakai**: paket + kuota + periode, mode `manual` | operator | konsol (`changeTenantPlan`, `extendSubscription`) |
 | 8 | Onboarding: migrasi, COA, pelatihan | implementasi | produk (impor Excel sudah ada) |
-| 9 | Pengingat perpanjangan H-60 | keuangan | **manual di Fase B** |
+| 9 | Pengingat perpanjangan H-60 | keuangan | **manual di Fase B** — daftar kerjanya di `/operator` ("Perpanjangan 60 hari ke depan", 17 Okt 2026) |
 
 Langkah 7 memakai fungsi yang sudah ada dan sudah berjejak audit. Satu-satunya
 yang perlu dibangun adalah **template penawaran (3) dan tombol yang
 menerjemahkan penawaran yang disetujui menjadi hak pakai (7)** — dan tombol itu
 hanya merangkai dua fungsi yang sudah dipanggil manusia hari ini.
+
+**Tombol langkah 7 ADA sejak 17 Okt 2026**: "Aktifkan dari penawaran" di
+rincian tenant (`activateQuoteEntitlement` — ganti paket → perpanjang → mode
+`manual`, berhenti pada langkah pertama yang gagal, nomor penawaran di setiap
+jejak). Template penawaran (3) belum. Perpanjangannya tetap menerbitkan
+tagihan Rp 0 `-K` (§6.4) — keputusan untuk menghilangkannya belum diambil.
 
 ---
 
@@ -477,9 +483,15 @@ Tiga aturan yang membentuk setiap angkanya:
   `lib/operator/store.ts` menyatakannya terlarang ("konsol melihat METADATA
   langganan, bukan pembukuan pelanggan"). Melanggarnya demi sebuah angka
   dasbor adalah harga yang salah; ia butuh keputusan tersendiri.
-- **Konversi per KOHORT** menuntut riwayat peristiwa langganan, dan tabel
-  peristiwa itu tidak ada. Yang dipajang karena itu konversi **sejak awal**,
-  dan ia dinamai demikian — bukan kohort yang bukan kohort.
+- **Konversi per KOHORT** menuntut riwayat peristiwa langganan. **Tabelnya
+  ADA sejak 17 Okt 2026** (`sai_platform.subscription_events`, migration
+  platform 0003 — dicatat SEMUA penulis `subscriptions`, dijaga
+  `tests/subscription-events.test.ts`), tetapi riwayatnya baru mulai hari
+  itu: langganan lama hanya punya satu peristiwa `created` beraktor
+  `backfill`, yang adalah keadaan SAAT migration, bukan keadaan awal. Kohort
+  yang jujur baru bisa dihitung untuk langganan yang lahir sesudahnya — dan
+  karena itu angkanya belum dipajang. Yang dipajang tetap konversi **sejak
+  awal**, dan ia dinamai demikian.
 
 Yang perlu didefinisikan sebelum rupiah pertama:
 
@@ -487,10 +499,10 @@ Yang perlu didefinisikan sebelum rupiah pertama:
 | --- | --- | --- |
 | Pelanggan berbayar ✅ | tenant dengan ≥1 pembayaran `paid` (comp tak punya baris pembayaran) | memisahkan penjualan dari hadiah |
 | MRR/ARR ✅ | jumlah ekuivalen-bulanan langganan bermode `manual`+`auto` yang belum `cancelled` (tahunan ÷ 12) | satu angka yang boleh disebut ke luar |
-| Konversi uji coba → berbayar ⚠ | **sejak awal**, bukan per kohort (tak ada riwayat peristiwa) | mengukur §1.2, bukan menebaknya |
+| Konversi uji coba → berbayar ⚠ | **sejak awal**, bukan per kohort (riwayat peristiwa baru tercatat sejak 17 Okt 2026) | mengukur §1.2, bukan menebaknya |
 | Waktu ke nilai pertama ⛔ | **tidak dihitung** — menuntut membuka buku pelanggan | menentukan panjang uji coba |
 | Tagihan menggantung ✅ | jumlah + nominal + umur TERTUA sejak jatuh tempo (bukan rata-rata: di bawah sepuluh tagihan, rata-rata disetir satu pencilan) | Fase B dijalankan manusia; ini bebannya |
-| Ekspansi per grup ⚠ | jumlah PT & pengguna ADA di ringkasan, tetapi tanpa dimensi waktu (tak ada potret historis) | jalur pertumbuhan utama (§2) |
+| Ekspansi per grup ⚠ | jumlah PT & pengguna ADA di ringkasan, tetapi tanpa dimensi waktu; perpindahan PAKET kini tercatat (`subscription_events.kind = 'plan'`) sejak 17 Okt 2026 | jalur pertumbuhan utama (§2) |
 
 ---
 

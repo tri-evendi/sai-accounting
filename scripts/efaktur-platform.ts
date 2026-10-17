@@ -25,8 +25,8 @@ import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
-import { buildEfaktur, efakturToCsv, type EfakturInvoiceInput } from "../src/lib/efaktur";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
+import { platformEfaktur } from "../src/lib/billing/platform-efaktur";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);
@@ -52,63 +52,13 @@ async function main() {
   const to = argValue("--to");
   const out = argValue("--out");
 
-  const seller = {
-    npwp: process.env.PLATFORM_SELLER_NPWP ?? null,
-    name: process.env.PLATFORM_SELLER_NAME ?? null,
-  };
-
   const platform = clientFor(PlatformClient, platformUrl);
   const control = clientFor(ControlClient, controlUrl);
 
-  const invoices = await platform.platformInvoice.findMany({
-    where: {
-      status: "paid",
-      ...(from ? { issueDate: { gte: new Date(from) } } : {}),
-    },
-    orderBy: { id: "asc" },
-    select: {
-      number: true,
-      issueDate: true,
-      amount: true,
-      taxAmount: true,
-      total: true,
-      currency: true,
-      tenantId: true,
-    },
-  });
-
-  const profiles = await platform.tenantBillingProfile.findMany({
-    select: { tenantId: true, npwp: true, name: true, address: true },
-  });
-  const profileByTenant = new Map(profiles.map((p) => [p.tenantId, p]));
-  const tenants = await control.tenant.findMany({ select: { id: true, name: true } });
-  const tenantById = new Map(tenants.map((t) => [t.id, t]));
-
-  const inputs: EfakturInvoiceInput[] = invoices.map((inv) => {
-    const profile = profileByTenant.get(inv.tenantId);
-    const dpp = Number(inv.amount);
-    const taxAmount = Number(inv.taxAmount);
-    return {
-      invoiceNo: inv.number,
-      date: inv.issueDate,
-      currency: inv.currency, // IDR ⇒ lokal (faktur keluaran)
-      rate: 1,
-      dpp,
-      taxAmount,
-      /* Tarif efektif DIBACA dari angka tersimpan (PPN ÷ DPP), bukan diketik
-       * ulang — tagihan lama yang terbit pada tarif lama tetap jujur. */
-      taxRate: dpp > 0 ? Math.round((taxAmount / dpp) * 10000) / 100 : null,
-      buyerName: profile?.name ?? tenantById.get(inv.tenantId)?.name ?? null,
-      buyerNpwp: profile?.npwp ?? null,
-      buyerAddress: profile?.address ?? null,
-      pebNumber: null,
-      pebDate: null,
-      exportNote: null,
-    };
-  });
-
-  const result = buildEfaktur(seller, inputs, { from, to });
-  const csv = efakturToCsv(result.rows);
+  /* Logikanya di `src/lib/billing/platform-efaktur.ts` — sama dengan unduhan
+     konsol operator (`/operator/efaktur`). */
+  const result = await platformEfaktur({ platform, control }, { from, to });
+  const csv = result.csv;
 
   if (result.problems.length > 0) {
     console.error(`⚠ ${result.problems.length} tagihan TIDAK ikut (kolom wajib kosong):`);
@@ -124,10 +74,10 @@ async function main() {
   if (out) {
     /* UTF-8 + BOM, konvensi route e-Faktur pelanggan (ramah Excel/DJP). */
     writeFileSync(out, "﻿" + csv, "utf8");
-    console.log(`✓ ${result.rows.length} baris → ${out}`);
+    console.log(`✓ ${result.rowCount} baris → ${out}`);
   } else {
     console.log(csv);
-    console.error(`\n✓ ${result.rows.length} baris (stdout). Simpan: --out berkas.csv`);
+    console.error(`\n✓ ${result.rowCount} baris (stdout). Simpan: --out berkas.csv`);
   }
 
   await platform.$disconnect();

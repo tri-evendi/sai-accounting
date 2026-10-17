@@ -268,8 +268,28 @@ const SRC = join(__dirname, "..", "src");
  * transfer manual. Client karena ia memang formulir; halamannya tetap server
  * component dan hanya menurunkan boolean "dari basis data / dari environment",
  * jadi nilai environment-nya tidak pernah menyeberang ke peramban.
+ *
+ * 186 sejak Akun Operator (2026-10-17, migration kendali 0004):
+ * `components/operator/operator-accounts.tsx` — buat akun, ubah peran,
+ * nonaktifkan, cabut sesi, atur ulang. Client karena kredensial yang
+ * diterbitkan harus tampil SEKALI dan hanya hidup di state peramban (bukan di
+ * URL, bukan di HTML hasil render server yang bisa ter-cache). Halamannya tetap
+ * server component; izin dihitung di server dan turun sebagai boolean.
+ *
+ * 187 sejak bantuan pengguna (2026-10-17):
+ * `components/operator/tenant-user-support.tsx` — cabut sesi, kirim tautan
+ * atur-ulang, kirim ulang undangan, masing-masing dengan alasan yang diketik.
+ * Client karena formulir alasannya; daftar pengguna & undangan dibaca server
+ * dan turun sudah berlabel.
+ *
+ * 189 sejak pengumuman status (2026-10-17, migration platform 0004), DUA:
+ *   + `components/layout/status-banner.tsx` — banner di seluruh aplikasi,
+ *     dibaca di PERAMBAN lewat `/api/status/notices` karena root layout
+ *     sengaja tidak menyentuh basis data (ia ikut berjalan saat `next build`).
+ *   + `components/operator/status-notices-panel.tsx` — formulir pengumuman
+ *     dengan pratinjau kalimat yang dirakit dari kamus saat operator memilih.
  */
-const AMBANG_KLIEN = 185;
+const AMBANG_KLIEN = 189;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -436,6 +456,8 @@ const KLIEN_TERSAHKAN = [
   // kembali fokus — dua hal yang memang menuntut client.
   "components/layout/notification-bell.tsx",
   "components/layout/sidebar.tsx",
+  /* Pengumuman status — lihat `AMBANG_KLIEN`. */
+  "components/layout/status-banner.tsx",
   "components/layout/user-menu.tsx",
   /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
      satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
@@ -444,6 +466,9 @@ const KLIEN_TERSAHKAN = [
      daftar. */
   "components/operator/content-editor.tsx",
   "components/operator/mail-settings-form.tsx",
+  /* Akun operator (migration kendali 0004) — kredensial sekali-tampil hidup
+     di state peramban saja. Lihat catatan di `AMBANG_KLIEN`. */
+  "components/operator/operator-accounts.tsx",
   /* Kulit panel admin konsol operator: menu samping + laci + kepala. Client
      karena `Grid.useBreakpoint()`, `Drawer`, dan penandaan butir aktif lewat
      `usePathname` — tiga hal yang semuanya menuntut peramban. Kalimat, ikon,
@@ -457,7 +482,11 @@ const KLIEN_TERSAHKAN = [
      menurunkan "dari basis data / dari environment" sebagai boolean — nilai
      env-nya sendiri tidak pernah menyeberang ke peramban. */
   "components/operator/site-settings-form.tsx",
+  /* Pengumuman status — lihat `AMBANG_KLIEN`. */
+  "components/operator/status-notices-panel.tsx",
   "components/operator/tenant-actions.tsx",
+  /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
+  "components/operator/tenant-user-support.tsx",
   "components/providers/antd-provider.tsx",
   "components/reports/report-launch-dialog.tsx",
   "components/settings/audit-log-panel.tsx",

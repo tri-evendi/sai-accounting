@@ -22,6 +22,8 @@ import { redirect } from "next/navigation";
 
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { verifyOperatorLogin } from "@/lib/operator/credentials";
+import { findDbOperatorCredential, recordOperatorLogin } from "@/lib/operator/operator-accounts";
+import { controlDb } from "@/lib/control-db";
 import { operatorPlaneViolation } from "@/lib/operator/guard";
 import { clientIpFrom, operatorCookieName } from "@/lib/operator/plane";
 import {
@@ -64,6 +66,9 @@ export async function operatorLogin(
     username,
     password: String(formData.get("password") ?? ""),
     totpCode: String(formData.get("totp") ?? ""),
+    /* Akun basis data (migration kendali 0004). Akun env dicari lebih dulu
+       dan tidak menyentuh basis data sama sekali. */
+    findDbAccount: (name) => findDbOperatorCredential({ control: controlDb }, name),
   });
 
   if (!account) {
@@ -75,7 +80,10 @@ export async function operatorLogin(
     return { error: t("operator.login.failed") };
   }
 
-  const token = issueOperatorToken(account.name);
+  const token = issueOperatorToken(account.name, new Date(), process.env, {
+    source: account.source,
+    sessionVersion: account.sessionVersion,
+  });
   if (!token) {
     /* OPERATOR_SESSION_SECRET tidak layak → gagal-tertutup: tidak ada sesi
      * untuk siapa pun, dan alasannya hanya di log server. */
@@ -95,7 +103,19 @@ export async function operatorLogin(
     maxAge: Math.floor(OPERATOR_SESSION_TTL_MS / 1000),
   });
 
-  await writeOperatorAuditLog({ operator: account.name, action: "operator.login", ipAddress: ip });
+  if (account.id !== null) {
+    /* "Masuk terakhir" di layar akun — gagal mencatatnya tidak menggagalkan
+       masuk yang sudah terverifikasi. */
+    await recordOperatorLogin({ control: controlDb }, account.id).catch((error) =>
+      console.error("[operator] gagal mencatat masuk terakhir:", error)
+    );
+  }
+  await writeOperatorAuditLog({
+    operator: account.name,
+    action: "operator.login",
+    details: { source: account.source, role: account.role },
+    ipAddress: ip,
+  });
 
   redirect("/operator");
 }

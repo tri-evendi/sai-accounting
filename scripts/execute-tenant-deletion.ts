@@ -36,8 +36,8 @@
 
 import "dotenv/config";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
-import { bukaServer } from "../src/lib/db-server";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
+import { bukaServer } from "@sai/db/server";
 import { releaseCompanyClient } from "../src/lib/company-clients";
 
 import { removeCompanyDocuments } from "../src/lib/document-storage";
@@ -136,7 +136,7 @@ async function main() {
        * lain sudah dihancurkan — jadi kegagalan di tengah meninggalkan tenant
        * separuh terhapus, keadaan yang paling sulit dibaca orang berikutnya.
        *
-       * `db-server.ts#hapus` memutus koneksi lain lebih dulu di PostgreSQL dan
+       * `@sai/db/server#hapus` memutus koneksi lain lebih dulu di PostgreSQL dan
        * tidak menambah apa pun di MariaDB, jadi pemanggil di sini berhenti
        * peduli mesinnya apa.
        */

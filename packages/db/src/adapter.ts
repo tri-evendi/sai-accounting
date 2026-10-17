@@ -23,7 +23,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
    dan sebagian dijalankan `tsx` yang tidak selalu menyelesaikan alias tsconfig.
    Alias yang gagal di sana muncul sebagai "Cannot find module" saat berjalan —
    bukan saat `tsc`. */
-import { uraikanUrl, type DbEngine } from "./db-engine";
+import { uraikanUrl, type DbEngine } from "./engine";
 
 export interface OpsiAdapter {
   /** Batas koneksi per klien. */

@@ -758,5 +758,64 @@ model TenantAuditLog {
   @@index([tenantSlug, createdAt])
   @@index([tenantId])
   @@index([userId])
+  /// Bacaan LINTAS tenant di `/operator/audit/tenants` (migration 0003).
+  @@index([createdAt])
+  @@index([action])
   @@map("tenant_audit_logs")
+}
+
+/// AKUN OPERATOR (migration kendali 0004) — akun konsol penyedia yang
+/// dikelola dari layar, berperan bertingkat, dan sesinya bisa dicabut.
+///
+/// ══ KENAPA DI BASIS DATA KENDALI, BUKAN `sai_platform` ═════════════════════
+/// Penjaga konsol (`lib/operator/guard.ts`) membaca tabel ini pada SETIAP
+/// permintaan, dan doktrin #137 melarang penjaga bergantung pada basis data
+/// penagihan: penagihan yang mati tidak boleh mematikan gerbangnya. Kendali
+/// memang sudah syarat hidup konsol (daftar tenant tinggal di sana).
+///
+/// ══ AKUN ENV TETAP ADA ═════════════════════════════════════════════════════
+/// `OPERATOR_USERS` tetap berlaku sebagai akun DARURAT berperan `owner`, tanpa
+/// basis data sama sekali — supaya kendali yang mati atau baris yang salah
+/// ubah tidak pernah mengunci semua orang keluar. Nama yang sudah dipakai akun
+/// env ditolak di sini.
+///
+/// Rahasia TOTP DIENKRIPSI (AES-256-GCM, `SETTINGS_ENCRYPTION_KEY`, pola
+/// `mail_settings`): bocornya cadangan basis data tidak boleh sekaligus
+/// membocorkan faktor kedua. Tanpa kunci itu akun basis data tidak bisa dibuat
+/// MAUPUN dipakai masuk (gagal-tertutup).
+///
+/// Bukan tabel `users`: operator bukan pelanggan (#154).
+model OperatorAccount {
+  id Int @id @default(autoincrement())
+
+  /// Pengenal untuk jejak audit — pola `NAME_PATTERN` di `credentials.ts`.
+  name String @unique @db.VarChar(50)
+
+  /// owner | billing | support | viewer — `OPERATOR_ROLES` di `lib/operator/roles.ts`.
+  role String @db.VarChar(20)
+
+  /// bcrypt.
+  passwordHash String @map("password_hash") @db.VarChar(100)
+
+  /// Rahasia TOTP base32, tersegel (`settings-crypto.ts`).
+  totpCiphertext String @map("totp_ciphertext") @db.Text
+  totpIv         String @map("totp_iv") @db.VarChar(32)
+  totpTag        String @map("totp_tag") @db.VarChar(32)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  /// Dinaikkan untuk MENCABUT semua sesi akun ini. Token membawa versinya;
+  /// penjaga menolak token yang versinya tidak sama.
+  sessionVersion Int @default(1) @map("session_version")
+
+  lastLoginAt DateTime? @map("last_login_at")
+
+  /// Nama operator yang membuat akun ini — jejak lengkapnya di jejak operator.
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("operator_accounts")
 }

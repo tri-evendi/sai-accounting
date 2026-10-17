@@ -31,7 +31,7 @@ import "dotenv/config";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 /** Tahap pengingat, dalam hari sejak perusahaan dibuat. */
 const TAHAP = [1, 3, 7, 14] as const;

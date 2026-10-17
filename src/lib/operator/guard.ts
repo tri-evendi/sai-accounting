@@ -19,10 +19,16 @@
  *      beda format.
  *   4. Sesi memuat penanda MFA (selalu — token tanpa `mfa: true` ditolak).
  *
+ *   5. (sejak migration kendali 0004) Identitas yang BERLAKU SEKARANG: akun
+ *      env masih ada di `OPERATOR_USERS`; akun basis data masih aktif dan
+ *      versi sesinya sama (`identity.ts`). Perannya dibaca dari sumbernya,
+ *      bukan dari token.
+ *
  * DILARANG mengimpor `lib/platform-db.ts` dari sini (doktrin #137): penjaga
  * berjalan pada setiap permintaan halaman operator; penagihan yang mati tidak
  * boleh mematikan gerbangnya. Data platform dibaca halaman lewat
- * `lib/operator/store.ts`.
+ * `lib/operator/store.ts`. Basis data KENDALI boleh — dan hanya untuk akun
+ * basis data; akun env tidak menyentuhnya sama sekali.
  */
 
 import "server-only";
@@ -38,10 +44,26 @@ import {
   operatorCookieName,
 } from "./plane";
 import { verifyOperatorToken, type OperatorSessionPayload } from "./session";
+import { parseOperatorAccounts } from "./credentials";
+import { resolveOperatorIdentity, type OperatorIdentity } from "./identity";
+import { lookupDbOperatorState } from "./operator-accounts";
+import { operatorCan, type OperatorPermission } from "./roles";
+import { controlDb } from "@/lib/control-db";
 
 export interface OperatorPageSession {
-  operator: { name: string };
+  operator: OperatorIdentity;
   session: OperatorSessionPayload;
+}
+
+/** Token di cookie → identitas yang berlaku sekarang, atau null. */
+async function currentOperator(): Promise<OperatorPageSession | null> {
+  const session = verifyOperatorToken(await readOperatorCookie());
+  if (!session) return null;
+  const operator = await resolveOperatorIdentity(session, {
+    envAccounts: parseOperatorAccounts(process.env.OPERATOR_USERS),
+    lookupDb: (name) => lookupDbOperatorState({ control: controlDb }, name),
+  });
+  return operator ? { operator, session } : null;
 }
 
 /** Baca token sesi operator dari cookie (kedua nama — lihat `plane.ts`). */
@@ -78,10 +100,10 @@ export async function operatorPlaneViolation(): Promise<"host" | "ip" | null> {
 export async function requireOperatorPage(): Promise<OperatorPageSession> {
   if ((await operatorPlaneViolation()) !== null) notFound();
 
-  const session = verifyOperatorToken(await readOperatorCookie());
-  if (!session) redirect("/operator/login");
+  const current = await currentOperator();
+  if (!current) redirect("/operator/login");
 
-  return { operator: { name: session.sub }, session };
+  return current;
 }
 
 /**
@@ -91,19 +113,38 @@ export async function requireOperatorPage(): Promise<OperatorPageSession> {
  */
 export async function optionalOperatorSession(): Promise<OperatorPageSession | null> {
   if ((await operatorPlaneViolation()) !== null) return null;
-  const session = verifyOperatorToken(await readOperatorCookie());
-  return session ? { operator: { name: session.sub }, session } : null;
+  return currentOperator();
 }
 
 /**
  * Penjaga SERVER ACTION bidang operator (issue #155) — pemeriksaan yang sama
- * dengan `requireOperatorPage` (host + IP + cookie + MFA), tetapi jawabannya
- * `null`, bukan redirect/404: action menjawab lewat state form, dan jawaban
- * gagalnya SERAGAM (pola action login #154 — action tidak boleh terpanggil
- * dari host pelanggan sekalipun proxy berubah). Setiap action tulis WAJIB
- * memanggil ini lebih dulu — ditegakkan sapuan sumber di
- * `tests/operator-writes.test.ts` dan `tests/authz-coverage.test.ts`.
+ * dengan `requireOperatorPage` (host + IP + cookie + MFA + identitas), tetapi
+ * jawabannya `null`, bukan redirect/404: action menjawab lewat state form, dan
+ * jawaban gagalnya SERAGAM (pola action login #154).
+ *
+ * `permission` WAJIB (migration kendali 0004): setiap action tulis menyebut
+ * izin yang dituntutnya, dan peran yang tidak memegangnya mendapat `null` yang
+ * sama dengan sesi yang habis. Ditegakkan sapuan sumber di
+ * `tests/operator-roles.test.ts`.
  */
-export async function requireOperatorActionSession(): Promise<OperatorPageSession | null> {
-  return optionalOperatorSession();
+export async function requireOperatorActionSession(
+  permission: OperatorPermission
+): Promise<OperatorPageSession | null> {
+  const current = await optionalOperatorSession();
+  if (!current || !operatorCan(current.operator.role, permission)) return null;
+  return current;
+}
+
+/**
+ * Penjaga ROUTE HANDLER bidang operator (unduhan berkas): pemeriksaan yang
+ * sama dengan `requireOperatorActionSession(izin)`, dengan jawaban HTTP yang
+ * tidak membedakan alasannya — 404 untuk semua kegagalan, pola penjaga
+ * halaman untuk pelanggaran bidang. Unduhan tidak punya formulir untuk
+ * memajang "ditolak", dan 401/403 yang berbeda akan memberi tahu pemindai
+ * bahwa rutenya ada.
+ */
+export async function requireOperatorRoute(
+  permission: OperatorPermission
+): Promise<OperatorPageSession | null> {
+  return requireOperatorActionSession(permission);
 }

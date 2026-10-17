@@ -43,7 +43,7 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import {
   GRACE_PERIOD_DAYS,
@@ -63,11 +63,12 @@ import { ppnEnabledFrom, readSiteSettingsRow } from "../src/lib/site-settings-co
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
-import { mesinKendali } from "../src/lib/db-engine-runtime";
+import { mesinKendali } from "@sai/db/engine-runtime";
 import { resolvePaymentGateway } from "../src/lib/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
 import { runReconciliation } from "../src/lib/platform-reconciliation";
+import { recordSubscriptionEvent } from "../src/lib/subscription-events";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);
@@ -128,6 +129,19 @@ async function applyEvent(
       ...(next === "cancelled" ? { cancelledAt: now } : {}),
     },
   });
+  await recordSubscriptionEvent(
+    platform,
+    {
+      subscriptionId: subscription.id,
+      tenantId: subscription.tenantId,
+      kind: "status",
+      actor: "scheduler",
+      fromStatus: subscription.status,
+      toStatus: next,
+      details: { event },
+    },
+    now
+  );
 
   /* 2 — KENDALI belakangan: salinan status untuk penjaga hanya-baca. */
   const tenant = await control.tenant.update({
@@ -226,6 +240,21 @@ async function main() {
           },
           select: { id: true },
         });
+        await recordSubscriptionEvent(
+          platform,
+          {
+            subscriptionId: created.id,
+            tenantId: orphan.tenantId,
+            kind: "created",
+            actor: "scheduler",
+            toStatus: orphan.status,
+            toPlanId: plan.id,
+            toPrice: plan.priceMonthly,
+            currency: plan.currency,
+            details: { via: "orphan_adoption" },
+          },
+          now
+        );
         console.log(
           `+ adopsi yatim: tenant #${orphan.tenantId} → subscription #${created.id} ` +
             `(${orphan.status}, paket "${plan.key}")`
@@ -312,6 +341,21 @@ async function main() {
         where: { id: sub.id },
         data: { currentPeriodStart: period.start, currentPeriodEnd: period.end },
       });
+      await recordSubscriptionEvent(
+        platform,
+        {
+          subscriptionId: sub.id,
+          tenantId: sub.tenantId,
+          kind: "period",
+          actor: "scheduler",
+          details: {
+            via: "trial_expired",
+            from: period.start.toISOString(),
+            to: period.end.toISOString(),
+          },
+        },
+        now
+      );
 
       /* Tagihan pertama — nomor deterministik = kunci idempotensinya.
        * PPN dihitung lewat lib/tax.ts (issue #141) — tarifnya tidak pernah

@@ -27,6 +27,7 @@ import { revalidatePath } from "next/cache";
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
+import type { OperatorPermission } from "@/lib/operator/roles";
 import { changeTenantPlan, type QuotaWarning } from "@/lib/billing/change-tenant-plan";
 import {
   executeTenantDeletion,
@@ -36,6 +37,7 @@ import {
   setTenantSuspension,
   extendSubscription,
   type OperatorActor,
+  activateQuoteEntitlement,
 } from "@/lib/operator/writes";
 import {
   changePlanSchema,
@@ -44,6 +46,7 @@ import {
   suspensionSchema,
   extendSubscriptionSchema,
   billingModeActionSchema,
+  quoteActivationSchema,
 } from "@/lib/validations/operator";
 import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-constants";
 import { invalidateTenantState } from "@/lib/tenant-state";
@@ -61,12 +64,12 @@ export interface OperatorActionResult {
 
 type T = Awaited<ReturnType<typeof getT>>;
 
-async function guardAndTranslate(): Promise<
+async function guardAndTranslate(permission: OperatorPermission): Promise<
   | { ok: true; t: T; actorName: string }
   | { ok: false; result: OperatorActionResult }
 > {
   const t = await getT();
-  const session = await requireOperatorActionSession();
+  const session = await requireOperatorActionSession(permission);
   if (!session) {
     /* Jawaban seragam — tidak membedakan "host salah" dari "sesi habis". */
     return { ok: false, result: { ok: false, message: t("operator.actions.denied") } };
@@ -87,7 +90,7 @@ function felt(tenantId: number): void {
 /* ── 1. Tandai tagihan lunas (transfer manual) ─────────────────────────────── */
 
 export async function operatorMarkInvoicePaid(input: unknown): Promise<OperatorActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("tenant.billing");
   if (!gate.ok) return gate.result;
   const { t, actorName } = gate;
 
@@ -143,7 +146,7 @@ function quotaWarningText(t: T, warning: QuotaWarning | null): string | null {
 }
 
 export async function operatorChangePlan(input: unknown): Promise<OperatorActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("tenant.billing");
   if (!gate.ok) return gate.result;
   const { t, actorName } = gate;
 
@@ -179,7 +182,7 @@ export async function operatorChangePlan(input: unknown): Promise<OperatorAction
 /* ── 3. Suspensi / pemulihan manual ────────────────────────────────────────── */
 
 export async function operatorSetSuspension(input: unknown): Promise<OperatorActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("tenant.lifecycle");
   if (!gate.ok) return gate.result;
   const { t, actorName } = gate;
 
@@ -221,7 +224,7 @@ export async function operatorSetSuspension(input: unknown): Promise<OperatorAct
 export async function operatorExtendSubscription(
   input: unknown
 ): Promise<OperatorActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("tenant.billing");
   if (!gate.ok) return gate.result;
   const { t, actorName } = gate;
 
@@ -282,7 +285,7 @@ export async function operatorExtendSubscription(
  * membayar nol.
  */
 export async function operatorSetBillingMode(input: unknown): Promise<OperatorActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("tenant.billing");
   if (!gate.ok) return gate.result;
   const { t, actorName } = gate;
 
@@ -336,7 +339,7 @@ export async function operatorSetBillingMode(input: unknown): Promise<OperatorAc
 /* ── 4. Eksekusi penghapusan (lewat masa tenggang) ─────────────────────────── */
 
 export async function operatorExecuteDeletion(input: unknown): Promise<OperatorActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("tenant.delete");
   if (!gate.ok) return gate.result;
   const { t, actorName } = gate;
 
@@ -398,4 +401,31 @@ export async function operatorExecuteDeletion(input: unknown): Promise<OperatorA
     default:
       return { ok: false, message: t("operator.tenant.notFound") };
   }
+}
+
+/* ── 7. Penawaran disetujui → hak pakai ───────────────────────────────────── */
+
+export async function operatorActivateQuote(input: unknown): Promise<OperatorActionResult> {
+  const gate = await guardAndTranslate("tenant.billing");
+  if (!gate.ok) return gate.result;
+  const { t, actorName } = gate;
+
+  const parsed = quoteActivationSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("operator.quote.errInput") };
+  const { tenantId, planKey, cycle, periods, quoteRef, reason } = parsed.data;
+
+  const result = await activateQuoteEntitlement(deps(), {
+    tenantId,
+    planKey,
+    cycle,
+    periods,
+    quoteRef,
+    actor: { operator: actorName, reason },
+  });
+  felt(tenantId);
+
+  const ringkas = result.steps.map((s) => `${s.step}: ${s.outcome}`).join(" · ");
+  return result.ok
+    ? { ok: true, message: t("operator.quote.done", { quote: quoteRef }), warning: null }
+    : { ok: false, message: t("operator.quote.partial", { steps: ringkas }) };
 }

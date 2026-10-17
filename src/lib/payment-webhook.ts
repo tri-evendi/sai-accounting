@@ -38,6 +38,7 @@ import {
   type SubscriptionEvent,
 } from "@/lib/subscription-lifecycle";
 import type { SubscriptionStatus } from "@/lib/platform-constants";
+import { recordSubscriptionEvent } from "@/lib/subscription-events";
 
 export interface WebhookDeps {
   platform: PlatformClient;
@@ -226,6 +227,19 @@ export async function processPaymentNotification(
             ...(event === "payment_received" ? { pastDueSince: null } : {}),
           },
         });
+        await recordSubscriptionEvent(
+          platform,
+          {
+            subscriptionId: subscription.id,
+            tenantId: subscription.tenantId,
+            kind: "status",
+            actor: `webhook:${source?.gateway ?? "midtrans"}`,
+            fromStatus: subscription.status,
+            toStatus: next,
+            details: { event, invoice: notification.order_id },
+          },
+          now
+        );
         /* ── 2. KENDALI terakhir: salinan status untuk penjaga hanya-baca ── */
         await control.tenant.update({
           where: { id: subscription.tenantId },

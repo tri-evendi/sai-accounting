@@ -32,7 +32,7 @@
  */
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { repostForSource } from "../src/lib/posting";
 
 function createClient() {

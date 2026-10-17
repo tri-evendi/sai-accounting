@@ -50,6 +50,14 @@ export type TenantAuditAction =
   | "tenant.invitation.create"
   | "tenant.invitation.accept"
   | "tenant.invitation.revoke"
+  /** Undangan terbuka DITERBITKAN ULANG oleh operator (bantuan pengguna):
+   *  token baru, yang lama mati; kalimat surelnya sama dengan undangan asli. */
+  | "tenant.invitation.resend"
+  /** Bantuan pengguna oleh operator: semua sesi seorang pengguna dicabut. */
+  | "tenant.user.sessions_revoke"
+  /** Bantuan pengguna oleh operator: tautan atur-ulang kata sandi dikirim ke
+   *  alamat PEMILIK akun. Operator tidak pernah melihat tokennya. */
+  | "tenant.user.password_reset_sent"
   /** Ganti NAMA TAMPILAN akun (#458). Slug-nya TIDAK ikut berubah — alamat
    *  yang sudah dibagikan tetap sampai; ganti slug adalah pekerjaan tersendiri
    *  dengan pengalihan & pemesanan slug lama (lingkup 3 issue itu). */
@@ -175,10 +183,40 @@ export async function readTenantAuditPage(
   tenantSlug: string,
   options: { limit?: number; skip?: number } = {}
 ): Promise<{ entries: TenantAuditEntry[]; total: number }> {
+  return readTenantAuditFeed({ tenantSlug }, options);
+}
+
+/**
+ * Jejak LINTAS tenant untuk konsol operator, terbaru dulu, dipaginasi di SQL.
+ *
+ * Saringan:
+ *   - `tenantSlug`: satu tenant (slug, bukan id — lihat `readTenantAuditPage`);
+ *   - `actionPrefix`: kelompok tindakan, mis. `tenant.deletion.` atau
+ *     `tenant.plan.`. Awalan, bukan daftar: kosakatanya bertitik dan
+ *     berkelompok, dan awalan tetap berlaku untuk tindakan baru sekelompok.
+ *
+ * Index `[created_at]` dan `[action]` lahir untuk bentuk ini (migration
+ * kendali 0003).
+ */
+export async function readTenantAuditFeed(
+  filter: { tenantSlug?: string; tenantId?: number; actionPrefix?: string },
+  options: { limit?: number; skip?: number } = {}
+): Promise<{ entries: TenantAuditEntry[]; total: number }> {
   const take = Math.min(500, Math.max(1, options.limit ?? 100));
   const skip = Math.max(0, options.skip ?? 0);
 
-  const where = { tenantSlug };
+  /* `tenantId` didahulukan bila ada: slug bisa BERGANTI (#458), dan setiap
+     entri menyalin slug yang berlaku SAAT ia ditulis — menyaring dengan slug
+     sekarang menyembunyikan seluruh riwayat sebelum penggantian. Slug tetap
+     satu-satunya pegangan untuk tenant yang barisnya sudah TIDAK ada. */
+  const where = {
+    ...(filter.tenantId !== undefined
+      ? { tenantId: filter.tenantId }
+      : filter.tenantSlug
+        ? { tenantSlug: filter.tenantSlug }
+        : {}),
+    ...(filter.actionPrefix ? { action: { startsWith: filter.actionPrefix } } : {}),
+  };
   const [rows, total] = await Promise.all([
     controlDb.tenantAuditLog.findMany({
       where,

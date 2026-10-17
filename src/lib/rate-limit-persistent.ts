@@ -31,7 +31,7 @@
 import "server-only";
 
 import { controlDb } from "@/lib/control-db";
-import { mesinKendali } from "@/lib/db-engine-runtime";
+import { mesinKendali } from "@sai/db/engine-runtime";
 
 export interface PersistentRateLimitOptions {
   windowMs: number;

@@ -36,6 +36,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SiteSettingsForm } from "@/components/operator/site-settings-form";
 import { getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
+import { operatorCan } from "@/lib/operator/roles";
 import {
   effectiveSetting,
   ppnEnabledFrom,
@@ -57,7 +58,7 @@ function gateValue(v: boolean | null | undefined): "env" | "on" | "off" {
 }
 
 export default async function OperatorSettingsPage() {
-  await requireOperatorPage();
+  const { operator } = await requireOperatorPage();
   const t = await getT();
   const row = await siteSettingsForOperator();
 
@@ -117,6 +118,9 @@ export default async function OperatorSettingsPage() {
         title={t("operator.settings.heading")}
         description={t("operator.settings.description")}
       />
+      {!operatorCan(operator.role, "site.settings") ? (
+        <ConsoleNotice>{t("operator.roleCannotEdit")}</ConsoleNotice>
+      ) : (
       <ConsolePanel>
       <SiteSettingsForm
         initial={initial}
@@ -127,6 +131,7 @@ export default async function OperatorSettingsPage() {
         reset={operatorResetSiteSettings}
       />
       </ConsolePanel>
+      )}
     </div>
   );
 }

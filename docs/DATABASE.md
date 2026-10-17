@@ -165,7 +165,7 @@ Aturannya:
 ---
 
 ## 8. Prisma (konvensi teknis)
-- Generator: `provider = "prisma-client"`, output `src/generated/prisma`. Datasource `postgresql`, **tanpa `url`** (koneksi via `@prisma/adapter-pg`, dipilih dari skema URL di `src/lib/db-engine.ts`). Klien yang dibangkitkan **terikat dialek `provider`**: image ini tidak bisa bicara ke `mysql://`.
+- Generator: `provider = "prisma-client"`, output `src/generated/prisma`. Datasource `postgresql`, **tanpa `url`** (koneksi via `@prisma/adapter-pg`, dipilih dari skema URL di `packages/db/src/engine.ts`). Klien yang dibangkitkan **terikat dialek `provider`**: image ini tidak bisa bicara ke `mysql://`.
 - Import client **selalu**: `import { prisma } from "@/lib/prisma"` (singleton). Class dari `@/generated/prisma/client`.
 - Field opsional pakai `?`; default via `@default(...)`.
 
@@ -230,7 +230,7 @@ CREATE DATABASE sai_platform OWNER sai_billing
 
 *(Padanan MariaDB lama: `CREATE DATABASE … utf8mb4_unicode_ci` + `GRANT ALL
 PRIVILEGES ON \`sai_platform\`.*`. Collation `C` disamakan dengan yang dipakai
-`ServerPostgres` di `src/lib/db-server.ts` untuk buku PT.)*
+`ServerPostgres` di `packages/db/src/server.ts` untuk buku PT.)*
 
 lalu set `PLATFORM_DATABASE_URL` di `.env` (lihat `.env.docker.example`) dan
 jalankan `bun run db:migrate:platform` (atau `db:migrate:all`, yang sudah

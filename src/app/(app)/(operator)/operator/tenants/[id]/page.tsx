@@ -46,9 +46,27 @@ import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
+import { AuditTrailTable } from "@/components/operator/audit-trail-table";
+import { ButtonLink } from "@/components/ui/button";
+import { readTenantAuditFeed } from "@/lib/tenant-audit";
+import { TenantUserSupport } from "@/components/operator/tenant-user-support";
+import { tenantUsersForOperator } from "@/lib/operator/user-support";
+import { controlDb } from "@/lib/control-db";
+import {
+  operatorResendInvitation,
+  operatorRevokeUserSessions,
+  operatorSendPasswordReset,
+} from "./user-actions";
 import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { listPlansForOperator, tenantDetailForOperator, tenantStatusVariant } from "@/lib/operator/store";
+import { operatorCan } from "@/lib/operator/roles";
+import {
+  listPlansForOperator,
+  tenantDetailForOperator,
+  tenantHealthForOperator,
+  tenantStatusVariant,
+} from "@/lib/operator/store";
+import type { HealthSignal } from "@/lib/operator/tenant-health";
 import { executionVerdict } from "@/lib/tenant-deletion";
 import {
   BILLING_MODE_LABEL_KEYS,
@@ -122,12 +140,33 @@ type TenantDetail = NonNullable<Awaited<ReturnType<typeof tenantDetailForOperato
 type Invoice = NonNullable<TenantDetail["billing"]>["invoices"][number];
 type Company = TenantDetail["companies"][number];
 
+/** Peta STATIS sinyal kesehatan → kunci kamus (penjaga kunci yatim membaca teks). */
+const HEALTH_LABEL: Record<HealthSignal["key"], DictionaryKey> = {
+  quotaCompaniesOver: "operator.health.quotaCompaniesOver",
+  quotaCompaniesNear: "operator.health.quotaCompaniesNear",
+  quotaUsersOver: "operator.health.quotaUsersOver",
+  quotaUsersNear: "operator.health.quotaUsersNear",
+  bookIdle: "operator.health.bookIdle",
+  bookNeverUsed: "operator.health.bookNeverUsed",
+  bookUnreadable: "operator.health.bookUnreadable",
+  conformanceFindings: "operator.health.conformanceFindings",
+  conformanceAmbiguous: "operator.health.conformanceAmbiguous",
+};
+const HEALTH_TONE_LABEL: Record<HealthSignal["tone"], DictionaryKey> = {
+  danger: "operator.health.toneDanger",
+  warning: "operator.health.toneWarning",
+  info: "operator.health.toneInfo",
+};
+
+/** Cukup untuk "apa yang terakhir terjadi"; selebihnya di halaman jejak. */
+const JEJAK_DI_RINCIAN = 20;
+
 export default async function OperatorTenantDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireOperatorPage();
+  const { operator } = await requireOperatorPage();
   const t = await getT();
 
   const { id } = await params;
@@ -139,6 +178,20 @@ export default async function OperatorTenantDetailPage({
 
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
   const { tenant, usage, companies, billing, deletionRequest } = detail;
+  /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
+     `/operator/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
+     diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
+  const [trail, people, health] = await Promise.all([
+    /* Per `tenantId`, bukan slug: entri sebelum slug berganti tetap terbaca. */
+    readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }),
+    tenantUsersForOperator({ control: controlDb }, tenant.id),
+    tenantHealthForOperator({
+      id: tenant.id,
+      maxCompanies: tenant.maxCompanies,
+      maxUsers: tenant.maxUsers,
+      usage,
+    }),
+  ]);
 
   /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
    * tanpanya panel ganti paket memang tidak boleh muncul. */
@@ -316,6 +369,24 @@ export default async function OperatorTenantDetailPage({
         )}
       </ConsolePanel>
 
+      {/* ── Kesehatan: sinyal metadata, tidak pernah isi buku ───────────── */}
+      <ConsolePanel title={t("operator.health.heading")} footnote={t("operator.health.note")}>
+        {health.length === 0 ? (
+          <p style={MUTED}>{t("operator.health.allClear")}</p>
+        ) : (
+          <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "grid", gap: 8 }}>
+            {health.map((h, i) => (
+              <li key={`${h.key}-${i}`} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                <Badge variant={h.tone === "danger" ? "danger" : h.tone === "warning" ? "warning" : "default"}>
+                  {t(HEALTH_TONE_LABEL[h.tone])}
+                </Badge>
+                <span>{t(HEALTH_LABEL[h.key] as DictionaryKey, h.params as Record<string, string | number>)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ConsolePanel>
+
       {/* ── Platform: langganan & tagihan — boleh "mati" dengan tenang ───── */}
       <ConsolePanel title={t("operator.tenant.subscriptionHeading")}>
         {billing === null ? (
@@ -426,6 +497,69 @@ export default async function OperatorTenantDetailPage({
         )}
       </ConsolePanel>
 
+      {/* ── Pengguna & undangan — bantuan masuk tanpa memegang rahasia ───── */}
+      <ConsolePanel title={t("operator.users.heading", { count: people.users.length })}>
+        <TenantUserSupport
+          tenantId={tenant.id}
+          users={people.users.map((u) => ({
+            id: u.id,
+            label: u.name ? `${u.name} (${u.username})` : u.username,
+            email: u.email,
+            mustChangePassword: u.mustChangePassword,
+            activeMemberships: u.activeMemberships,
+          }))}
+          invitations={people.invitations.map((i) => ({
+            id: i.id,
+            email: i.email,
+            companyName: i.companyName,
+            companyRole: i.companyRole,
+            expiresLabel: formatDate(i.expiresAt),
+            expired: i.expired,
+          }))}
+          canAct={operatorCan(operator.role, "tenant.users")}
+          revoke={operatorRevokeUserSessions}
+          reset={operatorSendPasswordReset}
+          resend={operatorResendInvitation}
+        />
+      </ConsolePanel>
+
+      {/* ── Jejak tenant — apa yang SUDAH dilakukan, sebelum tombol untuk
+          melakukan berikutnya. ──────────────────────────────────────────── */}
+      <ConsolePanel
+        title={`${t("operator.tenant.trailHeading")} (${trail.total})`}
+        flush
+        actions={
+          trail.total > 0 ? (
+            <ButtonLink
+              href={`/operator/audit/tenants?tenant=${encodeURIComponent(tenant.slug)}`}
+              variant="outline"
+              size="sm"
+            >
+              {t("operator.tenant.trailAll")}
+            </ButtonLink>
+          ) : undefined
+        }
+      >
+        <AuditTrailTable
+          rows={trail.entries.map((e) => ({
+            id: e.id,
+            createdAt: e.createdAt,
+            actor: e.username,
+            action: e.action,
+            ipAddress: e.ipAddress,
+            details: e.details,
+          }))}
+          labels={{
+            time: t("operator.audit.colTime"),
+            actor: t("operator.tenantAudit.colActor"),
+            action: t("operator.audit.colAction"),
+            ip: t("operator.audit.colIp"),
+            details: t("operator.audit.colDetails"),
+          }}
+          empty={<p style={{ ...MUTED, padding: "var(--ant-padding-lg)" }}>{t("operator.tenantAudit.empty")}</p>}
+        />
+      </ConsolePanel>
+
       {/* ── Tindakan tulis (#155) — SENGAJA paling bawah: fakta dibaca dulu,
           tombolnya belakangan; yang paling merusak paling jauh dari jalur
           baca. Semua nilai sudah diserialkan di sini (tanggal jadi label,
@@ -441,6 +575,11 @@ export default async function OperatorTenantDetailPage({
            Dipakai panel mode penagihan sebagai peringatan sebelum menyalakan
            penagihan otomatis tanpa satu pun cara membayar. */
         paymentRailReady={paymentRailConfigured()}
+        allowed={{
+          billing: operatorCan(operator.role, "tenant.billing"),
+          lifecycle: operatorCan(operator.role, "tenant.lifecycle"),
+          delete: operatorCan(operator.role, "tenant.delete"),
+        }}
         usage={usage}
         currentPlanKey={tenant.planKey}
         billingAvailable={billing !== null}

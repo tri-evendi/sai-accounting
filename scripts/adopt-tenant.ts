@@ -41,7 +41,7 @@ import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { PrismaClient } from "../src/generated/control/client.js";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import {
   isFullAccessRole,
   TENANT_ROLES,
@@ -52,6 +52,7 @@ import {
   nextPeriod,
   planOrphanSubscriptionAdoptions,
 } from "../src/lib/subscription-lifecycle";
+import { recordSubscriptionEvent } from "../src/lib/subscription-events";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
@@ -306,6 +307,21 @@ async function main() {
             },
             select: { id: true },
           });
+          await recordSubscriptionEvent(
+            platform,
+            {
+              subscriptionId: subscription.id,
+              tenantId: tenant.id,
+              kind: "created",
+              actor: `cli:${process.env.USER ?? "unknown"}`,
+              toStatus: spec.status,
+              toPlanId: plan.id,
+              toPrice: plan.priceMonthly,
+              currency: plan.currency,
+              details: { via: "adopt-tenant" },
+            },
+            now
+          );
           console.log(
             `+ subscription #${subscription.id} (${spec.status}, paket "${plan.key}") lahir bersama tenant.`
           );

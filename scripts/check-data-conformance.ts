@@ -40,7 +40,7 @@ import "dotenv/config";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 import { CONTRACT_STATUSES, CURRENCIES } from "../src/lib/constants";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";

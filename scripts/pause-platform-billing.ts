@@ -78,9 +78,10 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import { setTenantSuspension } from "../src/lib/operator/writes";
+import { recordSubscriptionEvent } from "../src/lib/subscription-events";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);
@@ -249,6 +250,13 @@ async function main() {
           where: { id: sub.id },
           data: { billingMode: "none" },
         });
+        await recordSubscriptionEvent(platform, {
+          subscriptionId: sub.id,
+          tenantId: sub.tenantId,
+          kind: "billing_mode",
+          actor: `cli:${process.env.USER ?? "unknown"}`,
+          details: { from: modeLama ?? null, to: "none", reason, via: "billing:pause" },
+        });
       }
       diubahMode += 1;
     }
@@ -284,6 +292,13 @@ async function main() {
         await platform.subscription.update({
           where: { id: sub.id },
           data: { trialEndsAt: null },
+        });
+        await recordSubscriptionEvent(platform, {
+          subscriptionId: sub.id,
+          tenantId: sub.tenantId,
+          kind: "trial_cleared",
+          actor: `cli:${process.env.USER ?? "unknown"}`,
+          details: { trialEndsAt: sub.trialEndsAt.toISOString(), reason, via: "billing:pause" },
         });
       }
       trialDibersihkan += 1;

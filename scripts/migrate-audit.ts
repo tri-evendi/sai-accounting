@@ -35,7 +35,7 @@ import { createInterface } from "node:readline";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";

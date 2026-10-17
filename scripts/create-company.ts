@@ -28,7 +28,7 @@
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "../src/lib/tenant-routes";
 import { ROLES, ROLE_LABELS } from "../src/lib/constants";

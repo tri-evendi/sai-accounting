@@ -65,6 +65,30 @@ export const suspensionSchema = z.object({
 });
 export type SuspensionFormInput = z.infer<typeof suspensionSchema>;
 
+/* ── 3a. Ganti slug (alamat) akun — pagar sebenarnya di `renameTenantSlug` ── */
+
+export const slugRenameSchema = z.object({
+  tenantId: tenantIdField,
+  slugBaru: z.string().trim().toLowerCase().min(1).max(63),
+  reason: operatorReasonField,
+});
+export type SlugRenameFormInput = z.infer<typeof slugRenameSchema>;
+
+/* ── 3c. Penawaran disetujui → hak pakai (KOMERSIALISASI §7 langkah 7) ───── */
+
+export const quoteActivationSchema = z.object({
+  tenantId: tenantIdField,
+  planKey: z.string().trim().min(1).max(30),
+  cycle: z.enum(["monthly", "yearly"]),
+  /* Batas yang SAMA dengan perpanjangan kompensasi (1–24) — langkah keduanya
+     memang `extendSubscription`. */
+  periods: z.coerce.number().int().min(1).max(24),
+  /** Nomor penawaran/kontrak di buku PT penyedia — masuk alasan setiap jejak. */
+  quoteRef: z.string().trim().min(3).max(60),
+  reason: operatorReasonField,
+});
+export type QuoteActivationFormInput = z.infer<typeof quoteActivationSchema>;
+
 /* ── 3b. Perpanjangan kompensasi ───────────────────────────────────────────── */
 
 /**

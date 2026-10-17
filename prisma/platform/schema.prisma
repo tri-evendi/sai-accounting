@@ -656,3 +656,136 @@ model SiteSetting {
 
   @@map("site_settings")
 }
+
+/// JEJAK AUDIT BIDANG OPERATOR (migration 0002) — masuk/keluar konsol dan
+/// perubahan setelan PENYEDIA (surel, isi pendaratan, pengaturan situs).
+///
+/// Tindakan operator terhadap TENANT tidak di sini: ia milik tenantnya, di
+/// `tenant_audit_logs` basis data kendali, dengan aktor `operator:<nama>`.
+///
+/// Sampai migration 0002 jejak ini berupa berkas `data/audit/operators/audit.jsonl`
+/// di volume `audit` — terikat pada satu container, dan karena itu SYARAT
+/// pemisahan `apps/operator` (dok 14 §5). Pemindahannya `bun run
+/// migrate:operator-audit`.
+///
+/// Tanpa FK: akun operator hidup di env, dan percobaan masuk yang gagal
+/// mencatat nama yang DIKETIK, yang memang bukan akun.
+model OperatorAuditLog {
+  id Int @id @default(autoincrement())
+
+  /// Id entri JSONL lama (`<epoch>-<acak>`), diisi HANYA oleh skrip
+  /// pemindahan — idempotensi lewat constraint (pola `TenantAuditLog.legacyId`).
+  legacyId String? @unique @map("legacy_id") @db.VarChar(40)
+
+  /// Nama akun operator; percobaan gagal mencatat nama yang diketik.
+  operator String @db.VarChar(100)
+
+  /// enum-like `OperatorAuditAction` di `lib/operator/audit.ts`.
+  action String @db.VarChar(50)
+
+  /// JSON dalam TEKS — tidak pernah memuat rahasia; penulisnya yang menjamin.
+  details String? @db.Text
+
+  ipAddress String? @map("ip_address") @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  /// Jejak tidak pernah diubah; kolom ini ada karena konvensi docs/DATABASE.md §9.
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([operator, createdAt])
+  @@index([action])
+  @@map("operator_audit_logs")
+}
+
+/// PERISTIWA LANGGANAN (migration platform 0003) — riwayat yang tidak bisa
+/// diisi mundur, maka dicatat sejak sekarang.
+///
+/// `subscriptions` hanya menyimpan keadaan TERAKHIR: status, paket, harga,
+/// periode. Churn ("berapa yang berhenti bulan ini"), konversi per kohort
+/// ("dari yang uji coba Agustus, berapa yang membayar"), dan ekspansi ("berapa
+/// yang naik paket") semuanya pertanyaan tentang PERUBAHAN — dan perubahan yang
+/// tidak dicatat pada saat terjadi tidak bisa direkonstruksi kemudian
+/// (`docs/KOMERSIALISASI.md` §8).
+///
+/// Setiap penulis `subscriptions` mencatat lewat `recordSubscriptionEvent`
+/// (`lib/subscription-events.ts`); `tests/subscription-events.test.ts` menolak
+/// berkas yang menulis langganan tanpa mencatat peristiwanya.
+///
+/// Tanpa FK ke `subscriptions`: riwayat harus selamat dari baris yang dicatatnya.
+model SubscriptionEvent {
+  id Int @id @default(autoincrement())
+
+  subscriptionId Int @map("subscription_id")
+  tenantId       Int @map("tenant_id")
+
+  /// created | status | plan | billing_mode | period | trial_cleared —
+  /// `SUBSCRIPTION_EVENT_KINDS`; CHECK di migration.
+  kind String @db.VarChar(20)
+
+  fromStatus String? @map("from_status") @db.VarChar(20)
+  toStatus   String? @map("to_status") @db.VarChar(20)
+  fromPlanId Int?    @map("from_plan_id")
+  toPlanId   Int?    @map("to_plan_id")
+  fromPrice  Decimal? @map("from_price") @db.Decimal(15, 2)
+  toPrice    Decimal? @map("to_price") @db.Decimal(15, 2)
+  currency   String?  @db.VarChar(5)
+
+  /// Siapa: `scheduler`, `webhook:<gerbang>`, `operator:<nama>`,
+  /// `cli:<user>`, `self-service:<jalur>`, `signup`, `backfill`.
+  actor String @db.VarChar(100)
+
+  /// JSON dalam teks — sebab/konteks (event mesin siklus hidup, siklus, dst.).
+  details String? @db.Text
+
+  occurredAt DateTime @map("occurred_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([subscriptionId])
+  @@index([tenantId])
+  @@index([kind, occurredAt])
+  @@index([occurredAt])
+  @@map("subscription_events")
+}
+
+/// PENGUMUMAN STATUS (migration platform 0004) — pemeliharaan terjadwal dan
+/// insiden yang diumumkan operator, terbaca di `/status` dan sebagai banner
+/// di aplikasi.
+///
+/// ══ TANPA SATU PUN KOLOM TEKS BEBAS — dengan sengaja ═══════════════════════
+/// Aturan yang sama dengan `maintenanceWindow` (#374): aplikasi ini berbicara
+/// tiga bahasa, dan kalimat yang diketik operator hanya benar di bahasa yang
+/// mengetiknya. Yang disimpan hanya JENIS, KOMPONEN, FASE, dan WAKTU; kalimatnya
+/// dirakit dari kamus berparameter. `tests/status-notices.test.ts` menolak
+/// kolom teks bebas di model ini.
+model StatusNotice {
+  id Int @id @default(autoincrement())
+
+  /// maintenance | incident — `STATUS_NOTICE_KINDS`; CHECK di migration.
+  kind String @db.VarChar(20)
+
+  /// application | billing | email — `ComponentId` di `lib/public-status.ts`.
+  component String @db.VarChar(20)
+
+  /// scheduled | investigating | identified | monitoring | resolved.
+  phase String @db.VarChar(20)
+
+  startsAt DateTime  @map("starts_at")
+  /// Akhir yang DIRENCANAKAN (pemeliharaan). Insiden boleh tanpa akhir.
+  endsAt   DateTime? @map("ends_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  /// Tampil sebagai banner di dalam aplikasi (selain di `/status`).
+  showInApp Boolean @default(true) @map("show_in_app")
+
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([resolvedAt])
+  @@index([startsAt])
+  @@map("status_notices")
+}

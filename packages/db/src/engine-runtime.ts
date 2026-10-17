@@ -20,7 +20,7 @@
  * bukan menebak, melainkan mempertahankan perilaku yang sudah ada hari ini.
  * URL yang ADA tapi skemanya tak dikenali tetap MELEMPAR, lewat `db-engine.ts`.
  */
-import { dbEngineDariUrl, type DbEngine } from "@/lib/db-engine";
+import { dbEngineDariUrl, type DbEngine } from "./engine";
 
 function dariEnv(nama: string): DbEngine {
   const url = process.env[nama]?.trim();

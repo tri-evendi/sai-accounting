@@ -30,6 +30,8 @@ import "server-only";
 
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
+import { makeLatestJournalDateReader } from "@/lib/operator/writes";
+import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@/lib/operator/tenant-health";
 /* Inti rekonsiliasi tinggal di `src/lib/`, BUKAN di `scripts/`: mengimpor skrip
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
  * `next build` (ditemukan saat penggelaran #151). */
@@ -844,4 +846,297 @@ export function tenantStatusVariant(status: string): "success" | "warning" | "da
   if (TENANT_READ_ONLY_STATUSES.has(status)) return "danger";
   if (status === "active") return "success";
   return "warning";
+}
+
+/**
+ * Slug → id tenant untuk tautan di jejak tenant. Jejak menyimpan slug yang
+ * DISALIN (ia harus terbaca sesudah tenantnya tiada), jadi baris untuk tenant
+ * yang sudah dihapus memang tidak punya tujuan tautan — dan peta ini yang
+ * menyatakannya, bukan tautan yang berakhir 404.
+ */
+export async function tenantIdsBySlug(slugs: string[]): Promise<Map<string, number>> {
+  const unik = [...new Set(slugs)];
+  if (unik.length === 0) return new Map();
+  const rows = await controlDb.tenant.findMany({
+    where: { slug: { in: unik } },
+    select: { id: true, slug: true },
+  });
+  return new Map(rows.map((r) => [r.slug, r.id]));
+}
+
+/* ───────────────────────── Perpanjangan mendatang ──────────────────────── */
+
+/** Jendela pengingat perpanjangan — H-60 (`docs/KOMERSIALISASI.md` §6.3, §7 langkah 9). */
+export const RENEWAL_WINDOW_DAYS = 60;
+
+export interface UpcomingRenewal {
+  subscriptionId: number;
+  tenantId: number;
+  tenantName: string | null;
+  tenantSlug: string | null;
+  planName: string;
+  status: string;
+  billingCycle: string;
+  billingMode: string;
+  price: string;
+  currency: string;
+  currentPeriodEnd: Date;
+  daysLeft: number;
+}
+
+/**
+ * Langganan BERBAYAR yang periodenya berakhir dalam `days` hari ke depan —
+ * daftar kerja pengingat perpanjangan H-60, yang di Fase B dikerjakan MANUSIA
+ * (`KOMERSIALISASI.md` §7 langkah 9).
+ *
+ * Ada karena penagihan PERPANJANGAN belum ada di kode mana pun (§11): tidak ada
+ * yang menerbitkan tagihan periode berikutnya, mode `auto` pun tidak. Tanpa
+ * daftar ini, akhir periode sebuah langganan berlalu tanpa satu pun tanda —
+ * pelanggan memakai produk gratis dan tidak ada yang tahu sejak kapan.
+ *
+ * Hanya `active` dan `past_due`: `trialing` punya jalurnya sendiri (tagihan
+ * pertama saat uji coba habis), `suspended`/`cancelled` tidak diperpanjang.
+ * Yang SUDAH lewat ikut tampil (daysLeft negatif): itu justru yang paling
+ * terlambat.
+ *
+ * `null` = platform tak terjangkau.
+ */
+export async function upcomingRenewalsForOperator(
+  days = RENEWAL_WINDOW_DAYS,
+  now: Date = new Date(),
+  deps: { control: ControlClient; platform: PlatformClient } = {
+    control: controlDb,
+    platform: platformDb,
+  }
+): Promise<UpcomingRenewal[] | null> {
+  const batas = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  let subs;
+  try {
+    subs = await deps.platform.subscription.findMany({
+      where: { status: { in: ["active", "past_due"] }, currentPeriodEnd: { lte: batas } },
+      orderBy: { currentPeriodEnd: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        tenantId: true,
+        status: true,
+        billingCycle: true,
+        billingMode: true,
+        price: true,
+        currency: true,
+        currentPeriodEnd: true,
+        plan: { select: { name: true } },
+      },
+    });
+  } catch (error) {
+    console.error("[operator-store] perpanjangan mendatang tak terbaca:", error);
+    return null;
+  }
+
+  const tenants = await deps.control.tenant.findMany({
+    where: { id: { in: [...new Set(subs.map((s) => s.tenantId))] } },
+    select: { id: true, name: true, slug: true },
+  });
+  const byId = new Map(tenants.map((t) => [t.id, t]));
+
+  return subs.map((s) => ({
+    subscriptionId: s.id,
+    tenantId: s.tenantId,
+    tenantName: byId.get(s.tenantId)?.name ?? null,
+    tenantSlug: byId.get(s.tenantId)?.slug ?? null,
+    planName: s.plan.name,
+    status: s.status,
+    billingCycle: s.billingCycle,
+    billingMode: s.billingMode,
+    price: s.price.toString(),
+    currency: s.currency,
+    currentPeriodEnd: s.currentPeriodEnd,
+    daysLeft: Math.floor((s.currentPeriodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
+  }));
+}
+
+/**
+ * Slug yang diketik di saringan jejak → id tenant, termasuk slug LAMA dari
+ * `tenant_slug_history`. `null` = tidak dikenal (mungkin tenant yang sudah
+ * dihapus — saringan jatuh ke slug yang disalin di jejaknya).
+ */
+export async function tenantIdForAnySlug(slug: string): Promise<number | null> {
+  const now = await controlDb.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (now) return now.id;
+  const old = await controlDb.tenantSlugHistory.findUnique({ where: { slug }, select: { tenantId: true } });
+  return old?.tenantId ?? null;
+}
+
+/* ─────────────────────── Permintaan hapus lintas tenant ─────────────────── */
+
+export interface OperatorDeletionRequest {
+  id: number;
+  tenantId: number;
+  tenantName: string;
+  tenantSlug: string;
+  status: string;
+  graceEndsAt: Date;
+  executedAt: Date | null;
+  cancelledAt: Date | null;
+  retentionUntil: Date | null;
+  note: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Semua permintaan penghapusan akun, terbaru dulu — sampai halaman ini satu-
+ * satunya cara melihatnya adalah membuka tenant satu per satu, sehingga
+ * permintaan yang masa tenggangnya SUDAH lewat bisa terlupakan berminggu-minggu
+ * (UU PDP: permintaan pemilik bukan sesuatu yang boleh menunggu kebetulan).
+ */
+export async function deletionRequestsForOperator(limit = 200): Promise<OperatorDeletionRequest[]> {
+  const rows = await controlDb.tenantDeletionRequest.findMany({
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: Math.min(500, Math.max(1, limit)),
+    select: {
+      id: true,
+      tenantId: true,
+      status: true,
+      graceEndsAt: true,
+      executedAt: true,
+      cancelledAt: true,
+      retentionUntil: true,
+      note: true,
+      createdAt: true,
+      tenant: { select: { name: true, slug: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    tenantId: r.tenantId,
+    tenantName: r.tenant.name,
+    tenantSlug: r.tenant.slug,
+    status: r.status,
+    graceEndsAt: r.graceEndsAt,
+    executedAt: r.executedAt,
+    cancelledAt: r.cancelledAt,
+    retentionUntil: r.retentionUntil,
+    note: r.note,
+    createdAt: r.createdAt,
+  }));
+}
+
+/* ───────────────────────────── Katalog paket ───────────────────────────── */
+
+export interface OperatorCatalogPlan {
+  id: number;
+  key: string;
+  name: string;
+  priceMonthly: string;
+  priceYearly: string | null;
+  currency: string;
+  maxCompanies: number;
+  maxUsers: number;
+  trialDays: number;
+  isActive: boolean;
+  isPublic: boolean;
+  contactOnly: boolean;
+  isRecommended: boolean;
+  /** Langganan yang TIDAK `cancelled` pada paket ini. */
+  subscribers: number;
+}
+
+/**
+ * Katalog paket HANYA-BACA. Menyuntingnya dari layar sengaja belum ada:
+ * tangga harga dijaga `docs/PRICING.md` + `tests/pricing-ladder.test.ts`
+ * dan ditulis `bun run db:seed:plans`; editor layar akan membuat basis data
+ * dan dokumen yang dijaga tes itu menyimpang tanpa satu pun tes merah.
+ *
+ * `null` = platform tak terjangkau.
+ */
+export async function plansForOperatorCatalog(): Promise<OperatorCatalogPlan[] | null> {
+  try {
+    const [plans, counts] = await Promise.all([
+      platformDb.plan.findMany({ orderBy: [{ isActive: "desc" }, { priceMonthly: "asc" }] }),
+      platformDb.subscription.groupBy({
+        by: ["planId"],
+        where: { status: { not: "cancelled" } },
+        _count: { _all: true },
+      }),
+    ]);
+    const byPlan = new Map(counts.map((c) => [c.planId, c._count._all]));
+    return plans.map((p) => ({
+      id: p.id,
+      key: p.key,
+      name: p.name,
+      priceMonthly: p.priceMonthly.toString(),
+      priceYearly: p.priceYearly?.toString() ?? null,
+      currency: p.currency,
+      maxCompanies: p.maxCompanies,
+      maxUsers: p.maxUsers,
+      trialDays: p.trialDays,
+      isActive: p.isActive,
+      isPublic: p.isPublic,
+      contactOnly: p.contactOnly,
+      isRecommended: p.isRecommended,
+      subscribers: byPlan.get(p.id) ?? 0,
+    }));
+  } catch (error) {
+    console.error("[operator-store] katalog paket tak terbaca:", error);
+    return null;
+  }
+}
+
+/* ─────────────────────────── Kesehatan satu tenant ─────────────────────── */
+
+/**
+ * Kumpulkan masukan `tenantHealthSignals` untuk SATU tenant (halaman rincian).
+ *
+ * Tanggal jurnal termuda tiap PT aktif dibaca dengan pembaca yang SAMA dengan
+ * jangkar retensi hapus-tenant (`makeLatestJournalDateReader`, koneksi pendek
+ * per buku — bukan klien Prisma buku yang akan mengusir klien milik pelanggan
+ * dari kolam LRU). Hanya TANGGAL; tidak ada isi buku yang dibaca.
+ */
+export async function tenantHealthForOperator(tenant: {
+  id: number;
+  maxCompanies: number;
+  maxUsers: number;
+  usage: { companies: number; users: number };
+}): Promise<HealthSignal[]> {
+  const controlUrl = process.env.CONTROL_DATABASE_URL;
+  const companies = await controlDb.company.findMany({
+    where: { tenantId: tenant.id, isActive: true },
+    select: { slug: true, databaseName: true },
+  });
+
+  const reader = controlUrl ? makeLatestJournalDateReader(controlUrl) : null;
+  const books = await Promise.all(
+    companies.map(async (c) => {
+      if (!reader) return { slug: c.slug, latestJournal: "unreadable" as const };
+      try {
+        return { slug: c.slug, latestJournal: await reader(c.databaseName) };
+      } catch (error) {
+        console.warn(`[operator-health] buku ${c.databaseName} tak terbaca: ${String(error)}`);
+        return { slug: c.slug, latestJournal: "unreadable" as const };
+      }
+    })
+  );
+
+  let conformance: { findings: number; ambiguousSlugs: string[] } | null = null;
+  try {
+    const last = await platformDb.conformanceRun.findFirst({ orderBy: { id: "desc" }, select: { details: true } });
+    const details = parseConformanceDetails(last?.details ?? null);
+    if (details) {
+      const slugs = companies.map((c) => c.slug);
+      const shared = await controlDb.company.findMany({
+        where: { slug: { in: slugs }, NOT: { tenantId: tenant.id } },
+        select: { slug: true },
+      });
+      conformance = attributeConformance(details.findings, slugs, new Set(shared.map((s) => s.slug)));
+    }
+  } catch (error) {
+    console.error("[operator-health] sapuan kesesuaian tak terbaca:", error);
+  }
+
+  return tenantHealthSignals({
+    usage: tenant.usage,
+    quota: { maxCompanies: tenant.maxCompanies, maxUsers: tenant.maxUsers },
+    books,
+    conformance,
+  });
 }

@@ -35,7 +35,7 @@
  */
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 function clientFor(rawUrl: string) {
   const url = new URL(rawUrl);

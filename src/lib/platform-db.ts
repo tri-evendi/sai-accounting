@@ -29,7 +29,7 @@
  */
 
 import { PrismaClient } from "@/generated/platform/client";
-import { buatAdapter } from "@/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 const globalForPlatform = globalThis as unknown as {
   platformPrisma: PrismaClient | undefined;

@@ -24,7 +24,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | Menyentuh skema / menambah tabel atau relasi | [13](./13-AUDIT-SKEMA.md) *(aturan yang ditegakkan + jebakan indeks FK)* |
 | Merencanakan VM baru / DC-DRC | [10](./10-PORTABILITAS-DAN-PEMISAHAN.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) |
 | Mempertimbangkan ganti basis data | [10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(putusan)* → [11](./11-RENCANA-POSTGRESQL.md) *(rencana)* |
-| Mempertimbangkan memisah konsol operator dari platform pelanggan | [10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(container — sudah)* → [14](./14-RENCANA-MONOREPO.md) *(kode — belum, dan kenapa)* |
+| Mempertimbangkan memisah konsol operator dari platform pelanggan | [10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(container — sudah)* → [14](./14-RENCANA-MONOREPO.md) *(kode — Fase 1a: workspace + `packages/db`)* |
 
 ## Isi
 
@@ -43,7 +43,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | Migrasi MariaDB → PostgreSQL — **DIJALANKAN 15 Okt 2026**; fase, gerbang, kegagalan penukaran pertama, dan **validasi pasca-penukaran (§10.2)** |
 | 12 | [KLASIFIKASI-BUKU.md](./12-KLASIFIKASI-BUKU.md) | Buku mana **produksi**, mana **uji** — dengan dasar isinya, bukan namanya. Dibangkitkan `bun run classify:books` |
 | 13 | [AUDIT-SKEMA.md](./13-AUDIT-SKEMA.md) | **Audit desain skema** — apa yang sudah benar dan harus dijaga, tiga temuan (S1/S2 **ditutup**, S3 menunggu keputusan kosakata), dan keputusan desain yang harus diambil saat pindah mesin |
-| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Kenapa konsol operator masih satu kode dengan platform pelanggan (porsinya **5,6 %** dari kode tulisan tangan, 17 Okt 2026), apa yang dibeli & dibayar pemisahan, **Fase 0 selesai** (arah dependensi dijaga tes) — Fase 1–4 menunggu pemicu yang dapat diamati |
+| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Kenapa konsol operator masih satu kode dengan platform pelanggan (porsinya **7,8 %** dari kode tulisan tangan, 17 Okt 2026 sore), apa yang dibeli & dibayar pemisahan, **Fase 0 + 1a selesai** (arah dependensi dijaga tes; workspace bun + `@sai/db`) — Fase 1b–4 belum |
 
 ## Dokumen domain yang TIDAK digantikan dokumen ini
 

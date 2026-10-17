@@ -44,7 +44,7 @@ import { stat } from "node:fs/promises";
 import JSZip from "jszip";
 
 import { controlDb } from "@/lib/control-db";
-import { mesinPerusahaan } from "@/lib/db-engine-runtime";
+import { mesinPerusahaan } from "@sai/db/engine-runtime";
 import { getCompanyClient } from "@/lib/company-clients";
 import { resolveDocumentPath } from "@/lib/document-storage";
 import { toCsv } from "@/lib/export-csv";

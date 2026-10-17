@@ -96,8 +96,13 @@ import {
   type DeletionExecuteFormInput,
   type ManualPaymentFormInput,
   type SuspensionFormInput,
+  slugRenameSchema,
+  type SlugRenameFormInput,
+  quoteActivationSchema,
+  type QuoteActivationFormInput,
 } from "@/lib/validations/operator";
 import type { OperatorActionResult } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
+import { operatorRenameTenantSlug } from "@/app/(app)/(operator)/operator/tenants/[id]/slug-actions";
 import {
   operatorChangePlan,
   operatorExecuteDeletion,
@@ -105,6 +110,7 @@ import {
   operatorSetSuspension,
   operatorExtendSubscription,
   operatorSetBillingMode,
+  operatorActivateQuote,
 } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
 
 /* ── Bentuk data dari halaman server (serial, tanggal sudah terformat) ────── */
@@ -156,6 +162,13 @@ export interface TenantActionsProps {
     pastGrace: boolean;
     note: string | null;
   } | null;
+  /**
+   * Izin peran operator yang sedang masuk (migration kendali 0004), dihitung
+   * di SERVER. Panel tanpa izin TIDAK digambar — bukan pagar keamanan (action
+   * menolak sendiri), tetapi tombol yang pasti ditolak adalah tombol yang
+   * mengajari orang bahwa konsol ini rusak.
+   */
+  allowed: { billing: boolean; lifecycle: boolean; delete: boolean };
 }
 
 /* ── Bingkai panel + pesan hasil yang seragam ─────────────────────────────── */
@@ -1247,6 +1260,228 @@ function DeletionPanel({
 
 /* ══ Rangkaian panel ═══════════════════════════════════════════════════════ */
 
+/* ══ 3a. Ganti alamat (slug) akun ══════════════════════════════════════════ */
+
+function SlugPanel({ tenantId, tenantSlug }: { tenantId: number; tenantSlug: string }) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<SlugRenameFormInput>({
+    resolver: zodResolver(slugRenameSchema) as Resolver<SlugRenameFormInput>,
+    defaultValues: { tenantId, slugBaru: "", reason: "" },
+  });
+
+  async function runAction(values: SlugRenameFormInput) {
+    const res = await operatorRenameTenantSlug(values);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      return;
+    }
+    setResult(res);
+    setOpen(false);
+    form.reset({ tenantId, slugBaru: "", reason: "" });
+    router.refresh();
+  }
+
+  if (!open) {
+    return (
+      <Flex vertical gap={token.marginXS}>
+        <ResultNotice result={result} />
+        <Button variant="secondary" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(true)}>
+          {t("operator.slug.open")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(runAction)} noValidate>
+        <Flex vertical gap={token.marginSM}>
+          <p style={noticeBox(token)}>{t("operator.slug.explain", { slug: tenantSlug })}</p>
+          <FormField
+            control={form.control}
+            name="slugBaru"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.slug.newLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput autoComplete="off" spellCheck={false} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ReasonField control={form.control} />
+          <RootError message={form.formState.errors.root?.message} />
+          <Flex gap={token.marginXS}>
+            <Button type="submit" variant="primary" size="sm" disabled={form.formState.isSubmitting}>
+              {t("operator.slug.submit")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </Flex>
+        </Flex>
+      </form>
+    </Form>
+  );
+}
+
+/* ══ 3d. Penawaran disetujui → hak pakai (KOMERSIALISASI §7 langkah 7) ═════ */
+
+function QuotePanel({
+  tenantId,
+  tenantName,
+  currentPlanKey,
+  plans,
+}: {
+  tenantId: number;
+  tenantName: string;
+  currentPlanKey: string;
+  plans: NonNullable<TenantActionsProps["plans"]>;
+}) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState<QuoteActivationFormInput | null>(null);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<QuoteActivationFormInput>({
+    resolver: zodResolver(quoteActivationSchema) as Resolver<QuoteActivationFormInput>,
+    defaultValues: { tenantId, planKey: currentPlanKey, cycle: "yearly", periods: 1, quoteRef: "", reason: "" },
+  });
+
+  async function runAction(values: QuoteActivationFormInput) {
+    const res = await operatorActivateQuote(values);
+    setConfirming(null);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      router.refresh();
+      return;
+    }
+    setResult(res);
+    setOpen(false);
+    router.refresh();
+  }
+
+  if (!open) {
+    return (
+      <Flex vertical gap={token.marginXS}>
+        <ResultNotice result={result} />
+        <Button variant="secondary" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(true)}>
+          {t("operator.quote.open")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit((values) => setConfirming(values))} noValidate>
+        <Flex vertical gap={token.marginSM}>
+          <p style={noticeBox(token)}>{t("operator.quote.explain")}</p>
+          <FormField
+            control={form.control}
+            name="quoteRef"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.quote.refLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput autoComplete="off" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="planKey"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.plan.planLabel")}</FormLabel>
+                <FormControl>
+                  <SelectField options={plans.map((p) => ({ value: p.key, label: p.name }))} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="cycle"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.extend.cycleLabel")}</FormLabel>
+                <FormControl>
+                  <SelectField
+                    options={[
+                      { value: "yearly", label: t("operator.actions.extend.cycleYearly") },
+                      { value: "monthly", label: t("operator.actions.extend.cycleMonthly") },
+                    ]}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="periods"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.actions.extend.periodsLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput type="number" min={1} max={24} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ReasonField control={form.control} />
+          <RootError message={form.formState.errors.root?.message} />
+          <Flex gap={token.marginXS}>
+            <Button type="submit" variant="primary" size="sm">
+              {t("operator.quote.submit")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </Flex>
+        </Flex>
+
+        <ConfirmDialog
+          open={confirming !== null}
+          onOpenChange={(next) => {
+            if (!next) setConfirming(null);
+          }}
+          title={t("operator.quote.title")}
+          message={
+            confirming
+              ? t("operator.quote.confirmBody", {
+                  tenant: tenantName,
+                  quote: confirming.quoteRef,
+                  plan: confirming.planKey,
+                  periods: confirming.periods,
+                })
+              : ""
+          }
+          confirmVariant="primary"
+          confirmLabel={t("operator.quote.submit")}
+          onConfirm={async () => {
+            if (confirming) await runAction(confirming);
+          }}
+        />
+      </form>
+    </Form>
+  );
+}
+
 export function TenantActions(props: TenantActionsProps) {
   const t = useT();
   const { token } = theme.useToken();
@@ -1265,6 +1500,9 @@ export function TenantActions(props: TenantActionsProps) {
         {t("operator.actions.heading")}
       </h2>
       <p style={{ margin: 0, color: token.colorTextSecondary }}>{t("operator.actions.note")}</p>
+      {!props.allowed.billing && !props.allowed.lifecycle && !props.allowed.delete && (
+        <Alert type="info" showIcon message={t("operator.actions.roleReadOnly")} />
+      )}
 
       {!props.billingAvailable && (
         <Alert type="warning" showIcon message={t("operator.actions.billingDown")} />
@@ -1279,7 +1517,7 @@ export function TenantActions(props: TenantActionsProps) {
           gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
         }}
       >
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.billing && (
           <ActionPanel
             icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.markPaid.title")}
@@ -1289,7 +1527,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && props.plans && props.plans.length > 0 && (
+        {props.billingAvailable && props.allowed.billing && props.plans && props.plans.length > 0 && (
           <ActionPanel
             icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.plan.title")}
@@ -1306,7 +1544,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.lifecycle && (
           <ActionPanel
             icon={<PauseCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.suspension.title")}
@@ -1320,7 +1558,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.billing && (
           <ActionPanel
             icon={<PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.extend.title")}
@@ -1334,7 +1572,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.billing && (
           <ActionPanel
             icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.billingMode.heading")}
@@ -1349,17 +1587,44 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        <ActionPanel
-          icon={<DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
-          title={t("operator.actions.deletion.title")}
-          description={t("operator.actions.deletion.keptHeading")}
-        >
-          <DeletionPanel
-            tenantId={props.tenantId}
-            tenantSlug={props.tenantSlug}
-            deletionRequest={props.deletionRequest}
-          />
-        </ActionPanel>
+        {props.billingAvailable && props.allowed.billing && props.plans && props.plans.length > 0 && (
+          <ActionPanel
+            icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.quote.title")}
+            description={t("operator.quote.description")}
+          >
+            <QuotePanel
+              tenantId={props.tenantId}
+              tenantName={props.tenantName}
+              currentPlanKey={props.currentPlanKey}
+              plans={props.plans}
+            />
+          </ActionPanel>
+        )}
+
+        {props.allowed.lifecycle && (
+          <ActionPanel
+            icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.slug.title")}
+            description={t("operator.slug.description")}
+          >
+            <SlugPanel tenantId={props.tenantId} tenantSlug={props.tenantSlug} />
+          </ActionPanel>
+        )}
+
+        {props.allowed.delete && (
+          <ActionPanel
+            icon={<DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.actions.deletion.title")}
+            description={t("operator.actions.deletion.keptHeading")}
+          >
+            <DeletionPanel
+              tenantId={props.tenantId}
+              tenantSlug={props.tenantSlug}
+              deletionRequest={props.deletionRequest}
+            />
+          </ActionPanel>
+        )}
       </div>
       </Flex>
     </section>

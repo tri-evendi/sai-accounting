@@ -58,7 +58,7 @@ export async function operatorSaveSiteSettings(
 ): Promise<OperatorSettingsResult> {
   const t = await getT();
 
-  const session = await requireOperatorActionSession();
+  const session = await requireOperatorActionSession("site.settings");
   if (!session) {
     /* Jawaban seragam — tidak membedakan "host salah" dari "sesi habis". */
     return { ok: false, message: t("operator.actions.denied") };
@@ -140,7 +140,7 @@ export async function operatorSaveSiteSettings(
 export async function operatorResetSiteSettings(): Promise<OperatorSettingsResult> {
   const t = await getT();
 
-  const session = await requireOperatorActionSession();
+  const session = await requireOperatorActionSession("site.settings");
   if (!session) return { ok: false, message: t("operator.actions.denied") };
 
   try {

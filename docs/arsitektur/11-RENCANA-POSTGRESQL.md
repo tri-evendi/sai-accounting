@@ -623,10 +623,10 @@ terpasang sebagai dependensi produksi, dipatok sama persis dengan
 
 | # | Titik | Perubahan | Status |
 |---|---|---|---|
-| 1 | `src/lib/control-db.ts`, `platform-db.ts`, `company-clients.ts` | pilih adapter dari skema URL | ✅ **SELESAI** — `db-engine.ts` + `db-adapter.ts`; ketiganya kini memanggil `buatAdapter(url, …)` |
+| 1 | `src/lib/control-db.ts`, `platform-db.ts`, `company-clients.ts` | pilih adapter dari skema URL | ✅ **SELESAI** — `packages/db/src/engine.ts` + `packages/db/src/adapter.ts`; ketiganya kini memanggil `buatAdapter(url, …)` |
 | 2 | `src/lib/rate-limit-persistent.ts` | `ON DUPLICATE KEY UPDATE` → `ON CONFLICT` | ✅ **SELESAI** — dua pernyataan berdampingan, bukan satu abstraksi |
 | 3 | `prisma/control/migrations/0010_…` | trigger → `CREATE FUNCTION … RETURNS trigger` | ✅ **SELESAI & TERBUKTI** — `prisma/postgresql/control/0002_slug_permanen` |
-| 4 | `src/lib/company-provisioning.ts` | **`db-server.ts`** — antarmuka SEMANTIK (`adakah`/`buat`/`jumlahTabel`/`hapus`), bukan penerus SQL | ✅ **SELESAI & TERBUKTI** |
+| 4 | `src/lib/company-provisioning.ts` | **`packages/db/src/server.ts`** — antarmuka SEMANTIK (`adakah`/`buat`/`jumlahTabel`/`hapus`), bukan penerus SQL | ✅ **SELESAI & TERBUKTI** |
 | 5 | `src/lib/tenant-export.ts` | `DATABASE()` → `current_schema()`, penanda `?` → `$1` | ✅ SELESAI |
 | 6 | `scripts/subscription-scheduler.ts` | `information_schema.SCHEMATA` → `pg_database` | ✅ SELESAI |
 | 7 | `scripts/execute-tenant-deletion.ts` | lepaskan klien → `pg_terminate_backend` → `DROP DATABASE` | ✅ SELESAI & TERBUKTI |
@@ -637,7 +637,7 @@ terpasang sebagai dependensi produksi, dipatok sama persis dengan
 sintaksis kecil, melainkan KONSEP: `information_schema.SCHEMATA` di PostgreSQL
 berisi **skema di dalam satu basis data**, bukan daftar basis data — jadi query
 gaya MySQL **berhasil dan memulangkan jawaban yang salah**. Katalog tabel pun
-bersifat per-basis-data, tanpa tampilan lintas-basis-data. Maka `db-server.ts`
+bersifat per-basis-data, tanpa tampilan lintas-basis-data. Maka `packages/db/src/server.ts`
 mengabstraksi MAKSUDNYA, dan penyediaan berhenti menulis satu baris SQL pun —
 tidak ada SQL MySQL yang bisa tertinggal di sana.
 
@@ -724,7 +724,7 @@ Dua sebab, dan yang kedua mendasar:
    6432 yang ditulis di URL. Cepat diperbaiki.
 
 2. **Klien Prisma dibangkitkan dari skema `provider = "mysql"`.** Adapter driver
-   (`db-adapter.ts`) memilih SAMBUNGAN-nya dengan benar — tetapi mesin kueri
+   (`packages/db/src/adapter.ts`) memilih SAMBUNGAN-nya dengan benar — tetapi mesin kueri
    Prisma mengeluarkan SQL dialek **MySQL**. Image yang berjalan secara
    fundamental tidak bisa bicara ke PostgreSQL, betapa pun benar adapternya.
 
@@ -834,7 +834,7 @@ pemblokir sudah diperbaiki di `develop` dan tinggal dirilis.
 | Migrasi `_prisma_migrations` | 19/19 basis data bersih, nol gagal/rollback; kendali di `0002_slug_permanen`, sisanya di `0001_baseline` |
 | **Sequence autoincrement** (jebakan klasik salin data) | Semua kolom serial di 19 basis data (15 + 13 + 17×61) berada **≥ `MAX(id)`**, nol bermasalah |
 | Email pengguna | 13/13 sudah huruf kecil, nol duplikat bila dibandingkan tanpa huruf besar-kecil. Login menormalkan pengenal (`auth.ts:57`), jadi kepekaan huruf PostgreSQL tidak mematahkan login |
-| Hak membuat basis data (pendaftaran PT baru) | role `sai` punya `CREATEDB`; jalur `ServerPostgres` ada di `db-server.ts` |
+| Hak membuat basis data (pendaftaran PT baru) | role `sai` punya `CREATEDB`; jalur `ServerPostgres` ada di `packages/db/src/server.ts` |
 | PgBouncer | `pool_mode = transaction`, `default_pool_size = 20`, `max_client_conn = 200`; `migrate` & `job-backup` langsung ke `pg` |
 | SQL mentah yang bergantung mesin | `rate-limit-persistent.ts` (`ON CONFLICT`), `tenant-export.ts`, `subscription-scheduler.ts` (`pg_database`) bercabang per mesin dengan benar |
 

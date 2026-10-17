@@ -10,13 +10,21 @@
  * `writeTenantAuditLog` (jejak milik tenant, aktornya nama operator dari sesi
  * ini); jejak di berkas ini tetap merekam sisi operatornya.
  *
- * Rumahnya `data/audit/operators/audit.jsonl` — pola persis `tenant-audit.ts`:
- * fs murni, tanpa Prisma, gagal menulis tidak menggagalkan operasinya, dan
- * bisa dialihkan lewat env untuk tes.
+ * ══ RUMAHNYA: TABEL `operator_audit_logs` DI `sai_platform` ═══════════════
+ * Sampai migration platform 0002 jejak ini di-`appendFile` ke
+ * `data/audit/operators/audit.jsonl` di volume `audit`: dibaca UTUH setiap
+ * kali, tanpa paginasi, tidak ikut `pg_dump`, dan terikat pada satu container
+ * yang memasang volumenya — syarat yang harus dibereskan sebelum konsol
+ * operator menjadi aplikasi sendiri (dok 14 §5). Isi berkas lama dipindahkan
+ * `bun run migrate:operator-audit`.
+ *
+ * Gagal menulis TIDAK menggagalkan operasinya (pola `tenant-audit.ts`): jejak
+ * adalah catatan tentang yang terjadi, bukan gerbang. Konsekuensinya dinyatakan
+ * apa adanya — `sai_platform` yang mati berarti masuk konsol tetap bisa, dan
+ * jejaknya hanya tertinggal di log server.
  */
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import path from "node:path";
+import { platformDb } from "@/lib/platform-db";
 
 export type OperatorAuditAction =
   | "operator.login"
@@ -46,7 +54,24 @@ export type OperatorAuditAction =
    * `reset` = barisnya dihapus, ketiganya kembali ke environment.
    */
   | "operator.settings.update"
-  | "operator.settings.reset";
+  | "operator.settings.reset"
+  /**
+   * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
+   * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
+   * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil
+   * sekali di layar orang yang membuatnya).
+   */
+  | "operator.account.create"
+  | "operator.account.role"
+  | "operator.account.deactivate"
+  | "operator.account.activate"
+  | "operator.account.revoke"
+  | "operator.account.reset"
+  /** Unduhan CSV e-Faktur tagihan platform — periode + jumlah baris. */
+  | "operator.efaktur.export"
+  /** Pengumuman status dibuat / fasenya berpindah (migration platform 0004). */
+  | "operator.status.create"
+  | "operator.status.phase";
 
 export interface OperatorAuditEntry {
   id: string;
@@ -58,11 +83,6 @@ export interface OperatorAuditEntry {
   createdAt: string;
 }
 
-function auditFile(): { dir: string; file: string } {
-  const dir = process.env.OPERATOR_AUDIT_DIR ?? path.join(process.cwd(), "data", "audit", "operators");
-  return { dir, file: path.join(dir, "audit.jsonl") };
-}
-
 /** Tulis satu peristiwa. Gagal menulis dicatat ke log server, tidak melempar. */
 export async function writeOperatorAuditLog(params: {
   operator: string;
@@ -70,45 +90,58 @@ export async function writeOperatorAuditLog(params: {
   details?: Record<string, unknown>;
   ipAddress?: string | null;
 }): Promise<void> {
-  const { dir, file } = auditFile();
-  const entry: OperatorAuditEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    operator: params.operator.slice(0, 100),
-    action: params.action,
-    details: params.details,
-    ipAddress: params.ipAddress ?? null,
-    createdAt: new Date().toISOString(),
-  };
-
   try {
-    await mkdir(dir, { recursive: true });
-    await appendFile(file, `${JSON.stringify(entry)}\n`, "utf8");
+    await platformDb.operatorAuditLog.create({
+      data: {
+        operator: params.operator.slice(0, 100),
+        action: params.action,
+        details: params.details === undefined ? null : JSON.stringify(params.details),
+        ipAddress: params.ipAddress ? params.ipAddress.slice(0, 45) : null,
+      },
+    });
   } catch (error) {
     console.error("[operator-audit] gagal menulis jejak:", error);
   }
 }
 
-/** Baca jejak, terbaru dulu — untuk halaman/audit kelak. Belum ada = kosong. */
-export async function readOperatorAuditLogs(
-  options: { limit?: number } = {}
-): Promise<OperatorAuditEntry[]> {
-  const limit = Math.min(500, Math.max(1, options.limit ?? 100));
-  let raw: string;
-  try {
-    raw = await readFile(auditFile().file, "utf8");
-  } catch {
-    return [];
-  }
+/**
+ * Sehalaman jejak, terbaru dulu, + totalnya — DIPAGINASI DI SQL.
+ * `id` pemutus seri: dua peristiwa bisa berbagi milidetik yang sama.
+ */
+export async function readOperatorAuditPage(
+  options: { limit?: number; skip?: number } = {}
+): Promise<{ entries: OperatorAuditEntry[]; total: number }> {
+  const take = Math.min(500, Math.max(1, options.limit ?? 100));
+  const skip = Math.max(0, options.skip ?? 0);
+  const [rows, total] = await Promise.all([
+    platformDb.operatorAuditLog.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip,
+      take,
+    }),
+    platformDb.operatorAuditLog.count(),
+  ]);
+  return {
+    entries: rows.map((row) => ({
+      id: String(row.id),
+      operator: row.operator,
+      action: row.action as OperatorAuditAction,
+      details: parseDetails(row.details),
+      ipAddress: row.ipAddress,
+      createdAt: row.createdAt.toISOString(),
+    })),
+    total,
+  };
+}
 
-  const entries: OperatorAuditEntry[] = [];
-  for (const line of raw.trim().split("\n").reverse()) {
-    if (!line) continue;
-    try {
-      entries.push(JSON.parse(line) as OperatorAuditEntry);
-    } catch {
-      // baris korup dilewati — jejak lain tetap terbaca
-    }
-    if (entries.length >= limit) break;
+/** Rincian yang tak terurai TIDAK menggagalkan pembacaan — satu baris rusak
+ *  tidak boleh menyembunyikan jejak di sekitarnya. */
+function parseDetails(raw: string | null): Record<string, unknown> | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
   }
-  return entries;
 }

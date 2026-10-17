@@ -12,7 +12,7 @@
  */
 
 import { PrismaClient } from "@/generated/control/client";
-import { buatAdapter } from "@/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 const globalForControl = globalThis as unknown as {
   controlPrisma: PrismaClient | undefined;
@@ -38,7 +38,7 @@ function createControlClient(): PrismaClient {
   }
 
   /* Mesinnya diputuskan dari URL, bukan dari sakelar terpisah — lihat
-     `db-engine.ts`. Penukaran ke PostgreSQL = mengubah URL-nya, dan tidak ada
+     `@sai/db/engine`. Penukaran ke PostgreSQL = mengubah URL-nya, dan tidak ada
      tempat kedua yang bisa ketinggalan. */
   const adapter = buatAdapter(databaseUrl, { batasKoneksi: CONTROL_CONNECTION_LIMIT });
 

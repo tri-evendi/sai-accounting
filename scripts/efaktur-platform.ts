@@ -25,7 +25,7 @@ import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { buildEfaktur, efakturToCsv, type EfakturInvoiceInput } from "../src/lib/efaktur";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {

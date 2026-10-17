@@ -55,7 +55,7 @@
 
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import {
   SIGNUP_MAX_COMPANIES,
   SIGNUP_MAX_USERS,

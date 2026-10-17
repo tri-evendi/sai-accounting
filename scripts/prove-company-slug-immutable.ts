@@ -29,7 +29,7 @@
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 const TRIGGER = "companies_slug_immutable";
 /** Dilempar untuk memaksa rollback — bukan penanda kegagalan. */

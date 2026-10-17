@@ -1,0 +1,18 @@
+{
+  "name": "@sai/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Lapis basis data bersama: mesin dari URL, pabrik adapter Prisma, operasi tingkat server. Dipakai aplikasi (Next) dan skrip (tsx/bun).",
+  "exports": {
+    "./engine": "./src/engine.ts",
+    "./engine-runtime": "./src/engine-runtime.ts",
+    "./adapter": "./src/adapter.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-mariadb": "^7.5.0",
+    "@prisma/adapter-pg": "7.5.0",
+    "mariadb": "^3.5.2",
+    "pg": "^8.23.1"
+  }
+}

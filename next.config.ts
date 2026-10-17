@@ -133,6 +133,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  /**
+   * Paket workspace (`packages/*`) dikirim sebagai SUMBER TypeScript, tanpa
+   * langkah build sendiri (dok 14 §5 Fase 1). Next tidak mentranspilasi isi
+   * `node_modules` kecuali disebut di sini, dan tanpanya build gagal pada
+   * sintaksis tipe pertama di `@sai/db`.
+   */
+  transpilePackages: ["@sai/db"],
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },

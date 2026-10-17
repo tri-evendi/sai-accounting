@@ -10,7 +10,7 @@
  * data tertulis ke dua tempat sekaligus, dan tidak ada galat yang menunjukkannya.
  */
 import { describe, expect, it } from "vitest";
-import { dbEngineDariUrl, portBawaan, uraikanUrl } from "@/lib/db-engine";
+import { dbEngineDariUrl, portBawaan, uraikanUrl } from "@sai/db/engine";
 
 describe("mesin dari skema URL", () => {
   it.each([

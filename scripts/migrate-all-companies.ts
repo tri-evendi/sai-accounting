@@ -30,7 +30,7 @@
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 function controlClient(): PrismaClient {
   const raw = process.env.CONTROL_DATABASE_URL;

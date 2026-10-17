@@ -34,7 +34,7 @@
  */
 import { createPool, type Pool } from "mariadb";
 import { Client as PgClient } from "pg";
-import { uraikanUrl, type DbEngine } from "@/lib/db-engine";
+import { uraikanUrl, type DbEngine } from "./engine";
 
 /**
  * Pola nama basis data yang diizinkan — lapis KEDUA, sengaja diulang.

@@ -24,7 +24,7 @@
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import { proveCompanySlugScope } from "../src/lib/company-slug-proof";
 
 async function main() {

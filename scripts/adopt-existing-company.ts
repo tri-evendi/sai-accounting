@@ -39,7 +39,7 @@ import { readFile, rename, mkdir, access } from "node:fs/promises";
 import path from "node:path";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import { isReservedCompanySlug } from "../src/lib/tenant-routes";
 
 interface LegacyUser {

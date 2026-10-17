@@ -61,7 +61,7 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
 import { PrismaClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import { SIGNUP_MAX_COMPANIES, SIGNUP_MAX_USERS } from "../src/lib/registration";
 
 /* ── Argumen ─────────────────────────────────────────────────────────────── */

@@ -35,7 +35,7 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import { backupHealth } from "../src/lib/backup-heartbeat";
 import { decideBackupAlert } from "../src/lib/backup-watchdog";
 import { decideSchedulerAlert, decideConformanceAlert } from "../src/lib/health-watchdog";

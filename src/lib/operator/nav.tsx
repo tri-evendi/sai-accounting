@@ -16,6 +16,9 @@
  */
 import {
   ClockCircleOutlined,
+  AppstoreOutlined,
+  DeleteOutlined,
+  AuditOutlined,
   CloudServerOutlined,
   DashboardOutlined,
   FileProtectOutlined,
@@ -56,6 +59,24 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/operator/tenants",
       label: t("operator.nav.tenants"),
       icon: <TeamOutlined style={UKURAN_IKON} />,
+      group: pelanggan,
+    },
+    {
+      href: "/operator/deletions",
+      label: t("operator.nav.deletions"),
+      icon: <DeleteOutlined style={UKURAN_IKON} />,
+      group: pelanggan,
+    },
+    {
+      href: "/operator/plans",
+      label: t("operator.nav.plans"),
+      icon: <AppstoreOutlined style={UKURAN_IKON} />,
+      group: pelanggan,
+    },
+    {
+      href: "/operator/efaktur",
+      label: t("operator.nav.efaktur"),
+      icon: <AuditOutlined style={UKURAN_IKON} />,
       group: pelanggan,
     },
     {

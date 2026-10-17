@@ -134,3 +134,17 @@ export async function requireOperatorActionSession(
   if (!current || !operatorCan(current.operator.role, permission)) return null;
   return current;
 }
+
+/**
+ * Penjaga ROUTE HANDLER bidang operator (unduhan berkas): pemeriksaan yang
+ * sama dengan `requireOperatorActionSession(izin)`, dengan jawaban HTTP yang
+ * tidak membedakan alasannya — 404 untuk semua kegagalan, pola penjaga
+ * halaman untuk pelanggaran bidang. Unduhan tidak punya formulir untuk
+ * memajang "ditolak", dan 401/403 yang berbeda akan memberi tahu pemindai
+ * bahwa rutenya ada.
+ */
+export async function requireOperatorRoute(
+  permission: OperatorPermission
+): Promise<OperatorPageSession | null> {
+  return requireOperatorActionSession(permission);
+}

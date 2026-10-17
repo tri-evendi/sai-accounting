@@ -4569,7 +4569,10 @@
       "groupSystem": "System",
       "conformance": "Data Conformance",
       "backups": "Backups",
-      "accounts": "Accounts"
+      "accounts": "Accounts",
+      "deletions": "Deletion requests",
+      "plans": "Plan catalog",
+      "efaktur": "Platform e-Faktur"
     },
     "attention": {
       "heading": "Needs attention",
@@ -5157,6 +5160,65 @@
       "errInvitation": "Invitation not found, already used, or not part of this tenant.",
       "errInvitationHasAccount": "That address now has an account — the invitation was not resent. If they still lack company access, add them from the customer's team page.",
       "errInvitationOutcome": "The invitation was not reissued ({outcome})."
+    },
+    "efaktur": {
+      "heading": "Platform Invoice e-Faktur",
+      "description": "CSV e-Faktur export for paid SAI subscription invoices — the same as bun run efaktur:platform, now on screen.",
+      "sellerMissing": "PLATFORM_SELLER_NPWP is not set: every row will lack the seller tax ID.",
+      "from": "From date",
+      "to": "To date",
+      "preview": "Preview",
+      "unavailable": "The preview cannot be read yet: sai_platform is unreachable.",
+      "summary": "{rows} rows ready · {problems} invoices left out",
+      "download": "Download CSV",
+      "note": "UTF-8 with BOM, the customer e-Faktur export convention. Every download is recorded in the operator trail.",
+      "noProblems": "Every paid invoice in this period has all required columns.",
+      "missing": "empty columns"
+    },
+    "slug": {
+      "title": "Change account address",
+      "description": "The slug in /t/<slug>/… — the same guard as the customer panel: the old slug is reserved forever and redirected, and the 30-day pause applies.",
+      "open": "Change address",
+      "explain": "Current address: {slug}. Old links keep working through a permanent redirect; the database name does not change.",
+      "newLabel": "New slug",
+      "submit": "Change address",
+      "changed": "Account address changed: {from} → {to}.",
+      "errShape": "Slugs are lowercase letters, digits and hyphens, with no hyphen at either end.",
+      "errReserved": "That slug is reserved by the system.",
+      "errSame": "That is the slug currently in use.",
+      "errTaken": "That slug is taken — now or in the past — by another account or this one.",
+      "errTooSoon": "This account address was changed recently; the 30-day pause applies to operators too."
+    },
+    "deletions": {
+      "heading": "Account Deletion Requests",
+      "description": "Every deletion request (privacy law), newest first. {ready} ready to execute — execution happens on the tenant page, with slug re-entry.",
+      "colStatus": "State",
+      "colRequested": "Requested",
+      "colGrace": "Grace ends",
+      "colRetention": "Retained until",
+      "executed": "Executed",
+      "cancelled": "Cancelled by owner",
+      "ready": "Ready to execute",
+      "grace": "Grace period",
+      "empty": "No deletion requests yet."
+    },
+    "plans": {
+      "heading": "Plan Catalog",
+      "description": "Plans in sai_platform, their prices, quotas, and how many subscriptions use them.",
+      "colName": "Plan",
+      "colMonthly": "Monthly",
+      "colYearly": "Yearly",
+      "colQuota": "Quota",
+      "colState": "Visibility",
+      "colSubscribers": "Subscriptions",
+      "recommended": "Recommended",
+      "contactOnly": "By quote",
+      "quota": "{companies} companies · {users} users · {trial}-day trial",
+      "inactive": "Inactive",
+      "public": "Public",
+      "hidden": "Hidden",
+      "unavailable": "The catalog cannot be read yet: sai_platform is unreachable.",
+      "readOnly": "Read only. Prices are guarded by docs/PRICING.md and tests/pricing-ladder.test.ts and written through bun run db:seed:plans — editing here would make the database and that document diverge."
     }
   },
   "docs": {

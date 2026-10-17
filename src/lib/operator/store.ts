@@ -952,3 +952,130 @@ export async function upcomingRenewalsForOperator(
     daysLeft: Math.floor((s.currentPeriodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
   }));
 }
+
+/**
+ * Slug yang diketik di saringan jejak → id tenant, termasuk slug LAMA dari
+ * `tenant_slug_history`. `null` = tidak dikenal (mungkin tenant yang sudah
+ * dihapus — saringan jatuh ke slug yang disalin di jejaknya).
+ */
+export async function tenantIdForAnySlug(slug: string): Promise<number | null> {
+  const now = await controlDb.tenant.findUnique({ where: { slug }, select: { id: true } });
+  if (now) return now.id;
+  const old = await controlDb.tenantSlugHistory.findUnique({ where: { slug }, select: { tenantId: true } });
+  return old?.tenantId ?? null;
+}
+
+/* ─────────────────────── Permintaan hapus lintas tenant ─────────────────── */
+
+export interface OperatorDeletionRequest {
+  id: number;
+  tenantId: number;
+  tenantName: string;
+  tenantSlug: string;
+  status: string;
+  graceEndsAt: Date;
+  executedAt: Date | null;
+  cancelledAt: Date | null;
+  retentionUntil: Date | null;
+  note: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Semua permintaan penghapusan akun, terbaru dulu — sampai halaman ini satu-
+ * satunya cara melihatnya adalah membuka tenant satu per satu, sehingga
+ * permintaan yang masa tenggangnya SUDAH lewat bisa terlupakan berminggu-minggu
+ * (UU PDP: permintaan pemilik bukan sesuatu yang boleh menunggu kebetulan).
+ */
+export async function deletionRequestsForOperator(limit = 200): Promise<OperatorDeletionRequest[]> {
+  const rows = await controlDb.tenantDeletionRequest.findMany({
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: Math.min(500, Math.max(1, limit)),
+    select: {
+      id: true,
+      tenantId: true,
+      status: true,
+      graceEndsAt: true,
+      executedAt: true,
+      cancelledAt: true,
+      retentionUntil: true,
+      note: true,
+      createdAt: true,
+      tenant: { select: { name: true, slug: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    tenantId: r.tenantId,
+    tenantName: r.tenant.name,
+    tenantSlug: r.tenant.slug,
+    status: r.status,
+    graceEndsAt: r.graceEndsAt,
+    executedAt: r.executedAt,
+    cancelledAt: r.cancelledAt,
+    retentionUntil: r.retentionUntil,
+    note: r.note,
+    createdAt: r.createdAt,
+  }));
+}
+
+/* ───────────────────────────── Katalog paket ───────────────────────────── */
+
+export interface OperatorCatalogPlan {
+  id: number;
+  key: string;
+  name: string;
+  priceMonthly: string;
+  priceYearly: string | null;
+  currency: string;
+  maxCompanies: number;
+  maxUsers: number;
+  trialDays: number;
+  isActive: boolean;
+  isPublic: boolean;
+  contactOnly: boolean;
+  isRecommended: boolean;
+  /** Langganan yang TIDAK `cancelled` pada paket ini. */
+  subscribers: number;
+}
+
+/**
+ * Katalog paket HANYA-BACA. Menyuntingnya dari layar sengaja belum ada:
+ * tangga harga dijaga `docs/PRICING.md` + `tests/pricing-ladder.test.ts`
+ * dan ditulis `bun run db:seed:plans`; editor layar akan membuat basis data
+ * dan dokumen yang dijaga tes itu menyimpang tanpa satu pun tes merah.
+ *
+ * `null` = platform tak terjangkau.
+ */
+export async function plansForOperatorCatalog(): Promise<OperatorCatalogPlan[] | null> {
+  try {
+    const [plans, counts] = await Promise.all([
+      platformDb.plan.findMany({ orderBy: [{ isActive: "desc" }, { priceMonthly: "asc" }] }),
+      platformDb.subscription.groupBy({
+        by: ["planId"],
+        where: { status: { not: "cancelled" } },
+        _count: { _all: true },
+      }),
+    ]);
+    const byPlan = new Map(counts.map((c) => [c.planId, c._count._all]));
+    return plans.map((p) => ({
+      id: p.id,
+      key: p.key,
+      name: p.name,
+      priceMonthly: p.priceMonthly.toString(),
+      priceYearly: p.priceYearly?.toString() ?? null,
+      currency: p.currency,
+      maxCompanies: p.maxCompanies,
+      maxUsers: p.maxUsers,
+      trialDays: p.trialDays,
+      isActive: p.isActive,
+      isPublic: p.isPublic,
+      contactOnly: p.contactOnly,
+      isRecommended: p.isRecommended,
+      subscribers: byPlan.get(p.id) ?? 0,
+    }));
+  } catch (error) {
+    console.error("[operator-store] katalog paket tak terbaca:", error);
+    return null;
+  }
+}

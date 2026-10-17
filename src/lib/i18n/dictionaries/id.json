@@ -5110,7 +5110,19 @@
       "errLastOwner": "Ditolak: perubahan ini menyisakan nol owner aktif, dan tanpa owner tidak ada yang bisa memulihkan peran siapa pun."
     },
     "roleCannotEdit": "Peran Anda hanya bisa melihat halaman ini. Perubahannya milik peran yang lebih tinggi — lihat Akun.",
-    "roleCannotEditMail": "Peran Anda hanya bisa melihat pengaturan surel; menyimpan dan uji kirim akan ditolak. Perubahannya milik pemilik."
+    "roleCannotEditMail": "Peran Anda hanya bisa melihat pengaturan surel; menyimpan dan uji kirim akan ditolak. Perubahannya milik pemilik.",
+    "renewals": {
+      "heading": "Perpanjangan {days} hari ke depan ({count})",
+      "description": "Langganan berbayar yang periodenya berakhir segera — atau sudah lewat. Tagihan perpanjangan BELUM terbit otomatis dalam mode apa pun, termasuk otomatis: hubungi pelanggan dan terbitkan secara manual.",
+      "unavailable": "Daftar perpanjangan belum bisa dibaca: sai_platform tak terjangkau.",
+      "empty": "Tidak ada langganan berbayar yang berakhir dalam {days} hari ke depan.",
+      "colPlan": "Paket",
+      "colPrice": "Harga",
+      "colEnd": "Akhir periode",
+      "colMode": "Mode tagih",
+      "daysLeft": "{days} hari lagi",
+      "overdue": "lewat {days} hari"
+    }
   },
   "docs": {
     "title": "Dokumentasi",

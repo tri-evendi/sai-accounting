@@ -5110,7 +5110,19 @@
       "errLastOwner": "已拒绝：此更改将导致没有任何有效的所有者，而没有所有者就无人能恢复任何人的角色。"
     },
     "roleCannotEdit": "您的角色只能查看此页面。更改属于更高的角色——见账户。",
-    "roleCannotEditMail": "您的角色只能查看邮件设置；保存和测试发送将被拒绝。更改属于所有者。"
+    "roleCannotEditMail": "您的角色只能查看邮件设置；保存和测试发送将被拒绝。更改属于所有者。",
+    "renewals": {
+      "heading": "未来 {days} 天内续订（{count}）",
+      "description": "即将到期或已到期的付费订阅。任何模式（包括自动模式）都不会自动开具续订发票：请联系客户并手动开具。",
+      "unavailable": "暂时无法读取续订列表：sai_platform 无法访问。",
+      "empty": "未来 {days} 天内没有到期的付费订阅。",
+      "colPlan": "套餐",
+      "colPrice": "价格",
+      "colEnd": "周期结束",
+      "colMode": "计费模式",
+      "daysLeft": "剩余 {days} 天",
+      "overdue": "已逾期 {days} 天"
+    }
   },
   "docs": {
     "title": "使用文档",

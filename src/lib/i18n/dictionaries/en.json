@@ -5110,7 +5110,19 @@
       "errLastOwner": "Refused: this change leaves zero active owners, and without an owner nobody can restore anyone's role."
     },
     "roleCannotEdit": "Your role can only view this page. Changes belong to a higher role — see Accounts.",
-    "roleCannotEditMail": "Your role can only view mail settings; saving and test sends will be refused. Changes belong to owners."
+    "roleCannotEditMail": "Your role can only view mail settings; saving and test sends will be refused. Changes belong to owners.",
+    "renewals": {
+      "heading": "Renewals in the next {days} days ({count})",
+      "description": "Paid subscriptions whose period ends soon — or already has. Renewal invoices are NOT issued automatically in any mode, including auto: contact the customer and issue one manually.",
+      "unavailable": "The renewal list cannot be read yet: sai_platform is unreachable.",
+      "empty": "No paid subscription ends in the next {days} days.",
+      "colPlan": "Plan",
+      "colPrice": "Price",
+      "colEnd": "Period end",
+      "colMode": "Billing mode",
+      "daysLeft": "{days} days left",
+      "overdue": "{days} days overdue"
+    }
   },
   "docs": {
     "title": "Documentation",

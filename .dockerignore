@@ -62,10 +62,18 @@ docker-compose*.yml
 # tidak ada build produksi yang berhasil sejak #160, jadi tidak ada yang pernah
 # melihatnya sampai penggelaran #151. Menambah pohon migration keempat berarti
 # menambah barisnya di sini juga.
+#
+# ⚠️ DAN ITU TERJADI LAGI: sejak penukaran ke PostgreSQL (15 Okt 2026) migration
+# yang DITERAPKAN hidup di `prisma/postgresql/<company|control|platform>/`, dan
+# baris itu tidak pernah ditambahkan. Image migrator v0.9.0 dan main@1386c23d
+# membawa NOL berkas `.sql` PostgreSQL; gelar 17 Okt berhenti di P3015. Kini
+# dijaga `tests/dockerignore-migrations.test.ts`: setiap pohon yang memuat
+# `*/migration.sql` di bawah `prisma/` wajib punya pengecualiannya di sini.
 **/*.sql
 !prisma/migrations/**/*.sql
 !prisma/control/migrations/**/*.sql
 !prisma/platform/migrations/**/*.sql
+!prisma/postgresql/**/*.sql
 
 # ⚠️ `backups/` DI SINI TIDAK SAMA DENGAN `backups/` DI `.gitignore`.
 # Pola git tanpa garis miring depan cocok di KEDALAMAN MANA PUN; pola

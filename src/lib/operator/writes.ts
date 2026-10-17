@@ -51,6 +51,7 @@ import {
   retentionUntilFrom,
 } from "@/lib/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { recordSubscriptionEvent } from "@/lib/subscription-events";
 import { bukaBasisData } from "@sai/db/server";
 import {
   auditActor,
@@ -244,6 +245,15 @@ export async function setTenantSuspension(
        * tenggang (paritas dengan jalur `payment_received` webhook). */
       ...(input.mode === "restore" ? { pastDueSince: null } : {}),
     },
+  });
+  await recordSubscriptionEvent(deps.platform, {
+    subscriptionId: subscription.id,
+    tenantId: tenant.id,
+    kind: "status",
+    actor: auditActor(input.actor).username,
+    fromStatus: subscription.status,
+    toStatus: next,
+    details: { event, reason: input.actor.reason },
   });
 
   /* ── 2. KENDALI belakangan: salinan status untuk penjaga hanya-baca ────── */
@@ -544,6 +554,13 @@ export async function setBillingMode(
     where: { id: subscription.id },
     data: { billingMode: input.mode },
   });
+  await recordSubscriptionEvent(deps.platform, {
+    subscriptionId: subscription.id,
+    tenantId: tenant.id,
+    kind: "billing_mode",
+    actor: auditActor(input.actor).username,
+    details: { from, to: input.mode, reason: input.actor.reason },
+  });
 
   await writeTenantAuditLog({
     tenantId: tenant.id,
@@ -753,6 +770,33 @@ export async function extendSubscription(
       pastDueSince: null,
     },
   });
+  /* SATU peristiwa `period` yang juga membawa perpindahan status & harga —
+     bukan tiga baris: ketiganya satu keputusan operator, dan hitungan
+     "berapa perpanjangan bulan ini" harus menghitungnya sekali. */
+  await recordSubscriptionEvent(
+    deps.platform,
+    {
+      subscriptionId: subscription.id,
+      tenantId: tenant.id,
+      kind: "period",
+      actor: auditActor(input.actor).username,
+      fromStatus: subscription.status,
+      toStatus: "active",
+      fromPrice: subscription.price,
+      toPrice: hargaBaru ?? subscription.price,
+      currency: subscription.currency,
+      details: {
+        reason: input.actor.reason,
+        compensation: true,
+        cycleFrom: subscription.billingCycle,
+        cycleTo: input.cycle,
+        periods: input.periods,
+        from: from.toISOString(),
+        to: to.toISOString(),
+      },
+    },
+    now
+  );
 
   /* ── 2. KENDALI belakangan ─────────────────────────────────────────────── */
   await deps.control.tenant.update({

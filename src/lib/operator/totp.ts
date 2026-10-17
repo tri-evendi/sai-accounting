@@ -11,7 +11,7 @@
  * hanya terjadi di server action login, yang berjalan di runtime Node.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -91,4 +91,40 @@ export function verifyTotp(
     }
   }
   return false;
+}
+
+/**
+ * Rahasia TOTP baru, base32 tanpa padding — 20 byte (160 bit) acak, panjang
+ * yang dianjurkan RFC 4226 untuk HMAC-SHA1. Dipakai skrip
+ * `operator-credential.ts` (akun env) DAN konsol (akun basis data): satu
+ * pembangkit, supaya keduanya tidak pelan-pelan berbeda kekuatan.
+ */
+export function randomTotpSecret(bytes = 20): string {
+  const raw = randomBytes(bytes);
+  let bits = 0;
+  let value = 0;
+  let output = "";
+  for (const byte of raw) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  return output;
+}
+
+/** URI `otpauth://` untuk dipindai aplikasi authenticator. */
+export function otpauthUri(issuer: string, account: string, secretBase32: string): string {
+  const label = encodeURIComponent(`${issuer}:${account}`);
+  const params = new URLSearchParams({
+    secret: secretBase32,
+    issuer,
+    algorithm: "SHA1",
+    digits: String(TOTP_DIGITS),
+    period: String(TOTP_STEP_SECONDS),
+  });
+  return `otpauth://totp/${label}?${params.toString()}`;
 }

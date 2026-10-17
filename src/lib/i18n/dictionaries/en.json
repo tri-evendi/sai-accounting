@@ -4568,7 +4568,8 @@
       "groupSite": "Website",
       "groupSystem": "System",
       "conformance": "Data Conformance",
-      "backups": "Backups"
+      "backups": "Backups",
+      "accounts": "Accounts"
     },
     "attention": {
       "heading": "Needs attention",
@@ -4867,7 +4868,8 @@
         "errGrace": "Refused: the grace period has not passed (until {date}).",
         "errNoRequest": "Refused: there is no pending deletion request.",
         "errConfirm": "The typed slug does not match — read again which tenant is being deleted."
-      }
+      },
+      "roleReadOnly": "Your role is read-only. Actions on tenants belong to the billing, support or owner roles."
     },
     "mail": {
       "heading": "Email Settings",
@@ -5048,7 +5050,67 @@
         "menggantung": "Migration stuck",
         "tak_terbaca": "Unreadable"
       }
-    }
+    },
+    "accounts": {
+      "heading": "Operator Accounts",
+      "description": "Who holds the keys to this console, with which role, and when they last signed in. Only owners can change it.",
+      "readOnly": "Your role can only view this list. Account changes belong to owners.",
+      "keyMissing": "SETTINGS_ENCRYPTION_KEY is not set: new accounts cannot be created and database accounts cannot sign in, because their TOTP secret can be neither sealed nor opened.",
+      "unavailable": "The account list cannot be read yet: the control database is unreachable. Env accounts can still sign in.",
+      "dbHeading": "Console accounts",
+      "rolesNote": "Owner: every action. Billing: mark paid, extensions, plan changes, billing mode. Support: suspension/restoration and site content. Viewer: read only. Every role can read the whole console. Deactivating and resetting also revoke sessions.",
+      "envHeading": "Emergency accounts (env)",
+      "envNote": "From OPERATOR_USERS, always owners, and deliberately not editable on screen: the emergency way in must not be revocable by a stolen session. Change them in the env, then recreate the container.",
+      "roles": {
+        "owner": "Owner",
+        "billing": "Billing",
+        "support": "Support",
+        "viewer": "Viewer"
+      },
+      "credentialTitle": "Credentials for {name}",
+      "credentialOnce": "Shown ONCE. Save the password and scan the URI in an authenticator app now; once this box is closed, the only way back is a reset.",
+      "credentialPassword": "Password",
+      "credentialTotp": "TOTP secret",
+      "credentialUri": "Authenticator URI",
+      "credentialDone": "I have saved it",
+      "confirmDeactivateTitle": "Deactivate {name}?",
+      "confirmDeactivateBody": "{name} can no longer sign in and every session is revoked immediately. It can be reactivated at any time.",
+      "confirmRevokeTitle": "Revoke all sessions of {name}?",
+      "confirmRevokeBody": "Every browser where {name} is signed in will be asked to sign in again on the next click. The credentials do not change.",
+      "confirmResetTitle": "Reset credentials for {name}?",
+      "confirmResetBody": "A new password and TOTP secret are issued and shown once; the old ones stop working and every session of {name} is revoked.",
+      "colName": "Name",
+      "colRole": "Role",
+      "colStatus": "State",
+      "colLastLogin": "Last sign-in",
+      "colActions": "Actions",
+      "you": "you",
+      "saveRole": "Save role",
+      "active": "Active",
+      "inactive": "Inactive",
+      "deactivate": "Deactivate",
+      "revoke": "Revoke sessions",
+      "reset": "Reset credentials",
+      "activate": "Activate",
+      "nameLabel": "New account name",
+      "namePlaceholder": "e.g. rina.support",
+      "roleLabel": "Role",
+      "create": "Create account",
+      "empty": "No console accounts yet. Only env accounts can sign in to the console now.",
+      "created": "Account {name} created.",
+      "updated": "Account {name} updated.",
+      "unchanged": "Nothing changed.",
+      "errName": "Account names are 2–50 characters: letters, digits, dots, underscores or hyphens.",
+      "errRole": "Unknown role.",
+      "errEnvName": "That name is already used by an env account — env accounts always win at sign-in, so this account could never be used.",
+      "errTaken": "That name is already taken.",
+      "errKey": "SETTINGS_ENCRYPTION_KEY is not set — the TOTP secret cannot be sealed, so nothing was stored.",
+      "errNotFound": "Account not found.",
+      "errSelf": "You cannot deactivate or demote your own account.",
+      "errLastOwner": "Refused: this change leaves zero active owners, and without an owner nobody can restore anyone's role."
+    },
+    "roleCannotEdit": "Your role can only view this page. Changes belong to a higher role — see Accounts.",
+    "roleCannotEditMail": "Your role can only view mail settings; saving and test sends will be refused. Changes belong to owners."
   },
   "docs": {
     "title": "Documentation",

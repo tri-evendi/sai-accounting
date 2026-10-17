@@ -268,8 +268,15 @@ const SRC = join(__dirname, "..", "src");
  * transfer manual. Client karena ia memang formulir; halamannya tetap server
  * component dan hanya menurunkan boolean "dari basis data / dari environment",
  * jadi nilai environment-nya tidak pernah menyeberang ke peramban.
+ *
+ * 186 sejak Akun Operator (2026-10-17, migration kendali 0004):
+ * `components/operator/operator-accounts.tsx` — buat akun, ubah peran,
+ * nonaktifkan, cabut sesi, atur ulang. Client karena kredensial yang
+ * diterbitkan harus tampil SEKALI dan hanya hidup di state peramban (bukan di
+ * URL, bukan di HTML hasil render server yang bisa ter-cache). Halamannya tetap
+ * server component; izin dihitung di server dan turun sebagai boolean.
  */
-const AMBANG_KLIEN = 185;
+const AMBANG_KLIEN = 186;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -444,6 +451,9 @@ const KLIEN_TERSAHKAN = [
      daftar. */
   "components/operator/content-editor.tsx",
   "components/operator/mail-settings-form.tsx",
+  /* Akun operator (migration kendali 0004) — kredensial sekali-tampil hidup
+     di state peramban saja. Lihat catatan di `AMBANG_KLIEN`. */
+  "components/operator/operator-accounts.tsx",
   /* Kulit panel admin konsol operator: menu samping + laci + kepala. Client
      karena `Grid.useBreakpoint()`, `Drawer`, dan penandaan butir aktif lewat
      `usePathname` — tiga hal yang semuanya menuntut peramban. Kalimat, ikon,

@@ -51,7 +51,7 @@ export async function operatorSaveSiteContent(
 ): Promise<OperatorContentActionResult> {
   const t = await getT();
 
-  const session = await requireOperatorActionSession();
+  const session = await requireOperatorActionSession("site.content");
   if (!session) {
     /* Jawaban seragam — tidak membedakan "host salah" dari "sesi habis". */
     return { ok: false, message: t("operator.actions.denied") };

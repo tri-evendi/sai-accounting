@@ -14,30 +14,10 @@
  * tidak pernah di repositori.
  */
 
-import { randomBytes } from "node:crypto";
 import { createInterface } from "node:readline";
 import { hash } from "bcrypt";
 
-import { totpAt } from "../src/lib/operator/totp";
-
-const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-
-function randomBase32Secret(bytes = 20): string {
-  const raw = randomBytes(bytes);
-  let bits = 0;
-  let value = 0;
-  let output = "";
-  for (const byte of raw) {
-    value = (value << 8) | byte;
-    bits += 8;
-    while (bits >= 5) {
-      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
-      bits -= 5;
-    }
-  }
-  if (bits > 0) output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
-  return output;
-}
+import { randomTotpSecret, totpAt } from "../src/lib/operator/totp";
 
 function askHidden(question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -86,7 +66,7 @@ async function main() {
     console.error("✗ Hash mengandung pemisah — laporkan ini.");
     process.exit(1);
   }
-  const totpSecret = randomBase32Secret();
+  const totpSecret = randomTotpSecret();
 
   console.log("\nTambahkan (atau gabungkan dengan koma) ke environment produksi:\n");
   console.log(`  OPERATOR_USERS="${name}:${passwordHash}:${totpSecret}"`);

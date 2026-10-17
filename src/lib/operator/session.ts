@@ -6,9 +6,14 @@
  * tidak boleh punya arti apa pun di bidang ini, dan sebaliknya.
  *
  * Bentuk token: `base64url(payload-JSON) + "." + base64url(HMAC-SHA256)`,
- * kunci dari `OPERATOR_SESSION_SECRET`. Stateless dengan kedaluwarsa pendek;
- * pencabutan = mengganti rahasia (satu-dua akun operator, bukan ribuan
- * pelanggan — daftar sesi tersimpan belum membayar harganya).
+ * kunci dari `OPERATOR_SESSION_SECRET`. Stateless dengan kedaluwarsa pendek.
+ *
+ * Pencabutan (sejak migration kendali 0004): token akun BASIS DATA membawa
+ * `ver` = `operator_accounts.session_version` saat terbit; penjaga menolak
+ * token yang versinya tidak lagi sama, jadi "cabut sesi" = naikkan satu
+ * angka. Akun ENV (darurat) tetap dicabut dengan mengganti rahasia — atau
+ * dengan MENGHAPUS entrinya dari `OPERATOR_USERS`, yang kini juga menolak
+ * tokennya (penjaga memeriksa akunnya masih ada).
  *
  * GAGAL-TERTUTUP: rahasia tidak diset / terlalu pendek → tidak ada token yang
  * bisa dibuat MAUPUN diverifikasi; konsol menolak semua orang, bukan
@@ -37,6 +42,14 @@ export interface OperatorSessionPayload {
   exp: number;
   /** Penanda MFA sudah lewat. Selalu true — login tanpa TOTP tidak ada. */
   mfa: true;
+  /**
+   * Asal akun. TIDAK ADA = token terbit sebelum migration kendali 0004, yang
+   * hanya mengenal akun env — dibaca sebagai `env`, supaya sesi yang sedang
+   * berjalan tidak putus saat rilis.
+   */
+  src?: "env" | "db";
+  /** Versi sesi akun basis data saat token terbit (wajib bila `src: "db"`). */
+  ver?: number;
 }
 
 function resolveSecret(env: Record<string, string | undefined> = process.env): string | null {
@@ -53,16 +66,24 @@ function sign(data: string, secret: string): string {
 export function issueOperatorToken(
   operatorName: string,
   now: Date = new Date(),
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  account: { source: "env" | "db"; sessionVersion: number | null } = {
+    source: "env",
+    sessionVersion: null,
+  }
 ): string | null {
   const secret = resolveSecret(env);
   if (!secret) return null;
+  /* Token db tanpa versi tidak bisa dicabut — tidak diterbitkan sama sekali. */
+  if (account.source === "db" && !Number.isInteger(account.sessionVersion)) return null;
 
   const payload: OperatorSessionPayload = {
     sub: operatorName,
     iat: now.getTime(),
     exp: now.getTime() + OPERATOR_SESSION_TTL_MS,
     mfa: true,
+    src: account.source,
+    ...(account.source === "db" ? { ver: account.sessionVersion as number } : {}),
   };
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `${body}.${sign(body, secret)}`;
@@ -107,7 +128,9 @@ export function verifyOperatorToken(
     candidate.sub.length === 0 ||
     typeof candidate.iat !== "number" ||
     typeof candidate.exp !== "number" ||
-    candidate.mfa !== true
+    candidate.mfa !== true ||
+    (candidate.src !== undefined && candidate.src !== "env" && candidate.src !== "db") ||
+    (candidate.src === "db" && !Number.isInteger(candidate.ver))
   ) {
     return null;
   }

@@ -51,6 +51,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { readTenantAuditPage } from "@/lib/tenant-audit";
 import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
+import { operatorCan } from "@/lib/operator/roles";
 import { listPlansForOperator, tenantDetailForOperator, tenantStatusVariant } from "@/lib/operator/store";
 import { executionVerdict } from "@/lib/tenant-deletion";
 import {
@@ -133,7 +134,7 @@ export default async function OperatorTenantDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireOperatorPage();
+  const { operator } = await requireOperatorPage();
   const t = await getT();
 
   const { id } = await params;
@@ -488,6 +489,11 @@ export default async function OperatorTenantDetailPage({
            Dipakai panel mode penagihan sebagai peringatan sebelum menyalakan
            penagihan otomatis tanpa satu pun cara membayar. */
         paymentRailReady={paymentRailConfigured()}
+        allowed={{
+          billing: operatorCan(operator.role, "tenant.billing"),
+          lifecycle: operatorCan(operator.role, "tenant.lifecycle"),
+          delete: operatorCan(operator.role, "tenant.delete"),
+        }}
         usage={usage}
         currentPlanKey={tenant.planKey}
         billingAvailable={billing !== null}

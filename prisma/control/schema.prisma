@@ -758,5 +758,8 @@ model TenantAuditLog {
   @@index([tenantSlug, createdAt])
   @@index([tenantId])
   @@index([userId])
+  /// Bacaan LINTAS tenant di `/operator/audit/tenants` (migration 0003).
+  @@index([createdAt])
+  @@index([action])
   @@map("tenant_audit_logs")
 }

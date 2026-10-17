@@ -174,12 +174,15 @@ lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — lolos sebagai jalur publik karena `127.0.0.1` ≠ `OPERATOR_HOST` |
 | **Volume** | `audit:/app/data/audit` (RW) — **TANPA `documents`** |
 
-**Tanggung jawab:** 11 halaman konsol penyedia — tenant, audit, surel,
+**Tanggung jawab:** 12 halaman konsol penyedia — tenant, audit (operator + jejak tenant), surel,
 penjadwal, **kesesuaian data**, isi situs, pengaturan, rekonsiliasi.
 
-**Kenapa hanya volume `audit`.** Bidang operator menulis
-`data/audit/operators/audit.jsonl` (`lib/operator/audit.ts`), jadi volume itu
-dibutuhkan. Ia **tidak pernah** menyentuh `data/documents` — diperiksa di
+**Kenapa hanya volume `audit` — dan kenapa ia akan dicabut.** Sampai
+migration platform 0002 (17 Okt 2026) bidang operator menulis
+`data/audit/operators/audit.jsonl`. Kini jejaknya di tabel
+`sai_platform.operator_audit_logs`; volume masih dipasang hanya sampai
+`migrate:operator-audit --apply` memindahkan berkas lama di produksi, lalu bisa
+dicabut — syarat dok 14 §5 sebelum konsol menjadi aplikasi sendiri. Ia **tidak pernah** menyentuh `data/documents` — diperiksa di
 seluruh `app/(app)/(operator)` dan `lib/operator/` saat pemisahan dibuat. Tidak
 memasang volume yang tidak dibutuhkan adalah **pengurangan hak**, bukan
 penghematan: berkas dokumen setiap pelanggan berada di luar jangkauan proses

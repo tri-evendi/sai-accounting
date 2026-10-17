@@ -175,10 +175,32 @@ export async function readTenantAuditPage(
   tenantSlug: string,
   options: { limit?: number; skip?: number } = {}
 ): Promise<{ entries: TenantAuditEntry[]; total: number }> {
+  return readTenantAuditFeed({ tenantSlug }, options);
+}
+
+/**
+ * Jejak LINTAS tenant untuk konsol operator, terbaru dulu, dipaginasi di SQL.
+ *
+ * Saringan:
+ *   - `tenantSlug`: satu tenant (slug, bukan id — lihat `readTenantAuditPage`);
+ *   - `actionPrefix`: kelompok tindakan, mis. `tenant.deletion.` atau
+ *     `tenant.plan.`. Awalan, bukan daftar: kosakatanya bertitik dan
+ *     berkelompok, dan awalan tetap berlaku untuk tindakan baru sekelompok.
+ *
+ * Index `[created_at]` dan `[action]` lahir untuk bentuk ini (migration
+ * kendali 0003).
+ */
+export async function readTenantAuditFeed(
+  filter: { tenantSlug?: string; actionPrefix?: string },
+  options: { limit?: number; skip?: number } = {}
+): Promise<{ entries: TenantAuditEntry[]; total: number }> {
   const take = Math.min(500, Math.max(1, options.limit ?? 100));
   const skip = Math.max(0, options.skip ?? 0);
 
-  const where = { tenantSlug };
+  const where = {
+    ...(filter.tenantSlug ? { tenantSlug: filter.tenantSlug } : {}),
+    ...(filter.actionPrefix ? { action: { startsWith: filter.actionPrefix } } : {}),
+  };
   const [rows, total] = await Promise.all([
     controlDb.tenantAuditLog.findMany({
       where,

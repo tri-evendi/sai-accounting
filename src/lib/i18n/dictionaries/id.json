@@ -4693,7 +4693,9 @@
       "colCompanyUsers": "Pengguna",
       "companyActive": "Aktif",
       "companyInactive": "Nonaktif",
-      "booksNote": "Konsol ini membaca metadata langganan, BUKAN pembukuan pelanggan — basis data perusahaan tidak pernah dibuka dari sini."
+      "booksNote": "Konsol ini membaca metadata langganan, BUKAN pembukuan pelanggan — basis data perusahaan tidak pernah dibuka dari sini.",
+      "trailHeading": "Jejak tenant",
+      "trailAll": "Lihat semua jejak"
     },
     "reconciliation": {
       "heading": "Rekonsiliasi",
@@ -4990,14 +4992,27 @@
     },
     "audit": {
       "heading": "Jejak Audit Operator",
-      "description": "Masuk, keluar, dan perubahan setelan platform — siapa, dari IP mana, kapan. Tindakan terhadap tenant tercatat di halaman tenant masing-masing.",
+      "description": "Masuk, keluar, dan perubahan setelan platform — siapa, dari IP mana, kapan. Tindakan terhadap tenant ada di Jejak tenant.",
       "colTime": "Waktu",
       "colOperator": "Operator",
       "colAction": "Tindakan",
       "colIp": "IP",
       "colDetails": "Rincian",
       "empty": "Belum ada jejak tercatat.",
-      "emptyHint": "Jejak tertulis sejak masuk pertama ke konsol ini."
+      "emptyHint": "Jejak tertulis sejak masuk pertama ke konsol ini.",
+      "tenantTrailLink": "Jejak tenant"
+    },
+    "tenantAudit": {
+      "heading": "Jejak Tenant",
+      "description": "Tindakan terhadap setiap tenant — suspensi, ganti paket, pelunasan, mode penagihan, penghapusan — beserta aktor dan alasannya. Tetap terbaca sesudah tenantnya dihapus.",
+      "operatorTrailLink": "Jejak operator",
+      "tenantLabel": "Tenant (slug)",
+      "tenantPlaceholder": "mis. pt-contoh",
+      "groupLabel": "Kelompok tindakan",
+      "groupAll": "Semua tindakan",
+      "colTenant": "Tenant",
+      "colActor": "Aktor",
+      "empty": "Belum ada jejak untuk saringan ini."
     }
   },
   "docs": {

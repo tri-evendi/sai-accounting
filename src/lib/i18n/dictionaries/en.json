@@ -4693,7 +4693,9 @@
       "colCompanyUsers": "Users",
       "companyActive": "Active",
       "companyInactive": "Inactive",
-      "booksNote": "This console reads subscription metadata, NOT customer books — company databases are never opened from here."
+      "booksNote": "This console reads subscription metadata, NOT customer books — company databases are never opened from here.",
+      "trailHeading": "Tenant trail",
+      "trailAll": "View full trail"
     },
     "reconciliation": {
       "heading": "Reconciliation",
@@ -4990,14 +4992,27 @@
     },
     "audit": {
       "heading": "Operator audit trail",
-      "description": "Sign-ins, sign-outs, and platform setting changes — who, from which IP, when. Actions against a tenant are recorded on that tenant's own page.",
+      "description": "Sign-ins, sign-outs and platform setting changes — who, from which IP, when. Actions on tenants are in the Tenant trail.",
       "colTime": "Time",
       "colOperator": "Operator",
       "colAction": "Action",
       "colIp": "IP",
       "colDetails": "Details",
       "empty": "No entries recorded yet.",
-      "emptyHint": "Entries are written from the first sign-in to this console onwards."
+      "emptyHint": "Entries are written from the first sign-in to this console onwards.",
+      "tenantTrailLink": "Tenant trail"
+    },
+    "tenantAudit": {
+      "heading": "Tenant Trail",
+      "description": "Actions on every tenant — suspension, plan changes, payments, billing mode, deletion — with their actor and reason. Still readable after the tenant is deleted.",
+      "operatorTrailLink": "Operator trail",
+      "tenantLabel": "Account (slug)",
+      "tenantPlaceholder": "e.g. pt-example",
+      "groupLabel": "Action group",
+      "groupAll": "All actions",
+      "colTenant": "Account",
+      "colActor": "Actor",
+      "empty": "No trail entries for this filter yet."
     }
   },
   "docs": {

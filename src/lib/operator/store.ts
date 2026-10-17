@@ -845,3 +845,19 @@ export function tenantStatusVariant(status: string): "success" | "warning" | "da
   if (status === "active") return "success";
   return "warning";
 }
+
+/**
+ * Slug → id tenant untuk tautan di jejak tenant. Jejak menyimpan slug yang
+ * DISALIN (ia harus terbaca sesudah tenantnya tiada), jadi baris untuk tenant
+ * yang sudah dihapus memang tidak punya tujuan tautan — dan peta ini yang
+ * menyatakannya, bukan tautan yang berakhir 404.
+ */
+export async function tenantIdsBySlug(slugs: string[]): Promise<Map<string, number>> {
+  const unik = [...new Set(slugs)];
+  if (unik.length === 0) return new Map();
+  const rows = await controlDb.tenant.findMany({
+    where: { slug: { in: unik } },
+    select: { id: true, slug: true },
+  });
+  return new Map(rows.map((r) => [r.slug, r.id]));
+}

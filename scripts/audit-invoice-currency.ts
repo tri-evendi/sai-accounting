@@ -31,7 +31,7 @@
  * There is no flag that rewrites invoice currency in bulk. That is on purpose.
  */
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { repostForSource } from "../src/lib/posting";
 

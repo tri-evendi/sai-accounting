@@ -37,7 +37,7 @@
  * lebih murah daripada itu.
  */
 
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient } from "@sai/db/client/company";
 import { getCompanyClient } from "@/lib/company-clients";
 import { currentCompany } from "@/lib/current-company";
 

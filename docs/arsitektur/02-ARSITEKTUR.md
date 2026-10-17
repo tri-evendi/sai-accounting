@@ -384,7 +384,7 @@ Dua hal yang mengejutkan orang baru:
 
 1. **`src/proxy.ts`, bukan `src/middleware.ts`.** Next versi ini menamainya
    `proxy`. Jangan pernah membuat `middleware.ts`.
-2. **`src/generated/` tidak ada di git.** Ketiga klien Prisma lahir saat
+2. **`packages/db/generated/` tidak ada di git.** Ketiga klien Prisma lahir saat
    `bun run db:generate` / tahap build Docker. Tanpa ketiganya `next build`
    gagal dengan "module not found" yang **tidak menyebut** bahwa yang kurang
    adalah satu perintah generate.

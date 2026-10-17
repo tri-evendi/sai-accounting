@@ -23,7 +23,7 @@
  */
 
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/control/client.js";
+import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { proveCompanySlugScope } from "../src/lib/company-slug-proof";
 

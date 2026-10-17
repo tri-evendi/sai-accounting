@@ -52,7 +52,7 @@
  * human holding that bank advice can supply, and reposting without it would
  * either fail en masse or, worse, succeed against a guessed rate.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 
 /** Type-only Prisma import, as in ./mapping — callers pass the client. */
 type Client = Prisma.TransactionClient | PrismaClient;

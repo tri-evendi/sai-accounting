@@ -37,8 +37,8 @@ import path from "node:path";
 
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
-import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { PrismaClient as CompanyClient } from "../src/generated/prisma/client.js";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
+import { PrismaClient as CompanyClient } from "@sai/db/client/company";
 
 const APPLY = process.argv.includes("--apply");
 const AUDIT_ROOT = path.join(process.cwd(), "data", "audit");

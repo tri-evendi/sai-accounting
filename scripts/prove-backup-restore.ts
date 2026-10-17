@@ -42,7 +42,7 @@ import path from "node:path";
 
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
-import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
 
 function argValue(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);

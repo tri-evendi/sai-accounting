@@ -72,7 +72,7 @@ ENV DATABASE_URL="mysql://build:build@localhost:3306/build" \
     AUTH_URL="http://localhost:3000"
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Generate the Prisma client into src/generated/prisma, then build standalone.
+# Generate the Prisma client into packages/db/generated/company, then build standalone.
 #
 # `--max-old-space-size=768` WAJIB, bukan penyetelan halus. Mesin ini punya RAM
 # ~1,9 GB yang sebagian besar sudah dipakai container yang sedang melayani, jadi
@@ -90,12 +90,12 @@ COPY . .
 # bertambah besar.
 #
 # TIGA klien Prisma di-generate, dan ketiganya wajib: skema PERUSAHAAN
-# (`prisma/schema.prisma` → src/generated/prisma, issue #104), skema KENDALI
-# (`prisma/control/schema.prisma` → src/generated/control, issue #104), dan
-# skema PLATFORM (`prisma/platform/schema.prisma` → src/generated/platform,
+# (`packages/db/prisma/company/schema.prisma` → packages/db/generated/company, issue #104), skema KENDALI
+# (`packages/db/prisma/control/schema.prisma` → packages/db/generated/control, issue #104), dan
+# skema PLATFORM (`packages/db/prisma/platform/schema.prisma` → packages/db/generated/platform,
 # issue #137). Ketiganya gitignored, jadi ketiganya lahir di sini. Tanpa salah
 # satunya `next build` berhenti dengan "module not found" pada
-# `@/generated/<yang-kurang>/client` — dan pesan itu tidak menyebut sama sekali
+# `@sai/db/client/<yang-kurang>` — dan pesan itu tidak menyebut sama sekali
 # bahwa yang kurang adalah satu perintah generate.
 #
 # Klien PLATFORM sempat tertinggal di sini padahal kodenya sudah mengimpornya:

@@ -9,7 +9,7 @@
  * `Prisma.TransactionClient` behaves — so this also exercises the engine's
  * "join the caller's transaction" path.
  */
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 
 export interface FakeLine {
   id: number;

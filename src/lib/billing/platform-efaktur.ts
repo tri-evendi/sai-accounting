@@ -9,8 +9,8 @@
  *
  * Klien disuntik, tanpa `server-only` (pola `change-tenant-plan.ts`).
  */
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
-import type { PrismaClient as ControlClient } from "@/generated/control/client";
+import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buildEfaktur, efakturToCsv, type EfakturInvoiceInput } from "@/lib/efaktur";
 
 export interface PlatformEfakturResult {

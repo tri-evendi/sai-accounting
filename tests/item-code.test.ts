@@ -29,7 +29,7 @@ import { itemSchema } from "@/lib/validations/inventory";
 import { parseItemRows, ITEM_COLUMNS } from "@/lib/import/master";
 import { summarizeInventoryItem, type ItemWithStock } from "@/lib/inventory";
 
-const schema = readFileSync(join(__dirname, "..", "prisma", "schema.prisma"), "utf8");
+const schema = readFileSync(join(__dirname, "..", "packages", "db", "prisma", "company", "schema.prisma"), "utf8");
 const migration = readFileSync(
   join(__dirname, "..", "prisma", "migrations", "0051_item_codes", "migration.sql"),
   "utf8"

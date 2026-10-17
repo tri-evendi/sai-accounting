@@ -8,7 +8,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@sai/db/client/company";
 import { postJournal } from "@/lib/ledger";
 import { periodBounds } from "@/lib/period";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";

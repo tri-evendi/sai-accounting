@@ -36,7 +36,7 @@ import {
   sortableKeys,
   type SortSpec,
 } from "@/lib/table-sort";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { LockOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { LearnMore } from "@/components/ui/learn-more";

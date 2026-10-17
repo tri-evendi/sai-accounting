@@ -20,7 +20,7 @@
  * Yang kedua tidak bisa dipalsukan tanpa ketahuan: ia berdamai dengan Laba Rugi
  * menurut konstruksi, sebab ia MEMANG baris Laba Rugi itu.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
 import { akumulasiBiaya, hargaPokokKeluaran } from "./production-cost";
 import { ringkasanVarians, type RingkasanVarians } from "./variance";

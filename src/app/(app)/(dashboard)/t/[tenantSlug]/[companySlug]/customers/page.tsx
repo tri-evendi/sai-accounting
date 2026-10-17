@@ -43,7 +43,7 @@ import {
   sortableKeys,
   type SortSpec,
 } from "@/lib/table-sort";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 export const dynamic = "force-dynamic";
 
 /**

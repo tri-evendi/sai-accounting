@@ -19,7 +19,7 @@
  * is implemented. An unknown method throws rather than silently straight-lining.
  *
  * ── ALWAYS IDR ───────────────────────────────────────────────────────────────
- * Fixed assets are scoped to IDR (see the model note in prisma/schema.prisma and
+ * Fixed assets are scoped to IDR (see the model note in packages/db/prisma/company/schema.prisma and
  * @/lib/fixed-assets): `cost`, `residualValue` and every amount here are IDR base.
  * There is no rate and no cross-currency addition to guard against.
  */

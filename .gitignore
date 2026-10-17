@@ -60,6 +60,12 @@ next-env.d.ts
 # penyebabnya tidak terlihat di diff mana pun. Terjadi sungguhan sebelum
 # `Merge PR #236`.
 /src/generated/
+# Sejak monorepo Fase 1b (17 Okt 2026) ketiga klien dibangkitkan ke
+# `packages/db/generated/{company,control,platform}`. Baris `src/generated` di atas
+# tetap ada untuk checkout/worktree lama yang masih menyimpannya. TANPA garis
+# miring di ujung: pola ber-`/` hanya cocok dengan DIREKTORI, dan symlink yang
+# dijelaskan di atas adalah berkas.
+/packages/db/generated
 
 # local audit trail (sensitive)
 # Sejak #104 jejak audit pindah ke `data/audit/<slug>/audit.jsonl` — satu

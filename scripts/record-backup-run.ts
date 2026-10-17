@@ -34,7 +34,7 @@
  * terlindungi.
  */
 import "dotenv/config";
-import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
+import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { buatAdapter } from "@sai/db/adapter";
 
 function clientFor(rawUrl: string) {

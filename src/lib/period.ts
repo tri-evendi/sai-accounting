@@ -20,7 +20,7 @@
  * `@/lib/period-close`.
  */
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@sai/db/client/company";
 import { MONTH_NAMES } from "@/lib/month-names";
 
 // Re-exported so server code can keep importing MONTH_NAMES from here; the array

@@ -206,7 +206,7 @@ describe("PPN tagihan platform — lewat lib/tax.ts, tarif tidak diketik ulang",
 describe("tidak ada data kartu di mana pun (AC #141)", () => {
   it("skema platform & modul gerbang tidak punya satu pun kolom/kode kartu", () => {
     const schema = readFileSync(
-      join(__dirname, "..", "prisma", "platform", "schema.prisma"),
+      join(__dirname, "..", "packages", "db", "prisma", "platform", "schema.prisma"),
       "utf8"
     );
     const gateway = readFileSync(

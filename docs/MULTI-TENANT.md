@@ -299,7 +299,7 @@ persis pola `periods.closed_by_id`. **Isi katalog `plans`** (angka, alasan,
 cara mengubah harga) hidup di `docs/PRICING.md` (#404).
 
 Konsekuensi yang harus diikuti kode: satu generator Prisma lagi
-(`prisma/platform/schema.prisma` → `src/generated/platform`), satu
+(`packages/db/prisma/platform/schema.prisma` → `packages/db/generated/platform`), satu
 `PLATFORM_DATABASE_URL`, dan satu perintah migration lagi di `db:migrate:all`.
 
 **Sesuai `docs/DATABASE.md`:** Inggris · `snake_case` via `@map` · tabel jamak ·

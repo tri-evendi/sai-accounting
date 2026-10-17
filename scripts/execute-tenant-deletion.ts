@@ -35,7 +35,7 @@
  */
 
 import "dotenv/config";
-import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { bukaServer } from "@sai/db/server";
 import { releaseCompanyClient } from "../src/lib/company-clients";

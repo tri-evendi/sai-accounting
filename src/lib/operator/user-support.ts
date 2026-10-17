@@ -14,7 +14,7 @@
  * "pengguna/undangan milik tenant INI" diuji dengan fake. Pengiriman surel
  * ada di server action (`mailer` ber-`server-only`).
  */
-import type { PrismaClient as ControlClient } from "@/generated/control/client";
+import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 
 type Deps = { control: ControlClient };
 

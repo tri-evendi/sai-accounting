@@ -920,7 +920,7 @@ export async function LandingPricing({
               justru lebih dulu muncul: *apa yang saya dapat terlepas dari
               paket mana pun.* Tanpa itu pembaca menyimpulkan bahwa modul,
               bahasa, dan mata uang ikut dijatah — padahal `Plan` hanya punya
-              `maxCompanies` & `maxUsers` (`prisma/platform/schema.prisma`).
+              `maxCompanies` & `maxUsers` (`packages/db/prisma/platform/schema.prisma`).
 
               Sampai #397 jawabannya berbentuk `<dl>` tiga angka besar —
               SALINAN PERSIS strip bukti di hero (`landing-stats.tsx`), yang

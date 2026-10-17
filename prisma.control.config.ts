@@ -3,7 +3,7 @@
 // Berdampingan dengan `prisma.config.ts` (basis data perusahaan). Dua skema,
 // dua klien, dua folder migration — dijalankan lewat `--config`:
 //
-//   bun run db:generate:control    → klien ke src/generated/control
+//   bun run db:generate:control    → klien ke packages/db/generated/control
 //   bun run db:migrate:control     → migrate deploy ke CONTROL_DATABASE_URL
 //
 // Basis data PERUSAHAAN tetap memakai `prisma.config.ts`; migration-nya kini
@@ -12,7 +12,7 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/control/schema.prisma",
+  schema: "packages/db/prisma/control/schema.prisma",
   migrations: {
     /*
      * == JALUR MIGRATION PINDAH KE PostgreSQL (15 Okt 2026) ==============

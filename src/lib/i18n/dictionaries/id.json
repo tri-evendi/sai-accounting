@@ -5254,6 +5254,23 @@
         "monitoring": "Dipantau",
         "resolved": "Selesai"
       }
+    },
+    "health": {
+      "heading": "Kesehatan",
+      "note": "Dari metadata saja: kuota, tanggal jurnal termuda tiap buku (bukan isinya), dan temuan sapuan kesesuaian terakhir.",
+      "allClear": "Tidak ada sinyal yang menuntut perhatian.",
+      "toneDanger": "Tindakan",
+      "toneWarning": "Perhatikan",
+      "toneInfo": "Catatan",
+      "quotaCompaniesOver": "Pemakaian PT melewati kuota: {used} dari {max}.",
+      "quotaCompaniesNear": "PT hampir penuh: {used} dari {max} — saat yang baik untuk bicara naik paket.",
+      "quotaUsersOver": "Pengguna melewati kuota: {used} dari {max}.",
+      "quotaUsersNear": "Pengguna hampir penuh: {used} dari {max}.",
+      "bookIdle": "Buku {book} tanpa jurnal baru selama {days} hari — tanda awal berhenti memakai.",
+      "bookNeverUsed": "Buku {book} belum punya satu jurnal pun.",
+      "bookUnreadable": "Buku {book} tidak terbaca — periksa koneksi basis datanya.",
+      "conformanceFindings": "{count} temuan sapuan kesesuaian terakhir milik buku tenant ini — lihat Kesesuaian data.",
+      "conformanceAmbiguous": "Temuan untuk {books} tidak bisa diatribusikan: slug PT itu juga dipakai tenant lain."
     }
   },
   "docs": {

@@ -60,7 +60,13 @@ import {
 import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
-import { listPlansForOperator, tenantDetailForOperator, tenantStatusVariant } from "@/lib/operator/store";
+import {
+  listPlansForOperator,
+  tenantDetailForOperator,
+  tenantHealthForOperator,
+  tenantStatusVariant,
+} from "@/lib/operator/store";
+import type { HealthSignal } from "@/lib/operator/tenant-health";
 import { executionVerdict } from "@/lib/tenant-deletion";
 import {
   BILLING_MODE_LABEL_KEYS,
@@ -134,6 +140,24 @@ type TenantDetail = NonNullable<Awaited<ReturnType<typeof tenantDetailForOperato
 type Invoice = NonNullable<TenantDetail["billing"]>["invoices"][number];
 type Company = TenantDetail["companies"][number];
 
+/** Peta STATIS sinyal kesehatan → kunci kamus (penjaga kunci yatim membaca teks). */
+const HEALTH_LABEL: Record<HealthSignal["key"], DictionaryKey> = {
+  quotaCompaniesOver: "operator.health.quotaCompaniesOver",
+  quotaCompaniesNear: "operator.health.quotaCompaniesNear",
+  quotaUsersOver: "operator.health.quotaUsersOver",
+  quotaUsersNear: "operator.health.quotaUsersNear",
+  bookIdle: "operator.health.bookIdle",
+  bookNeverUsed: "operator.health.bookNeverUsed",
+  bookUnreadable: "operator.health.bookUnreadable",
+  conformanceFindings: "operator.health.conformanceFindings",
+  conformanceAmbiguous: "operator.health.conformanceAmbiguous",
+};
+const HEALTH_TONE_LABEL: Record<HealthSignal["tone"], DictionaryKey> = {
+  danger: "operator.health.toneDanger",
+  warning: "operator.health.toneWarning",
+  info: "operator.health.toneInfo",
+};
+
 /** Cukup untuk "apa yang terakhir terjadi"; selebihnya di halaman jejak. */
 const JEJAK_DI_RINCIAN = 20;
 
@@ -157,10 +181,16 @@ export default async function OperatorTenantDetailPage({
   /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
      `/operator/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
      diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
-  const [trail, people] = await Promise.all([
+  const [trail, people, health] = await Promise.all([
     /* Per `tenantId`, bukan slug: entri sebelum slug berganti tetap terbaca. */
     readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }),
     tenantUsersForOperator({ control: controlDb }, tenant.id),
+    tenantHealthForOperator({
+      id: tenant.id,
+      maxCompanies: tenant.maxCompanies,
+      maxUsers: tenant.maxUsers,
+      usage,
+    }),
   ]);
 
   /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
@@ -336,6 +366,24 @@ export default async function OperatorTenantDetailPage({
           <p style={MUTED}>
             {t("operator.tenant.trialEndsAt")}: {formatDate(tenant.trialEndsAt)}
           </p>
+        )}
+      </ConsolePanel>
+
+      {/* ── Kesehatan: sinyal metadata, tidak pernah isi buku ───────────── */}
+      <ConsolePanel title={t("operator.health.heading")} footnote={t("operator.health.note")}>
+        {health.length === 0 ? (
+          <p style={MUTED}>{t("operator.health.allClear")}</p>
+        ) : (
+          <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "grid", gap: 8 }}>
+            {health.map((h, i) => (
+              <li key={`${h.key}-${i}`} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                <Badge variant={h.tone === "danger" ? "danger" : h.tone === "warning" ? "warning" : "default"}>
+                  {t(HEALTH_TONE_LABEL[h.tone])}
+                </Badge>
+                <span>{t(HEALTH_LABEL[h.key] as DictionaryKey, h.params as Record<string, string | number>)}</span>
+              </li>
+            ))}
+          </ul>
         )}
       </ConsolePanel>
 

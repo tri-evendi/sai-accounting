@@ -84,7 +84,20 @@ export interface KoneksiBasisData {
    * terjangkau MELEMPAR, supaya pemanggil bisa membedakan keduanya.
    */
   jurnalTermuda(): Promise<Date | null>;
+  /**
+   * Ringkasan `_prisma_migrations`: yang TERAPAN (selesai, tidak dibatalkan),
+   * yang MENGGANTUNG (mulai tapi tidak selesai — `migrate deploy` berikutnya
+   * akan menolak berjalan), dan nama terapan terakhir. Tabel yang belum ada
+   * MELEMPAR: "belum pernah dimigrasikan" bukan "nol migration".
+   */
+  ringkasanMigrasi(): Promise<RingkasanMigrasi>;
   tutup(): Promise<void>;
+}
+
+export interface RingkasanMigrasi {
+  terapan: number;
+  menggantung: number;
+  terakhir: string | null;
 }
 
 // ── MariaDB ────────────────────────────────────────────────────────────────
@@ -208,6 +221,21 @@ class KoneksiMariaDb implements KoneksiBasisData {
       latest: Date | null;
     }[];
     return r[0]?.latest ?? null;
+  }
+
+  async ringkasanMigrasi(): Promise<RingkasanMigrasi> {
+    const r = (await this.pool.query(
+      "SELECT " +
+        "SUM(finished_at IS NOT NULL AND rolled_back_at IS NULL) AS terapan, " +
+        "SUM(finished_at IS NULL AND rolled_back_at IS NULL) AS menggantung, " +
+        "MAX(CASE WHEN finished_at IS NOT NULL AND rolled_back_at IS NULL THEN migration_name END) AS terakhir " +
+        "FROM `_prisma_migrations`"
+    )) as { terapan: unknown; menggantung: unknown; terakhir: string | null }[];
+    return {
+      terapan: Number(r[0]?.terapan ?? 0),
+      menggantung: Number(r[0]?.menggantung ?? 0),
+      terakhir: r[0]?.terakhir ?? null,
+    };
   }
 
   async tutup(): Promise<void> {
@@ -337,6 +365,21 @@ class KoneksiPostgres implements KoneksiBasisData {
       `SELECT MAX("date") AT TIME ZONE 'UTC' AS latest FROM journals`
     );
     return r.rows[0]?.latest ?? null;
+  }
+
+  async ringkasanMigrasi(): Promise<RingkasanMigrasi> {
+    /* `FILTER`, bukan `SUM(boolean)`: PostgreSQL tidak menjumlah boolean —
+       idiom MySQL yang sudah sekali mematahkan sapuan kesesuaian sesudah
+       penukaran (lihat dok 11 §10.2). `::int` karena `count` adalah bigint,
+       yang diurai `pg` sebagai TEKS. */
+    const r = await this.c.query<RingkasanMigrasi>(
+      `SELECT
+         count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL)::int AS terapan,
+         count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)::int AS menggantung,
+         max(migration_name) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL) AS terakhir
+       FROM "_prisma_migrations"`
+    );
+    return r.rows[0] ?? { terapan: 0, menggantung: 0, terakhir: null };
   }
 
   async tutup(): Promise<void> {

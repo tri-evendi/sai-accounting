@@ -4567,7 +4567,8 @@
       "groupCustomers": "Pelanggan",
       "groupSite": "Situs",
       "groupSystem": "Sistem",
-      "conformance": "Kesesuaian Data"
+      "conformance": "Kesesuaian Data",
+      "backups": "Cadangan"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -5013,6 +5014,40 @@
       "colTenant": "Tenant",
       "colActor": "Aktor",
       "empty": "Belum ada jejak untuk saringan ini."
+    },
+    "backups": {
+      "heading": "Cadangan & Versi Skema",
+      "description": "Apakah cadangan semalam berhasil dan tersimpan di luar server ini, dan apakah setiap basis data berada di migration yang diharapkan kode yang sedang berjalan.",
+      "runsHeading": "Riwayat cadangan",
+      "runsUnavailable": "Riwayat cadangan belum bisa dibaca: sai_platform tak terjangkau.",
+      "runsEmpty": "Belum ada putaran cadangan tercatat.",
+      "colFinished": "Selesai",
+      "colStatus": "Status",
+      "colSize": "Ukuran",
+      "colArtifact": "Artefak / sebab",
+      "statusOk": "Terkirim ke luar",
+      "statusLocal": "Hanya lokal",
+      "statusError": "Gagal",
+      "latestLocal": "Cadangan terakhir HANYA tersimpan di server ini (BACKUP_S3_BUCKET belum disetel). Cadangan yang tinggal di disk yang sama dengan basis datanya hilang bersama disk itu.",
+      "latestError": "Cadangan terakhir GAGAL. Sebabnya ada di kolom artefak; tidak ada cadangan baru sampai ini diperbaiki.",
+      "lastOffsite": "Terakhir terkirim ke luar server: {date}.",
+      "neverOffsite": "Belum pernah ada cadangan yang terkirim ke luar server ini.",
+      "versionsHeading": "Versi skema ({ok} dari {total} mutakhir)",
+      "versionsUnavailable": "Versi skema belum bisa dibaca: CONTROL_DATABASE_URL tidak diset atau daftar perusahaan tak terbaca.",
+      "versionsNote": "Dibaca langsung dari _prisma_migrations tiap basis data, dibandingkan dengan migration terakhir yang dikenal image ini. Buku PT nonaktif tetap dihitung: bukunya ada selama masa retensi.",
+      "colDatabase": "Basis data",
+      "colLatest": "Migration terakhir",
+      "colApplied": "Terapan",
+      "colVersion": "Keadaan",
+      "expected": "diharapkan {name}",
+      "inactive": "nonaktif",
+      "version": {
+        "mutakhir": "Mutakhir",
+        "tertinggal": "Tertinggal",
+        "mendahului": "Mendahului image",
+        "menggantung": "Migration menggantung",
+        "tak_terbaca": "Tak terbaca"
+      }
     }
   },
   "docs": {

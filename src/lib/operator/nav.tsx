@@ -15,6 +15,7 @@
  */
 import {
   ClockCircleOutlined,
+  CloudServerOutlined,
   DashboardOutlined,
   FileProtectOutlined,
   FileTextOutlined,
@@ -83,6 +84,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/operator/conformance",
       label: t("operator.nav.conformance"),
       icon: <FileSearchOutlined style={UKURAN_IKON} />,
+    },
+    {
+      href: "/operator/backup",
+      label: t("operator.nav.backups"),
+      icon: <CloudServerOutlined style={UKURAN_IKON} />,
+      group: sistem,
     },
     {
       href: "/operator/mail",

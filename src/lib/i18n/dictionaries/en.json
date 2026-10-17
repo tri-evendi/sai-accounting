@@ -4567,7 +4567,8 @@
       "groupCustomers": "Customers",
       "groupSite": "Website",
       "groupSystem": "System",
-      "conformance": "Data Conformance"
+      "conformance": "Data Conformance",
+      "backups": "Backups"
     },
     "attention": {
       "heading": "Needs attention",
@@ -5013,6 +5014,40 @@
       "colTenant": "Account",
       "colActor": "Actor",
       "empty": "No trail entries for this filter yet."
+    },
+    "backups": {
+      "heading": "Backups & Schema Versions",
+      "description": "Whether last night's backup succeeded and is stored off this server, and whether every database is at the migration the running code expects.",
+      "runsHeading": "Backup history",
+      "runsUnavailable": "Backup history cannot be read yet: sai_platform is unreachable.",
+      "runsEmpty": "No backup runs recorded yet.",
+      "colFinished": "Finished",
+      "colStatus": "Result",
+      "colSize": "Size",
+      "colArtifact": "Artifact / cause",
+      "statusOk": "Sent off-site",
+      "statusLocal": "Local only",
+      "statusError": "Failed",
+      "latestLocal": "The latest backup is stored ONLY on this server (BACKUP_S3_BUCKET is not set). A backup on the same disk as its database is lost with that disk.",
+      "latestError": "The latest backup FAILED. The cause is in the artifact column; no new backup exists until this is fixed.",
+      "lastOffsite": "Last sent off-site: {date}.",
+      "neverOffsite": "No backup has ever been sent off this server.",
+      "versionsHeading": "Schema versions ({ok} of {total} up to date)",
+      "versionsUnavailable": "Schema versions cannot be read yet: CONTROL_DATABASE_URL is not set or the company list is unreadable.",
+      "versionsNote": "Read directly from each database's _prisma_migrations and compared with the latest migration this image knows. Inactive company books still count: their books exist throughout the retention period.",
+      "colDatabase": "Database",
+      "colLatest": "Latest migration",
+      "colApplied": "Applied",
+      "colVersion": "State",
+      "expected": "expected {name}",
+      "inactive": "inactive",
+      "version": {
+        "mutakhir": "Up to date",
+        "tertinggal": "Behind",
+        "mendahului": "Ahead of image",
+        "menggantung": "Migration stuck",
+        "tak_terbaca": "Unreadable"
+      }
     }
   },
   "docs": {

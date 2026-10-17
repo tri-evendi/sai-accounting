@@ -4567,7 +4567,8 @@
       "groupCustomers": "客户",
       "groupSite": "网站",
       "groupSystem": "系统",
-      "conformance": "数据一致性"
+      "conformance": "数据一致性",
+      "backups": "备份"
     },
     "attention": {
       "heading": "需要处理",
@@ -5013,6 +5014,40 @@
       "colTenant": "租户",
       "colActor": "执行者",
       "empty": "此筛选条件下暂无日志。"
+    },
+    "backups": {
+      "heading": "备份与架构版本",
+      "description": "昨晚的备份是否成功并保存在本服务器之外，以及每个数据库是否处于当前运行代码所期望的迁移版本。",
+      "runsHeading": "备份记录",
+      "runsUnavailable": "暂时无法读取备份记录：sai_platform 无法访问。",
+      "runsEmpty": "尚无备份记录。",
+      "colFinished": "完成时间",
+      "colStatus": "状态",
+      "colSize": "大小",
+      "colArtifact": "文件 / 原因",
+      "statusOk": "已异地保存",
+      "statusLocal": "仅本地",
+      "statusError": "失败",
+      "latestLocal": "最近一次备份仅保存在本服务器上（未设置 BACKUP_S3_BUCKET）。与数据库同盘的备份会随该磁盘一起丢失。",
+      "latestError": "最近一次备份失败。原因见文件列；修复之前不会产生新的备份。",
+      "lastOffsite": "最近一次异地保存：{date}。",
+      "neverOffsite": "从未有备份被发送到本服务器之外。",
+      "versionsHeading": "架构版本（{total} 个中 {ok} 个为最新）",
+      "versionsUnavailable": "暂时无法读取架构版本：未设置 CONTROL_DATABASE_URL 或无法读取公司列表。",
+      "versionsNote": "直接读取每个数据库的 _prisma_migrations，并与本镜像已知的最新迁移比较。停用公司的账簿仍计入：保存期内账簿依然存在。",
+      "colDatabase": "数据库",
+      "colLatest": "最新迁移",
+      "colApplied": "已应用",
+      "colVersion": "状态",
+      "expected": "应为 {name}",
+      "inactive": "已停用",
+      "version": {
+        "mutakhir": "最新",
+        "tertinggal": "落后",
+        "mendahului": "领先于镜像",
+        "menggantung": "迁移卡住",
+        "tak_terbaca": "无法读取"
+      }
     }
   },
   "docs": {

@@ -48,7 +48,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { ButtonLink } from "@/components/ui/button";
-import { readTenantAuditPage } from "@/lib/tenant-audit";
+import { readTenantAuditFeed } from "@/lib/tenant-audit";
 import { TenantUserSupport } from "@/components/operator/tenant-user-support";
 import { tenantUsersForOperator } from "@/lib/operator/user-support";
 import { controlDb } from "@/lib/control-db";
@@ -158,7 +158,8 @@ export default async function OperatorTenantDetailPage({
      `/operator/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
      diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
   const [trail, people] = await Promise.all([
-    readTenantAuditPage(tenant.slug, { limit: JEJAK_DI_RINCIAN }),
+    /* Per `tenantId`, bukan slug: entri sebelum slug berganti tetap terbaca. */
+    readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }),
     tenantUsersForOperator({ control: controlDb }, tenant.id),
   ]);
 

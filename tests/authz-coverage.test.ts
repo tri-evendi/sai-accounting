@@ -419,12 +419,20 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
     }
   });
 
-  it("tidak ada route API di bawah (operator) — masuk/keluar lewat server action", () => {
-    // Disengaja (#154): permukaan API operator di `src/app/api` akan tercakup
-    // penjaga izin PELANGGAN, yang justru bidang yang salah.
+  it("route di bawah (operator) hanya UNDUHAN, dan setiap route berpenjaga izin operator", () => {
+    // #154: permukaan API operator di `src/app/api` akan tercakup penjaga izin
+    // PELANGGAN — bidang yang salah; masuk/keluar & aksi tulis lewat server
+    // action. Sejak 17 Okt 2026 satu bentuk route dibolehkan: UNDUHAN berkas
+    // (e-Faktur platform), yang memang tidak bisa dilayani server action. Ia
+    // wajib `requireOperatorRoute("<izin>")` dan hanya mengekspor GET.
     const group = join(APP_DIR, "(operator)");
     const routes = existsSync(group) ? filesNamed(group, "route.ts") : [];
-    expect(routes).toEqual([]);
+    for (const f of routes) {
+      const src = readFileSync(f, "utf8");
+      expect(src, `${f} tanpa requireOperatorRoute("<izin>")`).toMatch(/requireOperatorRoute\("[a-z.]+"\)/);
+      expect(src, `${f} mengekspor selain GET`).not.toMatch(/export async function (POST|PUT|PATCH|DELETE)\b/);
+    }
+    expect(routes.length).toBeLessThanOrEqual(1);
   });
 });
 

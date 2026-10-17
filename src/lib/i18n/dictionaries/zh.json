@@ -4569,7 +4569,10 @@
       "groupSystem": "系统",
       "conformance": "数据一致性",
       "backups": "备份",
-      "accounts": "账户"
+      "accounts": "账户",
+      "deletions": "删除请求",
+      "plans": "套餐目录",
+      "efaktur": "平台 e-Faktur"
     },
     "attention": {
       "heading": "需要处理",
@@ -5157,6 +5160,65 @@
       "errInvitation": "未找到邀请、邀请已使用或不属于此租户。",
       "errInvitationHasAccount": "该地址现已有账户——未重新发送邀请。若其仍无公司访问权，请从客户的团队页面添加。",
       "errInvitationOutcome": "邀请未重新签发（{outcome}）。"
+    },
+    "efaktur": {
+      "heading": "平台发票 e-Faktur",
+      "description": "已付款 SAI 订阅发票的 e-Faktur CSV 导出——与 bun run efaktur:platform 相同，现可在界面操作。",
+      "sellerMissing": "尚未设置 PLATFORM_SELLER_NPWP：每一行都将缺少卖方税号。",
+      "from": "起始日期",
+      "to": "截止日期",
+      "preview": "预览",
+      "unavailable": "暂时无法读取预览：sai_platform 无法访问。",
+      "summary": "{rows} 行就绪 · {problems} 张发票未包含",
+      "download": "下载 CSV",
+      "note": "UTF-8 带 BOM，与客户 e-Faktur 导出惯例一致。每次下载都会记入运营者日志。",
+      "noProblems": "本期所有已付发票的必填栏位均完整。",
+      "missing": "空栏位"
+    },
+    "slug": {
+      "title": "更改账户地址",
+      "description": "/t/<slug>/… 中的 slug——与客户面板相同的保护：旧 slug 永久保留并重定向，30 天间隔同样适用。",
+      "open": "更改地址",
+      "explain": "当前地址：{slug}。旧链接通过永久重定向继续有效；数据库名称不变。",
+      "newLabel": "新 slug",
+      "submit": "更改地址",
+      "changed": "账户地址已更改：{from} → {to}。",
+      "errShape": "slug 只能包含小写字母、数字和连字符，且两端不能是连字符。",
+      "errReserved": "该 slug 为系统保留。",
+      "errSame": "这是当前正在使用的 slug。",
+      "errTaken": "该 slug 现在或曾经已被其他账户或本账户使用。",
+      "errTooSoon": "此账户地址刚更改过；30 天间隔对运营者同样适用。"
+    },
+    "deletions": {
+      "heading": "账户删除请求",
+      "description": "所有删除请求（个人数据保护法），最新在前。{ready} 个可执行——执行在租户页面进行，需重新输入 slug。",
+      "colStatus": "状态",
+      "colRequested": "请求时间",
+      "colGrace": "宽限期结束",
+      "colRetention": "保存至",
+      "executed": "已执行",
+      "cancelled": "所有者已取消",
+      "ready": "可执行",
+      "grace": "宽限期",
+      "empty": "尚无删除请求。"
+    },
+    "plans": {
+      "heading": "套餐目录",
+      "description": "sai_platform 中的套餐、价格、配额以及使用它们的订阅数。",
+      "colName": "套餐",
+      "colMonthly": "月付",
+      "colYearly": "年付",
+      "colQuota": "配额",
+      "colState": "可见性",
+      "colSubscribers": "订阅",
+      "recommended": "推荐",
+      "contactOnly": "报价",
+      "quota": "{companies} 家公司 · {users} 个用户 · 试用 {trial} 天",
+      "inactive": "停用",
+      "public": "公开",
+      "hidden": "隐藏",
+      "unavailable": "暂时无法读取目录：sai_platform 无法访问。",
+      "readOnly": "只读。价格由 docs/PRICING.md 和 tests/pricing-ladder.test.ts 保护，并通过 bun run db:seed:plans 写入——在此编辑会使数据库与该文档不一致。"
     }
   },
   "docs": {

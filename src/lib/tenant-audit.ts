@@ -199,14 +199,22 @@ export async function readTenantAuditPage(
  * kendali 0003).
  */
 export async function readTenantAuditFeed(
-  filter: { tenantSlug?: string; actionPrefix?: string },
+  filter: { tenantSlug?: string; tenantId?: number; actionPrefix?: string },
   options: { limit?: number; skip?: number } = {}
 ): Promise<{ entries: TenantAuditEntry[]; total: number }> {
   const take = Math.min(500, Math.max(1, options.limit ?? 100));
   const skip = Math.max(0, options.skip ?? 0);
 
+  /* `tenantId` didahulukan bila ada: slug bisa BERGANTI (#458), dan setiap
+     entri menyalin slug yang berlaku SAAT ia ditulis — menyaring dengan slug
+     sekarang menyembunyikan seluruh riwayat sebelum penggantian. Slug tetap
+     satu-satunya pegangan untuk tenant yang barisnya sudah TIDAK ada. */
   const where = {
-    ...(filter.tenantSlug ? { tenantSlug: filter.tenantSlug } : {}),
+    ...(filter.tenantId !== undefined
+      ? { tenantId: filter.tenantId }
+      : filter.tenantSlug
+        ? { tenantSlug: filter.tenantSlug }
+        : {}),
     ...(filter.actionPrefix ? { action: { startsWith: filter.actionPrefix } } : {}),
   };
   const [rows, total] = await Promise.all([

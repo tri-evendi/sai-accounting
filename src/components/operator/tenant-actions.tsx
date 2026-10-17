@@ -96,8 +96,11 @@ import {
   type DeletionExecuteFormInput,
   type ManualPaymentFormInput,
   type SuspensionFormInput,
+  slugRenameSchema,
+  type SlugRenameFormInput,
 } from "@/lib/validations/operator";
 import type { OperatorActionResult } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
+import { operatorRenameTenantSlug } from "@/app/(app)/(operator)/operator/tenants/[id]/slug-actions";
 import {
   operatorChangePlan,
   operatorExecuteDeletion,
@@ -1254,6 +1257,77 @@ function DeletionPanel({
 
 /* ══ Rangkaian panel ═══════════════════════════════════════════════════════ */
 
+/* ══ 3a. Ganti alamat (slug) akun ══════════════════════════════════════════ */
+
+function SlugPanel({ tenantId, tenantSlug }: { tenantId: number; tenantSlug: string }) {
+  const t = useT();
+  const { token } = theme.useToken();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [result, setResult] = useState<OperatorActionResult | null>(null);
+
+  const form = useForm<SlugRenameFormInput>({
+    resolver: zodResolver(slugRenameSchema) as Resolver<SlugRenameFormInput>,
+    defaultValues: { tenantId, slugBaru: "", reason: "" },
+  });
+
+  async function runAction(values: SlugRenameFormInput) {
+    const res = await operatorRenameTenantSlug(values);
+    if (!res.ok) {
+      form.setError("root", { message: res.message });
+      return;
+    }
+    setResult(res);
+    setOpen(false);
+    form.reset({ tenantId, slugBaru: "", reason: "" });
+    router.refresh();
+  }
+
+  if (!open) {
+    return (
+      <Flex vertical gap={token.marginXS}>
+        <ResultNotice result={result} />
+        <Button variant="secondary" size="sm" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(true)}>
+          {t("operator.slug.open")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(runAction)} noValidate>
+        <Flex vertical gap={token.marginSM}>
+          <p style={noticeBox(token)}>{t("operator.slug.explain", { slug: tenantSlug })}</p>
+          <FormField
+            control={form.control}
+            name="slugBaru"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("operator.slug.newLabel")}</FormLabel>
+                <FormControl>
+                  <TextInput autoComplete="off" spellCheck={false} {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <ReasonField control={form.control} />
+          <RootError message={form.formState.errors.root?.message} />
+          <Flex gap={token.marginXS}>
+            <Button type="submit" variant="primary" size="sm" disabled={form.formState.isSubmitting}>
+              {t("operator.slug.submit")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+          </Flex>
+        </Flex>
+      </form>
+    </Form>
+  );
+}
+
 export function TenantActions(props: TenantActionsProps) {
   const t = useT();
   const { token } = theme.useToken();
@@ -1356,6 +1430,16 @@ export function TenantActions(props: TenantActionsProps) {
               billingMode={props.billingMode}
               paymentRailReady={props.paymentRailReady}
             />
+          </ActionPanel>
+        )}
+
+        {props.allowed.lifecycle && (
+          <ActionPanel
+            icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.slug.title")}
+            description={t("operator.slug.description")}
+          >
+            <SlugPanel tenantId={props.tenantId} tenantSlug={props.tenantSlug} />
           </ActionPanel>
         )}
 

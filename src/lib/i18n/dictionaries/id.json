@@ -4569,7 +4569,10 @@
       "groupSystem": "Sistem",
       "conformance": "Kesesuaian Data",
       "backups": "Cadangan",
-      "accounts": "Akun"
+      "accounts": "Akun",
+      "deletions": "Permintaan hapus",
+      "plans": "Katalog paket",
+      "efaktur": "e-Faktur platform"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -5157,6 +5160,65 @@
       "errInvitation": "Undangan tidak ditemukan, sudah dipakai, atau bukan milik tenant ini.",
       "errInvitationHasAccount": "Alamat itu kini sudah punya akun — undangan tidak dikirim ulang. Bila ia belum punya akses PT, tambahkan lewat halaman tim pelanggan.",
       "errInvitationOutcome": "Undangan tidak diterbitkan ulang ({outcome})."
+    },
+    "efaktur": {
+      "heading": "e-Faktur Tagihan Platform",
+      "description": "Ekspor CSV e-Faktur untuk tagihan langganan SAI yang sudah lunas — sama dengan bun run efaktur:platform, kini dari layar.",
+      "sellerMissing": "PLATFORM_SELLER_NPWP belum diset: setiap baris akan kehilangan NPWP penjual.",
+      "from": "Dari tanggal",
+      "to": "Sampai tanggal",
+      "preview": "Pratinjau",
+      "unavailable": "Pratinjau belum bisa dibaca: sai_platform tak terjangkau.",
+      "summary": "{rows} baris siap · {problems} tagihan tidak ikut",
+      "download": "Unduh CSV",
+      "note": "Berkas UTF-8 dengan BOM, konvensi ekspor e-Faktur pelanggan. Setiap unduhan tercatat di jejak operator.",
+      "noProblems": "Semua tagihan lunas di periode ini lengkap kolom wajibnya.",
+      "missing": "kolom kosong"
+    },
+    "slug": {
+      "title": "Ganti alamat akun",
+      "description": "Slug di alamat /t/<slug>/… — pagar yang sama dengan panel pelanggan: slug lama dipesan selamanya dan dipantulkan, jeda 30 hari berlaku.",
+      "open": "Ganti alamat",
+      "explain": "Alamat sekarang: {slug}. Tautan lama tetap sampai lewat pantulan permanen; nama basis data tidak berubah.",
+      "newLabel": "Slug baru",
+      "submit": "Ganti alamat",
+      "changed": "Alamat akun berganti: {from} → {to}.",
+      "errShape": "Slug hanya huruf kecil, angka, dan tanda hubung, tanpa tanda hubung di ujung.",
+      "errReserved": "Slug itu dicadangkan sistem.",
+      "errSame": "Itu slug yang sedang dipakai.",
+      "errTaken": "Slug itu sudah dipakai — sekarang atau dulu — oleh akun lain atau akun ini sendiri.",
+      "errTooSoon": "Alamat akun ini baru saja diganti; jeda 30 hari berlaku juga untuk operator."
+    },
+    "deletions": {
+      "heading": "Permintaan Penghapusan Akun",
+      "description": "Semua permintaan penghapusan (UU PDP), terbaru dulu. {ready} siap dieksekusi — eksekusinya di halaman tenant, dengan ketik-ulang slug.",
+      "colStatus": "Keadaan",
+      "colRequested": "Diminta",
+      "colGrace": "Tenggang berakhir",
+      "colRetention": "Retensi sampai",
+      "executed": "Dieksekusi",
+      "cancelled": "Dibatalkan pemilik",
+      "ready": "Siap dieksekusi",
+      "grace": "Masa tenggang",
+      "empty": "Belum pernah ada permintaan penghapusan."
+    },
+    "plans": {
+      "heading": "Katalog Paket",
+      "description": "Paket yang ada di sai_platform, harganya, kuotanya, dan berapa langganan yang memakainya.",
+      "colName": "Paket",
+      "colMonthly": "Bulanan",
+      "colYearly": "Tahunan",
+      "colQuota": "Kuota",
+      "colState": "Tampil",
+      "colSubscribers": "Langganan",
+      "recommended": "Dianjurkan",
+      "contactOnly": "Lewat penawaran",
+      "quota": "{companies} PT · {users} pengguna · uji coba {trial} hari",
+      "inactive": "Nonaktif",
+      "public": "Publik",
+      "hidden": "Tersembunyi",
+      "unavailable": "Katalog belum bisa dibaca: sai_platform tak terjangkau.",
+      "readOnly": "Hanya-baca. Harga dijaga docs/PRICING.md dan tests/pricing-ladder.test.ts, ditulis lewat bun run db:seed:plans — menyunting di sini akan membuat basis data dan dokumen itu menyimpang."
     }
   },
   "docs": {

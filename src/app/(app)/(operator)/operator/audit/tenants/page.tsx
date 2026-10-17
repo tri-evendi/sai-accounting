@@ -25,7 +25,7 @@ import { Select } from "@/components/ui/select";
 import { ConsolePanel } from "@/components/operator/console-ui";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { tenantIdsBySlug } from "@/lib/operator/store";
+import { tenantIdForAnySlug, tenantIdsBySlug } from "@/lib/operator/store";
 import { readTenantAuditFeed } from "@/lib/tenant-audit";
 import { TENANT_AUDIT_GROUPS } from "@/lib/operator/audit-groups";
 import { getT } from "@/lib/i18n/server";
@@ -51,8 +51,15 @@ export default async function OperatorTenantAuditPage({
     : "";
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
 
+  /* Slug apa pun yang pernah dipakai tenant itu → id-nya, supaya riwayat
+     sebelum slug berganti ikut terbaca. Tidak dikenal → saring per slug yang
+     disalin di jejak (tenant yang sudah dihapus). */
+  const tenantId = tenant ? await tenantIdForAnySlug(tenant) : null;
   const { entries, total } = await readTenantAuditFeed(
-    { tenantSlug: tenant || undefined, actionPrefix: group || undefined },
+    {
+      ...(tenantId !== null ? { tenantId } : { tenantSlug: tenant || undefined }),
+      actionPrefix: group || undefined,
+    },
     { limit: PER_HALAMAN, skip: (page - 1) * PER_HALAMAN }
   );
   const ids = await tenantIdsBySlug(entries.map((e) => e.tenantSlug));

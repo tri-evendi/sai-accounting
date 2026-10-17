@@ -861,3 +861,94 @@ export async function tenantIdsBySlug(slugs: string[]): Promise<Map<string, numb
   });
   return new Map(rows.map((r) => [r.slug, r.id]));
 }
+
+/* ───────────────────────── Perpanjangan mendatang ──────────────────────── */
+
+/** Jendela pengingat perpanjangan — H-60 (`docs/KOMERSIALISASI.md` §6.3, §7 langkah 9). */
+export const RENEWAL_WINDOW_DAYS = 60;
+
+export interface UpcomingRenewal {
+  subscriptionId: number;
+  tenantId: number;
+  tenantName: string | null;
+  tenantSlug: string | null;
+  planName: string;
+  status: string;
+  billingCycle: string;
+  billingMode: string;
+  price: string;
+  currency: string;
+  currentPeriodEnd: Date;
+  daysLeft: number;
+}
+
+/**
+ * Langganan BERBAYAR yang periodenya berakhir dalam `days` hari ke depan —
+ * daftar kerja pengingat perpanjangan H-60, yang di Fase B dikerjakan MANUSIA
+ * (`KOMERSIALISASI.md` §7 langkah 9).
+ *
+ * Ada karena penagihan PERPANJANGAN belum ada di kode mana pun (§11): tidak ada
+ * yang menerbitkan tagihan periode berikutnya, mode `auto` pun tidak. Tanpa
+ * daftar ini, akhir periode sebuah langganan berlalu tanpa satu pun tanda —
+ * pelanggan memakai produk gratis dan tidak ada yang tahu sejak kapan.
+ *
+ * Hanya `active` dan `past_due`: `trialing` punya jalurnya sendiri (tagihan
+ * pertama saat uji coba habis), `suspended`/`cancelled` tidak diperpanjang.
+ * Yang SUDAH lewat ikut tampil (daysLeft negatif): itu justru yang paling
+ * terlambat.
+ *
+ * `null` = platform tak terjangkau.
+ */
+export async function upcomingRenewalsForOperator(
+  days = RENEWAL_WINDOW_DAYS,
+  now: Date = new Date(),
+  deps: { control: ControlClient; platform: PlatformClient } = {
+    control: controlDb,
+    platform: platformDb,
+  }
+): Promise<UpcomingRenewal[] | null> {
+  const batas = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  let subs;
+  try {
+    subs = await deps.platform.subscription.findMany({
+      where: { status: { in: ["active", "past_due"] }, currentPeriodEnd: { lte: batas } },
+      orderBy: { currentPeriodEnd: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        tenantId: true,
+        status: true,
+        billingCycle: true,
+        billingMode: true,
+        price: true,
+        currency: true,
+        currentPeriodEnd: true,
+        plan: { select: { name: true } },
+      },
+    });
+  } catch (error) {
+    console.error("[operator-store] perpanjangan mendatang tak terbaca:", error);
+    return null;
+  }
+
+  const tenants = await deps.control.tenant.findMany({
+    where: { id: { in: [...new Set(subs.map((s) => s.tenantId))] } },
+    select: { id: true, name: true, slug: true },
+  });
+  const byId = new Map(tenants.map((t) => [t.id, t]));
+
+  return subs.map((s) => ({
+    subscriptionId: s.id,
+    tenantId: s.tenantId,
+    tenantName: byId.get(s.tenantId)?.name ?? null,
+    tenantSlug: byId.get(s.tenantId)?.slug ?? null,
+    planName: s.plan.name,
+    status: s.status,
+    billingCycle: s.billingCycle,
+    billingMode: s.billingMode,
+    price: s.price.toString(),
+    currency: s.currency,
+    currentPeriodEnd: s.currentPeriodEnd,
+    daysLeft: Math.floor((s.currentPeriodEnd.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
+  }));
+}

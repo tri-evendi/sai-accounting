@@ -79,10 +79,17 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { attentionItems, type AttentionItem } from "@/lib/operator/attention";
-import { operatorOverview, type OperatorOverview, tenantStatusVariant } from "@/lib/operator/store";
+import {
+  operatorOverview,
+  type OperatorOverview,
+  tenantStatusVariant,
+  upcomingRenewalsForOperator,
+  RENEWAL_WINDOW_DAYS,
+  type UpcomingRenewal,
+} from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@/lib/money-format";
 import { formatDateMedium as formatDate, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -172,7 +179,10 @@ const ATTENTION_ROW: React.CSSProperties = {
 export default async function OperatorOverviewPage() {
   await requireOperatorPage();
   const t = await getT();
-  const { control, revenue, platform } = await operatorOverview();
+  const [{ control, revenue, platform }, renewals] = await Promise.all([
+    operatorOverview(),
+    upcomingRenewalsForOperator(),
+  ]);
   const perluDitangani = attentionItems({ control, platform });
 
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
@@ -220,6 +230,67 @@ export default async function OperatorOverviewPage() {
           {formatDate(row.createdAt)}
         </span>
       ),
+    },
+  ];
+
+  const renewalColumns: SaiColumns<UpcomingRenewal> = [
+    {
+      key: "tenant",
+      title: t("operator.tenants.colName"),
+      align: "left",
+      render: (_v, r) => (
+        <Link
+          href={`/operator/tenants/${r.tenantId}`}
+          style={{ color: "var(--ant-color-link)", fontWeight: 500 }}
+        >
+          {r.tenantName ?? `#${r.tenantId}`}
+        </Link>
+      ),
+    },
+    {
+      key: "plan",
+      title: t("operator.renewals.colPlan"),
+      align: "left",
+      render: (_v, r) => (
+        <span>
+          {r.planName}
+          <span style={CONSOLE_MUTED}>
+            {" · "}
+            {r.billingCycle === "yearly" ? t("operator.tenant.cycleYearly") : t("operator.tenant.cycleMonthly")}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "price",
+      title: t("operator.renewals.colPrice"),
+      align: "right",
+      render: (_v, r) => (
+        <span style={{ fontVariantNumeric: "tabular-nums" }}>
+          {formatMoney(Number(r.price), r.currency as CurrencyCode)}
+        </span>
+      ),
+    },
+    {
+      key: "end",
+      title: t("operator.renewals.colEnd"),
+      align: "left",
+      render: (_v, r) => (
+        <span style={{ whiteSpace: "nowrap" }}>
+          {formatDate(r.currentPeriodEnd)}{" "}
+          {r.daysLeft < 0 ? (
+            <Badge variant="danger">{t("operator.renewals.overdue", { days: -r.daysLeft })}</Badge>
+          ) : (
+            <span style={CONSOLE_MUTED}>({t("operator.renewals.daysLeft", { days: r.daysLeft })})</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: "mode",
+      title: t("operator.renewals.colMode"),
+      align: "left",
+      render: (_v, r) => <span style={CONSOLE_MUTED}>{r.billingMode}</span>,
     },
   ];
 
@@ -315,6 +386,31 @@ export default async function OperatorOverviewPage() {
             })
           )}
         </ConsolePanel>
+
+        {/* ══ 1b. PERPANJANGAN H-60 ═════════════════════════════════════════
+            Penagihan PERPANJANGAN belum ada di kode mana pun (KOMERSIALISASI
+            §11) — tidak ada mode, termasuk `auto`, yang menerbitkan tagihan
+            periode berikutnya. Daftar ini pengingat MANUSIA (§7 langkah 9). */}
+        {renewals === null ? (
+          <ConsoleNotice>{t("operator.renewals.unavailable")}</ConsoleNotice>
+        ) : (
+          <ConsolePanel
+            title={t("operator.renewals.heading", { days: RENEWAL_WINDOW_DAYS, count: renewals.length })}
+            description={t("operator.renewals.description")}
+            flush
+          >
+            <StaticTable
+              columns={renewalColumns}
+              rows={renewals}
+              rowKey={(r) => r.subscriptionId}
+              empty={
+                <p style={{ ...CONSOLE_MUTED, padding: "var(--ant-padding-lg)" }}>
+                  {t("operator.renewals.empty", { days: RENEWAL_WINDOW_DAYS })}
+                </p>
+              }
+            />
+          </ConsolePanel>
+        )}
 
         {/* ══ 2. PENDAPATAN (§8) ══════════════════════════════════════════
             Definisi setiap angkanya di `lib/platform-revenue.ts`. */}

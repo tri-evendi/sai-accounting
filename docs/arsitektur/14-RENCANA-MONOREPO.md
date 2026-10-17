@@ -10,6 +10,11 @@
 > **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
 > Penyebut lama ikut menghitung `src/generated/`. Putusannya tidak berubah.
 >
+> **Pengukuran ulang 17 Okt 2026 (sore), sesudah 10 fitur konsol:**
+> **7,8 %** — 58 berkas / 14.403 baris dari 873 / 185.147 (penyebut yang sama:
+> `src/` + `packages/` tanpa `src/generated/`). Naik 2,2 poin dalam sehari;
+> pemicu §6 (15 %) belum, tetapi kecepatannya kini terlihat.
+>
 > **Diukur:** 15 Oktober 2026, di produksi. Setiap angka di dokumen ini adalah
 > **potret bertanggal** — ia akan bergerak.
 >
@@ -378,7 +383,7 @@ Semuanya dapat diamati. Satu saja cukup.
 | **Kewajiban kepatuhan** yang menuntut binari operator tidak memuat data/kode penyewa | Manfaat 1 berhenti menjadi "lebih baik" dan menjadi **syarat**. |
 | **Deployable operator ketiga** (mis. halaman status publik, portal audit) | Biaya *package* terbayar oleh tiga konsumen, bukan dua. |
 | **Dua tim menggelar dengan irama berbeda** | Hari ini satu orang menggelar keduanya; biaya 3 ditanggung oleh orang yang sama yang tahu konteksnya. Dua tim mematahkan asumsi itu. |
-| **Porsi operator melewati ~15 % kode** | Pada 5,6 % (17 Okt 2026; potret 15 Okt menulis 2,9 % karena salah penyebut, lihat §1) pemisahan memindahkan sedikit sekali. Pada 15 % ia memindahkan sesuatu yang nyata. |
+| **Porsi operator melewati ~15 % kode** | Pada 7,8 % (17 Okt 2026 sore; 5,6 % pagi harinya, potret 15 Okt menulis 2,9 % karena salah penyebut, lihat §1) pemisahan memindahkan sedikit sekali. Pada 15 % ia memindahkan sesuatu yang nyata. |
 | **Waktu build melewati ~20 menit** | Sudah menyakitkan dengan satu aplikasi; dua aplikasi yang bisa dibangun **paralel** mulai menang, bukan kalah. |
 
 **Yang BUKAN pemicu:** "monorepo itu praktik yang baik". Ia bukan praktik, ia

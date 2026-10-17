@@ -4851,7 +4851,7 @@
         "willHeading": "What happens on execution",
         "willCancel": "The tenant becomes cancelled; all companies are deactivated; all memberships and sessions are revoked.",
         "willAnonymize": "PERSONAL data is anonymised (privacy law): email, name and username are replaced; passwords are scrambled.",
-        "willRetention": "The retention deadline is computed and recorded: 10 years from the youngest journal entry.",
+        "willRetention": "The retention deadline is computed and recorded: 10 years from the youngest journal entry or from the execution date, whichever is later.",
         "keptHeading": "What is NOT deleted — and why",
         "keptBody": "The ledgers and bookkeeping records are not touched — not one byte: tax law requires 10 years of retention. What is anonymised is personal data, not the bookkeeping. Destroying the books is a second gate (CLI, --drop-ledgers) that only opens after the retention period has passed.",
         "confirmLabel": "Retype the tenant slug",
@@ -4860,6 +4860,7 @@
         "confirmTitle": "Execute the deletion now?",
         "confirmBody": "Tenant {slug} will be cancelled, every company deactivated, and its personal data anonymised — this cannot be undone. The ledgers stay stored for the statutory retention period.",
         "success": "Execution complete: {companies} companies deactivated, {users} accounts anonymised. Books retained until {date}.",
+        "unreadableBooks": "Books {books} could not be read: their retention anchor was taken from today, not from their youngest journal entry. Recorded in the audit trail; check the database connection.",
         "errGrace": "Refused: the grace period has not passed (until {date}).",
         "errNoRequest": "Refused: there is no pending deletion request.",
         "errConfirm": "The typed slug does not match — read again which tenant is being deleted."

@@ -375,6 +375,12 @@ export async function operatorExecuteDeletion(input: unknown): Promise<OperatorA
             result.retentionUntil
           ),
         }),
+        warning:
+          result.unreadableBooks.length > 0
+            ? t("operator.actions.deletion.unreadableBooks", {
+                books: result.unreadableBooks.join(", "),
+              })
+            : null,
       };
     case "grace_active":
       return {

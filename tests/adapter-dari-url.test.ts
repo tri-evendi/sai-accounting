@@ -104,6 +104,27 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
     ).toEqual([]);
   });
 
+  it("driver `mariadb` mentah hanya di db-server.ts (+ dua alat migrasi data)", () => {
+    /* Bentuk ketiga dari cacat yang sama, dan yang paling senyap: tanpa Prisma
+       sama sekali. `makeLatestJournalDateReader` memaku `createPool` milik
+       `mariadb`; sesudah penukaran setiap pembacaan gagal tersambung, galatnya
+       ditelan, dan jangkar retensi hapus-tenant jatuh ke hari ini (#636).
+       Kedua alat `pg-*` memang membaca MariaDB: itu tugasnya, dan keduanya
+       ikut dicabut di Fase E. */
+    const BOLEH = [
+      "src/lib/db-server.ts",
+      "scripts/pg-migrate-data.ts",
+      "scripts/pg-prove-parity.ts",
+    ];
+    const pelanggar = semua.filter(
+      (f) => !BOLEH.includes(f) && /from\s+["']mariadb["']|require\(\s*["']mariadb["']/.test(tanpaKomentar(f))
+    );
+    expect(
+      pelanggar,
+      "Driver per mesin MEMAKU mesinnya. Pakai `bukaBasisData(url, nama)` dari `src/lib/db-server.ts`."
+    ).toEqual([]);
+  });
+
   it("pabriknya sendiri memilih dari MESIN, bukan dari sakelar env", () => {
     const isi = readFileSync(join(AKAR, PABRIK), "utf8");
     expect(isi).toMatch(/uraikanUrl/);

@@ -205,6 +205,12 @@ async function main() {
       console.log("  tenant → cancelled; PT nonaktif; akses & sesi seluruh akun dicabut;");
       console.log("  data pribadi dianonimkan; buku besar TETAP tersimpan.");
       console.log(`  retention_until = ${result.retentionUntil.toISOString()}`);
+      if (result.unreadableBooks.length > 0) {
+        console.warn(
+          `  ⚠ buku tak terbaca: ${result.unreadableBooks.join(", ")} — jangkar retensinya ` +
+            "jatuh ke hari ini (tercatat di jejak audit)."
+        );
+      }
       console.log(
         "  Penghancuran buku baru bisa SETELAH tanggal itu:\n" +
           `    bunx tsx scripts/execute-tenant-deletion.ts --tenant ${slug} --confirm ${slug} --drop-ledgers`

@@ -4851,7 +4851,7 @@
         "willHeading": "Yang terjadi saat eksekusi",
         "willCancel": "Tenant menjadi berhenti; seluruh PT dinonaktifkan; semua keanggotaan dan sesi dicabut.",
         "willAnonymize": "Data PRIBADI dianonimkan (UU PDP): email, nama, dan nama pengguna diganti; kata sandi diacak.",
-        "willRetention": "Batas retensi dihitung dan dicatat: 10 tahun sejak entri jurnal termuda.",
+        "willRetention": "Batas retensi dihitung dan dicatat: 10 tahun sejak entri jurnal termuda atau sejak hari eksekusi, mana yang lebih lambat.",
         "keptHeading": "Yang TIDAK dihapus — dan alasannya",
         "keptBody": "Buku besar dan catatan pembukuan TIDAK disentuh satu byte pun: UU KUP mewajibkan penyimpanan 10 tahun. Yang dianonimkan adalah data pribadi, bukan pembukuan. Penghancuran buku adalah gerbang kedua (CLI, --drop-ledgers) yang baru terbuka setelah masa retensi lewat.",
         "confirmLabel": "Ketik ulang slug tenant",
@@ -4860,6 +4860,7 @@
         "confirmTitle": "Eksekusi penghapusan sekarang?",
         "confirmBody": "Tenant {slug} akan menjadi berhenti, seluruh PT dinonaktifkan, dan data pribadinya dianonimkan — tidak bisa dibatalkan. Buku besar tetap tersimpan sesuai retensi UU KUP.",
         "success": "Eksekusi selesai: {companies} PT dinonaktifkan, {users} akun dianonimkan. Buku tersimpan sampai {date}.",
+        "unreadableBooks": "Buku {books} tidak terbaca: jangkar retensinya dihitung dari hari ini, bukan dari jurnal termudanya. Tercatat di jejak audit; periksa koneksi basis datanya.",
         "errGrace": "Ditolak: masa tenggang belum lewat (sampai {date}).",
         "errNoRequest": "Ditolak: tidak ada permintaan penghapusan pending.",
         "errConfirm": "Slug yang diketik tidak cocok — baca lagi tenant mana yang sedang dihapus."

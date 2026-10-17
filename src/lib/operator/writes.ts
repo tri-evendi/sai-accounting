@@ -34,7 +34,6 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { createPool } from "mariadb";
 
 import type { PrismaClient as ControlClient } from "@/generated/control/client";
 import { processPaymentNotification } from "@/lib/payment-webhook";
@@ -52,6 +51,7 @@ import {
   retentionUntilFrom,
 } from "@/lib/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { bukaBasisData } from "@/lib/db-server";
 import {
   auditActor,
   planChangeApplier,
@@ -272,6 +272,9 @@ export type DeletionExecutionResult =
       retentionUntil: Date;
       companiesDeactivated: number;
       usersAnonymized: number;
+      /** Slug PT yang bukunya tak terbaca: jangkar retensinya jatuh ke hari
+       *  ini. Kosong pada keadaan normal. */
+      unreadableBooks: string[];
     }
   | { outcome: "tenant_not_found" }
   /** Tidak ada permintaan `pending` — penghapusan HANYA atas permintaan
@@ -295,9 +298,16 @@ export type DeletionExecutionResult =
  * CLI bergerbang bukti adalah gesekan yang memang diinginkan.
  *
  * `latestJournalDate` disuntikkan: jangkar retensi dibaca dari buku, dan
- * PEMBACANYA berbeda per lingkungan (pool mariadb di skrip/konsol, fake di
- * tes). Buku tak terjangkau TIDAK menggagalkan eksekusi — jangkar jatuh ke
+ * PEMBACANYA berbeda per lingkungan (`makeLatestJournalDateReader` di
+ * skrip/konsol, fake di tes). Pembaca memulangkan `null` untuk buku tanpa
+ * jurnal dan MELEMPAR untuk buku yang tak terjangkau.
+ *
+ * Buku tak terjangkau TIDAK menggagalkan eksekusi — jangkar jatuh ke
  * "sekarang" (arah konservatif: menyimpan lebih lama selalu bisa diperbaiki).
+ * Tetapi ia TIDAK LAGI senyap: namanya masuk `unreadableBooks` di hasil DAN di
+ * jejak audit. Sampai Okt 2026 pembacanya memakai driver MariaDB terhadap
+ * PostgreSQL, sehingga SETIAP buku gagal terbaca, dan satu-satunya bekasnya
+ * adalah baris `console.warn` yang tidak dibaca siapa pun (#636).
  */
 export async function executeTenantDeletion(
   /* Sengaja HANYA kendali (+ pembaca buku): eksekusi ini tidak menyentuh
@@ -349,8 +359,18 @@ export async function executeTenantDeletion(
 
   /* Jangkar retensi UU KUP: entri jurnal TERMUDA di seluruh bukunya. */
   let latest: Date | null = null;
+  const unreadableBooks: string[] = [];
   for (const company of companies) {
-    const d = await deps.latestJournalDate(company.databaseName);
+    let d: Date | null;
+    try {
+      d = await deps.latestJournalDate(company.databaseName);
+    } catch (error) {
+      console.warn(
+        `[operator-writes] buku ${company.databaseName} tak terbaca (${String(error)}) — jangkar retensi jatuh ke hari ini`
+      );
+      unreadableBooks.push(company.slug);
+      continue;
+    }
     if (d && (!latest || d.getTime() > latest.getTime())) latest = d;
   }
   const retentionUntil = retentionUntilFrom(latest, now);
@@ -396,6 +416,9 @@ export async function executeTenantDeletion(
       companies: companies.map((c) => c.slug),
       users: users.length,
       retentionUntil: retentionUntil.toISOString(),
+      /* Kosong = jangkar dibaca dari SEMUA buku. Berisi = jangkar buku itu
+         jatuh ke hari ini; jejaknya menyatakan itu, bukan menyembunyikannya. */
+      unreadableBooks,
     },
   });
 
@@ -405,41 +428,32 @@ export async function executeTenantDeletion(
     retentionUntil,
     companiesDeactivated: companies.length,
     usersAnonymized: users.length,
+    unreadableBooks,
   };
 }
 
 /**
  * Pembaca `MAX(journals.date)` sebuah buku — jangkar retensi UU KUP, dipakai
  * `executeTenantDeletion` lewat injeksi (kredensialnya dari
- * `CONTROL_DATABASE_URL`, pola skrip #142). Buku tak terjangkau → `null` +
- * peringatan log: retensi jatuh ke jangkar paling konservatif (sekarang),
- * TIDAK menggagalkan eksekusi.
+ * `CONTROL_DATABASE_URL`, pola skrip #142).
+ *
+ * Mesinnya diputuskan URL lewat `db-server.ts`, bukan dipaku di sini. Versi
+ * sebelumnya memaku `createPool` milik `mariadb`; sesudah penukaran ke
+ * PostgreSQL (15 Okt 2026) setiap pembacaan gagal tersambung dan jangkarnya
+ * diam-diam jatuh ke hari ini (#636).
+ *
+ * Buku tanpa jurnal → `null`. Buku tak terjangkau → MELEMPAR; pemanggil yang
+ * memutuskan jatuh ke mana dan mencatatnya.
  */
 export function makeLatestJournalDateReader(
   controlUrl: string
 ): (databaseName: string) => Promise<Date | null> {
-  const url = new URL(controlUrl);
   return async (databaseName) => {
-    const pool = createPool({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: databaseName,
-      connectionLimit: 1,
-    });
+    const db = await bukaBasisData(controlUrl, databaseName);
     try {
-      const rows = (await pool.query("SELECT MAX(`date`) AS latest FROM journals")) as {
-        latest: Date | null;
-      }[];
-      return rows[0]?.latest ?? null;
-    } catch (error) {
-      console.warn(
-        `[operator-writes] buku ${databaseName} tak terbaca (${String(error)}) — jangkar retensi jatuh ke hari ini`
-      );
-      return null;
+      return await db.jurnalTermuda();
     } finally {
-      await pool.end();
+      await db.tutup();
     }
   };
 }

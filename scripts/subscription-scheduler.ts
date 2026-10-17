@@ -43,7 +43,7 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import {
   GRACE_PERIOD_DAYS,
@@ -63,7 +63,7 @@ import { ppnEnabledFrom, readSiteSettingsRow } from "../src/lib/site-settings-co
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "../src/lib/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
-import { mesinKendali } from "../src/lib/db-engine-runtime";
+import { mesinKendali } from "@sai/db/engine-runtime";
 import { resolvePaymentGateway } from "../src/lib/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */

@@ -2,9 +2,10 @@
 
 > **Status:** asesmen + rencana. **Fase 0 SELESAI 17 Okt 2026** (§4): arah
 > dependensi kini ditegakkan `tests/operator-dependency-direction.test.ts`, dan
-> dua penyeberangan dibereskan. **Fase 1–4 belum dikerjakan, dan
-> rekomendasinya: jangan dikerjakan sekarang.** Rencananya ditulis lengkap
-> supaya ia siap pada hari pemicunya muncul, bukan supaya ia dikerjakan hari ini.
+> dua penyeberangan dibereskan. **Fase 1a SELESAI 17 Okt 2026** atas
+> permintaan pemilik (§5): workspace bun + `packages/db` (`@sai/db`). Fase 1b
+> (skema + klien hasil bangkitan) dan Fase 2–4 belum. Timbangan di §2 tidak
+> berubah; yang berubah adalah keputusannya, yang memang milik pemilik.
 >
 > **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
 > Penyebut lama ikut menghitung `src/generated/`. Putusannya tidak berubah.
@@ -297,6 +298,29 @@ pindahkan `src/lib/db-*` + skema Prisma ke `packages/db`. Aplikasi tetap
   `tests/adapter-dari-url.test.ts`: pabrik adapter wajib memakai impor relatif).
   Setiap skrip harus dijalankan sungguhan, bukan hanya di-`tsc`.
 - **Bisa berhenti di sini?** Ya, dan hasilnya tetap perbaikan.
+
+#### Fase 1a — ✅ SELESAI 17 Okt 2026
+
+| Apa | Hasil |
+|---|---|
+| `workspaces: ["packages/*"]` di `package.json` | bun membuat symlink `node_modules/@sai/db → packages/db` |
+| `src/lib/db-{engine,engine-runtime,adapter,server}.ts` | pindah ke `packages/db/src/{engine,engine-runtime,adapter,server}.ts`, diekspor sebagai subpath `@sai/db/<nama>` |
+| 40 pengimpor (28 skrip memakai `../src/lib/db-adapter`) | semuanya mengimpor `@sai/db/*` |
+| `next.config.ts` | `transpilePackages: ["@sai/db"]` (paketnya dikirim sebagai SUMBER TS, tanpa langkah build) |
+| `Dockerfile` tahap `deps` | menyalin `packages/db/package.json` sebelum `bun install --frozen-lockfile` |
+| Penjaga baru `tests/packages-mandiri.test.ts` | paket tidak boleh mengimpor `@/…` atau keluar lewat path relatif; tiap subpath `exports` menunjuk berkas yang ada; Dockerfile menyalin manifes SETIAP paket |
+
+Risiko utama di atas dibuktikan saat BERJALAN: keempat subpath dimuat oleh
+`tsx` dan oleh `bun` dari sebuah skrip di `scripts/`, bukan hanya oleh `tsc`.
+
+#### Fase 1b — belum: skema Prisma + klien hasil bangkitan
+
+Sengaja dipisah dari 1a. Klien hasil bangkitan (`src/generated/{prisma,control,platform}`)
+diimpor **76 berkas** lewat `@/generated/*`, dan path keluarannya dipaku di tiga
+`prisma*.config.ts`, di tahap `builder`/`migrator` Dockerfile, dan di
+`.dockerignore`. Memindahkan berkas skema SAJA tidak memberi apa-apa yang
+belum diberi 1a; memindahkan kliennya adalah gerakan sendiri dengan gerbang
+build image sendiri. `prisma/postgresql/**` tetap tidak pindah (lihat atas).
 
 ### Fase 2 — `packages/core` + `packages/ui` (≈ 5 hari)
 

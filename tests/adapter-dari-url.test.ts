@@ -44,7 +44,7 @@ function berkasTs(dir: string): string[] {
 }
 
 /** Satu-satunya berkas yang BOLEH menyebut adapter per mesin. */
-const PABRIK = "src/lib/db-adapter.ts";
+const PABRIK = "packages/db/src/adapter.ts";
 
 /**
  * Isi berkas TANPA komentar.
@@ -64,7 +64,7 @@ function tanpaKomentar(f: string): string {
 }
 
 describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
-  const semua = [...berkasTs("scripts"), ...berkasTs("src")];
+  const semua = [...berkasTs("scripts"), ...berkasTs("src"), ...berkasTs("packages")];
 
   it("ada berkas untuk diperiksa — penjaga atas tes ini sendiri", () => {
     expect(semua.length).toBeGreaterThan(50);
@@ -74,14 +74,14 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
   it.each([
     ["@prisma/adapter-mariadb", /@prisma\/adapter-mariadb/],
     ["@prisma/adapter-pg", /@prisma\/adapter-pg/],
-  ])("hanya db-adapter.ts yang mengimpor %s", (_nama, pola) => {
+  ])("hanya @sai/db/adapter yang mengimpor %s", (_nama, pola) => {
     const pelanggar = semua.filter(
       (f) => f !== PABRIK && pola.test(tanpaKomentar(f))
     );
     expect(
       pelanggar,
       "Impor adapter per mesin MEMAKU mesinnya. Pakai `buatAdapter(url, { batasKoneksi })` " +
-        "dari `src/lib/db-adapter.ts` — ia memilih adapter dari skema URL."
+        "dari `@sai/db/adapter` — ia memilih adapter dari skema URL."
     ).toEqual([]);
   });
 
@@ -100,11 +100,11 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
     );
     expect(
       pelanggar,
-      "Pakai `AdapterBasisData` dari `src/lib/db-adapter.ts` sebagai tipenya."
+      "Pakai `AdapterBasisData` dari `@sai/db/adapter` sebagai tipenya."
     ).toEqual([]);
   });
 
-  it("driver `mariadb` mentah hanya di db-server.ts (+ dua alat migrasi data)", () => {
+  it("driver `mariadb` mentah hanya di @sai/db/server (+ dua alat migrasi data)", () => {
     /* Bentuk ketiga dari cacat yang sama, dan yang paling senyap: tanpa Prisma
        sama sekali. `makeLatestJournalDateReader` memaku `createPool` milik
        `mariadb`; sesudah penukaran setiap pembacaan gagal tersambung, galatnya
@@ -112,7 +112,7 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
        Kedua alat `pg-*` memang membaca MariaDB: itu tugasnya, dan keduanya
        ikut dicabut di Fase E. */
     const BOLEH = [
-      "src/lib/db-server.ts",
+      "packages/db/src/server.ts",
       "scripts/pg-migrate-data.ts",
       "scripts/pg-prove-parity.ts",
     ];
@@ -121,7 +121,7 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
     );
     expect(
       pelanggar,
-      "Driver per mesin MEMAKU mesinnya. Pakai `bukaBasisData(url, nama)` dari `src/lib/db-server.ts`."
+      "Driver per mesin MEMAKU mesinnya. Pakai `bukaBasisData(url, nama)` dari `@sai/db/server`."
     ).toEqual([]);
   });
 
@@ -139,7 +139,7 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
        tidak selalu menyelesaikan alias tsconfig. Alias yang gagal di sana
        muncul saat BERJALAN, bukan saat `tsc`. */
     const isi = readFileSync(join(AKAR, PABRIK), "utf8");
-    expect(isi).toMatch(/from "\.\/db-engine"/);
-    expect(isi).not.toMatch(/from "@\/lib\/db-engine"/);
+    expect(isi).toMatch(/from "\.\/engine"/);
+    expect(isi).not.toMatch(/from "@\//);
   });
 });

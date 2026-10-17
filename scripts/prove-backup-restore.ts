@@ -40,7 +40,7 @@ import { copyFileSync, mkdtempSync, readdirSync, readFileSync, statSync } from "
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
 

@@ -28,7 +28,7 @@
  */
 
 import { PrismaClient } from "@/generated/prisma/client";
-import { buatAdapter } from "@/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 
 /** Berapa klien perusahaan boleh hidup bersamaan. */
 const POOL_MAX = Number(process.env.COMPANY_CLIENT_POOL_MAX) || 4;
@@ -139,7 +139,7 @@ export function getCompanyClient(databaseName: string): PrismaClient {
  *
  * ══ KENAPA INI ADA — ditemukan 12 Okt 2026 saat menguji PostgreSQL ═════════
  * PostgreSQL MENOLAK `DROP DATABASE` selama masih ada koneksi, jadi
- * `db-server.ts#hapus` memutus koneksi lain lebih dulu dengan
+ * `@sai/db/server#hapus` memutus koneksi lain lebih dulu dengan
  * `pg_terminate_backend`. Dan koneksi yang diputus dari sisi server membuat
  * klien `pg` memancarkan event `error` — yang kalau tidak ada yang
  * mendengarnya, MENJATUHKAN PROSESNYA.

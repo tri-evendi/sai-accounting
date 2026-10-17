@@ -5,7 +5,7 @@
  * Run: bunx tsx scripts/seed-coa.ts
  */
 import { PrismaClient } from "../src/generated/prisma/client";
-import { buatAdapter, type AdapterBasisData } from "../src/lib/db-adapter";
+import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { seedCoaForModules } from "../src/lib/coa-seeding";
 import { BUSINESS_MODULES, type BusinessModule } from "../src/lib/business-modules";
 

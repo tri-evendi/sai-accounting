@@ -49,10 +49,10 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 /* Driver `mariadb` TIDAK diimpor lagi di sini. Operasi tingkat server kini
-   hidup di `db-server.ts`, yang menjawab untuk KEDUA mesin — jadi berkas ini
+   hidup di `@sai/db/server`, yang menjawab untuk KEDUA mesin — jadi berkas ini
    tidak bisa lagi memegang SQL yang hanya benar di salah satunya. */
-import { bukaServer, bukaBasisData, ddlPembukuan, direktoriMigration } from "@/lib/db-server";
-import type { DbEngine } from "@/lib/db-engine";
+import { bukaServer, bukaBasisData, ddlPembukuan, direktoriMigration } from "@sai/db/server";
+import type { DbEngine } from "@sai/db/engine";
 
 import { controlDb } from "@/lib/control-db";
 import { invalidateCompany } from "@/lib/company-registry";
@@ -195,7 +195,7 @@ export async function provisionCompany(
   }
 
   const url = provisioningUrl();
-  /* Mesinnya diputuskan dari URL (`db-engine.ts`). Penyediaan tidak pernah tahu
+  /* Mesinnya diputuskan dari URL (`@sai/db/engine`). Penyediaan tidak pernah tahu
      mesin apa yang dipakainya, dan itu disengaja: satu pemanggil yang tahu akan
      segera punya cabang `if` yang kelak menyimpang dari yang lain. */
   const server = await bukaServer(url.toString());
@@ -235,7 +235,7 @@ export async function provisionCompany(
       try {
         /* Nama tidak bisa jadi parameter di mesin mana pun; keamanannya dari
            `assertSafeDatabaseName` di sini DAN pemeriksaan kedua di
-           `db-server.ts`. Sintaksis per mesin hidup di sana — penyediaan ini
+           `@sai/db/server`. Sintaksis per mesin hidup di sana — penyediaan ini
            tidak lagi menulis satu baris SQL pun. */
         await server.buat(databaseName);
       } catch (error) {

@@ -25,7 +25,7 @@
 
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/control/client.js";
-import { buatAdapter } from "../src/lib/db-adapter";
+import { buatAdapter } from "@sai/db/adapter";
 import { TENANT_ROLES, TENANT_ROLE_VALUES } from "../src/lib/constants";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

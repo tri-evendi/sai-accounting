@@ -51,7 +51,7 @@ import {
   retentionUntilFrom,
 } from "@/lib/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { bukaBasisData } from "@/lib/db-server";
+import { bukaBasisData } from "@sai/db/server";
 import {
   auditActor,
   planChangeApplier,
@@ -437,7 +437,7 @@ export async function executeTenantDeletion(
  * `executeTenantDeletion` lewat injeksi (kredensialnya dari
  * `CONTROL_DATABASE_URL`, pola skrip #142).
  *
- * Mesinnya diputuskan URL lewat `db-server.ts`, bukan dipaku di sini. Versi
+ * Mesinnya diputuskan URL lewat `@sai/db/server`, bukan dipaku di sini. Versi
  * sebelumnya memaku `createPool` milik `mariadb`; sesudah penukaran ke
  * PostgreSQL (15 Okt 2026) setiap pembacaan gagal tersambung dan jangkarnya
  * diam-diam jatuh ke hari ini (#636).

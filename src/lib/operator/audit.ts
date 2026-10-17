@@ -68,7 +68,10 @@ export type OperatorAuditAction =
   | "operator.account.revoke"
   | "operator.account.reset"
   /** Unduhan CSV e-Faktur tagihan platform — periode + jumlah baris. */
-  | "operator.efaktur.export";
+  | "operator.efaktur.export"
+  /** Pengumuman status dibuat / fasenya berpindah (migration platform 0004). */
+  | "operator.status.create"
+  | "operator.status.phase";
 
 export interface OperatorAuditEntry {
   id: string;

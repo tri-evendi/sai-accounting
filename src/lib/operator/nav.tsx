@@ -16,6 +16,7 @@
  */
 import {
   ClockCircleOutlined,
+  NotificationOutlined,
   AppstoreOutlined,
   DeleteOutlined,
   AuditOutlined,
@@ -107,6 +108,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/operator/conformance",
       label: t("operator.nav.conformance"),
       icon: <FileSearchOutlined style={UKURAN_IKON} />,
+    },
+    {
+      href: "/operator/status-notices",
+      label: t("operator.nav.statusNotices"),
+      icon: <NotificationOutlined style={UKURAN_IKON} />,
+      group: sistem,
     },
     {
       href: "/operator/backup",

@@ -30,6 +30,7 @@ import { LocaleProvider } from "@/lib/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { getTheme } from "@/lib/theme/server";
+import { StatusBanner } from "@/components/layout/status-banner";
 
 export async function generateMetadata(): Promise<Metadata> {
   const dictionary = await getDictionary(await getLocale());
@@ -62,6 +63,10 @@ export default async function RootLayout({
             satu query Prisma di root layout, yang ikut berjalan saat
             `next build` menghasilkan 49 halaman statis — padahal build
             memakai DATABASE_URL placeholder tanpa koneksi. */}
+        {/* Banner pengumuman status (migration platform 0004) — dibaca di
+            PERAMBAN lewat /api/status/notices, bukan di sini, dengan alasan
+            yang sama dengan identitas perusahaan di bawah. */}
+        <StatusBanner />
         <CompanyIdentityProvider>{children}</CompanyIdentityProvider>
       </LocaleProvider>
     </RootDocument>

@@ -4572,7 +4572,8 @@
       "accounts": "账户",
       "deletions": "删除请求",
       "plans": "套餐目录",
-      "efaktur": "平台 e-Faktur"
+      "efaktur": "平台 e-Faktur",
+      "statusNotices": "状态公告"
     },
     "attention": {
       "heading": "需要处理",
@@ -5219,6 +5220,40 @@
       "hidden": "隐藏",
       "unavailable": "暂时无法读取目录：sai_platform 无法访问。",
       "readOnly": "只读。价格由 docs/PRICING.md 和 tests/pricing-ladder.test.ts 保护，并通过 bun run db:seed:plans 写入——在此编辑会使数据库与该文档不一致。"
+    },
+    "statusNotices": {
+      "heading": "状态公告",
+      "description": "公布计划维护和事故。显示在 /status 上，如选择，也会作为横幅显示在整个应用中。",
+      "unavailable": "暂时无法读取公告：sai_platform 无法访问。",
+      "note": "语句由三语词典拼成——没有自由文本，因此任何语言的读者都能读到完整的句子。环境变量中的维护窗口（MAINTENANCE_FROM/UNTIL）仍然有效。",
+      "kindLabel": "类型",
+      "componentLabel": "组件",
+      "phaseLabel": "阶段",
+      "startsLabel": "开始",
+      "endsLabel": "结束（计划）",
+      "showInApp": "在应用中显示为横幅",
+      "previewLabel": "客户将看到的内容",
+      "create": "发布",
+      "empty": "过去 7 天内没有公告。",
+      "colNotice": "公告",
+      "colPhase": "阶段",
+      "colNext": "转到",
+      "inApp": "横幅 + /status",
+      "statusOnly": "仅 /status",
+      "created": "公告已发布。",
+      "updated": "公告阶段已更新。",
+      "errInvalid": "输入无效：请检查该类型的阶段，并确保结束时间晚于开始时间。",
+      "kind": {
+        "maintenance": "维护",
+        "incident": "事故"
+      },
+      "phase": {
+        "scheduled": "已计划",
+        "investigating": "调查中",
+        "identified": "已找到原因",
+        "monitoring": "监控中",
+        "resolved": "已解决"
+      }
     }
   },
   "docs": {
@@ -5423,5 +5458,27 @@
     "tooSoon": "网址刚刚更改过。30 天后可再次更改。",
     "nextChange": "可于 {date} 再次更改。",
     "submit": "更改网址"
+  },
+  "statusNotice": {
+    "regionLabel": "状态公告",
+    "details": "详情",
+    "incidentHeading": "故障",
+    "resolvedAt": "已于 {time} 恢复。",
+    "component": {
+      "application": "记账应用",
+      "billing": "订阅与计费",
+      "email": "邮件发送"
+    },
+    "maintenance": {
+      "scheduled": "{component} 计划维护：{from} 至 {until}。该时段内服务可能不可用。",
+      "monitoring": "{component} 的维护已完成；我们正在监控结果。",
+      "resolved": "{component} 的维护（{from} – {until}）已结束。"
+    },
+    "incident": {
+      "investigating": "我们正在调查自 {from} 起 {component} 的故障。",
+      "identified": "{component} 故障的原因已找到，正在修复。",
+      "monitoring": "{component} 故障的修复已部署；我们正在监控结果。",
+      "resolved": "始于 {from} 的 {component} 故障已解决。"
+    }
   }
 }

@@ -13,7 +13,7 @@
  */
 export const MIGRATION_TERAKHIR = {
   control: "0004_operator_accounts",
-  platform: "0003_subscription_events",
+  platform: "0004_status_notices",
   company: "0001_baseline",
 } as const;
 

@@ -26,6 +26,7 @@
 
 import { compare } from "bcrypt";
 import { verifyTotp } from "./totp";
+import type { OperatorRole } from "./roles";
 
 export interface OperatorAccount {
   name: string;
@@ -33,8 +34,34 @@ export interface OperatorAccount {
   totpSecret: string;
 }
 
+/**
+ * Akun BASIS DATA (migration kendali 0004) sebagaimana dibutuhkan verifikasi:
+ * rahasia TOTP sudah DIBUKA oleh pencarinya. `null` dari pencari = tidak ada,
+ * nonaktif, atau rahasianya tidak bisa dibuka — ketiganya ditolak seragam.
+ */
+export interface DbOperatorCredential {
+  id: number;
+  name: string;
+  role: OperatorRole;
+  passwordHash: string;
+  totpSecret: string;
+  sessionVersion: number;
+}
+
+/** Hasil login yang sah — cukup untuk menerbitkan sesi. */
+export interface VerifiedOperator {
+  name: string;
+  role: OperatorRole;
+  /** `env` = akun darurat `OPERATOR_USERS` (selalu owner); `db` = `operator_accounts`. */
+  source: "env" | "db";
+  /** Hanya akun db: versi sesi yang dibawa token (pencabutan). */
+  sessionVersion: number | null;
+  /** Hanya akun db. */
+  id: number | null;
+}
+
 /** Nama akun operator: pendek, tanpa `:`/`,`/spasi — pengenal untuk jejak audit. */
-const NAME_PATTERN = /^[a-z0-9._-]{2,50}$/i;
+export const NAME_PATTERN = /^[a-z0-9._-]{2,50}$/i;
 
 /**
  * Urai `OPERATOR_USERS`. Entri yang salah bentuk DIBUANG (dan dilaporkan lewat
@@ -78,9 +105,17 @@ export function parseOperatorAccounts(raw: string | undefined): OperatorAccount[
 
 /**
  * Verifikasi login operator: nama + kata sandi (bcrypt) + kode TOTP, ketiganya
- * sekaligus. Jawaban SERAGAM (`true`/`false` saja): pemanggil tidak pernah
- * tahu bagian mana yang salah — nama yang tidak ada pun tetap membayar satu
- * perbandingan bcrypt supaya waktunya tidak membocorkan keberadaan akun.
+ * sekaligus. Jawaban SERAGAM (`null` saja): pemanggil tidak pernah tahu bagian
+ * mana yang salah — nama yang tidak ada pun tetap membayar SATU perbandingan
+ * bcrypt supaya waktunya tidak membocorkan keberadaan akun.
+ *
+ * Urutan: akun ENV dulu, lalu akun BASIS DATA lewat `findDbAccount` (disuntik
+ * pemanggil; tanpa itu hanya env). Nama env MENANG — akun basis data dengan
+ * nama yang sama tidak bisa dibuat (`operator-accounts.ts`), dan bila tetap
+ * ada (mis. env ditambah belakangan) ia tidak bisa dipakai masuk.
+ *
+ * Pencari yang MELEMPAR (kendali mati) diperlakukan sebagai "tidak ada":
+ * akun env tetap bisa masuk — memang itu gunanya akun darurat.
  */
 export async function verifyOperatorLogin(params: {
   username: string;
@@ -88,22 +123,49 @@ export async function verifyOperatorLogin(params: {
   totpCode: string;
   accountsRaw?: string;
   now?: Date;
-}): Promise<OperatorAccount | null> {
+  findDbAccount?: (name: string) => Promise<DbOperatorCredential | null>;
+}): Promise<VerifiedOperator | null> {
+  const wanted = params.username.trim().toLowerCase();
   const accounts = parseOperatorAccounts(params.accountsRaw ?? process.env.OPERATOR_USERS);
-  const account = accounts.find((a) => a.name.toLowerCase() === params.username.trim().toLowerCase());
+  const envAccount = accounts.find((a) => a.name.toLowerCase() === wanted);
+
+  let dbAccount: DbOperatorCredential | null = null;
+  if (!envAccount && params.findDbAccount && NAME_PATTERN.test(wanted)) {
+    try {
+      dbAccount = await params.findDbAccount(wanted);
+    } catch (error) {
+      console.error("[operator] akun basis data tak terbaca saat masuk:", error);
+      dbAccount = null;
+    }
+  }
 
   /* Hash pembanding untuk nama yang tidak dikenal — bcrypt tetap berjalan
    * dengan biaya yang sama, jawaban tetap seragam. */
   const DUMMY_HASH = "$2b$12$C6UzMDM.H6dfI/f/IKcEeO7ZBpDLbaB6iy1RwXjbQXBEO3kbpm9tC";
+  const hash = envAccount?.passwordHash ?? dbAccount?.passwordHash ?? DUMMY_HASH;
+  const secret = envAccount?.totpSecret ?? dbAccount?.totpSecret ?? null;
 
-  const passwordOk = await compare(params.password, account?.passwordHash ?? DUMMY_HASH);
+  const passwordOk = await compare(params.password, hash);
   const totpOk = mfaDisabled()
     ? true
-    : account
-      ? verifyTotp(account.totpSecret, params.totpCode.trim(), params.now)
+    : secret
+      ? verifyTotp(secret, params.totpCode.trim(), params.now)
       : false;
 
-  return account && passwordOk && totpOk ? account : null;
+  if (!passwordOk || !totpOk) return null;
+  if (envAccount) {
+    return { name: envAccount.name, role: "owner", source: "env", sessionVersion: null, id: null };
+  }
+  if (dbAccount) {
+    return {
+      name: dbAccount.name,
+      role: dbAccount.role,
+      source: "db",
+      sessionVersion: dbAccount.sessionVersion,
+      id: dbAccount.id,
+    };
+  }
+  return null;
 }
 
 /**

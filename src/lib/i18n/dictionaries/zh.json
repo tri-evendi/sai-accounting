@@ -4568,7 +4568,8 @@
       "groupSite": "网站",
       "groupSystem": "系统",
       "conformance": "数据一致性",
-      "backups": "备份"
+      "backups": "备份",
+      "accounts": "账户"
     },
     "attention": {
       "heading": "需要处理",
@@ -4867,7 +4868,8 @@
         "errGrace": "已拒绝：宽限期尚未结束（至 {date}）。",
         "errNoRequest": "已拒绝：没有待处理的删除请求。",
         "errConfirm": "输入的 slug 不匹配——请再确认正在删除哪个租户。"
-      }
+      },
+      "roleReadOnly": "您的角色为只读。针对租户的操作属于计费、支持或所有者角色。"
     },
     "mail": {
       "heading": "邮件设置",
@@ -5048,7 +5050,67 @@
         "menggantung": "迁移卡住",
         "tak_terbaca": "无法读取"
       }
-    }
+    },
+    "accounts": {
+      "heading": "运营者账户",
+      "description": "谁持有本控制台的钥匙、担任什么角色、最近何时登录。只有所有者可以更改。",
+      "readOnly": "您的角色只能查看此列表。账户更改属于所有者。",
+      "keyMissing": "尚未设置 SETTINGS_ENCRYPTION_KEY：无法创建新账户，数据库账户也无法登录，因为其 TOTP 密钥既无法加密也无法解密。",
+      "unavailable": "暂时无法读取账户列表：控制数据库无法访问。环境变量账户仍可登录。",
+      "dbHeading": "控制台账户",
+      "rolesNote": "所有者：全部操作。计费：标记已付、延期、更换套餐、计费模式。支持：停用/恢复及网站内容。观察者：只读。所有角色均可查看整个控制台。停用和重置会同时撤销会话。",
+      "envHeading": "应急账户（环境变量）",
+      "envNote": "来自 OPERATOR_USERS，始终为所有者，且有意不可在界面上修改：应急入口不应被被盗会话撤销。请在环境变量中修改，然后重建容器。",
+      "roles": {
+        "owner": "所有者",
+        "billing": "计费",
+        "support": "支持",
+        "viewer": "观察者"
+      },
+      "credentialTitle": "{name} 的凭据",
+      "credentialOnce": "仅显示一次。请立即保存密码并在身份验证器中扫描 URI；关闭此框后，唯一的办法是重置。",
+      "credentialPassword": "密码",
+      "credentialTotp": "TOTP 密钥",
+      "credentialUri": "身份验证器 URI",
+      "credentialDone": "我已保存",
+      "confirmDeactivateTitle": "停用 {name}？",
+      "confirmDeactivateBody": "{name} 将无法再登录，所有会话立即撤销。随时可以重新启用。",
+      "confirmRevokeTitle": "撤销 {name} 的所有会话？",
+      "confirmRevokeBody": "{name} 已登录的每个浏览器在下一次点击时都需要重新登录。凭据不变。",
+      "confirmResetTitle": "重置 {name} 的凭据？",
+      "confirmResetBody": "将签发新的密码和 TOTP 密钥并仅显示一次；旧凭据失效，{name} 的所有会话被撤销。",
+      "colName": "名称",
+      "colRole": "角色",
+      "colStatus": "状态",
+      "colLastLogin": "最近登录",
+      "colActions": "操作",
+      "you": "您",
+      "saveRole": "保存角色",
+      "active": "启用",
+      "inactive": "停用",
+      "deactivate": "停用",
+      "revoke": "撤销会话",
+      "reset": "重置凭据",
+      "activate": "启用",
+      "nameLabel": "新账户名称",
+      "namePlaceholder": "例如 rina.support",
+      "roleLabel": "角色",
+      "create": "创建账户",
+      "empty": "尚无控制台账户。目前只有环境变量账户可以登录。",
+      "created": "已创建账户 {name}。",
+      "updated": "已更新账户 {name}。",
+      "unchanged": "没有任何更改。",
+      "errName": "账户名称为 2–50 个字符：字母、数字、点、下划线或连字符。",
+      "errRole": "未知角色。",
+      "errEnvName": "该名称已被环境变量账户使用——登录时环境变量账户始终优先，因此此账户永远无法使用。",
+      "errTaken": "该名称已被占用。",
+      "errKey": "尚未设置 SETTINGS_ENCRYPTION_KEY——无法加密 TOTP 密钥，因此未保存任何内容。",
+      "errNotFound": "未找到账户。",
+      "errSelf": "您不能停用或降级自己的账户。",
+      "errLastOwner": "已拒绝：此更改将导致没有任何有效的所有者，而没有所有者就无人能恢复任何人的角色。"
+    },
+    "roleCannotEdit": "您的角色只能查看此页面。更改属于更高的角色——见账户。",
+    "roleCannotEditMail": "您的角色只能查看邮件设置；保存和测试发送将被拒绝。更改属于所有者。"
   },
   "docs": {
     "title": "使用文档",

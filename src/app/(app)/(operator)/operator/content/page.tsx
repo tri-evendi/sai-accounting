@@ -45,6 +45,7 @@ import { ContentEditor, type ContentEditorRow } from "@/components/operator/cont
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
+import { operatorCan } from "@/lib/operator/roles";
 import {
   SITE_CONTENT_PREFIX,
   isSiteContentLocale,
@@ -65,7 +66,7 @@ export default async function OperatorContentPage({
 }: {
   searchParams: Promise<{ locale?: string; section?: string; q?: string }>;
 }) {
-  await requireOperatorPage();
+  const { operator } = await requireOperatorPage();
   const t = await getT();
   const params = await searchParams;
 
@@ -225,6 +226,9 @@ export default async function OperatorContentPage({
         {/* `ContentEditor` menyusun formulirnya sendiri; ia dibungkus panel di
             sini supaya isian suntingan berdiri di atas permukaan yang sama
             dengan pemilih di atasnya. */}
+        {!operatorCan(operator.role, "site.content") ? (
+          <ConsoleNotice>{t("operator.roleCannotEdit")}</ConsoleNotice>
+        ) : (
         <ConsolePanel>
         <ContentEditor
           /* `key` memaksa editor dibangun ULANG saat bahasa/bagian berganti:
@@ -238,6 +242,7 @@ export default async function OperatorContentPage({
           save={operatorSaveSiteContent}
         />
         </ConsolePanel>
+        )}
       </div>
     </div>
   );

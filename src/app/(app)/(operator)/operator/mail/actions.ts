@@ -32,6 +32,7 @@ import {
 import { resolveMailConfig, sendMail } from "@/lib/mailer";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
+import type { OperatorPermission } from "@/lib/operator/roles";
 import { clientIpFrom } from "@/lib/operator/plane";
 import { platformDb } from "@/lib/platform-db";
 import { mailSettingsSchema, mailTestSchema } from "@/lib/validations/operator";
@@ -44,11 +45,11 @@ export interface OperatorMailActionResult {
 
 type T = Awaited<ReturnType<typeof getT>>;
 
-async function guardAndTranslate(): Promise<
+async function guardAndTranslate(permission: OperatorPermission): Promise<
   { ok: true; t: T; actorName: string; ip: string | null } | { ok: false; result: OperatorMailActionResult }
 > {
   const t = await getT();
-  const session = await requireOperatorActionSession();
+  const session = await requireOperatorActionSession(permission);
   if (!session) {
     /* Jawaban seragam — tidak membedakan "host salah" dari "sesi habis". */
     return { ok: false, result: { ok: false, message: t("operator.actions.denied") } };
@@ -70,7 +71,7 @@ function orNull(value: string | undefined): string | null {
 /* ── 1. Simpan pengaturan ──────────────────────────────────────────────────── */
 
 export async function operatorSaveMailSettings(input: unknown): Promise<OperatorMailActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("platform.mail");
   if (!gate.ok) return gate.result;
   const { t, actorName, ip } = gate;
 
@@ -135,7 +136,7 @@ export async function operatorSaveMailSettings(input: unknown): Promise<Operator
 /* ── 2. Uji kirim ──────────────────────────────────────────────────────────── */
 
 export async function operatorSendTestMail(input: unknown): Promise<OperatorMailActionResult> {
-  const gate = await guardAndTranslate();
+  const gate = await guardAndTranslate("platform.mail");
   if (!gate.ok) return gate.result;
   const { t, actorName, ip } = gate;
 

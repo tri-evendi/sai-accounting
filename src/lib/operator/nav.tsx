@@ -6,10 +6,11 @@
  * beserta urutan dan pengelompokannya — tinggal di satu berkas yang bisa
  * dibaca tanpa membuka komponen.
  *
- * Bedanya dengan `panelNav`: TIDAK ADA cabang izin di sini. Bidang operator
- * tidak punya matriks peran — siapa pun yang lolos `OPERATOR_HOST` + daftar IP
- * + kata sandi + TOTP memegang seluruh konsol (#154). Menambahkan `can(...)`
- * palsu di sini akan menyiratkan pembagian yang tidak ada.
+ * Bedanya dengan `panelNav`: TIDAK ADA cabang izin di sini, dan itu tetap
+ * benar sesudah peran operator lahir (migration kendali 0004): peran membagi
+ * TINDAKAN, bukan BACAAN (`lib/operator/roles.ts`) — setiap operator boleh
+ * membuka setiap halaman. Yang disembunyikan per peran adalah tombol & formulir
+ * di dalam halamannya, dan yang menolaknya adalah action-nya sendiri.
  *
  * `.tsx` karena butirnya membawa ikon; tidak ada komponen yang diekspor.
  */
@@ -20,6 +21,7 @@ import {
   FileProtectOutlined,
   FileTextOutlined,
   HistoryOutlined,
+  KeyOutlined,
   MailOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -95,6 +97,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/operator/mail",
       label: t("operator.nav.mail"),
       icon: <MailOutlined style={UKURAN_IKON} />,
+      group: sistem,
+    },
+    {
+      href: "/operator/accounts",
+      label: t("operator.nav.accounts"),
+      icon: <KeyOutlined style={UKURAN_IKON} />,
       group: sistem,
     },
     {

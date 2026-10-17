@@ -4568,7 +4568,8 @@
       "groupSite": "Situs",
       "groupSystem": "Sistem",
       "conformance": "Kesesuaian Data",
-      "backups": "Cadangan"
+      "backups": "Cadangan",
+      "accounts": "Akun"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -4867,7 +4868,8 @@
         "errGrace": "Ditolak: masa tenggang belum lewat (sampai {date}).",
         "errNoRequest": "Ditolak: tidak ada permintaan penghapusan pending.",
         "errConfirm": "Slug yang diketik tidak cocok — baca lagi tenant mana yang sedang dihapus."
-      }
+      },
+      "roleReadOnly": "Peran Anda hanya bisa melihat. Tindakan terhadap tenant milik peran penagihan, dukungan, atau pemilik."
     },
     "mail": {
       "heading": "Pengaturan Surel",
@@ -5048,7 +5050,67 @@
         "menggantung": "Migration menggantung",
         "tak_terbaca": "Tak terbaca"
       }
-    }
+    },
+    "accounts": {
+      "heading": "Akun Operator",
+      "description": "Siapa yang memegang kunci konsol ini, dengan peran apa, dan kapan terakhir masuk. Hanya owner yang bisa mengubahnya.",
+      "readOnly": "Peran Anda hanya bisa melihat daftar ini. Perubahan akun milik owner.",
+      "keyMissing": "SETTINGS_ENCRYPTION_KEY belum diset: akun baru tidak bisa dibuat dan akun basis data tidak bisa masuk, sebab rahasia TOTP-nya tidak bisa disegel maupun dibuka.",
+      "unavailable": "Daftar akun belum bisa dibaca: basis data kendali tak terjangkau. Akun env tetap bisa masuk.",
+      "dbHeading": "Akun konsol",
+      "rolesNote": "Pemilik: semua tindakan. Penagihan: lunas, perpanjangan, ganti paket, mode penagihan. Dukungan: suspensi/pemulihan dan isi situs. Pengamat: hanya melihat. Semua peran bisa membaca seluruh konsol. Nonaktif dan atur ulang ikut mencabut sesi.",
+      "envHeading": "Akun darurat (env)",
+      "envNote": "Dari OPERATOR_USERS, selalu berperan owner, dan sengaja tidak bisa diubah dari layar: jalan masuk darurat tidak boleh bisa dicabut oleh sesi yang dicuri. Ubah lewat env, lalu buat ulang container.",
+      "roles": {
+        "owner": "Pemilik",
+        "billing": "Penagihan",
+        "support": "Dukungan",
+        "viewer": "Pengamat"
+      },
+      "credentialTitle": "Kredensial untuk {name}",
+      "credentialOnce": "Ditampilkan SEKALI. Simpan kata sandi dan pindai URI di aplikasi authenticator sekarang; sesudah kotak ini ditutup, satu-satunya jalan adalah mengatur ulang.",
+      "credentialPassword": "Kata sandi",
+      "credentialTotp": "Rahasia TOTP",
+      "credentialUri": "URI authenticator",
+      "credentialDone": "Sudah saya simpan",
+      "confirmDeactivateTitle": "Nonaktifkan {name}?",
+      "confirmDeactivateBody": "{name} tidak bisa masuk lagi dan semua sesinya dicabut seketika. Bisa diaktifkan kembali kapan pun.",
+      "confirmRevokeTitle": "Cabut semua sesi {name}?",
+      "confirmRevokeBody": "Setiap peramban tempat {name} sedang masuk akan diminta masuk ulang pada klik berikutnya. Kredensialnya tidak berubah.",
+      "confirmResetTitle": "Atur ulang kredensial {name}?",
+      "confirmResetBody": "Kata sandi dan rahasia TOTP baru diterbitkan dan ditampilkan sekali; yang lama berhenti berlaku dan semua sesi {name} dicabut.",
+      "colName": "Nama",
+      "colRole": "Peran",
+      "colStatus": "Status",
+      "colLastLogin": "Masuk terakhir",
+      "colActions": "Tindakan",
+      "you": "Anda",
+      "saveRole": "Simpan peran",
+      "active": "Aktif",
+      "inactive": "Nonaktif",
+      "deactivate": "Nonaktifkan",
+      "revoke": "Cabut sesi",
+      "reset": "Atur ulang kredensial",
+      "activate": "Aktifkan",
+      "nameLabel": "Nama akun baru",
+      "namePlaceholder": "mis. rina.support",
+      "roleLabel": "Peran",
+      "create": "Buat akun",
+      "empty": "Belum ada akun konsol. Konsol sekarang hanya dimasuki akun env.",
+      "created": "Akun {name} dibuat.",
+      "updated": "Akun {name} diperbarui.",
+      "unchanged": "Tidak ada yang berubah.",
+      "errName": "Nama akun 2–50 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.",
+      "errRole": "Peran tidak dikenal.",
+      "errEnvName": "Nama itu sudah dipakai akun env — akun env selalu menang saat masuk, jadi akun ini tidak akan pernah bisa dipakai.",
+      "errTaken": "Nama itu sudah dipakai akun lain.",
+      "errKey": "SETTINGS_ENCRYPTION_KEY belum diset — rahasia TOTP tidak bisa disegel, jadi tidak ada yang disimpan.",
+      "errNotFound": "Akun tidak ditemukan.",
+      "errSelf": "Anda tidak bisa menonaktifkan atau menurunkan peran akun Anda sendiri.",
+      "errLastOwner": "Ditolak: perubahan ini menyisakan nol owner aktif, dan tanpa owner tidak ada yang bisa memulihkan peran siapa pun."
+    },
+    "roleCannotEdit": "Peran Anda hanya bisa melihat halaman ini. Perubahannya milik peran yang lebih tinggi — lihat Akun.",
+    "roleCannotEditMail": "Peran Anda hanya bisa melihat pengaturan surel; menyimpan dan uji kirim akan ditolak. Perubahannya milik pemilik."
   },
   "docs": {
     "title": "Dokumentasi",

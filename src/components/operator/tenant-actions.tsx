@@ -156,6 +156,13 @@ export interface TenantActionsProps {
     pastGrace: boolean;
     note: string | null;
   } | null;
+  /**
+   * Izin peran operator yang sedang masuk (migration kendali 0004), dihitung
+   * di SERVER. Panel tanpa izin TIDAK digambar — bukan pagar keamanan (action
+   * menolak sendiri), tetapi tombol yang pasti ditolak adalah tombol yang
+   * mengajari orang bahwa konsol ini rusak.
+   */
+  allowed: { billing: boolean; lifecycle: boolean; delete: boolean };
 }
 
 /* ── Bingkai panel + pesan hasil yang seragam ─────────────────────────────── */
@@ -1265,6 +1272,9 @@ export function TenantActions(props: TenantActionsProps) {
         {t("operator.actions.heading")}
       </h2>
       <p style={{ margin: 0, color: token.colorTextSecondary }}>{t("operator.actions.note")}</p>
+      {!props.allowed.billing && !props.allowed.lifecycle && !props.allowed.delete && (
+        <Alert type="info" showIcon message={t("operator.actions.roleReadOnly")} />
+      )}
 
       {!props.billingAvailable && (
         <Alert type="warning" showIcon message={t("operator.actions.billingDown")} />
@@ -1279,7 +1289,7 @@ export function TenantActions(props: TenantActionsProps) {
           gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))",
         }}
       >
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.billing && (
           <ActionPanel
             icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.markPaid.title")}
@@ -1289,7 +1299,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && props.plans && props.plans.length > 0 && (
+        {props.billingAvailable && props.allowed.billing && props.plans && props.plans.length > 0 && (
           <ActionPanel
             icon={<SwapOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.plan.title")}
@@ -1306,7 +1316,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.lifecycle && (
           <ActionPanel
             icon={<PauseCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.suspension.title")}
@@ -1320,7 +1330,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.billing && (
           <ActionPanel
             icon={<PlayCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.extend.title")}
@@ -1334,7 +1344,7 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        {props.billingAvailable && (
+        {props.billingAvailable && props.allowed.billing && (
           <ActionPanel
             icon={<DollarCircleOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
             title={t("operator.actions.billingMode.heading")}
@@ -1349,17 +1359,19 @@ export function TenantActions(props: TenantActionsProps) {
           </ActionPanel>
         )}
 
-        <ActionPanel
-          icon={<DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
-          title={t("operator.actions.deletion.title")}
-          description={t("operator.actions.deletion.keptHeading")}
-        >
-          <DeletionPanel
-            tenantId={props.tenantId}
-            tenantSlug={props.tenantSlug}
-            deletionRequest={props.deletionRequest}
-          />
-        </ActionPanel>
+        {props.allowed.delete && (
+          <ActionPanel
+            icon={<DeleteOutlined aria-hidden="true" style={{ fontSize: 16 }} />}
+            title={t("operator.actions.deletion.title")}
+            description={t("operator.actions.deletion.keptHeading")}
+          >
+            <DeletionPanel
+              tenantId={props.tenantId}
+              tenantSlug={props.tenantSlug}
+              deletionRequest={props.deletionRequest}
+            />
+          </ActionPanel>
+        )}
       </div>
       </Flex>
     </section>

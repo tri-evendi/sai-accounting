@@ -54,7 +54,19 @@ export type OperatorAuditAction =
    * `reset` = barisnya dihapus, ketiganya kembali ke environment.
    */
   | "operator.settings.update"
-  | "operator.settings.reset";
+  | "operator.settings.reset"
+  /**
+   * AKUN OPERATOR (migration kendali 0004). `details` memuat nama akun
+   * sasaran, peran sebelum/sesudah, dan aktif sebelum/sesudah — TIDAK PERNAH
+   * kata sandi atau rahasia TOTP yang diterbitkan (keduanya hanya tampil
+   * sekali di layar orang yang membuatnya).
+   */
+  | "operator.account.create"
+  | "operator.account.role"
+  | "operator.account.deactivate"
+  | "operator.account.activate"
+  | "operator.account.revoke"
+  | "operator.account.reset";
 
 export interface OperatorAuditEntry {
   id: string;

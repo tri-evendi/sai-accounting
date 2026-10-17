@@ -16,9 +16,10 @@
  */
 
 import { MailSettingsForm } from "@/components/operator/mail-settings-form";
-import { CONSOLE_PAGE } from "@/components/operator/console-ui";
+import { CONSOLE_PAGE, ConsoleNotice } from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
+import { operatorCan } from "@/lib/operator/roles";
 import { mailSettingsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import { mailHealth } from "@/lib/mail-health";
@@ -49,7 +50,7 @@ const SILENT_BANNER: React.CSSProperties = {
 };
 
 export default async function OperatorMailPage() {
-  await requireOperatorPage();
+  const { operator } = await requireOperatorPage();
   const t = await getT();
 
   const data = await mailSettingsForOperator();
@@ -107,6 +108,9 @@ export default async function OperatorMailPage() {
         </div>
       )}
 
+      {!operatorCan(operator.role, "platform.mail") && (
+        <ConsoleNotice>{t("operator.roleCannotEditMail")}</ConsoleNotice>
+      )}
       <MailSettingsForm
         available={data.available}
         encryptionKeyAvailable={data.encryptionKeyAvailable}

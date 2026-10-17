@@ -37,6 +37,7 @@ import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { runWithCompany } from "@/lib/company-context";
 import { activeRoleKeys } from "@/lib/roles";
 import { sendMail } from "@/lib/mailer";
+import { invitationMail } from "@/lib/account-mail";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
@@ -171,16 +172,7 @@ export async function POST(request: Request) {
           to: email,
           /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
           sensitive: true,
-          subject: `Undangan bergabung ke ${company.name} — SAI Accounting`,
-          text:
-            `Halo,\n\n` +
-            `${inviterName} mengundang Anda bergabung ke ${company.name} di SAI Accounting.\n` +
-            "Buka tautan berikut untuk MENENTUKAN KATA SANDI ANDA SENDIRI — tidak ada\n" +
-            "kata sandi sementara, tidak ada yang perlu dikirim lewat pesan:\n\n" +
-            `  ${link}\n\n` +
-            "Tautan berlaku 7 hari dan hanya bisa dipakai sekali.\n" +
-            "Tidak merasa diundang? Abaikan surel ini.\n\n" +
-            "— SAI Accounting",
+          ...invitationMail({ companyName: company.name, inviterName, link }),
         });
       } else if (issued.outcome === "add_existing_member") {
         /* Orang setenant: SUDAH ditambahkan (addExistingUserToCompany) —

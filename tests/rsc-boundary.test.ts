@@ -275,8 +275,14 @@ const SRC = join(__dirname, "..", "src");
  * diterbitkan harus tampil SEKALI dan hanya hidup di state peramban (bukan di
  * URL, bukan di HTML hasil render server yang bisa ter-cache). Halamannya tetap
  * server component; izin dihitung di server dan turun sebagai boolean.
+ *
+ * 187 sejak bantuan pengguna (2026-10-17):
+ * `components/operator/tenant-user-support.tsx` — cabut sesi, kirim tautan
+ * atur-ulang, kirim ulang undangan, masing-masing dengan alasan yang diketik.
+ * Client karena formulir alasannya; daftar pengguna & undangan dibaca server
+ * dan turun sudah berlabel.
  */
-const AMBANG_KLIEN = 186;
+const AMBANG_KLIEN = 187;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -468,6 +474,8 @@ const KLIEN_TERSAHKAN = [
      env-nya sendiri tidak pernah menyeberang ke peramban. */
   "components/operator/site-settings-form.tsx",
   "components/operator/tenant-actions.tsx",
+  /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
+  "components/operator/tenant-user-support.tsx",
   "components/providers/antd-provider.tsx",
   "components/reports/report-launch-dialog.tsx",
   "components/settings/audit-log-panel.tsx",

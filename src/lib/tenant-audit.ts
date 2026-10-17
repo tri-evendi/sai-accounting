@@ -50,6 +50,14 @@ export type TenantAuditAction =
   | "tenant.invitation.create"
   | "tenant.invitation.accept"
   | "tenant.invitation.revoke"
+  /** Undangan terbuka DITERBITKAN ULANG oleh operator (bantuan pengguna):
+   *  token baru, yang lama mati; kalimat surelnya sama dengan undangan asli. */
+  | "tenant.invitation.resend"
+  /** Bantuan pengguna oleh operator: semua sesi seorang pengguna dicabut. */
+  | "tenant.user.sessions_revoke"
+  /** Bantuan pengguna oleh operator: tautan atur-ulang kata sandi dikirim ke
+   *  alamat PEMILIK akun. Operator tidak pernah melihat tokennya. */
+  | "tenant.user.password_reset_sent"
   /** Ganti NAMA TAMPILAN akun (#458). Slug-nya TIDAK ikut berubah — alamat
    *  yang sudah dibagikan tetap sampai; ganti slug adalah pekerjaan tersendiri
    *  dengan pengalihan & pemesanan slug lama (lingkup 3 issue itu). */

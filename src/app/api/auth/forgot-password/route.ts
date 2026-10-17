@@ -25,6 +25,7 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { issueResetTokenForEmail } from "@/lib/password-reset-store";
 import { sendMail } from "@/lib/mailer";
+import { passwordResetMail } from "@/lib/account-mail";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { clientIpFrom } from "@/lib/client-ip";
 
@@ -96,15 +97,7 @@ export async function POST(request: Request) {
         to: email,
         /* Membawa/menyiratkan AKSES AKUN — tidak pernah disalin ke alamat arsip (#BCC): lihat `MailMessage.sensitive`. */
         sensitive: true,
-        subject: "Atur ulang kata sandi — SAI Accounting",
-        text:
-          `Halo ${issued.name ?? ""},\n\n` +
-          "Seseorang (semoga Anda) meminta pengaturan ulang kata sandi untuk akun ini.\n" +
-          "Buka tautan berikut untuk membuat kata sandi baru — berlaku 60 menit,\n" +
-          "sekali pakai:\n\n" +
-          `  ${link}\n\n` +
-          "Bukan Anda yang meminta? Abaikan surel ini; kata sandi Anda tidak berubah.\n\n" +
-          "— SAI Accounting",
+        ...passwordResetMail({ name: issued.name, link }),
       });
     } catch (error) {
       console.error("[forgot-password] gagal menerbitkan/mengirim tautan:", error);

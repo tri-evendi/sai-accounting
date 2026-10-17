@@ -5254,6 +5254,23 @@
         "monitoring": "监控中",
         "resolved": "已解决"
       }
+    },
+    "health": {
+      "heading": "健康",
+      "note": "仅基于元数据：配额、每本账簿的最新日记账日期（不读取内容）以及最近一次一致性检查的发现。",
+      "allClear": "没有需要关注的信号。",
+      "toneDanger": "需处理",
+      "toneWarning": "需关注",
+      "toneInfo": "备注",
+      "quotaCompaniesOver": "公司数超出配额：{max} 中用了 {used}。",
+      "quotaCompaniesNear": "公司数接近上限：{max} 中用了 {used}——是洽谈升级的好时机。",
+      "quotaUsersOver": "用户数超出配额：{max} 中用了 {used}。",
+      "quotaUsersNear": "用户数接近上限：{max} 中用了 {used}。",
+      "bookIdle": "账簿 {book} 已 {days} 天没有新日记账——停用的早期迹象。",
+      "bookNeverUsed": "账簿 {book} 还没有任何日记账。",
+      "bookUnreadable": "无法读取账簿 {book}——请检查其数据库连接。",
+      "conformanceFindings": "最近一次一致性检查中有 {count} 项发现属于该租户的账簿——见数据一致性。",
+      "conformanceAmbiguous": "{books} 的发现无法归属：该公司 slug 也被其他租户使用。"
     }
   },
   "docs": {

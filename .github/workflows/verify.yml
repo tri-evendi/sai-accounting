@@ -23,7 +23,7 @@
 # TIDAK BISA LUPA.
 #
 # ══ KENAPA DI RUNNER, BUKAN DI SERVER ══════════════════════════════════════
-# `bun run typecheck` menuntut `--max-old-space-size=1536`. Kotak produksi
+# `bun run typecheck` menuntut `--max-old-space-size=2048` (1536 sampai 17 Okt 2026). Kotak produksi
 # punya ~3,6 GB yang dibagi enam aplikasi; saat berkas ini ditulis, memori
 # tersedia di sana 604 MB dengan 3 GB swap SUDAH terpakai. Menjalankan typecheck
 # di sana berarti GC berputar di swap, di sebelah produksi yang sedang melayani.
@@ -66,7 +66,7 @@ jobs:
 
       # Node TETAP runtime-nya meski paket dipasang bun: `tsc`, `prisma`, dan
       # `vitest` dijalankan Node lewat shebang binary-nya — dan karena itulah
-      # `NODE_OPTIONS=--max-old-space-size=1536` di skrip `typecheck` MASIH
+      # `NODE_OPTIONS=--max-old-space-size=2048` di skrip `typecheck` MASIH
       # BERLAKU. Bun memakai JavaScriptCore, yang mengabaikan flag itu.
       # Versinya wajib >= 20.19/22.12/24: skrip preinstall Prisma 7 menolak
       # yang lebih tua, dan bun tidak menyuntikkan Node-nya sendiri ke PATH

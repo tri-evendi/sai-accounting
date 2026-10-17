@@ -5254,6 +5254,23 @@
         "monitoring": "Monitoring",
         "resolved": "Resolved"
       }
+    },
+    "health": {
+      "heading": "Health",
+      "note": "From metadata only: quotas, each book's latest journal date (not its contents), and the latest conformance sweep findings.",
+      "allClear": "No signals need attention.",
+      "toneDanger": "Action",
+      "toneWarning": "Watch",
+      "toneInfo": "Note",
+      "quotaCompaniesOver": "Companies exceed the quota: {used} of {max}.",
+      "quotaCompaniesNear": "Companies almost full: {used} of {max} — a good moment to talk about an upgrade.",
+      "quotaUsersOver": "Users exceed the quota: {used} of {max}.",
+      "quotaUsersNear": "Users almost full: {used} of {max}.",
+      "bookIdle": "Book {book} has had no new journal for {days} days — an early sign of disuse.",
+      "bookNeverUsed": "Book {book} has no journal yet.",
+      "bookUnreadable": "Book {book} could not be read — check its database connection.",
+      "conformanceFindings": "{count} findings in the latest conformance sweep belong to this tenant's books — see Data conformance.",
+      "conformanceAmbiguous": "Findings for {books} cannot be attributed: that company slug is also used by another tenant."
     }
   },
   "docs": {

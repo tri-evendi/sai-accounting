@@ -30,6 +30,8 @@ import "server-only";
 
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
+import { makeLatestJournalDateReader } from "@/lib/operator/writes";
+import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@/lib/operator/tenant-health";
 /* Inti rekonsiliasi tinggal di `src/lib/`, BUKAN di `scripts/`: mengimpor skrip
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
  * `next build` (ditemukan saat penggelaran #151). */
@@ -1078,4 +1080,63 @@ export async function plansForOperatorCatalog(): Promise<OperatorCatalogPlan[] |
     console.error("[operator-store] katalog paket tak terbaca:", error);
     return null;
   }
+}
+
+/* ─────────────────────────── Kesehatan satu tenant ─────────────────────── */
+
+/**
+ * Kumpulkan masukan `tenantHealthSignals` untuk SATU tenant (halaman rincian).
+ *
+ * Tanggal jurnal termuda tiap PT aktif dibaca dengan pembaca yang SAMA dengan
+ * jangkar retensi hapus-tenant (`makeLatestJournalDateReader`, koneksi pendek
+ * per buku — bukan klien Prisma buku yang akan mengusir klien milik pelanggan
+ * dari kolam LRU). Hanya TANGGAL; tidak ada isi buku yang dibaca.
+ */
+export async function tenantHealthForOperator(tenant: {
+  id: number;
+  maxCompanies: number;
+  maxUsers: number;
+  usage: { companies: number; users: number };
+}): Promise<HealthSignal[]> {
+  const controlUrl = process.env.CONTROL_DATABASE_URL;
+  const companies = await controlDb.company.findMany({
+    where: { tenantId: tenant.id, isActive: true },
+    select: { slug: true, databaseName: true },
+  });
+
+  const reader = controlUrl ? makeLatestJournalDateReader(controlUrl) : null;
+  const books = await Promise.all(
+    companies.map(async (c) => {
+      if (!reader) return { slug: c.slug, latestJournal: "unreadable" as const };
+      try {
+        return { slug: c.slug, latestJournal: await reader(c.databaseName) };
+      } catch (error) {
+        console.warn(`[operator-health] buku ${c.databaseName} tak terbaca: ${String(error)}`);
+        return { slug: c.slug, latestJournal: "unreadable" as const };
+      }
+    })
+  );
+
+  let conformance: { findings: number; ambiguousSlugs: string[] } | null = null;
+  try {
+    const last = await platformDb.conformanceRun.findFirst({ orderBy: { id: "desc" }, select: { details: true } });
+    const details = parseConformanceDetails(last?.details ?? null);
+    if (details) {
+      const slugs = companies.map((c) => c.slug);
+      const shared = await controlDb.company.findMany({
+        where: { slug: { in: slugs }, NOT: { tenantId: tenant.id } },
+        select: { slug: true },
+      });
+      conformance = attributeConformance(details.findings, slugs, new Set(shared.map((s) => s.slug)));
+    }
+  } catch (error) {
+    console.error("[operator-health] sapuan kesesuaian tak terbaca:", error);
+  }
+
+  return tenantHealthSignals({
+    usage: tenant.usage,
+    quota: { maxCompanies: tenant.maxCompanies, maxUsers: tenant.maxUsers },
+    books,
+    conformance,
+  });
 }

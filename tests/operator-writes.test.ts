@@ -64,8 +64,8 @@ vi.mock("@/lib/control-db", () => ({
   },
 }));
 
+import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";
 import {
-  changeTenantPlan,
   executeTenantDeletion,
   extendSubscription,
   recordManualPayment,
@@ -361,7 +361,7 @@ function makeWorld() {
      * buku: eksekusi penghapusan tidak menyentuh `sai_platform` satu kali pun,
      * jadi bentuk dependensinya pun tidak boleh berpura-pura membutuhkannya.
      */
-    deletionDeps(latestJournalDate: () => Promise<Date | null>) {
+    deletionDeps(latestJournalDate: (databaseName?: string) => Promise<Date | null>) {
       return { control, latestJournalDate } as unknown as Parameters<
         typeof executeTenantDeletion
       >[0];
@@ -818,7 +818,44 @@ describe("executeTenantDeletion — eksekusi lewat masa tenggang (aksi #4)", () 
     expect(logs[0].details).toMatchObject({
       reason: DELETE_INPUT.actor.reason,
       phase: "deactivate_anonymize",
+      unreadableBooks: [],
     });
+  });
+
+  it("jurnal bertanggal MASA DEPAN menggeser jangkar — satu-satunya kasus pembacanya menentukan hasil", async () => {
+    const world = makeWorld();
+    withRequest(world.state, GRACE_PASSED);
+    const result = await executeTenantDeletion(
+      world.deletionDeps(async () => new Date("2027-12-31T00:00:00Z")),
+      DELETE_INPUT,
+      NOW
+    );
+    expect((result as { retentionUntil: Date }).retentionUntil.toISOString()).toBe(
+      "2037-12-31T00:00:00.000Z"
+    );
+  });
+
+  it("buku tak terbaca: eksekusi TETAP jalan, jangkar konservatif, tapi namanya tercatat — tidak senyap (#636)", async () => {
+    const world = makeWorld();
+    withRequest(world.state, GRACE_PASSED);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const result = await executeTenantDeletion(
+      world.deletionDeps(async (databaseName?: string) => {
+        if (databaseName === "sai_cabang") throw new Error("connect ECONNREFUSED");
+        return new Date("2027-12-31T00:00:00Z");
+      }),
+      DELETE_INPUT,
+      NOW
+    );
+    expect(result).toMatchObject({ outcome: "executed", unreadableBooks: ["cabang"] });
+    // Buku yang TERBACA tetap ikut menentukan jangkar.
+    expect((result as { retentionUntil: Date }).retentionUntil.toISOString()).toBe(
+      "2037-12-31T00:00:00.000Z"
+    );
+    const logs = await readTenantAuditLogs("contoh");
+    expect(logs[0].details).toMatchObject({ unreadableBooks: ["cabang"] });
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 });
 

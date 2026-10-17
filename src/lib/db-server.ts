@@ -78,6 +78,12 @@ export interface KoneksiBasisData {
     mulai: Date;
     selesai: Date;
   }): Promise<void>;
+  /**
+   * `MAX(journals.date)`: jangkar retensi UU KUP sebuah buku
+   * (`executeTenantDeletion`). `null` = buku tanpa jurnal; buku yang tak
+   * terjangkau MELEMPAR, supaya pemanggil bisa membedakan keduanya.
+   */
+  jurnalTermuda(): Promise<Date | null>;
   tutup(): Promise<void>;
 }
 
@@ -197,6 +203,13 @@ class KoneksiMariaDb implements KoneksiBasisData {
     );
   }
 
+  async jurnalTermuda(): Promise<Date | null> {
+    const r = (await this.pool.query("SELECT MAX(`date`) AS latest FROM journals")) as {
+      latest: Date | null;
+    }[];
+    return r[0]?.latest ?? null;
+  }
+
   async tutup(): Promise<void> {
     await this.pool.end();
   }
@@ -313,6 +326,17 @@ class KoneksiPostgres implements KoneksiBasisData {
        VALUES ($1, $2, $3, $4, $5, 1)`,
       [i.id, i.checksum, i.nama, i.mulai, i.selesai]
     );
+  }
+
+  async jurnalTermuda(): Promise<Date | null> {
+    /* `journals.date` adalah `TIMESTAMP(3)` TANPA zona, berisi UTC (cara Prisma
+       menyimpannya). Driver `pg` mengurai tipe itu sebagai waktu LOKAL proses,
+       jadi tanpa `AT TIME ZONE 'UTC'` hasilnya bergeser sejauh TZ container.
+       Dengan itu nilainya menjadi `timestamptz` dan terurai apa adanya. */
+    const r = await this.c.query<{ latest: Date | null }>(
+      `SELECT MAX("date") AT TIME ZONE 'UTC' AS latest FROM journals`
+    );
+    return r.rows[0]?.latest ?? null;
   }
 
   async tutup(): Promise<void> {

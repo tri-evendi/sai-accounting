@@ -47,7 +47,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ContainerOutlined, FileTextOutlined } from "@ant-design/icons";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
-import { StatCard } from "@/components/dashboard/stat-card";
+import { StatCard } from "@/components/ui/stat-card";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import {
   InventoryExportAction,
@@ -952,7 +952,7 @@ export default async function DashboardPage({
           * Warna kartu kondisi stok KEMBALI (issue #229), dan berkas ini tetap
           * server component tanpa satu pun kelas Tailwind: `tone` mewarnai
           * dirinya sendiri dari token uang AntD di dalam `StatCard`. Lihat
-          * kepala `components/dashboard/stat-card.tsx` — termasuk kenapa ia
+          * kepala `components/ui/stat-card.tsx` — termasuk kenapa ia
           * masih boleh dirender di server.
           *
           * Warnanya tetap BUKAN penanda tunggal: judul kartunya sendiri

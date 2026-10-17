@@ -34,9 +34,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { createPool } from "mariadb";
 
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
 import type { PrismaClient as ControlClient } from "@/generated/control/client";
 import { processPaymentNotification } from "@/lib/payment-webhook";
 import {
@@ -53,30 +51,20 @@ import {
   retentionUntilFrom,
 } from "@/lib/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { bukaBasisData } from "@/lib/db-server";
+import {
+  auditActor,
+  planChangeApplier,
+  type BillingActor,
+  type BillingWriteDeps,
+} from "@/lib/billing/change-tenant-plan";
 
-export interface OperatorWriteDeps {
-  platform: PlatformClient;
-  control: ControlClient;
-}
-
-/** Aktor + alasan — wajib pada SETIAP aksi (aturan #155 no. 1 & 2). */
-export interface OperatorActor {
-  /** Nama akun operator dari sesi konsol, atau `cli:<user>` dari skrip. */
-  operator: string;
-  /** Alasan yang DIKETIK operator — disimpan apa adanya di jejak. */
-  reason: string;
-}
-
-function auditActor(actor: OperatorActor): { userId: string; username: string } {
-  /* Aktornya OPERATOR — bukan "system" dan bukan salah satu pengguna tenant:
-   * jejak harus bisa menjawab "siapa" tanpa menebak.
-   *
-   * Dua bidang, dua awalan: `operator:<nama>` dari konsol, `cli:<user>` dari
-   * skrip pemulihan. Nama yang SUDAH membawa awalan bidangnya dibiarkan apa
-   * adanya — `operator:cli:vyn` hanya akan menyulitkan pembacanya. */
-  const name = actor.operator.includes(":") ? actor.operator : `operator:${actor.operator}`;
-  return { userId: name, username: name };
-}
+/* Tipe deps/aktor & `auditActor` milik `lib/billing/change-tenant-plan.ts`
+ * sejak Fase 0 (docs/arsitektur/14-RENCANA-MONOREPO.md §3): perpindahan paket
+ * dipakai rute pelanggan juga, jadi arahnya operator → billing, tidak pernah
+ * sebaliknya. Nama lamanya dipertahankan sebagai alias untuk aksi operator. */
+export type OperatorWriteDeps = BillingWriteDeps;
+export type OperatorActor = BillingActor;
 
 /* ═══════════════ 1. Tandai tagihan lunas — transfer manual ═══════════════ */
 
@@ -193,201 +181,11 @@ export async function recordManualPayment(
   };
 }
 
-/* ═══════════════════════════ 2. Ganti paket ═══════════════════════════════ */
-
-/** Kuota paket baru yang LEBIH KECIL dari pemakaian nyata — peringatan, BUKAN
- *  penghalang: turun paket keputusan yang sah; konsekuensinya dinyatakan dan
- *  ikut tercatat di jejak. */
-export interface QuotaWarning {
-  companies: { used: number; max: number } | null;
-  users: { used: number; max: number } | null;
-}
-
-export type ChangePlanResult =
-  | {
-      outcome: "changed";
-      tenantSlug: string;
-      fromPlanKey: string;
-      toPlanKey: string;
-      subscriptionId: number;
-      subscriptionStatus: string;
-      /** `null` = tidak ada kuota yang terlampaui. */
-      quotaWarning: QuotaWarning | null;
-    }
-  | { outcome: "tenant_not_found" }
-  | { outcome: "plan_not_found" }
-  /** Kalah balapan dengan putaran adopsi penjadwal (UNIQUE
-   *  `initial_for_tenant_id`) — coba lagi; langganannya kini sudah ada. */
-  | { outcome: "race_lost" };
-
-/**
- * Pindahkan tenant ke paket lain — logika `scripts/change-tenant-plan.ts`
- * DIANGKAT ke sini (bukan disalin); skrip kini pembungkus tipis.
- *
- * Urutan tulis #137: (1) langganan platform dibuat/dipindah dengan SNAPSHOT
- * harga, (2) salinan kendali (plan_key + kuota + status) ditulis TERAKHIR.
- *
- * Tenant `suspended`: ganti paket TIDAK memulihkan akses — status langganan
- * tidak disentuh; pemulihan adalah keputusan terpisah lewat
- * `setTenantSuspension` (mesin siklus hidup), dengan alasannya sendiri.
- */
-export async function changeTenantPlan(
-  deps: OperatorWriteDeps,
-  input: {
-    tenantRef: { id: number } | { slug: string },
-    planKey: string;
-    actor: OperatorActor;
-  },
-  now: Date = new Date()
-): Promise<ChangePlanResult> {
-  const tenant = await deps.control.tenant.findUnique({
-    where: input.tenantRef as { id: number },
-    select: { id: true, slug: true, planKey: true },
-  });
-  if (!tenant) return { outcome: "tenant_not_found" };
-
-  const plan = await deps.platform.plan.findUnique({ where: { key: input.planKey } });
-  if (!plan || !plan.isActive) return { outcome: "plan_not_found" };
-
-  /* ── 1. PLATFORM dulu ──────────────────────────────────────────────────── */
-  const existing = await deps.platform.subscription.findFirst({
-    where: { tenantId: tenant.id },
-    orderBy: { id: "desc" },
-  });
-
-  let subscription;
-  if (existing && existing.status !== "cancelled") {
-    subscription = await deps.platform.subscription.update({
-      where: { id: existing.id },
-      data: {
-        planId: plan.id,
-        /* SNAPSHOT harga — harga paket boleh naik besok; langganan ini tidak. */
-        price: plan.priceMonthly,
-        currency: plan.currency,
-      },
-    });
-  } else {
-    const status = plan.trialDays > 0 ? "trialing" : "active";
-    const period = nextPeriod("monthly", now);
-    try {
-      subscription = await deps.platform.subscription.create({
-        data: {
-          tenantId: tenant.id,
-          planId: plan.id,
-          status,
-          billingCycle: "monthly",
-          price: plan.priceMonthly,
-          currency: plan.currency,
-          currentPeriodStart: period.start,
-          currentPeriodEnd: period.end,
-          trialEndsAt:
-            plan.trialDays > 0
-              ? new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000)
-              : null,
-          /* Kunci idempotensi KELAHIRAN (#152) — balapan dengan putaran adopsi
-           * penjadwal menabrak UNIQUE ini, bukan melahirkan kembar. */
-          initialForTenantId: existing ? null : tenant.id,
-        },
-      });
-    } catch (error) {
-      if ((error as { code?: string }).code === "P2002") return { outcome: "race_lost" };
-      throw error;
-    }
-  }
-
-  /* ── 2. KENDALI belakangan: salin kuota + status (snapshot §5) ─────────── */
-  await deps.control.tenant.update({
-    where: { id: tenant.id },
-    data: {
-      planKey: plan.key,
-      maxCompanies: plan.maxCompanies,
-      maxUsers: plan.maxUsers,
-      trialEndsAt: subscription.trialEndsAt,
-      status: tenantStatusForSubscription(subscription.status as SubscriptionStatus),
-    },
-  });
-
-  /* Kuota vs pemakaian NYATA (sumber kebenaran, bukan usage_counters). */
-  const [companiesUsed, usersUsed] = await Promise.all([
-    deps.control.company.count({ where: { tenantId: tenant.id, isActive: true } }),
-    deps.control.user.count({ where: { tenantId: tenant.id } }),
-  ]);
-  const quotaWarning: QuotaWarning | null =
-    companiesUsed > plan.maxCompanies || usersUsed > plan.maxUsers
-      ? {
-          companies:
-            companiesUsed > plan.maxCompanies
-              ? { used: companiesUsed, max: plan.maxCompanies }
-              : null,
-          users: usersUsed > plan.maxUsers ? { used: usersUsed, max: plan.maxUsers } : null,
-        }
-      : null;
-
-  await writeTenantAuditLog({
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    ...auditActor(input.actor),
-    action: "tenant.plan.change",
-    details: {
-      reason: input.actor.reason,
-      from: tenant.planKey,
-      to: plan.key,
-      maxCompanies: plan.maxCompanies,
-      maxUsers: plan.maxUsers,
-      subscriptionStatus: subscription.status,
-      /* Konsekuensi turun paket di bawah pemakaian IKUT tercatat (#155). */
-      quotaWarning,
-    },
-  });
-
-  return {
-    outcome: "changed",
-    tenantSlug: tenant.slug,
-    fromPlanKey: tenant.planKey,
-    toPlanKey: plan.key,
-    subscriptionId: subscription.id,
-    subscriptionStatus: subscription.status,
-    quotaWarning,
-  };
-}
-
-/**
- * Pemasang paket untuk tagihan PERPINDAHAN PAKET yang baru lunas — dioper ke
- * `processPaymentNotification` (lihat `WebhookDeps.applyPlanChange`).
- *
- * Ada di sini, bukan di `payment-webhook.ts`, justru karena berkas ini sudah
- * mengimpor berkas itu: pemasangnya mengalir turun bersama `deps`, dan arah
- * ketergantungannya tetap satu arah. Yang dipakai tetap `changeTenantPlan`
- * yang sama dengan konsol operator — satu mesin, satu jejak audit, bukan
- * implementasi kedua yang pelan-pelan menyimpang.
- *
- * MELEMPAR bila perpindahannya gagal: pelanggan sudah membayar, jadi
- * "gagal diam-diam" berarti uang masuk tanpa paket naik. Webhook yang melempar
- * membuat gerbang mengulang kirimannya, dan pengulangan itu aman — pembayaran
- * sudah ter-idempoten oleh `gateway_ref` UNIQUE.
- */
-export function planChangeApplier(deps: OperatorWriteDeps, actor: OperatorActor) {
-  return async (input: {
-    tenantId: number;
-    planKey: string;
-    invoiceNumber: string;
-  }): Promise<void> => {
-    const result = await changeTenantPlan(deps, {
-      tenantRef: { id: input.tenantId },
-      planKey: input.planKey,
-      actor: {
-        operator: actor.operator,
-        reason: `${actor.reason} (tagihan ${input.invoiceNumber})`,
-      },
-    });
-    if (result.outcome !== "changed") {
-      throw new Error(
-        `Perpindahan paket gagal untuk tagihan ${input.invoiceNumber} ` +
-          `(→ ${input.planKey}): ${result.outcome}`
-      );
-    }
-  };
-}
+/* ═══════════════════════════ 2. Ganti paket ═══════════════════════════════
+ * `changeTenantPlan` + `planChangeApplier` pindah ke
+ * `lib/billing/change-tenant-plan.ts` (Fase 0, dok 14 §3): dua rute PELANGGAN
+ * memakainya, jadi ia logika penagihan, bukan logika operator. Konsol operator
+ * mengimpornya dari sana. */
 
 /* ══════════════════ 3. Suspensi & pemulihan manual ════════════════════════ */
 
@@ -474,6 +272,9 @@ export type DeletionExecutionResult =
       retentionUntil: Date;
       companiesDeactivated: number;
       usersAnonymized: number;
+      /** Slug PT yang bukunya tak terbaca: jangkar retensinya jatuh ke hari
+       *  ini. Kosong pada keadaan normal. */
+      unreadableBooks: string[];
     }
   | { outcome: "tenant_not_found" }
   /** Tidak ada permintaan `pending` — penghapusan HANYA atas permintaan
@@ -497,9 +298,16 @@ export type DeletionExecutionResult =
  * CLI bergerbang bukti adalah gesekan yang memang diinginkan.
  *
  * `latestJournalDate` disuntikkan: jangkar retensi dibaca dari buku, dan
- * PEMBACANYA berbeda per lingkungan (pool mariadb di skrip/konsol, fake di
- * tes). Buku tak terjangkau TIDAK menggagalkan eksekusi — jangkar jatuh ke
+ * PEMBACANYA berbeda per lingkungan (`makeLatestJournalDateReader` di
+ * skrip/konsol, fake di tes). Pembaca memulangkan `null` untuk buku tanpa
+ * jurnal dan MELEMPAR untuk buku yang tak terjangkau.
+ *
+ * Buku tak terjangkau TIDAK menggagalkan eksekusi — jangkar jatuh ke
  * "sekarang" (arah konservatif: menyimpan lebih lama selalu bisa diperbaiki).
+ * Tetapi ia TIDAK LAGI senyap: namanya masuk `unreadableBooks` di hasil DAN di
+ * jejak audit. Sampai Okt 2026 pembacanya memakai driver MariaDB terhadap
+ * PostgreSQL, sehingga SETIAP buku gagal terbaca, dan satu-satunya bekasnya
+ * adalah baris `console.warn` yang tidak dibaca siapa pun (#636).
  */
 export async function executeTenantDeletion(
   /* Sengaja HANYA kendali (+ pembaca buku): eksekusi ini tidak menyentuh
@@ -551,8 +359,18 @@ export async function executeTenantDeletion(
 
   /* Jangkar retensi UU KUP: entri jurnal TERMUDA di seluruh bukunya. */
   let latest: Date | null = null;
+  const unreadableBooks: string[] = [];
   for (const company of companies) {
-    const d = await deps.latestJournalDate(company.databaseName);
+    let d: Date | null;
+    try {
+      d = await deps.latestJournalDate(company.databaseName);
+    } catch (error) {
+      console.warn(
+        `[operator-writes] buku ${company.databaseName} tak terbaca (${String(error)}) — jangkar retensi jatuh ke hari ini`
+      );
+      unreadableBooks.push(company.slug);
+      continue;
+    }
     if (d && (!latest || d.getTime() > latest.getTime())) latest = d;
   }
   const retentionUntil = retentionUntilFrom(latest, now);
@@ -598,6 +416,9 @@ export async function executeTenantDeletion(
       companies: companies.map((c) => c.slug),
       users: users.length,
       retentionUntil: retentionUntil.toISOString(),
+      /* Kosong = jangkar dibaca dari SEMUA buku. Berisi = jangkar buku itu
+         jatuh ke hari ini; jejaknya menyatakan itu, bukan menyembunyikannya. */
+      unreadableBooks,
     },
   });
 
@@ -607,41 +428,32 @@ export async function executeTenantDeletion(
     retentionUntil,
     companiesDeactivated: companies.length,
     usersAnonymized: users.length,
+    unreadableBooks,
   };
 }
 
 /**
  * Pembaca `MAX(journals.date)` sebuah buku — jangkar retensi UU KUP, dipakai
  * `executeTenantDeletion` lewat injeksi (kredensialnya dari
- * `CONTROL_DATABASE_URL`, pola skrip #142). Buku tak terjangkau → `null` +
- * peringatan log: retensi jatuh ke jangkar paling konservatif (sekarang),
- * TIDAK menggagalkan eksekusi.
+ * `CONTROL_DATABASE_URL`, pola skrip #142).
+ *
+ * Mesinnya diputuskan URL lewat `db-server.ts`, bukan dipaku di sini. Versi
+ * sebelumnya memaku `createPool` milik `mariadb`; sesudah penukaran ke
+ * PostgreSQL (15 Okt 2026) setiap pembacaan gagal tersambung dan jangkarnya
+ * diam-diam jatuh ke hari ini (#636).
+ *
+ * Buku tanpa jurnal → `null`. Buku tak terjangkau → MELEMPAR; pemanggil yang
+ * memutuskan jatuh ke mana dan mencatatnya.
  */
 export function makeLatestJournalDateReader(
   controlUrl: string
 ): (databaseName: string) => Promise<Date | null> {
-  const url = new URL(controlUrl);
   return async (databaseName) => {
-    const pool = createPool({
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: decodeURIComponent(url.username),
-      password: decodeURIComponent(url.password),
-      database: databaseName,
-      connectionLimit: 1,
-    });
+    const db = await bukaBasisData(controlUrl, databaseName);
     try {
-      const rows = (await pool.query("SELECT MAX(`date`) AS latest FROM journals")) as {
-        latest: Date | null;
-      }[];
-      return rows[0]?.latest ?? null;
-    } catch (error) {
-      console.warn(
-        `[operator-writes] buku ${databaseName} tak terbaca (${String(error)}) — jangkar retensi jatuh ke hari ini`
-      );
-      return null;
+      return await db.jurnalTermuda();
     } finally {
-      await pool.end();
+      await db.tutup();
     }
   };
 }

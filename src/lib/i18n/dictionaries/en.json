@@ -5271,6 +5271,18 @@
       "bookUnreadable": "Book {book} could not be read — check its database connection.",
       "conformanceFindings": "{count} findings in the latest conformance sweep belong to this tenant's books — see Data conformance.",
       "conformanceAmbiguous": "Findings for {books} cannot be attributed: that company slug is also used by another tenant."
+    },
+    "quote": {
+      "title": "Activate from quote",
+      "description": "Quote approved and paid in the provider's own books → plan + period + manual billing mode, in one recorded step.",
+      "open": "Activate from quote",
+      "explain": "Chains the same three actions as their own buttons: change plan (if different), extend the period, then manual billing mode. Stops at the first failing step. The extension still issues an IDR 0 invoice marked -K — the real invoice lives in the provider's books.",
+      "refLabel": "Quote / contract number",
+      "submit": "Activate entitlement",
+      "confirmBody": "Activate {tenant} from quote {quote}: plan {plan}, {periods} periods, manual billing mode?",
+      "done": "Entitlement active from quote {quote}.",
+      "partial": "Not finished — {steps}. The remaining steps can be continued with their own buttons.",
+      "errInput": "Incomplete input: quote number, plan, 1–24 periods and a reason are required."
     }
   },
   "docs": {

@@ -67,6 +67,7 @@ vi.mock("@/lib/control-db", () => ({
 import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";
 import {
   executeTenantDeletion,
+  activateQuoteEntitlement,
   extendSubscription,
   recordManualPayment,
   setBillingMode,
@@ -92,6 +93,7 @@ function dec(value: string) {
 /** Dunia kecil in-memory: satu tenant menunggak dengan satu tagihan terbit. */
 function makeWorld() {
   const state = {
+    subscriptionEvents: [] as Record<string, unknown>[],
     tenant: {
       id: 7,
       slug: "contoh",
@@ -201,6 +203,13 @@ function makeWorld() {
   let nextSubscriptionId = 4;
 
   const platform = {
+    /* Peristiwa langganan (migration platform 0003) — dicatat setiap penulis. */
+    subscriptionEvent: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        state.subscriptionEvents.push(data);
+        return data;
+      },
+    },
     platformInvoice: {
       findUnique: async ({ where }: { where: { number: string } }) =>
         state.invoices.find((inv) => inv.number === where.number) ?? null,
@@ -1249,5 +1258,45 @@ describe("setBillingMode — aksi #6", () => {
       paymentRailConfigured({ PAYMENT_GATEWAY: "midtrans", MIDTRANS_SERVER_KEY: "SB-x" })
     ).toBe(true);
     expect(paymentRailConfigured({ MANUAL_PAYMENT_INSTRUCTIONS: "Transfer BCA 123" })).toBe(true);
+  });
+});
+
+describe("activateQuoteEntitlement — penawaran disetujui → hak pakai (§7 langkah 7)", () => {
+  it("paket berbeda → ganti paket, perpanjang, mode manual; nomor penawaran di SETIAP jejak", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "active";
+    state.tenant.status = "active";
+    const r = await activateQuoteEntitlement(
+      deps,
+      { tenantId: 7, planKey: "lite", cycle: "monthly", periods: 3, quoteRef: "Q-2026-014", actor: ACTOR },
+      NOW
+    );
+    expect(r.steps.map((s) => [s.step, s.outcome])).toEqual([
+      ["plan", "changed"],
+      ["extend", "extended"],
+      ["billing_mode", "changed"],
+    ]);
+    expect(r.ok).toBe(true);
+    expect(state.tenant.planKey).toBe("lite");
+    const logs = await readTenantAuditLogs("contoh");
+    expect(logs.length).toBeGreaterThanOrEqual(3);
+    for (const l of logs) expect(String(l.details?.reason)).toContain("Penawaran Q-2026-014");
+    /* Riwayat langganan: tiga keputusan, tiga peristiwa — plan, period, billing_mode. */
+    expect(state.subscriptionEvents.map((e) => e.kind)).toEqual(["plan", "period", "billing_mode"]);
+  });
+
+  it("berhenti pada langkah pertama yang gagal dan MENYATAKANNYA", async () => {
+    const { state, deps } = makeWorld();
+    state.subscriptions[0].status = "cancelled";
+    const r = await activateQuoteEntitlement(
+      deps,
+      { tenantId: 7, planKey: "starter", cycle: "yearly", periods: 1, quoteRef: "Q-1", actor: ACTOR },
+      NOW
+    );
+    expect(r.ok).toBe(false);
+    expect(r.steps.map((s) => [s.step, s.outcome])).toEqual([
+      ["plan", "unchanged"],
+      ["extend", "cancelled"],
+    ]);
   });
 });

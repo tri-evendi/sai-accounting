@@ -5271,6 +5271,18 @@
       "bookUnreadable": "Buku {book} tidak terbaca — periksa koneksi basis datanya.",
       "conformanceFindings": "{count} temuan sapuan kesesuaian terakhir milik buku tenant ini — lihat Kesesuaian data.",
       "conformanceAmbiguous": "Temuan untuk {books} tidak bisa diatribusikan: slug PT itu juga dipakai tenant lain."
+    },
+    "quote": {
+      "title": "Aktifkan dari penawaran",
+      "description": "Penawaran disetujui dan dibayar di buku PT penyedia → paket + periode + mode tagih manual, dalam satu langkah berjejak.",
+      "open": "Aktifkan dari penawaran",
+      "explain": "Merangkai tiga tindakan yang sama dengan tombolnya masing-masing: ganti paket (bila berbeda), perpanjang periode, lalu mode tagih manual. Berhenti pada langkah pertama yang gagal. Perpanjangan tetap menerbitkan tagihan Rp 0 bertanda -K — faktur sebenarnya ada di buku PT penyedia.",
+      "refLabel": "Nomor penawaran / kontrak",
+      "submit": "Aktifkan hak pakai",
+      "confirmBody": "Aktifkan {tenant} dari penawaran {quote}: paket {plan}, {periods} periode, mode tagih manual?",
+      "done": "Hak pakai aktif dari penawaran {quote}.",
+      "partial": "Belum selesai — {steps}. Langkah yang tersisa bisa dilanjutkan dengan tombolnya masing-masing.",
+      "errInput": "Isian tidak lengkap: nomor penawaran, paket, periode 1–24, dan alasan wajib."
     }
   },
   "docs": {

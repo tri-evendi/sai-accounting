@@ -55,6 +55,7 @@ import { recordSubscriptionEvent } from "@/lib/subscription-events";
 import { bukaBasisData } from "@sai/db/server";
 import {
   auditActor,
+  changeTenantPlan,
   planChangeApplier,
   type BillingActor,
   type BillingWriteDeps,
@@ -856,4 +857,80 @@ export function extendPeriod(
  */
 export function compedInvoiceNumber(subscriptionId: number, periodStart: Date): string {
   return `PINV-S${subscriptionId}-${periodStart.toISOString().slice(0, 10).replace(/-/g, "")}-K`;
+}
+
+/* ═══════ 7. Penawaran disetujui → hak pakai (KOMERSIALISASI §7 langkah 7) ══ */
+
+export type QuoteActivationStep =
+  | { step: "plan"; outcome: string }
+  | { step: "extend"; outcome: string; to?: Date }
+  | { step: "billing_mode"; outcome: string };
+
+export interface QuoteActivationResult {
+  /** `true` hanya bila SEMUA langkah yang perlu berhasil. */
+  ok: boolean;
+  steps: QuoteActivationStep[];
+}
+
+/**
+ * Terjemahkan penawaran yang DISETUJUI (dan dibayar di buku PT penyedia,
+ * §7 langkah 5–6) menjadi hak pakai: paket + periode + mode `manual`.
+ *
+ * Hanya MERANGKAI tiga fungsi yang sudah dipanggil manusia satu per satu —
+ * `changeTenantPlan`, `extendSubscription`, `setBillingMode` — dengan satu
+ * nomor penawaran yang ikut masuk alasan setiap jejaknya. Bukan mesin baru:
+ * setiap aturan (snapshot harga, idempotensi `-K`, `price_zero`) tetap milik
+ * fungsi aslinya.
+ *
+ * BERHENTI pada langkah pertama yang gagal dan melaporkan setiap langkah —
+ * keadaan setengah jadi DINYATAKAN, tidak disembunyikan, dan operator bisa
+ * melanjutkan langkah yang tersisa dengan tombolnya masing-masing.
+ *
+ * ⚠ Perpanjangan menerbitkan tagihan Rp 0 bertanda `-K` (§6.4) — sama dengan
+ * menekan "perpanjang" dengan tangan. Faktur yang sebenarnya hidup di buku PT
+ * penyedia; menghilangkan tagihan Rp 0 itu adalah keputusan tersendiri.
+ */
+export async function activateQuoteEntitlement(
+  deps: OperatorWriteDeps,
+  input: {
+    tenantId: number;
+    planKey: string;
+    cycle: "monthly" | "yearly";
+    periods: number;
+    quoteRef: string;
+    actor: OperatorActor;
+  },
+  now: Date = new Date()
+): Promise<QuoteActivationResult> {
+  const actor: OperatorActor = {
+    operator: input.actor.operator,
+    reason: `Penawaran ${input.quoteRef}: ${input.actor.reason}`,
+  };
+  const steps: QuoteActivationStep[] = [];
+
+  const tenant = await deps.control.tenant.findUnique({
+    where: { id: input.tenantId },
+    select: { planKey: true },
+  });
+  if (!tenant) return { ok: false, steps: [{ step: "plan", outcome: "tenant_not_found" }] };
+
+  if (tenant.planKey !== input.planKey) {
+    const plan = await changeTenantPlan(deps, { tenantRef: { id: input.tenantId }, planKey: input.planKey, actor }, now);
+    steps.push({ step: "plan", outcome: plan.outcome });
+    if (plan.outcome !== "changed") return { ok: false, steps };
+  } else {
+    steps.push({ step: "plan", outcome: "unchanged" });
+  }
+
+  const ext = await extendSubscription(
+    deps,
+    { tenantRef: { id: input.tenantId }, cycle: input.cycle, periods: input.periods, actor },
+    now
+  );
+  steps.push({ step: "extend", outcome: ext.outcome, ...(ext.outcome === "extended" ? { to: ext.to } : {}) });
+  if (ext.outcome !== "extended") return { ok: false, steps };
+
+  const mode = await setBillingMode(deps, { tenantRef: { id: input.tenantId }, mode: "manual", actor });
+  steps.push({ step: "billing_mode", outcome: mode.outcome });
+  return { ok: mode.outcome === "changed" || mode.outcome === "not_applicable", steps };
 }

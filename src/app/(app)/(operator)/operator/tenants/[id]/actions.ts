@@ -37,6 +37,7 @@ import {
   setTenantSuspension,
   extendSubscription,
   type OperatorActor,
+  activateQuoteEntitlement,
 } from "@/lib/operator/writes";
 import {
   changePlanSchema,
@@ -45,6 +46,7 @@ import {
   suspensionSchema,
   extendSubscriptionSchema,
   billingModeActionSchema,
+  quoteActivationSchema,
 } from "@/lib/validations/operator";
 import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-constants";
 import { invalidateTenantState } from "@/lib/tenant-state";
@@ -399,4 +401,31 @@ export async function operatorExecuteDeletion(input: unknown): Promise<OperatorA
     default:
       return { ok: false, message: t("operator.tenant.notFound") };
   }
+}
+
+/* ── 7. Penawaran disetujui → hak pakai ───────────────────────────────────── */
+
+export async function operatorActivateQuote(input: unknown): Promise<OperatorActionResult> {
+  const gate = await guardAndTranslate("tenant.billing");
+  if (!gate.ok) return gate.result;
+  const { t, actorName } = gate;
+
+  const parsed = quoteActivationSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: t("operator.quote.errInput") };
+  const { tenantId, planKey, cycle, periods, quoteRef, reason } = parsed.data;
+
+  const result = await activateQuoteEntitlement(deps(), {
+    tenantId,
+    planKey,
+    cycle,
+    periods,
+    quoteRef,
+    actor: { operator: actorName, reason },
+  });
+  felt(tenantId);
+
+  const ringkas = result.steps.map((s) => `${s.step}: ${s.outcome}`).join(" · ");
+  return result.ok
+    ? { ok: true, message: t("operator.quote.done", { quote: quoteRef }), warning: null }
+    : { ok: false, message: t("operator.quote.partial", { steps: ringkas }) };
 }

@@ -4693,7 +4693,9 @@
       "colCompanyUsers": "用户数",
       "companyActive": "启用",
       "companyInactive": "停用",
-      "booksNote": "此控制台读取的是订阅元数据，而非客户账簿——从这里永远不会打开公司数据库。"
+      "booksNote": "此控制台读取的是订阅元数据，而非客户账簿——从这里永远不会打开公司数据库。",
+      "trailHeading": "租户日志",
+      "trailAll": "查看全部日志"
     },
     "reconciliation": {
       "heading": "对账",
@@ -4990,14 +4992,27 @@
     },
     "audit": {
       "heading": "操作员审计记录",
-      "description": "登录、退出以及平台设置变更——何人、来自哪个 IP、何时。针对租户的操作记录在该租户自己的页面上。",
+      "description": "登录、登出及平台设置变更——谁、从哪个 IP、何时。针对租户的操作见租户日志。",
       "colTime": "时间",
       "colOperator": "操作员",
       "colAction": "操作",
       "colIp": "IP 地址",
       "colDetails": "详情",
       "empty": "尚无记录。",
-      "emptyHint": "自首次登录本控制台起即开始记录。"
+      "emptyHint": "自首次登录本控制台起即开始记录。",
+      "tenantTrailLink": "租户日志"
+    },
+    "tenantAudit": {
+      "heading": "租户日志",
+      "description": "针对每个租户的操作——停用、更换套餐、付款、计费模式、删除——及其执行者和原因。租户删除后仍可查阅。",
+      "operatorTrailLink": "运营者日志",
+      "tenantLabel": "租户（slug）",
+      "tenantPlaceholder": "例如 pt-example",
+      "groupLabel": "操作类别",
+      "groupAll": "全部操作",
+      "colTenant": "租户",
+      "colActor": "执行者",
+      "empty": "此筛选条件下暂无日志。"
     }
   },
   "docs": {

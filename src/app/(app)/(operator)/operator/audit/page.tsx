@@ -21,135 +21,72 @@
  *
  * Jejak TENANT (tindakan terhadap pelanggan — penangguhan, pindah paket,
  * pembayaran manual) TIDAK di sini: ia milik tenantnya dan tinggal di
- * `tenant_audit_logs` basis data kendali, terbaca di halaman tenant masing
- * masing. Berkas ini merekam sisi OPERATORnya: masuk, keluar, dan perubahan
- * setelan platform.
+ * `tenant_audit_logs` basis data kendali, terbaca di `/operator/audit/tenants`
+ * (lintas tenant) dan di halaman rincian tiap tenant. Halaman ini merekam sisi
+ * OPERATORnya: masuk, keluar, dan perubahan setelan platform.
+ *
+ * Sejak migration platform 0002 sumbernya tabel `operator_audit_logs`,
+ * dipaginasi di SQL — bukan lagi 200 baris terakhir dari sebuah berkas.
  */
 
 import { HistoryOutlined } from "@ant-design/icons";
 
-import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ConsolePanel } from "@/components/operator/console-ui";
 import { PageHeader } from "@/components/ui/page-header";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { readOperatorAuditLogs, type OperatorAuditEntry } from "@/lib/operator/audit";
+import { Pagination } from "@/components/ui/pagination";
+import { ConsolePanel } from "@/components/operator/console-ui";
+import { AuditTrailTable } from "@/components/operator/audit-trail-table";
+import { readOperatorAuditPage } from "@/lib/operator/audit";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-/** Sebanyak yang masih bisa dibaca mata dalam satu halaman tanpa paginasi. */
-const BATAS = 200;
+const PER_HALAMAN = 100;
 
-/** Tindakan yang berarti SESUATU GAGAL — satu-satunya yang diberi warna. */
-const GAGAL = new Set(["operator.login.failed"]);
-
-/**
- * Jam SAMPAI DETIK, dan karena itu BUKAN `formatDateTime` bersama.
- *
- * `lib/utils.ts` memformat `timeStyle: "short"` (tanpa detik) — benar untuk
- * tenggat dan tanggal tagihan, salah untuk jejak audit: dua tindakan operator
- * yang terjadi dalam satu menit yang sama akan tampil berjam sama persis,
- * sehingga URUTANNYA hanya bisa dipercaya dari urutan barisnya. Jejak yang
- * dibaca orang justru ketika ada yang perlu dipertanggungjawabkan tidak boleh
- * menyembunyikan selisih detik.
- */
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium" }).format(d);
-}
-
-/** Rincian → satu baris. Panjangnya dipotong di sini, bukan lewat CSS: baris
- *  tabel yang melebar karena satu JSON panjang menggeser seluruh kolomnya. */
-function ringkasDetails(details: Record<string, unknown> | undefined): string {
-  if (!details || Object.keys(details).length === 0) return "—";
-  const teks = JSON.stringify(details);
-  return teks.length > 160 ? `${teks.slice(0, 157)}…` : teks;
-}
-
-export default async function OperatorAuditPage() {
+export default async function OperatorAuditPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireOperatorPage();
   const t = await getT();
-  const entries = await readOperatorAuditLogs({ limit: BATAS });
-
-  const columns: SaiColumns<OperatorAuditEntry> = [
-    {
-      key: "createdAt",
-      title: t("operator.audit.colTime"),
-      align: "left",
-      render: (_v, row) => (
-        <span style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
-          {formatDateTime(row.createdAt)}
-        </span>
-      ),
-    },
-    {
-      key: "operator",
-      title: t("operator.audit.colOperator"),
-      align: "left",
-      render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.operator}</span>,
-    },
-    {
-      key: "action",
-      title: t("operator.audit.colAction"),
-      align: "left",
-      render: (_v, row) =>
-        GAGAL.has(row.action) ? (
-          <Badge variant="danger">{row.action}</Badge>
-        ) : (
-          /* Tanpa `Badge` untuk tindakan biasa: lencana pada SETIAP baris
-             berhenti menandai apa pun. Yang ditandai hanya yang gagal. */
-          <span style={{ fontVariantNumeric: "tabular-nums" }}>{row.action}</span>
-        ),
-    },
-    {
-      key: "ipAddress",
-      title: t("operator.audit.colIp"),
-      align: "left",
-      render: (_v, row) => (
-        <span
-          style={{
-            fontVariantNumeric: "tabular-nums",
-            color: "var(--ant-color-text-secondary)",
-          }}
-        >
-          {row.ipAddress ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "details",
-      title: t("operator.audit.colDetails"),
-      align: "left",
-      render: (_v, row) => (
-        <span
-          style={{
-            fontSize: "var(--ant-font-size-sm)",
-            color: "var(--ant-color-text-secondary)",
-            wordBreak: "break-all",
-          }}
-        >
-          {ringkasDetails(row.details)}
-        </span>
-      ),
-    },
-  ];
+  const page = Math.max(1, Number.parseInt((await searchParams).page ?? "1", 10) || 1);
+  const { entries, total } = await readOperatorAuditPage({
+    limit: PER_HALAMAN,
+    skip: (page - 1) * PER_HALAMAN,
+  });
 
   return (
     <div>
       <PageHeader
-        title={`${t("operator.audit.heading")} (${entries.length})`}
+        title={`${t("operator.audit.heading")} (${total})`}
         description={t("operator.audit.description")}
+        actions={
+          <ButtonLink href="/operator/audit/tenants" variant="outline" size="sm">
+            {t("operator.audit.tenantTrailLink")}
+          </ButtonLink>
+        }
       />
 
       <ConsolePanel flush>
-        <StaticTable
-          columns={columns}
-          rows={entries}
-          rowKey={(row) => row.id}
+        <AuditTrailTable
+          rows={entries.map((e) => ({
+            id: e.id,
+            createdAt: e.createdAt,
+            actor: e.operator,
+            action: e.action,
+            ipAddress: e.ipAddress,
+            details: e.details,
+          }))}
+          labels={{
+            time: t("operator.audit.colTime"),
+            actor: t("operator.audit.colOperator"),
+            action: t("operator.audit.colAction"),
+            ip: t("operator.audit.colIp"),
+            details: t("operator.audit.colDetails"),
+          }}
           empty={
             <EmptyState
               icon={<HistoryOutlined aria-hidden="true" style={{ fontSize: 48 }} />}
@@ -157,6 +94,11 @@ export default async function OperatorAuditPage() {
               description={t("operator.audit.emptyHint")}
             />
           }
+        />
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(total / PER_HALAMAN)}
+          basePath="/operator/audit"
         />
       </ConsolePanel>
     </div>

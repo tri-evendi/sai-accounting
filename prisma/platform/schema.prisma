@@ -656,3 +656,44 @@ model SiteSetting {
 
   @@map("site_settings")
 }
+
+/// JEJAK AUDIT BIDANG OPERATOR (migration 0002) — masuk/keluar konsol dan
+/// perubahan setelan PENYEDIA (surel, isi pendaratan, pengaturan situs).
+///
+/// Tindakan operator terhadap TENANT tidak di sini: ia milik tenantnya, di
+/// `tenant_audit_logs` basis data kendali, dengan aktor `operator:<nama>`.
+///
+/// Sampai migration 0002 jejak ini berupa berkas `data/audit/operators/audit.jsonl`
+/// di volume `audit` — terikat pada satu container, dan karena itu SYARAT
+/// pemisahan `apps/operator` (dok 14 §5). Pemindahannya `bun run
+/// migrate:operator-audit`.
+///
+/// Tanpa FK: akun operator hidup di env, dan percobaan masuk yang gagal
+/// mencatat nama yang DIKETIK, yang memang bukan akun.
+model OperatorAuditLog {
+  id Int @id @default(autoincrement())
+
+  /// Id entri JSONL lama (`<epoch>-<acak>`), diisi HANYA oleh skrip
+  /// pemindahan — idempotensi lewat constraint (pola `TenantAuditLog.legacyId`).
+  legacyId String? @unique @map("legacy_id") @db.VarChar(40)
+
+  /// Nama akun operator; percobaan gagal mencatat nama yang diketik.
+  operator String @db.VarChar(100)
+
+  /// enum-like `OperatorAuditAction` di `lib/operator/audit.ts`.
+  action String @db.VarChar(50)
+
+  /// JSON dalam TEKS — tidak pernah memuat rahasia; penulisnya yang menjamin.
+  details String? @db.Text
+
+  ipAddress String? @map("ip_address") @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  /// Jejak tidak pernah diubah; kolom ini ada karena konvensi docs/DATABASE.md §9.
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([operator, createdAt])
+  @@index([action])
+  @@map("operator_audit_logs")
+}

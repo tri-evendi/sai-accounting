@@ -637,9 +637,12 @@ services:
     volumes:
       # HANYA `audit` — dan itu hasil pemeriksaan, bukan dugaan.
       #
-      # Bidang operator menulis `data/audit/operators/audit.jsonl`
-      # (`lib/operator/audit.ts`, lewat `OPERATOR_AUDIT_DIR`), jadi volume
-      # `audit` memang dibutuhkan. Ia TIDAK PERNAH menyentuh `data/documents`
+      # Sejak migration platform 0002 jejak operator tinggal di tabel
+      # `operator_audit_logs`, BUKAN di volume ini. Volume masih dipasang
+      # sampai `migrate:operator-audit --apply` memindahkan
+      # `data/audit/operators/audit.jsonl` di produksi; sesudah itu ia bisa
+      # dicabut — syarat dok 14 §5 sebelum konsol menjadi aplikasi sendiri.
+      # Ia TIDAK PERNAH menyentuh `data/documents`
       # — diperiksa di seluruh `app/(app)/(operator)` dan `lib/operator/`
       # saat pemisahan ini dibuat.
       #

@@ -46,6 +46,9 @@ import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
+import { AuditTrailTable } from "@/components/operator/audit-trail-table";
+import { ButtonLink } from "@/components/ui/button";
+import { readTenantAuditPage } from "@/lib/tenant-audit";
 import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listPlansForOperator, tenantDetailForOperator, tenantStatusVariant } from "@/lib/operator/store";
@@ -122,6 +125,9 @@ type TenantDetail = NonNullable<Awaited<ReturnType<typeof tenantDetailForOperato
 type Invoice = NonNullable<TenantDetail["billing"]>["invoices"][number];
 type Company = TenantDetail["companies"][number];
 
+/** Cukup untuk "apa yang terakhir terjadi"; selebihnya di halaman jejak. */
+const JEJAK_DI_RINCIAN = 20;
+
 export default async function OperatorTenantDetailPage({
   params,
 }: {
@@ -139,6 +145,10 @@ export default async function OperatorTenantDetailPage({
 
   const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
   const { tenant, usage, companies, billing, deletionRequest } = detail;
+  /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
+     `/operator/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
+     diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
+  const trail = await readTenantAuditPage(tenant.slug, { limit: JEJAK_DI_RINCIAN });
 
   /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
    * tanpanya panel ganti paket memang tidak boleh muncul. */
@@ -424,6 +434,43 @@ export default async function OperatorTenantDetailPage({
             rowKey={(company) => company.id}
           />
         )}
+      </ConsolePanel>
+
+      {/* ── Jejak tenant — apa yang SUDAH dilakukan, sebelum tombol untuk
+          melakukan berikutnya. ──────────────────────────────────────────── */}
+      <ConsolePanel
+        title={`${t("operator.tenant.trailHeading")} (${trail.total})`}
+        flush
+        actions={
+          trail.total > 0 ? (
+            <ButtonLink
+              href={`/operator/audit/tenants?tenant=${encodeURIComponent(tenant.slug)}`}
+              variant="outline"
+              size="sm"
+            >
+              {t("operator.tenant.trailAll")}
+            </ButtonLink>
+          ) : undefined
+        }
+      >
+        <AuditTrailTable
+          rows={trail.entries.map((e) => ({
+            id: e.id,
+            createdAt: e.createdAt,
+            actor: e.username,
+            action: e.action,
+            ipAddress: e.ipAddress,
+            details: e.details,
+          }))}
+          labels={{
+            time: t("operator.audit.colTime"),
+            actor: t("operator.tenantAudit.colActor"),
+            action: t("operator.audit.colAction"),
+            ip: t("operator.audit.colIp"),
+            details: t("operator.audit.colDetails"),
+          }}
+          empty={<p style={{ ...MUTED, padding: "var(--ant-padding-lg)" }}>{t("operator.tenantAudit.empty")}</p>}
+        />
       </ConsolePanel>
 
       {/* ── Tindakan tulis (#155) — SENGAJA paling bawah: fakta dibaca dulu,

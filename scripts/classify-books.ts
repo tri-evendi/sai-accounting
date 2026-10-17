@@ -17,8 +17,8 @@
  * baru mendaftar. Kueri yang ditempel dari dokumen akan menyimpang dari
  * aturannya; skrip yang memanggil `classifyBook()` tidak bisa.
  */
-import { PrismaClient as ControlClient } from "../src/generated/control/client";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
+import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
 
 import {

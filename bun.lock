@@ -56,6 +56,7 @@
       "dependencies": {
         "@prisma/adapter-mariadb": "^7.5.0",
         "@prisma/adapter-pg": "7.5.0",
+        "@prisma/client": "^7.5.0",
         "mariadb": "^3.5.2",
         "pg": "^8.23.1",
       },

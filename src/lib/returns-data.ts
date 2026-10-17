@@ -7,7 +7,7 @@
  * and hands the numbers to `assertWithinReturnable`.
  */
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 
 type Client = Prisma.TransactionClient | typeof prisma;
 

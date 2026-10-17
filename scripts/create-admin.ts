@@ -16,7 +16,7 @@
 import "dotenv/config";
 import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "../src/lib/constants";
 import { userQuotaExceeded } from "../src/lib/invitations";
-import { PrismaClient } from "../src/generated/control/client.js";
+import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import bcrypt from "bcrypt";
 

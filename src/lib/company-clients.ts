@@ -27,7 +27,7 @@
  * berarti satu SELECT bisa membawa pergi kredensial setiap perusahaan.
  */
 
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
 
 /** Berapa klien perusahaan boleh hidup bersamaan. */

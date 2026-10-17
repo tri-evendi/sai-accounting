@@ -26,7 +26,7 @@ import "dotenv/config";
 
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
-import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
+import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { schedulerHealth } from "../src/lib/scheduler-heartbeat";
 
 async function main() {

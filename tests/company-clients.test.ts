@@ -23,7 +23,7 @@ vi.hoisted(() => {
 const created: string[] = [];
 const disconnected: string[] = [];
 
-vi.mock("@/generated/prisma/client", () => ({
+vi.mock("@sai/db/client/company", () => ({
   PrismaClient: class {
     databaseName: string;
     constructor(options: { adapter: { databaseName: string } }) {

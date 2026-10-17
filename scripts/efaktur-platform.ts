@@ -23,8 +23,8 @@
 
 import "dotenv/config";
 import { writeFileSync } from "node:fs";
-import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
-import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
+import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { platformEfaktur } from "../src/lib/billing/platform-efaktur";
 

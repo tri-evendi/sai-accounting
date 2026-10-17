@@ -28,7 +28,7 @@
  * tenant. Pakai `TenantKeyedCache` dari `lib/tenant-cache.ts`.
  */
 
-import { PrismaClient } from "@/generated/platform/client";
+import { PrismaClient } from "@sai/db/client/platform";
 import { buatAdapter } from "@sai/db/adapter";
 
 const globalForPlatform = globalThis as unknown as {

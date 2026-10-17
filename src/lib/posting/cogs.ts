@@ -18,7 +18,7 @@
  *   4. Costs are IDR only. Foreign-currency purchases must be converted before
  *      being stored in `stock_movements.unit_cost`.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 import { round2 } from "./rules";
 
 /**

@@ -35,10 +35,12 @@ const eslintConfig = defineConfig([
      *    gelap dan tidak melihat satu pun variabel CSS; nilainya juga sudah
      *    ditulis sebagai triplet RGB, bukan string.
      *
-     * `src/generated/**` adalah keluaran `prisma generate`, bukan kode kita.
+     * `packages/db/generated/**` (dulu `src/generated/**`) adalah keluaran
+     * `prisma generate`, bukan kode kita.
      */
     ignores: [
       "src/generated/**",
+      "packages/db/generated/**",
       "src/lib/theme/antd-tokens.ts",
       "src/lib/pdf/brand.ts",
     ],

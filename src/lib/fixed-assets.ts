@@ -16,11 +16,11 @@
  * the fast pre-check; the unique index is the hard guarantee.
  *
  * ── IDR ONLY ────────────────────────────────────────────────────────────────
- * See the model note in prisma/schema.prisma: fixed assets are valued in IDR, so
+ * See the model note in packages/db/prisma/company/schema.prisma: fixed assets are valued in IDR, so
  * everything here is IDR base with no rate.
  */
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { postForSource } from "@/lib/posting";
 import {
   bookValue,

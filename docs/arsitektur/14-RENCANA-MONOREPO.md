@@ -3,8 +3,9 @@
 > **Status:** asesmen + rencana. **Fase 0 SELESAI 17 Okt 2026** (§4): arah
 > dependensi kini ditegakkan `tests/operator-dependency-direction.test.ts`, dan
 > dua penyeberangan dibereskan. **Fase 1a SELESAI 17 Okt 2026** atas
-> permintaan pemilik (§5): workspace bun + `packages/db` (`@sai/db`). Fase 1b
-> (skema + klien hasil bangkitan) dan Fase 2–4 belum. Timbangan di §2 tidak
+> permintaan pemilik (§5): workspace bun + `packages/db` (`@sai/db`). **Fase 1b
+> SELESAI 17 Okt 2026** (malam): skema + klien hasil bangkitan di `packages/db`,
+> diimpor lewat `@sai/db/client/{company,control,platform}`. Fase 2–4 belum. Timbangan di §2 tidak
 > berubah; yang berubah adalah keputusannya, yang memang milik pemilik.
 >
 > **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
@@ -318,14 +319,21 @@ pindahkan `src/lib/db-*` + skema Prisma ke `packages/db`. Aplikasi tetap
 Risiko utama di atas dibuktikan saat BERJALAN: keempat subpath dimuat oleh
 `tsx` dan oleh `bun` dari sebuah skrip di `scripts/`, bukan hanya oleh `tsc`.
 
-#### Fase 1b — belum: skema Prisma + klien hasil bangkitan
+#### Fase 1b — ✅ SELESAI 17 Okt 2026
 
-Sengaja dipisah dari 1a. Klien hasil bangkitan (`src/generated/{prisma,control,platform}`)
-diimpor **76 berkas** lewat `@/generated/*`, dan path keluarannya dipaku di tiga
-`prisma*.config.ts`, di tahap `builder`/`migrator` Dockerfile, dan di
-`.dockerignore`. Memindahkan berkas skema SAJA tidak memberi apa-apa yang
-belum diberi 1a; memindahkan kliennya adalah gerakan sendiri dengan gerbang
-build image sendiri. `prisma/postgresql/**` tetap tidak pindah (lihat atas).
+| Apa | Hasil |
+|---|---|
+| `prisma/schema.prisma`, `prisma/{control,platform}/schema.prisma` | pindah ke `packages/db/prisma/{company,control,platform}/schema.prisma`; isinya tidak berubah selain baris `output` |
+| `src/generated/{prisma,control,platform}` | kini `packages/db/generated/{company,control,platform}` (gitignored, dibangkitkan `bun run db:generate` dan tahap build Docker seperti sebelumnya) |
+| 78 pengimpor (`@/generated/*` di aplikasi, `../src/generated/*/client.js` di 29 skrip) | semuanya `@sai/db/client/{company,control,platform}`, satu bentuk untuk Next, `tsx`, dan `bun` |
+| `prisma*.config.ts` | tetap di akar (perintah CLI dan Dockerfile tidak berubah); `schema:` menunjuk ke paket, `migrations.path` tetap `prisma/postgresql/<db>` |
+| `.gitignore`, `.dockerignore`, ESLint | jalur baru ditambahkan; `src/generated` tetap diabaikan demi checkout/worktree lama |
+| Penjaga baru `tests/klien-prisma-dari-paket.test.ts` | menolak impor jalur lama, skema yatim di `prisma/`, dan subpath klien yang tidak diekspor; dibuktikan merah dengan satu impor `@/generated/…` |
+
+Dibuktikan saat BERJALAN, bukan hanya `tsc`: ketiga subpath klien dimuat oleh
+`tsx` dan oleh `bun` dari skrip di `scripts/`; `prisma validate` lolos untuk
+ketiga config. Yang tetap di `prisma/`: `postgresql/**` (migration yang
+diterapkan), arsip MariaDB, dan `seed.ts`.
 
 ### Fase 2 — `packages/core` + `packages/ui` (≈ 5 hari)
 

@@ -9,7 +9,7 @@
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { advancePaymentSchema } from "@/lib/validations/advance";
 import { fxAmounts } from "@/lib/validations/fx";
 import { requireApiPermission } from "@/lib/auth-guard";

@@ -21,7 +21,7 @@
  * stok bahan baru berkurang saat produksinya selesai — dan selama tiga hari itu
  * buku menyatakan barang yang sudah tidak ada di gudang.
  */
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { postForSource } from "@/lib/posting";
 import { averageUnitCostForItem, costOfMovement } from "@/lib/posting/cogs";
 import { calculateStockTotals } from "@/lib/inventory";

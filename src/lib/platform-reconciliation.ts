@@ -19,8 +19,8 @@
  * Membaca kedua sisi, tidak menulis apa pun.
  */
 
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
-import type { PrismaClient as ControlClient } from "@/generated/control/client";
+import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { tenantStatusForSubscription } from "@/lib/subscription-lifecycle";
 
 export type Finding = { check: string; detail: string };

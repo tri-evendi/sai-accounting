@@ -11,7 +11,7 @@
  * issue #104 batal pada saat itu juga.
  */
 
-import { PrismaClient } from "@/generated/control/client";
+import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 
 const globalForControl = globalThis as unknown as {

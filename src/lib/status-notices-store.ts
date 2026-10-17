@@ -12,7 +12,7 @@
  *
  * Tanpa `server-only`, klien disuntik untuk tulisan (pola `writes.ts`).
  */
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
+import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import {
   PHASES_FOR,
   STATUS_NOTICE_COMPONENTS,

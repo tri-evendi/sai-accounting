@@ -24,7 +24,7 @@
  */
 
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/control/client.js";
+import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { TENANT_ROLES, TENANT_ROLE_VALUES } from "../src/lib/constants";
 

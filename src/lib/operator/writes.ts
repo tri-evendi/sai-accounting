@@ -35,7 +35,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import type { PrismaClient as ControlClient } from "@/generated/control/client";
+import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { processPaymentNotification } from "@/lib/payment-webhook";
 import {
   nextPeriod,

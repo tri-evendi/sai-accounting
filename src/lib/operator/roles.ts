@@ -26,6 +26,9 @@ export const OPERATOR_PERMISSIONS = [
   "tenant.billing",
   /** Suspensi & pemulihan manual. */
   "tenant.lifecycle",
+  /** Bantuan pengguna: cabut sesi, kirim tautan atur ulang, kirim ulang undangan.
+   *  Tidak pernah memegang rahasia — hanya meminta aplikasi mengirim tautan. */
+  "tenant.users",
   /** Eksekusi penghapusan akun (UU PDP) — tidak bisa dibalik. */
   "tenant.delete",
   /** Isi halaman pendaratan. */
@@ -49,7 +52,7 @@ export type OperatorPermission = (typeof OPERATOR_PERMISSIONS)[number];
 const MATRIKS: Record<OperatorRole, readonly OperatorPermission[]> = {
   owner: OPERATOR_PERMISSIONS,
   billing: ["tenant.billing"],
-  support: ["tenant.lifecycle", "site.content"],
+  support: ["tenant.lifecycle", "tenant.users", "site.content"],
   viewer: [],
 };
 

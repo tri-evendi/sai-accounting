@@ -10,6 +10,7 @@ export const TENANT_AUDIT_GROUPS = [
   "tenant.register",
   "tenant.company.",
   "tenant.invitation.",
+  "tenant.user.",
   "tenant.profile.",
   "tenant.slug.",
   "tenant.plan.",

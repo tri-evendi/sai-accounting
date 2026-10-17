@@ -49,6 +49,14 @@ import { TenantActions } from "@/components/operator/tenant-actions";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { ButtonLink } from "@/components/ui/button";
 import { readTenantAuditPage } from "@/lib/tenant-audit";
+import { TenantUserSupport } from "@/components/operator/tenant-user-support";
+import { tenantUsersForOperator } from "@/lib/operator/user-support";
+import { controlDb } from "@/lib/control-db";
+import {
+  operatorResendInvitation,
+  operatorRevokeUserSessions,
+  operatorSendPasswordReset,
+} from "./user-actions";
 import { paymentRailConfigured } from "@/lib/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
@@ -149,7 +157,10 @@ export default async function OperatorTenantDetailPage({
   /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
      `/operator/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
      diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
-  const trail = await readTenantAuditPage(tenant.slug, { limit: JEJAK_DI_RINCIAN });
+  const [trail, people] = await Promise.all([
+    readTenantAuditPage(tenant.slug, { limit: JEJAK_DI_RINCIAN }),
+    tenantUsersForOperator({ control: controlDb }, tenant.id),
+  ]);
 
   /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
    * tanpanya panel ganti paket memang tidak boleh muncul. */
@@ -435,6 +446,32 @@ export default async function OperatorTenantDetailPage({
             rowKey={(company) => company.id}
           />
         )}
+      </ConsolePanel>
+
+      {/* ── Pengguna & undangan — bantuan masuk tanpa memegang rahasia ───── */}
+      <ConsolePanel title={t("operator.users.heading", { count: people.users.length })}>
+        <TenantUserSupport
+          tenantId={tenant.id}
+          users={people.users.map((u) => ({
+            id: u.id,
+            label: u.name ? `${u.name} (${u.username})` : u.username,
+            email: u.email,
+            mustChangePassword: u.mustChangePassword,
+            activeMemberships: u.activeMemberships,
+          }))}
+          invitations={people.invitations.map((i) => ({
+            id: i.id,
+            email: i.email,
+            companyName: i.companyName,
+            companyRole: i.companyRole,
+            expiresLabel: formatDate(i.expiresAt),
+            expired: i.expired,
+          }))}
+          canAct={operatorCan(operator.role, "tenant.users")}
+          revoke={operatorRevokeUserSessions}
+          reset={operatorSendPasswordReset}
+          resend={operatorResendInvitation}
+        />
       </ConsolePanel>
 
       {/* ── Jejak tenant — apa yang SUDAH dilakukan, sebelum tombol untuk

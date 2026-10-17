@@ -697,3 +697,55 @@ model OperatorAuditLog {
   @@index([action])
   @@map("operator_audit_logs")
 }
+
+/// PERISTIWA LANGGANAN (migration platform 0003) — riwayat yang tidak bisa
+/// diisi mundur, maka dicatat sejak sekarang.
+///
+/// `subscriptions` hanya menyimpan keadaan TERAKHIR: status, paket, harga,
+/// periode. Churn ("berapa yang berhenti bulan ini"), konversi per kohort
+/// ("dari yang uji coba Agustus, berapa yang membayar"), dan ekspansi ("berapa
+/// yang naik paket") semuanya pertanyaan tentang PERUBAHAN — dan perubahan yang
+/// tidak dicatat pada saat terjadi tidak bisa direkonstruksi kemudian
+/// (`docs/KOMERSIALISASI.md` §8).
+///
+/// Setiap penulis `subscriptions` mencatat lewat `recordSubscriptionEvent`
+/// (`lib/subscription-events.ts`); `tests/subscription-events.test.ts` menolak
+/// berkas yang menulis langganan tanpa mencatat peristiwanya.
+///
+/// Tanpa FK ke `subscriptions`: riwayat harus selamat dari baris yang dicatatnya.
+model SubscriptionEvent {
+  id Int @id @default(autoincrement())
+
+  subscriptionId Int @map("subscription_id")
+  tenantId       Int @map("tenant_id")
+
+  /// created | status | plan | billing_mode | period | trial_cleared —
+  /// `SUBSCRIPTION_EVENT_KINDS`; CHECK di migration.
+  kind String @db.VarChar(20)
+
+  fromStatus String? @map("from_status") @db.VarChar(20)
+  toStatus   String? @map("to_status") @db.VarChar(20)
+  fromPlanId Int?    @map("from_plan_id")
+  toPlanId   Int?    @map("to_plan_id")
+  fromPrice  Decimal? @map("from_price") @db.Decimal(15, 2)
+  toPrice    Decimal? @map("to_price") @db.Decimal(15, 2)
+  currency   String?  @db.VarChar(5)
+
+  /// Siapa: `scheduler`, `webhook:<gerbang>`, `operator:<nama>`,
+  /// `cli:<user>`, `self-service:<jalur>`, `signup`, `backfill`.
+  actor String @db.VarChar(100)
+
+  /// JSON dalam teks — sebab/konteks (event mesin siklus hidup, siklus, dst.).
+  details String? @db.Text
+
+  occurredAt DateTime @map("occurred_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([subscriptionId])
+  @@index([tenantId])
+  @@index([kind, occurredAt])
+  @@index([occurredAt])
+  @@map("subscription_events")
+}

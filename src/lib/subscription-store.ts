@@ -19,6 +19,7 @@ import "server-only";
 
 import { controlDb } from "@/lib/control-db";
 import { platformDb } from "@/lib/platform-db";
+import { recordSubscriptionEvent } from "@/lib/subscription-events";
 import {
   initialSubscriptionFromPlan,
   tenantStatusForSubscription,
@@ -178,6 +179,21 @@ export async function createInitialSubscription(
     );
     return { created: false, reason: "platform_unreachable" };
   }
+
+  await recordSubscriptionEvent(
+    platformDb,
+    {
+      subscriptionId: subscription.id,
+      tenantId,
+      kind: "created",
+      actor: "signup",
+      toStatus: spec.status,
+      toPlanId: plan.id,
+      toPrice: plan.priceMonthly,
+      currency: plan.currency,
+    },
+    now
+  );
 
   /* Salinan KENDALI paling akhir (urutan tulis #137): status + snapshot paket
    * (kuota & trial_ends_at) disamakan dengan langganan yang baru lahir.

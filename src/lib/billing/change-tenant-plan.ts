@@ -39,6 +39,7 @@ import type { PrismaClient as ControlClient } from "@/generated/control/client";
 import { nextPeriod, tenantStatusForSubscription } from "@/lib/subscription-lifecycle";
 import type { SubscriptionStatus } from "@/lib/platform-constants";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { recordSubscriptionEvent } from "@/lib/subscription-events";
 
 /** Klien yang disuntikkan pemanggil — kedua lapis yang disentuh penagihan. */
 export interface BillingWriteDeps {
@@ -170,6 +171,46 @@ export async function changeTenantPlan(
       if ((error as { code?: string }).code === "P2002") return { outcome: "race_lost" };
       throw error;
     }
+  }
+
+  /* Dua cabang, dua pencatatan — sama dengan dua cabang tulisan di atas:
+     memindahkan langganan yang hidup = `plan`; melahirkan yang baru (tidak ada
+     / sudah `cancelled`) = `created`. */
+  if (existing && existing.status !== "cancelled") {
+    await recordSubscriptionEvent(
+      deps.platform,
+      {
+        subscriptionId: subscription.id,
+        tenantId: tenant.id,
+        kind: "plan",
+        actor: auditActor(input.actor).username,
+        fromStatus: existing.status,
+        toStatus: subscription.status,
+        fromPlanId: existing.planId,
+        toPlanId: plan.id,
+        fromPrice: existing.price,
+        toPrice: plan.priceMonthly,
+        currency: plan.currency,
+        details: { reason: input.actor.reason, from: tenant.planKey, to: plan.key },
+      },
+      now
+    );
+  } else {
+    await recordSubscriptionEvent(
+      deps.platform,
+      {
+        subscriptionId: subscription.id,
+        tenantId: tenant.id,
+        kind: "created",
+        actor: auditActor(input.actor).username,
+        toStatus: subscription.status,
+        toPlanId: plan.id,
+        toPrice: plan.priceMonthly,
+        currency: plan.currency,
+        details: { reason: input.actor.reason, via: "plan_change", replaces: existing?.id ?? null },
+      },
+      now
+    );
   }
 
   /* ── 2. KENDALI belakangan: salin kuota + status (snapshot §5) ─────────── */

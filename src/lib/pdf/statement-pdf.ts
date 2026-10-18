@@ -69,6 +69,7 @@ import {
   unratedNote,
   unresolvedNote,
 } from "@/lib/statement-layout";
+import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
 /** A plain, serialisable line — server components pass these to the client button. */
 export interface StatementRow {
@@ -421,13 +422,14 @@ function afterTable(doc: jsPDF): number {
   return (doc as any).lastAutoTable.finalY;
 }
 
-function header(doc: jsPDF, title: string, period: string, company: { name: string; address: string }) {
+function header(doc: jsPDF, title: string, period: string, company: PdfCompany) {
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text(company.name, pageWidth / 2, y, { align: "center" });
+  drawCompanyLogo(doc, company, y);
   y += 7;
 
   doc.setFontSize(12);
@@ -579,7 +581,7 @@ export function incomeStatementPrintRows(
   };
 }
 
-export function generateStatementPDF(payload: StatementPayload, company: { name: string; address: string }): jsPDF {
+export function generateStatementPDF(payload: StatementPayload, company: PdfCompany): jsPDF {
   const doc = new jsPDF();
   /*
    * `const` sejak issue #274: Laba/Rugi adalah cabang TERAKHIR yang menggeser

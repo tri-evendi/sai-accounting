@@ -5,123 +5,118 @@
 
 ## Kenapa permukaan ini punya aturan sendiri
 
-Ia bukan halaman pelanggan. Konsol hidup di **hostname sendiri**
-(`OPERATOR_HOST`, biasanya `ops.saiaccounting.id`), punya **sesi, cookie, dan
-kredensialnya sendiri** (`apps/operator/src/lib/operator/session.ts` + TOTP wajib), dan tidak
-pernah mewarisi konteks perusahaan. Pembacanya satu-dua orang penyedia, bukan
-ribuan pelanggan — jadi yang dioptimalkan bukan onboarding melainkan **kecepatan
-menjawab "apa yang perlu ditangani hari ini"**.
+Konsol hidup di hostname sendiri (`OPERATOR_HOST`, biasanya
+`ops.saiaccounting.id`), punya sesi, cookie, dan kredensialnya sendiri (`apps/operator/src/lib/operator/session.ts` + TOTP wajib), dan tidak
+pernah mewarisi konteks perusahaan. Pembacanya satu-dua orang penyedia, jadi yang
+dioptimalkan adalah kecepatan menjawab "apa yang perlu ditangani hari ini".
 
-Dua kelonggaran dunia pemasaran (`/`) dan satu kelengkapan dunia pelanggan
-(`/platform`) karena itu TIDAK berlaku di sini: tidak ada hero, tidak ada CTA
-berulang, dan tidak ada `UserMenu` (pengalih perusahaan, ganti kata sandi,
-pintu ke `/platform` — ketiganya 404 di host ini).
+Karena itu tidak ada hero, tidak ada CTA berulang (kelonggaran pendaratan `/`),
+dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 
 ## Aturan (meng-override / menambah MASTER.md)
 
-- **Bentuknya PANEL ADMIN, bukan bilah tab.** Menu samping gelap 256px + kepala
-  64px + isi lebar penuh yang menggulung sendiri — angka yang sama dengan chrome
+- **Bentuknya panel admin, bukan bilah tab.** Menu samping gelap 256px + kepala
+  64px + isi lebar penuh yang menggulung sendiri; angkanya sama dengan chrome
   dasbor dan `PlatformShell`. Kulitnya `apps/operator/src/components/operator/operator-shell.tsx`;
   daftar butirnya `apps/operator/src/lib/operator/nav.tsx`, bukan di dalam kulitnya.
-- **Isi TANPA batas lebar.** `maxWidth` di wadah isi dilarang: tabel tenant &
+- **Isi tanpa batas lebar.** `maxWidth` di wadah isi dilarang: tabel tenant &
   jejak audit punya 5–7 kolom, dan mengurungnya di 1152px membuat keduanya
   menggulung mendatar di monitor 1440px.
 - **Bidang gelap permanen = penanda bidang.** Menu samping (dan kepala halaman
-  masuk) memakai `SIDER_BG_DARK` di KEDUA tema, dengan `colorTextLightSolid` /
+  masuk) memakai `SIDER_BG_DARK` di kedua tema, dengan `colorTextLightSolid` /
   `NEUTRAL_TEXT_DARK` / `BORDER_TOKENS_DARK` untuk apa pun di atasnya. Satu
   pandangan harus cukup untuk tahu ini bukan aplikasi pelanggan. Lambangnya
-  `SafetyCertificateOutlined`, **bukan** `BrandMark`.
+  `SafetyCertificateOutlined`, bukan `BrandMark`.
 - **`PageHeader` wajib,** sama seperti halaman dasbor. Halaman tingkat-1 tanpa
   breadcrumb dan judulnya persis label menunya (boleh membawa jumlah); halaman
   di bawahnya (konsol `/tenants/[id]`) memakai breadcrumb yang dimulai dari
-  label menu induknya — breadcrumb ITULAH jalan pulangnya, bukan tombol
-  "kembali" tulisan tangan.
+  label menu induknya. Breadcrumb itulah jalan pulangnya; jangan menulis tombol
+  "kembali" sendiri.
 - **Lencana "Tindakan tercatat" selalu di kepala, dan selalu pertama dibaca.**
-  Ia peringatan, bukan hiasan: setiap tindakan di sini terekam atas nama operator
+  Setiap tindakan di sini terekam atas nama operator
   yang sedang masuk.
-- **Penjaga per HALAMAN, bukan per layout.** Setiap halaman memanggil
-  `requireOperatorPage()` dan setiap server action `requireOperatorActionSession()`
-  — layout hanya membaca sesi secara opsional untuk chrome. Dijaga
-  `tests/authz-coverage.test.ts` (grup `(operator)`), yang juga menolak `route.ts`
-  mana pun di bawah grup ini.
-- **Dua bidang data, satu yang boleh mati.** Bacaan dari basis data KENDALI
-  selalu tampil; bacaan PLATFORM (`sai_platform`) jatuh ke `null` dan dijawab
-  satu KALIMAT ("penagihan tidak terjangkau"), tidak pernah 500. Pola
+- **Penjaga per halaman, bukan per layout.** Setiap halaman memanggil
+  `requireOperatorPage()` dan setiap server action `requireOperatorActionSession()`;
+  layout hanya membaca sesi secara opsional untuk chrome. Dijaga
+  `tests/authz-coverage.test.ts` (grup `(operator)`). `route.ts` di bawah grup
+  ini hanya boleh berupa unduhan berkas (hanya `GET`, wajib
+  `requireOperatorRoute("<izin>")`); di luar grup, satu-satunya API aplikasi ini
+  adalah probe publik `/api/health`.
+- **Dua bidang data, satu yang boleh mati.** Bacaan dari basis data kendali
+  selalu tampil; bacaan platform (`sai_platform`) jatuh ke `null` dan dijawab
+  satu kalimat ("penagihan tidak terjangkau"), tidak pernah 500. Pola
   `billingOverviewForTenant`; lihat `apps/operator/src/lib/operator/store.ts`.
-- **Setiap wilayah isi duduk di atas PERMUKAAN.** Bingkainya dua, dan
-  pembedaannya satu kalimat supaya ia tidak menjadi selera
+- **Setiap wilayah isi berada di atas permukaan.** Bingkainya dua
   (`apps/operator/src/components/operator/console-ui.tsx`):
-  - **`ConsolePanel`** — kartu bertepi & berbayang, untuk isi yang tanpa itu
-    mengambang di atas latar halaman: tabel, formulir, daftar fakta, prosa.
+  - **`ConsolePanel`**: kartu bertepi & berbayang, untuk isi yang berdiri di
+    atas latar halaman: tabel, formulir, daftar fakta, prosa.
     `flush` untuk tabel (yang sudah membawa tepi & nada kepalanya sendiri), dan
-    `title` BOLEH kosong ketika judulnya hanya akan mengulang `<h1>` halaman.
-  - **`ConsoleSection`** — tanpa permukaan, untuk isi yang sudah berkartu
+    `title` boleh kosong ketika judulnya hanya akan mengulang `<h1>` halaman.
+  - **`ConsoleSection`**: tanpa permukaan, untuk isi yang sudah berkartu
     sendiri (kisi `StatCard`). Kartu di dalam kartu menghasilkan dua tepi
     berjarak 24px yang tidak memisahkan apa pun.
 
   Permukaan yang disusun tangan di komponen client (`mail-settings-form`,
-  `tenant-actions`) memakai resep yang SAMA dengan `ui/card.tsx` — `paddingLG`
-  + `boxShadowTertiary`. Satu konsol, satu keluarga permukaan.
+  `tenant-actions`) memakai resep yang sama dengan `@sai/ui/card`: `paddingLG`
+  + `boxShadowTertiary`.
 
-- **Kalimat "tak terjangkau" satu bentuk: `ConsoleNotice`.** Ia bukan `Alert`:
-  bidang platform memang BOLEH mati, dan menjawab keadaan yang sudah
-  diantisipasi dengan warna bahaya membuatnya terbaca seperti kerusakan.
+- **Kalimat "tak terjangkau" satu bentuk: `ConsoleNotice`,** bukan `Alert`.
+  Bidang platform memang boleh mati; menjawab keadaan yang sudah diantisipasi
+  dengan warna bahaya membuatnya terbaca seperti kerusakan.
 
-- **Jarak antar-bagian SATU angka** (`--ant-margin-lg`, lewat `CONSOLE_PAGE`),
+- **Jarak antar-bagian satu angka** (`--ant-margin-lg`, lewat `CONSOLE_PAGE`),
   dan gaya teks sekunder satu objek (`CONSOLE_MUTED`). Jangan mendefinisikan
-  `NOTICE`/`MUTED`/gaya judul seksi di dalam halaman — bentuk itu sudah pernah
-  tumbuh menjadi enam salinan dalam empat bentuk berbeda.
+  `NOTICE`/`MUTED`/gaya judul seksi di dalam halaman; bentuk itu pernah
+  menjadi enam salinan dalam empat bentuk berbeda.
 
-- **Ringkasan dibuka oleh "PERLU DITANGANI", bukan oleh ubin.** Daftar itu
+- **Ringkasan dibuka oleh "Perlu ditangani", bukan oleh ubin.** Daftar itu
   memuat hanya keadaan yang menuntut tindakan, berurut menurut mendesaknya,
-  masing-masing bertaut ke tempat tindakannya; penyaringnya murni & teruji
-  (`apps/operator/src/lib/operator/attention.ts`), dan keadaan tenang dikatakan SEKALI sebagai
-  satu kalimat — bukan sebagai enam baris nol. Baris penjadwal berdiri paling
-  atas karena ia MENJELASKAN baris lain.
+  masing-masing bertaut ke tempat tindakannya. Penyaringnya murni & teruji
+  (`apps/operator/src/lib/operator/attention.ts`). Keadaan tenang dikatakan
+  sekali sebagai satu kalimat, tidak sebagai enam baris nol. Baris penjadwal
+  berdiri paling atas karena ia menjelaskan baris lain.
 
-  Ubin angka tetap ada di bawahnya dan tetap `StatCard` apa adanya — bukan ubin
-  kedua milik konsol (alasan di kepala `(operator)/page.tsx`). Yang
-  dilarang adalah menjadikan ubin itu JAWABAN halaman: enam belas angka
-  berbobot sama memindahkan penyaringan ke kepala orang yang membukanya.
+  Ubin angka tetap ada di bawahnya sebagai `StatCard` apa adanya, tanpa ubin
+  kedua milik konsol (alasan di kepala `(operator)/page.tsx`). Ubin itu tidak
+  boleh menjadi jawaban halaman: enam belas angka berbobot sama memindahkan
+  penyaringan ke orang yang membukanya.
 
-- **Kepala area kerja memuat dua kelompok, bukan elemen yang mengambang.**
-  Kiri: lencana "tindakan tercatat" + HOST yang sedang dibuka — keduanya
-  menjawab pertanyaan yang sama (apa akibat klik berikutnya, dan pada siapa).
-  Kanan: identitas operator dalam satu isian + tombol keluar. Host-lah yang
-  menyusut di layar sempit, bukan target sentuh.
+- **Kepala area kerja memuat dua kelompok.** Kiri: lencana "tindakan tercatat"
+  + host yang sedang dibuka; keduanya menjawab apa akibat klik berikutnya, dan
+  pada siapa. Kanan: identitas operator dalam satu isian + tombol keluar. Di
+  layar sempit host yang menyusut, bukan target sentuh.
 - **Saringan & pilihan lewat form GET,** tidak lewat state client: hasilnya URL
-  yang bisa disalin ke tiket dukungan, dan nol byte JS tambahan. Berlaku untuk
+  yang bisa disalin ke tiket dukungan, tanpa JS tambahan. Berlaku untuk
   daftar tenant dan pemilih bahasa/bagian di konsol `/content`.
 
 ### konsol `/content` — isi halaman pendaratan
 
-- **Yang disimpan hanya PENIMPA.** Kamus (`packages/core/src/i18n/dictionaries/*.json`) tetap
+- **Yang disimpan hanya penimpa.** Kamus (`packages/core/src/i18n/dictionaries/*.json`) tetap
   sumber bawaan; `site_contents` hanya memuat kalimat yang sudah diganti. Isian
-  kosong = "pakai bawaan" (barisnya dihapus), dan bawaannya berdiri sebagai
+  kosong = "pakai bawaan" (barisnya dihapus), dan bawaannya tampil sebagai
   `placeholder` isian itu.
-- **Hanya `landing.*`.** Namespace lain tidak boleh bisa disunting dari konsol —
-  `errors.*`/`validation.*` adalah PERILAKU, bukan pemasaran. Dijaga dua lapis
+- **Hanya `landing.*`.** Namespace lain tidak boleh bisa disunting dari konsol:
+  `errors.*`/`validation.*` adalah perilaku, bukan pemasaran. Dijaga dua lapis
   (skema zod lalu `isEditableContentKey`) dan `tests/site-content.test.ts`.
-- **Label barisnya NAMA KUNCI** (`heroHeading`), bukan kalimat manusia: ia satu-
-  satunya penanda yang sama di konsol, di kamus, dan di jejak audit.
-- **Jejak audit mencatat KUNCI, bukan NILAI.** Jejak yang memuat setiap kalimat
-  pemasaran yang pernah diketik berhenti bisa dibaca sebagai jejak.
+- **Label barisnya nama kunci** (`heroHeading`), bukan kalimat: hanya nama itu
+  yang sama di konsol, di kamus, dan di jejak audit.
+- **Jejak audit mencatat kunci, bukan nilai.** Jejak yang memuat setiap kalimat
+  pemasaran yang pernah diketik tidak lagi bisa dibaca sebagai jejak.
 
 ## Jangan
 
-- **Jangan** mengimpor modul bertenant/bercompany, `auth()`, `signOut`, atau
-  chrome pelanggan (`UserMenu`, `Sidebar`, `Navbar`) ke dalam bidang ini — satu
-  impor seperti itu mengubah "folder yang bisa diekstrak jadi aplikasi kedua"
-  menjadi jalinan yang harus diurai.
-- **Jangan** memakai `PlatformShell` di sini (dan sebaliknya): keduanya
-  BERBENTUK sama dengan sengaja, tetapi yang satu memikul sesi pelanggan.
-- **Jangan** menulis `<h1>` sendiri dengan konstanta gaya lokal. Itu bentuk lama
-  berkas-berkas ini (empat salinan dari gaya yang sama); gantinya `PageHeader`.
-- **Jangan** menulis `<h2>` seksi dengan konstanta gaya lokal pula — penyakit
-  yang sama, satu tingkat lebih bawah. Gantinya `ConsolePanel`/`ConsoleSection`.
-- **Jangan** menambahkan `forceRender` pada `Drawer` menu samping — ia
-  mengembalikan menu tak terlihat ke urutan fokus.
-- **Jangan** mengimpor `packages/platform/src/platform-db.ts` (atau modul yang mengimpornya) dari
-  penjaga, proxy, atau jalur panas i18n — doktrin #137. `packages/platform/src/i18n/server.ts`
-  memuat `site-content-store` lewat `await import()` justru karena itu, dan
-  `tests/site-content.test.ts` menolak impor statisnya.
+- Mengimpor modul bertenant/bercompany, `auth()`, `signOut`, atau chrome
+  pelanggan (`UserMenu`, `Sidebar`, `Navbar`) ke dalam aplikasi ini. Konsol
+  adalah aplikasi & image tersendiri, dan arah impornya dijaga
+  `tests/operator-dependency-direction.test.ts`.
+- Memakai `PlatformShell` di sini (dan sebaliknya). Bentuk keduanya sengaja
+  sama, tetapi yang satu memikul sesi pelanggan.
+- Menulis `<h1>` sendiri dengan konstanta gaya lokal; gantinya `PageHeader`.
+- Menulis `<h2>` seksi dengan konstanta gaya lokal; gantinya
+  `ConsolePanel`/`ConsoleSection`.
+- Menambahkan `forceRender` pada `Drawer` menu samping: ia mengembalikan menu
+  tak terlihat ke urutan fokus.
+- Mengimpor `packages/platform/src/platform-db.ts` (atau modul yang mengimpornya) dari
+  penjaga, proxy, atau jalur panas i18n (doktrin #137). Karena itu
+  `packages/platform/src/i18n/server.ts` memuat `site-content-store` lewat
+  `await import()`, dan `tests/site-content.test.ts` menolak impor statisnya.

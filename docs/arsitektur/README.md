@@ -1,19 +1,18 @@
 # Arsitektur & Peta Layanan — SAI Accounting
 
-> **Apa ini.** Potret **keadaan yang BERJALAN HARI INI**, dibuat dengan membaca
-> kode, konfigurasi, dan bukti runtime — bukan rencana, bukan cita-cita.
-> Tanggal potret: **11 Oktober 2026**. Rujukan versi: **v0.9.0**
-> (`origin/main@a2eecf7c`), yaitu image yang sedang melayani produksi.
+> **Apa ini.** Gambaran keadaan yang berjalan saat ini, disusun dari kode,
+> konfigurasi, dan bukti runtime. Rencana tidak dicatat di sini.
+> Dimutakhirkan **18 Oktober 2026**; produksi = `main@ca0cd038`. Angka runtime
+> yang lebih tua diberi tanggal di tempatnya.
 >
-> **Apa ini BUKAN.** Bukan pengganti dokumen domain yang sudah ada. Dokumen di
-> sini menjawab *"bentuknya apa, tersambung ke apa, dan di mana risikonya"*;
-> *"kenapa aturannya begitu"* tetap dijawab dokumen aslinya, yang dirujuk
-> dengan tautan alih-alih disalin. Menyalin aturan berarti membuat salinan
-> kedua yang akan membusuk tanpa ada yang menyadarinya.
+> **Batasnya.** Dokumen ini tidak menggantikan dokumen domain. Ia menjawab
+> bentuk sistem, sambungannya, dan letak risikonya. Alasan sebuah aturan tetap
+> dijawab dokumen aslinya, yang dirujuk lewat tautan. Aturan tidak disalin ke
+> sini supaya tidak ada dua salinan yang bisa berbeda.
 
 ## Urutan baca
 
-Tiga pintu masuk, tergantung siapa yang membaca:
+Titik mulai menurut siapa yang membaca:
 
 | Anda | Mulai dari |
 |---|---|
@@ -24,7 +23,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | Menyentuh skema / menambah tabel atau relasi | [13](./13-AUDIT-SKEMA.md) *(aturan yang ditegakkan + jebakan indeks FK)* |
 | Merencanakan VM baru / DC-DRC | [10](./10-PORTABILITAS-DAN-PEMISAHAN.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) |
 | Mempertimbangkan ganti basis data | [10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(putusan)* → [11](./11-RENCANA-POSTGRESQL.md) *(rencana)* |
-| Mempertimbangkan memisah konsol operator dari platform pelanggan | [10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(container — sudah)* → [14](./14-RENCANA-MONOREPO.md) *(kode — Fase 1a: workspace + `packages/db`)* |
+| Mempertimbangkan memisah konsol operator dari platform pelanggan | [10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(container — sudah)* → [14](./14-RENCANA-MONOREPO.md) *(kode — selesai 18 Okt 2026: `apps/operator` + lima paket)* |
 
 ## Isi
 
@@ -43,7 +42,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | Migrasi MariaDB → PostgreSQL — **DIJALANKAN 15 Okt 2026**; fase, gerbang, kegagalan penukaran pertama, dan **validasi pasca-penukaran (§10.2)** |
 | 12 | [KLASIFIKASI-BUKU.md](./12-KLASIFIKASI-BUKU.md) | Buku mana **produksi**, mana **uji** — dengan dasar isinya, bukan namanya. Dibangkitkan `bun run classify:books` |
 | 13 | [AUDIT-SKEMA.md](./13-AUDIT-SKEMA.md) | **Audit desain skema** — apa yang sudah benar dan harus dijaga, tiga temuan (S1/S2 **ditutup**, S3 menunggu keputusan kosakata), dan keputusan desain yang harus diambil saat pindah mesin |
-| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Kenapa konsol operator masih satu kode dengan platform pelanggan (porsinya **7,8 %** dari kode tulisan tangan, 17 Okt 2026 sore), apa yang dibeli & dibayar pemisahan, **SELURUH fase selesai 18 Okt 2026**: lima paket (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`) + konsol sebagai aplikasi & image tersendiri (`apps/operator`, `…-operator`) |
+| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Pemisahan konsol ke `apps/operator` + paket `@sai/*` (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`) — alasan, harga, fase (selesai 18 Okt 2026) |
 
 ## Dokumen domain yang TIDAK digantikan dokumen ini
 
@@ -61,37 +60,36 @@ Semuanya tetap sumber kebenaran untuk bidangnya masing-masing:
 | [`docs/MODUL-USAHA.md`](../MODUL-USAHA.md) | Modul per jenis usaha (#99) |
 | [`docs/AUDIT-RILIS-UMUM.md`](../AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung |
 | [`AGENTS.md`](../../AGENTS.md) | Aturan kerja: gerbang verify/build, UI, otorisasi, DB |
-| [`PRODUCTION.md`](../../PRODUCTION.md) | Runbook penggelaran (lihat catatan kebusukan di dok 07) |
+| [`PRODUCTION.md`](../../PRODUCTION.md) | Runbook penggelaran (§Updates; ringkasannya di dok 07 §5) |
 | [`design-system/sai-accounting/MASTER.md`](../../design-system/sai-accounting/MASTER.md) | Sistem desain, token, penjaga UI |
 
 ## Tiga tingkat keyakinan
 
-Setiap klaim di dokumen ini ditandai. Tanpa penandaan = **terbukti**.
+Setiap klaim di dokumen ini ditandai. Klaim tanpa tanda berarti terbukti.
 
 | Tanda | Arti |
 |---|---|
-| *(tanpa tanda)* | **TERBUKTI** — dibaca dari kode, konfigurasi, atau keluaran perintah yang dijalankan saat penyusunan |
-| 🔶 **TERSIMPULKAN** | Kesimpulan yang wajar dari bukti, tetapi tidak dieksekusi/diamati langsung |
-| ❓ **BELUM DIPASTIKAN** | Tidak diketahui dari repo ini — butuh pemilik, akses, atau pengukuran |
+| *(tanpa tanda)* | **Terbukti**: dibaca dari kode, konfigurasi, atau keluaran perintah yang dijalankan saat penyusunan |
+| 🔶 **Tersimpulkan** | Kesimpulan yang wajar dari bukti, tetapi tidak dieksekusi atau diamati langsung |
+| ❓ **Belum dipastikan** | Tidak diketahui dari repo ini; butuh pemilik, akses, atau pengukuran |
 
 ## Cara memelihara dokumen ini
 
-Dokumen ini membusuk seperti dokumen mana pun. Yang membuatnya membusuk
-**paling cepat**:
+Dokumen ini perlu diperbarui ketika salah satu hal berikut berubah:
 
 1. Layanan baru di `docker-compose.yml` → perbarui **03** dan **07**.
 2. Basis data/skema Prisma keempat → perbarui **02**, **04**, **06**.
 3. Integrasi luar baru (gerbang bayar, penyedia surel) → perbarui **04** dan **05**.
 4. Rezim autentikasi baru (selain sesi/Bearer/operator) → perbarui **05**.
-5. Temuan di **08** yang sudah ditutup → **pindahkan ke riwayat, jangan hapus**;
-   temuan yang hilang tanpa jejak akan ditemukan ulang oleh orang berikutnya.
-6. Putusan di **10** (PostgreSQL, pemisahan container) → bila **pemicunya**
-   terjadi, perbarui putusannya **beserta pemicu yang terpenuhi**. Putusan yang
-   berubah tanpa menyebut apa yang berubah tidak bisa ditinjau siapa pun.
-7. **10 memegang PUTUSAN, 11 memegang RENCANA.** Keduanya sengaja dipisah:
-   putusan "jangan sekarang" tidak boleh menghapus rencananya, dan adanya
-   rencana tidak boleh terbaca sebagai persetujuan.
+5. Temuan di **08** yang sudah ditutup → pindahkan ke riwayat, jangan hapus.
+   Temuan yang hilang tanpa jejak akan ditemukan ulang oleh orang berikutnya.
+6. Putusan di **10** (PostgreSQL, pemisahan container) → bila pemicunya
+   terjadi, perbarui putusannya beserta pemicu yang terpenuhi, supaya
+   perubahannya bisa ditinjau.
+7. **10 memuat putusan, 11 memuat rencana.** Keduanya sengaja dipisah:
+   putusan "jangan sekarang" tidak menghapus rencananya, dan adanya rencana
+   tidak berarti sudah disetujui.
 
-Angka runtime (jumlah tenant, status cadangan, nomor migration) **sengaja
-dicantumkan beserta tanggal pengambilannya**. Angka tanpa tanggal adalah angka
-yang akan dipercaya terlalu lama.
+Angka runtime (jumlah tenant, status cadangan, nomor migration) dicantumkan
+beserta tanggal pengambilannya, supaya pembaca tahu kapan angka itu perlu
+dicek ulang.

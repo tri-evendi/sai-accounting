@@ -18,6 +18,7 @@
     "./i18n/load": "./src/i18n/load.ts",
     "./i18n/locale-cookie": "./src/i18n/locale-cookie.ts",
     "./i18n/validation": "./src/i18n/validation.ts",
+    "./image-file": "./src/image-file.ts",
     "./invitations": "./src/invitations.ts",
     "./labels": "./src/labels.ts",
     "./migration-manifest": "./src/migration-manifest.ts",

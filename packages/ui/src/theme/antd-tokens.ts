@@ -498,6 +498,9 @@ export const BRAND_TONE_DARK = "#2F6FBF";
  */
 export const BRAND_SOLID_LIGHT = PRIMARY_BUTTON_LIGHT.colorPrimary;
 export const BRAND_SOLID_DARK = PRIMARY_BUTTON_DARK.colorPrimary;
+/** Glif lambang di atas isian merek, di permukaan tanpa token (ikon raster,
+ *  favicon dinamis, gambar OG). Sama dengan `scripts/build-brand-icons.ts`. */
+export const BRAND_GLYPH_ON_SOLID = "#ffffff";
 
 export function brandSolid(resolved: ResolvedTheme): string {
   return resolved === "dark" ? BRAND_SOLID_DARK : BRAND_SOLID_LIGHT;

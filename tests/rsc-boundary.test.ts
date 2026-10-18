@@ -299,8 +299,13 @@ import { join } from "node:path";
  *     `theme.useToken()`), `global-error-document` (isi kedua `global-error`),
  *     `loaded-dictionary` (kamus untuk layar tanpa `<LocaleProvider>`).
  *   Halaman 404-nya sendiri (`not-found`, `global-not-found`) tetap server.
+ * 197 → 201 (18 Okt 2026, logo produk & logo perusahaan):
+ *   + `@sai/ui` `brand-context` (alamat logo unggahan dari `RootDocument`) dan
+ *     `brand-mark` (kini membaca konteks itu — glifnya sendiri tak berubah);
+ *   + `brand-mark-panel` (konsol `/brand`) dan `company-logo-panel`
+ *     (Pengaturan): formulir unggah dengan pratinjau. Halamannya tetap server.
  */
-const AMBANG_KLIEN = 197;
+const AMBANG_KLIEN = 201;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -458,6 +463,7 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/app/(operator)/error.tsx",
   "apps/operator/src/app/(operator)/login/login-form.tsx",
   "apps/operator/src/app/global-error.tsx",
+  "apps/operator/src/components/operator/brand-mark-panel.tsx",
   /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
      satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
      tombol "kembalikan ke bawaan" per baris. Halamannya TETAP server component:
@@ -506,6 +512,7 @@ const KLIEN_TERSAHKAN = [
   "components/layout/user-menu.tsx",
   "components/reports/report-launch-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
+  "components/settings/company-logo-panel.tsx",
   "components/settings/module-picker.tsx",
   "components/settings/module-settings-panel.tsx",
   // Pulau client kecil: satu tombol + dialog konfirmasi + `router.refresh()`.
@@ -550,6 +557,8 @@ const KLIEN_TERSAHKAN = [
   "packages/ui/src/components/alert-dialog.tsx",
   "packages/ui/src/components/app-link.tsx",
   "packages/ui/src/components/badge.tsx",
+  "packages/ui/src/components/brand-context.tsx",
+  "packages/ui/src/components/brand-mark.tsx",
   "packages/ui/src/components/button.tsx",
   "packages/ui/src/components/card.tsx",
   "packages/ui/src/components/checkbox.tsx",

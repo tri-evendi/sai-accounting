@@ -14,6 +14,7 @@ import { LocaleProvider } from "@sai/core/i18n/client";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { RootDocument } from "@sai/ui/providers/root-document";
 import { getTheme } from "@sai/ui/theme/server";
+import { activeBrandMarkSrc } from "@sai/platform/brand-routes";
 
 export const metadata: Metadata = {
   title: `${APP_NAME} · Operator`,
@@ -23,9 +24,9 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
-  const [dictionary, theme] = await Promise.all([getDictionary(locale), getTheme()]);
+  const [dictionary, theme, brandMarkSrc] = await Promise.all([getDictionary(locale), getTheme(), activeBrandMarkSrc()]);
   return (
-    <RootDocument locale={locale} theme={theme}>
+    <RootDocument locale={locale} theme={theme} brandMarkSrc={brandMarkSrc}>
       <LocaleProvider locale={locale} dictionary={dictionary}>
         {children}
       </LocaleProvider>

@@ -1,16 +1,12 @@
 # Multi-PT: satu aplikasi, satu basis data per perusahaan
 
-Issue #104. Dokumen ini menjelaskan **bentuknya**, **cara memindahkan pemasangan
-yang sudah berjalan**, dan **aturan yang tidak boleh dilanggar** saat menulis
-kode baru.
+Issue #104. Dokumen ini menjelaskan bentuknya, cara menambah perusahaan, dan
+aturan yang tidak boleh dilanggar saat menulis kode baru.
 
-> **Lingkupnya: SATU GRUP USAHA yang memegang beberapa PT** — bukan platform
-> berlangganan dengan pelanggan yang tidak saling kenal. Rencana menjadikannya
-> multi-pelanggan ada di [`MULTI-TENANT.md`](./MULTI-TENANT.md); tahap 1–3-nya
-> (#134 skema `tenants` di basis data kendali, #135 izin lingkup TENANT —
-> `company.create` kini milik keanggotaan tenant, bukan keanggotaan PT —, #136
-> email sebagai pengenal login + atur-ulang kata sandi mandiri) SUDAH
-> diimplementasikan. Aturan multi-PT di dokumen ini tetap berlaku penuh.
+> Lingkupnya satu grup usaha yang memegang beberapa PT. Lapis multi-pelanggan
+> di atasnya (tenant, pendaftaran mandiri, langganan; #134–#142) sudah
+> diimplementasikan; rancangannya di [`MULTI-TENANT.md`](./MULTI-TENANT.md).
+> Aturan multi-PT di dokumen ini tetap berlaku penuh.
 
 ---
 
@@ -27,41 +23,41 @@ kode baru.
                                       └──────────────────────┘
 ```
 
-- **Identitas** (siapa orangnya, kata sandinya, pencabutan sesinya) hidup di
-  basis data kendali. Satu orang = satu akun, berapa pun PT yang dipegangnya.
-- **Keanggotaan** = `pengguna × perusahaan × peran`. Seseorang bisa Direktur
-  Utama di PT A dan Kepala Gudang di PT B; satu kolom `users.role` tidak bisa
-  menyatakan itu.
-- **Buku besar** — jurnal, faktur, stok, kas, bagan akun, izin per peran, modul
-  aktif — seluruhnya per perusahaan, tanpa satu pun kolom `company_id`.
+- **Identitas** (orangnya, kata sandinya, pencabutan sesinya) hidup di basis
+  data kendali. Satu orang punya satu akun, berapa pun PT yang dipegangnya.
+- **Keanggotaan** = `pengguna × perusahaan × peran`. Seseorang bisa menjadi
+  Direktur Utama di PT A dan Kepala Gudang di PT B; satu kolom `users.role`
+  tidak bisa menyatakan itu.
+- **Buku besar** (jurnal, faktur, stok, kas, bagan akun, izin per peran, modul
+  aktif) seluruhnya per perusahaan, tanpa kolom `company_id`.
 
-**Kenapa basis data terpisah, bukan tenancy per-baris.** Isolasinya FISIK, bukan
-sekadar teruji: satu klausa `WHERE company_id = …` yang terlupa akan menampilkan
-buku besar satu klien kepada klien lain, dan di produk akuntansi itu bukan bug
-melainkan insiden. Dengan basis data terpisah, kebocoran seperti itu **tidak
-mungkin terjadi** — bukan "tidak terjadi karena tesnya lengkap". Modelnya juga
-sudah dikenal akuntan Indonesia: berkas perusahaan Accurate/MYOB.
+**Kenapa basis data terpisah, bukan tenancy per baris.** Isolasinya fisik.
+Dengan tenancy per baris, satu klausa `WHERE company_id = …` yang terlupa
+menampilkan buku besar satu klien kepada klien lain, dan di produk akuntansi
+itu insiden. Dengan basis data terpisah, kebocoran seperti itu tidak mungkin
+terjadi, terlepas dari lengkap atau tidaknya tes. Modelnya juga sudah dikenal
+akuntan Indonesia: berkas perusahaan Accurate/MYOB.
 
-**Ongkosnya, disebut apa adanya:** manajemen koneksi, migration harus jalan di
-semua basis data, dan pelaporan konsolidasi lintas-PT menjadi sulit. Yang
-terakhir sengaja **di luar lingkup** — bila kebutuhan itu muncul, pilihan
-arsitekturnya berubah dan harus dibicarakan lagi.
+**Ongkosnya:** manajemen koneksi, migration harus jalan di semua basis data,
+dan pelaporan konsolidasi lintas-PT menjadi sulit. Konsolidasi sengaja di luar
+lingkup. Bila kebutuhan itu muncul, pilihan arsitekturnya berubah dan harus
+dibicarakan lagi.
 
 ---
 
 ## 2. Aturan yang tidak boleh dilanggar
 
-> **Konteks perusahaan yang hilang harus MELEMPAR — tidak pernah jatuh ke basis
-> data bawaan.**
+> **Konteks perusahaan yang hilang harus melempar galat, tidak pernah jatuh ke
+> basis data bawaan.**
 
-Ini satu-satunya aturan yang kalau meleset akibatnya fatal DAN sunyi. Kode yang
-berjalan tanpa konteks lalu diam-diam memakai koneksi bawaan akan menulis
-transaksi PT A ke buku PT B: tanpa galat, tanpa jejak, ketahuan berbulan-bulan
-kemudian sebagai neraca yang tidak cocok — kalau ketahuan.
+Pelanggaran aturan ini fatal dan tidak bersuara. Kode yang berjalan tanpa
+konteks lalu memakai koneksi bawaan akan menulis transaksi PT A ke buku PT B
+tanpa galat dan tanpa jejak. Ia baru ketahuan berbulan-bulan kemudian sebagai
+neraca yang tidak cocok, kalau ketahuan.
 
-Karena itu di `src/lib/prisma.ts` tidak ada `?? defaultCompany`, tidak ada mode
-"kalau cuma satu perusahaan pakai yang itu", dan `DATABASE_URL` lama tidak
-pernah menjadi jawaban.
+Karena itu `src/lib/prisma.ts` tidak punya `?? defaultCompany`, tidak punya
+mode "kalau cuma satu perusahaan pakai yang itu", dan tidak pernah memakai
+`DATABASE_URL` lama sebagai jawaban.
 
 | Jalur kode | Cara mendapat konteks |
 |---|---|
@@ -75,524 +71,354 @@ pernah menjadi jawaban.
 ### Sejak issue #157: konteks halaman datang dari URL
 
 Halaman dasbor hidup di `/t/{tenantSlug}/{companySlug}/…`. Perusahaannya
-diambil dari jalur, bukan dari sesi, dan **keanggotaannya diverifikasi ulang
-setiap permintaan** (`enterCompanyFromRoute`, `lib/company-route.ts`).
+diambil dari jalur, dan keanggotaannya diverifikasi ulang pada setiap
+permintaan (`enterCompanyFromRoute`, `lib/company-route.ts`).
 
-Sebabnya bukan estetika URL. Cookie sesi satu untuk SELURUH TAB: berganti
-perusahaan di tab sebelah membuat tab ini menampilkan buku PT lama sambil
-menulis ke PT baru — kegagalan yang dilarang di atas, hanya saja ia masuk lewat
-antarmuka, bukan lewat lapisan basis data. Akibat kedua, tautan dalam
-`/invoices/12` menunjuk faktur yang berbeda bagi setiap penerimanya.
+Alasannya: satu cookie sesi berlaku untuk semua tab. Berganti perusahaan di tab
+sebelah membuat tab ini menampilkan buku PT lama sambil menulis ke PT baru. Itu
+kegagalan yang dilarang di atas, hanya masuk lewat antarmuka. Akibat lainnya,
+tautan `/invoices/12` menunjuk faktur yang berbeda bagi setiap penerimanya.
 
 Yang berlaku sekarang:
 
-* **Sesi turun pangkat.** `session.user.companyId` berarti "yang TERAKHIR
-  dibuka" — untuk menjawab `/dashboard` telanjang dan menandai pilihan di
-  `/select-company`. Ia **bukan** sumber kebenaran otorisasi. Peran pun tidak
+* **Sesi turun pangkat.** `session.user.companyId` berarti "yang terakhir
+  dibuka". Gunanya menjawab `/dashboard` tanpa jalur perusahaan dan menandai
+  pilihan di `/select-company`; ia bukan sumber otorisasi. Peran pun tidak
   diambil dari sesi: JWT menyimpan peran di perusahaan terakhir, dan memakainya
   di halaman perusahaan lain berarti memberi hak PT A di buku PT B.
-* **Gagal apa pun = 404.** Slug tak ada, PT nonaktif, bukan anggota, tenant
-  lain — satu jawaban yang sama. 403 mengakui "ini ada tapi bukan hakmu", dan
-  pengakuan itu sendiri sudah kebocoran enumerasi (§4.4 docs/MULTI-TENANT.md).
-* **`currentCompany()` punya dua sumber:** konteks ALS → penyimpan
-  per-permintaan (ditulis penjaga). Setelah itu **melempar** — sumber ketiga
+* **Gagal apa pun menghasilkan 404.** Slug tak ada, PT nonaktif, bukan anggota,
+  atau tenant lain mendapat jawaban yang sama. Jawaban 403 mengakui bahwa
+  sumber dayanya ada, dan pengakuan itu sudah kebocoran enumerasi (§4.4
+  docs/MULTI-TENANT.md).
+* **`currentCompany()` punya dua sumber:** konteks ALS, lalu penyimpan
+  per-permintaan yang ditulis penjaga. Setelah itu ia melempar. Sumber ketiga
   (sesi) dihapus di #158; lihat di bawah.
-* **Slug perusahaan TETAP.** Ia ikut menyusun nama basis data DAN kini ada di
-  URL; menggantinya mematikan setiap tautan yang pernah dibagikan tanpa satu pun
-  galat. Nama perusahaan tetap bebas berubah.
-* **Jalur lama masih hidup**, dipantulkan 307 oleh `src/proxy.ts` menurut
-  `MIGRATED_ROOT_SEGMENTS` di `packages/core/src/tenant-routes.ts`. Satu-satunya berkas yang
-  sengaja tinggal di jalur lama adalah `/dashboard` telanjang — pengarah tanpa
-  query, karena proxy tidak bisa memantulkan token yang belum membawa slug.
+* **Slug perusahaan tetap.** Slug menyusun nama basis data dan muncul di URL.
+  Menggantinya mematikan setiap tautan yang pernah dibagikan, tanpa galat.
+  Nama perusahaan bebas berubah.
+* **Jalur lama masih dilayani** dengan pengalihan 307 oleh `src/proxy.ts`
+  menurut `MIGRATED_ROOT_SEGMENTS` di `packages/core/src/tenant-routes.ts`.
+  Satu-satunya berkas yang sengaja tinggal di jalur lama adalah `/dashboard`
+  tanpa jalur perusahaan. Ia pengarah tanpa query, karena proxy tidak bisa
+  mengalihkan token yang belum membawa slug.
 * **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
-  `packages/ui/src/components/app-link.tsx` memetakan `href` lama ke jalur kanonik dari
-  `usePathname()` — bukan dari sesi, sebab sesi dibagi seluruh tab.
+  `packages/ui/src/components/app-link.tsx` memetakan `href` lama ke jalur
+  kanonik dari `usePathname()`. Sesi tidak dipakai karena dibagi semua tab.
 * **`CompanySessionSync` tidak menahan apa pun lagi.** Di #157 ia menahan
-  permukaan interaktif sampai cookie menyusul — perlu, selama route API masih
-  membaca sesi. Sejak #158 ia hanya mencatat "yang terakhir dibuka" di latar.
+  permukaan interaktif sampai cookie menyusul, karena route API masih membaca
+  sesi. Sejak #158 ia hanya mencatat "yang terakhir dibuka" di latar.
 
-### Sejak issue #158: konteks API datang dari permintaan, dan sesi DIHAPUS
+### Sejak issue #158: konteks API datang dari permintaan, dan sesi dihapus
 
-#157 memindahkan halaman; route API masih menanyakan perusahaan kepada sesi.
-Selama itu benar, `/t/acme/cv-maju/invoices` menampilkan buku CV Maju sambil
-menulis ke PT yang tertulis di cookie — bahayanya tidak hilang, ia hanya turun
-satu lapis dan menjadi lebih sulit terlihat karena URL-nya terlihat meyakinkan.
+#157 memindahkan halaman, tetapi route API masih menanyakan perusahaan kepada
+sesi. Selama itu, `/t/acme/cv-maju/invoices` menampilkan buku CV Maju sambil
+menulis ke PT yang tercatat di cookie. Bahayanya hanya turun satu lapis, dan
+lebih sulit terlihat karena URL-nya tampak benar.
 
-* **Bentuknya HEADER.** `apiFetch()` (`lib/api-fetch.ts`) menyuntikkan
-  `x-tenant-slug` + `x-company-slug` dari `window.location.pathname` — satu
-  tempat, bukan 67 pemanggil. Setiap `fetch("/api/…")` telanjang ditolak sebuah
-  tes pemindai di `tests/authz-coverage.test.ts`.
+* **Bentuknya header.** `apiFetch()` (`lib/api-fetch.ts`) menyuntikkan
+  `x-tenant-slug` + `x-company-slug` dari `window.location.pathname`, di satu
+  tempat untuk 67 pemanggil. Tes pemindai di `tests/authz-coverage.test.ts`
+  menolak setiap `fetch("/api/…")` langsung.
 * **Jalur untuk yang tidak bisa berheader.** Unduhan `<a href download>` tidak
   melewati `apiFetch`, jadi dua route tinggal di `/api/t/{tenant}/{company}/…`
-  (template Daftar Akun, ekspor e-Faktur). Bila keduanya dikirim sekaligus,
-  jalur menang.
-* **Header adalah masukan pengguna.** Penjaga hanya memakainya untuk bertanya
-  "perusahaan mana", lalu membaca ulang keanggotaan pemanggil ke basis data
-  kendali pada permintaan itu juga. Gagal apa pun → 404 yang byte-nya sama
-  dengan slug fiktif; tidak ada satu pun gerbang berikutnya yang berjalan.
-* **Peran dari keanggotaan, bukan JWT** — sama seperti di halaman.
+  (template Daftar Akun, ekspor e-Faktur). Bila jalur dan header dikirim
+  bersamaan, jalur menang.
+* **Header adalah masukan pengguna.** Penjaga memakainya hanya untuk menentukan
+  perusahaan yang dimaksud, lalu membaca ulang keanggotaan pemanggil di basis
+  data kendali pada permintaan itu juga. Gagal apa pun menghasilkan 404 yang
+  sama persis dengan jawaban untuk slug fiktif, dan tidak ada gerbang
+  berikutnya yang berjalan.
+* **Peran diambil dari keanggotaan, bukan dari JWT**, sama seperti di halaman.
 * **Tidak ada cadangan sesi.** `enterCompanyFromSession` dihapus seluruhnya, dan
   `currentCompany()` kehilangan sumber ketiganya. Permintaan tanpa lingkup
-  dijawab **409 `company_required`**, bukan dilayani dengan perusahaan yang
-  terakhir dibuka. Inilah inti perubahannya: doktrin di atas berhenti menjadi
-  kedisiplinan yang harus diingat setiap penulis route dan menjadi sifat
-  strukturnya — tidak ada perusahaan bawaan untuk didarati.
-* **Route publik & tingkat tenant tidak ikut.** `/api/auth/*`,
-  `/api/billing/webhook`, `/api/health`, dan seluruh `/api/tenant/*` +
-  `/api/companies` memang bekerja tanpa perusahaan; daftarnya di
+  dijawab 409 `company_required`, tidak dilayani dengan perusahaan yang
+  terakhir dibuka. Dengan begitu aturan di atas menjadi sifat struktur, bukan
+  kedisiplinan yang harus diingat setiap penulis route: tidak ada perusahaan
+  bawaan yang bisa dipakai.
+* **Route publik dan tingkat tenant tidak ikut.** `/api/auth/*`,
+  `/api/billing/webhook`, `/api/health`, seluruh `/api/tenant/*`, dan
+  `/api/companies` bekerja tanpa perusahaan; daftarnya di
   `tests/authz-coverage.test.ts`.
 
 ### Bagaimana klien diselesaikan
 
 Semua kode server bertanya lewat `currentCompany()` (`lib/current-company.ts`),
-dan `prisma` memakainya **saat query dipanggil**:
+dan `prisma` memakainya saat query dipanggil:
 
 1. konteks `AsyncLocalStorage` (dipasang `runWithCompany` / penjaga), lalu
 2. penyimpan per-permintaan yang ditulis penjaga (`setRouteCompany`), lalu
 3. **melempar**.
 
-**Kenapa sumber kedua ada** padahal penjaga juga memanggil
+**Kenapa sumber kedua ada**, padahal penjaga juga memanggil
 `enterCompanyContext()`: rambatan `enterWith` tidak pernah sampai dari penjaga
-ke badan route (lihat bagian berikutnya). Sumber keduanyalah yang sebenarnya
-melayani setiap permintaan HTTP. Penjaga menulis ke keduanya lalu **membaca
-kembali sumber kedua** untuk membuktikan konteksnya mendarat — kalau tidak, ia
-melempar sebelum satu query pun berjalan.
+ke badan route (lihat bagian berikutnya). Sumber kedua yang sebenarnya melayani
+setiap permintaan HTTP. Penjaga menulis ke keduanya, lalu membaca kembali
+sumber kedua untuk membuktikan konteksnya terpasang. Kalau tidak, ia melempar
+sebelum query pertama berjalan.
 
 **Jangkar sumber kedua (issue #333).** Penyimpan itu dulu `cache()` React.
-`cache()` memoisasi HANYA di dalam sebuah render, dan **route handler bukan
-render**: diukur di route handler Next 16.2.1 yang sungguhan,
-`holder() === holder()` → `false`, sehingga penjaga menulis ke satu objek dan
-pembacaan berikutnya menerima objek lain. Sabuk kedua karena itu tidak pernah
-bekerja untuk API sekali pun — halaman selamat (di render `cache()` memang
-memoisasi), route handler menjawab 500. Jangkarnya sekarang objek permintaan
-milik Next sendiri: hasil `await headers()`, yang diukur identik di sepanjang
-satu permintaan dan berbeda untuk permintaan lain, dengan `WeakMap` di atasnya
-sehingga entrinya mati bersama permintaannya.
+`cache()` hanya memoisasi di dalam render, dan route handler bukan render.
+Diukur di route handler Next 16.2.1, `holder() === holder()` bernilai `false`:
+penjaga menulis ke satu objek, pembacaan berikutnya menerima objek lain.
+Akibatnya mekanisme ini tidak pernah bekerja untuk API. Halaman selamat karena
+di render `cache()` memang memoisasi, sedangkan route handler menjawab 500.
+Jangkarnya sekarang objek permintaan milik Next sendiri, yaitu hasil
+`await headers()`. Objek itu terukur identik sepanjang satu permintaan dan
+berbeda antarpermintaan. `WeakMap` di atasnya membuat entrinya hilang bersama
+permintaannya.
 
 **Route self-scoped menyebut perusahaannya sendiri.** `/api/user/permissions`,
 `/api/user/accountant-mode`, dan `/api/company/identity` sengaja tanpa
-`requireApiPermission`, tapi mereka tetap butuh konteks — sejak #158 mereka
-memanggil `enterCompanyFromRequest()` (`lib/company-request.ts`), yang
-memverifikasi keanggotaan persis seperti penjaga.
+`requireApiPermission`, tetapi tetap butuh konteks. Sejak #158 mereka memanggil
+`enterCompanyFromRequest()` (`lib/company-request.ts`), yang memverifikasi
+keanggotaan dengan cara yang sama seperti penjaga.
 
-**Kenapa penyelesaiannya saat dipanggil, bukan saat akses properti.** Membaca
+**Kenapa diselesaikan saat dipanggil, bukan saat akses properti.** Membaca
 sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.
 
 ### Kenapa `enterWith` tidak boleh diandalkan
 
-Bagian ini dulu menyebut rambatannya "tergantung lingkungan". Diukur ulang di
-issue #333 (Node 22.22, dan di dalam route handler & render Next 16.2.1 yang
-sungguhan), batasnya ternyata bukan soal lingkungan melainkan soal `await`:
+Diukur di issue #333 (Node 22.22, serta di route handler dan render Next
+16.2.1), batas rambatannya ditentukan oleh `await`:
 
-- `enterWith` yang dipanggil **sebelum** `await` apa pun di fungsi itu →
-  merambat ke kelanjutan pemanggilnya.
-- `enterWith` yang dipanggil **sesudah** sebuah `await` → tidak merambat;
-  pemanggil melihat store lamanya, atau tidak sama sekali.
+- `enterWith` yang dipanggil sebelum `await` apa pun di fungsi itu merambat ke
+  kelanjutan pemanggilnya.
+- `enterWith` yang dipanggil sesudah sebuah `await` tidak merambat; pemanggil
+  melihat store lamanya, atau tidak ada store sama sekali.
 
-Sebuah penjaga selalu berada di kasus kedua — ia membaca basis data kendali
-lebih dulu, baru menanam. Karena itu konteks yang ditanam `enterCompanyContext()`
-dari penjaga **tidak pernah** sampai ke badan route maupun ke komponen halaman:
-terukur `null` di keduanya. Yang dijamin:
+Penjaga selalu berada di kasus kedua, karena ia membaca basis data kendali
+lebih dulu sebelum menanam konteks. Karena itu konteks dari
+`enterCompanyContext()` di penjaga tidak pernah sampai ke badan route maupun ke
+komponen halaman; terukur `null` di keduanya. Yang dijamin:
 
-- `runWithCompany()` memakai `run()` — selalu bisa diandalkan, termasuk melewati
-  batas async. Inilah cara skrip/cron/tes menyebut perusahaannya.
-- Untuk permintaan HTTP, kebenarannya bertumpu pada **penyimpan per-permintaan**
-  di `lib/current-company.ts` — bukan rambatan ALS, dan (sejak #158) bukan pula
+- `runWithCompany()` memakai `run()` dan selalu bisa diandalkan, termasuk
+  melewati batas async. Ini cara skrip, cron, dan tes menyebut perusahaannya.
+- Untuk permintaan HTTP, kebenarannya bertumpu pada penyimpan per-permintaan di
+  `lib/current-company.ts`, bukan pada rambatan ALS dan (sejak #158) bukan pada
   sesi.
 
-Dan satu sifat yang tetap penting: konteks yang sedang berjalan **tidak**
-tertimpa dari dalam — pekerjaan latar yang membungkus dirinya dengan
-`runWithCompany(PT_A)` tetap menulis ke PT A sekalipun sesuatu di dalamnya
-menanam PT B. Yang eksplisit menang. Keduanya dikunci di
-`tests/company-context.test.ts`.
+Konteks yang sedang berjalan juga tidak tertimpa dari dalam. Pekerjaan latar
+yang membungkus dirinya dengan `runWithCompany(PT_A)` tetap menulis ke PT A
+walaupun sesuatu di dalamnya menanam PT B; konteks eksplisit menang. Kedua
+sifat ini dikunci di `tests/company-context.test.ts`.
 
 ### Satu bentuk yang tidak didukung
 
-`prisma.$transaction([a, b])` (bentuk array) tidak bisa lewat proxy — bentuk itu
-menuntut `PrismaPromise` yang belum dijalankan. Bentuk callback
-(`prisma.$transaction(async (tx) => …)`) bekerja penuh dan dipakai seluruh
-transaksi di kode ini. Kalau perlu bentuk array: `await currentCompanyClient()`
+`prisma.$transaction([a, b])` (bentuk array) tidak bisa lewat proxy, karena
+bentuk itu menuntut `PrismaPromise` yang belum dijalankan. Bentuk callback
+(`prisma.$transaction(async (tx) => …)`) bekerja penuh dan dipakai semua
+transaksi di kode ini. Kalau perlu bentuk array: `await currentCompanyClient()`,
 lalu panggil di klien itu.
 
-### Cache WAJIB dikunci per perusahaan
+### Cache wajib dikunci per perusahaan
 
 Satu proses melayani beberapa PT bergantian. Cache tingkat modul yang isinya
-milik satu perusahaan akan dipakai untuk perusahaan lain selama satu TTL —
-querynya tetap ke basis data yang benar, tapi **keputusannya** salah, dan itu
-tidak meninggalkan galat apa pun. Sudah dikunci: matriks izin efektif, override
-per pengguna, himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
+milik satu perusahaan akan dipakai untuk perusahaan lain selama satu TTL.
+Query-nya tetap ke basis data yang benar, tetapi keputusannya salah, tanpa
+galat. Yang sudah dikunci: matriks izin efektif, override per pengguna,
+himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
 (`setup-gate.ts`), dan registry perusahaan.
 
-### Slug perusahaan PERMANEN — ditegakkan basis data (#161)
+### Slug perusahaan permanen, ditegakkan basis data (#161)
 
-`companies.slug` tidak boleh berubah setelah perusahaan lahir, dan sejak issue
-#161 yang menolaknya bukan lagi kesepakatan melainkan trigger
-`companies_slug_immutable` (migration kendali **0010**):
+`companies.slug` tidak boleh berubah setelah perusahaan dibuat. Sejak issue
+#161 yang menolak perubahan itu adalah trigger `companies_slug_immutable`
+(PostgreSQL: `prisma/postgresql/control/0002_slug_permanen`, fungsi trigger
+dengan `RAISE EXCEPTION`; dulu migration MariaDB kendali 0010):
 
 ```
-ERROR 1644 (45000): slug perusahaan permanen (#161): ia menyusun nama basis
-data dan URL. Nama boleh diubah; ganti slug perlu alias tersimpan.
+ERROR: slug perusahaan permanen (#161): ia menyusun nama basis data dan URL.
+Nama boleh diubah; ganti slug perlu alias tersimpan.
 ```
 
-Alasannya bertumpuk, dan semuanya sunyi kalau dilanggar:
+Alasannya, dan semuanya tidak menimbulkan galat bila dilanggar:
 
-- slug menyusun **nama basis data** (`sai_t{tenantId}_{slug}`, sejak #153) —
-  menggantinya berarti me-rename basis data hidup, atau membiarkan nama basis
-  data tidak lagi sesuai slug-nya (satu-satunya petunjuk manusiawi tentang buku
-  siapa yang ada di dalamnya);
-- sejak #157 slug duduk di **URL** — menggantinya mematikan setiap tautan yang
-  pernah dibagikan, di-bookmark, atau dikirim lewat surel, dan yang muncul
-  bukan penjelasan melainkan `not-found` yang byte-identik dengan "perusahaan
-  ini tidak ada" (sifat anti-penyisiran #158, yang di sini justru menyembunyikan
-  sebabnya);
-- cache rute `(tenant.slug, company.slug) → id` akan menunjuk id lama sampai
+- Slug menyusun nama basis data (`sai_t{tenantId}_{slug}`, sejak #153).
+  Menggantinya berarti mengganti nama basis data yang sedang dipakai, atau
+  membiarkan nama basis data tidak lagi sesuai slug-nya. Nama itu satu-satunya
+  petunjuk yang terbaca manusia tentang buku siapa di dalamnya.
+- Sejak #157 slug ada di URL. Menggantinya mematikan setiap tautan yang pernah
+  dibagikan, disimpan, atau dikirim lewat surel. Yang muncul adalah `not-found`
+  yang identik dengan "perusahaan ini tidak ada" (sifat anti-penyisiran #158),
+  sehingga penyebabnya tidak terlihat.
+- Cache rute `(tenant.slug, company.slug) → id` akan menunjuk id lama sampai
   satu TTL berlalu.
 
-**Yang ditolak adalah NILAI yang berubah**, bukan kolom yang ikut disebut:
-`SET slug = slug` dan penulisan baris penuh oleh ORM tetap lolos. **`name`
-bebas diubah** — ia tidak pernah dipakai sebagai pengenal.
+Yang ditolak adalah nilai yang berubah, bukan kolom yang disebut: `SET slug =
+slug` dan penulisan baris penuh oleh ORM tetap lolos. `name` bebas diubah
+karena tidak pernah dipakai sebagai pengenal.
 
-Dua lapis di atasnya: tes `tests/company-slug-immutable.test.ts` menolak kode
-yang menulis `slug` ke baris yang sudah ada (agar penulisnya tahu saat menulis,
-bukan saat pengguna pertama mencobanya), dan
-`scripts/prove-company-slug-immutable.ts` memastikan triggernya masih hidup di
-pemasangan nyata — trigger bisa raib tanpa mengubah satu baris kode pun (dump
-tanpa `--triggers`, pemulihan dari dump seperti itu, migration yang me-rebuild
-tabelnya), dan CI tidak akan pernah melihatnya.
+Ada dua lapis lagi. Tes `tests/company-slug-immutable.test.ts` menolak kode
+yang menulis `slug` ke baris yang sudah ada, supaya kesalahannya ketahuan saat
+kode ditulis. `scripts/prove-company-slug-immutable.ts` memastikan trigger-nya
+masih ada di pemasangan nyata. Trigger bisa hilang tanpa perubahan kode (dump
+tanpa `--triggers`, pemulihan dari dump seperti itu, migration yang membangun
+ulang tabelnya), dan CI tidak akan melihatnya.
 
-**Kalau penggantian nama memang dibutuhkan**, jalurnya bukan membuang trigger
-lalu `UPDATE slug`. Ia menuntut slug lama yang **disimpan dan tetap dilayani**
-sebagai alias — tanpa itu, yang terjadi hanyalah memindahkan kerusakan ke
-tautan orang lain, tanpa bunyi.
+**Kalau penggantian slug memang dibutuhkan**, jalurnya bukan membuang trigger
+lalu `UPDATE slug`. Slug lama harus disimpan dan tetap dilayani sebagai alias.
+Tanpa itu, kerusakan hanya berpindah ke tautan orang lain.
 
 ---
 
 ## 3. Memindahkan pemasangan yang sudah berjalan
 
-**Urutannya tidak boleh ditukar.** Langkah 2 membaca tabel `users` yang dibuang
-langkah 3.
+Adopsi pemasangan satu-basis-data ke model ini (#104) sudah dijalankan di
+produksi pada 2026-07-28, saat mesinnya masih MariaDB (`sai_production` →
+`pt-sai`). Runbook lengkapnya ada di riwayat git berkas ini.
 
-> **Di server produksi, perintah `bun run …` di bawah harus dijalankan DI DALAM
-> container**, bukan di host — dan ini bukan soal selera. Service `db` tidak
-> memublikasikan port ke host sama sekali (lihat `docker-compose.yml`), jadi
-> nama `db` di `DATABASE_URL` hanya bisa diselesaikan dari dalam jaringan
-> `internal`. Menjalankannya di host akan berhenti pada kegagalan koneksi yang
-> terdengar seperti kredensial salah. Bungkusnya:
->
-> ```bash
-> docker compose run --rm migrate bun run <skrip>
-> ```
->
-> Service `migrate` memakai image yang sama dengan `app-customer`, `env_file: .env` yang
-> sama, dan berdiri di jaringan yang sama — jadi yang dijalankan benar-benar
-> kode dan konfigurasi yang akan naik. Image-nya harus sudah dibangun:
-> `docker compose build`.
->
-> **⚑ ARSIP MariaDB.** Runbook ini dijalankan sekali, 2026-07-28, saat mesinnya
-> masih MariaDB. Sejak 15 Okt 2026 mesinnya PostgreSQL: container `sai-db` hanya
-> jalan mundur dan akan dicabut (#636). Perintah di bawah **tidak berlaku** untuk
-> produksi sekarang; padanan PostgreSQL-nya `docker exec sai-pg psql -U sai …` /
-> `pg_dump`. Dibiarkan sebagai catatan karena temuan-temuannya masih mengajarkan
-> sesuatu.
->
-> Perintah `mariadb`/`mariadb-dump` dijalankan di dalam container `sai-db`
-> (image `mariadb:11` **tidak** memasang `mysql`/`mysqldump`; keduanya bernama
-> `mariadb`/`mariadb-dump`). Sandi root diambil dari environment container,
-> jadi ia tidak pernah tertulis di baris perintah maupun riwayat shell.
+Urutan yang tetap berlaku, dan tidak boleh ditukar: **cadangkan →
+`db:migrate:control` → `adopt-company` → buktikan akunnya pindah →
+`db:migrate:companies`**. `adopt-company` menyalin pengguna dengan id yang
+sama, membuat tenant, dan menuntut peta email `--emails`. Urutan itu penting
+karena migration perusahaan membuang tabel `users` yang dibaca adopsi; skripnya
+menolak berjalan bila tabel itu sudah hilang.
 
-```bash
-# 0. CADANGKAN dulu.
-docker exec sai-db sh -c 'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" \
-  --single-transaction --routines --events sai_production' > backup-sebelum-104.sql
-#    Periksa cadangannya SEBELUM lanjut — yang menentukan bukan ukurannya:
-#    grep -c "INSERT INTO \`users\`" backup-sebelum-104.sql   # harus ≥ 1
-
-# 1. Basis data kendali — BESERTA HAK AKSESNYA. Pengguna aplikasi hanya berhak
-#    atas basis data yang sekarang; tanpa GRANT, migration kendali berhenti
-#    dengan `P1010: User was denied access` — pesan yang terdengar seperti
-#    kredensial salah padahal bukan.
-docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
-  CREATE DATABASE IF NOT EXISTS \`sai_control\`
-    DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-  GRANT ALL PRIVILEGES ON \`sai_control\`.* TO '"'"'$MARIADB_USER'"'"'@'"'"'%'"'"';
-  FLUSH PRIVILEGES;"'
-#    tambahkan CONTROL_DATABASE_URL ke .env — kredensial & host SAMA dengan
-#    DATABASE_URL, hanya nama basis datanya yang berbeda.
-docker compose build                                    # image harus ada dulu
-docker compose run --rm migrate bun run db:migrate:control
-
-# 2. Daftarkan basis data yang sekarang sebagai perusahaan pertama
-#    (menyalin pengguna DENGAN ID YANG SAMA + memindahkan jejak audit lama)
-#    Sejak issue #134/#136 adopsi juga MEMBUAT TENANT dan menuntut peta email
-#    (JSON {"username": "email"} yang diisi operator — bukan ditebak mesin):
-docker compose run --rm migrate bun run adopt-company -- \
-  --slug pt-sai --name "PT Subur Anugerah Indonesia" --emails emails.json
-
-#    BUKTIKAN akunnya sudah pindah SEBELUM langkah 3 — ini titik tak-bisa-balik.
-#    Yang dicari: jumlah pengguna DAN keanggotaan di basis data kendali > 0.
-#    (0042 membuang tabel `users`; kalau adopsi gagal diam-diam, satu-satunya
-#    jalan pulang adalah cadangan langkah 0.)
-
-# 3. Migration perusahaan — 0042 membuang tabel `users` dari buku,
-#    0043 menyelaraskan nilai enum-like data legacy (issue #111)
-docker compose run --rm migrate bun run db:migrate:companies
-
-# 5. Naikkan image baru (skema & kode harus naik bersama)
-docker compose up -d          # image-nya sudah dibangun di langkah 1
-```
-
-**Dijalankan sungguhan di produksi 2026-07-28** (PT Subur Anugerah Indonesia,
-`sai_production` → `pt-sai`). Yang ditemukan saat itu dan sudah dibetulkan di
-atas: perintah `bun run …` tidak bisa jalan di host (service `db` tanpa port),
-`mysqldump`/`mysql` tidak ada di image `mariadb:11`, dan pemasangan itu ternyata
-masih tertinggal di 0036 — jadi langkah 3 menerapkan 0037→0043 sekaligus, bukan
-hanya migration multi-PT. Hasilnya: 1 pengguna pindah ke basis data kendali,
-829 gerakan stok & 18.689 baris kas dinormalkan, 26 barang yang saldonya dulu
-terbaca nol kembali punya saldo.
-
-**Kenapa langkah 4 ada.** `migrate deploy` tidak melaporkan berapa baris yang
-diperbaikinya, dan sejak sekarang ia berjalan ke N basis data sekaligus.
-Pemeriksaannya BINARY — dengan collation `utf8mb4_unicode_ci`, `type = 'in'`
-cocok dengan `'IN'`, jadi pemeriksaan biasa akan bilang "bersih" untuk data yang
-justru sedang salah hitung (issue #111). Perintah ini read-only dan exit-nya
-bukan nol bila masih ada sisa.
-
-**`docker compose up` kini aman terhadap urutan.** Service `migrate` menjalankan
-`db:migrate:all`, bukan `prisma migrate deploy` mentah. Bedanya menentukan:
-perintah mentah itu menerapkan 0042 — yang **menghapus tabel `users`** — ke
-basis data yang ditunjuk `DATABASE_URL`, jadi menaikkan container sebelum
-langkah 2 akan menghapus seluruh akun beserta hash kata sandinya. `db:migrate:all`
-hanya menyentuh perusahaan yang **sudah terdaftar**; registry yang masih kosong
-membuatnya berhenti dengan kode bukan-nol dan menyebutkan perintah yang harus
-dijalankan lebih dulu, sehingga `app-customer` pun tidak ikut naik.
-
-### Bila pemasangannya masih di bawah 0032, PERIKSA `memberships.role`
-
-Adopsi menyalin `users.role` apa adanya ke `memberships.role` di basis data
-kendali, dan itu terjadi **sebelum** langkah 3. Migration `0032` mengganti nama
-kunci peran (`bos → managing_director`, `core → finance_manager`,
-`ptg → warehouse_head`) — tapi ia hanya menyentuh basis data PERUSAHAAN, tempat
-kuncinya sudah tidak lagi tinggal. Akibatnya, pada pemasangan yang diadopsi saat
-masih di bawah 0032, `memberships.role` tertinggal memakai kunci lama sementara
-tabel `roles` dan kode sudah memakai kunci baru: setiap pengguna kehilangan
-SELURUH izinnya, tanpa satu pun galat — sekadar aplikasi yang kosong.
-
-Produksi tidak mengalaminya karena sudah di 0036 saat diadopsi. Pemasangan yang
-lebih tua harus diperbaiki sesudah langkah 3:
-
-```sql
-UPDATE memberships SET role='managing_director' WHERE role='bos';
-UPDATE memberships SET role='finance_manager'   WHERE role='core';
-UPDATE memberships SET role='warehouse_head'    WHERE role='ptg';
-```
-
-Cara memeriksanya: setiap nilai `memberships.role` di basis data kendali harus
-ada di `roles.key` basis data perusahaannya.
-
-Skrip adopsi membaca skema LAMA (kolomnya masih `users.status`, bukan
-`must_change_password`) — ia mendeteksi mana yang ada, jadi urutan di atas benar
-apa adanya. Ia juga **menolak berjalan** bila tabel `users` sudah hilang, jadi
-urutan yang salah gagal berisik. Tapi kalau langkah 3 terlanjur jalan lebih dulu, akun
-lama hanya bisa dipulihkan dari cadangan — karena itu langkah 0 ada.
+Di server, perintah `bun run …` dijalankan lewat
+`docker compose run --rm migrate bun run <skrip>`, karena basis data tidak
+memublikasikan port ke host.
 
 ### Perusahaan berikutnya
 
-**Dari aplikasi** (issue #104) — halaman **Tambah Perusahaan** (`/companies/new`;
-sejak issue #135 izinnya `company.create` di matriks TENANT — owner/admin
-tenant, tanpa menuntut perusahaan aktif). Ia mengerjakan hal yang sama dengan
-skrip di bawah — buat basis data, terapkan skema, daftarkan — sambil
-mengalirkan kemajuannya tahap demi tahap.
+**Dari aplikasi** (issue #104): halaman Tambah Perusahaan (`/companies/new`).
+Sejak issue #135 izinnya `company.create` di matriks tenant (owner/admin
+tenant), tanpa menuntut perusahaan aktif. Halaman ini mengerjakan hal yang sama
+dengan skrip di bawah (buat basis data, terapkan skema, daftarkan) sambil
+menampilkan kemajuannya per tahap.
 
-Syaratnya satu: pengguna basis data aplikasi harus boleh membuat basis data.
-
-> **⚑ PostgreSQL (sejak 15 Okt 2026).** Hak itu kini `CREATEDB` pada role
-> aplikasi. **Peringatan:** per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi
-> pembatasan pola nama di bawah **tidak punya padanan yang berlaku**. Aplikasi
-> berhak atas seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk
-> aplikasi; lihat [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026)
-> butir 4. Blok di bawah adalah konfigurasi MariaDB lama.
-
-Di MariaDB hak itu dibatasi **pola nama**, bukan diberikan menyeluruh:
-
-```bash
-docker exec sai-db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" -e "
-  GRANT CREATE, ALTER, DROP, INDEX, REFERENCES,
-        SELECT, INSERT, UPDATE, DELETE
-    ON \`sai\_t%\`.* TO '"'"'$MARIADB_USER'"'"'@'"'"'%'"'"';
-  FLUSH PRIVILEGES;"'
-```
-
-Polanya: `sai\_t%` cocok dengan `sai_t3_pt_movin_nusantara`,
-`sai_t7_pt_bumi_baru`, dan setiap nama yang DIBUAT penyediaan — sebab sejak
-issue #153 namanya selalu `sai_t{tenantId}_{slug}` (`databaseNameForSlug`). Ia
-**tidak** cocok dengan `sai_control`, `sai_platform`, maupun basis data warisan
-(`sai_production`, `sai_cv_maju`): hak atas nama-nama itu tetap diberikan satu
-per satu, jadi satu baris GRANT ini tidak diam-diam memperluas jangkauan
-aplikasi ke basis data yang bukan buku perusahaan. (Pemasangan lama memakai pola yang lebih longgar, `sai\_%`; ia juga
-jalan, tetapi ikut mencakup `sai_platform` — persis yang diperingatkan
-docs/DATABASE.md §Platform.)
-
-Tiga hal yang mudah salah pada baris di atas, dan semuanya membuatnya sunyi
-alih-alih merah:
-
-- **`\_` bukan salah ketik.** Di dalam `GRANT`, nama basis data adalah pola
-  bergaya `LIKE`: `_` di sana berarti "satu karakter apa saja". Tanpa garis
-  miring, `sai_t%` juga cocok dengan `saixt…` — lebih luas dari yang dimaksud.
-- **Backtick, bukan kutip tunggal.** `'sai\_t%'.*` ditolak parser.
-- **Hibah tidak berlaku surut untuk sesi yang sedang hidup.** Setelah
-  `FLUSH PRIVILEGES`, koneksi yang sudah terbuka di pool aplikasi masih memakai
-  hak lama; halaman penyediaan baru mulus setelah aplikasinya di-restart
-  (`docker compose restart app`) atau pool-nya berputar sendiri.
-
-Memeriksanya tanpa membuat perusahaan: `SHOW GRANTS FOR 'sai'@'%';` — barisnya
-harus menyebut ``` `sai\_t%` ```.
-
-Dua sisi yang saling menjaga: kode memaksa awalan `sai_`
-(`COMPANY_DATABASE_PREFIX`), server memaksa pola yang sama. Tanpa GRANT ini
-halamannya tetap berguna, hanya jalurnya berbeda: administrator membuat basis
-data kosong lebih dulu, lalu penyediaan mengisinya.
-
-#### Kalau halaman itu berhenti di "Membuat basis data" (galat 1044)
-
-Inilah bentuknya di log server (di layar pengguna yang muncul kalimat berbahasa
-tugas — lihat catatan di bawah):
-
-```
-(conn:67709, no: 1044, SQLState: 42000) Access denied for user 'sai'@'%'
-to database 'sai_t3_pt_movin_nusantara_cakrawala'
-```
-
-**Itu bukan bug aplikasi** — itu hibah yang belum pernah dijalankan di server
-ini. Jalankan blok GRANT di atas (sebagai root), restart aplikasinya, lalu ulangi
-dari halaman yang sama: penyediaan menulis registry PALING AKHIR, jadi kegagalan
-di tahap ini tidak meninggalkan perusahaan yang terdaftar. Bila hak itu memang
-tidak akan pernah diberikan, jalur satunya tetap terbuka: administrator membuat
-basis datanya manual —
+Syaratnya: pengguna basis data aplikasi harus boleh membuat basis data. Di
+PostgreSQL hak itu adalah `CREATEDB` pada role aplikasi:
 
 ```sql
-CREATE DATABASE `sai_t3_pt_movin_nusantara_cakrawala`
-  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- `\_` juga di sini: di GRANT (dan HANYA di GRANT) `_` adalah wildcard, jadi
--- nama yang tidak di-escape diam-diam menjadi pola yang lebih luas.
-GRANT CREATE, ALTER, DROP, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE
-  ON `sai\_t3\_pt\_movin\_nusantara\_cakrawala`.* TO 'sai'@'%';
-FLUSH PRIVILEGES;
+ALTER ROLE sai CREATEDB;   -- dijalankan sebagai superuser di `sai-pg`
 ```
 
-— lalu penyediaan yang sama mengisinya (basis data yang sudah ada **dan masih
-kosong** dipakai apa adanya; yang sudah berisi tabel ditolak, supaya tidak ada
-buku yang tertimpa). Nama yang harus dibuat persis sama dengan yang dipratinjau
-formulirnya.
+PostgreSQL tidak punya padanan pembatasan pola nama yang dulu dipakai di
+MariaDB (`GRANT … ON \`sai\_t%\`.*`). `CREATEDB` berlaku untuk nama apa pun.
+Awalan `sai_` dipaksa oleh kode: `COMPANY_DATABASE_PREFIX`, dan sejak #153 nama
+`sai_t{tenantId}_{slug}` dari `databaseNameForSlug`. Basis data yang dibuat
+role itu dimiliki role itu.
 
-⚠ Yang TIDAK boleh disarankan sebagai jalan pintas: `GRANT ALL PRIVILEGES ON
-*.*`. Ia memberi aplikasi hak atas seluruh server — termasuk `mysql.user` —
-demi satu operasi yang jarang.
+> ⚠ Per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi aplikasi berhak atas
+> seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk aplikasi, dan
+> superuser hanya untuk `migrate`/`job-backup`; lihat
+> [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026)
+> butir 4.
 
-**Yang dilihat pengguna** sejak perbaikan galat ini: kalimat "pengguna basis
-data aplikasi belum berhak membuat basis data baru di server ini — hubungi
-administrator server Anda", bukan teks mariadb. Galat mentahnya (nomor koneksi,
-SQLState, pernyataan SQL, nama pengguna basis data) hanya ada di log server;
-pemetaannya murni dan teruji — `provisionErrorMessage`
-(`src/lib/company-provisioning-shared.ts`), dijaga
+Tanpa hak itu halamannya tetap bisa dipakai lewat jalur lain. Administrator
+membuat basis data kosong lebih dulu (`CREATE DATABASE "<nama>" OWNER sai
+TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C';`, dengan nama
+persis seperti yang dipratinjau formulir), lalu penyediaan mengisinya. Basis
+data yang sudah ada dan masih kosong dipakai apa adanya; yang sudah berisi
+tabel ditolak. Penyediaan menulis registry paling akhir, jadi kegagalan di
+tahap "Membuat basis data" tidak meninggalkan perusahaan yang terdaftar. Hak
+baru tidak berlaku untuk koneksi yang sudah terbuka di pool, jadi buat ulang
+`app-customer` sesudahnya.
+
+Jangan memperbaikinya dengan memberi aplikasi `SUPERUSER`.
+
+**Yang dilihat pengguna** adalah kalimat yang menjelaskan tindakannya
+("hubungi administrator server Anda"), bukan teks galat basis data. Galat
+mentahnya hanya ada di log server. Pemetaannya fungsi murni yang teruji,
+`provisionErrorMessage` (`src/lib/company-provisioning-shared.ts`), dijaga
 `tests/company-provisioning.test.tsx`.
 
-Migration diterapkan oleh aplikasi SENDIRI, bukan lewat Prisma CLI (image
-produksi tidak memuatnya). Pembukuannya ditulis ke `_prisma_migrations` dengan
-bentuk yang sama persis, jadi `db:migrate:all` berikutnya membacanya sebagai
-sudah diterapkan — dijaga `tests/company-provisioning.test.tsx`.
+Migration untuk perusahaan baru diterapkan oleh aplikasi sendiri, bukan lewat
+Prisma CLI (image produksi tidak memuatnya). Catatannya ditulis ke
+`_prisma_migrations` dengan bentuk yang sama, jadi `db:migrate:all` berikutnya
+membacanya sebagai sudah diterapkan. Ini juga dijaga
+`tests/company-provisioning.test.tsx`.
 
-**Dari baris perintah** — tetap ada, dan tetap jalan:
+**Dari baris perintah:**
 
 ```bash
 docker compose run --rm migrate bun run create-company -- \
   --slug pt-b --name "PT Bumi Baru" [--admin budi]
 ```
 
-Pengguna basis datanya harus berhak `CREATE DATABASE`; bila tidak (dan di banyak
-hosting memang tidak), buat basis datanya manual **beserta GRANT-nya**, lalu
-jalankan dengan `--database <nama>`.
+Role basis datanya harus berhak `CREATEDB`; bila tidak, buat basis datanya
+manual (lihat di atas), lalu jalankan dengan `--database <nama>`.
 
-Membuat basis data → menerapkan migration → **baru** mendaftarkan (registry
+Urutannya: buat basis data, terapkan migration, lalu daftarkan. Registry
 ditulis terakhir supaya kegagalan di tengah tidak meninggalkan perusahaan yang
-bisa dipilih tapi belum bisa dibuka). Sesudahnya: masuk ke aplikasi, pilih
-perusahaannya, jalankan **wizard penyiapan** — identitas, bagan akun, saldo
-awal, dan modul adalah keputusan akuntansi, bukan argumen baris perintah.
+bisa dipilih tetapi belum bisa dibuka. Sesudahnya masuk ke aplikasi, pilih
+perusahaannya, dan jalankan wizard penyiapan. Identitas, bagan akun, saldo
+awal, dan modul adalah keputusan akuntansi, jadi tidak diberikan sebagai
+argumen baris perintah.
 
 ### Migration sesudah ini
 
 ```bash
-bun run db:migrate:all      # kendali, lalu SETIAP perusahaan
+docker compose run --rm migrate bun run db:migrate:all   # kendali → platform → SETIAP perusahaan
 ```
 
-Kegagalan satu perusahaan **tidak menghentikan** yang lain: kalau berhenti di
-yang pertama gagal, sisanya tertinggal di skema lama sementara aplikasinya sudah
-versi baru. Ringkasannya dicetak di akhir dan exit code-nya bukan nol.
+Kegagalan satu perusahaan tidak menghentikan yang lain. Kalau proses berhenti
+di kegagalan pertama, sisanya tertinggal di skema lama sementara aplikasinya
+sudah versi baru. Ringkasan dicetak di akhir, dan exit code-nya bukan nol.
 
 ---
 
 ## 4. Berganti perusahaan
 
-Pemilih di `/select-company`; penukar di menu pengguna (muncul hanya bila
-memang ada lebih dari satu). Pengguna dengan **satu** perusahaan tidak pernah
-melihat keduanya — perusahaannya sudah aktif sejak ia masuk.
+Pemilih ada di `/select-company`, penukar di menu pengguna (hanya muncul bila
+ada lebih dari satu perusahaan). Pengguna dengan satu perusahaan tidak melihat
+keduanya; perusahaannya sudah aktif sejak ia masuk.
 
-**Berpindah selalu memuat ulang halaman sepenuhnya**, tidak pernah navigasi
-klien. Izin efektif, himpunan modul, identitas perusahaan yang tercetak di
-dokumen, dan cache query semuanya per perusahaan; navigasi klien menyisakan
-jendela — sekejap, tapi nyata — di mana menu PT A dirender di atas data PT B.
-Anggap berganti perusahaan sebagai "masuk ke buku yang lain", bukan mengubah
-penyaring.
+**Berpindah selalu memuat ulang halaman sepenuhnya**, tidak lewat navigasi
+klien. Izin efektif, himpunan modul, identitas perusahaan di dokumen, dan cache
+query semuanya per perusahaan. Navigasi klien menyisakan jeda singkat ketika
+menu PT A dirender di atas data PT B. Perlakukan berganti perusahaan sebagai
+masuk ke buku lain, bukan mengubah filter.
 
-**Kenapa tidak dipilihkan otomatis.** Memilihkan "yang pertama" terdengar ramah
-dan justru berbahaya: orang akan mengira ia melihat PT yang biasa dibukanya,
-lalu mencatat transaksi ke buku yang salah.
+**Kenapa tidak dipilihkan otomatis.** Memilihkan perusahaan pertama berbahaya:
+orang akan mengira ia melihat PT yang biasa dibukanya, lalu mencatat transaksi
+ke buku yang salah.
 
-**PT yang baru DIBUAT adalah pengecualiannya (issue #339).** Sesudah
-`/companies/new` selesai, perusahaan yang barusan lahir menjadi yang sedang
-dibuka — **hanya bila sesi itu belum menunjuk perusahaan mana pun**. Tidak ada
-tebakan di situ: yang diambil bukan "yang pertama menurut abjad" melainkan yang
-orang itu sendiri buat sedetik sebelumnya. Sebaliknya, orang yang sedang bekerja
-di PT A lalu membuat PT B **tidak** dipindahkan bukunya; jalan ke PT baru tetap
-berupa tautan yang ia tekan sendiri. Keputusannya murni dan teruji di
-`lib/company-selection.ts`; angkanya tetap melewati `update({ companyId })` yang
-memeriksa ulang keanggotaan ke basis data kendali.
+**Pengecualiannya PT yang baru dibuat (issue #339).** Sesudah `/companies/new`
+selesai, perusahaan yang baru dibuat menjadi perusahaan yang dibuka, hanya bila
+sesi itu belum menunjuk perusahaan mana pun. Yang dipilih adalah perusahaan
+yang orang itu buat sedetik sebelumnya, bukan perusahaan pertama menurut abjad.
+Orang yang sedang bekerja di PT A lalu membuat PT B tidak dipindahkan bukunya;
+ia membuka PT baru lewat tautan. Keputusannya fungsi murni yang teruji di
+`lib/company-selection.ts`, dan id-nya tetap melewati `update({ companyId })`
+yang memeriksa ulang keanggotaan di basis data kendali.
 
-**Sesi sah tanpa peran adalah keadaan yang mungkin, dan ia menyembuhkan diri
-sendiri (issue #339, `4c1424b`).** `role: null` dengan `companyCount ≥ 1` punya
-perlakuan yang ditulis: di rute yang JALURNYA menyebut perusahaan, kerangka
-dasbor tetap memasang `{children}` — tersembunyi — supaya `CompanySessionSync`
-di dalamnya berjalan dan menambal token lewat `update({ companyId })`; satu
-putaran render kemudian perannya datang dan halaman muncul utuh. Sebelumnya ia
-memutar "Memuat sesi…" tanpa batas: penjaga jalur bertenant mengambil perusahaan
-dari JALUR sehingga menjawab 200 dan tidak pernah memantulkan, sementara
-`{children}` yang tidak dirender membuat satu-satunya penambal terkunci di dalam
-pintu yang ia sendiri harus buka. Di luar rute berperusahaan (mis. `/dashboard`
-telanjang) penjaganya memang memantulkan ke `/select-company`, jadi tidak ada
-yang perlu ditambal diam-diam.
+**Sesi sah tanpa peran bisa terjadi, dan ia pulih sendiri (issue #339,
+`4c1424b`).** Untuk `role: null` dengan `companyCount ≥ 1`, di rute yang
+jalurnya menyebut perusahaan, kerangka dasbor tetap memasang `{children}`
+secara tersembunyi. Dengan begitu `CompanySessionSync` di dalamnya berjalan dan
+memperbarui token lewat `update({ companyId })`. Satu putaran render kemudian
+perannya tersedia dan halaman tampil utuh.
 
-Pemilihan otomatis di atas menutup jalan yang paling sering menghasilkan keadaan
-itu, tetapi tidak semuanya — ia masih bisa lahir dari luar `/companies/new`:
-akses yang dicabut lalu diberikan lagi saat sesi hidup, keanggotaan yang ditulis
-skrip CLI (`create-company`, `adopt-existing-company`), atau token yang lebih tua
-daripada perubahan ini. Karena itu kedua sisinya tetap ada.
+Sebelumnya halaman menampilkan "Memuat sesi…" tanpa batas. Penjaga jalur
+bertenant mengambil perusahaan dari jalur, jadi menjawab 200 dan tidak
+mengalihkan. Sementara itu `{children}` tidak dirender, sehingga
+`CompanySessionSync`, satu-satunya yang bisa memperbarui token, tidak pernah
+berjalan. Di luar rute berperusahaan (mis. `/dashboard` tanpa jalur
+perusahaan), penjaga mengalihkan ke `/select-company`, jadi tidak ada yang
+perlu diperbarui.
+
+Pemilihan otomatis di atas menutup penyebab yang paling sering, tetapi keadaan
+ini masih bisa muncul dari luar `/companies/new`: akses yang dicabut lalu
+diberikan lagi saat sesi hidup, keanggotaan yang ditulis skrip CLI
+(`create-company`, `adopt-existing-company`), atau token yang lebih tua dari
+perubahan ini. Karena itu kedua mekanisme tetap ada.
 
 ---
 
 ### Gladi resik sebelum menyentuh produksi
 
-Seluruh urutan di atas layak dijalankan dulu pada SALINAN. Sekali dijalankan
-begitu, ia sudah menemukan dua hal yang tidak terlihat dari membaca kode: hak
-akses yang kurang (`P1010`) dan skrip adopsi yang menyebut kolom yang belum ada.
+Perubahan yang menyentuh banyak buku sekaligus sebaiknya dijalankan dulu pada
+salinan. Gladi adopsi #104 menemukan dua hal yang tidak terlihat dari membaca
+kode: hak akses yang kurang dan skrip yang menyebut kolom yang belum ada.
 
 ```bash
-# PostgreSQL (sejak 15 Okt 2026), di dalam container `sai-pg`:
+# di dalam container `sai-pg`:
 pg_dump -U sai -Fc sai_production > /tmp/full.dump
-createdb -U sai -T template0 sai_gladi && createdb -U sai -T template0 sai_gladi_control
+createdb -U sai -T template0 sai_gladi
 pg_restore -U sai -d sai_gladi --no-owner /tmp/full.dump
-# (MariaDB lama: mysqldump --single-transaction … / mysql sai_gladi < …)
-# arahkan DATABASE_URL & CONTROL_DATABASE_URL ke kedua salinan itu, lalu
-# jalankan langkah 1-3. Bandingkan jumlah baris & Σ debit dengan produksi.
-# Setelah yakin: DROP kedua basis data salinan dan hapus dump-nya.
+# arahkan URL basis data ke salinannya, jalankan perubahan, bandingkan jumlah
+# baris & Σ debit dengan produksi, lalu DROP salinan dan hapus dump-nya.
 ```
 
 ## 5. Yang berubah bagi pengembang
@@ -603,10 +429,10 @@ pg_restore -U sai -d sai_gladi --no-owner /tmp/full.dump
 | `session.user.role` selalu ada | `null` selama perusahaan belum dipilih |
 | `users.status` (Int) | `users.must_change_password` (Boolean) |
 | FK `periods.closed_by_id → users` | id global tanpa FK; nama dicari, yang hilang tampil "—" |
-| `data/audit/audit.jsonl` | `data/audit/<slug>/audit.jsonl` |
+| `data/audit/audit.jsonl` | tabel `audit_logs` di basis data tiap PT |
 | `bun run db:migrate` | `bun run db:migrate:all` |
 | `bun run create-admin -- --username …` | `… --company <slug>` (wajib) |
 
-Tabel di basis data perusahaan **tidak boleh** punya foreign key ke pengguna —
-FK tidak bisa menyeberangi basis data. Simpan id global sebagai `Int` biasa dan
-cari namanya lewat `users-directory.ts`.
+Tabel di basis data perusahaan **tidak boleh** punya foreign key ke pengguna,
+karena FK tidak bisa menyeberangi basis data. Simpan id global sebagai `Int`
+biasa dan cari namanya lewat `users-directory.ts`.

@@ -27,6 +27,7 @@ import { Button } from "@sai/ui/button";
 import { APP_NAME, type SystemRole } from "@sai/core/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
+import { CompanyLogoPanel } from "@/components/settings/company-logo-panel";
 import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";
 import { ReminderSettingsPanel } from "@/components/settings/reminder-settings-panel";
 import {
@@ -160,6 +161,14 @@ export function SettingsClient({
           </Flex>
         </CardContent>
       </Card>
+
+      {/* Logo perusahaan (migration company 0002) — dicetak di kepala setiap
+          PDF. Izin yang sama dengan kartu-kartu profil perusahaan di bawahnya. */}
+      {canManageModules && (
+        <div id="logo" style={blockGap}>
+          <CompanyLogoPanel />
+        </div>
+      )}
 
       {/* issue #368 — PPN: status PKP + tarif ber-efektif-tanggal. Izinnya
           sama (`company_setting.manage`): keduanya profil perusahaan, dan

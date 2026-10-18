@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { enterCompanyFromRequest } from "@/lib/company-request";
 import { getCompanyIdentity } from "@/lib/company-identity";
+import { readCompanyLogoMeta } from "@/lib/company-logo";
 
 /**
  * Perusahaan datang dari PERMINTAAN, dan keanggotaan tetap diverifikasi
@@ -39,6 +40,18 @@ export async function GET() {
     return NextResponse.json({ error: "Company scope required" }, { status: 409 });
   }
 
-  const identity = await getCompanyIdentity();
-  return NextResponse.json(identity);
+  const [identity, logo] = await Promise.all([
+    getCompanyIdentity(),
+    // Gagal-lunak: logo yang tak terbaca (mis. buku lama sebelum migration 0002) bukan alasan identitasnya gagal.
+    readCompanyLogoMeta().catch((error) => {
+      console.error("[company-identity] logo perusahaan tak terbaca:", error);
+      return null;
+    }),
+  ]);
+  return NextResponse.json({
+    ...identity,
+    logo: logo
+      ? { version: logo.sha256.slice(0, 16), mimeType: logo.mimeType, width: logo.width, height: logo.height }
+      : null,
+  });
 }

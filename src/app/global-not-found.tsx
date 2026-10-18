@@ -20,6 +20,7 @@ import { getLocale, getT } from "@sai/platform/i18n/server";
 import { RootDocument } from "@sai/ui/providers/root-document";
 import { StatusScreen } from "@sai/ui/status-screen";
 import { getTheme } from "@sai/ui/theme/server";
+import { activeBrandMarkSrc } from "@sai/platform/brand-routes";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -27,9 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function GlobalNotFound() {
-  const [locale, theme, t] = await Promise.all([getLocale(), getTheme(), getT()]);
+  const [locale, theme, t, brandMarkSrc] = await Promise.all([getLocale(), getTheme(), getT(), activeBrandMarkSrc()]);
   return (
-    <RootDocument locale={locale} theme={theme}>
+    <RootDocument locale={locale} theme={theme} brandMarkSrc={brandMarkSrc}>
       <StatusScreen
         kind="notFound"
         minHeight="100vh"

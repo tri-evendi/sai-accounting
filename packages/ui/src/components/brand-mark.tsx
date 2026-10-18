@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Lambang produk — satu tempat, tiga pemakai.
  *
@@ -16,9 +18,17 @@
  * ditolak, ada di kepala berkas itu.
  *
  * Yang tersisa di sini: KOTAKNYA — ukuran, radius, dan pasangan warnanya.
+ *
+ * ── Logo unggahan (konsol operator `/brand`) ──────────────────────────────
+ * Bila operator mengunggah logo produk, kotak yang sama menampilkan gambar
+ * itu (`object-fit: contain`, tanpa isian merek) alih-alih glif bawaan.
+ * Alamatnya datang dari `BrandMarkProvider` di `RootDocument`; tanpa provider
+ * atau tanpa unggahan, glif bawaan yang tampil. Karena konteks itu, komponen
+ * ini client component.
  */
 
 import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@sai/ui/brand/mark";
+import { useBrandMarkSrc } from "./brand-context";
 
 /**
  * Ukuran kotaknya. `md` (40px) memenuhi target sentuh minimum MASTER.md untuk
@@ -36,6 +46,18 @@ const BOX: Record<BrandMarkSize, React.CSSProperties> = {
 const GLYPH: Record<BrandMarkSize, number> = { sm: 16, md: 20, lg: 24 };
 
 export function BrandMark({ size = "md" }: { size?: BrandMarkSize }) {
+  const unggahan = useBrandMarkSrc();
+  if (unggahan) {
+    const sisi = BOX[size].width as number;
+    return (
+      <span style={{ ...BOX[size], display: "flex", flexShrink: 0, overflow: "hidden" }} aria-hidden="true">
+        {/* <img>, bukan next/image: rute `/brand/mark` sudah menyajikan berkasnya
+            apa adanya, dan pengoptimal gambar Next hanya menambah satu lompatan. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={unggahan} alt="" width={sisi} height={sisi} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+      </span>
+    );
+  }
   return (
     <span
       style={{

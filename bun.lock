@@ -99,6 +99,7 @@
         "@sai/billing": "workspace:*",
         "@sai/core": "workspace:*",
         "@sai/db": "workspace:*",
+        "@sai/ui": "workspace:*",
       },
       "peerDependencies": {
         "next": "*",

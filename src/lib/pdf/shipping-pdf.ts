@@ -1,6 +1,7 @@
 import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
 
 interface ShippingDocData {
@@ -16,7 +17,7 @@ interface ShippingDocData {
   }[];
 }
 
-export function generateShippingPDF(data: ShippingDocData, company: { name: string; address: string }) {
+export function generateShippingPDF(data: ShippingDocData, company: PdfCompany) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
@@ -25,6 +26,7 @@ export function generateShippingPDF(data: ShippingDocData, company: { name: stri
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text(company.name, pageWidth / 2, y, { align: "center" });
+  drawCompanyLogo(doc, company, y);
   y += 6;
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");

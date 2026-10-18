@@ -25,8 +25,14 @@ import type { MetadataRoute } from "next";
 
 import { APP_NAME } from "@sai/core/constants";
 import { APP_BACKGROUND_HEX, BRAND_HEX } from "@sai/ui/theme/antd-tokens";
+import { brandMarkUrl, cachedBrandMark } from "@sai/platform/brand-assets";
+import { platformDb } from "@sai/platform/platform-db";
 
-export default function manifest(): MetadataRoute.Manifest {
+/* Dinamis: ikonnya mengikuti logo produk yang diunggah di konsol (`/brand`). */
+export const dynamic = "force-dynamic";
+
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const unggahan = await cachedBrandMark({ platform: platformDb });
   return {
     name: APP_NAME,
     short_name: "SAI",
@@ -39,20 +45,24 @@ export default function manifest(): MetadataRoute.Manifest {
     /* Light-first, sesuai MASTER.md — dan latar putih di layar pembuka membuat
        peralihan ke halaman pertama tidak berkedip. */
     orientation: "portrait-primary",
-    icons: [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      /*
-       * Android memotong ikon dan hanya menjamin lingkaran 80% di tengah tetap
-       * terlihat. Tanpa entri ini, ikon "any" dipakai apa adanya dan sudutnya
-       * terpotong.
-       */
-      {
-        src: "/icons/icon-maskable-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
-      },
-    ],
+    /* Logo unggahan: satu ikon dengan ukuran aslinya, TANPA varian maskable —
+       logo unggahan belum tentu punya area aman yang tahan dipotong peluncur. */
+    icons: unggahan
+      ? [{ src: brandMarkUrl(unggahan), sizes: `${unggahan.width}x${unggahan.height}`, type: unggahan.mimeType, purpose: "any" }]
+      : [
+          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          /*
+           * Android memotong ikon dan hanya menjamin lingkaran 80% di tengah tetap
+           * terlihat. Tanpa entri ini, ikon "any" dipakai apa adanya dan sudutnya
+           * terpotong.
+           */
+          {
+            src: "/icons/icon-maskable-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
   };
 }

@@ -411,7 +411,7 @@ export async function bukaBasisData(url: string, nama: string): Promise<KoneksiB
  *
  * ══ INI BUKAN DETAIL ══════════════════════════════════════════════════════
  * PostgreSQL TIDAK memakai 65 migration MariaDB. Ia memakai **baseline** yang
- * dibangkitkan dari skema (`bun run pg:baseline`) plus migration tambahan
+ * yang dibangkitkan sekali dari skema saat penukaran (15 Okt 2026) plus migration tambahan
  * tulis-tangan — sebab 5.241 baris SQL MariaDB tidak punya nilai di mesin baru,
  * dan menjalankannya di sana akan gagal pada pernyataan pertama.
  *

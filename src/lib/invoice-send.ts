@@ -37,6 +37,7 @@ import { sendMail, type MailAttachment } from "@sai/platform/mailer";
 import { mailConfigForCompany } from "@/lib/tenant-mail-settings";
 import { getCompanyContext } from "@/lib/company-context";
 import { getCompanyIdentity } from "@/lib/company-identity";
+import { readCompanyLogo } from "@/lib/company-logo";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
 import { userNamesByIds } from "@/lib/users-directory";
@@ -98,12 +99,21 @@ function invoiceValue(invoice: LoadedInvoice): number {
 export async function renderInvoicePdf(
   invoice: LoadedInvoice
 ): Promise<{ filename: string; content: Uint8Array }> {
-  const [{ generateInvoicePDF }, company] = await Promise.all([
+  const [{ generateInvoicePDF }, { toPdfLogo }, company, logo] = await Promise.all([
     import("@/lib/pdf/invoice-pdf"),
+    import("@/lib/pdf/company-header"),
     getCompanyIdentity(),
+    // Gagal-lunak: faktur tanpa logo tetap terkirim.
+    readCompanyLogo().catch((error) => {
+      console.error("[invoice-send] logo perusahaan tak terbaca:", error);
+      return null;
+    }),
   ]);
 
-  const doc = generateInvoicePDF(buildInvoicePdfData(invoice), company);
+  const doc = generateInvoicePDF(buildInvoicePdfData(invoice), {
+    ...company,
+    logo: logo ? toPdfLogo({ ...logo.meta, base64: Buffer.from(logo.content).toString("base64") }) : null,
+  });
   return {
     /* Nama berkas sama dengan yang diunduh dari halaman faktur — pelanggan yang
        menerima dua kali tidak mendapat dua nama berbeda untuk kertas yang

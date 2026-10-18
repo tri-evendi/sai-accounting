@@ -63,9 +63,16 @@ export function configuredOperatorHost(
   return normalizeHost(env.OPERATOR_HOST);
 }
 
-/** Jalur konsol yang sah TANPA sesi operator: halaman masuk dan probe health. */
+/** Jalur konsol yang sah TANPA sesi operator: halaman masuk, probe health, logo & ikon. */
 export function isOperatorPublicPath(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/api/health";
+  return (
+    pathname === "/login" ||
+    pathname === "/api/health" ||
+    // Logo & ikon: tampil di halaman masuk konsol, sebelum ada sesi.
+    pathname === "/brand/mark" ||
+    pathname === "/favicon.ico" ||
+    pathname === "/apple-icon.png"
+  );
 }
 
 /**

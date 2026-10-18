@@ -2,6 +2,7 @@ import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { CASH_TYPE_LABELS, type CashType } from "@sai/core/constants";
+import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
 export interface FinanceReportRow {
   date: string;
@@ -36,7 +37,7 @@ function formatMoney(amount: number, currency: string): string {
 export function generateFinanceReportPDF(
   balances: FinanceBalanceRow[],
   transactions: FinanceReportRow[],
-  company: { name: string; address: string }
+  company: PdfCompany
 ) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -45,6 +46,7 @@ export function generateFinanceReportPDF(
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text(company.name, pageWidth / 2, y, { align: "center" });
+  drawCompanyLogo(doc, company, y);
   y += 7;
   doc.setFontSize(12);
   doc.text("Finance Report", pageWidth / 2, y, { align: "center" });

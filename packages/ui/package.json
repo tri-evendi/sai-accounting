@@ -7,6 +7,7 @@
     "./alert-dialog": "./src/components/alert-dialog.tsx",
     "./app-link": "./src/components/app-link.tsx",
     "./badge": "./src/components/badge.tsx",
+    "./brand-context": "./src/components/brand-context.tsx",
     "./brand-lockup": "./src/components/brand-lockup.tsx",
     "./brand-mark": "./src/components/brand-mark.tsx",
     "./brand/mark": "./src/brand/mark.ts",

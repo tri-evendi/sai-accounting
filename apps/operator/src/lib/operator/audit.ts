@@ -71,7 +71,10 @@ export type OperatorAuditAction =
   | "operator.efaktur.export"
   /** Pengumuman status dibuat / fasenya berpindah (migration platform 0004). */
   | "operator.status.create"
-  | "operator.status.phase";
+  | "operator.status.phase"
+  /* Logo produk (migration platform 0005). `details` memuat sidik, format, dan ukurannya — bukan isi berkasnya. */
+  | "operator.brand.update"
+  | "operator.brand.reset";
 
 export interface OperatorAuditEntry {
   id: string;

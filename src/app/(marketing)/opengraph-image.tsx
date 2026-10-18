@@ -23,6 +23,8 @@
  * dengan rasio kontras terukurnya, persis seperti `SIDER_BG_DARK`.
  */
 import { ImageResponse } from "next/og";
+import { cachedBrandMarkContent } from "@sai/platform/brand-assets";
+import { platformDb } from "@sai/platform/platform-db";
 
 import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@sai/ui/brand/mark";
 import { APP_NAME } from "@sai/core/constants";
@@ -37,8 +39,15 @@ import {
 export const alt = APP_NAME;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+/* Mengikuti logo produk yang diunggah di konsol (`/brand`): dibangun ulang
+   paling lambat 5 menit sesudah logonya berganti. */
+export const revalidate = 300;
 
 export default async function Image() {
+  const unggahan = await cachedBrandMarkContent({ platform: platformDb });
+  const logo = unggahan
+    ? `data:${unggahan.meta.mimeType};base64,${Buffer.from(unggahan.content).toString("base64")}`
+    : null;
   return new ImageResponse(
     <div
       style={{
@@ -63,7 +72,7 @@ export default async function Image() {
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 16,
-            background: MEREK,
+            background: logo ? "transparent" : MEREK,
           }}
         >
           {/*
@@ -77,14 +86,13 @@ export default async function Image() {
            * dibutuhkan hanya PATH-nya, dan sejak `lib/brand/mark.ts` ada,
            * path itu bisa dibaca tanpa merender komponennya.
            */}
-          <svg
-            width={44}
-            height={44}
-            viewBox={BRAND_MARK_VIEWBOX}
-            fill={LATAR}
-          >
-            <path fillRule="evenodd" clipRule="evenodd" d={BRAND_MARK_PATH} />
-          </svg>
+          {logo ? (
+            <img src={logo} width={72} height={72} alt="" style={{ objectFit: "contain" }} />
+          ) : (
+            <svg width={44} height={44} viewBox={BRAND_MARK_VIEWBOX} fill={LATAR}>
+              <path fillRule="evenodd" clipRule="evenodd" d={BRAND_MARK_PATH} />
+            </svg>
+          )}
         </div>
         <div
           style={{

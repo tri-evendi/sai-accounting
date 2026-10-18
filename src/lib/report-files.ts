@@ -21,6 +21,7 @@ import { apiFetch } from "@/lib/api-fetch";
 // sengaja: `statement-layout.ts` tidak mengimpor apa pun, jadi ia tak menyeret
 // jsPDF — yang tetap dimuat malas di `downloadStatementPdf()` di bawah.
 import { STATEMENT_TITLES } from "@/lib/statement-layout";
+import type { PdfCompany } from "@/lib/pdf/company-header";
 
 /** Tanggal berkas — hari ini, bukan periode laporan (dua hal berbeda). */
 function stamp(): string {
@@ -55,7 +56,7 @@ export async function fetchReportPayload(
 /** Susun PDF di peramban dan unduh — jalur yang sama dengan tombol di halaman. */
 export async function downloadStatementPdf(
   payload: StatementPayload,
-  company: { name: string; address: string }
+  company: PdfCompany
 ): Promise<void> {
   const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
   const doc = generateStatementPDF(payload, company);

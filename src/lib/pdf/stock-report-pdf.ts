@@ -4,8 +4,9 @@ import autoTable from "jspdf-autotable";
 import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { STOCK_LEVEL_LABELS, getStockLevel, type ClientInventoryItem } from "@/lib/inventory";
 import { formatMoney } from "@sai/core/money-format";
+import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
-export function generateStockReportPDF(items: ClientInventoryItem[], company: { name: string; address: string }) {
+export function generateStockReportPDF(items: ClientInventoryItem[], company: PdfCompany) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = 15;
@@ -13,6 +14,7 @@ export function generateStockReportPDF(items: ClientInventoryItem[], company: { 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text(company.name, pageWidth / 2, y, { align: "center" });
+  drawCompanyLogo(doc, company, y);
   y += 7;
   doc.setFontSize(12);
   doc.text("Stock Report", pageWidth / 2, y, { align: "center" });

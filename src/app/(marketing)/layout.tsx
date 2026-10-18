@@ -35,6 +35,7 @@ import { RootDocument } from "@sai/ui/providers/root-document";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { getTheme } from "@sai/ui/theme/server";
+import { activeBrandMarkSrc } from "@sai/platform/brand-routes";
 
 /* Cadangan bila sebuah halaman pemasaran lupa metadata-nya sendiri; `/` dan
    `/pricing` masing-masing menimpanya dengan judul, deskripsi & kanoniknya. */
@@ -52,10 +53,10 @@ export default async function MarketingLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
-  const theme = await getTheme();
+  const [theme, brandMarkSrc] = await Promise.all([getTheme(), activeBrandMarkSrc()]);
 
   return (
-    <RootDocument locale={locale} theme={theme}>
+    <RootDocument locale={locale} theme={theme} brandMarkSrc={brandMarkSrc}>
       {children}
     </RootDocument>
   );

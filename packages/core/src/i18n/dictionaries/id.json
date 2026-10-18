@@ -3499,7 +3499,29 @@
     "sampleConfirmBody": "Seluruh dokumen bertanda [CONTOH] dihapus beserta jurnalnya. Data yang Anda catat sendiri tidak disentuh. Tindakan ini tidak bisa dibatalkan.",
     "sampleCleared": "Data contoh sudah dibuang. Laporan kini hanya berisi transaksi Anda.",
     "sampleKept": "Masih disimpan karena sudah Anda pakai di dokumen sungguhan: {names}",
-    "sampleFailed": "Gagal membuang data contoh"
+    "sampleFailed": "Gagal membuang data contoh",
+    "companyLogo": {
+      "title": "Logo perusahaan",
+      "description": "Dicetak di kepala setiap dokumen PDF: faktur, kontrak, surat jalan, retur, dan laporan.",
+      "none": "Belum ada logo",
+      "previewAlt": "Logo {name}",
+      "choose": "Pilih berkas logo",
+      "hint": "PNG atau JPEG, paling besar 512 KB, sisi terpendek minimal 64 px. Latar transparan atau putih paling rapi di kertas.",
+      "submit": "Simpan logo",
+      "remove": "Hapus logo",
+      "removeTitle": "Hapus logo perusahaan?",
+      "removeDescription": "Dokumen berikutnya dicetak tanpa logo. Dokumen yang sudah dikirim tidak berubah.",
+      "saved": "Logo disimpan. Dokumen berikutnya memakai logo ini.",
+      "removed": "Logo dihapus.",
+      "err": {
+        "generic": "Logo gagal disimpan. Coba lagi.",
+        "empty": "Pilih berkas gambar dulu.",
+        "too_large": "Berkas lebih besar dari 512 KB.",
+        "not_image": "Berkas ini bukan PNG atau JPEG.",
+        "too_small": "Gambar terlalu kecil: sisi terpendek minimal {min} px.",
+        "too_big_dimensions": "Gambar terlalu besar: sisi terpanjang maksimal 4096 px."
+      }
+    }
   },
   "glossary": {
     "descriptionBefore": "{count} istilah akuntansi yang dipakai aplikasi ini, dijelaskan dengan bahasa sehari-hari beserta contohnya. Istilah yang sama juga muncul sebagai ikon",
@@ -4578,7 +4600,8 @@
       "deletions": "Permintaan hapus",
       "plans": "Katalog paket",
       "efaktur": "e-Faktur platform",
-      "statusNotices": "Pengumuman status"
+      "statusNotices": "Pengumuman status",
+      "brand": "Logo produk"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -5288,6 +5311,34 @@
       "done": "Hak pakai aktif dari penawaran {quote}.",
       "partial": "Belum selesai — {steps}. Langkah yang tersisa bisa dilanjutkan dengan tombolnya masing-masing.",
       "errInput": "Isian tidak lengkap: nomor penawaran, paket, periode 1–24, dan alasan wajib."
+    },
+    "brand": {
+      "heading": "Logo produk",
+      "description": "Lambang SAI yang tampil di aplikasi pelanggan, konsol ini, ikon tab peramban, ikon layar depan, dan pratinjau tautan.",
+      "current": "Yang sedang dipakai",
+      "usingDefault": "Lambang bawaan dari kode",
+      "usingCustom": "Diunggah {by} pada {at}",
+      "previewLight": "Tema terang",
+      "previewDark": "Tema gelap",
+      "previewNote": "Contoh ukuran: layar depan (128 px), sidebar (40 px), dan ikon tab (16 px).",
+      "upload": "Unggah logo baru",
+      "fileLabel": "Berkas gambar",
+      "hint": "PNG atau JPEG, paling besar 512 KB, sisi terpendek minimal 256 px. Gambar persegi berlatar transparan memberi hasil paling rapi.",
+      "submit": "Simpan logo",
+      "reset": "Kembalikan ke lambang bawaan",
+      "resetTitle": "Kembalikan ke lambang bawaan?",
+      "resetDescription": "Logo unggahan tetap tersimpan di riwayat, tetapi berhenti dipakai di semua permukaan dalam satu menit.",
+      "saved": "Logo produk disimpan. Aplikasi pelanggan memakainya paling lambat satu menit lagi.",
+      "resetDone": "Lambang bawaan dipakai lagi.",
+      "unavailable": "Basis data platform tidak terjangkau. Lambang bawaan sedang dipakai, dan logo tidak bisa diubah sekarang.",
+      "readOnly": "Peran Anda hanya bisa melihat. Mengganti logo membutuhkan izin pengaturan situs.",
+      "err": {
+        "empty": "Pilih berkas gambar dulu.",
+        "too_large": "Berkas lebih besar dari 512 KB.",
+        "not_image": "Berkas ini bukan PNG atau JPEG.",
+        "too_small": "Gambar terlalu kecil: sisi terpendek minimal {min} px.",
+        "too_big_dimensions": "Gambar terlalu besar: sisi terpanjang maksimal 4096 px."
+      }
     }
   },
   "docs": {

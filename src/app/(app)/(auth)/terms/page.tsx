@@ -29,6 +29,9 @@ import { APP_NAME } from "@sai/core/constants";
 import { TERMS_VERSION, isDraftLegalVersion } from "@/lib/legal";
 
 export const dynamic = "force-static";
+/* Dibangun ulang berkala (ISR) supaya lambang produk unggahan dari konsol
+   (`/brand`) ikut tampil, tidak terkunci pada lambang saat build. */
+export const revalidate = 300;
 
 const PAGE: React.CSSProperties = {
   minHeight: "100vh",

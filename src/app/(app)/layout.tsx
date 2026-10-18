@@ -30,6 +30,7 @@ import { LocaleProvider } from "@sai/core/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { getTheme } from "@sai/ui/theme/server";
+import { activeBrandMarkSrc } from "@sai/platform/brand-routes";
 import { StatusBanner } from "@/components/layout/status-banner";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,10 +54,10 @@ export default async function RootLayout({
   // menyeberang ke browser.
   const locale = await getLocale();
   const dictionary = await getDictionary(locale);
-  const theme = await getTheme();
+  const [theme, brandMarkSrc] = await Promise.all([getTheme(), activeBrandMarkSrc()]);
 
   return (
-    <RootDocument locale={locale} theme={theme}>
+    <RootDocument locale={locale} theme={theme} brandMarkSrc={brandMarkSrc}>
       <LocaleProvider locale={locale} dictionary={dictionary}>
         {/* Identitas perusahaan diambil di sisi client (lihat
             company-identity-client.tsx): membacanya di server SINI berarti

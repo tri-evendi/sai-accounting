@@ -100,6 +100,9 @@ function isPublicPath(pathname: string): boolean {
    * data perusahaan di dalamnya.
    */
   if (pathname === "/manifest.webmanifest") return true;
+  // Logo produk & ikon (dinamis sejak logo bisa diunggah dari konsol). Diambil
+  // peramban tanpa sesi — dari halaman masuk, pendaratan, dan layar depan.
+  if (pathname === "/brand/mark" || pathname === "/favicon.ico" || pathname === "/apple-icon.png") return true;
   if (pathname === "/opengraph-image" || pathname.startsWith("/opengraph-image/")) return true;
   /*
    * issue #300 — dokumentasi sistem. SATU-SATUNYA pelepasan berbentuk SUBPOHON

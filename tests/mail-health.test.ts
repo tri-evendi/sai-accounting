@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { mailHealth } from "@/lib/mail-health";
+import { mailHealth } from "@sai/platform/mail-health";
 
 describe("kesehatan surel", () => {
   it("PRODUKSI + transport file = keadaan yang DILAPORKAN, bukan didiamkan", () => {
@@ -88,12 +88,12 @@ describe("peringatan sekali-bunyi", () => {
      penggantinya beserta pemulihannya. */
   afterEach(async () => {
     vi.unstubAllEnvs();
-    (await import("@/lib/mailer-core")).resetMailWarning();
+    (await import("@sai/platform/mailer-core")).resetMailWarning();
     vi.restoreAllMocks();
   });
 
   const send = async () => {
-    const { sendMail } = await import("@/lib/mailer-core");
+    const { sendMail } = await import("@sai/platform/mailer-core");
     await sendMail(
       { to: "a@contoh.id", subject: "x", text: "y" },
       {

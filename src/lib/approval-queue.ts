@@ -22,7 +22,7 @@ import {
   type ApprovalDocumentType,
   type ApprovalStatus,
 } from "@/lib/approvals";
-import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import {
   approvalDecisionMessage,
   approvalDocumentTypeLabels,

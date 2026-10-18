@@ -81,7 +81,7 @@ vi.mock("@/lib/tenant-directory", () => ({
   },
 }));
 
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getT: async () => T,
   getLocale: async () => "id",
   getRequestI18n: async () => ({ locale: "id", dictionary: dict, t: T }),

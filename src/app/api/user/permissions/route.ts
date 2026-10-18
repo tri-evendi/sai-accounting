@@ -4,7 +4,7 @@ import { effectivePermissionsFor } from "@/lib/authz-effective";
 import { enterCompanyFromRequest } from "@/lib/company-request";
 import { tenantPermissionsForRole } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 /**
  * Izin EFEKTIF milik pengguna yang sedang login (issue #73; sejak issue #75

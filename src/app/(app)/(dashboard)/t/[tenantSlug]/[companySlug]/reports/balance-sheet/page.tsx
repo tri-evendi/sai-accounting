@@ -29,7 +29,7 @@ import { comparisonDate, parseComparison } from "@/lib/statement-compare";
 import { balanceSheetSummary } from "@/lib/report-summary";
 import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

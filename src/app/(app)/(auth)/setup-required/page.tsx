@@ -28,7 +28,7 @@ import { canEffective } from "@/lib/authz-effective";
 import { runWithCompany } from "@/lib/company-context";
 import { getCompany } from "@/lib/company-registry";
 import { isSetupDone } from "@/lib/setup-gate";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { AuthShell } from "@/components/auth/auth-shell";
 
 /*

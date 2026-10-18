@@ -6,7 +6,7 @@
  * `statusNotice.<kind>.<phase>` dengan parameter komponen & waktu. Lihat
  * komentar model `StatusNotice`.
  */
-import type { ComponentId } from "@/lib/public-status";
+import type { ComponentId } from "@sai/core/public-status";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export const STATUS_NOTICE_KINDS = ["maintenance", "incident"] as const;

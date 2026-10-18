@@ -15,7 +15,7 @@ import "server-only";
  * `server-only`: `getRequestI18n` membaca cookie permintaan.
  */
 import { formatCurrency } from "@sai/core/utils";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import type { PaymentProblem } from "@/lib/document-payments";
 
 /**

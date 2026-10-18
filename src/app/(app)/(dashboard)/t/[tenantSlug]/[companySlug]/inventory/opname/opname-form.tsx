@@ -15,7 +15,7 @@ import { Flex } from "antd";
 import { Button } from "@sai/ui/button";
 import { Checkbox } from "@sai/ui/checkbox";
 import { Input, TextInput } from "@sai/ui/input";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { EmptyState } from "@sai/ui/empty-state";
 import { StaticTable } from "@sai/ui/static-table";
 import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";

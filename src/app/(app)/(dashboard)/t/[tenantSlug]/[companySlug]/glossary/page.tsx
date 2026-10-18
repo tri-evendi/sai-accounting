@@ -12,7 +12,7 @@ import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { PageHeader } from "@sai/ui/page-header";
 import { TERM_LIST } from "@sai/core/labels";
 import { GlossaryBrowser } from "./glossary-browser";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

@@ -80,12 +80,12 @@ import {
   BUSINESS_MODULES,
   CATEGORY_META,
 } from "@/lib/business-modules";
-import { resolveContactChannels } from "@/lib/site-settings";
-import { getT } from "@/lib/i18n/server";
+import { resolveContactChannels } from "@sai/platform/site-settings";
+import { getT } from "@sai/platform/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS } from "@/lib/registration";
-import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
-import { DEFAULT_TAX_RATE } from "@/lib/tax";
+import { TRIAL_DAYS } from "@sai/core/registration";
+import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
+import { DEFAULT_TAX_RATE } from "@sai/core/tax";
 
 export async function LandingFaq() {
   const t = await getT();

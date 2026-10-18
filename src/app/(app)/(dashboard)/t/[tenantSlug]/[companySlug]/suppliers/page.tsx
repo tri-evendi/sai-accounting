@@ -21,7 +21,7 @@ import { Link } from "@sai/ui/app-link";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";
 import { EmptyState } from "@sai/ui/empty-state";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { INLINE_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 import { TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";

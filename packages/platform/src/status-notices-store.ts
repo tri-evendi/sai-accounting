@@ -20,7 +20,7 @@ import {
   type StatusNoticeKind,
   type StatusNoticePhase,
   type StatusNoticeRecord,
-} from "@/lib/status-notices";
+} from "@sai/core/status-notices";
 
 type Deps = { platform: PlatformClient };
 

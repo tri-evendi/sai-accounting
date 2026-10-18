@@ -13,7 +13,7 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate, formatNumber } from "@sai/core/utils";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { HistoryOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { SPACE_XS } from "@sai/ui/layout-scale";

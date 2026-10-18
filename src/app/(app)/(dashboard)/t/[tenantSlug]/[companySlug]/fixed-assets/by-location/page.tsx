@@ -18,7 +18,7 @@ import { moneyColumn } from "@sai/ui/money-column";
 import { qtyColumn, type SaiColumns } from "@sai/ui/table-columns";
 import { Money } from "@sai/ui/money";
 import { EnvironmentOutlined } from "@ant-design/icons";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

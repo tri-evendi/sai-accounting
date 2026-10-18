@@ -20,7 +20,7 @@
  * KEDUA di proses yang sengaja dibatasi satu koneksi.
  */
 
-import { selfServeSignupOpen } from "@/lib/registration";
+import { selfServeSignupOpen } from "@sai/core/registration";
 
 /** Baris pengaturan, bentuk yang dipakai kedua sisi. */
 export interface SiteSettingsRow {

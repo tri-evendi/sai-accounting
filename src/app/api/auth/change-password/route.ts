@@ -3,9 +3,9 @@ import bcrypt from "bcrypt";
 import { auth } from "@/lib/auth";
 import { controlDb } from "@sai/core/control-db";
 import { changePasswordApiSchema } from "@/lib/validations/auth";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function POST(request: Request) {

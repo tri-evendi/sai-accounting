@@ -27,7 +27,7 @@ import {
 } from "@ant-design/icons";
 import type { IconComponent } from "@sai/ui/icons";
 import type { ReportSummary, SummaryDirection } from "@/lib/report-summary";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 interface DirStyle {

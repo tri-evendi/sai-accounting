@@ -46,7 +46,7 @@ import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Link } from "@sai/ui/app-link";
 import { Button } from "@sai/ui/button";
 import { SetupWizard } from "./setup-wizard";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

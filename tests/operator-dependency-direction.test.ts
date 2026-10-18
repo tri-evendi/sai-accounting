@@ -113,7 +113,8 @@ function imporDari(teks: string, berkas: string): string[] {
 const di = (path: string, akar: string) => path === akar || path.startsWith(`${akar}/`);
 const diOperator = (path: string) => OPERATOR.some((a) => di(path, a));
 
-const semua = berkasTs("src");
+/* `packages/*` ikut: penulis penagihan bersama kini di `@sai/platform/billing`. */
+const semua = [...berkasTs("src"), ...berkasTs("packages")];
 const imporPerBerkas = new Map(
   semua.map((f) => [f, imporDari(readFileSync(join(AKAR, f), "utf8"), f)])
 );
@@ -197,8 +198,8 @@ describe("arah dependensi konsol operator", () => {
   });
 
   it("logika penagihan bersama tidak bergantung balik pada operator", () => {
-    const billing = semua.filter((f) => di(f, "src/lib/billing"));
-    expect(billing).toContain("src/lib/billing/change-tenant-plan.ts");
+    const billing = semua.filter((f) => di(f, "packages/platform/src/billing"));
+    expect(billing).toContain("packages/platform/src/billing/change-tenant-plan.ts");
     for (const f of billing) {
       expect((imporPerBerkas.get(f) ?? []).filter(diOperator), f).toEqual([]);
     }

@@ -9,7 +9,7 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { sendMail } from "@/lib/mailer";
+import { sendMail } from "@sai/platform/mailer";
 
 let outbox: string;
 

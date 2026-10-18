@@ -75,3 +75,13 @@ export function formatAmount(value: number, currency: CurrencyCode = "IDR") {
 export function isNegative(value: number) {
   return value < 0;
 }
+
+/**
+ * Pembulatan sen — JANGAN percaya aritmetika float mentah pada uang.
+ *
+ * Inilah `round2` mesin posting (dulu hanya di `lib/posting/rules.ts`, yang
+ * masih mengekspornya ulang). Pindah ke sini supaya modul murni yang hanya
+ * butuh pembulatan — `lib/tax.ts`, dan lewat itu siklus langganan platform —
+ * tidak ikut menyeret mesin posting 1.100 baris (monorepo Fase 3a).
+ */
+export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;

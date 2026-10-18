@@ -20,7 +20,7 @@ import {
   withinPeriod,
   type EfakturInvoiceInput,
   type EfakturSeller,
-} from "@/lib/efaktur";
+} from "@sai/core/efaktur";
 
 const SELLER: EfakturSeller = { npwp: "01.234.567.8-901.000", name: "PT Subur Anugerah Indonesia" };
 

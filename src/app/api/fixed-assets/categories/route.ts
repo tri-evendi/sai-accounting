@@ -10,7 +10,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { fixedAssetCategorySchema } from "@/lib/validations/fixed-asset";
 import { getCategories } from "@/lib/fixed-assets";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function GET(request: Request) {

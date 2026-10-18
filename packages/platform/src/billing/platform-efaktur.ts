@@ -11,7 +11,7 @@
  */
 import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import type { PrismaClient as ControlClient } from "@sai/db/client/control";
-import { buildEfaktur, efakturToCsv, type EfakturInvoiceInput } from "@/lib/efaktur";
+import { buildEfaktur, efakturToCsv, type EfakturInvoiceInput } from "@sai/core/efaktur";
 
 export interface PlatformEfakturResult {
   csv: string;

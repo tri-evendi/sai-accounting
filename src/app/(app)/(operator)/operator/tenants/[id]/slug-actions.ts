@@ -12,13 +12,13 @@
  */
 import { revalidatePath } from "next/cache";
 
-import { auditActor } from "@/lib/billing/change-tenant-plan";
-import { getT } from "@/lib/i18n/server";
+import { auditActor } from "@sai/platform/billing/change-tenant-plan";
+import { getT } from "@sai/platform/i18n/server";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
-import { renameTenantSlug } from "@/lib/tenant-slug";
+import { renameTenantSlug } from "@sai/platform/tenant-slug";
 import { slugRenameSchema as schema } from "@/lib/validations/operator";
-import { invalidateTenantState } from "@/lib/tenant-state";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { invalidateTenantState } from "@sai/platform/tenant-state";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 import type { OperatorActionResult } from "./actions";

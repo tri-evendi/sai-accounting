@@ -53,13 +53,13 @@ vi.mock("@/lib/tenant-guard", () => ({
   }),
 }));
 
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getRequestI18n: async () => ({ t: (key: string) => key, dictionary: {} }),
 }));
 
 vi.mock("@sai/core/i18n/validation", () => ({ translateFieldErrors: () => ({}) }));
 
-vi.mock("@/lib/platform-db", () => ({
+vi.mock("@sai/platform/platform-db", () => ({
   platformDb: {
     plan: { findUnique: async () => state.plan },
     subscription: {
@@ -101,14 +101,14 @@ vi.mock("@sai/core/control-db", () => ({
   },
 }));
 
-vi.mock("@/lib/billing/change-tenant-plan", () => ({
+vi.mock("@sai/platform/billing/change-tenant-plan", () => ({
   changeTenantPlan: async () => {
     state.plansApplied += 1;
     return { outcome: "applied" };
   },
 }));
 
-vi.mock("@/lib/tenant-state", () => ({ invalidateTenantState: () => {} }));
+vi.mock("@sai/platform/tenant-state", () => ({ invalidateTenantState: () => {} }));
 
 const { POST } = await import("@/app/api/tenant/billing/plan-change/route");
 

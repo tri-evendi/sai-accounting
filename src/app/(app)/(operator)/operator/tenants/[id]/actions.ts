@@ -25,10 +25,10 @@
 import { revalidatePath } from "next/cache";
 
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
 import type { OperatorPermission } from "@/lib/operator/roles";
-import { changeTenantPlan, type QuotaWarning } from "@/lib/billing/change-tenant-plan";
+import { changeTenantPlan, type QuotaWarning } from "@sai/platform/billing/change-tenant-plan";
 import {
   executeTenantDeletion,
   makeLatestJournalDateReader,
@@ -49,8 +49,8 @@ import {
   quoteActivationSchema,
 } from "@/lib/validations/operator";
 import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@sai/billing/platform-constants";
-import { invalidateTenantState } from "@/lib/tenant-state";
-import { getT } from "@/lib/i18n/server";
+import { invalidateTenantState } from "@sai/platform/tenant-state";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateMedium } from "@sai/core/utils";
 

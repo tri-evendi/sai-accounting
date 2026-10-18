@@ -23,6 +23,7 @@
  *      adalah salinan yang akan berbeda.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { theme } from "antd";
@@ -41,7 +42,6 @@ import {
 } from "@sai/ui/layout-scale";
 
 const ROOT = join(__dirname, "..");
-const SRC = join(ROOT, "src");
 
 function berkasSumber(dir: string): string[] {
   const out: string[] = [];
@@ -101,7 +101,7 @@ const DIIZINKAN: ReadonlyArray<{ berkas: string; alasan: string }> = [
 ];
 
 describe("angka jarak tidak diketik ulang di halaman", () => {
-  const berkas = berkasSumber(SRC);
+  const berkas = akarSumber().flatMap((d) => berkasSumber(d));
   const PERAN = /^const (SECTION_GAP|CARD_GAP|INLINE_GAP|CONTROL_GAP|GRID_GAP) = \d+;/m;
 
   it("sapuannya benar-benar membaca banyak berkas", () => {

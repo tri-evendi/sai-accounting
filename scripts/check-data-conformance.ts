@@ -282,7 +282,7 @@ async function rekam(hasil: {
   failures: string[];
 }) {
   try {
-    const { platformDb } = await import("../src/lib/platform-db");
+    const { platformDb } = await import("@sai/platform/platform-db");
     await platformDb.conformanceRun.create({
       data: {
         startedAt: hasil.startedAt,

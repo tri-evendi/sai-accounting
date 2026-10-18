@@ -34,7 +34,7 @@
  */
 
 import { controlDb } from "@sai/core/control-db";
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 
 /**
  * Peristiwa tenant yang dicatat. Union eksplisit (pola `AuditAction`):

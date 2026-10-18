@@ -51,7 +51,7 @@ import {
 } from "@/components/landing/landing-scale";
 import { APP_NAME } from "@sai/core/constants";
 import { healthReport } from "@/lib/health-report";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { publicAppUrl } from "@/lib/public-url";
 import {
@@ -59,16 +59,16 @@ import {
   publicStatus,
   type ComponentId,
   type ComponentState,
-} from "@/lib/public-status";
+} from "@sai/core/public-status";
 import { formatDateTime } from "@sai/core/utils";
-import { platformDb } from "@/lib/platform-db";
-import { readStatusNoticeRecords } from "@/lib/status-notices-store";
+import { platformDb } from "@sai/platform/platform-db";
+import { readStatusNoticeRecords } from "@sai/platform/status-notices-store";
 import {
   COMPONENT_LABEL as NOTICE_COMPONENT_LABEL,
   NOTICE_SENTENCE,
   visibleOnStatusPage,
   type PublicStatusNotice,
-} from "@/lib/status-notices";
+} from "@sai/core/status-notices";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

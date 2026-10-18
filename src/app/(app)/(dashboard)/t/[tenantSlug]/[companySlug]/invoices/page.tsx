@@ -44,7 +44,7 @@ import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { EmptyState } from "@sai/ui/empty-state";
 import { Pagination } from "@sai/ui/pagination";
 import { FileDoneOutlined } from "@ant-design/icons";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { statusFilterLabels } from "@/lib/i18n/labels";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { TermTooltip } from "@sai/ui/term-tooltip";

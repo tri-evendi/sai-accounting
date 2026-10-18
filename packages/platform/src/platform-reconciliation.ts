@@ -21,7 +21,7 @@
 
 import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import type { PrismaClient as ControlClient } from "@sai/db/client/control";
-import { tenantStatusForSubscription } from "@/lib/subscription-lifecycle";
+import { tenantStatusForSubscription } from "@sai/billing/subscription-lifecycle";
 
 export type Finding = { check: string; detail: string };
 

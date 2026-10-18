@@ -25,7 +25,7 @@ import { TextInput } from "@sai/ui/input";
 import { SelectField } from "@sai/ui/select";
 import { Button } from "@sai/ui/button";
 import { EmptyState } from "@sai/ui/empty-state";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import {
   Form,
   FormControl,

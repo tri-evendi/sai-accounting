@@ -9,7 +9,7 @@ import { Card } from "@sai/ui/card";
 import { AimOutlined, DashboardOutlined, OrderedListOutlined } from "@ant-design/icons";
 import { PageHeader } from "@sai/ui/page-header";
 import { Link } from "@sai/ui/app-link";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { CARD_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

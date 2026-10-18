@@ -286,9 +286,9 @@ Ketiga halaman pemasaran `force-dynamic`. Dugaan pertama: penghalangnya
 `await auth()` di `/`. Bukan — penghalang yang lebih dalam adalah **i18n**:
 
 ```
-src/lib/i18n/server.ts:40   const cookieStore = await cookies();
-src/lib/i18n/server.ts:41   const chosen = cookieStore.get(LOCALE_COOKIE)?.value;
-src/lib/i18n/server.ts:44   const headerStore = await headers();   // Accept-Language
+packages/platform/src/i18n/server.ts:40   const cookieStore = await cookies();
+packages/platform/src/i18n/server.ts:41   const chosen = cookieStore.get(LOCALE_COOKIE)?.value;
+packages/platform/src/i18n/server.ts:44   const headerStore = await headers();   // Accept-Language
 ```
 
 Locale datang dari **cookie** (keputusan sadar, bukan rute `[lang]` — lihat
@@ -300,7 +300,7 @@ jauh lebih besar daripada memisahkan container, demi tiga halaman.
 
 ### Yang sudah benar dan jangan diutak-atik
 
-CMS pendaratan (`lib/site-content-store.ts`) membaca DB **platform**, tapi
+CMS pendaratan (`packages/platform/src/site-content-store.ts`) membaca DB **platform**, tapi
 degradasinya dirancang betul, dan komentarnya menyebut jebakannya sendiri:
 
 > *"Kalau `{}` hasil kegagalan masuk ke cache, satu detik platform tak

@@ -18,7 +18,7 @@ import { randomBytes } from "node:crypto";
 import { hash } from "bcrypt";
 
 import type { PrismaClient as ControlClient } from "@sai/db/client/control";
-import { openSecret, sealSecret, encryptionKeyAvailable } from "@/lib/settings-crypto";
+import { openSecret, sealSecret, encryptionKeyAvailable } from "@sai/core/settings-crypto";
 import { NAME_PATTERN, type DbOperatorCredential } from "./credentials";
 import type { DbOperatorState } from "./identity";
 import { isOperatorRole, type OperatorRole } from "./roles";

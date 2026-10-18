@@ -28,7 +28,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-import { getDictionary, getT } from "@/lib/i18n/server";
+import { getDictionary, getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
 import { clientIpFrom } from "@/lib/operator/plane";
@@ -36,8 +36,8 @@ import {
   SITE_CONTENT_PREFIX,
   isEditableContentKey,
   isSiteContentLocale,
-} from "@/lib/site-content";
-import { saveSiteContent } from "@/lib/site-content-store";
+} from "@sai/core/site-content";
+import { saveSiteContent } from "@sai/platform/site-content-store";
 import { siteContentSchema } from "@/lib/validations/operator";
 
 export interface OperatorContentActionResult {

@@ -75,7 +75,7 @@ vi.mock("@/lib/current-company", () => ({ setRouteCompany, routeCompany }));
 vi.mock("@/lib/auth", () => ({ auth: authFn }));
 vi.mock("next/headers", () => ({ headers: headersFn }));
 vi.mock("@/lib/authz-effective", () => ({ canEffective, isModuleActiveFor }));
-vi.mock("@/lib/tenant-state", () => ({ tenantStateForCompany }));
+vi.mock("@sai/platform/tenant-state", () => ({ tenantStateForCompany }));
 
 import { requireApiPermission } from "@/lib/auth-guard";
 import { companyScopeFromHeaders, COMPANY_SLUG_HEADER, TENANT_SLUG_HEADER } from "@/lib/company-scope";

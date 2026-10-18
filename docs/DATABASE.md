@@ -147,7 +147,7 @@ Aturannya:
      TIDAK mengubah satu pun angka yang sudah terbit di laporan; yang berubah
      hanya bawaan formulir berikutnya.
 
-  `src/lib/tax.ts` **tetap** memuat `DEFAULT_TAX_RATE` untuk dua hal yang memang
+  `packages/core/src/tax.ts` **tetap** memuat `DEFAULT_TAX_RATE` untuk dua hal yang memang
   bukan milik pelanggan: benih tarif pertama sebuah perusahaan baru, dan PPN
   tingkat **platform** (tagihan langganan kita sendiri — lihat §11).
   `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali.
@@ -217,7 +217,7 @@ Lapisan ketiga di samping kendali dan perusahaan (rancangan & alasannya:
 **data bisnis penyedia SaaS**, nol angka akuntansi pelanggan. Skema:
 `packages/db/prisma/platform/schema.prisma` → klien
 `packages/db/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien runtime
-`src/lib/platform-db.ts`.
+`packages/platform/src/platform-db.ts`.
 
 **Menyediakannya (opsional — pemasangan multi-PT satu grup usaha tidak butuh):**
 
@@ -251,16 +251,16 @@ menyertakannya di antara kendali dan perusahaan).
   **platform dulu**, kendali belakangan; selisihnya ditemukan
   `bun run reconcile:platform` (lengkap sejak #140 — empat pemeriksaan,
   termasuk kecocokan status dan usage_counters).
-- **Penagihan mati ≠ login mati.** `src/lib/platform-db.ts` malas (lazy) dan
+- **Penagihan mati ≠ login mati.** `packages/platform/src/platform-db.ts` malas (lazy) dan
   hanya boleh diimpor kode penagihan — jangan pernah dari penjaga, sesi, atau
   jalur lain yang berjalan pada setiap permintaan. `db:migrate:all` melewati
   platform dengan peringatan bila `PLATFORM_DATABASE_URL` tidak diset
   (`scripts/migrate-platform.ts`) — tapi GAGAL bila diset dan migrationnya
   gagal.
 - **Cache data platform dikunci per `tenant_id`** — aturan cache #104 diperluas;
-  pakai `TenantKeyedCache` (`src/lib/tenant-cache.ts`). Pengecualian yang
+  pakai `TenantKeyedCache` (`packages/core/src/tenant-cache.ts`). Pengecualian yang
   dinyatakan: `mail_settings` (#169) adalah singleton milik PENYEDIA, bukan
-  milik satu tenant, jadi cache-nya (`src/lib/mail-settings.ts`, TTL 60 detik)
+  milik satu tenant, jadi cache-nya (`packages/platform/src/mail-settings.ts`, TTL 60 detik)
   memang tunggal.
 - **Rahasia di basis data: hanya `mail_settings.password_ciphertext` (#169).**
   Doktrin "kredensial hidup di environment" tetap berlaku untuk yang lain;
@@ -271,11 +271,11 @@ menyertakannya di antara kendali dan perusahaan).
   `file`**: platform mati tidak boleh mematikan undangan & atur-ulang sandi.
 
 **Siklus hidup langganan (issue #140).** Mesin keputusannya MURNI di
-`src/lib/subscription-lifecycle.ts` (teruji tuntas); `suspended`/`cancelled`
+`packages/billing/src/subscription-lifecycle.ts` (teruji tuntas); `suspended`/`cancelled`
 membuat buku besar **HANYA-BACA di lapisan penjaga** — setiap izin tulis
 ditolak, baca & ekspor tetap jalan, TIDAK ADA data yang dihapus otomatis pada
 keadaan mana pun. Penjaga membaca status dari **salinan di `tenants`**
-(kendali) lewat cache per-perusahaan (`src/lib/tenant-state.ts`) — tidak
+(kendali) lewat cache per-perusahaan (`packages/platform/src/tenant-state.ts`) — tidak
 pernah dari `sai_platform` di jalur permintaan.
 
 **Penjadwal.** `bun run scheduler:subscriptions` — satu putaran: trial habis
@@ -303,8 +303,8 @@ Webhook `/api/billing/webhook`: tanda tangan SHA-512 diverifikasi (503
 fail-closed tanpa kunci di produksi), idempoten pada UNIQUE
 `payments.gateway_ref`, menulis platform DULU lalu kendali; gagal bayar →
 `past_due`, tidak pernah langsung `suspended`. PPN tagihan platform dihitung
-lewat `src/lib/tax.ts` (sakelar `PLATFORM_PPN_DISABLED` = mekanisme untuk
+lewat `packages/core/src/tax.ts` (sakelar `PLATFORM_PPN_DISABLED` = mekanisme untuk
 keputusan penasihat pajak); e-Faktur: `bun run efaktur:platform` memakai mesin
-`src/lib/efaktur.ts`, NPWP pembeli dari `tenant_billing_profiles` (diisi
+`packages/core/src/efaktur.ts`, NPWP pembeli dari `tenant_billing_profiles` (diisi
 pelanggan di /platform — dulu /tenant, issue #172). **TIDAK ADA data kartu yang disimpan** — hanya
 referensi gerbang, nomor VA, dan payload QR.

@@ -18,11 +18,11 @@ import { controlDb } from "@sai/core/control-db";
 import {
   DELETION_GRACE_DAYS,
   graceEndsAtFrom,
-} from "@/lib/tenant-deletion";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { sendMail } from "@/lib/mailer";
+} from "@sai/core/tenant-deletion";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { sendMail } from "@sai/platform/mailer";
 import { TENANT_ROLES } from "@sai/core/constants";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 const requestSchema = z.object({
   note: z.string().max(2000).trim().optional(),

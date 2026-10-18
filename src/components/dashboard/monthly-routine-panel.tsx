@@ -30,7 +30,7 @@ import {
   LockOutlined,
 } from "@ant-design/icons";
 
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { IconComponent } from "@sai/ui/icons";
 import type { MonthlyStep, MonthlyRoutineProgress } from "@/lib/monthly-routine";
 

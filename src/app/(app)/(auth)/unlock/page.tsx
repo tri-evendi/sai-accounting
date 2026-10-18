@@ -28,7 +28,7 @@ import { notFound, redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 import { UnlockForm } from "./unlock-form";
 

@@ -30,7 +30,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { getAccountLedger } from "@/lib/ledger";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import {
   AccurateReportShapeError,
   AccurateSourceUnavailableError,

@@ -21,13 +21,13 @@ import { describe, expect, it } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 import { PERSISTENT_RATE_LIMITS } from "@/lib/rate-limit-persistent";
 
 const SRC = path.join(process.cwd(), "src");
 
 /** Satu-satunya berkas yang boleh menyentuh header proxy mentah. */
-const ALLOWED = new Set([path.join(SRC, "lib", "client-ip.ts")]);
+const ALLOWED = new Set([path.join(process.cwd(), "packages", "core", "src", "client-ip.ts")]);
 
 async function sourceFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -56,7 +56,9 @@ describe("pembaca alamat klien tunggal (#372)", () => {
   it("tidak ada berkas lain di src/ yang membaca x-forwarded-for sendiri", async () => {
     const offenders: string[] = [];
 
-    for (const file of await sourceFiles(SRC)) {
+    /* `src/` + paket workspace — `client-ip` sendiri kini di `packages/core`. */
+    const semua = [...(await sourceFiles(SRC)), ...(await sourceFiles(path.join(process.cwd(), "packages")))];
+    for (const file of semua) {
       if (ALLOWED.has(file)) continue;
       if (stripComments(await readFile(file, "utf8")).includes("x-forwarded-for")) {
         offenders.push(path.relative(process.cwd(), file));

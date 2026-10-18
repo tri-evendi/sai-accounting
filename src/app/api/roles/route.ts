@@ -9,7 +9,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { getRoles } from "@/lib/roles";
 import { validateNewRole } from "@/lib/roles-admin";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function GET() {
   const result = await requireApiPermission("authz.manage");

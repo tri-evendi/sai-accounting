@@ -25,7 +25,7 @@ import {
   trialEndsAtFrom,
   usernameFromEmail,
   verdictForVerification,
-} from "@/lib/registration";
+} from "@sai/core/registration";
 import { TENANT_STATUSES } from "@sai/core/constants";
 
 describe("token verifikasi", () => {

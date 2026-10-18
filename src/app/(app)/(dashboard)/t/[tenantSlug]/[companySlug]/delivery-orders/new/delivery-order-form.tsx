@@ -21,7 +21,7 @@ import { Input, TextInput } from "@sai/ui/input";
 import { Label } from "@sai/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { SearchableSelect, type SearchableOption } from "@sai/ui/searchable-select";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { EmptyState } from "@sai/ui/empty-state";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { formatNumber } from "@sai/core/utils";

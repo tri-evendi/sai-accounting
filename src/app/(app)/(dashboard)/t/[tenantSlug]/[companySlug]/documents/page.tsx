@@ -21,7 +21,7 @@ import type { Prisma } from "@sai/db/client/company";
 import { documentFileHref } from "@/lib/document-storage";
 import { formatDate, parsePageParam } from "@sai/core/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 import { SPACE_MD, SPACE_XS } from "@sai/ui/layout-scale";
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";
 import { companyScopeFromRequest } from "@/lib/company-request";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { tenantCan } from "@/lib/tenant-authz";
 

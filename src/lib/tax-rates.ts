@@ -30,7 +30,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_TAX_RATE, type CompanyTaxProfile, type TaxRateRow } from "@/lib/tax";
+import { DEFAULT_TAX_RATE, type CompanyTaxProfile, type TaxRateRow } from "@sai/core/tax";
 
 /**
  * Tanggal berlaku tarif 11% — 1 April 2022, UU HPP.

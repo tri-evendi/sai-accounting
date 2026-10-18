@@ -22,6 +22,7 @@
  * **adakah yang memanggilnya.**
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
@@ -52,7 +53,7 @@ const services = readdirSync(join(SRC, "lib"))
  * menangkap kejadian yang melahirkan berkas ini: `closeYear()` tidak dipanggil
  * dari src/ maupun dari satu tes pun.
  */
-const allFiles = [...sourceFiles(SRC), ...sourceFiles(TESTS)];
+const allFiles = [...akarSumber().flatMap((d) => sourceFiles(d)), ...sourceFiles(TESTS)];
 
 /**
  * Buang komentar sebelum menyapu.

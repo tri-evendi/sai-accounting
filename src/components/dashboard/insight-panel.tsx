@@ -22,7 +22,7 @@ import { WarningOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 import type { DashboardInsight } from "@/lib/dashboard-insights";
 import { formatMoney } from "@sai/core/money-format";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 const PANEL: React.CSSProperties = {
   borderRadius: "var(--ant-border-radius-lg)",

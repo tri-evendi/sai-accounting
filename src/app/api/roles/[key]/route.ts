@@ -11,7 +11,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { canDeactivateRole, roleDeletionBlock, validateRoleLabel } from "@/lib/roles-admin";
 import { invalidateEffectiveMatrix } from "@/lib/authz-effective";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function PATCH(
   request: Request,

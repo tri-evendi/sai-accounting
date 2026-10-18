@@ -5,7 +5,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { getReconciliation } from "@/lib/bank-statements";
 import { movementSigned } from "@/lib/reconciliation";
 import { ReconciliationWorkspace } from "./reconciliation-workspace";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

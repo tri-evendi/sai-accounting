@@ -202,7 +202,7 @@ server is the quarterly drill a human runs, with a target they typed themselves.
 `/status` is public — no session, no permission guard — because the people who
 need it most are the ones who cannot sign in. It reads the *same*
 `healthReport()` that `/api/health` reads, then narrows it in
-`src/lib/public-status.ts` to three components (bookkeeping, subscriptions &
+`packages/core/src/public-status.ts` to three components (bookkeeping, subscriptions &
 billing, email delivery) with no database names, no heartbeat ages, and no error
 strings. That narrowing is a pure function so it can be proven by test rather
 than reviewed by eye: `tests/public-status.test.ts`.

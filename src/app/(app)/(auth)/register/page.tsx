@@ -55,8 +55,8 @@ import { MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/ico
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@sai/ui/button";
-import { resolveContactChannels, resolveSelfServeSignupOpen } from "@/lib/site-settings";
-import { getT } from "@/lib/i18n/server";
+import { resolveContactChannels, resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
+import { getT } from "@sai/platform/i18n/server";
 
 import { RegisterForm } from "./register-form";
 

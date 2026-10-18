@@ -31,7 +31,7 @@ import { DocsAppChrome } from "@/components/docs/docs-app-chrome";
 import { DocsPublicChrome } from "@/components/docs/docs-public-chrome";
 import { kulitDokumentasi } from "@/lib/docs-chrome";
 import { pembacaDokumentasi } from "@/lib/docs-viewer";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export default async function DocsLayout({ children }: { children: React.ReactNode }) {
   const t = await getT();

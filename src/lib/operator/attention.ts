@@ -45,7 +45,7 @@
  * memulangkan daftar kunci. Diuji di `tests/operator-attention.test.ts`.
  */
 
-import { SCHEDULER_STALE_AFTER_MINUTES } from "@/lib/scheduler-heartbeat";
+import { SCHEDULER_STALE_AFTER_MINUTES } from "@sai/core/scheduler-heartbeat";
 
 /** Seberapa keras baris ini dibaca. Bukan warna-saja: tiap baris berteks. */
 export type AttentionTone = "danger" | "warning" | "info";

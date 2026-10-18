@@ -30,7 +30,7 @@ import {
   priorReturnedByInvoiceItem,
   nextSalesReturnNo,
 } from "@/lib/returns-data";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));

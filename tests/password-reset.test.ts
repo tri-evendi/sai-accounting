@@ -14,7 +14,7 @@ import {
   hashResetToken,
   mintResetToken,
   verdictForToken,
-} from "@/lib/password-reset";
+} from "@sai/core/password-reset";
 
 describe("mintResetToken", () => {
   it("token mentah 64 hex; yang disimpan hanya hash-nya, dan keduanya BERBEDA", () => {

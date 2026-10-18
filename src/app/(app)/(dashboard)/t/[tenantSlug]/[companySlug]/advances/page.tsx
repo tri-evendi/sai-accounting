@@ -30,7 +30,7 @@ import type { SaiColumns } from "@sai/ui/table-columns";
 import { Money } from "@sai/ui/money";
 import { formatDateShort } from "@sai/core/utils";
 import { InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined } from "@ant-design/icons";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { CARD_GAP, SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

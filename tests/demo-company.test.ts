@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { demoWriteRefusal, isWritePermission } from "@/lib/subscription-lifecycle";
+import { demoWriteRefusal, isWritePermission } from "@sai/billing/subscription-lifecycle";
 
 const read = (rel: string) => readFileSync(join(__dirname, "..", rel), "utf8");
 const src = (rel: string) => read(join("src", rel));

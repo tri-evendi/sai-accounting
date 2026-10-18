@@ -14,6 +14,8 @@
     "./card": "./src/components/card.tsx",
     "./checkbox": "./src/components/checkbox.tsx",
     "./command": "./src/components/command.tsx",
+    "./confirm-dialog": "./src/components/confirm-dialog.tsx",
+    "./confirm-phrase": "./src/confirm-phrase.ts",
     "./data-table": "./src/components/data-table.tsx",
     "./dialog": "./src/components/dialog.tsx",
     "./empty-state": "./src/components/empty-state.tsx",

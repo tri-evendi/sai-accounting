@@ -37,11 +37,11 @@
  * yang menangkap seluruh KELASNYA adalah `next build` di CI.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(__dirname, "..");
-const SRC = join(ROOT, "src");
 const PAKET = join(ROOT, "node_modules", "@ant-design", "icons");
 
 /** Setiap `.ts`/`.tsx` di bawah `src/`. */
@@ -54,7 +54,7 @@ function berkasSumber(dir: string, keluar: string[] = []): string[] {
   return keluar;
 }
 
-const BERKAS = berkasSumber(SRC).map((jalur) => ({
+const BERKAS = akarSumber().flatMap((d) => berkasSumber(d)).map((jalur) => ({
   jalur: jalur.slice(ROOT.length + 1),
   isi: readFileSync(jalur, "utf8"),
 }));

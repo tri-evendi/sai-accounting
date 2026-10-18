@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { perluTindakan, vonisVersi } from "@/lib/schema-version";
+import { perluTindakan, vonisVersi } from "@sai/core/schema-version";
 
 const R = (terakhir: string | null, menggantung = 0) => ({ terapan: 3, menggantung, terakhir });
 

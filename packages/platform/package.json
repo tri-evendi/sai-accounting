@@ -1,0 +1,37 @@
+{
+  "name": "@sai/platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kode SISI-SERVER milik platform, dipakai permukaan pelanggan DAN konsol operator: klien basis data platform, surel, terjemahan sisi server, jejak langganan & tenant, isi situs, penulis penagihan. Menulis basis data — gerbangnya lebih berat daripada paket murni.",
+  "exports": {
+    "./billing/change-tenant-plan": "./src/billing/change-tenant-plan.ts",
+    "./billing/platform-efaktur": "./src/billing/platform-efaktur.ts",
+    "./i18n/server": "./src/i18n/server.ts",
+    "./invitation-store": "./src/invitation-store.ts",
+    "./mail-health": "./src/mail-health.ts",
+    "./mail-settings": "./src/mail-settings.ts",
+    "./mailer": "./src/mailer.ts",
+    "./mailer-core": "./src/mailer-core.ts",
+    "./membership-upsert": "./src/membership-upsert.ts",
+    "./password-reset-store": "./src/password-reset-store.ts",
+    "./payment-webhook": "./src/payment-webhook.ts",
+    "./platform-db": "./src/platform-db.ts",
+    "./platform-reconciliation": "./src/platform-reconciliation.ts",
+    "./site-content-store": "./src/site-content-store.ts",
+    "./site-settings": "./src/site-settings.ts",
+    "./status-notices-store": "./src/status-notices-store.ts",
+    "./subscription-events": "./src/subscription-events.ts",
+    "./tenant-audit": "./src/tenant-audit.ts",
+    "./tenant-slug": "./src/tenant-slug.ts",
+    "./tenant-state": "./src/tenant-state.ts"
+  },
+  "dependencies": {
+    "@sai/billing": "workspace:*",
+    "@sai/core": "workspace:*",
+    "@sai/db": "workspace:*"
+  },
+  "peerDependencies": {
+    "next": "*",
+    "server-only": "*"
+  }
+}

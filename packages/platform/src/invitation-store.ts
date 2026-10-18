@@ -21,8 +21,8 @@ import {
   mintInvitationToken,
   userQuotaExceeded,
   type InvitationOutcome,
-} from "@/lib/invitations";
-import { addExistingUserToCompany } from "@/lib/users-directory";
+} from "@sai/core/invitations";
+import { upsertMembership } from "@sai/platform/membership-upsert";
 import { TENANT_ROLES } from "@sai/core/constants";
 
 /** Kursi terpakai sebuah tenant: pengguna hidup + undangan yang masih menunggu. */
@@ -79,7 +79,7 @@ export async function issueInvitation(input: {
   if (outcome === "add_existing_member") {
     // Orang setenant → langsung ditambahkan ke PT-nya (janji #104 §4.5, kini
     // dari antarmuka). Tanpa baris undangan: tidak ada yang perlu diterima.
-    await addExistingUserToCompany(owner!.id, input.companyRole, input.companyId);
+    await upsertMembership(owner!.id, input.companyRole, input.companyId);
     return { outcome, userId: owner!.id };
   }
 

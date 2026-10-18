@@ -26,12 +26,12 @@
 import { NextResponse } from "next/server";
 
 import { controlDb } from "@sai/core/control-db";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { tenantProfileSchema } from "@/lib/validations/tenant";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { invalidateTenantState } from "@/lib/tenant-state";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { invalidateTenantState } from "@sai/platform/tenant-state";
 
 export async function PATCH(request: Request) {
   const { dictionary, t } = await getRequestI18n();

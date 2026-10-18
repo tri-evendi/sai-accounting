@@ -15,9 +15,9 @@
  */
 import { NextResponse } from "next/server";
 
-import { platformDb } from "@/lib/platform-db";
-import { cachedStatusNoticeRecords } from "@/lib/status-notices-store";
-import { visibleAsBanner } from "@/lib/status-notices";
+import { platformDb } from "@sai/platform/platform-db";
+import { cachedStatusNoticeRecords } from "@sai/platform/status-notices-store";
+import { visibleAsBanner } from "@sai/core/status-notices";
 
 export const dynamic = "force-dynamic";
 

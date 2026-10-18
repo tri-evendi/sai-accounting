@@ -7,8 +7,8 @@
  * `/operator/efaktur` sebelum orang menekan tombol unduh.
  */
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
-import { platformEfaktur } from "@/lib/billing/platform-efaktur";
+import { platformDb } from "@sai/platform/platform-db";
+import { platformEfaktur } from "@sai/platform/billing/platform-efaktur";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorRoute } from "@/lib/operator/guard";
 import { clientIpFrom } from "@/lib/operator/plane";

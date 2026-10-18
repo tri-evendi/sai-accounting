@@ -23,7 +23,7 @@ import { newStorageKey, resolveDocumentPath } from "@/lib/document-storage";
 import { DOCUMENT_TYPES, type DocumentType } from "@sai/core/constants";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 

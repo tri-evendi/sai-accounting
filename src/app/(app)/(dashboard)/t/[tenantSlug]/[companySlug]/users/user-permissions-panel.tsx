@@ -36,7 +36,7 @@ import { Alert, Flex, theme, Typography } from "antd";
 import { Card, CardHeader, CardTitle } from "@sai/ui/card";
 import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { PageLoader } from "@sai/ui/loading";
 import { SelectField } from "@sai/ui/select";
 import {

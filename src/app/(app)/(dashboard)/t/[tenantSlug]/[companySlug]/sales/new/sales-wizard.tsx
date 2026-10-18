@@ -56,7 +56,7 @@ import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { humanizeFieldMessage } from "@/lib/form-guards";
 import type { ClosedPeriodRef } from "@/lib/form-guards";
 import { resolveSubmitFailure } from "@/lib/form-sections";
-import { companyTaxRateOn, defaultInvoiceTax } from "@/lib/tax";
+import { companyTaxRateOn, defaultInvoiceTax } from "@sai/core/tax";
 import { useCompanyTaxProfile } from "@/lib/tax-profile-client";
 import { normalizeItemName, type ContractLineOutstanding } from "@/lib/document-chain";
 import {

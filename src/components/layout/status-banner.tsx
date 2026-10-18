@@ -20,7 +20,7 @@ import {
   COMPONENT_LABEL,
   NOTICE_SENTENCE,
   type PublicStatusNotice,
-} from "@/lib/status-notices";
+} from "@sai/core/status-notices";
 import { formatDateTime } from "@sai/core/utils";
 
 const KUNCI = "sai-status-banner-ditutup";

@@ -24,7 +24,7 @@ import { Select } from "@sai/ui/select";
 import { Badge } from "@sai/ui/badge";
 import { StaticTable } from "@sai/ui/static-table";
 import { type SaiColumns } from "@sai/ui/table-columns";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { useToast } from "@sai/ui/toast";
 import { PageLoader } from "@sai/ui/loading";
 import { PageHeader } from "@sai/ui/page-header";

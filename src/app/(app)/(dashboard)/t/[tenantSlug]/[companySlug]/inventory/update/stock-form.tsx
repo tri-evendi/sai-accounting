@@ -34,7 +34,7 @@ import { TextInput } from "@sai/ui/input";
 import { Label } from "@sai/ui/label";
 import { SelectField } from "@sai/ui/select";
 import { Card } from "@sai/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { EmptyState } from "@sai/ui/empty-state";
 import { ContainerOutlined, ExclamationCircleOutlined, InfoCircleOutlined, LockOutlined } from "@ant-design/icons";
 import {

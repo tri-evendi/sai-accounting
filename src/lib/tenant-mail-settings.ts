@@ -45,9 +45,9 @@ import {
   openSecret,
   sealSecret,
   type SealedSecret,
-} from "@/lib/settings-crypto";
-import type { MailConfig } from "@/lib/mailer-core";
-import type { MailTransport } from "@/lib/mail-settings";
+} from "@sai/core/settings-crypto";
+import type { MailConfig } from "@sai/platform/mailer-core";
+import type { MailTransport } from "@sai/platform/mail-settings";
 
 /** Baris apa adanya — TERMASUK segel kata sandi. Internal. */
 export interface TenantMailRow {

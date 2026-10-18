@@ -8,7 +8,9 @@
     "./plan-change": "./src/plan-change.ts",
     "./plan-copy": "./src/plan-copy.ts",
     "./plan-stacking": "./src/plan-stacking.ts",
-    "./platform-constants": "./src/platform-constants.ts"
+    "./platform-constants": "./src/platform-constants.ts",
+    "./platform-revenue": "./src/platform-revenue.ts",
+    "./subscription-lifecycle": "./src/subscription-lifecycle.ts"
   },
   "dependencies": {
     "@sai/core": "workspace:*"

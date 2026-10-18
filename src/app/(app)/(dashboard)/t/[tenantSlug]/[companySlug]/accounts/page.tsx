@@ -31,7 +31,7 @@ import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { TextInput } from "@sai/ui/input";
 import { Badge } from "@sai/ui/badge";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { EmptyState } from "@sai/ui/empty-state";

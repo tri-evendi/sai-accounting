@@ -34,7 +34,7 @@ import { EmptyState } from "@sai/ui/empty-state";
 import { formatDateShort } from "@sai/core/utils";
 import { EnvironmentOutlined, GoldOutlined, InfoCircleOutlined, PlusOutlined, TagsOutlined } from "@ant-design/icons";
 import { RunDepreciation } from "./run-depreciation";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { CARD_GAP, SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

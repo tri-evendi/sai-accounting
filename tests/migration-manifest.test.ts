@@ -2,7 +2,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { MIGRATION_TERAKHIR } from "@/lib/migration-manifest";
+import { MIGRATION_TERAKHIR } from "@sai/core/migration-manifest";
 
 describe("manifes migration = direktori migration terakhir", () => {
   it.each(Object.entries(MIGRATION_TERAKHIR))("%s", (jenis, terakhir) => {

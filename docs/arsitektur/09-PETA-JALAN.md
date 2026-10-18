@@ -88,7 +88,8 @@ yang terasa ada padahal tidak bisa dibuka.
 
 ### 0.3 Sambungkan peringatan → P1-1 — **CADANGAN ✅ 12 Okt 2026, dua lagi**
 
-> `watch:backup` (`src/lib/backup-watchdog.ts` + `scripts/watch-backup-health.ts`)
+> `watch:backup` (`src/lib/backup-watchdog.ts` + `scripts/watch-backup-health.ts` — kini dilebur ke
+> `scripts/watch-health.ts`, satu penjaga tiga denyut)
 > berjalan tiap jam dari `job-scheduler`, satu surel per status per 24 jam lewat
 > `rate_limit_counters` di basis data kendali.
 >

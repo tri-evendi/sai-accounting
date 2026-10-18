@@ -28,7 +28,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { readFirstSheetRows } from "@/lib/xlsx-read";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { buildTemplate } from "@/lib/import/template";
 import type { RowError } from "@/lib/import/rows";
 import {

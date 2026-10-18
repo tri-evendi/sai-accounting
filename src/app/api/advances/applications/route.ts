@@ -27,7 +27,7 @@ import { postForSource, unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { resolveApplicationLines, getAdvanceTargetState } from "@/lib/advances";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 /** Remaining balance of a compensation target, for the form that fills it in. */

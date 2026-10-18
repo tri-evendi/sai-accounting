@@ -32,7 +32,7 @@ import { TrialBalanceStatement } from "@/components/reports/trial-balance-statem
 import { reportById, resolveAsOf } from "@/lib/report-catalog";
 import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

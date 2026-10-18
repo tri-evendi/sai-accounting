@@ -19,7 +19,7 @@
  * 3. Urut kode, sama seperti setiap pemilih master lain di app ini.
  */
 import { prisma } from "@/lib/prisma";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { UNASSIGNED_COST_CENTER } from "@/lib/cost-centers";
 
 export interface CostCenterOption {

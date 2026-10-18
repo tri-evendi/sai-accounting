@@ -46,7 +46,7 @@ import {
 import { BUSINESS_MODULES } from "@/lib/business-modules";
 import { CURRENCIES } from "@sai/core/constants";
 import { LOCALES } from "@sai/core/i18n/config";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 /**
  * Nilai fakta — `fontSizeHeading2` (30px), tebal, `tabular-nums`.

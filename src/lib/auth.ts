@@ -6,7 +6,7 @@ import { companiesForUser, membershipFor } from "@/lib/company-registry";
 import { tenantCan } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { loginSchema } from "@/lib/validations/auth";
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,

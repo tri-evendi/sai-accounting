@@ -21,10 +21,10 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { consumeVerificationToken } from "@/lib/registration-store";
 import { createInitialSubscription } from "@/lib/subscription-store";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import { reportError } from "@/lib/alert";
-import { getRequestI18n } from "@/lib/i18n/server";
-import { clientIpFrom } from "@/lib/client-ip";
+import { getRequestI18n } from "@sai/platform/i18n/server";
+import { clientIpFrom } from "@sai/core/client-ip";
 
 function clientIp(request: Request): string {
   /*

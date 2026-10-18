@@ -19,8 +19,8 @@
 import { NextResponse } from "next/server";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { getEfakturExport } from "@/lib/efaktur-data";
-import { efakturToCsv } from "@/lib/efaktur";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { efakturToCsv } from "@sai/core/efaktur";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 function parseDate(value: string | null): Date | null {
   if (!value) return null;

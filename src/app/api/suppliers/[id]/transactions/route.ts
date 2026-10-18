@@ -20,7 +20,7 @@ import { getSupplierPurchaseAllocations } from "@/lib/receivables";
 import { resolveAllocationLines } from "@/lib/supplier-allocations";
 import { createSupplierTransactionInTx } from "@/lib/document-writes";
 import { approvalNotice } from "@/lib/approval-requests";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function GET(

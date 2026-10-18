@@ -31,7 +31,7 @@ import { PageHeader } from "@sai/ui/page-header";
 import { EmptyState } from "@sai/ui/empty-state";
 import { PeriodFilter } from "../report-filters";
 import { formatDate } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { InfoCircleOutlined, ProfileOutlined } from "@ant-design/icons";
 

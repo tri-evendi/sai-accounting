@@ -22,7 +22,7 @@ import {
   type ComponentId,
   type ComponentState,
   type StatusInput,
-} from "@/lib/public-status";
+} from "@sai/core/public-status";
 
 /** Pemasangan yang seluruhnya sehat — dasar setiap kasus di bawah. */
 const SEHAT: StatusInput = {

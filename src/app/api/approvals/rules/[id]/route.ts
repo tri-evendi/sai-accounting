@@ -12,7 +12,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalRuleSchema } from "@/lib/validations/approval";
 import { activeRoleKeys } from "@/lib/roles";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 async function loadRule(id: string) {

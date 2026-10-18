@@ -27,7 +27,7 @@ import "dotenv/config";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
-import { schedulerHealth } from "../src/lib/scheduler-heartbeat";
+import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
 
 async function main() {
   const url = process.env.PLATFORM_DATABASE_URL;

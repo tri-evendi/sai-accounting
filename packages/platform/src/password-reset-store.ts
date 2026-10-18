@@ -12,7 +12,7 @@ import {
   mintResetToken,
   verdictForToken,
   type ResetTokenVerdict,
-} from "@/lib/password-reset";
+} from "@sai/core/password-reset";
 
 /**
  * Terbitkan token untuk sebuah email — atau `null` bila emailnya tidak

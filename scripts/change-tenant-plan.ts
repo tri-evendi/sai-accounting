@@ -28,7 +28,7 @@ import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
-import { changeTenantPlan } from "../src/lib/billing/change-tenant-plan";
+import { changeTenantPlan } from "@sai/platform/billing/change-tenant-plan";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

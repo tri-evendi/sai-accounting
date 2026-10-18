@@ -73,7 +73,7 @@ import { AntdProvider } from "@/components/providers/antd-provider";
  * SUNGGUHAN, jadi kunci salah ketik tetap muncul sebagai teks kunci di markup.
  */
 const dict = id as unknown as Dictionary;
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getT: async () => (key: DictionaryKey, values?: TranslationValues) =>
     translate(dict, key, values),
 }));

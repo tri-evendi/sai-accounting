@@ -14,7 +14,7 @@ import { ButtonLink } from "@sai/ui/button";
 import { Badge } from "@sai/ui/badge";
 import { formatDate } from "@sai/core/utils";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

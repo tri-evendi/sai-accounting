@@ -14,7 +14,7 @@ import { partyRecapColumns } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

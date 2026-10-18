@@ -23,16 +23,16 @@ const platformDb = vi.hoisted(() => ({
 const controlDb = vi.hoisted(() => ({
   tenant: { update: vi.fn(), findUnique: vi.fn() },
 }));
-vi.mock("@/lib/platform-db", () => ({ platformDb }));
+vi.mock("@sai/platform/platform-db", () => ({ platformDb }));
 vi.mock("@sai/core/control-db", () => ({ controlDb }));
 
-import { SIGNUP_PLAN_KEY } from "@/lib/registration";
+import { SIGNUP_PLAN_KEY } from "@sai/core/registration";
 import { createInitialSubscription } from "@/lib/subscription-store";
 import {
   ORPHAN_ADOPTABLE_TENANT_STATUSES,
   initialSubscriptionFromPlan,
   planOrphanSubscriptionAdoptions,
-} from "@/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 
 const NOW = new Date("2026-08-01T00:00:00Z");
 const DAY_MS = 24 * 60 * 60 * 1000;

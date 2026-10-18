@@ -46,7 +46,7 @@ import {
   resolveSection,
   sectionOf,
   siteContentDefaults,
-} from "@/lib/site-content";
+} from "@sai/core/site-content";
 
 const dictionary = id as Dictionary;
 
@@ -240,18 +240,18 @@ describe("setiap kunci punya rumah di konsol", () => {
 
 describe("jalur panas tidak menyeret klien Prisma penagihan", () => {
   it("`i18n/server.ts` mengimpor store penimpa secara DINAMIS, bukan statis", () => {
-    const src = readFileSync(join(__dirname, "..", "src", "lib", "i18n", "server.ts"), "utf8");
+    const src = readFileSync(join(__dirname, "..", "packages", "platform", "src", "i18n", "server.ts"), "utf8");
 
     /* Berkas ini diimpor nyaris setiap route. Impor STATIS ke
        `site-content-store` (yang mengimpor `lib/platform-db.ts`) akan menyeret
        klien Prisma penagihan ke bundel server setiap halaman buku besar —
        doktrin #137: penjaga & jalur panas bukan kode penagihan. */
     expect(src).not.toMatch(/^\s*import\s[^;]*site-content-store/m);
-    expect(src).toMatch(/await import\(\s*["']@\/lib\/site-content-store["']\s*\)/);
+    expect(src).toMatch(/await import\(\s*["']@sai\/platform\/site-content-store["']\s*\)/);
   });
 
   it("modul murni `site-content.ts` tidak mengimpor Prisma, next/*, maupun server-only", () => {
-    const src = readFileSync(join(__dirname, "..", "src", "lib", "site-content.ts"), "utf8");
+    const src = readFileSync(join(__dirname, "..", "packages", "core", "src", "site-content.ts"), "utf8");
 
     /* IMPORNYA yang diperiksa, bukan untaian katanya di mana pun: kepala berkas
        itu MENYEBUT `server-only` untuk menjelaskan kenapa ia tidak memakainya,

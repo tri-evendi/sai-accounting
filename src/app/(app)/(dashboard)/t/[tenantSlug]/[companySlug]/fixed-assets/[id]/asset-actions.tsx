@@ -38,7 +38,7 @@ import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@sai/ui/button";
 import { Card } from "@sai/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { Input } from "@sai/ui/input";
 import { Money } from "@sai/ui/money";
 import { useToast } from "@sai/ui/toast";

@@ -45,7 +45,7 @@ import { resolvePeriod } from "@/lib/report-catalog";
 import { cashFlowSummary } from "@/lib/report-summary";
 import { formatCurrency, formatDate } from "@sai/core/utils";
 import { WarningOutlined } from "@ant-design/icons";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

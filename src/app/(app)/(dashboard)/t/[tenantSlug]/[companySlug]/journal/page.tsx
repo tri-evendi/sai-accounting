@@ -20,7 +20,7 @@ import { AccountBookOutlined } from "@ant-design/icons";
 import { PageHeader } from "@sai/ui/page-header";
 import { Pagination } from "@sai/ui/pagination";
 import { Link } from "@sai/ui/app-link";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

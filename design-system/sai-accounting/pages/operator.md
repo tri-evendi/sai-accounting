@@ -121,7 +121,7 @@ pintu ke `/platform` — ketiganya 404 di host ini).
   yang sama, satu tingkat lebih bawah. Gantinya `ConsolePanel`/`ConsoleSection`.
 - **Jangan** menambahkan `forceRender` pada `Drawer` menu samping — ia
   mengembalikan menu tak terlihat ke urutan fokus.
-- **Jangan** mengimpor `lib/platform-db.ts` (atau modul yang mengimpornya) dari
-  penjaga, proxy, atau jalur panas i18n — doktrin #137. `lib/i18n/server.ts`
+- **Jangan** mengimpor `packages/platform/src/platform-db.ts` (atau modul yang mengimpornya) dari
+  penjaga, proxy, atau jalur panas i18n — doktrin #137. `packages/platform/src/i18n/server.ts`
   memuat `site-content-store` lewat `await import()` justru karena itu, dan
   `tests/site-content.test.ts` menolak impor statisnya.

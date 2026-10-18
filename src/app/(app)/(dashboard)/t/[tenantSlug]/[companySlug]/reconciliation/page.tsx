@@ -42,7 +42,7 @@ import { LockOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { LearnMore } from "@sai/ui/learn-more";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

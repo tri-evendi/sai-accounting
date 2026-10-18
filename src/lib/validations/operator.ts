@@ -21,7 +21,7 @@ import { z } from "zod";
 import { LOCALES } from "@sai/core/i18n/config";
 import { BILLING_MODES } from "@sai/billing/platform-constants";
 import { vmsg } from "@sai/core/i18n/validation";
-import { SITE_CONTENT_VALUE_MAX } from "@/lib/site-content";
+import { SITE_CONTENT_VALUE_MAX } from "@sai/core/site-content";
 
 /** Alasan yang diketik operator — masuk ke jejak audit apa adanya. */
 export const operatorReasonField = z

@@ -39,7 +39,7 @@ import { ConsolePanel } from "@/components/operator/console-ui";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { readOperatorAuditPage } from "@/lib/operator/audit";
 import { requireOperatorPage } from "@/lib/operator/guard";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

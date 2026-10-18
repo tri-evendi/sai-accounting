@@ -2,7 +2,7 @@ import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { NewBomForm } from "./bom-form";
 
 export const dynamic = "force-dynamic";

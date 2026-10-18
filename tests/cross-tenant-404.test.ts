@@ -65,7 +65,7 @@ vi.mock("@/lib/tenant-directory", () => ({
 /* i18n membaca cookies()/headers() — di luar lingkup permintaan Next keduanya
  * melempar. `t` mengembalikan KUNCINYA, jadi isi respons tetap bisa
  * dibandingkan byte demi byte antar skenario. */
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getRequestI18n: async () => ({
     locale: "id",
     dictionary: {},
@@ -73,7 +73,7 @@ vi.mock("@/lib/i18n/server", () => ({
   }),
 }));
 
-vi.mock("@/lib/platform-db", () => ({
+vi.mock("@sai/platform/platform-db", () => ({
   platformDb: {
     platformInvoice: {
       /* Kunci yang TIDAK dikirim = tanpa penyaring — persis Prisma. Kalau
@@ -161,7 +161,7 @@ vi.mock("next/headers", () => ({
 /* Jejak audit menulis ke basis data (platform & PT) — di tes ini cukup
  * dibuktikan TIDAK menghalangi jalur 404/409; isinya urusan tes lain. */
 vi.mock("@/lib/audit", () => ({ writeAuditLog: vi.fn(async () => {}) }));
-vi.mock("@/lib/tenant-audit", () => ({ writeTenantAuditLog: vi.fn(async () => {}) }));
+vi.mock("@sai/platform/tenant-audit", () => ({ writeTenantAuditLog: vi.fn(async () => {}) }));
 
 import { POST as payPost } from "@/app/api/tenant/billing/pay/route";
 import { DELETE as invitationDelete } from "@/app/api/tenant/invitations/[id]/route";

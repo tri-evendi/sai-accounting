@@ -17,6 +17,7 @@
  * berkas melainkan SIFAT seluruh direktori.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
@@ -80,7 +81,7 @@ describe("berkas dokumen hanya keluar lewat route bertenant (#489)", () => {
   it("tidak ada satu pun sumber yang menunjuk /api/documents/", async () => {
     const offenders: string[] = [];
 
-    for (const file of await sourceFiles(SRC)) {
+    for (const file of (await Promise.all(akarSumber().map((d) => sourceFiles(d)))).flat()) {
       const source = await readFile(file, "utf8");
       // Komentar sengaja IKUT diperiksa di sini: prosa yang menyebut alamat
       // lama sebagai alamat yang berlaku adalah petunjuk yang menyesatkan

@@ -49,7 +49,7 @@ import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
 import { Link } from "@sai/ui/app-link";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@sai/core/i18n/config";
-import { useTheme } from "@/lib/theme/client";
+import { useTheme } from "@sai/ui/theme/client";
 import { THEMES, type Theme } from "@sai/ui/theme/config";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { setLocale } from "@/lib/i18n/actions";

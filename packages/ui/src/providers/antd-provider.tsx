@@ -68,7 +68,7 @@ import {
   statusTextTokens,
   tagStatusTokens,
 } from "@sai/ui/theme/antd-tokens";
-import { useTheme } from "@/lib/theme/client";
+import { useTheme } from "@sai/ui/theme/client";
 
 /**
  * Ketiga locale diimpor STATIS, berbeda dari kamus aplikasi yang sengaja

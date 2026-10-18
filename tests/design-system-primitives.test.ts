@@ -49,8 +49,9 @@
  * dalam primitif.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join } from "node:path";
 
 const SRC_DIR = join(__dirname, "..", "src");
 // `(setup)` ikut sejak issue #103: wizard penyiapan pindah ke grup rutenya
@@ -140,7 +141,7 @@ const RAW_BUTTON_ALLOWLIST = new Set([
  * sebaris. Sejak #399 `<html>` itu ditulis SEKALI di `RootDocument` dan dipakai
  * kedua root layout (`app/(app)`, `app/(marketing)`).
  */
-const CLASSNAME_ALLOWLIST = new Set(["components/providers/root-document.tsx"]);
+const CLASSNAME_ALLOWLIST = new Set(["packages/ui/src/providers/root-document.tsx"]);
 
 function tsxFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -152,7 +153,7 @@ function tsxFiles(dir: string): string[] {
 
 /** Jalur relatif terhadap `src/`, selalu bergaya posix supaya pesan galat stabil. */
 function label(file: string): string {
-  return relative(SRC_DIR, file).split(sep).join("/");
+  return relSumber(file);
 }
 
 /** Seluruh pohon `src/`, kecuali klien Prisma hasil `prisma generate`. */
@@ -218,7 +219,8 @@ describe("adopsi primitif design system", () => {
 });
 
 describe("kosakata gaya pasca-Tailwind (#203/#204)", () => {
-  const files = allTsx(SRC_DIR);
+  // `src/` + paket workspace — primitif `@sai/ui` juga terikat aturan nol-className.
+  const files = akarSumber().flatMap((d) => allTsx(d));
   const KELAS = /className\s*=/;
 
   it("memindai seluruh pohon src, bukan sebagian", () => {
@@ -344,7 +346,7 @@ describe("isian berkas tetap bisa dijangkau papan ketik (#205)", () => {
         "`<label>` yang membungkusnya BUKAN elemen fokusable — jadi " +
         "permukaannya berhenti punya perhentian Tab sama sekali dan " +
         "unggahannya menjadi mouse-only.\n\n" +
-        "Pakai atribut `data-sr-only` (aturannya di `src/app/globals.css`): " +
+        "Pakai atribut `data-sr-only` (aturannya di `packages/ui/src/globals.css`): " +
         "isiannya tetap fokusable dan tetap dibacakan pembaca layar, hanya " +
         "kotaknya yang 1x1px terpotong. Acuan lengkap beserta alasannya: " +
         "`app/(app)/(dashboard)/.../accounts/import/import-form.tsx`."

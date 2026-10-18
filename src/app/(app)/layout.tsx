@@ -22,14 +22,14 @@
  */
 import type { Metadata } from "next";
 
-export { viewport } from "@/lib/viewport";
+export { viewport } from "@sai/ui/viewport";
 
 import { APP_NAME } from "@sai/core/constants";
-import { RootDocument } from "@/components/providers/root-document";
+import { RootDocument } from "@sai/ui/providers/root-document";
 import { LocaleProvider } from "@sai/core/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
-import { getTheme } from "@/lib/theme/server";
+import { getTheme } from "@sai/ui/theme/server";
 import { StatusBanner } from "@/components/layout/status-banner";
 
 export async function generateMetadata(): Promise<Metadata> {

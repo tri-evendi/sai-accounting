@@ -22,7 +22,7 @@ import {
   normalizeHost,
   operatorCookieName,
   trustedProxyHops,
-} from "@/lib/operator/plane";
+} from "@sai/core/operator-plane";
 
 const OPS = "ops.example.com";
 const APP = "app.example.com";

@@ -487,7 +487,6 @@ const KLIEN_TERSAHKAN = [
   "components/operator/tenant-actions.tsx",
   /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
   "components/operator/tenant-user-support.tsx",
-  "components/providers/antd-provider.tsx",
   "components/reports/report-launch-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
   "components/settings/module-picker.tsx",
@@ -529,7 +528,6 @@ const KLIEN_TERSAHKAN = [
   "lib/company-identity-client.tsx",
   "lib/report-files.ts",
   "lib/tax-profile-client.tsx",
-  "lib/theme/client.tsx",
   "lib/use-effective-permissions.ts",
   "packages/core/src/i18n/client.tsx",
   "packages/ui/src/components/alert-dialog.tsx",
@@ -562,6 +560,8 @@ const KLIEN_TERSAHKAN = [
   "packages/ui/src/components/textarea.tsx",
   "packages/ui/src/components/toast.tsx",
   "packages/ui/src/components/wizard-steps.tsx",
+  "packages/ui/src/providers/antd-provider.tsx",
+  "packages/ui/src/theme/client.tsx",
 ];
 
 function sourceFiles(dir: string): string[] {

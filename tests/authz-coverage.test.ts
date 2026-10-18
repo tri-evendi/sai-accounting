@@ -17,6 +17,7 @@
  * baru yang berisi halaman berizin berarti menambahkannya DI SINI juga.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
@@ -769,7 +770,6 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
     "lib/api-fetch.ts",
   ]);
 
-  const SRC_DIR = join(__dirname, "..", "src");
   /**
    * `fetch("/api/…")` / `fetch(`/api/…`)` — TIDAK cocok dengan `apiFetch(`.
    *
@@ -794,15 +794,18 @@ describe("panggilan API membawa perusahaannya (issue #158)", () => {
    * mendaftar di `BARE_FETCH_EXCEPTIONS` dengan alasannya, seperti yang lain.
    */
   const BARE_FETCH_ANY = /(?<![\w.])fetch\(/;
-  const SCOPED_SURFACES = ["app/(app)/(dashboard)/", "components/"];
+  const SCOPED_SURFACES = ["app/(app)/(dashboard)/", "components/", "packages/ui/src/"];
 
-  const offenders = sourceFiles(SRC_DIR)
-    .map((f) => relative(SRC_DIR, f).split(sep).join("/"))
-    .filter((rel) => {
-      const source = readFileSync(join(SRC_DIR, rel), "utf8");
+  // `src/` + paket workspace (primitif `@sai/ui` ikut aturan yang sama).
+  const offenders = akarSumber()
+    .flatMap((d) => sourceFiles(d))
+    .filter((f) => {
+      const rel = relSumber(f);
+      const source = readFileSync(f, "utf8");
       if (BARE_FETCH_LITERAL.test(source)) return true;
       return SCOPED_SURFACES.some((dir) => rel.startsWith(dir)) && BARE_FETCH_ANY.test(source);
-    });
+    })
+    .map(relSumber);
 
   it("tidak ada fetch() telanjang ke /api di luar daftar pengecualian", () => {
     expect(offenders.filter((rel) => !BARE_FETCH_EXCEPTIONS.has(rel))).toEqual([]);
@@ -846,8 +849,10 @@ describe("kegagalan memuat daftar tidak boleh terbaca sebagai daftar kosong", ()
   /** `.catch(() => setSesuatu([]))` — idem, lewat pintu yang lain. */
   const CATCH_TO_EMPTY = /catch\(\s*\(\s*\)\s*=>\s*set[A-Za-z]*\(\s*\[\s*\]\s*\)/;
 
-  const offenders = sourceFiles(SRC_DIR)
-    .map((f) => relative(SRC_DIR, f).split(sep).join("/"))
+  // `src/` + paket workspace; jalur paket dilaporkan relatif akar repo.
+  const offenders = akarSumber()
+    .flatMap((d) => sourceFiles(d))
+    .map(relSumber)
     /*
      * Hanya permukaan yang DIRENDER. Sebuah route handler yang memulangkan `[]`
      * sering kali sedang menyatakan keputusan otorisasi, bukan menelan
@@ -859,7 +864,7 @@ describe("kegagalan memuat daftar tidak boleh terbaca sebagai daftar kosong", ()
     // Modul penjelasnya sendiri MENGUTIP pola itu di komentar kepala.
     .filter((rel) => rel !== "lib/option-list.ts")
     .filter((rel) => {
-      const source = readFileSync(join(SRC_DIR, rel), "utf8");
+      const source = readFileSync(rel.startsWith("packages/") ? join(SRC_DIR, "..", rel) : join(SRC_DIR, rel), "utf8");
       return OK_TERNARY_TO_EMPTY.test(source) || CATCH_TO_EMPTY.test(source);
     });
 

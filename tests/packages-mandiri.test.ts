@@ -74,6 +74,11 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
         expect(existsSync(dir) && readdirSync(dir).length > 0, tujuan).toBe(true);
         continue;
       }
+      if (!/\.tsx?$/.test(tujuan)) {
+        /* Aset non-TS (`./globals.css`) — cukup ada. */
+        expect(existsSync(join(AKAR, `packages/${d}`, tujuan)), tujuan).toBe(true);
+        continue;
+      }
       expect(berkas, tujuan).toContain(join(`packages/${d}`, tujuan));
     }
   });

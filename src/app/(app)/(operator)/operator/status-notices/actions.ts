@@ -11,7 +11,7 @@ import { z } from "zod";
 import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
-import { clientIpFrom } from "@/lib/operator/plane";
+import { clientIpFrom } from "@sai/core/operator-plane";
 import { platformDb } from "@sai/platform/platform-db";
 import { createStatusNotice, setStatusNoticePhase } from "@sai/platform/status-notices-store";
 import { STATUS_NOTICE_COMPONENTS, STATUS_NOTICE_KINDS, STATUS_NOTICE_PHASES } from "@sai/core/status-notices";

@@ -29,7 +29,7 @@ import { headers } from "next/headers";
 import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
-import { clientIpFrom } from "@/lib/operator/plane";
+import { clientIpFrom } from "@sai/core/operator-plane";
 import {
   saveSiteSettings,
   siteSettingsForOperator,

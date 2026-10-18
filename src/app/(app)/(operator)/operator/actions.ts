@@ -25,7 +25,7 @@ import { verifyOperatorLogin } from "@/lib/operator/credentials";
 import { findDbOperatorCredential, recordOperatorLogin } from "@/lib/operator/operator-accounts";
 import { controlDb } from "@sai/core/control-db";
 import { operatorPlaneViolation } from "@/lib/operator/guard";
-import { clientIpFrom, operatorCookieName } from "@/lib/operator/plane";
+import { clientIpFrom, operatorCookieName } from "@sai/core/operator-plane";
 import {
   OPERATOR_SESSION_TTL_MS,
   issueOperatorToken,

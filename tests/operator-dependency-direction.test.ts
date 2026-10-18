@@ -58,13 +58,11 @@ const OPERATOR = [
  * tumbuh adalah daftar putih yang berhenti berarti.
  */
 const DAFTAR_PUTIH: Record<string, { target: string; alasan: string }[]> = {
-  "src/proxy.ts": [
-    {
-      target: "src/lib/operator/plane",
-      alasan:
-        "proxy memutuskan BIDANG (host operator vs pelanggan) sebelum rute mana pun berjalan",
-    },
-  ],
+  /* Kosong sejak monorepo Fase 3d: satu-satunya penyeberangan yang pernah ada
+     — `src/proxy.ts` → `lib/operator/plane` — hilang ketika aturan bidang
+     pindah ke `@sai/core/operator-plane`. Kedua aplikasi membutuhkannya, dan
+     sisi pelanggan WAJIB tetap memakainya (dok 14 Fase 3): `OPERATOR_HOST`
+     kosong → `/operator` 404 di host mana pun. */
 };
 
 /** Komponen yang boleh dipakai permukaan operator. */

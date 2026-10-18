@@ -12,6 +12,7 @@
  * yang dijaga bukan satu berkas melainkan SIFAT seluruh direktori.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -105,7 +106,7 @@ describe("tidak ada berkas yang ditulis ke public/ (#367)", () => {
   it("hanya document-storage.ts yang boleh menyebut public/uploads", async () => {
     const offenders: string[] = [];
 
-    for (const file of await sourceFiles(SRC)) {
+    for (const file of (await Promise.all(akarSumber().map((d) => sourceFiles(d)))).flat()) {
       if (ALLOWED.has(file)) continue;
       const source = stripComments(await readFile(file, "utf8"));
       if (PUBLIC_PATH.test(source)) {

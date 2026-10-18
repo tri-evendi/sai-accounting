@@ -20,7 +20,7 @@ import {
   ipAllowed,
   normalizeHost,
   operatorCookieName,
-} from "@/lib/operator/plane";
+} from "@sai/core/operator-plane";
 
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {

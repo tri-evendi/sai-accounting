@@ -25,7 +25,7 @@ import {
   updateOperatorAccount,
   type IssuedCredential,
 } from "@/lib/operator/operator-accounts";
-import { clientIpFrom } from "@/lib/operator/plane";
+import { clientIpFrom } from "@sai/core/operator-plane";
 import { OPERATOR_ROLES } from "@/lib/operator/roles";
 
 export interface OperatorAccountActionResult {

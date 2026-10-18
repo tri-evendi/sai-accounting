@@ -11,7 +11,7 @@ import { platformDb } from "@sai/platform/platform-db";
 import { platformEfaktur } from "@sai/platform/billing/platform-efaktur";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorRoute } from "@/lib/operator/guard";
-import { clientIpFrom } from "@/lib/operator/plane";
+import { clientIpFrom } from "@sai/core/operator-plane";
 
 export const dynamic = "force-dynamic";
 

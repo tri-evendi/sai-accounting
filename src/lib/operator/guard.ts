@@ -42,7 +42,7 @@ import {
   ipAllowed,
   normalizeHost,
   operatorCookieName,
-} from "./plane";
+} from "@sai/core/operator-plane";
 import { verifyOperatorToken, type OperatorSessionPayload } from "./session";
 import { parseOperatorAccounts } from "./credentials";
 import { resolveOperatorIdentity, type OperatorIdentity } from "./identity";

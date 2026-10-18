@@ -54,7 +54,7 @@ export async function brandIconResponse(size: number): Promise<Response> {
 
 /**
  * Alamat logo unggahan untuk `RootDocument` (root layout kedua aplikasi), atau
- * `null` untuk lambang bawaan. Ber-cache 60 detik dan gagal-lunak — root layout
+ * `null` untuk lambang bawaan. Ber-cache 60 detik dan fail-soft — root layout
  * dirender setiap permintaan, dan platform yang mati tidak boleh menjatuhkannya.
  */
 export async function activeBrandMarkSrc(): Promise<string | null> {

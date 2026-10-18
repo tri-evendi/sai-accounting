@@ -1,4 +1,4 @@
-# 07 — Infrastruktur & Penggelaran
+# 07 — Infrastruktur & Deploy
 
 > Dimutakhirkan 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
@@ -141,7 +141,7 @@ graph TD
 | `…-backup` | `backup` (tahap) | `job-backup` |
 
 Kedua image aplikasi dibangun dari commit yang sama di setiap dorongan, dan
-compose menarik keduanya dengan `SAI_TAG` yang sama. Sesudah gelar, periksa
+compose menarik keduanya dengan `SAI_TAG` yang sama. Sesudah deploy, periksa
 bahwa `app-customer` dan `app-operator` menjalankan image `sha-` dan
 tanggal-bangun yang sama. Keduanya menulis basis data yang sama, jadi versi
 skemanya harus satu.
@@ -199,7 +199,7 @@ flowchart LR
     A["bun run verify<br/>= typecheck + lint + vitest"] --> B["bun run build<br/>EXIT=0"]
     B --> O["bun run build:operator<br/>EXIT=0"]
     A -.->|"TIDAK membuktikan<br/>aplikasinya bisa dibangun"| B
-    O --> C["gelar"]
+    O --> C["deploy"]
 
     style A fill:#e8f0ff,stroke:#4a6fa5
     style B fill:#fff4e6,stroke:#c9873d
@@ -303,7 +303,7 @@ menjalankan `app-operator` dari image `runner`:
 `git checkout <sha-lama> -- docker-compose.yml`, lalu
 `SAI_TAG=sha-<lama> docker compose up -d --no-deps app-customer app-operator`.
 
-`SAI_IMAGE` menimpa awalan registry, yang juga membuat image lokal warisan
+`SAI_IMAGE` menimpa prefix registry, yang juga membuat image lokal warisan
 terjangkau.
 
 ### Satu langkah sekali-jalan
@@ -474,9 +474,9 @@ docker compose logs job-conformance --tail 60
 docker compose logs job-backup --tail 60
 ```
 
-## 10. Satu runbook penggelaran
+## 10. Satu runbook deploy
 
-Penggelaran dijelaskan di dua tempat: `PRODUCTION.md` §Updates (dan §Rollback)
+Deploy dijelaskan di dua tempat: `PRODUCTION.md` §Updates (dan §Rollback)
 serta §5 dokumen ini. Perkakas build-di-server (`setup:prod`, `start:prod`,
 `bun run deploy`, PM2/`ecosystem.config*.cjs`, `build-standalone.yml`,
 `DOCKER.md`, `HOSTING*.md`) dicabut 12 Okt 2026 karena menjalankan `next build`
@@ -498,6 +498,6 @@ tak terjangkau; kepala berkasnya menyatakan ia tidak dipakai untuk rilis biasa.
 
 > ⚠ `.dockerignore` menjangkar polanya, `.gitignore` tidak. Karena perbedaan itu,
 > pola `backups/` pernah membuat seluruh basis data produksi ikut masuk ke image
-> yang digelar. Periksa isi image, tidak cukup pohon berkas.
+> yang di-deploy. Periksa isi image, tidak cukup pohon berkas.
 
 Lanjut: [08 Penilaian Arsitektur](./08-PENILAIAN-ARSITEKTUR.md)

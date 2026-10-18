@@ -96,11 +96,11 @@ Yang berlaku sekarang:
 * **Slug perusahaan tetap.** Slug menyusun nama basis data dan muncul di URL.
   Menggantinya mematikan setiap tautan yang pernah dibagikan, tanpa galat.
   Nama perusahaan bebas berubah.
-* **Jalur lama masih dilayani** dengan pengalihan 307 oleh `src/proxy.ts`
+* **Jalur lama masih dilayani** dengan redirect 307 oleh `src/proxy.ts`
   menurut `MIGRATED_ROOT_SEGMENTS` di `packages/core/src/tenant-routes.ts`.
   Satu-satunya berkas yang sengaja tinggal di jalur lama adalah `/dashboard`
   tanpa jalur perusahaan. Ia pengarah tanpa query, karena proxy tidak bisa
-  mengalihkan token yang belum membawa slug.
+  me-redirect token yang belum membawa slug.
 * **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
   `packages/ui/src/components/app-link.tsx` memetakan `href` lama ke jalur
   kanonik dari `usePathname()`. Sesi tidak dipakai karena dibagi semua tab.
@@ -295,7 +295,7 @@ ALTER ROLE sai CREATEDB;   -- dijalankan sebagai superuser di `sai-pg`
 
 PostgreSQL tidak punya padanan pembatasan pola nama yang dulu dipakai di
 MariaDB (`GRANT … ON \`sai\_t%\`.*`). `CREATEDB` berlaku untuk nama apa pun.
-Awalan `sai_` dipaksa oleh kode: `COMPANY_DATABASE_PREFIX`, dan sejak #153 nama
+Prefix `sai_` dipaksa oleh kode: `COMPANY_DATABASE_PREFIX`, dan sejak #153 nama
 `sai_t{tenantId}_{slug}` dari `databaseNameForSlug`. Basis data yang dibuat
 role itu dimiliki role itu.
 
@@ -392,10 +392,10 @@ perannya tersedia dan halaman tampil utuh.
 
 Sebelumnya halaman menampilkan "Memuat sesi…" tanpa batas. Penjaga jalur
 bertenant mengambil perusahaan dari jalur, jadi menjawab 200 dan tidak
-mengalihkan. Sementara itu `{children}` tidak dirender, sehingga
+me-redirect. Sementara itu `{children}` tidak dirender, sehingga
 `CompanySessionSync`, satu-satunya yang bisa memperbarui token, tidak pernah
 berjalan. Di luar rute berperusahaan (mis. `/dashboard` tanpa jalur
-perusahaan), penjaga mengalihkan ke `/select-company`, jadi tidak ada yang
+perusahaan), penjaga me-redirect ke `/select-company`, jadi tidak ada yang
 perlu diperbarui.
 
 Pemilihan otomatis di atas menutup penyebab yang paling sering, tetapi keadaan

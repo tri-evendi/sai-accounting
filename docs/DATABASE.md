@@ -49,7 +49,7 @@ Standar ini mengodifikasikan konvensi yang sudah dipakai di
   ```
 - **Primary key**: selalu `id` — `Int @id @default(autoincrement())`.
 - **Foreign key**: `<referenced_singular>_id` → `supplier_id`, `account_id`, `parent_id`.
-- **Boolean**: awalan `is_`/`has_` → `is_active`, `is_posted`.
+- **Boolean**: prefix `is_`/`has_` → `is_active`, `is_posted`.
 - **Tanggal/waktu**: `*_at` (timestamp) atau `*_date` (tanggal transaksi) → `created_at`, `posted_at`, `due_date`.
 - **Uang**: nama jelas, plus pendamping mata uang bila valas (lihat §4) → `amount`, `debit`, `credit`, `total`, `base_amount`.
 - **Kode/nomor**: `code` (master, mis. COA), `number`/`no` (dokumen, mis. `invoice_no`). Dokumen dan kode memakai `@unique`.

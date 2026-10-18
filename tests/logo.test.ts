@@ -6,7 +6,7 @@
  *  - route logo perusahaan: melihat butuh `settings.view`, mengganti dan
  *    menghapus butuh `company_setting.manage`; isi berkas divalidasi; setiap
  *    perubahan tercatat di jejak audit;
- *  - penyimpanan logo produk: cache 60 detik, gagal-lunak ke nilai terakhir
+ *  - penyimpanan logo produk: cache 60 detik, fail-soft ke nilai terakhir
  *    (lalu ke lambang bawaan), dan tulisan mengosongkan cache-nya;
  *  - kepala PDF: logo diskalakan ke kotaknya dan logo rusak tidak
  *    menggagalkan dokumen.

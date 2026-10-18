@@ -37,7 +37,7 @@ graph TB
 
     PROXY -->|"isBearerApiPath(path)"| BEARER["<b>Token Bearer</b><br/>/api/v1/**<br/>requireApiToken(izin)"]
 
-    OPROXY -->|"decideOperatorRouting()"| OPS["<b>Sesi operator</b><br/>seluruh jalur di OPERATOR_HOST (tanpa awalan)<br/>cookie bertanda tangan + IP + TOTP"]
+    OPROXY -->|"decideOperatorRouting()"| OPS["<b>Sesi operator</b><br/>seluruh jalur di OPERATOR_HOST (tanpa prefix)<br/>cookie bertanda tangan + IP + TOTP"]
 
     PROXY -->|sisanya| SESS["<b>Sesi NextAuth</b><br/>JWT · 24 jam · cookie<br/>requirePagePermission /<br/>requireApiPermission"]
 
@@ -133,7 +133,7 @@ graph LR
 | TOTP | `apps/operator/src/lib/operator/totp.ts` — `OPERATOR_MFA` |
 | Env di `.env` (11 Okt 2026) | `OPERATOR_DOMAIN`, `OPERATOR_HOST`, `OPERATOR_IP_ALLOWLIST`, `OPERATOR_MFA`, `OPERATOR_SESSION_SECRET`, `OPERATOR_USERS` — semuanya terisi |
 
-**Gagal-tertutup.** Bidang ditentukan oleh host saja:
+**Fail-closed.** Bidang ditentukan oleh host saja:
 
 - `OPERATOR_HOST` kosong → konsol 404 di host mana pun.
 - Aplikasi pelanggan tidak memuat rute konsol; host operator yang salah arah ke
@@ -141,7 +141,7 @@ graph LR
 - Aplikasi konsol menjawab 404 untuk setiap host selain `OPERATOR_HOST`.
 - Daftar IP kosong → semua ditolak; `*` hanya untuk pengembangan lokal.
 
-Tautan `/operator/*` lama dialihkan 308 ke jalur tanpa awalan
+Tautan `/operator/*` lama di-redirect 308 ke jalur tanpa prefix
 (`apps/operator/next.config.ts`).
 
 #### ⚠ Daftar IP & hitungan hop proxy
@@ -158,11 +158,11 @@ kirinya bisa diketik klien.
   sebagai satu IP.
 - Jangan menurunkan angkanya di bawah jumlah proxy sebenarnya: setiap hop yang
   tidak dihitung berarti satu entri kiriman klien ikut dipercaya.
-- Rantai yang lebih pendek dari angka ini ditolak (gagal-tertutup).
+- Rantai yang lebih pendek dari angka ini ditolak (fail-closed).
 
 ### 2.4 Jalur publik — kenapa daftarnya PERSIS
 
-`isPublicPath` di `src/proxy.ts` mencocokkan jalur persis, bukan awalan, dengan
+`isPublicPath` di `src/proxy.ts` mencocokkan jalur persis, bukan prefix, dengan
 satu pengecualian. Halaman publik baru harus disebut namanya di sana (dan di
 `tests/authz-coverage`), sehingga tidak ada halaman yang menjadi publik tanpa
 sengaja.
@@ -183,7 +183,7 @@ sengaja.
 | `/manifest.webmanifest` | Peramban mengambil manifest tanpa kredensial; tanpa ini PWA #471 gagal tanpa galat |
 | `/docs/**` | Satu-satunya pelepasan subpohon, karena pohon dokumen tidak bisa dienumerasi; dijawab `isDocsPath` (fungsi murni teruji) + dua tes |
 
-`/opengraph-image` dicocokkan sebagai awalan karena Next menambahkan sufiks
+`/opengraph-image` dicocokkan sebagai prefix karena Next menambahkan sufiks
 versi; pencocokan persis akan berhenti cocok setelah pemutakhiran Next.
 Manifest PWA dulu tidak pernah terambil, bahkan oleh pengguna yang sudah masuk:
 peramban mengambilnya `no-cors` tanpa kredensial, lalu menerima HTML halaman
@@ -207,7 +207,7 @@ masuk dengan status 307.
 | `(app)/(setup)` | 2 | `/t/{t}/{c}/setup`, `/setup/done` | `setup.manage` |
 | `(app)/(tenant)/(panel)` | 7 | `/platform/…`, `/companies/new` | Matriks **tenant** |
 | `(app)/(docs)` | 3 | `/docs`, `/docs/cari`, `/docs/[...slug]` | **Tanpa** — dijaga tes |
-| `apps/operator` · `(operator)` | 18 (17 + `/login`) | `/`, `/tenants`, `/login`, … di `OPERATOR_DOMAIN` (tanpa awalan) | Bidang operator |
+| `apps/operator` · `(operator)` | 18 (17 + `/login`) | `/`, `/tenants`, `/login`, … di `OPERATOR_DOMAIN` (tanpa prefix) | Bidang operator |
 
 ### Pola jalur bertenant
 
@@ -219,7 +219,7 @@ masuk dengan status 307.
 - **Slug tenant berganti (#458)** → `permanentRedirect` (301), bukan 307,
   supaya bookmark peramban dan mesin pencari ikut pindah ke alamat baru. Jalur
   dalamnya dibaca dari header `x-sai-path` yang dititipkan proxy. Hanya anggota
-  tenant itu yang dialihkan; bukan anggota tetap mendapat 404.
+  tenant itu yang di-redirect; bukan anggota tetap mendapat 404.
 - **Slug PT tidak boleh berubah**, dijaga
   `scripts/prove-company-slug-immutable.ts` + `tests/company-slug-immutable.test.ts`.
 

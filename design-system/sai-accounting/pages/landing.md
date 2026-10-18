@@ -44,7 +44,7 @@ produksi:
   itu tidak ada query sama sekali.
 - **Kunci baru otomatis bisa disunting**: daftarnya diturunkan dari kamus
   (`siteContentDefaults`). Yang perlu diurus hanya penempatan di bagian yang
-  benar: `SITE_CONTENT_SECTIONS` mencocokkan awalan nama kunci, dan
+  benar: `SITE_CONTENT_SECTIONS` mencocokkan prefix nama kunci, dan
   `tests/site-content.test.ts` menolak kunci yang jatuh ke penampung terakhir.
 - **Nama kunci terbaca manusia.** Label baris di konsol adalah nama kuncinya,
   jadi beri nama yang menyebut bagiannya (`pricingYearlySaving`, bukan
@@ -1347,7 +1347,7 @@ membutuhkan keduanya, dan memisahkan akarnya memangkas payload dokumen
 pendaratan kira-kira separuh. Bagian yang sama (`<html>`, font, kelas pemikul
 token, skrip tema, `AntdRegistry`, `AntdProvider`) ditulis sekali di
 `RootDocument` (`packages/ui/src/providers/root-document.tsx`) dan dipakai
-setiap dokumen akar kedua aplikasi, supaya akar-akarnya tidak menyimpang.
+setiap root layout kedua aplikasi, supaya root layout-nya tidak menyimpang.
 
 `AntdProvider` sengaja tetap di akar pemasaran: ialah yang menulis blok
 `.sai-tokens{--ant-…}` yang mewarnai seluruh pendaratan. Sisa JS-nya adalah

@@ -111,7 +111,7 @@ Butir di sini baru dikerjakan bila pemicunya terjadi.
 | Pekerjaan | Pemicu terukur | Prasyarat | Rujukan |
 |---|---|---|---|
 | **Antrean pekerjaan** | Satu putaran penjadwal tidak muat dalam 1 jam, atau satu produser butuh *retry* < 1 jam | Pilihan antrean + penyimpanan | P2-2 |
-| **Replika `app-customer`** | CPU/memori jadi pembatas, atau butuh gelar tanpa henti | Cache bersama, dan tinjau `max_connections` + kolam PgBouncer | P2-3 |
+| **Replika `app-customer`** | CPU/memori jadi pembatas, atau butuh deploy tanpa henti | Cache bersama, dan tinjau `max_connections` + kolam PgBouncer | P2-3 |
 | **Replika baca PostgreSQL** | Laporan mulai memperlambat tulisan | Pemantauan yang bisa menunjukkan itu | SPOF-1 |
 | **Mesin kedua / HA** | RTO yang dapat diterima < waktu bangun ulang manual | ❓ RTO dari pemilik | SPOF-3 |
 | **Staging** | Perubahan skema mulai butuh latihan sebelum produksi | Keputusan ongkos | P2-1 |
@@ -172,9 +172,9 @@ dan [`docs/PRICING.md`](../PRICING.md); kepatuhan di
 | Butir | Selesai | Hasil |
 |---|---|---|
 | 0.4 CI → P0-3 | 11 Okt | `.github/workflows/verify.yml`; `verify` *required status check* pada `main` (`strict: false`, `app_id` dipin) |
-| 0.5 Dokumen penggelaran → P1-3 | 11–12 Okt | satu jalur hidup (`PRODUCTION.md` §Updates); perkakas standalone, PM2, `build-standalone.yml`, `HOSTING*.md`, `DOCKER.md` dicabut |
+| 0.5 Dokumen deploy → P1-3 | 11–12 Okt | satu jalur hidup (`PRODUCTION.md` §Updates); perkakas standalone, PM2, `build-standalone.yml`, `HOSTING*.md`, `DOCKER.md` dicabut |
 | 0.3 Peringatan → P1-1 | 12–13 Okt | `watch:health` (`scripts/watch-health.ts`, langkah ke-6 `job-scheduler`): cadangan, penjadwal (termasuk putaran `error`), kesesuaian; peredam per komponen |
-| 1.1 Container operator dipisah | digelar | sejak 18 Okt menjadi aplikasi dan image tersendiri (`apps/operator`, `-operator`); [dok 14](./14-RENCANA-MONOREPO.md) |
+| 1.1 Container operator dipisah | di-deploy | sejak 18 Okt menjadi aplikasi dan image tersendiri (`apps/operator`, `-operator`); [dok 14](./14-RENCANA-MONOREPO.md) |
 | 1.2 Jalan pintas `/` di proxy → P3-4 | 11 Okt | satu pantulan bila token membawa kedua slug; `tests/proxy-landing-shortcut.test.ts` |
 | 1.3 Jejak kesesuaian → P1-2 | 11 Okt | `conformance_runs`, medan `/api/health`, halaman konsol `/conformance` |
 | 1.4 Uji proxy → P3-2 | sudah ada | `tests/proxy-bearer-api.test.ts` |
@@ -191,13 +191,13 @@ dan [`docs/PRICING.md`](../PRICING.md); kepatuhan di
 **Apa yang ada.** Aplikasi akuntansi SaaS berbahasa Indonesia, monorepo bun:
 aplikasi pelanggan (`src/`) dan konsol operator (`apps/operator`, di
 `ops.saiaccounting.id`) di atas paket bersama. Empat image GHCR dari satu
-commit (aplikasi, `-operator`, `-migrator`, `-backup`), digelar di satu mesin
+commit (aplikasi, `-operator`, `-migrator`, `-backup`), di-deploy di satu mesin
 lewat Docker Compose di belakang Traefik. Satu basis data PostgreSQL 17 per
 PT (ditambah kendali dan platform) di balik PgBouncer; MariaDB `db` masih hidup sebagai
 jalan mundur sampai #636.
 
 **Apa yang sehat.** Bentuk arsitekturnya: mode kegagalan dipilih dengan sengaja
-(konteks PT yang hilang melempar galat, bidang operator gagal-tertutup), satu
+(konteks PT yang hilang melempar galat, bidang operator fail-closed), satu
 pintu menuju buku besar, aturan arsitektural ditegakkan tes, dan keputusan sulit
 tertulis beserta ukuran dan tanggalnya.
 

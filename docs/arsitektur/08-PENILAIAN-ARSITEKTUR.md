@@ -269,9 +269,9 @@ satu cadangan di repo ini terbukti bisa dipulihkan. Sejak 15 Okt dump-nya
 
 ---
 
-### ✅ P1-3 — Dokumentasi penggelaran saling bertentangan — **ditutup 11–12 Okt 2026**
+### ✅ P1-3 — Dokumentasi deploy saling bertentangan — **ditutup 11–12 Okt 2026**
 
-**Temuan semula.** Lima berkas menjelaskan cara menggelar dan tidak sepakat.
+**Temuan semula.** Lima berkas menjelaskan cara men-deploy dan tidak sepakat.
 `PRODUCTION.md` §2 menyarankan `bun run setup:prod` (`next build` di server),
 sementara §Updates melarangnya (~19 menit, iowait 58–92%, dua build bersamaan
 pernah OOM). Di sampingnya ada `HOSTING*.md`, `DOCKER.md`, dua
@@ -640,7 +640,7 @@ halaman pemasaran tetap dirender per permintaan
 | ~~P0-3~~ | ~~Nol CI~~ | ✅ ditutup 11 Okt; `verify` required pada `main`, `develop` tanpa proteksi (disengaja) | — |
 | ~~P1-1~~ | ~~Kegagalan latar tidak berbunyi~~ | ✅ ditutup 12–13 Okt; `watch:health` | — |
 | ~~P1-2~~ | ~~Temuan kesesuaian hanya di stdout~~ | ✅ ditutup 11 Okt; jejak + `/api/health` + halaman konsol | — |
-| ~~P1-3~~ | ~~Dokumen penggelaran bertentangan~~ | ✅ ditutup 11–12 Okt | — |
+| ~~P1-3~~ | ~~Dokumen deploy bertentangan~~ | ✅ ditutup 11–12 Okt | — |
 | **P2-1** | Basis data uji di produksi | 🟡 terklasifikasi; dua keputusan menunggu pemilik | Rendah |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | 🟡 putaran `error` kini mengirim peringatan; enam langkah tanpa jejak sendiri | Tinggi |
 | **P2-3** | Satu `app-customer`, tanpa jalur skala | batas diketahui, belum tercapai | Tinggi |

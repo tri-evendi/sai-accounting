@@ -3,7 +3,7 @@
 > Keadaan per 18 Okt 2026 (`main@ca0cd038`) · [indeks](./README.md)
 >
 > Dokumen ini dulu berupa asesmen (15 Okt, putusan "belum"), lalu rencana fase.
-> Semua fase sudah dijalankan dan digelar. Yang tersisa di sini: bentuk akhir,
+> Semua fase sudah dijalankan dan di-deploy. Yang tersisa di sini: bentuk akhir,
 > penjaganya, keputusan yang masih berlaku, dan riwayat singkat. Timbangan
 > untung-rugi lengkap dan pengukuran porsi operator per fase ada di riwayat git
 > berkas ini. Pemisahan container sebelumnya: [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
@@ -30,8 +30,8 @@ sai-accounting/
 | Alias | `@/*` = `src/*` · `@op/*` = `apps/operator/src/*` (di konsol, `@/` tidak terselesaikan) · `@sai/<paket>/*` lewat workspace bun |
 | Paket | dikirim sebagai sumber TS, tanpa langkah build: `transpilePackages: ["@sai/db", "@sai/core", "@sai/ui", "@sai/billing", "@sai/platform"]` di kedua `next.config.ts` |
 | Image | empat, dari satu commit (`publish-image.yml`): `sai-accounting` (target `runner`), `-operator` (`runner-operator`), `-migrator`, `-backup` |
-| Gelar | `docker compose pull` → `migrate` → `up -d`; sesudahnya periksa bahwa image tiap layanan berasal dari `sha-` yang sama |
-| Bidang | konsol di `ops.saiaccounting.id` tanpa awalan `/operator`; bidang ditentukan host saja. `apps/operator/src/proxy.ts`: host lain atau `OPERATOR_HOST` kosong → 404; tanpa sesi → `/login`. `/operator` dan `/operator/*` → 308 ke jalur tanpa awalan (`apps/operator/next.config.ts`) |
+| Deploy | `docker compose pull` → `migrate` → `up -d`; sesudahnya periksa bahwa image tiap layanan berasal dari `sha-` yang sama |
+| Bidang | konsol di `ops.saiaccounting.id` tanpa prefix `/operator`; bidang ditentukan host saja. `apps/operator/src/proxy.ts`: host lain atau `OPERATOR_HOST` kosong → 404; tanpa sesi → `/login`. `/operator` dan `/operator/*` → 308 ke jalur tanpa prefix (`apps/operator/next.config.ts`) |
 | Sisi pelanggan | `src/proxy.ts` tetap memakai `@sai/core/operator-plane`: host operator yang sampai ke aplikasi pelanggan (Traefik salah arah) → 404; aplikasi pelanggan tidak punya rute operator |
 | Volume konsol | hanya `audit` (tinggal arsip berkas lama `.dipindahkan`, aman dicabut), tanpa `documents` |
 | Ukuran terukur 18 Okt | standalone konsol 69 MB (20 rute) vs pelanggan 299 MB; build pelanggan tidak memuat rute operator |
@@ -90,7 +90,7 @@ gerakan.
 | 2a–2d | 18 Okt | `@sai/core`, i18n inti, `@sai/ui`, `@sai/billing` |
 | 3a–3c | 18 Okt | putus tiga sisi yang menyeret kode pembukuan ke konsol; modul murni ke `core`/`billing`; `@sai/platform` |
 | 3d + 4 | 18 Okt | kerangka bersama ke `@sai/ui`; `apps/operator` lahir; image `-operator` |
-| hanya-host | 18 Okt | konsol tanpa awalan `/operator`; tautan lama 308; halaman galat & 404 di kedua aplikasi |
+| hanya-host | 18 Okt | konsol tanpa prefix `/operator`; tautan lama 308; halaman galat & 404 di kedua aplikasi |
 
 Satu risiko benar-benar terjadi: pemindai yang hanya menyapu `src/` lulus
 dengan nol pelanggar begitu berkasnya pindah. Dua puluh pemindai dialihkan ke

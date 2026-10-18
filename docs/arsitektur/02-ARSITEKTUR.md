@@ -49,7 +49,7 @@ graph TB
     end
 
     subgraph trust2["Batas 2 — proxy aplikasi (src/proxy.ts · apps/operator/src/proxy.ts)"]
-        PROXY["Keputusan bidang (host) + sesi<br/>• isPublicPath — daftar jalur PERSIS<br/>• decideOperatorRouting — gagal-tertutup<br/>• isBearerApiPath — lepas ke penjaga token"]
+        PROXY["Keputusan bidang (host) + sesi<br/>• isPublicPath — daftar jalur PERSIS<br/>• decideOperatorRouting — fail-closed<br/>• isBearerApiPath — lepas ke penjaga token"]
     end
 
     subgraph trust3["Batas 3 — penjaga per rute"]
@@ -94,7 +94,7 @@ graph TB
 | Batas | Penegak | Sifat gagal |
 |---|---|---|
 | 1 — TLS | Traefik, label di `docker-compose.yml` | HTTP → 301 ke HTTPS; `www.` → apex |
-| 2 — bidang & sesi | `src/proxy.ts` + `apps/operator/src/proxy.ts` + `packages/core/src/operator-plane.ts` (bidang ditentukan host saja) | **Gagal-tertutup**: `OPERATOR_HOST` kosong = konsol 404 di host mana pun; host operator di aplikasi pelanggan = 404 |
+| 2 — bidang & sesi | `src/proxy.ts` + `apps/operator/src/proxy.ts` + `packages/core/src/operator-plane.ts` (bidang ditentukan host saja) | **Fail-closed**: `OPERATOR_HOST` kosong = konsol 404 di host mana pun; host operator di aplikasi pelanggan = 404 |
 | 3 — izin | `page-auth.ts` / `auth-guard.ts` / `api-token-guard.ts` | Halaman → pantul ke beranda; API → 403. Dijaga `tests/authz-coverage` |
 | 4 — perusahaan | `company-context.ts` / `current-company.ts` | `MissingCompanyContextError` — **melempar, tidak pernah menebak** |
 | 4 — buku besar | `lib/posting/index.ts` + `lib/ledger.ts` | Periode tertutup / belum disetujui = posting ditolak |
@@ -362,7 +362,7 @@ packages/                         # diimpor sebagai @sai/<paket>/<subpath>
                                   #   jejak langganan & tenant, isi situs, penulis penagihan
 apps/
 └── operator/  (61 berkas)        # KONSOL OPERATOR — aplikasi Next kedua, image `…-operator`
-    ├── src/app/(operator)/        # 18 halaman (17 + /login) + 1 unduhan, TANPA awalan /operator — HOST SENDIRI
+    ├── src/app/(operator)/        # 18 halaman (17 + /login) + 1 unduhan, TANPA prefix /operator — HOST SENDIRI
     ├── src/app/api/health/       # probe sempit (hanya kendali yang memutuskan 503)
     ├── src/lib/operator/         # sesi, penjaga, TOTP, store, tulisan, jejak
     ├── src/components/operator/  # panel konsol

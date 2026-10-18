@@ -103,7 +103,7 @@ export async function renderInvoicePdf(
     import("@/lib/pdf/invoice-pdf"),
     import("@/lib/pdf/company-header"),
     getCompanyIdentity(),
-    // Gagal-lunak: faktur tanpa logo tetap terkirim.
+    // Fail-soft: faktur tanpa logo tetap terkirim.
     readCompanyLogo().catch((error) => {
       console.error("[invoice-send] logo perusahaan tak terbaca:", error);
       return null;

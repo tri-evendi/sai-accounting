@@ -9,9 +9,10 @@
  *     entri tanpa rahasia TOTP tidak pernah bisa masuk),
  *   • kode TOTP saat ini, untuk memastikan authenticator terpasang benar.
  *
- * TIDAK menulis apa pun: kredensial operator hidup di environment
- * (docker-compose/.env produksi), tidak pernah di basis data mana pun dan
- * tidak pernah di repositori.
+ * TIDAK menulis apa pun. Entri yang dicetak ditempel ke `OPERATOR_USERS` di
+ * .env produksi — jalur untuk akun operator PERTAMA. Akun berikutnya dibuat di
+ * konsol (`/accounts`, tabel kendali `operator_accounts`). Kredensial tidak
+ * pernah masuk repositori.
  */
 
 import { createInterface } from "node:readline";

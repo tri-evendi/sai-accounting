@@ -13,10 +13,13 @@
  * kekhawatiran teoretis:
  *   - dua rute pelanggan mengimpor `changeTenantPlan`/`planChangeApplier` dari
  *     `lib/operator/writes`. Logika penagihan yang kebetulan pertama kali
- *     ditulis untuk konsol. Kini di `lib/billing/change-tenant-plan.ts`;
+ *     ditulis untuk konsol. Kini di `packages/platform/src/billing/change-tenant-plan.ts`;
  *   - konsol operator mengimpor `components/dashboard/stat-card`, komponen
  *     generik yang tinggal di folder milik buku besar. Kini di
- *     `components/ui/stat-card.tsx`.
+ *     `packages/ui/src/components/stat-card.tsx`.
+ *
+ * Sejak monorepo Fase 3d konsolnya aplikasi tersendiri (`apps/operator`, alias
+ * `@op/*`); aturan 4 di bawah melarangnya mengimpor apa pun dari `src/`.
  *
  * == ATURANNYA ===========================================================
  *   1. Di luar permukaan operator, `src/` TIDAK mengimpor `lib/operator/*`,

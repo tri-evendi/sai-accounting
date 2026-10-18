@@ -59,7 +59,7 @@ function isPublicPath(pathname: string): boolean {
    * sama sekali. Memantulkannya ke `/login` berarti menjawab "apakah layanannya
    * jalan?" dengan layar yang hanya berguna kalau layanannya jalan.
    *
-   * Isinya sudah dipersempit `lib/public-status.ts` menjadi tiga keadaan tanpa
+   * Isinya sudah dipersempit `@sai/core/public-status` menjadi empat keadaan tanpa
    * nama basis data, angka, maupun kalimat galat — publik di sini adalah SIFAT
    * halamannya, bukan kelonggaran proxy.
    */

@@ -1,47 +1,49 @@
 # 13 — Audit Desain Skema Basis Data
 
-> Dijalankan 12 Oktober 2026 · [indeks](./README.md)
+> **ARSIP: dijalankan 12 Oktober 2026**, di MariaDB sebelum penukaran · [indeks](./README.md)
 >
-> **Metode.** Setiap angka di dokumen ini berasal dari **skema Prisma dan basis
-> data produksi yang berjalan**, bukan dari pembacaan selera. Yang tidak diukur
-> tidak diklaim. Satu pengukuran yang saya salah baca lebih dulu ikut dicatat
-> apa adanya di §2.1, sebab cara mengukurnya ternyata lebih mudah salah daripada
-> hasilnya.
+> Sesudahnya: PostgreSQL 15 Okt 2026 ([dok 11](./11-RENCANA-POSTGRESQL.md)),
+> monorepo 18 Okt 2026 ([dok 14](./14-RENCANA-MONOREPO.md)). Status per 18 Okt
+> 2026: S1 ✅ dan S2 ✅ ditutup 12 Okt (§8). S3 ❌ masih terbuka:
+> `CONTRACT_STATUSES` di `packages/core/src/constants.ts` masih tiga nilai tanpa
+> `completed`, dan belum ada CHECK constraint. Keputusan §5 sudah lewat momen
+> penukarannya; keadaannya kini dicatat di §5.
 >
-> **Pertanyaannya:** apakah skema ini bisa dipelihara ke depan — dan apa yang
-> berubah kalau ia pindah ke PostgreSQL.
+> **Metode.** Setiap angka berasal dari skema Prisma dan basis data produksi yang
+> berjalan. Yang tidak diukur tidak diklaim. Satu pengukuran yang awalnya salah
+> dibaca dicatat di §2.1, karena cara mengukurnya ternyata mudah keliru.
+>
+> **Pertanyaannya:** apakah skema ini bisa dipelihara ke depan, dan apa yang
+> berubah bila ia pindah ke PostgreSQL.
 
 ## 0. Putusan
 
-**Skemanya sehat, dan jauh lebih disiplin daripada rata-rata aplikasi
-akuntansi.** Enam sifat di §1 bukan kebetulan: ia hasil `docs/DATABASE.md`
-ditegakkan, dan ia yang membuat migrasi mesin menjadi pekerjaan mekanis alih-alih
-proyek.
+**Skemanya sehat dan jauh lebih disiplin daripada rata-rata aplikasi
+akuntansi.** Enam sifat di §1 adalah hasil `docs/DATABASE.md` ditegakkan, dan
+sifat-sifat itu membuat migrasi mesin menjadi pekerjaan mekanis.
 
-Tiga temuan yang perlu dikerjakan, dan **urutannya penting**:
+Ada tiga temuan, dan urutan pengerjaannya penting:
 
-| | Temuan | Dampak | Kapan |
-|---|---|---|---|
-| **S1** | **18 kolom FK yang indeksnya dibuat MySQL secara IMPLISIT** | Di PostgreSQL indeks itu **tidak ada** — 242 indeks hilang tanpa satu pun galat | **SEBELUM** pindah mesin |
-| **S2** | **10 kolom `*_id` tanpa indeks apa pun** — sudah begitu hari ini | Pemindaian tabel penuh saat tumbuh; `audit_logs.user_id` yang paling terasa | Kapan saja, murah |
-| **S3** | **Nol CHECK constraint**, dan nilai enum-like **sudah terbukti menyimpang** | 101 baris `contracts.status = "completed"` di luar kosakata | Data **dibersihkan dulu**, baru dibatasi |
+| | Temuan | Dampak | Kapan | Status 18 Okt |
+|---|---|---|---|---|
+| **S1** | **18 kolom FK yang indeksnya dibuat MySQL secara implisit** | Di PostgreSQL indeks itu tidak ada: 242 indeks hilang tanpa galat | Sebelum pindah mesin | ✅ ditutup 12 Okt (§8) |
+| **S2** | **10 kolom `*_id` tanpa indeks apa pun** | Pemindaian tabel penuh saat data tumbuh; paling terasa di `audit_logs.user_id` | Kapan saja, murah | ✅ ditutup 12 Okt (§8) |
+| **S3** | **Nol CHECK constraint**, dan nilai enum-like sudah terbukti menyimpang | 101 baris `contracts.status = "completed"` di luar kosakata | Bersihkan data dulu, baru batasi | ❌ terbuka; menunggu keputusan kosakata pemilik |
 
-S1 adalah satu-satunya yang **wajib** selesai sebelum penukaran mesin. S3 punya
-urutan yang tidak boleh dibalik: memasang constraint lebih dulu akan menolak data
-yang sudah ada.
+Hanya S1 yang wajib selesai sebelum penukaran mesin. Urutan S3 tidak boleh
+dibalik: constraint yang dipasang lebih dulu akan menolak data yang sudah ada.
 
 ---
 
-## 1. Yang sudah benar, dan harus dijaga tetap begitu
+## 1. Yang sudah benar dan harus dipertahankan
 
-Bagian ini bukan pujian; ia daftar sifat yang **akan hilang kalau tidak ada yang
-menyadarinya sebagai sifat**.
+Sifat-sifat berikut mudah hilang bila tidak ada yang menyadarinya.
 
-### 1.1 Nol drift di 17 buku — diukur, bukan diasumsikan
+### 1.1 Nol drift di 17 buku (diukur)
 
-Model basis-data-per-PT punya satu mode kegagalan khas: buku-buku perlahan
-berbeda satu sama lain, dan setiap laporan harus belajar menghadapi semua
-variannya. Di sini tidak terjadi:
+Model basis-data-per-PT punya satu risiko khas: buku-buku perlahan berbeda satu
+sama lain, dan setiap laporan harus menangani semua variannya. Di sini hal itu
+tidak terjadi:
 
 | | Nilai, **identik di 17 buku** |
 |---|---|
@@ -49,11 +51,11 @@ variannya. Di sini tidak terjadi:
 | Kolom per buku | **668** |
 | Indeks per buku | **253** |
 
-`GROUP_CONCAT(DISTINCT …)` atas ke-17 skema memulangkan **satu** angka untuk
-ketiganya. Itu bukti `db:migrate:all` benar-benar dijalankan ke semua buku, dan
-sifat inilah yang membuat satu laporan bisa dipercaya di semua PT.
+`GROUP_CONCAT(DISTINCT …)` atas ke-17 skema memulangkan satu angka untuk
+ketiganya. Artinya `db:migrate:all` memang dijalankan ke semua buku, sehingga
+satu laporan bisa dipercaya di semua PT.
 
-### 1.2 Disiplin uang utuh — nol `Float`
+### 1.2 Disiplin uang: nol `Float`
 
 | Presisi | Jumlah kolom | Untuk |
 |---|---|---|
@@ -62,40 +64,36 @@ sifat inilah yang membuat satu laporan bisa dipercaya di semua PT.
 | `Decimal(18,6)` | **16** | kurs |
 | `Decimal(5,2)` | 1 | tarif pajak persen — berkomentar, disengaja |
 
-**Nol kolom `Float`.** Di aplikasi akuntansi itu pembeda antara neraca yang
-seimbang dan selisih satu rupiah yang tidak pernah bisa dijelaskan. PostgreSQL
-`numeric` justru **lebih ketat** dari MariaDB soal pembulatan, jadi sifat ini
-berpindah dengan aman.
+Tidak ada kolom `Float`. Di aplikasi akuntansi, itulah yang mencegah selisih
+satu rupiah yang tidak bisa dijelaskan. `numeric` PostgreSQL lebih ketat dari
+MariaDB soal pembulatan, jadi sifat ini aman saat pindah.
 
-### 1.3 Nol relasi tanpa `onDelete` eksplisit
+### 1.3 Semua relasi punya `onDelete` eksplisit
 
-53 `Restrict` · 34 `Cascade` · 8 `SetNull` — dan **nol** yang menyerahkan
-keputusan ke bawaan. Pada data akuntansi, `Restrict` sebagai pilihan mayoritas
-adalah jawaban yang benar: dokumen yang sudah diposting tidak boleh ikut terhapus
-bersama master data.
+53 `Restrict` · 34 `Cascade` · 8 `SetNull`, dan tidak ada yang memakai bawaan.
+Untuk data akuntansi, `Restrict` sebagai pilihan mayoritas sudah tepat: dokumen
+yang sudah diposting tidak boleh ikut terhapus bersama master data.
 
 ### 1.4 Konvensi penamaan ditegakkan 100%
 
-**Nol** pelanggaran: setiap model punya `@@map` `snake_case` jamak, dan setiap
+Tidak ada pelanggaran: setiap model punya `@@map` `snake_case` jamak, dan setiap
 tabel punya `id` + `created_at` + `updated_at`.
 
-Satu pengecualian, dan ia **benar**: `TenantAuditLog` tanpa `updated_at` — jejak
-audit bersifat hanya-tambah dan tidak pernah di-*update*; kolom yang tak pernah
-berubah hanya akan menjadi kolom yang membohongi pembacanya. **Yang perlu
-diperbaiki bukan tabelnya, melainkan `docs/DATABASE.md`** yang menulis aturannya
-tanpa pengecualian ini.
+Satu pengecualian, dan itu benar: `TenantAuditLog` tanpa `updated_at`. Jejak
+audit hanya-tambah dan tidak pernah di-*update*, jadi kolom itu tidak akan
+pernah bermakna. Yang perlu diperbaiki adalah `docs/DATABASE.md`, yang menulis
+aturannya tanpa pengecualian ini.
 
-### 1.5 Permukaan tipe sempit — dan itu yang membuatnya portabel
+### 1.5 Permukaan tipe sempit, dan karena itu portabel
 
-Hanya **empat** keluarga tipe native di seluruh 89 model: `VarChar` (247),
+Hanya empat keluarga tipe native di seluruh 89 model *(per 12 Okt; 93 per 18 Okt)*: `VarChar` (247),
 `Decimal` (116), `Text` (43), `Date` (2). Nol `Json`, nol `Bytes`, nol enum
 native, nol `TinyInt`.
 
-Aturan `docs/DATABASE.md` yang mewajibkan *enum-like* ditulis
-`String @db.VarChar` + `z.enum` — yang terasa bertele-tele saat menulisnya —
-adalah alasan tunggal kenapa tidak ada satu pun tipe yang menuntut desain ulang
-saat berpindah mesin. Ia juga sumber temuan **S3**: harga dari portabilitas itu
-adalah ketiadaan penjaga di tingkat basis data.
+Aturan `docs/DATABASE.md` yang mewajibkan enum-like ditulis
+`String @db.VarChar` + `z.enum` adalah alasan tidak ada tipe yang menuntut desain
+ulang saat pindah mesin. Aturan yang sama juga sumber temuan S3: portabilitas itu
+dibayar dengan tidak adanya penjaga nilai di tingkat basis data.
 
 ### 1.6 Setiap tabel nyata punya indeks sekunder
 
@@ -106,17 +104,16 @@ milik Prisma.
 
 ## 2. S1 — 18 indeks yang dibuat MySQL untuk kita, dan PostgreSQL tidak
 
-**Ini temuan terpenting di dokumen ini**, dan ia tidak akan pernah muncul sebagai
+Ini temuan terpenting di dokumen ini, dan ia tidak akan pernah muncul sebagai
 galat.
 
-MySQL/MariaDB **mewajibkan** indeks pada kolom FK dan **membuatnya sendiri** bila
-tidak dideklarasikan — nama indeksnya berakhiran `_fkey`. PostgreSQL **tidak**:
-sebuah `FOREIGN KEY` di PostgreSQL tidak membawa indeks sama sekali. Jadi setiap
-kolom FK yang indeksnya tidak ditulis di skema Prisma akan **kehilangan
-indeksnya** saat pindah, dan satu-satunya gejalanya adalah kueri yang perlahan
-melambat.
+MySQL/MariaDB mewajibkan indeks pada kolom FK dan membuatnya sendiri bila tidak
+dideklarasikan, dengan nama berakhiran `_fkey`. PostgreSQL tidak: `FOREIGN KEY`
+di PostgreSQL tidak membawa indeks. Setiap kolom FK yang indeksnya tidak ditulis
+di skema Prisma akan kehilangan indeksnya saat pindah. Gejalanya hanya kueri yang
+perlahan melambat.
 
-Diukur di basis data hidup — kolom FK yang **tidak punya** indeks selain yang
+Diukur di basis data hidup, kolom FK yang tidak punya indeks selain yang
 berakhiran `_fkey`:
 
 | Basis data | Kolom |
@@ -125,39 +122,39 @@ berakhiran `_fkey`:
 | `sai_control` | `api_tokens.created_by_user_id` |
 | `sai_platform` | `payments.platform_invoice_id` · `platform_invoices.subscription_id` · `platform_invoices.target_plan_id` · `subscriptions.plan_id` |
 
-**14 per buku × 17 buku + 1 + 3 = 242 indeks** yang tidak akan dibuat.
+Totalnya 14 per buku × 17 buku + 1 + 3 = 242 indeks yang tidak akan dibuat.
 
-Dua di antaranya menunjuk tabel yang sudah cukup besar untuk terasa:
-`contract_items` (767 baris) dan `contract_payments` (720) — dan keduanya diambil
-lewat `contract_id` pada setiap pembukaan detail kontrak.
+Dua di antaranya ada di tabel yang sudah cukup besar: `contract_items` (767
+baris) dan `contract_payments` (720). Keduanya dibaca lewat `contract_id` setiap
+kali detail kontrak dibuka.
 
-**Perbaikannya benar di kedua mesin:** deklarasikan `@@index` di skema Prisma.
-Di MariaDB itu tidak mengubah apa pun secara fungsional (indeksnya sudah ada,
-hanya namanya menjadi eksplisit); di PostgreSQL itu satu-satunya hal yang
-membuatnya ada. Jadi **dikerjakan sekarang, bukan saat migrasi** — dengan begitu
-ia ikut teruji oleh produksi yang berjalan sebelum mesinnya berganti.
+**Perbaikannya berlaku di kedua mesin:** deklarasikan `@@index` di skema Prisma.
+Di MariaDB tidak ada perubahan fungsional (indeksnya sudah ada, hanya namanya
+menjadi eksplisit). Di PostgreSQL, deklarasi itulah satu-satunya yang membuat
+indeksnya ada. Karena itu dikerjakan sebelum migrasi, supaya sudah teruji di
+produksi sebelum mesinnya berganti.
 
-### 2.1 Catatan metode: sapuan skema saja menjawab salah
+### 2.1 Catatan metode: sapuan skema saja memberi jawaban salah
 
-Sapuan pertama saya atas skema Prisma memulangkan **32** kolom `*Id` tanpa
-`@@index`. Angka itu salah dua arah sekaligus:
+Sapuan pertama atas skema Prisma memulangkan 32 kolom `*Id` tanpa `@@index`.
+Angka itu salah ke dua arah:
 
-- Regex `@relation` saya tidak menangkap deklarasi **multi-baris**, jadi
-  `fixed_assets.asset_account_id` tercatat "bukan relasi" padahal ia FK — dan
-  terbukti punya indeks `_fkey` di basis data hidup.
-- Sebaliknya, beberapa kolom `*Id` memang **bukan** FK sama sekali (lihat §3),
-  jadi ia bukan bagian dari temuan ini.
+- Regex `@relation` yang dipakai tidak menangkap deklarasi multi-baris, sehingga
+  `fixed_assets.asset_account_id` tercatat "bukan relasi". Padahal kolom itu FK
+  dan punya indeks `_fkey` di basis data hidup.
+- Sebaliknya, beberapa kolom `*Id` memang bukan FK (lihat §3), jadi tidak
+  termasuk temuan ini.
 
-Jawaban yang benar hanya bisa datang dari **`information_schema` basis data yang
-berjalan**, bukan dari membaca skema. Dicatat di sini karena siapa pun yang
-mengulang audit ini akan tergoda mengulangi kesalahan yang sama.
+Jawaban yang benar hanya datang dari `information_schema` basis data yang
+berjalan. Ini dicatat supaya audit berikutnya tidak mengulang kesalahan yang
+sama.
 
 ---
 
 ## 3. S2 — 10 kolom `*_id` yang tidak terindeks di mesin mana pun
 
-Berbeda dari S1, ini **sudah** menjadi keadaan hari ini: kolom ini bukan FK, jadi
-MySQL tidak membuatkan apa pun, dan skemanya juga tidak meminta.
+Berbeda dari S1, ini sudah menjadi keadaan saat audit. Kolom-kolom ini bukan FK,
+jadi MySQL tidak membuatkan indeks, dan skemanya juga tidak memintanya.
 
 | Kolom | Kenapa tanpa FK |
 |---|---|
@@ -171,10 +168,10 @@ MySQL tidak membuatkan apa pun, dan skemanya juga tidak meminta.
 | `recurring_occurrences.document_id` | ❓ belum jelas kenapa tanpa FK |
 | `recurring_templates.source_id` | ❓ polimorfik (menunjuk beberapa jenis dokumen) — FK memang tak mungkin |
 
-**Ketiadaan FK-nya benar** dan tidak boleh "diperbaiki": itu aturan isolasi
-multi-PT. **Ketiadaan indeksnya tidak.** Yang paling terasa `audit_logs.user_id`
-— halaman audit menyaring per pengguna, dan tabel itu tumbuh selamanya tanpa
-pernah dipangkas.
+Ketiadaan FK-nya benar dan tidak boleh "diperbaiki", karena itu aturan isolasi
+multi-PT. Ketiadaan indeksnya yang salah. Paling terasa di `audit_logs.user_id`:
+halaman audit menyaring per pengguna, dan tabel itu terus tumbuh tanpa
+dipangkas.
 
 ---
 
@@ -182,19 +179,18 @@ pernah dipangkas.
 
 `docs/DATABASE.md` memilih `String @db.VarChar` + `z.enum` alih-alih enum native.
 Alasannya kuat (§1.5): portabilitas, dan menambah nilai enum di MySQL adalah
-`ALTER TABLE` yang mengunci. Tapi konsekuensinya harus dinyatakan dengan jujur:
-**`z.enum` menjaga jalur tulis lewat aplikasi, dan tidak menjaga apa pun selain
-itu.**
+`ALTER TABLE` yang mengunci. Konsekuensinya: `z.enum` hanya menjaga tulisan yang
+lewat aplikasi.
 
-**CHECK constraint di `sai_production`: 0.**
+CHECK constraint di `sai_production`: 0.
 
-Dan ini bukan risiko teoretis. Kosakata `src/lib/constants.ts:168`:
+Kosakata di `packages/core/src/constants.ts:168` (dulu `src/lib/constants.ts`):
 
 ```ts
 export const CONTRACT_STATUSES = ["signed", "pending", "canceled"] as const;
 ```
 
-Nilai yang **benar-benar ada** di buku pt-sai:
+Nilai yang ada di buku pt-sai:
 
 | status | baris |
 |---|---|
@@ -203,21 +199,19 @@ Nilai yang **benar-benar ada** di buku pt-sai:
 | `canceled` | 39 |
 | ~~`signed`~~ | **0** ← ada di kosakata, tak pernah dipakai |
 
-Dua kesalahan berlawanan arah sekaligus: satu nilai dipakai 101 kali tanpa pernah
-diizinkan, satu nilai diizinkan tanpa pernah dipakai. Inilah 101 dari 1.439
-temuan `check-data-conformance` — jadi pemeriksa kesesuaian **sudah** menemukan
-ini; yang tidak ada adalah sesuatu yang **mencegahnya**.
+Ada dua penyimpangan berlawanan arah: satu nilai dipakai 101 kali tanpa
+diizinkan, dan satu nilai diizinkan tetapi tidak pernah dipakai. Ke-101 baris itu
+termasuk dalam 1.439 temuan `check-data-conformance`. Pemeriksa kesesuaian sudah
+menemukannya; yang belum ada adalah mekanisme yang mencegahnya.
 
-🔶 Tersimpulkan: `completed` masuk lewat impor data warisan, bukan lewat form.
-Itu konsisten dengan `signed` yang nol — kosakata aplikasi dan kosakata data
-warisan tidak pernah dipertemukan.
+🔶 Tersimpulkan: `completed` masuk lewat impor data warisan, bukan lewat form. Ini
+konsisten dengan `signed` yang nol: kosakata aplikasi dan kosakata data warisan
+tidak pernah diselaraskan.
 
-### 4.0 Dari mana `completed` datang — ditelusuri 12 Okt 2026
+### 4.0 Asal `completed` (ditelusuri 12 Okt 2026)
 
-Keputusan kosakata butuh bukti, bukan dugaan. Ini buktinya.
-
-**Ia datang dari impor warisan, bukan dari pemakaian aplikasi.** Ketiga status di
-buku pt-sai lahir dalam jendela **dua detik yang sama**:
+Nilai ini berasal dari impor warisan. Ketiga status di buku pt-sai tercatat
+dalam jendela dua detik yang sama:
 
 | status | baris | pertama | terakhir |
 |---|---|---|---|
@@ -225,25 +219,23 @@ buku pt-sai lahir dalam jendela **dua detik yang sama**:
 | `completed` | 101 | 2026-07-18 11:42:45.139 | 11:42:46.509 |
 | `canceled` | 39 | 2026-07-18 11:42:45.093 | 11:42:45.921 |
 
-**Dan status di aplikasi lama berupa ANGKA.** Di dump warisan
+Status di aplikasi lama berupa angka. Di dump warisan
 (`subt5236_sai_prod_18july.sql`), `tb_trans_contract.status` adalah
 `varchar(40) DEFAULT '0'` dengan nilai `'0'` (1.297×), `'2'` (646×), `'7'`
-(180×), `'30'`, `'1'`, dan seterusnya. Jadi **pengimpor yang memetakan angka
-menjadi kata**, dan ia memakai kosakata yang lebih kaya daripada yang dimiliki
-aplikasi.
+(180×), `'30'`, `'1'`, dan seterusnya. Pengimpor memetakan angka itu menjadi kata,
+dengan kosakata yang lebih kaya daripada yang dimiliki aplikasi.
 
-**`completed` tidak ada di kode mana pun.** Disapu seluruh `src/`: nol
-kemunculan sebagai status kontrak — bukan di `CONTRACT_STATUSES`, bukan di
-query, bukan di UI.
+`completed` tidak ada di kode mana pun. Sapuan seluruh `src/` tidak menemukannya
+sebagai status kontrak, baik di `CONTRACT_STATUSES`, di query, maupun di UI.
 
-**Tapi `signed` BUKAN kosakata mati.** Ia bisa dipilih di form pembuatan
-kontrak (`contract-form.tsx:94`). Ia nol baris karena pengimpor tidak pernah
+`signed` masih dipakai: ia bisa dipilih di form pembuatan kontrak
+(`contract-form.tsx:94`). Jumlahnya nol karena pengimpor tidak pernah
 menghasilkannya dan belum ada pengguna yang menyetelnya di buku ini.
 
-#### Jadi pertanyaannya menjadi tajam, dan ia bukan pertanyaan teknis
+#### Pertanyaan untuk pemilik
 
-**Apakah bisnis ini membedakan kontrak yang DITANDATANGANI dari kontrak yang
-SELESAI DIKERJAKAN?**
+**Apakah bisnis ini membedakan kontrak yang sudah ditandatangani dari kontrak
+yang sudah selesai dikerjakan?**
 
 | Kalau YA | Kalau TIDAK |
 |---|---|
@@ -251,17 +243,17 @@ SELESAI DIKERJAKAN?**
 | Tambahkan ke `CONTRACT_STATUSES` + label 3 bahasa + posisi warna + tombol saringan | Satu migration `UPDATE`, nol perubahan kode |
 | Nol data berubah | Informasi "sudah selesai" HILANG dari 101 kontrak, tanpa jalan balik |
 
-🔶 **Rekomendasi saya: YA** — untuk kontrak, "ditandatangani" dan "selesai
-dikerjakan" memang dua keadaan berbeda, dan memetakan 101 baris ke `signed`
-membuang informasi yang tidak bisa dipulihkan. Tapi ini **semantik akuntansi
-pemilik**, bukan keputusan teknis, jadi saya tidak mengambilnya.
+🔶 Rekomendasi: ya. Untuk kontrak, "ditandatangani" dan "selesai dikerjakan"
+adalah dua keadaan berbeda, dan memetakan 101 baris ke `signed` membuang
+informasi yang tidak bisa dipulihkan. Namun ini menyangkut semantik akuntansi
+pemilik, jadi keputusannya tidak diambil di sini.
 
-### 4.0.1 Yang SUDAH diperbaiki tanpa menunggu keputusan itu
+### 4.0.1 Yang sudah diperbaiki tanpa menunggu keputusan itu
 
-Penelusuran di atas menemukan cacat yang **tidak** bergantung pada keputusan
-kosakata — dan karena itu dikerjakan sekarang.
+Penelusuran di atas menemukan cacat yang tidak bergantung pada keputusan
+kosakata, jadi langsung dikerjakan.
 
-**Donat status di halaman kontrak dibangun dari tiga status yang DIPAKU:**
+Grafik donat status di halaman kontrak dibangun dari tiga status yang dipaku:
 
 ```ts
 { name: sah,        value: countByStatus.get("signed")   ?? 0 },
@@ -269,35 +261,36 @@ kosakata — dan karena itu dikerjakan sekarang.
 { name: dibatalkan, value: countByStatus.get("canceled") ?? 0 },
 ```
 
-Diukur di produksi: **609 kontrak · 508 masuk grafik · 101 HILANG** — 16,6%.
+Diukur di produksi: 609 kontrak, 508 masuk grafik, 101 hilang (16,6%).
 
-Yang membuatnya berbahaya: **grafiknya tidak terlihat salah.** Ia menggambar
-tiga irisan rapi dengan jumlah yang tampak masuk akal. Dan tabel di halaman yang
-SAMA justru benar — `StatusBadge` punya cadangan dan menampilkan "Completed" —
-jadi dua permukaan di satu halaman menjawab berbeda tentang data yang sama.
+Grafiknya tidak terlihat salah: tiga irisan rapi dengan jumlah yang tampak masuk
+akal. Tabel di halaman yang sama justru benar (`StatusBadge` punya cadangan dan
+menampilkan "Completed"), sehingga dua bagian di satu halaman memberi jawaban
+berbeda tentang data yang sama.
 
-Diperbaiki lewat `src/lib/contract-status-chart.ts`: tiga yang dikenal tetap di
-posisi 0-1-2 (warna dipasangkan per POSISI, bukan per nama), lalu status di luar
-kosakata menyusul dan mendapat `unknownTone` yang memang sudah jadi cadangan di
+Diperbaiki lewat `src/lib/contract-status-chart.ts`. Tiga status yang dikenal
+tetap di posisi 0-1-2 (warna dipasangkan per posisi, bukan per nama). Status di
+luar kosakata menyusul dan mendapat `unknownTone`, cadangan yang sudah ada di
 `dashboard-charts.tsx`.
 
-`tests/contract-status-chart.test.ts` menegakkan invariannya: **jumlah irisan =
-jumlah kontrak**, apa pun statusnya. Dan ia menolak kembalinya daftar yang dipaku.
+`tests/contract-status-chart.test.ts` menjaga invariannya: jumlah irisan sama
+dengan jumlah kontrak, apa pun statusnya. Tes itu juga menolak kembalinya daftar
+yang dipaku.
 
-Efek sampingnya berguna: **grafiknya sekarang menjadi bukti untuk keputusan
-§4.0** — irisan "Completed" terlihat, dengan jumlahnya.
+Sekarang irisan "Completed" terlihat beserta jumlahnya, sehingga grafiknya bisa
+dipakai sebagai bahan keputusan §4.0.
 
 ### 4.1 Urutan perbaikan yang tidak boleh dibalik
 
-1. **Putuskan kosakatanya** (keputusan pemilik): apakah `completed` sah dan harus
-   masuk `CONTRACT_STATUSES`, atau 101 baris itu harus dipetakan ke `signed`?
+1. **Putuskan kosakatanya** (keputusan pemilik): apakah `completed` sah dan masuk
+   `CONTRACT_STATUSES`, atau 101 baris itu dipetakan ke `signed`.
 2. **Perbaiki datanya** lewat migration bertanggal.
-3. **Baru** pasang penjaga tingkat basis data.
+3. **Baru kemudian** pasang penjaga di tingkat basis data.
 
-Memasang penjaga lebih dulu akan **menolak data yang sudah ada** — dan di
-PostgreSQL `ALTER TABLE … ADD CONSTRAINT … CHECK` memvalidasi seluruh baris saat
-dipasang, jadi ia akan gagal keras. Itu sebenarnya kabar baik: gagal keras lebih
-baik daripada diam, tapi hanya kalau urutannya benar.
+Penjaga yang dipasang lebih dulu akan menolak data yang sudah ada. Di
+PostgreSQL, `ALTER TABLE … ADD CONSTRAINT … CHECK` memvalidasi seluruh baris saat
+dipasang, jadi pemasangannya akan gagal dengan galat. Itu lebih baik daripada
+gagal tanpa suara, tetapi urutannya tetap harus benar.
 
 ### 4.2 Pilihan penjaga di PostgreSQL
 
@@ -307,59 +300,66 @@ baik daripada diam, tapi hanya kalau urutannya benar.
 | Enum native PostgreSQL | Penjaga terkuat | Mengubah skema Prisma ke `enum`, dan `ALTER TYPE … ADD VALUE` tidak bisa di dalam transaksi |
 | Tabel referensi + FK | Paling fleksibel | 20+ tabel kecil baru; berlebihan untuk kosakata yang jarang berubah |
 
-Disarankan **`CHECK`**: ia menutup lubangnya tanpa menyentuh satu pun tipe, jadi
-sifat portabel §1.5 tetap utuh.
+Yang disarankan `CHECK`: ia menutup celahnya tanpa mengubah tipe, sehingga sifat
+portabel §1.5 tetap utuh.
 
 ---
 
-## 5. Keputusan desain yang harus diambil SAAT pindah mesin
+## 5. Keputusan desain saat pindah mesin, dan keadaannya sesudah penukaran
+
+| | Keadaan 18 Okt 2026 |
+|---|---|
+| 5.1 Zona waktu | Timestamp naif dipertahankan: baseline PostgreSQL memakai `TIMESTAMP(3)` tanpa zona. ❓ Pemilik, bila `timestamptz` diinginkan untuk kolom peristiwa (kini migration tersendiri, tidak lagi bagian penukaran) |
+| 5.2 `serial` vs `identity` | ✅ `SERIAL`, sesuai saran; sequence terbukti ≥ `MAX(id)` sesudah pemuatan (dok 11 §10.2) |
+| 5.3 Trigger | ✅ ditulis ulang di `prisma/postgresql/control/0002_slug_permanen`, dijaga `tests/pg-trigger-parity.test.ts`. ❌ Pembuktinya `scripts/prove-company-slug-immutable.ts` masih berdialek MySQL (placeholder `?`, `trigger_schema = <nama db>`) |
+
+Analisis aslinya, sebagai alasan di balik tabel di atas:
 
 ### 5.1 Zona waktu — 165 kolom waktu, semuanya naif
 
-Di buku produksi: **165 kolom `datetime`** dan 2 `date`. `datetime` MariaDB
-**tidak menyimpan zona waktu**, dan Prisma memetakan `DateTime` ke
-`timestamp(3)` **tanpa** zona di PostgreSQL — jadi bawaannya mempertahankan
-perilaku yang sama.
+Di buku produksi ada 165 kolom `datetime` dan 2 `date`. `datetime` MariaDB tidak
+menyimpan zona waktu, dan Prisma memetakan `DateTime` ke `timestamp(3)` tanpa
+zona di PostgreSQL. Bawaannya karena itu mempertahankan perilaku yang sama.
 
-Tapi "sama" di sini berarti mempertahankan satu asumsi yang tak pernah ditulis:
-**semua waktu disimpan UTC, dan tampilan mengubahnya ke WIB.** Untuk aplikasi
-akuntansi yang penutupan periodenya berbasis tanggal, asumsi yang tak tertulis
-itu adalah bom waktu — satu dokumen yang diposting 23:30 WIB bisa jatuh ke
-periode yang salah kalau ada satu saja jalur yang lupa mengubahnya.
+Perilaku yang sama itu bergantung pada asumsi yang tidak pernah ditulis: semua
+waktu disimpan dalam UTC, dan tampilan mengubahnya ke WIB. Penutupan periode di
+aplikasi ini berbasis tanggal. Bila satu jalur lupa mengubah zona, dokumen yang
+diposting pukul 23:30 WIB bisa masuk ke periode yang salah.
 
-**Pindah mesin adalah momen termurah untuk memutuskannya**, dan ada dua jawaban
-yang sah:
+Pindah mesin adalah momen termurah untuk memutuskannya (momen itu lewat tanpa
+keputusan; bawaannya dipertahankan). Ada dua jawaban yang sah:
 
-- `timestamptz` untuk kolom **peristiwa** (`created_at`, `posted_at`, `sent_at`)
-  — PostgreSQL menyimpan titik waktu absolut, dan konversi berhenti menjadi
+- `timestamptz` untuk kolom peristiwa (`created_at`, `posted_at`, `sent_at`).
+  PostgreSQL menyimpan titik waktu absolut, dan konversi tidak lagi menjadi
   tanggung jawab kode.
-- `date` tetap `date` untuk kolom **tanggal akuntansi** (`invoice_date`,
-  `period`) — tanggal buku bukan titik waktu, dan memberinya zona waktu justru
-  menciptakan kesalahan baru.
+- `date` tetap `date` untuk kolom tanggal akuntansi (`invoice_date`, `period`).
+  Tanggal buku bukan titik waktu; memberinya zona waktu justru menimbulkan
+  kesalahan baru.
 
-❓ **Keputusan pemilik.** Yang TIDAK boleh terjadi: memilih tanpa menyadari bahwa
-sebuah pilihan sedang dibuat.
+❓ Keputusan pemilik. Yang perlu dihindari: memilih tanpa sadar bahwa sebuah
+pilihan sedang dibuat.
 
 ### 5.2 `serial` vs `identity`
 
 99 migration memakai `AUTO_INCREMENT` (49 berkas). Prisma memetakan
 `autoincrement()` ke `SERIAL` di PostgreSQL. `GENERATED … AS IDENTITY` adalah
-bentuk baku SQL yang lebih bersih, tapi Prisma belum membangkitkannya —
-**terima `SERIAL`**, jangan tulis tangan sesuatu yang `prisma migrate` akan
-melawan di migration berikutnya.
+bentuk baku SQL yang lebih bersih, tetapi Prisma belum membangkitkannya. Terima
+`SERIAL`; jangan menulis tangan sesuatu yang akan dilawan `prisma migrate` di
+migration berikutnya.
 
 ### 5.3 Satu trigger harus ditulis ulang
 
-`companies_slug_immutable` (satu-satunya trigger di seluruh pemasangan,
-dihitung di produksi). PostgreSQL menuntut `CREATE FUNCTION … RETURNS trigger`
-lalu `CREATE TRIGGER` — penulisan ulang, bukan terjemahan. Pembuktinya
-`scripts/prove-company-slug-immutable.ts` ikut berubah.
+`companies_slug_immutable` adalah satu-satunya trigger di seluruh pemasangan
+(dihitung di produksi). PostgreSQL menuntut `CREATE FUNCTION … RETURNS trigger`
+lalu `CREATE TRIGGER`, jadi trigger ini harus ditulis ulang, tidak cukup
+diterjemahkan. Skrip pembuktinya, `scripts/prove-company-slug-immutable.ts`,
+ikut berubah.
 
 ---
 
-## 6. Yang TIDAK saya temukan, dan itu berarti
+## 6. Yang dicari dan tidak ditemukan
 
-Agar audit ini bisa dipercaya, berikut yang dicari dan **tidak ada**:
+Supaya audit ini bisa diperiksa, berikut yang dicari dan tidak ada:
 
 | Dicari | Hasil |
 |---|---|
@@ -375,41 +375,42 @@ Agar audit ini bisa dipercaya, berikut yang dicari dan **tidak ada**:
 
 ## 7. Ringkasan untuk pemelihara berikutnya
 
-**Skema ini bisa dipelihara.** Yang membuatnya begitu bukan keberuntungan: tiga
-aturan di `docs/DATABASE.md` — uang `Decimal`, enum-like sebagai `String`, dan
-`db:migrate:all` ke semua buku — ditegakkan tanpa pengecualian, dan ketiganya
-terukur di produksi.
+**Skema ini bisa dipelihara.** Tiga aturan di `docs/DATABASE.md` (uang
+`Decimal`, enum-like sebagai `String`, dan `db:migrate:all` ke semua buku)
+ditegakkan tanpa pengecualian, dan ketiganya terukur di produksi.
 
 Yang perlu dikerjakan, dalam urutan ini:
 
-1. **S1 sekarang** (sebelum pindah mesin) — deklarasikan 18 `@@index`. Benar di
-   kedua mesin; menundanya sampai migrasi berarti ia tidak pernah teruji
+1. **S1 sekarang** (sebelum pindah mesin): deklarasikan 18 `@@index`. Benar di
+   kedua mesin; bila ditunda sampai migrasi, perubahannya tidak pernah teruji di
    produksi.
-2. **S2 kapan saja** — 10 indeks, terutama `audit_logs.user_id`.
-3. **S3 bertahap** — kosakata → data → penjaga. Jangan dibalik.
-4. **§5.1 saat pindah** — putuskan `timestamptz`, jangan mewarisi asumsi yang tak
-   tertulis.
+2. **S2 kapan saja**: 10 indeks, terutama `audit_logs.user_id`.
+3. **S3 bertahap**: kosakata → data → penjaga. Jangan dibalik.
+4. **§5.1**: tidak diputuskan saat pindah; timestamp naif dipertahankan.
+   ❓ Pemilik, bila `timestamptz` diinginkan.
 
-Dan satu pelajaran soal cara mengaudit: **`information_schema` basis data yang
-berjalan adalah satu-satunya sumber kebenaran.** Dua dari tiga temuan di dokumen
-ini tidak terlihat di skema Prisma, dan satu angka yang saya baca dari skema
-ternyata salah (§2.1).
+*Status 18 Okt 2026: butir 1 & 2 ✅ (§8), butir 3 ❌ terbuka, butir 4 ❓.*
+
+Pelajaran soal cara mengaudit: `information_schema` basis data yang berjalan
+adalah satu-satunya sumber kebenaran. Dua dari tiga temuan di dokumen ini tidak
+terlihat di skema Prisma, dan satu angka yang dibaca dari skema ternyata salah
+(§2.1).
 
 ---
 
-## 8. Dikerjakan pada hari yang sama — S1 & S2 DITUTUP
+## 8. Dikerjakan pada hari yang sama: S1 & S2 ditutup
 
-Audit yang temuannya tidak dikerjakan akan ditemukan ulang. S1 dan S2 ditutup
-12 Okt 2026; S3 menunggu satu keputusan kosakata.
+S1 dan S2 ditutup 12 Okt 2026. S3 menunggu satu keputusan kosakata.
 
-### 8.1 Kriterianya diperbaiki di tengah jalan, dan itu menemukan 4 lagi
+### 8.1 Kriteria diperbaiki di tengah jalan, dan menemukan 4 lagi
 
-Mula-mula saya mencari "kolom FK yang indeksnya hanya implisit". Kriteria itu
-salah — yang menentukan bukan *bagaimana indeksnya dibuat*, melainkan **apakah ia
-dideklarasikan di skema Prisma**, sebab PostgreSQL akan dibangun dari skema itu.
+Kriteria awalnya "kolom FK yang indeksnya hanya implisit". Kriteria itu salah.
+Yang menentukan adalah apakah indeksnya dideklarasikan di skema Prisma, karena
+PostgreSQL dibangun dari skema itu, tidak peduli bagaimana indeksnya dulu
+dibuat.
 
-Dengan kriteria yang benar — diff **indeks hidup** vs **indeks terdeklarasi** —
-muncul empat yang lolos dari analisis berbasis-FK:
+Dengan kriteria yang benar (diff indeks hidup vs indeks terdeklarasi), muncul
+empat kolom yang lolos dari analisis berbasis FK:
 
 | Yang lolos | Kenapa lolos |
 |---|---|
@@ -418,23 +419,25 @@ muncul empat yang lolos dari analisis berbasis-FK:
 | `approval_requests.decided_by_id` | **Tidak punya FK sama sekali** — indeksnya bernama `_fkey` tapi itu sisa dari constraint yang pernah dicabut. Namanya membohongi pembacanya |
 | `companies.is_demo` | Bukan kolom FK sama sekali, jadi tak pernah masuk pencarian FK |
 
-### 8.2 Hasil akhir: nol indeks akan hilang
+### 8.2 Hasil akhir: tidak ada indeks yang akan hilang
 
-**28 + 4 = 32 deklarasi `@@index`** ditambahkan ke tiga skema, dan tiga migration
-tulis-tangan menyesuaikan basis datanya:
+32 deklarasi `@@index` (28 + 4) ditambahkan ke tiga skema, dan tiga migration
+tulisan tangan menyesuaikan basis datanya:
 
 | Migration | Isi |
 |---|---|
-| `prisma/migrations/0065_indeks_fk_eksplisit` | 15 `RENAME INDEX` + 6 `CREATE INDEX` |
-| `prisma/control/migrations/0018_indeks_fk_eksplisit` | 1 `RENAME` + 3 `CREATE` |
-| `prisma/platform/migrations/0019_indeks_fk_eksplisit` | 3 `RENAME` |
+| `prisma/migrations/0065_indeks_fk_eksplisit` *(arsip MariaDB)* | 15 `RENAME INDEX` + 6 `CREATE INDEX` |
+| `prisma/control/migrations/0018_indeks_fk_eksplisit` *(arsip MariaDB)* | 1 `RENAME` + 3 `CREATE` |
+| `prisma/platform/migrations/0019_indeks_fk_eksplisit` *(arsip MariaDB)* | 3 `RENAME` |
 
-**`RENAME`, bukan `CREATE`** untuk yang sudah ada: indeksnya memang sudah ada di
-MariaDB, jadi `CREATE INDEX` akan menghasilkan indeks **kedua** pada kolom yang
-sama — dua kali biaya tulis, nol manfaat baca. Mengganti nama memindahkan nol
-byte data.
+Di PostgreSQL ke-32 indeks itu langsung ada di `0001_baseline` tiap basis data,
+karena baseline dibangkitkan dari skema yang sudah mendeklarasikannya.
 
-**Dibuktikan di basis data sekali-pakai** (struktur produksi disalin, migration
+Untuk indeks yang sudah ada dipakai `RENAME`, bukan `CREATE`. Indeksnya sudah ada
+di MariaDB, jadi `CREATE INDEX` akan membuat indeks kedua pada kolom yang sama:
+biaya tulis dua kali tanpa manfaat baca. Mengganti nama tidak memindahkan data.
+
+Dibuktikan di basis data sekali-pakai (struktur produksi disalin, migration
 diterapkan, lalu dibandingkan dua arah dengan skemanya):
 
 | | indeks hidup | terdeklarasi tapi tak ada | ada tapi tak terdeklarasi |
@@ -443,38 +446,39 @@ diterapkan, lalu dibandingkan dua arah dengan skemanya):
 | kendali | 60 (dari 57) | **0** | **0** |
 | platform | 45 | **0** | **0** |
 
-Nol `_fkey` tersisa. Basis data sekali-pakainya dibuang setelah pembuktian.
+Tidak ada `_fkey` yang tersisa. Basis data sekali-pakai dibuang setelah
+pembuktian.
 
-### 8.3 Penjaga permanen, bukan sekadar perbaikan sekali
+### 8.3 Penjaga permanen
 
-`tests/index-fk-parity.test.ts` membaca ketiga skema dan menolak **setiap relasi
-tanpa `@@index`**. Ia berjalan di CI pada setiap PR, jadi relasi ke-19 ditolak
-pada hari ia ditulis — bukan ditemukan dua tahun kemudian oleh audit berikutnya.
+`tests/index-fk-parity.test.ts` membaca ketiga skema dan menolak setiap relasi
+tanpa `@@index`. Tes ini berjalan di CI pada setiap PR, jadi relasi baru tanpa
+indeks ditolak pada hari ia ditulis.
 
-Tiga hal yang membuatnya bukan tes kosong:
+Tiga hal yang membuat tes ini benar-benar memeriksa:
 
-1. **`@relation` multi-baris ikut terbaca.** Sapuan pertama saya memakai
-   `@relation\([^)]*fields:` yang berhenti di baris pertama, dan karenanya
-   melaporkan `fixed_assets.asset_account_id` sebagai "bukan relasi" padahal ia
-   FK. Ada tes terpisah yang menjaga pembacanya sendiri — kalau ia kembali ke
-   bentuk naif, seluruh berkas uji ini akan hijau karena **tidak melihat apa
-   pun**, kegagalan paling berbahaya yang bisa dimiliki sebuah tes.
-2. **Indeks komposit hanya menutupi PREFIKSnya.** `[a, b]` tidak menutupi kueri
-   atas `b` saja. Memperlakukannya sebagai tertutup akan meloloskan persis kelas
-   cacat yang dijaga.
-3. **Sudah dilihat MERAH lebih dulu.** Mencabut `@@index([reversalOfId])` dari
-   `Journal` membuatnya gagal dan menyebut `Journal.[reversalOfId]` dengan nama.
-   Probe pertama saya keliru — saya mencabut salah satu dari enam
-   `@@index([invoiceId])` yang ternyata masih tertutup indeks lain di model yang
-   sama, dan tesnya hijau dengan benar.
+1. **`@relation` multi-baris ikut terbaca.** Sapuan pertama memakai
+   `@relation\([^)]*fields:`, yang berhenti di baris pertama, sehingga
+   `fixed_assets.asset_account_id` dilaporkan "bukan relasi" padahal FK. Ada tes
+   terpisah untuk pembacanya. Bila pembaca kembali ke bentuk naif, seluruh tes
+   akan hijau karena tidak melihat apa pun.
+2. **Indeks komposit hanya menutupi prefiksnya.** `[a, b]` tidak menutupi kueri
+   atas `b` saja. Menganggapnya tertutup akan meloloskan cacat yang justru
+   dijaga.
+3. **Sudah dilihat merah lebih dulu.** Mencabut `@@index([reversalOfId])` dari
+   `Journal` membuat tes gagal dan menyebut `Journal.[reversalOfId]`. Percobaan
+   pertama keliru: yang dicabut salah satu dari enam `@@index([invoiceId])` yang
+   masih tertutup indeks lain di model yang sama, dan tesnya memang hijau.
 
-### 8.4 Yang MASIH terbuka
+### 8.4 Yang masih terbuka
 
-**S3 — penjaga nilai enum-like.** Butuh satu keputusan pemilik lebih dulu:
+**S3, penjaga nilai enum-like.** Butuh satu keputusan pemilik lebih dulu:
 apakah `completed` sah dan masuk `CONTRACT_STATUSES`, atau 101 baris itu
-dipetakan ke `signed`? Setelah itu: perbaiki data, **baru** pasang `CHECK`.
-Urutannya tidak boleh dibalik — `ALTER TABLE … ADD CHECK` di PostgreSQL
-memvalidasi seluruh baris saat dipasang, jadi ia akan gagal keras.
+dipetakan ke `signed`. Sesudah itu perbaiki data, baru pasang `CHECK`. Urutannya
+tidak boleh dibalik, karena `ALTER TABLE … ADD CHECK` di PostgreSQL memvalidasi
+seluruh baris saat dipasang dan akan gagal.
 
-**§5.1 — zona waktu.** Keputusan `timestamptz` vs `timestamp` harus diambil
-**saat** pindah mesin, bukan diwarisi tanpa disadari.
+**§5.1, zona waktu.** Tidak diputuskan saat penukaran; baseline PostgreSQL
+mempertahankan `TIMESTAMP(3)` naif. ❓ Tetap keputusan pemilik bila
+`timestamptz` diinginkan untuk kolom peristiwa, kini sebagai migration
+tersendiri.

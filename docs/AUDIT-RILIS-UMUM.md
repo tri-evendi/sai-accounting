@@ -1,17 +1,20 @@
 # Audit Kesiapan Rilis Umum — Perjalanan Pelanggan Ujung-ke-Ujung
 
-> ⏳ **POTRET BERTANGGAL — 15 Agustus 2026. Jangan dibaca sebagai keadaan
-> sekarang.** Dokumen ini disimpan sebagai **riwayat**: metodenya jelas dan
-> setiap temuannya menyebut `berkas:baris`, jadi ia masih berguna untuk
-> menelusuri *kenapa* sesuatu dulu diputuskan. Tapi hampir dua bulan rilis
-> sudah lewat di atasnya, dan sebagian temuannya sudah ditutup.
+> **Arsip: potret bertanggal 15 Agustus 2026.** Isinya bukan keadaan sekarang
+> dan tidak boleh dijadikan dasar tindakan. Dokumen ini disimpan sebagai
+> riwayat: metodenya jelas dan setiap temuannya menyebut `berkas:baris`, jadi ia
+> masih berguna untuk menelusuri alasan keputusan lama.
 >
-> **Untuk keadaan arsitektur yang berlaku, baca
-> [`docs/arsitektur/08-PENILAIAN-ARSITEKTUR.md`](./arsitektur/08-PENILAIAN-ARSITEKTUR.md)**
-> (temuan aktif P0–P3 beserta statusnya) dan
+> Sebagian besar temuannya sudah ditutup, dan banyak jalur `berkas:baris`-nya
+> sudah pindah (monorepo `packages/`, `apps/operator`). Isinya menyebut MariaDB,
+> `data/audit/*.jsonl`, dan `public/uploads`; ketiganya sudah diganti
+> (PostgreSQL, tabel jejak audit, `data/documents` berpenjaga). Angka di
+> dalamnya juga sudah berubah.
+>
+> Untuk keadaan yang berlaku, baca
+> [`docs/arsitektur/08-PENILAIAN-ARSITEKTUR.md`](./arsitektur/08-PENILAIAN-ARSITEKTUR.md)
+> (temuan aktif beserta statusnya) dan
 > [`docs/arsitektur/09-PETA-JALAN.md`](./arsitektur/09-PETA-JALAN.md).
-> Angka di dokumen ini pun sudah bergerak — mis. "169 berkas uji" di §0 kini
-> **270+**.
 
 > Ditulis 15 Agustus 2026, terhadap `main` (= `develop`, nol commit selisih).
 > Cakupan: pendaratan pemasaran → pendaftaran/masuk → pembuatan PT →

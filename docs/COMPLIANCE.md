@@ -1,19 +1,20 @@
 # Kepatuhan & siklus hidup akun (issue #142)
 
 Implementasi §10 [`MULTI-TENANT.md`](./MULTI-TENANT.md). Dokumen ini mencatat
-KEBIJAKAN yang kodenya tegakkan — dan memisahkan dengan jujur mana yang sudah
-mekanisme, mana yang masih keputusan tertunda.
+kebijakan yang ditegakkan kode, dan memisahkan mana yang sudah berupa mekanisme
+dari mana yang masih keputusan tertunda.
 
-> ⚠️ **Naskah hukum (S&K, kebijakan privasi) masih DRAF** — versi berakhiran
-> `-draf` di `src/lib/legal.ts`, berspanduk DRAF di halamannya. Mekanismenya
-> berjalan; janjinya belum boleh dibuat sebelum ditinjau penasihat hukum/pajak.
+> ⚠ **Naskah hukum (S&K, kebijakan privasi) masih draf**: versinya berakhiran
+> `-draf` di `src/lib/legal.ts` dan halamannya berspanduk DRAF. Mekanismenya
+> berjalan, tetapi janjinya belum boleh dibuat sebelum ditinjau penasihat
+> hukum/pajak.
 
 ---
 
-## 1. Retensi: berhenti berlangganan TIDAK menghapus buku
+## 1. Retensi: berhenti berlangganan tidak menghapus buku
 
-**Kebijakan.** UU KUP mewajibkan buku, catatan, dan dokumen dasar pembukuan
-disimpan **10 tahun** — termasuk yang elektronik. Maka:
+**Kebijakan.** UU KUP mewajibkan buku, catatan, dan dokumen dasar pembukuan,
+termasuk yang elektronik, disimpan **10 tahun**. Karena itu:
 
 ```
 suspended (hanya-baca) → ekspor kapan saja → penghapusan HANYA atas permintaan
@@ -21,7 +22,7 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 → penghancuran buku HANYA setelah retention_until (≥10 tahun) lewat
 ```
 
-**Penegakan di kode** (bukan hanya tulisan):
+**Penegakan di kode:**
 
 | Aturan | Ditegakkan oleh |
 |---|---|
@@ -43,33 +44,35 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 
 ## 3. Jejak audit tingkat tenant
 
-`data/audit/tenants/<slug>/audit.jsonl` (`packages/platform/src/tenant-audit.ts`) — terpisah
-dari jejak per-PT dengan alasan yang sama (#104): pembaca yang lupa menyaring
-tidak punya apa-apa untuk bocor. Peristiwa: pendaftaran (beserta **versi S&K/
-privasi yang disetujui**), pembuatan PT, undangan, ganti paket, transisi
-status (penjadwal, aktor `system`), ekspor, siklus permintaan penghapusan.
-Jejak TIDAK dihapus oleh eksekusi penghapusan — ia buktinya.
+Jejaknya tabel `tenant_audit_logs` di basis data kendali
+(`packages/platform/src/tenant-audit.ts`; sejak #484, sebelumnya berkas
+`data/audit/tenants/<slug>/audit.jsonl`). Ia terpisah dari jejak per-PT dengan
+alasan yang sama seperti #104: pembaca yang lupa menyaring tidak punya data
+untuk dibocorkan. Peristiwa yang dicatat: pendaftaran (beserta versi S&K/privasi
+yang disetujui), pembuatan PT, undangan, ganti paket, transisi status
+(penjadwal, aktor `system`), ekspor, dan siklus permintaan penghapusan. Eksekusi
+penghapusan tidak menghapus jejak ini, karena jejak inilah buktinya.
 
 ## 4. Persetujuan dokumen ber-versi
 
-`src/lib/legal.ts` = satu sumber versi. Persetujuan dicatat di
-`registrations.terms_version`/`privacy_version` DAN di entri audit
-`tenant.register`. Mengubah naskah WAJIB menaikkan versi. **Belum ada** alur
-persetujuan-ulang untuk pengguna lama saat versi naik — dibangun saat naskah
-final pertama terbit.
+`src/lib/legal.ts` adalah satu-satunya sumber versi. Persetujuan dicatat di
+`registrations.terms_version`/`privacy_version` dan di entri audit
+`tenant.register`. Setiap perubahan naskah wajib menaikkan versi. Alur
+persetujuan-ulang untuk pengguna lama saat versi naik belum ada; ia dibangun
+saat naskah final pertama terbit.
 
-## 5. ❗ KEPUTUSAN TERBUKA — harus dijawab SEBELUM pelanggan umum pertama
+## 5. Keputusan terbuka — dijawab sebelum pelanggan umum pertama
 
 1. **Tempat penyimpanan (data residency).** Ketentuan perpajakan menyebut
-   penyimpanan **di Indonesia**. Bila benar berlaku untuk SaaS pembukuan, ini
-   menentukan pilihan hosting — dan jauh lebih mahal diubah belakangan.
-   Kode ini TIDAK menjawabnya; `/privacy` §4 sengaja menyebutnya tertunda.
-   **Pemilik produk + penasihat hukum yang memutuskan.**
+   penyimpanan di Indonesia. Bila itu berlaku untuk SaaS pembukuan, ia
+   menentukan pilihan hosting, dan jauh lebih mahal diubah belakangan. Kode
+   tidak menjawabnya; `/privacy` §4 menyebutnya tertunda. Yang memutuskan:
+   pemilik produk bersama penasihat hukum.
 2. **Tinjauan naskah S&K + privasi** oleh penasihat hukum → terbitkan versi
    tanpa akhiran `-draf`, bangun alur persetujuan-ulang.
 3. **Durasi tenggang (30 hari) dan jangkar retensi** (entri jurnal termuda +
-   10 tahun, konservatif) — angka yang dipakai kode; konfirmasi ke penasihat
-   pajak bila ingin lebih presisi (mis. akhir tahun buku).
-4. **Persetujuan S&K penerima undangan (#139)**: yang tercatat ber-versi baru
-   persetujuan PENDAFTAR utama; halaman terima-undangan belum memintanya —
-   lengkapi bersama alur persetujuan-ulang saat naskah final terbit.
+   10 tahun, konservatif). Ini angka yang dipakai kode; konfirmasikan ke
+   penasihat pajak bila ingin lebih presisi (mis. akhir tahun buku).
+4. **Persetujuan S&K penerima undangan (#139).** Yang tercatat ber-versi baru
+   persetujuan pendaftar utama; halaman terima-undangan belum memintanya.
+   Lengkapi bersama alur persetujuan-ulang saat naskah final terbit.

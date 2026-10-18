@@ -169,7 +169,7 @@ function run(script: string, args: string[], env?: Record<string, string>): Prom
  * pemasangan yang sebenarnya SEHAT. Keduanya keliru dengan cara yang berbeda:
  *
  *  • `SETTINGS_ENCRYPTION_KEY` memang ada dan memang penting — tapi ia milik
- *    pengaturan surel (#169), yang disetel BELAKANGAN lewat `/operator/mail`.
+ *    pengaturan surel (#169), yang disetel BELAKANGAN lewat konsol `/mail`.
  *    Tidak satu pun dari lima langkah di bawah menyentuhnya.
  *  • `NEXTAUTH_SECRET` **tidak pernah ada di repo ini**; namanya `AUTH_SECRET`.
  *    Nama itu dikarang, dan `grep` seluruh `src/` + `scripts/` hanya menemukan
@@ -192,7 +192,7 @@ const REQUIRED_ENV = [
  */
 const RECOMMENDED_ENV = [
   ["AUTH_SECRET", "penandatangan sesi — tanpa ini tidak ada yang bisa MASUK"],
-  ["SETTINGS_ENCRYPTION_KEY", "kunci enkripsi pengaturan surel (#169), dipakai /operator/mail"],
+  ["SETTINGS_ENCRYPTION_KEY", "kunci enkripsi pengaturan surel (#169), dipakai konsol /mail"],
 ] as const;
 
 function missing(vars: readonly (readonly [string, string])[]): string[] {
@@ -408,14 +408,14 @@ async function main() {
         "═══ Selesai. Tiga langkah terakhir milik manusia ═══════════════════\n" +
         "\n" +
         "1. Tempel baris OPERATOR_USERS di atas ke `.env` produksi, lalu:\n" +
-        "     docker compose up -d --force-recreate web\n" +
+        "     docker compose up -d --force-recreate app-customer app-operator\n" +
         "   (`env_file` hanya dibaca saat kontainer DIBUAT — restart biasa tidak cukup.)\n" +
         "\n" +
         "2. PINDAI URI otpauth:// ke aplikasi authenticator SEBELUM langkah 1.\n" +
         "   MFA operator wajib; entri tanpa rahasia TOTP dibuang sebagai salah\n" +
         "   bentuk, bukan diperlakukan sebagai akun tanpa MFA.\n" +
         "\n" +
-        "3. Setel SMTP di /operator/mail dan tekan UJI KIRIM.\n" +
+        "3. Setel SMTP di konsol /mail dan tekan UJI KIRIM.\n" +
         "   Tanpa itu, setiap pendaftaran akan menjawab \"cek email Anda\" sambil\n" +
         "   menulis surelnya ke cakram, tanpa satu galat pun (issue #317).\n" +
         (useDefaults

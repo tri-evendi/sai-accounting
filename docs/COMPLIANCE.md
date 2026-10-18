@@ -26,8 +26,8 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 
 | Aturan | Ditegakkan oleh |
 |---|---|
-| Suspensi = hanya-baca, bukan terkunci | penjaga #140 (`tenant-state.ts`) |
-| Ekspor tetap terbuka saat suspended | `requireTenantPermission` tidak memeriksa status; `api/tenant/export` tanpa cabang status |
+| Suspensi = hanya-baca, bukan terkunci | guard #140 (`tenant-state.ts`) |
+| Ekspor tetap terbuka saat suspended | `requireTenantPermission` tidak memeriksa status; `api/tenant/export` tanpa branch status |
 | Tidak ada jalur hapus-buku tanpa permintaan | satu-satunya kode yang men-DROP basis data perusahaan adalah `scripts/execute-tenant-deletion.ts --drop-ledgers`, dan ia menolak tanpa baris permintaan `executed` |
 | Eksekusi menunggu tenggang | `executionVerdict` (murni, teruji) |
 | Penghancuran menunggu retensi | `ledgerDropVerdict` + `retention_until` = 10 tahun sejak entri jurnal termuda, dihitung SAAT eksekusi (`retentionUntilFrom`) |
@@ -44,13 +44,13 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 
 ## 3. Jejak audit tingkat tenant
 
-Jejaknya tabel `tenant_audit_logs` di basis data kendali
+Jejaknya tabel `tenant_audit_logs` di basis data control
 (`packages/platform/src/tenant-audit.ts`; sejak #484, sebelumnya berkas
 `data/audit/tenants/<slug>/audit.jsonl`). Ia terpisah dari jejak per-PT dengan
 alasan yang sama seperti #104: pembaca yang lupa menyaring tidak punya data
 untuk dibocorkan. Peristiwa yang dicatat: pendaftaran (beserta versi S&K/privasi
 yang disetujui), pembuatan PT, undangan, ganti paket, transisi status
-(penjadwal, aktor `system`), ekspor, dan siklus permintaan penghapusan. Eksekusi
+(scheduler, aktor `system`), ekspor, dan siklus permintaan penghapusan. Eksekusi
 penghapusan tidak menghapus jejak ini, karena jejak inilah buktinya.
 
 ## 4. Persetujuan dokumen ber-versi

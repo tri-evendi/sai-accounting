@@ -63,7 +63,7 @@ Standar ini mengodifikasikan konvensi yang sudah dipakai di
 Kolomnya `VARCHAR`, jadi basis data menerima nilai apa pun. Zod menjaga
 formulir, tetapi tidak menjaga impor/ETL. Impor legacy pernah menyalin
 `'IN'`/`'OUT'`/`'PROCESS'` dan `'Kas Kecil'`/`'Rp'`/`'USD'`/`'CNY'` apa adanya
-tanpa galat. Hasilnya saldo stok nol untuk 33 barang, dan 18.689 baris kas
+tanpa error. Hasilnya saldo stok nol untuk 33 barang, dan 18.689 baris kas
 terposting ke akun kas bawaan.
 
 Collation basis data kini `C` (PostgreSQL, sejak 15 Okt 2026), jadi
@@ -75,8 +75,8 @@ filter Prisma `contains` perlu `mode: "insensitive"` untuk masukan bebas
 
 Aturannya:
 - Daftar nilai ada di satu tempat (`packages/core/src/constants.ts`) dan dipakai
-  `z.enum(...)` maupun penjaga impor. Jangan diketik ulang.
-- Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan melempar galat
+  `z.enum(...)` maupun guard impor. Jangan diketik ulang.
+- Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan melempar error
   untuk nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka
   salah tanpa jejak.
 - `bun run check-data-conformance` (juga layanan `job-conformance`) memeriksa
@@ -132,7 +132,7 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 - **Setiap kolom FK wajib punya `@@index`** (atau tercakup `@@unique`/`@id`)
   dan `CREATE INDEX` di migration-nya. PostgreSQL tidak membuat index untuk
   `FOREIGN KEY` secara otomatis; MariaDB/InnoDB dulu membuatnya sendiri. Tanpa
-  deklarasi, kueri join melambat tanpa galat. Dijaga
+  deklarasi, kueri join melambat tanpa error. Dijaga
   `tests/index-fk-parity.test.ts`.
   ```prisma
   @@index([accountId])
@@ -170,7 +170,7 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 > **Mesin: PostgreSQL 17 sejak 15 Okt 2026.** Riwayat MariaDB (`prisma/migrations/` 0001–0065, `prisma/control/migrations/`, `prisma/platform/migrations/`) adalah arsip hanya-baca. Berkas baru di sana tidak akan diterapkan. Latar dan validasinya: [`arsitektur/11-RENCANA-POSTGRESQL.md` §10](./arsitektur/11-RENCANA-POSTGRESQL.md).
 
 - Proyek ini tidak memakai `prisma migrate dev`. Migration ditulis tangan sebagai folder berurutan di `prisma/postgresql/<db>/NNNN_<nama>/migration.sql`, dengan `<db>` = `company` (buku tiap PT), `control`, atau `platform`. Contoh: `prisma/postgresql/control/0002_slug_permanen`.
-- Diterapkan via `prisma migrate deploy`: `bun run db:migrate:all` (kendali → platform → setiap PT). Di produksi `migrate` menyambung langsung ke `pg`, tidak lewat PgBouncer, karena advisory lock Prisma terikat sesi.
+- Diterapkan via `prisma migrate deploy`: `bun run db:migrate:all` (control → platform → setiap PT). Di produksi `migrate` menyambung langsung ke `pg`, tidak lewat PgBouncer, karena advisory lock Prisma terikat sesi.
 - Gaya DDL mengikuti `prisma/postgresql/company/0001_baseline`: identifier berkutip ganda (`"created_at"`), `SERIAL` untuk `id`, `TIMESTAMP(3)`, `DECIMAL(15,2)`, FK ditambahkan via `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... ON DELETE ... ON UPDATE ...`. Prisma tidak membangkitkan trigger: tulis tangan, dan `tests/pg-trigger-parity.test.ts` menjaganya.
 - Setelah menulis model dan SQL, jalankan `bun run db:generate` (Prisma client). Perbarui `prisma/seed.ts` bila perlu data awal.
 
@@ -215,7 +215,7 @@ sengaja: log mencatat keadaan saat itu.
 
 ## 11. Basis data platform `sai_platform` (issue #137) — operasional
 
-Lapisan ketiga di samping kendali dan perusahaan (rancangan dan alasannya:
+Lapisan ketiga di samping control dan perusahaan (rancangan dan alasannya:
 `docs/MULTI-TENANT.md` §4A). Isinya `plans`, `subscriptions`, `payments`,
 `platform_invoices`, `usage_counters`, `scheduler_runs`, `mail_settings`: data
 bisnis penyedia SaaS, tanpa angka akuntansi pelanggan. Skema
@@ -236,7 +236,7 @@ Collation `C` sama dengan yang dipakai `ServerPostgres`
 (`packages/db/src/server.ts`) untuk buku PT. Lalu set `PLATFORM_DATABASE_URL`
 di `.env` (lihat `.env.docker.example`) dan jalankan
 `bun run db:migrate:platform`, atau `db:migrate:all`, yang menyertakannya di
-antara kendali dan perusahaan.
+antara control dan perusahaan.
 
 **Aturan:**
 
@@ -246,13 +246,13 @@ antara kendali dan perusahaan.
   berhak atas `sai_platform`, bukan pengguna `sai` milik buku besar.
 - **Tidak ada FK lintas-basis-data.** Kolom `tenant_id` di setiap tabel platform
   adalah `Int` biasa tanpa FK, sama dengan pola `periods.closed_by_id`.
-- **Urutan tulis:** alur yang menulis ke platform dan kendali menulis ke
-  platform dulu, kendali belakangan. Selisihnya ditemukan
+- **Urutan tulis:** alur yang menulis ke platform dan control menulis ke
+  platform dulu, control belakangan. Selisihnya ditemukan
   `bun run reconcile:platform` (empat pemeriksaan sejak #140, termasuk
   kecocokan status dan `usage_counters`).
 - **Penagihan mati tidak boleh mematikan login.**
   `packages/platform/src/platform-db.ts` dimuat malas (lazy) dan hanya boleh
-  diimpor kode penagihan, tidak dari penjaga, sesi, atau jalur lain yang
+  diimpor kode penagihan, tidak dari guard, sesi, atau jalur lain yang
   berjalan pada setiap permintaan. `db:migrate:all` melewati platform dengan
   peringatan bila `PLATFORM_DATABASE_URL` tidak diset
   (`scripts/migrate-platform.ts`), tetapi gagal bila diset dan migration-nya
@@ -273,14 +273,14 @@ antara kendali dan perusahaan.
 
 **Siklus hidup langganan (issue #140).** Mesin keputusannya fungsi murni di
 `packages/billing/src/subscription-lifecycle.ts` (teruji tuntas). Status
-`suspended`/`cancelled` membuat buku besar hanya-baca di lapisan penjaga: setiap
+`suspended`/`cancelled` membuat buku besar hanya-baca di lapisan guard: setiap
 izin tulis ditolak, baca dan ekspor tetap jalan, dan tidak ada data yang dihapus
-otomatis pada keadaan mana pun. Penjaga membaca status dari salinan di
-`tenants` (kendali) lewat cache per-perusahaan
+otomatis pada keadaan mana pun. Guard membaca status dari salinan di
+`tenants` (control) lewat cache per-perusahaan
 (`packages/platform/src/tenant-state.ts`), tidak pernah dari `sai_platform` di
 jalur permintaan.
 
-**Penjadwal.** `bun run scheduler:subscriptions` menjalankan satu putaran: trial
+**Scheduler.** `bun run scheduler:subscriptions` menjalankan satu putaran: trial
 habis (+ tagihan pertama), dunning, suspensi setelah tenggang, pengingat
 H-7/H-3/H-1, sinkronisasi `usage_counters`, deteksi basis data yatim (lapor
 saja), dan rekonsiliasi. Ia idempoten (nomor tagihan deterministik +
@@ -293,7 +293,7 @@ Paket bawaan: `bun run db:seed:plans`. Ganti paket sebuah tenant (operator,
 sampai gateway #141): `bun run change-plan -- --tenant <slug> --plan <key>`.
 Kuota disalin ke `tenants` (pola snapshot), dan platform ditulis lebih dulu.
 
-**Penagihan Indonesia (issue #141).** Gerbang pembayaran ada di
+**Penagihan Indonesia (issue #141).** Gate pembayaran ada di
 `packages/billing/src/payment-gateway.ts`: Midtrans (VA + QRIS) di balik
 abstraksi kecil, `manual` sebagai bawaan, dan transport `mock` di luar produksi
 (tanpa jaringan, VA deterministik). Kredensial nyata hanya lewat env
@@ -302,7 +302,7 @@ bawaannya tidak terpasang.
 
 Webhook `/api/billing/webhook` memverifikasi tanda tangan SHA-512 (503
 fail-closed tanpa kunci di produksi), idempoten pada UNIQUE
-`payments.gateway_ref`, dan menulis platform dulu lalu kendali. Gagal bayar
+`payments.gateway_ref`, dan menulis platform dulu lalu control. Gagal bayar
 menjadi `past_due`, tidak pernah langsung `suspended`.
 
 PPN tagihan platform dihitung lewat `packages/core/src/tax.ts`; sakelar
@@ -310,4 +310,4 @@ PPN tagihan platform dihitung lewat `packages/core/src/tax.ts`; sakelar
 e-Faktur: `bun run efaktur:platform` memakai mesin `packages/core/src/efaktur.ts`,
 dengan NPWP pembeli dari `tenant_billing_profiles` (diisi pelanggan di
 /platform, dulu /tenant, issue #172). Data kartu tidak disimpan; yang disimpan
-hanya referensi gerbang, nomor VA, dan payload QR.
+hanya referensi gate, nomor VA, dan payload QR.

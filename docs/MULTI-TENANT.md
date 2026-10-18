@@ -37,9 +37,9 @@ Dokumen sebelumnya memakai satu kata untuk dua hal. Tabel ini memisahkannya.
 
 | Istilah | Artinya di sini | Hidup di |
 |---|---|---|
-| **Tenant** (pelanggan) | Pihak yang berlangganan & membayar. Satu badan usaha/orang yang memakai platform. | tabel `tenants`, basis data kendali |
+| **Tenant** (pelanggan) | Pihak yang berlangganan & membayar. Satu badan usaha/orang yang memakai platform. | tabel `tenants`, basis data control |
 | **Company** (PT) | Satu buku besar. Satu tenant boleh punya beberapa. | tabel `companies` + **satu basis data sendiri** |
-| **User** (orang) | Manusia yang masuk. Bisa jadi anggota beberapa company, di dalam satu tenant. | tabel `users`, basis data kendali |
+| **User** (orang) | Manusia yang masuk. Bisa jadi anggota beberapa company, di dalam satu tenant. | tabel `users`, basis data control |
 
 Aturan yang berlaku di seluruh kode:
 
@@ -91,9 +91,9 @@ ada di riwayat git berkas ini; komentar kode masih merujuk nomornya.
 | 4.3 | Username unik se-pemasangan | #136 (unik per tenant; email jadi pengenal login) |
 | 4.4 | Kebocoran enumerasi: 409 `username_taken` memantulkan id global | #136, #139 (undangan menjawab seragam) |
 | 4.5 | "Satu login banyak PT" tanpa UI (`addExistingUserToCompany` tanpa pemanggil) | #139 |
-| 4.6 | Pembatas laju hanya di memori | #138 (persisten di basis data kendali) |
-| 4.7 | Jejak audit tanpa tingkat tenant | #142 (`tenant_audit_logs` di kendali) |
-| 4.8 | Tidak ada penjadwal | #140 (kini layanan `job-scheduler`) |
+| 4.6 | Pembatas laju hanya di memori | #138 (persisten di basis data control) |
+| 4.7 | Jejak audit tanpa tingkat tenant | #142 (`tenant_audit_logs` di control) |
+| 4.8 | Tidak ada scheduler | #140 (kini layanan `job-scheduler`) |
 
 ---
 
@@ -113,10 +113,10 @@ Setiap garis pemisah baru membayar isolasi dengan harga yang sama.
 | Lapis | Basis data | Isinya | Disentuh |
 |---|---|---|---|
 | **Platform** | `sai_platform` | `plans`, `subscriptions`, `payments`, `platform_invoices`, `usage_counters` — **bisnis KAMI** | jarang: pendaftaran, siklus tagih, webhook pembayaran |
-| **Kendali** | `sai_control` | `tenants`, `users`, `tenant_memberships`, `companies` (registry), `memberships` — **identitas & perutean** | **setiap permintaan** |
+| **Control** | `sai_control` | `tenants`, `users`, `tenant_memberships`, `companies` (registry), `memberships` — **identitas & perutean** | **setiap permintaan** |
 | **Perusahaan** | `sai_pt_*` | jurnal, faktur, stok, kas — **buku pelanggan** | setiap permintaan yang menyentuh buku |
 
-### Kenapa `tenants` tinggal di KENDALI, bukan di platform
+### Kenapa `tenants` tinggal di CONTROL, bukan di platform
 
 `tenants` dibaca di setiap permintaan: pengguna ini tenant mana, perusahaan apa
 yang boleh ia lihat, dan apakah tenantnya `suspended` (hanya-baca). Bila tabel
@@ -135,7 +135,7 @@ Karena itu garisnya ditarik di penagihan, bukan di tenant.
 - **Dampak kegagalan terbatas.** Migration atau bug penagihan tidak menyentuh
   tabel yang mengautentikasi semua orang. Bila penagihan mati, orang tetap bisa
   masuk dan bekerja.
-- **Retensi & cadangan berbeda.** Catatan pembayaran punya kewajiban simpannya
+- **Retensi & backup berbeda.** Catatan pembayaran punya kewajiban simpannya
   sendiri, lepas dari buku pelanggan.
 - **Hak akses berbeda.** Pengguna basis data aplikasi tidak perlu menyentuh
   `sai_platform` sama sekali di jalur permintaan biasa.
@@ -156,7 +156,7 @@ direkonsiliasi, sedangkan tenant yang naik kelas tanpa pembayaran tidak akan
 ketahuan.
 
 Karena itu perlu pekerjaan rekonsiliasi berkala yang membandingkan keduanya.
-Ini salah satu alasan penjadwal (§4.8) masuk daftar.
+Ini salah satu alasan scheduler (§4.8) masuk daftar.
 
 ### Yang TIDAK berubah
 
@@ -167,7 +167,7 @@ yang masuk ke sana, dan tidak ada angka akuntansi yang keluar darinya.
 
 ## 5. Model data
 
-Tambahan di basis data kendali (`sai_control`), tidak di basis data perusahaan
+Tambahan di basis data control (`sai_control`), tidak di basis data perusahaan
 maupun `sai_platform` (alasannya di §4A).
 
 ```prisma
@@ -245,20 +245,20 @@ enum-like = `String @db.VarChar` + `z.enum`.
 Ini inti pekerjaannya. Matriks izin semula hanya punya satu lingkup; ia perlu
 dua.
 
-| Lingkup | Contoh | Dijawab | Penjaga |
+| Lingkup | Contoh | Dijawab | Guard |
 |---|---|---|---|
 | **Tenant** | `tenant.home`, `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings` | `TenantMembership` | `requireTenantPermission` (**baru**) |
 | **Perusahaan** | seluruh matriks sekarang (`invoice.write`, `report.read`, …) | `Membership` | `requireApiPermission` / `requirePagePermission` (tidak berubah) |
 
-> **Aturan: izin tingkat tenant tidak boleh diperiksa penjaga perusahaan.**
+> **Aturan: izin tingkat tenant tidak boleh diperiksa guard perusahaan.**
 
-Penjaga perusahaan menuntut konteks perusahaan, padahal ketiadaan konteks itu
+Guard perusahaan menuntut konteks perusahaan, padahal ketiadaan konteks itu
 adalah keadaan sah saat pelanggan baru membuat perusahaan pertamanya. Memakai
-penjaga lama untuk kasus ini menuntut pengecualian yang melemahkan jaminan #104.
+guard lama untuk kasus ini menuntut pengecualian yang melemahkan jaminan #104.
 
 `tests/authz-coverage.test.ts` mencakup rute tingkat tenant: setiap rute itu
-harus mendeklarasikan penjaganya, sama seperti rute perusahaan. Tanpa itu,
-rute tenant, tempat penagihan berada, bisa lahir tanpa penjaga.
+harus mendeklarasikan guard-nya, sama seperti rute perusahaan. Tanpa itu,
+rute tenant, tempat penagihan berada, bisa lahir tanpa guard.
 
 Peran tenant bawaan:
 
@@ -284,7 +284,7 @@ Peran tenant bawaan:
 | 6 | Wizard `/setup` (6 langkah) | `trialing` | tidak berubah |
 | 7 | `/setup/done` → beranda "Langkah Pertama" | `trialing` | tidak berubah |
 
-Langkah 2 sengaja menjadi gerbang: penyediaan basis data tidak boleh terjangkau
+Langkah 2 sengaja menjadi gate: penyediaan basis data tidak boleh terjangkau
 permintaan anonim (§9).
 
 ### 7.2 Staf diundang — bukan dibuatkan kata sandi
@@ -405,10 +405,10 @@ Keempat tindakannya:
 
 | Tindakan | Inti | Catatan |
 | --- | --- | --- |
-| Tandai tagihan lunas (transfer manual) | `recordManualPayment` | `PAYMENT_GATEWAY=manual` adalah BAWAAN; sebelum #155 pelunasan dilakukan `UPDATE` SQL langsung di produksi. Memakai `processPaymentNotification` yang SAMA dengan webhook — satu jalur transisi status, bukan dua yang menyimpang. Referensi bank menjadi `gateway_ref` yang UNIQUE: transfer yang sama tidak bisa tercatat dua kali, juga saat operator & penjadwal bergerak bersamaan (P2002 → duplikat, bukan pembayaran kedua). |
+| Tandai tagihan lunas (transfer manual) | `recordManualPayment` | `PAYMENT_GATEWAY=manual` adalah BAWAAN; sebelum #155 pelunasan dilakukan `UPDATE` SQL langsung di produksi. Memakai `processPaymentNotification` yang SAMA dengan webhook — satu jalur transisi status, bukan dua yang menyimpang. Referensi bank menjadi `gateway_ref` yang UNIQUE: transfer yang sama tidak bisa tercatat dua kali, juga saat operator & scheduler bergerak bersamaan (P2002 → duplikat, bukan pembayaran kedua). |
 | Ganti paket | `changeTenantPlan` | Menggantikan `bun run change-plan`; skripnya kini pembungkus tipis atas inti yang sama. Kuota baru yang lebih kecil dari pemakaian nyata adalah **peringatan, bukan penghalang** — turun paket keputusan yang sah — dan konsekuensinya ikut tercatat di jejak. Tenant `suspended` **tidak** dipulihkan oleh ganti paket: pemulihan keputusan terpisah dengan alasannya sendiri. |
 | Tangguhkan / pulihkan | `setTenantSuspension` | Lewat mesin siklus hidup (`operator_suspend` / `operator_restore`), bukan `UPDATE` status langsung. Layar menyatakan gamblang: `suspended` = HANYA-BACA, bukan terkunci dan bukan terhapus. |
-| Eksekusi penghapusan | `executeTenantDeletion` | Hanya atas permintaan `pending` yang masa tenggangnya SUDAH lewat (§10). Konfirmasi dengan **mengetik ulang slug tenant**, bukan "Ya". Layar menyebut apa yang TIDAK dihapus dan kenapa. Gerbang kedua (`--drop-ledgers`) sengaja TIDAK diberi tombol konsol. |
+| Eksekusi penghapusan | `executeTenantDeletion` | Hanya atas permintaan `pending` yang masa tenggangnya SUDAH lewat (§10). Konfirmasi dengan **mengetik ulang slug tenant**, bukan "Ya". Layar menyebut apa yang TIDAK dihapus dan kenapa. Gate kedua (`--drop-ledgers`) sengaja TIDAK diberi tombol konsol. |
 
 Skrip CLI-nya tetap ada sebagai jalur pemulihan saat konsol tidak bisa dibuka
 (host salah konfigurasi, IP belum di-allowlist, Next mati). Skrip itu kini
@@ -424,19 +424,19 @@ Lihat §10. Penghapusan akun lebih dari sekadar `DELETE`.
 ## 8. Migrasi pemasangan yang sudah berjalan
 
 Keputusan: `pt-sai` dimasukkan ke dalam satu `Tenant`. Bila tenant hanya
-berlaku untuk pendaftar baru, setiap penjaga harus selamanya menangani keadaan
-"tanpa tenant", dan cabang yang jarang dilewati jarang teruji.
+berlaku untuk pendaftar baru, setiap guard harus selamanya menangani keadaan
+"tanpa tenant", dan branch yang jarang dilewati jarang teruji.
 
 Urutannya tidak boleh ditukar:
 
-1. Migration kendali: tabel & kolom baru, semuanya **nullable**.
+1. Migration control: tabel & kolom baru, semuanya **nullable**.
 2. Skrip adopsi: buat satu `Tenant`, tautkan `pt-sai` dan seluruh penggunanya,
    lalu isi email tiap pengguna. Data email harus disiapkan manusia lebih dulu;
    mesin tidak bisa menebaknya.
 3. Buktikan: setiap `companies.tenant_id` dan `users.email` terisi, dan
    tidak ada email kembar.
 4. Baru jadikan NOT NULL + unik.
-5. Baru penjaga tingkat tenant boleh mengandalkan keberadaannya.
+5. Baru guard tingkat tenant boleh mengandalkan keberadaannya.
 
 Pelajaran migrasi #104 berlaku: cadangkan dulu, dan jalankan di salinan lebih
 dulu. Gladi resik #104 menemukan dua hal yang tidak terlihat dari membaca kode:
@@ -523,7 +523,7 @@ Nomor issue diisi saat dibuat.
 | 2 | Pemisahan izin platform vs perusahaan (§6) | 1 | #135 |
 | 3 | Identitas email + infrastruktur surel (§4.1) | 1 | #136 |
 | 4 | Basis data `sai_platform` terpisah + rekonsiliasinya (§4A) | 1 | #137 |
-| 5 | Pendaftaran mandiri + gerbang penyediaan (§7.1, §9) | 2, 3 | #138 |
+| 5 | Pendaftaran mandiri + gate penyediaan (§7.1, §9) | 2, 3 | #138 |
 | 6 | Undangan staf + akses multi-PT (§7.2, §7.3) | 3 | #139 |
 | 7 | Langganan, kuota, trial, suspensi (§7.4) | 2, 4 | #140 |
 | 8 | Penagihan Indonesia — gateway, PPN, e-Faktur (§10) | 7 | #141 |

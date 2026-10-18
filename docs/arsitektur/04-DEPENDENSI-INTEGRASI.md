@@ -22,7 +22,7 @@ graph LR
 
     subgraph degradasi["TERDEGRADASI — fitur mati, aplikasi hidup"]
         SMTP["SMTP<br/>surel keluar"]
-        S3["S3-compatible<br/>cadangan luar-mesin"]
+        S3["S3-compatible<br/>backup luar-mesin"]
         MT["Midtrans Core API<br/>VA + QRIS"]
     end
 
@@ -66,9 +66,9 @@ graph LR
 | **Let's Encrypt** (resolver `le`) | Traefik | Sertifikat kedaluwarsa → peramban menolak. 🔶 Pembaruan ditangani Traefik; tidak ada pemantauan di repo ini | `certresolver=le` |
 | **DNS** | semua | `APP_DOMAIN` tak terselesaikan = tak terjangkau. `OPERATOR_DOMAIN` salah = konsol 404 (fail-closed, disengaja) | `APP_DOMAIN`, `OPERATOR_DOMAIN`, `OPERATOR_HOST` |
 
-Probe kesehatan: hanya basis data **kendali** yang boleh memutuskan 503.
-Platform, PT contoh, penjadwal, cadangan, dan surel hanya dilaporkan. Kalau
-probe 503 karena penjadwal telat, satu masalah penagihan akan berubah menjadi
+Probe kesehatan: hanya basis data **control** yang boleh memutuskan 503.
+Platform, PT contoh, scheduler, backup, dan surel hanya dilaporkan. Kalau
+probe 503 karena scheduler telat, satu masalah penagihan akan berubah menjadi
 pemadaman total.
 
 ### 2.2 TERDEGRADASI (fitur mati, aplikasi hidup)
@@ -100,7 +100,7 @@ graph TD
 | Lapis 2 | `packages/platform/src/mail-settings.ts` — milik penyedia, di `sai_platform` |
 | Lapis 3 | *environment* / transport `file` → `data/mail-outbox/*.eml` |
 | Sandi | Disimpan hanya sebagai segel AES-256-GCM (`packages/core/src/settings-crypto.ts`, kunci `SETTINGS_ENCRYPTION_KEY`) |
-| Cache | TTL 60s; sengaja tidak berkunci penyewa, karena pengaturan platform milik penyedia dan hanya satu untuk seluruh pemasangan |
+| Cache | TTL 60s; sengaja tidak berkunci tenant, karena pengaturan platform milik penyedia dan hanya satu untuk seluruh pemasangan |
 | Status 11 Okt 2026 | 1 baris `mail_settings`, `transport = smtp`, host terisi. `tenant_mail_settings` = 0 baris |
 
 **Aturan:** surel yang membawa token akses (undangan staf, atur-ulang sandi,
@@ -111,9 +111,9 @@ infrastruktur yang bisa ia baca.
 Bila SMTP mati, undangan, atur-ulang sandi, pengiriman faktur, dan pengingat
 pelanggan gagal; login dan buku besar tidak terpengaruh. `mail-settings.ts`
 sengaja tanpa `server-only` karena dipakai skrip `tsx` di luar Next. Menarik
-`server-only` ke sana akan mematikan penjadwal.
+`server-only` ke sana akan mematikan scheduler.
 
-#### S3-compatible — cadangan
+#### S3-compatible — backup
 
 | | |
 |---|---|
@@ -121,9 +121,9 @@ sengaja tanpa `server-only` karena dipakai skrip `tsx` di luar Next. Menarik
 | Penyedia | Mana pun yang S3-compatible, lewat `--endpoint-url` |
 | Env | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, `BACKUP_S3_BUCKET`, `BACKUP_S3_PREFIX`, `BACKUP_ENCRYPTION_KEY`, `BACKUP_RETENTION_DAYS` |
 | Status 18 Okt 2026 | Tiga env kosong: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BACKUP_S3_BUCKET` |
-| Akibat | Cadangan harian terenkripsi hanya mendarat di volume `cadangan` (mesin yang sama). `/api/health` → `backup: local_only`, `lastSuccessAt: null` |
+| Akibat | Backup harian terenkripsi hanya mendarat di volume `backup` (mesin yang sama). `/api/health` → `backup: local_only`, `lastSuccessAt: null` |
 
-#### Midtrans — gerbang pembayaran
+#### Midtrans — gate pembayaran
 
 | | |
 |---|---|
@@ -142,7 +142,7 @@ keduanya tetap terpisah:
    milik tenant yang disimpan terenkripsi per perusahaan. Karena itu
    `company-payment-settings.ts` tidak pernah membaca `process.env.MIDTRANS_*`.
 
-Gerbang efektif menuntut `NODE_ENV=production` dan `MIDTRANS_SERVER_KEY`. Di
+Gate efektif menuntut `NODE_ENV=production` dan `MIDTRANS_SERVER_KEY`. Di
 luar itu ia jatuh ke MOCK dengan peringatan, sehingga salah setel tidak
 menagih sungguhan. Verifikasi webhook fail-closed: produksi tanpa
 `MIDTRANS_SERVER_KEY` menolak semua webhook.
@@ -187,7 +187,7 @@ graph TB
         D1["prisma.ts"]; E1["@sai/platform/platform-db"]
     end
 
-    subgraph L2["Lapis 2 — penjaga"]
+    subgraph L2["Lapis 2 — guard"]
         A2["page-auth.ts"]; B2["auth-guard.ts"]; C2["api-token-guard.ts"]
         D2["authz-effective.ts"]; E2["apps/operator · lib/operator/guard.ts"]; F2["auth.ts"]
     end
@@ -226,16 +226,16 @@ Tanpa prefix = `src/lib/`; `@sai/*` = `packages/*/src/`.
 
 Tes merah kalau dilanggar:
 
-| Larangan | Penjaga | Kenapa |
+| Larangan | Guard | Kenapa |
 |---|---|---|
 | `lib/reports.ts`, `lib/ledger.ts`, `lib/posting/*` **tidak boleh** mengimpor `business-modules.ts` | `tests/business-modules-ledger.test.ts` | Modul tidak pernah menggerbangi buku besar; laporan harus tetap rekonsiliasi |
-| `packages/core/src/operator-plane.ts` **tidak boleh** mengimpor `platform-db.ts` | doktrin #137 | Penjaga & proxy bukan kode penagihan |
-| Halaman `(docs)/**` **tidak boleh** memuat penjaga apa pun | `tests/authz-coverage.test.ts`, `tests/docs.test.ts` | `/docs` publik; pembaca anonim tidak boleh memicu satu kueri pun |
+| `packages/core/src/operator-plane.ts` **tidak boleh** mengimpor `platform-db.ts` | doktrin #137 | Guard & proxy bukan kode penagihan |
+| Halaman `(docs)/**` **tidak boleh** memuat guard apa pun | `tests/authz-coverage.test.ts`, `tests/docs.test.ts` | `/docs` publik; pembaca anonim tidak boleh memicu satu kueri pun |
 | `@ant-design/icons` **tidak boleh** diimpor sebagai default/namespace | `tests/icon-rsc-boundary.test.ts` | Barrel-nya meruntuhkan lapisan RSC |
 | `<Link><Button/></Link>` | `tests/anchor-button-nesting.test.ts` | Dua elemen interaktif bersarang |
 | `asChild` pada `Button` | `tests/button-no-aschild.test.ts` | Tidak aman dari server component (dicabut #250) |
 | Nilai warna mentah di luar `packages/ui/src/theme/antd-tokens.ts` | ESLint `sai/warna-token-antd` (#204) | Satu sumber warna |
-| Halaman/route tanpa deklarasi izin | `tests/authz-coverage.test.ts` | Rute tak berpenjaga = lubang |
+| Halaman/route tanpa deklarasi izin | `tests/authz-coverage.test.ts` | Rute tak ber-guard = lubang |
 | Skrip **tidak boleh** mengimpor `server-only` | — (`tsx` mati di atasnya) | Logika produser harus di pustaka murni |
 
 ## 4. Hulu & hilir
@@ -244,11 +244,11 @@ Tes merah kalau dilanggar:
 
 | Sumber | Masuk lewat | Dipercaya? |
 |---|---|---|
-| Peramban pengguna | HTTPS → Traefik → proxy → penjaga | **Tidak** — zod di setiap jalur tulis |
+| Peramban pengguna | HTTPS → Traefik → proxy → guard | **Tidak** — zod di setiap jalur tulis |
 | Webhook Midtrans | `POST /api/billing/webhook` | **Tidak** — tanda tangan SHA-512, fail-closed |
 | Integrator API | `Authorization: Bearer sai_…` | **Tidak** — `requireApiToken` + izin |
 | Unggahan berkas | `POST /api/upload`, impor master/COA | **Tidak** — validasi tipe & bentuk |
-| Dump sistem lama | `subt5236_sai_prod_18july.sql` (manual) | **Tidak** — **tidak melewati penjaga zod**; alasan `conformance` ada |
+| Dump sistem lama | `subt5236_sai_prod_18july.sql` (manual) | **Tidak** — **tidak melewati guard zod**; alasan `conformance` ada |
 | Ekspor Accurate | Unggahan manusia | **Tidak** — pengurai sendiri |
 
 ### Hilir (yang menerima keluaran)
@@ -264,11 +264,11 @@ Tes merah kalau dilanggar:
 | Perayap | `/robots.txt`, `/sitemap.xml`, `/opengraph-image` | Metadata publik |
 
 `remind:customers` adalah satu-satunya jalur yang menghubungi orang di luar
-organisasi pelanggan. Ada tiga penjaga sebelum surel keluar:
+organisasi pelanggan. Ada tiga guard sebelum surel keluar:
 
 1. `reminder_enabled` — bawaannya mati.
 2. `reminder_tested_at` — seseorang harus pernah menerima sendiri kalimatnya
-   lebih dulu; tanpa itu penjadwal menolak.
+   lebih dulu; tanpa itu scheduler menolak.
 3. Kunci unik `(invoice_id, reminder_kind, reminder_due_key)` — putaran kedua
    menabrak constraint sebelum `sendMail` dipanggil.
 
@@ -279,11 +279,11 @@ langsung mengirim ratusan surel untuk tunggakan lama.
 
 ```mermaid
 graph TD
-    SPOF1["<b>PostgreSQL — satu instans</b><br/>+ satu PgBouncer<br/>tanpa replika · tanpa failover<br/>17 buku PT + kendali + platform<br/>di satu volume"]
+    SPOF1["<b>PostgreSQL — satu instans</b><br/>+ satu PgBouncer<br/>tanpa replika · tanpa failover<br/>17 buku PT + control + platform<br/>di satu volume"]
     SPOF2["<b>app-customer — satu container</b><br/>tanpa replika<br/>(app-operator kini terpisah)"]
     SPOF3["<b>Mesin tunggal</b><br/>~3,6 GB RAM · 6 aplikasi"]
     SPOF4["<b>Traefik — satu instans</b><br/>dipakai 6 aplikasi"]
-    SPOF5["<b>Cadangan hanya lokal</b><br/>tidak ada salinan luar-mesin"]
+    SPOF5["<b>Backup hanya lokal</b><br/>tidak ada salinan luar-mesin"]
 
     SPOF1 --> I1["Pemadaman total +<br/>⚠ kehilangan data permanen<br/>karena SPOF5"]
     SPOF2 --> I2["Pemadaman sampai restart<br/>(~detik, restart: unless-stopped)"]
@@ -300,15 +300,15 @@ graph TD
 | # | Titik | Dampak | Mitigasi hari ini | Penilaian |
 |---|---|---|---|---|
 | 1 | **PostgreSQL tunggal** (+ PgBouncer tunggal) | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk SPOF 5 |
-| 2 | **Cadangan tanpa salinan luar-mesin** | Kehilangan mesin = kehilangan buku beserta cadangannya | Salinan terenkripsi harian di volume `cadangan` (mesin yang sama) + peringatan `watch:health` | **Kritis — P0** |
+| 2 | **Backup tanpa salinan luar-mesin** | Kehilangan mesin = kehilangan buku beserta backup-nya | Salinan terenkripsi harian di volume `backup` (mesin yang sama) + peringatan `watch:health` | **Kritis — P0** |
 | 3 | **Mesin tunggal** | Kehilangan semuanya | Tidak ada | Diterima sadar pada skala ini |
 | 4 | **`app-customer` tunggal** | Pemadaman enam permukaan pelanggan sampai restart; konsol operator tidak ikut jatuh | `restart: unless-stopped` + healthcheck | Dapat diterima |
 | 5 | **Traefik tunggal** | 6 aplikasi | Di luar repo ini | Di luar lingkup |
 | 6 | **`AUTH_SECRET` tunggal** | Rotasi = seluruh sesi batal | Masa sesi 24 jam | Dapat diterima |
-| 7 | **`BACKUP_ENCRYPTION_KEY`** | Kunci hilang = cadangan tidak bisa dibuka | ❓ Penyimpanan kunci di luar mesin belum dipastikan | **Perlu dipastikan** |
+| 7 | **`BACKUP_ENCRYPTION_KEY`** | Kunci hilang = backup tidak bisa dibuka | ❓ Penyimpanan kunci di luar mesin belum dipastikan | **Perlu dipastikan** |
 | 8 | **`SETTINGS_ENCRYPTION_KEY`** | Kunci hilang = sandi SMTP tersimpan tak terbaca | Dapat disetel ulang lewat konsol | Rendah |
 
-Titik 7 perlu diperiksa segera: cadangan yang berhasil pun tidak bisa dipakai
+Titik 7 perlu diperiksa segera: backup yang berhasil pun tidak bisa dipakai
 kalau kuncinya hanya ada di `.env` mesin yang hilang bersama datanya.
 
 ## 6. Kopling
@@ -316,10 +316,10 @@ kalau kuncinya hanya ada di `.env` mesin yang hilang bersama datanya.
 | Kopling | Ketat? | Catatan |
 |---|---|---|
 | `app-customer` ↔ PostgreSQL | **Ketat** | Benar — ini aplikasi basis data |
-| `app-customer` ↔ kolam klien PT | **Ketat** | `prisma` Proxy menyembunyikan ini dari 120 berkas |
+| `app-customer` ↔ pool klien PT | **Ketat** | `prisma` Proxy menyembunyikan ini dari 120 berkas |
 | `job-scheduler`/`job-conformance` ↔ image `migrator` | **Ketat, sengaja** | Image sama = env & `node_modules` sama. Harganya: membangun image aplikasi tidak membangun `migrator`, sehingga 2 layanan bisa menjalankan kode basi tanpa tanda. Terjadi beberapa kali; kini CI membangun keempat image tiap kali |
-| Kendali ↔ platform | **Longgar, sengaja** | Tanpa FK. Harganya: butuh rekonsiliasi (`reconcile:platform`) |
-| Kendali ↔ buku PT | **Longgar, sengaja** | `database_name` menunjuk, bukan FK |
+| Control ↔ platform | **Longgar, sengaja** | Tanpa FK. Harganya: butuh rekonsiliasi (`reconcile:platform`) |
+| Control ↔ buku PT | **Longgar, sengaja** | `database_name` menunjuk, bukan FK |
 | Aplikasi ↔ Midtrans | **Longgar** | `PaymentGateway` punya transport MOCK & `manual` |
 | Aplikasi ↔ SMTP | **Longgar** | Tiga lapis + transport `file` |
 | Aplikasi ↔ S3 | **Longgar** | Hanya `job-backup` yang bicara S3 |
@@ -330,7 +330,7 @@ kalau kuncinya hanya ada di `.env` mesin yang hilang bersama datanya.
 | Duplikasi | Bukti | Risiko |
 |---|---|---|
 | **Dua jalur penyemaian** | `prisma/seed.ts` (baris tanpa jurnal) vs `scripts/seed-demo.ts` (diposting lewat mesin sungguhan) | Rendah — pembedaannya didokumentasikan di `package.json` |
-| **Dua pembatas laju** | `rate-limit.ts` (memori) + `rate-limit-persistent.ts` (tabel kendali) | Rendah — yang persisten sengaja dipakai ulang `lib/alert.ts` alih-alih menulis peredam kedua |
+| **Dua pembatas laju** | `rate-limit.ts` (memori) + `rate-limit-persistent.ts` (tabel control) | Rendah — yang persisten sengaja dipakai ulang `lib/alert.ts` alih-alih menulis peredam kedua |
 | **Tiga sumber pengaturan surel** | tenant → platform → env | Rendah — urutannya eksplisit dan diuji |
 | **Dua definisi migration-apply** | `db:migrate` (satu DB) vs `db:migrate:all` (semua) | Rendah — `db:migrate` sengaja dipertahankan dan bahayanya ditulis di `package.json` |
 

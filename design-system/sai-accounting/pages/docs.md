@@ -22,11 +22,11 @@ Dokumentasi memakai lebar penuh area yang tersedia (keputusan pemilik,
 
 Alasan batas lama, dicatat untuk peninjauan ulang: di atas ±75 karakter per baris, mata kehilangan awal
 baris berikutnya saat kembali dari ujung kanan, dan kalimat berhenti bisa
-dipindai sekali lihat. Akibatnya kini: di monitor lebar satu baris prosa bisa
+di-scan sekali lihat. Akibatnya kini: di monitor lebar satu baris prosa bisa
 memuat ±200 karakter.
 
 Untuk mengembalikannya: satu `maxWidth` di `KOLOM_BACA` (`docs-shell.tsx`) + baris
-§Dokumentasi di `MASTER.md`. Penjaga menolak lebar skala-kolom (≥600px) yang
+§Dokumentasi di `MASTER.md`. Guard menolak lebar skala-kolom (≥600px) yang
 diketik di luar berkas itu, supaya batasnya tidak hanya berlaku di satu kulit.
 
 ## Tata letak (#453)
@@ -125,7 +125,7 @@ token yang sama, tema gelap gratis, dan pembaca layar membacanya sebagai teks.
 - Tiga yang ada: `alur-jurnal`, `alur-persetujuan`, `buku-per-pt`. Nama yang
   tidak punya perender ditolak `tsc`; perender yang tidak dipakai ditolak tes.
 
-## Penjaga
+## Guard
 
 `tests/docs.test.ts` menolak: daftar impor di luar daftar-IZIN, `--sai-landing-*`,
 `fontSizeHeading1`, tombol berisi penuh, `<main>` ganda, lebar skala-kolom

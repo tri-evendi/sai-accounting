@@ -35,14 +35,14 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - **Lencana "Tindakan tercatat" selalu di kepala, dan selalu pertama dibaca.**
   Setiap tindakan di sini terekam atas nama operator
   yang sedang masuk.
-- **Penjaga per halaman, bukan per layout.** Setiap halaman memanggil
+- **Guard per halaman, bukan per layout.** Setiap halaman memanggil
   `requireOperatorPage()` dan setiap server action `requireOperatorActionSession()`;
   layout hanya membaca sesi secara opsional untuk chrome. Dijaga
   `tests/authz-coverage.test.ts` (grup `(operator)`). `route.ts` di bawah grup
   ini hanya boleh berupa unduhan berkas (hanya `GET`, wajib
   `requireOperatorRoute("<izin>")`); di luar grup, satu-satunya API aplikasi ini
   adalah probe publik `/api/health`.
-- **Dua bidang data, satu yang boleh mati.** Bacaan dari basis data kendali
+- **Dua bidang data, satu yang boleh mati.** Bacaan dari basis data control
   selalu tampil; bacaan platform (`sai_platform`) jatuh ke `null` dan dijawab
   satu kalimat ("penagihan tidak terjangkau"), tidak pernah 500. Pola
   `billingOverviewForTenant`; lihat `apps/operator/src/lib/operator/store.ts`.
@@ -73,7 +73,7 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
   memuat hanya keadaan yang menuntut tindakan, berurut menurut mendesaknya,
   masing-masing bertaut ke tempat tindakannya. Penyaringnya murni & teruji
   (`apps/operator/src/lib/operator/attention.ts`). Keadaan tenang dikatakan
-  sekali sebagai satu kalimat, tidak sebagai enam baris nol. Baris penjadwal
+  sekali sebagai satu kalimat, tidak sebagai enam baris nol. Baris scheduler
   berdiri paling atas karena ia menjelaskan baris lain.
 
   Ubin angka tetap ada di bawahnya sebagai `StatCard` apa adanya, tanpa ubin
@@ -117,6 +117,6 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
 - Menambahkan `forceRender` pada `Drawer` menu samping: ia mengembalikan menu
   tak terlihat ke urutan fokus.
 - Mengimpor `packages/platform/src/platform-db.ts` (atau modul yang mengimpornya) dari
-  penjaga, proxy, atau jalur panas i18n (doktrin #137). Karena itu
+  guard, proxy, atau jalur panas i18n (doktrin #137). Karena itu
   `packages/platform/src/i18n/server.ts` memuat `site-content-store` lewat
   `await import()`, dan `tests/site-content.test.ts` menolak impor statisnya.

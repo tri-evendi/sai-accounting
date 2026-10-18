@@ -1,6 +1,6 @@
 # Audit Kesiapan Rilis Umum — Perjalanan Pelanggan Ujung-ke-Ujung
 
-> **Arsip: potret bertanggal 15 Agustus 2026.** Isinya bukan keadaan sekarang
+> **Arsip: snapshot bertanggal 15 Agustus 2026.** Isinya bukan keadaan sekarang
 > dan tidak boleh dijadikan dasar tindakan. Dokumen ini disimpan sebagai
 > riwayat: metodenya jelas dan setiap temuannya menyebut `berkas:baris`, jadi ia
 > masih berguna untuk menelusuri alasan keputusan lama.
@@ -8,7 +8,7 @@
 > Sebagian besar temuannya sudah ditutup, dan banyak jalur `berkas:baris`-nya
 > sudah pindah (monorepo `packages/`, `apps/operator`). Isinya menyebut MariaDB,
 > `data/audit/*.jsonl`, dan `public/uploads`; ketiganya sudah diganti
-> (PostgreSQL, tabel jejak audit, `data/documents` berpenjaga). Angka di
+> (PostgreSQL, tabel jejak audit, `data/documents` ber-guard). Angka di
 > dalamnya juga sudah berubah.
 >
 > Untuk keadaan yang berlaku, baca
@@ -45,7 +45,7 @@ selama ini benar karena hanya ada satu pelanggan yang saling kenal.
 |---|---|
 | **Isolasi yang belum lengkap** | Buku besar terisolasi sempurna; **berkas unggahan dan jejak audit tidak** — keduanya hidup di luar basis data PT, di satu direktori bersama. |
 | **Pintu masuk data yang belum ada** | Pelanggan baru bisa membuat buku kosong, tapi tidak bisa **memindahkan bukunya yang lama** ke dalamnya. Saldo awal yang tersedia tidak cukup untuk perusahaan yang sudah berjalan. |
-| **Operasi yang masih manual** | Tanpa cadangan otomatis, tanpa pemantauan, tanpa pemulihan yang pernah dilatih, dan dengan penjadwal langganan yang bergantung pada cron yang dipasang tangan. |
+| **Operasi yang masih manual** | Tanpa backup otomatis, tanpa pemantauan, tanpa restore yang pernah dilatih, dan dengan scheduler langganan yang bergantung pada cron yang dipasang tangan. |
 
 Rekomendasi: **jangan buka pendaftaran umum** sebelum P0 di bawah tuntas.
 Estimasi kasar: P0 ≈ 4–6 minggu kerja, P0+P1 ≈ 10–12 minggu.
@@ -62,7 +62,7 @@ status pengembangan.
 | 1 | Pendaratan pemasaran | `src/app/(marketing)/page.tsx` → `components/landing/**` | **Baik.** Hero → fitur → modul → bukti → harga → FAQ (seksi kontak dicabut). Harga & kuota dibaca dari katalog paket, lama uji coba dari `TRIAL_DAYS`, tarif PPN dari `lib/tax.ts` — tidak ada angka yang diketik ke kalimat pemasaran. `openGraph` + `robots` + `sitemap` terpasang. |
 | 2 | Jalan menghubungi | `lib/contact-channels.ts` | **Bersyarat.** Formulir kontak sudah DICABUT dari pendaratan; yang tersisa tombol WhatsApp melayang (`PLATFORM_CONTACT_WHATSAPP`), `mailto:` paket rundingan & jawaban FAQ dukungan (`PLATFORM_CONTACT_EMAIL`). Tanpa kedua env itu tidak ada satu pun jalan menghubungi di halaman publik — masuk daftar pra-rilis. |
 | 3 | Pendaftaran | `/register` → `api/auth/register` | **Baik.** Jawaban seragam (anti-enumerasi), bcrypt di dalam permintaan, pembatas laju **persisten** per-IP + per-email, S&K ber-versi. Tidak ada apa pun yang lahir sebelum tautan diklik. |
-| 4 | Verifikasi email | `api/auth/verify-email` | **Baik.** POST (bukan GET) supaya pemindai tautan surel tidak membakar token. Tenant + User + Membership + langganan lahir di sini; kegagalan langganan tidak menggagalkan pendaftaran (disembuhkan putaran adopsi penjadwal). |
+| 4 | Verifikasi email | `api/auth/verify-email` | **Baik.** POST (bukan GET) supaya scanner tautan surel tidak membakar token. Tenant + User + Membership + langganan lahir di sini; kegagalan langganan tidak menggagalkan pendaftaran (disembuhkan putaran adopsi scheduler). |
 | 5 | Masuk | `lib/auth.ts` + `lib/post-login.ts` | **Cukup, satu cacat** → [F-6]. Pendaratan pasca-masuk satu aturan untuk semua pintu; staf mendarat di buku, pemilik di `/platform`. Pembatas laju login masih di memori. |
 | 6 | Buat PT | `/companies/new` → `lib/company-provisioning.ts` | **Baik.** Izin di matriks **tenant** (memecah ayam-dan-telur), urutan buat→migrasi→daftarkan sehingga kegagalan hanya meninggalkan basis data yatim, kemajuan di-stream ke layar. |
 | 7 | Wisaya penyiapan | `(setup)/…/setup` + `lib/opening-balance.ts` | **Lubang terbesar** → [F-2], [F-3]. Identitas → modul → mata uang → COA → saldo awal → tinjau; sekali jalan, satu jurnal pembuka seimbang. Tetapi saldo awal yang bisa dimasukkan tidak cukup untuk perusahaan yang sudah berjalan. |
@@ -91,7 +91,7 @@ Tiga akibat, semuanya nyata:
 1. **Lintas-tenant.** `proxy.ts` menggerbangi jalurnya sebagai non-publik, jadi
    pengambilan anonim dipantulkan ke `/login` — tetapi proxy **tidak pernah
    membuktikan keanggotaan** (itu memang tugas `requirePagePermission`, dan
-   berkas statis tidak melewati satu pun penjaga). Siapa pun yang punya sesi
+   berkas statis tidak melewati satu pun guard). Siapa pun yang punya sesi
    **di tenant mana pun** dan mengetahui nama berkasnya bisa mengambil dokumen
    tenant lain. Nama berkasnya mempertahankan nama asli pengguna dan hanya
    diacak oleh stempel milidetik.
@@ -182,7 +182,7 @@ ke dua arah sekaligus:
   **gerakan stok saja, tanpa jurnal**. Laporan stok terisi; akun Persediaan nol.
 
 Jadi pengguna baru menghadapi dua pilihan yang **dua-duanya salah**, tidak ada
-petunjuk mana yang dimaksud, dan tidak ada satu pun penjaga, peringatan, atau
+petunjuk mana yang dimaksud, dan tidak ada satu pun guard, peringatan, atau
 rekonsiliasi yang menyebutkan bahwa kedua angkanya berbeda. Yang menemukannya
 adalah akuntan, berbulan-bulan kemudian, saat neracanya tidak bisa dijelaskan.
 
@@ -195,35 +195,35 @@ saldo akun Persediaan" yang wajib nol — sebab yang membuat cacat ini bertahan
 bukan sulitnya diperbaiki, melainkan tidak adanya yang pernah membandingkan
 kedua angka itu.
 
-#### F-4 · Tidak ada cadangan otomatis, dan pemulihan belum pernah dilatih
+#### F-4 · Tidak ada backup otomatis, dan restore belum pernah dilatih
 
-> **Status:** issue [#374](https://github.com/tri-evendi/sai-accounting/issues/374) — separuh pertama dikerjakan (cadangan). Keputusan pemilik: penyimpanan objek **S3-compatible**. Latihan pemulihan kuartalan tetap milik manusia, dan **belum pernah dijalankan** — jadi baris daftar siap-rilis ini belum boleh dicentang.
+> **Status:** issue [#374](https://github.com/tri-evendi/sai-accounting/issues/374) — separuh pertama dikerjakan (backup). Keputusan pemilik: penyimpanan objek **S3-compatible**. Latihan restore kuartalan tetap milik manusia, dan **belum pernah dijalankan** — jadi baris daftar siap-rilis ini belum boleh dicentang.
 
-`docker-compose.yml` tidak memuat layanan cadangan. `PRODUCTION.md:107` hanya
+`docker-compose.yml` tidak memuat layanan backup. `PRODUCTION.md:107` hanya
 berbunyi *"Back up both with your server backups."* Direktori `backups/` berisi
 tiga dump manual, yang termuda 28 Juli 2026.
 
 Dengan satu basis data per PT, jumlah objek yang harus dicadangkan **tumbuh
 seiring jumlah pelanggan** — dan dua di antaranya bahkan bukan basis data:
 `public/uploads` dan `data/audit`. Menjual langganan atas pembukuan yang wajib
-disimpan sepuluh tahun (UU KUP) tanpa cadangan otomatis dan tanpa satu pun
-pemulihan yang pernah dibuktikan adalah risiko yang tidak sepadan.
+disimpan sepuluh tahun (UU KUP) tanpa backup otomatis dan tanpa satu pun
+restore yang pernah dibuktikan adalah risiko yang tidak sepadan.
 
 **Perbaikan.** Lihat §4.3.
 
-#### F-5 · Tidak ada pemantauan maupun pelacakan galat
+#### F-5 · Tidak ada pemantauan maupun pelacakan error
 
-> **Status:** issue [#374](https://github.com/tri-evendi/sai-accounting/issues/374) — dikerjakan. Keputusan pemilik: **log terstruktur + peringatan surel**, bukan vendor. Konsekuensinya ditanggung apa adanya: tanpa dasbor tidak ada pengelompokan galat dan tidak ada riwayat, jadi yang menggantikannya adalah bentuk JSON yang bisa diagregasi `jq` dan peredam satu surel per jenis galat per jam. Halaman status publik **belum** ada.
+> **Status:** issue [#374](https://github.com/tri-evendi/sai-accounting/issues/374) — dikerjakan. Keputusan pemilik: **log terstruktur + peringatan surel**, bukan vendor. Konsekuensinya ditanggung apa adanya: tanpa dasbor tidak ada pengelompokan error dan tidak ada riwayat, jadi yang menggantikannya adalah bentuk JSON yang bisa diagregasi `jq` dan peredam satu surel per jenis error per jam. Halaman status publik **belum** ada.
 
 Nol Sentry, nol OpenTelemetry, nol metrik. Setiap kegagalan berakhir sebagai
 `console.error` di log container. `/api/health` hanya membuktikan basis data
-kendali terjangkau — ia **tidak** memeriksa basis data platform, tidak
-memeriksa satu pun basis data PT, dan tidak memeriksa apakah penjadwal masih
+control terjangkau — ia **tidak** memeriksa basis data platform, tidak
+memeriksa satu pun basis data PT, dan tidak memeriksa apakah scheduler masih
 hidup.
 
 Akibatnya untuk rilis umum: kegagalan pertama yang diketahui adalah kegagalan
 yang **dilaporkan pelanggan**. Verifikasi email yang gagal terkirim
-(`api/auth/register` menelan galatnya ke `console.error` secara sengaja) tidak
+(`api/auth/register` menelan error-nya ke `console.error` secara sengaja) tidak
 terlihat oleh siapa pun sampai ada yang mengeluh tidak bisa masuk.
 
 ---
@@ -236,7 +236,7 @@ terlihat oleh siapa pun sampai ada yang mengeluh tidak bisa masuk.
 >
 > ⚠ **Cakupannya melebar saat dikerjakan, dan temuan barunya lebih berat daripada F-6 sendiri.** Delapan permukaan membaca alamat klien dengan `x-forwarded-for.split(",")[0]` — entri paling KIRI, yang justru bisa diketik klien. Lima di antaranya adalah kunci pembatas laju **per-IP endpoint publik** yang dibangun #138 (`/register`, `/forgot-password`, `/reset-password`, verifikasi surel, penerimaan undangan), satu formulir kontak pendaratan, dan dua jejak audit.
 >
-> Artinya seluruh pembatas laju per-IP yang selama ini dianggap kokoh **bisa dilewati dengan satu header**: satu nilai acak per permintaan, dan setiap permintaan tampak datang dari alamat baru. Jejak auditnya pun mencatat alamat pilihan penyerang sebagai fakta. Logika pembacaan yang benar sudah ada dan sudah teruji sejak #162 — ia hanya tinggal di `lib/operator/plane.ts` dan tidak pernah dipakai bidang pelanggan.
+> Artinya seluruh pembatas laju per-IP yang selama ini dianggap kokoh **bisa dilewati dengan satu header**: satu nilai acak per permintaan, dan setiap permintaan tampak datang dari alamat baru. Jejak auditnya pun mencatat alamat pilihan penyerang sebagai fakta. Logika pembacaan yang benar sudah ada dan sudah teruji sejak #162 — ia hanya tinggal di `lib/operator/plane.ts` dan tidak pernah dipakai plane pelanggan.
 
 `lib/rate-limit.ts:5` menyimpan hitungan di `Map` proses; `lib/auth.ts:56`
 memakainya dengan kunci `login:<pengenal>`. Tiga akibat: hitungannya **hilang
@@ -281,24 +281,24 @@ melayani ratusan tenant.
 
 Di lapisan bawahnya: satu MariaDB, satu container, satu disk. Ratusan basis
 data pada satu instance akan menabrak `max_connections`, ukuran buffer pool,
-dan waktu cadangan jauh sebelum menabrak CPU.
+dan waktu backup jauh sebelum menabrak CPU.
 
 **Perbaikan.** Bukan kode, melainkan keputusan kapasitas — lihat §4.3 dan §6.
 
 #### F-9 · Siklus hidup langganan bergantung pada cron yang dipasang tangan
 
-> **Status:** issue [#373](https://github.com/tri-evendi/sai-accounting/issues/373) — dikerjakan. Cakupannya menyempit setelah kodenya dibaca: ringkasan tiap putaran **sudah** tercatat di tabel `scheduler_runs` sejak #154, dan konsol operator **sudah** menampilkannya. Yang benar-benar kurang tinggal penjadwalnya sebagai layanan, denyutnya di `/api/health`, dan skrip pembuktiannya.
+> **Status:** issue [#373](https://github.com/tri-evendi/sai-accounting/issues/373) — dikerjakan. Cakupannya menyempit setelah kodenya dibaca: ringkasan tiap putaran **sudah** tercatat di tabel `scheduler_runs` sejak #154, dan konsol operator **sudah** menampilkannya. Yang benar-benar kurang tinggal scheduler-nya sebagai layanan, denyutnya di `/api/health`, dan skrip pembuktiannya.
 
-`package.json` (`_scheduler_note`) menyebut penjadwal harus dipasang lewat cron
+`package.json` (`_scheduler_note`) menyebut scheduler harus dipasang lewat cron
 host. Ia idempoten dan tertulis rapi — tetapi **tidak ada apa pun yang
 memeriksa ia terpasang**. Bila terlewat pada hari rilis: uji coba tidak pernah
 berakhir, tagihan pertama tidak pernah terbit, pengingat tidak pernah
-terkirim — **tanpa satu pun galat di mana pun**.
+terkirim — **tanpa satu pun error di mana pun**.
 
 **Perbaikan.** (a) jadikan layanan di `docker-compose.yml` (loop tidur, atau
 sidecar cron) sehingga ia lahir bersama deploy; (b) tulis waktu jalan terakhir
 ke `sai_platform`, dan tampilkan di konsol operator + `/api/health` diperluas
-sebagai "penjadwal terakhir jalan: N menit lalu".
+sebagai "scheduler terakhir jalan: N menit lalu".
 
 #### F-10 · Tidak ada satu pun antarmuka integrasi
 
@@ -315,7 +315,7 @@ keberatan penjualan pertama.
 
 > **Catatan pasca-rilis 2026-08-16 — lapis 1 pernah MATI di produksi.**
 > Deploy pertama yang memuat `/api/v1` menjawab **401 untuk setiap endpoint**,
-> termasuk `openapi.json` yang sengaja publik. Sebabnya bukan di penjaganya:
+> termasuk `openapi.json` yang sengaja publik. Sebabnya bukan di guard-nya:
 > `src/proxy.ts` membaca sesi NextAuth untuk setiap `/api/*` yang tidak
 > disebut `isPublicPath`, dan token Bearer tidak menghasilkan cookie sesi —
 > jadi permintaannya ditolak **sebelum** `requireApiToken` sempat berjalan.
@@ -324,14 +324,14 @@ keberatan penjualan pertama.
 > `bun run build` keduanya hijau, sebab setiap tes token memanggil
 > `requireApiToken` LANGSUNG dan tak satu pun menembus proxy. Penolakan yang
 > terjadi satu lapis di atas yang diuji tidak terlihat oleh tes mana pun — dan
-> yang menemukannya adalah pemeriksaan `curl` sesudah deploy, bukan gerbangnya.
+> yang menemukannya adalah pemeriksaan `curl` sesudah deploy, bukan gate-nya.
 >
 > Diperbaiki lewat `isBearerApiPath` (fungsi murni, sepola `isDocsPath`) dan
 > dijaga `tests/proxy-bearer-api.test.ts`, yang memanggil `proxy()` yang
-> SUNGGUHAN — penjaga di lapisan yang benar, bukan penjaga kesekian di lapisan
+> SUNGGUHAN — guard di lapisan yang benar, bukan guard kesekian di lapisan
 > yang sudah aman. **Pelajaran yang berlaku di luar F-10:** setiap permukaan
 > ber-autentikasi-bukan-sesi yang ditambahkan kelak akan menabrak perangkap
-> yang sama, dan gerbangnya tidak akan berbunyi.
+> yang sama, dan gate-nya tidak akan berbunyi.
 
 ---
 
@@ -356,12 +356,12 @@ Supaya perbaikan tidak merusak yang sudah mahal dibangun:
 - **Otorisasi.** Matriks terpusat + override DB + `tests/authz-coverage`
   menolak halaman/route tanpa deklarasi izin. Pemisahan izin tenant vs PT
   memecahkan ayam-dan-telur pembuatan PT pertama.
-- **Bidang operator terpisah host** dengan fail-closed ganda (tanpa
+- **Plane operator terpisah host** dengan fail-closed ganda (tanpa
   `OPERATOR_HOST`, `/operator` 404 di mana pun) + TOTP + daftar IP.
 - **Anti-enumerasi** konsisten di `/register`, `/forgot-password`, dan
   undangan: jawaban seragam, kerja mahal tidak ditunggu respons.
 - **Disiplin akuntansi.** Satu mesin posting, kunci periode di dalam
-  transaksi, saldo awal sekali-jalan dengan dua penjaga, neraca yang memakai
+  transaksi, saldo awal sekali-jalan dengan dua guard, neraca yang memakai
   satu rumus ekuitas, `Akumulasi Laba/Rugi` yang **dilabeli benar** (bukan
   "laba berjalan" yang menyesatkan di tahun kedua).
 - **Suspensi = hanya-baca, bukan terkunci.** Pelanggan menunggak tetap bisa
@@ -377,8 +377,8 @@ Satu wisaya, enam berkas, satu jurnal pembuka. Bentuk yang sama untuk setiap
 jenis supaya sekali dipelajari berlaku semuanya:
 
 ```
-unggah xlsx/csv  →  pemetaan kolom  →  pratinjau + galat per-baris  →  terapkan
-                        (disimpan)        (nol galat = boleh lanjut)     (transaksi)
+unggah xlsx/csv  →  pemetaan kolom  →  pratinjau + error per-baris  →  terapkan
+                        (disimpan)        (nol error = boleh lanjut)     (transaksi)
 ```
 
 | Berkas | Isi | Menjadi |
@@ -394,10 +394,10 @@ Aturan yang mengikat seluruh modul:
 
 1. **Inti murni, seperti `coa-import.ts`.** Parsing + validasi tanpa Prisma dan
    tanpa ExcelJS, sehingga seluruh aturan impor bisa diuji tanpa MySQL.
-2. **Nol galat sebelum menerapkan.** Impor sebagian adalah buku yang tidak bisa
+2. **Nol error sebelum menerapkan.** Impor sebagian adalah buku yang tidak bisa
    dijelaskan siapa pun.
 3. **Satu transaksi per berkas**, dan **satu** jurnal pembuka untuk seluruh
-   penyiapan — penjaga sekali-jalan `assertCanRunSetup` tetap berlaku.
+   penyiapan — guard sekali-jalan `assertCanRunSetup` tetap berlaku.
 4. **Semua baris hasil impor ditandai** (`source_type` pembuka) sehingga bisa
    dilaporkan, direkonsiliasi, dan — selama penyiapan belum dikunci — dibatalkan
    seluruhnya.
@@ -411,7 +411,7 @@ angka gelondongan persediaan bisa dicabut tanpa kehilangan apa pun.
 
 **Lapis 1 — API baca (terkecil yang berguna).**
 `Authorization: Bearer <token>` dengan token per-PT yang di-hash di basis data
-kendali, berlingkup izin **yang sudah ada** (`invoice.read`, `report.read`, …)
+control, berlingkup izin **yang sudah ada** (`invoice.read`, `report.read`, …)
 lewat `canEffective` — jadi tidak ada matriks kedua yang akan menyimpang.
 Kuota per token, jejak pemakaian, pencabutan seketika. Endpoint: pelanggan,
 pemasok, barang, faktur, saldo akun, neraca saldo.
@@ -440,10 +440,10 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Cadangan** | SUDAH: Layanan `job-backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
-| **Pemulihan** | BELUM: **Latihan pemulihan yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan cadangan acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah dipulihkan bukan cadangan. |
-| **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut penjadwal (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
-| **Penjadwal** | SUDAH: Layanan `job-scheduler` di compose (#373) — bukan lagi cron host. |
+| **Backup** | SUDAH: Layanan `job-backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
+| **Restore** | BELUM: **Latihan restore yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan backup acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah di-restore bukan backup. |
+| **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut scheduler (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
+| **Scheduler** | SUDAH: Layanan `job-scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
 | **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Pelanggan yang membayar berhak tahu sebelum bertanya. |
 
@@ -467,18 +467,18 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 ## 5. Konsep audit — cara membuktikannya, berulang kali
 
-Audit sekali adalah foto. Yang dibutuhkan rilis umum adalah **gerbang**. Tiga
+Audit sekali adalah foto. Yang dibutuhkan rilis umum adalah **gate**. Tiga
 lapis, meniru pola yang sudah dipakai repo ini (`tests/authz-coverage`,
 `tests/anchor-button-nesting`, `prove-*`).
 
-### Lapis 1 — gerbang otomatis di `bun run verify`
+### Lapis 1 — gate otomatis di `bun run verify`
 
 Uji yang **gagal** bila aturan dilanggar, bukan checklist yang dibaca orang:
 
 | Uji baru | Menjaga |
 |---|---|
 | `tests/no-public-uploads.test.ts` | Tidak ada berkas di `src/` yang menulis ke `public/` (F-1) |
-| `tests/tenant-export-completeness.test.ts` | Setiap penyimpanan per-tenant (tabel, berkas dokumen, jejak audit) punya cabang di `tenant-export` **dan** di jalur penghapusan (F-1, F-7) |
+| `tests/tenant-export-completeness.test.ts` | Setiap penyimpanan per-tenant (tabel, berkas dokumen, jejak audit) punya branch di `tenant-export` **dan** di jalur penghapusan (F-1, F-7) |
 | `tests/rate-limit-coverage.test.ts` | Setiap route yang terjangkau **tanpa sesi** memanggil pembatas laju **persisten** (F-6) |
 | `tests/import-purity.test.ts` | Modul impor tidak mengimpor Prisma/ExcelJS (§4.1 aturan 1) |
 | `tests/api-versioning.test.ts` | Setiap route di `/api/v1/` mendeklarasikan izin + idempotensi (§4.2) |
@@ -493,22 +493,22 @@ aman dijalankan terhadap produksi:
   masing-masing, lalu **buktikan** sesi A tidak bisa mengambil berkas B
   (tanpa cookie: 302 ke `/login`; dengan cookie A: 403/404). Ini yang mengubah
   F-1 dari "sudah diperbaiki" menjadi "terbukti diperbaiki".
-- `prove-backup-restore.ts` — pulihkan cadangan termuda ke basis data bayangan,
+- `prove-backup-restore.ts` — pulihkan backup termuda ke basis data bayangan,
   bandingkan jumlah baris per tabel dan neraca saldo satu PT.
 - `prove-books-balance.ts` — untuk **setiap** PT terdaftar: aset = kewajiban +
   ekuitas + akumulasi laba/rugi; nilai persediaan = saldo akun persediaan;
   total piutang pembantu = saldo akun kontrol. Dijalankan bulanan; setiap
   ketidakcocokan adalah insiden, bukan pembulatan.
-- `prove-scheduler-alive.ts` — waktu jalan terakhir penjadwal < 2 jam.
+- `prove-scheduler-alive.ts` — waktu jalan terakhir scheduler < 2 jam.
 
 ### Lapis 3 — ritual manual, terjadwal
 
 | Irama | Kegiatan |
 |---|---|
-| Tiap rilis | `bun run verify` (agent/cabang) **+** `bun run build` sekali di atas `develop` hasil gabungan (sesi utama) — aturan `AGENTS.md` tidak berubah |
-| Mingguan | Baca papan galat; nol galat baru yang tidak terjelaskan |
+| Tiap rilis | `bun run verify` (agent/branch) **+** `bun run build` sekali di atas `develop` hasil gabungan (sesi utama) — aturan `AGENTS.md` tidak berubah |
+| Mingguan | Baca papan error; nol error baru yang tidak terjelaskan |
 | Bulanan | `prove-books-balance.ts` seluruh PT; tinjau kuota & pemakaian |
-| Kuartalan | **Latihan pemulihan penuh** ke server bayangan; tinjau ulang matriks izin efektif tiap tenant |
+| Kuartalan | **Latihan restore penuh** ke server bayangan; tinjau ulang matriks izin efektif tiap tenant |
 | Tahunan | Uji tembus pihak ketiga; tinjau ulang skema e-Faktur terhadap aturan DJP berjalan (F-11); tinjau S&K + kebijakan privasi (F-15) |
 | Per pelanggan baru (30 hari pertama) | Wawancara singkat perjalanan penyiapan — di situlah F-2/F-3 muncul sebagai keluhan, atau terbukti tertutup |
 
@@ -518,9 +518,9 @@ Rilis umum dibuka **hanya bila seluruh baris ini benar**:
 
 - [ ] F-1 tertutup **dan** `prove-tenant-isolation.ts` hijau
 - [ ] F-7 tertutup; jejak audit ikut ekspor & penghapusan
-- [ ] Cadangan otomatis berjalan **dan** satu pemulihan sudah pernah berhasil
-- [ ] Pelacakan galat menyala, peringatan sampai ke orang yang bertugas
-- [ ] Penjadwal jadi layanan; `prove-scheduler-alive.ts` hijau
+- [ ] Backup otomatis berjalan **dan** satu restore sudah pernah berhasil
+- [ ] Pelacakan error menyala, peringatan sampai ke orang yang bertugas
+- [ ] Scheduler jadi layanan; `prove-scheduler-alive.ts` hijau
 - [ ] F-6 tertutup (pembatas laju login persisten, per-IP + per-pengenal)
 - [ ] Impor Data Awal §4.1 minimal berkas 1–5; F-3 tertutup
 - [ ] `bun run verify` **dan** `bun run build` hijau di `develop` hasil gabungan
@@ -557,18 +557,18 @@ Empat hal yang tidak boleh diputuskan oleh kode:
 ## 7. Ringkasan satu halaman
 
 **Yang sudah kuat:** isolasi buku besar, otorisasi, disiplin akuntansi,
-pemisahan bidang operator, anti-enumerasi, dokumentasi keputusan.
+pemisahan plane operator, anti-enumerasi, dokumentasi keputusan.
 
 **Yang menghalangi rilis umum:** dokumen unggahan tidak berlingkup tenant (dan
 karenanya juga tidak ikut ekspor & penghapusan PDP); tidak ada jalan masuk bagi
 data perusahaan yang sudah berjalan; saldo awal persediaan yang bisa
-tercatat dua kali; nol cadangan otomatis; nol pemantauan.
+tercatat dua kali; nol backup otomatis; nol pemantauan.
 
 **Yang menentukan apakah produk ini laku:** Impor Data Awal (§4.1) dan API
 baca (§4.2 lapis 1). Keduanya bukan perbaikan cacat — keduanya adalah pintu
 masuk yang belum dibuat.
 
-**Yang membuat semuanya bertahan:** gerbang otomatis di `bun run verify`
+**Yang membuat semuanya bertahan:** gate otomatis di `bun run verify`
 (§5 lapis 1) dan skrip pembuktian terhadap sistem hidup (§5 lapis 2) — supaya
 audit berikutnya tidak perlu membaca ulang seluruh kode untuk mengetahui apakah
 yang diperbaiki hari ini masih benar bulan depan.

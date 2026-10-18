@@ -65,7 +65,7 @@ Ada dua service Traefik: `sai-app.loadbalancer.server.port=3000` dan
 > ⚠ **Nama service Traefik kedua container harus berbeda.** Dengan nama yang
 > sama, Traefik menganggapnya satu service dengan dua backend dan membagi beban
 > di antaranya. Permintaan operator lalu bisa mendarat di container pelanggan,
-> tanpa galat apa pun.
+> tanpa error apa pun.
 
 `entrypoints=web` / `websecure` adalah nama entrypoint Traefik, bukan nama
 service compose. Keduanya tidak ikut berubah saat service di-rename.
@@ -166,7 +166,7 @@ batas 333 MB menghasilkan heap limit 525 MB, sama dengan di bawah npm.
 
 Bun memakai JavaScriptCore, yang mengabaikan `--max-old-space-size`. Bila
 perintah diubah menjadi `bun --bun …` atau `bun scripts/x.ts`, batas memori itu
-hilang. Kegagalannya lalu berubah dari galat V8 yang terbaca menjadi
+hilang. Kegagalannya lalu berubah dari error V8 yang terbaca menjadi
 OOM-killer kernel (exit 137).
 
 | Perintah | Batas heap | Alasan tercatat |
@@ -185,12 +185,12 @@ Bun memblokir skrip lifecycle dependensi kecuali paketnya disebut di
 
 | Paket | Tanpa ini |
 |---|---|
-| `bcrypt` | Modul native tidak dibangun → galat saat login |
+| `bcrypt` | Modul native tidak dibangun → error saat login |
 | `@prisma/engines` | Mesin query tidak diunduh → `prisma generate` gagal |
 | `esbuild` | Binary tidak terpasang → vitest mati |
 | `prisma`, `sharp`, `unrs-resolver` | — |
 
-## 4. Gerbang rilis — dan siapa menjalankan yang mana
+## 4. Gate rilis — dan siapa menjalankan yang mana
 
 Aturannya di [`AGENTS.md`](../../AGENTS.md):
 
@@ -206,11 +206,11 @@ flowchart LR
     style O fill:#fff4e6,stroke:#c9873d
 ```
 
-| Gerbang | Siapa | Di mana |
+| Gate | Siapa | Di mana |
 |---|---|---|
-| `bun run verify` | Semua, termasuk agent latar & sesi cabang | Cabang masing-masing |
-| `bun run build` | Hanya sesi utama, sekali, di atas `develop` hasil gabungan | Bukan di cabang mana pun |
-| `bun run build:operator` | Sama dengan `build`; wajib bila perubahan menyentuh konsol (`apps/operator`) atau `packages/*` | Bukan di cabang mana pun |
+| `bun run verify` | Semua, termasuk agent latar & sesi branch | Branch masing-masing |
+| `bun run build` | Hanya sesi utama, sekali, di atas `develop` hasil gabungan | Bukan di branch mana pun |
+| `bun run build:operator` | Sama dengan `build`; wajib bila perubahan menyentuh konsol (`apps/operator`) atau `packages/*` | Bukan di branch mana pun |
 
 **Agent latar tidak menjalankan `bun run build`.** Mesinnya ~3,6 GB dengan
 produksi berjalan di atasnya, dan `next build` makan ~10 menit. Dua agent yang
@@ -219,21 +219,21 @@ rusak. Tiga pengukuran lain di sesi yang sama juga habis jadi timeout karena
 beban. Build yang tidak dijalankan ditulis di badan PR.
 
 **Sesi utama tetap menjalankannya di atas hasil gabungan.** Satu-satunya build
-yang pernah gagal di repo ini gagal di hasil gabungan, padahal setiap cabangnya
+yang pernah gagal di repo ini gagal di hasil gabungan, padahal setiap branch-nya
 hijau sendiri-sendiri. Tanpa langkah ini, yang dipromosikan adalah kode yang
 belum pernah dibangun.
 
-### Jebakan gerbang yang terdokumentasi
+### Jebakan gate yang terdokumentasi
 
 | Jebakan | Akibat |
 |---|---|
 | `bun test` ≠ `bun run test` | `bun test` memanggil runner bawaan Bun: mengabaikan `vitest.config.ts`, tidak kenal alias `@/`, dan melaporkan "no tests found" seolah suite rusak |
-| `\| tail` pada perintah verify | Menutupi kode keluar; gerbang tampak hijau |
+| `\| tail` pada perintah verify | Menutupi kode keluar; gate tampak hijau |
 | `.next/types` basi | Typecheck gagal pada rute yang dipindahkan |
 | `npm install` | Repo hanya punya `bun.lock` → lockfile kedua |
 
 **`next build` tidak memeriksa tipe** (`typescript.ignoreBuildErrors: true`).
-`bun run typecheck` adalah satu-satunya gerbang tipe, jadi perintah itu harus
+`bun run typecheck` adalah satu-satunya gate tipe, jadi perintah itu harus
 selalu bisa dijalankan.
 
 ## 5. Alur rilis
@@ -341,7 +341,7 @@ Klien Prisma sudah dibangkitkan di dalam image (`migrator`, `prepared`), jadi
 
 | Basis data | Dir migration | Diterapkan 18 Okt 2026 |
 |---|---|---|
-| Kendali | `prisma/postgresql/control/` | **4/4** |
+| Control | `prisma/postgresql/control/` | **4/4** |
 | Platform | `prisma/postgresql/platform/` | **4/4** |
 | Perusahaan | `prisma/postgresql/company/` | **1/1** (setiap buku PT) |
 
@@ -349,8 +349,8 @@ Klien Prisma sudah dibangkitkan di dalam image (`migrator`, `prepared`), jadi
 MariaDB hanya-baca (99 migration). Yang ditulis di sana tidak akan diterapkan.
 
 > ⚠ **`db:migrate` (tunggal) hanya menyentuh satu basis data**, yaitu yang
-> ditunjuk `DATABASE_URL`. Kendali, platform, dan buku PT lain tertinggal tanpa
-> galat. Selalu pakai `db:migrate:all`.
+> ditunjuk `DATABASE_URL`. Control, platform, dan buku PT lain tertinggal tanpa
+> error. Selalu pakai `db:migrate:all`.
 
 Migration ditulis tangan di `prisma/postgresql/<company|control|platform>/NNNN_<nama>/migration.sql`
 (lihat [`docs/DATABASE.md §7`](../DATABASE.md)), tidak dibangkitkan
@@ -369,7 +369,7 @@ Hanya nama; nilainya tidak dicantumkan di dokumen ini.
 | Basis data | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL`, `PG_USER`, `PG_PASSWORD` (dipakai `pg`, `pgbouncer`, dan URL langsung `migrate`/`job-backup`) · `DB_NAME` · `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `DB_CONNECTION_LIMIT` = MariaDB jalan mundur (#636) |
 | Operator | `OPERATOR_DOMAIN`, `OPERATOR_HOST`, `OPERATOR_IP_ALLOWLIST`, `OPERATOR_MFA`, `OPERATOR_SESSION_SECRET`, `OPERATOR_USERS` |
 | Enkripsi | `SETTINGS_ENCRYPTION_KEY`, `BACKUP_ENCRYPTION_KEY` |
-| Cadangan | `BACKUP_RETENTION_DAYS`, `BACKUP_S3_PREFIX` |
+| Backup | `BACKUP_RETENTION_DAYS`, `BACKUP_S3_PREFIX` |
 | Kontak | `PLATFORM_CONTACT_EMAIL`, `PLATFORM_CONTACT_WHATSAPP` |
 | Lain | `NODE_ENV`, `TZ`, `NEXT_PUBLIC_APP_NAME` |
 
@@ -377,12 +377,12 @@ Hanya nama; nilainya tidak dicantumkan di dokumen ini.
 
 | Variabel | Akibat ketiadaannya |
 |---|---|
-| `AWS_ACCESS_KEY_ID` | Cadangan hanya lokal (`local_only`) |
-| `AWS_SECRET_ACCESS_KEY` | Cadangan hanya lokal |
-| `BACKUP_S3_BUCKET` | Cadangan hanya lokal; arsip ke volume `cadangan` |
-| `AWS_DEFAULT_REGION` | Cadangan |
-| `MIDTRANS_SERVER_KEY` | Gerbang bayar → MOCK |
-| `MIDTRANS_IS_PRODUCTION` | Gerbang bayar |
+| `AWS_ACCESS_KEY_ID` | Backup hanya lokal (`local_only`) |
+| `AWS_SECRET_ACCESS_KEY` | Backup hanya lokal |
+| `BACKUP_S3_BUCKET` | Backup hanya lokal; arsip ke volume `backup` |
+| `AWS_DEFAULT_REGION` | Backup |
+| `MIDTRANS_SERVER_KEY` | Gate bayar → MOCK |
+| `MIDTRANS_IS_PRODUCTION` | Gate bayar |
 | `PAYMENT_GATEWAY` | Jatuh ke `manual` |
 | `PLATFORM_ALERT_EMAIL` | Peringatan jatuh ke `PLATFORM_CONTACT_EMAIL` |
 | `OPERATOR_TRUSTED_PROXY_HOPS` | Bawaan 1, benar untuk susunan sekarang (Traefik saja) |
@@ -401,12 +401,12 @@ Pemeriksa: `bun run check:env` (`scripts/check-env.mjs`).
 | Klien | Koneksi | Dikali | Total |
 |---|---|---|---|
 | Buku PT (LRU) | 2 | maks 4 klien | **8** |
-| Kendali | 2 | 1 | **2** |
+| Control | 2 | 1 | **2** |
 | Platform | 1 | 1 | **1** |
 | | | | **11 dari `app-customer`** |
 
 Ditambah `app-operator`, `job-scheduler`, `job-conformance`, dan `job-backup`
-saat berjalan. Angkanya sengaja kecil: setiap koneksi yang dipesan kendali tidak
+saat berjalan. Angkanya sengaja kecil: setiap koneksi yang dipesan control tidak
 bisa dipakai buku PT, dan `max_connections` di mesin ini terbatas. Sejak
 PostgreSQL (15 Okt 2026) anggarannya dua lapis: `max_client_conn = 200` di
 PgBouncer dan `max_connections = 100` di `pg`, dengan `default_pool_size = 20`
@@ -431,18 +431,18 @@ Dinilai di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 | Mekanisme | Isi |
 |---|---|
-| `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), `conformance` (+umur, jumlah temuan), `mail`. 503 hanya bila kendali tak terjangkau |
-| `GET /status` | Versi untuk manusia: komponen dengan empat keadaan (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`packages/core/src/public-status.ts`) |
+| `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), `conformance` (+umur, jumlah temuan), `mail`. 503 hanya bila control tak terjangkau |
+| `GET /status` | Versi untuk manusia: komponen dengan empat keadaan (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat error (`packages/core/src/public-status.ts`) |
 | Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `pg` tiap 10s |
 | Healthcheck Traefik | `/api/health` tiap 30s |
 | `scheduler_runs` | Status per putaran; dipangkas `prune:trails` > 90 hari (baris `error`, terakhir, & `ok` terakhir ditahan selamanya) |
 | `conformance_runs` | Status + jumlah temuan per sapuan mingguan |
 | `backup_runs` | Status per percobaan (`ok` · `lokal` · `error`) |
-| `/scheduler` (host konsol) | Denyut penjadwal di layar |
+| `/scheduler` (host konsol) | Denyut scheduler di layar |
 | `audit_logs` / `tenant_audit_logs` | Jejak tindakan |
 | `bun run prove-scheduler-alive` | Pembuktian denyut |
-| `bun run prove-backup-restore` | Pembuktian cadangan bisa dibuka |
-| `watch:health` | Langkah 6 `job-scheduler`, tiap jam: surel peringatan bila cadangan, penjadwal, atau kesesuaian tidak sehat; peredam satu surel per status per 24 jam |
+| `bun run prove-backup-restore` | Pembuktian backup bisa dibuka |
+| `watch:health` | Langkah 6 `job-scheduler`, tiap jam: surel peringatan bila backup, scheduler, atau kesesuaian tidak sehat; peredam satu surel per status per 24 jam |
 | `src/lib/alert.ts` | Peringatan surel berperedam untuk peristiwa dalam-aplikasi |
 | `docker compose logs <layanan>` | Log mentah |
 | CI `Verify` | `typecheck + lint + test` pada setiap PR & push `develop`/`main`; required status check pada `main` sejak 11 Okt 2026 |
@@ -461,9 +461,9 @@ lama. Perilakunya tidak terpengaruh, tetapi komentarnya perlu dirapikan.
 |---|---|
 | Agregasi log | Log lama hanya bisa dibaca lewat `docker logs` pada container yang masih hidup |
 | Metrik / dasbor | Tidak ada tren. "Apakah ini melambat?" tidak terjawab |
-| Pelacakan galat (Sentry dsb.) | Galat runtime hanya di log |
+| Pelacakan error (Sentry dsb.) | Error runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
-| Peringatan saat penjadwal mati total | `watch:health` berjalan di dalam `job-scheduler` dan ikut mati bersamanya. Hanya pembaca `/api/health` dari luar mesin yang bisa menutup celah ini |
+| Peringatan saat scheduler mati total | `watch:health` berjalan di dalam `job-scheduler` dan ikut mati bersamanya. Hanya pembaca `/api/health` dari luar mesin yang bisa menutup celah ini |
 
 Membaca log, dari `PRODUCTION.md §Reading the logs`:
 
@@ -483,16 +483,16 @@ serta §5 dokumen ini. Perkakas build-di-server (`setup:prod`, `start:prod`,
 di server. `scripts/deploy.sh` tersisa sebagai jalan darurat warisan bila GHCR
 tak terjangkau; kepala berkasnya menyatakan ia tidak dipakai untuk rilis biasa.
 
-## 11. Pemulihan bencana
+## 11. Disaster recovery
 
 | Pertanyaan | Jawaban hari ini |
 |---|---|
-| RPO (kehilangan data maksimum) | **24 jam** untuk kerusakan data (cadangan harian di volume `cadangan`) · **tak terbatas** untuk kehilangan mesin, karena belum ada salinan luar-mesin |
+| RPO (kehilangan data maksimum) | **24 jam** untuk kerusakan data (backup harian di volume `backup`) · **tak terbatas** untuk kehilangan mesin, karena belum ada salinan luar-mesin |
 | RTO (waktu pulih) | ❓ Belum pernah diukur |
-| Cadangan luar-mesin | **Tidak ada**: `BACKUP_S3_BUCKET` kosong, `/api/health` → `backup: local_only` (18 Okt 2026) |
+| Backup luar-mesin | **Tidak ada**: `BACKUP_S3_BUCKET` kosong, `/api/health` → `backup: local_only` (18 Okt 2026) |
 | Dump manual | Ada dan dipakai: `backups/` di akar repo; yang terbaru `pra-cutover2-postgres-2026-10-15-0437.sql`. Semuanya di mesin yang sama dengan datanya |
-| Latihan pemulihan | Diwajibkan kuartalan, dijalankan manusia; ❓ tidak ada bukti pernah dijalankan |
-| Kunci enkripsi cadangan di luar mesin | ❓ Belum dipastikan; risiko besar |
+| Latihan restore | Diwajibkan kuartalan, dijalankan manusia; ❓ tidak ada bukti pernah dijalankan |
+| Kunci enkripsi backup di luar mesin | ❓ Belum dipastikan; risiko besar |
 | Rollback kode | Baik: tag `sha-<pendek>` di GHCR |
 | Rollback skema | ❓ Tidak ada migration `down` |
 

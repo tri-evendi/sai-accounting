@@ -9,7 +9,7 @@ sistem melaporkan kegagalannya, bukan soal struktur. Nomor butir lama (0.1, 2.2,
 karena dirujuk dari kode dan dokumen lain.
 
 Pekerjaan konsol operator 17–18 Okt (bantuan pengguna, perpanjangan H-60,
-penawaran → hak pakai, kesehatan tenant, gerbang di `/settings`, …) tercatat di
+penawaran → hak pakai, kesehatan tenant, gate di `/settings`, …) tercatat di
 [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md), tidak disalin di sini.
 
 ---
@@ -27,19 +27,19 @@ penawaran → hak pakai, kesehatan tenant, gerbang di `/settings`, …) tercatat
 | Replika `app-customer` sekarang | Prasyaratnya belum ada: cache dalam-memori akan berbeda antar-replika (P2-3) |
 | Lingkungan staging penuh | 🔶 Mungkin belum sepadan. Keputusan pemilik (§5 #8) |
 | Pisahkan container pemasaran | Batasnya memotong funnel: `/register` ada di `(auth)`. Nol beban terukur. [Dok 10 §4](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
-| Mulai DC/DRC dari replikasi | Replika dari basis data tanpa cadangan luar-mesin ikut menyalin setiap kesalahan, jadi kegagalannya berkorelasi. [Dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
+| Mulai DC/DRC dari replikasi | Replika dari basis data tanpa backup luar-mesin ikut menyalin setiap kesalahan, jadi kegagalannya berkorelasi. [Dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md) |
 | Pecah repo menjadi dua | Monorepo cukup; lihat [dok 14 §3](./14-RENCANA-MONOREPO.md) |
 
 ---
 
 ## 2. Terbuka
 
-### 0.1 Cadangan luar-mesin → P0-1 — 🟠 lokal ✅ / luar-mesin ❌
+### 0.1 Backup luar-mesin → P0-1 — 🟠 lokal ✅ / luar-mesin ❌
 
 **Sudah berjalan.** `job-backup` membuat artefak terenkripsi harian di volume
-`cadangan` (`pg_dumpall` langsung ke `pg`) dan merekam putarannya `local`, jadi
+`backup` (`pg_dumpall` langsung ke `pg`) dan merekam putarannya `local`, jadi
 `/api/health` → `backup.status = "local_only"`. Sejak 12 Okt artefak lokal
-terbukti bisa dipulihkan lewat `prove-backup-restore`. `watch:health` mengirim
+terbukti bisa di-restore lewat `prove-backup-restore`. `watch:health` mengirim
 peringatan selama status itu bertahan.
 
 **Belum.** Salinan di luar mesin: `BACKUP_S3_BUCKET` dan kredensialnya masih
@@ -60,12 +60,12 @@ lulus.
 
 ### 0.2 Kunci enkripsi di luar mesin → P0-2 — ❌
 
-Dikerjakan bersama 0.1. Cadangan luar-mesin yang kuncinya hanya ada di `.env`
+Dikerjakan bersama 0.1. Backup luar-mesin yang kuncinya hanya ada di `.env`
 server ini tidak bisa dibuka setelah mesinnya hilang.
 
 1. Salin `BACKUP_ENCRYPTION_KEY` ke penyimpanan rahasia di luar mesin.
 2. Catat lokasinya (bukan nilainya) di `PRODUCTION.md`.
-3. Buktikan: buka cadangan di mesin yang tidak punya `.env` produksi.
+3. Buktikan: buka backup di mesin yang tidak punya `.env` produksi.
 
 **Prasyarat:** ❓ pemilik memilih pengelola rahasia (§5 #1).
 
@@ -96,7 +96,7 @@ dibalik dan tidak boleh didasarkan pada nama.
 
 | Butir | Keadaan |
 |---|---|
-| **P2-2** jejak per-langkah penjadwal | Hanya `scheduler:subscriptions` menulis `scheduler_runs`; enam langkah lain hanya tercetak di log. Menutupnya hampir sama dengan membangun antrean, jadi ditunda bersama pemicu antrean |
+| **P2-2** jejak per-langkah scheduler | Hanya `scheduler:subscriptions` menulis `scheduler_runs`; enam langkah lain hanya tercetak di log. Menutupnya hampir sama dengan membangun antrean, jadi ditunda bersama pemicu antrean |
 | **P2-4** `script-src 'unsafe-inline'` | Jalur nonce + `strict-dynamic` terdokumentasi di `packages/core/src/security-headers.ts`; proyek tersendiri. `style-src 'unsafe-inline'` struktural (#203) |
 | **P3-1** beban tipe | Batas heap `typecheck` 2048 MB sejak 17 Okt (jalan dingin OOM di 1536). Kamus i18n belum dipecah; pemicu berikutnya OOM di 2048 |
 | **P3-3** `CODEOWNERS` | Sengaja tidak, sampai ada orang kedua |
@@ -110,15 +110,15 @@ Butir di sini baru dikerjakan bila pemicunya terjadi.
 
 | Pekerjaan | Pemicu terukur | Prasyarat | Rujukan |
 |---|---|---|---|
-| **Antrean pekerjaan** | Satu putaran penjadwal tidak muat dalam 1 jam, atau satu produser butuh *retry* < 1 jam | Pilihan antrean + penyimpanan | P2-2 |
-| **Replika `app-customer`** | CPU/memori jadi pembatas, atau butuh deploy tanpa henti | Cache bersama, dan tinjau `max_connections` + kolam PgBouncer | P2-3 |
+| **Antrean pekerjaan** | Satu putaran scheduler tidak muat dalam 1 jam, atau satu produser butuh *retry* < 1 jam | Pilihan antrean + penyimpanan | P2-2 |
+| **Replika `app-customer`** | CPU/memori jadi pembatas, atau butuh deploy tanpa henti | Cache bersama, dan tinjau `max_connections` + pool PgBouncer | P2-3 |
 | **Replika baca PostgreSQL** | Laporan mulai memperlambat tulisan | Pemantauan yang bisa menunjukkan itu | SPOF-1 |
 | **Mesin kedua / HA** | RTO yang dapat diterima < waktu bangun ulang manual | ❓ RTO dari pemilik | SPOF-3 |
 | **Staging** | Perubahan skema mulai butuh latihan sebelum produksi | Keputusan ongkos | P2-1 |
 | **Metrik/dasbor** | "Apakah ini melambat?" ditanyakan dan tak terjawab | — | Dok 07 |
 | **Pecah kamus i18n / berkas besar** | `typecheck` dingin OOM di 2048 MB | — | P3-1 |
 | **Kanal peringatan kedua** | Satu kegagalan surel membuat P1-1 terulang | — | P1-1 |
-| **Pisahkan bidang akuisisi** (`(marketing)`+`(auth)` bersama) | Lalu lintas perayap terukur bersaing dengan pelanggan | — | Dok 10 §4 |
+| **Pisahkan plane akuisisi** (`(marketing)`+`(auth)` bersama) | Lalu lintas perayap terukur bersaing dengan pelanggan | — | Dok 10 §4 |
 | **WAL/PITR** | RPO 24 jam tidak lagi dapat diterima pemilik | 0.1 selesai | Dok 10 §5 |
 | **VM kedua sebagai target restore dingin** | Butuh jalan pulang dari kehilangan mesin | 0.1 + 0.2 | Dok 10 §5 |
 | **Replikasi → DRC** | RTO menuntutnya, dan restore dingin sudah terbukti | VM kedua | Dok 10 §5 |
@@ -134,14 +134,14 @@ padat.
 | Kendala | Akibatnya pada rencana |
 |---|---|
 | **RAM ~3,6 GB, banyak aplikasi** | Tidak ada proses jangka-panjang baru tanpa mengukur. Tidak ada build di server; image dibangun di CI |
-| **`max_connections` PostgreSQL (100) + kolam PgBouncer** | Setiap klien baru mengurangi anggaran yang lain; tiap koneksi backend adalah satu proses |
+| **`max_connections` PostgreSQL (100) + pool PgBouncer** | Setiap klien baru mengurangi anggaran yang lain; tiap koneksi backend adalah satu proses |
 | **Tanpa FK lintas basis data** | Setiap alur multi-lapis butuh urutan tulis + rekonsiliasi |
 | **Konteks PT wajib eksplisit** | Setiap pekerjaan latar baru wajib memakai `runWithCompany()` |
-| **Platform tak boleh di jalur panas** | Keputusan jalur panas dibaca dari snapshot di kendali |
+| **Platform tak boleh di jalur panas** | Keputusan jalur panas dibaca dari snapshot di control |
 | **Migration N× per rilis** | Perubahan skema berbiaya linear terhadap jumlah buku |
 | **Tipe tidak diperiksa saat build** | `bun run verify` harus selalu bisa dijalankan |
 | **Dua aplikasi, satu skema** | Kedua image aplikasi wajib dari `sha-` yang sama ([dok 14](./14-RENCANA-MONOREPO.md)) |
-| **Modul tak boleh gerbangi buku besar** | Fitur baru harus memisahkan "antarmuka" dari "data historis" |
+| **Modul tak boleh men-gate buku besar** | Fitur baru harus memisahkan "antarmuka" dari "data historis" |
 | **`db:migrate` tunggal berbahaya** | Otomasi apa pun wajib memakai `db:migrate:all` |
 | **Jejak audit harus selamat dari penghapusan** | `tenant_audit_logs` sengaja tanpa FK; jangan "dirapikan" |
 
@@ -153,7 +153,7 @@ padat.
 |---|---|---|
 | 1 | Pengelola rahasia mana untuk `BACKUP_ENCRYPTION_KEY`? | 0.2 |
 | 2 | RTO yang dapat diterima? | Penilaian SPOF, §3 |
-| 3 | Latihan pemulihan kuartalan: siapa, kapan? | Kredibilitas pemulihan |
+| 3 | Latihan restore kuartalan: siapa, kapan? | Kredibilitas restore |
 | 4 | Buku uji di produksi: kecualikan dari kesesuaian? rapikan? | 2.2 |
 | 6 | Siapa/apa yang membaca `/api/health` selain `watch:health`? | Lingkup pemantauan |
 | 7 | Kapan `billing_mode` dibuka dari `none`? | [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md) |
@@ -173,12 +173,12 @@ dan [`docs/PRICING.md`](../PRICING.md); kepatuhan di
 |---|---|---|
 | 0.4 CI → P0-3 | 11 Okt | `.github/workflows/verify.yml`; `verify` *required status check* pada `main` (`strict: false`, `app_id` dipin) |
 | 0.5 Dokumen deploy → P1-3 | 11–12 Okt | satu jalur hidup (`PRODUCTION.md` §Updates); perkakas standalone, PM2, `build-standalone.yml`, `HOSTING*.md`, `DOCKER.md` dicabut |
-| 0.3 Peringatan → P1-1 | 12–13 Okt | `watch:health` (`scripts/watch-health.ts`, langkah ke-6 `job-scheduler`): cadangan, penjadwal (termasuk putaran `error`), kesesuaian; peredam per komponen |
+| 0.3 Peringatan → P1-1 | 12–13 Okt | `watch:health` (`scripts/watch-health.ts`, langkah ke-6 `job-scheduler`): backup, scheduler (termasuk putaran `error`), kesesuaian; peredam per komponen |
 | 1.1 Container operator dipisah | di-deploy | sejak 18 Okt menjadi aplikasi dan image tersendiri (`apps/operator`, `-operator`); [dok 14](./14-RENCANA-MONOREPO.md) |
 | 1.2 Jalan pintas `/` di proxy → P3-4 | 11 Okt | satu pantulan bila token membawa kedua slug; `tests/proxy-landing-shortcut.test.ts` |
 | 1.3 Jejak kesesuaian → P1-2 | 11 Okt | `conformance_runs`, medan `/api/health`, halaman konsol `/conformance` |
 | 1.4 Uji proxy → P3-2 | sudah ada | `tests/proxy-bearer-api.test.ts` |
-| 1.5 Pemangkasan jejak → P2-5 | 11 Okt | 4 aturan (baris terakhir & `ok` terakhir selalu tinggal); langkah terakhir penjadwal |
+| 1.5 Pemangkasan jejak → P2-5 | 11 Okt | 4 aturan (baris terakhir & `ok` terakhir selalu tinggal); langkah terakhir scheduler |
 | 2.1 Klasifikasi buku → P2-1 | 11 Okt | `bun run classify:books`; [dok 12](./12-KLASIFIKASI-BUKU.md) |
 | 3.1 CSP → P2-4 | 11 Okt | `unsafe-eval` dicabut di produksi; `tests/security-headers.test.ts` |
 | PostgreSQL | 15 Okt | atas putusan pemilik; [dok 11](./11-RENCANA-POSTGRESQL.md) |
@@ -193,26 +193,26 @@ aplikasi pelanggan (`src/`) dan konsol operator (`apps/operator`, di
 `ops.saiaccounting.id`) di atas paket bersama. Empat image GHCR dari satu
 commit (aplikasi, `-operator`, `-migrator`, `-backup`), di-deploy di satu mesin
 lewat Docker Compose di belakang Traefik. Satu basis data PostgreSQL 17 per
-PT (ditambah kendali dan platform) di balik PgBouncer; MariaDB `db` masih hidup sebagai
+PT (ditambah control dan platform) di balik PgBouncer; MariaDB `db` masih hidup sebagai
 jalan mundur sampai #636.
 
 **Apa yang sehat.** Bentuk arsitekturnya: mode kegagalan dipilih dengan sengaja
-(konteks PT yang hilang melempar galat, bidang operator fail-closed), satu
+(konteks PT yang hilang melempar error, plane operator fail-closed), satu
 pintu menuju buku besar, aturan arsitektural ditegakkan tes, dan keputusan sulit
 tertulis beserta ukuran dan tanggalnya.
 
-**Prioritas tertinggi yang masih terbuka:** cadangan luar-mesin (P0-1; bagian
+**Prioritas tertinggi yang masih terbuka:** backup luar-mesin (P0-1; bagian
 lokal sudah ✅) dan kunci di luar mesin (P0-2). P1-1 sudah ditutup
 `watch:health`.
 
 | # | Langkah | Usaha | Rujukan |
 |---|---|---|---|
-| 1 | Setel 3 env S3, jalankan cadangan, buktikan dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
+| 1 | Setel 3 env S3, jalankan backup, buktikan dengan `prove-backup-restore` | Rendah | 0.1 / P0-1 |
 | 2 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat di mana | Rendah | 0.2 / P0-2 |
 | 3 | Tutup risiko PostgreSQL dok 11 §10.2 butir 4–7 (+ `auth.ts:116`) | Rendah–sedang | dok 11 §5 |
 | 4 | #636: cabut MariaDB (≥ 22 Okt 2026), dump terakhir disimpan di luar mesin | Sedang | dok 11 §1 |
 | 5 | Jawab dua keputusan pemilik di 2.2 | — | [dok 12 §6](./12-KLASIFIKASI-BUKU.md) |
 
 Nomor 1 dan 2 dikerjakan bersama. Langkah pembuktian jangan dilewati:
-gerbangnya `lastSuccessAt != null` dan `prove-backup-restore` lulus. Laporan
+gate-nya `lastSuccessAt != null` dan `prove-backup-restore` lulus. Laporan
 "sukses" dari skrip tidak cukup.

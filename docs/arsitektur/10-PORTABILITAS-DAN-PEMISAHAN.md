@@ -5,7 +5,7 @@
 > Sesudahnya: PostgreSQL 15 Okt 2026 ([dok 11](./11-RENCANA-POSTGRESQL.md)),
 > monorepo 18 Okt 2026 ([dok 14](./14-RENCANA-MONOREPO.md)). Status terkini
 > per 18 Okt 2026 (`main@ca0cd038`): container operator ✅ (kini aplikasi dan image
-> sendiri), PostgreSQL ✅, cadangan lokal ✅ / luar-mesin ❌, pemasaran tetap
+> sendiri), PostgreSQL ✅, backup lokal ✅ / luar-mesin ❌, pemasaran tetap
 > tidak dipisah. Ringkasan di [§6](#6-ringkasan-apa-yang-dikerjakan-apa-yang-tidak).
 >
 > **Pertanyaan yang dijawab dokumen ini.** Empat pertanyaan pemilik, dijawab
@@ -22,18 +22,18 @@
 
 | Pertanyaan | Putusan | Dasar |
 |---|---|---|
-| Pisahkan container **operator** | ✅ Selesai: container sendiri (11 Okt), lalu aplikasi dan image sendiri (18 Okt, [dok 14](./14-RENCANA-MONOREPO.md)) | `decideOperatorRouting` memutuskan bidang murni dari env + Host |
+| Pisahkan container **operator** | ✅ Selesai: container sendiri (11 Okt), lalu aplikasi dan image sendiri (18 Okt, [dok 14](./14-RENCANA-MONOREPO.md)) | `decideOperatorRouting` memutuskan plane murni dari env + Host |
 | Pisahkan container **pemasaran** | ❌ Jangan | Batasnya memotong funnel; nol beban terukur; tanpa alasan keamanan |
 | Pindah ke **PostgreSQL** | ✅ Dikerjakan 15 Okt 2026 atas putusan pemilik (asesmen semula: jangan sekarang) | [Dok 11](./11-RENCANA-POSTGRESQL.md) |
 | **Portabilitas VM** | 🟢 Sudah ~80% siap | Image di registry, named volume, skema deklaratif |
-| **DC/DRC** | ⏸ Belum bisa dibicarakan | Prasyaratnya cadangan luar-mesin terverifikasi + WAL/PITR + secret di luar kotak |
+| **DC/DRC** | ⏸ Belum bisa dibicarakan | Prasyaratnya backup luar-mesin terverifikasi + WAL/PITR + secret di luar kotak |
 
-Satu hal mengikat semuanya: **cadangan luar-mesin yang belum ada adalah
+Satu hal mengikat semuanya: **backup luar-mesin yang belum ada adalah
 penghalang utama migrasi VM, dan juga prasyarat DC/DRC.**
 
-Migrasi VM memakai cadangan itu: dump seluruh basis data + `data/documents` +
+Migrasi VM memakai backup itu: dump seluruh basis data + `data/documents` +
 `data/audit`, terenkripsi, di luar mesin. Artefak lokal harian sudah ada dan
-terbukti bisa dipulihkan. Yang belum ada adalah salinannya di luar mesin dan
+terbukti bisa di-restore. Yang belum ada adalah salinannya di luar mesin dan
 kuncinya di luar server. P0-1/P0-2 di [dok 08](./08-PENILAIAN-ARSITEKTUR.md)
 karena itu sekaligus pekerjaan portabilitas dan DRC.
 
@@ -51,14 +51,14 @@ dibatalkan tanpa sengaja:
 | Skema **deklaratif**, `db:migrate:all` idempoten | VM baru bisa dibangun dari nol, berulang |
 | `.env.docker.example` ada | Inventaris variabel terdokumentasi |
 | Traefik lewat **label**, bukan berkas konfigurasi | Routing ikut pindah bersama `docker-compose.yml` |
-| `app-*` dan `job-*` **stateless** | Seluruh state ada di `pg` + volume `documents`, `audit`, `cadangan` |
+| `app-*` dan `job-*` **stateless** | Seluruh state ada di `pg` + volume `documents`, `audit`, `backup` |
 | Kredensial basis data **dari environment**, bukan dari tabel | Satu `.env` baru cukup; tidak ada URL tertanam di data |
 
 ### Yang menghalangi
 
 | # | Penghalang | Status |
 |---|---|---|
-| 1 | **Cadangan luar-mesin** | 🟠 lokal ✅ (harian, terbukti bisa dipulihkan sejak 12 Okt) / luar-mesin ❌ (`BACKUP_S3_BUCKET` kosong); lihat P0-1 |
+| 1 | **Backup luar-mesin** | 🟠 lokal ✅ (harian, terbukti bisa di-restore sejak 12 Okt) / luar-mesin ❌ (`BACKUP_S3_BUCKET` kosong); lihat P0-1 |
 | 2 | **Kunci enkripsi 🔶 hanya di mesin ini** | 🔴 lihat P0-2 |
 | 3 | Prosedur restore belum pernah dilatih | 🟠 diwajibkan kuartalan di `package.json`; ❓ tanpa bukti dijalankan |
 | 4 | Rencana cutover DNS | ❓ belum ada |
@@ -78,9 +78,9 @@ sequenceDiagram
     participant D as DNS
 
     Note over B: 1. siapkan: Docker + Traefik + jaringan traefik_default
-    L->>S: 2. cadangan terakhir (terverifikasi prove-backup-restore)
+    L->>S: 2. backup terakhir (terverifikasi prove-backup-restore)
     L->>L: 3. BEKUKAN tulisan (hentikan app-* + job-*; pg tetap hidup)
-    L->>S: 4. cadangan FINAL sesudah pembekuan
+    L->>S: 4. backup FINAL sesudah pembekuan
     S->>B: 5. tarik arsip + buka segel
     B->>B: 6. muat dump; pulihkan volume documents & audit
     B->>B: 7. salin .env (kredensial baru untuk db)
@@ -94,13 +94,13 @@ Langkah 9 wajib: buktikan lewat angka pra/pasca yang dibaca sendiri, jangan lewa
 laporan skrip. Aturan ini sudah berlaku di repo ini untuk migration.
 
 Rancangan ini belum menjadi prosedur karena tujuan S3 di langkah 2, 4, dan 5
-belum ada (per 18 Okt hanya artefak lokal di volume `cadangan`), dan
+belum ada (per 18 Okt hanya artefak lokal di volume `backup`), dan
 prosedurnya belum pernah dilatih ujung-ke-ujung.
 
 ## 2. PostgreSQL — ✅ dikerjakan 15 Okt 2026
 
 Asesmen 11 Okt menilai "jangan sekarang". Tidak ada keluhan terukur yang
-diselesaikan PostgreSQL, P0 cadangan masih terbuka, dan biaya terbesarnya adalah
+diselesaikan PostgreSQL, P0 backup masih terbuka, dan biaya terbesarnya adalah
 koneksi: PostgreSQL memakai satu proses per koneksi, puncak terukur 62, sehingga
 PgBouncer wajib. Pemilik memutuskan pindah. Sejak 15 Okt 2026 produksi berjalan
 di PostgreSQL 17 + PgBouncer, dengan isolasi fisik #104 dipertahankan: satu
@@ -127,10 +127,10 @@ dan build pelanggan tidak memuat rute operator.
 | | |
 |---|---|
 | Image | empat dari satu commit: aplikasi pelanggan, `-operator`, `-migrator`, `-backup`; kedua aplikasi wajib dari `sha-` yang sama |
-| Bidang | ditentukan host saja. Konsol di `ops.saiaccounting.id` tanpa prefix `/operator`; `/operator/*` → 308 |
+| Plane | ditentukan host saja. Konsol di `ops.saiaccounting.id` tanpa prefix `/operator`; `/operator/*` → 308 |
 | Konsol (`apps/operator/src/proxy.ts`) | `OPERATOR_HOST` kosong → seluruh konsol 404; host lain → 404 (bukan rute pelanggan); IP di luar `OPERATOR_IP_ALLOWLIST` → 404; tanpa sesi → `/login` |
 | Pelanggan (`src/proxy.ts`) | host operator yang sampai ke sini (Traefik salah arah) → 404; tidak ada rute operator di binarinya |
-| Aturan bidang | satu fungsi murni, `decideOperatorRouting` di `packages/core/src/operator-plane.ts`, dipakai kedua aplikasi |
+| Aturan plane | satu fungsi murni, `decideOperatorRouting` di `packages/core/src/operator-plane.ts`, dipakai kedua aplikasi |
 | Volume konsol | hanya `audit` |
 
 Asesmen ini dulu mencatat satu celah: container operator melayani rute
@@ -138,7 +138,7 @@ pelanggan bila dihubungi dengan `Host:` lain. Celah itu ikut tertutup, karena
 binari konsol tidak punya rute pelanggan dan proxy-nya menjawab 404.
 
 Yang didapat sejak langkah pertama tetap berlaku: blast radius, restart, batas
-sumber daya, dan log terpisah per bidang.
+sumber daya, dan log terpisah per plane.
 
 ## 4. Pemisahan halaman pemasaran
 
@@ -148,7 +148,7 @@ sumber daya, dan log terpisah per bidang.
 |---|---|---|
 | Alasan | Keamanan: pemisahan hak istimewa | Hanya performa/ketersediaan |
 | Beban terukur | — | 162–185 ms hangat · 1.337 ms dingin |
-| Batas bidang tegas? | Ya: host + fail-closed 404 | Tidak: funnel terbelah |
+| Batas plane tegas? | Ya: host + fail-closed 404 | Tidak: funnel terbelah |
 | Putusan | ✅ Lakukan | ❌ Jangan |
 
 ### Alasan utama: batasnya memotong funnel
@@ -208,9 +208,9 @@ pendaratan datang dari kamus.
 |---|
 | Lalu lintas perayap/bot terukur bersaing dengan permintaan pelanggan |
 | Butuh edge caching lintas wilayah (menuntut i18n pindah ke jalur URL lebih dulu) |
-| `(marketing)` + `(auth)` dipisah bersama sebagai satu "bidang akuisisi" |
+| `(marketing)` + `(auth)` dipisah bersama sebagai satu "plane akuisisi" |
 
-Bila nanti perlu, opsi ketiga itulah batas yang tepat: pisahkan bidang akuisisi,
+Bila nanti perlu, opsi ketiga itulah batas yang tepat: pisahkan plane akuisisi,
 bukan hanya halaman pemasaran.
 
 ## 5. DC/DRC: prasyarat dulu
@@ -219,18 +219,18 @@ DC/DRC belum bisa dibicarakan sebelum tiga hal ini ada:
 
 | # | Prasyarat | Kenapa | Tier |
 |---|---|---|---|
-| 1 | **Cadangan luar-mesin terverifikasi** | DRC tanpa cadangan terbukti hanyalah VM kedua yang kosong. Per 18 Okt yang ada baru artefak lokal | 0 |
+| 1 | **Backup luar-mesin terverifikasi** | DRC tanpa backup terbukti hanyalah VM kedua yang kosong. Per 18 Okt yang ada baru artefak lokal | 0 |
 | 2 | **PITR (WAL archiving PostgreSQL)** | RPO harian = kehilangan sampai 24 jam pembukuan. Untuk data retensi 10 tahun, pengiriman WAL (`archive_command`, mis. wal-g/pgBackRest) lebih murah daripada replika penuh dan sudah cukup. *(Sebelum 15 Okt: binlog MariaDB)* | 2 |
 | 3 | **Secret di luar kotak** | Dua VM berarti dua `.env`; menyalin rahasia dengan tangan rawan bocor | 2–3 |
 
 Sesudah itu baru *streaming replication* PostgreSQL asinkron ke DRC, dengan promosi manual (`pg_promote()`).
 
-> ⚠ **Jangan mulai dari replikasi.** Replika dari basis data tanpa cadangan ikut
+> ⚠ **Jangan mulai dari replikasi.** Replika dari basis data tanpa backup ikut
 > menyalin setiap kesalahan: satu `DROP DATABASE` yang salah sasaran sampai ke
-> DRC dalam hitungan detik. Cadangan luar-mesin melindungi dari kesalahan seperti
+> DRC dalam hitungan detik. Backup luar-mesin melindungi dari kesalahan seperti
 > itu; replikasi tidak.
 
-🔶 Urutan yang disarankan bila nanti dikerjakan: cadangan luar-mesin
+🔶 Urutan yang disarankan bila nanti dikerjakan: backup luar-mesin
 terverifikasi → WAL/PITR → VM kedua sebagai target restore dingin (bukan
 replika) → baru replikasi asinkron bila RTO menuntutnya. Setiap langkah berguna
 walaupun langkah berikutnya tidak pernah dikerjakan.
@@ -241,7 +241,7 @@ walaupun langkah berikutnya tidak pernah dikerjakan.
 
 | Pekerjaan | Putusan | Tier | Biaya |
 |---|---|---|---|
-| Cadangan jalan + kunci keluar mesin | 🟠 lokal ✅ / luar-mesin ❌ · kunci ❌ | 0 | Rendah (3 env) |
+| Backup jalan + kunci keluar mesin | 🟠 lokal ✅ / luar-mesin ❌ · kunci ❌ | 0 | Rendah (3 env) |
 | Pisahkan container operator | ✅ selesai; sejak 18 Okt aplikasi dan image sendiri | 1 | — |
 | Pindahkan pemantulan `/` ke proxy | ✅ selesai 11 Okt (dok 08 P3-4) | 1 | — |
 | WAL/PITR | ✅ disarankan | 2 | Sedang |

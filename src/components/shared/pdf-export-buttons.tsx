@@ -8,7 +8,7 @@ import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-repo
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@/components/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { downloadStatementWorkbook } from "@/lib/report-files";
 

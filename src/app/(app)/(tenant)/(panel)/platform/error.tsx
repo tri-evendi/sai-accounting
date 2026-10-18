@@ -31,7 +31,7 @@ import { Flex, Typography, theme } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 const { Title, Text } = Typography;

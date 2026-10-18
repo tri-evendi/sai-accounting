@@ -20,7 +20,7 @@
 import { NextResponse } from "next/server";
 
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { tenantSlugSchema } from "@/lib/validations/tenant";
 import { renameTenantSlug, type PenolakanSlug } from "@/lib/tenant-slug";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";

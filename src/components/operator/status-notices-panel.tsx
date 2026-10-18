@@ -18,8 +18,8 @@ import { Select } from "@/components/ui/select";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { CONSOLE_MUTED } from "@/components/operator/console-ui";
-import { useT } from "@/lib/i18n/client";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { useT } from "@sai/core/i18n/client";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import {
   COMPONENT_LABEL,
   NOTICE_SENTENCE,

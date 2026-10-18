@@ -55,7 +55,7 @@ import {
 } from "@ant-design/icons";
 import type { IconComponent } from "@/lib/icons";
 import type { Workflow, WorkflowTone } from "@/lib/workflows";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 /**
  * `lib/workflows.ts` tetap menyebut ikon dengan NAMA LAMA: modul itu

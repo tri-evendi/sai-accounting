@@ -18,7 +18,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";

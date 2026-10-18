@@ -36,7 +36,7 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAppRouter } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { formatNumber } from "@sai/core/utils";
 
 const ICON_SIZE = 16;

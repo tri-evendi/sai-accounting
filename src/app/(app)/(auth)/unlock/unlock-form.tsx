@@ -19,7 +19,7 @@ import { useAppRouter } from "@/components/ui/app-link";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** Hanya jalur di dalam aplikasi. `//host` sengaja ditolak — lihat kepala. */
 function tujuanAman(next: string | undefined, fallback: string): string {

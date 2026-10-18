@@ -56,7 +56,7 @@ import {
 } from "@/lib/authz-user-overrides";
 import { permissionGroups } from "@/lib/authz-labels";
 import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
-import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { useDictionary, useT, type TranslateFn } from "@sai/core/i18n/client";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { CloseOutlined, LockOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";

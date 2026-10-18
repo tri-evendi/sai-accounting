@@ -37,7 +37,7 @@
  */
 
 import { Link } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useRef, useState } from "react";
 import { ArrowRightOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import {

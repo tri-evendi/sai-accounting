@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Dokumen biaya impor (issue #495 butir 1).

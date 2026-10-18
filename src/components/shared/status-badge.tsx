@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { type ContractStatus } from "@sai/core/constants";
-import { useDictionary } from "@/lib/i18n/client";
+import { useDictionary } from "@sai/core/i18n/client";
 import { contractStatusLabels } from "@/lib/i18n/labels";
 
 const statusVariants: Record<ContractStatus, "success" | "warning" | "danger"> = {

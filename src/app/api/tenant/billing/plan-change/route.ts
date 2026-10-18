@@ -36,7 +36,7 @@ import { z } from "zod";
 
 import { controlDb } from "@sai/core/control-db";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";
 import { platformDb } from "@/lib/platform-db";
 import { quotePlanChange } from "@/lib/plan-change";

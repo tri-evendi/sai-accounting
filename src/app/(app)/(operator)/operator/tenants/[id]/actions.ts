@@ -51,7 +51,7 @@ import {
 import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-constants";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateMedium } from "@sai/core/utils";
 
 export interface OperatorActionResult {

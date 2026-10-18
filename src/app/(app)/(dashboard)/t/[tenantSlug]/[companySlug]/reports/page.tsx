@@ -11,7 +11,7 @@ import type { IconComponent } from "@/lib/icons";
 import { reportsByCategory, reportTextKey, type ReportDefinition } from "@/lib/report-catalog";
 import { PageHeader } from "@/components/ui/page-header";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
-import type { Dictionary } from "@/lib/i18n/dictionary";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
 import { CARD_GAP } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";

@@ -48,7 +48,7 @@ import enUS from "antd/locale/en_US";
 import idID from "antd/locale/id_ID";
 import zhCN from "antd/locale/zh_CN";
 
-import type { Locale } from "@/lib/i18n/config";
+import type { Locale } from "@sai/core/i18n/config";
 import {
   ANTD_CSS_VAR_KEY,
   PRIMARY_BUTTON_DARK,

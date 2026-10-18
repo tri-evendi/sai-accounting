@@ -46,7 +46,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/components/ui/toast";
 import { ACCURATE_TYPE_LEGEND } from "@/lib/coa-import";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
 

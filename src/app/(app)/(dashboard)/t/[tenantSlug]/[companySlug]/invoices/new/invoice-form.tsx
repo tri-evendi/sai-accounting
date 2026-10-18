@@ -70,7 +70,7 @@ import {
   negativeValueIssue,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
 import { normalizeItemName, resolveChainKey } from "@/lib/document-chain";
 import { ItemNameInput, type ItemSuggestion } from "@/components/ui/item-name-input";

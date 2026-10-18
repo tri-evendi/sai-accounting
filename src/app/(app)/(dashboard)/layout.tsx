@@ -27,7 +27,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { GuidedTour } from "@/components/help/guided-tour";
 import { CommandPalette } from "@/components/layout/command-palette";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();

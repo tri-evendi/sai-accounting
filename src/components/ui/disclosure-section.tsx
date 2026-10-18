@@ -52,7 +52,7 @@ import { Collapse, theme } from "antd";
 
 import { Badge } from "@/components/ui/badge";
 import { ADVANCED_SECTION_TITLE } from "@/lib/form-sections";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** Hanya ada satu panel di sini; kuncinya konstan, bukan dihitung. */
 const PANEL_KEY = "detail";

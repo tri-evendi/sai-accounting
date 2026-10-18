@@ -95,7 +95,7 @@ pintu ke `/platform` — ketiganya 404 di host ini).
 
 ### `/operator/content` — isi halaman pendaratan
 
-- **Yang disimpan hanya PENIMPA.** Kamus (`lib/i18n/dictionaries/*.json`) tetap
+- **Yang disimpan hanya PENIMPA.** Kamus (`packages/core/src/i18n/dictionaries/*.json`) tetap
   sumber bawaan; `site_contents` hanya memuat kalimat yang sudah diganti. Isian
   kosong = "pakai bawaan" (barisnya dihapus), dan bawaannya berdiri sebagai
   `placeholder` isian itu.

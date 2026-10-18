@@ -12,7 +12,25 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const AKAR = process.cwd();
-const PINDAH = ["authz", "constants", "control-db", "money-format", "utils"] as const;
+/** Modul → berkasnya di `packages/core/src/`. Fase 2a: fondasi; Fase 2b: i18n (tanpa `server.ts`,
+ *  `actions.ts`, `labels.ts` — ketiganya bergantung pada modul aplikasi dan tetap di `src/lib/i18n`). */
+const BERKAS: Record<string, string> = {
+  authz: "authz.ts",
+  constants: "constants.ts",
+  "control-db": "control-db.ts",
+  "money-format": "money-format.ts",
+  utils: "utils.ts",
+  "i18n/client": "i18n/client.tsx",
+  "i18n/config": "i18n/config.ts",
+  "i18n/dictionary": "i18n/dictionary.ts",
+  "i18n/load": "i18n/load.ts",
+  "i18n/locale-cookie": "i18n/locale-cookie.ts",
+  "i18n/validation": "i18n/validation.ts",
+  "i18n/dictionaries/id.json": "i18n/dictionaries/id.json",
+  "i18n/dictionaries/en.json": "i18n/dictionaries/en.json",
+  "i18n/dictionaries/zh.json": "i18n/dictionaries/zh.json",
+};
+const PINDAH = Object.keys(BERKAS);
 
 function berkasTs(dir: string): string[] {
   const keluar: string[] = [];
@@ -34,9 +52,11 @@ describe("@sai/core", () => {
   const berkas = ["src", "scripts", "tests", "prisma", "packages"].flatMap(berkasTs);
 
   it.each(PINDAH)("%s hidup di packages/core, tidak di src/lib", (m) => {
-    expect(existsSync(join(AKAR, `packages/core/src/${m}.ts`))).toBe(true);
-    expect(existsSync(join(AKAR, `src/lib/${m}.ts`))).toBe(false);
-    expect(existsSync(join(AKAR, `src/lib/${m}.tsx`))).toBe(false);
+    expect(existsSync(join(AKAR, `packages/core/src/${BERKAS[m]}`))).toBe(true);
+    expect(existsSync(join(AKAR, `src/lib/${BERKAS[m]}`))).toBe(false);
+    const polos = BERKAS[m].replace(/\.(tsx?|json)$/, "");
+    expect(existsSync(join(AKAR, `src/lib/${polos}.ts`))).toBe(false);
+    expect(existsSync(join(AKAR, `src/lib/${polos}.tsx`))).toBe(false);
   });
 
   it("ada pengimpor untuk diperiksa — penjaga atas tes ini sendiri", () => {

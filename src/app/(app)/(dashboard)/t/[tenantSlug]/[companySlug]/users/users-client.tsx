@@ -31,7 +31,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { DeleteOutlined, KeyOutlined, UndoOutlined, UserAddOutlined } from "@ant-design/icons";
 import { ROLES, ROLE_LABELS, isFullAccessRole } from "@sai/core/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { QuotaMeter } from "@/components/ui/quota-meter";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";

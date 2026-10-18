@@ -30,7 +30,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import id from "@/lib/i18n/dictionaries/id.json";
+import id from "@sai/core/i18n/dictionaries/id.json";
 
 const API_DIR = join(__dirname, "..", "src", "app", "api");
 

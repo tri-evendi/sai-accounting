@@ -86,7 +86,7 @@ import { platformInvoiceAmounts } from "@/lib/subscription-lifecycle";
 import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";

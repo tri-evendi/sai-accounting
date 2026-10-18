@@ -91,7 +91,7 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { Button } from "@/components/ui/button";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** `w-64` — lebar menu samping, sama dengan chrome dasbor. */
 const LEBAR_MENU = 256;

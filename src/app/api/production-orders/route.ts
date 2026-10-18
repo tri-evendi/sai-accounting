@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { productionOrderSchema } from "@/lib/validations/manufacturing";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { kebutuhanKotor, round3 } from "@/lib/manufacturing/bom";
 import { nextProductionOrderNo } from "@/lib/manufacturing/production-writes";
 

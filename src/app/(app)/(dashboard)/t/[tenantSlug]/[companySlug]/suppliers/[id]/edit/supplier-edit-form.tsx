@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 export function EditSupplierForm() {

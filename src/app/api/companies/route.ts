@@ -30,7 +30,7 @@ import { NextResponse } from "next/server";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { companyCreateSchema } from "@/lib/validations/company";
 import { provisionCompany } from "@/lib/company-provisioning";
 import { provisionErrorMessage, type ProvisionEvent } from "@/lib/company-provisioning-shared";

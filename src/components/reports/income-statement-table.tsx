@@ -35,7 +35,7 @@ import { Money } from "@/components/ui/money";
 import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   incomeStatementLayout,

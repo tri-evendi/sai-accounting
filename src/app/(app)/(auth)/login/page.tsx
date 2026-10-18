@@ -10,7 +10,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { useT, type TranslateFn } from "@sai/core/i18n/client";
 // Aturan arah pasca-masuk hidup di satu tempat (#159 temuan 3): penjaga
 // halaman server memakai fungsi yang sama — jangan menyalinnya ke sini lagi.
 import { resolvePostLoginPath } from "@/lib/post-login";

@@ -33,7 +33,7 @@ import {
 } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import type { IconComponent } from "@/lib/icons";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { QuickAction, QuickActionTone } from "@/lib/quick-actions";
 
 /**

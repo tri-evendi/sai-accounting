@@ -53,7 +53,7 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@sai/core/utils";
 import { CalendarOutlined } from "@ant-design/icons";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
 

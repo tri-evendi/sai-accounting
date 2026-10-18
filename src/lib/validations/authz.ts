@@ -2,7 +2,7 @@ import { z } from "zod";
 import { PERMISSIONS, type Permission } from "@sai/core/authz";
 import { roleEnum } from "@/lib/validations/common";
 import { ROLE_VALUES } from "@sai/core/constants";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Payload PUT /api/authz/overrides (issue #73): set LENGKAP override yang

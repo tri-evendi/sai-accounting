@@ -44,7 +44,7 @@ import {
 import type { IconComponent } from "@/lib/icons";
 import type { CurrencyBreakdownRow } from "@/lib/dashboard-summary";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * What the number means in cash terms — drives icon, word, sign and colour.

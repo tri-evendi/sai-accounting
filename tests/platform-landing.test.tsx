@@ -34,9 +34,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 
-import { LocaleProvider } from "@/lib/i18n/client";
-import { translate, type Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
 import { formatMoney } from "@sai/core/money-format";
 import { POST_LOGIN_PATH } from "@/lib/post-login";
 import { legacyTenantScopedPath, renamedPagePath } from "@/lib/tenant-routes";

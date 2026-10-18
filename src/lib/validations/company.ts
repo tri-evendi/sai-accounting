@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 import { COMPANY_DATABASE_PREFIX } from "@/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "@/lib/tenant-routes";
 

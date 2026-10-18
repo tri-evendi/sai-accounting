@@ -35,7 +35,7 @@
  * `name` sengaja TIDAK ikut dipetakan: "Pro" dan "Enterprise" adalah nama
  * produk, dan nama produk tidak diterjemahkan — `APP_NAME` pun tidak.
  */
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Kunci deskripsi per `plans.key` yang disemai `scripts/seed-plans.ts`.

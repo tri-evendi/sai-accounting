@@ -15,7 +15,7 @@ import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 export function LedgerFilter({
   basePath,

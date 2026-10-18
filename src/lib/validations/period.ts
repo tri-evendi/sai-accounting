@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PERIOD_STATUSES } from "@/lib/period";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /** Mirrors the enum-like `periods.status` column (docs/DATABASE.md §2). */
 export const periodStatusSchema = z.enum(PERIOD_STATUSES);

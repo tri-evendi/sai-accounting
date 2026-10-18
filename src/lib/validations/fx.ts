@@ -2,7 +2,7 @@ import { z } from "zod";
 // Pure module (no Prisma singleton) — safe to pull into schemas that client
 // components import.
 import { round2 } from "@/lib/posting/rules";
-import { vmsg, type ValidationKey } from "@/lib/i18n/validation";
+import { vmsg, type ValidationKey } from "@sai/core/i18n/validation";
 
 /** Currencies the app transacts in. IDR is the reporting/base currency. */
 export const CURRENCY_VALUES = ["USD", "CNY", "IDR"] as const;

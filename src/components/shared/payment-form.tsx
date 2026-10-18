@@ -42,7 +42,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
 import { CASH_TYPES, CASH_TYPE_KEYS, type CashType } from "@sai/core/constants";
 import { SelectField } from "@/components/ui/select";

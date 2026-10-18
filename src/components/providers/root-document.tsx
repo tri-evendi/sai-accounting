@@ -53,7 +53,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 import "@/app/globals.css";
 import { AntdProvider } from "@/components/providers/antd-provider";
-import type { Locale } from "@/lib/i18n/config";
+import type { Locale } from "@sai/core/i18n/config";
 import { ANTD_CSS_VAR_KEY } from "@/lib/theme/antd-tokens";
 import { colorScheme, themeClass, themeScript, type Theme } from "@/lib/theme/config";
 import { ThemeProvider } from "@/lib/theme/client";

@@ -29,7 +29,7 @@
 import { BINGKAI_DOKUMENTASI } from "@/components/docs/docs-shell";
 import { PlatformShell } from "@/components/tenant/platform-shell";
 import { navDokumentasi, type PembacaDokumentasi } from "@/lib/docs-chrome";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 export function DocsAppChrome({
   pembaca,

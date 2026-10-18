@@ -59,7 +59,7 @@ import {
 } from "@/components/landing/landing-scale";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export interface FrameCompany {
   name: string;

@@ -72,7 +72,7 @@ import {
   Legend,
 } from "recharts";
 import { Flex, theme, Typography } from "antd";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 const CHART_HEIGHT = 260;

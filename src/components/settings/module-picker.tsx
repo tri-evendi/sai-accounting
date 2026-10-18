@@ -39,7 +39,7 @@ import {
   type BusinessCategory,
   type BusinessModule,
 } from "@/lib/business-modules";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import {
   CheckOutlined,
   CloseOutlined,

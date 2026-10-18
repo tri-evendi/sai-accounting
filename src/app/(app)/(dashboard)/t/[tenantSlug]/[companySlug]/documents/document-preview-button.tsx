@@ -9,7 +9,7 @@ import { useState } from "react";
 import { ExportOutlined, EyeOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { DocumentPreview } from "@/components/shared/document-preview";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** Ikon di dalam tombol — `h-4 w-4` + `mr-1` lama. */
 const ICON_SIZE = 16;

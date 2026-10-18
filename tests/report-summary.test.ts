@@ -10,9 +10,9 @@
  * a lay owner actually reads.
  */
 import { describe, it, expect } from "vitest";
-import { translate } from "@/lib/i18n/dictionary";
+import { translate } from "@sai/core/i18n/dictionary";
 import { formatCurrency } from "@sai/core/utils";
-import id from "@/lib/i18n/dictionaries/id.json";
+import id from "@sai/core/i18n/dictionaries/id.json";
 import {
   incomeStatementSummary,
   balanceSheetSummary,

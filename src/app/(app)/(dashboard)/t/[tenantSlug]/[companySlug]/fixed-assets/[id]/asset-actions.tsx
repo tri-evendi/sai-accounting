@@ -43,7 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { DollarCircleOutlined, SwapOutlined } from "@ant-design/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** Dua kartu berdampingan di layar lebar, menumpuk di bawah ~2×320px. */

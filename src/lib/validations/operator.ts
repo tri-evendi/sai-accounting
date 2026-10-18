@@ -18,9 +18,9 @@
  */
 
 import { z } from "zod";
-import { LOCALES } from "@/lib/i18n/config";
+import { LOCALES } from "@sai/core/i18n/config";
 import { BILLING_MODES } from "@/lib/platform-constants";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 import { SITE_CONTENT_VALUE_MAX } from "@/lib/site-content";
 
 /** Alasan yang diketik operator — masuk ke jejak audit apa adanya. */

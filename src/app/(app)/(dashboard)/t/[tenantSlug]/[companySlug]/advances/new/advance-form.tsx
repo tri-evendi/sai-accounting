@@ -38,7 +38,7 @@ import {
 import { BASE_CURRENCY, CURRENCY_OPTIONS } from "@/components/shared/currency-rate-fields";
 import { useToast } from "@/components/ui/toast";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
 import { advancePaymentSchema, type AdvancePaymentInput } from "@/lib/validations/advance";

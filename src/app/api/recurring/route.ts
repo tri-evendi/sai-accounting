@@ -20,7 +20,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { recurringTemplateSchema } from "@/lib/validations/recurring";
 import { nextOccurrence, type RecurrenceRule } from "@/lib/recurring";
 

@@ -33,7 +33,7 @@ import { Spinner } from "@/components/ui/loading";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { formatCurrency } from "@sai/core/utils";
 import type { RevaluationLine, RevaluationPlan } from "@/lib/fx-revaluation";
 

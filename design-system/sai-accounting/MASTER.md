@@ -411,7 +411,7 @@ Laporan **tidak dibuka langsung dari kartunya**. Menekan kartu membuka dialog pa
 Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`** (`src/components/ui/form.tsx`). Contoh acuan: `src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
 
 1. **Satu skema zod, dua sisi.** Skema yang divalidasi form **wajib** skema yang sama dipakai route handler — **diimpor, bukan disalin**. Bila server menambah field (mis. `invoiceId` dari URL), pisahkan field bersama sebagai objek yang dipakai ulang (contoh: `paymentFormFields` di `lib/validations/payment.ts`, dipakai `paymentFormSchema` client dan `invoicePaymentSchema`/`contractPaymentSchema` server). Client & server tidak boleh bisa menyimpang diam-diam.
-2. **Pesan error lewat KUNCI kamus, ramah awam.** Skema tidak menulis kalimat, melainkan kunci bertipe: `z.string().min(1, vmsg("validation.dateRequired"))` (`@/lib/i18n/validation`). Alasannya: pesan zod dipanggang saat modul dimuat sehingga tidak bisa ikut berganti bahasa — sedangkan mengubahnya menjadi pabrik `make…Schema(t)` melanggar aturan 1, dan `z.setErrorMap()` global membocorkan bahasa antar-permintaan yang berjalan bersamaan. Kalimatnya karena itu disusun di **batas tampilan**: `FormMessage` di client, `translateFieldErrors()` di route handler, `humanizeFieldMessage()` di jalur pesan API. Kunci salah ketik ditolak `tsc` (tipe `ValidationKey`); `tests/i18n-validation.test.tsx` menolak kalimat yang tertinggal di dalam skema. Pesan yang membawa nominal memakai `vissue("…", { … })` — kunci + nilainya ikut sebagai `params` zod, bukan sandi yang diselundupkan ke dalam teks pesan.
+2. **Pesan error lewat KUNCI kamus, ramah awam.** Skema tidak menulis kalimat, melainkan kunci bertipe: `z.string().min(1, vmsg("validation.dateRequired"))` (`@sai/core/i18n/validation`). Alasannya: pesan zod dipanggang saat modul dimuat sehingga tidak bisa ikut berganti bahasa — sedangkan mengubahnya menjadi pabrik `make…Schema(t)` melanggar aturan 1, dan `z.setErrorMap()` global membocorkan bahasa antar-permintaan yang berjalan bersamaan. Kalimatnya karena itu disusun di **batas tampilan**: `FormMessage` di client, `translateFieldErrors()` di route handler, `humanizeFieldMessage()` di jalur pesan API. Kunci salah ketik ditolak `tsc` (tipe `ValidationKey`); `tests/i18n-validation.test.tsx` menolak kalimat yang tertinggal di dalam skema. Pesan yang membawa nominal memakai `vissue("…", { … })` — kunci + nilainya ikut sebagai `params` zod, bukan sandi yang diselundupkan ke dalam teks pesan.
 
    Pola baku jawaban 400 di route handler (acuan: `src/app/api/invoices/route.ts`, `src/app/api/{invoices,contracts}/[id]/payments/route.ts`):
 
@@ -421,7 +421,7 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
      return NextResponse.json(
        {
          error: t("validation.invalidInput"),
-         details: translateFieldErrors(parsed.error, dictionary),    // @/lib/i18n/validation
+         details: translateFieldErrors(parsed.error, dictionary),    // @sai/core/i18n/validation
        },
        { status: 400 }
      );

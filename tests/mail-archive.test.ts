@@ -145,7 +145,7 @@ describe("isian alamat arsip di panel operator", () => {
        arsipnya bocor justru saat ia bekerja benar. */
     void SCHEMA_SOURCE;
     const id = JSON.parse(
-      readFileSync(join(process.cwd(), "src/lib/i18n/dictionaries/id.json"), "utf8")
+      readFileSync(join(process.cwd(), "packages/core/src/i18n/dictionaries/id.json"), "utf8")
     );
     const hint = id.operator.mail.archiveAddressHint as string;
     expect(hint.toLowerCase()).toContain("token");

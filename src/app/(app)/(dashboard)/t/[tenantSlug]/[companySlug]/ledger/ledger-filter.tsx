@@ -14,7 +14,7 @@ import { useAppRouter } from "@/components/ui/app-link";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 interface Props {
   accountOptions: { value: string; label: string }[];

@@ -114,8 +114,8 @@ import {
 } from "react-hook-form";
 import { describedByWith } from "@/components/ui/input";
 import { Label, RequiredMark } from "@/components/ui/label";
-import { useDictionary } from "@/lib/i18n/client";
-import { translateMessage } from "@/lib/i18n/validation";
+import { useDictionary } from "@sai/core/i18n/client";
+import { translateMessage } from "@sai/core/i18n/validation";
 
 const Form = FormProvider;
 

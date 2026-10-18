@@ -35,7 +35,7 @@ import {
   stockShortfallMessage,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { ContainerOutlined, DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 

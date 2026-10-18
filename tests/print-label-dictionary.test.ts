@@ -124,8 +124,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import id from "@/lib/i18n/dictionaries/id.json";
-import { translate } from "@/lib/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { translate } from "@sai/core/i18n/dictionary";
 import { CASH_FLOW_CATEGORY_LABELS } from "@/lib/reports";
 import { formatNumber } from "@sai/core/utils";
 import {

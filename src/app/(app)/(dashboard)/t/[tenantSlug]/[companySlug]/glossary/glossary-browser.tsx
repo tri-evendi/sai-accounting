@@ -41,7 +41,7 @@ import {
   termsByCategory,
   type TermCategory,
 } from "@/lib/labels";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { termCategoryLabels } from "@/lib/i18n/labels";
 import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
 

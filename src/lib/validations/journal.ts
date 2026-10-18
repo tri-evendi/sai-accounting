@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { CURRENCIES } from "@sai/core/constants";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 export const journalLineSchema = z
   .object({

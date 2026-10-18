@@ -19,7 +19,7 @@
 
 import { can, type Permission } from "@sai/core/authz";
 import type { TermKey } from "@/lib/labels";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Arah uang untuk aksi tersebut — dipakai untuk ikon + LABEL teks

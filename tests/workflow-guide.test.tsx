@@ -8,8 +8,8 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { WorkflowGuide } from "@/components/dashboard/workflow-guide";
 import { visibleWorkflows } from "@/lib/workflows";
-import { translate } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
+import { translate } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
 
 /**
  * Penerjemah bahasa sumber. Panel menerima `t` sebagai prop (lihat catatan di

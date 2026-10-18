@@ -16,9 +16,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 
 const src = (...parts: string[]) => readFileSync(join(__dirname, "..", "src", ...parts), "utf8");
 
@@ -89,7 +89,7 @@ describe("barang kembar dijawab, bukan diruntuhkan", () => {
 describe("ganti bahasa selamat dari tab lama sesudah deploy", () => {
   const toggle = src("components", "ui", "locale-toggle.tsx");
   const menu = src("components", "layout", "user-menu.tsx");
-  const fallback = src("lib", "i18n", "locale-cookie.ts");
+  const fallback = readFileSync(join(__dirname, "..", "packages", "core", "src", "i18n", "locale-cookie.ts"), "utf8");
 
   it("KEDUA sakelar bahasa punya jaring pengamannya", () => {
     /* Dua tempat, dan keduanya harus dijaga: satu di layar pra-aplikasi

@@ -42,7 +42,7 @@ import { Badge, theme } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 
 import { Link } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 import { parseTenantPath } from "@/lib/tenant-routes";

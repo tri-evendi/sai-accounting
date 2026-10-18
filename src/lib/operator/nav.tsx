@@ -33,7 +33,7 @@ import {
 } from "@ant-design/icons";
 
 import type { OperatorShellNavItem } from "@/components/operator/operator-shell";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /** Bentuk seminimal yang dibutuhkan — `getT()` maupun `useT()` keduanya cocok. */
 type TerjemahFn = (key: DictionaryKey) => string;

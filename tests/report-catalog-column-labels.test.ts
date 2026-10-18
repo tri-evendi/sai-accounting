@@ -46,8 +46,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import id from "@/lib/i18n/dictionaries/id.json";
-import { translate } from "@/lib/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { translate } from "@sai/core/i18n/dictionary";
 import { REPORTS, REPORT_CATEGORIES, reportTextKey } from "@/lib/report-catalog";
 import {
   AGING_COLUMNS,

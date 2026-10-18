@@ -2,15 +2,25 @@
   "name": "@sai/core",
   "version": "0.0.0",
   "private": true,
-  "description": "Fondasi bersama permukaan pelanggan & operator: konstanta, matriks izin bawaan, format angka/uang, utilitas, klien basis data kendali. Dipakai aplikasi (Next) dan skrip (tsx/bun).",
+  "description": "Fondasi bersama permukaan pelanggan & operator: konstanta, i18n (kamus tiga bahasa + penerjemah klien), matriks izin bawaan, format angka/uang, utilitas, klien basis data kendali. Dipakai aplikasi (Next) dan skrip (tsx/bun).",
   "exports": {
     "./authz": "./src/authz.ts",
     "./constants": "./src/constants.ts",
     "./control-db": "./src/control-db.ts",
+    "./i18n/client": "./src/i18n/client.tsx",
+    "./i18n/config": "./src/i18n/config.ts",
+    "./i18n/dictionaries/*": "./src/i18n/dictionaries/*",
+    "./i18n/dictionary": "./src/i18n/dictionary.ts",
+    "./i18n/load": "./src/i18n/load.ts",
+    "./i18n/locale-cookie": "./src/i18n/locale-cookie.ts",
+    "./i18n/validation": "./src/i18n/validation.ts",
     "./money-format": "./src/money-format.ts",
     "./utils": "./src/utils.ts"
   },
   "dependencies": {
     "@sai/db": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "*"
   }
 }

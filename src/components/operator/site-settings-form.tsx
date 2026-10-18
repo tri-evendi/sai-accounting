@@ -50,7 +50,7 @@ import {
 import { TextInput } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { siteSettingsSchema, type SiteSettingsFormInput } from "@/lib/validations/operator";
 import type { OperatorSettingsResult } from "@/app/(app)/(operator)/operator/settings/actions";
 

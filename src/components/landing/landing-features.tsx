@@ -62,7 +62,7 @@ import {
 } from "@/components/landing/landing-section";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROLES } from "@sai/core/constants";
-import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
+import { LOCALES, LOCALE_LABELS } from "@sai/core/i18n/config";
 import { roleLabels } from "@/lib/i18n/labels";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { formatMoney } from "@sai/core/money-format";

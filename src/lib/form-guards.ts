@@ -23,8 +23,8 @@
 
 import { MONTH_NAMES } from "@/lib/month-names";
 import type { StockShortfall } from "@/lib/delivery-orders";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import { isValidationKey, translateMessage } from "@/lib/i18n/validation";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import { isValidationKey, translateMessage } from "@sai/core/i18n/validation";
 
 // ───────────────────────────── Label lapangan ─────────────────────────────
 

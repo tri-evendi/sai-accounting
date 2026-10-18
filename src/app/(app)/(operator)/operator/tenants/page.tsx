@@ -51,7 +51,7 @@ import { requireOperatorPage } from "@/lib/operator/guard";
 import { listTenantsForOperator, tenantStatusVariant } from "@/lib/operator/store";
 import { TENANT_STATUSES } from "@sai/core/constants";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";

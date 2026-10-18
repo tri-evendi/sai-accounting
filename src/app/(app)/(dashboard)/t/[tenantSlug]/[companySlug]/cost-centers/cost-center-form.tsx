@@ -37,7 +37,7 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { costCenterSchema, type CostCenterInput } from "@/lib/validations/cost-center";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 

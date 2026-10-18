@@ -4,7 +4,7 @@ import { dueDateField } from "./common";
 import { normalizeConsigneeName } from "@/lib/consignee";
 import { CASH_TYPES } from "@sai/core/constants";
 import { cashTypeField, requireBankForForeignCash } from "./payment";
-import { vissue, vmsg } from "@/lib/i18n/validation";
+import { vissue, vmsg } from "@sai/core/i18n/validation";
 
 export const cashTransactionSchema = z
   .object({

@@ -38,7 +38,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { NAV_HOME, isNavItemVisible, visibleNavGroups } from "@/lib/nav";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /**
  * Teks yang hanya dibacakan pembaca layar — pengganti kelas `sr-only`

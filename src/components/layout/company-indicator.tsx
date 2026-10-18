@@ -45,7 +45,7 @@
 import { Flex, theme } from "antd";
 import { ShopOutlined, SwapOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /**
  * Teks yang hanya dibacakan pembaca layar — pengganti kelas `sr-only`.

@@ -60,7 +60,7 @@ import type { BillingOverview } from "@/lib/subscription-store";
 import { offersInstantPayment } from "@/lib/payment-gateway";
 import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 import { BillingProfileForm, PayInvoice } from "./billing-actions";
 

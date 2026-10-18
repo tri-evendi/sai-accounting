@@ -34,7 +34,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { Textarea } from "@/components/ui/textarea";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { planLandedCost, type AdditionalCostBasis } from "@/lib/landed-cost";
 import { InfoCircleOutlined } from "@ant-design/icons";

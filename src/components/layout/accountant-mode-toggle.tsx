@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { ROLES, isFullAccessRole } from "@sai/core/constants";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**

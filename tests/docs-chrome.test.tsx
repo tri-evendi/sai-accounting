@@ -35,9 +35,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToReadableStream } from "react-dom/server";
 
-import { LocaleProvider } from "@/lib/i18n/client";
-import { translate, type Dictionary, type DictionaryKey } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import { translate, type Dictionary, type DictionaryKey } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
 import { kulitDokumentasi, navDokumentasi, type PembacaDokumentasi } from "@/lib/docs-chrome";
 import { isTenantScopedPath, legacyTenantScopedPath } from "@/lib/tenant-routes";
 

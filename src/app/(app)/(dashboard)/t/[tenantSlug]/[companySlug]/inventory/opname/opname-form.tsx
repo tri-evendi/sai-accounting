@@ -23,7 +23,7 @@ import { useToast } from "@/components/ui/toast";
 import { SearchOutlined } from "@ant-design/icons";
 import { formatNumber } from "@sai/core/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { SPACE_MD, SPACE_SM } from "@/lib/layout-scale";
 

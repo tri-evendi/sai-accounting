@@ -29,7 +29,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
 import type {

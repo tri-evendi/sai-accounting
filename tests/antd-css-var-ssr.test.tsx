@@ -56,9 +56,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createCache, extractStyle, StyleProvider } from "@ant-design/cssinjs";
 
 import type { ContractChainStage } from "@/lib/document-chain";
-import type { Dictionary, DictionaryKey, TranslationValues } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import { translate } from "@/lib/i18n/dictionary";
+import type { Dictionary, DictionaryKey, TranslationValues } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { translate } from "@sai/core/i18n/dictionary";
 import {
   ANTD_CSS_VAR_KEY,
   MONEY_TOKENS_DARK,

@@ -40,10 +40,10 @@ import { useId, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Segmented } from "antd";
 
-import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@sai/core/i18n/config";
 import { setLocale } from "@/lib/i18n/actions";
-import { fallbackSwitchLocale } from "@/lib/i18n/locale-cookie";
-import { useLocale, useT } from "@/lib/i18n/client";
+import { fallbackSwitchLocale } from "@sai/core/i18n/locale-cookie";
+import { useLocale, useT } from "@sai/core/i18n/client";
 
 /** Singkatan sesudut-layar. Sengaja bukan bendera: bahasa bukan negara. */
 const SHORT: Record<Locale, string> = {

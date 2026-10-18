@@ -23,7 +23,7 @@ import {
   serializeReminderPoints,
   type ReminderCandidate,
 } from "@/lib/invoice-reminder";
-import id from "@/lib/i18n/dictionaries/id.json";
+import id from "@sai/core/i18n/dictionaries/id.json";
 
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 

@@ -40,10 +40,10 @@ import { useId } from "react";
 import { Segmented } from "antd";
 import { DesktopOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import type { IconComponent } from "@/lib/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useTheme } from "@/lib/theme/client";
 import { THEMES, type Theme } from "@/lib/theme/config";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 const ICONS: Record<Theme, IconComponent> = {
   light: SunOutlined,

@@ -41,7 +41,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
 import { useToast } from "@/components/ui/toast";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import type { BudgetListRow } from "@/lib/budget-report";
 import { DeleteOutlined, OrderedListOutlined } from "@ant-design/icons";

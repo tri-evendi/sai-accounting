@@ -36,7 +36,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ROLE_LABELS, ROLES } from "@sai/core/constants";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { approvalDocumentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
 

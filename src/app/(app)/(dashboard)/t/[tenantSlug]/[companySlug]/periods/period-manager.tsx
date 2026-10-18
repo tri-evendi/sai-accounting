@@ -37,7 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency, formatDate } from "@sai/core/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
-import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { useT, type TranslateFn } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { FxRevaluationPanel } from "./fx-revaluation-panel";
 import { YearClosePanel } from "./year-close-panel";

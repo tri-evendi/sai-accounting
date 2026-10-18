@@ -30,9 +30,9 @@ import { createRequire } from "node:module";
 import { renderToStaticMarkup } from "react-dom/server";
 import { theme } from "antd";
 
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import { LocaleProvider } from "@/lib/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
 
 /* ------------------------------------------------------------------ */
 /* Perekam prop — satu-satunya cara melihat kontrak ke AntD di node    */

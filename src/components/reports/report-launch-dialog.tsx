@@ -70,7 +70,7 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { useAppRouter } from "@/components/ui/app-link";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { downloadStatementPdf, downloadStatementWorkbook, fetchReportPayload } from "@/lib/report-files";
 import type { ReportDefinition } from "@/lib/report-catalog";
 import { SPACE_SM } from "@/lib/layout-scale";

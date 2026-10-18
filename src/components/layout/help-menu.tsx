@@ -59,7 +59,7 @@ import { GLOSSARY_PATH } from "@/lib/labels";
 import { DOCS_ROOT, docForPathname, docsPath } from "@/lib/docs";
 import { tourForPath } from "@/lib/tours";
 import { replayTour } from "@/components/help/guided-tour";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** Lebar panel — sama dengan `w-72` sebelum migrasi. */
 const LEBAR_PANEL = 288;

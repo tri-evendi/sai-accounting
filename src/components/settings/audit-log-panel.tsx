@@ -24,8 +24,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { useT, type TranslateFn } from "@/lib/i18n/client";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { useT, type TranslateFn } from "@sai/core/i18n/client";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { apiFetch } from "@/lib/api-fetch";
 
 interface AuditEntry {

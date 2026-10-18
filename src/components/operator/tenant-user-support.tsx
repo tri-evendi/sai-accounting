@@ -20,8 +20,8 @@ import { Input } from "@/components/ui/input";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { CONSOLE_MUTED } from "@/components/operator/console-ui";
-import { useT } from "@/lib/i18n/client";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { useT } from "@sai/core/i18n/client";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { OperatorActionResult } from "@/app/(app)/(operator)/operator/tenants/[id]/actions";
 
 export interface SupportUserView {

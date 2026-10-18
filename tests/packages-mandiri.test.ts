@@ -66,6 +66,12 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
       exports: Record<string, string>;
     };
     for (const tujuan of Object.values(manifes.exports)) {
+      if (tujuan.endsWith("/*")) {
+        /* Pola (`./i18n/dictionaries/*`): direktorinya wajib ada dan berisi. */
+        const dir = join(AKAR, `packages/${d}`, tujuan.slice(0, -2));
+        expect(existsSync(dir) && readdirSync(dir).length > 0, tujuan).toBe(true);
+        continue;
+      }
       expect(berkas, tujuan).toContain(join(`packages/${d}`, tujuan));
     }
   });

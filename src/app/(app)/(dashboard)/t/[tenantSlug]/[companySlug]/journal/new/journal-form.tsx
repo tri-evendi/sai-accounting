@@ -55,7 +55,7 @@ import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { CURRENCIES } from "@sai/core/constants";
 import { formatCurrency } from "@sai/core/utils";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 

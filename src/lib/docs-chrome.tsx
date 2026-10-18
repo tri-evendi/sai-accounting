@@ -59,7 +59,7 @@
 import { BookOutlined } from "@ant-design/icons";
 
 import type { PlatformNavItem } from "@/components/tenant/platform-shell";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 import { panelNav } from "@/lib/panel-nav";
 import { COMPANY_HOME_PATH, tenantPath } from "@/lib/tenant-routes";
 

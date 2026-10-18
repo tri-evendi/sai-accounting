@@ -34,7 +34,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { apiFetch } from "@/lib/api-fetch";
 import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useToast } from "@/components/ui/toast";
 
 const { Text } = Typography;

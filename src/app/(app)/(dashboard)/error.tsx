@@ -23,7 +23,7 @@ import { WarningOutlined } from "@ant-design/icons";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 const { Title, Text } = Typography;
 

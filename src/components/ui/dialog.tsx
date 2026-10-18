@@ -47,7 +47,7 @@
 import * as React from "react";
 import { Modal } from "antd";
 
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /* ------------------------------------------------------------------------ */
 /* Keadaan buka/tutup — konteks yang menggantikan `Dialog.Root` Radix         */

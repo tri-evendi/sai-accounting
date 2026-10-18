@@ -13,7 +13,7 @@
 
 import { z } from "zod";
 
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Siklus hidup langganan (docs/MULTI-TENANT.md §7.4, issue #140):

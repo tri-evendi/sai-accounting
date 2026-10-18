@@ -39,8 +39,8 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 
-import id from "@/lib/i18n/dictionaries/id.json";
-import { translate } from "@/lib/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { translate } from "@sai/core/i18n/dictionary";
 import { buildReportSheet } from "@/lib/report-export";
 import { cashFlowPrintRows } from "@/lib/pdf/statement-pdf";
 import {

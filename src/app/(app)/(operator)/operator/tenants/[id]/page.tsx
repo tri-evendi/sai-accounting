@@ -75,7 +75,7 @@ import {
 } from "@/lib/platform-constants";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";

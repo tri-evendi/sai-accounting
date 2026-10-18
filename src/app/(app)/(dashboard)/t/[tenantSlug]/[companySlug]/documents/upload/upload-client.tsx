@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { DOCUMENT_TYPES } from "@sai/core/constants";
 import { UploadOutlined } from "@ant-design/icons";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
 import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";

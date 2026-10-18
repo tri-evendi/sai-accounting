@@ -48,9 +48,9 @@ import {
 import { focusFormField, type FocusSearchRoot, type FocusTargetNode } from "@/components/ui/disclosure-section";
 import { TextInput } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { LocaleProvider } from "@/lib/i18n/client";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
 
 /* ------------------------------------------------------------------ */
 /* Mini-DOM: pohon dari markup nyata                                    */

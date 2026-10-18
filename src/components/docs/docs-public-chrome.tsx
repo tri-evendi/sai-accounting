@@ -25,7 +25,7 @@ import { Link } from "@/components/ui/app-link";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { BINGKAI_DOKUMENTASI, LEBAR_BINGKAI } from "@/components/docs/docs-shell";
 import { DOCS_ROOT } from "@/lib/docs";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 const HALAMAN: React.CSSProperties = {
   minHeight: "100vh",

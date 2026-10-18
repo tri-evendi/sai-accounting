@@ -34,7 +34,7 @@
 import { Link } from "@/components/ui/app-link";
 import { BookOutlined } from "@ant-design/icons";
 import { getTerm, glossaryHref } from "@/lib/labels";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { SPACE_XS } from "@/lib/layout-scale";
 
 /**

@@ -33,7 +33,7 @@
 import { Pagination as AntPagination } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { Link } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 interface PaginationProps {
   currentPage: number;

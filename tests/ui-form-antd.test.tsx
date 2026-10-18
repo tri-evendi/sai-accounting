@@ -48,11 +48,11 @@ import { TextInput } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { applyPaymentServerErrors } from "@/components/shared/payment-form";
-import { LocaleProvider } from "@/lib/i18n/client";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
 
 /* ------------------------------------------------------------------ */

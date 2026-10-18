@@ -36,7 +36,7 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 

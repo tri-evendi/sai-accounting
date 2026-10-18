@@ -56,7 +56,7 @@ import {
   negativeValueIssue,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
-import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { useT, type TranslateFn } from "@sai/core/i18n/client";
 import { DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { Label } from "@/components/ui/label";

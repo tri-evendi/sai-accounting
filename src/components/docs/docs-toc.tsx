@@ -21,7 +21,7 @@
  */
 
 import { docAnchor } from "@/lib/docs";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 const KOTAK: React.CSSProperties = {
   display: "flex",

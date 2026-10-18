@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/form";
 import { PasswordField } from "@/components/ui/password-input";
 import { changePasswordSchema, type ChangePasswordInput } from "@/lib/validations/auth";
-import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { useT, type TranslateFn } from "@sai/core/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 const { Text } = Typography;

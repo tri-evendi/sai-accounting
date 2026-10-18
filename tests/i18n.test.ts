@@ -35,8 +35,8 @@ import {
   isLocale,
   negotiateLocale,
   type Locale,
-} from "@/lib/i18n/config";
-import { translate, type Dictionary } from "@/lib/i18n/dictionary";
+} from "@sai/core/i18n/config";
+import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 import {
   accountTypeLabels,
   approvalDecisionMessage,
@@ -70,9 +70,9 @@ import { FIRST_STEPS } from "@/lib/first-steps";
 import { WORKFLOWS } from "@/lib/workflows";
 import { PURCHASE_STEPS, SALES_STEPS } from "@/lib/wizard";
 import { TOURS } from "@/lib/tours";
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 
 const DICTIONARIES: Record<Locale, Dictionary> = { id, en, zh };
 

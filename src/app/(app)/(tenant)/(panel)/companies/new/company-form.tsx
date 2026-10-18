@@ -41,7 +41,7 @@ import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fieldGrid } from "@/lib/layout-width";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { companyToAdoptAfterCreate } from "@/lib/company-selection";
 import {
   databaseNameForSlug,

@@ -48,7 +48,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useToast } from "@/components/ui/toast";
 import { Link } from "@/components/ui/app-link";
 import { V1_ROOT } from "@/lib/api-v1";

@@ -42,7 +42,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ContentEditor, type ContentEditorRow } from "@/components/operator/content-editor";
-import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@sai/core/i18n/config";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";

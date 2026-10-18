@@ -48,7 +48,7 @@ import { formatDate } from "@sai/core/utils";
 import { wasResubmitted } from "@/lib/approvals";
 import type { SystemRole } from "@sai/core/constants";
 import type { ApprovalRequestView } from "@/lib/approval-queue";
-import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { useDictionary, useT, type TranslateFn } from "@sai/core/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
 

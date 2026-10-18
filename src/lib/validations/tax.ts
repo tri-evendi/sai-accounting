@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /** `YYYY-MM-DD`, dan benar-benar sebuah tanggal (bukan `2026-02-31`). */
 const isoDate = z

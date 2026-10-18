@@ -32,8 +32,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { LocaleProvider } from "@/lib/i18n/client";
-import type { Dictionary } from "@/lib/i18n/dictionary";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
 import {
   VALIDATION_MESSAGES,
   isValidationKey,
@@ -42,10 +42,10 @@ import {
   vissue,
   vmsg,
   type ValidationKey,
-} from "@/lib/i18n/validation";
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+} from "@sai/core/i18n/validation";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 
 const VALIDATIONS_DIR = join(__dirname, "..", "src", "lib", "validations");
 

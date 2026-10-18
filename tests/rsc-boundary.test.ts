@@ -66,7 +66,7 @@
  * berisi JSX.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const SRC = join(__dirname, "..", "src");
@@ -557,11 +557,11 @@ const KLIEN_TERSAHKAN = [
   "components/ui/toast.tsx",
   "components/ui/wizard-steps.tsx",
   "lib/company-identity-client.tsx",
-  "lib/i18n/client.tsx",
   "lib/report-files.ts",
   "lib/tax-profile-client.tsx",
   "lib/theme/client.tsx",
   "lib/use-effective-permissions.ts",
+  "packages/core/src/i18n/client.tsx",
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -574,8 +574,18 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
+/* Paket workspace (monorepo Fase 2) ikut dipindai: modul client yang pindah
+   ke `packages/*` tidak boleh keluar dari hitungan diam-diam. Jalurnya
+   dilaporkan relatif ke AKAR repo (`packages/core/src/...`), jalur `src/`
+   tetap relatif ke `src/` seperti sebelumnya. */
+const PACKAGES = join(__dirname, "..", "packages");
 const files = new Map<string, string>(
-  sourceFiles(SRC).map((f) => [f, readFileSync(f, "utf8")])
+  [
+    ...sourceFiles(SRC),
+    ...readdirSync(PACKAGES, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && existsSync(join(PACKAGES, d.name, "src")))
+      .flatMap((d) => sourceFiles(join(PACKAGES, d.name, "src"))),
+  ].map((f) => [f, readFileSync(f, "utf8")])
 );
 
 /**
@@ -608,7 +618,8 @@ function stripLeadingComments(code: string): string {
 
 const isClient = (code: string) => /^["']use client["']/.test(stripLeadingComments(code));
 
-const rel = (p: string) => p.slice(SRC.length + 1).split("\\").join("/");
+const rel = (p: string) =>
+  (p.startsWith(PACKAGES) ? `packages/${p.slice(PACKAGES.length + 1)}` : p.slice(SRC.length + 1)).split("\\").join("/");
 
 const clientFiles = [...files]
   .filter(([, code]) => isClient(code))

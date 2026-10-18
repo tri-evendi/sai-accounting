@@ -47,7 +47,7 @@ import {
   RESOURCE_LABELS,
   type PermissionResource,
 } from "@/lib/authz-labels";
-import type { Dictionary } from "./dictionary";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
 
 /**
  * Label tipe akun (bagan akun). Sumber bentuknya `ACCOUNT_TYPES` di

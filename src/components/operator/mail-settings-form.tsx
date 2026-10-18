@@ -61,7 +61,7 @@ import { TextInput } from "@/components/ui/input";
 import { PasswordField } from "@/components/ui/password-input";
 import { SelectField } from "@/components/ui/select";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import {
   mailSettingsSchema,
   mailTestSchema,

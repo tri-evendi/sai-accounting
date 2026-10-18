@@ -58,9 +58,9 @@ import type { CashType } from "@sai/core/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { isAdvancedField, orderedFields, resolveSubmitFailure } from "@/lib/form-sections";
 import { closedPeriodIssue, type ClosedPeriodRef } from "@/lib/form-guards";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { cashTypeLabels } from "@/lib/i18n/labels";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 import { apiFetch } from "@/lib/api-fetch";
 import { cashTransactionSchema, type CashTransactionInput } from "@/lib/validations/finance";
 

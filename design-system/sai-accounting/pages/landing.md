@@ -1394,7 +1394,7 @@ Ia satu-satunya permukaan yang ditempel orang ke WhatsApp, LinkedIn, atau Slack
 
 ⚠ **`hreflang` sengaja TIDAK dipasang.** Ia menuntut satu ALAMAT per bahasa;
 aplikasi ini menyimpan bahasa di **cookie**, bukan segmen rute
-(`lib/i18n/config.ts`). Ketiga bahasa berbagi satu alamat, jadi `alternates`
+(`packages/core/src/i18n/config.ts`). Ketiga bahasa berbagi satu alamat, jadi `alternates`
 yang menunjuk alamat yang sama tiga kali bukan sekadar tak berguna — ia
 memberi tahu mesin pencari sesuatu yang tidak benar. Baru dipasang bila bahasa
 kelak pindah ke `/(id|en|zh)/…`.

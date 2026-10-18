@@ -45,7 +45,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { WizardSteps } from "@/components/ui/wizard-steps";
 import { canJumpToStep, stepIndex, type WizardStepMeta } from "@/lib/wizard";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { ArrowLeftOutlined, ArrowRightOutlined, ExclamationCircleOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 
 interface WizardProps {

@@ -32,7 +32,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DisconnectOutlined, LinkOutlined, LockOutlined, UnlockOutlined, UploadOutlined, WarningOutlined } from "@ant-design/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { Link } from "@/components/ui/app-link";
 import { parseStatementCsv, type DateOrder, type ParsedStatementLine } from "@/lib/import/bank-statement";
 import { apiFetch } from "@/lib/api-fetch";

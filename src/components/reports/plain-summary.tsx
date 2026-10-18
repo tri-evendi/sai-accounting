@@ -28,7 +28,7 @@ import {
 import type { IconComponent } from "@/lib/icons";
 import type { ReportSummary, SummaryDirection } from "@/lib/report-summary";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 interface DirStyle {
   Icon: IconComponent;

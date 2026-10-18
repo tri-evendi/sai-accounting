@@ -40,7 +40,7 @@
  */
 import type { Permission } from "@sai/core/authz";
 import { toISODate } from "@/lib/dashboard-summary";
-import type { Dictionary, DictionaryKey } from "@/lib/i18n/dictionary";
+import type { Dictionary, DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 
 /**

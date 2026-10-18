@@ -28,7 +28,7 @@ import { appPath } from "@/lib/tenant-routes";
 import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import type { TermKey } from "@/lib/labels";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export interface NavItem {
   href: string;

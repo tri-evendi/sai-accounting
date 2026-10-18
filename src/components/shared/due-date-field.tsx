@@ -13,7 +13,7 @@
 import { Flex, theme, Typography } from "antd";
 import { Input } from "@/components/ui/input";
 import { CalendarOutlined } from "@ant-design/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 interface DueDateFieldProps {
   /** `YYYY-MM-DD`, or "" when unknown. Uncontrolled when omitted. */

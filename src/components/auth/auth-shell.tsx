@@ -53,7 +53,7 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** `max-w-md` — lebar kartu tugas. */
 const LEBAR_KARTU = 448;

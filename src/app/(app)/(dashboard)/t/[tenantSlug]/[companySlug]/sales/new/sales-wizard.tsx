@@ -76,7 +76,7 @@ import {
   type SalesLineDraft,
   type SalesStepId,
 } from "@/lib/wizard";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { CheckCircleOutlined, ContainerOutlined, DeleteOutlined, DownloadOutlined, FileTextOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 

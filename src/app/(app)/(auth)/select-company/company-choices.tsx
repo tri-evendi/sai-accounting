@@ -23,7 +23,7 @@ import { useSession } from "next-auth/react";
 import { Flex, Typography, theme } from "antd";
 import { CheckOutlined, ShopOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { tenantPath } from "@/lib/tenant-routes";
 
 const { Text } = Typography;

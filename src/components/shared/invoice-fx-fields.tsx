@@ -38,7 +38,7 @@ import {
 import { computeTax, defaultInvoiceTax } from "@/lib/tax";
 import { useDefaultTaxRate } from "@/lib/tax-profile-client";
 import { FileDoneOutlined, GlobalOutlined, InfoCircleOutlined, TeamOutlined } from "@ant-design/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**

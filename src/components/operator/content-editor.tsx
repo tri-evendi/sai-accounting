@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/form";
 import { TextInput } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { siteContentSchema, type SiteContentFormInput } from "@/lib/validations/operator";
 import type { OperatorContentActionResult } from "@/app/(app)/(operator)/operator/content/actions";
 

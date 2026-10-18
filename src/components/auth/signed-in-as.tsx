@@ -22,7 +22,7 @@ import { Flex, theme } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
 
 import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 export function SignedInAs({ name }: { name: string }) {
   const t = useT();

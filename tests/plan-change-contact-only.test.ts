@@ -57,7 +57,7 @@ vi.mock("@/lib/i18n/server", () => ({
   getRequestI18n: async () => ({ t: (key: string) => key, dictionary: {} }),
 }));
 
-vi.mock("@/lib/i18n/validation", () => ({ translateFieldErrors: () => ({}) }));
+vi.mock("@sai/core/i18n/validation", () => ({ translateFieldErrors: () => ({}) }));
 
 vi.mock("@/lib/platform-db", () => ({
   platformDb: {

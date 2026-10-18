@@ -38,7 +38,7 @@ import { Link } from "@/components/ui/app-link";
 import { GLOSSARY_PATH } from "@/lib/labels";
 import { CloseSquareOutlined, ReadOutlined } from "@ant-design/icons";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 
 interface SettingsClientProps {

@@ -37,7 +37,7 @@ import {
   useCostCenters,
 } from "@/components/shared/cost-center-field";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 import { ItemNameInput, type ItemSuggestion } from "@/components/ui/item-name-input";

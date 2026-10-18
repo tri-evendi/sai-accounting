@@ -26,7 +26,7 @@
  */
 import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { balanceSheetEquityTotal, grossMarginPct } from "@/lib/statement-layout";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 /** Same literal union as `SummaryCard`'s `MoneyDirection`, structurally assignable. */
 export type SummaryDirection = "in" | "out" | "profit" | "loss" | "receivable" | "payable";

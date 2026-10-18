@@ -58,7 +58,7 @@ import {
   type PurchaseLineDraft,
   type PurchaseStepId,
 } from "@/lib/wizard";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { AppstoreAddOutlined, CheckCircleOutlined, DeleteOutlined, PlusOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 

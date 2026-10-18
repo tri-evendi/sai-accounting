@@ -50,7 +50,7 @@
 
 import { Flex, Steps, theme, Typography } from "antd";
 
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 export interface WizardStepView {
   /** Kunci stabil — id langkah, bukan indeks. */

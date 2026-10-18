@@ -70,7 +70,7 @@ import {
   type DocBranch,
 } from "@/lib/docs";
 import { getRequestI18n } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Dirender per permintaan, bukan statis: judul & nama cabang mengikuti cookie

@@ -30,10 +30,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import id from "@/lib/i18n/dictionaries/id.json";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import { LOCALES } from "@/lib/i18n/config";
-import { translate } from "@/lib/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import { LOCALES } from "@sai/core/i18n/config";
+import { translate } from "@sai/core/i18n/dictionary";
 import {
   SITE_CONTENT_KEY_MAX,
   SITE_CONTENT_PATHS,

@@ -27,7 +27,7 @@ import { NextResponse } from "next/server";
 
 import { controlDb } from "@sai/core/control-db";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { tenantProfileSchema } from "@/lib/validations/tenant";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";

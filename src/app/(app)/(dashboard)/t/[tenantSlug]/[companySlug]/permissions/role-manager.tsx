@@ -33,7 +33,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { type SaiColumns } from "@/components/ui/table-columns";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** Panjang maksimum label & kunci peran — batas yang sama ditegakkan API. */

@@ -42,7 +42,7 @@
 
 import { can, type Permission } from "@sai/core/authz";
 import type { AllowedPermissions } from "@/lib/nav";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export type MonthlyStepKey = "pengeluaran" | "cocokkan_bank" | "tutup_bulan";
 

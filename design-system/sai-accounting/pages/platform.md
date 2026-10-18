@@ -29,9 +29,9 @@ Tiga jalan ditimbang; yang dipilih A.
 
 | Jalan | Keputusan |
 |---|---|
-| **A. Angkat RESEP `color-mix` ke modul netral-permukaan.** Pendaratan & `/platform` sama-sama mendeklarasikan nadanya sendiri dari resep yang sama, masing-masing dengan lingkup `data-*` sendiri | **DIPILIH.** Penjaga #245 tetap utuh — tidak ada impor lintas batas, sebab resepnya tinggal di `@sai/ui/theme/tone-recipe` dan `components/landing/**` memang boleh mengimpor `@sai/ui/**` — dan aritmetikanya hanya ditulis sekali |
+| **A. Angkat RESEP `color-mix` ke modul netral-permukaan.** Pendaratan & `/platform` sama-sama mendeklarasikan nadanya sendiri dari resep yang sama, masing-masing dengan lingkup `data-*` sendiri | **DIPILIH.** Guard #245 tetap utuh — tidak ada impor lintas batas, sebab resepnya tinggal di `@sai/ui/theme/tone-recipe` dan `components/landing/**` memang boleh mengimpor `@sai/ui/**` — dan aritmetikanya hanya ditulis sekali |
 | B. `/platform` diberi nada sendiri, resep sendiri | Ditolak: dua salinan `color-mix` yang akan menyimpang pada hari salah satunya disetel, dan perbedaannya tidak berbunyi |
-| C. Batas pemasaran/app digeser; `/platform` dinyatakan bagian dunia pemasaran | Ditolak: melonggarkan penjaga yang baru saja dibuat mekanis (#245), dan menyeret `/platform/team` — pekerjaan administratif yang butuh ketenangan — ikut ke dalam dunia pemasaran |
+| C. Batas pemasaran/app digeser; `/platform` dinyatakan bagian dunia pemasaran | Ditolak: melonggarkan guard yang baru saja dibuat mekanis (#245), dan menyeret `/platform/team` — pekerjaan administratif yang butuh ketenangan — ikut ke dalam dunia pemasaran |
 
 Rumahnya `packages/ui/src/theme/tone-recipe.ts`: ia tidak mendeklarasikan satu pun
 variabel CSS dan tidak tahu apa-apa tentang halaman mana pun. Yang dibaginya
@@ -168,7 +168,7 @@ ini"; nada `chip` menjatuhkan isiannya di bawah 3:1 di tema gelap. Kalau
 suatu hari nada ini cukup redup untuk memikul tombol, tes itu merah dan
 pemisahan kepala/badan boleh dicabut secara sadar.
 
-## Penjaganya
+## Guard-nya
 
 `tests/platform-colors.test.ts` menghitung ulang setiap pasangan warna dari
 token yang benar-benar terpasang (`theme.getDesignToken` pada paket `antd` di
@@ -201,6 +201,6 @@ tidak mengimpor apa pun dari `components/landing/**`, dan sebaliknya.
   sebaris, dan yang tak punya bentuk sebaris hidup di satu `<style href
   precedence>` bertarget `data-*`.
 - **Dua tema.** Setiap nada dicampur ke permukaan yang sedang berlaku, jadi
-  tidak ada satu pun cabang tema di halaman `/platform`.
+  tidak ada satu pun branch tema di halaman `/platform`.
 - **Klaim harus punya sumber**: harga & kuota dari `activePlans()`, nominal
   lewat `platformInvoiceAmounts()` yang sama dengan yang menagih.

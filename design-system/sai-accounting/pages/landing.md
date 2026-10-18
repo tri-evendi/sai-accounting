@@ -44,7 +44,7 @@ produksi:
   itu tidak ada query sama sekali.
 - **Kunci baru otomatis bisa disunting**: daftarnya diturunkan dari kamus
   (`siteContentDefaults`). Yang perlu diurus hanya penempatan di bagian yang
-  benar: `SITE_CONTENT_SECTIONS` mencocokkan awalan nama kunci, dan
+  benar: `SITE_CONTENT_SECTIONS` mencocokkan prefix nama kunci, dan
   `tests/site-content.test.ts` menolak kunci yang jatuh ke penampung terakhir.
 - **Nama kunci terbaca manusia.** Label baris di konsol adalah nama kuncinya,
   jadi beri nama yang menyebut bagiannya (`pricingYearlySaving`, bukan
@@ -120,13 +120,13 @@ pembukuan menaruh navy sebagai primernya.
 
 ### Tiga hal yang HANYA ketahuan lewat pengukuran
 
-Ketiganya ditangkap penjaga atau audit, tidak terlihat oleh mata:
+Ketiganya ditangkap guard atau audit, tidak terlihat oleh mata:
 
 1. **Bibit nada ≠ warna teks.** Nada pita diturunkan dari warna berbobot
    permukaan. Memakai `colorPrimary` (yang di tema gelap sengaja terang)
    menjatuhkan isian tombol ke 2,96:1 terhadap pita ajakan.
 2. **Benih ≠ warna yang dirender.** Algoritma gelap AntD mentransformasi
-   `colorPrimary`: benih 5,41:1 keluar sebagai 4,24:1. Penjaga mengukur nilai
+   `colorPrimary`: benih 5,41:1 keluar sebagai 4,24:1. Guard mengukur nilai
    yang terpakai, bukan benihnya.
 3. **Lambang produk lenyap di tema gelap.** `BrandMark` menaruh glif putih di
    atas `colorPrimary`; dengan navy, di tema gelap itu 2,98:1. Karena
@@ -156,7 +156,7 @@ Empat hal yang mengubahnya, semuanya diturunkan dari token AntD:
 1. **Radius pendaratan sendiri**: `--sai-landing-radius`
    (`--ant-border-radius-lg` × 2 = 16px) untuk kartu, dan
    `--sai-landing-radius-control` (`--ant-border-radius` × 2 = 12px) untuk
-   kendali. Radius app (6–8px) dipilih untuk kerapatan data, dan pendaratan
+   control. Radius app (6–8px) dipilih untuk kerapatan data, dan pendaratan
    tidak memikul tabel. Pada bidang sebesar tombol ajakan, radius adalah
    selisih terbesar antara "berwibawa" dan "kaku".
 2. **Kartu menjawab kursor**: `[data-landing-card]` naik 3px dan bayangannya
@@ -391,7 +391,7 @@ kedua (yang melanggar §Aksi utama per layar):
 
 Setiap seksi dulu langsung dimulai dengan `<h2>`, tanpa penanda bagi pembaca
 yang menggulung cepat bahwa ia memasuki wilayah lain. Pita berwarna memberi
-penanda untuk mata, tetapi tidak untuk orang yang memindai teks, dan tidak
+penanda untuk mata, tetapi tidak untuk orang yang men-scan teks, dan tidak
 untuk pembaca layar.
 
 Bentuknya: 12px, tebal, huruf besar, `letter-spacing: 0.08em`, warna merek. Dua
@@ -517,7 +517,7 @@ menjadi elips.
 
 ### Daftar modul: satu ikon per baris, SATU warna
 
-Sepuluh baris teks datar tidak bisa dipindai; ikon per modul membuatnya bisa.
+Sepuluh baris teks datar tidak bisa di-scan; ikon per modul membuatnya bisa.
 Petanya `Record<BusinessModule, …>`, sehingga modul baru tanpa ikon ditolak
 `tsc` alih-alih tampil tanpa lambang di halaman publik.
 
@@ -786,7 +786,7 @@ tetap. Empat perubahan, semuanya di `landing-pricing.tsx` + `landing-scale.ts`:
    berbayar, dan hanya bila semua punya harga tahunan (`hematTahunan`,
    dihitung), supaya janji di pil berlaku untuk setiap kartu. Sakelar tidak
    dirender bila tak ada harga tahunan, karena dua pil yang menampilkan hal
-   yang sama adalah kendali palsu. Blok tahunan memajang yang ditagih (harga
+   yang sama adalah control palsu. Blok tahunan memajang yang ditagih (harga
    tahunan) sebagai angka besar; padanan bulanan (`priceYearly / 12`,
    dibulatkan `formatMoney`) menjadi kalimat kecil di bawahnya
    (`pricingYearlyEquivalent`).
@@ -888,7 +888,7 @@ pengguna."*). Alasannya:
 
 Ketiga angka di kalimatnya tetap dihitung dari registri yang sama
 (`BUSINESS_MODULES.length`, `LOCALES.length`, `CURRENCIES`). Kunci
-`pricingAllTitle` dihapus dari ketiga kamus (penjaga kunci yatim).
+`pricingAllTitle` dihapus dari ketiga kamus (guard kunci yatim).
 
 ### Lima FAQ pembeli — setiap jawaban diverifikasi ke kode SEBELUM ditulis
 
@@ -1110,7 +1110,7 @@ Empat keputusan yang lahir dari angka itu:
 2. **Tombol `inverse`, bukan `primary`.** Isian primer sama dengan isian merek
    pitanya (1,00:1), sehingga tombol lenyap sebagai bidang. `variant="inverse"`
    (`packages/ui/src/components/button.tsx`) adalah varian bernama (isian
-   putih, label navy), bukan gaya sebaris ad-hoc. Penjaga penekanan
+   putih, label navy), bukan gaya sebaris ad-hoc. Guard penekanan
    (`tests/button-emphasis.test.ts`) menghitungnya sebagai ajakan penuh: satu
    per wadah, dan di pendaratan harus menuju `/register`. `primary`/`default`
    dilarang di `landing-closing-cta.tsx` (dijaga).
@@ -1152,7 +1152,7 @@ keputusannya:
   `tests/landing-colors.test.ts` menolak warna mentah.
 - **`Button href` `outline` + gaya varian bernama (`WHATSAPP_FAB_STYLE`),
   bukan `primary`.** Ia tautan keluar (`https://wa.me/…`, tab baru, `rel`
-  noopener), dan penjaga penekanan mengunci primer pendaratan ke `/register`;
+  noopener), dan guard penekanan mengunci primer pendaratan ke `/register`;
   dijaga eksplisit di `tests/button-emphasis.test.ts`. Sumbernya
   `contactChannels()`: nomor kosong / salah bentuk berarti tidak dirender.
 - **Hover/aktif lewat token global `--ant-color-brand-solid-hover` /
@@ -1194,7 +1194,7 @@ barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
   Memaksanya berarti mencabang tema di dalam blok gaya pendaratan, yaitu
   mekanisme tema kedua di satu halaman. Pita pekat yang sah memakai token
   `colorBrandSolid` (§Pita pekat di atas): satu nilai per tema yang dipilih di
-  `antd-tokens.ts`, jadi tidak ada cabang tema di halaman.
+  `antd-tokens.ts`, jadi tidak ada branch tema di halaman.
   Ini berlaku untuk biru, tidak untuk setiap hue: `geekblue-6` dan `purple-6`
   memikul teks putih di kedua tema, dan yang menjatuhkan bidang pekat mereka
   adalah elemen lain di atasnya (`pages/platform.md` §Yang DITOLAK).
@@ -1210,7 +1210,7 @@ barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
   (§KLAIM HARUS PUNYA SUMBER), dan sepuluh hue berdampingan tidak membentuk
   hierarki.
 
-### Penjaganya
+### Guard-nya
 
 `tests/landing-colors.test.ts` menghitung ulang setiap pasangan
 teks-di-atas-warna (sejak #402 juga kepala Pro vs kepala Enterprise, pil strip
@@ -1241,7 +1241,7 @@ tanpa sengaja.
   bukan `<small>` (latar dokumen 16px ⇒ `<small>` = 12,8px).
 - **Dua tema.** Latar halaman `colorBgContainer`; pita seksi lewat nada pekat
   (§Nada pekat), yang mengikuti tema karena resepnya dicampur ke permukaan yang
-  sedang berlaku, tanpa cabang tema di halaman ini. Setiap pembatas bidang
+  sedang berlaku, tanpa branch tema di halaman ini. Setiap pembatas bidang
   tetap punya `border`, juga ketika nadanya sudah berbeda.
 - **Nama produk lewat `APP_NAME`**, lambang lewat `BrandMark`, bukan literal.
 - **Trilingual.** Semua teks lewat kunci `landing.*` di ketiga kamus; kunci yang
@@ -1267,7 +1267,7 @@ karena satu angka lalu ditagih angka lain.
   `--sai-landing-font-size-section` (sebesar judul seksi, di bawah hero).
 - **Lama uji coba** dari `TRIAL_DAYS`, konstanta yang sama yang menghitungnya.
 - **Nama PT tidak pernah muncul di sini.** Pemasangan multi-PT belum bisa tahu
-  tenant mana yang sedang datang, dan nilai cadangannya nama pemasang pertama.
+  tenant mana yang sedang datang, dan nilai fallback-nya nama pemasang pertama.
   Ini kesalahan yang sama yang dilarang MASTER §Orientasi Perusahaan untuk
   dokumen tercetak.
 - **Tidak ada tombol yang menjanjikan lebih dari yang dikerjakan.** Tombol di
@@ -1329,7 +1329,7 @@ memuat ulang seluruh aplikasi, sehingga tombol terpenting halaman ini juga
 tautan paling lambatnya. Yang tetap `Button href` hanya `mailto:` paket
 rundingan, karena itu tautan keluar.
 
-Penjaga penekanan (`tests/button-emphasis.test.ts`) mengenali kedua tag.
+Guard penekanan (`tests/button-emphasis.test.ts`) mengenali kedua tag.
 Sebelumnya ia hanya mencocokkan `<Button>`, sehingga seluruh aturan #267 bisa
 dilewati dengan `<ButtonLink variant="primary">`, termasuk batas "setiap primer
 pendaratan menuju `/register`". Diukur saat diperlebar: 0 `<ButtonLink>` tanpa
@@ -1347,7 +1347,7 @@ membutuhkan keduanya, dan memisahkan akarnya memangkas payload dokumen
 pendaratan kira-kira separuh. Bagian yang sama (`<html>`, font, kelas pemikul
 token, skrip tema, `AntdRegistry`, `AntdProvider`) ditulis sekali di
 `RootDocument` (`packages/ui/src/providers/root-document.tsx`) dan dipakai
-setiap dokumen akar kedua aplikasi, supaya akar-akarnya tidak menyimpang.
+setiap root layout kedua aplikasi, supaya root layout-nya tidak menyimpang.
 
 `AntdProvider` sengaja tetap di akar pemasaran: ialah yang menulis blok
 `.sai-tokens{--ant-…}` yang mewarnai seluruh pendaratan. Sisa JS-nya adalah

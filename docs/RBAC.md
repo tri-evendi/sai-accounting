@@ -88,7 +88,7 @@ view/decide/export untuk kasus khusus. Invarian yang dijaga
   peran × dua izin). `delete ⊆ write ⊆ read` harus tetap berlaku pada matriks
   efektif hasil usulan. Sel kembar dan peran asing ditolak.
 - **UI**: halaman `/permissions` ("Hak Akses", grup Bantuan & Pengaturan),
-  penjaga `authz.manage` (bawaan: peran berakses penuh). API
+  guard `authz.manage` (bawaan: peran berakses penuh). API
   `GET/PUT /api/authz/overrides`; PUT mengganti seluruh set, daftar kosong
   berarti reset. Setiap simpan diaudit (`authz.override.update`/`.reset`)
   beserta aktor dan perannya.
@@ -127,7 +127,7 @@ view/decide/export untuk kasus khusus. Invarian yang dijaga
   penyimpangan nyata.
 - **UI**: panel "Izin Khusus" di halaman `/users` (per pengguna, tiga keadaan:
   "Ikuti peran (Boleh/Tidak)" / "Selalu boleh" / "Selalu tidak"). API
-  `GET/PUT /api/users/[id]/permissions` dengan penjaga `authz.manage`, karena
+  `GET/PUT /api/users/[id]/permissions` dengan guard `authz.manage`, karena
   mengubah otorisasi adalah kewenangan /permissions, bukan sekadar
   `user.manage`. PUT mengganti seluruh set; daftar kosong berarti ikuti peran.
   Setiap simpan diaudit (`user.authz.override.update`/`.reset`) beserta aktor
@@ -158,7 +158,7 @@ view/decide/export untuk kasus khusus. Invarian yang dijaga
 - **Modul tidak pernah menggerbangi buku besar.** Jurnal yang berasal dari
   dokumen sebuah modul tetap ada, dan laporan tetap rekonsiliasi, setelah
   modulnya dimatikan. Mesin laporan dan posting tidak boleh punya jalur impor
-  apa pun ke `business-modules.ts` atau penjaga otorisasi; dijaga
+  apa pun ke `business-modules.ts` atau guard otorisasi; dijaga
   `tests/business-modules-ledger.test.ts`.
 - **Izin ≠ modul.** Halaman diarahkan ke `/feature-inactive` ("fitur ini belum
   aktif untuk perusahaan Anda"), dan API menjawab 403 dengan
@@ -177,27 +177,27 @@ view/decide/export untuk kasus khusus. Invarian yang dijaga
 - **Cache**: TTL yang sama dengan matriks izin efektif, dengan invalidasi
   eksplisit saat menulis (route modul dan wizard). Bila pembacaan DB gagal,
   semua modul dianggap aktif (fail-open, dicatat). Modul hanya memperkecil
-  permukaan, jadi gagal-tertutup akan menghilangkan seluruh aplikasi karena DB
+  permukaan, jadi fail-closed akan menghilangkan seluruh aplikasi karena DB
   yang sedang bermasalah.
 - **UI**: langkah "Modul Usaha" di wizard penyiapan (preset kategori hanya nilai
-  awal) dan kartu "Modul Usaha" di /settings, dengan penjaga
+  awal) dan kartu "Modul Usaha" di /settings, dengan guard
   `company_setting.manage`. Modul menjawab "bidang usaha perusahaan ini apa"
   (sekelompok dengan profil dan identitas pajak), bukan "siapa boleh apa".
   Keduanya memakai satu komponen `components/settings/module-picker.tsx`. API
   `GET/PUT /api/company-settings/modules`; setiap simpan diaudit
   (`company_setting.modules.update`, beserta keadaan sebelumnya).
 
-## Lingkup tenant (issue #135) — matriks kedua, penjaga kedua
+## Lingkup tenant (issue #135) — matriks kedua, guard kedua
 
 Sejak epik multi-tenant (#133), izin punya dua lingkup yang tidak pernah
 dicampur:
 
-| Lingkup | Matriks | Penjaga | Sumber jawaban |
+| Lingkup | Matriks | Guard | Sumber jawaban |
 |---|---|---|---|
-| **Tenant** (`tenant.home`, `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings`) | `TENANT_PERMISSION_ROLES` di `src/lib/tenant-authz.ts` | `requireTenantApiPermission` / `requireTenantPagePermission` (`src/lib/tenant-guard.ts`) | `tenant_memberships` (owner/admin/member) di basis data kendali |
+| **Tenant** (`tenant.home`, `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings`) | `TENANT_PERMISSION_ROLES` di `src/lib/tenant-authz.ts` | `requireTenantApiPermission` / `requireTenantPagePermission` (`src/lib/tenant-guard.ts`) | `tenant_memberships` (owner/admin/member) di basis data control |
 | **Perusahaan** (seluruh matriks di atas) | `PERMISSION_ROLES` di `packages/core/src/authz.ts` | `requireApiPermission` / `requirePagePermission` | `memberships` per-PT |
 
-Aturannya: **izin tenant tidak boleh diperiksa penjaga perusahaan.** Penjaga
+Aturannya: **izin tenant tidak boleh diperiksa guard perusahaan.** Guard
 perusahaan menuntut konteks perusahaan, sedangkan di lingkup tenant ketiadaan
 konteks itu sah (pemilik tenant yang belum punya PT sedang membuat yang
 pertama). Kedua himpunan kunci izin terpisah, jadi salah matriks ditolak `tsc`.
@@ -216,40 +216,40 @@ perannya kontraktual.
    sesi → `/login`; modul nonaktif → `/feature-inactive` (issue #99); tanpa
    izin → `/dashboard`. Izin di `ACCOUNTING_PERMISSIONS` otomatis ikut dijaga
    Mode Akuntan (issue #11). Untuk halaman client, pecah menjadi `page.tsx`
-   server yang memanggil penjaga + `<nama>-form.tsx` client (pola `journal/new`).
+   server yang memanggil guard + `<nama>-form.tsx` client (pola `journal/new`).
 2. **API**: `requireApiPermission("izin")` (`src/lib/auth-guard.ts`). Menjawab
    401/403 (403 dengan `code: "module_inactive"` bila yang menutup adalah
    modulnya, issue #99). Hanya berdasar peran; Mode Akuntan adalah preferensi
    tampilan, bukan otorisasi. Pemeriksaan yang lebih halus (mis. persetujuan:
    peran harus sama dengan `approverRole` aturan; aksi self-scoped) ditulis
-   inline sesudah penjaga izin, sebagai pelengkap.
+   inline sesudah guard izin, sebagai pelengkap.
 3. **Proxy** (`src/proxy.ts`; di Next 16 pengganti `middleware.ts`): lapisan
    pengaman autentikasi, yaitu verifikasi JWT dan alur wajib-ganti-kata-sandi.
-   Gerbang per-prefix dari matriks statis dihapus di issue #73. Matriksnya kini
+   Gate per-prefix dari matriks statis dihapus di issue #73. Matriksnya kini
    bisa di-override DB, dan salinan bawaan di proxy akan memblokir izin yang
    justru diberikan override. Cache efektif dan invalidasinya tidak terlihat
    dari proxy, dan dokumentasi Next melarang proxy bergantung pada modul/global
    bersama. Di lapisan ini route dashboard hanya menuntut autentikasi;
    penegakan izin sepenuhnya di lapisan 1–2, dan `tests/authz-coverage.test.ts`
-   membuktikan setiap halaman/route memanggil penjaganya.
+   membuktikan setiap halaman/route memanggil guard-nya.
 4. **Tampilan**: menu (`nav.ts`), Aksi Cepat, tombol (pakai `can()`). Ini hanya
    tampilan dan tidak pernah dianggap pengamanan.
 
 **Cakupan dipaksa tes** (`tests/authz-coverage.test.ts`): setiap `page.tsx`
-dashboard dan `route.ts` API wajib memanggil penjaganya; berkas tanpa
+dashboard dan `route.ts` API wajib memanggil guard-nya; berkas tanpa
 deklarasi izin membuat tes merah. Pengecualian eksplisit beserta alasannya ada
 di berkas tes itu (beranda, NextAuth, endpoint self-scoped, health).
 
 ## Kunci buku — otentikasi ulang sebelum masuk ke buku sebuah PT
 
 Membuka buku sebuah perusahaan menuntut sandi sekali lagi, sekali per hari
-kerja per PT. Gerbangnya berada paling awal di `gateAfterCompany()`
-(`src/lib/page-auth.ts`), sebelum gerbang penyiapan, modul, dan suspensi.
+kerja per PT. Gate-nya berada paling awal di `gateAfterCompany()`
+(`src/lib/page-auth.ts`), sebelum gate penyiapan, modul, dan suspensi.
 
 Fitur ini bukan tambalan celah, dan jangan dihapus karena dianggap berlebihan.
 Sejak issue #158 tidak ada "sesi perusahaan" yang memberi akses:
 `session.user.companyId` hanya catatan "terakhir dibuka", jalur kanonik
-`/t/{tenant}/{company}/…` membawa perusahaannya, dan penjaga memeriksa ulang
+`/t/{tenant}/{company}/…` membawa perusahaannya, dan guard memeriksa ulang
 keanggotaan di setiap permintaan. Mengetik URL buku PT lain sudah ditolak tanpa
 fitur ini. Yang diberikannya adalah bukti kehadiran (pola `sudo`). Sesi yang
 ditinggalkan terbuka di laptop yang tidak terkunci tetap bisa membuka menu mana
@@ -257,13 +257,13 @@ pun, dan kunci ini membuat akses ke buku (tempat jurnal ditulis dan saldo awal
 dibukukan) menuntut sandi.
 
 - **Sandinya sama dengan sandi login.** Identitas di aplikasi ini tunggal (basis
-  data kendali); peran melekat pada keanggotaan per PT, dan pembuat PT otomatis
+  data control); peran melekat pada keanggotaan per PT, dan pembuat PT otomatis
   menjadi `ADMINISTRATOR` (peran berakses penuh) di PT yang baru dibuat
   (`src/app/api/companies/route.ts`). Kredensial terpisah per PT pernah
   ditimbang dan ditolak. `docs/MULTI-COMPANY.md` melarang FK ke `users` dari
   basis data perusahaan, jadi model itu menuntut sistem identitas kedua beserta
   reset sandi, undangan, dan audit yang digandakan per PT.
-- **Mekanismenya cookie ber-HMAC**, bukan klaim di JWT. Penjaga halaman butuh
+- **Mekanismenya cookie ber-HMAC**, bukan klaim di JWT. Guard halaman butuh
   jawabannya di server, secara sinkron, pada permintaan yang sedang berjalan,
   sedangkan `update()` NextAuth berjalan di klien. Cookie ditandatangani
   `AUTH_SECRET`, dan `users.id` ikut ditandatangani, jadi cookie yang tertinggal
@@ -276,17 +276,17 @@ dibukukan) menuntut sandi.
   sama (anti-enumerasi) dan dibatasi laju per pengguna dengan anggaran
   `RATE_LIMITS.login`. Route ini terdaftar di `API_EXCEPTIONS`
   `tests/authz-coverage.test.ts` dan **tidak boleh** memakai
-  `requireApiPermission`: penjaga itu memanggil gerbang kunci, sehingga route
+  `requireApiPermission`: guard itu memanggil gate kunci, sehingga route
   pembuka kunci akan menuntut kunci yang belum ada.
 - **Layar promptnya** `/unlock` di grup `(auth)`, satu-satunya tempat yang
   memang memakai `AuthShell`. Halaman ini sengaja tidak memakai
-  `requirePagePermission`, karena ia akan mengalihkan ke dirinya sendiri;
-  penjaganya ringan dan ditulis di halaman itu. Slug yang bukan milik pemanggil
+  `requirePagePermission`, karena ia akan me-redirect ke dirinya sendiri;
+  guard-nya ringan dan ditulis di halaman itu. Slug yang bukan milik pemanggil
   dijawab `notFound()`, bukan pesan lain, supaya halaman itu tidak bisa dipakai
   menebak keberadaan PT.
 - Tesnya `tests/company-unlock.test.ts`: tanda tangan yang diubah, isi yang
   diubah dengan tanda tangan lama, cookie milik pengguna lain, entri
-  kedaluwarsa, dan `AUTH_SECRET` yang hilang (harus melempar galat, tidak boleh
+  kedaluwarsa, dan `AUTH_SECRET` yang hilang (harus melempar error, tidak boleh
   memakai nilai bawaan).
 
 ## Sesi & pencabutan (fase 3)

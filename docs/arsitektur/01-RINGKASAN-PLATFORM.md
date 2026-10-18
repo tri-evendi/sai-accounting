@@ -27,17 +27,17 @@ Tiga audiens dilayani dua aplikasi Next.js dalam satu monorepo: pemasaran dan
 aplikasi pelanggan di `src/` (container `app-customer`), konsol operator di
 `apps/operator` (container `app-operator`, image `…-operator`).
 
-| Bidang | Host | Kode | Untuk siapa |
+| Plane | Host | Kode | Untuk siapa |
 |---|---|---|---|
 | **Pemasaran** | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon pelanggan, perayap mesin pencari |
 | **Aplikasi pelanggan** | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha yang membukukan |
-| **Konsol operator** | `OPERATOR_DOMAIN` (rute di akar, tanpa awalan; `/operator/*` lama → 308 ke jalur tanpa awalan) | `apps/operator` | Kami, penyedia layanan |
+| **Konsol operator** | `OPERATOR_DOMAIN` (rute di akar, tanpa prefix; `/operator/*` lama → 308 ke jalur tanpa prefix) | `apps/operator` | Kami, penyedia layanan |
 
-Pemisahan operator ditegakkan kode. Bidangnya ditentukan host saja
+Pemisahan operator ditegakkan kode. Plane-nya ditentukan host saja
 (`packages/core/src/operator-plane.ts`, murni dan aman-edge). Image pelanggan
 tidak memuat rute konsol, dan `apps/operator/src/proxy.ts` menjawab 404 untuk
 setiap host selain `OPERATOR_HOST`. Tanpa `OPERATOR_HOST` di `.env`, konsol
-menjawab 404 di host mana pun (gagal-tertutup). Alasannya: cookie berlingkup
+menjawab 404 di host mana pun (fail-closed). Alasannya: cookie berlingkup
 host, sehingga sesi pelanggan yang bocor tidak bisa menjangkau konsol operator.
 
 ## 3. Dua sumbu penyewaan, dan keduanya wajib dibedakan
@@ -63,7 +63,7 @@ graph TD
 ```
 
 - **Tenant** = pelanggan yang berlangganan, pemilik paket, tagihan, dan kuota.
-  Datanya di basis data kendali dan platform.
+  Datanya di basis data control dan platform.
 - **Perusahaan (PT)** = satu buku besar, dengan basis data PostgreSQL sendiri
   per PT (issue #104; MariaDB sampai 15 Okt 2026). Satu tenant boleh punya
   banyak PT.
@@ -95,7 +95,7 @@ graph TB
         DB[("<b>pg</b> · PostgreSQL 17<br/>:5432 — tidak dipublikasikan")]
     end
 
-    S3["Penyimpanan S3<br/>(cadangan luar-mesin)"]
+    S3["Penyimpanan S3<br/>(backup luar-mesin)"]
     SMTP["SMTP<br/>(surel keluar)"]
 
     U -->|HTTPS| TR
@@ -134,16 +134,16 @@ sebagai loop shell yang tidur, tanpa antrean. Alasannya ditulis di
 
 | Basis data | Jumlah | Isi | Klien Prisma |
 |---|---|---|---|
-| **kendali** `sai_control` | 1 | Pengguna, tenant, perusahaan, keanggotaan, undangan, token API, notifikasi | `packages/db/generated/control` |
-| **platform** `sai_platform` | 1 | Paket, langganan, tagihan platform, pembayaran, jejak penjadwal & cadangan, isi situs | `packages/db/generated/platform` |
+| **control** `sai_control` | 1 | Pengguna, tenant, perusahaan, keanggotaan, undangan, token API, notifikasi | `packages/db/generated/control` |
+| **platform** `sai_platform` | 1 | Paket, langganan, tagihan platform, pembayaran, jejak scheduler & backup, isi situs | `packages/db/generated/platform` |
 | **perusahaan** `sai_<slug>` | **banyak** (17 per 16 Okt 2026) | Seluruh buku besar: jurnal, faktur, kontrak, stok, aset tetap, jejak audit | `packages/db/generated/company` |
 
 Aturan ini diulang di empat berkas sumber:
 
-> **Konteks perusahaan yang hilang harus melempar galat, tidak pernah jatuh ke
+> **Konteks perusahaan yang hilang harus melempar error, tidak pernah jatuh ke
 > basis data bawaan.**
 
-Jatuh ke bawaan berarti transaksi PT A tertulis ke buku PT B tanpa galat dan
+Jatuh ke bawaan berarti transaksi PT A tertulis ke buku PT B tanpa error dan
 tanpa jejak, lalu baru ketahuan berbulan-bulan kemudian sebagai neraca yang
 tidak cocok. Halaman yang gagal terbuka jauh lebih murah. Penegakannya dibedah di [dok 02 §3](./02-ARSITEKTUR.md) dan
 [dok 06 §1](./06-ALIRAN-DATA.md).
@@ -154,7 +154,7 @@ Doktrin kembarannya, dari issue #137:
 > boleh membuat login atau buku besar ikut mati.
 
 Karena itu `packages/platform/src/platform-db.ts` dilarang diimpor dari jalur
-panas (penjaga, sesi, proxy), dan `/api/health` melaporkan status platform tanpa
+panas (guard, sesi, proxy), dan `/api/health` melaporkan status platform tanpa
 membiarkannya ikut memutuskan 503.
 
 ## 6. Kemampuan yang sudah ada
@@ -203,10 +203,10 @@ pajak + e-Faktur · modul per jenis usaha (11 modul) · i18n tiga bahasa
 
 ### Platform (sisi penyedia)
 Pendaftaran mandiri · wisaya penyiapan · undangan staf · paket & langganan ·
-tagihan platform · gerbang pembayaran Midtrans · penjadwal langganan ·
-konsol operator (tenant, audit, surel, penjadwal, isi situs, rekonsiliasi) ·
+tagihan platform · gate pembayaran Midtrans · scheduler langganan ·
+konsol operator (tenant, audit, surel, scheduler, isi situs, rekonsiliasi) ·
 halaman status publik · ekspor data tenant · permintaan penghapusan akun ·
-cadangan otomatis.
+backup otomatis.
 
 ## 7. Tumpukan teknologi
 
@@ -221,7 +221,7 @@ cadangan otomatis.
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |
 | Surel | **Nodemailer 7** | Konfigurasi tiga lapis — lihat dok 04 |
-| Uji | **Vitest 3** — **303 berkas tes** (18 Okt 2026) | Gerbangnya `bun run verify` |
+| Uji | **Vitest 3** — **303 berkas tes** (18 Okt 2026) | Gate-nya `bun run verify` |
 | Proxy | **Traefik** (bersama 5 aplikasi lain di mesin yang sama) | TLS Let's Encrypt, resolver `le` |
 | Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 4 image dibangun CI (pelanggan, operator, migrator, backup — sejak 18 Okt 2026); **jangan pernah build di server** |
 
@@ -233,8 +233,8 @@ Dihitung 18 Okt 2026:
 |---|---|
 | Halaman (`page.tsx`) | 131 (pelanggan, `src/app`) + 18 (konsol, `apps/operator` — 17 + `/login`) |
 | Rute API (`route.ts`) | 127 (pelanggan) + 2 (konsol) |
-| Model Prisma | 61 (perusahaan) + 15 (kendali) + 12 (platform) = **88** *(11 Okt 2026)* |
-| Migration aktif (`prisma/postgresql/`) | 1 (perusahaan) + 4 (kendali) + 4 (platform) = **9** — arsip MariaDB hanya-baca: 99 |
+| Model Prisma | 61 (perusahaan) + 15 (control) + 12 (platform) = **88** *(11 Okt 2026)* |
+| Migration aktif (`prisma/postgresql/`) | 1 (perusahaan) + 4 (control) + 4 (platform) = **9** — arsip MariaDB hanya-baca: 99 |
 | Modul `src/lib` | 231 berkas — sisanya pindah ke `packages/*` (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`) |
 | Berkas tes | 303 |
 | Izin RBAC | 66 (perusahaan) + 6 (tenant) *(11 Okt 2026)* |
@@ -248,22 +248,22 @@ itu:
 | | |
 |---|---|
 | Container naik | `sai-app-customer` (healthy), `sai-app-operator` (healthy), `sai-job-scheduler`, `sai-job-conformance`, `sai-job-backup`, `sai-pgbouncer`, `sai-pg` (healthy), `sai-db` (jalan mundur, tidak ditulisi) |
-| Basis data | **19** di PostgreSQL 17.11: kendali + platform + **17** buku PT, cocok dengan 17 terdaftar. Total 227 MB |
+| Basis data | **19** di PostgreSQL 17.11: control + platform + **17** buku PT, cocok dengan 17 terdaftar. Total 227 MB |
 | Tenant / perusahaan / pengguna / keanggotaan | 11 / 17 / 13 / 17 |
 | Langganan | 11: 10 `active`, 1 `trialing`; mode penagihan 11/11 `none`; 0 pembayaran |
 | Kesehatan (18 Okt) | `control`, `platform`, `company`, `scheduler`, `mail` = `ok` · **`backup` = `local_only`** (`lastSuccessAt: null` — belum ada salinan luar mesin) · `conformance` = `findings` (1.439 temuan, 0 PT gagal) |
-| Migration diterapkan (18 Okt) | kendali 4/4 · platform 4/4 · perusahaan 1/1 (`prisma/postgresql/`) |
+| Migration diterapkan (18 Okt) | control 4/4 · platform 4/4 · perusahaan 1/1 (`prisma/postgresql/`) |
 
 Dua hal dari tabel itu adalah temuan, dan keduanya dinilai di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md):
 
-1. **Belum ada salinan cadangan di luar mesin.** `AWS_ACCESS_KEY_ID`,
+1. **Belum ada salinan backup di luar mesin.** `AWS_ACCESS_KEY_ID`,
    `AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` di `.env` kosong, jadi
-   cadangan harian terenkripsi hanya tersimpan di volume `cadangan` di mesin
+   backup harian terenkripsi hanya tersimpan di volume `backup` di mesin
    yang sama. `/api/health` melaporkan `backup: local_only` dengan
    `lastSuccessAt: null`. Risikonya juga hukum: pembukuan wajib disimpan
    sepuluh tahun (UU KUP), dan kehilangan mesin berarti kehilangan buku beserta
-   cadangannya.
+   backup-nya.
 2. **Penagihan otomatis sengaja dimatikan** di seluruh 11 langganan
    (`billing_mode=none`). Ini keputusan Fase A yang didokumentasikan di
    [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md), bukan kerusakan.

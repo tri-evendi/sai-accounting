@@ -3,8 +3,8 @@
 > Keadaan per 18 Okt 2026 (`main@ca0cd038`) · [indeks](./README.md)
 >
 > Dokumen ini dulu berupa asesmen (15 Okt, putusan "belum"), lalu rencana fase.
-> Semua fase sudah dijalankan dan digelar. Yang tersisa di sini: bentuk akhir,
-> penjaganya, keputusan yang masih berlaku, dan riwayat singkat. Timbangan
+> Semua fase sudah dijalankan dan di-deploy. Yang tersisa di sini: bentuk akhir,
+> guard-nya, keputusan yang masih berlaku, dan riwayat singkat. Timbangan
 > untung-rugi lengkap dan pengukuran porsi operator per fase ada di riwayat git
 > berkas ini. Pemisahan container sebelumnya: [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
 
@@ -30,23 +30,23 @@ sai-accounting/
 | Alias | `@/*` = `src/*` · `@op/*` = `apps/operator/src/*` (di konsol, `@/` tidak terselesaikan) · `@sai/<paket>/*` lewat workspace bun |
 | Paket | dikirim sebagai sumber TS, tanpa langkah build: `transpilePackages: ["@sai/db", "@sai/core", "@sai/ui", "@sai/billing", "@sai/platform"]` di kedua `next.config.ts` |
 | Image | empat, dari satu commit (`publish-image.yml`): `sai-accounting` (target `runner`), `-operator` (`runner-operator`), `-migrator`, `-backup` |
-| Gelar | `docker compose pull` → `migrate` → `up -d`; sesudahnya periksa bahwa image tiap layanan berasal dari `sha-` yang sama |
-| Bidang | konsol di `ops.saiaccounting.id` tanpa awalan `/operator`; bidang ditentukan host saja. `apps/operator/src/proxy.ts`: host lain atau `OPERATOR_HOST` kosong → 404; tanpa sesi → `/login`. `/operator` dan `/operator/*` → 308 ke jalur tanpa awalan (`apps/operator/next.config.ts`) |
+| Deploy | `docker compose pull` → `migrate` → `up -d`; sesudahnya periksa bahwa image tiap layanan berasal dari `sha-` yang sama |
+| Plane | konsol di `ops.saiaccounting.id` tanpa prefix `/operator`; plane ditentukan host saja. `apps/operator/src/proxy.ts`: host lain atau `OPERATOR_HOST` kosong → 404; tanpa sesi → `/login`. `/operator` dan `/operator/*` → 308 ke jalur tanpa prefix (`apps/operator/next.config.ts`) |
 | Sisi pelanggan | `src/proxy.ts` tetap memakai `@sai/core/operator-plane`: host operator yang sampai ke aplikasi pelanggan (Traefik salah arah) → 404; aplikasi pelanggan tidak punya rute operator |
 | Volume konsol | hanya `audit` (tinggal arsip berkas lama `.dipindahkan`, aman dicabut), tanpa `documents` |
 | Ukuran terukur 18 Okt | standalone konsol 69 MB (20 rute) vs pelanggan 299 MB; build pelanggan tidak memuat rute operator |
 
-## 2. Penjaga
+## 2. Guard
 
-| Penjaga | Yang dijaga |
+| Guard | Yang dijaga |
 |---|---|
 | `tests/operator-dependency-direction.test.ts` | arah dependensi: di luar konsol tidak ada yang mengimpor ke dalamnya (daftar putih kosong sejak Fase 3d); konsol hanya memakai `src/components/ui` + komponen operator. Impor diselesaikan sebagai path, komentar dibuang |
 | `tests/packages-mandiri.test.ts` | paket tidak mengimpor `@/…` atau keluar lewat path relatif; tiap subpath `exports` menunjuk berkas yang ada; manifes jujur; graf antarpaket tanpa siklus; Dockerfile menyalin manifes setiap paket |
 | `tests/klien-prisma-dari-paket.test.ts` | klien Prisma hanya lewat `@sai/db/client/{company,control,platform}`; menolak `@/generated/*`, skema yatim di `prisma/` |
 | `tests/paket-pindahan.test.ts` | modul yang sudah pindah tidak hidup kembali di jalur lama |
-| `tests/akar-sumber.ts` | wajib dipakai setiap pemindai: akar `src/` + `apps/operator/src` + `packages/*/src`, dan `uraiPaket()` untuk graf impor. Pemindai yang hanya menyapu `src/` akan lulus dengan nol pelanggar sesudah berkasnya pindah |
+| `tests/akar-sumber.ts` | wajib dipakai setiap scanner: akar `src/` + `apps/operator/src` + `packages/*/src`, dan `uraiPaket()` untuk graf impor. Scanner yang hanya menyapu `src/` akan lulus dengan nol pelanggar sesudah berkasnya pindah |
 | `tests/landing-boundary.test.ts`, `tests/docs.test.ts` | daftar-izin pembaca `@sai/platform` disebut satu per satu: pendaratan hanya `i18n/server` + `site-settings`, `/docs` hanya `i18n/server` |
-| `tests/error-pages.test.ts` | halaman galat & 404 ada di kedua aplikasi dan memakai `StatusScreen` yang sama |
+| `tests/error-pages.test.ts` | halaman error & 404 ada di kedua aplikasi dan memakai `StatusScreen` yang sama |
 | ESLint `sai/*` | diperluas ke `packages/*/src/**` dan `apps/operator/src/**` |
 
 ## 3. Keputusan penting
@@ -57,7 +57,7 @@ sai-accounting/
   migration yang sudah diterapkan mempertaruhkan `migrate deploy` pada seluruh
   basis data produksi demi kerapian.
 - **Aplikasi pelanggan tetap di `src/`**, tidak dipindah ke `apps/customer`:
-  diff terkecil, dan setiap jalur yang dipindai tes tetap berlaku.
+  diff terkecil, dan setiap jalur yang di-scan tes tetap berlaku.
 - **`operator-plane` tetap dipakai sisi pelanggan.** Ia yang menolak permintaan
   bila Traefik salah arah.
 - **Kedua image dari `sha-` yang sama.** Dua binari di atas satu skema bisa
@@ -84,16 +84,16 @@ gerakan.
 
 | Fase | Tanggal | Isi |
 |---|---|---|
-| 0 | 17 Okt | penjaga arah dependensi; `changeTenantPlan` keluar dari `lib/operator`; `StatCard` ke `ui` |
+| 0 | 17 Okt | guard arah dependensi; `changeTenantPlan` keluar dari `lib/operator`; `StatCard` ke `ui` |
 | 1a | 17 Okt | workspace bun + `@sai/db` (engine/adapter/server) |
 | 1b | 17 Okt | skema + klien bangkitan ke `packages/db` |
 | 2a–2d | 18 Okt | `@sai/core`, i18n inti, `@sai/ui`, `@sai/billing` |
 | 3a–3c | 18 Okt | putus tiga sisi yang menyeret kode pembukuan ke konsol; modul murni ke `core`/`billing`; `@sai/platform` |
 | 3d + 4 | 18 Okt | kerangka bersama ke `@sai/ui`; `apps/operator` lahir; image `-operator` |
-| hanya-host | 18 Okt | konsol tanpa awalan `/operator`; tautan lama 308; halaman galat & 404 di kedua aplikasi |
+| hanya-host | 18 Okt | konsol tanpa prefix `/operator`; tautan lama 308; halaman error & 404 di kedua aplikasi |
 
-Satu risiko benar-benar terjadi: pemindai yang hanya menyapu `src/` lulus
-dengan nol pelanggar begitu berkasnya pindah. Dua puluh pemindai dialihkan ke
+Satu risiko benar-benar terjadi: scanner yang hanya menyapu `src/` lulus
+dengan nol pelanggar begitu berkasnya pindah. Dua puluh scanner dialihkan ke
 `tests/akar-sumber.ts`, dan perubahannya dibuktikan dengan pelanggaran yang
 sengaja ditanam di dalam paket.
 
@@ -108,5 +108,5 @@ lama dari commit yang sama; menukar `SAI_TAG` saja tidak cukup. Rinciannya di
 ## Rujukan lama
 
 Komentar kode masih menyebut nomor versi asesmen: §3 (`changeTenantPlan`
-milik penagihan) → kini §3 di atas; §4 (Fase 0, penjaga arah dependensi) →
+milik penagihan) → kini §3 di atas; §4 (Fase 0, guard arah dependensi) →
 §2 dan §4.

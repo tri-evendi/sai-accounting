@@ -42,7 +42,7 @@ export async function GET() {
 
   const [identity, logo] = await Promise.all([
     getCompanyIdentity(),
-    // Gagal-lunak: logo yang tak terbaca (mis. buku lama sebelum migration 0002) bukan alasan identitasnya gagal.
+    // Fail-soft: logo yang tak terbaca (mis. buku lama sebelum migration 0002) bukan alasan identitasnya gagal.
     readCompanyLogoMeta().catch((error) => {
       console.error("[company-identity] logo perusahaan tak terbaca:", error);
       return null;

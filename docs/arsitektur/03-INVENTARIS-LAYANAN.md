@@ -17,7 +17,7 @@ penyebaran, bukan mikrolayanan.
 
 ## 0. Berapa layanan yang dipelihara?
 
-Jawabannya menentukan cara berpikir soal penggelaran, penskalaan, dan blast
+Jawabannya menentukan cara berpikir soal deploy, penskalaan, dan blast
 radius. **Tujuh layanan didefinisikan, enam berjalan terus-menerus**, dan
 ketujuh permukaan web dibagi ke dua aplikasi Next di antaranya.
 
@@ -25,13 +25,13 @@ ketujuh permukaan web dibagi ke dua aplikasi Next di antaranya.
 |---|---|---|---|
 | `app-customer` | `sai-app-customer` | **Enam grup rute pelanggan** — pemasaran, auth, panel tenant, buku besar, setup, docs | selalu hidup |
 | `app-operator` | `sai-app-operator` | Konsol operator — aplikasi `apps/operator`, image `…-operator` | selalu hidup |
-| `pg` | `sai-pg` | **PostgreSQL 17**: 17 buku PT + kendali + platform | selalu hidup |
-| `pgbouncer` | `sai-pgbouncer` | Kolam koneksi `transaction` di depan `pg` | selalu hidup |
+| `pg` | `sai-pg` | **PostgreSQL 17**: 17 buku PT + control + platform | selalu hidup |
+| `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` di depan `pg` | selalu hidup |
 | `db` | `sai-db` | MariaDB 11, **jalan mundur** sejak 15 Okt, tidak ditulisi; dicabut di #636 | selalu hidup (sementara) |
 | `job-scheduler` | `sai-job-scheduler` | 7 langkah: tagihan, kabar, pengingat, berulang, `watch:health`, `prune:trails` | tiap jam |
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
-| `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 (tanpa bucket: volume `cadangan`) | harian |
-| `migrate` | `sai-migrate` | Migration, lalu **keluar** (`restart: "no"`) | sekali per gelar |
+| `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 (tanpa bucket: volume `backup`) | harian |
+| `migrate` | `sai-migrate` | Migration, lalu **keluar** (`restart: "no"`) | sekali per deploy |
 
 Ditambah `traefik`, yang dipakai bersama lima aplikasi lain di mesin ini dan
 tidak termasuk `docker-compose.yml` repo ini.
@@ -58,22 +58,22 @@ sai-app-customer  (container #1)
 
 sai-app-operator  (container #2 — image …-operator, apps/operator)
 └── OPERATOR_DOMAIN
-    └── (operator)         18 halaman   /  ·  /tenants  ·  /login …  (tanpa awalan)
+    └── (operator)         18 halaman   /  ·  /tenants  ·  /login …  (tanpa prefix)
 ```
 
 Konsekuensinya:
 
 - Kedua image aplikasi dibangun dari commit dan `SAI_TAG` yang sama. Keduanya
   menulis basis data yang sama, jadi versi skemanya harus satu.
-- Satu penggelaran tetap memindahkan keenam permukaan pelanggan. Halaman
+- Satu deploy tetap memindahkan keenam permukaan pelanggan. Halaman
   pendaratan tidak bisa dirilis tanpa ikut merilis buku besar.
 - Restart hanya mengosongkan cache container itu (pengaturan surel TTL 60s,
-  kolam klien LRU per PT). Me-restart konsol operator tidak mengosongkan cache
+  pool klien LRU per PT). Me-restart konsol operator tidak mengosongkan cache
   pelanggan.
 - `app-customer` tetap titik gagal tunggal bagi keenam permukaan pelanggan,
   diredam `restart: unless-stopped` dan healthcheck. Ia tidak lagi menjatuhkan
   konsol operator bersamanya.
-- Pemisahan bidang ditegakkan oleh hostname, lalu oleh kode. Image pelanggan
+- Pemisahan plane ditegakkan oleh hostname, lalu oleh kode. Image pelanggan
   tidak memuat rute konsol. `OPERATOR_HOST: ""` pada `app-customer` adalah lapis
   tambahan: Host operator yang dikirim langsung ke container itu (melewati
   Traefik) tetap dijawab 404.
@@ -124,7 +124,7 @@ mesin.
 
 ## 2. Katalog layanan
 
-### 2.1 `app-customer` — bidang pelanggan (`sai-app-customer`)
+### 2.1 `app-customer` — plane pelanggan (`sai-app-customer`)
 
 | | |
 |---|---|
@@ -134,7 +134,7 @@ mesin.
 | **Pengguna** | `node` (bukan root) |
 | **Port** | `3000` — `expose`, bukan `ports`. Tidak terbit ke host |
 | **Jaringan** | `traefik_default` + `internal` |
-| **Domain** | `APP_DOMAIN` + `www.` (dialihkan ke apex). Tidak melayani `OPERATOR_DOMAIN` |
+| **Domain** | `APP_DOMAIN` + `www.` (di-redirect ke apex). Tidak melayani `OPERATOR_DOMAIN` |
 | **Bergantung pada** | `pg` (healthy), `pgbouncer` (berjalan), `migrate` (selesai sukses) |
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` tiap 30s, 3 kali coba, start 20s |
 | **Volume** | `documents:/app/data/documents` (RW) · `audit:/app/data/audit` (RW) |
@@ -152,27 +152,27 @@ PostgreSQL (lewat PgBouncer) · berkas di dua volume.
 SMTP keluar · HTTP keluar ke Midtrans Core API.
 
 Satu container, tanpa replika. Restart mengosongkan setiap cache dalam memori
-(pengaturan surel TTL 60s, kolam klien LRU, konteks per permintaan). Itu murah
+(pengaturan surel TTL 60s, pool klien LRU, konteks per permintaan). Itu murah
 hari ini, tetapi juga alasan `app-customer` tidak bisa diskalakan horizontal
 tanpa pekerjaan tambahan; lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
-### 2.2 `app-operator` — bidang operator (`sai-app-operator`)
+### 2.2 `app-operator` — plane operator (`sai-app-operator`)
 
 | | |
 |---|---|
 | **Image** | `ghcr.io/tri-evendi/sai-accounting-operator:latest` (tahap `runner-operator`, aplikasi `apps/operator`); tag `sha-` harus sama dengan `app-customer` |
-| **Perintah** | `node apps/operator/server.js` — rute tanpa awalan `/operator` (`/`, `/tenants`, `/login`, …); tautan `/operator/*` lama dialihkan 308 |
+| **Perintah** | `node apps/operator/server.js` — rute tanpa prefix `/operator` (`/`, `/tenants`, `/login`, …); tautan `/operator/*` lama di-redirect 308 |
 | **Port** | `3000` — `expose` |
 | **Jaringan** | `traefik_default` + `internal` |
 | **Domain** | Hanya `OPERATOR_DOMAIN`; tidak punya router `APP_DOMAIN` |
 | **Bergantung pada** | `pg` (healthy), `pgbouncer` (berjalan), `migrate` (selesai sukses) |
-| **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — probe konsol sendiri: hanya basis data kendali yang memutuskan 503, platform dilaporkan; dilayani di host mana pun |
+| **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — probe konsol sendiri: hanya basis data control yang memutuskan 503, platform dilaporkan; dilayani di host mana pun |
 | **Volume** | `audit:/app/data/audit` (RW); tanpa `documents` |
 
 **Tanggung jawab:** 17 halaman konsol penyedia + `/login` (+ 1 rute unduhan):
-tenant, audit (operator + jejak tenant), cadangan & versi skema, akun operator,
+tenant, audit (operator + jejak tenant), backup & versi skema, akun operator,
 permintaan hapus, katalog paket, e-Faktur platform, pengumuman status, surel,
-penjadwal, kesesuaian data, isi situs, pengaturan, rekonsiliasi.
+scheduler, kesesuaian data, isi situs, pengaturan, rekonsiliasi.
 
 Volume `audit` adalah sisa yang aman dicabut. Jejak operator tinggal di tabel
 `sai_platform.operator_audit_logs` sejak 17 Okt 2026, dan berkas JSONL lamanya
@@ -220,7 +220,7 @@ aplikasi `sai` adalah **SUPERUSER**. Keduanya dibahas di
 Satu instans, tanpa replika. Ini titik gagal tunggal paling berat di sistem;
 lihat [dok 04 §5](./04-DEPENDENSI-INTEGRASI.md).
 
-### 2.3a `pgbouncer` — kolam koneksi (`sai-pgbouncer`)
+### 2.3a `pgbouncer` — pool koneksi (`sai-pgbouncer`)
 
 | | |
 |---|---|
@@ -236,7 +236,7 @@ bersamaan. Mode `session` akan menghapus manfaatnya.
 
 Masih hidup sejak penukaran 15 Okt 2026, tetapi tidak ditulisi siapa pun. Image
 yang berjalan dibangun dari skema `provider = "postgresql"` dan tidak bisa
-memakai `mysql://`, jadi kembali ke MariaDB berarti menggelar image `sha-` lama
+memakai `mysql://`, jadi kembali ke MariaDB berarti men-deploy image `sha-` lama
 sekaligus menukar URL. Pencabutan: issue #636, paling cepat 22 Okt 2026.
 
 ### 2.4 `migrate` — migrator sekali-jalan
@@ -248,12 +248,12 @@ sekaligus menukar URL. Pencabutan: issue #636, paling cepat 22 Okt 2026.
 | **restart** | `"no"`, sengaja: ia harus selesai, tidak berputar |
 | **Bergantung pada** | `pg` (healthy), `pgbouncer` (berjalan); menyambung langsung ke `pg` (advisory lock Prisma Migrate terikat sesi) |
 
-**Tanggung jawab:** menerapkan migration ke kendali, lalu platform, lalu setiap
+**Tanggung jawab:** menerapkan migration ke control, lalu platform, lalu setiap
 perusahaan terdaftar. Satu perusahaan yang gagal tidak menghentikan yang lain.
 
 **Kenapa tidak `db:migrate` / `prisma migrate deploy` saja:** perintah itu hanya
-menerapkan ke satu basis data (yang ditunjuk `DATABASE_URL`), sehingga kendali,
-platform, dan buku PT lain tertinggal tanpa galat. Selalu pakai
+menerapkan ke satu basis data (yang ditunjuk `DATABASE_URL`), sehingga control,
+platform, dan buku PT lain tertinggal tanpa error. Selalu pakai
 `db:migrate:all`.
 
 **Kenapa `FROM bunbase`, tidak `FROM builder`:** migrator tidak memakai keluaran
@@ -261,7 +261,7 @@ platform, dan buku PT lain tertinggal tanpa galat. Selalu pakai
 sehingga image yang paling butuh berkas migration menjadi yang paling mahal
 dibuat.
 
-### 2.5 `job-scheduler` — penjadwal langganan (`sai-job-scheduler`)
+### 2.5 `job-scheduler` — scheduler langganan (`sai-job-scheduler`)
 
 | | |
 |---|---|
@@ -270,7 +270,7 @@ dibuat.
 | **Batas per langkah** | `timeout -k 30 480` (7 langkah × 480s = 56 menit < 1 jam) |
 | **Bergantung pada** | `pg` (healthy), `pgbouncer` (berjalan), `migrate` (selesai sukses) |
 
-Tujuh langkah berurutan dalam satu putaran: lima produser, lalu penjaga dan
+Tujuh langkah berurutan dalam satu putaran: lima produser, lalu guard dan
 pemangkas.
 
 | Urut | Perintah | Tugas | Idempotensi |
@@ -280,7 +280,7 @@ pemangkas.
 | 3 | `notify:invoice-due` | Kabar jatuh tempo (≤3 hari) + ringkasan mingguan tertunggak | `dedupe_key` |
 | 4 | `remind:customers` | **Surel ke pelanggan** (H-3/H+1/H+7, satu per faktur) | Kunci unik (invoice, kind, due_key) |
 | 5 | `recurring:run` | Terbitkan dokumen berulang yang jatuh hari ini | Kunci unik (template, occurrence_date) |
-| 6 | `watch:health` | Baca denyut cadangan, penjadwal, kesesuaian; kirim surel peringatan | Peredam satu surel per status per 24 jam |
+| 6 | `watch:health` | Baca denyut backup, scheduler, kesesuaian; kirim surel peringatan | Peredam satu surel per status per 24 jam |
 | 7 | `prune:trails` | Pangkas jejak putaran > 90 hari — satu-satunya yang menghapus, karena itu paling akhir | Putaran kosong = satu `SELECT` per tabel |
 
 Tiga keputusan desain yang perlu dibaca sebelum menyentuhnya:
@@ -295,15 +295,15 @@ Tiga keputusan desain yang perlu dibaca sebelum menyentuhnya:
    langkah yang gagal, tidak yang menggantung. Pada 30 Agustus 2026
    `scheduler:subscriptions` menggantung dua jam dengan CPU 0,09%, putaran itu
    tidak pernah sampai `sleep`, dan semua putaran berikutnya tertahan.
-   Container tetap "Up", log terakhir "✓ selesai tanpa masalah", nol galat.
+   Container tetap "Up", log terakhir "✓ selesai tanpa masalah", nol error.
    Masalahnya hanya terlihat dari `/api/health` → `scheduler: late` dan
    `docker top`.
 
 **Kenapa layanan, tidak baris crontab (#373):** tidak ada yang memeriksa bahwa
 baris crontab itu ada. Kalau terlewat saat rilis, uji coba tidak pernah
 berakhir, tagihan pertama tidak terbit, dan penunggak tidak ditangguhkan, semua
-tanpa galat, sampai seseorang melihat laporan pendapatan bernilai nol. Sebagai
-layanan, ia ikut naik bersama penggelaran dan terlihat di `docker compose ps`.
+tanpa error, sampai seseorang melihat laporan pendapatan bernilai nol. Sebagai
+layanan, ia ikut naik bersama deploy dan terlihat di `docker compose ps`.
 
 **Dapat diamati lewat:** `scheduler_runs` (platform) · `/api/health` →
 `scheduler` · konsol `/scheduler` · `bun run prove-scheduler-alive`.
@@ -323,8 +323,8 @@ kurs · mata uang pembayaran ≠ dokumennya · faktur kelebihan bayar · jurnal
 timpang/kosong · tipe akun asing · dan sejak #444 akun penampung beban berskala
 material ("Beban Lain-lain" dkk; ambang 5% dari total beban).
 
-**Kenapa ada:** penjaga zod hanya berlaku di jalur tulis. Impor sekali jalan,
-perbaikan SQL manual, dan penyemai tidak melewati penjaga itu. Audit 20–21
+**Kenapa ada:** guard zod hanya berlaku di jalur tulis. Impor sekali jalan,
+perbaikan SQL manual, dan penyemai tidak melewati guard itu. Audit 20–21
 Agustus 2026 menemukan enam kelas cacat yang masuk lewat jalur tersebut di buku
 produksi: status kontrak di luar enum, mata uang `LC`, 609 kontrak valas tanpa
 kurs, 720 pembayaran salah label mata uang, faktur kelebihan bayar, dan
@@ -344,7 +344,7 @@ temuan menjadi *crash-loop*.
 dilaporkan `/api/health` → `conformance`, dan diperingatkan lewat surel oleh
 `watch:health`. Rinciannya: `docker compose logs job-conformance --tail 60`.
 
-### 2.7 `job-backup` — cadangan (`sai-job-backup`)
+### 2.7 `job-backup` — backup (`sai-job-backup`)
 
 | | |
 |---|---|
@@ -352,41 +352,41 @@ dilaporkan `/api/health` → `conformance`, dan diperingatkan lewat surel oleh
 | **Perintah** | `sh scripts/backup.sh` |
 | **Kadens** | `sleep 86400` — harian (RPO 1 hari, disengaja) |
 | **Batas** | `timeout -k 60 7200` — 2 jam, longgar |
-| **Volume** | `documents:…:ro` · `audit:…:ro` (hanya-baca) · `cadangan:/app/data/cadangan` (RW, hanya untuk hasilnya sendiri) |
+| **Volume** | `documents:…:ro` · `audit:…:ro` (hanya-baca) · `backup:/app/data/backup` (RW, hanya untuk hasilnya sendiri) |
 
 **Urutan:** `pg_dumpall` langsung ke `pg` (mesin dan tujuan diturunkan dari `DATABASE_URL`; MariaDB: `mariadb-dump --all-databases`) → `tar -czf` → `openssl enc
 -aes-256-cbc -pbkdf2 -iter 200000 -salt` → SHA-256 atas ciphertext →
 `aws s3 cp` (arsip + `.sha256`) → pangkas yang kedaluwarsa (hanya bila
 unggahan sukses). Tanpa `BACKUP_S3_BUCKET`, arsip terenkripsi + `.sha256`
-disalin ke volume `cadangan` saja, dan `/api/health` melaporkan `local_only`.
+disalin ke volume `backup` saja, dan `/api/health` melaporkan `local_only`.
 
 Empat keputusan desain:
 
 1. **`--all-databases`, tidak daftar yang diketik tangan.** Daftar tangan akan
-   tertinggal saat pelanggan baru mendaftar, dan cadangan menjadi tidak lengkap
+   tertinggal saat pelanggan baru mendaftar, dan backup menjadi tidak lengkap
    tanpa ada yang tahu.
 2. **Enkripsi dilakukan sebelum berkas meninggalkan mesin.**
 3. **SHA-256 atas ciphertext ikut dikirim.** AES-256-CBC tidak membawa
    pemeriksaan keutuhan sendiri. Tanpa berkas `.sha256`, arsip yang rusak di
-   perjalanan baru ketahuan saat pemulihan.
+   perjalanan baru ketahuan saat restore.
 4. **Memakai `awscli`, tidak SigV4 buatan sendiri.** Penanda tangan S3 sendiri
    hanya ~60 baris, tetapi mudah lulus uji lalu gagal pada penyedia yang
    menormalkan header sedikit berbeda, dan kegagalan itu baru muncul saat
-   memulihkan.
+   me-restore.
 
 Volume sumber dipasang `:ro` dengan sengaja. Layanan penyalin tidak perlu
-menulis ke yang disalinnya, dan bendera itu mencegah skrip cadangan merusak
+menulis ke yang disalinnya, dan bendera itu mencegah skrip backup merusak
 data yang dicadangkan.
 
 **⚠ Status 18 Okt 2026: `local_only`, belum ada salinan di luar mesin.**
 `/api/health` → `backup: local_only`, `lastSuccessAt: null`. `AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` di `.env` kosong, jadi cadangan
-harian hanya mendarat di volume `cadangan` di mesin yang sama. Kehilangan mesin
-berarti kehilangan buku beserta cadangannya. Tetap P0 di
+`AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` di `.env` kosong, jadi backup
+harian hanya mendarat di volume `backup` di mesin yang sama. Kehilangan mesin
+berarti kehilangan buku beserta backup-nya. Tetap P0 di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md) sampai kredensial S3 disetel.
 
 **Pembuktian:** `docker compose run --rm job-backup bun run prove-backup-restore`
-memeriksa bahwa sidik jari cocok, sandi benar, dan setiap basis data terdaftar
+memeriksa bahwa fingerprint cocok, sandi benar, dan setiap basis data terdaftar
 ada di dalam arsip. Skrip ini tidak memuat dump ke basis data mana pun, karena
 satu `psql <` yang salah sasaran akan menimpa produksi dengan data lama.
 Pemuatan sungguhan ke server bayangan adalah latihan kuartalan yang dijalankan
@@ -404,7 +404,7 @@ Rinciannya: [dok 07 §2](./07-INFRASTRUKTUR-DEPLOY.md).
 ## 3. Modul aplikasi (di dalam kedua container `app-*`)
 
 `src/lib` punya 231 berkas (18 Okt 2026); modul bersama pindah ke
-`packages/*` dan ditulis di bawah dengan jalur paketnya. Tanpa awalan = di
+`packages/*` dan ditulis di bawah dengan jalur paketnya. Tanpa prefix = di
 `src/lib/`. Daftar di bawah hanya memuat modul yang memegang keputusan.
 
 ### 3.1 Lapisan data & konteks
@@ -412,15 +412,15 @@ Rinciannya: [dok 07 §2](./07-INFRASTRUKTUR-DEPLOY.md).
 | Modul | Tanggung jawab |
 |---|---|
 | `prisma.ts` | Proxy klien PT aktif; menyelesaikan klien saat kueri dipanggil |
-| `company-clients.ts` | Kolam LRU klien PT (`POOL_MAX`=4, 2 koneksi/klien, *grace* 15s) |
+| `company-clients.ts` | Pool LRU klien PT (`POOL_MAX`=4, 2 koneksi/klien, *grace* 15s) |
 | `company-context.ts` | `AsyncLocalStorage` + `runWithCompany()` + `MissingCompanyContextError` |
 | `current-company.ts` | "PT mana ini?" — 2 sumber, `WeakMap` dikunci pada `headers()` |
-| `packages/core/src/control-db.ts` | Singleton kendali (batas 2 koneksi) |
+| `packages/core/src/control-db.ts` | Singleton control (batas 2 koneksi) |
 | `packages/platform/src/platform-db.ts` | Singleton platform (batas 1 koneksi); dilarang dari jalur panas |
 | `company-registry.ts` · `company-route.ts` · `company-request.ts` | Resolusi PT dari jalur/permintaan |
 | `company-provisioning.ts` | Pembuatan basis data PT baru + penyemaian |
 | `users-directory.ts` | Pengganti FK ke `users` lintas basis data |
-| `packages/core/src/tenant-cache.ts` | `TenantKeyedCache`: cache wajib berkunci penyewa |
+| `packages/core/src/tenant-cache.ts` | `TenantKeyedCache`: cache wajib berkunci tenant |
 
 ### 3.2 Otorisasi & sesi
 
@@ -435,8 +435,8 @@ Rinciannya: [dok 07 §2](./07-INFRASTRUKTUR-DEPLOY.md).
 | `auth.ts` | NextAuth v5 — Credentials, JWT 24 jam |
 | `business-modules.ts` | 11 modul; dilarang diimpor modul laporan/posting |
 | `company-unlock.ts` | Kunci buku — otentikasi ulang |
-| `packages/core/src/rate-limit.ts` · `rate-limit-persistent.ts` | Pembatasan laju (memori + tabel kendali) |
-| `packages/core/src/operator-plane.ts` | Keputusan bidang operator (host saja); murni, aman-edge |
+| `packages/core/src/rate-limit.ts` · `rate-limit-persistent.ts` | Pembatasan laju (memori + tabel control) |
+| `packages/core/src/operator-plane.ts` | Keputusan plane operator (host saja); murni, aman-edge |
 | `apps/operator/src/lib/operator/{guard,session,credentials,totp}.ts` | Sesi operator + IP + TOTP |
 
 ### 3.3 Mesin akuntansi
@@ -471,9 +471,9 @@ Rinciannya: [dok 07 §2](./07-INFRASTRUKTUR-DEPLOY.md).
 | Modul | Tanggung jawab |
 |---|---|
 | `packages/billing/src/subscription-lifecycle.ts` · `subscription-store.ts` | Daur hidup langganan |
-| `packages/billing/src/payment-gateway.ts` | Abstraksi gerbang — `midtrans` \| `manual`, dengan transport MOCK |
+| `packages/billing/src/payment-gateway.ts` | Abstraksi gate — `midtrans` \| `manual`, dengan transport MOCK |
 | `packages/platform/src/payment-webhook.ts` | Pemrosesan webhook |
-| `company-payment-settings.ts` | Gerbang milik pelanggan (bukan milik platform) |
+| `company-payment-settings.ts` | Gate milik pelanggan (bukan milik platform) |
 | `packages/core/src/registration.ts` · `packages/platform/src/invitation-store.ts` | Pendaftaran mandiri & undangan |
 | `tenant-{export,directory}.ts` · `packages/core/src/tenant-deletion.ts` · `packages/platform/src/tenant-{state,audit}.ts` | Siklus hidup tenant |
 | `packages/platform/src/{mailer-core,mail-settings}.ts` · `tenant-mail-settings.ts` | Surel tiga lapis |
@@ -502,25 +502,25 @@ Dijalankan manual atau oleh layanan `job-scheduler`. Semua lewat `bun run <nama>
 
 | Skrip | Tugas | Kapan |
 |---|---|---|
-| `db:migrate:all` | kendali → platform → setiap PT | Setiap rilis yang membawa migration |
+| `db:migrate:all` | control → platform → setiap PT | Setiap rilis yang membawa migration |
 | `migrate-all-companies.ts` | Terapkan ke setiap PT; tidak berhenti di PT gagal | dipanggil di atas |
 | `migrate-platform.ts` | Platform; dilewati dengan peringatan bila `PLATFORM_DATABASE_URL` kosong | dipanggil di atas |
 | `migrate-audit.ts` | `data/audit/<slug>/audit.jsonl` → tabel `audit_logs` per PT | Langkah rilis #370, sekali |
-| `migrate-tenant-audit.ts` | `data/audit/tenants/<slug>/…` → `tenant_audit_logs` (kendali) | Langkah rilis #484, sekali |
+| `migrate-tenant-audit.ts` | `data/audit/tenants/<slug>/…` → `tenant_audit_logs` (control) | Langkah rilis #484, sekali |
 | `adopt-existing-company.ts` | Daftarkan basis data lama sebagai PT pertama | Migrasi #104, sekali |
 | `adopt-tenant.ts` | Adopsi tenant | Migrasi #133, sekali |
 
 Kedua skrip audit mengganti nama berkasnya menjadi `.dipindahkan` dan tidak
 menghapusnya, karena jejak audit tidak boleh dihapus otomatis.
 
-### 4.2 Pembuktian (gerbang rilis)
+### 4.2 Pembuktian (gate rilis)
 
 Skrip-skrip ini memeriksa keadaan nyata, tidak sekadar melaporkan hasil skrip lain.
 
 | Skrip | Membuktikan |
 |---|---|
-| `prove-scheduler-alive.ts` | Penjadwal benar-benar berdenyut |
-| `prove-backup-restore.ts` | Cadangan terbaru bisa dibuka & memuat setiap basis data |
+| `prove-scheduler-alive.ts` | Scheduler benar-benar berdenyut |
+| `prove-backup-restore.ts` | Backup terbaru bisa dibuka & memuat setiap basis data |
 | `prove-tenant-adoption.ts` | Adopsi tenant benar-benar terjadi |
 | `prove-company-slug-immutable.ts` | Slug PT tidak bisa berubah |
 | `prove-company-slug-scope.ts` | Lingkup slug benar |
@@ -565,14 +565,14 @@ produser harus tinggal di pustaka murni.
 
 | Volume | Dipasang di | Isi | Dicadangkan? |
 |---|---|---|---|
-| `pg_data` | `pg:/var/lib/postgresql/data` | 19 basis data: 17 buku PT + kendali + platform | Ya, lewat `pg_dumpall` |
+| `pg_data` | `pg:/var/lib/postgresql/data` | 19 basis data: 17 buku PT + control + platform | Ya, lewat `pg_dumpall` |
 | `db_data` | `db:/var/lib/mysql` | MariaDB jalan mundur, beku sejak 15 Okt 2026 | Tidak lagi; arsipkan dump terakhir sebelum dihapus (#636) |
 | `documents` | `app-customer` (RW), `job-backup` (RO); tidak `app-operator` | `data/documents/<companyId>/<uuid>.<ext>` | Ya — di `tar` |
 | `audit` | `app-customer` (RW), `app-operator` (RW), `job-backup` (RO) | Kini hanya berkas JSONL lama (sudah dipindahkan ke tabel, berganti nama `.dipindahkan`) | Ya — di `tar` |
-| `cadangan` | `job-backup` (RW) | Arsip cadangan terenkripsi + `.sha256` saat `BACKUP_S3_BUCKET` belum disetel | — (ia *adalah* cadangannya; mesin yang sama) |
+| `backup` | `job-backup` (RW) | Arsip backup terenkripsi + `.sha256` saat `BACKUP_S3_BUCKET` belum disetel | — (ia *adalah* backup-nya; mesin yang sama) |
 
 Jejak audit ada di tiga tabel: `audit_logs` di tiap buku PT,
-`tenant_audit_logs` di kendali, dan `operator_audit_logs` di platform.
+`tenant_audit_logs` di control, dan `operator_audit_logs` di platform.
 `tenant_audit_logs` sengaja tanpa FK ke `tenants`: jejak ini mencatat
 penghapusan tenant, jadi harus tetap ada sesudah tenant dihapus.
 
@@ -581,16 +581,16 @@ pengembangan). Produksi memakai SMTP dari baris `mail_settings` di platform.
 
 ## 6. Peringatan
 
-Dua jalur surel peringatan, penerimanya `PLATFORM_ALERT_EMAIL` (cadangan
+Dua jalur surel peringatan, penerimanya `PLATFORM_ALERT_EMAIL` (backup
 `PLATFORM_CONTACT_EMAIL`):
 
 - `watch:health` (langkah 6 `job-scheduler`, tiap jam) membaca tiga denyut
-  (cadangan, penjadwal, kesesuaian) dan mengirim surel bila salah satunya tidak
+  (backup, scheduler, kesesuaian) dan mengirim surel bila salah satunya tidak
   sehat. Peredamnya satu surel per status per 24 jam.
 - `src/lib/alert.ts` (issue #374) untuk peristiwa dalam aplikasi, dengan peredam
-  satu surel per sidik jari per jam lewat `rate-limit-persistent.ts`.
+  satu surel per fingerprint per jam lewat `rate-limit-persistent.ts`.
 
-Titik buta: kalau penjadwal mati total, `watch:health` ikut mati dan tidak
+Titik buta: kalau scheduler mati total, `watch:health` ikut mati dan tidak
 melaporkan apa pun. Celah ini hanya bisa ditutup pembaca `/api/health` dari
 luar mesin, dan pembaca itu belum ada (§7).
 
@@ -602,7 +602,7 @@ luar mesin, dan pembaca itu belum ada (§7).
 | ❓ Lingkungan *staging* | Tidak ada definisi compose/CI untuk non-produksi. 🔶 Tersimpulkan: pengembangan terjadi di lokal + produksi langsung |
 | ❓ Pemantauan luar | Tidak ada konfigurasi Uptime/Prometheus/Sentry di repo. `/api/health` ada, pembacanya tak diketahui |
 | ❓ Agregasi log | Hanya `docker compose logs`. Tidak ada pengiriman ke luar |
-| ❓ Latihan pemulihan kuartalan | Diwajibkan `package.json`; tidak ada bukti pernah dijalankan |
+| ❓ Latihan restore kuartalan | Diwajibkan `package.json`; tidak ada bukti pernah dijalankan |
 | 🔶 Asal `sai_production` | Satu-satunya buku yang tidak berpola `sai_t<N>_…`, dan ia terdaftar di `sai_control`. 🔶 Tersimpulkan: buku pra-#104 yang diadopsi |
 | ❓ Basis data uji di produksi | `sai_t11_data_dummy`, `sai_t1_uji_wisaya_416`, `sai_t1_uji_pindahan_425`, `sai_t2_demo` tampak uji/demo tapi hidup di instans produksi |
 

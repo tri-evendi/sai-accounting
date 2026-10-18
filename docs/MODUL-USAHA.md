@@ -36,7 +36,7 @@ BUSINESS_CATEGORIES  CATEGORY_MODULES     authz-effective · nav · coaTemplateF
 | Penegakan | `src/lib/authz-effective.ts` — modul diperiksa lebih dulu dan berdiri sendiri (fitur yang tidak dipakai tak terjangkau siapa pun, sekalipun perannya berakses penuh), baru bawaan → override peran → override pengguna |
 | Bagan akun mengikuti modul | `src/lib/coa-template.ts` → `coaTemplateFor` |
 | Layar | `/modules` (halaman sendiri sejak #538) + `api/company-settings/modules` |
-| Penjaga | `tests/business-modules.test.ts`, `-enforcement`, `-ledger` |
+| Guard | `tests/business-modules.test.ts`, `-enforcement`, `-ledger` |
 
 ## Tiga aturan yang tidak boleh dilanggar
 
@@ -100,13 +100,13 @@ Karena itu urutannya: mesin posting lebih dulu, akunnya menyusul.
 Urutan yang sama sudah terbukti pada biaya impor (#533): dokumen penyesuaian
 harga pokok lebih dulu, akun bea masuk & freight menyusul.
 
-### Dua penjaga yang tidak boleh hilang
+### Dua guard yang tidak boleh hilang
 
 1. **`stock_movements.production_order_id` menolak jurnal HPP.** Bahan yang
    keluar ke produksi menjadi Barang Dalam Proses, bukan HPP, dan jurnalnya
    terbit sekali dari perintahnya. Tanpa penolakan itu, satu `repostForSource`
    membebankan HPP di atas nilai yang sudah pindah ke WIP. Biayanya tercatat dua
-   kali, dan karena kedua jurnalnya seimbang, tidak ada penjaga jurnal yang
+   kali, dan karena kedua jurnalnya seimbang, tidak ada guard jurnal yang
    menangkapnya.
 2. **Akun manufaktur bertanda `module: "manufacturing"`, bukan `inventory`.**
    Kolom itu mengatur penyemaian, bukan menu. Dengan tanda `inventory` (yang

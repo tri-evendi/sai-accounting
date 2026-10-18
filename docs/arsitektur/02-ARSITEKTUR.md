@@ -10,14 +10,14 @@
 |---|---|---|
 | **Monolit modular** | Aplikasi Next.js pelanggan (modul per domain di `src/lib`) + konsol operator sebagai aplikasi kedua (`apps/operator`) + paket bersama di `packages/` (monorepo, §7) | Satu mesin ~3,6 GB berbagi dengan 5 aplikasi lain; mikrolayanan di sini berarti membayar overhead tanpa pembeli |
 | **Database-per-tenant** (per PT) | 17 basis data perusahaan | Isolasi FISIK buku besar — satu kueri salah tidak bisa menyeberang |
-| **Shared-database** (kendali & platform) | `sai_control`, `sai_platform` | Identitas & penagihan memang lintas-tenant |
+| **Shared-database** (control & platform) | `sai_control`, `sai_platform` | Identitas & penagihan memang lintas-tenant |
 | **Ambient context** | `AsyncLocalStorage` + penyimpan per-permintaan | Agar 120 berkas yang `import { prisma }` tidak perlu diubah tanda tangannya |
 | **Proxy klien basis data** | `src/lib/prisma.ts`, `packages/core/src/control-db.ts`, `packages/platform/src/platform-db.ts` | Klien diselesaikan **saat kueri dipanggil**, bukan saat modul dimuat |
-| **Kolam klien LRU** | `lib/company-clients.ts` | `max_connections` adalah anggaran terbatas (PostgreSQL: 100, satu **proses** per koneksi; di depannya PgBouncer `transaction`); 17 klien permanen = kehabisan koneksi |
+| **Pool klien LRU** | `lib/company-clients.ts` | `max_connections` adalah anggaran terbatas (PostgreSQL: 100, satu **proses** per koneksi; di depannya PgBouncer `transaction`); 17 klien permanen = kehabisan koneksi |
 | **Izin terpusat sebagai matriks** | `packages/core/src/authz.ts` + `authz-effective.ts` | Halaman & API pasangannya tidak bisa menyimpang diam-diam |
-| **Mesin posting terpusat** | `lib/posting/` | Setiap dokumen → jurnal lewat **satu** pintu; penjaga periode & persetujuan tak bisa dilewati dengan menambah route |
-| **Snapshot lintas-basis-data** | Status tenant & kuota disalin dari platform ke kendali | Jalur panas tidak boleh menyentuh basis data penagihan |
-| **Fungsi murni + penjaga tes** | 303 berkas tes (18 Okt 2026) | Aturan diuji sebagai fungsi, bukan lewat basis data |
+| **Mesin posting terpusat** | `lib/posting/` | Setiap dokumen → jurnal lewat **satu** pintu; guard periode & persetujuan tak bisa dilewati dengan menambah route |
+| **Snapshot lintas-basis-data** | Status tenant & kuota disalin dari platform ke control | Jalur panas tidak boleh menyentuh basis data penagihan |
+| **Fungsi murni + guard tes** | 303 berkas tes (18 Okt 2026) | Aturan diuji sebagai fungsi, bukan lewat basis data |
 | **Pekerja loop-tidur** | `job-scheduler`, `job-conformance`, `job-backup` | Tanpa antrean, tanpa daemon cron — satu proses shell yang tidur tidak memakan apa pun |
 
 ### Yang sengaja TIDAK dipakai
@@ -30,8 +30,8 @@ Ketiadaannya sering disangka kelalaian, padahal disengaja:
 | Cache bersama (Redis/Memcached) | Cache hanya di memori proses; satu container = satu cache, hilang saat *restart* |
 | Panggilan HTTP antar-layanan | Kedua aplikasi Next (pelanggan & konsol) tidak saling memanggil; keduanya hanya berbagi basis data |
 | Tailwind / `className` | Dicabut di #203 — gaya **sebaris** + token `var(--ant-…)`, dijaga ESLint `sai/warna-token-antd` |
-| Pemeriksaan tipe di `next build` | Dimatikan sengaja; `bun run typecheck` jadi satu-satunya gerbang tipe |
-| Penskalaan horizontal | Satu container `app-customer`; `AsyncLocalStorage` & kolam LRU per-proses tetap benar, tapi cache tidak dibagikan |
+| Pemeriksaan tipe di `next build` | Dimatikan sengaja; `bun run typecheck` jadi satu-satunya gate tipe |
+| Penskalaan horizontal | Satu container `app-customer`; `AsyncLocalStorage` & pool LRU per-proses tetap benar, tapi cache tidak dibagikan |
 
 ## 2. Batas sistem
 
@@ -49,14 +49,14 @@ graph TB
     end
 
     subgraph trust2["Batas 2 — proxy aplikasi (src/proxy.ts · apps/operator/src/proxy.ts)"]
-        PROXY["Keputusan bidang (host) + sesi<br/>• isPublicPath — daftar jalur PERSIS<br/>• decideOperatorRouting — gagal-tertutup<br/>• isBearerApiPath — lepas ke penjaga token"]
+        PROXY["Keputusan plane (host) + sesi<br/>• isPublicPath — daftar jalur PERSIS<br/>• decideOperatorRouting — fail-closed<br/>• isBearerApiPath — lepas ke guard token"]
     end
 
-    subgraph trust3["Batas 3 — penjaga per rute"]
+    subgraph trust3["Batas 3 — guard per rute"]
         PG["requirePagePermission<br/>(halaman)"]
         AG["requireApiPermission<br/>(API sesi)"]
         TG["requireApiToken<br/>(API v1 Bearer)"]
-        OG["penjaga operator<br/>(sesi + IP + TOTP)"]
+        OG["guard operator<br/>(sesi + IP + TOTP)"]
     end
 
     subgraph trust4["Batas 4 — lapisan data"]
@@ -65,7 +65,7 @@ graph TB
     end
 
     subgraph data["Basis data"]
-        CDB[("kendali")]
+        CDB[("control")]
         PDB[("platform")]
         BDB[("17 × buku PT")]
     end
@@ -94,13 +94,13 @@ graph TB
 | Batas | Penegak | Sifat gagal |
 |---|---|---|
 | 1 — TLS | Traefik, label di `docker-compose.yml` | HTTP → 301 ke HTTPS; `www.` → apex |
-| 2 — bidang & sesi | `src/proxy.ts` + `apps/operator/src/proxy.ts` + `packages/core/src/operator-plane.ts` (bidang ditentukan host saja) | **Gagal-tertutup**: `OPERATOR_HOST` kosong = konsol 404 di host mana pun; host operator di aplikasi pelanggan = 404 |
+| 2 — plane & sesi | `src/proxy.ts` + `apps/operator/src/proxy.ts` + `packages/core/src/operator-plane.ts` (plane ditentukan host saja) | **Fail-closed**: `OPERATOR_HOST` kosong = konsol 404 di host mana pun; host operator di aplikasi pelanggan = 404 |
 | 3 — izin | `page-auth.ts` / `auth-guard.ts` / `api-token-guard.ts` | Halaman → pantul ke beranda; API → 403. Dijaga `tests/authz-coverage` |
 | 4 — perusahaan | `company-context.ts` / `current-company.ts` | `MissingCompanyContextError` — **melempar, tidak pernah menebak** |
 | 4 — buku besar | `lib/posting/index.ts` + `lib/ledger.ts` | Periode tertutup / belum disetujui = posting ditolak |
 
-Batas 2 bukan penjaga otorisasi. Proxy hanya memutuskan perlu sesi atau tidak,
-dan bidang mana. Otorisasi ada di batas 3. Untuk `/api/v1/*` proxy melepaskan
+Batas 2 bukan guard otorisasi. Proxy hanya memutuskan perlu sesi atau tidak,
+dan plane mana. Otorisasi ada di batas 3. Untuk `/api/v1/*` proxy melepaskan
 jalurnya; tanpa itu proxy menjawab 401 sebelum `requireApiToken` berjalan. Hal
 itu terjadi di produksi sampai 16 Agustus 2026 (lihat `lib/api-v1.ts`).
 
@@ -117,7 +117,7 @@ graph TB
         P4["SiteContent · SiteSetting"]
     end
 
-    subgraph L2["Lapis 2 — KENDALI (sai_control) · 1 basis data"]
+    subgraph L2["Lapis 2 — CONTROL (sai_control) · 1 basis data"]
         C1["Tenant · TenantMembership · TenantSlugHistory"]
         C2["Company · Membership · User"]
         C3["Invitation · Registration · PasswordResetToken"]
@@ -153,15 +153,15 @@ Semuanya ditegakkan kode atau tes:
    selalu dari *environment*. URL lengkap di tabel berarti satu `SELECT` bisa
    membawa kredensial setiap pelanggan. Nama basis data juga disaring
    `/^[A-Za-z0-9_]{1,64}$/` sebelum dipakai menyusun string koneksi.
-3. **Urutan tulis lintas-lapis: platform dulu, kendali belakangan.** Kegagalan
+3. **Urutan tulis lintas-lapis: platform dulu, control belakangan.** Kegagalan
    di tengah meninggalkan pembayaran tercatat tanpa tenant naik kelas, yang bisa
    direkonsiliasi (`bun run reconcile:platform`). Urutan sebaliknya
    meninggalkan tenant naik kelas tanpa pembayaran, yang tidak akan ketahuan.
-4. **Tidak ada angka akuntansi di kendali maupun platform.** Tabel transaksi di
+4. **Tidak ada angka akuntansi di control maupun platform.** Tabel transaksi di
    sana membatalkan isolasi #104.
-5. **Cache tingkat modul yang isinya milik satu penyewa wajib dikunci** per
+5. **Cache tingkat modul yang isinya milik satu tenant wajib dikunci** per
    `companyId` / `tenantId` (`packages/core/src/tenant-cache.ts`).
-6. **`platform-db.ts` dilarang dari jalur panas.** Penjaga, sesi, proxy, dan
+6. **`platform-db.ts` dilarang dari jalur panas.** Guard, sesi, proxy, dan
    `packages/core/src/operator-plane.ts` tidak boleh mengimpornya.
 
 Rinciannya: [`docs/MULTI-COMPANY.md §2`](../MULTI-COMPANY.md),
@@ -175,9 +175,9 @@ didokumentasikan di sumbernya; ringkasnya:
 ```mermaid
 sequenceDiagram
     participant R as Permintaan HTTP
-    participant G as Penjaga<br/>(requirePagePermission)
+    participant G as Guard<br/>(requirePagePermission)
     participant CR as company-route.ts
-    participant CDB as basis data kendali
+    participant CDB as basis data control
     participant H as current-company.ts<br/>(WeakMap per permintaan)
     participant P as prisma (Proxy)
     participant POOL as company-clients (LRU)
@@ -192,7 +192,7 @@ sequenceDiagram
     CR->>H: setRouteCompany(ctx)
     Note over H: dikunci pada objek hasil `await headers()`<br/>— satu objek per permintaan, WeakMap
     G->>G: timpa session.user.role dengan peran di PT INI
-    G->>G: gerbang izin + kunci buku + penyiapan
+    G->>G: gate izin + kunci buku + penyiapan
     G-->>R: lanjut render
 
     R->>P: prisma.invoice.findMany(...)
@@ -208,9 +208,9 @@ sequenceDiagram
 1. Konteks `AsyncLocalStorage`, dipasang `runWithCompany()` dan dipakai skrip,
    cron, seed, dan tes. Karena memakai `als.run()`, ia merambat ke seluruh
    callback.
-2. Penyimpan per-permintaan, dipasang penjaga untuk permintaan HTTP.
+2. Penyimpan per-permintaan, dipasang guard untuk permintaan HTTP.
 
-Bila keduanya kosong, kode melempar galat. Tidak ada sumber ketiga.
+Bila keduanya kosong, kode melempar error. Tidak ada sumber ketiga.
 
 ### Dua jebakan yang sudah diukur dan ditutup
 
@@ -225,15 +225,15 @@ di atasnya. Entrinya hilang bersama permintaannya tanpa perlu dibersihkan.
 
 **(b) `enterWith` tidak merambat setelah `await`.**
 `enterCompanyContext()` memakai `als.enterWith`, yang hanya merambat bila
-dipanggil sebelum `await` apa pun di fungsi itu. Penjaga selalu membaca basis
-data kendali lebih dulu, jadi konteksnya terukur `null` di badan route dan di
+dipanggil sebelum `await` apa pun di fungsi itu. Guard selalu membaca basis
+data control lebih dulu, jadi konteksnya terukur `null` di badan route dan di
 komponen halaman. Karena itu permintaan HTTP bertumpu pada penyimpan
 per-permintaan, tidak pada rambatan ALS.
 
 **(c) Sesi dicabut sebagai sumber (#158).** Dulu `companyId` ada di JWT sebagai
 jaring pengaman. Akibatnya route yang lupa membawa lingkupnya tetap bekerja
-dengan perusahaan yang terakhir dibuka di tab mana pun, tanpa galat dan tanpa
-jejak. Setelah dicabut, lupa membawa perusahaan langsung menghasilkan galat.
+dengan perusahaan yang terakhir dibuka di tab mana pun, tanpa error dan tanpa
+jejak. Setelah dicabut, lupa membawa perusahaan langsung menghasilkan error.
 
 Satu bentuk tidak didukung: `prisma.$transaction([a, b])` (bentuk array) tidak
 bisa lewat Proxy. Bentuk callback bekerja penuh, dan seluruh transaksi di repo
@@ -294,9 +294,9 @@ graph TB
 
     PFS["<b>postForSource()</b><br/>lib/posting/index.ts"]
 
-    subgraph gates["Gerbang — tak bisa dilewati route baru"]
+    subgraph gates["Gate — tak bisa dilewati route baru"]
         G1["Idempoten<br/>sumber ber-jurnal hidup<br/>tak pernah diposting dua kali"]
-        G2["Gerbang PERSETUJUAN (#25)<br/>belum disetujui = tak masuk jurnal"]
+        G2["Gate PERSETUJUAN (#25)<br/>belum disetujui = tak masuk jurnal"]
         G3["Kunci PERIODE (#13)<br/>periode tertutup = ditolak"]
         G4["Berimbang<br/>Σ debit = Σ kredit"]
     end
@@ -334,7 +334,7 @@ Dan dua aturan valas yang mudah salah:
 - Akun yang diringankan mengikuti mata uang dokumen. Faktur USD yang dilunasi
   transfer IDR tetap membersihkan piutang USD (#43).
 
-Gerbang persetujuan dan periode ditaruh di sini, tidak di route, karena setiap
+Gate persetujuan dan periode ditaruh di sini, tidak di route, karena setiap
 jalur yang mengubah dokumen menjadi jurnal melewati
 `postForSource`/`repostForSource`. Route baru tidak bisa melewatinya.
 
@@ -357,14 +357,14 @@ packages/                         # diimpor sebagai @sai/<paket>/<subpath>
 │                                 #   efaktur, tenant-routes, labels, control-db, …
 ├── ui/        (54 berkas)        # primitif Ant Design v6, provider & kerangka <html>, tema
 │                                 #   & token warna, layout-scale, lambang — lihat MASTER.md
-├── billing/   (7 berkas)         # aturan penagihan MURNI: gerbang, paket, siklus langganan
+├── billing/   (7 berkas)         # aturan penagihan MURNI: gate, paket, siklus langganan
 └── platform/  (20 berkas)        # SISI-SERVER bersama: platform-db, surel, i18n/server,
                                   #   jejak langganan & tenant, isi situs, penulis penagihan
 apps/
 └── operator/  (61 berkas)        # KONSOL OPERATOR — aplikasi Next kedua, image `…-operator`
-    ├── src/app/(operator)/        # 18 halaman (17 + /login) + 1 unduhan, TANPA awalan /operator — HOST SENDIRI
-    ├── src/app/api/health/       # probe sempit (hanya kendali yang memutuskan 503)
-    ├── src/lib/operator/         # sesi, penjaga, TOTP, store, tulisan, jejak
+    ├── src/app/(operator)/        # 18 halaman (17 + /login) + 1 unduhan, TANPA prefix /operator — HOST SENDIRI
+    ├── src/app/api/health/       # probe sempit (hanya control yang memutuskan 503)
+    ├── src/lib/operator/         # sesi, guard, TOTP, store, tulisan, jejak
     ├── src/components/operator/  # panel konsol
     ├── src/proxy.ts              # host ≠ OPERATOR_HOST → 404; tanpa cookie → login
     └── tsconfig.json             # alias `@op/*` → ./src/* (TANPA `@/`)
@@ -424,8 +424,8 @@ apps/operator ─┘          │
   kembali ke `src/`.
 - Modul yang sudah pindah tidak boleh muncul lagi di jalur lamanya
   (`tests/paket-pindahan.test.ts`, tabel jalur lama → baru).
-- Penjaga yang memindai kode wajib memakai `tests/akar-sumber.ts` (akar `src/`
-  + `packages/*/src`; `uraiPaket()` untuk graf impor). Pemindai yang hanya
+- Guard yang men-scan kode wajib memakai `tests/akar-sumber.ts` (akar `src/`
+  + `packages/*/src`; `uraiPaket()` untuk graf impor). Scanner yang hanya
   menyapu `src/` akan lulus dengan nol pelanggar setelah kodenya pindah ke paket.
 - Paket baru butuh baris `COPY packages/<x>/package.json` di tahap `deps`
   Dockerfile dan entri `transpilePackages`. Aplikasi baru di `apps/*` butuh
@@ -455,14 +455,14 @@ Dua hal yang sering mengejutkan orang baru:
 | Tombol tautan | `<ButtonLink href>` internal · `<Button href>` eksternal. `<Link><Button/></Link>` **ditolak tes** |
 | Angka | `tabular-nums`, rata-kanan, format `id-ID` |
 | Semantik uang | Hijau masuk / merah keluar — **tidak boleh warna-saja** |
-| i18n | id/en/zh lewat **cookie locale** (bukan rute `[lang]`); terjemahan yang hilang = **galat tsc** |
+| i18n | id/en/zh lewat **cookie locale** (bukan rute `[lang]`); terjemahan yang hilang = **error tsc** |
 
 Satu jebakan RSC membuat `next build` gagal: barrel `@ant-design/icons`
 memanggil `createContext` di tingkat modul tanpa `"use client"`, dan build React
 untuk server component tidak mengekspor `createContext`. `modularizeImports` di
 `next.config.ts` menulis ulang setiap impor bernama ke jalur per-ikon, sehingga
 barrel-nya tidak dimuat. `optimizePackageImports` tidak menyelesaikannya;
-alasannya ada di `next.config.ts`. Penjaganya `tests/icon-rsc-boundary.test.ts`.
+alasannya ada di `next.config.ts`. Guard-nya `tests/icon-rsc-boundary.test.ts`.
 
 Sumber kebenaran desain: [`design-system/sai-accounting/MASTER.md`](../../design-system/sai-accounting/MASTER.md),
 dengan `pages/<page>.md` yang **meng-override** MASTER.
@@ -476,9 +476,9 @@ sumbernya; mengubahnya berarti membantah alasan itu lebih dulu.
 |---|---|---|---|
 | 1 | Satu basis data per PT (#104) | Isolasi fisik buku besar | Migration harus berjalan N kali; `db:migrate:all` |
 | 2 | Konteks hilang = melempar | Tulisan silang-PT tidak berbunyi | Setiap jalur baru wajib membawa lingkupnya |
-| 3 | Platform terpisah dari kendali (#137) | Penagihan mati ≠ aplikasi mati | Tanpa FK/transaksi lintas-basis; butuh rekonsiliasi |
+| 3 | Platform terpisah dari control (#137) | Penagihan mati ≠ aplikasi mati | Tanpa FK/transaksi lintas-basis; butuh rekonsiliasi |
 | 4 | Operator di host sendiri (#154) | Cookie berlingkup host | Dua domain + daftar IP + hitungan hop proxy |
-| 5 | Posting lewat satu pintu | Penjaga tak bisa dilewati route baru | `lib/posting/index.ts` jadi berkas besar (1.867 baris) |
-| 6 | Tipe diperiksa di luar `next build` | Mesin ~3,6 GB yang dibagi 6 aplikasi tidak sanggup | `bun run verify` jadi gerbang WAJIB — build hijau ≠ tipe benar |
+| 5 | Posting lewat satu pintu | Guard tak bisa dilewati route baru | `lib/posting/index.ts` jadi berkas besar (1.867 baris) |
+| 6 | Tipe diperiksa di luar `next build` | Mesin ~3,6 GB yang dibagi 6 aplikasi tidak sanggup | `bun run verify` jadi gate WAJIB — build hijau ≠ tipe benar |
 
 Lanjut: [03 Inventaris Layanan](./03-INVENTARIS-LAYANAN.md)

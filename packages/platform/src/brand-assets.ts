@@ -9,7 +9,7 @@
  * platform. Konsol mengosongkan cache-nya sendiri sesudah menulis; aplikasi
  * pelanggan menyusul paling lambat 60 detik kemudian.
  *
- * Gagal-lunak (doktrin #137): `sai_platform` yang tak terjangkau berarti
+ * Fail-soft (doktrin #137): `sai_platform` yang tak terjangkau berarti
  * lambang bawaan, bukan halaman yang gagal.
  *
  * Tanpa `server-only`, klien disuntik untuk tulisan (pola `writes.ts`).
@@ -43,7 +43,7 @@ const TTL_MS = 60 * 1000;
 let metaCache: { at: number; meta: BrandMarkMeta | null } | null = null;
 let contentCache: { sha256: string; content: Uint8Array } | null = null;
 
-/** Metadata logo aktif, ber-cache dan gagal-lunak (`null` = pakai lambang bawaan). */
+/** Metadata logo aktif, ber-cache dan fail-soft (`null` = pakai lambang bawaan). */
 export async function cachedBrandMark(deps: Deps, now: number = Date.now()): Promise<BrandMarkMeta | null> {
   if (metaCache && now - metaCache.at < TTL_MS) return metaCache.meta;
   try {

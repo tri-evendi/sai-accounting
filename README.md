@@ -4,69 +4,68 @@ Bookkeeping and accounting system for businesses in Indonesia — double-entry j
 
 > The first installation was **PT Subur Anugerah Indonesia**; that name survives only as the fallback in `packages/core/src/constants.ts` and must never be printed for another tenant — see `docs/MULTI-COMPANY.md` and `tests/company-identity.test.ts`.
 
-## Dokumentasi
+## Documentation
 
-Indeks lengkap: [`docs/README.md`](./docs/README.md).
+Full index: [`docs/README.md`](./docs/README.md).
 
-**Arsitektur & peta layanan:** [`docs/arsitektur/`](./docs/arsitektur/), potret
-keadaan yang berjalan (komponen, layanan, dependensi, API, aliran data,
-infrastruktur, penilaian, peta jalan). Mulai dari
-[indeksnya](./docs/arsitektur/README.md).
+**Architecture & service map:** [`docs/arsitektur/`](./docs/arsitektur/), a
+snapshot of what is actually running (components, services, dependencies, APIs,
+data flow, infrastructure, assessment, roadmap). Start from
+[its index](./docs/arsitektur/README.md).
 
-Dokumen domain: [`docs/MULTI-COMPANY.md`](./docs/MULTI-COMPANY.md) ·
+Domain documents: [`docs/MULTI-COMPANY.md`](./docs/MULTI-COMPANY.md) ·
 [`docs/MULTI-TENANT.md`](./docs/MULTI-TENANT.md) ·
 [`docs/RBAC.md`](./docs/RBAC.md) · [`docs/DATABASE.md`](./docs/DATABASE.md) ·
 [`docs/MODUL-USAHA.md`](./docs/MODUL-USAHA.md) ·
 [`docs/KOMERSIALISASI.md`](./docs/KOMERSIALISASI.md) ·
 [`docs/PRICING.md`](./docs/PRICING.md) ·
-[`docs/COMPLIANCE.md`](./docs/COMPLIANCE.md). Aturan kerja: [`AGENTS.md`](./AGENTS.md).
+[`docs/COMPLIANCE.md`](./docs/COMPLIANCE.md). Working rules: [`AGENTS.md`](./AGENTS.md).
 
 ## Stack
 
 - Next.js 16 (App Router)
-- PostgreSQL 17 + PgBouncer + Prisma (`@prisma/adapter-pg`), sejak 15 Okt 2026; sebelumnya MariaDB
+- PostgreSQL 17 + PgBouncer + Prisma (`@prisma/adapter-pg`) since 15 Oct 2026; MariaDB before that
 - NextAuth (credentials)
-- Ant Design v6 (tanpa Tailwind sejak issue #203; gaya sebaris di atas token AntD)
-- Bun sebagai pemasang paket & peluncur skrip; Node tetap runtime-nya
+- Ant Design v6 (no Tailwind since issue #203; inline styles on top of AntD tokens)
+- Bun as package installer & script runner; Node remains the runtime
 
-## Prasyarat
+## Prerequisites
 
-- Node.js 20.19+ / 22.12+ / 24+ (Prisma 7 menolak versi di bawahnya)
+- Node.js 20.19+ / 22.12+ / 24+ (Prisma 7 refuses anything older)
 - Bun 1.2+ — `curl -fsSL https://bun.sh/install | bash`
 
-Bun memasang dependensi dan menjalankan skrip (`bun run <skrip>`), tetapi
-`next build`, `tsc`, Prisma, dan skrip `tsx` tetap dieksekusi Node lewat
-shebang binary-nya. Ini disengaja: batas memori `NODE_OPTIONS=--max-old-space-size`
-hanya berlaku di V8, dan hilang tanpa peringatan bila runtime Bun dipaksakan
-(`bun --bun …` atau `bun skrip.ts`).
+Bun installs dependencies and runs scripts (`bun run <script>`), but
+`next build`, `tsc`, Prisma, and the `tsx` scripts still execute on Node through
+their binaries' shebangs. This is deliberate: the `NODE_OPTIONS=--max-old-space-size`
+memory cap only applies to V8, and silently disappears if the Bun runtime is
+forced (`bun --bun …` or `bun script.ts`).
 
-> Perintah tes proyek ini adalah `bun run test`. `bun test` menjalankan test
-> runner bawaan Bun, yang mengabaikan `vitest.config.mts`.
+> The test command for this project is `bun run test`. `bun test` runs Bun's
+> built-in test runner, which ignores `vitest.config.mts`.
 
-Jika `bun install` gagal dengan *"Prisma only supports Node.js versions…"*
-padahal `node -v` terlihat baru, `PATH` Anda mendahulukan Node lama. Bun
-menjalankan skrip lifecycle dengan `node` dari `PATH` dan tidak mewarisi
-alias/fungsi shell nvm. Periksa dengan `env node -v`.
+If `bun install` fails with *"Prisma only supports Node.js versions…"* even
+though `node -v` looks recent, your `PATH` puts an old Node first. Bun runs
+lifecycle scripts with the `node` found on `PATH` and does not inherit nvm's
+shell aliases/functions. Check with `env node -v`.
 
 ## Quick start (development)
 
 ```bash
-cp .env.example .env   # isi DATABASE_URL, CONTROL_DATABASE_URL, (PLATFORM_DATABASE_URL), AUTH_SECRET
+cp .env.example .env   # fill in DATABASE_URL, CONTROL_DATABASE_URL, (PLATFORM_DATABASE_URL), AUTH_SECRET
 bun install
-bun run db:migrate:all # kendali → platform → setiap PT
-bun run db:generate    # ketiga klien Prisma
-bun run dev            # http://localhost:3000  (konsol operator: bun run dev:operator → :3001)
+bun run db:migrate:all # control → platform → every company
+bun run db:generate    # all three Prisma clients
+bun run dev            # http://localhost:3000  (operator console: bun run dev:operator → :3001)
 ```
 
-> `.env.example` masih memuat contoh URL `mysql://`, padahal mesinnya
-> PostgreSQL; tulis `postgres://…`. `bun run setup` (`scripts/setup.sh`) belum
-> diperbarui: ia hanya menerapkan migration ke satu `DATABASE_URL` dan masih
-> menyebut MySQL. Pakai langkah di atas.
+> `.env.example` still contains sample `mysql://` URLs even though the engine is
+> PostgreSQL; write `postgres://…`. `bun run setup` (`scripts/setup.sh`) has not
+> been updated: it only applies migrations to a single `DATABASE_URL` and still
+> mentions MySQL. Use the steps above.
 
-> Setelah menarik perubahan yang menyentuh `package.json`, jalankan `bun
-> install` lagi. `node_modules` yang lebih tua dari `package.json` baru gagal
-> saat halamannya dibuka (`scripts/check-env.mjs` memeriksa ini pada start
-> produksi).
+> After pulling changes that touch `package.json`, run `bun install` again. A
+> `node_modules` older than the new `package.json` only fails once the affected
+> page is opened (`scripts/check-env.mjs` checks this on production start).
 
 Demo logins (after seed): see terminal output from seed — e.g. `admin` / `admin123`.
 
@@ -78,41 +77,40 @@ ALLOW_SEED=true bun run db:seed
 
 ## Production
 
-Produksi berjalan di Docker Compose, dan image-nya dibangun di runner GitHub,
-tidak di server.
+Production runs on Docker Compose, and the images are built on GitHub runners,
+not on the server.
 
-**Menggelar rilis baru:** [PRODUCTION.md](./PRODUCTION.md) §Updates:
-`pull` → (migrate bila ada migration baru) → `up -d`. Itu satu-satunya jalur
-penggelaran; langkahnya tidak disalin di sini supaya hanya ada satu versi.
+**Deploying a new release:** [PRODUCTION.md](./PRODUCTION.md) §Updates:
+`pull` → (migrate if there are new migrations) → `up -d`. That is the only
+deployment path; the steps are not copied here so that only one version exists.
 
-> ⚠ **Jangan membangun di server.** Kotak produksi ~3,6 GB berbagi dengan lima
-> aplikasi lain (per Okt 2026). `next build` di sana pernah memakan ~19 menit
-> dengan iowait 58–92%, dan separuh health probe menjawab 503 selama rebuild.
-> Lihat `AGENTS.md`.
+> ⚠ **Never build on the server.** The ~3.6 GB production box is shared with five
+> other applications (as of Oct 2026). A `next build` there once took ~19 minutes
+> with 58–92% iowait, and half the health probes answered 503 during the rebuild.
+> See `AGENTS.md`.
 
-Jangan menjalankan `db:seed` di produksi.
+Do not run `db:seed` in production.
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `bun run dev` | Development server (aplikasi pelanggan) |
-| `bun run dev:operator` | Development server konsol operator (`apps/operator`, port 3001) |
-| `bun run verify` | Gerbang: typecheck + lint + test. Wajib hijau sebelum merge |
-| `bun run build` | Production build aplikasi pelanggan |
-| `bun run build:operator` | Production build konsol operator |
-| `bun run db:migrate:all` | Terapkan migration ke semua basis data (kendali → platform → setiap PT) |
-| `bun run db:generate` | Bangkitkan ketiga klien Prisma |
+| `bun run dev` | Development server (customer app) |
+| `bun run dev:operator` | Operator console development server (`apps/operator`, port 3001) |
+| `bun run verify` | Gate: typecheck + lint + test. Must be green before merge |
+| `bun run build` | Production build of the customer app |
+| `bun run build:operator` | Production build of the operator console |
+| `bun run db:migrate:all` | Apply migrations to every database (control → platform → every company) |
+| `bun run db:generate` | Generate all three Prisma clients |
 | `bun run create-admin` | Create first user |
 | `bun run db:seed` | Demo data (requires `ALLOW_SEED=true`) |
 
-> `bun run db:migrate` (tunggal) hanya menerapkan migration company ke satu
-> basis data, yaitu yang ditunjuk `DATABASE_URL`. Selalu pakai
-> `db:migrate:all`. Alasannya di `package.json` dan
-> `docs/arsitektur/07-INFRASTRUKTUR-DEPLOY.md` §6.
+> `bun run db:migrate` (single) only applies the company migrations to one
+> database, the one `DATABASE_URL` points to. Always use `db:migrate:all`. The
+> reasoning is in `package.json` and `docs/arsitektur/07-INFRASTRUKTUR-DEPLOY.md` §6.
 
-Daftar lengkap skrip ada di `package.json`, masing-masing dengan catatan
-alasannya.
+The full list of scripts is in `package.json`, each with a note explaining why it
+exists.
 
 ## Roles
 
@@ -129,20 +127,20 @@ Users with `must_change_password = true` must change their password on next logi
 
 ## Security
 
-- Sesi JWT (24 jam), kata sandi bcrypt, otorisasi berbasis izin, tanpa
-  perbandingan string peran (`docs/RBAC.md`)
-- Rate-limited login dan ganti sandi
-- Validasi unggahan berkas (tipe, ukuran, magic bytes); berkas disajikan lewat
-  route berpenjaga, tidak sebagai berkas statis
-- Jejak audit disimpan di tabel: `audit_logs` di tiap buku PT,
-  `tenant_audit_logs` di basis data kendali, dan `operator_audit_logs` di
-  basis data platform
-- Header keamanan + HSTS di produksi; CSP tanpa `unsafe-eval` di produksi,
-  dijaga `tests/security-headers.test.ts`
-- Konsol operator adalah aplikasi tersendiri (`apps/operator`, image
-  `-operator`) di hostname terpisah (`ops.saiaccounting.id`), tanpa awalan
-  `/operator` (`/`, `/tenants`, `/login`, …). Ia gagal-tertutup: tanpa
-  `OPERATOR_HOST` ia menjawab 404 di mana pun
+- JWT sessions (24 hours), bcrypt passwords, permission-based authorization with
+  no role-string comparisons (`docs/RBAC.md`)
+- Rate-limited login and password change
+- File upload validation (type, size, magic bytes); files are served through
+  guarded routes, never as static files
+- Audit trails are stored in tables: `audit_logs` in each company's books,
+  `tenant_audit_logs` in the control database, and `operator_audit_logs` in the
+  platform database
+- Security headers + HSTS in production; CSP without `unsafe-eval` in production,
+  guarded by `tests/security-headers.test.ts`
+- The operator console is a separate application (`apps/operator`, image
+  `-operator`) on its own hostname (`ops.saiaccounting.id`), with no `/operator`
+  prefix (`/`, `/tenants`, `/login`, …). It is fail-closed: without
+  `OPERATOR_HOST` it answers 404 everywhere
 
 ## License
 

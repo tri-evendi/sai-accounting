@@ -1,7 +1,7 @@
 # Paket & harga — sumber kebenaran katalog
 
 > Satu lapis di atas dokumen ini ada `docs/KOMERSIALISASI.md`: strategi
-> go-to-market, fase, dan gerbang kapan mesin langganan otomatis boleh
+> go-to-market, fase, dan gate kapan mesin langganan otomatis boleh
 > dinyalakan. Dokumen ini tetap sumber kebenaran katalog (angka, kuota, aturan
 > main yang hidup di kode); dokumen itu menjawab kepada siapa dan bagaimana
 > katalog ini dijual. Bila keduanya berbeda soal angka, dokumen ini yang benar.
@@ -43,12 +43,12 @@ memajangnya.
 modul (`BUSINESS_MODULES`), tiga bahasa antarmuka, dan semua mata uang, dan
 halaman harga menyatakannya sekali untuk semua paket (`pricingAllNote`). Model
 datanya hanya punya `max_companies` & `max_users`
-(`packages/db/prisma/platform/schema.prisma`). Gerbang fitur per paket tidak
-ditambahkan: ia butuh kolom baru, penjaga baru di ±35 resource izin, dan
+(`packages/db/prisma/platform/schema.prisma`). Gate fitur per paket tidak
+ditambahkan: ia butuh kolom baru, guard baru di ±35 resource izin, dan
 mengingkari kalimat yang sudah dipajang.
 
 **Alamat halaman harga publik: `/pricing`** (kanonik + sitemap). Alamat lama
-`/harga` (sejak #399, dan tujuan alias `/pricing` sejak #413) kini dialihkan
+`/harga` (sejak #399, dan tujuan alias `/pricing` sejak #413) kini di-redirect
 permanen (308) ke `/pricing`. Halaman itu memajang harga bulanan dan tahunan
 (sakelar tanpa JS). Harga tahunan berasal dari kolom `price_yearly`, dan
 hematnya dihitung dari kedua kolom; tidak ada angka diskon yang diketik.
@@ -102,7 +102,7 @@ sebelum dipakai di materi penjualan):
 - **Enterprise** — dirundingkan, dan sejak #408 tidak dipajang sebagai kartu.
   Lantai internalnya ≈ Rp 2.500.000/bln dengan kontrak tahunan. Angka ini
   pedoman penjualan: tidak dipajang dan tidak ada di katalog (kolom harga tetap
-  0 + `contact_only`, penjaga di `plan-change`). Pembedanya dari Business adalah
+  0 + `contact_only`, guard di `plan-change`). Pembedanya dari Business adalah
   jasa: migrasi data (Accurate/Excel), pelatihan tim, SLA tertulis, kontrak dan
   tagihan tahunan/PO. Kuota per pelanggan ditulis ke `tenants.max_*` saat
   paketnya diberikan (`changeTenantPlan`).
@@ -158,9 +158,9 @@ tidak pernah lebih murah daripada naik paket.
 
 - **Paket gratis** — setiap PT adalah basis data sendiri (`docs/MULTI-COMPANY.md`)
   di mesin yang juga menjalankan produksi lain. Pelanggan gratis punya biaya
-  marjinal nyata (basis data, cadangan, penjadwal) dan beban dukungan yang tidak
+  marjinal nyata (basis data, backup, scheduler) dan beban dukungan yang tidak
   dibayar. Penggantinya: uji coba 14 hari + Starter tahunan.
-- **Gerbang fitur per paket** — lihat §1.
+- **Gate fitur per paket** — lihat §1.
 - **Harga termasuk PPN** — separuh vendor melakukannya (Accurate, Zahir). Kami
   memilih DPP + PPN terpisah seperti Jurnal & Kledo, dan menuliskannya di kartu
   (`pricingTaxNote`) serta FAQ.

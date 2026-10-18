@@ -84,7 +84,7 @@ e-Faktur CTAS & Legacy (PPN keluaran), Email Faktur Pajak, SPT PPN/PPnBM, SPT PP
 e-Banking (tarik mutasi bank), e-Payment, Virtual Account, e-Commerce/Marketplace, Accurate Store (add-on). POS via produk terpisah (Accurate POS) yang sinkron.
 
 ## 6. Setup & Governance
-Multi-user + Akses Grup (RBAC), Penyetuju Transaksi (approval workflow), Penomoran otomatis per dokumen, Desain Cetakan (template faktur), multi-cabang/gudang, multi-currency, Log Aktifitas (audit trail), Proses Akhir Bulan (closing).
+Multi-user + Akses Grup (RBAC), Penyetuju Transaksi (approval workflow), Penomoran otomatis per dokumen, Desain Cetakan (template faktur), multi-branch/gudang, multi-currency, Log Aktifitas (audit trail), Proses Akhir Bulan (closing).
 
 ---
 
@@ -190,7 +190,7 @@ keduanya dijaga `ledger.read`. **Tidak ada penulisan sama sekali.**
 **Rincian buku besar hanya memuat SATU SISI tiap transaksi.** Lawan akunnya
 tidak ada di berkas dan tidak bisa disimpulkan darinya. Karena itu hasil
 parsernya tidak pernah boleh diposting sebagai jurnal — `postJournal` menolak
-jurnal timpang, jadi tebakan lawan akun akan berubah menjadi galat yang jauh
+jurnal timpang, jadi tebakan lawan akun akan berubah menjadi error yang jauh
 dari sebabnya. Yang sah: mencocokkan, memeriksa, menarik saldo.
 
 Saldo awal pun berhenti sebagai **berkas rancangan**. Pintunya tetap

@@ -14,7 +14,7 @@ aturan yang tidak boleh dilanggar saat menulis kode baru.
 
 ```
   ┌──────────────────────────┐        ┌──────────────────────┐
-  │  BASIS DATA KENDALI      │        │  sai_pt_a  (buku PT A)│
+  │  BASIS DATA CONTROL      │        │  sai_pt_a  (buku PT A)│
   │  companies               │        │  invoices, journals,  │
   │  users                   │        │  stock_movements, …   │
   │  memberships             │        └──────────────────────┘
@@ -24,7 +24,7 @@ aturan yang tidak boleh dilanggar saat menulis kode baru.
 ```
 
 - **Identitas** (orangnya, kata sandinya, pencabutan sesinya) hidup di basis
-  data kendali. Satu orang punya satu akun, berapa pun PT yang dipegangnya.
+  data control. Satu orang punya satu akun, berapa pun PT yang dipegangnya.
 - **Keanggotaan** = `pengguna × perusahaan × peran`. Seseorang bisa menjadi
   Direktur Utama di PT A dan Kepala Gudang di PT B; satu kolom `users.role`
   tidak bisa menyatakan itu.
@@ -47,12 +47,12 @@ dibicarakan lagi.
 
 ## 2. Aturan yang tidak boleh dilanggar
 
-> **Konteks perusahaan yang hilang harus melempar galat, tidak pernah jatuh ke
+> **Konteks perusahaan yang hilang harus melempar error, tidak pernah jatuh ke
 > basis data bawaan.**
 
 Pelanggaran aturan ini fatal dan tidak bersuara. Kode yang berjalan tanpa
 konteks lalu memakai koneksi bawaan akan menulis transaksi PT A ke buku PT B
-tanpa galat dan tanpa jejak. Ia baru ketahuan berbulan-bulan kemudian sebagai
+tanpa error dan tanpa jejak. Ia baru ketahuan berbulan-bulan kemudian sebagai
 neraca yang tidak cocok, kalau ketahuan.
 
 Karena itu `src/lib/prisma.ts` tidak punya `?? defaultCompany`, tidak punya
@@ -91,16 +91,16 @@ Yang berlaku sekarang:
   sumber dayanya ada, dan pengakuan itu sudah kebocoran enumerasi (§4.4
   docs/MULTI-TENANT.md).
 * **`currentCompany()` punya dua sumber:** konteks ALS, lalu penyimpan
-  per-permintaan yang ditulis penjaga. Setelah itu ia melempar. Sumber ketiga
+  per-permintaan yang ditulis guard. Setelah itu ia melempar. Sumber ketiga
   (sesi) dihapus di #158; lihat di bawah.
 * **Slug perusahaan tetap.** Slug menyusun nama basis data dan muncul di URL.
-  Menggantinya mematikan setiap tautan yang pernah dibagikan, tanpa galat.
+  Menggantinya mematikan setiap tautan yang pernah dibagikan, tanpa error.
   Nama perusahaan bebas berubah.
-* **Jalur lama masih dilayani** dengan pengalihan 307 oleh `src/proxy.ts`
+* **Jalur lama masih dilayani** dengan redirect 307 oleh `src/proxy.ts`
   menurut `MIGRATED_ROOT_SEGMENTS` di `packages/core/src/tenant-routes.ts`.
   Satu-satunya berkas yang sengaja tinggal di jalur lama adalah `/dashboard`
   tanpa jalur perusahaan. Ia pengarah tanpa query, karena proxy tidak bisa
-  mengalihkan token yang belum membawa slug.
+  me-redirect token yang belum membawa slug.
 * **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
   `packages/ui/src/components/app-link.tsx` memetakan `href` lama ke jalur
   kanonik dari `usePathname()`. Sesi tidak dipakai karena dibagi semua tab.
@@ -117,19 +117,19 @@ lebih sulit terlihat karena URL-nya tampak benar.
 
 * **Bentuknya header.** `apiFetch()` (`lib/api-fetch.ts`) menyuntikkan
   `x-tenant-slug` + `x-company-slug` dari `window.location.pathname`, di satu
-  tempat untuk 67 pemanggil. Tes pemindai di `tests/authz-coverage.test.ts`
+  tempat untuk 67 pemanggil. Tes scanner di `tests/authz-coverage.test.ts`
   menolak setiap `fetch("/api/…")` langsung.
 * **Jalur untuk yang tidak bisa berheader.** Unduhan `<a href download>` tidak
   melewati `apiFetch`, jadi dua route tinggal di `/api/t/{tenant}/{company}/…`
   (template Daftar Akun, ekspor e-Faktur). Bila jalur dan header dikirim
   bersamaan, jalur menang.
-* **Header adalah masukan pengguna.** Penjaga memakainya hanya untuk menentukan
+* **Header adalah masukan pengguna.** Guard memakainya hanya untuk menentukan
   perusahaan yang dimaksud, lalu membaca ulang keanggotaan pemanggil di basis
-  data kendali pada permintaan itu juga. Gagal apa pun menghasilkan 404 yang
-  sama persis dengan jawaban untuk slug fiktif, dan tidak ada gerbang
+  data control pada permintaan itu juga. Gagal apa pun menghasilkan 404 yang
+  sama persis dengan jawaban untuk slug fiktif, dan tidak ada gate
   berikutnya yang berjalan.
 * **Peran diambil dari keanggotaan, bukan dari JWT**, sama seperti di halaman.
-* **Tidak ada cadangan sesi.** `enterCompanyFromSession` dihapus seluruhnya, dan
+* **Tidak ada backup sesi.** `enterCompanyFromSession` dihapus seluruhnya, dan
   `currentCompany()` kehilangan sumber ketiganya. Permintaan tanpa lingkup
   dijawab 409 `company_required`, tidak dilayani dengan perusahaan yang
   terakhir dibuka. Dengan begitu aturan di atas menjadi sifat struktur, bukan
@@ -145,21 +145,21 @@ lebih sulit terlihat karena URL-nya tampak benar.
 Semua kode server bertanya lewat `currentCompany()` (`lib/current-company.ts`),
 dan `prisma` memakainya saat query dipanggil:
 
-1. konteks `AsyncLocalStorage` (dipasang `runWithCompany` / penjaga), lalu
-2. penyimpan per-permintaan yang ditulis penjaga (`setRouteCompany`), lalu
+1. konteks `AsyncLocalStorage` (dipasang `runWithCompany` / guard), lalu
+2. penyimpan per-permintaan yang ditulis guard (`setRouteCompany`), lalu
 3. **melempar**.
 
-**Kenapa sumber kedua ada**, padahal penjaga juga memanggil
-`enterCompanyContext()`: rambatan `enterWith` tidak pernah sampai dari penjaga
+**Kenapa sumber kedua ada**, padahal guard juga memanggil
+`enterCompanyContext()`: rambatan `enterWith` tidak pernah sampai dari guard
 ke badan route (lihat bagian berikutnya). Sumber kedua yang sebenarnya melayani
-setiap permintaan HTTP. Penjaga menulis ke keduanya, lalu membaca kembali
+setiap permintaan HTTP. Guard menulis ke keduanya, lalu membaca kembali
 sumber kedua untuk membuktikan konteksnya terpasang. Kalau tidak, ia melempar
 sebelum query pertama berjalan.
 
 **Jangkar sumber kedua (issue #333).** Penyimpan itu dulu `cache()` React.
 `cache()` hanya memoisasi di dalam render, dan route handler bukan render.
 Diukur di route handler Next 16.2.1, `holder() === holder()` bernilai `false`:
-penjaga menulis ke satu objek, pembacaan berikutnya menerima objek lain.
+guard menulis ke satu objek, pembacaan berikutnya menerima objek lain.
 Akibatnya mekanisme ini tidak pernah bekerja untuk API. Halaman selamat karena
 di render `cache()` memang memoisasi, sedangkan route handler menjawab 500.
 Jangkarnya sekarang objek permintaan milik Next sendiri, yaitu hasil
@@ -171,7 +171,7 @@ permintaannya.
 `/api/user/accountant-mode`, dan `/api/company/identity` sengaja tanpa
 `requireApiPermission`, tetapi tetap butuh konteks. Sejak #158 mereka memanggil
 `enterCompanyFromRequest()` (`lib/company-request.ts`), yang memverifikasi
-keanggotaan dengan cara yang sama seperti penjaga.
+keanggotaan dengan cara yang sama seperti guard.
 
 **Kenapa diselesaikan saat dipanggil, bukan saat akses properti.** Membaca
 sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.
@@ -186,9 +186,9 @@ Diukur di issue #333 (Node 22.22, serta di route handler dan render Next
 - `enterWith` yang dipanggil sesudah sebuah `await` tidak merambat; pemanggil
   melihat store lamanya, atau tidak ada store sama sekali.
 
-Penjaga selalu berada di kasus kedua, karena ia membaca basis data kendali
+Guard selalu berada di kasus kedua, karena ia membaca basis data control
 lebih dulu sebelum menanam konteks. Karena itu konteks dari
-`enterCompanyContext()` di penjaga tidak pernah sampai ke badan route maupun ke
+`enterCompanyContext()` di guard tidak pernah sampai ke badan route maupun ke
 komponen halaman; terukur `null` di keduanya. Yang dijamin:
 
 - `runWithCompany()` memakai `run()` dan selalu bisa diandalkan, termasuk
@@ -215,8 +215,8 @@ lalu panggil di klien itu.
 Satu proses melayani beberapa PT bergantian. Cache tingkat modul yang isinya
 milik satu perusahaan akan dipakai untuk perusahaan lain selama satu TTL.
 Query-nya tetap ke basis data yang benar, tetapi keputusannya salah, tanpa
-galat. Yang sudah dikunci: matriks izin efektif, override per pengguna,
-himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
+error. Yang sudah dikunci: matriks izin efektif, override per pengguna,
+himpunan modul (`authz-effective.ts`), latch gate penyiapan
 (`setup-gate.ts`), dan registry perusahaan.
 
 ### Slug perusahaan permanen, ditegakkan basis data (#161)
@@ -224,14 +224,14 @@ himpunan modul (`authz-effective.ts`), latch gerbang penyiapan
 `companies.slug` tidak boleh berubah setelah perusahaan dibuat. Sejak issue
 #161 yang menolak perubahan itu adalah trigger `companies_slug_immutable`
 (PostgreSQL: `prisma/postgresql/control/0002_slug_permanen`, fungsi trigger
-dengan `RAISE EXCEPTION`; dulu migration MariaDB kendali 0010):
+dengan `RAISE EXCEPTION`; dulu migration MariaDB control 0010):
 
 ```
 ERROR: slug perusahaan permanen (#161): ia menyusun nama basis data dan URL.
 Nama boleh diubah; ganti slug perlu alias tersimpan.
 ```
 
-Alasannya, dan semuanya tidak menimbulkan galat bila dilanggar:
+Alasannya, dan semuanya tidak menimbulkan error bila dilanggar:
 
 - Slug menyusun nama basis data (`sai_t{tenantId}_{slug}`, sejak #153).
   Menggantinya berarti mengganti nama basis data yang sedang dipakai, atau
@@ -252,7 +252,7 @@ Ada dua lapis lagi. Tes `tests/company-slug-immutable.test.ts` menolak kode
 yang menulis `slug` ke baris yang sudah ada, supaya kesalahannya ketahuan saat
 kode ditulis. `scripts/prove-company-slug-immutable.ts` memastikan trigger-nya
 masih ada di pemasangan nyata. Trigger bisa hilang tanpa perubahan kode (dump
-tanpa `--triggers`, pemulihan dari dump seperti itu, migration yang membangun
+tanpa `--triggers`, restore dari dump seperti itu, migration yang membangun
 ulang tabelnya), dan CI tidak akan melihatnya.
 
 **Kalau penggantian slug memang dibutuhkan**, jalurnya bukan membuang trigger
@@ -295,7 +295,7 @@ ALTER ROLE sai CREATEDB;   -- dijalankan sebagai superuser di `sai-pg`
 
 PostgreSQL tidak punya padanan pembatasan pola nama yang dulu dipakai di
 MariaDB (`GRANT … ON \`sai\_t%\`.*`). `CREATEDB` berlaku untuk nama apa pun.
-Awalan `sai_` dipaksa oleh kode: `COMPANY_DATABASE_PREFIX`, dan sejak #153 nama
+Prefix `sai_` dipaksa oleh kode: `COMPANY_DATABASE_PREFIX`, dan sejak #153 nama
 `sai_t{tenantId}_{slug}` dari `databaseNameForSlug`. Basis data yang dibuat
 role itu dimiliki role itu.
 
@@ -318,7 +318,7 @@ baru tidak berlaku untuk koneksi yang sudah terbuka di pool, jadi buat ulang
 Jangan memperbaikinya dengan memberi aplikasi `SUPERUSER`.
 
 **Yang dilihat pengguna** adalah kalimat yang menjelaskan tindakannya
-("hubungi administrator server Anda"), bukan teks galat basis data. Galat
+("hubungi administrator server Anda"), bukan teks error basis data. Error
 mentahnya hanya ada di log server. Pemetaannya fungsi murni yang teruji,
 `provisionErrorMessage` (`src/lib/company-provisioning-shared.ts`), dijaga
 `tests/company-provisioning.test.tsx`.
@@ -349,7 +349,7 @@ argumen baris perintah.
 ### Migration sesudah ini
 
 ```bash
-docker compose run --rm migrate bun run db:migrate:all   # kendali → platform → SETIAP perusahaan
+docker compose run --rm migrate bun run db:migrate:all   # control → platform → SETIAP perusahaan
 ```
 
 Kegagalan satu perusahaan tidak menghentikan yang lain. Kalau proses berhenti
@@ -381,7 +381,7 @@ yang orang itu buat sedetik sebelumnya, bukan perusahaan pertama menurut abjad.
 Orang yang sedang bekerja di PT A lalu membuat PT B tidak dipindahkan bukunya;
 ia membuka PT baru lewat tautan. Keputusannya fungsi murni yang teruji di
 `lib/company-selection.ts`, dan id-nya tetap melewati `update({ companyId })`
-yang memeriksa ulang keanggotaan di basis data kendali.
+yang memeriksa ulang keanggotaan di basis data control.
 
 **Sesi sah tanpa peran bisa terjadi, dan ia pulih sendiri (issue #339,
 `4c1424b`).** Untuk `role: null` dengan `companyCount ≥ 1`, di rute yang
@@ -390,12 +390,12 @@ secara tersembunyi. Dengan begitu `CompanySessionSync` di dalamnya berjalan dan
 memperbarui token lewat `update({ companyId })`. Satu putaran render kemudian
 perannya tersedia dan halaman tampil utuh.
 
-Sebelumnya halaman menampilkan "Memuat sesi…" tanpa batas. Penjaga jalur
+Sebelumnya halaman menampilkan "Memuat sesi…" tanpa batas. Guard jalur
 bertenant mengambil perusahaan dari jalur, jadi menjawab 200 dan tidak
-mengalihkan. Sementara itu `{children}` tidak dirender, sehingga
+me-redirect. Sementara itu `{children}` tidak dirender, sehingga
 `CompanySessionSync`, satu-satunya yang bisa memperbarui token, tidak pernah
 berjalan. Di luar rute berperusahaan (mis. `/dashboard` tanpa jalur
-perusahaan), penjaga mengalihkan ke `/select-company`, jadi tidak ada yang
+perusahaan), guard me-redirect ke `/select-company`, jadi tidak ada yang
 perlu diperbarui.
 
 Pemilihan otomatis di atas menutup penyebab yang paling sering, tetapi keadaan
@@ -425,7 +425,7 @@ pg_restore -U sai -d sai_gladi --no-owner /tmp/full.dump
 
 | Dulu | Sekarang |
 |---|---|
-| `prisma.user.…` | `users-directory.ts` (satu-satunya jembatan ke basis data kendali) |
+| `prisma.user.…` | `users-directory.ts` (satu-satunya jembatan ke basis data control) |
 | `session.user.role` selalu ada | `null` selama perusahaan belum dipilih |
 | `users.status` (Int) | `users.must_change_password` (Boolean) |
 | FK `periods.closed_by_id → users` | id global tanpa FK; nama dicari, yang hilang tampil "—" |

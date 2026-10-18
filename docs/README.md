@@ -9,7 +9,7 @@ satunya sudah basi.
 | Anda | Mulai dari |
 |---|---|
 | Insinyur baru di proyek ini | [`arsitektur/`](./arsitektur/README.md) → `01` → `02` |
-| Mau menggelar rilis | [`../PRODUCTION.md`](../PRODUCTION.md) **§Updates** |
+| Mau men-deploy rilis | [`../PRODUCTION.md`](../PRODUCTION.md) **§Updates** |
 | Menulis kode di repo ini | [`../AGENTS.md`](../AGENTS.md) |
 | Menyentuh basis data | [`DATABASE.md`](./DATABASE.md) + [`MULTI-COMPANY.md`](./MULTI-COMPANY.md) |
 | Menambah halaman / route | [`RBAC.md`](./RBAC.md) |
@@ -20,7 +20,7 @@ satunya sudah basi.
 
 ## Arsitektur & peta layanan
 
-[`arsitektur/`](./arsitektur/README.md) — 14 berkas + indeks: potret
+[`arsitektur/`](./arsitektur/README.md) — 14 berkas + indeks: snapshot
 keadaan yang berjalan (komponen, layanan, dependensi, API, aliran data,
 infrastruktur, penilaian berprioritas, peta jalan, portabilitas/pemisahan,
 rencana PostgreSQL, klasifikasi buku, audit skema, monorepo), dengan indeksnya
@@ -36,9 +36,9 @@ sendiri.
 | [`DATABASE.md`](./DATABASE.md) | Standar skema, tipe data, workflow migration | Aktif |
 | [`MODUL-USAHA.md`](./MODUL-USAHA.md) | Modul per jenis usaha (#99) | Aktif |
 | [`COMPLIANCE.md`](./COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi | Aktif |
-| [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) | Strategi go-to-market, fase, gerbangnya | Aktif |
+| [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) | Strategi go-to-market, fase, gate-nya | Aktif |
 | [`PRICING.md`](./PRICING.md) | Katalog paket & harga — sumber kebenaran | Aktif |
-| [`AUDIT-RILIS-UMUM.md`](./AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung | **Arsip** (potret 15 Agu 2026) |
+| [`AUDIT-RILIS-UMUM.md`](./AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung | **Arsip** (snapshot 15 Agu 2026) |
 | [`accurate-reference.md`](./accurate-reference.md) | Peta fitur Accurate Online — referensi pembanding | Referensi |
 
 ## Dokumen di akar repo
@@ -46,13 +46,13 @@ sendiri.
 | Berkas | Isi | Status |
 |---|---|---|
 | [`../README.md`](../README.md) | Pintu masuk repo, quick start | Aktif |
-| [`../AGENTS.md`](../AGENTS.md) | **Aturan kerja** — gerbang verify/build, UI, otorisasi, DB | Aktif · WAJIB |
-| [`../PRODUCTION.md`](../PRODUCTION.md) | **Runbook penggelaran** — §Updates adalah jalur yang hidup | Aktif |
+| [`../AGENTS.md`](../AGENTS.md) | **Aturan kerja** — gate verify/build, UI, otorisasi, DB | Aktif · WAJIB |
+| [`../PRODUCTION.md`](../PRODUCTION.md) | **Runbook deploy** — §Updates adalah jalur yang hidup | Aktif |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Perubahan yang terlihat pengguna | **Dibangkitkan** — jangan sunting |
 | [`../CLAUDE.md`](../CLAUDE.md) | Penerus ke `AGENTS.md` | Aktif |
 
 `DOCKER.md`, ketiga `HOSTING*.md`, dan perkakas standalone/PM2 dicabut 12 Okt
-2026; satu-satunya jalur penggelaran adalah `PRODUCTION.md` §Updates.
+2026; satu-satunya jalur deploy adalah `PRODUCTION.md` §Updates.
 
 `CHANGELOG.md` dibangkitkan dari `src/lib/changelog.ts`
 (`bun run changelog:build`); suntingan langsung akan tertimpa.

@@ -26,8 +26,8 @@ Ada tiga temuan, dan urutan pengerjaannya penting:
 
 | | Temuan | Dampak | Kapan | Status 18 Okt |
 |---|---|---|---|---|
-| **S1** | **18 kolom FK yang indeksnya dibuat MySQL secara implisit** | Di PostgreSQL indeks itu tidak ada: 242 indeks hilang tanpa galat | Sebelum pindah mesin | ✅ ditutup 12 Okt (§8) |
-| **S2** | **10 kolom `*_id` tanpa indeks apa pun** | Pemindaian tabel penuh saat data tumbuh; paling terasa di `audit_logs.user_id` | Kapan saja, murah | ✅ ditutup 12 Okt (§8) |
+| **S1** | **18 kolom FK yang indeksnya dibuat MySQL secara implisit** | Di PostgreSQL indeks itu tidak ada: 242 indeks hilang tanpa error | Sebelum pindah mesin | ✅ ditutup 12 Okt (§8) |
+| **S2** | **10 kolom `*_id` tanpa indeks apa pun** | Scan tabel penuh saat data tumbuh; paling terasa di `audit_logs.user_id` | Kapan saja, murah | ✅ ditutup 12 Okt (§8) |
 | **S3** | **Nol CHECK constraint**, dan nilai enum-like sudah terbukti menyimpang | 101 baris `contracts.status = "completed"` di luar kosakata | Bersihkan data dulu, baru batasi | ❌ terbuka; menunggu keputusan kosakata pemilik |
 
 Hanya S1 yang wajib selesai sebelum penukaran mesin. Urutan S3 tidak boleh
@@ -93,7 +93,7 @@ native, nol `TinyInt`.
 Aturan `docs/DATABASE.md` yang mewajibkan enum-like ditulis
 `String @db.VarChar` + `z.enum` adalah alasan tidak ada tipe yang menuntut desain
 ulang saat pindah mesin. Aturan yang sama juga sumber temuan S3: portabilitas itu
-dibayar dengan tidak adanya penjaga nilai di tingkat basis data.
+dibayar dengan tidak adanya guard nilai di tingkat basis data.
 
 ### 1.6 Setiap tabel nyata punya indeks sekunder
 
@@ -105,7 +105,7 @@ milik Prisma.
 ## 2. S1 — 18 indeks yang dibuat MySQL untuk kita, dan PostgreSQL tidak
 
 Ini temuan terpenting di dokumen ini, dan ia tidak akan pernah muncul sebagai
-galat.
+error.
 
 MySQL/MariaDB mewajibkan indeks pada kolom FK dan membuatnya sendiri bila tidak
 dideklarasikan, dengan nama berakhiran `_fkey`. PostgreSQL tidak: `FOREIGN KEY`
@@ -175,7 +175,7 @@ dipangkas.
 
 ---
 
-## 4. S3 — tidak ada penjaga nilai di basis data, dan nilainya sudah menyimpang
+## 4. S3 — tidak ada guard nilai di basis data, dan nilainya sudah menyimpang
 
 `docs/DATABASE.md` memilih `String @db.VarChar` + `z.enum` alih-alih enum native.
 Alasannya kuat (§1.5): portabilitas, dan menambah nilai enum di MySQL adalah
@@ -264,13 +264,13 @@ Grafik donat status di halaman kontrak dibangun dari tiga status yang dipaku:
 Diukur di produksi: 609 kontrak, 508 masuk grafik, 101 hilang (16,6%).
 
 Grafiknya tidak terlihat salah: tiga irisan rapi dengan jumlah yang tampak masuk
-akal. Tabel di halaman yang sama justru benar (`StatusBadge` punya cadangan dan
+akal. Tabel di halaman yang sama justru benar (`StatusBadge` punya backup dan
 menampilkan "Completed"), sehingga dua bagian di satu halaman memberi jawaban
 berbeda tentang data yang sama.
 
 Diperbaiki lewat `src/lib/contract-status-chart.ts`. Tiga status yang dikenal
 tetap di posisi 0-1-2 (warna dipasangkan per posisi, bukan per nama). Status di
-luar kosakata menyusul dan mendapat `unknownTone`, cadangan yang sudah ada di
+luar kosakata menyusul dan mendapat `unknownTone`, backup yang sudah ada di
 `dashboard-charts.tsx`.
 
 `tests/contract-status-chart.test.ts` menjaga invariannya: jumlah irisan sama
@@ -285,19 +285,19 @@ dipakai sebagai bahan keputusan §4.0.
 1. **Putuskan kosakatanya** (keputusan pemilik): apakah `completed` sah dan masuk
    `CONTRACT_STATUSES`, atau 101 baris itu dipetakan ke `signed`.
 2. **Perbaiki datanya** lewat migration bertanggal.
-3. **Baru kemudian** pasang penjaga di tingkat basis data.
+3. **Baru kemudian** pasang guard di tingkat basis data.
 
-Penjaga yang dipasang lebih dulu akan menolak data yang sudah ada. Di
+Guard yang dipasang lebih dulu akan menolak data yang sudah ada. Di
 PostgreSQL, `ALTER TABLE … ADD CONSTRAINT … CHECK` memvalidasi seluruh baris saat
-dipasang, jadi pemasangannya akan gagal dengan galat. Itu lebih baik daripada
+dipasang, jadi pemasangannya akan gagal dengan error. Itu lebih baik daripada
 gagal tanpa suara, tetapi urutannya tetap harus benar.
 
-### 4.2 Pilihan penjaga di PostgreSQL
+### 4.2 Pilihan guard di PostgreSQL
 
 | Pilihan | Untung | Rugi |
 |---|---|---|
 | **`CHECK (status IN (…))`** ← disarankan | Nol tipe baru; `ALTER` menambah nilai tidak mengunci; tetap `text` bagi Prisma | Daftar nilai hidup di dua tempat (kode + DB) — harus dibangkitkan dari `constants.ts`, jangan diketik ulang |
-| Enum native PostgreSQL | Penjaga terkuat | Mengubah skema Prisma ke `enum`, dan `ALTER TYPE … ADD VALUE` tidak bisa di dalam transaksi |
+| Enum native PostgreSQL | Guard terkuat | Mengubah skema Prisma ke `enum`, dan `ALTER TYPE … ADD VALUE` tidak bisa di dalam transaksi |
 | Tabel referensi + FK | Paling fleksibel | 20+ tabel kecil baru; berlebihan untuk kosakata yang jarang berubah |
 
 Yang disarankan `CHECK`: ia menutup celahnya tanpa mengubah tipe, sehingga sifat
@@ -385,7 +385,7 @@ Yang perlu dikerjakan, dalam urutan ini:
    kedua mesin; bila ditunda sampai migrasi, perubahannya tidak pernah teruji di
    produksi.
 2. **S2 kapan saja**: 10 indeks, terutama `audit_logs.user_id`.
-3. **S3 bertahap**: kosakata → data → penjaga. Jangan dibalik.
+3. **S3 bertahap**: kosakata → data → guard. Jangan dibalik.
 4. **§5.1**: tidak diputuskan saat pindah; timestamp naif dipertahankan.
    ❓ Pemilik, bila `timestamptz` diinginkan.
 
@@ -443,13 +443,13 @@ diterapkan, lalu dibandingkan dua arah dengan skemanya):
 | | indeks hidup | terdeklarasi tapi tak ada | ada tapi tak terdeklarasi |
 |---|---|---|---|
 | perusahaan | 259 (dari 253) | **0** | **0** |
-| kendali | 60 (dari 57) | **0** | **0** |
+| control | 60 (dari 57) | **0** | **0** |
 | platform | 45 | **0** | **0** |
 
 Tidak ada `_fkey` yang tersisa. Basis data sekali-pakai dibuang setelah
 pembuktian.
 
-### 8.3 Penjaga permanen
+### 8.3 Guard permanen
 
 `tests/index-fk-parity.test.ts` membaca ketiga skema dan menolak setiap relasi
 tanpa `@@index`. Tes ini berjalan di CI pada setiap PR, jadi relasi baru tanpa
@@ -472,7 +472,7 @@ Tiga hal yang membuat tes ini benar-benar memeriksa:
 
 ### 8.4 Yang masih terbuka
 
-**S3, penjaga nilai enum-like.** Butuh satu keputusan pemilik lebih dulu:
+**S3, guard nilai enum-like.** Butuh satu keputusan pemilik lebih dulu:
 apakah `completed` sah dan masuk `CONTRACT_STATUSES`, atau 101 baris itu
 dipetakan ke `signed`. Sesudah itu perbaiki data, baru pasang `CHECK`. Urutannya
 tidak boleh dibalik, karena `ALTER TABLE … ADD CHECK` di PostgreSQL memvalidasi

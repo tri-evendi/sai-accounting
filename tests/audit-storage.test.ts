@@ -30,6 +30,7 @@
  * itu dicabut, bukan dilonggarkan.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -63,7 +64,7 @@ describe("jejak audit perusahaan tidak lagi berupa berkas (#370)", () => {
   it("tidak ada berkas di src/ yang menyentuh data/audit selain jejak tenant", async () => {
     const offenders: string[] = [];
 
-    for (const file of await sourceFiles(SRC)) {
+    for (const file of (await Promise.all(akarSumber().map((d) => sourceFiles(d)))).flat()) {
       if (ALLOWED.has(file)) continue;
       const source = (await readFile(file, "utf8"))
         // Komentar dilucuti: berkas yang MENJELASKAN perpindahan ini bukan

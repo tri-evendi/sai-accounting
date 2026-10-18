@@ -22,7 +22,7 @@ import {
   trialEndsAtFrom,
   usernameFromEmail,
   verdictForVerification,
-} from "@/lib/registration";
+} from "@sai/core/registration";
 
 /**
  * Catat pendaftaran baru dan terbitkan token verifikasinya.

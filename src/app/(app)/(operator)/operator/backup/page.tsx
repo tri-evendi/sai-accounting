@@ -33,7 +33,7 @@ import {
   type OperatorBackupRun,
   type SchemaVersionRow,
 } from "@/lib/operator/backups";
-import { perluTindakan, type StatusVersi } from "@/lib/schema-version";
+import { perluTindakan, type StatusVersi } from "@sai/core/schema-version";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateTime } from "@sai/core/utils";

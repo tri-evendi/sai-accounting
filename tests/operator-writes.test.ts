@@ -79,7 +79,7 @@ import {
 } from "@sai/billing/platform-constants";
 import { paymentRailConfigured } from "@sai/billing/payment-gateway";
 import { readTenantAuditLogs } from "@/lib/tenant-audit";
-import { readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
 import { invalidateTenantState, tenantStateForCompany } from "@/lib/tenant-state";
 
 type Deps = Parameters<typeof recordManualPayment>[0];

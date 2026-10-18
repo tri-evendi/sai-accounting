@@ -32,12 +32,12 @@ import {
   pendingInvitationsForCompany,
   tenantSeatCount,
 } from "@/lib/invitation-store";
-import { userQuotaExceeded } from "@/lib/invitations";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { userQuotaExceeded } from "@sai/core/invitations";
+import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
 import { runWithCompany } from "@/lib/company-context";
 import { activeRoleKeys } from "@/lib/roles";
 import { sendMail } from "@/lib/mailer";
-import { invitationMail } from "@/lib/account-mail";
+import { invitationMail } from "@sai/core/account-mail";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";

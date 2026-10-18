@@ -26,7 +26,7 @@ import "server-only";
 import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
-import { schedulerHealth, type SchedulerHealth } from "@/lib/scheduler-heartbeat";
+import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
 import { mailHealth, type MailHealthStatus } from "@/lib/mail-health";

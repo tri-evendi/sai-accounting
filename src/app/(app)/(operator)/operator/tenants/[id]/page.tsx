@@ -67,7 +67,7 @@ import {
   tenantStatusVariant,
 } from "@/lib/operator/store";
 import type { HealthSignal } from "@/lib/operator/tenant-health";
-import { executionVerdict } from "@/lib/tenant-deletion";
+import { executionVerdict } from "@sai/core/tenant-deletion";
 import {
   BILLING_MODE_LABEL_KEYS,
   platformInvoiceIsRevenue,

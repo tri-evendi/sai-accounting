@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TenantKeyedCache } from "@/lib/tenant-cache";
+import { TenantKeyedCache } from "@sai/core/tenant-cache";
 
 describe("TenantKeyedCache", () => {
   beforeEach(() => {

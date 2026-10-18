@@ -31,7 +31,7 @@ import {
   issueOperatorToken,
   verifyOperatorToken,
 } from "@/lib/operator/session";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit } from "@sai/core/rate-limit";
 import { getT } from "@/lib/i18n/server";
 
 export interface OperatorLoginState {

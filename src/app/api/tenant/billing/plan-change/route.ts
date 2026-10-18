@@ -40,7 +40,7 @@ import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";
 import { platformDb } from "@/lib/platform-db";
 import { quotePlanChange } from "@sai/billing/plan-change";
-import { platformInvoiceAmounts } from "@/lib/subscription-lifecycle";
+import { platformInvoiceAmounts } from "@sai/billing/subscription-lifecycle";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { resolvePpnEnabled } from "@/lib/site-settings";

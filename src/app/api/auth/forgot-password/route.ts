@@ -25,9 +25,9 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { issueResetTokenForEmail } from "@/lib/password-reset-store";
 import { sendMail } from "@/lib/mailer";
-import { passwordResetMail } from "@/lib/account-mail";
+import { passwordResetMail } from "@sai/core/account-mail";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 
 /** Alamat aplikasi untuk tautan di surel — AUTH_URL adalah sumber yang sama
  *  yang dipakai Auth.js, jadi tautannya menunjuk host yang benar di belakang

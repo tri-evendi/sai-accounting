@@ -44,8 +44,8 @@ import {
   type MailTransport,
 } from "@/lib/mail-settings";
 import { resolveMailConfig, type MailConfigSource } from "@/lib/mailer-core";
-import { encryptionKeyAvailable } from "@/lib/settings-crypto";
-import { summarizeRevenue, type RevenueSummary } from "@/lib/platform-revenue";
+import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
+import { summarizeRevenue, type RevenueSummary } from "@sai/billing/platform-revenue";
 
 export type { ReconciliationReport };
 export type { MailSettingsView };

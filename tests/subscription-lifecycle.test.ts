@@ -29,7 +29,7 @@ import {
   tenantStatusForSubscription,
   transition,
   type SubscriptionEvent,
-} from "@/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { DEFAULT_BILLING_MODE, billingModeIsAutomatic } from "@sai/billing/platform-constants";
 import { PERMISSIONS } from "@sai/core/authz";

@@ -20,7 +20,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { invitationMail, passwordResetMail } from "@/lib/account-mail";
+import { invitationMail, passwordResetMail } from "@sai/core/account-mail";
 import { auditActor } from "@/lib/billing/change-tenant-plan";
 import { controlDb } from "@sai/core/control-db";
 import { getT } from "@/lib/i18n/server";

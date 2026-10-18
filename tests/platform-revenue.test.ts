@@ -21,7 +21,7 @@ import {
   monthlyEquivalent,
   summarizeRevenue,
   type RevenueSubscription,
-} from "@/lib/platform-revenue";
+} from "@sai/billing/platform-revenue";
 
 const sub = (over: Partial<RevenueSubscription> = {}): RevenueSubscription => ({
   tenantId: 1,

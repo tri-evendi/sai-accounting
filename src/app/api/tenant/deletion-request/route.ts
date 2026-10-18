@@ -18,7 +18,7 @@ import { controlDb } from "@sai/core/control-db";
 import {
   DELETION_GRACE_DAYS,
   graceEndsAtFrom,
-} from "@/lib/tenant-deletion";
+} from "@sai/core/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { sendMail } from "@/lib/mailer";
 import { TENANT_ROLES } from "@sai/core/constants";

@@ -26,7 +26,7 @@ function berkasTs(dir: string): string[] {
 const tanpaKomentar = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("setiap penulis langganan mencatat peristiwanya", () => {
-  const semua = [...berkasTs("src"), ...berkasTs("scripts")];
+  const semua = [...berkasTs("src"), ...berkasTs("packages"), ...berkasTs("scripts")];
   const penulis = semua
     .map((f) => {
       const isi = tanpaKomentar(readFileSync(join(AKAR, f), "utf8"));

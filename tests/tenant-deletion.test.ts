@@ -17,7 +17,7 @@ import {
   graceEndsAtFrom,
   ledgerDropVerdict,
   retentionUntilFrom,
-} from "@/lib/tenant-deletion";
+} from "@sai/core/tenant-deletion";
 
 const now = new Date("2026-08-01T10:00:00Z");
 const past = new Date("2026-07-01T10:00:00Z");

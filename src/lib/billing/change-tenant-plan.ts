@@ -36,7 +36,7 @@
 
 import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import type { PrismaClient as ControlClient } from "@sai/db/client/control";
-import { nextPeriod, tenantStatusForSubscription } from "@/lib/subscription-lifecycle";
+import { nextPeriod, tenantStatusForSubscription } from "@sai/billing/subscription-lifecycle";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { recordSubscriptionEvent } from "@/lib/subscription-events";

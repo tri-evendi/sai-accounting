@@ -21,7 +21,7 @@ import { join } from "node:path";
 /* Diimpor dari INTI-nya, bukan pembungkus `server-only`-nya: itu juga modul
    yang sama dengan yang dimuat penjadwal, jadi tesnya menguji jalur yang
    sungguh dipakai di luar Next. */
-import { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@/lib/site-settings-core";
+import { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@sai/core/site-settings-core";
 
 describe("effectiveSetting — presedensi DB → env", () => {
   it("tidak diatur dari konsol (`null`/`undefined`) → pakai environment", () => {

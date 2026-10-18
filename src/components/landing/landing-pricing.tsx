@@ -53,9 +53,9 @@ import {
   planHighlightKeys,
 } from "@sai/billing/plan-copy";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { TRIAL_DAYS } from "@sai/core/registration";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
-import { DEFAULT_TAX_RATE } from "@/lib/tax";
+import { DEFAULT_TAX_RATE } from "@sai/core/tax";
 
 /**
  * Nominal paket — `--sai-landing-font-size-section` (24px → 30px di ≥576px),

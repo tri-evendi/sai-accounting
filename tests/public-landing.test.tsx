@@ -35,8 +35,8 @@ import { LOCALES, LOCALE_LABELS } from "@sai/core/i18n/config";
 import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 import id from "@sai/core/i18n/dictionaries/id.json";
 import { formatMoney } from "@sai/core/money-format";
-import { TRIAL_DAYS } from "@/lib/registration";
-import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
+import { TRIAL_DAYS } from "@sai/core/registration";
+import { DEFAULT_TAX_RATE, computeTax } from "@sai/core/tax";
 
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);

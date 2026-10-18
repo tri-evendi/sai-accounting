@@ -162,7 +162,7 @@ Semuanya ditegakkan kode atau tes, bukan konvensi:
 4. **Tidak ada angka akuntansi di kendali maupun platform.** Kalau ada yang
    menaruh tabel transaksi di sana, seluruh janji isolasi #104 batal saat itu juga.
 5. **Cache tingkat modul yang isinya milik satu penyewa WAJIB dikunci** per
-   `companyId` / `tenantId` (`lib/tenant-cache.ts`).
+   `companyId` / `tenantId` (`packages/core/src/tenant-cache.ts`).
 6. **`platform-db.ts` dilarang dari jalur panas** — penjaga, sesi, proxy, dan
    `lib/operator/plane.ts` tidak boleh mengimpornya.
 

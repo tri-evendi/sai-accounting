@@ -83,9 +83,9 @@ import {
 import { resolveContactChannels } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { TRIAL_DAYS } from "@sai/core/registration";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
-import { DEFAULT_TAX_RATE } from "@/lib/tax";
+import { DEFAULT_TAX_RATE } from "@sai/core/tax";
 
 export async function LandingFaq() {
   const t = await getT();

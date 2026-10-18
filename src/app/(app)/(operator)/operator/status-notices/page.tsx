@@ -13,7 +13,7 @@ import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import { platformDb } from "@/lib/platform-db";
 import { readStatusNoticeRecords } from "@/lib/status-notices-store";
-import { visibleOnStatusPage, type PublicStatusNotice } from "@/lib/status-notices";
+import { visibleOnStatusPage, type PublicStatusNotice } from "@sai/core/status-notices";
 
 import { operatorCreateStatusNotice, operatorSetStatusNoticePhase } from "./actions";
 

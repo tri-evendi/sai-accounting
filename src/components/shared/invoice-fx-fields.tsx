@@ -35,7 +35,7 @@ import {
   CurrencyRateFields,
   currencyRatePayload,
 } from "@/components/shared/currency-rate-fields";
-import { computeTax, defaultInvoiceTax } from "@/lib/tax";
+import { computeTax, defaultInvoiceTax } from "@sai/core/tax";
 import { useDefaultTaxRate } from "@/lib/tax-profile-client";
 import { FileDoneOutlined, GlobalOutlined, InfoCircleOutlined, TeamOutlined } from "@ant-design/icons";
 import { useT } from "@sai/core/i18n/client";

@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { trialCountdown } from "@/lib/subscription-lifecycle";
+import { trialCountdown } from "@sai/billing/subscription-lifecycle";
 
 const NOW = new Date("2026-08-04T10:00:00Z");
 const DAY = 24 * 60 * 60 * 1000;

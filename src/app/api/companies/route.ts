@@ -39,7 +39,7 @@ import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { runWithCompany } from "@/lib/company-context";
 import { ROLES } from "@sai/core/constants";
 import { controlDb } from "@sai/core/control-db";
-import { refuseProvisioning } from "@/lib/registration";
+import { refuseProvisioning } from "@sai/core/registration";
 
 export async function POST(request: Request) {
   const result = await requireTenantApiPermission("company.create");

@@ -140,7 +140,7 @@ benar. **Tidak ada satu pun pemanggilnya.**
 
 ### 4.6 Pembatas laju hanya di memori
 
-`src/lib/rate-limit.ts` menyimpan hitungannya di `Map` tingkat modul. Ia hilang
+`packages/core/src/rate-limit.ts` menyimpan hitungannya di `Map` tingkat modul. Ia hilang
 saat proses dimulai ulang dan tidak dibagi antar-instance. Untuk `/login`
 internal itu masih bisa diterima; untuk `/register` dan atur-ulang kata sandi
 yang **terbuka ke internet**, tidak.
@@ -571,7 +571,7 @@ mandiri, jalur permintaan penghapusan, dan retensi yang tertulis.
 
 **PPN atas langganan.** Tagihan KAMI ke pelanggan kena PPN dan menuntut
 e-Faktur. Ironi yang layak disadari: aplikasi ini sudah punya mesin PPN &
-e-Faktur (`src/lib/tax.ts`, `/tax/efaktur`) untuk pelanggan — dan kita akan
+e-Faktur (`packages/core/src/tax.ts`, `/tax/efaktur`) untuk pelanggan — dan kita akan
 membutuhkannya untuk diri sendiri.
 
 **Pembayaran.** Standar Indonesia: Midtrans / Xendit / Doku — Virtual Account,

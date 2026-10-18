@@ -16,7 +16,7 @@ import {
   visibleAsBanner,
   visibleOnStatusPage,
   type StatusNoticeRecord,
-} from "@/lib/status-notices";
+} from "@sai/core/status-notices";
 
 const NOW = new Date("2026-10-17T05:00:00Z");
 const H = 60 * 60 * 1000;

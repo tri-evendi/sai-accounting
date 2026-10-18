@@ -59,7 +59,7 @@ import {
   publicStatus,
   type ComponentId,
   type ComponentState,
-} from "@/lib/public-status";
+} from "@sai/core/public-status";
 import { formatDateTime } from "@sai/core/utils";
 import { platformDb } from "@/lib/platform-db";
 import { readStatusNoticeRecords } from "@/lib/status-notices-store";
@@ -68,7 +68,7 @@ import {
   NOTICE_SENTENCE,
   visibleOnStatusPage,
   type PublicStatusNotice,
-} from "@/lib/status-notices";
+} from "@sai/core/status-notices";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;

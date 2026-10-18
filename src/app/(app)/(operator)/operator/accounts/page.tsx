@@ -18,7 +18,7 @@ import { parseOperatorAccounts } from "@/lib/operator/credentials";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listOperatorAccounts } from "@/lib/operator/operator-accounts";
 import { operatorCan } from "@/lib/operator/roles";
-import { encryptionKeyAvailable } from "@/lib/settings-crypto";
+import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
 import { formatDateTime } from "@sai/core/utils";
 
 import { operatorCreateAccount, operatorUpdateAccount } from "./actions";

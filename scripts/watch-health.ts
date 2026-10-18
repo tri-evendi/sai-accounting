@@ -39,7 +39,7 @@ import { buatAdapter } from "@sai/db/adapter";
 import { backupHealth } from "../src/lib/backup-heartbeat";
 import { decideBackupAlert } from "../src/lib/backup-watchdog";
 import { decideSchedulerAlert, decideConformanceAlert } from "../src/lib/health-watchdog";
-import { schedulerHealth } from "../src/lib/scheduler-heartbeat";
+import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { conformanceHealth } from "../src/lib/conformance-heartbeat";
 import { sendMail } from "../src/lib/mailer-core";
 

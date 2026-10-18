@@ -37,7 +37,7 @@ import { sendMail } from "@/lib/mailer";
 import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 
 function appOrigin(request: Request): string {

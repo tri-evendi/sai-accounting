@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { invitationMail, passwordResetMail } from "@/lib/account-mail";
+import { invitationMail, passwordResetMail } from "@sai/core/account-mail";
 import { invitationOfTenant, revokeUserSessions, userOfTenant } from "@/lib/operator/user-support";
 import { operatorCan } from "@/lib/operator/roles";
 
@@ -77,7 +77,7 @@ describe("surel akses akun — satu kalimat untuk aplikasi dan operator", () => 
   it("rute pelanggan memakai pembangun yang sama, bukan salinan teks", () => {
     for (const f of ["src/app/api/tenant/invitations/route.ts", "src/app/api/auth/forgot-password/route.ts"]) {
       const isi = readFileSync(join(process.cwd(), f), "utf8");
-      expect(isi, f).toMatch(/@\/lib\/account-mail/);
+      expect(isi, f).toMatch(/@sai\/core\/account-mail/);
       expect(isi, f).not.toMatch(/MENENTUKAN KATA SANDI ANDA SENDIRI|semoga Anda\) meminta/);
     }
   });

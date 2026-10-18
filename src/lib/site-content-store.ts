@@ -45,7 +45,7 @@ import {
   SITE_CONTENT_PREFIX,
   SITE_CONTENT_VALUE_MAX,
   isSiteContentLocale,
-} from "@/lib/site-content";
+} from "@sai/core/site-content";
 
 /** Tag revalidasi — satu untuk seluruh tabel; penulisnya memanggil ini. */
 export const SITE_CONTENT_TAG = "site-content";

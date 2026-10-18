@@ -34,7 +34,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 
 /* `username` sengaja TIDAK ada di sini (#159 temuan 4) — klien lama yang
  * masih mengirimkannya tetap lolos: kunci tak dikenal dibuang zod. */

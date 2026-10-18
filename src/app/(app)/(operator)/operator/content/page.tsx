@@ -53,7 +53,7 @@ import {
   sectionOf,
   siteContentDefaults,
   SITE_CONTENT_SECTIONS,
-} from "@/lib/site-content";
+} from "@sai/core/site-content";
 import { siteContentForOperator } from "@/lib/site-content-store";
 import { formatDateTime } from "@sai/core/utils";
 import { operatorSaveSiteContent } from "./actions";

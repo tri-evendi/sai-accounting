@@ -35,7 +35,7 @@ import { LandingStats } from "@/components/landing/landing-stats";
 import { ButtonLink } from "@sai/ui/button";
 import { getT } from "@/lib/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS } from "@/lib/registration";
+import { TRIAL_DAYS } from "@sai/core/registration";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 
 export async function LandingHero() {

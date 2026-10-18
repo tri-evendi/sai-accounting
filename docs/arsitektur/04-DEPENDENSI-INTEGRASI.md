@@ -100,7 +100,7 @@ graph TD
 | Lapis 1 | `lib/tenant-mail-settings.ts` — SMTP milik pelanggan |
 | Lapis 2 | `lib/mail-settings.ts` — milik penyedia, di `sai_platform` |
 | Lapis 3 | *environment* / transport `file` → `data/mail-outbox/*.eml` |
-| Sandi | Disimpan **hanya** sebagai segel AES-256-GCM (`lib/settings-crypto.ts`, kunci `SETTINGS_ENCRYPTION_KEY`) |
+| Sandi | Disimpan **hanya** sebagai segel AES-256-GCM (`packages/core/src/settings-crypto.ts`, kunci `SETTINGS_ENCRYPTION_KEY`) |
 | Cache | TTL 60s; **tidak** berkunci penyewa — sengaja, karena pengaturan platform milik **penyedia**, satu untuk seluruh pemasangan |
 | Status 11 Okt | 1 baris `mail_settings`, `transport = smtp`, host terisi. `tenant_mail_settings` = **0 baris** |
 
@@ -171,7 +171,7 @@ dampak hari ini **nol**.
 [`docs/accurate-reference.md` Lampiran B](../accurate-reference.md)). Tidak ada
 panggilan jaringan ke Accurate; tidak ada kredensial Accurate.
 
-**e-Faktur / Coretax** (`lib/efaktur.ts`, `scripts/efaktur-platform.ts`) —
+**e-Faktur / Coretax** (`packages/core/src/efaktur.ts`, `scripts/efaktur-platform.ts`) —
 pembuatan **berkas** untuk diunggah ke sistem pajak. Tidak ada panggilan API ke
 DJP.
 

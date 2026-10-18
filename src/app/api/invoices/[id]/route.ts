@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { invoiceSchema, invoiceSubtotal } from "@/lib/validations/invoice";
-import { resolveInvoiceTax } from "@/lib/tax";
+import { resolveInvoiceTax } from "@sai/core/tax";
 import { fxAmounts } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { requireApiPermission } from "@/lib/auth-guard";

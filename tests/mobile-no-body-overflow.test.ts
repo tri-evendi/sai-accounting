@@ -27,6 +27,7 @@
  * sudah tidak dipakai pengguna aplikasi ini.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -100,7 +101,7 @@ function unboundedWidths(source: string): string[] {
 }
 
 describe("tak ada lebar tetap yang melebihi layar 390px tanpa langit-langit", () => {
-  const files = tsxFiles(SRC);
+  const files = akarSumber().flatMap((d) => tsxFiles(d));
 
   it("menemukan berkas untuk diperiksa (penjaga yang memeriksa nol berkas selalu hijau)", () => {
     expect(files.length).toBeGreaterThan(50);
@@ -111,7 +112,7 @@ describe("tak ada lebar tetap yang melebihi layar 390px tanpa langit-langit", ()
     for (const file of files) {
       const hits = unboundedWidths(layoutOnly(readFileSync(file, "utf8")));
       if (hits.length > 0) {
-        pelanggar.push(`${file.slice(SRC.length + 1)}: ${hits.join(", ")}`);
+        pelanggar.push(`${relSumber(file)}: ${hits.join(", ")}`);
       }
     }
     expect(
@@ -155,7 +156,7 @@ describe("wisaya Penjualan & Pembelian ikut diperiksa (#471 butir 3)", () => {
       expect(files.length, `wisaya tidak ditemukan di ${dir}`).toBeGreaterThan(0);
       for (const file of files) {
         const hits = unboundedWidths(layoutOnly(readFileSync(file, "utf8")));
-        if (hits.length > 0) pelanggar.push(`${file.slice(SRC.length + 1)}: ${hits.join(", ")}`);
+        if (hits.length > 0) pelanggar.push(`${relSumber(file)}: ${hits.join(", ")}`);
       }
     }
     expect(pelanggar).toEqual([]);
@@ -167,13 +168,13 @@ describe("wisaya Penjualan & Pembelian ikut diperiksa (#471 butir 3)", () => {
      * `FIELD_MIN`. Bila FIELD_MIN naik melewati separuh layar sempit, kisinya
      * berhenti runtuh dan kedua kolomnya justru mendorong badan halaman.
      */
-    const forms = tsxFiles(SRC).filter((f) => /\bFIELD_MIN\b/.test(readFileSync(f, "utf8")));
+    const forms = akarSumber().flatMap((d) => tsxFiles(d)).filter((f) => /\bFIELD_MIN\b/.test(readFileSync(f, "utf8")));
     expect(forms.length, "tak satu pun formulir memakai FIELD_MIN").toBeGreaterThan(0);
     for (const file of forms) {
       const src = readFileSync(file, "utf8");
       const m = /const FIELD_MIN\b\s*=\s*(\d+)/.exec(src);
       expect(m, `${file} menyebut FIELD_MIN tanpa mendefinisikannya`).not.toBeNull();
-      expect(Number(m![1]), `${file.slice(SRC.length + 1)}: FIELD_MIN`).toBeLessThanOrEqual(
+      expect(Number(m![1]), `${relSumber(file)}: FIELD_MIN`).toBeLessThanOrEqual(
         NARROW
       );
     }

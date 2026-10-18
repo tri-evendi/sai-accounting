@@ -20,7 +20,7 @@ import { TextInput } from "@sai/ui/input";
 import { StaticTable } from "@sai/ui/static-table";
 import { moneyColumn } from "@sai/ui/money-column";
 import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
-import type { EfakturRow } from "@/lib/efaktur";
+import type { EfakturRow } from "@sai/core/efaktur";
 import { formatDateShort } from "@sai/core/utils";
 import { toISODate } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";

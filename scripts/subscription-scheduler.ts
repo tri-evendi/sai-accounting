@@ -58,8 +58,8 @@ import {
   tenantStatusForSubscription,
   transition,
   type SubscriptionEvent,
-} from "../src/lib/subscription-lifecycle";
-import { ppnEnabledFrom, readSiteSettingsRow } from "../src/lib/site-settings-core";
+} from "@sai/billing/subscription-lifecycle";
+import { ppnEnabledFrom, readSiteSettingsRow } from "@sai/core/site-settings-core";
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";

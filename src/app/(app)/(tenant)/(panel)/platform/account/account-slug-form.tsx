@@ -32,7 +32,7 @@ import { Input } from "@sai/ui/input";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";
 import { useToast } from "@sai/ui/toast";
-import { tenantSlugFrom } from "@/lib/registration";
+import { tenantSlugFrom } from "@sai/core/registration";
 
 const { Text } = Typography;
 

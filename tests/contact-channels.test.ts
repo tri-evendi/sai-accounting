@@ -9,7 +9,7 @@ import {
   contactChannels,
   parseWhatsappNumber,
   whatsappUrl,
-} from "@/lib/contact-channels";
+} from "@sai/core/contact-channels";
 
 describe("contactChannels", () => {
   it("kosong = kosong: tidak ada kanal yang dikarang", () => {

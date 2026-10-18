@@ -31,7 +31,7 @@
  */
 import "server-only";
 
-import { openSecret, sealSecret } from "@/lib/settings-crypto";
+import { openSecret, sealSecret } from "@sai/core/settings-crypto";
 import {
   manualPaymentGateway,
   midtransGatewayWith,

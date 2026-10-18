@@ -21,7 +21,7 @@ import {
   invitationVerdict,
   mintInvitationToken,
   userQuotaExceeded,
-} from "@/lib/invitations";
+} from "@sai/core/invitations";
 
 describe("mintInvitationToken", () => {
   it("token mentah 64 hex; yang disimpan hanya hash-nya, dan keduanya BERBEDA", () => {

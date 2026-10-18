@@ -23,7 +23,7 @@ import {
   encryptionKeyAvailable,
   openSecret,
   sealSecret,
-} from "@/lib/settings-crypto";
+} from "@sai/core/settings-crypto";
 import {
   invalidateMailSettingsCache,
   mailSettingsView,

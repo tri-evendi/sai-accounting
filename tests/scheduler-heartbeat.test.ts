@@ -19,7 +19,7 @@ import { join } from "node:path";
 import {
   SCHEDULER_STALE_AFTER_MINUTES,
   schedulerHealth,
-} from "@/lib/scheduler-heartbeat";
+} from "@sai/core/scheduler-heartbeat";
 
 const now = new Date("2026-08-15T12:00:00.000Z");
 const minutesAgo = (n: number) => new Date(now.getTime() - n * 60_000);

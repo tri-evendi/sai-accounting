@@ -36,7 +36,7 @@ import {
   SITE_CONTENT_PREFIX,
   isEditableContentKey,
   isSiteContentLocale,
-} from "@/lib/site-content";
+} from "@sai/core/site-content";
 import { saveSiteContent } from "@/lib/site-content-store";
 import { siteContentSchema } from "@/lib/validations/operator";
 

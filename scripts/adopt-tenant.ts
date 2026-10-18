@@ -51,7 +51,7 @@ import {
 import {
   nextPeriod,
   planOrphanSubscriptionAdoptions,
-} from "../src/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 import { recordSubscriptionEvent } from "../src/lib/subscription-events";
 
 function parseArgs(argv: string[]) {

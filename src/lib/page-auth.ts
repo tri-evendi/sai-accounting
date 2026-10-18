@@ -8,7 +8,7 @@ import { isSetupDone } from "@/lib/setup-gate";
 import { headers } from "next/headers";
 
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
-import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
+import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
 import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@/lib/tenant-state";
 import { COMPANY_HOME_PATH, parseTenantPath, tenantPath } from "@sai/core/tenant-routes";

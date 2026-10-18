@@ -45,7 +45,7 @@ import {
   openSecret,
   sealSecret,
   type SealedSecret,
-} from "@/lib/settings-crypto";
+} from "@sai/core/settings-crypto";
 import type { MailConfig } from "@/lib/mailer-core";
 import type { MailTransport } from "@/lib/mail-settings";
 

@@ -26,7 +26,7 @@ import id from "@sai/core/i18n/dictionaries/id.json";
 import type { Dictionary } from "@sai/core/i18n/dictionary";
 import { translate } from "@sai/core/i18n/dictionary";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { selfServeSignupOpen } from "@/lib/registration";
+import { selfServeSignupOpen } from "@sai/core/registration";
 
 const dictionary = id as Dictionary;
 const LANDING = join(__dirname, "..", "src", "components", "landing");

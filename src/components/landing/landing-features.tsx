@@ -66,7 +66,7 @@ import { LOCALES, LOCALE_LABELS } from "@sai/core/i18n/config";
 import { roleLabels } from "@/lib/i18n/labels";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { formatMoney } from "@sai/core/money-format";
-import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
+import { DEFAULT_TAX_RATE, computeTax } from "@sai/core/tax";
 
 /** Kotak ikon: 40px = target sentuh MASTER.md, meski di sini ia tidak diklik. */
 const ICON_BOX = 40;

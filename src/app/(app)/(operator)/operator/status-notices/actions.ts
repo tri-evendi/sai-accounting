@@ -14,7 +14,7 @@ import { requireOperatorActionSession } from "@/lib/operator/guard";
 import { clientIpFrom } from "@/lib/operator/plane";
 import { platformDb } from "@/lib/platform-db";
 import { createStatusNotice, setStatusNoticePhase } from "@/lib/status-notices-store";
-import { STATUS_NOTICE_COMPONENTS, STATUS_NOTICE_KINDS, STATUS_NOTICE_PHASES } from "@/lib/status-notices";
+import { STATUS_NOTICE_COMPONENTS, STATUS_NOTICE_KINDS, STATUS_NOTICE_PHASES } from "@sai/core/status-notices";
 
 export interface StatusNoticeActionResult {
   ok: boolean;

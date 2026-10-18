@@ -35,7 +35,7 @@
 
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { SUBSCRIPTION_STATUSES, billingModeIsAutomatic } from "@sai/billing/platform-constants";
-import { computeTax, DEFAULT_TAX_RATE } from "@/lib/tax";
+import { computeTax, DEFAULT_TAX_RATE } from "@sai/core/tax";
 
 export const SUBSCRIPTION_EVENTS = [
   "payment_received",

@@ -21,7 +21,7 @@ import {
   mintInvitationToken,
   userQuotaExceeded,
   type InvitationOutcome,
-} from "@/lib/invitations";
+} from "@sai/core/invitations";
 import { upsertMembership } from "@/lib/membership-upsert";
 import { TENANT_ROLES } from "@sai/core/constants";
 

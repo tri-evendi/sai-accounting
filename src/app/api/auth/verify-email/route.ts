@@ -24,7 +24,7 @@ import { createInitialSubscription } from "@/lib/subscription-store";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 
 function clientIp(request: Request): string {
   /*

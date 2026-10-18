@@ -35,7 +35,7 @@ import {
 } from "@/lib/company-unlock";
 import { controlDb } from "@sai/core/control-db";
 import { getT } from "@/lib/i18n/server";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
 
 const schema = z.object({
   companySlug: z.string().min(1).max(64),

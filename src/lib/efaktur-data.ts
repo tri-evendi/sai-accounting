@@ -19,7 +19,7 @@ import {
   type EfakturInvoiceInput,
   type EfakturResult,
   type EfakturSeller,
-} from "@/lib/efaktur";
+} from "@sai/core/efaktur";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 

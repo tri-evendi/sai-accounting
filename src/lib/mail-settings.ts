@@ -38,7 +38,7 @@ import {
   openSecret,
   sealSecret,
   type SealedSecret,
-} from "@/lib/settings-crypto";
+} from "@sai/core/settings-crypto";
 
 export type MailTransport = "file" | "smtp";
 

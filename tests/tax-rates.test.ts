@@ -25,7 +25,7 @@ import {
   defaultInvoiceTax,
   taxRateFor,
   type CompanyTaxProfile,
-} from "@/lib/tax";
+} from "@sai/core/tax";
 
 /** Riwayat tarif yang tidak urut — urutan masukan tak boleh berpengaruh. */
 const RATES = [
@@ -141,13 +141,13 @@ describe("tidak ada formulir dokumen yang kembali ke konstanta", () => {
    */
   const ALLOWED = new Set([
     /* Sumbernya sendiri. */
-    "src/lib/tax.ts",
+    "packages/core/src/tax.ts",
     /* Benih tarif pertama sebuah perusahaan baru. */
     "src/lib/tax-rates.ts",
     /* Cadangan pohon komponen TANPA provider (uji unit, layar di luar /t/…). */
     "src/lib/tax-profile-client.tsx",
     /* PPN atas tagihan langganan KAMI — fakta platform, bukan milik pelanggan. */
-    "src/lib/subscription-lifecycle.ts",
+    "packages/billing/src/subscription-lifecycle.ts",
     /* Klaim harga di halaman pemasaran — juga PPN yang dipungut SAI. */
     "src/components/landing/landing-pricing.tsx",
     "src/components/landing/landing-faq.tsx",
@@ -199,7 +199,9 @@ function filesImportingConstant(): string[] {
       }
     }
   };
+  /* `src/` + paket workspace — `tax` & siklus langganan kini di `packages/*`. */
   walk(join(root, "src"));
+  walk(join(root, "packages"));
   return found.sort();
 }
 

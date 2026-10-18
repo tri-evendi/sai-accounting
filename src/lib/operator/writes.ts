@@ -42,14 +42,14 @@ import {
   tenantStatusForSubscription,
   transition,
   type SubscriptionEvent,
-} from "@/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 import type { BillingMode, SubscriptionStatus } from "@sai/billing/platform-constants";
 import { billingModeIsAutomatic } from "@sai/billing/platform-constants";
 import {
   anonymizedUserFields,
   executionVerdict,
   retentionUntilFrom,
-} from "@/lib/tenant-deletion";
+} from "@sai/core/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { recordSubscriptionEvent } from "@/lib/subscription-events";
 import { bukaBasisData } from "@sai/db/server";

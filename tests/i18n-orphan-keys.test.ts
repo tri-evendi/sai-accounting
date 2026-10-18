@@ -249,7 +249,7 @@ function berkasSumber(dir: string, keluar: string[] = []): string[] {
     const jalur = join(dir, entri.name);
     // `src/generated` adalah klien Prisma, bukan kode kita.
     if (entri.isDirectory()) {
-      if (entri.name !== "generated" && entri.name !== "node_modules") berkasSumber(jalur, keluar);
+      if (entri.name !== "generated" && entri.name !== "node_modules" && entri.name !== ".next") berkasSumber(jalur, keluar);
     } else if (entri.name.endsWith(".ts") || entri.name.endsWith(".tsx")) keluar.push(jalur);
   }
   return keluar;
@@ -281,7 +281,11 @@ function bacaSumber(): Temuan {
   };
 
   /* Paket workspace ikut: kunci yang hanya disebut kode di `packages/*` bukan yatim. */
-  for (const berkas of [...berkasSumber(SRC), ...berkasSumber(join(SRC, "..", "packages"))]) {
+  for (const berkas of [
+    ...berkasSumber(SRC),
+    ...berkasSumber(join(SRC, "..", "packages")),
+    ...berkasSumber(join(SRC, "..", "apps")),
+  ]) {
     const kode = readFileSync(berkas, "utf8");
     const src = ts.createSourceFile(berkas, kode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const rel = berkas.slice(SRC.length + 1).split("\\").join("/");

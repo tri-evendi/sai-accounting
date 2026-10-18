@@ -46,7 +46,7 @@ import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import {
   executeTenantDeletion,
   makeLatestJournalDateReader,
-} from "../src/lib/operator/writes";
+} from "../apps/operator/src/lib/operator/writes";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

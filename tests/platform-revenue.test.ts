@@ -195,8 +195,8 @@ describe("angka pendapatan BENAR-BENAR tampil di konsol", () => {
   const baca = (...bagian: string[]) =>
     readFileSync(join(__dirname, "..", ...bagian), "utf8");
 
-  const halaman = baca("src", "app", "(app)", "(operator)", "operator", "page.tsx");
-  const store = baca("src", "lib", "operator", "store.ts");
+  const halaman = baca("apps", "operator", "src", "app", "(operator)", "operator", "page.tsx");
+  const store = baca("apps", "operator", "src", "lib", "operator", "store.ts");
 
   it("halaman ringkasan merender seksi pendapatan beserta keempat angkanya", () => {
     expect(halaman).toContain("operator.overview.revenueHeading");

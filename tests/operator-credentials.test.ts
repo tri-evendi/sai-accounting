@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { hash } from "bcrypt";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { parseOperatorAccounts, verifyOperatorLogin } from "@/lib/operator/credentials";
-import { totpAt } from "@/lib/operator/totp";
+import { parseOperatorAccounts, verifyOperatorLogin } from "@op/lib/operator/credentials";
+import { totpAt } from "@op/lib/operator/totp";
 
 const TOTP_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 const NOW = new Date(1111111111 * 1000);
@@ -222,11 +222,11 @@ describe("saklar OPERATOR_MFA", () => {
 /* ────────────────────────────────────────────────────────────────────────── */
 describe("OPERATOR_MFA=off — formulirnya ikut, bukan hanya servernya", () => {
   const form = readFileSync(
-    join(process.cwd(), "src/app/(app)/(operator)/operator/login/login-form.tsx"),
+    join(process.cwd(), "apps/operator/src/app/(operator)/operator/login/login-form.tsx"),
     "utf8"
   );
   const page = readFileSync(
-    join(process.cwd(), "src/app/(app)/(operator)/operator/login/page.tsx"),
+    join(process.cwd(), "apps/operator/src/app/(operator)/operator/login/page.tsx"),
     "utf8"
   );
 

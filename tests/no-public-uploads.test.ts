@@ -31,7 +31,7 @@ async function sourceFiles(dir: string): Promise<string[]> {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === "generated" || entry.name === "node_modules") continue;
+      if (entry.name === "generated" || entry.name === "node_modules" || entry.name === ".next") continue;
       found.push(...(await sourceFiles(full)));
     } else if (/\.(ts|tsx|mjs)$/.test(entry.name)) {
       found.push(full);

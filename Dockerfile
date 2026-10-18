@@ -59,14 +59,18 @@ COPY packages/core/package.json packages/core/
 COPY packages/ui/package.json packages/ui/
 COPY packages/billing/package.json packages/billing/
 COPY packages/platform/package.json packages/platform/
+# Aplikasi tambahan (`apps/*`, monorepo Fase 3d) juga anggota workspace.
+COPY apps/operator/package.json apps/operator/
 # Deterministic install of the full dependency set (build needs devDeps).
 # --frozen-lockfile = padanan `npm ci`: menolak build bila bun.lock tidak cocok
 # dengan package.json, bukan diam-diam menyelesaikan ulang versinya.
 RUN bun install --frozen-lockfile
 
 
-# ─── Build ───────────────────────────────────────────────────
-FROM bunbase AS builder
+# ─── Build: sumber + ketiga klien Prisma, dipakai KEDUA aplikasi ────────────
+# (monorepo Fase 3d) `builder` (pelanggan) dan `builder-operator` (konsol)
+# berangkat dari tahap ini, jadi `prisma generate` berjalan sekali.
+FROM bunbase AS prepared
 ENV NODE_ENV=production
 # Placeholders so module-load code (e.g. src/lib/prisma.ts) doesn't throw while
 # Next collects page/route data at build time. No DB connection is made here,
@@ -110,8 +114,18 @@ COPY . .
 # saat build; keduanya hal yang berbeda dan mudah tertukar.
 RUN NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate \
     && NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate --config prisma.control.config.ts \
-    && NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate --config prisma.platform.config.ts \
-    && NODE_OPTIONS="--max-old-space-size=768" bun run build
+    && NODE_OPTIONS="--max-old-space-size=768" bunx prisma generate --config prisma.platform.config.ts
+
+# ─── Build aplikasi PELANGGAN ────────────────────────────────
+FROM prepared AS builder
+RUN NODE_OPTIONS="--max-old-space-size=768" bun run build
+
+# ─── Build KONSOL OPERATOR (`apps/operator`) ─────────────────
+# Aplikasi Next kedua. `outputFileTracingRoot` = akar repo, jadi keluaran
+# standalone-nya memuat `apps/operator/server.js` + `node_modules` + paket yang
+# tertelusur, dengan struktur direktori akar repo.
+FROM prepared AS builder-operator
+RUN NODE_OPTIONS="--max-old-space-size=768" bun run build:operator
 
 
 # ─── Migrator (dipakai service `migrate` di compose) ─────────
@@ -234,3 +248,30 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]
+
+
+# ─── Runtime KONSOL OPERATOR ─────────────────────────────────
+# Image sendiri sejak monorepo Fase 4: image pelanggan tidak lagi memuat konsol,
+# dan image ini tidak memuat satu pun halaman buku. Dibangun dari commit yang
+# SAMA dengan `runner` (lihat publish-image.yml).
+FROM base AS runner-operator
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1
+
+# `server.js` standalone ada di `apps/operator/` (akar penelusuran = akar repo)
+# dan ia `chdir` ke direktorinya sendiri saat mulai.
+COPY --from=builder-operator /app/apps/operator/.next/standalone ./
+COPY --from=builder-operator /app/apps/operator/.next/static ./apps/operator/.next/static
+
+# Volume jejak lama (`audit`) masih dipasang compose ke /app/data/audit.
+RUN mkdir -p ./data/audit && chown -R node:node /app
+
+USER node
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/operator/server.js"]

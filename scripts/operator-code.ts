@@ -29,7 +29,7 @@
  */
 import "dotenv/config";
 
-import { totpAt } from "../src/lib/operator/totp";
+import { totpAt } from "../apps/operator/src/lib/operator/totp";
 
 /** Panjang jendela TOTP, sama dengan yang dipakai `verifyOperatorLogin`. */
 const PERIOD = 30;

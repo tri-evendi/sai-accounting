@@ -8,7 +8,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@sai/core/control-db", () => ({ controlDb: {} }));
 vi.mock("@sai/platform/platform-db", () => ({ platformDb: {} }));
 
-import { upcomingRenewalsForOperator } from "@/lib/operator/store";
+import { upcomingRenewalsForOperator } from "@op/lib/operator/store";
 
 const NOW = new Date("2026-10-17T00:00:00Z");
 

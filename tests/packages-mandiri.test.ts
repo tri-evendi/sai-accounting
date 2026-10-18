@@ -131,5 +131,24 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
     );
     expect(paket.length).toBeGreaterThan(0);
     for (const d of paket) expect(deps, d).toContain(`COPY packages/${d}/package.json packages/${d}/`);
+    /* Aplikasi tambahan (`apps/*`, Fase 3d) juga anggota workspace di bun.lock. */
+    const apps = existsSync(join(AKAR, "apps"))
+      ? readdirSync(join(AKAR, "apps")).filter((d) => existsSync(join(AKAR, "apps", d, "package.json")))
+      : [];
+    for (const d of apps) expect(deps, d).toContain(`COPY apps/${d}/package.json apps/${d}/`);
+  });
+
+  it("setiap aplikasi di `apps/*` punya target runtime Dockerfile, target CI, dan layanan compose", () => {
+    /* Fase 4: aplikasi yang dibangun tapi tidak pernah diterbitkan atau
+       ditarik adalah aplikasi yang tidak pernah digelar — dan konsol yang
+       hilang dari image pelanggan tidak memberi galat di mana pun. */
+    const docker = readFileSync(join(AKAR, "Dockerfile"), "utf8");
+    const ci = readFileSync(join(AKAR, ".github", "workflows", "publish-image.yml"), "utf8");
+    const compose = readFileSync(join(AKAR, "docker-compose.yml"), "utf8");
+    expect(docker).toContain("FROM prepared AS builder-operator");
+    expect(docker).toContain("FROM base AS runner-operator");
+    expect(docker).toContain('CMD ["node", "apps/operator/server.js"]');
+    expect(ci).toMatch(/- target: runner-operator\s+suffix: "-operator"/);
+    expect(compose).toMatch(/app-operator:[\s\S]*?target: runner-operator[\s\S]*?image: \$\{SAI_IMAGE:-[^}]+\}-operator:\$\{SAI_TAG:-latest\}/);
   });
 });

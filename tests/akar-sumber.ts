@@ -9,23 +9,28 @@
  *
  * Jalur relatif yang dilaporkan:
  *   - berkas di `src/`        → relatif ke `src/` (`components/x.tsx`), seperti dulu;
- *   - berkas di `packages/…`  → relatif ke AKAR repo (`packages/ui/src/components/button.tsx`).
+ *   - berkas di `packages/…` / `apps/…` → relatif ke AKAR repo
+ *     (`packages/ui/src/components/button.tsx`, `apps/operator/src/lib/operator/guard.ts`).
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 export const AKAR_REPO = join(__dirname, "..");
 export const SRC = join(AKAR_REPO, "src");
 
-/** `src/` + `src/` setiap paket workspace yang punya direktori sumber. */
+/**
+ * `src/` + `src/` setiap paket workspace (`packages/*`) dan setiap aplikasi
+ * tambahan (`apps/*`, sejak monorepo Fase 3d: konsol operator).
+ */
 export function akarSumber(): string[] {
-  const paket = join(AKAR_REPO, "packages");
-  return [
-    SRC,
-    ...readdirSync(paket, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && existsSync(join(paket, d.name, "src")))
-      .map((d) => join(paket, d.name, "src")),
-  ];
+  const di = (induk: string) => {
+    const akar = join(AKAR_REPO, induk);
+    if (!existsSync(akar)) return [];
+    return readdirSync(akar, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && existsSync(join(akar, d.name, "src")))
+      .map((d) => join(akar, d.name, "src"));
+  };
+  return [SRC, ...di("packages"), ...di("apps")];
 }
 
 export function relSumber(jalur: string): string {
@@ -42,6 +47,14 @@ export function relSumber(jalur: string): string {
  */
 let PETA_EKSPOR: Map<string, string> | null = null;
 export function uraiPaket(spec: string): string | null {
+  /* `@op/*` — alias internal konsol operator (apps/operator/tsconfig.json). */
+  if (spec.startsWith("@op/")) {
+    const dasar = join(AKAR_REPO, "apps", "operator", "src", spec.slice(4));
+    for (const k of [dasar, `${dasar}.ts`, `${dasar}.tsx`, join(dasar, "index.ts"), join(dasar, "index.tsx")]) {
+      if (existsSync(k) && statSync(k).isFile()) return k;
+    }
+    return null;
+  }
   if (!spec.startsWith("@sai/")) return null;
   if (!PETA_EKSPOR) {
     PETA_EKSPOR = new Map();

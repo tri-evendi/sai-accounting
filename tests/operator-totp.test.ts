@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { decodeBase32, totpAt, verifyTotp } from "@/lib/operator/totp";
+import { decodeBase32, totpAt, verifyTotp } from "@op/lib/operator/totp";
 
 const RFC_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 

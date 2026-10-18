@@ -391,9 +391,12 @@ describe("cakupan penjaga halaman tenant (issue #135)", () => {
 });
 
 describe("cakupan penjaga bidang operator (issue #154)", () => {
+  /* Sejak monorepo Fase 3d konsolnya aplikasi Next tersendiri. Grup yang
+     HILANG kini merah (asersi pertama), bukan dilewati. */
+  const OPERATOR_APP_DIR = join(__dirname, "..", "apps", "operator", "src", "app");
   const pages = OPERATOR_PAGE_GROUPS.flatMap((group) =>
-    existsSync(join(APP_DIR, group)) ? filesNamed(join(APP_DIR, group), "page.tsx") : []
-  ).map((f) => relative(APP_DIR, f).split(sep).join("/"));
+    existsSync(join(OPERATOR_APP_DIR, group)) ? filesNamed(join(OPERATOR_APP_DIR, group), "page.tsx") : []
+  ).map((f) => relative(OPERATOR_APP_DIR, f).split(sep).join("/"));
 
   it("grup (operator) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
     expect(pages.length).toBeGreaterThan(0);
@@ -403,7 +406,7 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
   it("setiap halaman operator memakai requireOperatorPage — BUKAN penjaga pelanggan", () => {
     for (const rel of pages) {
       if (OPERATOR_PAGE_EXCEPTIONS.has(rel)) continue;
-      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      const src = readFileSync(join(OPERATOR_APP_DIR, rel), "utf8");
       expect(src, `${rel} tanpa requireOperatorPage`).toContain("requireOperatorPage(");
       // Penjaga pelanggan/tenant di bidang operator akan menyeret matriks izin
       // pelanggan ke bidang yang sengaja hidup di luarnya.
@@ -416,7 +419,7 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
 
   it("halaman masuk operator menjaga dirinya sendiri lewat pemeriksaan bidang", () => {
     for (const rel of OPERATOR_PAGE_EXCEPTIONS) {
-      const src = readFileSync(join(APP_DIR, rel), "utf8");
+      const src = readFileSync(join(OPERATOR_APP_DIR, rel), "utf8");
       expect(src, `${rel} tanpa operatorPlaneViolation`).toContain("operatorPlaneViolation(");
     }
   });
@@ -427,7 +430,7 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
     // action. Sejak 17 Okt 2026 satu bentuk route dibolehkan: UNDUHAN berkas
     // (e-Faktur platform), yang memang tidak bisa dilayani server action. Ia
     // wajib `requireOperatorRoute("<izin>")` dan hanya mengekspor GET.
-    const group = join(APP_DIR, "(operator)");
+    const group = join(OPERATOR_APP_DIR, "(operator)");
     const routes = existsSync(group) ? filesNamed(group, "route.ts") : [];
     for (const f of routes) {
       const src = readFileSync(f, "utf8");
@@ -435,6 +438,17 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
       expect(src, `${f} mengekspor selain GET`).not.toMatch(/export async function (POST|PUT|PATCH|DELETE)\b/);
     }
     expect(routes.length).toBeLessThanOrEqual(1);
+  });
+
+  it("API aplikasi operator hanya probe `/api/health` — tanpa sesi, tanpa data", () => {
+    /* Permukaan API baru di konsol tidak tercakup penjaga mana pun di atas
+       (yang memeriksa halaman & route di bawah `(operator)`). Probe health
+       sengaja publik dan hanya memulangkan status keterjangkauan. */
+    const api = join(OPERATOR_APP_DIR, "api");
+    const routes = existsSync(api) ? filesNamed(api, "route.ts").map((f) => relative(api, f).split(sep).join("/")) : [];
+    expect(routes).toEqual(["health/route.ts"]);
+    const src = readFileSync(join(api, "health", "route.ts"), "utf8");
+    expect(src).not.toMatch(/export async function (POST|PUT|PATCH|DELETE)\b/);
   });
 });
 
@@ -864,7 +878,7 @@ describe("kegagalan memuat daftar tidak boleh terbaca sebagai daftar kosong", ()
     // Modul penjelasnya sendiri MENGUTIP pola itu di komentar kepala.
     .filter((rel) => rel !== "lib/option-list.ts")
     .filter((rel) => {
-      const source = readFileSync(rel.startsWith("packages/") ? join(SRC_DIR, "..", rel) : join(SRC_DIR, rel), "utf8");
+      const source = readFileSync(/^(packages|apps)\//.test(rel) ? join(SRC_DIR, "..", rel) : join(SRC_DIR, rel), "utf8");
       return OK_TERNARY_TO_EMPTY.test(source) || CATCH_TO_EMPTY.test(source);
     });
 

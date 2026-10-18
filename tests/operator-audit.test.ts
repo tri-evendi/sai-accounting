@@ -43,9 +43,9 @@ vi.mock("@sai/core/control-db", () => ({
   },
 }));
 
-import { readOperatorAuditPage, writeOperatorAuditLog } from "@/lib/operator/audit";
-import { operatorAuditRowFromLegacy } from "@/lib/operator/audit-legacy";
-import { TENANT_AUDIT_GROUPS } from "@/lib/operator/audit-groups";
+import { readOperatorAuditPage, writeOperatorAuditLog } from "@op/lib/operator/audit";
+import { operatorAuditRowFromLegacy } from "@op/lib/operator/audit-legacy";
+import { TENANT_AUDIT_GROUPS } from "@op/lib/operator/audit-groups";
 import { readTenantAuditFeed } from "@sai/platform/tenant-audit";
 
 beforeEach(() => {
@@ -122,7 +122,7 @@ describe("jejak operator di tabel, bukan di berkas", () => {
   it("modulnya tidak lagi menyentuh sistem berkas", () => {
     /* Kembalinya `appendFile` berarti jejak kembali terikat pada satu volume —
        persis yang menghalangi pemisahan `apps/operator` (dok 14 §5). */
-    const isi = readFileSync(join(process.cwd(), "src/lib/operator/audit.ts"), "utf8");
+    const isi = readFileSync(join(process.cwd(), "apps/operator/src/lib/operator/audit.ts"), "utf8");
     expect(isi).not.toMatch(/from\s+["']node:fs/);
     expect(isi).toMatch(/platformDb\.operatorAuditLog/);
   });

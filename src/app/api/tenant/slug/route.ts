@@ -19,13 +19,13 @@
 
 import { NextResponse } from "next/server";
 
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { tenantSlugSchema } from "@/lib/validations/tenant";
-import { renameTenantSlug, type PenolakanSlug } from "@/lib/tenant-slug";
+import { renameTenantSlug, type PenolakanSlug } from "@sai/platform/tenant-slug";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { invalidateTenantState } from "@/lib/tenant-state";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { invalidateTenantState } from "@sai/platform/tenant-state";
 
 /** Penolakan → kunci kamus. Peta eksplisit: kunci rakitan tidak diperiksa `tsc`. */
 const PESAN: Record<PenolakanSlug | "tidak-ada", Parameters<Awaited<ReturnType<typeof getRequestI18n>>["t"]>[0]> = {

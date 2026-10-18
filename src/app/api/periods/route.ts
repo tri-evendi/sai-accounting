@@ -3,7 +3,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { closePeriod, getPeriodSummary, listPeriods } from "@/lib/period-close";
 import { periodCloseSchema } from "@/lib/validations/period";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 /** Months the Manager can act on, newest first. */

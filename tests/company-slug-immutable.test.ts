@@ -23,6 +23,7 @@
  * perusahaan lahir — itu bukan perubahan, itu kelahirannya.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
@@ -92,7 +93,7 @@ const SLUG_PROPERTY = /\bslug\b\s*[:,}]/;
 const RAW_SQL_UPDATE = /UPDATE\s+`?companies`?[\s\S]{0,300}?\bset\b[\s\S]{0,200}?\bslug\b\s*=/gi;
 
 describe("slug perusahaan permanen (#161)", () => {
-  const files = [...sourceFiles(SRC_DIR), ...sourceFiles(SCRIPTS_DIR)];
+  const files = [...akarSumber().flatMap((d) => sourceFiles(d)), ...sourceFiles(SCRIPTS_DIR)];
 
   it("menemukan berkas sumber untuk diperiksa", () => {
     // Penjaga bagi penjaga: kalau penelusurannya kosong, dua tes di bawah lulus

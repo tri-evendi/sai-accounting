@@ -36,7 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { Input } from "@sai/ui/input";
 import { Label } from "@sai/ui/label";
 import { Textarea } from "@sai/ui/textarea";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { DataTable } from "@sai/ui/data-table";
 import { StaticTable } from "@sai/ui/static-table";
 import { textColumn, type SaiColumns } from "@sai/ui/table-columns";

@@ -17,7 +17,7 @@
 ## 1. Katalog yang dijual
 
 Semua harga **IDR per bulan, belum termasuk PPN 11%** (PPN tampil sebagai baris
-tersendiri di tagihan — `lib/tax.ts` `DEFAULT_TAX_RATE`, sakelar
+tersendiri di tagihan — `packages/core/src/tax.ts` `DEFAULT_TAX_RATE`, sakelar
 `PLATFORM_PPN_DISABLED`). Tahunan = **10 bulan** (dua bulan gratis) di semua
 paket berbayar.
 
@@ -111,11 +111,11 @@ sebelum dipakai di materi penjualan):
 
 | Aturan                     | Nilai                                | Sumber                                       |
 | -------------------------- | ------------------------------------ | -------------------------------------------- |
-| Uji coba                   | 14 hari, **paket Pro** (`trialing`)  | `lib/registration.ts` `TRIAL_DAYS`, `SIGNUP_PLAN_KEY` |
+| Uji coba                   | 14 hari, **paket Pro** (`trialing`)  | `packages/core/src/registration.ts` `TRIAL_DAYS`, `SIGNUP_PLAN_KEY` |
 | Sesudah uji coba           | tagihan pertama = harga Pro; boleh turun ke Starter bila ≤1 PT & ≤3 pengguna | `plan-change.ts` (turun paket ditolak bila melampaui kuota) |
 | Naik paket                 | prorata sisa periode, berpindah setelah LUNAS | `plan-change.ts`, `payment-webhook.ts` |
 | Menunggak → ditangguhkan   | tenggang 14 hari; ditangguhkan = hanya-baca, ekspor tetap jalan | `subscription-lifecycle.ts` `GRACE_PERIOD_DAYS` |
-| PPN                        | 11% di atas DPP, baris terpisah      | `lib/tax.ts`; FAQ `faqTaxA`                  |
+| PPN                        | 11% di atas DPP, baris terpisah      | `packages/core/src/tax.ts`; FAQ `faqTaxA`                  |
 | Snapshot                   | harga & kuota langganan berjalan disalin (`subscriptions.price`, `tenants.max_*`) — perubahan katalog TIDAK menyentuhnya | `schema.prisma` komentar `Plan` |
 | Pembayaran                 | Midtrans VA/QRIS atau transfer manual | `payment-gateway.ts`                        |
 

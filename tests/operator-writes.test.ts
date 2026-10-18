@@ -64,7 +64,7 @@ vi.mock("@sai/core/control-db", () => ({
   },
 }));
 
-import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";
+import { changeTenantPlan } from "@sai/platform/billing/change-tenant-plan";
 import {
   executeTenantDeletion,
   activateQuoteEntitlement,
@@ -78,9 +78,9 @@ import {
   platformInvoiceIsRevenue,
 } from "@sai/billing/platform-constants";
 import { paymentRailConfigured } from "@sai/billing/payment-gateway";
-import { readTenantAuditLogs } from "@/lib/tenant-audit";
-import { readOnlyRefusal } from "@/lib/subscription-lifecycle";
-import { invalidateTenantState, tenantStateForCompany } from "@/lib/tenant-state";
+import { readTenantAuditLogs } from "@sai/platform/tenant-audit";
+import { readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
+import { invalidateTenantState, tenantStateForCompany } from "@sai/platform/tenant-state";
 
 type Deps = Parameters<typeof recordManualPayment>[0];
 

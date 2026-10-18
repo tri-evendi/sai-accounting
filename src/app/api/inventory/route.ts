@@ -9,7 +9,7 @@ import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
 import { round2 } from "@/lib/posting/rules";
 import { BASE_CURRENCY } from "@/lib/validations/fx";
 import { handlePostingError } from "@/lib/api-errors";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { PROCESS_SHRINKAGE_NOTE } from "@sai/core/constants";
 

@@ -16,4 +16,4 @@ export {
   type MailAttachment,
   type MailMessage,
   type MailResult,
-} from "@/lib/mailer-core";
+} from "@sai/platform/mailer-core";

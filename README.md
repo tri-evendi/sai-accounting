@@ -2,7 +2,7 @@
 
 Bookkeeping and accounting system for businesses in Indonesia — double-entry journals and general ledger, receivables and payables, IDR plus foreign currencies, and the operational documents around them (contracts, invoices, delivery orders, inventory). One installation can hold several companies, each with genuinely separate books.
 
-> The first installation was **PT Subur Anugerah Indonesia**; that name survives only as the fallback in `src/lib/constants.ts` and must never be printed for another tenant — see `docs/MULTI-COMPANY.md` and `tests/company-identity.test.ts`.
+> The first installation was **PT Subur Anugerah Indonesia**; that name survives only as the fallback in `packages/core/src/constants.ts` and must never be printed for another tenant — see `docs/MULTI-COMPANY.md` and `tests/company-identity.test.ts`.
 
 ## Dokumentasi
 
@@ -64,7 +64,7 @@ bun run dev            # http://localhost:3000
 > install`** lagi sebelum `bun run dev`. `node_modules` yang lebih tua dari
 > `package.json` gagal DIAM-DIAM sampai halamannya disentuh — contoh nyata:
 > tanpa `nodemailer`, Turbopack tetap me-resolve `import("nodemailer")` di
-> `src/lib/mailer-core.ts` walau transport `file` tidak pernah memakainya,
+> `packages/platform/src/mailer-core.ts` walau transport `file` tidak pernah memakainya,
 > dan `/api/auth/register` menjawab 500. (`scripts/check-env.mjs` memeriksa
 > ini pada start produksi.)
 

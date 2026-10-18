@@ -21,7 +21,7 @@ import {
   SCHEDULER_STALE_MINUTES,
   type AttentionInput,
 } from "@/lib/operator/attention";
-import { SCHEDULER_STALE_AFTER_MINUTES } from "@/lib/scheduler-heartbeat";
+import { SCHEDULER_STALE_AFTER_MINUTES } from "@sai/core/scheduler-heartbeat";
 
 const SEKARANG = new Date("2026-10-11T08:00:00.000Z");
 
@@ -211,6 +211,6 @@ describe("kamus & ambang", () => {
        ambangnya, konsol ikut berubah tanpa ada yang harus ingat. */
     expect(SCHEDULER_STALE_MINUTES).toBe(SCHEDULER_STALE_AFTER_MINUTES);
     const src = readFileSync(join(__dirname, "..", "src/lib/operator/attention.ts"), "utf8");
-    expect(src).toContain('from "@/lib/scheduler-heartbeat"');
+    expect(src).toContain('from "@sai/core/scheduler-heartbeat"');
   });
 });

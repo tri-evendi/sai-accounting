@@ -69,7 +69,7 @@ vi.mock("@/lib/posting/mapping", async (importOriginal) => ({
 }));
 
 vi.mock("@/lib/audit", () => ({ writeAuditLog: vi.fn() }));
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getRequestI18n: async () => ({ dictionary: null, t: (key: string) => key }),
 }));
 

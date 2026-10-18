@@ -69,7 +69,7 @@ import {
   docsPath,
   type DocBranch,
 } from "@/lib/docs";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**

@@ -19,7 +19,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { assertStatementUnlocked, ReconciliationLockedError } from "@/lib/reconciliation";
 import { parseStatementCsv } from "@/lib/import/bank-statement";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translate } from "@sai/core/i18n/dictionary";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {

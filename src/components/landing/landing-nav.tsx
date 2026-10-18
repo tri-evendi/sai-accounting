@@ -60,7 +60,7 @@ import { BrandLockup } from "@sai/ui/brand-lockup";
 import { ButtonLink } from "@sai/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { APP_NAME } from "@sai/core/constants";
-import { getLocale, getT } from "@/lib/i18n/server";
+import { getLocale, getT } from "@sai/platform/i18n/server";
 
 /**
  * Tautan seksi: warna sekunder, penuh + bergaris saat hover (aturan hover ada

@@ -28,7 +28,7 @@
  * Murni, nol IO — alasan yang sama dengan `backup-watchdog.ts`.
  */
 import type { WatchdogDecision } from "@/lib/backup-watchdog";
-import type { SchedulerHealthStatus } from "@/lib/scheduler-heartbeat";
+import type { SchedulerHealthStatus } from "@sai/core/scheduler-heartbeat";
 import type { ConformanceHealthStatus } from "@/lib/conformance-heartbeat";
 
 const DIAM: WatchdogDecision = { alert: false, subject: "", body: "", fingerprint: "" };

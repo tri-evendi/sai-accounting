@@ -8,12 +8,12 @@
 import { ConsoleNotice, ConsolePanel, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { StatusNoticesPanel } from "@/components/operator/status-notices-panel";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
-import { platformDb } from "@/lib/platform-db";
-import { readStatusNoticeRecords } from "@/lib/status-notices-store";
-import { visibleOnStatusPage, type PublicStatusNotice } from "@/lib/status-notices";
+import { platformDb } from "@sai/platform/platform-db";
+import { readStatusNoticeRecords } from "@sai/platform/status-notices-store";
+import { visibleOnStatusPage, type PublicStatusNotice } from "@sai/core/status-notices";
 
 import { operatorCreateStatusNotice, operatorSetStatusNoticePhase } from "./actions";
 

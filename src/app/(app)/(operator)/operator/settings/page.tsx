@@ -34,7 +34,7 @@
 import { ConsoleNotice, ConsolePanel } from "@/components/operator/console-ui";
 import { PageHeader } from "@sai/ui/page-header";
 import { SiteSettingsForm } from "@/components/operator/site-settings-form";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import {
@@ -42,7 +42,7 @@ import {
   ppnEnabledFrom,
   signupOpenFrom,
   siteSettingsForOperator,
-} from "@/lib/site-settings";
+} from "@sai/platform/site-settings";
 import {
   operatorResetSiteSettings,
   operatorSaveSiteSettings,

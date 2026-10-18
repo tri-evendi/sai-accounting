@@ -35,21 +35,21 @@ import "server-only";
 
 import { unstable_cache, updateTag } from "next/cache";
 
-import { contactChannels, type ContactChannels } from "@/lib/contact-channels";
-import { platformDb } from "@/lib/platform-db";
+import { contactChannels, type ContactChannels } from "@sai/core/contact-channels";
+import { platformDb } from "@sai/platform/platform-db";
 import {
   effectiveSetting,
   ppnEnabledFrom,
   readSiteSettingsRow,
   signupOpenFrom,
   type SiteSettingsRow,
-} from "@/lib/site-settings-core";
+} from "@sai/core/site-settings-core";
 
 /* Di-ekspor ulang supaya pemanggil lama tidak perlu tahu pemecahannya; INTI-nya
  * hidup di `site-settings-core.ts` sebab penjadwal (`tsx`, di luar Next) juga
  * membacanya dan tidak bisa memuat modul ber-`server-only`. */
-export { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@/lib/site-settings-core";
-export type { SiteSettingsRow } from "@/lib/site-settings-core";
+export { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@sai/core/site-settings-core";
+export type { SiteSettingsRow } from "@sai/core/site-settings-core";
 
 /** Tag revalidasi — satu untuk barisnya; penulisnya memanggil ini. */
 export const SITE_SETTINGS_TAG = "site-settings";

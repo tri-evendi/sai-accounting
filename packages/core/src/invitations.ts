@@ -32,7 +32,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 
-import { usernameFromEmail } from "@/lib/registration";
+import { usernameFromEmail } from "@sai/core/registration";
 
 /** Umur undangan: 7 hari. */
 export const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;

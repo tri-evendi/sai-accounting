@@ -26,9 +26,9 @@ import { ConsolePanel } from "@/components/operator/console-ui";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { tenantIdForAnySlug, tenantIdsBySlug } from "@/lib/operator/store";
-import { readTenantAuditFeed } from "@/lib/tenant-audit";
+import { readTenantAuditFeed } from "@sai/platform/tenant-audit";
 import { TENANT_AUDIT_GROUPS } from "@/lib/operator/audit-groups";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

@@ -33,7 +33,7 @@ import { StaticTable } from "@sai/ui/static-table";
 import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
 import { ENDPOINTS } from "@/lib/api-v1-spec";
 import { V1_ROOT } from "@/lib/api-v1";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 interface Baris {
   segment: string;

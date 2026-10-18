@@ -45,7 +45,7 @@ import { Select } from "@sai/ui/select";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { EmptyState } from "@sai/ui/empty-state";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";

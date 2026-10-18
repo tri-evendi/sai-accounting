@@ -84,7 +84,7 @@ vi.mock("@/lib/company-registry", () => ({ membershipFor }));
 vi.mock("@/lib/auth", () => ({ auth: authFn }));
 vi.mock("next/headers", () => ({ headers: headersFn }));
 vi.mock("@/lib/company-clients", () => ({ getCompanyClient }));
-vi.mock("@/lib/tenant-state", () => ({ tenantStateForCompany }));
+vi.mock("@sai/platform/tenant-state", () => ({ tenantStateForCompany }));
 
 import { runWithoutCompany } from "@/lib/company-context";
 import { invalidateTenantRoute } from "@/lib/company-route";

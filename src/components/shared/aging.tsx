@@ -44,7 +44,7 @@ import { Table, TableBody, TableCell, TableRow } from "@sai/ui/table";
 import { Money, MoneyCell } from "@sai/ui/money";
 import { CheckCircleOutlined, ClockCircleOutlined, MinusCircleOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { AGING_BUCKETS, type AgingBucket, type PaymentStatus } from "@/lib/receivables";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 /* `ChartCard` server, `AgingChart` client — batas RSC-nya sama persis dengan
    pemakaian grafik lain (beranda, /inventory, /reports/cash-flow), jadi berkas

@@ -15,7 +15,7 @@
  * harus melihat tombol unduh SEBELUM tombol hapus — itulah urutan di halaman
  * ini, dan alasan kenapa ekspor tetap hidup walau langganan ditangguhkan.
  */
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { PageHeader } from "@sai/ui/page-header";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";

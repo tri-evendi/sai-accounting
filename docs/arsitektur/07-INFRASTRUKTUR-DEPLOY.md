@@ -432,7 +432,7 @@ tetap belum dipastikan.
 | Mekanisme | Isi |
 |---|---|
 | `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), **`conformance`** (+umur, jumlah temuan), `mail`. **503 hanya bila kendali tak terjangkau** |
-| `GET /status` | Versi untuk manusia — komponen dengan **empat keadaan** (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`lib/public-status.ts`) |
+| `GET /status` | Versi untuk manusia — komponen dengan **empat keadaan** (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`packages/core/src/public-status.ts`) |
 | Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `db` tiap 10s |
 | Healthcheck Traefik | `/api/health` tiap 30s |
 | `scheduler_runs` | 1.251 baris — status per putaran; **dipangkas** > 90 hari (baris `error`, terakhir, & `ok` terakhir ditahan selamanya) |
@@ -448,7 +448,7 @@ tetap belum dipastikan.
 
 🔶 **Satu ketidakcocokan kecil komentar-vs-kode.** `src/proxy.ts` baris 60
 menyebut `/status` "dipersempit menjadi **tiga** keadaan", sementara
-`lib/public-status.ts` mendefinisikan `ComponentState` dengan **empat** nilai
+`packages/core/src/public-status.ts` mendefinisikan `ComponentState` dengan **empat** nilai
 (`operational` · `degraded` · `down` · `unknown`) dan memakainya juga untuk
 `overall`. Yang berjumlah tiga adalah `MaintenanceState`
 (`none` · `upcoming` · `active`). Komentarnya kemungkinan tertinggal dari versi

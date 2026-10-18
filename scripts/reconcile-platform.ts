@@ -33,7 +33,7 @@ import "dotenv/config";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
-import { runReconciliation } from "../src/lib/platform-reconciliation";
+import { runReconciliation } from "@sai/platform/platform-reconciliation";
 
 function clientFor<T>(
   Ctor: new (args: { adapter: AdapterBasisData }) => T,

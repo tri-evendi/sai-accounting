@@ -62,7 +62,7 @@ import {
 } from "@ant-design/icons";
 
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import {
   Form,
   FormControl,

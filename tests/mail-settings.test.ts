@@ -23,7 +23,7 @@ import {
   encryptionKeyAvailable,
   openSecret,
   sealSecret,
-} from "@/lib/settings-crypto";
+} from "@sai/core/settings-crypto";
 import {
   invalidateMailSettingsCache,
   mailSettingsView,
@@ -33,8 +33,8 @@ import {
   storedMailPassword,
   type MailSettingsClient,
   type MailSettingsRow,
-} from "@/lib/mail-settings";
-import { resolveMailConfig, sendMail } from "@/lib/mailer-core";
+} from "@sai/platform/mail-settings";
+import { resolveMailConfig, sendMail } from "@sai/platform/mailer-core";
 
 /** Kunci uji — 64 karakter heksadesimal, seperti `openssl rand -hex 32`. */
 const KEY_A = "a".repeat(64);

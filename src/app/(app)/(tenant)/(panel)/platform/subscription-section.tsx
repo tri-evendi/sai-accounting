@@ -55,11 +55,11 @@ import {
   isReadOnlyTenantStatus,
   platformInvoiceAmounts,
   trialCountdown,
-} from "@/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
 import { offersInstantPayment } from "@sai/billing/payment-gateway";
-import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@/lib/site-settings";
-import { getT } from "@/lib/i18n/server";
+import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@sai/platform/site-settings";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 import { BillingProfileForm, PayInvoice } from "./billing-actions";

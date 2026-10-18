@@ -24,8 +24,8 @@ import {
   webhookServerKey,
   type MidtransNotification,
 } from "@sai/billing/payment-gateway";
-import { platformInvoiceAmounts, transition } from "@/lib/subscription-lifecycle";
-import { computeTax, DEFAULT_TAX_RATE } from "@/lib/tax";
+import { platformInvoiceAmounts, transition } from "@sai/billing/subscription-lifecycle";
+import { computeTax, DEFAULT_TAX_RATE } from "@sai/core/tax";
 
 const notification = (over: Partial<MidtransNotification> = {}): MidtransNotification => ({
   order_id: "PINV-S1-20260801",
@@ -195,7 +195,7 @@ describe("PPN tagihan platform — lewat lib/tax.ts, tarif tidak diketik ulang",
 
   it("modul lifecycle tidak mengetik ulang tarif — 11 tidak muncul sebagai angka pajak", () => {
     const src = readFileSync(
-      join(__dirname, "..", "src", "lib", "subscription-lifecycle.ts"),
+      join(__dirname, "..", "packages", "billing", "src", "subscription-lifecycle.ts"),
       "utf8"
     );
     expect(src).toContain("DEFAULT_TAX_RATE"); // tarif dari lib/tax.ts …

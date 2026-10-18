@@ -26,7 +26,7 @@ import { useState } from "react";
 import { Flex, Typography, theme } from "antd";
 
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { useT } from "@sai/core/i18n/client";
 import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 

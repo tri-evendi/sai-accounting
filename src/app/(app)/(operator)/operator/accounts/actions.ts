@@ -16,7 +16,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { controlDb } from "@sai/core/control-db";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { parseOperatorAccounts } from "@/lib/operator/credentials";
 import { requireOperatorActionSession } from "@/lib/operator/guard";

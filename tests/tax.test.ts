@@ -17,7 +17,7 @@ import {
   computeTax,
   resolveInvoiceTax,
   defaultInvoiceTax,
-} from "@/lib/tax";
+} from "@sai/core/tax";
 import { invoiceSchema } from "@/lib/validations/invoice";
 import { customerSchema } from "@/lib/validations/finance";
 import {

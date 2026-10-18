@@ -26,7 +26,7 @@ import { Alert, Flex, Typography, theme } from "antd";
 import { Button } from "@sai/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { Checkbox } from "@sai/ui/checkbox";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { Input } from "@sai/ui/input";
 import { StaticTable } from "@sai/ui/static-table";
 import { useToast } from "@sai/ui/toast";

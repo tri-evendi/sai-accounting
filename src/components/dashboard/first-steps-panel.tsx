@@ -39,7 +39,7 @@ import {
   TruckOutlined,
 } from "@ant-design/icons";
 
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { IconComponent } from "@sai/ui/icons";
 import type { FirstStep, FirstStepProgress } from "@/lib/first-steps";
 

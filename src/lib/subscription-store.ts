@@ -18,12 +18,12 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
-import { recordSubscriptionEvent } from "@/lib/subscription-events";
+import { platformDb } from "@sai/platform/platform-db";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 import {
   initialSubscriptionFromPlan,
   tenantStatusForSubscription,
-} from "@/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 
 export interface BillingOverview {
   tenant: {
@@ -78,7 +78,7 @@ export interface BillingOverview {
  * `registration-store.ts`. Dua literal yang harus sepakat akan berhenti
  * sepakat pada hari salah satunya diubah, dan akibatnya senyap: tenant lahir
  * menunjuk satu paket sementara langganannya lahir di paket lain. */
-import { SIGNUP_PLAN_KEY } from "@/lib/registration";
+import { SIGNUP_PLAN_KEY } from "@sai/core/registration";
 
 const TRIAL_PLAN_KEY = SIGNUP_PLAN_KEY;
 

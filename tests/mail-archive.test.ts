@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { archiveFor, type MailConfig, type MailMessage } from "@/lib/mailer-core";
+import { archiveFor, type MailConfig, type MailMessage } from "@sai/platform/mailer-core";
 
 const CONFIG: MailConfig = {
   transport: "smtp",
@@ -81,7 +81,7 @@ describe("BCC, bukan CC", () => {
   it("pemasangannya memakai bcc", () => {
     /* CC menampilkan alamat arsip kepada SETIAP pelanggan penerima, dan alamat
        yang sudah tersebar tidak bisa ditarik kembali. */
-    const source = readFileSync(join(process.cwd(), "src/lib/mailer-core.ts"), "utf8");
+    const source = readFileSync(join(process.cwd(), "packages/platform/src/mailer-core.ts"), "utf8");
     expect(source).toMatch(/\bbcc:/);
     expect(source).not.toMatch(/^\s*cc:/m);
   });
@@ -100,7 +100,7 @@ describe("isian alamat arsip di panel operator", () => {
     const lapisan = [
       "src/lib/validations/operator.ts",
       "src/app/(app)/(operator)/operator/mail/actions.ts",
-      "src/lib/mail-settings.ts",
+      "packages/platform/src/mail-settings.ts",
       "src/components/operator/mail-settings-form.tsx",
     ];
     for (const rel of lapisan) {

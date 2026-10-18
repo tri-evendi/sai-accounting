@@ -31,7 +31,7 @@ import type { Prisma } from "@sai/db/client/company";
 import { invoiceSubtotal, type InvoiceInput } from "@/lib/validations/invoice";
 import type { DeliveryOrderInput } from "@/lib/validations/delivery-order";
 import type { SupplierTransactionInput } from "@/lib/validations/finance";
-import { resolveInvoiceTax } from "@/lib/tax";
+import { resolveInvoiceTax } from "@sai/core/tax";
 import { fxAmounts } from "@/lib/validations/fx";
 import { toDateOrNull } from "@/lib/validations/common";
 import { postForSource } from "@/lib/posting";

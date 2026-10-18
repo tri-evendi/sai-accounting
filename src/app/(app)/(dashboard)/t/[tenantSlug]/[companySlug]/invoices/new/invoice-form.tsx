@@ -61,7 +61,7 @@ import {
   useCostCenters,
 } from "@/components/shared/cost-center-field";
 import { invoiceSubtotal } from "@/lib/validations/invoice";
-import { companyTaxRateOn, defaultInvoiceTax } from "@/lib/tax";
+import { companyTaxRateOn, defaultInvoiceTax } from "@sai/core/tax";
 import { useCompanyTaxProfile } from "@/lib/tax-profile-client";
 import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { resolveSubmitFailure } from "@/lib/form-sections";

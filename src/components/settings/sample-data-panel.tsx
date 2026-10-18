@@ -38,7 +38,7 @@ import { ExperimentOutlined } from "@ant-design/icons";
 
 import { Button } from "@sai/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { useToast } from "@sai/ui/toast";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";

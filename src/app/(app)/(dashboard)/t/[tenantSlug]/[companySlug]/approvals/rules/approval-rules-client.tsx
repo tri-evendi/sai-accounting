@@ -23,7 +23,7 @@ import { PlusOutlined, SafetyCertificateOutlined, StopOutlined } from "@ant-desi
 import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { Input } from "@sai/ui/input";
 import { Label } from "@sai/ui/label";
 import { Textarea } from "@sai/ui/textarea";

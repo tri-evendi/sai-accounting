@@ -18,7 +18,7 @@ import { Money } from "@sai/ui/money";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatNumber } from "@sai/core/utils";
 import { averageUnitCostForItem } from "@/lib/posting/cogs";
 import { biayaStandar, explodeBom, type BomInput } from "@/lib/manufacturing/bom";

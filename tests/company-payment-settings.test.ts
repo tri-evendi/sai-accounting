@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { sealSecret } from "@/lib/settings-crypto";
+import { sealSecret } from "@sai/core/settings-crypto";
 import {
   companyOffersInstantPayment,
   companyPaymentCredentials,

@@ -16,7 +16,7 @@ import { PageHeader } from "@sai/ui/page-header";
 import { EmptyState } from "@sai/ui/empty-state";
 import { ContainerOutlined } from "@ant-design/icons";
 import { OpnameForm } from "./opname-form";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

@@ -59,7 +59,7 @@ import Link from "next/link";
 import { ButtonLink } from "@sai/ui/button";
 import { Card, CardContent } from "@sai/ui/card";
 import { docsPath, type DocSlug } from "@/lib/docs";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 /** Sama dengan kartu fitur: 40px = target sentuh MASTER.md. */
 const ICON_BOX = 40;

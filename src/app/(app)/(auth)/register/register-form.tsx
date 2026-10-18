@@ -19,7 +19,7 @@ import { Input } from "@sai/ui/input";
 import { PasswordInput } from "@sai/ui/password-input";
 import { Checkbox } from "@sai/ui/checkbox";
 import { useT } from "@sai/core/i18n/client";
-import { tenantSlugFrom } from "@/lib/registration";
+import { tenantSlugFrom } from "@sai/core/registration";
 import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 const { Text } = Typography;

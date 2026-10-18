@@ -22,7 +22,7 @@
 
 import { createContext, useContext } from "react";
 
-import { DEFAULT_TAX_RATE, companyTaxRateOn, type CompanyTaxProfile } from "@/lib/tax";
+import { DEFAULT_TAX_RATE, companyTaxRateOn, type CompanyTaxProfile } from "@sai/core/tax";
 
 /**
  * Cadangan untuk pohon komponen tanpa provider — yaitu HANYA uji unit dan

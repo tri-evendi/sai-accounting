@@ -63,7 +63,7 @@ import {
   MODULE_META,
   type BusinessModule,
 } from "@/lib/business-modules";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 /**
  * Ikon per modul — supaya sepuluh baris bisa DIPINDAI, bukan dibaca berurutan.

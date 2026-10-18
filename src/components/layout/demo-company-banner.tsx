@@ -28,7 +28,7 @@
 import { ExperimentOutlined } from "@ant-design/icons";
 
 import { getCompany } from "@/lib/company-registry";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 const BANNER: React.CSSProperties = {
   display: "flex",

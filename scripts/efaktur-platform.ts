@@ -26,7 +26,7 @@ import { writeFileSync } from "node:fs";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
-import { platformEfaktur } from "../src/lib/billing/platform-efaktur";
+import { platformEfaktur } from "@sai/platform/billing/platform-efaktur";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

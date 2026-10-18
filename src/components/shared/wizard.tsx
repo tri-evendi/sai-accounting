@@ -42,7 +42,7 @@
 import { useState } from "react";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { WizardSteps } from "@sai/ui/wizard-steps";
 import { canJumpToStep, stepIndex, type WizardStepMeta } from "@/lib/wizard";
 import { useT } from "@sai/core/i18n/client";

@@ -36,7 +36,7 @@ import {
 } from "@sai/ui/alert-dialog";
 import { Button } from "@sai/ui/button";
 import { TextInput } from "@sai/ui/input";
-import { matchesConfirmPhrase } from "@/lib/form-guards";
+import { matchesConfirmPhrase } from "@sai/ui/confirm-phrase";
 import { useT } from "@sai/core/i18n/client";
 
 interface ConfirmDialogProps {

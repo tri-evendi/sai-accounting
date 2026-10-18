@@ -28,7 +28,7 @@ import {
   type PublicStatusNotice,
   type StatusNoticeKind,
   type StatusNoticePhase,
-} from "@/lib/status-notices";
+} from "@sai/core/status-notices";
 import { formatDateTime } from "@sai/core/utils";
 import type { StatusNoticeActionResult } from "@/app/(app)/(operator)/operator/status-notices/actions";
 

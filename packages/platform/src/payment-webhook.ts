@@ -36,9 +36,9 @@ import {
   tenantStatusForSubscription,
   transition,
   type SubscriptionEvent,
-} from "@/lib/subscription-lifecycle";
+} from "@sai/billing/subscription-lifecycle";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
-import { recordSubscriptionEvent } from "@/lib/subscription-events";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 
 export interface WebhookDeps {
   platform: PlatformClient;

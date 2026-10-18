@@ -10,7 +10,7 @@ const platformCalls: { op: string; args: unknown }[] = [];
 let platformRows: Record<string, unknown>[] = [];
 let platformCreateFails = false;
 
-vi.mock("@/lib/platform-db", () => ({
+vi.mock("@sai/platform/platform-db", () => ({
   platformDb: {
     operatorAuditLog: {
       create: async (args: { data: Record<string, unknown> }) => {
@@ -46,7 +46,7 @@ vi.mock("@sai/core/control-db", () => ({
 import { readOperatorAuditPage, writeOperatorAuditLog } from "@/lib/operator/audit";
 import { operatorAuditRowFromLegacy } from "@/lib/operator/audit-legacy";
 import { TENANT_AUDIT_GROUPS } from "@/lib/operator/audit-groups";
-import { readTenantAuditFeed } from "@/lib/tenant-audit";
+import { readTenantAuditFeed } from "@sai/platform/tenant-audit";
 
 beforeEach(() => {
   platformCalls.length = 0;
@@ -181,7 +181,7 @@ describe("jejak tenant lintas tenant", () => {
   it("setiap kelompok saringan mencocokkan minimal satu tindakan yang ADA", () => {
     /* Kelompok yang tidak cocok apa pun adalah opsi saringan yang selalu
        kosong — terbaca sebagai "tidak pernah terjadi". */
-    const sumber = readFileSync(join(process.cwd(), "src/lib/tenant-audit.ts"), "utf8");
+    const sumber = readFileSync(join(process.cwd(), "packages/platform/src/tenant-audit.ts"), "utf8");
     const union = sumber.slice(
       sumber.indexOf("export type TenantAuditAction"),
       sumber.indexOf("export interface TenantAuditEntry")

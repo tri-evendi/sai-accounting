@@ -60,7 +60,7 @@ import {
   SIGNUP_MAX_COMPANIES,
   SIGNUP_MAX_USERS,
   SIGNUP_PLAN_KEY,
-} from "../src/lib/registration";
+} from "@sai/core/registration";
 
 const DEFAULT_PLANS = [
   {

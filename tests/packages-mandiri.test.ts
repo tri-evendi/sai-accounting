@@ -88,6 +88,34 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
     }
   });
 
+  it("impor `@sai/*` sebuah paket tercantum di `dependencies` manifesnya, dan grafnya tanpa siklus", () => {
+    /* Diagram arah dependensi di dok 02 §7 bersandar pada ini. Manifes yang
+       tidak jujur tidak gagal di mana pun — bun menautkan seluruh workspace —
+       sampai sebuah paket kelak dibangun atau diterbitkan sendiri. */
+    const paket = readdirSync(join(AKAR, "packages")).filter((d) => existsSync(join(AKAR, "packages", d, "package.json")));
+    const graf = new Map<string, Set<string>>();
+    for (const d of paket) {
+      const manifes = JSON.parse(readFileSync(join(AKAR, "packages", d, "package.json"), "utf8")) as {
+        name: string;
+        dependencies?: Record<string, string>;
+      };
+      const dipakai = new Set<string>();
+      for (const f of berkas.filter((b) => b.startsWith(`packages/${d}/`))) {
+        for (const m of tanpaKomentar(readFileSync(join(AKAR, f), "utf8")).matchAll(IMPOR)) {
+          const nama = /^(@sai\/[a-z-]+)/.exec(m[1])?.[1];
+          if (nama && nama !== manifes.name) dipakai.add(nama);
+        }
+      }
+      for (const n of dipakai) expect(Object.keys(manifes.dependencies ?? {}), `${manifes.name} → ${n}`).toContain(n);
+      graf.set(manifes.name, dipakai);
+    }
+    const kunjung = (n: string, jejak: string[]): void => {
+      expect(jejak, `siklus: ${[...jejak, n].join(" → ")}`).not.toContain(n);
+      for (const m of graf.get(n) ?? []) kunjung(m, [...jejak, n]);
+    };
+    for (const n of graf.keys()) kunjung(n, []);
+  });
+
   it("Dockerfile menyalin manifes SETIAP paket sebelum `bun install --frozen-lockfile`", () => {
     /* Paket baru tanpa baris COPY di tahap `deps` tidak gagal di `verify`;
        ia gagal di build image CI sesudah merge ke main. */

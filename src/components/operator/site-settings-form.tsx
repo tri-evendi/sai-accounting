@@ -37,7 +37,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, theme } from "antd";
 
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import {
   Form,
   FormControl,

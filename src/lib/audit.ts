@@ -42,7 +42,7 @@
  * halaman Audit membaca dari tabel dan berkas lamanya belum terlihat: itulah
  * kenapa skripnya LANGKAH RILIS, bukan kebersihan yang bisa ditunda.
  */
-import { clientIpFrom } from "@/lib/client-ip";
+import { clientIpFrom } from "@sai/core/client-ip";
 import { prisma } from "@/lib/prisma";
 
 export type AuditAction =

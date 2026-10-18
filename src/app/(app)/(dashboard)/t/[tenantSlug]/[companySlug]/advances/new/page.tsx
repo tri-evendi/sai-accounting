@@ -3,7 +3,7 @@ import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@sai/ui/page-header";
 import { AdvanceForm } from "./advance-form";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined } from "@ant-design/icons";
 import { Badge } from "@sai/ui/badge";
 import type { VarianceStatus } from "@/lib/budget";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 /**
  * Over / under / on-target indicator for a budget or target row (issue #29).

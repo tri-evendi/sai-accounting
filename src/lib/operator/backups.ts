@@ -13,9 +13,9 @@ import "server-only";
 import { bukaBasisData } from "@sai/db/server";
 import { uraikanUrl } from "@sai/db/engine";
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
-import { MIGRATION_TERAKHIR, type JenisBasisData } from "@/lib/migration-manifest";
-import { vonisVersi, type RingkasanMigrasiDb, type StatusVersi } from "@/lib/schema-version";
+import { platformDb } from "@sai/platform/platform-db";
+import { MIGRATION_TERAKHIR, type JenisBasisData } from "@sai/core/migration-manifest";
+import { vonisVersi, type RingkasanMigrasiDb, type StatusVersi } from "@sai/core/schema-version";
 
 export interface OperatorBackupRun {
   id: number;

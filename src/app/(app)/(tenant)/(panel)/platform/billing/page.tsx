@@ -19,7 +19,7 @@ import { Button } from "@sai/ui/button";
 import { Card, CardContent, CardHeader } from "@sai/ui/card";
 import { PageHeader } from "@sai/ui/page-header";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 
 import { SubscriptionSection } from "../subscription-section";

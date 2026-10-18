@@ -56,7 +56,7 @@ import {
   type MailSettingsClient,
   type MailSettingsRow,
   type MailTransport,
-} from "@/lib/mail-settings";
+} from "@sai/platform/mail-settings";
 
 /**
  * Lampiran (issue #465) — dipakai jalur "kirim faktur ke pelanggan".

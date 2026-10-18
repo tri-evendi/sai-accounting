@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getAccountLedger } from "@/lib/ledger";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("ledger.read");

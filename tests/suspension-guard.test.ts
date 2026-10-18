@@ -199,7 +199,7 @@ vi.mock("next/navigation", () => ({
 import { requireApiPermission } from "@/lib/auth-guard";
 import { requirePagePermission } from "@/lib/page-auth";
 import { enterCompanyContext } from "@/lib/company-context";
-import { invalidateTenantState } from "@/lib/tenant-state";
+import { invalidateTenantState } from "@sai/platform/tenant-state";
 import {
   invalidateEffectiveMatrix,
   invalidateEnabledModules,

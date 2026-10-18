@@ -29,7 +29,7 @@ import {
   MAX_IMPORT_ROWS,
 } from "@/lib/coa-import";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function POST(request: Request, ctx: TenantApiContext) {
   const result = await requireApiPermission("account.manage", ctx.params);

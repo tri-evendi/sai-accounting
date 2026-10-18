@@ -14,8 +14,8 @@ import { NextResponse } from "next/server";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { buildTenantExport } from "@/lib/tenant-export";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function GET(request: Request) {
   const result = await requireTenantApiPermission("tenant.export");

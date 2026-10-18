@@ -35,7 +35,7 @@ import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { reportById, resolvePeriod } from "@/lib/report-catalog";
 import { formatDate } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

@@ -29,23 +29,23 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import { makeLatestJournalDateReader } from "@/lib/operator/writes";
 import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@/lib/operator/tenant-health";
 /* Inti rekonsiliasi tinggal di `src/lib/`, BUKAN di `scripts/`: mengimpor skrip
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
  * `next build` (ditemukan saat penggelaran #151). */
-import { runReconciliation, type ReconciliationReport } from "@/lib/platform-reconciliation";
+import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
 import {
   mailSettingsView,
   readMailSettings,
   type MailSettingsClient,
   type MailSettingsView,
   type MailTransport,
-} from "@/lib/mail-settings";
-import { resolveMailConfig, type MailConfigSource } from "@/lib/mailer-core";
-import { encryptionKeyAvailable } from "@/lib/settings-crypto";
-import { summarizeRevenue, type RevenueSummary } from "@/lib/platform-revenue";
+} from "@sai/platform/mail-settings";
+import { resolveMailConfig, type MailConfigSource } from "@sai/platform/mailer-core";
+import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
+import { summarizeRevenue, type RevenueSummary } from "@sai/billing/platform-revenue";
 
 export type { ReconciliationReport };
 export type { MailSettingsView };

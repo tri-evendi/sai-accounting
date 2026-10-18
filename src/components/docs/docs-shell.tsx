@@ -63,7 +63,7 @@ import { DocsSearchForm } from "@/components/docs/docs-search-form";
 import { DocsToc } from "@/components/docs/docs-toc";
 import { Link } from "@sai/ui/app-link";
 import { DOCS_ROOT } from "@/lib/docs";
-import { getLocale, getT } from "@/lib/i18n/server";
+import { getLocale, getT } from "@sai/platform/i18n/server";
 import { DEFAULT_LOCALE } from "@sai/core/i18n/config";
 
 /**

@@ -18,7 +18,7 @@ import {
   SLUG_TERLARANG,
   bolehGantiLagi,
   tolakGantiSlug,
-} from "@/lib/tenant-slug";
+} from "@sai/platform/tenant-slug";
 
 const ROOT = join(__dirname, "..");
 const baca = (p: string) => readFileSync(join(ROOT, p), "utf8");
@@ -86,7 +86,7 @@ describe("aturan ganti slug — keputusan murni", () => {
 });
 
 describe("penulisan & pemantulan", () => {
-  const lib = baca("src/lib/tenant-slug.ts");
+  const lib = baca("packages/platform/src/tenant-slug.ts");
   const route = baca("src/lib/company-route.ts");
 
   it("slug lama dicatat DAN slug baru dipasang dalam SATU transaksi", () => {

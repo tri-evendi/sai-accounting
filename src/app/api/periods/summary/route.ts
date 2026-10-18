@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getPeriodSummary } from "@/lib/period-close";
 import { periodQuerySchema } from "@/lib/validations/period";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 /** Pre-close inspection for one month: GET /api/periods/summary?year=2026&month=3 */

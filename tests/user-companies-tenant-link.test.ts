@@ -32,7 +32,7 @@ vi.mock("@/lib/company-registry", () => ({
   ],
 }));
 vi.mock("@/lib/company-request", () => ({ companyScopeFromRequest: async () => null }));
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getRequestI18n: async () => ({ t: (key: string) => key }),
 }));
 

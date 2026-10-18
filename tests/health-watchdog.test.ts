@@ -20,7 +20,7 @@ import {
   type ConformanceWatchdogInput,
 } from "@/lib/health-watchdog";
 import { decideBackupAlert } from "@/lib/backup-watchdog";
-import type { SchedulerHealthStatus } from "@/lib/scheduler-heartbeat";
+import type { SchedulerHealthStatus } from "@sai/core/scheduler-heartbeat";
 import type { ConformanceHealthStatus } from "@/lib/conformance-heartbeat";
 
 function sched(over: Partial<SchedulerWatchdogInput> = {}): SchedulerWatchdogInput {

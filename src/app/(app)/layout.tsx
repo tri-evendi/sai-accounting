@@ -28,7 +28,7 @@ import { APP_NAME } from "@sai/core/constants";
 import { RootDocument } from "@/components/providers/root-document";
 import { LocaleProvider } from "@sai/core/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
-import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { getTheme } from "@/lib/theme/server";
 import { StatusBanner } from "@/components/layout/status-banner";
 

@@ -61,7 +61,7 @@ import {
 import { MODULE_ICON } from "@/components/landing/landing-modules";
 import { Card, CardContent } from "@sai/ui/card";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 /** Sama dengan kartu manfaat & kepercayaan: 40px = target sentuh MASTER.md. */
 const ICON_BOX = 40;

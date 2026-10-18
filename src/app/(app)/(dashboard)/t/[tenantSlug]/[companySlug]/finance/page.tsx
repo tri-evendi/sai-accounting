@@ -32,7 +32,7 @@ import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
 import { CheckCircleOutlined, WalletOutlined } from "@ant-design/icons";
 import { EmptyState } from "@sai/ui/empty-state";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";

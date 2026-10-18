@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { Input } from "@sai/ui/input";
 import { Label } from "@sai/ui/label";
 import { Spinner } from "@sai/ui/loading";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";
 import { formatCurrency, formatDate } from "@sai/core/utils";

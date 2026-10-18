@@ -13,7 +13,7 @@ import { ConsoleNotice, ConsolePanel, CONSOLE_MUTED, CONSOLE_PAGE } from "@/comp
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { plansForOperatorCatalog, type OperatorCatalogPlan } from "@/lib/operator/store";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

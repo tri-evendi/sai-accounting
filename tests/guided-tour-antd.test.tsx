@@ -24,6 +24,7 @@
  *      satunya potongan pengelolaan fokus yang tidak diberikan AntD.
  */
 import { describe, expect, it, vi } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -82,7 +83,7 @@ function berkasSumber(dir: string): string[] {
 }
 
 describe("sasaran tur benar-benar ada di halaman", () => {
-  const sumber = berkasSumber(SRC_DIR).map((f) => readFileSync(f, "utf8"));
+  const sumber = akarSumber().flatMap((d) => berkasSumber(d)).map((f) => readFileSync(f, "utf8"));
 
   it("setiap `target` di lib/tours.ts punya atribut data-tour yang cocok", () => {
     const dicari = [...new Set(TOURS.flatMap((t) => t.steps.map((s) => s.target)))].filter(

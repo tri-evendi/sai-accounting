@@ -29,7 +29,7 @@ import {
 } from "@/lib/notifications";
 import { PageHeader } from "@sai/ui/page-header";
 import { EmptyState } from "@sai/ui/empty-state";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatDate } from "@sai/core/utils";
 import { NotificationList } from "./notification-list";
 

@@ -87,7 +87,7 @@ persis keluhan "terlalu kaku".
 "Integrasi & jalan keluar data" berbentuk **pita `brand` + daftar** (bentuk
 seksi modul), bukan kartu — bukan karena selera: tanpa pita itu halaman
 memajang TIGA kisi kartu bernada berturut-turut (untuk siapa → kepercayaan).
-Enam butirnya semuanya punya sumber (`lib/efaktur.ts`, `lib/reconciliation.ts`
+Enam butirnya semuanya punya sumber (`packages/core/src/efaktur.ts`, `lib/reconciliation.ts`
 + `lib/bank-statements.ts`, `lib/import/*` + `lib/coa-import.ts`,
 `app/api/v1/*` + `lib/api-token.ts`, `lib/tenant-export.ts` +
 `lib/report-export.ts`, `CURRENCIES`); yang tidak ada di kode (sinkron bank
@@ -661,7 +661,7 @@ membedakan halaman ini dari halaman kompetitor yang mengatakan hal serupa.
 
 Setiap klaim di kalimat pertama punya pelaksananya: penutupan periode
 (`/periods`, `form-guards.ts`), laporan (`lib/reports.ts` — neraca saldo, laba
-rugi, neraca, arus kas), PPN & e-Faktur (`lib/tax.ts`, modul `tax_id`), satu
+rugi, neraca, arus kas), PPN & e-Faktur (`packages/core/src/tax.ts`, modul `tax_id`), satu
 buku besar per PT (#104; modul tidak pernah menggerbangi buku besar —
 `business-modules.ts` aturan 1), naik paket mandiri (`packages/billing/src/plan-change.ts`).
 
@@ -1339,7 +1339,7 @@ angka lalu ditagih angka lain.
   pelanggan lama tapi tidak boleh ditawarkan lagi.
 - **Harga adalah DPP.** `platformInvoiceAmounts()` menambahkan PPN di atasnya,
   jadi catatan PPN **wajib** ada, mengikuti sakelar (`PLATFORM_PPN_DISABLED`)
-  dan tarif (`lib/tax.ts`) yang sama dengan yang menagih.
+  dan tarif (`packages/core/src/tax.ts`) yang sama dengan yang menagih.
 - **Nominal paket tidak dibesarkan ke skala hero.** Yang paling besar di
   halaman ini adalah kalimat yang menjelaskan produknya; halaman yang angkanya
   lebih besar dari janjinya menjual harga, bukan pekerjaan. (Sejak #413
@@ -1377,9 +1377,9 @@ angka lalu ditagih angka lain.
 Ia satu-satunya permukaan yang ditempel orang ke WhatsApp, LinkedIn, atau Slack
 — kanal yang menjadi jalur penjualan sebenarnya di Indonesia. Karena itu:
 
-- `generateMetadata` di `app/page.tsx`: judul, deskripsi (kalimat hero, bukan
+- `generateMetadata` di `app/(marketing)/page.tsx`: judul, deskripsi (kalimat hero, bukan
   kalimat pemasaran kedua), kanonik, `openGraph`, `twitter`;
-- `app/opengraph-image.tsx` — **dibangkitkan**, bukan PNG. Warnanya harfiah dan
+- `app/(marketing)/opengraph-image.tsx` — **dibangkitkan**, bukan PNG. Warnanya harfiah dan
   hidup di `packages/ui/src/theme/antd-tokens.ts` (`OG_*`) beserta rasio kontrasnya, sebab
   Satori tidak punya dokumen dan `var(--ant-…)` di sana tidak pernah teratasi;
 - `app/sitemap.ts` menurunkan pohonnya dari `DOC_INDEX`, tidak mengetiknya;

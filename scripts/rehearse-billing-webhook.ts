@@ -25,7 +25,7 @@ import {
   MOCK_SERVER_KEY,
   type MidtransNotification,
 } from "@sai/billing/payment-gateway";
-import { processPaymentNotification } from "../src/lib/payment-webhook";
+import { processPaymentNotification } from "@sai/platform/payment-webhook";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

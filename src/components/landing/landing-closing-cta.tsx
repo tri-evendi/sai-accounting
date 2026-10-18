@@ -47,10 +47,10 @@ import {
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
 import { ButtonLink } from "@sai/ui/button";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
-import { TRIAL_DAYS } from "@/lib/registration";
-import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
+import { TRIAL_DAYS } from "@sai/core/registration";
+import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
 
 export async function LandingClosingCta() {
   const t = await getT();

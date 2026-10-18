@@ -12,7 +12,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
 import { tenantCan } from "@/lib/tenant-authz";
-import { tenantSeatCount } from "@/lib/invitation-store";
+import { tenantSeatCount } from "@sai/platform/invitation-store";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { UsersClient } from "./users-client";
 

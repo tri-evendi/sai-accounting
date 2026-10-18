@@ -30,7 +30,7 @@ import { ContainerOutlined } from "@ant-design/icons";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

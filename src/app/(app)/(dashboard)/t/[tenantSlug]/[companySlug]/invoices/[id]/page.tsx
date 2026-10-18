@@ -39,7 +39,7 @@ import { InvoiceSendSection } from "./send-section";
 import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { invoiceWhatsAppTarget, listInvoiceSends } from "@/lib/invoice-send";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { INLINE_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

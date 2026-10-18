@@ -35,8 +35,8 @@ import { LOCALES, LOCALE_LABELS } from "@sai/core/i18n/config";
 import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 import id from "@sai/core/i18n/dictionaries/id.json";
 import { formatMoney } from "@sai/core/money-format";
-import { TRIAL_DAYS } from "@/lib/registration";
-import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
+import { TRIAL_DAYS } from "@sai/core/registration";
+import { DEFAULT_TAX_RATE, computeTax } from "@sai/core/tax";
 
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) => translate(dict, key, values);
@@ -122,7 +122,7 @@ vi.mock("@/lib/auth", () => ({ auth: async () => state.session }));
  * yang dipakai tetap kamus SUNGGUHAN (`id.json`), jadi kunci yang salah ketik
  * tetap terlihat sebagai teks kunci di markup, bukan tersembunyi di balik
  * tiruan yang mengembalikan apa saja. */
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getT: async () => T,
   getLocale: async () => "id",
   /* Kartu manfaat (#402) membaca kamus utuh untuk `roleLabels()` — kamus

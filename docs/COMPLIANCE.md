@@ -43,7 +43,7 @@ eksplisit → tenggang 30 hari → eksekusi: nonaktif + anonimisasi (buku UTUH)
 
 ## 3. Jejak audit tingkat tenant
 
-`data/audit/tenants/<slug>/audit.jsonl` (`src/lib/tenant-audit.ts`) — terpisah
+`data/audit/tenants/<slug>/audit.jsonl` (`packages/platform/src/tenant-audit.ts`) — terpisah
 dari jejak per-PT dengan alasan yang sama (#104): pembaca yang lupa menyaring
 tidak punya apa-apa untuk bocor. Peristiwa: pendaftaran (beserta **versi S&K/
 privasi yang disetujui**), pembuatan PT, undangan, ganti paket, transisi

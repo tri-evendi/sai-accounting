@@ -73,9 +73,9 @@ import {
   landingChip,
   landingGlyph,
 } from "@/components/landing/landing-scale";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatMoney } from "@sai/core/money-format";
-import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
+import { DEFAULT_TAX_RATE, computeTax } from "@sai/core/tax";
 
 /**
  * Angka contoh. Konstanta bernama, bukan tersebar di markup, supaya jelas

@@ -6,7 +6,7 @@ import { calculateStockTotals } from "@/lib/inventory";
 import { listClosedPeriods } from "@/lib/period";
 import { LearnMore } from "@sai/ui/learn-more";
 import { TermTooltip } from "@sai/ui/term-tooltip";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { DeliveryOrderForm } from "./delivery-order-form";
 
 export const dynamic = "force-dynamic";

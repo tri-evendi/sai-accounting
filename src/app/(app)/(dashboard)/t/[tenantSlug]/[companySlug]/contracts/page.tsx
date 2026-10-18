@@ -39,7 +39,7 @@ import { EmptyState } from "@sai/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { Pagination } from "@sai/ui/pagination";
 import { FileTextOutlined } from "@ant-design/icons";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
 import { irisanStatusKontrak } from "@/lib/contract-status-chart";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";

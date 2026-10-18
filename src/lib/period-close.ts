@@ -11,7 +11,7 @@ import { userDisplayName, userNamesByIds } from "@/lib/users-directory";
 import { getBalanceSheet, getTrialBalance } from "@/lib/reports";
 import { type PeriodStatus, periodBounds } from "@/lib/period";
 import { openForeignCurrencies } from "@/lib/fx-revaluation-service";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
 import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 

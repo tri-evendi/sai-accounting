@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@sai/core/control-db", () => ({ controlDb: {} }));
-vi.mock("@/lib/platform-db", () => ({ platformDb: {} }));
+vi.mock("@sai/platform/platform-db", () => ({ platformDb: {} }));
 
 import { upcomingRenewalsForOperator } from "@/lib/operator/store";
 

@@ -74,7 +74,7 @@ Yang dikatakan angka-angka ini, berurutan:
   sasaran yang salah.
 - **Tangga harga belum pernah diuji pasar.** 9 dari 11 tenant ada di `pro`
   bukan karena memilih, melainkan karena `SIGNUP_PLAN_KEY = "pro"`
-  (`lib/registration.ts`). Nol pembayaran berarti nol data soal kesediaan
+  (`packages/core/src/registration.ts`). Nol pembayaran berarti nol data soal kesediaan
   membayar — `PRICING.md` tetap riset pesaing, bukan harga tervalidasi.
 - **Rp 3,98 jt "piutang" itu fiktif** dan sedang mengotori pembukuan platform;
   5 tagihan `paid` bernilai Rp 0 membuat "pendapatan" tidak bisa dibaca dari
@@ -460,7 +460,7 @@ tagihan Rp 0 `-K` (§6.4) — keputusan untuk menghilangkannya belum diambil.
 
 **Status 10 Okt 2026: empat dari enam SUDAH berdiri di konsol** (seksi
 "Pendapatan" di halaman ringkasan `/operator`), definisinya di
-`lib/platform-revenue.ts` dan dijaga `tests/platform-revenue.test.ts`. Dua
+`packages/billing/src/platform-revenue.ts` dan dijaga `tests/platform-revenue.test.ts`. Dua
 sisanya sengaja tidak ada, dan ketiadaannya ikut tertulis di layar.
 
 Tiga aturan yang membentuk setiap angkanya:
@@ -516,7 +516,7 @@ pertama:
    Sakelarnya: **`/operator/settings` → Gerbang → PPN** (bawaannya tetap env
    `PLATFORM_PPN_DISABLED`). Enam tagihan yang sudah terbit memuat PPN 11% dan
    perlu ditinjau.
-2. **Tarif & dasar pengenaan PPN yang berlaku saat penerbitan** — `lib/tax.ts`
+2. **Tarif & dasar pengenaan PPN yang berlaku saat penerbitan** — `packages/core/src/tax.ts`
    memegang satu tarif (`DEFAULT_TAX_RATE`); kalau dasar pengenaannya tidak lagi
    100% dari harga, bentuk perhitungannya yang berubah, bukan hanya angkanya.
 3. **PPh 23**: apakah langganan + jasa ini objek pemotongan? Bila ya: siapa
@@ -568,9 +568,9 @@ pertama:
 | **Tidak ada bendera "boleh ditagih"**; harga nol pun tidak dilewati | akun internal/uji coba ditagih lalu ditangguhkan — sudah terjadi 2× | `scripts/subscription-scheduler.ts` langkah 1 |
 | `extendSubscription` mengubah `billing_cycle` **tanpa memotret ulang harga** | tenant 3 kini `yearly` berharga Rp 599.000 → saat comp habis 9 Sep 2027 ditagih **Rp 599rb untuk setahun**, kurang tagih 10×, tanpa bersuara | `lib/operator/writes.ts` |
 | Comp menghasilkan tagihan `paid` Rp 0 | "pendapatan" tak bisa dibaca tanpa menyaring comp; butuh status/penanda tersendiri | `extendSubscription`, `platform_invoices.status` |
-| Tidak ada sakelar menutup pendaftaran publik | orang asing bisa mendaftar → ditagih → ditangguhkan, tanpa rel bayar | `lib/registration.ts`, `proxy.ts` |
+| Tidak ada sakelar menutup pendaftaran publik | orang asing bisa mendaftar → ditagih → ditangguhkan, tanpa rel bayar | `packages/core/src/registration.ts`, `proxy.ts` |
 | `MANUAL_PAYMENT_INSTRUCTIONS` kosong | tombol "Bayar" = jalan buntu tanpa nomor rekening | `packages/billing/src/payment-gateway.ts` |
-| `tenant_billing_profiles` kosong (0 baris) | ekspor e-Faktur platform akan menandai semua sebagai masalah | `lib/efaktur.ts` |
+| `tenant_billing_profiles` kosong (0 baris) | ekspor e-Faktur platform akan menandai semua sebagai masalah | `packages/core/src/efaktur.ts` |
 | Uji coba 14 hari < waktu ke nilai pertama | konversi diukur sebelum nilai pernah terasa | `TRIAL_DAYS` |
 
 ---

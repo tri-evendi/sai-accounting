@@ -25,7 +25,7 @@ import {
   markNotificationsRead,
   unreadNotificationCount,
 } from "@/lib/notifications";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 async function currentUserId(): Promise<number | null> {

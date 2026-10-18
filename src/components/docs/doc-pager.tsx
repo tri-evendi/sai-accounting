@@ -28,7 +28,7 @@ import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 
 import { Link } from "@sai/ui/app-link";
 import { docNeighbours, docsPath } from "@/lib/docs";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 /**
  * `display:grid` sebaris, `grid-template-columns` TIDAK — kolomnya berubah di

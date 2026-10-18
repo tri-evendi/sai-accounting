@@ -2,7 +2,7 @@ import { CheckOutlined, ClockCircleOutlined, FileDoneOutlined, FileTextOutlined,
 import { Badge } from "@sai/ui/badge";
 import { formatCurrency, formatNumber } from "@sai/core/utils";
 import type { ChainStatus, ContractChainStage } from "@/lib/document-chain";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**

@@ -41,8 +41,8 @@ import { bukaServer } from "@sai/db/server";
 import { releaseCompanyClient } from "../src/lib/company-clients";
 
 import { removeCompanyDocuments } from "../src/lib/document-storage";
-import { ledgerDropVerdict } from "../src/lib/tenant-deletion";
-import { writeTenantAuditLog } from "../src/lib/tenant-audit";
+import { ledgerDropVerdict } from "@sai/core/tenant-deletion";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import {
   executeTenantDeletion,
   makeLatestJournalDateReader,

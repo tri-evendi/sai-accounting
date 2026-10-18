@@ -337,6 +337,8 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
       "@/lib/",
       // Pindahan `src/lib/*` (monorepo Fase 2) — izinnya setara `@/lib/`.
       "@sai/core/",
+      // Dari `@sai/platform` hanya penerjemah sisi server — disebut persis.
+      "@sai/platform/i18n/server",
       "react",
       "@ant-design/icons",
     ];

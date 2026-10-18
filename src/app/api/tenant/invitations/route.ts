@@ -31,16 +31,16 @@ import {
   issueInvitation,
   pendingInvitationsForCompany,
   tenantSeatCount,
-} from "@/lib/invitation-store";
-import { userQuotaExceeded } from "@/lib/invitations";
-import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+} from "@sai/platform/invitation-store";
+import { userQuotaExceeded } from "@sai/core/invitations";
+import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
 import { runWithCompany } from "@/lib/company-context";
 import { activeRoleKeys } from "@/lib/roles";
-import { sendMail } from "@/lib/mailer";
-import { invitationMail } from "@/lib/account-mail";
+import { sendMail } from "@sai/platform/mailer";
+import { invitationMail } from "@sai/core/account-mail";
 import { writeAuditLog } from "@/lib/audit";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 const inviteSchema = z.object({

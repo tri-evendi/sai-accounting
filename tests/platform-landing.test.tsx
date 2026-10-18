@@ -30,8 +30,9 @@
  * dari alamat lama, dan tidak ada jalur yang memantul ke dirinya sendiri.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join } from "node:path";
 import { renderToReadableStream } from "react-dom/server";
 
 import { LocaleProvider } from "@sai/core/i18n/client";
@@ -189,7 +190,7 @@ vi.mock("@/lib/plan-catalog", () => ({
   activePlans: async () => PLANS,
 }));
 
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getT: async () => T,
 }));
 
@@ -677,9 +678,10 @@ describe("tidak ada tautan internal yang tertinggal di alamat lama", () => {
   }
 
   it('tak satu pun `href="/tenant"` tersisa di seluruh src', () => {
-    const offenders = sourceFiles(SRC)
+    const offenders = akarSumber()
+      .flatMap((d) => sourceFiles(d))
       .filter((file) => /href=\{?["'`]\/tenant["'`/]/.test(readFileSync(file, "utf8")))
-      .map((file) => relative(SRC, file).split(sep).join("/"));
+      .map((file) => relSumber(file));
     expect(offenders).toEqual([]);
   });
 

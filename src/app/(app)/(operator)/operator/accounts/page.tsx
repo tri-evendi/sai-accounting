@@ -13,12 +13,12 @@ import { ConsoleNotice, ConsolePanel, CONSOLE_PAGE } from "@/components/operator
 import { OperatorAccounts, type OperatorAccountView } from "@/components/operator/operator-accounts";
 import { PageHeader } from "@sai/ui/page-header";
 import { controlDb } from "@sai/core/control-db";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { parseOperatorAccounts } from "@/lib/operator/credentials";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listOperatorAccounts } from "@/lib/operator/operator-accounts";
 import { operatorCan } from "@/lib/operator/roles";
-import { encryptionKeyAvailable } from "@/lib/settings-crypto";
+import { encryptionKeyAvailable } from "@sai/core/settings-crypto";
 import { formatDateTime } from "@sai/core/utils";
 
 import { operatorCreateAccount, operatorUpdateAccount } from "./actions";

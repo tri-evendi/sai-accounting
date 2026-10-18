@@ -28,7 +28,7 @@ import {
 } from "@sai/core/i18n/config";
 import { translate, type Dictionary, type DictionaryKey, type TranslationValues } from "@sai/core/i18n/dictionary";
 import { loadDictionary } from "@sai/core/i18n/load";
-import { applySiteContent, isSiteContentPath } from "@/lib/site-content";
+import { applySiteContent, isSiteContentPath } from "@sai/core/site-content";
 
 /**
  * Bahasa aktif untuk permintaan ini.
@@ -93,7 +93,7 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
   }
   if (!isSiteContentPath(pathname)) return dictionary;
 
-  const { publishedSiteContent } = await import("@/lib/site-content-store");
+  const { publishedSiteContent } = await import("@sai/platform/site-content-store");
   return applySiteContent(dictionary, await publishedSiteContent(locale));
 }
 

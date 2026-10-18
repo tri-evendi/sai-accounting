@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { contractPaymentSchema } from "@/lib/validations/contract";
 import { fxAmounts } from "@/lib/validations/fx";
 import { requireApiPermission } from "@/lib/auth-guard";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";

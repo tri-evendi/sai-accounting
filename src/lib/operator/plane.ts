@@ -110,7 +110,7 @@ export function decideOperatorRouting(
  * berarti setiap pemasangan yang sudah berjalan diam-diam kembali ke bawaan
  * pada hari deploy berikutnya.
  */
-export { DEFAULT_TRUSTED_PROXY_HOPS, clientIpFrom, trustedProxyHops } from "@/lib/client-ip";
+export { DEFAULT_TRUSTED_PROXY_HOPS, clientIpFrom, trustedProxyHops } from "@sai/core/client-ip";
 
 function ipv4ToInt(ip: string): number | null {
   const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);

@@ -87,7 +87,7 @@ import {
   RENEWAL_WINDOW_DAYS,
   type UpcomingRenewal,
 } from "@/lib/operator/store";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { formatDateMedium as formatDate, formatDateTime } from "@sai/core/utils";

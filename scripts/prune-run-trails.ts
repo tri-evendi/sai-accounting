@@ -27,7 +27,7 @@
  * Putaran kedua tidak menemukan apa pun untuk dipangkas. Tidak ada keadaan yang
  * disimpan, tidak ada penanda yang harus dibersihkan.
  */
-import { platformDb } from "../src/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import {
   TRAIL_RETENTION_DAYS,
   decideTrailPrune,

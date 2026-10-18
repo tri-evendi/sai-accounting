@@ -20,6 +20,7 @@
     "./dialog": "./src/components/dialog.tsx",
     "./empty-state": "./src/components/empty-state.tsx",
     "./form": "./src/components/form.tsx",
+    "./globals.css": "./src/globals.css",
     "./icons": "./src/icons.ts",
     "./input": "./src/components/input.tsx",
     "./item-name-input": "./src/components/item-name-input.tsx",
@@ -36,6 +37,8 @@
     "./password-input": "./src/components/password-input.tsx",
     "./popover": "./src/components/popover.tsx",
     "./progress": "./src/components/progress.tsx",
+    "./providers/antd-provider": "./src/providers/antd-provider.tsx",
+    "./providers/root-document": "./src/providers/root-document.tsx",
     "./quota-meter": "./src/components/quota-meter.tsx",
     "./searchable-select": "./src/components/searchable-select.tsx",
     "./select": "./src/components/select.tsx",
@@ -47,10 +50,14 @@
     "./table-sort": "./src/table-sort.ts",
     "./term-tooltip": "./src/components/term-tooltip.tsx",
     "./textarea": "./src/components/textarea.tsx",
+    "./theme/actions": "./src/theme/actions.ts",
     "./theme/antd-tokens": "./src/theme/antd-tokens.ts",
+    "./theme/client": "./src/theme/client.tsx",
     "./theme/config": "./src/theme/config.ts",
+    "./theme/server": "./src/theme/server.ts",
     "./theme/tone-recipe": "./src/theme/tone-recipe.ts",
     "./toast": "./src/components/toast.tsx",
+    "./viewport": "./src/viewport.ts",
     "./wizard-steps": "./src/components/wizard-steps.tsx"
   },
   "dependencies": {
@@ -60,6 +67,8 @@
     "antd": "*",
     "@ant-design/icons": "*",
     "react": "*",
-    "next": "*"
+    "next": "*",
+    "@ant-design/nextjs-registry": "*",
+    "server-only": "*"
   }
 }

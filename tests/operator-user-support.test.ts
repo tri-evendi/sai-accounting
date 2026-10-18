@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { invitationMail, passwordResetMail } from "@sai/core/account-mail";
-import { invitationOfTenant, revokeUserSessions, userOfTenant } from "@/lib/operator/user-support";
-import { operatorCan } from "@/lib/operator/roles";
+import { invitationOfTenant, revokeUserSessions, userOfTenant } from "@op/lib/operator/user-support";
+import { operatorCan } from "@op/lib/operator/roles";
 
 function fake() {
   const users = [
@@ -84,7 +84,7 @@ describe("surel akses akun — satu kalimat untuk aplikasi dan operator", () => 
 
   it("tautan operator menuju host PELANGGAN (AUTH_URL), tidak pernah host permintaan", () => {
     const isi = readFileSync(
-      join(process.cwd(), "src/app/(app)/(operator)/operator/tenants/[id]/user-actions.ts"),
+      join(process.cwd(), "apps/operator/src/app/(operator)/operator/tenants/[id]/user-actions.ts"),
       "utf8"
     );
     expect(isi).toMatch(/process\.env\.AUTH_URL/);

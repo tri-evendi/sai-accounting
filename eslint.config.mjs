@@ -23,7 +23,14 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["src/**/*.ts", "src/**/*.tsx", "packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
+    files: [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "packages/*/src/**/*.ts",
+      "packages/*/src/**/*.tsx",
+      "apps/*/src/**/*.ts",
+      "apps/*/src/**/*.tsx",
+    ],
     /*
      * Dua berkas yang MEMANG menulis nilai warna, dan hanya dua:
      *
@@ -51,6 +58,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    "apps/*/.next/**",
+    "apps/*/next-env.d.ts",
     "out/**",
     "build/**",
     "next-env.d.ts",

@@ -480,7 +480,7 @@ Tiga aturan yang membentuk setiap angkanya:
 ⚠ Dua metrik yang TIDAK dihitung, beserta sebabnya:
 
 - **Waktu ke nilai pertama** menuntut membuka BUKU pelanggan, dan
-  `lib/operator/store.ts` menyatakannya terlarang ("konsol melihat METADATA
+  `apps/operator/src/lib/operator/store.ts` menyatakannya terlarang ("konsol melihat METADATA
   langganan, bukan pembukuan pelanggan"). Melanggarnya demi sebuah angka
   dasbor adalah harga yang salah; ia butuh keputusan tersendiri.
 - **Konversi per KOHORT** menuntut riwayat peristiwa langganan. **Tabelnya
@@ -566,7 +566,7 @@ pertama:
 | --- | --- | --- |
 | **TIDAK ADA penagihan PERPANJANGAN sama sekali** | `platformInvoice.create` hanya ada di tiga tempat — trial habis, comp operator, prorata pindah paket — dan tak satu pun dipicu `current_period_end`. Jadi langganan "aktif" tidak pernah menagih bulan/tahun berikutnya; mesin pendapatan BERULANG belum ada. Ditemukan saat membangun panel mode penagihan | `scripts/subscription-scheduler.ts` |
 | **Tidak ada bendera "boleh ditagih"**; harga nol pun tidak dilewati | akun internal/uji coba ditagih lalu ditangguhkan — sudah terjadi 2× | `scripts/subscription-scheduler.ts` langkah 1 |
-| `extendSubscription` mengubah `billing_cycle` **tanpa memotret ulang harga** | tenant 3 kini `yearly` berharga Rp 599.000 → saat comp habis 9 Sep 2027 ditagih **Rp 599rb untuk setahun**, kurang tagih 10×, tanpa bersuara | `lib/operator/writes.ts` |
+| `extendSubscription` mengubah `billing_cycle` **tanpa memotret ulang harga** | tenant 3 kini `yearly` berharga Rp 599.000 → saat comp habis 9 Sep 2027 ditagih **Rp 599rb untuk setahun**, kurang tagih 10×, tanpa bersuara | `apps/operator/src/lib/operator/writes.ts` |
 | Comp menghasilkan tagihan `paid` Rp 0 | "pendapatan" tak bisa dibaca tanpa menyaring comp; butuh status/penanda tersendiri | `extendSubscription`, `platform_invoices.status` |
 | Tidak ada sakelar menutup pendaftaran publik | orang asing bisa mendaftar → ditagih → ditangguhkan, tanpa rel bayar | `packages/core/src/registration.ts`, `proxy.ts` |
 | `MANUAL_PAYMENT_INSTRUCTIONS` kosong | tombol "Bayar" = jalan buntu tanpa nomor rekening | `packages/billing/src/payment-gateway.ts` |

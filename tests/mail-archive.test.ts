@@ -89,7 +89,7 @@ describe("BCC, bukan CC", () => {
 
 describe("isian alamat arsip di panel operator", () => {
   const SCHEMA_SOURCE = readFileSync(
-    join(process.cwd(), "src/lib/validations/operator.ts"),
+    join(process.cwd(), "apps/operator/src/lib/validations/operator.ts"),
     "utf8"
   );
 
@@ -98,10 +98,10 @@ describe("isian alamat arsip di panel operator", () => {
        layar lalu diam-diam tidak tersimpan — bentuk kegagalan yang paling lama
        tidak ketahuan, sebab layarnya terlihat benar. */
     const lapisan = [
-      "src/lib/validations/operator.ts",
-      "src/app/(app)/(operator)/operator/mail/actions.ts",
+      "apps/operator/src/lib/validations/operator.ts",
+      "apps/operator/src/app/(operator)/operator/mail/actions.ts",
       "packages/platform/src/mail-settings.ts",
-      "src/components/operator/mail-settings-form.tsx",
+      "apps/operator/src/components/operator/mail-settings-form.tsx",
     ];
     for (const rel of lapisan) {
       expect(
@@ -112,7 +112,7 @@ describe("isian alamat arsip di panel operator", () => {
   });
 
   it("menerima alamat kosong — itulah cara mencabutnya", async () => {
-    const { mailSettingsSchema } = await import("@/lib/validations/operator");
+    const { mailSettingsSchema } = await import("@op/lib/validations/operator");
     const dasar = {
       transport: "file" as const,
       fromAddress: "SAI <no-reply@contoh.id>",
@@ -123,7 +123,7 @@ describe("isian alamat arsip di panel operator", () => {
   });
 
   it("menolak yang bukan alamat telanjang", async () => {
-    const { mailSettingsSchema } = await import("@/lib/validations/operator");
+    const { mailSettingsSchema } = await import("@op/lib/validations/operator");
     const dasar = {
       transport: "file" as const,
       fromAddress: "SAI <no-reply@contoh.id>",

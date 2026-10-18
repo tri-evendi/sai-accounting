@@ -31,7 +31,7 @@ import {
   operatorAuditRowFromLegacy,
   type LegacyOperatorEntry,
   type OperatorAuditRow,
-} from "@/lib/operator/audit-legacy";
+} from "../apps/operator/src/lib/operator/audit-legacy";
 
 const APPLY = process.argv.includes("--apply");
 const BATCH = 500;

@@ -170,7 +170,7 @@ putusan di atas tetap "jangan sekarang", dan dok 11 menyebut gerbangnya.
 
 ### Kenapa ini bisa tanpa perubahan kode
 
-`lib/operator/plane.ts` memutuskan bidang **murni dari env + Host header**:
+`packages/core/src/operator-plane.ts` memutuskan bidang **murni dari env + Host header**:
 
 ```
 OPERATOR_HOST tidak diset  →  /operator = blocked (404) di host MANA PUN

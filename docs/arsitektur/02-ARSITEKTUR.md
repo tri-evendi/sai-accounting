@@ -8,7 +8,7 @@
 
 | Pola | Di mana | Kenapa |
 |---|---|---|
-| **Monolit modular** | Satu aplikasi Next.js (modul per domain di `src/lib`) + paket bersama di `packages/` (monorepo, §7) | Satu mesin ~3,6 GB berbagi dengan 5 aplikasi lain; mikrolayanan di sini berarti membayar overhead tanpa pembeli |
+| **Monolit modular** | Aplikasi Next.js pelanggan (modul per domain di `src/lib`) + konsol operator sebagai aplikasi kedua (`apps/operator`) + paket bersama di `packages/` (monorepo, §7) | Satu mesin ~3,6 GB berbagi dengan 5 aplikasi lain; mikrolayanan di sini berarti membayar overhead tanpa pembeli |
 | **Database-per-tenant** (per PT) | 17 basis data perusahaan | Isolasi FISIK buku besar — satu kueri salah tidak bisa menyeberang |
 | **Shared-database** (kendali & platform) | `sai_control`, `sai_platform` | Identitas & penagihan memang lintas-tenant |
 | **Ambient context** | `AsyncLocalStorage` + penyimpan per-permintaan | Agar 120 berkas yang `import { prisma }` tidak perlu diubah tanda tangannya |
@@ -94,7 +94,7 @@ graph TB
 | Batas | Penegak | Sifat gagal |
 |---|---|---|
 | 1 — TLS | Traefik, label di `docker-compose.yml` | HTTP → 301 ke HTTPS; `www.` → apex |
-| 2 — bidang & sesi | `src/proxy.ts` + `lib/operator/plane.ts` | **Gagal-tertutup**: `OPERATOR_HOST` kosong = `/operator` 404 di mana pun |
+| 2 — bidang & sesi | `src/proxy.ts` + `packages/core/src/operator-plane.ts` | **Gagal-tertutup**: `OPERATOR_HOST` kosong = `/operator` 404 di mana pun |
 | 3 — izin | `page-auth.ts` / `auth-guard.ts` / `api-token-guard.ts` | Halaman → pantul ke beranda; API → 403. Dijaga `tests/authz-coverage` |
 | 4 — perusahaan | `company-context.ts` / `current-company.ts` | `MissingCompanyContextError` — **melempar, tidak pernah menebak** |
 | 4 — buku besar | `lib/posting/index.ts` + `lib/ledger.ts` | Periode tertutup / belum disetujui = posting ditolak |
@@ -164,7 +164,7 @@ Semuanya ditegakkan kode atau tes, bukan konvensi:
 5. **Cache tingkat modul yang isinya milik satu penyewa WAJIB dikunci** per
    `companyId` / `tenantId` (`packages/core/src/tenant-cache.ts`).
 6. **`platform-db.ts` dilarang dari jalur panas** — penjaga, sesi, proxy, dan
-   `lib/operator/plane.ts` tidak boleh mengimpornya.
+   `packages/core/src/operator-plane.ts` tidak boleh mengimpornya.
 
 Rinciannya: [`docs/MULTI-COMPANY.md §2`](../MULTI-COMPANY.md),
 [`docs/MULTI-TENANT.md §4A`](../MULTI-TENANT.md).
@@ -347,25 +347,35 @@ dengan menambah route baru**.
 
 ## 7. Struktur kode
 
-Repo ini **monorepo bun workspaces** sejak 17–18 Okt 2026 (dok 14, Fase 1–3c):
-SATU aplikasi Next.js di `src/`, ditambah lima paket di `packages/` yang
-dikirim sebagai **sumber TypeScript** (`transpilePackages` di `next.config.ts`,
-tanpa langkah build sendiri). Angka di bawah potret 18 Okt 2026.
+Repo ini **monorepo bun workspaces** sejak 17–18 Okt 2026 (dok 14, Fase 1–4):
+DUA aplikasi Next.js — pelanggan di `src/` (akar repo) dan konsol operator di
+`apps/operator/` — ditambah lima paket di `packages/` yang dikirim sebagai
+**sumber TypeScript** (`transpilePackages` di kedua `next.config.ts`, tanpa
+langkah build sendiri). Setiap aplikasi punya image sendiri. Angka di bawah
+potret 18 Okt 2026.
 
 ```
 packages/                         # diimpor sebagai @sai/<paket>/<subpath>
 ├── db/        (4 berkas)         # mesin dari URL, pabrik adapter Prisma, operasi server
 │   ├── prisma/{company,control,platform}/schema.prisma   # TIGA skema
 │   └── generated/{company,control,platform}/             # gitignored — lahir saat build
-├── core/      (32 berkas)        # MURNI: authz (matriks bawaan), constants, utils,
+├── core/      (34 berkas)        # MURNI: authz (matriks bawaan), constants, utils,
 │                                 #   money-format, i18n inti + kamus id/en/zh, tax,
 │                                 #   efaktur, tenant-routes, labels, control-db, …
-├── ui/        (48 berkas)        # primitif Ant Design v6, tema & token warna,
-│                                 #   layout-scale, lambang — lihat MASTER.md
+├── ui/        (54 berkas)        # primitif Ant Design v6, provider & kerangka <html>, tema
+│                                 #   & token warna, layout-scale, lambang — lihat MASTER.md
 ├── billing/   (7 berkas)         # aturan penagihan MURNI: gerbang, paket, siklus langganan
 └── platform/  (20 berkas)        # SISI-SERVER bersama: platform-db, surel, i18n/server,
                                   #   jejak langganan & tenant, isi situs, penulis penagihan
-src/
+apps/
+└── operator/  (61 berkas)        # KONSOL OPERATOR — aplikasi Next kedua, image `…-operator`
+    ├── src/app/(operator)/operator/   # 19 halaman + 1 unduhan — HOST SENDIRI
+    ├── src/app/api/health/       # probe sempit (hanya kendali yang memutuskan 503)
+    ├── src/lib/operator/         # sesi, penjaga, TOTP, store, tulisan, jejak
+    ├── src/components/operator/  # panel konsol
+    ├── src/proxy.ts              # host ≠ OPERATOR_HOST → 404; tanpa cookie → login
+    └── tsconfig.json             # alias `@op/*` → ./src/* (TANPA `@/`)
+src/                              # APLIKASI PELANGGAN
 ├── app/
 │   ├── (marketing)/              # publik: /, /pricing, /status, sitemap, OG
 │   ├── (app)/
@@ -375,24 +385,22 @@ src/
 │   │   │   └── t/[tenantSlug]/[companySlug]/   # ← 102 halaman buku
 │   │   ├── (setup)/              # wisaya penyiapan PT
 │   │   ├── (tenant)/(panel)/     # /platform/* — akun, tagihan, tim
-│   │   ├── (docs)/docs/          # dokumentasi — publik, tanpa sesi
-│   │   └── (operator)/operator/  # konsol penyedia — HOST SENDIRI
+│   │   └── (docs)/docs/          # dokumentasi — publik, tanpa sesi
 │   └── api/                      # 127 rute
 │       ├── v1/                   # permukaan publik — token Bearer
 │       ├── auth/                 # NextAuth + pendaftaran/atur-ulang
 │       ├── billing/webhook       # Midtrans — tanda tangan SHA-512
 │       ├── health                # probe tanpa sesi
 │       └── t/[tenantSlug]/[companySlug]/   # rute berlingkup jalur
-├── lib/                          # 254 berkas — logika domain PEMBUKUAN
+├── lib/                          # 231 berkas — logika domain PEMBUKUAN
 │   ├── posting/                  # mesin jurnal (5 berkas)
 │   ├── validations/              # skema zod per domain (31 berkas)
-│   ├── operator/                 # bidang operator (18 berkas)
-│   ├── i18n/ theme/              # hanya server action & `labels` — intinya di @sai/core / @sai/ui
+│   ├── i18n/                     # hanya server action bahasa & `labels` — intinya di @sai/core
 │   └── manufacturing/ import/ pdf/ accurate/ …
 ├── components/
 │   ├── ui/                       # 5 pembungkus yang bergantung pada aplikasi
 │   │                             #   (primitifnya di @sai/ui)
-│   └── layout/ dashboard/ reports/ settings/ setup/ landing/ operator/ …
+│   └── layout/ dashboard/ reports/ settings/ setup/ landing/ docs/ …
 ├── proxy.ts                      # ⚠ BUKAN middleware.ts
 └── types/
 prisma/
@@ -404,11 +412,14 @@ prisma/
 **Arah dependensi** (dijaga tes, bukan kedisiplinan):
 
 ```
-src/  ──▶  @sai/platform  ──▶  @sai/billing  ──▶  @sai/core  ──▶  @sai/db
-  │                                  @sai/ui ──▶  @sai/core
-  └──────────────────────────────────────────────▶ (semua paket)
+src/ ──────────┐
+               ├──▶  @sai/platform  ──▶  @sai/billing  ──▶  @sai/core  ──▶  @sai/db
+apps/operator ─┘                          @sai/ui ──────────▶  @sai/core
+   (kedua aplikasi boleh memakai paket mana pun; TIDAK pernah satu sama lain)
 ```
 
+- Kedua aplikasi tidak saling mengimpor: konsol tidak menyentuh `src/`, dan
+  pelanggan tidak menyentuh `apps/operator` (`tests/operator-dependency-direction.test.ts`).
 - Paket **tidak pernah** mengimpor `@/…` atau keluar dari dirinya lewat jalur
   relatif (`tests/packages-mandiri.test.ts`). Karena itu tidak ada graf impor
   yang bisa berangkat dari paket lalu kembali ke `src/`.
@@ -419,6 +430,8 @@ src/  ──▶  @sai/platform  ──▶  @sai/billing  ──▶  @sai/core  �
   `src/` saja LULUS dengan nol pelanggar begitu kodenya pindah ke paket.
 - Paket baru = baris `COPY packages/<x>/package.json` di tahap `deps`
   Dockerfile + entri `transpilePackages` (keduanya dijaga `packages-mandiri`).
+  Aplikasi baru di `apps/*` = baris `COPY` yang sama + target runtime
+  Dockerfile + target CI + layanan compose (juga dijaga `packages-mandiri`).
 
 Dua hal yang mengejutkan orang baru:
 

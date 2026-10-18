@@ -22,6 +22,7 @@
     "./labels": "./src/labels.ts",
     "./migration-manifest": "./src/migration-manifest.ts",
     "./money-format": "./src/money-format.ts",
+    "./operator-plane": "./src/operator-plane.ts",
     "./password-reset": "./src/password-reset.ts",
     "./public-status": "./src/public-status.ts",
     "./rate-limit": "./src/rate-limit.ts",

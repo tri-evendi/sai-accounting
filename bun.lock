@@ -50,6 +50,17 @@
         "vitest": "^3.2.7",
       },
     },
+    "apps/operator": {
+      "name": "@sai/app-operator",
+      "version": "0.0.0",
+      "dependencies": {
+        "@sai/billing": "workspace:*",
+        "@sai/core": "workspace:*",
+        "@sai/db": "workspace:*",
+        "@sai/platform": "workspace:*",
+        "@sai/ui": "workspace:*",
+      },
+    },
     "packages/billing": {
       "name": "@sai/billing",
       "version": "0.0.0",
@@ -102,9 +113,11 @@
       },
       "peerDependencies": {
         "@ant-design/icons": "*",
+        "@ant-design/nextjs-registry": "*",
         "antd": "*",
         "next": "*",
         "react": "*",
+        "server-only": "*",
       },
     },
   },
@@ -668,6 +681,8 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA=="],
 
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
+
+    "@sai/app-operator": ["@sai/app-operator@workspace:apps/operator"],
 
     "@sai/billing": ["@sai/billing@workspace:packages/billing"],
 

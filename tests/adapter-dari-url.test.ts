@@ -32,7 +32,7 @@ function berkasTs(dir: string): string[] {
     for (const e of readdirSync(join(AKAR, p), { withFileTypes: true })) {
       const anak = `${p}/${e.name}`;
       if (e.isDirectory()) {
-        if (e.name === "generated" || e.name === "node_modules") continue;
+        if (e.name === "generated" || e.name === "node_modules" || e.name === ".next") continue;
         telusuri(anak);
       } else if (e.name.endsWith(".ts") || e.name.endsWith(".tsx")) {
         keluar.push(anak);

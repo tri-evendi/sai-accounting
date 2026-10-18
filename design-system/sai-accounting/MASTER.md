@@ -826,7 +826,7 @@ sebab ia yang dibutuhkan kalau keputusannya ditinjau ulang.
 ## Anti-Patterns (JANGAN)
 - Emoji sebagai ikon → pakai `@ant-design/icons`.
 - Dua paket ikon di satu layar; prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
-- `className` di mana pun (satu pengecualian: `<html>` di `components/providers/root-document.tsx`, dipakai kedua root layout) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
+- `className` di mana pun (satu pengecualian: `<html>` di `packages/ui/src/providers/root-document.tsx`, dipakai ketiga root layout) → tidak ada lembar gaya yang memaknainya sejak #203, jadi kelasnya tidak GAGAL — ia hanya berhenti berlaku.
 - Nilai warna mentah (hex, `rgb()`, nama warna CSS) di luar `packages/ui/src/theme/antd-tokens.ts` → ditolak ESLint `sai/warna-token-antd`.
 - Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
 - Angka rata-kiri / tanpa tabular-nums di tabel keuangan; **0 untuk nilai yang tidak diketahui** → kosong atau "—", lihat Prinsip Inti #4.

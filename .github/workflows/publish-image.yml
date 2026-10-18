@@ -45,6 +45,13 @@ jobs:
         include:
           - target: runner
             suffix: ""
+          # Konsol operator sebagai aplikasi Next tersendiri (monorepo Fase 3d +
+          # Fase 4). Dibangun dari COMMIT YANG SAMA dengan `runner` di setiap
+          # dorongan — kedua aplikasi menulis basis data yang sama, jadi
+          # keduanya tidak boleh berbeda versi skema. Ritual gelar memeriksa
+          # tag `sha-` keduanya sama.
+          - target: runner-operator
+            suffix: "-operator"
           - target: migrator
             suffix: "-migrator"
           # `backup` ikut, meski jarang berubah dan tidak ada di jalur

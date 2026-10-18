@@ -14,7 +14,7 @@ import {
   reconciliationForOperator,
   schedulerRunsForOperator,
   tenantDetailForOperator,
-} from "@/lib/operator/store";
+} from "@op/lib/operator/store";
 
 type Deps = Parameters<typeof tenantDetailForOperator>[1];
 

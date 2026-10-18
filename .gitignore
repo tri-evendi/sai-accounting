@@ -16,6 +16,9 @@
 
 # next.js
 /.next/
+# Keluaran build konsol operator (monorepo Fase 3d) — `/.next/` di atas berjangkar ke akar.
+/apps/*/.next/
+/apps/*/next-env.d.ts
 /out/
 
 # production

@@ -66,10 +66,10 @@
  * berisi JSX.
  */
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { akarSumber, relSumber } from "./akar-sumber";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const SRC = join(__dirname, "..", "src");
 
 /**
  * Ambang jumlah modul `"use client"`, terukur 2026-08-05 setelah #184.
@@ -428,7 +428,6 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/user-permissions-panel.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/users/users-client.tsx",
   "app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/work-centers/new/work-center-form.tsx",
-  "app/(app)/(operator)/operator/login/login-form.tsx",
   "app/(app)/(setup)/t/[tenantSlug]/[companySlug]/setup/setup-wizard.tsx",
   "app/(app)/(tenant)/(panel)/companies/new/company-form.tsx",
   "app/(app)/(tenant)/(panel)/companies/new/provision-progress.tsx",
@@ -441,6 +440,35 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(tenant)/(panel)/platform/error.tsx",
   "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
   "app/(app)/(tenant)/layout.tsx",
+  "apps/operator/src/app/(operator)/operator/login/login-form.tsx",
+  /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
+     satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
+     tombol "kembalikan ke bawaan" per baris. Halamannya TETAP server component:
+     nilai bawaan + nilai tersimpan dihitung di server dan diturunkan sebagai
+     daftar. */
+  "apps/operator/src/components/operator/content-editor.tsx",
+  "apps/operator/src/components/operator/mail-settings-form.tsx",
+  /* Akun operator (migration kendali 0004) — kredensial sekali-tampil hidup
+     di state peramban saja. Lihat catatan di `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/operator-accounts.tsx",
+  /* Kulit panel admin konsol operator: menu samping + laci + kepala. Client
+     karena `Grid.useBreakpoint()`, `Drawer`, dan penandaan butir aktif lewat
+     `usePathname` — tiga hal yang semuanya menuntut peramban. Kalimat, ikon,
+     dan formulir keluarnya DIOPER dari layout server; berkas itu tidak
+     mengimpor satu pun modul autentikasi. */
+  "apps/operator/src/components/operator/operator-shell.tsx",
+  /* Pengaturan situs (migration 0016): formulir tiga medan — client karena ia
+     memang formulir (RHF + zod, hasil simpan tanpa muat ulang, dialog
+     konfirmasi untuk "kembalikan ke pengaturan server"). Halamannya TETAP
+     server component: ia membaca barisnya, menghitung nilai yang BERLAKU, dan
+     menurunkan "dari basis data / dari environment" sebagai boolean — nilai
+     env-nya sendiri tidak pernah menyeberang ke peramban. */
+  "apps/operator/src/components/operator/site-settings-form.tsx",
+  /* Pengumuman status — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/status-notices-panel.tsx",
+  "apps/operator/src/components/operator/tenant-actions.tsx",
+  /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/tenant-user-support.tsx",
   "components/auth/auth-shell.tsx",
   "components/auth/signed-in-as.tsx",
   "components/dashboard/dashboard-export-actions.tsx",
@@ -459,35 +487,6 @@ const KLIEN_TERSAHKAN = [
   /* Pengumuman status — lihat `AMBANG_KLIEN`. */
   "components/layout/status-banner.tsx",
   "components/layout/user-menu.tsx",
-  /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
-     satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
-     tombol "kembalikan ke bawaan" per baris. Halamannya TETAP server component:
-     nilai bawaan + nilai tersimpan dihitung di server dan diturunkan sebagai
-     daftar. */
-  "components/operator/content-editor.tsx",
-  "components/operator/mail-settings-form.tsx",
-  /* Akun operator (migration kendali 0004) — kredensial sekali-tampil hidup
-     di state peramban saja. Lihat catatan di `AMBANG_KLIEN`. */
-  "components/operator/operator-accounts.tsx",
-  /* Kulit panel admin konsol operator: menu samping + laci + kepala. Client
-     karena `Grid.useBreakpoint()`, `Drawer`, dan penandaan butir aktif lewat
-     `usePathname` — tiga hal yang semuanya menuntut peramban. Kalimat, ikon,
-     dan formulir keluarnya DIOPER dari layout server; berkas itu tidak
-     mengimpor satu pun modul autentikasi. */
-  "components/operator/operator-shell.tsx",
-  /* Pengaturan situs (migration 0016): formulir tiga medan — client karena ia
-     memang formulir (RHF + zod, hasil simpan tanpa muat ulang, dialog
-     konfirmasi untuk "kembalikan ke pengaturan server"). Halamannya TETAP
-     server component: ia membaca barisnya, menghitung nilai yang BERLAKU, dan
-     menurunkan "dari basis data / dari environment" sebagai boolean — nilai
-     env-nya sendiri tidak pernah menyeberang ke peramban. */
-  "components/operator/site-settings-form.tsx",
-  /* Pengumuman status — lihat `AMBANG_KLIEN`. */
-  "components/operator/status-notices-panel.tsx",
-  "components/operator/tenant-actions.tsx",
-  /* Bantuan pengguna — formulir alasan per tindakan. Lihat `AMBANG_KLIEN`. */
-  "components/operator/tenant-user-support.tsx",
-  "components/providers/antd-provider.tsx",
   "components/reports/report-launch-dialog.tsx",
   "components/settings/audit-log-panel.tsx",
   "components/settings/module-picker.tsx",
@@ -529,7 +528,6 @@ const KLIEN_TERSAHKAN = [
   "lib/company-identity-client.tsx",
   "lib/report-files.ts",
   "lib/tax-profile-client.tsx",
-  "lib/theme/client.tsx",
   "lib/use-effective-permissions.ts",
   "packages/core/src/i18n/client.tsx",
   "packages/ui/src/components/alert-dialog.tsx",
@@ -562,6 +560,8 @@ const KLIEN_TERSAHKAN = [
   "packages/ui/src/components/textarea.tsx",
   "packages/ui/src/components/toast.tsx",
   "packages/ui/src/components/wizard-steps.tsx",
+  "packages/ui/src/providers/antd-provider.tsx",
+  "packages/ui/src/theme/client.tsx",
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -574,18 +574,13 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/* Paket workspace (monorepo Fase 2) ikut dipindai: modul client yang pindah
-   ke `packages/*` tidak boleh keluar dari hitungan diam-diam. Jalurnya
-   dilaporkan relatif ke AKAR repo (`packages/core/src/...`), jalur `src/`
-   tetap relatif ke `src/` seperti sebelumnya. */
-const PACKAGES = join(__dirname, "..", "packages");
+/* `src/` + `packages/*` + `apps/*` (monorepo Fase 2 & 3d) lewat
+   `tests/akar-sumber.ts`: modul client yang pindah tidak boleh keluar dari
+   hitungan diam-diam. Jalur di luar `src/` dilaporkan relatif AKAR repo. */
 const files = new Map<string, string>(
-  [
-    ...sourceFiles(SRC),
-    ...readdirSync(PACKAGES, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && existsSync(join(PACKAGES, d.name, "src")))
-      .flatMap((d) => sourceFiles(join(PACKAGES, d.name, "src"))),
-  ].map((f) => [f, readFileSync(f, "utf8")])
+  akarSumber()
+    .flatMap((d) => sourceFiles(d))
+    .map((f) => [f, readFileSync(f, "utf8")])
 );
 
 /**
@@ -618,8 +613,7 @@ function stripLeadingComments(code: string): string {
 
 const isClient = (code: string) => /^["']use client["']/.test(stripLeadingComments(code));
 
-const rel = (p: string) =>
-  (p.startsWith(PACKAGES) ? `packages/${p.slice(PACKAGES.length + 1)}` : p.slice(SRC.length + 1)).split("\\").join("/");
+const rel = relSumber;
 
 const clientFiles = [...files]
   .filter(([, code]) => isClient(code))

@@ -11,8 +11,8 @@ import {
   compedInvoiceNumber,
   extendPeriod,
   extensionStart,
-} from "@/lib/operator/writes";
-import { extendSubscriptionSchema } from "@/lib/validations/operator";
+} from "@op/lib/operator/writes";
+import { extendSubscriptionSchema } from "@op/lib/validations/operator";
 
 const NOW = new Date("2026-08-21T00:00:00.000Z");
 

@@ -43,7 +43,7 @@ Tiga pintu masuk, tergantung siapa yang membaca:
 | 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | Migrasi MariaDB → PostgreSQL — **DIJALANKAN 15 Okt 2026**; fase, gerbang, kegagalan penukaran pertama, dan **validasi pasca-penukaran (§10.2)** |
 | 12 | [KLASIFIKASI-BUKU.md](./12-KLASIFIKASI-BUKU.md) | Buku mana **produksi**, mana **uji** — dengan dasar isinya, bukan namanya. Dibangkitkan `bun run classify:books` |
 | 13 | [AUDIT-SKEMA.md](./13-AUDIT-SKEMA.md) | **Audit desain skema** — apa yang sudah benar dan harus dijaga, tiga temuan (S1/S2 **ditutup**, S3 menunggu keputusan kosakata), dan keputusan desain yang harus diambil saat pindah mesin |
-| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Kenapa konsol operator masih satu kode dengan platform pelanggan (porsinya **7,8 %** dari kode tulisan tangan, 17 Okt 2026 sore), apa yang dibeli & dibayar pemisahan, **Fase 0, 1, 2, 3a–3c selesai** (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`; permukaan operator kini hanya bergantung pada paket) — 3d (`apps/operator`) + Fase 4 (dua image) belum, dan wajib satu rilis |
+| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Kenapa konsol operator masih satu kode dengan platform pelanggan (porsinya **7,8 %** dari kode tulisan tangan, 17 Okt 2026 sore), apa yang dibeli & dibayar pemisahan, **SELURUH fase selesai 18 Okt 2026**: lima paket (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`) + konsol sebagai aplikasi & image tersendiri (`apps/operator`, `…-operator`) |
 
 ## Dokumen domain yang TIDAK digantikan dokumen ini
 

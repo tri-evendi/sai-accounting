@@ -138,12 +138,19 @@ function stripErrorThrows(source: string): string {
   return source.replace(/new Error\((?:[^()]|\([^()]*\))*\)/g, "new Error()");
 }
 
-const SCHEMA_FILES = readdirSync(VALIDATIONS_DIR)
-  .filter((name) => name.endsWith(".ts"))
-  .sort()
-  .map((name) => ({
+/* Skema konsol operator pindah ke `apps/operator` di monorepo Fase 3d —
+   kuncinya tetap kunci `validation.*` di kamus yang sama. */
+const VALIDATIONS_OPERATOR = join(__dirname, "..", "apps", "operator", "src", "lib", "validations");
+const SCHEMA_FILES = [VALIDATIONS_DIR, VALIDATIONS_OPERATOR]
+  .flatMap((dir) =>
+    readdirSync(dir)
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => ({ dir, name }))
+  )
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map(({ dir, name }) => ({
     name,
-    code: stripErrorThrows(stripComments(readFileSync(join(VALIDATIONS_DIR, name), "utf8"))),
+    code: stripErrorThrows(stripComments(readFileSync(join(dir, name), "utf8"))),
   }));
 
 /** Semua jalur-titik yang sah di kamus sumber. */

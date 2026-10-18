@@ -64,8 +64,8 @@ import {
   MONEY_TOKENS_DARK,
   MONEY_TOKENS_LIGHT,
 } from "@sai/ui/theme/antd-tokens";
-import { ThemeProvider } from "@/lib/theme/client";
-import { AntdProvider } from "@/components/providers/antd-provider";
+import { ThemeProvider } from "@sai/ui/theme/client";
+import { AntdProvider } from "@sai/ui/providers/antd-provider";
 
 /*
  * `getT` membaca cookie lewat `next/headers`, yang menuntut konteks permintaan —
@@ -262,7 +262,6 @@ describe("server component tanpa komponen AntD di atasnya", () => {
 });
 
 describe("kedua ujung mekanisme harus menyebut kunci yang sama", () => {
-  const baca = (p: string) => readFileSync(join(__dirname, "..", "src", p), "utf8");
 
   it("dokumen akar memasang ANTD_CSS_VAR_KEY pada <html>", () => {
     /*
@@ -277,13 +276,13 @@ describe("kedua ujung mekanisme harus menyebut kunci yang sama", () => {
      * KEDUA root layout (`app/(app)` dan `app/(marketing)`), justru supaya
      * pemikul kunci ini tidak bisa hilang di salah satunya.
      */
-    const layout = baca("components/providers/root-document.tsx");
+    const layout = readFileSync(join(__dirname, "..", "packages", "ui", "src", "providers", "root-document.tsx"), "utf8");
     expect(layout).toContain("ANTD_CSS_VAR_KEY");
     expect(layout).toMatch(/className=\{`[^`]*\$\{ANTD_CSS_VAR_KEY\}[^`]*`\}/);
   });
 
   it("AntdProvider menyerahkan kunci itu ke ConfigProvider", () => {
-    const provider = baca("components/providers/antd-provider.tsx");
+    const provider = readFileSync(join(__dirname, "..", "packages", "ui", "src", "providers", "antd-provider.tsx"), "utf8");
     expect(provider).toMatch(/cssVar:\s*\{\s*key:\s*ANTD_CSS_VAR_KEY\s*\}/);
   });
 });

@@ -158,7 +158,7 @@ dampak hari ini **nol**.
 
 | Dependensi | Peran | Bila mati |
 |---|---|---|
-| **GitHub Actions** | Membangun 3 image (`runner`, `migrator`, `backup`) | Tidak bisa rilis. Produksi tetap jalan. ⚠ Jangan membangun di server — lihat dok 07 |
+| **GitHub Actions** | Membangun 4 image (`runner`, `runner-operator`, `migrator`, `backup`) | Tidak bisa rilis. Produksi tetap jalan. ⚠ Jangan membangun di server — lihat dok 07 |
 | **GHCR** | Menyimpan image + tag `sha-<pendek>` | Tidak bisa `pull`; **rollback juga ikut hilang** |
 | **npm registry** (lewat bun) | `bun install --frozen-lockfile` | Build gagal |
 | **Docker Hub** | `node:22-bookworm-slim`, `postgres:17-alpine`, `edoburu/pgbouncer`, `oven/bun:1.3` (+ `mariadb:11` sampai #636) | Build gagal; container berjalan tak terpengaruh |
@@ -231,7 +231,7 @@ Bukan konvensi — tes merah kalau dilanggar:
 | Larangan | Penjaga | Kenapa |
 |---|---|---|
 | `lib/reports.ts`, `lib/ledger.ts`, `lib/posting/*` **tidak boleh** mengimpor `business-modules.ts` | `tests/business-modules-ledger.test.ts` | Modul tidak pernah menggerbangi buku besar; laporan harus tetap rekonsiliasi |
-| `lib/operator/plane.ts` **tidak boleh** mengimpor `platform-db.ts` | doktrin #137 | Penjaga & proxy bukan kode penagihan |
+| `packages/core/src/operator-plane.ts` **tidak boleh** mengimpor `platform-db.ts` | doktrin #137 | Penjaga & proxy bukan kode penagihan |
 | Halaman `(docs)/**` **tidak boleh** memuat penjaga apa pun | `tests/authz-coverage.test.ts`, `tests/docs.test.ts` | `/docs` publik; pembaca anonim tidak boleh memicu satu kueri pun |
 | `@ant-design/icons` **tidak boleh** diimpor sebagai default/namespace | `tests/icon-rsc-boundary.test.ts` | Barrel-nya meruntuhkan lapisan RSC |
 | `<Link><Button/></Link>` | `tests/anchor-button-nesting.test.ts` | Dua elemen interaktif bersarang |

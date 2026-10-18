@@ -104,7 +104,7 @@ describe("themeScript", () => {
 
 describe("blok `html.dark` di globals.css", () => {
   const css = readFileSync(
-    join(__dirname, "..", "src", "app", "globals.css"),
+    join(__dirname, "..", "packages", "ui", "src", "globals.css"),
     "utf8"
   );
   /** Ruang di dalam `rgba(...)` dibuang; AntD menuliskannya tanpa spasi. */

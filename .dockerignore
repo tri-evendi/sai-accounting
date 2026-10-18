@@ -7,6 +7,12 @@ node_modules
 
 # Build artifacts (rebuilt inside the image)
 .next
+# Pola di berkas ini BERJANGKAR ke akar konteks: `.next` di atas tidak menangkap
+# keluaran build konsol (`apps/operator/.next`, monorepo Fase 3d), dan
+# `node_modules` tidak menangkap yang per-aplikasi. Keduanya disebut sendiri.
+apps/*/.next
+apps/*/node_modules
+packages/*/node_modules
 dist
 out
 build

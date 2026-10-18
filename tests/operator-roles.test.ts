@@ -8,16 +8,16 @@ import { join } from "node:path";
 import { compare, hash } from "bcrypt";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { OPERATOR_PERMISSIONS, OPERATOR_ROLES, operatorCan } from "@/lib/operator/roles";
-import { resolveOperatorIdentity, type DbOperatorState } from "@/lib/operator/identity";
-import { issueOperatorToken, verifyOperatorToken } from "@/lib/operator/session";
-import { verifyOperatorLogin, type DbOperatorCredential } from "@/lib/operator/credentials";
+import { OPERATOR_PERMISSIONS, OPERATOR_ROLES, operatorCan } from "@op/lib/operator/roles";
+import { resolveOperatorIdentity, type DbOperatorState } from "@op/lib/operator/identity";
+import { issueOperatorToken, verifyOperatorToken } from "@op/lib/operator/session";
+import { verifyOperatorLogin, type DbOperatorCredential } from "@op/lib/operator/credentials";
 import {
   createOperatorAccount,
   findDbOperatorCredential,
   updateOperatorAccount,
-} from "@/lib/operator/operator-accounts";
-import { totpAt } from "@/lib/operator/totp";
+} from "@op/lib/operator/operator-accounts";
+import { totpAt } from "@op/lib/operator/totp";
 
 const KEY = "a".repeat(64);
 const SECRET_ENV = { OPERATOR_SESSION_SECRET: "s".repeat(40) };
@@ -60,7 +60,7 @@ describe("matriks izin operator", () => {
 });
 
 describe("setiap server action operator menyebut izinnya", () => {
-  const AKAR = join(process.cwd(), "src/app/(app)/(operator)/operator");
+  const AKAR = join(process.cwd(), "apps/operator/src/app/(operator)/operator");
   const berkas: string[] = [];
   const telusuri = (dir: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

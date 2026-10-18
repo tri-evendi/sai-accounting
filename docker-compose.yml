@@ -594,10 +594,14 @@ services:
   # klien yang ikut dipercaya. Rantai yang lebih pendek dari angka ini
   # ditolak (gagal-tertutup), bukan ditebak.
   app-operator:
+    # Aplikasi Next TERSENDIRI sejak monorepo Fase 3d + 4 (`apps/operator`).
+    # Image pelanggan tidak lagi memuat konsol; image ini tidak memuat satu pun
+    # halaman buku. Ditarik dari tag yang SAMA (`SAI_TAG`) dengan app-customer —
+    # keduanya menulis basis data yang sama, jadi versi skemanya harus satu.
     build:
       context: .
-      target: runner
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}:${SAI_TAG:-latest}
+      target: runner-operator
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-operator:${SAI_TAG:-latest}
     container_name: sai-app-operator
     restart: unless-stopped
     expose:

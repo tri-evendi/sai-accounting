@@ -1,13 +1,13 @@
 # Konsol Operator `/operator` — override MASTER.md
 
-> Berlaku untuk seluruh `src/app/(app)/(operator)/**` + `src/components/operator/**`
-> + `src/lib/operator/**`. Untuk halaman lain, MASTER.md tetap berlaku apa adanya.
+> Berlaku untuk seluruh `apps/operator/src/app/(operator)/**` + `apps/operator/src/components/operator/**`
+> + `apps/operator/src/lib/operator/**`. Untuk halaman lain, MASTER.md tetap berlaku apa adanya.
 
 ## Kenapa permukaan ini punya aturan sendiri
 
 Ia bukan halaman pelanggan. Konsol hidup di **hostname sendiri**
 (`OPERATOR_HOST`, biasanya `ops.saiaccounting.id`), punya **sesi, cookie, dan
-kredensialnya sendiri** (`lib/operator/session.ts` + TOTP wajib), dan tidak
+kredensialnya sendiri** (`apps/operator/src/lib/operator/session.ts` + TOTP wajib), dan tidak
 pernah mewarisi konteks perusahaan. Pembacanya satu-dua orang penyedia, bukan
 ribuan pelanggan — jadi yang dioptimalkan bukan onboarding melainkan **kecepatan
 menjawab "apa yang perlu ditangani hari ini"**.
@@ -21,8 +21,8 @@ pintu ke `/platform` — ketiganya 404 di host ini).
 
 - **Bentuknya PANEL ADMIN, bukan bilah tab.** Menu samping gelap 256px + kepala
   64px + isi lebar penuh yang menggulung sendiri — angka yang sama dengan chrome
-  dasbor dan `PlatformShell`. Kulitnya `components/operator/operator-shell.tsx`;
-  daftar butirnya `lib/operator/nav.tsx`, bukan di dalam kulitnya.
+  dasbor dan `PlatformShell`. Kulitnya `apps/operator/src/components/operator/operator-shell.tsx`;
+  daftar butirnya `apps/operator/src/lib/operator/nav.tsx`, bukan di dalam kulitnya.
 - **Isi TANPA batas lebar.** `maxWidth` di wadah isi dilarang: tabel tenant &
   jejak audit punya 5–7 kolom, dan mengurungnya di 1152px membuat keduanya
   menggulung mendatar di monitor 1440px.
@@ -47,10 +47,10 @@ pintu ke `/platform` — ketiganya 404 di host ini).
 - **Dua bidang data, satu yang boleh mati.** Bacaan dari basis data KENDALI
   selalu tampil; bacaan PLATFORM (`sai_platform`) jatuh ke `null` dan dijawab
   satu KALIMAT ("penagihan tidak terjangkau"), tidak pernah 500. Pola
-  `billingOverviewForTenant`; lihat `lib/operator/store.ts`.
+  `billingOverviewForTenant`; lihat `apps/operator/src/lib/operator/store.ts`.
 - **Setiap wilayah isi duduk di atas PERMUKAAN.** Bingkainya dua, dan
   pembedaannya satu kalimat supaya ia tidak menjadi selera
-  (`components/operator/console-ui.tsx`):
+  (`apps/operator/src/components/operator/console-ui.tsx`):
   - **`ConsolePanel`** — kartu bertepi & berbayang, untuk isi yang tanpa itu
     mengambang di atas latar halaman: tabel, formulir, daftar fakta, prosa.
     `flush` untuk tabel (yang sudah membawa tepi & nada kepalanya sendiri), dan
@@ -75,7 +75,7 @@ pintu ke `/platform` — ketiganya 404 di host ini).
 - **Ringkasan dibuka oleh "PERLU DITANGANI", bukan oleh ubin.** Daftar itu
   memuat hanya keadaan yang menuntut tindakan, berurut menurut mendesaknya,
   masing-masing bertaut ke tempat tindakannya; penyaringnya murni & teruji
-  (`lib/operator/attention.ts`), dan keadaan tenang dikatakan SEKALI sebagai
+  (`apps/operator/src/lib/operator/attention.ts`), dan keadaan tenang dikatakan SEKALI sebagai
   satu kalimat — bukan sebagai enam baris nol. Baris penjadwal berdiri paling
   atas karena ia MENJELASKAN baris lain.
 

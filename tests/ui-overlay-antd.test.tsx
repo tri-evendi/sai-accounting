@@ -87,7 +87,7 @@ vi.mock("antd", async (importOriginal) => {
   return { ...actual, App: FakeApp, Modal: FakeModal, Popover: FakePopover };
 });
 
-const { AntdProvider } = await import("@/components/providers/antd-provider");
+const { AntdProvider } = await import("@sai/ui/providers/antd-provider");
 const { ConfirmDialog } = await import("@sai/ui/confirm-dialog");
 const { Dialog, DialogContent, DialogTitle, writeDialogAria } = await import(
   "@sai/ui/dialog"

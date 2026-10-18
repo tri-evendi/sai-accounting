@@ -97,7 +97,8 @@ describe("`style-src 'unsafe-inline'` WAJIB tinggal — terlihat seperti kelalai
 
   it("dan gaya sebaris memang mekanisme utamanya — bukan sisa", () => {
     /* Angka ini yang membuat alasan di atas bisa diperiksa, bukan dipercaya. */
-    const src = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
+    // Kebijakannya hidup di satu modul untuk KEDUA aplikasi (monorepo Fase 3d).
+    const src = readFileSync(join(process.cwd(), "packages/core/src/security-headers.ts"), "utf8");
     expect(src).toContain("#203");
     expect(src).toMatch(/style="\.\.\."|style="/);
   });

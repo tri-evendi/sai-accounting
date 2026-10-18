@@ -13,14 +13,7 @@ import {
   tenantPath,
 } from "@sai/core/tenant-routes";
 
-import {
-  clientIpFrom,
-  configuredOperatorHost,
-  decideOperatorRouting,
-  ipAllowed,
-  normalizeHost,
-  operatorCookieName,
-} from "@/lib/operator/plane";
+import { configuredOperatorHost, decideOperatorRouting, normalizeHost } from "@sai/core/operator-plane";
 
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
@@ -233,22 +226,19 @@ export async function proxy(request: NextRequest) {
     return new NextResponse(null, { status: 404 });
   }
   if (operatorDecision.kind === "operator" || operatorDecision.kind === "operator-public") {
-    if (
-      pathname !== "/api/health" &&
-      !ipAllowed(clientIpFrom(request.headers), process.env.OPERATOR_IP_ALLOWLIST)
-    ) {
-      return new NextResponse(null, { status: 404 });
+    /*
+     * Sejak monorepo Fase 3d konsolnya aplikasi TERSENDIRI (`apps/operator`,
+     * container `app-operator`). Aplikasi ini tidak punya satu pun rute
+     * operator; bidang operator yang sampai ke sini berarti Traefik salah arah
+     * — dijawab 404 polos, tidak pernah dilempar ke alur sesi pelanggan.
+     * Probe `/api/health` tetap dilayani supaya container ini tidak dinyatakan
+     * sakit hanya karena host-nya.
+     */
+    if (pathname === "/api/health") return teruskan(request);
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    if (operatorDecision.kind === "operator") {
-      const hasOperatorCookie =
-        request.cookies.has(operatorCookieName(true)) ||
-        request.cookies.has(operatorCookieName(false));
-      if (!hasOperatorCookie) {
-        return NextResponse.redirect(new URL("/operator/login", request.url));
-      }
-    }
-    // Bidang operator TIDAK menjalani alur sesi pelanggan di bawah.
-    return teruskan(request);
+    return new NextResponse(null, { status: 404 });
   }
 
   // Auth.js names the session cookie `__Secure-authjs.session-token` (and salts

@@ -1,0 +1,612 @@
+/**
+ * Rincian TENANT — konsol operator (issue #154), dan sejak #155 juga
+ * PERMUKAAN TINDAKANNYA: panel tulis (`TenantActions`) berdiri di halaman
+ * yang sama dengan faktanya, karena tombol yang memindahkan uang harus
+ * berdiri persis di sebelah angka yang menjadi alasannya.
+ *
+ * Dua sumber, dua nasib — dan keduanya jujur di layar:
+ *   • Bagian KENDALI (paket ter-snapshot, kuota, pemakaian, daftar PT) selalu
+ *     tampil, juga saat `sai_platform` mati.
+ *   • Bagian PLATFORM (langganan, tagihan + pembayarannya, profil pajak)
+ *     jatuh ke "penagihan tidak terjangkau" — bukan 500. Saat itu terjadi,
+ *     tindakan penagihan (lunas/paket/suspensi) ikut MATI di layar: menawarkan
+ *     tombol yang pasti gagal adalah kebohongan kecil yang mahal.
+ *
+ * Halaman ini TIDAK PERNAH membuka basis data perusahaan tenant: operator
+ * melihat metadata langganan, bukan pembukuan pelanggan (batas #154 —
+ * membaca buku adalah keputusan terpisah dengan persetujuan & jejaknya
+ * sendiri).
+ *
+ * ── Setelah AntD (issue #200) ────────────────────────────────────────────
+ * Kedua tabel pindah ke `StaticTable` (aturan #189 — halaman rincian, nol
+ * kendali interaktif), dan kolom nominal tagihan pindah dari `MoneyCell` ke
+ * `moneyColumn`, jadi aturan uang MASTER.md ditegakkan pembantunya alih-alih
+ * diketik ulang per sel.
+ *
+ * Warnanya variabel token AntD `var(--ant-…)` (#203). Konsol operator sengaja
+ * tidak menggambar satu pun komponen AntD di atas isinya — kerangkanya tidak
+ * mengimpor apa pun dari sisi pelanggan — dan itu dulu berarti variabel AntD
+ * tak teratasi di sini. Tidak lagi sejak #227: kelas `ANTD_CSS_VAR_KEY` dipikul
+ * `<html>` oleh root layout, bukan oleh elemen yang digambar komponen AntD.
+ * Token `:root` aplikasi yang dulu dipakai sudah dicabut `globals.css` oleh
+ * #203. Yang mewarnai dirinya sendiri — `Badge`, `Button`, `Money` — memakai
+ * token yang sama karena masing-masing dirender sebagai daun client.
+ */
+
+import { notFound } from "next/navigation";
+import { Badge } from "@sai/ui/badge";
+import {
+  ConsoleNotice,
+  ConsolePanel,
+  CONSOLE_MUTED,
+  CONSOLE_PAGE,
+} from "@op/components/operator/console-ui";
+import { PageHeader } from "@sai/ui/page-header";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { TenantActions } from "@op/components/operator/tenant-actions";
+import { AuditTrailTable } from "@op/components/operator/audit-trail-table";
+import { ButtonLink } from "@sai/ui/button";
+import { readTenantAuditFeed } from "@sai/platform/tenant-audit";
+import { TenantUserSupport } from "@op/components/operator/tenant-user-support";
+import { tenantUsersForOperator } from "@op/lib/operator/user-support";
+import { controlDb } from "@sai/core/control-db";
+import {
+  operatorResendInvitation,
+  operatorRevokeUserSessions,
+  operatorSendPasswordReset,
+} from "./user-actions";
+import { paymentRailConfigured } from "@sai/billing/payment-gateway";
+import { requireOperatorPage } from "@op/lib/operator/guard";
+import { operatorCan } from "@op/lib/operator/roles";
+import {
+  listPlansForOperator,
+  tenantDetailForOperator,
+  tenantHealthForOperator,
+  tenantStatusVariant,
+} from "@op/lib/operator/store";
+import type { HealthSignal } from "@op/lib/operator/tenant-health";
+import { executionVerdict } from "@sai/core/tenant-deletion";
+import {
+  BILLING_MODE_LABEL_KEYS,
+  platformInvoiceIsRevenue,
+  type BillingMode,
+} from "@sai/billing/platform-constants";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
+import { getT } from "@sai/platform/i18n/server";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
+
+export const dynamic = "force-dynamic";
+
+const MUTED = CONSOLE_MUTED;
+
+/** Sub-judul DI DALAM panel (h3): tagihan & pajak di bawah langganan. */
+const H3: React.CSSProperties = {
+  margin: 0,
+  fontSize: "var(--ant-font-size)",
+  fontWeight: "var(--ant-font-weight-strong)" as React.CSSProperties["fontWeight"],
+  color: "var(--ant-color-text)",
+};
+
+/**
+ * Kisi fakta yang membagi lebarnya sendiri — satu kolom di 375px tanpa media
+ * query.
+ */
+const FACT_GRID: React.CSSProperties = {
+  display: "grid",
+  gap: "var(--ant-margin-sm)",
+  margin: 0,
+  gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
+};
+
+/**
+ * Satu fakta — BERISIAN, bukan bertepi, dan itu berubah bersama panelnya.
+ *
+ * Sampai halaman ini duduk di dalam kartu, tiap fakta menggambar tepinya
+ * sendiri; itu benar selama tidak ada bingkai lain di sekelilingnya. Begitu
+ * panelnya punya tepi, dua belas kotak bertepi di dalam satu kotak bertepi
+ * menghasilkan tiga belas garis pada satu wilayah — "outline saja", persis
+ * keluhan yang #266 ukur. Isian `fill-quaternary` memisahkan sel dari kartunya
+ * tanpa menambah satu garis pun.
+ */
+function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        padding: "var(--ant-padding-sm)",
+        borderRadius: "var(--ant-border-radius)",
+        background: "var(--ant-color-fill-quaternary)",
+      }}
+    >
+      <dt style={{ fontSize: 14, color: "var(--ant-color-text-secondary)" }}>{label}</dt>
+      <dd
+        style={{
+          margin: "4px 0 0",
+          fontSize: 14,
+          fontWeight: 500,
+          fontVariantNumeric: "tabular-nums",
+          color: "var(--ant-color-text)",
+        }}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+type TenantDetail = NonNullable<Awaited<ReturnType<typeof tenantDetailForOperator>>>;
+type Invoice = NonNullable<TenantDetail["billing"]>["invoices"][number];
+type Company = TenantDetail["companies"][number];
+
+/** Peta STATIS sinyal kesehatan → kunci kamus (penjaga kunci yatim membaca teks). */
+const HEALTH_LABEL: Record<HealthSignal["key"], DictionaryKey> = {
+  quotaCompaniesOver: "operator.health.quotaCompaniesOver",
+  quotaCompaniesNear: "operator.health.quotaCompaniesNear",
+  quotaUsersOver: "operator.health.quotaUsersOver",
+  quotaUsersNear: "operator.health.quotaUsersNear",
+  bookIdle: "operator.health.bookIdle",
+  bookNeverUsed: "operator.health.bookNeverUsed",
+  bookUnreadable: "operator.health.bookUnreadable",
+  conformanceFindings: "operator.health.conformanceFindings",
+  conformanceAmbiguous: "operator.health.conformanceAmbiguous",
+};
+const HEALTH_TONE_LABEL: Record<HealthSignal["tone"], DictionaryKey> = {
+  danger: "operator.health.toneDanger",
+  warning: "operator.health.toneWarning",
+  info: "operator.health.toneInfo",
+};
+
+/** Cukup untuk "apa yang terakhir terjadi"; selebihnya di halaman jejak. */
+const JEJAK_DI_RINCIAN = 20;
+
+export default async function OperatorTenantDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { operator } = await requireOperatorPage();
+  const t = await getT();
+
+  const { id } = await params;
+  const tenantId = Number.parseInt(id, 10);
+  if (!Number.isInteger(tenantId) || tenantId <= 0) notFound();
+
+  const detail = await tenantDetailForOperator(tenantId);
+  if (!detail) notFound();
+
+  const statusLabel = (value: string) => t(`tenantSettings.status.${value}` as DictionaryKey);
+  const { tenant, usage, companies, billing, deletionRequest } = detail;
+  /* Jejak SATU tenant, 20 terbaru — bacaan lengkap & saringannya di
+     `/operator/audit/tenants?tenant=<slug>`. Sampai panel ini ada, alasan yang
+     diwajibkan setiap aksi di bawah tidak pernah terbaca kembali. */
+  const [trail, people, health] = await Promise.all([
+    /* Per `tenantId`, bukan slug: entri sebelum slug berganti tetap terbaca. */
+    readTenantAuditFeed({ tenantId: tenant.id }, { limit: JEJAK_DI_RINCIAN }),
+    tenantUsersForOperator({ control: controlDb }, tenant.id),
+    tenantHealthForOperator({
+      id: tenant.id,
+      maxCompanies: tenant.maxCompanies,
+      maxUsers: tenant.maxUsers,
+      usage,
+    }),
+  ]);
+
+  /* Bahan panel tindakan (#155). Paket hanya dibaca bila penagihan hidup —
+   * tanpanya panel ganti paket memang tidak boleh muncul. */
+  const plans = billing === null ? null : await listPlansForOperator();
+
+  const invoiceColumns: SaiColumns<Invoice> = [
+    {
+      key: "number",
+      title: t("operator.tenant.colInvoiceNumber"),
+      align: "left",
+      render: (_v, invoice) => (
+        <span style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>{invoice.number}</span>
+      ),
+    },
+    {
+      key: "issueDate",
+      title: t("operator.tenant.colIssueDate"),
+      align: "left",
+      render: (_v, invoice) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatDate(invoice.issueDate)}</span>
+      ),
+    },
+    {
+      key: "dueDate",
+      title: t("operator.tenant.colDueDate"),
+      align: "left",
+      render: (_v, invoice) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatDate(invoice.dueDate)}</span>
+      ),
+    },
+    /* Nominal lewat `moneyColumn`, dan mata uangnya DIBACA PER BARIS: tagihan
+       tenant tidak selalu IDR, dan angka tanpa mata uangnya adalah angka yang
+       salah. Sortirnya diabaikan `StaticTable`. */
+    moneyColumn<Invoice>({
+      dataIndex: "total",
+      title: t("operator.tenant.colTotal"),
+      currency: (invoice) => invoice.currency as CurrencyCode,
+    }),
+    {
+      key: "status",
+      title: t("operator.tenant.colStatus"),
+      align: "left",
+      /* `success` HANYA untuk uang yang BENAR-BENAR masuk: tagihan kompensasi
+         (`comped`) bernilai nol rupiah dan tidak boleh terbaca sebagai
+         pendapatan dari warnanya. Satu fungsi yang memutuskannya, dipakai
+         setiap permukaan — `platformInvoiceIsRevenue`. */
+      render: (_v, invoice) => (
+        <Badge variant={platformInvoiceIsRevenue(invoice.status) ? "success" : "default"}>
+          {t(`tenantSettings.invoiceStatus.${invoice.status}` as DictionaryKey)}
+        </Badge>
+      ),
+    },
+    {
+      key: "payments",
+      title: t("operator.tenant.colPayments"),
+      align: "left",
+      render: (_v, invoice) =>
+        invoice.payments.length === 0 ? (
+          <span style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>—</span>
+        ) : (
+          <ul
+            style={{
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              margin: 0,
+              padding: 0,
+              fontSize: 12,
+              color: "var(--ant-color-text-secondary)",
+            }}
+          >
+            {invoice.payments.map((payment) => (
+              <li key={payment.id} style={{ whiteSpace: "nowrap" }}>
+                {payment.status} · {payment.method ?? payment.gateway ?? "?"} ·{" "}
+                {formatMoney(Number(payment.amount), invoice.currency as CurrencyCode)}
+                {payment.paidAt && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    {t("operator.tenant.paidAt", { date: formatDate(payment.paidAt) })}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        ),
+    },
+  ];
+
+  const companyColumns: SaiColumns<Company> = [
+    {
+      key: "name",
+      title: t("operator.tenant.colCompanyName"),
+      align: "left",
+      render: (_v, company) => (
+        <span style={{ fontWeight: 500, color: "var(--ant-color-text)" }}>{company.name}</span>
+      ),
+    },
+    {
+      key: "slug",
+      title: t("operator.tenant.colCompanySlug"),
+      align: "left",
+      render: (_v, company) => (
+        <span style={{ color: "var(--ant-color-text-secondary)" }}>{company.slug}</span>
+      ),
+    },
+    {
+      key: "active",
+      title: t("operator.tenant.colCompanyActive"),
+      align: "left",
+      render: (_v, company) => (
+        <Badge variant={company.isActive ? "success" : "default"}>
+          {company.isActive
+            ? t("operator.tenant.companyActive")
+            : t("operator.tenant.companyInactive")}
+        </Badge>
+      ),
+    },
+    {
+      key: "users",
+      title: t("operator.tenant.colCompanyUsers"),
+      align: "right",
+      render: (_v, company) => (
+        <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--ant-color-text)" }}>
+          {company.userCount}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div style={CONSOLE_PAGE}>
+      {/* Kepala halaman = `PageHeader`, sama dengan halaman dasbor di bawah
+          tingkat-1 — bukan `<h1>` + tombol "kembali" tulisan tangan. Breadcrumb
+          yang menyebut daftar tenant ADALAH jalan pulangnya, dan ia menyebut
+          lokasinya sekaligus; tombol kembali hanya menyebut arah. */}
+      <PageHeader
+        breadcrumbs={[
+          { label: t("operator.nav.tenants"), href: "/operator/tenants" },
+          { label: tenant.name },
+        ]}
+        title={tenant.name}
+        description={tenant.slug}
+        badge={
+          <Badge
+            variant={tenantStatusVariant(tenant.status)}
+          >
+            {statusLabel(tenant.status)}
+          </Badge>
+        }
+      />
+
+      {/* ── Kendali: paket ter-snapshot, kuota, pemakaian — selalu tampil ── */}
+      <ConsolePanel title={t("operator.tenant.planHeading")}>
+        <dl style={FACT_GRID}>
+          <Fact label={t("operator.tenant.planLabel")} value={tenant.planKey} />
+          <Fact label={t("operator.tenant.signupDate")} value={formatDate(tenant.createdAt)} />
+          <Fact
+            label={t("operator.tenant.usageCompanies")}
+            value={t("operator.tenant.usageOf", {
+              used: usage.companies,
+              max: tenant.maxCompanies,
+            })}
+          />
+          <Fact
+            label={t("operator.tenant.usageUsers")}
+            value={t("operator.tenant.usageOf", { used: usage.users, max: tenant.maxUsers })}
+          />
+        </dl>
+        {tenant.trialEndsAt && (
+          <p style={MUTED}>
+            {t("operator.tenant.trialEndsAt")}: {formatDate(tenant.trialEndsAt)}
+          </p>
+        )}
+      </ConsolePanel>
+
+      {/* ── Kesehatan: sinyal metadata, tidak pernah isi buku ───────────── */}
+      <ConsolePanel title={t("operator.health.heading")} footnote={t("operator.health.note")}>
+        {health.length === 0 ? (
+          <p style={MUTED}>{t("operator.health.allClear")}</p>
+        ) : (
+          <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "grid", gap: 8 }}>
+            {health.map((h, i) => (
+              <li key={`${h.key}-${i}`} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                <Badge variant={h.tone === "danger" ? "danger" : h.tone === "warning" ? "warning" : "default"}>
+                  {t(HEALTH_TONE_LABEL[h.tone])}
+                </Badge>
+                <span>{t(HEALTH_LABEL[h.key] as DictionaryKey, h.params as Record<string, string | number>)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ConsolePanel>
+
+      {/* ── Platform: langganan & tagihan — boleh "mati" dengan tenang ───── */}
+      <ConsolePanel title={t("operator.tenant.subscriptionHeading")}>
+        {billing === null ? (
+          <ConsoleNotice>{t("operator.tenant.billingUnavailable")}</ConsoleNotice>
+        ) : (
+          <>
+            {billing.subscription === null ? (
+              <p style={MUTED}>{t("operator.tenant.noSubscription")}</p>
+            ) : (
+              <dl style={FACT_GRID}>
+                <Fact
+                  label={t("operator.tenant.statusLabel")}
+                  value={
+                    <Badge variant={billing.subscription.status === "active" ? "success" : "warning"}>
+                      {statusLabel(billing.subscription.status)}
+                    </Badge>
+                  }
+                />
+                <Fact
+                  label={t("operator.tenant.priceLabel")}
+                  value={`${formatMoney(
+                    Number(billing.subscription.price),
+                    billing.subscription.currency as CurrencyCode
+                  )} / ${
+                    billing.subscription.billingCycle === "yearly"
+                      ? t("operator.tenant.cycleYearly")
+                      : t("operator.tenant.cycleMonthly")
+                  }`}
+                />
+                {/* MODE PENAGIHAN sebagai fakta, bukan hanya nilai awal panel
+                    di bawah: ia menjawab "apakah akun ini akan ditagih?" —
+                    pertanyaan yang sebelumnya hanya bisa dijawab dengan
+                    membuka basis data. */}
+                <Fact
+                  label={t("operator.actions.billingMode.currentLabel")}
+                  value={t(
+                    BILLING_MODE_LABEL_KEYS[
+                      (billing.subscription.billingMode as BillingMode) ?? "none"
+                    ] ?? BILLING_MODE_LABEL_KEYS.none
+                  )}
+                />
+                <Fact
+                  label={t("operator.tenant.periodEnd")}
+                  value={formatDate(billing.subscription.currentPeriodEnd)}
+                />
+                <Fact
+                  label={
+                    billing.subscription.pastDueSince
+                      ? t("operator.tenant.pastDueSince")
+                      : billing.subscription.cancelledAt
+                        ? t("operator.tenant.cancelledAt")
+                        : t("operator.tenant.trialEndsAt")
+                  }
+                  value={
+                    billing.subscription.pastDueSince
+                      ? formatDate(billing.subscription.pastDueSince)
+                      : billing.subscription.cancelledAt
+                        ? formatDate(billing.subscription.cancelledAt)
+                        : billing.subscription.trialEndsAt
+                          ? formatDate(billing.subscription.trialEndsAt)
+                          : "—"
+                  }
+                />
+              </dl>
+            )}
+
+            <h3 style={H3}>{t("operator.tenant.invoicesHeading")}</h3>
+            {billing.invoices.length === 0 ? (
+              <p style={MUTED}>{t("operator.tenant.noInvoices")}</p>
+            ) : (
+              <StaticTable
+                columns={invoiceColumns}
+                rows={billing.invoices}
+                rowKey={(invoice) => invoice.id}
+              />
+            )}
+
+            <h3 style={H3}>{t("operator.tenant.taxHeading")}</h3>
+            {billing.profile === null ? (
+              <p style={MUTED}>{t("operator.tenant.profileMissing")}</p>
+            ) : (
+              <dl style={FACT_GRID}>
+                <Fact label={t("operator.tenant.npwp")} value={billing.profile.npwp ?? "—"} />
+                <Fact label={t("operator.tenant.npwpName")} value={billing.profile.name ?? "—"} />
+                <Fact
+                  label={t("operator.tenant.npwpAddress")}
+                  value={billing.profile.address ?? "—"}
+                />
+              </dl>
+            )}
+          </>
+        )}
+      </ConsolePanel>
+
+      {/* ── Registry PT — kendali; bukunya TIDAK PERNAH dibuka dari sini ─── */}
+      <ConsolePanel
+        title={t("operator.tenant.companiesHeading")}
+        footnote={t("operator.tenant.booksNote")}
+      >
+        {companies.length === 0 ? (
+          <p style={MUTED}>{t("operator.tenant.noCompanies")}</p>
+        ) : (
+          <StaticTable
+            columns={companyColumns}
+            rows={companies}
+            rowKey={(company) => company.id}
+          />
+        )}
+      </ConsolePanel>
+
+      {/* ── Pengguna & undangan — bantuan masuk tanpa memegang rahasia ───── */}
+      <ConsolePanel title={t("operator.users.heading", { count: people.users.length })}>
+        <TenantUserSupport
+          tenantId={tenant.id}
+          users={people.users.map((u) => ({
+            id: u.id,
+            label: u.name ? `${u.name} (${u.username})` : u.username,
+            email: u.email,
+            mustChangePassword: u.mustChangePassword,
+            activeMemberships: u.activeMemberships,
+          }))}
+          invitations={people.invitations.map((i) => ({
+            id: i.id,
+            email: i.email,
+            companyName: i.companyName,
+            companyRole: i.companyRole,
+            expiresLabel: formatDate(i.expiresAt),
+            expired: i.expired,
+          }))}
+          canAct={operatorCan(operator.role, "tenant.users")}
+          revoke={operatorRevokeUserSessions}
+          reset={operatorSendPasswordReset}
+          resend={operatorResendInvitation}
+        />
+      </ConsolePanel>
+
+      {/* ── Jejak tenant — apa yang SUDAH dilakukan, sebelum tombol untuk
+          melakukan berikutnya. ──────────────────────────────────────────── */}
+      <ConsolePanel
+        title={`${t("operator.tenant.trailHeading")} (${trail.total})`}
+        flush
+        actions={
+          trail.total > 0 ? (
+            <ButtonLink
+              href={`/operator/audit/tenants?tenant=${encodeURIComponent(tenant.slug)}`}
+              variant="outline"
+              size="sm"
+            >
+              {t("operator.tenant.trailAll")}
+            </ButtonLink>
+          ) : undefined
+        }
+      >
+        <AuditTrailTable
+          rows={trail.entries.map((e) => ({
+            id: e.id,
+            createdAt: e.createdAt,
+            actor: e.username,
+            action: e.action,
+            ipAddress: e.ipAddress,
+            details: e.details,
+          }))}
+          labels={{
+            time: t("operator.audit.colTime"),
+            actor: t("operator.tenantAudit.colActor"),
+            action: t("operator.audit.colAction"),
+            ip: t("operator.audit.colIp"),
+            details: t("operator.audit.colDetails"),
+          }}
+          empty={<p style={{ ...MUTED, padding: "var(--ant-padding-lg)" }}>{t("operator.tenantAudit.empty")}</p>}
+        />
+      </ConsolePanel>
+
+      {/* ── Tindakan tulis (#155) — SENGAJA paling bawah: fakta dibaca dulu,
+          tombolnya belakangan; yang paling merusak paling jauh dari jalur
+          baca. Semua nilai sudah diserialkan di sini (tanggal jadi label,
+          Decimal jadi string) — komponen client tidak menerima Date/Decimal. */}
+      <TenantActions
+        tenantId={tenant.id}
+        tenantSlug={tenant.slug}
+        tenantName={tenant.name}
+        tenantStatus={tenant.status}
+        subscriptionStatus={billing?.subscription?.status ?? null}
+        billingMode={billing?.subscription?.billingMode ?? null}
+        /* Dihitung di SERVER dari environment; yang menyeberang hanya boolean.
+           Dipakai panel mode penagihan sebagai peringatan sebelum menyalakan
+           penagihan otomatis tanpa satu pun cara membayar. */
+        paymentRailReady={paymentRailConfigured()}
+        allowed={{
+          billing: operatorCan(operator.role, "tenant.billing"),
+          lifecycle: operatorCan(operator.role, "tenant.lifecycle"),
+          delete: operatorCan(operator.role, "tenant.delete"),
+        }}
+        usage={usage}
+        currentPlanKey={tenant.planKey}
+        billingAvailable={billing !== null}
+        issuedInvoices={(billing?.invoices ?? [])
+          .filter((invoice) => invoice.status === "issued")
+          .map((invoice) => ({
+            number: invoice.number,
+            total: invoice.total,
+            currency: invoice.currency,
+            dueDateLabel: formatDate(invoice.dueDate),
+          }))}
+        plans={plans}
+        deletionRequest={
+          deletionRequest
+            ? {
+                id: deletionRequest.id,
+                graceEndsAtLabel: formatDate(deletionRequest.graceEndsAt),
+                /* Vonis yang SAMA dengan yang dipakai inti tulis — layar dan
+                 * server tidak boleh berbeda pendapat soal tenggang. */
+                pastGrace:
+                  executionVerdict({ status: "pending", graceEndsAt: deletionRequest.graceEndsAt }) ===
+                  "executable",
+                note: deletionRequest.note,
+              }
+            : null
+        }
+      />
+    </div>
+  );
+}

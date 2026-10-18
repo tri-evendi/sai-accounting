@@ -27,7 +27,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { nextOccurrence, type RecurrenceRule } from "@/lib/recurring";
 import { RetweetOutlined } from "@ant-design/icons";
 

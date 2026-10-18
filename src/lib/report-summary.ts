@@ -24,7 +24,7 @@
  * `ReportSummary` tidak berubah sedikit pun — isinya tetap string biasa, hanya
  * kini dalam bahasa pengguna.
  */
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { balanceSheetEquityTotal, grossMarginPct } from "@/lib/statement-layout";
 import type { TranslateFn } from "@/lib/i18n/client";
 

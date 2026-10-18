@@ -40,7 +40,7 @@ import {
   type SortSpec,
 } from "@/lib/table-sort";
 import type { Prisma } from "@sai/db/client/company";
-import { formatDateShort, parsePageParam } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { FileDoneOutlined } from "@ant-design/icons";

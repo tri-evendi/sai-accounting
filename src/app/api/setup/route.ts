@@ -25,7 +25,7 @@ import {
   OpeningBalanceError,
   type OpeningBalancesInput,
 } from "@/lib/opening-balance";
-import { CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@sai/core/constants";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";

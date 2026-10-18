@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import type { Session } from "next-auth";
-import { ACCOUNTING_PERMISSIONS, type Permission } from "@/lib/authz";
+import { ACCOUNTING_PERMISSIONS, type Permission } from "@sai/core/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";

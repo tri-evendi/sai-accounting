@@ -32,7 +32,7 @@
  * pengaturan MAUPUN skrip operator untuk akun lama — lingkup 4).
  */
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { isValidSlug } from "@/lib/tenant-routes";
 
 /** Jeda wajib antar-penggantian. */

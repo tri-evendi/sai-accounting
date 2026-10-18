@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
 import { getT } from "@/lib/i18n/server";

@@ -30,7 +30,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { reportById, resolvePeriod } from "@/lib/report-catalog";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
 import { ProjectOutlined } from "@ant-design/icons";

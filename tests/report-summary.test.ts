@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { translate } from "@/lib/i18n/dictionary";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import id from "@/lib/i18n/dictionaries/id.json";
 import {
   incomeStatementSummary,

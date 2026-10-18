@@ -54,7 +54,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layout";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { SPACE_XS } from "@/lib/layout-scale";

@@ -24,7 +24,7 @@ import { useSession } from "next-auth/react";
 import { Alert, Flex, theme, Typography } from "antd";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { APP_NAME, type SystemRole } from "@/lib/constants";
+import { APP_NAME, type SystemRole } from "@sai/core/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";

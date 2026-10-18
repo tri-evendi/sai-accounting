@@ -35,7 +35,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import type { PeriodCheck, PeriodSummary } from "@/lib/period-close";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";

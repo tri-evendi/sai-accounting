@@ -21,7 +21,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { COMPANY_ADDRESS, COMPANY_NAME } from "@/lib/constants";
+import { COMPANY_ADDRESS, COMPANY_NAME } from "@sai/core/constants";
 import { getCompanyContext } from "@/lib/company-context";
 import { currentCompany } from "@/lib/current-company";
 import { getCompany } from "@/lib/company-registry";

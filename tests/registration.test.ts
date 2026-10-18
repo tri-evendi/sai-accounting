@@ -26,7 +26,7 @@ import {
   usernameFromEmail,
   verdictForVerification,
 } from "@/lib/registration";
-import { TENANT_STATUSES } from "@/lib/constants";
+import { TENANT_STATUSES } from "@sai/core/constants";
 
 describe("token verifikasi", () => {
   it("mentah 64 hex, tersimpan hanya hash-nya, dan keduanya BERBEDA", () => {

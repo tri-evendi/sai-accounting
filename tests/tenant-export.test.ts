@@ -55,7 +55,7 @@ describe("jejak audit tenant — tulis lalu baca ulang", () => {
   });
 
   it("entri tersimpan dan terbaca terbaru-dulu, terpisah per tenant", async () => {
-    vi.doMock("@/lib/control-db", () => ({
+    vi.doMock("@sai/core/control-db", () => ({
       controlDb: {
         tenantAuditLog: {
           create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -99,7 +99,7 @@ describe("jejak audit tenant — tulis lalu baca ulang", () => {
     // jejak tenant lain kosong — pemisahan per-tenant, bukan penyaring
     expect(await readTenantAuditLogs("pt-lain")).toEqual([]);
 
-    vi.doUnmock("@/lib/control-db");
+    vi.doUnmock("@sai/core/control-db");
     vi.resetModules();
   });
 });

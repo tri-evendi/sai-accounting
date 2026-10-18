@@ -23,7 +23,7 @@ import {
   isStockMovementType,
   type CashType,
   type StockMovementType,
-} from "@/lib/constants";
+} from "@sai/core/constants";
 
 /**
  * Nilai `tb_stok.status` legacy → nilai baku.

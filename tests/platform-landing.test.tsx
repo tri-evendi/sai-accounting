@@ -37,7 +37,7 @@ import { renderToReadableStream } from "react-dom/server";
 import { LocaleProvider } from "@/lib/i18n/client";
 import { translate, type Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney } from "@sai/core/money-format";
 import { POST_LOGIN_PATH } from "@/lib/post-login";
 import { legacyTenantScopedPath, renamedPagePath } from "@/lib/tenant-routes";
 
@@ -392,7 +392,7 @@ describe("setiap rute menjaga dirinya sendiri", () => {
     // Membaca `tenant.companies` (atau menyentuh basis data kendali langsung)
     // akan membocorkan keberadaan PT lain kepada staf salah satu PT.
     expect(src).not.toContain("tenant.companies");
-    expect(src).not.toContain("@/lib/control-db");
+    expect(src).not.toContain("@sai/core/control-db");
     expect(src).not.toContain("@/lib/prisma");
   });
 });

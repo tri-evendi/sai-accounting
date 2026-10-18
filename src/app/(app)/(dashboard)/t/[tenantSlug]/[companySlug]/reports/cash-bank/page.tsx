@@ -34,7 +34,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import { reportById, resolvePeriod, columnLabels } from "@/lib/report-catalog";
 import { cashBankPayload } from "@/lib/report-payload";
 import { cashBankColumns, type CashBankColumnId } from "@/lib/statement-layout";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
 import { BankOutlined } from "@ant-design/icons";

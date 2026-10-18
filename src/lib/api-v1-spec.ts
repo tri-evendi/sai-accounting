@@ -23,7 +23,7 @@
  * MURNI: tanpa Prisma, tanpa I/O.
  */
 
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import { DEFAULT_LIMIT, MAX_LIMIT } from "@/lib/api-v1";
 
 export interface FieldSpec {

@@ -50,6 +50,13 @@
         "vitest": "^3.2.7",
       },
     },
+    "packages/core": {
+      "name": "@sai/core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@sai/db": "workspace:*",
+      },
+    },
     "packages/db": {
       "name": "@sai/db",
       "version": "0.0.0",
@@ -622,6 +629,8 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA=="],
 
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
+
+    "@sai/core": ["@sai/core@workspace:packages/core"],
 
     "@sai/db": ["@sai/db@workspace:packages/db"],
 

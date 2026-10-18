@@ -37,7 +37,7 @@ import {
   type SortSpec,
 } from "@/lib/table-sort";
 import type { Prisma } from "@sai/db/client/company";
-import { formatDateShort, parsePageParam } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { LockOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";

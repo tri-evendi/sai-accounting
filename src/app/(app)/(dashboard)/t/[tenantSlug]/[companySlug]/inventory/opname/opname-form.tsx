@@ -21,7 +21,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { useToast } from "@/components/ui/toast";
 import { SearchOutlined } from "@ant-design/icons";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";

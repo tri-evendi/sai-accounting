@@ -610,7 +610,7 @@ describe("cakupan penjaga API route", () => {
     for (const rel of V1_PUBLIC) {
       const src = readFileSync(join(API_DIR, rel), "utf8");
       expect(src, `${rel} menyentuh basis data perusahaan`).not.toContain("@/lib/prisma");
-      expect(src, `${rel} menyentuh basis data kendali`).not.toContain("@/lib/control-db");
+      expect(src, `${rel} menyentuh basis data kendali`).not.toContain("@sai/core/control-db");
     }
   });
 

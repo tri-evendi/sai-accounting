@@ -22,7 +22,7 @@ import {
   type ColumnBase,
   type SaiColumn,
 } from "@/components/ui/table-columns";
-import { type CurrencyCode } from "@/lib/money-format";
+import { type CurrencyCode } from "@sai/core/money-format";
 
 /**
  * Kolom nominal — rata kanan, tabular-nums, format id-ID, mata uang eksplisit,

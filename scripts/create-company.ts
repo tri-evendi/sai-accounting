@@ -31,7 +31,7 @@ import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "../src/lib/tenant-routes";
-import { ROLES, ROLE_LABELS } from "../src/lib/constants";
+import { ROLES, ROLE_LABELS } from "@sai/core/constants";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};

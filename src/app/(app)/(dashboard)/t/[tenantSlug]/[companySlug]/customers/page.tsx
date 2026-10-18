@@ -20,7 +20,7 @@
  * urutan nama. Urutan bawaan halaman ini memang bertingkat, dan sortir kolom
  * mengganti tingkat KEDUAnya saja.
  */
-import { parsePageParam } from "@/lib/utils";
+import { parsePageParam } from "@sai/core/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";

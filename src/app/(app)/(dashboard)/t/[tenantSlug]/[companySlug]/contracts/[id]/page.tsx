@@ -38,7 +38,7 @@ import { Money } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DeductStockNotice } from "./deduct-stock-notice";
 import { DocumentChainTimeline } from "@/components/shared/document-chain-timeline";
-import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
+import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@sai/core/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   buildContractChain,

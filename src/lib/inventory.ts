@@ -1,4 +1,4 @@
-import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { round2 } from "@/lib/posting/rules";
 

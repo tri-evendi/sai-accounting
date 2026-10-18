@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Flex } from "antd";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { DOCUMENT_TYPES } from "@/lib/constants";
+import { DOCUMENT_TYPES } from "@sai/core/constants";
 import { UploadOutlined } from "@ant-design/icons";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";

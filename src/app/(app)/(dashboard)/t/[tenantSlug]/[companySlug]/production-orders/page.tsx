@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { SettingOutlined } from "@ant-design/icons";
 import { statusLabelKey, statusVariant } from "./status";
 

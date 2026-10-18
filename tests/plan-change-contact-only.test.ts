@@ -94,7 +94,7 @@ vi.mock("@/lib/platform-db", () => ({
   },
 }));
 
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     company: { count: async () => 1 },
     user: { count: async () => 2 },

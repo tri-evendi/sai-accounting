@@ -41,7 +41,7 @@
 import "server-only";
 
 import { routeCompany, setRouteCompany } from "@/lib/current-company";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { membershipFor } from "@/lib/company-registry";
 import { isValidSlug } from "@/lib/tenant-routes";
 import { tenantIdUntukSlugLama } from "@/lib/tenant-slug";

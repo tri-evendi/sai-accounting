@@ -21,7 +21,7 @@ import { ACCOUNT_TYPES, EXPENSE_NATURES, acceptsExpenseNature } from "@/lib/acco
 import { useT } from "@/lib/i18n/client";
 import { useDictionary } from "@/lib/i18n/client";
 import { accountTypeLabels, expenseNatureLabels } from "@/lib/i18n/labels";
-import { CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@sai/core/constants";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 

@@ -1,4 +1,4 @@
-import { parsePageParam } from "@/lib/utils";
+import { parsePageParam } from "@sai/core/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +16,7 @@ import { ChartCard } from "@/components/dashboard/chart-card";
 import { StockStatusChart, StockLevelChart } from "@/components/shared/dashboard-charts";
 import { stockLevelChartHeight, stockLevelSeries } from "@/lib/chart-data";
 import { InventoryPageActions } from "./inventory-actions";
-import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { Card } from "@/components/ui/card";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";

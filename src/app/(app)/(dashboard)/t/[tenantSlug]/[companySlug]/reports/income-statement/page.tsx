@@ -30,7 +30,7 @@ import { comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { incomeStatementSummary } from "@/lib/report-summary";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";

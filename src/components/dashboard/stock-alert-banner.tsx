@@ -16,7 +16,7 @@
  */
 import { Link } from "@/components/ui/app-link";
 import { WarningOutlined } from "@ant-design/icons";
-import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { getT } from "@/lib/i18n/server";
 
 export type LowStockAlertItem = {

@@ -33,7 +33,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Money } from "@/components/ui/money";
 import { moneyColumn } from "@/components/ui/money-column";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";

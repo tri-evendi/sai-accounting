@@ -27,7 +27,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { PERMISSIONS } from "@/lib/authz";
+import { PERMISSIONS } from "@sai/core/authz";
 import { REPORTS } from "@/lib/report-catalog";
 
 const APP = join(__dirname, "..", "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]");

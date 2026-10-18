@@ -50,7 +50,7 @@ import {
   AdvanceForm,
   type ContractOption,
 } from "@/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { useT } from "@/lib/i18n/client";
 import { CloseOutlined, InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 /** One purchase this supplier's advances can be compensated into. */

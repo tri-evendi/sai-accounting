@@ -22,7 +22,7 @@ import { PageLoader } from "@/components/ui/loading";
 import { ACCOUNT_TYPES, EXPENSE_NATURES, acceptsExpenseNature } from "@/lib/accounting";
 import { useDictionary, useT } from "@/lib/i18n/client";
 import { accountTypeLabels, expenseNatureLabels } from "@/lib/i18n/labels";
-import { CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@sai/core/constants";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 

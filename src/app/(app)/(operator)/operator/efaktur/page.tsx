@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { ConsoleNotice, ConsolePanel, CONSOLE_MUTED, CONSOLE_PAGE } from "@/components/operator/console-ui";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { platformEfaktur } from "@/lib/billing/platform-efaktur";
 import { getT } from "@/lib/i18n/server";

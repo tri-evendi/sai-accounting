@@ -19,7 +19,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 import { averageUnitCostForItem } from "@/lib/posting/cogs";
 import { biayaStandar, explodeBom, type BomInput } from "@/lib/manufacturing/bom";
 import { SECTION_GAP } from "@/lib/layout-scale";

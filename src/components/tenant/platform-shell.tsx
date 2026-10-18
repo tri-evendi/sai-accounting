@@ -85,7 +85,7 @@ import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
 import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 
-import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { APP_NAME, APP_VERSION } from "@sai/core/constants";
 import { PLATFORM_STYLE } from "@/components/tenant/platform-tone";
 import { UserMenu } from "@/components/layout/user-menu";
 import { BrandLockup } from "@/components/ui/brand-lockup";

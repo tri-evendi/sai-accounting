@@ -30,7 +30,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { cashFlowLayout, type CashFlowLabels, type CashFlowLayoutRow } from "@/lib/statement-layout";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined, WarningOutlined } from "@ant-design/icons";
 
 export type CashFlowPayload = Extract<StatementPayload, { kind: "cash-flow" }>;

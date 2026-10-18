@@ -30,7 +30,7 @@ import { Money } from "@/components/ui/money";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { ArrowDownOutlined, ArrowUpOutlined, CheckCircleOutlined, DisconnectOutlined, LinkOutlined, LockOutlined, UnlockOutlined, UploadOutlined, WarningOutlined } from "@ant-design/icons";
 import { useT } from "@/lib/i18n/client";
 import { Link } from "@/components/ui/app-link";

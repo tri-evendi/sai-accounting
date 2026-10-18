@@ -47,7 +47,7 @@
 import Link from "next/link";
 import { Alert, Col, Flex, Layout, Row, theme } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
-import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { APP_NAME, APP_VERSION } from "@sai/core/constants";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { LocaleToggle } from "@/components/ui/locale-toggle";

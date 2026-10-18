@@ -11,9 +11,9 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { validateTenantMembershipChange } from "@/lib/tenant-authz";
-import type { TenantRole } from "@/lib/constants";
+import type { TenantRole } from "@sai/core/constants";
 
 export interface TenantMembershipInfo {
   tenantId: number;

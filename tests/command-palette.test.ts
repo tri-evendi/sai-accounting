@@ -20,8 +20,8 @@
 import { describe, expect, it } from "vitest";
 
 import { NAV_HOME, isNavItemVisible, visibleNavGroups, visibleNavHrefs } from "@/lib/nav";
-import { PERMISSIONS } from "@/lib/authz";
-import { ROLES } from "@/lib/constants";
+import { PERMISSIONS } from "@sai/core/authz";
+import { ROLES } from "@sai/core/constants";
 import { filterPermissionsByModules, BUSINESS_MODULES, type BusinessModule } from "@/lib/business-modules";
 
 /** Persis cara palet menyusun daftarnya (lihat command-palette.tsx). */

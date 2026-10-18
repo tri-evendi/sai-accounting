@@ -16,7 +16,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { userNamesByIds } from "@/lib/users-directory";
-import { isFullAccessRole, type Role } from "@/lib/constants";
+import { isFullAccessRole, type Role } from "@sai/core/constants";
 import {
   countUnreadDecisions,
   type ApprovalDocumentType,

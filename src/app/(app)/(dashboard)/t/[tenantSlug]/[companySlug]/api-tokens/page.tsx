@@ -10,7 +10,7 @@
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { currentCompanyId } from "@/lib/current-company";
 
 import { ApiTokensClient } from "./api-tokens-client";

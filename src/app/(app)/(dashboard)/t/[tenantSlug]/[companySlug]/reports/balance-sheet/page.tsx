@@ -27,7 +27,7 @@ import { BalanceSheetStatement } from "@/components/reports/balance-sheet-statem
 import { resolveAsOf } from "@/lib/report-catalog";
 import { comparisonDate, parseComparison } from "@/lib/statement-compare";
 import { balanceSheetSummary } from "@/lib/report-summary";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 

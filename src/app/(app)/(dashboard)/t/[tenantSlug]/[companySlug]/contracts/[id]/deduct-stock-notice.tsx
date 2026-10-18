@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAppRouter } from "@/components/ui/app-link";
 import { useT } from "@/lib/i18n/client";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 
 const ICON_SIZE = 16;
 

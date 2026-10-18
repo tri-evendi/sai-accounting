@@ -36,7 +36,7 @@ import {
 import { perluTindakan, type StatusVersi } from "@/lib/schema-version";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

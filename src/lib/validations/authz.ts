@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { PERMISSIONS, type Permission } from "@/lib/authz";
+import { PERMISSIONS, type Permission } from "@sai/core/authz";
 import { roleEnum } from "@/lib/validations/common";
-import { ROLE_VALUES } from "@/lib/constants";
+import { ROLE_VALUES } from "@sai/core/constants";
 import { vmsg } from "@/lib/i18n/validation";
 
 /**

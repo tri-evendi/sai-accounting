@@ -24,7 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
 import { LedgerFilter } from "./ledger-filter";

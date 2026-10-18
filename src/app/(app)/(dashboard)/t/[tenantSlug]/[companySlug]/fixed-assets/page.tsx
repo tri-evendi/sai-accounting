@@ -31,7 +31,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { EnvironmentOutlined, GoldOutlined, InfoCircleOutlined, PlusOutlined, TagsOutlined } from "@ant-design/icons";
 import { RunDepreciation } from "./run-depreciation";
 import { getT } from "@/lib/i18n/server";

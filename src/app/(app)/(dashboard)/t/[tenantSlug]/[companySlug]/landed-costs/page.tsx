@@ -18,7 +18,7 @@ import { Money } from "@/components/ui/money";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort, parsePageParam } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { ImportOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";

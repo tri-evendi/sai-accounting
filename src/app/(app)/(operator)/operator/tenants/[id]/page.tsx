@@ -51,7 +51,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { readTenantAuditFeed } from "@/lib/tenant-audit";
 import { TenantUserSupport } from "@/components/operator/tenant-user-support";
 import { tenantUsersForOperator } from "@/lib/operator/user-support";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   operatorResendInvitation,
   operatorRevokeUserSessions,
@@ -73,10 +73,10 @@ import {
   platformInvoiceIsRevenue,
   type BillingMode,
 } from "@/lib/platform-constants";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateMedium as formatDate } from "@/lib/utils";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

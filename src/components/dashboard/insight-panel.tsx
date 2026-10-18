@@ -21,7 +21,7 @@ import { Link } from "@/components/ui/app-link";
 import { WarningOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 import type { DashboardInsight } from "@/lib/dashboard-insights";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
 
 const PANEL: React.CSSProperties = {

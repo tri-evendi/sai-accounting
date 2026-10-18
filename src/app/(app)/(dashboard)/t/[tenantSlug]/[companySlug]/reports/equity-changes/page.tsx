@@ -34,7 +34,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { reportById, resolvePeriod } from "@/lib/report-catalog";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

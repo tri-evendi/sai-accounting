@@ -13,7 +13,7 @@ import { reportById, resolveColumns, resolvePeriod } from "@/lib/report-catalog"
 import { partyRecapColumns } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

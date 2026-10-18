@@ -41,7 +41,7 @@
  */
 
 import { BrandMark } from "@/components/ui/brand-mark";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME } from "@sai/core/constants";
 import { NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
 
 const TRUNCATE: React.CSSProperties = {

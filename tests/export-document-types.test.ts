@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@/lib/constants";
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@sai/core/constants";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 
 const dict = (loc: string) =>

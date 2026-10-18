@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { Link } from "@/components/ui/app-link";
 import { getT } from "@/lib/i18n/server";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 import { ExperimentOutlined } from "@ant-design/icons";
 
 export const dynamic = "force-dynamic";

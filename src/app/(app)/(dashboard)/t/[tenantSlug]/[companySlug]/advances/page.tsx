@@ -28,7 +28,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { CARD_GAP, SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";

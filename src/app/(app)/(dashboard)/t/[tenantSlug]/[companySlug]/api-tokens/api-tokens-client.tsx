@@ -53,7 +53,7 @@ import { useToast } from "@/components/ui/toast";
 import { Link } from "@/components/ui/app-link";
 import { V1_ROOT } from "@/lib/api-v1";
 import { docsPath } from "@/lib/docs";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 const { Text } = Typography;
 

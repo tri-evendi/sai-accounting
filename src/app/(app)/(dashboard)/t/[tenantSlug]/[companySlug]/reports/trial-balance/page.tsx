@@ -30,7 +30,7 @@ import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { TrialBalanceStatement } from "@/components/reports/trial-balance-statement";
 import { reportById, resolveAsOf } from "@/lib/report-catalog";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 

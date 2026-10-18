@@ -28,7 +28,7 @@ import { Spinner } from "@/components/ui/loading";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@/lib/i18n/client";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import type { YearClosePlan } from "@/lib/year-close";
 
 interface Muatan {

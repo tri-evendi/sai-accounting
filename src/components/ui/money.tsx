@@ -33,7 +33,7 @@
 
 import { theme } from "antd";
 
-import { formatAmount, formatMoney, isNegative, type CurrencyCode } from "@/lib/money-format";
+import { formatAmount, formatMoney, isNegative, type CurrencyCode } from "@sai/core/money-format";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 
 /**

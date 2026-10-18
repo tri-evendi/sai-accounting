@@ -18,8 +18,8 @@ import {
   normalizeOverrides,
   validateOverrides,
 } from "@/lib/authz-overrides";
-import { PERMISSIONS, PERMISSION_ROLES, can, type Permission } from "@/lib/authz";
-import { ROLE_VALUES } from "@/lib/constants";
+import { PERMISSIONS, PERMISSION_ROLES, can, type Permission } from "@sai/core/authz";
+import { ROLE_VALUES } from "@sai/core/constants";
 
 describe("applyOverrides — merakit matriks efektif", () => {
   it("tanpa override = persis matriks bawaan (perilaku hari ini)", () => {

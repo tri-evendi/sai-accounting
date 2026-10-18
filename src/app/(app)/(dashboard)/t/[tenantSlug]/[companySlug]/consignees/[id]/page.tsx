@@ -12,7 +12,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 

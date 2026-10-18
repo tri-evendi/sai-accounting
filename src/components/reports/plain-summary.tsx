@@ -17,7 +17,7 @@
  * `colorSuccess`/`colorError` bawaan yang gagal 4,5:1 sebagai teks.
  */
 import { Card } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import {
   BulbOutlined,
   FallOutlined,

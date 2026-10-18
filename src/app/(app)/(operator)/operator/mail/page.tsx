@@ -24,7 +24,7 @@ import { mailSettingsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import { mailHealth } from "@/lib/mail-health";
 import { outboxCount } from "@/lib/mailer-core";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

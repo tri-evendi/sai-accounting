@@ -31,7 +31,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { useT } from "@/lib/i18n/client";
 import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";

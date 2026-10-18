@@ -57,7 +57,7 @@ import {
   DOCUMENT_TYPE_LABELS,
   ROLE_LABELS,
   STATUS_FILTER_LABELS,
-} from "@/lib/constants";
+} from "@sai/core/constants";
 import {
   APPROVAL_DOCUMENT_TYPE_LABELS,
   APPROVAL_STATUS_LABELS,

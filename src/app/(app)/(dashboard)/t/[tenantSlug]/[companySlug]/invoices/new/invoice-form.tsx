@@ -63,7 +63,7 @@ import {
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { companyTaxRateOn, defaultInvoiceTax } from "@/lib/tax";
 import { useCompanyTaxProfile } from "@/lib/tax-profile-client";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { resolveSubmitFailure } from "@/lib/form-sections";
 import {
   closedPeriodIssue,

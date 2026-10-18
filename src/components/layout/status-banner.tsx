@@ -21,7 +21,7 @@ import {
   NOTICE_SENTENCE,
   type PublicStatusNotice,
 } from "@/lib/status-notices";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 const KUNCI = "sai-status-banner-ditutup";
 

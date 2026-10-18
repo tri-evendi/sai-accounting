@@ -11,7 +11,7 @@ import { BASE_CURRENCY } from "@/lib/validations/fx";
 import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
-import { PROCESS_SHRINKAGE_NOTE } from "@/lib/constants";
+import { PROCESS_SHRINKAGE_NOTE } from "@sai/core/constants";
 
 /**
  * Ringkasan stok per barang. `?active=1` membuang barang yang dinonaktifkan —

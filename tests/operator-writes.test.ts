@@ -44,7 +44,7 @@ const controlFake = vi.hoisted(() => ({
  * disaring per slug.
  */
 const tenantAuditRows: Record<string, unknown>[] = [];
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     company: { findUnique: async () => ({ tenant: controlFake.tenant }) },
     tenantAuditLog: {

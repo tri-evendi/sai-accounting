@@ -18,7 +18,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatNumber, formatDateShort, parsePageParam } from "@/lib/utils";
+import { formatNumber, formatDateShort, parsePageParam } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { InfoCircleOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";

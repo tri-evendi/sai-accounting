@@ -56,7 +56,7 @@ import { setLocale } from "@/lib/i18n/actions";
 import { fallbackSwitchLocale } from "@/lib/i18n/locale-cookie";
 import { useDictionary, useLocale, useT } from "@/lib/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
-import type { SystemRole } from "@/lib/constants";
+import type { SystemRole } from "@sai/core/constants";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette, primaryButtonTokens } from "@/lib/theme/antd-tokens";
 

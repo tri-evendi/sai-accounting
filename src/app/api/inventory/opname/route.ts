@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
-import { OPNAME_ADJUSTMENT_NOTE } from "@/lib/constants";
+import { OPNAME_ADJUSTMENT_NOTE } from "@sai/core/constants";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { opnameSchema } from "@/lib/validations/inventory";
 import { requireApiPermission } from "@/lib/auth-guard";

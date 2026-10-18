@@ -22,7 +22,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { COMPANY_ADDRESS, COMPANY_NAME } from "@/lib/constants";
+import { COMPANY_ADDRESS, COMPANY_NAME } from "@sai/core/constants";
 import { apiFetch } from "@/lib/api-fetch";
 import { parseTenantPath } from "@/lib/tenant-routes";
 

@@ -32,7 +32,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FileDoneOutlined, InboxOutlined } from "@ant-design/icons";

@@ -23,7 +23,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["src/**/*.ts", "src/**/*.tsx"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
     /*
      * Dua berkas yang MEMANG menulis nilai warna, dan hanya dua:
      *

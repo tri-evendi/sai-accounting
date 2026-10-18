@@ -29,7 +29,7 @@ import { getCompanyContext } from "@/lib/company-context";
 import { loadDictionary } from "@/lib/i18n/load";
 import { translate } from "@/lib/i18n/dictionary";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import {
   buildReminderMessage,
   dueKeyOf,

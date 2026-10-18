@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { formatDateShort, parsePageParam } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AccountBookOutlined } from "@ant-design/icons";
 import { PageHeader } from "@/components/ui/page-header";

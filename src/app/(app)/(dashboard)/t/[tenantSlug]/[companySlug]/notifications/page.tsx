@@ -30,7 +30,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { NotificationList } from "./notification-list";
 
 export const dynamic = "force-dynamic";

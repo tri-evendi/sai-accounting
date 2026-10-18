@@ -25,7 +25,7 @@
 
 import { NextResponse } from "next/server";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { tenantProfileSchema } from "@/lib/validations/tenant";

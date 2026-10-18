@@ -31,7 +31,7 @@
  * perilaku lama.
  */
 
-import { FULL_ACCESS_ROLES, ROLES, type Role } from "@/lib/constants";
+import { FULL_ACCESS_ROLES, ROLES, type Role } from "./constants";
 
 /** Semua peran sistem. Urutannya mengikuti `ROLE_VALUES` supaya matriks bawaan
  *  dan matriks EFEKTIF (`applyOverrides`) menghasilkan urutan yang sama. */

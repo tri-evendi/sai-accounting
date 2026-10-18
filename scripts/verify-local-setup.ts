@@ -9,7 +9,7 @@
  *   bunx tsx scripts/verify-local-setup.ts
  */
 import "dotenv/config";
-import { controlDb } from "../src/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { runWithCompany } from "../src/lib/company-context";
 import { prisma } from "../src/lib/prisma";
 

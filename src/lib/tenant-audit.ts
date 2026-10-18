@@ -33,7 +33,7 @@
  * tersirat yang bisa salah tebak.
  */
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { clientIpFrom } from "@/lib/client-ip";
 
 /**

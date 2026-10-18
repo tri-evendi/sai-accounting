@@ -29,7 +29,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
+import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@sai/core/utils";
 import { toBase } from "@/lib/receivables";
 import { PageHeader } from "@/components/ui/page-header";
 import { InvoicePaymentSection } from "./payment-section";

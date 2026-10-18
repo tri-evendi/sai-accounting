@@ -24,7 +24,7 @@ import { SearchableSelect, type SearchableOption } from "@/components/ui/searcha
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TermTooltip } from "@/components/ui/term-tooltip";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 import { findStockShortfalls } from "@/lib/delivery-orders";
 import {
   closedPeriodIssue,

@@ -26,7 +26,7 @@ Setiap kali membuat/mengubah/mereview UI (halaman, komponen, warna, tipografi, l
 
 # Otorisasi / RBAC (WAJIB untuk halaman & API route baru)
 
-Otorisasi berbasis **izin terpusat** — lihat `docs/RBAC.md`. Inti: matriks izin di `src/lib/authz.ts`; halaman memanggil `requirePagePermission("resource.action")`, API `requireApiPermission(...)`, tampilan `can(...)`. **Jangan** membandingkan string peran atau menulis daftar `["managing_director","finance_manager"]` di luar matriks — tes `authz-coverage` menolak halaman/route tanpa deklarasi izin. Sejak issue #73 matriks di kode adalah **BAWAAN**: matriks **EFEKTIF** = bawaan + override DB (`role_permission_overrides`) yang dikelola peran berakses penuh di halaman `/permissions`; penjaga memakai `canEffective` (`src/lib/authz-effective.ts`), jadi jangan tanam asumsi "peran X pasti tidak bisa Y" di luar penjaga.
+Otorisasi berbasis **izin terpusat** — lihat `docs/RBAC.md`. Inti: matriks izin di `packages/core/src/authz.ts`; halaman memanggil `requirePagePermission("resource.action")`, API `requireApiPermission(...)`, tampilan `can(...)`. **Jangan** membandingkan string peran atau menulis daftar `["managing_director","finance_manager"]` di luar matriks — tes `authz-coverage` menolak halaman/route tanpa deklarasi izin. Sejak issue #73 matriks di kode adalah **BAWAAN**: matriks **EFEKTIF** = bawaan + override DB (`role_permission_overrides`) yang dikelola peran berakses penuh di halaman `/permissions`; penjaga memakai `canEffective` (`src/lib/authz-effective.ts`), jadi jangan tanam asumsi "peran X pasti tidak bisa Y" di luar penjaga.
 
 # Multi-perusahaan (WAJIB dibaca sebelum menyentuh basis data)
 

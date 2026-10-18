@@ -102,7 +102,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useAppRouter } from "@/components/ui/app-link";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
-import { APP_NAME, APP_VERSION } from "@/lib/constants";
+import { APP_NAME, APP_VERSION } from "@sai/core/constants";
 import { docsPath } from "@/lib/docs";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";

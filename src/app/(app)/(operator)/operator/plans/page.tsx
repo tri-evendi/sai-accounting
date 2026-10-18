@@ -12,7 +12,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { ConsoleNotice, ConsolePanel, CONSOLE_MUTED, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { plansForOperatorCatalog, type OperatorCatalogPlan } from "@/lib/operator/store";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

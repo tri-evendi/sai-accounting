@@ -60,7 +60,7 @@ import {
 } from "@/components/landing/landing-scale";
 import { TILE_LABEL } from "@/components/ui/stat-tile";
 import { getT } from "@/lib/i18n/server";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney } from "@sai/core/money-format";
 
 /**
  * Angka contoh. Konstanta bernama, bukan tersebar di markup, supaya jelas

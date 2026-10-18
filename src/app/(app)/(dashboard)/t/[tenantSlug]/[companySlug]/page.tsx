@@ -9,13 +9,13 @@ import { statusColumn } from "@/components/ui/status-column";
 import { Money } from "@/components/ui/money";
 import { notFound, redirect } from "next/navigation";
 import { Link } from "@/components/ui/app-link";
-import { formatDateShort, formatNumber } from "@/lib/utils";
+import { formatDateShort, formatNumber } from "@sai/core/utils";
 import {
   countStockHealth,
   stockLevelsFromTotals,
   toLowStockAlerts,
 } from "@/lib/inventory";
-import { LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD, type CashType } from "@sai/core/constants";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
 import { enterCompanyFromRoute } from "@/lib/company-route";
 import type { TenantScopedParams } from "@/lib/tenant-routes";

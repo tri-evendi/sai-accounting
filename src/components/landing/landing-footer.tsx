@@ -37,7 +37,7 @@ import { LANDING_NOTE } from "@/components/landing/landing-scale";
 import { BrandLockup } from "@/components/ui/brand-lockup";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME } from "@sai/core/constants";
 import { getLocale, getT } from "@/lib/i18n/server";
 
 /** Tautan kaki: warna sekunder, penuh + bergaris saat hover. */

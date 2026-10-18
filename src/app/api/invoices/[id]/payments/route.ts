@@ -13,7 +13,7 @@ import { checkPaymentFits, type PaymentProblem } from "@/lib/document-payments";
 /* Dibagi pakai dengan jalur pembayaran KONTRAK sejak #483 — dua salinan
    kalimat penolakan bisa menyimpang tanpa ada yang melihatnya. */
 import { PaymentRefused, paymentProblemMessage } from "@/lib/payment-refusal";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { toBase } from "@/lib/receivables";
 import { invoiceTotal } from "@/lib/validations/invoice";
 

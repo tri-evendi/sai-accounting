@@ -49,7 +49,7 @@ import {
 } from "@/components/shared/currency-rate-fields";
 import { ConsigneeSelect } from "@/components/shared/consignee-select";
 import { CustomerSelect } from "@/components/shared/customer-select";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { resolveSubmitFailure } from "@/lib/form-sections";
 import {
   closedPeriodIssue,

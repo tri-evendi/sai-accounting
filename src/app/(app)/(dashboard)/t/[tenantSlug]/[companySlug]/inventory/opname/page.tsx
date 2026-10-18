@@ -7,7 +7,7 @@ import {
   toLowStockAlerts,
 } from "@/lib/inventory";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
-import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { TermTooltip } from "@/components/ui/term-tooltip";

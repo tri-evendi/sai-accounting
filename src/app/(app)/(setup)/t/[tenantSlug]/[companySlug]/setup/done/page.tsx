@@ -33,7 +33,7 @@ import { tenantPath, type TenantScopedParams } from "@/lib/tenant-routes";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";

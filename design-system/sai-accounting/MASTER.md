@@ -836,7 +836,7 @@ sebab ia yang dibutuhkan kalau keputusannya ditinjau ulang.
 - Fokus keyboard tak terlihat; hover yang menggeser layout.
 - Dark mode dipaksakan sebagai default; gaya "landing/marketing" (hero raksasa, CTA berulang, irama 96px, kolom baca di tengah) di app internal — **butir ini bukan lagi imbauan**, lihat §Pemasaran vs App di atas dan penjaganya `tests/landing-boundary.test.ts`.
 - Jargon akuntansi mentah di permukaan tanpa tooltip/penjelasan.
-- Nilai enum DB tampil mentah di UI (`purchase`, `bl`, `coo`, …) — selalu lewat peta label bahasa tugas (`Record<Type, string>` seperti `CONTRACT_STATUS_LABELS`/`DOCUMENT_TYPE_LABELS` di `src/lib/constants.ts`); `Record` bertipe penuh membuat nilai baru tanpa label ditolak `tsc` (issue #68).
+- Nilai enum DB tampil mentah di UI (`purchase`, `bl`, `coo`, …) — selalu lewat peta label bahasa tugas (`Record<Type, string>` seperti `CONTRACT_STATUS_LABELS`/`DOCUMENT_TYPE_LABELS` di `packages/core/src/constants.ts`); `Record` bertipe penuh membuat nilai baru tanpa label ditolak `tsc` (issue #68).
 
 ---
 
@@ -1385,7 +1385,7 @@ menunjuk halaman acak). `bun run build` adalah gerbang tersendiri, dan ia wajib
 - [ ] Judul & breadcrumb lewat `PageHeader` (bukan `<h1>` atau `Typography.Title level={1}` sendiri); label breadcrumb = label menu samping.
 - [ ] Reuse komponen `src/components/ui`; warna & jarak dari token AntD (`var(--ant-...)` atau `theme.useToken()`), bukan nilai mentah.
 - [ ] **Dilihat di tema TERANG dan GELAP** - lihat jebakan "dua bidang sewarna" di bagian Color Palette; melebur-nya sidebar `SIDER_BG_DARK` dengan permukaan gelap tidak terlihat dari kode.
-- [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`src/lib/constants.ts`), lambang lewat `BrandMark` — bukan literal.
+- [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`packages/core/src/constants.ts`), lambang lewat `BrandMark` — bukan literal.
 - [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`). **Tombol-tautan: `<ButtonLink href>` untuk rute di dalam app** (satu `<a>`, navigasi sisi-klien + prefetch, #289), `<Button href>` untuk tautan keluar / `download` / pemuatan penuh yang disengaja — **tidak pernah `<Link><Button/></Link>`** (dua elemen interaktif bersarang: HTML tak sah, pembaca layar mengumumkannya dua kali), dan `asChild` sudah dicabut (#250).
 - [ ] **Hitung tombol berisi penuh di layar jadi — termasuk yang lahir dari `.map()`, dari komponen lain, dan dari kolom tabel. Satu, atau nol.** `variant` ditulis eksplisit di SETIAP `<Button>`; bawaannya `secondary`, jadi penekanan tinggi harus diminta (`variant="primary"`) — dan tombol yang variannya lupa ditulis tidak akan tampak salah, ia hanya diam-diam kehilangan penekanannya. §Aksi utama per layar.
 - [ ] **Satu ukuran kendali per baris.** Lihat barisnya, bukan tombolnya: `size="sm"` (30px) yang berdampingan dengan `Select`/`Input`/`MoneyInput` bawaan (40px) mematahkan garis dasar barisnya. Kalau campur, NAIKKAN tombolnya — jangan mengecilkan isian di sebelahnya. §Satu baris kendali = satu ukuran.

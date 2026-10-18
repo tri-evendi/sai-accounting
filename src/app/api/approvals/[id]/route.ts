@@ -21,7 +21,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
-import { isFullAccessRole } from "@/lib/constants";
+import { isFullAccessRole } from "@sai/core/constants";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
 import { postForSource, type PostingSourceType } from "@/lib/posting";

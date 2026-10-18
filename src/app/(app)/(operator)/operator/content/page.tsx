@@ -55,7 +55,7 @@ import {
   SITE_CONTENT_SECTIONS,
 } from "@/lib/site-content";
 import { siteContentForOperator } from "@/lib/site-content-store";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 import { operatorSaveSiteContent } from "./actions";
 
 export const dynamic = "force-dynamic";

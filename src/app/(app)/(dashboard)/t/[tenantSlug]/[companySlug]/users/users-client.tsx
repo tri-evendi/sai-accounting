@@ -29,7 +29,7 @@ import { useToast } from "@/components/ui/toast";
 import { PageLoader } from "@/components/ui/loading";
 import { PageHeader } from "@/components/ui/page-header";
 import { DeleteOutlined, KeyOutlined, UndoOutlined, UserAddOutlined } from "@ant-design/icons";
-import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
+import { ROLES, ROLE_LABELS, isFullAccessRole } from "@sai/core/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
 import { useT } from "@/lib/i18n/client";
 import { QuotaMeter } from "@/components/ui/quota-meter";

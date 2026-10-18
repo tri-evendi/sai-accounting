@@ -25,7 +25,7 @@
 import { ImageResponse } from "next/og";
 
 import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@/lib/brand/mark";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME } from "@sai/core/constants";
 import {
   OG_BG as LATAR,
   OG_BORDER as TEPI,

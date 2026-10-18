@@ -20,8 +20,8 @@ import {
   tenantPermissionsForRole,
   validateTenantMembershipChange,
 } from "@/lib/tenant-authz";
-import { PERMISSIONS } from "@/lib/authz";
-import { TENANT_ROLES, TENANT_ROLE_VALUES } from "@/lib/constants";
+import { PERMISSIONS } from "@sai/core/authz";
+import { TENANT_ROLES, TENANT_ROLE_VALUES } from "@sai/core/constants";
 
 describe("matriks izin tenant", () => {
   it("setiap izin punya minimal satu peran, dan semua perannya sah", () => {

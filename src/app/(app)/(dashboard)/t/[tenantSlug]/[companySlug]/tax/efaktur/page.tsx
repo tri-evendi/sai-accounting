@@ -21,7 +21,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { moneyColumn } from "@/components/ui/money-column";
 import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import type { EfakturRow } from "@/lib/efaktur";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { toISODate } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";

@@ -26,7 +26,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { approvalResubmitSchema } from "@/lib/validations/approval";
 import { ApprovalTransitionError, assertTransition, canResubmit } from "@/lib/approvals";
-import { isFullAccessRole } from "@/lib/constants";
+import { isFullAccessRole } from "@sai/core/constants";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 

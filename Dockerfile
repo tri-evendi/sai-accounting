@@ -55,6 +55,7 @@ COPY package.json bun.lock ./
 # lewat `COPY . .` di tahap berikut, dan symlink node_modules/@sai/db yang
 # dibuat di sini menunjuk ke sana. Paket baru = satu baris baru di sini.
 COPY packages/db/package.json packages/db/
+COPY packages/core/package.json packages/core/
 # Deterministic install of the full dependency set (build needs devDeps).
 # --frozen-lockfile = padanan `npm ci`: menolak build bila bun.lock tidak cocok
 # dengan package.json, bukan diam-diam menyelesaikan ulang versinya.

@@ -55,8 +55,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import { ROLE_LABELS, type Role } from "@/lib/constants";
-import type { Permission } from "@/lib/authz";
+import { ROLE_LABELS, type Role } from "@sai/core/constants";
+import type { Permission } from "@sai/core/authz";
 import {
   isProtectedCell,
   validateOverrides,

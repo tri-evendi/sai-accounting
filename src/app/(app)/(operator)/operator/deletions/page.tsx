@@ -18,7 +18,7 @@ import { requireOperatorPage } from "@/lib/operator/guard";
 import { deletionRequestsForOperator, type OperatorDeletionRequest } from "@/lib/operator/store";
 import { executionVerdict } from "@/lib/tenant-deletion";
 import { getT } from "@/lib/i18n/server";
-import { formatDateMedium as formatDate } from "@/lib/utils";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

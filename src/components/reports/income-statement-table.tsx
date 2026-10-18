@@ -43,7 +43,7 @@ import {
   type IncomeStatementLabels,
   type IncomeStatementLayoutRow,
 } from "@/lib/statement-layout";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 
 export type IncomeStatementPayload = Extract<StatementPayload, { kind: "income-statement" }>;
 

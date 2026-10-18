@@ -35,7 +35,7 @@ import { LearnMore } from "@/components/ui/learn-more";
 import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { FileTextOutlined, InfoCircleOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";

@@ -1,5 +1,5 @@
 import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { type DocumentType } from "@/lib/constants";
+import { type DocumentType } from "@sai/core/constants";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import {
 } from "@/lib/table-sort";
 import type { Prisma } from "@sai/db/client/company";
 import { documentFileHref } from "@/lib/document-storage";
-import { formatDate, parsePageParam } from "@/lib/utils";
+import { formatDate, parsePageParam } from "@sai/core/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { documentTypeLabels } from "@/lib/i18n/labels";

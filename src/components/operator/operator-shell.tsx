@@ -72,7 +72,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { APP_VERSION } from "@/lib/constants";
+import { APP_VERSION } from "@sai/core/constants";
 import {
   BORDER_TOKENS_DARK,
   NEUTRAL_TEXT_DARK,

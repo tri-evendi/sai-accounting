@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
-import { PERMISSION_ROLES } from "@/lib/authz";
+import { PERMISSION_ROLES } from "@sai/core/authz";
 import {
   PROTECTED_CELLS,
   applyOverrides,

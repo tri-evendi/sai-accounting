@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { TermTooltip } from "@/components/ui/term-tooltip";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { SECTION_GAP } from "@/lib/layout-scale";
 import { AuditOutlined } from "@ant-design/icons";

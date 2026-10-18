@@ -54,7 +54,7 @@ import { join } from "node:path";
 import { bukaServer, bukaBasisData, ddlPembukuan, direktoriMigration } from "@sai/db/server";
 import type { DbEngine } from "@sai/db/engine";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { invalidateCompany } from "@/lib/company-registry";
 import {
   assertSafeDatabaseName,

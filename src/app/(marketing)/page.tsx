@@ -64,7 +64,7 @@ import { LandingPricing } from "@/components/landing/landing-pricing";
 import { LandingShell } from "@/components/landing/landing-shell";
 import { LandingTrust } from "@/components/landing/landing-trust";
 import { auth } from "@/lib/auth";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { publicAppUrl } from "@/lib/public-url";
 

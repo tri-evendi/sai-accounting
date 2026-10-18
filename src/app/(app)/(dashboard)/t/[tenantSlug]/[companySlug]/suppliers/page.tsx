@@ -6,7 +6,7 @@
  * lencananya, karena itulah satu-satunya penjelasan mengapa namanya tak lagi
  * muncul di pemilih pembelian.
  */
-import { parsePageParam } from "@/lib/utils";
+import { parsePageParam } from "@sai/core/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";

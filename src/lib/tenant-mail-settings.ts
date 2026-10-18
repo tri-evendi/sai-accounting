@@ -39,7 +39,7 @@
  * karena itu harus bisa memuat modul ini (preseden `mailer-core.ts`).
  */
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   EncryptionKeyError,
   openSecret,

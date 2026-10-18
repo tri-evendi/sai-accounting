@@ -25,7 +25,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { companyScopeFromRequest } from "@/lib/company-request";
 import {
   issueInvitation,

@@ -23,7 +23,7 @@
  * halaman — menyembunyikan menu saja tidak pernah dianggap pengamanan.
  */
 
-import { can, type Permission } from "@/lib/authz";
+import { can, type Permission } from "@sai/core/authz";
 import { appPath } from "@/lib/tenant-routes";
 import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";

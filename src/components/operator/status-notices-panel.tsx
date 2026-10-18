@@ -29,7 +29,7 @@ import {
   type StatusNoticeKind,
   type StatusNoticePhase,
 } from "@/lib/status-notices";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 import type { StatusNoticeActionResult } from "@/app/(app)/(operator)/operator/status-notices/actions";
 
 const PHASE_LABEL: Record<StatusNoticePhase, DictionaryKey> = {

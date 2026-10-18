@@ -36,7 +36,7 @@ import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@/lib/i18n/client";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 const { Text } = Typography;
 

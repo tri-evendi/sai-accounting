@@ -61,7 +61,7 @@ import { TERM_LIST } from "@/lib/labels";
 import { ENDPOINTS } from "@/lib/api-v1-spec";
 import { cariDokumentasi, indeksDokumentasi } from "@/lib/docs-search";
 import { waktuBaca } from "@/lib/docs-text";
-import { PERMISSIONS } from "@/lib/authz";
+import { PERMISSIONS } from "@sai/core/authz";
 
 const ROOT = join(__dirname, "..");
 const SRC = join(ROOT, "src");
@@ -334,6 +334,8 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
       "@/components/docs/",
       "@/components/ui/",
       "@/lib/",
+      // Pindahan `src/lib/*` (monorepo Fase 2) — izinnya setara `@/lib/`.
+      "@sai/core/",
       "react",
       "@ant-design/icons",
     ];

@@ -17,7 +17,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 
-import { TENANT_STATUSES, type TenantStatus } from "@/lib/constants";
+import { TENANT_STATUSES, type TenantStatus } from "@sai/core/constants";
 
 /** Umur tautan verifikasi: 24 jam — pendaftar tidak selalu membuka surelnya
  *  saat itu juga; lebih lama hanya memperpanjang umur hash kata sandi yang

@@ -38,7 +38,7 @@ import { useToast } from "@/components/ui/toast";
 import { WizardSteps } from "@/components/ui/wizard-steps";
 import { fieldGrid, formGrid } from "@/lib/layout-width";
 import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { DownloadOutlined, UploadOutlined, ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, DeleteOutlined, InfoCircleOutlined, LoadingOutlined, PlusOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { useT, type TranslateFn } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";

@@ -77,7 +77,7 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { SelectField } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/i18n/client";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import {
   BILLING_MODES,
   BILLING_MODE_LABEL_KEYS,

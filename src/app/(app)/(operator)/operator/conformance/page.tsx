@@ -41,7 +41,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { conformanceRunsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@/lib/layout-scale";
 
 export const dynamic = "force-dynamic";

@@ -20,7 +20,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { CompanyIndicator } from "@/components/layout/company-indicator";
 import { visibleNavHrefs } from "@/lib/nav";
-import { ROLES } from "@/lib/constants";
+import { ROLES } from "@sai/core/constants";
 import { LocaleProvider } from "@/lib/i18n/client";
 import type { Dictionary } from "@/lib/i18n/dictionary";
 import id from "@/lib/i18n/dictionaries/id.json";

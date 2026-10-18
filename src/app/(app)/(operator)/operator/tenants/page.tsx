@@ -49,10 +49,10 @@ import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listTenantsForOperator, tenantStatusVariant } from "@/lib/operator/store";
-import { TENANT_STATUSES } from "@/lib/constants";
+import { TENANT_STATUSES } from "@sai/core/constants";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateMedium as formatDate } from "@/lib/utils";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

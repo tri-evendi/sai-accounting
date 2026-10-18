@@ -27,7 +27,7 @@ import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { runWithCompany } from "@/lib/company-context";
 import { tenantPath } from "@/lib/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";

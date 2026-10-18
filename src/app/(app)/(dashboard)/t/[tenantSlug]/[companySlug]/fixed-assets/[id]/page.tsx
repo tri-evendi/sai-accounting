@@ -25,7 +25,7 @@ import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
 import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";

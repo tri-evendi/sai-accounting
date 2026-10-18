@@ -5,7 +5,7 @@
  * Penerima DINONAKTIFKAN, tidak dihapus: baris nonaktif tetap tampil
  * (diurutkan belakangan) dengan kolom Status yang menjelaskannya.
  */
-import { parsePageParam } from "@/lib/utils";
+import { parsePageParam } from "@sai/core/utils";
 import type { TenantScopedParams } from "@/lib/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";

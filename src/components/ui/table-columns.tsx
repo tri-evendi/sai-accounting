@@ -53,7 +53,7 @@
 
 import type { ColumnType } from "antd/es/table";
 
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 
 /**
  * Kolom yang dimengerti KEDUA perender.

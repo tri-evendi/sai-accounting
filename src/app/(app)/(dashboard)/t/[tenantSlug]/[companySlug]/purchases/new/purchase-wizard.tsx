@@ -43,7 +43,7 @@ import { CostCenterField, useCostCenters } from "@/components/shared/cost-center
 import { Wizard, WizardSummaryRow } from "@/components/shared/wizard";
 import { WizardPartnerStep } from "@/components/shared/wizard-partner-step";
 import { useWizardDraft } from "@/components/shared/use-wizard-draft";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { humanizeFieldMessage, type ClosedPeriodRef } from "@/lib/form-guards";
 import {
   PURCHASE_STEPS,

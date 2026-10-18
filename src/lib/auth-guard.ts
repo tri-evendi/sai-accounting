@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 import { auth } from "@/lib/auth";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromRequest } from "@/lib/company-request";

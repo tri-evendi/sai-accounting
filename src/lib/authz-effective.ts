@@ -31,7 +31,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { currentCompanyId } from "@/lib/current-company";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import {
   canWithMatrix,
   createEffectiveMatrixLoader,
@@ -49,7 +49,7 @@ import {
   createUserOverridesLoader,
   rolePermissionSet,
 } from "@/lib/authz-user-overrides";
-import type { Role } from "@/lib/constants";
+import type { Role } from "@sai/core/constants";
 
 /**
  * ══ SETIAP CACHE DI SINI DIKUNCI PER PERUSAHAAN (issue #104) ═══════════════

@@ -34,7 +34,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@/lib/i18n/validation";
 import { changeTenantPlan } from "@/lib/billing/change-tenant-plan";

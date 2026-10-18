@@ -31,14 +31,14 @@
  *   pernah lebih longgar, juga per orang.
  */
 
-import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@/lib/authz";
+import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@sai/core/authz";
 import {
   EFFECTIVE_MATRIX_TTL_MS,
   canWithMatrix,
   isProtectedCell,
   type EffectiveMatrix,
 } from "@/lib/authz-overrides";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS } from "@sai/core/constants";
 
 /** TTL cache override pengguna — KONSTANTA 60 dtk yang sama dengan matriks
  *  efektif #73 (`EFFECTIVE_MATRIX_TTL_MS`): total jeda terasa ≤ ±1 menit. */

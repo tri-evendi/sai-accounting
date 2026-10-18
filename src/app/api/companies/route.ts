@@ -37,8 +37,8 @@ import { provisionErrorMessage, type ProvisionEvent } from "@/lib/company-provis
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { runWithCompany } from "@/lib/company-context";
-import { ROLES } from "@/lib/constants";
-import { controlDb } from "@/lib/control-db";
+import { ROLES } from "@sai/core/constants";
+import { controlDb } from "@sai/core/control-db";
 import { refuseProvisioning } from "@/lib/registration";
 
 export async function POST(request: Request) {

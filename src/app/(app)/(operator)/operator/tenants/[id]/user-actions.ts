@@ -22,7 +22,7 @@ import { z } from "zod";
 
 import { invitationMail, passwordResetMail } from "@/lib/account-mail";
 import { auditActor } from "@/lib/billing/change-tenant-plan";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { getT } from "@/lib/i18n/server";
 import { issueInvitation } from "@/lib/invitation-store";
 import { sendMail } from "@/lib/mailer";

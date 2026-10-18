@@ -15,7 +15,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { getT } from "@/lib/i18n/server";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { parseOperatorAccounts } from "@/lib/operator/credentials";

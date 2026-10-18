@@ -30,7 +30,7 @@ import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { Money } from "@/components/ui/money";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import { Link } from "@/components/ui/app-link";
 import { ReverseButton } from "./reverse-button";
 import { getT } from "@/lib/i18n/server";

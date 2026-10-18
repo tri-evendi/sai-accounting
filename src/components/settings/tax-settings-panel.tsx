@@ -32,7 +32,7 @@ import { StaticTable } from "@/components/ui/static-table";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { PlusOutlined, SaveOutlined } from "@ant-design/icons";
 
 interface TaxRateRow {

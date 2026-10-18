@@ -36,7 +36,7 @@ import {
 import { chartPeriodStart, monthlyActivitySeries } from "@/lib/chart-data";
 import { canEffective } from "@/lib/authz-effective";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort, parsePageParam } from "@/lib/utils";
+import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";

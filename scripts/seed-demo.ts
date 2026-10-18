@@ -71,7 +71,7 @@
  * `CompanyContext`-nya dirakit di sini.
  */
 import "dotenv/config";
-import { controlDb } from "../src/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { runWithCompany, type CompanyContext } from "../src/lib/company-context";
 import { bookActivity, seedSampleBook, SAMPLE_TAG } from "../src/lib/demo-seed";
 

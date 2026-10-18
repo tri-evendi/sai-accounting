@@ -48,8 +48,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
-import type { SystemRole } from "@/lib/constants";
-import type { Permission } from "@/lib/authz";
+import type { SystemRole } from "@sai/core/constants";
+import type { Permission } from "@sai/core/authz";
 import {
   validateUserOverrides,
   type UserPermissionOverrideRow,

@@ -31,7 +31,7 @@
  */
 import { Link } from "@/components/ui/app-link";
 import { Card } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import {
   FallOutlined,
   FileDoneOutlined,

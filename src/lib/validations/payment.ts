@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BASE_CURRENCY, currencyEnum, rateField, requireRateForForeign } from "./fx";
-import { CASH_TYPES } from "@/lib/constants";
+import { CASH_TYPES } from "@sai/core/constants";
 import { vmsg } from "@/lib/i18n/validation";
 
 /**

@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { SECTION_GAP } from "@/lib/layout-scale";
 import { DeliveryOrderPdfButton } from "./pdf-button";

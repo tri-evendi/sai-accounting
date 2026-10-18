@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { auth } from "@/lib/auth";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { changePasswordApiSchema } from "@/lib/validations/auth";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { writeAuditLog } from "@/lib/audit";

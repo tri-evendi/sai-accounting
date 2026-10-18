@@ -67,7 +67,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { activePlans } from "@/lib/plan-catalog";
 import { planDescriptionKey, planHighlightKeys } from "@/lib/plan-copy";
 import { periodDaysFor } from "@/lib/plan-change";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney } from "@sai/core/money-format";
 
 import { PlanAction } from "./plan-actions";
 import { getT } from "@/lib/i18n/server";

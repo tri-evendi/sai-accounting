@@ -36,7 +36,7 @@ import { Label } from "@/components/ui/label";
 import { TextInput } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { useT } from "@/lib/i18n/client";
 import { LinkOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";

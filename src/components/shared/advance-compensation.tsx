@@ -34,7 +34,7 @@ import { Money } from "@/components/ui/money";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/client";
 import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { DeleteOutlined, InfoCircleOutlined, MoneyCollectOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { moneyPalette } from "@/lib/theme/antd-tokens";

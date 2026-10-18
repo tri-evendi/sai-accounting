@@ -20,7 +20,7 @@
  *     memaksa pembacaan ulang.
  */
 import { describe, expect, it, vi } from "vitest";
-import { PERMISSIONS, type Permission } from "@/lib/authz";
+import { PERMISSIONS, type Permission } from "@sai/core/authz";
 import { permissionResource } from "@/lib/authz-labels";
 import { EFFECTIVE_MATRIX_TTL_MS } from "@/lib/authz-overrides";
 import {

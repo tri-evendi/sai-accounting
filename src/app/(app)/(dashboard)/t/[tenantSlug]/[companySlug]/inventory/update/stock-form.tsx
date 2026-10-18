@@ -54,8 +54,8 @@ import {
   costCenterPayload,
   useCostCenters,
 } from "@/components/shared/cost-center-field";
-import { formatCurrency, formatNumber } from "@/lib/utils";
-import { CASH_TYPES, type CashType } from "@/lib/constants";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
+import { CASH_TYPES, type CashType } from "@sai/core/constants";
 import { cashTypeLabels } from "@/lib/i18n/labels";
 import {
   closedPeriodIssue,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@sai/core/constants";
 import { vmsg } from "@/lib/i18n/validation";
 
 export const journalLineSchema = z

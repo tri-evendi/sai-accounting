@@ -1,9 +1,9 @@
 import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { STOCK_LEVEL_LABELS, getStockLevel, type ClientInventoryItem } from "@/lib/inventory";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney } from "@sai/core/money-format";
 
 export function generateStockReportPDF(items: ClientInventoryItem[], company: { name: string; address: string }) {
   const doc = new jsPDF();

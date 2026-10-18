@@ -48,9 +48,9 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { moneyColumn } from "@/components/ui/money-column";
 import { StaticTable } from "@/components/ui/static-table";
 import type { SaiColumns } from "@/components/ui/table-columns";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { platformInvoiceIsRevenue } from "@/lib/platform-constants";
-import { formatDateMedium } from "@/lib/utils";
+import { formatDateMedium } from "@sai/core/utils";
 import {
   isReadOnlyTenantStatus,
   platformInvoiceAmounts,

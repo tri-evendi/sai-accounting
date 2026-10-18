@@ -75,7 +75,7 @@ lewat SQL akan bilang "bersih".
 > sekaligus. Lihat [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
 
 Aturannya:
-- Daftar nilai hidup di **satu tempat** (`src/lib/constants.ts`), dipakai
+- Daftar nilai hidup di **satu tempat** (`packages/core/src/constants.ts`), dipakai
   `z.enum(...)` maupun penjaga impor — jangan diketik ulang.
 - Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan **melempar** untuk
   nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka salah

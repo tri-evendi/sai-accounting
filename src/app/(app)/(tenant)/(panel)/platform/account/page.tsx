@@ -28,7 +28,7 @@ import { IdcardOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { bolehGantiLagi } from "@/lib/tenant-slug";
 

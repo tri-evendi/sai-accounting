@@ -17,7 +17,7 @@
  */
 import { NextResponse } from "next/server";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { currentCompanyId } from "@/lib/current-company";
 import { writeAuditLog } from "@/lib/audit";

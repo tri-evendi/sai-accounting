@@ -19,7 +19,7 @@
 import { NextResponse } from "next/server";
 
 import { platformDb } from "@/lib/platform-db";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   verifyMidtransSignature,
   webhookServerKey,

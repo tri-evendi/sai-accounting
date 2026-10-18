@@ -6,7 +6,7 @@
  * kolom wajibnya kosong TIDAK ikut berkas; daftarnya dipajang di halaman
  * `/operator/efaktur` sebelum orang menekan tombol unduh.
  */
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { platformEfaktur } from "@/lib/billing/platform-efaktur";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";

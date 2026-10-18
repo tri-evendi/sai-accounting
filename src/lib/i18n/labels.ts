@@ -30,7 +30,7 @@ import {
   type ContractStatus,
   type DocumentType,
   type SystemRole,
-} from "@/lib/constants";
+} from "@sai/core/constants";
 import { ACCOUNT_TYPES, EXPENSE_NATURES } from "@/lib/accounting";
 import {
   APPROVAL_DOCUMENT_TYPE_LABELS,
@@ -41,7 +41,7 @@ import {
 } from "@/lib/approvals";
 import { MONTH_NAMES } from "@/lib/month-names";
 import { TERM_CATEGORY_LABELS, type TermCategory } from "@/lib/labels";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import {
   PERMISSION_LABELS,
   RESOURCE_LABELS,

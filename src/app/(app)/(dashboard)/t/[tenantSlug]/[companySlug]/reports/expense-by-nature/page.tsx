@@ -30,7 +30,7 @@ import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodFilter } from "../report-filters";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
 import { InfoCircleOutlined, ProfileOutlined } from "@ant-design/icons";

@@ -54,7 +54,7 @@ import { TermTooltip } from "@/components/ui/term-tooltip";
 import { LearnMore } from "@/components/ui/learn-more";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
-import type { CashType } from "@/lib/constants";
+import type { CashType } from "@sai/core/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { isAdvancedField, orderedFields, resolveSubmitFailure } from "@/lib/form-sections";
 import { closedPeriodIssue, type ClosedPeriodRef } from "@/lib/form-guards";

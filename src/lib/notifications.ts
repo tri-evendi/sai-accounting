@@ -29,7 +29,7 @@
  */
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 
 /**
  * Jenis pemberitahuan. Enum-like `String @db.VarChar` (docs/DATABASE.md), dan

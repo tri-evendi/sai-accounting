@@ -33,7 +33,7 @@ import { type SaiColumns } from "@/components/ui/table-columns";
 import { moneyColumn } from "@/components/ui/money-column";
 import { useToast } from "@/components/ui/toast";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ROLE_LABELS, ROLES } from "@/lib/constants";
+import { ROLE_LABELS, ROLES } from "@sai/core/constants";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
 import type { ApprovalRuleView } from "@/lib/approval-queue";
 import { useDictionary, useT } from "@/lib/i18n/client";

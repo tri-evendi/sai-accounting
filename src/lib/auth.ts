@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { companiesForUser, membershipFor } from "@/lib/company-registry";
 import { tenantCan } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";

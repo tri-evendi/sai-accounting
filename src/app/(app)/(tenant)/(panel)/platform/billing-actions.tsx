@@ -22,7 +22,7 @@ import { Flex, Typography, theme } from "antd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 import { useT } from "@/lib/i18n/client";
 
 const { Text } = Typography;

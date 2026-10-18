@@ -14,7 +14,7 @@
  *
  * TAMPILAN saja — tiap halaman tujuan tetap dijaga `requirePagePermission`.
  */
-import { can, type Permission } from "@/lib/authz";
+import { can, type Permission } from "@sai/core/authz";
 import { BUSINESS_MODULES, type BusinessModule } from "@/lib/business-modules";
 import type { AllowedPermissions } from "@/lib/nav";
 import type { TermKey } from "@/lib/labels";

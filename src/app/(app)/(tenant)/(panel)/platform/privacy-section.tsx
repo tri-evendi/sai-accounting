@@ -30,7 +30,7 @@ import { DownloadOutlined, SecurityScanOutlined } from "@ant-design/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { useT } from "@/lib/i18n/client";
 import { moneyPalette } from "@/lib/theme/antd-tokens";
 

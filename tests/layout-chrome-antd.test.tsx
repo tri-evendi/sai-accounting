@@ -45,10 +45,10 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { LocaleProvider } from "@/lib/i18n/client";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import { ROLES } from "@/lib/constants";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { ROLES } from "@sai/core/constants";
 
 /*
  * Menu samping memakai `useAppRouter()` (dan lewat itu `useRouter()`) untuk

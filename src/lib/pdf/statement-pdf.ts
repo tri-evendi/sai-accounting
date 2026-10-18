@@ -397,7 +397,7 @@ function signedQty(value: number): string {
 
 /**
  * Quantity, id-ID, up to three decimals with trailing zeros dropped — the screen
- * uses `formatNumber` from `@/lib/utils`, and this must agree with it or the
+ * uses `formatNumber` from `@sai/core/utils`, and this must agree with it or the
  * printout and the page would disagree on the same figure.
  */
 function qty(value: number): string {

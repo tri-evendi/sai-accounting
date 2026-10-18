@@ -36,22 +36,22 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
-import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
 import { BUSINESS_MODULES } from "@/lib/business-modules";
-import { APP_NAME, CURRENCIES } from "@/lib/constants";
-import { LOCALES } from "@/lib/i18n/config";
+import { APP_NAME, CURRENCIES } from "@sai/core/constants";
+import { LOCALES } from "@sai/core/i18n/config";
 import { getT } from "@/lib/i18n/server";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { activePlans } from "@/lib/plan-catalog";
-import { stackingComparisons, type StackingComparison } from "@/lib/plan-stacking";
+import { stackingComparisons, type StackingComparison } from "@sai/billing/plan-stacking";
 import { resolveContactChannels, resolvePpnEnabled } from "@/lib/site-settings";
 import {
   planCarriesNegotiation,
   planDescriptionKey,
   planHighlightKeys,
-} from "@/lib/plan-copy";
+} from "@sai/billing/plan-copy";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";

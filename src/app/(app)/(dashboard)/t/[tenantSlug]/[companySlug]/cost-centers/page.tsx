@@ -20,18 +20,18 @@
  * (aturan pemilihan perender, issue #189).
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { BranchesOutlined } from "@ant-design/icons";
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 
 export const dynamic = "force-dynamic";
 

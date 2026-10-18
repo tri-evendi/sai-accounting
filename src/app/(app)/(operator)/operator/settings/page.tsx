@@ -32,7 +32,7 @@
  */
 
 import { ConsoleNotice, ConsolePanel } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { SiteSettingsForm } from "@/components/operator/site-settings-form";
 import { getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";

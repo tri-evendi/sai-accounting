@@ -31,7 +31,7 @@ import { dirname, join, normalize, relative } from "node:path";
 import { createFakeReportClient, type FakeSeedJournal } from "./fake-client";
 import { getIncomeStatement, getTrialBalance } from "@/lib/reports";
 import { getAccountLedger } from "@/lib/ledger";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import {
   BUSINESS_MODULES,
   CORE_MODULE,

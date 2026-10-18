@@ -19,12 +19,12 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@/lib/constants";
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS } from "@sai/core/constants";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 
 const dict = (loc: string) =>
   JSON.parse(
-    readFileSync(join(__dirname, "..", "src", "lib", "i18n", "dictionaries", `${loc}.json`), "utf8")
+    readFileSync(join(__dirname, "..", "packages", "core", "src", "i18n", "dictionaries", `${loc}.json`), "utf8")
   );
 
 describe("kosakatanya lengkap", () => {

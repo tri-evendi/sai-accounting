@@ -17,9 +17,9 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import idDict from "../src/lib/i18n/dictionaries/id.json";
-import enDict from "../src/lib/i18n/dictionaries/en.json";
-import zhDict from "../src/lib/i18n/dictionaries/zh.json";
+import idDict from "@sai/core/i18n/dictionaries/id.json";
+import enDict from "@sai/core/i18n/dictionaries/en.json";
+import zhDict from "@sai/core/i18n/dictionaries/zh.json";
 
 const baca = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
 const HALAMAN_PATH = "src/app/(app)/(operator)/operator/conformance/page.tsx";

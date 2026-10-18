@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const findUnique = vi.fn();
 
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     tenantMailSetting: { findUnique: (...args: unknown[]) => findUnique(...args) },
     company: { findUnique: vi.fn() },

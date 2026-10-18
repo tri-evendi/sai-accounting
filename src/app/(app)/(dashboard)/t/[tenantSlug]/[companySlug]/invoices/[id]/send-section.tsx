@@ -27,12 +27,12 @@ import { useRouter } from "next/navigation";
 import { Flex, Typography, theme } from "antd";
 import { MailOutlined, WhatsAppOutlined } from "@ant-design/icons";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { useToast } from "@sai/ui/toast";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
-import { formatDateTime } from "@/lib/utils";
+import { useT } from "@sai/core/i18n/client";
+import { formatDateTime } from "@sai/core/utils";
 
 const { Text } = Typography;
 

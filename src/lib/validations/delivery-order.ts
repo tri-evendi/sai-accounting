@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { lineStockKg } from "@/lib/delivery-orders";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Zod for Surat Jalan / Delivery Order (issue #14).

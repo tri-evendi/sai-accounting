@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 import { booleanField } from "./common";
 
 /**

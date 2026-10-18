@@ -15,23 +15,23 @@
  */
 
 import { notFound } from "next/navigation";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Link } from "@/components/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
+import { Link } from "@sai/ui/app-link";
 import { prisma } from "@/lib/prisma";
 import { requirePagePermission } from "@/lib/page-auth";
 import { canEffective } from "@/lib/authz-effective";
 import { DeleteDocumentButton } from "@/components/shared/delete-document-button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@sai/ui/empty-state";
 import { DollarCircleOutlined, WarningOutlined } from "@ant-design/icons";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@/lib/utils";
+import { formatDate, formatDateShort, formatCurrency, formatNumber } from "@sai/core/utils";
 import { toBase } from "@/lib/receivables";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { InvoicePaymentSection } from "./payment-section";
 import { InvoicePDFButtonWrapper } from "./pdf-button";
 import { InvoiceAdvanceSection } from "./advance-section";
@@ -40,7 +40,7 @@ import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { invoiceWhatsAppTarget, listInvoiceSends } from "@/lib/invoice-send";
 import { getT } from "@/lib/i18n/server";
-import { INLINE_GAP, SECTION_GAP } from "@/lib/layout-scale";
+import { INLINE_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

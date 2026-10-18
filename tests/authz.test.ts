@@ -18,8 +18,8 @@ import {
   can,
   rolesFor,
   type Permission,
-} from "@/lib/authz";
-import { FULL_ACCESS_ROLES, ROLES, ROLE_VALUES } from "@/lib/constants";
+} from "@sai/core/authz";
+import { FULL_ACCESS_ROLES, ROLES, ROLE_VALUES } from "@sai/core/constants";
 import { roleEnum } from "@/lib/validations/common";
 
 describe("matriks izin", () => {

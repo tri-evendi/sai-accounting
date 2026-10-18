@@ -31,13 +31,13 @@ import {
   mapTransactionStatus,
   type MidtransNotification,
   type PaymentMethod,
-} from "@/lib/payment-gateway";
+} from "@sai/billing/payment-gateway";
 import {
   tenantStatusForSubscription,
   transition,
   type SubscriptionEvent,
 } from "@/lib/subscription-lifecycle";
-import type { SubscriptionStatus } from "@/lib/platform-constants";
+import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { recordSubscriptionEvent } from "@/lib/subscription-events";
 
 export interface WebhookDeps {

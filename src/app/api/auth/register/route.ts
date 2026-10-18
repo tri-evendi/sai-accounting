@@ -36,7 +36,7 @@ import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
 import { sendMail } from "@/lib/mailer";
 import { reportError } from "@/lib/alert";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { clientIpFrom } from "@/lib/client-ip";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
 

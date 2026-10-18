@@ -5,19 +5,19 @@
  * menyebutnya lewat FK, dan meski perintah itu menyimpan salinan barisnya
  * sendiri, menghapus resepnya akan memutus jejak asal-usulnya.
  */
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { Link } from "@/components/ui/app-link";
+import { Card } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { Link } from "@sai/ui/app-link";
 import { getT } from "@/lib/i18n/server";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber } from "@sai/core/utils";
 import { ExperimentOutlined } from "@ant-design/icons";
 
 export const dynamic = "force-dynamic";

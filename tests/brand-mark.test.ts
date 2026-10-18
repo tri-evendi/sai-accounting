@@ -21,8 +21,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { BRAND_MARK_PATH, brandMarkSvg } from "@/lib/brand/mark";
-import { BRAND_HEX, BRAND_SOLID_LIGHT } from "@/lib/theme/antd-tokens";
+import { BRAND_MARK_PATH, brandMarkSvg } from "@sai/ui/brand/mark";
+import { BRAND_HEX, BRAND_SOLID_LIGHT } from "@sai/ui/theme/antd-tokens";
 
 const ROOT = join(__dirname, "..");
 const baca = (...bagian: string[]) => readFileSync(join(ROOT, ...bagian), "utf8");
@@ -33,7 +33,7 @@ describe("geometri lambang hidup di satu berkas", () => {
 
   it("path-nya tidak tertulis di berkas sumber mana pun selain modulnya", () => {
     const pemakai = [
-      ["src", "components", "ui", "brand-mark.tsx"],
+      ["packages", "ui", "src", "components", "brand-mark.tsx"],
       ["src", "app", "(marketing)", "opengraph-image.tsx"],
       ["scripts", "build-brand-icons.ts"],
     ];
@@ -44,11 +44,11 @@ describe("geometri lambang hidup di satu berkas", () => {
   });
 
   it("ketiga permukaan MENGIMPOR dari modul lambang", () => {
-    expect(baca("src", "components", "ui", "brand-mark.tsx")).toContain('from "@/lib/brand/mark"');
+    expect(baca("packages", "ui", "src", "components", "brand-mark.tsx")).toContain('from "@sai/ui/brand/mark"');
     expect(baca("src", "app", "(marketing)", "opengraph-image.tsx")).toContain(
-      'from "@/lib/brand/mark"'
+      'from "@sai/ui/brand/mark"'
     );
-    expect(baca("scripts", "build-brand-icons.ts")).toContain("/src/lib/brand/mark");
+    expect(baca("scripts", "build-brand-icons.ts")).toContain('from "@sai/ui/brand/mark"');
   });
 
   it("kartu pratinjau sosial berhenti memakai huruf awal produk", () => {

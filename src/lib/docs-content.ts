@@ -25,7 +25,7 @@
 
 import type { NamaDiagram } from "@/components/docs/docs-figures";
 import type { DocSlug } from "@/lib/docs";
-import type { TermKey } from "@/lib/labels";
+import type { TermKey } from "@sai/core/labels";
 
 /**
  * Blok prosa. Sengaja data bertipe, bukan Markdown:

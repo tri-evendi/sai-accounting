@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { canonicalCashType, canonicalStockType, LegacyValueError } from "@/lib/legacy-values";
-import { CASH_TYPES, STOCK_MOVEMENT_TYPES } from "@/lib/constants";
+import { CASH_TYPES, STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
 
 describe("canonicalStockType", () => {
   it("memetakan nilai legacy tb_stok.status ke nilai yang dibandingkan kode", () => {

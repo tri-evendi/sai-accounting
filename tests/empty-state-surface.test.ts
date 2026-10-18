@@ -22,10 +22,10 @@
  * harus disunting, dan penyuntingnya wajib menyebut alasannya.
  */
 import { readFileSync, readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 
-const SRC = join(__dirname, "..", "src");
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -35,8 +35,8 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const berkas = sourceFiles(SRC).map((f) => ({
-  rel: relative(SRC, f).split(sep).join("/"),
+const berkas = akarSumber().flatMap((d) => sourceFiles(d)).map((f) => ({
+  rel: relSumber(f),
   kode: readFileSync(f, "utf8"),
 }));
 
@@ -74,11 +74,11 @@ describe("keadaan kosong menggambar permukaannya sendiri", () => {
     /* Kalau telusurnya rusak (jalur salah, filter kelewat rakus), tes di bawah
        lulus dengan daftar kosong. Ini yang menahan kegagalan diam itu. */
     expect(berkas.length).toBeGreaterThan(400);
-    expect(berkas.some((b) => b.rel === "components/ui/empty-state.tsx")).toBe(true);
+    expect(berkas.some((b) => b.rel === "packages/ui/src/components/empty-state.tsx")).toBe(true);
   });
 
   it("primitifnya benar-benar menggambar tepi, latar, dan bayangan", () => {
-    const kode = berkas.find((b) => b.rel === "components/ui/empty-state.tsx")!.kode;
+    const kode = berkas.find((b) => b.rel === "packages/ui/src/components/empty-state.tsx")!.kode;
     for (const token of ["colorBorderSecondary", "colorBgContainer", "boxShadowTertiary"]) {
       expect(kode, `permukaan keadaan-kosong kehilangan ${token}`).toContain(token);
     }
@@ -86,7 +86,7 @@ describe("keadaan kosong menggambar permukaannya sendiri", () => {
 
   it("`flat` hanya dipakai pemanggil yang sudah disahkan", () => {
     const pemakai = berkas
-      .filter((b) => b.rel !== "components/ui/empty-state.tsx")
+      .filter((b) => b.rel !== "packages/ui/src/components/empty-state.tsx")
       .filter((b) => /<EmptyState[^>]*\bflat\b/.test(b.kode.replace(/\n/g, " ")))
       .map((b) => b.rel)
       .sort();

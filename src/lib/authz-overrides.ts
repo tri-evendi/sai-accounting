@@ -23,8 +23,8 @@
  *   longgar, juga setelah dikonfigurasi.
  */
 
-import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@/lib/authz";
-import { ROLES, ROLE_LABELS, ROLE_VALUES, type Role } from "@/lib/constants";
+import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@sai/core/authz";
+import { ROLES, ROLE_LABELS, ROLE_VALUES, type Role } from "@sai/core/constants";
 
 /** Satu baris override — bentuk yang sama dengan tabelnya. */
 export interface PermissionOverride {

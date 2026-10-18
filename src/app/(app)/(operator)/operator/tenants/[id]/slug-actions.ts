@@ -19,7 +19,7 @@ import { renameTenantSlug } from "@/lib/tenant-slug";
 import { slugRenameSchema as schema } from "@/lib/validations/operator";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 import type { OperatorActionResult } from "./actions";
 

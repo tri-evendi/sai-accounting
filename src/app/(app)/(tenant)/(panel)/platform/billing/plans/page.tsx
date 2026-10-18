@@ -60,20 +60,20 @@
  */
 import { CheckOutlined } from "@ant-design/icons";
 import { platformChip, platformHead } from "@/components/tenant/platform-tone";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@sai/ui/badge";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { activePlans } from "@/lib/plan-catalog";
-import { planDescriptionKey, planHighlightKeys } from "@/lib/plan-copy";
-import { periodDaysFor } from "@/lib/plan-change";
-import { formatMoney } from "@/lib/money-format";
+import { planDescriptionKey, planHighlightKeys } from "@sai/billing/plan-copy";
+import { periodDaysFor } from "@sai/billing/plan-change";
+import { formatMoney } from "@sai/core/money-format";
 
 import { PlanAction } from "./plan-actions";
 import { getT } from "@/lib/i18n/server";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
-import { SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

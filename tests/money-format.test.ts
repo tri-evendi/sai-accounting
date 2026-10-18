@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { formatAmount, formatMoney, isNegative } from "@/lib/money-format";
+import { formatAmount, formatMoney, isNegative } from "@sai/core/money-format";
 
 /**
  * `Intl` menyisipkan spasi tak-putus (U+00A0) antara simbol dan angkanya, dan

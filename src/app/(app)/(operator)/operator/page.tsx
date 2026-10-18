@@ -62,7 +62,7 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 
-import { StatCard } from "@/components/ui/stat-card";
+import { StatCard } from "@sai/ui/stat-card";
 import {
   ConsoleNotice,
   ConsolePanel,
@@ -71,12 +71,12 @@ import {
   CONSOLE_PAGE,
   CONSOLE_TILES,
 } from "@/components/operator/console-ui";
-import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { ButtonLink } from "@sai/ui/button";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { attentionItems, type AttentionItem } from "@/lib/operator/attention";
 import {
@@ -88,9 +88,9 @@ import {
   type UpcomingRenewal,
 } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
-import { formatDateMedium as formatDate, formatDateTime } from "@/lib/utils";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
+import { formatDateMedium as formatDate, formatDateTime } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

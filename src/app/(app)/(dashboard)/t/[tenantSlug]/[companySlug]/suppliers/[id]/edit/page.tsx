@@ -5,7 +5,7 @@
  * izin `supplier.write` lewat `requirePagePermission` sebelum form dirender.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { EditSupplierForm } from "./supplier-edit-form";
 
 export const dynamic = "force-dynamic";

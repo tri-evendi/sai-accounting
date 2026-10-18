@@ -26,7 +26,7 @@
 
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { docNeighbours, docsPath } from "@/lib/docs";
 import { getT } from "@/lib/i18n/server";
 

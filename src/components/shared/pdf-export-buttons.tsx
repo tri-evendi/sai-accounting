@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { FileExcelOutlined } from "@ant-design/icons";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@sai/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { downloadStatementWorkbook } from "@/lib/report-files";
 

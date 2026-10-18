@@ -18,7 +18,7 @@
  * date])` serves exactly this shape.
  */
 import { prisma } from "@/lib/prisma";
-import { OPNAME_ADJUSTMENT_NOTE } from "@/lib/constants";
+import { OPNAME_ADJUSTMENT_NOTE } from "@sai/core/constants";
 import {
   buildStockMovementReport,
   type StockMovementReport,

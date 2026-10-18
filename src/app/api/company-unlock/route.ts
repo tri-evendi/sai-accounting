@@ -33,7 +33,7 @@ import {
   UMUR_KUNCI_MS,
   withCompanyUnlocked,
 } from "@/lib/company-unlock";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { getT } from "@/lib/i18n/server";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 

@@ -23,12 +23,12 @@
  * halaman — menyembunyikan menu saja tidak pernah dianggap pengamanan.
  */
 
-import { can, type Permission } from "@/lib/authz";
-import { appPath } from "@/lib/tenant-routes";
+import { can, type Permission } from "@sai/core/authz";
+import { appPath } from "@sai/core/tenant-routes";
 import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
-import type { TermKey } from "@/lib/labels";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { TermKey } from "@sai/core/labels";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export interface NavItem {
   href: string;

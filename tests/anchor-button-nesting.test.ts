@@ -94,12 +94,13 @@
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { join } from "node:path";
 import ts from "typescript";
 
 const ROOT = join(__dirname, "..");
 const SRC = join(ROOT, "src");
-const BUTTON = join(SRC, "components", "ui", "button.tsx");
+const BUTTON = join(SRC, "..", "packages", "ui", "src", "components", "button.tsx");
 
 /**
  * Nama tag yang merender sebuah `<a>`. `Link` menutupi keduanya sekaligus:
@@ -119,7 +120,7 @@ function berkasTsx(dir: string, keluar: string[] = []): string[] {
   return keluar;
 }
 
-const relatif = (jalur: string) => jalur.slice(SRC.length + 1).split("\\").join("/");
+const relatif = relSumber;
 
 function sumber(nama: string, kode: string): ts.SourceFile {
   return ts.createSourceFile(nama, kode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -203,7 +204,7 @@ function pengenalDipakai(nama: string, kode: string, pengenal: string[]): string
   return [...dipakai].sort();
 }
 
-const BERKAS = berkasTsx(SRC).map((jalur) => ({
+const BERKAS = akarSumber().flatMap((d) => berkasTsx(d)).map((jalur) => ({
   rel: relatif(jalur),
   isi: readFileSync(jalur, "utf8"),
 }));
@@ -225,7 +226,7 @@ describe("sarang anchor–tombol (#289)", () => {
      * satu pun gagal. Ini yang menahan kegagalan diam itu.
      */
     expect(BERKAS.length).toBeGreaterThan(200);
-    expect(BERKAS.some(({ rel }) => rel === "components/ui/button.tsx")).toBe(true);
+    expect(BERKAS.some(({ rel }) => rel === "packages/ui/src/components/button.tsx")).toBe(true);
   });
 
   it("tidak ada satu pun sarang anchor–tombol di seluruh src/", () => {

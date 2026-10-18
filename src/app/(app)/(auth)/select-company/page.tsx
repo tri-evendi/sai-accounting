@@ -30,7 +30,7 @@
  */
 import { redirect } from "next/navigation";
 import { ShopOutlined, UserOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 
 import { auth } from "@/lib/auth";
 import { companiesForUser } from "@/lib/company-registry";

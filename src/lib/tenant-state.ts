@@ -16,7 +16,7 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { TenantKeyedCache } from "@/lib/tenant-cache";
 
 export interface TenantState {

@@ -1,11 +1,11 @@
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { calculateStockTotals } from "@/lib/inventory";
 import { listClosedPeriods } from "@/lib/period";
-import { LearnMore } from "@/components/ui/learn-more";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import { getT } from "@/lib/i18n/server";
 import { DeliveryOrderForm } from "./delivery-order-form";
 

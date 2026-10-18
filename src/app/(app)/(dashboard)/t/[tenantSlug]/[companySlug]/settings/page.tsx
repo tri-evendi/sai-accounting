@@ -7,7 +7,7 @@
  * client dan API-nya tetap ber-gate peran masing-masing.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { canEffective, getEnabledModules } from "@/lib/authz-effective";
 import { BUSINESS_MODULES, isModuleEnabled } from "@/lib/business-modules";
 import { sampleDataSummary } from "@/lib/demo-seed";

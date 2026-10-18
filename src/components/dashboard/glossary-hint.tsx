@@ -23,7 +23,7 @@
 
 import { ArrowRightOutlined, BookOutlined } from "@ant-design/icons";
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { getT } from "@/lib/i18n/server";
 
 const ROW: React.CSSProperties = {

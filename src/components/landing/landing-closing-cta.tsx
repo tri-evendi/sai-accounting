@@ -46,7 +46,7 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@sai/ui/button";
 import { getT } from "@/lib/i18n/server";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@/lib/registration";

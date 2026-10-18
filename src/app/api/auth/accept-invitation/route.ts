@@ -27,13 +27,13 @@ import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { runWithCompany } from "@/lib/company-context";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { clientIpFrom } from "@/lib/client-ip";
 
 /* `username` sengaja TIDAK ada di sini (#159 temuan 4) — klien lama yang

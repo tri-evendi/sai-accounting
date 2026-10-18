@@ -61,10 +61,10 @@ import { ReadOutlined } from "@ant-design/icons";
 import { DocsNav } from "@/components/docs/docs-nav";
 import { DocsSearchForm } from "@/components/docs/docs-search-form";
 import { DocsToc } from "@/components/docs/docs-toc";
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { DOCS_ROOT } from "@/lib/docs";
 import { getLocale, getT } from "@/lib/i18n/server";
-import { DEFAULT_LOCALE } from "@/lib/i18n/config";
+import { DEFAULT_LOCALE } from "@sai/core/i18n/config";
 
 /**
  * ⚠ KOLOM BACA TIDAK LAGI DIBATASI (keputusan pemilik, 23 Agu 2026).

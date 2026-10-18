@@ -30,7 +30,7 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { mesinKendali } from "@sai/db/engine-runtime";
 
 export interface PersistentRateLimitOptions {

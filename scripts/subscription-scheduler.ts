@@ -61,10 +61,10 @@ import {
 } from "../src/lib/subscription-lifecycle";
 import { ppnEnabledFrom, readSiteSettingsRow } from "../src/lib/site-settings-core";
 import { writeTenantAuditLog } from "../src/lib/tenant-audit";
-import type { SubscriptionStatus } from "../src/lib/platform-constants";
+import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { sendMail } from "../src/lib/mailer-core";
 import { mesinKendali } from "@sai/db/engine-runtime";
-import { resolvePaymentGateway } from "../src/lib/payment-gateway";
+import { resolvePaymentGateway } from "@sai/billing/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
 import { runReconciliation } from "../src/lib/platform-reconciliation";

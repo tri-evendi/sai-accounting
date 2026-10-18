@@ -26,7 +26,7 @@
  * sebagai batas yang diketahui, bukan sebagai kelalaian.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   DOC_BRANCHES,
   docsInBranch,
@@ -34,8 +34,8 @@ import {
   type DocBranch,
   type DocEntry,
 } from "@/lib/docs";
-import type { TranslateFn } from "@/lib/i18n/client";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { TranslateFn } from "@sai/core/i18n/client";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /** Nama cabang di kamus — peta eksplisit; alasannya sama dengan di halaman dokumen. */
 const NAMA_CABANG: Record<DocBranch, DictionaryKey> = {

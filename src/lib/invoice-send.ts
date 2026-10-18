@@ -41,7 +41,7 @@ import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
 import { userNamesByIds } from "@/lib/users-directory";
 import { getT } from "@/lib/i18n/server";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 
 export const INVOICE_SEND_CHANNELS = ["email", "whatsapp"] as const;
 export type InvoiceSendChannel = (typeof INVOICE_SEND_CHANNELS)[number];

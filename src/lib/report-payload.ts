@@ -38,7 +38,7 @@ import { parseCostCenterFilter } from "@/lib/cost-centers";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { resolveAsOf, resolveColumns, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { resolveStockPeriod } from "@/lib/stock-period";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 
 /** Parameter mentah dari URL — bentuknya sama dengan `searchParams` halaman. */
 export interface ReportPayloadParams {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { currencyEnum } from "./fx";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Bank reconciliation validation (issue #24).

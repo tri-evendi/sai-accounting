@@ -43,7 +43,7 @@ import {
   klikBiasa,
   tautanDicegat,
   type KlikTautan,
-} from "@/components/ui/app-link";
+} from "@sai/ui/app-link";
 
 /** Alamat yang sedang dibuka; tiap tes boleh menggesernya. */
 let pathname = "/t/acme/cv-maju/invoices";
@@ -56,7 +56,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace, prefetch, refresh: vi.fn(), back: vi.fn(), forward: vi.fn() }),
 }));
 
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@sai/ui/button";
 
 beforeEach(() => {
   pathname = "/t/acme/cv-maju/invoices";
@@ -254,7 +254,7 @@ async function tangkap(props: React.ComponentProps<typeof ButtonLink>): Promise<
     },
   }));
   vi.resetModules();
-  const { ButtonLink: Tertangkap } = await import("@/components/ui/button");
+  const { ButtonLink: Tertangkap } = await import("@sai/ui/button");
   renderToStaticMarkup(React.createElement(Tertangkap, props));
   vi.doUnmock("antd");
   vi.resetModules();

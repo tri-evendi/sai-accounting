@@ -29,7 +29,7 @@ import {
 } from "@ant-design/icons";
 
 import type { PlatformNavItem } from "@/components/tenant/platform-shell";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 import { tenantCan } from "@/lib/tenant-authz";
 
 /** Bentuk seminimal yang dibutuhkan — sama dengan yang diterima `tenantCan`. */

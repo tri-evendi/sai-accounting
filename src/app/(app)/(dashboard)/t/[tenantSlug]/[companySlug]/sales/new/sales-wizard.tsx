@@ -34,25 +34,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Flex, theme, Typography } from "antd";
-import { Link } from "@/components/ui/app-link";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { Input, TextInput } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { SelectField } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { Link } from "@sai/ui/app-link";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { Input, TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { SelectField } from "@sai/ui/select";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Badge } from "@sai/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { SearchableSelect, type SearchableOption } from "@sai/ui/searchable-select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import { DisclosureSection } from "@/components/ui/disclosure-section";
-import { EmptyState } from "@/components/ui/empty-state";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { EmptyState } from "@sai/ui/empty-state";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { Wizard, WizardSummaryRow } from "@/components/shared/wizard";
 import { WizardPartnerStep } from "@/components/shared/wizard-partner-step";
 import { useWizardDraft } from "@/components/shared/use-wizard-draft";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { humanizeFieldMessage } from "@/lib/form-guards";
 import type { ClosedPeriodRef } from "@/lib/form-guards";
 import { resolveSubmitFailure } from "@/lib/form-sections";
@@ -76,7 +76,7 @@ import {
   type SalesLineDraft,
   type SalesStepId,
 } from "@/lib/wizard";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { CheckCircleOutlined, ContainerOutlined, DeleteOutlined, DownloadOutlined, FileTextOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 

@@ -40,7 +40,7 @@
  * perusahaan sungguhan, sama seperti `invoice-due-digest.ts`.
  */
 
-import { translate, type Dictionary } from "@/lib/i18n/dictionary";
+import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 
 /** Satu titik pengingat: kunci tersimpan + geseran hari dari jatuh tempo. */
 export interface ReminderPoint {

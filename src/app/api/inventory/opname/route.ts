@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
-import { OPNAME_ADJUSTMENT_NOTE } from "@/lib/constants";
+import { OPNAME_ADJUSTMENT_NOTE } from "@sai/core/constants";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { opnameSchema } from "@/lib/validations/inventory";
 import { requireApiPermission } from "@/lib/auth-guard";
@@ -9,7 +9,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { postForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 /**
  * Stok opname (issue #57) — penyesuaian hitung-fisik.
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     // ── Pola baku jawaban 400 (fase A; disalin ke seluruh route di fase B) ──
     // Skema membawa KUNCI kamus, bukan kalimat (pesan zod dipanggang saat modul
-    // dimuat dan tidak bisa ikut berganti bahasa — lihat lib/i18n/validation.ts).
+    // dimuat dan tidak bisa ikut berganti bahasa — lihat @sai/core/i18n/validation).
     // Route handler boleh membaca cookie bahasa persis seperti server component,
     // jadi DI SINILAH kunci itu kembali menjadi kalimat, dalam bahasa pengguna.
     const { dictionary, t } = await getRequestI18n();

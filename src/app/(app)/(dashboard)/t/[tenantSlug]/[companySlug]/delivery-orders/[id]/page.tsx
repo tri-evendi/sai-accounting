@@ -8,18 +8,18 @@
  */
 
 import { notFound } from "next/navigation";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Link } from "@/components/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
+import { Link } from "@sai/ui/app-link";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP } from "@/lib/layout-scale";
+import { SECTION_GAP } from "@sai/ui/layout-scale";
 import { DeliveryOrderPdfButton } from "./pdf-button";
 
 export const dynamic = "force-dynamic";

@@ -36,8 +36,8 @@ import {
   tooltipSurface,
   type ChartToken,
 } from "@/components/shared/dashboard-charts";
-import { borderTokens, moneyTokens, neutralTextTokens } from "@/lib/theme/antd-tokens";
-import type { ResolvedTheme } from "@/lib/theme/config";
+import { borderTokens, moneyTokens, neutralTextTokens } from "@sai/ui/theme/antd-tokens";
+import type { ResolvedTheme } from "@sai/ui/theme/config";
 
 /* ------------------------------------------------------------------ */
 /* Kontras — rumus yang sama dengan tests/antd-tokens.test.ts          */

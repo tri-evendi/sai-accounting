@@ -182,7 +182,7 @@ describe("tiap baris punya tujuan — kecuali yang memang tidak boleh", () => {
 
 describe("kamus & ambang", () => {
   const dict = JSON.parse(
-    readFileSync(join(__dirname, "..", "src/lib/i18n/dictionaries/id.json"), "utf8")
+    readFileSync(join(__dirname, "..", "packages/core/src/i18n/dictionaries/id.json"), "utf8")
   ) as { operator: { attention: Record<string, string> } };
 
   it("setiap kunci baris punya label DAN kalimat sebabnya", () => {

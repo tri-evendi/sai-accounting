@@ -6,7 +6,7 @@
  * the FK. Budgets/targets are IDR-only, so there is no currency/rate field.
  */
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 const year = z.coerce.number().int().min(2000).max(2100);
 const month = z.coerce.number().int().min(1).max(12);

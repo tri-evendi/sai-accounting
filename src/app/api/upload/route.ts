@@ -20,7 +20,7 @@ import { requireApiPermission } from "@/lib/auth-guard";
 import { writeAuditLog } from "@/lib/audit";
 import { currentCompanyId } from "@/lib/current-company";
 import { newStorageKey, resolveDocumentPath } from "@/lib/document-storage";
-import { DOCUMENT_TYPES, type DocumentType } from "@/lib/constants";
+import { DOCUMENT_TYPES, type DocumentType } from "@sai/core/constants";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { getRequestI18n } from "@/lib/i18n/server";

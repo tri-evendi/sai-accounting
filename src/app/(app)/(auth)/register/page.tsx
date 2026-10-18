@@ -54,7 +54,7 @@ import type { Metadata } from "next";
 import { MailOutlined, UserAddOutlined, WhatsAppOutlined } from "@ant-design/icons";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { resolveContactChannels, resolveSelfServeSignupOpen } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 

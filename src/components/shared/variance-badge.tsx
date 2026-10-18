@@ -1,5 +1,5 @@
 import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined } from "@ant-design/icons";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@sai/ui/badge";
 import type { VarianceStatus } from "@/lib/budget";
 import { getT } from "@/lib/i18n/server";
 

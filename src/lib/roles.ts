@@ -10,7 +10,7 @@
  * dipakai) hidup di fase berikutnya; modul ini fokus baca.
  */
 import { prisma } from "@/lib/prisma";
-import { ROLE_LABELS } from "@/lib/constants";
+import { ROLE_LABELS } from "@sai/core/constants";
 
 export interface RoleRecord {
   key: string;

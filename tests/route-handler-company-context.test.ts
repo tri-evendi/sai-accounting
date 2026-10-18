@@ -79,7 +79,7 @@ const getCompanyClient = vi.hoisted(() => vi.fn());
 const tenantStateForCompany = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/control-db", () => ({ controlDb }));
+vi.mock("@sai/core/control-db", () => ({ controlDb }));
 vi.mock("@/lib/company-registry", () => ({ membershipFor }));
 vi.mock("@/lib/auth", () => ({ auth: authFn }));
 vi.mock("next/headers", () => ({ headers: headersFn }));

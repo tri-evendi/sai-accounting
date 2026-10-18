@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { translateMessage } from "@/lib/i18n/validation";
-import id from "@/lib/i18n/dictionaries/id.json";
+import { translateMessage } from "@sai/core/i18n/validation";
+import id from "@sai/core/i18n/dictionaries/id.json";
 import { paymentFormSchema } from "@/lib/validations/payment";
 import { invoicePaymentSchema } from "@/lib/validations/invoice";
 import { contractPaymentSchema } from "@/lib/validations/contract";

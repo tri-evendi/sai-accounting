@@ -23,7 +23,7 @@
 import { DocFigure } from "@/components/docs/docs-figures";
 import { docAnchor } from "@/lib/docs";
 import type { DocBlock } from "@/lib/docs-content";
-import { getTerm } from "@/lib/labels";
+import { getTerm } from "@sai/core/labels";
 import { getT } from "@/lib/i18n/server";
 
 const PARAGRAF: React.CSSProperties = {

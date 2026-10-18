@@ -43,10 +43,10 @@
  * jadi labirin konfigurasi.
  */
 
-import { PERMISSIONS, type Permission } from "@/lib/authz";
+import { PERMISSIONS, type Permission } from "@sai/core/authz";
 import { EFFECTIVE_MATRIX_TTL_MS } from "@/lib/authz-overrides";
 import { permissionResource, type PermissionResource } from "@/lib/authz-labels";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Semua modul. Urutannya adalah urutan tampil di layar DAN urutan penyimpanan

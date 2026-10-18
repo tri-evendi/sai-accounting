@@ -13,10 +13,10 @@
 import { useState } from "react";
 import type { jsPDF } from "jspdf";
 import { EyeOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { useToast } from "@sai/ui/toast";
 import { DocumentPreview } from "@/components/shared/document-preview";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 export function PdfDocumentButton({
   title,

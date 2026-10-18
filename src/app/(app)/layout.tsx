@@ -24,9 +24,9 @@ import type { Metadata } from "next";
 
 export { viewport } from "@/lib/viewport";
 
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME } from "@sai/core/constants";
 import { RootDocument } from "@/components/providers/root-document";
-import { LocaleProvider } from "@/lib/i18n/client";
+import { LocaleProvider } from "@sai/core/i18n/client";
 import { CompanyIdentityProvider } from "@/lib/company-identity-client";
 import { getDictionary, getLocale } from "@/lib/i18n/server";
 import { getTheme } from "@/lib/theme/server";

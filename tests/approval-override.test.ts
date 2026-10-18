@@ -24,7 +24,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { FULL_ACCESS_ROLES, ROLES, isFullAccessRole } from "@/lib/constants";
+import { FULL_ACCESS_ROLES, ROLES, isFullAccessRole } from "@sai/core/constants";
 
 /**
  * Cermin dari penjaga di `src/app/api/approvals/[id]/route.ts`.

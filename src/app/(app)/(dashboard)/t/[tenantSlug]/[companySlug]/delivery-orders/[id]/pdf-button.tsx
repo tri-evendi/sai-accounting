@@ -1,7 +1,7 @@
 "use client";
 
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 
 interface DeliveryOrderPdf {

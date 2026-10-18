@@ -3,7 +3,7 @@ import { round2 } from "@/lib/posting/rules";
 import { BASE_CURRENCY, currencyEnum, fxAmounts, rateField, requireRateForForeign } from "./fx";
 import { dueDateField, nullableBooleanField } from "./common";
 import { paymentFormFields, requireBankForForeignCash } from "./payment";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 export const contractItemSchema = z.object({
   /**

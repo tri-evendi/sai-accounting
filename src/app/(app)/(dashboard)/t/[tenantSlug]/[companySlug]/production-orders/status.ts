@@ -1,4 +1,4 @@
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Status perintah produksi → kunci kamus & warna lencana.

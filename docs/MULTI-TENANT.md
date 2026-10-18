@@ -104,7 +104,7 @@ ada.
 
 ### 4.2 Penghalang utama: `company.create` dilingkup PERUSAHAAN
 
-`src/lib/authz.ts:150` menaruh `"company.create"` di matriks izin **per
+`packages/core/src/authz.ts:150` menaruh `"company.create"` di matriks izin **per
 perusahaan**, dan `requireApiPermission` menuntut konteks perusahaan.
 
 > **Untuk membuat perusahaan Anda perlu keanggotaan; untuk punya keanggotaan

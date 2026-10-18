@@ -24,7 +24,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
 import type { OperatorPermission } from "@/lib/operator/roles";
@@ -48,11 +48,11 @@ import {
   billingModeActionSchema,
   quoteActivationSchema,
 } from "@/lib/validations/operator";
-import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-constants";
+import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@sai/billing/platform-constants";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateMedium } from "@/lib/utils";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatDateMedium } from "@sai/core/utils";
 
 export interface OperatorActionResult {
   ok: boolean;

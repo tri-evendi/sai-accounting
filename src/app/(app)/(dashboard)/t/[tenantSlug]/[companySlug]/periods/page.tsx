@@ -4,10 +4,10 @@
  * membaca daftar periode di server dan menegakkan izinnya.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { listPeriods } from "@/lib/period-close";
 import { PeriodManager } from "./period-manager";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

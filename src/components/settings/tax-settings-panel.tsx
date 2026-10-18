@@ -23,16 +23,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Flex, Typography, theme } from "antd";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Checkbox } from "@sai/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
-import { StaticTable } from "@/components/ui/static-table";
-import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
+import { Input } from "@sai/ui/input";
+import { StaticTable } from "@sai/ui/static-table";
+import { useToast } from "@sai/ui/toast";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { PlusOutlined, SaveOutlined } from "@ant-design/icons";
 
 interface TaxRateRow {

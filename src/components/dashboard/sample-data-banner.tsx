@@ -34,10 +34,10 @@
 
 import { ExperimentOutlined } from "@ant-design/icons";
 
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@sai/ui/button";
 import { hasSampleData } from "@/lib/demo-seed";
 import { getT } from "@/lib/i18n/server";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 
 const BANNER: React.CSSProperties = {
   display: "flex",

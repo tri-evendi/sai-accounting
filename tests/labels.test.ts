@@ -19,7 +19,7 @@ import {
   termAnchorId,
   termOf,
   termsByCategory,
-} from "@/lib/labels";
+} from "@sai/core/labels";
 import { NAV_GROUPS, NAV_HOME } from "@/lib/nav";
 import { QUICK_ACTIONS } from "@/lib/quick-actions";
 

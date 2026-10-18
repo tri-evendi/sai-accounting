@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { MoneyInput } from "@/components/ui/money-input";
+import { MoneyInput } from "@sai/ui/money-input";
 
 describe("MoneyInput", () => {
   it("menampilkan nilai terformat id-ID, rata kanan, tabular-nums, numerik", () => {

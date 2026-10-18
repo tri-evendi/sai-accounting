@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 import { auth } from "@/lib/auth";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromRequest } from "@/lib/company-request";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@/lib/tenant-state";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 
 type AuthResult =
   | {

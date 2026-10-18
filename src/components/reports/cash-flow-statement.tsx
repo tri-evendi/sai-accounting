@@ -22,15 +22,15 @@
  *    BERTEKS, bukan sekadar latar kuning.
  *  • Judul kelompok `scope="colgroup"`, label subtotal `scope="row"`.
  */
-import { Badge } from "@/components/ui/badge";
-import { Money } from "@/components/ui/money";
-import { moneyColumn } from "@/components/ui/money-column";
-import { StaticTable, type SummaryCell } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { Badge } from "@sai/ui/badge";
+import { Money } from "@sai/ui/money";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable, type SummaryCell } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { cashFlowLayout, type CashFlowLabels, type CashFlowLayoutRow } from "@/lib/statement-layout";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { ArrowDownOutlined, ArrowUpOutlined, MinusOutlined, WarningOutlined } from "@ant-design/icons";
 
 export type CashFlowPayload = Extract<StatementPayload, { kind: "cash-flow" }>;

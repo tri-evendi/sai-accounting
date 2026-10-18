@@ -46,7 +46,7 @@ import { readFile, stat } from "node:fs/promises";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
 import { contentTypeFor, resolveDocumentPath } from "@/lib/document-storage";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

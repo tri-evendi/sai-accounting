@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { ROLES } from "@/lib/constants";
+import { ROLES } from "@sai/core/constants";
 import {
   MONTHLY_ROUTINE,
   formatMonthYear,

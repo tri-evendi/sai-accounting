@@ -31,7 +31,7 @@
  *     pilihannya, dan /select-company tetap hidup untuk BERGANTI perusahaan.
  */
 import { hasAccountBusiness } from "@/lib/tenant-authz";
-import { legacyTenantScopedPath, tenantPath } from "@/lib/tenant-routes";
+import { legacyTenantScopedPath, tenantPath } from "@sai/core/tenant-routes";
 
 export interface PostLoginCompany {
   companyId: number | null | undefined;

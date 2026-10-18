@@ -17,10 +17,10 @@ import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme } from "antd";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
+import { Button } from "@sai/ui/button";
+import { Card } from "@sai/ui/card";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
 import {
   Form,
   FormControl,
@@ -28,10 +28,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { useToast } from "@/components/ui/toast";
+} from "@sai/ui/form";
+import { useToast } from "@sai/ui/toast";
 import type { AccountOption } from "../new/asset-form";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
 import {

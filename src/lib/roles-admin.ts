@@ -7,7 +7,7 @@
  * otorisasi berjalan bergantung padanya. Peran kustom lahir tanpa izin; izinnya
  * diatur di /permissions (role_permission_overrides).
  */
-import { ROLES } from "@/lib/constants";
+import { ROLES } from "@sai/core/constants";
 
 /** Kunci peran sistem yang tak boleh dipakai ulang / diutak-atik strukturnya. */
 export const SYSTEM_ROLE_KEYS: readonly string[] = Object.values(ROLES);

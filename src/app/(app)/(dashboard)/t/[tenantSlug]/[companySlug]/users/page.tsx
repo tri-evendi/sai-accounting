@@ -9,7 +9,7 @@
  * sama sekali.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
 import { tenantCan } from "@/lib/tenant-authz";
 import { tenantSeatCount } from "@/lib/invitation-store";

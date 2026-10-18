@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { customerSchema, supplierSchema } from "./finance";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Zod untuk wizard terpandu (issue #5) — HANYA bagian yang belum punya skema.

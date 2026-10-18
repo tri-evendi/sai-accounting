@@ -41,7 +41,7 @@
  * di dua tempat adalah nama header yang suatu hari berbeda di dua tempat.
  */
 
-import { isValidSlug, type TenantScopedParams } from "@/lib/tenant-routes";
+import { isValidSlug, type TenantScopedParams } from "@sai/core/tenant-routes";
 
 /** Tenant pemilik perusahaan di permintaan ini. */
 export const TENANT_SLUG_HEADER = "x-tenant-slug";

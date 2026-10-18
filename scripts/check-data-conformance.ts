@@ -42,7 +42,7 @@ import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
 
-import { CONTRACT_STATUSES, CURRENCIES } from "../src/lib/constants";
+import { CONTRACT_STATUSES, CURRENCIES } from "@sai/core/constants";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
 import {
   DEFAULT_CATCH_ALL_THRESHOLD,

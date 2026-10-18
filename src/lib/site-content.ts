@@ -37,8 +37,8 @@
  * `tests/site-content.test.ts` tanpa basis data maupun DOM.
  */
 
-import type { Dictionary, DictionaryKey } from "@/lib/i18n/dictionary";
-import { LOCALES, type Locale } from "@/lib/i18n/config";
+import type { Dictionary, DictionaryKey } from "@sai/core/i18n/dictionary";
+import { LOCALES, type Locale } from "@sai/core/i18n/config";
 
 /** Namespace kamus yang boleh disunting operator. Satu, dan dengan sengaja. */
 export const SITE_CONTENT_NAMESPACE = "landing" as const;

@@ -7,7 +7,7 @@
  */
 import { ConsoleNotice, ConsolePanel, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { StatusNoticesPanel } from "@/components/operator/status-notices-panel";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";

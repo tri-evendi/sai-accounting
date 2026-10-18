@@ -139,7 +139,7 @@ const nextConfig: NextConfig = {
    * `node_modules` kecuali disebut di sini, dan tanpanya build gagal pada
    * sintaksis tipe pertama di `@sai/db`.
    */
-  transpilePackages: ["@sai/db"],
+  transpilePackages: ["@sai/db", "@sai/core", "@sai/ui", "@sai/billing"],
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
   },

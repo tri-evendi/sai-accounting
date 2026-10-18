@@ -14,7 +14,7 @@
 | **Ambient context** | `AsyncLocalStorage` + penyimpan per-permintaan | Agar 120 berkas yang `import { prisma }` tidak perlu diubah tanda tangannya |
 | **Proxy klien basis data** | `lib/prisma.ts`, `control-db.ts`, `platform-db.ts` | Klien diselesaikan **saat kueri dipanggil**, bukan saat modul dimuat |
 | **Kolam klien LRU** | `lib/company-clients.ts` | `max_connections` adalah anggaran terbatas (PostgreSQL: 100, satu **proses** per koneksi; di depannya PgBouncer `transaction`); 17 klien permanen = kehabisan koneksi |
-| **Izin terpusat sebagai matriks** | `lib/authz.ts` + `authz-effective.ts` | Halaman & API pasangannya tidak bisa menyimpang diam-diam |
+| **Izin terpusat sebagai matriks** | `packages/core/src/authz.ts` + `authz-effective.ts` | Halaman & API pasangannya tidak bisa menyimpang diam-diam |
 | **Mesin posting terpusat** | `lib/posting/` | Setiap dokumen → jurnal lewat **satu** pintu; penjaga periode & persetujuan tak bisa dilewati dengan menambah route |
 | **Snapshot lintas-basis-data** | Status tenant & kuota disalin dari platform ke kendali | Jalur panas tidak boleh menyentuh basis data penagihan |
 | **Fungsi murni + penjaga tes** | 276 berkas tes | Aturan diuji sebagai fungsi, bukan lewat basis data |
@@ -248,7 +248,7 @@ callback bekerja penuh, dan seluruh transaksi di repo (84 pemanggilan `$transact
 
 ```mermaid
 graph LR
-    A["Matriks BAWAAN<br/>lib/authz.ts<br/>66 izin × 4 peran<br/>(murni, teruji)"]
+    A["Matriks BAWAAN<br/>packages/core/src/authz.ts<br/>66 izin × 4 peran<br/>(murni, teruji)"]
     B["Override PERAN<br/>role_permission_overrides<br/>dikelola di /permissions"]
     C["Override PENGGUNA<br/>user_permission_overrides"]
     D["Modul USAHA<br/>11 modul<br/>company_settings"]
@@ -396,7 +396,7 @@ Dua hal yang mengejutkan orang baru:
 | Rendering | Server Component secara bawaan; `"use client"` hanya di daun interaktif |
 | Komponen | **Ant Design v6** lewat `src/components/ui`; `@ant-design/nextjs-registry` untuk SSR |
 | Gaya | **Sebaris** (`style={{…}}`) — **tanpa Tailwind, tanpa `className`** sejak #203 |
-| Warna | `var(--ant-…)` atau `theme.useToken()`; hex mentah hanya boleh di `lib/theme/antd-tokens.ts`, dijaga ESLint `sai/warna-token-antd` |
+| Warna | `var(--ant-…)` atau `theme.useToken()`; hex mentah hanya boleh di `packages/ui/src/theme/antd-tokens.ts`, dijaga ESLint `sai/warna-token-antd` |
 | Pseudo/media | Satu `<style href precedence>` per komponen, menyasar atribut `data-*` |
 | Ikon | `@ant-design/icons` — **impor bernama saja**, ditulis ulang `modularizeImports` ke jalur per-ikon |
 | Tabel | `StaticTable` (server, tanpa JS) atau `DataTable` (AntD, client, **+80 KB gzip/rute**) |

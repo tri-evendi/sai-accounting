@@ -15,23 +15,23 @@
  * `<Card>`. Catatan akun di bawah kartu berdiri di luar pohon itu, jadi ia
  * memakai ikon + kata.
  */
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getAdvances, summarizeAdvances, type AdvanceRow } from "@/lib/advances";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { formatDateShort } from "@/lib/utils";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { ButtonLink } from "@sai/ui/button";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { formatDateShort } from "@sai/core/utils";
 import { InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
-import { CARD_GAP, SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

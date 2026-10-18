@@ -26,7 +26,7 @@
  *    petunjuk bahwa barisnya bisa ditekan.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   AppstoreAddOutlined,
   ArrowDownOutlined,
@@ -40,7 +40,7 @@ import {
 } from "@ant-design/icons";
 
 import { getT } from "@/lib/i18n/server";
-import type { IconComponent } from "@/lib/icons";
+import type { IconComponent } from "@sai/ui/icons";
 import type { FirstStep, FirstStepProgress } from "@/lib/first-steps";
 
 /**

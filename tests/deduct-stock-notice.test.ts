@@ -44,7 +44,7 @@ describe("stok TIDAK dipotong dari layar kontrak", () => {
     /* Kalau kalimatnya menjanjikan pemotongan seketika, tombolnya berbohong —
        yang terjadi hanyalah sebuah formulir terbuka. */
     const id = JSON.parse(
-      readFileSync(join(__dirname, "..", "src", "lib", "i18n", "dictionaries", "id.json"), "utf8")
+      readFileSync(join(__dirname, "..", "packages", "core", "src", "i18n", "dictionaries", "id.json"), "utf8")
     );
     expect(id.contracts.deductStockMessage).toMatch(/tidak dipotong dari layar ini/i);
     expect(id.contracts.deductStockMessage).toMatch(/\{qty\}/);

@@ -23,7 +23,7 @@ import {
   verifyMidtransSignature,
   webhookServerKey,
   type MidtransNotification,
-} from "@/lib/payment-gateway";
+} from "@sai/billing/payment-gateway";
 import { platformInvoiceAmounts, transition } from "@/lib/subscription-lifecycle";
 import { computeTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 
@@ -210,7 +210,7 @@ describe("tidak ada data kartu di mana pun (AC #141)", () => {
       "utf8"
     );
     const gateway = readFileSync(
-      join(__dirname, "..", "src", "lib", "payment-gateway.ts"),
+      join(__dirname, "..", "packages", "billing", "src", "payment-gateway.ts"),
       "utf8"
     );
     // Batas kata, bukan substring: "pan" hidup di dalam kata Indonesia yang

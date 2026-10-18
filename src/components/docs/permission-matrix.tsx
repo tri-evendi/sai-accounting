@@ -32,12 +32,12 @@
  * bermakna (urutan deklarasi = urutan modul di menu).
  */
 
-import { StaticTable } from "@/components/ui/static-table";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@/lib/authz";
+import { StaticTable } from "@sai/ui/static-table";
+import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@sai/core/authz";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { permissionResource } from "@/lib/authz-labels";
-import { ROLE_VALUES, type SystemRole } from "@/lib/constants";
+import { ROLE_VALUES, type SystemRole } from "@sai/core/constants";
 import { getRequestI18n } from "@/lib/i18n/server";
 
 interface Baris {

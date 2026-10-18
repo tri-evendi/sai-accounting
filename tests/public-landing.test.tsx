@@ -30,11 +30,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToReadableStream } from "react-dom/server";
 
 import { BUSINESS_MODULES, MODULE_META } from "@/lib/business-modules";
-import { CURRENCIES } from "@/lib/constants";
-import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
-import { translate, type Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import { formatMoney } from "@/lib/money-format";
+import { CURRENCIES } from "@sai/core/constants";
+import { LOCALES, LOCALE_LABELS } from "@sai/core/i18n/config";
+import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { formatMoney } from "@sai/core/money-format";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
 

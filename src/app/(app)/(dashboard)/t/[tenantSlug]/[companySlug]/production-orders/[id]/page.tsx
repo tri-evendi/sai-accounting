@@ -6,22 +6,22 @@
  * aritmetika yang sama dengan laporannya, bukan salinan kedua.
  */
 import { notFound } from "next/navigation";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Money } from "@/components/ui/money";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { Money } from "@sai/ui/money";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { variansPerintahProduksi } from "@/lib/manufacturing/variance-report";
-import { SECTION_GAP } from "@/lib/layout-scale";
+import { SECTION_GAP } from "@sai/ui/layout-scale";
 import { ProductionOrderActions } from "./actions";
 import { statusLabelKey, statusVariant } from "../status";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 
 export const dynamic = "force-dynamic";
 

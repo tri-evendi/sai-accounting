@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ROLE_VALUES } from "@/lib/constants";
+import { ROLE_VALUES } from "@sai/core/constants";
 
 /**
  * Enum peran bersama (audit RBAC fase 1) — dipakai validasi user (buat/ubah),

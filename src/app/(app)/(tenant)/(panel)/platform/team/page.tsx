@@ -16,14 +16,14 @@
  * bagi pemilik yang baru saja mendaftar.
  */
 import { MailOutlined, TeamOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
 import { companiesForUser } from "@/lib/company-registry";
 import { getT } from "@/lib/i18n/server";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 
 export const dynamic = "force-dynamic";
 

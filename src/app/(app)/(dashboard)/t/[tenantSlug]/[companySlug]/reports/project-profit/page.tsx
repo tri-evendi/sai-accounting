@@ -19,18 +19,18 @@
  * berlawanan.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getProjectProfit, type ProjectProfitRow } from "@/lib/project-profit-report";
-import { Card } from "@/components/ui/card";
-import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { StaticTable, type SummaryRow } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Money } from "@sai/ui/money";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { reportById, resolvePeriod } from "@/lib/report-catalog";
-import { formatDate, formatNumber } from "@/lib/utils";
+import { formatDate, formatNumber } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
 import { ProjectOutlined } from "@ant-design/icons";

@@ -30,7 +30,7 @@
 import { readdir, readFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 
 const APPLY = process.argv.includes("--apply");
 const BATCH = 500;

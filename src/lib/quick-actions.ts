@@ -17,9 +17,9 @@
  * langsung tetap ditolak di sana.
  */
 
-import { can, type Permission } from "@/lib/authz";
-import type { TermKey } from "@/lib/labels";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import { can, type Permission } from "@sai/core/authz";
+import type { TermKey } from "@sai/core/labels";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Arah uang untuk aksi tersebut — dipakai untuk ikon + LABEL teks

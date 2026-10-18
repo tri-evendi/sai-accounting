@@ -6,7 +6,7 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   hashResetToken,
   mintResetToken,

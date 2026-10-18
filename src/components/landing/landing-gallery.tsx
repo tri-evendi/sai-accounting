@@ -74,7 +74,7 @@ import {
   landingGlyph,
 } from "@/components/landing/landing-scale";
 import { getT } from "@/lib/i18n/server";
-import { formatMoney } from "@/lib/money-format";
+import { formatMoney } from "@sai/core/money-format";
 import { DEFAULT_TAX_RATE, computeTax } from "@/lib/tax";
 
 /**

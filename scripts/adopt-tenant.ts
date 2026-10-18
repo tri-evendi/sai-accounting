@@ -47,7 +47,7 @@ import {
   TENANT_ROLES,
   TENANT_STATUSES,
   type TenantStatus,
-} from "../src/lib/constants";
+} from "@sai/core/constants";
 import {
   nextPeriod,
   planOrphanSubscriptionAdoptions,

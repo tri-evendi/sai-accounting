@@ -49,7 +49,7 @@ import {
 import { businessModulesPayloadSchema } from "@/lib/validations/modules";
 import { isSetupComplete } from "@/lib/opening-balance";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function POST(request: Request) {
   const result = await requireApiPermission("setup.manage");

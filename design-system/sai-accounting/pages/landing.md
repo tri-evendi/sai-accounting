@@ -663,7 +663,7 @@ Setiap klaim di kalimat pertama punya pelaksananya: penutupan periode
 (`/periods`, `form-guards.ts`), laporan (`lib/reports.ts` — neraca saldo, laba
 rugi, neraca, arus kas), PPN & e-Faktur (`lib/tax.ts`, modul `tax_id`), satu
 buku besar per PT (#104; modul tidak pernah menggerbangi buku besar —
-`business-modules.ts` aturan 1), naik paket mandiri (`lib/plan-change.ts`).
+`business-modules.ts` aturan 1), naik paket mandiri (`packages/billing/src/plan-change.ts`).
 
 **Judul hero merangkul satu PT**: "Pembukuan satu atau beberapa PT, dalam satu
 akun". Judul lama ("Pembukuan beberapa PT…") membuat pemilik satu PT — pasar
@@ -763,7 +763,7 @@ jadi tidak ada aturan yang saling menimpa.
 tabel `plans` (§KLAIM HARUS PUNYA SUMBER): Business memikul *"Dukungan
 prioritas — dibalas hari kerja berikutnya"* (`plans.highlight.prioritySupport`,
 tiga bahasa; keputusan pemilik di #404, dicatat di `docs/PRICING.md`) —
-dipetakan di `lib/plan-copy.ts` §SOROTAN, dirender di kartu publik DAN halaman
+dipetakan di `packages/billing/src/plan-copy.ts` §SOROTAN, dirender di kartu publik DAN halaman
 paket di dalam aplikasi dari daftar yang sama. Paket lain tidak diberi butir
 hiasan ("semua modul", "tiga bahasa"): itu sudah dinyatakan sekali untuk semua
 paket (`pricingAllNote`), dan mengulanginya per kartu menyiratkan paket lain
@@ -771,7 +771,7 @@ tidak mendapatkannya. Butir kedua Enterprise kini *"Migrasi data, pelatihan
 tim, dukungan langsung"* (`pricingContactSupport`) — jasa yang memang
 membedakannya dari Business (`docs/PRICING.md` §2), tetap tanpa jam layanan.
 
-Nama paket TIDAK diterjemahkan (nama produk, `lib/plan-copy.ts`), maka
+Nama paket TIDAK diterjemahkan (nama produk, `packages/billing/src/plan-copy.ts`), maka
 "Starter"/"Business", bukan "Mulai"/"Bisnis": satu tangga dalam satu bahasa
 di ketiga kamus. Deskripsi tiap paket tetap lewat `plans.description.*`.
 
@@ -790,7 +790,7 @@ Yang tersisa dari Enterprise di halaman harga adalah **satu paragraf catatan
 di kaki kartu Business** (`[data-landing-negotiate]`,
 `pricingNegotiateNote`): *"Butuh lebih dari 8 PT atau 40 pengguna? Kuota,
 migrasi data, SLA, dan masa kontrak dirundingkan. Hubungi kami →"*. Angkanya
-dari `maxCompanies`/`maxUsers` paket pemikulnya (`lib/plan-copy.ts`
+dari `maxCompanies`/`maxUsers` paket pemikulnya (`packages/billing/src/plan-copy.ts`
 `planCarriesNegotiation`, dipetakan — bukan `key === "business"` di
 komponen). Tautannya **tautan teks** pola `faqMoreCta` (`data-landing-link`,
 `colorLink`), BUKAN tombol kedua: kartu itu sudah memikul satu primer, dan
@@ -875,7 +875,7 @@ tiga kartu nominal.
 Jawabannya sudah menjadi keputusan komersial tercatat (`docs/PRICING.md` §1:
 *3 × Starter = Rp 747.000 > Pro; 3 × Pro = Rp 1.797.000 > Business*), jadi yang
 ditambahkan di layar hanya **penurunannya dari katalog** —
-`lib/plan-stacking.ts`, pasangan paket BERURUTAN, `Math.ceil` pada kuota PT.
+`packages/billing/src/plan-stacking.ts`, pasangan paket BERURUTAN, `Math.ceil` pada kuota PT.
 
 Empat aturan yang mengikatnya:
 
@@ -1097,7 +1097,7 @@ disorot — bukan hiasan.
    pita hijau selebar layar di halaman yang menjual pembukuan terbaca sebagai
    pernyataan tentang angka.
 2. **`color-mix()` di atas permukaan yang sedang berlaku, bukan anak tangga
-   palet telanjang.** (Sejak #303 resepnya milik `src/lib/theme/tone-recipe.ts`,
+   palet telanjang.** (Sejak #303 resepnya milik `packages/ui/src/theme/tone-recipe.ts`,
    modul netral-permukaan yang juga dipakai `/platform` — lihat MASTER.md
    §Permukaan KETIGA. Yang dibagi hanya BENTUK `color-mix`-nya; kadar di bawah
    tetap milik halaman ini.) Tangga AntD (`--ant-blue-1` … `-10`) MEMBALIK di tema
@@ -1167,7 +1167,7 @@ Empat keputusan yang lahir dari angka itu:
    warnanya tipis.
 2. **Tombol `inverse`, bukan `primary`.** Isian primer = isian merek yang sama
    dengan pitanya (1,00:1): tombol lenyap sebagai bidang. `variant="inverse"`
-   (`components/ui/button.tsx`) adalah varian BERNAMA — isian putih, label
+   (`packages/ui/src/components/button.tsx`) adalah varian BERNAMA — isian putih, label
    navy — bukan gaya sebaris ad-hoc, dan penjaga penekanan
    (`tests/button-emphasis.test.ts`) menghitungnya sebagai ajakan penuh: satu
    per wadah, di pendaratan wajib menuju `/register`. `primary`/`default`
@@ -1274,7 +1274,7 @@ label barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
   §Yang DITOLAK. Jangan mengutip kalimat di atas sebagai aturan umum.
 - **Permukaan gelap permanen (`SIDER_BG_DARK`) sebagai pita penutup.** Bekerja
   untuk teksnya, tetapi isian tombol primer tema terang (`#0958d9`) di atasnya
-  hanya 2,99:1 — angka yang sudah tercatat di `lib/theme/antd-tokens.ts` dan
+  hanya 2,99:1 — angka yang sudah tercatat di `packages/ui/src/theme/antd-tokens.ts` dan
   yang membuat `Menu` diberi tokennya sendiri. Tombol ajakan yang tidak bisa
   ditemukan sebagai bidang adalah harga yang terlalu mahal untuk sebuah pita.
   **Tetap ditolak** — dan pelajarannya justru yang dipakai #401: di atas bidang
@@ -1361,7 +1361,7 @@ angka lalu ditagih angka lain.
   perubahan ini dirender apa adanya — sehingga kartu Pro berbahasa Inggris
   berbunyi *"Sampai tiga PT, lima belas pengguna."* tepat di atas baris kuota
   *"3 companies / 15 users"*: satu fakta, dua bahasa, tiga baris berjarak.
-  Pemetaannya di `lib/plan-copy.ts`; paket buatan operator jatuh ke kolomnya.
+  Pemetaannya di `packages/billing/src/plan-copy.ts`; paket buatan operator jatuh ke kolomnya.
   `name` sengaja TIDAK diterjemahkan — nama produk bukan teks antarmuka.
 - **Paket rundingan tidak boleh menyortir ke depan.** Harganya `0.00` di
   katalog, jadi `orderBy: priceMonthly asc` telanjang menaruh kartu yang TIDAK
@@ -1380,7 +1380,7 @@ Ia satu-satunya permukaan yang ditempel orang ke WhatsApp, LinkedIn, atau Slack
 - `generateMetadata` di `app/page.tsx`: judul, deskripsi (kalimat hero, bukan
   kalimat pemasaran kedua), kanonik, `openGraph`, `twitter`;
 - `app/opengraph-image.tsx` — **dibangkitkan**, bukan PNG. Warnanya harfiah dan
-  hidup di `lib/theme/antd-tokens.ts` (`OG_*`) beserta rasio kontrasnya, sebab
+  hidup di `packages/ui/src/theme/antd-tokens.ts` (`OG_*`) beserta rasio kontrasnya, sebab
   Satori tidak punya dokumen dan `var(--ant-…)` di sana tidak pernah teratasi;
 - `app/sitemap.ts` menurunkan pohonnya dari `DOC_INDEX`, tidak mengetiknya;
 - `app/robots.ts` melarang seluruh app internal — bukan sebagai kontrol akses
@@ -1394,7 +1394,7 @@ Ia satu-satunya permukaan yang ditempel orang ke WhatsApp, LinkedIn, atau Slack
 
 ⚠ **`hreflang` sengaja TIDAK dipasang.** Ia menuntut satu ALAMAT per bahasa;
 aplikasi ini menyimpan bahasa di **cookie**, bukan segmen rute
-(`lib/i18n/config.ts`). Ketiga bahasa berbagi satu alamat, jadi `alternates`
+(`packages/core/src/i18n/config.ts`). Ketiga bahasa berbagi satu alamat, jadi `alternates`
 yang menunjuk alamat yang sama tiga kali bukan sekadar tak berguna — ia
 memberi tahu mesin pencari sesuatu yang tidak benar. Baru dipasang bila bahasa
 kelak pindah ke `/(id|en|zh)/…`.

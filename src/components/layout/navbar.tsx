@@ -28,8 +28,8 @@ import { HelpMenu } from "@/components/layout/help-menu";
 import { ApprovalBadge } from "@/components/layout/approval-badge";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserMenu } from "@/components/layout/user-menu";
-import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
+import { Button } from "@sai/ui/button";
+import { useT } from "@sai/core/i18n/client";
 
 /**
  * Bilah atas menempel saat halaman digulung, jadi ia harus di atas isi —

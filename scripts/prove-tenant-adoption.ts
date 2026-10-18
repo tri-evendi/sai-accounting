@@ -26,7 +26,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
-import { TENANT_ROLES, TENANT_ROLE_VALUES } from "../src/lib/constants";
+import { TENANT_ROLES, TENANT_ROLE_VALUES } from "@sai/core/constants";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

@@ -23,7 +23,7 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["src/**/*.ts", "src/**/*.tsx"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
     /*
      * Dua berkas yang MEMANG menulis nilai warna, dan hanya dua:
      *
@@ -41,7 +41,7 @@ const eslintConfig = defineConfig([
     ignores: [
       "src/generated/**",
       "packages/db/generated/**",
-      "src/lib/theme/antd-tokens.ts",
+      "packages/ui/src/theme/antd-tokens.ts",
       "src/lib/pdf/brand.ts",
     ],
     plugins: { sai: { rules: { "warna-token-antd": warnaTokenAntd } } },

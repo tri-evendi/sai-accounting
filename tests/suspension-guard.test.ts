@@ -27,7 +27,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import { encodeUnlockCookie, NAMA_COOKIE_KUNCI } from "@/lib/company-unlock";
 
 /* ── Tepian yang dipalsukan ──────────────────────────────────────────────────
@@ -148,7 +148,7 @@ vi.mock("@/lib/company-route", () => ({
   },
 }));
 
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     company: {
       findUnique: async ({
@@ -205,7 +205,7 @@ import {
   invalidateEnabledModules,
   invalidateUserOverrides,
 } from "@/lib/authz-effective";
-import { ROLES } from "@/lib/constants";
+import { ROLES } from "@sai/core/constants";
 
 /* Setiap skenario memakai companyId BARU: cache tenant-state & registry (60
  * dtk) tidak pernah menyimpan sisa skenario lain — kecuali di tes yang memang

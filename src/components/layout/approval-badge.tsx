@@ -32,11 +32,11 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Badge, theme } from "antd";
 import { BellOutlined } from "@ant-design/icons";
-import { Link } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
+import { Link } from "@sai/ui/app-link";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
-import { parseTenantPath } from "@/lib/tenant-routes";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
+import { parseTenantPath } from "@sai/core/tenant-routes";
 
 interface Counts {
   pending: number;

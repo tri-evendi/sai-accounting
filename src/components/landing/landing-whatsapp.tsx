@@ -63,7 +63,7 @@
 import { WhatsAppOutlined } from "@ant-design/icons";
 import type { CSSProperties } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { resolveContactChannels } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 

@@ -17,22 +17,22 @@
  * `StaticTable` (dirender server, tanpa JS) adalah bentuk yang benar.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getExpenseByNature } from "@/lib/expense-nature-report";
 import { resolvePeriod } from "@/lib/report-catalog";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Money } from "@sai/ui/money";
+import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { PeriodFilter } from "../report-filters";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { InfoCircleOutlined, ProfileOutlined } from "@ant-design/icons";
 
 export const dynamic = "force-dynamic";

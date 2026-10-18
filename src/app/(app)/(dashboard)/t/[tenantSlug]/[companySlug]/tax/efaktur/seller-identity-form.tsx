@@ -8,12 +8,12 @@
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { useToast } from "@sai/ui/toast";
 import { SaveOutlined } from "@ant-design/icons";
 import { Col, Row } from "antd";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** `margin` 16 — jarak antar isian. */

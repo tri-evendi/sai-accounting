@@ -32,7 +32,7 @@ import { headers } from "next/headers";
 
 import { companyScopeFromHeaders } from "@/lib/company-scope";
 import { enterCompanyFromRoute, type RouteCompanyResult } from "@/lib/company-route";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 
 export type RequestCompanyResult = RouteCompanyResult | { ok: false; reason: "no-scope" };
 

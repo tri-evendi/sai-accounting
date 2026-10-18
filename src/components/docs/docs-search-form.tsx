@@ -21,7 +21,7 @@
 
 import { SearchOutlined } from "@ant-design/icons";
 
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 const FORM: React.CSSProperties = {
   display: "flex",

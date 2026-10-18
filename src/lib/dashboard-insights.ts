@@ -32,7 +32,7 @@
  * antarbahasa, dan kalimat yang disambung dari potongan string hanya benar di
  * bahasa yang menulisnya.
  */
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /** Satu kalimat siap dirender. */
 export interface DashboardInsight {

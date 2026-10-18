@@ -25,16 +25,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Flex, theme } from "antd";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/loading";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Input } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { Spinner } from "@sai/ui/loading";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
-import { formatCurrency } from "@/lib/utils";
+import { useT } from "@sai/core/i18n/client";
+import { formatCurrency } from "@sai/core/utils";
 import type { RevaluationLine, RevaluationPlan } from "@/lib/fx-revaluation";
 
 export function FxRevaluationPanel({

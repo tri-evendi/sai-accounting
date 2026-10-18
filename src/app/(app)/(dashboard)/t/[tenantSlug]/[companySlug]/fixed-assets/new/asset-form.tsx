@@ -23,11 +23,11 @@ import { useMemo } from "react";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Card } from "@sai/ui/card";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
 import {
   Form,
   FormControl,
@@ -35,11 +35,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Money } from "@/components/ui/money";
-import { useToast } from "@/components/ui/toast";
+} from "@sai/ui/form";
+import { Money } from "@sai/ui/money";
+import { useToast } from "@sai/ui/toast";
 import { straightLineMonthly } from "@/lib/depreciation";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";

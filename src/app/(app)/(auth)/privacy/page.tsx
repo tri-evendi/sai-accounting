@@ -14,8 +14,8 @@
  * karena `<html>` memikul kelas `ANTD_CSS_VAR_KEY` sejak #227.
  */
 import { WarningOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/constants";
+import { Button } from "@sai/ui/button";
+import { APP_NAME } from "@sai/core/constants";
 import { PRIVACY_VERSION, isDraftLegalVersion } from "@/lib/legal";
 
 export const dynamic = "force-static";

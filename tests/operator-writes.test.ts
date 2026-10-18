@@ -44,7 +44,7 @@ const controlFake = vi.hoisted(() => ({
  * disaring per slug.
  */
 const tenantAuditRows: Record<string, unknown>[] = [];
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     company: { findUnique: async () => ({ tenant: controlFake.tenant }) },
     tenantAuditLog: {
@@ -76,8 +76,8 @@ import {
 import {
   PLATFORM_INVOICE_STATUSES,
   platformInvoiceIsRevenue,
-} from "@/lib/platform-constants";
-import { paymentRailConfigured } from "@/lib/payment-gateway";
+} from "@sai/billing/platform-constants";
+import { paymentRailConfigured } from "@sai/billing/payment-gateway";
 import { readTenantAuditLogs } from "@/lib/tenant-audit";
 import { readOnlyRefusal } from "@/lib/subscription-lifecycle";
 import { invalidateTenantState, tenantStateForCompany } from "@/lib/tenant-state";

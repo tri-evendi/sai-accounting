@@ -8,8 +8,8 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
-import { TENANT_ROLES } from "@/lib/constants";
+import { controlDb } from "@sai/core/control-db";
+import { TENANT_ROLES } from "@sai/core/constants";
 import {
   STATUS_AFTER_VERIFICATION,
   hashVerificationToken,

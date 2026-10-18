@@ -34,7 +34,7 @@ import { businessModulesPayloadSchema } from "@/lib/validations/modules";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 async function currentState() {
   const settings = await getCompanySettings();

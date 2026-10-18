@@ -17,10 +17,10 @@
  * pusat biaya, membaca buku besar, ringkasan bahasa awam, dan tombol-tombolnya.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getIncomeStatement } from "@/lib/reports";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
@@ -30,10 +30,10 @@ import { comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
 import { incomeStatementSummary } from "@/lib/report-summary";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { IncomeWaterfallChart } from "@/components/shared/dashboard-charts";

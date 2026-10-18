@@ -30,7 +30,7 @@ import {
   type ContractStatus,
   type DocumentType,
   type SystemRole,
-} from "@/lib/constants";
+} from "@sai/core/constants";
 import { ACCOUNT_TYPES, EXPENSE_NATURES } from "@/lib/accounting";
 import {
   APPROVAL_DOCUMENT_TYPE_LABELS,
@@ -40,14 +40,14 @@ import {
   type ApprovalStatus,
 } from "@/lib/approvals";
 import { MONTH_NAMES } from "@/lib/month-names";
-import { TERM_CATEGORY_LABELS, type TermCategory } from "@/lib/labels";
-import type { Permission } from "@/lib/authz";
+import { TERM_CATEGORY_LABELS, type TermCategory } from "@sai/core/labels";
+import type { Permission } from "@sai/core/authz";
 import {
   PERMISSION_LABELS,
   RESOURCE_LABELS,
   type PermissionResource,
 } from "@/lib/authz-labels";
-import type { Dictionary } from "./dictionary";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
 
 /**
  * Label tipe akun (bagan akun). Sumber bentuknya `ACCOUNT_TYPES` di

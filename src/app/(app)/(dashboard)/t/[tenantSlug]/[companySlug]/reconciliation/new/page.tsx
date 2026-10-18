@@ -6,7 +6,7 @@
  * dirender.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { NewReconciliationForm } from "./reconciliation-form";
 
 export const dynamic = "force-dynamic";

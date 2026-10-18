@@ -9,9 +9,9 @@
 import { notFound, redirect } from "next/navigation";
 
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 import { RecurringForm } from "../recurring-form";
 
 export const dynamic = "force-dynamic";

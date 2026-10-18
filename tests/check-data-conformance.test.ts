@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { CONTRACT_STATUSES, CURRENCIES } from "@/lib/constants";
+import { CONTRACT_STATUSES, CURRENCIES } from "@sai/core/constants";
 
 const SOURCE = readFileSync(join(process.cwd(), "scripts/check-data-conformance.ts"), "utf8");
 /** Hanya badan skrip — kepala & komentar memang menyebut nilai contoh. */
@@ -25,8 +25,8 @@ const CODE = SOURCE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, ""
 
 describe("kosakata pemeriksa datang dari konstanta, bukan salinan", () => {
   it("mengimpor daftar status & mata uang dari sumber yang dipakai zod", () => {
-    expect(CODE).toMatch(/import \{[^}]*CONTRACT_STATUSES[^}]*\} from "\.\.\/src\/lib\/constants"/);
-    expect(CODE).toMatch(/import \{[^}]*CURRENCIES[^}]*\} from "\.\.\/src\/lib\/constants"/);
+    expect(CODE).toMatch(/import \{[^}]*CONTRACT_STATUSES[^}]*\} from "@sai\/core\/constants"/);
+    expect(CODE).toMatch(/import \{[^}]*CURRENCIES[^}]*\} from "@sai\/core\/constants"/);
     expect(CODE).toMatch(/ACCOUNT_TYPE_VALUES/);
   });
 

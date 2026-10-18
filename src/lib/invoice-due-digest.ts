@@ -51,7 +51,7 @@
  * di sini.
  */
 import { ageInDays, type PaymentStatus } from "@/lib/receivables";
-import { formatCurrency, formatDateMedium } from "@/lib/utils";
+import { formatCurrency, formatDateMedium } from "@sai/core/utils";
 
 /** Jenis pemberitahuan yang diterbitkan modul ini. Harus ada di
  *  `NOTIFICATION_KINDS` — dijaga `tests/invoice-due-digest.test.ts`. */

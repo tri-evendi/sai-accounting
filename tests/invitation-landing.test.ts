@@ -21,7 +21,7 @@
 import { describe, expect, it } from "vitest";
 
 import { POST_LOGIN_PATH, resolvePostLoginPath } from "@/lib/post-login";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 
 const BOOKS = tenantPath("acme", "pusat", "/dashboard");
 

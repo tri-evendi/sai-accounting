@@ -24,11 +24,11 @@
 import { useActionState } from "react";
 import { Alert, Flex, Typography, theme } from "antd";
 import { KeyOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
-import { useT } from "@/lib/i18n/client";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
+import { Input } from "@sai/ui/input";
+import { PasswordInput } from "@sai/ui/password-input";
+import { useT } from "@sai/core/i18n/client";
 import { operatorLogin, type OperatorLoginState } from "../actions";
 
 const { Title, Text } = Typography;

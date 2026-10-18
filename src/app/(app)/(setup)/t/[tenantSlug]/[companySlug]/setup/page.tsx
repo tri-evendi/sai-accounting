@@ -32,19 +32,19 @@
  * menggantikan gaya sebaris yang ditulis tangan di bawah.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { Money } from "@/components/ui/money";
-import { formatDate } from "@/lib/utils";
+import { PageHeader } from "@sai/ui/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { Money } from "@sai/ui/money";
+import { formatDate } from "@sai/core/utils";
 import { getCompanySettings } from "@/lib/opening-balance";
-import { CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@sai/core/constants";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
-import { Link } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
+import { Link } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
 import { SetupWizard } from "./setup-wizard";
 import { getT } from "@/lib/i18n/server";
 

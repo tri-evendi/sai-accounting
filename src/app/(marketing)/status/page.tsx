@@ -49,10 +49,10 @@ import {
   LANDING_NOTE,
   LANDING_SURFACE,
 } from "@/components/landing/landing-scale";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME } from "@sai/core/constants";
 import { healthReport } from "@/lib/health-report";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { publicAppUrl } from "@/lib/public-url";
 import {
   maintenanceWindow,
@@ -60,7 +60,7 @@ import {
   type ComponentId,
   type ComponentState,
 } from "@/lib/public-status";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 import { platformDb } from "@/lib/platform-db";
 import { readStatusNoticeRecords } from "@/lib/status-notices-store";
 import {

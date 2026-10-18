@@ -31,7 +31,7 @@
  */
 
 import { COMPANY_SLUG_HEADER, TENANT_SLUG_HEADER } from "@/lib/company-scope";
-import { parseTenantPath } from "@/lib/tenant-routes";
+import { parseTenantPath } from "@sai/core/tenant-routes";
 
 /**
  * Salin `init` sambil menambahkan sepasang header lingkup bila `pathname`

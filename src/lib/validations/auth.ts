@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Pengenal masuk (issue #136): EMAIL — pengenal resmi sejak migrasi #134

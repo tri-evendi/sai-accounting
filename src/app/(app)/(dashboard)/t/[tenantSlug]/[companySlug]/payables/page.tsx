@@ -19,29 +19,29 @@
  * keduanya memakai IKON + KATA, bukan warna — jalan yang sama yang dipilih
  * `shared/aging.tsx` di #194.
  */
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getPayables, type PayableRow } from "@/lib/receivables";
 import { getAdvances, summarizeAdvances } from "@/lib/advances";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Money } from "@/components/ui/money";
-import { PageHeader } from "@/components/ui/page-header";
-import { LearnMore } from "@/components/ui/learn-more";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { EmptyState } from "@sai/ui/empty-state";
+import { Money } from "@sai/ui/money";
+import { PageHeader } from "@sai/ui/page-header";
+import { LearnMore } from "@sai/ui/learn-more";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { FileTextOutlined, InfoCircleOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 
 export const dynamic = "force-dynamic";

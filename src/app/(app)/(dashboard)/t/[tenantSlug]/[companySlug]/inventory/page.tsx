@@ -1,5 +1,5 @@
-import { parsePageParam } from "@/lib/utils";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { parsePageParam } from "@sai/core/utils";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -16,22 +16,22 @@ import { ChartCard } from "@/components/dashboard/chart-card";
 import { StockStatusChart, StockLevelChart } from "@/components/shared/dashboard-charts";
 import { stockLevelChartHeight, stockLevelSeries } from "@/lib/chart-data";
 import { InventoryPageActions } from "./inventory-actions";
-import { LOW_STOCK_THRESHOLD } from "@/lib/constants";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Pagination } from "@/components/ui/pagination";
+import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { Badge } from "@sai/ui/badge";
+import { ButtonLink } from "@sai/ui/button";
+import { EmptyState } from "@sai/ui/empty-state";
+import { Pagination } from "@sai/ui/pagination";
 import { ContainerOutlined } from "@ant-design/icons";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
-import { PageHeader } from "@/components/ui/page-header";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

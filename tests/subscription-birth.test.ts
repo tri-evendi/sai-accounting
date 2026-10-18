@@ -24,7 +24,7 @@ const controlDb = vi.hoisted(() => ({
   tenant: { update: vi.fn(), findUnique: vi.fn() },
 }));
 vi.mock("@/lib/platform-db", () => ({ platformDb }));
-vi.mock("@/lib/control-db", () => ({ controlDb }));
+vi.mock("@sai/core/control-db", () => ({ controlDb }));
 
 import { SIGNUP_PLAN_KEY } from "@/lib/registration";
 import { createInitialSubscription } from "@/lib/subscription-store";

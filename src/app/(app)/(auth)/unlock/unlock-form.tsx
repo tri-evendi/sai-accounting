@@ -15,11 +15,11 @@ import { useState } from "react";
 import { Flex, Typography, theme } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { PasswordInput } from "@/components/ui/password-input";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { PasswordInput } from "@sai/ui/password-input";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 /** Hanya jalur di dalam aplikasi. `//host` sengaja ditolak — lihat kepala. */
 function tujuanAman(next: string | undefined, fallback: string): string {

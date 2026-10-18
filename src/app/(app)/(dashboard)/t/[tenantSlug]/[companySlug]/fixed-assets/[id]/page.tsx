@@ -12,23 +12,23 @@
  * menurut panjang tabel (#189).
  */
 import { notFound } from "next/navigation";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getFixedAsset } from "@/lib/fixed-assets";
 
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { Progress } from "@/components/ui/progress";
-import { PageHeader } from "@/components/ui/page-header";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
+import { Card, CardHeader, CardTitle } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { Progress } from "@sai/ui/progress";
+import { PageHeader } from "@sai/ui/page-header";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
-import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 import { AssetActions } from "./asset-actions";
 
 export const dynamic = "force-dynamic";

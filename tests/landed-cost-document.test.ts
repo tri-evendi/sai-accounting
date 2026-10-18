@@ -30,9 +30,9 @@ import { join } from "node:path";
 import { ANY_CURRENCY, MAPPING_KEYS, MAPPING_KEY_LABELS } from "@/lib/posting/mapping";
 import { postForSource } from "@/lib/posting";
 import { COA_TEMPLATE } from "@/lib/accounting";
-import { STOCK_MOVEMENT_TYPES } from "@/lib/constants";
+import { STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
 import { planLandedCost } from "@/lib/landed-cost";
-import { PERMISSIONS } from "@/lib/authz";
+import { PERMISSIONS } from "@sai/core/authz";
 import { createFakeClient, type FakeMapping } from "./fake-client";
 
 const src = (...p: string[]) => readFileSync(join(__dirname, "..", "src", ...p), "utf8");

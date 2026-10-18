@@ -22,9 +22,9 @@
 
 import { useSession } from "next-auth/react";
 import { Alert, Flex, theme, Typography } from "antd";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { APP_NAME, type SystemRole } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Button } from "@sai/ui/button";
+import { APP_NAME, type SystemRole } from "@sai/core/constants";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { AuditLogPanel } from "@/components/settings/audit-log-panel";
 import { TaxSettingsPanel } from "@/components/settings/tax-settings-panel";
@@ -33,12 +33,12 @@ import {
   SampleDataPanel,
   type SampleDataCounts,
 } from "@/components/settings/sample-data-panel";
-import { PageHeader } from "@/components/ui/page-header";
-import { Link } from "@/components/ui/app-link";
-import { GLOSSARY_PATH } from "@/lib/labels";
+import { PageHeader } from "@sai/ui/page-header";
+import { Link } from "@sai/ui/app-link";
+import { GLOSSARY_PATH } from "@sai/core/labels";
 import { CloseSquareOutlined, ReadOutlined } from "@ant-design/icons";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 
 interface SettingsClientProps {

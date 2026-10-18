@@ -32,8 +32,8 @@
  * pengaturan MAUPUN skrip operator untuk akun lama — lingkup 4).
  */
 
-import { controlDb } from "@/lib/control-db";
-import { isValidSlug } from "@/lib/tenant-routes";
+import { controlDb } from "@sai/core/control-db";
+import { isValidSlug } from "@sai/core/tenant-routes";
 
 /** Jeda wajib antar-penggantian. */
 export const JEDA_GANTI_SLUG_HARI = 30;

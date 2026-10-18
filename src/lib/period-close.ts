@@ -13,7 +13,7 @@ import { type PeriodStatus, periodBounds } from "@/lib/period";
 import { openForeignCurrencies } from "@/lib/fx-revaluation-service";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
-import { translate, type Dictionary } from "@/lib/i18n/dictionary";
+import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 
 /*
  * ── Bahasa: dibaca DI SINI, bukan diserahkan ke pemanggil ──────────────────

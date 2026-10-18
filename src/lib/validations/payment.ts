@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { BASE_CURRENCY, currencyEnum, rateField, requireRateForForeign } from "./fx";
-import { CASH_TYPES } from "@/lib/constants";
-import { vmsg } from "@/lib/i18n/validation";
+import { CASH_TYPES } from "@sai/core/constants";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Kas/bank yang dipakai sebuah pelunasan (migrasi 0059).

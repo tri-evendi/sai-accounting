@@ -21,20 +21,20 @@
  * yang dipilih #194/#195.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { PageHeader } from "@/components/ui/page-header";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import { Link } from "@/components/ui/app-link";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable, type SummaryRow } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { PageHeader } from "@sai/ui/page-header";
+import { formatCurrency, formatDate } from "@sai/core/utils";
+import { Link } from "@sai/ui/app-link";
 import { ReverseButton } from "./reverse-button";
 import { getT } from "@/lib/i18n/server";
-import { INLINE_GAP } from "@/lib/layout-scale";
+import { INLINE_GAP } from "@sai/ui/layout-scale";
 import { RollbackOutlined, UndoOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 

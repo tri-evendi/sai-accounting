@@ -107,6 +107,16 @@ Aturannya:
 | Boolean | `Boolean` (`BOOLEAN`) | |
 | Mata uang | `String @db.VarChar(5)` | kode ISO (`IDR`,`USD`,`CNY`) |
 
+**Berkas gambar di basis data** (`brand_assets` di platform, `company_logos`
+di buku PT): `Bytes` (`BYTEA`) beserta `mime_type`, `sha256` (`CHAR(64)`),
+`width`, `height`, `byte_size`. CHECK menegakkan format (PNG/JPEG saja),
+`byte_size = octet_length(content)`, dan batas ukurannya; indeks unik parsial
+`WHERE is_active` menjamin satu yang aktif. Mengganti = menonaktifkan yang lama
+dan membuat baris baru dalam satu transaksi, jadi riwayatnya tetap ada. Isi
+berkas divalidasi dari kepalanya (`@sai/core/image-file`), bukan dari nama atau
+MIME kiriman peramban. Hanya untuk berkas kecil (≤ 512 KB); dokumen unggahan
+pengguna tetap di disk (`lib/document-storage.ts`).
+
 **Aturan uang multi-mata uang:** setiap nilai valas menyimpan tiga hal:
 1. `amount` (nilai mata uang asli) + `currency`,
 2. `rate` (kurs ke IDR pada tanggal transaksi),
@@ -251,6 +261,8 @@ antara kendali dan perusahaan.
   pakai `TenantKeyedCache` (`packages/core/src/tenant-cache.ts`). Pengecualiannya
   `mail_settings` (#169): singleton milik penyedia, jadi cache-nya
   (`packages/platform/src/mail-settings.ts`, TTL 60 detik) tunggal.
+  `brand_assets` (logo produk, migration platform 0005) sama: singleton milik
+  penyedia, cache tunggal 60 detik di `packages/platform/src/brand-assets.ts`.
 - **Satu-satunya rahasia di basis data adalah `mail_settings.password_ciphertext` (#169).**
   Kredensial lain tetap hidup di environment. Kolom ini disegel AES-256-GCM
   dengan kunci yang tetap di env (`SETTINGS_ENCRYPTION_KEY`, 64 karakter hex).

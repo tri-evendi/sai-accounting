@@ -1,5 +1,5 @@
 /**
- * Bacaan halaman `/operator/backup`: riwayat CADANGAN dan VERSI SKEMA setiap
+ * Bacaan halaman `/backup`: riwayat CADANGAN dan VERSI SKEMA setiap
  * basis data. Sebelum halaman ini, "19/19 buku di migration terakhir" dan
  * "cadangan semalam berhasil" hanya bisa dibuktikan lewat SSH + `psql`.
  *

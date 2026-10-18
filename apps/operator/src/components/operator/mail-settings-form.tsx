@@ -68,11 +68,11 @@ import {
   type MailSettingsFormInput,
   type MailTestFormInput,
 } from "@op/lib/validations/operator";
-import type { OperatorMailActionResult } from "@op/app/(operator)/operator/mail/actions";
+import type { OperatorMailActionResult } from "@op/app/(operator)/mail/actions";
 import {
   operatorSaveMailSettings,
   operatorSendTestMail,
-} from "@op/app/(operator)/operator/mail/actions";
+} from "@op/app/(operator)/mail/actions";
 
 /* ── Bentuk data dari halaman server (serial; tanggal sudah terformat) ─────── */
 
@@ -483,7 +483,7 @@ function SettingsPanel({ available, encryptionKeyAvailable, effective, settings 
 
             <Flex vertical gap={token.marginXS} style={FULL_ROW}>
               <RootError message={form.formState.errors.root?.message} />
-              {/* Satu-satunya aksi yang MENGIKAT di `/operator/mail` (#267):
+              {/* Satu-satunya aksi yang MENGIKAT di `/mail` (#267):
                   ia menulis kredensial SMTP yang dipakai seluruh platform.
                   "Uji kirim" di bawahnya `secondary` — ia memverifikasi, tidak
                   menyimpan. */}

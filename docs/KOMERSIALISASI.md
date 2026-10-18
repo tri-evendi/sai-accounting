@@ -267,7 +267,7 @@ apa yang paling mudah dibangun.
   kode dan memang dibuat untuk ini: `PLATFORM_PPN_DISABLED`, yang komentarnya
   menyebut dirinya *"mekanisme untuk jawaban penasihat pajak, bukan kebijakan
   yang kami tetapkan"*. Sejak migration 0017 sakelar itu bisa dibalik dari
-  **`/operator/settings`** tanpa SSH — dan keputusan konsol dibaca juga oleh
+  **konsol `/settings`** tanpa SSH — dan keputusan konsol dibaca juga oleh
   **penjadwal**, jadi yang berubah bukan hanya nominal yang dipajang melainkan
   nominal yang benar-benar ditagih.
 
@@ -340,8 +340,8 @@ yang tidak punya perjanjian komersial.
 | Pulihkan 5 tenant `suspended` + 1 `past_due` | `setTenantSuspension` (konsol) |
 | Batalkan/void 6 tagihan fiktif Rp 3,98 jt | tindakan operator (butuh status `void`, §11) |
 | Tandai seluruh akun uji coba & internal sebagai **tidak boleh ditagih** | **belum ada** — §3.3, satu kolom |
-| Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **`/operator/settings` → Gerbang → Pendaftaran mandiri** (env `SELF_SERVE_SIGNUP` tetap jadi bawaannya) |
-| Matikan PPN di tagihan platform sampai status PKP diputuskan | **`/operator/settings` → Gerbang → PPN** (env `PLATFORM_PPN_DISABLED=true` tetap jadi bawaannya) |
+| Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **konsol `/settings` → Gerbang → Pendaftaran mandiri** (env `SELF_SERVE_SIGNUP` tetap jadi bawaannya) |
+| Matikan PPN di tagihan platform sampai status PKP diputuskan | **konsol `/settings` → Gerbang → PPN** (env `PLATFORM_PPN_DISABLED=true` tetap jadi bawaannya) |
 | Ubah CTA harga dari "Coba gratis" → **"Minta penawaran"** untuk ≥4 PT | kanal kontak sudah ada (`contactChannels()`) |
 
 **Keluar dari Fase A bila:** tidak ada akun non-komersial yang bisa menerima
@@ -441,7 +441,7 @@ percakapan.
 | 6 | Pembayaran masuk, dicocokkan | keuangan | aplikasi ini (piutang) |
 | 7 | **Aktifkan hak pakai**: paket + kuota + periode, mode `manual` | operator | konsol (`changeTenantPlan`, `extendSubscription`) |
 | 8 | Onboarding: migrasi, COA, pelatihan | implementasi | produk (impor Excel sudah ada) |
-| 9 | Pengingat perpanjangan H-60 | keuangan | **manual di Fase B** — daftar kerjanya di `/operator` ("Perpanjangan 60 hari ke depan", 17 Okt 2026) |
+| 9 | Pengingat perpanjangan H-60 | keuangan | **manual di Fase B** — daftar kerjanya di beranda konsol ("Perpanjangan 60 hari ke depan", 17 Okt 2026) |
 
 Langkah 7 memakai fungsi yang sudah ada dan sudah berjejak audit. Satu-satunya
 yang perlu dibangun adalah **template penawaran (3) dan tombol yang
@@ -459,7 +459,7 @@ tagihan Rp 0 `-K` (§6.4) — keputusan untuk menghilangkannya belum diambil.
 ## 8. Metrik yang harus mulai diukur
 
 **Status 10 Okt 2026: empat dari enam SUDAH berdiri di konsol** (seksi
-"Pendapatan" di halaman ringkasan `/operator`), definisinya di
+"Pendapatan" di beranda konsol `/`), definisinya di
 `packages/billing/src/platform-revenue.ts` dan dijaga `tests/platform-revenue.test.ts`. Dua
 sisanya sengaja tidak ada, dan ketiadaannya ikut tertulis di layar.
 
@@ -513,7 +513,7 @@ jawabannya bisa langsung dipasang. Yang harus dijawab sebelum tagihan berbayar
 pertama:
 
 1. **Status PKP penyedia** — menentukan boleh/tidaknya PPN muncul di tagihan.
-   Sakelarnya: **`/operator/settings` → Gerbang → PPN** (bawaannya tetap env
+   Sakelarnya: **konsol `/settings` → Gerbang → PPN** (bawaannya tetap env
    `PLATFORM_PPN_DISABLED`). Enam tagihan yang sudah terbit memuat PPN 11% dan
    perlu ditinjau.
 2. **Tarif & dasar pengenaan PPN yang berlaku saat penerbitan** — `packages/core/src/tax.ts`
@@ -545,7 +545,7 @@ pertama:
 | K-5 | PPN platform dimatikan sampai status PKP dijawab | **usulan** | §9.1 |
 | K-6 | Fase C bergerbang 6 syarat terukur | **usulan** | §5 |
 | K-7 | Harga 249/599/1.199 + pembeda kuota | **sudah diputuskan (#404/#408)** | `PRICING.md` |
-| K-8 | Gerbang pendaftaran mandiri & PPN dipindah dari `.env` ke `/operator/settings` | **sudah diputuskan (pemilik, 11 Okt 2026)** | §9.1 · migration 0017 |
+| K-8 | Gerbang pendaftaran mandiri & PPN dipindah dari `.env` ke konsol `/settings` | **sudah diputuskan (pemilik, 11 Okt 2026)** | §9.1 · migration 0017 |
 
 ### Pertanyaan yang hanya pemilik bisa jawab
 

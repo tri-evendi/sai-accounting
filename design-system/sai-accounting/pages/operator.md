@@ -1,4 +1,4 @@
-# Konsol Operator `/operator` — override MASTER.md
+# Konsol Operator (`ops.saiaccounting.id`, aplikasi `apps/operator`) — override MASTER.md
 
 > Berlaku untuk seluruh `apps/operator/src/app/(operator)/**` + `apps/operator/src/components/operator/**`
 > + `apps/operator/src/lib/operator/**`. Untuk halaman lain, MASTER.md tetap berlaku apa adanya.
@@ -33,7 +33,7 @@ pintu ke `/platform` — ketiganya 404 di host ini).
   `SafetyCertificateOutlined`, **bukan** `BrandMark`.
 - **`PageHeader` wajib,** sama seperti halaman dasbor. Halaman tingkat-1 tanpa
   breadcrumb dan judulnya persis label menunya (boleh membawa jumlah); halaman
-  di bawahnya (`/operator/tenants/[id]`) memakai breadcrumb yang dimulai dari
+  di bawahnya (konsol `/tenants/[id]`) memakai breadcrumb yang dimulai dari
   label menu induknya — breadcrumb ITULAH jalan pulangnya, bukan tombol
   "kembali" tulisan tangan.
 - **Lencana "Tindakan tercatat" selalu di kepala, dan selalu pertama dibaca.**
@@ -80,7 +80,7 @@ pintu ke `/platform` — ketiganya 404 di host ini).
   atas karena ia MENJELASKAN baris lain.
 
   Ubin angka tetap ada di bawahnya dan tetap `StatCard` apa adanya — bukan ubin
-  kedua milik konsol (alasan di kepala `(operator)/operator/page.tsx`). Yang
+  kedua milik konsol (alasan di kepala `(operator)/page.tsx`). Yang
   dilarang adalah menjadikan ubin itu JAWABAN halaman: enam belas angka
   berbobot sama memindahkan penyaringan ke kepala orang yang membukanya.
 
@@ -91,9 +91,9 @@ pintu ke `/platform` — ketiganya 404 di host ini).
   menyusut di layar sempit, bukan target sentuh.
 - **Saringan & pilihan lewat form GET,** tidak lewat state client: hasilnya URL
   yang bisa disalin ke tiket dukungan, dan nol byte JS tambahan. Berlaku untuk
-  daftar tenant dan pemilih bahasa/bagian di `/operator/content`.
+  daftar tenant dan pemilih bahasa/bagian di konsol `/content`.
 
-### `/operator/content` — isi halaman pendaratan
+### konsol `/content` — isi halaman pendaratan
 
 - **Yang disimpan hanya PENIMPA.** Kamus (`packages/core/src/i18n/dictionaries/*.json`) tetap
   sumber bawaan; `site_contents` hanya memuat kalimat yang sudah diganti. Isian

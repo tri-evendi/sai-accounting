@@ -241,7 +241,7 @@ Baris kedua yang paling mudah terlewat: kotak bersarang yang memakai
 sehingga yang memisahkannya tinggal garis — "outline saja" dalam bentuk kecil,
 di dalam wilayah yang sudah bergaris. Dua tempat sudah diperbaiki begitu (rantai
 dokumen di `/contracts/[id]`, kelompok isian di `/suppliers/[id]`), dan kisi
-fakta `/operator/tenants/[id]` memakai pola yang sama.
+fakta konsol `/tenants/[id]` memakai pola yang sama.
 
 Dijaga `tests/card-surface.test.ts`.
 
@@ -855,6 +855,7 @@ Markup mentah yang "kelihatan sama" adalah cara paling sering aturan di dokumen 
   - Baris total lewat prop `summary` (peta kunci kolom → isi sel) pada kedua varian; keadaan kosong lewat `empty` berisi `EmptyState`, tak pernah "No Data" bawaan AntD.
 - **Primitif JSX `Table`** (`packages/ui/src/components/table.tsx`: `TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableFooter`) kini **lapisan gaya di bawah kedua perender di atas**, bukan API yang dipanggil halaman. Ia masih dipakai langsung oleh berkas yang belum dikonversi (fase C, #193–#200); untuk tabel BARU pakai `StaticTable`/`DataTable`. Yang tetap terlarang: `<table>`/`<thead>`/`<tbody>`/`<tfoot>` mentah.
 - **Nominal di tabel → `MoneyCell`** (satu sel penuh) atau **`Money`** (di dalam sel/teks). Jangan format angka sendiri: tabular-nums, rata kanan, format `id-ID`, dan mata uang eksplisit sudah di dalamnya.
+- **Layar galat & 404 → `StatusScreen`** (`packages/ui/src/components/status-screen.tsx`, 18 Okt 2026). Setiap `error.tsx`, `not-found.tsx`, `global-not-found.tsx`, dan `global-error.tsx` di KEDUA aplikasi memakainya — dua salinan yang dulu ditulis tangan sudah menyimpang sekali. Teks lewat prop (layar ini juga hidup tanpa `<LocaleProvider>`), satu primer per layar, tombol pulang `<Button href>` (pemuatan penuh — jalan keluar dari render yang gagal). "Coba lagi" = `unstable_retry()`, BUKAN `reset()` (yang tidak mengambil ulang data). `global-error` lewat `GlobalErrorDocument`, tanpa provider apa pun. Dijaga `tests/error-pages.test.ts`.
 - **Tombol → `Button`** (`packages/ui/src/components/button.tsx`), termasuk pemicu `ConfirmDialog` (dipasang lewat prop `trigger`). Sejak issue #187 isinya AntD `Button`; **nama propnya tidak berubah** (`variant`/`size`/`type`). Perhatikan satu perangkap yang sengaja ditahan primitif: di AntD `type` berarti VARIAN VISUAL, di sini ia tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan "membetulkannya" dengan meneruskan `type` langsung ke AntD — 60 tombol kirim akan berhenti mengirim formulirnya tanpa satu galat pun. **Bawaan `variant` adalah `secondary`** (#267 potongan 5): tombol berisi penuh harus DIMINTA (`variant="primary"`), satu per layar — §Aksi utama per layar.
 - **Tombol yang menuju ke suatu tempat → `<Button href>`. `asChild` sudah TIDAK ADA (#250).** Bentuk itu membaca prop anaknya, dan dari server component anak itu bisa tiba sebagai simpul `react.lazy` yang belum punya `.props`: `React.Children.only()` melempar dan prerender-nya mati — dengan gejala yang BERPINDAH-PINDAH menurut urutan chunk, sehingga halaman yang jatuh hari ini bukan halaman yang jatuh besok. Ke-37 pemanggilnya pindah ke `href` dan propnya dicabut dari primitifnya; `tests/button-no-aschild.test.ts` menolak yang ke-38. Atribut yang dulu menempel di `<a>` anaknya (`download`/`target`/`rel`) kini ditulis di `<Button>`-nya.
 - **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan merakit tombol ikon sendiri dari padding kecil (≈28px). Antar aksi ikon yang berdampingan beri jarak **minimal 8px** (`--ant-margin-xs`) — 4px membuat dua aksi bersebelahan mudah salah tekan di layar sentuh.
@@ -925,7 +926,7 @@ Yang **tidak** memenuhi syarat:
 - **Jalan keluar dari layar buntu** (`/feature-inactive`, `/setup-required`:
   "Kembali ke dasbor"). Layarnya tidak punya tugas; ia punya pintu.
 - **Kirim formulir yang MENYARING**, bukan mengikat. "Saring" di
-  `/operator` `outline`, dan itu benar: ia membaca ulang, tidak menulis apa pun.
+  beranda konsol `outline`, dan itu benar: ia membaca ulang, tidak menulis apa pun.
   Sejak potongan 4 ini berlaku pada **seluruh** kotak cari/saring app ini:
   `/contracts`, `/delivery-orders`, `/documents`, `/invoices`, `/finance`,
   `/accounts` (potongan 4 — variannya sudah tertulis `secondary`, jadi ia tidak

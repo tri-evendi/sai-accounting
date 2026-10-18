@@ -37,7 +37,7 @@ import { optionalOperatorSession } from "@op/lib/operator/guard";
 import { operatorNav } from "@op/lib/operator/nav";
 import { getT } from "@sai/platform/i18n/server";
 import { SIDER_BG_DARK } from "@sai/ui/theme/antd-tokens";
-import { operatorLogout } from "./operator/actions";
+import { operatorLogout } from "./actions";
 
 export const dynamic = "force-dynamic";
 

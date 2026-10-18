@@ -3213,7 +3213,12 @@
     "description": "准备页面时发生错误。请重试；若持续出现，请记下下方代码并联系管理员。",
     "code": "代码：{digest}",
     "retry": "重试",
-    "toHome": "返回首页"
+    "toHome": "返回首页",
+    "toLanding": "返回主页"
+  },
+  "notFound": {
+    "title": "找不到页面",
+    "description": "该地址不存在，或页面已被移动。请检查链接，或从首页重新开始。"
   },
   "permissionResource": {
     "approval": "审批",

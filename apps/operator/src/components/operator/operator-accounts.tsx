@@ -29,7 +29,7 @@ import { useT } from "@sai/core/i18n/client";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { OPERATOR_ROLES, type OperatorRole } from "@op/lib/operator/roles";
 import type { IssuedCredential } from "@op/lib/operator/operator-accounts";
-import type { OperatorAccountActionResult } from "@op/app/(operator)/operator/accounts/actions";
+import type { OperatorAccountActionResult } from "@op/app/(operator)/accounts/actions";
 
 export interface OperatorAccountView {
   id: number;

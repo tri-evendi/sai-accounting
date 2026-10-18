@@ -115,7 +115,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
   if (platform !== null) {
     const run = platform.lastRun;
     if (run === null) {
-      out.push({ key: "schedulerNever", count: 0, tone: "danger", href: "/operator/scheduler" });
+      out.push({ key: "schedulerNever", count: 0, tone: "danger", href: "/scheduler" });
     } else {
       const umurMenit = (now.getTime() - run.finishedAt.getTime()) / MENIT_MS;
       const gagal = run.status !== "ok" || run.errorCount > 0;
@@ -127,7 +127,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
           key: "schedulerFailing",
           count: run.errorCount,
           tone: "danger",
-          href: "/operator/scheduler",
+          href: "/scheduler",
         });
       }
     }
@@ -139,7 +139,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
       key: "trialsExpired",
       count: control.trialsExpired,
       tone: "warning",
-      href: "/operator/tenants?status=trialing",
+      href: "/tenants?status=trialing",
     });
   }
 
@@ -149,7 +149,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
       key: "invoicesOverdue",
       count: platform.overdueInvoices,
       tone: "danger",
-      href: "/operator/tenants?status=past_due",
+      href: "/tenants?status=past_due",
     });
   }
 
@@ -160,7 +160,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
       key: "tenantsPastDue",
       count: menunggak,
       tone: "warning",
-      href: "/operator/tenants?status=past_due",
+      href: "/tenants?status=past_due",
     });
   }
 
@@ -178,7 +178,7 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
       key: "trialsEndingSoon",
       count: control.trialsEndingSoon,
       tone: "info",
-      href: "/operator/tenants?status=trialing",
+      href: "/tenants?status=trialing",
     });
   }
 

@@ -3213,7 +3213,12 @@
     "description": "Something went wrong while preparing the page. Try again; if it keeps happening, note the code below and contact your admin.",
     "code": "Code: {digest}",
     "retry": "Try again",
-    "toHome": "Go to Home"
+    "toHome": "Go to Home",
+    "toLanding": "Go to the homepage"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "This address doesn't exist, or the page has moved. Check the link, or start again from the home page."
   },
   "permissionResource": {
     "approval": "Approvals",

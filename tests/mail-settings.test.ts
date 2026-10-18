@@ -501,7 +501,7 @@ describe("halaman /operator/mail benar-benar memasang panelnya", () => {
   it("halaman dijaga penjaga bidang operator dan merender <MailSettingsForm />", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(
-      path.join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "operator", "mail", "page.tsx"),
+      path.join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "mail", "page.tsx"),
       "utf8"
     );
     expect(src).toContain("requireOperatorPage()");
@@ -512,7 +512,7 @@ describe("halaman /operator/mail benar-benar memasang panelnya", () => {
   it("server action-nya menjaga bidangnya sendiri dan mencatat jejak tanpa kata sandi", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(
-      path.join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "operator", "mail", "actions.ts"),
+      path.join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "mail", "actions.ts"),
       "utf8"
     );
     expect(src).toContain("requireOperatorActionSession(");

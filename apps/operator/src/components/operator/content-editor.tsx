@@ -57,7 +57,7 @@ import { TextInput } from "@sai/ui/input";
 import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
 import { siteContentSchema, type SiteContentFormInput } from "@op/lib/validations/operator";
-import type { OperatorContentActionResult } from "@op/app/(operator)/operator/content/actions";
+import type { OperatorContentActionResult } from "@op/app/(operator)/content/actions";
 
 /** Satu baris yang bisa disunting — disusun di server, dioper apa adanya. */
 export interface ContentEditorRow {

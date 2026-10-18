@@ -21,86 +21,44 @@
  * di dalam cangkang panel — menu, penanda akun, dan tombol keluar tetap ada.
  *
  * ⚠ DUA JALAN KELUAR, dan keduanya harus tetap ada setelah konversi AntD
- * (#200): "Coba lagi" (`reset()`) dan tautan kembali ke `/platform`. Tombol
+ * (#200): "Coba lagi" dan tautan kembali ke `/platform`. Tombol
  * keduanya menuju `/platform`, BUKAN `error.toHome` ("Ke Beranda") yang dipakai
  * dasbor: beranda adalah buku sebuah PT, dan menawarkannya kepada pemilik yang
  * belum punya PT berarti mengirimnya ke pantulan berikutnya.
+ *
+ * Sejak 18 Okt 2026 tata letaknya `StatusScreen` (`@sai/ui`) — satu primitif
+ * untuk setiap layar galat & 404 di kedua aplikasi — dan "Coba lagi" memanggil
+ * `unstable_retry()`, bukan `reset()`: `reset()` hanya merender ulang TANPA
+ * mengambil ulang data, jadi galat dari server component (yang paling umum di
+ * sini) tidak pernah pulih lewat tombol itu.
  */
 import { useEffect } from "react";
-import { Flex, Typography, theme } from "antd";
-import { WarningOutlined } from "@ant-design/icons";
-import { Card, CardContent } from "@sai/ui/card";
-import { Button } from "@sai/ui/button";
-import { useT } from "@sai/core/i18n/client";
-import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
-const { Title, Text } = Typography;
+import { useT } from "@sai/core/i18n/client";
+import { StatusScreen } from "@sai/ui/status-screen";
 
 export default function PlatformError({
   error,
-  reset,
+  unstable_retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  unstable_retry: () => void;
 }) {
   const t = useT();
-  const { token } = theme.useToken();
 
   useEffect(() => {
-    // Digest memetakan ke baris log produksi bila perlu ditelusuri.
+    // Ter-log di server; digest memetakan ke baris log produksi bila perlu ditelusuri.
     console.error("Platform route error:", error);
   }, [error]);
 
   return (
-    <Flex align="center" justify="center" style={{ minHeight: "60vh" }}>
-      <Card style={{ maxWidth: 448 }}>
-        <CardContent>
-          <Flex vertical align="center" gap={token.margin} style={{ textAlign: "center" }}>
-            <Flex
-              align="center"
-              justify="center"
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: "50%",
-                background: token.colorErrorBg,
-                /* Ikon adalah bentuk, bukan teks — 3:1 sudah cukup; tapi token
-                   uang negatif dipakai supaya ia sewarna dengan galat lain di
-                   aplikasi ini. */
-                color: moneyPalette(token).colorMoneyNegative,
-              }}
-            >
-              <WarningOutlined aria-hidden="true" style={{ fontSize: 24 }} />
-            </Flex>
-
-            <Flex vertical gap={token.marginXXS}>
-              <Title level={1} style={{ fontSize: token.fontSizeLG, marginBlock: 0 }}>
-                {t("error.title")}
-              </Title>
-              <Text type="secondary" style={{ lineHeight: 1.625 }}>
-                {t("error.description")}
-              </Text>
-              {error.digest && (
-                <Text
-                  type="secondary"
-                  style={{ fontFamily: "monospace", fontSize: token.fontSizeSM }}
-                >
-                  {t("error.code", { digest: error.digest })}
-                </Text>
-              )}
-            </Flex>
-
-            <Flex wrap align="center" justify="center" gap={token.marginSM}>
-              <Button variant="primary" onClick={() => reset()}>
-                {t("error.retry")}
-              </Button>
-              <Button href="/platform" variant="secondary">
-                {t("platform.title")}
-              </Button>
-            </Flex>
-          </Flex>
-        </CardContent>
-      </Card>
-    </Flex>
+    <StatusScreen
+      kind="error"
+      title={t("error.title")}
+      description={t("error.description")}
+      detail={error.digest ? t("error.code", { digest: error.digest }) : undefined}
+      retry={{ label: t("error.retry"), onRetry: unstable_retry }}
+      home={{ label: t("platform.title"), href: "/platform" }}
+    />
   );
 }

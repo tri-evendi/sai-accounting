@@ -947,7 +947,7 @@ describe("suspensi TERASA SEKETIKA — cache status tenant, bukan TTL 60 detik",
 
 describe("server action konsol — sapuan sumber (aturan #155 no. 4)", () => {
   const src = readFileSync(
-    join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "operator", "tenants", "[id]", "actions.ts"),
+    join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "tenants", "[id]", "actions.ts"),
     "utf8"
   );
 
@@ -992,7 +992,7 @@ describe("server action konsol — sapuan sumber (aturan #155 no. 4)", () => {
  */
 describe("panel tindakan benar-benar TERPASANG di layar rincian tenant", () => {
   const page = readFileSync(
-    join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "operator", "tenants", "[id]", "page.tsx"),
+    join(__dirname, "..", "apps", "operator", "src", "app", "(operator)", "tenants", "[id]", "page.tsx"),
     "utf8"
   );
 

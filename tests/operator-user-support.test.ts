@@ -84,7 +84,7 @@ describe("surel akses akun — satu kalimat untuk aplikasi dan operator", () => 
 
   it("tautan operator menuju host PELANGGAN (AUTH_URL), tidak pernah host permintaan", () => {
     const isi = readFileSync(
-      join(process.cwd(), "apps/operator/src/app/(operator)/operator/tenants/[id]/user-actions.ts"),
+      join(process.cwd(), "apps/operator/src/app/(operator)/tenants/[id]/user-actions.ts"),
       "utf8"
     );
     expect(isi).toMatch(/process\.env\.AUTH_URL/);

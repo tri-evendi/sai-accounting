@@ -94,7 +94,7 @@ export interface OperatorShellNavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
-  /** Cocokkan PERSIS — untuk butir pendaratan (`/operator`), yang kalau tidak
+  /** Cocokkan PERSIS — untuk butir pendaratan (`/`), yang kalau tidak
    *  akan menyala di setiap anak-rute karena semuanya berawalan dengannya. */
   exact?: boolean;
   /** Judul kelompok di atas butir ini. Kelompok = satu label, bukan submenu
@@ -297,10 +297,10 @@ export function OperatorShell({ children, nav, labels, logout }: OperatorShellPr
   const lebar = screens.lg ?? false;
   const [menuOpen, setMenuOpen] = useState(false);
 
-  /* Butir TERPANJANG yang cocok, bukan butir pertama: `/operator/content`
-     berawalan sama dengan tidak satu pun butir lain, tetapi `/operator/tenants`
-     dan `/operator/tenants/12` keduanya harus menyalakan butir yang sama —
-     sementara `/operator` (exact) tidak boleh menyala di keduanya. */
+  /* Butir TERPANJANG yang cocok, bukan butir pertama: `/content`
+     berawalan sama dengan tidak satu pun butir lain, tetapi `/tenants`
+     dan `/tenants/12` keduanya harus menyalakan butir yang sama —
+     sementara `/` (exact) tidak boleh menyala di keduanya. */
   const activeHref =
     nav
       .filter((item) => (item.exact ? pathname === item.href : pathname.startsWith(item.href)))

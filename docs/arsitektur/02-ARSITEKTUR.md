@@ -369,7 +369,7 @@ packages/                         # diimpor sebagai @sai/<paket>/<subpath>
                                   #   jejak langganan & tenant, isi situs, penulis penagihan
 apps/
 └── operator/  (61 berkas)        # KONSOL OPERATOR — aplikasi Next kedua, image `…-operator`
-    ├── src/app/(operator)/operator/   # 19 halaman + 1 unduhan — HOST SENDIRI
+    ├── src/app/(operator)/        # 19 halaman + 1 unduhan, TANPA awalan /operator — HOST SENDIRI
     ├── src/app/api/health/       # probe sempit (hanya kendali yang memutuskan 503)
     ├── src/lib/operator/         # sesi, penjaga, TOTP, store, tulisan, jejak
     ├── src/components/operator/  # panel konsol

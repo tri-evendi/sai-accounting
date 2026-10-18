@@ -168,7 +168,7 @@ lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 | | |
 |---|---|
 | **Image** | `sai-accounting-operator` (target `runner-operator`, aplikasi `apps/operator`) — **sendiri** sejak monorepo Fase 4 (18 Okt 2026); tag `sha-` WAJIB sama dengan `app-customer` |
-| **Perintah** | `node apps/operator/server.js` |
+| **Perintah** | `node apps/operator/server.js` — rute TANPA awalan `/operator` (`/`, `/tenants`, `/login`, …); tautan `/operator/*` lama dialihkan 308 |
 | **Port** | `3000` — `expose` |
 | **Jaringan** | `traefik_default` + `internal` |
 | **Domain** | `OPERATOR_DOMAIN` **saja**; tidak punya router `APP_DOMAIN` |
@@ -325,7 +325,7 @@ pendapatan dan bertanya kenapa nol. Sebagai layanan ia lahir bersama deploy
 dan terlihat di `docker compose ps`.
 
 **Dapat diamati lewat:** `scheduler_runs` (platform) · `/api/health` →
-`scheduler` · `/operator/scheduler` · `bun run prove-scheduler-alive`.
+`scheduler` · konsol `/scheduler` · `bun run prove-scheduler-alive`.
 
 **Status 11 Okt 2026:** 1.246 putaran, terakhir 7 menit sebelum potret,
 `status: ok`.

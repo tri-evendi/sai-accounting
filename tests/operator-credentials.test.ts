@@ -222,11 +222,11 @@ describe("saklar OPERATOR_MFA", () => {
 /* ────────────────────────────────────────────────────────────────────────── */
 describe("OPERATOR_MFA=off — formulirnya ikut, bukan hanya servernya", () => {
   const form = readFileSync(
-    join(process.cwd(), "apps/operator/src/app/(operator)/operator/login/login-form.tsx"),
+    join(process.cwd(), "apps/operator/src/app/(operator)/login/login-form.tsx"),
     "utf8"
   );
   const page = readFileSync(
-    join(process.cwd(), "apps/operator/src/app/(operator)/operator/login/page.tsx"),
+    join(process.cwd(), "apps/operator/src/app/(operator)/login/page.tsx"),
     "utf8"
   );
 

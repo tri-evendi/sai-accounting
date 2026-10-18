@@ -440,7 +440,7 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(tenant)/(panel)/platform/error.tsx",
   "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
   "app/(app)/(tenant)/layout.tsx",
-  "apps/operator/src/app/(operator)/operator/login/login-form.tsx",
+  "apps/operator/src/app/(operator)/login/login-form.tsx",
   /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
      satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
      tombol "kembalikan ke bawaan" per baris. Halamannya TETAP server component:

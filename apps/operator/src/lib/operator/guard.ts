@@ -101,7 +101,7 @@ export async function requireOperatorPage(): Promise<OperatorPageSession> {
   if ((await operatorPlaneViolation()) !== null) notFound();
 
   const current = await currentOperator();
-  if (!current) redirect("/operator/login");
+  if (!current) redirect("/login");
 
   return current;
 }

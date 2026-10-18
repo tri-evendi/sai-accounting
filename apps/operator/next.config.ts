@@ -43,6 +43,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders(isProduction) }];
   },
+  /*
+   * Konsol dulu berawalan `/operator` (sejak #154, ketika ia grup rute di
+   * aplikasi pelanggan). Sejak ia aplikasi di host sendiri, awalan itu tidak
+   * membawa informasi apa pun — bidangnya ditentukan host. Tautan lama
+   * (bookmark, riwayat, tautan di catatan) dialihkan PERMANEN, bukan 404.
+   */
+  async redirects() {
+    return [
+      { source: "/operator", destination: "/", permanent: true },
+      { source: "/operator/:path*", destination: "/:path*", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

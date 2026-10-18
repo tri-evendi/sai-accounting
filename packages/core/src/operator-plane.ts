@@ -4,14 +4,17 @@
  *
  * Konsol operator hidup di HOSTNAME SENDIRI (`OPERATOR_HOST`) di luar lingkup
  * cookie aplikasi pelanggan: sesi pelanggan yang bocor tidak pernah sampai ke
- * konsol, dan sebaliknya. Grup rute `(operator)` dipilih alih-alih aplikasi
- * kedua (keputusan #154) — dan justru karena itu PEMERIKSAAN HOST-lah yang
- * menegakkan pemisahan bidangnya, sehingga ia WAJIB GAGAL-TERTUTUP:
+ * konsol, dan sebaliknya. Dulu konsol berupa grup rute `(operator)` di
+ * aplikasi yang SAMA (keputusan #154), dengan awalan `/operator`; kini ia
+ * aplikasi sendiri di host sendiri, tanpa awalan. PEMERIKSAAN HOST tetap yang
+ * menegakkan pemisahan bidangnya, dan ia WAJIB GAGAL-TERTUTUP:
  *
- *   • `OPERATOR_HOST` tidak diset → seluruh rute /operator TIDAK TERJANGKAU
- *     di host mana pun — bukan terbuka-diam-diam.
- *   • Di host pelanggan, /operator = 404. Di host operator, rute pelanggan
- *     (dasbor, login pelanggan, API) = 404.
+ *   • `OPERATOR_HOST` tidak diset → konsol TIDAK TERJANGKAU di host mana pun
+ *     — bukan terbuka-diam-diam.
+ *   • Host pelanggan tidak pernah mencapai konsol; host operator tidak pernah
+ *     mencapai rute pelanggan (dasbor, login pelanggan, API) — sejak monorepo
+ *     Fase 3d keduanya aplikasi & image terpisah, dan modul ini yang membuat
+ *     keduanya sepakat host mana milik siapa.
  *   • Daftar IP (`OPERATOR_IP_ALLOWLIST`) kosong/tidak diset → SEMUA ditolak;
  *     membukanya harus eksplisit (`*` hanya untuk pengembangan lokal).
  *
@@ -23,16 +26,23 @@
  * penagihan.
  */
 
-/** Keputusan perutean satu permintaan terhadap bidang operator. */
+/**
+ * Keputusan perutean satu permintaan terhadap bidang operator.
+ *
+ * Sejak konsol menjadi aplikasi sendiri (monorepo Fase 3d) dan kehilangan
+ * awalan `/operator`, bidangnya ditentukan HOST saja — jalur tidak lagi
+ * membawa informasi bidang. Putusan `blocked` (lintas-bidang menurut jalur)
+ * karena itu tidak ada lagi: aplikasi pelanggan tidak punya rute konsol, dan
+ * aplikasi konsol tidak punya rute pelanggan; masing-masing menjawab 404 untuk
+ * bidang yang bukan miliknya.
+ */
 export type OperatorRouteDecision =
-  /** Bukan urusan konsol operator — jalur pelanggan berjalan seperti biasa. */
+  /** Bukan host konsol (atau konsol dimatikan) — bidang pelanggan. */
   | { kind: "customer" }
-  /** Halaman publik bidang operator (login, health) di host operator. */
+  /** Host konsol, jalur publik (masuk, probe health) — tanpa sesi operator. */
   | { kind: "operator-public" }
-  /** Halaman operator terlindungi di host operator — wajib sesi operator. */
-  | { kind: "operator" }
-  /** GAGAL-TERTUTUP: permintaan lintas-bidang. Jawab 404, tanpa penjelasan. */
-  | { kind: "blocked" };
+  /** Host konsol, jalur terlindungi — wajib sesi operator. */
+  | { kind: "operator" };
 
 /** Huruf kecil + buang port — bentuk kanonis untuk membandingkan hostname. */
 export function normalizeHost(raw: string | null | undefined): string | null {
@@ -53,44 +63,24 @@ export function configuredOperatorHost(
   return normalizeHost(env.OPERATOR_HOST);
 }
 
-export function isOperatorPath(pathname: string): boolean {
-  return pathname === "/operator" || pathname.startsWith("/operator/");
-}
-
-/** Jalur bidang operator yang sah TANPA sesi operator (halaman login-nya). */
+/** Jalur konsol yang sah TANPA sesi operator: halaman masuk dan probe health. */
 export function isOperatorPublicPath(pathname: string): boolean {
-  return pathname === "/operator/login";
+  return pathname === "/login" || pathname === "/api/health";
 }
 
 /**
  * Keputusan inti pemisahan bidang. Murni: (host permintaan, jalur, host
- * terkonfigurasi) → keputusan. Semua cabang yang ragu jatuh ke `blocked`.
+ * terkonfigurasi) → keputusan. GAGAL-TERTUTUP: `OPERATOR_HOST` tidak diset →
+ * tidak ada satu host pun yang menjadi host konsol (`customer` di mana-mana,
+ * dan aplikasi konsol menjawab 404 untuk `customer`).
  */
 export function decideOperatorRouting(
   requestHost: string | null | undefined,
   pathname: string,
   operatorHost: string | null
 ): OperatorRouteDecision {
-  const onOperatorPath = isOperatorPath(pathname);
-
-  // Konsol tidak dikonfigurasi → rute operator tidak ada di host mana pun.
-  if (!operatorHost) {
-    return onOperatorPath ? { kind: "blocked" } : { kind: "customer" };
-  }
-
-  const host = normalizeHost(requestHost);
-
-  if (host === operatorHost) {
-    // Di host operator HANYA bidang operator (dan health probe untuk
-    // load-balancer) yang hidup. Login pelanggan, dasbor, dan seluruh API
-    // pelanggan = 404: sesi operator tidak boleh bisa membuka rute pelanggan.
-    if (pathname === "/api/health") return { kind: "operator-public" };
-    if (!onOperatorPath) return { kind: "blocked" };
-    return isOperatorPublicPath(pathname) ? { kind: "operator-public" } : { kind: "operator" };
-  }
-
-  // Host pelanggan (atau host tak dikenal): rute operator tidak terjangkau.
-  return onOperatorPath ? { kind: "blocked" } : { kind: "customer" };
+  if (!operatorHost || normalizeHost(requestHost) !== operatorHost) return { kind: "customer" };
+  return isOperatorPublicPath(pathname) ? { kind: "operator-public" } : { kind: "operator" };
 }
 
 /* ─────────────────────────── Daftar IP operator ─────────────────────────── */

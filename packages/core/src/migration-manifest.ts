@@ -1,6 +1,6 @@
 /**
  * Migration TERAKHIR yang diharapkan per jenis basis data — untuk
- * `/operator/backup`, yang menandai basis data yang TERTINGGAL.
+ * `/backup` konsol operator, yang menandai basis data yang TERTINGGAL.
  *
  * Kenapa konstanta, bukan membaca `prisma/postgresql/*` saat berjalan: image
  * `runner` (Next standalone) tidak memuat direktori `prisma/`. Membacanya akan

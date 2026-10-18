@@ -22,7 +22,7 @@ import enDict from "@sai/core/i18n/dictionaries/en.json";
 import zhDict from "@sai/core/i18n/dictionaries/zh.json";
 
 const baca = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
-const HALAMAN_PATH = "apps/operator/src/app/(operator)/operator/conformance/page.tsx";
+const HALAMAN_PATH = "apps/operator/src/app/(operator)/conformance/page.tsx";
 const HALAMAN = baca(HALAMAN_PATH);
 const NAV = baca("apps/operator/src/lib/operator/nav.tsx");
 const STORE = baca("apps/operator/src/lib/operator/store.ts");
@@ -140,10 +140,10 @@ describe("daftar temuan tidak berbohong soal kelengkapannya", () => {
 });
 
 describe("nav menunjuk ke halaman ini", () => {
-  it("ada entri `/operator/conformance` berlabel dari kamus", () => {
+  it("ada entri `/conformance` berlabel dari kamus", () => {
     /* Halaman tanpa entri nav adalah halaman yang hanya bisa ditemukan dengan
        mengetik alamatnya — yaitu halaman yang tidak akan dibuka siapa pun. */
-    expect(NAV).toContain('href: "/operator/conformance"');
+    expect(NAV).toContain('href: "/conformance"');
     expect(NAV).toContain('t("operator.nav.conformance")');
   });
 });

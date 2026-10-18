@@ -7,10 +7,10 @@
 > SELESAI 17 Okt 2026** (malam): skema + klien hasil bangkitan di `packages/db`,
 > diimpor lewat `@sai/db/client/{company,control,platform}`. **Fase 2 SELESAI
 > 18 Okt 2026**: `@sai/core`, `@sai/ui`, `@sai/billing` (lihat §Fase 2).
-> **Fase 3a–3c SELESAI 18 Okt 2026** (lihat §Fase 3): tiga sisi domain diputus,
-> `@sai/platform` lahir, dan permukaan operator kini hanya bergantung pada
-> dirinya sendiri + paket. **Belum:** 3d (`apps/operator` lahir) + Fase 4 (dua
-> image) — keduanya HARUS dirilis bersama. Timbangan di §2 tidak
+> **Fase 3 dan 4 SELESAI 18 Okt 2026** (lihat §Fase 3): tiga sisi domain
+> diputus, `@sai/platform` lahir, lalu konsol menjadi aplikasi Next tersendiri
+> (`apps/operator`) dengan image sendiri (`…-operator`). **Rencana monorepo di
+> dokumen ini tuntas**; yang tersisa adalah gelar pertamanya (§Fase 3d). Timbangan di §2 tidak
 > berubah; yang berubah adalah keputusannya, yang memang milik pemilik.
 >
 > **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
@@ -431,17 +431,24 @@ daripada sebelumnya, ketika keduanya lolos sebagai bagian dari `@/lib/`;
 `packages-mandiri` menuntut manifes jujur dan graf antarpaket tanpa siklus.
 Tiga belas skrip yang mengimpor `@sai/platform` dijalankan sungguhan lewat `tsx`.
 
-#### Fase 3d — belum: `apps/operator` lahir (+ Fase 4, dirilis BERSAMA)
+#### Fase 3d + Fase 4 — ✅ SELESAI 18 Okt 2026 (satu rilis)
 
-Yang tersisa kini mekanis di sisi kode, tetapi berat di sisi gelar:
+| Apa | Hasil |
+|---|---|
+| Kerangka bersama (3d-1) | `RootDocument`, `antd-provider`, `theme/{client,server,actions}`, `viewport`, `globals.css` → `@sai/ui`; aturan bidang → `@sai/core/operator-plane`. Server action `setTheme` terbukti terdaftar dari dalam paket. `src/proxy.ts` berhenti mengimpor `lib/operator` — daftar putih penyeberangan pelanggan → operator kini KOSONG |
+| `apps/operator` (3d-2) | `(operator)` (19 halaman + 1 unduhan), `lib/operator`, `components/operator`, `validations/operator` pindah. Alias `@op/*`; `@/` tidak terselesaikan di sana. Root layout sendiri, `proxy.ts` sendiri di atas `decideOperatorRouting` yang sama, `/api/health` sempit. Kepala keamanan satu modul (`packages/core/src/security-headers.ts`) untuk kedua aplikasi |
+| Dua image (Fase 4) | Dockerfile: `prepared` → `builder` + `builder-operator`; target `runner-operator`. CI menerbitkan `…-operator` dari commit yang sama. compose: `app-operator` menarik `${SAI_IMAGE}-operator:${SAI_TAG}` |
+| Hasil terukur | build pelanggan: **nol** rute `/operator`. build konsol: 20 rute, 32 dtk, standalone **69 MB** (pelanggan 299 MB). Uji nyala dengan header Host sungguhan: konsol — host lain 404, tanpa sesi → login; pelanggan — `/operator` 404 di SETIAP host |
 
-- Aplikasi Next kedua butuh kerangkanya sendiri: root layout + provider (AntD,
-  tema, i18n), `proxy.ts` versi operator, `next.config.ts`, aset publik.
-- Begitu `(operator)` keluar dari aplikasi pelanggan, container `app-operator`
-  yang menjalankan image pelanggan berhenti punya konsol. 3d **tidak bisa
-  digelar tanpa** Fase 4 (Dockerfile/target kedua, CI membangun dua image,
-  compose menarik dua) — keduanya satu rilis, dengan ritual gelar yang
-  memeriksa kedua image berasal dari SHA yang sama.
+Dua yang tertulis di "WAJIB tetap ada" di atas, dan keduanya terpenuhi:
+`operator-plane` tetap dipakai sisi pelanggan (`OPERATOR_HOST` kosong →
+`/operator` 404), dan pemisahan bidang diukur terhadap KEDUA aplikasi.
+
+**Gelar pertama — yang berubah bagi operator server:** `app-operator`
+berganti image. `docker compose pull` menarik `…-operator` baru; sesudah
+`up -d`, periksa kedua image aplikasi berasal dari `sha-` yang sama. Rollback
+melintasi pemisahan ini juga mengembalikan `docker-compose.yml` lama (tag
+`sha-` sebelum 18 Okt tidak punya image `…-operator`) — dok 07 §Rollback.
 
 ### Fase 4 — dua image (≈ 2 hari)
 

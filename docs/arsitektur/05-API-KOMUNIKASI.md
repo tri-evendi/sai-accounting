@@ -126,13 +126,13 @@ graph LR
 
 | | |
 |---|---|
-| Modul murni | `lib/operator/plane.ts` (**aman-edge** — tanpa Prisma, `node:crypto`, `next/*`) |
-| Penjaga | `lib/operator/guard.ts` |
-| Sesi | `lib/operator/session.ts` — `OPERATOR_SESSION_SECRET` |
-| Kredensial | `OPERATOR_USERS` (akun **darurat**, selalu owner) + `sai_control.operator_accounts` (sejak 17 Okt 2026, migration kendali 0004; TOTP tersegel `SETTINGS_ENCRYPTION_KEY`) — `lib/operator/credentials.ts`, `operator-accounts.ts` |
-| Peran | `lib/operator/roles.ts` — owner / billing / support / viewer; membagi **tindakan**, bukan bacaan. Setiap server action memanggil `requireOperatorActionSession(izin)` (dijaga `tests/operator-roles.test.ts`) |
+| Modul murni | `packages/core/src/operator-plane.ts` (**aman-edge** — tanpa Prisma, `node:crypto`, `next/*`) |
+| Penjaga | `apps/operator/src/lib/operator/guard.ts` |
+| Sesi | `apps/operator/src/lib/operator/session.ts` — `OPERATOR_SESSION_SECRET` |
+| Kredensial | `OPERATOR_USERS` (akun **darurat**, selalu owner) + `sai_control.operator_accounts` (sejak 17 Okt 2026, migration kendali 0004; TOTP tersegel `SETTINGS_ENCRYPTION_KEY`) — `apps/operator/src/lib/operator/credentials.ts`, `operator-accounts.ts` |
+| Peran | `apps/operator/src/lib/operator/roles.ts` — owner / billing / support / viewer; membagi **tindakan**, bukan bacaan. Setiap server action memanggil `requireOperatorActionSession(izin)` (dijaga `tests/operator-roles.test.ts`) |
 | Pencabutan sesi | akun basis data: `session_version` dibawa token dan dibandingkan **tiap permintaan** (`identity.ts`); akun env: hapus entrinya atau putar `OPERATOR_SESSION_SECRET` |
-| TOTP | `lib/operator/totp.ts` — `OPERATOR_MFA` |
+| TOTP | `apps/operator/src/lib/operator/totp.ts` — `OPERATOR_MFA` |
 | Env di `.env` 11 Okt | `OPERATOR_DOMAIN`, `OPERATOR_HOST`, `OPERATOR_IP_ALLOWLIST`, `OPERATOR_MFA`, `OPERATOR_SESSION_SECRET`, `OPERATOR_USERS` — **semuanya terisi** |
 
 **Gagal-tertutup di tiga arah sekaligus:**

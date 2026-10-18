@@ -1431,6 +1431,9 @@ tanpa `app/layout.tsx` di atasnya. Maka seluruh app pindah apa adanya ke
 `app/(marketing)/**`, dan bagian yang SAMA (`<html>`, font, kelas pemikul
 token, skrip tema, `AntdRegistry`, `AntdProvider`) hidup sekali di
 `components/providers/root-document.tsx` supaya kedua akar tidak menyimpang.
+(Kini `@sai/ui/providers/root-document` — `packages/ui/src/providers/` — dan
+dipakai TIGA akar sejak konsol operator menjadi aplikasi sendiri, monorepo
+Fase 3d.)
 
 **Sesudah** (build produksi lokal, `next start`, tanpa cache):
 

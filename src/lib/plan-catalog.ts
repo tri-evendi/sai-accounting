@@ -26,7 +26,7 @@
  */
 import { unstable_cache } from "next/cache";
 
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 
 export interface PlanOption {
   key: string;

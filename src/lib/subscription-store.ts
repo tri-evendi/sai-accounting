@@ -18,8 +18,8 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
-import { recordSubscriptionEvent } from "@/lib/subscription-events";
+import { platformDb } from "@sai/platform/platform-db";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 import {
   initialSubscriptionFromPlan,
   tenantStatusForSubscription,

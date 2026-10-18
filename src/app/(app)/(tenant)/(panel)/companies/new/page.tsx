@@ -37,7 +37,7 @@
 import { Card, CardContent } from "@sai/ui/card";
 import { PageHeader } from "@sai/ui/page-header";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 import { CompanyForm } from "./company-form";
 

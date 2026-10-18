@@ -23,7 +23,7 @@
  * "aktifkan" tidak pernah menjadi tombol yang mengirim ratusan surel sekaligus.
  */
 import { prisma } from "@/lib/prisma";
-import { sendMail } from "@/lib/mailer-core";
+import { sendMail } from "@sai/platform/mailer-core";
 import { mailConfigForCompany } from "@/lib/tenant-mail-settings";
 import { getCompanyContext } from "@/lib/company-context";
 import { loadDictionary } from "@sai/core/i18n/load";

@@ -26,7 +26,7 @@ import { Money } from "@sai/ui/money";
 import { Progress } from "@sai/ui/progress";
 import { PageHeader } from "@sai/ui/page-header";
 import { formatCurrency, formatDateShort } from "@sai/core/utils";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
 import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 import { AssetActions } from "./asset-actions";

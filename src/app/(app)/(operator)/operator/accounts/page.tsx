@@ -13,7 +13,7 @@ import { ConsoleNotice, ConsolePanel, CONSOLE_PAGE } from "@/components/operator
 import { OperatorAccounts, type OperatorAccountView } from "@/components/operator/operator-accounts";
 import { PageHeader } from "@sai/ui/page-header";
 import { controlDb } from "@sai/core/control-db";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { parseOperatorAccounts } from "@/lib/operator/credentials";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listOperatorAccounts } from "@/lib/operator/operator-accounts";

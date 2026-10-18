@@ -33,14 +33,14 @@ import "server-only";
 import { z } from "zod";
 
 import { prisma } from "@/lib/prisma";
-import { sendMail, type MailAttachment } from "@/lib/mailer";
+import { sendMail, type MailAttachment } from "@sai/platform/mailer";
 import { mailConfigForCompany } from "@/lib/tenant-mail-settings";
 import { getCompanyContext } from "@/lib/company-context";
 import { getCompanyIdentity } from "@/lib/company-identity";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
 import { userNamesByIds } from "@/lib/users-directory";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatCurrency, formatDate } from "@sai/core/utils";
 
 export const INVOICE_SEND_CHANNELS = ["email", "whatsapp"] as const;

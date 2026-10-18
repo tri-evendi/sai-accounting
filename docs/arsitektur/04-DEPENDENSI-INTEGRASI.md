@@ -96,9 +96,9 @@ graph TD
 
 | | |
 |---|---|
-| Pustaka | `nodemailer` 7 — **satu** berkas: `lib/mailer-core.ts` |
+| Pustaka | `nodemailer` 7 — **satu** berkas: `packages/platform/src/mailer-core.ts` |
 | Lapis 1 | `lib/tenant-mail-settings.ts` — SMTP milik pelanggan |
-| Lapis 2 | `lib/mail-settings.ts` — milik penyedia, di `sai_platform` |
+| Lapis 2 | `packages/platform/src/mail-settings.ts` — milik penyedia, di `sai_platform` |
 | Lapis 3 | *environment* / transport `file` → `data/mail-outbox/*.eml` |
 | Sandi | Disimpan **hanya** sebagai segel AES-256-GCM (`packages/core/src/settings-crypto.ts`, kunci `SETTINGS_ENCRYPTION_KEY`) |
 | Cache | TTL 60s; **tidak** berkunci penyewa — sengaja, karena pengaturan platform milik **penyedia**, satu untuk seluruh pemasangan |
@@ -128,7 +128,7 @@ menarik `server-only` ke sana akan mematikan penjadwal.
 
 | | |
 |---|---|
-| Modul | `packages/billing/src/payment-gateway.ts`, `lib/payment-webhook.ts`, `lib/company-payment-settings.ts` |
+| Modul | `packages/billing/src/payment-gateway.ts`, `packages/platform/src/payment-webhook.ts`, `lib/company-payment-settings.ts` |
 | Keluar | `POST {base}/v2/charge` — Core API. `base` = `api.midtrans.com` (produksi) / `api.sandbox.midtrans.com` |
 | Masuk | `POST /api/billing/webhook` — tanda tangan **SHA-512** |
 | Env | `PAYMENT_GATEWAY`, `MIDTRANS_SERVER_KEY`, `MIDTRANS_IS_PRODUCTION` |

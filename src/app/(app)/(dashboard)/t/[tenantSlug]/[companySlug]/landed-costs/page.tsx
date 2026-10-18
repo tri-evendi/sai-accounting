@@ -19,7 +19,7 @@ import { Pagination } from "@sai/ui/pagination";
 import { PageHeader } from "@sai/ui/page-header";
 import { EmptyState } from "@sai/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { ImportOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 

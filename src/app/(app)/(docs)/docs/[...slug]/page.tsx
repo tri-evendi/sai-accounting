@@ -27,7 +27,7 @@ import { PermissionMatrix } from "@/components/docs/permission-matrix";
 import { DOCS_ROOT, DOC_INDEX, docBranchAnchor, docBySlug, type DocBranch } from "@/lib/docs";
 import { DOC_BLOCKS } from "@/lib/docs-content";
 import { waktuBaca } from "@/lib/docs-text";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { Link } from "@sai/ui/app-link";
 

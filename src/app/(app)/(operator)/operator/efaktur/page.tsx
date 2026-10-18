@@ -12,9 +12,9 @@ import { Input } from "@sai/ui/input";
 import { PageHeader } from "@sai/ui/page-header";
 import { ConsoleNotice, ConsolePanel, CONSOLE_MUTED, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
-import { platformEfaktur } from "@/lib/billing/platform-efaktur";
-import { getT } from "@/lib/i18n/server";
+import { platformDb } from "@sai/platform/platform-db";
+import { platformEfaktur } from "@sai/platform/billing/platform-efaktur";
+import { getT } from "@sai/platform/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 

@@ -22,7 +22,7 @@ import {
   userQuotaExceeded,
   type InvitationOutcome,
 } from "@sai/core/invitations";
-import { upsertMembership } from "@/lib/membership-upsert";
+import { upsertMembership } from "@sai/platform/membership-upsert";
 import { TENANT_ROLES } from "@sai/core/constants";
 
 /** Kursi terpakai sebuah tenant: pengguna hidup + undangan yang masih menunggu. */

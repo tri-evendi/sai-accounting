@@ -462,7 +462,7 @@ Konsol operator (#154) mula-mula hanya membaca — dan itu bisa dirilis tanpa
 risiko. Tindakan tulisnya tidak: setiap tombol memindahkan uang, mencabut
 akses, atau menghancurkan data. Karena itu keempatnya tunduk pada empat aturan
 yang sama, ditegakkan di INTI (`src/lib/operator/writes.ts`; ganti paket di
-`src/lib/billing/change-tenant-plan.ts` sejak 17 Okt 2026, karena rute
+`packages/platform/src/billing/change-tenant-plan.ts` sejak 17 Okt 2026, karena rute
 pelanggan memakainya juga), bukan diserahkan ke pemanggil:
 
 1. **satu baris jejak audit tenant per tindakan sukses**, dengan OPERATOR

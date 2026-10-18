@@ -24,7 +24,7 @@
 import { ArrowRightOutlined, BookOutlined } from "@ant-design/icons";
 
 import { Link } from "@sai/ui/app-link";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 const ROW: React.CSSProperties = {
   display: "flex",

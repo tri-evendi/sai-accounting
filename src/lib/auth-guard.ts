@@ -7,7 +7,7 @@ import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromRequest } from "@/lib/company-request";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
 import { getCompany } from "@/lib/company-registry";
-import { tenantStateForCompany } from "@/lib/tenant-state";
+import { tenantStateForCompany } from "@sai/platform/tenant-state";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
 
 type AuthResult =

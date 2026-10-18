@@ -32,7 +32,7 @@ import {
   verifyOperatorToken,
 } from "@/lib/operator/session";
 import { checkRateLimit } from "@sai/core/rate-limit";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export interface OperatorLoginState {
   error: string | null;

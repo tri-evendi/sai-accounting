@@ -18,7 +18,7 @@ import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { PageHeader } from "@sai/ui/page-header";
 import { formatDate, formatNumber } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
 import { DeliveryOrderPdfButton } from "./pdf-button";
 

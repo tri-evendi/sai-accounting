@@ -81,7 +81,7 @@ import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import { setTenantSuspension } from "../src/lib/operator/writes";
-import { recordSubscriptionEvent } from "../src/lib/subscription-events";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

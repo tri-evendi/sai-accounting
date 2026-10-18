@@ -52,7 +52,7 @@ import {
   nextPeriod,
   planOrphanSubscriptionAdoptions,
 } from "@sai/billing/subscription-lifecycle";
-import { recordSubscriptionEvent } from "../src/lib/subscription-events";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};

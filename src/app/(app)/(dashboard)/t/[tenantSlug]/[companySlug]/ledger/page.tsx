@@ -25,7 +25,7 @@ import { StaticTable, type SummaryRow } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { Money } from "@sai/ui/money";
 import { formatDateShort } from "@sai/core/utils";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
 import { LedgerFilter } from "./ledger-filter";
 import { parseCostCenterFilter } from "@/lib/cost-centers";

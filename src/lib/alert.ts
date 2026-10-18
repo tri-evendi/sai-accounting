@@ -41,7 +41,7 @@ import "server-only";
 import { logError } from "@/lib/log";
 import type { LogContext } from "@/lib/log";
 import { checkPersistentRateLimit } from "@/lib/rate-limit-persistent";
-import { sendMail } from "@/lib/mailer";
+import { sendMail } from "@sai/platform/mailer";
 
 /** Satu surel per sidik jari per jam. */
 const ALERT_THROTTLE = { windowMs: 60 * 60 * 1000, maxAttempts: 1 } as const;

@@ -43,7 +43,7 @@ import { Input } from "@sai/ui/input";
 import { Select } from "@sai/ui/select";
 import { ContentEditor, type ContentEditorRow } from "@/components/operator/content-editor";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@sai/core/i18n/config";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import {
@@ -54,7 +54,7 @@ import {
   siteContentDefaults,
   SITE_CONTENT_SECTIONS,
 } from "@sai/core/site-content";
-import { siteContentForOperator } from "@/lib/site-content-store";
+import { siteContentForOperator } from "@sai/platform/site-content-store";
 import { formatDateTime } from "@sai/core/utils";
 import { operatorSaveSiteContent } from "./actions";
 

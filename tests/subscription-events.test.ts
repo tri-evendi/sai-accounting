@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import { recordSubscriptionEvent, SUBSCRIPTION_EVENT_KINDS } from "@/lib/subscription-events";
+import { recordSubscriptionEvent, SUBSCRIPTION_EVENT_KINDS } from "@sai/platform/subscription-events";
 
 const AKAR = process.cwd();
 
@@ -41,8 +41,8 @@ describe("setiap penulis langganan mencatat peristiwanya", () => {
   it("penulisnya ditemukan — penjaga atas tes ini sendiri", () => {
     expect(penulis.map((p) => p.f)).toEqual(
       expect.arrayContaining([
-        "src/lib/payment-webhook.ts",
-        "src/lib/billing/change-tenant-plan.ts",
+        "packages/platform/src/payment-webhook.ts",
+        "packages/platform/src/billing/change-tenant-plan.ts",
         "src/lib/operator/writes.ts",
         "scripts/subscription-scheduler.ts",
       ])

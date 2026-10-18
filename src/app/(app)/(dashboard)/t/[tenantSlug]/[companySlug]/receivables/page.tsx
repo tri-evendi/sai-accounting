@@ -37,7 +37,7 @@ import { LedgerFilter } from "@/components/shared/ledger-filter";
 import { AgeCell, AgingSummary, PaymentStatusBadge, PartyTotals } from "@/components/shared/aging";
 import { formatDateShort } from "@sai/core/utils";
 import { FileDoneOutlined } from "@ant-design/icons";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { agingPayload } from "@/lib/report-payload";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";

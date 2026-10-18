@@ -10,11 +10,11 @@ import { NextResponse } from "next/server";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { controlDb } from "@sai/core/control-db";
 import { companyScopeFromRequest } from "@/lib/company-request";
-import { revokeInvitation } from "@/lib/invitation-store";
+import { revokeInvitation } from "@sai/platform/invitation-store";
 import { runWithCompany } from "@/lib/company-context";
 import { writeAuditLog } from "@/lib/audit";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function DELETE(
   request: Request,

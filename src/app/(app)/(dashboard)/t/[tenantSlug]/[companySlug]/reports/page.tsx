@@ -10,7 +10,7 @@ import { AccountBookOutlined, AimOutlined, ArrowRightOutlined, BankOutlined, Con
 import type { IconComponent } from "@sai/ui/icons";
 import { reportsByCategory, reportTextKey, type ReportDefinition } from "@/lib/report-catalog";
 import { PageHeader } from "@sai/ui/page-header";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import type { Dictionary } from "@sai/core/i18n/dictionary";
 import { CARD_GAP } from "@sai/ui/layout-scale";
 

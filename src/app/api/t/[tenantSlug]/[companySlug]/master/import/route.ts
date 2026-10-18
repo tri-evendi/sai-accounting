@@ -38,7 +38,7 @@ import type { Permission } from "@sai/core/authz";
 import { readFirstSheetRows } from "@/lib/xlsx-read";
 import ExcelJS from "exceljs";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { writeAuditLog } from "@/lib/audit";
 import { buildTemplate } from "@/lib/import/template";
 import type { ColumnSpec } from "@/lib/import/spec";

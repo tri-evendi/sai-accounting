@@ -26,7 +26,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
 import { clientIpFrom } from "@/lib/operator/plane";
@@ -34,7 +34,7 @@ import {
   saveSiteSettings,
   siteSettingsForOperator,
   resetSiteSettings,
-} from "@/lib/site-settings";
+} from "@sai/platform/site-settings";
 import { siteSettingsSchema } from "@/lib/validations/operator";
 
 export interface OperatorSettingsResult {

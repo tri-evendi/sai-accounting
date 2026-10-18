@@ -24,7 +24,7 @@
  * jejaknya hanya tertinggal di log server.
  */
 
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 
 export type OperatorAuditAction =
   | "operator.login"

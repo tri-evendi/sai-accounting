@@ -36,7 +36,7 @@ import "server-only";
 import { unstable_cache, updateTag } from "next/cache";
 
 import { contactChannels, type ContactChannels } from "@sai/core/contact-channels";
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import {
   effectiveSetting,
   ppnEnabledFrom,

@@ -217,7 +217,7 @@ Lapisan ketiga di samping kendali dan perusahaan (rancangan & alasannya:
 **data bisnis penyedia SaaS**, nol angka akuntansi pelanggan. Skema:
 `packages/db/prisma/platform/schema.prisma` → klien
 `packages/db/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien runtime
-`src/lib/platform-db.ts`.
+`packages/platform/src/platform-db.ts`.
 
 **Menyediakannya (opsional — pemasangan multi-PT satu grup usaha tidak butuh):**
 
@@ -251,7 +251,7 @@ menyertakannya di antara kendali dan perusahaan).
   **platform dulu**, kendali belakangan; selisihnya ditemukan
   `bun run reconcile:platform` (lengkap sejak #140 — empat pemeriksaan,
   termasuk kecocokan status dan usage_counters).
-- **Penagihan mati ≠ login mati.** `src/lib/platform-db.ts` malas (lazy) dan
+- **Penagihan mati ≠ login mati.** `packages/platform/src/platform-db.ts` malas (lazy) dan
   hanya boleh diimpor kode penagihan — jangan pernah dari penjaga, sesi, atau
   jalur lain yang berjalan pada setiap permintaan. `db:migrate:all` melewati
   platform dengan peringatan bila `PLATFORM_DATABASE_URL` tidak diset
@@ -260,7 +260,7 @@ menyertakannya di antara kendali dan perusahaan).
 - **Cache data platform dikunci per `tenant_id`** — aturan cache #104 diperluas;
   pakai `TenantKeyedCache` (`packages/core/src/tenant-cache.ts`). Pengecualian yang
   dinyatakan: `mail_settings` (#169) adalah singleton milik PENYEDIA, bukan
-  milik satu tenant, jadi cache-nya (`src/lib/mail-settings.ts`, TTL 60 detik)
+  milik satu tenant, jadi cache-nya (`packages/platform/src/mail-settings.ts`, TTL 60 detik)
   memang tunggal.
 - **Rahasia di basis data: hanya `mail_settings.password_ciphertext` (#169).**
   Doktrin "kredensial hidup di environment" tetap berlaku untuk yang lain;
@@ -275,7 +275,7 @@ menyertakannya di antara kendali dan perusahaan).
 membuat buku besar **HANYA-BACA di lapisan penjaga** — setiap izin tulis
 ditolak, baca & ekspor tetap jalan, TIDAK ADA data yang dihapus otomatis pada
 keadaan mana pun. Penjaga membaca status dari **salinan di `tenants`**
-(kendali) lewat cache per-perusahaan (`src/lib/tenant-state.ts`) — tidak
+(kendali) lewat cache per-perusahaan (`packages/platform/src/tenant-state.ts`) — tidak
 pernah dari `sai_platform` di jalur permintaan.
 
 **Penjadwal.** `bun run scheduler:subscriptions` — satu putaran: trial habis

@@ -16,7 +16,7 @@ import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { EmptyState } from "@sai/ui/empty-state";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { ToolOutlined } from "@ant-design/icons";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 

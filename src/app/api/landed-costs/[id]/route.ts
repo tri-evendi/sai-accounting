@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { handlePostingError } from "@/lib/api-errors";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { deleteLandedCostInTx } from "@/lib/landed-cost-data";
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {

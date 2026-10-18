@@ -41,7 +41,7 @@ import { decideBackupAlert } from "../src/lib/backup-watchdog";
 import { decideSchedulerAlert, decideConformanceAlert } from "../src/lib/health-watchdog";
 import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { conformanceHealth } from "../src/lib/conformance-heartbeat";
-import { sendMail } from "../src/lib/mailer-core";
+import { sendMail } from "@sai/platform/mailer-core";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 

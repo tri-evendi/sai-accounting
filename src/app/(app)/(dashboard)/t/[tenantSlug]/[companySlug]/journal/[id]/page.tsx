@@ -33,7 +33,7 @@ import { PageHeader } from "@sai/ui/page-header";
 import { formatCurrency, formatDate } from "@sai/core/utils";
 import { Link } from "@sai/ui/app-link";
 import { ReverseButton } from "./reverse-button";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { INLINE_GAP } from "@sai/ui/layout-scale";
 import { RollbackOutlined, UndoOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";

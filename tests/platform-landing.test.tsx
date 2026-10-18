@@ -190,7 +190,7 @@ vi.mock("@/lib/plan-catalog", () => ({
   activePlans: async () => PLANS,
 }));
 
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getT: async () => T,
 }));
 

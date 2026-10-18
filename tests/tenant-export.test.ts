@@ -71,7 +71,7 @@ describe("jejak audit tenant — tulis lalu baca ulang", () => {
     }));
     vi.resetModules();
 
-    const { readTenantAuditLogs, writeTenantAuditLog } = await import("@/lib/tenant-audit");
+    const { readTenantAuditLogs, writeTenantAuditLog } = await import("@sai/platform/tenant-audit");
     await writeTenantAuditLog({
       tenantId: 1,
       tenantSlug: "pt-uji",

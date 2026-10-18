@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import { platformEfaktur } from "@/lib/billing/platform-efaktur";
+import { platformEfaktur } from "@sai/platform/billing/platform-efaktur";
 
 describe("platformEfaktur", () => {
   it("hanya tagihan lunas; pembeli dari profil pajak, jatuh ke nama tenant", async () => {

@@ -26,9 +26,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
-import { sendMail } from "@/lib/mailer";
+import { sendMail } from "@sai/platform/mailer";
 import {
   readTenantMail,
   recordTenantMailTest,

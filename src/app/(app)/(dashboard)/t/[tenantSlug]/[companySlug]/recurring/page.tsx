@@ -26,7 +26,7 @@ import { Badge } from "@sai/ui/badge";
 import { EmptyState } from "@sai/ui/empty-state";
 import { PageHeader } from "@sai/ui/page-header";
 import { Link } from "@sai/ui/app-link";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatDateShort } from "@sai/core/utils";
 import { nextOccurrence, type RecurrenceRule } from "@/lib/recurring";
 import { RetweetOutlined } from "@ant-design/icons";

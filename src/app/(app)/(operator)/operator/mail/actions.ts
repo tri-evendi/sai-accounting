@@ -22,19 +22,19 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import {
   recordMailTestResult,
   redactSecret,
   saveMailSettings,
   type MailSettingsClient,
-} from "@/lib/mail-settings";
-import { resolveMailConfig, sendMail } from "@/lib/mailer";
+} from "@sai/platform/mail-settings";
+import { resolveMailConfig, sendMail } from "@sai/platform/mailer";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
 import type { OperatorPermission } from "@/lib/operator/roles";
 import { clientIpFrom } from "@/lib/operator/plane";
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import { mailSettingsSchema, mailTestSchema } from "@/lib/validations/operator";
 
 export interface OperatorMailActionResult {

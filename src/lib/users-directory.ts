@@ -24,7 +24,7 @@ import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
 import { currentCompanyId } from "@/lib/current-company";
-import { upsertMembership } from "@/lib/membership-upsert";
+import { upsertMembership } from "@sai/platform/membership-upsert";
 import { TENANT_ROLES } from "@sai/core/constants";
 
 export interface CompanyUser {

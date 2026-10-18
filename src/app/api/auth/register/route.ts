@@ -33,12 +33,12 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { createRegistration, emailHasAccount } from "@/lib/registration-store";
 import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
-import { sendMail } from "@/lib/mailer";
+import { sendMail } from "@sai/platform/mailer";
 import { reportError } from "@/lib/alert";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { clientIpFrom } from "@sai/core/client-ip";
-import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
+import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
 
 function appOrigin(request: Request): string {
   return process.env.AUTH_URL?.replace(/\/$/, "") ?? new URL(request.url).origin;

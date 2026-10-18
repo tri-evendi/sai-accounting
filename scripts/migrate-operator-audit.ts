@@ -26,7 +26,7 @@ import "dotenv/config";
 import { readFile, rename } from "node:fs/promises";
 import path from "node:path";
 
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import {
   operatorAuditRowFromLegacy,
   type LegacyOperatorEntry,

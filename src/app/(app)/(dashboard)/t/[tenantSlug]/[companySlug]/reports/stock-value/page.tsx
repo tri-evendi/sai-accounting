@@ -55,7 +55,7 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layout";
 import { formatCurrency, formatDate } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { SPACE_XS } from "@sai/ui/layout-scale";
 export const dynamic = "force-dynamic";

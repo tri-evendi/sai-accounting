@@ -5,7 +5,7 @@ import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
 import { PageHeader } from "@sai/ui/page-header";
 import { LearnMore } from "@sai/ui/learn-more";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { TaxProfileProvider } from "@/lib/tax-profile-client";
 import { readCompanyTaxProfile } from "@/lib/tax-rates";
 import { SalesWizard } from "./sales-wizard";

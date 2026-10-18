@@ -60,15 +60,15 @@ import {
   type SubscriptionEvent,
 } from "@sai/billing/subscription-lifecycle";
 import { ppnEnabledFrom, readSiteSettingsRow } from "@sai/core/site-settings-core";
-import { writeTenantAuditLog } from "../src/lib/tenant-audit";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
-import { sendMail } from "../src/lib/mailer-core";
+import { sendMail } from "@sai/platform/mailer-core";
 import { mesinKendali } from "@sai/db/engine-runtime";
 import { resolvePaymentGateway } from "@sai/billing/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
-import { runReconciliation } from "../src/lib/platform-reconciliation";
-import { recordSubscriptionEvent } from "../src/lib/subscription-events";
+import { runReconciliation } from "@sai/platform/platform-reconciliation";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {
   const url = new URL(rawUrl);

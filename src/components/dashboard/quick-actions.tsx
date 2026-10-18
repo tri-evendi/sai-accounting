@@ -31,7 +31,7 @@ import {
   ShoppingCartOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { IconComponent } from "@sai/ui/icons";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { QuickAction, QuickActionTone } from "@/lib/quick-actions";

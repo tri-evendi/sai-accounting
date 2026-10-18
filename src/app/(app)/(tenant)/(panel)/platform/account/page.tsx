@@ -27,10 +27,10 @@ import { IdcardOutlined } from "@ant-design/icons";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { controlDb } from "@sai/core/control-db";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
-import { bolehGantiLagi } from "@/lib/tenant-slug";
+import { bolehGantiLagi } from "@sai/platform/tenant-slug";
 
 import { AccountNameForm } from "./account-name-form";
 import { AccountSlugForm } from "./account-slug-form";

@@ -40,7 +40,7 @@ import {
 import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { conformanceRunsForOperator } from "@/lib/operator/store";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
 

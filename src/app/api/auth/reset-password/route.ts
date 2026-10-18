@@ -20,8 +20,8 @@ import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
-import { consumeResetToken } from "@/lib/password-reset-store";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { consumeResetToken } from "@sai/platform/password-reset-store";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { clientIpFrom } from "@sai/core/client-ip";
 
 function clientIp(request: Request): string {

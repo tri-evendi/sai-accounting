@@ -157,7 +157,7 @@ Doktrin kembarannya, dari issue #137:
 > **Penagihan mati ≠ aplikasi mati.** `sai_platform` yang tak terjangkau tidak
 > boleh membuat login atau buku besar ikut mati.
 
-Karena itu `src/lib/platform-db.ts` dilarang diimpor dari jalur panas (penjaga,
+Karena itu `packages/platform/src/platform-db.ts` dilarang diimpor dari jalur panas (penjaga,
 sesi, proxy), dan `/api/health` **melaporkan** status platform tanpa membiarkan
 status itu ikut memutuskan 503.
 

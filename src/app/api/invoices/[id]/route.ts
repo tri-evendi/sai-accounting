@@ -21,7 +21,7 @@ import {
   contractOutstandingForInvoice,
   OverInvoiceError,
 } from "@/lib/document-chain";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function GET(

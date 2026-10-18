@@ -22,7 +22,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 
-import { acceptInvitation, invitationInfoByToken } from "@/lib/invitation-store";
+import { acceptInvitation, invitationInfoByToken } from "@sai/platform/invitation-store";
 import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
@@ -31,8 +31,8 @@ import { controlDb } from "@sai/core/control-db";
 import { runWithCompany } from "@/lib/company-context";
 import { tenantPath } from "@sai/core/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { clientIpFrom } from "@sai/core/client-ip";
 

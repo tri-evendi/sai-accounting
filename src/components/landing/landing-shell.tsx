@@ -31,7 +31,7 @@ import { LandingFooter } from "@/components/landing/landing-footer";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { LANDING_STYLE } from "@/components/landing/landing-scale";
 import { LandingWhatsappFab } from "@/components/landing/landing-whatsapp";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export async function LandingShell({
   children,

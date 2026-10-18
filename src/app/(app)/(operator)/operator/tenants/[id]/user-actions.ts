@@ -21,19 +21,19 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { invitationMail, passwordResetMail } from "@sai/core/account-mail";
-import { auditActor } from "@/lib/billing/change-tenant-plan";
+import { auditActor } from "@sai/platform/billing/change-tenant-plan";
 import { controlDb } from "@sai/core/control-db";
-import { getT } from "@/lib/i18n/server";
-import { issueInvitation } from "@/lib/invitation-store";
-import { sendMail } from "@/lib/mailer";
+import { getT } from "@sai/platform/i18n/server";
+import { issueInvitation } from "@sai/platform/invitation-store";
+import { sendMail } from "@sai/platform/mailer";
 import { requireOperatorActionSession } from "@/lib/operator/guard";
 import {
   invitationOfTenant,
   revokeUserSessions,
   userOfTenant,
 } from "@/lib/operator/user-support";
-import { issueResetTokenForEmail } from "@/lib/password-reset-store";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { issueResetTokenForEmail } from "@sai/platform/password-reset-store";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 
 import type { OperatorActionResult } from "./actions";
 

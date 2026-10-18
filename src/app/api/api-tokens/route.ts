@@ -33,7 +33,7 @@ import { currentCompanyId } from "@/lib/current-company";
 import { activeRoleKeys } from "@/lib/roles";
 import { issueToken } from "@/lib/api-token";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 const createSchema = z.object({

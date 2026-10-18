@@ -42,11 +42,11 @@ import { Card, CardContent, CardHeader } from "@sai/ui/card";
 import { BUSINESS_MODULES } from "@/lib/business-modules";
 import { APP_NAME, CURRENCIES } from "@sai/core/constants";
 import { LOCALES } from "@sai/core/i18n/config";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { activePlans } from "@/lib/plan-catalog";
 import { stackingComparisons, type StackingComparison } from "@sai/billing/plan-stacking";
-import { resolveContactChannels, resolvePpnEnabled } from "@/lib/site-settings";
+import { resolveContactChannels, resolvePpnEnabled } from "@sai/platform/site-settings";
 import {
   planCarriesNegotiation,
   planDescriptionKey,
@@ -54,7 +54,7 @@ import {
 } from "@sai/billing/plan-copy";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@sai/core/registration";
-import { resolveSelfServeSignupOpen } from "@/lib/site-settings";
+import { resolveSelfServeSignupOpen } from "@sai/platform/site-settings";
 import { DEFAULT_TAX_RATE } from "@sai/core/tax";
 
 /**

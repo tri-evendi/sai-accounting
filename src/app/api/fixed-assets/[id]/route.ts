@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getFixedAsset } from "@/lib/fixed-assets";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("fixed_asset.read");

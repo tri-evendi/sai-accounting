@@ -10,7 +10,7 @@ import { headers } from "next/headers";
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
 import { getCompany } from "@/lib/company-registry";
-import { tenantStateForCompany } from "@/lib/tenant-state";
+import { tenantStateForCompany } from "@sai/platform/tenant-state";
 import { COMPANY_HOME_PATH, parseTenantPath, tenantPath } from "@sai/core/tenant-routes";
 import { isCompanyUnlocked, NAMA_COOKIE_KUNCI } from "@/lib/company-unlock";
 import { cookies } from "next/headers";

@@ -27,7 +27,7 @@ import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@sai/ui/empty-state";
 import { DownloadOutlined, FileDoneOutlined, FileTextOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

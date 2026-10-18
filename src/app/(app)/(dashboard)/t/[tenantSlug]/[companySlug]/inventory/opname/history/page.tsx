@@ -12,7 +12,7 @@ import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pd
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { formatDate, formatNumber } from "@sai/core/utils";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
 import { AuditOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";

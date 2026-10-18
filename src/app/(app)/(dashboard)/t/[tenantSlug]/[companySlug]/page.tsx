@@ -57,7 +57,7 @@ import type { FinanceBalanceRow } from "@/lib/pdf/finance-report-pdf";
 import { getIncomeStatement, getCashBalanceBase } from "@/lib/reports";
 import { getReceivables, getPayables } from "@/lib/receivables";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { cashTypeLabels } from "@/lib/i18n/labels";
 import { buildDashboardInsights } from "@/lib/dashboard-insights";
 import { getBudgetReport } from "@/lib/budget-report";

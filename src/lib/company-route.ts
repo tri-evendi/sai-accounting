@@ -44,7 +44,7 @@ import { routeCompany, setRouteCompany } from "@/lib/current-company";
 import { controlDb } from "@sai/core/control-db";
 import { membershipFor } from "@/lib/company-registry";
 import { isValidSlug } from "@sai/core/tenant-routes";
-import { tenantIdUntukSlugLama } from "@/lib/tenant-slug";
+import { tenantIdUntukSlugLama } from "@sai/platform/tenant-slug";
 
 export type RouteCompanyResult =
   | {

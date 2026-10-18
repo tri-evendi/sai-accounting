@@ -46,8 +46,8 @@ import {
   sealSecret,
   type SealedSecret,
 } from "@sai/core/settings-crypto";
-import type { MailConfig } from "@/lib/mailer-core";
-import type { MailTransport } from "@/lib/mail-settings";
+import type { MailConfig } from "@sai/platform/mailer-core";
+import type { MailTransport } from "@sai/platform/mail-settings";
 
 /** Baris apa adanya — TERMASUK segel kata sandi. Internal. */
 export interface TenantMailRow {

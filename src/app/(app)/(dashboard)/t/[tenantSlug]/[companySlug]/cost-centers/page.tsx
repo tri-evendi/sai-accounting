@@ -29,7 +29,7 @@ import type { SaiColumns } from "@sai/ui/table-columns";
 import { Badge } from "@sai/ui/badge";
 import { EmptyState } from "@sai/ui/empty-state";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { BranchesOutlined } from "@ant-design/icons";
 import { Link } from "@sai/ui/app-link";
 

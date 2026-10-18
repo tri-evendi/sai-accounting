@@ -8,7 +8,7 @@ import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { listPeriods } from "@/lib/period-close";
 import { PeriodManager } from "./period-manager";
 import { PageHeader } from "@sai/ui/page-header";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
 

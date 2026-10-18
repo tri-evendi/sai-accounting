@@ -36,7 +36,7 @@
 import { randomBytes } from "node:crypto";
 
 import type { PrismaClient as ControlClient } from "@sai/db/client/control";
-import { processPaymentNotification } from "@/lib/payment-webhook";
+import { processPaymentNotification } from "@sai/platform/payment-webhook";
 import {
   nextPeriod,
   tenantStatusForSubscription,
@@ -50,8 +50,8 @@ import {
   executionVerdict,
   retentionUntilFrom,
 } from "@sai/core/tenant-deletion";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
-import { recordSubscriptionEvent } from "@/lib/subscription-events";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
+import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 import { bukaBasisData } from "@sai/db/server";
 import {
   auditActor,
@@ -59,7 +59,7 @@ import {
   planChangeApplier,
   type BillingActor,
   type BillingWriteDeps,
-} from "@/lib/billing/change-tenant-plan";
+} from "@sai/platform/billing/change-tenant-plan";
 
 /* Tipe deps/aktor & `auditActor` milik `lib/billing/change-tenant-plan.ts`
  * sejak Fase 0 (docs/arsitektur/14-RENCANA-MONOREPO.md §3): perpindahan paket

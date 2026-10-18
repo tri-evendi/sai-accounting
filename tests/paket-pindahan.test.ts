@@ -11,6 +11,9 @@
  *       skala jarak, lambang; `labels` & `tenant-routes` ke `@sai/core`.
  *   2d — aturan penagihan MURNI ke `@sai/billing` (penulisnya — webhook,
  *       katalog, ganti paket — tetap di aplikasi karena menyentuh basis data).
+ *   3a–3c — penutupan dependensi konsol operator: modul MURNI ke `@sai/core` /
+ *       `@sai/billing`, modul SISI-SERVER (basis data, surel, jejak) ke
+ *       `@sai/platform`.
  *
  * Salinan yang tertinggal di jalur lama — atau yang dibuat ulang karena
  * seseorang mengira modulnya hilang — lolos `tsc` dan diam-diam menjadi sumber
@@ -66,6 +69,8 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/components/ui/wizard-steps.tsx", "packages/ui/src/components/wizard-steps.tsx"],
   ["src/lib/account-mail.ts", "packages/core/src/account-mail.ts"],
   ["src/lib/authz.ts", "packages/core/src/authz.ts"],
+  ["src/lib/billing/change-tenant-plan.ts", "packages/platform/src/billing/change-tenant-plan.ts"],
+  ["src/lib/billing/platform-efaktur.ts", "packages/platform/src/billing/platform-efaktur.ts"],
   ["src/lib/brand/mark.ts", "packages/ui/src/brand/mark.ts"],
   ["src/lib/client-ip.ts", "packages/core/src/client-ip.ts"],
   ["src/lib/constants.ts", "packages/core/src/constants.ts"],
@@ -80,19 +85,30 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/lib/i18n/dictionary.ts", "packages/core/src/i18n/dictionary.ts"],
   ["src/lib/i18n/load.ts", "packages/core/src/i18n/load.ts"],
   ["src/lib/i18n/locale-cookie.ts", "packages/core/src/i18n/locale-cookie.ts"],
+  ["src/lib/i18n/server.ts", "packages/platform/src/i18n/server.ts"],
   ["src/lib/i18n/validation.ts", "packages/core/src/i18n/validation.ts"],
   ["src/lib/icons.ts", "packages/ui/src/icons.ts"],
+  ["src/lib/invitation-store.ts", "packages/platform/src/invitation-store.ts"],
   ["src/lib/invitations.ts", "packages/core/src/invitations.ts"],
   ["src/lib/labels.ts", "packages/core/src/labels.ts"],
   ["src/lib/layout-scale.ts", "packages/ui/src/layout-scale.ts"],
+  ["src/lib/mail-health.ts", "packages/platform/src/mail-health.ts"],
+  ["src/lib/mail-settings.ts", "packages/platform/src/mail-settings.ts"],
+  ["src/lib/mailer-core.ts", "packages/platform/src/mailer-core.ts"],
+  ["src/lib/mailer.ts", "packages/platform/src/mailer.ts"],
+  ["src/lib/membership-upsert.ts", "packages/platform/src/membership-upsert.ts"],
   ["src/lib/migration-manifest.ts", "packages/core/src/migration-manifest.ts"],
   ["src/lib/money-format.ts", "packages/core/src/money-format.ts"],
+  ["src/lib/password-reset-store.ts", "packages/platform/src/password-reset-store.ts"],
   ["src/lib/password-reset.ts", "packages/core/src/password-reset.ts"],
   ["src/lib/payment-gateway.ts", "packages/billing/src/payment-gateway.ts"],
+  ["src/lib/payment-webhook.ts", "packages/platform/src/payment-webhook.ts"],
   ["src/lib/plan-change.ts", "packages/billing/src/plan-change.ts"],
   ["src/lib/plan-copy.ts", "packages/billing/src/plan-copy.ts"],
   ["src/lib/plan-stacking.ts", "packages/billing/src/plan-stacking.ts"],
   ["src/lib/platform-constants.ts", "packages/billing/src/platform-constants.ts"],
+  ["src/lib/platform-db.ts", "packages/platform/src/platform-db.ts"],
+  ["src/lib/platform-reconciliation.ts", "packages/platform/src/platform-reconciliation.ts"],
   ["src/lib/platform-revenue.ts", "packages/billing/src/platform-revenue.ts"],
   ["src/lib/public-status.ts", "packages/core/src/public-status.ts"],
   ["src/lib/rate-limit.ts", "packages/core/src/rate-limit.ts"],
@@ -100,15 +116,22 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/lib/scheduler-heartbeat.ts", "packages/core/src/scheduler-heartbeat.ts"],
   ["src/lib/schema-version.ts", "packages/core/src/schema-version.ts"],
   ["src/lib/settings-crypto.ts", "packages/core/src/settings-crypto.ts"],
+  ["src/lib/site-content-store.ts", "packages/platform/src/site-content-store.ts"],
   ["src/lib/site-content.ts", "packages/core/src/site-content.ts"],
   ["src/lib/site-settings-core.ts", "packages/core/src/site-settings-core.ts"],
+  ["src/lib/site-settings.ts", "packages/platform/src/site-settings.ts"],
+  ["src/lib/status-notices-store.ts", "packages/platform/src/status-notices-store.ts"],
   ["src/lib/status-notices.ts", "packages/core/src/status-notices.ts"],
+  ["src/lib/subscription-events.ts", "packages/platform/src/subscription-events.ts"],
   ["src/lib/subscription-lifecycle.ts", "packages/billing/src/subscription-lifecycle.ts"],
   ["src/lib/table-sort.ts", "packages/ui/src/table-sort.ts"],
   ["src/lib/tax.ts", "packages/core/src/tax.ts"],
+  ["src/lib/tenant-audit.ts", "packages/platform/src/tenant-audit.ts"],
   ["src/lib/tenant-cache.ts", "packages/core/src/tenant-cache.ts"],
   ["src/lib/tenant-deletion.ts", "packages/core/src/tenant-deletion.ts"],
   ["src/lib/tenant-routes.ts", "packages/core/src/tenant-routes.ts"],
+  ["src/lib/tenant-slug.ts", "packages/platform/src/tenant-slug.ts"],
+  ["src/lib/tenant-state.ts", "packages/platform/src/tenant-state.ts"],
   ["src/lib/theme/antd-tokens.ts", "packages/ui/src/theme/antd-tokens.ts"],
   ["src/lib/theme/config.ts", "packages/ui/src/theme/config.ts"],
   ["src/lib/theme/tone-recipe.ts", "packages/ui/src/theme/tone-recipe.ts"],
@@ -144,7 +167,7 @@ describe("modul pindahan monorepo Fase 2", () => {
   });
 
   it("ada pengimpor paket untuk diperiksa — penjaga atas tes ini sendiri", () => {
-    const pemakai = berkas.filter((f) => /["']@sai\/(core|ui|billing)\//.test(readFileSync(join(AKAR, f), "utf8")));
+    const pemakai = berkas.filter((f) => /["']@sai\/(core|ui|billing|platform)\//.test(readFileSync(join(AKAR, f), "utf8")));
     expect(pemakai.length).toBeGreaterThan(400);
   });
 

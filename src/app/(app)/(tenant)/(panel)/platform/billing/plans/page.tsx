@@ -70,7 +70,7 @@ import { periodDaysFor } from "@sai/billing/plan-change";
 import { formatMoney } from "@sai/core/money-format";
 
 import { PlanAction } from "./plan-actions";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { SPACE_XS } from "@sai/ui/layout-scale";

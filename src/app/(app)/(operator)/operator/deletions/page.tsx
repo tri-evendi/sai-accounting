@@ -17,7 +17,7 @@ import { ConsolePanel, CONSOLE_MUTED } from "@/components/operator/console-ui";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { deletionRequestsForOperator, type OperatorDeletionRequest } from "@/lib/operator/store";
 import { executionVerdict } from "@sai/core/tenant-deletion";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";

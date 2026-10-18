@@ -195,7 +195,7 @@ describe("penerimaan undangan — kegagalan token dijawab satu kalimat", () => {
 
   it("store menurunkan username lewat kandidat deterministik", () => {
     const storeSrc = readFileSync(
-      join(__dirname, "..", "src", "lib", "invitation-store.ts"),
+      join(__dirname, "..", "packages", "platform", "src", "invitation-store.ts"),
       "utf8"
     );
     expect(storeSrc).toContain("invitationUsernameCandidates(row.email)");

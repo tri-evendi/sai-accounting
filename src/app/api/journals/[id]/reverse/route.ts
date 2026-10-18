@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { reverseJournal } from "@/lib/ledger";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { postingErrorResponse } from "@/lib/api-errors";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function POST(
   _request: Request,

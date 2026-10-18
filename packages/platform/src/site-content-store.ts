@@ -40,7 +40,7 @@ import "server-only";
 import { unstable_cache, updateTag } from "next/cache";
 
 import type { Locale } from "@sai/core/i18n/config";
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import {
   SITE_CONTENT_PREFIX,
   SITE_CONTENT_VALUE_MAX,

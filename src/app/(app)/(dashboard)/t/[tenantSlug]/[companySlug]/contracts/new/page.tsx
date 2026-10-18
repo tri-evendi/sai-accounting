@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@sai/ui/page-header";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { NewContractForm } from "./contract-form";
 
 export const dynamic = "force-dynamic";

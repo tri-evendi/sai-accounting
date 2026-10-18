@@ -10,7 +10,7 @@ import type { SaiColumns } from "@sai/ui/table-columns";
 import { EmptyState } from "@sai/ui/empty-state";
 import { PageHeader } from "@sai/ui/page-header";
 import { Link } from "@sai/ui/app-link";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatDate, formatNumber } from "@sai/core/utils";
 import { SettingOutlined } from "@ant-design/icons";
 import { statusLabelKey, statusVariant } from "./status";

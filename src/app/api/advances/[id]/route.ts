@@ -8,7 +8,7 @@ import { unpostForSource } from "@/lib/posting";
 import { handlePostingError } from "@/lib/api-errors";
 import { getAdvances } from "@/lib/advances";
 import { writeAuditLog } from "@/lib/audit";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const result = await requireApiPermission("advance.read");

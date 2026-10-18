@@ -33,7 +33,7 @@ export { viewport } from "@/lib/viewport";
 
 import { RootDocument } from "@/components/providers/root-document";
 import { APP_NAME } from "@sai/core/constants";
-import { getDictionary, getLocale } from "@/lib/i18n/server";
+import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { getTheme } from "@/lib/theme/server";
 
 /* Cadangan bila sebuah halaman pemasaran lupa metadata-nya sendiri; `/` dan

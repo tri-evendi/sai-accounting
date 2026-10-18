@@ -46,7 +46,7 @@ import {
   type ContractLineOutstanding,
 } from "@/lib/document-chain";
 import { EmptyState } from "@sai/ui/empty-state";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { INLINE_GAP, SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 import { ContainerOutlined, DollarCircleOutlined, FileDoneOutlined, TruckOutlined, WarningOutlined } from "@ant-design/icons";
 import { ContractPaymentSection } from "./payment-section";

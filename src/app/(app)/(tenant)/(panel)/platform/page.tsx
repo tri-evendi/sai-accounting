@@ -85,13 +85,13 @@ import { formatDateMedium } from "@sai/core/utils";
 import { platformInvoiceAmounts } from "@sai/billing/subscription-lifecycle";
 import { companiesForUser } from "@/lib/company-registry";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { isReadOnlyTenantStatus } from "@sai/billing/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@sai/core/tenant-routes";
-import { resolvePpnEnabled } from "@/lib/site-settings";
+import { resolvePpnEnabled } from "@sai/platform/site-settings";
 
 export const dynamic = "force-dynamic";
 

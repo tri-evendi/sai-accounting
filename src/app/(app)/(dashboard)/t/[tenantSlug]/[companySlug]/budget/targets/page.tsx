@@ -11,7 +11,7 @@ import { listSalesTargets } from "@/lib/budget-report";
 import { PageHeader } from "@sai/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { SalesTargetClient } from "./sales-target-client";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

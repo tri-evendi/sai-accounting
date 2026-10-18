@@ -18,16 +18,16 @@
  */
 import { NextResponse } from "next/server";
 
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import { controlDb } from "@sai/core/control-db";
 import {
   verifyMidtransSignature,
   webhookServerKey,
   type MidtransNotification,
 } from "@sai/billing/payment-gateway";
-import { planChangeApplier } from "@/lib/billing/change-tenant-plan";
-import { processPaymentNotification } from "@/lib/payment-webhook";
-import { invalidateTenantState } from "@/lib/tenant-state";
+import { planChangeApplier } from "@sai/platform/billing/change-tenant-plan";
+import { processPaymentNotification } from "@sai/platform/payment-webhook";
+import { invalidateTenantState } from "@sai/platform/tenant-state";
 
 export async function POST(request: Request) {
   const serverKey = webhookServerKey();

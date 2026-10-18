@@ -417,7 +417,7 @@ Form ditulis dengan **`react-hook-form` + `zodResolver`** memakai pola **`Form`*
 
    ```ts
    if (!parsed.success) {
-     const { dictionary, t } = await getRequestI18n();               // @/lib/i18n/server
+     const { dictionary, t } = await getRequestI18n();               // @sai/platform/i18n/server
      return NextResponse.json(
        {
          error: t("validation.invalidInput"),

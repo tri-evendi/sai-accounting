@@ -21,9 +21,9 @@ import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import { mailSettingsForOperator } from "@/lib/operator/store";
-import { getT } from "@/lib/i18n/server";
-import { mailHealth } from "@/lib/mail-health";
-import { outboxCount } from "@/lib/mailer-core";
+import { getT } from "@sai/platform/i18n/server";
+import { mailHealth } from "@sai/platform/mail-health";
+import { outboxCount } from "@sai/platform/mailer-core";
 import { formatDateTime } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";

@@ -24,13 +24,13 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@/lib/platform-db";
+import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
-import { mailHealth, type MailHealthStatus } from "@/lib/mail-health";
-import { outboxCount, resolveMailConfig } from "@/lib/mailer-core";
+import { mailHealth, type MailHealthStatus } from "@sai/platform/mail-health";
+import { outboxCount, resolveMailConfig } from "@sai/platform/mailer-core";
 
 /**
  * Kesiapan surel seperti yang boleh dilihat dari luar: satu kata.

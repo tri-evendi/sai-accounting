@@ -49,7 +49,7 @@
  */
 import { PlatformShell } from "@/components/tenant/platform-shell";
 import { panelNav } from "@/lib/panel-nav";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {

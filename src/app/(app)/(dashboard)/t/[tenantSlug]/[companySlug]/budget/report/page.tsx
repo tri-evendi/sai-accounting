@@ -32,7 +32,7 @@ import { budgetColumns, type BudgetColumnId } from "@/lib/statement-layout";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
 import { formatCurrency } from "@sai/core/utils";
-import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
+import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
 import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 import { DashboardOutlined, WarningOutlined } from "@ant-design/icons";

@@ -122,7 +122,7 @@ vi.mock("@/lib/auth", () => ({ auth: async () => state.session }));
  * yang dipakai tetap kamus SUNGGUHAN (`id.json`), jadi kunci yang salah ketik
  * tetap terlihat sebagai teks kunci di markup, bukan tersembunyi di balik
  * tiruan yang mengembalikan apa saja. */
-vi.mock("@/lib/i18n/server", () => ({
+vi.mock("@sai/platform/i18n/server", () => ({
   getT: async () => T,
   getLocale: async () => "id",
   /* Kartu manfaat (#402) membaca kamus utuh untuk `roleLabels()` — kamus

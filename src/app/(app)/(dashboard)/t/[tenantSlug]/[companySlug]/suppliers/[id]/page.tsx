@@ -46,7 +46,7 @@ import {
 } from "@/lib/advances";
 import type { AppliedAdvance } from "@/components/shared/advance-compensation";
 import { toBase } from "@/lib/receivables";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 /** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */

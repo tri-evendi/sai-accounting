@@ -93,7 +93,7 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
   }
   if (!isSiteContentPath(pathname)) return dictionary;
 
-  const { publishedSiteContent } = await import("@/lib/site-content-store");
+  const { publishedSiteContent } = await import("@sai/platform/site-content-store");
   return applySiteContent(dictionary, await publishedSiteContent(locale));
 }
 

@@ -141,7 +141,7 @@ export function mailSettingsView(row: MailSettingsRow): MailSettingsView {
  * memuatnya) tidak menyeret klien Prisma platform ke dalam grafik impornya.
  */
 async function defaultClient(): Promise<MailSettingsClient> {
-  const mod = await import("@/lib/platform-db");
+  const mod = await import("@sai/platform/platform-db");
   return mod.platformDb as unknown as MailSettingsClient;
 }
 

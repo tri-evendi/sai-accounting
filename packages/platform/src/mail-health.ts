@@ -27,8 +27,8 @@
  * cakram adalah `mailer-core`, yang punya alasan sendiri untuk menyentuhnya.
  */
 
-import type { MailConfigSource } from "@/lib/mailer-core";
-import type { MailTransport } from "@/lib/mail-settings";
+import type { MailConfigSource } from "@sai/platform/mailer-core";
+import type { MailTransport } from "@sai/platform/mail-settings";
 
 export type MailHealthStatus = "ok" | "capturing_to_file" | "not_configured";
 

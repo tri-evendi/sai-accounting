@@ -28,8 +28,8 @@
  */
 
 import { controlDb } from "@sai/core/control-db";
-import { renameTenantSlug } from "@/lib/tenant-slug";
-import { writeTenantAuditLog } from "@/lib/tenant-audit";
+import { renameTenantSlug } from "@sai/platform/tenant-slug";
+import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 
 function arg(nama: string): string | undefined {
   const i = process.argv.indexOf(`--${nama}`);

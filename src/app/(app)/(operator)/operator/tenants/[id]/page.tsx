@@ -48,7 +48,7 @@ import type { SaiColumns } from "@sai/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { ButtonLink } from "@sai/ui/button";
-import { readTenantAuditFeed } from "@/lib/tenant-audit";
+import { readTenantAuditFeed } from "@sai/platform/tenant-audit";
 import { TenantUserSupport } from "@/components/operator/tenant-user-support";
 import { tenantUsersForOperator } from "@/lib/operator/user-support";
 import { controlDb } from "@sai/core/control-db";
@@ -74,7 +74,7 @@ import {
   type BillingMode,
 } from "@sai/billing/platform-constants";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { formatDateMedium as formatDate } from "@sai/core/utils";
 

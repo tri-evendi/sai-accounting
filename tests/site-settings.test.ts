@@ -150,7 +150,7 @@ describe("jalur uang & permukaan ikut MENDENGAR panel", () => {
     expect(src).toContain("site-settings-core");
     expect(src).toContain("ppnEnabledFrom(await readSiteSettingsRow(platform)");
     expect(src, "penjadwal tidak boleh memuat pembungkus Next-nya").not.toContain(
-      'from "../src/lib/site-settings"'
+      'from "@sai/platform/site-settings"'
     );
   });
 

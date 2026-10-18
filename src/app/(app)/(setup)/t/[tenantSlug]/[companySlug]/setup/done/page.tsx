@@ -32,7 +32,7 @@ import { requirePagePermission } from "@/lib/page-auth";
 import { tenantPath, type TenantScopedParams } from "@sai/core/tenant-routes";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { prisma } from "@/lib/prisma";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { formatDate } from "@sai/core/utils";
 import { Button } from "@sai/ui/button";
 import { Card, CardContent } from "@sai/ui/card";

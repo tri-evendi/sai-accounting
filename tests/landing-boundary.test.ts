@@ -85,7 +85,20 @@ const PINTU_MASUK = [
    (monorepo Fase 2) — izinnya setara. Paket workspace LAIN tidak otomatis sah.
    (`@sai/billing` berisi aturan MURNI — katalog teks & konstanta paket yang
    memang dipajang halaman harga; penulis penagihan tetap di aplikasi.) */
-const IMPOR_SAH = ["@/components/landing/", "@/components/ui/", "@/lib/", "@sai/ui/", "@sai/core/", "@sai/billing/"];
+/* Dari `@sai/platform` (kode sisi-server yang MENULIS basis data) hanya dua
+   pembaca yang sah — penerjemah sisi server dan pengaturan situs — disebut
+   persis, bukan seluruh paket. Lebih ketat daripada sebelum Fase 3c, ketika
+   keduanya lolos sebagai bagian dari `@/lib/` bersama setiap penulis. */
+const IMPOR_SAH = [
+  "@/components/landing/",
+  "@/components/ui/",
+  "@/lib/",
+  "@sai/ui/",
+  "@sai/core/",
+  "@sai/billing/",
+  "@sai/platform/i18n/server",
+  "@sai/platform/site-settings",
+];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

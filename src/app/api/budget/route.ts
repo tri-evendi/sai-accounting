@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { budgetSchema } from "@/lib/validations/budget";
 import { accountCategoryFor } from "@/lib/accounting";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function POST(request: Request) {

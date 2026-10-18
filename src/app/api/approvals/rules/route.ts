@@ -14,7 +14,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { approvalRuleSchema } from "@/lib/validations/approval";
 import { listApprovalRules } from "@/lib/approval-queue";
 import { activeRoleKeys } from "@/lib/roles";
-import { getRequestI18n } from "@/lib/i18n/server";
+import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function GET(request: Request) {

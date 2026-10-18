@@ -15,7 +15,7 @@ import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
 
 import { TagsOutlined } from "@ant-design/icons";
 import { CategoryForm } from "./category-form";
-import { getT } from "@/lib/i18n/server";
+import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";

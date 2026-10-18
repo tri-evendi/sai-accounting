@@ -1,25 +1,24 @@
 # 07 — Infrastruktur & Penggelaran
 
-> Potret 11 Oktober 2026 · v0.9.0 · [indeks](./README.md)
+> Dimutakhirkan 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 ## 1. Mesin
 
 | | |
 |---|---|
 | Platform | Linux 6.8.0-117-generic |
-| RAM | **~3,6 GB** — dan **6 aplikasi** berbagi di atasnya |
+| RAM | **~3,6 GB**, dipakai bersama 6 aplikasi |
 | Direktori | `/opt/applications/sai-accounting` |
 | Zona waktu | `Asia/Jakarta` |
 
-**Aplikasi lain di mesin yang sama** (`docker ps`, 11 Okt 2026):
+Aplikasi lain di mesin yang sama (`docker ps`, 11 Okt 2026):
 `movin-pwa`, `movin-landing`, `movin-budget-web`, `movin-wedding`,
 `movin-partner`, `traefik`.
 
-Keterbatasan RAM ini **bukan catatan pinggir** — ia alasan langsung di balik
-empat keputusan arsitektural:
+Keterbatasan RAM ini menjadi alasan langsung empat keputusan arsitektural:
 
 1. Pemeriksaan tipe dikeluarkan dari `next build`.
-2. Image dibangun di runner GitHub, **bukan di server**.
+2. Image dibangun di runner GitHub, tidak di server.
 3. Tahap `migrator` tidak mewarisi `builder`.
 4. Batas heap eksplisit di setiap perintah Node.
 
@@ -33,14 +32,14 @@ graph TB
 
     TR -->|"Host(APP_DOMAIN)"| W1["app-customer :3000<br/>OPERATOR_HOST kosong"]
     TR -->|"Host(www.APP_DOMAIN)"| RD["redirectregex → apex (301)"]
-    TR -->|"Host(OPERATOR_DOMAIN)"| W2["app-operator :3000<br/>IMAGE SAMA"]
+    TR -->|"Host(OPERATOR_DOMAIN)"| W2["app-operator :3000<br/>image …-operator (apps/operator)"]
     TR -->|"5 aplikasi lain"| OTHER["movin-*"]
 
     RD --> W1
 
     subgraph nets["Jaringan Docker"]
         N1["traefik_default (eksternal)<br/>— traefik + app-customer + app-operator"]
-        N2["internal (bridge)<br/>— app-customer, app-operator, db,<br/>migrate, job-scheduler, job-conformance, job-backup"]
+        N2["internal (bridge)<br/>— app-customer, app-operator, pg, pgbouncer,<br/>db (jalan mundur), migrate, job-scheduler,<br/>job-conformance, job-backup"]
     end
 
     style TR fill:#fff4e6,stroke:#c9873d
@@ -56,35 +55,33 @@ graph TB
 | `sai-app-secure` | `app-customer` | `websecure` (443) | `Host(APP_DOMAIN)` | — · TLS `le` |
 | `sai-www` | `app-customer` | `web` | `Host(www.APP_DOMAIN)` | `sai-www-apex` → 301 ke apex |
 | `sai-www-secure` | `app-customer` | `websecure` | `Host(www.APP_DOMAIN)` | `sai-www-apex` · TLS `le` |
-| `sai-ops` | **`app-operator`** | `web` | `Host(OPERATOR_DOMAIN)` | `sai-https` |
-| `sai-ops-secure` | **`app-operator`** | `websecure` | `Host(OPERATOR_DOMAIN)` | — · TLS `le` |
+| `sai-ops` | `app-operator` | `web` | `Host(OPERATOR_DOMAIN)` | `sai-https` |
+| `sai-ops-secure` | `app-operator` | `websecure` | `Host(OPERATOR_DOMAIN)` | — · TLS `le` |
 
-Dua **service** Traefik, bukan satu: `sai-app.loadbalancer.server.port=3000`
-dan `sai-ops.loadbalancer.server.port=3000`, masing-masing dengan probe
+Ada dua service Traefik: `sai-app.loadbalancer.server.port=3000` dan
+`sai-ops.loadbalancer.server.port=3000`. Masing-masing punya probe
 `/api/health` tiap 30s (timeout 5s).
 
-> ⚠ **Nama service-nya WAJIB berbeda.** Kalau kedua container memakai nama
-> service Traefik yang sama, Traefik menganggapnya SATU service dengan dua
-> backend lalu menyeimbangkan beban di antaranya — dan permintaan operator bisa
-> mendarat di container pelanggan. Itu membatalkan seluruh alasan pemisahan
-> bidang, tanpa satu pun galat.
+> ⚠ **Nama service Traefik kedua container harus berbeda.** Dengan nama yang
+> sama, Traefik menganggapnya satu service dengan dua backend dan membagi beban
+> di antaranya. Permintaan operator lalu bisa mendarat di container pelanggan,
+> tanpa galat apa pun.
 
-`entrypoints=web` / `websecure` adalah nama **entrypoint Traefik**, bukan nama
-service compose — keduanya tidak ikut berubah saat service di-rename.
+`entrypoints=web` / `websecure` adalah nama entrypoint Traefik, bukan nama
+service compose. Keduanya tidak ikut berubah saat service di-rename.
 
 ### Port
 
 | Port | Terbit ke | Catatan |
 |---|---|---|
-| `80`, `443` | **Host** | Hanya Traefik |
-| `3000` | **Tidak** (`expose`) | `app-customer` & `app-operator`, hanya di jaringan Docker |
-| `5432` | **Tidak** | `pg` dan `pgbouncer`, hanya di `internal` |
-| `3306` | **Tidak** | `db` (MariaDB jalan mundur, sampai #636), hanya di `internal` |
+| `80`, `443` | Host | Hanya Traefik |
+| `3000` | Tidak (`expose`) | `app-customer` & `app-operator`, hanya di jaringan Docker |
+| `5432` | Tidak | `pg` dan `pgbouncer`, hanya di `internal` |
+| `3306` | Tidak | `db` (MariaDB jalan mundur, sampai #636), hanya di `internal` |
 
-**Tidak ada satu pun port basis data yang terbit ke host.** Itu juga alasan
-`job-scheduler`, `job-conformance`, dan `job-backup` memakai ulang image
-`migrator`: itulah satu-satunya cara menjangkau `db` yang tidak memublikasikan
-port.
+Tidak ada port basis data yang terbit ke host. Karena itu `job-scheduler`,
+`job-conformance`, dan `job-backup` memakai ulang image `migrator`: hanya dari
+dalam jaringan compose `pg`/`pgbouncer` bisa dijangkau.
 
 ### Domain
 
@@ -92,15 +89,14 @@ port.
 |---|---|---|
 | `APP_DOMAIN` | `saiaccounting.id` | Pemasaran + aplikasi pelanggan |
 | `OPERATOR_DOMAIN` | `ops.saiaccounting.id` | Routing Traefik konsol operator |
-| `OPERATOR_HOST` | — (**wajib**) | Pemeriksaan host **di dalam aplikasi** |
+| `OPERATOR_HOST` | — (wajib) | Pemeriksaan host di dalam aplikasi |
 
-⚠ `OPERATOR_DOMAIN` dan `OPERATOR_HOST` adalah **dua hal berbeda** yang harus
-cocok: yang pertama membuat Traefik meneruskan, yang kedua membuat aplikasi
-menerima. Keduanya ada di `.env` produksi.
+`OPERATOR_DOMAIN` dan `OPERATOR_HOST` adalah dua variabel berbeda yang nilainya
+harus cocok. Yang pertama membuat Traefik meneruskan permintaan, yang kedua
+membuat aplikasi menerimanya. Keduanya ada di `.env` produksi.
 
-🔶 Nilai domain sebenarnya **tidak dicantumkan di dokumen ini** — ia ada di
-`.env` dan bukan rahasia, tetapi mencantumkannya di sini berarti satu salinan
-lagi yang bisa menyimpang.
+Nilai domain sebenarnya tidak dicantumkan di sini. Nilainya ada di `.env` dan
+bukan rahasia, tetapi salinan kedua di dokumen bisa menyimpang.
 
 ## 3. Image & tahap build
 
@@ -109,21 +105,29 @@ graph TD
     BASE["<b>base</b><br/>node:22-bookworm-slim<br/>+ openssl · ca-certificates"]
     BUN["<b>bunbase</b><br/>+ bun 1.3 + tautan bunx"]
     DEPS["<b>deps</b><br/>bun install --frozen-lockfile<br/>(termasuk devDeps)"]
-    BUILD["<b>builder</b><br/>3× prisma generate<br/>+ next build<br/>heap 768 MB"]
+    PREP["<b>prepared</b><br/>3× prisma generate<br/>heap 768 MB"]
+    BUILD["<b>builder</b><br/>next build (pelanggan)<br/>heap 768 MB"]
+    BUILDO["<b>builder-operator</b><br/>build:operator (apps/operator)<br/>heap 768 MB"]
     MIGR["<b>migrator</b><br/>3× prisma generate<br/>heap 512 MB<br/>CMD: db:migrate:all"]
     BAK["<b>backup</b><br/>+ postgresql-client-17 + awscli<br/>(+ mariadb-client sampai #636)<br/>CMD: scripts/backup.sh"]
     RUN["<b>runner</b><br/>standalone + static + public<br/>USER node · CMD: node server.js"]
+    RUNO["<b>runner-operator</b><br/>standalone apps/operator<br/>USER node · CMD: node apps/operator/server.js"]
 
     BASE --> BUN --> DEPS
-    BUN --> BUILD
+    BUN --> PREP
+    PREP --> BUILD
+    PREP --> BUILDO
     BUN --> MIGR
-    DEPS -.->|node_modules| BUILD
+    DEPS -.->|node_modules| PREP
     DEPS -.->|node_modules| MIGR
     MIGR --> BAK
     BUILD -.->|.next/standalone| RUN
+    BUILDO -.->|apps/operator/.next/standalone| RUNO
     BASE --> RUN
+    BASE --> RUNO
 
     style RUN fill:#e8f0ff,stroke:#4a6fa5
+    style RUNO fill:#ffeaea,stroke:#b55
     style MIGR fill:#fff4e6,stroke:#c9873d
 ```
 
@@ -131,107 +135,106 @@ graph TD
 
 | Image | Tahap | Dipakai layanan |
 |---|---|---|
-| `ghcr.io/tri-evendi/sai-accounting` | `runner` | **`app-customer`** |
-| `…-operator` | `runner-operator` (aplikasi `apps/operator`) | **`app-operator`** — sejak monorepo Fase 4, 18 Okt 2026; sebelumnya `app-operator` memakai image `runner` |
-| `…-migrator` | `migrator` | `migrate`, **`job-scheduler`**, **`job-conformance`** |
+| `ghcr.io/tri-evendi/sai-accounting` | `runner` | `app-customer` |
+| `…-operator` | `runner-operator` (aplikasi `apps/operator`) | `app-operator` |
+| `…-migrator` | `migrator` | `migrate`, `job-scheduler`, `job-conformance` |
 | `…-backup` | `backup` (tahap) | `job-backup` |
 
-Kedua image aplikasi dibangun dari commit yang SAMA di setiap dorongan, dan
+Kedua image aplikasi dibangun dari commit yang sama di setiap dorongan, dan
 compose menarik keduanya dengan `SAI_TAG` yang sama. Sesudah gelar, periksa
-bahwa `app-customer` dan `app-operator` sama-sama menjalankan image `sha-` /
-tanggal-bangun yang sama — keduanya menulis basis data yang sama, jadi versi
-skemanya tidak boleh berbeda.
+bahwa `app-customer` dan `app-operator` menjalankan image `sha-` dan
+tanggal-bangun yang sama. Keduanya menulis basis data yang sama, jadi versi
+skemanya harus satu.
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>` (dari `package.json`).
 
-> ⚠ **`docker compose build web` TIDAK membangun image `migrate`.**
-> Ini pelajaran yang **terulang beberapa rilis**: `job-scheduler` dan `job-conformance`
-> berjalan di atas image migrator, yang ikut memuat kode aplikasi — jadi
-> melewatkannya berarti **dua layanan menjalankan kode basi tanpa satu pun
-> tanda**. Matriks CI sekarang membangun **ketiganya setiap kali**, sehingga
-> mereka tidak bisa lagi menyimpang.
+Membangun image aplikasi tidak ikut membangun image `migrator`. Image itu juga
+memuat kode aplikasi dan dipakai `job-scheduler` serta `job-conformance`, jadi
+bila terlewat, kedua layanan itu menjalankan kode lama tanpa tanda apa pun. Ini
+sudah terjadi di beberapa rilis. Karena itu matriks CI membangun keempat image
+setiap kali, dan `pull` di §5 selalu menyebut semuanya.
 
 ### Kenapa `bun` tidak menggantikan `node`
 
-Pembagiannya **disengaja** dan ditulis di `package.json`:
-**Bun = pemasang paket + peluncur skrip. Node = runtime.**
+Pembagiannya disengaja dan ditulis di `package.json`: Bun adalah pemasang
+paket dan peluncur skrip, Node adalah runtime.
 
 `bun run` menghormati shebang `#!/usr/bin/env node` pada binary di
-`node_modules/.bin`, jadi `next`, `tsc`, `prisma`, dan `tsx` tetap dieksekusi
-Node — **dan karena itu `NODE_OPTIONS=--max-old-space-size=…` TETAP BERLAKU**
-(terukur: batas 333 MB menghasilkan heap limit 525 MB, sama persis seperti di
-bawah npm).
+`node_modules/.bin`, jadi `next`, `tsc`, `prisma`, dan `tsx` tetap dijalankan
+Node. Karena itu `NODE_OPTIONS=--max-old-space-size=…` tetap berlaku. Terukur:
+batas 333 MB menghasilkan heap limit 525 MB, sama dengan di bawah npm.
 
-Bun memakai JavaScriptCore, yang **mengabaikan** `--max-old-space-size`. Kalau
-ada yang mengubah perintah menjadi `bun --bun …` atau `bun scripts/x.ts`,
-**pagar memori itu lenyap diam-diam** dan kegagalan berubah dari galat V8 yang
-terbaca menjadi OOM-killer kernel (exit 137).
+Bun memakai JavaScriptCore, yang mengabaikan `--max-old-space-size`. Bila
+perintah diubah menjadi `bun --bun …` atau `bun scripts/x.ts`, batas memori itu
+hilang. Kegagalannya lalu berubah dari galat V8 yang terbaca menjadi
+OOM-killer kernel (exit 137).
 
 | Perintah | Batas heap | Alasan tercatat |
 |---|---|---|
-| `bun run typecheck` | **1536 MB** | Naik dari 768: kamus i18n (~2.500 kunci dot-path bertipe) + dimensi pusat biaya menembus 768 dan mati `FatalProcessOutOfMemory` (exit 134, **bukan** dibunuh kernel). Terukur: 768 gagal walau 607 MB bebas; 1400 lolos |
-| `builder` di Docker | **768 MB** | Terukur di mesin ini |
+| `bun run typecheck` | **2048 MB** | Kamus i18n bertipe terus tumbuh; pada batas lebih rendah `tsc` mati `FatalProcessOutOfMemory` (exit 134, bukan dibunuh kernel). Riwayat pengukurannya di `_typecheck_note` `package.json` |
+| `prepared` / `builder` / `builder-operator` di Docker | **768 MB** | Terukur di mesin ini |
 | `migrator` di Docker | **512 MB** | Hanya `prisma generate` |
 
-**Jangan pernah melepaskan `--max-old-space-size`** — tanpa batas, Node tumbuh
-sampai kernel membunuhnya, dan itu jauh lebih sulit dibaca.
+Jangan melepaskan `--max-old-space-size`. Tanpa batas, Node tumbuh sampai
+kernel membunuhnya, dan kegagalan itu jauh lebih sulit dibaca.
 
 ### `trustedDependencies` bukan hiasan
 
-Bun **memblokir** skrip lifecycle dependensi kecuali disebut di
-`package.json` → `trustedDependencies` (berbeda dari npm, yang menjalankan
-semuanya):
+Bun memblokir skrip lifecycle dependensi kecuali paketnya disebut di
+`package.json` → `trustedDependencies`. npm menjalankan semuanya.
 
 | Paket | Tanpa ini |
 |---|---|
-| `bcrypt` | Modul native tidak dibangun → **galat saat login** |
+| `bcrypt` | Modul native tidak dibangun → galat saat login |
 | `@prisma/engines` | Mesin query tidak diunduh → `prisma generate` gagal |
-| `esbuild` | Binary tidak terpasang → **vitest mati** |
+| `esbuild` | Binary tidak terpasang → vitest mati |
 | `prisma`, `sharp`, `unrs-resolver` | — |
 
-## 4. Dua gerbang rilis — dan siapa menjalankan yang mana
+## 4. Gerbang rilis — dan siapa menjalankan yang mana
 
-Aturannya di [`AGENTS.md`](../../AGENTS.md), dan pembagiannya penting:
+Aturannya di [`AGENTS.md`](../../AGENTS.md):
 
 ```mermaid
 flowchart LR
     A["bun run verify<br/>= typecheck + lint + vitest"] --> B["bun run build<br/>EXIT=0"]
+    B --> O["bun run build:operator<br/>EXIT=0"]
     A -.->|"TIDAK membuktikan<br/>aplikasinya bisa dibangun"| B
-    B --> C["gelar"]
+    O --> C["gelar"]
 
     style A fill:#e8f0ff,stroke:#4a6fa5
     style B fill:#fff4e6,stroke:#c9873d
+    style O fill:#fff4e6,stroke:#c9873d
 ```
 
 | Gerbang | Siapa | Di mana |
 |---|---|---|
-| `bun run verify` | **Semua** — termasuk agent latar & sesi cabang | Cabang masing-masing |
-| `bun run build` | **Hanya sesi utama, SEKALI**, di atas `develop` hasil gabungan | Bukan di cabang mana pun |
+| `bun run verify` | Semua, termasuk agent latar & sesi cabang | Cabang masing-masing |
+| `bun run build` | Hanya sesi utama, sekali, di atas `develop` hasil gabungan | Bukan di cabang mana pun |
+| `bun run build:operator` | Sama dengan `build`; wajib bila perubahan menyentuh konsol (`apps/operator`) atau `packages/*` | Bukan di cabang mana pun |
 
-**Kenapa agent latar dilarang `bun run build`:** kotak ~3,6 GB dengan produksi
-hidup di atasnya, `next build` ~10 menit, dan **dua agent yang membangun
-bersamaan sudah menghasilkan OOM (exit 137)** — kegagalan yang terbaca seperti
-kode rusak padahal bukan. Tiga pengukuran lain di sesi yang sama juga terbuang
-jadi timeout karena beban. Ketiadaan build **ditulis apa adanya di badan PR**,
-bukan didiamkan.
+**Agent latar tidak menjalankan `bun run build`.** Mesinnya ~3,6 GB dengan
+produksi berjalan di atasnya, dan `next build` makan ~10 menit. Dua agent yang
+membangun bersamaan pernah berakhir OOM (exit 137), yang terbaca seperti kode
+rusak. Tiga pengukuran lain di sesi yang sama juga habis jadi timeout karena
+beban. Build yang tidak dijalankan ditulis di badan PR.
 
-**Kenapa sesi utama tetap WAJIB menjalankannya di atas hasil gabungan:**
-satu-satunya build yang pernah gagal di repo ini **gagal di hasil gabungan**,
-sementara setiap cabangnya hijau sendiri-sendiri. Menghapus langkah ini berarti
-mempromosikan sesuatu yang **belum pernah dibangun**.
+**Sesi utama tetap menjalankannya di atas hasil gabungan.** Satu-satunya build
+yang pernah gagal di repo ini gagal di hasil gabungan, padahal setiap cabangnya
+hijau sendiri-sendiri. Tanpa langkah ini, yang dipromosikan adalah kode yang
+belum pernah dibangun.
 
 ### Jebakan gerbang yang terdokumentasi
 
 | Jebakan | Akibat |
 |---|---|
-| `bun test` ≠ `bun run test` | `bun test` memanggil runner bawaan Bun — mengabaikan `vitest.config.ts`, tidak kenal alias `@/`, melaporkan "no tests found" **seolah-olah suite rusak** |
-| `\| tail` pada perintah verify | **Menutupi kode keluar** — gerbang tampak hijau |
+| `bun test` ≠ `bun run test` | `bun test` memanggil runner bawaan Bun: mengabaikan `vitest.config.ts`, tidak kenal alias `@/`, dan melaporkan "no tests found" seolah suite rusak |
+| `\| tail` pada perintah verify | Menutupi kode keluar; gerbang tampak hijau |
 | `.next/types` basi | Typecheck gagal pada rute yang dipindahkan |
-| `npm install` | Repo hanya punya `bun.lock` → **lockfile kedua** |
+| `npm install` | Repo hanya punya `bun.lock` → lockfile kedua |
 
-Dan yang paling penting: **`next build` TIDAK memeriksa tipe**
-(`typescript.ignoreBuildErrors: true`). Jadi `bun run typecheck` adalah
-**satu-satunya** gerbang tipe, dan ia **harus bisa dijalankan**.
+**`next build` tidak memeriksa tipe** (`typescript.ignoreBuildErrors: true`).
+`bun run typecheck` adalah satu-satunya gerbang tipe, jadi perintah itu harus
+selalu bisa dijalankan.
 
 ## 5. Alur rilis
 
@@ -247,85 +250,80 @@ sequenceDiagram
     Note over D: verify hijau + build hijau<br/>di atas hasil gabungan
     D->>M: PR develop → main
     M->>CI: push ke main
-    CI->>CI: build matriks: runner · migrator · backup
+    CI->>CI: build matriks: runner · runner-operator · migrator · backup
     CI->>R: push latest · sha-<pendek> · <versi>
 
-    Note over S: di server — TANPA membangun
+    Note over S: di server — TANPA membangun,<br/>sesudah SEMUA job publish CI hijau
     S->>S: git pull (compose + migration saja)
-    S->>R: docker compose pull app-customer app-operator migrate job-scheduler job-conformance
-    S->>S: ada migration baru?
+    S->>R: docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup
+    S->>S: ada migration baru di prisma/postgresql/?
     alt ada
-        S->>S: docker compose run --rm migrate bun run db:migrate
+        S->>S: docker compose run --rm migrate bun run db:migrate:all
     end
-    S->>S: docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance
+    S->>S: docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup
 ```
 
 ### Perintahnya
 
+Tunggu sampai semua job matriks `publish-image.yml` (keempat target) hijau.
+Bila satu target belum terdorong saat `pull`, layanan berjalan di versi yang
+berbeda-beda.
+
 ```bash
 git pull
-docker compose pull app-customer app-operator migrate job-scheduler job-conformance
-# HANYA bila ada migration baru:
-docker compose run --rm migrate bun run db:migrate
-docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup
+# HANYA bila ada migration baru di prisma/postgresql/:
+docker compose run --rm migrate bun run db:migrate:all
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup
 ```
 
-**Urutan menentukan bila rilis membawa migration: pull → migrate → swap.**
-Satu `docker compose up --build -d` **salah** — ia menukar container
-**sebelum** migration berjalan, jadi kode baru sejenak bertemu skema lama.
+**Bila rilis membawa migration, urutannya pull → migrate → swap.**
+`docker compose up --build -d` dalam satu langkah salah: container ditukar
+sebelum migration berjalan, sehingga kode baru sempat bertemu skema lama.
 
 Memeriksa apakah sebuah rilis membawa migration:
 
 ```bash
-git diff --name-only <sha-main-sebelumnya>..HEAD -- prisma/
+git diff --name-only <sha-main-sebelumnya>..HEAD -- prisma/postgresql/
 ```
 
 ### Rollback
 
 Setiap push menandai `sha-<pendek>` dan nomor versi di samping `latest`, jadi
-setiap rilis punya jangkarnya sendiri **secara otomatis**:
+setiap rilis otomatis punya tag untuk kembali:
 
 ```bash
 SAI_TAG=sha-573d9cf docker compose up -d --no-deps app-customer app-operator
 ```
 
-⚠ **Rollback melintasi Fase 4 (sebelum 18 Okt 2026).** Tag `sha-` yang lebih
-tua dari pemisahan **tidak punya** image `…-operator`, jadi perintah di atas
-gagal menarik `app-operator`. Kembali ke sebelum pemisahan berarti juga
-mengembalikan `docker-compose.yml` versi itu (yang menjalankan `app-operator`
-dari image `runner`): `git checkout <sha-lama> -- docker-compose.yml`, lalu
+⚠ **Rollback ke sebelum Fase 4 (18 Okt 2026).** Tag `sha-` yang lebih tua dari
+pemisahan tidak punya image `…-operator`, jadi perintah di atas gagal menarik
+`app-operator`. Kembalikan juga `docker-compose.yml` versi itu, yang
+menjalankan `app-operator` dari image `runner`:
+`git checkout <sha-lama> -- docker-compose.yml`, lalu
 `SAI_TAG=sha-<lama> docker compose up -d --no-deps app-customer app-operator`.
-
-Ritual lama — `docker tag … :rollback-<sha>` **sebelum** membangun, karena
-build menimpa `:latest` dan image lamanya langsung tak terjangkau di containerd
-— **sudah tidak perlu**. Lupa satu kali dulu berarti rollback berubah dari 30
-detik menjadi build 10 menit **di tengah insiden**.
 
 `SAI_IMAGE` menimpa awalan registry, yang juga membuat image lokal warisan
 terjangkau.
 
 ### Satu langkah sekali-jalan
 
-Paket GHCR dibuat **private** bahkan untuk repo publik. Entah jadikan ketiga
-paket publik sekali, atau autentikasi servernya. Sampai itu dilakukan,
-`docker compose pull` menjawab `denied`.
+Paket GHCR dibuat private, juga untuk repo publik. Setiap paket baru
+(keempatnya: aplikasi, `…-operator`, `…-migrator`, `…-backup`) harus dijadikan
+publik sekali, atau servernya diautentikasi. Sampai itu dilakukan,
+`docker compose pull` menjawab `denied` untuk paket itu.
 
 ### Langkah rilis yang mudah terlewat
 
 | Kondisi | Langkah |
 |---|---|
-| Migration baru | `db:migrate:all` (**bukan** `db:migrate` — lihat §6) |
-| Setelah `db:migrate:all` | `bun run db:generate` |
-| Rilis #370 | `bun run migrate:audit` — tanpa ini halaman Audit tampak **KOSONG** |
-| Rilis #484 | `bun run migrate:tenant-audit` |
-| Rilis #416 | `bun run seed-asset-categories` |
-| Buku pra-#104 | `bun run adopt-company` **sebelum** `up` |
+| Migration baru | `db:migrate:all` (bukan `db:migrate`; lihat §6) |
 | Katalog paket berubah | `bun run db:seed:plans` |
 
-**Pelajaran yang terbukti dua kali:** buktikan migrasi lewat **angka pra/pasca**
-yang dibaca sendiri, **bukan** lewat laporan skrip. Dan **sapu `.next/server`**
-untuk membuktikan sebuah fitur benar-benar **terjangkau** — begitu #555
-ketahuan tanpa pemanggil.
+Dua kebiasaan yang sudah dua kali terbukti perlu: buktikan migration lewat
+angka pra/pasca yang dibaca sendiri, jangan lewat laporan skrip. Untuk
+memastikan sebuah fitur terjangkau, periksa `.next/server`; dengan cara itu
+#555 ketahuan tidak punya pemanggil.
 
 ## 6. Migration
 
@@ -334,45 +332,41 @@ graph LR
     A["db:migrate:all"] --> B["1. db:migrate:control<br/>prisma migrate deploy<br/>--config prisma.control.config.ts"]
     B --> C["2. db:migrate:platform<br/>scripts/migrate-platform.ts<br/>(dilewati BERISIK bila env kosong)"]
     C --> D["3. db:migrate:companies<br/>scripts/migrate-all-companies.ts<br/>setiap PT terdaftar"]
-    D --> E["bun run db:generate<br/>3 klien Prisma"]
 
     style A fill:#e8f0ff,stroke:#4a6fa5
 ```
 
-| Basis data | Dir migration | Diterapkan 11 Okt |
+Klien Prisma sudah dibangkitkan di dalam image (`migrator`, `prepared`), jadi
+`db:generate` tidak perlu dijalankan di server.
+
+| Basis data | Dir migration | Diterapkan 18 Okt 2026 |
 |---|---|---|
-| Kendali | `prisma/control/migrations/` | **17/17** |
-| Platform | `prisma/platform/migrations/` | **17/17** |
-| Perusahaan | `prisma/migrations/` | **64/64** (`sai_production`) |
+| Kendali | `prisma/postgresql/control/` | **4/4** |
+| Platform | `prisma/postgresql/platform/` | **4/4** |
+| Perusahaan | `prisma/postgresql/company/` | **1/1** (setiap buku PT) |
 
-**Tidak ada drift** pada potret ini.
+`prisma/migrations/` dan `prisma/{control,platform}/migrations/` adalah arsip
+MariaDB hanya-baca (99 migration). Yang ditulis di sana tidak akan diterapkan.
 
-> ⚠ **`db:migrate` (tunggal) berbahaya pada pemasangan multi-PT.** Ia
-> menerapkan ke **satu** basis data — yang ditunjuk `DATABASE_URL`. Dan
-> **migration 0042 MENGHAPUS tabel `users` dari basis data perusahaan.** Bila
-> `docker compose up` berjalan **sebelum** langkah adopsi (yang menyalin
-> pengguna ke kendali), perintah itu akan menghapus **seluruh akun beserta hash
-> sandinya**, dan satu-satunya jalan pulang adalah cadangan.
->
-> `db:migrate:all` aman terhadap urutan: pemasangan yang belum diadopsi tidak
-> punya perusahaan terdaftar, jadi tidak ada yang disentuh — skripnya berhenti
-> dan menyebutkan perintah adopsi yang harus dijalankan lebih dulu.
+> ⚠ **`db:migrate` (tunggal) hanya menyentuh satu basis data**, yaitu yang
+> ditunjuk `DATABASE_URL`. Kendali, platform, dan buku PT lain tertinggal tanpa
+> galat. Selalu pakai `db:migrate:all`.
 
-**Migration ditulis TANGAN** di `prisma/migrations/NNNN_<nama>/migration.sql`
-(lihat [`docs/DATABASE.md §7`](../DATABASE.md)) — bukan dibangkitkan
-`migrate dev`. Menyunting **komentar** di migration yang sudah diterapkan
-**tidak** merusak `migrate deploy` (sudah diverifikasi).
+Migration ditulis tangan di `prisma/postgresql/<company|control|platform>/NNNN_<nama>/migration.sql`
+(lihat [`docs/DATABASE.md §7`](../DATABASE.md)), tidak dibangkitkan
+`migrate dev`. Menyunting komentar di migration yang sudah diterapkan tidak
+merusak `migrate deploy` (sudah diverifikasi).
 
 ## 7. Variabel lingkungan
 
-Nama saja — **nilai tidak dicantumkan di dokumen ini**.
+Hanya nama; nilainya tidak dicantumkan di dokumen ini.
 
-### Terisi di `.env` produksi (11 Okt 2026)
+### Terisi di `.env` produksi (11 Okt 2026; baris basis data 18 Okt)
 
 | Kelompok | Variabel |
 |---|---|
 | Domain & auth | `APP_DOMAIN`, `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST` |
-| Basis data | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `DB_CONNECTION_LIMIT` |
+| Basis data | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL`, `PG_USER`, `PG_PASSWORD` (dipakai `pg`, `pgbouncer`, dan URL langsung `migrate`/`job-backup`) · `DB_NAME` · `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `DB_CONNECTION_LIMIT` = MariaDB jalan mundur (#636) |
 | Operator | `OPERATOR_DOMAIN`, `OPERATOR_HOST`, `OPERATOR_IP_ALLOWLIST`, `OPERATOR_MFA`, `OPERATOR_SESSION_SECRET`, `OPERATOR_USERS` |
 | Enkripsi | `SETTINGS_ENCRYPTION_KEY`, `BACKUP_ENCRYPTION_KEY` |
 | Cadangan | `BACKUP_RETENTION_DAYS`, `BACKUP_S3_PREFIX` |
@@ -383,21 +377,21 @@ Nama saja — **nilai tidak dicantumkan di dokumen ini**.
 
 | Variabel | Akibat ketiadaannya |
 |---|---|
-| `AWS_ACCESS_KEY_ID` | **Cadangan gagal** |
-| `AWS_SECRET_ACCESS_KEY` | **Cadangan gagal** |
-| `BACKUP_S3_BUCKET` | **Cadangan gagal** |
+| `AWS_ACCESS_KEY_ID` | Cadangan hanya lokal (`local_only`) |
+| `AWS_SECRET_ACCESS_KEY` | Cadangan hanya lokal |
+| `BACKUP_S3_BUCKET` | Cadangan hanya lokal; arsip ke volume `cadangan` |
 | `AWS_DEFAULT_REGION` | Cadangan |
-| `MIDTRANS_SERVER_KEY` | Gerbang bayar → **MOCK** |
+| `MIDTRANS_SERVER_KEY` | Gerbang bayar → MOCK |
 | `MIDTRANS_IS_PRODUCTION` | Gerbang bayar |
 | `PAYMENT_GATEWAY` | Jatuh ke `manual` |
 | `PLATFORM_ALERT_EMAIL` | Peringatan jatuh ke `PLATFORM_CONTACT_EMAIL` |
-| `OPERATOR_TRUSTED_PROXY_HOPS` | Bawaan **1** = benar untuk susunan sekarang (Traefik saja) |
-| `COMPANY_CLIENT_POOL_MAX` | Bawaan **4** |
-| `CONTROL_DB_CONNECTION_LIMIT` | Bawaan **2** |
-| `PLATFORM_DB_CONNECTION_LIMIT` | Bawaan **1** |
-| `POOL_DISCONNECT_GRACE_MS` | Bawaan **15.000** |
+| `OPERATOR_TRUSTED_PROXY_HOPS` | Bawaan 1, benar untuk susunan sekarang (Traefik saja) |
+| `COMPANY_CLIENT_POOL_MAX` | Bawaan 4 |
+| `CONTROL_DB_CONNECTION_LIMIT` | Bawaan 2 |
+| `PLATFORM_DB_CONNECTION_LIMIT` | Bawaan 1 |
+| `POOL_DISCONNECT_GRACE_MS` | Bawaan 15.000 |
 | `COMPANY_DATABASE_URL_TEMPLATE` | Jatuh ke `DATABASE_URL` |
-| `SMTP_*` | Tidak perlu — SMTP dari `platform.mail_settings` |
+| `SMTP_*` | Tidak perlu; SMTP dari `platform.mail_settings` |
 | `ALLOW_SEED` | **Jangan pernah** `true` di produksi |
 
 Pemeriksa: `bun run check:env` (`scripts/check-env.mjs`).
@@ -411,14 +405,12 @@ Pemeriksa: `bun run check:env` (`scripts/check-env.mjs`).
 | Platform | 1 | 1 | **1** |
 | | | | **11 dari `app-customer`** |
 
-Plus `app-operator`, `job-scheduler`, `job-conformance`, dan `job-backup` saat
-berjalan — pemisahan bidang menambah satu klien lagi ke anggaran ini.
-Angka-angka ini
-**sengaja kecil**: setiap koneksi yang dipesan kendali adalah koneksi yang tidak
-bisa dipakai buku PT, dan `max_connections` di mesin ini adalah anggaran yang
-benar-benar terbatas. Sejak PostgreSQL (15 Okt 2026) anggaran itu dua lapis:
-`max_client_conn = 200` di PgBouncer dan `max_connections = 100` di `pg`,
-dengan `default_pool_size = 20` per pasangan basis data/pengguna.
+Ditambah `app-operator`, `job-scheduler`, `job-conformance`, dan `job-backup`
+saat berjalan. Angkanya sengaja kecil: setiap koneksi yang dipesan kendali tidak
+bisa dipakai buku PT, dan `max_connections` di mesin ini terbatas. Sejak
+PostgreSQL (15 Okt 2026) anggarannya dua lapis: `max_client_conn = 200` di
+PgBouncer dan `max_connections = 100` di `pg`, dengan `default_pool_size = 20`
+per pasangan basis data/pengguna.
 
 ## 8. Lingkungan
 
@@ -426,59 +418,52 @@ dengan `default_pool_size = 20` per pasangan basis data/pengguna.
 |---|---|
 | **Pengembangan** | `bun run dev` — lokal. Transport surel `file` → `data/mail-outbox/` |
 | **Produksi** | `docker compose` di mesin ini |
-| **Staging** | ❓ **Tidak ada definisi di repo.** 🔶 Tersimpulkan: lokal → produksi langsung |
+| **Staging** | ❓ Tidak ada definisi di repo. 🔶 Tersimpulkan: lokal → produksi langsung |
 
-🔶 **Catatan:** basis data bernama `sai_t11_data_dummy`,
-`sai_t1_uji_wisaya_416`, `sai_t1_uji_pindahan_425`, dan `sai_t2_demo` hidup di
-**instans produksi**. Pola namanya menunjukkan pengujian/demo, dan ketiadaan
-staging membuat itu masuk akal. Dinilai di
-[dok 08](./08-PENILAIAN-ARSITEKTUR.md).
-
-`DOCKER.md` (dihapus 12 Okt 2026) menyebut host
-`inventory.suburanugerahindonesia.com` sebagai contoh — host **uji**, bukan
-`ops.*`. Dicatat di sini karena berkasnya sudah tidak ada; ❓ keaktifan host itu
-tetap belum dipastikan.
+🔶 Basis data `sai_t11_data_dummy`, `sai_t1_uji_wisaya_416`,
+`sai_t1_uji_pindahan_425`, dan `sai_t2_demo` hidup di instans produksi. Dari
+namanya, keempatnya untuk pengujian/demo, yang masuk akal tanpa staging.
+Dinilai di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 ## 9. Pemantauan & dapat-diamati
 
-### Yang ADA
+### Yang ada
 
 | Mekanisme | Isi |
 |---|---|
-| `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), **`conformance`** (+umur, jumlah temuan), `mail`. **503 hanya bila kendali tak terjangkau** |
-| `GET /status` | Versi untuk manusia — komponen dengan **empat keadaan** (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`packages/core/src/public-status.ts`) |
-| Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `db` tiap 10s |
+| `GET /api/health` | `control`, `platform`, `company`, `scheduler` (+umur), `backup` (+umur), `conformance` (+umur, jumlah temuan), `mail`. 503 hanya bila kendali tak terjangkau |
+| `GET /status` | Versi untuk manusia: komponen dengan empat keadaan (`operational` · `degraded` · `down` · `unknown`), tanpa nama basis data, angka, atau kalimat galat (`packages/core/src/public-status.ts`) |
+| Healthcheck Docker | `app-customer` & `app-operator` tiap 30s · `pg` tiap 10s |
 | Healthcheck Traefik | `/api/health` tiap 30s |
-| `scheduler_runs` | 1.251 baris — status per putaran; **dipangkas** > 90 hari (baris `error`, terakhir, & `ok` terakhir ditahan selamanya) |
-| `conformance_runs` | Status + jumlah temuan per sapuan mingguan (**baru**, migration platform 0018) |
-| `backup_runs` | 54 baris — status per percobaan |
-| `/operator/scheduler` | Denyut penjadwal di layar |
+| `scheduler_runs` | Status per putaran; dipangkas `prune:trails` > 90 hari (baris `error`, terakhir, & `ok` terakhir ditahan selamanya) |
+| `conformance_runs` | Status + jumlah temuan per sapuan mingguan |
+| `backup_runs` | Status per percobaan (`ok` · `lokal` · `error`) |
+| `/scheduler` (host konsol) | Denyut penjadwal di layar |
 | `audit_logs` / `tenant_audit_logs` | Jejak tindakan |
 | `bun run prove-scheduler-alive` | Pembuktian denyut |
 | `bun run prove-backup-restore` | Pembuktian cadangan bisa dibuka |
-| `lib/alert.ts` | Peringatan surel berperedam — **hanya 2 pemanggil** |
+| `watch:health` | Langkah 6 `job-scheduler`, tiap jam: surel peringatan bila cadangan, penjadwal, atau kesesuaian tidak sehat; peredam satu surel per status per 24 jam |
+| `src/lib/alert.ts` | Peringatan surel berperedam untuk peristiwa dalam-aplikasi |
 | `docker compose logs <layanan>` | Log mentah |
-| **CI `Verify`** | `typecheck + lint + test` pada setiap PR & push `develop`/`main`; **required status check** pada `main` sejak 11 Okt 2026 |
+| CI `Verify` | `typecheck + lint + test` pada setiap PR & push `develop`/`main`; required status check pada `main` sejak 11 Okt 2026 |
 
-🔶 **Satu ketidakcocokan kecil komentar-vs-kode.** `src/proxy.ts` baris 60
-menyebut `/status` "dipersempit menjadi **tiga** keadaan", sementara
-`packages/core/src/public-status.ts` mendefinisikan `ComponentState` dengan **empat** nilai
-(`operational` · `degraded` · `down` · `unknown`) dan memakainya juga untuk
-`overall`. Yang berjumlah tiga adalah `MaintenanceState`
+🔶 Komentar di `src/proxy.ts` (sekitar baris 62) tidak cocok dengan kode. Ia
+menyebut `/status` "dipersempit `lib/public-status.ts` menjadi tiga keadaan",
+padahal `packages/core/src/public-status.ts` mendefinisikan `ComponentState`
+dengan empat nilai (`operational` · `degraded` · `down` · `unknown`) dan
+memakainya juga untuk `overall`. Yang berjumlah tiga adalah `MaintenanceState`
 (`none` · `upcoming` · `active`). Komentarnya kemungkinan tertinggal dari versi
-lebih awal — tidak berdampak pada perilaku, tetapi layak dirapikan di repo yang
-komentarnya biasa dipercaya seakurat kodenya.
+lama. Perilakunya tidak terpengaruh, tetapi komentarnya perlu dirapikan.
 
-### Yang TIDAK ADA
+### Yang tidak ada
 
 | Hilang | Akibat |
 |---|---|
-| Agregasi log | Satu-satunya cara membaca masa lalu adalah `docker logs` pada container yang **masih hidup** |
+| Agregasi log | Log lama hanya bisa dibaca lewat `docker logs` pada container yang masih hidup |
 | Metrik / dasbor | Tidak ada tren. "Apakah ini melambat?" tidak terjawab |
 | Pelacakan galat (Sentry dsb.) | Galat runtime hanya di log |
-| Pemantauan luar | ❓ `/api/health` ada; **pembacanya belum dipastikan** |
-| Peringatan tersambung | `lib/alert.ts` tidak dipanggil dari cadangan/penjadwal/kesesuaian |
-| ~~Temuan `job-conformance` yang bisa ditanyai~~ | ✅ **ditutup** — `conformance_runs` + `/api/health` → `conformance` |
+| Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
+| Peringatan saat penjadwal mati total | `watch:health` berjalan di dalam `job-scheduler` dan ikut mati bersamanya. Hanya pembaca `/api/health` dari luar mesin yang bisa menutup celah ini |
 
 Membaca log, dari `PRODUCTION.md §Reading the logs`:
 
@@ -489,57 +474,30 @@ docker compose logs job-conformance --tail 60
 docker compose logs job-backup --tail 60
 ```
 
-## 10. ⚠ Kebusukan dokumentasi penggelaran
+## 10. Satu runbook penggelaran
 
-**Temuan, bukan catatan pinggir.** Repo punya **lima** berkas yang menjelaskan
-cara menggelar, dan mereka tidak sepakat:
-
-| Berkas | Keadaan |
-|---|---|
-| `PRODUCTION.md` §Updates, §Rollback | **MUTAKHIR** — registry pull + compose up |
-| `PRODUCTION.md` §2, §4 | ✅ **DITANDAI WARISAN** di tempatnya (11 Okt 2026) |
-| `PRODUCTION.md` §5 (nginx) | ✅ **DITANDAI WARISAN** di tempatnya |
-| `PRODUCTION.md` §Legacy: PM2 | Ditandai warisan — **benar** |
-| ~~`HOSTING.md` ×3~~ | ✅ **DIHAPUS** 12 Okt 2026 — digabung dulu jadi `docs/warisan/PENGGELARAN-STANDALONE.md`, lalu ikut tercabut bersama perkakasnya di hari yang sama |
-| ~~`DOCKER.md`~~ | ✅ **DIHAPUS** 12 Okt 2026 — tumpang tindih `PRODUCTION.md` + dok 07; §Redeploying-nya mengajarkan build di server. Satu pengukurannya diselamatkan ke `PRODUCTION.md` §Updates |
-| ~~`ecosystem.config.cjs`, `ecosystem.config.low-memory.cjs`~~ | ✅ **DIHAPUS** 12 Okt 2026 bersama `package-standalone.sh` yang menyalinnya |
-| ~~`.github/workflows/build-standalone.yml`~~ | ✅ **DIHAPUS** 12 Okt 2026 — artefak 43 MB tiap dorongan ke `main`, nol pemakai |
-
-Bahayanya dulu **konkret**: `PRODUCTION.md` §2 menyarankan
-`bun run setup:prod`, yang menjalankan `next build` **di server** — persis yang
-dilarang §Updates dan `AGENTS.md`, dan yang sudah terukur menghabiskan ~19
-menit dengan iowait 58–92%. Seseorang yang membaca dari atas akan menemukan
-nasihat yang salah **sebelum** menemukan yang benar.
-
-✅ **Ditutup 12 Okt 2026.** Nasihat itu tidak bisa diikuti lagi karena
-**perkakasnya tidak ada**: `setup-production.sh`, `start-production.sh`,
-`start-low-memory.sh`, `package-standalone.sh`, `deploy-on-server.sh`, kedua
-`ecosystem.config*.cjs`, dan `build-standalone.yml` dicabut, beserta enam skrip
-`package.json` yang memanggilnya. §2/§4/§5 `PRODUCTION.md` kini **nisan** yang
-menunjuk ke §Updates — judulnya dipertahankan supaya penomoran dan tautan masuk
-tidak rusak.
-
-Satu jebakan ikut ketemu saat mencabutnya: `bun run deploy` menunjuk
-`scripts/deploy-on-server.sh` — jalur build-di-server — bukan `scripts/deploy.sh`.
-Jalan pintas itu dicabut. `scripts/deploy.sh` sendiri **tinggal** (kepalanya sudah
-menyatakan dirinya terlarang) sebagai pecah-kaca kalau GHCR tak terjangkau.
+Penggelaran dijelaskan di dua tempat: `PRODUCTION.md` §Updates (dan §Rollback)
+serta §5 dokumen ini. Perkakas build-di-server (`setup:prod`, `start:prod`,
+`bun run deploy`, PM2/`ecosystem.config*.cjs`, `build-standalone.yml`,
+`DOCKER.md`, `HOSTING*.md`) dicabut 12 Okt 2026 karena menjalankan `next build`
+di server. `scripts/deploy.sh` tersisa sebagai jalan darurat warisan bila GHCR
+tak terjangkau; kepala berkasnya menyatakan ia tidak dipakai untuk rilis biasa.
 
 ## 11. Pemulihan bencana
 
 | Pertanyaan | Jawaban hari ini |
 |---|---|
-| RPO (kehilangan data maksimum) | **Dirancang** 24 jam · **Nyata: tak terbatas** — belum ada cadangan |
+| RPO (kehilangan data maksimum) | **24 jam** untuk kerusakan data (cadangan harian di volume `cadangan`) · **tak terbatas** untuk kehilangan mesin, karena belum ada salinan luar-mesin |
 | RTO (waktu pulih) | ❓ Belum pernah diukur |
-| Cadangan luar-mesin | **TIDAK ADA** (54 percobaan, 0 berhasil) |
-| Dump manual | **Ada dan dipakai** — `backups/` di akar repo berisi dump pra-promosi, yang terbaru `pra-promosi-0017-2026-10-11-0022.sql` (hari potret). ⚠ Tetapi semuanya **di mesin yang sama dengan datanya** |
-| Latihan pemulihan | Diwajibkan **kuartalan oleh manusia**; ❓ tidak ada bukti pernah dijalankan |
-| Kunci enkripsi cadangan di luar mesin | ❓ Belum dipastikan — **risiko besar** |
-| Rollback kode | **Baik** — tag `sha-<pendek>` di GHCR |
+| Cadangan luar-mesin | **Tidak ada**: `BACKUP_S3_BUCKET` kosong, `/api/health` → `backup: local_only` (18 Okt 2026) |
+| Dump manual | Ada dan dipakai: `backups/` di akar repo; yang terbaru `pra-cutover2-postgres-2026-10-15-0437.sql`. Semuanya di mesin yang sama dengan datanya |
+| Latihan pemulihan | Diwajibkan kuartalan, dijalankan manusia; ❓ tidak ada bukti pernah dijalankan |
+| Kunci enkripsi cadangan di luar mesin | ❓ Belum dipastikan; risiko besar |
+| Rollback kode | Baik: tag `sha-<pendek>` di GHCR |
 | Rollback skema | ❓ Tidak ada migration `down` |
 
-> ⚠ **Sebuah jebakan yang terdokumentasi:** `.dockerignore` **menjangkar**
-> polanya, `.gitignore` **tidak**. Asimetri `backups/` pernah memanggang
-> **seluruh basis data produksi ke dalam image yang digelar**. Periksa
-> **image**, bukan pohon berkas.
+> ⚠ `.dockerignore` menjangkar polanya, `.gitignore` tidak. Karena perbedaan itu,
+> pola `backups/` pernah membuat seluruh basis data produksi ikut masuk ke image
+> yang digelar. Periksa isi image, tidak cukup pohon berkas.
 
 Lanjut: [08 Penilaian Arsitektur](./08-PENILAIAN-ARSITEKTUR.md)

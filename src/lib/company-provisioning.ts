@@ -71,7 +71,7 @@ import {
  * Direktori migration, PER MESIN.
  *
  * ⚠ PostgreSQL TIDAK memakai 65 migration MariaDB: ia memakai **baseline** yang
- * dibangkitkan dari skema (`bun run pg:baseline`) plus migration tambahan
+ * yang dibangkitkan sekali dari skema saat penukaran (15 Okt 2026) plus migration tambahan
  * tulis-tangan. 5.241 baris SQL MariaDB tidak punya nilai di mesin baru, dan
  * menjalankannya di sana akan gagal pada pernyataan pertama.
  *

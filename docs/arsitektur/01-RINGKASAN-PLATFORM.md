@@ -1,53 +1,49 @@
 # 01 — Ringkasan Platform
 
-> Potret 11 Oktober 2026 · v0.9.0 (`origin/main@a2eecf7c`) · [indeks](./README.md)
+> Dimutakhirkan 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
-> **⚑ Diperbarui 17 Okt 2026: mesin basis data.** Sejak 15 Okt 2026 produksi
-> berjalan di **PostgreSQL 17** (`sai-pg`, lewat `sai-pgbouncer`). Diagram,
-> tumpukan teknologi, dan §9.1 di bawah sudah mencerminkannya; angka lain tetap
-> potret 11 Okt. MariaDB (`sai-db`) hanya jalan mundur, tidak ditulisi, dan akan
-> dicabut (#636). Lihat
+> Sejak 15 Okt 2026 produksi berjalan di PostgreSQL 17 (`sai-pg`, lewat
+> `sai-pgbouncer`). MariaDB (`sai-db`) hanya jalan mundur, tidak ditulisi, dan
+> akan dicabut (#636). Lihat
 > [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
 
 ## 1. Apa yang dijual
 
 **SAI Accounting** adalah aplikasi akuntansi berbahasa Indonesia yang dijual
 sebagai langganan SaaS kepada usaha kecil–menengah Indonesia. Doktrin
-produknya satu baris, dan ia ditulis di `AGENTS.md` sebagai syarat setiap
-pekerjaan UI:
+produknya ditulis di `AGENTS.md` sebagai syarat setiap pekerjaan UI:
 
 > **simple surface, standard engine** — ramah pengguna awam, tapi proses
 > akuntansi tetap baku.
 
-Artinya secara konkret: staf mengisi formulir yang tidak menyebut "debit" dan
-"kredit", sementara mesin posting (`src/lib/posting/`) menerjemahkan setiap
-dokumen menjadi jurnal berpasangan ganda yang seimbang di belakang layar.
-Pembanding yang dipakai saat membangunnya adalah Accurate Online — petanya ada
-di [`docs/accurate-reference.md`](../accurate-reference.md).
+Staf mengisi formulir yang tidak menyebut "debit" dan "kredit". Mesin posting
+(`src/lib/posting/`) menerjemahkan setiap dokumen menjadi jurnal berpasangan
+ganda yang seimbang. Pembanding saat membangunnya adalah Accurate Online; petanya
+ada di [`docs/accurate-reference.md`](../accurate-reference.md).
 
-## 2. Tiga penyewa permukaan, satu proses
+## 2. Tiga permukaan, dua aplikasi
 
-Yang membuat arsitektur ini tidak biasa: **tiga audiens berbeda dilayani satu
-container Next.js**, dipisahkan oleh *hostname* dan grup rute — bukan oleh tiga
-aplikasi.
+Tiga audiens dilayani dua aplikasi Next.js dalam satu monorepo: pemasaran dan
+aplikasi pelanggan di `src/` (container `app-customer`), konsol operator di
+`apps/operator` (container `app-operator`, image `…-operator`).
 
-| Bidang | Host | Grup rute | Untuk siapa |
+| Bidang | Host | Kode | Untuk siapa |
 |---|---|---|---|
-| **Pemasaran** | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `(marketing)` | Calon pelanggan, perayap mesin pencari |
-| **Aplikasi pelanggan** | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `(app)` | Staf & pemilik usaha yang membukukan |
-| **Konsol operator** | `OPERATOR_DOMAIN` (`/operator/…`) | `(operator)` | Kami, penyedia layanan |
+| **Pemasaran** | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon pelanggan, perayap mesin pencari |
+| **Aplikasi pelanggan** | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha yang membukukan |
+| **Konsol operator** | `OPERATOR_DOMAIN` (rute di akar, tanpa awalan; `/operator/*` lama → 308 ke jalur tanpa awalan) | `apps/operator` | Kami, penyedia layanan |
 
-Pemisahan operator **ditegakkan, bukan dikonvensikan**: di host pelanggan
-setiap `/operator` menjawab 404, dan di host operator setiap rute pelanggan
-menjawab 404. Tanpa `OPERATOR_HOST` di `.env`, `/operator` tidak terjangkau di
-host mana pun — gagal-tertutup. Logikanya murni di `packages/core/src/operator-plane.ts`,
-dipanggil dari `src/proxy.ts`. Alasannya: cookie berlingkup host, jadi sesi
-pelanggan yang bocor tidak pernah bisa menjangkau konsol operator.
+Pemisahan operator ditegakkan kode. Bidangnya ditentukan host saja
+(`packages/core/src/operator-plane.ts`, murni dan aman-edge). Image pelanggan
+tidak memuat rute konsol, dan `apps/operator/src/proxy.ts` menjawab 404 untuk
+setiap host selain `OPERATOR_HOST`. Tanpa `OPERATOR_HOST` di `.env`, konsol
+menjawab 404 di host mana pun (gagal-tertutup). Alasannya: cookie berlingkup
+host, sehingga sesi pelanggan yang bocor tidak bisa menjangkau konsol operator.
 
 ## 3. Dua sumbu penyewaan, dan keduanya wajib dibedakan
 
-Istilah yang paling sering tertukar di repo ini, dan selisihnya menentukan ke
-basis data mana sebuah baris ditulis:
+Dua istilah ini paling sering tertukar, dan perbedaannya menentukan ke basis
+data mana sebuah baris ditulis:
 
 ```mermaid
 graph TD
@@ -66,10 +62,11 @@ graph TD
     style D3 fill:#eef7ee,stroke:#5a8f5a
 ```
 
-- **Tenant** = pelanggan yang berlangganan. Ia yang punya paket, tagihan, dan
-  kuota. Hidup di basis data **kendali** + **platform**.
-- **Perusahaan (PT)** = satu buku besar. **Satu basis data PostgreSQL sendiri per
-  PT** (issue #104; MariaDB sampai 15 Okt 2026). Satu tenant boleh punya banyak PT.
+- **Tenant** = pelanggan yang berlangganan, pemilik paket, tagihan, dan kuota.
+  Datanya di basis data kendali dan platform.
+- **Perusahaan (PT)** = satu buku besar, dengan basis data PostgreSQL sendiri
+  per PT (issue #104; MariaDB sampai 15 Okt 2026). Satu tenant boleh punya
+  banyak PT.
 
 Rinciannya di [`docs/MULTI-TENANT.md §2`](../MULTI-TENANT.md) dan
 [`docs/MULTI-COMPANY.md`](../MULTI-COMPANY.md).
@@ -89,8 +86,8 @@ graph TB
 
     subgraph compose["docker compose — jaringan internal"]
         WEBC["<b>app-customer</b> · sai-app-customer<br/>Next.js 16 standalone<br/>:3000"]
-        WEBO["<b>app-operator</b> · sai-app-operator<br/>image SAMA · :3000"]
-        SCH["<b>job-scheduler</b><br/>5 produser · tiap jam"]
+        WEBO["<b>app-operator</b> · sai-app-operator<br/>apps/operator · image …-operator · :3000"]
+        SCH["<b>job-scheduler</b><br/>7 langkah · tiap jam"]
         CON["<b>job-conformance</b><br/>pemeriksa data · mingguan"]
         BAK["<b>job-backup</b><br/>dump+sandi+unggah · harian"]
         MIG["<b>migrate</b><br/>sekali-jalan"]
@@ -127,11 +124,11 @@ graph TB
     style DB fill:#eef7ee,stroke:#5a8f5a
 ```
 
-Satu mesin, enam container aplikasi, satu PostgreSQL di belakang PgBouncer — dan **tidak ada**
-antrean pesan, *cache* bersama, *service mesh*, maupun layanan HTTP kedua.
-Seluruh pekerjaan latar berjalan sebagai *loop shell yang tidur*, bukan sebagai
-pekerja yang mengambil dari antrean. Itu pilihan sadar yang dibenarkan panjang
-di `docker-compose.yml`; konsekuensinya dinilai di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
+Satu mesin, dua aplikasi Next yang tidak saling memanggil lewat HTTP (keduanya
+hanya berbagi basis data), dan satu PostgreSQL di belakang PgBouncer. Tidak ada
+antrean pesan, *cache* bersama, atau *service mesh*. Pekerjaan latar berjalan
+sebagai loop shell yang tidur, tanpa antrean. Alasannya ditulis di
+`docker-compose.yml`; konsekuensinya dinilai di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 ## 5. Tiga basis data, dan satu aturan yang tidak boleh dilanggar
 
@@ -139,17 +136,16 @@ di `docker-compose.yml`; konsekuensinya dinilai di [dok 08](./08-PENILAIAN-ARSIT
 |---|---|---|---|
 | **kendali** `sai_control` | 1 | Pengguna, tenant, perusahaan, keanggotaan, undangan, token API, notifikasi | `packages/db/generated/control` |
 | **platform** `sai_platform` | 1 | Paket, langganan, tagihan platform, pembayaran, jejak penjadwal & cadangan, isi situs | `packages/db/generated/platform` |
-| **perusahaan** `sai_<slug>` | **banyak** (17 per 11 Okt 2026) | Seluruh buku besar: jurnal, faktur, kontrak, stok, aset tetap, jejak audit | `packages/db/generated/company` |
+| **perusahaan** `sai_<slug>` | **banyak** (17 per 16 Okt 2026) | Seluruh buku besar: jurnal, faktur, kontrak, stok, aset tetap, jejak audit | `packages/db/generated/company` |
 
-Aturannya, dan ia diulang di empat berkas sumber karena memang sepenting itu:
+Aturan ini diulang di empat berkas sumber:
 
-> **Konteks perusahaan yang hilang harus MELEMPAR — tidak pernah jatuh ke basis
-> data bawaan.**
+> **Konteks perusahaan yang hilang harus melempar galat, tidak pernah jatuh ke
+> basis data bawaan.**
 
-Sebabnya bukan kerapian. Jatuh ke bawaan berarti transaksi PT A tertulis ke
-buku PT B **tanpa galat dan tanpa jejak**, lalu ketahuan berbulan-bulan
-kemudian sebagai neraca yang tidak cocok. Halaman yang gagal terbuka hari ini
-jauh lebih murah. Penegakannya dibedah di [dok 02 §3](./02-ARSITEKTUR.md) dan
+Jatuh ke bawaan berarti transaksi PT A tertulis ke buku PT B tanpa galat dan
+tanpa jejak, lalu baru ketahuan berbulan-bulan kemudian sebagai neraca yang
+tidak cocok. Halaman yang gagal terbuka jauh lebih murah. Penegakannya dibedah di [dok 02 §3](./02-ARSITEKTUR.md) dan
 [dok 06 §1](./06-ALIRAN-DATA.md).
 
 Doktrin kembarannya, dari issue #137:
@@ -157,13 +153,13 @@ Doktrin kembarannya, dari issue #137:
 > **Penagihan mati ≠ aplikasi mati.** `sai_platform` yang tak terjangkau tidak
 > boleh membuat login atau buku besar ikut mati.
 
-Karena itu `packages/platform/src/platform-db.ts` dilarang diimpor dari jalur panas (penjaga,
-sesi, proxy), dan `/api/health` **melaporkan** status platform tanpa membiarkan
-status itu ikut memutuskan 503.
+Karena itu `packages/platform/src/platform-db.ts` dilarang diimpor dari jalur
+panas (penjaga, sesi, proxy), dan `/api/health` melaporkan status platform tanpa
+membiarkannya ikut memutuskan 503.
 
 ## 6. Kemampuan yang sudah ada
 
-Diukur dari rute yang benar-benar ada di `src/app`, bukan dari rencana.
+Diukur dari rute yang ada di `src/app`.
 
 ### Akuntansi inti
 Daftar akun (COA) + impor · jurnal umum + pembalikan · buku besar · neraca
@@ -225,70 +221,52 @@ cadangan otomatis.
 | Validasi | **Zod 4** + `react-hook-form` | Satu modul validasi per domain (31 berkas) |
 | Grafik | **Recharts 3** | |
 | Surel | **Nodemailer 7** | Konfigurasi tiga lapis — lihat dok 04 |
-| Uji | **Vitest 3** — **276 berkas tes · 4.654 tes** | Gerbangnya `bun run verify` |
+| Uji | **Vitest 3** — **303 berkas tes** (18 Okt 2026) | Gerbangnya `bun run verify` |
 | Proxy | **Traefik** (bersama 5 aplikasi lain di mesin yang sama) | TLS Let's Encrypt, resolver `le` |
 | Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 4 image dibangun CI (pelanggan, operator, migrator, backup — sejak 18 Okt 2026); **jangan pernah build di server** |
 
 ## 8. Ukuran
 
-| | |
-|---|---|
-| Berkas TypeScript/TSX | 939 |
-| Baris kode (`src/`) | ~342.800 |
-| Halaman (`page.tsx`) | 142 |
-| Rute API (`route.ts`) | 126 |
-| Model Prisma | 61 (perusahaan) + 15 (kendali) + 12 (platform) = **88** |
-| Migration | 64 (perusahaan) + 17 (kendali) + 18 (platform) = **99** |
-| Modul `src/lib` | 299 berkas |
-| Berkas tes | 276 (4.654 tes) |
-| Skrip operasional | 51 |
-| Izin RBAC | 66 (perusahaan) + 6 (tenant) |
-
-## 9. Keadaan produksi saat potret
-
-Dibaca dari `docker compose ps`, `/api/health`, dan kueri langsung ke MariaDB
-pada 11 Oktober 2026:
+Dihitung 18 Okt 2026:
 
 | | |
 |---|---|
-| Image yang melayani | `ghcr.io/tri-evendi/sai-accounting:latest` — v0.9.0 |
-| Container naik | `sai-web` (healthy), `sai-scheduler`, `sai-conformance`, `sai-backup`, `sai-db` (healthy) — **nama pra-pemisahan**; potret ini diambil sebelum bidang dipisah |
-| Tenant | 11 |
-| Perusahaan terdaftar | **17** — dan **17** basis data perusahaan di MariaDB (cocok, tidak ada yang tak terdaftar) |
-| Pengguna | 13 |
-| Keanggotaan | 17 |
-| Langganan | 11 — 10 `active`, 1 `trialing` |
-| **Mode penagihan** | **11 dari 11 = `none`** — penagihan otomatis dihentikan (Fase A) |
-| Pembayaran tercatat | 0 |
-| Token API aktif | 0 |
-| Putaran penjadwal | 1.246 — terakhir 7 menit sebelum potret, **sehat** |
-| Putaran cadangan | 54 — **`lastSuccessAt: null`** ⚠ |
+| Halaman (`page.tsx`) | 131 (pelanggan, `src/app`) + 18 (konsol, `apps/operator` — 17 + `/login`) |
+| Rute API (`route.ts`) | 127 (pelanggan) + 2 (konsol) |
+| Model Prisma | 61 (perusahaan) + 15 (kendali) + 12 (platform) = **88** *(11 Okt 2026)* |
+| Migration aktif (`prisma/postgresql/`) | 1 (perusahaan) + 4 (kendali) + 4 (platform) = **9** — arsip MariaDB hanya-baca: 99 |
+| Modul `src/lib` | 231 berkas — sisanya pindah ke `packages/*` (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`) |
+| Berkas tes | 303 |
+| Izin RBAC | 66 (perusahaan) + 6 (tenant) *(11 Okt 2026)* |
 
-### 9.1 Potret 16 Okt 2026 — sesudah penukaran ke PostgreSQL
+## 9. Keadaan produksi
 
 Dibaca dari `docker ps`, `/api/health` (dari dalam container), dan kueri
-langsung ke `sai-pg`:
+langsung ke `sai-pg` pada 16 Okt 2026; baris bertanda 18 Okt diperbarui hari
+itu:
 
 | | |
 |---|---|
 | Container naik | `sai-app-customer` (healthy), `sai-app-operator` (healthy), `sai-job-scheduler`, `sai-job-conformance`, `sai-job-backup`, `sai-pgbouncer`, `sai-pg` (healthy), `sai-db` (jalan mundur, tidak ditulisi) |
 | Basis data | **19** di PostgreSQL 17.11: kendali + platform + **17** buku PT, cocok dengan 17 terdaftar. Total 227 MB |
-| Tenant / perusahaan / pengguna / keanggotaan | 11 / 17 / 13 / 17 (sama dengan potret 11 Okt) |
+| Tenant / perusahaan / pengguna / keanggotaan | 11 / 17 / 13 / 17 |
 | Langganan | 11: 10 `active`, 1 `trialing`; mode penagihan 11/11 `none`; 0 pembayaran |
-| Kesehatan | `control`, `platform`, `company`, `scheduler`, `mail` = `ok` · **`backup` = `failing`** (nol cadangan sejak penukaran) · **`conformance` = `late`** (17 PT gagal). Keduanya sudah diperbaiki di `develop`; lihat [11 §10.2](./11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026) |
-| Migration diterapkan | kendali 17/17 · platform 17/17 · perusahaan 64/64 — **tidak ada drift** *(platform 0018 ditambahkan 11 Okt sore, BELUM diterapkan)* |
+| Kesehatan (18 Okt) | `control`, `platform`, `company`, `scheduler`, `mail` = `ok` · **`backup` = `local_only`** (`lastSuccessAt: null` — belum ada salinan luar mesin) · `conformance` = `findings` (1.439 temuan, 0 PT gagal) |
+| Migration diterapkan (18 Okt) | kendali 4/4 · platform 4/4 · perusahaan 1/1 (`prisma/postgresql/`) |
 
-Dua hal dari tabel itu adalah temuan, bukan statistik, dan keduanya dinilai di
+Dua hal dari tabel itu adalah temuan, dan keduanya dinilai di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md):
 
-1. **Cadangan belum pernah berhasil sekali pun.** `/api/health` melaporkan
-   `backup.status: "failing"` dengan `lastSuccessAt: null` setelah 54 percobaan.
-   Akarnya terbukti di `.env`: `AWS_ACCESS_KEY_ID`,
-   `AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` **tidak ada**. Ini risiko
-   hukum, bukan sekadar teknis — pembukuan wajib disimpan sepuluh tahun (UU KUP).
-2. **Penagihan otomatis sengaja mati** di seluruh 11 langganan
-   (`billing_mode=none`). Itu keputusan Fase A yang didokumentasikan di
-   [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md) — **bukan** kerusakan.
+1. **Belum ada salinan cadangan di luar mesin.** `AWS_ACCESS_KEY_ID`,
+   `AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` di `.env` kosong, jadi
+   cadangan harian terenkripsi hanya tersimpan di volume `cadangan` di mesin
+   yang sama. `/api/health` melaporkan `backup: local_only` dengan
+   `lastSuccessAt: null`. Risikonya juga hukum: pembukuan wajib disimpan
+   sepuluh tahun (UU KUP), dan kehilangan mesin berarti kehilangan buku beserta
+   cadangannya.
+2. **Penagihan otomatis sengaja dimatikan** di seluruh 11 langganan
+   (`billing_mode=none`). Ini keputusan Fase A yang didokumentasikan di
+   [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md), bukan kerusakan.
 
 ## 10. Ke mana selanjutnya
 

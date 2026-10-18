@@ -1,13 +1,12 @@
 # 06 — Aliran Data
 
-> Potret 11 Oktober 2026 · v0.9.0 · [indeks](./README.md)
+> Dimutakhirkan 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
-Enam alur yang membawa hampir seluruh nilai sistem ini. Masing-masing dilacak
-dari masukan sampai tempat data berhenti.
+Dokumen ini melacak alur utama sistem dari masukan sampai tempat data berhenti.
 
 ## 1. Daur hidup permintaan halaman
 
-Alur paling sering terjadi, dan tempat setiap batas keamanan dilewati.
+Alur yang paling sering terjadi. Setiap batas keamanan dilewati di sini.
 
 ```mermaid
 sequenceDiagram
@@ -64,17 +63,17 @@ sequenceDiagram
     G-->>B: HTML (RSC)
 ```
 
-**Lima hal yang sering disalahpahami pada alur ini:**
+Lima hal yang sering disalahpahami pada alur ini:
 
-1. **Proxy bukan penjaga otorisasi.** Ia memutuskan "perlu sesi atau tidak" dan
-   "bidang mana". Izin diputuskan penjaga, satu lapis di bawah.
-2. **Keanggotaan dibaca ulang dari basis data setiap permintaan**, tidak dibaca
-   dari JWT. Lebih mahal, dan itu harga yang dibayar sengaja.
-3. **Peran ditimpa per permintaan.** JWT membawa peran di PT yang *terakhir*
+1. Proxy tidak memutuskan izin. Ia hanya memutuskan perlu sesi atau tidak, dan
+   bidang mana. Izin diputuskan penjaga, satu lapis di bawahnya.
+2. Keanggotaan dibaca ulang dari basis data pada setiap permintaan, tidak dari
+   JWT. Biayanya lebih tinggi, dan itu disengaja.
+3. Peran ditimpa per permintaan, karena JWT membawa peran di PT yang terakhir
    dibuka.
-4. **Empat kegagalan berbeda menghasilkan 404 yang identik.** Membedakannya
+4. Empat kegagalan berbeda menghasilkan 404 yang identik. Membedakannya akan
    membocorkan keberadaan perusahaan orang lain.
-5. **Konteks hilang → melempar**, selalu, tanpa jalur bawaan.
+5. Konteks yang hilang selalu melempar galat; tidak ada jalur bawaan.
 
 ## 2. Posting dokumen → jurnal
 
@@ -165,14 +164,13 @@ stateDiagram-v2
 ```
 
 **Dokumen berulang** (`recurring:run`) selalu menerbitkan pengajuan persetujuan
-dengan `force` — **apa pun nilainya**. Jadi buku besar diam sampai seseorang
-menyetujuinya di `/approvals`. Kejadian yang jatuh di periode **tertutup** atau
-yang dokumen sumbernya **hilang** **ditahan dan dilaporkan** — tidak
-diselundupkan, tidak dibuang.
+dengan `force`, berapa pun nilainya. Buku besar tidak berubah sampai seseorang
+menyetujuinya di `/approvals`. Kejadian yang jatuh di periode tertutup, atau
+yang dokumen sumbernya hilang, ditahan dan dilaporkan.
 
 ## 3. Alur penyediaan PT baru
 
-Satu-satunya alur yang **membuat basis data**.
+Satu-satunya alur yang membuat basis data.
 
 ```mermaid
 sequenceDiagram
@@ -212,16 +210,16 @@ sequenceDiagram
     SU->>CDB: tandai penyiapan selesai
 ```
 
-Dua catatan yang mencegah kesalahan:
+Dua catatan:
 
-- **`companies.database_name` menyimpan NAMA, bukan URL.** Menyimpan URL
-  lengkap berarti satu `SELECT` bisa membawa pergi kredensial setiap pelanggan.
-- Data `[CONTOH]` pada perusahaan baru **wajib `is_demo = FALSE`** — ia prasyarat
-  penyiapan, bukan data demo yang akan disapu.
+- `companies.database_name` hanya menyimpan nama basis data. Bila URL lengkap
+  disimpan, satu `SELECT` bisa membawa kredensial setiap pelanggan.
+- Data `[CONTOH]` pada perusahaan baru wajib `is_demo = FALSE`. Data itu
+  prasyarat penyiapan, dan tidak boleh ikut tersapu bersama data demo.
 
 ## 4. Alur penagihan langganan
 
-Alur yang menyeberangi **dua** basis data, dan karena itu punya aturan urutan.
+Alur ini menyeberangi dua basis data, sehingga urutan tulisnya diatur.
 
 ```mermaid
 sequenceDiagram
@@ -261,9 +259,8 @@ sequenceDiagram
 
 ### Kenapa urutannya tidak boleh dibalik
 
-FK dan transaksi **tidak menyeberangi** basis data, jadi kegagalan di tengah
-selalu mungkin. Urutan platform→kendali memilih **kegagalan yang bisa
-diperbaiki**:
+FK dan transaksi tidak menyeberangi basis data, jadi kegagalan di tengah selalu
+mungkin. Urutan platform→kendali memastikan kegagalan itu bisa diperbaiki:
 
 | Urutan | Kegagalan di tengah meninggalkan | Bisa diperbaiki? |
 |---|---|---|
@@ -272,8 +269,8 @@ diperbaiki**:
 
 ### Keadaan hari ini
 
-**Penagihan otomatis sengaja DIHENTIKAN** (Fase A). Terbukti dari basis data
-platform 11 Okt 2026:
+Penagihan otomatis sengaja dihentikan (Fase A). Data dari basis data platform,
+11 Okt 2026:
 
 | | |
 |---|---|
@@ -282,11 +279,11 @@ platform 11 Okt 2026:
 | `platform_invoices` | 11 baris |
 | `MIDTRANS_*` di `.env` | **tidak ada** → transport MOCK |
 
-Alur di atas karena itu **berjalan tanpa menagih siapa pun**. Mekanismenya
-hidup dan diuji; gerbangnya tertutup di tingkat data. Alasan & gerbang
-pembukaannya: [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md).
-Penghentiannya dilakukan `scripts/pause-platform-billing.ts` —
-**kering secara bawaan**, `--apply` menuntut `--reason`, dan idempoten.
+Karena itu alur di atas berjalan tanpa menagih siapa pun. Mekanismenya aktif dan
+diuji, tetapi gerbangnya ditutup di tingkat data. Alasan dan syarat
+pembukaannya ada di [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md).
+Penghentiannya dilakukan `scripts/pause-platform-billing.ts`: kering secara
+bawaan, `--apply` menuntut `--reason`, dan idempoten.
 
 ## 5. Alur cadangan
 
@@ -298,6 +295,7 @@ sequenceDiagram
     participant V as volume documents + audit (:ro)
     participant FS as BACKUP_WORK_DIR
     participant S3 as penyimpanan S3
+    participant L as volume cadangan (/app/data/cadangan)
     participant PDB as sai_platform
 
     B->>DB: pg_dumpall
@@ -314,45 +312,41 @@ sequenceDiagram
     Note over B,FS: enkripsi SEBELUM berkas<br/>meninggalkan mesin
     B->>FS: sha256sum atas CIPHERTEXT
 
-    B->>S3: aws s3 cp arsip.enc
-    B->>S3: aws s3 cp arsip.enc.sha256
-    alt unggah gagal
-        B->>PDB: INSERT backup_runs (error)
-        B-->>B: TIDAK memangkas apa pun
+    alt BACKUP_S3_BUCKET disetel
+        B->>S3: aws s3 cp arsip.enc
+        B->>S3: aws s3 cp arsip.enc.sha256
+        alt unggah gagal
+            B->>PDB: INSERT backup_runs (error)
+            B-->>B: TIDAK memangkas apa pun
+        end
+        B->>S3: pangkas yang > BACKUP_RETENTION_DAYS
+        B->>PDB: INSERT backup_runs (ok)
+    else tanpa bucket
+        B->>L: salin arsip.enc + .sha256
+        B->>L: pangkas yang > BACKUP_RETENTION_DAYS
+        B->>PDB: INSERT backup_runs (lokal)
     end
-
-    B->>S3: pangkas yang > BACKUP_RETENTION_DAYS
-    B->>PDB: INSERT backup_runs (ok)
 ```
 
-### ⚠ Status terbukti: alur ini belum pernah selesai
+### ⚠ Status 18 Okt 2026: `local_only`
 
-| Bukti | Nilai |
-|---|---|
-| `/api/health` → `backup.status` | `"failing"` |
-| `lastSuccessAt` | **`null`** |
-| `lastAttemptAt` | `2026-10-11T06:31:14Z` (berjalan) |
-| `backup_runs` | **54 baris** |
-| `staleAfterHours` | 48 |
+`/api/health` → `backup: local_only`, `lastSuccessAt: null`.
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` di `.env`
+kosong, jadi alur berjalan di cabang tanpa bucket. Arsip terenkripsi disimpan
+di volume `cadangan` di mesin yang sama, dan putarannya dicatat `lokal`, bukan
+`ok`. Salinan ini melindungi dari kerusakan data (`DROP TABLE` keliru,
+migration yang merusak), tetapi tidak dari kehilangan mesin. `watch:health`
+terus memperingatkannya.
 
-**Akar terbukti dari `.env`:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-dan `BACKUP_S3_BUCKET` **tidak ada**. Yang ada: `BACKUP_ENCRYPTION_KEY`,
-`BACKUP_RETENTION_DAYS`, `BACKUP_S3_PREFIX`.
-
-Jadi langkah dump/tar/enkripsi 🔶 **kemungkinan** berjalan sampai `aws s3 cp`,
-lalu gagal di sana — dan karena pemangkasan dikerjakan **paling akhir dan hanya
-bila unggahan sukses**, tidak ada yang dihapus. Itu perilaku yang benar;
-masalahnya tidak ada salinan yang **keluar dari mesin**.
-
-**Konsekuensinya bukan teknis.** Pembukuan wajib disimpan sepuluh tahun
-(UU KUP). Menjual langganan atas data itu tanpa cadangan luar-mesin adalah
-risiko **hukum**. Prioritas **P0** di [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
+Risikonya juga hukum: pembukuan wajib disimpan sepuluh tahun (UU KUP), dan
+langganan dijual tanpa cadangan luar-mesin. Prioritas **P0** di
+[dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 ### Satu risiko yang menyertainya
 
-`BACKUP_ENCRYPTION_KEY` ada di `.env` **pada mesin yang sama dengan datanya**.
-❓ Belum dipastikan apakah ia disimpan di luar mesin. Cadangan yang berhasil pun
-**tidak bisa dibuka** kalau kuncinya hilang bersama mesinnya.
+`BACKUP_ENCRYPTION_KEY` ada di `.env` pada mesin yang sama dengan datanya.
+❓ Belum dipastikan apakah kunci itu juga disimpan di luar mesin. Tanpa kunci,
+cadangan yang berhasil pun tidak bisa dibuka.
 
 ## 6. Alur surel keluar
 
@@ -381,8 +375,8 @@ flowchart TD
 
 ### Alur pengingat ke pelanggan — empat gerbang
 
-Satu-satunya alur yang menghubungi orang **di luar** organisasi pelanggan,
-dan karena itu digerbangi paling ketat:
+Satu-satunya alur yang menghubungi orang di luar organisasi pelanggan, sehingga
+gerbangnya paling ketat:
 
 ```mermaid
 flowchart LR
@@ -400,17 +394,15 @@ flowchart LR
     style F fill:#eef7ee,stroke:#5a8f5a
 ```
 
-Gerbang kedua layak diperhatikan: **seseorang harus pernah menerima sendiri
-kalimatnya lebih dulu**, atau penjadwal menolak. Dan jendela toleransi 2 hari
-membuat "aktifkan" tidak pernah menjadi tombol yang mengirim ratusan surel ke
-tunggakan lama sekaligus.
+Pada gerbang kedua, penjadwal menolak bila belum ada yang pernah menerima
+sendiri kalimat pengingatnya. Jendela toleransi 2 hari mencegah pengaktifan
+fitur ini mengirim ratusan surel ke tunggakan lama sekaligus.
 
-Satu pengingat **per FAKTUR**, bukan ringkasan — seorang pelanggan hanya
-memikul fakturnya sendiri. Berbeda dari `notify:invoice-due` (kabar
-**dalam-aplikasi**), yang justru **ringkasan**: kotak masuk berisi 80 baris
-sama tak terbacanya dengan kotak masuk kosong. Dan kabar itu hanya kepada
-anggota yang boleh membaca Piutang (`receivable.read`, matriks **EFEKTIF**),
-karena badannya menyebut jumlah tunggakan dan nama pelanggan.
+Pengingat dikirim satu per faktur, karena seorang pelanggan hanya menanggung
+fakturnya sendiri. `notify:invoice-due` (kabar dalam-aplikasi) berbeda: ia
+berupa ringkasan, karena 80 kabar terpisah tidak akan terbaca. Kabar itu hanya
+dikirim ke anggota yang boleh membaca Piutang (`receivable.read`, matriks
+efektif), karena isinya menyebut jumlah tunggakan dan nama pelanggan.
 
 ## 7. Aliran penyimpanan berkas
 
@@ -430,16 +422,13 @@ flowchart LR
     style G fill:#ffeaea,stroke:#b55
 ```
 
-Perubahan di #367 layak dicatat karena ia menutup lubang nyata. Sampai issue
-itu berkas mendarat di `public/uploads/` — **satu direktori bersama seluruh PT
-seluruh tenant** — dengan nama yang mempertahankan nama asli pengguna, lalu
-disajikan sebagai **berkas statis yang tidak melewati satu pun penjaga**.
-Sekarang: di luar `public/`, nama `uuid`, dan hanya terjangkau lewat route
-bertenant (#489) yang menuntut `document.read` **dan** menemukan barisnya di
-basis data PT aktif.
+Berkas disimpan di luar `public/` dengan nama `uuid`. Berkas hanya terjangkau
+lewat route bertenant (#489) yang menuntut `document.read` dan menemukan
+barisnya di basis data PT aktif. Sebelum #367, berkas ada di direktori statis
+bersama `public/uploads/` yang tidak melewati penjaga apa pun.
 
-`companyId` datang dari **konteks yang sudah dimasuki penjaga**, bukan dari
-klien — pola yang sama dengan `lib/audit.ts`.
+`companyId` diambil dari konteks yang sudah dimasuki penjaga, tidak dari klien.
+Polanya sama dengan `lib/audit.ts`.
 
 ## 8. Ke mana data berhenti
 
@@ -452,13 +441,13 @@ klien — pola yang sama dengan `lib/audit.ts`.
 | Jejak audit tenant | `tenant_audit_logs` (kendali) | **Selamat dari penghapusan tenant** — sengaja tanpa FK |
 | Identitas & keanggotaan | `sai_control` | Sampai penghapusan akun |
 | Langganan & tagihan | `sai_platform` | ❓ belum dipastikan |
-| Jejak penjadwal | `scheduler_runs` (1.246 baris) | ❓ tanpa kebijakan pemangkasan yang terlihat |
-| Jejak cadangan | `backup_runs` (54 baris) | ❓ sama |
-| Arsip cadangan | S3 | `BACKUP_RETENTION_DAYS` — **tetapi belum ada arsip** |
+| Jejak penjadwal | `scheduler_runs` | Dipangkas `prune:trails` > 90 hari |
+| Jejak cadangan & kesesuaian | `backup_runs`, `conformance_runs` | Dipangkas `prune:trails` > 90 hari |
+| Arsip cadangan | Volume `cadangan` (lokal; S3 belum disetel) | `BACKUP_RETENTION_DAYS` |
 | Surel pengembangan | `data/mail-outbox/*.eml` | ❓ tanpa pemangkasan |
 
-**Berhenti berlangganan TIDAK menghapus buku** — itu keputusan sadar di
-[`docs/COMPLIANCE.md §1`](../COMPLIANCE.md), karena kewajiban retensi 10 tahun
-melekat pada pembukuan, bukan pada status langganan.
+Berhenti berlangganan tidak menghapus buku. Keputusan ini tercatat di
+[`docs/COMPLIANCE.md §1`](../COMPLIANCE.md): kewajiban retensi 10 tahun melekat
+pada pembukuan, tidak pada status langganan.
 
 Lanjut: [07 Infrastruktur & Deploy](./07-INFRASTRUKTUR-DEPLOY.md)

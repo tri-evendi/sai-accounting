@@ -1,10 +1,10 @@
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
 import { calculateStockTotals } from "@/lib/inventory";
-import { PageHeader } from "@/components/ui/page-header";
-import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
+import { LearnMore } from "@sai/ui/learn-more";
 import { getT } from "@/lib/i18n/server";
 import { PurchaseWizard } from "./purchase-wizard";
 

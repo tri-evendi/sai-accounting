@@ -29,7 +29,7 @@ import {
   serializeDraft,
   type WizardKind,
 } from "@/lib/wizard";
-import { useT, type TranslateFn } from "@/lib/i18n/client";
+import { useT, type TranslateFn } from "@sai/core/i18n/client";
 
 /**
  * Kalimat penjelas draf yang dibuang. Kembar berbahasa dari

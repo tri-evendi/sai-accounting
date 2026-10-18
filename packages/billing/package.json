@@ -1,0 +1,19 @@
+{
+  "name": "@sai/billing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Aturan penagihan platform yang MURNI: kontrak gerbang pembayaran, perubahan & penumpukan paket, teks paket, konstanta platform. Tanpa basis data — penulisnya tetap di aplikasi.",
+  "exports": {
+    "./payment-gateway": "./src/payment-gateway.ts",
+    "./plan-change": "./src/plan-change.ts",
+    "./plan-copy": "./src/plan-copy.ts",
+    "./plan-stacking": "./src/plan-stacking.ts",
+    "./platform-constants": "./src/platform-constants.ts"
+  },
+  "dependencies": {
+    "@sai/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "*"
+  }
+}

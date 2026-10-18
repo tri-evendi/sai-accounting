@@ -10,7 +10,7 @@
  */
 
 /* Hanya TIPE — kamusnya sendiri tidak pernah ikut ke bundel mana pun. */
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Awalan WAJIB untuk nama basis data perusahaan.

@@ -25,6 +25,7 @@
  * pembagian "permukaan mana boleh memikul tombol apa".
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { theme } from "antd";
@@ -42,7 +43,7 @@ import {
   PRIMARY_BUTTON_LIGHT,
   brandPrimary,
   brandTone,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 
 type RGB = [number, number, number, number];
 
@@ -385,7 +386,6 @@ describe("nada benar-benar terlihat sebagai bidang, bukan sebagai kartu polos", 
 
 /* ── batas: nada `/platform` tidak bisa dipanggil dari luar `/platform` ──── */
 
-const SRC = join(__dirname, "..", "src");
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -396,9 +396,9 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const rel = (p: string) => p.slice(SRC.length + 1).split("\\").join("/");
+const rel = relSumber;
 const files = new Map<string, string>(
-  sourceFiles(SRC).map((f) => [rel(f), readFileSync(f, "utf8")])
+  akarSumber().flatMap((d) => sourceFiles(d)).map((f) => [rel(f), readFileSync(f, "utf8")])
 );
 
 /** Satu-satunya berkas yang boleh MENYEBUT nama variabelnya. */

@@ -28,8 +28,8 @@ import { DOCS_ROOT, DOC_INDEX, docBranchAnchor, docBySlug, type DocBranch } from
 import { DOC_BLOCKS } from "@/lib/docs-content";
 import { waktuBaca } from "@/lib/docs-text";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { Link } from "@/components/ui/app-link";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { Link } from "@sai/ui/app-link";
 
 export const dynamic = "force-dynamic";
 

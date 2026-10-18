@@ -18,6 +18,7 @@
  * yang tumbuh diam-diam.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -42,11 +43,11 @@ function berkasSumber(dir: string): string[] {
  */
 const DIIZINKAN: ReadonlyArray<{ berkas: string; alasan: string }> = [
   {
-    berkas: "src/components/ui/brand-lockup.tsx",
+    berkas: "packages/ui/src/components/brand-lockup.tsx",
     alasan: "Ia lockup-nya sendiri.",
   },
   {
-    berkas: "src/components/ui/brand-mark.tsx",
+    berkas: "packages/ui/src/components/brand-mark.tsx",
     alasan: "Definisinya.",
   },
   {
@@ -67,7 +68,7 @@ const DIIZINKAN: ReadonlyArray<{ berkas: string; alasan: string }> = [
   },
 ];
 
-const berkas = berkasSumber(SRC);
+const berkas = akarSumber().flatMap((d) => berkasSumber(d));
 
 describe("lambang hanya dirender lewat lockup", () => {
   it("sapuannya benar-benar membaca banyak berkas", () => {
@@ -111,7 +112,7 @@ describe("lambang hanya dirender lewat lockup", () => {
 });
 
 describe("lockup memikul satu tipografi", () => {
-  const src = readFileSync(join(SRC, "components", "ui", "brand-lockup.tsx"), "utf8");
+  const src = readFileSync(join(SRC, "..", "packages", "ui", "src", "components", "brand-lockup.tsx"), "utf8");
 
   it("nama produk memakai satu ukuran dan satu bobot, dari token", () => {
     expect(src).toContain("var(--ant-font-size-lg)");

@@ -35,24 +35,24 @@
 
 import Link from "next/link";
 import { TeamOutlined } from "@ant-design/icons";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { EmptyState } from "@sai/ui/empty-state";
+import { Input } from "@sai/ui/input";
 import {
   ConsolePanel,
   CONSOLE_PAGE,
 } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
-import { Select } from "@/components/ui/select";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { Select } from "@sai/ui/select";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { listTenantsForOperator, tenantStatusVariant } from "@/lib/operator/store";
-import { TENANT_STATUSES } from "@/lib/constants";
+import { TENANT_STATUSES } from "@sai/core/constants";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateMedium as formatDate } from "@/lib/utils";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

@@ -4,16 +4,16 @@
  * sumber via `lib/party-recap.ts` (aturan IDR base di sana).
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getPurchasesBySupplier } from "@/lib/party-recap";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { PartyRecapTable } from "../party-recap-table";
 import { reportById, resolveColumns, resolvePeriod } from "@/lib/report-catalog";
 import { partyRecapColumns } from "@/lib/statement-layout";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

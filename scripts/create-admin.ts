@@ -14,7 +14,7 @@
  * sandinya tidak diubah, hanya keanggotaannya yang bertambah.
  */
 import "dotenv/config";
-import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "../src/lib/constants";
+import { isFullAccessRole, ROLES, ROLE_VALUES, TENANT_ROLES } from "@sai/core/constants";
 import { userQuotaExceeded } from "../src/lib/invitations";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";

@@ -43,7 +43,7 @@ import { stat } from "node:fs/promises";
 
 import JSZip from "jszip";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { mesinPerusahaan } from "@sai/db/engine-runtime";
 import { getCompanyClient } from "@/lib/company-clients";
 import { resolveDocumentPath } from "@/lib/document-storage";

@@ -23,15 +23,15 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { StaticTable } from "@/components/ui/static-table";
-import { scopedHref } from "@/components/ui/app-link";
+import { StaticTable } from "@sai/ui/static-table";
+import { scopedHref } from "@sai/ui/app-link";
 import {
   qtyColumn,
   textColumn,
   type SaiColumn,
   type SaiColumns,
-} from "@/components/ui/table-columns";
-import { moneyColumn } from "@/components/ui/money-column";
+} from "@sai/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
 import { statusColumn } from "@/components/ui/status-column";
 import {
   nextSort,
@@ -40,7 +40,7 @@ import {
   sortOrderBy,
   sortableKeys,
   type SortSpec,
-} from "@/lib/table-sort";
+} from "@sai/ui/table-sort";
 
 type Row = { doc: string; amount: number };
 

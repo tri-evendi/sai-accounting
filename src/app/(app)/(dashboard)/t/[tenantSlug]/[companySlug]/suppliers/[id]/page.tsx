@@ -22,19 +22,19 @@
  * pencabutan Tailwind.
  */
 import { notFound } from "next/navigation";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { formatDate } from "@/lib/utils";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { ButtonLink } from "@sai/ui/button";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { formatDate } from "@sai/core/utils";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { FileDoneOutlined, InboxOutlined } from "@ant-design/icons";
 import { SupplierTransactionForm } from "./transaction-form";
 import { AllocationEditor } from "./allocation-editor";
@@ -47,7 +47,7 @@ import {
 import type { AppliedAdvance } from "@/components/shared/advance-compensation";
 import { toBase } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP } from "@/lib/layout-scale";
+import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 /** Half a cent — money is Decimal(15,2), so anything below this is rounding noise. */
 const EPSILON = 0.005;

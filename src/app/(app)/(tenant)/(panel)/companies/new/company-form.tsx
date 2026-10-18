@@ -38,10 +38,10 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Alert, Flex, Typography, theme } from "antd";
 import { CheckCircleOutlined, LoadingOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
 import { fieldGrid } from "@/lib/layout-width";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { companyToAdoptAfterCreate } from "@/lib/company-selection";
 import {
   databaseNameForSlug,

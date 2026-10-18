@@ -9,7 +9,7 @@ import "server-only";
  */
 
 import { cookies } from "next/headers";
-import { parseTheme, THEME_COOKIE, type Theme } from "./config";
+import { parseTheme, THEME_COOKIE, type Theme } from "@sai/ui/theme/config";
 
 /** Tema pilihan pembaca. Cookie kosong/rusak → bawaan terang. */
 export async function getTheme(): Promise<Theme> {

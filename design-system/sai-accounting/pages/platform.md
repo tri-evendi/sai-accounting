@@ -33,7 +33,7 @@ Tiga jalan ditimbang; yang dipilih **A**.
 | B. `/platform` diberi nada sendiri, resep sendiri | Ditolak: dua salinan `color-mix` yang akan menyimpang pada hari salah satunya disetel, dan perbedaannya tidak berbunyi |
 | C. Batas pemasaran/app digeser; `/platform` dinyatakan bagian dunia pemasaran | Ditolak: melonggarkan penjaga yang baru saja dibuat mekanis (#245), dan menyeret `/platform/team` — pekerjaan administratif yang butuh ketenangan — ikut ke dalam dunia pemasaran |
 
-Rumahnya `src/lib/theme/tone-recipe.ts`: ia tidak mendeklarasikan satu pun
+Rumahnya `packages/ui/src/theme/tone-recipe.ts`: ia tidak mendeklarasikan satu pun
 variabel CSS dan tidak tahu apa-apa tentang halaman mana pun. Yang dibaginya
 hanya bentuk `color-mix` + peta peran→keluarga palet.
 

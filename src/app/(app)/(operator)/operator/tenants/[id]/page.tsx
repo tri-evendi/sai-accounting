@@ -34,30 +34,30 @@
  */
 
 import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@sai/ui/badge";
 import {
   ConsoleNotice,
   ConsolePanel,
   CONSOLE_MUTED,
   CONSOLE_PAGE,
 } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
-import { moneyColumn } from "@/components/ui/money-column";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@sai/ui/button";
 import { readTenantAuditFeed } from "@/lib/tenant-audit";
 import { TenantUserSupport } from "@/components/operator/tenant-user-support";
 import { tenantUsersForOperator } from "@/lib/operator/user-support";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   operatorResendInvitation,
   operatorRevokeUserSessions,
   operatorSendPasswordReset,
 } from "./user-actions";
-import { paymentRailConfigured } from "@/lib/payment-gateway";
+import { paymentRailConfigured } from "@sai/billing/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import {
@@ -72,11 +72,11 @@ import {
   BILLING_MODE_LABEL_KEYS,
   platformInvoiceIsRevenue,
   type BillingMode,
-} from "@/lib/platform-constants";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+} from "@sai/billing/platform-constants";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateMedium as formatDate } from "@/lib/utils";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

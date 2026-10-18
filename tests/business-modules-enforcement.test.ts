@@ -24,8 +24,8 @@ import {
   runWithCompany,
   runWithoutCompany,
 } from "@/lib/company-context";
-import { ROLES } from "@/lib/constants";
-import { PERMISSIONS, type Permission } from "@/lib/authz";
+import { ROLES } from "@sai/core/constants";
+import { PERMISSIONS, type Permission } from "@sai/core/authz";
 import {
   BUSINESS_MODULES,
   isOptInModule,

@@ -15,13 +15,13 @@
 import { useEffect, useState } from "react";
 import { Alert } from "antd";
 
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import {
   COMPONENT_LABEL,
   NOTICE_SENTENCE,
   type PublicStatusNotice,
 } from "@/lib/status-notices";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 const KUNCI = "sai-status-banner-ditutup";
 

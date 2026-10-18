@@ -59,9 +59,9 @@ import { usePathname } from "next/navigation";
 import { Flex, Tour, theme } from "antd";
 import type { TourProps } from "antd";
 import { CloseOutlined, CompassOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { tourForPath, tourStorageKey, type TourDef } from "@/lib/tours";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 
 export const TOUR_REPLAY_EVENT = "sai:tour:replay";
 

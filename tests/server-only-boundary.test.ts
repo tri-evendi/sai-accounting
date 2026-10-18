@@ -22,6 +22,7 @@
  *    (mis. `user-menu.tsx` → `lib/i18n/actions.ts`).
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber, uraiPaket } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname, normalize } from "node:path";
 
@@ -36,7 +37,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 const files = new Map<string, string>(
-  sourceFiles(SRC).map((f) => [f, readFileSync(f, "utf8")])
+  akarSumber().flatMap((d) => sourceFiles(d)).map((f) => [f, readFileSync(f, "utf8")])
 );
 
 /** Direktif hanya berlaku bila berada di kepala berkas. */
@@ -49,6 +50,8 @@ const RUNTIME_IMPORT = /^\s*import\s+(?!type\s)(?:[^;]*?\s+from\s+)?"([^"]+)"/gm
 
 function resolve(spec: string, from: string): string | null {
   let base: string;
+  const paket = uraiPaket(spec);
+  if (paket) return files.has(paket) ? paket : null;
   if (spec.startsWith("@/")) base = join(SRC, spec.slice(2));
   else if (spec.startsWith(".")) base = normalize(join(dirname(from), spec));
   else return null;
@@ -102,7 +105,7 @@ function pathToServerOnly(root: string): string[] | null {
   return null;
 }
 
-const rel = (p: string) => p.slice(SRC.length + 1);
+const rel = relSumber;
 
 describe("batas server/client", () => {
   const clientFiles = [...files]

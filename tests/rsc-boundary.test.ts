@@ -66,7 +66,7 @@
  * berisi JSX.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const SRC = join(__dirname, "..", "src");
@@ -522,46 +522,46 @@ const KLIEN_TERSAHKAN = [
   "components/shared/wizard-partner-step.tsx",
   "components/shared/wizard.tsx",
   "components/tenant/platform-shell.tsx",
-  "components/ui/alert-dialog.tsx",
-  "components/ui/app-link.tsx",
-  "components/ui/badge.tsx",
-  "components/ui/button.tsx",
-  "components/ui/card.tsx",
-  "components/ui/checkbox.tsx",
-  "components/ui/command.tsx",
   "components/ui/confirm-dialog.tsx",
-  "components/ui/data-table.tsx",
-  "components/ui/dialog.tsx",
   "components/ui/disclosure-section.tsx",
-  "components/ui/empty-state.tsx",
-  "components/ui/form.tsx",
-  "components/ui/input.tsx",
-  "components/ui/item-name-input.tsx",
-  "components/ui/learn-more.tsx",
-  "components/ui/loading.tsx",
   "components/ui/locale-toggle.tsx",
-  "components/ui/money-input.tsx",
-  "components/ui/money.tsx",
-  "components/ui/page-header.tsx",
-  "components/ui/pagination.tsx",
-  "components/ui/password-input.tsx",
-  "components/ui/popover.tsx",
-  "components/ui/progress.tsx",
-  "components/ui/quota-meter.tsx",
-  "components/ui/searchable-select.tsx",
-  "components/ui/select.tsx",
   "components/ui/server-searchable-select.tsx",
-  "components/ui/term-tooltip.tsx",
-  "components/ui/textarea.tsx",
   "components/ui/theme-toggle.tsx",
-  "components/ui/toast.tsx",
-  "components/ui/wizard-steps.tsx",
   "lib/company-identity-client.tsx",
-  "lib/i18n/client.tsx",
   "lib/report-files.ts",
   "lib/tax-profile-client.tsx",
   "lib/theme/client.tsx",
   "lib/use-effective-permissions.ts",
+  "packages/core/src/i18n/client.tsx",
+  "packages/ui/src/components/alert-dialog.tsx",
+  "packages/ui/src/components/app-link.tsx",
+  "packages/ui/src/components/badge.tsx",
+  "packages/ui/src/components/button.tsx",
+  "packages/ui/src/components/card.tsx",
+  "packages/ui/src/components/checkbox.tsx",
+  "packages/ui/src/components/command.tsx",
+  "packages/ui/src/components/data-table.tsx",
+  "packages/ui/src/components/dialog.tsx",
+  "packages/ui/src/components/empty-state.tsx",
+  "packages/ui/src/components/form.tsx",
+  "packages/ui/src/components/input.tsx",
+  "packages/ui/src/components/item-name-input.tsx",
+  "packages/ui/src/components/learn-more.tsx",
+  "packages/ui/src/components/loading.tsx",
+  "packages/ui/src/components/money-input.tsx",
+  "packages/ui/src/components/money.tsx",
+  "packages/ui/src/components/page-header.tsx",
+  "packages/ui/src/components/pagination.tsx",
+  "packages/ui/src/components/password-input.tsx",
+  "packages/ui/src/components/popover.tsx",
+  "packages/ui/src/components/progress.tsx",
+  "packages/ui/src/components/quota-meter.tsx",
+  "packages/ui/src/components/searchable-select.tsx",
+  "packages/ui/src/components/select.tsx",
+  "packages/ui/src/components/term-tooltip.tsx",
+  "packages/ui/src/components/textarea.tsx",
+  "packages/ui/src/components/toast.tsx",
+  "packages/ui/src/components/wizard-steps.tsx",
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -574,8 +574,18 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
+/* Paket workspace (monorepo Fase 2) ikut dipindai: modul client yang pindah
+   ke `packages/*` tidak boleh keluar dari hitungan diam-diam. Jalurnya
+   dilaporkan relatif ke AKAR repo (`packages/core/src/...`), jalur `src/`
+   tetap relatif ke `src/` seperti sebelumnya. */
+const PACKAGES = join(__dirname, "..", "packages");
 const files = new Map<string, string>(
-  sourceFiles(SRC).map((f) => [f, readFileSync(f, "utf8")])
+  [
+    ...sourceFiles(SRC),
+    ...readdirSync(PACKAGES, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && existsSync(join(PACKAGES, d.name, "src")))
+      .flatMap((d) => sourceFiles(join(PACKAGES, d.name, "src"))),
+  ].map((f) => [f, readFileSync(f, "utf8")])
 );
 
 /**
@@ -608,7 +618,8 @@ function stripLeadingComments(code: string): string {
 
 const isClient = (code: string) => /^["']use client["']/.test(stripLeadingComments(code));
 
-const rel = (p: string) => p.slice(SRC.length + 1).split("\\").join("/");
+const rel = (p: string) =>
+  (p.startsWith(PACKAGES) ? `packages/${p.slice(PACKAGES.length + 1)}` : p.slice(SRC.length + 1)).split("\\").join("/");
 
 const clientFiles = [...files]
   .filter(([, code]) => isClient(code))

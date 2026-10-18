@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { companyScopeFromRequest } from "@/lib/company-request";
 import { revokeInvitation } from "@/lib/invitation-store";
 import { runWithCompany } from "@/lib/company-context";

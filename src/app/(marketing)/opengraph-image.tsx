@@ -24,15 +24,15 @@
  */
 import { ImageResponse } from "next/og";
 
-import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@/lib/brand/mark";
-import { APP_NAME } from "@/lib/constants";
+import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@sai/ui/brand/mark";
+import { APP_NAME } from "@sai/core/constants";
 import {
   OG_BG as LATAR,
   OG_BORDER as TEPI,
   OG_BRAND as MEREK,
   OG_TEXT as TEKS,
   OG_TEXT_SECONDARY as TEKS_SEKUNDER,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 
 export const alt = APP_NAME;
 export const size = { width: 1200, height: 630 };

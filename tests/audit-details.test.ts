@@ -26,7 +26,7 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 const dict = (lang: string) =>
   JSON.parse(
-    readFileSync(join(__dirname, "..", "src", "lib", "i18n", "dictionaries", `${lang}.json`), "utf8")
+    readFileSync(join(__dirname, "..", "packages", "core", "src", "i18n", "dictionaries", `${lang}.json`), "utf8")
   ) as { audit: Record<string, string> };
 
 describe("kolom Rincian tidak memuntahkan struktur data", () => {

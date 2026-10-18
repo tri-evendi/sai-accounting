@@ -27,7 +27,7 @@
  * tidak ada panah. Urutannya tetap terbaca: nomor "1."–"n" ada di setiap
  * langkah, dan `<ol>`-nya tetap daftar berurutan.
  */
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -53,9 +53,9 @@ import {
   UploadOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
-import type { IconComponent } from "@/lib/icons";
+import type { IconComponent } from "@sai/ui/icons";
 import type { Workflow, WorkflowTone } from "@/lib/workflows";
-import type { TranslateFn } from "@/lib/i18n/client";
+import type { TranslateFn } from "@sai/core/i18n/client";
 
 /**
  * `lib/workflows.ts` tetap menyebut ikon dengan NAMA LAMA: modul itu

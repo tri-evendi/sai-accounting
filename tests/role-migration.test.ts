@@ -20,7 +20,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ROLES, ROLE_LABELS, ROLE_VALUES } from "@/lib/constants";
+import { ROLES, ROLE_LABELS, ROLE_VALUES } from "@sai/core/constants";
 
 const MIGRATION_PATH = path.join(
   process.cwd(),

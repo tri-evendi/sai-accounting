@@ -38,26 +38,26 @@
  * + format id-ID, tanpa "Rp".
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getStockValuePeriodReport } from "@/lib/stock-report";
 import { PeriodFilter } from "../report-filters";
 import { resolvePeriod, columnLabels } from "@/lib/report-catalog";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
-import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Money } from "@sai/ui/money";
+import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
 import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layout";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_XS } from "@sai/ui/layout-scale";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */

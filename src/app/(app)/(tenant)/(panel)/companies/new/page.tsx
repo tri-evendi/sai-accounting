@@ -34,8 +34,8 @@
  * URL-nya TIDAK berubah: `(panel)` adalah grup rute, dan grup rute tidak muncul
  * di alamat. Lihat kepala `(panel)/layout.tsx`.
  */
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { getT } from "@/lib/i18n/server";
 

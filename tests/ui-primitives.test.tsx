@@ -11,9 +11,9 @@
 
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Card } from "@/components/ui/card";
-import { Input, TextInput } from "@/components/ui/input";
-import { SelectField, SEARCH_THRESHOLD, Select } from "@/components/ui/select";
+import { Card } from "@sai/ui/card";
+import { Input, TextInput } from "@sai/ui/input";
+import { SelectField, SEARCH_THRESHOLD, Select } from "@sai/ui/select";
 
 /*
  * `Button` dan `Badge` sudah tidak diuji di sini sejak issue #187. Keduanya

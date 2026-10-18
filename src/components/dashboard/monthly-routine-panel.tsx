@@ -20,7 +20,7 @@
  * yang belum membawa nomor urut dan ajakan bertindak.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   ArrowRightOutlined,
   ArrowUpOutlined,
@@ -31,7 +31,7 @@ import {
 } from "@ant-design/icons";
 
 import { getT } from "@/lib/i18n/server";
-import type { IconComponent } from "@/lib/icons";
+import type { IconComponent } from "@sai/ui/icons";
 import type { MonthlyStep, MonthlyRoutineProgress } from "@/lib/monthly-routine";
 
 /**

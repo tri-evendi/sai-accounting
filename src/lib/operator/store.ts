@@ -28,7 +28,7 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@/lib/platform-db";
 import { makeLatestJournalDateReader } from "@/lib/operator/writes";
 import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@/lib/operator/tenant-health";

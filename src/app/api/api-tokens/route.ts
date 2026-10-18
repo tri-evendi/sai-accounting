@@ -27,14 +27,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { currentCompanyId } from "@/lib/current-company";
 import { activeRoleKeys } from "@/lib/roles";
 import { issueToken } from "@/lib/api-token";
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(100),

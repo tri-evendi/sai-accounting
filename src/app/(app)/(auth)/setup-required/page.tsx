@@ -21,7 +21,7 @@
  */
 import { redirect } from "next/navigation";
 import { LockOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 
 import { auth } from "@/lib/auth";
 import { canEffective } from "@/lib/authz-effective";

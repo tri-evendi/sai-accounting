@@ -24,16 +24,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Col, Flex, Row, theme, Typography } from "antd";
 import { CheckOutlined, DeleteOutlined, LockOutlined, PlusOutlined, StopOutlined } from "@ant-design/icons";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import { type SaiColumns } from "@/components/ui/table-columns";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Button } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import { type SaiColumns } from "@sai/ui/table-columns";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
+import { useToast } from "@sai/ui/toast";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /** Panjang maksimum label & kunci peran — batas yang sama ditegakkan API. */

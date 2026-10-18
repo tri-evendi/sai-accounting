@@ -17,14 +17,14 @@
 
 import { MailSettingsForm } from "@/components/operator/mail-settings-form";
 import { CONSOLE_PAGE, ConsoleNotice } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import { mailSettingsForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
 import { mailHealth } from "@/lib/mail-health";
 import { outboxCount } from "@/lib/mailer-core";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

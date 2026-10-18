@@ -12,7 +12,7 @@ import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { businessModulesPayloadSchema } from "./modules";
 import { booleanField } from "./common";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /** One opening cash/bank balance — the user picks a concrete cash_bank account. */
 export const openingCashSchema = z

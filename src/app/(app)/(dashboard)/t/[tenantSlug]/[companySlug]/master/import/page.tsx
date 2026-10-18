@@ -17,7 +17,7 @@ import { redirect } from "next/navigation";
 
 import { requirePagePermission } from "@/lib/page-auth";
 import { canEffective } from "@/lib/authz-effective";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 
 import { MasterImportForm } from "./master-import-form";
 

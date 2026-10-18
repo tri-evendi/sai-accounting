@@ -12,7 +12,7 @@
  */
 import { z } from "zod";
 import { APPROVAL_DOCUMENT_TYPES } from "@/lib/approvals";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 
 /**

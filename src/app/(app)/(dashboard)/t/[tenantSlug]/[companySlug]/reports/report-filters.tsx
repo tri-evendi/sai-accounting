@@ -31,11 +31,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Flex } from "antd";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { useT } from "@/lib/i18n/client";
-import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { Button } from "@sai/ui/button";
+import { useT } from "@sai/core/i18n/client";
+import { SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 
 /** `margin` 16 · `marginLG` 24 — jarak antar kendali & jarak ke tabel di bawah. */
 const CONTROL_GAP = SPACE_SM;

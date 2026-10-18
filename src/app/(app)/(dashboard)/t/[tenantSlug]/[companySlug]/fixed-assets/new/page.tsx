@@ -1,10 +1,10 @@
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { TagsOutlined } from "@ant-design/icons";
 import { AssetForm } from "./asset-form";
 import { getT } from "@/lib/i18n/server";

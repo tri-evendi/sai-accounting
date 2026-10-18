@@ -17,11 +17,11 @@ import { useState } from "react";
 import { Alert, Flex, Typography, theme } from "antd";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
 import { apiFetch } from "@/lib/api-fetch";
-import { useT } from "@/lib/i18n/client";
-import { useToast } from "@/components/ui/toast";
+import { useT } from "@sai/core/i18n/client";
+import { useToast } from "@sai/ui/toast";
 
 const { Text } = Typography;
 

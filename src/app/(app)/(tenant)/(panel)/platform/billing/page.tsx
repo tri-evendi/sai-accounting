@@ -15,9 +15,9 @@
  */
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { platformHead } from "@/components/tenant/platform-tone";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { billingOverviewForTenant } from "@/lib/subscription-store";
 import { getT } from "@/lib/i18n/server";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";

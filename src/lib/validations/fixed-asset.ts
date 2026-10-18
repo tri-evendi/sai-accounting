@@ -8,7 +8,7 @@
  */
 import { z } from "zod";
 import { DEPRECIATION_METHODS } from "@/lib/depreciation";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 export const depreciationMethodEnum = z.enum(DEPRECIATION_METHODS);
 

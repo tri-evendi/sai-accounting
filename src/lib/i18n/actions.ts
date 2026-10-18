@@ -20,7 +20,7 @@ import {
   LOCALE_COOKIE_MAX_AGE,
   isLocale,
   type Locale,
-} from "./config";
+} from "@sai/core/i18n/config";
 
 export async function setLocale(locale: string): Promise<Locale> {
   const next: Locale = isLocale(locale) ? locale : DEFAULT_LOCALE;

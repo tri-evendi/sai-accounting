@@ -61,12 +61,30 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
     expect(pelanggar).toEqual([]);
   });
 
-  it("setiap subpath yang diekspor menunjuk berkas yang ada", () => {
-    const manifes = JSON.parse(readFileSync(join(AKAR, "packages/db/package.json"), "utf8")) as {
+  it.each(
+    readdirSync(join(AKAR, "packages")).filter((d) => existsSync(join(AKAR, "packages", d, "package.json")))
+  )("setiap subpath yang diekspor @sai/%s menunjuk berkas yang ada", (d) => {
+    const manifes = JSON.parse(readFileSync(join(AKAR, `packages/${d}/package.json`), "utf8")) as {
       exports: Record<string, string>;
     };
     for (const tujuan of Object.values(manifes.exports)) {
-      expect(berkas, tujuan).toContain(join("packages/db", tujuan));
+      if (tujuan.endsWith("/*")) {
+        /* Pola (`./i18n/dictionaries/*`): direktorinya wajib ada dan berisi. */
+        const dir = join(AKAR, `packages/${d}`, tujuan.slice(0, -2));
+        expect(existsSync(dir) && readdirSync(dir).length > 0, tujuan).toBe(true);
+        continue;
+      }
+      expect(berkas, tujuan).toContain(join(`packages/${d}`, tujuan));
+    }
+  });
+
+  it("setiap paket workspace tercantum di `transpilePackages`", () => {
+    /* Paket dikirim sebagai SUMBER TS. Tanpa entri ini Next memperlakukannya
+       sebagai dependensi pihak ketiga yang sudah dikompilasi. */
+    const config = readFileSync(join(AKAR, "next.config.ts"), "utf8");
+    for (const d of readdirSync(join(AKAR, "packages")).filter((x) => existsSync(join(AKAR, "packages", x, "package.json")))) {
+      const nama = (JSON.parse(readFileSync(join(AKAR, "packages", d, "package.json"), "utf8")) as { name: string }).name;
+      expect(config, nama).toContain(`"${nama}"`);
     }
   });
 

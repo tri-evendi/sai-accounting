@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { costCenterSchema } from "@/lib/validations/cost-center";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("cost_center.read");

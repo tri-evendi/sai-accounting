@@ -46,7 +46,7 @@
  * angka. Diuji di `tests/platform-revenue.test.ts`.
  */
 
-import { billingModeIsAutomatic } from "@/lib/platform-constants";
+import { billingModeIsAutomatic } from "@sai/billing/platform-constants";
 
 /** Satu langganan, seminimal yang dibutuhkan hitungan MRR. */
 export interface RevenueSubscription {

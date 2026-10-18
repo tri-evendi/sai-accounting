@@ -1,7 +1,7 @@
 # RBAC — Otorisasi Berbasis Izin (WAJIB untuk halaman/route baru)
 
 > Hasil refactor audit RBAC 2026-07 (PR #70, #71, dst). Satu sumber kebenaran:
-> **`src/lib/authz.ts`**. Kode tidak pernah bertanya "perannya Direktur Utama
+> **`packages/core/src/authz.ts`**. Kode tidak pernah bertanya "perannya Direktur Utama
 > atau Manajer Keuangan?" —
 > kode bertanya **"punya izin `resource.action`?"**
 > Sejak issue #73 matriks di kode adalah **BAWAAN (baseline)**; matriks
@@ -13,7 +13,7 @@
 
 ## Peran
 
-Empat peran SISTEM di kode (`src/lib/constants.ts` — `ROLES`, `ROLE_VALUES`, `roleEnum`
+Empat peran SISTEM di kode (`packages/core/src/constants.ts` — `ROLES`, `ROLE_VALUES`, `roleEnum`
 di `validations/common.ts` untuk zod). Kuncinya nama jabatan baku Bahasa Inggris
 `snake_case` sejak **migration 0032** (konvensi docs/DATABASE.md); singkatan lama
 `bos`/`core`/`ptg` sudah tidak ada lagi, baik di DB maupun di kode.
@@ -30,7 +30,7 @@ dengan izin terbatas): harus selalu ada DUA jalan masuk yang berdiri sendiri unt
 mengelola pengguna & hak akses, supaya satu akun yang hilang tak pernah mengunci
 seluruh perusahaan. Pemisahan tugas ditukar dengan ketahanan secara sadar; jejaknya
 tetap terbaca karena catatan audit menyimpan peran aktor. Keduanya berada di
-`FULL_ACCESS_ROLES` (`src/lib/constants.ts`) — SATU sumber untuk matriks izin,
+`FULL_ACCESS_ROLES` (`packages/core/src/constants.ts`) — SATU sumber untuk matriks izin,
 bawaan Mode Akuntan, dan sel anti-lockout.
 
 **Peran BAWAAN pembuat perusahaan = `administrator`**, bukan `managing_director`
@@ -52,7 +52,7 @@ data di tabel `roles` (migration 0031).
 
 ## Matriks izin
 
-`PERMISSION_ROLES` di `src/lib/authz.ts`: `"<resource>.<action>"` → daftar peran.
+`PERMISSION_ROLES` di `packages/core/src/authz.ts`: `"<resource>.<action>"` → daftar peran.
 Aksi baku: `read` · `write` · `delete` · `manage` · view/decide/export untuk kasus khusus.
 Invarian dijaga `tests/authz.test.ts`: kedua peran berakses penuh memegang semua;
 hapus master = akses-penuh-saja (kecuali `advance.delete`, terdokumentasi);
@@ -185,7 +185,7 @@ pernah bercampur:
 | Lingkup | Matriks | Penjaga | Sumber jawaban |
 |---|---|---|---|
 | **Tenant** (`tenant.home`, `company.create`, `tenant.billing`, `tenant.member.invite`, `tenant.settings`) | `TENANT_PERMISSION_ROLES` di `src/lib/tenant-authz.ts` | `requireTenantApiPermission` / `requireTenantPagePermission` (`src/lib/tenant-guard.ts`) | `tenant_memberships` (owner/admin/member) di basis data kendali |
-| **Perusahaan** (seluruh matriks di atas) | `PERMISSION_ROLES` di `src/lib/authz.ts` | `requireApiPermission` / `requirePagePermission` | `memberships` per-PT |
+| **Perusahaan** (seluruh matriks di atas) | `PERMISSION_ROLES` di `packages/core/src/authz.ts` | `requireApiPermission` / `requirePagePermission` | `memberships` per-PT |
 
 Aturannya: **izin tenant TIDAK BOLEH diperiksa penjaga perusahaan** — penjaga
 perusahaan menuntut konteks perusahaan, dan ketiadaan konteks itu justru

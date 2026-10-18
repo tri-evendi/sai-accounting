@@ -15,26 +15,26 @@
  * sebelahnya tetap menyebutkannya dengan ikon + kata.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
 import { reportById } from "@/lib/report-catalog";
 import { budgetPayload } from "@/lib/report-payload";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "@/lib/budget";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
-import { StaticTable } from "@/components/ui/static-table";
-import { type SaiColumns } from "@/components/ui/table-columns";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
+import { Card } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
+import { StaticTable } from "@sai/ui/static-table";
+import { type SaiColumns } from "@sai/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Money } from "@sai/ui/money";
 import { budgetColumns, type BudgetColumnId } from "@/lib/statement-layout";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { VarianceBadge } from "@/components/shared/variance-badge";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
-import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 import { DashboardOutlined, WarningOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 

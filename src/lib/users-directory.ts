@@ -22,9 +22,9 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { currentCompanyId } from "@/lib/current-company";
-import { TENANT_ROLES } from "@/lib/constants";
+import { TENANT_ROLES } from "@sai/core/constants";
 
 export interface CompanyUser {
   id: number;

@@ -16,8 +16,8 @@
  * component sejak #227; warna angkanya anak tangga uang #186, bukan
  * `colorSuccess`/`colorError` bawaan yang gagal 4,5:1 sebagai teks.
  */
-import { Card } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { Card } from "@sai/ui/card";
+import { formatCurrency } from "@sai/core/utils";
 import {
   BulbOutlined,
   FallOutlined,
@@ -25,10 +25,10 @@ import {
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
 } from "@ant-design/icons";
-import type { IconComponent } from "@/lib/icons";
+import type { IconComponent } from "@sai/ui/icons";
 import type { ReportSummary, SummaryDirection } from "@/lib/report-summary";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 interface DirStyle {
   Icon: IconComponent;

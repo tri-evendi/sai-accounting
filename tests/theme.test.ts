@@ -26,7 +26,7 @@ import {
   parseTheme,
   themeClass,
   themeScript,
-} from "@/lib/theme/config";
+} from "@sai/ui/theme/config";
 
 describe("parseTheme", () => {
   it("menerima ketiga pilihan yang sah", () => {

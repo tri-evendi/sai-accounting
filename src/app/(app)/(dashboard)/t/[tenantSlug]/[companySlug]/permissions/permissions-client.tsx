@@ -39,13 +39,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Flex, theme } from "antd";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { RoleManager } from "./role-manager";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@sai/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { Checkbox } from "@sai/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PageLoader } from "@/components/ui/loading";
+import { PageLoader } from "@sai/ui/loading";
 import {
   Table,
   TableBody,
@@ -53,10 +53,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast";
-import { ROLE_LABELS, type Role } from "@/lib/constants";
-import type { Permission } from "@/lib/authz";
+} from "@sai/ui/table";
+import { useToast } from "@sai/ui/toast";
+import { ROLE_LABELS, type Role } from "@sai/core/constants";
+import type { Permission } from "@sai/core/authz";
 import {
   isProtectedCell,
   validateOverrides,
@@ -64,11 +64,11 @@ import {
 } from "@/lib/authz-overrides";
 import { permissionGroups } from "@/lib/authz-labels";
 import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
-import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { useDictionary, useT, type TranslateFn } from "@sai/core/i18n/client";
 import { permissionLabels, permissionResourceLabels } from "@/lib/i18n/labels";
 import { CloseSquareOutlined, LockOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 /** Lebar minimum matriks sebelum ia menggulung mendatar — bekas `min-w-[640px]`. */
 const MATRIX_MIN_WIDTH = 640;

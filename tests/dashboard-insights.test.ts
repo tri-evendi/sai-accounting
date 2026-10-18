@@ -19,7 +19,7 @@ import {
 
 const dict = (loc: string) =>
   JSON.parse(
-    readFileSync(join(__dirname, "..", "src", "lib", "i18n", "dictionaries", `${loc}.json`), "utf8")
+    readFileSync(join(__dirname, "..", "packages", "core", "src", "i18n", "dictionaries", `${loc}.json`), "utf8")
   );
 
 describe("diam adalah keluaran yang sah", () => {

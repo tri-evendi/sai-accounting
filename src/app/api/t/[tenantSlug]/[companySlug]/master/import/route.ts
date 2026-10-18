@@ -34,7 +34,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import { readFirstSheetRows } from "@/lib/xlsx-read";
 import ExcelJS from "exceljs";
 import { getCompanyIdentity } from "@/lib/company-identity";

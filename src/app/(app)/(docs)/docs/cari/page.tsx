@@ -25,7 +25,7 @@ import type { Metadata } from "next";
 import { SearchOutlined } from "@ant-design/icons";
 
 import { DocsShell } from "@/components/docs/docs-shell";
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { cariDokumentasi, type HasilCari } from "@/lib/docs-search";
 import { getT } from "@/lib/i18n/server";
 

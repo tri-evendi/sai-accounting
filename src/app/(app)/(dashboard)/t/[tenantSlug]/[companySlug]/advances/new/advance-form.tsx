@@ -19,12 +19,12 @@
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { TextInput } from "@/components/ui/input";
-import { Money } from "@/components/ui/money";
-import { SelectField } from "@/components/ui/select";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Card } from "@sai/ui/card";
+import { TextInput } from "@sai/ui/input";
+import { Money } from "@sai/ui/money";
+import { SelectField } from "@sai/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import {
   Form,
@@ -34,11 +34,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from "@sai/ui/form";
 import { BASE_CURRENCY, CURRENCY_OPTIONS } from "@/components/shared/currency-rate-fields";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@sai/ui/toast";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
 import { advancePaymentSchema, type AdvancePaymentInput } from "@/lib/validations/advance";

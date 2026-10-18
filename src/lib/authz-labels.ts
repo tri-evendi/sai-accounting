@@ -10,7 +10,7 @@
  * Modul MURNI (tanpa React/Prisma) — dipakai server & client.
  */
 
-import { PERMISSIONS, type Permission } from "@/lib/authz";
+import { PERMISSIONS, type Permission } from "@sai/core/authz";
 
 /** `"invoice.write"` → `"invoice"`, diketik dari `Permission` itu sendiri. */
 export type PermissionResource = Permission extends `${infer R}.${string}` ? R : never;

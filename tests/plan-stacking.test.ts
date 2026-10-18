@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { stackingComparisons, type StackablePlan } from "@/lib/plan-stacking";
+import { stackingComparisons, type StackablePlan } from "@sai/billing/plan-stacking";
 
 const paket = (
   key: string,

@@ -7,7 +7,7 @@
  * komentar model `StatusNotice`.
  */
 import type { ComponentId } from "@/lib/public-status";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export const STATUS_NOTICE_KINDS = ["maintenance", "incident"] as const;
 export type StatusNoticeKind = (typeof STATUS_NOTICE_KINDS)[number];

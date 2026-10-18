@@ -27,7 +27,7 @@
  * Tanpa `--terapkan`, ia hanya MENAMPILKAN apa yang akan terjadi.
  */
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { renameTenantSlug } from "@/lib/tenant-slug";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 

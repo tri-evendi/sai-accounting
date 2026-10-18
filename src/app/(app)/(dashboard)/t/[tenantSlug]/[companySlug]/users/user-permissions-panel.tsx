@@ -33,12 +33,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Flex, theme, Typography } from "antd";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { PageLoader } from "@/components/ui/loading";
-import { SelectField } from "@/components/ui/select";
+import { PageLoader } from "@sai/ui/loading";
+import { SelectField } from "@sai/ui/select";
 import {
   Table,
   TableBody,
@@ -46,21 +46,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/components/ui/toast";
-import type { SystemRole } from "@/lib/constants";
-import type { Permission } from "@/lib/authz";
+} from "@sai/ui/table";
+import { useToast } from "@sai/ui/toast";
+import type { SystemRole } from "@sai/core/constants";
+import type { Permission } from "@sai/core/authz";
 import {
   validateUserOverrides,
   type UserPermissionOverrideRow,
 } from "@/lib/authz-user-overrides";
 import { permissionGroups } from "@/lib/authz-labels";
 import { RESOURCE_MODULE, isModuleEnabled, type BusinessModule } from "@/lib/business-modules";
-import { useDictionary, useT, type TranslateFn } from "@/lib/i18n/client";
+import { useDictionary, useT, type TranslateFn } from "@sai/core/i18n/client";
 import { permissionLabels, permissionResourceLabels, roleLabels } from "@/lib/i18n/labels";
 import { CloseOutlined, LockOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 /** Lebar minimum matriks sebelum ia menggulung mendatar — bekas `min-w-[560px]`. */
 const MATRIX_MIN_WIDTH = 560;

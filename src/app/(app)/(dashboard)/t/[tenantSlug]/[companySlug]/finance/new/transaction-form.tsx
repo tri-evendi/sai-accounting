@@ -29,11 +29,11 @@ import { Alert, Flex, theme, Typography } from "antd";
 import { useSearchParams } from "next/navigation";
 import { useForm, useWatch, type FieldErrors, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAppRouter } from "@/components/ui/app-link";
+import { useAppRouter } from "@sai/ui/app-link";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
+import { Button } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
 import {
   Form,
   FormControl,
@@ -42,25 +42,25 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Money } from "@/components/ui/money";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+} from "@sai/ui/form";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Money } from "@sai/ui/money";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { AccountBookOutlined, ArrowDownOutlined, ArrowUpOutlined, InfoCircleOutlined, LockOutlined } from "@ant-design/icons";
-import { PageLoader } from "@/components/ui/loading";
-import { PageHeader } from "@/components/ui/page-header";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
+import { PageLoader } from "@sai/ui/loading";
+import { PageHeader } from "@sai/ui/page-header";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
 import { CostCenterField, useCostCenters } from "@/components/shared/cost-center-field";
-import type { CashType } from "@/lib/constants";
+import type { CashType } from "@sai/core/constants";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { isAdvancedField, orderedFields, resolveSubmitFailure } from "@/lib/form-sections";
 import { closedPeriodIssue, type ClosedPeriodRef } from "@/lib/form-guards";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { cashTypeLabels } from "@/lib/i18n/labels";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 import { apiFetch } from "@/lib/api-fetch";
 import { cashTransactionSchema, type CashTransactionInput } from "@/lib/validations/finance";
 

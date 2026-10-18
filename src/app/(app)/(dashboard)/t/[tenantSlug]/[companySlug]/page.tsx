@@ -1,24 +1,24 @@
 import { auth } from "@/lib/auth";
 import { requireSetupDone, requireUnlockedCompany } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { moneyColumn } from "@/components/ui/money-column";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
 import { statusColumn } from "@/components/ui/status-column";
-import { Money } from "@/components/ui/money";
+import { Money } from "@sai/ui/money";
 import { notFound, redirect } from "next/navigation";
-import { Link } from "@/components/ui/app-link";
-import { formatDateShort, formatNumber } from "@/lib/utils";
+import { Link } from "@sai/ui/app-link";
+import { formatDateShort, formatNumber } from "@sai/core/utils";
 import {
   countStockHealth,
   stockLevelsFromTotals,
   toLowStockAlerts,
 } from "@/lib/inventory";
-import { LOW_STOCK_THRESHOLD, type CashType } from "@/lib/constants";
+import { LOW_STOCK_THRESHOLD, type CashType } from "@sai/core/constants";
 import { effectivePermissionsFor } from "@/lib/authz-effective";
 import { enterCompanyFromRoute } from "@/lib/company-route";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { quickActionsForRole } from "@/lib/quick-actions";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { visibleWorkflows } from "@/lib/workflows";
@@ -40,14 +40,14 @@ import {
 import { MonthlyRoutinePanel } from "@/components/dashboard/monthly-routine-panel";
 import { SampleDataBanner } from "@/components/dashboard/sample-data-banner";
 import { GlossaryHint } from "@/components/dashboard/glossary-hint";
-import { PageHeader } from "@/components/ui/page-header";
-import { Badge } from "@/components/ui/badge";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { Badge } from "@sai/ui/badge";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { EmptyState } from "@sai/ui/empty-state";
 import { ContainerOutlined, FileTextOutlined } from "@ant-design/icons";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
-import { StatCard } from "@/components/ui/stat-card";
+import { StatCard } from "@sai/ui/stat-card";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import {
   InventoryExportAction,
@@ -62,7 +62,7 @@ import { cashTypeLabels } from "@/lib/i18n/labels";
 import { buildDashboardInsights } from "@/lib/dashboard-insights";
 import { getBudgetReport } from "@/lib/budget-report";
 import { getSalesByCustomer, getPurchasesBySupplier } from "@/lib/party-recap";
-import { CARD_GAP } from "@/lib/layout-scale";
+import { CARD_GAP } from "@sai/ui/layout-scale";
 import { InsightPanel } from "@/components/dashboard/insight-panel";
 
 export const dynamic = "force-dynamic";

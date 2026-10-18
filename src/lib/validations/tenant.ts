@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 
 /**
  * Skema permukaan AKUN (tenant) — issue #458.

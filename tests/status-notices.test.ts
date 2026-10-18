@@ -69,7 +69,7 @@ describe("aturan tampil", () => {
 describe("kosakata & kalimat", () => {
   it("setiap pasangan jenis × fase yang sah punya kalimat di ketiga kamus", () => {
     for (const lang of ["id", "en", "zh"]) {
-      const d = JSON.parse(readFileSync(join(process.cwd(), `src/lib/i18n/dictionaries/${lang}.json`), "utf8"));
+      const d = JSON.parse(readFileSync(join(process.cwd(), `packages/core/src/i18n/dictionaries/${lang}.json`), "utf8"));
       for (const kind of STATUS_NOTICE_KINDS) {
         for (const phase of PHASES_FOR[kind]) {
           const kunci = NOTICE_SENTENCE[kind][phase];

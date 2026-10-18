@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { buildOpnameHistory, type OpnameAdjustmentInput } from "@/lib/opname-history";
-import { OPNAME_ADJUSTMENT_NOTE } from "@/lib/constants";
+import { OPNAME_ADJUSTMENT_NOTE } from "@sai/core/constants";
 
 const row = (
   date: string,

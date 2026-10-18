@@ -27,7 +27,7 @@ import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { sendMail } from "@/lib/mailer";
 import {
   readTenantMail,

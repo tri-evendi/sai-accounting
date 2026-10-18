@@ -30,9 +30,9 @@ import { createRequire } from "node:module";
 import { renderToStaticMarkup } from "react-dom/server";
 import { theme } from "antd";
 
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import { LocaleProvider } from "@/lib/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
 
 /* ------------------------------------------------------------------ */
 /* Perekam prop — satu-satunya cara melihat kontrak ke AntD di node    */
@@ -90,12 +90,12 @@ vi.mock("antd", async (importOriginal) => {
 const { AntdProvider } = await import("@/components/providers/antd-provider");
 const { ConfirmDialog } = await import("@/components/ui/confirm-dialog");
 const { Dialog, DialogContent, DialogTitle, writeDialogAria } = await import(
-  "@/components/ui/dialog"
+  "@sai/ui/dialog"
 );
-const { LearnMore } = await import("@/components/ui/learn-more");
-const { Popover, PopoverContent, PopoverTrigger } = await import("@/components/ui/popover");
-const { TermTooltip } = await import("@/components/ui/term-tooltip");
-const { useToast } = await import("@/components/ui/toast");
+const { LearnMore } = await import("@sai/ui/learn-more");
+const { Popover, PopoverContent, PopoverTrigger } = await import("@sai/ui/popover");
+const { TermTooltip } = await import("@sai/ui/term-tooltip");
+const { useToast } = await import("@sai/ui/toast");
 
 const dictionary = id as unknown as Dictionary;
 

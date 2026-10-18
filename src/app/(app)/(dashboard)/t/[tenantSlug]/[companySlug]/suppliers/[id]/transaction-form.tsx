@@ -23,22 +23,22 @@ import { useCallback, useState } from "react";
 import { Alert, Col, Flex, Row, theme } from "antd";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input, TextInput } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { Button } from "@sai/ui/button";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Input, TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { Select } from "@sai/ui/select";
 import {
   CostCenterField,
   costCenterPayload,
   useCostCenters,
 } from "@/components/shared/cost-center-field";
-import { useToast } from "@/components/ui/toast";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { useT } from "@/lib/i18n/client";
+import { useToast } from "@sai/ui/toast";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
+import { useT } from "@sai/core/i18n/client";
 import { ArrowDownOutlined, ArrowUpOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
-import { CASH_TYPES, CASH_TYPE_KEYS, type CashType } from "@/lib/constants";
+import { CASH_TYPES, CASH_TYPE_KEYS, type CashType } from "@sai/core/constants";
 
 const BASE_CURRENCY = "IDR";
 

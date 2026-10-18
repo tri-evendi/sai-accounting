@@ -14,11 +14,11 @@
  */
 import { CloudServerOutlined } from "@ant-design/icons";
 
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import {
   ConsoleNotice,
   ConsolePanel,
@@ -35,8 +35,8 @@ import {
 } from "@/lib/operator/backups";
 import { perluTindakan, type StatusVersi } from "@/lib/schema-version";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateTime } from "@/lib/utils";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatDateTime } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

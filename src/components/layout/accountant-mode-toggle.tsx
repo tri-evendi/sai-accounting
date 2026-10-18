@@ -5,12 +5,12 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Flex, Grid, theme } from "antd";
 import { CalculatorOutlined } from "@ant-design/icons";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
-import { ROLES, isFullAccessRole } from "@/lib/constants";
-import { useT } from "@/lib/i18n/client";
+import { ROLES, isFullAccessRole } from "@sai/core/constants";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 
 /**

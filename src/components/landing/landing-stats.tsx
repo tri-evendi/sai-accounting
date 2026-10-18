@@ -44,8 +44,8 @@ import {
   landingGlyph,
 } from "@/components/landing/landing-scale";
 import { BUSINESS_MODULES } from "@/lib/business-modules";
-import { CURRENCIES } from "@/lib/constants";
-import { LOCALES } from "@/lib/i18n/config";
+import { CURRENCIES } from "@sai/core/constants";
+import { LOCALES } from "@sai/core/i18n/config";
 import { getT } from "@/lib/i18n/server";
 
 /**

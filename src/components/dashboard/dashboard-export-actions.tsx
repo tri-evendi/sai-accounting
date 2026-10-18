@@ -24,7 +24,7 @@
  */
 
 import { useCompanyIdentity } from "@/lib/company-identity-client";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";

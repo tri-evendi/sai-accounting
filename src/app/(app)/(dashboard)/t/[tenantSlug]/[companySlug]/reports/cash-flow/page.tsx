@@ -21,18 +21,18 @@
  * **Halaman tetap server component.**
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { canEffective } from "@/lib/authz-effective";
 import { prisma } from "@/lib/prisma";
 import { getCashFlow } from "@/lib/reports";
 import { cashFlowSeriesByCurrency, chartPeriodStart } from "@/lib/chart-data";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { CashFlowChart } from "@/components/shared/dashboard-charts";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
@@ -43,10 +43,10 @@ import {
 } from "@/components/reports/cash-flow-statement";
 import { resolvePeriod } from "@/lib/report-catalog";
 import { cashFlowSummary } from "@/lib/report-summary";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@sai/core/utils";
 import { WarningOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
-import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

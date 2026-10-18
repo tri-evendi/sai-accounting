@@ -1,9 +1,9 @@
 import { CheckOutlined, ClockCircleOutlined, FileDoneOutlined, FileTextOutlined, MinusOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
-import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { Badge } from "@sai/ui/badge";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
 import type { ChainStatus, ContractChainStage } from "@/lib/document-chain";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 /**
  * Timeline dokumen berantai (issue #15): Kontrak → Surat Jalan → Faktur →

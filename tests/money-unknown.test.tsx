@@ -18,12 +18,12 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { Money, MoneyCell, UNKNOWN } from "@/components/ui/money";
-import { DataTable } from "@/components/ui/data-table";
-import { StaticTable } from "@/components/ui/static-table";
-import { textColumn } from "@/components/ui/table-columns";
-import { moneyColumn } from "@/components/ui/money-column";
-import { MoneyInput } from "@/components/ui/money-input";
+import { Money, MoneyCell, UNKNOWN } from "@sai/ui/money";
+import { DataTable } from "@sai/ui/data-table";
+import { StaticTable } from "@sai/ui/static-table";
+import { textColumn } from "@sai/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
+import { MoneyInput } from "@sai/ui/money-input";
 
 /**
  * Hanya teks yang benar-benar TERBACA, tanpa atribut. Tanpa penyaring ini,

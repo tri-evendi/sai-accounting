@@ -9,7 +9,7 @@
  * ia harus tampil sebagai angka + kode mentah, bukan melempar.
  */
 import { describe, expect, it } from "vitest";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@sai/core/utils";
 
 describe("formatCurrency", () => {
   it("memformat kode ISO-4217 yang sah", () => {

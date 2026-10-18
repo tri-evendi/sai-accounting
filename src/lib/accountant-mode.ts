@@ -1,4 +1,4 @@
-import { FULL_ACCESS_ROLES, isFullAccessRole, type Role } from "@/lib/constants";
+import { FULL_ACCESS_ROLES, isFullAccessRole, type Role } from "@sai/core/constants";
 
 /**
  * "Mode Akuntan" (issue #11) — display-only preference deciding whether a user

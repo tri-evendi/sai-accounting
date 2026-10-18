@@ -31,18 +31,18 @@
  * bukan nilai tersimpan yang terbaca dua kali.
  */
 
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@sai/ui/button";
 import {
   ConsoleNotice,
   ConsolePanel,
   CONSOLE_MUTED,
   CONSOLE_PAGE,
 } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { PageHeader } from "@sai/ui/page-header";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
 import { ContentEditor, type ContentEditorRow } from "@/components/operator/content-editor";
-import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@sai/core/i18n/config";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
@@ -55,7 +55,7 @@ import {
   SITE_CONTENT_SECTIONS,
 } from "@/lib/site-content";
 import { siteContentForOperator } from "@/lib/site-content-store";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@sai/core/utils";
 import { operatorSaveSiteContent } from "./actions";
 
 export const dynamic = "force-dynamic";

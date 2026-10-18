@@ -31,21 +31,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Col, Flex, Row, Spin, theme, Typography } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Input, TextInput } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Input, TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { Select } from "@sai/ui/select";
+import { Badge } from "@sai/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import {
   ServerSearchableSelect,
   type PickerOption,
 } from "@/components/ui/server-searchable-select";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import { DueDateField } from "@/components/shared/due-date-field";
 import {
   InvoiceCustomerField,
@@ -63,17 +63,17 @@ import {
 import { invoiceSubtotal } from "@/lib/validations/invoice";
 import { companyTaxRateOn, defaultInvoiceTax } from "@/lib/tax";
 import { useCompanyTaxProfile } from "@/lib/tax-profile-client";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
 import { resolveSubmitFailure } from "@/lib/form-sections";
 import {
   closedPeriodIssue,
   negativeValueIssue,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import type { ContractLineOutstanding, PulledInvoiceLine } from "@/lib/document-chain";
 import { normalizeItemName, resolveChainKey } from "@/lib/document-chain";
-import { ItemNameInput, type ItemSuggestion } from "@/components/ui/item-name-input";
+import { ItemNameInput, type ItemSuggestion } from "@sai/ui/item-name-input";
 import { DeleteOutlined, DownloadOutlined, InfoCircleOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 

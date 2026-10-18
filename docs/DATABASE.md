@@ -75,7 +75,7 @@ lewat SQL akan bilang "bersih".
 > sekaligus. Lihat [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
 
 Aturannya:
-- Daftar nilai hidup di **satu tempat** (`src/lib/constants.ts`), dipakai
+- Daftar nilai hidup di **satu tempat** (`packages/core/src/constants.ts`), dipakai
   `z.enum(...)` maupun penjaga impor — jangan diketik ulang.
 - Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan **melempar** untuk
   nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka salah
@@ -295,7 +295,7 @@ sampai gateway #141): `bun run change-plan -- --tenant <slug> --plan <key>` —
 kuota disalin ke `tenants` (pola snapshot), platform ditulis lebih dulu.
 
 **Penagihan Indonesia (issue #141).** Gerbang pembayaran di
-`src/lib/payment-gateway.ts` — Midtrans (VA + QRIS) di balik abstraksi kecil;
+`packages/billing/src/payment-gateway.ts` — Midtrans (VA + QRIS) di balik abstraksi kecil;
 `manual` bawaan; transport `mock` di luar produksi (nol jaringan, VA
 deterministik) — kredensial real HANYA lewat env (`PAYMENT_GATEWAY`,
 `MIDTRANS_SERVER_KEY`, lihat `.env.docker.example`; bawaan TIDAK terpasang).

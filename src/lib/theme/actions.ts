@@ -14,7 +14,7 @@
  */
 
 import { cookies } from "next/headers";
-import { parseTheme, THEME_COOKIE, THEME_COOKIE_MAX_AGE, type Theme } from "./config";
+import { parseTheme, THEME_COOKIE, THEME_COOKIE_MAX_AGE, type Theme } from "@sai/ui/theme/config";
 
 export async function setTheme(theme: string): Promise<Theme> {
   const next = parseTheme(theme);

@@ -25,7 +25,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { companyScopeFromRequest } from "@/lib/company-request";
 import {
   issueInvitation,
@@ -41,7 +41,7 @@ import { invitationMail } from "@/lib/account-mail";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 const inviteSchema = z.object({
   email: z.email().max(255).trim(),

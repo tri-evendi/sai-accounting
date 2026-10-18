@@ -33,11 +33,11 @@
  */
 import { useState } from "react";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useAppRouter } from "@/components/ui/app-link";
-import { useT } from "@/lib/i18n/client";
-import { formatNumber } from "@/lib/utils";
+import { useAppRouter } from "@sai/ui/app-link";
+import { useT } from "@sai/core/i18n/client";
+import { formatNumber } from "@sai/core/utils";
 
 const ICON_SIZE = 16;
 

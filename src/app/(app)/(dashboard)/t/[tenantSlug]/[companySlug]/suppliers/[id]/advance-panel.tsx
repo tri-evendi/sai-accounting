@@ -34,13 +34,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Col, Flex, Row, theme } from "antd";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Select } from "@sai/ui/select";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
 import {
   AdvanceCompensationSection,
   type AdvanceOption,
@@ -50,8 +50,8 @@ import {
   AdvanceForm,
   type ContractOption,
 } from "@/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/advances/new/advance-form";
-import { formatCurrency, formatDateShort } from "@/lib/utils";
-import { useT } from "@/lib/i18n/client";
+import { formatCurrency, formatDateShort } from "@sai/core/utils";
+import { useT } from "@sai/core/i18n/client";
 import { CloseOutlined, InfoCircleOutlined, MoneyCollectOutlined, PlusOutlined, VerticalAlignTopOutlined } from "@ant-design/icons";
 /** One purchase this supplier's advances can be compensated into. */
 export interface PurchaseTargetView {

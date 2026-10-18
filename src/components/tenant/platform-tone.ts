@@ -86,7 +86,7 @@
  * `--sai-platform-` tidak boleh muncul di luar berkas ini dan
  * `app/(app)/(tenant)/(panel)/platform/**`, dan akarnya dipasang tepat satu berkas.
  */
-import { toneMix, type ToneHue } from "@/lib/theme/tone-recipe";
+import { toneMix, type ToneHue } from "@sai/ui/theme/tone-recipe";
 
 /** Wilayah `/platform` yang berhak atas nada. Tiga, dan alasannya di kepala. */
 export const PLATFORM_HUES = ["brand", "indigo", "violet"] as const satisfies readonly ToneHue[];

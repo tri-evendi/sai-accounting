@@ -8,7 +8,7 @@
  * `POST /api/journals` (bos-only) seperti sebelumnya.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { NewJournalForm } from "./journal-form";
 
 export const dynamic = "force-dynamic";

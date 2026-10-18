@@ -19,7 +19,7 @@
 
 import "server-only";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import type { CompanyContext } from "@/lib/company-context";
 
 export interface CompanyRecord extends CompanyContext {

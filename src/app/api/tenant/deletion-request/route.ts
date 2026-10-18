@@ -14,14 +14,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   DELETION_GRACE_DAYS,
   graceEndsAtFrom,
 } from "@/lib/tenant-deletion";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { sendMail } from "@/lib/mailer";
-import { TENANT_ROLES } from "@/lib/constants";
+import { TENANT_ROLES } from "@sai/core/constants";
 import { getRequestI18n } from "@/lib/i18n/server";
 
 const requestSchema = z.object({

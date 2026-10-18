@@ -34,6 +34,7 @@
  * teks, jadi yang dijaga adalah bentuk yang BISA diperiksa, dan sisanya ditulis.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -91,7 +92,9 @@ const DIIZINKAN: ReadonlyArray<{ berkas: string; alasan: string }> = [
 ];
 
 describe("resep kartu selalu membawa angkatnya", () => {
-  const berkas = berkasTsx(SRC).filter((f) => !f.endsWith(join("components", "ui", "card.tsx")));
+  const berkas = akarSumber()
+    .flatMap((d) => berkasTsx(d))
+    .filter((f) => !f.endsWith(join("packages", "ui", "src", "components", "card.tsx")));
 
   it("sapuannya benar-benar membaca banyak berkas", () => {
     expect(berkas.length).toBeGreaterThan(200);

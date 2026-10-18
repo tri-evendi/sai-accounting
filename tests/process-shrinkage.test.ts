@@ -26,7 +26,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { stockUpdateSchema } from "@/lib/validations/inventory";
-import { PROCESS_SHRINKAGE_NOTE, STOCK_MOVEMENT_TYPES } from "@/lib/constants";
+import { PROCESS_SHRINKAGE_NOTE, STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
 import { MAPPING_KEYS, MAPPING_KEY_LABELS } from "@/lib/posting/mapping";
 import { COA_TEMPLATE } from "@/lib/accounting";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";

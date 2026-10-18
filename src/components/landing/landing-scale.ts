@@ -72,7 +72,7 @@ import {
   TONE_HUE_TOKEN,
   toneMix,
   type ToneHue,
-} from "@/lib/theme/tone-recipe";
+} from "@sai/ui/theme/tone-recipe";
 
 /* ------------------------------------------------------------------------ */
 /* NADA PEKAT — pita seksi & kartu berisi solid (permintaan pemilik)          */

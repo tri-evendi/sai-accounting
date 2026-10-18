@@ -54,10 +54,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Select, Spin } from "antd";
 
-import { Label } from "@/components/ui/label";
+import { Label } from "@sai/ui/label";
 import { apiFetch } from "@/lib/api-fetch";
-import type { NameTidakDiterima } from "@/components/ui/searchable-select";
-import { useT } from "@/lib/i18n/client";
+import type { NameTidakDiterima } from "@sai/ui/searchable-select";
+import { useT } from "@sai/core/i18n/client";
 import type { PickerOption } from "@/lib/picker";
 
 export type { PickerOption };

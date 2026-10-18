@@ -43,8 +43,8 @@ import {
   transition,
   type SubscriptionEvent,
 } from "@/lib/subscription-lifecycle";
-import type { BillingMode, SubscriptionStatus } from "@/lib/platform-constants";
-import { billingModeIsAutomatic } from "@/lib/platform-constants";
+import type { BillingMode, SubscriptionStatus } from "@sai/billing/platform-constants";
+import { billingModeIsAutomatic } from "@sai/billing/platform-constants";
 import {
   anonymizedUserFields,
   executionVerdict,

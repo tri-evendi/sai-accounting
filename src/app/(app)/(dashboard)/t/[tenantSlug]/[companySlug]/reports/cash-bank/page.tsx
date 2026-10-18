@@ -20,21 +20,21 @@
  * `columnFor`, bukan daftar kolom kedua di sebelahnya.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getCashFlow } from "@/lib/reports";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Money } from "@sai/ui/money";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { reportById, resolvePeriod, columnLabels } from "@/lib/report-catalog";
 import { cashBankPayload } from "@/lib/report-payload";
 import { cashBankColumns, type CashBankColumnId } from "@/lib/statement-layout";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
 import { notFound } from "next/navigation";
 import { BankOutlined } from "@ant-design/icons";

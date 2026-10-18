@@ -24,8 +24,8 @@
  * aturannya ditulis terpisah di `design-system/sai-accounting/pages/landing.md`.
  */
 import { WarningOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/constants";
+import { Button } from "@sai/ui/button";
+import { APP_NAME } from "@sai/core/constants";
 import { TERMS_VERSION, isDraftLegalVersion } from "@/lib/legal";
 
 export const dynamic = "force-static";

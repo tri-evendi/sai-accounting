@@ -18,16 +18,16 @@
  * Tabelnya kini `StaticTable` (#189): kolom sebagai data, dirender di server.
  */
 
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
 import { statusColumn } from "@/components/ui/status-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import {
   ContractStatusChart,
@@ -35,17 +35,17 @@ import {
 } from "@/components/shared/dashboard-charts";
 import { chartPeriodStart, monthlyActivitySeries } from "@/lib/chart-data";
 import { canEffective } from "@/lib/authz-effective";
-import { EmptyState } from "@/components/ui/empty-state";
-import { formatDateShort, parsePageParam } from "@/lib/utils";
-import { Pagination } from "@/components/ui/pagination";
+import { EmptyState } from "@sai/ui/empty-state";
+import { formatDateShort, parsePageParam } from "@sai/core/utils";
+import { Pagination } from "@sai/ui/pagination";
 import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
 import { irisanStatusKontrak } from "@/lib/contract-status-chart";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
-import { PageHeader } from "@/components/ui/page-header";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
 
 export const dynamic = "force-dynamic";
 

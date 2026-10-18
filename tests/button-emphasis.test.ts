@@ -118,7 +118,7 @@ const ROOT = join(__dirname, "..");
  * terpenuhi — dan potongan 5 sudah membaliknya: setiap pemanggil menulis
  * variannya sendiri, jadi pembalikannya tidak mengubah satu piksel pun.
  */
-const AREA_TERAUDIT = [join("src", "app"), join("src", "components")];
+const AREA_TERAUDIT = [join("src", "app"), join("src", "components"), join("packages", "ui", "src")];
 
 /**
  * Direktori halaman pendaratan — DIKECUALIKAN dari aturan satu-primer, dengan
@@ -375,7 +375,7 @@ describe("penekanan tombol (#267)", () => {
      * yang sama (lingkup penjaganya utuh) dengan cara yang tidak bisa hampa.
      */
     const semua = new Set<string>();
-    for (const akar of ["src/app", "src/components"]) {
+    for (const akar of ["src/app", "src/components", "packages/ui/src"]) {
       for (const jalur of berkasTsx(join(ROOT, akar))) semua.add(relatif(jalur));
     }
     const dijaga = new Set(berkasDijaga().map(relatif));
@@ -528,7 +528,7 @@ describe("penekanan tombol (#267)", () => {
      * seandainya salah satu dari keduanya digeser sendirian — persis kelas
      * perbedaan yang tidak pernah gagal di `tsc`.
      */
-    const isi = readFileSync(join(ROOT, "src", "components", "ui", "button.tsx"), "utf8");
+    const isi = readFileSync(join(ROOT, "packages", "ui", "src", "components", "button.tsx"), "utf8");
     expect(isi.match(/variant = "secondary"/g)).toHaveLength(2);
     expect(isi).not.toMatch(/variant = "primary"/);
   });

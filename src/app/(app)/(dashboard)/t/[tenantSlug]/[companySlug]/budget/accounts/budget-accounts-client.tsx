@@ -23,11 +23,11 @@ import { useRouter } from "next/navigation";
 import { Alert, Col, Flex, Row, Spin, theme } from "antd";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Card } from "@/components/ui/card";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
+import { Button } from "@sai/ui/button";
+import { EmptyState } from "@sai/ui/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Form,
@@ -36,12 +36,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { moneyColumn } from "@/components/ui/money-column";
-import { useToast } from "@/components/ui/toast";
-import { useDictionary, useT } from "@/lib/i18n/client";
+} from "@sai/ui/form";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
+import { useToast } from "@sai/ui/toast";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 import type { BudgetListRow } from "@/lib/budget-report";
 import { DeleteOutlined, OrderedListOutlined } from "@ant-design/icons";

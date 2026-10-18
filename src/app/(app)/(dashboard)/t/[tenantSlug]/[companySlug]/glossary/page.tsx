@@ -8,9 +8,9 @@
  * Terbuka untuk semua peran: memahami istilah bukan hak istimewa.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { PageHeader } from "@/components/ui/page-header";
-import { TERM_LIST } from "@/lib/labels";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
+import { PageHeader } from "@sai/ui/page-header";
+import { TERM_LIST } from "@sai/core/labels";
 import { GlossaryBrowser } from "./glossary-browser";
 import { getT } from "@/lib/i18n/server";
 

@@ -16,7 +16,7 @@
  * Prop `className` DICABUT — tidak ada pemanggil yang mengisinya, dan jalan
  * lewat untuk kelas Tailwind adalah persis yang dihapus fase ini.
  */
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { getT } from "@/lib/i18n/server";
 
 /** `space-y-5` (20px) = `marginMD`. */

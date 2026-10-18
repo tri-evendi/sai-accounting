@@ -28,8 +28,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 
 type Baris = { nama: string; sisa: number };
 const ROWS: Baris[] = [{ nama: "PT Rempah Jaya", sisa: 12_500_000 }];
@@ -93,7 +93,7 @@ describe("label kartu diturunkan dari judul kolomnya", () => {
 });
 
 describe("wadahnya berhenti menggulir mendatar saat menjadi kartu", () => {
-  const css = readFileSync(join(__dirname, "..", "src", "components", "ui", "table.tsx"), "utf8");
+  const css = readFileSync(join(__dirname, "..", "packages", "ui", "src", "components", "table.tsx"), "utf8");
 
   it("`overflow-x` dibatalkan di dalam @media kartu", () => {
     /* Tanpa ini kartunya duduk di dalam kotak yang tetap bisa digeser

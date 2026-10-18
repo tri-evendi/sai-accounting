@@ -16,18 +16,18 @@
  *     di log adalah fitur yang tampak rusak.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { Link } from "@/components/ui/app-link";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { Link } from "@sai/ui/app-link";
 import { getT } from "@/lib/i18n/server";
-import { formatDateShort } from "@/lib/utils";
+import { formatDateShort } from "@sai/core/utils";
 import { nextOccurrence, type RecurrenceRule } from "@/lib/recurring";
 import { RetweetOutlined } from "@ant-design/icons";
 

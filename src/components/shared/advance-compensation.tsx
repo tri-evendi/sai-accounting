@@ -26,18 +26,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { DataTable } from "@/components/ui/data-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { useToast } from "@/components/ui/toast";
-import { useT } from "@/lib/i18n/client";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
-import { formatDateShort } from "@/lib/utils";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { DataTable } from "@sai/ui/data-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { useToast } from "@sai/ui/toast";
+import { useT } from "@sai/core/i18n/client";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { formatDateShort } from "@sai/core/utils";
 import { DeleteOutlined, InfoCircleOutlined, MoneyCollectOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 /** Lebar isian tanggal kompensasi — setara `w-44` sebelum migrasi. */
 const DATE_FIELD_WIDTH = 176;

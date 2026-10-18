@@ -16,9 +16,9 @@
  */
 
 import { theme, Typography } from "antd";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { useT } from "@/lib/i18n/client";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { useT } from "@sai/core/i18n/client";
 
 export const BASE_CURRENCY = "IDR";
 

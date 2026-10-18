@@ -20,12 +20,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { CompanyIndicator } from "@/components/layout/company-indicator";
 import { visibleNavHrefs } from "@/lib/nav";
-import { ROLES } from "@/lib/constants";
-import { LocaleProvider } from "@/lib/i18n/client";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+import { ROLES } from "@sai/core/constants";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 
 const SRC = join(__dirname, "..", "src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");

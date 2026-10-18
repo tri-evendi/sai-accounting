@@ -19,7 +19,7 @@
  * path.
  */
 import type { Prisma, PrismaClient } from "@sai/db/client/company";
-import { FULL_ACCESS_ROLES } from "@/lib/constants";
+import { FULL_ACCESS_ROLES } from "@sai/core/constants";
 import {
   blocksPosting,
   documentTypeForSource,

@@ -17,24 +17,24 @@
 
 import { useState, useEffect } from "react";
 import { Alert, Col, Flex, Row, theme, Typography } from "antd";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import { type SaiColumns } from "@/components/ui/table-columns";
+import { Card, CardHeader, CardTitle } from "@sai/ui/card";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import { type SaiColumns } from "@sai/ui/table-columns";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
-import { PageLoader } from "@/components/ui/loading";
-import { PageHeader } from "@/components/ui/page-header";
+import { useToast } from "@sai/ui/toast";
+import { PageLoader } from "@sai/ui/loading";
+import { PageHeader } from "@sai/ui/page-header";
 import { DeleteOutlined, KeyOutlined, UndoOutlined, UserAddOutlined } from "@ant-design/icons";
-import { ROLES, ROLE_LABELS, isFullAccessRole } from "@/lib/constants";
+import { ROLES, ROLE_LABELS, isFullAccessRole } from "@sai/core/constants";
 import { UserPermissionsPanel } from "./user-permissions-panel";
-import { useT } from "@/lib/i18n/client";
-import { QuotaMeter } from "@/components/ui/quota-meter";
+import { useT } from "@sai/core/i18n/client";
+import { QuotaMeter } from "@sai/ui/quota-meter";
 import { apiFetch } from "@/lib/api-fetch";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 /** Lebar meter kursi — bekas `sm:max-w-sm`. */
 const SEATS_WIDTH = 384;

@@ -20,10 +20,10 @@
 import { useEffect } from "react";
 import { Flex, Typography, theme } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
-import { useT } from "@/lib/i18n/client";
+import { Card, CardContent } from "@sai/ui/card";
+import { Button } from "@sai/ui/button";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
+import { useT } from "@sai/core/i18n/client";
 
 const { Title, Text } = Typography;
 

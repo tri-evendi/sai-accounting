@@ -4,13 +4,13 @@
  * the other planning/reporting surfaces.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Card } from "@/components/ui/card";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
+import { Card } from "@sai/ui/card";
 import { AimOutlined, DashboardOutlined, OrderedListOutlined } from "@ant-design/icons";
-import { PageHeader } from "@/components/ui/page-header";
-import { Link } from "@/components/ui/app-link";
+import { PageHeader } from "@sai/ui/page-header";
+import { Link } from "@sai/ui/app-link";
 import { getT } from "@/lib/i18n/server";
-import { CARD_GAP } from "@/lib/layout-scale";
+import { CARD_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

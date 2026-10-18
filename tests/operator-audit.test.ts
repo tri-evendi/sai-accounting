@@ -28,7 +28,7 @@ vi.mock("@/lib/platform-db", () => ({
 }));
 
 const controlCalls: { op: string; args: unknown }[] = [];
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     tenantAuditLog: {
       findMany: async (args: unknown) => {

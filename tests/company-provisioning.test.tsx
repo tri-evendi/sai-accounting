@@ -42,12 +42,12 @@ import {
   PROVISION_STEPS,
   type ProvisionState,
 } from "@/app/(app)/(tenant)/(panel)/companies/new/provision-progress";
-import { LocaleProvider } from "@/lib/i18n/client";
-import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
-import { translate, type Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import { MONEY_TOKENS_LIGHT } from "@sai/ui/theme/antd-tokens";
+import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 
 describe("nama basis data — ini penjaga keamanan, bukan kerapian", () => {
   it("selalu berawalan sai_ (pola yang sama dengan hak akses di server), dengan id tenant di awalan (issue #153)", () => {

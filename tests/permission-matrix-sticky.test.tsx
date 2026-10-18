@@ -44,8 +44,8 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { theme } from "antd";
 
-import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { tableHeadBg } from "@/lib/theme/antd-tokens";
+import { Table, TableHead, TableHeader, TableRow } from "@sai/ui/table";
+import { tableHeadBg } from "@sai/ui/theme/antd-tokens";
 
 const token = theme.getDesignToken();
 
@@ -166,7 +166,7 @@ describe("matriks izin — header tetap terbaca saat digulir", () => {
     const markup = stickyMarkup();
     expect(markup).toContain("overflow-x:auto");
     expect(markup).toContain("max-height:70vh");
-    expect(source("src/components/ui/table.tsx")).toContain('overflowX: "auto"');
+    expect(source("packages/ui/src/components/table.tsx")).toContain('overflowX: "auto"');
   });
 
   it("tanpa `sticky`, sel judul tidak membawa gaya lengket sama sekali", () => {

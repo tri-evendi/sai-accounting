@@ -4,19 +4,19 @@
  * Dikonversi ke token Ant Design pada issue #197; **tetap server component**.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { getCategories } from "@/lib/fixed-assets";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
-import { StaticTable } from "@/components/ui/static-table";
-import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { Card } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
+import { StaticTable } from "@sai/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
 
 import { TagsOutlined } from "@ant-design/icons";
 import { CategoryForm } from "./category-form";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP } from "@/lib/layout-scale";
+import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

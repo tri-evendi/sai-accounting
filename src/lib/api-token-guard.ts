@@ -40,10 +40,10 @@ import "server-only";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { enterCompanyContext } from "@/lib/company-context";
 import { canEffective } from "@/lib/authz-effective";
-import type { Permission } from "@/lib/authz";
+import type { Permission } from "@sai/core/authz";
 import {
   bearerFrom,
   parseToken,

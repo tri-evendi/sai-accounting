@@ -23,8 +23,8 @@
  */
 import type { MetadataRoute } from "next";
 
-import { APP_NAME } from "@/lib/constants";
-import { APP_BACKGROUND_HEX, BRAND_HEX } from "@/lib/theme/antd-tokens";
+import { APP_NAME } from "@sai/core/constants";
+import { APP_BACKGROUND_HEX, BRAND_HEX } from "@sai/ui/theme/antd-tokens";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {

@@ -46,8 +46,8 @@
  * sama.
  */
 
-import { SIDER_BG_DARK } from "@/lib/theme/antd-tokens";
-import { SPACE_LG } from "@/lib/layout-scale";
+import { SIDER_BG_DARK } from "@sai/ui/theme/antd-tokens";
+import { SPACE_LG } from "@sai/ui/layout-scale";
 
 /** Balok kerangka: satu bentuk, dipakai belasan kali dengan ukuran berbeda.
  *  Warnanya `fillSecondary`, bukan `fillQuaternary`: yang terakhir itu latar

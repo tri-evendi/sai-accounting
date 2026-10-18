@@ -16,10 +16,10 @@
  */
 
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getBalanceSheet } from "@/lib/reports";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { PlainSummary } from "@/components/reports/plain-summary";
@@ -27,7 +27,7 @@ import { BalanceSheetStatement } from "@/components/reports/balance-sheet-statem
 import { resolveAsOf } from "@/lib/report-catalog";
 import { comparisonDate, parseComparison } from "@/lib/statement-compare";
 import { balanceSheetSummary } from "@/lib/report-summary";
-import { formatDate } from "@/lib/utils";
+import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { getT } from "@/lib/i18n/server";
 

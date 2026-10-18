@@ -26,7 +26,7 @@ import {
   colorScheme,
   type ResolvedTheme,
   type Theme,
-} from "./config";
+} from "@sai/ui/theme/config";
 import { setTheme as persistTheme } from "./actions";
 
 interface ThemeContextValue {

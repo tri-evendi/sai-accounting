@@ -26,7 +26,7 @@
  * pengelolaan tenant — bukan diam-diam di sini.
  */
 
-import { TENANT_ROLES, TENANT_ROLE_VALUES, type TenantRole } from "@/lib/constants";
+import { TENANT_ROLES, TENANT_ROLE_VALUES, type TenantRole } from "@sai/core/constants";
 
 /** Owner + admin — pengelolaan sehari-hari tenant, TANPA penagihan. */
 const MANAGERS = [TENANT_ROLES.OWNER, TENANT_ROLES.ADMIN] as const;

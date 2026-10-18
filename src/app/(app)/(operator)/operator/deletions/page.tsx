@@ -8,17 +8,17 @@
  */
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { ConsolePanel, CONSOLE_MUTED } from "@/components/operator/console-ui";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { deletionRequestsForOperator, type OperatorDeletionRequest } from "@/lib/operator/store";
 import { executionVerdict } from "@/lib/tenant-deletion";
 import { getT } from "@/lib/i18n/server";
-import { formatDateMedium as formatDate } from "@/lib/utils";
+import { formatDateMedium as formatDate } from "@sai/core/utils";
 
 export const dynamic = "force-dynamic";
 

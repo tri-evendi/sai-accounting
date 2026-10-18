@@ -62,18 +62,18 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
-import { useAppRouter } from "@/components/ui/app-link";
+} from "@sai/ui/dialog";
+import { Button } from "@sai/ui/button";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { useToast } from "@sai/ui/toast";
+import { useAppRouter } from "@sai/ui/app-link";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { downloadStatementPdf, downloadStatementWorkbook, fetchReportPayload } from "@/lib/report-files";
 import type { ReportDefinition } from "@/lib/report-catalog";
-import { SPACE_SM } from "@/lib/layout-scale";
+import { SPACE_SM } from "@sai/ui/layout-scale";
 
 /** `padding` 20 · `paddingLG` 16 di kaki — jarak kepala/badan/kaki dialog. */
 const PANE_PADDING = 20;

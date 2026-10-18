@@ -5,7 +5,7 @@
  * fetch kedua dari browser, dan halaman ini yang menegakkan izinnya.
  */
 import { notFound } from "next/navigation";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { CostCenterForm } from "../../cost-center-form";

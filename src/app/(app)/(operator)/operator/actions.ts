@@ -23,7 +23,7 @@ import { redirect } from "next/navigation";
 import { writeOperatorAuditLog } from "@/lib/operator/audit";
 import { verifyOperatorLogin } from "@/lib/operator/credentials";
 import { findDbOperatorCredential, recordOperatorLogin } from "@/lib/operator/operator-accounts";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import { operatorPlaneViolation } from "@/lib/operator/guard";
 import { clientIpFrom, operatorCookieName } from "@/lib/operator/plane";
 import {

@@ -12,7 +12,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   decideInvitationOutcome,
   hashInvitationToken,
@@ -23,7 +23,7 @@ import {
   type InvitationOutcome,
 } from "@/lib/invitations";
 import { addExistingUserToCompany } from "@/lib/users-directory";
-import { TENANT_ROLES } from "@/lib/constants";
+import { TENANT_ROLES } from "@sai/core/constants";
 
 /** Kursi terpakai sebuah tenant: pengguna hidup + undangan yang masih menunggu. */
 export async function tenantSeatCount(

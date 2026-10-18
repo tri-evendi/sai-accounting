@@ -28,14 +28,14 @@ import { Flex, Typography } from "antd";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
 import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { SelectField } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { SelectField } from "@sai/ui/select";
+import { Card } from "@sai/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@sai/ui/empty-state";
 import { ContainerOutlined, ExclamationCircleOutlined, InfoCircleOutlined, LockOutlined } from "@ant-design/icons";
 import {
   Form,
@@ -45,17 +45,17 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
-import { PageHeader } from "@/components/ui/page-header";
+} from "@sai/ui/form";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
 import {
   CostCenterField,
   costCenterPayload,
   useCostCenters,
 } from "@/components/shared/cost-center-field";
-import { formatCurrency, formatNumber } from "@/lib/utils";
-import { CASH_TYPES, type CashType } from "@/lib/constants";
+import { formatCurrency, formatNumber } from "@sai/core/utils";
+import { CASH_TYPES, type CashType } from "@sai/core/constants";
 import { cashTypeLabels } from "@/lib/i18n/labels";
 import {
   closedPeriodIssue,
@@ -65,10 +65,10 @@ import {
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
 import { findStockShortfalls } from "@/lib/delivery-orders";
-import { useDictionary, useT } from "@/lib/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
-import { SECTION_GAP, SPACE_SM, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_SM, SPACE_XS } from "@sai/ui/layout-scale";
 import {
   itemSchema,
   stockUpdateSchema,

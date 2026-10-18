@@ -23,7 +23,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
-import { STOCK_MOVEMENT_TYPES } from "@/lib/constants";
+import { STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
 import { calculateStockTotals } from "@/lib/inventory";
 
 /* `date` disebut karena `calculateStockTotals` memakai `StockMovement` yang

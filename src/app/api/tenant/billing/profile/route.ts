@@ -13,7 +13,7 @@ import { z } from "zod";
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { platformDb } from "@/lib/platform-db";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 const profileSchema = z.object({
   /** NPWP 15/16 digit — dibiarkan longgar (format berubah di era Coretax);

@@ -176,7 +176,7 @@ describe("isiannya kotak teks, bukan pemilih wajib", () => {
   });
 
   it("mengetik nama yang BERBEDA mencabut tautannya", () => {
-    const ctrl = src("components", "ui", "item-name-input.tsx");
+    const ctrl = readFileSync(join(__dirname, "..", "packages", "ui", "src", "components", "item-name-input.tsx"), "utf8");
     /* Tautan yang bertahan atas nama yang sudah berubah adalah cara paling
        halus untuk mengurangi pagu kontrak atas barang yang tak difakturkan. */
     expect(ctrl).toMatch(/itemId: text === linkedName \? itemId : null/);

@@ -14,17 +14,17 @@
 
 import { useState } from "react";
 import { Alert, Col, Flex, Row, theme, Typography } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Link } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Input, TextInput } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Link } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Input, TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { SearchableSelect, type SearchableOption } from "@sai/ui/searchable-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { EmptyState } from "@/components/ui/empty-state";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { formatNumber } from "@/lib/utils";
+import { EmptyState } from "@sai/ui/empty-state";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { formatNumber } from "@sai/core/utils";
 import { findStockShortfalls } from "@/lib/delivery-orders";
 import {
   closedPeriodIssue,
@@ -35,7 +35,7 @@ import {
   stockShortfallMessage,
   type ClosedPeriodRef,
 } from "@/lib/form-guards";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { ContainerOutlined, DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
 

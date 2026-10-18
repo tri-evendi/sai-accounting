@@ -42,25 +42,25 @@
  */
 import { CalendarOutlined } from "@ant-design/icons";
 import { platformHead } from "@/components/tenant/platform-tone";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { moneyColumn } from "@/components/ui/money-column";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
-import { platformInvoiceIsRevenue } from "@/lib/platform-constants";
-import { formatDateMedium } from "@/lib/utils";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
+import { platformInvoiceIsRevenue } from "@sai/billing/platform-constants";
+import { formatDateMedium } from "@sai/core/utils";
 import {
   isReadOnlyTenantStatus,
   platformInvoiceAmounts,
   trialCountdown,
 } from "@/lib/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
-import { offersInstantPayment } from "@/lib/payment-gateway";
+import { offersInstantPayment } from "@sai/billing/payment-gateway";
 import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
-import type { DictionaryKey } from "@/lib/i18n/dictionary";
+import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 import { BillingProfileForm, PayInvoice } from "./billing-actions";
 

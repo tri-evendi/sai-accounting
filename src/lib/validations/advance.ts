@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 import { currencyEnum, rateField, requireRateForForeign } from "./fx";
-import { vissue, vmsg } from "@/lib/i18n/validation";
+import { vissue, vmsg } from "@sai/core/i18n/validation";
 
 /** Direction of an advance. Mirrors `advance_payments.type` (enum-like VarChar). */
 export const advanceTypeEnum = z.enum(["sales", "purchase"]);

@@ -12,7 +12,7 @@ import { InvalidClosingRateError } from "@/lib/fx-revaluation";
 import { ClosedPeriodError, periodBounds } from "@/lib/period";
 import { fxRevaluationSchema, periodQuerySchema } from "@/lib/validations/period";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 /**
  * REVALUASI VALAS (issue #554) — pratinjau dan posting.

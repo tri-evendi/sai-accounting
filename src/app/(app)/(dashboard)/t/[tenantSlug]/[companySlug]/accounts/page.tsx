@@ -23,21 +23,21 @@
  * INTERAKTIVITAS, bukan kerapatan atau kemewahan).
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { TextInput } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@sai/ui/card";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { TextInput } from "@sai/ui/input";
+import { Badge } from "@sai/ui/badge";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
-import { EmptyState } from "@/components/ui/empty-state";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
+import { EmptyState } from "@sai/ui/empty-state";
 import { ApartmentOutlined } from "@ant-design/icons";
-import { PageHeader } from "@/components/ui/page-header";
-import { Link } from "@/components/ui/app-link";
+import { PageHeader } from "@sai/ui/page-header";
+import { Link } from "@sai/ui/app-link";
 
 export const dynamic = "force-dynamic";
 

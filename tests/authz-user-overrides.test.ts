@@ -25,7 +25,7 @@ import {
   PROTECTED_CELLS,
   applyOverrides,
 } from "@/lib/authz-overrides";
-import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@/lib/authz";
+import { PERMISSIONS, PERMISSION_ROLES, type Permission } from "@sai/core/authz";
 
 /** Matriks efektif = bawaan (tanpa override peran) — titik berangkat umum. */
 const baseline = applyOverrides([]);

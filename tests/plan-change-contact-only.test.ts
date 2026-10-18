@@ -57,7 +57,7 @@ vi.mock("@/lib/i18n/server", () => ({
   getRequestI18n: async () => ({ t: (key: string) => key, dictionary: {} }),
 }));
 
-vi.mock("@/lib/i18n/validation", () => ({ translateFieldErrors: () => ({}) }));
+vi.mock("@sai/core/i18n/validation", () => ({ translateFieldErrors: () => ({}) }));
 
 vi.mock("@/lib/platform-db", () => ({
   platformDb: {
@@ -94,7 +94,7 @@ vi.mock("@/lib/platform-db", () => ({
   },
 }));
 
-vi.mock("@/lib/control-db", () => ({
+vi.mock("@sai/core/control-db", () => ({
   controlDb: {
     company: { count: async () => 1 },
     user: { count: async () => 2 },

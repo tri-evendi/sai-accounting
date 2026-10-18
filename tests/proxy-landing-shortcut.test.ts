@@ -31,7 +31,7 @@ vi.mock("next-auth/jwt", () => ({ getToken: vi.fn(async () => state.token) }));
 import { NextRequest } from "next/server";
 
 import { proxy } from "@/proxy";
-import { COMPANY_HOME_PATH, tenantPath } from "@/lib/tenant-routes";
+import { COMPANY_HOME_PATH, tenantPath } from "@sai/core/tenant-routes";
 
 const HOST = "https://buku.contoh.test";
 

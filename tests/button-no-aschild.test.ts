@@ -36,12 +36,13 @@
  * kelak menjadi keputusan sadar, bukan efek samping regex yang melar.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = join(__dirname, "..");
 const SRC = join(ROOT, "src");
-const BUTTON = join(SRC, "components", "ui", "button.tsx");
+const BUTTON = join(SRC, "..", "packages", "ui", "src", "components", "button.tsx");
 
 /** Setiap `.ts`/`.tsx` di bawah `src/`. */
 function berkasSumber(dir: string, keluar: string[] = []): string[] {
@@ -53,7 +54,7 @@ function berkasSumber(dir: string, keluar: string[] = []): string[] {
   return keluar;
 }
 
-const BERKAS = berkasSumber(SRC).map((jalur) => ({
+const BERKAS = akarSumber().flatMap((d) => berkasSumber(d)).map((jalur) => ({
   jalur: jalur.slice(ROOT.length + 1),
   isi: readFileSync(jalur, "utf8"),
 }));

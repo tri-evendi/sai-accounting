@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { vmsg } from "@/lib/i18n/validation";
+import { vmsg } from "@sai/core/i18n/validation";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_NATURE_VALUES } from "@/lib/accounting";
-import { CURRENCIES } from "@/lib/constants";
+import { CURRENCIES } from "@sai/core/constants";
 
 // normal_balance is derived from `type` on the server (see normalBalanceFor); not user input.
 export const accountSchema = z.object({

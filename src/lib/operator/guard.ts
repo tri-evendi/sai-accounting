@@ -48,7 +48,7 @@ import { parseOperatorAccounts } from "./credentials";
 import { resolveOperatorIdentity, type OperatorIdentity } from "./identity";
 import { lookupDbOperatorState } from "./operator-accounts";
 import { operatorCan, type OperatorPermission } from "./roles";
-import { controlDb } from "@/lib/control-db";
+import { controlDb } from "@sai/core/control-db";
 
 export interface OperatorPageSession {
   operator: OperatorIdentity;

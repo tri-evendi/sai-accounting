@@ -48,15 +48,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { SelectField } from "@/components/ui/select";
+} from "@sai/ui/form";
+import { SelectField } from "@sai/ui/select";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
-import { translateMessage } from "@/lib/i18n/validation";
-import { LocaleProvider } from "@/lib/i18n/client";
-import type { Dictionary } from "@/lib/i18n/dictionary";
-import id from "@/lib/i18n/dictionaries/id.json";
-import en from "@/lib/i18n/dictionaries/en.json";
-import zh from "@/lib/i18n/dictionaries/zh.json";
+import { translateMessage } from "@sai/core/i18n/validation";
+import { LocaleProvider } from "@sai/core/i18n/client";
+import type { Dictionary } from "@sai/core/i18n/dictionary";
+import id from "@sai/core/i18n/dictionaries/id.json";
+import en from "@sai/core/i18n/dictionaries/en.json";
+import zh from "@sai/core/i18n/dictionaries/zh.json";
 
 import { advancePaymentSchema } from "@/lib/validations/advance";
 import { budgetSchema, salesTargetSchema } from "@/lib/validations/budget";

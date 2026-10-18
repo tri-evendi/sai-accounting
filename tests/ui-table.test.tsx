@@ -17,13 +17,13 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { Money, MoneyCell } from "@/components/ui/money";
-import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
-import { DataTable } from "@/components/ui/data-table";
-import { StaticTable } from "@/components/ui/static-table";
-import { qtyColumn, textColumn } from "@/components/ui/table-columns";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Pagination } from "@/components/ui/pagination";
+import { Money, MoneyCell } from "@sai/ui/money";
+import { MONEY_TOKENS_LIGHT } from "@sai/ui/theme/antd-tokens";
+import { DataTable } from "@sai/ui/data-table";
+import { StaticTable } from "@sai/ui/static-table";
+import { qtyColumn, textColumn } from "@sai/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Pagination } from "@sai/ui/pagination";
 import { stockMovementColumns, STOCK_MOVEMENT_HEADERS } from "@/lib/statement-layout";
 
 type Row = { doc: string; amount: number | null };

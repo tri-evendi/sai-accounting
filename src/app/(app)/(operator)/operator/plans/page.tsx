@@ -5,14 +5,14 @@
  * Halaman ini menjawab "paket apa yang ada, berapa harganya, dan siapa yang
  * memakainya" — pertanyaan yang sampai sekarang dijawab dengan `psql`.
  */
-import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/ui/page-header";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { PageHeader } from "@sai/ui/page-header";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { ConsoleNotice, ConsolePanel, CONSOLE_MUTED, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { plansForOperatorCatalog, type OperatorCatalogPlan } from "@/lib/operator/store";
-import { formatMoney, type CurrencyCode } from "@/lib/money-format";
+import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

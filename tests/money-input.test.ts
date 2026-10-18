@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { displayToNumber, numberToDisplay } from "@/components/ui/money-input-format";
+import { displayToNumber, numberToDisplay } from "@sai/ui/money-input-format";
 
 describe("numberToDisplay", () => {
   it("menyisipkan pemisah ribuan id-ID", () => {

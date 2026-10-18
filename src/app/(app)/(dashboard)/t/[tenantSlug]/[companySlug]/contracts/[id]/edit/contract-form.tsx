@@ -16,13 +16,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Input, TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Input, TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
+import { Label } from "@sai/ui/label";
+import { Select } from "@sai/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import {
   CurrencyRateFields,
   currencyRatePayload,
@@ -33,10 +33,10 @@ import {
   type ContractCustomerRef,
 } from "@/components/shared/customer-select";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { PageLoader } from "@/components/ui/loading";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageLoader } from "@sai/ui/loading";
+import { PageHeader } from "@sai/ui/page-header";
 import { DueDateField } from "@/components/shared/due-date-field";
-import { useT } from "@/lib/i18n/client";
+import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchOptionList } from "@/lib/option-list";
 

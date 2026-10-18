@@ -26,7 +26,7 @@ import {
   unreadNotificationCount,
 } from "@/lib/notifications";
 import { getRequestI18n } from "@/lib/i18n/server";
-import { translateFieldErrors } from "@/lib/i18n/validation";
+import { translateFieldErrors } from "@sai/core/i18n/validation";
 
 async function currentUserId(): Promise<number | null> {
   const session = await auth();

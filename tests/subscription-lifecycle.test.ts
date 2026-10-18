@@ -30,9 +30,9 @@ import {
   transition,
   type SubscriptionEvent,
 } from "@/lib/subscription-lifecycle";
-import type { SubscriptionStatus } from "@/lib/platform-constants";
-import { DEFAULT_BILLING_MODE, billingModeIsAutomatic } from "@/lib/platform-constants";
-import { PERMISSIONS } from "@/lib/authz";
+import type { SubscriptionStatus } from "@sai/billing/platform-constants";
+import { DEFAULT_BILLING_MODE, billingModeIsAutomatic } from "@sai/billing/platform-constants";
+import { PERMISSIONS } from "@sai/core/authz";
 
 describe("transition — matriks LENGKAP (status × event), diagram §7.4 harfiah", () => {
   /* Setiap sel dieja eksplisit: sel yang tidak disebut diagram = null. */

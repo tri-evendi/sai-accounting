@@ -1,7 +1,7 @@
 import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { CASH_TYPE_LABELS, type CashType } from "@/lib/constants";
+import { CASH_TYPE_LABELS, type CashType } from "@sai/core/constants";
 
 export interface FinanceReportRow {
   date: string;

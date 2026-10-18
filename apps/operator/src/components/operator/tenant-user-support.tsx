@@ -22,7 +22,7 @@ import type { SaiColumns } from "@sai/ui/table-columns";
 import { CONSOLE_MUTED } from "@op/components/operator/console-ui";
 import { useT } from "@sai/core/i18n/client";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
-import type { OperatorActionResult } from "@op/app/(operator)/operator/tenants/[id]/actions";
+import type { OperatorActionResult } from "@op/app/(operator)/tenants/[id]/actions";
 
 export interface SupportUserView {
   id: number;

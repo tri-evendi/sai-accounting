@@ -12,13 +12,14 @@
  * mana pun, dan daftar IP kosong menolak SEMUA orang.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   clientIpFrom,
   configuredOperatorHost,
   decideOperatorRouting,
   ipAllowed,
-  isOperatorPath,
   normalizeHost,
   operatorCookieName,
   trustedProxyHops,
@@ -54,60 +55,55 @@ describe("configuredOperatorHost — gagal-tertutup", () => {
   });
 });
 
+/*
+ * Sejak konsol menjadi aplikasi sendiri tanpa awalan `/operator`, BIDANG
+ * ditentukan HOST saja. Pemisahannya kini berlapis tiga: putusan di bawah,
+ * dua image terpisah (aplikasi pelanggan tidak punya rute konsol, konsol tidak
+ * punya rute pelanggan), dan proxy masing-masing yang menjawab 404 untuk
+ * bidang yang bukan miliknya.
+ */
 describe("decideOperatorRouting — OPERATOR_HOST tidak diset (gagal-tertutup)", () => {
-  it("/operator tidak terjangkau di host mana pun", () => {
-    expect(decideOperatorRouting(APP, "/operator", null).kind).toBe("blocked");
-    expect(decideOperatorRouting(OPS, "/operator/login", null).kind).toBe("blocked");
-    expect(decideOperatorRouting(null, "/operator/tenants/1", null).kind).toBe("blocked");
-  });
-
-  it("rute pelanggan berjalan biasa", () => {
-    expect(decideOperatorRouting(APP, "/dashboard", null).kind).toBe("customer");
-    expect(decideOperatorRouting(APP, "/login", null).kind).toBe("customer");
+  it("tidak ada host yang menjadi host konsol — `customer` di mana-mana", () => {
+    for (const host of [APP, OPS, null, "evil.example.com"]) {
+      for (const path of ["/", "/login", "/tenants/1", "/api/health"]) {
+        expect(decideOperatorRouting(host, path, null).kind).toBe("customer");
+      }
+    }
   });
 });
 
-describe("decideOperatorRouting — sesi pelanggan TIDAK BISA mencapai rute operator", () => {
-  it("host pelanggan → /operator apa pun = blocked (bukan redirect, bukan login)", () => {
-    for (const path of ["/operator", "/operator/login", "/operator/tenants/9", "/operator/scheduler"]) {
-      expect(decideOperatorRouting(APP, path, OPS).kind).toBe("blocked");
+describe("decideOperatorRouting — host pelanggan tidak pernah mencapai konsol", () => {
+  it("host pelanggan → `customer`, apa pun jalurnya (termasuk jalur yang ada di konsol)", () => {
+    for (const path of ["/", "/login", "/tenants", "/tenants/3", "/accounts", "/operator", "/api/health"]) {
+      expect(decideOperatorRouting(APP, path, OPS).kind).toBe("customer");
     }
   });
 
   it("host tak dikenal / tanpa header host diperlakukan sama", () => {
-    expect(decideOperatorRouting(null, "/operator", OPS).kind).toBe("blocked");
-    expect(decideOperatorRouting("evil.example.com", "/operator", OPS).kind).toBe("blocked");
+    expect(decideOperatorRouting(null, "/tenants", OPS).kind).toBe("customer");
+    expect(decideOperatorRouting("evil.example.com", "/login", OPS).kind).toBe("customer");
+    // Subdomain yang BERAKHIRAN host konsol bukan host konsol.
+    expect(decideOperatorRouting("x.ops.example.com", "/", OPS).kind).toBe("customer");
   });
 });
 
-describe("decideOperatorRouting — sesi operator TIDAK BISA mencapai rute pelanggan", () => {
-  it("host operator → dasbor/login/API pelanggan = blocked", () => {
-    for (const path of ["/dashboard", "/login", "/api/invoices", "/tenant", "/select-company", "/"]) {
-      expect(decideOperatorRouting(OPS, path, OPS).kind).toBe("blocked");
+describe("decideOperatorRouting — host operator", () => {
+  it("jalur terlindungi → `operator` (wajib sesi)", () => {
+    for (const path of ["/", "/tenants", "/tenants/3", "/accounts", "/dashboard", "/api/companies"]) {
+      expect(decideOperatorRouting(OPS, path, OPS).kind).toBe("operator");
     }
   });
 
-  it("host operator → bidang operator hidup", () => {
-    expect(decideOperatorRouting(OPS, "/operator", OPS).kind).toBe("operator");
-    expect(decideOperatorRouting(OPS, "/operator/tenants/3", OPS).kind).toBe("operator");
-    expect(decideOperatorRouting(OPS, "/operator/login", OPS).kind).toBe("operator-public");
-  });
-
-  it("health probe tetap hidup untuk load-balancer", () => {
+  it("hanya halaman masuk & probe health yang publik", () => {
+    expect(decideOperatorRouting(OPS, "/login", OPS).kind).toBe("operator-public");
     expect(decideOperatorRouting(OPS, "/api/health", OPS).kind).toBe("operator-public");
+    // Bukan awalan: `/login/x` dan `/loginx` tetap terlindungi.
+    expect(decideOperatorRouting(OPS, "/login/x", OPS).kind).toBe("operator");
+    expect(decideOperatorRouting(OPS, "/loginx", OPS).kind).toBe("operator");
   });
 
   it("perbandingan host tahan beda huruf & port", () => {
-    expect(decideOperatorRouting("OPS.example.com:443", "/operator", OPS).kind).toBe("operator");
-  });
-});
-
-describe("isOperatorPath", () => {
-  it("awalan persis, bukan substring", () => {
-    expect(isOperatorPath("/operator")).toBe(true);
-    expect(isOperatorPath("/operator/login")).toBe(true);
-    expect(isOperatorPath("/operators")).toBe(false);
-    expect(isOperatorPath("/x/operator")).toBe(false);
+    expect(decideOperatorRouting("OPS.example.com:443", "/", OPS).kind).toBe("operator");
   });
 });
 
@@ -258,5 +254,31 @@ describe("operatorCookieName", () => {
   it("awalan __Host- saat secure — cookie tidak bisa dipasangi Domain", () => {
     expect(operatorCookieName(true)).toBe("__Host-sai_operator");
     expect(operatorCookieName(false)).toBe("sai_operator");
+  });
+});
+
+describe("konsol tanpa awalan `/operator`", () => {
+  const AKAR = join(process.cwd(), "apps", "operator");
+  const berkas = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) return e.name === ".next" || e.name === "node_modules" ? [] : berkas(p);
+      return /\.tsx?$/.test(e.name) ? [p] : [];
+    });
+
+  it("tidak ada tautan/alamat `\"/operator…\"` di kode konsol", () => {
+    /* Bidang konsol ditentukan host. Tautan berawalan `/operator` hanya
+       bekerja lewat pengalihan di next.config — dan menjadi 404 begitu
+       pengalihan itu kelak dicabut. */
+    const semua = berkas(join(AKAR, "src"));
+    expect(semua.length).toBeGreaterThan(50);
+    const pelanggar = semua.filter((f) => /["'`]\/operator(?=[/"'`?#])/.test(readFileSync(f, "utf8")));
+    expect(pelanggar).toEqual([]);
+  });
+
+  it("tautan lama dialihkan PERMANEN, bukan 404", () => {
+    const config = readFileSync(join(AKAR, "next.config.ts"), "utf8");
+    expect(config).toContain('{ source: "/operator", destination: "/", permanent: true }');
+    expect(config).toContain('{ source: "/operator/:path*", destination: "/:path*", permanent: true }');
   });
 });

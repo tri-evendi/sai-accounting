@@ -114,6 +114,10 @@ const nextConfig: NextConfig = {
     "@ant-design/icons": { transform: "@ant-design/icons/{{member}}" },
   },
   experimental: {
+    // `app/global-not-found.tsx`: aplikasi ini punya dua root layout ((app) &
+    // (marketing)), jadi tidak ada `app/not-found.tsx` yang bisa dirakit untuk
+    // alamat yang tidak cocok dengan rute mana pun. Lihat kepala berkas itu.
+    globalNotFound: true,
     optimizePackageImports: [
       "lucide-react",
       "recharts",

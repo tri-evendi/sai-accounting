@@ -52,7 +52,7 @@ import { SelectField } from "@sai/ui/select";
 import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
 import { siteSettingsSchema, type SiteSettingsFormInput } from "@op/lib/validations/operator";
-import type { OperatorSettingsResult } from "@op/app/(operator)/operator/settings/actions";
+import type { OperatorSettingsResult } from "@op/app/(operator)/settings/actions";
 
 export interface SiteSettingsFormProps {
   /** Nilai awal = yang BERLAKU sekarang (DB bila ada, kalau tidak env). */

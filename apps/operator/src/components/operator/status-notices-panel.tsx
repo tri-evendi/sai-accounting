@@ -30,7 +30,7 @@ import {
   type StatusNoticePhase,
 } from "@sai/core/status-notices";
 import { formatDateTime } from "@sai/core/utils";
-import type { StatusNoticeActionResult } from "@op/app/(operator)/operator/status-notices/actions";
+import type { StatusNoticeActionResult } from "@op/app/(operator)/status-notices/actions";
 
 const PHASE_LABEL: Record<StatusNoticePhase, DictionaryKey> = {
   scheduled: "operator.statusNotices.phase.scheduled",

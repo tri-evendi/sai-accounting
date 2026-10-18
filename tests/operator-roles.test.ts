@@ -60,7 +60,7 @@ describe("matriks izin operator", () => {
 });
 
 describe("setiap server action operator menyebut izinnya", () => {
-  const AKAR = join(process.cwd(), "apps/operator/src/app/(operator)/operator");
+  const AKAR = join(process.cwd(), "apps/operator/src/app/(operator)");
   const berkas: string[] = [];
   const telusuri = (dir: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

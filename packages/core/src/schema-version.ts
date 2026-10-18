@@ -1,6 +1,6 @@
 /**
  * Vonis versi skema SATU basis data terhadap migration yang diharapkan —
- * MURNI, dipakai `/operator/backup`.
+ * MURNI, dipakai `/backup` konsol operator.
  *
  * Lima keadaan, bukan dua, karena "tidak mutakhir" punya sebab yang
  * tindakannya berbeda:

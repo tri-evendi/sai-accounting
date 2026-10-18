@@ -380,7 +380,7 @@ function warnIfProductionIsSilent(config: MailConfig): void {
   console.error(
     "[mailer] ⚠ PRODUKSI TANPA SMTP: setiap surel ditulis ke berkas dan TIDAK " +
       "dikirim ke siapa pun — verifikasi pendaftaran, atur-ulang kata sandi, " +
-      "undangan staf, faktur, dan pengingat. Setel di /operator/mail atau lewat " +
+      "undangan staf, faktur, dan pengingat. Setel di halaman Surel konsol operator atau lewat " +
       "MAIL_TRANSPORT/SMTP_URL. Lihat /api/health → mail.status."
   );
 }

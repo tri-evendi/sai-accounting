@@ -1,5 +1,5 @@
 /**
- * Kelompok tindakan jejak tenant untuk saringan `/operator/audit/tenants`.
+ * Kelompok tindakan jejak tenant untuk saringan `/audit/tenants`.
  *
  * AWALAN, bukan daftar tindakan: kosakata `TenantAuditAction` bertitik dan
  * berkelompok, jadi tindakan baru sekelompok (mis. `tenant.deletion.<baru>`)

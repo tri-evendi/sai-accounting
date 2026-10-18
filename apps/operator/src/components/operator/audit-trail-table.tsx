@@ -1,7 +1,7 @@
 /**
  * TABEL JEJAK AUDIT konsol operator — satu bentuk untuk tiga tempat:
- * jejak bidang operator (`/operator/audit`), jejak tenant lintas tenant
- * (`/operator/audit/tenants`), dan jejak satu tenant di halaman rinciannya.
+ * jejak bidang operator (`/audit`), jejak tenant lintas tenant
+ * (`/audit/tenants`), dan jejak satu tenant di halaman rinciannya.
  *
  * Satu komponen, bukan tiga salinan, karena aturan bacanya sama dan aturan
  * itulah yang paling mudah menyimpang:

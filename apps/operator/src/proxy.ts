@@ -6,7 +6,6 @@ import {
   configuredOperatorHost,
   decideOperatorRouting,
   ipAllowed,
-  normalizeHost,
   operatorCookieName,
 } from "@sai/core/operator-plane";
 
@@ -23,7 +22,7 @@ import {
  *   • Host lain (Traefik salah arah) → 404, BUKAN rute pelanggan.
  *   • `OPERATOR_IP_ALLOWLIST` kosong → semua IP ditolak; `/api/health`
  *     dikecualikan untuk probe load-balancer.
- *   • Tanpa cookie sesi → `/operator/login`. Verifikasi kriptografisnya tetap
+ *   • Tanpa cookie sesi → `/login`. Verifikasi kriptografisnya tetap
  *     di `requireOperatorPage()` / `requireOperatorActionSession()`.
  */
 export async function proxy(request: NextRequest) {
@@ -35,10 +34,9 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/api/health") return NextResponse.next();
 
   const decision = decideOperatorRouting(host, pathname, operatorHost);
-  if (decision.kind !== "operator" && decision.kind !== "operator-public") {
-    if (operatorHost && pathname === "/" && normalizeHost(host) === operatorHost) {
-      return NextResponse.redirect(new URL("/operator", request.url));
-    }
+  if (decision.kind === "customer") {
+    // Host lain, atau OPERATOR_HOST tidak diset: aplikasi ini tidak punya
+    // satu pun rute untuk bidang itu.
     if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return new NextResponse(null, { status: 404 });
   }
@@ -50,7 +48,7 @@ export async function proxy(request: NextRequest) {
   if (decision.kind === "operator") {
     const hasOperatorCookie =
       request.cookies.has(operatorCookieName(true)) || request.cookies.has(operatorCookieName(false));
-    if (!hasOperatorCookie) return NextResponse.redirect(new URL("/operator/login", request.url));
+    if (!hasOperatorCookie) return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const headers = new Headers(request.headers);

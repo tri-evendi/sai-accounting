@@ -99,7 +99,7 @@ describe("isian alamat arsip di panel operator", () => {
        tidak ketahuan, sebab layarnya terlihat benar. */
     const lapisan = [
       "apps/operator/src/lib/validations/operator.ts",
-      "apps/operator/src/app/(operator)/operator/mail/actions.ts",
+      "apps/operator/src/app/(operator)/mail/actions.ts",
       "packages/platform/src/mail-settings.ts",
       "apps/operator/src/components/operator/mail-settings-form.tsx",
     ];

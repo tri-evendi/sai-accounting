@@ -52,7 +52,7 @@
  *
  * ══ KENAPA BUKAN `DashboardSection` ════════════════════════════════════════
  * Ia memang hampir sama bentuknya, dan `StatCard` justru DIPAKAI apa adanya di
- * konsol ini dengan alasan yang tertulis di `(operator)/operator/page.tsx`.
+ * konsol ini dengan alasan yang tertulis di `(operator)/page.tsx`.
  * Bedanya satu: `DashboardSection` membawa tautan "lihat semua" yang labelnya
  * `t("dashboard.seeAll")` dan menggambar `app-link` — komponen yang seluruh
  * sebab keberadaannya adalah menyelaraskan jalur BERTENANT. Di host `ops.` ia

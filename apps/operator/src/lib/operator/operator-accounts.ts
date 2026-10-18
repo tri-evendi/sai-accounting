@@ -1,6 +1,6 @@
 /**
  * AKUN OPERATOR BASIS DATA (migration kendali 0004) — baca untuk login dan
- * penjaga, tulis untuk layar `/operator/accounts`.
+ * penjaga, tulis untuk layar `/accounts`.
  *
  * Tanpa `server-only` dan klien DISUNTIK (pola `writes.ts`): aturannya diuji
  * dengan fake in-memory. Yang menulis jejak audit operator adalah PEMANGGIL

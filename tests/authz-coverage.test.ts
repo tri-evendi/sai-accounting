@@ -74,7 +74,7 @@ const OPERATOR_PAGE_EXCEPTIONS = new Set([
   // jadi penjaga sesi akan memantulkannya ke dirinya sendiri. Ia tetap menjaga
   // diri lewat `operatorPlaneViolation()` — pemeriksaan host + daftar IP yang
   // sama, yang gagal-TERTUTUP bila `OPERATOR_HOST` tidak diset.
-  "(operator)/operator/login/page.tsx",
+  "(operator)/login/page.tsx",
 ]);
 
 /**
@@ -400,7 +400,7 @@ describe("cakupan penjaga bidang operator (issue #154)", () => {
 
   it("grup (operator) ada dan berisi halaman — kalau kosong, tes di bawah tidak menjaga apa pun", () => {
     expect(pages.length).toBeGreaterThan(0);
-    expect(pages).toContain("(operator)/operator/page.tsx");
+    expect(pages).toContain("(operator)/page.tsx");
   });
 
   it("setiap halaman operator memakai requireOperatorPage — BUKAN penjaga pelanggan", () => {

@@ -31,7 +31,7 @@
  *
  * ── Penekanan tombol (#267): satu batas yang SENGAJA diterima ──────────────
  * Keempat pemicu panel `secondary`/`danger`, dan halaman yang memuatnya
- * (`/operator/tenants/[id]`) tidak punya satu pun tombol berisi penuh sendiri
+ * (`/tenants/[id]`) tidak punya satu pun tombol berisi penuh sendiri
  * — jadi keadaan bawaan layar ini adalah NOL aksi utama, yang benar untuk
  * konsol baca. Begitu sebuah panel dibuka, submit-nya primer: ia mengikat, dan
  * pasangan "submit + Batal" yang keduanya `secondary` akan meninggalkan
@@ -101,8 +101,8 @@ import {
   quoteActivationSchema,
   type QuoteActivationFormInput,
 } from "@op/lib/validations/operator";
-import type { OperatorActionResult } from "@op/app/(operator)/operator/tenants/[id]/actions";
-import { operatorRenameTenantSlug } from "@op/app/(operator)/operator/tenants/[id]/slug-actions";
+import type { OperatorActionResult } from "@op/app/(operator)/tenants/[id]/actions";
+import { operatorRenameTenantSlug } from "@op/app/(operator)/tenants/[id]/slug-actions";
 import {
   operatorChangePlan,
   operatorExecuteDeletion,
@@ -111,7 +111,7 @@ import {
   operatorExtendSubscription,
   operatorSetBillingMode,
   operatorActivateQuote,
-} from "@op/app/(operator)/operator/tenants/[id]/actions";
+} from "@op/app/(operator)/tenants/[id]/actions";
 
 /* ── Bentuk data dari halaman server (serial, tanggal sudah terformat) ────── */
 

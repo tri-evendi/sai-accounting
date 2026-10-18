@@ -10,10 +10,10 @@
 
 import { useState } from "react";
 import { Col, Row, theme } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Select } from "@sai/ui/select";
+import { Input } from "@sai/ui/input";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
 
 interface Props {

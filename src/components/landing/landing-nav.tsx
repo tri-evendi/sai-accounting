@@ -56,8 +56,8 @@ import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 import Link from "next/link";
 
 import { LANDING_NAV_HEIGHT } from "@/components/landing/landing-scale";
-import { BrandLockup } from "@/components/ui/brand-lockup";
-import { ButtonLink } from "@/components/ui/button";
+import { BrandLockup } from "@sai/ui/brand-lockup";
+import { ButtonLink } from "@sai/ui/button";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { APP_NAME } from "@sai/core/constants";
 import { getLocale, getT } from "@/lib/i18n/server";

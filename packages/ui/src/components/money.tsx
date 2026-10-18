@@ -34,7 +34,7 @@
 import { theme } from "antd";
 
 import { formatAmount, formatMoney, isNegative, type CurrencyCode } from "@sai/core/money-format";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 /**
  * Nilai yang belum diketahui ditulis dengan em dash, bukan nol (MASTER.md).

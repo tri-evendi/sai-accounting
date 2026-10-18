@@ -36,8 +36,8 @@ import Link from "next/link";
 import { Alert, Flex, theme } from "antd";
 import { MailOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
 import { useT } from "@sai/core/i18n/client";
 
 export default function ForgotPasswordPage() {

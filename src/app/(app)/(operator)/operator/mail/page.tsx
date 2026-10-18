@@ -17,7 +17,7 @@
 
 import { MailSettingsForm } from "@/components/operator/mail-settings-form";
 import { CONSOLE_PAGE, ConsoleNotice } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import { mailSettingsForOperator } from "@/lib/operator/store";

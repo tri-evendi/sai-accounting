@@ -30,12 +30,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme } from "antd";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { TextInput } from "@/components/ui/input";
+import { Button } from "@sai/ui/button";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Label } from "@sai/ui/label";
+import { TextInput } from "@sai/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@sai/ui/toast";
 import { formatCurrency, formatDateShort } from "@sai/core/utils";
 import { useT } from "@sai/core/i18n/client";
 import { LinkOutlined } from "@ant-design/icons";

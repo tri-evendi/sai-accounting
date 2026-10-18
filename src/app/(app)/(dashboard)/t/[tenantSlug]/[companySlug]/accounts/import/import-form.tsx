@@ -37,18 +37,18 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
+import { useAppRouter } from "@sai/ui/app-link";
 import { DownloadOutlined, FileExcelOutlined, UploadOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { useToast } from "@sai/ui/toast";
 import { ACCURATE_TYPE_LEGEND } from "@/lib/coa-import";
 import { useDictionary, useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
-import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
+import { parseTenantPath, tenantApiPath } from "@sai/core/tenant-routes";
 
 interface RowError {
   row: number;

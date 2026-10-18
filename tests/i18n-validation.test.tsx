@@ -31,7 +31,7 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormMessage } from "@sai/ui/form";
 import { LocaleProvider } from "@sai/core/i18n/client";
 import type { Dictionary } from "@sai/core/i18n/dictionary";
 import {

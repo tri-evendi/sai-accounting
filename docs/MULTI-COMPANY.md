@@ -101,11 +101,11 @@ Yang berlaku sekarang:
   URL; menggantinya mematikan setiap tautan yang pernah dibagikan tanpa satu pun
   galat. Nama perusahaan tetap bebas berubah.
 * **Jalur lama masih hidup**, dipantulkan 307 oleh `src/proxy.ts` menurut
-  `MIGRATED_ROOT_SEGMENTS` di `lib/tenant-routes.ts`. Satu-satunya berkas yang
+  `MIGRATED_ROOT_SEGMENTS` di `packages/core/src/tenant-routes.ts`. Satu-satunya berkas yang
   sengaja tinggal di jalur lama adalah `/dashboard` telanjang — pengarah tanpa
   query, karena proxy tidak bisa memantulkan token yang belum membawa slug.
 * **Tautan tidak ditulis dalam bentuk bertenant.** `Link`/`useAppRouter` di
-  `components/ui/app-link.tsx` memetakan `href` lama ke jalur kanonik dari
+  `packages/ui/src/components/app-link.tsx` memetakan `href` lama ke jalur kanonik dari
   `usePathname()` — bukan dari sesi, sebab sesi dibagi seluruh tab.
 * **`CompanySessionSync` tidak menahan apa pun lagi.** Di #157 ia menahan
   permukaan interaktif sampai cookie menyusul — perlu, selama route API masih

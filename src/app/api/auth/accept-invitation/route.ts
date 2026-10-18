@@ -29,7 +29,7 @@ import {
 } from "@/lib/rate-limit-persistent";
 import { controlDb } from "@sai/core/control-db";
 import { runWithCompany } from "@/lib/company-context";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";
 import { getRequestI18n } from "@/lib/i18n/server";

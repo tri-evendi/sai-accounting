@@ -20,8 +20,8 @@
  * gerak "sedang bekerja" tetap ada; yang berhenti berdenyut hanya dua batang
  * kepala halaman, yang tugasnya memang MENAHAN RUANG, bukan bergerak.
  */
-import { Card } from "@/components/ui/card";
-import { TableSkeleton } from "@/components/ui/loading";
+import { Card } from "@sai/ui/card";
+import { TableSkeleton } from "@sai/ui/loading";
 
 /** Batang penampung teks kepala halaman — `h-8 w-64` / `h-4 w-96` dulu. */
 const BAR: React.CSSProperties = {

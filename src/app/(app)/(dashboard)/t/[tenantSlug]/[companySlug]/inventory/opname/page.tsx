@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import {
   countStockHealth,
@@ -8,16 +8,16 @@ import {
 } from "@/lib/inventory";
 import { StockAlertBanner } from "@/components/dashboard/stock-alert-banner";
 import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
-import { Card } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { ContainerOutlined } from "@ant-design/icons";
 import { OpnameForm } from "./opname-form";
 import { getT } from "@/lib/i18n/server";
-import { CARD_GAP, SECTION_GAP } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

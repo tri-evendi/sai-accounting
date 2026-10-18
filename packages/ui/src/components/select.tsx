@@ -77,8 +77,8 @@ import {
   describedByWith,
   isInvalidField,
   type BareFieldProps,
-} from "@/components/ui/input";
-import { Label, RequiredMark } from "@/components/ui/label";
+} from "@sai/ui/input";
+import { Label, RequiredMark } from "@sai/ui/label";
 
 /**
  * Di 375px daftar AntD menampilkan ±6 baris sekaligus. Di bawah ambang ini

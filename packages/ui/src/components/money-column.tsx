@@ -15,13 +15,13 @@
  * memakai hook. Itu sebabnya `StaticTable` boleh memanggilnya di server.
  */
 
-import { Money } from "@/components/ui/money";
+import { Money } from "@sai/ui/money";
 import {
   isEmptyValue,
   numericSorter,
   type ColumnBase,
   type SaiColumn,
-} from "@/components/ui/table-columns";
+} from "@sai/ui/table-columns";
 import { type CurrencyCode } from "@sai/core/money-format";
 
 /**

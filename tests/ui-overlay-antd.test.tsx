@@ -90,12 +90,12 @@ vi.mock("antd", async (importOriginal) => {
 const { AntdProvider } = await import("@/components/providers/antd-provider");
 const { ConfirmDialog } = await import("@/components/ui/confirm-dialog");
 const { Dialog, DialogContent, DialogTitle, writeDialogAria } = await import(
-  "@/components/ui/dialog"
+  "@sai/ui/dialog"
 );
-const { LearnMore } = await import("@/components/ui/learn-more");
-const { Popover, PopoverContent, PopoverTrigger } = await import("@/components/ui/popover");
-const { TermTooltip } = await import("@/components/ui/term-tooltip");
-const { useToast } = await import("@/components/ui/toast");
+const { LearnMore } = await import("@sai/ui/learn-more");
+const { Popover, PopoverContent, PopoverTrigger } = await import("@sai/ui/popover");
+const { TermTooltip } = await import("@sai/ui/term-tooltip");
+const { useToast } = await import("@sai/ui/toast");
 
 const dictionary = id as unknown as Dictionary;
 

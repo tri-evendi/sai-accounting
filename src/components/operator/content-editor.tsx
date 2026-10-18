@@ -43,7 +43,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, theme } from "antd";
 import { UndoOutlined } from "@ant-design/icons";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import {
   Form,
   FormControl,
@@ -52,9 +52,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { TextInput } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+} from "@sai/ui/form";
+import { TextInput } from "@sai/ui/input";
+import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
 import { siteContentSchema, type SiteContentFormInput } from "@/lib/validations/operator";
 import type { OperatorContentActionResult } from "@/app/(app)/(operator)/operator/content/actions";

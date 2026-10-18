@@ -23,7 +23,7 @@ import { useSearchParams } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
 import { CheckCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
 
 const { Text } = Typography;

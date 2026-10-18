@@ -94,7 +94,7 @@
 
 import { Empty, theme } from "antd";
 import { ContainerOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 
 interface EmptyStateProps {
   icon?: React.ReactNode;

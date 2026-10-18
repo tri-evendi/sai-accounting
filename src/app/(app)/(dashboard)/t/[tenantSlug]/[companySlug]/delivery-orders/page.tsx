@@ -5,22 +5,22 @@
  * dokumen sumber (kontrak/faktur) dan consignee, membawa total kuantitas (kg),
  * dan menautkan ke detail + cetak PDF. Kuantitas rata-kanan & tabular per MASTER.
  */
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Pagination } from "@/components/ui/pagination";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Pagination } from "@sai/ui/pagination";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { formatNumber, formatDateShort, parsePageParam } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { InfoCircleOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 export const dynamic = "force-dynamic";
 

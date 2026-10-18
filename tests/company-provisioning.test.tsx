@@ -43,7 +43,7 @@ import {
   type ProvisionState,
 } from "@/app/(app)/(tenant)/(panel)/companies/new/provision-progress";
 import { LocaleProvider } from "@sai/core/i18n/client";
-import { MONEY_TOKENS_LIGHT } from "@/lib/theme/antd-tokens";
+import { MONEY_TOKENS_LIGHT } from "@sai/ui/theme/antd-tokens";
 import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 import id from "@sai/core/i18n/dictionaries/id.json";
 import en from "@sai/core/i18n/dictionaries/en.json";

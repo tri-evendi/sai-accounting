@@ -6,21 +6,21 @@
  * origin document and carries a nota-retur PDF. Values are shown in the return's
  * own currency (inherited from the origin), right-aligned and tabular, per MASTER.
  */
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { Pagination } from "@/components/ui/pagination";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { ButtonLink } from "@sai/ui/button";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { Pagination } from "@sai/ui/pagination";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { formatDateShort, parsePageParam } from "@sai/core/utils";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { InfoCircleOutlined, PlusOutlined, RollbackOutlined, WarningOutlined } from "@ant-design/icons";
 import { ReturnPdfButton } from "./pdf-button";
 

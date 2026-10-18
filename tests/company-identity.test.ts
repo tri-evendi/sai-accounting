@@ -14,12 +14,12 @@
  * nilai cadangan, dan yang mengisi nilai awal form wizard.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { FALLBACK_COMPANY_IDENTITY, pickIdentity } from "@/lib/company-identity";
 
-const SRC = join(__dirname, "..", "src");
 
 /**
  * Berkas yang SAH mengimpor konstanta identitas, beserta alasannya.
@@ -29,7 +29,7 @@ const SRC = join(__dirname, "..", "src");
 const ALLOWED = new Map<string, string>([
   ["lib/company-identity.ts", "mendefinisikan nilai cadangan sisi server"],
   ["lib/company-identity-client.tsx", "mendefinisikan nilai cadangan sisi client"],
-  ["lib/constants.ts", "tempat konstanta itu sendiri"],
+  ["packages/core/src/constants.ts", "tempat konstanta itu sendiri"],
   ["app/api/setup/route.ts", "nilai awal yang mengisi form wizard setup"],
   ["app/(app)/(setup)/setup/page.tsx", "nilai awal yang mengisi form wizard setup"],
 ]);
@@ -45,8 +45,8 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const files = sourceFiles(SRC).map((path) => ({
-  rel: path.slice(SRC.length + 1),
+const files = akarSumber().flatMap((d) => sourceFiles(d)).map((path) => ({
+  rel: relSumber(path),
   code: readFileSync(path, "utf8"),
 }));
 

@@ -19,12 +19,12 @@ import { useEffect, useState } from "react";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Col, Flex, Row, theme } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import {
   Form,
   FormControl,
@@ -33,9 +33,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { useToast } from "@/components/ui/toast";
-import { PageHeader } from "@/components/ui/page-header";
+} from "@sai/ui/form";
+import { useToast } from "@sai/ui/toast";
+import { PageHeader } from "@sai/ui/page-header";
 import { costCenterSchema, type CostCenterInput } from "@/lib/validations/cost-center";
 import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";

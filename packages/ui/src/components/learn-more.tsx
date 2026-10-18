@@ -31,11 +31,11 @@
  * bukan `colorPrimary` bawaan yang hanya 4,10:1 sebagai teks.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { BookOutlined } from "@ant-design/icons";
-import { getTerm, glossaryHref } from "@/lib/labels";
+import { getTerm, glossaryHref } from "@sai/core/labels";
 import { useT } from "@sai/core/i18n/client";
-import { SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_XS } from "@sai/ui/layout-scale";
 
 /**
  * Dua keadaan yang tidak punya bentuk sebaris — garis bawah saat disorot dan

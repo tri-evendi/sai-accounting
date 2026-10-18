@@ -48,8 +48,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { SelectField } from "@/components/ui/select";
+} from "@sai/ui/form";
+import { SelectField } from "@sai/ui/select";
 import { applyServerFieldErrors } from "@/lib/form-server-errors";
 import { translateMessage } from "@sai/core/i18n/validation";
 import { LocaleProvider } from "@sai/core/i18n/client";

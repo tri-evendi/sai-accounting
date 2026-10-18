@@ -26,7 +26,7 @@
  * sebagai batas yang diketahui, bukan sebagai kelalaian.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   DOC_BRANCHES,
   docsInBranch,

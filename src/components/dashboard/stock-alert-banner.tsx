@@ -14,7 +14,7 @@
  * Peringatan tidak pernah warna saja: ada ikon, kalimat berisi jumlah barang,
  * dan daftar nama barangnya.
  */
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { WarningOutlined } from "@ant-design/icons";
 import { LOW_STOCK_THRESHOLD } from "@sai/core/constants";
 import { getT } from "@/lib/i18n/server";

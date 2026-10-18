@@ -50,7 +50,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { Collapse, theme } from "antd";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@sai/ui/badge";
 import { ADVANCED_SECTION_TITLE } from "@/lib/form-sections";
 import { useT } from "@sai/core/i18n/client";
 

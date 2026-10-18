@@ -56,6 +56,7 @@ COPY package.json bun.lock ./
 # dibuat di sini menunjuk ke sana. Paket baru = satu baris baru di sini.
 COPY packages/db/package.json packages/db/
 COPY packages/core/package.json packages/core/
+COPY packages/ui/package.json packages/ui/
 # Deterministic install of the full dependency set (build needs devDeps).
 # --frozen-lockfile = padanan `npm ci`: menolak build bila bun.lock tidak cocok
 # dengan package.json, bukan diam-diam menyelesaikan ulang versinya.

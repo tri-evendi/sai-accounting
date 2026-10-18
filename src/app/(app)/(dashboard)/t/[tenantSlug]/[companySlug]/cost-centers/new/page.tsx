@@ -1,6 +1,6 @@
 /** Pusat Biaya Baru (issue #91) — pembungkus server yang menegakkan izinnya. */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { CostCenterForm } from "../cost-center-form";
 
 export const dynamic = "force-dynamic";

@@ -17,7 +17,7 @@
  * Daftar kosong memulangkan `null` — bukan panel kosong berjudul "Yang perlu
  * diperhatikan" yang justru mengumumkan ketiadaan beritanya.
  */
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { WarningOutlined, InfoCircleOutlined } from "@ant-design/icons";
 
 import type { DashboardInsight } from "@/lib/dashboard-insights";

@@ -11,24 +11,24 @@
  * schema before production filing (see `@/lib/efaktur`).
  */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
-import { tenantApiPath, type TenantScopedParams } from "@/lib/tenant-routes";
-import { PageHeader } from "@/components/ui/page-header";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { tenantApiPath, type TenantScopedParams } from "@sai/core/tenant-routes";
+import { PageHeader } from "@sai/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
 import type { EfakturRow } from "@/lib/efaktur";
 import { formatDateShort } from "@sai/core/utils";
 import { toISODate } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@sai/ui/empty-state";
 import { DownloadOutlined, FileDoneOutlined, FileTextOutlined, InfoCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

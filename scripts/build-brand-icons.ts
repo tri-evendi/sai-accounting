@@ -44,8 +44,8 @@ import { fileURLToPath } from "node:url";
 
 import sharp from "sharp";
 
-import { brandMarkSvg } from "../src/lib/brand/mark";
-import { BRAND_SOLID_LIGHT } from "../src/lib/theme/antd-tokens";
+import { brandMarkSvg } from "@sai/ui/brand/mark";
+import { BRAND_SOLID_LIGHT } from "@sai/ui/theme/antd-tokens";
 
 /* `fileURLToPath(import.meta.url)`, bukan `import.meta.dirname`: `tsx`
    menjalankan skrip ini sebagai CJS dan yang kedua lahir `undefined` di sana —

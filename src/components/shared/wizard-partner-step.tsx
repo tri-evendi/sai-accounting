@@ -12,16 +12,16 @@
  */
 
 import { Alert, Col, Flex, Row, theme, Typography } from "antd";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { Input } from "@sai/ui/input";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Card, CardContent } from "@sai/ui/card";
+import { SearchableSelect, type SearchableOption } from "@sai/ui/searchable-select";
 import {
   ServerSearchableSelect,
   type PickerOption,
 } from "@/components/ui/server-searchable-select";
 import { DisclosureSection } from "@/components/ui/disclosure-section";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@sai/ui/empty-state";
 import type { PartnerDraft } from "@/lib/wizard";
 import { TeamOutlined, UserAddOutlined } from "@ant-design/icons";
 import { useT } from "@sai/core/i18n/client";

@@ -45,7 +45,7 @@ import {
   type LandingHue,
 } from "@/components/landing/landing-scale";
 import { WHATSAPP_FAB_STYLE } from "@/components/landing/landing-whatsapp";
-import { INVERSE_BUTTON_MIX, INVERSE_BUTTON_STYLE } from "@/components/ui/button";
+import { INVERSE_BUTTON_MIX, INVERSE_BUTTON_STYLE } from "@sai/ui/button";
 import {
   BORDER_TOKENS_DARK,
   BORDER_TOKENS_LIGHT,
@@ -56,7 +56,7 @@ import {
   brandSolidActive,
   brandSolidHover,
   brandTone,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 
 type RGB = [number, number, number, number];
 

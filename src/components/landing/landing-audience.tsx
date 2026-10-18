@@ -59,7 +59,7 @@ import {
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
 import { MODULE_ICON } from "@/components/landing/landing-modules";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@sai/ui/card";
 import { MODULE_META, type BusinessModule } from "@/lib/business-modules";
 import { getT } from "@/lib/i18n/server";
 

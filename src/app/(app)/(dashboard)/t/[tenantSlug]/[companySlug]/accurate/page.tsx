@@ -9,7 +9,7 @@
  * mencocokkan buku dengan sistem lain memang pekerjaan akuntan.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { AccurateReconcileForm } from "./accurate-form";
 
 export const dynamic = "force-dynamic";

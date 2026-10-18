@@ -7,11 +7,11 @@
 
 import { useState } from "react";
 import { Alert, Col, Flex, Row, theme } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 

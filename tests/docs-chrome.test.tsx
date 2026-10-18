@@ -39,7 +39,7 @@ import { LocaleProvider } from "@sai/core/i18n/client";
 import { translate, type Dictionary, type DictionaryKey } from "@sai/core/i18n/dictionary";
 import id from "@sai/core/i18n/dictionaries/id.json";
 import { kulitDokumentasi, navDokumentasi, type PembacaDokumentasi } from "@/lib/docs-chrome";
-import { isTenantScopedPath, legacyTenantScopedPath } from "@/lib/tenant-routes";
+import { isTenantScopedPath, legacyTenantScopedPath } from "@sai/core/tenant-routes";
 
 const dict = id as unknown as Dictionary;
 const T = (key: DictionaryKey, values?: Record<string, string | number>) =>

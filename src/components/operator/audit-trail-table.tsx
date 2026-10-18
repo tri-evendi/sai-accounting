@@ -11,10 +11,10 @@
  *
  * Server component (tanpa `"use client"`): `StaticTable` dirender server.
  */
-import { Badge } from "@/components/ui/badge";
-import { Link } from "@/components/ui/app-link";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { Link } from "@sai/ui/app-link";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { CONSOLE_MUTED, CONSOLE_TABULAR } from "@/components/operator/console-ui";
 
 export interface AuditTrailRow {

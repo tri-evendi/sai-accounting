@@ -33,8 +33,8 @@
  * Denyut & `prefers-reduced-motion` lewat satu aturan CSS ber-`href` +
  * `precedence` yang menyasar atribut `data-skeleton`, bukan kelas.
  */
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { TILE_CONTENT, TILE_HEADER } from "@/components/ui/stat-tile";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { TILE_CONTENT, TILE_HEADER } from "@sai/ui/stat-tile";
 
 /** Balok kerangka. Warnanya `fillSecondary`, bukan `fillQuaternary`: yang
  *  terakhir itu latar halus untuk bidang lebar, dan sebagai BALOK di atas

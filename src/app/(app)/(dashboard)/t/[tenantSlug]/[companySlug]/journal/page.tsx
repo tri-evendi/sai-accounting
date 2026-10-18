@@ -6,20 +6,20 @@
  * (`Badge`, `Money`) + variabel `--ant-…` yang HANYA dipakai di dalam `<Card>`.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Card } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { formatDateShort, parsePageParam } from "@sai/core/utils";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@sai/ui/empty-state";
 import { AccountBookOutlined } from "@ant-design/icons";
-import { PageHeader } from "@/components/ui/page-header";
-import { Pagination } from "@/components/ui/pagination";
-import { Link } from "@/components/ui/app-link";
+import { PageHeader } from "@sai/ui/page-header";
+import { Pagination } from "@sai/ui/pagination";
+import { Link } from "@sai/ui/app-link";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

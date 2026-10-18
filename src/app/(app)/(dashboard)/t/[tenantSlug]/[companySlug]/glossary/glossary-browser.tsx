@@ -27,23 +27,23 @@
  * basi" yang akan gagal kalau entrinya ditinggal).
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { useMemo, useState } from "react";
 import { Flex, Segmented } from "antd";
 import { ArrowUpOutlined, SearchOutlined } from "@ant-design/icons";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { Input } from "@sai/ui/input";
+import { EmptyState } from "@sai/ui/empty-state";
 import {
   TERM_CATEGORIES,
   searchTerms,
   termAnchorId,
   termsByCategory,
   type TermCategory,
-} from "@/lib/labels";
+} from "@sai/core/labels";
 import { useDictionary, useT } from "@sai/core/i18n/client";
 import { termCategoryLabels } from "@/lib/i18n/labels";
-import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 
 /** `marginLG` 24 · `marginSM` 12 · `margin` 16 — token AntD sebagai angka. */
 const GROUP_GAP = 32;

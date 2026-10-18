@@ -6,15 +6,15 @@
  * show a realisation. The picker is filtered here; the API re-checks.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { listBudgets } from "@/lib/budget-report";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodPicker } from "@/components/shared/period-picker";
 import { BudgetAccountsClient } from "./budget-accounts-client";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP } from "@/lib/layout-scale";
+import { SECTION_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

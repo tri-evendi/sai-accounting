@@ -1097,7 +1097,7 @@ disorot — bukan hiasan.
    pita hijau selebar layar di halaman yang menjual pembukuan terbaca sebagai
    pernyataan tentang angka.
 2. **`color-mix()` di atas permukaan yang sedang berlaku, bukan anak tangga
-   palet telanjang.** (Sejak #303 resepnya milik `src/lib/theme/tone-recipe.ts`,
+   palet telanjang.** (Sejak #303 resepnya milik `packages/ui/src/theme/tone-recipe.ts`,
    modul netral-permukaan yang juga dipakai `/platform` — lihat MASTER.md
    §Permukaan KETIGA. Yang dibagi hanya BENTUK `color-mix`-nya; kadar di bawah
    tetap milik halaman ini.) Tangga AntD (`--ant-blue-1` … `-10`) MEMBALIK di tema
@@ -1167,7 +1167,7 @@ Empat keputusan yang lahir dari angka itu:
    warnanya tipis.
 2. **Tombol `inverse`, bukan `primary`.** Isian primer = isian merek yang sama
    dengan pitanya (1,00:1): tombol lenyap sebagai bidang. `variant="inverse"`
-   (`components/ui/button.tsx`) adalah varian BERNAMA — isian putih, label
+   (`packages/ui/src/components/button.tsx`) adalah varian BERNAMA — isian putih, label
    navy — bukan gaya sebaris ad-hoc, dan penjaga penekanan
    (`tests/button-emphasis.test.ts`) menghitungnya sebagai ajakan penuh: satu
    per wadah, di pendaratan wajib menuju `/register`. `primary`/`default`
@@ -1274,7 +1274,7 @@ label barisnya sudah menyebutnya, jadi warna bukan penanda tunggal.
   §Yang DITOLAK. Jangan mengutip kalimat di atas sebagai aturan umum.
 - **Permukaan gelap permanen (`SIDER_BG_DARK`) sebagai pita penutup.** Bekerja
   untuk teksnya, tetapi isian tombol primer tema terang (`#0958d9`) di atasnya
-  hanya 2,99:1 — angka yang sudah tercatat di `lib/theme/antd-tokens.ts` dan
+  hanya 2,99:1 — angka yang sudah tercatat di `packages/ui/src/theme/antd-tokens.ts` dan
   yang membuat `Menu` diberi tokennya sendiri. Tombol ajakan yang tidak bisa
   ditemukan sebagai bidang adalah harga yang terlalu mahal untuk sebuah pita.
   **Tetap ditolak** — dan pelajarannya justru yang dipakai #401: di atas bidang
@@ -1380,7 +1380,7 @@ Ia satu-satunya permukaan yang ditempel orang ke WhatsApp, LinkedIn, atau Slack
 - `generateMetadata` di `app/page.tsx`: judul, deskripsi (kalimat hero, bukan
   kalimat pemasaran kedua), kanonik, `openGraph`, `twitter`;
 - `app/opengraph-image.tsx` — **dibangkitkan**, bukan PNG. Warnanya harfiah dan
-  hidup di `lib/theme/antd-tokens.ts` (`OG_*`) beserta rasio kontrasnya, sebab
+  hidup di `packages/ui/src/theme/antd-tokens.ts` (`OG_*`) beserta rasio kontrasnya, sebab
   Satori tidak punya dokumen dan `var(--ant-…)` di sana tidak pernah teratasi;
 - `app/sitemap.ts` menurunkan pohonnya dari `DOC_INDEX`, tidak mengetiknya;
 - `app/robots.ts` melarang seluruh app internal — bukan sebagai kontrol akses

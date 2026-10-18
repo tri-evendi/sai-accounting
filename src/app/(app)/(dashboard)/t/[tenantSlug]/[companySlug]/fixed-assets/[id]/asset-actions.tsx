@@ -36,12 +36,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "@sai/ui/button";
+import { Card } from "@sai/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Input } from "@/components/ui/input";
-import { Money } from "@/components/ui/money";
-import { useToast } from "@/components/ui/toast";
+import { Input } from "@sai/ui/input";
+import { Money } from "@sai/ui/money";
+import { useToast } from "@sai/ui/toast";
 import { DollarCircleOutlined, SwapOutlined } from "@ant-design/icons";
 import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";

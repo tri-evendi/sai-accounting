@@ -29,11 +29,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Flex, Typography, theme } from "antd";
 import { SaveOutlined, SendOutlined } from "@ant-design/icons";
 
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { useToast } from "@sai/ui/toast";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";
 import { formatDateTime } from "@sai/core/utils";

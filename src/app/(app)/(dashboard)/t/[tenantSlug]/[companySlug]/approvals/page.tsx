@@ -9,14 +9,14 @@
  * bisa mengintip antrean orang lain.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import {
   listDecidedApprovals,
   listMyApprovalRequests,
   listPendingApprovals,
 } from "@/lib/approval-queue";
 import { ApprovalQueue } from "./approval-queue-client";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";

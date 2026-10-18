@@ -70,14 +70,14 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
 import { APP_VERSION } from "@sai/core/constants";
 import {
   BORDER_TOKENS_DARK,
   NEUTRAL_TEXT_DARK,
   SIDER_BG_DARK,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 
 /** Lebar menu samping — angka yang sama dengan chrome dasbor & `/platform`. */
 const LEBAR_MENU = 256;

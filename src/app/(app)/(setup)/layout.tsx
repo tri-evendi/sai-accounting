@@ -53,7 +53,7 @@
 import { SessionProvider } from "next-auth/react";
 
 import { SetupShell } from "@/components/setup/setup-shell";
-import { ToastProvider } from "@/components/ui/toast";
+import { ToastProvider } from "@sai/ui/toast";
 
 export default function SetupLayout({ children }: { children: React.ReactNode }) {
   return (

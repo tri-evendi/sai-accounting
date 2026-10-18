@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Select } from "@sai/ui/select";
 import { Flex } from "antd";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { DOCUMENT_TYPES } from "@sai/core/constants";
 import { UploadOutlined } from "@ant-design/icons";
 import { useDictionary, useT } from "@sai/core/i18n/client";
 import { documentTypeLabels } from "@/lib/i18n/labels";
 import { apiFetch } from "@/lib/api-fetch";
-import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 
 /** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
 const FIELD_GAP = 16;

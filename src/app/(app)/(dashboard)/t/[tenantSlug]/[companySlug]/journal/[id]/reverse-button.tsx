@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, theme } from "antd";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";

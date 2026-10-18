@@ -7,7 +7,7 @@
  * izin sebelum merender.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { NewCustomerForm } from "./customer-form";
 
 export const dynamic = "force-dynamic";

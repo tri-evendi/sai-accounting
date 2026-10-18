@@ -21,8 +21,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Flex, theme, Typography } from "antd";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@sai/ui/input";
+import { Button } from "@sai/ui/button";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useT } from "@sai/core/i18n/client";
 import type { StockPeriodGranularity } from "@/lib/stock-period";

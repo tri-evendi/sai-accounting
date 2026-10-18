@@ -16,7 +16,7 @@
  * ini, dan alasan kenapa ekspor tetap hidup walau langganan ditangguhkan.
  */
 import { getT } from "@/lib/i18n/server";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 

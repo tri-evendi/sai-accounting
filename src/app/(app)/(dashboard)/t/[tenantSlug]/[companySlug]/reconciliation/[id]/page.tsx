@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Button } from "@sai/ui/button";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { notFound } from "next/navigation";
 import { requirePagePermission } from "@/lib/page-auth";
 import { getReconciliation } from "@/lib/bank-statements";

@@ -20,11 +20,11 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { PasswordField, PasswordInput } from "@/components/ui/password-input";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { SelectField } from "@/components/ui/select";
+import { PasswordField, PasswordInput } from "@sai/ui/password-input";
+import { SearchableSelect } from "@sai/ui/searchable-select";
+import { SelectField } from "@sai/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@sai/ui/textarea";
 import { LocaleProvider } from "@sai/core/i18n/client";
 import type { Dictionary } from "@sai/core/i18n/dictionary";
 import id from "@sai/core/i18n/dictionaries/id.json";

@@ -29,8 +29,8 @@
  * dengan teks anak tangga uang (#186) — bukan `colorSuccess` pekat sebagai
  * warna teks, yang pada 12px hanya 2,21:1.
  */
-import { Link } from "@/components/ui/app-link";
-import { Card } from "@/components/ui/card";
+import { Link } from "@sai/ui/app-link";
+import { Card } from "@sai/ui/card";
 import { formatCurrency } from "@sai/core/utils";
 import {
   FallOutlined,
@@ -41,7 +41,7 @@ import {
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
 } from "@ant-design/icons";
-import type { IconComponent } from "@/lib/icons";
+import type { IconComponent } from "@sai/ui/icons";
 import type { CurrencyBreakdownRow } from "@/lib/dashboard-summary";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";

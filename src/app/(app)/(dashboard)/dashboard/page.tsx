@@ -31,7 +31,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { routeForCompany } from "@/lib/company-route";
 import { resolvePostLoginPath } from "@/lib/post-login";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 
 export const dynamic = "force-dynamic";
 

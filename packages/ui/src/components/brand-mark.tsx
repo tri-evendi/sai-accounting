@@ -18,7 +18,7 @@
  * Yang tersisa di sini: KOTAKNYA — ukuran, radius, dan pasangan warnanya.
  */
 
-import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@/lib/brand/mark";
+import { BRAND_MARK_PATH, BRAND_MARK_VIEWBOX } from "@sai/ui/brand/mark";
 
 /**
  * Ukuran kotaknya. `md` (40px) memenuhi target sentuh minimum MASTER.md untuk

@@ -61,7 +61,7 @@ import type { Metadata } from "next";
 import { RightOutlined } from "@ant-design/icons";
 
 import { DocsShell } from "@/components/docs/docs-shell";
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   DOC_BRANCHES,
   docBranchAnchor,

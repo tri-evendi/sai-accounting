@@ -33,7 +33,7 @@
  */
 
 import { controlDb } from "@sai/core/control-db";
-import { isValidSlug } from "@/lib/tenant-routes";
+import { isValidSlug } from "@sai/core/tenant-routes";
 
 /** Jeda wajib antar-penggantian. */
 export const JEDA_GANTI_SLUG_HARI = 30;

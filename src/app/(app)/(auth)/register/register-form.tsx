@@ -14,13 +14,13 @@ import Link from "next/link";
 import { Alert, Flex, Typography, theme } from "antd";
 import { UserAddOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/password-input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { PasswordInput } from "@sai/ui/password-input";
+import { Checkbox } from "@sai/ui/checkbox";
 import { useT } from "@sai/core/i18n/client";
 import { tenantSlugFrom } from "@/lib/registration";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 const { Text } = Typography;
 

@@ -21,28 +21,28 @@
  * mengganti tingkat KEDUAnya saja.
  */
 import { parsePageParam } from "@sai/core/utils";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { ButtonLink } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Pagination } from "@/components/ui/pagination";
-import { Link } from "@/components/ui/app-link";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Pagination } from "@sai/ui/pagination";
+import { Link } from "@sai/ui/app-link";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
-import { INLINE_GAP } from "@/lib/layout-scale";
+import { INLINE_GAP } from "@sai/ui/layout-scale";
 import { TeamOutlined } from "@ant-design/icons";
 import {
   parseSort,
   sortOrderBy,
   sortableKeys,
   type SortSpec,
-} from "@/lib/table-sort";
+} from "@sai/ui/table-sort";
 import type { Prisma } from "@sai/db/client/company";
 export const dynamic = "force-dynamic";
 

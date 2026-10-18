@@ -236,7 +236,7 @@ Bukan konvensi — tes merah kalau dilanggar:
 | `@ant-design/icons` **tidak boleh** diimpor sebagai default/namespace | `tests/icon-rsc-boundary.test.ts` | Barrel-nya meruntuhkan lapisan RSC |
 | `<Link><Button/></Link>` | `tests/anchor-button-nesting.test.ts` | Dua elemen interaktif bersarang |
 | `asChild` pada `Button` | `tests/button-no-aschild.test.ts` | Tidak aman dari server component (dicabut #250) |
-| Nilai warna mentah di luar `lib/theme/antd-tokens.ts` | ESLint `sai/warna-token-antd` (#204) | Satu sumber warna |
+| Nilai warna mentah di luar `packages/ui/src/theme/antd-tokens.ts` | ESLint `sai/warna-token-antd` (#204) | Satu sumber warna |
 | Halaman/route tanpa deklarasi izin | `tests/authz-coverage.test.ts` | Rute tak berpenjaga = lubang |
 | Skrip **tidak boleh** mengimpor `server-only` | — (`tsx` mati di atasnya) | Logika produser harus di pustaka murni |
 

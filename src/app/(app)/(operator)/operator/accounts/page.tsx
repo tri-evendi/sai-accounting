@@ -11,7 +11,7 @@
  */
 import { ConsoleNotice, ConsolePanel, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { OperatorAccounts, type OperatorAccountView } from "@/components/operator/operator-accounts";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { controlDb } from "@sai/core/control-db";
 import { getT } from "@/lib/i18n/server";
 import { parseOperatorAccounts } from "@/lib/operator/credentials";

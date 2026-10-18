@@ -20,9 +20,9 @@
  * halaman menjadi PEMASARAN. Dijaga `tests/docs.test.ts`.
  */
 
-import { ButtonLink } from "@/components/ui/button";
-import { Link } from "@/components/ui/app-link";
-import { BrandLockup } from "@/components/ui/brand-lockup";
+import { ButtonLink } from "@sai/ui/button";
+import { Link } from "@sai/ui/app-link";
+import { BrandLockup } from "@sai/ui/brand-lockup";
 import { BINGKAI_DOKUMENTASI, LEBAR_BINGKAI } from "@/components/docs/docs-shell";
 import { DOCS_ROOT } from "@/lib/docs";
 import type { TranslateFn } from "@sai/core/i18n/client";

@@ -23,7 +23,7 @@
 
 import { Input } from "antd";
 
-import { isInvalidField } from "@/components/ui/input";
+import { isInvalidField } from "@sai/ui/input";
 
 /** `TextAreaRef` AntD — tidak diekspor dari akar paket, jadi diambil dari komponennya. */
 type TextareaRef = React.ComponentRef<typeof Input.TextArea>;

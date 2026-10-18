@@ -31,12 +31,12 @@
  * supaya kulit client tidak mengimpor satu pun modul autentikasi.
  */
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { OperatorShell } from "@/components/operator/operator-shell";
 import { optionalOperatorSession } from "@/lib/operator/guard";
 import { operatorNav } from "@/lib/operator/nav";
 import { getT } from "@/lib/i18n/server";
-import { SIDER_BG_DARK } from "@/lib/theme/antd-tokens";
+import { SIDER_BG_DARK } from "@sai/ui/theme/antd-tokens";
 import { operatorLogout } from "./operator/actions";
 
 export const dynamic = "force-dynamic";

@@ -25,10 +25,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Flex, Typography, theme } from "antd";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useT } from "@sai/core/i18n/client";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 const { Text } = Typography;
 

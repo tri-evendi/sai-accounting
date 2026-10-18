@@ -26,16 +26,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
 import { DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { Select } from "@/components/ui/select";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
+import { Select } from "@sai/ui/select";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { apiFetch } from "@/lib/api-fetch";
-import { parseTenantPath, tenantApiPath } from "@/lib/tenant-routes";
+import { parseTenantPath, tenantApiPath } from "@sai/core/tenant-routes";
 import { useT } from "@sai/core/i18n/client";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@sai/ui/toast";
 
 const { Text } = Typography;
 

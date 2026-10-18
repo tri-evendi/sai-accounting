@@ -106,12 +106,11 @@
  *     dinilai di berkas komponennya, bukan di tempat ia benar-benar dipakai.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
-const ROOT = join(__dirname, "..");
-const SRC = join(ROOT, "src");
 
 function berkasTsx(dir: string, keluar: string[] = []): string[] {
   for (const entri of readdirSync(dir, { withFileTypes: true })) {
@@ -124,7 +123,7 @@ function berkasTsx(dir: string, keluar: string[] = []): string[] {
   return keluar;
 }
 
-const relatif = (jalur: string) => jalur.slice(SRC.length + 1).split("\\").join("/");
+const relatif = relSumber;
 
 function sumber(nama: string, kode: string): ts.SourceFile {
   return ts.createSourceFile(nama, kode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -198,7 +197,7 @@ function periksa(rel: string, kode: string): { tombol: Temuan[]; dialogTerkendal
   return { tombol, dialogTerkendali };
 }
 
-const BERKAS = berkasTsx(SRC).map((jalur) => ({
+const BERKAS = akarSumber().flatMap((d) => berkasTsx(d)).map((jalur) => ({
   rel: relatif(jalur),
   isi: readFileSync(jalur, "utf8"),
 }));

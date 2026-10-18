@@ -12,9 +12,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Flex, theme, Typography } from "antd";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+import { Input } from "@sai/ui/input";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
 
 export function LedgerFilter({

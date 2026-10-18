@@ -396,7 +396,7 @@ Dua hal yang mengejutkan orang baru:
 | Rendering | Server Component secara bawaan; `"use client"` hanya di daun interaktif |
 | Komponen | **Ant Design v6** lewat `src/components/ui`; `@ant-design/nextjs-registry` untuk SSR |
 | Gaya | **Sebaris** (`style={{…}}`) — **tanpa Tailwind, tanpa `className`** sejak #203 |
-| Warna | `var(--ant-…)` atau `theme.useToken()`; hex mentah hanya boleh di `lib/theme/antd-tokens.ts`, dijaga ESLint `sai/warna-token-antd` |
+| Warna | `var(--ant-…)` atau `theme.useToken()`; hex mentah hanya boleh di `packages/ui/src/theme/antd-tokens.ts`, dijaga ESLint `sai/warna-token-antd` |
 | Pseudo/media | Satu `<style href precedence>` per komponen, menyasar atribut `data-*` |
 | Ikon | `@ant-design/icons` — **impor bernama saja**, ditulis ulang `modularizeImports` ke jalur per-ikon |
 | Tabel | `StaticTable` (server, tanpa JS) atau `DataTable` (AntD, client, **+80 KB gzip/rute**) |

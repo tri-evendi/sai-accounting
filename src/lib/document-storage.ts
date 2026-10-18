@@ -63,7 +63,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { rm } from "node:fs/promises";
 
-import { tenantApiPath } from "@/lib/tenant-routes";
+import { tenantApiPath } from "@sai/core/tenant-routes";
 
 /** Akar penyimpanan dokumen. Sejajar `data/audit`, dan sama-sama volume. */
 export const DOCUMENTS_ROOT = path.join(process.cwd(), "data", "documents");

@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { apiFetch } from "@/lib/api-fetch";
-import { parseTenantPath } from "@/lib/tenant-routes";
+import { parseTenantPath } from "@sai/core/tenant-routes";
 
 /**
  * Satu permintaan dipakai bersama — DIKUNCI PER PERUSAHAAN (issue #158).

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Flex, theme, Typography } from "antd";
-import { Link } from "@/components/ui/app-link";
-import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
-import { Input } from "@/components/ui/input";
+import { Link } from "@sai/ui/app-link";
+import { SearchableSelect, type SearchableOption } from "@sai/ui/searchable-select";
+import { Input } from "@sai/ui/input";
 import { useT } from "@sai/core/i18n/client";
 import { fetchOptionList } from "@/lib/option-list";
 

@@ -40,7 +40,7 @@ import path from "node:path";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient as CompanyClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
-import { isReservedCompanySlug } from "../src/lib/tenant-routes";
+import { isReservedCompanySlug } from "@sai/core/tenant-routes";
 
 interface LegacyUser {
   id: number;

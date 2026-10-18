@@ -17,24 +17,24 @@
  * sebagai baris pembuka dan bukan sebagai mutasi.
  */
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { getAccountLedger } from "@/lib/ledger";
-import { Card, CardContent } from "@/components/ui/card";
-import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
+import { Card, CardContent } from "@sai/ui/card";
+import { StaticTable, type SummaryRow } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
 import { formatDateShort } from "@sai/core/utils";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { accountTypeLabel } from "@/lib/i18n/labels";
 import { LedgerFilter } from "./ledger-filter";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-center-options";
-import { SECTION_GAP } from "@/lib/layout-scale";
-import { EmptyState } from "@/components/ui/empty-state";
+import { SECTION_GAP } from "@sai/ui/layout-scale";
+import { EmptyState } from "@sai/ui/empty-state";
 import { BookOutlined } from "@ant-design/icons";
-import { PageHeader } from "@/components/ui/page-header";
-import { Link } from "@/components/ui/app-link";
+import { PageHeader } from "@sai/ui/page-header";
+import { Link } from "@sai/ui/app-link";
 
 export const dynamic = "force-dynamic";
 

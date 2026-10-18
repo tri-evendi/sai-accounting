@@ -36,7 +36,7 @@
  * terhadap permukaan itu juga.
  */
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { useT } from "@sai/core/i18n/client";
 import { useRef, useState } from "react";
 import { ArrowRightOutlined, QuestionCircleOutlined } from "@ant-design/icons";
@@ -44,9 +44,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { getTerm, glossaryHref } from "@/lib/labels";
-import { SPACE_XXS } from "@/lib/layout-scale";
+} from "@sai/ui/popover";
+import { getTerm, glossaryHref } from "@sai/core/labels";
+import { SPACE_XXS } from "@sai/ui/layout-scale";
 
 /**
  * Tiga hal yang tidak punya bentuk sebaris, dan ketiganya bukan hiasan:

@@ -98,7 +98,7 @@
 
 import { CaretDownOutlined, CaretUpOutlined, SwapOutlined } from "@ant-design/icons";
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import {
   Table,
   TableBody,
@@ -107,9 +107,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { nextSort, sortHref, type ActiveSort, type SortParams } from "@/lib/table-sort";
+} from "@sai/ui/table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { nextSort, sortHref, type ActiveSort, type SortParams } from "@sai/ui/table-sort";
 
 /**
  * Sel baris kaki. Bentuk polos = isi sel; bentuk objek dipakai ketika satu

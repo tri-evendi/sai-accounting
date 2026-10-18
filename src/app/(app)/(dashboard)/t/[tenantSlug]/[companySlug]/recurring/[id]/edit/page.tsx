@@ -7,7 +7,7 @@
 import { notFound } from "next/navigation";
 
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { prisma } from "@/lib/prisma";
 import { RecurringForm } from "../../recurring-form";
 

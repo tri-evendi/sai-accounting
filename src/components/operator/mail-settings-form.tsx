@@ -46,8 +46,8 @@ import {
   SendOutlined,
 } from "@ant-design/icons";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
 import {
   Form,
   FormControl,
@@ -56,11 +56,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { TextInput } from "@/components/ui/input";
-import { PasswordField } from "@/components/ui/password-input";
-import { SelectField } from "@/components/ui/select";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+} from "@sai/ui/form";
+import { TextInput } from "@sai/ui/input";
+import { PasswordField } from "@sai/ui/password-input";
+import { SelectField } from "@sai/ui/select";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 import { useT } from "@sai/core/i18n/client";
 import {
   mailSettingsSchema,

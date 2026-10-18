@@ -44,12 +44,12 @@
  * #245). Penjaga yang tidak pernah dilihat merah bukan penjaga.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { LANDING_STYLE } from "@/components/landing/landing-scale";
 
-const SRC = join(__dirname, "..", "src");
 
 /** Direktori tempat bentuk pemasaran boleh hidup. */
 const LANDING_DIR = "components/landing/";
@@ -81,7 +81,9 @@ const PINTU_MASUK = [
  * direktori di belakang. `@/components/ui` (primitif), `@/lib` (kamus,
  * konstanta, katalog paket), dan sesama berkas pendaratan — selebihnya tidak.
  */
-const IMPOR_SAH = ["@/components/landing/", "@/components/ui/", "@/lib/"];
+/* `@sai/ui` & `@sai/core` adalah pindahan `components/ui` & `lib` (monorepo
+   Fase 2) — izinnya setara. Paket workspace LAIN tidak otomatis sah. */
+const IMPOR_SAH = ["@/components/landing/", "@/components/ui/", "@/lib/", "@sai/ui/", "@sai/core/"];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -92,10 +94,10 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const rel = (p: string) => p.slice(SRC.length + 1).split("\\").join("/");
+const rel = relSumber;
 
 const files = new Map<string, string>(
-  sourceFiles(SRC).map((f) => [rel(f), readFileSync(f, "utf8")])
+  akarSumber().flatMap((d) => sourceFiles(d)).map((f) => [rel(f), readFileSync(f, "utf8")])
 );
 
 const isLanding = (file: string) => file.startsWith(LANDING_DIR);
@@ -166,7 +168,8 @@ describe("pendaratan tidak mengimpor app internal", () => {
       for (const spec of importsOf(code)) {
         // Paket pihak ketiga (`next/link`, `@ant-design/icons`, `react`) tidak
         // pernah berawalan `@/` — ia bukan permukaan aplikasi ini.
-        if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
+        // `@sai/*` BUKAN pihak ketiga: ia kode repo ini dan wajib lewat daftar-izin.
+        if (!spec.startsWith("@/") && !spec.startsWith("@sai/") && !spec.startsWith(".")) continue;
         if (IMPOR_SAH.some((ok) => spec.startsWith(ok))) continue;
         pelanggar.push(`${file} — ${spec}`);
       }

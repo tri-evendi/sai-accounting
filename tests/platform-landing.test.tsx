@@ -39,7 +39,7 @@ import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
 import id from "@sai/core/i18n/dictionaries/id.json";
 import { formatMoney } from "@sai/core/money-format";
 import { POST_LOGIN_PATH } from "@/lib/post-login";
-import { legacyTenantScopedPath, renamedPagePath } from "@/lib/tenant-routes";
+import { legacyTenantScopedPath, renamedPagePath } from "@sai/core/tenant-routes";
 
 const dict = id as unknown as Dictionary;
 const T = (key: string, values?: Record<string, string | number>) =>

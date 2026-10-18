@@ -47,10 +47,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme } from "antd";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { Card } from "@sai/ui/card";
+import { Select } from "@sai/ui/select";
+import { useToast } from "@sai/ui/toast";
 import { formatCurrency } from "@sai/core/utils";
 import { CalendarOutlined } from "@ant-design/icons";
 import { useDictionary, useT } from "@sai/core/i18n/client";

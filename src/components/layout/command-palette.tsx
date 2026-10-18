@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAppRouter } from "@/components/ui/app-link";
+import { useAppRouter } from "@sai/ui/app-link";
 
 import {
   Command,
@@ -34,8 +34,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+} from "@sai/ui/command";
+import { Dialog, DialogContent, DialogTitle } from "@sai/ui/dialog";
 import { NAV_HOME, isNavItemVisible, visibleNavGroups } from "@/lib/nav";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
 import { useT } from "@sai/core/i18n/client";

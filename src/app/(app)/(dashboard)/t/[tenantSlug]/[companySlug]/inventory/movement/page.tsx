@@ -1,22 +1,22 @@
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getStockMovementReport } from "@/lib/stock-report";
 import { resolveStockPeriod } from "@/lib/stock-period";
 import { StockPeriodFilter } from "@/components/shared/stock-period-filter";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { formatDate, formatNumber } from "@sai/core/utils";
 import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { stockMovementColumns, type StockMovementColumnId } from "@/lib/statement-layout";
 import { getT } from "@/lib/i18n/server";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import { HistoryOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_XS } from "@sai/ui/layout-scale";
 export const dynamic = "force-dynamic";
 
 /** Ikon keadaan kosong — `h-12 w-12` lama. */

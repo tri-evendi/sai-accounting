@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 import { ExportOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { DocumentPreview } from "@/components/shared/document-preview";
 import { useT } from "@sai/core/i18n/client";
 

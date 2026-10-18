@@ -22,13 +22,13 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { enterCompanyFromRoute } from "@/lib/company-route";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import {
   listNotifications,
   markNotificationsRead,
 } from "@/lib/notifications";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { getT } from "@/lib/i18n/server";
 import { formatDate } from "@sai/core/utils";
 import { NotificationList } from "./notification-list";

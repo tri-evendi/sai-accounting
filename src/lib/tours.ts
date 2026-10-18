@@ -35,7 +35,7 @@
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { BUSINESS_MODULES, type BusinessModule } from "@/lib/business-modules";
 
-import { appPath } from "@/lib/tenant-routes";
+import { appPath } from "@sai/core/tenant-routes";
 export interface TourStep {
   /** Judul langkah dalam bahasa SUMBER (dipakai tes; layar memakai kuncinya). */
   title: string;

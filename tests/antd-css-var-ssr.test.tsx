@@ -63,7 +63,7 @@ import {
   ANTD_CSS_VAR_KEY,
   MONEY_TOKENS_DARK,
   MONEY_TOKENS_LIGHT,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 import { ThemeProvider } from "@/lib/theme/client";
 import { AntdProvider } from "@/components/providers/antd-provider";
 

@@ -8,7 +8,7 @@
  */
 import { Flex, theme } from "antd";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Select } from "@/components/ui/select";
+import { Select } from "@sai/ui/select";
 import { useDictionary, useT } from "@sai/core/i18n/client";
 import { monthNames } from "@/lib/i18n/labels";
 

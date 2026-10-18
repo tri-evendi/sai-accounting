@@ -53,9 +53,9 @@ import {
   QuestionCircleOutlined,
   ReadOutlined,
 } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/components/ui/app-link";
-import { GLOSSARY_PATH } from "@/lib/labels";
+import { Button } from "@sai/ui/button";
+import { Link } from "@sai/ui/app-link";
+import { GLOSSARY_PATH } from "@sai/core/labels";
 import { DOCS_ROOT, docForPathname, docsPath } from "@/lib/docs";
 import { tourForPath } from "@/lib/tours";
 import { replayTour } from "@/components/help/guided-tour";

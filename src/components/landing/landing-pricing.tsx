@@ -36,9 +36,9 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
-import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@sai/ui/badge";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
 import { BUSINESS_MODULES } from "@/lib/business-modules";
 import { APP_NAME, CURRENCIES } from "@sai/core/constants";
 import { LOCALES } from "@sai/core/i18n/config";

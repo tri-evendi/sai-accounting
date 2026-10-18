@@ -21,16 +21,16 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { Alert, Col, Flex, Row, Spin, theme, Typography } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
 import { ServerSearchableSelect } from "@/components/ui/server-searchable-select";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { useToast } from "@/components/ui/toast";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { useToast } from "@sai/ui/toast";
 import { formatCurrency } from "@sai/core/utils";
 import { useT } from "@sai/core/i18n/client";
 import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";

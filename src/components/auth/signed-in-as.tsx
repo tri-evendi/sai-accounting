@@ -21,7 +21,7 @@ import { signOut } from "next-auth/react";
 import { Flex, theme } from "antd";
 import { LogoutOutlined } from "@ant-design/icons";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
 
 export function SignedInAs({ name }: { name: string }) {

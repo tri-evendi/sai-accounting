@@ -19,9 +19,9 @@
 import { useState } from "react";
 import { Flex, Typography, theme } from "antd";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/toast";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { useToast } from "@sai/ui/toast";
 import { formatDateTime } from "@sai/core/utils";
 import { useT } from "@sai/core/i18n/client";
 

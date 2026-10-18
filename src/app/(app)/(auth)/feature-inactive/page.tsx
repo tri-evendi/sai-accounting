@@ -31,7 +31,7 @@
  */
 import { redirect } from "next/navigation";
 import { CloseSquareOutlined } from "@ant-design/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 
 import { auth } from "@/lib/auth";
 import { getEnabledModules } from "@/lib/authz-effective";

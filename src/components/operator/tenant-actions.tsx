@@ -61,7 +61,7 @@ import {
   SwapOutlined,
 } from "@ant-design/icons";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Form,
@@ -71,11 +71,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { TextInput } from "@/components/ui/input";
-import { MoneyInput } from "@/components/ui/money-input";
-import { SelectField } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@sai/ui/form";
+import { TextInput } from "@sai/ui/input";
+import { MoneyInput } from "@sai/ui/money-input";
+import { SelectField } from "@sai/ui/select";
+import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import {

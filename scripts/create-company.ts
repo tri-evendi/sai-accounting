@@ -30,7 +30,7 @@ import { spawnSync } from "node:child_process";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
-import { isReservedCompanySlug } from "../src/lib/tenant-routes";
+import { isReservedCompanySlug } from "@sai/core/tenant-routes";
 import { ROLES, ROLE_LABELS } from "@sai/core/constants";
 
 function parseArgs(argv: string[]) {

@@ -54,9 +54,9 @@
  * sudah tersaring — aturan "warna bukan satu-satunya sinyal" MASTER.md.
  */
 
-import { Link } from "@/components/ui/app-link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TILE_CONTENT, TILE_HEADER, TILE_LABEL } from "@/components/ui/stat-tile";
+import { Link } from "@sai/ui/app-link";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { TILE_CONTENT, TILE_HEADER, TILE_LABEL } from "@sai/ui/stat-tile";
 
 /**
  * Arah angka kartu. `neutral` (bawaan) sengaja tanpa warna: di beranda

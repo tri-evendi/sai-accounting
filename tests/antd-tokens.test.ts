@@ -57,7 +57,7 @@ import {
   type BrandTextTokens,
   type MoneyTokens,
   type NeutralTextTokens,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 
 /** `#abc` / `#aabbcc` / `rgba(r,g,b,a)` -> kanal + alfa. */
 function parse(color: string): { rgb: [number, number, number]; alpha: number } {
@@ -1350,9 +1350,9 @@ describe("jenjang permukaan (#266)", () => {
 const readSrc = (relative: string) => readFileSync(join(__dirname, "..", relative), "utf8");
 
 const PROVIDER = "src/components/providers/antd-provider.tsx";
-const TABLE_PRIMITIVE = "src/components/ui/table.tsx";
-const STATIC_TABLE = "src/components/ui/static-table.tsx";
-const CARD = "src/components/ui/card.tsx";
+const TABLE_PRIMITIVE = "packages/ui/src/components/table.tsx";
+const STATIC_TABLE = "packages/ui/src/components/static-table.tsx";
+const CARD = "packages/ui/src/components/card.tsx";
 
 describe("jenjang perender (#266)", () => {
   it("nadanya BUKAN warna baru — ia permukaan yang sudah masuk hitungan `worst()`", () => {

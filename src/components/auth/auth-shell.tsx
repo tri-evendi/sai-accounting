@@ -48,11 +48,11 @@ import Link from "next/link";
 import { Alert, Col, Flex, Layout, Row, theme } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
 import { APP_NAME, APP_VERSION } from "@sai/core/constants";
-import { BrandLockup } from "@/components/ui/brand-lockup";
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandLockup } from "@sai/ui/brand-lockup";
+import { BrandMark } from "@sai/ui/brand-mark";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
+import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@sai/ui/theme/antd-tokens";
 import { useT } from "@sai/core/i18n/client";
 
 /** `max-w-md` — lebar kartu tugas. */

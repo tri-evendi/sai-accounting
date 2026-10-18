@@ -31,8 +31,8 @@
 
 import { Input, type InputRef } from "antd";
 
-import { describedByWith, isInvalidField } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { describedByWith, isInvalidField } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
 import { useId } from "react";
 
 type PasswordFieldProps = Omit<

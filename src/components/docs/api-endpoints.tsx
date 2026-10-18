@@ -29,8 +29,8 @@
  * dibaca tanpa sesi.
  */
 
-import { StaticTable } from "@/components/ui/static-table";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { StaticTable } from "@sai/ui/static-table";
+import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
 import { ENDPOINTS } from "@/lib/api-v1-spec";
 import { V1_ROOT } from "@/lib/api-v1";
 import { getT } from "@/lib/i18n/server";

@@ -67,7 +67,7 @@ import {
   tableHeadBg,
   statusTextTokens,
   tagStatusTokens,
-} from "@/lib/theme/antd-tokens";
+} from "@sai/ui/theme/antd-tokens";
 import { useTheme } from "@/lib/theme/client";
 
 /**

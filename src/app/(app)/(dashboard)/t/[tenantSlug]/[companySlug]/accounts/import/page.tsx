@@ -3,7 +3,7 @@
  * (sama dengan membuat akun manual). Form-nya client component di bawah.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { ImportAccountsForm } from "./import-form";
 
 export const dynamic = "force-dynamic";

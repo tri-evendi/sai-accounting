@@ -56,6 +56,9 @@
       "dependencies": {
         "@sai/db": "workspace:*",
       },
+      "peerDependencies": {
+        "react": "*",
+      },
     },
     "packages/db": {
       "name": "@sai/db",
@@ -66,6 +69,19 @@
         "@prisma/client": "^7.5.0",
         "mariadb": "^3.5.2",
         "pg": "^8.23.1",
+      },
+    },
+    "packages/ui": {
+      "name": "@sai/ui",
+      "version": "0.0.0",
+      "dependencies": {
+        "@sai/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "@ant-design/icons": "*",
+        "antd": "*",
+        "next": "*",
+        "react": "*",
       },
     },
   },
@@ -633,6 +649,8 @@
     "@sai/core": ["@sai/core@workspace:packages/core"],
 
     "@sai/db": ["@sai/db@workspace:packages/db"],
+
+    "@sai/ui": ["@sai/ui@workspace:packages/ui"],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

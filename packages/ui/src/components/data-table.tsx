@@ -54,7 +54,7 @@
 import { Table as AntTable } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
-import type { SaiColumns } from "@/components/ui/table-columns";
+import type { SaiColumns } from "@sai/ui/table-columns";
 
 interface DataTableProps<T> {
   columns: SaiColumns<T>;

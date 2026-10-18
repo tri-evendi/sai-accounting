@@ -27,7 +27,7 @@
 import { useEffect, useState } from "react";
 import { Flex, theme, Typography } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { Select } from "@/components/ui/select";
+import { Select } from "@sai/ui/select";
 import { useT } from "@sai/core/i18n/client";
 import { fetchOptionList } from "@/lib/option-list";
 

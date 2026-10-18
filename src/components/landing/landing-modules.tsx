@@ -56,7 +56,7 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@sai/ui/badge";
 import {
   BUSINESS_MODULES,
   CORE_MODULE,

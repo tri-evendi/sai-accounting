@@ -29,14 +29,14 @@
 import { redirect } from "next/navigation";
 import { AccountBookOutlined, ArrowRightOutlined, CheckCircleOutlined, ReconciliationOutlined } from "@ant-design/icons";
 import { requirePagePermission } from "@/lib/page-auth";
-import { tenantPath, type TenantScopedParams } from "@/lib/tenant-routes";
+import { tenantPath, type TenantScopedParams } from "@sai/core/tenant-routes";
 import { getCompanySettings } from "@/lib/opening-balance";
 import { prisma } from "@/lib/prisma";
 import { getT } from "@/lib/i18n/server";
 import { formatDate } from "@sai/core/utils";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 
 export const dynamic = "force-dynamic";
 

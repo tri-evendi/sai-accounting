@@ -46,7 +46,7 @@
 import type { ReactNode } from "react";
 import { Breadcrumb, Flex, Typography, theme } from "antd";
 
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 
 const { Title, Text } = Typography;
 

@@ -28,7 +28,7 @@ import { HelpMenu } from "@/components/layout/help-menu";
 import { ApprovalBadge } from "@/components/layout/approval-badge";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { UserMenu } from "@/components/layout/user-menu";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
 
 /**

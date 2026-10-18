@@ -19,12 +19,12 @@
  * membentang selebar tabel dulu hanya sebaris teks abu di tengah, dan MASTER.md
  * meminta keadaan kosong yang bermakna.
  */
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import { Money } from "@/components/ui/money";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import { Money } from "@sai/ui/money";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { EmptyState } from "@sai/ui/empty-state";
 import { FundOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { PartyRecapResult, PartyRecapRow } from "@/lib/party-recap";
 import type { PartyRecapColumnId } from "@/lib/statement-layout";

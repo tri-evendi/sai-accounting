@@ -27,8 +27,8 @@
  */
 
 import { theme } from "antd";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@sai/ui/badge";
+import { Checkbox } from "@sai/ui/checkbox";
 import {
   BUSINESS_CATEGORIES,
   BUSINESS_MODULES,

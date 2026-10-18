@@ -19,9 +19,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@sai/core/i18n/client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@sai/ui/toast";
 import { humanizeFieldMessage } from "@/lib/form-guards";
 import { apiFetch } from "@/lib/api-fetch";
 import { DeleteOutlined } from "@ant-design/icons";

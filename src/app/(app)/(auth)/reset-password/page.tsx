@@ -15,8 +15,8 @@ import { useSearchParams } from "next/navigation";
 import { Alert, Flex, Typography, theme } from "antd";
 import { KeyOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
-import { PasswordInput } from "@/components/ui/password-input";
+import { Button } from "@sai/ui/button";
+import { PasswordInput } from "@sai/ui/password-input";
 import { useT } from "@sai/core/i18n/client";
 
 const { Text } = Typography;

@@ -24,10 +24,10 @@
  */
 
 import { can, type Permission } from "@sai/core/authz";
-import { appPath } from "@/lib/tenant-routes";
+import { appPath } from "@sai/core/tenant-routes";
 import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
-import type { TermKey } from "@/lib/labels";
+import type { TermKey } from "@sai/core/labels";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 
 export interface NavItem {

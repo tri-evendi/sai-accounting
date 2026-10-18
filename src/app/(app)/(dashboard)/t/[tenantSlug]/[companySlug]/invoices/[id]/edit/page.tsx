@@ -5,7 +5,7 @@
  * izin `invoice.write` lewat `requirePagePermission` sebelum form dirender.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { TaxProfileProvider } from "@/lib/tax-profile-client";
 import { readCompanyTaxProfile } from "@/lib/tax-rates";
 import { EditInvoiceForm } from "./invoice-edit-form";

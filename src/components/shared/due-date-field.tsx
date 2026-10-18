@@ -11,7 +11,7 @@
  */
 
 import { Flex, theme, Typography } from "antd";
-import { Input } from "@/components/ui/input";
+import { Input } from "@sai/ui/input";
 import { CalendarOutlined } from "@ant-design/icons";
 import { useT } from "@sai/core/i18n/client";
 

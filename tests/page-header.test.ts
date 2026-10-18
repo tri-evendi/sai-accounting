@@ -3,7 +3,7 @@
  * di design-system/sai-accounting/MASTER.md.
  *
  * Aturan yang dijaga: semua halaman dashboard memakai `PageHeader`
- * (`src/components/ui/page-header.tsx`), tidak menulis judul tingkat-1 atau
+ * (`packages/ui/src/components/page-header.tsx`), tidak menulis judul tingkat-1 atau
  * memanggil breadcrumb sendiri — supaya judul, jejak lokasi, dan tombol aksi
  * tampil di tempat yang sama di seluruh app, dan halaman baru tidak menyimpang
  * lagi.

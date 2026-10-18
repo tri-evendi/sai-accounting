@@ -46,7 +46,7 @@
 
 import { Select, type SelectProps } from "antd";
 
-import { Label } from "@/components/ui/label";
+import { Label } from "@sai/ui/label";
 import { useT } from "@sai/core/i18n/client";
 
 export interface SearchableOption {

@@ -13,9 +13,9 @@
  */
 import { Flex, Typography, theme } from "antd";
 
-import { ButtonLink } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@sai/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
 
 const { Text, Title } = Typography;
 

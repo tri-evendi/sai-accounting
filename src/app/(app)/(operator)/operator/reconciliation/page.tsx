@@ -21,19 +21,19 @@
  */
 
 import { CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
-import { Badge } from "@/components/ui/badge";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import {
   ConsoleNotice,
   ConsolePanel,
   CONSOLE_PAGE,
 } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { reconciliationForOperator } from "@/lib/operator/store";
 import { getT } from "@/lib/i18n/server";
-import { SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

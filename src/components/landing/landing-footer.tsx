@@ -34,7 +34,7 @@
 import Link from "next/link";
 
 import { LANDING_NOTE } from "@/components/landing/landing-scale";
-import { BrandLockup } from "@/components/ui/brand-lockup";
+import { BrandLockup } from "@sai/ui/brand-lockup";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { APP_NAME } from "@sai/core/constants";

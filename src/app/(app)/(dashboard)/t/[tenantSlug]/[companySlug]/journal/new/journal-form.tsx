@@ -42,17 +42,17 @@
 
 import { useEffect, useState } from "react";
 import { Alert, Col, Flex, Row, theme } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
+import { useAppRouter } from "@sai/ui/app-link";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input, TextInput } from "@/components/ui/input";
-import { SelectField, Select } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StaticTable, type SummaryRow } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
-import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Input, TextInput } from "@sai/ui/input";
+import { SelectField, Select } from "@sai/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { StaticTable, type SummaryRow } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
+import { PageHeader } from "@sai/ui/page-header";
 import { CURRENCIES } from "@sai/core/constants";
 import { formatCurrency } from "@sai/core/utils";
 import { useT } from "@sai/core/i18n/client";

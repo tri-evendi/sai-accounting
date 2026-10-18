@@ -4,9 +4,9 @@
  * sumber via `lib/party-recap.ts` (aturan IDR base di sana).
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getSalesByCustomer } from "@/lib/party-recap";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { PeriodFilter } from "../report-filters";
 import { PartyRecapTable } from "../party-recap-table";
 import { reportById, resolveColumns, resolvePeriod } from "@/lib/report-catalog";

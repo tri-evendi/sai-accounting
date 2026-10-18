@@ -19,11 +19,11 @@
 
 import { useEffect, useState } from "react";
 import { Flex, theme } from "antd";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Button } from "@sai/ui/button";
+import { EmptyState } from "@sai/ui/empty-state";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { useT, type TranslateFn } from "@sai/core/i18n/client";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { apiFetch } from "@/lib/api-fetch";

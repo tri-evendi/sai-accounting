@@ -1,29 +1,29 @@
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { type DocumentType } from "@sai/core/constants";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/card";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Pagination } from "@/components/ui/pagination";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@sai/ui/card";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Pagination } from "@sai/ui/pagination";
+import { PageHeader } from "@sai/ui/page-header";
+import { EmptyState } from "@sai/ui/empty-state";
 import { FileTextOutlined } from "@ant-design/icons";
 import {
   parseSort,
   sortOrderBy,
   sortableKeys,
   type SortSpec,
-} from "@/lib/table-sort";
+} from "@sai/ui/table-sort";
 import type { Prisma } from "@sai/db/client/company";
 import { documentFileHref } from "@/lib/document-storage";
 import { formatDate, parsePageParam } from "@sai/core/utils";
 import { DocumentPreviewButton } from "./document-preview-button";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { documentTypeLabels } from "@/lib/i18n/labels";
-import { SPACE_MD, SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_MD, SPACE_XS } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

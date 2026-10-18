@@ -9,7 +9,7 @@
  */
 import type { Viewport } from "next";
 
-import { BRAND_HEX } from "@/lib/theme/antd-tokens";
+import { BRAND_HEX } from "@sai/ui/theme/antd-tokens";
 
 export const viewport: Viewport = {
   /*

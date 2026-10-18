@@ -36,7 +36,7 @@ import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, theme } from "antd";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Form,
@@ -46,10 +46,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@sai/ui/form";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
+import { Textarea } from "@sai/ui/textarea";
 import { useT } from "@sai/core/i18n/client";
 import { siteSettingsSchema, type SiteSettingsFormInput } from "@/lib/validations/operator";
 import type { OperatorSettingsResult } from "@/app/(app)/(operator)/operator/settings/actions";

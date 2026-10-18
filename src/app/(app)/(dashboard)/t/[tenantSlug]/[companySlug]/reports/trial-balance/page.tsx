@@ -22,10 +22,10 @@
 import { redirect } from "next/navigation";
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { canOpenPage, requirePagePermission } from "@/lib/page-auth";
-import { tenantPath, type TenantScopedParams } from "@/lib/tenant-routes";
+import { tenantPath, type TenantScopedParams } from "@sai/core/tenant-routes";
 import { getTrialBalance } from "@/lib/reports";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@sai/ui/card";
+import { PageHeader } from "@sai/ui/page-header";
 import { AsOfFilter } from "../report-filters";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import { TrialBalanceStatement } from "@/components/reports/trial-balance-statement";

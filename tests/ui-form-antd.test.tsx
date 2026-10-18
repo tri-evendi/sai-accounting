@@ -43,10 +43,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { TextInput } from "@/components/ui/input";
-import { SelectField } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+} from "@sai/ui/form";
+import { TextInput } from "@sai/ui/input";
+import { SelectField } from "@sai/ui/select";
+import { Textarea } from "@sai/ui/textarea";
 import { applyPaymentServerErrors } from "@/components/shared/payment-form";
 import { LocaleProvider } from "@sai/core/i18n/client";
 import type { Dictionary } from "@sai/core/i18n/dictionary";
@@ -149,7 +149,7 @@ describe("FormItem berdiri di atas Form.Item AntD", () => {
 
   it("TIDAK memakai `Form` AntD — tak ada state formulir kedua", () => {
     const source = readFileSync(
-      join(__dirname, "..", "src", "components", "ui", "form.tsx"),
+      join(__dirname, "..", "packages", "ui", "src", "components", "form.tsx"),
       "utf8"
     );
     // Baris komentar dibuang: kepala berkas MENYEBUT nama-nama ini justru untuk

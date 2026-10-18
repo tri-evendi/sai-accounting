@@ -65,7 +65,7 @@
 
 import type { CSSProperties } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 
 /* ══ GAYA BERSAMA ═══════════════════════════════════════════════════════════
  * Diekspor supaya halaman berhenti mendefinisikannya ulang. Yang TIDAK ada di

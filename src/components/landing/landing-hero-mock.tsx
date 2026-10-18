@@ -58,7 +58,7 @@ import {
   LANDING_SURFACE,
   landingChip,
 } from "@/components/landing/landing-scale";
-import { TILE_LABEL } from "@/components/ui/stat-tile";
+import { TILE_LABEL } from "@sai/ui/stat-tile";
 import { getT } from "@/lib/i18n/server";
 import { formatMoney } from "@sai/core/money-format";
 

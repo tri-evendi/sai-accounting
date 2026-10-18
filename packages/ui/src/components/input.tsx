@@ -39,7 +39,7 @@
 import { useId } from "react";
 import { Input as AntdInput, type InputRef } from "antd";
 
-import { Label, RequiredMark } from "@/components/ui/label";
+import { Label, RequiredMark } from "@sai/ui/label";
 
 /**
  * Ukuran kontrol. `md` = bawaan provider (`controlHeight: 40`, target sentuh

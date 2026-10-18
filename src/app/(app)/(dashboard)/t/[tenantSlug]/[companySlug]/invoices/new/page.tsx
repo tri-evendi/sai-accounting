@@ -1,11 +1,11 @@
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { listClosedPeriods } from "@/lib/period";
-import { PageHeader } from "@/components/ui/page-header";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
 import { getT } from "@/lib/i18n/server";
 import { TaxProfileProvider } from "@/lib/tax-profile-client";
 import { readCompanyTaxProfile } from "@/lib/tax-rates";

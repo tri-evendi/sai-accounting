@@ -54,8 +54,8 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import "@/app/globals.css";
 import { AntdProvider } from "@/components/providers/antd-provider";
 import type { Locale } from "@sai/core/i18n/config";
-import { ANTD_CSS_VAR_KEY } from "@/lib/theme/antd-tokens";
-import { colorScheme, themeClass, themeScript, type Theme } from "@/lib/theme/config";
+import { ANTD_CSS_VAR_KEY } from "@sai/ui/theme/antd-tokens";
+import { colorScheme, themeClass, themeScript, type Theme } from "@sai/ui/theme/config";
 import { ThemeProvider } from "@/lib/theme/client";
 
 // Inter (MASTER.md) — dipilih karena dukungan `tabular-nums` untuk angka keuangan.

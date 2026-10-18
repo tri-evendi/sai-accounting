@@ -34,13 +34,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Col, Flex, Row, theme } from "antd";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { StaticTable } from "@/components/ui/static-table";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
-import { Money } from "@/components/ui/money";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Select } from "@sai/ui/select";
+import { StaticTable } from "@sai/ui/static-table";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
+import { Money } from "@sai/ui/money";
 import {
   AdvanceCompensationSection,
   type AdvanceOption,

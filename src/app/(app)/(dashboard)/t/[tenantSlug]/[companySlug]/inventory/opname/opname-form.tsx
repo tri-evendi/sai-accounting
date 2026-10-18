@@ -12,20 +12,20 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Flex } from "antd";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input, TextInput } from "@/components/ui/input";
+import { Button } from "@sai/ui/button";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Input, TextInput } from "@sai/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { EmptyState } from "@/components/ui/empty-state";
-import { StaticTable } from "@/components/ui/static-table";
-import { qtyColumn, textColumn, type SaiColumns } from "@/components/ui/table-columns";
-import { useToast } from "@/components/ui/toast";
+import { EmptyState } from "@sai/ui/empty-state";
+import { StaticTable } from "@sai/ui/static-table";
+import { qtyColumn, textColumn, type SaiColumns } from "@sai/ui/table-columns";
+import { useToast } from "@sai/ui/toast";
 import { SearchOutlined } from "@ant-design/icons";
 import { formatNumber } from "@sai/core/utils";
 import { OpnameSheetPDFButton } from "@/components/shared/pdf-export-buttons";
 import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
-import { SPACE_MD, SPACE_SM } from "@/lib/layout-scale";
+import { SPACE_MD, SPACE_SM } from "@sai/ui/layout-scale";
 
 /** `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
 const SECTION_GAP = SPACE_MD;

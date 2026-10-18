@@ -40,7 +40,7 @@ import {
   type ApprovalStatus,
 } from "@/lib/approvals";
 import { MONTH_NAMES } from "@/lib/month-names";
-import { TERM_CATEGORY_LABELS, type TermCategory } from "@/lib/labels";
+import { TERM_CATEGORY_LABELS, type TermCategory } from "@sai/core/labels";
 import type { Permission } from "@sai/core/authz";
 import {
   PERMISSION_LABELS,

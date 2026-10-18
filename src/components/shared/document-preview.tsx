@@ -17,8 +17,8 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from "@sai/ui/dialog";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
 
 /**

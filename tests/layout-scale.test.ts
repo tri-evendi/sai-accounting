@@ -38,7 +38,7 @@ import {
   SPACE_XS,
   SPACE_XXL,
   SPACE_XXS,
-} from "@/lib/layout-scale";
+} from "@sai/ui/layout-scale";
 
 const ROOT = join(__dirname, "..");
 const SRC = join(ROOT, "src");

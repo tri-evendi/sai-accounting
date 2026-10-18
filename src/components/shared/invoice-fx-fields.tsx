@@ -25,11 +25,11 @@
 
 import { useEffect, useState } from "react";
 import { Col, Flex, Row, theme, Typography } from "antd";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Money } from "@/components/ui/money";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Money } from "@sai/ui/money";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import {
   BASE_CURRENCY,
   CurrencyRateFields,

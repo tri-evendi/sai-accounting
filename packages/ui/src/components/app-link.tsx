@@ -35,7 +35,7 @@ import NextLink from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, type ComponentProps } from "react";
 
-import { legacyTenantScopedPath, parseTenantPath, tenantPath } from "@/lib/tenant-routes";
+import { legacyTenantScopedPath, parseTenantPath, tenantPath } from "@sai/core/tenant-routes";
 
 export type AppLinkProps = ComponentProps<typeof NextLink>;
 

@@ -11,7 +11,7 @@ import {
   legacyTenantScopedPath,
   renamedPagePath,
   tenantPath,
-} from "@/lib/tenant-routes";
+} from "@sai/core/tenant-routes";
 
 import {
   clientIpFrom,

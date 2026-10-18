@@ -44,13 +44,13 @@ import { useRouter } from "next/navigation";
 import { Avatar, Dropdown, Flex, Grid, theme } from "antd";
 import type { MenuProps } from "antd";
 import { BgColorsOutlined, CheckOutlined, DesktopOutlined, DownOutlined, FileDoneOutlined, KeyOutlined, LogoutOutlined, MoonOutlined, ShopOutlined, SunOutlined, TranslationOutlined, UserOutlined } from "@ant-design/icons";
-import type { IconComponent } from "@/lib/icons";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/components/ui/app-link";
+import type { IconComponent } from "@sai/ui/icons";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Link } from "@sai/ui/app-link";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@sai/core/i18n/config";
 import { useTheme } from "@/lib/theme/client";
-import { THEMES, type Theme } from "@/lib/theme/config";
+import { THEMES, type Theme } from "@sai/ui/theme/config";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { setLocale } from "@/lib/i18n/actions";
 import { fallbackSwitchLocale } from "@sai/core/i18n/locale-cookie";
@@ -58,7 +58,7 @@ import { useDictionary, useLocale, useT } from "@sai/core/i18n/client";
 import { roleLabels } from "@/lib/i18n/labels";
 import type { SystemRole } from "@sai/core/constants";
 import { apiFetch } from "@/lib/api-fetch";
-import { moneyPalette, primaryButtonTokens } from "@/lib/theme/antd-tokens";
+import { moneyPalette, primaryButtonTokens } from "@sai/ui/theme/antd-tokens";
 
 const THEME_ICONS: Record<Theme, IconComponent> = { light: SunOutlined, dark: MoonOutlined, system: DesktopOutlined };
 const THEME_LABELS: Record<Theme, DictionaryKey> = {

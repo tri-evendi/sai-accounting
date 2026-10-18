@@ -35,7 +35,7 @@
 import { useId } from "react";
 import { Input, type InputRef } from "antd";
 
-import { displayToNumber, numberToDisplay } from "@/components/ui/money-input-format";
+import { displayToNumber, numberToDisplay } from "@sai/ui/money-input-format";
 
 interface MoneyInputProps
   extends Omit<

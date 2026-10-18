@@ -28,8 +28,8 @@
  * dirinya sendiri.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { PageHeader } from "@/components/ui/page-header";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
+import { PageHeader } from "@sai/ui/page-header";
 import { getT } from "@/lib/i18n/server";
 import { ModuleSettingsPanel } from "@/components/settings/module-settings-panel";
 

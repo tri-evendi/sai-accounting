@@ -25,7 +25,7 @@ import { Flex, Typography, theme } from "antd";
 import type { GlobalToken } from "antd";
 import { CheckOutlined, KeyOutlined } from "@ant-design/icons";
 import { AuthShell } from "@/components/auth/auth-shell";
-import { Button } from "@/components/ui/button";
+import { Button } from "@sai/ui/button";
 import {
   Form,
   FormControl,
@@ -33,11 +33,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { PasswordField } from "@/components/ui/password-input";
+} from "@sai/ui/form";
+import { PasswordField } from "@sai/ui/password-input";
 import { changePasswordSchema, type ChangePasswordInput } from "@/lib/validations/auth";
 import { useT, type TranslateFn } from "@sai/core/i18n/client";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 const { Text } = Typography;
 

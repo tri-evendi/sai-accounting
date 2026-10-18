@@ -1,4 +1,4 @@
-import { SPACE_LG } from "@/lib/layout-scale";
+import { SPACE_LG } from "@sai/ui/layout-scale";
 /**
  * Kerangka muat untuk grup rute `(setup)`.
  *

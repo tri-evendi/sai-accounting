@@ -14,11 +14,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Flex } from "antd";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { CONSOLE_MUTED } from "@/components/operator/console-ui";
 import { useT } from "@sai/core/i18n/client";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";

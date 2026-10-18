@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@sai/ui/badge";
 import { type ContractStatus } from "@sai/core/constants";
 import { useDictionary } from "@sai/core/i18n/client";
 import { contractStatusLabels } from "@/lib/i18n/labels";

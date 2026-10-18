@@ -61,10 +61,10 @@
 import { signOut, useSession } from "next-auth/react";
 import { Flex, Layout, theme } from "antd";
 
-import { BrandLockup } from "@/components/ui/brand-lockup";
+import { BrandLockup } from "@sai/ui/brand-lockup";
 import { UserMenu } from "@/components/layout/user-menu";
-import { PageLoader } from "@/components/ui/loading";
-import { BORDER_TOKENS_DARK } from "@/lib/theme/antd-tokens";
+import { PageLoader } from "@sai/ui/loading";
+import { BORDER_TOKENS_DARK } from "@sai/ui/theme/antd-tokens";
 import { useT } from "@sai/core/i18n/client";
 
 /** `max-w-5xl` — lebar isi wizard, sama untuk kepala dan badannya. */

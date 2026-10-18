@@ -33,9 +33,9 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
+} from "@sai/ui/alert-dialog";
+import { Button } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
 import { matchesConfirmPhrase } from "@/lib/form-guards";
 import { useT } from "@sai/core/i18n/client";
 

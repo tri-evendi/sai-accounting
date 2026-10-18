@@ -57,7 +57,7 @@ import {
   isDocsPath,
 } from "@/lib/docs";
 import { DOC_BLOCKS } from "@/lib/docs-content";
-import { TERM_LIST } from "@/lib/labels";
+import { TERM_LIST } from "@sai/core/labels";
 import { ENDPOINTS } from "@/lib/api-v1-spec";
 import { cariDokumentasi, indeksDokumentasi } from "@/lib/docs-search";
 import { waktuBaca } from "@/lib/docs-text";
@@ -333,6 +333,7 @@ describe("permukaan KETIGA: bukan pemasaran, bukan meja kerja", () => {
     const SAH = [
       "@/components/docs/",
       "@/components/ui/",
+      "@sai/ui/",
       "@/lib/",
       // Pindahan `src/lib/*` (monorepo Fase 2) — izinnya setara `@/lib/`.
       "@sai/core/",

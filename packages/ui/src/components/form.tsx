@@ -112,8 +112,8 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form";
-import { describedByWith } from "@/components/ui/input";
-import { Label, RequiredMark } from "@/components/ui/label";
+import { describedByWith } from "@sai/ui/input";
+import { Label, RequiredMark } from "@sai/ui/label";
 import { useDictionary } from "@sai/core/i18n/client";
 import { translateMessage } from "@sai/core/i18n/validation";
 

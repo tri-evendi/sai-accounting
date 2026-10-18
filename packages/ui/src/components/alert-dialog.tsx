@@ -42,7 +42,7 @@ import {
   DialogTitle,
   DialogTrigger,
   type DialogContentProps,
-} from "@/components/ui/dialog";
+} from "@sai/ui/dialog";
 
 const AlertDialog = Dialog;
 const AlertDialogTrigger = DialogTrigger;

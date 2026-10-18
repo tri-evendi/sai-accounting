@@ -38,14 +38,14 @@
  * TIDAK berubah: warna tetap bukan penanda tunggal. Ukuran (`<small>`), kata,
  * dan ikon tetap membawa maknanya sendiri.
  */
-import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { Money, MoneyCell } from "@/components/ui/money";
+import { Badge } from "@sai/ui/badge";
+import { Card, CardHeader } from "@sai/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@sai/ui/table";
+import { Money, MoneyCell } from "@sai/ui/money";
 import { CheckCircleOutlined, ClockCircleOutlined, MinusCircleOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { AGING_BUCKETS, type AgingBucket, type PaymentStatus } from "@/lib/receivables";
 import { getT } from "@/lib/i18n/server";
-import { SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
+import { SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 /* `ChartCard` server, `AgingChart` client — batas RSC-nya sama persis dengan
    pemakaian grafik lain (beranda, /inventory, /reports/cash-flow), jadi berkas
    ini TETAP server component. Dijaga `tests/rsc-boundary.test.ts`. */

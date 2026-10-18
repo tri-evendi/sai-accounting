@@ -28,12 +28,12 @@
  */
 import { ReconciliationOutlined } from "@ant-design/icons";
 
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Money } from "@/components/ui/money";
-import { moneyColumn } from "@/components/ui/money-column";
-import { StaticTable } from "@/components/ui/static-table";
-import { textColumn, type SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { EmptyState } from "@sai/ui/empty-state";
+import { Money } from "@sai/ui/money";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable } from "@sai/ui/static-table";
+import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {

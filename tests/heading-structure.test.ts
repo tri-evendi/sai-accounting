@@ -14,6 +14,7 @@
  * (`<h1>`). Sampel 20 halaman tidak pernah bisa menemukan itu; penyisiran bisa.
  */
 import { describe, expect, it } from "vitest";
+import { akarSumber, relSumber } from "./akar-sumber";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -35,11 +36,11 @@ function tsxFiles(dir: string): string[] {
   return out;
 }
 
-const FILES = tsxFiles(SRC);
+const FILES = akarSumber().flatMap((d) => tsxFiles(d));
 
 describe("CardTitle bisa memilih tingkat headingnya", () => {
   it("primitifnya menerima `level` dan bawaannya tetap 3", () => {
-    const src = read(join(SRC, "components", "ui", "card.tsx"));
+    const src = read(join(SRC, "..", "packages", "ui", "src", "components", "card.tsx"));
     expect(src).toContain("level = 3");
     expect(src).toContain('`h${level}`');
   });
@@ -62,7 +63,7 @@ describe("CardTitle bisa memilih tingkat headingnya", () => {
          sedang patuh — dan tekanan untuk menghijaukannya akan jatuh pada
          komentarnya, bukan pada kodenya. */
       if (!src.includes("<DashboardSection")) continue;
-      if (src.includes("CardTitle level={2}")) offenders.push(file.replace(SRC, "src"));
+      if (src.includes("CardTitle level={2}")) offenders.push(relSumber(file));
     }
     // Di dalam DashboardSection urutannya sudah h1 → h2 → h3; menaikkannya ke
     // h2 membuat judul kartu bersaing dengan judul seksinya sendiri.
@@ -80,7 +81,7 @@ describe("kartu tingkat atas tidak melompati h2", () => {
     for (const file of FILES) {
       const src = read(file);
       if (!src.includes("<CardTitle")) continue;
-      if (file.endsWith(join("components", "ui", "card.tsx"))) continue;
+      if (file.endsWith(join("packages", "ui", "src", "components", "card.tsx"))) continue;
       /*
        * Punya h2 sendiri → h3 di dalamnya memang benar. Tiga bentuknya, dan
        * ketiganya harus dikenali: `<h2>` telanjang, `DashboardSection` (yang
@@ -91,7 +92,7 @@ describe("kartu tingkat atas tidak melompati h2", () => {
        */
       if (/<h2|DashboardSection|Typography\.Title\s+level=\{2\}/.test(src)) continue;
       if (/<CardTitle(?![^>]*level=)/.test(src)) {
-        offenders.push(file.replace(SRC, "src"));
+        offenders.push(relSumber(file));
       }
     }
     expect(offenders).toEqual([]);
@@ -122,7 +123,7 @@ describe("kotak cari punya nama yang terbaca pembaca layar", () => {
         const tag = m[0];
         if (!/name="(search|q)"|type="search"/.test(tag)) continue;
         if (/aria-label=|aria-labelledby=|\blabel=/.test(tag)) continue;
-        offenders.push(`${file.replace(SRC, "src")} :: ${tag.slice(0, 60).replace(/\s+/g, " ")}`);
+        offenders.push(`${relSumber(file)} :: ${tag.slice(0, 60).replace(/\s+/g, " ")}`);
       }
     }
     expect(offenders).toEqual([]);

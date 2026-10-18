@@ -68,7 +68,7 @@
  * di `lib/docs-content.ts`, yang hanya diimpor halaman servernya.
  */
 
-import { appPath } from "@/lib/tenant-routes";
+import { appPath } from "@sai/core/tenant-routes";
 
 /** Akar permukaan dokumentasi. Tidak pernah ditulis harfiah di tempat lain. */
 export const DOCS_ROOT = "/docs";

@@ -40,9 +40,9 @@
  * tidak bergerak karenanya.
  */
 
-import { BrandMark } from "@/components/ui/brand-mark";
+import { BrandMark } from "@sai/ui/brand-mark";
 import { APP_NAME } from "@sai/core/constants";
-import { NEUTRAL_TEXT_DARK } from "@/lib/theme/antd-tokens";
+import { NEUTRAL_TEXT_DARK } from "@sai/ui/theme/antd-tokens";
 
 const TRUNCATE: React.CSSProperties = {
   overflow: "hidden",

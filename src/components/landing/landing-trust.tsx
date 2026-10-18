@@ -56,8 +56,8 @@ import {
 } from "@/components/landing/landing-section";
 import Link from "next/link";
 
-import { ButtonLink } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { ButtonLink } from "@sai/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
 import { docsPath, type DocSlug } from "@/lib/docs";
 import { getT } from "@/lib/i18n/server";
 

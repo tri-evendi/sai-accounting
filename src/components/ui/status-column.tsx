@@ -10,7 +10,7 @@
  */
 
 import { StatusBadge } from "@/components/shared/status-badge";
-import { type ColumnBase, type SaiColumn } from "@/components/ui/table-columns";
+import { type ColumnBase, type SaiColumn } from "@sai/ui/table-columns";
 
 /** Kolom status — selalu badge BERTEKS, tidak pernah warna saja (MASTER.md). */
 export function statusColumn<T>({

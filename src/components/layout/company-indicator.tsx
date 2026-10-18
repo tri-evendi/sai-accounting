@@ -44,7 +44,7 @@
 
 import { Flex, theme } from "antd";
 import { ShopOutlined, SwapOutlined } from "@ant-design/icons";
-import { Link } from "@/components/ui/app-link";
+import { Link } from "@sai/ui/app-link";
 import { useT } from "@sai/core/i18n/client";
 
 /**

@@ -34,14 +34,14 @@
 
 import { useState } from "react";
 import { Alert, Col, Flex, Row, theme, Typography } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
+import { useAppRouter } from "@sai/ui/app-link";
 import { DueDateField } from "@/components/shared/due-date-field";
-import { Button } from "@/components/ui/button";
-import { Input, TextInput } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@sai/ui/button";
+import { Input, TextInput } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { DisclosureSection, focusFormField } from "@/components/ui/disclosure-section";
-import { TermTooltip } from "@/components/ui/term-tooltip";
+import { TermTooltip } from "@sai/ui/term-tooltip";
 import {
   CurrencyRateFields,
   baseUnknown,
@@ -59,8 +59,8 @@ import {
 import { useT, type TranslateFn } from "@sai/core/i18n/client";
 import { DeleteOutlined, LockOutlined, PlusOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
-import { Label } from "@/components/ui/label";
-import { SelectField } from "@/components/ui/select";
+import { Label } from "@sai/ui/label";
+import { SelectField } from "@sai/ui/select";
 
 interface ContractItem {
   /** Barang dari master (#491). `null` sampai dipilih. */

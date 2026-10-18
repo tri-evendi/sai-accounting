@@ -7,9 +7,9 @@
  * kenapa — tampil sebelum tombol unduh, sebab berkas yang diam-diam kehilangan
  * tiga tagihan adalah berkas yang dilaporkan ke DJP tanpa tiga tagihan.
  */
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { PageHeader } from "@sai/ui/page-header";
 import { ConsoleNotice, ConsolePanel, CONSOLE_MUTED, CONSOLE_PAGE } from "@/components/operator/console-ui";
 import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@/lib/platform-db";

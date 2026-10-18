@@ -13,31 +13,31 @@
  * DALAM `<Card>` (lihat kepala `shared/aging.tsx`). Arahnya tetap tidak
  * bergantung warna: baris "Masuk"/"Keluar" di bawahnya menyebutkannya.
  */
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { Badge } from "@sai/ui/badge";
 import { formatCurrency, formatDateShort, parsePageParam } from "@sai/core/utils";
-import { Pagination } from "@/components/ui/pagination";
-import { PageHeader } from "@/components/ui/page-header";
-import { Money } from "@/components/ui/money";
-import { SelectField } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Pagination } from "@sai/ui/pagination";
+import { PageHeader } from "@sai/ui/page-header";
+import { Money } from "@sai/ui/money";
+import { SelectField } from "@sai/ui/select";
+import { Label } from "@sai/ui/label";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import type { CashType } from "@sai/core/constants";
 import { FinancePageActions } from "./finance-actions";
 import { bankReconciliationStatus } from "@/lib/bank-statements";
 import { CheckCircleOutlined, WalletOutlined } from "@ant-design/icons";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState } from "@sai/ui/empty-state";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
-import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@/lib/layout-scale";
+import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

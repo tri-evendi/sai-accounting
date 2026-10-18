@@ -10,11 +10,11 @@
  */
 import { useState } from "react";
 import { Alert, Col, Row, theme, Typography } from "antd";
-import { useAppRouter } from "@/components/ui/app-link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppRouter } from "@sai/ui/app-link";
+import { Button } from "@sai/ui/button";
+import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { useT } from "@sai/core/i18n/client";
 import { apiFetch } from "@/lib/api-fetch";
 

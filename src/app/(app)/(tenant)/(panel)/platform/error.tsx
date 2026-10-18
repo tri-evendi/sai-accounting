@@ -29,10 +29,10 @@
 import { useEffect } from "react";
 import { Flex, Typography, theme } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@sai/ui/card";
+import { Button } from "@sai/ui/button";
 import { useT } from "@sai/core/i18n/client";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 const { Title, Text } = Typography;
 

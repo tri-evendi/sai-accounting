@@ -68,18 +68,18 @@
  * punya arti tidak pernah dipakai ulang sebagai hiasan (#186/#187).
  */
 import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
-import { StatCard } from "@/components/ui/stat-card";
+import { StatCard } from "@sai/ui/stat-card";
 import {
   platformChip,
   platformGlyph,
   platformHead,
   type PlatformHue,
 } from "@/components/tenant/platform-tone";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
-import { QuotaMeter } from "@/components/ui/quota-meter";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { EmptyState } from "@sai/ui/empty-state";
+import { PageHeader } from "@sai/ui/page-header";
+import { QuotaMeter } from "@sai/ui/quota-meter";
 import { formatMoney } from "@sai/core/money-format";
 import { formatDateMedium } from "@sai/core/utils";
 import { platformInvoiceAmounts } from "@/lib/subscription-lifecycle";
@@ -90,7 +90,7 @@ import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { isReadOnlyTenantStatus } from "@/lib/subscription-lifecycle";
 import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
-import { tenantPath } from "@/lib/tenant-routes";
+import { tenantPath } from "@sai/core/tenant-routes";
 import { resolvePpnEnabled } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";

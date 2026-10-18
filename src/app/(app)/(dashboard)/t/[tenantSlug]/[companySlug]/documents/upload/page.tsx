@@ -4,7 +4,7 @@
  * Pembungkus server tipis; API `/api/upload` tetap menegakkan peran juga.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { UploadClient } from "./upload-client";
 
 export const dynamic = "force-dynamic";

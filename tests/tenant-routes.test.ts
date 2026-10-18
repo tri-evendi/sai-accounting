@@ -32,9 +32,9 @@ import {
   legacyTenantScopedPath,
   parseTenantPath,
   tenantPath,
-} from "@/lib/tenant-routes";
+} from "@sai/core/tenant-routes";
 import { companyCreateSchema } from "@/lib/validations/company";
-import { scopedHref } from "@/components/ui/app-link";
+import { scopedHref } from "@sai/ui/app-link";
 import { activeNavHref } from "@/lib/nav";
 import { tourForPath } from "@/lib/tours";
 
@@ -203,7 +203,7 @@ describe("slug perusahaan yang dicadangkan (issue #346)", () => {
      * sudah tidak istimewa, sementara nama yang BARU istimewa bebas dipilih.
      * Melesetnya tidak berbunyi, jadi yang menjaganya harus bentuk sumbernya.
      */
-    const src = readFileSync(join(SRC, "lib", "tenant-routes.ts"), "utf8");
+    const src = readFileSync(join(SRC, "..", "packages", "core", "src", "tenant-routes.ts"), "utf8");
     const deklarasi = src
       .split("\n")
       .find((baris) => baris.includes("export const RESERVED_COMPANY_SLUGS"));

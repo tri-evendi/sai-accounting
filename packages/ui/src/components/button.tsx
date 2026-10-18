@@ -216,7 +216,7 @@ import {
   klikBiasa,
   scopedHref,
   tautanDicegat,
-} from "@/components/ui/app-link";
+} from "@sai/ui/app-link";
 
 type ButtonVariant =
   | "primary"

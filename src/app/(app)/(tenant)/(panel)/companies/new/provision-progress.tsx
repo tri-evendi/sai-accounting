@@ -37,11 +37,11 @@
 import { Flex, Typography, theme } from "antd";
 import type { GlobalToken } from "antd";
 import { CheckCircleOutlined, ClockCircleOutlined, LoadingOutlined, WarningOutlined } from "@ant-design/icons";
-import { Progress } from "@/components/ui/progress";
+import { Progress } from "@sai/ui/progress";
 import { useT } from "@sai/core/i18n/client";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 import type { ProvisionPhase } from "@/lib/company-provisioning-shared";
-import { SPACE_XS } from "@/lib/layout-scale";
+import { SPACE_XS } from "@sai/ui/layout-scale";
 
 const { Text } = Typography;
 

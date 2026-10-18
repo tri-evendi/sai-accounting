@@ -42,12 +42,12 @@
  */
 import { CalendarOutlined } from "@ant-design/icons";
 import { platformHead } from "@/components/tenant/platform-tone";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { moneyColumn } from "@/components/ui/money-column";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { platformInvoiceIsRevenue } from "@/lib/platform-constants";
 import { formatDateMedium } from "@sai/core/utils";

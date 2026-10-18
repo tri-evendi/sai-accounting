@@ -34,20 +34,20 @@
  */
 
 import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@sai/ui/badge";
 import {
   ConsoleNotice,
   ConsolePanel,
   CONSOLE_MUTED,
   CONSOLE_PAGE,
 } from "@/components/operator/console-ui";
-import { PageHeader } from "@/components/ui/page-header";
-import { moneyColumn } from "@/components/ui/money-column";
-import { StaticTable } from "@/components/ui/static-table";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { PageHeader } from "@sai/ui/page-header";
+import { moneyColumn } from "@sai/ui/money-column";
+import { StaticTable } from "@sai/ui/static-table";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { TenantActions } from "@/components/operator/tenant-actions";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@sai/ui/button";
 import { readTenantAuditFeed } from "@/lib/tenant-audit";
 import { TenantUserSupport } from "@/components/operator/tenant-user-support";
 import { tenantUsersForOperator } from "@/lib/operator/user-support";

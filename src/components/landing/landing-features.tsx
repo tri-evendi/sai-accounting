@@ -60,7 +60,7 @@ import {
   LandingSection,
   LandingSectionIntro,
 } from "@/components/landing/landing-section";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@sai/ui/card";
 import { ROLES } from "@sai/core/constants";
 import { LOCALES, LOCALE_LABELS } from "@sai/core/i18n/config";
 import { roleLabels } from "@/lib/i18n/labels";

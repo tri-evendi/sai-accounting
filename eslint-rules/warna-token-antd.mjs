@@ -23,7 +23,7 @@
  *  2. **Kontrasnya tak pernah diukur.** Angka kontras aplikasi ini dihitung
  *     ulang setiap kali suite berjalan (`tests/money-tokens.test.ts`,
  *     `tests/ui-controls-antd.test.tsx`) — tetapi hanya untuk nilai yang
- *     berdiri di `src/lib/theme/antd-tokens.ts`. Hex yang diketik di sebuah
+ *     berdiri di `packages/ui/src/theme/antd-tokens.ts`. Hex yang diketik di sebuah
  *     halaman tidak diperiksa siapa pun.
  *  3. **Ia tidak bisa dicari.** Pelajaran termahal dari `RAW_PALETTE`: satu
  *     kelas `border-l-primary` lolos berbulan-bulan karena polanya tidak
@@ -48,7 +48,7 @@
  * ══ YANG DIKECUALIKAN, DAN DI MANA ═════════════════════════════════════════
  * Pengecualiannya BERKAS, bukan pola, dan didaftar di `eslint.config.mjs`
  * supaya terlihat di satu tempat:
- *  • `src/lib/theme/antd-tokens.ts` — sumber kebenarannya; di sinilah setiap
+ *  • `packages/ui/src/theme/antd-tokens.ts` — sumber kebenarannya; di sinilah setiap
  *    hex ditulis, beserta rasio kontras terhitungnya;
  *  • `src/lib/pdf/brand.ts` — warna DOKUMEN CETAK. Kertas tidak punya tema
  *    gelap dan tidak melihat satu pun variabel CSS.
@@ -137,7 +137,7 @@ const PESAN =
   "`theme.useToken()` bila nilainya memang perlu dihitung. Nilai mentah tidak " +
   "ikut berganti tema, kontrasnya tidak pernah diukur suite ini, dan ia tidak " +
   "bisa dicari kembali. Kalau ini memang nilai baru, tulis di " +
-  "`src/lib/theme/antd-tokens.ts` beserta rasio kontrasnya, lalu rujuk dari " +
+  "`packages/ui/src/theme/antd-tokens.ts` beserta rasio kontrasnya, lalu rujuk dari " +
   "sini. Lihat §Color Palette di design-system/sai-accounting/MASTER.md.";
 
 /** Apakah teks ini memuat nilai warna mentah, di posisi mana pun? */

@@ -14,7 +14,9 @@
     "./i18n/load": "./src/i18n/load.ts",
     "./i18n/locale-cookie": "./src/i18n/locale-cookie.ts",
     "./i18n/validation": "./src/i18n/validation.ts",
+    "./labels": "./src/labels.ts",
     "./money-format": "./src/money-format.ts",
+    "./tenant-routes": "./src/tenant-routes.ts",
     "./utils": "./src/utils.ts"
   },
   "dependencies": {

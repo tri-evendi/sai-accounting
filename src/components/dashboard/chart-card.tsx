@@ -13,7 +13,7 @@
  * mengisinya, dan sebuah jalan lewat untuk kelas Tailwind adalah persis yang
  * dihapus fase ini.
  */
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 
 /** Kartu adalah wadah tata letak grafiknya sendiri — badan `Card` `display:contents`. */
 const CARD: React.CSSProperties = {

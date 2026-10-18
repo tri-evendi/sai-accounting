@@ -1,18 +1,18 @@
 import { effectiveAccountantMode } from "@/lib/accountant-mode";
 import { canEffective } from "@/lib/authz-effective";
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
+import { Card } from "@sai/ui/card";
+import { Badge } from "@sai/ui/badge";
 import { ReportLaunchDialog } from "@/components/reports/report-launch-dialog";
 import { costCenterFilterOptions } from "@/lib/cost-center-options";
 import { AccountBookOutlined, AimOutlined, ArrowRightOutlined, BankOutlined, ContainerOutlined, FileExcelOutlined, FundOutlined, HistoryOutlined, MoneyCollectOutlined, ReconciliationOutlined, RiseOutlined, TeamOutlined, TransactionOutlined, TruckOutlined, WalletOutlined } from "@ant-design/icons";
-import type { IconComponent } from "@/lib/icons";
+import type { IconComponent } from "@sai/ui/icons";
 import { reportsByCategory, reportTextKey, type ReportDefinition } from "@/lib/report-catalog";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader } from "@sai/ui/page-header";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import type { Dictionary } from "@sai/core/i18n/dictionary";
-import { CARD_GAP } from "@/lib/layout-scale";
+import { CARD_GAP } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
 

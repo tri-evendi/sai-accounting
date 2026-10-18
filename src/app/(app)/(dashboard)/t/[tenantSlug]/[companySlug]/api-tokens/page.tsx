@@ -8,7 +8,7 @@
  * sama — pemilih di layar adalah kenyamanan, bukan penjaga.
  */
 import { requirePagePermission } from "@/lib/page-auth";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
 import { controlDb } from "@sai/core/control-db";
 import { currentCompanyId } from "@/lib/current-company";

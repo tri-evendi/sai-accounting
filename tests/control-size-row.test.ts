@@ -88,14 +88,14 @@
  * itu berubah.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 
 const ROOT = join(__dirname, "..");
 
 /** Seluruh permukaan UI app — dua akar, bukan daftar subdirektori. */
-const AREA = [join("src", "app"), join("src", "components")];
+const AREA = [join("src", "app"), join("src", "components"), join("packages", "ui", "src")];
 
 /**
  * Kendali yang ukurannya ditulis lewat prop `size` (peta `SIZES` di
@@ -345,7 +345,7 @@ describe("satu baris kendali = satu ukuran", () => {
      * berubah warna.
      */
     const semua = new Set<string>();
-    for (const akar of ["src/app", "src/components"]) {
+    for (const akar of ["src/app", "src/components", "packages/ui/src"]) {
       for (const j of berkasTsx(join(ROOT, akar))) semua.add(relatif(j));
     }
     const dijaga = new Set(berkasDijaga().map(relatif));
@@ -419,14 +419,14 @@ describe("satu baris kendali = satu ukuran", () => {
      * benar, tidak menjaga apa pun", jadi yang merah harus tes ini, bukan sebuah
      * layar.
      */
-    const button = readFileSync(join(ROOT, "src", "components", "ui", "button.tsx"), "utf8");
+    const button = readFileSync(join(ROOT, "packages", "ui", "src", "components", "button.tsx"), "utf8");
     expect(button).toMatch(/sm:\s*\{\s*size:\s*"small"\s*\}/);
     expect(button).toMatch(/md:\s*\{\s*size:\s*"middle"\s*\}/);
     expect(button).toMatch(/lg:\s*\{\s*size:\s*"large"\s*\}/);
     // `icon` = bentuk lingkaran setinggi `controlHeight`, bukan ukuran ketiga.
     expect(button).toMatch(/icon:\s*\{\s*size:\s*"middle",\s*shape:\s*"circle"\s*\}/);
 
-    const input = readFileSync(join(ROOT, "src", "components", "ui", "input.tsx"), "utf8");
+    const input = readFileSync(join(ROOT, "packages", "ui", "src", "components", "input.tsx"), "utf8");
     expect(input).toMatch(/fieldSize === "sm" \? \("small" as const\) : undefined/);
 
     /*
@@ -441,7 +441,8 @@ describe("satu baris kendali = satu ukuran", () => {
       "searchable-select.tsx",
       "server-searchable-select.tsx",
     ]) {
-      const isi = readFileSync(join(ROOT, "src", "components", "ui", berkas), "utf8");
+      const dulu = join(ROOT, "src", "components", "ui", berkas);
+      const isi = readFileSync(existsSync(dulu) ? dulu : join(ROOT, "packages", "ui", "src", "components", berkas), "utf8");
       expect(isi, `${berkas} kini menerima ukuran — perbarui KENDALI_TETAP`).not.toMatch(
         /\bfieldSize\b/
       );

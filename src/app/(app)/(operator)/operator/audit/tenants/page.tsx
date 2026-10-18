@@ -16,12 +16,12 @@
 
 import { HistoryOutlined } from "@ant-design/icons";
 
-import { Button, ButtonLink } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
-import { Pagination } from "@/components/ui/pagination";
-import { Select } from "@/components/ui/select";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { EmptyState } from "@sai/ui/empty-state";
+import { Input } from "@sai/ui/input";
+import { PageHeader } from "@sai/ui/page-header";
+import { Pagination } from "@sai/ui/pagination";
+import { Select } from "@sai/ui/select";
 import { ConsolePanel } from "@/components/operator/console-ui";
 import { AuditTrailTable } from "@/components/operator/audit-trail-table";
 import { requireOperatorPage } from "@/lib/operator/guard";

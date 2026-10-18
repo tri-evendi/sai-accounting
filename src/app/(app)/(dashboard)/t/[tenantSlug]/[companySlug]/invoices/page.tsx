@@ -21,35 +21,35 @@
  * punya kolom total yang tersimpan (dan yang dijaga tetap sinkron).
  */
 
-import { Link } from "@/components/ui/app-link";
-import type { TenantScopedParams } from "@/lib/tenant-routes";
+import { Link } from "@sai/ui/app-link";
+import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { requirePagePermission } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { TextInput } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { StaticTable } from "@/components/ui/static-table";
+import { Button, ButtonLink } from "@sai/ui/button";
+import { TextInput } from "@sai/ui/input";
+import { Card } from "@sai/ui/card";
+import { StaticTable } from "@sai/ui/static-table";
 import { statusColumn } from "@/components/ui/status-column";
-import { moneyColumn } from "@/components/ui/money-column";
-import type { SaiColumns } from "@/components/ui/table-columns";
+import { moneyColumn } from "@sai/ui/money-column";
+import type { SaiColumns } from "@sai/ui/table-columns";
 import { lastSentByInvoice } from "@/lib/invoice-send";
 import {
   parseSort,
   sortOrderBy,
   sortableKeys,
   type SortSpec,
-} from "@/lib/table-sort";
+} from "@sai/ui/table-sort";
 import type { Prisma } from "@sai/db/client/company";
 import { formatDateShort, parsePageParam } from "@sai/core/utils";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Pagination } from "@/components/ui/pagination";
+import { EmptyState } from "@sai/ui/empty-state";
+import { Pagination } from "@sai/ui/pagination";
 import { FileDoneOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@/lib/i18n/server";
 import { statusFilterLabels } from "@/lib/i18n/labels";
-import { SECTION_GAP, SPACE_XS } from "@/lib/layout-scale";
-import { TermTooltip } from "@/components/ui/term-tooltip";
-import { LearnMore } from "@/components/ui/learn-more";
-import { PageHeader } from "@/components/ui/page-header";
+import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
+import { TermTooltip } from "@sai/ui/term-tooltip";
+import { LearnMore } from "@sai/ui/learn-more";
+import { PageHeader } from "@sai/ui/page-header";
 
 export const dynamic = "force-dynamic";
 

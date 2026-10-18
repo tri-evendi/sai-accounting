@@ -27,12 +27,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ConfigProvider, theme } from "antd";
 import { StyleProvider, createCache, extractStyle } from "@ant-design/cssinjs";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { focusRingColor, tagStatusTokens } from "@/lib/theme/antd-tokens";
+import { Badge } from "@sai/ui/badge";
+import { Button } from "@sai/ui/button";
+import { Checkbox } from "@sai/ui/checkbox";
+import { Label } from "@sai/ui/label";
+import { Progress } from "@sai/ui/progress";
+import { focusRingColor, tagStatusTokens } from "@sai/ui/theme/antd-tokens";
 
 /** Sama dengan `CONTROL_HEIGHT` di `components/providers/antd-provider.tsx`. */
 const CONTROL_HEIGHT = 40;

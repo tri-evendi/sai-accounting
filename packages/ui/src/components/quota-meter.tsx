@@ -56,9 +56,9 @@
 
 import { Progress, theme } from "antd";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { TILE_CONTENT, TILE_HEADER, TILE_LABEL } from "@/components/ui/stat-tile";
-import { moneyPalette } from "@/lib/theme/antd-tokens";
+import { Card, CardContent, CardHeader } from "@sai/ui/card";
+import { TILE_CONTENT, TILE_HEADER, TILE_LABEL } from "@sai/ui/stat-tile";
+import { moneyPalette } from "@sai/ui/theme/antd-tokens";
 
 export interface QuotaMeterProps {
   /** Apa yang dihitung — "Perusahaan", "Pengguna". Sentence case, tanpa titik dua. */

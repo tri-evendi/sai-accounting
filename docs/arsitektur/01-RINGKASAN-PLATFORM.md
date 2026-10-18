@@ -40,7 +40,7 @@ aplikasi.
 Pemisahan operator **ditegakkan, bukan dikonvensikan**: di host pelanggan
 setiap `/operator` menjawab 404, dan di host operator setiap rute pelanggan
 menjawab 404. Tanpa `OPERATOR_HOST` di `.env`, `/operator` tidak terjangkau di
-host mana pun — gagal-tertutup. Logikanya murni di `src/lib/operator/plane.ts`,
+host mana pun — gagal-tertutup. Logikanya murni di `packages/core/src/operator-plane.ts`,
 dipanggil dari `src/proxy.ts`. Alasannya: cookie berlingkup host, jadi sesi
 pelanggan yang bocor tidak pernah bisa menjangkau konsol operator.
 
@@ -227,7 +227,7 @@ cadangan otomatis.
 | Surel | **Nodemailer 7** | Konfigurasi tiga lapis — lihat dok 04 |
 | Uji | **Vitest 3** — **276 berkas tes · 4.654 tes** | Gerbangnya `bun run verify` |
 | Proxy | **Traefik** (bersama 5 aplikasi lain di mesin yang sama) | TLS Let's Encrypt, resolver `le` |
-| Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 3 image dibangun CI; **jangan pernah build di server** |
+| Registry | **GHCR** (`ghcr.io/tri-evendi/sai-accounting`) | 4 image dibangun CI (pelanggan, operator, migrator, backup — sejak 18 Okt 2026); **jangan pernah build di server** |
 
 ## 8. Ukuran
 

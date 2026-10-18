@@ -127,13 +127,20 @@ graph TD
     style MIGR fill:#fff4e6,stroke:#c9873d
 ```
 
-### Tiga image yang didorong ke GHCR
+### Empat image yang didorong ke GHCR
 
 | Image | Tahap | Dipakai layanan |
 |---|---|---|
-| `ghcr.io/tri-evendi/sai-accounting` | `runner` | **`app-customer`** + **`app-operator`** |
+| `ghcr.io/tri-evendi/sai-accounting` | `runner` | **`app-customer`** |
+| `…-operator` | `runner-operator` (aplikasi `apps/operator`) | **`app-operator`** — sejak monorepo Fase 4, 18 Okt 2026; sebelumnya `app-operator` memakai image `runner` |
 | `…-migrator` | `migrator` | `migrate`, **`job-scheduler`**, **`job-conformance`** |
 | `…-backup` | `backup` (tahap) | `job-backup` |
+
+Kedua image aplikasi dibangun dari commit yang SAMA di setiap dorongan, dan
+compose menarik keduanya dengan `SAI_TAG` yang sama. Sesudah gelar, periksa
+bahwa `app-customer` dan `app-operator` sama-sama menjalankan image `sha-` /
+tanggal-bangun yang sama — keduanya menulis basis data yang sama, jadi versi
+skemanya tidak boleh berbeda.
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>` (dari `package.json`).
 
@@ -281,6 +288,13 @@ setiap rilis punya jangkarnya sendiri **secara otomatis**:
 ```bash
 SAI_TAG=sha-573d9cf docker compose up -d --no-deps app-customer app-operator
 ```
+
+⚠ **Rollback melintasi Fase 4 (sebelum 18 Okt 2026).** Tag `sha-` yang lebih
+tua dari pemisahan **tidak punya** image `…-operator`, jadi perintah di atas
+gagal menarik `app-operator`. Kembali ke sebelum pemisahan berarti juga
+mengembalikan `docker-compose.yml` versi itu (yang menjalankan `app-operator`
+dari image `runner`): `git checkout <sha-lama> -- docker-compose.yml`, lalu
+`SAI_TAG=sha-<lama> docker compose up -d --no-deps app-customer app-operator`.
 
 Ritual lama — `docker tag … :rollback-<sha>` **sebelum** membangun, karena
 build menimpa `:latest` dan image lamanya langsung tak terjangkau di containerd

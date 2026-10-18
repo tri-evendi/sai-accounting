@@ -47,9 +47,9 @@ const AKAR = process.cwd();
 
 /** Permukaan operator: rute konsol, inti operator, komponen konsol. */
 const OPERATOR = [
-  "src/app/(app)/(operator)",
-  "src/lib/operator",
-  "src/components/operator",
+  "apps/operator/src/app/(operator)",
+  "apps/operator/src/lib/operator",
+  "apps/operator/src/components/operator",
 ];
 
 /**
@@ -58,17 +58,15 @@ const OPERATOR = [
  * tumbuh adalah daftar putih yang berhenti berarti.
  */
 const DAFTAR_PUTIH: Record<string, { target: string; alasan: string }[]> = {
-  "src/proxy.ts": [
-    {
-      target: "src/lib/operator/plane",
-      alasan:
-        "proxy memutuskan BIDANG (host operator vs pelanggan) sebelum rute mana pun berjalan",
-    },
-  ],
+  /* Kosong sejak monorepo Fase 3d: satu-satunya penyeberangan yang pernah ada
+     — `src/proxy.ts` → `lib/operator/plane` — hilang ketika aturan bidang
+     pindah ke `@sai/core/operator-plane`. Kedua aplikasi membutuhkannya, dan
+     sisi pelanggan WAJIB tetap memakainya (dok 14 Fase 3): `OPERATOR_HOST`
+     kosong → `/operator` 404 di host mana pun. */
 };
 
 /** Komponen yang boleh dipakai permukaan operator. */
-const KOMPONEN_BOLEH = ["src/components/ui", "src/components/operator"];
+const KOMPONEN_BOLEH = ["src/components/ui", "apps/operator/src/components/operator"];
 
 function berkasTs(dir: string): string[] {
   const keluar: string[] = [];
@@ -76,7 +74,7 @@ function berkasTs(dir: string): string[] {
     for (const e of readdirSync(join(AKAR, p), { withFileTypes: true })) {
       const anak = `${p}/${e.name}`;
       if (e.isDirectory()) {
-        if (e.name === "generated" || e.name === "node_modules") continue;
+        if (e.name === "generated" || e.name === "node_modules" || e.name === ".next") continue;
         telusuri(anak);
       } else if (e.name.endsWith(".ts") || e.name.endsWith(".tsx")) {
         keluar.push(anak);
@@ -97,6 +95,8 @@ const IMPOR = /(?:\bfrom\s+|\bimport\s*\(\s*|\bimport\s+)["']([^"']+)["']/g;
 /** Spesifier impor → path berkas relatif akar (tanpa ekstensi), atau null untuk paket. */
 function selesaikan(dariBerkas: string, spesifier: string): string | null {
   if (spesifier.startsWith("@/")) return `src/${spesifier.slice(2)}`;
+  // Alias internal konsol (apps/operator/tsconfig.json) — juga terlihat dari akar.
+  if (spesifier.startsWith("@op/")) return `apps/operator/src/${spesifier.slice(4)}`;
   if (spesifier.startsWith(".")) return normalize(join(dirname(dariBerkas), spesifier));
   return null;
 }
@@ -114,7 +114,7 @@ const di = (path: string, akar: string) => path === akar || path.startsWith(`${a
 const diOperator = (path: string) => OPERATOR.some((a) => di(path, a));
 
 /* `packages/*` ikut: penulis penagihan bersama kini di `@sai/platform/billing`. */
-const semua = [...berkasTs("src"), ...berkasTs("packages")];
+const semua = [...berkasTs("src"), ...berkasTs("packages"), ...berkasTs("apps")];
 const imporPerBerkas = new Map(
   semua.map((f) => [f, imporDari(readFileSync(join(AKAR, f), "utf8"), f)])
 );
@@ -128,20 +128,20 @@ describe("arah dependensi konsol operator", () => {
 
   it("pengurai impor mengenali setiap bentuk, dan mengabaikan komentar", () => {
     const contoh = [
-      'import { a } from "@/lib/operator/guard";',
+      'import { a } from "@op/lib/operator/guard";',
       'import type { B } from "../operator/session";',
-      'export { c } from "@/lib/operator/store";',
-      'const d = await import("@/lib/operator/totp");',
-      'import "@/lib/operator/audit";',
-      '// import { x } from "@/lib/operator/nav";',
-      '/* import { y } from "@/lib/operator/attention"; */',
+      'export { c } from "@op/lib/operator/store";',
+      'const d = await import("@op/lib/operator/totp");',
+      'import "@op/lib/operator/audit";',
+      '// import { x } from "@op/lib/operator/nav";',
+      '/* import { y } from "@op/lib/operator/attention"; */',
     ].join("\n");
-    expect(imporDari(contoh, "src/lib/billing/contoh.ts")).toEqual([
-      "src/lib/operator/guard",
-      "src/lib/operator/session",
-      "src/lib/operator/store",
-      "src/lib/operator/totp",
-      "src/lib/operator/audit",
+    expect(imporDari(contoh, "apps/operator/src/lib/billing/contoh.ts")).toEqual([
+      "apps/operator/src/lib/operator/guard",
+      "apps/operator/src/lib/operator/session",
+      "apps/operator/src/lib/operator/store",
+      "apps/operator/src/lib/operator/totp",
+      "apps/operator/src/lib/operator/audit",
     ]);
   });
 
@@ -175,7 +175,7 @@ describe("arah dependensi konsol operator", () => {
     for (const [f, impor] of imporPerBerkas) {
       if (!diOperator(f)) continue;
       for (const t of impor) {
-        if (di(t, "src/app") && !di(t, "src/app/(app)/(operator)")) pelanggar.push(`${f} → ${t}`);
+        if (di(t, "src/app") && !di(t, "apps/operator/src/app/(operator)")) pelanggar.push(`${f} → ${t}`);
       }
     }
     expect(pelanggar).toEqual([]);
@@ -195,6 +195,20 @@ describe("arah dependensi konsol operator", () => {
       pelanggar,
       "Komponen yang dipakai dua sisi tinggal di components/ui (contoh: ui/stat-card.tsx)."
     ).toEqual([]);
+  });
+
+  it("4. aplikasi operator tidak mengimpor APA PUN dari `src/` (aplikasi pelanggan)", () => {
+    /* Sejak monorepo Fase 3d konsolnya aplikasi Next tersendiri. Yang dipakai
+       bersama hidup di `packages/*`; satu impor ke `src/` berarti build
+       operator diam-diam membundel kode pelanggan — dan `@/` di dalam
+       `apps/operator` bahkan tidak terselesaikan oleh tsconfig-nya sendiri. */
+    const pelanggar: string[] = [];
+    for (const [f, impor] of imporPerBerkas) {
+      if (!di(f, "apps/operator")) continue;
+      for (const t of impor) if (di(t, "src")) pelanggar.push(`${f} → ${t}`);
+    }
+    expect(semua.filter((f) => di(f, "apps/operator")).length).toBeGreaterThan(50);
+    expect(pelanggar).toEqual([]);
   });
 
   it("logika penagihan bersama tidak bergantung balik pada operator", () => {

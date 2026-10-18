@@ -17,7 +17,7 @@
 import { createInterface } from "node:readline";
 import { hash } from "bcrypt";
 
-import { randomTotpSecret, totpAt } from "../src/lib/operator/totp";
+import { randomTotpSecret, totpAt } from "../apps/operator/src/lib/operator/totp";
 
 function askHidden(question: string): Promise<string> {
   return new Promise((resolve) => {

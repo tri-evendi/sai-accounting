@@ -304,16 +304,24 @@ describe("penjaga halaman & API benar-benar memakai gerbang modul", () => {
       "isModuleActiveFor(",
       "currentCompanyId(",
     ];
-    const roots = ["app/(app)/(auth)", "app/(app)/(tenant)", "app/(app)/(operator)", "app/(app)/(docs)"];
+    /* Jalur relatif AKAR repo. Konsol operator pindah ke `apps/operator` di
+       monorepo Fase 3d; akar yang hilang kini MERAH, bukan dilewati — akar
+       yang dilewati diam-diam adalah penjaga yang berhenti menjaga. */
+    const roots = [
+      "src/app/(app)/(auth)",
+      "src/app/(app)/(tenant)",
+      "apps/operator/src/app/(operator)",
+      "src/app/(app)/(docs)",
+    ];
     const offenders: string[] = [];
 
     for (const root of roots) {
-      const dir = join(__dirname, "..", "src", root);
-      if (!existsSync(dir)) continue;
+      const dir = join(__dirname, "..", root);
+      expect(existsSync(dir), `${root} tidak ada — perbarui daftar akar`).toBe(true);
       for (const file of readdirSync(dir, { recursive: true, encoding: "utf8" })) {
         if (!file.endsWith(".tsx") && !file.endsWith(".ts")) continue;
         const rel = join(root, file);
-        const src = read(rel);
+        const src = readFileSync(join(__dirname, "..", rel), "utf8");
         // Baris komentar dibuang dulu: berkas ini justru MENJELASKAN jebakannya
         // dengan menyebut nama fungsinya, dan penjelasan bukan pemanggilan.
         const code = src

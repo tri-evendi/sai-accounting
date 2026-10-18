@@ -753,7 +753,7 @@ describe("label tombol destruktif (#219)", () => {
     // Tanpa baris ini, menghapus override-nya meninggalkan seluruh describe
     // ini hijau sambil mengukur warna yang tidak pernah sampai ke layar.
     const src = readFileSync(
-      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      join(__dirname, "..", "packages", "ui", "src", "providers", "antd-provider.tsx"),
       "utf8"
     );
     expect(src).toMatch(
@@ -776,7 +776,7 @@ describe("label tombol destruktif (#219)", () => {
      * Angkanya dikunci supaya ia tidak diam-diam memburuk.
      */
     const src = readFileSync(
-      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      join(__dirname, "..", "packages", "ui", "src", "providers", "antd-provider.tsx"),
       "utf8"
     );
     const globalBlock = src.slice(src.indexOf("token: {"), src.indexOf("components: {"));
@@ -1094,7 +1094,7 @@ describe("chrome di atas permukaan gelap permanen (#205)", () => {
     // Angka di atas hanya berlaku kalau tokennya memang dioper. Tanpa baris
     // ini, menghapus override-nya meninggalkan seluruh describe ini hijau.
     const src = readFileSync(
-      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      join(__dirname, "..", "packages", "ui", "src", "providers", "antd-provider.tsx"),
       "utf8"
     );
     expect(src).toMatch(/Menu:\s*\{\s*darkItemSelectedBg:\s*PRIMARY_BUTTON_DARK\.colorPrimary\s*\}/);
@@ -1191,7 +1191,7 @@ describe("jenjang permukaan (#266)", () => {
      * rasio di berkas token — yang memang harus diturunkan ulang.
      */
     const src = readFileSync(
-      join(__dirname, "..", "src", "components", "providers", "antd-provider.tsx"),
+      join(__dirname, "..", "packages", "ui", "src", "providers", "antd-provider.tsx"),
       "utf8"
     );
     for (const surface of ["colorBgLayout", "colorBgContainer", "colorBgElevated"]) {
@@ -1349,7 +1349,7 @@ describe("jenjang permukaan (#266)", () => {
  */
 const readSrc = (relative: string) => readFileSync(join(__dirname, "..", relative), "utf8");
 
-const PROVIDER = "src/components/providers/antd-provider.tsx";
+const PROVIDER = "packages/ui/src/providers/antd-provider.tsx";
 const TABLE_PRIMITIVE = "packages/ui/src/components/table.tsx";
 const STATIC_TABLE = "packages/ui/src/components/static-table.tsx";
 const CARD = "packages/ui/src/components/card.tsx";

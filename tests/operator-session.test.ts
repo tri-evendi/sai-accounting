@@ -12,7 +12,7 @@ import {
   OPERATOR_SESSION_TTL_MS,
   issueOperatorToken,
   verifyOperatorToken,
-} from "@/lib/operator/session";
+} from "@op/lib/operator/session";
 
 const ENV = { OPERATOR_SESSION_SECRET: "rahasia-uji-yang-panjangnya-cukup-32-karakter!" };
 const NOW = new Date("2026-08-02T10:00:00Z");

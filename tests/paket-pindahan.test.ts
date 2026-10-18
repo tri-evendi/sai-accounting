@@ -27,6 +27,8 @@ const AKAR = process.cwd();
 
 /** [jalur lama, jalur baru] relatif akar repo. */
 const PINDAH: ReadonlyArray<readonly [string, string]> = [
+  ["src/components/providers/antd-provider.tsx", "packages/ui/src/providers/antd-provider.tsx"],
+  ["src/components/providers/root-document.tsx", "packages/ui/src/providers/root-document.tsx"],
   ["src/components/ui/alert-dialog.tsx", "packages/ui/src/components/alert-dialog.tsx"],
   ["src/components/ui/app-link.tsx", "packages/ui/src/components/app-link.tsx"],
   ["src/components/ui/badge.tsx", "packages/ui/src/components/badge.tsx"],
@@ -99,6 +101,7 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/lib/membership-upsert.ts", "packages/platform/src/membership-upsert.ts"],
   ["src/lib/migration-manifest.ts", "packages/core/src/migration-manifest.ts"],
   ["src/lib/money-format.ts", "packages/core/src/money-format.ts"],
+  ["src/lib/operator/plane.ts", "packages/core/src/operator-plane.ts"],
   ["src/lib/password-reset-store.ts", "packages/platform/src/password-reset-store.ts"],
   ["src/lib/password-reset.ts", "packages/core/src/password-reset.ts"],
   ["src/lib/payment-gateway.ts", "packages/billing/src/payment-gateway.ts"],
@@ -132,10 +135,14 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/lib/tenant-routes.ts", "packages/core/src/tenant-routes.ts"],
   ["src/lib/tenant-slug.ts", "packages/platform/src/tenant-slug.ts"],
   ["src/lib/tenant-state.ts", "packages/platform/src/tenant-state.ts"],
+  ["src/lib/theme/actions.ts", "packages/ui/src/theme/actions.ts"],
   ["src/lib/theme/antd-tokens.ts", "packages/ui/src/theme/antd-tokens.ts"],
+  ["src/lib/theme/client.tsx", "packages/ui/src/theme/client.tsx"],
   ["src/lib/theme/config.ts", "packages/ui/src/theme/config.ts"],
+  ["src/lib/theme/server.ts", "packages/ui/src/theme/server.ts"],
   ["src/lib/theme/tone-recipe.ts", "packages/ui/src/theme/tone-recipe.ts"],
   ["src/lib/utils.ts", "packages/core/src/utils.ts"],
+  ["src/lib/viewport.ts", "packages/ui/src/viewport.ts"],
 ];
 
 const tanpaEkstensi = (p: string) => p.replace(/\.(tsx?|js)$/, "");

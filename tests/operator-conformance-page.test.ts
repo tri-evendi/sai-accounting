@@ -22,10 +22,10 @@ import enDict from "@sai/core/i18n/dictionaries/en.json";
 import zhDict from "@sai/core/i18n/dictionaries/zh.json";
 
 const baca = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
-const HALAMAN_PATH = "src/app/(app)/(operator)/operator/conformance/page.tsx";
+const HALAMAN_PATH = "apps/operator/src/app/(operator)/operator/conformance/page.tsx";
 const HALAMAN = baca(HALAMAN_PATH);
-const NAV = baca("src/lib/operator/nav.tsx");
-const STORE = baca("src/lib/operator/store.ts");
+const NAV = baca("apps/operator/src/lib/operator/nav.tsx");
+const STORE = baca("apps/operator/src/lib/operator/store.ts");
 
 describe("halaman ada di bidang operator, dan dijaga", () => {
   it("berkasnya ada di grup rute `(operator)`", () => {

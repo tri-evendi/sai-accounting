@@ -41,7 +41,7 @@ import { Segmented } from "antd";
 import { DesktopOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import type { IconComponent } from "@sai/ui/icons";
 import { useT } from "@sai/core/i18n/client";
-import { useTheme } from "@/lib/theme/client";
+import { useTheme } from "@sai/ui/theme/client";
 import { THEMES, type Theme } from "@sai/ui/theme/config";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 

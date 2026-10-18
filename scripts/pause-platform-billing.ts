@@ -80,7 +80,7 @@ import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
-import { setTenantSuspension } from "../src/lib/operator/writes";
+import { setTenantSuspension } from "../apps/operator/src/lib/operator/writes";
 import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {

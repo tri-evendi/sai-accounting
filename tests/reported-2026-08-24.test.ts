@@ -117,7 +117,7 @@ describe("ganti bahasa selamat dari tab lama sesudah deploy", () => {
        render ulang), sementara tema sudah diterapkan di klien sebelum
        cookienya ditulis. Memuat ulang di sana hanya akan membuang isian
        formulir tanpa alasan. */
-    const theme = src("lib", "theme", "client.tsx");
+    const theme = readFileSync(join(__dirname, "..", "packages", "ui", "src", "theme", "client.tsx"), "utf8");
     expect(theme).toMatch(/persistTheme\(next\)\.catch/);
     expect(theme).not.toMatch(/location\.reload/);
   });

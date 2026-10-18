@@ -1,0 +1,18 @@
+{
+  "name": "@sai/app-operator",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Konsol operator SAI sebagai aplikasi Next.js tersendiri (monorepo Fase 3d). Versi yang dicetak diambil dari package.json AKAR repo, bukan dari sini — kedua aplikasi selalu digelar dari SHA yang sama.",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@sai/billing": "workspace:*",
+    "@sai/core": "workspace:*",
+    "@sai/db": "workspace:*",
+    "@sai/platform": "workspace:*",
+    "@sai/ui": "workspace:*"
+  }
+}

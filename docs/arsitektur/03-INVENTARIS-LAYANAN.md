@@ -38,8 +38,10 @@ ke **dua** proses di antaranya.
 Plus **`traefik`**, berbagi dengan lima aplikasi lain di mesin ini — **bukan**
 bagian dari `docker-compose.yml` repo ini.
 
-Dan hanya **tiga image** menopang semuanya: `app-operator` memakai image yang
-SAMA dengan `app-customer`, sementara `job-scheduler` + `job-conformance`
+Dan **empat image** menopang semuanya (sejak monorepo Fase 4, 18 Okt 2026):
+`app-customer` (`runner`), `app-operator` (`runner-operator` — aplikasi
+`apps/operator` tersendiri; sebelumnya ia memakai image yang SAMA dengan
+`app-customer`), `migrator`, dan `backup`. `job-scheduler` + `job-conformance`
 **sengaja memakai ulang** image `migrator`.
 
 ### ⚠ Tujuh PERMUKAAN, dua PROSES
@@ -165,16 +167,16 @@ lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 | | |
 |---|---|
-| **Image** | **SAMA** dengan `app-customer` — tidak ada image keempat |
-| **Perintah** | `node server.js` |
+| **Image** | `sai-accounting-operator` (target `runner-operator`, aplikasi `apps/operator`) — **sendiri** sejak monorepo Fase 4 (18 Okt 2026); tag `sha-` WAJIB sama dengan `app-customer` |
+| **Perintah** | `node apps/operator/server.js` |
 | **Port** | `3000` — `expose` |
 | **Jaringan** | `traefik_default` + `internal` |
 | **Domain** | `OPERATOR_DOMAIN` **saja**; tidak punya router `APP_DOMAIN` |
 | **Bergantung pada** | `db` (healthy), `migrate` (selesai sukses) |
-| **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — lolos sebagai jalur publik karena `127.0.0.1` ≠ `OPERATOR_HOST` |
+| **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` — probe konsol sendiri: hanya basis data kendali yang memutuskan 503, platform dilaporkan; dilayani di host mana pun |
 | **Volume** | `audit:/app/data/audit` (RW) — **TANPA `documents`** |
 
-**Tanggung jawab:** 18 halaman konsol penyedia (+ 1 rute unduhan) — tenant, audit (operator + jejak tenant), cadangan & versi skema, akun operator, permintaan hapus, katalog paket, e-Faktur platform, pengumuman status, surel,
+**Tanggung jawab:** 19 halaman konsol penyedia (+ 1 rute unduhan) — tenant, audit (operator + jejak tenant), cadangan & versi skema, akun operator, permintaan hapus, katalog paket, e-Faktur platform, pengumuman status, surel,
 penjadwal, **kesesuaian data**, isi situs, pengaturan, rekonsiliasi.
 
 **Kenapa hanya volume `audit` — dan kenapa ia akan dicabut.** Sampai
@@ -182,20 +184,26 @@ migration platform 0002 (17 Okt 2026) bidang operator menulis
 `data/audit/operators/audit.jsonl`. Kini jejaknya di tabel
 `sai_platform.operator_audit_logs`; volume masih dipasang hanya sampai
 `migrate:operator-audit --apply` memindahkan berkas lama di produksi, lalu bisa
-dicabut — syarat dok 14 §5 sebelum konsol menjadi aplikasi sendiri. Ia **tidak pernah** menyentuh `data/documents` — diperiksa di
-seluruh `app/(app)/(operator)` dan `lib/operator/` saat pemisahan dibuat. Tidak
+dicabut — berkas lama SUDAH dipindahkan di produksi pada 17 Okt 2026 (17 entri), jadi
+baris volumenya kini sisa yang aman dicabut. Ia **tidak pernah** menyentuh `data/documents` — diperiksa di
+seluruh `app/(app)/(operator)` dan `lib/operator/` (kini di `apps/operator/src/`) saat pemisahan dibuat. Tidak
 memasang volume yang tidak dibutuhkan adalah **pengurangan hak**, bukan
 penghematan: berkas dokumen setiap pelanggan berada di luar jangkauan proses
 konsol operator.
 
-**Apa yang pemisahan ini TIDAK berikan.** Image-nya sama, jadi ia **tetap
-memuat seluruh kode pelanggan** — grup rute Next.js tidak bisa dieksklusi saat
-build. Ini isolasi **proses**, bukan eliminasi kode.
+**Eliminasi kode, bukan hanya isolasi proses (sejak monorepo Fase 3d + 4).**
+Sampai 18 Okt 2026 image-nya SAMA dengan `app-customer` dan memuat seluruh
+kode pelanggan — grup rute Next.js tidak bisa dieksklusi saat build. Kini
+konsol adalah aplikasi Next tersendiri: image operator tidak memuat satu pun
+halaman buku (keluaran standalone 69 MB vs 299 MB), dan image pelanggan tidak
+memuat satu pun rute `/operator` (`next build` mencatat nol). Yang dipakai
+bersama hidup di `packages/*` ([dok 02 §7](./02-ARSITEKTUR.md)).
 
-⚠ **Jangan beri container ini router `APP_DOMAIN`.** Dengan `OPERATOR_HOST`
-diset, `decideOperatorRouting` menjawab `customer` untuk Host yang tak dikenal
-— jadi label `APP_DOMAIN` akan membuatnya ikut melayani rute pelanggan dan
-membatalkan pemisahan ini.
+⚠ **Jangan beri container ini router `APP_DOMAIN`.** Sejak Fase 3d hal itu tidak
+lagi membatalkan pemisahan — aplikasinya tidak punya rute pelanggan, dan
+`apps/operator/src/proxy.ts` menjawab 404 untuk setiap host selain
+`OPERATOR_HOST` — tetapi setiap pelanggan yang diarahkan ke sana akan menerima
+404 untuk seluruh aplikasinya.
 
 Rinciannya: [dok 10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md).
 

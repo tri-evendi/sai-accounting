@@ -16,7 +16,7 @@ function berkasTs(dir: string): string[] {
   for (const e of readdirSync(join(AKAR, dir), { withFileTypes: true })) {
     const p = `${dir}/${e.name}`;
     if (e.isDirectory()) {
-      if (e.name === "generated" || e.name === "node_modules") continue;
+      if (e.name === "generated" || e.name === "node_modules" || e.name === ".next") continue;
       keluar.push(...berkasTs(p));
     } else if (/\.tsx?$/.test(e.name)) keluar.push(p);
   }
@@ -26,7 +26,7 @@ function berkasTs(dir: string): string[] {
 const tanpaKomentar = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 describe("setiap penulis langganan mencatat peristiwanya", () => {
-  const semua = [...berkasTs("src"), ...berkasTs("packages"), ...berkasTs("scripts")];
+  const semua = [...berkasTs("src"), ...berkasTs("packages"), ...berkasTs("apps"), ...berkasTs("scripts")];
   const penulis = semua
     .map((f) => {
       const isi = tanpaKomentar(readFileSync(join(AKAR, f), "utf8"));
@@ -43,7 +43,7 @@ describe("setiap penulis langganan mencatat peristiwanya", () => {
       expect.arrayContaining([
         "packages/platform/src/payment-webhook.ts",
         "packages/platform/src/billing/change-tenant-plan.ts",
-        "src/lib/operator/writes.ts",
+        "apps/operator/src/lib/operator/writes.ts",
         "scripts/subscription-scheduler.ts",
       ])
     );

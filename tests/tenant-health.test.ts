@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { attributeConformance, tenantHealthSignals, BOOK_IDLE_DAYS } from "@/lib/operator/tenant-health";
+import { attributeConformance, tenantHealthSignals, BOOK_IDLE_DAYS } from "@op/lib/operator/tenant-health";
 
 const NOW = new Date("2026-10-17T00:00:00Z");
 const DAY = 24 * 60 * 60 * 1000;

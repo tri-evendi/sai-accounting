@@ -39,7 +39,7 @@ const SRC = path.join(process.cwd(), "src");
 /** Berkas yang BOLEH menyentuh `data/audit` — beserta alasannya. */
 const ALLOWED = new Set([
   // Jejak BIDANG OPERATOR — di luar ketenantan pelanggan (#154/#137).
-  path.join(SRC, "lib", "operator", "audit.ts"),
+  path.join(SRC, "..", "apps", "operator", "src", "lib", "operator", "audit.ts"),
 ]);
 
 async function sourceFiles(dir: string): Promise<string[]> {
@@ -48,7 +48,7 @@ async function sourceFiles(dir: string): Promise<string[]> {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === "generated" || entry.name === "node_modules") continue;
+      if (entry.name === "generated" || entry.name === "node_modules" || entry.name === ".next") continue;
       found.push(...(await sourceFiles(full)));
     } else if (/\.(ts|tsx|mjs)$/.test(entry.name)) {
       found.push(full);

@@ -29,12 +29,12 @@
  */
 import type { Metadata } from "next";
 
-export { viewport } from "@/lib/viewport";
+export { viewport } from "@sai/ui/viewport";
 
-import { RootDocument } from "@/components/providers/root-document";
+import { RootDocument } from "@sai/ui/providers/root-document";
 import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
-import { getTheme } from "@/lib/theme/server";
+import { getTheme } from "@sai/ui/theme/server";
 
 /* Cadangan bila sebuah halaman pemasaran lupa metadata-nya sendiri; `/` dan
    `/pricing` masing-masing menimpanya dengan judul, deskripsi & kanoniknya. */

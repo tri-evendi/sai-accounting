@@ -1,11 +1,11 @@
-# SAI LuckyHands — fronted by Traefik (same convention as movin-partner /
-# wedding-movin). Traefik terminates TLS and routes ${APP_DOMAIN} to the app
-# over the shared external `traefik` network; the app is NOT published on the
-# host directly. PostgreSQL (`pg`, via `pgbouncer`) + one-shot Prisma migrations
+# SAI Accounting — fronted by Traefik (same convention as movin-partner /
+# wedding-movin). Traefik terminates TLS and routes ${APP_DOMAIN} to
+# app-customer and ${OPERATOR_DOMAIN} to app-operator over the shared external
+# `traefik` network; neither app is published on the host directly. PostgreSQL (`pg`, via `pgbouncer`) + one-shot Prisma migrations
 # run on a private network. `db` (MariaDB) is a read-only fallback until #636.
 #
-#   cp .env.docker.example .env      # set APP_DOMAIN, AUTH_*, DB_* / DATABASE_URL
-#   docker compose up --build -d
+# Images are built by CI and pulled from GHCR; never build on the server.
+# Release steps: PRODUCTION.md §Updates.
 #
 # `.env` is auto-loaded by Compose for the ${...} interpolation below and
 # injected at run time via env_file. Requires an existing Traefik instance
@@ -178,7 +178,7 @@ services:
   # menyembuhkan yang tertinggal — sedangkan loop yang mati karena satu galat
   # mengembalikan kita persis ke kegagalan senyap yang layanan ini tutup.
   # Kegagalannya tetap terbaca: tercatat di `scheduler_runs` (status `error`),
-  # tampil di /operator/scheduler, dan terbaca `prove-scheduler-alive`.
+  # tampil di konsol `/scheduler`, dan terbaca `prove-scheduler-alive`.
   #
   # Tidur 3600 detik, BUKAN cron di dalam container: satu proses shell yang
   # tidur tidak memakan apa pun, dan menambah daemon cron ke image berarti satu
@@ -446,28 +446,15 @@ services:
           sleep 86400
         done
 
-  # ══ DUA BIDANG, DUA CONTAINER, SATU IMAGE ═══════════════════════════════════
+  # ── DUA APLIKASI, DUA IMAGE ────────────────────────────────────────────────
   #
-  # Sampai pemisahan ini, `web` adalah SATU container yang melayani ketujuh
-  # permukaan sekaligus — pemasaran, autentikasi, panel tenant, buku besar,
-  # dokumentasi, wisaya, DAN konsol operator. Yang memisahkan bidang operator
-  # hanyalah pemeriksaan HOST di dalam aplikasi (`lib/operator/plane.ts`).
-  #
-  # Pemeriksaan itu TETAP menjadi batas keamanannya dan tidak berubah sedikit
-  # pun. Yang ditambahkan di sini adalah batas KEDUA yang berbeda jenis: batas
-  # PROSES. Kebocoran memori, crash, atau OOM di permukaan pelanggan tidak lagi
-  # menjatuhkan konsol operator, dan sebaliknya; log keduanya terpisah; dan
-  # keduanya bisa di-restart sendiri-sendiri.
-  #
-  # IMAGE-nya SAMA. Tidak ada image baru, tidak ada build tambahan, dan tidak
-  # satu baris kode pun berubah — `decideOperatorRouting` sudah memutuskan
-  # bidang murni dari env + Host header, jadi yang membedakan kedua container
-  # hanyalah `OPERATOR_HOST` dan label Traefik-nya.
-  #
-  # ⚠ YANG PEMISAHAN INI TIDAK BERIKAN, supaya tidak ada yang keliru
-  # mengandalkannya: image operator TETAP MEMUAT SELURUH KODE PELANGGAN. Grup
-  # rute Next.js tidak bisa dieksklusi saat build, jadi ini isolasi PROSES,
-  # bukan eliminasi kode. Satu kerentanan di dependensi tetap ada di keduanya.
+  # Aplikasi pelanggan (`src/`, image `sai-accounting`) dan konsol operator
+  # (`apps/operator`, image `sai-accounting-operator`) adalah dua aplikasi Next
+  # yang dibangun dari commit yang sama dan ditarik dengan `SAI_TAG` yang sama;
+  # keduanya menulis basis data yang sama, jadi versi skemanya harus satu.
+  # Bidangnya ditentukan host (`packages/core/src/operator-plane.ts`): image
+  # pelanggan tidak memuat rute konsol, dan konsol menjawab 404 untuk host
+  # selain `OPERATOR_HOST`. Lihat docs/arsitektur/14-RENCANA-MONOREPO.md.
   #
   # ⚠ NAMA SERVICE TRAEFIK HARUS BERBEDA (`sai-app` vs `sai-ops`). Kalau
   # keduanya memakai nama service yang sama, Traefik menganggapnya SATU service
@@ -641,14 +628,10 @@ services:
     volumes:
       # HANYA `audit` — dan itu hasil pemeriksaan, bukan dugaan.
       #
-      # Sejak migration platform 0002 jejak operator tinggal di tabel
-      # `operator_audit_logs`, BUKAN di volume ini. Volume masih dipasang
-      # sampai `migrate:operator-audit --apply` memindahkan
-      # `data/audit/operators/audit.jsonl` di produksi; sesudah itu ia bisa
-      # dicabut — syarat dok 14 §5 sebelum konsol menjadi aplikasi sendiri.
-      # Ia TIDAK PERNAH menyentuh `data/documents`
-      # — diperiksa di seluruh `app/(app)/(operator)` dan `lib/operator/`
-      # saat pemisahan ini dibuat.
+      # Jejak operator tinggal di tabel `operator_audit_logs` sejak migration
+      # platform 0002, dan berkas lamanya sudah dipindahkan di produksi
+      # (17 Okt 2026). Volume ini tinggal arsip `.dipindahkan` dan aman dicabut.
+      # Konsol tidak pernah menyentuh `data/documents`.
       #
       # Tidak memasang volume yang tidak dibutuhkan adalah pengurangan HAK,
       # bukan penghematan: berkas dokumen setiap pelanggan kini berada di luar

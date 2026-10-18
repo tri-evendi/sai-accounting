@@ -18,7 +18,7 @@ import {
   type OperasiVarians,
 } from "@/lib/manufacturing/variance";
 import { variansPerintahProduksi } from "@/lib/manufacturing/variance-report";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 
 const KOMPONEN: KomponenVarians[] = [
   // Boros 50 kg pada harga 45.000.

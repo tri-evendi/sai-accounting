@@ -1,18 +1,18 @@
 # Standar Database & Penamaan — SAI Accounting
 
-> **Multi-perusahaan (issue #104).** Skema di `prisma/schema.prisma` adalah skema
+> **Multi-perusahaan (issue #104).** Skema di `packages/db/prisma/company/schema.prisma` adalah skema
 > **satu perusahaan**, dan sejak #104 ia digandakan: satu basis data per PT.
 > Pengguna/perusahaan/keanggotaan hidup di skema terpisah
-> (`prisma/control/schema.prisma`). Aturan lintas-basis-data ada di
+> (`packages/db/prisma/control/schema.prisma`). Aturan lintas-basis-data ada di
 > `docs/MULTI-COMPANY.md` — terutama: **tidak ada FK ke `users` dari basis data
 > perusahaan**, dan migration diterapkan dengan `bun run db:migrate:all`.
 >
 > **Basis data platform (issue #137).** Sejak #137 ada skema KETIGA:
-> `prisma/platform/schema.prisma` → basis data `sai_platform` (langganan &
+> `packages/db/prisma/platform/schema.prisma` → basis data `sai_platform` (langganan &
 > penagihan SaaS — data bisnis KAMI, bukan buku pelanggan). Ia **opsional**
 > untuk pemasangan multi-PT satu grup usaha. Aturan operasionalnya di §11.
 
-Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). Tujuan: konsisten, aman untuk data keuangan, dan mudah dipelihara. Standar ini mengodifikasikan konvensi yang **sudah** dipakai di `prisma/schema.prisma` + menutup celah.
+Aturan **wajib** untuk setiap perubahan skema (model Prisma, migration, query). Tujuan: konsisten, aman untuk data keuangan, dan mudah dipelihara. Standar ini mengodifikasikan konvensi yang **sudah** dipakai di `packages/db/prisma/company/schema.prisma` + menutup celah.
 
 > Ringkas: **Bahasa Inggris · `snake_case` di DB · tabel jamak · uang `Decimal` (jangan Float) · setiap tabel punya `id` + `created_at` + `updated_at`.**
 
@@ -165,8 +165,8 @@ Aturannya:
 ---
 
 ## 8. Prisma (konvensi teknis)
-- Generator: `provider = "prisma-client"`, output `src/generated/prisma`. Datasource `postgresql`, **tanpa `url`** (koneksi via `@prisma/adapter-pg`, dipilih dari skema URL di `packages/db/src/engine.ts`). Klien yang dibangkitkan **terikat dialek `provider`**: image ini tidak bisa bicara ke `mysql://`.
-- Import client **selalu**: `import { prisma } from "@/lib/prisma"` (singleton). Class dari `@/generated/prisma/client`.
+- Generator: `provider = "prisma-client"`, output `packages/db/generated/company`. Datasource `postgresql`, **tanpa `url`** (koneksi via `@prisma/adapter-pg`, dipilih dari skema URL di `packages/db/src/engine.ts`). Klien yang dibangkitkan **terikat dialek `provider`**: image ini tidak bisa bicara ke `mysql://`.
+- Import client **selalu**: `import { prisma } from "@/lib/prisma"` (singleton). Class dari `@sai/db/client/company`.
 - Field opsional pakai `?`; default via `@default(...)`.
 
 ---
@@ -215,8 +215,8 @@ Lapisan ketiga di samping kendali dan perusahaan (rancangan & alasannya:
 `docs/MULTI-TENANT.md` §4A). Isinya `plans`, `subscriptions`, `payments`,
 `platform_invoices`, `usage_counters`, `scheduler_runs`, `mail_settings` —
 **data bisnis penyedia SaaS**, nol angka akuntansi pelanggan. Skema:
-`prisma/platform/schema.prisma` → klien
-`src/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien runtime
+`packages/db/prisma/platform/schema.prisma` → klien
+`packages/db/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien runtime
 `src/lib/platform-db.ts`.
 
 **Menyediakannya (opsional — pemasangan multi-PT satu grup usaha tidak butuh):**

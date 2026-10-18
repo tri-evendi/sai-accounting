@@ -9,7 +9,7 @@
  * them here cannot be bypassed by adding another API route.
  */
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@sai/db/client/company";
 import { assertPeriodOpen } from "@/lib/period";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
 

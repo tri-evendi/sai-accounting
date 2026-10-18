@@ -25,8 +25,8 @@
  * lahir dari masa tenggang yang habis (penjadwal #140).
  */
 
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
-import type { PrismaClient as ControlClient } from "@/generated/control/client";
+import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 import {
   mapTransactionStatus,
   type MidtransNotification,

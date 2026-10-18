@@ -27,7 +27,7 @@
  * audit ditulis pemanggil SETELAH transaksi sukses, karena log berkas tidak ikut
  * di-rollback. Tidak ada aturan akuntansi baru satu pun di file ini.
  */
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { invoiceSubtotal, type InvoiceInput } from "@/lib/validations/invoice";
 import type { DeliveryOrderInput } from "@/lib/validations/delivery-order";
 import type { SupplierTransactionInput } from "@/lib/validations/finance";

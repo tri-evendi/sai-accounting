@@ -28,7 +28,7 @@ import {
   pullInvoiceLines,
 } from "@/lib/document-chain";
 import { invoiceSchema } from "@/lib/validations/invoice";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 
 // A contract for 6.000 kg Arabika @ 90.000/kg and 1.000 kg Robusta @ 60.000/kg.
 const CONTRACT_LINES = [

@@ -104,7 +104,7 @@ export function dateIn(today: Date, monthsAgo: number, day: number): Date {
  * Versi pertama pagar ini membaca `type: { not: "opening" }` — dan "opening"
  * BUKAN nilai yang pernah ditulis siapa pun. `journals.type` hanya mengenal
  * `general, sales, purchase, cash, adjustment, reversal` (lihat komentar
- * kolomnya di `prisma/schema.prisma`); wisaya menulis jurnal pembukanya sebagai
+ * kolomnya di `packages/db/prisma/company/schema.prisma`); wisaya menulis jurnal pembukanya sebagai
  * `type = "general"` dengan `source_type = "opening_balance"`. Penanda yang SAH
  * memang yang kedua — `opening-balance.ts` menyebutnya "the authoritative one".
  *

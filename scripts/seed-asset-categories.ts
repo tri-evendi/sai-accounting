@@ -23,8 +23,8 @@
  */
 import "dotenv/config";
 
-import { PrismaClient as ControlClient } from "../src/generated/control/client.js";
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
+import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
 
 import { seedDefaultAssetCategories } from "../src/lib/asset-categories";

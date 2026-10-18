@@ -17,7 +17,7 @@
  *
  * Tanpa `server-only`, klien disuntik — penulis terbesarnya skrip.
  */
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
+import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 
 export const SUBSCRIPTION_EVENT_KINDS = [
   /** Langganan lahir (pendaftaran, adopsi, ganti paket tanpa langganan aktif). */

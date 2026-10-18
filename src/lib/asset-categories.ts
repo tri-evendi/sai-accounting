@@ -13,7 +13,7 @@
  * Prisma dan tidak menyentuh permintaan, sesi, maupun rahasia. Penandanya milik
  * modul yang tidak boleh sampai ke bundel klien; ini bukan salah satunya.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 

@@ -44,7 +44,7 @@ untuk kontrak; kartu paket dalam aplikasi pun tidak memajangnya.
 modul (`BUSINESS_MODULES`), tiga bahasa antarmuka, dan semua mata uang — dan
 halaman harga menyatakannya satu kali untuk semua paket (`pricingAllNote`).
 Model datanya memang hanya punya `max_companies` & `max_users`
-(`prisma/platform/schema.prisma`); menambah gerbang fitur per paket berarti
+(`packages/db/prisma/platform/schema.prisma`); menambah gerbang fitur per paket berarti
 kolom baru, penjaga baru di ±35 resource izin, dan mengingkari kalimat yang
 sudah dipajang. Jangan.
 

@@ -36,7 +36,7 @@
  * Nothing in this file posts, values or reverses anything. A "pulled" faktur is
  * posted by the existing invoice rule, unchanged.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 import { round2 } from "@/lib/posting/rules";
 
 /** Type-only client (no `@/lib/prisma` singleton) so the pure half stays importable. */

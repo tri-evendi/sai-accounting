@@ -57,7 +57,7 @@ describe("kabel ke data", () => {
        pelanggaran doktrin #137. */
     expect(HALAMAN).toContain("conformanceRunsForOperator");
     expect(HALAMAN).not.toContain("platformDb");
-    expect(HALAMAN).not.toContain("@/generated/platform");
+    expect(HALAMAN).not.toContain("@sai/db/client/platform");
   });
 
   it("store-nya benar-benar ada, dan menelan galat jadi `null`", () => {

@@ -33,7 +33,7 @@ import { coaTemplateFor } from "@/lib/coa-template";
 import { seedDefaultMappings } from "@/lib/posting/mapping";
 import { seedDefaultAssetCategories } from "@/lib/asset-categories";
 import type { BusinessModule } from "@/lib/business-modules";
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 

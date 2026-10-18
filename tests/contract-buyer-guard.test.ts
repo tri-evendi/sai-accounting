@@ -12,7 +12,7 @@
  * Murni: tanpa DATABASE_URL, sikap yang sama dengan `document-chain.test.ts`.
  */
 import { describe, expect, it } from "vitest";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import {
   assertContractCustomerFitsInvoices,
   ContractBuyerMismatchError,

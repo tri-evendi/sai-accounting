@@ -25,9 +25,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const SKEMA = [
-  ["perusahaan", "prisma/schema.prisma"],
-  ["kendali", "prisma/control/schema.prisma"],
-  ["platform", "prisma/platform/schema.prisma"],
+  ["perusahaan", "packages/db/prisma/company/schema.prisma"],
+  ["kendali", "packages/db/prisma/control/schema.prisma"],
+  ["platform", "packages/db/prisma/platform/schema.prisma"],
 ] as const;
 
 interface Model {

@@ -10,7 +10,7 @@
  * row for that currency. So `ar_default` resolves to 110201 normally but to
  * 110203 (Piutang Usaha CNY) when posting a CNY document.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 
 /** Sentinel stored in `account_mappings.currency` for the currency-agnostic default. */
 export const ANY_CURRENCY = "any";

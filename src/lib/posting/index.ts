@@ -35,8 +35,8 @@
  * bypassed by adding another API route. See `approvalGate` below.
  */
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/generated/prisma/client";
-import type { Journal } from "@/generated/prisma/client";
+import { Prisma } from "@sai/db/client/company";
+import type { Journal } from "@sai/db/client/company";
 import { postJournal, reverseJournal, type JournalEntryInput } from "@/lib/ledger";
 import {
   MAPPING_KEYS,

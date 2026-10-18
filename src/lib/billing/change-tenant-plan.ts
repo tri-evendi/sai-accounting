@@ -34,8 +34,8 @@
  *     `server-only`); itu kewajiban pemanggil di proses Next.
  */
 
-import type { PrismaClient as PlatformClient } from "@/generated/platform/client";
-import type { PrismaClient as ControlClient } from "@/generated/control/client";
+import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { nextPeriod, tenantStatusForSubscription } from "@/lib/subscription-lifecycle";
 import type { SubscriptionStatus } from "@/lib/platform-constants";
 import { writeTenantAuditLog } from "@/lib/tenant-audit";

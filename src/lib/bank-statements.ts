@@ -12,7 +12,7 @@ import {
   type ReconItem,
   type ReconciliationSummary,
 } from "@/lib/reconciliation";
-import type { BankStatement, BankStatementLine, CashMovement } from "@/generated/prisma/client";
+import type { BankStatement, BankStatementLine, CashMovement } from "@sai/db/client/company";
 
 type Client = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 

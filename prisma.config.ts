@@ -4,7 +4,7 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: "packages/db/prisma/company/schema.prisma",
   migrations: {
     /*
      * == JALUR MIGRATION PINDAH KE PostgreSQL (15 Okt 2026) ==============

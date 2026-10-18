@@ -14,7 +14,7 @@
  * `bags × kg_per_bag` — not by whole bags. The whole line (bags + kg/bag) is kept
  * on the document; only the kg total drives the stock-out and the over-issue check.
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@sai/db/client/company";
 
 /** Type-only client (no `@/lib/prisma` singleton) so number-gen stays importable. */
 type Client = Prisma.TransactionClient | PrismaClient;

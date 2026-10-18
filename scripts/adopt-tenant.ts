@@ -39,8 +39,8 @@
 
 import "dotenv/config";
 import { readFile } from "node:fs/promises";
-import { PrismaClient } from "../src/generated/control/client.js";
-import { PrismaClient as PlatformClient } from "../src/generated/platform/client.js";
+import { PrismaClient } from "@sai/db/client/control";
+import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { buatAdapter } from "@sai/db/adapter";
 import {
   isFullAccessRole,

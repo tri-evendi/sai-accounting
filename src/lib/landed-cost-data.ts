@@ -24,7 +24,7 @@
  *    ke bulan yang sudah dikunci, lewat satu-satunya jalur yang tidak melewati
  *    penjaga periode.
  */
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { planLandedCost, type AdditionalCostBasis, type LandedCostPlan } from "@/lib/landed-cost";

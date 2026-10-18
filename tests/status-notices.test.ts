@@ -91,7 +91,7 @@ describe("kosakata & kalimat", () => {
   });
 
   it("model StatusNotice tidak punya kolom teks bebas", () => {
-    const schema = readFileSync(join(process.cwd(), "prisma/platform/schema.prisma"), "utf8");
+    const schema = readFileSync(join(process.cwd(), "packages/db/prisma/platform/schema.prisma"), "utf8");
     const model = schema.slice(schema.indexOf("model StatusNotice {"));
     const badan = model.slice(0, model.indexOf("\n}"));
     expect(badan).not.toMatch(/@db\.Text|title|body|message/);

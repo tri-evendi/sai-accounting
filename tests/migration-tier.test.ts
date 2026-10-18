@@ -32,9 +32,9 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(__dirname, "..");
 
 const TINGKAT = [
-  { nama: "perusahaan", migrasi: "prisma/migrations", skema: "prisma/schema.prisma" },
-  { nama: "kendali", migrasi: "prisma/control/migrations", skema: "prisma/control/schema.prisma" },
-  { nama: "platform", migrasi: "prisma/platform/migrations", skema: "prisma/platform/schema.prisma" },
+  { nama: "perusahaan", migrasi: "prisma/migrations", skema: "packages/db/prisma/company/schema.prisma" },
+  { nama: "kendali", migrasi: "prisma/control/migrations", skema: "packages/db/prisma/control/schema.prisma" },
+  { nama: "platform", migrasi: "prisma/platform/migrations", skema: "packages/db/prisma/platform/schema.prisma" },
 ] as const;
 
 /**

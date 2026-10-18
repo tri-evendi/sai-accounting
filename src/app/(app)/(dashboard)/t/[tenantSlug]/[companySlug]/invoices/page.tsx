@@ -39,7 +39,7 @@ import {
   sortableKeys,
   type SortSpec,
 } from "@/lib/table-sort";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { formatDateShort, parsePageParam } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination } from "@/components/ui/pagination";

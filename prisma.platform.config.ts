@@ -4,7 +4,7 @@
 // `prisma.control.config.ts` (basis data kendali). Tiga skema, tiga klien,
 // tiga folder migration — dijalankan lewat `--config`:
 //
-//   bun run db:generate:platform   → klien ke src/generated/platform
+//   bun run db:generate:platform   → klien ke packages/db/generated/platform
 //   bun run db:migrate:platform    → migrate deploy ke PLATFORM_DATABASE_URL
 //
 // `db:migrate:platform` dibungkus `scripts/migrate-platform.ts`: pemasangan
@@ -16,7 +16,7 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/platform/schema.prisma",
+  schema: "packages/db/prisma/platform/schema.prisma",
   migrations: {
     /*
      * == JALUR MIGRATION PINDAH KE PostgreSQL (15 Okt 2026) ==============

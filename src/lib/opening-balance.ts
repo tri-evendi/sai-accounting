@@ -26,7 +26,7 @@
  * creating opening invoice/purchase records (an ETL concern, see the issue).
  */
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { postJournal } from "@/lib/ledger";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
 import { round2 } from "@/lib/posting/rules";

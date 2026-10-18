@@ -347,7 +347,7 @@ describe("gerbang mode penagihan: hanya `auto` yang boleh ditagih", () => {
     expect(migrasi).toMatch(/DEFAULT\s+'none'/i);
 
     const skema = readFileSync(
-      join(__dirname, "..", "prisma", "platform", "schema.prisma"),
+      join(__dirname, "..", "packages", "db", "prisma", "platform", "schema.prisma"),
       "utf8"
     );
     expect(skema).toMatch(/billingMode\s+String\s+@default\("none"\)/);

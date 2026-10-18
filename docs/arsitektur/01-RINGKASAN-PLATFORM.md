@@ -137,9 +137,9 @@ di `docker-compose.yml`; konsekuensinya dinilai di [dok 08](./08-PENILAIAN-ARSIT
 
 | Basis data | Jumlah | Isi | Klien Prisma |
 |---|---|---|---|
-| **kendali** `sai_control` | 1 | Pengguna, tenant, perusahaan, keanggotaan, undangan, token API, notifikasi | `src/generated/control` |
-| **platform** `sai_platform` | 1 | Paket, langganan, tagihan platform, pembayaran, jejak penjadwal & cadangan, isi situs | `src/generated/platform` |
-| **perusahaan** `sai_<slug>` | **banyak** (17 per 11 Okt 2026) | Seluruh buku besar: jurnal, faktur, kontrak, stok, aset tetap, jejak audit | `src/generated/prisma` |
+| **kendali** `sai_control` | 1 | Pengguna, tenant, perusahaan, keanggotaan, undangan, token API, notifikasi | `packages/db/generated/control` |
+| **platform** `sai_platform` | 1 | Paket, langganan, tagihan platform, pembayaran, jejak penjadwal & cadangan, isi situs | `packages/db/generated/platform` |
+| **perusahaan** `sai_<slug>` | **banyak** (17 per 11 Okt 2026) | Seluruh buku besar: jurnal, faktur, kontrak, stok, aset tetap, jejak audit | `packages/db/generated/company` |
 
 Aturannya, dan ia diulang di empat berkas sumber karena memang sepenting itu:
 

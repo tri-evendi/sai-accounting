@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaClient as ControlClient } from "../src/generated/control/client";
+import { PrismaClient } from "@sai/db/client/company";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import bcrypt from "bcrypt";
 

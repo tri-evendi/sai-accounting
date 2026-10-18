@@ -17,7 +17,7 @@ import {
   sortableKeys,
   type SortSpec,
 } from "@/lib/table-sort";
-import type { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@sai/db/client/company";
 import { documentFileHref } from "@/lib/document-storage";
 import { formatDate, parsePageParam } from "@/lib/utils";
 import { DocumentPreviewButton } from "./document-preview-button";

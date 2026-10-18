@@ -434,10 +434,19 @@ membacanya: komponen `BrandMark`, kartu pratinjau sosial (`opengraph-image`),
 dan generator ikon raster. Menyalin `<path>`-nya ke tempat keempat ditolak
 `tests/brand-mark.test.ts`, karena salinan bisa menyimpang tanpa galat.
 
-- **Ikon raster adalah turunan.** `bun run brand:icons` membangkitkan
-  `favicon.ico` (16/32/48), `apple-icon.png`, dan ketiga ikon manifest dari
-  lambang yang sama. Jangan menyunting PNG-nya; ubah lambangnya, jalankan
-  skripnya, lalu komit hasilnya.
+- **Logo unggahan menimpa lambang bawaan tanpa rilis.** Operator mengunggahnya
+  di konsol (`/brand`, izin `site.settings`; tabel `brand_assets` di
+  `sai_platform`). Root layout kedua aplikasi membaca logo aktif (cache 60
+  detik, gagal-lunak ke lambang bawaan) dan meneruskan alamatnya ke
+  `RootDocument`, lalu `BrandMark` menampilkannya di kotak yang sama. Rute
+  `/favicon.ico`, `/apple-icon.png`, manifest, dan `opengraph-image` ikut
+  berganti. Jadi: **jangan pernah menggambar lambang tanpa `BrandMark`** —
+  salinan SVG lokal tidak ikut berganti saat logonya diganti.
+- **Ikon raster bawaan adalah turunan.** `bun run brand:icons` membangkitkan
+  ikon manifest di `public/icons/` dari lambang yang sama. `favicon.ico` dan
+  `apple-icon.png` tidak lagi berkas statis: keduanya rute (`brandIconResponse`)
+  yang menyajikan logo unggahan atau menggambar lambang bawaan. Jangan
+  menyunting PNG-nya; ubah lambangnya, jalankan skripnya, lalu komit hasilnya.
 - **Warnanya satu: navy `#1E3A5F`** (`BRAND_SOLID_LIGHT`), peran "bidang merek
   di belakang isi terang", sama dengan tombol primer. `BRAND_HEX` (bilah status
   dan `theme_color` manifest) bernilai sama.
@@ -452,6 +461,16 @@ dan generator ikon raster. Menyalin `<path>`-nya ke tempat keempat ditolak
   tahap ini (dua buku bertumpuk, sudut terpotong, undak, garis halaman). Yang
   dipakai adalah bidang pejal dengan satu takik, dan takik itu harus ≥2,5 unit
   pada kanvas 24 unit agar tidak lebih kecil dari satu piksel di favicon.
+
+## Logo perusahaan
+
+Logo setiap PT diunggah pemilik PT sendiri di Pengaturan (kartu "Logo
+perusahaan", izin `company_setting.manage`; tabel `company_logos` di buku PT
+itu). Ia hanya muncul di DOKUMEN, tidak di chrome aplikasi: kepala PDF
+memanggil `drawCompanyLogo` (`src/lib/pdf/company-header.ts`), yang menggambar
+logo di kiri atas sejajar nama perusahaan. Dokumen tanpa logo identik dengan
+sebelum fitur ini ada. Generator PDF baru wajib menerima `PdfCompany` dan
+memanggil `drawCompanyLogo` tepat sesudah nama perusahaan.
 
 ## Ikon
 

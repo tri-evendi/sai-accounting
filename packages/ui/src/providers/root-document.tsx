@@ -53,6 +53,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 import "../globals.css";
 import { AntdProvider } from "@sai/ui/providers/antd-provider";
+import { BrandMarkProvider } from "@sai/ui/brand-context";
 import type { Locale } from "@sai/core/i18n/config";
 import { ANTD_CSS_VAR_KEY } from "@sai/ui/theme/antd-tokens";
 import { colorScheme, themeClass, themeScript, type Theme } from "@sai/ui/theme/config";
@@ -68,6 +69,7 @@ const inter = Inter({
 export function RootDocument({
   locale,
   theme,
+  brandMarkSrc = null,
   children,
 }: {
   /** Bahasa aktif — dibaca root layout dari cookie (`getLocale()`), SEKALI. */
@@ -85,6 +87,8 @@ export function RootDocument({
    * `html.dark` di sana sebelum menghapusnya.
    */
   theme: Theme;
+  /** Alamat logo produk unggahan (`brandMarkUrl`), atau `null` untuk lambang bawaan. */
+  brandMarkSrc?: string | null;
   children: React.ReactNode;
 }) {
   return (
@@ -146,7 +150,9 @@ export function RootDocument({
                 tema dari konteks itu supaya toggle tema mengubah komponen AntD
                 tanpa muat ulang (alasan lengkapnya di antd-provider.tsx).
                 Bahasanya tetap datang sebagai prop dari server. */}
-            <AntdProvider locale={locale}>{children}</AntdProvider>
+            <AntdProvider locale={locale}>
+              <BrandMarkProvider src={brandMarkSrc}>{children}</BrandMarkProvider>
+            </AntdProvider>
           </ThemeProvider>
         </AntdRegistry>
       </body>

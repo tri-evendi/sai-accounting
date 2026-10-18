@@ -317,6 +317,12 @@ describe("inventaris grup rute — permukaan baru WAJIB mendaftar (issue #156)",
     const known = new Set([
       "api", // route API — cakupannya dijaga describe "cakupan penjaga API route"
       "(app)", // root layout aplikasi — grup-grupnya diinventarisasi tes di atas
+      // Rute gambar publik tanpa halaman: logo produk unggahan (`/brand/mark`)
+      // dan dua ikon yang menyajikannya atau lambang bawaan. Publik memang
+      // disengaja — peramban memintanya sebelum (dan tanpa) sesi.
+      "brand",
+      "favicon.ico",
+      "apple-icon.png",
       ...MARKETING_GROUPS,
     ]);
     const unregistered = readdirSync(APP_ROOT, { withFileTypes: true })

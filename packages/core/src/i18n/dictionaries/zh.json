@@ -3499,7 +3499,29 @@
     "sampleConfirmBody": "所有标记为 [CONTOH] 的单据及其会计分录都会被删除。您自己录入的数据不会受到影响。此操作无法撤销。",
     "sampleCleared": "示例数据已清除。报表现在只包含您自己的交易。",
     "sampleKept": "以下项目因已用于真实单据而保留：{names}",
-    "sampleFailed": "无法清除示例数据"
+    "sampleFailed": "无法清除示例数据",
+    "companyLogo": {
+      "title": "公司标志",
+      "description": "打印在每份 PDF 文件的页眉：发票、合同、送货单、退货单和报表。",
+      "none": "尚无标志",
+      "previewAlt": "{name} 的标志",
+      "choose": "选择标志文件",
+      "hint": "PNG 或 JPEG，最大 512 KB，最短边至少 64 px。透明或白色背景打印效果最佳。",
+      "submit": "保存标志",
+      "remove": "删除标志",
+      "removeTitle": "删除公司标志？",
+      "removeDescription": "之后的文件将不带标志打印。已发送的文件不受影响。",
+      "saved": "标志已保存。之后的文件将使用此标志。",
+      "removed": "标志已删除。",
+      "err": {
+        "generic": "标志保存失败，请重试。",
+        "empty": "请先选择图片文件。",
+        "too_large": "文件超过 512 KB。",
+        "not_image": "此文件不是 PNG 或 JPEG。",
+        "too_small": "图片太小：最短边至少需要 {min} px。",
+        "too_big_dimensions": "图片太大：最长边最多 4096 px。"
+      }
+    }
   },
   "glossary": {
     "descriptionBefore": "本应用使用的 {count} 个会计术语，均以日常用语解释并附示例。同样的术语也会以",
@@ -4578,7 +4600,8 @@
       "deletions": "删除请求",
       "plans": "套餐目录",
       "efaktur": "平台 e-Faktur",
-      "statusNotices": "状态公告"
+      "statusNotices": "状态公告",
+      "brand": "产品标志"
     },
     "attention": {
       "heading": "需要处理",
@@ -5288,6 +5311,34 @@
       "done": "已根据报价 {quote} 激活使用权。",
       "partial": "尚未完成——{steps}。剩余步骤可通过各自的按钮继续。",
       "errInput": "输入不完整：报价编号、套餐、1–24 个周期和原因均为必填。"
+    },
+    "brand": {
+      "heading": "产品标志",
+      "description": "显示在客户应用、本控制台、浏览器标签页图标、主屏幕图标和链接预览中的 SAI 标志。",
+      "current": "当前使用",
+      "usingDefault": "代码内置标志",
+      "usingCustom": "由 {by} 于 {at} 上传",
+      "previewLight": "浅色主题",
+      "previewDark": "深色主题",
+      "previewNote": "示例尺寸：主屏幕（128 px）、侧边栏（40 px）和浏览器标签页（16 px）。",
+      "upload": "上传新标志",
+      "fileLabel": "图片文件",
+      "hint": "PNG 或 JPEG，最大 512 KB，最短边至少 256 px。透明背景的方形图片效果最佳。",
+      "submit": "保存标志",
+      "reset": "恢复内置标志",
+      "resetTitle": "恢复内置标志？",
+      "resetDescription": "已上传的标志会保留在历史记录中，但一分钟内将在所有位置停止使用。",
+      "saved": "产品标志已保存。客户应用最迟一分钟后生效。",
+      "resetDone": "已重新使用内置标志。",
+      "unavailable": "无法连接平台数据库。当前使用内置标志，暂时无法更改标志。",
+      "readOnly": "您的角色只能查看此页。更改标志需要站点设置权限。",
+      "err": {
+        "empty": "请先选择图片文件。",
+        "too_large": "文件超过 512 KB。",
+        "not_image": "此文件不是 PNG 或 JPEG。",
+        "too_small": "图片太小：最短边至少需要 {min} px。",
+        "too_big_dimensions": "图片太大：最长边最多 4096 px。"
+      }
     }
   },
   "docs": {

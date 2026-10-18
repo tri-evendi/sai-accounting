@@ -6,6 +6,8 @@
   "exports": {
     "./billing/change-tenant-plan": "./src/billing/change-tenant-plan.ts",
     "./billing/platform-efaktur": "./src/billing/platform-efaktur.ts",
+    "./brand-assets": "./src/brand-assets.ts",
+    "./brand-routes": "./src/brand-routes.tsx",
     "./i18n/server": "./src/i18n/server.ts",
     "./invitation-store": "./src/invitation-store.ts",
     "./mail-health": "./src/mail-health.ts",
@@ -28,7 +30,8 @@
   "dependencies": {
     "@sai/billing": "workspace:*",
     "@sai/core": "workspace:*",
-    "@sai/db": "workspace:*"
+    "@sai/db": "workspace:*",
+    "@sai/ui": "workspace:*"
   },
   "peerDependencies": {
     "next": "*",

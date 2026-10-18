@@ -407,10 +407,15 @@ prisma/
 ```
 src/ ──────────┐
                ├──▶  @sai/platform  ──▶  @sai/billing  ──▶  @sai/core  ──▶  @sai/db
-apps/operator ─┘                          @sai/ui ──────────▶  @sai/core
+apps/operator ─┘          │
+                          └──▶  @sai/ui  ──▶  @sai/core
    (kedua aplikasi boleh memakai paket mana pun; TIDAK pernah satu sama lain)
 ```
 
+- `@sai/platform → @sai/ui` ada untuk satu hal: rute ikon (`brand-routes.tsx`)
+  menggambar lambang bawaan dari `@sai/ui/brand/mark` bila belum ada logo
+  unggahan. Arah sebaliknya (`ui → platform`) tidak boleh ada: `@sai/ui`
+  menerima alamat logo lewat prop `RootDocument`, bukan membacanya sendiri.
 - Kedua aplikasi tidak saling mengimpor: konsol tidak menyentuh `src/`, dan
   aplikasi pelanggan tidak menyentuh `apps/operator`
   (`tests/operator-dependency-direction.test.ts`).

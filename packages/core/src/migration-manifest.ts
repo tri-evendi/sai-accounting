@@ -13,8 +13,8 @@
  */
 export const MIGRATION_TERAKHIR = {
   control: "0004_operator_accounts",
-  platform: "0004_status_notices",
-  company: "0001_baseline",
+  platform: "0005_brand_assets",
+  company: "0002_company_logos",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

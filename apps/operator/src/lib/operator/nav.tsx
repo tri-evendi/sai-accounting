@@ -27,6 +27,7 @@ import {
   HistoryOutlined,
   KeyOutlined,
   MailOutlined,
+  PictureOutlined,
   SettingOutlined,
   TeamOutlined,
   FileSearchOutlined,
@@ -96,6 +97,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/settings",
       label: t("operator.nav.settings"),
       icon: <SettingOutlined style={UKURAN_IKON} />,
+      group: situs,
+    },
+    {
+      href: "/brand",
+      label: t("operator.nav.brand"),
+      icon: <PictureOutlined style={UKURAN_IKON} />,
       group: situs,
     },
     {

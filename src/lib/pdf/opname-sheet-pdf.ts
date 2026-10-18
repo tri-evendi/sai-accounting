@@ -18,6 +18,7 @@
 import { PRINT_BRAND } from "@/lib/pdf/brand";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
 export interface OpnameSheetItem {
   name: string;
@@ -34,7 +35,7 @@ function qty(value: number): string {
 
 export function generateOpnameSheetPDF(
   items: OpnameSheetItem[],
-  company: { name: string; address: string },
+  company: PdfCompany,
   options: { date: string; showSystemQty: boolean }
 ): jsPDF {
   const doc = new jsPDF();
@@ -44,6 +45,7 @@ export function generateOpnameSheetPDF(
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.text(company.name, pageWidth / 2, y, { align: "center" });
+  drawCompanyLogo(doc, company, y);
   y += 7;
   doc.setFontSize(12);
   doc.text("Lembar Hitung Fisik Persediaan", pageWidth / 2, y, { align: "center" });

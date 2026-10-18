@@ -100,7 +100,15 @@ function isPublicPath(pathname: string): boolean {
    * data perusahaan di dalamnya.
    */
   if (pathname === "/manifest.webmanifest") return true;
-  if (pathname === "/opengraph-image" || pathname.startsWith("/opengraph-image/")) return true;
+  // Logo produk & ikon (dinamis sejak logo bisa diunggah dari konsol). Diambil
+  // peramban tanpa sesi — dari halaman masuk, pendaratan, dan layar depan.
+  if (pathname === "/brand/mark" || pathname === "/favicon.ico" || pathname === "/apple-icon.png") return true;
+  /* Bentuk ketiga, yang benar-benar dipakai sejak gambarnya tinggal di grup
+     `(marketing)`: Next menambahkan sufiks grup pada NAMA segmennya
+     (`/opengraph-image-pwu6ef?<hash>`). Tanpa bentuk ini setiap pratinjau
+     tautan dialihkan ke /login dan kartunya tampil tanpa gambar — terjadi di
+     produksi sampai 18 Okt 2026. */
+  if (/^\/opengraph-image(?:-[a-z0-9]+)?(?:\/|$)/.test(pathname)) return true;
   /*
    * issue #300 — dokumentasi sistem. SATU-SATUNYA pelepasan berbentuk SUBPOHON
    * di berkas ini, dan itu memang perlu dibenarkan: baris-baris di atas sengaja

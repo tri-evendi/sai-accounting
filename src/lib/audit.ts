@@ -284,7 +284,10 @@ export type AuditAction =
    * pelanggan atas nama perusahaan ini. Penjadwal menolak berjalan tanpanya.
    */
   | "company_setting.reminders.update"
-  | "company_setting.reminders.test";
+  | "company_setting.reminders.test"
+  /** Logo perusahaan (migration company 0002). `details` memuat sidik, format, dan ukurannya — bukan isi berkasnya. */
+  | "company_setting.logo.update"
+  | "company_setting.logo.remove";
 
 export type AuditEntity =
   /** Baris `companies` di basis data KENDALI — bukan tabel di buku perusahaan. */

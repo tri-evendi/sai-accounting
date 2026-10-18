@@ -3499,7 +3499,29 @@
     "sampleConfirmBody": "Every document marked [CONTOH] is deleted along with its journal entries. Anything you recorded yourself is left untouched. This cannot be undone.",
     "sampleCleared": "Sample data removed. Your reports now contain only your own transactions.",
     "sampleKept": "Kept because you have already used them on real documents: {names}",
-    "sampleFailed": "Could not remove the sample data"
+    "sampleFailed": "Could not remove the sample data",
+    "companyLogo": {
+      "title": "Company logo",
+      "description": "Printed in the header of every PDF document: invoices, contracts, delivery notes, returns, and reports.",
+      "none": "No logo yet",
+      "previewAlt": "{name} logo",
+      "choose": "Choose a logo file",
+      "hint": "PNG or JPEG, at most 512 KB, shortest side at least 64 px. A transparent or white background prints best.",
+      "submit": "Save logo",
+      "remove": "Remove logo",
+      "removeTitle": "Remove the company logo?",
+      "removeDescription": "New documents are printed without a logo. Documents already sent do not change.",
+      "saved": "Logo saved. New documents use this logo.",
+      "removed": "Logo removed.",
+      "err": {
+        "generic": "The logo could not be saved. Please try again.",
+        "empty": "Choose an image file first.",
+        "too_large": "The file is larger than 512 KB.",
+        "not_image": "This file is not a PNG or JPEG.",
+        "too_small": "The image is too small: the shortest side must be at least {min} px.",
+        "too_big_dimensions": "The image is too large: the longest side may be at most 4096 px."
+      }
+    }
   },
   "glossary": {
     "descriptionBefore": "{count} accounting terms used by this app, explained in plain language with an example. The same terms also appear as a",
@@ -4578,7 +4600,8 @@
       "deletions": "Deletion requests",
       "plans": "Plan catalog",
       "efaktur": "Platform e-Faktur",
-      "statusNotices": "Status notices"
+      "statusNotices": "Status notices",
+      "brand": "Product logo"
     },
     "attention": {
       "heading": "Needs attention",
@@ -5288,6 +5311,34 @@
       "done": "Entitlement active from quote {quote}.",
       "partial": "Not finished — {steps}. The remaining steps can be continued with their own buttons.",
       "errInput": "Incomplete input: quote number, plan, 1–24 periods and a reason are required."
+    },
+    "brand": {
+      "heading": "Product logo",
+      "description": "The SAI mark shown in the customer app, this console, the browser tab, the home-screen icon, and link previews.",
+      "current": "Currently in use",
+      "usingDefault": "Built-in mark from the code",
+      "usingCustom": "Uploaded by {by} on {at}",
+      "previewLight": "Light theme",
+      "previewDark": "Dark theme",
+      "previewNote": "Sample sizes: home screen (128 px), sidebar (40 px), and browser tab (16 px).",
+      "upload": "Upload a new logo",
+      "fileLabel": "Image file",
+      "hint": "PNG or JPEG, at most 512 KB, shortest side at least 256 px. A square image with a transparent background looks best.",
+      "submit": "Save logo",
+      "reset": "Restore the built-in mark",
+      "resetTitle": "Restore the built-in mark?",
+      "resetDescription": "The uploaded logo stays in the history but stops being used everywhere within a minute.",
+      "saved": "Product logo saved. The customer app picks it up within a minute.",
+      "resetDone": "The built-in mark is in use again.",
+      "unavailable": "The platform database is unreachable. The built-in mark is in use, and the logo cannot be changed right now.",
+      "readOnly": "Your role can only view this page. Changing the logo requires the site settings permission.",
+      "err": {
+        "empty": "Choose an image file first.",
+        "too_large": "The file is larger than 512 KB.",
+        "not_image": "This file is not a PNG or JPEG.",
+        "too_small": "The image is too small: the shortest side must be at least {min} px.",
+        "too_big_dimensions": "The image is too large: the longest side may be at most 4096 px."
+      }
     }
   },
   "docs": {

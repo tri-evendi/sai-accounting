@@ -2834,3 +2834,31 @@ model ProductionOrderOperation {
   @@index([workCenterId])
   @@map("production_order_operations")
 }
+
+/// Logo perusahaan (migration company 0002) — diunggah pemilik PT di
+/// Pengaturan (`company_setting.manage`), dicetak di kepala dokumen PDF.
+/// Unggahan baru menonaktifkan yang lama; paling banyak satu baris aktif
+/// (indeks unik parsial di migration). `createdByUserId` = id GLOBAL pengguna
+/// di basis data kendali, tanpa FK (aturan multi-perusahaan).
+model CompanyLogo {
+  id Int @id @default(autoincrement())
+
+  /// `image/png` | `image/jpeg` — dibaca dari isi berkas, bukan dari peramban.
+  mimeType String @map("mime_type") @db.VarChar(20)
+  content  Bytes
+  sha256   String @db.Char(64)
+  width    Int
+  height   Int
+  byteSize Int    @map("byte_size")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdByUserId Int? @map("created_by_user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("company_logos")
+}
+

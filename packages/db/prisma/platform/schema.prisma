@@ -789,3 +789,35 @@ model StatusNotice {
   @@index([startsAt])
   @@map("status_notices")
 }
+
+/// Logo produk yang diunggah operator (konsol `/brand`, migration platform 0005).
+/// Tanpa baris aktif, lambang bawaan dari kode (`packages/ui/src/brand/mark.ts`)
+/// yang tampil. Unggahan baru menonaktifkan yang lama; paling banyak satu baris
+/// aktif per `kind` (indeks unik parsial di migration — Prisma tidak bisa
+/// menyatakannya). CHECK di migration menyamai `@sai/core/image-file`.
+model BrandAsset {
+  id Int @id @default(autoincrement())
+
+  /// `mark` = lambang produk. Kosakata ditutup CHECK.
+  kind String @db.VarChar(20)
+
+  /// `image/png` | `image/jpeg` — dibaca dari isi berkas, bukan dari peramban.
+  mimeType String @map("mime_type") @db.VarChar(20)
+  content  Bytes
+  sha256   String @db.Char(64)
+  width    Int
+  height   Int
+  byteSize Int    @map("byte_size")
+
+  isActive Boolean @default(true) @map("is_active")
+
+  /// Nama operator yang mengunggah.
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([kind, createdAt])
+  @@map("brand_assets")
+}
+

@@ -236,7 +236,7 @@ describe("tombol destruktif berpasangan dengan ConfirmDialog (#308)", () => {
      * satu pun gagal. Ini yang menahan kegagalan diam itu.
      */
     expect(BERKAS.length).toBeGreaterThan(200);
-    expect(BERKAS.some(({ rel }) => rel === "components/ui/confirm-dialog.tsx")).toBe(true);
+    expect(BERKAS.some(({ rel }) => rel === "packages/ui/src/components/confirm-dialog.tsx")).toBe(true);
   });
 
   it("tidak ada satu pun <Button> merah tanpa ConfirmDialog di seluruh src/", () => {

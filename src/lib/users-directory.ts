@@ -24,6 +24,7 @@ import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
 import { currentCompanyId } from "@/lib/current-company";
+import { upsertMembership } from "@/lib/membership-upsert";
 import { TENANT_ROLES } from "@sai/core/constants";
 
 export interface CompanyUser {
@@ -284,11 +285,7 @@ export async function addExistingUserToCompany(
   companyId?: number
 ): Promise<CompanyUser | null> {
   const targetCompanyId = companyId ?? (await activeCompanyId());
-  await controlDb.membership.upsert({
-    where: { userId_companyId: { userId, companyId: targetCompanyId } },
-    create: { userId, companyId: targetCompanyId, role },
-    update: { role, isActive: true },
-  });
+  await upsertMembership(userId, role, targetCompanyId);
   return findCompanyUserIn(targetCompanyId, userId);
 }
 

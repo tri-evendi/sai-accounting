@@ -19,7 +19,7 @@ import { Alert, Flex } from "antd";
 
 import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { Input } from "@sai/ui/input";
 import { Select } from "@sai/ui/select";
 import { StaticTable } from "@sai/ui/static-table";

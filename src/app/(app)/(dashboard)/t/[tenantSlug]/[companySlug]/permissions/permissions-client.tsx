@@ -44,7 +44,7 @@ import { RoleManager } from "./role-manager";
 import { Button } from "@sai/ui/button";
 import { Badge } from "@sai/ui/badge";
 import { Checkbox } from "@sai/ui/checkbox";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { PageLoader } from "@sai/ui/loading";
 import {
   Table,

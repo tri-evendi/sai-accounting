@@ -20,7 +20,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@sai/core/i18n/client";
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { useToast } from "@sai/ui/toast";
 import { humanizeFieldMessage } from "@/lib/form-guards";
 import { apiFetch } from "@/lib/api-fetch";

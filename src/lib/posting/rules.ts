@@ -11,8 +11,11 @@
  */
 import type { JournalLineInput } from "@/lib/ledger";
 
-/** Cents-accurate rounding — never trust raw float arithmetic on money. */
-export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+/** Cents-accurate rounding — never trust raw float arithmetic on money.
+ *  Satu definisi, di `@sai/core/money-format`; diekspor ulang di sini supaya
+ *  pengimpor mesin posting tidak berubah. */
+import { round2 } from "@sai/core/money-format";
+export { round2 };
 
 /** Raised when a rule cannot build a correct journal from what it was given. */
 export class PostingRuleError extends Error {

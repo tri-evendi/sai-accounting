@@ -13,7 +13,7 @@
  * it through PPN Masukan. A 0% / non-taxable document computes PPN 0, and the
  * posting engine then emits NO VAT line at all — never a zero one.
  */
-import { round2 } from "@/lib/posting/rules";
+import { round2 } from "@sai/core/money-format";
 
 /**
  * Tarif PPN bawaan, dalam persen. 11% di Indonesia sejak 1 April 2022 (UU HPP).

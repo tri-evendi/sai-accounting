@@ -28,7 +28,7 @@ import { CheckCircleOutlined, CloseCircleOutlined, LockOutlined, ReloadOutlined,
 import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { Label } from "@sai/ui/label";
 import { Spinner } from "@sai/ui/loading";
 import { StaticTable } from "@sai/ui/static-table";

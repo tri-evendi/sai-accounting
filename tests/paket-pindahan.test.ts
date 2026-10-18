@@ -33,6 +33,7 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/components/ui/card.tsx", "packages/ui/src/components/card.tsx"],
   ["src/components/ui/checkbox.tsx", "packages/ui/src/components/checkbox.tsx"],
   ["src/components/ui/command.tsx", "packages/ui/src/components/command.tsx"],
+  ["src/components/ui/confirm-dialog.tsx", "packages/ui/src/components/confirm-dialog.tsx"],
   ["src/components/ui/data-table.tsx", "packages/ui/src/components/data-table.tsx"],
   ["src/components/ui/dialog.tsx", "packages/ui/src/components/dialog.tsx"],
   ["src/components/ui/empty-state.tsx", "packages/ui/src/components/empty-state.tsx"],

@@ -27,7 +27,7 @@ import { Alert, Flex, Typography, theme } from "antd";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@sai/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ConfirmDialog } from "@sai/ui/confirm-dialog";
 import { Input } from "@sai/ui/input";
 import { apiFetch } from "@/lib/api-fetch";
 import { useT } from "@sai/core/i18n/client";

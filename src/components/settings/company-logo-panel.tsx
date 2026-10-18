@@ -86,8 +86,7 @@ export function CompanyLogoPanel() {
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: token.borderRadiusLG,
-                border: `${token.lineWidth}px solid ${token.colorBorderSecondary}`,
-                background: token.colorBgContainer,
+                background: token.colorFillQuaternary,
                 padding: token.paddingXS,
               }}
             >

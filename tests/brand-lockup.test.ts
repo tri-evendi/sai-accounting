@@ -83,7 +83,8 @@ describe("lambang hanya dirender lewat lockup", () => {
     for (const jalur of berkas) {
       const relatif = jalur.replace(`${ROOT}/`, "");
       if (izin.has(relatif)) continue;
-      if (readFileSync(jalur, "utf8").includes("<BrandMark")) pelanggar.push(relatif);
+      // `<BrandMark` diikuti batas tag — bukan `<BrandMarkProvider`/`<BrandMarkPanel`.
+      if (/<BrandMark[\s/>]/.test(readFileSync(jalur, "utf8"))) pelanggar.push(relatif);
     }
     expect(
       pelanggar,

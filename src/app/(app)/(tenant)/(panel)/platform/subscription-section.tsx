@@ -49,7 +49,7 @@ import { moneyColumn } from "@sai/ui/money-column";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
-import { platformInvoiceIsRevenue } from "@/lib/platform-constants";
+import { platformInvoiceIsRevenue } from "@sai/billing/platform-constants";
 import { formatDateMedium } from "@sai/core/utils";
 import {
   isReadOnlyTenantStatus,
@@ -57,7 +57,7 @@ import {
   trialCountdown,
 } from "@/lib/subscription-lifecycle";
 import type { BillingOverview } from "@/lib/subscription-store";
-import { offersInstantPayment } from "@/lib/payment-gateway";
+import { offersInstantPayment } from "@sai/billing/payment-gateway";
 import { resolveManualPaymentInstructions, resolvePpnEnabled } from "@/lib/site-settings";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";

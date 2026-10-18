@@ -82,7 +82,7 @@ import {
   BILLING_MODES,
   BILLING_MODE_LABEL_KEYS,
   type BillingMode,
-} from "@/lib/platform-constants";
+} from "@sai/billing/platform-constants";
 import {
   changePlanSchema,
   deletionExecuteSchema,

@@ -54,7 +54,7 @@ dialihkan permanen (308) ke `/pricing`, bukan halaman kedua. Halaman itu memajan
 tahunan (sakelar tanpa JS); tahunan = kolom `price_yearly`, hematnya dihitung
 dari kedua kolom — tidak ada angka diskon yang diketik.
 
-Nama paket adalah **nama produk** dan tidak diterjemahkan (`lib/plan-copy.ts`
+Nama paket adalah **nama produk** dan tidak diterjemahkan (`packages/billing/src/plan-copy.ts`
 — alasan yang sama dengan `APP_NAME`); deskripsi & butir sorotan **lewat kunci
 kamus** tiga bahasa (`plans.description.*`, `plans.highlight.*`).
 

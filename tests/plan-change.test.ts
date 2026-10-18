@@ -1,5 +1,5 @@
 /**
- * Aritmetika perpindahan paket swalayan (`lib/plan-change.ts`).
+ * Aritmetika perpindahan paket swalayan (`@sai/billing/plan-change`).
  *
  * Ini satu-satunya tempat di jalur swalayan yang menghitung UANG, dan uang yang
  * salah tidak berbunyi saat terjadi — ia muncul sebagai tagihan yang
@@ -14,7 +14,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { quotePlanChange, type TargetPlan } from "@/lib/plan-change";
+import { quotePlanChange, type TargetPlan } from "@sai/billing/plan-change";
 
 const STARTER: TargetPlan = {
   key: "starter",

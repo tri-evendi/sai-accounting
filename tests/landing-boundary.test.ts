@@ -81,9 +81,11 @@ const PINTU_MASUK = [
  * direktori di belakang. `@/components/ui` (primitif), `@/lib` (kamus,
  * konstanta, katalog paket), dan sesama berkas pendaratan — selebihnya tidak.
  */
-/* `@sai/ui` & `@sai/core` adalah pindahan `components/ui` & `lib` (monorepo
-   Fase 2) — izinnya setara. Paket workspace LAIN tidak otomatis sah. */
-const IMPOR_SAH = ["@/components/landing/", "@/components/ui/", "@/lib/", "@sai/ui/", "@sai/core/"];
+/* `@sai/ui`, `@sai/core`, `@sai/billing` adalah pindahan `components/ui` & `lib`
+   (monorepo Fase 2) — izinnya setara. Paket workspace LAIN tidak otomatis sah.
+   (`@sai/billing` berisi aturan MURNI — katalog teks & konstanta paket yang
+   memang dipajang halaman harga; penulis penagihan tetap di aplikasi.) */
+const IMPOR_SAH = ["@/components/landing/", "@/components/ui/", "@/lib/", "@sai/ui/", "@sai/core/", "@sai/billing/"];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

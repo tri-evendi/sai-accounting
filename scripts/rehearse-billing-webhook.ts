@@ -24,7 +24,7 @@ import {
   verifyMidtransSignature,
   MOCK_SERVER_KEY,
   type MidtransNotification,
-} from "../src/lib/payment-gateway";
+} from "@sai/billing/payment-gateway";
 import { processPaymentNotification } from "../src/lib/payment-webhook";
 
 function clientFor<T>(Ctor: new (args: { adapter: AdapterBasisData }) => T, rawUrl: string): T {

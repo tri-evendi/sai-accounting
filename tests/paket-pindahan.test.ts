@@ -9,6 +9,8 @@
  *   2c — primitif desain ke `@sai/ui`: `components/ui/*` (kecuali enam yang
  *       bergantung pada server action / konteks perusahaan / domain), tema,
  *       skala jarak, lambang; `labels` & `tenant-routes` ke `@sai/core`.
+ *   2d — aturan penagihan MURNI ke `@sai/billing` (penulisnya — webhook,
+ *       katalog, ganti paket — tetap di aplikasi karena menyentuh basis data).
  *
  * Salinan yang tertinggal di jalur lama — atau yang dibuat ulang karena
  * seseorang mengira modulnya hilang — lolos `tsc` dan diam-diam menjadi sumber
@@ -78,6 +80,11 @@ const PINDAH: ReadonlyArray<readonly [string, string]> = [
   ["src/lib/labels.ts", "packages/core/src/labels.ts"],
   ["src/lib/layout-scale.ts", "packages/ui/src/layout-scale.ts"],
   ["src/lib/money-format.ts", "packages/core/src/money-format.ts"],
+  ["src/lib/payment-gateway.ts", "packages/billing/src/payment-gateway.ts"],
+  ["src/lib/plan-change.ts", "packages/billing/src/plan-change.ts"],
+  ["src/lib/plan-copy.ts", "packages/billing/src/plan-copy.ts"],
+  ["src/lib/plan-stacking.ts", "packages/billing/src/plan-stacking.ts"],
+  ["src/lib/platform-constants.ts", "packages/billing/src/platform-constants.ts"],
   ["src/lib/table-sort.ts", "packages/ui/src/table-sort.ts"],
   ["src/lib/tenant-routes.ts", "packages/core/src/tenant-routes.ts"],
   ["src/lib/theme/antd-tokens.ts", "packages/ui/src/theme/antd-tokens.ts"],
@@ -115,7 +122,7 @@ describe("modul pindahan monorepo Fase 2", () => {
   });
 
   it("ada pengimpor paket untuk diperiksa — penjaga atas tes ini sendiri", () => {
-    const pemakai = berkas.filter((f) => /["']@sai\/(core|ui)\//.test(readFileSync(join(AKAR, f), "utf8")));
+    const pemakai = berkas.filter((f) => /["']@sai\/(core|ui|billing)\//.test(readFileSync(join(AKAR, f), "utf8")));
     expect(pemakai.length).toBeGreaterThan(400);
   });
 

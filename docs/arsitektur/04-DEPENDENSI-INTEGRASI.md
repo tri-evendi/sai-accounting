@@ -128,7 +128,7 @@ menarik `server-only` ke sana akan mematikan penjadwal.
 
 | | |
 |---|---|
-| Modul | `lib/payment-gateway.ts`, `lib/payment-webhook.ts`, `lib/company-payment-settings.ts` |
+| Modul | `packages/billing/src/payment-gateway.ts`, `lib/payment-webhook.ts`, `lib/company-payment-settings.ts` |
 | Keluar | `POST {base}/v2/charge` — Core API. `base` = `api.midtrans.com` (produksi) / `api.sandbox.midtrans.com` |
 | Masuk | `POST /api/billing/webhook` — tanda tangan **SHA-512** |
 | Env | `PAYMENT_GATEWAY`, `MIDTRANS_SERVER_KEY`, `MIDTRANS_IS_PRODUCTION` |

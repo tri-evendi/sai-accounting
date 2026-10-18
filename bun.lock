@@ -50,6 +50,16 @@
         "vitest": "^3.2.7",
       },
     },
+    "packages/billing": {
+      "name": "@sai/billing",
+      "version": "0.0.0",
+      "dependencies": {
+        "@sai/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "zod": "*",
+      },
+    },
     "packages/core": {
       "name": "@sai/core",
       "version": "0.0.0",
@@ -645,6 +655,8 @@
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA=="],
 
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
+
+    "@sai/billing": ["@sai/billing@workspace:packages/billing"],
 
     "@sai/core": ["@sai/core@workspace:packages/core"],
 

@@ -48,7 +48,7 @@ import {
   billingModeActionSchema,
   quoteActivationSchema,
 } from "@/lib/validations/operator";
-import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@/lib/platform-constants";
+import { BILLING_MODE_LABEL_KEYS, type BillingMode } from "@sai/billing/platform-constants";
 import { invalidateTenantState } from "@/lib/tenant-state";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";

@@ -33,8 +33,8 @@
  * TIDAK ADA keadaan yang menghapus data — tidak satu pun.
  */
 
-import type { SubscriptionStatus } from "@/lib/platform-constants";
-import { SUBSCRIPTION_STATUSES, billingModeIsAutomatic } from "@/lib/platform-constants";
+import type { SubscriptionStatus } from "@sai/billing/platform-constants";
+import { SUBSCRIPTION_STATUSES, billingModeIsAutomatic } from "@sai/billing/platform-constants";
 import { computeTax, DEFAULT_TAX_RATE } from "@/lib/tax";
 
 export const SUBSCRIPTION_EVENTS = [

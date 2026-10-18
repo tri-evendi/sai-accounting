@@ -118,7 +118,7 @@ Tiga hal membuatnya mustahil berhasil:
 2. **Tidak ada rel untuk membayar sekalipun ia mau.** `MIDTRANS_SERVER_KEY`
    tidak diset → gerbang jatuh ke `manual`; `MANUAL_PAYMENT_INSTRUCTIONS` juga
    tidak diset → tombol "Bayar" menghasilkan referensi `manual-PINV-…`
-   **tanpa nomor rekening** (`lib/payment-gateway.ts`).
+   **tanpa nomor rekening** (`packages/billing/src/payment-gateway.ts`).
 3. **14 hari lebih pendek daripada waktu mencapai nilai** untuk perangkat
    pembukuan. Nilai pertama produk ini baru terasa setelah satu siklus tutup
    bulan: COA tersusun, saldo awal masuk, transaksi sebulan tercatat, laporan
@@ -569,7 +569,7 @@ pertama:
 | `extendSubscription` mengubah `billing_cycle` **tanpa memotret ulang harga** | tenant 3 kini `yearly` berharga Rp 599.000 → saat comp habis 9 Sep 2027 ditagih **Rp 599rb untuk setahun**, kurang tagih 10×, tanpa bersuara | `lib/operator/writes.ts` |
 | Comp menghasilkan tagihan `paid` Rp 0 | "pendapatan" tak bisa dibaca tanpa menyaring comp; butuh status/penanda tersendiri | `extendSubscription`, `platform_invoices.status` |
 | Tidak ada sakelar menutup pendaftaran publik | orang asing bisa mendaftar → ditagih → ditangguhkan, tanpa rel bayar | `lib/registration.ts`, `proxy.ts` |
-| `MANUAL_PAYMENT_INSTRUCTIONS` kosong | tombol "Bayar" = jalan buntu tanpa nomor rekening | `lib/payment-gateway.ts` |
+| `MANUAL_PAYMENT_INSTRUCTIONS` kosong | tombol "Bayar" = jalan buntu tanpa nomor rekening | `packages/billing/src/payment-gateway.ts` |
 | `tenant_billing_profiles` kosong (0 baris) | ekspor e-Faktur platform akan menandai semua sebagai masalah | `lib/efaktur.ts` |
 | Uji coba 14 hari < waktu ke nilai pertama | konversi diukur sebelum nilai pernah terasa | `TRIAL_DAYS` |
 

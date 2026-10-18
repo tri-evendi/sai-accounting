@@ -36,7 +36,7 @@ import {
   manualPaymentGateway,
   midtransGatewayWith,
   type PaymentGateway,
-} from "@/lib/payment-gateway";
+} from "@sai/billing/payment-gateway";
 
 /**
  * Bentuk baris yang dibutuhkan — STRUKTURAL, bukan tipe generated.

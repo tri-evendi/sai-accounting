@@ -57,7 +57,7 @@ import {
   operatorRevokeUserSessions,
   operatorSendPasswordReset,
 } from "./user-actions";
-import { paymentRailConfigured } from "@/lib/payment-gateway";
+import { paymentRailConfigured } from "@sai/billing/payment-gateway";
 import { requireOperatorPage } from "@/lib/operator/guard";
 import { operatorCan } from "@/lib/operator/roles";
 import {
@@ -72,7 +72,7 @@ import {
   BILLING_MODE_LABEL_KEYS,
   platformInvoiceIsRevenue,
   type BillingMode,
-} from "@/lib/platform-constants";
+} from "@sai/billing/platform-constants";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { getT } from "@/lib/i18n/server";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";

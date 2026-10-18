@@ -295,7 +295,7 @@ sampai gateway #141): `bun run change-plan -- --tenant <slug> --plan <key>` —
 kuota disalin ke `tenants` (pola snapshot), platform ditulis lebih dulu.
 
 **Penagihan Indonesia (issue #141).** Gerbang pembayaran di
-`src/lib/payment-gateway.ts` — Midtrans (VA + QRIS) di balik abstraksi kecil;
+`packages/billing/src/payment-gateway.ts` — Midtrans (VA + QRIS) di balik abstraksi kecil;
 `manual` bawaan; transport `mock` di luar produksi (nol jaringan, VA
 deterministik) — kredensial real HANYA lewat env (`PAYMENT_GATEWAY`,
 `MIDTRANS_SERVER_KEY`, lihat `.env.docker.example`; bawaan TIDAK terpasang).

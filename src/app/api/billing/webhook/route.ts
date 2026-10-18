@@ -24,7 +24,7 @@ import {
   verifyMidtransSignature,
   webhookServerKey,
   type MidtransNotification,
-} from "@/lib/payment-gateway";
+} from "@sai/billing/payment-gateway";
 import { planChangeApplier } from "@/lib/billing/change-tenant-plan";
 import { processPaymentNotification } from "@/lib/payment-webhook";
 import { invalidateTenantState } from "@/lib/tenant-state";

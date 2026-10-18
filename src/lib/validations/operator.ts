@@ -19,7 +19,7 @@
 
 import { z } from "zod";
 import { LOCALES } from "@sai/core/i18n/config";
-import { BILLING_MODES } from "@/lib/platform-constants";
+import { BILLING_MODES } from "@sai/billing/platform-constants";
 import { vmsg } from "@sai/core/i18n/validation";
 import { SITE_CONTENT_VALUE_MAX } from "@/lib/site-content";
 

@@ -61,7 +61,9 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
     expect(pelanggar).toEqual([]);
   });
 
-  it.each(["db", "core"])("setiap subpath yang diekspor @sai/%s menunjuk berkas yang ada", (d) => {
+  it.each(
+    readdirSync(join(AKAR, "packages")).filter((d) => existsSync(join(AKAR, "packages", d, "package.json")))
+  )("setiap subpath yang diekspor @sai/%s menunjuk berkas yang ada", (d) => {
     const manifes = JSON.parse(readFileSync(join(AKAR, `packages/${d}/package.json`), "utf8")) as {
       exports: Record<string, string>;
     };

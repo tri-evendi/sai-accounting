@@ -16,7 +16,7 @@ import { z } from "zod";
 
 import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { platformDb } from "@/lib/platform-db";
-import { resolvePaymentGateway } from "@/lib/payment-gateway";
+import { resolvePaymentGateway } from "@sai/billing/payment-gateway";
 import { getRequestI18n } from "@/lib/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 

@@ -45,13 +45,13 @@ import { LOCALES } from "@sai/core/i18n/config";
 import { getT } from "@/lib/i18n/server";
 import { formatMoney, type CurrencyCode } from "@sai/core/money-format";
 import { activePlans } from "@/lib/plan-catalog";
-import { stackingComparisons, type StackingComparison } from "@/lib/plan-stacking";
+import { stackingComparisons, type StackingComparison } from "@sai/billing/plan-stacking";
 import { resolveContactChannels, resolvePpnEnabled } from "@/lib/site-settings";
 import {
   planCarriesNegotiation,
   planDescriptionKey,
   planHighlightKeys,
-} from "@/lib/plan-copy";
+} from "@sai/billing/plan-copy";
 import { askValues, landingAsk } from "@/lib/landing-ask";
 import { TRIAL_DAYS } from "@/lib/registration";
 import { resolveSelfServeSignupOpen } from "@/lib/site-settings";

@@ -3213,7 +3213,12 @@
     "description": "Terjadi kesalahan saat menyiapkan halaman. Coba muat ulang; bila terus berulang, catat kode di bawah dan hubungi admin.",
     "code": "Kode: {digest}",
     "retry": "Coba lagi",
-    "toHome": "Ke Beranda"
+    "toHome": "Ke Beranda",
+    "toLanding": "Ke halaman utama"
+  },
+  "notFound": {
+    "title": "Halaman tidak ditemukan",
+    "description": "Alamat ini tidak ada, atau halamannya sudah dipindahkan. Periksa kembali tautannya, atau mulai lagi dari beranda."
   },
   "permissionResource": {
     "approval": "Persetujuan",

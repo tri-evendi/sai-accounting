@@ -288,8 +288,19 @@ import { join } from "node:path";
  *     sengaja tidak menyentuh basis data (ia ikut berjalan saat `next build`).
  *   + `components/operator/status-notices-panel.tsx` — formulir pengumuman
  *     dengan pratinjau kalimat yang dirakit dari kamus saat operator memilih.
+ *
+ * 197 sejak halaman galat & 404 (2026-10-18), DELAPAN — dan Next yang
+ * menuntutnya: setiap `error.tsx` / `global-error.tsx` WAJIB client component
+ * (batas galat React hanya ada di client).
+ *   + `app/(app)/error.tsx`, `app/(marketing)/error.tsx`, `app/global-error.tsx`,
+ *     `apps/operator/src/app/(operator)/error.tsx`,
+ *     `apps/operator/src/app/global-error.tsx` — lima batas galat baru;
+ *   + `@sai/ui` `status-screen` (rupa bersama layar galat & 404 — client karena
+ *     `theme.useToken()`), `global-error-document` (isi kedua `global-error`),
+ *     `loaded-dictionary` (kamus untuk layar tanpa `<LocaleProvider>`).
+ *   Halaman 404-nya sendiri (`not-found`, `global-not-found`) tetap server.
  */
-const AMBANG_KLIEN = 189;
+const AMBANG_KLIEN = 197;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -440,7 +451,13 @@ const KLIEN_TERSAHKAN = [
   "app/(app)/(tenant)/(panel)/platform/error.tsx",
   "app/(app)/(tenant)/(panel)/platform/privacy-section.tsx",
   "app/(app)/(tenant)/layout.tsx",
+  /* Halaman galat & 404 (2026-10-18) — lihat catatan di `AMBANG_KLIEN`. */
+  "app/(app)/error.tsx",
+  "app/(marketing)/error.tsx",
+  "app/global-error.tsx",
+  "apps/operator/src/app/(operator)/error.tsx",
   "apps/operator/src/app/(operator)/login/login-form.tsx",
+  "apps/operator/src/app/global-error.tsx",
   /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
      satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan
      tombol "kembalikan ke bawaan" per baris. Halamannya TETAP server component:
@@ -542,9 +559,11 @@ const KLIEN_TERSAHKAN = [
   "packages/ui/src/components/dialog.tsx",
   "packages/ui/src/components/empty-state.tsx",
   "packages/ui/src/components/form.tsx",
+  "packages/ui/src/components/global-error-document.tsx",
   "packages/ui/src/components/input.tsx",
   "packages/ui/src/components/item-name-input.tsx",
   "packages/ui/src/components/learn-more.tsx",
+  "packages/ui/src/components/loaded-dictionary.ts",
   "packages/ui/src/components/loading.tsx",
   "packages/ui/src/components/money-input.tsx",
   "packages/ui/src/components/money.tsx",
@@ -556,6 +575,7 @@ const KLIEN_TERSAHKAN = [
   "packages/ui/src/components/quota-meter.tsx",
   "packages/ui/src/components/searchable-select.tsx",
   "packages/ui/src/components/select.tsx",
+  "packages/ui/src/components/status-screen.tsx",
   "packages/ui/src/components/term-tooltip.tsx",
   "packages/ui/src/components/textarea.tsx",
   "packages/ui/src/components/toast.tsx",

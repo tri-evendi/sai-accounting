@@ -5,7 +5,10 @@
 > dua penyeberangan dibereskan. **Fase 1a SELESAI 17 Okt 2026** atas
 > permintaan pemilik (§5): workspace bun + `packages/db` (`@sai/db`). **Fase 1b
 > SELESAI 17 Okt 2026** (malam): skema + klien hasil bangkitan di `packages/db`,
-> diimpor lewat `@sai/db/client/{company,control,platform}`. Fase 2–4 belum. Timbangan di §2 tidak
+> diimpor lewat `@sai/db/client/{company,control,platform}`. **Fase 2 SELESAI
+> 18 Okt 2026**: `@sai/core`, `@sai/ui`, `@sai/billing` (lihat §Fase 2). Fase 3–4
+> belum — dan Fase 3 kini terlihat lebih besar dari perkiraan (§Fase 2, "Yang
+> ditemukan"). Timbangan di §2 tidak
 > berubah; yang berubah adalah keputusannya, yang memang milik pemilik.
 >
 > **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
@@ -347,6 +350,48 @@ Pindahkan 12 modul bersama (§1) + `components/ui`. Satu *package* per gerakan,
   ada lagi akan **lulus dengan nol pelanggar** — yaitu gagal secara diam-diam.
   Setiap tes bentuk wajib punya asersi "ada berkas untuk diperiksa".
 - **Bisa berhenti di sini?** Ya.
+
+#### Fase 2 — ✅ SELESAI 18 Okt 2026 (empat gerakan, `verify` hijau di antara tiap gerakan)
+
+| Gerakan | Paket | Isi |
+|---|---|---|
+| 2a | `@sai/core` | `authz` (matriks BAWAAN), `constants`, `control-db`, `money-format`, `utils` |
+| 2b | `@sai/core/i18n/*` | `config`, `dictionary`, `load`, `client`, `validation`, `locale-cookie`, kamus `id/en/zh.json` |
+| 2c | `@sai/ui` | 39 primitif `components/ui`, tema (`antd-tokens`, `config`, `tone-recipe`), `layout-scale`, `icons`, `table-sort`, `brand/mark`; plus `labels` & `tenant-routes` ke `@sai/core` |
+| 2d | `@sai/billing` | `payment-gateway`, `plan-change`, `plan-copy`, `plan-stacking`, `platform-constants` |
+
+Ukuran per 18 Okt: core 13 berkas / 2.510 baris, ui 46 / 9.454, billing 5 / 944,
+db 4 / 656. Setiap pindahan **dihitung penutupan dependensinya**, bukan ditebak:
+yang bergantung pada modul aplikasi tetap tinggal.
+
+**Yang TETAP di aplikasi, dan kenapa.** `i18n/server.ts` (membaca timpaan isi
+situs dari basis data platform), `i18n/actions.ts` & `theme/{client,server,actions}`
+(server action), `i18n/labels.ts`; enam pembungkus di `src/components/ui`
+(`confirm-dialog`, `disclosure-section`, `locale-toggle`,
+`server-searchable-select`, `status-column`, `theme-toggle`); penulis penagihan
+(`payment-webhook`, `plan-catalog`, `billing/change-tenant-plan`,
+`billing/platform-efaktur`).
+
+**Risiko utama di atas TERJADI, dan ditutup.** Sembilan pemindai menyapu `src/`
+saja; begitu primitif pindah, mereka akan lulus dengan nol pelanggar. Semuanya
+kini memakai `tests/akar-sumber.ts` (akar `src/` + `packages/*/src`, dan
+`uraiPaket()` untuk penjaga yang membangun graf impor). ESLint `sai/*`
+diperluas ke `packages/*/src/**`. Dibuktikan dengan pelanggaran yang DITANAM di
+`packages/ui`: sarang Link>Button, warna mentah, modul client baru, dan
+client → `server-only` lewat `@sai/ui/*` — keempatnya merah.
+`landing-boundary` dulu melewatkan `@sai/*` sebagai pihak ketiga; kini tidak.
+
+**Yang ditemukan — dan mengubah perkiraan Fase 3.** Dari 12 modul bersama di
+§1, **10 kini di paket**; `i18n/server` dan `site-settings` tidak (keduanya
+membaca basis data platform). Lebih penting: sesudah 10 fitur konsol 17 Okt,
+permukaan operator mengimpor **32 modul aplikasi** di luar `lib/operator`
+(`platform-db`, `mailer*`, `subscription-*`, `tenant-*`, `site-content*`,
+`status-notices*`, `account-mail`, `invitation-store`, `password-reset-store`,
+`rate-limit`, `schema-version`, …). Fase 3 karena itu tidak bisa "memindahkan
+`(operator)` + `lib/operator` + `components/operator`" saja: ia butuh satu paket
+sisi-server lagi (sebut `@sai/platform`: klien platform, surel, jejak
+langganan & tenant, isi situs) — dan itu kode yang MENULIS basis data, jadi
+gerbangnya lebih berat daripada Fase 2.
 
 ### Fase 3 — `apps/operator` lahir (≈ 4 hari)
 

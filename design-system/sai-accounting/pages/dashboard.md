@@ -106,7 +106,7 @@ Aturan yang ikut berlaku di halaman tujuan:
   ikut pindah: `/contracts` tidak mengambil baris tagihan (dan tidak merender
   Aktivitas bulanan) tanpa `invoice.read` efektif; `/reports/cash-flow` tidak
   membaca buku kas tanpa `cash.read` efektif, izin yang berbeda dari
-  `report.read` penjaga halamannya.
+  `report.read` guard halamannya.
 
 ## Jangan
 

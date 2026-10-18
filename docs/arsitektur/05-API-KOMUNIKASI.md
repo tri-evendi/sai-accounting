@@ -54,15 +54,15 @@ graph TB
 | Pustaka | `next-auth` v5 beta |
 | Penyedia | **Credentials** saja (nama pengguna + sandi, `bcrypt`) |
 | Strategi | **JWT**, masa 24 jam |
-| Cookie | Berlingkup host — inilah yang memisahkan bidang operator |
+| Cookie | Berlingkup host — inilah yang memisahkan plane operator |
 | Env | `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST` |
 
 JWT tidak lagi membawa `companyId`; dicabut di #158 (alasannya di
 [dok 02 §4](./02-ARSITEKTUR.md)). Perusahaan selalu datang dari jalur URL, dan
-keanggotaannya dibaca ulang dari basis data kendali pada setiap permintaan.
+keanggotaannya dibaca ulang dari basis data control pada setiap permintaan.
 
 Peran juga ditimpa per permintaan. JWT membawa peran di perusahaan yang
-terakhir dibuka, jadi penjaga menggantinya dengan peran di PT yang sedang
+terakhir dibuka, jadi guard menggantinya dengan peran di PT yang sedang
 dibuka. Tanpa itu, `finance_manager` di PT A yang membuka buku PT B (tempat ia
 hanya `staff`) akan memegang hak PT A.
 
@@ -71,7 +71,7 @@ hanya `staff`) akan memegang hak PT A.
 | | |
 |---|---|
 | Bentuk | `Authorization: Bearer sai_…` |
-| Penjaga | `lib/api-token-guard.ts` → `requireApiToken("izin")` |
+| Guard | `lib/api-token-guard.ts` → `requireApiToken("izin")` |
 | Penyimpanan | `control.api_tokens` |
 | Pengelolaan | Halaman `/t/{tenant}/{company}/api-tokens` |
 | Spesifikasi | `GET /api/v1/openapi.json` — sengaja publik, tanpa data perusahaan |
@@ -87,7 +87,7 @@ yang sah.
 Cacat itu lolos `verify` dan `build` karena semua tes token memanggil
 `requireApiToken` langsung, tanpa melewati proxy.
 
-Dilepas proxy tidak berarti tanpa penjaga: `tests/api-v1-spec.test.ts`
+Dilepas proxy tidak berarti tanpa guard: `tests/api-v1-spec.test.ts`
 menuntut setiap route `/api/v1/*` memanggil `requireApiToken` dengan izin yang
 sama dengan yang didokumentasikan.
 
@@ -125,15 +125,15 @@ graph LR
 | | |
 |---|---|
 | Modul murni | `packages/core/src/operator-plane.ts` (aman-edge: tanpa Prisma, `node:crypto`, `next/*`) |
-| Penjaga | `apps/operator/src/lib/operator/guard.ts` |
+| Guard | `apps/operator/src/lib/operator/guard.ts` |
 | Sesi | `apps/operator/src/lib/operator/session.ts` — `OPERATOR_SESSION_SECRET` |
-| Kredensial | `OPERATOR_USERS` (akun darurat, selalu owner) + `sai_control.operator_accounts` (sejak 17 Okt 2026, migration kendali 0004; TOTP tersegel `SETTINGS_ENCRYPTION_KEY`) — `apps/operator/src/lib/operator/credentials.ts`, `operator-accounts.ts` |
+| Kredensial | `OPERATOR_USERS` (akun darurat, selalu owner) + `sai_control.operator_accounts` (sejak 17 Okt 2026, migration control 0004; TOTP tersegel `SETTINGS_ENCRYPTION_KEY`) — `apps/operator/src/lib/operator/credentials.ts`, `operator-accounts.ts` |
 | Peran | `apps/operator/src/lib/operator/roles.ts` — owner / billing / support / viewer; membagi tindakan, bukan bacaan. Setiap server action memanggil `requireOperatorActionSession(izin)` (dijaga `tests/operator-roles.test.ts`) |
 | Pencabutan sesi | akun basis data: `session_version` dibawa token dan dibandingkan tiap permintaan (`identity.ts`); akun env: hapus entrinya atau putar `OPERATOR_SESSION_SECRET` |
 | TOTP | `apps/operator/src/lib/operator/totp.ts` — `OPERATOR_MFA` |
 | Env di `.env` (11 Okt 2026) | `OPERATOR_DOMAIN`, `OPERATOR_HOST`, `OPERATOR_IP_ALLOWLIST`, `OPERATOR_MFA`, `OPERATOR_SESSION_SECRET`, `OPERATOR_USERS` — semuanya terisi |
 
-**Fail-closed.** Bidang ditentukan oleh host saja:
+**Fail-closed.** Plane ditentukan oleh host saja:
 
 - `OPERATOR_HOST` kosong → konsol 404 di host mana pun.
 - Aplikasi pelanggan tidak memuat rute konsol; host operator yang salah arah ke
@@ -180,7 +180,7 @@ sengaja.
 | `/api/billing/webhook` | Pengirimnya server Midtrans; kredensialnya tanda tangan |
 | `/api/auth/*` | NextAuth, kecuali `change-password` |
 | `/robots.txt`, `/sitemap.xml`, `/opengraph-image*` | Perayap & pratinjau tautan tidak punya cookie |
-| `/manifest.webmanifest` | Peramban mengambil manifest tanpa kredensial; tanpa ini PWA #471 gagal tanpa galat |
+| `/manifest.webmanifest` | Peramban mengambil manifest tanpa kredensial; tanpa ini PWA #471 gagal tanpa error |
 | `/docs/**` | Satu-satunya pelepasan subpohon, karena pohon dokumen tidak bisa dienumerasi; dijawab `isDocsPath` (fungsi murni teruji) + dua tes |
 
 `/opengraph-image` dicocokkan sebagai prefix karena Next menambahkan sufiks
@@ -197,9 +197,9 @@ masuk dengan status 307.
 | Rute API | **127** pelanggan + **2** konsol (`/api/health`, unduhan e-Faktur) | Campuran — lihat §5 |
 | Berkas metadata | 4 (`robots`, `sitemap`, `manifest`, `opengraph-image`) | Publik |
 
-## 4. Halaman menurut bidang
+## 4. Halaman menurut plane
 
-| Grup rute | Jumlah | Pola jalur | Penjaga |
+| Grup rute | Jumlah | Pola jalur | Guard |
 |---|---|---|---|
 | `(marketing)` | 3 | `/`, `/pricing`, `/status` | **Tanpa** |
 | `(app)/(auth)` | 13 | `/login`, `/register`, … | Sebagian publik |
@@ -207,7 +207,7 @@ masuk dengan status 307.
 | `(app)/(setup)` | 2 | `/t/{t}/{c}/setup`, `/setup/done` | `setup.manage` |
 | `(app)/(tenant)/(panel)` | 7 | `/platform/…`, `/companies/new` | Matriks **tenant** |
 | `(app)/(docs)` | 3 | `/docs`, `/docs/cari`, `/docs/[...slug]` | **Tanpa** — dijaga tes |
-| `apps/operator` · `(operator)` | 18 (17 + `/login`) | `/`, `/tenants`, `/login`, … di `OPERATOR_DOMAIN` (tanpa prefix) | Bidang operator |
+| `apps/operator` · `(operator)` | 18 (17 + `/login`) | `/`, `/tenants`, `/login`, … di `OPERATOR_DOMAIN` (tanpa prefix) | Plane operator |
 
 ### Pola jalur bertenant
 
@@ -403,7 +403,7 @@ Dijaga `tests/security-headers.test.ts`. Rinciannya
 | Halaman | HTML (RSC) |
 | API internal | JSON |
 | `/api/v1` | JSON + `meta` (bentuk dari `lib/api-v1.ts`) |
-| `/api/health` | JSON; 503 hanya bila kendali tak terjangkau |
+| `/api/health` | JSON; 503 hanya bila control tak terjangkau |
 | Ekspor laporan | XLSX (`exceljs`), PDF (`jspdf` + `jspdf-autotable`), ZIP (`jszip`) |
 | `/api/v1/openapi.json` | OpenAPI (dari `lib/api-v1-spec.ts`) |
 | Berkas dokumen | Byte lewat route bertenant, bukan berkas statis |

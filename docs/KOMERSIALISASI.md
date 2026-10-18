@@ -1,4 +1,4 @@
-# Komersialisasi — strategi, fase, dan gerbangnya
+# Komersialisasi — strategi, fase, dan gate-nya
 
 > **Status: usulan, belum diputuskan pemilik.** Dokumen ini menjawab satu
 > pertanyaan: *"platform dipakai internal dan proses komersialnya belum jelas;
@@ -22,7 +22,7 @@
 Mesin langganan tidak perlu dimunculkan karena ia sudah menyala. Ia sudah
 bertindak terhadap akun uji coba: menerbitkan tagihan, mengirim 40 surel
 penagihan, lalu menangguhkan lima buku menjadi hanya-baca. Yang belum ada adalah
-rel pendapatannya. Tidak ada gerbang pembayaran terpasang, tidak ada nomor
+rel pendapatannya. Tidak ada gate pembayaran terpasang, tidak ada nomor
 rekening untuk transfer manual, tidak ada profil pajak pelanggan, dan belum
 pernah ada pembayaran tercatat.
 
@@ -34,7 +34,7 @@ adalah tiga langkah berurutan:
 2. **Jual dengan penawaran** untuk pelanggan multi-PT (≥3 PT), memakai konsol
    operator dan buku PT sendiri yang keduanya sudah ada (§5 Fase B).
 3. **Nyalakan langganan swalayan** hanya untuk Starter/Pro, dan hanya setelah
-   gerbang terukur di §5 Fase C terlewati.
+   gate terukur di §5 Fase C terlewati.
 
 Satu koreksi atas usulan awal: jalur jualnya dibelah menurut jumlah PT. Dasarnya
 aritmetika (§4.1).
@@ -64,7 +64,7 @@ tetapi tidak mengurangi temuannya.
 | **Pembayaran tercatat** | **0 baris** | `sai_platform.payments` |
 | Surel penagihan terkirim (SMTP hidup, uji terakhir `ok`) | **18 `invoice_due` + 22 `trial_ending`** | `sai_platform.reminder_logs`, `mail_settings` |
 | Profil penagihan pelanggan (NPWP) | **0** | `sai_platform.tenant_billing_profiles` |
-| Putaran penjadwal | 1.212 `ok` · 5 `error` (terakhir error 16 Agu) | `sai_platform.scheduler_runs` |
+| Putaran scheduler | 1.212 `ok` · 5 `error` (terakhir error 16 Agu) | `sai_platform.scheduler_runs` |
 
 Yang ditunjukkan angka-angka ini:
 
@@ -83,7 +83,7 @@ Yang ditunjukkan angka-angka ini:
 ### 1.1 Akar masalahnya: **"boleh ditagih" bukan konsep di model**
 
 > **Ditutup (Fase A).** Kolom `subscriptions.billing_mode` (`none` | `manual` |
-> `auto`, bawaan `none`) kini ada di `sai_platform`, dan penjadwal
+> `auto`, bawaan `none`) kini ada di `sai_platform`, dan scheduler
 > (`scripts/subscription-scheduler.ts`) hanya menjalankan trial habis, dunning,
 > dan tenggang untuk mode otomatis (`billingModeIsAutomatic`); akun lama
 > dibereskan lewat `bun run billing:pause`. Uraian di bawah dipertahankan
@@ -91,7 +91,7 @@ Yang ditunjukkan angka-angka ini:
 
 Ini temuan terpenting dokumen ini, dan sifatnya arsitektural.
 
-Penjadwal mengambil setiap langganan yang belum `cancelled`. Untuk setiap
+Scheduler mengambil setiap langganan yang belum `cancelled`. Untuk setiap
 langganan yang masa uji cobanya habis, ia menerbitkan tagihan sebesar
 `sub.price` + PPN tanpa memeriksa apakah akun itu memang pelanggan
 (`scripts/subscription-scheduler.ts`, langkah 1). Tidak ada bendera
@@ -121,7 +121,7 @@ Tiga hal membuatnya tidak mungkin berhasil:
 1. **Tidak ada metode pembayaran yang pernah diambil.** Menagih orang yang
    tidak pernah memberi cara membayar hanya bisa gagal.
 2. **Tidak ada rel untuk membayar walau pelanggan mau.** `MIDTRANS_SERVER_KEY`
-   tidak diset, jadi gerbang jatuh ke `manual`. `MANUAL_PAYMENT_INSTRUCTIONS`
+   tidak diset, jadi gate jatuh ke `manual`. `MANUAL_PAYMENT_INSTRUCTIONS`
    juga tidak diset, jadi tombol "Bayar" menghasilkan referensi `manual-PINV-…`
    tanpa nomor rekening (`packages/billing/src/payment-gateway.ts`).
 3. **14 hari lebih pendek daripada waktu mencapai nilai** untuk perangkat
@@ -136,7 +136,7 @@ gabungan terburuk dari keduanya:
 
 | Desain | Akhir uji coba | Syarat |
 | --- | --- | --- |
-| **Kartu di muka** | langsung ditagih otomatis | wajib ada gerbang pembayaran; cocok untuk swalayan |
+| **Kartu di muka** | langsung ditagih otomatis | wajib ada gate pembayaran; cocok untuk swalayan |
 | **Tanpa kartu** | akun **turun/beku**, TIDAK ditagih | tagihan hanya lahir setelah orang setuju membeli |
 | *Sekarang* | *tanpa kartu, **tetapi ditagih** + ditangguhkan* | *—* |
 
@@ -153,7 +153,7 @@ Dasar seluruh strategi di bawah ini: produk ini adalah pembukuan untuk satu grup
 berisi beberapa PT, bukan aplikasi akuntansi untuk satu UMKM.
 
 Buktinya ada di arsitekturnya. Setiap PT punya basis data sendiri
-(`docs/MULTI-COMPANY.md`), keanggotaan dan pengguna hidup di basis data kendali,
+(`docs/MULTI-COMPANY.md`), keanggotaan dan pengguna hidup di basis data control,
 dan kuota paket dihitung dalam jumlah PT. Tidak ada vendor di tabel pesaing
 `PRICING.md` §2 yang menjual bentuk itu sebagai anak tangga swalayan. Mekari
 Jurnal menaruh multi-perusahaan di paket ERP "hubungi penjualan", Kledo hanya di
@@ -197,12 +197,12 @@ polanya berulang, lalu otomatiskan bagian yang paling sering diulang.
 
 Urutan ini aman di sini karena sekitar 90% alur quote-to-cash sudah ada, dan
 semuanya dijalankan manusia. Konsol operator sudah bisa memberi paket dan kuota
-(`changeTenantPlan`), memberi periode berbayar tanpa gerbang
+(`changeTenantPlan`), memberi periode berbayar tanpa gate
 (`extendSubscription`), mencatat transfer manual (`recordManualPayment`), dan
 menangguhkan/memulihkan (`setTenantSuspension`). Fase B hampir tidak menuntut
 fitur baru. Syaratnya, mesin otomatis berhenti bertindak mendahului manusia.
 
-Pilar ini punya batas waktu; §4.1 menyebut angkanya. Tahap manual tanpa gerbang
+Pilar ini punya batas waktu; §4.1 menyebut angkanya. Tahap manual tanpa gate
 keluar membuat bisnis tidak bisa tumbuh.
 
 ### 3.3 Entitlement ≠ billing (aturan arsitektur)
@@ -217,7 +217,7 @@ ditegakkan `billing_mode`):
 
 - setiap tenant punya mode penagihan yang eksplisit, mis. `internal` (tidak
   pernah ditagih), `manual` (ditagih di luar sistem atau di buku PT sendiri),
-  `otomatis` (siklus penjadwal);
+  `otomatis` (siklus scheduler);
 - penerbitan tagihan, dunning, dan penangguhan hanya menyentuh mode `otomatis`;
 - akun baru mendapat mode yang tidak menagih. Akun menjadi `auto` lewat tindakan
   manusia, tidak lewat berakhirnya waktu: satu panel di konsol operator
@@ -265,7 +265,7 @@ membaliknya mahal.
   `PLATFORM_PPN_DISABLED`, yang menurut komentarnya adalah *"mekanisme untuk
   jawaban penasihat pajak, bukan kebijakan yang kami tetapkan"*. Sejak
   migration 0017 sakelar itu bisa dibalik dari konsol `/settings` tanpa SSH.
-  Penjadwal juga membaca keputusan konsol, jadi yang berubah adalah nominal yang
+  Scheduler juga membaca keputusan konsol, jadi yang berubah adalah nominal yang
   benar-benar ditagih, tidak hanya yang dipajang.
 
 ---
@@ -320,7 +320,7 @@ harganya tidak pernah bisa naik.
 
 ---
 
-## 5. Tiga fase, dengan gerbang yang bisa diukur
+## 5. Tiga fase, dengan gate yang bisa diukur
 
 ### Fase A — berhenti bertindak *(mulai sekarang; bukan pekerjaan fitur)*
 
@@ -332,8 +332,8 @@ yang tidak punya perjanjian komersial.
 | Pulihkan 5 tenant `suspended` + 1 `past_due` | `setTenantSuspension` (konsol) |
 | Batalkan/void 6 tagihan fiktif Rp 3,98 jt | tindakan operator (butuh status `void`, §11) |
 | Tandai seluruh akun uji coba & internal sebagai **tidak boleh ditagih** | **sudah ada** — `subscriptions.billing_mode` (bawaan `none`) + `bun run billing:pause` |
-| Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **konsol `/settings` → Gerbang → Pendaftaran mandiri** (env `SELF_SERVE_SIGNUP` tetap jadi bawaannya) |
-| Matikan PPN di tagihan platform sampai status PKP diputuskan | **konsol `/settings` → Gerbang → PPN** (env `PLATFORM_PPN_DISABLED=true` tetap jadi bawaannya) |
+| Tutup `/register` publik (atau jadikan undangan) sampai rel bayar ada | **konsol `/settings` → Gate → Pendaftaran mandiri** (env `SELF_SERVE_SIGNUP` tetap jadi bawaannya) |
+| Matikan PPN di tagihan platform sampai status PKP diputuskan | **konsol `/settings` → Gate → PPN** (env `PLATFORM_PPN_DISABLED=true` tetap jadi bawaannya) |
 | Ubah CTA harga dari "Coba gratis" → **"Minta penawaran"** untuk ≥4 PT | kanal kontak sudah ada (`contactChannels()`) |
 
 **Keluar dari Fase A bila:** secara konstruksi tidak ada akun non-komersial yang
@@ -353,15 +353,15 @@ berulang.
 - Satu pelanggan dijalankan di mode `otomatis` dengan pengawasan (§4.2).
 - Yang perlu dibangun sekecil mungkin: satu dokumen penawaran (lingkup, kuota,
   harga, masa kontrak, syarat bayar) dan satu tombol konsol "aktifkan sesuai
-  penawaran". Tidak perlu CPQ, gerbang pembayaran, atau dunning.
+  penawaran". Tidak perlu CPQ, gate pembayaran, atau dunning.
 
-**Keluar dari Fase B (= gerbang Fase C) bila semua terpenuhi:**
+**Keluar dari Fase B (= gate Fase C) bila semua terpenuhi:**
 
 1. ≥10 pelanggan berbayar, ≥3 di antaranya datang tanpa demo yang memakan waktu
    penjual;
 2. ≥3 siklus perpanjangan berhasil ditagih dan tertagih (bukan comp);
 3. status PKP dan perlakuan PPh 23 sudah dijawab konsultan pajak (§9);
-4. gerbang pembayaran hidup (`MIDTRANS_SERVER_KEY`) atau instruksi transfer
+4. gate pembayaran hidup (`MIDTRANS_SERVER_KEY`) atau instruksi transfer
    manual terisi, dan keduanya pernah diuji dengan uang sungguhan;
 5. kebijakan refund dan pembatalan tertulis dan ditautkan dari `/terms`;
 6. ada satu orang yang bertanggung jawab atas tagihan yang menggantung. Otomasi
@@ -370,7 +370,7 @@ berulang.
 ### Fase C — swalayan untuk Starter/Pro *(dipicu volume, bukan kesiapan kode)*
 
 - **Penagihan perpanjangan harus dibangun lebih dulu.** Fitur ini belum ada:
-  penjadwal hanya menerbitkan tagihan pertama (saat uji coba habis) dan tidak
+  scheduler hanya menerbitkan tagihan pertama (saat uji coba habis) dan tidak
   pernah menagih periode berikutnya (§11). Tanpa itu, pelanggan swalayan
   membayar sekali lalu memakai produk tanpa bayar seterusnya, dan hal itu baru
   ketahuan saat pendapatan dijumlahkan.
@@ -502,7 +502,7 @@ jawabannya bisa langsung diterapkan. Yang harus dijawab sebelum tagihan berbayar
 pertama:
 
 1. **Status PKP penyedia**, yang menentukan boleh tidaknya PPN muncul di
-   tagihan. Sakelarnya ada di konsol `/settings` → Gerbang → PPN (bawaannya
+   tagihan. Sakelarnya ada di konsol `/settings` → Gate → PPN (bawaannya
    tetap env `PLATFORM_PPN_DISABLED`). Enam tagihan yang sudah terbit memuat
    PPN 11% dan perlu ditinjau.
 2. **Tarif dan dasar pengenaan PPN yang berlaku saat penerbitan.**
@@ -529,13 +529,13 @@ pertama:
 | # | Keputusan | Status | Dasar |
 | --- | --- | --- | --- |
 | K-1 | Jalur jual dibelah menurut jumlah PT (swalayan ≤3 PT, penawaran ≥4 PT) | **usulan** | §4.1 |
-| K-2 | Hentikan tindakan otomatis terhadap akun non-komersial | **dibangun (Fase A)** — `billing_mode` menggerbangi penjadwal | §1.1 |
+| K-2 | Hentikan tindakan otomatis terhadap akun non-komersial | **dibangun (Fase A)** — `billing_mode` menggerbangi scheduler | §1.1 |
 | K-3 | Uji coba: tanpa kartu → beku (bukan ditagih), 30 hari | **usulan** | §1.2 |
 | K-4 | Penagihan Fase B lewat buku PT sendiri, bukan `platform_invoices` | **usulan** | §3.4 |
 | K-5 | PPN platform dimatikan sampai status PKP dijawab | **usulan** | §9.1 |
 | K-6 | Fase C bergerbang 6 syarat terukur | **usulan** | §5 |
 | K-7 | Harga 249/599/1.199 + pembeda kuota | **sudah diputuskan (#404/#408)** | `PRICING.md` |
-| K-8 | Gerbang pendaftaran mandiri & PPN dipindah dari `.env` ke konsol `/settings` | **sudah diputuskan (pemilik, 11 Okt 2026)** | §9.1 · migration 0017 |
+| K-8 | Gate pendaftaran mandiri & PPN dipindah dari `.env` ke konsol `/settings` | **sudah diputuskan (pemilik, 11 Okt 2026)** | §9.1 · migration 0017 |
 
 ### Pertanyaan yang hanya pemilik bisa jawab
 
@@ -558,7 +558,7 @@ pertama:
 | ~~Tidak ada bendera "boleh ditagih"~~ — **ditutup**: `billing_mode` menggerbangi trial habis, dunning, dan tenggang | (dulu: akun internal/uji coba ditagih lalu ditangguhkan, 2×) | `scripts/subscription-scheduler.ts` |
 | ~~`extendSubscription` mengubah `billing_cycle` tanpa memotret ulang harga~~ — **ditutup**: kini memotret harga siklus dari katalog `plans` dan menolak siklus tanpa harga (`cycle_unpriced`); baris tenant 3 yang sudah terlanjur `yearly` Rp 599.000 perlu diperiksa terpisah | kurang tagih 10× saat comp habis 9 Sep 2027 | `apps/operator/src/lib/operator/writes.ts` |
 | Comp menghasilkan tagihan `paid` Rp 0 | "pendapatan" tak bisa dibaca tanpa menyaring comp; butuh status/penanda tersendiri | `extendSubscription`, `platform_invoices.status` |
-| ~~Tidak ada sakelar menutup pendaftaran publik~~ — **ditutup**: konsol `/settings` → Gerbang → Pendaftaran mandiri (env `SELF_SERVE_SIGNUP` jadi bawaan) | — | `packages/core/src/registration.ts`, konsol `/settings` |
+| ~~Tidak ada sakelar menutup pendaftaran publik~~ — **ditutup**: konsol `/settings` → Gate → Pendaftaran mandiri (env `SELF_SERVE_SIGNUP` jadi bawaan) | — | `packages/core/src/registration.ts`, konsol `/settings` |
 | `MANUAL_PAYMENT_INSTRUCTIONS` kosong | tombol "Bayar" = jalan buntu tanpa nomor rekening | `packages/billing/src/payment-gateway.ts` |
 | `tenant_billing_profiles` kosong (0 baris) | ekspor e-Faktur platform akan menandai semua sebagai masalah | `packages/core/src/efaktur.ts` |
 | Uji coba 14 hari < waktu ke nilai pertama | konversi diukur sebelum nilai pernah terasa | `TRIAL_DAYS` |
@@ -568,6 +568,6 @@ pertama:
 ## 12. Yang membuat dokumen ini kedaluwarsa
 
 Tinjau ulang bila salah satu terjadi: pelanggan berbayar pertama masuk; jawaban
-konsultan pajak turun; gerbang pembayaran dinyalakan; jumlah pelanggan berbayar
-melewati 10, lalu 30; atau harga katalog berubah. Angka di §1 adalah potret
+konsultan pajak turun; gate pembayaran dinyalakan; jumlah pelanggan berbayar
+melewati 10, lalu 30; atau harga katalog berubah. Angka di §1 adalah snapshot
 10 Oktober 2026 dan akan berubah begitu Fase A dijalankan.

@@ -24,7 +24,7 @@ sequenceDiagram
     B->>T: GET /t/akme/pt-akme/invoices
     T->>P: HTTP (TLS sudah diterminasi)
 
-    P->>P: normalizeHost → bidang operator?
+    P->>P: normalizeHost → plane operator?
     P->>P: isPublicPath? isBearerApiPath?
     P->>P: getToken() — JWT NextAuth
     alt tanpa sesi
@@ -66,14 +66,14 @@ sequenceDiagram
 Lima hal yang sering disalahpahami pada alur ini:
 
 1. Proxy tidak memutuskan izin. Ia hanya memutuskan perlu sesi atau tidak, dan
-   bidang mana. Izin diputuskan penjaga, satu lapis di bawahnya.
+   plane mana. Izin diputuskan guard, satu lapis di bawahnya.
 2. Keanggotaan dibaca ulang dari basis data pada setiap permintaan, tidak dari
    JWT. Biayanya lebih tinggi, dan itu disengaja.
 3. Peran ditimpa per permintaan, karena JWT membawa peran di PT yang terakhir
    dibuka.
 4. Empat kegagalan berbeda menghasilkan 404 yang identik. Membedakannya akan
    membocorkan keberadaan perusahaan orang lain.
-5. Konteks yang hilang selalu melempar galat; tidak ada jalur bawaan.
+5. Konteks yang hilang selalu melempar error; tidak ada jalur bawaan.
 
 ## 2. Posting dokumen → jurnal
 
@@ -102,7 +102,7 @@ sequenceDiagram
     AG-->>R: lolos
     R->>Z: parse badan permintaan
     alt tidak sah
-        Z-->>U: 400 + galat per medan
+        Z-->>U: 400 + error per medan
     end
 
     R->>TX: mulai transaksi
@@ -254,18 +254,18 @@ sequenceDiagram
     WH->>PDB: UPDATE payments + platform_invoices
     Note over WH,PDB: ⚠ PLATFORM DULU
     WH->>CDB: snapshot status tenant + kuota
-    Note over WH,CDB: KENDALI BELAKANGAN
+    Note over WH,CDB: CONTROL BELAKANGAN
 ```
 
 ### Kenapa urutannya tidak boleh dibalik
 
 FK dan transaksi tidak menyeberangi basis data, jadi kegagalan di tengah selalu
-mungkin. Urutan platform→kendali memastikan kegagalan itu bisa diperbaiki:
+mungkin. Urutan platform→control memastikan kegagalan itu bisa diperbaiki:
 
 | Urutan | Kegagalan di tengah meninggalkan | Bisa diperbaiki? |
 |---|---|---|
 | **Platform dulu** ✅ | Pembayaran tercatat, tenant **belum** naik kelas | **Ya** — `bun run reconcile:platform` |
-| Kendali dulu ❌ | Tenant naik kelas, **tanpa** pembayaran | **Tidak akan pernah ketahuan** |
+| Control dulu ❌ | Tenant naik kelas, **tanpa** pembayaran | **Tidak akan pernah ketahuan** |
 
 ### Keadaan hari ini
 
@@ -280,12 +280,12 @@ Penagihan otomatis sengaja dihentikan (Fase A). Data dari basis data platform,
 | `MIDTRANS_*` di `.env` | **tidak ada** → transport MOCK |
 
 Karena itu alur di atas berjalan tanpa menagih siapa pun. Mekanismenya aktif dan
-diuji, tetapi gerbangnya ditutup di tingkat data. Alasan dan syarat
+diuji, tetapi gate-nya ditutup di tingkat data. Alasan dan syarat
 pembukaannya ada di [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md).
 Penghentiannya dilakukan `scripts/pause-platform-billing.ts`: kering secara
 bawaan, `--apply` menuntut `--reason`, dan idempoten.
 
-## 5. Alur cadangan
+## 5. Alur backup
 
 ```mermaid
 sequenceDiagram
@@ -295,7 +295,7 @@ sequenceDiagram
     participant V as volume documents + audit (:ro)
     participant FS as BACKUP_WORK_DIR
     participant S3 as penyimpanan S3
-    participant L as volume cadangan (/app/data/cadangan)
+    participant L as volume backup (/app/data/backup)
     participant PDB as sai_platform
 
     B->>DB: pg_dumpall
@@ -332,21 +332,21 @@ sequenceDiagram
 
 `/api/health` → `backup: local_only`, `lastSuccessAt: null`.
 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, dan `BACKUP_S3_BUCKET` di `.env`
-kosong, jadi alur berjalan di cabang tanpa bucket. Arsip terenkripsi disimpan
-di volume `cadangan` di mesin yang sama, dan putarannya dicatat `lokal`, bukan
+kosong, jadi alur berjalan di branch tanpa bucket. Arsip terenkripsi disimpan
+di volume `backup` di mesin yang sama, dan putarannya dicatat `lokal`, bukan
 `ok`. Salinan ini melindungi dari kerusakan data (`DROP TABLE` keliru,
 migration yang merusak), tetapi tidak dari kehilangan mesin. `watch:health`
 terus memperingatkannya.
 
 Risikonya juga hukum: pembukuan wajib disimpan sepuluh tahun (UU KUP), dan
-langganan dijual tanpa cadangan luar-mesin. Prioritas **P0** di
+langganan dijual tanpa backup luar-mesin. Prioritas **P0** di
 [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 
 ### Satu risiko yang menyertainya
 
 `BACKUP_ENCRYPTION_KEY` ada di `.env` pada mesin yang sama dengan datanya.
 ❓ Belum dipastikan apakah kunci itu juga disimpan di luar mesin. Tanpa kunci,
-cadangan yang berhasil pun tidak bisa dibuka.
+backup yang berhasil pun tidak bisa dibuka.
 
 ## 6. Alur surel keluar
 
@@ -373,10 +373,10 @@ flowchart TD
     style J fill:#eef7ee,stroke:#5a8f5a
 ```
 
-### Alur pengingat ke pelanggan — empat gerbang
+### Alur pengingat ke pelanggan — empat gate
 
 Satu-satunya alur yang menghubungi orang di luar organisasi pelanggan, sehingga
-gerbangnya paling ketat:
+gate-nya paling ketat:
 
 ```mermaid
 flowchart LR
@@ -394,7 +394,7 @@ flowchart LR
     style F fill:#eef7ee,stroke:#5a8f5a
 ```
 
-Pada gerbang kedua, penjadwal menolak bila belum ada yang pernah menerima
+Pada gate kedua, scheduler menolak bila belum ada yang pernah menerima
 sendiri kalimat pengingatnya. Jendela toleransi 2 hari mencegah pengaktifan
 fitur ini mengirim ratusan surel ke tunggakan lama sekaligus.
 
@@ -425,9 +425,9 @@ flowchart LR
 Berkas disimpan di luar `public/` dengan nama `uuid`. Berkas hanya terjangkau
 lewat route bertenant (#489) yang menuntut `document.read` dan menemukan
 barisnya di basis data PT aktif. Sebelum #367, berkas ada di direktori statis
-bersama `public/uploads/` yang tidak melewati penjaga apa pun.
+bersama `public/uploads/` yang tidak melewati guard apa pun.
 
-`companyId` diambil dari konteks yang sudah dimasuki penjaga, tidak dari klien.
+`companyId` diambil dari konteks yang sudah dimasuki guard, tidak dari klien.
 Polanya sama dengan `lib/audit.ts`.
 
 ## 8. Ke mana data berhenti
@@ -438,12 +438,12 @@ Polanya sama dengan `lib/audit.ts`.
 | Dokumen transaksi | Tabel per jenis di buku PT | Mengikuti buku |
 | Berkas lampiran | `data/documents/<companyId>/` | Mengikuti buku |
 | Jejak audit PT | `audit_logs` (per buku) | Mengikuti buku |
-| Jejak audit tenant | `tenant_audit_logs` (kendali) | **Selamat dari penghapusan tenant** — sengaja tanpa FK |
+| Jejak audit tenant | `tenant_audit_logs` (control) | **Selamat dari penghapusan tenant** — sengaja tanpa FK |
 | Identitas & keanggotaan | `sai_control` | Sampai penghapusan akun |
 | Langganan & tagihan | `sai_platform` | ❓ belum dipastikan |
-| Jejak penjadwal | `scheduler_runs` | Dipangkas `prune:trails` > 90 hari |
-| Jejak cadangan & kesesuaian | `backup_runs`, `conformance_runs` | Dipangkas `prune:trails` > 90 hari |
-| Arsip cadangan | Volume `cadangan` (lokal; S3 belum disetel) | `BACKUP_RETENTION_DAYS` |
+| Jejak scheduler | `scheduler_runs` | Dipangkas `prune:trails` > 90 hari |
+| Jejak backup & kesesuaian | `backup_runs`, `conformance_runs` | Dipangkas `prune:trails` > 90 hari |
+| Arsip backup | Volume `backup` (lokal; S3 belum disetel) | `BACKUP_RETENTION_DAYS` |
 | Surel pengembangan | `data/mail-outbox/*.eml` | ❓ tanpa pemangkasan |
 
 Berhenti berlangganan tidak menghapus buku. Keputusan ini tercatat di

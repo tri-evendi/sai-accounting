@@ -20,7 +20,7 @@ satunya sudah basi.
 
 ## Arsitektur & peta layanan
 
-[`arsitektur/`](./arsitektur/README.md) — 14 berkas + indeks: potret
+[`arsitektur/`](./arsitektur/README.md) — 14 berkas + indeks: snapshot
 keadaan yang berjalan (komponen, layanan, dependensi, API, aliran data,
 infrastruktur, penilaian berprioritas, peta jalan, portabilitas/pemisahan,
 rencana PostgreSQL, klasifikasi buku, audit skema, monorepo), dengan indeksnya
@@ -36,9 +36,9 @@ sendiri.
 | [`DATABASE.md`](./DATABASE.md) | Standar skema, tipe data, workflow migration | Aktif |
 | [`MODUL-USAHA.md`](./MODUL-USAHA.md) | Modul per jenis usaha (#99) | Aktif |
 | [`COMPLIANCE.md`](./COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi | Aktif |
-| [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) | Strategi go-to-market, fase, gerbangnya | Aktif |
+| [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) | Strategi go-to-market, fase, gate-nya | Aktif |
 | [`PRICING.md`](./PRICING.md) | Katalog paket & harga — sumber kebenaran | Aktif |
-| [`AUDIT-RILIS-UMUM.md`](./AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung | **Arsip** (potret 15 Agu 2026) |
+| [`AUDIT-RILIS-UMUM.md`](./AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung | **Arsip** (snapshot 15 Agu 2026) |
 | [`accurate-reference.md`](./accurate-reference.md) | Peta fitur Accurate Online — referensi pembanding | Referensi |
 
 ## Dokumen di akar repo
@@ -46,7 +46,7 @@ sendiri.
 | Berkas | Isi | Status |
 |---|---|---|
 | [`../README.md`](../README.md) | Pintu masuk repo, quick start | Aktif |
-| [`../AGENTS.md`](../AGENTS.md) | **Aturan kerja** — gerbang verify/build, UI, otorisasi, DB | Aktif · WAJIB |
+| [`../AGENTS.md`](../AGENTS.md) | **Aturan kerja** — gate verify/build, UI, otorisasi, DB | Aktif · WAJIB |
 | [`../PRODUCTION.md`](../PRODUCTION.md) | **Runbook deploy** — §Updates adalah jalur yang hidup | Aktif |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Perubahan yang terlihat pengguna | **Dibangkitkan** — jangan sunting |
 | [`../CLAUDE.md`](../CLAUDE.md) | Penerus ke `AGENTS.md` | Aktif |

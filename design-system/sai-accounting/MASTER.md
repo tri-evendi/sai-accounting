@@ -69,7 +69,7 @@ beberapa token kustom hasil pengukuran kontras. Tidak ada palet kedua
 | Teks utama | `colorText` |
 | Teks penjelas / label kolom | `colorTextSecondary` |
 | Kisi tabel & tepi kartu | `colorBorderSecondary` (#208) |
-| Batas kendali (`Input`, `Select`) | `colorBorder` (#208) |
+| Batas control (`Input`, `Select`) | `colorBorder` (#208) |
 | Garis pemisah dekoratif (`Divider`) | `colorSplit` (#208) |
 | Cincin fokus papan ketik | `colorPrimaryBorder` (#187) |
 | Tautan & teks merek | `colorLink` / `colorBrandText` (#186) |
@@ -91,7 +91,7 @@ palet AntD sendiri (green-8 / red-8 / gold-9 / blue-7):
 | Informasional | `colorMoneyInfo` |
 
 Keempatnya juga dipakai sebagai warna teks `Tag` (issue #187) dan warna teks
-galat formulir. `colorSuccess`/`colorWarning`/`colorError` bawaan tetap dipakai
+error formulir. `colorSuccess`/`colorWarning`/`colorError` bawaan tetap dipakai
 untuk isian pekat, ikon berlatar, dan `Progress`; di sana ambangnya 3:1
 non-teks.
 
@@ -108,8 +108,8 @@ masuk kategori yang ketat:
 |---|---|---|
 | Teks < 18,66px, atau < 24px bila tidak tebal | **4,5:1** | seluruh isi tabel (`fontSize` 14px), label, teks bantuan, teks `Tag` |
 | Teks >= 24px, atau >= 18,66px **bold** | **3:1** | angka besar kartu KPI (`fontSizeHeading*`) |
-| Grafis non-teks: ikon, batas kendali, cincin fokus, bilah chart | **3:1** | `colorBorder`, `colorBorderSecondary`, `colorPrimaryBorder` |
-| Teks nonaktif & batas kendali nonaktif | dikecualikan | `colorTextDisabled`, `colorBorderDisabled` — memang harus terlihat mati |
+| Grafis non-teks: ikon, batas control, cincin fokus, bilah chart | **3:1** | `colorBorder`, `colorBorderSecondary`, `colorPrimaryBorder` |
+| Teks nonaktif & batas control nonaktif | dikecualikan | `colorTextDisabled`, `colorBorderDisabled` — memang harus terlihat mati |
 
 Baris pertama itulah yang membuat anak tangga ke-6 gagal sebagai teks 14px
 (`colorSuccess` 2,27:1 · `colorWarning` 1,90:1 · `colorError` 3,27:1). Sebagai
@@ -146,7 +146,7 @@ Ketiganya tetap bawaan AntD, setelah diukur. Ada dua batas:
   `colorBorderSecondary` (`#8c8c8c`) berada di antara kartu putih dan halaman,
   jadi harus lolos 3:1 terhadap keduanya, dan sisi halaman habis lebih dulu.
   Permukaan tergelap yang masih lolos: `#f2f2f2` (tepi kartu) · `#e7e7e7`
-  (uang-positif) · `#e1e1e1` (batas kendali). `#f2f2f2` hanya menambah ΔL\*
+  (uang-positif) · `#e1e1e1` (batas control). `#f2f2f2` hanya menambah ΔL\*
   1,05 sambil menghabiskan seluruh margin ambang 3:1. Anak tangga netral AntD
   berikutnya (`#f0f0f0` α 0,06 · `#d9d9d9` α 0,15) gagal: 2,95:1 dan 2,38:1
   pada tepi kartu, dan `#d9d9d9` menurunkan angka hijau ke 3,96:1.
@@ -159,7 +159,7 @@ Ketiganya tetap bawaan AntD, setelah diukur. Ada dua batas:
   karena halaman gelap sudah `#000000`.
 
 Ada satu susunan yang lolos semua ambang: latar `#f0f0f0` bersama kisi naik ke
-grey-4 dan kendali ke grey-5 (tidak ada pasangan yang turun; kisi 3,08 → 3,47).
+grey-4 dan control ke grey-5 (tidak ada pasangan yang turun; kisi 3,08 → 3,47).
 Susunan itu ditolak karena menggelapkan setiap garis demi menambah ΔL\* 1,74,
 berlawanan dengan arah keluhan. #208 menaikkan kisi dari 1,05:1 (bawaan AntD)
 ke 3,08:1 dan itu tidak boleh dibalik. Konsekuensinya, garis itulah yang paling
@@ -219,7 +219,7 @@ tabel ini:
 |---|---|
 | **berdiri di atas latar halaman** | tepi + `--ant-box-shadow-tertiary` — sama dengan `Card` |
 | **bersarang DI DALAM kartu** | `--ant-color-fill-quaternary`, **tanpa tepi** |
-| **bagian dari GAMBAR** (diagram) | tepi saja, tanpa angkat — terdaftar di penjaga |
+| **bagian dari GAMBAR** (diagram) | tepi saja, tanpa angkat — terdaftar di guard |
 
 Baris kedua paling sering terlewat. Kotak bersarang yang memakai
 `colorBgContainer` sewarna dengan kartu penampungnya, sehingga hanya dipisahkan
@@ -244,7 +244,7 @@ Satu kekurangan yang diketahui: pilihan "ikut sistem". Preferensi OS tidak terli
 
 **Dua bidang sewarna:** di tema gelap, sidebar `#001529` dan `colorBgContainer` `#141414` berkontras 1,00:1, tidak bisa dibedakan secara luminansi; `colorBgLayout` gelap `#000000` berjarak 1,14:1 dari sider. Batas antar-bidang yang sewarna wajib punya `border` dengan warna `colorBorderSecondary` (3:1, dinaikkan di #208). Jangan `colorSplit`: #208 sengaja menahannya di bawah 3:1 sebagai pemisah dekoratif, dan di atas sider ia hanya 2,67:1. Ketiga shell gelap (`sidebar.tsx`, `auth-shell.tsx`, `platform-shell.tsx`) dikunci pada token yang benar oleh `tests/antd-tokens.test.ts`. Kartu berdiri di atas `colorBgLayout`, bukan di atas isian abu-abu lain. Tinjau UI baru di kedua tema sebelum diserahkan.
 
-**Permukaan gelap permanen memakai nilai gelap di kedua tema.** Sider, panel merek layar masuk, dan menu konsol penyewa tidak berganti warna, jadi elemen di atasnya diambil dari tabel gelap (`SIDER_BG_DARK`, `BORDER_TOKENS_DARK`, `PRIMARY_BUTTON_DARK`), bukan dari `…Tokens(resolved)`. Perhatikan bahwa token AntD ber-prefix "dark" (mis. `Menu.darkItemSelectedBg`) tetap mengambil `colorPrimary` dari tema yang sedang berlaku; tanpa nilai gelap sendiri, label putih butir menu terpilih di tema terang jatuh di bawah 4,5:1.
+**Permukaan gelap permanen memakai nilai gelap di kedua tema.** Sider, panel merek layar masuk, dan menu konsol tenant tidak berganti warna, jadi elemen di atasnya diambil dari tabel gelap (`SIDER_BG_DARK`, `BORDER_TOKENS_DARK`, `PRIMARY_BUTTON_DARK`), bukan dari `…Tokens(resolved)`. Perhatikan bahwa token AntD ber-prefix "dark" (mis. `Menu.darkItemSelectedBg`) tetap mengambil `colorPrimary` dari tema yang sedang berlaku; tanpa nilai gelap sendiri, label putih butir menu terpilih di tema terang jatuh di bawah 4,5:1.
 
 ---
 
@@ -270,7 +270,7 @@ membawa satuan (`--ant-padding` = `16px`, jadi ditulis apa adanya, bukan `${}px`
 |---|---|---|
 | Celah rapat (ikon–teks) | `--ant-margin-xxs` / `--ant-padding-xxs` | 4px |
 | Inline, antar-aksi ikon | `--ant-margin-xs` | 8px |
-| Padding kendali & sel tabel (vertikal) | `--ant-padding-sm` | 12px |
+| Padding control & sel tabel (vertikal) | `--ant-padding-sm` | 12px |
 | Padding standar, gap grid | `--ant-padding` / `--ant-margin` | 16px |
 | Padding kartu, jarak antar-bagian (Density 6/10) | `--ant-padding-lg` / `--ant-margin-lg` | 24px |
 | Gap besar | `--ant-margin-xl` | 32px |
@@ -285,26 +285,26 @@ telanjang. `tests/layout-scale.test.ts` membandingkan setiap anak tangga dengan
 token AntD yang terpasang, karena berkas itu satu-satunya salinan nilai token di
 repo.
 
-Radius: `--ant-border-radius` 6px (kendali & kartu) · `--ant-border-radius-lg`
+Radius: `--ant-border-radius` 6px (control & kartu) · `--ant-border-radius-lg`
 8px (permukaan besar) · `--ant-border-radius-sm` 4px (balok kerangka, tag).
 
 Bayangan: `--ant-box-shadow-tertiary` (lift halus) · `--ant-box-shadow-card` ·
 `--ant-box-shadow` (melayang: modal, dropdown, popover). Jangan menulis
 `box-shadow` sendiri; nilainya berlapis tiga dan disetel per algoritma tema.
 
-**Tinggi kendali datang dari satu token:** `controlHeight: 40` di
+**Tinggi control datang dari satu token:** `controlHeight: 40` di
 `AntdProvider` (target sentuh minimum; bawaan AntD 32px). Button, Input,
 Select, dan DatePicker ikut naik. `size="sm"` adalah turunan
 (`controlHeight × 0,75` = 30px), jadi bukan target sentuh utama.
 
-### Satu baris kendali = satu ukuran
+### Satu baris control = satu ukuran
 
-Dua ukuran kendali dalam satu baris adalah cacat. Selisih 40px dan 30px pada
+Dua ukuran control dalam satu baris adalah cacat. Selisih 40px dan 30px pada
 baris yang disejajarkan (`alignItems: "flex-end"`, `align="center"`, `<Row>`)
-membuat garis dasar patah: satu kendali menggantung di atas tetangganya dan
+membuat garis dasar patah: satu control menggantung di atas tetangganya dan
 terbaca sebagai render yang gagal.
 
-Aturannya berlaku per baris. Setiap kendali yang berdampingan mendatar
+Aturannya berlaku per baris. Setiap control yang berdampingan mendatar
 (`Button`, `ButtonLink`, `Input`/`TextInput`, `Select`/`SelectField`,
 `MoneyInput`, `PasswordField`, `Textarea`, kedua isian berpencarian) memakai
 ukuran yang sama.
@@ -345,12 +345,12 @@ Semua halaman dashboard memakai `PageHeader` (`packages/ui/src/components/page-h
 
 ## Orientasi Perusahaan (chrome, wajib — issue #104)
 
-Buku besar tiap PT ada di basis datanya sendiri, jadi pengguna harus selalu tahu buku mana yang sedang ia tulis. Pencatatan ke PT yang salah tidak menimbulkan galat; ia baru terlihat berbulan-bulan kemudian sebagai neraca yang tidak cocok.
+Buku besar tiap PT ada di basis datanya sendiri, jadi pengguna harus selalu tahu buku mana yang sedang ia tulis. Pencatatan ke PT yang salah tidak menimbulkan error; ia baru terlihat berbulan-bulan kemudian sebagai neraca yang tidak cocok.
 
 - **Nama perusahaan aktif selalu terlihat di top bar** (`CompanyIndicator`) di semua ukuran layar, tanpa membuka menu. Namanya dibawa sesi (`session.user.companyName`), bukan diambil lewat permintaan, sehingga hadir pada render pertama.
-- Penanda itu untuk orientasi, bukan kendali. Pergantian perusahaan ada di menu avatar dan hanya muncul bila pengguna memegang lebih dari satu PT.
+- Penanda itu untuk orientasi, bukan control. Pergantian perusahaan ada di menu avatar dan hanya muncul bila pengguna memegang lebih dari satu PT.
 - Di layar sempit, yang menyempit adalah namanya (truncate + `title`), bukan target sentuh aksi di sebelah kanan.
-- **Identitas yang dicetak** (kop faktur/kontrak/surat jalan) diambil berurutan: setting perusahaan → nama di registry kendali → konstanta. Jangan memundurkannya ke konstanta lebih awal: konstanta berisi nama pemasang pertama, dan mencetaknya di dokumen PT lain menghasilkan surat dengan badan hukum yang salah.
+- **Identitas yang dicetak** (kop faktur/kontrak/surat jalan) diambil berurutan: setting perusahaan → nama di registry control → konstanta. Jangan memundurkannya ke konstanta lebih awal: konstanta berisi nama pemasang pertama, dan mencetaknya di dokumen PT lain menghasilkan surat dengan badan hukum yang salah.
 - Layar pra-aplikasi (`/select-company`, `/setup-required`, `/feature-inactive`) wajib punya jalan keluar: tombol keluar atau tautan kembali. Tanpa itu, orang yang aksesnya baru dicabut tidak bisa ke mana-mana.
 
 ## Pola Komponen (khusus domain)
@@ -366,8 +366,8 @@ Buku besar tiap PT ada di basis datanya sendiri, jadi pengguna harus selalu tahu
 
 Laporan tidak dibuka langsung dari kartunya. Menekan kartu membuka dialog parameter (`components/reports/report-launch-dialog.tsx`) yang menanyakan periode/saringan/kolom, lalu menawarkan tiga jalan: **Pratinjau** (halaman laporan), **Unduh PDF**, **Unduh Excel**. Membuka dengan periode bawaan berarti menghitung dan merender laporan yang salah, lalu menghitung ulang setelah saringan diubah.
 
-- **Kendali dirender dari katalog**, tidak ditulis per laporan. `paramKind`, `filters`, `columns`, dan `payloadKind` di `lib/report-catalog.ts` adalah satu-satunya sumber bagi dialog, halaman, dan berkas ekspor.
-- **`paramKind` menyatakan parameter yang benar-benar dibaca halaman tujuan**, bukan bentuk periode yang secara konsep cocok. Kendali yang isiannya diabaikan menyesatkan pengguna (tiga entri katalog pernah begitu).
+- **Control dirender dari katalog**, tidak ditulis per laporan. `paramKind`, `filters`, `columns`, dan `payloadKind` di `lib/report-catalog.ts` adalah satu-satunya sumber bagi dialog, halaman, dan berkas ekspor.
+- **`paramKind` menyatakan parameter yang benar-benar dibaca halaman tujuan**, bukan bentuk periode yang secara konsep cocok. Control yang isiannya diabaikan menyesatkan pengguna (tiga entri katalog pernah begitu).
 - **Tombol unduh hanya muncul bila laporannya punya `payloadKind`.** Entri yang menunjuk halaman modul interaktif hanya menawarkan "Buka", dengan kalimat yang menjelaskan alasannya.
 - **Pemilihan kolom hanya untuk laporan bertipe daftar.** Susunan Laba/Rugi, Neraca, dan Arus Kas ditentukan standar akuntansi, jadi centang kolom di sana tidak berguna. Kolom identitas baris selalu ikut (`fixed`), dan pilihan pengguna hanya boleh mengurangi kolom, tidak memunculkan kolom yang tidak ada isinya.
 - **Satu penentu kolom untuk tiga permukaan** (`stockMovementColumns`, `partyRecapColumns`, `agingColumns`, `stockValueColumns`, `cashBankColumns` di `lib/statement-layout.ts`): layar, PDF, dan lembar sebar. Pratinjau harus memperlihatkan kolom yang sama dengan berkasnya.
@@ -381,7 +381,7 @@ Laporan tidak dibuka langsung dari kartunya. Menekan kartu membuka dialog parame
 Form ditulis dengan `react-hook-form` + `zodResolver` memakai pola `Form` (`packages/ui/src/components/form.tsx`). Contoh acuan: `src/app/(app)/(dashboard)/t/[tenantSlug]/[companySlug]/customers/new/customer-form.tsx` (master sederhana) dan `src/components/shared/payment-form.tsx` (transaksi valas).
 
 1. **Satu skema zod, dua sisi.** Form wajib memakai skema yang sama dengan route handler, diimpor, tidak disalin. Bila server menambah field (mis. `invoiceId` dari URL), pisahkan field bersama sebagai objek yang dipakai ulang (contoh: `paymentFormFields` di `lib/validations/payment.ts`, dipakai `paymentFormSchema` di client dan `invoicePaymentSchema`/`contractPaymentSchema` di server). Client dan server tidak boleh bisa menyimpang.
-2. **Pesan galat lewat kunci kamus, ramah awam.** Skema menulis kunci bertipe, bukan kalimat: `z.string().min(1, vmsg("validation.dateRequired"))` (`@sai/core/i18n/validation`). Pesan zod ditetapkan saat modul dimuat sehingga tidak bisa berganti bahasa; pabrik `make…Schema(t)` melanggar aturan 1, dan `z.setErrorMap()` global membocorkan bahasa antar-permintaan yang berjalan bersamaan. Kalimatnya karena itu disusun di batas tampilan: `FormMessage` di client, `translateFieldErrors()` di route handler, `humanizeFieldMessage()` di jalur pesan API. Kunci salah ketik ditolak `tsc` (tipe `ValidationKey`); `tests/i18n-validation.test.tsx` menolak kalimat yang tertinggal di skema. Pesan yang membawa nominal memakai `vissue("…", { … })`: kunci dan nilainya dikirim sebagai `params` zod, tidak disisipkan ke teks pesan.
+2. **Pesan error lewat kunci kamus, ramah awam.** Skema menulis kunci bertipe, bukan kalimat: `z.string().min(1, vmsg("validation.dateRequired"))` (`@sai/core/i18n/validation`). Pesan zod ditetapkan saat modul dimuat sehingga tidak bisa berganti bahasa; pabrik `make…Schema(t)` melanggar aturan 1, dan `z.setErrorMap()` global membocorkan bahasa antar-permintaan yang berjalan bersamaan. Kalimatnya karena itu disusun di batas tampilan: `FormMessage` di client, `translateFieldErrors()` di route handler, `humanizeFieldMessage()` di jalur pesan API. Kunci salah ketik ditolak `tsc` (tipe `ValidationKey`); `tests/i18n-validation.test.tsx` menolak kalimat yang tertinggal di skema. Pesan yang membawa nominal memakai `vissue("…", { … })`: kunci dan nilainya dikirim sebagai `params` zod, tidak disisipkan ke teks pesan.
 
    Pola baku jawaban 400 di route handler (acuan: `src/app/api/invoices/route.ts`, `src/app/api/{invoices,contracts}/[id]/payments/route.ts`):
 
@@ -397,25 +397,25 @@ Form ditulis dengan `react-hook-form` + `zodResolver` memakai pola `Form` (`pack
      );
    }
    ```
-3. **Struktur field:** `FormField` → `FormItem` → `FormLabel` + `FormControl` + `FormDescription?` + `FormMessage`. Pautan label–input–deskripsi–galat (`aria-invalid`/`aria-describedby`/`role="alert"`) terpasang otomatis. Jangan memasang `aria-*` manual.
+3. **Struktur field:** `FormField` → `FormItem` → `FormLabel` + `FormControl` + `FormDescription?` + `FormMessage`. Pautan label–input–deskripsi–error (`aria-invalid`/`aria-describedby`/`role="alert"`) terpasang otomatis. Jangan memasang `aria-*` manual.
 
    Keempatnya berada di dalam `FormItem` yang sama, dan `FormItem` di dalam `FormField`, bukan sebaliknya (issue #262). `aria-describedby` hanya boleh menyebut id yang simpulnya dirender, dan `FormItem` memutuskannya saat render dari anak yang dilihatnya (fragment, array, dan elemen HTML biasa ikut ditelusuri). Isi di balik prop `render` sebuah `FormField` yang berada di dalam `FormItem` tidak terlihat dari sana, sehingga pautan deskripsinya hilang. Jangan menambal dengan `FormDescription` kosong, karena itu menambah simpul yang dibacakan tanpa isi. Bila sebuah panel tidak punya isian (mis. "kata sandi sudah tersimpan"), tulis dua bentuk `FormItem` yang berbeda.
-4. **Isian di dalam `FormControl` harus telanjang**: `TextInput`/`SelectField`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/galat sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
+4. **Isian di dalam `FormControl` harus telanjang**: `TextInput`/`SelectField`/`MoneyInput`, bukan `Input`/`Select` komposit (yang membawa label/error sendiri). `FormControl` (Radix `Slot`) meneruskan atribut ke anak tunggal, jadi anaknya harus satu elemen kontrol.
 
    `{...field}` tidak berlaku sama untuk ketiga isian pilihan. `SelectField` menerimanya utuh (`name` ikut, dan nilainya ikut `new FormData(form)`). `SearchableSelect`/`ServerSearchableSelect` menolak `name` di tipe; nilainya dibaca lewat `value`/`onChange` dan tidak ikut `FormData`. Tabel dan alasannya: §Primitif Wajib, "Keluarga isian pilihan".
 5. **Nominal pakai `MoneyInput`**: tampil `1.234.567`, payload menerima angka bersih (`1234567`). Desimal 0 untuk IDR, 2 untuk valas.
 6. **Progressive disclosure:** field bersyarat (mis. kurs untuk valas) hanya dirender saat relevan, dan skema hanya menuntutnya pada kondisi itu (`superRefine`).
-7. **Server tetap penjaga terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (ke field bila ada `fieldErrors`, atau ke `root`). Field yang tidak punya isian di layar (mis. `invoiceId` yang disuntik server) dilaporkan sebagai galat formulir, bukan ditempel pada field yang tidak terlihat. Acuan: `applyPaymentServerErrors` di `payment-form.tsx`.
+7. **Server tetap guard terakhir.** Kegagalan validasi server dipetakan ke `form.setError` (ke field bila ada `fieldErrors`, atau ke `root`). Field yang tidak punya isian di layar (mis. `invoiceId` yang disuntik server) dilaporkan sebagai error formulir, bukan ditempel pada field yang tidak terlihat. Acuan: `applyPaymentServerErrors` di `payment-form.tsx`.
 
 ### Ant Design sebagai KULIT (keputusan issue #192)
 
-`FormItem` dibangun di atas `Form.Item` AntD yang dipakai tanpa `Form` AntD: tanpa `name`, `rules`, atau `validateMessages`. Mesin formulirnya tetap react-hook-form + zod; AntD hanya memberi tata letak label, jarak, dan keadaan galat. `Form` AntD dan `Form.useForm` tidak boleh dipakai di halaman mana pun, karena aturan validasi akan hidup di dua tempat dan aturan 1 batal. Dijaga `tests/ui-form-antd.test.tsx`.
+`FormItem` dibangun di atas `Form.Item` AntD yang dipakai tanpa `Form` AntD: tanpa `name`, `rules`, atau `validateMessages`. Mesin formulirnya tetap react-hook-form + zod; AntD hanya memberi tata letak label, jarak, dan keadaan error. `Form` AntD dan `Form.useForm` tidak boleh dipakai di halaman mana pun, karena aturan validasi akan hidup di dua tempat dan aturan 1 batal. Dijaga `tests/ui-form-antd.test.tsx`.
 
 Tiga akibat yang perlu diketahui sebelum menulis form baru:
 
-- **Label ditulis sebagai anak** (`<FormLabel required>`), lalu diangkat `FormItem` menjadi prop `label` `Form.Item`, karena di AntD label adalah prop. Pengangkatan hanya menjangkau anak langsung; label di dalam `FormField` tetap dirender sebagai `<label htmlFor>` biasa di slot kendali. Keduanya benar.
-- **Slot `help` AntD tidak dipakai.** Tanpa `name`, `Form.Item` baru merender daftar galatnya setelah `useLayoutEffect`, sehingga di render server pesannya hilang. Pesan validasi karena itu tetap `FormMessage` (`role="alert"`, warna `colorMoneyNegative` yang lolos AA; `colorError` AntD gagal 4,5:1 sebagai teks 14px).
-- **Pautan ARIA tetap milik `FormControl`.** AntD hanya menyuntikkan `aria-*` di cabang ber-`name`, yang tidak dipakai di sini. `FormControl` juga memasang `aria-required`, jadi isian wajib tidak hanya ditandai `*`.
+- **Label ditulis sebagai anak** (`<FormLabel required>`), lalu diangkat `FormItem` menjadi prop `label` `Form.Item`, karena di AntD label adalah prop. Pengangkatan hanya menjangkau anak langsung; label di dalam `FormField` tetap dirender sebagai `<label htmlFor>` biasa di slot control. Keduanya benar.
+- **Slot `help` AntD tidak dipakai.** Tanpa `name`, `Form.Item` baru merender daftar error-nya setelah `useLayoutEffect`, sehingga di render server pesannya hilang. Pesan validasi karena itu tetap `FormMessage` (`role="alert"`, warna `colorMoneyNegative` yang lolos AA; `colorError` AntD gagal 4,5:1 sebagai teks 14px).
+- **Pautan ARIA tetap milik `FormControl`.** AntD hanya menyuntikkan `aria-*` di branch ber-`name`, yang tidak dipakai di sini. `FormControl` juga memasang `aria-required`, jadi isian wajib tidak hanya ditandai `*`.
 
 Tanda wajib `*` digambar aplikasi ini di belakang teks label (sama seperti `Input`/`Select` komposit), bukan tanda bintang AntD yang digambar `::before` di depan label. Dua konvensi di layar yang sama terlihat sebagai cacat.
 
@@ -432,7 +432,7 @@ Tanda wajib `*` digambar aplikasi ini di belakang teks label (sama seperti `Inpu
 Geometri lambang hanya ada di `packages/ui/src/brand/mark.ts`. Tiga permukaan
 membacanya: komponen `BrandMark`, kartu pratinjau sosial (`opengraph-image`),
 dan generator ikon raster. Menyalin `<path>`-nya ke tempat keempat ditolak
-`tests/brand-mark.test.ts`, karena salinan bisa menyimpang tanpa galat.
+`tests/brand-mark.test.ts`, karena salinan bisa menyimpang tanpa error.
 
 - **Logo unggahan menimpa lambang bawaan tanpa rilis.** Operator mengunggahnya
   di konsol (`/brand`, izin `site.settings`; tabel `brand_assets` di
@@ -492,7 +492,7 @@ SVG di dalam ikon AntD berukuran `1em`, dan pembungkusnya `<span>`:
 | **Harus beda dari teksnya** (ikon empty state 48px, ikon kepala callout 20px) | `style={{ fontSize: 20 }}` — sekali, di tempat itu. |
 | **JANGAN** | prop `size={16}`, atau `width`/`height` sebaris. |
 
-Kedua larangan itu tidak menimbulkan galat:
+Kedua larangan itu tidak menimbulkan error:
 - Ukuran kotak (`width`/`height` sebaris) mengenai `<span>`, bukan
   `<svg width="1em">` di dalamnya. Ukurannya terpasang, tetapi ikonnya tidak
   berubah.
@@ -510,7 +510,7 @@ pernah menjadi penanda tunggal.
 Ini syarat build. Barrel paket itu memanggil `createContext` di tingkat modul
 tanpa `"use client"`, sedangkan build React untuk server component tidak punya
 `createContext`. Satu server component yang menyentuh barrel menggagalkan
-seluruh `next build` dengan galat yang menunjuk halaman acak (`Failed to
+seluruh `next build` dengan error yang menunjuk halaman acak (`Failed to
 collect page data for /setup-required`). Karena itu `next.config.ts` menulis
 ulang setiap impor bernama menjadi jalur di dalam paket, sehingga barrel tidak
 pernah dimuat; ikonnya sendiri aman sebagai daun client. Penulisan ulang itu
@@ -555,24 +555,24 @@ Pendaratan boleh punya token sendiri. Tanpa token, satu-satunya cara membuat her
 1. **Setiap nilai adalah turunan token AntD**: `calc()` di atas `--ant-font-size-*`, `--ant-margin-*`, `--ant-padding-*`. Bila skala tipografi app berubah, skala pemasaran ikut berubah dan tidak menjadi tipografi kedua. Yang bukan turunan hanya tiga lebar baca (72/48/42rem) serta bobot/tracking display, karena app internal tidak punya token "kolom baca".
 2. **Deklarasinya dibatasi pada `[data-landing]`**, bukan `:root`. Blok itu (`src/components/landing/landing-scale.ts`, dipasang `LandingShell`) hanya ada di dokumen yang merender komponen pendaratan. Menyalin `var(--sai-landing-font-size-hero)` ke halaman internal karena itu tidak menghasilkan hero: propertinya tidak teratasi, dan teks mewarisi ukuran induknya.
 
-### Penjaganya (`tests/landing-boundary.test.ts`)
+### Guard-nya (`tests/landing-boundary.test.ts`)
 
 - **App internal tidak mengimpor apa pun dari `components/landing/**`.** Pintu masuknya halaman di `src/app/(marketing)/` (`/` dan `/pricing`, #399). Pintu baru berarti satu baris di `PINTU_MASUK` yang terlihat di diff.
 - **Sebaliknya juga:** berkas pendaratan hanya boleh mengimpor `@sai/ui` / `@/components/ui`, `@sai/core` / `@/lib`, dan sesama berkas pendaratan. Halaman ini dibaca tanpa sesi, dan setiap impor ke app internal membuka jalan bagi kode ber-`auth()`/ber-Prisma ke permukaan publik.
 - **`--sai-landing-` dan `data-landing` tidak boleh muncul di luar direktori itu**, dan akarnya dipasang tepat di satu berkas (`landing-shell.tsx`).
 - **Blok skalanya tidak boleh dideklarasikan pada selektor global** (`:root`/`html`/`body`/`*`); pembatasan lingkup itulah yang membuat batas ini bekerja secara mekanis.
 
-Dengan begitu, menyalin bentuk pemasaran ke halaman internal menjadi impor yang ditolak penjaga. Acuan halaman internal yang paling dekat dengan bentuk pemasaran: `app/(app)/(tenant)/(panel)/platform/billing/plans/page.tsx`, satu-satunya layar internal yang memajang daftar harga. Halaman itu sengaja tanpa hero dan tanpa kartu "paling populer", dan CTA-nya menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
+Dengan begitu, menyalin bentuk pemasaran ke halaman internal menjadi impor yang ditolak guard. Acuan halaman internal yang paling dekat dengan bentuk pemasaran: `app/(app)/(tenant)/(panel)/platform/billing/plans/page.tsx`, satu-satunya layar internal yang memajang daftar harga. Halaman itu sengaja tanpa hero dan tanpa kartu "paling populer", dan CTA-nya menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
 
 ### Permukaan KETIGA: `/platform`, dan bagaimana ia boleh berwarna tanpa menembus batas (issue #303)
 
-`/platform` adalah panel tempat pelanggan membeli dan mengelola langganannya; ia bukan pendaratan dan bukan buku besar. Agar ia berwarna tanpa mengimpor `landing-scale.ts` (ditolak penjaga) atau menyalin resepnya ke berkas kedua (dua salinan akan menyimpang), yang dibagi adalah resepnya, bukan tokennya:
+`/platform` adalah panel tempat pelanggan membeli dan mengelola langganannya; ia bukan pendaratan dan bukan buku besar. Agar ia berwarna tanpa mengimpor `landing-scale.ts` (ditolak guard) atau menyalin resepnya ke berkas kedua (dua salinan akan menyimpang), yang dibagi adalah resepnya, bukan tokennya:
 
-- `@sai/ui/theme/tone-recipe` (`packages/ui/src/theme/tone-recipe.ts`) netral terhadap permukaan. Ia tidak mendeklarasikan variabel CSS dan tidak mengenal halaman mana pun; isinya hanya bentuk `color-mix(in srgb, var(--ant-<hue>-6) N%, var(--ant-color-bg-*))` + peta peran→keluarga palet. `components/landing/**` sudah boleh mengimpor `@sai/ui/**`, jadi penjaga #245 tidak dilonggarkan.
+- `@sai/ui/theme/tone-recipe` (`packages/ui/src/theme/tone-recipe.ts`) netral terhadap permukaan. Ia tidak mendeklarasikan variabel CSS dan tidak mengenal halaman mana pun; isinya hanya bentuk `color-mix(in srgb, var(--ant-<hue>-6) N%, var(--ant-color-bg-*))` + peta peran→keluarga palet. `components/landing/**` sudah boleh mengimpor `@sai/ui/**`, jadi guard #245 tidak dilonggarkan.
 - Setiap permukaan mendeklarasikan nadanya sendiri, dengan nama dan lingkup `data-*` sendiri: `--sai-landing-*` di `[data-landing]`, `--sai-platform-*` di `[data-platform]`. Nama variabel yang disalin ke permukaan lain tidak teratasi.
 - **Kadarnya tidak dibagi.** Kadar campuran dibatasi tombol dan latar yang dipikul tiap permukaan: pendaratan `LANDING_MIX` (`landing-scale.ts`), `/platform` `PLATFORM_MIX` (`components/tenant/platform-tone.ts`, dibatasi tepi tombol garis di tema terang). Angka satu permukaan tidak berlaku untuk permukaan lain; rinciannya di `pages/landing.md` dan `pages/platform.md`.
 
-Untuk permukaan berikutnya (mis. `/docs`, #300): ambil resepnya, ukur kadarnya sendiri, deklarasikan di lingkup `data-*` sendiri, dan tulis penjaganya sendiri.
+Untuk permukaan berikutnya (mis. `/docs`, #300): ambil resepnya, ukur kadarnya sendiri, deklarasikan di lingkup `data-*` sendiri, dan tulis guard-nya sendiri.
 
 ---
 
@@ -603,7 +603,7 @@ bila seseorang menyalin bentuk hero ke sana. Nol CTA adalah penerapan aturan
 yang sudah ada: §Aksi utama per layar menyebut "nol juga sah", dan halaman yang
 hanya menjelaskan tidak mengikat atau memajukan apa pun.
 
-**Penjaga:**
+**Guard:**
 
 - **Sisi pemasaran.** `tests/landing-boundary.test.ts` hanya mengizinkan halaman
   `app/(marketing)/` mengimpor `components/landing/**`; berkas dokumentasi
@@ -621,10 +621,10 @@ hanya menjelaskan tidak mengikat atau memajukan apa pun.
   tidak boleh muncul di permukaan ini, dan `variant="primary"` tidak boleh muncul
   sama sekali.
 - **Akses publiknya dijaga dua kali**: `tests/authz-coverage.test.ts` mendaftarkan
-  grup rute `(docs)` sebagai grup publik (halamannya tidak memanggil penjaga
+  grup rute `(docs)` sebagai grup publik (halamannya tidak memanggil guard
   apa pun dan tidak menyentuh `auth()` maupun Prisma), dan `src/proxy.ts`
   melepaskan subpohonnya lewat `isDocsPath()`. Bila salah satunya hilang,
-  halaman tidak terbaca tanpa sesi; gejalanya halaman masuk, bukan galat.
+  halaman tidak terbaca tanpa sesi; gejalanya halaman masuk, bukan error.
 
 **Bahasa: Indonesia, dan pilihannya ditampilkan.** Prosa dokumentasi berbeda
 dari label: label menamai sesuatu yang sudah dirender layar, sedangkan prosa
@@ -647,15 +647,15 @@ aturan pertama `docs/MULTI-COMPANY.md`. Karena itu halaman menyatakan batasnya
 dan menunjuk ke `/permissions` di dalam aplikasi.
 
 **Kelengkapan dijaga.** Setiap item `NAV_GROUPS` punya halaman dokumen atau
-tercantum di `NAV_TANPA_DOKUMEN` dengan alasan tertulis. Penjagaan dua arah, jadi
+tercantum di `NAV_TANPA_DOKUMEN` dengan alasan tertulis. Guard dua arah, jadi
 entri basi juga gagal. Yang dijaga adalah bahwa modul baru tidak bisa ditambahkan
 tanpa dokumen; tuntutan "semuanya sudah ditulis" tidak realistis dan akan
-membuat penjaganya dilonggarkan. Pola yang sama: `tests/print-label-dictionary.test.ts`
-(#298) dan penjaga kunci yatim (#260).
+membuat guard-nya dilonggarkan. Pola yang sama: `tests/print-label-dictionary.test.ts`
+(#298) dan guard kunci yatim (#260).
 
 **Istilah tetap milik `/glossary`.** Blok `istilah` membaca `TERMS`
 (`packages/core/src/labels.ts`, #21/#1); definisi yang disalin ke prosa ditolak
-penjaganya. Definisi dirender di tempat, bukan ditautkan, karena `/glossary`
+guard-nya. Definisi dirender di tempat, bukan ditautkan, karena `/glossary`
 bertenant dan menuntut sesi; tautan ke sana dari permukaan publik akan
 di-redirect ke halaman masuk.
 
@@ -700,13 +700,13 @@ Kulit aplikasi memakai `PlatformShell`, bukan kerangka dasbor, karena dua hal:
 dan cara mengembalikannya di `pages/docs.md` §Lebar). Bentuknya ditulis sekali di
 `docs-shell.tsx` dan dipakai kedua kulit, agar keduanya tidak berbeda.
 
-**Penjaga:**
+**Guard:**
 
 - `tests/docs-chrome.test.tsx` merender layout dan halaman asli untuk keempat
   keadaan di tabel, termasuk "menu samping tidak kosong dan tidak ada butir yang
   menuntut PT";
 - `tests/docs.test.ts` mengunci bahwa kulit dipilih di layout (kedua `page.tsx`
-  bebas dari sesi), bahwa jalur pemilihan kulit tidak memuat penjaga atau
+  bebas dari sesi), bahwa jalur pemilihan kulit tidak memuat guard atau
   `redirect()`, bahwa lebar skala kolom (≥600px) tidak diketik di luar
   `docs-shell.tsx`, dan bahwa daftar izin impor dikecualikan untuk satu berkas
   bernama;
@@ -721,10 +721,10 @@ dan tetap berlaku untuk chrome aplikasi.
 ### Daftar isi: DAFTAR, bukan kartu
 
 Kartu cocok untuk sedikit pilihan setara. Daftar isi tidak begitu: kartu seragam
-yang berjajar sulit dipindai dan memakan tinggi layar. Aturannya:
+yang berjajar sulit di-scan dan memakan tinggi layar. Aturannya:
 
-- **dua cabang** diperlakukan sebagai peta: bilah lompat di puncak dengan jumlah
-  halaman per cabang, agar pembaca tahu dokumentasi ditulis untuk dua jenis
+- **dua branch** diperlakukan sebagai peta: bilah lompat di puncak dengan jumlah
+  halaman per branch, agar pembaca tahu dokumentasi ditulis untuk dua jenis
   pembaca sebelum menggulung;
 - **entri** berupa daftar tipografis: `<h3>` (bukan `<span>`; judul tanpa
   jenjang membuat daftar terbaca sebagai dua baris oleh pembaca layar), satu
@@ -734,9 +734,9 @@ yang berjajar sulit dipindai dan memakan tinggi layar. Aturannya:
   tautan saat `:hover`/`:focus-visible`;
 - **pemisah bagian berupa garis, bukan ruang.** Irama 24px di tabel di atas
   berlaku; menambah jarak antar-bagian berarti memakai irama pemasaran;
-- **jangkar bagian diturunkan dari kunci cabang** (`#cabang-pengguna`), bukan
+- **jangkar bagian diturunkan dari kunci branch** (`#branch-pengguna`), bukan
   dari judul terjemahan, karena alamat tidak boleh berganti bersama bahasa;
-- **halaman dokumen punya pengalih maju/mundur** di dalam cabangnya. Di sana
+- **halaman dokumen punya pengalih maju/mundur** di dalam branch-nya. Di sana
   kotak bertepi tepat dipakai: paling banyak dua, setara, berdampingan.
 
 ---
@@ -766,15 +766,15 @@ Markup mentah yang terlihat sama adalah jalur bocor paling umum bagi aturan di d
   - **`StaticTable`** (`packages/ui/src/components/static-table.tsx`) adalah bawaan. Untuk laporan dan daftar yang dipaginasi server: dirender di server, tanpa JavaScript.
   - **`DataTable`** (`packages/ui/src/components/data-table.tsx`) dibangun di atas AntD `Table` dan merupakan komponen client. Pakai hanya bila datanya sudah di client dan pengguna diuntungkan sortir/filter/paginasi seketika. Ongkosnya terukur: +80 KB gzip per rute (rc-table + hidrasi), ditambah penyalinan seluruh `dataSource` ke peramban. Untuk tabel yang hanya menampilkan, ongkos itu tidak sepadan, dan halaman neraca saldo dengan 2.000 akun tidak lagi berupa HTML.
   - Kolomnya sama untuk keduanya: `textColumn`/`qtyColumn` (`table-columns.tsx`), `moneyColumn` (`money-column.tsx`), `statusColumn` (`src/components/ui/status-column.tsx`). Pembantu yang membawa komponen client tinggal di modulnya sendiri, agar halaman tanpa kolom uang tidak ikut memuat `money.tsx` di client.
-  - **Sortir bukan alasan memilih `DataTable` (issue #265).** `StaticTable` mengurutkan lewat URL: judul kolom menjadi tautan `?sort=…&dir=…`, dan `orderBy` Prisma mengurutkan seluruh data, bukan hanya baris yang tampil. Halamannya menulis satu `SortSpec` (`packages/ui/src/table-sort.ts`), memakainya sebagai daftar putih `parseSort` sekaligus pembangun `orderBy`, lalu mengoper `sort={{ basePath, params, keys, active }}`. `sorter` berarti hal yang sama di kedua perender, dan bawaannya mati di semua pembantu kolom; menyalakannya keputusan halaman, karena hanya halaman yang tahu apakah kolomnya punya `orderBy`. `StaticTable` melempar galat bila kolom menyatakan `sorter` tanpa konteks `sort`, agar tidak ada kendali sortir yang tidak tampil.
+  - **Sortir bukan alasan memilih `DataTable` (issue #265).** `StaticTable` mengurutkan lewat URL: judul kolom menjadi tautan `?sort=…&dir=…`, dan `orderBy` Prisma mengurutkan seluruh data, bukan hanya baris yang tampil. Halamannya menulis satu `SortSpec` (`packages/ui/src/table-sort.ts`), memakainya sebagai daftar putih `parseSort` sekaligus pembangun `orderBy`, lalu mengoper `sort={{ basePath, params, keys, active }}`. `sorter` berarti hal yang sama di kedua perender, dan bawaannya mati di semua pembantu kolom; menyalakannya keputusan halaman, karena hanya halaman yang tahu apakah kolomnya punya `orderBy`. `StaticTable` melempar error bila kolom menyatakan `sorter` tanpa konteks `sort`, agar tidak ada control sortir yang tidak tampil.
   - **Kunci sortir hanya boleh kolom NOT NULL.** Kolom yang nilainya bisa belum diketahui tidak ditawarkan sortirnya; bila ditawarkan, membalik arah urutan menaikkan blok baris "—" ke puncak, yang dilarang butir 4 Prinsip Inti. Kolom yang nilainya dihitung di memori (total faktur dari baris barangnya) juga tidak, karena urutan "terbesar"-nya berubah per halaman.
   - Keduanya menggulung sendiri: `StaticTable` lewat pembungkus ber-`overflow-x: auto`, `DataTable` lewat `scroll={{ x: "max-content" }}` yang dipasang primitif sebagai bawaan. AntD `Table` tanpa `scroll.x` tidak menggulung sendiri; halamannya yang menggulung, dan itu tidak terlihat di layar 1440px tempat kode ditulis. Jangan mengosongkan bawaan itu.
   - **Header lengket butuh `sticky` dan `maxHeight` berpasangan.** `position: sticky` dihitung terhadap kotak bergulir terdekat; tanpa `maxHeight`, pembungkus tidak pernah menggulung vertikal dan properti itu tidak berpengaruh. Salah satu tanpa yang lain adalah bug; lihat komentar kepala `packages/ui/src/components/table.tsx` dan `tests/permission-matrix-sticky.test.tsx`.
   - Baris total lewat prop `summary` (peta kunci kolom → isi sel) pada kedua varian; keadaan kosong lewat `empty` berisi `EmptyState`, tidak pernah "No Data" bawaan AntD.
 - **Primitif JSX `Table`** (`packages/ui/src/components/table.tsx`: `TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`/`TableFooter`) adalah lapisan gaya di bawah kedua perender di atas, bukan API untuk halaman baru. Tabel baru memakai `StaticTable`/`DataTable`. `<table>`/`<thead>`/`<tbody>`/`<tfoot>` mentah tetap terlarang.
 - **Nominal di tabel → `MoneyCell`** (satu sel penuh) atau **`Money`** (di dalam sel/teks). Jangan memformat angka sendiri: tabular-nums, rata kanan, format `id-ID`, dan mata uang eksplisit sudah termasuk.
-- **Layar galat & 404 → `StatusScreen`** (`packages/ui/src/components/status-screen.tsx`). Setiap `error.tsx`, `not-found.tsx`, `global-not-found.tsx`, dan `global-error.tsx` di kedua aplikasi memakainya, karena salinan tulisan tangan menyimpang. Teks lewat prop (layar ini juga dirender tanpa `<LocaleProvider>`), satu primer per layar, tombol pulang `<Button href>` (pemuatan penuh, untuk keluar dari render yang gagal). "Coba lagi" memakai `unstable_retry()`, bukan `reset()` (yang tidak mengambil ulang data). `global-error` lewat `GlobalErrorDocument`, tanpa provider apa pun. Dijaga `tests/error-pages.test.ts`.
-- **Tombol → `Button`** (`packages/ui/src/components/button.tsx`), termasuk pemicu `ConfirmDialog` (lewat prop `trigger`). Isinya AntD `Button` dengan prop `variant`/`size`/`type` milik primitif. Di AntD `type` berarti varian visual; di primitif ini `type` tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan meneruskan `type` langsung ke AntD: setiap tombol kirim akan berhenti mengirim formulirnya tanpa galat. Bawaan `variant` adalah `secondary`; tombol berisi penuh harus diminta (`variant="primary"`), satu per layar (§Aksi utama per layar).
+- **Layar error & 404 → `StatusScreen`** (`packages/ui/src/components/status-screen.tsx`). Setiap `error.tsx`, `not-found.tsx`, `global-not-found.tsx`, dan `global-error.tsx` di kedua aplikasi memakainya, karena salinan tulisan tangan menyimpang. Teks lewat prop (layar ini juga dirender tanpa `<LocaleProvider>`), satu primer per layar, tombol pulang `<Button href>` (pemuatan penuh, untuk keluar dari render yang gagal). "Coba lagi" memakai `unstable_retry()`, bukan `reset()` (yang tidak mengambil ulang data). `global-error` lewat `GlobalErrorDocument`, tanpa provider apa pun. Dijaga `tests/error-pages.test.ts`.
+- **Tombol → `Button`** (`packages/ui/src/components/button.tsx`), termasuk pemicu `ConfirmDialog` (lewat prop `trigger`). Isinya AntD `Button` dengan prop `variant`/`size`/`type` milik primitif. Di AntD `type` berarti varian visual; di primitif ini `type` tetap berarti `submit`/`button`/`reset` seperti di HTML. Jangan meneruskan `type` langsung ke AntD: setiap tombol kirim akan berhenti mengirim formulirnya tanpa error. Bawaan `variant` adalah `secondary`; tombol berisi penuh harus diminta (`variant="primary"`), satu per layar (§Aksi utama per layar).
 - **Tombol yang menuju ke suatu tempat → `<ButtonLink href>`** (rute di dalam app) atau `<Button href>` (tautan keluar / `download` / pemuatan penuh). `asChild` tidak ada dan ditolak `tests/button-no-aschild.test.ts`. Bentuk itu membaca prop anaknya, dan dari server component anak itu bisa tiba sebagai simpul `react.lazy` tanpa `.props`, sehingga `React.Children.only()` melempar dan prerender gagal di halaman yang berganti-ganti. Atribut `download`/`target`/`rel` ditulis di tombolnya.
 - **Tombol ikon → `variant="ghost" size="icon"`** = 40px, memenuhi target sentuh minimum. Jangan merakit tombol ikon dari padding kecil (≈28px). Aksi ikon yang berdampingan diberi jarak minimal 8px (`--ant-margin-xs`); 4px membuatnya mudah salah tekan di layar sentuh.
 - **Tingginya datang dari token `controlHeight: 40`** di `AntdProvider`, bukan dari gaya di primitif (lihat §Jarak, radius, bayangan).
@@ -785,7 +785,7 @@ Markup mentah yang terlihat sama adalah jalur bocor paling umum bagi aturan di d
 - **Notifikasi melayang → `useToast()`** (`packages/ui/src/components/toast.tsx`), bukan `import { message } from "antd"`. Jalur statis AntD membuat akar React sendiri di luar `ConfigProvider` dan tampil dengan token bawaan (kotak putih di halaman gelap). `useToast` juga memasang wilayah live; `message` AntD tidak punya `aria-live`.
 - **Isian pilihan telanjang → `SelectField`** (`packages/ui/src/components/select.tsx`), pasangan dari `Select` komposit seperti `PasswordField` dari `PasswordInput`. Ia `Select` AntD, bukan `<select>` native. Empat akibatnya:
   - **`name` tetap terkirim**: primitifnya menitipkan `<input type="hidden">` di dalam kontrolnya, jadi `new FormData(form)` dan `<form method="get">` tetap bekerja.
-  - **`[name=…]` tidak menunjuk kendali yang bisa difokuskan** (issue #259). `document.querySelector('[name=…]')` pada isian pilihan menemukan input tersembunyi itu, dan `focus()` di sana tidak melempar galat tetapi juga tidak memindahkan fokus. Kendali sebenarnya adalah `<input role="combobox">` di akar yang sama; `id` yang dioper mendarat di sana. Kode yang memindahkan fokus lewat nama field wajib menerjemahkan hasil pencariannya ke kendali yang bisa difokuskan. `focusFormField` (`src/components/ui/disclosure-section.tsx`) sudah melakukannya untuk semua pemanggil.
+  - **`[name=…]` tidak menunjuk control yang bisa difokuskan** (issue #259). `document.querySelector('[name=…]')` pada isian pilihan menemukan input tersembunyi itu, dan `focus()` di sana tidak melempar error tetapi juga tidak memindahkan fokus. Control sebenarnya adalah `<input role="combobox">` di akar yang sama; `id` yang dioper mendarat di sana. Kode yang memindahkan fokus lewat nama field wajib menerjemahkan hasil pencariannya ke control yang bisa difokuskan. `focusFormField` (`src/components/ui/disclosure-section.tsx`) sudah melakukannya untuk semua pemanggil.
   - **`required` tidak divalidasi peramban.** Yang ada `aria-required` + tanda `*`; validasinya zod + server. Isian pilihan wajib harus punya validasi selain `required`.
   - **Pencarian menyala otomatis di atas 12 opsi** (`SEARCH_THRESHOLD`), bisa ditimpa lewat prop `searchable`.
 - **Keluarga isian pilihan: tiga primitif, satu perbedaan** (issue #263). Ketiganya isian pilihan, ketiganya dipakai di dalam pola `Form`, dan dari sisi pemanggil terlihat setara. Perbedaannya tidak terlihat di layar:
@@ -796,8 +796,8 @@ Markup mentah yang terlihat sama adalah jalur bocor paling umum bagi aturan di d
 | `SearchableSelect` (`@sai/ui/searchable-select`) | opsinya butuh **baris kedua** (negara / kontak) — sesuatu yang `SelectField` tidak punya | **tidak** |
 | `ServerSearchableSelect` (`src/components/ui/server-searchable-select.tsx`) | daftarnya terlalu besar untuk dikirim ke klien; tiap ketikan mencari ke server | **tidak** |
 
-  - **Kedua isian berpencarian tidak menerima `name`, dan itu dinyatakan di tipe.** `Select` AntD bukan kontrol form, jadi tidak ada tempat untuk menitipkan nama. Bila `name` diterima lalu diabaikan, formulir yang membaca `new FormData(form)` kehilangan satu field tanpa galat: field itu tidak ada di muatan, dan server menerima objek yang tampak sah. Karena itu `name` ada di tipe kedua isian itu hanya untuk ditolak, dengan tipe berupa kalimat agar pesan `tsc` menyebut penggantinya.
-  - **Bentuk sebaran juga tertutup.** `name="…"` yang ditulis langsung ditolak sebagai properti berlebih, tetapi `{...field}` dari `react-hook-form` tidak: pemeriksaan properti berlebih JSX tidak berlaku untuk sebaran, hanya pemeriksaan tipe atas properti yang dideklarasikan. Karena itu `name` dideklarasikan untuk ditolak. Penjaganya `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipe lewat `@ts-expect-error` yang dinilai `bun run typecheck`).
+  - **Kedua isian berpencarian tidak menerima `name`, dan itu dinyatakan di tipe.** `Select` AntD bukan kontrol form, jadi tidak ada tempat untuk menitipkan nama. Bila `name` diterima lalu diabaikan, formulir yang membaca `new FormData(form)` kehilangan satu field tanpa error: field itu tidak ada di muatan, dan server menerima objek yang tampak sah. Karena itu `name` ada di tipe kedua isian itu hanya untuk ditolak, dengan tipe berupa kalimat agar pesan `tsc` menyebut penggantinya.
+  - **Bentuk sebaran juga tertutup.** `name="…"` yang ditulis langsung ditolak sebagai properti berlebih, tetapi `{...field}` dari `react-hook-form` tidak: pemeriksaan properti berlebih JSX tidak berlaku untuk sebaran, hanya pemeriksaan tipe atas properti yang dideklarasikan. Karena itu `name` dideklarasikan untuk ditolak. Guard-nya `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipe lewat `@ts-expect-error` yang dinilai `bun run typecheck`).
   - **Bila nilainya harus terkirim bersama form**, pakai `SelectField`, atau baca nilainya lewat `value`/`onChange`.
   - **Tidak ada `searchPlaceholder`**: di AntD yang diketik adalah pemicunya sendiri, jadi teks petunjuknya `placeholder`.
 
@@ -818,7 +818,7 @@ membatalkan, menyetujui).
 Semua yang terender bersamaan pada satu URL dalam satu keadaan, bukan satu
 berkas atau satu komponen.
 
-- Cabang yang saling meniadakan dihitung satu. `/verify-email` menulis tiga
+- Branch yang saling meniadakan dihitung satu. `/verify-email` menulis tiga
   tombol primer di satu berkas (sudah terverifikasi · sudah terdaftar ·
   verifikasi sekarang), tetapi yang tampil selalu satu. Sama halnya kaki wisaya
   ("Lanjut" di langkah tengah, "Selesai" di langkah terakhir).
@@ -826,7 +826,7 @@ berkas atau satu komponen.
   tidak bersaing dengan tombol di halaman di belakangnya.
 - Primer dari komponen berbeda tetap satu layar. `/platform/billing` memuat tiga
   tautan "Lihat paket" dari tiga berkas (kepala halaman, pita masa coba, kartu
-  naik-paket); tidak ada penjaga yang mendeteksinya, jadi periksa dengan mata.
+  naik-paket); tidak ada guard yang mendeteksinya, jadi periksa dengan mata.
 
 ### Yang memenuhi syarat menjadi aksi utama
 
@@ -1021,21 +1021,21 @@ berisi penuh tanpa ada yang memutuskannya.
 Jangan membalik bawaan ini agar varian tidak perlu ditulis; yang hilang adalah
 keputusannya.
 
-### Penjaganya — dan batasnya, yang harus dibaca
+### Guard-nya — dan batasnya, yang harus dibaca
 
 `tests/button-emphasis.test.ts` menjaga tiga hal:
 
 1. **Keeksplisitan**: setiap `<Button>`/`<ButtonLink>` menyebut `variant`-nya di
    seluruh `src/app`, `src/components`, dan `packages/ui/src`, tanpa daftar
-   pengecualian. Lingkup itu sendiri dijaga: penjaganya harus menyentuh setiap
-   berkas `.tsx` di akar-akar itu. Penjaga ini tetap perlu walau bawaannya
+   pengecualian. Lingkup itu sendiri dijaga: guard-nya harus menyentuh setiap
+   berkas `.tsx` di akar-akar itu. Guard ini tetap perlu walau bawaannya
    `secondary`, karena tombol implisit gagal tanpa tanda (sekunder di antara
    sekunder), sehingga pertanyaannya harus dijawab sekali dan terlihat di diff.
-2. **Satu primer per wadah JSX** yang bisa terender bersamaan. Cabang ternary
+2. **Satu primer per wadah JSX** yang bisa terender bersamaan. Branch ternary
    dihitung sebagai alternatif (`Math.max`), tidak dijumlahkan; tanpa itu
-   penjaganya gagal pada kaki wisaya dan `/verify-email`, yang justru contoh
+   guard-nya gagal pada kaki wisaya dan `/verify-email`, yang justru contoh
    aturan yang benar. `<Button>` implisit tidak dihitung primer (primitifnya
-   tidak merendernya begitu, dan penjaga #1 melarang bentuk itu).
+   tidak merendernya begitu, dan guard #1 melarang bentuk itu).
 3. **Batas pengecualian pendaratan**: setiap tombol primer di
    `components/landing/**` harus menuju `/register`.
 
@@ -1046,11 +1046,11 @@ lain, dan primer di lingkup berbeda dalam satu berkas. Kolom
 `StaticTable`/`DataTable` dirakit di variabel di luar `return`, jadi tombol baris
 dan tombol halaman berada di dua akar JSX dan `hitungPrimer` tidak pernah
 melihat keduanya bersama. Setiap tabel di app ini berbentuk begitu, jadi primer
-di kolom render tidak akan terdeteksi. Penjaga yang hijau di berkas seperti itu
+di kolom render tidak akan terdeteksi. Guard yang hijau di berkas seperti itu
 tidak membuktikan aturan ini terpenuhi.
 
 **Preseden** (dua primer dari dua berkas atau dua lingkup yang tidak terlihat
-penjaga; yang diturunkan adalah aksi sampingan atau navigasi):
+guard; yang diturunkan adalah aksi sampingan atau navigasi):
 
 - `shared/advance-compensation.tsx` → `secondary` (memposting, tetapi sampingan
   di `/invoices/[id]` & `/suppliers/[id]`).
@@ -1066,13 +1066,13 @@ penjaga; yang diturunkan adalah aksi sampingan atau navigasi):
 
 ---
 
-## Penjaga: aturan mana dijaga apa (issue #204)
+## Guard: aturan mana dijaga apa (issue #204)
 
-Aturan yang tidak dijaga cenderung dilanggar pada PR berikutnya. Penjaga yang
+Aturan yang tidak dijaga cenderung dilanggar pada PR berikutnya. Guard yang
 hanya mengenal sebagian kosakata lebih berisiko lagi, karena hasil hijaunya
 dibaca sebagai aman.
 
-| Aturan | Penjaga |
+| Aturan | Guard |
 |---|---|
 | Warna hanya dari token AntD (bukan hex/`rgb()`/nama warna) | ESLint `sai/warna-token-antd` (`eslint-rules/warna-token-antd.mjs`) |
 | Nol `className`; ikon tanpa prop `size`; `Alert` tanpa `role`; tanpa `<table>`/`<button>` mentah | `tests/design-system-primitives.test.ts` |
@@ -1088,34 +1088,34 @@ dibaca sebagai aman.
 | Nada pekat pendaratan: teks/tombol/glif/lantai "nadanya terlihat", dihitung ulang dari token terpasang + resep yang dirender | `tests/landing-colors.test.ts` |
 | Nada pekat `/platform`: kadar diikat tepi tombol garis, badan kartu tetap telanjang, dan nadanya terkurung di `[data-platform]` | `tests/platform-colors.test.ts` |
 | `Button asChild` tidak kembali (bentuk yang mematikan prerender dari server component) | `tests/button-no-aschild.test.ts` |
-| Tak ada `<a>` yang membungkus `<button>`: jumlah sarang anchor–tombol per berkas hanya boleh mengecil, modul yang sudah dibersihkan tetap nol, `legacyBehavior` tidak dipakai. Tidak terlihat penjaga: sarang yang dirakit antar-berkas dan alias impor baru | `tests/anchor-button-nesting.test.ts` |
+| Tak ada `<a>` yang membungkus `<button>`: jumlah sarang anchor–tombol per berkas hanya boleh mengecil, modul yang sudah dibersihkan tetap nol, `legacyBehavior` tidak dipakai. Tidak terlihat guard: sarang yang dirakit antar-berkas dan alias impor baru | `tests/anchor-button-nesting.test.ts` |
 | `<ButtonLink>` benar-benar menavigasi di sisi klien: satu `<a class="ant-btn">`, `href` ter-scope tenant, `router.push` pada klik biasa, dan Ctrl/klik-tengah/`download`/alamat luar tetap milik peramban | `tests/button-link-navigation.test.tsx` |
-| Satu aksi utama per layar: `variant` eksplisit di seluruh `src/app` + `src/components` + `packages/ui/src` (tanpa daftar pengecualian, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register`. Tidak terlihat penjaga: `.map()`, primer antar-komponen, primer antar-lingkup dalam satu berkas (yaitu setiap kolom tabel), dan primer berkondisi; lihat §Aksi utama per layar | `tests/button-emphasis.test.ts` |
+| Satu aksi utama per layar: `variant` eksplisit di seluruh `src/app` + `src/components` + `packages/ui/src` (tanpa daftar pengecualian, dan lingkup itu sendiri dijaga), tak ada dua primer yang bisa terender bersamaan dalam satu wadah JSX, dan setiap primer pendaratan menuju `/register`. Tidak terlihat guard: `.map()`, primer antar-komponen, primer antar-lingkup dalam satu berkas (yaitu setiap kolom tabel), dan primer berkondisi; lihat §Aksi utama per layar | `tests/button-emphasis.test.ts` |
 | Bawaan `variant` primitif `Button` = `secondary`, di kedua bentuknya (tombol & anchor), dikunci di sumber **dan** di markup hasil render | `tests/button-emphasis.test.ts` · `tests/ui-controls-antd.test.tsx` |
-| Satu baris kendali = satu ukuran: kendali yang berdampingan mendatar (`Flex`/`Space`/`Row`/`display: flex\|grid`) tidak boleh mencampur `sm` (30px) dengan bawaan (40px) atau `lg`; tumpukan dan sel kisi melebar-penuh punya barisnya sendiri; model `sm→small` di kedua primitif ikut dikunci. Tidak terlihat penjaga: baris yang dirakit antar-berkas, gaya yang datang dari impor, `size={x ? "sm" : "md"}`, dan tinggi yang dipaksa lewat `style` | `tests/control-size-row.test.ts` |
-| Destruktif = merah + konfirmasi: setiap `<Button>` yang bisa bernilai `danger`/`destructive` berpasangan dengan `ConfirmDialog` (sebagai `trigger`, atau bentuk terkendali di berkas yang sama); satu-satunya pengecualian berupa atribut (`aria-pressed` = sakelar, yang menekannya lagi mengembalikannya), bukan daftar nama berkas, sehingga tidak ada daftar yang perlu dirawat. Tidak terlihat penjaga: dialog mana untuk tombol mana (bentuk terkendali dinilai per berkas), apakah pesannya menyebut akibatnya, tombol destruktif yang tidak berwarna merah, dan perakitan antar-berkas | `tests/destructive-confirm.test.ts` |
+| Satu baris control = satu ukuran: control yang berdampingan mendatar (`Flex`/`Space`/`Row`/`display: flex\|grid`) tidak boleh mencampur `sm` (30px) dengan bawaan (40px) atau `lg`; tumpukan dan sel kisi melebar-penuh punya barisnya sendiri; model `sm→small` di kedua primitif ikut dikunci. Tidak terlihat guard: baris yang dirakit antar-berkas, gaya yang datang dari impor, `size={x ? "sm" : "md"}`, dan tinggi yang dipaksa lewat `style` | `tests/control-size-row.test.ts` |
+| Destruktif = merah + konfirmasi: setiap `<Button>` yang bisa bernilai `danger`/`destructive` berpasangan dengan `ConfirmDialog` (sebagai `trigger`, atau bentuk terkendali di berkas yang sama); satu-satunya pengecualian berupa atribut (`aria-pressed` = sakelar, yang menekannya lagi mengembalikannya), bukan daftar nama berkas, sehingga tidak ada daftar yang perlu dirawat. Tidak terlihat guard: dialog mana untuk tombol mana (bentuk terkendali dinilai per berkas), apakah pesannya menyebut akibatnya, tombol destruktif yang tidak berwarna merah, dan perakitan antar-berkas | `tests/destructive-confirm.test.ts` |
 | Nilai tak diketahui tidak pernah tampil 0 | `tests/money-unknown.test.tsx` |
-| `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender kendali sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
+| `StaticTable` tidak mengabaikan `sorter`; kolom yang menyatakannya merender control sortir, `aria-sort`, dan tautan yang mempertahankan query | `tests/table-sort.test.tsx` |
 | Form: satu skema zod dua sisi; `Form` AntD tidak dipakai | `tests/form-schema-parity.test.ts`, `tests/ui-form-antd.test.tsx` |
-| Fokus galat validasi mendarat di kendali yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
+| Fokus error validasi mendarat di control yang bisa difokuskan (bukan hidden companion isian pilihan) | `tests/focus-form-field.test.tsx` |
 | Keluarga isian pilihan: hanya `SelectField` yang ikut `FormData`; `name` pada kedua isian berpencarian ditolak `tsc` bahkan lewat `{...field}` | `tests/ui-fields.test.tsx` (markup di vitest, penutupan tipenya lewat `@ts-expect-error` yang dinilai `bun run typecheck`) |
-| Tidak ada kunci kamus yang menganggur: setiap kunci di `id/en/zh.json` punya rujukan di `src/`, `packages/*`, atau `apps/*` — literal, rantai properti berakar kamus, atau bentuk dinamis yang terdaftar (daftarnya dijaga dua arah: entri basi gagal, bentuk dinamis baru yang belum diputuskan juga gagal). Tidak terlihat penjaga: subpohon yang diambil utuh, dan kunci yang hanya dirujuk dari `tests/` | `tests/i18n-orphan-keys.test.ts` |
+| Tidak ada kunci kamus yang menganggur: setiap kunci di `id/en/zh.json` punya rujukan di `src/`, `packages/*`, atau `apps/*` — literal, rantai properti berakar kamus, atau bentuk dinamis yang terdaftar (daftarnya dijaga dua arah: entri basi gagal, bentuk dinamis baru yang belum diputuskan juga gagal). Tidak terlihat guard: subpohon yang diambil utuh, dan kunci yang hanya dirujuk dari `tests/` | `tests/i18n-orphan-keys.test.ts` |
 | Permukaan dokumentasi tetap permukaan ketiga: tidak mengimpor chrome app internal, tidak melampaui `fontSizeHeading2`, nol tombol berisi penuh; setiap modul navigasi punya halaman dokumen atau alasan tertulis (dijaga dua arah); definisi istilah tidak disalin; `isDocsPath` benar-benar dipakai proxy | `tests/docs.test.ts` |
-| `/docs` terbaca tanpa sesi: grup rute `(docs)` terdaftar sebagai grup publik, halamannya tidak memanggil penjaga apa pun dan tidak menyentuh `auth()`/Prisma | `tests/authz-coverage.test.ts` → "permukaan PUBLIK: dokumentasi sistem (#300)" |
+| `/docs` terbaca tanpa sesi: grup rute `(docs)` terdaftar sebagai grup publik, halamannya tidak memanggil guard apa pun dan tidak menyentuh `auth()`/Prisma | `tests/authz-coverage.test.ts` → "permukaan PUBLIK: dokumentasi sistem (#300)" |
 
-**Menambah penjaga:** langgar aturannya sekali dengan sengaja, pastikan tesnya
+**Menambah guard:** langgar aturannya sekali dengan sengaja, pastikan tesnya
 gagal karena alasan yang benar, lalu kembalikan. Contoh kode yang terlihat benar
 tetapi tidak berpengaruh: `position: sticky` tanpa kotak bergulir, pembungkus
 `role="status"` di sekeliling `Alert` yang selalu asertif, dan `styles.content`
 pada `Modal` yang bukan bagian semantik v6 (sehingga prop `size` dialog tidak
-berpengaruh selama berbulan-bulan). Penjaga `Alert` di atas juga lulus pada
-percobaan pertama terhadap pelanggaran yang sengaja disuntikkan. Penjaga yang
+berpengaruh selama berbulan-bulan). Guard `Alert` di atas juga lulus pada
+percobaan pertama terhadap pelanggaran yang sengaja disuntikkan. Guard yang
 belum pernah terlihat gagal belum terbukti bekerja.
 
 **`bun run verify` yang hijau tidak membuktikan aplikasinya bisa dibangun.**
 Sebuah bug pernah lolos typecheck, lint, dan seluruh tes, lalu menggagalkan
 `next build` produksi (barrel `@ant-design/icons` yang menyentuh lapisan RSC;
-galatnya menunjuk halaman acak). `bun run build` adalah gerbang tersendiri dan
+error-nya menunjuk halaman acak). `bun run build` adalah gate tersendiri dan
 wajib `EXIT=0` sebelum UI diserahkan.
 
 ---
@@ -1135,7 +1135,7 @@ wajib `EXIT=0` sebelum UI diserahkan.
 - [ ] Nama produk & versi lewat `APP_NAME` / `APP_VERSION` (`packages/core/src/constants.ts`), lambang lewat `BrandMark`, bukan literal.
 - [ ] Tabel lewat `StaticTable` (bawaan) / `DataTable` (hanya bila butuh sortir-filter seketika) + `MoneyCell`; tombol lewat `Button` (ikon = `size="icon"`). Tombol-tautan: `<ButtonLink href>` untuk rute di dalam app (satu `<a>`, navigasi sisi-klien + prefetch), `<Button href>` untuk tautan keluar / `download` / pemuatan penuh yang disengaja. Tidak pernah `<Link><Button/></Link>` (dua elemen interaktif bersarang: HTML tidak sah, pembaca layar mengumumkannya dua kali), dan tanpa `asChild`.
 - [ ] **Hitung tombol berisi penuh di layar jadi**, termasuk yang berasal dari `.map()`, komponen lain, dan kolom tabel: satu, atau nol. `variant` ditulis eksplisit di setiap `<Button>`. Bawaannya `secondary`, jadi penekanan tinggi harus diminta (`variant="primary"`); tombol yang variannya lupa ditulis tidak tampak salah, tetapi kehilangan penekanannya. §Aksi utama per layar.
-- [ ] **Satu ukuran kendali per baris.** Periksa per baris: `size="sm"` (30px) di sebelah `Select`/`Input`/`MoneyInput` bawaan (40px) mematahkan garis dasar. Bila campur, naikkan tombolnya; jangan mengecilkan isian di sebelahnya. §Satu baris kendali = satu ukuran.
+- [ ] **Satu ukuran control per baris.** Periksa per baris: `size="sm"` (30px) di sebelah `Select`/`Input`/`MoneyInput` bawaan (40px) mematahkan garis dasar. Bila campur, naikkan tombolnya; jangan mengecilkan isian di sebelahnya. §Satu baris control = satu ukuran.
 - [ ] **Nol `className`.** Tidak ada lembar gaya yang memaknainya; kelas tidak gagal, tetapi juga tidak berlaku. Gaya ditulis sebaris, dan yang tidak punya bentuk sebaris (`:hover`, `::after`, `@media`) ditulis di satu `<style href precedence>` di komponennya; pola `landing-shell.tsx` (memasang CSS `landing-scale.ts`) / `packages/ui/src/components/table.tsx`.
 - [ ] Empty state bermakna + aksi.
-- [ ] **`bun run verify` hijau dan `bun run build` `EXIT=0`.** Yang pertama tidak membuktikan yang kedua; lihat §Penjaga.
+- [ ] **`bun run verify` hijau dan `bun run build` `EXIT=0`.** Yang pertama tidak membuktikan yang kedua; lihat §Guard.

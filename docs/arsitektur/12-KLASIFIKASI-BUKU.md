@@ -1,6 +1,6 @@
 # 12 — Klasifikasi Buku: Produksi atau Uji
 
-> **ARSIP: potret 11 Oktober 2026**, diambil di MariaDB sebelum penukaran ke
+> **ARSIP: snapshot 11 Oktober 2026**, diambil di MariaDB sebelum penukaran ke
 > PostgreSQL · [indeks](./README.md)
 >
 > Sesudahnya: PostgreSQL 15 Okt 2026 ([dok 11](./11-RENCANA-POSTGRESQL.md)),
@@ -101,7 +101,7 @@ uji. Kolom ini mengubah perilaku:
 | `demoWriteRefusal` di `page-auth.ts` dan `auth-guard.ts` | Buku menjadi hanya-baca |
 | `demo-company-banner.tsx` | Banner muncul di layar pengguna |
 | `subscription-lifecycle.ts` | Perlakuan langganan berbeda |
-| 4 produser penjadwal (`notify:*`, `remind:customers`, `recurring:run`) | Buku dikecualikan dari pekerjaan latar |
+| 4 produser scheduler (`notify:*`, `remind:customers`, `recurring:run`) | Buku dikecualikan dari pekerjaan latar |
 
 Menandai buku uji sebagai `is_demo` akan menolak tulisan di buku yang mungkin
 masih dipakai seseorang. Per 11 Okt 2026 hanya satu buku ber-`is_demo`:
@@ -110,10 +110,10 @@ masih dipakai seseorang. Per 11 Okt 2026 hanya satu buku ber-`is_demo`:
 Penanda "buku ini uji, kecualikan dari laporan kesesuaian" harus terpisah dari
 `is_demo`. Penanda itu belum dibuat; lihat §6.
 
-## 5. Pertanyaan cadangan: terjawab
+## 5. Pertanyaan backup: terjawab
 
 Peta jalan (§2.2 butir 3) menyisakan pertanyaan apakah buku uji perlu
-dikecualikan dari cadangan, dengan catatan *"ukur dulu ukuran dumpnya; bila
+dikecualikan dari backup, dengan catatan *"ukur dulu ukuran dumpnya; bila
 kecil, biarkan."*
 
 Sudah diukur (di MariaDB, 11 Okt 2026):
@@ -130,7 +130,7 @@ tabel, bukan data. Ukuran di PostgreSQL berbeda (ukur ulang dengan
 Mengecualikan 15 buku menghemat ~60 MB dari 78 MB. Penghematan itu tidak
 sepadan dengan daftar pengecualian yang harus dipelihara tangan.
 
-> **Putusan: jangan kecualikan dari cadangan.** Dump seluruh server
+> **Putusan: jangan kecualikan dari backup.** Dump seluruh server
 > (`pg_dumpall`; dulu `--all-databases`) dipilih karena daftar tangan akan
 > tertinggal saat pelanggan baru mendaftar, dan buku yang tertinggal tidak
 > tercadangkan tanpa ada yang tahu.

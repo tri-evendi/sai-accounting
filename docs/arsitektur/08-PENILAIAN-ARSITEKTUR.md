@@ -1,6 +1,6 @@
 # 08 — Penilaian Arsitektur
 
-> **ARSIP: potret 11 Oktober 2026** · v0.9.0 · [indeks](./README.md)
+> **ARSIP: snapshot 11 Oktober 2026** · v0.9.0 · [indeks](./README.md)
 >
 > Sesudahnya: PostgreSQL 15 Okt 2026 ([dok 11](./11-RENCANA-POSTGRESQL.md)),
 > monorepo 18 Okt 2026 ([dok 14](./14-RENCANA-MONOREPO.md)). Status per 18 Okt
@@ -36,8 +36,8 @@ kegagalan yang terlihat.
 | Webhook tanpa kunci di produksi → **tolak semua** | Menerima webhook palsu |
 | Rantai proxy lebih pendek dari hitungan hop → **ditolak** | Mempercayai entri kiriman klien |
 | `migrate-platform.ts` dilewati **berisik** | Dilewati diam-diam |
-| Penjadwal jadi **layanan**, bukan crontab (#373) | Baris cron hilang → tagihan tak pernah terbit, **nol galat** |
-| Terjemahan hilang = **galat tsc** | Teks bahasa Inggris bocor ke UI |
+| Scheduler jadi **layanan**, bukan crontab (#373) | Baris cron hilang → tagihan tak pernah terbit, **nol error** |
+| Terjemahan hilang = **error tsc** | Teks bahasa Inggris bocor ke UI |
 
 Ini aturan yang konsisten, dan mahal untuk dibangun ulang bila dilonggarkan demi
 kenyamanan.
@@ -55,7 +55,7 @@ disimpan di tabel, dan tidak ada FK lintas basis data.
 
 ### 1.3 Satu pintu menuju buku besar
 
-Gerbang persetujuan dan kunci periode ada di `postForSource`, bukan di route.
+Gate persetujuan dan kunci periode ada di `postForSource`, bukan di route.
 Route baru karena itu tidak bisa melewatinya, dan seluruh kelas celah di masa
 depan tertutup sekaligus.
 
@@ -87,7 +87,7 @@ ada nilai pembuktian yang sepadan dengan risiko itu"). Pertimbangan itu tepat.
 
 ### 1.6 Pemeriksa kesesuaian data
 
-Penjaga zod hanya berlaku di jalur tulis. Untuk jalur yang tidak melewatinya
+Guard zod hanya berlaku di jalur tulis. Untuk jalur yang tidak melewatinya
 (impor sekali-jalan, perbaikan SQL manual, penyemai) dibangun layanan terpisah.
 Layanan ini lahir dari enam kelas cacat nyata yang ditemukan dalam dua hari
 penelusuran.
@@ -111,22 +111,22 @@ memutuskan).
 
 ## 2. Temuan, berurutan menurut prioritas
 
-### 🟠 P0-1 — Cadangan: lokal ✅ / luar-mesin ❌
+### 🟠 P0-1 — Backup: lokal ✅ / luar-mesin ❌
 
 **Temuan semula (11 Okt).** `/api/health` → `backup.status = "failing"`,
 `lastSuccessAt = null`, 54 baris `backup_runs` yang semuanya gagal, dan tiga env
-S3 tidak ada. Tidak ada satu pun salinan dari 17 buku PT, kendali, platform,
+S3 tidak ada. Tidak ada satu pun salinan dari 17 buku PT, control, platform,
 dokumen, dan jejak audit.
 
 **Keadaan 18 Okt 2026.** Bagian lokal ✅: sejak 12 Okt `job-backup` membuat
-artefak terenkripsi harian di volume `cadangan` (`backup.status = "local_only"`),
-dan artefak itu terbukti bisa dipulihkan lewat `prove-backup-restore` (lihat
+artefak terenkripsi harian di volume `backup` (`backup.status = "local_only"`),
+dan artefak itu terbukti bisa di-restore lewat `prove-backup-restore` (lihat
 "Sebagian P0-1" di bawah). Bagian luar-mesin ❌: `BACKUP_S3_BUCKET` dan
 kredensialnya masih kosong. Kerusakan disk, kehilangan mesin, atau akun yang
 hilang akan menghapus data beserta salinannya.
 
 Risikonya juga hukum: pembukuan wajib disimpan sepuluh tahun (UU KUP), dan
-`docker-compose.yml` mencatat itu sebagai alasan layanan cadangan ada.
+`docker-compose.yml` mencatat itu sebagai alasan layanan backup ada.
 
 **Perbaikan.** Setel tiga env S3, jalankan satu putaran manual, lalu
 `docker compose run --rm job-backup bun run prove-backup-restore`.
@@ -136,17 +136,17 @@ dan `prove-backup-restore` lulus atas artefak luar-mesin.
 
 ---
 
-### 🔴 P0-2 — Kunci enkripsi cadangan 🔶 kemungkinan hanya ada di mesin yang sama
+### 🔴 P0-2 — Kunci enkripsi backup 🔶 kemungkinan hanya ada di mesin yang sama
 
 **Bukti.** `BACKUP_ENCRYPTION_KEY` ada di `.env` di mesin produksi.
 ❓ Tidak ada petunjuk di repo bahwa kunci itu disalin ke luar.
 
-**Dampak.** Cadangan (kini harian, lokal) dienkripsi AES-256-CBC. Bila kuncinya
-hanya ada di mesin yang hilang bersama datanya, cadangan itu tidak bisa dibuka,
-padahal kita mengira punya jalan pemulihan.
+**Dampak.** Backup (kini harian, lokal) dienkripsi AES-256-CBC. Bila kuncinya
+hanya ada di mesin yang hilang bersama datanya, backup itu tidak bisa dibuka,
+padahal kita mengira punya jalan restore.
 
 **Perbaikan.** Simpan kunci di pengelola rahasia di luar mesin, lalu catat
-lokasinya (bukan nilainya). Buktikan dengan memulihkan di mesin yang tidak punya
+lokasinya (bukan nilainya). Buktikan dengan me-restore di mesin yang tidak punya
 `.env` produksi.
 
 **Prioritas setara P0-1.** Keduanya harus selesai bersama; P0-1 tanpa P0-2
@@ -159,7 +159,7 @@ memberi rasa aman yang keliru.
 **Temuan semula.** Tidak ada workflow berpemicu `pull_request`, tidak ada yang
 menjalankan `verify`, dan `main` tidak punya *required status check* maupun
 syarat review. Sementara itu `next.config.ts` sengaja mematikan pemeriksaan tipe
-di `next build`. Satu-satunya penghalang antara galat tipe dan image produksi
+di `next build`. Satu-satunya penghalang antara error tipe dan image produksi
 adalah orang yang ingat menjalankan satu perintah. PR #599 sempat menerbitkan
 tiga image tanpa satu pun pemeriksaan.
 
@@ -174,7 +174,7 @@ enforce_admins                  : true
 ```
 
 - **`app_id` dipin**, tidak hanya nama konteks. Tanpa itu, aplikasi pihak ketiga
-  mana pun yang melaporkan konteks `verify` bisa memenuhi gerbangnya.
+  mana pun yang melaporkan konteks `verify` bisa memenuhi gate-nya.
 - **`strict: false` disengaja.** `main` selalu di depan `develop` karena merge
   bubble promosi, sehingga `strict: true` akan memblokir setiap PR promosi.
 - `gh api -X PUT …/branches/main/protection` mengganti seluruh objek proteksi.
@@ -195,20 +195,20 @@ gabungan (`AGENTS.md`).
 
 ### ✅ P1-1 — Kegagalan latar tidak memberi tahu siapa pun — **ditutup 12–13 Okt 2026**
 
-Ketiga denyut (cadangan, penjadwal, kesesuaian) kini mengirim peringatan lewat
+Ketiga denyut (backup, scheduler, kesesuaian) kini mengirim peringatan lewat
 `watch:health`, satu langkah `job-scheduler` dengan peredam per komponen.
 Terbukti di produksi:
-`cadangan=backup:local_only · penjadwal=ok · kesesuaian=conformance:findings`.
+`backup=backup:local_only · scheduler=ok · kesesuaian=conformance:findings`.
 Dua mengirim peringatan, satu tidak karena memang sehat.
 
-Celah di versi pertamanya ditutup 13 Okt. Pemeriksa penjadwal mula-mula hanya
+Celah di versi pertamanya ditutup 13 Okt. Pemeriksa scheduler mula-mula hanya
 membaca `finishedAt`, sehingga putaran yang selesai tepat waktu tetapi merekam
 `status = "error"` dilaporkan `ok`. Produksi punya 5 putaran seperti itu (Agu
-2026). Diuji terhadap putaran `2026-08-16 07:55:03` (`status=error`, `galat=1`):
+2026). Diuji terhadap putaran `2026-08-16 07:55:03` (`status=error`, `error=1`):
 versi pertama tidak mengirim peringatan, versi sekarang mengirim dengan sidik
 jari terpisah `scheduler:errors`.
 
-`schedulerHealth()` menjawab apakah penjadwalnya hidup, dan untuk itu `ok` memang
+`schedulerHealth()` menjawab apakah scheduler-nya hidup, dan untuk itu `ok` memang
 benar. Apakah pekerjaannya berhasil adalah pertanyaan lain, dan dijawab di
 pemeriksa, tanpa mengubah kontrak `/api/health`.
 
@@ -218,8 +218,8 @@ langkah lain (`notify:setup`, `notify:invoice-due`, `remind:customers`,
 salah satunya gagal tiap jam, itu hanya terlihat di log container. Lihat P2-2.
 
 *Temuan semula (11 Okt): `lib/alert.ts` hanya dipanggil dari dua route
-pendaftaran, sehingga cadangan yang gagal 54 kali berturut-turut, putaran
-penjadwal `error`/`timeout`, dan temuan kesesuaian tidak memberi tahu siapa
+pendaftaran, sehingga backup yang gagal 54 kali berturut-turut, putaran
+scheduler `error`/`timeout`, dan temuan kesesuaian tidak memberi tahu siapa
 pun.*
 
 ---
@@ -241,7 +241,7 @@ termasuk kuantitas faktur termigrasi yang salah senilai Rp 774 juta.
 | Halaman konsol `/conformance` (host konsol, dulu `/operator/conformance`) | ✅ merender ketiga status; jumlah temuan disebut utuh saat dipangkas |
 | Peringatan | ✅ kemudian ditutup `watch:health` (P1-1) |
 
-Penjaganya `tests/conformance-heartbeat.test.ts` dan
+Guard-nya `tests/conformance-heartbeat.test.ts` dan
 `tests/operator-conformance-page.test.ts`. Pemeriksa hanya-baca skripnya
 diperketat: buku PT hanya boleh dibaca (tanpa `$executeRaw*`), dan ada tepat satu
 tulisan Prisma, ke `platformDb.conformanceRun`, yang dijalankan sebelum
@@ -249,11 +249,11 @@ tulisan Prisma, ke `platformDb.conformanceRun`, yang dijalankan sebelum
 
 ---
 
-### ✅ Sebagian P0-1 — jaring cadangan lokal — **12 Okt 2026**
+### ✅ Sebagian P0-1 — jaring backup lokal — **12 Okt 2026**
 
 Dulu `backup.sh` berhenti dengan `die` bila `BACKUP_S3_BUCKET` kosong, sehingga
 54 putaran tidak menghasilkan artefak. Sejak 12 Okt skrip tetap membuat dump,
-mengenkripsinya, menyimpannya ke volume `cadangan`, dan merekam putarannya
+mengenkripsinya, menyimpannya ke volume `backup`, dan merekam putarannya
 `local`. `/api/health` karena itu melaporkan `local_only`, dan laporannya akurat.
 Peringatannya dikirim dari `job-scheduler`, tidak dari `job-backup`, karena
 pemeriksa di dalam layanan yang mati ikut mati.
@@ -261,7 +261,7 @@ pemeriksa di dalam layanan yang mati ikut mati.
 Dibuktikan di produksi 12 Okt: artefak terenkripsi (`600`) + `.sha256`, baris
 `backup_runs` pertama yang bukan `error`, dan `prove-backup-restore` lulus (sidik
 jari cocok, dekripsi berhasil, 19 basis data di dalam dump). Itu kali pertama
-satu cadangan di repo ini terbukti bisa dipulihkan. Sejak 15 Okt dump-nya
+satu backup di repo ini terbukti bisa di-restore. Sejak 15 Okt dump-nya
 `pg_dumpall` langsung ke `pg`.
 
 **Masih terbuka:** `BACKUP_S3_BUCKET` + kredensial (P0-1 bagian luar-mesin) dan
@@ -311,7 +311,7 @@ jadi pengujian dilakukan di produksi.
 **Dampak.**
 
 1. Setiap buku ikut dump seluruh server (`pg_dumpall`; dulu `--all-databases`),
-   jadi cadangan membawa data uji dan menjadi lebih besar dan lama tanpa manfaat.
+   jadi backup membawa data uji dan menjadi lebih besar dan lama tanpa manfaat.
 2. `check-data-conformance` menyapu setiap buku, sehingga temuan dari buku uji
    bercampur dengan temuan atas data sungguhan.
 3. Karena semuanya `is_active = 1`, buku uji ikut dihitung sebagai perusahaan di
@@ -345,11 +345,11 @@ diadopsi.
 > Dua pertanyaan ikut terjawab:
 >
 > 1. **`is_demo` bukan penanda yang dicari.** Kolom ini mengubah perilaku:
->    `demoWriteRefusal` di kedua penjaga membuat bukunya hanya-baca, ditambah
->    banner, perlakuan langganan, dan pengecualian dari 4 produser penjadwal.
+>    `demoWriteRefusal` di kedua guard membuat bukunya hanya-baca, ditambah
+>    banner, perlakuan langganan, dan pengecualian dari 4 produser scheduler.
 >    Menandai buku uji sebagai `is_demo` akan menolak tulisan di buku yang mungkin
 >    masih dipakai seseorang.
-> 2. **Jangan kecualikan dari cadangan.** Diukur di MariaDB, 11 Okt: seluruh
+> 2. **Jangan kecualikan dari backup.** Diukur di MariaDB, 11 Okt: seluruh
 >    `sai_*` 78,1 MB, dan 16 dari 17 buku tepat 4,0 MB masing-masing, yaitu
 >    overhead struktural InnoDB untuk 62 tabel, bukan data. Menghemat ~60 MB
 >    tidak sepadan dengan kehilangan jaminan dump seluruh server.
@@ -390,7 +390,7 @@ naik sampai satu putaran tidak muat dalam satu jam, atau (b) satu produser butuh
 *retry* lebih cepat dari sejam. Keduanya belum terjadi.
 
 > **Diperbaiki sebagian, 13 Okt 2026.** Putaran yang merekam `status = "error"`
-> kini mengirim peringatan lewat `watch:health` (sidik jari `scheduler:errors`).
+> kini mengirim peringatan lewat `watch:health` (fingerprint `scheduler:errors`).
 > Lihat P1-1.
 >
 > **Sisanya:** hanya `scheduler:subscriptions` yang menulis baris
@@ -413,10 +413,10 @@ naik sampai satu putaran tidak muat dalam satu jam, atau (b) satu produser butuh
 ### 🟡 P2-3 — Satu container `app-customer`, tanpa jalur penskalaan
 
 **Bukti.** Satu `app-customer` tanpa replika. Cache dalam-memori: pengaturan
-surel (TTL 60s), kolam klien LRU, penyimpan konteks per permintaan.
+surel (TTL 60s), pool klien LRU, penyimpan konteks per permintaan.
 
 **Dampak.** Restart mengosongkan setiap cache, dan itu murah serta benar. Tetapi
-replika tambahan akan punya kolam LRU dan cache surel sendiri yang bisa berbeda,
+replika tambahan akan punya pool LRU dan cache surel sendiri yang bisa berbeda,
 sehingga pengaturan tampak berubah tergantung replika yang melayani. Masalah
 seperti itu sulit didiagnosis.
 
@@ -460,7 +460,7 @@ ditinjau.
 > `eval(`, yaitu shim `vm` milik dependensi Next (`vm-browserify`). Isinya
 > definisi `Script.prototype.runInThisContext` tanpa pemanggilan. Di
 > pengembangan `unsafe-eval` tetap diizinkan, karena tanpa itu React tidak bisa
-> merekonstruksi jejak galat sisi server di peramban.
+> merekonstruksi jejak error sisi server di peramban.
 >
 > **(b) `style-src 'unsafe-inline'` harus tetap ada, karena struktural.** Sejak
 > #203 seluruh gaya repo ini ditulis sebaris: terukur 2.618 kemunculan
@@ -491,7 +491,7 @@ ditinjau.
 ketiganya.
 
 **Dampak.** Saat itu kecil. Namun `scheduler_runs` tumbuh ~8.760 baris per tahun
-tanpa batas, dan ikut di setiap dump cadangan.
+tanpa batas, dan ikut di setiap dump backup.
 
 **Perbaikan.**
 
@@ -510,7 +510,7 @@ tanpa batas, dan ikut di setiap dump cadangan.
 > | 4 | **Baris `ok` TERAKHIR** selalu disimpan | `health-report.ts` membaca baris `ok` terakhir **secara terpisah** (`where: { status: "ok" }`). Memangkasnya mengubah "berhasil terakhir 4 bulan lalu" menjadi "tidak pernah berhasil" — menghapus satu-satunya petunjuk bahwa mekanismenya pernah bekerja |
 >
 > Kasus 4 nyata: per 11 Okt 2026 `backup_runs` berisi 54 baris yang semuanya
-> `error`. Bila satu cadangan berhasil lalu gagal 90 hari berturut-turut,
+> `error`. Bila satu backup berhasil lalu gagal 90 hari berturut-turut,
 > pemangkasan naif akan menghapus bukti keberhasilan itu.
 >
 > Lingkupnya diperluas ke ketiga tabel: `scheduler_runs`, `backup_runs`,
@@ -520,7 +520,7 @@ tanpa batas, dan ikut di setiap dump cadangan.
 > `tests/run-trail-retention.test.ts` (21 tes). `DELETE` yang salah tidak bisa
 > dibatalkan, jadi tes terpenting di berkas itu adalah empat tes yang
 > membuktikan baris tertahan. Dua di antaranya mengunci keadaan produksi saat itu:
-> 1.251 baris penjadwal dan 54 baris cadangan, nol yang dipangkas.
+> 1.251 baris scheduler dan 54 baris backup, nol yang dipangkas.
 >
 > Dipanggil `job-scheduler` tiap jam sebagai langkah terakhir (kini ke-7, sesudah
 > `watch:health`). Langkah ini satu-satunya yang menghapus, jadi bila putaran
@@ -532,7 +532,7 @@ tanpa batas, dan ikut di setiap dump cadangan.
 
 **Tidak ikut dikerjakan:** pemangkasan `data/mail-outbox/`. Itu artefak
 pengembangan (transport surel `file`), tidak tumbuh di produksi yang memakai
-SMTP, dan tidak ikut dalam cadangan basis data.
+SMTP, dan tidak ikut dalam backup basis data.
 
 ---
 
@@ -564,7 +564,7 @@ pintu), dan bagian murninya sudah dipisah ke `rules.ts`, `mapping.ts`,
 ### ✅ P3-2 — Tes token API tidak menembus proxy — **sudah tertutup sebelum temuan ini ditulis**
 
 Temuan ini disusun dari komentar `lib/api-v1.ts` yang menceritakan regresi
-401-sebelum-penjaga (ada di produksi sampai 16 Agu 2026). Diperiksa 11 Okt:
+401-sebelum-guard (ada di produksi sampai 16 Agu 2026). Diperiksa 11 Okt:
 `tests/proxy-bearer-api.test.ts` sudah ada dan memanggil `proxy()` sungguhan.
 Tes itu memastikan setiap route v1 tidak dijawab 401 oleh proxy, `openapi.json`
 publik, API sesi tetap dijaga, dan `isBearerApiPath` benar-benar dipanggil di
@@ -580,7 +580,7 @@ kini juga teruji ujung-ke-ujung oleh `tests/proxy-landing-shortcut.test.ts`
 
 **Dampak.** *Bus factor* = 1. Diperberat oleh banyaknya konteks yang dibawa
 sistem ini: aturan seperti "`enterWith` tidak merambat setelah `await`" atau
-"platform dulu, kendali belakangan" sudah tertulis, tetapi pembaca harus tahu di
+"platform dulu, control belakangan" sudah tertulis, tetapi pembaca harus tahu di
 mana mencarinya.
 
 **Yang sudah benar.** Dokumentasi di dekat keputusan mengurangi risiko *bus
@@ -598,16 +598,16 @@ pertahankan kebiasaan menulis alasan.
 (dipaku di `src/app/(marketing)/page.tsx`), lalu `/dashboard` memantulkan lagi ke
 bukunya.
 
-**Resep semula keliru** ("tambahkan `/` ke cabang `/login`/`/register` di
+**Resep semula keliru** ("tambahkan `/` ke branch `/login`/`/register` di
 `src/proxy.ts`, cabut `auth()` dari pendaratan"). `/dashboard` menjalankan
 `routeForCompany(companyId)`, satu query yang tidak bisa dijalankan di Edge,
 untuk sesi tanpa slug. `resolvePostLoginPath` menjawab `/platform` bagi pemegang
-urusan akun. Resep itu akan menghasilkan dua regresi tanpa galat.
+urusan akun. Resep itu akan menghasilkan dua regresi tanpa error.
 
 **Yang dikerjakan:** proxy memotong `/` hanya bila token membawa kedua slug (dan
 tidak wajib ganti sandi), ke alamat yang sama dengan jalur `/dashboard`. Di luar
 itu proxy tidak bertindak, dan `auth()` di pendaratan tetap menjadi jalur
-cadangan. Hasilnya satu pantulan tanpa render, dari semula dua pantulan dan satu
+backup. Hasilnya satu pantulan tanpa render, dari semula dua pantulan dan satu
 render. Dijaga `tests/proxy-landing-shortcut.test.ts` (9 tes; enam menguji kasus
 yang tidak boleh dipantulkan, termasuk `/pricing`, yang sengaja dibiarkan sebagai
 pertanyaan produk).
@@ -623,7 +623,7 @@ halaman pemasaran tetap dirender per permintaan
 | Pertanyaan | Kenapa penting |
 |---|---|
 | Apakah ada yang membaca `/api/health` selain `watch:health`? | Menentukan lingkup pemantauan |
-| Apakah latihan pemulihan kuartalan pernah dijalankan? | Diwajibkan `package.json`; tanpa bukti, RTO tak diketahui |
+| Apakah latihan restore kuartalan pernah dijalankan? | Diwajibkan `package.json`; tanpa bukti, RTO tak diketahui |
 | Berapa RPO yang dapat diterima pemilik? | Menentukan apakah WAL/PITR masuk Tier 2 atau Tier 4 ([dok 10 §5](./10-PORTABILITAS-DAN-PEMISAHAN.md)) |
 | Berapa RTO yang dapat diterima pemilik? | Menentukan apakah RPO 24 jam cukup |
 
@@ -635,8 +635,8 @@ halaman pemasaran tetap dirender per permintaan
 
 | # | Temuan | Keadaan | Usaha sisa |
 |---|---|---|---|
-| **P0-1** | Cadangan | 🟠 lokal ✅ (artefak terenkripsi harian, terbukti bisa dipulihkan sejak 12 Okt) / luar-mesin ❌ (`BACKUP_S3_BUCKET` kosong) | Rendah (3 env) |
-| **P0-2** | Kunci cadangan 🔶 di mesin yang sama | ❌ terbuka | Rendah |
+| **P0-1** | Backup | 🟠 lokal ✅ (artefak terenkripsi harian, terbukti bisa di-restore sejak 12 Okt) / luar-mesin ❌ (`BACKUP_S3_BUCKET` kosong) | Rendah (3 env) |
+| **P0-2** | Kunci backup 🔶 di mesin yang sama | ❌ terbuka | Rendah |
 | ~~P0-3~~ | ~~Nol CI~~ | ✅ ditutup 11 Okt; `verify` required pada `main`, `develop` tanpa proteksi (disengaja) | — |
 | ~~P1-1~~ | ~~Kegagalan latar tidak berbunyi~~ | ✅ ditutup 12–13 Okt; `watch:health` | — |
 | ~~P1-2~~ | ~~Temuan kesesuaian hanya di stdout~~ | ✅ ditutup 11 Okt; jejak + `/api/health` + halaman konsol | — |

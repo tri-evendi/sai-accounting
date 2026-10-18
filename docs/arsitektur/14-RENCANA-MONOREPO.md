@@ -444,6 +444,11 @@ Dua yang tertulis di "WAJIB tetap ada" di atas, dan keduanya terpenuhi:
 `operator-plane` tetap dipakai sisi pelanggan (`OPERATOR_HOST` kosong →
 `/operator` 404), dan pemisahan bidang diukur terhadap KEDUA aplikasi.
 
+**Sesudahnya (18 Okt, rilis berikutnya): konsol tanpa awalan `/operator`.**
+Bidangnya kini ditentukan host saja — `ops.saiaccounting.id/tenants`, bukan
+`…/operator/tenants`. `operator-plane` kehilangan putusan `blocked`; tautan
+lama dialihkan permanen (308) oleh `apps/operator/next.config.ts`.
+
 **Gelar pertama — yang berubah bagi operator server:** `app-operator`
 berganti image. `docker compose pull` menarik `…-operator` baru; sesudah
 `up -d`, periksa kedua image aplikasi berasal dari `sha-` yang sama. Rollback

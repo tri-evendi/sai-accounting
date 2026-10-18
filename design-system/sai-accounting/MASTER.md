@@ -8,7 +8,7 @@
 
 **Project:** SAI Accounting — ERP/pembukuan internal (trading/ekspor komoditas)
 **Prinsip:** *Simple surface, standard engine* — tampilan tenang & mudah untuk staff amatir; integritas akuntansi tetap baku.
-**Stack:** Next.js 16 (App Router) · **Ant Design v6** (`ConfigProvider` + CSS-in-JS) di `@sai/ui` (`packages/ui/src/components`; enam pembungkus yang bergantung pada aplikasi tetap di `src/components/ui`) · form `react-hook-form` + `zod` · tabel **`StaticTable` (server, BAWAAN)** / `DataTable` (AntD, client, hanya bila butuh sortir-filter seketika) · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Tanpa Tailwind, tanpa lembar kelas apa pun sejak issue #203** - gaya ditulis SEBARIS (`style={{...}}`), warnanya `var(--ant-...)` atau `theme.useToken()`, dan nilai warna mentah (hex, `rgb()`, nama warna CSS) tidak ditulis di luar `packages/ui/src/theme/antd-tokens.ts` — dijaga ESLint `sai/warna-token-antd` (issue #204). Rujukan shadcn/Tailwind/CVA di dokumen ini hanya muncul sebagai **catatan sejarah**; `radix-ui` tersisa untuk SATU hal, `Slot` di `FormControl`.
+**Stack:** Next.js 16 (App Router) · **Ant Design v6** (`ConfigProvider` + CSS-in-JS) di `@sai/ui` (`packages/ui/src/components`; lima pembungkus yang bergantung pada aplikasi tetap di `src/components/ui`) · form `react-hook-form` + `zod` · tabel **`StaticTable` (server, BAWAAN)** / `DataTable` (AntD, client, hanya bila butuh sortir-filter seketika) · ikon **`@ant-design/icons`** (issue #201) · chart `recharts`. **Tanpa Tailwind, tanpa lembar kelas apa pun sejak issue #203** - gaya ditulis SEBARIS (`style={{...}}`), warnanya `var(--ant-...)` atau `theme.useToken()`, dan nilai warna mentah (hex, `rgb()`, nama warna CSS) tidak ditulis di luar `packages/ui/src/theme/antd-tokens.ts` — dijaga ESLint `sai/warna-token-antd` (issue #204). Rujukan shadcn/Tailwind/CVA di dokumen ini hanya muncul sebagai **catatan sejarah**; `radix-ui` tersisa untuk SATU hal, `Slot` di `FormControl`.
 **Dials:** Variance 3/10 (minimal, profesional) · Motion 2/10 (halus) · Density 6/10 (nyaman untuk data, tidak sesak).
 
 ---
@@ -39,7 +39,7 @@ dari SATU tempat: token `ConfigProvider` Ant Design, ditambah sedikit token
 kustom yang lahir dari pengukuran kontras.
 
 - **Sumber angkanya:** `packages/ui/src/theme/antd-tokens.ts`. Di sanalah setiap hex
-  ditulis, beserta rasio kontras terhitungnya - dan `tests/money-tokens.test.ts`
+  ditulis, beserta rasio kontras terhitungnya - dan `tests/antd-tokens.test.ts`
   serta `tests/antd-css-var-ssr.test.tsx` menghitung ulang angka itu dari paket
   `antd` yang benar-benar terpasang setiap kali suite berjalan. Tabel warna
   TIDAK disalin ke berkas ini lagi: dua salinan angka kontras adalah dua angka
@@ -586,7 +586,7 @@ Keputusannya **ya**, karena alternatifnya lebih buruk: tanpa token, satu-satunya
 - **`--sai-landing-` dan `data-landing` tidak boleh muncul di satu berkas pun di luar direktori itu**, dan akarnya dipasang tepat satu berkas (`landing-shell.tsx`).
 - **Blok skalanya tidak boleh dideklarasikan pada selektor global** (`:root`/`html`/`body`/`*`) — justru pengurungan itulah yang membuat batas ini mekanisme, bukan imbauan.
 
-Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(app)/(tenant)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
+Akibatnya, menyalin bentuk pemasaran ke halaman internal berhenti menjadi "kelas yang tak ada yang memeriksa" dan menjadi **impor yang ditolak penjaga**. Acuan halaman internal yang paling dekat dengan godaan itu: `app/(app)/(tenant)/(panel)/platform/billing/plans/page.tsx` — satu-satunya layar internal yang memajang daftar harga, dan yang sengaja tidak punya hero, tidak punya kartu "paling populer", serta ber-CTA menyebut tindakannya ("Pilih paket ini"), bukan "Mulai sekarang".
 
 ### Permukaan KETIGA: `/platform`, dan bagaimana ia boleh berwarna tanpa menembus batas (issue #303)
 

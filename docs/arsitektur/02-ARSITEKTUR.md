@@ -8,7 +8,7 @@
 
 | Pola | Di mana | Kenapa |
 |---|---|---|
-| **Monolit modular** | Satu aplikasi Next.js, modul per domain di `src/lib` | Satu mesin ~3,6 GB berbagi dengan 5 aplikasi lain; mikrolayanan di sini berarti membayar overhead tanpa pembeli |
+| **Monolit modular** | Satu aplikasi Next.js (modul per domain di `src/lib`) + paket bersama di `packages/` (monorepo, §7) | Satu mesin ~3,6 GB berbagi dengan 5 aplikasi lain; mikrolayanan di sini berarti membayar overhead tanpa pembeli |
 | **Database-per-tenant** (per PT) | 17 basis data perusahaan | Isolasi FISIK buku besar — satu kueri salah tidak bisa menyeberang |
 | **Shared-database** (kendali & platform) | `sai_control`, `sai_platform` | Identitas & penagihan memang lintas-tenant |
 | **Ambient context** | `AsyncLocalStorage` + penyimpan per-permintaan | Agar 120 berkas yang `import { prisma }` tidak perlu diubah tanda tangannya |
@@ -347,7 +347,24 @@ dengan menambah route baru**.
 
 ## 7. Struktur kode
 
+Repo ini **monorepo bun workspaces** sejak 17–18 Okt 2026 (dok 14, Fase 1–3c):
+SATU aplikasi Next.js di `src/`, ditambah lima paket di `packages/` yang
+dikirim sebagai **sumber TypeScript** (`transpilePackages` di `next.config.ts`,
+tanpa langkah build sendiri). Angka di bawah potret 18 Okt 2026.
+
 ```
+packages/                         # diimpor sebagai @sai/<paket>/<subpath>
+├── db/        (4 berkas)         # mesin dari URL, pabrik adapter Prisma, operasi server
+│   ├── prisma/{company,control,platform}/schema.prisma   # TIGA skema
+│   └── generated/{company,control,platform}/             # gitignored — lahir saat build
+├── core/      (32 berkas)        # MURNI: authz (matriks bawaan), constants, utils,
+│                                 #   money-format, i18n inti + kamus id/en/zh, tax,
+│                                 #   efaktur, tenant-routes, labels, control-db, …
+├── ui/        (48 berkas)        # primitif Ant Design v6, tema & token warna,
+│                                 #   layout-scale, lambang — lihat MASTER.md
+├── billing/   (7 berkas)         # aturan penagihan MURNI: gerbang, paket, siklus langganan
+└── platform/  (20 berkas)        # SISI-SERVER bersama: platform-db, surel, i18n/server,
+                                  #   jejak langganan & tenant, isi situs, penulis penagihan
 src/
 ├── app/
 │   ├── (marketing)/              # publik: /, /pricing, /status, sitemap, OG
@@ -360,25 +377,48 @@ src/
 │   │   ├── (tenant)/(panel)/     # /platform/* — akun, tagihan, tim
 │   │   ├── (docs)/docs/          # dokumentasi — publik, tanpa sesi
 │   │   └── (operator)/operator/  # konsol penyedia — HOST SENDIRI
-│   └── api/                      # 126 rute
+│   └── api/                      # 127 rute
 │       ├── v1/                   # permukaan publik — token Bearer
 │       ├── auth/                 # NextAuth + pendaftaran/atur-ulang
 │       ├── billing/webhook       # Midtrans — tanda tangan SHA-512
 │       ├── health                # probe tanpa sesi
 │       └── t/[tenantSlug]/[companySlug]/   # rute berlingkup jalur
-├── lib/                          # 299 berkas — logika domain
+├── lib/                          # 254 berkas — logika domain PEMBUKUAN
 │   ├── posting/                  # mesin jurnal (5 berkas)
 │   ├── validations/              # skema zod per domain (31 berkas)
-│   ├── i18n/                     # id/en/zh — kunci dot-path BERTIPE
-│   ├── operator/                 # bidang operator (10 berkas)
-│   ├── manufacturing/ import/ pdf/ accurate/ brand/ theme/
+│   ├── operator/                 # bidang operator (18 berkas)
+│   ├── i18n/ theme/              # hanya server action & `labels` — intinya di @sai/core / @sai/ui
+│   └── manufacturing/ import/ pdf/ accurate/ …
 ├── components/
-│   ├── ui/                       # primitif Ant Design v6
+│   ├── ui/                       # 5 pembungkus yang bergantung pada aplikasi
+│   │                             #   (primitifnya di @sai/ui)
 │   └── layout/ dashboard/ reports/ settings/ setup/ landing/ operator/ …
-├── generated/{prisma,control,platform}/   # gitignored — lahir saat build
 ├── proxy.ts                      # ⚠ BUKAN middleware.ts
 └── types/
+prisma/
+├── postgresql/{company,control,platform}/NNNN_*/   # migration yang DITERAPKAN
+├── migrations/ control/ platform/                  # arsip MariaDB — hanya-baca
+└── seed.ts
 ```
+
+**Arah dependensi** (dijaga tes, bukan kedisiplinan):
+
+```
+src/  ──▶  @sai/platform  ──▶  @sai/billing  ──▶  @sai/core  ──▶  @sai/db
+  │                                  @sai/ui ──▶  @sai/core
+  └──────────────────────────────────────────────▶ (semua paket)
+```
+
+- Paket **tidak pernah** mengimpor `@/…` atau keluar dari dirinya lewat jalur
+  relatif (`tests/packages-mandiri.test.ts`). Karena itu tidak ada graf impor
+  yang bisa berangkat dari paket lalu kembali ke `src/`.
+- Modul yang PINDAH tidak boleh muncul lagi di jalur lamanya
+  (`tests/paket-pindahan.test.ts`, tabel jalur lama → baru).
+- Penjaga yang MEMINDAI kode wajib memakai `tests/akar-sumber.ts` (akar `src/`
+  + `packages/*/src`; `uraiPaket()` untuk graf impor). Pemindai yang menyapu
+  `src/` saja LULUS dengan nol pelanggar begitu kodenya pindah ke paket.
+- Paket baru = baris `COPY packages/<x>/package.json` di tahap `deps`
+  Dockerfile + entri `transpilePackages` (keduanya dijaga `packages-mandiri`).
 
 Dua hal yang mengejutkan orang baru:
 
@@ -394,7 +434,7 @@ Dua hal yang mengejutkan orang baru:
 | Aspek | Keadaan |
 |---|---|
 | Rendering | Server Component secara bawaan; `"use client"` hanya di daun interaktif |
-| Komponen | **Ant Design v6** lewat `src/components/ui`; `@ant-design/nextjs-registry` untuk SSR |
+| Komponen | **Ant Design v6** lewat `@sai/ui` (`packages/ui/src/components`); `@ant-design/nextjs-registry` untuk SSR |
 | Gaya | **Sebaris** (`style={{…}}`) — **tanpa Tailwind, tanpa `className`** sejak #203 |
 | Warna | `var(--ant-…)` atau `theme.useToken()`; hex mentah hanya boleh di `packages/ui/src/theme/antd-tokens.ts`, dijaga ESLint `sai/warna-token-antd` |
 | Pseudo/media | Satu `<style href precedence>` per komponen, menyasar atribut `data-*` |

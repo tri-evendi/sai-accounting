@@ -6,9 +6,11 @@
 > permintaan pemilik (§5): workspace bun + `packages/db` (`@sai/db`). **Fase 1b
 > SELESAI 17 Okt 2026** (malam): skema + klien hasil bangkitan di `packages/db`,
 > diimpor lewat `@sai/db/client/{company,control,platform}`. **Fase 2 SELESAI
-> 18 Okt 2026**: `@sai/core`, `@sai/ui`, `@sai/billing` (lihat §Fase 2). Fase 3–4
-> belum — dan Fase 3 kini terlihat lebih besar dari perkiraan (§Fase 2, "Yang
-> ditemukan"). Timbangan di §2 tidak
+> 18 Okt 2026**: `@sai/core`, `@sai/ui`, `@sai/billing` (lihat §Fase 2).
+> **Fase 3a–3c SELESAI 18 Okt 2026** (lihat §Fase 3): tiga sisi domain diputus,
+> `@sai/platform` lahir, dan permukaan operator kini hanya bergantung pada
+> dirinya sendiri + paket. **Belum:** 3d (`apps/operator` lahir) + Fase 4 (dua
+> image) — keduanya HARUS dirilis bersama. Timbangan di §2 tidak
 > berubah; yang berubah adalah keputusannya, yang memang milik pemilik.
 >
 > **Koreksi angka 17 Okt 2026:** porsi operator **5,6 %**, bukan 2,9 % (§1).
@@ -366,7 +368,7 @@ yang bergantung pada modul aplikasi tetap tinggal.
 
 **Yang TETAP di aplikasi, dan kenapa.** `i18n/server.ts` (membaca timpaan isi
 situs dari basis data platform), `i18n/actions.ts` & `theme/{client,server,actions}`
-(server action), `i18n/labels.ts`; enam pembungkus di `src/components/ui`
+(server action), `i18n/labels.ts`; enam pembungkus di `src/components/ui` (lima sejak 3a — `confirm-dialog` menyusul ke `@sai/ui`)
 (`confirm-dialog`, `disclosure-section`, `locale-toggle`,
 `server-searchable-select`, `status-column`, `theme-toggle`); penulis penagihan
 (`payment-webhook`, `plan-catalog`, `billing/change-tenant-plan`,
@@ -407,6 +409,39 @@ ia tidak lagi perlu memutuskan bidang, karena bidang lain tidak ada di binari.
 - **Risiko utama:** pergeseran versi (biaya 3, §2). Mulai dari sini, kedua
   aplikasi **wajib** digelar dari tag yang sama, dan ritual rilis harus
   memeriksanya.
+
+#### Fase 3a–3c — ✅ SELESAI 18 Okt 2026: prasyaratnya, bukan aplikasinya
+
+Penutupan dependensi permukaan operator (`(operator)` + `lib/operator` +
+`components/operator`) diukur dulu: **54 berkas aplikasi** (termasuk sisi
+`import type`), 47 di antaranya runtime. Isinya bukan hanya kode platform —
+tiga sisi menyeret kode PEMBUKUAN pelanggan ke konsol yang, menurut doktrinnya,
+tidak pernah membuka buku:
+
+| Gerakan | Apa | Hasil |
+|---|---|---|
+| 3a | Putus tiga sisi: `tax` → `posting/rules` (cukup `round2`, kini di `@sai/core/money-format`); `confirm-dialog` → `form-guards` → `delivery-orders` (cukup `matchesConfirmPhrase`, kini `@sai/ui/confirm-phrase`; dialognya pindah ke `@sai/ui`); `invitation-store` → `users-directory` → `current-company` (upsert keanggotaan dipisah ke `membership-upsert`) | 54 → 42 berkas, perilaku tidak berubah |
+| 3b | Modul MURNI dari penutupan → `@sai/core` (19, a.l. `tax`, `efaktur`, `rate-limit`, `site-content`, `status-notices`, `tenant-deletion`) dan `@sai/billing` (`subscription-lifecycle`, `platform-revenue`) | arah diperiksa dulu: tak satu pun calon `core` mengimpor `billing`/platform |
+| 3c | Modul SISI-SERVER → paket baru **`@sai/platform`** (20: `platform-db`, surel, `i18n/server`, jejak langganan & tenant, isi situs, `payment-webhook`, `billing/*`) | penutupan tinggal **satu** berkas: `lib/validations/operator` (khusus operator — ikut ke `apps/operator`) |
+
+Penjaga yang lahir di sepanjang jalan: sebelas pemindai lagi beralih ke
+`tests/akar-sumber.ts`; daftar-izin pendaratan & `/docs` menyebut PERSIS dua
+pembaca dari `@sai/platform` (`i18n/server`, `site-settings`) — lebih ketat
+daripada sebelumnya, ketika keduanya lolos sebagai bagian dari `@/lib/`;
+`packages-mandiri` menuntut manifes jujur dan graf antarpaket tanpa siklus.
+Tiga belas skrip yang mengimpor `@sai/platform` dijalankan sungguhan lewat `tsx`.
+
+#### Fase 3d — belum: `apps/operator` lahir (+ Fase 4, dirilis BERSAMA)
+
+Yang tersisa kini mekanis di sisi kode, tetapi berat di sisi gelar:
+
+- Aplikasi Next kedua butuh kerangkanya sendiri: root layout + provider (AntD,
+  tema, i18n), `proxy.ts` versi operator, `next.config.ts`, aset publik.
+- Begitu `(operator)` keluar dari aplikasi pelanggan, container `app-operator`
+  yang menjalankan image pelanggan berhenti punya konsol. 3d **tidak bisa
+  digelar tanpa** Fase 4 (Dockerfile/target kedua, CI membangun dua image,
+  compose menarik dua) — keduanya satu rilis, dengan ritual gelar yang
+  memeriksa kedua image berasal dari SHA yang sama.
 
 ### Fase 4 — dua image (≈ 2 hari)
 

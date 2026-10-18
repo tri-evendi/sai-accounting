@@ -1377,9 +1377,9 @@ angka lalu ditagih angka lain.
 Ia satu-satunya permukaan yang ditempel orang ke WhatsApp, LinkedIn, atau Slack
 — kanal yang menjadi jalur penjualan sebenarnya di Indonesia. Karena itu:
 
-- `generateMetadata` di `app/page.tsx`: judul, deskripsi (kalimat hero, bukan
+- `generateMetadata` di `app/(marketing)/page.tsx`: judul, deskripsi (kalimat hero, bukan
   kalimat pemasaran kedua), kanonik, `openGraph`, `twitter`;
-- `app/opengraph-image.tsx` — **dibangkitkan**, bukan PNG. Warnanya harfiah dan
+- `app/(marketing)/opengraph-image.tsx` — **dibangkitkan**, bukan PNG. Warnanya harfiah dan
   hidup di `packages/ui/src/theme/antd-tokens.ts` (`OG_*`) beserta rasio kontrasnya, sebab
   Satori tidak punya dokumen dan `var(--ant-…)` di sana tidak pernah teratasi;
 - `app/sitemap.ts` menurunkan pohonnya dari `DOC_INDEX`, tidak mengetiknya;

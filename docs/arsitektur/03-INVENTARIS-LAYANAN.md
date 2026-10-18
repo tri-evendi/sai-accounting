@@ -17,7 +17,7 @@ penyebaran, bukan mikrolayanan.
 
 ## 0. Berapa layanan yang dipelihara?
 
-Jawabannya menentukan cara berpikir soal penggelaran, penskalaan, dan blast
+Jawabannya menentukan cara berpikir soal deploy, penskalaan, dan blast
 radius. **Tujuh layanan didefinisikan, enam berjalan terus-menerus**, dan
 ketujuh permukaan web dibagi ke dua aplikasi Next di antaranya.
 
@@ -31,7 +31,7 @@ ketujuh permukaan web dibagi ke dua aplikasi Next di antaranya.
 | `job-scheduler` | `sai-job-scheduler` | 7 langkah: tagihan, kabar, pengingat, berulang, `watch:health`, `prune:trails` | tiap jam |
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
 | `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 (tanpa bucket: volume `cadangan`) | harian |
-| `migrate` | `sai-migrate` | Migration, lalu **keluar** (`restart: "no"`) | sekali per gelar |
+| `migrate` | `sai-migrate` | Migration, lalu **keluar** (`restart: "no"`) | sekali per deploy |
 
 Ditambah `traefik`, yang dipakai bersama lima aplikasi lain di mesin ini dan
 tidak termasuk `docker-compose.yml` repo ini.
@@ -58,14 +58,14 @@ sai-app-customer  (container #1)
 
 sai-app-operator  (container #2 — image …-operator, apps/operator)
 └── OPERATOR_DOMAIN
-    └── (operator)         18 halaman   /  ·  /tenants  ·  /login …  (tanpa awalan)
+    └── (operator)         18 halaman   /  ·  /tenants  ·  /login …  (tanpa prefix)
 ```
 
 Konsekuensinya:
 
 - Kedua image aplikasi dibangun dari commit dan `SAI_TAG` yang sama. Keduanya
   menulis basis data yang sama, jadi versi skemanya harus satu.
-- Satu penggelaran tetap memindahkan keenam permukaan pelanggan. Halaman
+- Satu deploy tetap memindahkan keenam permukaan pelanggan. Halaman
   pendaratan tidak bisa dirilis tanpa ikut merilis buku besar.
 - Restart hanya mengosongkan cache container itu (pengaturan surel TTL 60s,
   kolam klien LRU per PT). Me-restart konsol operator tidak mengosongkan cache
@@ -134,7 +134,7 @@ mesin.
 | **Pengguna** | `node` (bukan root) |
 | **Port** | `3000` — `expose`, bukan `ports`. Tidak terbit ke host |
 | **Jaringan** | `traefik_default` + `internal` |
-| **Domain** | `APP_DOMAIN` + `www.` (dialihkan ke apex). Tidak melayani `OPERATOR_DOMAIN` |
+| **Domain** | `APP_DOMAIN` + `www.` (di-redirect ke apex). Tidak melayani `OPERATOR_DOMAIN` |
 | **Bergantung pada** | `pg` (healthy), `pgbouncer` (berjalan), `migrate` (selesai sukses) |
 | **Healthcheck** | `fetch('http://127.0.0.1:3000/api/health')` tiap 30s, 3 kali coba, start 20s |
 | **Volume** | `documents:/app/data/documents` (RW) · `audit:/app/data/audit` (RW) |
@@ -161,7 +161,7 @@ tanpa pekerjaan tambahan; lihat [dok 08](./08-PENILAIAN-ARSITEKTUR.md).
 | | |
 |---|---|
 | **Image** | `ghcr.io/tri-evendi/sai-accounting-operator:latest` (tahap `runner-operator`, aplikasi `apps/operator`); tag `sha-` harus sama dengan `app-customer` |
-| **Perintah** | `node apps/operator/server.js` — rute tanpa awalan `/operator` (`/`, `/tenants`, `/login`, …); tautan `/operator/*` lama dialihkan 308 |
+| **Perintah** | `node apps/operator/server.js` — rute tanpa prefix `/operator` (`/`, `/tenants`, `/login`, …); tautan `/operator/*` lama di-redirect 308 |
 | **Port** | `3000` — `expose` |
 | **Jaringan** | `traefik_default` + `internal` |
 | **Domain** | Hanya `OPERATOR_DOMAIN`; tidak punya router `APP_DOMAIN` |
@@ -236,7 +236,7 @@ bersamaan. Mode `session` akan menghapus manfaatnya.
 
 Masih hidup sejak penukaran 15 Okt 2026, tetapi tidak ditulisi siapa pun. Image
 yang berjalan dibangun dari skema `provider = "postgresql"` dan tidak bisa
-memakai `mysql://`, jadi kembali ke MariaDB berarti menggelar image `sha-` lama
+memakai `mysql://`, jadi kembali ke MariaDB berarti men-deploy image `sha-` lama
 sekaligus menukar URL. Pencabutan: issue #636, paling cepat 22 Okt 2026.
 
 ### 2.4 `migrate` — migrator sekali-jalan
@@ -303,7 +303,7 @@ Tiga keputusan desain yang perlu dibaca sebelum menyentuhnya:
 baris crontab itu ada. Kalau terlewat saat rilis, uji coba tidak pernah
 berakhir, tagihan pertama tidak terbit, dan penunggak tidak ditangguhkan, semua
 tanpa galat, sampai seseorang melihat laporan pendapatan bernilai nol. Sebagai
-layanan, ia ikut naik bersama penggelaran dan terlihat di `docker compose ps`.
+layanan, ia ikut naik bersama deploy dan terlihat di `docker compose ps`.
 
 **Dapat diamati lewat:** `scheduler_runs` (platform) · `/api/health` →
 `scheduler` · konsol `/scheduler` · `bun run prove-scheduler-alive`.
@@ -404,7 +404,7 @@ Rinciannya: [dok 07 §2](./07-INFRASTRUKTUR-DEPLOY.md).
 ## 3. Modul aplikasi (di dalam kedua container `app-*`)
 
 `src/lib` punya 231 berkas (18 Okt 2026); modul bersama pindah ke
-`packages/*` dan ditulis di bawah dengan jalur paketnya. Tanpa awalan = di
+`packages/*` dan ditulis di bawah dengan jalur paketnya. Tanpa prefix = di
 `src/lib/`. Daftar di bawah hanya memuat modul yang memegang keputusan.
 
 ### 3.1 Lapisan data & konteks

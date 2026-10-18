@@ -340,7 +340,7 @@ menghalangi kewajiban hukumnya.
 ### 7.4-IP Daftar IP operator dan proxy di depannya (issue #154/#162)
 
 `OPERATOR_IP_ALLOWLIST` adalah lapisan terluar konsol operator. Di belakangnya
-masih ada hostname operator sendiri, bcrypt, dan TOTP wajib. Ia gagal-tertutup:
+masih ada hostname operator sendiri, bcrypt, dan TOTP wajib. Ia fail-closed:
 kosong atau tidak diset berarti menolak semua orang; `*` (khusus pengembangan
 lokal) mengizinkan semua.
 

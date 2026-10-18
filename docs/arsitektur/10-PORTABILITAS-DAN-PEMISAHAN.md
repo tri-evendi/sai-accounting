@@ -127,7 +127,7 @@ dan build pelanggan tidak memuat rute operator.
 | | |
 |---|---|
 | Image | empat dari satu commit: aplikasi pelanggan, `-operator`, `-migrator`, `-backup`; kedua aplikasi wajib dari `sha-` yang sama |
-| Bidang | ditentukan host saja. Konsol di `ops.saiaccounting.id` tanpa awalan `/operator`; `/operator/*` → 308 |
+| Bidang | ditentukan host saja. Konsol di `ops.saiaccounting.id` tanpa prefix `/operator`; `/operator/*` → 308 |
 | Konsol (`apps/operator/src/proxy.ts`) | `OPERATOR_HOST` kosong → seluruh konsol 404; host lain → 404 (bukan rute pelanggan); IP di luar `OPERATOR_IP_ALLOWLIST` → 404; tanpa sesi → `/login` |
 | Pelanggan (`src/proxy.ts`) | host operator yang sampai ke sini (Traefik salah arah) → 404; tidak ada rute operator di binarinya |
 | Aturan bidang | satu fungsi murni, `decideOperatorRouting` di `packages/core/src/operator-plane.ts`, dipakai kedua aplikasi |

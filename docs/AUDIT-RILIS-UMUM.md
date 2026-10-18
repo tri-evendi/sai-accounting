@@ -356,7 +356,7 @@ Supaya perbaikan tidak merusak yang sudah mahal dibangun:
 - **Otorisasi.** Matriks terpusat + override DB + `tests/authz-coverage`
   menolak halaman/route tanpa deklarasi izin. Pemisahan izin tenant vs PT
   memecahkan ayam-dan-telur pembuatan PT pertama.
-- **Bidang operator terpisah host** dengan gagal-tertutup ganda (tanpa
+- **Bidang operator terpisah host** dengan fail-closed ganda (tanpa
   `OPERATOR_HOST`, `/operator` 404 di mana pun) + TOTP + daftar IP.
 - **Anti-enumerasi** konsisten di `/register`, `/forgot-password`, dan
   undangan: jawaban seragam, kerja mahal tidak ditunggu respons.

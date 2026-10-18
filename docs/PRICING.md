@@ -48,7 +48,7 @@ ditambahkan: ia butuh kolom baru, penjaga baru di ±35 resource izin, dan
 mengingkari kalimat yang sudah dipajang.
 
 **Alamat halaman harga publik: `/pricing`** (kanonik + sitemap). Alamat lama
-`/harga` (sejak #399, dan tujuan alias `/pricing` sejak #413) kini dialihkan
+`/harga` (sejak #399, dan tujuan alias `/pricing` sejak #413) kini di-redirect
 permanen (308) ke `/pricing`. Halaman itu memajang harga bulanan dan tahunan
 (sakelar tanpa JS). Harga tahunan berasal dari kolom `price_yearly`, dan
 hematnya dihitung dari kedua kolom; tidak ada angka diskon yang diketik.

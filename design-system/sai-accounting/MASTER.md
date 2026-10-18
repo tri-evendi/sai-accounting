@@ -41,7 +41,7 @@ beberapa token kustom hasil pengukuran kontras. Tidak ada palet kedua
   AntD berikutnya.
 - **Cara memakai:** `style={{ color: "var(--ant-color-text-secondary)" }}`,
   atau `theme.useToken()` bila nilainya perlu dihitung. Nama variabel = nama
-  token dalam kebab-case berawalan `--ant-`.
+  token dalam kebab-case ber-prefix `--ant-`.
 - **Identitas merek: navy institusional**, bukan biru bawaan AntD (`#1677ff`
   terbaca sebagai warna *framework*).
 
@@ -231,12 +231,12 @@ garis di dalam wilayah yang sudah bergaris. Acuan: rantai dokumen di
 
 Server component boleh memakai warna token tanpa menjadi client. `AntdProvider` memberi `cssVar` kunci tetap (`ANTD_CSS_VAR_KEY` di `packages/ui/src/theme/antd-tokens.ts`), dan `RootDocument` (`packages/ui/src/providers/root-document.tsx`) memasang kunci itu sebagai kelas di `<html>`. Blok `.sai-tokens{--ant-…}` karena itu ada di `<head>` sejak HTML pertama dan diwarisi seluruh dokumen, termasuk pohon tanpa komponen AntD di atasnya.
 
-- **Bentuk:** `style={{ color: "var(--ant-color-text-secondary)" }}`. Nama variabel = nama token dalam kebab-case berawalan `--ant-` (`colorMoneyPositive` → `--ant-color-money-positive`), termasuk token kustom #186/#207/#208. Nilai jarak sudah membawa satuan (`--ant-padding` = `16px`).
+- **Bentuk:** `style={{ color: "var(--ant-color-text-secondary)" }}`. Nama variabel = nama token dalam kebab-case ber-prefix `--ant-` (`colorMoneyPositive` → `--ant-color-money-positive`), termasuk token kustom #186/#207/#208. Nilai jarak sudah membawa satuan (`--ant-padding` = `16px`).
 - **`theme.useToken()` hanya bila nilainya dibutuhkan** (menghitung, membandingkan, meneruskan ke pustaka chart). Memanggilnya hanya demi warna menjadikan berkas `"use client"` tanpa manfaat; `tests/rsc-boundary.test.ts` mengunci jumlahnya.
 - **Pergantian tema:** kedua tema memakai selektor yang sama, jadi toggle menimpa isi blok, bukan menambah blok kedua. Server component ikut berganti warna tanpa dirender ulang.
 - Warna tetap tidak boleh menjadi penanda tunggal, dan ambang kontras tidak berubah. Bukti SSR-nya di `tests/antd-css-var-ssr.test.tsx`.
 
-*Dark mode:* algoritma gelap AntD, dipilih `AntdProvider` dari cookie yang dibaca dokumen akar di server, sehingga blok token yang benar ikut pada HTML pertama tanpa kedipan sebelum hydrate. Semantik warna dan ambang kontras sama di kedua tema; nilai gelap ditulis di sebelah nilai terangnya di `antd-tokens.ts`.
+*Dark mode:* algoritma gelap AntD, dipilih `AntdProvider` dari cookie yang dibaca root layout di server, sehingga blok token yang benar ikut pada HTML pertama tanpa kedipan sebelum hydrate. Semantik warna dan ambang kontras sama di kedua tema; nilai gelap ditulis di sebelah nilai terangnya di `antd-tokens.ts`.
 
 > **Pengecualian tertulis (#219):** isian tombol destruktif di tema gelap sengaja gagal ambang 3:1 "isian vs latar" (2,69:1) agar labelnya tetap 6,13:1; di tema terang keduanya lolos. Alasannya di §Aksi destruktif. Baca bagian itu sebelum menyeragamkannya.
 
@@ -244,7 +244,7 @@ Satu kekurangan yang diketahui: pilihan "ikut sistem". Preferensi OS tidak terli
 
 **Dua bidang sewarna:** di tema gelap, sidebar `#001529` dan `colorBgContainer` `#141414` berkontras 1,00:1, tidak bisa dibedakan secara luminansi; `colorBgLayout` gelap `#000000` berjarak 1,14:1 dari sider. Batas antar-bidang yang sewarna wajib punya `border` dengan warna `colorBorderSecondary` (3:1, dinaikkan di #208). Jangan `colorSplit`: #208 sengaja menahannya di bawah 3:1 sebagai pemisah dekoratif, dan di atas sider ia hanya 2,67:1. Ketiga shell gelap (`sidebar.tsx`, `auth-shell.tsx`, `platform-shell.tsx`) dikunci pada token yang benar oleh `tests/antd-tokens.test.ts`. Kartu berdiri di atas `colorBgLayout`, bukan di atas isian abu-abu lain. Tinjau UI baru di kedua tema sebelum diserahkan.
 
-**Permukaan gelap permanen memakai nilai gelap di kedua tema.** Sider, panel merek layar masuk, dan menu konsol penyewa tidak berganti warna, jadi elemen di atasnya diambil dari tabel gelap (`SIDER_BG_DARK`, `BORDER_TOKENS_DARK`, `PRIMARY_BUTTON_DARK`), bukan dari `…Tokens(resolved)`. Perhatikan bahwa token AntD berawalan "dark" (mis. `Menu.darkItemSelectedBg`) tetap mengambil `colorPrimary` dari tema yang sedang berlaku; tanpa nilai gelap sendiri, label putih butir menu terpilih di tema terang jatuh di bawah 4,5:1.
+**Permukaan gelap permanen memakai nilai gelap di kedua tema.** Sider, panel merek layar masuk, dan menu konsol penyewa tidak berganti warna, jadi elemen di atasnya diambil dari tabel gelap (`SIDER_BG_DARK`, `BORDER_TOKENS_DARK`, `PRIMARY_BUTTON_DARK`), bukan dari `…Tokens(resolved)`. Perhatikan bahwa token AntD ber-prefix "dark" (mis. `Menu.darkItemSelectedBg`) tetap mengambil `colorPrimary` dari tema yang sedang berlaku; tanpa nilai gelap sendiri, label putih butir menu terpilih di tema terang jatuh di bawah 4,5:1.
 
 ---
 
@@ -437,7 +437,7 @@ dan generator ikon raster. Menyalin `<path>`-nya ke tempat keempat ditolak
 - **Logo unggahan menimpa lambang bawaan tanpa rilis.** Operator mengunggahnya
   di konsol (`/brand`, izin `site.settings`; tabel `brand_assets` di
   `sai_platform`). Root layout kedua aplikasi membaca logo aktif (cache 60
-  detik, gagal-lunak ke lambang bawaan) dan meneruskan alamatnya ke
+  detik, fail-soft ke lambang bawaan) dan meneruskan alamatnya ke
   `RootDocument`, lalu `BrandMark` menampilkannya di kotak yang sama. Rute
   `/favicon.ico`, `/apple-icon.png`, manifest, dan `opengraph-image` ikut
   berganti. Jadi: **jangan pernah menggambar lambang tanpa `BrandMark`** —
@@ -657,7 +657,7 @@ membuat penjaganya dilonggarkan. Pola yang sama: `tests/print-label-dictionary.t
 (`packages/core/src/labels.ts`, #21/#1); definisi yang disalin ke prosa ditolak
 penjaganya. Definisi dirender di tempat, bukan ditautkan, karena `/glossary`
 bertenant dan menuntut sesi; tautan ke sana dari permukaan publik akan
-dialihkan ke halaman masuk.
+di-redirect ke halaman masuk.
 
 ### Satu halaman, DUA kulit — dan kenapa yang kedua BUKAN kerangka dasbor
 
@@ -690,10 +690,10 @@ Kulit aplikasi memakai `PlatformShell`, bukan kerangka dasbor, karena dua hal:
   PT akan melihat pemutar memuat tanpa akhir di halaman yang seharusnya publik.
   Alasan yang sama tertulis di kepala `(tenant)/layout.tsx` dan
   `platform-shell.tsx`.
-- **Menunya akan dialihkan.** Sekitar 40 butir menu dasbor beralamat jalur
+- **Menunya akan di-redirect.** Sekitar 40 butir menu dasbor beralamat jalur
   aplikasi (`/invoices`, `/dashboard`), yang diterjemahkan ke jalur kanonik oleh
   `scopedHref` dengan membaca slug dari `usePathname()`. Alamat `/docs` tidak
-  memuat slug, jadi setiap butir bergantung pada pengalihan 307 dan tidak ada
+  memuat slug, jadi setiap butir bergantung pada redirect 307 dan tidak ada
   butir yang bertanda aktif.
 
 **Lebar: penuh di kedua kulit** (keputusan pemilik; alasan batas kolom baca lama
@@ -744,7 +744,7 @@ yang berjajar sulit dipindai dan memakan tinggi layar. Aturannya:
 ## Anti-Patterns (JANGAN)
 - Emoji sebagai ikon → pakai `@ant-design/icons`.
 - Dua paket ikon di satu layar; prop `size`/`width`/`height` pada ikon → ukurannya `style={{ fontSize }}`, lihat §Ikon. Dijaga `tests/design-system-primitives.test.ts`.
-- `className` di mana pun (satu pengecualian: `<html>` di `packages/ui/src/providers/root-document.tsx`, dipakai setiap dokumen akar kedua aplikasi) → tidak ada lembar gaya yang memaknainya, jadi kelas tidak gagal; ia hanya tidak berlaku.
+- `className` di mana pun (satu pengecualian: `<html>` di `packages/ui/src/providers/root-document.tsx`, dipakai setiap root layout kedua aplikasi) → tidak ada lembar gaya yang memaknainya, jadi kelas tidak gagal; ia hanya tidak berlaku.
 - Nilai warna mentah (hex, `rgb()`, nama warna CSS) di luar `packages/ui/src/theme/antd-tokens.ts` → ditolak ESLint `sai/warna-token-antd`.
 - Warna sebagai satu-satunya penanda status/nominal → selalu ada tanda/teks/ikon.
 - Angka rata kiri / tanpa tabular-nums di tabel keuangan; 0 untuk nilai yang tidak diketahui → kosong atau "—", lihat Prinsip Inti #4.

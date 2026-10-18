@@ -64,7 +64,7 @@ graph LR
 | **PostgreSQL 17** (+ PgBouncer) | semua | Pemadaman total. Bagi `app-*` dan job, PgBouncer mati sama dengan basis data mati; hanya `migrate`/`job-backup` yang langsung ke `pg`. `/api/health` → 503 `database: unreachable`, Traefik berhenti mengirim lalu lintas | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL` |
 | **Traefik** | web | Tidak ada akses dari luar. Container tetap sehat | Label Docker di `docker-compose.yml` |
 | **Let's Encrypt** (resolver `le`) | Traefik | Sertifikat kedaluwarsa → peramban menolak. 🔶 Pembaruan ditangani Traefik; tidak ada pemantauan di repo ini | `certresolver=le` |
-| **DNS** | semua | `APP_DOMAIN` tak terselesaikan = tak terjangkau. `OPERATOR_DOMAIN` salah = konsol 404 (gagal-tertutup, disengaja) | `APP_DOMAIN`, `OPERATOR_DOMAIN`, `OPERATOR_HOST` |
+| **DNS** | semua | `APP_DOMAIN` tak terselesaikan = tak terjangkau. `OPERATOR_DOMAIN` salah = konsol 404 (fail-closed, disengaja) | `APP_DOMAIN`, `OPERATOR_DOMAIN`, `OPERATOR_HOST` |
 
 Probe kesehatan: hanya basis data **kendali** yang boleh memutuskan 503.
 Platform, PT contoh, penjadwal, cadangan, dan surel hanya dilaporkan. Kalau
@@ -144,7 +144,7 @@ keduanya tetap terpisah:
 
 Gerbang efektif menuntut `NODE_ENV=production` dan `MIDTRANS_SERVER_KEY`. Di
 luar itu ia jatuh ke MOCK dengan peringatan, sehingga salah setel tidak
-menagih sungguhan. Verifikasi webhook gagal-tertutup: produksi tanpa
+menagih sungguhan. Verifikasi webhook fail-closed: produksi tanpa
 `MIDTRANS_SERVER_KEY` menolak semua webhook.
 
 Bila Midtrans mati, pembayaran langganan baru tidak bisa diproses. Karena
@@ -220,7 +220,7 @@ graph TB
     style L2 fill:#e8f0ff,stroke:#4a6fa5
 ```
 
-Tanpa awalan = `src/lib/`; `@sai/*` = `packages/*/src/`.
+Tanpa prefix = `src/lib/`; `@sai/*` = `packages/*/src/`.
 
 ### Larangan impor yang DITEGAKKAN TES
 
@@ -245,7 +245,7 @@ Tes merah kalau dilanggar:
 | Sumber | Masuk lewat | Dipercaya? |
 |---|---|---|
 | Peramban pengguna | HTTPS → Traefik → proxy → penjaga | **Tidak** — zod di setiap jalur tulis |
-| Webhook Midtrans | `POST /api/billing/webhook` | **Tidak** — tanda tangan SHA-512, gagal-tertutup |
+| Webhook Midtrans | `POST /api/billing/webhook` | **Tidak** — tanda tangan SHA-512, fail-closed |
 | Integrator API | `Authorization: Bearer sai_…` | **Tidak** — `requireApiToken` + izin |
 | Unggahan berkas | `POST /api/upload`, impor master/COA | **Tidak** — validasi tipe & bentuk |
 | Dump sistem lama | `subt5236_sai_prod_18july.sql` (manual) | **Tidak** — **tidak melewati penjaga zod**; alasan `conformance` ada |

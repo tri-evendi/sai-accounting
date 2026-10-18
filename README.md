@@ -81,9 +81,9 @@ ALLOW_SEED=true bun run db:seed
 Produksi berjalan di Docker Compose, dan image-nya dibangun di runner GitHub,
 tidak di server.
 
-**Menggelar rilis baru:** [PRODUCTION.md](./PRODUCTION.md) §Updates:
+**Deploy rilis baru:** [PRODUCTION.md](./PRODUCTION.md) §Updates:
 `pull` → (migrate bila ada migration baru) → `up -d`. Itu satu-satunya jalur
-penggelaran; langkahnya tidak disalin di sini supaya hanya ada satu versi.
+deploy; langkahnya tidak disalin di sini supaya hanya ada satu versi.
 
 > ⚠ **Jangan membangun di server.** Kotak produksi ~3,6 GB berbagi dengan lima
 > aplikasi lain (per Okt 2026). `next build` di sana pernah memakan ~19 menit
@@ -129,7 +129,7 @@ Users with `must_change_password = true` must change their password on next logi
 
 ## Security
 
-- Sesi JWT (24 jam), kata sandi bcrypt, otorisasi berbasis izin, tanpa
+- JWT sessions (24 jam), bcrypt passwords, otorisasi berbasis izin, tanpa
   perbandingan string peran (`docs/RBAC.md`)
 - Rate-limited login dan ganti sandi
 - Validasi unggahan berkas (tipe, ukuran, magic bytes); berkas disajikan lewat
@@ -140,8 +140,8 @@ Users with `must_change_password = true` must change their password on next logi
 - Header keamanan + HSTS di produksi; CSP tanpa `unsafe-eval` di produksi,
   dijaga `tests/security-headers.test.ts`
 - Konsol operator adalah aplikasi tersendiri (`apps/operator`, image
-  `-operator`) di hostname terpisah (`ops.saiaccounting.id`), tanpa awalan
-  `/operator` (`/`, `/tenants`, `/login`, …). Ia gagal-tertutup: tanpa
+  `-operator`) di hostname terpisah (`ops.saiaccounting.id`), tanpa prefix
+  `/operator` (`/`, `/tenants`, `/login`, …). Ia fail-closed: tanpa
   `OPERATOR_HOST` ia menjawab 404 di mana pun
 
 ## License

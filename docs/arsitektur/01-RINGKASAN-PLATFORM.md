@@ -31,13 +31,13 @@ aplikasi pelanggan di `src/` (container `app-customer`), konsol operator di
 |---|---|---|---|
 | **Pemasaran** | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon pelanggan, perayap mesin pencari |
 | **Aplikasi pelanggan** | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha yang membukukan |
-| **Konsol operator** | `OPERATOR_DOMAIN` (rute di akar, tanpa awalan; `/operator/*` lama → 308 ke jalur tanpa awalan) | `apps/operator` | Kami, penyedia layanan |
+| **Konsol operator** | `OPERATOR_DOMAIN` (rute di akar, tanpa prefix; `/operator/*` lama → 308 ke jalur tanpa prefix) | `apps/operator` | Kami, penyedia layanan |
 
 Pemisahan operator ditegakkan kode. Bidangnya ditentukan host saja
 (`packages/core/src/operator-plane.ts`, murni dan aman-edge). Image pelanggan
 tidak memuat rute konsol, dan `apps/operator/src/proxy.ts` menjawab 404 untuk
 setiap host selain `OPERATOR_HOST`. Tanpa `OPERATOR_HOST` di `.env`, konsol
-menjawab 404 di host mana pun (gagal-tertutup). Alasannya: cookie berlingkup
+menjawab 404 di host mana pun (fail-closed). Alasannya: cookie berlingkup
 host, sehingga sesi pelanggan yang bocor tidak bisa menjangkau konsol operator.
 
 ## 3. Dua sumbu penyewaan, dan keduanya wajib dibedakan

@@ -3,7 +3,7 @@
 /**
  * Alamat logo produk unggahan untuk `BrandMark`. Diisi root layout (server)
  * lewat `RootDocument`: ia membaca metadata logo aktif sekali per permintaan
- * (`@sai/platform/brand-assets`, ber-cache 60 detik, gagal-lunak) dan
+ * (`@sai/platform/brand-assets`, ber-cache 60 detik, fail-soft) dan
  * meneruskannya ke sini, jadi setiap chrome yang memakai `BrandMark` ikut
  * berganti tanpa disentuh satu per satu.
  *

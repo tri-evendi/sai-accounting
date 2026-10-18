@@ -18,7 +18,7 @@ Titik mulai menurut siapa yang membaca:
 |---|---|
 | Insinyur baru | [01](./01-RINGKASAN-PLATFORM.md) → [02](./02-ARSITEKTUR.md) → [06](./06-ALIRAN-DATA.md) |
 | Mengambil keputusan teknis | [01](./01-RINGKASAN-PLATFORM.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) → [09](./09-PETA-JALAN.md) |
-| Bertugas jaga / menggelar rilis | [07](./07-INFRASTRUKTUR-DEPLOY.md) → [03](./03-INVENTARIS-LAYANAN.md) |
+| Bertugas jaga / men-deploy rilis | [07](./07-INFRASTRUKTUR-DEPLOY.md) → [03](./03-INVENTARIS-LAYANAN.md) |
 | Membaca laporan kesesuaian data | [12](./12-KLASIFIKASI-BUKU.md) *(buku mana yang temuannya nyata)* |
 | Menyentuh skema / menambah tabel atau relasi | [13](./13-AUDIT-SKEMA.md) *(aturan yang ditegakkan + jebakan indeks FK)* |
 | Merencanakan VM baru / DC-DRC | [10](./10-PORTABILITAS-DAN-PEMISAHAN.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) |
@@ -60,7 +60,7 @@ Semuanya tetap sumber kebenaran untuk bidangnya masing-masing:
 | [`docs/MODUL-USAHA.md`](../MODUL-USAHA.md) | Modul per jenis usaha (#99) |
 | [`docs/AUDIT-RILIS-UMUM.md`](../AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung |
 | [`AGENTS.md`](../../AGENTS.md) | Aturan kerja: gerbang verify/build, UI, otorisasi, DB |
-| [`PRODUCTION.md`](../../PRODUCTION.md) | Runbook penggelaran (§Updates; ringkasannya di dok 07 §5) |
+| [`PRODUCTION.md`](../../PRODUCTION.md) | Runbook deploy (§Updates; ringkasannya di dok 07 §5) |
 | [`design-system/sai-accounting/MASTER.md`](../../design-system/sai-accounting/MASTER.md) | Sistem desain, token, penjaga UI |
 
 ## Tiga tingkat keyakinan

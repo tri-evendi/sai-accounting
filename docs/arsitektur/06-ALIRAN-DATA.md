@@ -249,7 +249,7 @@ sequenceDiagram
     MT->>WH: webhook
     WH->>WH: verifikasi tanda tangan SHA-512
     alt tanda tangan salah / kunci tak ada di produksi
-        WH-->>MT: TOLAK (gagal-tertutup)
+        WH-->>MT: TOLAK (fail-closed)
     end
     WH->>PDB: UPDATE payments + platform_invoices
     Note over WH,PDB: ⚠ PLATFORM DULU

@@ -177,7 +177,7 @@ view/decide/export untuk kasus khusus. Invarian yang dijaga
 - **Cache**: TTL yang sama dengan matriks izin efektif, dengan invalidasi
   eksplisit saat menulis (route modul dan wizard). Bila pembacaan DB gagal,
   semua modul dianggap aktif (fail-open, dicatat). Modul hanya memperkecil
-  permukaan, jadi gagal-tertutup akan menghilangkan seluruh aplikasi karena DB
+  permukaan, jadi fail-closed akan menghilangkan seluruh aplikasi karena DB
   yang sedang bermasalah.
 - **UI**: langkah "Modul Usaha" di wizard penyiapan (preset kategori hanya nilai
   awal) dan kartu "Modul Usaha" di /settings, dengan penjaga
@@ -280,7 +280,7 @@ dibukukan) menuntut sandi.
   pembuka kunci akan menuntut kunci yang belum ada.
 - **Layar promptnya** `/unlock` di grup `(auth)`, satu-satunya tempat yang
   memang memakai `AuthShell`. Halaman ini sengaja tidak memakai
-  `requirePagePermission`, karena ia akan mengalihkan ke dirinya sendiri;
+  `requirePagePermission`, karena ia akan me-redirect ke dirinya sendiri;
   penjaganya ringan dan ditulis di halaman itu. Slug yang bukan milik pemanggil
   dijawab `notFound()`, bukan pesan lain, supaya halaman itu tidak bisa dipakai
   menebak keberadaan PT.

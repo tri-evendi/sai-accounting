@@ -24,7 +24,7 @@
 
 **Jalan mundur.** Klien Prisma terikat pada `provider`, jadi image yang dibangun
 dari skema PostgreSQL tidak bisa tersambung ke `mysql://`. Kembali ke MariaDB
-berarti menggelar image `sha-` lama dari GHCR (sebelum 15 Okt) dan menukar
+berarti men-deploy image `sha-` lama dari GHCR (sebelum 15 Okt) dan menukar
 `DATABASE_URL`/`CONTROL_*`/`PLATFORM_*`. Semua tulisan yang masuk ke PostgreSQL
 sesudah penukaran akan hilang. Biaya jalan mundur ini naik setiap hari, dan itu
 alasan #636.

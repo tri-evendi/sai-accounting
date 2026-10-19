@@ -50,7 +50,7 @@ services:
   # Jalan mundurnya BUKAN sekadar menukar URL: image yang dibangun dari skema
   # PostgreSQL tidak bisa memakai `mysql://`. Kembali berarti menggelar image
   # lama (tag `sha-` di GHCR) DAN menukar URL. Lihat
-  # docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase E.
+  # docs/arsitektur/07-RIWAYAT.md
   pg:
     # ⚠ Versi mayor di sini HARUS sejajar dengan `postgresql-client-17` di
     # `Dockerfile` tahap `backup`. `pg_dump` menolak server yang lebih baru
@@ -454,7 +454,7 @@ services:
   # keduanya menulis basis data yang sama, jadi versi skemanya harus satu.
   # Bidangnya ditentukan host (`packages/core/src/operator-plane.ts`): image
   # pelanggan tidak memuat rute konsol, dan konsol menjawab 404 untuk host
-  # selain `OPERATOR_HOST`. Lihat docs/arsitektur/14-RENCANA-MONOREPO.md.
+  # selain `OPERATOR_HOST`. Lihat docs/arsitektur/07-RIWAYAT.md
   #
   # ⚠ NAMA SERVICE TRAEFIK HARUS BERBEDA (`sai-app` vs `sai-ops`). Kalau
   # keduanya memakai nama service yang sama, Traefik menganggapnya SATU service

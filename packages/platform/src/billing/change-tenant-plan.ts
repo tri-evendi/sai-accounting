@@ -14,7 +14,7 @@
  * menyembunyikan bahwa ia dipakai bersama, dan pada hari konsol operator
  * dipisah menjadi aplikasi sendiri, modul yang tampak "milik operator" akan
  * ikut pindah dan memutus dua rute pelanggan
- * (docs/arsitektur/14-RENCANA-MONOREPO.md §3).
+ * (docs/arsitektur/07-RIWAYAT.md).
  *
  * Arahnya kini ditegakkan `tests/operator-dependency-direction.test.ts`:
  * berkas ini TIDAK BOLEH mengimpor `lib/operator/*`; `lib/operator/*` boleh

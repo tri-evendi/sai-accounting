@@ -1,6 +1,6 @@
 /**
  * KLIEN PostgreSQL TIDAK BOLEH LEBIH TUA DARI SERVERNYA
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D butir 8)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == CACAT YANG DIJAGA, DAN IA SUDAH TERJADI SEKALI ========================
  * `pg_dump`/`pg_dumpall` MENOLAK server yang lebih baru daripada dirinya. Itu

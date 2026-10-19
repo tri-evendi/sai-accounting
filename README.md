@@ -107,7 +107,7 @@ Do not run `db:seed` in production.
 
 > `bun run db:migrate` (single) only applies the company migrations to one
 > database, the one `DATABASE_URL` points to. Always use `db:migrate:all`. The
-> reasoning is in `package.json` and `docs/arsitektur/07-INFRASTRUKTUR-DEPLOY.md` §6.
+> reasoning is in `package.json` and `docs/arsitektur/02-LAYANAN-INFRA.md`
 
 The full list of scripts is in `package.json`, each with a note explaining why it
 exists.

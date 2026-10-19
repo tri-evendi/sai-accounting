@@ -1,0 +1,326 @@
+# 03 — API, Integrasi & Titik Gagal
+
+> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+
+Permukaan sistem dari luar: siapa boleh masuk lewat jalur mana, apa yang
+dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
+
+## 1. Protokol
+
+| Protokol | Di mana |
+|---|---|
+| HTTPS | Semua lalu lintas masuk; Traefik terminasi TLS, HTTP → 301 |
+| HTTP | Traefik → `app-*:3000` di jaringan Docker |
+| PostgreSQL | `app-*` + 2 job → `pgbouncer:5432`; `migrate` + `job-backup` → `pg:5432` langsung |
+| SMTP | `app-customer` / `job-scheduler` → penyedia surel |
+| HTTPS keluar | `app-customer` → Midtrans Core API — **satu-satunya** panggilan HTTP keluar |
+| S3 | `job-backup` → penyimpanan objek (`awscli`) |
+
+Tidak ada gRPC, GraphQL, WebSocket, SSE, atau antrean. Layanan berkoordinasi
+lewat basis data bersama.
+
+## 2. Tiga rezim autentikasi
+
+Sesi NextAuth dan token Bearer berjalan di aplikasi pelanggan, dipisahkan
+**oleh jalur**. Sesi operator hidup di aplikasi tersendiri, dipisahkan **oleh
+host**.
+
+| Rezim | Untuk | Pemisah |
+|---|---|---|
+| Tanpa autentikasi | Daftar jalur publik yang dicocokkan persis | `isPublicPath(path)` |
+| Sesi NextAuth | Mayoritas halaman & API pelanggan | sisanya di `APP_DOMAIN` |
+| Token Bearer | `/api/v1/**` | `isBearerApiPath(path)` |
+| Sesi operator | Seluruh jalur di `OPERATOR_HOST` | `decideOperatorRouting()` |
+
+### 2.1 Sesi NextAuth
+
+`next-auth` v5 beta, **Credentials** saja (nama pengguna + sandi, `bcrypt`),
+strategi **JWT** masa 24 jam, cookie **berlingkup host** — itulah yang
+memisahkan plane operator. Env: `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST`.
+
+JWT **tidak** membawa `companyId` (dicabut #158); perusahaan selalu dari jalur
+URL, keanggotaan dibaca ulang tiap permintaan. Peran juga ditimpa per
+permintaan — tanpa itu `finance_manager` di PT A yang membuka buku PT B (tempat
+ia hanya `staff`) akan memegang hak PT A.
+
+### 2.2 Token Bearer (`/api/v1`)
+
+`Authorization: Bearer sai_…` → `lib/api-token-guard.ts` →
+`requireApiToken("izin")`. Disimpan di `control.api_tokens`, dikelola di
+halaman `/api-tokens`. Status 11 Okt 2026: **0 token aktif**.
+
+| Endpoint | Izin |
+|---|---|
+| `/api/v1/accounts` · `customers` · `invoices` · `items` · `suppliers` | `account.read` · `customer.read` · `invoice.read` · `inventory.read` · `supplier.read` |
+| `/api/v1/openapi.json` | publik, tanpa data perusahaan |
+
+Hanya-baca, lima sumber daya, semuanya `GET`. Bentuk jawaban ditetapkan di
+`lib/api-v1.ts` sejak baru ada satu endpoint.
+
+> **Kenapa proxy melepas `/api/v1/*`.** Proxy membaca sesi NextAuth untuk tiap
+> `/api/*` non-publik lalu menjawab 401 bila tidak ada cookie — dan permintaan
+> ber-`Authorization` tidak membawa cookie. Sampai 16 Agu 2026 **seluruh
+> `/api/v1` di produksi dijawab 401** sebelum guard token berjalan. Cacat itu
+> lolos `verify` dan `build` karena semua tes token memanggil `requireApiToken`
+> langsung. Kini `tests/proxy-bearer-api.test.ts` memanggil `proxy()` sungguhan,
+> dan `tests/api-v1-spec.test.ts` menuntut izin yang dipakai sama dengan yang
+> didokumentasikan.
+
+### 2.3 Sesi operator
+
+```
+1. Host = OPERATOR_HOST        →  kalau tidak: 404
+2. IP ∈ OPERATOR_IP_ALLOWLIST  →  kosong: TOLAK SEMUA
+3. Cookie sesi bertanda tangan →  kalau tidak: /login
+4. TOTP bila OPERATOR_MFA      →  kalau tidak: tolak
+```
+
+| | |
+|---|---|
+| Modul murni | `@sai/core/operator-plane` (aman-edge: tanpa Prisma, `node:crypto`, `next/*`) |
+| Guard & sesi | `apps/operator/src/lib/operator/{guard,session}.ts` · `OPERATOR_SESSION_SECRET` |
+| Kredensial | `OPERATOR_USERS` (akun darurat, selalu owner) + `control.operator_accounts` (TOTP dienkripsi) |
+| Peran | owner / billing / support / viewer — membagi **tindakan**, bukan bacaan; tiap server action memanggil `requireOperatorActionSession(izin)` |
+| Pencabutan sesi | Akun DB: `session_version` dibandingkan tiap permintaan · akun env: hapus entri atau putar secret |
+
+Fail-closed di empat tempat: `OPERATOR_HOST` kosong → 404 di mana pun · image
+pelanggan tidak memuat rute konsol · image konsol 404 untuk host lain ·
+allowlist kosong → tolak semua.
+
+> ⚠ **Daftar IP & hitungan hop proxy.** Allowlist membaca `x-forwarded-for` dan
+> mengambil entri ke-N **dari kanan**, N = `OPERATOR_TRUSTED_PROXY_HOPS`
+> (bawaan 1 = Traefik saja). Entri paling kanan satu-satunya yang ditulis
+> Traefik; entri di kirinya bisa diketik klien. Menambah CDN/LB di depan
+> Traefik → setel `=2` pada perubahan yang sama, kalau lupa semua pengunjung
+> lewat CDN tampak sebagai satu IP. Jangan menurunkan angkanya di bawah jumlah
+> proxy sebenarnya. Rantai lebih pendek dari angka ini ditolak.
+
+## 3. Jalur publik — daftarnya PERSIS
+
+`isPublicPath` mencocokkan jalur **persis**, bukan prefix, dengan dua
+pengecualian. Halaman publik baru harus disebut namanya di sana dan di
+`tests/authz-coverage`.
+
+| Jalur | Kenapa publik |
+|---|---|
+| `/`, `/pricing`, `/status` | Pembacanya belum punya akun, atau sedang tidak bisa memakai aplikasinya |
+| `/login`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password`, `/accept-invitation` | Pra-akun |
+| `/terms`, `/privacy` | Harus terbaca sebelum disetujui |
+| `/api/health` | Docker & Traefik tidak punya — dan tidak boleh punya — kredensial |
+| `/api/billing/webhook` | Pengirimnya server Midtrans; kredensialnya tanda tangan |
+| `/api/auth/*` | NextAuth, **kecuali** `change-password` |
+| `/robots.txt`, `/sitemap.xml`, `/opengraph-image*` | Perayap & pratinjau tautan tidak punya cookie |
+| `/manifest.webmanifest` | Peramban mengambilnya `no-cors`; tanpa ini PWA #471 gagal **tanpa error** |
+| `/docs/**` | Satu-satunya pelepasan subpohon — pohon dokumen tidak bisa dienumerasi |
+
+`/opengraph-image` dicocokkan sebagai prefix karena Next menambahkan sufiks
+versi.
+
+## 4. Permukaan HTTP
+
+| Permukaan | Jumlah (18 Okt 2026) |
+|---|---|
+| Halaman | 131 pelanggan + 19 konsol |
+| Rute API | 128 pelanggan + 2 konsol |
+| Rute aset | 3 pelanggan + 3 konsol |
+
+| Grup | Jumlah | Pola jalur | Guard |
+|---|---|---|---|
+| `(marketing)` | 3 | `/`, `/pricing`, `/status` | Tanpa |
+| `(app)/(auth)` | 13 | `/login`, `/register`, … | Sebagian publik |
+| `(app)/(dashboard)` | 103 | `/t/{tenant}/{company}/…` + `/dashboard` | `requirePagePermission` |
+| `(app)/(setup)` | 2 | `/t/{t}/{c}/setup`, `/setup/done` | `setup.manage` |
+| `(app)/(tenant)/(panel)` | 7 | `/platform/…`, `/companies/new` | Matriks tenant |
+| `(app)/(docs)` | 3 | `/docs`, `/docs/cari`, `/docs/[...slug]` | Tanpa — dijaga tes |
+| `apps/operator` | 19 | `/`, `/tenants`, `/login`, … | Plane operator |
+
+```
+/t/{tenantSlug}/{companySlug}/{halaman}
+   └── tenant       └── PT        └── 102 halaman
+```
+
+- **Slug tenant berganti (#458)** → `permanentRedirect` (**301**, bukan 307), supaya bookmark dan mesin pencari ikut pindah. Jalur dalamnya dari header `x-sai-path`. Bukan anggota tetap 404.
+- **Slug PT tidak boleh berubah** — trigger basis data + `prove-company-slug-immutable`.
+- Slug tak ada, PT nonaktif, bukan anggota, dan tenant lain dijawab **404 yang sama** (`lib/company-route.ts`, dijaga `tests/cross-tenant-404.test.ts`). Jawaban berbeda membocorkan keberadaan perusahaan orang lain.
+
+128 rute API per domain: akuntansi inti · penjualan · pembelian & persediaan ·
+manufaktur · aset tetap · kas & rekonsiliasi · laporan · tata kelola · tenant &
+platform · autentikasi & infra. Daftar lengkap per rute beserta izinnya:
+[08 Glosarium & Katalog](./08-GLOSARIUM.md).
+
+| Permukaan | Format jawaban |
+|---|---|
+| Halaman · API internal | HTML (RSC) · JSON |
+| `/api/v1` | JSON + `meta` |
+| `/api/health` | JSON; **503 hanya bila control tak terjangkau** |
+| Ekspor laporan | XLSX (`exceljs`), PDF (`jspdf`), ZIP (`jszip`) |
+| Berkas dokumen | Byte lewat route bertenant, bukan berkas statis |
+
+## 5. Header keamanan
+
+Didefinisikan **sekali** di `packages/core/src/security-headers.ts`, dipasang
+kedua aplikasi untuk setiap jalur. Dijaga `tests/security-headers.test.ts`.
+
+| Header | Nilai |
+|---|---|
+| `X-Frame-Options` · `X-Content-Type-Options` | `DENY` · `nosniff` |
+| `Referrer-Policy` · `X-DNS-Prefetch-Control` | `strict-origin-when-cross-origin` · `off` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` — produksi saja |
+
+```
+default-src 'self'
+script-src  'self' 'unsafe-inline'                 ← 'unsafe-eval' hanya di DEV
+style-src   'self' 'unsafe-inline'
+img-src     'self' data: blob:
+connect-src 'self'        font-src 'self'
+frame-src   'self' blob:  object-src 'self' blob:
+frame-ancestors 'none'    base-uri 'self'    form-action 'self'
+```
+
+`blob:` ada untuk pratinjau PDF faktur/kontrak, tanpa membuka sumber luar.
+
+| Arahan longgar | Keadaan |
+|---|---|
+| `'unsafe-eval'` | ✅ **dicabut di produksi** (11 Okt 2026) |
+| `style-src 'unsafe-inline'` | **Struktural** — 2.618 `style={{` di 305 berkas (#203); nonce tidak bisa menandai atribut `style` |
+| `script-src 'unsafe-inline'` | Jalur nonce + `strict-dynamic` terdokumentasi di `security-headers.ts`; terbuka sebagai P2-4 |
+
+## 6. Komunikasi antar-layanan
+
+**Tidak ada panggilan jaringan antar-layanan.** Seluruh koordinasi lewat basis
+data bersama, dan karena itu tidak ada antrean.
+
+| Jalur | Mekanisme | Jejaknya di |
+|---|---|---|
+| `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` | `/scheduler`, `/api/health` |
+| `job-conformance` → `app-customer` | `conformance_runs` | `/api/health` |
+| `job-backup` → `app-customer` | `backup_runs` | `/api/health` |
+| `migrate` → semua | `depends_on: service_completed_successfully` | Keluaran container |
+| Midtrans → `app-customer` | Webhook HTTP | `payments`, `platform_invoices` |
+
+Konsekuensinya: tanpa *retry* per pekerjaan, *dead-letter*, atau
+*backpressure*. Gantinya setiap produser idempoten, sehingga putaran berikutnya
+menyelesaikan yang tertinggal. Terbuka sebagai P2-2.
+
+## 7. Dependensi luar
+
+### Wajib — tanpa ini aplikasi tidak melayani
+
+| Dependensi | Bila mati |
+|---|---|
+| PostgreSQL + PgBouncer | Pemadaman total. Bagi aplikasi, PgBouncer mati = basis data mati |
+| Traefik | Tidak ada akses dari luar; container tetap sehat |
+| Let's Encrypt | Sertifikat kedaluwarsa → peramban menolak. 🔶 Tanpa pemantauan di repo ini |
+| DNS | `APP_DOMAIN` tak terselesaikan = tak terjangkau; `OPERATOR_DOMAIN` salah = konsol 404 |
+
+Probe kesehatan: **hanya control yang boleh memutuskan 503.** Kalau probe 503
+karena scheduler telat, satu masalah penagihan berubah jadi pemadaman total.
+
+### Terdegradasi — fitur mati, aplikasi hidup
+
+**SMTP**, konfigurasinya tiga lapis dan urutannya menentukan:
+
+```
+1. Pengaturan TENANT      control.tenant_mail_settings   (SMTP milik pelanggan)
+        ↓ tidak ada
+2. Pengaturan PLATFORM    platform.mail_settings         (disetel di /mail)
+        ↓ tidak ada / tak terjangkau
+3. Environment            SMTP_* / MAIL_TRANSPORT=file → data/mail-outbox/*.eml
+```
+
+> ⚠ **Surel yang membawa TOKEN AKSES** (undangan, atur-ulang sandi, verifikasi)
+> **tidak pernah** lewat SMTP tenant — langsung ke lapis 2. SMTP tenant
+> dikendalikan pelanggan, dan token akses adalah kredensial.
+
+`nodemailer` 7 di satu berkas (`@sai/platform/mailer-core`); sandi disimpan
+terenkripsi AES-256-GCM. Cache TTL 60s, sengaja tanpa kunci tenant karena
+pengaturan platform hanya satu. Status 11 Okt: 1 baris `mail_settings`,
+`tenant_mail_settings` 0 baris. Bila SMTP mati: undangan, atur-ulang sandi,
+pengiriman faktur, dan pengingat gagal; **login dan buku besar tidak
+terpengaruh**.
+
+**S3** — `awscli` di image `backup`, penyedia mana pun lewat `--endpoint-url`.
+Status 18 Okt: tiga env kosong → `local_only`.
+
+**Midtrans** — `POST {base}/v2/charge` keluar, `POST /api/billing/webhook`
+masuk (tanda tangan SHA-512). Status 11 Okt: tanpa `MIDTRANS_*` → transport
+**MOCK**. Dua pemakaian yang harus tetap terpisah:
+
+1. **Penagihan platform** (kami menagih tenant) → kunci platform dari environment.
+2. **Penagihan pelanggan** (tenant menagih pelanggannya) → kredensial milik tenant, terenkripsi per perusahaan. Karena itu `company-payment-settings.ts` **tidak pernah** membaca `process.env.MIDTRANS_*`.
+
+Gate efektif menuntut `NODE_ENV=production` **dan** `MIDTRANS_SERVER_KEY`; di
+luar itu jatuh ke MOCK dengan peringatan. Verifikasi webhook fail-closed:
+produksi tanpa kunci menolak semua webhook.
+
+### Hanya saat build/rilis
+
+GitHub Actions (tidak bisa rilis; produksi tetap jalan) · GHCR (tidak bisa
+`pull`, jadi rollback juga tidak) · npm registry dan Docker Hub (build gagal;
+container berjalan tak terpengaruh).
+
+### Tidak dipanggil runtime
+
+**Accurate Online** (`src/lib/accurate/`) berbasis ekspor laporan yang diunggah
+manusia. **e-Faktur / Coretax** membuat berkas untuk diunggah ke sistem pajak.
+Keduanya tanpa panggilan jaringan maupun kredensial.
+
+### Hulu & hilir
+
+| Sumber masuk | Dipercaya? |
+|---|---|
+| Peramban pengguna | Tidak — zod di setiap jalur tulis |
+| Webhook Midtrans | Tidak — tanda tangan SHA-512, fail-closed |
+| Integrator API | Tidak — `requireApiToken` + izin |
+| Unggahan berkas | Tidak — validasi tipe & bentuk |
+| Dump sistem lama | Tidak — **tidak melewati guard zod**; alasan `job-conformance` ada |
+| Ekspor Accurate | Tidak — pengurai sendiri |
+
+Keluar: peramban (HTML/JSON/PDF/XLSX) · pelanggan tenant lewat SMTP (faktur +
+pengingat) · anggota tim (undangan, atur-ulang sandi) · Midtrans (jumlah, id
+pesanan) · S3 (**seluruh** basis data + dokumen + audit, terenkripsi) ·
+perayap.
+
+`remind:customers` satu-satunya jalur yang menghubungi orang **di luar**
+organisasi pelanggan. Empat gate sebelum surel keluar: `reminder_enabled`
+menyala (bawaan mati) · `reminder_tested_at` terisi, jadi seseorang pernah
+menerima sendiri kalimatnya · masih dalam jendela toleransi 2 hari · kunci unik
+`(invoice, kind, due_key)` belum terpakai.
+
+## 8. Titik gagal tunggal
+
+| # | Titik | Dampak | Mitigasi hari ini | Penilaian |
+|---|---|---|---|---|
+| 1 | **PostgreSQL tunggal** (+ PgBouncer tunggal) | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk #2 |
+| 2 | **Backup tanpa salinan luar-mesin** | Kehilangan mesin = kehilangan buku **beserta** backup-nya | Salinan terenkripsi harian di mesin yang sama + peringatan | **Kritis — P0** |
+| 3 | **Mesin tunggal** (satu VM, 6 aplikasi) | Kehilangan semuanya | Tidak ada | Diterima sadar |
+| 4 | **`app-customer` tunggal** | Enam permukaan pelanggan padam; konsol **tidak** ikut jatuh | `restart` + healthcheck | Dapat diterima |
+| 5 | **Traefik tunggal** | 6 aplikasi tak terjangkau | Di luar repo ini | Di luar lingkup |
+| 6 | **`AUTH_SECRET` tunggal** | Rotasi = seluruh sesi batal | Masa sesi 24 jam | Dapat diterima |
+| 7 | **`BACKUP_ENCRYPTION_KEY`** | Kunci hilang = backup tidak bisa dibuka | ❓ Penyimpanan luar belum dipastikan | **Perlu dipastikan segera** |
+| 8 | **`SETTINGS_ENCRYPTION_KEY`** | Sandi SMTP tersimpan tak terbaca | Dapat disetel ulang lewat konsol | Rendah |
+
+## 9. Larangan impor yang ditegakkan tes
+
+| Larangan | Guard | Kenapa |
+|---|---|---|
+| `reports.ts`, `ledger.ts`, `posting/*` mengimpor `business-modules.ts` | `tests/business-modules-ledger.test.ts` | Modul tidak menggerbangi buku besar |
+| `operator-plane` mengimpor `platform-db.ts` | doktrin #137 | Guard & proxy bukan kode penagihan |
+| Halaman `(docs)/**` memuat guard | `tests/docs.test.ts` | `/docs` publik; pembaca anonim tidak memicu kueri |
+| `@ant-design/icons` default/namespace | `tests/icon-rsc-boundary.test.ts` | Barrel-nya meruntuhkan lapisan RSC |
+| `<Link><Button/></Link>` · `asChild` | `tests/anchor-button-nesting` · `button-no-aschild` | Elemen interaktif bersarang · tidak aman dari server component |
+| Warna mentah di luar `antd-tokens.ts` | ESLint `sai/warna-token-antd` | Satu sumber warna |
+| Halaman/route tanpa deklarasi izin | `tests/authz-coverage.test.ts` | Rute tak ber-guard = lubang |
+| Skrip mengimpor `server-only` | `tsx` mati di atasnya | Logika produser harus di pustaka murni |
+
+Arah dependensi antar-paket dijaga `tests/packages-mandiri.test.ts` dan
+`tests/operator-dependency-direction.test.ts`.
+
+| Kopling | Ketat? | Catatan |
+|---|---|---|
+| `app-customer` ↔ PostgreSQL | Ketat | Benar — ini aplikasi basis data |
+| `job-*` ↔ image `migrator` | Ketat, sengaja | Env & `node_modules` sama; harganya CI harus membangun keempat image |
+| Control ↔ platform · Control ↔ buku PT | Longgar, sengaja | Tanpa FK; butuh `reconcile:platform` · `database_name` menunjuk |
+| Aplikasi ↔ Midtrans · ↔ SMTP | Longgar | Transport MOCK/`manual` · tiga lapis + transport `file` |
+| UI ↔ Ant Design v6 | Ketat | Diperketat sengaja #203 |

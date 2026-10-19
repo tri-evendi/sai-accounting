@@ -1,6 +1,6 @@
 /**
  * IRISAN DONAT STATUS KONTRAK — setiap kontrak harus terhitung
- * (audit skema §S3 — docs/arsitektur/13-AUDIT-SKEMA.md)
+ * (temuan S3 pada audit skema — docs/arsitektur/07-RIWAYAT.md)
  *
  * == CACAT YANG DIPERBAIKI BERKAS INI =====================================
  * Donat status di halaman kontrak dibangun dari TIGA status yang dipaku:
@@ -22,7 +22,7 @@
  *
  * == KENAPA INI BISA DIPERBAIKI TANPA MENUNGGU KEPUTUSAN KOSAKATA ==========
  * Apakah `completed` sah dan harus masuk `CONTRACT_STATUSES`, atau 101 baris itu
- * harus dipetakan ke `signed`, adalah keputusan pemilik (§S3). Tapi jawaban mana
+ * harus dipetakan ke `signed`, adalah keputusan pemilik (temuan S3). Tapi jawaban mana
  * pun TIDAK mengubah aturan di sini: **grafik harus menghitung setiap kontrak.**
  * Jadi kedua hal itu dipisahkan — yang satu dikerjakan sekarang, yang satu
  * menunggu.

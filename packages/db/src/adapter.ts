@@ -1,6 +1,6 @@
 /**
  * SATU PABRIK ADAPTER UNTUK KEDUA MESIN
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * Tiga pabrik klien — `control-db`, `platform-db`, `company-clients` — dulu
  * masing-masing memanggil `new PrismaMariaDb({...})` dengan daftar parameter
@@ -44,7 +44,7 @@ export interface OpsiAdapter {
  * detail: MariaDB memakai thread per koneksi, PostgreSQL memakai PROSES. Angka
  * yang wajar di MariaDB bisa menjadi puluhan proses backend di PostgreSQL —
  * pada kotak 3,6 GB ini itulah alasan PgBouncer menjadi wajib, bukan opsional
- * (docs/arsitektur/11-RENCANA-POSTGRESQL.md §9.5). Angkanya dibiarkan sama di
+ * (docs/arsitektur/07-RIWAYAT.md). Angkanya dibiarkan sama di
  * sini dengan sengaja: yang mengubahnya harus PgBouncer di depan, bukan nilai
  * yang diam-diam berbeda per mesin.
  */

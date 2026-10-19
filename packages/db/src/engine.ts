@@ -1,6 +1,6 @@
 /**
  * MESIN BASIS DATA MANA — DIPUTUSKAN DARI URL, DI SATU TEMPAT
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == KENAPA SATU TEMPAT ====================================================
  * Ada TIGA pabrik klien (`control-db`, `platform-db`, `company-clients`), satu

@@ -1,6 +1,6 @@
 /**
  * MESIN BASIS DATA DIPUTUSKAN DARI URL — dan tidak pernah DITEBAK
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == KENAPA "TIDAK MENEBAK" ADALAH SIFAT, BUKAN KEREWELAN ==================
  * Bawaan yang ramah ("kalau tidak dikenali, anggap mariadb") terasa sopan dan

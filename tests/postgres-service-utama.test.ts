@@ -1,6 +1,6 @@
 /**
  * PostgreSQL ADALAH MESIN UTAMA — dan compose harus mencerminkannya
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase E)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == BERKAS INI DULU MENUNTUT YANG SEBALIKNYA ==============================
  * Sampai 15 Okt 2026 ia menuntut `pg` dan `pgbouncer` **dipagari**

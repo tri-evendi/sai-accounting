@@ -1,13 +1,12 @@
 /**
  * ARAH DEPENDENSI KONSOL OPERATOR ↔ PERMUKAAN PELANGGAN
- * (Fase 0 — docs/arsitektur/14-RENCANA-MONOREPO.md §4)
+ * (Fase 0 — docs/arsitektur/07-RIWAYAT.md)
  *
  * == KENAPA ADA ==========================================================
- * Konsol operator masih SATU kode dengan permukaan pelanggan, dengan sengaja
- * (dok 14 §0). Yang membuat pilihan itu bisa dibatalkan kelak adalah arah
- * dependensinya: pada hari `apps/operator` dipisah, setiap impor yang
- * menyeberang harus dibongkar dulu. Tanpa penjaga ini, Fase 1 dimulai dengan
- * arkeologi.
+ * Penjaga ini lahir sebelum `apps/operator` dipisah, untuk memastikan tidak ada
+ * impor yang menyeberang saat pemisahannya dikerjakan. Sesudah pemisahan ia
+ * tetap berlaku: satu impor dari konsol ke `src/` akan membundel kode pelanggan
+ * ke image operator.
  *
  * Penyeberangan yang SUDAH terjadi sebelum tes ini ada, dan karena itu bukan
  * kekhawatiran teoretis:

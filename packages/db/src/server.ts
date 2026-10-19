@@ -1,6 +1,6 @@
 /**
  * OPERASI TINGKAT SERVER, DUA MESIN — satu antarmuka semantik
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D butir 4)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == KENAPA ANTARMUKA SEMANTIK, BUKAN "JALANKAN SQL INI" ===================
  * Penyediaan perusahaan (`company-provisioning.ts`) adalah SATU-SATUNYA tempat
@@ -370,7 +370,7 @@ class KoneksiPostgres implements KoneksiBasisData {
   async ringkasanMigrasi(): Promise<RingkasanMigrasi> {
     /* `FILTER`, bukan `SUM(boolean)`: PostgreSQL tidak menjumlah boolean —
        idiom MySQL yang sudah sekali mematahkan sapuan kesesuaian sesudah
-       penukaran (lihat dok 11 §10.2). `::int` karena `count` adalah bigint,
+       penukaran (docs/arsitektur/07-RIWAYAT.md). `::int` karena `count` adalah bigint,
        yang diurai `pg` sebagai TEKS. */
     const r = await this.c.query<RingkasanMigrasi>(
       `SELECT

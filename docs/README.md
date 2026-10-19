@@ -8,23 +8,24 @@ satunya sudah basi.
 
 | Anda | Mulai dari |
 |---|---|
-| Insinyur baru di proyek ini | [`arsitektur/`](./arsitektur/README.md) → `01` → `02` |
+| Insinyur baru di proyek ini | [`arsitektur/`](./arsitektur/README.md) → `08` → `01` → `04` |
 | Mau men-deploy rilis | [`../PRODUCTION.md`](../PRODUCTION.md) **§Updates** |
 | Menulis kode di repo ini | [`../AGENTS.md`](../AGENTS.md) |
 | Menyentuh basis data | [`DATABASE.md`](./DATABASE.md) + [`MULTI-COMPANY.md`](./MULTI-COMPANY.md) |
 | Menambah halaman / route | [`RBAC.md`](./RBAC.md) |
-| Mengerjakan konsol operator | `apps/operator/` + [`../AGENTS.md`](../AGENTS.md) §Struktur monorepo + [`arsitektur/14`](./arsitektur/14-RENCANA-MONOREPO.md) |
+| Mengerjakan konsol operator | `apps/operator/` + [`../AGENTS.md`](../AGENTS.md) (bagian Struktur monorepo) + [`arsitektur/07`](./arsitektur/07-RIWAYAT.md) |
 | Mengerjakan UI | [`../design-system/sai-accounting/MASTER.md`](../design-system/sai-accounting/MASTER.md) |
-| Mengambil keputusan teknis | [`arsitektur/08`](./arsitektur/08-PENILAIAN-ARSITEKTUR.md) → [`09`](./arsitektur/09-PETA-JALAN.md) |
+| Mengambil keputusan teknis | [`arsitektur/05`](./arsitektur/05-PENILAIAN.md) |
 | Mengambil keputusan komersial | [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) + [`PRICING.md`](./PRICING.md) |
 
 ## Arsitektur & peta layanan
 
-[`arsitektur/`](./arsitektur/README.md) — 14 berkas + indeks: snapshot
-keadaan yang berjalan (komponen, layanan, dependensi, API, aliran data,
-infrastruktur, penilaian berprioritas, peta jalan, portabilitas/pemisahan,
-rencana PostgreSQL, klasifikasi buku, audit skema, monorepo), dengan indeksnya
-sendiri.
+[`arsitektur/`](./arsitektur/README.md) — **8 berkas + indeks**: snapshot
+keadaan yang berjalan. Arsitektur dan diagramnya (01), layanan & infrastruktur
+termasuk tiga bentuk arsitektur infra (02), API dan integrasi (03), ERD +
+aliran data + daur hidup status (04), penilaian berprioritas (05), keamanan &
+model ancaman (06), riwayat empat pekerjaan besar (07), serta glosarium,
+strategi pengujian, target non-fungsional dan katalog rute (08).
 
 ## Dokumen domain
 

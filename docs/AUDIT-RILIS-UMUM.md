@@ -12,9 +12,9 @@
 > dalamnya juga sudah berubah.
 >
 > Untuk keadaan yang berlaku, baca
-> [`docs/arsitektur/08-PENILAIAN-ARSITEKTUR.md`](./arsitektur/08-PENILAIAN-ARSITEKTUR.md)
+> [`docs/arsitektur/05-PENILAIAN.md`](./arsitektur/05-PENILAIAN.md)
 > (temuan aktif beserta statusnya) dan
-> [`docs/arsitektur/09-PETA-JALAN.md`](./arsitektur/09-PETA-JALAN.md).
+> [`docs/arsitektur/05-PENILAIAN.md`](./arsitektur/05-PENILAIAN.md).
 
 > Ditulis 15 Agustus 2026, terhadap `main` (= `develop`, nol commit selisih).
 > Cakupan: pendaratan pemasaran → pendaftaran/masuk → pembuatan PT →

@@ -1,6 +1,6 @@
 /**
  * SETIAP KOLOM FK HARUS PUNYA @@index — DIDEKLARASIKAN, BUKAN DIWARISI
- * (audit skema §S1 — docs/arsitektur/13-AUDIT-SKEMA.md)
+ * (temuan S1 pada audit skema — docs/arsitektur/07-RIWAYAT.md)
  *
  * ══ CACAT YANG DIJAGA TES INI, DAN KENAPA IA BISA MENUMPUK 18 KALI ═════════
  * MySQL/MariaDB MEWAJIBKAN indeks pada kolom `FOREIGN KEY` dan MEMBUATNYA
@@ -95,7 +95,7 @@ describe("paritas indeks FK: MySQL memaafkan, PostgreSQL tidak", () => {
         kurang,
         `Relasi tanpa @@index. Di MariaDB ini tetap cepat — indeksnya dibuat ` +
           `diam-diam oleh MySQL — tapi di PostgreSQL indeksnya TIDAK ADA. ` +
-          `Tambahkan @@index([...]) di modelnya. Lihat docs/arsitektur/13-AUDIT-SKEMA.md §S1.`
+          `Tambahkan @@index([...]) di modelnya. Lihat docs/arsitektur/07-RIWAYAT.md`
       ).toEqual([]);
     });
   }

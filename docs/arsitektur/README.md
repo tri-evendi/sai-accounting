@@ -1,95 +1,64 @@
 # Arsitektur & Peta Layanan — SAI Accounting
 
-> **Apa ini.** Gambaran keadaan yang berjalan saat ini, disusun dari kode,
-> konfigurasi, dan bukti runtime. Rencana tidak dicatat di sini.
-> Dimutakhirkan **18 Oktober 2026**; produksi = `main@ca0cd038`. Angka runtime
-> yang lebih tua diberi tanggal di tempatnya.
->
-> **Batasnya.** Dokumen ini tidak menggantikan dokumen domain. Ia menjawab
-> bentuk sistem, sambungannya, dan letak risikonya. Alasan sebuah aturan tetap
-> dijawab dokumen aslinya, yang dirujuk lewat tautan. Aturan tidak disalin ke
-> sini supaya tidak ada dua salinan yang bisa berbeda.
-
-## Urutan baca
-
-Titik mulai menurut siapa yang membaca:
-
-| Anda | Mulai dari |
-|---|---|
-| Insinyur baru | [01](./01-RINGKASAN-PLATFORM.md) → [02](./02-ARSITEKTUR.md) → [06](./06-ALIRAN-DATA.md) |
-| Mengambil keputusan teknis | [01](./01-RINGKASAN-PLATFORM.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) → [09](./09-PETA-JALAN.md) |
-| Bertugas jaga / men-deploy rilis | [07](./07-INFRASTRUKTUR-DEPLOY.md) → [03](./03-INVENTARIS-LAYANAN.md) |
-| Membaca laporan kesesuaian data | [12](./12-KLASIFIKASI-BUKU.md) *(buku mana yang temuannya nyata)* |
-| Menyentuh skema / menambah tabel atau relasi | [13](./13-AUDIT-SKEMA.md) *(aturan yang ditegakkan + jebakan indeks FK)* |
-| Merencanakan VM baru / DC-DRC | [10](./10-PORTABILITAS-DAN-PEMISAHAN.md) → [08](./08-PENILAIAN-ARSITEKTUR.md) |
-| Mempertimbangkan ganti basis data | [10 §2](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(putusan)* → [11](./11-RENCANA-POSTGRESQL.md) *(rencana)* |
-| Mempertimbangkan memisah konsol operator dari platform pelanggan | [10 §3](./10-PORTABILITAS-DAN-PEMISAHAN.md) *(container — sudah)* → [14](./14-RENCANA-MONOREPO.md) *(kode — selesai 18 Okt 2026: `apps/operator` + lima paket)* |
+> Gambaran sistem yang sedang berjalan, disusun dari kode, konfigurasi, dan
+> keluaran perintah. Rencana tidak dicatat di sini.
+> Dimutakhirkan 19 Oktober 2026 · produksi `main@ca0cd038`.
 
 ## Isi
 
 | # | Dokumen | Menjawab |
 |---|---|---|
-| 01 | [RINGKASAN-PLATFORM.md](./01-RINGKASAN-PLATFORM.md) | Produk apa ini, untuk siapa, kemampuan apa yang sudah ada, arsitektur sekilas |
-| 02 | [ARSITEKTUR.md](./02-ARSITEKTUR.md) | Batas sistem, tiga lapis basis data, pola arsitektur, diagram komponen |
-| 03 | [INVENTARIS-LAYANAN.md](./03-INVENTARIS-LAYANAN.md) | Katalog setiap layanan, container, modul, dan skrip — beserta tanggung jawabnya |
-| 04 | [DEPENDENSI-INTEGRASI.md](./04-DEPENDENSI-INTEGRASI.md) | Dependensi internal/eksternal, hulu-hilir, titik gagal tunggal |
-| 05 | [API-KOMUNIKASI.md](./05-API-KOMUNIKASI.md) | Permukaan HTTP, tiga rezim autentikasi, pola komunikasi antar-layanan |
-| 06 | [ALIRAN-DATA.md](./06-ALIRAN-DATA.md) | Daur hidup permintaan, alur posting jurnal, alur penagihan, alur backup |
-| 07 | [INFRASTRUKTUR-DEPLOY.md](./07-INFRASTRUKTUR-DEPLOY.md) | Container, domain, port, volume, alur rilis, variabel lingkungan |
-| 08 | [PENILAIAN-ARSITEKTUR.md](./08-PENILAIAN-ARSITEKTUR.md) | Kekuatan, utang teknis, risiko — diprioritaskan dengan bukti |
-| 09 | [PETA-JALAN.md](./09-PETA-JALAN.md) | Rekomendasi berurutan, prasyarat, pertanyaan yang belum terjawab |
-| 10 | [PORTABILITAS-DAN-PEMISAHAN.md](./10-PORTABILITAS-DAN-PEMISAHAN.md) | Asesmen: portabilitas VM · PostgreSQL · pemisahan container operator & pemasaran · prasyarat DC/DRC |
-| 11 | [RENCANA-POSTGRESQL.md](./11-RENCANA-POSTGRESQL.md) | Migrasi MariaDB → PostgreSQL — **DIJALANKAN 15 Okt 2026**; fase, gate, kegagalan penukaran pertama, dan **validasi pasca-penukaran (§10.2)** |
-| 12 | [KLASIFIKASI-BUKU.md](./12-KLASIFIKASI-BUKU.md) | Buku mana **produksi**, mana **uji** — dengan dasar isinya, bukan namanya. Dibangkitkan `bun run classify:books` |
-| 13 | [AUDIT-SKEMA.md](./13-AUDIT-SKEMA.md) | **Audit desain skema** — apa yang sudah benar dan harus dijaga, tiga temuan (S1/S2 **ditutup**, S3 menunggu keputusan kosakata), dan keputusan desain yang harus diambil saat pindah mesin |
-| 14 | [RENCANA-MONOREPO.md](./14-RENCANA-MONOREPO.md) | Pemisahan konsol ke `apps/operator` + paket `@sai/*` (`@sai/db`, `@sai/core`, `@sai/ui`, `@sai/billing`, `@sai/platform`) — alasan, harga, fase (selesai 18 Okt 2026) |
+| 01 | [ARSITEKTUR.md](./01-ARSITEKTUR.md) | Produk, dua aplikasi, diagram konteks & container, pola, empat batas keamanan, tiga lapis basis data, konteks perusahaan, otorisasi, mesin posting, struktur kode, ukuran |
+| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, sembilan layanan, pekerjaan latar, image & build, gate rilis, deploy & rollback, migration, env, pemantauan, DR, **tiga bentuk arsitektur infra** |
+| 03 | [API-INTEGRASI.md](./03-API-INTEGRASI.md) | Permukaan HTTP, tiga rezim autentikasi, header keamanan, dependensi luar, titik gagal tunggal, larangan impor |
+| 04 | [ALIRAN-DATA.md](./04-ALIRAN-DATA.md) | ERD ketiga skema, enam alur data, daur hidup status tiap dokumen |
+| 05 | [PENILAIAN.md](./05-PENILAIAN.md) | Kekuatan, temuan terbuka berprioritas, portabilitas VM, pemicu, keputusan yang menunggu pemilik |
+| 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman, regresi yang pernah terjadi |
+| 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Empat pekerjaan selesai: keputusan yang masih mengikat dan yang masih terbuka |
+| 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
 
-## Dokumen domain yang TIDAK digantikan dokumen ini
+## Mulai dari mana
 
-Semuanya tetap sumber kebenaran untuk bidangnya masing-masing:
-
-| Dokumen | Bidang |
+| Anda | Mulai dari |
 |---|---|
-| [`docs/MULTI-COMPANY.md`](../MULTI-COMPANY.md) | Satu basis data per PT (#104) — aturan & migrasi pemasangan |
-| [`docs/MULTI-TENANT.md`](../MULTI-TENANT.md) | Lapis tenant/SaaS (#133) — model data & pemisahan tiga lapis |
-| [`docs/RBAC.md`](../RBAC.md) | Matriks izin, empat lapis penegakan, kunci buku |
-| [`docs/DATABASE.md`](../DATABASE.md) | Standar skema, tipe data, workflow migration |
-| [`docs/KOMERSIALISASI.md`](../KOMERSIALISASI.md) | Strategi komersial, fase, gate-nya |
-| [`docs/PRICING.md`](../PRICING.md) | Katalog paket & harga |
-| [`docs/COMPLIANCE.md`](../COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi |
-| [`docs/MODUL-USAHA.md`](../MODUL-USAHA.md) | Modul per jenis usaha (#99) |
-| [`docs/AUDIT-RILIS-UMUM.md`](../AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung |
-| [`AGENTS.md`](../../AGENTS.md) | Aturan kerja: gate verify/build, UI, otorisasi, DB |
-| [`PRODUCTION.md`](../../PRODUCTION.md) | Runbook deploy (§Updates; ringkasannya di dok 07 §5) |
-| [`design-system/sai-accounting/MASTER.md`](../../design-system/sai-accounting/MASTER.md) | Sistem desain, token, guard UI |
+| Insinyur baru | 08 → 01 → 04 |
+| Bertugas jaga / men-deploy | 02 |
+| Merencanakan kapasitas atau HA | 02 → 05 |
+| Mengambil keputusan teknis | 01 → 05 |
+| Menyentuh basis data atau skema | 04 → [`DATABASE.md`](../DATABASE.md) → 07 |
+| Menambah halaman / rute | 06 (daftar periksa) → 08 |
+| Meninjau keamanan | 06 → 03 |
+| Menelusuri kenapa sesuatu dibuat begini | 07 |
 
 ## Tiga tingkat keyakinan
 
-Setiap klaim di dokumen ini ditandai. Klaim tanpa tanda berarti terbukti.
-
 | Tanda | Arti |
 |---|---|
-| *(tanpa tanda)* | **Terbukti**: dibaca dari kode, konfigurasi, atau keluaran perintah yang dijalankan saat penyusunan |
-| 🔶 **Tersimpulkan** | Kesimpulan yang wajar dari bukti, tetapi tidak dieksekusi atau diamati langsung |
-| ❓ **Belum dipastikan** | Tidak diketahui dari repo ini; butuh pemilik, akses, atau pengukuran |
+| *(tanpa tanda)* | Terbukti — dibaca dari kode, konfigurasi, atau keluaran perintah |
+| 🔶 | Tersimpulkan — kesimpulan wajar dari bukti, tidak diamati langsung |
+| ❓ | Belum dipastikan — butuh pemilik, akses, atau pengukuran |
 
-## Cara memelihara dokumen ini
+Angka runtime selalu disertai tanggal pengambilannya.
 
-Dokumen ini perlu diperbarui ketika salah satu hal berikut berubah:
+## Dokumen lain yang tidak digantikan dokumen ini
 
-1. Layanan baru di `docker-compose.yml` → perbarui **03** dan **07**.
-2. Basis data/skema Prisma keempat → perbarui **02**, **04**, **06**.
-3. Integrasi luar baru (gate bayar, penyedia surel) → perbarui **04** dan **05**.
-4. Rezim autentikasi baru (selain sesi/Bearer/operator) → perbarui **05**.
-5. Temuan di **08** yang sudah ditutup → pindahkan ke riwayat, jangan hapus.
-   Temuan yang hilang tanpa jejak akan ditemukan ulang oleh orang berikutnya.
-6. Putusan di **10** (PostgreSQL, pemisahan container) → bila pemicunya
-   terjadi, perbarui putusannya beserta pemicu yang terpenuhi, supaya
-   perubahannya bisa ditinjau.
-7. **10 memuat putusan, 11 memuat rencana.** Keduanya sengaja dipisah:
-   putusan "jangan sekarang" tidak menghapus rencananya, dan adanya rencana
-   tidak berarti sudah disetujui.
+| Dokumen | Bidang |
+|---|---|
+| [`MULTI-COMPANY.md`](../MULTI-COMPANY.md) · [`MULTI-TENANT.md`](../MULTI-TENANT.md) | Satu basis data per PT (#104) · lapis tenant/SaaS (#133) |
+| [`RBAC.md`](../RBAC.md) · [`MODUL-USAHA.md`](../MODUL-USAHA.md) | Matriks izin, penegakan, kunci buku · modul per jenis usaha (#99) |
+| [`DATABASE.md`](../DATABASE.md) | Standar skema, tipe data, workflow migration |
+| [`COMPLIANCE.md`](../COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi |
+| [`KOMERSIALISASI.md`](../KOMERSIALISASI.md) · [`PRICING.md`](../PRICING.md) | Strategi komersial & katalog harga |
+| [`AGENTS.md`](../../AGENTS.md) · [`PRODUCTION.md`](../../PRODUCTION.md) | Aturan kerja · runbook deploy |
+| [`MASTER.md`](../../design-system/sai-accounting/MASTER.md) | Sistem desain & token |
 
-Angka runtime (jumlah tenant, status backup, nomor migration) dicantumkan
-beserta tanggal pengambilannya, supaya pembaca tahu kapan angka itu perlu
-dicek ulang.
+## Cara memelihara
+
+| Yang berubah | Perbarui |
+|---|---|
+| Layanan baru di `docker-compose.yml` | 02 |
+| Tabel, relasi, atau basis data baru | 04 (ERD), dan 01 bila lapisnya bertambah |
+| Status dokumen baru | 04 (daur hidup) dan 08 (glosarium) |
+| Integrasi luar atau rezim autentikasi baru | 03 |
+| Halaman / rute baru | 08 (angka), dan 06 bila menyentuh kontrol keamanan |
+| Temuan di 05 ditutup | Hapus temuannya; bila ia meninggalkan aturan atau guard baru, pindahkan aturannya ke bab yang bersangkutan |

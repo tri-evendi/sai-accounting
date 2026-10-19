@@ -121,7 +121,7 @@ describe("jejak operator di tabel, bukan di berkas", () => {
 
   it("modulnya tidak lagi menyentuh sistem berkas", () => {
     /* Kembalinya `appendFile` berarti jejak kembali terikat pada satu volume —
-       persis yang menghalangi pemisahan `apps/operator` (dok 14 §5). */
+       persis yang menghalangi pemisahan `apps/operator`. */
     const isi = readFileSync(join(process.cwd(), "apps/operator/src/lib/operator/audit.ts"), "utf8");
     expect(isi).not.toMatch(/from\s+["']node:fs/);
     expect(isi).toMatch(/platformDb\.operatorAuditLog/);

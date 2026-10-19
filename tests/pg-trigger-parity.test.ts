@@ -1,6 +1,6 @@
 /**
  * SETIAP TRIGGER MariaDB HARUS PUNYA PADANAN PostgreSQL
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == CACAT YANG DIJAGA =====================================================
  * Baseline PostgreSQL DIBANGKITKAN Prisma dari skema, dan Prisma tidak tahu
@@ -85,7 +85,7 @@ describe("paritas trigger: Prisma tidak membangkitkannya, jadi ia mudah hilang",
       "Trigger ini ada di MariaDB tapi TIDAK di baseline PostgreSQL. Prisma tidak " +
         "membangkitkan trigger — tulis padanannya sebagai migration tambahan di " +
         "prisma/postgresql/<db>/NNNN_<nama>/migration.sql. Lihat " +
-        "docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D."
+        "docs/arsitektur/07-RIWAYAT.md"
     ).toEqual([]);
   });
 

@@ -1,6 +1,6 @@
 /**
  * TIDAK ADA YANG BOLEH MEMAKU ADAPTER BASIS DATA
- * (penukaran PostgreSQL — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase E)
+ * (penukaran PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * == CACAT YANG DIJAGA, DAN IA SUDAH MENJATUHKAN PRODUKSI ==================
  * 28 skrip membangun adapternya sendiri dengan `new PrismaMariaDb({...})`.

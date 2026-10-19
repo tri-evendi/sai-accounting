@@ -1,6 +1,6 @@
 /**
  * MEMBUKTIKAN SATU BASIS DATA PINDAH UTUH: MariaDB vs PostgreSQL
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  *     bun run pg:prove --source <mysql-url> --target <postgres-url>
  *

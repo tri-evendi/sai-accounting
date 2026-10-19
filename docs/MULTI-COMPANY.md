@@ -302,7 +302,7 @@ role itu dimiliki role itu.
 > ⚠ Per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi aplikasi berhak atas
 > seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk aplikasi, dan
 > superuser hanya untuk `migrate`/`job-backup`; lihat
-> [`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026)
+> [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md#yang-masih-terbuka)
 > butir 4.
 
 Tanpa hak itu halamannya tetap bisa dipakai lewat jalur lain. Administrator

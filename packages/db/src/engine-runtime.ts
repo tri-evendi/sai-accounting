@@ -1,6 +1,6 @@
 /**
  * MESIN MANA YANG SEDANG DIPAKAI, DIBACA SAAT BERJALAN
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10 Fase D)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  * `db-engine.ts` murni: ia menjawab "URL ini mesinnya apa". Berkas ini yang
  * membaca environment dan menjawab "basis data X sedang di mesin apa" — dan ia

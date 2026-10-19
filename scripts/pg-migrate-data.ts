@@ -1,6 +1,6 @@
 /**
  * MEMINDAHKAN DATA SATU BASIS DATA: MariaDB -> PostgreSQL
- * (rencana migrasi — docs/arsitektur/11-RENCANA-POSTGRESQL.md §10)
+ * (migrasi PostgreSQL — docs/arsitektur/07-RIWAYAT.md)
  *
  *     bun run pg:data --source <mysql-url> --target <postgres-url>
  *     bun run pg:data --source ... --target ... --dry-run

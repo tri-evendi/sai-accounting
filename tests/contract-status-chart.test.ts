@@ -1,6 +1,6 @@
 /**
  * DONAT STATUS KONTRAK — setiap kontrak harus terhitung
- * (audit skema §S3 — docs/arsitektur/13-AUDIT-SKEMA.md)
+ * (temuan S3 pada audit skema — docs/arsitektur/07-RIWAYAT.md)
  *
  * Invarian yang dijaga berkas ini satu, dan ia pernah dilanggar di produksi:
  * **jumlah seluruh irisan = jumlah kontrak.** Diukur 12 Okt 2026 — 609 kontrak,

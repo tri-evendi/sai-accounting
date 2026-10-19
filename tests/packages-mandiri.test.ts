@@ -1,5 +1,5 @@
 /**
- * PAKET WORKSPACE BERDIRI SENDIRI (dok 14 §5 Fase 1)
+ * PAKET WORKSPACE BERDIRI SENDIRI (docs/arsitektur/07-RIWAYAT.md)
  *
  * `packages/*` dipakai aplikasi Next DAN skrip `tsx`/`bun`, dan kelak oleh dua
  * aplikasi (`apps/customer`, `apps/operator`). Paket yang mengimpor balik ke
@@ -94,7 +94,8 @@ describe("paket workspace tidak bergantung balik pada aplikasi", () => {
   });
 
   it("impor `@sai/*` sebuah paket tercantum di `dependencies` manifesnya, dan grafnya tanpa siklus", () => {
-    /* Diagram arah dependensi di dok 02 §7 bersandar pada ini. Manifes yang
+    /* Diagram arah dependensi di docs/arsitektur/01-ARSITEKTUR.md bersandar
+       pada ini. Manifes yang
        tidak jujur tidak gagal di mana pun — bun menautkan seluruh workspace —
        sampai sebuah paket kelak dibangun atau diterbitkan sendiri. */
     const paket = readdirSync(join(AKAR, "packages")).filter((d) => existsSync(join(AKAR, "packages", d, "package.json")));

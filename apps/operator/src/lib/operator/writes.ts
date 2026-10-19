@@ -62,7 +62,7 @@ import {
 } from "@sai/platform/billing/change-tenant-plan";
 
 /* Tipe deps/aktor & `auditActor` milik `lib/billing/change-tenant-plan.ts`
- * sejak Fase 0 (docs/arsitektur/14-RENCANA-MONOREPO.md §3): perpindahan paket
+ * sejak Fase 0 (docs/arsitektur/07-RIWAYAT.md): perpindahan paket
  * dipakai rute pelanggan juga, jadi arahnya operator → billing, tidak pernah
  * sebaliknya. Nama lamanya dipertahankan sebagai alias untuk aksi operator. */
 export type OperatorWriteDeps = BillingWriteDeps;
@@ -184,8 +184,8 @@ export async function recordManualPayment(
 }
 
 /* ═══════════════════════════ 2. Ganti paket ═══════════════════════════════
- * `changeTenantPlan` + `planChangeApplier` pindah ke
- * `lib/billing/change-tenant-plan.ts` (Fase 0, dok 14 §3): dua rute PELANGGAN
+ * `changeTenantPlan` + `planChangeApplier` tinggal di
+ * `packages/platform/src/billing/change-tenant-plan.ts`: dua rute PELANGGAN
  * memakainya, jadi ia logika penagihan, bukan logika operator. Konsol operator
  * mengimpornya dari sana. */
 

@@ -71,7 +71,7 @@ perbandingan SQL peka huruf besar-kecil, sama seperti JavaScript. Akibatnya:
 filter Prisma `contains` perlu `mode: "insensitive"` untuk masukan bebas
 (`abadi` harus menemukan `PT ABADI`), dan `@unique` pada kode/nomor menerima
 `ABC` dan `abc` sekaligus, jadi normalkan sebelum menulis. Lihat
-[`arsitektur/11-RENCANA-POSTGRESQL.md` §10.2](./arsitektur/11-RENCANA-POSTGRESQL.md#102-validasi-pasca-penukaran-16-okt-2026).
+[`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md#yang-masih-terbuka).
 
 Aturannya:
 - Daftar nilai ada di satu tempat (`packages/core/src/constants.ts`) dan dipakai
@@ -167,7 +167,7 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 ---
 
 ## 7. Migrations (workflow proyek ini)
-> **Mesin: PostgreSQL 17 sejak 15 Okt 2026.** Riwayat MariaDB (`prisma/migrations/` 0001–0065, `prisma/control/migrations/`, `prisma/platform/migrations/`) adalah arsip hanya-baca. Berkas baru di sana tidak akan diterapkan. Latar dan validasinya: [`arsitektur/11-RENCANA-POSTGRESQL.md` §10](./arsitektur/11-RENCANA-POSTGRESQL.md).
+> **Mesin: PostgreSQL 17 sejak 15 Okt 2026.** Riwayat MariaDB (`prisma/migrations/` 0001–0065, `prisma/control/migrations/`, `prisma/platform/migrations/`) adalah arsip hanya-baca. Berkas baru di sana tidak akan diterapkan. Latar dan validasinya: [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md).
 
 - Proyek ini tidak memakai `prisma migrate dev`. Migration ditulis tangan sebagai folder berurutan di `prisma/postgresql/<db>/NNNN_<nama>/migration.sql`, dengan `<db>` = `company` (buku tiap PT), `control`, atau `platform`. Contoh: `prisma/postgresql/control/0002_slug_permanen`.
 - Diterapkan via `prisma migrate deploy`: `bun run db:migrate:all` (control → platform → setiap PT). Di produksi `migrate` menyambung langsung ke `pg`, tidak lewat PgBouncer, karena advisory lock Prisma terikat sesi.

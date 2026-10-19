@@ -214,7 +214,7 @@ passed disappears on its own.
 Images are built by GitHub Actions (`.github/workflows/publish-image.yml`) on
 every push to `main` and pushed to GHCR. Do not build on the production
 server. That box has ~3.6 GB of RAM shared with five other apps (as of Oct
-2026, `docs/arsitektur/07-INFRASTRUKTUR-DEPLOY.md` §1); building there took
+2026, `docs/arsitektur/02-LAYANAN-INFRA.md`); building there took
 ~19 minutes at 58-92% iowait, starved the container still serving (about half
 the health probes answered 503), and two concurrent builds have produced an
 OOM (exit 137).

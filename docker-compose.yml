@@ -96,7 +96,11 @@ services:
   # TETAPI menukar mode ke `session` kelak akan mengembalikan soal memori yang
   # justru hendak dipecahkan di sini.
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    # VERSI DIPATOK, bukan `latest` (celah on-premise #8). `latest` bergerak
+    # tanpa pemberitahuan — dan digest-nya bahkan tidak sama dengan versi
+    # bertag mana pun, jadi pemasangan yang menariknya menjalankan pooler yang
+    # tidak bisa disebut namanya. Menaikkannya adalah langkah sadar satu baris.
+    image: edoburu/pgbouncer:v1.26.0-p0
     container_name: sai-pgbouncer
     restart: unless-stopped
     environment:

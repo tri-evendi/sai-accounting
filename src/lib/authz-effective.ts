@@ -37,11 +37,14 @@ import {
   createEffectiveMatrixLoader,
   type EffectiveMatrix,
 } from "@/lib/authz-overrides";
+import { currentEntitlement } from "@/lib/entitlement-source";
+import { intersectModules } from "@sai/core/entitlement";
 import {
   createEnabledModulesLoader,
   filterPermissionsByModules,
   isPermissionEnabled,
   type BusinessModule,
+  parseEnabledModules,
 } from "@/lib/business-modules";
 import {
   applyUserOverrides,
@@ -82,6 +85,7 @@ interface CompanyAuthzLoaders {
 
 const perCompany = new Map<number, CompanyAuthzLoaders>();
 
+
 function createLoaders(): CompanyAuthzLoaders {
   return {
     matrix: createEffectiveMatrixLoader(() =>
@@ -105,7 +109,31 @@ function createLoaders(): CompanyAuthzLoaders {
         orderBy: { id: "asc" },
         select: { enabledModules: true },
       });
-      return settings?.enabledModules ?? null;
+      const mentah = settings?.enabledModules ?? null;
+
+      /*
+       * ══ LAPIS ENTITLEMENT (#3) DIIRIS DI SINI, DAN HANYA DI SINI ═════════
+       * Modul yang DIBELI (paket SaaS atau berkas lisensi on-premise) diiris
+       * dengan modul yang AKTIF di perusahaan ini. Titik ini dipilih karena
+       * setiap penjaga yang sudah ada — halaman, route API, menu, Aksi Cepat —
+       * membaca himpunan yang sama, jadi lapis ini ikut ditegakkan di semuanya
+       * tanpa satu baris pun diubah di sana. Lapis yang dipasang di 50 tempat
+       * adalah lapis yang bocor di tempat ke-51.
+       *
+       * Di SaaS `modules` selalu `"all"` (paket membawa batas, bukan daftar
+       * modul), jadi nilai mentahnya diteruskan APA ADANYA — tanpa diurai dan
+       * diserialkan ulang. Jalur SaaS karena itu identik byte-per-byte dengan
+       * sebelum lapis ini ada, dan itulah bukti bahwa celah on-premise tidak
+       * dibayar dengan risiko di sisi yang sudah berjalan.
+       */
+      const entitlement = await currentEntitlement();
+      if (entitlement.modules === "all") return mentah;
+
+      /* `parseEnabledModules` tetap SATU-SATUNYA yang memutuskan arti nilai
+         kosong dan modul mana yang sah — termasuk bahwa modul opt-in tidak ikut
+         bawaan. Lisensi hanya menyempitkan hasilnya. */
+      const aktif = [...parseEnabledModules(mentah)];
+      return intersectModules(entitlement, aktif).join(",");
     }),
   };
 }

@@ -282,8 +282,8 @@ async function rekam(hasil: {
   failures: string[];
 }) {
   try {
-    const { platformDb } = await import("@sai/platform/platform-db");
-    await platformDb.conformanceRun.create({
+    const { controlDb } = await import("@sai/core/control-db");
+    await controlDb.conformanceRun.create({
       data: {
         startedAt: hasil.startedAt,
         finishedAt: new Date(),

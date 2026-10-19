@@ -17,18 +17,19 @@ dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
 | S3 | `job-backup` → penyimpanan objek (`awscli`) |
 
 Tidak ada gRPC, GraphQL, WebSocket, SSE, atau antrean. Layanan berkoordinasi
-lewat basis data bersama.
+lewat basis data bersama. Antrean pekerjaan dan pemindahan pembuatan dokumen ke
+server dirancang di [09 Rancangan Layanan](./09-RANCANGAN-LAYANAN.md).
 
 ## 2. Tiga rezim autentikasi
 
-Sesi NextAuth dan token Bearer berjalan di aplikasi pelanggan, dipisahkan
+Sesi NextAuth dan token Bearer berjalan di aplikasi customer, dipisahkan
 **oleh jalur**. Sesi operator hidup di aplikasi tersendiri, dipisahkan **oleh
 host**.
 
 | Rezim | Untuk | Pemisah |
 |---|---|---|
 | Tanpa autentikasi | Daftar jalur publik yang dicocokkan persis | `isPublicPath(path)` |
-| Sesi NextAuth | Mayoritas halaman & API pelanggan | sisanya di `APP_DOMAIN` |
+| Sesi NextAuth | Mayoritas halaman & API customer | sisanya di `APP_DOMAIN` |
 | Token Bearer | `/api/v1/**` | `isBearerApiPath(path)` |
 | Sesi operator | Seluruh jalur di `OPERATOR_HOST` | `decideOperatorRouting()` |
 
@@ -84,7 +85,7 @@ Hanya-baca, lima sumber daya, semuanya `GET`. Bentuk jawaban ditetapkan di
 | Pencabutan sesi | Akun DB: `session_version` dibandingkan tiap permintaan · akun env: hapus entri atau putar secret |
 
 Fail-closed di empat tempat: `OPERATOR_HOST` kosong → 404 di mana pun · image
-pelanggan tidak memuat rute konsol · image konsol 404 untuk host lain ·
+customer tidak memuat rute konsol · image konsol 404 untuk host lain ·
 allowlist kosong → tolak semua.
 
 > ⚠ **Daftar IP & hitungan hop proxy.** Allowlist membaca `x-forwarded-for` dan
@@ -120,9 +121,9 @@ versi.
 
 | Permukaan | Jumlah (18 Okt 2026) |
 |---|---|
-| Halaman | 131 pelanggan + 19 konsol |
-| Rute API | 128 pelanggan + 2 konsol |
-| Rute aset | 3 pelanggan + 3 konsol |
+| Halaman | 131 customer + 19 konsol |
+| Rute API | 128 customer + 2 konsol |
+| Rute aset | 3 customer + 3 konsol |
 
 | Grup | Jumlah | Pola jalur | Guard |
 |---|---|---|---|
@@ -153,7 +154,8 @@ platform · autentikasi & infra. Daftar lengkap per rute beserta izinnya:
 | Halaman · API internal | HTML (RSC) · JSON |
 | `/api/v1` | JSON + `meta` |
 | `/api/health` | JSON; **503 hanya bila control tak terjangkau** |
-| Ekspor laporan | XLSX (`exceljs`), PDF (`jspdf`), ZIP (`jszip`) |
+| Ekspor laporan | XLSX (`exceljs`) **di server** · PDF (`jspdf`) **di peramban** · ZIP (`jszip`) **di server, di-stream** |
+| Lampiran surel | PDF faktur dibuat **di server** dengan modul `jspdf` yang sama |
 | Berkas dokumen | Byte lewat route bertenant, bukan berkas statis |
 
 ## 5. Header keamanan
@@ -193,7 +195,7 @@ data bersama, dan karena itu tidak ada antrean.
 
 | Jalur | Mekanisme | Jejaknya di |
 |---|---|---|
-| `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` | `/scheduler`, `/api/health` |
+| `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` (kendali) | `/scheduler`, `/api/health` |
 | `job-conformance` → `app-customer` | `conformance_runs` | `/api/health` |
 | `job-backup` → `app-customer` | `backup_runs` | `/api/health` |
 | `migrate` → semua | `depends_on: service_completed_successfully` | Keluaran container |
@@ -222,7 +224,7 @@ karena scheduler telat, satu masalah penagihan berubah jadi pemadaman total.
 **SMTP**, konfigurasinya tiga lapis dan urutannya menentukan:
 
 ```
-1. Pengaturan TENANT      control.tenant_mail_settings   (SMTP milik pelanggan)
+1. Pengaturan TENANT      control.tenant_mail_settings   (SMTP milik customer)
         ↓ tidak ada
 2. Pengaturan PLATFORM    platform.mail_settings         (disetel di /mail)
         ↓ tidak ada / tak terjangkau
@@ -231,7 +233,7 @@ karena scheduler telat, satu masalah penagihan berubah jadi pemadaman total.
 
 > ⚠ **Surel yang membawa TOKEN AKSES** (undangan, atur-ulang sandi, verifikasi)
 > **tidak pernah** lewat SMTP tenant — langsung ke lapis 2. SMTP tenant
-> dikendalikan pelanggan, dan token akses adalah kredensial.
+> dikendalikan customer, dan token akses adalah kredensial.
 
 `nodemailer` 7 di satu berkas (`@sai/platform/mailer-core`); sandi disimpan
 terenkripsi AES-256-GCM. Cache TTL 60s, sengaja tanpa kunci tenant karena
@@ -247,7 +249,7 @@ Status 18 Okt: tiga env kosong → `local_only`.
 masuk (tanda tangan SHA-512). Status 11 Okt: tanpa `MIDTRANS_*` → transport
 **MOCK**. Dua pemakaian yang harus tetap terpisah:
 
-1. **Penagihan platform** (kami menagih tenant) → kunci platform dari environment.
+1. **Penagihan platform** (SAI menagih tenant) → kunci platform dari environment.
 2. **Penagihan pelanggan** (tenant menagih pelanggannya) → kredensial milik tenant, terenkripsi per perusahaan. Karena itu `company-payment-settings.ts` **tidak pernah** membaca `process.env.MIDTRANS_*`.
 
 Gate efektif menuntut `NODE_ENV=production` **dan** `MIDTRANS_SERVER_KEY`; di
@@ -283,7 +285,7 @@ pesanan) · S3 (**seluruh** basis data + dokumen + audit, terenkripsi) ·
 perayap.
 
 `remind:customers` satu-satunya jalur yang menghubungi orang **di luar**
-organisasi pelanggan. Empat gate sebelum surel keluar: `reminder_enabled`
+organisasi customer. Empat gate sebelum surel keluar: `reminder_enabled`
 menyala (bawaan mati) · `reminder_tested_at` terisi, jadi seseorang pernah
 menerima sendiri kalimatnya · masih dalam jendela toleransi 2 hari · kunci unik
 `(invoice, kind, due_key)` belum terpakai.
@@ -295,7 +297,7 @@ menerima sendiri kalimatnya · masih dalam jendela toleransi 2 hari · kunci uni
 | 1 | **PostgreSQL tunggal** (+ PgBouncer tunggal) | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk #2 |
 | 2 | **Backup tanpa salinan luar-mesin** | Kehilangan mesin = kehilangan buku **beserta** backup-nya | Salinan terenkripsi harian di mesin yang sama + peringatan | **Kritis — P0** |
 | 3 | **Mesin tunggal** (satu VM, 6 aplikasi) | Kehilangan semuanya | Tidak ada | Diterima sadar |
-| 4 | **`app-customer` tunggal** | Enam permukaan pelanggan padam; konsol **tidak** ikut jatuh | `restart` + healthcheck | Dapat diterima |
+| 4 | **`app-customer` tunggal** | Enam permukaan customer padam; konsol **tidak** ikut jatuh | `restart` + healthcheck | Dapat diterima |
 | 5 | **Traefik tunggal** | 6 aplikasi tak terjangkau | Di luar repo ini | Di luar lingkup |
 | 6 | **`AUTH_SECRET` tunggal** | Rotasi = seluruh sesi batal | Masa sesi 24 jam | Dapat diterima |
 | 7 | **`BACKUP_ENCRYPTION_KEY`** | Kunci hilang = backup tidak bisa dibuka | ❓ Penyimpanan luar belum dipastikan | **Perlu dipastikan segera** |

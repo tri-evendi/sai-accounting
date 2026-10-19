@@ -24,6 +24,7 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
+import { billingPlaneInstalled } from "@sai/core/deploy-profile";
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
@@ -44,7 +45,13 @@ import { outboxCount, resolveMailConfig } from "@sai/platform/mailer-core";
 export type MailStatus = { status: MailHealthStatus | "unknown" };
 
 /** Bidang yang jawabannya sekadar "terjangkau atau tidak diketahui". */
-export type ReachStatus = { status: "ok" | "unknown" };
+/**
+ * `not-installed` BUKAN varian kerapian. Tanpanya, pemasangan on-premise —
+ * yang memang tidak memasang bidang penagihan — melaporkan `unknown` selamanya,
+ * dan "tak terjangkau" yang permanen tidak bisa dibedakan dari kerusakan yang
+ * nyata oleh siapa pun yang membaca probe ini.
+ */
+export type ReachStatus = { status: "ok" | "unknown" | "not-installed" };
 
 /** Bidang PT contoh — punya keadaan ketiga; lihat `sampleCompany()`. */
 export type CompanyStatus = { status: "ok" | "unknown" | "error" };
@@ -118,18 +125,17 @@ async function mail(): Promise<MailStatus> {
 /** Putaran terakhir yang SELESAI. Tak terjangkau / belum ada = `null`, bukan lemparan. */
 async function lastSchedulerRun(): Promise<SchedulerHealth> {
   try {
-    const run = await platformDb.schedulerRun.findFirst({
+    const run = await controlDb.schedulerRun.findFirst({
       orderBy: { id: "desc" },
       select: { finishedAt: true },
     });
     return schedulerHealth(run?.finishedAt ?? null);
   } catch {
     /*
-     * Platform tak terjangkau, atau migration 0005 belum diterapkan. Keduanya
-     * "belum ada yang bisa dilaporkan" — pola yang sama dengan
-     * `schedulerRunsForOperator`, dan sengaja TIDAK dibedakan dari "belum
-     * pernah jalan": keduanya sama-sama berarti probe ini tidak tahu, dan
-     * jawaban yang jujur untuk tidak tahu adalah `unknown`.
+     * Kendali tak terjangkau, atau migration kendali 0005 belum diterapkan.
+     * Keduanya "belum ada yang bisa dilaporkan", dan sengaja TIDAK dibedakan
+     * dari "belum pernah jalan": keduanya sama-sama berarti probe ini tidak
+     * tahu, dan jawaban yang jujur untuk tidak tahu adalah `unknown`.
      */
     return schedulerHealth(null);
   }
@@ -150,7 +156,7 @@ async function lastSchedulerRun(): Promise<SchedulerHealth> {
  */
 async function lastConformanceRun(): Promise<ConformanceHealth> {
   try {
-    const run = await platformDb.conformanceRun.findFirst({
+    const run = await controlDb.conformanceRun.findFirst({
       orderBy: { id: "desc" },
       select: { finishedAt: true, findingCount: true, companiesFailed: true },
     });
@@ -187,12 +193,12 @@ function tanpaSebab({ lastError: _sebab, ...sisa }: BackupHealth): PublicBackupH
 async function lastBackup(): Promise<PublicBackupHealth> {
   try {
     const [sukses, percobaan] = await Promise.all([
-      platformDb.backupRun.findFirst({
+      controlDb.backupRun.findFirst({
         where: { status: "ok" },
         orderBy: { finishedAt: "desc" },
         select: { finishedAt: true },
       }),
-      platformDb.backupRun.findFirst({
+      controlDb.backupRun.findFirst({
         orderBy: { finishedAt: "desc" },
         select: { finishedAt: true, status: true, error: true },
       }),
@@ -236,6 +242,11 @@ async function lastBackup(): Promise<PublicBackupHealth> {
  * pemadaman layanan.
  */
 async function platform(): Promise<ReachStatus> {
+  /* Profil on-premise memang tidak memasangnya. Menanyainya di sana berarti
+     membuat satu koneksi yang pasti gagal pada setiap probe — dan melaporkan
+     keadaan yang benar sebagai `unknown`. */
+  if (!billingPlaneInstalled()) return { status: "not-installed" };
+
   try {
     await platformDb.$queryRaw`SELECT 1`;
     return { status: "ok" };

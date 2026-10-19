@@ -134,11 +134,17 @@ describe("pemeriksa tidak boleh mengubah satu angka akuntansi pun", () => {
     expect(CODE).not.toContain("$executeRawUnsafe");
   });
 
-  it("satu-satunya tulisan Prisma menyasar `platformDb`, bukan buku PT", () => {
+  it("satu-satunya tulisan Prisma menyasar `controlDb`, bukan buku PT", () => {
+    /* Sasarannya `controlDb` sejak jejak putaran pindah ke basis data kendali
+       (migration kendali 0005). Yang dijaga tes ini tidak berubah: pemeriksa
+       kesesuaian MEMBACA buku dan menulis TEPAT SATU hal — jejak putarannya.
+       Yang berubah hanya di basis data mana jejak itu tinggal, dan pindahnya
+       justru supaya pemeriksa tetap bisa mencatat di pemasangan on-premise,
+       yang tidak memasang `sai_platform`. */
     const tulisan = [...CODE.matchAll(/(\w+)\.(\w+)\.(create|createMany|update|updateMany|upsert|delete|deleteMany)\(/g)];
     expect(tulisan.length, "diharapkan TEPAT satu tulisan: jejak putaran").toBe(1);
     const [, klien, model, operasi] = tulisan[0]!;
-    expect(klien).toBe("platformDb");
+    expect(klien).toBe("controlDb");
     expect(model).toBe("conformanceRun");
     expect(operasi).toBe("create");
   });

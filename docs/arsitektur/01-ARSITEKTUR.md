@@ -12,13 +12,13 @@ seimbang.
 
 | Permukaan | Host | Kode | Untuk siapa |
 |---|---|---|---|
-| Pemasaran | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon pelanggan, crawler |
-| Aplikasi pelanggan | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha |
+| Pemasaran | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon customer, crawler |
+| Aplikasi customer | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha |
 | Konsol operator | `OPERATOR_DOMAIN` (rute di akar) | `apps/operator` | Penyedia layanan |
 
 Dua aplikasi Next.js, dua image, satu monorepo. Plane ditentukan **host saja**
 (`packages/core/src/operator-plane.ts`); tanpa `OPERATOR_HOST`, konsol 404 di
-host mana pun. Cookie berlingkup host, jadi sesi pelanggan yang bocor tidak
+host mana pun. Cookie berlingkup host, jadi sesi customer yang bocor tidak
 menjangkau konsol.
 
 ## 2. Tenant ≠ Perusahaan
@@ -27,7 +27,7 @@ Menentukan ke basis data mana sebuah baris ditulis.
 
 | | Tenant | Perusahaan (PT) |
 |---|---|---|
-| Artinya | Satu pelanggan yang berlangganan | Satu buku besar |
+| Artinya | Satu customer yang berlangganan | Satu buku besar |
 | Punya | Paket, tagihan, kuota | Jurnal, faktur, stok, aset |
 | Datanya di | `sai_control` + `sai_platform` | Basis data sendiri, `sai_<slug>` |
 | Jumlah | 1 tenant → banyak PT | — |
@@ -42,7 +42,7 @@ Rinciannya: [`MULTI-TENANT.md`](../MULTI-TENANT.md) ·
 ```mermaid
 graph LR
     STAF[Staf & pemilik usaha] --> SAI
-    CALON[Calon pelanggan] --> SAI
+    CALON[Calon customer] --> SAI
     OPS[Operator] --> SAI
     INT[Integrator] --> SAI
 
@@ -59,7 +59,7 @@ graph LR
 | Pihak | Hubungannya |
 |---|---|
 | Staf & pemilik usaha | Membukukan di `APP_DOMAIN` |
-| Calon pelanggan | Pemasaran & pendaftaran; termasuk crawler |
+| Calon customer | Pemasaran & pendaftaran; termasuk crawler |
 | Operator | Konsol di `OPERATOR_DOMAIN` |
 | Integrator | `/api/v1` hanya-baca, token Bearer |
 | Midtrans | Dua arah: permintaan bayar keluar, webhook masuk |
@@ -286,7 +286,7 @@ apps/operator/ (61 berkas)        # KONSOL — image `…-operator`
 ├── src/lib/operator/             # sesi, guard, TOTP, store, tulisan, jejak
 ├── src/proxy.ts                  # host ≠ OPERATOR_HOST → 404
 └── tsconfig.json                 # alias `@op/*` (TANPA `@/`)
-src/                              # APLIKASI PELANGGAN
+src/                              # APLIKASI CUSTOMER
 ├── app/
 │   ├── (marketing)/              # /, /pricing, /status, sitemap, OG
 │   ├── (app)/(auth)/             # login, daftar, lupa sandi, undangan, unlock
@@ -365,9 +365,9 @@ Dihitung 18 Okt 2026.
 
 | | |
 |---|---|
-| Halaman | 131 pelanggan + 19 konsol |
-| Rute API | 128 pelanggan + 2 konsol |
-| Model Prisma | 61 perusahaan + 15 control + 12 platform = 88 |
+| Halaman | 131 customer + 19 konsol |
+| Rute API | 128 customer + 2 konsol |
+| Model Prisma | 62 perusahaan + 19 control + 17 platform = 98 — **tiga di antaranya kembar sementara**: jejak putaran ada di kedua skema selama langkah expand (migration kendali 0005), dan hilang dari platform pada langkah contract |
 | Migration aktif | company 1 · control 4 · platform 4; arsip MariaDB hanya-baca: 99 |
 | Modul `src/lib` | 231 berkas |
 | Berkas tes | 306 berkas · 4.429 tes |

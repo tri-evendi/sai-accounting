@@ -13,10 +13,10 @@ Urutan ini menentukan prioritas kontrol.
 | # | Aset | Kalau bocor / rusak |
 |---|---|---|
 | 1 | **Buku besar 17 PT** (`journals`, `journal_lines`, dokumen sumber) | Pembukuan yang wajib disimpan 10 tahun (UU KUP) hilang atau tidak bisa dipercaya. Tidak ada cara merekonstruksinya dari ingatan pengguna |
-| 2 | **Isolasi antar-PT** | Satu pelanggan membaca buku pelanggan lain. Kerugiannya kepercayaan, dan tidak bisa ditarik kembali |
+| 2 | **Isolasi antar-PT** | Satu customer membaca buku customer lain. Kerugiannya kepercayaan, dan tidak bisa ditarik kembali |
 | 3 | **Jejak audit** (`audit_logs`, `tenant_audit_logs`, `operator_audit_logs`) | Kehilangan kemampuan menjawab "siapa mengubah ini" — justru saat pertanyaan itu paling dibutuhkan |
 | 4 | **Arsip backup + kuncinya** | Arsip terenkripsi yang bocor = seluruh basis data bocor, bila kuncinya ikut |
-| 5 | **Kredensial pihak ketiga** (SMTP tenant, gateway pembayaran tenant) | Pelanggan menanggung akibat di infrastruktur miliknya sendiri |
+| 5 | **Kredensial pihak ketiga** (SMTP tenant, gateway pembayaran tenant) | Customer menanggung akibat di infrastruktur miliknya sendiri |
 | 6 | **Konsol operator** | Akses ke semua tenant sekaligus: pengaturan, katalog paket, hapus tenant |
 | 7 | **Identitas & sesi** | Pengambilalihan akun |
 
@@ -29,7 +29,7 @@ Urutan ini menentukan prioritas kontrol.
 | **Staf berperan rendah** | Sesi di PT yang sama | Naik hak · menembus gate persetujuan · menyunting jurnal yang sudah diposting · memposting ke periode tertutup |
 | **Integrator ber-token** | Token Bearer berlingkup PT | Memakai token di luar lingkupnya · token yang tidak bisa dicabut |
 | **Midtrans (dipalsukan)** | Tahu alamat webhook | Webhook palsu → tenant naik kelas tanpa bayar |
-| **Operator (kami)** | Akses semua tenant | Tindakan tanpa jejak · kredensial operator yang bocor |
+| **Operator (SAI)** | Akses semua tenant | Tindakan tanpa jejak · kredensial operator yang bocor |
 | **Penyerang yang menguasai satu arsip backup** | Satu berkas `.enc` | Seluruh basis data, **bila** kuncinya ikut |
 | **Penyerang dengan satu lubang injeksi SQL** | Satu `$queryRawUnsafe` yang salah | Hari ini: akses penuh ke server basis data, karena role aplikasi superuser |
 
@@ -86,9 +86,9 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 |---|---|
 | `OPERATOR_HOST` kosong | Konsol **404 di host mana pun** |
 | Allowlist IP kosong | **Tolak semua** (`*` hanya untuk pengembangan lokal) |
-| Image pelanggan | **Tidak memuat** rute konsol |
-| Image konsol | 404 untuk setiap host selain `OPERATOR_HOST`, **dan** tidak punya rute pelanggan |
-| Volume | Konsol **tidak pernah** memasang `documents`, jadi berkas pelanggan di luar jangkauannya |
+| Image customer | **Tidak memuat** rute konsol |
+| Image konsol | 404 untuk setiap host selain `OPERATOR_HOST`, **dan** tidak punya rute customer |
+| Volume | Konsol **tidak pernah** memasang `documents`, jadi berkas customer di luar jangkauannya |
 | Pencabutan sesi | `session_version` dibandingkan tiap permintaan (akun DB) atau putar `OPERATOR_SESSION_SECRET` (akun env) |
 
 ### 3.5 Masukan yang tidak dipercaya
@@ -140,7 +140,7 @@ sulit dikenali, dan itu yang perlu diingat saat menambah permukaan baru.
 | **`cache()` React tidak per-permintaan di route handler** (#333) | Di render halaman nilainya benar; **hanya** route handler yang 500 | Penyimpan dikunci pada hasil `await headers()` + `WeakMap` |
 | **`enterWith` tidak merambat setelah `await`** | Konteks terukur `null` di badan route, padahal sudah "dipasang" | Permintaan HTTP bertumpu pada penyimpan per-permintaan |
 | **Manifest PWA dijawab HTML halaman masuk** dengan status 307 | Peramban mengambilnya `no-cors`; PWA gagal **tanpa error** | `/manifest.webmanifest` masuk daftar jalur publik |
-| **Dua container dengan nama service Traefik yang sama** | Traefik membagi beban; permintaan operator bisa mendarat di container pelanggan, **tanpa error** | Nama service berbeda, dan konsol 404 untuk host lain |
+| **Dua container dengan nama service Traefik yang sama** | Traefik membagi beban; permintaan operator bisa mendarat di container customer, **tanpa error** | Nama service berbeda, dan konsol 404 untuk host lain |
 | **Tidak ada satu pun tes yang menyentuh header keamanan** | CSP yang dilemahkan atau dihapus **tidak menimbulkan gejala** | `tests/security-headers.test.ts`, termasuk dua tes yang menuntut sesuatu **tetap tidak ada** |
 | **`.dockerignore` menjangkar pola, `.gitignore` tidak** | Pola `backups/` membuat seluruh basis data produksi ikut masuk ke image yang di-deploy | Periksa **isi image**, bukan pohon berkas (`tests/dockerignore-migrations.test.ts`) |
 

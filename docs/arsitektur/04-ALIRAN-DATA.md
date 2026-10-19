@@ -7,7 +7,7 @@ dokumen.
 
 ## 1. ERD — model data
 
-88 model di tiga skema (`packages/db/prisma/<db>/schema.prisma`), dipecah per
+95 model di tiga skema (`packages/db/prisma/<db>/schema.prisma`), dipecah per
 lapis dan per domain. Nama di diagram = nama model Prisma; tabelnya
 `snake_case` jamak lewat `@@map`. `||--o{` = satu-ke-banyak wajib, `|o--o{` =
 induk opsional.
@@ -67,7 +67,7 @@ PT — urusan pembukuan).
 
 **Tanpa relasi keluar, dan sengaja:** `Registration` (pendaftar belum punya
 `User`) · `TenantSlugHistory` (slug lama harus tetap bisa di-redirect) ·
-`RateLimitCounter` · `OperatorAccount` (akun kami, bukan pengguna pelanggan) ·
+`RateLimitCounter` · `OperatorAccount` (akun SAI, bukan pengguna customer) ·
 **`TenantAuditLog`** — jejak ini mencatat penghapusan tenant, jadi ia **harus
 selamat** sesudah tenant-nya hilang.
 
@@ -260,7 +260,7 @@ Tidak satu pun dari kolom ini boleh "diperbaiki" dengan menambah FK.
 | `tenant_audit_logs.user_id` (control) | sama, **dan** jejaknya harus selamat dari penghapusan |
 | `invitations.invited_by_user_id` (control) | sama |
 | `tenant_deletion_requests.requested_by_user_id` (control) | sama |
-| `companies.database_name` (control) | **Menunjuk basis data**, bukan baris. Menyimpan URL lengkap di sini berarti satu `SELECT` bisa membawa kredensial setiap pelanggan |
+| `companies.database_name` (control) | **Menunjuk basis data**, bukan baris. Menyimpan URL lengkap di sini berarti satu `SELECT` bisa membawa kredensial setiap customer |
 | `company_settings.opening_journal_id` | 🔶 Satu baris per buku, jadi FK/indeks tidak memberi manfaat |
 | `budgets.account_id`, `fixed_assets.*_account_id` | FK ada di basis data, relasi Prisma sengaja tidak dideklarasikan supaya tidak menggantung back-relation di model yang ramai |
 
@@ -386,7 +386,7 @@ POST /api/companies
 Dua catatan:
 
 - `companies.database_name` hanya menyimpan **nama**. Bila URL lengkap
-  disimpan, satu `SELECT` bisa membawa kredensial setiap pelanggan.
+  disimpan, satu `SELECT` bisa membawa kredensial setiap customer.
 - Data `[CONTOH]` pada perusahaan baru wajib `is_demo = FALSE`. Data itu
   prasyarat penyiapan, dan tidak boleh ikut tersapu bersama data demo.
 
@@ -445,7 +445,7 @@ wajib memakai pengaturan platform dan tidak pernah SMTP tenant. Sisanya
 
 ### Pengingat ke pelanggan — empat gate
 
-Satu-satunya alur yang menghubungi orang di luar organisasi pelanggan, sehingga
+Satu-satunya alur yang menghubungi orang di luar organisasi customer, sehingga
 gate-nya paling ketat:
 
 | # | Gate | Kalau tidak lulus |
@@ -653,7 +653,7 @@ Tiga hal yang mudah salah di sini:
 
 | Hal | Kenyataannya |
 |---|---|
-| `suspended` dan `cancelled` | **Hanya-baca, bukan hilang.** `READ_ONLY_TENANT_STATUSES` — pelanggan yang berhenti tetap **wajib** bisa membaca dan mengekspor pembukuannya |
+| `suspended` dan `cancelled` | **Hanya-baca, bukan hilang.** `READ_ONLY_TENANT_STATUSES` — customer yang berhenti tetap **wajib** bisa membaca dan mengekspor pembukuannya |
 | Pindah status otomatis | Semuanya digerakkan `scheduler:subscriptions` tiap jam, dan **tiap langkahnya idempoten** |
 | Keadaan hari ini | Seluruh 11 langganan ber-`billing_mode = none`, jadi tangga ini tidak digerakkan — gate-nya ditutup di tingkat data, bukan di kode |
 

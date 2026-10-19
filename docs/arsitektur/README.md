@@ -1,21 +1,23 @@
 # Arsitektur & Peta Layanan — SAI Accounting
 
-> Gambaran sistem yang sedang berjalan, disusun dari kode, konfigurasi, dan
-> keluaran perintah. Rencana tidak dicatat di sini.
-> Dimutakhirkan 19 Oktober 2026 · produksi `main@ca0cd038`.
+> **01–08 menggambarkan sistem yang sedang berjalan**, disusun dari kode,
+> konfigurasi, dan keluaran perintah. **09 adalah satu-satunya dokumen
+> rancangan** — isinya belum dibangun, dan setiap bagiannya ditandai demikian.
+> Dimutakhirkan 20 Oktober 2026 · produksi `main@ca0cd038`.
 
 ## Isi
 
 | # | Dokumen | Menjawab |
 |---|---|---|
 | 01 | [ARSITEKTUR.md](./01-ARSITEKTUR.md) | Produk, dua aplikasi, diagram konteks & container, pola, empat batas keamanan, tiga lapis basis data, konteks perusahaan, otorisasi, mesin posting, struktur kode, ukuran |
-| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, sembilan layanan, pekerjaan latar, image & build, gate rilis, deploy & rollback, migration, env, pemantauan, DR, **tiga bentuk arsitektur infra** |
+| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, sembilan layanan, pekerjaan latar, image & build, gate rilis, deploy & rollback, migration, env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
 | 03 | [API-INTEGRASI.md](./03-API-INTEGRASI.md) | Permukaan HTTP, tiga rezim autentikasi, header keamanan, dependensi luar, titik gagal tunggal, larangan impor |
 | 04 | [ALIRAN-DATA.md](./04-ALIRAN-DATA.md) | ERD ketiga skema, enam alur data, daur hidup status tiap dokumen |
 | 05 | [PENILAIAN.md](./05-PENILAIAN.md) | Kekuatan, temuan terbuka berprioritas, portabilitas VM, pemicu, keputusan yang menunggu pemilik |
 | 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman, regresi yang pernah terjadi |
 | 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Empat pekerjaan selesai: keputusan yang masih mengikat dan yang masih terbuka |
 | 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
+| 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, bahasa & monorepo poliglot, tabel `jobs`, dokumen di server, fan-out per tenant, SaaS vs On-Premise, entitlement, tahapan, nomenklatur, observabilitas, tata kelola |
 
 ## Mulai dari mana
 
@@ -24,7 +26,8 @@
 | Insinyur baru | 08 → 01 → 04 |
 | Bertugas jaga / men-deploy | 02 |
 | Merencanakan kapasitas atau HA | 02 → 05 |
-| Mengambil keputusan teknis | 01 → 05 |
+| Mengambil keputusan teknis | 01 → 05 → 09 |
+| Merancang untuk skala pasar atau pemasangan dedicated | 05 → 09 |
 | Menyentuh basis data atau skema | 04 → [`DATABASE.md`](../DATABASE.md) → 07 |
 | Menambah halaman / rute | 06 (daftar periksa) → 08 |
 | Meninjau keamanan | 06 → 03 |
@@ -57,8 +60,10 @@ Angka runtime selalu disertai tanggal pengambilannya.
 | Yang berubah | Perbarui |
 |---|---|
 | Layanan baru di `docker-compose.yml` | 02 |
+| Variabel lingkungan baru | 02 **dan** `.env.docker.example` — nama di satu tempat saja adalah variabel yang tidak akan pernah disetel orang |
 | Tabel, relasi, atau basis data baru | 04 (ERD), dan 01 bila lapisnya bertambah |
 | Status dokumen baru | 04 (daur hidup) dan 08 (glosarium) |
 | Integrasi luar atau rezim autentikasi baru | 03 |
 | Halaman / rute baru | 08 (angka), dan 06 bila menyentuh kontrol keamanan |
 | Temuan di 05 ditutup | Hapus temuannya; bila ia meninggalkan aturan atau guard baru, pindahkan aturannya ke bab yang bersangkutan |
+| Sebagian rancangan di 09 dibangun | Pindahkan bagiannya ke 01–08 sebagai keadaan, lalu hapus dari 09. **09 tidak boleh memuat apa pun yang sudah jadi** |

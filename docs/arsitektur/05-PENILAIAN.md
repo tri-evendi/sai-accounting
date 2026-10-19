@@ -20,6 +20,9 @@ ketahanan data, bukan struktur.
 | Pemeriksa kesesuaian data | Menyapu jalur yang tidak melewati zod; lahir dari enam kelas cacat nyata |
 | Dokumentasi di dekat keputusannya | Komentar menyimpan ukuran dan tanggal, sehingga bisa ditinjau ulang |
 | Degradasi berjenjang konsisten | #137 di tiga tingkat: impor, klien, probe |
+| Skema patuh standarnya sendiri | Diukur 19 Okt 2026 atas 95 model: `@@map`, `snake_case`, `id` Int, dan larangan `Float` untuk uang — **nol pelanggaran**. Tiga yang tampak melanggar ternyata cacat pada standarnya, dan standarnya yang diperbaiki |
+| Kolom tersandi berpola tunggal | Selalu bertiga: `<subjek>_ciphertext` · `_iv` · `_tag`. Empat tempat, nol penyimpangan |
+| Hak PDP terpenuhi secara struktural | Ekspor mandiri menyapu `information_schema`, jadi kolom PII **baru** ikut terbawa tanpa seseorang harus ingat; penghapusan menganonimkan dan menyisakan baris supaya jejak audit tidak menunjuk kekosongan |
 
 | Keputusan | Yang digantikan |
 |---|---|
@@ -86,6 +89,41 @@ tidak butuh kejadian apa pun untuk terpicu.
 **Perbaikan.** Nyalakan perpanjangan otomatis, atau pasang pengingat yang tidak
 bergantung pada ingatan seseorang. Usaha: satu sakelar.
 
+### 🟠 P1-1 — Satu tenant tidak bisa dipulihkan sendiri
+
+`scripts/backup.sh` memakai `pg_dumpall --all-databases` — satu dump untuk
+kendali, platform, dan setiap buku PT sekaligus. Itu benar untuk kelengkapan,
+dan itulah alasan bentuk ini dipilih. Tetapi akibatnya: **memulangkan satu
+tenant ke keadaan sebelumnya menuntut menyentuh dump yang memuat semua tenant
+lain.**
+
+Hari ini dampaknya kecil — 11 tenant, semuanya `billing_mode = none`. Pada
+customer berbayar, "pulihkan data kami saja ke keadaan Selasa" adalah
+permintaan biasa, dan jawabannya tidak bisa.
+
+**Perbaikannya** `pg_dump` per basis data + satu `pg_dumpall --globals-only`,
+dengan bukti kelengkapan diperluas: setiap basis data terdaftar wajib punya
+objek dumpnya sendiri. Rancangannya di
+[09 §6](./09-RANCANGAN-LAYANAN.md#6-fan-out-per-tenant).
+
+### 🟡 P2-5 — Dua jalur berkas tanpa batas, dipicu pengguna
+
+| Jalur | Yang tidak dibatasi |
+|---|---|
+| `/api/reports/export` | Workbook disusun utuh di memori (`lib/xlsx.ts`), dan skema payload tidak punya batas jumlah baris |
+| `/api/reports/payload` | Rentang periode dipilih pengguna tanpa batas; laporan arus kas membaca seluruh `journalLine` rentang itu (`lib/reports.ts:574`, tanpa `take`) |
+
+Ekspor mandiri tenant sudah di-stream, jadi ia bukan bagian dari temuan ini —
+tetapi CSV-nya masih utuh di memori.
+
+Pada 227 MB total hari ini tak ada yang terasa. Keduanya tumbuh linear terhadap
+isi buku, dan keduanya dipicu satu klik dari pengguna yang berhak.
+
+**Perbaikannya murah dan tidak menuntut infrastruktur baru:** batas baris pada
+ekspor, batas rentang pada payload, keduanya dengan pesan yang menyebut
+batasnya. Penulisan ulang ke bentuk aliran menunggu `svc-integrator`, karena jalur
+aliran ExcelJS berat CPU dan memblokir proses yang sedang melayani permintaan.
+
 ### 🟡 P2-1 — Basis data uji/demo hidup di instans produksi
 
 Empat dari 17 buku berpola nama uji, semuanya `is_active = 1`. 🔶 Tidak ada
@@ -113,9 +151,10 @@ kehilangan putaran itu.
 occurrence_date)`. Putaran berikutnya menyusulkan yang tertinggal. Putaran yang
 merekam `status = "error"` kini mengirim peringatan.
 
-**Sisanya.** Hanya `scheduler:subscriptions` yang menulis `scheduler_runs`.
-Enam langkah lain tidak meninggalkan jejak sendiri, jadi salah satunya bisa
-gagal setiap jam sementara putarannya tetap tercatat `ok`.
+**Sisanya.** Hanya `scheduler:subscriptions` yang menulis `scheduler_runs`
+(kini di basis data kendali). Enam langkah lain tidak meninggalkan jejak
+sendiri, jadi salah satunya bisa gagal setiap jam sementara putarannya tetap
+tercatat `ok`.
 
 **Perbaikan: jangan menambah antrean sekarang.** Menutupnya berarti setiap
 langkah menulis hasilnya sendiri — tabel baru, migration, pembungkus di compose
@@ -123,13 +162,46 @@ langkah menulis hasilnya sendiri — tabel baru, migration, pembungkus di compos
 
 ### 🟡 P2-3 — Satu container `app-customer`, tanpa jalur penskalaan
 
-Cache dalam-memori: pengaturan surel (TTL 60s), pool klien LRU, penyimpan
-konteks per permintaan. Replika tambahan akan punya cache sendiri yang bisa
-berbeda, sehingga pengaturan tampak berubah tergantung replika yang melayani.
+Cache dalam-memori: pengaturan surel (TTL 60s), keadaan tenant (TTL 60s),
+override izin pengguna, pool klien LRU, penyimpan konteks per permintaan — dan
+**cache data Next** untuk isi & pengaturan situs (`unstable_cache`, TTL 300s).
+Yang terakhir ini paling mudah terlewat: `updateTag` hanya membatalkan cache di
+instans yang melayani panggilannya, jadi operator mengubah satu pengaturan dan
+replika lain menyajikan nilai lama sampai lima menit. Dokumentasi Next sendiri
+menyatakan cache-nya per-instans dan menuntut `cacheHandler` bersama.
 
-Anggaran koneksi sudah dihitung eksplisit (8+2+1 = 11), jadi batas skalanya
-diketahui sebelum tercapai. Sebelum replika pertama dibutuhkan cache bersama
-dan peninjauan ulang `max_connections`. **Prasyarat, bukan pekerjaan.**
+Replika tambahan akan punya cache sendiri yang bisa berbeda, sehingga pengaturan
+tampak berubah tergantung replika yang melayani.
+
+Anggaran koneksi per proses aplikasi dihitung eksplisit (8+2+1 = 11). Yang
+**belum** dianggarkan adalah agregatnya, dan angkanya timpang: PgBouncer
+`DEFAULT_POOL_SIZE: 20` berlaku **per pasangan (basis data, pengguna)** dan ada
+19 basis data — sampai 380 koneksi server dituntut, sementara `max_connections`
+tidak pernah ditimpa di `docker-compose.yml` sehingga tetap **100**. Tidak ada
+`MAX_DB_CONNECTIONS` sebagai batas global.
+
+Hari ini tidak terasa (puncak terukur 62), dan itulah sebabnya ia tercatat di
+sini alih-alih sebagai insiden. Pooler kedua menggandakan tuntutannya, jadi
+tiga hal ini **prasyarat** replika pertama, bukan pekerjaan sesudahnya: cache
+bersama, `MAX_DB_CONNECTIONS` + `DEFAULT_POOL_SIZE` yang disetel ulang, dan
+`max_connections` yang dinaikkan dengan sengaja beserta `shared_buffers`-nya.
+
+### 🟡 P2-6 — Data pribadi tanpa klasifikasi, dan IP tersimpan selamanya
+
+Inventaris 19 Okt 2026: 10 kolom kontak, 13 alamat, 3 NPWP, 3 `ip_address` di
+jejak audit. Kredensial semuanya ter-hash atau tersandi, dan hak akses serta
+hak hapus sudah terpenuhi secara struktural — sapuan `information_schema` pada
+ekspor mandiri, dan anonimisasi pada eksekusi penghapusan.
+
+| # | Yang terbuka | Perbaikan |
+|---|---|---|
+| 1 | Tak ada cara **mesin** mengetahui kolom mana data pribadi; tinjauan PII bergantung pada ingatan | konvensi `/// @pii <kelas>` + penjaga yang menolak kolom berpola PII tanpa klasifikasi |
+| 2 | `ip_address` di tiga jejak audit **tanpa batas waktu** — jejak audit sengaja tidak pernah dipangkas, dan itu benar | retensi pada **kolomnya**, bukan barisnya: kosongkan sesudah ambang; peristiwanya tetap utuh |
+| 3 | NPWP & alamat polos di cakram, **tanpa keputusan tercatat** | boleh tetap polos — yang tidak boleh adalah tidak ada keputusannya |
+
+Ketiganya murah, dan dua di antaranya sudah punya tempatnya: konvensi
+`/// @pii` dan pola kolom tersandi kini tertulis di
+[`DATABASE.md`](../DATABASE.md).
 
 ### 🟡 P2-4 — CSP masih memakai `script-src 'unsafe-inline'`
 
@@ -170,10 +242,13 @@ mengurangi risikonya: alasan tiap keputusan tertulis di dekat kodenya.
 | **P0-1** | Backup | 🟠 lokal ✅ terbukti bisa di-restore / luar-mesin ❌ | Rendah (3 env) |
 | **P0-2** | Kunci backup 🔶 di mesin yang sama | ❌ terbuka | Rendah |
 | **P0-3** | Masa aktif VM berakhir 3 Jun 2027 | ❌ terbuka | Satu sakelar |
+| **P1-1** | Tak ada restore per tenant | ❌ terbuka | Sedang |
 | **P2-1** | Basis data uji di produksi | 🟡 terklasifikasi; 2 keputusan menunggu pemilik | Rendah |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | 🟡 putaran `error` sudah berbunyi | Tinggi |
 | **P2-3** | Satu `app-customer` | Batas diketahui, belum tercapai | Tinggi |
 | **P2-4** | CSP `script-src 'unsafe-inline'` | 🟡 `unsafe-eval` dicabut; `style-src` struktural | Tinggi |
+| **P2-5** | Ekspor & payload laporan tanpa batas | ❌ terbuka | Rendah (batas) |
+| **P2-6** | PII tanpa klasifikasi; IP audit tanpa retensi | ❌ terbuka | Rendah |
 | **P3-1** | Beban tipe | 🟡 batas 2048 MB; kamus i18n belum dipecah | Tinggi |
 | **P3-3** | Tanpa `CODEOWNERS` | Sengaja ditunda | Rendah |
 
@@ -217,7 +292,7 @@ tidak, karena alasannya hanya performa dan **batasnya memotong funnel**:
 ```
 
 Memisahkan pemasaran menghasilkan container yang hanya melayani **tiga
-halaman**, sementara pendaftaran tetap di container pelanggan. Beban terukur:
+halaman**, sementara pendaftaran tetap di container customer. Beban terukur:
 162–185 ms hangat, 1.337 ms cold. Statis/CDN juga tidak bisa karena locale
 datang dari **cookie**, sehingga ketiga halaman `force-dynamic`. Bila nanti
 perlu, batas yang tepat adalah **plane akuisisi** (`(marketing)` + `(auth)`
@@ -235,9 +310,11 @@ Butir di sini baru dikerjakan bila pemicunya terjadi.
 | Mesin kedua / HA | RTO yang dapat diterima < waktu bangun ulang manual | ❓ RTO dari pemilik |
 | Staging | Perubahan skema mulai butuh latihan sebelum produksi | Keputusan ongkos |
 | Metrik/dasbor | "Apakah ini melambat?" ditanyakan dan tak terjawab | — |
+| Redis | ≥ 2 replika **dan** keusangan lintas-replika terukur, sesudah `cacheHandler` beralas Postgres dinilai tak memadai | Replika aplikasi |
+| Ekspor berbentuk aliran | Batas baris mulai menolak permintaan yang sah | `svc-integrator` (jalur aliran memblokir proses) |
 | Pecah kamus i18n | `typecheck` cold run OOM di 2048 MB | — |
 | Kanal peringatan kedua | Satu kegagalan surel membuat kegagalan latar kembali tak terdengar | — |
-| Pisahkan plane akuisisi | Lalu lintas crawler terukur bersaing dengan pelanggan | — |
+| Pisahkan plane akuisisi | Lalu lintas crawler terukur bersaing dengan customer | — |
 | WAL/PITR | RPO 24 jam tidak lagi dapat diterima | P0-1 selesai |
 | VM kedua (restore dingin) | Butuh jalan pulang dari kehilangan mesin | P0-1 + P0-2 |
 | Replikasi → DRC | RTO menuntutnya, dan restore dingin sudah terbukti | VM kedua |
@@ -263,7 +340,8 @@ Butir di sini baru dikerjakan bila pemicunya terjadi.
 | Tidak diusulkan | Alasan |
 |---|---|
 | Pecah jadi mikrolayanan | Satu VM berbagi dengan lima aplikasi lain |
-| Tambah antrean pesan | Idempotensi sudah menutup kebutuhannya |
+| Broker pesan (Kafka/Rabbit/Redis) | Mengembalikan tulis-ganda: commit berhasil, publish gagal, dan tak ada yang tahu apakah mengulang memperbaiki atau menduplikasi |
+| Mikrolayanan per domain akuntansi | Batasnya tidak nyata — setiap pekerja butuh konteks perusahaan, pintu posting, dan tiga klien yang sama |
 | Kembalikan `companyId` ke sesi | Ia menutupi route yang lupa lingkup PT (#158) |
 | Tenant-baris / *schema-per-tenant* | Membatalkan isolasi fisik, janji inti #104 |
 | Pemeriksaan tipe di `next build` | Terukur tidak sanggup di mesin ini |

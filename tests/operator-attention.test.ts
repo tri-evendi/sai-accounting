@@ -28,11 +28,13 @@ const SEKARANG = new Date("2026-10-11T08:00:00.000Z");
 /** Keadaan paling tenang yang mungkin: tidak ada apa pun yang menuntut. */
 function tenang(): AttentionInput {
   return {
-    control: { byStatus: { active: 12 }, trialsEndingSoon: 0, trialsExpired: 0 },
-    platform: {
-      overdueInvoices: 0,
+    control: {
+      byStatus: { active: 12 },
+      trialsEndingSoon: 0,
+      trialsExpired: 0,
       lastRun: { finishedAt: new Date(SEKARANG.getTime() - 5 * 60_000), status: "ok", errorCount: 0 },
     },
+    platform: { overdueInvoices: 0 },
   };
 }
 
@@ -60,7 +62,7 @@ describe("nol tidak punya baris", () => {
 describe("penjadwal berdiri paling atas", () => {
   it("belum pernah jalan → baris pertama, dan ia `danger`", () => {
     const input = tenang();
-    input.platform!.lastRun = null;
+    input.control.lastRun = null;
     input.control.trialsExpired = 9;
     input.platform!.overdueInvoices = 4;
     const items = attentionItems(input, SEKARANG);
@@ -72,7 +74,7 @@ describe("penjadwal berdiri paling atas", () => {
 
   it("putaran terakhir bergalat → satu baris, membawa jumlah galatnya", () => {
     const input = tenang();
-    input.platform!.lastRun = {
+    input.control.lastRun = {
       finishedAt: new Date(SEKARANG.getTime() - 60_000),
       status: "ok",
       errorCount: 2,
@@ -84,7 +86,7 @@ describe("penjadwal berdiri paling atas", () => {
 
   it("putaran terakhir BASI (lewat ambang) → baris yang sama", () => {
     const input = tenang();
-    input.platform!.lastRun = {
+    input.control.lastRun = {
       finishedAt: new Date(SEKARANG.getTime() - (SCHEDULER_STALE_MINUTES + 1) * 60_000),
       status: "ok",
       errorCount: 0,
@@ -94,7 +96,7 @@ describe("penjadwal berdiri paling atas", () => {
 
   it("tepat DI ambang belum basi — batasnya '>', bukan '>='", () => {
     const input = tenang();
-    input.platform!.lastRun = {
+    input.control.lastRun = {
       finishedAt: new Date(SEKARANG.getTime() - SCHEDULER_STALE_MINUTES * 60_000),
       status: "ok",
       errorCount: 0,
@@ -104,7 +106,7 @@ describe("penjadwal berdiri paling atas", () => {
 
   it("basi DAN bergalat tetap SATU baris — tindakannya satu", () => {
     const input = tenang();
-    input.platform!.lastRun = {
+    input.control.lastRun = {
       finishedAt: new Date(SEKARANG.getTime() - 10 * 60 * 60_000),
       status: "error",
       errorCount: 3,
@@ -112,13 +114,32 @@ describe("penjadwal berdiri paling atas", () => {
     expect(attentionItems(input, SEKARANG)).toHaveLength(1);
   });
 
-  it("platform MATI → tidak ada baris penjadwal sama sekali", () => {
-    /* Halaman sudah mengatakan "tak terjangkau" sebagai kalimat tersendiri;
-       baris "penjadwal tak diketahui" di sini hanya mengulangnya. */
+  it("platform MATI → baris penjadwal TETAP dinilai", () => {
+    /* ══ TES INI DULU MENUNTUT YANG SEBALIKNYA ════════════════════════════
+       Sampai jejak putaran pindah ke basis data kendali, aturan penjadwal
+       dilewati ketika `sai_platform` tak terjangkau, dengan alasan "halaman
+       sudah mengatakan tak terjangkau sebagai kalimat tersendiri".
+
+       Alasan itu keliru arahnya. Tagihan yang berhenti terbit adalah gejala
+       yang paling sering BERARTI penjadwalnya mati — jadi justru pada saat
+       bidang penagihan kacau, baris ini yang paling dibutuhkan. Dan sejak
+       jejaknya di kendali, tidak ada lagi sebab teknis untuk melewatkannya:
+       penagihan yang mati tidak membuat jejak putaran tak terbaca. */
     const input = tenang();
     input.platform = null;
+    input.control.lastRun = null;
     input.control.trialsExpired = 2;
-    expect(attentionItems(input, SEKARANG).map((i) => i.key)).toEqual(["trialsExpired"]);
+    expect(attentionItems(input, SEKARANG).map((i) => i.key)).toEqual([
+      "schedulerNever",
+      "trialsExpired",
+    ]);
+  });
+
+  it("platform mati + penjadwal SEHAT → tidak ada baris penjadwal", () => {
+    // Penjelasnya tetap tidak berbunyi saat tidak ada yang perlu dijelaskan.
+    const input = tenang();
+    input.platform = null;
+    expect(attentionItems(input, SEKARANG)).toEqual([]);
   });
 });
 
@@ -130,8 +151,9 @@ describe("urutan = urutan mendesaknya", () => {
           byStatus: { past_due: 2, suspended: 1, cancelled: 1 },
           trialsEndingSoon: 5,
           trialsExpired: 9,
+          lastRun: null,
         },
-        platform: { overdueInvoices: 4, lastRun: null },
+        platform: { overdueInvoices: 4 },
       },
       SEKARANG
     );
@@ -169,8 +191,13 @@ describe("tiap baris punya tujuan — kecuali yang memang tidak boleh", () => {
   it("baris lain semuanya membawa `href`", () => {
     const items = attentionItems(
       {
-        control: { byStatus: { past_due: 1 }, trialsEndingSoon: 1, trialsExpired: 1 },
-        platform: { overdueInvoices: 1, lastRun: null },
+        control: {
+          byStatus: { past_due: 1 },
+          trialsEndingSoon: 1,
+          trialsExpired: 1,
+          lastRun: null,
+        },
+        platform: { overdueInvoices: 1 },
       },
       SEKARANG
     );
@@ -190,8 +217,13 @@ describe("kamus & ambang", () => {
        yang membuatnya bisa ditindaklanjuti justru kalimat keduanya. */
     const semua = attentionItems(
       {
-        control: { byStatus: { past_due: 1, suspended: 1 }, trialsEndingSoon: 1, trialsExpired: 1 },
-        platform: { overdueInvoices: 1, lastRun: null },
+        control: {
+          byStatus: { past_due: 1, suspended: 1 },
+          trialsEndingSoon: 1,
+          trialsExpired: 1,
+          lastRun: null,
+        },
+        platform: { overdueInvoices: 1 },
       },
       SEKARANG
     ).map((i) => i.key);

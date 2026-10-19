@@ -33,7 +33,6 @@
  * hilang hanya SATU pemeriksaan — dan ketiadaan itu akan terbaca besok.
  */
 import "dotenv/config";
-import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { backupHealth } from "../src/lib/backup-heartbeat";
@@ -76,24 +75,27 @@ interface Komponen {
 }
 
 async function main() {
-  const rawUrl = process.env.PLATFORM_DATABASE_URL?.trim();
+  /* Jejak putaran pindah ke KENDALI (migration kendali 0005). Satu klien untuk
+     dua pekerjaan di skrip ini — membaca jejak, dan meredam peringatan lewat
+     `rate_limit_counters` yang sejak awal memang tinggal di kendali. */
+  const rawUrl = process.env.CONTROL_DATABASE_URL?.trim();
   if (!rawUrl) {
-    log("PLATFORM_DATABASE_URL kosong — tidak ada riwayat untuk diperiksa.");
+    log("CONTROL_DATABASE_URL kosong — tidak ada riwayat untuk diperiksa.");
     return;
   }
 
-  const platform = new PlatformClient({ adapter: adapterFor(rawUrl) });
+  const control = new ControlClient({ adapter: adapterFor(rawUrl) });
   const komponen: Komponen[] = [];
 
   try {
     /* ── 1. Cadangan ──────────────────────────────────────────────────────── */
     const [sukses, percobaan] = await Promise.all([
-      platform.backupRun.findFirst({
+      control.backupRun.findFirst({
         where: { status: "ok" },
         orderBy: { finishedAt: "desc" },
         select: { finishedAt: true },
       }),
-      platform.backupRun.findFirst({
+      control.backupRun.findFirst({
         orderBy: { finishedAt: "desc" },
         select: { finishedAt: true, status: true, error: true },
       }),
@@ -125,7 +127,7 @@ async function main() {
     /* `status` dan `errorCount` ikut dibaca: denyut menjawab "apakah penjadwal
        hidup", baris putarannya menjawab "apakah pekerjaannya berhasil". Dua
        pertanyaan, dan versi pertama penjaga ini hanya menanyakan yang pertama. */
-    const putaran = await platform.schedulerRun.findFirst({
+    const putaran = await control.schedulerRun.findFirst({
       orderBy: { id: "desc" },
       select: { finishedAt: true, status: true, errorCount: true },
     });
@@ -144,7 +146,7 @@ async function main() {
 
     /* ── 3. Kesesuaian data ───────────────────────────────────────────────── */
     const kesesuaian = conformanceHealth(
-      await platform.conformanceRun.findFirst({
+      await control.conformanceRun.findFirst({
         orderBy: { id: "desc" },
         select: { finishedAt: true, findingCount: true, companiesFailed: true },
       })
@@ -207,42 +209,34 @@ async function main() {
      * memang penghitung berkunci dengan jendela tetap (#138).
      * `rate-limit-persistent.ts` TIDAK bisa diimpor — ia `server-only` (#140).
      */
-    const controlUrl = process.env.CONTROL_DATABASE_URL?.trim();
-    const control = controlUrl ? new ControlClient({ adapter: adapterFor(controlUrl) }) : null;
     const sejak = new Date(Date.now() - PEREDAM_JAM * 3_600_000);
 
-    try {
-      for (const k of berbunyi) {
-        const kunci = `alert:${k.putusan.fingerprint}`;
-        const terakhir = control
-          ? await control.rateLimitCounter
-              .findUnique({ where: { key: kunci }, select: { windowStartedAt: true } })
-              .catch(() => null)
-          : null;
+    for (const k of berbunyi) {
+      const kunci = `alert:${k.putusan.fingerprint}`;
+      const terakhir = await control.rateLimitCounter
+        .findUnique({ where: { key: kunci }, select: { windowStartedAt: true } })
+        .catch(() => null);
 
-        if (terakhir && terakhir.windowStartedAt > sejak) {
-          log(`diredam — ${k.putusan.fingerprint} sudah dikirim ${terakhir.windowStartedAt.toISOString()}`);
-          continue;
-        }
-
-        await sendMail({ to, subject: k.putusan.subject, text: k.putusan.body });
-        log(`terkirim ke ${to}: ${k.putusan.subject}`);
-
-        /* Dicatat SETELAH terkirim: surel yang gagal dikirim tidak boleh ikut
-           meredam percobaan besok. */
-        await control?.rateLimitCounter
-          .upsert({
-            where: { key: kunci },
-            create: { key: kunci, windowStartedAt: new Date(), count: 1 },
-            update: { windowStartedAt: new Date(), count: { increment: 1 } },
-          })
-          .catch((e: unknown) => log("⚠ gagal mencatat peredam:", e));
+      if (terakhir && terakhir.windowStartedAt > sejak) {
+        log(`diredam — ${k.putusan.fingerprint} sudah dikirim ${terakhir.windowStartedAt.toISOString()}`);
+        continue;
       }
-    } finally {
-      await control?.$disconnect().catch(() => {});
+
+      await sendMail({ to, subject: k.putusan.subject, text: k.putusan.body });
+      log(`terkirim ke ${to}: ${k.putusan.subject}`);
+
+      /* Dicatat SETELAH terkirim: surel yang gagal dikirim tidak boleh ikut
+         meredam percobaan besok. */
+      await control.rateLimitCounter
+        .upsert({
+          where: { key: kunci },
+          create: { key: kunci, windowStartedAt: new Date(), count: 1 },
+          update: { windowStartedAt: new Date(), count: { increment: 1 } },
+        })
+        .catch((e: unknown) => log("⚠ gagal mencatat peredam:", e));
     }
   } finally {
-    await platform.$disconnect().catch(() => {});
+    await control.$disconnect().catch(() => {});
   }
 }
 

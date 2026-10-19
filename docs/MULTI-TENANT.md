@@ -1,7 +1,7 @@
 # Multi-tenant: dari multi-PT menjadi platform SaaS
 
 Issue #133 (epik), lanjutan dari #104 yang membangun multi-PT untuk satu grup
-usaha. Dokumen ini merancang apa yang berubah bila pelanggannya tidak saling
+usaha. Dokumen ini merancang apa yang berubah bila customer-nya tidak saling
 kenal dan mendaftar sendiri.
 
 > **Status: terimplementasi.** Kesembilan tahap §12 (#134–#142) sudah
@@ -19,7 +19,7 @@ kenal dan mendaftar sendiri.
 
 Perjalanan yang dituju:
 
-> **pelanggan** mendaftar → menyiapkan perusahaannya (bisa lebih dari satu) →
+> **customer** mendaftar → menyiapkan perusahaannya (bisa lebih dari satu) →
 > mendaftarkan stafnya → berlangganan.
 
 Bentuk itu lazim. Penghalang utamanya saat dirancang adalah satu izin yang
@@ -37,7 +37,7 @@ Dokumen sebelumnya memakai satu kata untuk dua hal. Tabel ini memisahkannya.
 
 | Istilah | Artinya di sini | Hidup di |
 |---|---|---|
-| **Tenant** (pelanggan) | Pihak yang berlangganan & membayar. Satu badan usaha/orang yang memakai platform. | tabel `tenants`, basis data control |
+| **Tenant** (customer) | Pihak yang berlangganan & membayar. Satu badan usaha/orang yang memakai platform. | tabel `tenants`, basis data control |
 | **Company** (PT) | Satu buku besar. Satu tenant boleh punya beberapa. | tabel `companies` + **satu basis data sendiri** |
 | **User** (orang) | Manusia yang masuk. Bisa jadi anggota beberapa company, di dalam satu tenant. | tabel `users`, basis data control |
 
@@ -73,7 +73,7 @@ Dua tingkat keanggotaan, dan keduanya perlu:
 
 - **`TenantMembership`** menjawab "boleh membuat perusahaan, mengubah paket,
   mengundang orang?". Pertanyaan ini harus bisa dijawab tanpa perusahaan aktif,
-  karena pelanggan baru belum punya satu pun.
+  karena customer baru belum punya satu pun.
 - **`Membership`** (sudah ada) menjawab "boleh menulis faktur di PT ini?" dan
   tidak berubah.
 
@@ -99,7 +99,7 @@ ada di riwayat git berkas ini; komentar kode masih merujuk nomornya.
 
 ## 4A. Pemisahan basis data: tiga lapis, bukan dua
 
-Data bisnis SaaS tidak boleh bercampur dengan data pelanggan. Letak garis
+Data bisnis SaaS tidak boleh bercampur dengan data customer. Letak garis
 pemisahnya ditentukan oleh satu batasan yang sudah dikenal kode ini:
 
 > **Foreign key tidak bisa menyeberangi basis data, begitu pula transaksi.**
@@ -112,9 +112,9 @@ Setiap garis pemisah baru membayar isolasi dengan harga yang sama.
 
 | Lapis | Basis data | Isinya | Disentuh |
 |---|---|---|---|
-| **Platform** | `sai_platform` | `plans`, `subscriptions`, `payments`, `platform_invoices`, `usage_counters` — **bisnis KAMI** | jarang: pendaftaran, siklus tagih, webhook pembayaran |
+| **Platform** | `sai_platform` | `plans`, `subscriptions`, `payments`, `platform_invoices`, `usage_counters` — **bisnis SAI** | jarang: pendaftaran, siklus tagih, webhook pembayaran |
 | **Control** | `sai_control` | `tenants`, `users`, `tenant_memberships`, `companies` (registry), `memberships` — **identitas & perutean** | **setiap permintaan** |
-| **Perusahaan** | `sai_pt_*` | jurnal, faktur, stok, kas — **buku pelanggan** | setiap permintaan yang menyentuh buku |
+| **Perusahaan** | `sai_pt_*` | jurnal, faktur, stok, kas — **buku customer** | setiap permintaan yang menyentuh buku |
 
 ### Kenapa `tenants` tinggal di CONTROL, bukan di platform
 
@@ -136,7 +136,7 @@ Karena itu garisnya ditarik di penagihan, bukan di tenant.
   tabel yang mengautentikasi semua orang. Bila penagihan mati, orang tetap bisa
   masuk dan bekerja.
 - **Retensi & backup berbeda.** Catatan pembayaran punya kewajiban simpannya
-  sendiri, lepas dari buku pelanggan.
+  sendiri, lepas dari buku customer.
 - **Hak akses berbeda.** Pengguna basis data aplikasi tidak perlu menyentuh
   `sai_platform` sama sekali di jalur permintaan biasa.
 
@@ -160,7 +160,7 @@ Ini salah satu alasan scheduler (§4.8) masuk daftar.
 
 ### Yang TIDAK berubah
 
-Buku besar pelanggan tetap satu basis data per PT. Tidak ada tabel platform
+Buku besar customer tetap satu basis data per PT. Tidak ada tabel platform
 yang masuk ke sana, dan tidak ada angka akuntansi yang keluar darinya.
 
 ---
@@ -186,7 +186,7 @@ model Tenant {
   /// Batas dari paket, DISALIN saat paket berubah — bukan dibaca dari tabel
   /// paket saat dipakai. Alasannya sama dengan snapshot peran penyetuju di
   /// aturan persetujuan: menaikkan harga paket tidak boleh diam-diam
-  /// mempersempit pelanggan yang sudah berjalan.
+  /// mempersempit customer yang sudah berjalan.
   maxCompanies Int @default(1) @map("max_companies")
   maxUsers     Int @default(3) @map("max_users")
 
@@ -225,8 +225,8 @@ Tabel pendukung baru di `sai_control`: `email_verification_tokens`,
 
 Tabel di `sai_platform` (basis data terpisah, §4A): `plans`, `subscriptions`,
 `payments`, `platform_invoices`, dan `usage_counters`. `platform_invoices` adalah
-tagihan kami ke pelanggan, sengaja dinamai berbeda dari `invoices` milik buku
-besar pelanggan. Semuanya merujuk `tenant_id` sebagai `Int` biasa tanpa FK,
+tagihan SAI ke customer, sengaja dinamai berbeda dari `invoices` milik buku
+besar customer. Semuanya merujuk `tenant_id` sebagai `Int` biasa tanpa FK,
 seperti `periods.closed_by_id`. Isi katalog `plans` (angka, alasan, cara
 mengubah harga) ada di `docs/PRICING.md` (#404).
 
@@ -253,7 +253,7 @@ dua.
 > **Aturan: izin tingkat tenant tidak boleh diperiksa guard perusahaan.**
 
 Guard perusahaan menuntut konteks perusahaan, padahal ketiadaan konteks itu
-adalah keadaan sah saat pelanggan baru membuat perusahaan pertamanya. Memakai
+adalah keadaan sah saat customer baru membuat perusahaan pertamanya. Memakai
 guard lama untuk kasus ini menuntut pengecualian yang melemahkan jaminan #104.
 
 `tests/authz-coverage.test.ts` mencakup rute tingkat tenant: setiap rute itu
@@ -272,7 +272,7 @@ Peran tenant bawaan:
 
 ## 7. Perjalanan, langkah demi langkah
 
-### 7.1 Pelanggan baru mendaftar sendiri
+### 7.1 Customer baru mendaftar sendiri
 
 | # | Langkah | Keadaan tenant | Catatan |
 |---|---|---|---|
@@ -328,11 +328,11 @@ suspended ──(operator_restore)──> active                       [manual, 
 ```
 
 Dua perpindahan terakhir adalah tindakan manual operator di luar siklus dunning
-(permintaan pelanggan, penyalahgunaan). Keduanya tetap lewat mesin siklus hidup,
+(permintaan customer, penyalahgunaan). Keduanya tetap lewat mesin siklus hidup,
 wajib beralasan, dan tercatat di jejak audit tenant dengan operator sebagai
 aktor.
 
-**`suspended` berarti hanya-baca**, tidak terkunci dan tidak terhapus. Pelanggan
+**`suspended` berarti hanya-baca**, tidak terkunci dan tidak terhapus. Customer
 yang berhenti membayar tetap wajib menyimpan pembukuannya (§10) dan harus bisa
 mengunduhnya. Mengunci buku besarnya karena tagihan tertunggak berarti
 menghalangi kewajiban hukumnya.
@@ -389,11 +389,11 @@ berisiko: setiap tombol memindahkan uang, mencabut akses, atau menghapus data.
 Karena itu keempat tindakan tunduk pada empat aturan yang sama, ditegakkan di
 inti (`apps/operator/src/lib/operator/writes.ts`; ganti paket di
 `packages/platform/src/billing/change-tenant-plan.ts` sejak 17 Okt 2026 karena
-rute pelanggan juga memakainya), tidak diserahkan ke pemanggil:
+rute customer juga memakainya), tidak diserahkan ke pemanggil:
 
 1. Satu baris jejak audit tenant per tindakan sukses, dengan operator sebagai
    aktor (`operator:<nama>` dari sesi konsol, `cli:<user>` dari skrip), tidak
-   atas nama pengguna pelanggan.
+   atas nama pengguna customer.
 2. Alasan yang diketik operator wajib (minimal 5 karakter) dan tersimpan apa
    adanya di jejak. Tindakan tanpa alasan tidak bisa ditinjau ulang.
 3. Urutan tulis §4A: `sai_platform` dulu, `sai_control` belakangan.
@@ -446,7 +446,7 @@ hak akses yang kurang (`P1010`) dan skrip yang menyebut kolom yang belum ada.
 
 ## 9. Ongkos yang berubah di bawah pendaftaran mandiri
 
-Isolasi fisik tetap dipertahankan: kebocoran buku besar lintas pelanggan
+Isolasi fisik tetap dipertahankan: kebocoran buku besar lintas customer
 menjadi tidak mungkin secara struktur.
 
 Pendaftaran mandiri mengubah ongkosnya. Sebelumnya perusahaan dibuat sesekali,
@@ -472,14 +472,14 @@ Yang wajib ada sejak awal:
 ## 10. Kepatuhan Indonesia — dan kenapa "hapus akun" tidak sesederhana kelihatannya
 
 > ⚠ Bagian ini harus dikonfirmasi ke penasihat hukum/pajak sebelum dijadikan
-> janji ke pelanggan. Ia ditulis di sini karena memengaruhi rancangan, tidak
+> janji ke customer. Ia ditulis di sini karena memengaruhi rancangan, tidak
 > hanya syarat dan ketentuan.
 
 **Retensi wajib.** UU KUP menuntut buku, catatan, dan dokumen dasar pembukuan
 disimpan 10 tahun, termasuk yang dikelola secara elektronik. Akibatnya,
 berhenti berlangganan tidak boleh menghapus buku besar. Alurnya: `suspended`
 (hanya-baca), ekspor, lalu penghapusan hanya atas permintaan eksplisit dan
-setelah masa retensi, dengan pelanggan diberi tahu apa yang ia tanggung.
+setelah masa retensi, dengan customer diberi tahu apa yang ia tanggung.
 
 **Tempat penyimpanan.** Ketentuan yang sama menyebut penyimpanan di Indonesia.
 Bila berlaku untuk SaaS pembukuan, ketentuan itu menentukan pilihan hosting,
@@ -489,9 +489,9 @@ yang jauh lebih mahal diubah belakangan.
 penghapusan, serta pemberitahuan kebocoran. Yang perlu dibangun: ekspor data
 mandiri, jalur permintaan penghapusan, dan retensi yang tertulis.
 
-**PPN atas langganan.** Tagihan kami ke pelanggan kena PPN dan menuntut
+**PPN atas langganan.** Tagihan SAI ke customer kena PPN dan menuntut
 e-Faktur. Aplikasi ini sudah punya mesin PPN dan e-Faktur
-(`packages/core/src/tax.ts`, `/tax/efaktur`) untuk pelanggan, dan mesin yang
+(`packages/core/src/tax.ts`, `/tax/efaktur`) untuk customer, dan mesin yang
 sama dipakai untuk tagihan platform.
 
 **Pembayaran.** Standar Indonesia: Midtrans / Xendit / Doku — Virtual Account,
@@ -508,7 +508,7 @@ tagih-lalu-ingatkan, bukan auto-debit seperti kartu.
   dibicarakan sebelum email dikunci sebagai pengenal.
 - **Akun yang menyeberang tenant** (§2). Bila kebutuhannya nyata, jawabannya
   akun terpisah per tenant.
-- **White-label / domain kustom per pelanggan.**
+- **White-label / domain kustom per customer.**
 
 ---
 

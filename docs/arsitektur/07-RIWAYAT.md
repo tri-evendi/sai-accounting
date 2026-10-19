@@ -49,11 +49,11 @@ Keputusan yang masih mengikat:
 
 - **Monorepo, bukan multi-repo.** 19 basis data berbagi satu skema; dua repo menambah sinkronisasi lintas-repo tanpa manfaat.
 - **Migration & `prisma*.config.ts` tetap di akar.** Memindahkan direktori migration yang sudah diterapkan mempertaruhkan `migrate deploy` pada seluruh basis data produksi demi kerapian.
-- **Aplikasi pelanggan tetap di `src/`**, tidak dipindah ke `apps/customer`: diff terkecil, dan setiap jalur yang di-scan tes tetap berlaku.
-- **`operator-plane` tetap dipakai sisi pelanggan.** Ia yang menolak permintaan bila Traefik salah arah.
+- **Aplikasi customer tetap di `src/`**, tidak dipindah ke `apps/customer`: diff terkecil, dan setiap jalur yang di-scan tes tetap berlaku.
+- **`operator-plane` tetap dipakai sisi customer.** Ia yang menolak permintaan bila Traefik salah arah.
 - **Kedua image dari `sha-` yang sama.** Dua binari di atas satu skema bisa berbeda versi.
-- **Logika penagihan bukan logika operator.** `changeTenantPlan` dipakai dua rute pelanggan, jadi tinggal di `packages/platform`; konsol mengimpornya, tidak sebaliknya.
-- **Yang sengaja tetap di aplikasi pelanggan:** `src/lib/i18n/{actions,labels}.ts`, `src/lib/plan-catalog.ts`, dan lima wrapper di `src/components/ui`.
+- **Logika penagihan bukan logika operator.** `changeTenantPlan` dipakai dua rute customer, jadi tinggal di `packages/platform`; konsol mengimpornya, tidak sebaliknya.
+- **Yang sengaja tetap di aplikasi customer:** `src/lib/i18n/{actions,labels}.ts`, `src/lib/plan-catalog.ts`, dan lima wrapper di `src/components/ui`.
 
 Satu risiko benar-benar terjadi: **scanner yang hanya menyapu `src/` lulus
 dengan nol pelanggar** begitu berkasnya pindah. Dua puluh scanner dialihkan ke
@@ -158,7 +158,7 @@ ada alasan yang menyebut nama basis data.
 Dua putusan yang sudah diambil:
 
 - **`is_demo` bukan penanda yang dicari.** Kolom itu **mengubah perilaku**: buku jadi hanya-baca + banner + dikecualikan dari scheduler. Menandai buku uji sebagai `is_demo` akan menolak tulisan di buku yang mungkin masih dipakai seseorang.
-- **Jangan kecualikan dari backup.** Seluruh `sai_*` 78,1 MB; 16 buku non-produksi **tepat 4,0 MB masing-masing** — itu overhead struktural, bukan data. Mengecualikan 15 buku menghemat ~60 MB, tidak sepadan dengan daftar pengecualian yang harus dipelihara tangan dan akan tertinggal saat pelanggan baru mendaftar.
+- **Jangan kecualikan dari backup.** Seluruh `sai_*` 78,1 MB; 16 buku non-produksi **tepat 4,0 MB masing-masing** — itu overhead struktural, bukan data. Mengecualikan 15 buku menghemat ~60 MB, tidak sepadan dengan daftar pengecualian yang harus dipelihara tangan dan akan tertinggal saat customer baru mendaftar.
 
 Yang masih terbuka: penanda "buku uji" terpisah dari `is_demo` · ❓ apakah buku
 uji dikecualikan dari laporan kesesuaian · ❓ apakah 3 buku `kosong` + 4

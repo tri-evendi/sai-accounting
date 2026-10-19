@@ -38,7 +38,7 @@ dan batas heap eksplisit di setiap perintah Node.
 
 | Layanan | Container | Peran | Kadens |
 |---|---|---|---|
-| `app-customer` | `sai-app-customer` | Enam grup rute pelanggan + 128 rute API | selalu hidup |
+| `app-customer` | `sai-app-customer` | Enam grup rute customer + 128 rute API | selalu hidup |
 | `app-operator` | `sai-app-operator` | Konsol operator | selalu hidup |
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
@@ -92,7 +92,7 @@ Hanya kedua `app-*` yang berada di dua jaringan (`traefik_default` +
 tanpa replika: restart mengosongkan setiap cache dalam memori, dan cache
 per-proses itulah yang menghalangi penskalaan horizontal (P2-3).
 
-> ⚠ **Jangan beri `app-operator` router `APP_DOMAIN`.** Pelanggan yang diarahkan
+> ⚠ **Jangan beri `app-operator` router `APP_DOMAIN`.** Customer yang diarahkan
 > ke sana menerima 404 untuk seluruh aplikasi.
 
 ## 4. Basis data
@@ -109,11 +109,68 @@ per-proses itulah yang menghalangi penskalaan horizontal (P2-3).
 ke `pg` — Prisma Migrate memakai advisory lock yang terikat sesi, dan pooler
 `transaction` memulangkan dump sebagian.
 
-**`pgbouncer`** (`edoburu/pgbouncer`) mendengarkan di **5432**, bukan 6432 —
+**`pgbouncer`** (`edoburu/pgbouncer:v1.26.0-p0` — **versi dipatok**, bukan
+`latest`, sejak 19 Okt 2026) mendengarkan di **5432**, bukan 6432 —
 salah port ini sebab pertama penukaran 15 Okt gagal. `POOL_MODE=transaction`,
 `MAX_CLIENT_CONN=200`, `DEFAULT_POOL_SIZE=20`, `AUTH_TYPE=scram-sha-256`.
 Wajib karena PostgreSQL memakai satu proses per koneksi dan puncak terukur 62
 koneksi; mode `session` menghapus manfaatnya.
+
+**Profil on-premise.** `docker-compose.onprem.yml` adalah override, bukan berkas
+pengganti: `docker compose -f docker-compose.yml -f docker-compose.onprem.yml up
+-d`. Hasilnya **tujuh service** — `pg`, `pgbouncer`, `migrate`, `app-customer`,
+dan ketiga `job-*`.
+
+| Yang berbeda di mesin customer | Sebabnya |
+|---|---|
+| Jaringan `traefik` **lokal** | di berkas utama ia `external: true`, dan tanpa Traefik di mesin itu `up` **gagal memvalidasi** sebelum satu container pun start |
+| `app-operator` · `db` tidak dipasang | profil `tidak-dipasang` |
+| Tag image **wajib**: `${SAI_TAG:?…}` | `latest` berpindah setiap kali CI mendorong, jadi `up -d` karena reboot atau ganti disk bisa memasang versi yang belum pernah diuji di sana |
+| `pull_policy: always` | `build:` di berkas utama membuat `up` **membangun image di kotak customer** — sepuluh menit `next build` tanpa toolchain-nya, dilarang PRODUCTION.md |
+| `APP_DEPLOY_PROFILE: onprem` | lewat `environment:` (menimpa `env_file:`) di kelima service SAI — override ini sendiri yang menyatakan profilnya, jadi tidak ada baris yang bisa lupa disalin |
+
+Dijaga `tests/onprem-profile.test.ts`, yang menuntut **setiap** service
+ber-`image: ${SAI_IMAGE…}` di berkas utama disebut di override — dipatok, atau
+dinyatakan tidak dipasang. Tanpa itu, service baru ikut ke mesin customer dengan
+setelan SaaS-nya tanpa satu permukaan pun berubah warna di sini.
+
+**Profil penyebaran.** `APP_DEPLOY_PROFILE` = `saas` (bawaan bila tidak diset)
+atau `onprem`, dibaca lewat `@sai/core/deploy-profile`; nilai asing **melempar**.
+Pemasangan on-premise tidak memasang basis data platform sama sekali, dan
+variabel ini yang membuat aplikasi bisa **menyatakan** keadaan itu alih-alih
+melaporkannya sebagai kerusakan:
+
+| Akibatnya | |
+|---|---|
+| `/api/health` | `platform: not-installed`, bukan `unknown` |
+| Halaman status | tidak lagi memuat satu baris kuning permanen |
+| `scheduler:subscriptions` | mencatat putaran kosong berstatus `ok`, supaya `watch:health` tidak mengirim surel tiap jam tentang langganan yang tidak ada di sana |
+
+Profil `saas` yang kehilangan `PLATFORM_DATABASE_URL` justru **tidak** mencatat
+apa pun: di sana ketiadaan alamat memang kerusakan, dan jejak yang kosong itulah
+yang membuat penjaganya berbunyi. Profilnya **tidak pernah disimpulkan** dari env
+basis data — alasannya di `packages/core/src/deploy-profile.ts`.
+
+**Jejak putaran ada di basis data kendali**, bukan `sai_platform`:
+`scheduler_runs`, `conformance_runs`, `backup_runs` (migration kendali
+`0005_jejak_putaran`). Kenapa bukan platform: komentar model `SchedulerRun` di
+`packages/db/prisma/control/schema.prisma`. Baris lama diangkut `bun run
+trails:move` — idempoten, dan tidak menghapus apa pun di platform; `DROP`
+menyusul sebagai langkah contract di rilis berikutnya.
+
+**Bundel diagnostik.** `bun run support:bundle` merakit satu arsip yang bisa
+dikirim dari mesin customer: versi & digest image, status dan jumlah restart
+container, sisa sumber daya, **nama** migration terpasang per basis data, jumlah
+baris per tabel dari `n_live_tup` (angka, tanpa memindai tabel), `/api/health`,
+dan baris log. Log diambil dengan **allowlist** — hanya baris berbentuk
+diagnostik yang masuk, sisanya dibuang tanpa dibaca — lalu yang lolos disunting.
+Daftar sensor sengaja tidak dipakai: ia selalu ketinggalan satu bentuk, dan
+bundel yang kurang satu baris log bisa diminta ulang sementara bundel yang
+membocorkan satu faktur tidak bisa ditarik. Setiap arsip memuat `manifes.txt`
+yang menyebut apa yang ikut dan apa yang ditinggalkan, supaya pengirimnya bisa
+memeriksanya lebih dulu. Hanya **membaca**; `--dry-run` menyebutkan isi tanpa
+menulis. Dijaga `tests/support-bundle-script.test.ts`, yang **menjalankan**
+fungsi penyuntingan yang dikirim, bukan salinannya.
 
 **`db`** (MariaDB 11) masih hidup sejak 15 Okt tetapi tidak ditulisi. Kembali
 ke MariaDB berarti men-deploy image `sha-` lama **sekaligus** menukar URL,
@@ -150,7 +207,7 @@ menghentikan yang lain. Image-nya dibangun dari `bunbase`, bukan `builder`.
 
 Tiga keputusan desain:
 
-1. **`remind:customers` di belakang produser lain (#467)** — satu-satunya langkah yang mengirim surel ke luar organisasi pelanggan, jadi putaran yang mati di tengah berhenti pada pekerjaan yang masih bisa diulang tanpa akibat bagi orang lain.
+1. **`remind:customers` di belakang produser lain (#467)** — satu-satunya langkah yang mengirim surel ke luar organisasi customer, jadi putaran yang mati di tengah berhenti pada pekerjaan yang masih bisa diulang tanpa akibat bagi orang lain.
 2. **`|| true` per langkah** — satu produser gagal tidak menghentikan langkah berikutnya.
 3. **`timeout` wajib** — `|| true` menangani langkah yang *gagal*, bukan yang *menggantung*. Pada 30 Agu 2026 `scheduler:subscriptions` menggantung dua jam dengan CPU 0,09%; container tetap "Up", log terakhir "✓ selesai", nol error.
 
@@ -188,7 +245,7 @@ unggahan sukses. Tanpa `BACKUP_S3_BUCKET`, hasilnya ke volume `backup` dan
 
 | Keputusan | Alasan |
 |---|---|
-| `--all-databases`, bukan daftar yang diketik | Daftar tangan tertinggal saat pelanggan baru mendaftar |
+| `--all-databases`, bukan daftar yang diketik | Daftar tangan tertinggal saat customer baru mendaftar |
 | Enkripsi sebelum berkas meninggalkan mesin | — |
 | SHA-256 atas ciphertext ikut dikirim | AES-256-CBC tidak membawa pemeriksaan keutuhan sendiri |
 | `awscli`, bukan SigV4 buatan sendiri | Penanda tangan sendiri gagal pada penyedia yang menormalkan header berbeda, dan gagalnya muncul saat restore |
@@ -255,7 +312,7 @@ berkas konfigurasi.
 
 > ⚠ **Nama service Traefik kedua container harus berbeda.** Dengan nama sama,
 > Traefik menganggapnya satu service dengan dua backend dan membagi beban —
-> permintaan operator bisa mendarat di container pelanggan, **tanpa error**.
+> permintaan operator bisa mendarat di container customer, **tanpa error**.
 
 | Port | Terbit ke host |
 |---|---|

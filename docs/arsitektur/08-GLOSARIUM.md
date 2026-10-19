@@ -10,10 +10,12 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 
 | Kata | Artinya di repo ini | BUKAN |
 |---|---|---|
-| **Tenant** | Satu **pelanggan yang berlangganan** — pemilik paket, tagihan, kuota. Datanya di `sai_control` + `sai_platform` | Bukan perusahaan, bukan pengguna |
+| **Tenant** | Satu **customer yang berlangganan** — pemilik paket, tagihan, kuota. Datanya di `sai_control` + `sai_platform` | Bukan perusahaan, bukan pengguna |
 | **Perusahaan / PT** | Satu **buku besar**, dengan basis data sendiri (`sai_<slug>`). Satu tenant boleh punya banyak PT | Bukan tenant |
-| **Buku** | Isi satu basis data perusahaan: jurnal, dokumen, stok, aset | — |
-| **Plane** | Permukaan yang dipisahkan **host**: pelanggan (`APP_DOMAIN`) vs operator (`OPERATOR_DOMAIN`) | Bukan grup rute, bukan container |
+| **Buku** | Isi satu basis data perusahaan: jurnal, dokumen, stok, aset. Wadahnya disebut **basis data perusahaan** — itu nama yang dipakai dalam diagram dan rancangan; "buku PT" di dokumen lama berarti hal yang sama | Bukan nama tabel |
+| **Plane** | Permukaan yang dipisahkan **host**: customer (`APP_DOMAIN`) vs operator (`OPERATOR_DOMAIN`) | Bukan grup rute, bukan container |
+| **Profil penyebaran** | SaaS atau on-premise — `APP_DEPLOY_PROFILE`, **disetel**, tidak pernah disimpulkan dari env basis data. On-premise tidak memasang `sai_platform` | Bukan `NODE_ENV`, bukan plane |
+| **Jejak putaran** | Satu baris per putaran penjadwal, pemeriksa kesesuaian, atau cadangan — `scheduler_runs` · `conformance_runs` · `backup_runs`, di basis data **kendali** | Bukan log, bukan jejak audit |
 
 ### 1.2 Istilah akuntansi yang punya arti teknis di sini
 
@@ -122,7 +124,7 @@ berkelanjutan: tidak ada metrik atau dasbor di sistem ini.
 | `typecheck` cold | 1.556 MB RSS / 82 s (batas kini 2048 MB) | 11 & 17 Okt 2026 |
 | Suite tes | ~74 s | 18 Okt 2026 |
 | Berat `DataTable` | +80 KB gzip per rute | — |
-| Standalone konsol vs pelanggan | 69 MB vs 299 MB | 18 Okt 2026 |
+| Standalone konsol vs customer | 69 MB vs 299 MB | 18 Okt 2026 |
 
 ### 3.2 Target yang BELUM ditetapkan
 
@@ -143,7 +145,7 @@ pengukurannya.
 
 1. **Satu VM: 2 vCPU · 8 GB · 80 GB SSD, dibagi enam aplikasi.** Setiap proses jangka-panjang baru harus diukur lebih dulu.
 2. **`max_connections` 100, satu proses per koneksi.** Setiap klien baru mengurangi anggaran yang lain.
-3. **Migration berjalan N kali per rilis.** Perubahan skema berbiaya linear terhadap jumlah pelanggan.
+3. **Migration berjalan N kali per rilis.** Perubahan skema berbiaya linear terhadap jumlah customer.
 4. **Tidak ada pemantauan luar.** Target yang tidak bisa diamati dari luar mesin tidak bisa dibuktikan.
 
 ## 4. Katalog rute
@@ -161,7 +163,7 @@ grep -rho 'requireApiPermission("[^"]*"' src/app/api --include=route.ts | sort |
 grep -rLE 'require[A-Z][A-Za-z]*\(' src/app/api --include=route.ts
 ```
 
-Angka per 18 Okt 2026: **131** halaman pelanggan · **128** rute API pelanggan ·
+Angka per 18 Okt 2026: **131** halaman customer · **128** rute API customer ·
 3 rute metadata/aset · **19** halaman konsol · 2 rute fungsional konsol ·
 **10** rute API tanpa penjaga (semuanya terdaftar sebagai pengecualian).
 
@@ -171,7 +173,7 @@ Sepuluh rute publik itu: enam alur autentikasi pra-sesi (`auth/[...nextauth]`,
 `health` dan `status/notices` (pembacanya Docker, Traefik, dan halaman status),
 serta `v1/openapi.json`.
 
-Rute API pelanggan per kelompok:
+Rute API customer per kelompok:
 
 | Kelompok | Rute |
 |---|---|

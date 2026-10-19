@@ -23,7 +23,7 @@ Mesin langganan tidak perlu dimunculkan karena ia sudah menyala. Ia sudah
 bertindak terhadap akun uji coba: menerbitkan tagihan, mengirim 40 surel
 penagihan, lalu menangguhkan lima buku menjadi hanya-baca. Yang belum ada adalah
 rel pendapatannya. Tidak ada gate pembayaran terpasang, tidak ada nomor
-rekening untuk transfer manual, tidak ada profil pajak pelanggan, dan belum
+rekening untuk transfer manual, tidak ada profil pajak customer, dan belum
 pernah ada pembayaran tercatat.
 
 Karena itu pilihannya bukan "munculkan" atau "sembunyikan". Yang diusulkan
@@ -31,7 +31,7 @@ adalah tiga langkah berurutan:
 
 1. **Hentikan mesinnya bertindak** terhadap akun yang tidak punya perjanjian
    komersial (§5 Fase A). Ini pekerjaan segera, bukan fitur.
-2. **Jual dengan penawaran** untuk pelanggan multi-PT (≥3 PT), memakai konsol
+2. **Jual dengan penawaran** untuk customer multi-PT (≥3 PT), memakai konsol
    operator dan buku PT sendiri yang keduanya sudah ada (§5 Fase B).
 3. **Nyalakan langganan swalayan** hanya untuk Starter/Pro, dan hanya setelah
    gate terukur di §5 Fase C terlewati.
@@ -51,7 +51,7 @@ aritmetika (§4.1).
 ## 1. Keadaan hari ini — yang terukur
 
 Konteksnya masa uji coba: akun yang terdaftar adalah penguji dan pilot, bukan
-pelanggan yang pernah setuju membeli. Konteks ini menjelaskan bentuk angkanya,
+customer yang pernah setuju membeli. Konteks ini menjelaskan bentuk angkanya,
 tetapi tidak mengurangi temuannya.
 
 | Ukuran | Nilai | Sumber |
@@ -63,8 +63,8 @@ tetapi tidak mengurangi temuannya.
 | Tagihan berstatus `paid` | 5 — semuanya **Rp 0**, hasil *comp* operator (nomor `…-K`) | idem |
 | **Pembayaran tercatat** | **0 baris** | `sai_platform.payments` |
 | Surel penagihan terkirim (SMTP hidup, uji terakhir `ok`) | **18 `invoice_due` + 22 `trial_ending`** | `sai_platform.reminder_logs`, `mail_settings` |
-| Profil penagihan pelanggan (NPWP) | **0** | `sai_platform.tenant_billing_profiles` |
-| Putaran scheduler | 1.212 `ok` · 5 `error` (terakhir error 16 Agu) | `sai_platform.scheduler_runs` |
+| Profil penagihan customer (NPWP) | **0** | `sai_platform.tenant_billing_profiles` |
+| Putaran scheduler | 1.212 `ok` · 5 `error` (terakhir error 16 Agu) | `scheduler_runs` di basis data **kendali** (pindah dari `sai_platform`, migration kendali 0005) |
 
 Yang ditunjukkan angka-angka ini:
 
@@ -78,7 +78,7 @@ Yang ditunjukkan angka-angka ini:
   `paid` bernilai Rp 0 membuat pendapatan tidak bisa dibaca dari tabel mana pun
   tanpa menyaring comp lebih dulu.
 - PPN 11% sudah ikut terbit di enam tagihan itu, padahal status PKP penyedia
-  belum diputuskan dan belum ada pelanggan yang punya profil NPWP (§9).
+  belum diputuskan dan belum ada customer yang punya profil NPWP (§9).
 
 ### 1.1 Akar masalahnya: **"boleh ditagih" bukan konsep di model**
 
@@ -93,7 +93,7 @@ Ini temuan terpenting dokumen ini, dan sifatnya arsitektural.
 
 Scheduler mengambil setiap langganan yang belum `cancelled`. Untuk setiap
 langganan yang masa uji cobanya habis, ia menerbitkan tagihan sebesar
-`sub.price` + PPN tanpa memeriksa apakah akun itu memang pelanggan
+`sub.price` + PPN tanpa memeriksa apakah akun itu memang customer
 (`scripts/subscription-scheduler.ts`, langkah 1). Tidak ada bendera
 non-billable, dan harga nol pun tidak dilewati.
 
@@ -120,7 +120,7 @@ Tiga hal membuatnya tidak mungkin berhasil:
 
 1. **Tidak ada metode pembayaran yang pernah diambil.** Menagih orang yang
    tidak pernah memberi cara membayar hanya bisa gagal.
-2. **Tidak ada rel untuk membayar walau pelanggan mau.** `MIDTRANS_SERVER_KEY`
+2. **Tidak ada rel untuk membayar walau customer mau.** `MIDTRANS_SERVER_KEY`
    tidak diset, jadi gate jatuh ke `manual`. `MANUAL_PAYMENT_INSTRUCTIONS`
    juga tidak diset, jadi tombol "Bayar" menghasilkan referensi `manual-PINV-…`
    tanpa nomor rekening (`packages/billing/src/payment-gateway.ts`).
@@ -174,7 +174,7 @@ pasar mana pun.
 dalam grup yang sama, bukan dari fitur tambahan. Karena itu keputusan
 `PRICING.md` §1 (*"yang membedakan paket HANYA kuota PT & pengguna"*) cocok
 dengan unit nilainya. Harga yang mengikuti jumlah PT naik bersama manfaat yang
-diterima pelanggan, dan mudah dijelaskan kepada pemilik grup.
+diterima customer, dan mudah dijelaskan kepada pemilik grup.
 
 ---
 
@@ -185,14 +185,14 @@ diterima pelanggan, dan mudah dijelaskan kepada pemilik grup.
 Harga per PT menurun di setiap anak tangga (249rb → 199,7rb → 149,9rb per PT),
 sehingga naik paket selalu lebih murah daripada menumpuk paket kecil
 (`PRICING.md` §1). Dengan begitu jalur ekspansi alami (tambah PT) juga jalur
-termurah bagi pelanggan. Tidak ada insentif memecah grup menjadi beberapa akun,
+termurah bagi customer. Tidak ada insentif memecah grup menjadi beberapa akun,
 yang akan merusak konsolidasi yang justru dijual produk ini.
 
 ### 3.2 Urutan: manual → terukur → otomatis
 
 Produk ini belum pernah terjual. Dalam keadaan itu, membangun atau menyalakan
 otomasi penagihan berarti mengotomatiskan proses yang bentuknya belum diketahui.
-Praktik baku untuk sepuluh pelanggan pertama: kerjakan secara manual sampai
+Praktik baku untuk sepuluh customer pertama: kerjakan secara manual sampai
 polanya berulang, lalu otomatiskan bagian yang paling sering diulang.
 
 Urutan ini aman di sini karena sekitar 90% alur quote-to-cash sudah ada, dan
@@ -210,7 +210,7 @@ keluar membuat bisnis tidak bisa tumbuh.
 Hak pakai (berapa PT dan pengguna yang boleh dibuka) dan penagihan (tagihan,
 pengingat, penangguhan) harus bisa hidup terpisah. Satu akun boleh punya hak
 pakai penuh tanpa kewajiban bayar: internal, penguji, pilot, demo, atau
-pelanggan yang tagihannya ditangani di luar sistem.
+customer yang tagihannya ditangani di luar sistem.
 
 Sampai Fase A keduanya menyatu, dan §1.1 menunjukkan akibatnya. Aturannya (kini
 ditegakkan `billing_mode`):
@@ -233,10 +233,10 @@ kejadian yang sudah terjadi dua kali (issue #416 dan kejadian di §1).
 ### 3.4 Satu mesin faktur, bukan dua
 
 Penyedia sudah menjadi tenant di aplikasinya sendiri, dan aplikasi itu punya
-kontrak, faktur, PPN, piutang, dan ekspor e-Faktur yang dipakai untuk pelanggan
+kontrak, faktur, PPN, piutang, dan ekspor e-Faktur yang dipakai untuk customer
 nyata. Sementara itu `platform_invoices` adalah mesin faktur kedua di repo yang
 sama, dengan nomor, PPN, dan status lunasnya sendiri. Bedanya, ia tidak punya
-e-Faktur per pelanggan, tidak punya profil NPWP yang terisi, dan belum pernah
+e-Faktur per customer, tidak punya profil NPWP yang terisi, dan belum pernah
 mencatat pembayaran.
 
 **Keputusan yang diusulkan:** sampai Fase C, penjualan ditagih di buku PT
@@ -247,19 +247,19 @@ pembukuan sungguhan, bukan dari tabel yang mencampur comp dengan penjualan.
 
 ### 3.5 Kepatuhan Indonesia menentukan rel pembayarannya
 
-Bentuk penagihan ditentukan oleh cara pelanggan korporat Indonesia membayar,
+Bentuk penagihan ditentukan oleh cara customer korporat Indonesia membayar,
 bukan oleh apa yang paling mudah dibangun. Urutan ini sering terbalik, dan
 membaliknya mahal.
 
 - Pembeli korporat membayar lewat PO → faktur → transfer, dengan termin. Kartu
   berulang tidak menjawab kebutuhan pembeli ini.
-- Bila langganan/jasa ini dipotong PPh 23 oleh pelanggan, uang yang masuk selalu
-  lebih kecil dari nominal tagihan, dan pelanggan akan meminta bukti potong.
+- Bila langganan/jasa ini dipotong PPh 23 oleh customer, uang yang masuk selalu
+  lebih kecil dari nominal tagihan, dan customer akan meminta bukti potong.
   Mesin langganan otomatis tidak mengenal pemotongan. Setiap tagihan akan
-  terbaca "kurang bayar", dan dunning akan menangguhkan pelanggan yang sudah
+  terbaca "kurang bayar", dan dunning akan menangguhkan customer yang sudah
   membayar penuh. **Ini perlu dikonfirmasi ke konsultan pajak (§9).** Bila
   jawabannya "ya", alasan ini saja cukup untuk menunda penagihan otomatis bagi
-  pelanggan berbadan hukum.
+  customer berbadan hukum.
 - PPN hanya boleh dipungut bila penyedia PKP. Enam tagihan yang sudah terbit
   memuat PPN 11% dan mendahului keputusan itu. Sakelarnya sudah ada di kode:
   `PLATFORM_PPN_DISABLED`, yang menurut komentarnya adalah *"mekanisme untuk
@@ -282,7 +282,7 @@ Enterprise ≥Rp 30 jt (lantai internal `PRICING.md` §2).
 Artinya jalur penawaran manual untuk Starter dan Pro akan merugi. Satu
 kesepakatan yang menuntut demo, pelingkupan migrasi, dan tindak lanjut memakan
 6–12 jam kerja. Pada Pro (margin kotor tahun pertama beberapa juta rupiah),
-ongkos itu menghabiskan marginnya sebelum pelanggan masuk bulan kedua.
+ongkos itu menghabiskan marginnya sebelum customer masuk bulan kedua.
 
 Karena itu rekomendasinya dibelah:
 
@@ -293,7 +293,7 @@ Karena itu rekomendasinya dibelah:
   menanggung tenaga manusia, dan jasa migrasi/pelatihan (Rp 1,5–3 juta sekali,
   `PRICING.md` §5) menambah pendapatan yang tidak bisa dipungut lewat swalayan.
 
-Satu penyimpangan dari patokan itu tetap dipilih: untuk sepuluh pelanggan
+Satu penyimpangan dari patokan itu tetap dipilih: untuk sepuluh customer
 berbayar pertama, semua jalur dijalankan manual, termasuk Starter/Pro. Tujuan
 fase itu adalah mempelajari harga dan keberatan pembeli, bukan efisiensi.
 Penyimpangan ini dibatasi waktu dan jumlah (§5).
@@ -303,19 +303,19 @@ Penyimpangan ini dibatasi waktu dan jumlah (§5).
 Risiko Fase A–B: selama belum ada yang membayar lewat sistem, tidak ada yang
 tahu bagian mana dari mesin penagihan yang rusak. Bug seperti harga tahunan yang
 tidak dipotret ulang (§11) hanya muncul saat uang sungguhan lewat. Mitigasinya:
-pelanggan berbayar pertama sengaja ditagih lewat sistem (satu tenant, mode
+customer berbayar pertama sengaja ditagih lewat sistem (satu tenant, mode
 `otomatis`, diawasi), tidak semuanya dialihkan ke manual sampai Fase C.
 
 ### 4.3 Harga publik yang dipajang sebelum tervalidasi
 
-Tangga harga sudah dipajang di `/pricing` sebelum ada pelanggan berbayar
+Tangga harga sudah dipajang di `/pricing` sebelum ada customer berbayar
 (#404/#413, sudah di produksi). Praktik umum menerima ini karena harga publik
 membangun kepercayaan dan menyaring pembeli. Syaratnya, angka itu tidak
 dibekukan sebagai komitmen, dan syarat ini belum dipenuhi. Selama belum ada
 pembayaran, angka di `/pricing` adalah hipotesis. `PRICING.md` §4 sudah
-menyediakan jalur mengubahnya tanpa menyentuh pelanggan berjalan (snapshot).
+menyediakan jalur mengubahnya tanpa menyentuh customer berjalan (snapshot).
 Yang perlu ditambahkan adalah kebijakan kenaikan saat perpanjangan (§6.3).
-Tanpa kebijakan itu, snapshot yang melindungi pelanggan lama juga membuat
+Tanpa kebijakan itu, snapshot yang melindungi customer lama juga membuat
 harganya tidak pernah bisa naik.
 
 ---
@@ -341,7 +341,7 @@ bisa menerima tagihan.
 
 ### Fase B — jual dengan penawaran *(fase utama; 6–12 bulan)*
 
-Sasaran: 3–5 pelanggan berbayar nyata, dan satu bentuk penawaran yang terbukti
+Sasaran: 3–5 customer berbayar nyata, dan satu bentuk penawaran yang terbukti
 berulang.
 
 - Jalur ≥4 PT: penawaran → kontrak → faktur di buku PT sendiri (§3.4) →
@@ -350,14 +350,14 @@ berulang.
 - Jalur 1–3 PT: tetap dijual manual, dengan harga yang dipajang apa adanya.
   Diskon hanya dengan alasan tertulis (§6.4), karena di jalur ini data harga
   dikumpulkan.
-- Satu pelanggan dijalankan di mode `otomatis` dengan pengawasan (§4.2).
+- Satu customer dijalankan di mode `otomatis` dengan pengawasan (§4.2).
 - Yang perlu dibangun sekecil mungkin: satu dokumen penawaran (lingkup, kuota,
   harga, masa kontrak, syarat bayar) dan satu tombol konsol "aktifkan sesuai
   penawaran". Tidak perlu CPQ, gate pembayaran, atau dunning.
 
 **Keluar dari Fase B (= gate Fase C) bila semua terpenuhi:**
 
-1. ≥10 pelanggan berbayar, ≥3 di antaranya datang tanpa demo yang memakan waktu
+1. ≥10 customer berbayar, ≥3 di antaranya datang tanpa demo yang memakan waktu
    penjual;
 2. ≥3 siklus perpanjangan berhasil ditagih dan tertagih (bukan comp);
 3. status PKP dan perlakuan PPh 23 sudah dijawab konsultan pajak (§9);
@@ -371,15 +371,15 @@ berulang.
 
 - **Penagihan perpanjangan harus dibangun lebih dulu.** Fitur ini belum ada:
   scheduler hanya menerbitkan tagihan pertama (saat uji coba habis) dan tidak
-  pernah menagih periode berikutnya (§11). Tanpa itu, pelanggan swalayan
+  pernah menagih periode berikutnya (§11). Tanpa itu, customer swalayan
   membayar sekali lalu memakai produk tanpa bayar seterusnya, dan hal itu baru
   ketahuan saat pendapatan dijumlahkan.
 - Checkout swalayan mengambil metode pembayaran di muka; uji coba tanpa kartu
   berakhir dengan beku, tidak dengan tagihan (§1.2).
 - Dunning dan auto-suspend dinyalakan hanya untuk mode `auto`.
 - Business/Enterprise tetap di jalur penawaran (§4.1).
-- Pemicunya: pelanggan kecil baru per bulan melebihi kapasitas kerja manual,
-  dalam praktik sekitar 20–30 pelanggan berbayar. Di bawah itu, otomasi
+- Pemicunya: customer kecil baru per bulan melebihi kapasitas kerja manual,
+  dalam praktik sekitar 20–30 customer berbayar. Di bawah itu, otomasi
   penagihan lebih banyak menimbulkan insiden daripada menghemat waktu; dokumen
   ini mencatat dua contohnya.
 
@@ -403,10 +403,10 @@ dibayar.
 
 ### 6.3 Kebijakan kenaikan saat perpanjangan (**belum ada — perlu diputuskan**)
 
-Snapshot harga (`subscriptions.price`) melindungi pelanggan lama dari perubahan
-katalog. Tanpa kebijakan perpanjangan, snapshot itu juga membuat harga pelanggan
+Snapshot harga (`subscriptions.price`) melindungi customer lama dari perubahan
+katalog. Tanpa kebijakan perpanjangan, snapshot itu juga membuat harga customer
 pertama tidak pernah bisa naik. Usulan: harga dikunci selama masa kontrak;
-perpanjangan memakai katalog berjalan dengan pemberitahuan ≥60 hari; pelanggan
+perpanjangan memakai katalog berjalan dengan pemberitahuan ≥60 hari; customer
 Fase A–B mendapat satu periode perpanjangan di harga lama sebagai imbalan atas
 risiko sebagai pengguna awal.
 
@@ -469,9 +469,9 @@ Tiga aturan yang membentuk setiap angkanya:
 
 Dua metrik yang tidak dihitung, beserta sebabnya:
 
-- **Waktu ke nilai pertama** menuntut membuka buku pelanggan, dan
+- **Waktu ke nilai pertama** menuntut membuka buku customer, dan
   `apps/operator/src/lib/operator/store.ts` melarangnya ("konsol melihat METADATA
-  langganan, bukan pembukuan pelanggan"). Melanggar larangan itu demi angka
+  langganan, bukan pembukuan customer"). Melanggar larangan itu demi angka
   dasbor tidak sepadan; ia butuh keputusan tersendiri.
 - **Konversi per kohort** menuntut riwayat peristiwa langganan. Tabelnya ada
   sejak 17 Okt 2026 (`sai_platform.subscription_events`, migration platform
@@ -486,10 +486,10 @@ Yang perlu didefinisikan sebelum rupiah pertama:
 
 | Metrik | Definisi yang diusulkan | Kenapa |
 | --- | --- | --- |
-| Pelanggan berbayar ✅ | tenant dengan ≥1 pembayaran `paid` (comp tak punya baris pembayaran) | memisahkan penjualan dari hadiah |
+| Customer berbayar ✅ | tenant dengan ≥1 pembayaran `paid` (comp tak punya baris pembayaran) | memisahkan penjualan dari hadiah |
 | MRR/ARR ✅ | jumlah ekuivalen-bulanan langganan bermode `manual`+`auto` yang belum `cancelled` (tahunan ÷ 12) | satu angka yang boleh disebut ke luar |
 | Konversi uji coba → berbayar ⚠ | **sejak awal**, bukan per kohort (riwayat peristiwa baru tercatat sejak 17 Okt 2026) | mengukur §1.2, bukan menebaknya |
-| Waktu ke nilai pertama ⛔ | **tidak dihitung** — menuntut membuka buku pelanggan | menentukan panjang uji coba |
+| Waktu ke nilai pertama ⛔ | **tidak dihitung** — menuntut membuka buku customer | menentukan panjang uji coba |
 | Tagihan menggantung ✅ | jumlah + nominal + umur TERTUA sejak jatuh tempo (bukan rata-rata: di bawah sepuluh tagihan, rata-rata disetir satu pencilan) | Fase B dijalankan manusia; ini bebannya |
 | Ekspansi per grup ⚠ | jumlah PT & pengguna ADA di ringkasan, tetapi tanpa dimensi waktu; perpindahan PAKET kini tercatat (`subscription_events.kind = 'plan'`) sejak 17 Okt 2026 | jalur pertumbuhan utama (§2) |
 
@@ -516,9 +516,9 @@ pertama:
    buku PT itu di aplikasi ini (§3.4).
 5. **Dokumen komersial**: syarat berlangganan, SLA (Business menjanjikan
    "dukungan prioritas", `PRICING.md` §2), kebijakan refund dan pembatalan,
-   pemrosesan data pelanggan. `/terms` dan `/privacy` sudah ada sebagai halaman;
+   pemrosesan data customer. `/terms` dan `/privacy` sudah ada sebagai halaman;
    isinya perlu ditinjau terhadap janji komersial yang dipajang.
-6. **Penangguhan sebagai tindakan komersial**: menjadikan buku pelanggan
+6. **Penangguhan sebagai tindakan komersial**: menjadikan buku customer
    hanya-baca karena tunggakan harus punya dasar di syarat berlangganan, beserta
    masa tenggangnya (kode memakai 14 hari).
 
@@ -567,7 +567,7 @@ pertama:
 
 ## 12. Yang membuat dokumen ini kedaluwarsa
 
-Tinjau ulang bila salah satu terjadi: pelanggan berbayar pertama masuk; jawaban
-konsultan pajak turun; gate pembayaran dinyalakan; jumlah pelanggan berbayar
+Tinjau ulang bila salah satu terjadi: customer berbayar pertama masuk; jawaban
+konsultan pajak turun; gate pembayaran dinyalakan; jumlah customer berbayar
 melewati 10, lalu 30; atau harga katalog berubah. Angka di §1 adalah snapshot
 10 Oktober 2026 dan akan berubah begitu Fase A dijalankan.

@@ -92,8 +92,8 @@ model Tenant {
   users            User[]
   memberships      TenantMembership[]
   deletionRequests TenantDeletionRequest[]
-  invitations Invitation[]
-  mailSetting TenantMailSetting?
+  invitations      Invitation[]
+  mailSetting      TenantMailSetting?
 
   @@index([status])
   @@map("tenants")
@@ -537,8 +537,8 @@ model ApiToken {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([companyId])
   @@index([revokedAt])
@@ -591,7 +591,7 @@ model Notification {
   readAt DateTime? @map("read_at")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([userId, kind, dedupeKey])
   @@index([userId, readAt])
@@ -818,4 +818,134 @@ model OperatorAccount {
 
   @@index([isActive])
   @@map("operator_accounts")
+}
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// JEJAK PUTARAN — penjadwal, kesesuaian data, cadangan
+///
+/// ══ KENAPA DI KENDALI, BUKAN `sai_platform` ════════════════════════════════
+/// Ketiga tabel ini dulu tinggal di platform karena layar pembacanya konsol
+/// operator. Itu keliru, dan keliru dengan cara yang baru terlihat pada profil
+/// on-premise: `sai_platform` TIDAK DIPASANG di sana, sementara penjadwal,
+/// pemeriksa kesesuaian, dan cadangan tetap BERJALAN. Akibatnya `/api/health`
+/// tidak bisa menjawab "apakah cadangan semalam berhasil" — tepat pada
+/// pemasangan yang customer-nya sendiri memegang cadangan itu, dan tepat pada
+/// pertanyaan yang paling mahal untuk tidak terjawab.
+///
+/// Garis doktrin #137 bukan "siapa yang melihat layarnya", melainkan **apakah
+/// penagihan yang mati boleh mematikannya**. Jejak putaran menggambarkan
+/// operasi yang terjadi di KEDUA profil; penagihan tidak. Alasan yang sama
+/// menempatkan `OperatorAccount` di sini.
+///
+/// Dua akibat lain yang ikut benar: tabel `jobs` (rancangan §4) akan tinggal di
+/// kendali juga, jadi "pekerjaan" dan "jejak pekerjaan" berada di satu basis
+/// data yang sama dan ikut satu cadangan yang sama — dan `prune-run-trails`
+/// tidak lagi menuntut basis data penagihan hidup untuk memangkas jejak.
+///
+/// ⚠ Ketiganya TANPA relasi ke model lain, dan itu disengaja: jejak putaran
+/// adalah catatan operasional yang harus tetap bisa dibaca ketika yang
+/// dirujuknya sudah dihapus.
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// Satu baris per putaran penjadwal (#140).
+model SchedulerRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | error — `error` = ada butir yang menuntut tindakan orang
+  /// (rinciannya di `details.errors`). String + union TS, konvensi
+  /// docs/DATABASE.md.
+  status String @db.VarChar(10)
+
+  invoicesIssued Int @default(0) @map("invoices_issued")
+  remindersSent  Int @default(0) @map("reminders_sent")
+  statusChanges  Int @default(0) @map("status_changes")
+  adoptions      Int @default(0)
+  errorCount     Int @default(0) @map("error_count")
+
+  /// JSON `{issued, reminders, transitions, adoptions, errors}` — masing-masing
+  /// daftar string BARIS LAPORAN (bukan struktur yang di-query), persis kalimat
+  /// yang dulu hanya tercetak di stdout. Dibiarkan Text: isi lama tidak perlu
+  /// bermigrasi saat bentuk barisnya berubah.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startedAt])
+  @@map("scheduler_runs")
+}
+
+/// Satu baris per sapuan kesesuaian data (#374).
+model ConformanceRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | findings | error — TIGA nilai, dan bedanya menentukan:
+  /// `ok` = berjalan & bersih; `findings` = berjalan & menemukan sesuatu (bukan
+  /// kegagalan layanan); `error` = ada buku yang GAGAL diperiksa, dan buku yang
+  /// tidak terperiksa bukan buku yang bersih. Konvensi String + union TS.
+  status String @db.VarChar(12)
+
+  /// Berapa buku disapu, dan berapa yang gagal diperiksa. Yang pertama membuat
+  /// "apakah sapuannya melewatkan buku baru?" bisa dijawab tanpa menebak.
+  companiesChecked Int @default(0) @map("companies_checked")
+  companiesFailed  Int @default(0) @map("companies_failed")
+
+  /// Total baris temuan di seluruh buku. Nol = bersih.
+  findingCount Int @default(0) @map("finding_count")
+
+  /// JSON `{findings, failures}` — daftar baris laporan, persis kalimat yang
+  /// dulu hanya tercetak ke stdout. Text: isi lama tidak perlu bermigrasi saat
+  /// bentuk barisnya berubah (alasan yang sama dengan `SchedulerRun.details`).
+  ///
+  /// Memuat LABEL temuan, bukan nilai uang dan bukan baris datanya.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("conformance_runs")
+}
+
+/// Satu baris per putaran cadangan (#374).
+model BackupRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | local | error — konvensi String + union TS, lihat docs/DATABASE.md.
+  ///
+  /// `local` (12 Okt 2026): artefak terenkripsi DIBUAT tapi tetap di mesin ini,
+  /// sebab `BACKUP_S3_BUCKET` belum disetel. Sengaja BUKAN `ok` — `backupHealth`
+  /// mencari keberhasilan dengan `where: { status: "ok" }`, jadi nilai terpisah
+  /// inilah yang mencegah salinan lokal mengisi `lastSuccessAt`.
+  status String @db.VarChar(10)
+
+  /// Sebab kegagalan, apa adanya dari `backup.sh`. Null saat berhasil.
+  ///
+  /// TIDAK memuat kredensial: yang ditulis skripnya adalah kalimat sebab
+  /// ("BACKUP_ENCRYPTION_KEY belum diset"), bukan nilainya.
+  error String? @db.Text
+
+  /// Nama objek yang dikirim, saat berhasil. Bukti yang bisa dicari kembali.
+  artifact String? @db.VarChar(255)
+
+  /// Ukuran terkirim dalam byte. Cadangan yang "berhasil" tapi 0 byte adalah
+  /// kegagalan yang paling meyakinkan bentuknya.
+  sizeBytes BigInt? @map("size_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("backup_runs")
 }

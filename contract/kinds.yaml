@@ -1,0 +1,141 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KONTRAK PEKERJAAN — satu sumber untuk kedua bahasa (rancangan §3.5)
+#
+# Berkas ini DIBACA, tidak pernah disalin. Dari sini dibangkitkan:
+#   • TypeScript → packages/core/src/generated/job-kinds.ts  (bun run contract:gen)
+#   • Go         → services/integrator/internal/contract/     (menyusul, tahap 1b)
+#
+# ══ KENAPA DIBANGKITKAN, BUKAN DITULIS DUA KALI ════════════════════════════
+# Dua daftar tulis tangan menyimpang TANPA GALAT, dan bentuk penyimpangannya
+# sudah bisa diramalkan sekarang:
+#
+#   • `kind` yang hanya dikenal penerbit (Node) tapi tidak satu pun jalur
+#     mengklaimnya → baris `queued` yang menumpuk SELAMANYA. Tidak ada galat,
+#     tidak ada pekerja yang mengeluh; hanya antrean yang tumbuh dan metrik
+#     umur-tertua yang perlahan memerah berbulan-bulan kemudian.
+#   • `kind` yang dikenal pekerja tapi tidak pernah diterbitkan → kode mati yang
+#     terlihat hidup.
+#
+# ══ MENAMBAH `kind` ════════════════════════════════════════════════════════
+#   1. tambahkan di `kinds:` di bawah, dengan `lane` dan `max_attempts`;
+#   2. `bun run contract:gen`;
+#   3. commit berkas bangkitannya bersama perubahan ini — penjaga
+#      `tests/contract-jobs.test.ts` menolak keduanya kalau tidak sinkron.
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ── Status pekerjaan ───────────────────────────────────────────────────────
+# Urutannya bermakna: `queued` → `claimed` → `done` | `failed` → `dead`.
+# `failed` BUKAN akhir — ia menunggu percobaan berikutnya. `dead` yang akhir.
+statuses:
+  - queued
+  - claimed
+  - done
+  - failed
+  - dead
+
+# ── Jalur ──────────────────────────────────────────────────────────────────
+# Setiap jalur satu PROSES tersendiri; `kinds` di bawah menunjuk salah satunya.
+# `single_instance: true` berarti lebih dari satu proses jalur itu salah —
+# penerbit ganda menerbitkan dua kali, dan migration ganda bertabrakan.
+lanes:
+  interactive:
+    description: ekspor & dokumen yang ditunggu pengguna di layar
+    single_instance: false
+  bulk:
+    description: impor besar, paket laporan, surel borongan
+    single_instance: false
+  schedule:
+    description: denyut penerbitan tiap jam — hanya MENERBITKAN, tidak melaksanakan
+    single_instance: true
+  tenant:
+    description: cadangan & kesesuaian data per perusahaan; satu-satunya yang memegang rahasia
+    single_instance: true
+  schema:
+    description: migration setiap perusahaan; dijalankan sekali saat rilis
+    single_instance: true
+  ledger:
+    description: pekerjaan yang MENULIS buku besar — pintu posting tunggal (I-2)
+    single_instance: true
+  integration:
+    description: integrasi luar (e-faktur, feed bank); tidak menyentuh pembukuan
+    single_instance: false
+
+# ── Jenis pekerjaan ────────────────────────────────────────────────────────
+# `writes_ledger: true` HANYA boleh pada jalur `ledger`. Penjaga menegakkannya:
+# pintu posting wajib tunggal, dan ia TypeScript (rancangan §3.3).
+kinds:
+  report.export:
+    lane: interactive
+    max_attempts: 3
+    description: satu laporan menjadi berkas yang diunduh pengguna
+
+  document.generate:
+    lane: interactive
+    max_attempts: 3
+    description: satu dokumen (faktur, surat jalan, kontrak) menjadi PDF
+
+  report.package:
+    lane: bulk
+    max_attempts: 3
+    description: paket laporan satu periode
+
+  import.process:
+    lane: bulk
+    max_attempts: 1
+    description: >
+      impor berkas besar. `max_attempts: 1` DISENGAJA — impor yang diulang
+      otomatis setelah gagal separuh jalan adalah cara tercepat menggandakan
+      data master. Pengguna yang mengulang melihat apa yang sudah masuk.
+
+  mail.batch:
+    lane: bulk
+    max_attempts: 3
+    description: surel borongan (pengingat, pemberitahuan)
+
+  tenant.backup:
+    lane: tenant
+    max_attempts: 2
+    description: cadangan per perusahaan, tersandi sebelum meninggalkan mesin
+
+  tenant.conformance:
+    lane: tenant
+    max_attempts: 2
+    description: sapuan kesesuaian data satu perusahaan
+
+  schema.migrate:
+    lane: schema
+    max_attempts: 1
+    description: >
+      migration satu perusahaan. `max_attempts: 1` — migration yang gagal
+      separuh jalan menuntut mata manusia, bukan percobaan kedua yang otomatis.
+
+  schedule.tick:
+    lane: schedule
+    max_attempts: 1
+    description: >
+      denyut penerbitan. `max_attempts: 1` karena putaran berikutnya datang
+      sejam kemudian dan menyusul sendiri — rekonsiliasi, bukan pengulangan.
+
+  ledger.recurring:
+    lane: ledger
+    max_attempts: 3
+    writes_ledger: true
+    description: dokumen berulang yang MEMPOSTING lewat pintu posting
+
+  ledger.dunning:
+    lane: ledger
+    max_attempts: 3
+    writes_ledger: true
+    description: dunning yang membuat catatan di buku
+
+  integration.efaktur:
+    lane: integration
+    max_attempts: 5
+    description: berkas e-faktur ke sistem pajak
+
+  integration.bank_feed:
+    lane: integration
+    max_attempts: 5
+    description: tarik mutasi bank

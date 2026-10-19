@@ -60,13 +60,46 @@ describe("hanya KENDALI yang boleh menjatuhkan probe", () => {
     expect(route).toMatch(/status: "error", database: "unreachable" \}, \{ status: 503 \}/);
   });
 
-  it("tidak ada 503 kedua di berkas ini", () => {
+  it("hanya hal INTRINSIK container ini yang boleh 503", () => {
     /*
-     * Inti doktrin #137, dan cara termudah melanggarnya adalah menambahkan satu
-     * `503` lagi untuk platform atau PT — yang mengubah kegagalan penagihan
-     * (atau kegagalan SATU pelanggan) menjadi pemadaman bagi semua.
+     * ══ ATURANNYA DIPERTAJAM, BUKAN DILONGGARKAN ══════════════════════════
+     * Sampai gerbang skema ada (rancangan §3.2), tes ini menuntut TEPAT SATU
+     * `503` di berkas ini. Angka itu adalah pendekatan dari aturan yang
+     * sebenarnya, dan pendekatannya berhenti cukup begitu ada sebab kedua yang
+     * SAH.
+     *
+     * Aturan yang sebenarnya: probe boleh jatuh hanya karena keadaan yang
+     * intrinsik pada container INI — bukan karena bidang lain yang kebetulan
+     * dibacanya. Dua keadaan memenuhinya:
+     *
+     *   • kendali tak terjangkau → container ini tidak bisa melayani apa pun;
+     *   • skema tidak sepadan dengan image → container ini TIDAK BOLEH melayani,
+     *     sebab ia akan menulis kolom yang belum ada.
+     *
+     * Yang tetap dilarang mutlak — dan itulah inti doktrin #137 — adalah 503
+     * yang lahir dari bidang HILIR: penagihan, satu PT, cadangan, penjadwal,
+     * surel. Kegagalan di sana tidak boleh menjadi pemadaman bagi semua, dan
+     * tes di bawah ini yang menjaganya.
      */
-    expect(route.match(/status: 503/g) ?? []).toHaveLength(1);
+    const sebab = [...route.matchAll(/status: 503/g)];
+    expect(sebab).toHaveLength(2);
+    expect(route).toMatch(/"schema" in report/);
+  });
+
+  it("TIDAK ADA 503 yang lahir dari bidang hilir", () => {
+    const g = route.slice(route.indexOf("export async function GET()"));
+    for (const hilir of [
+      "platform",
+      "company",
+      "backup",
+      "scheduler",
+      "conformance",
+      "mail",
+    ]) {
+      expect(g, `503 dari bidang hilir: ${hilir}`).not.toMatch(
+        new RegExp(`${hilir}[\\s\\S]{0,120}status: 503`)
+      );
+    }
   });
 
   it("platform yang gagal menjawab `unknown`, bukan melempar", () => {

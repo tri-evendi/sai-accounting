@@ -206,12 +206,20 @@ describe("/api/health menyebut penjadwal tanpa ikut memutuskan (#373 · doktrin 
     expect(code).toContain("schedulerHealth");
   });
 
-  it("HANYA basis data kendali yang bisa membuatnya 503", () => {
-    // Penagihan mati ≠ aplikasi mati. Kalau probe ini gagal karena penjadwal
-    // telat, Traefik berhenti mengirim lalu lintas ke container yang masih
-    // melayani setiap pembukuan pelanggan dengan sempurna.
+  it("penjadwal yang telat TIDAK PERNAH bisa membuatnya 503", () => {
+    /* Penagihan mati ≠ aplikasi mati. Kalau probe ini gagal karena penjadwal
+       telat, Traefik berhenti mengirim lalu lintas ke container yang masih
+       melayani setiap pembukuan pelanggan dengan sempurna.
+
+       Sejak gerbang skema ada (§3.2) jumlah 503-nya DUA — kendali tak
+       terjangkau dan skema tidak sepadan — dan keduanya intrinsik pada
+       container ini. Yang dijaga di sini bukan jumlahnya melainkan bahwa tidak
+       satu pun di antaranya lahir dari denyut penjadwal. */
     const failures = [...route.matchAll(/status:\s*503/g)];
-    expect(failures).toHaveLength(1);
+    expect(failures).toHaveLength(2);
+    const g = route.slice(route.indexOf("export async function GET()"));
+    expect(g).not.toContain("scheduler");
+    expect(g).not.toContain("schedulerHealth");
 
     // Yang diperiksa adalah GERBANGNYA — bagian `healthReport()` yang berjalan
     // sebelum keputusan "belum siap" diambil. `platformDb` memang diimpor di

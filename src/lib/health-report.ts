@@ -25,6 +25,7 @@ import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
 import { billingPlaneInstalled } from "@sai/core/deploy-profile";
+import { schemaGateVerdict, type SchemaGateVerdict } from "@sai/platform/schema-gate";
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
@@ -89,6 +90,14 @@ export type PublicBackupHealth = Omit<BackupHealth, "lastError">;
  */
 export type HealthReport =
   | { status: "error"; database: "unreachable" }
+  /**
+   * Skema yang tidak sepadan dengan image ini (rancangan §3.2). Bentuknya
+   * TERPISAH, bukan bidang bernilai buruk — alasannya sama dengan
+   * `database: "unreachable"` di atas: ia satu-satunya keadaan lain yang berarti
+   * "jangan kirim lalu lintas ke sini", dan membedakannya di TIPE membuat
+   * pemanggil mustahil lupa menanganinya.
+   */
+  | { status: "error"; schema: SchemaGateVerdict }
   | {
       status: "ok";
       control: { status: "ok" };
@@ -317,6 +326,22 @@ export async function healthReport(): Promise<HealthReport> {
   } catch {
     return { status: "error", database: "unreachable" };
   }
+
+  /*
+   * ══ GERBANG SKEMA (§3.2) ══════════════════════════════════════════════════
+   * Diperiksa SETELAH kendali terbukti terjangkau — urutannya penting: basis
+   * data yang sedang restart akan menghasilkan vonis "tak terbaca" yang tidak
+   * berarti apa-apa, dan melaporkannya sebagai skema tertinggal akan membuat
+   * setiap deploy gagal berdasarkan perlombaan waktu.
+   *
+   * Ini yang menggantikan `service_completed_successfully` pada container
+   * `migrate`: begitu pekerjaan latar menjadi layanan yang berjalan terus, tidak
+   * ada lagi apa pun yang "selesai" untuk ditunggu. Hanya arah TERTINGGAL dan
+   * MENGGANTUNG yang memblokir; skema yang mendahului image tetap dilayani,
+   * sebab itu keadaan rollback yang disengaja.
+   */
+  const gate = await schemaGateVerdict();
+  if (!gate.serve) return { status: "error", schema: gate };
 
   const [
     schedulerStatus,

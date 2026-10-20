@@ -37,11 +37,34 @@ function mayorServer(): number | null {
   return m ? Number(m[1]) : null;
 }
 
-/** Versi mayor klien dari `postgresql-client-<mayor>` di Dockerfile. */
-function mayorKlien(): number | null {
-  const m = /postgresql-client-(\d+)/.exec(dockerfile);
-  return m ? Number(m[1]) : null;
+/**
+ * SETIAP versi mayor klien yang disebut Dockerfile.
+ *
+ * Jamak, bukan tunggal, dan itu perbaikan yang dituntut tahap 1b: sejak jalur
+ * `tenant` punya image Go-nya sendiri, `postgresql-client-<n>` muncul DUA kali
+ * di berkas ini — dan pemeriksa yang membaca kecocokan PERTAMA akan meluluskan
+ * image kedua yang kliennya lebih tua. Di situlah dump sungguhan dijalankan
+ * sejak tahap 1b, jadi justru itu yang paling tidak boleh lolos (rancangan
+ * §3.5: "tes versi klien `pg` ikut menunjuk image Go, karena di situlah dump
+ * dijalankan").
+ */
+function mayorKlien(): number[] {
+  return [...perintah.matchAll(/postgresql-client-(\d+)/g)].map((m) => Number(m[1]));
 }
+
+/**
+ * Dockerfile TANPA baris komentarnya.
+ *
+ * Dibutuhkan karena berkas itu MENJELASKAN bahaya versi klien dalam prosa —
+ * tiga kali, dengan menyebut `postgresql-client` tanpa nomor — dan pemeriksa
+ * yang membaca seluruh teks akan menuding penjelasan itu sebagai pelanggaran.
+ * Penjaga yang menolak komentar memaksa alasannya dihapus dari tempat ia paling
+ * berguna; yang diperiksa PERINTAHNYA.
+ */
+const perintah = dockerfile
+  .split("\n")
+  .filter((b) => !b.trimStart().startsWith("#"))
+  .join("\n");
 
 describe("versi klien PostgreSQL vs servernya", () => {
   it("compose menyebut versi mayor server secara eksplisit", () => {
@@ -53,21 +76,45 @@ describe("versi klien PostgreSQL vs servernya", () => {
 
   it("Dockerfile memasang klien yang DIPATOK versinya", () => {
     expect(
-      mayorKlien(),
+      mayorKlien().length,
       "`postgresql-client` tanpa nomor versi mengambil versi Debian (15 di " +
         "bookworm), yang akan MENOLAK server 17. Pakai `postgresql-client-<n>`."
-    ).not.toBeNull();
+    ).toBeGreaterThan(0);
+    /* Tanpa nomor versi sama sekali: tangkap bentuk `postgresql-client ` dan
+       `postgresql-client\n`, yang akan lolos dari pemeriksaan di atas selama
+       ADA satu penyebutan lain yang bernomor. */
+    expect(
+      /postgresql-client(?![-\w])/.test(perintah),
+      "ada `postgresql-client` tanpa nomor versi di Dockerfile"
+    ).toBe(false);
   });
 
-  it("klien TIDAK lebih tua dari server", () => {
+  it("SETIAP klien yang dipasang TIDAK lebih tua dari server", () => {
     const server = mayorServer()!;
-    const klien = mayorKlien()!;
-    expect(
-      klien,
-      `klien PostgreSQL ${klien} < server ${server}. \`pg_dump\` akan menolak ` +
-        `dengan "aborting because of server version mismatch" — pada cadangan ` +
-        `PERTAMA sesudah penukaran. Naikkan \`postgresql-client-${server}\` di Dockerfile.`
-    ).toBeGreaterThanOrEqual(server);
+    const semua = mayorKlien();
+    expect(semua.length, "tidak ada klien bernomor di Dockerfile").toBeGreaterThan(0);
+    for (const klien of semua) {
+      expect(
+        klien,
+        `klien PostgreSQL ${klien} < server ${server}. \`pg_dump\` akan menolak ` +
+          `dengan "aborting because of server version mismatch" — pada cadangan ` +
+          `PERTAMA sesudah penukaran. Naikkan \`postgresql-client-${server}\` di Dockerfile.`
+      ).toBeGreaterThanOrEqual(server);
+    }
+  });
+
+  it("image jalur `tenant` punya kliennya sendiri", () => {
+    /* Sejak tahap 1b, dump SUNGGUHAN dijalankan image `integrator` — bukan
+       image `backup`. Image tanpa `pg_dump` akan gagal pada pekerjaan
+       `tenant.backup` PERTAMA, dengan "executable file not found". */
+    const i = dockerfile.indexOf("AS integrator");
+    expect(i, "tahap `integrator` tidak ada di Dockerfile").toBeGreaterThan(-1);
+    const tahap = dockerfile.slice(i);
+    expect(tahap).toMatch(/postgresql-client-\d+/);
+    /* Dan sertifikat TLS untuk unggahan S3: tanpanya galatnya "x509:
+       certificate signed by unknown authority", yang terbaca seperti
+       kredensial salah. */
+    expect(tahap).toMatch(/ca-certificates/);
   });
 
   it("klien diambil dari PGDG, bukan dari repo Debian", () => {

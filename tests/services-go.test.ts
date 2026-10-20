@@ -138,14 +138,46 @@ describe("invarian I-2: pintu posting tunggal, dan ia TypeScript", () => {
     }
   });
 
-  it("satu-satunya tabel yang ditulis pohon Go adalah `jobs`", () => {
-    /* Lebih kuat daripada penjaga di atas, dan sengaja: daftar tabel buku hanya
-       memuat basis data PERUSAHAAN, jadi tulisan ke tabel `control` atau
-       `platform` mana pun akan lolos darinya. Penagihan (#137) dan pengguna
-       bukan milik integrator. */
+  /**
+   * Tabel yang BOLEH ditulis pohon Go — daftar-izin, dan sengaja sependek ini.
+   *
+   * Lebih kuat daripada penjaga tabel buku di atas: daftar itu hanya memuat
+   * basis data PERUSAHAAN, jadi tulisan ke tabel `control` atau `platform` mana
+   * pun akan lolos darinya. Penagihan (#137) dan pengguna bukan milik
+   * integrator.
+   *
+   * `backup_runs` masuk di tahap 1b, dan itu PENGECUALIAN YANG DISEBUT — bukan
+   * pelonggaran yang kebetulan lolos. Sebabnya I-3: layanan tidak saling
+   * memanggil. `scripts/backup.sh` menitipkan barisnya ke Node lewat `bun run
+   * record:backup`; jalur Go tidak punya jalan itu (tidak ada Node di
+   * image-nya, dan memanggil layanan lain justru yang dilarang). Yang tersisa
+   * dua pilihan: Go menulis barisnya sendiri, atau jejaknya hilang.
+   *
+   * Jejaknya tidak boleh hilang — ia yang menjawab `/api/health` → `backup`,
+   * dan tanpanya produksi bisa berjalan puluhan hari tanpa satu salinan
+   * sementara container terlihat "Up". Itu bukan hipotesis: produksi repo ini
+   * pernah berjalan 26 hari begitu (#374).
+   *
+   * Dan ia bukan tabel buku: nol angka akuntansi, dan menghapus seluruh isinya
+   * tidak mengubah satu laporan pun. Invarian I-2 tidak tersentuh.
+   *
+   * ⚠ MENAMBAH BARIS DI SINI ADALAH KEPUTUSAN. Setiap tambahan memperluas apa
+   * yang bisa ditulis bahasa yang bukan pemilik pintu posting, dan alasannya
+   * ditulis DI SINI — bukan di pesan commit yang tak akan dibaca orang
+   * berikutnya.
+   */
+  const BOLEH_DITULIS = ["backup_runs", "jobs"];
+
+  it("pohon Go hanya menulis tabel yang ada di daftar-izin", () => {
     const ditulis = new Set<string>();
     for (const b of GO) for (const t of tulisan(b.isi)) ditulis.add(t.tabel);
-    expect([...ditulis].sort()).toEqual(["jobs"]);
+    expect([...ditulis].sort()).toEqual(BOLEH_DITULIS);
+  });
+
+  it("tidak satu pun tabel di daftar-izin adalah tabel buku", () => {
+    /* Penjaga atas penjaga: daftar-izin yang suatu hari memuat `journals`
+       membatalkan invarian I-2 tanpa satu baris tes pun berubah warna. */
+    for (const t of BOLEH_DITULIS) expect(TABEL_BUKU, t).not.toContain(t);
   });
 
   it("pelari Go MENOLAK mengklaim kind penulis buku", () => {

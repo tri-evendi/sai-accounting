@@ -56,29 +56,61 @@ var ErrNoJob = errors.New("tidak ada pekerjaan yang menunggu")
 const kolomPulang = `id, kind, tenant_id, company_id, payload, status, attempts,
 	       max_attempts, cancel_requested, result_ref`
 
-// Claim mengambil satu pekerjaan untuk satu jalur.
+// Claim mengambil satu pekerjaan dari daftar `kind` yang DIKLAIM pekerja ini.
 //
 // Klausa `kind = ANY($1)` itulah yang membuat jalur terpisah: proses jalur
 // `tenant` tidak pernah melihat pekerjaan `interactive`, jadi satu cadangan
 // raksasa tidak pernah membuat pengguna yang menunggu unduhan ikut menunggu.
+//
+// ══ `kinds` DISERAHKAN PEMANGGIL, BUKAN DITURUNKAN DARI JALUR ══════════════
+//
+// Versi pertama berkas ini menurunkannya dari `KindsByLane[lane]`, dan itu
+// benar untuk keadaan akhir: satu jalur, satu proses. Tapi keadaan akhir itu
+// datang lewat tahap 1b–1d, dan selama transisi sebuah jalur bisa dilayani DUA
+// bahasa untuk `kind` yang berbeda — jalur `tenant` di tahap 1b adalah contoh
+// pertamanya: `tenant.backup` pindah ke Go, `tenant.conformance` tetap
+// TypeScript sebab dua dari sebelas pemeriksaannya MENGHITUNG angka akuntansi
+// dan §3.3 menahan Go di depan garis itu sampai ada pemicu terukur.
+//
+// Pelari yang mengklaim seluruh `kind` jalurnya akan mengklaim yang tidak bisa
+// ia kerjakan, lalu menggagalkannya sampai `max_attempts` habis. Yang menjaga
+// supaya ini tidak menjadi lubang: `kind` yang DITERBITKAN tanpa satu pengklaim
+// pun ditolak `tests/kind-punya-pengklaim.test.ts` — bukan ditemukan
+// berbulan-bulan kemudian lewat metrik umur-tertua yang perlahan memerah.
 //
 // ⚠ Pekerjaan ber-WritesLedger TIDAK pernah diklaim di sini, dan itu bukan
 // kebetulan konfigurasi: jalur `ledger` punya pelarinya sendiri di Node, dan
 // pintu posting wajib tunggal (I-2). Pemeriksaannya di bawah berdiri meskipun
 // kontraknya sudah menjamin hal yang sama — biaya satu perbandingan melawan
 // kelas kegagalan yang tidak menghasilkan galat.
-func (q *Queue) Claim(ctx context.Context, lane contract.JobLane, workerID string) (*Job, error) {
-	kinds, ada := contract.KindsByLane[lane]
-	if !ada || len(kinds) == 0 {
-		return nil, fmt.Errorf("jalur %q tidak punya kind di kontrak", lane)
+func (q *Queue) Claim(
+	ctx context.Context,
+	lane contract.JobLane,
+	kinds []contract.JobKind,
+	workerID string,
+) (*Job, error) {
+	if len(kinds) == 0 {
+		return nil, fmt.Errorf("pekerja jalur %q tidak mengklaim satu kind pun", lane)
+	}
+
+	milikJalur := map[contract.JobKind]bool{}
+	for _, k := range contract.KindsByLane[lane] {
+		milikJalur[k] = true
 	}
 
 	daftar := make([]string, 0, len(kinds))
 	for _, k := range kinds {
 		if contract.JobKinds[k].WritesLedger {
 			return nil, fmt.Errorf(
-				"jalur %q memuat kind %q yang MENULIS buku besar — pintu posting wajib "+
-					"tunggal dan ia TypeScript (invarian I-2)", lane, k)
+				"pekerja mengklaim kind %q yang MENULIS buku besar — pintu posting wajib "+
+					"tunggal dan ia TypeScript (invarian I-2)", k)
+		}
+		if !milikJalur[k] {
+			// Isolasi jalur TETAP jalur: pekerja jalur `tenant` yang mengklaim
+			// `report.export` membuat satu cadangan raksasa menahan unduhan yang
+			// ditunggu orang di layar — tepat yang §3.1 ada untuk mencegah.
+			return nil, fmt.Errorf(
+				"kind %q bukan milik jalur %q — isolasi jalur dilanggar", k, lane)
 		}
 		daftar = append(daftar, string(k))
 	}

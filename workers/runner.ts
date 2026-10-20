@@ -171,7 +171,16 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
   process.on("SIGTERM", () => minta("SIGTERM"));
   process.on("SIGINT", () => minta("SIGINT"));
 
-  console.log(`[${lane}] mulai sebagai ${me}`);
+  /* Hanya `kind` yang punya handler yang diklaim — lihat `claimJob`. Diurutkan
+     supaya log dan kueri bisa diulang. */
+  const kinds = (Object.keys(handlers) as JobKind[]).filter((k) => handlers[k]).sort();
+  if (kinds.length === 0) {
+    console.error(`[${lane}] tidak punya satu handler pun — keluar tanpa mengklaim apa pun.`);
+    await controlDb.$disconnect().catch(() => {});
+    return;
+  }
+
+  console.log(`[${lane}] mulai sebagai ${me} — mengklaim ${kinds.join(", ")}`);
 
   /* Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah
      sebuah crash harus memulangkan pekerjaan yang tertinggal sekarang, bukan
@@ -182,7 +191,7 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
   while (!berhenti) {
     let job: JobRow | null;
     try {
-      job = await claimJob(lane, me);
+      job = await claimJob(lane, me, kinds);
     } catch (e) {
       console.error(`[${lane}] gagal mengklaim:`, e);
       await tidur(IDLE_MS);

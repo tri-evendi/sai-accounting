@@ -92,15 +92,40 @@ export async function publishJob(input: PublishInput): Promise<{ id: number } | 
 }
 
 /**
- * Klaim satu pekerjaan untuk satu jalur. `null` = tidak ada yang menunggu.
+ * Klaim satu pekerjaan dari daftar `kind` yang DIKLAIM pekerja ini.
  *
- * Klausa `kind = ANY(...)` itulah yang membuat jalur terpisah: proses jalur
+ * Klausa `kind IN (...)` itulah yang membuat jalur terpisah: proses jalur
  * `bulk` tidak pernah melihat pekerjaan `interactive`, jadi satu impor raksasa
  * tidak pernah membuat pengguna yang menunggu unduhan ikut menunggu.
+ *
+ * ══ `kinds` DISERAHKAN PEMANGGIL, BUKAN DITURUNKAN DARI JALUR ══════════════
+ * Versi pertama menurunkannya dari `KINDS_BY_LANE[lane]`, dan itu benar untuk
+ * keadaan akhir: satu jalur, satu proses. Tapi keadaan akhir itu datang lewat
+ * tahap 1b–1d, dan selama transisi sebuah jalur bisa dilayani DUA bahasa untuk
+ * `kind` yang berbeda — jalur `tenant` di tahap 1b adalah contoh pertamanya.
+ *
+ * Pelari yang mengklaim seluruh `kind` jalurnya akan mengklaim yang tidak bisa
+ * ia kerjakan, lalu menggagalkannya sampai `max_attempts` habis. Yang menjaga
+ * supaya ini tidak menjadi lubang: `kind` yang DITERBITKAN tanpa satu pengklaim
+ * pun ditolak `tests/kind-punya-pengklaim.test.ts`.
+ *
+ * `kinds` yang kosong memulangkan `null` — bukan melempar: pelari tanpa handler
+ * memang tidak punya apa pun untuk diklaim, dan itu bukan galat basis data.
  */
-export async function claimJob(lane: JobLane, workerId: string): Promise<JobRow | null> {
-  const kinds = KINDS_BY_LANE[lane];
-  if (!kinds || kinds.length === 0) return null;
+export async function claimJob(
+  lane: JobLane,
+  workerId: string,
+  kinds: readonly JobKind[] = KINDS_BY_LANE[lane] ?? []
+): Promise<JobRow | null> {
+  if (kinds.length === 0) return null;
+  for (const kind of kinds) {
+    /* Isolasi jalur TETAP jalur: pekerja jalur `ledger` yang mengklaim
+       `report.export` membuat satu posting menahan unduhan yang ditunggu orang
+       di layar — tepat yang §3.1 ada untuk mencegah. */
+    if (!KINDS_BY_LANE[lane]?.includes(kind)) {
+      throw new Error(`kind \`${kind}\` bukan milik jalur \`${lane}\` — isolasi jalur dilanggar`);
+    }
+  }
 
   const rows = await controlDb.$queryRaw<JobRow[]>`
     UPDATE jobs SET status = 'claimed', claimed_at = now(), claimed_by = ${workerId},

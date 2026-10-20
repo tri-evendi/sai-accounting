@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sort"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -89,23 +90,28 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("jalur %q tidak ada di kontrak", r.Lane)
 	}
 
-	// Setiap kind jalur ini WAJIB punya handler, dan itu diperiksa SEBELUM satu
-	// pekerjaan pun diklaim.
+	// Pelari mengklaim HANYA `kind` yang punya handler, dan daftarnya dirakit di
+	// sini — bukan diturunkan dari jalurnya.
 	//
-	// Sisi Node memeriksanya per pekerjaan dan menandai barisnya gagal; di sini
-	// pemeriksaannya dipindah ke boot dengan sengaja. Pelari yang hidup tanpa
-	// handler akan mengklaim lalu menggagalkan setiap baris yang lewat sampai
-	// `max_attempts` habis — untuk `schema.migrate` yang `max_attempts: 1` itu
-	// berarti migration mati pada percobaan pertama, dan rilisnya terlihat
-	// seperti migration yang gagal, bukan seperti pelari yang salah dibangun.
-	for _, k := range contract.KindsByLane[r.Lane] {
-		if _, ok := r.Handlers[k]; !ok {
-			return fmt.Errorf(
-				"tidak ada handler untuk kind %q di jalur %q — kontrak dan pelari "+
-					"tidak sepakat; pelari ini menolak boot alih-alih mematikan baris "+
-					"yang lewat", k, r.Lane)
-		}
+	// Pelari yang mengklaim `kind` tanpa handler akan mengklaim lalu
+	// menggagalkan setiap baris yang lewat sampai `max_attempts` habis. Untuk
+	// `schema.migrate` yang `max_attempts: 1` itu berarti migration mati pada
+	// percobaan pertama, dan rilisnya terbaca seperti migration yang gagal —
+	// bukan seperti pelari yang salah dibangun.
+	//
+	// Sisi lain dari keputusan ini: `kind` yang tidak diklaim pelari mana pun
+	// menumpuk sebagai baris `queued` SELAMANYA. Yang menutupnya bukan pelari
+	// ini melainkan `tests/kind-punya-pengklaim.test.ts`, yang menolak `kind`
+	// yang DITERBITKAN tanpa pengklaim.
+	kinds := make([]contract.JobKind, 0, len(r.Handlers))
+	for k := range r.Handlers {
+		kinds = append(kinds, k)
 	}
+	if len(kinds) == 0 {
+		return fmt.Errorf("pelari jalur %q tidak punya satu handler pun", r.Lane)
+	}
+	// Urutan map Go acak; diurutkan supaya log dan kueri bisa diulang.
+	sort.Slice(kinds, func(i, j int) bool { return kinds[i] < kinds[j] })
 
 	me := WorkerID(r.Lane)
 
@@ -127,7 +133,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	berhenti, batalkanBerhenti := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer batalkanBerhenti()
 
-	r.logf("mulai sebagai %s", me)
+	r.logf("mulai sebagai %s — mengklaim %v", me, kinds)
 
 	// Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah
 	// sebuah crash harus memulangkan pekerjaan yang tertinggal sekarang, bukan
@@ -147,7 +153,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}()
 
 	for berhenti.Err() == nil {
-		job, err := r.Queue.Claim(ctx, r.Lane, me)
+		job, err := r.Queue.Claim(ctx, r.Lane, kinds, me)
 		if errors.Is(err, ErrNoJob) {
 			r.tidur(berhenti, contract.Idle)
 			continue

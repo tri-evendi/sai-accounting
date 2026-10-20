@@ -116,3 +116,40 @@ func Kendali(ctx context.Context, maxConns int32) (*pgxpool.Pool, error) {
 
 	return pgxpool.NewWithConfig(ctx, cfg)
 }
+
+// Sambungan adalah parameter yang dibutuhkan PROSES ANAK (`pg_dump`).
+//
+// Diambil dari konfigurasi pgx yang sudah terurai, bukan diurai ulang dari
+// teks: dua pengurai untuk satu URL berarti satu di antaranya akan salah pada
+// sandi yang memuat `@` atau `%` — dan dua skrip di repo ini pernah gagal
+// persis karena itu.
+type Sambungan struct {
+	Host     string
+	Port     int
+	User     string
+	Sandi    string
+	Database string
+}
+
+// SambunganKendali menguraikan CONTROL_DATABASE_URL menjadi parameternya.
+func SambunganKendali() (Sambungan, error) {
+	raw := os.Getenv("CONTROL_DATABASE_URL")
+	if raw == "" {
+		return Sambungan{}, errors.New("CONTROL_DATABASE_URL belum diset")
+	}
+	dsn, _, err := Bersih(raw)
+	if err != nil {
+		return Sambungan{}, fmt.Errorf("CONTROL_DATABASE_URL: %w", err)
+	}
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return Sambungan{}, fmt.Errorf("CONTROL_DATABASE_URL tidak bisa diurai: %w", err)
+	}
+	return Sambungan{
+		Host:     cfg.Host,
+		Port:     int(cfg.Port),
+		User:     cfg.User,
+		Sandi:    cfg.Password,
+		Database: cfg.Database,
+	}, nil
+}

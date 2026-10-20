@@ -62,14 +62,16 @@ func TestClaimMenolakJalurPenulisBuku(t *testing.T) {
 	// yang memposting.
 	// pool nil: tidak pernah terpakai, sebab pemeriksaan I-2 berdiri lebih dulu.
 	q := &Queue{}
-	if _, err := q.Claim(context.Background(), contract.LaneLedger, "uji"); err == nil {
+	if _, err := q.Claim(context.Background(), contract.LaneLedger,
+		contract.KindsByLane[contract.LaneLedger], "uji"); err == nil {
 		t.Fatal("Claim pada jalur ledger tidak menolak")
 	}
 }
 
 func TestClaimMenolakJalurTakDikenal(t *testing.T) {
 	q := &Queue{}
-	if _, err := q.Claim(context.Background(), contract.JobLane("tidak-ada"), "uji"); err == nil {
+	if _, err := q.Claim(context.Background(), contract.JobLane("tidak-ada"),
+		[]contract.JobKind{contract.KindTenantBackup}, "uji"); err == nil {
 		t.Fatal("Claim pada jalur tak dikenal tidak menolak")
 	}
 }

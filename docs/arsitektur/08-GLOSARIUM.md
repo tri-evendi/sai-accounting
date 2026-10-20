@@ -59,6 +59,8 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 | **Pintu posting** | `postForSource`. Wajib **TUNGGAL** (invarian I-2), dan ia TypeScript — kode Go tidak pernah mengklaim `kind` yang menulis buku |
 | **Daftar-izin tabel Go** | Dua nama: `jobs` dan `backup_runs`. Menambah baris di sana adalah **keputusan**, dan alasannya ditulis di tempat daftarnya |
 | **Putaran cadangan** | Satu direktori `<prefix>-<stempel>/` berisi satu objek `pg_dump -Fc` **per basis data** + peran tingkat server + berkas + manifest. Satu tenant bisa dipulihkan tanpa menyentuh yang lain |
+| **`started_at`** | Kapan percobaan INI mulai — disetel SEKALI pada klaim. BUKAN `claimed_at`, yang diperpanjang berkala sehingga selisihnya adalah jarak dari perpanjangan terakhir |
+| **Jumlah sampel** | Berapa pekerjaan yang menopang sebuah persentil. Ditampilkan BERSAMA persentilnya — p95 atas tiga pekerjaan adalah angka, bukan fakta |
 | **`result_ref`** | KUNCI objek hasil pekerjaan (`<kind>-<jobId>/<berkas>`), bukan tautan. **Memegang kuncinya bukan izin untuk membacanya**: unduhannya lewat rute aplikasi yang memeriksa izin SAAT MENGUNDUH, per `kind` dan per laporan |
 | **Ambang penyerahan** | `EXPORT_QUEUE_HANDOFF_ROWS`. Di bawahnya ekspor sinkron, di atasnya diserahkan ke antrean. BUKAN batas — plafon yang MENOLAK tetap `EXPORT_MAX_ROWS` |
 | **Manifest cadangan** | Satu-satunya objek putaran yang bisa dibaca **tanpa kunci**: nama basis data, peran, `companyId`, ukuran, sidik jari. Ia objek dan bukan hanya baris DB, sebab pada hari pemulihan basis data kendali bisa PERSIS yang hilang |
@@ -77,7 +79,7 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 
 ## 2. Strategi pengujian
 
-**325 berkas tes · 5.500 tes** dijalankan Vitest 3 lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
+**327 berkas tes · 5.543 tes** dijalankan Vitest 3 lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
 lewat `bun run go:test`. Keduanya gerbang tersendiri, dan yang satu hijau
 **tidak** membuktikan apa pun tentang yang lain.
 

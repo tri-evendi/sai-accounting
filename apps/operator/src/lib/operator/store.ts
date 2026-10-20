@@ -37,6 +37,7 @@ import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@o
  * `next build` (ditemukan saat penggelaran #151). */
 import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
 import { queueSnapshot } from "@sai/platform/job-queue";
+import { jobMetrics, type LaneMetrics } from "@sai/platform/job-metrics";
 import type { LaneQueueHealth } from "@sai/core/queue-health";
 import {
   mailSettingsView,
@@ -620,6 +621,29 @@ export async function queueSnapshotForOperator(
     return await deps.snapshot();
   } catch (error) {
     console.error("[operator-store] potret antrean tak terbaca:", error);
+    return null;
+  }
+}
+
+/**
+ * Metrik antrean (§11) — `null` bila tak terbaca, pola yang sama dengan potret.
+ *
+ * Bedanya menentukan di sini sama seperti di sana: tabel `jobs` yang belum
+ * dimigrasikan dan antrean yang memang tak punya kerja terlihat identik sebagai
+ * angka nol, dan yang pertama berarti pemasangan ini belum siap.
+ *
+ * ⚠ Kolom `started_at` baru ada sejak migration `0007`. Pada pemasangan yang
+ * belum menerapkannya, kuerinya GAGAL dan halaman mengatakan "belum bisa
+ * dibaca" — dan itu jawaban yang benar. Melaporkan persentil kosong akan
+ * terbaca sebagai "tidak ada pekerjaan yang lambat".
+ */
+export async function jobMetricsForOperator(
+  deps: { metrics: () => Promise<LaneMetrics[]> } = { metrics: jobMetrics }
+): Promise<LaneMetrics[] | null> {
+  try {
+    return await deps.metrics();
+  } catch (error) {
+    console.error("[operator-store] metrik antrean tak terbaca:", error);
     return null;
   }
 }

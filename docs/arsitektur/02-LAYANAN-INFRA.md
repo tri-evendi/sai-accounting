@@ -720,7 +720,7 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur** |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur** dan **laju & durasi pekerjaan** (dua panel, sengaja terpisah: yang pertama berambang, yang kedua belum) |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 
@@ -771,10 +771,62 @@ pemakaian, dan #317 melarangnya bocor ke permukaan publik — sebab yang sama
 yang membuat jumlah antrean surel tinggal di konsol operator. Angkanya dibaca
 di konsol.
 
+### Laju & durasi: riwayatnya ADA di tabelnya
+
+Panel kedua di `/operator/scheduler` memuat, per jalur: kedalaman, laju terbit,
+laju selesai, perkiraan waktu kuras, p50/p95/p99 durasi, dan **jumlah sampelnya**
+— jendela 15 menit terakhir.
+
+**Tidak ada Prometheus, tidak ada Grafana, tidak ada layanan kedua belas**, dan
+itu keputusan dengan sebab yang bisa diperiksa. Rancangan §9 menduga ketiga
+metrik ini butuh penyimpan riwayat sebab "laju menuntut dua titik waktu". Itu
+benar untuk **counter** — angka yang hanya naik, yang lajunya hanya terbaca
+dengan mengurangi dua pembacaan. Baris `jobs` bukan counter: ia **peristiwa yang
+membawa cap waktunya sendiri**, jadi lajunya satu `COUNT(*)` berjendela. Riwayat
+yang dicari sudah ada di tabelnya, lengkap dengan retensi 14 hari dari
+`archiveDoneJobs`.
+
+Kotak ini ~3,6 GB RAM dengan produksi hidup di atasnya; dua proses lagi untuk
+menyimpan angka yang **sudah** tersimpan adalah ongkos tanpa imbalan.
+
+⚠ **Durasi TIDAK bisa dihitung dari `claimed_at`, dan itu sebabnya `started_at`
+ada.** `claimed_at` diperpanjang berkala selama pekerjaan berjalan (*lease* yang
+diperbarui), jadi selisihnya adalah jarak dari perpanjangan terakhir. Diukur
+terhadap PostgreSQL sungguhan — sepuluh pekerjaan 100–1000 ms, lease diperpanjang
+30 detik sebelum selesai:
+
+| Dihitung dari | p50 | p95 |
+|---|---|---|
+| `started_at` (benar) | 550 ms | 955 ms |
+| `claimed_at` (salah) | 30.000 ms | **30.000 ms** |
+
+`p50 = p95` adalah intinya: bukan sekadar salah angkanya — ia kehilangan seluruh
+**sebaran**, satu-satunya hal yang dicari histogram.
+
+**Tiga aturan pembacaan, dan ketiganya ada supaya angkanya tidak dipercaya lebih
+dari yang pantas:**
+
+| Aturan | Sebabnya |
+|---|---|
+| `—`, bukan `0`, untuk yang tak terukur | jalur yang tidak menjalankan apa pun dan jalur yang menjalankan pekerjaan nol-milidetik terlihat sama bila keduanya dicetak `0` |
+| **Jumlah sampel** di samping tiap persentil | p95 atas tiga pekerjaan adalah angka, bukan fakta — dan ambang yang disetel darinya akan berteriak untuk hal normal |
+| Perkiraan kuras `—` ketika laju selesai **nol** | itu keadaan paling gawat (pekerjanya mati). "4.812 menit" terbaca sebagai *lambat*, padahal yang terjadi *tidak bergerak* — dan pembacanya akan menunggu alih-alih memeriksa pekerjanya. Keadaan itu dijawab panel umur di atasnya, yang punya ambang |
+
+Keenam angka datang dari **satu** pernyataan SQL, dan itu bukan soal ongkos:
+kedalaman yang dibaca sesudah sebuah pekerjaan selesai bertentangan dengan laju
+selesai yang dibaca sebelumnya, dan pembacanya tidak punya cara menduga mana
+yang lebih baru. Angka yang saling bertentangan lebih buruk daripada angka yang
+kurang.
+
+⚠ **Ambang per-jalur masih belum disetel.** Histogramnya baru menyala, jadi
+sampelnya belum ada. Tujuh jalur tetap memakai satu pasang ambang umur sampai
+angkanya layak dipercaya — dan satu pasang ambang yang jujur lebih baik daripada
+tujuh yang dikarang.
+
 | Yang tidak ada | Akibat |
 |---|---|
 | Agregasi log | Log lama hanya lewat `docker logs` pada container yang masih hidup |
-| Metrik / dasbor | Tidak ada tren; "apakah ini melambat?" tak terjawab — umur antrean terbaca **sekarang**, bukan sebagai riwayat |
+| Dasbor & tren > 14 hari | Durasi hilang bersama barisnya saat `archiveDoneJobs` memangkasnya; "apakah ini lebih lambat dibanding kuartal lalu" tak terjawab. **Pemicu** rollup per jam: ada yang sungguh menanyakannya |
 | Pelacakan error | Error runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
 | Peringatan saat scheduler mati total | `watch:health` berjalan **di dalam** `job-scheduler` dan ikut mati |

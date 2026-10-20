@@ -411,8 +411,12 @@ bawahnya sinkron (milidetik, satu permintaan); di atasnya diserahkan ke antrean.
 §5 dulu menyiratkan seluruh jalur dokumen harus lewat antrean; yang terukur
 ternyata lebih tajam — **yang perlu antrean bukan "dokumen" melainkan yang
 besar**, dan antrean untuk satu faktur hanya menambah penantian beserta satu
-tombol yang harus menunggu. Angkanya sendiri masih menunggu histogram durasi
-pekerjaan (§11).
+tombol yang harus menunggu.
+
+Angkanya sendiri (5.000 baris) masih **dikarang**, dan sekarang ada alat untuk
+memperbaikinya: histogram durasi per jalur sudah terbaca (§11). Yang belum ada
+sampelnya — ambang disetel dari pengukuran, bukan dari hari pertama pengukuran
+itu menyala.
 
 ✅ **Pemindahan ini memang tidak menuntut Go, dan itu terbukti.**
 `src/lib/invoice-send.ts` sudah menjalankan jsPDF di Node sejak #465; tahap 1c
@@ -748,19 +752,59 @@ per jalur, dengan ambang 7/10 menit yang hanya berlaku bila ada yang menunggu �
 berpasangan dengan denyut penerbit yang tidak bergantung pada isi antrean.
 Keduanya kini **keadaan**: [02 §14](./02-LAYANAN-INFRA.md).
 
-Yang belum ada, dan ketiganya butuh penyimpan **riwayat** yang belum dipilih —
-hari ini setiap angka terbaca *sekarang*, bukan sebagai tren:
+✅ **Ketiganya sudah jadi (20 Okt 2026)** — kedalaman, laju terbit & selesai,
+dan histogram p50/p95/p99 per jalur, di konsol operator. Tempatnya sekarang
+[02 §14](./02-LAYANAN-INFRA.md).
 
-| Metrik | Satuan | Perannya | Kenapa belum |
-|---|---|---|---|
-| *Queue depth* | jumlah | pendamping, berguna hanya bersama laju | terbaca sekarang; tanpa laju ia tidak mengatakan apa pun |
-| Laju terbit & laju selesai | per menit | bersama kedalaman memberi perkiraan *drain time* | menuntut dua titik waktu, jadi menuntut riwayat |
-| Durasi pekerjaan | histogram p95/p99 | rata-rata menyembunyikan satu jenis yang melambat | menuntut agregasi, bukan satu kueri |
+⚠ **Dan premis §11 ini ternyata SALAH — itu temuan terpentingnya.** Paragraf di
+atas dulu berbunyi *"ketiganya butuh penyimpan riwayat yang belum dipilih"*,
+sebab *"laju menuntut dua titik waktu, jadi menuntut riwayat"*. Itu benar untuk
+metrik berbentuk **counter** — angka yang hanya naik, yang lajunya hanya terbaca
+dengan mengurangi dua pembacaan, yang karena itu menuntut sesuatu yang menyimpan
+pembacaan sebelumnya.
 
-⚠ Histogram durasi bukan kemewahan: ia **prasyarat** ambang per-jalur. Hari ini
-tujuh jalur memakai satu pasang ambang dengan sengaja, sebab tujuh angka yang
-dikarang tanpa pengukuran akan berteriak untuk hal normal atau diam untuk hal
-gawat — dan dua-duanya lebih buruk daripada satu angka yang jujur.
+Tapi baris `jobs` **bukan counter**. Ia peristiwa yang membawa cap waktunya
+sendiri, dan laju atas peristiwa bercap waktu adalah satu `COUNT(*)` berjendela:
+
+```sql
+COUNT(*) FILTER (WHERE created_at > now() - interval '15 min')
+```
+
+Riwayat yang §11 cari karena itu **sudah ada di tabelnya**, lengkap dengan
+retensinya (`archiveDoneJobs`, 14 hari). Yang sungguh kurang hanya **satu
+kolom** — dan bukan kolom yang mudah diduga.
+
+**Yang kurang itu `started_at`, dan sebabnya halus.** Durasi tidak bisa dihitung
+dari kolom mana pun yang sudah ada: `claimed_at` DIPERPANJANG berkala selama
+pekerjaan berjalan (*lease* yang diperbarui), jadi `finished_at - claimed_at`
+adalah jarak dari perpanjangan terakhir. Diukur terhadap PostgreSQL sungguhan,
+sepuluh pekerjaan berdurasi 100–1000 ms dengan lease diperpanjang 30 detik
+sebelum selesai:
+
+| Dihitung dari | p50 | p95 |
+|---|---|---|
+| `started_at` (benar) | 550 ms | 955 ms |
+| `claimed_at` (salah) | 30.000 ms | **30.000 ms** |
+
+`p50 = p95` pada baris kedua adalah intinya: ia tidak sekadar salah angkanya, ia
+kehilangan seluruh **sebaran** — satu-satunya hal yang dicari histogram. Satu
+jenis yang melambat tidak akan pernah terlihat, dan tidak ada gejala yang
+memberi tahu pembacanya.
+
+**Konsekuensi keputusan ini besar dan disebut apa adanya: tidak ada Prometheus,
+tidak ada Grafana, tidak ada layanan kedua belas.** Kotak ini ~3,6 GB RAM dengan
+produksi hidup di atasnya; dua proses lagi untuk menyimpan angka yang sudah
+tersimpan adalah ongkos yang dibayar tanpa membeli apa pun. Yang hilang satu dan
+nyata: **tren di luar 14 hari tidak bisa dijawab.** Itu diterima karena bukan
+pertanyaan yang §11 ajukan — ambang disetel dari minggu terakhir, bukan dari
+kuartal lalu. **Pemicu** untuk membangun rollup per jam: ada orang yang sungguh
+menanyakan tren lebih panjang daripada retensinya.
+
+⚠ **Ambang per-jalur masih BELUM disetel, dan itu bukan kelalaian.** Histogramnya
+baru ada hari ini, jadi ia belum punya sampel — dan `samples` ditampilkan di
+samping setiap persentil justru karena itu: **p95 atas tiga pekerjaan adalah
+angka, bukan fakta.** Tujuh jalur tetap memakai satu pasang ambang sampai
+angkanya layak dipercaya. Pemicunya pengukuran, sama seperti 1d.
 
 Penamaannya mengikuti konvensi OpenTelemetry (`queue.items.age`,
 `queue.items.size`, `job.duration`) dengan dimensi nama jalur.

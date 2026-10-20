@@ -1053,6 +1053,22 @@ model Job {
   /// Diisi saat `done`/`dead` — dasar pengarsipan dan metrik durasi.
   finishedAt DateTime? @map("finished_at")
 
+  /// Kapan percobaan INI mulai berjalan — disetel SEKALI pada klaim, dan
+  /// `renewLease` TIDAK menyentuhnya. Itu seluruh alasan ia ada di samping
+  /// `claimedAt`: yang terakhir diperpanjang berkala, jadi
+  /// `finishedAt - claimedAt` adalah jarak dari perpanjangan terakhir — bukan
+  /// durasi. Histogram yang dibangun darinya terlihat rapi dan seluruhnya
+  /// salah.
+  ///
+  /// Disetel ULANG pada percobaan berikutnya: yang diukur durasi PERCOBAAN.
+  /// Rentang dari penerbitan sampai berhasil sudah terbaca dari `createdAt`,
+  /// dan mencampurnya berarti pekerjaan yang di-*backoff* satu jam muncul
+  /// sebagai pekerjaan yang BERJALAN satu jam.
+  ///
+  /// NULL pada baris yang selesai sebelum kolom ini ada — tanpa backfill, sebab
+  /// satu-satunya bahan terkaannya adalah `claimedAt`.
+  startedAt DateTime? @map("started_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

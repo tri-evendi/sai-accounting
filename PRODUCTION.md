@@ -54,6 +54,7 @@ operator variables. Use the table below as the reference.
 | `OPERATOR_SESSION_SECRET`, `SETTINGS_ENCRYPTION_KEY` | Random secrets for console sessions and encrypted mail settings |
 | `OPERATOR_USERS` | Emergency `owner` account(s) for the console — see [§3](#3-create-the-first-accounts) |
 | `BACKUP_ENCRYPTION_KEY` | Required by `svc-tenant` — see [§Automated backups](#automated-backups-issue-374-per-database-since-stage-1b) |
+| `COMPANY_MIGRATE_CONCURRENCY` | How many company databases migrate at once (default 2, ceiling 8). Each worker is a Prisma CLI process plus a PostgreSQL backend, and migrations run while the apps are still serving — a large number here is a self-scheduled OOM on the release step that must not half-fail |
 | `NODE_ENV` | `production` (set in the image) |
 
 **Never set `ALLOW_SEED=true` in production.**

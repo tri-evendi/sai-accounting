@@ -25,6 +25,57 @@
  * Perusahaan NONAKTIF ikut dimigrasikan. Nonaktif berarti "tidak bisa dibuka",
  * bukan "boleh tertinggal": begitu ia diaktifkan lagi, skemanya harus sudah
  * sesuai dengan aplikasi yang sedang berjalan.
+ *
+ * ══ BOUNDED CONCURRENCY (rancangan §6, tahap 1b) ═══════════════════════════
+ *
+ * Invarian I-1 menuntut jumlah tenant tidak menambah pekerjaan *wall-clock*,
+ * dan loop berurutan melanggarnya secara langsung: ratusan `migrate deploy`
+ * satu per satu **di setiap rilis**. Sekarang N berjalan bersamaan,
+ * `COMPANY_MIGRATE_CONCURRENCY` (bawaan 2).
+ *
+ * ⚠ ANGKANYA KECIL, DAN ITU DARI PENGUKURAN — BUKAN KEHATI-HATIAN. Tiap
+ * pelaksana adalah satu proses Prisma CLI (ratusan MB) plus satu proses
+ * backend PostgreSQL, dan migration berjalan SEMENTARA aplikasi masih
+ * melayani. Kotak ini ~3,6 GB dibagi enam aplikasi, dan repo ini sudah pernah
+ * kehilangan proses ke OOM-killer (exit 137) karena dua pekerjaan berat
+ * berjalan bersamaan. Dua pelaksana sudah memotong *wall-clock* separuh di 17
+ * perusahaan; menaikkannya adalah keputusan yang menuntut ruang memori yang
+ * terukur, bukan penyetelan.
+ *
+ * ⚠ KELUARANNYA DIKUMPULKAN PER PERUSAHAAN, bukan diwariskan langsung. Dengan
+ * `stdio: "inherit"`, N proses Prisma menulis ke terminal yang sama dan
+ * hasilnya saling menyisip — tidak bisa dibaca justru pada hari satu di
+ * antaranya gagal. Jadi tiap pelaksana ditangkap keluarannya dan dicetak
+ * sebagai SATU blok saat ia selesai.
+ *
+ * ══ YANG TIDAK PINDAH KE GO DI TAHAP INI, DAN KENAPA ═══════════════════════
+ *
+ * Rancangan §3.3 menaruh jalur `schema` di kolom Go ("migration-nya SQL
+ * tangan, jadi Go menerapkannya langsung"). Ia TIDAK pindah di tahap 1b, dan
+ * alasannya dua, keduanya dari rancangan yang sama:
+ *
+ *  1. **§3.5: Prisma tetap pemilik skema.** Penerap kedua wajib menulis baris
+ *     `_prisma_migrations` dalam format yang persis sama dengan Prisma —
+ *     termasuk checksum-nya. Dua penulis atas pembukuan skema yang menyimpang
+ *     tidak menghasilkan galat: `migrate deploy` berikutnya akan menerapkan
+ *     ulang, atau melaporkan drift, pada basis data yang sebenarnya benar.
+ *     Itu kelas kerusakan paling mahal di repo ini.
+ *
+ *  2. **§6 sendiri menahan asinkronisitasnya.** Nilai jalur `schema` lewat
+ *     antrean adalah gerbang yang berubah dari "semua perusahaan siap" menjadi
+ *     "perusahaan ini siap" — dan §6 menyebut prasyaratnya: *expand/contract*,
+ *     yang "belum berlaku hari ini". Memindahkan migration keluar dari gerbang
+ *     pemblokir SEBELUM setiap migration bekerja untuk kode lama DAN baru
+ *     berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya.
+ *     §6 juga sudah mengukur harganya: pada 17 perusahaan gerbang pemblokir
+ *     masih murah — detik, bukan menit.
+ *
+ * Yang DIBUTUHKAN §6 dari jalur ini ada tiga, dan ketiganya sudah ada tanpa
+ * penerap kedua: *bounded concurrency* (di berkas ini), hasil per perusahaan
+ * yang bisa ditanyai (`vonisVersi` di konsol operator `/backup` — dibaca dari
+ * `_prisma_migrations` itu sendiri, bukan dari tabel jejak yang bisa
+ * BERBOHONG tentang apa yang sungguh ada di basis datanya), dan dapat
+ * dilanjutkan dari tengah (`migrate deploy` hanya menerapkan yang belum).
  */
 
 import "dotenv/config";
@@ -53,6 +104,34 @@ function companyUrl(databaseName: string): string {
   const url = new URL(raw);
   url.pathname = `/${databaseName}`;
   return url.toString();
+}
+
+/**
+ * Berapa perusahaan dimigrasikan BERSAMAAN.
+ *
+ * Bawaan 2 — lihat catatan memori di kepala berkas. Nilai di luar jangkauan
+ * diabaikan dengan BUNYI, bukan diam: angka salah tulis yang diam-diam jatuh ke
+ * bawaan membuat orang mengira ia sedang menjalankan sesuatu yang lain.
+ */
+function batasSerentak(): number {
+  const raw = process.env.COMPANY_MIGRATE_CONCURRENCY;
+  if (raw === undefined || raw === "") return 2;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    console.warn(
+      `⚠ COMPANY_MIGRATE_CONCURRENCY=${JSON.stringify(raw)} bukan bilangan bulat ≥ 1 — memakai 2.`
+    );
+    return 2;
+  }
+  if (n > 8) {
+    /* Plafon, dan bukan selera: tiap pelaksana satu proses Prisma CLI plus satu
+       backend PostgreSQL, dan migration berjalan sementara aplikasi masih
+       melayani. Angka besar di sini adalah OOM-killer yang kita jadwalkan
+       sendiri, pada langkah rilis yang paling tidak boleh gagal separuh jalan. */
+    console.warn(`⚠ COMPANY_MIGRATE_CONCURRENCY=${n} di atas plafon 8 — memakai 8.`);
+    return 8;
+  }
+  return n;
 }
 
 async function main() {
@@ -89,36 +168,71 @@ async function main() {
   }
 
   const failures: { slug: string; databaseName: string; detail: string }[] = [];
+  const mulai = Date.now();
 
-  for (const company of companies) {
-    const label = `${company.slug} (${company.databaseName})${company.isActive ? "" : " [nonaktif]"}`;
-    console.log(`\n── migrate deploy → ${label}`);
+  /* Pelaksana berikutnya diambil dari satu kursor bersama, bukan dari potongan
+     daftar yang dibagi rata: perusahaan tidak sama besar, dan pembagian rata
+     membuat satu pelaksana selesai lebih dulu lalu menganggur sementara yang
+     lain masih punya giliran. */
+  let kursor = 0;
 
-    // Tanpa `npx`/`bunx` — node_modules/.bin sudah ada di PATH saat skrip ini
-    // dijalankan lewat `bun run db:migrate:companies`. Lihat catatan serupa di
-    // scripts/migrate-platform.ts.
-    const result = spawnSync("prisma", ["migrate", "deploy"], {
-      stdio: "inherit",
-      env: { ...process.env, DATABASE_URL: companyUrl(company.databaseName) },
-    });
+  async function pelaksana(nomor: number): Promise<void> {
+    for (;;) {
+      const i = kursor++;
+      if (i >= companies.length) return;
+      const company = companies[i]!;
+      const label = `${company.slug} (${company.databaseName})${company.isActive ? "" : " [nonaktif]"}`;
 
-    if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
-      console.error(
-        "✗ Binary `prisma` tidak ditemukan di PATH. Jalankan lewat package " +
-          "manager: `bun run db:migrate:companies`."
-      );
-      process.exit(1);
-    }
+      /* Keluarannya DITANGKAP, bukan diwariskan: N proses yang menulis ke
+         terminal yang sama saling menyisip, dan yang tidak bisa dibaca adalah
+         justru log pada hari satu di antaranya gagal. */
+      const result = spawnSync("prisma", ["migrate", "deploy"], {
+        encoding: "utf8",
+        env: { ...process.env, DATABASE_URL: companyUrl(company.databaseName) },
+      });
 
-    if (result.status !== 0) {
-      const detail =
-        result.error?.message ?? `prisma migrate deploy keluar dengan kode ${result.status}`;
-      failures.push({ slug: company.slug, databaseName: company.databaseName, detail });
-      console.error(`   GAGAL: ${detail} — lanjut ke perusahaan berikutnya.`);
+      if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+        console.error(
+          "✗ Binary `prisma` tidak ditemukan di PATH. Jalankan lewat package " +
+            "manager: `bun run db:migrate:companies`."
+        );
+        process.exit(1);
+      }
+
+      /* Satu blok per perusahaan, dicetak saat ia selesai — label di atas
+         keluarannya, supaya potongan log mana pun bisa ditelusuri ke bukunya. */
+      const badan = `${result.stdout ?? ""}${result.stderr ?? ""}`.trimEnd();
+      console.log(`\n── [p${nomor}] migrate deploy → ${label}`);
+      if (badan) console.log(badan);
+
+      if (result.status !== 0) {
+        const detail =
+          result.error?.message ?? `prisma migrate deploy keluar dengan kode ${result.status}`;
+        failures.push({ slug: company.slug, databaseName: company.databaseName, detail });
+        console.error(`   GAGAL: ${detail} — perusahaan lain TIDAK terpengaruh.`);
+      }
     }
   }
 
-  console.log(`\n═══ Ringkasan: ${companies.length - failures.length}/${companies.length} berhasil`);
+  const serentak = Math.max(1, Math.min(batasSerentak(), companies.length));
+  console.log(
+    `${companies.length} perusahaan, ${serentak} dimigrasikan bersamaan ` +
+      `(COMPANY_MIGRATE_CONCURRENCY=${serentak}).`
+  );
+  await Promise.all(Array.from({ length: serentak }, (_, n) => pelaksana(n + 1)));
+
+  /* Urutan laporan kegagalan DITETAPKAN ulang menurut id: dengan beberapa
+     pelaksana, urutan selesai berubah tiap putaran — dan ringkasan yang
+     urutannya berubah membuat dua rilis yang hasilnya sama terbaca berbeda. */
+  failures.sort(
+    (a, b) =>
+      companies.findIndex((c) => c.slug === a.slug) - companies.findIndex((c) => c.slug === b.slug)
+  );
+
+  console.log(
+    `\n═══ Ringkasan: ${companies.length - failures.length}/${companies.length} berhasil ` +
+      `dalam ${Math.round((Date.now() - mulai) / 1000)}s`
+  );
   if (failures.length > 0) {
     for (const f of failures) {
       console.error(`   ✗ ${f.slug} (${f.databaseName}): ${f.detail}`);

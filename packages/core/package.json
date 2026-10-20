@@ -26,6 +26,7 @@
     "./image-file": "./src/image-file.ts",
     "./invitations": "./src/invitations.ts",
     "./job-backoff": "./src/job-backoff.ts",
+    "./job-result": "./src/job-result.ts",
     "./labels": "./src/labels.ts",
     "./licence": "./src/licence.ts",
     "./migration-manifest": "./src/migration-manifest.ts",

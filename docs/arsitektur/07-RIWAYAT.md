@@ -32,7 +32,7 @@ Empat pelajaran yang masih berlaku:
 
 | # | Risiko | Usul |
 |---|---|---|
-| 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`job-backup` |
+| 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`svc-tenant` (jalur yang mendump SETIAP basis data) |
 | 2 | **Pencarian jadi peka huruf besar-kecil.** Filter `contains`/`startsWith` tanpa `mode: "insensitive"` — `abadi` tidak lagi menemukan `PT ABADI` | Tambahkan `mode: "insensitive"` di jalur pencarian |
 | 3 | **Collation `C` di semua basis data.** `ORDER BY name` mengurutkan per byte, dan `@unique` pada kode/nomor mengizinkan `ABC` dan `abc` sekaligus | `citext` atau indeks `lower(...)`, per kolom |
 | 4 | **Tiga skrip operator masih berdialek MySQL** — `pause-platform-billing.ts`, `adopt-existing-company.ts`, `prove-company-slug-immutable.ts` | Port ke dialek PostgreSQL |

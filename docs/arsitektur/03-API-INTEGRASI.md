@@ -11,14 +11,16 @@ dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
 |---|---|
 | HTTPS | Semua lalu lintas masuk; Traefik terminasi TLS, HTTP → 301 |
 | HTTP | Traefik → `app-*:3000` di jaringan Docker |
-| PostgreSQL | `app-*` + 2 job → `pgbouncer:5432`; `migrate` + `job-backup` → `pg:5432` langsung |
+| PostgreSQL | `app-*` + job & `svc-ledger` → `pgbouncer:5432`; `migrate` + `svc-tenant` → `pg:5432` langsung |
 | SMTP | `app-customer` / `job-scheduler` → penyedia surel |
 | HTTPS keluar | `app-customer` → Midtrans Core API — **satu-satunya** panggilan HTTP keluar |
-| S3 | `job-backup` → penyimpanan objek (`awscli`) |
+| S3 | `svc-tenant` → penyimpanan objek (SDK S3 di dalam biner Go; `awscli` hanya di image perkakas `job-backup`) |
 
-Tidak ada gRPC, GraphQL, WebSocket, SSE, atau antrean. Layanan berkoordinasi
-lewat basis data bersama. Antrean pekerjaan dan pemindahan pembuatan dokumen ke
-server dirancang di [09 Rancangan Layanan](./09-RANCANGAN-LAYANAN.md).
+Tidak ada gRPC, GraphQL, WebSocket, atau SSE. Layanan berkoordinasi lewat basis
+data bersama — termasuk **antrean pekerjaan**, yang adalah satu tabel (`jobs` di
+basis data kendali), bukan broker: [04 §8.9](./04-ALIRAN-DATA.md) dan
+[02 §5](./02-LAYANAN-INFRA.md). Pemindahan pembuatan dokumen ke server masih
+dirancang di [09 §5](./09-RANCANGAN-LAYANAN.md).
 
 ## 2. Tiga rezim autentikasi
 
@@ -251,20 +253,40 @@ frame-ancestors 'none'    base-uri 'self'    form-action 'self'
 
 ## 6. Komunikasi antar-layanan
 
-**Tidak ada panggilan jaringan antar-layanan.** Seluruh koordinasi lewat basis
-data bersama, dan karena itu tidak ada antrean.
+**Tidak ada panggilan jaringan antar-layanan**, dan itu invarian — bukan
+kebetulan: I-3 (`09` §2) melarangnya, sehingga integrator yang mati tidak
+membuat aplikasi gagal (permintaan menumpuk sebagai baris), bahasa pekerja bisa
+ditukar per `kind`, dan tidak ada *dual-write* karena tidak ada pihak kedua yang
+harus ikut berhasil.
+
+Seluruh koordinasi lewat basis data bersama. Sejak tahap 1a salah satu bentuknya
+adalah **antrean**: tabel `jobs` di basis data kendali, dengan klaim
+satu-pernyataan ber-`FOR UPDATE SKIP LOCKED`, *lease* yang diperpanjang,
+*backoff* ber-jitter, dan `dedupe_key` unik sebagai ganti *leader election*.
 
 | Jalur | Mekanisme | Jejaknya di |
 |---|---|---|
 | `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` (kendali) | `/scheduler`, `/api/health` |
+| `job-scheduler` → `svc-ledger` | **antrean** — `jobs`, `kind` `ledger.*` (`recurring:publish`) | `/api/health` → `queue` |
+| `job-scheduler` → `svc-tenant` | **antrean** — `jobs`, `kind` `tenant.backup` (`backup:publish`) | `/api/health` → `queue` |
 | `job-conformance` → `app-customer` | `conformance_runs` | `/api/health` |
-| `job-backup` → `app-customer` | `backup_runs` | `/api/health` |
-| `migrate` → semua | `depends_on: service_completed_successfully` | Keluaran container |
+| `svc-tenant` → `app-customer` | `backup_runs` + objek manifest di tujuan cadangan | `/api/health` |
+| `migrate` → semua | `depends_on: service_completed_successfully` + gerbang skema saat boot | Keluaran container, `/api/health` |
 | Midtrans → `app-customer` | Webhook HTTP | `payments`, `platform_invoices` |
 
-Konsekuensinya: tanpa *retry* per pekerjaan, *dead-letter*, atau
-*backpressure*. Gantinya setiap produser idempoten, sehingga putaran berikutnya
-menyelesaikan yang tertinggal. Terbuka sebagai P2-2.
+*Retry* per pekerjaan, *dead-letter*, dan *backpressure* karena itu **sudah ada
+untuk yang lewat antrean** — `attempts`/`max_attempts`, status `dead`, dan
+klaim yang dibatasi satu pekerjaan per pekerja. Yang BELUM lewat antrean
+(pengingat, kesesuaian data, migration) masih mengandalkan produser yang
+idempoten: putaran berikutnya menyelesaikan yang tertinggal. Terbuka sebagai
+P2-2 untuk sisa itu.
+
+⚠ **Dua pembacaan yang wajib berpasangan.** Umur antrean per jalur (`queue`)
+HIJAU ketika antreannya kosong — termasuk ketika penerbitnya mati dan tidak ada
+baris yang pernah terbit. Yang membantahnya denyut PENERBIT (`scheduler`), yang
+diukur dari stempel waktu putaran dan karena itu tidak bergantung pada isi
+antrean sama sekali. Satu di antaranya saja bisa berkata sehat untuk kegagalan
+total.
 
 ## 7. Dependensi luar
 

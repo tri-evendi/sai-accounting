@@ -301,7 +301,7 @@ role itu dimiliki role itu.
 
 > ⚠ Per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi aplikasi berhak atas
 > seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk aplikasi, dan
-> superuser hanya untuk `migrate`/`job-backup`; lihat
+> superuser hanya untuk `migrate`/`svc-tenant`; lihat
 > [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md#yang-masih-terbuka)
 > butir 4.
 

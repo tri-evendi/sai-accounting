@@ -440,7 +440,7 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Backup** | SUDAH: Layanan `job-backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
+| **Backup** | SUDAH: Layanan `svc-tenant` di compose (#374; per basis data sejak tahap 1b): satu objek `pg_dump -Fc` **per basis data** + `pg_dumpall --globals-only` + `data/documents` + `data/audit`, terenkripsi sebelum meninggalkan mesin, dikirim ke luar server (S3/B2) bila bucket disetel. Retensi 30 hari, dan yang TERBARU tidak pernah dibuang. Satu tenant bisa dipulihkan tanpa menyentuh yang lain. |
 | **Restore** | BELUM: **Latihan restore yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan backup acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah di-restore bukan backup. |
 | **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut scheduler (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
 | **Scheduler** | SUDAH: Layanan `job-scheduler` di compose (#373) — bukan lagi cron host. |

@@ -5,6 +5,17 @@
 > rancangan** — isinya belum dibangun, dan setiap bagiannya ditandai demikian.
 > Dimutakhirkan 20 Oktober 2026 · produksi `main@ca0cd038`.
 >
+> ⚠ **"Sedang berjalan" di sini berarti keadaan KODE yang tergabung, dan
+> stempel `main@…` di tiap dokumen menyebut kapan ia terakhir diukur terhadap
+> produksi.** Keduanya bisa berbeda beberapa hari, dan tahap 1a–1b
+> membedakannya sekarang: `svc-ledger` dan `svc-tenant` ada di compose dan
+> dijelaskan [02 §5](./02-LAYANAN-INFRA.md), tetapi **belum tergelar** —
+> keduanya naik pada rilis berikutnya, dan keduanya wajib ikut `pull` dan `up`
+> ([02 §11](./02-LAYANAN-INFRA.md), `PRODUCTION.md`). Dokumen yang menunggu
+> penyebaran sebelum mencatat sesuatu adalah dokumen yang selalu tertinggal satu
+> rilis, dan orang yang membacanya saat menggelar justru tidak menemukan
+> layanan yang harus ia gelar.
+>
 > Tahap **1a dan 1b** rancangan 09 selesai dan sudah dipindahkan ke 01–08
 > sebagai keadaan; 09 memuat sisanya saja — ditambah dua hal yang 1b sengaja
 > TIDAK pindahkan, beserta pemicunya (§9).

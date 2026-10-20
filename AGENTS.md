@@ -79,7 +79,7 @@ ditulis.
 | Model & field Prisma | Inggris, PascalCase / camelCase | `JournalLine.invoiceDate` |
 | Pengenal kode (fungsi, tipe, konstanta) | **Inggris**, camelCase / PascalCase / SCREAMING_SNAKE | `buildAdapter` · `CACHE_TTL_SECONDS` |
 | Berkas & berkas tes | Inggris `kebab-case`; tes menamai **aturan** yang dijaganya | `company-clients.ts` · `packages-standalone.test.ts` |
-| Service compose | `<jenis>-<peran>`, jenis dari daftar di bawah | `app-customer` · `svc-integrator` · `job-backup` · `db-postgres` |
+| Service compose | `<jenis>-<peran>`, jenis dari daftar di bawah | `app-customer` · `svc-tenant` · `job-scheduler` · `db-postgres` |
 | Paket & pengenal Go | Inggris; paket pendek **tanpa garis bawah**; `gofmt` wajib | `internal/ledgerread` · `ClaimJob` |
 | Volume compose | `<pemilik>_<isi>` | `postgres_data` · `app_documents` · `backup_archive` |
 | Env var | `<PLANE>_<SUBJEK>_<ATRIBUT>` | `COMPANY_DATABASE_URL` · `CONTROL_DB_CONNECTION_LIMIT` |
@@ -122,36 +122,97 @@ memuatnya selalu menyesatkan begitu penempatannya berubah:
 | Jenis | Artinya | Contoh |
 |---|---|---|
 | `app-` | aplikasi yang **dikonsumsi pengguna langsung** | `app-customer` · `app-operator` |
-| `svc-` | layanan internal yang berjalan terus; penggunanya layanan lain | `svc-integrator` · `svc-pooler` |
-| `job-` | tugas yang berjalan lalu **keluar** — berjadwal atau sekali-jalan | `job-backup` · `job-migrate` |
+| `svc-` | layanan internal yang berjalan terus; penggunanya layanan lain | `svc-ledger` · `svc-tenant` · `svc-pooler` |
+| `job-` | tugas yang berjalan lalu **keluar** — berjadwal atau sekali-jalan | `job-scheduler` · `job-conformance` · `job-migrate` |
 | `db-` | penyimpan **tahan-lama** | `db-postgres` |
 | `cache-` | penyimpan **boleh hilang** — namanya sendiri yang menjaga batas itu | `cache-redis` |
 
 # Go di `services/` (WAJIB bila menyentuh integrator)
 
-Integrator ditulis dalam **Go** sejak keputusan di
-`docs/arsitektur/09-RANCANGAN-LAYANAN.md` §3.3. Empat aturan mengikat, dan
-ketiganya ada karena **penjaga TypeScript repo ini tidak melihat Go sama
-sekali** — 25 dari 306 berkas tes memindai kode untuk menegakkan aturan
-struktural, dan semuanya berhenti di batas `services/`:
+`services/integrator` **sudah ada** (tahap 1b). Peta pohonnya, dua aturan yang
+menahannya, dan batas Go: `docs/arsitektur/01-ARSITEKTUR.md` §10. Yang berjalan
+hari ini: `cmd/tenant` → service `svc-tenant`, cadangan satu objek per basis
+data.
+
+```bash
+bun run go:test    # cd services/integrator && go test ./...
+bun run go:lint    # golangci-lint run — gofmt + 8 linter
+```
+
+`golangci-lint` **tidak** ikut `bun install`. Pasang sekali, dengan versi yang
+sama seperti CI (`.github/workflows/go.yml`):
+
+```bash
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2
+```
+
+Enam aturan mengikat, dan semuanya ada karena **penjaga TypeScript repo ini
+tidak melihat Go sama sekali** — 25+ dari 320 berkas tes memindai kode untuk
+menegakkan aturan struktural, dan semuanya berhenti di batas `services/`:
 
 1. **Hanya jalur `ledger` (Node) menulis buku besar.** Kode Go membaca buku,
    menulis tabel `jobs`, dan menghasilkan berkas — tidak pernah `INSERT`/`UPDATE`
    ke tabel buku. Pintu posting wajib tunggal (invarian I-2), dan pintu itu
    TypeScript.
+
+   Tabel yang boleh ditulis pohon Go adalah **daftar-izin**, dan isinya dua:
+   `jobs` dan `backup_runs`. Yang kedua pengecualian yang DISEBUT, bukan
+   kelonggaran yang kebetulan lolos — I-3 melarang Go menitip barisnya ke Node,
+   dan jejak cadangan yang hilang berarti produksi bisa berjalan puluhan hari
+   tanpa satu salinan sementara container terlihat "Up" (itu pernah terjadi,
+   26 hari, #374). **Menambah baris di daftar itu adalah keputusan**, dan
+   alasannya ditulis di tempat daftarnya — bukan di pesan commit.
 2. **Konstanta lintas bahasa DIBANGKITKAN dari `contract/`, tidak pernah ditulis
-   dua kali.** Berlaku untuk `kind`/`status` pekerjaan **dan** konstanta
-   akuntansi (tipe akun, status kontrak, mata uang, ambang materialitas). Dua
-   daftar tulis tangan menyimpang tanpa galat: `kind` yang hanya dikenal satu
-   sisi jadi baris yang menumpuk selamanya; tipe akun yang hanya dikenal satu
-   sisi jadi laporan yang melewatkan satu kelompok akun.
-3. **Gerbang rilis jadi TIGA:** `bun run verify` · `go test ./...` +
-   `golangci-lint run` · build. Perubahan yang menyentuh `services/` wajib
+   dua kali.** Berlaku untuk `kind`/`status` pekerjaan, untuk **angka** antrean
+   (backoff, lease, retensi, ambang umur), dan nanti untuk konstanta akuntansi
+   (tipe akun, status kontrak, mata uang, ambang materialitas). Dua daftar tulis
+   tangan menyimpang tanpa galat: `kind` yang hanya dikenal satu sisi jadi baris
+   yang menumpuk selamanya; `lease_renew_ms` yang berbeda di satu sisi membuat
+   pekerja sisi itu kehilangan pekerjaannya di tengah jalan; tipe akun yang
+   hanya dikenal satu sisi jadi laporan yang melewatkan satu kelompok akun.
+
+   Mengubah `contract/kinds.yaml` → **`bun run contract:gen`** → commit ketiga
+   berkas bangkitannya bersama perubahan itu. Gerbangnya `contract:gen --cek`,
+   dipanggil `tests/contract-jobs.test.ts`; generatornya juga MENOLAK kombinasi
+   yang tidak konsisten, jadi kombinasi yang salah tidak bisa lahir ke bahasa
+   mana pun.
+3. **Gerbang rilis jadi TIGA:** `bun run verify` · `bun run go:test` +
+   `bun run go:lint` · build. Perubahan yang menyentuh `services/` wajib
    melewati gerbang Go, dan `bun run verify` yang hijau **tidak** membuktikan apa
-   pun tentangnya.
+   pun tentangnya. Kebalikannya juga berlaku.
+
+   `gofmt` ada DI DALAM `golangci-lint`, bukan sebagai perintah terpisah:
+   `gofmt -l` keluar dengan kode 0 meski ia menyebut berkas yang belum
+   di-format — gerbang yang selalu hijau lebih buruk daripada tidak ada
+   gerbang, sebab ia terasa seperti perlindungan.
 4. **`services/` di luar workspace bun.** Glob-nya `packages/*` + `apps/*`.
    Jangan menaruh `package.json` di dalam pohon Go — itu menariknya ke graf paket
    yang penjaganya tidak memahaminya.
+5. **Versi Go dipatok di DUA tempat yang wajib sama:** `go.mod` dan tahap
+   `go-build` di Dockerfile. CI membacanya dari `go.mod`, jadi satu-satunya yang
+   bisa menyimpang adalah Dockerfile — dan yang disimpangkan versi Go bukan
+   kompilasi melainkan urutan iterasi map, tingkah GC, dan `time` monotonik.
+   Dijaga `tests/go-image-version.test.ts`.
+6. **Pelari mengklaim `kind` yang punya handler padanya, bukan seluruh `kind`
+   jalurnya.** Selama transisi 1b–1d satu jalur bisa dilayani DUA bahasa
+   (`tenant` adalah contoh pertamanya). Harganya satu lubang: `kind` yang
+   diterbitkan tanpa pengklaim menumpuk sebagai `queued` SELAMANYA, tanpa galat
+   dan tanpa pekerja yang mengeluh. **Menambah penerbit berarti memastikan ada
+   pengklaimnya** — dijaga `tests/kind-punya-pengklaim.test.ts`, yang juga
+   menolak dua pengklaim untuk satu `kind` dan handler di luar jalurnya.
+
+| Penjaga | Menolak |
+|---|---|
+| `tests/services-go.test.ts` | tulisan ke tabel di luar daftar-izin · kosakata/angka ditulis tangan di Go · bentuk SQL antrean · `kind` penulis buku diklaim Go |
+| `tests/kind-punya-pengklaim.test.ts` | `kind` terbit tanpa pengklaim · dua pengklaim · handler lintas jalur |
+| `tests/go-image-version.test.ts` | versi Go image ≠ `go.mod` · biner tidak statis |
+| `tests/pg-client-version.test.ts` | **setiap** `postgresql-client-<n>` yang lebih tua dari server |
+| sisi Go (`internal/*/*_test.go`) | perilaku: aritmetika backoff, ambang lease, interop `openssl`, pemakaian SDK S3 |
+
+**Penjaga Go ditulis dalam TypeScript bila aturannya bisa dibaca dari teks**, dan
+itu disengaja: gerbang yang tidak pernah dilewati orang adalah `bun run verify`
+(ia berjalan di CI pada setiap PR), bukan gerbang yang paling dekat dengan
+kodenya. Sisi Go menjaga yang hanya bisa dibuktikan dengan menjalankannya.
 
 Nama lama yang belum sesuai **tidak** diperbaiki diam-diam sambil mengerjakan hal
 lain: rename punya rencana berurutannya sendiri di

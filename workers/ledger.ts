@@ -99,7 +99,7 @@ async function dokumenBerulang(ctx: JobContext): Promise<string | null> {
 async function dunning(_ctx: JobContext): Promise<string | null> {
   throw new Error(
     "`ledger.dunning` belum diimplementasikan — jalurnya sudah ada supaya " +
-      "pekerjaannya tidak menumpuk tanpa pengklaim. Lihat rancangan §4."
+      "pekerjaannya tidak menumpuk tanpa pengklaim. Lihat 04 §8.9."
   );
 }
 

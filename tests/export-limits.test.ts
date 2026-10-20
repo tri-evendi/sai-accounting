@@ -1,5 +1,5 @@
 /**
- * PENJAGA tahap 1a — batas ekspor & periode laporan (rancangan §9).
+ * PENJAGA — batas ekspor & periode laporan (03 §4).
  *
  * Yang dijaga di sini bukan "ada batasnya", melainkan DI MANA batas itu berdiri.
  * Tiga kesalahan penempatan sudah pernah membuat batas semacam ini tidak

@@ -135,7 +135,7 @@ export function AsOfFilter({
 
 /**
  * Pemberitahuan bahwa periode yang diminta BUKAN periode yang dipakai
- * (rancangan §9, tahap 1a).
+ * (03 §4, Batas periode laporan).
  *
  * `resolvePeriod` memperbaiki tiga hal secara senyap — tanggal ngawur jatuh ke
  * bawaan, rentang terbalik ditukar, rentang keterlaluan dipendekkan — dan

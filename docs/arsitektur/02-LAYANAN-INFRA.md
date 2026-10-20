@@ -500,6 +500,38 @@ Migration ditulis **tangan** di
 [`DATABASE.md`](../DATABASE.md)), tidak dibangkitkan `migrate dev`. Klien
 Prisma sudah ada di dalam image, jadi `db:generate` tidak perlu di server.
 
+### Gerbang skema saat boot — pengganti `service_completed_successfully`
+
+`app-customer` menunggu container `migrate` lewat
+`depends_on: condition: service_completed_successfully`. Pengaman itu bekerja
+selama yang ditunggu adalah pekerjaan yang **berakhir** — dan ia hilang begitu
+pekerjaan latar menjadi layanan yang berjalan terus, sebab tidak ada lagi apa
+pun yang "selesai" untuk ditunggu.
+
+Gerbangnya **pindah, bukan dicabut**: aplikasi memeriksa sendiri saat boot
+apakah skema yang ditemuinya sepadan dengan yang dibawa image-nya, dan
+**menolak melayani** bila tidak (`packages/platform/src/schema-gate.ts`,
+dibaca `/api/health`). Itu justru lebih kuat — berlaku di orkestrator mana pun
+dan pada setiap restart, bukan hanya pada `up` yang pertama.
+
+Yang menentukan seluruh nilainya adalah **ARAH** mana yang memblokir, dan salah
+arah punya dua akibat yang dua-duanya mahal:
+
+| Vonis | Artinya | Dilayani? |
+|---|---|---|
+| `mutakhir` | skema sepadan dengan image | ✅ |
+| `tertinggal` | image lebih baru daripada skemanya | ❌ **503** |
+| `menggantung` | ada migration yang gagal di tengah | ❌ **503** |
+| `mendahului` | skema lebih baru daripada image | ✅ — ini keadaan **rollback yang disengaja** |
+| `tak_terbaca` | tabel riwayat tak terbaca | ✅ — "saya tidak tahu" bukan alasan menolak lalu lintas |
+
+Terlalu longgar → image yang lebih baru menulis kolom yang belum ada, dan
+kegagalannya **tidak seragam**: halaman yang tidak menyentuh kolom baru tetap
+sempurna, jadi yang terlihat adalah aplikasi "sebagian rusak" — dan sebagian
+rusak pada pembukuan berarti ada angka yang masuk dan ada yang diam-diam tidak.
+Terlalu ketat → rollback darurat ikut terblokir, tepat pada saat jalan keluar
+dari insiden paling dibutuhkan.
+
 ## 13. Variabel lingkungan
 
 Hanya nama; nilainya tidak dicantumkan. Pemeriksa: `bun run check:env`.
@@ -534,11 +566,11 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 
 | Yang ada | Isi |
 |---|---|
-| `GET /api/health` | `control`, `platform`, `company`, `scheduler`, `backup`, `conformance`, `mail`. **503 hanya bila control tak terjangkau** |
+| `GET /api/health` | `control`, `platform`, `company`, `scheduler`, **`queue`**, `backup`, `conformance`, `mail`. **503 hanya bila keadaan INTRINSIK container ini buruk** — control tak terjangkau, atau skema tak sepadan (§12). Bidang hilir dilaporkan, tidak pernah ikut memutuskan (doktrin #137) |
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur** |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 
@@ -546,10 +578,53 @@ Dua jalur peringatan, penerimanya `PLATFORM_ALERT_EMAIL`: `watch:health`
 (langkah 6, throttle satu surel per status per 24 jam) dan `src/lib/alert.ts`
 (#374, throttle per fingerprint per jam).
 
+### Antrean pekerjaan: yang diukur UMUR, bukan kedalaman
+
+***Queue depth* bukan sinyal yang benar** — ia tidak mengatakan berapa lama
+pekerjaannya menunggu maupun apakah tumpukannya tumbuh. Seribu pekerjaan yang
+semuanya selesai dalam dua detik adalah sistem yang sehat; **satu** pekerjaan
+yang menunggu empat jam adalah sistem yang rusak — dan metrik kedalaman membaca
+keduanya terbalik.
+
+| Status | Artinya | Ambang |
+|---|---|---|
+| `idle` | tidak ada yang menunggu | ambang **tidak berlaku** |
+| `ok` | ada yang menunggu, masih segar | < 7 menit |
+| `warn` | antrean tertahan | ≥ 7 menit |
+| `late` | ini yang membangunkan orang | ≥ 10 menit |
+
+Dipecah **per jalur**, dan ringkasannya mengambil yang **terburuk**: rata-rata
+lintas jalur menyembunyikan justru hal yang paling ingin diketahui —
+*starvation*, yaitu satu kelas pekerjaan tertahan di belakang kelas lain. Enam
+jalur sehat dan satu yang macet adalah insiden, bukan "86% sehat".
+
+Ambangnya **hanya berlaku bila ada yang menunggu**. Tanpa syarat itu, pekerja
+yang menganggur karena memang tak ada kerja terbaca seperti kegagalan — dan
+peringatan yang berbunyi untuk keadaan normal akhirnya diabaikan.
+
+⚠ **Dan justru syarat itu membuka lubang yang paling berbahaya di sini.** Bila
+penerbitnya mati, tak ada baris yang pernah terbit: antrean kosong, umur tertua
+nol, setiap ambang di atas **hijau** — sementara dokumen berulang, pengingat,
+dan cadangan semuanya berhenti. Kegagalan total yang terbaca sebagai kesehatan
+sempurna. Yang membantahnya hanya **denyut penjadwal**, yang diukur dari stempel
+waktu putaran dan karena itu tidak bergantung pada isi antrean sama sekali. Itu
+sebabnya keduanya dibaca di **satu halaman** (`/operator/scheduler`), dan
+sebabnya `/api/health` memuat `scheduler` dan `queue` berdampingan.
+
+Aturan umumnya: **setiap komponen yang berjalan satu instans wajib punya denyut
+yang diukur dari luar.** Dan stempel waktu **selesai** tidak bisa
+memperlihatkan pekerjaan yang tidak pernah selesai, jadi "yang masih
+tertunggak" wajib diukur sendiri.
+
+Probe publik memuat **satu kata** saja. Umur dan kedalaman menyiratkan volume
+pemakaian, dan #317 melarangnya bocor ke permukaan publik — sebab yang sama
+yang membuat jumlah antrean surel tinggal di konsol operator. Angkanya dibaca
+di konsol.
+
 | Yang tidak ada | Akibat |
 |---|---|
 | Agregasi log | Log lama hanya lewat `docker logs` pada container yang masih hidup |
-| Metrik / dasbor | Tidak ada tren; "apakah ini melambat?" tak terjawab |
+| Metrik / dasbor | Tidak ada tren; "apakah ini melambat?" tak terjawab — umur antrean terbaca **sekarang**, bukan sebagai riwayat |
 | Pelacakan error | Error runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
 | Peringatan saat scheduler mati total | `watch:health` berjalan **di dalam** `job-scheduler` dan ikut mati |

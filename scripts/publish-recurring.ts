@@ -1,6 +1,6 @@
 /**
  * TERBITKAN pekerjaan dokumen berulang — satu baris antrean per perusahaan
- * (rancangan §4).
+ * (02 §5, langkah 5 `job-scheduler`).
  *
  *   bun run recurring:publish
  *

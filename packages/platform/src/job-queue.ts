@@ -1,5 +1,7 @@
 /**
- * ANTREAN PEKERJAAN — penerbitan, klaim, lease, penyelesaian (rancangan §4).
+ * ANTREAN PEKERJAAN — penerbitan, klaim, lease, penyelesaian.
+ *
+ * Bentuk tabel & daur hidup statusnya: docs/arsitektur/04-ALIRAN-DATA.md §8.9.
  *
  * Sambungan SQL untuk tabel `jobs` di basis data KENDALI. Aritmetikanya murni
  * dan ada di `@sai/core/job-backoff`; kosakata `kind`/status dibangkitkan dari
@@ -292,7 +294,7 @@ export async function jobCounts(): Promise<Record<string, number>> {
 }
 
 /**
- * Buang baris `done` yang sudah melewati jendela retensi (rancangan §4).
+ * Buang baris `done` yang sudah melewati jendela retensi (04 §8.9).
  *
  * `DELETE`, bukan pindah ke tabel arsip: tabel arsip yang tak pernah dibaca
  * siapa pun adalah *bloat* yang sama dalam berkas yang berbeda, dan apa yang

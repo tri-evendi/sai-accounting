@@ -148,7 +148,7 @@ export function resolveStockPeriod(
       to = endOfDay(swap);
     }
     /*
-     * Batas rentang yang SAMA dengan `resolvePeriod` (rancangan §9, tahap 1a).
+     * Batas rentang yang SAMA dengan `resolvePeriod` (03 §4).
      *
      * Ada di sini bukan demi kerapian: `g=custom` adalah pembaca periode KEDUA
      * yang menerima `?from=&to=` mentah dari URL, jadi batas yang hanya berdiri

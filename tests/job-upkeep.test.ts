@@ -1,5 +1,5 @@
 /**
- * PENJAGA tahap 1a — pemeliharaan & sinyal utama antrean (rancangan §4, §11).
+ * PENJAGA — pemeliharaan & sinyal utama antrean (04 §8.9, 02 §14).
  *
  * Tiga hal dijaga di sini, dan ketiganya pernah ada sebagai kode yang benar
  * TANPA pemanggil — bentuk kegagalan yang paling sulit dilihat, karena setiap

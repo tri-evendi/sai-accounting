@@ -728,7 +728,7 @@ export interface PeriodParams {
  * (Jan 1 → today), matching the report pages. Invalid inputs fall back to the
  * default rather than producing an `Invalid Date`.
  *
- * ── Dua aturan yang ditambahkan rancangan §9 tahap 1a ─────────────────────────
+ * ── Tiga aturan periode laporan (03 §4, Batas periode laporan) ────────────────
  *
  * 1. RENTANG TERBALIK (`from` sesudah `to`) DITUKAR. Sebelumnya ia lolos dan
  *    menghasilkan laporan kosong yang tak bisa dibedakan dari periode yang

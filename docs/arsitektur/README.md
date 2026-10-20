@@ -4,6 +4,9 @@
 > konfigurasi, dan keluaran perintah. **09 adalah satu-satunya dokumen
 > rancangan** — isinya belum dibangun, dan setiap bagiannya ditandai demikian.
 > Dimutakhirkan 20 Oktober 2026 · produksi `main@ca0cd038`.
+>
+> Tahap 1a rancangan 09 selesai dan sudah dipindahkan ke 01–08 sebagai
+> keadaan; 09 memuat sisanya saja.
 
 ## Isi
 
@@ -17,7 +20,7 @@
 | 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman, regresi yang pernah terjadi |
 | 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Empat pekerjaan selesai: keputusan yang masih mengikat dan yang masih terbuka |
 | 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
-| 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, bahasa & monorepo poliglot, tabel `jobs`, dokumen di server, fan-out per tenant, SaaS vs On-Premise, entitlement, tahapan, nomenklatur, observabilitas, tata kelola |
+| 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, bahasa & monorepo poliglot, outbox & otorisasi hasil, dokumen di server, fan-out per tenant, SaaS vs On-Premise, tahapan, nomenklatur, observabilitas yang belum terukur, tata kelola |
 
 ## Mulai dari mana
 

@@ -1,6 +1,6 @@
 /**
  * PENJAGA tahap 1a — jalur `ledger` sebagai layanan, dan penjadwal yang
- * berhenti memposting (rancangan §4).
+ * berhenti memposting (02 §5).
  *
  * ⚠ Yang dijaga di sini adalah DUA PELAKSANA UNTUK SATU PEKERJAAN, dan itu
  * bukan kekhawatiran teoretis: `recurring:run` sudah berjalan sebagai langkah

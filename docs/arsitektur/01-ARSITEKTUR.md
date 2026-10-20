@@ -218,10 +218,31 @@ pemanggilan di repo memakai bentuk callback.
 ## 8. Otorisasi
 
 ```
-Matriks BAWAAN       → Override PERAN             → Override PENGGUNA        → Modul USAHA     → Matriks EFEKTIF
-@sai/core/authz         role_permission_overrides    user_permission_overrides   11 modul          canEffective()
-66 izin × 4 peran       dikelola di /permissions                                 company_settings
+Matriks BAWAAN       → Override PERAN             → Override PENGGUNA        → Modul USAHA     → Entitlement     → Matriks EFEKTIF
+@sai/core/authz         role_permission_overrides    user_permission_overrides   11 modul          lisensi/paket     canEffective()
+66 izin × 4 peran       dikelola di /permissions                                 company_settings  @sai/core/entitlement
 ```
+
+**Entitlement: satu pintu, dua sumber.** Tiga lapis menjawab tiga pertanyaan
+yang berbeda, dan menyatukannya akan membuat jawaban yang salah terbaca benar:
+
+| Lapis | Pertanyaannya | Sumber |
+|---|---|---|
+| Lisensi / paket | "dibeli?" | `plan_key` (SaaS) **atau** berkas lisensi (on-premise) |
+| Modul usaha | "dipakai perusahaan ini?" | pengaturan per perusahaan |
+| Izin peran | "boleh oleh orang ini?" | matriks efektif |
+
+Diiris di **satu titik** — sumber himpunan modul aktif di
+`src/lib/authz-effective.ts` — sehingga setiap penjaga yang sudah ada (halaman,
+route, menu, Aksi Cepat) ikut menegakkannya tanpa satu baris diubah. Lapis yang
+dipasang di 50 tempat adalah lapis yang bocor di tempat ke-51. Jalur SaaS keluar
+lebih awal dan meneruskan nilai mentah apa adanya, jadi perilakunya **terbukti
+tidak berubah**.
+
+⚠ **Lisensi hanya MENYEMPITKAN.** Ia berarti "boleh dipakai", bukan "menyala":
+modul opt-in tetap harus dipilih perusahaan, dan lisensi yang menyalakan modul
+yang tidak dipilih siapa pun akan menghidupkan manufaktur di buku yang tidak
+memakainya.
 
 Penegaknya `requirePagePermission` (halaman), `requireApiPermission` (API
 sesi), `requireApiToken` (API v1); tampilan memakai `can(...)`. Ketiganya
@@ -269,6 +290,20 @@ Dua aturan valas yang mudah salah:
 
 Gate persetujuan dan periode ada di sini, bukan di route, karena setiap jalur
 yang mengubah dokumen jadi jurnal melewati `postForSource`/`repostForSource`.
+
+**Pintunya tetap tunggal sesudah antrean masuk**, dan itu yang menentukan bentuk
+pekerjaan latar: jalur `ledger` (`svc-ledger`) adalah **satu-satunya** layanan
+latar yang menulis buku besar, dan handler-nya **mendelegasikan** ke mesin yang
+sama (`src/lib/recurring-run.ts` → `postForSource`). Enam jalur lain membaca
+buku, menulis tabel `jobs`, dan menghasilkan berkas — tidak pernah `INSERT`/
+`UPDATE` ke tabel buku. Kontraknya menolaknya sebelum kode lahir: `kind`
+ber-`writes_ledger` di luar jalur `ledger` gagal dibangkitkan
+(`scripts/contract-generate.ts`).
+
+Sebabnya bukan kerapian: `app-customer` memposting **secara sinkron** saat
+pengguna menekan tombol — 44 pemanggil `postForSource` — dan pintu kedua di
+proses lain berarti dua mesin menulis buku besar. Ketika keduanya menyimpang,
+yang menyimpang adalah **buku**, tanpa satu galat pun.
 
 ## 10. Struktur kode
 

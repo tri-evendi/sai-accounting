@@ -63,7 +63,7 @@ describe("hanya KENDALI yang boleh menjatuhkan probe", () => {
   it("hanya hal INTRINSIK container ini yang boleh 503", () => {
     /*
      * ══ ATURANNYA DIPERTAJAM, BUKAN DILONGGARKAN ══════════════════════════
-     * Sampai gerbang skema ada (rancangan §3.2), tes ini menuntut TEPAT SATU
+     * Sampai gerbang skema ada (02 §12), tes ini menuntut TEPAT SATU
      * `503` di berkas ini. Angka itu adalah pendekatan dari aturan yang
      * sebenarnya, dan pendekatannya berhenti cukup begitu ada sebab kedua yang
      * SAH.

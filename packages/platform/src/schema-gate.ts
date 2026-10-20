@@ -1,5 +1,5 @@
 /**
- * GERBANG SKEMA SAAT BOOT (rancangan §3.2) — aplikasi MENOLAK MELAYANI bila
+ * GERBANG SKEMA SAAT BOOT (02 §12) — aplikasi MENOLAK MELAYANI bila
  * skema yang ditemuinya tidak sepadan dengan yang dibawa image-nya.
  *
  * ══ PENGAMAN YANG DIPINDAH, BUKAN DICABUT ══════════════════════════════════

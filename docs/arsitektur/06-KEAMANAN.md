@@ -114,7 +114,24 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 | Keutuhan arsip backup | **SHA-256 atas ciphertext**, dikirim bersama arsip | AES-CBC tidak membawa pemeriksaan keutuhan sendiri |
 | Webhook pembayaran | **SHA-512** | Fail-closed |
 | MFA operator | **TOTP** | `OPERATOR_MFA` |
+| Berkas lisensi on-premise | **Ed25519**, diverifikasi **luring** | `@sai/core/licence`; kunci publik **ditanam di kode** |
 | Transport | **TLS** (Let's Encrypt, HSTS `max-age=63072000; preload`) | Hanya Traefik yang mengikat :80/:443 |
+
+**Lisensi on-premise — empat keputusan, dan semuanya tidak simetris.**
+
+| Keputusan | Kalau sebaliknya |
+|---|---|
+| Kunci publik **ditanam di kode**, tidak pernah dibaca dari env | kunci publik bukan rahasia, tapi kunci yang dibaca dari env berarti siapa pun yang bisa menyetel env di mesin itu menukarnya dengan kuncinya sendiri lalu menandatangani lisensinya sendiri — seluruh tanda tangan jadi hiasan |
+| Kunci privat **tidak pernah** di repo maupun di CI | di repo: setiap orang yang pernah mengklon memilikinya selamanya, dan `git` tidak bisa melupakannya. Di CI: siapa pun yang bisa memicu satu workflow mencetak lisensi tak terbatas, dan jejaknya terlihat seperti build biasa. Penerbitan lisensi pekerjaan manusia yang jarang — dan yang jarang tapi berbahaya memang tidak boleh otomatis |
+| Formatnya **bukan JWT** | JWT membawa `alg` di dalam pesan yang **belum terverifikasi**, dengan sejarah `alg: none` dan penukaran asimetris→HMAC yang kuncinya justru kunci publik. Di sini algoritmanya tidak dapat dinegosiasikan |
+| Diverifikasi **di tempat pemakaian**, tidak pernah disimpan sebagai baris | memverifikasi sekali lalu menyimpan hasilnya di `control` memindahkan kewenangan lisensi dari tanda tangan ke baris yang bisa ditulis. Verifikasi Ed25519 berbiaya mikrodetik; berkasnya dipasang **hanya-baca** |
+
+⚠ **Dukungan yang berakhir tidak mematikan apa pun**, dan itu ditegakkan sebagai
+kode, bukan niat: satu tes menyapu modul lisensi dan menolak `throw`,
+`process.exit`, `blocked`, `denied` — supaya tidak satu pun pemanggil bisa
+menjadikannya pemadaman. Lisensinya **perpetual**: yang berakhir adalah hak atas
+versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
+adalah kesalahan kategori untuk produk akuntansi.
 
 ### 3.7 Pengerasan transport & peramban
 

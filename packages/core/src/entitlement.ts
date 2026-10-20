@@ -1,5 +1,5 @@
 /**
- * ENTITLEMENT: SATU PINTU, DUA SUMBER (celah on-premise #3, rancangan §8).
+ * ENTITLEMENT: SATU PINTU, DUA SUMBER (lihat docs/arsitektur/01-ARSITEKTUR.md §8).
  *
  * Tiga lapis memutuskan apakah seseorang boleh melakukan sesuatu, dan
  * ketiganya menjawab pertanyaan yang BERBEDA:

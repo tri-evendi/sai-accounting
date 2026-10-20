@@ -108,7 +108,7 @@ export type PublicBackupHealth = Omit<BackupHealth, "lastError">;
 export type HealthReport =
   | { status: "error"; database: "unreachable" }
   /**
-   * Skema yang tidak sepadan dengan image ini (rancangan §3.2). Bentuknya
+   * Skema yang tidak sepadan dengan image ini (02 §12). Bentuknya
    * TERPISAH, bukan bidang bernilai buruk — alasannya sama dengan
    * `database: "unreachable"` di atas: ia satu-satunya keadaan lain yang berarti
    * "jangan kirim lalu lintas ke sini", dan membedakannya di TIPE membuat

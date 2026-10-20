@@ -1,5 +1,5 @@
 /**
- * BADAN PERMINTAAN BERBATAS (rancangan §9, tahap 1a).
+ * BADAN PERMINTAAN BERBATAS (03 §4, Batas muatan masuk).
  *
  * ⚠ Satu baris yang menjelaskan kenapa modul ini ada: `await request.json()`
  * SUDAH mematerialkan seluruh badan dan mengurainya sebelum validator mana pun

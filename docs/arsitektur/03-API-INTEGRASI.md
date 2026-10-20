@@ -153,10 +153,71 @@ platform · autentikasi & infra. Daftar lengkap per rute beserta izinnya:
 |---|---|
 | Halaman · API internal | HTML (RSC) · JSON |
 | `/api/v1` | JSON + `meta` |
-| `/api/health` | JSON; **503 hanya bila control tak terjangkau** |
+| `/api/health` | JSON; **503 hanya bila keadaan intrinsik container ini buruk** — lihat [02 §14](./02-LAYANAN-INFRA.md) |
 | Ekspor laporan | XLSX (`exceljs`) **di server** · PDF (`jspdf`) **di peramban** · ZIP (`jszip`) **di server, di-stream** |
 | Lampiran surel | PDF faktur dibuat **di server** dengan modul `jspdf` yang sama |
 | Berkas dokumen | Byte lewat route bertenant, bukan berkas statis |
+
+### Batas muatan masuk
+
+Dua batas berdiri di jalur ekspor laporan (`POST /api/reports/export`), dan
+keduanya ada karena rute itu satu-satunya tempat yang merakit lembar sebar dari
+muatan yang datang dari **luar** — peramban mengirim `StatementPayload` yang
+sudah dihitung halamannya.
+
+| Batas | Nilai | Di mana ia berdiri |
+|---|---|---|
+| Badan permintaan | **16 MiB** | **sebelum** diurai — `@/lib/request-body` |
+| Baris lembar sebar | **50.000** | pada `SheetModel` yang **sudah** dipetakan |
+| Kolom yang diminta | 64 | skema muatan |
+
+⚠ **Penempatannya yang menentukan, bukan angkanya.** `await request.json()`
+sudah mematerialkan DAN mengurai seluruh badan, jadi skema zod paling ketat pun
+tidak melindungi apa pun dari badan 500 MB — prosesnya mati sebelum baris pertama
+skema itu dibaca. Dan `content-length` saja tidak cukup: header itu tidak ada
+pada permintaan ber-*chunked encoding*, dan pada yang lain ia hanya pernyataan
+pengirim. Jadi byte yang sungguh datang **dihitung**, dan alirannya dibatalkan
+begitu melewati batas — batas yang menjawab 413 sambil membiarkan sisa
+unggahannya mengalir tidak membatasi apa pun.
+
+Batas barisnya dihitung pada model lembar, bukan pada muatannya: muatan tiap
+laporan berbeda bentuk (`rows`, seksi bersarang, grup arus kas), jadi penghitung
+per-jenis adalah penghitung yang akan melewatkan laporan berikutnya. Keduanya
+wajib **konsisten** — batas byte yang lebih ketat daripada yang dibutuhkan batas
+baris membuat batas baris tak pernah tercapai, dan penggunanya menerima galat
+yang menyebut sebab yang salah.
+
+Angkanya di `@sai/core/export-limits`, bukan di rutenya: begitu pembuatan dokumen
+pindah ke proses terpisah, pekerjanya menegakkan batas yang sama, dan batas yang
+hanya hidup di `src/lib` akan ditinggalkan pemakainya sendiri.
+
+### Batas periode laporan
+
+`resolvePeriod` (`src/lib/report-catalog.ts`) — satu titik tersempit untuk
+sebelas halaman laporan — menerapkan tiga aturan, dan ketiganya menutup
+kegagalan yang **sekelas**: semuanya menghasilkan laporan yang BENAR untuk
+periode yang tidak diminta.
+
+| Aturan | Perilakunya |
+|---|---|
+| Tanggal tak sah | jatuh ke bawaan |
+| Rentang terbalik | **ditukar** — konvensi yang sama dengan `resolveStockPeriod` |
+| Rentang keterlaluan | **awalnya** dipendekkan, akhirnya dipertahankan |
+
+Batas rentangnya **sepuluh tahun**, dan itu retensi wajib pembukuan (UU KUP),
+bukan tebakan kapasitas: periode tidak menentukan ongkos — laporan lima tahun di
+tenant berumur setahun membaca baris yang sama banyak dengan laporan setahun.
+Jadi ia batas **kewarasan**, yang hanya menolak yang mustahil. Yang memikul
+kapasitas adalah batas baris di atas.
+
+Batas yang sama berdiri di **kedua** pembaca periode: `?g=custom` di
+`src/lib/stock-period.ts` menerima `?from=&to=` mentah yang sama, dan batas yang
+hanya berdiri di satu pembaca adalah batas yang dilewati dengan menambahkan satu
+parameter.
+
+⚠ Ketiga aturan itu senyap, dan senyap adalah bagian yang berbahayanya. Penyaring
+periode membandingkan `?from=`/`?to=`/`?asOf=` **mentah** dengan nilai yang sudah
+diselesaikan dan mengatakan periode mana yang sungguh dipakai.
 
 ## 5. Header keamanan
 

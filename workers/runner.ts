@@ -1,5 +1,7 @@
 /**
- * PELARI JALUR — satu proses menguras satu jalur antrean (rancangan §3.2, §4).
+ * PELARI JALUR — satu proses menguras satu jalur antrean.
+ *
+ * Jalur sebagai unit isolasi: rancangan §3.2. Layanannya: 02 §5.
  *
  *   bun workers/ledger.ts        # jalur `ledger`
  *

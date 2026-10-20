@@ -1,5 +1,5 @@
 /**
- * DENYUT ANTREAN — sinyal utama antrean pekerjaan (rancangan §11).
+ * DENYUT ANTREAN — sinyal utama antrean pekerjaan (02 §14).
  *
  * ══ YANG DIUKUR UMUR, BUKAN KEDALAMAN ═══════════════════════════════════════
  * *Queue depth* tidak mengatakan berapa lama pekerjaannya menunggu maupun

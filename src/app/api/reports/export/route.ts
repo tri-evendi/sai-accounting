@@ -11,7 +11,7 @@
  * The workbook is built server-side (ExcelJS is a Node library); the browser only
  * downloads the resulting bytes.
  *
- * ── DUA BATAS, dan keduanya di jalur masuk (rancangan §9, tahap 1a) ──────────
+ * ── DUA BATAS, dan keduanya di jalur masuk (03 §4) ──────────────────────────
  *
  * Rute ini satu-satunya tempat di aplikasi yang merakit lembar sebar dari
  * muatan yang datang dari LUAR. Sampai tahap 1c memindahkannya ke antrean (§5),

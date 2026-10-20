@@ -1,5 +1,5 @@
 /**
- * BATAS EKSPOR & PERIODE LAPORAN (rancangan §9, tahap 1a).
+ * BATAS EKSPOR & PERIODE LAPORAN (03 §4).
  *
  * MURNI: tanpa Prisma, tanpa IO, tanpa `next/*`. Angkanya di `core` karena
  * tahap 1c memindahkan pembuatan dokumen ke proses Node terpisah (§5), dan

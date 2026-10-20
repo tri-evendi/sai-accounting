@@ -1,5 +1,5 @@
 /**
- * PENJAGA tahap 1a — gerbang skema saat boot (rancangan §3.2).
+ * PENJAGA — gerbang skema saat boot (02 §12).
  *
  * Gerbang ini menggantikan `service_completed_successfully` pada container
  * `migrate`, dan nilainya seluruhnya ada pada ARAH mana yang memblokir. Salah

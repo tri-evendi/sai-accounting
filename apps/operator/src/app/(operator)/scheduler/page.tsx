@@ -18,7 +18,7 @@
  * Kolom "Galat" tetap MERAH HANYA saat angkanya bukan nol, dan angkanya sendiri
  * yang jadi penanda utama — warna bukan sinyal tunggal (MASTER.md).
  *
- * ── Kenapa ANTREAN PEKERJAAN ada di halaman ini (rancangan §4, §11) ─────────
+ * ── Kenapa ANTREAN PEKERJAAN ada di halaman ini (02 §5, §14) ───────────────
  * Sejak tabel `jobs`, denyut jam berhenti MELAKSANAKAN dan hanya MENERBITKAN —
  * jadi halaman ini bidang penerbitnya, dan antrean adalah tempat terbitannya
  * jatuh. §11 menyuruh keduanya dibaca berpasangan, dan bukan demi kerapian:

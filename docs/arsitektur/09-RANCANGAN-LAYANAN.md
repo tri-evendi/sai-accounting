@@ -193,18 +193,12 @@ tidak ikut gelombang pertama.
 Hanya satu jalur menerima rahasia, dan ia jalur yang **tidak memproses masukan
 pengguna**.
 
-**Gerbang skema pindah ke dalam aplikasi.** Hari ini `app-customer` menunggu
-container `migrate` lewat `service_completed_successfully`; layanan yang berjalan
-terus tidak pernah "selesai", jadi pengaman itu hilang bersamanya. Gerbangnya
-**pindah, bukan dicabut**: `app-customer` memeriksa sendiri saat boot apakah
-skema yang ditemuinya sepadan dengan yang dibawa image-nya, dan **menolak
-melayani** bila tidak. Itu justru lebih kuat — berlaku di orkestrator mana pun,
-pada setiap restart, dan gerbangnya **per perusahaan** sehingga sejalan dengan
-expand/contract (§6).
-
-⚠ Ini satu-satunya bagian dari pemindahan `migrate` yang berupa **kode baru di
-aplikasi**, dan tidak boleh dilewati — tanpanya penyatuan ini menghapus pengaman
-tanpa menggantinya.
+**Gerbang skemanya sudah terpasang**, dan ia prasyarat pemindahan ini: begitu
+pekerjaan latar menjadi layanan yang berjalan terus, tidak ada lagi apa pun yang
+"selesai" untuk ditunggu `service_completed_successfully`. Aturan dan arah
+vonisnya kini **keadaan**, bukan rancangan — [02 §12](./02-LAYANAN-INFRA.md).
+Yang belum: gerbangnya masih per-image, bukan **per perusahaan**, dan
+expand/contract (§6) menuntut yang kedua.
 
 Jalur `schema` tetap dijalankan **sekali** saat rilis (`docker compose run --rm`),
 bukan diterbitkan ke antrean: migration adalah langkah rilis, dan pelaksananya
@@ -330,81 +324,18 @@ menghasilkan binary statis, lalu runtime tipis berisi binary itu +
 `postgresql-client-17` (untuk `pg_dump`). Image `migrator` dan `backup` yang ada
 dicabut setelah jalurnya pindah; `runner` dan `runner-operator` tidak berubah.
 
-## 4. Penerbitan, bukan pelaksanaan — dan tabel `jobs`
+## 4. Yang belum terbangun dari antrean
 
-> **Denyut jam berhenti melaksanakan dan hanya menerbitkan.** Tujuh langkah
-> berurutan menjadi baris di tabel `jobs`; N pekerja mengurasnya.
+**Tabel `jobs` sudah ada**, dan bersamanya: kontrak `kind`/status yang
+dibangkitkan, klaim satu-pernyataan ber-`FOR UPDATE SKIP LOCKED`, *lease* yang
+diperpanjang, *reclaim*, *backoff* ber-jitter, indeks berpredikat, pengarsipan
+baris `done`, dan jalur `ledger` sebagai layanan. Bentuk tabelnya, daur hidup
+statusnya, dan sebabnya ia tinggal di `control` kini **keadaan** —
+[04 §1.2 dan §8.9](./04-ALIRAN-DATA.md); layanannya di
+[02 §5](./02-LAYANAN-INFRA.md); metriknya di
+[02 §14](./02-LAYANAN-INFRA.md).
 
-Tanpa *leader election*: penerbitannya idempoten lewat `dedupe_key` unik, jadi
-denyut yang berjalan dua kali menabrak constraint sebelum apa pun terjadi.
-`pg_try_advisory_lock` hanya mengurangi pekerjaan terbuang, **bukan** memikul
-kebenaran. Ia sekaligus menutup P2-2: setiap langkah punya barisnya sendiri.
-
-**Kenapa Postgres, bukan broker.** Broker terpisah mengembalikan masalah yang
-sudah selesai — commit berhasil, publish gagal, dan tak ada yang tahu apakah
-mengulang memperbaiki atau menduplikasi. Untuk buku besar itu kelas kegagalan
-yang tidak boleh ada. `FOR UPDATE SKIP LOCKED` memadai jauh di atas kebutuhan
-ini.
-
-**Tempatnya: basis data `control` yang sudah ada** — bukan server baru, bukan
-basis data baru. Aplikasi sudah punya koneksi ke sana (2 dianggarkan), dan
-`tenant_id`/`company_id` yang dirujuk `jobs` juga hidup di sana. Basis data ke-20
-berarti satu pasangan pool, satu entri migration, dan satu objek dump lagi, demi
-nol manfaat. `platform` gugur karena doktrin #137 melarangnya dari jalur panas,
-dan membaca kemajuan pekerjaan **adalah** jalur panas.
-
-⚠ Harganya nyata: `control` juga melayani **autentikasi**, dan antrean
-ber-`SKIP LOCKED` membuat baris mati lebih cepat daripada tabel lain di
-sana. **Pemicu memindahkan `jobs` ke basis datanya sendiri:** latensi p95 kueri
-autentikasi naik terukur seiring throughput antrean. Sebelum itu terukur,
-memisahkannya adalah ongkos tanpa manfaat — tapi pemicunya harus dipasang
-bersama metrik §11, bukan ditunggu sampai ada yang mengeluh.
-
-Kolom yang menentukan (bentuknya mengikuti `DATABASE.md`):
-
-| Kolom | Kenapa ada |
-|---|---|
-| `kind` · `tenant_id` · `company_id` | `report.export`, `tenant.backup`, …; `company_id` null = pekerjaan tingkat tenant |
-| `payload` `Json` | **kecil**; isi besar tidak pernah masuk tabel |
-| `status` | `queued` · `claimed` · `done` · `failed` · `dead` |
-| `dedupe_key` **UNIK** | penerbitan dua kali menabrak constraint, bukan menghasilkan dua pekerjaan |
-| `attempts` · `max_attempts` · `run_after` | habis → `dead`; penundaan & *backoff* eksponensial |
-| `claimed_at` · `claimed_by` | memulangkan pekerjaan dari pekerja yang mati |
-| `last_error` | kegagalan adalah isi paling berharga di tabel ini |
-| `result_ref` | **kunci objek, bukan isinya** — dan bukan kapabilitas: lihat di bawah |
-| `priority` · `cancel_requested` · `progress` | urutan dalam satu jalur · pembatalan · kemajuan yang bisa ditampilkan |
-
-Empat detail yang menentukan ia bertahan lebih dari sebulan:
-
-| Hal | Yang benar |
-|---|---|
-| **Indeks** | ***partial index*** `WHERE status = 'queued'`, diurut `priority DESC, run_after ASC` — tanpa predikatnya pengambilan melambat seiring antrean tumbuh |
-| **Klaim** | **satu pernyataan** — CTE yang memilih lalu `UPDATE` sekaligus. Dua langkah terpisah adalah *race condition* |
-| **Bloat** | `autovacuum` lebih agresif **pada tabel ini saja**; baris `done` diarsipkan, baris gagal **tidak pernah** dipangkas |
-| ***Vacuum horizon*** | ⚠ satu transaksi panjang **di mana pun** di basis data yang sama menahannya, jadi laporan berdurasi panjang tidak boleh berjalan dalam transaksi terbuka di `control` |
-
-```sql
-UPDATE jobs SET status = 'claimed', claimed_at = now(), claimed_by = $1
-WHERE id = (
-  SELECT id FROM jobs
-  WHERE status = 'queued' AND run_after <= now()
-  ORDER BY priority DESC, run_after
-  FOR UPDATE SKIP LOCKED
-  LIMIT 1
-)
-RETURNING *;
-```
-
-***Reclaim*** harus ditulis, bukan diwarisi: baris `claimed` yang `claimed_at`
-lebih tua dari ambang kembali ke `queued` dengan `attempts + 1`.
-
-⚠ **Ambang tetap saja salah**, dan ini jenis bug yang hanya muncul di produksi:
-ekspor 30 menit melewati ambang mana pun yang masuk akal untuk mendeteksi pekerja
-mati, lalu diklaim pekerja kedua **sementara yang pertama masih berjalan** — dua
-pekerja mengerjakan satu pekerjaan, dan untuk `tenant.backup` itu berarti dua
-dump menulis ke satu kunci objek. Jadi pekerja **memperbarui `claimed_at` secara
-berkala** selama bekerja (*lease* yang diperpanjang), dan ambang reclaim adalah
-kelipatan interval pembaruan itu — bukan perkiraan durasi pekerjaan.
+Yang **belum**, dan keduanya menunggu pemakai pertamanya di tahap 1c:
 
 **Dua jawaban untuk *dual-write*.** Karena `jobs` di `control` sementara tulisan
 domain di basis data perusahaan, penerbitan tidak satu transaksi dengan tulisan
@@ -577,7 +508,7 @@ docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
 | `svc-pooler` | dipasang untuk **keseragaman konfigurasi**, bukan untuk beban |
 | Reverse proxy **milik customer** | **wajib** — TLS harus berhenti di suatu tempat; Traefik SAI tidak dikirim |
 | Volume `pg_data` · `documents` · `audit` · cadangan | **wajib** — dokumen dan jejak audit **tidak** ada di basis data |
-| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` |
+| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` — [06 §3.6](./06-KEAMANAN.md) |
 | Jalur `schema` | **wajib setiap pembaruan**, dijalankan customer |
 | `cache-redis` · `app-operator` · basis data `platform` | **tidak dipasang** |
 
@@ -594,15 +525,15 @@ sebelum dimulai, entitlement modul **sudah** per perusahaan sehingga langsung
 bisa digerakkan lisensi, dan doktrin #137 sudah menjaga batas plane penagihan.
 Compose on-premise, tag versi wajib, profil penyebaran, jejak putaran di
 `control`, dan bundel diagnostik kini **keadaan, bukan rancangan** — semuanya
-dijelaskan di [02](./02-LAYANAN-INFRA.md).
+dijelaskan di [02](./02-LAYANAN-INFRA.md). Begitu pula **artefak lisensi** dan
+**penegakan entitlement di satu pintu**: kriptografi dan kustodi kuncinya di
+[06 §3.6](./06-KEAMANAN.md), pintunya di [01 §8](./01-ARSITEKTUR.md).
 
 **Yang belum, dan harus dibangun.** Nomor yang hilang sudah selesai dan pindah
 ke 02; nomor pensiun, tidak dipakai ulang.
 
 | # | Celah | Catatan |
 |---|---|---|
-| 2 | Artefak lisensi | berkas bertanda tangan, terverifikasi **offline**: customer, batas perusahaan & pengguna, modul, versi maksimum, akhir dukungan |
-| 3 | Penegakan di satu pintu | satu fungsi, dua sumber — §8 |
 | 5 | Cadangan per tenant | §6 — profil ini yang membutuhkannya paling dulu |
 
 Hanya tiga hal menyeberang batas customer, dan ketiganya **manual**: image rilis
@@ -638,32 +569,21 @@ perlu" harus **tertulis dan dibantah** di dokumen serah terima.
 **Kesimpulan: arsitekturnya siap, produknya belum.** Yang kurang pipa komersial,
 bukan desain ulang.
 
-## 8. Entitlement: satu pintu, dua sumber
-
-| Lapis | Pertanyaannya | Sumber |
-|---|---|---|
-| Lisensi / paket | "dibeli?" | `plan_key` (SaaS) **atau** berkas lisensi (on-premise) |
-| Modul usaha | "dipakai perusahaan ini?" | pengaturan per perusahaan — ✅ ada |
-| Izin peran | "boleh oleh orang ini?" | matriks efektif — ✅ ada |
-
-**Lisensi diperiksa di tempat pekerjaan DILAHIRKAN, bukan di tempat ia
-dijalankan.** Jadi pembacanya dua: `app-customer` (di sinilah pengguna meminta
-sesuatu) dan jalur `schedule` (di sinilah pekerjaan lahir **tanpa pengguna** —
-tanpa pemeriksaan ia menerbitkan pekerjaan untuk modul yang tidak dibeli).
-Jalur `interactive`/`bulk` hanya mengeksekusi; jalur `tenant`/`schema` tidak
-pernah bergantung pada paket yang dibeli — pembukuan tetap harus dicadangkan apa
-pun status lisensinya.
-
-⚠ Yang sengaja **tidak** dilakukan: memverifikasi berkasnya sekali lalu menyimpan
-hasilnya sebagai baris di `control`. Itu memindahkan kewenangan lisensi dari
-tanda tangan ke baris yang bisa ditulis. Verifikasi Ed25519 berbiaya mikrodetik;
-berkasnya dipasang **hanya-baca** dan diverifikasi di tempat pemakaian.
+> §8 pensiun 20 Okt 2026: entitlement sudah terbangun dan pindah ke
+> [01 §8](./01-ARSITEKTUR.md). Nomor bagian **tidak dipakai ulang**, mengikuti
+> aturan yang sama dengan nomor celah di §7 — rujukan dari kode, `AGENTS.md`,
+> dan riwayat commit menunjuk nomor, dan menggesernya membatalkan semuanya
+> sekaligus demi kerapian yang tidak dibaca siapa pun.
 
 ## 9. Tahapan & pemicu
 
+✅ **Tahap 1a selesai 20 Okt 2026** dan karena itu tidak lagi di tabel ini: tabel
+`jobs`, `contract/` + generator, jalur `ledger` sebagai layanan, gerbang skema
+saat boot, batas ekspor & periode laporan, semver + tag tetap. Tempatnya
+sekarang [02](./02-LAYANAN-INFRA.md) dan [04](./04-ALIRAN-DATA.md).
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1a — fondasi antrean** | sebelum customer berbayar pertama | tabel `jobs` · `contract/` + generator · jalur `ledger` (Node) · gerbang skema saat boot · batas ekspor & periode laporan · semver + tag tetap | 1 |
 | **1b — Go masuk dari tepi** | sesudah 1a | jalur `tenant` (cadangan **per tenant** + kesesuaian) · jalur `schema` · **nol aturan akuntansi tersentuh** | 1 |
 | **1c — dokumen pindah ke server** | sesudah 1a | jalur `interactive`, `bulk`, `schedule` sebagai **proses Node terpisah** · generator dokumen pindah dari peramban ke server, **byte tetap identik** | 1 |
 | **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
@@ -673,7 +593,8 @@ berkasnya dipasang **hanya-baca** dan diverifikasi di tempat pemakaian.
 | **D — on-premise** | customer on-prem pertama | penanda profil · artefak lisensi · satu pintu entitlement · saluran rilis · bundel diagnostik | di customer |
 
 ⚠ **Tahap 1 dipecah empat, dan urutannya mengikuti satu garis: aturan akuntansi
-disentuh paling akhir.** 1b memindahkan ke Go apa yang nol aturan akuntansi
+disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.
+1b memindahkan ke Go apa yang nol aturan akuntansi
 (`tenant`, `schema`) dan bisa dibatalkan tanpa jejak — cadangan dan migration
 tidak meninggalkan angka di buku. 1c memindahkan dokumen ke server **tanpa
 mengganti bahasanya**, jadi keluarannya tetap byte-identik dan tidak ada
@@ -736,46 +657,26 @@ lebih aman:**
 > hilang sendiri begitu `db_data` dicabut. Bila tetap dijalankan: hanya sesudah
 > P0-1 dan P0-2 selesai.
 
-## 11. Observabilitas
+## 11. Observabilitas — yang belum terukur
 
-***Queue depth* bukan sinyal yang benar** — ia tidak mengatakan berapa lama
-pekerjaannya atau apakah tumpukannya tumbuh. Yang memetakan langsung ke apa yang
-dirasakan pengguna adalah **umur pekerjaan tertua yang belum jalan**.
+**Sinyal utamanya sudah terpasang:** umur pekerjaan tertua yang belum jalan,
+per jalur, dengan ambang 7/10 menit yang hanya berlaku bila ada yang menunggu —
+berpasangan dengan denyut penerbit yang tidak bergantung pada isi antrean.
+Keduanya kini **keadaan**: [02 §14](./02-LAYANAN-INFRA.md).
 
-| Metrik | Satuan | Perannya |
-|---|---|---|
-| **Umur tertua belum jalan** | detik | **sinyal utama** |
-| *Queue depth* | jumlah | pendamping, berguna hanya bersama laju |
-| Laju terbit & laju selesai | per menit | bersama kedalaman memberi perkiraan *drain time* |
-| Durasi pekerjaan | histogram p95/p99 | rata-rata menyembunyikan satu jenis yang melambat |
+Yang belum ada, dan ketiganya butuh penyimpan **riwayat** yang belum dipilih —
+hari ini setiap angka terbaca *sekarang*, bukan sebagai tren:
 
-⚠ **Semuanya dipecah per JALUR.** Rata-rata lintas jalur menyembunyikan justru
-hal yang paling ingin diketahui — *starvation*, yaitu satu kelas pekerjaan
-tertahan di belakang kelas lain.
+| Metrik | Satuan | Perannya | Kenapa belum |
+|---|---|---|---|
+| *Queue depth* | jumlah | pendamping, berguna hanya bersama laju | terbaca sekarang; tanpa laju ia tidak mengatakan apa pun |
+| Laju terbit & laju selesai | per menit | bersama kedalaman memberi perkiraan *drain time* | menuntut dua titik waktu, jadi menuntut riwayat |
+| Durasi pekerjaan | histogram p95/p99 | rata-rata menyembunyikan satu jenis yang melambat | menuntut agregasi, bukan satu kueri |
 
-Dua pagar yang mudah salah pasang: ambang **umur**, bukan jumlah (mis. peringatan
-7 menit, bunyi 10), dan keduanya berlaku **hanya bila ada pekerjaan menunggu** —
-tanpa syarat itu, antrean kosong dan pekerja yang menganggur karena tak ada kerja
-terbaca seperti kegagalan.
-
-⚠ **Dan justru syarat itu membuka lubang yang paling berbahaya di seluruh
-rancangan ini.** Bila jalur `schedule` mati, tak ada baris yang pernah terbit;
-antrean kosong, umur tertua nol, setiap pagar di atas **hijau** — sementara
-pengingat, dokumen berulang, dan cadangan semuanya berhenti. Kegagalan total
-yang terbaca sebagai kesehatan sempurna.
-
-Jadi satu metrik lagi wajib, dan ia **tidak boleh bergantung pada isi antrean**:
-
-| Metrik | Bentuk | Pagar |
-|---|---|---|
-| **Denyut penerbit** | stempel waktu putaran penerbitan terakhir, ditulis tiap jam ke jejak putaran | berbunyi bila **lebih tua dari dua periode** — terlepas dari ada atau tidaknya pekerjaan |
-
-Aturan umumnya: **setiap komponen yang berjalan satu instans wajib punya denyut
-yang diukur dari luar.** Di rancangan ini ada dua — jalur `schedule` dan jalur
-`tenant` — dan keduanya mengerjakan hal yang tidak ada yang akan menyadari
-hilangnya sampai dibutuhkan. Dan stempel waktu **selesai** tidak bisa
-memperlihatkan pekerjaan yang tidak pernah selesai, jadi "yang masih tertunggak"
-wajib diukur sendiri.
+⚠ Histogram durasi bukan kemewahan: ia **prasyarat** ambang per-jalur. Hari ini
+tujuh jalur memakai satu pasang ambang dengan sengaja, sebab tujuh angka yang
+dikarang tanpa pengukuran akan berteriak untuk hal normal atau diam untuk hal
+gawat — dan dua-duanya lebih buruk daripada satu angka yang jujur.
 
 Penamaannya mengikuti konvensi OpenTelemetry (`queue.items.age`,
 `queue.items.size`, `job.duration`) dengan dimensi nama jalur.

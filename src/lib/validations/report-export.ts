@@ -17,7 +17,7 @@ const money = z.number().finite();
 const line = z.object({ code: z.string(), name: z.string(), amount: money });
 
 /**
- * Array BARIS, berbatas (rancangan §9, tahap 1a).
+ * Array BARIS, berbatas (03 §4).
  *
  * Ditulis satu kali di sini alih-alih `.max(...)` di tujuh belas tempat: batas
  * yang disalin tujuh belas kali adalah batas yang akan terlupa di tempat ke

@@ -1,5 +1,7 @@
 /**
- * ANGKA MURNI ANTREAN PEKERJAAN — backoff, lease, retensi (rancangan §4).
+ * ANGKA MURNI ANTREAN PEKERJAAN — backoff, lease, retensi.
+ *
+ * Sifat yang dijaganya ada di docs/arsitektur/04-ALIRAN-DATA.md §8.9.
  *
  * Dipisahkan dari SQL-nya karena inilah bagian yang salahnya paling halus dan
  * paling mahal: angka yang keliru di sini tidak membuat apa pun gagal, ia
@@ -88,7 +90,7 @@ export function queueAgeMs(tertuaDiterbitkan: Date | null, sekarang: Date = new 
 }
 
 /**
- * Umur baris `done` sebelum dibuang dari tabel panas (rancangan §4, *bloat*).
+ * Umur baris `done` sebelum dibuang dari tabel panas (*bloat*; 04 §8.9).
  *
  * Dua minggu: cukup untuk "itu jalan minggu lalu, tunjukkan", dan sesudahnya
  * jawabannya ada di domain yang ditulis pekerjaan itu, bukan di baris

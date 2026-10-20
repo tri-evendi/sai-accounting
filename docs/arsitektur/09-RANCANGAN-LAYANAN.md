@@ -816,7 +816,7 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 | Bidang | Hilang |
 |---|---|
 | **Versi** | **semver + tag tetap + definisi GA** (hari ini `0.9.0`, tag `latest`) |
-| Rollback skema | **aturan** expand/contract ditegakkan penjaga, bukan kebiasaan — §6 |
+| ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). Prasyarat §6 karena itu terpenuhi; yang tersisa dari §6 adalah memindahkan penerapannya keluar dari gerbang pemblokir |
 | **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
 | **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |
 | Keamanan | `SECURITY.md` — jalur pengungkapan kerentanan |
@@ -828,6 +828,18 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 Dua di antaranya memblokir komersialisasi, bukan sekadar kerapian: **disiplin
 versi** — tanpa artefak bernomor tidak ada yang bisa dijual atau didukung — dan
 **severity insiden**, tanpanya tidak ada SLA yang bisa dijanjikan.
+
+⚠ **Delapan sisanya KEBIJAKAN, bukan kode — dan itu sebabnya ia tidak
+dikerjakan di sini.** Jendela dukungan, retensi data, severity insiden, sasaran
+SLO, definisi GA: semuanya menyatakan apa yang DIJANJIKAN kepada orang di luar
+repo ini, dan janji yang ditulis oleh yang bukan penjanjinya adalah janji yang
+tidak mengikat siapa pun. Yang bisa dikerjakan di sini sudah: satu-satunya
+baris di tabel itu yang berbentuk **penjaga** kini ada.
+
+Satu kaitan pantas disebut: **kontraksi skema pertama menuntut jendela dukungan
+lebih dulu tertulis.** Daftar-izin kontraksi menuntut penyebutan rilis tempat
+paruh expand-nya terkirim — dan pada pemasangan on-premise pernyataan "tak ada
+lagi instans yang memakai bentuk lama" tidak bisa diperiksa dari repo ini.
 
 ## 13. Yang sengaja TIDAK dirancang
 

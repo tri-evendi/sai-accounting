@@ -17,7 +17,7 @@
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { apiFetch } from "@/lib/api-fetch";
-import { parseTenantPath } from "@sai/core/tenant-routes";
+import { documentPdfHref, parseTenantPath } from "@sai/core/tenant-routes";
 // Nama dokumennya datang dari penentu bentuk laporan (#323). Ia statis dengan
 // sengaja: `statement-layout.ts` tidak mengimpor apa pun, jadi ia tak menyeret
 // jsPDF — yang tetap dimuat malas di `downloadStatementPdf()` di bawah.
@@ -183,6 +183,32 @@ export async function downloadStatementWorkbook(
     res.headers.get("Content-Disposition"),
     `Laporan_${stamp()}.xlsx`
   );
+}
+
+/**
+ * Ambil PDF dokumen satuan dari SERVER, sebagai Blob.
+ *
+ * Dipakai tombol pratinjau. Satu permintaan, satu Blob — dan unduhannya dibuat
+ * dari Blob yang sama, bukan dari permintaan kedua yang akan menghasilkan
+ * `/ID` PDF yang berbeda.
+ *
+ * ⚠ Ia mengirim ID, bukan muatan. Faktur adalah dokumen yang dikirim ke
+ * pelanggan dan disimpan sebagai bukti; angka di atas kertas diturunkan dari
+ * BUKU, bukan dari apa yang kebetulan ada di memori peramban.
+ */
+export async function fetchDocumentPdfBlob(jenis: string, id: number): Promise<Blob> {
+  const lingkup = parseTenantPath(window.location.pathname);
+  if (!lingkup) {
+    throw new Error(
+      "alamat ini bukan jalur bertenant — dokumen selalu milik satu PT, dan " +
+        "alamat cetaknya menuntut sepasang slug (#489)"
+    );
+  }
+  const res = await apiFetch(
+    documentPdfHref(lingkup.tenantSlug, lingkup.companySlug, jenis, id)
+  );
+  if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
+  return res.blob();
 }
 
 /** Asal sebuah laporan — apa yang dibutuhkan pekerja untuk MENGHITUNGNYA ULANG. */

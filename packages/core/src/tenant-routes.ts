@@ -291,6 +291,24 @@ export function tenantApiPath(tenantSlug: string, companySlug: string, path: str
   return `${TENANT_API_PREFIX}/${tenantSlug}/${companySlug}${suffix}`;
 }
 
+/**
+ * Alamat cetak sebuah dokumen satuan. SATU tempat rumus ini ditulis.
+ *
+ * Sepasang slug WAJIB, dan itu bukan kerepotan yang bisa dihemat (#489):
+ * alamat ini mendarat di `<iframe src>` pratinjau dan `<a href download>` —
+ * keduanya tidak melewati `apiFetch()` dan tidak bisa membawa header lingkup.
+ * Menjadikannya parameter wajib berarti yang lupa mengirimnya gugur di `tsc`,
+ * bukan di layar pengguna.
+ */
+export function documentPdfHref(
+  tenantSlug: string,
+  companySlug: string,
+  jenis: string,
+  id: number
+): string {
+  return tenantApiPath(tenantSlug, companySlug, `/documents/pdf/${jenis}/${id}`);
+}
+
 /** Sudah berbentuk `/t/…`? */
 export function isTenantScopedPath(pathname: string): boolean {
   return pathname === TENANT_ROUTE_PREFIX || pathname.startsWith(`${TENANT_ROUTE_PREFIX}/`);

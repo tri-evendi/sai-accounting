@@ -215,7 +215,7 @@ describe("peramban berhenti menghasilkan laporan", () => {
 });
 
 describe("yang BELUM pindah, dan itu disebut bukan disembunyikan", () => {
-  it("enam generator lain masih di peramban", () => {
+  it("generator lain masih di peramban — dan jumlahnya dicacah", () => {
     /*
      * §5 memindahkan dokumen ke server satu per satu, dan laporan keuangan
      * yang pertama karena muatannya SUDAH bolak-balik ke server untuk tombol
@@ -244,17 +244,20 @@ describe("yang BELUM pindah, dan itu disebut bukan disembunyikan", () => {
     );
     const unik = [...new Set(dinamis)].sort();
 
+    /* ⚠ Daftar ini MENYUSUT, dan commit yang membuatnya menyusut memang harus
+       menyentuh baris ini — itu seluruh gunanya. `invoice-pdf` keluar ketika
+       dokumen satuan pindah ke server (`tests/dokumen-satuan-server.test.ts`). */
     expect(unik, "generator yang masih digambar peramban").toEqual([
       "contract-pdf",
       "finance-report-pdf",
-      "invoice-pdf",
       "opname-sheet-pdf",
       "return-pdf",
       "shipping-pdf",
       "stock-report-pdf",
     ]);
-    /* `statement-pdf` TIDAK boleh ada di daftar itu lagi. */
+    /* Keduanya TIDAK boleh ada di daftar itu lagi. */
     expect(unik).not.toContain("statement-pdf");
+    expect(unik).not.toContain("invoice-pdf");
   });
 
   it("satu-satunya jalur server lain tetap faktur yang dikirim (#465)", () => {

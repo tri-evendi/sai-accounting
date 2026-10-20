@@ -37,7 +37,6 @@ import { InvoicePDFButtonWrapper } from "./pdf-button";
 import { InvoiceAdvanceSection } from "./advance-section";
 import { InvoiceSendSection } from "./send-section";
 import { getAdvances, getAdvanceTargetState } from "@/lib/advances";
-import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { invoiceWhatsAppTarget, listInvoiceSends } from "@/lib/invoice-send";
 import { getT } from "@sai/platform/i18n/server";
 import { INLINE_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
@@ -330,7 +329,7 @@ export default async function InvoiceDetailPage({
               yang dipakai pengirim surel di server (issue #465). Merakitnya di
               sini lagi berarti dua kertas yang perlahan menyimpang untuk satu
               nomor faktur, tanpa satu galat pun yang menandainya. */}
-          <InvoicePDFButtonWrapper invoice={buildInvoicePdfData(invoice)} />
+          <InvoicePDFButtonWrapper invoiceId={invoice.id} invoiceNo={invoice.invoiceNo} />
           <ButtonLink href={`/invoices/${id}/edit`} variant="secondary">
             {t("common.edit")}
           </ButtonLink>

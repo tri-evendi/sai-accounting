@@ -79,3 +79,27 @@ jobs:
           # kemerahan yang akhirnya diabaikan.
           version: v1.62.2
           working-directory: services/integrator
+          # ⚠ `verify: false` — DAN INI BUKAN MELEMAHKAN GERBANGNYA.
+          #
+          # Bawaan action ini menjalankan `golangci-lint config verify`, yang
+          # MENGUNDUH skema JSON dari `golangci-lint.run` sebelum satu linter
+          # pun berjalan. Pada 20 Okt 2026 unduhan itu timeout DUA KALI dalam
+          # tiga jalan, pada PR yang tidak menyentuh satu baris Go:
+          #
+          #     compile schema: jsonschema https://golangci-lint.run/...
+          #     context deadline exceeded (Client.Timeout exceeded ...)
+          #
+          # Keduanya hijau pada percobaan ulang tanpa satu baris diubah. Itu
+          # bentuk kegagalan yang paling mahal di repo ini: ia **terbaca seperti
+          # kode rusak padahal bukan** — dan gerbang yang merah karena situs
+          # pihak ketiga lambat adalah gerbang yang orang belajar mengulang
+          # tanpa membaca, lalu suatu hari mengulang kemerahan yang sungguhan.
+          #
+          # Yang HILANG hanya validasi skema `.golangci.yml`, bukan satu pun
+          # linter: kesembilan tetap berjalan, `gofmt` termasuk. Dan kesalahan
+          # tulis di konfigurasi itu tidak lolos diam-diam — `golangci-lint`
+          # sendiri menolak kunci yang tidak dikenalnya saat berjalan.
+          #
+          # Yang dibeli: gerbang ini tidak lagi menuntut jaringan ke luar
+          # GitHub untuk memberi jawaban tentang kode kita.
+          verify: false

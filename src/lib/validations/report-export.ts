@@ -11,19 +11,38 @@
  */
 import { z } from "zod";
 
+import { EXPORT_MAX_COLUMNS, EXPORT_MAX_ROWS } from "@sai/core/export-limits";
+
 const money = z.number().finite();
 const line = z.object({ code: z.string(), name: z.string(), amount: money });
+
+/**
+ * Array BARIS, berbatas (rancangan §9, tahap 1a).
+ *
+ * Ditulis satu kali di sini alih-alih `.max(...)` di tujuh belas tempat: batas
+ * yang disalin tujuh belas kali adalah batas yang akan terlupa di tempat ke
+ * delapan belas, dan array tak berbatas di batas kepercayaan tidak kelihatan
+ * salah saat dibaca.
+ *
+ * Ini lapis PERTAMA dari tiga, bukan satu-satunya. Pemutus akhirnya tetap
+ * jumlah baris `SheetModel` yang dihitung di rutenya — karena array bersarang
+ * (grup arus kas, sesi hitung ulang) membuat batas per-array TIDAK sama dengan
+ * batas total, dan yang dilindungi ialah lembar sebarnya, bukan muatannya.
+ * Lapis ketiganya batas byte badan permintaan, yang berdiri sebelum satu baris
+ * pun diurai.
+ */
+const rows = <T extends z.ZodTypeAny>(item: T) => z.array(item).max(EXPORT_MAX_ROWS);
 
 const trialBalance = z.object({
   kind: z.literal("trial-balance"),
   period: z.string(),
-  rows: z.array(z.object({ code: z.string(), name: z.string(), debit: money, credit: money })),
+  rows: rows(z.object({ code: z.string(), name: z.string(), debit: money, credit: money })),
   totalDebit: money,
   totalCredit: money,
   balanced: z.boolean(),
 });
 
-const section = z.object({ lines: z.array(line), total: money });
+const section = z.object({ lines: rows(line), total: money });
 
 const incomeStatement = z.object({
   kind: z.literal("income-statement"),
@@ -41,9 +60,9 @@ const incomeStatement = z.object({
 const balanceSheet = z.object({
   kind: z.literal("balance-sheet"),
   period: z.string(),
-  assets: z.array(line),
-  liabilities: z.array(line),
-  equity: z.array(line),
+  assets: rows(line),
+  liabilities: rows(line),
+  equity: rows(line),
   totalAssets: money,
   totalLiabilities: money,
   totalEquity: money,
@@ -55,7 +74,7 @@ const balanceSheet = z.object({
 const cashFlow = z.object({
   kind: z.literal("cash-flow"),
   period: z.string(),
-  groups: z.array(
+  groups: rows(
     z.object({
       /*
        * Kategori kanonik (issue #241). Enum, bukan `z.string()`: bentuk
@@ -66,7 +85,7 @@ const cashFlow = z.object({
        */
       category: z.enum(["operating", "investing", "financing", "uncategorised"]),
       label: z.string(),
-      lines: z.array(
+      lines: rows(
         z.object({
           code: z.string(),
           name: z.string(),
@@ -108,12 +127,12 @@ const quantity = z.number().finite();
  * / `partyRecapColumns` hanya pernah MENYARING kolom yang ada, jadi id asing
  * paling jauh tidak berefek — bukan kolom karangan di dalam berkas.
  */
-const columnSelection = z.array(z.string()).optional();
+const columnSelection = z.array(z.string()).max(EXPORT_MAX_COLUMNS).optional();
 
 const stockMovement = z.object({
   kind: z.literal("stock-movement"),
   period: z.string(),
-  rows: z.array(
+  rows: rows(
     z.object({
       name: z.string(),
       unit: z.string().nullable(),
@@ -138,10 +157,10 @@ const stockMovement = z.object({
 const opnameHistory = z.object({
   kind: z.literal("opname-history"),
   period: z.string(),
-  sessions: z.array(
+  sessions: rows(
     z.object({
       dateISO: z.string(),
-      adjustments: z.array(
+      adjustments: rows(
         z.object({
           itemName: z.string(),
           unit: z.string().nullable(),
@@ -177,7 +196,7 @@ const partyRecapRow = z.object({
 const partyRecap = z.object({
   kind: z.enum(["sales-by-customer", "purchases-by-supplier"]),
   period: z.string(),
-  rows: z.array(partyRecapRow),
+  rows: rows(partyRecapRow),
   totals: z.object({
     docCount: z.number().int().nonnegative(),
     grossBase: money,
@@ -196,7 +215,7 @@ const partyRecap = z.object({
 const aging = z.object({
   kind: z.enum(["receivables", "payables"]),
   period: z.string(),
-  rows: z.array(
+  rows: rows(
     z.object({
       partyName: z.string(),
       documentNo: z.string(),
@@ -210,7 +229,7 @@ const aging = z.object({
       outstandingBase: money.nullable(),
     })
   ),
-  buckets: z.array(z.object({ label: z.string(), amount: money })),
+  buckets: rows(z.object({ label: z.string(), amount: money })),
   total: money,
   unresolved: z.number().int().nonnegative(),
   visibleColumns: columnSelection,
@@ -230,7 +249,7 @@ const aging = z.object({
 const stockValue = z.object({
   kind: z.literal("stock-value"),
   period: z.string(),
-  rows: z.array(
+  rows: rows(
     z.object({
       code: z.string(),
       name: z.string(),
@@ -255,7 +274,7 @@ const stockValue = z.object({
 const cashBank = z.object({
   kind: z.literal("cash-bank"),
   period: z.string(),
-  rows: z.array(
+  rows: rows(
     z.object({
       code: z.string(),
       name: z.string(),
@@ -277,7 +296,7 @@ const cashBank = z.object({
 const budgetRealization = z.object({
   kind: z.literal("budget-realization"),
   period: z.string(),
-  rows: z.array(
+  rows: rows(
     z.object({
       code: z.string(),
       name: z.string(),

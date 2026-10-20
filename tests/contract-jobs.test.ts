@@ -41,7 +41,6 @@ import {
 const akar = process.cwd();
 const baca = (...p: string[]) => readFileSync(join(akar, ...p), "utf8");
 
-const KONTRAK = baca("contract", "kinds.yaml");
 const SKEMA = baca("packages", "db", "prisma", "control", "schema.prisma");
 const MIGRATION = baca("prisma", "postgresql", "control", "0006_jobs", "migration.sql");
 const QUEUE = baca("packages", "platform", "src", "job-queue.ts");

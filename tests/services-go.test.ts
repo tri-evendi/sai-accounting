@@ -306,13 +306,32 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
 });
 
 describe("integrator tidak menyentuh bidang yang bukan miliknya", () => {
-  it("tidak ada rujukan ke basis data penagihan atau platform", () => {
+  it("tidak MEMBACA alamat basis data penagihan", () => {
     /* #137: bidang penagihan turun ≠ aplikasi turun, dan integrator tidak punya
-       urusan di sana sama sekali. */
+       urusan di sana sama sekali.
+     *
+     * Yang dilarang BACAANNYA (`os.Getenv`), bukan penyebutannya: komentar yang
+     * menjelaskan kenapa variabel ini tidak dibaca adalah komentar yang paling
+     * ingin dibaca orang berikutnya, dan penjaga yang menolaknya memaksa
+     * alasannya dihapus dari tempat ia paling berguna. Ini bukan pelonggaran —
+     * `os.Getenv("PLATFORM_DATABASE_URL")` tetap merah, dan itu diuji dengan
+     * menambahkannya. */
+    const baca = /os\.Getenv\(\s*"PLATFORM_DATABASE_URL"/;
     for (const b of GO) {
-      expect(b.isi, b.rel).not.toContain("PLATFORM_DATABASE_URL");
+      expect(baca.test(b.isi), b.rel).toBe(false);
       expect(b.isi, b.rel).not.toContain("platformDb");
     }
+  });
+
+  it("basis data penagihan TETAP ikut dicadangkan — lewat pencacahan server", () => {
+    /* Penjaga di atas tidak boleh terbaca sebagai "platform tidak dicadangkan".
+       Pencacahan lewat `pg_database` itulah yang membuat integrator tidak perlu
+       memegang alamatnya: `sai_platform` ikut punya objek dumpnya sendiri tanpa
+       satu baris kredensial penagihan pernah masuk ke jalur ini. */
+    const daftar = GO.find((b) => b.rel.endsWith("internal/backup/daftar.go"));
+    expect(daftar, "internal/backup/daftar.go").toBeDefined();
+    expect(daftar!.isi).toContain("FROM pg_database");
+    expect(daftar!.isi).toContain("sai_platform");
   });
 
   it("konteks perusahaan yang hilang MELEMPAR, tidak jatuh ke bawaan", () => {

@@ -43,9 +43,13 @@ ketahanan data, bukan struktur.
 **Bukti.** `BACKUP_S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 kosong. `/api/health` → `backup: local_only`, `lastSuccessAt: null`.
 
-**Yang sudah berjalan.** Sejak 12 Okt `job-backup` membuat artefak terenkripsi
-harian di volume `backup`, dan artefak itu **terbukti bisa di-restore**
-(fingerprint cocok, dekripsi berhasil, 19 basis data di dalam dump).
+**Yang sudah berjalan.** Sejak 12 Okt artefak terenkripsi harian dibuat di
+volume `cadangan`, dan artefak itu **terbukti bisa di-restore** (fingerprint
+cocok, dekripsi berhasil, 19 basis data ikut). Sejak 20 Okt pelakunya
+`svc-tenant` dan bentuknya **satu objek per basis data** — lihat
+[02 §5](./02-LAYANAN-INFRA.md); itu yang menutup P1-1, dan ia TIDAK mengubah
+temuan ini: satu objek per basis data di cakram yang sama tetap bukan salinan
+di luar mesin.
 
 **Yang belum.** Salinan di luar mesin. Kerusakan disk, kebakaran, atau akun
 yang hilang akan menghapus data **beserta** salinannya. Risikonya juga hukum:
@@ -53,8 +57,9 @@ pembukuan wajib disimpan sepuluh tahun (UU KUP).
 
 ```bash
 # 1. Lengkapi .env: AWS_ACCESS_KEY_ID · AWS_SECRET_ACCESS_KEY · BACKUP_S3_BUCKET
-docker compose run --rm job-backup sh scripts/backup.sh --dry-run
-docker compose run --rm job-backup sh scripts/backup.sh
+# 2. Putaran berikutnya diterbitkan penjadwal sendiri (backup:publish, berbutir hari).
+#    Untuk memaksa sekarang — hapus baris `jobs` hari ini, atau tunggu tengah malam UTC.
+docker compose logs svc-tenant --tail 60                            # ← apa yang ia kerjakan
 docker compose run --rm job-backup bun run prove-backup-restore     # ← BUKTIKAN
 ```
 
@@ -88,23 +93,6 @@ tidak butuh kejadian apa pun untuk terpicu.
 
 **Perbaikan.** Nyalakan perpanjangan otomatis, atau pasang pengingat yang tidak
 bergantung pada ingatan seseorang. Usaha: satu sakelar.
-
-### 🟠 P1-1 — Satu tenant tidak bisa dipulihkan sendiri
-
-`scripts/backup.sh` memakai `pg_dumpall --all-databases` — satu dump untuk
-kendali, platform, dan setiap buku PT sekaligus. Itu benar untuk kelengkapan,
-dan itulah alasan bentuk ini dipilih. Tetapi akibatnya: **memulangkan satu
-tenant ke keadaan sebelumnya menuntut menyentuh dump yang memuat semua tenant
-lain.**
-
-Hari ini dampaknya kecil — 11 tenant, semuanya `billing_mode = none`. Pada
-customer berbayar, "pulihkan data kami saja ke keadaan Selasa" adalah
-permintaan biasa, dan jawabannya tidak bisa.
-
-**Perbaikannya** `pg_dump` per basis data + satu `pg_dumpall --globals-only`,
-dengan bukti kelengkapan diperluas: setiap basis data terdaftar wajib punya
-objek dumpnya sendiri. Rancangannya di
-[09 §6](./09-RANCANGAN-LAYANAN.md#6-fan-out-per-tenant).
 
 ### 🟡 P2-5 — Dua jalur berkas tanpa batas, dipicu pengguna
 
@@ -242,7 +230,6 @@ mengurangi risikonya: alasan tiap keputusan tertulis di dekat kodenya.
 | **P0-1** | Backup | 🟠 lokal ✅ terbukti bisa di-restore / luar-mesin ❌ | Rendah (3 env) |
 | **P0-2** | Kunci backup 🔶 di mesin yang sama | ❌ terbuka | Rendah |
 | **P0-3** | Masa aktif VM berakhir 3 Jun 2027 | ❌ terbuka | Satu sakelar |
-| **P1-1** | Tak ada restore per tenant | ❌ terbuka | Sedang |
 | **P2-1** | Basis data uji di produksi | 🟡 terklasifikasi; 2 keputusan menunggu pemilik | Rendah |
 | **P2-2** | Tanpa pemulihan per-pekerjaan | 🟡 putaran `error` sudah berbunyi | Tinggi |
 | **P2-3** | Satu `app-customer` | Batas diketahui, belum tercapai | Tinggi |

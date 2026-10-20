@@ -44,9 +44,9 @@ function mayorServer(): number | null {
  * `tenant` punya image Go-nya sendiri, `postgresql-client-<n>` muncul DUA kali
  * di berkas ini — dan pemeriksa yang membaca kecocokan PERTAMA akan meluluskan
  * image kedua yang kliennya lebih tua. Di situlah dump sungguhan dijalankan
- * sejak tahap 1b, jadi justru itu yang paling tidak boleh lolos (rancangan
- * §3.5: "tes versi klien `pg` ikut menunjuk image Go, karena di situlah dump
- * dijalankan").
+ * sejak tahap 1b, jadi justru itu yang paling tidak boleh lolos — dan
+ * rancangan §3.5 memang sudah menuntutnya sebelum image itu ada: "tes versi
+ * klien `pg` ikut menunjuk image Go, karena di situlah dump dijalankan".
  */
 function mayorKlien(): number[] {
   return [...perintah.matchAll(/postgresql-client-(\d+)/g)].map((m) => Number(m[1]));

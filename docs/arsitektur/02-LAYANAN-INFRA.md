@@ -198,9 +198,12 @@ menghentikan yang lain. Image-nya dibangun dari `bunbase`, bukan `builder`.
 > ditunjuk `DATABASE_URL`; control, platform, dan buku PT lain tertinggal
 > **tanpa error**.
 
-### `job-scheduler` — tujuh langkah, tiap jam
+### `job-scheduler` — delapan langkah, tiap jam
 
-`sleep 3600`, `timeout -k 30 480` per langkah (7 × 480s = 56 menit < 1 jam).
+`sleep 3600`, `timeout -k 30 420` per langkah (8 × 420s = 56 menit < 1 jam).
+Aritmetikanya DIJAGA (`tests/scheduler-heartbeat.test.ts`): jumlah langkah ×
+batas wajib di bawah selang putarannya, supaya putaran terburuk sekalipun
+tidak menumpuk lebih dari satu.
 
 | # | Perintah | Tugas | Idempotensi |
 |---|---|---|---|
@@ -209,8 +212,17 @@ menghentikan yang lain. Image-nya dibangun dari `bunbase`, bukan `builder`.
 | 3 | `notify:invoice-due` | Kabar jatuh tempo + ringkasan mingguan | `dedupe_key` |
 | 4 | `remind:customers` | **Surel ke pelanggan** (H-3/H+1/H+7) | Kunci unik (invoice, kind, due_key) |
 | 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting `svc-ledger` | `dedupe_key` berbutir jam UTC |
-| 6 | `watch:health` | Baca 3 heartbeat, kirim surel peringatan | Satu surel per status per 24 jam |
-| 7 | `prune:trails` | Pangkas jejak putaran > 90 hari | Putaran kosong = satu `SELECT` per tabel |
+| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan `svc-tenant` | `dedupe_key` berbutir hari UTC |
+| 7 | `watch:health` | Baca 3 heartbeat, kirim surel peringatan | Satu surel per status per 24 jam |
+| 8 | `prune:trails` | Pangkas jejak putaran > 90 hari | Putaran kosong = satu `SELECT` per tabel |
+
+⚠ **Dua butir kunci yang BERBEDA, dan bedanya disengaja.** Langkah 5 berbutir
+JAM: kunci berbutir hari akan membuat putaran pertama hari itu menjadi
+satu-satunya penerbit, sehingga template yang diaktifkan tengah hari terlantar
+sampai besok. Langkah 6 berbutir HARI: cadensi cadangan memang harian (RPO satu
+hari), dan butir jam akan menerbitkan 24 dump seluruh pemasangan sehari. Satu
+pertanyaan memutuskan keduanya — **berapa sering pekerjaan ini SEHARUSNYA
+terjadi**, bukan berapa sering penerbitnya berjalan.
 
 Tiga keputusan desain:
 
@@ -542,8 +554,44 @@ ketahuan tidak punya pemanggil.
 db:migrate:all
 ├─ 1. db:migrate:control     prisma migrate deploy --config prisma.control.config.ts
 ├─ 2. db:migrate:platform    scripts/migrate-platform.ts  (dilewati dengan peringatan bila env kosong)
-└─ 3. db:migrate:companies   scripts/migrate-all-companies.ts  (setiap PT terdaftar)
+└─ 3. db:migrate:companies   scripts/migrate-all-companies.ts  (setiap PT terdaftar,
+                             COMPANY_MIGRATE_CONCURRENCY bersamaan — bawaan 2, plafon 8)
 ```
+
+> **PRISMA TETAP PEMILIK SKEMA, dan itu aturan — bukan keadaan sementara.**
+> Hanya `prisma migrate deploy` yang menerapkan migration dan menulis baris
+> `_prisma_migrations`. Tidak ada penerap kedua, dalam bahasa apa pun.
+>
+> Sebabnya bukan selera melainkan bentuk kegagalannya. Penerap kedua wajib
+> menulis pembukuannya dalam format yang **persis** sama — termasuk checksum
+> tiap berkas migration — dan penyimpangannya TIDAK menghasilkan galat: ia
+> membuat `migrate deploy` berikutnya menerapkan ulang, atau melaporkan drift,
+> pada basis data yang sebenarnya benar. Pada migration itu berarti kerusakan
+> data yang disebabkan oleh perkakas yang sedang memperbaikinya.
+>
+> Kode Go karena itu **tidak pernah** menulis berkas migration maupun baris
+> `_prisma_migrations`; dijaga `tests/services-go.test.ts` (daftar-izin tabel)
+> dan `tests/migrate-fanout.test.ts`.
+
+**Fan-out per perusahaan: *bounded concurrency*, dan angkanya kecil karena
+memori.** Tiap pelaksana adalah satu proses Prisma CLI (ratusan MB) plus satu
+backend PostgreSQL, dan migration berjalan **sementara aplikasi masih
+melayani** — pada kotak 3,6 GB yang dibagi enam aplikasi, dan yang sudah pernah
+kehilangan proses ke OOM-killer. Dua pelaksana memotong *wall-clock* separuh di
+17 perusahaan; menaikkannya menuntut ruang memori yang terukur.
+
+Keluaran tiap perusahaan **ditangkap** lalu dicetak sebagai satu blok: dengan
+`stdio: "inherit"`, N proses Prisma menulis ke terminal yang sama dan saling
+menyisip — tidak bisa dibaca justru pada hari satu di antaranya gagal.
+
+Satu perusahaan yang gagal **tidak** menghentikan yang lain (#104), dan exit
+code akhirnya bukan nol — jadi `migrate` yang dirantai
+`service_completed_successfully` tetap menahan rilis, sementara yang berhasil
+sudah benar-benar naik. Hasil per perusahaan ditanyakan ke konsol operator
+`/backup`, yang membacanya dari `_prisma_migrations` **sendiri** alih-alih dari
+tabel jejak: jejak mengatakan "rilis melaporkan sukses", `_prisma_migrations`
+mengatakan "basis datanya memang memilikinya" — dan pada hari keduanya berbeda,
+hanya yang kedua benar.
 
 Diterapkan 18 Okt 2026: control **4/4** · platform **4/4** · perusahaan
 **1/1** per buku. `prisma/migrations/` dan `prisma/{control,platform}/

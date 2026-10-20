@@ -54,7 +54,7 @@
  * tangan, jadi Go menerapkannya langsung"). Ia TIDAK pindah di tahap 1b, dan
  * alasannya dua, keduanya dari rancangan yang sama:
  *
- *  1. **§3.5: Prisma tetap pemilik skema.** Penerap kedua wajib menulis baris
+ *  1. **Prisma tetap pemilik skema** (aturannya di 02 §12). Penerap kedua wajib menulis baris
  *     `_prisma_migrations` dalam format yang persis sama dengan Prisma —
  *     termasuk checksum-nya. Dua penulis atas pembukuan skema yang menyimpang
  *     tidak menghasilkan galat: `migrate deploy` berikutnya akan menerapkan

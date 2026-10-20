@@ -5,22 +5,23 @@
 > rancangan** — isinya belum dibangun, dan setiap bagiannya ditandai demikian.
 > Dimutakhirkan 20 Oktober 2026 · produksi `main@ca0cd038`.
 >
-> Tahap 1a rancangan 09 selesai dan sudah dipindahkan ke 01–08 sebagai
-> keadaan; 09 memuat sisanya saja.
+> Tahap **1a dan 1b** rancangan 09 selesai dan sudah dipindahkan ke 01–08
+> sebagai keadaan; 09 memuat sisanya saja — ditambah dua hal yang 1b sengaja
+> TIDAK pindahkan, beserta pemicunya (§9).
 
 ## Isi
 
 | # | Dokumen | Menjawab |
 |---|---|---|
-| 01 | [ARSITEKTUR.md](./01-ARSITEKTUR.md) | Produk, dua aplikasi, diagram konteks & container, pola, empat batas keamanan, tiga lapis basis data, konteks perusahaan, otorisasi, mesin posting, struktur kode, ukuran |
-| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, sepuluh layanan, pekerjaan latar, image & build, gate rilis, deploy & rollback, migration, env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
+| 01 | [ARSITEKTUR.md](./01-ARSITEKTUR.md) | Produk, dua aplikasi, diagram konteks & container, pola, empat batas keamanan, tiga lapis basis data, konteks perusahaan, otorisasi, mesin posting, struktur kode **& pohon poliglot (batas Go, kontrak bangkitan, tiga gerbang rilis)**, ukuran |
+| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, sepuluh layanan, pekerjaan latar (**jalur `ledger` & `tenant`**), image & build, gate rilis, deploy & rollback, migration (**pemilik skema, fan-out**), env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
 | 03 | [API-INTEGRASI.md](./03-API-INTEGRASI.md) | Permukaan HTTP, tiga rezim autentikasi, header keamanan, dependensi luar, titik gagal tunggal, larangan impor |
 | 04 | [ALIRAN-DATA.md](./04-ALIRAN-DATA.md) | ERD ketiga skema, enam alur data, daur hidup status tiap dokumen |
 | 05 | [PENILAIAN.md](./05-PENILAIAN.md) | Kekuatan, temuan terbuka berprioritas, portabilitas VM, pemicu, keputusan yang menunggu pemilik |
 | 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman, regresi yang pernah terjadi |
 | 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Empat pekerjaan selesai: keputusan yang masih mengikat dan yang masih terbuka |
 | 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
-| 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, bahasa & monorepo poliglot, outbox & otorisasi hasil, dokumen di server, fan-out per tenant, SaaS vs On-Premise, tahapan, nomenklatur, observabilitas yang belum terukur, tata kelola |
+| 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, jalur yang BELUM pindah & batas Go, kontrak yang belum dibangkitkan, outbox & otorisasi hasil, dokumen di server, fan-out per tenant yang belum (kesesuaian, expand/contract), SaaS vs On-Premise, tahapan & pemicu, nomenklatur, observabilitas yang belum terukur, tata kelola |
 
 ## Mulai dari mana
 

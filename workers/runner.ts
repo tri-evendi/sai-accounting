@@ -6,8 +6,14 @@
  *   bun workers/ledger.ts        # jalur `ledger`
  *
  * Satu berkas ini dipakai setiap jalur Node. Jalur Go punya pelarinya sendiri
- * (tahap 1b), dan keduanya membaca kontrak yang sama — itulah yang membuat
- * "jalur" punya arti yang sama di dua bahasa.
+ * (`services/integrator/internal/jobs/runner.go`), dan keduanya membaca
+ * kontrak yang SAMA — kosakata maupun angkanya — itulah yang membuat "jalur"
+ * punya arti yang sama di dua bahasa.
+ *
+ * ⚠ Satu jalur bisa dilayani KEDUA bahasa selama transisi (01 §10): jalur
+ * `tenant` adalah contoh pertamanya. Karena itu pelari mengklaim `kind` yang
+ * punya handler padanya, bukan seluruh `kind` jalurnya — dan lubang yang
+ * dibuka keputusan itu ditutup `tests/kind-punya-pengklaim.test.ts`.
  *
  * ══ EMPAT HAL YANG MEMBUATNYA AMAN, DAN SEMUANYA MUDAH TERLEWAT ════════════
  *

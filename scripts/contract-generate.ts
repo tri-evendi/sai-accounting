@@ -1,5 +1,5 @@
 /**
- * BANGKITKAN KONTRAK LINTAS BAHASA (rancangan §3.5) — `contract/` → kode.
+ * BANGKITKAN KONTRAK LINTAS BAHASA (01 §10, Poliglot) — `contract/` → kode.
  *
  *   bun run contract:gen          # tulis berkas bangkitan
  *   bun run contract:gen -- --cek # GAGAL bila yang di disk tidak sinkron

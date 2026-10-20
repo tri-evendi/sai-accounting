@@ -4,8 +4,9 @@
  *   bun workers/ledger.ts
  *
  * ══ KENAPA JALUR INI ADA SAMA SEKALI ═══════════════════════════════════════
- * Enam jalur lain pindah ke Go (rancangan §3.3). Yang ini tidak, dan bukan
- * karena mahal: `app-customer` memposting SECARA SINKRON saat pengguna menekan
+ * Jalur lain pindah ke Go satu per satu (01 §10, batas Go) — `tenant` lebih
+ * dulu di tahap 1b. Yang ini tidak akan pernah pindah, dan bukan karena
+ * mahal: `app-customer` memposting SECARA SINKRON saat pengguna menekan
  * tombol — 44 pemanggil `postForSource` di Next.js — dan ia tidak pindah.
  * Pintu posting kedua di Go berarti dua mesin menulis buku besar, dan ketika
  * keduanya menyimpang, yang menyimpang adalah buku tanpa satu galat pun. I-3

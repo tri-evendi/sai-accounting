@@ -335,7 +335,70 @@ src/                              # APLIKASI CUSTOMER
 prisma/
 ├── postgresql/{company,control,platform}/NNNN_*/   # migration yang DITERAPKAN
 └── migrations/ control/ platform/                  # arsip MariaDB — hanya-baca
+workers/                             # pelari jalur NODE
+└── ledger.ts                        # jalur `ledger` — satu-satunya penulis buku
+services/integrator/                 # pelari jalur GO — nol aturan akuntansi
+├── go.mod · .golangci.yml           # DI LUAR workspace bun
+├── cmd/tenant/                      # jalur `tenant` — cadangan per basis data
+└── internal/
+    ├── contract/  (DIBANGKITKAN)    # kosakata & angka antrean
+    ├── jobs/                        # klaim · lease · reclaim — SQL antrean
+    ├── db/                          # kolam koneksi kendali, pembersih DSN
+    ├── backup/                      # dump · sandi · manifest · tujuan
+    └── trail/                       # `backup_runs` — satu-satunya tulisan di luar `jobs`
+contract/                            # SATU sumber untuk kontrak lintas bahasa
+└── kinds.yaml                       # kind · status · angka antrean
 ```
+
+### Poliglot: satu monorepo, dua bahasa, tiga workspace yang berbeda
+
+| Pohon | Bahasa | Di workspace bun? | Siapa menjaganya |
+|---|---|---|---|
+| `src/` · `apps/*` · `packages/*` | TypeScript | **ya** (`packages/*` + `apps/*`) | 25+ pemindai `tests/`, akar dari `tests/akar-sumber.ts` |
+| `workers/` · `scripts/` | TypeScript | tidak, tapi **ikut `tsconfig`** (`**/*.ts`) | `tsc` + lint |
+| `services/*` | Go | **tidak** | `tests/services-go.test.ts` + gerbang Go |
+
+**`services/` sengaja di luar workspace bun.** Satu `package.json` di dalam
+pohon Go akan menariknya ke graf paket yang penjaganya tidak memahaminya —
+dijaga `tests/services-go.test.ts`.
+
+**Dua aturan yang memutuskan poliglot ini bertahan atau menyimpang diam-diam:**
+
+> **1. Hanya jalur `ledger` (Node) menulis buku besar.** Kode Go membaca buku,
+> menulis tabel `jobs` (+ `backup_runs`, daftar-izin yang disebut), dan
+> menghasilkan berkas. Pintu posting wajib TUNGGAL (invarian I-2, §9), dan
+> pintu itu TypeScript: `app-customer` memposting secara sinkron saat pengguna
+> menekan tombol — 44 pemanggil `postForSource` — dan ia tidak akan pindah.
+> I-3 menutup jalan keluarnya: layanan tidak saling memanggil, jadi Go tidak
+> bisa menitip posting ke Node.
+
+> **2. Setiap konstanta yang dipakai DUA bahasa dibangkitkan dari `contract/`,
+> tidak pernah ditulis dua kali.** Berlaku untuk `kind`/status pekerjaan DAN
+> untuk angka antrean (backoff, lease, retensi, ambang umur). Dua daftar tulis
+> tangan menyimpang **tanpa galat**: `kind` yang hanya dikenal satu sisi menjadi
+> baris `queued` yang menumpuk selamanya tanpa pengklaim, dan `lease_renew_ms`
+> yang berbeda di satu sisi membuat pekerja sisi itu kehilangan pekerjaannya di
+> tengah jalan. Generatornya menolak kombinasi yang tidak konsisten, jadi
+> kombinasi yang salah tidak bisa LAHIR ke bahasa mana pun.
+
+**⚠ Batas Go: ia berhenti SEBELUM perhitungan akuntansi.** Jalur yang nol
+aturan akuntansi pindah tanpa perdebatan (cadangan, migration, integrasi luar,
+penerbitan). Jalur yang MENGHITUNG angka akuntansi tidak — sampai ada pemicu
+**terukur**, bukan rencana. Sebabnya bukan ongkos melainkan kelas kerusakannya:
+`contract/` membangkitkan **konstanta**, bukan **aturan**, dan dua implementasi
+"laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap
+berbeda hasilnya. Batas ini sudah menahan dua pemindahan:
+
+| Yang tertahan | Pemicu yang menunggu |
+|---|---|
+| Kesesuaian data (`tenant.conformance`) | 2 dari 11 pemeriksaannya memanggil pagar materialitas (#444/#445) — penilaian, bukan konstanta. Pemicunya sama dengan tahap 1d |
+| Jalur `schema` lewat antrean | *expand/contract* harus berlaku lebih dulu: tanpa itu, migration di luar gerbang pemblokir berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya |
+
+| Gerbang rilis | Isinya |
+|---|---|
+| 1 | `bun run verify` — typecheck + lint + vitest |
+| 2 | `bun run go:test` + `bun run go:lint` (gofmt + 8 linter) |
+| 3 | `bun run build` + `bun run build:operator` + build image |
 
 ```
 src/ ──────────┐
@@ -352,6 +415,9 @@ apps/operator ─┘          │
 | Klien Prisma hanya lewat `@sai/db/client/*` | `tests/klien-prisma-dari-paket.test.ts` |
 | Modul yang pindah tidak hidup lagi di jalur lama | `tests/paket-pindahan.test.ts` |
 | Scanner wajib memakai akar `src/` + `apps/operator/src` + `packages/*/src` | `tests/akar-sumber.ts` |
+| Pohon Go tidak menulis tabel buku; kosakata & angka antrean tidak ditulis tangan di sana | `tests/services-go.test.ts` |
+| `kind` yang DITERBITKAN punya tepat satu pengklaim, di jalurnya sendiri | `tests/kind-punya-pengklaim.test.ts` |
+| Versi Go di image = versi di `go.mod` | `tests/go-image-version.test.ts` |
 
 - `@sai/platform → @sai/ui` ada untuk satu hal: rute ikon menggambar lambang bawaan. Arah sebaliknya tidak boleh ada.
 - **Scanner yang hanya menyapu `src/` lulus dengan nol pelanggar** begitu kodenya pindah ke paket — kegagalan diam yang terjadi di Fase 2.

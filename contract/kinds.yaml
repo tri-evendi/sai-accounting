@@ -1,9 +1,9 @@
 # ═══════════════════════════════════════════════════════════════════════════
-# KONTRAK PEKERJAAN — satu sumber untuk kedua bahasa (rancangan §3.5)
+# KONTRAK PEKERJAAN — satu sumber untuk kedua bahasa (01 §10, Poliglot)
 #
 # Berkas ini DIBACA, tidak pernah disalin. Dari sini dibangkitkan:
 #   • TypeScript → packages/core/src/generated/job-kinds.ts  (bun run contract:gen)
-#   • Go         → services/integrator/internal/contract/     (menyusul, tahap 1b)
+#   • Go         → services/integrator/internal/contract/jobs_gen.go
 #
 # ══ KENAPA DIBANGKITKAN, BUKAN DITULIS DUA KALI ════════════════════════════
 # Dua daftar tulis tangan menyimpang TANPA GALAT, dan bentuk penyimpangannya

@@ -12,14 +12,20 @@ jumlah tenant.** Keempatnya hari ini berurutan dan terikat *wall-clock*:
 
 | Operasi | Sekarang | Pada ratusan tenant |
 |---|---|---|
-| Migration | `for` loop per perusahaan | ratusan `migrate deploy` berurutan **di setiap rilis** |
-| Cadangan | satu `pg_dumpall --all-databases` | satu dump raksasa — **dan tak ada restore per tenant** |
-| Kesesuaian data | per basis data, mingguan | jendela mingguan menjadi pembatas |
-| Penjadwal | tujuh langkah berurutan, tiap jam | satu putaran tidak muat dalam satu jam |
+| Migration | ✅ *bounded concurrency* (tahap 1b) — masih di gerbang pemblokir | gerbangnya yang jadi pembatas, bukan jumlah langkahnya; §6 |
+| Cadangan | ✅ satu objek `pg_dump -Fc` **per basis data** (tahap 1b) | satu objek per tenant per hari — ongkos penyimpanan tumbuh linear, dan itu memang ongkos yang benar |
+| Kesesuaian data | per basis data, mingguan, **berurutan** | jendela mingguan menjadi pembatas |
+| Penjadwal | delapan langkah berurutan, tiap jam | satu putaran tidak muat dalam satu jam |
 
-Yang hilang bukan hanya waktu, tapi satu kemampuan: **`pg_dumpall` berarti satu
-tenant tidak bisa dipulihkan tanpa menyentuh tenant lain** — padahal "pulihkan
-data kami saja ke keadaan Selasa" (kata customer) adalah permintaan biasa di SaaS berbayar.
+Yang hilang dulu bukan hanya waktu, tapi satu kemampuan: **`pg_dumpall` berarti
+satu tenant tidak bisa dipulihkan tanpa menyentuh tenant lain** — padahal
+"pulihkan data kami saja ke keadaan Selasa" (kata customer) adalah permintaan
+biasa di SaaS berbayar. ✅ Itu tertutup tahap 1b; prosedurnya di `PRODUCTION.md`.
+
+⚠ Dua baris yang sudah ✅ tetap di tabel ini, dan sengaja: tabel ini menamai
+**kelas masalahnya**, dan dua baris yang tersisa punya bentuk yang sama. Baris
+yang dihapus akan membuat pembaca berikutnya mengira hanya dua operasi yang
+pernah dikalikan jumlah tenant.
 
 ## 2. Tiga invarian
 
@@ -177,21 +183,32 @@ hanya menjatuhkan proses jalur `bulk`, dan pengguna yang menunggu unduhan di
 jalur `interactive` tidak merasakan apa pun. Operasionalnya tetap satu layanan —
 satu commit, beberapa `command`.
 
-| Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi |
-|---|---|---|---|---|---|
-| `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna | berapa pun | — | pooler |
-| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler |
-| `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler |
-| `tenant` | Go | kesesuaian data **dan cadangan** per perusahaan | **satu** | kunci enkripsi + kredensial unggah | **langsung** |
-| `schema` | Go | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** |
-| `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler |
+| Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi | Keadaan |
+|---|---|---|---|---|---|---|
+| `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna | berapa pun | — | pooler | tahap 1c |
+| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
+| `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di `job-scheduler` |
+| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-tenant` + `job-conformance` |
+| `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate`, *bounded concurrency* |
+| `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler | ✅ `svc-ledger` |
 
 ¹ Dimulai sebagai proses Node terpisah, pindah ke Go per generator bila ada
 pemicunya — §3.3 menjelaskan kenapa jalur yang **menghitung angka akuntansi**
 tidak ikut gelombang pertama.
 
+² **Satu jalur, DUA bahasa** — satu-satunya di tabel ini, dan hanya selama
+transisinya. Pelari karena itu mengklaim `kind` yang punya handler padanya,
+bukan seluruh `kind` jalurnya; lubang yang dibuka keputusan itu (`kind` yang
+diterbitkan tanpa pengklaim) ditutup `tests/kind-punya-pengklaim.test.ts`.
+
+³ TypeScript, dan itu keputusan — lihat §3.3 dan §6. `schema` memang sudah
+dirancang **tidak** diterbitkan ke antrean (paragraf terakhir bagian ini), jadi
+yang tersisa hanya pilihan bahasa penerapnya — dan penerap kedua atas pembukuan
+`_prisma_migrations` tidak membeli apa pun yang belum ada.
+
 Hanya satu jalur menerima rahasia, dan ia jalur yang **tidak memproses masukan
-pengguna**.
+pengguna** — ✅ `svc-tenant` satu-satunya container yang memegang
+`BACKUP_ENCRYPTION_KEY`.
 
 **Gerbang skemanya sudah terpasang**, dan ia prasyarat pemindahan ini: begitu
 pekerjaan latar menjadi layanan yang berjalan terus, tidak ada lagi apa pun yang
@@ -206,38 +223,30 @@ harus melihat kode keluarnya. Di on-premise, pelaksananya customer.
 
 ### 3.3 Bahasa & runtime: Go
 
-**Keputusan: `svc-integrator` ditulis dalam Go.** Yang dibeli: memori diam
-puluhan MB bukan ratusan (mesin 3,6 GB sudah dibagi enam aplikasi), paralelisme
-sejati untuk kerja CPU, *static binary* dengan image kecil, SDK S3 dan kripto
-native yang menghapus `awscli` + `openssl` dari image, dan hilangnya pagar
-`--max-old-space-size` yang pernah berujung OOM-killer di sini.
+✅ **Keputusan dan modulnya kini KEADAAN** — `services/integrator` ada, bersama
+pohon poliglotnya, dua aturan yang menahannya, batas Go, dan ketiga gerbang
+rilisnya: [01 §10](./01-ARSITEKTUR.md). Yang dibeli memang terukur: image jalur
+`tenant` **185 MB** melawan image `backup` yang mewarisi seluruh
+`node_modules`, biner statis 12 MB, dan `awscli` + Python keluar dari jalur
+cadangan.
 
-Satu hal tidak boleh ikut pindah, dan bukan karena mahal:
+Yang tinggal di sini: pembagian jalur yang **belum** pindah, dan batas yang
+menahan sebagiannya.
 
-> **I-2 menuntut pintu posting TUNGGAL.** `app-customer` memposting secara
-> sinkron saat pengguna menekan tombol — 44 pemanggil `postForSource` — dan ia
-> aplikasi Next.js yang tidak akan pindah. Pintu posting kedua di Go berarti dua
-> mesin menulis buku besar, dan penyimpangan di antara keduanya tidak
-> memunculkan galat. I-3 menutup jalan keluarnya: layanan tidak saling
-> memanggil, jadi Go tidak bisa menitip posting ke Node.
-
-Pembagiannya mengikuti satu garis: **apakah pekerjaan itu MENULIS ke buku
-besar.**
-
-| Jalur | Bahasa | Alasan |
+| Jalur | Bahasa | Keadaan |
 |---|---|---|
-| `tenant` — cadangan | **Go** | `backup.sh` sudah shell, nol aturan akuntansi |
-| `tenant` — kesesuaian data | **Go** | hanya membaca dan melaporkan; konstanta akuntansinya dibangkitkan, lihat §3.5 |
-| `schema` — migration | **Go** | migration-nya **SQL tangan**, jadi Go menerapkannya langsung |
-| Integrasi luar (e-faktur, feed bank) | **Go** | HTTP+XML, SFTP; tidak menyentuh pembukuan |
-| `schedule` — penerbitan | **Go** | hanya menerbitkan baris `jobs` |
+| `tenant` — cadangan | **Go** | ✅ `svc-tenant`, tahap 1b — [02 §5](./02-LAYANAN-INFRA.md) |
+| `tenant` — kesesuaian data | TypeScript | **tertahan** — 2 dari 11 pemeriksaannya menghitung materialitas; pemicunya sama dengan 1d (§9) |
+| `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
+| Integrasi luar (e-faktur, feed bank) | **Go** | belum dibangun — HTTP+XML, SFTP; tidak menyentuh pembukuan |
+| `schedule` — penerbitan | **Go** | belum dibangun — hanya menerbitkan baris `jobs`. Penerbitan hari ini masih langkah di `job-scheduler` (Node), dan itu memadai |
 | `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah |
-| Pekerjaan yang MENULIS buku besar | **tetap Node** | dokumen berulang lewat `createInvoiceInTx`, dunning. Satu jalur kecil, satu container: jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
+| Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
 
-⚠ **Batas yang disarankan: Go berhenti sebelum perhitungan akuntansi, sampai ada
-pemicu.** Lima baris pertama tabel itu nol aturan akuntansi — pindah tanpa
-perdebatan. Baris keenam lain sifatnya, dan ongkosnya baru terukur setelah
-rancangan ini ditulis:
+⚠ **Batas yang berlaku: Go berhenti sebelum perhitungan akuntansi, sampai ada
+pemicu.** Aturannya sendiri kini di [01 §10](./01-ARSITEKTUR.md) bersama dua
+pemindahan yang sudah ditahannya. Yang tinggal di sini ONGKOSNYA, sebab ia
+argumen tentang 1d — dan 1d belum dibangun:
 
 | Ongkos | Bentuknya |
 |---|---|
@@ -253,6 +262,15 @@ pemicu itu terbaca, jalur `interactive` dan `bulk` berjalan sebagai **proses Nod
 terpisah** di luar `app-customer`: itu sudah membeli paralelisme dan isolasi
 memori yang dicari, tanpa menyentuh satu aturan akuntansi pun.
 
+⚠ **Baris keempat tabel ongkos di atas sudah dibayar sebagian, dan hasilnya
+bukan yang diperkirakan.** "25 penjaga tidak melihat Go" dijawab tahap 1b dengan
+penjaga Go-nya sendiri — tapi yang ditulis bukan 25 pemindai Go. Yang ditulis
+penjaga **TypeScript** yang memindai teks Go (`tests/services-go.test.ts`,
+`kind-punya-pengklaim`, `go-image-version`), sebab gerbang yang tidak pernah
+dilewati orang adalah `bun run verify` — bukan gerbang yang paling dekat dengan
+kodenya. Sisi Go menjaga PERILAKU yang hanya bisa dibuktikan dengan
+menjalankannya. Pembagian itu pantas dipakai ulang di 1d.
+
 Runtime Node yang tersisa tetap **Node, bukan Bun**: pagar
 `--max-old-space-size` diabaikan JavaScriptCore.
 
@@ -266,63 +284,27 @@ Runtime Node yang tersisa tetap **Node, bukan Bun**: pagar
 > **Apa pun yang hilang bila Redis dikosongkan harus boleh hilang.** Redis mati
 > = aplikasi melambat. Redis mati ≠ pekerjaan hilang atau tagihan terlewat.
 
-### 3.5 Struktur monorepo poliglot
+### 3.5 Kontrak lintas bahasa — yang belum dibangkitkan
 
-```
-sai-accounting/
-├── package.json             # workspaces: packages/* · apps/*  ← tidak menyentuh services/
-├── src/                     # app-customer (Next.js) — pemilik pintu posting
-├── apps/operator/
-├── packages/{db,core,ui,billing,platform}/
-├── workers/                 # jalur `ledger` (Node) — satu-satunya yang menulis buku
-│   └── ledger.ts
-├── services/integrator/     # integrator GO — jalur tanpa aturan akuntansi
-│   ├── go.mod
-│   ├── cmd/<jalur>/main.go  # tenant · schema · schedule · integration
-│   └── internal/
-│       ├── jobs/            # klaim · lease · reclaim — satu-satunya tempat SQL antrean
-│       ├── ledgerread/      # pembacaan buku: neraca, laba-rugi, mutasi
-│       ├── document/        # penghasil PDF/XLSX/CSV
-│       ├── backup/
-│       └── contract/        # DIBANGKITKAN — jangan disunting tangan
-└── contract/                # satu sumber untuk setiap kontrak lintas bahasa
-    ├── jobs.sql             # DDL tabel jobs → sqlc
-    ├── kinds.yaml           # kind & status pekerjaan
-    └── accounting.yaml      # tipe akun, status, mata uang, ambang materialitas
-```
+✅ **Struktur pohonnya dan aturan "setiap konstanta dua-bahasa DIBANGKITKAN"
+kini KEADAAN** — [01 §10](./01-ARSITEKTUR.md). `contract/kinds.yaml` → TS +
+Go, generatornya menolak kombinasi yang tidak konsisten, dan berkas bangkitan
+yang basi ditolak gerbang (`contract:gen --cek`).
 
-**`services/` sengaja di luar workspace.** Glob-nya `packages/*` dan `apps/*`,
-terukur — jadi Go tidak masuk graf paket dan `bun install` tidak menyentuhnya.
-Satu `package.json` di dalam pohon Go akan menariknya ke graf yang penjaganya
-tidak memahaminya.
+Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 
-**Satu aturan yang memutuskan poliglot ini bertahan atau menyimpang diam-diam:**
+| Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
+|---|---|---|
+| `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
+| `contract/accounting.yaml` | `ACCOUNT_TYPE_VALUES`, `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas | jalur Go pertama yang MEMBACA angka akuntansi — yaitu kesesuaian data atau 1d, dan keduanya masih tertahan (§3.3) |
+| `internal/ledgerread/` · `internal/document/` | — | tahap 1d |
 
-> **Setiap konstanta yang dipakai dua bahasa DIBANGKITKAN dari `contract/`,
-> tidak pernah ditulis dua kali.** Itu berlaku untuk `kind` dan `status`
-> pekerjaan, dan juga untuk konstanta akuntansi:
-> `ACCOUNT_TYPE_VALUES`, `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas.
-> Komentar di `scripts/check-data-conformance.ts:55` sudah melarang menyalinnya
-> sejak sebelum Go masuk: konstanta itu **sumber yang sama** yang dipakai zod di
-> jalur tulis.
-
-Kalau dua daftar ditulis tangan, penyimpangannya **tidak muncul sebagai galat**:
-`kind` yang hanya dikenal satu sisi menjadi baris yang menumpuk selamanya tanpa
-pengklaim, dan tipe akun yang hanya dikenal satu sisi menjadi laporan yang
-diam-diam melewatkan satu kelompok akun.
-
-| Aturan | Bentuknya |
-|---|---|
-| **Prisma tetap pemilik skema** | Go membaca lewat `sqlc` dari `contract/jobs.sql` dan dari skema yang di-dump; Go **tidak pernah** menulis berkas migration |
-| **Hanya jalur `ledger` menulis buku besar** | Go menyentuh tabel `jobs`, membaca buku, dan menulis berkas — tidak lebih. Dijaga tes yang menolak `INSERT`/`UPDATE` ke tabel buku dari `services/` |
-| **Gerbang rilis jadi TIGA** | `bun run verify` · `go test ./...` + `golangci-lint` · build (`bun run build`, `bun run build:operator`, dan build image Go) |
-| **`pg_dump` sejajar mayor server** | tes versi klien `pg` ikut menunjuk image Go, karena di situlah dump dijalankan |
-| **Nomenklatur Go** | pengenal Inggris seperti lapisan lain; `gofmt` wajib; nama paket pendek tanpa garis bawah. Satu baris tambahan di `AGENTS.md` |
-
-**Dockerfile** bertambah dua tahap: `FROM golang:<versi dipatok> AS go-build`
-menghasilkan binary statis, lalu runtime tipis berisi binary itu +
-`postgresql-client-17` (untuk `pg_dump`). Image `migrator` dan `backup` yang ada
-dicabut setelah jalurnya pindah; `runner` dan `runner-operator` tidak berubah.
+⚠ **`accounting.yaml` sengaja BELUM dibuat, dan itu bukan penundaan.** Kontrak
+yang dibangkitkan untuk nol pembaca adalah berkas yang menyimpang tanpa ada yang
+menyadarinya: ia tidak punya sisi kedua yang bisa membantahnya. Komentar di
+`scripts/check-data-conformance.ts` sudah melarang MENYALIN konstanta itu sejak
+sebelum Go masuk, dan larangan itu yang menjaganya hari ini — bukan generator
+yang belum punya tujuan.
 
 ## 4. Yang belum terbangun dari antrean
 
@@ -408,15 +390,17 @@ bila ada pemicunya.**
 
 Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 
-| Operasi | Jalur | Perubahan |
-|---|---|---|
-| Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah |
-| **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain |
-| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data |
-| Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 |
+| Operasi | Jalur | Perubahan | Keadaan |
+|---|---|---|---|
+| Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ ketiganya ada (tahap 1b) — tapi masih di gerbang pemblokir, dan masih TypeScript. Alasannya di bawah |
+| **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
+| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | belum — sapuannya masih berurutan di `job-conformance` |
+| Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di `job-scheduler`, bukan jalur `schedule` tersendiri |
 
-Bukti kelengkapan cadangan diperluas: **setiap basis data terdaftar wajib punya
-objek dumpnya sendiri**, bukan hanya hadir di dalam satu dump besar.
+✅ **Bukti kelengkapan cadangan sudah diperluas**: setiap basis data terdaftar
+wajib punya objek dumpnya sendiri, bukan hanya hadir di dalam satu dump besar —
+dan basis data terdaftar yang HILANG dari server menggagalkan putaran sebelum
+satu objek pun dikirim. Pembuktinya memeriksa setiap objek, bukan satu.
 
 **Memparalelkan migration tidak cukup — skemanya yang harus berubah.** Selama
 rilis memblokir sampai setiap basis data termigrasi, waktu padam tetap tumbuh
@@ -436,6 +420,15 @@ rilis, jadi fase `contract` **wajib punya nomor issue saat `expand` ditulis**.
 murah — detik, bukan menit. Ia harus menjadi aturan **sebelum** jumlahnya
 membuatnya mahal, karena mengubah kebiasaan migration lebih lambat daripada
 menambah tenant.
+
+⚠ **Dan ia PRASYARAT, bukan pelengkap — itu yang ditemukan tahap 1b.**
+Memindahkan migration ke antrean tanpa expand/contract berarti aplikasi melayani
+buku yang skemanya lebih tua daripada kodenya, yaitu persis keadaan yang
+expand/contract ada untuk membuatnya aman. Jadi urutannya terbalik dari yang
+terbaca di tabel §9: **expand/contract lebih dulu, jalur `schema` menyusul.**
+Sampai itu, yang dibutuhkan §6 dari jalur ini sudah ada tanpa penerap migration
+kedua — dan penerap kedua atas pembukuan `_prisma_migrations` adalah kelas
+kerusakan yang tidak menghasilkan galat (§3.5: Prisma tetap pemilik skema).
 
 ## 7. Dua profil penyebaran: SaaS dan On-Premise
 
@@ -529,12 +522,19 @@ dijelaskan di [02](./02-LAYANAN-INFRA.md). Begitu pula **artefak lisensi** dan
 **penegakan entitlement di satu pintu**: kriptografi dan kustodi kuncinya di
 [06 §3.6](./06-KEAMANAN.md), pintunya di [01 §8](./01-ARSITEKTUR.md).
 
-**Yang belum, dan harus dibangun.** Nomor yang hilang sudah selesai dan pindah
-ke 02; nomor pensiun, tidak dipakai ulang.
+✅ **Kelima celah on-premise tertutup, 20 Okt 2026.** Nomor pensiun dan tidak
+dipakai ulang. Yang terakhir, **#5 cadangan per tenant**, ditutup tahap 1b:
+`pg_dumpall` diganti satu objek `pg_dump -Fc` **per basis data** + satu
+`pg_dumpall --globals-only` + satu manifest, sehingga satu tenant bisa
+dipulihkan tanpa menyentuh tenant lain. Keadaannya kini
+[02 §5 `svc-tenant`](./02-LAYANAN-INFRA.md); prosedur pemulihan satu PT ada di
+`PRODUCTION.md`.
 
-| # | Celah | Catatan |
-|---|---|---|
-| 5 | Cadangan per tenant | §6 — profil ini yang membutuhkannya paling dulu |
+Profil ini yang membutuhkannya paling dulu, dan itu terbukti dua kali: di
+on-premise tidak ada bucket milik SAI dan seringkali tidak ada S3 sama sekali,
+jadi direktori `cadangan` di mesin customer adalah satu-satunya salinan yang
+ada — yang juga membuat aturan "yang terbaru tidak pernah dibuang" berlaku di
+kedua tujuan, bukan hanya di jalur lokal.
 
 Hanya tiga hal menyeberang batas customer, dan ketiganya **manual**: image rilis
 bertag versi (masuk), berkas lisensi (masuk), bundel diagnostik (keluar).
@@ -582,9 +582,32 @@ bukan desain ulang.
 saat boot, batas ekspor & periode laporan, semver + tag tetap. Tempatnya
 sekarang [02](./02-LAYANAN-INFRA.md) dan [04](./04-ALIRAN-DATA.md).
 
+✅ **Tahap 1b selesai 20 Okt 2026.** Yang dibangun: modul Go
+`services/integrator` (di luar workspace bun, dependensi dua), kontrak lintas
+bahasa diperluas ke **angka** antrean dan dibangkitkan ke keduanya, SQL antrean
++ pelari jalur di Go, jalur `tenant` sebagai `svc-tenant` dengan **cadangan per
+basis data** (celah #5), gerbang rilis ketiga (`go:test` + `go:lint`), dan
+*bounded concurrency* pada fan-out migration. Tempatnya sekarang
+[01 §10](./01-ARSITEKTUR.md) (pohon poliglot, dua aturan yang menahannya, batas
+Go) dan [02 §5](./02-LAYANAN-INFRA.md) (layanan & keputusannya).
+
+⚠ **Dua hal yang 1b sengaja TIDAK pindahkan, dan pemicunya bukan jadwal.**
+Keduanya ditahan oleh ⚠ yang ditulis rancangan ini sendiri, jadi keduanya tidak
+menjadi tahap baru — mereka melipat ke pemicu yang sudah ada:
+
+| Tertahan | Ditahan oleh | Pemicunya |
+|---|---|---|
+| Kesesuaian data (`tenant.conformance`) ke Go | §3.3 — "Go berhenti sebelum perhitungan akuntansi" | 2 dari 11 pemeriksaannya memanggil pagar materialitas (#444/#445): penilaian, bukan konstanta. Pemicunya SAMA dengan 1d |
+| Jalur `schema` lewat antrean | §6 — *expand/contract* "belum berlaku hari ini" | Migration di luar gerbang pemblokir berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya. §6 juga sudah mengukur harga menunggu: pada 17 perusahaan gerbang pemblokir masih murah |
+
+Yang §6 butuhkan dari jalur `schema` ada tiga, dan ketiganya kini ada **tanpa**
+penerap migration kedua: *bounded concurrency*, hasil per perusahaan yang bisa
+ditanyai (`vonisVersi` di konsol `/backup`, dibaca dari `_prisma_migrations`
+sendiri — bukan dari tabel jejak yang bisa berbohong tentang apa yang sungguh
+ada di basis datanya), dan dapat dilanjutkan dari tengah.
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1b — Go masuk dari tepi** | sesudah 1a | jalur `tenant` (cadangan **per tenant** + kesesuaian) · jalur `schema` · **nol aturan akuntansi tersentuh** | 1 |
 | **1c — dokumen pindah ke server** | sesudah 1a | jalur `interactive`, `bulk`, `schedule` sebagai **proses Node terpisah** · generator dokumen pindah dari peramban ke server, **byte tetap identik** | 1 |
 | **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
@@ -594,16 +617,20 @@ sekarang [02](./02-LAYANAN-INFRA.md) dan [04](./04-ALIRAN-DATA.md).
 
 ⚠ **Tahap 1 dipecah empat, dan urutannya mengikuti satu garis: aturan akuntansi
 disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.
-1b memindahkan ke Go apa yang nol aturan akuntansi
-(`tenant`, `schema`) dan bisa dibatalkan tanpa jejak — cadangan dan migration
-tidak meninggalkan angka di buku. 1c memindahkan dokumen ke server **tanpa
-mengganti bahasanya**, jadi keluarannya tetap byte-identik dan tidak ada
-perhitungan yang punya dua implementasi. 1d satu-satunya yang menulis ulang
-aturan, dan karena itu ia **dibuka pengukuran, bukan rencana** (§3.3).
+1b memindahkan ke Go apa yang nol aturan akuntansi dan bisa dibatalkan tanpa
+jejak — cadangan tidak meninggalkan angka di buku. 1c memindahkan dokumen ke
+server **tanpa mengganti bahasanya**, jadi keluarannya tetap byte-identik dan
+tidak ada perhitungan yang punya dua implementasi. 1d satu-satunya yang menulis
+ulang aturan, dan karena itu ia **dibuka pengukuran, bukan rencana** (§3.3).
 
-Urutan ini juga membuat 1b berfungsi sebagai bukti bahwa toolchain, image, CI,
-dan kontrak bangkitan memang bekerja — sebelum dipakai untuk hal yang lebih mahal
-untuk salah.
+Urutan itu terbukti berguna pada 1b, dan bukan di tempat yang diperkirakan:
+toolchain, image, CI, dan kontrak bangkitan memang bekerja — tapi yang paling
+berharga adalah bahwa garis "nol aturan akuntansi" ternyata **memotong lebih
+dalam** daripada yang ditulis tabel di atas. Jalur `tenant` tidak seluruhnya
+nol aturan akuntansi (kesesuaian data menghitung materialitas), dan jalur
+`schema` punya pemilik pembukuan yang belum boleh punya penulis kedua. Garis
+itu ditemukan dengan menabraknya, bukan dengan merencanakannya — dan itu
+sebabnya 1b dikerjakan sebelum 1d, bukan sesudahnya.
 
 ⚠ **`cache-redis` pindah dari tahap 1 ke tahap 2**, karena tahap 1 berjalan satu
 replika dan cache bersama tidak membeli apa pun sebelum ada replika kedua —

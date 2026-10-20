@@ -130,7 +130,7 @@ describe("fan-out: kegagalan satu perusahaan tidak menggantung yang lain (#104)"
 
 describe("fan-out: penerap migration tetap TUNGGAL", () => {
   it("yang menerapkan tetap `prisma migrate deploy`", () => {
-    /* §3.5: Prisma tetap pemilik skema. Penerap kedua wajib menulis baris
+    /* Prisma tetap pemilik skema — aturannya di 02 §12. Penerap kedua wajib menulis baris
        `_prisma_migrations` dalam format yang persis sama — termasuk
        checksum-nya — dan dua penulis pembukuan skema yang menyimpang TIDAK
        menghasilkan galat: `migrate deploy` berikutnya akan menerapkan ulang,

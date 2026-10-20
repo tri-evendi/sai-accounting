@@ -248,16 +248,17 @@ describe("yang BELUM pindah, dan itu disebut bukan disembunyikan", () => {
        menyentuh baris ini — itu seluruh gunanya. `invoice-pdf` keluar ketika
        dokumen satuan pindah ke server (`tests/dokumen-satuan-server.test.ts`). */
     expect(unik, "generator yang masih digambar peramban").toEqual([
-      "contract-pdf",
       "finance-report-pdf",
       "opname-sheet-pdf",
-      "return-pdf",
-      "shipping-pdf",
       "stock-report-pdf",
     ]);
-    /* Keduanya TIDAK boleh ada di daftar itu lagi. */
-    expect(unik).not.toContain("statement-pdf");
-    expect(unik).not.toContain("invoice-pdf");
+    /* ⚠ Yang TERSISA ketiganya LAPORAN, bukan dokumen satuan — dan §5 menaruh
+       laporan di jalur lain (`/api/reports/pdf` untuk yang pendek, antrean
+       untuk paket). Jadi daftar ini tidak akan menyusut lagi lewat jalur
+       dokumen satuan; penyusutan berikutnya datang dari jalur laporan. */
+    for (const sudah of ["statement-pdf", "invoice-pdf", "contract-pdf", "shipping-pdf", "return-pdf"]) {
+      expect(unik, `${sudah} sudah pindah ke server`).not.toContain(sudah);
+    }
   });
 
   it("satu-satunya jalur server lain tetap faktur yang dikirim (#465)", () => {

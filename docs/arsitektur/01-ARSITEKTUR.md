@@ -426,6 +426,7 @@ apps/operator ─┘          │
 | Durasi diukur dari `started_at`, bukan dari `claimed_at` yang diperpanjang | `tests/metrik-antrean.test.ts` |
 | Migration expand-only: nol DROP/RENAME/penyempitan tipe/backfill | `tests/expand-contract.test.ts` |
 | Sapuan kesesuaian: urutan laporan deterministik, nol cetak di dalam pelaksana, koneksi ditutup di `finally` | `tests/kesesuaian-fanout.test.ts` |
+| Image yang dirujuk compose punya target yang menerbitkannya | `tests/image-compose-sepadan.test.ts` |
 | Dokumen satuan dirender dari BUKU, bukan dari muatan peramban | `tests/dokumen-satuan-server.test.ts` |
 
 - `@sai/platform → @sai/ui` ada untuk satu hal: rute ikon menggambar lambang bawaan. Arah sebaliknya tidak boleh ada.

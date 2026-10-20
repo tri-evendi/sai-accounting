@@ -19,7 +19,7 @@ export function ReturnPdfButton({ data }: { data: ReturnPdfData }) {
       filename={`${data.returnNo}.pdf`}
       generate={async () => {
         const { generateReturnPDF } = await import("@/lib/pdf/return-pdf");
-        return generateReturnPDF(data, company);
+        return generateReturnPDF(data, company).output("blob");
       }}
     />
   );

@@ -53,6 +53,35 @@
 export const EXPORT_MAX_ROWS = 50_000;
 
 /**
+ * Ambang PENYERAHAN ke antrean (tahap 1c, §5).
+ *
+ * ══ TIGA ANGKA, TIGA ARTI — DAN HANYA YANG INI YANG BUKAN BATAS ════════════
+ * Di atas ambang ini ekspor TIDAK ditolak; ia diserahkan ke jalur
+ * `interactive`, dan pengguna mengunduh hasilnya ketika siap.
+ * `EXPORT_MAX_ROWS` tetap PLAFON yang menolak — ia membatasi apa yang masuk
+ * akal dibangun sama sekali, bukan apa yang masuk akal dibangun SEKARANG.
+ *
+ * ══ KENAPA 5.000, DAN KENAPA ITU BUKAN TEBAKAN YANG DISEMBUNYIKAN ══════════
+ * Yang dilindungi ambang ini satu hal yang bisa diukur: EVENT LOOP. Perakitan
+ * lembar sebar ExcelJS sinkron dan menahan seluruh model baris sebagai objek
+ * JS, jadi permintaan ekspor yang besar menahan SETIAP permintaan lain di
+ * proses yang sama — termasuk halaman yang sedang dibuka orang lain.
+ *
+ * Lima ribu baris adalah sepersepuluh plafon, dan dipilih di sisi yang aman
+ * dengan sengaja: ongkos salah-rendah adalah satu unduhan yang menjadi
+ * asinkron padahal tidak perlu (pengguna menunggu beberapa detik lebih, dan
+ * kemajuannya terlihat), sementara ongkos salah-tinggi adalah p95 permintaan
+ * interaktif yang memburuk tanpa ada yang bisa menunjuk sebabnya.
+ *
+ * ⚠ Ia MENUNGGU pengukuran, dan tempat pengukurannya sudah disebut §11:
+ * histogram durasi pekerjaan. Sampai itu ada, angka ini sengaja konservatif —
+ * dan `jalur `interactive`` yang menerimanya memang proses terpisah, jadi
+ * salah-rendah tidak memindahkan beban ke tempat yang salah.
+ */
+export const EXPORT_QUEUE_HANDOFF_ROWS = 5_000;
+
+
+/**
  * Badan permintaan maksimum untuk muatan ekspor.
  *
  * ⚠ Nilainya WAJIB konsisten dengan `EXPORT_MAX_ROWS`: batas byte yang lebih

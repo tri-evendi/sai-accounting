@@ -13,6 +13,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { tanpaKomentar } from "./akar-sumber";
 
 const script = readFileSync(join(process.cwd(), "scripts", "backup.sh"), "utf8");
 const compose = readFileSync(join(process.cwd(), "docker-compose.yml"), "utf8");
@@ -238,21 +239,12 @@ function layanan(nama: string): string {
 /**
  * Teks compose TANPA baris komentar.
  *
- * Ada karena satu bentuk penjaga yang keliru sudah terjadi tiga kali di sesi
- * ini: pemeriksaan "layanan X tidak menjalankan Y" yang membaca SELURUH teks
- * akan menuding komentar yang menjelaskan kenapa Y tidak dijalankan lagi — dan
- * penjaga yang menolak penjelasannya memaksa alasan itu dihapus dari tempat ia
- * paling berguna.
- *
- * Aturannya: penjaga "ADA" boleh membaca teks penuh (komentar memang bagian
- * dari apa yang dijaga repo ini); penjaga "TIDAK ADA" wajib membaca `perintah`.
+ * Pembungkus satu baris di atas `tanpaKomentar` yang bersama — aturannya,
+ * beserta empat kali ia terbukti perlu, ada di `tests/akar-sumber.ts`.
+ * Namanya dipertahankan karena di berkas ini yang dibaca memang PERINTAH
+ * compose, dan itu yang dicari orang saat membaca asersinya.
  */
-function perintah(teks: string): string {
-  return teks
-    .split("\n")
-    .filter((b) => !b.trimStart().startsWith("#"))
-    .join("\n");
-}
+const perintah = tanpaKomentar;
 
 describe("jalur `tenant` di compose — PELAKSANA cadangan sejak tahap 1b", () => {
   const svc = layanan("svc-tenant");

@@ -49,11 +49,13 @@ import {
   claimJob,
   completeJob,
   failJob,
+  jobIdsPresent,
   reclaimStaleJobs,
   renewLease,
   reportProgress,
   type JobRow,
 } from "@sai/platform/job-queue";
+import { pruneOrphanResults } from "@sai/platform/job-result-store";
 
 /**
  * Jeda antar putaran UPKEEP — memulangkan lease kedaluwarsa & membuang baris
@@ -144,6 +146,40 @@ async function upkeep(lane: JobLane): Promise<void> {
     if (dibuang > 0) console.log(`[${lane}] upkeep: ${dibuang} baris \`done\` lewat retensi dibuang`);
   } catch (e) {
     console.error(`[${lane}] upkeep: gagal membuang baris \`done\`:`, e);
+  }
+
+  /*
+   * ══ HASIL YATIM — pembayaran atas peringatan yang ditulis sebelum ada hasil
+   *
+   * `DONE_RETENTION_DAYS` membuang baris `done` sesudah 14 hari, dan baris itu
+   * satu-satunya yang tahu di mana hasilnya berada. `@sai/core/job-backoff`
+   * sudah memperingatkannya sejak tahap 1a, sebelum ada satu `result_ref` pun:
+   * objek yang hidup lebih lama daripada barisnya adalah berkas yang tak bisa
+   * dijangkau siapa pun lagi sementara cakramnya tetap terpakai.
+   *
+   * ⚠ Himpunan id dibaca LEBIH DULU, dan putaran ini DILEWATI bila bacaannya
+   * gagal. Himpunan kosong karena basis data sedang tak terjangkau akan
+   * terbaca sebagai "tidak ada yang punya baris" — dan jawabannya menghapus
+   * SEMUANYA. Itu sebabnya dua `try` terpisah, bukan satu yang membungkus
+   * keduanya.
+   *
+   * Di container yang tidak memasang volume `hasil` ia tidak melakukan apa pun:
+   * direktorinya tidak ada, dan ketiadaannya bukan kegagalan.
+   */
+  let idAda: ReadonlySet<number>;
+  try {
+    idAda = await jobIdsPresent();
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal membaca id pekerjaan — pembersih hasil DILEWATI:`, e);
+    return;
+  }
+  try {
+    const yatim = await pruneOrphanResults(idAda);
+    if (yatim.length > 0) {
+      console.log(`[${lane}] upkeep: ${yatim.length} direktori hasil yatim dibuang`);
+    }
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal membuang hasil yatim:`, e);
   }
 }
 

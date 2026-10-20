@@ -116,8 +116,20 @@ describe("penerbit & pelaksana sepakat", () => {
   });
 
   it("pelaksana membaca `slug`/`databaseName` dari kendali, bukan dari payload", () => {
-    // Payload datang dari penerbit dan bisa basi (#104).
-    expect(PELAKSANA).toContain("controlDb.company.findUnique");
+    /*
+     * Payload datang dari penerbit dan bisa basi (#104).
+     *
+     * ⚠ Langkahnya PINDAH di tahap 1c ke `workers/jalur-perusahaan.ts`, sebab
+     * jalur `interactive` membutuhkannya persis sama — dan dua salinan akan
+     * menyimpang pada aturan multi-perusahaan yang paling mahal bila
+     * dilanggar. Yang dijaga karena itu dua hal: pembantunya memuat sifatnya,
+     * DAN pelaksananya memang memakainya.
+     */
+    const konteks = readFileSync(join(akar, "workers", "jalur-perusahaan.ts"), "utf8");
+    expect(konteks).toContain("controlDb.company.findUnique");
+    expect(PELAKSANA, "pelaksana berhenti memakai pembantunya").toContain(
+      "dalamKonteksPerusahaan("
+    );
     expect(PENERBIT).not.toContain("databaseName");
   });
 });

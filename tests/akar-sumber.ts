@@ -76,6 +76,43 @@ export function berkasGo(): { jalur: string; rel: string; isi: string }[] {
   return hasil;
 }
 
+/**
+ * Teks sumber TANPA komentarnya.
+ *
+ * ══ KENAPA INI ADA DI SINI, DAN BUKAN DI SATU BERKAS TES ═══════════════════
+ * Satu bentuk penjaga yang keliru sudah muncul EMPAT kali: pemeriksaan
+ * "X TIDAK ADA" — atau "X muncul tepat sekali" — yang membaca seluruh teks
+ * lalu menuding KOMENTAR yang menjelaskan X. Repo ini menulis komentar yang
+ * panjang dengan sengaja, jadi komentar adalah tempat X paling sering disebut:
+ * `postgresql-client` tanpa versi, `sh scripts/backup.sh` yang tidak lagi
+ * dijadwalkan, `PLATFORM_DATABASE_URL` yang justru tidak dibaca, `doc.save()`
+ * yang sudah diganti. Penjaga yang menolaknya memaksa alasannya dihapus dari
+ * tempat ia paling berguna.
+ *
+ * Aturannya satu kalimat:
+ *
+ * > Penjaga **"X ADA"** boleh membaca teks penuh — komentar memang bagian dari
+ * > apa yang dijaga repo ini. Penjaga **"X TIDAK ADA"** dan setiap penjaga
+ * > yang MENGHITUNG wajib membaca `tanpaKomentar(...)`.
+ *
+ * Ia pengupas kasar, bukan pengurai: `//` di dalam string literal (`"http://"`)
+ * ikut terpotong. Itu dapat diterima untuk tujuannya — yang dicari keberadaan
+ * dan jumlah sebuah pola, bukan AST — dan jauh lebih mudah dipercaya daripada
+ * pengurai yang benar 99% dengan satu kasus yang tidak ada yang tahu.
+ */
+export function tanpaKomentar(teks: string): string {
+  return teks
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((baris) => {
+      const t = baris.trimStart();
+      if (t.startsWith("//") || t.startsWith("*") || t.startsWith("#")) return "";
+      const i = baris.indexOf("//");
+      return i >= 0 ? baris.slice(0, i) : baris;
+    })
+    .join("\n");
+}
+
 export function relSumber(jalur: string): string {
   const keSrc = relative(SRC, jalur);
   const rel = keSrc.startsWith("..") ? relative(AKAR_REPO, jalur) : keSrc;

@@ -341,3 +341,74 @@ export async function archiveDoneJobs(retentionDays: number = DONE_RETENTION_DAY
   return controlDb.$executeRaw`
     DELETE FROM jobs WHERE status = 'done' AND finished_at < ${ambang}`;
 }
+
+/**
+ * Baris pekerjaan untuk RUTE UNDUHAN — dan hanya sebanyak yang ia butuhkan.
+ *
+ * Kolomnya sempit dengan sengaja, dan `payload` yang IKUT punya satu pembaca
+ * yang disebut: gerbang kedua (`bolehAmbilHasil`). Yang TIDAK diambil —
+ * `last_error`, `claimed_by`, `attempts` — adalah kolom yang tidak bisa bocor
+ * ke jawaban HTTP karena seseorang menambahkan `...job` di masa depan.
+ *
+ * ⚠ `payload` TIDAK PERNAH dipulangkan ke pemanggil HTTP. Ia dibaca gerbang,
+ * lalu dibuang; dijaga `tests/job-result-authorization.test.ts`.
+ */
+export interface JobForDownload {
+  id: number;
+  kind: JobKind;
+  status: JobStatus;
+  companyId: number | null;
+  resultRef: string | null;
+  /**
+   * Muatan pekerjaan — PARAMETER saja, tidak pernah angka.
+   *
+   * Dibutuhkan gerbang KEDUA di rute unduhan (`bolehAmbilHasil`): izin jenis
+   * menjawab "boleh mengunduh hasil jenis ini", bukan "boleh mengunduh laporan
+   * INI". Aman dibaca di sini karena `jobs` hidup di basis data kendali, dan
+   * kendali tidak memuat satu angka akuntansi pun — muatan membawa id laporan
+   * dan periodenya, lalu pekerjanya yang menghitung dari buku PT.
+   */
+  payload: unknown;
+}
+
+/**
+ * Baca satu pekerjaan untuk keperluan unduhan.
+ *
+ * ⚠ TIDAK menyaring `companyId` di dalam kueri ini, dan itu disengaja:
+ * penyaringannya milik pemanggil, yang tahu konteks perusahaan AKTIF — dan
+ * menaruhnya di sini akan membuat pemanggil berikutnya mengira id saja sudah
+ * cukup aman. Yang dijamin fungsi ini hanya satu: ia memulangkan `companyId`
+ * barisnya, sehingga pemanggil TIDAK BISA memutuskan tanpa melihatnya.
+ */
+export async function jobForDownload(id: number): Promise<JobForDownload | null> {
+  const rows = await controlDb.$queryRaw<JobForDownload[]>`
+    SELECT id, kind, status, company_id AS "companyId", result_ref AS "resultRef",
+           payload
+      FROM jobs WHERE id = ${id}`;
+  return rows[0] ?? null;
+}
+
+/**
+ * Id SELURUH pekerjaan yang barisnya masih ada — untuk pembersih hasil yatim.
+ *
+ * ══ KENAPA SELURUHNYA, DAN BUKAN HANYA YANG PUNYA `result_ref` ═════════════
+ * Versi pertama fungsi ini menyaring `result_ref IS NOT NULL`, dengan alasan
+ * yang terdengar benar: pekerjaan tanpa hasil tidak punya direktori, jadi
+ * memasukkannya hanya memperbesar himpunan. Itu CACAT, dan bentuknya *race*:
+ *
+ *   `writeJobResult` menulis berkasnya LEBIH DULU, dan `completeJob` yang
+ *   menulis `result_ref` SESUDAHNYA. Di antara keduanya — selama pekerjaan
+ *   masih berjalan — direktorinya ada sementara `result_ref` masih NULL.
+ *
+ * Saringan itu karena itu akan membuat pembersih menghapus hasil pekerjaan yang
+ * MASIH BERJALAN, dan pekerjaannya kemudian melaporkan `done` dengan
+ * `result_ref` yang menunjuk ke berkas yang sudah tidak ada. Gejalanya 404 di
+ * tombol unduh, dan sebabnya tidak ada di satu pun log.
+ *
+ * Himpunan yang lebih besar adalah harga yang benar: beberapa ribu bilangan
+ * bulat melawan satu kelas kerusakan yang hanya muncul di bawah beban.
+ */
+export async function jobIdsPresent(): Promise<Set<number>> {
+  const rows = await controlDb.$queryRaw<{ id: number }[]>`SELECT id FROM jobs`;
+  return new Set(rows.map((r) => r.id));
+}

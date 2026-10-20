@@ -1,0 +1,108 @@
+/**
+ * GERBANG KEDUA atas hasil pekerjaan — izin yang dibawa MUATANNYA.
+ *
+ * ══ CELAH YANG DITUTUPNYA, DAN IA CELAH DI KODE SAYA SENDIRI ═══════════════
+ * `JOB_RESULT_PERMISSION` menjawab "boleh mengunduh hasil JENIS ini". Itu
+ * perlu, dan ia tidak cukup — persis dengan alasan yang sudah ditulis
+ * `/api/reports/payload` sejak #355:
+ *
+ *   `report.export` hanya menjawab "boleh mengekspor laporan", bukan "boleh
+ *   mengekspor laporan INI".
+ *
+ * Tanpa gerbang ini, sebuah pekerjaan `report.export` atas Nilai Persediaan
+ * yang diterbitkan ketika modul Stok masih aktif tetap bisa diunduh SESUDAH
+ * modul itu dimatikan — dan itu melanggar justru aturan yang §4 tuntut:
+ * "izin diperiksa SAAT MENGUNDUH, bukan hanya saat pekerjaan lahir". Pekerjaan
+ * hidup berjam-jam; modul dan peran berubah di antaranya.
+ *
+ * ══ MUATAN PEKERJAAN AMAN DIBACA DI SINI ═══════════════════════════════════
+ * `jobs` hidup di basis data KENDALI, dan kendali TIDAK memuat satu angka
+ * akuntansi pun (`@sai/core/control-db`). Muatan pekerjaan karena itu hanya
+ * membawa PARAMETER — id laporan, periode, id perusahaan — dan pekerjanya yang
+ * menghitung angkanya dari buku PT saat ia berjalan. Membaca parameter untuk
+ * memutuskan izin tidak membuka apa pun yang belum diketahui penanyanya: ia
+ * sendiri yang mengirimkannya.
+ *
+ * ══ `switch` YANG LENGKAP, BUKAN PETA OPSIONAL ═════════════════════════════
+ * Setiap `kind` wajib disebut, dan `tsc` menolak yang tidak. `kind` baru yang
+ * menghasilkan berkas karena itu tidak bisa lahir tanpa seseorang memutuskan
+ * apakah hasilnya butuh gerbang kedua — dan keputusan "tidak butuh" ditulis
+ * sebagai `return true` beserta alasannya, bukan sebagai ketiadaan baris.
+ */
+import "server-only";
+
+import { canEffective } from "@/lib/authz-effective";
+import { isExportable, reportById } from "@/lib/report-catalog";
+import type { JobKind } from "@sai/core/generated/job-kinds";
+
+/** Pengguna yang sedang meminta — bentuk yang dipulangkan penjaga API. */
+export interface PemintaHasil {
+  id: string;
+  role: string;
+}
+
+/**
+ * Apakah pengguna ini berhak atas hasil pekerjaan dengan muatan ini?
+ *
+ * Dipanggil SESUDAH `JOB_RESULT_PERMISSION` lolos. `false` dijawab 404 oleh
+ * pemanggilnya — bukan 403: pemanggil yang tidak berhak tidak perlu tahu
+ * laporan itu ada (pola yang sama dengan `/api/reports/payload`).
+ */
+export async function bolehAmbilHasil(
+  kind: JobKind,
+  payload: unknown,
+  user: PemintaHasil
+): Promise<boolean> {
+  switch (kind) {
+    case "report.export":
+    case "report.package": {
+      /*
+       * Muatannya WAJIB menyebut laporan mana. Muatan tanpa `reportId` adalah
+       * pekerjaan yang tidak bisa diperiksa gerbang keduanya, dan jawabannya
+       * TOLAK — bukan "lewati gerbangnya". Baris yang tidak bisa diperiksa
+       * bukan baris yang bersih; aturan yang sama dengan `vonisVersi`
+       * memulangkan `tak_terbaca` alih-alih `mutakhir`.
+       */
+      const reportId = (payload as { reportId?: unknown } | null)?.reportId;
+      if (typeof reportId !== "string" || reportId === "") return false;
+
+      const report = reportById(reportId);
+      if (!report || !isExportable(report)) return false;
+
+      /* `canEffective` memeriksa modul lebih dulu, jadi satu panggilan menutup
+         modul-mati maupun peran-tak-berhak. */
+      return canEffective(user, report.permission);
+    }
+
+    case "document.generate":
+      /*
+       * Belum diterbitkan siapa pun (tahap 1c berikutnya). Ketika ia lahir,
+       * gerbang keduanya BUKAN opsional: muatannya akan menyebut dokumen mana,
+       * dan dokumen itu wajib ADA di basis data PT yang sedang dibuka — sama
+       * seperti rute berkas dokumen membuktikannya dengan `findUnique` atas
+       * klien PT aktif, bukan dengan perbandingan kepemilikan yang ditulis
+       * tangan. `false` sampai itu ditulis: jenis yang belum punya gerbangnya
+       * tidak boleh bisa diunduh.
+       */
+      return false;
+
+    /*
+     * Jenis di bawah TIDAK PERNAH menghasilkan berkas yang bisa diunduh
+     * pengguna — `JOB_RESULT_PERMISSION` sudah menyatakannya `null`, dan rute
+     * unduhan gugur di sana sebelum sampai ke sini. Baris-baris ini ada supaya
+     * `switch`-nya LENGKAP, sehingga `kind` baru tidak bisa lolos tanpa
+     * keputusan.
+     */
+    case "import.process":
+    case "mail.batch":
+    case "tenant.backup":
+    case "tenant.conformance":
+    case "schema.migrate":
+    case "schedule.tick":
+    case "ledger.recurring":
+    case "ledger.dunning":
+    case "integration.efaktur":
+    case "integration.bank_feed":
+      return false;
+  }
+}

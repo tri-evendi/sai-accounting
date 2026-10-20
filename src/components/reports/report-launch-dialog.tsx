@@ -69,7 +69,6 @@ import { Input } from "@sai/ui/input";
 import { Select } from "@sai/ui/select";
 import { useToast } from "@sai/ui/toast";
 import { useAppRouter } from "@sai/ui/app-link";
-import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { useT } from "@sai/core/i18n/client";
 import { downloadStatementPdf, downloadStatementWorkbook, fetchReportPayload } from "@/lib/report-files";
 import type { ReportDefinition } from "@/lib/report-catalog";
@@ -137,7 +136,6 @@ export function ReportLaunchDialog({
   const t = useT();
   const router = useAppRouter();
   const { toast } = useToast();
-  const company = useCompanyIdentity();
 
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(isoStartOfYear);
@@ -194,9 +192,17 @@ export function ReportLaunchDialog({
   async function download(format: "pdf" | "xlsx") {
     setBusy(format);
     try {
-      const payload = await fetchReportPayload(report.id, queryParams());
-      if (format === "pdf") await downloadStatementPdf(payload, company);
-      else await downloadStatementWorkbook(payload);
+      const params = queryParams();
+      const payload = await fetchReportPayload(report.id, params);
+      if (format === "pdf") await downloadStatementPdf(payload);
+      else {
+        /* Asalnya diserahkan: di atas ambang penyerahan, rutenya MENERBITKAN
+           pekerjaan alih-alih merakit lembar sebar di dalam permintaan — dan
+           pekerjanya menghitung ulang dari `reportId` + parameter ini, sebab
+           muatan laporan tidak boleh menginap di basis data kendali. Tanpa
+           asalnya, ekspor besar tetap dijawab 413 seperti sebelumnya. */
+        await downloadStatementWorkbook(payload, { reportId: report.id, params });
+      }
       toast(format === "pdf" ? t("reports.dialog.pdfDownloaded") : t("excel.downloaded"));
       setOpen(false);
     } catch (err) {

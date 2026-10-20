@@ -11,6 +11,7 @@
     "./i18n/server": "./src/i18n/server.ts",
     "./invitation-store": "./src/invitation-store.ts",
     "./job-queue": "./src/job-queue.ts",
+    "./job-result-store": "./src/job-result-store.ts",
     "./mail-health": "./src/mail-health.ts",
     "./mail-settings": "./src/mail-settings.ts",
     "./mailer": "./src/mailer.ts",

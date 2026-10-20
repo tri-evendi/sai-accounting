@@ -118,6 +118,12 @@ backups/
 # direktorinya ada sejak checkout pertama.
 /data/mail-outbox/
 /data/*.log
+# hasil/     berkas hasil pekerjaan (`result_ref`) — ekspor laporan, dokumen.
+#            Isinya buku besar PT sungguhan, dan satu-satunya jalan keluarnya
+#            route handler ber-izin. Ia TIDAK boleh ikut ke konteks build:
+#            satu dump produksi pernah terpanggang ke dalam image karena
+#            direktori runtime di pohon repo (lihat .dockerignore §anchor).
+/data/hasil/
 
 # Berkas referensi pihak ketiga (ekspor Accurate, terbitan Pajakku, dll).
 # Sebagian berisi buku besar SUNGGUHAN milik PT pelanggan. `docs/accurate-reference.md`

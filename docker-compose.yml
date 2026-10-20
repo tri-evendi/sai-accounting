@@ -566,6 +566,70 @@ services:
     stop_grace_period: 60s
     command: ["bun", "run", "jobs:run:ledger"]
 
+  # ── JALUR `interactive` — EKSPOR YANG DITUNGGU PENGGUNA (tahap 1c, §5) ─────
+  #
+  # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean.
+  #
+  # ══ IA TIDAK MENGGANTIKAN RUTE EKSPOR SINKRON ══════════════════════════════
+  #
+  # Ekspor berukuran biasa tetap dirakit di dalam permintaan HTTP dan selesai
+  # dalam milidetik — itu jawaban yang benar, dan antrean untuknya hanya
+  # menambah penantian. Yang diserahkan ke sini hanya yang di atas
+  # `EXPORT_QUEUE_HANDOFF_ROWS`, dan sebabnya bukan ukuran berkasnya melainkan
+  # EVENT LOOP: perakitan ExcelJS sinkron dan menahan SETIAP permintaan lain di
+  # proses yang sama, termasuk halaman yang sedang dibuka orang lain.
+  #
+  # Sampai tahap 1c, ekspor di atas `EXPORT_MAX_ROWS` dijawab 413 — DITOLAK.
+  # Layanan ini mengubah penolakan itu menjadi "akan dikerjakan", dan itulah
+  # satu kemampuan yang benar-benar bertambah.
+  #
+  # ══ TIGA BEDANYA DARI `svc-ledger`, DAN KETIGANYA DISENGAJA ════════════════
+  #
+  #  1. **Instansnya boleh BERAPA PUN.** Jalur ini tidak menulis buku dan tidak
+  #     menerbitkan apa pun, jadi dua pelari hanya berarti dua ekspor berjalan
+  #     bersamaan — `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan
+  #     dua kali. `contract/kinds.yaml` menyatakannya `single_instance: false`.
+  #  2. **Ia memasang volume `hasil` BISA-TULIS.** Satu-satunya layanan yang
+  #     boleh; `app-customer` memasangnya hanya-baca dan hanya men-stream.
+  #  3. **Lewat PgBouncer**, bukan langsung ke `pg`: ia membaca buku SATU PT per
+  #     pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data
+  #     seperti jalur `tenant`.
+  #
+  # ⚠ TANPA rahasia cadangan. `BACKUP_ENCRYPTION_KEY` dan kredensial S3 hanya di
+  # `svc-tenant`; jalur ini MEMPROSES MASUKAN PENGGUNA (parameter laporan), dan
+  # jalur yang memproses masukan pengguna tidak boleh berada di dalam proses
+  # yang bisa membaca kunci cadangan. `env_file: .env` memang membawa seluruh
+  # berkas — itu utang yang disebut di `svc-tenant`, dan arah yang penting tetap
+  # terjaga: kunci cadangan tidak ikut ke container yang tidak membutuhkannya.
+  svc-interactive:
+    build:
+      context: .
+      target: migrator
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
+    container_name: sai-svc-interactive
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      pg:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      # SATU-SATUNYA penulis volume ini. `app-customer` memasangnya `:ro`.
+      # Dokumen & jejak TIDAK dipasang: jalur ini membaca BUKU, bukan berkas,
+      # dan mount yang tidak dibutuhkan adalah permukaan yang tidak perlu ada.
+      - hasil:/app/data/hasil
+    networks:
+      - internal
+    # Pelari menyelesaikan pekerjaan yang sedang jalan lalu berhenti mengklaim.
+    # 60s bukan "cukup untuk menyelesaikan ekspor" — ekspor besar bisa lebih
+    # lama, dan yang menanganinya bukan jendela ini melainkan *lease*: pekerjaan
+    # yang terpotong dipulangkan `reclaimStaleJobs` lalu diklaim lagi.
+    stop_grace_period: 60s
+    command: ["bun", "run", "jobs:run:interactive"]
+
   # ── JALUR `tenant` — CADANGAN PER BASIS DATA (tahap 1b, §6) ────────────────
   #
   # Menggantikan putaran harian `job-backup`, dan yang berubah bukan bahasanya
@@ -708,6 +772,12 @@ services:
       # lama yang kehilangan tempat — memang tidak pernah ada.
       - documents:/app/data/documents
       - audit:/app/data/audit
+      # Hasil pekerjaan, HANYA-BACA (rancangan §4). Aplikasi men-stream byte-nya
+      # lewat route handler ber-izin dan tidak punya satu alasan pun untuk
+      # menulisnya — yang menulis adalah pelari jalur. Bendera `:ro` menghapus
+      # seluruh kelas kecelakaan di mana permintaan HTTP mengubah hasil
+      # pekerjaan orang lain.
+      - hasil:/app/data/hasil:ro
     networks:
       - traefik
       - internal
@@ -869,3 +939,17 @@ volumes:
   # dump produksi pernah terpanggang ke dalam image yang digelar karena
   # `backups/` di pohon repo (lihat .dockerignore §anchor).
   cadangan:
+  # Hasil pekerjaan (`result_ref`): ekspor laporan & dokumen yang dihasilkan
+  # jalur antrean, lalu diunduh pengguna lewat route handler ber-izin.
+  #
+  # ⚠ Volume BERNAMA dan bukan bind mount, alasan yang sama dengan `cadangan`
+  # di atas: isinya buku besar PT sungguhan, dan direktori runtime di pohon repo
+  # bisa ikut terpanggang ke dalam image (lihat .dockerignore §anchor).
+  #
+  # ⚠ Siapa yang MENULISnya belum ada. Jalur `interactive` & `bulk` lahir di
+  # tahap 1c; sampai itu `app-customer` memasangnya hanya-baca dan setiap
+  # permintaan unduh dijawab 404 — jawaban yang benar untuk hasil yang memang
+  # belum pernah ada. Mount-nya dipasang SEKARANG karena rute unduhannya sudah
+  # ada: mount yang menyusul kemudian adalah celah penyebaran yang ditemukan
+  # terlambat, dengan gejala 404 yang terbaca seperti pekerjaan yang gagal.
+  hasil:

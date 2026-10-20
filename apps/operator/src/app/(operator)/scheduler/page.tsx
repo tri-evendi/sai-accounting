@@ -17,10 +17,22 @@
  *
  * Kolom "Galat" tetap MERAH HANYA saat angkanya bukan nol, dan angkanya sendiri
  * yang jadi penanda utama — warna bukan sinyal tunggal (MASTER.md).
+ *
+ * ── Kenapa ANTREAN PEKERJAAN ada di halaman ini (rancangan §4, §11) ─────────
+ * Sejak tabel `jobs`, denyut jam berhenti MELAKSANAKAN dan hanya MENERBITKAN —
+ * jadi halaman ini bidang penerbitnya, dan antrean adalah tempat terbitannya
+ * jatuh. §11 menyuruh keduanya dibaca berpasangan, dan bukan demi kerapian:
+ * antrean yang kosong terbaca sehat justru ketika penerbitnya MATI, sebab tak
+ * ada baris yang pernah terbit. Yang membantah bacaan itu hanya riwayat putaran
+ * di bawah. Memisahkan keduanya ke dua halaman berarti memisahkan sebuah angka
+ * dari satu-satunya angka yang bisa membuktikannya bohong.
+ *
+ * Panelnya berdiri DI LUAR percabangan riwayat: riwayat yang kosong atau tak
+ * terbaca tidak boleh ikut menyembunyikan antreannya.
  */
 
 import { CalendarOutlined } from "@ant-design/icons";
-import { Badge } from "@sai/ui/badge";
+import { Badge, type BadgeVariant } from "@sai/ui/badge";
 import { EmptyState } from "@sai/ui/empty-state";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
@@ -32,7 +44,13 @@ import {
 } from "@op/components/operator/console-ui";
 import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@op/lib/operator/guard";
-import { schedulerRunsForOperator } from "@op/lib/operator/store";
+import { queueSnapshotForOperator, schedulerRunsForOperator } from "@op/lib/operator/store";
+import {
+  QUEUE_AGE_LATE_SECONDS,
+  QUEUE_AGE_WARN_SECONDS,
+  type LaneQueueHealth,
+  type QueueHealthStatus,
+} from "@sai/core/queue-health";
 import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
@@ -88,14 +106,70 @@ function RunList({
   );
 }
 
+const QUEUE_STATUS_KEY: Record<QueueHealthStatus, string> = {
+  idle: "operator.scheduler.queueStatusIdle",
+  ok: "operator.scheduler.queueStatusOk",
+  warn: "operator.scheduler.queueStatusWarn",
+  late: "operator.scheduler.queueStatusLate",
+};
+
+/*
+ * `idle` TIDAK hijau, dan itu disengaja: antrean kosong bukan kabar baik maupun
+ * kabar buruk, dan mewarnainya hijau menyatakan sesuatu yang tidak diketahui
+ * halaman ini — apakah ada yang menerbitkan. Netral adalah jawaban yang jujur.
+ */
+const QUEUE_BADGE: Record<QueueHealthStatus, BadgeVariant> = {
+  idle: "outline",
+  ok: "success",
+  warn: "warning",
+  late: "danger",
+};
+
 type SchedulerRun = NonNullable<Awaited<ReturnType<typeof schedulerRunsForOperator>>>[number];
 
 export default async function OperatorSchedulerPage() {
   await requireOperatorPage();
   const t = await getT();
 
-  const runs = await schedulerRunsForOperator(10);
+  const [runs, queue] = await Promise.all([schedulerRunsForOperator(10), queueSnapshotForOperator()]);
   const latest = runs?.[0] ?? null;
+
+  const queueColumns: SaiColumns<LaneQueueHealth> = [
+    {
+      key: "lane",
+      title: t("operator.scheduler.queueColLane"),
+      align: "left",
+      render: (_v, lane) => lane.lane,
+    },
+    {
+      key: "status",
+      title: t("operator.scheduler.colStatus"),
+      align: "left",
+      render: (_v, lane) => (
+        <Badge variant={QUEUE_BADGE[lane.status]}>
+          {t(QUEUE_STATUS_KEY[lane.status] as Parameters<typeof t>[0])}
+        </Badge>
+      ),
+    },
+    {
+      key: "waiting",
+      title: t("operator.scheduler.queueColWaiting"),
+      align: "right",
+      render: (_v, lane) => <span style={TABULAR}>{lane.waiting}</span>,
+    },
+    {
+      key: "age",
+      /* Detik, satu satuan, tanpa pembulatan ke "beberapa menit": ambangnya
+         SENDIRI ditulis dalam detik (420/600), dan angka yang satuannya
+         berbeda dari ambangnya memaksa pembacanya menghitung di kepala tepat
+         saat ia sedang panik. */
+      title: t("operator.scheduler.queueColAge"),
+      align: "right",
+      render: (_v, lane) => (
+        <span style={TABULAR}>{lane.ageSeconds === null ? "—" : lane.ageSeconds}</span>
+      ),
+    },
+  ];
 
   /** Kolom hitungan — semuanya rata kanan + tabular (MASTER.md §Angka). */
   const countColumn = (
@@ -160,6 +234,22 @@ export default async function OperatorSchedulerPage() {
     <div>
       <PageHeader title={t("operator.scheduler.heading")} description={t("operator.scheduler.description")} />
       <div style={CONSOLE_PAGE}>
+
+      <ConsolePanel title={t("operator.scheduler.queueHeading")}>
+        {queue === null ? (
+          <ConsoleNotice>{t("operator.scheduler.queueUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable columns={queueColumns} rows={queue} rowKey={(lane) => lane.lane} />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.queueNote", {
+                warn: QUEUE_AGE_WARN_SECONDS,
+                late: QUEUE_AGE_LATE_SECONDS,
+              })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
 
       {runs === null ? (
         <ConsoleNotice>{t("operator.scheduler.unavailable")}</ConsoleNotice>

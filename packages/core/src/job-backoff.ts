@@ -1,5 +1,5 @@
 /**
- * BACKOFF & LEASE — aritmetika murni antrean pekerjaan (rancangan §4).
+ * ANGKA MURNI ANTREAN PEKERJAAN — backoff, lease, retensi (rancangan §4).
  *
  * Dipisahkan dari SQL-nya karena inilah bagian yang salahnya paling halus dan
  * paling mahal: angka yang keliru di sini tidak membuat apa pun gagal, ia
@@ -86,3 +86,24 @@ export function queueAgeMs(tertuaDiterbitkan: Date | null, sekarang: Date = new 
   if (tertuaDiterbitkan === null) return 0;
   return Math.max(0, sekarang.getTime() - tertuaDiterbitkan.getTime());
 }
+
+/**
+ * Umur baris `done` sebelum dibuang dari tabel panas (rancangan §4, *bloat*).
+ *
+ * Dua minggu: cukup untuk "itu jalan minggu lalu, tunjukkan", dan sesudahnya
+ * jawabannya ada di domain yang ditulis pekerjaan itu, bukan di baris
+ * antreannya.
+ *
+ * ⚠ BARIS GAGAL TIDAK IKUT. `dead` dan `failed` tidak pernah dipangkas —
+ * kegagalan adalah isi paling berharga di tabel ini, dan ia justru yang dicari
+ * orang berbulan-bulan kemudian. Tabel yang membuang kegagalannya demi
+ * kerapian membuang satu-satunya catatan tentang apa yang pernah salah.
+ *
+ * ⚠ DAN SATU KAITAN YANG MUDAH TERLEWAT, untuk tahap 1c: `result_ref` adalah
+ * KUNCI objek, jadi barisnya satu-satunya yang tahu di mana hasil sebuah
+ * pekerjaan berada. Begitu ada jalur yang menulis `result_ref`, daur hidup
+ * objeknya wajib TIDAK lebih panjang daripada jendela ini — objek yang hidup
+ * lebih lama daripada barisnya adalah berkas yang tak bisa dijangkau siapa pun
+ * lagi sementara sewanya tetap dibayar.
+ */
+export const DONE_RETENTION_DAYS = 14;

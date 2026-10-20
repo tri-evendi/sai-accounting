@@ -36,9 +36,11 @@ import {
 } from "@sai/core/generated/job-kinds";
 import { LEASE_RENEW_MS } from "@sai/core/job-backoff";
 import {
+  archiveDoneJobs,
   claimJob,
   completeJob,
   failJob,
+  reclaimStaleJobs,
   renewLease,
   reportProgress,
   type JobRow,
@@ -46,6 +48,18 @@ import {
 
 /** Jeda saat antrean kosong. Pendek: pengguna menunggu unduhannya. */
 const IDLE_MS = 2_000;
+
+/**
+ * Jeda antar putaran UPKEEP — memulangkan lease kedaluwarsa & membuang baris
+ * `done` yang lewat retensi.
+ *
+ * WAJIB lebih rapat daripada `LEASE_STALE_MS` (dijaga `tests/job-upkeep.test.ts`):
+ * putaran yang lebih jarang daripada ambang basi berarti pekerjaan dari pekerja
+ * yang mati menunggu satu putaran penuh LAGI sesudah lease-nya kedaluwarsa, dan
+ * waktu tunggu itu tidak muncul di satu pun angka. Diekspor supaya penjaganya
+ * membandingkan angka yang SUNGGUH dipakai, bukan salinannya.
+ */
+export const UPKEEP_MS = 60_000;
 
 export interface JobContext {
   job: JobRow;
@@ -88,6 +102,39 @@ async function ambilPagar(lane: JobLane): Promise<boolean> {
   return rows[0]?.ok === true;
 }
 
+/**
+ * Satu putaran pemeliharaan tabel `jobs`.
+ *
+ * Dijalankan SETIAP pelari, bukan hanya jalur tunggal-instans: penyebaran yang
+ * kebetulan hanya memuat jalur jamak akan berjalan tanpa pernah memulangkan
+ * satu lease pun, dan kegagalan itu tidak punya gejala selain pekerjaan yang
+ * hilang.
+ *
+ * Tanpa kunci dan tanpa *leader election*, karena keduanya idempoten: pelari
+ * kedua yang menjalankannya pada saat yang sama memulangkan dan membuang nol
+ * baris. Ini pola §4 — kunci hanya mengurangi pekerjaan terbuang, bukan
+ * memikul kebenaran, dan di sini yang terbuang pun tidak berarti.
+ *
+ * Galatnya DITELAN (dicatat, tidak dilempar): pemeliharaan yang gagal tidak
+ * boleh menjatuhkan pelari yang sedang sehat mengerjakan pekerjaan orang.
+ */
+async function upkeep(lane: JobLane): Promise<void> {
+  try {
+    const dipulangkan = await reclaimStaleJobs();
+    if (dipulangkan > 0) {
+      console.log(`[${lane}] upkeep: ${dipulangkan} pekerjaan dipulangkan dari pekerja yang mati`);
+    }
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal memulangkan lease kedaluwarsa:`, e);
+  }
+  try {
+    const dibuang = await archiveDoneJobs();
+    if (dibuang > 0) console.log(`[${lane}] upkeep: ${dibuang} baris \`done\` lewat retensi dibuang`);
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal membuang baris \`done\`:`, e);
+  }
+}
+
 export interface RunnerOptions {
   lane: JobLane;
   handlers: Partial<Record<JobKind, JobHandler>>;
@@ -119,6 +166,12 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
   process.on("SIGINT", () => minta("SIGINT"));
 
   console.log(`[${lane}] mulai sebagai ${me}`);
+
+  /* Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah
+     sebuah crash harus memulangkan pekerjaan yang tertinggal sekarang, bukan
+     satu menit dari sekarang. */
+  await upkeep(lane);
+  const pemeliharaan = setInterval(() => void upkeep(lane), UPKEEP_MS);
 
   while (!berhenti) {
     let job: JobRow | null;
@@ -153,6 +206,7 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
     await kerjakan(lane, me, job, handler);
   }
 
+  clearInterval(pemeliharaan);
   await controlDb.$disconnect().catch(() => {});
   console.log(`[${lane}] berhenti.`);
 }

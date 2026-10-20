@@ -32,6 +32,7 @@
     "./operator-plane": "./src/operator-plane.ts",
     "./password-reset": "./src/password-reset.ts",
     "./public-status": "./src/public-status.ts",
+    "./queue-health": "./src/queue-health.ts",
     "./rate-limit": "./src/rate-limit.ts",
     "./registration": "./src/registration.ts",
     "./scheduler-heartbeat": "./src/scheduler-heartbeat.ts",

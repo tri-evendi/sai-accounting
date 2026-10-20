@@ -29,6 +29,8 @@ import { schemaGateVerdict, type SchemaGateVerdict } from "@sai/platform/schema-
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
+import { queueHealth, type QueueHealthStatus } from "@sai/core/queue-health";
+import { queueSnapshot } from "@sai/platform/job-queue";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
 import { mailHealth, type MailHealthStatus } from "@sai/platform/mail-health";
@@ -56,6 +58,21 @@ export type ReachStatus = { status: "ok" | "unknown" | "not-installed" };
 
 /** Bidang PT contoh — punya keadaan ketiga; lihat `sampleCompany()`. */
 export type CompanyStatus = { status: "ok" | "unknown" | "error" };
+
+/**
+ * Kesehatan antrean — SATU KATA saja, dan itu rambu #317, bukan kemalasan.
+ *
+ * Umur tertua per jalur dan kedalamannya adalah sinyal utama §11, tapi keduanya
+ * menyiratkan VOLUME PEMAKAIAN — persis hal yang #317 melarang bocor ke
+ * permukaan publik, dan sebab yang sama membuat `outboxCount` surel tinggal di
+ * konsol operator. Jadi probe publik memuat putusan terburuk lintas jalur, dan
+ * angkanya dibaca di konsol (`/scheduler`).
+ *
+ * `unknown` bukan `idle`: tabel `jobs` yang belum dimigrasikan atau tak terbaca
+ * BUKAN antrean yang kosong, dan menyamakannya membuat pemasangan yang belum
+ * siap melapor sehat.
+ */
+export type QueueStatus = { status: QueueHealthStatus | "unknown" };
 
 /**
  * Denyut cadangan TANPA sebab kegagalannya.
@@ -104,6 +121,7 @@ export type HealthReport =
       platform: ReachStatus;
       company: CompanyStatus;
       scheduler: SchedulerHealth;
+      queue: QueueStatus;
       backup: PublicBackupHealth;
       conformance: ConformanceHealth;
       mail: MailStatus;
@@ -126,6 +144,28 @@ async function mail(): Promise<MailStatus> {
       nodeEnv: process.env.NODE_ENV,
       outboxCount: count,
     }).public;
+  } catch {
+    return { status: "unknown" as const };
+  }
+}
+
+/**
+ * Putusan antrean, diringkas jadi satu kata.
+ *
+ * ⚠ Dibaca BERPASANGAN dengan `scheduler` di atas, dan pasangan itu bukan
+ * kerapian: bila penerbitnya mati, tak ada baris yang pernah terbit — antrean
+ * kosong, umur tertua nol, dan bidang ini melapor `idle` sementara pengingat,
+ * dokumen berulang, dan cadangan semuanya berhenti. Yang menangkap keadaan itu
+ * denyut penjadwal, yang diukur dari stempel waktu dan karena itu tidak
+ * bergantung pada isi antrean sama sekali. Bidang ini TIDAK bisa menggantikannya.
+ *
+ * Doktrin #137: kegagalan membacanya dilaporkan, tidak pernah menjatuhkan probe.
+ * Jalur pekerja hidup di container LAIN — keadaannya bukan keadaan container
+ * ini.
+ */
+async function queue(): Promise<QueueStatus> {
+  try {
+    return { status: queueHealth(await queueSnapshot()).status };
   } catch {
     return { status: "unknown" as const };
   }
@@ -345,6 +385,7 @@ export async function healthReport(): Promise<HealthReport> {
 
   const [
     schedulerStatus,
+    queueStatus,
     mailStatus,
     platformStatus,
     companyStatus,
@@ -352,6 +393,7 @@ export async function healthReport(): Promise<HealthReport> {
     conformanceStatus,
   ] = await Promise.all([
     lastSchedulerRun(),
+    queue(),
     mail(),
     platform(),
     sampleCompany(),
@@ -374,6 +416,7 @@ export async function healthReport(): Promise<HealthReport> {
     platform: platformStatus,
     company: companyStatus,
     scheduler: schedulerStatus,
+    queue: queueStatus,
     backup: backupStatus,
     conformance: conformanceStatus,
     mail: mailStatus,

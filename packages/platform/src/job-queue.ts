@@ -24,12 +24,19 @@ import { controlDb } from "@sai/core/control-db";
 import { Prisma } from "@sai/db/client/control";
 import {
   JOB_KINDS,
+  JOB_LANES,
   KINDS_BY_LANE,
   type JobKind,
   type JobLane,
   type JobStatus,
 } from "@sai/core/generated/job-kinds";
-import { LEASE_STALE_MS, backoffMs, isDead } from "@sai/core/job-backoff";
+import {
+  DONE_RETENTION_DAYS,
+  LEASE_STALE_MS,
+  backoffMs,
+  isDead,
+} from "@sai/core/job-backoff";
+import { laneQueueHealth, type LaneQueueHealth } from "@sai/core/queue-health";
 
 export interface JobRow {
   id: number;
@@ -227,23 +234,54 @@ export async function requestCancel(id: number): Promise<boolean> {
 }
 
 /**
- * Umur pekerjaan tertua yang MENUNGGU, per jalur — sinyal utama §11.
+ * Jalur untuk `kind` yang TIDAK dikenal image ini.
  *
- * Yang diukur umur, bukan jumlah: seribu pekerjaan yang selesai dalam dua detik
- * adalah sistem sehat, sementara satu pekerjaan yang menunggu empat jam adalah
- * sistem rusak — dan metrik jumlah membaca keduanya terbalik.
+ * Bisa terjadi saat *rolling deploy*: image yang lebih baru menerbitkan `kind`
+ * yang kontraknya belum ada di image lama. Baris semacam itu TIDAK boleh
+ * dilewatkan diam-diam — pekerjaan yang macet dan tak terlihat oleh satu pun
+ * pembaca adalah tepat kelas kegagalan yang §11 dibangun untuk menolaknya. Ia
+ * dikumpulkan di bawah nama yang jelas bukan nama jalur dari kontrak.
  */
-export async function oldestQueuedAt(lane?: JobLane): Promise<Date | null> {
-  const kinds = lane ? KINDS_BY_LANE[lane] : null;
-  const rows = kinds
-    ? await controlDb.$queryRaw<{ oldest: Date | null }[]>`
-        SELECT MIN(run_after) AS oldest FROM jobs
-        WHERE status = 'queued' AND run_after <= now()
-          AND kind IN (${Prisma.join([...kinds])})`
-    : await controlDb.$queryRaw<{ oldest: Date | null }[]>`
-        SELECT MIN(run_after) AS oldest FROM jobs
-        WHERE status = 'queued' AND run_after <= now()`;
-  return rows[0]?.oldest ?? null;
+const JALUR_TAK_DIKENAL = "(tak dikenal)";
+
+/**
+ * Potret antrean per jalur — sinyal utama §11, dalam SATU kueri.
+ *
+ * Satu kueri, bukan satu per jalur, dan sebabnya ada di §4: `control` juga
+ * melayani autentikasi, jadi tujuh perjalanan bolak-balik tiap kali ada yang
+ * membuka halaman kesehatan adalah ongkos yang dibayar tabel yang paling tidak
+ * boleh melambat. `GROUP BY kind` sudah dilayani indeks berpredikat
+ * `jobs_ambil_idx`.
+ *
+ * Yang dihitung hanya `queued` yang `run_after`-nya SUDAH lewat. Pekerjaan yang
+ * sengaja dijadwalkan ke depan atau sedang menunggu *backoff* bukan tunggakan,
+ * dan memasukkannya membuat setiap percobaan ulang terbaca sebagai antrean
+ * macet.
+ *
+ * SETIAP jalur dipulangkan, termasuk yang kosong: jalur yang hilang dari tabel
+ * tidak bisa dibedakan dari jalur yang memang tak punya kerja.
+ */
+export async function queueSnapshot(now: Date = new Date()): Promise<LaneQueueHealth[]> {
+  const rows = await controlDb.$queryRaw<{ kind: string; waiting: bigint; oldest: Date | null }[]>`
+    SELECT kind, COUNT(*)::bigint AS waiting, MIN(run_after) AS oldest
+      FROM jobs
+     WHERE status = 'queued' AND run_after <= now()
+     GROUP BY kind`;
+
+  const per = new Map<string, { waiting: number; oldest: Date | null }>();
+  for (const lane of Object.keys(JOB_LANES)) per.set(lane, { waiting: 0, oldest: null });
+
+  for (const r of rows) {
+    const lane = JOB_KINDS[r.kind as JobKind]?.lane ?? JALUR_TAK_DIKENAL;
+    const ember = per.get(lane) ?? { waiting: 0, oldest: null };
+    ember.waiting += Number(r.waiting);
+    if (r.oldest !== null && (ember.oldest === null || r.oldest < ember.oldest)) {
+      ember.oldest = r.oldest;
+    }
+    per.set(lane, ember);
+  }
+
+  return [...per].map(([lane, v]) => laneQueueHealth(lane, v.waiting, v.oldest, now));
 }
 
 /** Hitungan per status — untuk dasbor, bukan untuk gerbang. */
@@ -251,4 +289,28 @@ export async function jobCounts(): Promise<Record<string, number>> {
   const rows = await controlDb.$queryRaw<{ status: string; n: bigint }[]>`
     SELECT status, COUNT(*)::bigint AS n FROM jobs GROUP BY status`;
   return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
+}
+
+/**
+ * Buang baris `done` yang sudah melewati jendela retensi (rancangan §4).
+ *
+ * `DELETE`, bukan pindah ke tabel arsip: tabel arsip yang tak pernah dibaca
+ * siapa pun adalah *bloat* yang sama dalam berkas yang berbeda, dan apa yang
+ * dikerjakan sebuah pekerjaan yang BERHASIL sudah tercatat di domain yang ia
+ * tulis. Yang hilang hanyalah barisnya.
+ *
+ * ⚠ `status = 'done'` SAJA. `dead` dan `failed` tidak pernah tersentuh — lihat
+ * `DONE_RETENTION_DAYS`. Predikat yang melebar ke "sudah selesai" akan membuang
+ * justru baris yang paling dicari orang.
+ *
+ * Idempoten, jadi ia tidak butuh *leader election* maupun kunci: pelari kedua
+ * yang menjalankannya pada saat yang sama menghapus nol baris. Itu pola yang
+ * sama dengan `reclaimStaleJobs`.
+ *
+ * @returns jumlah baris yang dibuang.
+ */
+export async function archiveDoneJobs(retentionDays: number = DONE_RETENTION_DAYS): Promise<number> {
+  const ambang = new Date(Date.now() - retentionDays * 86_400_000);
+  return controlDb.$executeRaw`
+    DELETE FROM jobs WHERE status = 'done' AND finished_at < ${ambang}`;
 }

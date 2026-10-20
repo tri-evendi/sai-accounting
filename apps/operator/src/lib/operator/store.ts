@@ -36,6 +36,8 @@ import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@o
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
  * `next build` (ditemukan saat penggelaran #151). */
 import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
+import { queueSnapshot } from "@sai/platform/job-queue";
+import type { LaneQueueHealth } from "@sai/core/queue-health";
 import {
   mailSettingsView,
   readMailSettings,
@@ -598,6 +600,26 @@ export async function conformanceRunsForOperator(
     }));
   } catch (error) {
     console.error("[operator-store] riwayat kesesuaian data tak terbaca:", error);
+    return null;
+  }
+}
+
+/**
+ * Potret antrean pekerjaan per jalur — sinyal utama §11 untuk konsol.
+ *
+ * `null` bila tak terbaca, mengikuti pola `schedulerRunsForOperator`: halaman
+ * mengatakan "belum bisa dibaca", bukan mengarang antrean kosong. Bedanya
+ * menentukan di sini — tabel `jobs` yang belum dimigrasikan dan antrean yang
+ * memang tak punya kerja terlihat sama persis sebagai daftar kosong, dan yang
+ * pertama berarti pemasangan ini belum siap.
+ */
+export async function queueSnapshotForOperator(
+  deps: { snapshot: () => Promise<LaneQueueHealth[]> } = { snapshot: queueSnapshot }
+): Promise<LaneQueueHealth[] | null> {
+  try {
+    return await deps.snapshot();
+  } catch (error) {
+    console.error("[operator-store] potret antrean tak terbaca:", error);
     return null;
   }
 }

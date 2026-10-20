@@ -12,7 +12,7 @@
  * Yang TIDAK dikerjakan skrip ini: menyentuh basis data apa pun. Lisensi adalah
  * artefak bertanda tangan, bukan baris — kewenangannya ada pada tanda tangan,
  * dan menyimpan hasil verifikasinya sebagai baris yang bisa ditulis memindahkan
- * kewenangan itu ke tempat yang salah (docs/arsitektur/06-KEAMANAN.md §3.6).
+ * kewenangan itu ke tempat yang salah (docs/arsitektur/06-KEAMANAN.md §3.7).
  */
 import { createPrivateKey, createPublicKey, randomUUID, sign as signBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";

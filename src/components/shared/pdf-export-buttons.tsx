@@ -16,69 +16,57 @@ import {
   fetchStatementPdfBlob,
 } from "@/lib/report-files";
 
-interface ContractPDFData {
-  contractNo: string;
-  date: string;
-  buyer: string;
-  consignee: string | null;
-  packaging: string | null;
-  shipment: string | null;
-  top1: string | null;
-  top2: string | null;
-  currency: string;
-  status: string;
-  items: { itemName: string; bags: number; kgPerBag: number; pricePerKg: number }[];
-  payments: { date: string; amount: number; currency: string; note: string | null }[];
-}
+/*
+ * `ContractPDFData` DICABUT di tahap 1c, alasan yang sama dengan
+ * `InvoicePDFData`: tipe yang tinggal sebagai "bentuk yang dikirim peramban"
+ * adalah tipe yang mengundang jalur kedua dibangun lagi di atasnya. Bentuknya
+ * kini hidup di satu tempat — `ContractData` di generatornya, yang diberi makan
+ * `document-loaders.ts` dari baris buku.
+ */
 
-export function ContractPDFButton({ contract }: { contract: ContractPDFData }) {
-  const company = useCompanyIdentity();
+export function ContractPDFButton({
+  contractId,
+  contractNo,
+}: {
+  contractId: number;
+  contractNo: string;
+}) {
+  /* DARI SERVER, dan ia mengirim ID — bukan muatan kontrak. Kontrak adalah
+     dokumen yang dikirim ke pembeli; angka di atas kertas diturunkan dari BUKU
+     (rancangan §5). */
   return (
     <PdfDocumentButton
-      title={`Kontrak ${contract.contractNo}`}
-      filename={`Contract_${contract.contractNo}.pdf`}
-      generate={async () => {
-        const { generateContractPDF } = await import("@/lib/pdf/contract-pdf");
-        return generateContractPDF(contract, company).output("blob");
-      }}
+      title={`Kontrak ${contractNo}`}
+      filename={`Contract_${contractNo}.pdf`}
+      generate={() => fetchDocumentPdfBlob("contract", contractId)}
     />
   );
 }
 
-export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
-  const company = useCompanyIdentity();
+export function ShippingDocButton({
+  contractId,
+  contractNo,
+}: {
+  contractId: number;
+  contractNo: string;
+}) {
   const t = useT();
+  /*
+   * ⚠ `id`-nya id KONTRAK, bukan id `delivery_orders`. Tombolnya ada di halaman
+   * kontrak dan memakai data kontrak yang sama; membangun jalur kedua dari
+   * `delivery_orders` akan menghasilkan surat jalan yang berbeda dari yang
+   * dicetak orang hari ini — perubahan perilaku yang menyelinap di bawah nama
+   * "pindah ke server". Sebabnya ikut tertulis di `DOCUMENT_PDF`.
+   */
   return (
     <PdfDocumentButton
       label={t("nav.items.deliveryOrders")}
-      title={`Surat Jalan ${contract.contractNo}`}
-      filename={`SuratJalan_${contract.contractNo}.pdf`}
-      generate={async () => {
-        const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");
-        return generateShippingPDF({
-          contractNo: contract.contractNo,
-          date: contract.date,
-          buyer: contract.buyer,
-          consignee: contract.consignee,
-          shipment: contract.shipment,
-          items: contract.items.map((i) => ({
-            itemName: i.itemName,
-            bags: i.bags,
-            kgPerBag: i.kgPerBag,
-          })),
-        }, company).output("blob");
-      }}
+      title={`Surat Jalan ${contractNo}`}
+      filename={`SuratJalan_${contractNo}.pdf`}
+      generate={() => fetchDocumentPdfBlob("contract-shipping", contractId)}
     />
   );
 }
-
-/*
- * `InvoicePDFData` DICABUT di tahap 1c: tombol faktur tidak lagi menerima
- * muatan. Bentuk itu kini hidup di satu tempat — `buildInvoicePdfData` di sisi
- * server, yang memberi makan generator dari baris buku. Tipe yang tinggal di
- * sini sebagai "bentuk yang dikirim peramban" adalah tipe yang mengundang
- * jalur kedua dibangun lagi di atasnya.
- */
 
 export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
   const company = useCompanyIdentity();

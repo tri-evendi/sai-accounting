@@ -1,6 +1,6 @@
 # 06 — Keamanan & Model Ancaman
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 Apa yang dilindungi, dari siapa, dengan kontrol apa, dan apa yang belum ditutup.
 Temuan keamanan yang masih terbuka dilacak berprioritas di
@@ -102,7 +102,36 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 | Alur pra-sesi (daftar, lupa sandi, undangan) | Token sekali-pakai ter-hash + **jawaban seragam** (anti-enumerasi) + pembatasan laju per-IP/per-email |
 | Impor & dump sistem lama | **Tidak melewati zod** — itu justru alasan `job-conformance` ada |
 
-### 3.6 Kriptografi yang dipakai
+### 3.6 Hasil pekerjaan: `result_ref` adalah KUNCI, bukan kapabilitas
+
+Hasil pekerjaan latar (`data/hasil/<kind>-<jobId>/<berkas>`) memuat isi buku
+besar — ekspor neraca, umur piutang, dokumen. **Memegang kuncinya bukan izin
+untuk membacanya**, dan empat aturan menegakkannya sebagai kode:
+
+| Aturan | Kenapa |
+|---|---|
+| Penyimpanan **di luar `public/`** | berkas statis tidak melewati satu pun penjaga — pelajaran #367, dan satu-satunya alasan rutenya ada |
+| Unduhan lewat **rute aplikasi**, dan rute itu men-STREAM byte-nya | ia tidak pernah memulangkan 302 ke penyimpanan mana pun. Redirect ke URL bertanda tangan membuat izin diperiksa SEKALI lalu tautannya hidup sendiri sampai kedaluwarsa — dan tautan itu bisa dibagikan, disimpan peramban, dan muncul di log proxy |
+| Izin diperiksa **saat mengunduh** | pekerjaan hidup berjam-jam; orang yang perannya dicabut di antaranya tidak boleh tetap menerima hasilnya |
+| **Izin per `kind`, DITAMBAH gerbang kedua dari muatannya** | satu izin tunggal membuat siapa pun yang boleh mengunduh satu dokumen juga boleh mengunduh ekspor neraca. Dan izin JENIS saja tidak cukup: `report.export` menjawab "boleh mengekspor laporan", bukan "boleh mengekspor laporan INI" (#355) — tanpa gerbang kedua, pekerjaan yang terbit ketika sebuah modul masih aktif tetap bisa diunduh sesudah modul itu dimatikan |
+
+Keduanya `Record` yang LENGKAP atas seluruh `kind`: jenis baru tidak akan
+mengompilasi sampai seseorang memutuskan siapa yang berhak mengunduh hasilnya,
+dan keputusan "tidak pernah bisa diunduh" ditulis `null` beserta alasannya —
+ketiadaan entri tidak bisa dibedakan dari entri yang lupa ditulis.
+
+⚠ **Manifest cadangan TIDAK diunduh lewat rute bertenant.** Ia menyebut nama
+basis data SELURUH tenant; jalannya runbook operator, bukan permukaan HTTP per
+PT. `tenant.backup` karena itu `null` di peta izin.
+
+**Bentuk `result_ref` divalidasi meski ia datang dari basis data kita sendiri:**
+tepat dua segmen dari kosakata sempit, dan jalur gabungannya diperiksa LAGI
+berada di bawah akarnya. `path.join` menormalkan `..` dengan rapi, dan rapi
+adalah persis yang membuat lolosnya tidak terlihat. Penjaganya
+`tests/job-result-authorization.test.ts` + `tests/job-result-store.test.ts`,
+yang kedua menjalankan berkas sungguhan.
+
+### 3.7 Kriptografi yang dipakai
 
 | Untuk | Algoritma | Catatan |
 |---|---|---|
@@ -133,7 +162,7 @@ menjadikannya pemadaman. Lisensinya **perpetual**: yang berakhir adalah hak atas
 versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
 adalah kesalahan kategori untuk produk akuntansi.
 
-### 3.7 Pengerasan transport & peramban
+### 3.8 Pengerasan transport & peramban
 
 Header lengkapnya ada di [03 API & Integrasi](./03-API-INTEGRASI.md). Ringkas: `frame-ancestors
 'none'` + `X-Frame-Options: DENY` · `object-src` dibatasi · `form-action 'self'`

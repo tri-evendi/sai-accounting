@@ -4,7 +4,7 @@ import autoTable from "jspdf-autotable";
 import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
 
-interface ShippingDocData {
+export interface ShippingDocData {
   contractNo: string;
   date: string;
   buyer: string;

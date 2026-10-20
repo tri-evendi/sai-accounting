@@ -1,6 +1,6 @@
 # 03 — API, Integrasi & Titik Gagal
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 Permukaan sistem dari luar: siapa boleh masuk lewat jalur mana, apa yang
 dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
@@ -15,12 +15,43 @@ dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
 | SMTP | `app-customer` / `job-scheduler` → penyedia surel |
 | HTTPS keluar | `app-customer` → Midtrans Core API — **satu-satunya** panggilan HTTP keluar |
 | S3 | `svc-tenant` → penyimpanan objek (SDK S3 di dalam biner Go; `awscli` hanya di image perkakas `job-backup`) |
+| — | Hasil pekerjaan TIDAK memakai penyimpanan objek: ia volume `hasil` di mesin ini, dan satu-satunya jalan keluarnya route handler ber-izin |
 
 Tidak ada gRPC, GraphQL, WebSocket, atau SSE. Layanan berkoordinasi lewat basis
 data bersama — termasuk **antrean pekerjaan**, yang adalah satu tabel (`jobs` di
 basis data kendali), bukan broker: [04 §8.9](./04-ALIRAN-DATA.md) dan
 [02 §5](./02-LAYANAN-INFRA.md). Pemindahan pembuatan dokumen ke server masih
 dirancang di [09 §5](./09-RANCANGAN-LAYANAN.md).
+
+### Dokumen & hasil pekerjaan — tiga rute, satu aturan
+
+Sejak tahap 1c pembuatan dokumen ada di SERVER (rancangan §5), dan permukaannya
+tiga rute. Semuanya bertenant (`/api/t/{tenant}/{company}/…`) kecuali yang
+menerima muatan laporan lewat `apiFetch`:
+
+| Rute | Masukan | Izin |
+|---|---|---|
+| `POST /api/reports/pdf` | muatan laporan (sama dengan tombol Excel) | `report.export` |
+| `POST /api/reports/export` | muatan laporan; di atas ambang penyerahan ia **202** beserta `jobId` | `report.export` + izin laporannya (#355) |
+| `GET /api/t/…/documents/pdf/{jenis}/{id}` | **ID saja**, tanpa badan | per JENIS: `invoice.read`, `contract.read`, `document.read`, `return.read` |
+| `GET /api/t/…/jobs/{kind}/{id}/result` | ID pekerjaan | per `kind` + gerbang kedua dari muatannya |
+
+**Aturan yang mengikat ketiganya: kertasnya diturunkan dari BUKU.** Rute dokumen
+menerima ID dan memuat barisnya sendiri; ia `GET` tanpa badan, jadi jalur
+"render apa yang dikirim klien" tidak ada untuk ditutup. Syarat audit §5 —
+"server menyimpan byte yang persis sama dengan yang dikirim ke customer" — baru
+berarti sesuatu bila angka di atas kertas bukan angka yang dikirim peramban.
+
+⚠ **Dua jenis untuk satu generator, dan itu disengaja.** `contract-shipping`
+dibangun dari KONTRAK, `delivery-order` dari baris `delivery_orders` (#16).
+Generatornya sama — satu tata letak — tapi sumbernya berbeda; satu kunci untuk
+keduanya akan membuat `id` berarti dua hal tergantung pemanggilnya.
+
+⚠ **`kind` ada di JALUR rute hasil**, dan itu urutan pemeriksaan bukan kerapian
+URL: izin yang dituntut bergantung pada jenis pekerjaan, dan jenis itu ada di
+BARISnya. Membacanya sebelum gerbang berjalan membuat penanya **anonim**
+menerima 401 untuk id yang ada dan 404 untuk yang tidak — dan dari dua jawaban
+itu volume pemakaian bisa dicacah, yang doktrin #317 melarang.
 
 ## 2. Tiga rezim autentikasi
 
@@ -269,6 +300,8 @@ satu-pernyataan ber-`FOR UPDATE SKIP LOCKED`, *lease* yang diperpanjang,
 | `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` (kendali) | `/scheduler`, `/api/health` |
 | `job-scheduler` → `svc-ledger` | **antrean** — `jobs`, `kind` `ledger.*` (`recurring:publish`) | `/api/health` → `queue` |
 | `job-scheduler` → `svc-tenant` | **antrean** — `jobs`, `kind` `tenant.backup` (`backup:publish`) | `/api/health` → `queue` |
+| `app-customer` → `svc-interactive` | **antrean** — `jobs`, `kind` `report.export`, diterbitkan rute ekspor di atas ambang penyerahan | `/api/health` → `queue`; hasilnya di `data/hasil` |
+| `svc-interactive` → `app-customer` | `jobs.result_ref` + berkas di volume `hasil`; aplikasi men-stream byte-nya lewat rute ber-izin | rute hasil (409 sampai siap, 200 beserta byte) |
 | `job-conformance` → `app-customer` | `conformance_runs` | `/api/health` |
 | `svc-tenant` → `app-customer` | `backup_runs` + objek manifest di tujuan cadangan | `/api/health` |
 | `migrate` → semua | `depends_on: service_completed_successfully` + gerbang skema saat boot | Keluaran container, `/api/health` |

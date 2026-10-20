@@ -126,6 +126,79 @@ describe("peta jenis: LENGKAP, dan yang belum pindah tertulis", () => {
   });
 });
 
+describe("pemuat: turunannya SAMA dengan halamannya, bukan turunan kedua", () => {
+  const pemuat = readFileSync(join(AKAR_REPO, "src/lib/document-loaders.ts"), "utf8");
+
+  it("setiap jenis DOKUMEN satuan punya pemuatnya", () => {
+    /* Tiga yang `null` adalah LAPORAN — §5 menaruhnya di jalur lain. */
+    const tanpaPemuat = Object.entries(DOCUMENT_PDF)
+      .filter(([, spec]) => spec.muat === null)
+      .map(([jenis]) => jenis)
+      .sort();
+    expect(tanpaPemuat).toEqual(["finance-report", "opname-sheet", "stock-report"]);
+  });
+
+  it("nama consignee: master menang, teks warisan jadi jatuhannya (#22)", () => {
+    /* Turunan yang sama persis dengan halaman kontrak. Dua sumber untuk satu
+       nama akan berbeda pada hari salah satunya diperbarui. */
+    expect(pemuat.match(/consigneeRef\?\.name \?\? contract\.consignee \?\? null/g) ?? [])
+      .toHaveLength(2);
+  });
+
+  it("`buyer` surat jalan: kontrak tertaut, lalu consignee, lalu `-`", () => {
+    expect(pemuat).toContain('order.contract?.buyer ?? order.consignee?.name ?? "-"');
+  });
+
+  it("`originLabel` retur: nomor faktur, dan `TRX-<id>` untuk pembelian", () => {
+    /* `TRX-<purchaseId>` adalah LABEL, bukan nomor dokumen: transaksi pembelian
+       tidak punya nomor sendiri di buku ini, dan mengarang satu akan
+       menghasilkan nota yang menyebut nomor yang tidak ada di mana pun. */
+    expect(pemuat).toContain("originLabel: retur.invoice.invoiceNo");
+    expect(pemuat).toMatch(/originLabel: `TRX-\$\{retur\.purchaseId\}`/);
+  });
+
+  it("DUA surat jalan, DUA kunci — dan generatornya satu", () => {
+    /*
+     * Mereka memakai `generateShippingPDF` yang sama (satu tata letak, bukan
+     * dua) tetapi sumber yang berbeda. Satu kunci untuk keduanya akan membuat
+     * `id` berarti dua hal tergantung pemanggilnya — dan id yang berarti dua
+     * hal adalah id yang suatu hari memuat dokumen yang salah.
+     */
+    expect(DOCUMENT_PDF["contract-shipping"].muat).not.toBeNull();
+    expect(DOCUMENT_PDF["delivery-order"].muat).not.toBeNull();
+    expect(pemuat.match(/import\("@\/lib\/pdf\/shipping-pdf"\)/g) ?? []).toHaveLength(2);
+    expect(pemuat).toContain("export async function contractShippingPdfById");
+    expect(pemuat).toContain("export async function deliveryOrderPdfById");
+  });
+
+  it("setiap pemuat memulangkan `null` untuk baris yang tidak ada", () => {
+    /* Dokumen yang tidak ada di buku ini dan yang memang tidak pernah ada
+       dijawab sama — 404 — sebab membedakannya hanya memberi tahu penebak
+       bahwa id itu ADA di suatu tempat (#157). */
+    const nullReturn = pemuat.match(/if \(!\w+\) return null;/g) ?? [];
+    expect(nullReturn.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("TIDAK ada perbandingan kepemilikan yang ditulis tangan", () => {
+    /* `prisma` di dalam pemuatnya klien PT AKTIF, jadi id milik PT lain tidak
+       menemukan apa pun. Perbandingan yang ditulis tangan adalah perbandingan
+       yang bisa lupa ditulis (#367). */
+    expect(tanpaKomentar(pemuat)).not.toMatch(/companyId/);
+  });
+
+  it("byte-nya dibangkitkan SEKALI per dokumen", () => {
+    /* Syarat audit §5: yang disimpan sama dengan yang dikirim. Satu buffer
+       untuk kedua tujuan — bukan dua pembangkitan yang kebetulan sama. */
+    expect(tanpaKomentar(pemuat).match(/output\("arraybuffer"\)/g) ?? []).toHaveLength(1);
+  });
+
+  it("nama berkasnya membuang karakter yang memecah header", () => {
+    /* Nomor dokumen boleh memuat `/`, dan itu memecah nama berkas di sebagian
+       klien surel maupun `Content-Disposition` (#465). */
+    expect(pemuat).toMatch(/replace\(\/\[\^A-Za-z0-9\._-\]\/g, "-"\)/);
+  });
+});
+
 describe("rute: urutan pemeriksaan & bentuk jawaban", () => {
   it("gerbang izin berjalan SEBELUM barisnya dimuat", () => {
     const gerbang = rute.indexOf("await requireApiPermission(spec.permission, params)");
@@ -202,11 +275,14 @@ describe("alamat cetak: satu tempat rumusnya ditulis", () => {
 });
 
 describe("yang BELUM pindah, dicacah bukan disembunyikan", () => {
-  it("lima generator dokumen masih digambar peramban", () => {
+  it("yang tersisa di peramban hanya LAPORAN, bukan dokumen satuan", () => {
     /*
      * Pencacah, bukan larangan: ia merah ketika satu generator lagi pindah,
-     * dan daftar di sini harus menyusut bersamanya. `invoice-pdf` TIDAK boleh
-     * ada lagi — itu yang dipindahkan commit ini.
+     * dan daftar di sini harus menyusut bersamanya.
+     *
+     * Sesudah tahap ini, SETIAP dokumen satuan dirender di server. Yang
+     * tersisa tiga LAPORAN, dan §5 menaruh laporan di jalur lain — jadi
+     * penyusutan berikutnya datang dari sana, bukan dari rute dokumen.
      */
     const klien = [
       "src/components/shared/pdf-export-buttons.tsx",
@@ -222,14 +298,13 @@ describe("yang BELUM pindah, dicacah bukan disembunyikan", () => {
     const unik = [...new Set(dinamis)].sort();
 
     expect(unik, "generator yang masih digambar peramban").toEqual([
-      "contract-pdf",
       "finance-report-pdf",
       "opname-sheet-pdf",
-      "return-pdf",
-      "shipping-pdf",
       "stock-report-pdf",
     ]);
-    expect(unik).not.toContain("invoice-pdf");
-    expect(unik).not.toContain("statement-pdf");
+    /* Setiap generator DOKUMEN sudah pindah. */
+    for (const sudah of ["invoice-pdf", "statement-pdf", "contract-pdf", "shipping-pdf", "return-pdf"]) {
+      expect(unik, sudah).not.toContain(sudah);
+    }
   });
 });

@@ -5,7 +5,7 @@ import { drawCompanyLogo, type PdfCompany } from "./company-header";
 
 const COMPANY_PHONE = "021-XXXXXXX";
 
-interface ContractData {
+export interface ContractData {
   contractNo: string;
   date: string;
   buyer: string;

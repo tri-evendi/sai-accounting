@@ -1,6 +1,6 @@
 # 02 — Layanan & Infrastruktur
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 Apa yang berjalan, di mesin apa, dan bagaimana rilis sampai ke sana. Dua bagian
 terakhir berisi **target**, bukan keadaan.
@@ -34,7 +34,7 @@ Ukuran mesin ini adalah alasan langsung empat keputusan: tipe diperiksa di luar
 `next build`, image dibangun di CI, tahap `migrator` tidak mewarisi `builder`,
 dan batas heap eksplisit di setiap perintah Node.
 
-## 2. Sepuluh layanan
+## 2. Sebelas layanan
 
 | Layanan | Container | Peran | Kadens |
 |---|---|---|---|
@@ -47,6 +47,7 @@ dan batas heap eksplisit di setiap perintah Node.
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
 | `svc-ledger` | `sai-svc-ledger` | Pelari jalur `ledger` — menguras tabel `jobs` | selalu hidup |
 | `svc-tenant` | `sai-svc-tenant` | Pelari jalur `tenant` (Go) — cadangan **per basis data** | selalu hidup |
+| `svc-interactive` | `sai-svc-interactive` | Pelari jalur `interactive` — ekspor besar yang ditunggu pengguna | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
 
@@ -59,7 +60,7 @@ graph TB
     TR --> WEBO[sai-app-operator]
     WEBC --> PGB[sai-pgbouncer]
     WEBO --> PGB
-    JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger] --> PGB
+    JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger · sai-svc-interactive] --> PGB
     PGB --> PG[(sai-pg)]
     LANGSUNG[sai-svc-tenant · sai-migrate] --> PG
     OLD[(sai-db — MariaDB, fallback)]
@@ -336,6 +337,48 @@ data terdaftar yang hilang dari server, `pg_dump` lebih tua daripada server,
 > di mesin produksi, dibuat root, dan Docker tidak menerapkan kepemilikan image
 > ke volume bernama yang sudah ada. Langkahnya di PRODUCTION.md.
 
+### `svc-interactive` — jalur `interactive`, ekspor besar
+
+Menguras `report.export` dari tabel `jobs`. Ia **tidak** menggantikan
+`/api/reports/export`: ekspor berukuran biasa tetap dirakit di dalam permintaan
+HTTP dan selesai dalam milidetik — antrean untuknya hanya menambah penantian.
+
+Yang diserahkan ke sini hanya yang di atas `EXPORT_QUEUE_HANDOFF_ROWS` (5.000
+baris, plafon penolakan 50.000), dan sebabnya bukan ukuran berkasnya melainkan
+**event loop**: perakitan ExcelJS sinkron dan menahan SETIAP permintaan lain di
+proses yang sama, termasuk halaman yang sedang dibuka orang lain.
+
+Sampai tahap 1c, ekspor di atas plafon dijawab **413 — ditolak**. Layanan ini
+mengubah penolakan itu menjadi "akan dikerjakan".
+
+| Keputusan | Alasan |
+|---|---|
+| Muatan pekerjaan = **parameter**, bukan angka | `jobs` hidup di basis data **kendali**, dan kendali tidak memuat satu angka akuntansi pun (#104). Pekerjanya menghitung ulang dengan pembangun payload yang SAMA — dan laporan karena itu dihitung saat ia DIKERJAKAN, yang untuk ekspor yang menunggu beberapa menit justru lebih berguna |
+| Instansnya **berapa pun** | ia tidak menulis buku dan tidak menerbitkan apa pun; `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan dua kali |
+| Satu-satunya penulis volume `hasil` | `app-customer` memasangnya `:ro` dan hanya men-stream |
+| Lewat **PgBouncer** | ia membaca buku SATU PT per pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data seperti jalur `tenant` |
+| **Node, bukan Go** | ia MENGHITUNG angka akuntansi (`buildReportPayload` membaca buku), dan §3.3 menahan Go di depan garis itu. Yang dibeli proses terpisah: event loop sendiri dan batas memori sendiri — ekspor yang kehabisan memori menjatuhkan PELARI, bukan aplikasi, dan pekerjaannya dipulangkan `reclaimStaleJobs` dengan `attempts + 1` |
+| TANPA rahasia cadangan | `BACKUP_ENCRYPTION_KEY` hanya di `svc-tenant`. Jalur ini memproses MASUKAN PENGGUNA, dan jalur yang memproses masukan pengguna tidak boleh berada di dalam proses yang bisa membaca kunci cadangan |
+
+**Perusahaan nonaktif TETAP dikerjakan**, berbeda dari `svc-ledger` — dan
+bedanya bukan selera: jalur ini hanya MEMBACA, dan mengekspor buku yang akan
+diarsipkan adalah justru alasan orang menonaktifkannya. Keduanya memakai
+`dalamKonteksPerusahaan` yang sama dengan satu parameter yang membedakannya.
+
+**Hasilnya diunduh lewat rute aplikasi**, bukan tautan penyimpanan — tiga
+aturan `result_ref` di [06 §3](./06-KEAMANAN.md). Kliennya menunggu di rute
+hasil itu sendiri (409 `job_not_done` sampai siap), sebab rute status kedua akan
+punya penjaga izinnya sendiri yang bisa menyimpang dari penjaga unduhannya.
+
+⚠ **Hasil yatim dibersihkan setiap putaran pemeliharaan.** `DONE_RETENTION_DAYS`
+membuang baris `done` sesudah 14 hari, dan baris itu satu-satunya yang tahu di
+mana hasilnya berada — objek yang hidup lebih lama daripada barisnya adalah
+berkas yang tak bisa dijangkau siapa pun lagi sementara cakramnya tetap
+terpakai. Dua pagar menjaga pembersihnya: himpunan id memuat SELURUH baris
+`jobs` (bukan hanya yang punya `result_ref` — berkasnya ditulis SEBELUM kolomnya,
+jadi saringan itu akan menghapus hasil pekerjaan yang masih berjalan), dan
+direktori yang lebih baru dari 24 jam tidak pernah dibuang.
+
 ### `job-backup` — PERKAKAS, bukan lagi pelaksana
 
 Sejak tahap 1b ia tidak mencadangkan apa pun. Profil `perkakas` membuatnya
@@ -365,6 +408,7 @@ kuartalan manusia (❓ belum ada bukti dijalankan).
 | `documents` | `app-customer` (RW), `svc-tenant` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — objek `berkas.tar.gz.enc` |
 | `audit` | kedua `app-*` (RW), `svc-tenant` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — objek `berkas.tar.gz.enc` |
 | `cadangan` | `svc-tenant` (RW) | Satu direktori per putaran: objek terenkripsi + `.sha256` + `manifest.json` | — (ia *adalah* backup-nya) |
+| `hasil` | `svc-interactive` (RW), `app-customer` (RO) | Hasil pekerjaan (`result_ref`): `<kind>-<jobId>/<berkas>`. Di luar `public/` — satu-satunya jalan keluarnya route handler ber-izin | Tidak — ia dibangkitkan ulang dari buku, dan dibuang bersama baris `jobs`-nya |
 
 Jejak audit ada di **tiga** tabel: `audit_logs` (tiap buku PT),
 `tenant_audit_logs` (control), `operator_audit_logs` (platform).
@@ -499,19 +543,22 @@ server   ──▶  git pull → compose pull → [migrate] → up -d        (TA
 
 ```bash
 git pull
-docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
 # HANYA bila ada migration baru di prisma/postgresql/:
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
 ```
 
-⚠ **`svc-ledger` dan `svc-tenant` wajib ikut `pull` dan `up`**, dan itu bukan
-kelengkapan daftar: keduanya tidak melayani satu pun permintaan HTTP, jadi
+⚠ **`svc-ledger`, `svc-tenant`, dan `svc-interactive` wajib ikut `pull` dan
+`up`**, dan itu bukan kelengkapan daftar: ketiganya tidak melayani satu pun
+permintaan HTTP, jadi
 layanan yang tertinggal di versi lama tidak membuat satu halaman pun rusak.
 `svc-ledger` hanya menulis buku besar dengan image yang mendahului
 migration-nya; `svc-tenant` hanya **berhenti mencadangkan**, atau mencadangkan
-dengan pencacahan yang mendahului PT terbaru. Keduanya bentuk kegagalan yang
-paling mahal di repo ini: yang tidak terlihat.
+dengan pencacahan yang mendahului PT terbaru; `svc-interactive` hanya membuat
+setiap ekspor besar **menggantung** di antrean, dan tombol unduhnya menunggu
+sampai batas waktu lalu menyerah. Ketiganya bentuk kegagalan yang paling mahal
+di repo ini: yang tidak terlihat.
 
 ⚠ **`job-backup` dicabut dari daftar ini sejak tahap 1b**, dan itu bukan
 kelalaian: ia kini perkakas ber-profil `perkakas` yang tidak ikut `up`. Yang

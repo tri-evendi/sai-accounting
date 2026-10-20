@@ -317,7 +317,15 @@ statusnya, dan sebabnya ia tinggal di `control` kini **keadaan** —
 [02 §5](./02-LAYANAN-INFRA.md); metriknya di
 [02 §14](./02-LAYANAN-INFRA.md).
 
-Yang **belum**, dan keduanya menunggu pemakai pertamanya di tahap 1c:
+✅ **Otorisasi hasil pekerjaan sudah jadi (tahap 1c).** Ketiga aturannya kini
+kode, bukan asumsi — permukaannya di [03 §1](./03-API-INTEGRASI.md), kontrolnya
+di [06 §3](./06-KEAMANAN.md). Yang paling mudah terlewat di antara ketiganya
+ternyata yang KEEMPAT, dan ia ditemukan dengan menabraknya: izin JENIS tidak
+cukup — `report.export` menjawab "boleh mengekspor laporan", bukan "boleh
+mengekspor laporan INI" (#355), sehingga pekerjaan yang terbit ketika sebuah
+modul masih aktif tetap bisa diunduh sesudah modul itu dimatikan.
+
+Yang **belum**, dan ia satu — bukan dua:
 
 **Dua jawaban untuk *dual-write*.** Karena `jobs` di `control` sementara tulisan
 domain di basis data perusahaan, penerbitan tidak satu transaksi dengan tulisan
@@ -339,52 +347,79 @@ menjadikannya demikian. Relay memakai polling berinterval pendek, bukan CDC.
 > **Satu aturan yang tetap:** pekerjaan demi kenyamanan pengguna (ekspor, impor)
 > tidak butuh keduanya — yang hilang hanya berarti pengguna mengklik lagi.
 
-**Otorisasi hasil, dan ini yang paling mudah terlewat.** `result_ref` memuat
-isi buku besar, jadi tiga aturan berlaku dan ketiganya harus ditulis sebagai
-kode, bukan diasumsikan:
+⚠ **Outbox TIDAK dibangun di tahap 1c, dan itu keputusan — bukan sisa.**
+Paragraf di atas menyebut sendiri bahwa ia "menunggu pemakai pertamanya", dan
+pemakai yang dinamainya adalah **"faktur diposting → terbitkan dokumen &
+email"** — yaitu fitur yang `src/lib/invoice-send.ts` sengaja menolak
+mengotomatiskan:
 
-| Aturan | Kenapa |
-|---|---|
-| Penyimpanan objek **privat**, tanpa akses anonim | kunci objek yang bisa ditebak atau bocor dari log menjadi kebocoran buku |
-| Unduhan lewat **rute aplikasi**, bukan URL penyimpanan yang dibagikan | di situlah izin peran dan konteks perusahaan diperiksa; URL bertanda tangan dibuat di sana dan berumur pendek |
-| Izin diperiksa **saat mengunduh**, bukan hanya saat pekerjaan lahir | pekerjaan hidup berjam-jam; orang yang aksesnya dicabut di antaranya tidak boleh tetap menerima hasilnya |
+> *"TIDAK ADA YANG DIKIRIM OTOMATIS DI SINI. Setiap fungsi di modul ini berawal
+> dari seseorang yang menekan tombol. Pengingat otomatis adalah #467, dan
+> digabung sekarang berarti satu bug di sini mengirimkan surel ke pelanggan
+> sungguhan tanpa ada yang memintanya."*
 
-Itu sebabnya `result_ref` disebut kunci, bukan tautan: **memegang kuncinya bukan
-izin untuk membacanya.**
+Membangun mekanisme untuk konsumen yang sengaja absen menghasilkan jalur yang
+tidak pernah dijalankan satu kali pun — dan jalur yang tidak pernah dijalankan
+tidak bisa dibedakan dari jalur yang rusak. Alasan yang sama menahan
+`contract/accounting.yaml` (§3.5).
+
+**Pemicunya karena itu BUKAN tahap, melainkan satu keputusan produk:** hari
+pertama ada pengiriman dokumen yang terjadi TANPA seseorang menekan tombol.
+Sebelum itu, rekonsiliasi sudah cukup untuk setiap produser yang ada.
 
 ## 5. Dokumen dibuat di server
 
-Hari ini sebelas modul `src/lib/pdf/` berjalan di **peramban** (`report-files.ts`
-ber-`"use client"`). Itu diubah: generatornya pindah ke server. Yang
-mempermudahnya, modul-modul itu fungsi murni (data → byte) dengan kontrak yang
-jelas.
+✅ **Sebagian besar sudah jadi (tahap 1c).** Permukaannya di
+[03 §1](./03-API-INTEGRASI.md); jalur berantrenya di
+[02 §5](./02-LAYANAN-INFRA.md).
 
-| Dokumen | Sesudah |
+| Dokumen | Sesudah | Keadaan |
+|---|---|---|
+| Satu faktur, surat jalan, kontrak, retur | server, sinkron, di-stream — milidetik | ✅ setiap dokumen satuan, dari ID-nya |
+| Laporan pendek yang sudah tampil di layar | server, sinkron | ✅ `/api/reports/pdf` & `/api/reports/export` |
+| Ekspor besar | **pekerjaan** → penyimpanan objek → pengguna mengunduh tautan | ✅ jalur `interactive`; di atas ambang penyerahan |
+| **Paket laporan** (banyak laporan satu periode jadi satu berkas) | pekerjaan `report.package` | **belum** — ia FITUR BARU, bukan pemindahan |
+| Peramban | tidak menghasilkan apa pun | sebagian: tiga generator LAPORAN masih di sana |
+
+**Yang tersisa dua, dan keduanya bukan "pemindahan yang belum selesai":**
+
+| Tersisa | Kenapa ia bukan sekadar sisa |
 |---|---|
-| Satu faktur, surat jalan, kontrak, retur | server, sinkron, di-stream — milidetik |
-| Laporan periode panjang, paket laporan, ekspor tenant | **pekerjaan** `document.*` → penyimpanan objek → pengguna mengunduh tautan |
-| Peramban | tidak menghasilkan apa pun; tombolnya menjadi pemicu unduh |
+| Tiga generator laporan di peramban (`finance-report`, `opname-sheet`, `stock-report`) | ketiganya LAPORAN, bukan dokumen satuan — jalur mereka `/api/reports/pdf`, dan memindahkannya menuntut pembangun payload per laporan, bukan satu pemuat per dokumen |
+| `report.package` | tidak pernah ada di aplikasi ini. Membangunnya berarti **menambah fitur** di bawah nama "pindah ke server", dan itu dua keputusan yang digabung menjadi satu |
 
-Yang ini membuka, dan mustahil dari peramban: server menyimpan **byte yang
-persis sama** dengan yang dikirim ke customer (syarat audit), batch e-faktur dan
-paket laporan bulanan terbit sendiri, dan dokumen tidak lagi bergantung pada
-perangkat pengguna.
+⚠ **Satu klaim di §5 ini DIUKUR dan ternyata punya batas.** "Byte tetap
+identik" dipakai untuk menyimpulkan pemindahan ini tidak menuntut Go, dan
+kesimpulannya benar — tapi dua instance jsPDF atas muatan yang sama TIDAK
+menghasilkan byte yang sama: mereka berbeda pada `/ID` di trailer (pengenal
+berkas acak, 60 byte) dan, bila jamnya berjalan, `/CreationDate`. Isinya
+identik.
 
-⚠ **Ongkosnya CPU yang hari ini gratis.** Perakitan PDF laporan sekarang
-berjalan di mesin pengguna — satu peramban per pengguna, paralel sempurna, nol
-beban server. Memindahkannya ke server memindahkan beban itu ke mesin 3,6 GB
-yang sudah dibagi enam aplikasi. Itu sebabnya jalur ini **wajib lewat antrean**
-(§4), bukan lewat permintaan HTTP: kalau sebelas pengguna menekan "cetak laporan
-tahunan" bersamaan, antrean yang menahannya, bukan event loop.
+Jadi syarat audit ("server menyimpan byte yang persis sama dengan yang dikirim
+ke customer") dipenuhi dengan **membangkitkan sekali** dan memakai buffer itu
+untuk kedua tujuan — bukan dengan membangkitkan ulang lalu membandingkan.
+Angkanya dan penjaganya di [08 §2](./08-GLOSARIUM.md).
 
-⚠ **Pemindahan ini tidak menuntut Go.** `src/lib/invoice-send.ts` sudah
-menjalankan jsPDF **di Node** di server hari ini (impor dinamis, `server-only`),
-jadi langkah termurahnya memakai generator yang sama di proses Node terpisah —
-dan keluarannya tetap **byte-identik** dengan yang dicetak pengguna hari ini.
-Menulis ulang generatornya di Go memutus kesamaan byte itu untuk setiap dokumen
-yang pindah, dan menambah jendela dua-implementasi yang dibahas di §3.3. Urutan
-yang disarankan: **pindah ke server dulu dengan Node, Go menyusul per generator
-bila ada pemicunya.**
+⚠ **Ongkosnya CPU yang hari ini gratis — dan ia sudah dibayar sebagian.**
+Perakitan PDF dulu berjalan di mesin pengguna: satu peramban per pengguna,
+paralel sempurna, nol beban server. Memindahkannya memindahkan beban itu ke
+mesin 3,6 GB yang dibagi enam aplikasi.
+
+Yang dibangun karena itu membelah pembayarannya menurut ONGKOS, bukan menurut
+jenis dokumen — dan pembelahnya satu angka: `EXPORT_QUEUE_HANDOFF_ROWS`. Di
+bawahnya sinkron (milidetik, satu permintaan); di atasnya diserahkan ke antrean.
+§5 dulu menyiratkan seluruh jalur dokumen harus lewat antrean; yang terukur
+ternyata lebih tajam — **yang perlu antrean bukan "dokumen" melainkan yang
+besar**, dan antrean untuk satu faktur hanya menambah penantian beserta satu
+tombol yang harus menunggu. Angkanya sendiri masih menunggu histogram durasi
+pekerjaan (§11).
+
+✅ **Pemindahan ini memang tidak menuntut Go, dan itu terbukti.**
+`src/lib/invoice-send.ts` sudah menjalankan jsPDF di Node sejak #465; tahap 1c
+memakai generator yang SAMA di rute server dan di jalur `interactive`. Menulis
+ulang generatornya di Go akan menambah jendela dua-implementasi §3.3 untuk
+setiap dokumen yang pindah. Urutannya tetap: **Node dulu, Go menyusul per
+generator bila ada pemicunya** — dan sampai hari ini tidak ada.
 
 ## 6. Fan-out per tenant
 
@@ -501,7 +536,7 @@ docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
 | `svc-pooler` | dipasang untuk **keseragaman konfigurasi**, bukan untuk beban |
 | Reverse proxy **milik customer** | **wajib** — TLS harus berhenti di suatu tempat; Traefik SAI tidak dikirim |
 | Volume `pg_data` · `documents` · `audit` · cadangan | **wajib** — dokumen dan jejak audit **tidak** ada di basis data |
-| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` — [06 §3.6](./06-KEAMANAN.md) |
+| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` — [06 §3.7](./06-KEAMANAN.md) |
 | Jalur `schema` | **wajib setiap pembaruan**, dijalankan customer |
 | `cache-redis` · `app-operator` · basis data `platform` | **tidak dipasang** |
 
@@ -520,7 +555,7 @@ Compose on-premise, tag versi wajib, profil penyebaran, jejak putaran di
 `control`, dan bundel diagnostik kini **keadaan, bukan rancangan** — semuanya
 dijelaskan di [02](./02-LAYANAN-INFRA.md). Begitu pula **artefak lisensi** dan
 **penegakan entitlement di satu pintu**: kriptografi dan kustodi kuncinya di
-[06 §3.6](./06-KEAMANAN.md), pintunya di [01 §8](./01-ARSITEKTUR.md).
+[06 §3.7](./06-KEAMANAN.md), pintunya di [01 §8](./01-ARSITEKTUR.md).
 
 ✅ **Kelima celah on-premise tertutup, 20 Okt 2026.** Nomor pensiun dan tidak
 dipakai ulang. Yang terakhir, **#5 cadangan per tenant**, ditutup tahap 1b:
@@ -606,9 +641,30 @@ ditanyai (`vonisVersi` di konsol `/backup`, dibaca dari `_prisma_migrations`
 sendiri — bukan dari tabel jejak yang bisa berbohong tentang apa yang sungguh
 ada di basis datanya), dan dapat dilanjutkan dari tengah.
 
+✅ **Tahap 1c selesai 20 Okt 2026, untuk dokumen.** Yang dibangun: otorisasi
+hasil pekerjaan (pintu unduhan, izin per `kind` + gerbang kedua per laporan),
+penyimpanan hasil beserta pembersih yatimnya, jalur `interactive` sebagai proses
+Node terpisah, dan **setiap dokumen satuan** dirender di server dari ID-nya —
+faktur, kontrak, dua surat jalan, dua arah retur. Tempatnya sekarang
+[02 §5](./02-LAYANAN-INFRA.md), [03 §1 & §6](./03-API-INTEGRASI.md), dan
+[06 §3](./06-KEAMANAN.md).
+
+⚠ **Tiga hal yang 1c sengaja TIDAK bangun**, dan tidak satu pun karena
+kehabisan waktu:
+
+| Tertahan | Kenapa, dan pemicunya |
+|---|---|
+| **Outbox + relay** | §4 menyebut sendiri ia "menunggu pemakai pertamanya", dan pemakai yang dinamainya adalah fitur yang `invoice-send.ts` SENGAJA menolak mengotomatiskan. Pemicunya keputusan produk, bukan tahap: hari pertama ada pengiriman dokumen tanpa seseorang menekan tombol |
+| **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
+| Jalur `bulk` & `schedule` sebagai proses sendiri | belum ada `kind` yang diterbitkan untuk keduanya. Penerbitan hari ini masih langkah di `job-scheduler` dan itu memadai; pelari tanpa penerbit adalah kode mati yang terlihat hidup |
+
+Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
+`stock-report`) — ketiganya bukan dokumen satuan, dan jalurnya `/api/reports/pdf`
+(§5). Jumlahnya DICACAH penjaga, jadi ia tidak bisa diam-diam berubah menjadi
+"sudah semuanya".
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1c — dokumen pindah ke server** | sesudah 1a | jalur `interactive`, `bulk`, `schedule` sebagai **proses Node terpisah** · generator dokumen pindah dari peramban ke server, **byte tetap identik** | 1 |
 | **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` | 5–7 |
@@ -619,8 +675,9 @@ ada di basis datanya), dan dapat dilanjutkan dari tengah.
 disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.
 1b memindahkan ke Go apa yang nol aturan akuntansi dan bisa dibatalkan tanpa
 jejak — cadangan tidak meninggalkan angka di buku. 1c memindahkan dokumen ke
-server **tanpa mengganti bahasanya**, jadi keluarannya tetap byte-identik dan
-tidak ada perhitungan yang punya dua implementasi. 1d satu-satunya yang menulis
+server **tanpa mengganti bahasanya**, jadi tidak ada perhitungan yang punya dua
+implementasi — dan itu terbukti: generator yang dipakai rute server, jalur
+antrean, dan lampiran surel adalah satu fungsi yang sama. 1d satu-satunya yang menulis
 ulang aturan, dan karena itu ia **dibuka pengukuran, bukan rencana** (§3.3).
 
 Urutan itu terbukti berguna pada 1b, dan bukan di tempat yang diperkirakan:

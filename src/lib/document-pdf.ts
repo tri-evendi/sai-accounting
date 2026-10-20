@@ -41,6 +41,7 @@ import type { Permission } from "@sai/core/authz";
 export const DOCUMENT_PDF_KINDS = [
   "invoice",
   "contract",
+  "contract-shipping",
   "delivery-order",
   "sales-return",
   "purchase-return",
@@ -89,44 +90,52 @@ export const DOCUMENT_PDF: Readonly<Record<DocumentPdfKind, JenisDokumen>> = {
   },
 
   /*
-   * ══ LIMA JENIS DI BAWAH BELUM PINDAH, DAN SEBABNYA SATU ═════════════════
+   * ══ EMPAT JENIS DOKUMEN SATUAN LAINNYA — PEMUATNYA DI `document-loaders.ts`
    *
-   * Masing-masing butuh PEMUAT sisi server: satu kueri yang menyusun bentuk
-   * yang diminta generatornya dari baris buku. Hari ini bentuk itu dirakit di
-   * dalam komponen halaman, dari prop yang sudah dimuat server component-nya —
-   * jadi "memindahkannya" bukan memindahkan generator melainkan memindahkan
-   * PERAKITAN DATANYA, dan itu satu kueri per jenis.
+   * Yang dipindahkan BUKAN generatornya melainkan PERAKITAN DATANYA: tiap
+   * halaman memetakan baris Prisma-nya sendiri menjadi bentuk yang diminta
+   * generatornya, di dalam JSX-nya. Memindahkan pemetaan itu adalah seluruh isi
+   * §5 untuk dokumen satuan — dan ia yang membuat syarat auditnya berarti.
    *
-   * Ia TIDAK dikerjakan sekaligus dengan sengaja. Faktur lebih dulu karena
-   * pemuatnya sudah ada dan terbukti di produksi, sehingga rute, penjaga, dan
-   * bentuk jawabannya terbukti di satu jenis sebelum lima jenis ikut
-   * bergantung padanya. Lima entri `null` di bawah adalah DAFTAR PEKERJAAN
-   * yang terbaca, bukan lubang: rutenya menjawab 404, dan tombolnya tetap
-   * menggambar di peramban seperti sebelumnya.
+   * Tiap pemuat memakai turunan yang SAMA dengan halamannya, bukan turunan
+   * kedua: nama consignee dari relasi master dengan teks warisan sebagai
+   * jatuhan (#22), `originLabel` retur penjualan dari nomor fakturnya,
+   * `TRX-<purchaseId>` untuk retur pembelian. Turunan kedua akan menghasilkan
+   * kertas yang berbeda dari yang dicetak orang hari ini — perubahan perilaku
+   * yang menyelinap di bawah nama "pindah ke server".
    */
   contract: {
     permission: "contract.read",
-    muat: null,
-    catatan:
-      "butuh pemuat: `contracts` + `contract_items` → `ContractData`. " +
-      "Hari ini dirakit di `pdf-export-buttons.tsx` dari prop halaman.",
+    muat: async (id) => (await import("@/lib/document-loaders")).contractPdfById(id),
+  },
+  /*
+   * ⚠ DUA SURAT JALAN, DUA KUNCI — dan keduanya sah.
+   *
+   * `contract-shipping` dibangun dari KONTRAK (tombolnya di halaman kontrak,
+   * nomornya nomor kontrak); `delivery-order` dari baris `delivery_orders`
+   * (dokumen berantai #16, nomornya `SJ.YYYY.MM.NNNNN`). Generatornya SAMA —
+   * satu tata letak, bukan dua — tapi sumbernya berbeda.
+   *
+   * Satu kunci untuk keduanya akan membuat `id` berarti dua hal tergantung
+   * siapa yang memanggilnya, dan id yang berarti dua hal adalah id yang suatu
+   * hari memuat dokumen yang salah.
+   */
+  "contract-shipping": {
+    permission: "contract.read",
+    muat: async (id) =>
+      (await import("@/lib/document-loaders")).contractShippingPdfById(id),
   },
   "delivery-order": {
     permission: "document.read",
-    muat: null,
-    catatan:
-      "butuh pemuat: `delivery_orders` + item + consignee → `ShippingDocData`. " +
-      "Hari ini dirakit di `delivery-orders/[id]/pdf-button.tsx`.",
+    muat: async (id) => (await import("@/lib/document-loaders")).deliveryOrderPdfById(id),
   },
   "sales-return": {
     permission: "return.read",
-    muat: null,
-    catatan: "butuh pemuat: `sales_returns` + item → `ReturnPdfData`.",
+    muat: async (id) => (await import("@/lib/document-loaders")).salesReturnPdfById(id),
   },
   "purchase-return": {
     permission: "return.read",
-    muat: null,
-    catatan: "butuh pemuat: `purchase_returns` + item → `ReturnPdfData`.",
+    muat: async (id) => (await import("@/lib/document-loaders")).purchaseReturnPdfById(id),
   },
 
   /*

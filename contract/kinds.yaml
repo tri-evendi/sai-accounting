@@ -139,3 +139,51 @@ kinds:
     lane: integration
     max_attempts: 5
     description: tarik mutasi bank
+
+# ── Angka antrean ──────────────────────────────────────────────────────────
+#
+# ══ KENAPA ANGKA IKUT MASUK KONTRAK, PADAHAL IA BUKAN KOSAKATA ═════════════
+# Sampai tahap 1b hanya ada satu pelari, jadi angka-angka ini cukup hidup
+# sebagai konstanta TypeScript di `@sai/core/job-backoff`. Begitu pelari KEDUA
+# lahir dalam bahasa lain, keduanya menjadi kelas konstanta yang paling
+# berbahaya di seluruh rancangan: dipakai dua bahasa, dan penyimpangannya tidak
+# menghasilkan satu pun galat — hanya dua pelari yang bersikap berbeda terhadap
+# satu tabel.
+#
+# Bentuk penyimpangannya bukan hipotesis, dan tiap baris di bawah punya
+# versinya sendiri:
+#
+#   • `lease_renew_ms` yang lebih besar di satu sisi → pekerja sisi itu
+#     kehilangan pekerjaannya di tengah jalan, diklaim pekerja kedua, dan untuk
+#     `tenant.backup` itu dua dump menulis ke satu kunci objek;
+#   • `upkeep_ms` yang melewati ambang basi di satu sisi → pekerjaan dari
+#     pekerja yang mati menunggu satu putaran penuh LAGI, dan waktu tunggu itu
+#     tidak muncul di satu pun angka;
+#   • `queue_age_*` yang berbeda → probe kesehatan dan pelari tidak sepakat
+#     tentang kapan antrean disebut terlambat, jadi yang satu hijau sementara
+#     yang lain membangunkan orang.
+#
+# Prosa yang menjelaskan SEBAB tiap angka tetap tinggal di tempat angkanya
+# dipakai (`packages/core/src/job-backoff.ts`, `queue-health.ts`) — yang pindah
+# ke sini angkanya, bukan alasannya. Generator menolak pasangan yang tidak
+# konsisten, jadi tidak ada bahasa yang bisa memuat kombinasi yang salah.
+numbers:
+  # Backoff: penundaan dasar, dan plafon di satu jam.
+  backoff_base_ms: 30000
+  backoff_max_ms: 3600000
+
+  # Lease: interval pembaruan, dan ambang basi sebagai KELIPATANNYA.
+  lease_renew_ms: 30000
+  lease_stale_factor: 4
+
+  # Putaran pelari. `upkeep_ms` WAJIB lebih rapat daripada ambang basi
+  # (lease_renew_ms × lease_stale_factor) — ditegakkan generator.
+  upkeep_ms: 60000
+  idle_ms: 2000
+
+  # Retensi baris `done`. `dead` dan `failed` TIDAK pernah dipangkas.
+  done_retention_days: 14
+
+  # Ambang umur antrean — satu pasang untuk semua jalur.
+  queue_age_warn_seconds: 420
+  queue_age_late_seconds: 600

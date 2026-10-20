@@ -10,14 +10,27 @@
  * mustahil dilihat dari log. Karena murni, ia bisa diuji langsung.
  *
  * MURNI: tanpa Prisma, tanpa IO, tanpa `next/*`.
+ *
+ * ══ ANGKANYA DATANG DARI `contract/kinds.yaml`, PROSANYA TINGGAL DI SINI ════
+ * Sejak tahap 1b ada pelari KEDUA dalam bahasa lain (`services/integrator`),
+ * dan angka-angka ini jadi kelas konstanta yang paling berbahaya di rancangan:
+ * dipakai dua bahasa, dan penyimpangannya tidak menghasilkan satu pun galat —
+ * hanya dua pelari yang bersikap berbeda terhadap satu tabel. Jadi angkanya
+ * pindah ke kontrak dan dibangkitkan ke keduanya.
+ *
+ * Yang TIDAK pindah: sebabnya. Berkas ini tetap satu-satunya tempat yang
+ * menjelaskan kenapa tiap angka begitu, dan ia MENGEKSPOR ULANG angkanya —
+ * jadi tidak satu pun dari pemanggilnya perlu tahu bahwa angkanya datang dari
+ * YAML, dan tidak satu pun impor yang ada perlu berubah.
  */
+import * as kontrak from "./generated/job-numbers";
 
 /** Penundaan dasar sebelum percobaan kedua. */
-export const BACKOFF_BASE_MS = 30_000;
+export const BACKOFF_BASE_MS = kontrak.BACKOFF_BASE_MS;
 
 /** Plafon penundaan — satu jam. Lebih dari ini praktis "besok", dan pekerjaan
  *  yang perlu besok lebih baik diterbitkan ulang oleh produser berjadwal. */
-export const BACKOFF_MAX_MS = 3_600_000;
+export const BACKOFF_MAX_MS = kontrak.BACKOFF_MAX_MS;
 
 /**
  * Interval pembaruan *lease* oleh pekerja selama bekerja.
@@ -26,7 +39,7 @@ export const BACKOFF_MAX_MS = 3_600_000;
  * masih berguna, cukup jarang sehingga satu `UPDATE` tiap 30 detik per pekerja
  * tidak menjadi beban tulis sendiri di tabel yang sudah panas.
  */
-export const LEASE_RENEW_MS = 30_000;
+export const LEASE_RENEW_MS = kontrak.LEASE_RENEW_MS;
 
 /**
  * Ambang reclaim = KELIPATAN interval pembaruan, bukan perkiraan durasi.
@@ -43,7 +56,7 @@ export const LEASE_RENEW_MS = 30_000;
  * jawaban yang tidak bergantung pada jenis pekerjaan. Faktor 4 memberi ruang
  * untuk tiga pembaruan yang terlewat sebelum pekerjaan dipulangkan.
  */
-export const LEASE_STALE_FACTOR = 4;
+export const LEASE_STALE_FACTOR = kontrak.LEASE_STALE_FACTOR;
 export const LEASE_STALE_MS = LEASE_RENEW_MS * LEASE_STALE_FACTOR;
 
 /**
@@ -108,4 +121,4 @@ export function queueAgeMs(tertuaDiterbitkan: Date | null, sekarang: Date = new 
  * lebih lama daripada barisnya adalah berkas yang tak bisa dijangkau siapa pun
  * lagi sementara sewanya tetap dibayar.
  */
-export const DONE_RETENTION_DAYS = 14;
+export const DONE_RETENTION_DAYS = kontrak.DONE_RETENTION_DAYS;

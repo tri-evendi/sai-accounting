@@ -31,6 +31,8 @@
  * probe kesehatan, konsol operator, dan pelari pekerjaan.
  */
 
+import * as kontrak from "./generated/job-numbers";
+
 /**
  * Peringatan pada tujuh menit, bunyi pada sepuluh.
  *
@@ -42,9 +44,14 @@
  * berteriak untuk hal normal atau diam untuk hal gawat, dan dua-duanya lebih
  * buruk daripada satu angka yang jujur. Pemecahannya menunggu histogram durasi
  * pekerjaan di §11, bukan menunggu rapat.
+ *
+ * Angkanya di `contract/kinds.yaml` dan dibangkitkan ke kedua bahasa: probe
+ * kesehatan dan pelari yang tidak sepakat tentang kapan antrean disebut
+ * terlambat adalah dua permukaan yang satu hijau sementara yang lain
+ * membangunkan orang.
  */
-export const QUEUE_AGE_WARN_SECONDS = 7 * 60;
-export const QUEUE_AGE_LATE_SECONDS = 10 * 60;
+export const QUEUE_AGE_WARN_SECONDS = kontrak.QUEUE_AGE_WARN_SECONDS;
+export const QUEUE_AGE_LATE_SECONDS = kontrak.QUEUE_AGE_LATE_SECONDS;
 
 export type QueueHealthStatus =
   /** Tidak ada pekerjaan menunggu. Ambang TIDAK berlaku — lihat catatan di atas. */

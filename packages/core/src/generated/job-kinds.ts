@@ -1,9 +1,9 @@
 /**
  * DIBANGKITKAN DARI `contract/kinds.yaml` — JANGAN DISUNTING TANGAN.
  *
- * Jalankan `bun run contract:gen` setelah mengubah kontraknya, dan commit
- * hasilnya bersama perubahan itu. `bun run contract:gen -- --cek` gagal bila
- * berkas ini basi, dan penjaga `tests/contract-jobs.test.ts` memanggilnya.
+ * Jalankan `bun run contract:gen` setelah mengubah kontraknya, dan commit hasilnya
+ * bersama perubahan itu. `bun run contract:gen -- --cek` gagal bila berkas ini
+ * basi, dan penjaga `tests/contract-jobs.test.ts` memanggilnya.
  *
  * Kontrak versi 1.
  */

@@ -37,6 +37,7 @@ import {
   type JobLane,
 } from "@sai/core/generated/job-kinds";
 import { LEASE_RENEW_MS } from "@sai/core/job-backoff";
+import { IDLE_MS, UPKEEP_MS as UPKEEP_MS_KONTRAK } from "@sai/core/generated/job-numbers";
 import {
   archiveDoneJobs,
   claimJob,
@@ -48,9 +49,6 @@ import {
   type JobRow,
 } from "@sai/platform/job-queue";
 
-/** Jeda saat antrean kosong. Pendek: pengguna menunggu unduhannya. */
-const IDLE_MS = 2_000;
-
 /**
  * Jeda antar putaran UPKEEP — memulangkan lease kedaluwarsa & membuang baris
  * `done` yang lewat retensi.
@@ -60,8 +58,14 @@ const IDLE_MS = 2_000;
  * yang mati menunggu satu putaran penuh LAGI sesudah lease-nya kedaluwarsa, dan
  * waktu tunggu itu tidak muncul di satu pun angka. Diekspor supaya penjaganya
  * membandingkan angka yang SUNGGUH dipakai, bukan salinannya.
+ *
+ * Angkanya — beserta `IDLE_MS` — datang dari `contract/kinds.yaml`, sebab
+ * pelari Go membacanya juga. Jeda yang berbeda antara dua pelari membuat satu
+ * jalur dipulangkan lebih lambat daripada jalur lain tanpa ada yang
+ * memutuskannya, dan generator kontraknya MENOLAK pasangan yang tidak
+ * konsisten — jadi kombinasi yang salah tidak bisa lahir ke bahasa mana pun.
  */
-export const UPKEEP_MS = 60_000;
+export const UPKEEP_MS = UPKEEP_MS_KONTRAK;
 
 export interface JobContext {
   job: JobRow;

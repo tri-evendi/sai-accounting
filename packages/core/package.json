@@ -15,6 +15,7 @@
     "./entitlement": "./src/entitlement.ts",
     "./export-limits": "./src/export-limits.ts",
     "./generated/job-kinds": "./src/generated/job-kinds.ts",
+    "./generated/job-numbers": "./src/generated/job-numbers.ts",
     "./i18n/client": "./src/i18n/client.tsx",
     "./i18n/config": "./src/i18n/config.ts",
     "./i18n/dictionaries/*": "./src/i18n/dictionaries/*",

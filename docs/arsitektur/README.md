@@ -7,29 +7,32 @@
 >
 > ⚠ **"Sedang berjalan" di sini berarti keadaan KODE yang tergabung, dan
 > stempel `main@…` di tiap dokumen menyebut kapan ia terakhir diukur terhadap
-> produksi.** Keduanya bisa berbeda beberapa hari, dan tahap 1a–1b
-> membedakannya sekarang: `svc-ledger` dan `svc-tenant` ada di compose dan
-> dijelaskan [02 §5](./02-LAYANAN-INFRA.md), tetapi **belum tergelar** —
-> keduanya naik pada rilis berikutnya, dan keduanya wajib ikut `pull` dan `up`
-> ([02 §11](./02-LAYANAN-INFRA.md), `PRODUCTION.md`). Dokumen yang menunggu
+> produksi.** Keduanya bisa berbeda beberapa hari, dan tahap 1a–1c
+> membedakannya sekarang: `svc-ledger`, `svc-tenant`, dan `svc-interactive` ada
+> di compose dan dijelaskan [02 §5](./02-LAYANAN-INFRA.md), tetapi **belum
+> tergelar** — ketiganya naik pada rilis berikutnya, dan ketiganya wajib ikut
+> `pull` dan `up` ([02 §11](./02-LAYANAN-INFRA.md), `PRODUCTION.md`). Dokumen yang menunggu
 > penyebaran sebelum mencatat sesuatu adalah dokumen yang selalu tertinggal satu
 > rilis, dan orang yang membacanya saat menggelar justru tidak menemukan
 > layanan yang harus ia gelar.
 >
-> Tahap **1a dan 1b** rancangan 09 selesai dan sudah dipindahkan ke 01–08
-> sebagai keadaan; 09 memuat sisanya saja — ditambah dua hal yang 1b sengaja
-> TIDAK pindahkan, beserta pemicunya (§9).
+> Tahap **1a, 1b, dan 1c** rancangan 09 selesai dan sudah dipindahkan ke 01–08
+> sebagai keadaan; 09 memuat sisanya saja — ditambah lima hal yang sengaja
+> TIDAK dibangun, masing-masing beserta pemicunya (§9). Tiga di antaranya
+> ditahan oleh ⚠ yang ditulis 09 sendiri; dua lagi karena pemakai pertamanya
+> memang belum ada, dan mekanisme tanpa pemakai tidak bisa dibedakan dari
+> mekanisme yang rusak.
 
 ## Isi
 
 | # | Dokumen | Menjawab |
 |---|---|---|
 | 01 | [ARSITEKTUR.md](./01-ARSITEKTUR.md) | Produk, dua aplikasi, diagram konteks & container, pola, empat batas keamanan, tiga lapis basis data, konteks perusahaan, otorisasi, mesin posting, struktur kode **& pohon poliglot (batas Go, kontrak bangkitan, tiga gerbang rilis)**, ukuran |
-| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, sepuluh layanan, pekerjaan latar (**jalur `ledger` & `tenant`**), image & build, gate rilis, deploy & rollback, migration (**pemilik skema, fan-out**), env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
-| 03 | [API-INTEGRASI.md](./03-API-INTEGRASI.md) | Permukaan HTTP, tiga rezim autentikasi, header keamanan, dependensi luar, titik gagal tunggal, larangan impor |
+| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, **sebelas** layanan, pekerjaan latar (**jalur `ledger`, `tenant` & `interactive`**), image & build, gate rilis, deploy & rollback, migration (**pemilik skema, fan-out**), env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
+| 03 | [API-INTEGRASI.md](./03-API-INTEGRASI.md) | Permukaan HTTP (**termasuk dokumen & hasil pekerjaan**), tiga rezim autentikasi, header keamanan, dependensi luar, titik gagal tunggal, larangan impor |
 | 04 | [ALIRAN-DATA.md](./04-ALIRAN-DATA.md) | ERD ketiga skema, enam alur data, daur hidup status tiap dokumen |
 | 05 | [PENILAIAN.md](./05-PENILAIAN.md) | Kekuatan, temuan terbuka berprioritas, portabilitas VM, pemicu, keputusan yang menunggu pemilik |
-| 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman, regresi yang pernah terjadi |
+| 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman (**termasuk `result_ref` sebagai kunci, bukan kapabilitas**), regresi yang pernah terjadi |
 | 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Empat pekerjaan selesai: keputusan yang masih mengikat dan yang masih terbuka |
 | 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
 | 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, jalur yang BELUM pindah & batas Go, kontrak yang belum dibangkitkan, outbox & otorisasi hasil, dokumen di server, fan-out per tenant yang belum (kesesuaian, expand/contract), SaaS vs On-Premise, tahapan & pemicu, nomenklatur, observabilitas yang belum terukur, tata kelola |

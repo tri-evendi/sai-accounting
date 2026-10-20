@@ -1,6 +1,6 @@
 # 01 — Arsitektur
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 ## 1. Produk
 
@@ -337,7 +337,10 @@ prisma/
 ├── postgresql/{company,control,platform}/NNNN_*/   # migration yang DITERAPKAN
 └── migrations/ control/ platform/                  # arsip MariaDB — hanya-baca
 workers/                             # pelari jalur NODE
-└── ledger.ts                        # jalur `ledger` — satu-satunya penulis buku
+├── runner.ts                        # pelari jalur bersama (klaim · lease · upkeep)
+├── jalur-perusahaan.ts              # masuk konteks PT — satu tempat, satu aturan
+├── ledger.ts                        # jalur `ledger` — satu-satunya penulis buku
+└── interactive.ts                   # jalur `interactive` — ekspor besar
 services/integrator/                 # pelari jalur GO — nol aturan akuntansi
 ├── go.mod · .golangci.yml           # DI LUAR workspace bun
 ├── cmd/tenant/                      # jalur `tenant` — cadangan per basis data
@@ -419,6 +422,8 @@ apps/operator ─┘          │
 | Pohon Go tidak menulis tabel buku; kosakata & angka antrean tidak ditulis tangan di sana | `tests/services-go.test.ts` |
 | `kind` yang DITERBITKAN punya tepat satu pengklaim, di jalurnya sendiri | `tests/kind-punya-pengklaim.test.ts` |
 | Versi Go di image = versi di `go.mod` | `tests/go-image-version.test.ts` |
+| Hasil pekerjaan: izin per `kind` + gerbang kedua, nol redirect, jalur divalidasi dua kali | `tests/job-result-authorization.test.ts` · `job-result-store.test.ts` |
+| Dokumen satuan dirender dari BUKU, bukan dari muatan peramban | `tests/dokumen-satuan-server.test.ts` |
 
 - `@sai/platform → @sai/ui` ada untuk satu hal: rute ikon menggambar lambang bawaan. Arah sebaliknya tidak boleh ada.
 - **Scanner yang hanya menyapu `src/` lulus dengan nol pelanggar** begitu kodenya pindah ke paket — kegagalan diam yang terjadi di Fase 2.

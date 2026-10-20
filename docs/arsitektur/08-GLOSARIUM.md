@@ -1,6 +1,6 @@
 # 08 — Glosarium, Pengujian, Target & Katalog Rute
 
-> 20 Okt 2026 · diukur di cabang `feat/celah-onprem` · [indeks](./README.md)
+> 20 Okt 2026 · diukur di cabang `feat/tahap-1c-dokumen-sisa` · produksi `main@ca0cd038` · [indeks](./README.md)
 
 ## 1. Glosarium
 
@@ -59,6 +59,8 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 | **Pintu posting** | `postForSource`. Wajib **TUNGGAL** (invarian I-2), dan ia TypeScript — kode Go tidak pernah mengklaim `kind` yang menulis buku |
 | **Daftar-izin tabel Go** | Dua nama: `jobs` dan `backup_runs`. Menambah baris di sana adalah **keputusan**, dan alasannya ditulis di tempat daftarnya |
 | **Putaran cadangan** | Satu direktori `<prefix>-<stempel>/` berisi satu objek `pg_dump -Fc` **per basis data** + peran tingkat server + berkas + manifest. Satu tenant bisa dipulihkan tanpa menyentuh yang lain |
+| **`result_ref`** | KUNCI objek hasil pekerjaan (`<kind>-<jobId>/<berkas>`), bukan tautan. **Memegang kuncinya bukan izin untuk membacanya**: unduhannya lewat rute aplikasi yang memeriksa izin SAAT MENGUNDUH, per `kind` dan per laporan |
+| **Ambang penyerahan** | `EXPORT_QUEUE_HANDOFF_ROWS`. Di bawahnya ekspor sinkron, di atasnya diserahkan ke antrean. BUKAN batas — plafon yang MENOLAK tetap `EXPORT_MAX_ROWS` |
 | **Manifest cadangan** | Satu-satunya objek putaran yang bisa dibaca **tanpa kunci**: nama basis data, peran, `companyId`, ukuran, sidik jari. Ia objek dan bukan hanya baris DB, sebab pada hari pemulihan basis data kendali bisa PERSIS yang hilang |
 
 ### 1.4 Kata yang sengaja TIDAK dipakai
@@ -75,10 +77,14 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 
 ## 2. Strategi pengujian
 
-**320 berkas tes · 4.744 pemanggilan `it()`/`test()`**, dijalankan Vitest 3
-lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
+**325 berkas tes · 5.500 tes** dijalankan Vitest 3 lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
 lewat `bun run go:test`. Keduanya gerbang tersendiri, dan yang satu hijau
 **tidak** membuktikan apa pun tentang yang lain.
+
+> Angka 5.500 adalah yang DICETAK gerbangnya, bukan jumlah `it(` di dalam
+> sumber (4.879): `it.each` memekarkan satu pemanggilan menjadi satu tes per
+> baris data. Yang dicetak gerbangnya yang dipakai di sini, sebab itu yang bisa
+> diperiksa ulang oleh siapa pun dengan satu perintah.
 
 | Lapis | Berkas | Isinya |
 |---|---|---|
@@ -87,6 +93,25 @@ lewat `bun run go:test`. Keduanya gerbang tersendiri, dan yang satu hijau
 | Komponen | **12** me-render React | Primitif `@sai/ui`, tabel, form, overlay |
 | Proxy ujung-ke-ujung | beberapa | Memanggil `proxy()` sungguhan |
 | Perilaku Go | **8** berkas `_test.go` | Aritmetika backoff & ambang lease, pembersih DSN, interop `openssl enc` (memanggil biner SUNGGUHAN), pemakaian SDK S3 terhadap server HTTP uji |
+
+**Satu penjaga memanggil generator PDF SUNGGUHAN, dan temuannya pantas dicatat
+di sini.** Rancangan §5 memakai klaim "byte tetap identik" untuk menyimpulkan
+pemindahan dokumen ke server tidak menuntut Go. Kesimpulannya benar; klaimnya
+punya batas, dan batasnya DIUKUR:
+
+| Dibandingkan | Hasil |
+|---|---|
+| dua `output()` dari **satu** instance jsPDF | identik |
+| dua **instance**, muatan sama, jam dibekukan | beda **60 byte**, seluruhnya `/ID` di trailer — pengenal berkas acak PDF |
+| dua instance, jam berjalan | ditambah `/CreationDate` |
+
+Jadi "byte identik" adalah sifat SATU pembangkitan, bukan sifat yang bisa
+diandalkan dari dua — dan syarat auditnya dipenuhi dengan membangkitkan sekali
+lalu memakai buffer itu untuk kedua tujuan. Penjaganya membandingkan dua
+instance dengan kedua medan metadata itu dinormalkan: ia membuktikan ISI
+laporan — tata letak, teks, setiap angka — hanya punya SATU implementasi.
+Ditambah penjaga di atasnya: normalisasinya memang harus MENORMALKAN sesuatu,
+kalau tidak ia akan meluluskan dua berkas yang sungguh berbeda.
 
 **Penjaga pohon Go ditulis dalam TypeScript bila aturannya bisa dibaca dari
 teks**, dan itu bukan kemalasan: gerbang yang tidak pernah dilewati orang adalah

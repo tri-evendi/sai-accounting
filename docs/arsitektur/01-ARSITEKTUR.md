@@ -424,6 +424,7 @@ apps/operator ─┘          │
 | Versi Go di image = versi di `go.mod` | `tests/go-image-version.test.ts` |
 | Hasil pekerjaan: izin per `kind` + gerbang kedua, nol redirect, jalur divalidasi dua kali | `tests/job-result-authorization.test.ts` · `job-result-store.test.ts` |
 | Durasi diukur dari `started_at`, bukan dari `claimed_at` yang diperpanjang | `tests/metrik-antrean.test.ts` |
+| Migration expand-only: nol DROP/RENAME/penyempitan tipe/backfill | `tests/expand-contract.test.ts` |
 | Dokumen satuan dirender dari BUKU, bukan dari muatan peramban | `tests/dokumen-satuan-server.test.ts` |
 
 - `@sai/platform → @sai/ui` ada untuk satu hal: rute ikon menggambar lambang bawaan. Arah sebaliknya tidak boleh ada.

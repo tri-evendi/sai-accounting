@@ -184,6 +184,50 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 - Gaya DDL mengikuti `prisma/postgresql/company/0001_baseline`: identifier berkutip ganda (`"created_at"`), `SERIAL` untuk `id`, `TIMESTAMP(3)`, `DECIMAL(15,2)`, FK ditambahkan via `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... ON DELETE ... ON UPDATE ...`. Prisma tidak membangkitkan trigger: tulis tangan, dan `tests/pg-trigger-parity.test.ts` menjaganya.
 - Setelah menulis model dan SQL, jalankan `bun run db:generate` (Prisma client). Perbarui `prisma/seed.ts` bila perlu data awal.
 
+### 7.1 Setiap migration WAJIB expand-only — dijaga `tests/expand-contract.test.ts`
+
+Satu pertanyaan memutuskan boleh atau tidaknya sebuah pernyataan:
+
+> **Bisakah versi aplikasi yang BERJALAN SEKARANG — yang belum tahu apa-apa
+> tentang migration ini — tetap membaca dan menulis setelah ia diterapkan?**
+
+Itu bukan kerapian. Migration diterapkan ke **19 basis data**, dan selama
+putarannya berjalan ada instans yang sudah bermigrasi dan ada yang belum,
+sementara aplikasinya satu. Rancangan §6 menyebut aturan ini **prasyarat** bagi
+apa pun yang memindahkan penerapan keluar dari gerbang pemblokir.
+
+**Yang DILARANG, beserta kode lama yang dipatahkannya:**
+
+| Dilarang | Kode lama patah sebab |
+|---|---|
+| `DROP TABLE` · `DROP COLUMN` | ia masih menyebutnya, di `SELECT` maupun `INSERT` |
+| `RENAME` (tabel/kolom) | ganti nama = DROP + ADD dalam satu langkah; tak ada saat di mana nama lama dan baru sama-sama benar |
+| `ALTER COLUMN ... SET NOT NULL` | ia menulis tanpa kolom itu; `INSERT`-nya mulai gagal |
+| `ADD COLUMN ... NOT NULL` **tanpa** `DEFAULT` | idem, **dan** gagal seketika pada tabel yang sudah berisi baris |
+| `ALTER COLUMN ... TYPE` | penyempitan memotong data; pelebaran pun mengubah apa yang dipulangkan driver (Decimal→Float = uang yang berubah nilainya) |
+| `CREATE UNIQUE INDEX` pada tabel yang **sudah ada** | ia tidak tahu nilainya harus unik dan akan menulis duplikat |
+| `UPDATE` / `DELETE` data | migration adalah perubahan SKEMA. Backfill berjalan sekali, tanpa transaksi yang bisa dibatalkan per tenant, tanpa jejak audit — ia **skrip**, dengan pemiliknya sendiri |
+
+**Yang JUSTRU AMAN, dan daftarnya tidak simetris dengan sengaja:** `ADD COLUMN`
+nullable · `ADD COLUMN ... NOT NULL DEFAULT ...` · `CREATE INDEX` non-unik ·
+`CREATE TABLE` (termasuk `NOT NULL` di dalamnya, dan indeks unik atas tabel yang
+dibuat migration **yang sama**) · `DROP CONSTRAINT` · `DROP INDEX` ·
+`ALTER COLUMN ... DROP NOT NULL`.
+
+Ketidaksimetrisannya satu kalimat: **melepas** batasan aman — kode lama tidak
+pernah bergantung pada sesuatu DITOLAK — sementara **menambah** batasan tidak.
+
+**Kalau memang harus mengontraksi:** pecah jadi dua rilis. Paruh *expand*
+sekarang (tambah yang baru, biarkan yang lama, tulis ke keduanya); paruh
+*contract* sesudah tak ada lagi instans yang memakai bentuk lama — lalu
+daftarkan di `KONTRAKSI_DIIZINKAN` beserta **rilis tempat paruh expand-nya
+terkirim**. Rilis itu wajib disebut sebab ia satu-satunya yang membuat kontraksi
+aman, dan satu-satunya yang tidak tersimpan di berkas SQL mana pun.
+
+⚠ Pada pemasangan **on-premise** pernyataan "tak ada lagi instans yang memakai
+bentuk lama" tidak bisa diperiksa dari repo ini. Itu sebabnya jendela dukungan
+(09 §12) harus tertulis sebelum kontraksi pertama.
+
 ---
 
 ## 8. Prisma (konvensi teknis)

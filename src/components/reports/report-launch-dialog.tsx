@@ -69,7 +69,6 @@ import { Input } from "@sai/ui/input";
 import { Select } from "@sai/ui/select";
 import { useToast } from "@sai/ui/toast";
 import { useAppRouter } from "@sai/ui/app-link";
-import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { useT } from "@sai/core/i18n/client";
 import { downloadStatementPdf, downloadStatementWorkbook, fetchReportPayload } from "@/lib/report-files";
 import type { ReportDefinition } from "@/lib/report-catalog";
@@ -137,7 +136,6 @@ export function ReportLaunchDialog({
   const t = useT();
   const router = useAppRouter();
   const { toast } = useToast();
-  const company = useCompanyIdentity();
 
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(isoStartOfYear);
@@ -195,7 +193,7 @@ export function ReportLaunchDialog({
     setBusy(format);
     try {
       const payload = await fetchReportPayload(report.id, queryParams());
-      if (format === "pdf") await downloadStatementPdf(payload, company);
+      if (format === "pdf") await downloadStatementPdf(payload);
       else await downloadStatementWorkbook(payload);
       toast(format === "pdf" ? t("reports.dialog.pdfDownloaded") : t("excel.downloaded"));
       setOpen(false);

@@ -43,7 +43,7 @@ export function DeliveryOrderPdfButton({ order }: { order: DeliveryOrderPdf }) {
           consignee: order.consignee,
           shipment: shipment || null,
           items: order.items,
-        }, company);
+        }, company).output("blob");
       }}
     />
   );

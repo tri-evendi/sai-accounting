@@ -21,7 +21,6 @@ import { apiFetch } from "@/lib/api-fetch";
 // sengaja: `statement-layout.ts` tidak mengimpor apa pun, jadi ia tak menyeret
 // jsPDF — yang tetap dimuat malas di `downloadStatementPdf()` di bawah.
 import { STATEMENT_TITLES } from "@/lib/statement-layout";
-import type { PdfCompany } from "@/lib/pdf/company-header";
 
 /** Tanggal berkas — hari ini, bukan periode laporan (dua hal berbeda). */
 function stamp(): string {
@@ -53,14 +52,83 @@ export async function fetchReportPayload(
   return (await res.json()) as StatementPayload;
 }
 
-/** Susun PDF di peramban dan unduh — jalur yang sama dengan tombol di halaman. */
-export async function downloadStatementPdf(
-  payload: StatementPayload,
-  company: PdfCompany
+/**
+ * Minta PDF-nya ke SERVER, lalu unduh (rancangan §5, tahap 1c).
+ *
+ * ══ PERAMBAN BERHENTI MENGHASILKAN APA PUN ═════════════════════════════════
+ * Sampai tahap 1c fungsi ini memuat `statement-pdf` (1.097 baris) BESERTA
+ * jsPDF ke dalam bundle peramban, lalu menggambar PDF-nya di mesin pengguna.
+ * Sekarang ia mengirim muatan yang sama ke `/api/reports/pdf` dan mengunduh
+ * byte yang dipulangkan — bentuk yang persis sama dengan
+ * `downloadStatementWorkbook` di bawah, dan itu disengaja: dua jalur berkas
+ * yang bentuknya berbeda akan berbeda juga pada perbaikan berikutnya.
+ *
+ * Tiga hal yang dibuka pemindahan ini, dan ketiganya mustahil dari peramban:
+ * server bisa MENYIMPAN byte yang persis sama dengan yang dikirim ke customer
+ * (syarat audit), paket laporan bisa terbit sendiri, dan dokumen tidak lagi
+ * bergantung pada perangkat pengguna.
+ *
+ * `company` TIDAK lagi diteruskan: identitas dan logonya dirakit di server
+ * (`serverPdfCompany`), dari basis data PT yang sedang dibuka. Merakitnya di
+ * klien lalu mengirimkannya berarti nama dan logo perusahaan di kertas
+ * ditentukan oleh apa yang dikirim peramban — dan peramban bukan sumber
+ * kebenaran tentang PT mana ini.
+ */
+export async function downloadStatementPdf(payload: StatementPayload): Promise<void> {
+  const res = await apiFetch("/api/reports/pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
+  await simpanBlob(
+    await res.blob(),
+    res.headers.get("Content-Disposition"),
+    `${slug(STATEMENT_TITLES[payload.kind])}_${stamp()}.pdf`
+  );
+}
+
+/**
+ * Muatan laporan → Blob PDF dari server, TANPA mengunduhnya.
+ *
+ * Dipakai tombol pratinjau: ia menampilkan Blob-nya lebih dulu, dan unduhannya
+ * dibuat dari Blob yang SAMA. Permintaan kedua akan menghasilkan `/ID` PDF yang
+ * berbeda — pengenal berkas acak jsPDF — sehingga yang dilihat pengguna dan yang
+ * ia simpan bukan berkas yang sama byte-nya. Satu permintaan, satu berkas.
+ */
+export async function fetchStatementPdfBlob(payload: StatementPayload): Promise<Blob> {
+  const res = await apiFetch("/api/reports/pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
+  return res.blob();
+}
+
+/**
+ * Simpan sebuah Blob sebagai unduhan. SATU tempat tarian ini ditulis.
+ *
+ * Tiga pemanggil melakukannya persis sama — PDF laporan, workbook laporan, dan
+ * pratinjau dokumen — dan menyalinnya berarti tiga salinan yang akan berbeda
+ * pada perbaikan berikutnya. `revokeObjectURL` ikut, dan itu bukan kerapian:
+ * URL objek yang tidak dilepas menahan seluruh Blob di memori tab selama tab
+ * itu hidup.
+ */
+export async function simpanBlob(
+  blob: Blob,
+  disposition: string | null,
+  bawaan: string
 ): Promise<void> {
-  const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
-  const doc = generateStatementPDF(payload, company);
-  doc.save(`${slug(STATEMENT_TITLES[payload.kind])}_${stamp()}.pdf`);
+  const filename = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? bawaan;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -77,16 +145,9 @@ export async function downloadStatementWorkbook(payload: StatementPayload): Prom
   });
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
 
-  const blob = await res.blob();
-  const disposition = res.headers.get("Content-Disposition") ?? "";
-  const filename = disposition.match(/filename="?([^"]+)"?/)?.[1] ?? `Laporan_${stamp()}.xlsx`;
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  await simpanBlob(
+    await res.blob(),
+    res.headers.get("Content-Disposition"),
+    `Laporan_${stamp()}.xlsx`
+  );
 }

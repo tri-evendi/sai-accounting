@@ -46,7 +46,7 @@ export function InventoryExportAction() {
         if (!res.ok) throw new Error("inventory fetch failed");
         const items: ClientInventoryItem[] = await res.json();
         const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-        return generateStockReportPDF(items, company);
+        return generateStockReportPDF(items, company).output("blob");
       }}
     />
   );
@@ -67,7 +67,7 @@ export function FinanceExportAction() {
         const data: { balances: FinanceBalanceRow[]; transactions: FinanceReportRow[] } =
           await res.json();
         const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-        return generateFinanceReportPDF(data.balances, data.transactions, company);
+        return generateFinanceReportPDF(data.balances, data.transactions, company).output("blob");
       }}
     />
   );

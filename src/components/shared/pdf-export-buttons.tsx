@@ -10,7 +10,7 @@ import { useToast } from "@sai/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@sai/core/i18n/client";
 import { useCompanyIdentity } from "@/lib/company-identity-client";
-import { downloadStatementWorkbook } from "@/lib/report-files";
+import { downloadStatementWorkbook, fetchStatementPdfBlob } from "@/lib/report-files";
 
 interface ContractPDFData {
   contractNo: string;
@@ -35,7 +35,7 @@ export function ContractPDFButton({ contract }: { contract: ContractPDFData }) {
       filename={`Contract_${contract.contractNo}.pdf`}
       generate={async () => {
         const { generateContractPDF } = await import("@/lib/pdf/contract-pdf");
-        return generateContractPDF(contract, company);
+        return generateContractPDF(contract, company).output("blob");
       }}
     />
   );
@@ -62,7 +62,7 @@ export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
             bags: i.bags,
             kgPerBag: i.kgPerBag,
           })),
-        }, company);
+        }, company).output("blob");
       }}
     />
   );
@@ -95,7 +95,7 @@ export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }
       disabled={items.length === 0}
       generate={async () => {
         const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-        return generateStockReportPDF(items, company);
+        return generateStockReportPDF(items, company).output("blob");
       }}
     />
   );
@@ -127,7 +127,7 @@ export function OpnameSheetPDFButton({
       disabled={items.length === 0}
       generate={async () => {
         const { generateOpnameSheetPDF } = await import("@/lib/pdf/opname-sheet-pdf");
-        return generateOpnameSheetPDF(items, company, { date, showSystemQty });
+        return generateOpnameSheetPDF(items, company, { date, showSystemQty }).output("blob");
       }}
     />
   );
@@ -149,7 +149,7 @@ export function FinanceReportPDFButton({
       filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       generate={async () => {
         const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-        return generateFinanceReportPDF(balances, transactions, company);
+        return generateFinanceReportPDF(balances, transactions, company).output("blob");
       }}
     />
   );
@@ -162,7 +162,12 @@ export function FinanceReportPDFButton({
  * the page the user is looking at.
  */
 export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
-  const company = useCompanyIdentity();
+  /* `useCompanyIdentity()` dicabut dari tombol INI saja: identitas dan logonya
+     kini dirakit di server (`serverPdfCompany`), dari basis data PT yang sedang
+     dibuka. Merakitnya di klien lalu mengirimkannya berarti nama dan logo
+     perusahaan di kertas ditentukan oleh apa yang dikirim peramban — dan
+     peramban bukan sumber kebenaran tentang PT mana ini. Enam tombol lain di
+     berkas ini masih menggambar di peramban dan tetap memakainya. */
   const t = useT();
   const dateSlug = new Date().toISOString().slice(0, 10);
   return (
@@ -170,10 +175,14 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
       label={t("pdf.previewAndPrint")}
       title="Laporan Keuangan"
       filename={`Laporan_${dateSlug}.pdf`}
-      generate={async () => {
-        const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
-        return generateStatementPDF(payload, company);
-      }}
+      /* DARI SERVER sejak tahap 1c (rancangan §5): peramban tidak lagi memuat
+         `statement-pdf` (1.097 baris) beserta jsPDF hanya untuk menggambar
+         laporan yang angkanya sudah ada di layar. Muatannya sudah bolak-balik
+         ke server untuk tombol Excel di sebelahnya, jadi yang hilang nol dan
+         yang dibeli tiga: byte yang bisa DISIMPAN sama dengan yang dikirim,
+         paket laporan yang bisa terbit sendiri, dan dokumen yang tidak
+         bergantung pada perangkat pengguna. */
+      generate={() => fetchStatementPdfBlob(payload)}
     />
   );
 }
@@ -224,7 +233,7 @@ export function InvoicePDFButton({ invoice }: { invoice: InvoicePDFData }) {
       filename={`Invoice_${invoice.invoiceNo}.pdf`}
       generate={async () => {
         const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
-        return generateInvoicePDF(invoice, company);
+        return generateInvoicePDF(invoice, company).output("blob");
       }}
     />
   );

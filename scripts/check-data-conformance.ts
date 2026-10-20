@@ -272,6 +272,54 @@ function companyTemplate(): string {
  * platform yang belum dibangkitkan tidak boleh meruntuhkan pemeriksaannya
  * (doktrin #137 — penagihan mati ≠ aplikasi mati, diperluas ke perkakas).
  */
+/**
+ * Berapa buku disapu BERSAMAAN.
+ *
+ * ══ KENAPA ANGKANYA BUKAN SEKADAR MENIRU MIGRATION ════════════════════════
+ * `COMPANY_MIGRATE_CONCURRENCY` bawaannya 2 karena tiap pelaksananya satu
+ * proses Prisma CLI plus satu backend PostgreSQL, dan ia berjalan sementara
+ * aplikasi masih melayani. Sapuan ini jauh lebih ringan — nol proses anak,
+ * satu klien per buku, hanya BACA.
+ *
+ * Yang membatasinya tetap ada, dan bukan memori melainkan **basis datanya**:
+ * sebelas pemeriksaan per buku adalah sebelas `$queryRawUnsafe` yang menyapu
+ * tabel, pada satu `db-postgres` yang juga melayani aplikasi. Delapan buku
+ * serentak berarti 88 sapuan tabel bersamaan — dan pemeriksaan kesesuaian yang
+ * memperlambat orang yang sedang membukukan adalah pemeriksaan yang akhirnya
+ * dimatikan.
+ *
+ * Jadi bawaannya 3: lebih cepat dari berurutan, masih di bawah ambang di mana
+ * ia terasa oleh pengguna. Plafonnya 8, dan nilai salah tulis diabaikan dengan
+ * BUNYI — angka yang diam-diam jatuh ke bawaan membuat orang mengira ia sedang
+ * menjalankan sesuatu yang lain.
+ */
+function batasSerentak(): number {
+  const raw = process.env.CONFORMANCE_CONCURRENCY;
+  if (raw === undefined || raw === "") return 3;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    console.warn(
+      `⚠ CONFORMANCE_CONCURRENCY=${JSON.stringify(raw)} bukan bilangan bulat ≥ 1 — memakai 3.`
+    );
+    return 3;
+  }
+  if (n > 8) {
+    console.warn(`⚠ CONFORMANCE_CONCURRENCY=${n} di atas plafon 8 — memakai 8.`);
+    return 8;
+  }
+  return n;
+}
+
+/** Catatan satu buku di dalam jejak putaran — lihat `rekam`. */
+interface CatatanBuku {
+  slug: string;
+  databaseName: string;
+  /** ok | findings | error — sama kosakatanya dengan status putaran. */
+  status: "ok" | "findings" | "error";
+  findingCount: number;
+  durationMs: number;
+}
+
 async function rekam(hasil: {
   startedAt: Date;
   status: "ok" | "findings" | "error";
@@ -280,6 +328,7 @@ async function rekam(hasil: {
   findingCount: number;
   findings: string[];
   failures: string[];
+  perCompany: CatatanBuku[];
 }) {
   try {
     const { controlDb } = await import("@sai/core/control-db");
@@ -295,9 +344,25 @@ async function rekam(hasil: {
            jejak ini dibaca untuk tahu APA yang harus diperiksa orang — bukan
            untuk menggantikan pemeriksaannya. Jumlah utuhnya ada di
            `findingCount`. */
+        /*
+         * `perCompany` adalah "baris jejak per basis data" yang §6 tuntut, dan
+         * ia di dalam JSON — bukan tabel tersendiri. Itu mengikuti preseden yang
+         * sudah ada: `backup_runs` pun satu baris per PUTARAN, dan bukti
+         * per-basis-datanya hidup di `manifest.json` di dalam putaran itu.
+         *
+         * Yang hilang dari pilihan ini nyata: isi JSON tidak bisa dikueri, jadi
+         * "buku mana yang paling sering gagal" belum bisa dijawab SQL. Pemicu
+         * untuk memindahkannya ke tabel: ada orang yang sungguh menanyakan itu.
+         * Sampai hari itu, tabel tambahan hanya menambah migration dan retensi
+         * untuk pertanyaan yang belum pernah diajukan.
+         *
+         * TIDAK dipangkas, berbeda dari `findings`: panjangnya terikat jumlah
+         * perusahaan (19), bukan jumlah temuan (bisa ribuan).
+         */
         details: JSON.stringify({
           findings: hasil.findings.slice(0, 200),
           failures: hasil.failures,
+          perCompany: hasil.perCompany,
         }),
       },
     });
@@ -329,10 +394,28 @@ async function main() {
 
   let totalTemuan = 0;
   const gagal: string[] = [];
+  const perCompany: CatatanBuku[] = [];
 
-  for (const company of companies) {
+  /*
+   * ══ SATU BUKU, DAN KELUARANNYA DIKUMPULKAN BUKAN DICETAK ══════════════════
+   * Dengan beberapa pelaksana, `console.log` di tengah pemeriksaan membuat
+   * laporan dua buku saling menyisip — dan yang tidak bisa dibaca adalah justru
+   * log pada hari satu di antaranya menemukan sesuatu. Jadi tiap buku
+   * MEMULANGKAN barisnya, dan pencetaknya satu tempat. Pola yang sama dengan
+   * `migrate-all-companies.ts`.
+   */
+  async function periksaSatu(company: (typeof companies)[number]): Promise<{
+    baris: string[];
+    temuanBaris: string[];
+    jumlahTemuan: number;
+    gagalPesan: string | null;
+    durationMs: number;
+  }> {
+    const mulai = Date.now();
     const label = `${company.slug}${company.isActive ? "" : " [nonaktif]"}`;
-    const prisma = new PrismaClient({ adapter: adapterFor(companyTemplate(), company.databaseName) });
+    const prisma = new PrismaClient({
+      adapter: adapterFor(companyTemplate(), company.databaseName),
+    });
     const temuan: { check: Check; rows: { label: string }[] }[] = [];
 
     try {
@@ -342,30 +425,86 @@ async function main() {
         if (rows.length > 0) temuan.push({ check, rows });
       }
     } catch (error) {
-      gagal.push(`${company.slug}: ${error instanceof Error ? error.message : String(error)}`);
+      return {
+        baris: [],
+        temuanBaris: [],
+        jumlahTemuan: 0,
+        gagalPesan: `${company.slug}: ${error instanceof Error ? error.message : String(error)}`,
+        durationMs: Date.now() - mulai,
+      };
+    } finally {
+      /* `finally`: klien yang tidak ditutup pada jalur GAGAL menahan satu
+         koneksi per buku, dan sapuan yang gagal di sepuluh buku menghabiskan
+         pool-nya sendiri. Jalur lama memanggilnya dua kali; di sini sekali. */
       await prisma.$disconnect();
-      continue;
     }
-    await prisma.$disconnect();
 
     if (temuan.length === 0) {
-      console.log(`✓ ${label} — bersih`);
-      continue;
+      return {
+        baris: [`✓ ${label} — bersih`],
+        temuanBaris: [],
+        jumlahTemuan: 0,
+        gagalPesan: null,
+        durationMs: Date.now() - mulai,
+      };
     }
 
-    console.log(`\n✗ ${label}`);
+    const baris = [`\n✗ ${label}`];
+    const temuanBaris: string[] = [];
+    let jumlahTemuan = 0;
     for (const { check, rows } of temuan) {
-      totalTemuan += rows.length;
-      console.log(`   ${check.judul}: ${rows.length}`);
-      for (const r of rows) barisTemuan.push(`${company.slug} · ${check.judul}: ${r.label}`);
+      jumlahTemuan += rows.length;
+      baris.push(`   ${check.judul}: ${rows.length}`);
+      for (const r of rows) temuanBaris.push(`${company.slug} · ${check.judul}: ${r.label}`);
       /* Tiga contoh, bukan semuanya: daftar 609 baris di terminal menyembunyikan
          justru pemeriksaan lain yang ikut berbunyi. `--detail` untuk seluruhnya. */
       const tampil = detail ? rows : rows.slice(0, 3);
-      for (const r of tampil) console.log(`      · ${r.label}`);
+      for (const r of tampil) baris.push(`      · ${r.label}`);
       if (!detail && rows.length > tampil.length) {
-        console.log(`      … ${rows.length - tampil.length} lagi (pakai --detail)`);
+        baris.push(`      … ${rows.length - tampil.length} lagi (pakai --detail)`);
       }
     }
+    return { baris, temuanBaris, jumlahTemuan, gagalPesan: null, durationMs: Date.now() - mulai };
+  }
+
+  /*
+   * ══ HASILNYA DIINDEKS MENURUT URUTAN DAFTAR, BUKAN URUTAN SELESAI ════════
+   * Dengan beberapa pelaksana, urutan selesai berubah tiap putaran — dan
+   * laporan yang urutannya berubah membuat dua sapuan yang hasilnya SAMA
+   * terbaca berbeda, yang berarti diff antar putaran berhenti berguna.
+   * `migrate-all-companies.ts` menemukan hal yang sama dan menyelesaikannya
+   * dengan mengurutkan ulang; di sini hasilnya langsung ditaruh pada indeksnya.
+   */
+  const hasil = new Array<Awaited<ReturnType<typeof periksaSatu>>>(companies.length);
+  let berikut = 0;
+  async function pelaksana() {
+    for (;;) {
+      const i = berikut++;
+      if (i >= companies.length) return;
+      hasil[i] = await periksaSatu(companies[i]);
+    }
+  }
+
+  const serentak = Math.max(1, Math.min(batasSerentak(), companies.length));
+  console.log(
+    `${companies.length} buku, ${serentak} disapu bersamaan ` +
+      `(CONFORMANCE_CONCURRENCY=${serentak}).\n`
+  );
+  await Promise.all(Array.from({ length: serentak }, () => pelaksana()));
+
+  for (const [i, r] of hasil.entries()) {
+    const company = companies[i];
+    for (const b of r.baris) console.log(b);
+    barisTemuan.push(...r.temuanBaris);
+    totalTemuan += r.jumlahTemuan;
+    if (r.gagalPesan !== null) gagal.push(r.gagalPesan);
+    perCompany.push({
+      slug: company.slug,
+      databaseName: company.databaseName,
+      status: r.gagalPesan !== null ? "error" : r.jumlahTemuan > 0 ? "findings" : "ok",
+      findingCount: r.jumlahTemuan,
+      durationMs: r.durationMs,
+    });
   }
 
   console.log(
@@ -390,6 +529,7 @@ async function main() {
     findingCount: totalTemuan,
     findings: barisTemuan,
     failures: gagal,
+    perCompany,
   });
 
   /* Kode keluar BUKAN NOL bila ada temuan ATAU ada buku yang gagal diperiksa —

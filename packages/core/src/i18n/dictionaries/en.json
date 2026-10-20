@@ -4807,6 +4807,9 @@
       "listFailures": "Books that failed to be checked",
       "listEmpty": "None.",
       "findingsTruncated": "Showing {shown} of {total} findings. The rest are in `docker compose logs job-conformance`.",
+      "perBookHeading": "Per book",
+      "perBookLegacy": "This run was recorded before the sweep ran concurrently, so it has no per-book records. The next run will have them.",
+      "perBookColDuration": "Took (ms)",
       "failuresWhy": "A book that was not checked is not a clean book — a sweep with failures is flagged for action even at zero findings."
     },
     "actions": {

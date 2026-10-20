@@ -4807,6 +4807,9 @@
       "listFailures": "Buku yang gagal diperiksa",
       "listEmpty": "Tidak ada.",
       "findingsTruncated": "Menampilkan {shown} dari {total} temuan. Sisanya ada di `docker compose logs job-conformance`.",
+      "perBookHeading": "Per buku",
+      "perBookLegacy": "Putaran ini dicatat sebelum sapuannya berjalan serentak — catatan per buku belum ada. Putaran berikutnya memuatnya.",
+      "perBookColDuration": "Lama (ms)",
       "failuresWhy": "Buku yang tidak terperiksa bukan buku yang bersih — sapuan dengan kegagalan ditandai perlu ditindak, walau nol temuan."
     },
     "actions": {

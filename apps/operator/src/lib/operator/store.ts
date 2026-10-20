@@ -535,11 +535,30 @@ function parseRunDetails(raw: string | null): SchedulerRunDetails | null {
  * yang bisa dilaporkan", bukan 500.
  */
 /** Isi `details` jejak kesesuaian, sesudah diurai & disaring. */
+/** Catatan satu buku di dalam satu putaran sapuan. */
+export interface ConformanceCompanyRecord {
+  slug: string;
+  databaseName: string;
+  /** ok | findings | error */
+  status: string;
+  findingCount: number;
+  durationMs: number;
+}
+
 export interface ConformanceRunDetails {
   /** Baris temuan: `"<slug> · <judul pemeriksaan>: <label>"`. Dipangkas 200 di sumbernya. */
   findings: string[];
   /** Buku yang GAGAL diperiksa, beserta sebabnya. */
   failures: string[];
+  /**
+   * Satu catatan per BASIS DATA (§6) — kosong pada putaran yang dicatat sebelum
+   * sapuannya berjalan serentak.
+   *
+   * Kosong karena itu BUKAN "tidak ada buku yang disapu": ia putaran lama.
+   * Halaman yang menampilkannya wajib membedakan keduanya, sebab "nol buku
+   * disapu" adalah insiden sementara "putaran lama" bukan apa-apa.
+   */
+  perCompany: ConformanceCompanyRecord[];
 }
 
 export interface OperatorConformanceRun {
@@ -565,7 +584,33 @@ function parseConformanceDetails(raw: string | null): ConformanceRunDetails | nu
     const parsed = JSON.parse(raw) as Partial<ConformanceRunDetails>;
     const list = (value: unknown): string[] =>
       Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-    return { findings: list(parsed.findings), failures: list(parsed.failures) };
+
+    /* Disaring PER ELEMEN, dan bukan dipercaya karena JSON-nya terurai: putaran
+       lama ditulis sebelum medan ini ada, dan satu elemen yang bentuknya lain
+       tidak boleh menjatuhkan seluruh halaman. */
+    const bukuList = (value: unknown): ConformanceCompanyRecord[] =>
+      Array.isArray(value)
+        ? value.flatMap((item) => {
+            if (typeof item !== "object" || item === null) return [];
+            const o = item as Record<string, unknown>;
+            if (typeof o.slug !== "string" || typeof o.status !== "string") return [];
+            return [
+              {
+                slug: o.slug,
+                databaseName: typeof o.databaseName === "string" ? o.databaseName : "",
+                status: o.status,
+                findingCount: typeof o.findingCount === "number" ? o.findingCount : 0,
+                durationMs: typeof o.durationMs === "number" ? o.durationMs : 0,
+              },
+            ];
+          })
+        : [];
+
+    return {
+      findings: list(parsed.findings),
+      failures: list(parsed.failures),
+      perCompany: bukuList(parsed.perCompany),
+    };
   } catch {
     return null;
   }

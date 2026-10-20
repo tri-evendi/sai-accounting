@@ -27,8 +27,13 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { AKAR_REPO, tanpaKomentar } from "./akar-sumber";
 import type { PdfCompany } from "@/lib/pdf/company-header";
+import { REPORT_PDF } from "@/lib/report-pdf";
+import { statementPayloadSchema } from "@/lib/validations/report-export";
 
-const rute = readFileSync(join(AKAR_REPO, "src/app/api/reports/pdf/route.ts"), "utf8");
+const rute = readFileSync(join(AKAR_REPO, "src/app/api/reports/pdf/[jenis]/route.ts"), "utf8");
+/* Keputusan per jenis hidup di REGISTRI, bukan di badan rute — lihat ⚠ di
+   penjaga "memakai generator yang SAMA" di bawah. */
+const registri = readFileSync(join(AKAR_REPO, "src/lib/report-pdf.ts"), "utf8");
 const berkasLaporan = readFileSync(join(AKAR_REPO, "src/lib/report-files.ts"), "utf8");
 const tombolPdf = readFileSync(
   join(AKAR_REPO, "src/components/shared/pdf-document-button.tsx"),
@@ -133,8 +138,18 @@ describe("rute server: satu pembangkitan, satu buffer", () => {
   });
 
   it("memakai generator yang SAMA, bukan tata letak kedua", () => {
-    expect(rute).toContain('await import("@/lib/pdf/statement-pdf")');
-    expect(rute).toContain("generateStatementPDF(payload, company)");
+    /*
+     * ⚠ Keempat penjaga di bawah ini DIARAHKAN ULANG ketika rute laporan
+     * menjadi `[jenis]`: yang mereka jaga pindah dari badan rute ke
+     * `REPORT_PDF`, dan versi lamanya menuding teks rute — nama, bukan sifat.
+     * Penjaga yang terikat pada nama adalah penjaga yang jatuh pada refactor
+     * yang benar dan diam pada perubahan yang salah.
+     */
+    expect(registri).toContain('await import("@/lib/pdf/statement-pdf")');
+    expect(registri).toContain("generateStatementPDF(muatan, company)");
+    /* Dan hanya SATU tempat memuatnya — jalur kedua yang menggambar laporan
+       dengan caranya sendiri adalah tata letak kedua. */
+    expect(registri.match(/@\/lib\/pdf\/statement-pdf/g) ?? []).toHaveLength(1);
   });
 
   it("identitas & logo dirakit DI SERVER, bukan diterima dari peramban", () => {
@@ -145,20 +160,25 @@ describe("rute server: satu pembangkitan, satu buffer", () => {
   });
 
   it("batasnya SAMA dengan ekspor Excel, dan dihitung pada pemeta yang sama", () => {
-    /* Muatan tiap laporan berbeda bentuk, jadi penghitung baris per-jenis
-       adalah penghitung yang akan melewatkan laporan berikutnya. */
+    /* Dua penghitung untuk satu laporan berarti ada ukuran muatan yang ditolak
+       satu tombol dan diterima tombol di sebelahnya. */
     expect(rute).toContain("readBoundedText(request, EXPORT_MAX_BODY_BYTES)");
-    expect(rute).toContain("buildReportSheet(payload)");
-    expect(rute).toMatch(/sheet\.rows\.length > EXPORT_MAX_ROWS/);
-    expect(rute.match(/status: 413/g) ?? []).toHaveLength(2);
+    expect(registri).toContain("buildReportSheet(muatan).rows.length");
+    expect(tanpaKomentar(rute)).toMatch(/baris > EXPORT_MAX_ROWS/);
+    expect(tanpaKomentar(rute).match(/status: 413/g) ?? []).toHaveLength(2);
   });
 
   it("muatannya divalidasi skema yang SAMA dengan ekspor Excel", () => {
-    expect(rute).toContain("statementPayloadSchema.safeParse(body)");
+    /* Satu skema untuk dua tombol: muatan yang diterima Excel dan ditolak PDF
+       (atau sebaliknya) adalah dua definisi "laporan yang sah". */
+    expect(REPORT_PDF.statement.schema).toBe(statementPayloadSchema);
+    expect(tanpaKomentar(rute)).toContain("spec.schema.safeParse(body)");
   });
 
   it("menuntut izin, dan izinnya sama dengan ekspor", () => {
-    expect(rute).toContain('requireApiPermission("report.export")');
+    expect(REPORT_PDF.statement.permission).toBe("report.export");
+    /* Rute tidak menulis satu pun literal izin — ia mengambilnya dari entrinya. */
+    expect(tanpaKomentar(rute)).toContain("requireApiPermission(spec.permission)");
   });
 
   it("jawabannya tidak boleh di-cache proxy bersama", () => {
@@ -175,7 +195,7 @@ describe("peramban berhenti menghasilkan laporan", () => {
     const kode = tanpaKomentar(berkasLaporan);
     expect(kode).not.toContain('import("@/lib/pdf/statement-pdf")');
     expect(kode).not.toMatch(/generateStatementPDF/);
-    expect(berkasLaporan).toContain('apiFetch("/api/reports/pdf"');
+    expect(berkasLaporan).toContain("apiFetch(`/api/reports/pdf/${jenis}`");
   });
 
   it("tombol laporan mengambil Blob dari server", () => {
@@ -247,18 +267,17 @@ describe("yang BELUM pindah, dan itu disebut bukan disembunyikan", () => {
     /* ⚠ Daftar ini MENYUSUT, dan commit yang membuatnya menyusut memang harus
        menyentuh baris ini — itu seluruh gunanya. `invoice-pdf` keluar ketika
        dokumen satuan pindah ke server (`tests/dokumen-satuan-server.test.ts`). */
-    expect(unik, "generator yang masih digambar peramban").toEqual([
-      "finance-report-pdf",
-      "opname-sheet-pdf",
-      "stock-report-pdf",
-    ]);
-    /* ⚠ Yang TERSISA ketiganya LAPORAN, bukan dokumen satuan — dan §5 menaruh
-       laporan di jalur lain (`/api/reports/pdf` untuk yang pendek, antrean
-       untuk paket). Jadi daftar ini tidak akan menyusut lagi lewat jalur
-       dokumen satuan; penyusutan berikutnya datang dari jalur laporan. */
-    for (const sudah of ["statement-pdf", "invoice-pdf", "contract-pdf", "shipping-pdf", "return-pdf"]) {
-      expect(unik, `${sudah} sudah pindah ke server`).not.toContain(sudah);
-    }
+    /*
+     * NOL — dan ini akhir pencacahnya. §5 untuk peramban tertutup: dokumen
+     * satuan lewat rute dokumen (dari ID, dari BUKU), laporan lewat
+     * `/api/reports/pdf/<jenis>` (dari muatan), ekspor besar lewat antrean.
+     *
+     * Ambang nol tidak bisa menyusut diam-diam, jadi penjaga ini berhenti
+     * menjadi pencacah dan menjadi LARANGAN. Pagar keduanya — yang menyasar
+     * `.output(` alih-alih nama berkasnya — ada di
+     * `tests/laporan-pdf-server.test.ts`.
+     */
+    expect(unik, "generator yang masih digambar peramban").toEqual([]);
   });
 
   it("satu-satunya jalur server lain tetap faktur yang dikirim (#465)", () => {

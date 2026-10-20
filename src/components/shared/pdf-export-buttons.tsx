@@ -9,10 +9,10 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@sai/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@sai/core/i18n/client";
-import { useCompanyIdentity } from "@/lib/company-identity-client";
 import {
   downloadStatementWorkbook,
   fetchDocumentPdfBlob,
+  fetchReportPdfBlob,
   fetchStatementPdfBlob,
 } from "@/lib/report-files";
 
@@ -69,18 +69,18 @@ export function ShippingDocButton({
 }
 
 export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
-  const company = useCompanyIdentity();
   const t = useT();
+  /* DARI SERVER sejak tahap 1c (rancangan §5). Muatannya dikirim, bukan dimuat
+     ulang dari ID: lembar ini dicetak oleh orang yang sedang menatap
+     halamannya, dan yang harus dijamin adalah kertasnya sama dengan LAYARNYA.
+     Uraiannya di `lib/validations/report-pdf.ts`. */
   return (
     <PdfDocumentButton
       label={t("pdf.previewStock")}
       title="Laporan Stok"
       filename={`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       disabled={items.length === 0}
-      generate={async () => {
-        const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-        return generateStockReportPDF(items, company).output("blob");
-      }}
+      generate={() => fetchReportPdfBlob("stock", { items })}
     />
   );
 }
@@ -101,7 +101,6 @@ export function OpnameSheetPDFButton({
   date: string;
   showSystemQty: boolean;
 }) {
-  const company = useCompanyIdentity();
   const t = useT();
   return (
     <PdfDocumentButton
@@ -109,10 +108,10 @@ export function OpnameSheetPDFButton({
       title={t("inventory.opnameSheetTitle")}
       filename={`Lembar_Hitung_Stok_${date}.pdf`}
       disabled={items.length === 0}
-      generate={async () => {
-        const { generateOpnameSheetPDF } = await import("@/lib/pdf/opname-sheet-pdf");
-        return generateOpnameSheetPDF(items, company, { date, showSystemQty }).output("blob");
-      }}
+      /* DARI SERVER sejak tahap 1c. `showSystemQty` ikut dikirim — ia yang
+         memutuskan hitung-buta, dan keputusan itu milik orang yang mencetaknya,
+         bukan milik rutenya. */
+      generate={() => fetchReportPdfBlob("opname", { items, date, showSystemQty })}
     />
   );
 }
@@ -124,17 +123,17 @@ export function FinanceReportPDFButton({
   balances: FinanceBalanceRow[];
   transactions: FinanceReportRow[];
 }) {
-  const company = useCompanyIdentity();
   const t = useT();
+  /* DARI SERVER sejak tahap 1c. Keduanya dikirim sebagaimana halaman
+     menghitungnya: saldo per jenis & mata uang DAN transaksinya — dua bagian
+     di satu lembar, dan menurunkan yang satu dari yang lain di rute berarti
+     penjumlahan kedua yang bisa berbeda dari yang tampil di layar. */
   return (
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
       title="Laporan Kas & Bank"
       filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
-      generate={async () => {
-        const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-        return generateFinanceReportPDF(balances, transactions, company).output("blob");
-      }}
+      generate={() => fetchReportPdfBlob("finance", { balances, transactions })}
     />
   );
 }
@@ -146,12 +145,14 @@ export function FinanceReportPDFButton({
  * the page the user is looking at.
  */
 export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
-  /* `useCompanyIdentity()` dicabut dari tombol INI saja: identitas dan logonya
-     kini dirakit di server (`serverPdfCompany`), dari basis data PT yang sedang
-     dibuka. Merakitnya di klien lalu mengirimkannya berarti nama dan logo
-     perusahaan di kertas ditentukan oleh apa yang dikirim peramban — dan
-     peramban bukan sumber kebenaran tentang PT mana ini. Enam tombol lain di
-     berkas ini masih menggambar di peramban dan tetap memakainya. */
+  /* Identitas & logo dirakit di SERVER (`serverPdfCompany`), dari basis data PT
+     yang sedang dibuka. Merakitnya di klien lalu mengirimkannya berarti nama
+     dan logo perusahaan di kertas ditentukan oleh apa yang dikirim peramban —
+     dan peramban bukan sumber kebenaran tentang PT mana ini.
+
+     Sejak tahap 1c SETIAP tombol di berkas ini dirender server, jadi
+     `useCompanyIdentity` tidak diimpor di sini lagi — satu impor yang tinggal
+     adalah satu jalan kembali yang masih terbuka. */
   const t = useT();
   const dateSlug = new Date().toISOString().slice(0, 10);
   return (

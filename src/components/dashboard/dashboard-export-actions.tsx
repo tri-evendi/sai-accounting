@@ -21,19 +21,37 @@
  * DITEKAN, bukan saat halaman dimuat. Bila ada transaksi masuk di antara
  * keduanya, ia ikut tercetak — dan itu justru lebih benar daripada mencetak
  * potret yang sudah basi.
+ *
+ * ══ TAHAP 1c: PENGGAMBARANNYA PINDAH KE SERVER, DAN ONGKOSNYA DISEBUT ══════
+ * Sejak §5 kedua tombol ini tidak lagi memuat jsPDF: mereka mengirim muatannya
+ * ke `/api/reports/pdf/<jenis>`. Harganya nyata dan tidak disembunyikan —
+ * **barisnya melintasi jaringan DUA kali** di beranda: sekali turun dari
+ * `/api/inventory` atau `/api/finance`, sekali naik kembali sebagai muatan.
+ *
+ * Itu diterima dengan sadar karena yang dibelinya satu aturan, bukan dua:
+ * laporan dicetak DARI MUATAN, titik. Rute yang juga bisa memuat sendiri bila
+ * muatannya kosong adalah rute dengan dua modus — dan modus kedua adalah
+ * tempat perbedaan perilaku bersembunyi. Pada pemasangan terbesar yang pernah
+ * diukur (18.000+ baris kas) muatannya ~3 MB, masih di bawah batas 16 MB.
+ *
+ * **Pemicunya untuk menghapus perjalanan kedua:** turunan laporan kas
+ * diekstrak jadi satu fungsi bersama. Hari ini ia ditulis DUA kali — sekali
+ * sebaris di halaman Kas & Bank (disaring tahun/bulan) dan sekali di
+ * `/api/finance` GET (disaring jenis/mata uang) — dan menyatukannya adalah
+ * perubahan pada halaman yang filternya dipakai orang, bukan pekerjaan sambil
+ * lalu.
  */
 
-import { useCompanyIdentity } from "@/lib/company-identity-client";
 import { useT } from "@sai/core/i18n/client";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import { apiFetch } from "@/lib/api-fetch";
+import { fetchReportPdfBlob } from "@/lib/report-files";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function InventoryExportAction() {
-  const company = useCompanyIdentity();
   const t = useT();
 
   return (
@@ -45,15 +63,13 @@ export function InventoryExportAction() {
         const res = await apiFetch("/api/inventory");
         if (!res.ok) throw new Error("inventory fetch failed");
         const items: ClientInventoryItem[] = await res.json();
-        const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-        return generateStockReportPDF(items, company).output("blob");
+        return fetchReportPdfBlob("stock", { items });
       }}
     />
   );
 }
 
 export function FinanceExportAction() {
-  const company = useCompanyIdentity();
   const t = useT();
 
   return (
@@ -66,8 +82,10 @@ export function FinanceExportAction() {
         if (!res.ok) throw new Error("finance fetch failed");
         const data: { balances: FinanceBalanceRow[]; transactions: FinanceReportRow[] } =
           await res.json();
-        const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-        return generateFinanceReportPDF(data.balances, data.transactions, company).output("blob");
+        return fetchReportPdfBlob("finance", {
+          balances: data.balances,
+          transactions: data.transactions,
+        });
       }}
     />
   );

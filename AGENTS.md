@@ -206,6 +206,7 @@ menegakkan aturan struktural, dan semuanya berhenti di batas `services/`:
 | `tests/services-go.test.ts` | tulisan ke tabel di luar daftar-izin · kosakata/angka ditulis tangan di Go · bentuk SQL antrean · `kind` penulis buku diklaim Go |
 | `tests/kind-punya-pengklaim.test.ts` | `kind` terbit tanpa pengklaim · dua pengklaim · handler lintas jalur |
 | `tests/go-image-version.test.ts` | versi Go image ≠ `go.mod` · biner tidak statis |
+| `tests/gerbang-go.test.ts` | `paths:` filter di gerbang Go · versi `golangci-lint` CI ≠ mesin · `latest` · langkah gerbang yang hilang · ketergantungan jaringan di dalam gerbangnya |
 | `tests/pg-client-version.test.ts` | **setiap** `postgresql-client-<n>` yang lebih tua dari server |
 | sisi Go (`internal/*/*_test.go`) | perilaku: aritmetika backoff, ambang lease, interop `openssl`, pemakaian SDK S3 |
 

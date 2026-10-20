@@ -252,6 +252,14 @@ services:
       #   6 langkah × 600s = 60 menit   (tepat di batas — nol ruang sisa)
       #   7 langkah × 480s = 56 menit   ← sekarang, setelah `watch:health` ikut
       #
+      # ⚠ `recurring:run` menjadi `recurring:publish` (rancangan §4), dan BATAS
+      # tidak diturunkan karena jumlah langkah tidak berubah. Yang berubah lebih
+      # dalam daripada namanya: langkah itu berhenti MELAKSANAKAN. Ia kini
+      # menulis satu baris `jobs` per PT dan selesai dalam milidetik, dan yang
+      # memposting dokumen berulang adalah `svc-ledger`. Perhitungan di atas
+      # memang dibuat terhadap langkah yang melaksanakan, jadi satu langkah yang
+      # keluar dari perhitungan itu adalah ruang yang bertambah, bukan berkurang.
+      #
       # `watch:backup` menjadi `watch:health` 12 Okt 2026 — ia kini memeriksa
       # TIGA denyut (cadangan, penjadwal, kesesuaian) dalam satu langkah. Jumlah
       # langkah TIDAK bertambah, jadi BATAS tidak perlu turun lagi.
@@ -290,7 +298,7 @@ services:
           langkah notify:setup bun run notify:setup
           langkah notify:invoice-due bun run notify:invoice-due
           langkah remind:customers bun run remind:customers
-          langkah recurring:run bun run recurring:run
+          langkah recurring:publish bun run recurring:publish
           langkah watch:health bun run watch:health
           langkah prune:trails bun run prune:trails
           sleep 3600
@@ -449,6 +457,79 @@ services:
             && echo "[backup] ⏱ DIBUNUH setelah 7200s — dicoba lagi besok."
           sleep 86400
         done
+
+  # ── JALUR `ledger` — SATU-SATUNYA PENULIS BUKU BESAR DI LATAR ──────────────
+  #
+  # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean, bukan sekali-jalan
+  # lalu keluar. Tiga tetangganya di atas memang `job-` karena masing-masing
+  # satu putaran yang berakhir; yang ini tidak pernah berakhir.
+  #
+  # ══ KENAPA LAYANAN TERSENDIRI, BUKAN SATU LANGKAH LAGI DI `job-scheduler` ══
+  #
+  # Karena justru ITU yang dibongkar (rancangan §4). `recurring:run` dulu satu
+  # langkah di putaran penjadwal, dan bentuk itu punya tiga cacat yang tidak
+  # kelihatan sampai salah satunya kejadian:
+  #
+  #   • satu PT yang gagal menunggu SEJAM untuk dicoba lagi, karena yang
+  #     diulang adalah seluruh putaran — bukan yang gagal;
+  #   • langkah itu memikul batas `timeout` putaran, dan batas itu harus
+  #     diturunkan setiap kali ada langkah baru. Memposting dokumen berulang
+  #     untuk SEMUA PT di bawah satu stopwatch yang menyusut adalah ongkos yang
+  #     tumbuh seiring jumlah pelanggan;
+  #   • putaran yang mati di tengah daftar meninggalkan separuh PT tak tergarap
+  #     tanpa satu baris pun yang mencatat sampai mana ia sempat.
+  #
+  # Sekarang penjadwal MENERBITKAN (satu baris `jobs` per PT, selesai dalam
+  # milidetik) dan layanan ini MELAKSANAKAN, dengan `attempts` dan backoff per
+  # PT. Itu sekaligus menutup P2-2: tiap langkah punya barisnya sendiri.
+  #
+  # ⚠ SATU REPLIKA, DAN ITU BUKAN PILIHAN PENYEBARAN. Jalur ini tunggal-instans
+  # di `contract/kinds.yaml`, dan pelarinya memagari diri dengan
+  # `pg_try_advisory_lock`: instans kedua KELUAR tanpa bekerja alih-alih ikut
+  # mengklaim. Pagar itu tidak memikul kebenaran — `dedupe_key` yang unik sudah
+  # melakukannya — tapi ia mencegah kesalahan konfigurasi yang jauh lebih mudah
+  # dilakukan daripada dibayangkan. Menaikkan `deploy.replicas` di sini tidak
+  # akan menggandakan throughput; ia hanya menghasilkan satu container yang
+  # hidup dan satu yang keluar.
+  #
+  # ⚠ INVARIAN I-2 ADA DI SINI, BUKAN DI DOKUMEN. Ini satu-satunya layanan latar
+  # yang menulis buku besar, dan handler-nya MENDELEGASIKAN ke
+  # `src/lib/recurring-run.ts` — mesin yang sama yang dipakai `recurring:run`
+  # tangan. Dua mesin untuk satu aturan akuntansi akan menyimpang tanpa satu
+  # galat pun, dan yang menyimpang adalah buku.
+  #
+  # Image `migrator`, sama seperti tiga tetangga latar lain: ia butuh sumber TS
+  # dan `node_modules`, bukan keluaran `next build`.
+  #
+  # TANPA `timeout` pembungkus, dan itu disengaja — berbeda dari tiga tetangga
+  # di atas. Yang dijaga `timeout` di sana adalah PUTARAN yang menggantung lalu
+  # menahan putaran berikutnya selamanya; di sini tidak ada putaran berikutnya
+  # yang bisa tertahan. Pekerjaan yang menggantung dijaga oleh LEASE: ia
+  # berhenti diperpanjang, ambang reclaim melewatinya, dan barisnya pulang ke
+  # `queued` dengan `attempts + 1` — mekanisme yang tahu jenis pekerjaannya,
+  # yang tidak bisa dilakukan satu angka detik di compose.
+  svc-ledger:
+    build:
+      context: .
+      target: migrator
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
+    container_name: sai-svc-ledger
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      pg:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - internal
+    # `-k 30` saat berhenti: pelari menyelesaikan pekerjaan yang sedang jalan
+    # lalu keluar sendiri, tapi Prisma yang menahan event loop tidak selalu
+    # pergi karena TERM saja — alasan yang sama dengan `job-scheduler`.
+    stop_grace_period: 60s
+    command: ["bun", "run", "jobs:run:ledger"]
 
   # ── DUA APLIKASI, DUA IMAGE ────────────────────────────────────────────────
   #

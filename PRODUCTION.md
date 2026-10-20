@@ -224,7 +224,7 @@ OOM (exit 137).
 2. Pull:
    ```bash
    git pull                                  # compose file + migrations only
-   docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup
+   docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup svc-ledger
    ```
 3. Only if the release brings new migrations under `prisma/postgresql/`:
    ```bash
@@ -232,7 +232,7 @@ OOM (exit 137).
    ```
 4. Swap:
    ```bash
-   docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup
+   docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup svc-ledger
    ```
 5. Check that both app containers run images from the same `sha-` tag / build
    date:

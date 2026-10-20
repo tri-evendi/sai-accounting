@@ -84,3 +84,13 @@ services:
     pull_policy: always
     environment:
       APP_DEPLOY_PROFILE: onprem
+
+  # Jalur `ledger` ikut dipasang di on-premise, dan itu bukan pilihan: sejak
+  # rancangan §4 penjadwal hanya MENERBITKAN, jadi tanpa layanan ini dokumen
+  # berulang tidak pernah terbit sama sekali — baris `jobs` menumpuk tanpa
+  # pengklaim, dan tidak ada satu pun halaman yang rusak untuk mengabarkannya.
+  svc-ledger:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem

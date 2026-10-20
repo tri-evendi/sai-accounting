@@ -34,7 +34,7 @@ Ukuran mesin ini adalah alasan langsung empat keputusan: tipe diperiksa di luar
 `next build`, image dibangun di CI, tahap `migrator` tidak mewarisi `builder`,
 dan batas heap eksplisit di setiap perintah Node.
 
-## 2. Sembilan layanan
+## 2. Sepuluh layanan
 
 | Layanan | Container | Peran | Kadens |
 |---|---|---|---|
@@ -46,6 +46,7 @@ dan batas heap eksplisit di setiap perintah Node.
 | `job-scheduler` | `sai-job-scheduler` | 7 langkah penagihan & pemeliharaan | tiap jam |
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
 | `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 | harian |
+| `svc-ledger` | `sai-svc-ledger` | Pelari jalur `ledger` — menguras tabel `jobs` | selalu hidup |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
 
 Ditambah `traefik`, dipakai bersama lima aplikasi lain dan tidak termasuk
@@ -57,7 +58,7 @@ graph TB
     TR --> WEBO[sai-app-operator]
     WEBC --> PGB[sai-pgbouncer]
     WEBO --> PGB
-    JOB[sai-job-scheduler · sai-job-conformance] --> PGB
+    JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger] --> PGB
     PGB --> PG[(sai-pg)]
     LANGSUNG[sai-job-backup · sai-migrate] --> PG
     OLD[(sai-db — MariaDB, fallback)]
@@ -72,8 +73,13 @@ Hanya kedua `app-*` yang berada di dua jaringan (`traefik_default` +
 — itu sebabnya ketiga job memakai ulang image `migrator`.
 
 **Empat image dari satu commit:** `app-customer` (`runner`), `app-operator`
-(`runner-operator`), `migrator`, `backup`. `job-scheduler` dan
-`job-conformance` memakai ulang `migrator`.
+(`runner-operator`), `migrator`, `backup`. `job-scheduler`, `job-conformance`,
+dan `svc-ledger` memakai ulang `migrator`.
+
+⚠ `svc-ledger` ber-awalan `svc-`, bukan `job-`, dan bedanya bukan selera:
+ketiga `job-` adalah satu putaran yang BERAKHIR, sementara yang ini tidak
+pernah berakhir — ia menguras antrean selama hidupnya. Nomenklaturnya di
+`AGENTS.md`.
 
 ## 3. Dua aplikasi web
 
@@ -201,7 +207,7 @@ menghentikan yang lain. Image-nya dibangun dari `bunbase`, bukan `builder`.
 | 2 | `notify:setup` | Kabar penyiapan mandek (H+1/+3/+7/+14) | `dedupe_key`, maks 4 seumur hidup |
 | 3 | `notify:invoice-due` | Kabar jatuh tempo + ringkasan mingguan | `dedupe_key` |
 | 4 | `remind:customers` | **Surel ke pelanggan** (H-3/H+1/H+7) | Kunci unik (invoice, kind, due_key) |
-| 5 | `recurring:run` | Terbitkan dokumen berulang hari ini | Kunci unik (template, occurrence_date) |
+| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting `svc-ledger` | `dedupe_key` berbutir jam UTC |
 | 6 | `watch:health` | Baca 3 heartbeat, kirim surel peringatan | Satu surel per status per 24 jam |
 | 7 | `prune:trails` | Pangkas jejak putaran > 90 hari | Putaran kosong = satu `SELECT` per tabel |
 
@@ -214,6 +220,40 @@ Tiga keputusan desain:
 **Layanan, bukan crontab (#373):** baris crontab yang terlewat saat rilis tidak
 menghasilkan error. Sebagai layanan, ia ikut naik bersama deploy dan terlihat
 di `docker compose ps`.
+
+⚠ **Langkah 5 berhenti melaksanakan.** Sampai Oktober 2026 ia `recurring:run`,
+yang memposting dokumen berulang untuk SELURUH PT di dalam putaran ini. Tiga
+cacatnya tidak kelihatan sampai salah satunya kejadian: satu PT yang gagal
+menunggu **sejam** untuk dicoba lagi (yang diulang seluruh putaran, bukan yang
+gagal); langkah itu memikul batas `timeout` yang harus **turun** setiap kali ada
+langkah baru, padahal ongkosnya tumbuh seiring jumlah pelanggan; dan putaran
+yang mati di tengah daftar meninggalkan separuh PT tak tergarap tanpa satu baris
+pun yang mencatat sampai mana ia sempat. Sekarang langkah ini menulis satu baris
+`jobs` per PT dan selesai dalam milidetik; `svc-ledger` melaksanakannya dengan
+`attempts` dan *backoff* per PT.
+
+### `svc-ledger` — pelari jalur `ledger`
+
+Menguras `kind` `ledger.*` dari tabel `jobs` (basis data `control`). Satu-satunya
+layanan latar yang **menulis buku besar**, dan karena itu ia memikul invarian
+I-2: pintu posting wajib tunggal, dan pintu itu TypeScript. Handler-nya
+**mendelegasikan** ke `src/lib/recurring-run.ts` — mesin yang sama yang dipakai
+`recurring:run` tangan. Dua mesin untuk satu aturan akuntansi akan menyimpang
+tanpa satu galat pun, dan yang menyimpang adalah buku.
+
+| Hal | Bentuknya |
+|---|---|
+| Replika | **Satu, dan bukan pilihan penyebaran** — jalurnya tunggal-instans di `contract/kinds.yaml`; instans kedua keluar sendiri, dipagari `pg_try_advisory_lock` |
+| Pekerjaan menggantung | Dijaga **lease**, bukan `timeout` compose: perpanjangan berhenti, ambang reclaim melewatinya, barisnya pulang ke `queued` dengan `attempts + 1` |
+| Berhenti | SIGTERM menyelesaikan pekerjaan yang sedang jalan lalu berhenti mengklaim (`stop_grace_period: 60s`) |
+| Pemeliharaan | Tiap 60 detik: memulangkan lease kedaluwarsa, membuang baris `done` > 14 hari. Baris **gagal tidak pernah** dipangkas |
+| Terbaca di | `/operator/scheduler` (umur tertua per jalur) · `/api/health` → `queue` (satu kata) |
+
+⚠ Antrean yang **kosong tidak membuktikan penerbitnya hidup**: bila
+`recurring:publish` berhenti, tak ada baris yang pernah terbit — antrean kosong,
+umur tertua nol, dan setiap ambang hijau sementara dokumen berulang berhenti
+sama sekali. Yang membantahnya hanya denyut penjadwal, yang diukur dari stempel
+waktu putaran. Itu sebabnya keduanya dibaca di **satu halaman**.
 
 ### `job-conformance` — mingguan
 
@@ -401,11 +441,17 @@ server   ──▶  git pull → compose pull → [migrate] → up -d        (TA
 
 ```bash
 git pull
-docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup svc-ledger
 # HANYA bila ada migration baru di prisma/postgresql/:
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup svc-ledger
 ```
+
+⚠ **`svc-ledger` wajib ikut `pull` dan `up`**, dan itu bukan kelengkapan
+daftar: ia tidak melayani satu pun permintaan HTTP, jadi layanan yang
+tertinggal di versi lama tidak membuat satu halaman pun rusak — ia hanya
+menulis buku besar dengan image yang mendahului migration-nya, dan itu persis
+bentuk kegagalan yang paling mahal di repo ini.
 
 Tunggu **semua** job matriks hijau sebelum `pull`; bila satu target belum
 terdorong, layanan berjalan di versi berbeda-beda. Bila rilis membawa

@@ -77,6 +77,35 @@ export function berkasGo(): { jalur: string; rel: string; isi: string }[] {
 }
 
 /**
+ * Setiap berkas sumber berakhiran `akhiran`, di SELURUH akar sumber.
+ *
+ * Pasangan `berkasGo()` untuk sisi TypeScript, dan ia ada karena alternatifnya
+ * memanggil `grep` lewat `execFileSync` — yang **keluar dengan kode 1 ketika
+ * tak ada yang cocok**, sehingga penjaga yang seharusnya HIJAU (nol pelanggar)
+ * justru melempar galat. Itu sudah terjadi, dan kegagalannya terbaca seperti
+ * kode rusak padahal justru kode yang bersih.
+ */
+export function berkasSumber(akhiran: string[]): { jalur: string; rel: string; isi: string }[] {
+  const hasil: { jalur: string; rel: string; isi: string }[] = [];
+  const telusuri = (dir: string) => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const penuh = join(dir, d.name);
+      if (d.isDirectory()) {
+        telusuri(penuh);
+      } else if (d.isFile() && akhiran.some((a) => d.name.endsWith(a))) {
+        hasil.push({
+          jalur: penuh,
+          rel: relative(AKAR_REPO, penuh).split(sep).join("/"),
+          isi: readFileSync(penuh, "utf8"),
+        });
+      }
+    }
+  };
+  for (const akar of akarSumber()) telusuri(akar);
+  return hasil;
+}
+
+/**
  * Teks sumber TANPA komentarnya.
  *
  * ══ KENAPA INI ADA DI SINI, DAN BUKAN DI SATU BERKAS TES ═══════════════════

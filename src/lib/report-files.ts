@@ -16,6 +16,7 @@
  * menghitung ulang apa pun.
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import type { ReportPdfKind } from "@/lib/report-pdf-kinds";
 import { apiFetch } from "@/lib/api-fetch";
 import { documentPdfHref, parseTenantPath } from "@sai/core/tenant-routes";
 // Nama dokumennya datang dari penentu bentuk laporan (#323). Ia statis dengan
@@ -90,21 +91,31 @@ export async function downloadStatementPdf(payload: StatementPayload): Promise<v
 }
 
 /**
- * Muatan laporan → Blob PDF dari server, TANPA mengunduhnya.
+ * Muatan laporan → Blob PDF dari server, TANPA mengunduhnya. Empat jenis
+ * laporan memakai satu rute; `jenis` memilih izin, bentuk, dan generatornya di
+ * sisi server (`REPORT_PDF`).
  *
  * Dipakai tombol pratinjau: ia menampilkan Blob-nya lebih dulu, dan unduhannya
  * dibuat dari Blob yang SAMA. Permintaan kedua akan menghasilkan `/ID` PDF yang
  * berbeda — pengenal berkas acak jsPDF — sehingga yang dilihat pengguna dan yang
  * ia simpan bukan berkas yang sama byte-nya. Satu permintaan, satu berkas.
  */
-export async function fetchStatementPdfBlob(payload: StatementPayload): Promise<Blob> {
-  const res = await apiFetch("/api/reports/pdf", {
+export async function fetchReportPdfBlob(
+  jenis: ReportPdfKind,
+  payload: unknown
+): Promise<Blob> {
+  const res = await apiFetch(`/api/reports/pdf/${jenis}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`PDF gagal dibuat: ${res.status}`);
   return res.blob();
+}
+
+/** Laporan keuangan — jenis `statement`, diketik terhadap muatannya. */
+export async function fetchStatementPdfBlob(payload: StatementPayload): Promise<Blob> {
+  return fetchReportPdfBlob("statement", payload);
 }
 
 /**

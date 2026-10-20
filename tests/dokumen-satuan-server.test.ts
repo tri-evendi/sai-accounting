@@ -275,14 +275,14 @@ describe("alamat cetak: satu tempat rumusnya ditulis", () => {
 });
 
 describe("yang BELUM pindah, dicacah bukan disembunyikan", () => {
-  it("yang tersisa di peramban hanya LAPORAN, bukan dokumen satuan", () => {
+  it("peramban tidak menggambar PDF apa pun lagi", () => {
     /*
      * Pencacah, bukan larangan: ia merah ketika satu generator lagi pindah,
      * dan daftar di sini harus menyusut bersamanya.
      *
-     * Sesudah tahap ini, SETIAP dokumen satuan dirender di server. Yang
-     * tersisa tiga LAPORAN, dan §5 menaruh laporan di jalur lain — jadi
-     * penyusutan berikutnya datang dari sana, bukan dari rute dokumen.
+     * Sesudah tahap ini, SETIAP dokumen satuan dirender di server — dan sejak
+     * tiga laporan menyusulnya, daftarnya NOL. Penjaga ini karena itu berhenti
+     * menjadi pencacah: nol adalah ambang yang tidak bisa menyusut diam-diam.
      */
     const klien = [
       "src/components/shared/pdf-export-buttons.tsx",
@@ -297,14 +297,6 @@ describe("yang BELUM pindah, dicacah bukan disembunyikan", () => {
     ].map((m) => m[1]!);
     const unik = [...new Set(dinamis)].sort();
 
-    expect(unik, "generator yang masih digambar peramban").toEqual([
-      "finance-report-pdf",
-      "opname-sheet-pdf",
-      "stock-report-pdf",
-    ]);
-    /* Setiap generator DOKUMEN sudah pindah. */
-    for (const sudah of ["invoice-pdf", "statement-pdf", "contract-pdf", "shipping-pdf", "return-pdf"]) {
-      expect(unik, sudah).not.toContain(sudah);
-    }
+    expect(unik, "generator yang masih digambar peramban").toEqual([]);
   });
 });

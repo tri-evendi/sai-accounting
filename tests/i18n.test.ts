@@ -107,6 +107,13 @@ const SAME_AS_SOURCE_ALLOWED: Partial<Record<Locale, ReadonlySet<string>>> = {
        dengan akun yang dirujuknya. */
     "productionOrders.colStatus",
     "productionOrders.varianceOverhead",
+    /* Persentil (§11). "p95 (ms)" dan "p99 (ms)" adalah NOTASI, bukan kalimat:
+       `p95` nama statistiknya dan `ms` satuan SI. Menerjemahkan salah satunya
+       membuat judul kolom tidak lagi cocok dengan angka yang dibaca orang di
+       sebelahnya — dan pembaca metrik justru orang yang mencari notasi itu.
+       Baris catatannya DITERJEMAHKAN; yang di sini hanya judul kolomnya. */
+    "operator.scheduler.metricsColP95",
+    "operator.scheduler.metricsColP99",
     // Istilah teknis yang dipakai apa adanya dalam bahasa Indonesia — sama
     // seperti "slug" di dunia URL berbahasa Inggris.
     "companies.slugLabel",

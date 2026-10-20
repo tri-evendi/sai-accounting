@@ -44,7 +44,12 @@ import {
 } from "@op/components/operator/console-ui";
 import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@op/lib/operator/guard";
-import { queueSnapshotForOperator, schedulerRunsForOperator } from "@op/lib/operator/store";
+import {
+  jobMetricsForOperator,
+  queueSnapshotForOperator,
+  schedulerRunsForOperator,
+} from "@op/lib/operator/store";
+import { METRICS_WINDOW_MINUTES, drainMinutes, type LaneMetrics } from "@sai/platform/job-metrics";
 import {
   QUEUE_AGE_LATE_SECONDS,
   QUEUE_AGE_WARN_SECONDS,
@@ -131,7 +136,11 @@ export default async function OperatorSchedulerPage() {
   await requireOperatorPage();
   const t = await getT();
 
-  const [runs, queue] = await Promise.all([schedulerRunsForOperator(10), queueSnapshotForOperator()]);
+  const [runs, queue, metrics] = await Promise.all([
+    schedulerRunsForOperator(10),
+    queueSnapshotForOperator(),
+    jobMetricsForOperator(),
+  ]);
   const latest = runs?.[0] ?? null;
 
   const queueColumns: SaiColumns<LaneQueueHealth> = [
@@ -168,6 +177,69 @@ export default async function OperatorSchedulerPage() {
       render: (_v, lane) => (
         <span style={TABULAR}>{lane.ageSeconds === null ? "—" : lane.ageSeconds}</span>
       ),
+    },
+  ];
+
+  /*
+   * Kolom metrik (§11). `—` untuk setiap angka yang TIDAK ADA, dan itu bukan
+   * kerapian tampilan: jalur yang tidak menjalankan apa pun dan jalur yang
+   * menjalankan pekerjaan nol-milidetik terlihat sama bila keduanya dicetak
+   * `0`. Yang pertama berarti "tidak ada bahan", yang kedua "cepat".
+   */
+  const angkaAtauStrip = (n: number | null) => (
+    <span style={TABULAR}>{n === null ? "—" : n}</span>
+  );
+
+  const metricsColumns: SaiColumns<LaneMetrics> = [
+    {
+      key: "lane",
+      title: t("operator.scheduler.queueColLane"),
+      align: "left",
+      render: (_v, m) => m.lane,
+    },
+    {
+      key: "published",
+      title: t("operator.scheduler.metricsColPublished"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.publishedPerMin}</span>,
+    },
+    {
+      key: "completed",
+      title: t("operator.scheduler.metricsColCompleted"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.completedPerMin}</span>,
+    },
+    {
+      key: "drain",
+      /* `—` ketika antrean kosong DAN ketika laju selesai nol — dua sebab, dan
+         keduanya benar sebagai "tidak bisa diperkirakan". Yang kedua adalah
+         keadaan paling gawat (pekerja mati), dan ia tidak boleh muncul sebagai
+         angka besar: "4.812 menit" terbaca lambat, padahal tidak bergerak.
+         Keadaan itu dijawab kolom umur di panel di atas, yang punya ambang. */
+      title: t("operator.scheduler.metricsColDrain"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(drainMinutes(m)),
+    },
+    {
+      key: "p95",
+      title: t("operator.scheduler.metricsColP95"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(m.p95Ms),
+    },
+    {
+      key: "p99",
+      title: t("operator.scheduler.metricsColP99"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(m.p99Ms),
+    },
+    {
+      key: "samples",
+      /* Ditampilkan BERSAMA persentilnya, dan itu syarat bukan hiasan: p95 atas
+         tiga pekerjaan adalah angka, bukan fakta. Ambang per-jalur yang disetel
+         dari sampel sekecil itu akan berteriak untuk hal normal. */
+      title: t("operator.scheduler.metricsColSamples"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.samples}</span>,
     },
   ];
 
@@ -246,6 +318,19 @@ export default async function OperatorSchedulerPage() {
                 warn: QUEUE_AGE_WARN_SECONDS,
                 late: QUEUE_AGE_LATE_SECONDS,
               })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+
+      <ConsolePanel title={t("operator.scheduler.metricsHeading")}>
+        {metrics === null ? (
+          <ConsoleNotice>{t("operator.scheduler.metricsUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable columns={metricsColumns} rows={metrics} rowKey={(m) => m.lane} />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.metricsNote", { window: METRICS_WINDOW_MINUTES })}
             </p>
           </div>
         )}

@@ -127,9 +127,23 @@ export async function claimJob(
     }
   }
 
+  /*
+   * `started_at` disetel BERSAMA `claimed_at` di sini, dan itu satu-satunya
+   * tempat ia ditulis — `renewLease` di bawah sengaja tidak menyentuhnya.
+   *
+   * Keduanya tampak mubazir sampai seseorang mencoba menghitung durasi:
+   * `claimed_at` DIPERPANJANG selama pekerjaan berjalan, jadi
+   * `finished_at - claimed_at` adalah jarak dari perpanjangan terakhir —
+   * sekitar satu interval untuk SETIAP pekerjaan, berapa pun lamanya ia
+   * berjalan. Histogram §11 yang dibangun darinya terlihat rapi, sempit, dan
+   * seluruhnya salah.
+   *
+   * Pada klaim berikutnya ia disetel ULANG: yang diukur durasi PERCOBAAN, bukan
+   * rentang sejak penerbitan — rentang itu sudah terbaca dari `created_at`.
+   */
   const rows = await controlDb.$queryRaw<JobRow[]>`
     UPDATE jobs SET status = 'claimed', claimed_at = now(), claimed_by = ${workerId},
-                    updated_at = now()
+                    started_at = now(), updated_at = now()
     WHERE id = (
       SELECT id FROM jobs
       WHERE status = 'queued'

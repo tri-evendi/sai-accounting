@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AKAR_REPO } from "./akar-sumber";
+import { AKAR_REPO, tanpaKomentar } from "./akar-sumber";
 import {
   JOB_RESULT_PERMISSION,
   isDownloadableKind,
@@ -164,10 +164,86 @@ describe("rute unduhan: tidak ada jalan keluar selain byte", () => {
   });
 
   it("nama berkasnya dari `result_ref`, bukan dari muatan pekerjaan", () => {
-    /* Nama yang datang dari muatan bisa memuat apa pun, dan ia mendarat di
-       header `Content-Disposition` — tempat baris baru memecah respons. */
+    /*
+     * Nama yang datang dari muatan bisa memuat apa pun, dan ia mendarat di
+     * header `Content-Disposition` — tempat baris baru memecah respons.
+     *
+     * Versi pertama penjaga ini melarang kata `payload` muncul di rute sama
+     * sekali, dan ia merah ketika gerbang KEDUA lahir — gerbang yang memang
+     * HARUS membaca muatan untuk memeriksa izin laporannya (#355). Yang dijaga
+     * sifatnya: muatan tidak boleh menyusun nama berkas.
+     */
     expect(rute).toMatch(/resultFilename\(job\.resultRef\)/);
-    expect(rute).not.toMatch(/payload/);
+    const i = rute.indexOf("const filename =");
+    expect(i).toBeGreaterThan(-1);
+    expect(rute.slice(i, rute.indexOf("\n", i))).not.toMatch(/payload/);
+    /* Dan muatan hanya punya SATU pembaca di rute ini: gerbang keduanya. */
+    expect(tanpaKomentar(rute).match(/job\.payload/g) ?? []).toHaveLength(1);
+  });
+});
+
+describe("gerbang KEDUA: izin yang dibawa muatannya (#355)", () => {
+  const gate = readFileSync(join(AKAR_REPO, "src/lib/job-result-gate.ts"), "utf8");
+
+  it("rute memanggilnya SESUDAH izin jenis dan perbandingan perusahaan", () => {
+    /*
+     * Urutannya bukan selera: gerbang kedua membaca MUATAN pekerjaan, dan
+     * muatan itu tidak boleh terbaca oleh siapa pun yang belum lolos izin
+     * jenis maupun perbandingan perusahaan.
+     */
+    const izin = rute.indexOf("await requireApiPermission(izin, params)");
+    const pt = rute.indexOf("job.companyId !== authz.companyId");
+    const kedua = rute.indexOf("await bolehAmbilHasil(");
+    expect(izin).toBeLessThan(pt);
+    expect(pt).toBeLessThan(kedua);
+  });
+
+  it("`switch`-nya LENGKAP — `kind` baru tidak bisa lolos tanpa keputusan", () => {
+    /* Setiap `kind` wajib disebut, dan `tsc` menolak yang tidak. Keputusan
+       "tidak butuh gerbang" ditulis sebagai `return` beserta alasannya, bukan
+       sebagai ketiadaan baris. */
+    for (const kind of Object.keys(JOB_KINDS)) {
+      expect(gate, kind).toContain(`case "${kind}":`);
+    }
+  });
+
+  it("ekspor laporan memeriksa izin LAPORANNYA, bukan hanya `report.export`", () => {
+    /*
+     * `report.export` menjawab "boleh mengekspor laporan", bukan "boleh
+     * mengekspor laporan INI". Tanpa ini, pekerjaan atas Nilai Persediaan yang
+     * diterbitkan ketika modul Stok masih aktif tetap bisa diunduh SESUDAH
+     * modul itu dimatikan — melanggar justru aturan §4 yang menuntut izin
+     * diperiksa SAAT MENGUNDUH.
+     */
+    const i = gate.indexOf('case "report.export":');
+    const badan = gate.slice(i, gate.indexOf("case \"document.generate\":", i));
+    expect(badan).toContain("canEffective(user, report.permission)");
+    expect(badan).toContain("isExportable(report)");
+  });
+
+  it("muatan tanpa `reportId` DITOLAK, bukan dilewati gerbangnya", () => {
+    /* Baris yang tidak bisa diperiksa bukan baris yang bersih — aturan yang
+       sama dengan `vonisVersi` memulangkan `tak_terbaca` alih-alih `mutakhir`. */
+    const i = gate.indexOf('case "report.export":');
+    const badan = gate.slice(i, gate.indexOf("case \"document.generate\":", i));
+    expect(badan).toMatch(/typeof reportId !== "string"[\s\S]{0,40}return false/);
+  });
+
+  it("jenis yang belum punya gerbangnya TIDAK bisa diunduh", () => {
+    /* `document.generate` ada di kontrak tapi belum punya pemeriksaan
+       kepemilikan dokumennya. `false` sampai itu ditulis. */
+    const i = gate.indexOf('case "document.generate":');
+    const badan = gate.slice(i, gate.indexOf("case \"import.process\":", i));
+    expect(badan).toContain("return false");
+  });
+
+  it("muatannya TIDAK PERNAH dipulangkan ke pemanggil HTTP", () => {
+    /* Ia dibaca gerbang, lalu dibuang. Muatan memuat parameter laporan beserta
+       pilihan kolomnya — bukan angka, tapi juga bukan sesuatu yang perlu
+       dikirim balik. */
+    const i = rute.indexOf("return NextResponse.json(");
+    const sisa = rute.slice(i);
+    expect(sisa).not.toMatch(/job\.payload/);
   });
 });
 

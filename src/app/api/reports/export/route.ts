@@ -31,8 +31,15 @@
  */
 import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { canEffective } from "@/lib/authz-effective";
 import { readBoundedText } from "@/lib/request-body";
-import { EXPORT_MAX_BODY_BYTES, EXPORT_MAX_ROWS } from "@sai/core/export-limits";
+import {
+  EXPORT_MAX_BODY_BYTES,
+  EXPORT_MAX_ROWS,
+  EXPORT_QUEUE_HANDOFF_ROWS,
+} from "@sai/core/export-limits";
+import { publishJob } from "@sai/platform/job-queue";
+import { isExportable, reportById } from "@/lib/report-catalog";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
 import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
@@ -85,6 +92,79 @@ export async function POST(request: Request) {
   const payload: StatementPayload = parsed.data;
 
   const sheet = buildReportSheet(payload);
+
+  /*
+   * ── PENYERAHAN KE ANTREAN (tahap 1c, §5) ────────────────────────────────
+   *
+   * Di atas ambang penyerahan, ekspor TIDAK dirakit di sini. Sebabnya bukan
+   * ukuran berkasnya melainkan EVENT LOOP: perakitan ExcelJS sinkron dan
+   * menahan seluruh model baris sebagai objek JS, jadi satu ekspor besar
+   * menahan SETIAP permintaan lain di proses ini — termasuk halaman yang
+   * sedang dibuka orang lain. §5 menyebutnya tepat: kalau sebelas pengguna
+   * menekan "cetak laporan tahunan" bersamaan, antrean yang menahannya.
+   *
+   * ⚠ Yang diterbitkan PARAMETER, bukan muatan. `jobs` hidup di basis data
+   * KENDALI, dan kendali tidak memuat satu angka akuntansi pun — menaruh
+   * muatan laporan di sana membatalkan janji isolasi fisik #104 pada saat itu
+   * juga. Pekerjanya MENGHITUNG ULANG dari buku PT, dengan pembangun payload
+   * yang SAMA, jadi tidak ada implementasi kedua.
+   *
+   * ⚠ Karena itu penyerahan hanya mungkin bila pemanggil menyebut `?id=`
+   * laporannya. Yang tidak menyebutnya tetap dijawab 413 di bawah — sebuah
+   * muatan tanpa asal tidak bisa dihitung ulang siapa pun, dan menerbitkan
+   * pekerjaan yang pasti gagal lebih buruk daripada menolaknya sekarang.
+   */
+  if (sheet.rows.length > EXPORT_QUEUE_HANDOFF_ROWS) {
+    const url = new URL(request.url);
+    const report = reportById(url.searchParams.get("id") ?? "");
+
+    if (report && isExportable(report)) {
+      /* Gerbang KEDUA, sama seperti `/api/reports/payload` (#355):
+         `report.export` menjawab "boleh mengekspor laporan", bukan "boleh
+         mengekspor laporan INI". Diperiksa di sini DAN lagi saat mengunduh —
+         pekerjaan hidup berjam-jam, dan modul bisa dimatikan di antaranya. */
+      if (!(await canEffective(authz.session.user, report.permission))) {
+        const { t } = await getRequestI18n();
+        return NextResponse.json({ error: t("errors.notFound") }, { status: 404 });
+      }
+
+      /* Parameter laporan diambil dari query, BUKAN dari muatan: muatan sudah
+         berupa hasil, dan parameternya tidak bisa diturunkan kembali darinya. */
+      const params: Record<string, string> = {};
+      for (const [k, v] of url.searchParams) if (k !== "id" && v) params[k] = v;
+
+      const row = await publishJob({
+        kind: "report.export",
+        companyId: authz.companyId,
+        payload: { reportId: report.id, params },
+        /* TANPA `dedupeKey`: dua klik tombol ekspor memang dua pekerjaan —
+           pengguna yang mengklik lagi mengharapkan berkas baru, dan ekspor
+           tidak punya akibat yang perlu dijaga idempoten (§4). */
+      });
+      /*
+       * `row` null HANYA ketika `dedupeKey`-nya sudah ada, dan di atas tidak
+       * ada `dedupeKey` sama sekali — `ON CONFLICT (dedupe_key) DO NOTHING`
+       * tidak pernah menabrak untuk NULL, sebab NULL diizinkan berulang. Jadi
+       * cabang ini praktis tak terjangkau.
+       *
+       * Ia TIDAK melempar: ia JATUH KEMBALI ke jalur di bawah, yaitu perilaku
+       * persis sebelum tahap 1c — 413 bila di atas plafon, dirakit di sini
+       * bila tidak. Melempar akan menukar satu kemampuan yang hilang dengan
+       * satu galat 500 yang tidak dimengerti siapa pun, dan jalur mundurnya
+       * sudah ada di bawah tanpa satu baris tambahan.
+       */
+      if (row) {
+        /* 202: diterima, belum selesai. Kliennya menunggu di rute hasil, yang
+           menjawab 409 `job_not_done` sampai berkasnya ada — jadi tidak ada
+           rute status kedua yang bisa menyimpang dari rute unduhannya. */
+        return NextResponse.json(
+          { queued: true, jobId: row.id, kind: "report.export", rows: sheet.rows.length },
+          { status: 202 }
+        );
+      }
+    }
+  }
+
   if (sheet.rows.length > EXPORT_MAX_ROWS) {
     const { t, locale } = await getRequestI18n();
     const angka = new Intl.NumberFormat(locale);

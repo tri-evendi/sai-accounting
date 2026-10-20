@@ -61,6 +61,7 @@ import { Readable } from "node:stream";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { JOB_RESULT_PERMISSION, isKnownKind, resultFilename } from "@sai/core/job-result";
 import { jobForDownload } from "@sai/platform/job-queue";
+import { bolehAmbilHasil } from "@/lib/job-result-gate";
 import { resolveResultPath, resultSize } from "@sai/platform/job-result-store";
 import { contentTypeFor } from "@/lib/document-storage";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
@@ -129,6 +130,21 @@ export async function GET(
    * — pemeriksaan ini lapis kedua, bukan satu-satunya.
    */
   if (job.companyId === null || job.companyId !== authz.companyId) return tidakAda();
+
+  /*
+   * ── 4. GERBANG KEDUA: izin yang dibawa MUATANNYA ──────────────────────
+   *
+   * `JOB_RESULT_PERMISSION` menjawab "boleh mengunduh hasil JENIS ini". Itu
+   * tidak cukup, dan alasannya sudah tertulis di `/api/reports/payload` sejak
+   * #355: `report.export` hanya menjawab "boleh mengekspor laporan", bukan
+   * "boleh mengekspor laporan INI".
+   *
+   * Tanpa gerbang ini, pekerjaan atas Nilai Persediaan yang diterbitkan ketika
+   * modul Stok masih aktif tetap bisa diunduh SESUDAH modul itu dimatikan —
+   * melanggar justru aturan yang §4 tuntut. Pekerjaan hidup berjam-jam; modul
+   * dan peran berubah di antaranya.
+   */
+  if (!(await bolehAmbilHasil(job.kind, job.payload, authz.session.user))) return tidakAda();
 
   if (job.status !== "done" || job.resultRef === null) {
     /* Sudah lolos izin DAN perusahaan, jadi keadaannya kabar yang sah. */

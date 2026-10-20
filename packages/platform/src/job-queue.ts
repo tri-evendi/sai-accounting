@@ -345,10 +345,13 @@ export async function archiveDoneJobs(retentionDays: number = DONE_RETENTION_DAY
 /**
  * Baris pekerjaan untuk RUTE UNDUHAN — dan hanya sebanyak yang ia butuhkan.
  *
- * Kolomnya sempit dengan sengaja: muatan pekerjaan bisa memuat parameter
- * laporan beserta nama pelanggan, dan rute unduhan tidak punya satu alasan pun
- * untuk membacanya. Kolom yang tidak diambil adalah kolom yang tidak bisa
- * bocor ke jawaban HTTP karena seseorang menambahkan `...job` di masa depan.
+ * Kolomnya sempit dengan sengaja, dan `payload` yang IKUT punya satu pembaca
+ * yang disebut: gerbang kedua (`bolehAmbilHasil`). Yang TIDAK diambil —
+ * `last_error`, `claimed_by`, `attempts` — adalah kolom yang tidak bisa bocor
+ * ke jawaban HTTP karena seseorang menambahkan `...job` di masa depan.
+ *
+ * ⚠ `payload` TIDAK PERNAH dipulangkan ke pemanggil HTTP. Ia dibaca gerbang,
+ * lalu dibuang; dijaga `tests/job-result-authorization.test.ts`.
  */
 export interface JobForDownload {
   id: number;
@@ -356,6 +359,16 @@ export interface JobForDownload {
   status: JobStatus;
   companyId: number | null;
   resultRef: string | null;
+  /**
+   * Muatan pekerjaan — PARAMETER saja, tidak pernah angka.
+   *
+   * Dibutuhkan gerbang KEDUA di rute unduhan (`bolehAmbilHasil`): izin jenis
+   * menjawab "boleh mengunduh hasil jenis ini", bukan "boleh mengunduh laporan
+   * INI". Aman dibaca di sini karena `jobs` hidup di basis data kendali, dan
+   * kendali tidak memuat satu angka akuntansi pun — muatan membawa id laporan
+   * dan periodenya, lalu pekerjanya yang menghitung dari buku PT.
+   */
+  payload: unknown;
 }
 
 /**
@@ -369,7 +382,8 @@ export interface JobForDownload {
  */
 export async function jobForDownload(id: number): Promise<JobForDownload | null> {
   const rows = await controlDb.$queryRaw<JobForDownload[]>`
-    SELECT id, kind, status, company_id AS "companyId", result_ref AS "resultRef"
+    SELECT id, kind, status, company_id AS "companyId", result_ref AS "resultRef",
+           payload
       FROM jobs WHERE id = ${id}`;
   return rows[0] ?? null;
 }

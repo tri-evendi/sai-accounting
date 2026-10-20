@@ -26,6 +26,7 @@ import { JOB_LANES, KINDS_BY_LANE } from "@sai/core/generated/job-kinds";
 const akar = process.cwd();
 const RUNNER = readFileSync(join(akar, "workers", "runner.ts"), "utf8");
 const LEDGER = readFileSync(join(akar, "workers", "ledger.ts"), "utf8");
+const KONTEKS = readFileSync(join(akar, "workers", "jalur-perusahaan.ts"), "utf8");
 
 /**
  * Buang komentar: beberapa larangan di bawah DISEBUT di komentarnya sendiri,
@@ -146,19 +147,35 @@ describe("jalur `ledger`: pintu posting tetap tunggal (I-2)", () => {
     }
   });
 
+  /*
+   * ⚠ Tiga penjaga di bawah menjaga sifat yang PINDAH, bukan sifat yang baru.
+   *
+   * Sampai tahap 1c langkah "masuk ke konteks perusahaan" ditulis di dalam
+   * `workers/ledger.ts`. Tahap 1c menambah jalur kedua yang membutuhkannya
+   * persis sama (`interactive`), jadi ia diangkat ke `workers/jalur-perusahaan.ts`
+   * — dua salinan akan menyimpang pada aturan multi-perusahaan yang paling
+   * mahal bila dilanggar.
+   *
+   * Yang dijaga karena itu DUA hal sekaligus: bahwa pembantunya memuat
+   * sifatnya, DAN bahwa jalur `ledger` memang memakainya. Menjaga yang pertama
+   * saja akan meluluskan `ledger.ts` yang diam-diam berhenti memanggilnya.
+   */
   it("WAJIB `runWithCompany`, dan konteks yang hilang MELEMPAR", () => {
     /* Jatuh ke basis data bawaan berarti transaksi PT A tertulis ke buku PT B
        tanpa galat dan tanpa jejak (#104). */
-    expect(LEDGER).toContain("runWithCompany");
-    expect(LEDGER).toMatch(/tidak ada di registry kendali[\s\S]{0,200}melempar/);
+    expect(KONTEKS).toContain("runWithCompany");
+    expect(KONTEKS).toMatch(/tidak ada di registry kendali[\s\S]{0,200}melempar/);
+    expect(LEDGER, "jalur ledger berhenti memakai pembantunya").toContain(
+      "dalamKonteksPerusahaan("
+    );
   });
 
   it("`slug`/`databaseName` dibaca dari registry kendali, bukan dari payload", () => {
     // Payload datang dari penerbit dan bisa basi: perusahaan yang slug-nya
     // berubah tidak boleh menentukan ke basis data mana pekerjaan ini menulis.
-    expect(LEDGER).toContain("controlDb.company.findUnique");
-    const i = LEDGER.indexOf("runWithCompany(");
-    const pakai = LEDGER.slice(i, i + 300);
+    expect(KONTEKS).toContain("controlDb.company.findUnique");
+    const i = KONTEKS.indexOf("runWithCompany(");
+    const pakai = KONTEKS.slice(i, i + 300);
     expect(pakai).toContain("company.databaseName");
     expect(pakai).not.toMatch(/p\.databaseName|payload\.databaseName/);
   });
@@ -172,6 +189,12 @@ describe("jalur `ledger`: pintu posting tetap tunggal (I-2)", () => {
   });
 
   it("perusahaan nonaktif tidak diposting", () => {
-    expect(LEDGER).toMatch(/isActive[\s\S]{0,200}nonaktif/);
+    /* Nonaktif berarti "tidak bisa dibuka", dan memposting ke buku yang tidak
+       bisa dibuka adalah angka yang tidak akan dilihat siapa pun sampai ia
+       dibuka lagi. Jalur `ledger` meneruskan `true`; jalur `interactive` yang
+       hanya MEMBACA meneruskan `false`, dan bedanya diuji di
+       `tests/jalur-interactive.test.ts`. */
+    expect(KONTEKS).toMatch(/tolakNonaktif[\s\S]{0,200}nonaktif/);
+    expect(LEDGER).toMatch(/dalamKonteksPerusahaan\(companyId, true,/);
   });
 });

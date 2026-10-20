@@ -24,10 +24,8 @@
  * mulai disalin ke sini, dua implementasi aturan akuntansi akan hidup
  * berdampingan — kelas kegagalan yang I-2 ada untuk mencegah.
  */
-import { controlDb } from "@sai/core/control-db";
-
 import { runLane, type JobContext } from "./runner";
-import { runWithCompany } from "../src/lib/company-context";
+import { dalamKonteksPerusahaan } from "./jalur-perusahaan";
 import { runRecurringForCompany } from "../src/lib/recurring-run";
 
 /**
@@ -49,31 +47,13 @@ async function dokumenBerulang(ctx: JobContext): Promise<string | null> {
   const today = p.today ? new Date(p.today) : new Date();
   if (Number.isNaN(today.getTime())) throw new Error(`payload.today bukan tanggal: ${p.today}`);
 
-  /* Registry perusahaan ada di basis data KENDALI; `slug` dan `databaseName`
-     dibaca dari sana, tidak pernah dari payload. Payload datang dari penerbit
-     dan bisa basi — perusahaan yang slug-nya berubah atau yang sudah dihapus
-     tidak boleh menentukan ke basis data mana pekerjaan ini menulis. */
-  const company = await controlDb.company.findUnique({
-    where: { id: companyId },
-    select: { id: true, slug: true, databaseName: true, isActive: true },
-  });
-  if (!company) {
-    throw new Error(
-      `perusahaan #${companyId} tidak ada di registry kendali — pekerjaan ini ` +
-        "TIDAK dijalankan. Konteks perusahaan yang hilang harus melempar, dan " +
-        "tidak pernah jatuh ke basis data bawaan (#104)."
-    );
-  }
-  if (!company.isActive) {
-    throw new Error(`perusahaan #${companyId} (${company.slug}) nonaktif — tidak diposting`);
-  }
-
-  /* `runWithCompany` WAJIB: konteks perusahaan yang hilang harus MELEMPAR, dan
-     tidak pernah jatuh ke basis data bawaan — jatuh ke bawaan berarti transaksi
-     PT A tertulis ke buku PT B tanpa galat dan tanpa jejak (#104). */
-  const hasil = await runWithCompany(
-    { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
-    () => runRecurringForCompany(today)
+  /* `dalamKonteksPerusahaan` membaca registry dari basis data KENDALI dan
+     MELEMPAR bila perusahaannya tidak ada — konteks yang hilang tidak pernah
+     jatuh ke basis data bawaan (#104). `true` = perusahaan nonaktif menolak:
+     jalur ini MENULIS buku, dan memposting ke buku yang tidak bisa dibuka
+     adalah angka yang tidak akan dilihat siapa pun sampai ia dibuka lagi. */
+  const hasil = await dalamKonteksPerusahaan(companyId, true, () =>
+    runRecurringForCompany(today)
   );
 
   const dibuat = hasil.filter((o) => o.status === "created").length;

@@ -17,6 +17,7 @@
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { apiFetch } from "@/lib/api-fetch";
+import { parseTenantPath } from "@sai/core/tenant-routes";
 // Nama dokumennya datang dari penentu bentuk laporan (#323). Ia statis dengan
 // sengaja: `statement-layout.ts` tidak mengimpor apa pun, jadi ia tak menyeret
 // jsPDF — yang tetap dimuat malas di `downloadStatementPdf()` di bawah.
@@ -137,12 +138,44 @@ export async function simpanBlob(
  * Workbook disusun server (ExcelJS pustaka Node) dari payload yang SAMA dengan
  * layar dan PDF-nya, jadi ketiganya tak bisa berbeda angka.
  */
-export async function downloadStatementWorkbook(payload: StatementPayload): Promise<void> {
-  const res = await apiFetch("/api/reports/export", {
+export async function downloadStatementWorkbook(
+  payload: StatementPayload,
+  sumber?: SumberLaporan,
+  lapor?: (persen: number) => void
+): Promise<void> {
+  const query = new URLSearchParams();
+  if (sumber) {
+    query.set("id", sumber.reportId);
+    for (const [k, v] of Object.entries(sumber.params)) if (v) query.set(k, v);
+  }
+  const alamat = query.size > 0 ? `/api/reports/export?${query.toString()}` : "/api/reports/export";
+
+  const res = await apiFetch(alamat, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
+  /*
+   * ── 202: DISERAHKAN KE ANTREAN (tahap 1c, §5) ───────────────────────────
+   *
+   * Ekspor di atas ambang penyerahan tidak dirakit di dalam permintaan ini —
+   * perakitan ExcelJS sinkron dan akan menahan setiap permintaan lain di
+   * proses yang sama. Jawabannya menyebut id pekerjaannya, dan kita menunggu
+   * DI RUTE HASILNYA.
+   *
+   * ⚠ Menunggu di rute hasil, bukan di sebuah rute status: rute hasil sudah
+   * menjawab 409 `job_not_done` beserta statusnya sampai berkasnya ada. Rute
+   * status kedua akan punya penjaga izinnya sendiri yang bisa menyimpang dari
+   * penjaga unduhannya — dan yang menyimpang di antara keduanya adalah
+   * kebocoran.
+   */
+  if (res.status === 202) {
+    const antre = (await res.json()) as { jobId: number; kind: string };
+    await unduhSaatSiap(antre.jobId, antre.kind, lapor);
+    return;
+  }
+
   if (!res.ok) throw new Error(`Export failed: ${res.status}`);
 
   await simpanBlob(
@@ -150,4 +183,82 @@ export async function downloadStatementWorkbook(payload: StatementPayload): Prom
     res.headers.get("Content-Disposition"),
     `Laporan_${stamp()}.xlsx`
   );
+}
+
+/** Asal sebuah laporan — apa yang dibutuhkan pekerja untuk MENGHITUNGNYA ULANG. */
+export interface SumberLaporan {
+  reportId: string;
+  params: Record<string, string | undefined>;
+}
+
+/** Jeda antar pemeriksaan, dan batas menunggunya. */
+const JEDA_MS = 2_000;
+const BATAS_TUNGGU_MS = 10 * 60 * 1000;
+
+/**
+ * Tunggu sampai hasil pekerjaan siap, lalu unduh.
+ *
+ * ══ MENUNGGU DI RUTE HASIL — SATU PINTU, SATU PENJAGA ══════════════════════
+ * Rute hasil menjawab 409 `job_not_done` beserta statusnya selama pekerjaannya
+ * belum selesai, dan 200 beserta byte-nya begitu selesai. Jadi menunggu dan
+ * mengunduh adalah alamat yang SAMA — dan izin yang memutuskan keduanya juga
+ * sama persis, tidak bisa menyimpang.
+ *
+ * ⚠ BATAS WAKTU, bukan menunggu selamanya: tab yang memeriksa setiap dua detik
+ * tanpa henti adalah tab yang masih memeriksa besok pagi. Sepuluh menit jauh
+ * di atas ekspor terbesar yang masuk akal, dan sesudahnya pekerjaannya TIDAK
+ * dibatalkan — ia tetap berjalan, dan berkasnya tetap bisa diunduh nanti.
+ * Yang berakhir hanya penantian ini.
+ *
+ * `dead` MENGHENTIKAN penantian: pekerjaan yang sudah mati tidak akan menjadi
+ * hidup di pemeriksaan berikutnya, dan terus memeriksa hanya menunda kabar
+ * buruk yang sudah pasti.
+ */
+async function unduhSaatSiap(
+  jobId: number,
+  kind: string,
+  lapor?: (persen: number) => void
+): Promise<void> {
+  const lingkup = parseTenantPath(window.location.pathname);
+  if (!lingkup) {
+    throw new Error(
+      "alamat ini bukan jalur bertenant — hasil pekerjaan selalu milik satu PT, " +
+        "dan alamat unduhannya menuntut sepasang slug (#489)"
+    );
+  }
+  const href = `/api/t/${lingkup.tenantSlug}/${lingkup.companySlug}/jobs/${encodeURIComponent(kind)}/${jobId}/result`;
+
+  const batas = Date.now() + BATAS_TUNGGU_MS;
+  for (;;) {
+    const res = await apiFetch(href);
+
+    if (res.ok) {
+      await simpanBlob(
+        await res.blob(),
+        res.headers.get("Content-Disposition"),
+        `Laporan_${stamp()}.xlsx`
+      );
+      return;
+    }
+
+    if (res.status !== 409) {
+      /* 404 = bukan milik PT ini, izinnya dicabut, atau berkasnya hilang.
+         Apa pun sebabnya, ia tidak akan berubah dengan menunggu. */
+      throw new Error(`Hasil tidak bisa diambil: ${res.status}`);
+    }
+
+    const keadaan = (await res.json()) as { status?: string };
+    if (keadaan.status === "dead") {
+      throw new Error("Pekerjaan ekspor gagal — tidak ada berkas yang bisa diunduh.");
+    }
+
+    if (Date.now() > batas) {
+      throw new Error(
+        "Ekspornya masih dikerjakan. Berkasnya tidak hilang — coba unduh lagi sebentar lagi."
+      );
+    }
+
+    lapor?.(keadaan.status === "claimed" ? 50 : 10);
+    await new Promise((r) => setTimeout(r, JEDA_MS));
+  }
 }

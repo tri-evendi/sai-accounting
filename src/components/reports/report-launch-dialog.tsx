@@ -192,9 +192,17 @@ export function ReportLaunchDialog({
   async function download(format: "pdf" | "xlsx") {
     setBusy(format);
     try {
-      const payload = await fetchReportPayload(report.id, queryParams());
+      const params = queryParams();
+      const payload = await fetchReportPayload(report.id, params);
       if (format === "pdf") await downloadStatementPdf(payload);
-      else await downloadStatementWorkbook(payload);
+      else {
+        /* Asalnya diserahkan: di atas ambang penyerahan, rutenya MENERBITKAN
+           pekerjaan alih-alih merakit lembar sebar di dalam permintaan — dan
+           pekerjanya menghitung ulang dari `reportId` + parameter ini, sebab
+           muatan laporan tidak boleh menginap di basis data kendali. Tanpa
+           asalnya, ekspor besar tetap dijawab 413 seperti sebelumnya. */
+        await downloadStatementWorkbook(payload, { reportId: report.id, params });
+      }
       toast(format === "pdf" ? t("reports.dialog.pdfDownloaded") : t("excel.downloaded"));
       setOpen(false);
     } catch (err) {

@@ -293,8 +293,16 @@ server. That box has ~3.6 GB of RAM shared with five other apps (as of Oct
 the health probes answered 503), and two concurrent builds have produced an
 OOM (exit 137).
 
-1. Wait until every `publish` job of the release commit is green (four
-   images: `sai-accounting`, `-operator`, `-migrator`, `-backup`).
+1. Wait until every `publish` job of the release commit is green (**5 images**:
+   `sai-accounting`, `-operator`, `-migrator`, `-backup`, `-integrator`).
+
+   > `-integrator` was added to the matrix on 20 Oct 2026, and it was overdue:
+   > `svc-tenant` had referenced that image since stage 1b while nothing ever
+   > built it, so `docker compose pull svc-tenant` would have failed with
+   > `manifest unknown`. The count in this line is now guarded
+   > (`tests/image-compose-sepadan.test.ts`) — a stale number here makes someone
+   > wait for four images and then deploy with the fifth missing, which is the
+   > exact failure the guard exists to prevent.
 2. Pull:
    ```bash
    git pull                                  # compose file + migrations only

@@ -92,8 +92,8 @@ model Tenant {
   users            User[]
   memberships      TenantMembership[]
   deletionRequests TenantDeletionRequest[]
-  invitations Invitation[]
-  mailSetting TenantMailSetting?
+  invitations      Invitation[]
+  mailSetting      TenantMailSetting?
 
   @@index([status])
   @@map("tenants")
@@ -537,8 +537,8 @@ model ApiToken {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
 
   @@index([companyId])
   @@index([revokedAt])
@@ -591,7 +591,7 @@ model Notification {
   readAt DateTime? @map("read_at")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([userId, kind, dedupeKey])
   @@index([userId, readAt])
@@ -818,4 +818,246 @@ model OperatorAccount {
 
   @@index([isActive])
   @@map("operator_accounts")
+}
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// JEJAK PUTARAN — penjadwal, kesesuaian data, cadangan
+///
+/// ══ KENAPA DI KENDALI, BUKAN `sai_platform` ════════════════════════════════
+/// Ketiga tabel ini dulu tinggal di platform karena layar pembacanya konsol
+/// operator. Itu keliru, dan keliru dengan cara yang baru terlihat pada profil
+/// on-premise: `sai_platform` TIDAK DIPASANG di sana, sementara penjadwal,
+/// pemeriksa kesesuaian, dan cadangan tetap BERJALAN. Akibatnya `/api/health`
+/// tidak bisa menjawab "apakah cadangan semalam berhasil" — tepat pada
+/// pemasangan yang customer-nya sendiri memegang cadangan itu, dan tepat pada
+/// pertanyaan yang paling mahal untuk tidak terjawab.
+///
+/// Garis doktrin #137 bukan "siapa yang melihat layarnya", melainkan **apakah
+/// penagihan yang mati boleh mematikannya**. Jejak putaran menggambarkan
+/// operasi yang terjadi di KEDUA profil; penagihan tidak. Alasan yang sama
+/// menempatkan `OperatorAccount` di sini.
+///
+/// Dua akibat lain yang ikut benar: tabel `jobs` (rancangan §4) akan tinggal di
+/// kendali juga, jadi "pekerjaan" dan "jejak pekerjaan" berada di satu basis
+/// data yang sama dan ikut satu cadangan yang sama — dan `prune-run-trails`
+/// tidak lagi menuntut basis data penagihan hidup untuk memangkas jejak.
+///
+/// ⚠ Ketiganya TANPA relasi ke model lain, dan itu disengaja: jejak putaran
+/// adalah catatan operasional yang harus tetap bisa dibaca ketika yang
+/// dirujuknya sudah dihapus.
+/// ═══════════════════════════════════════════════════════════════════════════
+
+/// Satu baris per putaran penjadwal (#140).
+model SchedulerRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | error — `error` = ada butir yang menuntut tindakan orang
+  /// (rinciannya di `details.errors`). String + union TS, konvensi
+  /// docs/DATABASE.md.
+  status String @db.VarChar(10)
+
+  invoicesIssued Int @default(0) @map("invoices_issued")
+  remindersSent  Int @default(0) @map("reminders_sent")
+  statusChanges  Int @default(0) @map("status_changes")
+  adoptions      Int @default(0)
+  errorCount     Int @default(0) @map("error_count")
+
+  /// JSON `{issued, reminders, transitions, adoptions, errors}` — masing-masing
+  /// daftar string BARIS LAPORAN (bukan struktur yang di-query), persis kalimat
+  /// yang dulu hanya tercetak di stdout. Dibiarkan Text: isi lama tidak perlu
+  /// bermigrasi saat bentuk barisnya berubah.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([startedAt])
+  @@map("scheduler_runs")
+}
+
+/// Satu baris per sapuan kesesuaian data (#374).
+model ConformanceRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | findings | error — TIGA nilai, dan bedanya menentukan:
+  /// `ok` = berjalan & bersih; `findings` = berjalan & menemukan sesuatu (bukan
+  /// kegagalan layanan); `error` = ada buku yang GAGAL diperiksa, dan buku yang
+  /// tidak terperiksa bukan buku yang bersih. Konvensi String + union TS.
+  status String @db.VarChar(12)
+
+  /// Berapa buku disapu, dan berapa yang gagal diperiksa. Yang pertama membuat
+  /// "apakah sapuannya melewatkan buku baru?" bisa dijawab tanpa menebak.
+  companiesChecked Int @default(0) @map("companies_checked")
+  companiesFailed  Int @default(0) @map("companies_failed")
+
+  /// Total baris temuan di seluruh buku. Nol = bersih.
+  findingCount Int @default(0) @map("finding_count")
+
+  /// JSON `{findings, failures}` — daftar baris laporan, persis kalimat yang
+  /// dulu hanya tercetak ke stdout. Text: isi lama tidak perlu bermigrasi saat
+  /// bentuk barisnya berubah (alasan yang sama dengan `SchedulerRun.details`).
+  ///
+  /// Memuat LABEL temuan, bukan nilai uang dan bukan baris datanya.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("conformance_runs")
+}
+
+/// Satu baris per putaran cadangan (#374).
+model BackupRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | local | error — konvensi String + union TS, lihat docs/DATABASE.md.
+  ///
+  /// `local` (12 Okt 2026): artefak terenkripsi DIBUAT tapi tetap di mesin ini,
+  /// sebab `BACKUP_S3_BUCKET` belum disetel. Sengaja BUKAN `ok` — `backupHealth`
+  /// mencari keberhasilan dengan `where: { status: "ok" }`, jadi nilai terpisah
+  /// inilah yang mencegah salinan lokal mengisi `lastSuccessAt`.
+  status String @db.VarChar(10)
+
+  /// Sebab kegagalan, apa adanya dari `backup.sh`. Null saat berhasil.
+  ///
+  /// TIDAK memuat kredensial: yang ditulis skripnya adalah kalimat sebab
+  /// ("BACKUP_ENCRYPTION_KEY belum diset"), bukan nilainya.
+  error String? @db.Text
+
+  /// Nama objek yang dikirim, saat berhasil. Bukti yang bisa dicari kembali.
+  artifact String? @db.VarChar(255)
+
+  /// Ukuran terkirim dalam byte. Cadangan yang "berhasil" tapi 0 byte adalah
+  /// kegagalan yang paling meyakinkan bentuknya.
+  sizeBytes BigInt? @map("size_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@index([status, finishedAt])
+  @@map("backup_runs")
+}
+
+/// ═══════════════════════════════════════════════════════════════════════════
+/// ANTREAN PEKERJAAN (rancangan §4) — satu baris = satu pekerjaan
+///
+/// ══ KENAPA DI KENDALI, BUKAN BASIS DATA BARU ═══════════════════════════════
+/// Aplikasi sudah punya koneksi ke sini (2 dianggarkan), dan `tenant_id` serta
+/// `company_id` yang dirujuk baris ini juga hidup di sini. Basis data ke-20
+/// berarti satu pasangan pool, satu entri migration, dan satu objek dump lagi
+/// demi nol manfaat. `sai_platform` gugur karena doktrin #137 melarangnya dari
+/// jalur panas — dan membaca kemajuan pekerjaan ADALAH jalur panas.
+///
+/// ⚠ Harganya nyata: kendali juga melayani AUTENTIKASI, dan antrean
+/// ber-`SKIP LOCKED` membuat baris mati lebih cepat daripada tabel lain di
+/// sini. Pemicu memindahkannya ke basis datanya sendiri: latensi p95 kueri
+/// autentikasi naik TERUKUR seiring throughput antrean. Sebelum itu terukur,
+/// memisahkannya adalah ongkos tanpa manfaat.
+///
+/// ══ KENAPA POSTGRES, BUKAN BROKER ══════════════════════════════════════════
+/// Broker terpisah mengembalikan masalah yang sudah selesai: commit berhasil,
+/// publish gagal, dan tidak ada yang tahu apakah mengulang memperbaiki atau
+/// menduplikasi. Untuk buku besar itu kelas kegagalan yang tidak boleh ada.
+///
+/// ══ TANPA LEADER ELECTION ══════════════════════════════════════════════════
+/// Penerbitan idempoten lewat `dedupeKey` UNIK: denyut yang berjalan dua kali
+/// menabrak constraint sebelum apa pun terjadi. Itu lebih sederhana DAN lebih
+/// kuat daripada pemilihan pemimpin, yang punya mode gagalnya sendiri.
+///
+/// Indeks yang menentukan ditulis TANGAN di migration kendali 0006 — Prisma
+/// tidak bisa menyatakan *partial index*, dan tanpa predikat `status =
+/// 'queued'` pengambilan melambat seiring antrean tumbuh.
+/// ═══════════════════════════════════════════════════════════════════════════
+model Job {
+  id Int @id @default(autoincrement())
+
+  /// `report.export`, `tenant.backup`, … — kosakatanya di `contract/kinds.yaml`,
+  /// dan tipenya dibangkitkan (`@sai/core/generated/job-kinds`). TIDAK ada CHECK
+  /// di DB: kosakatanya berubah lewat kontrak, dan constraint yang harus ikut
+  /// setiap penambahan `kind` adalah migration yang pasti terlupakan.
+  kind String @db.VarChar(40)
+
+  /// Keduanya BOLEH null, dan artinya bertingkat:
+  /// `tenantId` null = pekerjaan tingkat PEMASANGAN (mis. `schedule.tick`);
+  /// `companyId` null = pekerjaan tingkat TENANT (mis. ekspor seluruh tenant).
+  /// Bukan FK: pekerjaan harus tetap terbaca setelah yang dirujuknya dihapus —
+  /// dan jejak pekerjaan yang hilang bersama tenantnya adalah jejak yang tidak
+  /// bisa menjawab "apa yang terjadi sebelum dihapus".
+  tenantId  Int? @map("tenant_id")
+  companyId Int? @map("company_id")
+
+  /// KECIL dengan sengaja: parameter, bukan isi. Satu ekspor menyimpan rentang
+  /// tanggal dan id laporan — bukan barisnya. Isi besar masuk penyimpanan objek
+  /// dan yang tercatat di sini hanya kuncinya (`resultRef`).
+  payload Json
+
+  /// `queued` · `claimed` · `done` · `failed` · `dead` — lihat `contract/`.
+  /// `failed` BUKAN akhir: ia menunggu percobaan berikutnya. `dead` yang akhir.
+  status String @default("queued") @db.VarChar(10)
+
+  /// Penerbitan dua kali menabrak constraint, bukan menghasilkan dua pekerjaan.
+  /// NULL diizinkan dan berarti "boleh berulang" — Postgres membolehkan banyak
+  /// NULL pada kolom unik, dan itu persis yang dibutuhkan pekerjaan demi
+  /// kenyamanan pengguna: menekan tombol ekspor dua kali memang dua pekerjaan.
+  dedupeKey String? @unique @map("dedupe_key") @db.VarChar(200)
+
+  attempts    Int @default(0)
+  maxAttempts Int @default(3) @map("max_attempts")
+
+  /// Penundaan & *backoff* eksponensial. Pengambilan menuntut `runAfter <= now()`.
+  runAfter DateTime @default(now()) @map("run_after")
+
+  /// `claimedAt` DIPERBARUI BERKALA oleh pekerja selama bekerja (*lease* yang
+  /// diperpanjang), bukan disetel sekali saat klaim. Ambang tetap saja salah:
+  /// ekspor 30 menit melewati ambang mana pun yang masuk akal untuk mendeteksi
+  /// pekerja mati, lalu diklaim pekerja kedua SEMENTARA yang pertama masih
+  /// berjalan — dan untuk `tenant.backup` itu dua dump menulis ke satu kunci
+  /// objek.
+  claimedAt DateTime? @map("claimed_at")
+  claimedBy String?   @map("claimed_by") @db.VarChar(100)
+
+  /// Kegagalan adalah isi paling berharga di tabel ini, jadi ia tidak pernah
+  /// ditimpa menjadi kosong saat percobaan berikutnya dimulai.
+  lastError String? @map("last_error") @db.Text
+
+  /// KUNCI OBJEK, bukan isinya — dan BUKAN kapabilitas. Memegang kuncinya
+  /// bukan izin untuk membacanya: penyimpanan objek privat, unduhan lewat rute
+  /// aplikasi, dan izin diperiksa SAAT MENGUNDUH (pekerjaan hidup berjam-jam;
+  /// orang yang aksesnya dicabut di antaranya tidak boleh tetap menerima
+  /// hasilnya).
+  resultRef String? @map("result_ref") @db.VarChar(500)
+
+  /// Urutan DALAM satu jalur. Besar lebih dulu.
+  priority Int @default(0)
+
+  /// Pembatalan: diminta, bukan dipaksakan. Pekerja memeriksanya di antara
+  /// langkah — membunuh proses di tengah tulisan adalah cara menghasilkan
+  /// keadaan separuh.
+  cancelRequested Boolean @default(false) @map("cancel_requested")
+
+  /// 0–100, untuk ditampilkan. Tidak pernah dipakai mengambil keputusan.
+  progress Int @default(0)
+
+  /// Diisi saat `done`/`dead` — dasar pengarsipan dan metrik durasi.
+  finishedAt DateTime? @map("finished_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status, kind])
+  @@index([tenantId, companyId, status])
+  @@index([finishedAt])
+  @@map("jobs")
 }

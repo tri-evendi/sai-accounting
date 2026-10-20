@@ -1,4 +1,4 @@
-# Audit Kesiapan Rilis Umum — Perjalanan Pelanggan Ujung-ke-Ujung
+# Audit Kesiapan Rilis Umum — Perjalanan Customer Ujung-ke-Ujung
 
 > **Arsip: snapshot bertanggal 15 Agustus 2026.** Isinya bukan keadaan sekarang
 > dan tidak boleh dijadikan dasar tindakan. Dokumen ini disimpan sebagai
@@ -39,12 +39,12 @@ usaha yang dikelola sendiri, ini sudah siap dan memang sudah jalan.
 Untuk **rilis umum** — orang asing mendaftar sendiri, membawa data lamanya,
 membayar, dan menuntut layanan — ia **belum siap**, dan yang menghalangi bukan
 kualitas kode melainkan **tiga lubang yang bentuknya sama**: hal-hal yang
-selama ini benar karena hanya ada satu pelanggan yang saling kenal.
+selama ini benar karena hanya ada satu customer yang saling kenal.
 
 | Lubang | Inti |
 |---|---|
 | **Isolasi yang belum lengkap** | Buku besar terisolasi sempurna; **berkas unggahan dan jejak audit tidak** — keduanya hidup di luar basis data PT, di satu direktori bersama. |
-| **Pintu masuk data yang belum ada** | Pelanggan baru bisa membuat buku kosong, tapi tidak bisa **memindahkan bukunya yang lama** ke dalamnya. Saldo awal yang tersedia tidak cukup untuk perusahaan yang sudah berjalan. |
+| **Pintu masuk data yang belum ada** | Customer baru bisa membuat buku kosong, tapi tidak bisa **memindahkan bukunya yang lama** ke dalamnya. Saldo awal yang tersedia tidak cukup untuk perusahaan yang sudah berjalan. |
 | **Operasi yang masih manual** | Tanpa backup otomatis, tanpa pemantauan, tanpa restore yang pernah dilatih, dan dengan scheduler langganan yang bergantung pada cron yang dipasang tangan. |
 
 Rekomendasi: **jangan buka pendaftaran umum** sebelum P0 di bawah tuntas.
@@ -129,10 +129,10 @@ Neraca dan Neraca Saldo benar. Tetapi:
 > buku besar pembantu Piutang/Utang **membaca dokumen sumber** (faktur/
 > pembelian), bukan baris jurnal.
 
-Konsekuensinya di hari pertama pelanggan baru: **umur piutang kosong**
+Konsekuensinya di hari pertama customer baru: **umur piutang kosong**
 walaupun neraca menunjukkan piutang Rp 2 miliar, dan **pembayaran atas faktur
 lama tidak bisa dicatat** karena fakturnya tidak ada sebagai dokumen. Bagi
-perusahaan yang pindah dari Accurate/Excel — yaitu setiap pelanggan rilis umum
+perusahaan yang pindah dari Accurate/Excel — yaitu setiap customer rilis umum
 — ini bukan ketidaknyamanan, ini jalan buntu.
 
 **Perbaikan.** Satu modul **Impor Data Awal** (lihat §4.1), yang untuk AR/AP
@@ -204,7 +204,7 @@ berbunyi *"Back up both with your server backups."* Direktori `backups/` berisi
 tiga dump manual, yang termuda 28 Juli 2026.
 
 Dengan satu basis data per PT, jumlah objek yang harus dicadangkan **tumbuh
-seiring jumlah pelanggan** — dan dua di antaranya bahkan bukan basis data:
+seiring jumlah customer** — dan dua di antaranya bahkan bukan basis data:
 `public/uploads` dan `data/audit`. Menjual langganan atas pembukuan yang wajib
 disimpan sepuluh tahun (UU KUP) tanpa backup otomatis dan tanpa satu pun
 restore yang pernah dibuktikan adalah risiko yang tidak sepadan.
@@ -222,7 +222,7 @@ memeriksa satu pun basis data PT, dan tidak memeriksa apakah scheduler masih
 hidup.
 
 Akibatnya untuk rilis umum: kegagalan pertama yang diketahui adalah kegagalan
-yang **dilaporkan pelanggan**. Verifikasi email yang gagal terkirim
+yang **dilaporkan customer**. Verifikasi email yang gagal terkirim
 (`api/auth/register` menelan error-nya ke `console.error` secara sengaja) tidak
 terlihat oleh siapa pun sampai ada yang mengeluh tidak bisa masuk.
 
@@ -236,7 +236,7 @@ terlihat oleh siapa pun sampai ada yang mengeluh tidak bisa masuk.
 >
 > ⚠ **Cakupannya melebar saat dikerjakan, dan temuan barunya lebih berat daripada F-6 sendiri.** Delapan permukaan membaca alamat klien dengan `x-forwarded-for.split(",")[0]` — entri paling KIRI, yang justru bisa diketik klien. Lima di antaranya adalah kunci pembatas laju **per-IP endpoint publik** yang dibangun #138 (`/register`, `/forgot-password`, `/reset-password`, verifikasi surel, penerimaan undangan), satu formulir kontak pendaratan, dan dua jejak audit.
 >
-> Artinya seluruh pembatas laju per-IP yang selama ini dianggap kokoh **bisa dilewati dengan satu header**: satu nilai acak per permintaan, dan setiap permintaan tampak datang dari alamat baru. Jejak auditnya pun mencatat alamat pilihan penyerang sebagai fakta. Logika pembacaan yang benar sudah ada dan sudah teruji sejak #162 — ia hanya tinggal di `lib/operator/plane.ts` dan tidak pernah dipakai plane pelanggan.
+> Artinya seluruh pembatas laju per-IP yang selama ini dianggap kokoh **bisa dilewati dengan satu header**: satu nilai acak per permintaan, dan setiap permintaan tampak datang dari alamat baru. Jejak auditnya pun mencatat alamat pilihan penyerang sebagai fakta. Logika pembacaan yang benar sudah ada dan sudah teruji sejak #162 — ia hanya tinggal di `lib/operator/plane.ts` dan tidak pernah dipakai plane customer.
 
 `lib/rate-limit.ts:5` menyimpan hitungan di `Map` proses; `lib/auth.ts:56`
 memakainya dengan kunci `login:<pengenal>`. Tiga akibat: hitungannya **hilang
@@ -340,8 +340,8 @@ keberatan penjualan pertama.
 | Kode | Temuan | Bukti |
 |---|---|---|
 | **F-11** | Ekspor e-Faktur **bukan** reproduksi byte-exact skema impor DJP/Coretax — dinyatakan jujur di kepala berkasnya sendiri, dan harus divalidasi terhadap skema berjalan sebelum dipakai melapor. Untuk rilis umum ini harus jadi janji yang **dinyatakan di UI**, atau dipenuhi. | `lib/efaktur.ts:17–27` |
-| **F-12** ([#368](https://github.com/tri-evendi/sai-accounting/issues/368)) | **SELESAI.** PPN adalah **konstanta kompilasi 11%**, tanpa efektif-tanggal dan tanpa penanda PKP/non-PKP per PT. Perubahan tarif menuntut redeploy; PT non-PKP tetap mendapat bawaan 11%. Dokumen tersimpan membawa `taxRate` sendiri, jadi riwayat aman — yang tidak aman adalah **bawaannya**. → Kini tabel `tax_rates` ber-efektif-tanggal + kolom `company_settings.is_pkp`, dikelola di **Pengaturan → PPN** dan ditanyakan wisaya penyiapan; setiap formulir dokumen memakai tarif perusahaan **pada tanggal dokumen itu**. Konstantanya tetap ada — ia masih benar sebagai benih perusahaan baru dan sebagai PPN tingkat **platform** (tagihan langganan kami sendiri) — dan `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali. | `lib/tax.ts:29` |
-| **F-13** | Ekspor mandiri tenant menyusun seluruh ZIP **di dalam permintaan HTTP**. Sudah dibaca ber-potongan 1000 baris, tetapi ZIP-nya utuh di memori. Tenant besar × kotak 3,6 GB = risiko OOM yang dipicu pengguna. | `lib/tenant-export.ts` |
+| **F-12** ([#368](https://github.com/tri-evendi/sai-accounting/issues/368)) | **SELESAI.** PPN adalah **konstanta kompilasi 11%**, tanpa efektif-tanggal dan tanpa penanda PKP/non-PKP per PT. Perubahan tarif menuntut redeploy; PT non-PKP tetap mendapat bawaan 11%. Dokumen tersimpan membawa `taxRate` sendiri, jadi riwayat aman — yang tidak aman adalah **bawaannya**. → Kini tabel `tax_rates` ber-efektif-tanggal + kolom `company_settings.is_pkp`, dikelola di **Pengaturan → PPN** dan ditanyakan wisaya penyiapan; setiap formulir dokumen memakai tarif perusahaan **pada tanggal dokumen itu**. Konstantanya tetap ada — ia masih benar sebagai benih perusahaan baru dan sebagai PPN tingkat **platform** (tagihan langganan SAI sendiri) — dan `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali. | `lib/tax.ts:29` |
+| **F-13** | **SEBAGIAN SELESAI.** ZIP-nya **tidak lagi** utuh di memori: sejak #367 arsipnya keluar sebagai aliran (`generateNodeStream`) dan isi berkas dokumen masuk lewat `createReadStream`. Yang MASIH berlaku: CSV setiap tabel tetap disusun utuh di memori sebelum aliran dimulai, jadi puncaknya tetap tumbuh mengikuti jumlah baris tenant — dan seluruhnya masih di dalam satu permintaan HTTP. | `lib/tenant-export.ts` |
 | **F-14** | **TIDAK BERLAKU LAGI.** Formulir kontak pendaratan (yang diam-diam gagal tanpa `PLATFORM_CONTACT_EMAIL`) sudah dicabut bersama seksinya. Yang tersisa hanya kanal yang dirender **bila** env-nya terisi, jadi tidak ada lagi kiriman yang gagal diam-diam. | — |
 | **F-15** | Tidak ada persetujuan-ulang saat S&K naik versi — pengguna lama dianggap menyetujui versi baru. Sudah dicatat sebagai keputusan sadar, tetapi untuk rilis umum ia menjadi risiko hukum, bukan lagi catatan. | `lib/legal.ts:11` |
 
@@ -364,7 +364,7 @@ Supaya perbaikan tidak merusak yang sudah mahal dibangun:
   transaksi, saldo awal sekali-jalan dengan dua guard, neraca yang memakai
   satu rumus ekuitas, `Akumulasi Laba/Rugi` yang **dilabeli benar** (bukan
   "laba berjalan" yang menyesatkan di tahun kedua).
-- **Suspensi = hanya-baca, bukan terkunci.** Pelanggan menunggak tetap bisa
+- **Suspensi = hanya-baca, bukan terkunci.** Customer menunggak tetap bisa
   mengunduh bukunya — jawaban yang benar menurut UU KUP dan UU PDP sekaligus.
 
 ---
@@ -425,7 +425,7 @@ tidak ada jalur tulis kedua.
 **Lapis 3 — webhook keluar.**
 `invoice.created`, `payment.received`, `period.closed`. HMAC-SHA256 di header,
 antrean coba-ulang dengan mundur-eksponensial, jejak pengiriman yang bisa
-dibaca pelanggan sendiri.
+dibaca customer sendiri.
 
 **Yang sengaja TIDAK dibangun sendiri:** konektor marketplace/kasir/bank.
 Sediakan API-nya, biarkan iPaaS dan integrator yang menjembatani. Satu
@@ -436,16 +436,16 @@ daripada seluruh lapis 1–3.
 disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 (`/api/v1/`) sejak hari pertama.
 
-### 4.3 Operasi — yang harus ada sebelum pelanggan pertama membayar
+### 4.3 Operasi — yang harus ada sebelum customer pertama membayar
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Backup** | SUDAH: Layanan `job-backup` di compose (#374): `mariadb-dump --all-databases` harian + `public/uploads` + `data/audit`, terenkripsi, dikirim ke luar server (S3/B2). Retensi 30 hari harian + 12 bulan bulanan. |
+| **Backup** | SUDAH: Layanan `svc-tenant` di compose (#374; per basis data sejak tahap 1b): satu objek `pg_dump -Fc` **per basis data** + `pg_dumpall --globals-only` + `data/documents` + `data/audit`, terenkripsi sebelum meninggalkan mesin, dikirim ke luar server (S3/B2) bila bucket disetel. Retensi 30 hari, dan yang TERBARU tidak pernah dibuang. Satu tenant bisa dipulihkan tanpa menyentuh yang lain. |
 | **Restore** | BELUM: **Latihan restore yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan backup acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah di-restore bukan backup. |
 | **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut scheduler (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
 | **Scheduler** | SUDAH: Layanan `job-scheduler` di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
-| **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Pelanggan yang membayar berhak tahu sebelum bertanya. |
+| **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Customer yang membayar berhak tahu sebelum bertanya. |
 
 ### 4.4 Urutan pengerjaan, dan alasannya
 
@@ -453,11 +453,11 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
    kebocoran lintas-tenant. Dikerjakan lebih dulu apa pun yang terjadi.
 2. **F-7 (audit ke basis data)** — sebab yang sama dengan F-1; dikerjakan
    berdekatan supaya "keadaan di luar basis data PT" habis sekaligus.
-3. **F-4 + F-5 + F-9 (operasi)** — harus ada **sebelum** ada pelanggan yang
+3. **F-4 + F-5 + F-9 (operasi)** — harus ada **sebelum** ada customer yang
    datanya bisa hilang. Ini bukan pekerjaan yang menunggu fitur.
 4. **F-6 (pembatas laju login)** — kecil, murah, jelas.
 5. **F-2 + F-3 (impor data awal)** — pekerjaan terbesar, tetapi ia yang
-   menentukan apakah pelanggan bisa **mulai memakai** produknya.
+   menentukan apakah customer bisa **mulai memakai** produknya.
 6. **F-10 lapis 1 (API baca)** — cukup untuk menjawab keberatan penjualan
    pertama; lapis 2–3 menyusul menurut permintaan nyata.
 7. **P2** — sesuai kesempatan, kecuali F-12 (PPN) yang harus diputuskan
@@ -510,7 +510,7 @@ aman dijalankan terhadap produksi:
 | Bulanan | `prove-books-balance.ts` seluruh PT; tinjau kuota & pemakaian |
 | Kuartalan | **Latihan restore penuh** ke server bayangan; tinjau ulang matriks izin efektif tiap tenant |
 | Tahunan | Uji tembus pihak ketiga; tinjau ulang skema e-Faktur terhadap aturan DJP berjalan (F-11); tinjau S&K + kebijakan privasi (F-15) |
-| Per pelanggan baru (30 hari pertama) | Wawancara singkat perjalanan penyiapan — di situlah F-2/F-3 muncul sebagai keluhan, atau terbukti tertutup |
+| Per customer baru (30 hari pertama) | Wawancara singkat perjalanan penyiapan — di situlah F-2/F-3 muncul sebagai keluhan, atau terbukti tertutup |
 
 ### Definisi "siap rilis" — daftar yang bisa dicentang
 
@@ -538,7 +538,7 @@ Empat hal yang tidak boleh diputuskan oleh kode:
 1. ~~**PPN (F-12).**~~ **Sudah diputuskan:** tarif menjadi pengaturan
    ber-efektif-tanggal dengan penanda PKP/non-PKP per PT — issue
    [#368](https://github.com/tri-evendi/sai-accounting/issues/368). Alasannya
-   dua, dan keduanya lahir dari rilis umum: pelanggan non-PKP pasti ada (bawaan
+   dua, dan keduanya lahir dari rilis umum: customer non-PKP pasti ada (bawaan
    11% salah bagi mereka), dan tarif yang berubah karena aturan tidak boleh
    menuntut redeploy 10 menit.
 2. **e-Faktur (F-11).** Apakah kita **berjanji** menghasilkan berkas impor DJP

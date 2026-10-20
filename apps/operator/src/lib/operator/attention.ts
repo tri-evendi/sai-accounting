@@ -72,11 +72,12 @@ export interface AttentionInput {
     byStatus: Record<string, number>;
     trialsEndingSoon: number;
     trialsExpired: number;
+    /** Jejak penjadwal — di kendali, jadi selalu bisa dinilai. */
+    lastRun: { finishedAt: Date; status: string; errorCount: number } | null;
   };
   /** `null` = `sai_platform` tak terjangkau — bidangnya memang boleh mati. */
   platform: {
     overdueInvoices: number;
-    lastRun: { finishedAt: Date; status: string; errorCount: number } | null;
   } | null;
 }
 
@@ -109,27 +110,27 @@ export function attentionItems(input: AttentionInput, now: Date = new Date()): A
   const { control, platform } = input;
 
   /* ── 1. Penjadwal (aturan 2 di kepala berkas) ───────────────────────────
-     Hanya bisa dinilai bila bidang platform terbaca; saat ia mati, halaman
-     sudah mengatakannya sebagai kalimat tersendiri dan menambahkan baris
-     "penjadwal tak diketahui" di sini hanya mengulang hal yang sama. */
-  if (platform !== null) {
-    const run = platform.lastRun;
-    if (run === null) {
-      out.push({ key: "schedulerNever", count: 0, tone: "danger", href: "/scheduler" });
-    } else {
-      const umurMenit = (now.getTime() - run.finishedAt.getTime()) / MENIT_MS;
-      const gagal = run.status !== "ok" || run.errorCount > 0;
-      /* Basi ATAU gagal — keduanya satu baris, sebab tindakannya sama (buka
-         halaman penjadwal) dan dua baris tentang satu mesin membuat daftar ini
-         terbaca lebih panjang daripada pekerjaannya. */
-      if (gagal || umurMenit > SCHEDULER_STALE_AFTER_MINUTES) {
-        out.push({
-          key: "schedulerFailing",
-          count: run.errorCount,
-          tone: "danger",
-          href: "/scheduler",
-        });
-      }
+     Dinilai SELALU, tanpa bergantung pada bidang platform. Sampai jejak putaran
+     pindah ke basis data kendali, aturan ini dilewati ketika `sai_platform` tak
+     terjangkau — dan itu salah ke arah yang paling mahal: tagihan yang berhenti
+     terbit adalah gejala yang PALING sering berarti penjadwalnya mati, jadi
+     justru pada saat penagihan terlihat kacau barisan ini paling dibutuhkan. */
+  const run = control.lastRun;
+  if (run === null) {
+    out.push({ key: "schedulerNever", count: 0, tone: "danger", href: "/scheduler" });
+  } else {
+    const umurMenit = (now.getTime() - run.finishedAt.getTime()) / MENIT_MS;
+    const gagal = run.status !== "ok" || run.errorCount > 0;
+    /* Basi ATAU gagal — keduanya satu baris, sebab tindakannya sama (buka
+       halaman penjadwal) dan dua baris tentang satu mesin membuat daftar ini
+       terbaca lebih panjang daripada pekerjaannya. */
+    if (gagal || umurMenit > SCHEDULER_STALE_AFTER_MINUTES) {
+      out.push({
+        key: "schedulerFailing",
+        count: run.errorCount,
+        tone: "danger",
+        href: "/scheduler",
+      });
     }
   }
 

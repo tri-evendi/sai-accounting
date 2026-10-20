@@ -7,7 +7,7 @@ dokumen.
 
 ## 1. ERD — model data
 
-88 model di tiga skema (`packages/db/prisma/<db>/schema.prisma`), dipecah per
+95 model di tiga skema (`packages/db/prisma/<db>/schema.prisma`), dipecah per
 lapis dan per domain. Nama di diagram = nama model Prisma; tabelnya
 `snake_case` jamak lewat `@@map`. `||--o{` = satu-ke-banyak wajib, `|o--o{` =
 induk opsional.
@@ -67,9 +67,27 @@ PT — urusan pembukuan).
 
 **Tanpa relasi keluar, dan sengaja:** `Registration` (pendaftar belum punya
 `User`) · `TenantSlugHistory` (slug lama harus tetap bisa di-redirect) ·
-`RateLimitCounter` · `OperatorAccount` (akun kami, bukan pengguna pelanggan) ·
+`RateLimitCounter` · `OperatorAccount` (akun SAI, bukan pengguna customer) ·
 **`TenantAuditLog`** — jejak ini mencatat penghapusan tenant, jadi ia **harus
-selamat** sesudah tenant-nya hilang.
+selamat** sesudah tenant-nya hilang · **`Job`**, antrean pekerjaan latar: ia
+memuat `tenant_id`/`company_id` sebagai angka tanpa FK, karena pekerjaan harus
+tetap bisa dibaca sesudah perusahaannya nonaktif — sebuah pekerjaan yang hilang
+bersama barisnya adalah kegagalan yang tidak meninggalkan jejak · `SchedulerRun`
+· `BackupRun` · `ConformanceRun` (jejak putaran).
+
+**`jobs` di `control`, bukan di `platform` maupun di basis data sendiri.**
+Aplikasi sudah punya koneksi ke `control` (2 dianggarkan) dan `tenant_id`/
+`company_id` yang dirujuknya juga hidup di sana; basis data ke-20 berarti satu
+pasangan pool, satu entri migration, dan satu objek dump lagi demi nol manfaat.
+`platform` gugur karena doktrin #137 melarangnya dari jalur panas — dan membaca
+kemajuan pekerjaan **adalah** jalur panas.
+
+⚠ **Harganya nyata:** `control` juga melayani **autentikasi**, dan antrean
+ber-`SKIP LOCKED` membuat baris mati lebih cepat daripada tabel lain di sana.
+Itu sebabnya `autovacuum` disetel lebih agresif **pada tabel itu saja**
+(migration kendali `0006_jobs`). **Pemicu memindahkan `jobs` ke basis datanya
+sendiri:** latensi p95 kueri autentikasi naik terukur seiring throughput
+antrean — bukan sebelum itu terukur.
 
 ### 1.3 Platform — langganan & penagihan
 
@@ -260,7 +278,7 @@ Tidak satu pun dari kolom ini boleh "diperbaiki" dengan menambah FK.
 | `tenant_audit_logs.user_id` (control) | sama, **dan** jejaknya harus selamat dari penghapusan |
 | `invitations.invited_by_user_id` (control) | sama |
 | `tenant_deletion_requests.requested_by_user_id` (control) | sama |
-| `companies.database_name` (control) | **Menunjuk basis data**, bukan baris. Menyimpan URL lengkap di sini berarti satu `SELECT` bisa membawa kredensial setiap pelanggan |
+| `companies.database_name` (control) | **Menunjuk basis data**, bukan baris. Menyimpan URL lengkap di sini berarti satu `SELECT` bisa membawa kredensial setiap customer |
 | `company_settings.opening_journal_id` | 🔶 Satu baris per buku, jadi FK/indeks tidak memberi manfaat |
 | `budgets.account_id`, `fixed_assets.*_account_id` | FK ada di basis data, relasi Prisma sengaja tidak dideklarasikan supaya tidak menggantung back-relation di model yang ramai |
 
@@ -386,7 +404,7 @@ POST /api/companies
 Dua catatan:
 
 - `companies.database_name` hanya menyimpan **nama**. Bila URL lengkap
-  disimpan, satu `SELECT` bisa membawa kredensial setiap pelanggan.
+  disimpan, satu `SELECT` bisa membawa kredensial setiap customer.
 - Data `[CONTOH]` pada perusahaan baru wajib `is_demo = FALSE`. Data itu
   prasyarat penyiapan, dan tidak boleh ikut tersapu bersama data demo.
 
@@ -445,7 +463,7 @@ wajib memakai pengaturan platform dan tidak pernah SMTP tenant. Sisanya
 
 ### Pengingat ke pelanggan — empat gate
 
-Satu-satunya alur yang menghubungi orang di luar organisasi pelanggan, sehingga
+Satu-satunya alur yang menghubungi orang di luar organisasi customer, sehingga
 gate-nya paling ketat:
 
 | # | Gate | Kalau tidak lulus |
@@ -653,7 +671,7 @@ Tiga hal yang mudah salah di sini:
 
 | Hal | Kenyataannya |
 |---|---|
-| `suspended` dan `cancelled` | **Hanya-baca, bukan hilang.** `READ_ONLY_TENANT_STATUSES` — pelanggan yang berhenti tetap **wajib** bisa membaca dan mengekspor pembukuannya |
+| `suspended` dan `cancelled` | **Hanya-baca, bukan hilang.** `READ_ONLY_TENANT_STATUSES` — customer yang berhenti tetap **wajib** bisa membaca dan mengekspor pembukuannya |
 | Pindah status otomatis | Semuanya digerakkan `scheduler:subscriptions` tiap jam, dan **tiap langkahnya idempoten** |
 | Keadaan hari ini | Seluruh 11 langganan ber-`billing_mode = none`, jadi tangga ini tidak digerakkan — gate-nya ditutup di tingkat data, bukan di kode |
 
@@ -669,6 +687,44 @@ Jejaknya tinggal di `tenant_audit_logs`, yang **sengaja tanpa FK** ke `tenants`
 tenant-nya hilang. Kewajiban retensi 10 tahun atas pembukuan dibahas di
 [`docs/COMPLIANCE.md`](../COMPLIANCE.md).
 
+### 8.9 Pekerjaan latar — `JOB_STATUSES`
+
+```mermaid
+stateDiagram-v2
+    [*] --> queued: diterbitkan
+    queued --> claimed: diklaim pekerja
+    claimed --> done: selesai
+    claimed --> queued: gagal, percobaan tersisa
+    claimed --> dead: percobaan habis
+    claimed --> queued: lease kedaluwarsa (reclaim)
+    queued --> failed: dibatalkan
+    done --> [*]: dibuang > 14 hari
+    dead --> [*]: TIDAK PERNAH dibuang
+```
+
+`contract/kinds.yaml` → `packages/core/src/generated/job-kinds.ts` · lima nilai:
+`queued` · `claimed` · `done` · `failed` · `dead`. Kosakatanya **dibangkitkan**,
+tidak ditulis dua kali: tahap 1b menambahkan pekerja Go yang membaca kontrak
+yang sama, dan dua daftar tulis tangan menyimpang tanpa galat — `kind` yang
+hanya dikenal satu sisi menjadi baris yang menumpuk selamanya.
+
+Empat sifat yang menentukan, dan masing-masing menjawab satu kegagalan:
+
+| Sifat | Bentuknya | Kalau tidak |
+|---|---|---|
+| **Klaim satu pernyataan** | CTE `FOR UPDATE SKIP LOCKED` yang memilih dan `UPDATE` sekaligus | dua pekerja memilih baris yang sama di celah antar-pernyataan |
+| **`dedupe_key` UNIK** | penerbitan dua kali menabrak constraint | penjadwal yang berjalan dua kali menghasilkan dua pekerjaan — dan ini yang menggantikan *leader election* |
+| **Lease diperpanjang** | pekerja memperbarui `claimed_at` tiap 30 detik; ambang reclaim kelipatannya | ambang tetap selalu salah untuk ekspor 30 menit: pekerja kedua mengklaimnya **sementara yang pertama masih berjalan** |
+| ***Partial index*** | `WHERE status = 'queued'`, urut `priority DESC, run_after` | pengambilan melambat seiring antrean tumbuh |
+
+⚠ **Baris `dead` tidak pernah dipangkas**, sementara baris `done` dibuang setelah
+14 hari. Kegagalan adalah isi paling berharga di tabel ini — ia justru yang
+dicari orang berbulan-bulan kemudian.
+
+⚠ ***Vacuum horizon*:** satu transaksi panjang **di mana pun** di basis data yang
+sama menahannya, jadi laporan berdurasi panjang tidak boleh berjalan dalam
+transaksi terbuka di `control`.
+
 ## 9. Ke mana data berhenti
 
 | Data | Tempat berhenti | Retensi |
@@ -681,6 +737,7 @@ tenant-nya hilang. Kewajiban retensi 10 tahun atas pembukuan dibahas di
 | Identitas & keanggotaan | `sai_control` | Sampai penghapusan akun |
 | Langganan & tagihan | `sai_platform` | ❓ belum dipastikan |
 | Jejak scheduler/backup/kesesuaian | `*_runs` | Dipangkas `prune:trails` > 90 hari |
+| Pekerjaan latar | `jobs` (control) | `done` dibuang > 14 hari oleh pelari jalur; **`dead` tidak pernah** |
 | Arsip backup | Volume `backup` (lokal; S3 belum disetel) | `BACKUP_RETENTION_DAYS` |
 | Surel pengembangan | `data/mail-outbox/*.eml` | ❓ tanpa pemangkasan |
 

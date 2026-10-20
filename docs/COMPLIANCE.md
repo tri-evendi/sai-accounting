@@ -61,7 +61,7 @@ penghapusan tidak menghapus jejak ini, karena jejak inilah buktinya.
 persetujuan-ulang untuk pengguna lama saat versi naik belum ada; ia dibangun
 saat naskah final pertama terbit.
 
-## 5. Keputusan terbuka — dijawab sebelum pelanggan umum pertama
+## 5. Keputusan terbuka — dijawab sebelum customer umum pertama
 
 1. **Tempat penyimpanan (data residency).** Ketentuan perpajakan menyebut
    penyimpanan di Indonesia. Bila itu berlaku untuk SaaS pembukuan, ia

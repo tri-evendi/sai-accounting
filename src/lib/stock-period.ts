@@ -27,6 +27,7 @@
  */
 import { toISODate } from "@/lib/dashboard-summary";
 import { isValidISODate } from "@/lib/report-catalog";
+import { clampPeriodStart } from "@sai/core/export-limits";
 
 export const STOCK_PERIOD_GRANULARITIES = ["week", "month", "year", "custom"] as const;
 export type StockPeriodGranularity = (typeof STOCK_PERIOD_GRANULARITIES)[number];
@@ -146,6 +147,16 @@ export function resolveStockPeriod(
       from = startOfDay(to);
       to = endOfDay(swap);
     }
+    /*
+     * Batas rentang yang SAMA dengan `resolvePeriod` (03 §4).
+     *
+     * Ada di sini bukan demi kerapian: `g=custom` adalah pembaca periode KEDUA
+     * yang menerima `?from=&to=` mentah dari URL, jadi batas yang hanya berdiri
+     * di `resolvePeriod` adalah batas yang dilewati dengan menambahkan
+     * `?g=custom` — dan batas yang punya pintu samping bukan batas.
+     */
+    const dipendekkan = clampPeriodStart(toISODate(from), toISODate(to));
+    if (dipendekkan !== toISODate(from)) from = new Date(`${dipendekkan}T00:00:00`);
     prev = null;
     next = null;
   } else {

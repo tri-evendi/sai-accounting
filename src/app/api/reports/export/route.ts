@@ -10,9 +10,29 @@
  *
  * The workbook is built server-side (ExcelJS is a Node library); the browser only
  * downloads the resulting bytes.
+ *
+ * ── DUA BATAS, dan keduanya di jalur masuk (03 §4) ──────────────────────────
+ *
+ * Rute ini satu-satunya tempat di aplikasi yang merakit lembar sebar dari
+ * muatan yang datang dari LUAR. Sampai tahap 1c memindahkannya ke antrean (§5),
+ * batasnya harus berdiri di sini:
+ *
+ * 1. BYTE, sebelum diurai. `await request.json()` sudah mematerialkan dan
+ *    mengurai seluruh badan, jadi skema zod paling ketat pun tidak melindungi
+ *    apa pun dari badan 500 MB — lihat `@/lib/request-body`.
+ * 2. BARIS, dihitung pada `SheetModel` yang SUDAH dipetakan, bukan pada
+ *    muatannya. Muatan tiap laporan berbeda bentuk (`rows`, seksi bersarang,
+ *    grup arus kas), jadi penghitung per-jenis adalah penghitung yang akan
+ *    melewatkan laporan berikutnya; `sheet.rows` dilewati semuanya, hari ini
+ *    dan sesudah laporan kedua belas ditambahkan.
+ *
+ * Keduanya menjawab 413 — "muatannya memang begitu besar", bukan 400 yang
+ * menuduh peramban salah bentuk.
  */
 import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/auth-guard";
+import { readBoundedText } from "@/lib/request-body";
+import { EXPORT_MAX_BODY_BYTES, EXPORT_MAX_ROWS } from "@sai/core/export-limits";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
 import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
@@ -29,9 +49,15 @@ export async function POST(request: Request) {
   const authz = await requireApiPermission("report.export");
   if (!authz.authorized) return authz.response;
 
+  const mentah = await readBoundedText(request, EXPORT_MAX_BODY_BYTES);
+  if (!mentah.ok) {
+    const { t } = await getRequestI18n();
+    return NextResponse.json({ error: t("reports.exportPayloadTooLarge") }, { status: 413 });
+  }
+
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(mentah.text);
   } catch {
     const { t } = await getRequestI18n();
     return NextResponse.json({ error: t("errors.invalidJson") }, { status: 400 });
@@ -59,6 +85,19 @@ export async function POST(request: Request) {
   const payload: StatementPayload = parsed.data;
 
   const sheet = buildReportSheet(payload);
+  if (sheet.rows.length > EXPORT_MAX_ROWS) {
+    const { t, locale } = await getRequestI18n();
+    const angka = new Intl.NumberFormat(locale);
+    return NextResponse.json(
+      {
+        error: t("reports.exportTooLarge", {
+          rows: angka.format(sheet.rows.length),
+          max: angka.format(EXPORT_MAX_ROWS),
+        }),
+      },
+      { status: 413 }
+    );
+  }
   const buffer = await buildWorkbookBuffer([sheet], await getCompanyIdentity());
 
   const slug = STATEMENT_TITLES[payload.kind].replace(/[^A-Za-z0-9]+/g, "_");

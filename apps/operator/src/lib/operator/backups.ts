@@ -13,7 +13,6 @@ import "server-only";
 import { bukaBasisData } from "@sai/db/server";
 import { uraikanUrl } from "@sai/db/engine";
 import { controlDb } from "@sai/core/control-db";
-import { platformDb } from "@sai/platform/platform-db";
 import { MIGRATION_TERAKHIR, type JenisBasisData } from "@sai/core/migration-manifest";
 import { vonisVersi, type RingkasanMigrasiDb, type StatusVersi } from "@sai/core/schema-version";
 
@@ -29,10 +28,10 @@ export interface OperatorBackupRun {
   sizeBytes: number | null;
 }
 
-/** `null` = `sai_platform` tak terjangkau — halaman berkata "belum bisa dibaca". */
+/** `null` = basis data kendali tak terjangkau — halaman berkata "belum bisa dibaca". */
 export async function backupRunsForOperator(limit = 20): Promise<OperatorBackupRun[] | null> {
   try {
-    const runs = await platformDb.backupRun.findMany({
+    const runs = await controlDb.backupRun.findMany({
       orderBy: { id: "desc" },
       take: Math.min(100, Math.max(1, limit)),
     });

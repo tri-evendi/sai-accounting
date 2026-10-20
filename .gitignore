@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+# bun workspaces: setiap paket & aplikasi punya node_modules sendiri, dan pola
+# berjangkar (`/node_modules`) tidak menjangkaunya.
+node_modules/
 /dist
 /.pnp
 .pnp.*

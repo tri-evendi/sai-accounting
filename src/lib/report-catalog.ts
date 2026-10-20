@@ -39,6 +39,7 @@
  * and the report pages byte-for-byte.
  */
 import type { Permission } from "@sai/core/authz";
+import { clampPeriodStart } from "@sai/core/export-limits";
 import { toISODate } from "@/lib/dashboard-summary";
 import type { Dictionary, DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
@@ -726,16 +727,56 @@ export interface PeriodParams {
  * Resolve `?from=&to=` into inclusive Date bounds. Defaults to year-to-date
  * (Jan 1 → today), matching the report pages. Invalid inputs fall back to the
  * default rather than producing an `Invalid Date`.
+ *
+ * ── Tiga aturan periode laporan (03 §4, Batas periode laporan) ────────────────
+ *
+ * 1. RENTANG TERBALIK (`from` sesudah `to`) DITUKAR. Sebelumnya ia lolos dan
+ *    menghasilkan laporan kosong yang tak bisa dibedakan dari periode yang
+ *    memang tak punya transaksi — jenis jawaban salah yang paling mahal, karena
+ *    ia terlihat seperti jawaban.
+ *
+ *    Ditukar, bukan dijatuhkan ke bawaan, karena repo ini SUDAH memutuskannya:
+ *    `resolveStockPeriod` (`src/lib/stock-period.ts`) menukar rentang terbalik
+ *    dengan alasan yang sama persis. Dua konvensi untuk satu hal lebih buruk
+ *    daripada mana pun di antaranya, dan penukaran memakai KEDUA tanggal yang
+ *    diketik orang alih-alih membuang keduanya.
+ *
+ *    Perbandingan `>` di sini pada string ISO, dan itu sah: `YYYY-MM-DD`
+ *    terurut leksikografis sama dengan terurut kronologis.
+ *
+ * 2. RENTANG KETERLALUAN dipendekkan awalnya (`clampPeriodStart`), tidak
+ *    ditolak. Lihat `@sai/core/export-limits` untuk sebabnya batas itu disebut
+ *    batas kewarasan dan bukan batas kapasitas.
+ *
+ * Keduanya mengumumkan diri tanpa satu halaman pun diubah: `fromISO`/`toISO`
+ * yang dipulangkan di sinilah yang tercetak sebagai label periode DAN yang
+ * mengisi kotak tanggal `PeriodFilter`, dan penyaring itu membandingkannya
+ * dengan `?from=`/`?to=` mentah untuk memasang pemberitahuannya.
  */
 export function resolvePeriod(
   fromStr: string | undefined,
   toStr: string | undefined,
   now: Date = new Date()
 ): PeriodParams {
-  const defFrom = toISODate(new Date(now.getFullYear(), 0, 1));
-  const defTo = toISODate(now);
-  const fromISO = fromStr && isValidISODate(fromStr) ? fromStr : defFrom;
-  const toISO = toStr && isValidISODate(toStr) ? toStr : defTo;
+  const diminta = toStr && isValidISODate(toStr) ? toStr : toISODate(now);
+  /*
+   * Bawaan awal = 1 Januari TAHUN AKHIR PERIODE, bukan tahun ini.
+   *
+   * Untuk permintaan biasa (tanpa parameter, atau `to` = hari ini) ini
+   * menghasilkan tanggal yang persis sama dengan sebelumnya. Yang diperbaikinya
+   * adalah `?to=` yang berdiri sendiri di tahun lain: dengan "1 Januari tahun
+   * ini" ia melahirkan rentang TERBALIK (1 Jan 2026 → 1 Mei 2025), dan
+   * penukaran di bawah akan "memperbaikinya" menjadi 1 Mei 2025 → 1 Jan 2026 —
+   * delapan bulan yang tak seorang pun minta, untuk permintaan yang berbunyi
+   * "sampai 1 Mei 2025". Diturunkan dari tanggal akhirnya, bawaan ini mustahil
+   * mendahuluinya, jadi rentangnya tidak pernah terbalik sejak awal dan
+   * "sampai tanggal itu" terbaca sebagai tahun-berjalan tanggal itu.
+   */
+  const defFrom = `${diminta.slice(0, 4)}-01-01`;
+  let fromISO = fromStr && isValidISODate(fromStr) ? fromStr : defFrom;
+  let toISO = diminta;
+  if (fromISO > toISO) [fromISO, toISO] = [toISO, fromISO];
+  fromISO = clampPeriodStart(fromISO, toISO);
   return {
     fromISO,
     toISO,

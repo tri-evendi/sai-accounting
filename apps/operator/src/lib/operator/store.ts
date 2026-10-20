@@ -36,6 +36,8 @@ import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@o
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
  * `next build` (ditemukan saat penggelaran #151). */
 import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
+import { queueSnapshot } from "@sai/platform/job-queue";
+import type { LaneQueueHealth } from "@sai/core/queue-health";
 import {
   mailSettingsView,
   readMailSettings,
@@ -579,10 +581,10 @@ function parseConformanceDetails(raw: string | null): ConformanceRunDetails | nu
  */
 export async function conformanceRunsForOperator(
   limit = 10,
-  deps: { platform: PlatformClient } = { platform: platformDb }
+  deps: { control: ControlClient } = { control: controlDb }
 ): Promise<OperatorConformanceRun[] | null> {
   try {
-    const runs = await deps.platform.conformanceRun.findMany({
+    const runs = await deps.control.conformanceRun.findMany({
       orderBy: { id: "desc" },
       take: Math.min(50, Math.max(1, limit)),
     });
@@ -602,12 +604,32 @@ export async function conformanceRunsForOperator(
   }
 }
 
+/**
+ * Potret antrean pekerjaan per jalur — sinyal utama §11 untuk konsol.
+ *
+ * `null` bila tak terbaca, mengikuti pola `schedulerRunsForOperator`: halaman
+ * mengatakan "belum bisa dibaca", bukan mengarang antrean kosong. Bedanya
+ * menentukan di sini — tabel `jobs` yang belum dimigrasikan dan antrean yang
+ * memang tak punya kerja terlihat sama persis sebagai daftar kosong, dan yang
+ * pertama berarti pemasangan ini belum siap.
+ */
+export async function queueSnapshotForOperator(
+  deps: { snapshot: () => Promise<LaneQueueHealth[]> } = { snapshot: queueSnapshot }
+): Promise<LaneQueueHealth[] | null> {
+  try {
+    return await deps.snapshot();
+  } catch (error) {
+    console.error("[operator-store] potret antrean tak terbaca:", error);
+    return null;
+  }
+}
+
 export async function schedulerRunsForOperator(
   limit = 10,
-  deps: { platform: PlatformClient } = { platform: platformDb }
+  deps: { control: ControlClient } = { control: controlDb }
 ): Promise<OperatorSchedulerRun[] | null> {
   try {
-    const runs = await deps.platform.schedulerRun.findMany({
+    const runs = await deps.control.schedulerRun.findMany({
       orderBy: { id: "desc" },
       take: Math.min(50, Math.max(1, limit)),
     });
@@ -643,6 +665,14 @@ export interface OperatorOverviewControl {
   users: number;
   /** Tenant terbaru — "siapa yang masuk hari ini", bukan daftar lengkap. */
   newest: { id: number; name: string; slug: string; status: string; createdAt: Date }[];
+  /**
+   * Putaran penjadwal terakhir. Rumahnya di sini, BUKAN di `platform` di bawah
+   * — dan itu koreksi, bukan kerapian: jejak putaran pindah ke basis data
+   * kendali (migration kendali 0005), jadi menyarangkannya di bawah `platform`
+   * berarti penagihan yang mati menyembunyikan "penjadwal tidak jalan" — tepat
+   * pertanyaan yang paling dibutuhkan ketika tagihan berhenti terbit.
+   */
+  lastRun: { finishedAt: Date; status: string; errorCount: number } | null;
 }
 
 export interface OperatorOverviewPlatform {
@@ -654,7 +684,6 @@ export interface OperatorOverviewPlatform {
   /** Tagihan `issued` yang belum jatuh tempo. */
   openInvoices: number;
   openTotal: number;
-  lastRun: { finishedAt: Date; status: string; errorCount: number } | null;
 }
 
 export interface OperatorOverview {
@@ -699,7 +728,7 @@ export async function operatorOverview(
 ): Promise<OperatorOverview> {
   const batasUjiCoba = new Date(now.getTime() + AMBANG_UJI_COBA_HARI * 24 * 60 * 60 * 1000);
 
-  const [statusRows, trialsEndingSoon, trialsExpired, companies, users, newest] =
+  const [statusRows, trialsEndingSoon, trialsExpired, companies, users, newest, lastRun] =
     await Promise.all([
       deps.control.tenant.groupBy({ by: ["status"], _count: { _all: true } }),
       deps.control.tenant.count({
@@ -712,6 +741,12 @@ export async function operatorOverview(
         orderBy: { createdAt: "desc" },
         take: 5,
         select: { id: true, name: true, slug: true, status: true, createdAt: true },
+      }),
+      /* Jejak penjadwal dibaca BERSAMA angka kendali, bukan bersama angka
+         penagihan — lihat `OperatorOverviewControl.lastRun`. */
+      deps.control.schedulerRun.findFirst({
+        orderBy: { id: "desc" },
+        select: { finishedAt: true, status: true, errorCount: true },
       }),
     ]);
 
@@ -730,12 +765,13 @@ export async function operatorOverview(
     companies,
     users,
     newest,
+    lastRun,
   };
 
   let platform: OperatorOverviewPlatform | null = null;
   let revenue: RevenueSummary | null = null;
   try {
-    const [subRows, overdue, open, lastRun, subsForMrr, paidPayments, issuedInvoices] =
+    const [subRows, overdue, open, subsForMrr, paidPayments, issuedInvoices] =
       await Promise.all([
       deps.platform.subscription.groupBy({ by: ["status"], _count: { _all: true } }),
       deps.platform.platformInvoice.aggregate({
@@ -747,10 +783,6 @@ export async function operatorOverview(
         where: { status: "issued", dueDate: { gte: now } },
         _count: { _all: true },
         _sum: { total: true },
-      }),
-      deps.platform.schedulerRun.findFirst({
-        orderBy: { id: "desc" },
-        select: { finishedAt: true, status: true, errorCount: true },
       }),
       /* ── Bahan §8. Ketiganya dibaca di putaran yang SAMA: angka pendapatan
          tidak boleh punya batas gagal sendiri — "MRR tak terjangkau sementara
@@ -787,7 +819,6 @@ export async function operatorOverview(
       overdueTotal: Number(overdue._sum.total ?? 0),
       openInvoices: open._count._all,
       openTotal: Number(open._sum.total ?? 0),
-      lastRun,
     };
 
     revenue = summarizeRevenue({
@@ -1119,7 +1150,7 @@ export async function tenantHealthForOperator(tenant: {
 
   let conformance: { findings: number; ambiguousSlugs: string[] } | null = null;
   try {
-    const last = await platformDb.conformanceRun.findFirst({ orderBy: { id: "desc" }, select: { details: true } });
+    const last = await controlDb.conformanceRun.findFirst({ orderBy: { id: "desc" }, select: { details: true } });
     const details = parseConformanceDetails(last?.details ?? null);
     if (details) {
       const slugs = companies.map((c) => c.slug);

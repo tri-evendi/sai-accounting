@@ -76,7 +76,7 @@ export type StatusInput =
   | { status: "error" }
   | {
       status: "ok";
-      platform: { status: "ok" | "unknown" };
+      platform: { status: "ok" | "unknown" | "not-installed" };
       company: { status: "ok" | "unknown" | "error" };
       scheduler: { status: "ok" | "late" | "unknown" };
       mail: { status: "ok" | "capturing_to_file" | "not_configured" | "unknown" };
@@ -144,9 +144,27 @@ export function publicStatus(report: StatusInput): PublicStatus {
    * yang NYATA meski tak ada satu halaman pun yang rusak — uji coba tidak
    * berakhir dan tagihan tidak terbit — dan itu persis kegagalan senyap yang
    * #373 dibuat untuk membuatnya bisa ditanyakan.
+   *
+   * ══ `not-installed` TIDAK IKUT DIHITUNG ═════════════════════════════════
+   * Di profil on-premise bidang penagihan memang tidak dipasang. Kalau keadaan
+   * itu disetor sebagai `unknown`, baris ini akan `unknown` SELAMANYA — dan
+   * halaman status yang selalu memuat satu baris kuning adalah halaman yang
+   * berhenti dibaca, termasuk pada hari barisnya kuning karena sebab yang
+   * sungguhan. Yang tersisa dinilai dari penjadwal, dan di on-premise justru
+   * itu yang bermakna: penjadwal yang mati berarti dokumen berulang berhenti
+   * terbit.
+   *
+   * ⚠ LABELNYA belum mengikuti. Di on-premise baris ini masih berjudul
+   * "penagihan" padahal yang dilaporkannya penjadwal — penamaan per profil
+   * punya urusannya sendiri, dan menukar label diam-diam di sini akan membuat
+   * dua profil memakai satu kata untuk dua hal.
    */
   const billing = worst([
-    report.platform.status === "ok" ? "operational" : "unknown",
+    report.platform.status === "ok"
+      ? "operational"
+      : report.platform.status === "not-installed"
+        ? "operational"
+        : "unknown",
     report.scheduler.status === "ok"
       ? "operational"
       : report.scheduler.status === "late"

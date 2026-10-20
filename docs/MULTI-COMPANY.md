@@ -3,7 +3,7 @@
 Issue #104. Dokumen ini menjelaskan bentuknya, cara menambah perusahaan, dan
 aturan yang tidak boleh dilanggar saat menulis kode baru.
 
-> Lingkupnya satu grup usaha yang memegang beberapa PT. Lapis multi-pelanggan
+> Lingkupnya satu grup usaha yang memegang beberapa PT. Lapis multi-customer
 > di atasnya (tenant, pendaftaran mandiri, langganan; #134–#142) sudah
 > diimplementasikan; rancangannya di [`MULTI-TENANT.md`](./MULTI-TENANT.md).
 > Aturan multi-PT di dokumen ini tetap berlaku penuh.
@@ -301,7 +301,7 @@ role itu dimiliki role itu.
 
 > ⚠ Per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi aplikasi berhak atas
 > seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk aplikasi, dan
-> superuser hanya untuk `migrate`/`job-backup`; lihat
+> superuser hanya untuk `migrate`/`svc-tenant`; lihat
 > [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md#yang-masih-terbuka)
 > butir 4.
 

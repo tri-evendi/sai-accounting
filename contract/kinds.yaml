@@ -1,0 +1,189 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KONTRAK PEKERJAAN — satu sumber untuk kedua bahasa (01 §10, Poliglot)
+#
+# Berkas ini DIBACA, tidak pernah disalin. Dari sini dibangkitkan:
+#   • TypeScript → packages/core/src/generated/job-kinds.ts  (bun run contract:gen)
+#   • Go         → services/integrator/internal/contract/jobs_gen.go
+#
+# ══ KENAPA DIBANGKITKAN, BUKAN DITULIS DUA KALI ════════════════════════════
+# Dua daftar tulis tangan menyimpang TANPA GALAT, dan bentuk penyimpangannya
+# sudah bisa diramalkan sekarang:
+#
+#   • `kind` yang hanya dikenal penerbit (Node) tapi tidak satu pun jalur
+#     mengklaimnya → baris `queued` yang menumpuk SELAMANYA. Tidak ada galat,
+#     tidak ada pekerja yang mengeluh; hanya antrean yang tumbuh dan metrik
+#     umur-tertua yang perlahan memerah berbulan-bulan kemudian.
+#   • `kind` yang dikenal pekerja tapi tidak pernah diterbitkan → kode mati yang
+#     terlihat hidup.
+#
+# ══ MENAMBAH `kind` ════════════════════════════════════════════════════════
+#   1. tambahkan di `kinds:` di bawah, dengan `lane` dan `max_attempts`;
+#   2. `bun run contract:gen`;
+#   3. commit berkas bangkitannya bersama perubahan ini — penjaga
+#      `tests/contract-jobs.test.ts` menolak keduanya kalau tidak sinkron.
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# ── Status pekerjaan ───────────────────────────────────────────────────────
+# Urutannya bermakna: `queued` → `claimed` → `done` | `failed` → `dead`.
+# `failed` BUKAN akhir — ia menunggu percobaan berikutnya. `dead` yang akhir.
+statuses:
+  - queued
+  - claimed
+  - done
+  - failed
+  - dead
+
+# ── Jalur ──────────────────────────────────────────────────────────────────
+# Setiap jalur satu PROSES tersendiri; `kinds` di bawah menunjuk salah satunya.
+# `single_instance: true` berarti lebih dari satu proses jalur itu salah —
+# penerbit ganda menerbitkan dua kali, dan migration ganda bertabrakan.
+lanes:
+  interactive:
+    description: ekspor & dokumen yang ditunggu pengguna di layar
+    single_instance: false
+  bulk:
+    description: impor besar, paket laporan, surel borongan
+    single_instance: false
+  schedule:
+    description: denyut penerbitan tiap jam — hanya MENERBITKAN, tidak melaksanakan
+    single_instance: true
+  tenant:
+    description: cadangan & kesesuaian data per perusahaan; satu-satunya yang memegang rahasia
+    single_instance: true
+  schema:
+    description: migration setiap perusahaan; dijalankan sekali saat rilis
+    single_instance: true
+  ledger:
+    description: pekerjaan yang MENULIS buku besar — pintu posting tunggal (I-2)
+    single_instance: true
+  integration:
+    description: integrasi luar (e-faktur, feed bank); tidak menyentuh pembukuan
+    single_instance: false
+
+# ── Jenis pekerjaan ────────────────────────────────────────────────────────
+# `writes_ledger: true` HANYA boleh pada jalur `ledger`. Penjaga menegakkannya:
+# pintu posting wajib tunggal, dan ia TypeScript (rancangan §3.3).
+kinds:
+  report.export:
+    lane: interactive
+    max_attempts: 3
+    description: satu laporan menjadi berkas yang diunduh pengguna
+
+  document.generate:
+    lane: interactive
+    max_attempts: 3
+    description: satu dokumen (faktur, surat jalan, kontrak) menjadi PDF
+
+  report.package:
+    lane: bulk
+    max_attempts: 3
+    description: paket laporan satu periode
+
+  import.process:
+    lane: bulk
+    max_attempts: 1
+    description: >
+      impor berkas besar. `max_attempts: 1` DISENGAJA — impor yang diulang
+      otomatis setelah gagal separuh jalan adalah cara tercepat menggandakan
+      data master. Pengguna yang mengulang melihat apa yang sudah masuk.
+
+  mail.batch:
+    lane: bulk
+    max_attempts: 3
+    description: surel borongan (pengingat, pemberitahuan)
+
+  tenant.backup:
+    lane: tenant
+    max_attempts: 2
+    description: cadangan per perusahaan, tersandi sebelum meninggalkan mesin
+
+  tenant.conformance:
+    lane: tenant
+    max_attempts: 2
+    description: sapuan kesesuaian data satu perusahaan
+
+  schema.migrate:
+    lane: schema
+    max_attempts: 1
+    description: >
+      migration satu perusahaan. `max_attempts: 1` — migration yang gagal
+      separuh jalan menuntut mata manusia, bukan percobaan kedua yang otomatis.
+
+  schedule.tick:
+    lane: schedule
+    max_attempts: 1
+    description: >
+      denyut penerbitan. `max_attempts: 1` karena putaran berikutnya datang
+      sejam kemudian dan menyusul sendiri — rekonsiliasi, bukan pengulangan.
+
+  ledger.recurring:
+    lane: ledger
+    max_attempts: 3
+    writes_ledger: true
+    description: dokumen berulang yang MEMPOSTING lewat pintu posting
+
+  ledger.dunning:
+    lane: ledger
+    max_attempts: 3
+    writes_ledger: true
+    description: dunning yang membuat catatan di buku
+
+  integration.efaktur:
+    lane: integration
+    max_attempts: 5
+    description: berkas e-faktur ke sistem pajak
+
+  integration.bank_feed:
+    lane: integration
+    max_attempts: 5
+    description: tarik mutasi bank
+
+# ── Angka antrean ──────────────────────────────────────────────────────────
+#
+# ══ KENAPA ANGKA IKUT MASUK KONTRAK, PADAHAL IA BUKAN KOSAKATA ═════════════
+# Sampai tahap 1b hanya ada satu pelari, jadi angka-angka ini cukup hidup
+# sebagai konstanta TypeScript di `@sai/core/job-backoff`. Begitu pelari KEDUA
+# lahir dalam bahasa lain, keduanya menjadi kelas konstanta yang paling
+# berbahaya di seluruh rancangan: dipakai dua bahasa, dan penyimpangannya tidak
+# menghasilkan satu pun galat — hanya dua pelari yang bersikap berbeda terhadap
+# satu tabel.
+#
+# Bentuk penyimpangannya bukan hipotesis, dan tiap baris di bawah punya
+# versinya sendiri:
+#
+#   • `lease_renew_ms` yang lebih besar di satu sisi → pekerja sisi itu
+#     kehilangan pekerjaannya di tengah jalan, diklaim pekerja kedua, dan untuk
+#     `tenant.backup` itu dua dump menulis ke satu kunci objek;
+#   • `upkeep_ms` yang melewati ambang basi di satu sisi → pekerjaan dari
+#     pekerja yang mati menunggu satu putaran penuh LAGI, dan waktu tunggu itu
+#     tidak muncul di satu pun angka;
+#   • `queue_age_*` yang berbeda → probe kesehatan dan pelari tidak sepakat
+#     tentang kapan antrean disebut terlambat, jadi yang satu hijau sementara
+#     yang lain membangunkan orang.
+#
+# Prosa yang menjelaskan SEBAB tiap angka tetap tinggal di tempat angkanya
+# dipakai (`packages/core/src/job-backoff.ts`, `queue-health.ts`) — yang pindah
+# ke sini angkanya, bukan alasannya. Generator menolak pasangan yang tidak
+# konsisten, jadi tidak ada bahasa yang bisa memuat kombinasi yang salah.
+numbers:
+  # Backoff: penundaan dasar, dan plafon di satu jam.
+  backoff_base_ms: 30000
+  backoff_max_ms: 3600000
+
+  # Lease: interval pembaruan, dan ambang basi sebagai KELIPATANNYA.
+  lease_renew_ms: 30000
+  lease_stale_factor: 4
+
+  # Putaran pelari. `upkeep_ms` WAJIB lebih rapat daripada ambang basi
+  # (lease_renew_ms × lease_stale_factor) — ditegakkan generator.
+  upkeep_ms: 60000
+  idle_ms: 2000
+
+  # Retensi baris `done`. `dead` dan `failed` TIDAK pernah dipangkas.
+  done_retention_days: 14
+
+  # Ambang umur antrean — satu pasang untuk semua jalur.
+  queue_age_warn_seconds: 420
+  queue_age_late_seconds: 600

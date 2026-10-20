@@ -12,13 +12,13 @@ seimbang.
 
 | Permukaan | Host | Kode | Untuk siapa |
 |---|---|---|---|
-| Pemasaran | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon pelanggan, crawler |
-| Aplikasi pelanggan | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha |
+| Pemasaran | `APP_DOMAIN` (`/`, `/pricing`, `/status`) | `src/app/(marketing)` | Calon customer, crawler |
+| Aplikasi customer | `APP_DOMAIN` (`/t/{tenant}/{company}/…`) | `src/app/(app)` | Staf & pemilik usaha |
 | Konsol operator | `OPERATOR_DOMAIN` (rute di akar) | `apps/operator` | Penyedia layanan |
 
 Dua aplikasi Next.js, dua image, satu monorepo. Plane ditentukan **host saja**
 (`packages/core/src/operator-plane.ts`); tanpa `OPERATOR_HOST`, konsol 404 di
-host mana pun. Cookie berlingkup host, jadi sesi pelanggan yang bocor tidak
+host mana pun. Cookie berlingkup host, jadi sesi customer yang bocor tidak
 menjangkau konsol.
 
 ## 2. Tenant ≠ Perusahaan
@@ -27,7 +27,7 @@ Menentukan ke basis data mana sebuah baris ditulis.
 
 | | Tenant | Perusahaan (PT) |
 |---|---|---|
-| Artinya | Satu pelanggan yang berlangganan | Satu buku besar |
+| Artinya | Satu customer yang berlangganan | Satu buku besar |
 | Punya | Paket, tagihan, kuota | Jurnal, faktur, stok, aset |
 | Datanya di | `sai_control` + `sai_platform` | Basis data sendiri, `sai_<slug>` |
 | Jumlah | 1 tenant → banyak PT | — |
@@ -42,7 +42,7 @@ Rinciannya: [`MULTI-TENANT.md`](../MULTI-TENANT.md) ·
 ```mermaid
 graph LR
     STAF[Staf & pemilik usaha] --> SAI
-    CALON[Calon pelanggan] --> SAI
+    CALON[Calon customer] --> SAI
     OPS[Operator] --> SAI
     INT[Integrator] --> SAI
 
@@ -59,7 +59,7 @@ graph LR
 | Pihak | Hubungannya |
 |---|---|
 | Staf & pemilik usaha | Membukukan di `APP_DOMAIN` |
-| Calon pelanggan | Pemasaran & pendaftaran; termasuk crawler |
+| Calon customer | Pemasaran & pendaftaran; termasuk crawler |
 | Operator | Konsol di `OPERATOR_DOMAIN` |
 | Integrator | `/api/v1` hanya-baca, token Bearer |
 | Midtrans | Dua arah: permintaan bayar keluar, webhook masuk |
@@ -79,9 +79,9 @@ graph TB
     TR --> WEBO[app-operator]
     WEBC --> PGB[PgBouncer]
     WEBO --> PGB
-    JOB[job-scheduler · job-conformance] --> PGB
+    JOB[job-scheduler · job-conformance · svc-ledger] --> PGB
     PGB --> DB[(pg)]
-    LANGSUNG[job-backup · migrate] --> DB
+    LANGSUNG[svc-tenant · migrate] --> DB
 
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
     style WEBO fill:#ffeaea,stroke:#b55
@@ -92,8 +92,9 @@ graph TB
 |---|---|
 | Traefik | Terminasi TLS; memilih aplikasi dari header `Host` |
 | `app-*` | Dua aplikasi Next, dua image. **Tidak saling memanggil lewat HTTP** |
-| `job-*` | Loop shell yang tidur, tanpa antrean |
-| `job-backup` · `migrate` | Langsung ke `pg`, melewati pooler |
+| `job-*` | Loop shell yang tidur; dua langkahnya kini hanya MENERBITKAN ke antrean |
+| `svc-*` | Pelari jalur yang menguras tabel `jobs` — `ledger` (Node), `tenant` (Go) |
+| `svc-tenant` · `migrate` | Langsung ke `pg`, melewati pooler: keduanya mencacah/menyentuh SETIAP basis data, dan pooler hanya mengekspos yang terdaftar di konfigurasinya |
 | `pg` | PostgreSQL 17: `control` + `platform` + 17 buku PT |
 
 ## 4. Pola
@@ -218,10 +219,31 @@ pemanggilan di repo memakai bentuk callback.
 ## 8. Otorisasi
 
 ```
-Matriks BAWAAN       → Override PERAN             → Override PENGGUNA        → Modul USAHA     → Matriks EFEKTIF
-@sai/core/authz         role_permission_overrides    user_permission_overrides   11 modul          canEffective()
-66 izin × 4 peran       dikelola di /permissions                                 company_settings
+Matriks BAWAAN       → Override PERAN             → Override PENGGUNA        → Modul USAHA     → Entitlement     → Matriks EFEKTIF
+@sai/core/authz         role_permission_overrides    user_permission_overrides   11 modul          lisensi/paket     canEffective()
+66 izin × 4 peran       dikelola di /permissions                                 company_settings  @sai/core/entitlement
 ```
+
+**Entitlement: satu pintu, dua sumber.** Tiga lapis menjawab tiga pertanyaan
+yang berbeda, dan menyatukannya akan membuat jawaban yang salah terbaca benar:
+
+| Lapis | Pertanyaannya | Sumber |
+|---|---|---|
+| Lisensi / paket | "dibeli?" | `plan_key` (SaaS) **atau** berkas lisensi (on-premise) |
+| Modul usaha | "dipakai perusahaan ini?" | pengaturan per perusahaan |
+| Izin peran | "boleh oleh orang ini?" | matriks efektif |
+
+Diiris di **satu titik** — sumber himpunan modul aktif di
+`src/lib/authz-effective.ts` — sehingga setiap penjaga yang sudah ada (halaman,
+route, menu, Aksi Cepat) ikut menegakkannya tanpa satu baris diubah. Lapis yang
+dipasang di 50 tempat adalah lapis yang bocor di tempat ke-51. Jalur SaaS keluar
+lebih awal dan meneruskan nilai mentah apa adanya, jadi perilakunya **terbukti
+tidak berubah**.
+
+⚠ **Lisensi hanya MENYEMPITKAN.** Ia berarti "boleh dipakai", bukan "menyala":
+modul opt-in tetap harus dipilih perusahaan, dan lisensi yang menyalakan modul
+yang tidak dipilih siapa pun akan menghidupkan manufaktur di buku yang tidak
+memakainya.
 
 Penegaknya `requirePagePermission` (halaman), `requireApiPermission` (API
 sesi), `requireApiToken` (API v1); tampilan memakai `can(...)`. Ketiganya
@@ -270,6 +292,20 @@ Dua aturan valas yang mudah salah:
 Gate persetujuan dan periode ada di sini, bukan di route, karena setiap jalur
 yang mengubah dokumen jadi jurnal melewati `postForSource`/`repostForSource`.
 
+**Pintunya tetap tunggal sesudah antrean masuk**, dan itu yang menentukan bentuk
+pekerjaan latar: jalur `ledger` (`svc-ledger`) adalah **satu-satunya** layanan
+latar yang menulis buku besar, dan handler-nya **mendelegasikan** ke mesin yang
+sama (`src/lib/recurring-run.ts` → `postForSource`). Enam jalur lain membaca
+buku, menulis tabel `jobs`, dan menghasilkan berkas — tidak pernah `INSERT`/
+`UPDATE` ke tabel buku. Kontraknya menolaknya sebelum kode lahir: `kind`
+ber-`writes_ledger` di luar jalur `ledger` gagal dibangkitkan
+(`scripts/contract-generate.ts`).
+
+Sebabnya bukan kerapian: `app-customer` memposting **secara sinkron** saat
+pengguna menekan tombol — 44 pemanggil `postForSource` — dan pintu kedua di
+proses lain berarti dua mesin menulis buku besar. Ketika keduanya menyimpang,
+yang menyimpang adalah **buku**, tanpa satu galat pun.
+
 ## 10. Struktur kode
 
 ```
@@ -286,7 +322,7 @@ apps/operator/ (61 berkas)        # KONSOL — image `…-operator`
 ├── src/lib/operator/             # sesi, guard, TOTP, store, tulisan, jejak
 ├── src/proxy.ts                  # host ≠ OPERATOR_HOST → 404
 └── tsconfig.json                 # alias `@op/*` (TANPA `@/`)
-src/                              # APLIKASI PELANGGAN
+src/                              # APLIKASI CUSTOMER
 ├── app/
 │   ├── (marketing)/              # /, /pricing, /status, sitemap, OG
 │   ├── (app)/(auth)/             # login, daftar, lupa sandi, undangan, unlock
@@ -300,7 +336,70 @@ src/                              # APLIKASI PELANGGAN
 prisma/
 ├── postgresql/{company,control,platform}/NNNN_*/   # migration yang DITERAPKAN
 └── migrations/ control/ platform/                  # arsip MariaDB — hanya-baca
+workers/                             # pelari jalur NODE
+└── ledger.ts                        # jalur `ledger` — satu-satunya penulis buku
+services/integrator/                 # pelari jalur GO — nol aturan akuntansi
+├── go.mod · .golangci.yml           # DI LUAR workspace bun
+├── cmd/tenant/                      # jalur `tenant` — cadangan per basis data
+└── internal/
+    ├── contract/  (DIBANGKITKAN)    # kosakata & angka antrean
+    ├── jobs/                        # klaim · lease · reclaim — SQL antrean
+    ├── db/                          # kolam koneksi kendali, pembersih DSN
+    ├── backup/                      # dump · sandi · manifest · tujuan
+    └── trail/                       # `backup_runs` — satu-satunya tulisan di luar `jobs`
+contract/                            # SATU sumber untuk kontrak lintas bahasa
+└── kinds.yaml                       # kind · status · angka antrean
 ```
+
+### Poliglot: satu monorepo, dua bahasa, tiga workspace yang berbeda
+
+| Pohon | Bahasa | Di workspace bun? | Siapa menjaganya |
+|---|---|---|---|
+| `src/` · `apps/*` · `packages/*` | TypeScript | **ya** (`packages/*` + `apps/*`) | 25+ pemindai `tests/`, akar dari `tests/akar-sumber.ts` |
+| `workers/` · `scripts/` | TypeScript | tidak, tapi **ikut `tsconfig`** (`**/*.ts`) | `tsc` + lint |
+| `services/*` | Go | **tidak** | `tests/services-go.test.ts` + gerbang Go |
+
+**`services/` sengaja di luar workspace bun.** Satu `package.json` di dalam
+pohon Go akan menariknya ke graf paket yang penjaganya tidak memahaminya —
+dijaga `tests/services-go.test.ts`.
+
+**Dua aturan yang memutuskan poliglot ini bertahan atau menyimpang diam-diam:**
+
+> **1. Hanya jalur `ledger` (Node) menulis buku besar.** Kode Go membaca buku,
+> menulis tabel `jobs` (+ `backup_runs`, daftar-izin yang disebut), dan
+> menghasilkan berkas. Pintu posting wajib TUNGGAL (invarian I-2, §9), dan
+> pintu itu TypeScript: `app-customer` memposting secara sinkron saat pengguna
+> menekan tombol — 44 pemanggil `postForSource` — dan ia tidak akan pindah.
+> I-3 menutup jalan keluarnya: layanan tidak saling memanggil, jadi Go tidak
+> bisa menitip posting ke Node.
+
+> **2. Setiap konstanta yang dipakai DUA bahasa dibangkitkan dari `contract/`,
+> tidak pernah ditulis dua kali.** Berlaku untuk `kind`/status pekerjaan DAN
+> untuk angka antrean (backoff, lease, retensi, ambang umur). Dua daftar tulis
+> tangan menyimpang **tanpa galat**: `kind` yang hanya dikenal satu sisi menjadi
+> baris `queued` yang menumpuk selamanya tanpa pengklaim, dan `lease_renew_ms`
+> yang berbeda di satu sisi membuat pekerja sisi itu kehilangan pekerjaannya di
+> tengah jalan. Generatornya menolak kombinasi yang tidak konsisten, jadi
+> kombinasi yang salah tidak bisa LAHIR ke bahasa mana pun.
+
+**⚠ Batas Go: ia berhenti SEBELUM perhitungan akuntansi.** Jalur yang nol
+aturan akuntansi pindah tanpa perdebatan (cadangan, migration, integrasi luar,
+penerbitan). Jalur yang MENGHITUNG angka akuntansi tidak — sampai ada pemicu
+**terukur**, bukan rencana. Sebabnya bukan ongkos melainkan kelas kerusakannya:
+`contract/` membangkitkan **konstanta**, bukan **aturan**, dan dua implementasi
+"laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap
+berbeda hasilnya. Batas ini sudah menahan dua pemindahan:
+
+| Yang tertahan | Pemicu yang menunggu |
+|---|---|
+| Kesesuaian data (`tenant.conformance`) | 2 dari 11 pemeriksaannya memanggil pagar materialitas (#444/#445) — penilaian, bukan konstanta. Pemicunya sama dengan tahap 1d |
+| Jalur `schema` lewat antrean | *expand/contract* harus berlaku lebih dulu: tanpa itu, migration di luar gerbang pemblokir berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya |
+
+| Gerbang rilis | Isinya |
+|---|---|
+| 1 | `bun run verify` — typecheck + lint + vitest |
+| 2 | `bun run go:test` + `bun run go:lint` (gofmt + 8 linter) |
+| 3 | `bun run build` + `bun run build:operator` + build image |
 
 ```
 src/ ──────────┐
@@ -317,6 +416,9 @@ apps/operator ─┘          │
 | Klien Prisma hanya lewat `@sai/db/client/*` | `tests/klien-prisma-dari-paket.test.ts` |
 | Modul yang pindah tidak hidup lagi di jalur lama | `tests/paket-pindahan.test.ts` |
 | Scanner wajib memakai akar `src/` + `apps/operator/src` + `packages/*/src` | `tests/akar-sumber.ts` |
+| Pohon Go tidak menulis tabel buku; kosakata & angka antrean tidak ditulis tangan di sana | `tests/services-go.test.ts` |
+| `kind` yang DITERBITKAN punya tepat satu pengklaim, di jalurnya sendiri | `tests/kind-punya-pengklaim.test.ts` |
+| Versi Go di image = versi di `go.mod` | `tests/go-image-version.test.ts` |
 
 - `@sai/platform → @sai/ui` ada untuk satu hal: rute ikon menggambar lambang bawaan. Arah sebaliknya tidak boleh ada.
 - **Scanner yang hanya menyapu `src/` lulus dengan nol pelanggar** begitu kodenya pindah ke paket — kegagalan diam yang terjadi di Fase 2.
@@ -365,9 +467,9 @@ Dihitung 18 Okt 2026.
 
 | | |
 |---|---|
-| Halaman | 131 pelanggan + 19 konsol |
-| Rute API | 128 pelanggan + 2 konsol |
-| Model Prisma | 61 perusahaan + 15 control + 12 platform = 88 |
+| Halaman | 131 customer + 19 konsol |
+| Rute API | 128 customer + 2 konsol |
+| Model Prisma | 62 perusahaan + 19 control + 17 platform = 98 — **tiga di antaranya kembar sementara**: jejak putaran ada di kedua skema selama langkah expand (migration kendali 0005), dan hilang dari platform pada langkah contract |
 | Migration aktif | company 1 · control 4 · platform 4; arsip MariaDB hanya-baca: 99 |
 | Modul `src/lib` | 231 berkas |
 | Berkas tes | 306 berkas · 4.429 tes |

@@ -1,0 +1,70 @@
+# GERBANG LINT GO — gerbang rilis nomor dua (AGENTS.md §Go di `services/`).
+#
+# ══ KENAPA DAFTARNYA PENDEK ════════════════════════════════════════════════
+# Linter yang berbunyi untuk hal yang bukan cacat akan dimatikan orang, dan
+# yang dimatikan bukan cuma linter itu — biasanya seluruh gerbangnya, dengan
+# `--no-verify` atau dengan satu baris `disable-all`. Jadi yang dinyalakan di
+# sini hanya yang temuannya punya bentuk kegagalan nyata di layanan ini:
+#
+#   errcheck    — galat yang diabaikan. Di pelari pekerjaan inilah bentuk
+#                 kegagalan termahal: `Exec` yang galatnya dibuang membuat
+#                 pekerjaan terbaca "selesai" padahal barisnya tidak berubah.
+#   govet       — kesalahan yang mengompilasi sempurna (format string, lock
+#                 yang tersalin, shadow `err`).
+#   staticcheck — pemeriksa paling padat temuan nyata per peringatan.
+#   ineffassign — penugasan yang tidak pernah dibaca; di jalur galat biasanya
+#                 berarti satu cabang yang lupa dipulangkan.
+#   unused      — kode mati yang terlihat hidup. Satu dari dua bentuk
+#                 penyimpangan kontrak yang disebut `contract/kinds.yaml`.
+#   errorlint   — `==` pada galat alih-alih `errors.Is`. Penting di sini: SEMUA
+#                 jalur "tidak ada pekerjaan" bergantung pada `errors.Is` yang
+#                 benar, dan perbandingan langsung gagal diam-diam begitu galat
+#                 dibungkus `%w`.
+#   gosec       — dinyalakan karena layanan inilah satu-satunya yang memegang
+#                 kunci enkripsi cadangan (tahap 1b). `nolint` di kode WAJIB
+#                 menyebut alasannya.
+#   bodyclose   — respons HTTP yang tidak ditutup. Integrasi luar (e-faktur,
+#                 feed bank) adalah jalur yang akan memakainya.
+#   gofmt       — DI DALAM sini, bukan sebagai perintah terpisah: `gofmt -l`
+#                 keluar dengan kode 0 meski ia menyebut berkas yang belum
+#                 di-format, jadi `gofmt -l .` sebagai gerbang adalah gerbang
+#                 yang SELALU hijau. Di sini ia temuan, dan temuan menggagalkan.
+#
+# Yang SENGAJA TIDAK dinyalakan: `misspell` (kamusnya Inggris, komentar di repo
+# ini Indonesia — ia akan menuduh setiap paragraf), `lll` (komentar di repo ini
+# memang panjang dan itu disengaja), `revive`/`godot` (gaya, bukan cacat).
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - errorlint
+    - gosec
+    - bodyclose
+    - gofmt
+
+linters-settings:
+  errcheck:
+    # Galat `Close()` pada pembaca yang sudah selesai dibaca memang tidak
+    # mengubah apa pun, dan memaksanya diperiksa menghasilkan `_ =` yang
+    # menyembunyikan justru yang perlu dilihat.
+    check-type-assertions: true
+    check-blank: false
+
+issues:
+  # Nol toleransi: gerbang yang mengizinkan "beberapa" temuan adalah gerbang
+  # yang angkanya naik satu per PR tanpa ada yang memutuskannya.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    # Berkas tes: pelanggaran yang bentuk kegagalannya tidak ada di tes.
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec

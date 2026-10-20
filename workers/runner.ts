@@ -1,0 +1,310 @@
+/**
+ * PELARI JALUR — satu proses menguras satu jalur antrean.
+ *
+ * Jalur sebagai unit isolasi: rancangan §3.2. Layanannya: 02 §5.
+ *
+ *   bun workers/ledger.ts        # jalur `ledger`
+ *
+ * Satu berkas ini dipakai setiap jalur Node. Jalur Go punya pelarinya sendiri
+ * (`services/integrator/internal/jobs/runner.go`), dan keduanya membaca
+ * kontrak yang SAMA — kosakata maupun angkanya — itulah yang membuat "jalur"
+ * punya arti yang sama di dua bahasa.
+ *
+ * ⚠ Satu jalur bisa dilayani KEDUA bahasa selama transisi (01 §10): jalur
+ * `tenant` adalah contoh pertamanya. Karena itu pelari mengklaim `kind` yang
+ * punya handler padanya, bukan seluruh `kind` jalurnya — dan lubang yang
+ * dibuka keputusan itu ditutup `tests/kind-punya-pengklaim.test.ts`.
+ *
+ * ══ EMPAT HAL YANG MEMBUATNYA AMAN, DAN SEMUANYA MUDAH TERLEWAT ════════════
+ *
+ *  1. **Lease diperpanjang selama bekerja.** Pekerjaan 30 menit melewati ambang
+ *     mana pun yang masuk akal untuk mendeteksi pekerja mati. Tanpa perpanjangan,
+ *     pekerja kedua mengklaimnya SEMENTARA yang pertama masih berjalan.
+ *
+ *  2. **Lease yang hilang MENGHENTIKAN pekerjaan.** Kalau perpanjangan menjawab
+ *     "ini bukan milikmu lagi", pekerjaan dibatalkan di tempat. Melanjutkan
+ *     berarti dua pekerja menulis hasil untuk satu pekerjaan.
+ *
+ *  3. **SIGTERM menyelesaikan yang sedang jalan, lalu berhenti mengklaim.**
+ *     Mematikan proses di tengah tulisan menghasilkan keadaan separuh;
+ *     `docker compose down` dan rilis mengirim SIGTERM setiap kali.
+ *
+ *  4. **Jalur tunggal-instans dipagari *advisory lock*.** Ia TIDAK memikul
+ *     kebenaran — `dedupeKey` yang unik sudah melakukannya — tapi ia mencegah
+ *     dua penerbit berjalan bersamaan karena salah konfigurasi, dan kesalahan
+ *     itu jauh lebih mudah dilakukan daripada dibayangkan.
+ */
+import "dotenv/config";
+
+import { controlDb } from "@sai/core/control-db";
+import {
+  JOB_LANES,
+  type JobKind,
+  type JobLane,
+} from "@sai/core/generated/job-kinds";
+import { LEASE_RENEW_MS } from "@sai/core/job-backoff";
+import { IDLE_MS, UPKEEP_MS as UPKEEP_MS_KONTRAK } from "@sai/core/generated/job-numbers";
+import {
+  archiveDoneJobs,
+  claimJob,
+  completeJob,
+  failJob,
+  reclaimStaleJobs,
+  renewLease,
+  reportProgress,
+  type JobRow,
+} from "@sai/platform/job-queue";
+
+/**
+ * Jeda antar putaran UPKEEP — memulangkan lease kedaluwarsa & membuang baris
+ * `done` yang lewat retensi.
+ *
+ * WAJIB lebih rapat daripada `LEASE_STALE_MS` (dijaga `tests/job-upkeep.test.ts`):
+ * putaran yang lebih jarang daripada ambang basi berarti pekerjaan dari pekerja
+ * yang mati menunggu satu putaran penuh LAGI sesudah lease-nya kedaluwarsa, dan
+ * waktu tunggu itu tidak muncul di satu pun angka. Diekspor supaya penjaganya
+ * membandingkan angka yang SUNGGUH dipakai, bukan salinannya.
+ *
+ * Angkanya — beserta `IDLE_MS` — datang dari `contract/kinds.yaml`, sebab
+ * pelari Go membacanya juga. Jeda yang berbeda antara dua pelari membuat satu
+ * jalur dipulangkan lebih lambat daripada jalur lain tanpa ada yang
+ * memutuskannya, dan generator kontraknya MENOLAK pasangan yang tidak
+ * konsisten — jadi kombinasi yang salah tidak bisa lahir ke bahasa mana pun.
+ */
+export const UPKEEP_MS = UPKEEP_MS_KONTRAK;
+
+export interface JobContext {
+  job: JobRow;
+  /** Laporkan kemajuan; sekaligus memperpanjang lease. */
+  progress: (persen: number) => Promise<void>;
+  /** `true` bila pembatalan diminta — periksa DI ANTARA langkah. */
+  cancelled: () => boolean;
+}
+
+/** Handler mengembalikan `resultRef` (kunci objek) atau `null`. */
+export type JobHandler = (ctx: JobContext) => Promise<string | null>;
+
+export class LeaseLostError extends Error {
+  constructor() {
+    super("lease hilang — pekerjaan ini sudah bukan milik pekerja ini");
+    this.name = "LeaseLostError";
+  }
+}
+
+/** Nama pekerja: cukup untuk menunjuk container yang memegang lease. */
+function workerId(lane: JobLane): string {
+  return `${lane}@${process.env.HOSTNAME ?? "lokal"}:${process.pid}`;
+}
+
+/**
+ * Pagar jalur tunggal-instans.
+ *
+ * `pg_try_advisory_lock` dipegang selama koneksi hidup dan dilepas sendiri saat
+ * proses mati — termasuk mati mendadak, yang justru kasus yang penting. Kunci
+ * yang disimpan sebagai baris akan tertinggal setelah OOM dan memblokir
+ * pengganti yang sehat.
+ */
+async function ambilPagar(lane: JobLane): Promise<boolean> {
+  /* Id kunci diturunkan dari nama jalur secara stabil — dua jalur berbeda tidak
+     boleh berebut kunci yang sama. `hashtext` deterministik di satu versi
+     server, dan itu cukup: yang dibandingkan hanya dua proses jalur yang sama
+     di server yang sama. */
+  const rows = await controlDb.$queryRaw<{ ok: boolean }[]>`
+    SELECT pg_try_advisory_lock(hashtext(${`sai.lane.${lane}`})) AS ok`;
+  return rows[0]?.ok === true;
+}
+
+/**
+ * Satu putaran pemeliharaan tabel `jobs`.
+ *
+ * Dijalankan SETIAP pelari, bukan hanya jalur tunggal-instans: penyebaran yang
+ * kebetulan hanya memuat jalur jamak akan berjalan tanpa pernah memulangkan
+ * satu lease pun, dan kegagalan itu tidak punya gejala selain pekerjaan yang
+ * hilang.
+ *
+ * Tanpa kunci dan tanpa *leader election*, karena keduanya idempoten: pelari
+ * kedua yang menjalankannya pada saat yang sama memulangkan dan membuang nol
+ * baris. Ini pola §4 — kunci hanya mengurangi pekerjaan terbuang, bukan
+ * memikul kebenaran, dan di sini yang terbuang pun tidak berarti.
+ *
+ * Galatnya DITELAN (dicatat, tidak dilempar): pemeliharaan yang gagal tidak
+ * boleh menjatuhkan pelari yang sedang sehat mengerjakan pekerjaan orang.
+ */
+async function upkeep(lane: JobLane): Promise<void> {
+  try {
+    const dipulangkan = await reclaimStaleJobs();
+    if (dipulangkan > 0) {
+      console.log(`[${lane}] upkeep: ${dipulangkan} pekerjaan dipulangkan dari pekerja yang mati`);
+    }
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal memulangkan lease kedaluwarsa:`, e);
+  }
+  try {
+    const dibuang = await archiveDoneJobs();
+    if (dibuang > 0) console.log(`[${lane}] upkeep: ${dibuang} baris \`done\` lewat retensi dibuang`);
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal membuang baris \`done\`:`, e);
+  }
+}
+
+export interface RunnerOptions {
+  lane: JobLane;
+  handlers: Partial<Record<JobKind, JobHandler>>;
+}
+
+export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> {
+  const me = workerId(lane);
+  const spec = JOB_LANES[lane];
+
+  if (spec.singleInstance) {
+    if (!(await ambilPagar(lane))) {
+      console.log(
+        `[${lane}] instans lain sudah memegang jalur ini — keluar tanpa bekerja.\n` +
+          `  Jalur ini tunggal-instans di contract/kinds.yaml. Ini bukan galat; ` +
+          `ia mencegah dua penerbit berjalan bersamaan.`
+      );
+      await controlDb.$disconnect().catch(() => {});
+      return;
+    }
+  }
+
+  let berhenti = false;
+  const minta = (sig: string) => {
+    if (berhenti) return;
+    berhenti = true;
+    console.log(`[${lane}] ${sig} — menyelesaikan pekerjaan yang sedang jalan, lalu berhenti.`);
+  };
+  process.on("SIGTERM", () => minta("SIGTERM"));
+  process.on("SIGINT", () => minta("SIGINT"));
+
+  /* Hanya `kind` yang punya handler yang diklaim — lihat `claimJob`. Diurutkan
+     supaya log dan kueri bisa diulang. */
+  const kinds = (Object.keys(handlers) as JobKind[]).filter((k) => handlers[k]).sort();
+  if (kinds.length === 0) {
+    console.error(`[${lane}] tidak punya satu handler pun — keluar tanpa mengklaim apa pun.`);
+    await controlDb.$disconnect().catch(() => {});
+    return;
+  }
+
+  console.log(`[${lane}] mulai sebagai ${me} — mengklaim ${kinds.join(", ")}`);
+
+  /* Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah
+     sebuah crash harus memulangkan pekerjaan yang tertinggal sekarang, bukan
+     satu menit dari sekarang. */
+  await upkeep(lane);
+  const pemeliharaan = setInterval(() => void upkeep(lane), UPKEEP_MS);
+
+  while (!berhenti) {
+    let job: JobRow | null;
+    try {
+      job = await claimJob(lane, me, kinds);
+    } catch (e) {
+      console.error(`[${lane}] gagal mengklaim:`, e);
+      await tidur(IDLE_MS);
+      continue;
+    }
+
+    if (!job) {
+      await tidur(IDLE_MS);
+      continue;
+    }
+
+    const handler = handlers[job.kind];
+    if (!handler) {
+      /* Pekerjaan yang jalurnya ini tapi tanpa handler adalah kegagalan
+         KONTRAK, bukan kegagalan data: ia dicatat sebagai galat supaya baris
+         itu akhirnya mati alih-alih diklaim-dan-dilepas selamanya oleh setiap
+         pekerja yang lewat. */
+      await failJob(
+        job.id,
+        me,
+        `tidak ada handler untuk kind \`${job.kind}\` di jalur \`${lane}\` — ` +
+          "kontrak dan pelari tidak sepakat"
+      );
+      continue;
+    }
+
+    await kerjakan(lane, me, job, handler);
+  }
+
+  clearInterval(pemeliharaan);
+  await controlDb.$disconnect().catch(() => {});
+  console.log(`[${lane}] berhenti.`);
+}
+
+async function kerjakan(
+  lane: JobLane,
+  me: string,
+  job: JobRow,
+  handler: JobHandler
+): Promise<void> {
+  let dibatalkan = job.cancelRequested;
+  let leaseHidup = true;
+
+  const perpanjang = setInterval(() => {
+    void (async () => {
+      try {
+        const masih = await renewLease(job.id, me);
+        if (!masih) {
+          leaseHidup = false;
+          console.error(`[${lane}] #${job.id} lease HILANG — pekerjaan dihentikan.`);
+        }
+      } catch (e) {
+        /* Gagal memperpanjang karena basis data sedang tak terjangkau BUKAN
+           bukti lease hilang. Menganggapnya hilang akan membatalkan pekerjaan
+           yang sebenarnya masih sah; ambang reclaim memberi ruang untuk
+           beberapa kali gagal. */
+        console.error(`[${lane}] #${job.id} gagal memperpanjang lease:`, e);
+      }
+      /* Pembatalan dibaca di putaran yang sama: satu kueri, dua pertanyaan. */
+      try {
+        const r = await controlDb.$queryRaw<{ cancel: boolean }[]>`
+          SELECT cancel_requested AS cancel FROM jobs WHERE id = ${job.id}`;
+        if (r[0]?.cancel) dibatalkan = true;
+      } catch {
+        /* diam: pembatalan yang terlambat terbaca hanya berarti pekerjaan
+           selesai, dan itu tidak merusak apa pun. */
+      }
+    })();
+  }, LEASE_RENEW_MS);
+
+  const mulai = Date.now();
+  try {
+    const resultRef = await handler({
+      job,
+      progress: async (persen) => {
+        if (!leaseHidup) throw new LeaseLostError();
+        await reportProgress(job.id, me, persen);
+      },
+      cancelled: () => dibatalkan || !leaseHidup,
+    });
+
+    if (!leaseHidup) throw new LeaseLostError();
+
+    if (dibatalkan) {
+      await failJob(job.id, me, "dibatalkan atas permintaan");
+      console.log(`[${lane}] #${job.id} ${job.kind} dibatalkan`);
+      return;
+    }
+
+    await completeJob(job.id, me, resultRef);
+    console.log(`[${lane}] #${job.id} ${job.kind} selesai (${Date.now() - mulai} ms)`);
+  } catch (e) {
+    if (e instanceof LeaseLostError) {
+      /* TIDAK dilaporkan sebagai kegagalan pekerjaan: barisnya sudah dipulangkan
+         dan mungkin sudah diklaim pekerja lain. Menulis `failJob` di sini akan
+         menaikkan `attempts` milik pekerjaan orang lain. */
+      console.error(`[${lane}] #${job.id} dilepas karena lease hilang`);
+      return;
+    }
+    const pesan = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    const hasil = await failJob(job.id, me, pesan);
+    console.error(
+      `[${lane}] #${job.id} ${job.kind} GAGAL (${hasil?.status ?? "tidak diketahui"}): ${pesan}`
+    );
+  } finally {
+    clearInterval(perpanjang);
+  }
+}
+
+const tidur = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));

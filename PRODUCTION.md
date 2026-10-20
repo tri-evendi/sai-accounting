@@ -55,6 +55,7 @@ operator variables. Use the table below as the reference.
 | `OPERATOR_USERS` | Emergency `owner` account(s) for the console — see [§3](#3-create-the-first-accounts) |
 | `BACKUP_ENCRYPTION_KEY` | Required by `svc-tenant` — see [§Automated backups](#automated-backups-issue-374-per-database-since-stage-1b) |
 | `COMPANY_MIGRATE_CONCURRENCY` | How many company databases migrate at once (default 2, ceiling 8). Each worker is a Prisma CLI process plus a PostgreSQL backend, and migrations run while the apps are still serving — a large number here is a self-scheduled OOM on the release step that must not half-fail |
+| `CONFORMANCE_CONCURRENCY` | How many books the conformance sweep scans at once (default **3**, ceiling 8). Deliberately *not* the same as the migrate default: this sweep spawns no child process and only reads, so what bounds it is `db-postgres`, not memory — eleven checks per book are eleven table scans on the same server that serves the apps. A conformance sweep that slows down someone posting entries is a sweep that eventually gets switched off |
 | `NODE_ENV` | `production` (set in the image) |
 
 **Never set `ALLOW_SEED=true` in production.**

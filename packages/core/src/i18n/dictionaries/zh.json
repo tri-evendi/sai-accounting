@@ -4807,6 +4807,9 @@
       "listFailures": "检查失败的账簿",
       "listEmpty": "无。",
       "findingsTruncated": "显示 {total} 条发现中的 {shown} 条。其余见 `docker compose logs job-conformance`。",
+      "perBookHeading": "按账套",
+      "perBookLegacy": "本次运行记录于并发扫描之前，因此没有按账套的记录。下一次运行将包含。",
+      "perBookColDuration": "耗时（毫秒）",
       "failuresWhy": "未被检查的账簿不等于干净的账簿——即使发现为零，存在检查失败的扫描也需要处理。"
     },
     "actions": {

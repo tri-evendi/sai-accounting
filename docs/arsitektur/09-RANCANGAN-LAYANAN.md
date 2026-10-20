@@ -433,7 +433,7 @@ Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 |---|---|---|---|
 | Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ ketiganya ada (tahap 1b) — tapi masih di gerbang pemblokir, dan masih TypeScript. Alasannya di bawah |
 | **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
-| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | belum — sapuannya masih berurutan di `job-conformance` |
+| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. Masih langkah di `job-conformance`, bukan jalur tersendiri: belum ada `kind` yang diterbitkan untuknya |
 | Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di `job-scheduler`, bukan jalur `schedule` tersendiri |
 
 ✅ **Bukti kelengkapan cadangan sudah diperluas**: setiap basis data terdaftar

@@ -720,7 +720,7 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur** dan **laju & durasi pekerjaan** (dua panel, sengaja terpisah: yang pertama berambang, yang kedua belum) |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur** dan **laju & durasi pekerjaan** (dua panel, sengaja terpisah: yang pertama berambang, yang kedua belum); `/conformance` memuat **catatan per buku** beserta lamanya |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 
@@ -830,6 +830,39 @@ tujuh yang dikarang.
 | Pelacakan error | Error runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
 | Peringatan saat scheduler mati total | `watch:health` berjalan **di dalam** `job-scheduler` dan ikut mati |
+
+### Sapuan kesesuaian berjalan SERENTAK, dan yang membatasinya basis datanya
+
+`CONFORMANCE_CONCURRENCY` — bawaan **3**, plafon 8, nilai salah tulis diabaikan
+dengan BUNYI. Angkanya sengaja **berbeda** dari `COMPANY_MIGRATE_CONCURRENCY`
+(bawaan 2): migration menjalankan satu proses Prisma CLI plus satu backend per
+pelaksana, sementara sapuan ini nol proses anak dan hanya BACA.
+
+Yang membatasinya karena itu bukan memori melainkan **`db-postgres`**: sebelas
+pemeriksaan per buku adalah sebelas sapuan tabel, pada satu server yang juga
+melayani aplikasi. Delapan buku serentak berarti 88 sapuan bersamaan — dan
+pemeriksaan kesesuaian yang memperlambat orang yang sedang membukukan adalah
+pemeriksaan yang akhirnya dimatikan.
+
+Konkurensi memecahkan tiga hal yang semuanya **sunyi**, dan ketiganya dijaga
+`tests/kesesuaian-fanout.test.ts`:
+
+| Pecah | Akibatnya kalau dibiarkan |
+|---|---|
+| Keluaran **menyisip** | laporan dua buku bergantian — dan yang tak terbaca adalah justru log pada hari satu di antaranya menemukan sesuatu |
+| Urutan laporan **berubah tiap putaran** | diff antar sapuan penuh meski hasilnya sama, dan diff yang selalu penuh adalah diff yang tidak dibaca |
+| Koneksi tak tertutup pada jalur **gagal** | satu klien per buku; sapuan yang gagal di sepuluh buku menghabiskan pool-nya sendiri |
+
+**Jejaknya memuat satu catatan per basis data** — slug, status, jumlah temuan,
+dan **lamanya**. Yang terakhir bukan hiasan: sapuan yang melambat selalu
+melambat pada SATU buku lebih dulu (yang terbesar, atau yang indeksnya hilang),
+dan total putaran menyembunyikannya di balik rata-rata.
+
+Ia di dalam JSON `details`, **bukan** tabel tersendiri — preseden yang sama
+dengan `backup_runs`, yang pun satu baris per putaran dengan bukti
+per-basis-datanya di `manifest.json`. Yang hilang nyata: JSON tidak bisa
+dikueri, jadi "buku mana yang paling sering gagal" belum terjawab SQL.
+**Pemicu** memindahkannya ke tabel: ada orang yang sungguh menanyakan itu.
 
 ## 15. Pemulihan bencana
 

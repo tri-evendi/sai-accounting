@@ -79,7 +79,7 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 
 ## 2. Strategi pengujian
 
-**329 berkas tes · 5.574 tes** dijalankan Vitest 3 lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
+**330 berkas tes · 5.592 tes** dijalankan Vitest 3 lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
 lewat `bun run go:test`. Keduanya gerbang tersendiri, dan yang satu hijau
 **tidak** membuktikan apa pun tentang yang lain.
 

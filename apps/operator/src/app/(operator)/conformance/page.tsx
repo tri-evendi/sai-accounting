@@ -39,7 +39,10 @@ import {
 } from "@op/components/operator/console-ui";
 import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@op/lib/operator/guard";
-import { conformanceRunsForOperator } from "@op/lib/operator/store";
+import {
+  conformanceRunsForOperator,
+  type ConformanceCompanyRecord,
+} from "@op/lib/operator/store";
 import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
@@ -115,6 +118,54 @@ export default async function OperatorConformancePage() {
 
   const runs = await conformanceRunsForOperator(10);
   const latest = runs?.[0] ?? null;
+
+  /*
+   * Tabel PER BUKU (§6) — "baris jejak per basis data" yang dituntut rancangan,
+   * dan satu-satunya tempat jawaban "buku mana" bisa dibaca tanpa membuka log.
+   *
+   * Ia memuat `durationMs`, dan itu bukan hiasan: sapuan yang melambat selalu
+   * melambat pada SATU buku lebih dulu — yang terbesar, atau yang indeksnya
+   * hilang — dan total putaran menyembunyikannya di balik rata-rata.
+   */
+  const bukuColumns: SaiColumns<ConformanceCompanyRecord> = [
+    {
+      key: "slug",
+      title: t("operator.conformance.colChecked"),
+      align: "left",
+      render: (_v, b) => b.slug,
+    },
+    {
+      key: "status",
+      title: t("operator.conformance.colStatus"),
+      align: "left",
+      render: (_v, b) => (
+        <Badge
+          variant={b.status === "error" ? "danger" : b.status === "findings" ? "warning" : "success"}
+        >
+          {b.status === "error"
+            ? t("operator.conformance.statusError")
+            : b.status === "findings"
+              ? t("operator.conformance.statusFindings")
+              : t("operator.conformance.statusOk")}
+        </Badge>
+      ),
+    },
+    {
+      key: "findings",
+      title: t("operator.conformance.colFindings"),
+      align: "right",
+      /* Nol temuan BUKAN angka yang menuntut perhatian; yang bukan nol iya. */
+      render: (_v, b) => (
+        <span style={b.findingCount > 0 ? PERLU_TINDAKAN : TABULAR}>{b.findingCount}</span>
+      ),
+    },
+    {
+      key: "duration",
+      title: t("operator.conformance.perBookColDuration"),
+      align: "right",
+      render: (_v, b) => <span style={TABULAR}>{b.durationMs}</span>,
+    },
+  ];
 
   const columns: SaiColumns<ConformanceRun> = [
     {
@@ -207,6 +258,29 @@ export default async function OperatorConformancePage() {
                 })}
               >
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
+                  {/* DI ATAS daftar temuan dengan sengaja: pertanyaan pertama
+                      orang yang membuka halaman ini "buku mana", dan daftar
+                      temuan menjawab "apa" — yang tidak berguna sebelum yang
+                      pertama terjawab. */}
+                  <div>
+                    <h2 style={{ ...MUTED, margin: "0 0 var(--ant-margin-xs)", fontSize: "inherit" }}>
+                      {t("operator.conformance.perBookHeading")}
+                    </h2>
+                    {latest.details && latest.details.perCompany.length > 0 ? (
+                      <StaticTable
+                        columns={bukuColumns}
+                        rows={latest.details.perCompany}
+                        rowKey={(b) => b.slug}
+                      />
+                    ) : (
+                      /* Kosong di sini BUKAN "nol buku disapu" — ia putaran yang
+                         dicatat sebelum medan ini ada. Bedanya menentukan: "nol
+                         buku disapu" adalah insiden, putaran lama bukan apa-apa. */
+                      <p style={{ ...MUTED, margin: 0 }}>
+                        {t("operator.conformance.perBookLegacy")}
+                      </p>
+                    )}
+                  </div>
                   <RunList
                     heading={t("operator.conformance.listFindings")}
                     items={latest.details?.findings ?? []}

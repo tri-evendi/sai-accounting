@@ -94,3 +94,21 @@ services:
     pull_policy: always
     environment:
       APP_DEPLOY_PROFILE: onprem
+
+  # Jalur `tenant` — cadangan per basis data (tahap 1b). Di on-premise ia LEBIH
+  # penting daripada di SaaS, dan bukan sebaliknya: di sini tidak ada bucket
+  # milik SAI, tidak ada mesin kedua, dan seringkali tidak ada S3 sama sekali —
+  # jadi direktori `cadangan` di mesin customer adalah satu-satunya salinan yang
+  # ada. Itu juga yang membuat aturan "yang terbaru tidak pernah dibuang"
+  # berlaku di sini, bukan hanya di jalur lokal (lihat `PilihUntukDibuang`).
+  #
+  # ⚠ Image-nya `-integrator`, BUKAN `-migrator`: ia satu-satunya layanan di
+  # pemasangan ini yang dibangun dari tahap Go. `docker compose pull` yang
+  # melewatkannya akan membiarkan jalur cadangan di image yang mendahului
+  # migration-nya — dan kegagalannya tidak terlihat di satu pun halaman, sebab
+  # layanan ini tidak melayani HTTP.
+  svc-tenant:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem

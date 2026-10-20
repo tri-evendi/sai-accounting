@@ -71,6 +71,33 @@ describe("schedulerHealth", () => {
 describe("penjadwal sebagai layanan (#373)", () => {
   const compose = readFileSync(join(process.cwd(), "docker-compose.yml"), "utf8");
 
+  /**
+   * Setiap layanan compose → badannya, dipotong sampai layanan BERIKUTNYA.
+   *
+   * Dipakai penjaga yang berlaku untuk SEMUA layanan, bukan untuk daftar yang
+   * diketik tangan: daftar yang diketik menjaga keadaan saat ia ditulis, dan
+   * layanan berikutnya yang melanggar aturannya tidak akan pernah masuk ke
+   * dalamnya.
+   */
+  function semuaLayanan(): Record<string, string> {
+    const baris = compose.split("\n");
+    const hasil: Record<string, string> = {};
+    let nama: string | null = null;
+    let kumpul: string[] = [];
+    for (const b of baris) {
+      const m = /^  ([a-z][a-z0-9-]*):$/.exec(b);
+      if (m) {
+        if (nama) hasil[nama] = kumpul.join("\n");
+        nama = m[1]!;
+        kumpul = [];
+        continue;
+      }
+      if (nama) kumpul.push(b);
+    }
+    if (nama) hasil[nama] = kumpul.join("\n");
+    return hasil;
+  }
+
   it("ada layanan `job-scheduler` yang lahir bersama deploy", () => {
     expect(compose).toMatch(/^ {2}job-scheduler:$/m);
     expect(compose).toContain("scheduler:subscriptions");
@@ -161,17 +188,24 @@ describe("penjadwal sebagai layanan (#373)", () => {
 
   it("setiap loop layanan punya timeout — bukan hanya penjadwal", () => {
     // Kelas cacatnya milik BENTUK `while true; do … sleep N; done`, bukan milik
-    // penjadwal. Cadangan harian dan pemeriksaan mingguan punya bentuk yang
-    // sama, dan pada cadensi itu satu kemacetan bisa berumur berbulan-bulan.
-    const loop = compose.split("\n").filter((b) => b.includes("while true"));
-    expect(loop.length).toBeGreaterThan(0);
-    for (const layanan of ["job-conformance", "job-backup"] as const) {
-      const mulai = compose.indexOf(`\n  ${layanan}:`);
-      expect(mulai, `layanan ${layanan} tidak ada`).toBeGreaterThan(-1);
-      const potong = compose.slice(mulai);
-      const habis = potong.indexOf("\n  ", 1) > 0 ? potong.indexOf("\n\n  ") : potong.length;
-      const badan = potong.slice(0, habis > 0 ? habis : potong.length);
-      expect(badan, `loop ${layanan} tanpa timeout`).toContain("timeout -k");
+    // penjadwal. Pemeriksaan mingguan punya bentuk yang sama, dan pada cadensi
+    // itu satu kemacetan bisa berumur berbulan-bulan.
+    //
+    // ⚠ Daftar layanannya DITURUNKAN dari compose, bukan diketik di sini.
+    // Versi pertama penjaga ini menyebut `["job-conformance", "job-backup"]`,
+    // dan daftar itu salah dua kali di tahap 1b: `job-backup` berhenti punya
+    // loop (cadangan pindah ke `svc-tenant` lewat antrean), sementara layanan
+    // berikutnya yang MENAMBAH loop tidak akan pernah masuk daftarnya. Penjaga
+    // yang daftarnya diketik tangan menjaga masa lalu.
+    const berloop = Object.entries(semuaLayanan()).filter(([, badan]) =>
+      badan.includes("while true")
+    );
+    expect(
+      berloop.length,
+      "tidak ada satu pun loop layanan di compose — penjaga ini tidak lagi melihat apa pun"
+    ).toBeGreaterThan(0);
+    for (const [nama, badan] of berloop) {
+      expect(badan, `loop ${nama} tanpa timeout`).toContain("timeout -k");
     }
   });
 

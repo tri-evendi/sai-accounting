@@ -1,10 +1,30 @@
 #!/bin/sh
 # ═══════════════════════════════════════════════════════════════════════════
-# CADANGAN OTOMATIS (issue #374)
+# CADANGAN — ALAT TANGAN sejak tahap 1b (issue #374)
 #
 #   sh scripts/backup.sh              # cadangkan & kirim
 #   sh scripts/backup.sh --dry-run    # cetak yang AKAN dikerjakan; tidak menulis
 #                                     # apa pun ke luar, tidak menghapus apa pun
+#
+# ══ TIDAK LAGI DIJADWALKAN ═════════════════════════════════════════════════
+# Yang mencadangkan sekarang `svc-tenant` (jalur `tenant`, Go), dan ia
+# mencadangkan SATU OBJEK PER BASIS DATA — menutup celah on-premise #5:
+# `pg_dumpall` di bawah berarti satu tenant tidak bisa dipulihkan tanpa
+# menyentuh tenant lain, padahal "pulihkan data kami saja ke keadaan Selasa"
+# adalah permintaan biasa di SaaS berbayar (rancangan §1, §6).
+#
+# Skrip ini TETAP ADA, dan bukan karena belum dibereskan. Tiga gunanya:
+#
+#   1. jalan mundur bertangan bila jalur antrean sedang tidak bisa dipakai;
+#   2. satu-satunya yang bisa mendump MariaDB — artefak dari sebelum penukaran
+#      15 Okt 2026 masih satu-satunya salinan dari masa itu;
+#   3. rujukan FORMAT. Artefak `svc-tenant` memakai `openssl enc` yang sama
+#      persis seperti di bawah, byte per byte — supaya prosedur pemulihan tidak
+#      bercabang, dan supaya hari pemulihan tidak menuntut biner Go.
+#
+# ⚠ Jangan menjadwalkannya kembali di `docker-compose.yml`. Dua pelaksana untuk
+# satu pekerjaan adalah dua `pg_dump` yang berebut IO di kotak yang satu
+# dumpnya saja pekerjaan berat; dijaga `tests/backup-script.test.ts`.
 #
 # ══ APA YANG DICADANGKAN, DAN KENAPA DAFTARNYA SEPANJANG INI ═══════════════
 # Sejak #104 buku besar setiap PT ada di basis datanya SENDIRI, jadi jumlah

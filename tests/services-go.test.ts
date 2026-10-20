@@ -337,6 +337,59 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
   });
 });
 
+describe("kosakata lintas bahasa: yang DITULIS Go = yang DIBACA kesehatan", () => {
+  /**
+   * `backup_runs.status` adalah kolom yang ditulis Go dan dibaca TypeScript,
+   * dan ia bukan kosakata yang dibangkitkan dari `contract/` — jadi ia
+   * satu-satunya tempat di repo ini di mana dua bahasa menyepakati sebuah
+   * nilai tanpa generator di antaranya.
+   *
+   * Bentuk penyimpangannya tidak menghasilkan satu pun galat: Go yang menulis
+   * `"sukses"` alih-alih `"ok"` membuat `lastBackup()` tidak pernah menemukan
+   * satu keberhasilan pun — `lastSuccessAt` tetap null selamanya, denyutnya
+   * `late`, dan `watch:health` mengirim surel setiap hari tentang cadangan
+   * yang sebenarnya berjalan sempurna. Kebalikannya lebih buruk: Go yang
+   * menulis `"ok"` untuk salinan yang TIDAK pergi ke luar mesin membuat
+   * permukaan ini berkata terlindungi untuk keadaan yang satu kehilangan mesin
+   * saja sudah cukup menghapus semuanya.
+   *
+   * Dibangkitkan? Tidak — tiga nilai di satu kolom belum sepadan dengan satu
+   * entri lagi di `contract/`, dan generator yang dipanggil untuk hal sekecil
+   * ini akan membuat orang berikutnya menambahkan hal kecil lain ke sana
+   * sampai `contract/` menjadi berkas konfigurasi. Yang dipilih penjaga ini:
+   * satu tes yang menyebut bentuk kegagalannya.
+   */
+  const KOSAKATA = ["ok", "local", "error"];
+
+  it("Go menulis ketiga nilai yang sama, tidak lebih", () => {
+    const trail = GO.find((b) => b.rel.endsWith("internal/trail/backup.go"));
+    expect(trail, "internal/trail/backup.go").toBeDefined();
+    for (const nilai of KOSAKATA) {
+      expect(trail!.isi, nilai).toContain(`\`${nilai}\``);
+    }
+
+    /* Nilai yang SUNGGUH diberikan ke kolomnya datang dari `Hasil.Status` di
+       paket backup, bukan dari berkas jejaknya. Di sanalah ia diperiksa. */
+    const jalankan = GO.find((b) => b.rel.endsWith("internal/backup/jalankan.go"))!.isi;
+    const literal = [...jalankan.matchAll(/status\s*(?::=|=)\s*"([a-z_]+)"/g)].map((m) => m[1]!);
+    expect(literal.length, "status putaran tidak ditetapkan di `jalankan.go`").toBeGreaterThan(0);
+    for (const nilai of literal) expect(KOSAKATA, `status ${nilai}`).toContain(nilai);
+  });
+
+  it("`ok` HANYA untuk salinan yang pergi ke LUAR mesin", () => {
+    /* Satu kata ini yang menentukan apakah permukaan kesehatan berkata benar. */
+    const jalankan = GO.find((b) => b.rel.endsWith("internal/backup/jalankan.go"))!.isi;
+    expect(jalankan).toMatch(/status := "local"[\s\S]{0,200}LuarMesin\(\)[\s\S]{0,80}status = "ok"/);
+  });
+
+  it("TypeScript membaca ketiga nilai itu juga", () => {
+    const health = readFileSync(join(AKAR_REPO, "src", "lib", "health-report.ts"), "utf8");
+    expect(health).toContain('status: "ok"');
+    expect(health).toContain('percobaan.status === "ok"');
+    expect(health).toContain('percobaan.status === "local"');
+  });
+});
+
 describe("integrator tidak menyentuh bidang yang bukan miliknya", () => {
   it("tidak MEMBACA alamat basis data penagihan", () => {
     /* #137: bidang penagihan turun ≠ aplikasi turun, dan integrator tidak punya

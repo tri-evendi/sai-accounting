@@ -43,10 +43,11 @@ dan batas heap eksplisit di setiap perintah Node.
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
 | `db` | `sai-db` | MariaDB 11, fallback, tidak ditulisi (#636) | sementara |
-| `job-scheduler` | `sai-job-scheduler` | 7 langkah penagihan & pemeliharaan | tiap jam |
+| `job-scheduler` | `sai-job-scheduler` | 8 langkah penagihan & pemeliharaan | tiap jam |
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
-| `job-backup` | `sai-job-backup` | dump → tar → sandi → S3 | harian |
 | `svc-ledger` | `sai-svc-ledger` | Pelari jalur `ledger` — menguras tabel `jobs` | selalu hidup |
+| `svc-tenant` | `sai-svc-tenant` | Pelari jalur `tenant` (Go) — cadangan **per basis data** | selalu hidup |
+| `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
 
 Ditambah `traefik`, dipakai bersama lima aplikasi lain dan tidak termasuk
@@ -60,7 +61,7 @@ graph TB
     WEBO --> PGB
     JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger] --> PGB
     PGB --> PG[(sai-pg)]
-    LANGSUNG[sai-job-backup · sai-migrate] --> PG
+    LANGSUNG[sai-svc-tenant · sai-migrate] --> PG
     OLD[(sai-db — MariaDB, fallback)]
 
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
@@ -111,7 +112,7 @@ per-proses itulah yang menghalangi penskalaan horizontal (P2-3).
 | Batas | `pg_isready` tiap 10s · `max_connections = 100` |
 | Isi | 19 basis data, 227 MB (16 Okt 2026) |
 
-`app-*` dan dua job lewat `pgbouncer`; `migrate` dan `job-backup` **langsung**
+`app-*` dan dua job lewat `pgbouncer`; `migrate` dan `svc-tenant` **langsung**
 ke `pg` — Prisma Migrate memakai advisory lock yang terikat sesi, dan pooler
 `transaction` memulangkan dump sebagian.
 
@@ -272,28 +273,73 @@ faktur termigrasi senilai **Rp 774 juta**. `|| true` di sini wajib: skrip
 sengaja keluar bukan-nol saat menemukan sesuatu, dan tanpa `|| true` setiap
 temuan jadi *crash-loop*.
 
-### `job-backup` — harian
+### `svc-tenant` — jalur `tenant`, cadangan PER BASIS DATA
 
-`sh scripts/backup.sh`, `sleep 86400` (RPO 1 hari, disengaja),
-`timeout -k 60 7200`. Volume: `documents` (:ro) · `audit` (:ro) · `backup` (RW).
+Pelari Go yang menguras `tenant.backup` dari tabel `jobs`. Yang menjadwalkannya
+langkah `backup:publish` di putaran penjadwal, berbutir **hari** UTC: putaran
+pertama hari itu menerbitkan, 23 berikutnya menabrak `dedupe_key` dan tidak
+melakukan apa pun. RPO 1 hari, disengaja.
 
-**Urutan:** `pg_dumpall` langsung ke `pg` → `tar -czf` → `openssl enc
--aes-256-cbc -pbkdf2 -iter 200000 -salt` → SHA-256 atas ciphertext →
-`aws s3 cp` (arsip + `.sha256`) → pangkas yang kedaluwarsa **hanya** bila
-unggahan sukses. Tanpa `BACKUP_S3_BUCKET`, hasilnya ke volume `backup` dan
-`/api/health` melaporkan `local_only`.
+Volume: `documents` (:ro) · `audit` (:ro) · `cadangan` (RW). Menyambung
+**langsung** ke `pg`, melewati PgBouncer — pooler hanya mengekspos basis data
+yang terdaftar di konfigurasinya, jadi pencacahan lewat pooler memulangkan
+sebagian, dan sebagian itulah bentuk cadangan paling berbahaya.
+
+**Isi satu putaran** `sai-<stempel>/`:
+
+| Objek | Isi |
+|---|---|
+| `db-<nama>.dump.enc` | satu `pg_dump -Fc` per basis data — control, platform, dan setiap buku PT |
+| `globals.sql.enc` | `pg_dumpall --globals-only`: peran & hak akses |
+| `berkas.tar.gz.enc` | `data/documents` + `data/audit` (#367/#370) |
+| `<objek>.sha256` | sidik jari atas **ciphertext**, untuk setiap objek |
+| `manifest.json` | satu-satunya objek yang terbaca **tanpa** kunci |
+
+**Urutan:** cacah → periksa versi → per basis data (dump → sandi → sidik →
+kirim → buang sementara) → globals → berkas → manifest → pangkas. Enkripsi
+terjadi sebelum berkas meninggalkan mesin; pemangkasan paling akhir dan hanya
+bila pengiriman sukses.
 
 | Keputusan | Alasan |
 |---|---|
-| `--all-databases`, bukan daftar yang diketik | Daftar tangan tertinggal saat customer baru mendaftar |
-| Enkripsi sebelum berkas meninggalkan mesin | — |
-| SHA-256 atas ciphertext ikut dikirim | AES-256-CBC tidak membawa pemeriksaan keutuhan sendiri |
-| `awscli`, bukan SigV4 buatan sendiri | Penanda tangan sendiri gagal pada penyedia yang menormalkan header berbeda, dan gagalnya muncul saat restore |
+| Satu objek **per basis data** | `pg_dumpall` berarti satu tenant tidak bisa dipulihkan tanpa menyentuh tenant lain — celah on-premise #5 |
+| Pencacahan dari `pg_database`, diperiksa terhadap registry | Daftar dari registry melewatkan yang ada di server tapi belum terdaftar; daftar dari server tidak bisa membuktikan kelengkapan. Dua arah, dan tidak satu arah pun cukup |
+| `-Fc`, bukan SQL teks | Bisa dipulihkan sebagian (`pg_restore --table=…`). Dump teks hanya bisa dijalankan seluruhnya |
+| Format tetap `openssl enc` | Pada hari pemulihan, perkakas yang dibutuhkan harus perkakas yang **ADA** — bukan biner Go di dalam image yang mungkin tidak bisa ditarik. Artefak lama & baru dibuka dengan cara yang sama |
+| Manifest sebagai **objek**, bukan hanya baris DB | Pada hari pemulihan, basis data kendali bisa persis yang hilang |
+| SDK S3, bukan SigV4 buatan sendiri | Penanda tangan sendiri gagal pada penyedia yang menormalkan header berbeda, dan gagalnya muncul saat restore. Yang dibeli dibanding `awscli`: Python keluar dari image |
+| Satu basis data pada satu waktu | Puncak cakram sementara = basis data terbesar, bukan seluruh pemasangan |
+
+**Empat hal yang menggagalkan putaran sebelum satu objek pun terkirim:** basis
+data terdaftar yang hilang dari server, `pg_dump` lebih tua daripada server,
+`BACKUP_ENCRYPTION_KEY` kosong, dan satu dump yang gagal. Manifest ditulis
+**paling akhir**, jadi manifest yang ada berarti putarannya lengkap.
 
 > **⚠ Status 18 Okt 2026: `local_only`**, `lastSuccessAt: null`, tiga env S3
 > kosong. Kehilangan mesin = kehilangan buku **beserta** backup-nya. P0-1.
 
-`prove-backup-restore` memeriksa fingerprint, sandi, dan kelengkapan arsip. Ia
+> **⚠ `svc-tenant` berjalan sebagai root**, dan itu tertunda — bukan selesai.
+> Ia satu-satunya container yang memegang `BACKUP_ENCRYPTION_KEY`, jadi justru
+> ia yang paling pantas non-root. Yang menahannya: volume `cadangan` sudah ada
+> di mesin produksi, dibuat root, dan Docker tidak menerapkan kepemilikan image
+> ke volume bernama yang sudah ada. Langkahnya di PRODUCTION.md.
+
+### `job-backup` — PERKAKAS, bukan lagi pelaksana
+
+Sejak tahap 1b ia tidak mencadangkan apa pun. Profil `perkakas` membuatnya
+tidak ikut `docker compose up -d`, sementara `docker compose run` tetap bisa
+memanggilnya. Ia tetap ada karena image-nya satu-satunya yang memuat klien
+Prisma, `openssl`, `awscli`, **dan** klien MariaDB — yang terakhir supaya
+pembukti masih bisa membaca artefak dari sebelum penukaran mesin.
+
+Membiarkan putaran hariannya hidup berdampingan dengan `svc-tenant` berarti
+**dua pelaksana untuk satu pekerjaan**; dijaga `tests/backup-script.test.ts`.
+
+`prove-backup-restore` memeriksa manifest, lalu untuk **setiap** objek:
+keberadaan, sidik jari, dekripsi, dan — untuk objek basis data — `pg_restore
+--list` yang membaca katalognya tanpa memuat satu baris pun. Lalu kelengkapan:
+setiap PT terdaftar wajib punya objeknya **sendiri**. Ia membaca **kedua** tata
+letak, sebab pada hari cut-over artefak terbaru masih berbentuk lama. Ia
 **tidak** memuat dump ke basis data mana pun — satu `psql <` yang salah sasaran
 akan menimpa produksi. Pemuatan sungguhan ke server bayangan adalah latihan
 kuartalan manusia (❓ belum ada bukti dijalankan).
@@ -302,11 +348,11 @@ kuartalan manusia (❓ belum ada bukti dijalankan).
 
 | Volume | Dipasang di | Isi | Dicadangkan? |
 |---|---|---|---|
-| `pg_data` | `pg` | 19 basis data | Ya, lewat `pg_dumpall` |
+| `pg_data` | `pg` | 19 basis data | Ya — satu objek `pg_dump -Fc` per basis data |
 | `db_data` | `db` | MariaDB fallback, beku sejak 15 Okt | Tidak lagi; arsipkan dump terakhir sebelum dihapus (#636) |
-| `documents` | `app-customer` (RW), `job-backup` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — di `tar` |
-| `audit` | kedua `app-*` (RW), `job-backup` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — di `tar` |
-| `backup` | `job-backup` (RW) | Arsip terenkripsi + `.sha256` | — (ia *adalah* backup-nya) |
+| `documents` | `app-customer` (RW), `svc-tenant` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — objek `berkas.tar.gz.enc` |
+| `audit` | kedua `app-*` (RW), `svc-tenant` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — objek `berkas.tar.gz.enc` |
+| `cadangan` | `svc-tenant` (RW) | Satu direktori per putaran: objek terenkripsi + `.sha256` + `manifest.json` | — (ia *adalah* backup-nya) |
 
 Jejak audit ada di **tiga** tabel: `audit_logs` (tiap buku PT),
 `tenant_audit_logs` (control), `operator_audit_logs` (platform).
@@ -441,17 +487,26 @@ server   ──▶  git pull → compose pull → [migrate] → up -d        (TA
 
 ```bash
 git pull
-docker compose pull app-customer app-operator migrate job-scheduler job-conformance job-backup svc-ledger
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant
 # HANYA bila ada migration baru di prisma/postgresql/:
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance job-backup svc-ledger
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant
 ```
 
-⚠ **`svc-ledger` wajib ikut `pull` dan `up`**, dan itu bukan kelengkapan
-daftar: ia tidak melayani satu pun permintaan HTTP, jadi layanan yang
-tertinggal di versi lama tidak membuat satu halaman pun rusak — ia hanya
-menulis buku besar dengan image yang mendahului migration-nya, dan itu persis
-bentuk kegagalan yang paling mahal di repo ini.
+⚠ **`svc-ledger` dan `svc-tenant` wajib ikut `pull` dan `up`**, dan itu bukan
+kelengkapan daftar: keduanya tidak melayani satu pun permintaan HTTP, jadi
+layanan yang tertinggal di versi lama tidak membuat satu halaman pun rusak.
+`svc-ledger` hanya menulis buku besar dengan image yang mendahului
+migration-nya; `svc-tenant` hanya **berhenti mencadangkan**, atau mencadangkan
+dengan pencacahan yang mendahului PT terbaru. Keduanya bentuk kegagalan yang
+paling mahal di repo ini: yang tidak terlihat.
+
+⚠ **`job-backup` dicabut dari daftar ini sejak tahap 1b**, dan itu bukan
+kelalaian: ia kini perkakas ber-profil `perkakas` yang tidak ikut `up`. Yang
+mencadangkan `svc-tenant`. Satu-satunya image-nya yang masih dipakai adalah
+untuk `docker compose run --rm job-backup bun run prove-backup-restore`, jadi
+ia tetap layak di-`pull` **pada hari latihan pemulihan** — bukan pada setiap
+rilis.
 
 Tunggu **semua** job matriks hijau sebelum `pull`; bila satu target belum
 terdorong, layanan berjalan di versi berbeda-beda. Bila rilis membawa

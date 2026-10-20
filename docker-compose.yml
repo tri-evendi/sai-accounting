@@ -250,7 +250,8 @@ services:
       #
       #   5 langkah × 600s = 50 menit   (sebelum `prune:trails`)
       #   6 langkah × 600s = 60 menit   (tepat di batas — nol ruang sisa)
-      #   7 langkah × 480s = 56 menit   ← sekarang, setelah `watch:health` ikut
+      #   7 langkah × 480s = 56 menit   (setelah `watch:health` ikut)
+      #   8 langkah × 420s = 56 menit   ← sekarang, setelah `backup:publish` ikut
       #
       # ⚠ `recurring:run` menjadi `recurring:publish` (rancangan §4), dan BATAS
       # tidak diturunkan karena jumlah langkah tidak berubah. Yang berubah lebih
@@ -270,10 +271,19 @@ services:
       # pada pekerjaan yang masih bisa diulang, bukan pada satu-satunya yang tak
       # punya langkah balik. Dijaga `tests/run-trail-retention.test.ts`.
       #
-      # Peringatan di baris ini dulu berbunyi "kalau langkah KETUJUH ditambahkan,
-      # turunkan BATAS". Langkah ketujuh itu sekarang ada, dan BATAS-nya memang
-      # diturunkan — 600 → 480. Peringatan yang sama berlaku untuk langkah
-      # kedelapan. `-k 30`
+      # ⚠ `backup:publish` adalah langkah KEDELAPAN, dan BATAS diturunkan
+      # 480 → 420 karena itu. Aturannya aritmetika, bukan selera, dan
+      # `tests/scheduler-heartbeat.test.ts` menghitungnya: 8 × 420 = 3.360s,
+      # masih di bawah selang 3.600s.
+      #
+      # Ia BISA diperdebatkan — langkah ini menerbitkan satu baris `jobs` dan
+      # selesai dalam milidetik, sama seperti `recurring:publish`, jadi dua dari
+      # delapan langkah sekarang praktis nol. Tapi aturan di atas ditulis sebagai
+      # aritmetika justru supaya ia tidak perlu bergantung pada penalaran tentang
+      # langkah mana yang cepat: penalaran itu benar hari ini dan akan salah pada
+      # hari seseorang menukar isi sebuah langkah tanpa menukar namanya.
+      #
+      # Peringatan yang sama berlaku untuk langkah KESEMBILAN. `-k 30`
       # mengirim KILL 30 detik setelah TERM untuk proses yang membandel —
       # Prisma yang menahan event loop tidak selalu pergi karena TERM saja.
       #
@@ -292,13 +302,14 @@ services:
           fi
           return 0
         }
-        BATAS=480
+        BATAS=420
         while true; do
           langkah scheduler:subscriptions bun run scheduler:subscriptions
           langkah notify:setup bun run notify:setup
           langkah notify:invoice-due bun run notify:invoice-due
           langkah remind:customers bun run remind:customers
           langkah recurring:publish bun run recurring:publish
+          langkah backup:publish bun run backup:publish
           langkah watch:health bun run watch:health
           langkah prune:trails bun run prune:trails
           sleep 3600
@@ -407,7 +418,10 @@ services:
       target: backup
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-backup:${SAI_TAG:-latest}
     container_name: sai-job-backup
-    restart: unless-stopped
+    # `"no"`, bukan `unless-stopped`: perintahnya kini satu penjelasan yang
+    # keluar dengan kode 0 (lihat di bawah), dan `unless-stopped` atas perintah
+    # yang berakhir adalah crash-loop yang mengisi log tanpa mengerjakan apa pun.
+    restart: "no"
     env_file: .env
     # ══ CADANGAN MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ═══════════
     #
@@ -438,25 +452,46 @@ services:
       - cadangan:/app/data/cadangan
     networks:
       - internal
-    # `|| true` — alasan yang sama dengan layanan `job-scheduler`: satu cadangan
-    # gagal tidak boleh mematikan seluruh jadwal cadangan berikutnya. Yang
-    # gagal berbunyi di log; yang mati diam-diam tidak berbunyi sama sekali.
+    # ══ LAYANAN INI BERHENTI MENCADANGKAN (tahap 1b) ═══════════════════════
+    #
+    # Yang mencadangkan sekarang `svc-tenant` (Go), dan ia mencadangkan SATU
+    # OBJEK PER BASIS DATA — menutup celah on-premise #5: `pg_dumpall` berarti
+    # satu tenant tidak bisa dipulihkan tanpa menyentuh tenant lain, padahal
+    # "pulihkan data kami saja ke keadaan Selasa" adalah permintaan biasa di
+    # SaaS berbayar (§1, §6).
+    #
+    # ⚠ CUT-OVER, BUKAN PENAMBAHAN. Membiarkan putaran harian di bawah tetap
+    # hidup berarti DUA pelaksana untuk satu pekerjaan — dan yang memisahkan
+    # keduanya hanya nama berkas yang kebetulan berbeda. Dua putaran cadangan
+    # yang berjalan bersamaan di kotak ini bukan redundansi, ia dua `pg_dump`
+    # yang berebut IO pada mesin yang satu dumpnya saja pekerjaan berat.
+    #
+    # ══ KENAPA LAYANANNYA TETAP ADA ════════════════════════════════════════
+    # Ia menjadi PERKAKAS, dan itu memang perannya di PRODUCTION.md sejak awal:
+    #
+    #   docker compose run --rm job-backup bun run prove-backup-restore
+    #   docker compose run --rm job-backup sh scripts/backup.sh --dry-run
+    #   docker compose run --rm job-backup ls -lh /app/data/cadangan
+    #
+    # Image-nya satu-satunya yang punya klien Prisma (untuk mencocokkan registry
+    # PT), `openssl`, `awscli`, DAN klien MariaDB — yang terakhir supaya pembukti
+    # masih bisa membaca artefak dari sebelum penukaran mesin. `svc-tenant`
+    # sengaja tidak memuat semua itu.
+    #
+    # `profiles` membuatnya TIDAK ikut `docker compose up -d`, sementara
+    # `docker compose run` tetap bisa memanggilnya. Dan `command`-nya diganti
+    # menjadi penjelasan yang keluar dengan kode 0: kalau suatu hari seseorang
+    # menyalakan profil ini, yang terjadi satu baris log — bukan putaran cadangan
+    # kedua yang tak ada yang memintanya.
+    profiles: ["perkakas"]
     command:
       - sh
       - -c
-      # `timeout` 2 jam — longgar, dan sengaja: cadangan yang sah memang lama
-      # (dump seluruh basis data → tar → enkripsi → unggah). Yang dijaga bukan
-      # kelambatan melainkan kemacetan; tanpa ini satu unggahan yang menggantung
-      # menahan cadangan SETIAP HARI berikutnya, dan itu persis bentuk kegagalan
-      # yang paling mahal — ketiadaan cadangan yang tidak berbunyi.
       - |
-        while true; do
-          timeout -k 60 7200 sh scripts/backup.sh
-          kode=$$?
-          [ "$$kode" = 124 ] || [ "$$kode" = 137 ] \
-            && echo "[backup] ⏱ DIBUNUH setelah 7200s — dicoba lagi besok."
-          sleep 86400
-        done
+        echo "[backup] Layanan ini PERKAKAS, bukan pelaksana (tahap 1b)."
+        echo "[backup] Yang mencadangkan: svc-tenant — satu objek per basis data."
+        echo "[backup] Pakai: docker compose run --rm job-backup bun run prove-backup-restore"
+        exit 0
 
   # ── JALUR `ledger` — SATU-SATUNYA PENULIS BUKU BESAR DI LATAR ──────────────
   #
@@ -530,6 +565,74 @@ services:
     # pergi karena TERM saja — alasan yang sama dengan `job-scheduler`.
     stop_grace_period: 60s
     command: ["bun", "run", "jobs:run:ledger"]
+
+  # ── JALUR `tenant` — CADANGAN PER BASIS DATA (tahap 1b, §6) ────────────────
+  #
+  # Menggantikan putaran harian `job-backup`, dan yang berubah bukan bahasanya
+  # melainkan BENTUK ARTEFAKNYA: satu objek `pg_dump -Fc` per basis data +
+  # satu `pg_dumpall --globals-only` + satu manifest, bukan satu arsip raksasa.
+  # Itulah yang menutup celah on-premise #5 — "pulihkan data kami saja ke
+  # keadaan Selasa" bisa dijawab tanpa menyentuh tenant lain.
+  #
+  # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean, bukan sekali-jalan
+  # lalu keluar. Yang menjadwalkannya `backup:publish` di putaran
+  # `job-scheduler`, berbutir HARI — alasannya di `scripts/publish-backup.ts`.
+  #
+  # ══ SATU-SATUNYA CONTAINER YANG MEMEGANG RAHASIA CADANGAN ══════════════════
+  #
+  # `BACKUP_ENCRYPTION_KEY` dan kredensial S3 hidup DI SINI dan tidak di jalur
+  # mana pun yang memproses masukan pengguna. Itu sebabnya ia jalur tersendiri
+  # dan bukan satu handler di pelari lain.
+  #
+  # ⚠ `env_file: .env` memang membawa seluruh berkas, termasuk variabel yang
+  # tidak dibutuhkannya. Memisahkannya menuntut berkas env kedua di mesin
+  # customer, dan berkas kedua yang lupa disalin adalah kegagalan boot yang
+  # pesannya menyalahkan hal lain. Yang penting arah sebaliknya: kunci cadangan
+  # TIDAK ikut ke container yang tidak membutuhkannya.
+  #
+  # ══ MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ════════════════════════
+  #
+  # Alasan yang sama yang sudah berlaku untuk `job-backup`, dan kini berlaku dua
+  # kali: jalur ini MENDAFTAR seluruh basis data (`pg_database`) lalu menyambung
+  # ke tiap-tiap basis data satu per satu. PgBouncer hanya mengekspos basis data
+  # yang terdaftar di konfigurasinya, jadi lewat pooler pencacahan akan
+  # memulangkan sebagian — dan sebagian itulah bentuk cadangan paling berbahaya:
+  # ia ADA, ia tampak berhasil, dan ia baru ketahuan kurang pada hari pemulihan.
+  #
+  # Satu URL mengatur keduanya: antrean `jobs` DAN parameter sambungan yang
+  # diserahkan ke `pg_dump` (`internal/db/dsn.go` → `SambunganKendali`).
+  svc-tenant:
+    build:
+      context: .
+      target: integrator
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:-latest}
+    container_name: sai-svc-tenant
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CONTROL_DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+    depends_on:
+      pg:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      # Hanya-baca, dan itu menghapus seluruh kelas kecelakaan di mana jalur
+      # cadangan justru merusak yang dicadangkannya.
+      - documents:/app/data/documents:ro
+      - audit:/app/data/audit:ro
+      # ⚠ SATU-SATUNYA mount yang bisa DITULIS, dan hanya untuk hasilnya
+      # sendiri. Dipakai ketika `BACKUP_S3_BUCKET` belum disetel: artefak
+      # terenkripsi mendarat di sini alih-alih tidak dibuat sama sekali.
+      - cadangan:/app/data/cadangan
+    networks:
+      - internal
+    # Pelari menyelesaikan pekerjaan yang sedang jalan lalu berhenti mengklaim.
+    # 60s bukan "cukup untuk menyelesaikan dump" — dump bisa berjam-jam, dan
+    # yang menanganinya bukan jendela ini melainkan *lease*: pekerjaan yang
+    # terpotong dipulangkan oleh `ReclaimStale` lalu diklaim lagi. Yang dibeli
+    # 60 detik adalah penulisan objek yang sedang berjalan selesai rapi.
+    stop_grace_period: 60s
 
   # ── DUA APLIKASI, DUA IMAGE ────────────────────────────────────────────────
   #

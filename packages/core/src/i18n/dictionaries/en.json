@@ -388,7 +388,8 @@
     "title": "Find a page",
     "placeholder": "Type a page name…",
     "empty": "No matching pages.",
-    "mainGroup": "Main"
+    "mainGroup": "Main",
+    "reportsGroup": "Reports"
   },
   "accountantMode": {
     "label": "Accountant Mode",

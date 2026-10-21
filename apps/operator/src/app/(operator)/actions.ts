@@ -43,8 +43,7 @@ export async function operatorLogin(
   formData: FormData
 ): Promise<OperatorLoginState> {
   const t = await getT();
-  /* Pesan gagal tidak menyebut kode autentikator yang medannya tidak ada:
-   * dengan `OPERATOR_MFA=off` formulirnya hanya punya nama + sandi. */
+  // Tanpa MFA, pesan gagal tidak menyebut kode autentikator.
   const failed = t(operatorMfaOff() ? "operator.login.failedNoMfa" : "operator.login.failed");
 
   /* Tembok bidang: host salah / IP tak terdaftar → jawaban seragam, tanpa

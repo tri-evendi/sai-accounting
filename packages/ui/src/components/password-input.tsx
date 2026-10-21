@@ -79,9 +79,7 @@ function PasswordInput({
 
   return (
     <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
-      {/* Tanda wajib dari atribut `required` native, sama dengan `Input` — tanpa
-          ini formulir login menandai "Nama akun *" tetapi tidak "Kata sandi",
-          padahal keduanya wajib (sapuan visual 21 Okt 2026). */}
+      {/* Tanda wajib mengikuti atribut `required`, sama dengan `Input`. */}
       {label && (
         <Label htmlFor={inputId}>
           {label}

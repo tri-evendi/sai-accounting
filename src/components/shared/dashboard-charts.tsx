@@ -157,15 +157,10 @@ function tooltipLabelStyle(token: ChartToken): React.CSSProperties {
 }
 
 /**
- * Baris tooltip untuk grafik yang warnanya dipasang per BATANG lewat `<Cell>`.
+ * Warna teks baris tooltip untuk batang yang warnanya diatur lewat `<Cell>`.
  *
- * `DefaultTooltipContent` mewarnai barisnya `entry.color`, dan warna itu
- * diambil dari `fill` milik `<Bar>` — bukan dari `<Cell>` di dalamnya. Batang
- * yang nadanya hanya hidup di `Cell` (waterfall laba/rugi, umur piutang) tidak
- * punya `entry.color`, sehingga recharts jatuh ke `#000` bawaannya: di tema
- * gelap itu teks hitam di atas `colorBgElevated`, ~1,2:1 — nominalnya tak
- * terbaca sama sekali (terlihat di sapuan visual 21 Okt 2026). Grafik yang
- * barisnya memang berwarna seri tidak memakai ini.
+ * Batang seperti itu tidak punya `entry.color`, jadi recharts memakai `#000`
+ * dan teksnya tidak terbaca di tema gelap.
  */
 export function tooltipItemStyle(token: ChartToken): React.CSSProperties {
   return { color: token.colorText };

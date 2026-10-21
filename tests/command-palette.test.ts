@@ -21,7 +21,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { NAV_HOME, isNavItemVisible, visibleNavGroups, visibleNavHrefs } from "@/lib/nav";
+import { NAV_HOME, isNavItemVisible, visibleNavGroups, visibleNavHrefs, visibleReportShortcuts } from "@/lib/nav";
+import { REPORTS } from "@/lib/report-catalog";
 import { PERMISSIONS } from "@sai/core/authz";
 import { ROLES } from "@sai/core/constants";
 import { filterPermissionsByModules, BUSINESS_MODULES, type BusinessModule } from "@/lib/business-modules";
@@ -98,12 +99,7 @@ describe("palet perintah memakai daftar yang sama dengan menu samping", () => {
   });
 });
 
-/**
- * Sapuan visual 21 Okt 2026: ⌘K membuka palet dengan fokus di tombol tutup,
- * jadi mengetik dan panah tidak berbuat apa-apa sampai pengguna menekan Tab.
- * Komponennya tidak dirender di sini (lihat kepala berkas), jadi yang dikunci
- * adalah kabelnya: kait fokus dialog dan ref pada kolom ketik.
- */
+/** Palet dibuka dengan fokus di kolom ketik, bukan di tombol tutup. */
 describe("palet: fokus awal di kolom ketik", () => {
   const src = readFileSync(join(__dirname, "..", "src", "components", "layout", "command-palette.tsx"), "utf8");
 
@@ -111,5 +107,49 @@ describe("palet: fokus awal di kolom ketik", () => {
     expect(src).toMatch(/<DialogContent[^>]*onOpenAutoFocus=\{focusInput\}/);
     expect(src).toMatch(/<CommandInput[^>]*ref=\{inputRef\}/);
     expect(src).toContain("inputRef.current?.focus()");
+  });
+});
+
+/** Laporan di palet diambil dari katalog Pusat Laporan dengan saringan yang sama. */
+describe("palet: laporan dari katalog", () => {
+  const md = { role: ROLES.MANAGING_DIRECTOR, accountantMode: true };
+  const hrefs = (user: typeof md, allowed?: ReadonlySet<string>) =>
+    visibleReportShortcuts(user, allowed).map((r) => r.href);
+
+  it("Neraca dan Arus Kas bisa dicari", () => {
+    expect(hrefs(md)).toContain("/reports/balance-sheet");
+    expect(hrefs(md)).toContain("/reports/cash-flow");
+  });
+
+  it("hanya laporan yang tersedia, tanpa href ganda", () => {
+    const all = hrefs(md, new Set(PERMISSIONS));
+    const available = new Set(REPORTS.filter((r) => r.status === "available").map((r) => r.href));
+    expect(all.every((h) => available.has(h))).toBe(true);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("laporan berbagi halaman digabung dalam satu baris dengan semua judulnya", () => {
+    const budget = visibleReportShortcuts(md, new Set(PERMISSIONS)).find((r) => r.href === "/budget/report");
+    expect(budget?.textKeys.length).toBe(2);
+  });
+
+  it("Neraca Saldo hilang saat Mode Akuntan mati, seperti di Pusat Laporan", () => {
+    expect(hrefs(md)).toContain("/reports/trial-balance");
+    expect(hrefs({ ...md, accountantMode: false })).not.toContain("/reports/trial-balance");
+  });
+
+  it("mengikuti izin efektif: tanpa izin, tanpa laporan", () => {
+    expect(hrefs(md, new Set<string>())).toEqual([]);
+  });
+
+  it("modul Stok mati menyembunyikan laporan stok", () => {
+    const withoutInventory = new Set(
+      filterPermissionsByModules(
+        PERMISSIONS,
+        new Set(BUSINESS_MODULES.filter((m) => m !== "inventory")) as ReadonlySet<BusinessModule>
+      )
+    );
+    expect(hrefs(md, new Set(PERMISSIONS))).toContain("/reports/stock-value");
+    expect(hrefs(md, withoutInventory)).not.toContain("/reports/stock-value");
   });
 });

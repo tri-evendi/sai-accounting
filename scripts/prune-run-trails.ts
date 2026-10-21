@@ -27,7 +27,7 @@
  * Putaran kedua tidak menemukan apa pun untuk dipangkas. Tidak ada keadaan yang
  * disimpan, tidak ada penanda yang harus dibersihkan.
  */
-import { platformDb } from "@sai/platform/platform-db";
+import { controlDb } from "@sai/core/control-db";
 import {
   TRAIL_RETENTION_DAYS,
   decideTrailPrune,
@@ -75,15 +75,15 @@ interface TrailDelegate {
 const TABEL: { nama: string; delegate: () => TrailDelegate }[] = [
   {
     nama: "scheduler_runs",
-    delegate: () => platformDb.schedulerRun as unknown as TrailDelegate,
+    delegate: () => controlDb.schedulerRun as unknown as TrailDelegate,
   },
   {
     nama: "backup_runs",
-    delegate: () => platformDb.backupRun as unknown as TrailDelegate,
+    delegate: () => controlDb.backupRun as unknown as TrailDelegate,
   },
   {
     nama: "conformance_runs",
-    delegate: () => platformDb.conformanceRun as unknown as TrailDelegate,
+    delegate: () => controlDb.conformanceRun as unknown as TrailDelegate,
   },
 ];
 
@@ -161,4 +161,4 @@ main()
     console.error(error);
     process.exit(1);
   })
-  .finally(() => void platformDb.$disconnect().catch(() => {}));
+  .finally(() => void controlDb.$disconnect().catch(() => {}));

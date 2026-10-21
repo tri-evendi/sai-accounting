@@ -26,27 +26,28 @@ import "dotenv/config";
 
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
-import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
 
 async function main() {
-  const url = process.env.PLATFORM_DATABASE_URL;
+  const url = process.env.CONTROL_DATABASE_URL;
   if (!url) {
     console.error(
-      "GAGAL: PLATFORM_DATABASE_URL belum diset — riwayat penjadwal tinggal di\n" +
-        "`sai_platform` (issue #137), dan tanpa alamatnya tidak ada yang bisa dibuktikan."
+      "GAGAL: CONTROL_DATABASE_URL belum diset — riwayat penjadwal tinggal di\n" +
+        "basis data KENDALI (pindah dari `sai_platform`, migration kendali 0005),\n" +
+        "dan tanpa alamatnya tidak ada yang bisa dibuktikan."
     );
     process.exit(1);
   }
 
   const parsed = new URL(url);
-  const platform = new PlatformClient({
+  const control = new ControlClient({
     adapter: buatAdapter(parsed.toString(), { batasKoneksi: 1 }),
   });
 
   let health;
   try {
-    const run = await platform.schedulerRun.findFirst({
+    const run = await control.schedulerRun.findFirst({
       orderBy: { id: "desc" },
       select: { finishedAt: true, status: true, errorCount: true },
     });
@@ -66,7 +67,7 @@ async function main() {
             "buka /operator/scheduler untuk rinciannya."
         );
       }
-      await platform.$disconnect();
+      await control.$disconnect();
       return;
     }
 
@@ -80,7 +81,7 @@ async function main() {
       console.error(
         "✗ Penjadwal TIDAK DIKETAHUI — belum pernah ada satu putaran pun tercatat.\n" +
           "  Layanan `scheduler` sudah jalan? `docker compose ps scheduler`\n" +
-          "  Migration platform sudah diterapkan? `bun run db:migrate:platform`"
+          "  Migration kendali sudah diterapkan? `bun run db:migrate:all`"
       );
     }
   } catch (error) {
@@ -88,11 +89,11 @@ async function main() {
       "✗ Riwayat penjadwal tak terbaca (`sai_platform` terjangkau? migration 0005 sudah?):",
       error
     );
-    await platform.$disconnect().catch(() => {});
+    await control.$disconnect().catch(() => {});
     process.exit(1);
   }
 
-  await platform.$disconnect();
+  await control.$disconnect();
   process.exit(1);
 }
 

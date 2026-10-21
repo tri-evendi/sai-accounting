@@ -43,6 +43,7 @@
 import "dotenv/config";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
+import { billingPlaneInstalled } from "@sai/core/deploy-profile";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 
 import {
@@ -165,15 +166,71 @@ async function applyEvent(
 async function main() {
   const platformUrl = process.env.PLATFORM_DATABASE_URL?.trim();
   const controlUrl = process.env.CONTROL_DATABASE_URL?.trim();
-  if (!platformUrl) {
-    console.warn(
-      "⚠ PLATFORM_DATABASE_URL belum diset — pemasangan tanpa penagihan, tidak ada yang dijadwalkan."
-    );
-    process.exit(0);
-  }
   if (!controlUrl) {
     console.error("✗ CONTROL_DATABASE_URL belum diset.");
     process.exit(1);
+  }
+
+  if (!platformUrl) {
+    /*
+     * ══ DUA SEBAB YANG TERLIHAT SAMA, DAN HARUS DIJAWAB BERBEDA ═══════════
+     * Alamat platform yang tidak ada bisa berarti dua hal yang berlawanan, dan
+     * sampai ada penanda profil keduanya diperlakukan sama — keluar diam-diam.
+     * Itu meninggalkan satu cacat yang hanya muncul di mesin customer:
+     *
+     *   Tanpa putaran yang tercatat, `/api/health` melaporkan
+     *   `scheduler: unknown` SELAMANYA, dan `watch:health` mengirim surel tiap
+     *   putaran berbunyi "TIDAK ADA SATU PUN PUTARAN PENJADWAL yang tercatat —
+     *   langganan tidak diperbarui, pengingat tidak terkirim". Di pemasangan
+     *   on-premise tidak ada satu pun langganan, jadi kalimat itu bukan
+     *   peringatan melainkan kebisingan — dan alarm yang berbunyi setiap jam
+     *   tanpa sebab adalah alarm yang dimatikan orang, termasuk pada hari ia
+     *   berbunyi benar.
+     *
+     * Jadi: profil `onprem` MENCATAT putarannya (nol pekerjaan penagihan,
+     * status `ok`) — kesehatan jadi jujur dan penjaga diam. Profil `saas` yang
+     * kehilangan alamatnya TIDAK mencatat apa pun, supaya jejaknya tetap kosong
+     * dan penjaga tetap berbunyi: di sana ketiadaan alamat memang kerusakan.
+     */
+    if (!billingPlaneInstalled()) {
+      const control = clientFor(ControlClient, controlUrl);
+      const mulai = new Date();
+      try {
+        await control.schedulerRun.create({
+          data: {
+            startedAt: mulai,
+            finishedAt: new Date(),
+            status: "ok",
+            invoicesIssued: 0,
+            remindersSent: 0,
+            statusChanges: 0,
+            adoptions: 0,
+            errorCount: 0,
+            details: JSON.stringify({
+              issued: [],
+              reminders: [],
+              transitions: [],
+              adoptions: [],
+              errors: [],
+              catatan: "profil on-premise — tanpa bidang penagihan, tidak ada yang dijadwalkan",
+            }),
+          },
+        });
+        console.log("✓ profil on-premise — putaran dicatat tanpa pekerjaan penagihan.");
+      } catch (e) {
+        console.error("⚠ putaran on-premise gagal dicatat (migration kendali 0005?):", e);
+      } finally {
+        await control.$disconnect().catch(() => {});
+      }
+      process.exit(0);
+    }
+
+    console.warn(
+      "⚠ PLATFORM_DATABASE_URL belum diset pada profil `saas` — tidak ada yang\n" +
+        "dijadwalkan, dan putaran ini SENGAJA tidak dicatat supaya penjaga kesehatan\n" +
+        "tetap berbunyi. Setel alamatnya, atau setel APP_DEPLOY_PROFILE=onprem."
+    );
+    process.exit(0);
   }
 
   const platform = clientFor(PlatformClient, platformUrl);
@@ -659,11 +716,15 @@ async function main() {
   }
 
   /* ── 8. Catat ringkasan putaran (issue #154, tabel `scheduler_runs`) ─────
+   * Ditulis ke KENDALI, bukan platform (migration kendali 0005): jejak putaran
+   * menggambarkan operasi yang terjadi di kedua profil penyebaran, sementara
+   * penagihan tidak.
+   *
    * Gagal MENCATAT tidak menggagalkan putarannya: ringkasan adalah laporan,
-   * bukan gerbang — dan pemasangan yang belum memigrasikan 0005 tidak boleh
-   * kehilangan penagihannya hanya karena riwayatnya belum punya tabel. */
+   * bukan gerbang — dan pemasangan yang belum memigrasikan kendali 0005 tidak
+   * boleh kehilangan penagihannya hanya karena riwayatnya belum punya tabel. */
   try {
-    await platform.schedulerRun.create({
+    await control.schedulerRun.create({
       data: {
         startedAt: now,
         finishedAt: new Date(),
@@ -677,7 +738,7 @@ async function main() {
       },
     });
   } catch (e) {
-    console.error("⚠ ringkasan putaran gagal dicatat ke scheduler_runs (migration 0005 sudah diterapkan?):", e);
+    console.error("⚠ ringkasan putaran gagal dicatat ke scheduler_runs (migration kendali 0005 sudah diterapkan?):", e);
   }
 
   await platform.$disconnect();

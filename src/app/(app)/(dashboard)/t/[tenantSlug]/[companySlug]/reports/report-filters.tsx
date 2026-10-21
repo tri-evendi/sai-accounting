@@ -29,8 +29,8 @@
  */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Flex } from "antd";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Alert, Flex } from "antd";
 import { Input } from "@sai/ui/input";
 import { Select } from "@sai/ui/select";
 import { Button } from "@sai/ui/button";
@@ -41,6 +41,26 @@ import { SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 const CONTROL_GAP = SPACE_SM;
 /** Lebar nyaman pemilih pusat biaya (`min-w-[220px]` lama). */
 const SELECT_MIN_WIDTH = 220;
+
+/**
+ * Pasangan `PeriodNotice` untuk laporan bertanggal-tunggal. Ada karena
+ * `resolveAsOf` juga jatuh ke hari ini secara senyap: satu penyaring yang
+ * mengatakan kebenaran sementara penyaring sebelahnya tidak adalah keadaan yang
+ * membuat orang berhenti mempercayai keduanya.
+ */
+function AsOfNotice({ asOf }: { asOf: string }) {
+  const translate = useT();
+  const diminta = useSearchParams().get("asOf");
+  if (diminta === null || diminta === "" || diminta === asOf) return null;
+  return (
+    <Alert
+      type="warning"
+      showIcon
+      message={translate("reports.asOfAdjusted", { date: asOf })}
+      style={{ marginBottom: SECTION_GAP }}
+    />
+  );
+}
 
 export function AsOfFilter({
   basePath,
@@ -68,45 +88,86 @@ export function AsOfFilter({
     router.push(`${basePath}?${p.toString()}`);
   }
   return (
-    <Flex
-      component="form"
-      onSubmit={submit}
-      align="flex-end"
-      gap={CONTROL_GAP}
-      style={{ marginBottom: SECTION_GAP }}
-    >
-      <div>
-        <Input
-          id="asOf"
-          type="date"
-          label={t("reports.asOfDate")}
-          value={d}
-          onChange={(e) => setD(e.target.value)}
-        />
-      </div>
-      {showCompare && (
-        <div style={{ minWidth: SELECT_MIN_WIDTH }}>
-          <Select
-            id="compare"
-            label={t("reports.compareLabel")}
-            value={cmp}
-            onChange={(e) => setCmp(e.target.value)}
-            options={[
-              { value: "", label: t("reports.compareNone") },
-              /* Neraca dibandingkan pada TANGGAL: "periode sebelumnya" tidak
-                 punya arti tanpa rentang, jadi hanya "tahun lalu" ditawarkan.
-                 Menawarkan pilihan yang diam-diam berperilaku sama dengan yang
-                 lain adalah kendali yang berbohong. */
-              { value: "previous_year", label: t("reports.comparePreviousYear") },
-            ]}
+    <>
+      <AsOfNotice asOf={asOf} />
+      <Flex
+        component="form"
+        onSubmit={submit}
+        align="flex-end"
+        gap={CONTROL_GAP}
+        style={{ marginBottom: SECTION_GAP }}
+      >
+        <div>
+          <Input
+            id="asOf"
+            type="date"
+            label={t("reports.asOfDate")}
+            value={d}
+            onChange={(e) => setD(e.target.value)}
           />
         </div>
-      )}
-      {/* Lihat catatan `outline` di kepala berkas (#267). */}
-      <Button type="submit" variant="outline">
-        {t("common.show")}
-      </Button>
-    </Flex>
+        {showCompare && (
+          <div style={{ minWidth: SELECT_MIN_WIDTH }}>
+            <Select
+              id="compare"
+              label={t("reports.compareLabel")}
+              value={cmp}
+              onChange={(e) => setCmp(e.target.value)}
+              options={[
+                { value: "", label: t("reports.compareNone") },
+                /* Neraca dibandingkan pada TANGGAL: "periode sebelumnya" tidak
+                   punya arti tanpa rentang, jadi hanya "tahun lalu" ditawarkan.
+                   Menawarkan pilihan yang diam-diam berperilaku sama dengan yang
+                   lain adalah kendali yang berbohong. */
+                { value: "previous_year", label: t("reports.comparePreviousYear") },
+              ]}
+            />
+          </div>
+        )}
+        {/* Lihat catatan `outline` di kepala berkas (#267). */}
+        <Button type="submit" variant="outline">
+          {t("common.show")}
+        </Button>
+      </Flex>
+    </>
+  );
+}
+
+/**
+ * Pemberitahuan bahwa periode yang diminta BUKAN periode yang dipakai
+ * (03 §4, Batas periode laporan).
+ *
+ * `resolvePeriod` memperbaiki tiga hal secara senyap — tanggal ngawur jatuh ke
+ * bawaan, rentang terbalik ditukar, rentang keterlaluan dipendekkan — dan
+ * ketiganya menghasilkan laporan yang BENAR untuk periode yang tidak diminta.
+ * Itu bentuk kesalahan yang paling sulit ditemukan orang, karena tidak ada yang
+ * kelihatan rusak.
+ *
+ * Dibandingkan di sini, bukan dikirim sebagai prop dari sebelas halaman: yang
+ * dibutuhkan hanyalah parameter URL mentah dan nilai yang sudah diselesaikan,
+ * dan keduanya SUDAH ada di komponen ini. Prop baru di sebelas halaman adalah
+ * prop yang akan terlupa di halaman laporan kedua belas.
+ *
+ * Parameter yang TIDAK ada bukan pengabaian: nilai bawaan memang bukan
+ * permintaan siapa pun, jadi hanya parameter yang benar-benar tertulis yang
+ * dibandingkan.
+ */
+function PeriodNotice({ from, to }: { from: string; to: string }) {
+  const translate = useT();
+  const sp = useSearchParams();
+  const mintaFrom = sp.get("from");
+  const mintaTo = sp.get("to");
+  const berubah =
+    (mintaFrom !== null && mintaFrom !== "" && mintaFrom !== from) ||
+    (mintaTo !== null && mintaTo !== "" && mintaTo !== to);
+  if (!berubah) return null;
+  return (
+    <Alert
+      type="warning"
+      showIcon
+      message={translate("reports.periodAdjusted", { from, to })}
+      style={{ marginBottom: SECTION_GAP }}
+    />
   );
 }
 
@@ -162,62 +223,65 @@ export function PeriodFilter({
     router.push(`${basePath}?${p.toString()}`);
   }
   return (
-    <Flex
-      component="form"
-      onSubmit={submit}
-      wrap
-      align="flex-end"
-      gap={CONTROL_GAP}
-      style={{ marginBottom: SECTION_GAP }}
-    >
-      <div>
-        <Input
-          id="from"
-          type="date"
-          label={translate("common.from")}
-          value={f}
-          onChange={(e) => setF(e.target.value)}
-        />
-      </div>
-      <div>
-        <Input
-          id="to"
-          type="date"
-          label={translate("common.to")}
-          value={t}
-          onChange={(e) => setT(e.target.value)}
-        />
-      </div>
-      {costCenterOptions && (
-        <div style={{ minWidth: SELECT_MIN_WIDTH }}>
-          <Select
-            id="costCenter"
-            label={translate("costCenters.filterLabel")}
-            value={cc}
-            onChange={(e) => setCc(e.target.value)}
-            options={costCenterOptions}
+    <>
+      <PeriodNotice from={from} to={to} />
+      <Flex
+        component="form"
+        onSubmit={submit}
+        wrap
+        align="flex-end"
+        gap={CONTROL_GAP}
+        style={{ marginBottom: SECTION_GAP }}
+      >
+        <div>
+          <Input
+            id="from"
+            type="date"
+            label={translate("common.from")}
+            value={f}
+            onChange={(e) => setF(e.target.value)}
           />
         </div>
-      )}
-      {showCompare && (
-        <div style={{ minWidth: SELECT_MIN_WIDTH }}>
-          <Select
-            id="compare"
-            label={translate("reports.compareLabel")}
-            value={cmp}
-            onChange={(e) => setCmp(e.target.value)}
-            options={[
-              { value: "", label: translate("reports.compareNone") },
-              { value: "preceding", label: translate("reports.comparePreceding") },
-              { value: "previous_year", label: translate("reports.comparePreviousYear") },
-            ]}
+        <div>
+          <Input
+            id="to"
+            type="date"
+            label={translate("common.to")}
+            value={t}
+            onChange={(e) => setT(e.target.value)}
           />
         </div>
-      )}
-      {/* Lihat catatan `outline` di kepala berkas (#267). */}
-      <Button type="submit" variant="outline">
-        {translate("common.show")}
-      </Button>
-    </Flex>
+        {costCenterOptions && (
+          <div style={{ minWidth: SELECT_MIN_WIDTH }}>
+            <Select
+              id="costCenter"
+              label={translate("costCenters.filterLabel")}
+              value={cc}
+              onChange={(e) => setCc(e.target.value)}
+              options={costCenterOptions}
+            />
+          </div>
+        )}
+        {showCompare && (
+          <div style={{ minWidth: SELECT_MIN_WIDTH }}>
+            <Select
+              id="compare"
+              label={translate("reports.compareLabel")}
+              value={cmp}
+              onChange={(e) => setCmp(e.target.value)}
+              options={[
+                { value: "", label: translate("reports.compareNone") },
+                { value: "preceding", label: translate("reports.comparePreceding") },
+                { value: "previous_year", label: translate("reports.comparePreviousYear") },
+              ]}
+            />
+          </div>
+        )}
+        {/* Lihat catatan `outline` di kepala berkas (#267). */}
+        <Button type="submit" variant="outline">
+          {translate("common.show")}
+        </Button>
+      </Flex>
+    </>
   );
 }

@@ -51,6 +51,17 @@ export async function GET() {
   const report = await healthReport();
 
   if (report.status === "error") {
+    /* Dua sebab berbeda, satu kode: 503 berarti "jangan kirim lalu lintas ke
+       sini". Sebabnya tetap DIBEDAKAN di badan jawaban — "basis data tak
+       terjangkau" dan "skema tidak sepadan dengan image ini" menuntut tindakan
+       yang sama sekali berbeda, dan orang yang membaca probe ini saat insiden
+       tidak boleh harus menebak yang mana. */
+    if ("schema" in report) {
+      return NextResponse.json(
+        { status: "error", schema: report.schema },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ status: "error", database: "unreachable" }, { status: 503 });
   }
 

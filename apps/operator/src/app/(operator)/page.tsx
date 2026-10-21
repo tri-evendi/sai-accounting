@@ -522,6 +522,39 @@ export default async function OperatorOverviewPage() {
             />
             <StatCard title={t("operator.overview.companies")} value={control.companies} />
             <StatCard title={t("operator.overview.users")} value={control.users} />
+            {/* Putaran penjadwal terakhir — ubin yang menjelaskan ubin lain:
+                uji coba kedaluwarsa yang menumpuk dan tagihan yang tidak pernah
+                terbit hampir selalu BERARTI penjadwalnya tidak jalan, bukan
+                pelanggannya yang diam.
+
+                Ubin ini di bagian KENDALI, bukan platform — jejak putaran
+                tinggal di basis data kendali, dan justru ketika penagihan tak
+                terjangkau pertanyaan "penjadwalnya jalan?" paling dibutuhkan. */}
+            <StatCard
+              title={t("operator.overview.schedulerLastRun")}
+              value={
+                control.lastRun
+                  ? formatDateTime(control.lastRun.finishedAt)
+                  : t("operator.overview.schedulerNever")
+              }
+              size="phrase"
+              tone={
+                control.lastRun === null
+                  ? "warning"
+                  : control.lastRun.status === "ok" && control.lastRun.errorCount === 0
+                    ? "success"
+                    : "danger"
+              }
+              hint={
+                control.lastRun
+                  ? t("operator.overview.schedulerHint", {
+                      status: control.lastRun.status,
+                      errors: control.lastRun.errorCount,
+                    })
+                  : undefined
+              }
+              href="/scheduler"
+            />
           </div>
         </ConsoleSection>
 
@@ -552,35 +585,6 @@ export default async function OperatorOverviewPage() {
                 title={t("operator.overview.subscriptionsPastDue")}
                 value={platform.subscriptionsByStatus.past_due ?? 0}
                 tone={(platform.subscriptionsByStatus.past_due ?? 0) > 0 ? "warning" : "neutral"}
-              />
-              {/* Putaran penjadwal terakhir — ubin yang menjelaskan ubin lain:
-                  uji coba kedaluwarsa yang menumpuk dan tagihan yang tidak
-                  pernah terbit hampir selalu BERARTI penjadwalnya tidak jalan,
-                  bukan pelanggannya yang diam. */}
-              <StatCard
-                title={t("operator.overview.schedulerLastRun")}
-                value={
-                  platform.lastRun
-                    ? formatDateTime(platform.lastRun.finishedAt)
-                    : t("operator.overview.schedulerNever")
-                }
-                size="phrase"
-                tone={
-                  platform.lastRun === null
-                    ? "warning"
-                    : platform.lastRun.status === "ok" && platform.lastRun.errorCount === 0
-                      ? "success"
-                      : "danger"
-                }
-                hint={
-                  platform.lastRun
-                    ? t("operator.overview.schedulerHint", {
-                        status: platform.lastRun.status,
-                        errors: platform.lastRun.errorCount,
-                      })
-                    : undefined
-                }
-                href="/scheduler"
               />
             </div>
           )}

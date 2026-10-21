@@ -37,7 +37,7 @@ import { sendMail, type MailAttachment } from "@sai/platform/mailer";
 import { mailConfigForCompany } from "@/lib/tenant-mail-settings";
 import { getCompanyContext } from "@/lib/company-context";
 import { getCompanyIdentity } from "@/lib/company-identity";
-import { readCompanyLogo } from "@/lib/company-logo";
+import { serverPdfCompany } from "@/lib/pdf-company";
 import { buildInvoicePdfData } from "@/lib/pdf/invoice-pdf-data";
 import { normalizeWhatsAppNumber, whatsAppShareUrl } from "@/lib/phone";
 import { userNamesByIds } from "@/lib/users-directory";
@@ -99,21 +99,16 @@ function invoiceValue(invoice: LoadedInvoice): number {
 export async function renderInvoicePdf(
   invoice: LoadedInvoice
 ): Promise<{ filename: string; content: Uint8Array }> {
-  const [{ generateInvoicePDF }, { toPdfLogo }, company, logo] = await Promise.all([
+  /* Identitas & logo dirakit `serverPdfCompany` — satu tempat, dipakai jalur
+     surel ini DAN rute cetak faktur. Dua perakitan untuk satu benda akan
+     menyimpang: yang satu memuat logo, yang lain lupa, dan gejalanya kertas
+     yang berbeda untuk satu PT tanpa satu galat pun. */
+  const [{ generateInvoicePDF }, company] = await Promise.all([
     import("@/lib/pdf/invoice-pdf"),
-    import("@/lib/pdf/company-header"),
-    getCompanyIdentity(),
-    // Fail-soft: faktur tanpa logo tetap terkirim.
-    readCompanyLogo().catch((error) => {
-      console.error("[invoice-send] logo perusahaan tak terbaca:", error);
-      return null;
-    }),
+    serverPdfCompany("invoice-send"),
   ]);
 
-  const doc = generateInvoicePDF(buildInvoicePdfData(invoice), {
-    ...company,
-    logo: logo ? toPdfLogo({ ...logo.meta, base64: Buffer.from(logo.content).toString("base64") }) : null,
-  });
+  const doc = generateInvoicePDF(buildInvoicePdfData(invoice), company);
   return {
     /* Nama berkas sama dengan yang diunduh dari halaman faktur — pelanggan yang
        menerima dua kali tidak mendapat dua nama berbeda untuk kertas yang
@@ -122,6 +117,39 @@ export async function renderInvoicePdf(
     filename: `Invoice_${invoice.invoiceNo.replace(/[^A-Za-z0-9._-]/g, "-")}.pdf`,
     content: new Uint8Array(doc.output("arraybuffer") as ArrayBuffer),
   };
+}
+
+/**
+ * PDF faktur dari ID-nya — SATU pintu untuk cetak dan untuk surel.
+ *
+ * ══ KENAPA DARI ID, BUKAN DARI MUATAN YANG DIKIRIM PERAMBAN ════════════════
+ * Faktur adalah dokumen yang dikirim ke pelanggan dan disimpan sebagai bukti.
+ * Merendernya dari muatan yang dikirim peramban berarti angka di atas kertas
+ * ditentukan oleh apa yang dikirim klien — dan sejak §5 memindahkan
+ * pembuatannya ke SERVER, server itulah yang tampak menjaminnya. Syarat audit
+ * §5 ("yang disimpan sama dengan yang dikirim ke customer") hanya berarti
+ * sesuatu bila kertasnya diturunkan dari BUKU.
+ *
+ * Itu juga yang membuat kertas cetak dan lampiran surel tidak bisa berbeda:
+ * keduanya `loadInvoice` + `renderInvoicePdf` yang sama persis, bukan dua jalur
+ * yang kebetulan memakai generator yang sama.
+ *
+ * `prisma` di sini klien PT AKTIF (konteksnya dimasuki penjaga rute), jadi id
+ * milik PT lain tidak menemukan apa pun — tanpa satu perbandingan kepemilikan
+ * yang ditulis tangan. Aturan yang sama dengan rute berkas dokumen (#367).
+ */
+export async function invoicePdfById(
+  invoiceId: number
+): Promise<{ filename: string; content: Uint8Array } | null> {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    include: invoiceInclude,
+  });
+  /* `null`, bukan melempar: pemanggilnya rute HTTP, dan jawaban yang benar
+     untuk faktur yang tidak ada di buku PT ini adalah 404 — sama persis
+     dengan id yang memang tidak pernah ada. */
+  if (!invoice) return null;
+  return renderInvoicePdf(invoice);
 }
 
 /**

@@ -1,0 +1,65 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- `jobs.started_at` — kapan percobaan ini MULAI, dan itu bukan `claimed_at`
+--
+-- ══ KENAPA KOLOM BARU, PADAHAL SUDAH ADA DUA CAP WAKTU ════════════════════
+-- Rancangan §11 menuntut histogram durasi pekerjaan (p95/p99) dan menyebutnya
+-- PRASYARAT ambang per-jalur: hari ini tujuh jalur memakai satu pasang ambang
+-- karena tak ada pengukuran yang membenarkan tujuh angka berbeda.
+--
+-- Durasi itu TIDAK bisa dihitung dari kolom yang sudah ada, dan sebabnya halus:
+--
+--   • `finished_at - claimed_at` BUKAN durasi. `claimed_at` diperpanjang
+--     BERKALA selama pekerjaan berjalan (*lease* yang diperbarui, lihat
+--     komentarnya di model `Job`), jadi selisih itu adalah jarak dari
+--     perpanjangan TERAKHIR — sekitar satu interval perpanjangan untuk SETIAP
+--     pekerjaan, berapa pun lamanya ia sungguh berjalan. Histogram yang
+--     dibangun darinya akan terlihat rapi, sempit, dan seluruhnya salah.
+--
+--     ITU DIUKUR, bukan didalilkan. Sepuluh pekerjaan berdurasi 100–1000 ms,
+--     dengan `claimed_at` diperpanjang 30 detik sebelum selesai, dijalankan
+--     terhadap PostgreSQL sungguhan:
+--
+--         dari `started_at` (benar)   p50 =    550 ms   p95 =  955 ms
+--         dari `claimed_at` (salah)   p50 = 30.000 ms   p95 = 30.000 ms
+--
+--     Perhatikan p50 = p95 pada baris kedua: ia bukan sekadar salah angkanya,
+--     ia kehilangan seluruh SEBARAN — yaitu satu-satunya hal yang dicari
+--     histogram. Satu jenis yang melambat tidak akan pernah terlihat;
+--   • `finished_at - created_at` adalah LATENSI (menunggu + berjalan), bukan
+--     durasi. Ia berguna, tapi ia tidak bisa menjawab pertanyaan yang §11
+--     ajukan — "jenis mana yang melambat" — sebab antrean yang padat
+--     menaikkannya untuk setiap jenis sekaligus.
+--
+-- Jadi yang kurang bukan penyimpan metrik, melainkan satu cap waktu yang tidak
+-- pernah ditimpa. Ia disetel SEKALI pada klaim, dan `renewLease` tidak
+-- menyentuhnya.
+--
+-- ══ DISETEL ULANG PADA SETIAP PERCOBAAN, DAN ITU DISENGAJA ════════════════
+-- Pekerjaan yang gagal lalu diklaim lagi mendapat `started_at` baru: yang
+-- diukur adalah durasi PERCOBAAN, bukan rentang dari percobaan pertama sampai
+-- yang terakhir berhasil. Rentang itu sudah terbaca dari `created_at`, dan
+-- mencampurnya ke dalam satu histogram berarti satu pekerjaan yang di-*backoff*
+-- satu jam muncul sebagai pekerjaan yang BERJALAN satu jam.
+--
+-- ══ BARIS LAMA TETAP NULL, DAN TIDAK DIISI DENGAN TERKAAN ═════════════════
+-- Tidak ada backfill. Baris yang selesai sebelum kolom ini ada memang tidak
+-- punya durasi yang terukur, dan satu-satunya bahan untuk mengarangnya adalah
+-- `claimed_at` — yaitu justru angka yang salah di atas. Menyuntikkannya akan
+-- mencemari histogram dengan nilai yang seluruhnya fiktif, pada baris yang
+-- jumlahnya paling banyak. Pembaca metrik karena itu mendapat JUMLAH SAMPEL
+-- di samping persentilnya: p95 atas tiga pekerjaan adalah angka, bukan fakta.
+--
+-- ══ TANPA INDEKS BARU, DAN ITU DIPUTUSKAN BUKAN TERLUPAKAN ════════════════
+-- Kueri metriknya menyapu tabel dan mengelompokkan per `kind`. Itu terdengar
+-- mahal, tapi tabel ini DIPANGKAS: `archiveDoneJobs` membuang baris selesai
+-- setelah `DONE_RETENTION_DAYS` (14 hari), jadi isinya ribuan baris — bukan
+-- jutaan. Sapuan atas ribuan baris jauh lebih murah daripada satu indeks lagi
+-- pada tabel yang setiap klaim, setiap perpanjangan lease, dan setiap
+-- penyelesaian menulisinya.
+--
+-- Pemicunya untuk meninjau ulang: tabel `jobs` melewati ~100 ribu baris, atau
+-- halaman metrik operator terasa lambat. Yang ditambahkan saat itu indeks pada
+-- `created_at` — dan bukan sekarang, atas dugaan.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE "jobs" ADD COLUMN "started_at" TIMESTAMP(3);

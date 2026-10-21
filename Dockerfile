@@ -222,6 +222,112 @@ RUN apt-get update \
 CMD ["sh", "scripts/backup.sh"]
 
 
+# ─── Build GO: integrator (tahap 1b, rancangan §3.3/§3.5) ────
+#
+# Dua tahap bertambah, dan keduanya TIDAK menyentuh tahap mana pun di atasnya:
+# pohon Go di luar workspace bun, jadi `bun install` tidak pernah melihatnya dan
+# `node_modules` tidak pernah masuk ke sini.
+#
+# ══ VERSINYA DIPATOK, DAN DIPATOK SEJAJAR `go.mod` ═════════════════════════
+# Versi Go yang berbeda antara mesin pengembang dan image berarti perilaku yang
+# berbeda pada hal yang paling sulit dilihat: urutan map, GC, dan `time`
+# monotonik. `golangci-lint` di CI membaca versinya DARI `go.mod`
+# (`go-version-file`), jadi satu-satunya tempat yang bisa menyimpang adalah
+# baris di bawah ini — dan `tests/go-image-version.test.ts` menolak kalau ia
+# menyimpang.
+FROM golang:1.23-bookworm AS go-build
+WORKDIR /src
+# Manifes lebih dulu, lalu sumbernya: lapisan `go mod download` hanya batal
+# ketika dependensinya berubah, bukan setiap kali satu komentar disunting.
+COPY services/integrator/go.mod services/integrator/go.sum ./
+RUN go mod download
+COPY services/integrator/ ./
+# `CGO_ENABLED=0` → biner statis, yang memang seluruh alasan Go dipilih (§3.3):
+# runtime tipis tanpa glibc yang harus cocok. `-trimpath` menghapus jalur mesin
+# pembangun dari biner; `-s -w` membuang tabel simbol debug (~30% ukuran).
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-tenant ./cmd/tenant
+
+
+# ─── Runtime integrator (service `svc-tenant` di compose) ────
+#
+# ══ KENAPA BUKAN `FROM scratch` ════════════════════════════════════════════
+# Biner-nya statis, jadi `scratch` cukup untuk MENJALANKANNYA — tapi jalur
+# `tenant` memanggil `pg_dump`/`pg_dumpall`, dan format dump PostgreSQL adalah
+# format yang hanya perkakas resminya berhak mengklaim bisa menulis (alasan
+# yang sama yang membuat `awscli` tidak ditulis ulang di tahap `backup`).
+#
+# Yang TIDAK ikut, dan itu seluruh keuntungannya atas tahap `backup`: tidak ada
+# Node, tidak ada `node_modules`, tidak ada Prisma, tidak ada Python dan tidak
+# ada `awscli` — SDK S3 ada DI DALAM biner. Diperiksa di image yang sudah
+# dibangun, bukan diasumsikan.
+#
+# `openssl` IKUT, dan itu bukan karena kita memintanya: ia dependensi
+# `postgresql-client`. Jalur ini tidak memakainya sama sekali (enkripsinya
+# pustaka baku Go), tapi kehadirannya kebetulan berguna dan pantas disebut —
+# perintah pemulihan yang tertulis di PRODUCTION.md bisa dijalankan DARI image
+# ini juga. Yang penting tetap arah ketergantungannya: format artefaknya tetap
+# format `openssl enc` supaya pemulihan tidak menuntut biner Go ini, bukan
+# sebaliknya.
+#
+# ⚠ `postgresql-client` Debian bookworm adalah versi **15**, dan `pg_dump`
+# MENOLAK server yang lebih baru daripada dirinya:
+#
+#   pg_dumpall: error: aborting because of server version mismatch
+#   detail: server version: 17.11; pg_dumpall version: 15.19
+#
+# Itu DIUKUR, bukan dibaca dari dokumentasi, dan ia terjadi pada cadangan
+# PERTAMA sesudah penukaran. Maka klien diambil dari PGDG dan DIPATOK ke 17,
+# sejajar dengan service `pg` di compose — dijaga
+# `tests/pg-client-version.test.ts`, yang memeriksa SETIAP penyebutan
+# `postgresql-client-<n>` di berkas ini, bukan hanya yang pertama.
+#
+# Jalur Go juga memeriksanya SAAT JALAN (`backup.PeriksaVersi`): tes menjaga
+# niat, pemeriksaan runtime menjaga kenyataan.
+# Terukur: 185 MB, melawan image `backup` yang mewarisi `migrator` beserta
+# seluruh `node_modules`-nya. Angka itu disebut di sini supaya kenaikannya
+# nanti terbaca sebagai perubahan, bukan sebagai keadaan.
+FROM debian:bookworm-slim AS integrator
+# `ca-certificates` untuk TLS ke penyedia S3. Tanpanya unggahan gagal dengan
+# "x509: certificate signed by unknown authority" — galat yang terbaca seperti
+# kredensial salah.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+         https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+         > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && apt-get purge -y curl gnupg \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=go-build /out/svc-tenant /usr/local/bin/svc-tenant
+# Direktori kerja cadangan: satu basis data pada satu waktu, lalu dibuang.
+# Di dalam container, bukan di volume — isinya plaintext seumur beberapa detik,
+# dan ia tidak boleh selamat dari restart.
+RUN install -d -m 700 /tmp/backup
+WORKDIR /app
+#
+# ⚠ TETAP ROOT, dan itu keputusan — bukan kelalaian.
+#
+# Dua tahap runtime lain di berkas ini memakai `USER node`, jadi non-root
+# memang konvensi di sini, dan layanan INILAH yang paling pantas
+# mendapatkannya: ia satu-satunya yang memegang `BACKUP_ENCRYPTION_KEY`.
+#
+# Yang menahannya bukan prinsip melainkan satu kenyataan yang tidak bisa diuji
+# dari sini: volume `cadangan` SUDAH ADA di mesin produksi, dibuat root oleh
+# `job-backup`, dan Docker TIDAK menerapkan kepemilikan dari image ke volume
+# bernama yang sudah ada. `USER nobody` karena itu akan lolos setiap
+# pemeriksaan di repo ini lalu gagal menulis pada putaran PERTAMA di mesin yang
+# sudah berjalan — dengan galat izin yang terbaca seperti cakram penuh.
+#
+# Syarat untuk memindahkannya, supaya tidak perlu ditemukan ulang:
+# `chown -R` volume `cadangan` ke uid yang dipakai, lalu pindahkan baris ini.
+# Itu langkah penyebaran, bukan perubahan kode, jadi tempatnya PRODUCTION.md.
+CMD ["svc-tenant"]
+
+
 # ─── Runtime ─────────────────────────────────────────────────
 FROM base AS runner
 ENV NODE_ENV=production \

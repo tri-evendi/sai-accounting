@@ -1,0 +1,105 @@
+# GERBANG GO — gerbang rilis nomor DUA (AGENTS.md §Go di `services/`).
+#
+# ══ KENAPA BERKAS INI ADA, TERPISAH DARI `verify.yml` ══════════════════════
+# `bun run verify` yang HIJAU tidak membuktikan apa pun tentang pohon Go, dan
+# itu bukan kelemahan `verify`: 25 dari 300+ berkas tes repo ini memindai kode
+# untuk menegakkan aturan struktural, dan semuanya berhenti di batas
+# `services/`. Gerbang yang tidak melihat sebuah bahasa tidak akan pernah
+# menolak apa pun yang ditulis di dalamnya.
+#
+# Pelajaran yang melahirkan `verify.yml` berlaku persis sama di sini: aturan
+# yang hanya hidup di `AGENTS.md` adalah aturan yang bergantung pada seseorang
+# yang ingat menjalankan sebuah perintah. Pada 11 Okt 2026 repo ini punya 270
+# berkas tes dan NOL otomasi yang menjalankannya; berkas ini mencegah pohon Go
+# lahir ke keadaan yang sama.
+#
+# ══ KENAPA JOB SENDIRI, BUKAN LANGKAH DI DALAM `verify` ════════════════════
+# Dua alasan, dan keduanya praktis:
+#
+#   1. Kontributor yang mengubah satu halaman TypeScript tidak perlu memasang
+#      toolchain Go. Menggabungkannya membuat setiap PR menuntut keduanya.
+#   2. Namanya terbaca sendiri di daftar status check. "Verify" yang kadang
+#      memuat Go dan kadang tidak adalah satu nama untuk dua arti.
+#
+# ⚠ TANPA `paths:` FILTER, DAN ITU DISENGAJA. Filter jalur akan membuat gerbang
+# ini DILEWATI pada PR yang mengubah `contract/kinds.yaml` tanpa menyentuh
+# `services/` — padahal itu PERSIS perubahan yang bisa membuat berkas bangkitan
+# Go basi. Jalannya murah (satu modul, nol dependensi aplikasi); yang mahal
+# adalah gerbang yang tidak berjalan pada hari ia dibutuhkan.
+name: Go
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: go-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: services/integrator
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Versi dibaca dari `go.mod`, BUKAN diketik di sini. Dua tempat yang
+          # menyebut versi Go adalah dua tempat yang bisa menyimpang, dan yang
+          # menyimpang akan menguji kode ini di versi yang bukan versi image.
+          go-version-file: services/integrator/go.mod
+          cache-dependency-path: services/integrator/go.sum
+
+      - name: Modul tidak boleh basi
+        # `go mod tidy` yang menghasilkan diff berarti `go.mod`/`go.sum` yang
+        # di-commit tidak cocok dengan impor yang sungguh ada — dan build image
+        # kemudian menarik apa pun yang kebetulan menyelesaikan graf itu.
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # Versi dipatok, sama dengan yang disebut `_go_note` di package.json.
+          # `latest` berarti gerbang yang bisa merah besok tanpa satu baris kode
+          # berubah — dan kemerahan yang tidak disebabkan siapa pun adalah
+          # kemerahan yang akhirnya diabaikan.
+          version: v1.62.2
+          working-directory: services/integrator
+          # ⚠ `verify: false` — DAN INI BUKAN MELEMAHKAN GERBANGNYA.
+          #
+          # Bawaan action ini menjalankan `golangci-lint config verify`, yang
+          # MENGUNDUH skema JSON dari `golangci-lint.run` sebelum satu linter
+          # pun berjalan. Pada 20 Okt 2026 unduhan itu timeout DUA KALI dalam
+          # tiga jalan, pada PR yang tidak menyentuh satu baris Go:
+          #
+          #     compile schema: jsonschema https://golangci-lint.run/...
+          #     context deadline exceeded (Client.Timeout exceeded ...)
+          #
+          # Keduanya hijau pada percobaan ulang tanpa satu baris diubah. Itu
+          # bentuk kegagalan yang paling mahal di repo ini: ia **terbaca seperti
+          # kode rusak padahal bukan** — dan gerbang yang merah karena situs
+          # pihak ketiga lambat adalah gerbang yang orang belajar mengulang
+          # tanpa membaca, lalu suatu hari mengulang kemerahan yang sungguhan.
+          #
+          # Yang HILANG hanya validasi skema `.golangci.yml`, bukan satu pun
+          # linter: kesembilan tetap berjalan, `gofmt` termasuk. Dan kesalahan
+          # tulis di konfigurasi itu tidak lolos diam-diam — `golangci-lint`
+          # sendiri menolak kunci yang tidak dikenalnya saat berjalan.
+          #
+          # Yang dibeli: gerbang ini tidak lagi menuntut jaringan ke luar
+          # GitHub untuk memberi jawaban tentang kode kita.
+          verify: false

@@ -39,7 +39,7 @@ strategi pengujian, target non-fungsional dan katalog rute (08).
 | [`COMPLIANCE.md`](./COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi | Aktif |
 | [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) | Strategi go-to-market, fase, gate-nya | Aktif |
 | [`PRICING.md`](./PRICING.md) | Katalog paket & harga — sumber kebenaran | Aktif |
-| [`AUDIT-RILIS-UMUM.md`](./AUDIT-RILIS-UMUM.md) | Audit perjalanan pelanggan ujung-ke-ujung | **Arsip** (snapshot 15 Agu 2026) |
+| [`AUDIT-RILIS-UMUM.md`](./AUDIT-RILIS-UMUM.md) | Audit perjalanan customer ujung-ke-ujung | **Arsip** (snapshot 15 Agu 2026) |
 | [`accurate-reference.md`](./accurate-reference.md) | Peta fitur Accurate Online — referensi pembanding | Referensi |
 
 ## Dokumen di akar repo

@@ -1,6 +1,6 @@
 # 06 — Keamanan & Model Ancaman
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 Apa yang dilindungi, dari siapa, dengan kontrol apa, dan apa yang belum ditutup.
 Temuan keamanan yang masih terbuka dilacak berprioritas di
@@ -13,10 +13,10 @@ Urutan ini menentukan prioritas kontrol.
 | # | Aset | Kalau bocor / rusak |
 |---|---|---|
 | 1 | **Buku besar 17 PT** (`journals`, `journal_lines`, dokumen sumber) | Pembukuan yang wajib disimpan 10 tahun (UU KUP) hilang atau tidak bisa dipercaya. Tidak ada cara merekonstruksinya dari ingatan pengguna |
-| 2 | **Isolasi antar-PT** | Satu pelanggan membaca buku pelanggan lain. Kerugiannya kepercayaan, dan tidak bisa ditarik kembali |
+| 2 | **Isolasi antar-PT** | Satu customer membaca buku customer lain. Kerugiannya kepercayaan, dan tidak bisa ditarik kembali |
 | 3 | **Jejak audit** (`audit_logs`, `tenant_audit_logs`, `operator_audit_logs`) | Kehilangan kemampuan menjawab "siapa mengubah ini" — justru saat pertanyaan itu paling dibutuhkan |
 | 4 | **Arsip backup + kuncinya** | Arsip terenkripsi yang bocor = seluruh basis data bocor, bila kuncinya ikut |
-| 5 | **Kredensial pihak ketiga** (SMTP tenant, gateway pembayaran tenant) | Pelanggan menanggung akibat di infrastruktur miliknya sendiri |
+| 5 | **Kredensial pihak ketiga** (SMTP tenant, gateway pembayaran tenant) | Customer menanggung akibat di infrastruktur miliknya sendiri |
 | 6 | **Konsol operator** | Akses ke semua tenant sekaligus: pengaturan, katalog paket, hapus tenant |
 | 7 | **Identitas & sesi** | Pengambilalihan akun |
 
@@ -29,7 +29,7 @@ Urutan ini menentukan prioritas kontrol.
 | **Staf berperan rendah** | Sesi di PT yang sama | Naik hak · menembus gate persetujuan · menyunting jurnal yang sudah diposting · memposting ke periode tertutup |
 | **Integrator ber-token** | Token Bearer berlingkup PT | Memakai token di luar lingkupnya · token yang tidak bisa dicabut |
 | **Midtrans (dipalsukan)** | Tahu alamat webhook | Webhook palsu → tenant naik kelas tanpa bayar |
-| **Operator (kami)** | Akses semua tenant | Tindakan tanpa jejak · kredensial operator yang bocor |
+| **Operator (SAI)** | Akses semua tenant | Tindakan tanpa jejak · kredensial operator yang bocor |
 | **Penyerang yang menguasai satu arsip backup** | Satu berkas `.enc` | Seluruh basis data, **bila** kuncinya ikut |
 | **Penyerang dengan satu lubang injeksi SQL** | Satu `$queryRawUnsafe` yang salah | Hari ini: akses penuh ke server basis data, karena role aplikasi superuser |
 
@@ -86,9 +86,9 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 |---|---|
 | `OPERATOR_HOST` kosong | Konsol **404 di host mana pun** |
 | Allowlist IP kosong | **Tolak semua** (`*` hanya untuk pengembangan lokal) |
-| Image pelanggan | **Tidak memuat** rute konsol |
-| Image konsol | 404 untuk setiap host selain `OPERATOR_HOST`, **dan** tidak punya rute pelanggan |
-| Volume | Konsol **tidak pernah** memasang `documents`, jadi berkas pelanggan di luar jangkauannya |
+| Image customer | **Tidak memuat** rute konsol |
+| Image konsol | 404 untuk setiap host selain `OPERATOR_HOST`, **dan** tidak punya rute customer |
+| Volume | Konsol **tidak pernah** memasang `documents`, jadi berkas customer di luar jangkauannya |
 | Pencabutan sesi | `session_version` dibandingkan tiap permintaan (akun DB) atau putar `OPERATOR_SESSION_SECRET` (akun env) |
 
 ### 3.5 Masukan yang tidak dipercaya
@@ -102,7 +102,36 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 | Alur pra-sesi (daftar, lupa sandi, undangan) | Token sekali-pakai ter-hash + **jawaban seragam** (anti-enumerasi) + pembatasan laju per-IP/per-email |
 | Impor & dump sistem lama | **Tidak melewati zod** — itu justru alasan `job-conformance` ada |
 
-### 3.6 Kriptografi yang dipakai
+### 3.6 Hasil pekerjaan: `result_ref` adalah KUNCI, bukan kapabilitas
+
+Hasil pekerjaan latar (`data/hasil/<kind>-<jobId>/<berkas>`) memuat isi buku
+besar — ekspor neraca, umur piutang, dokumen. **Memegang kuncinya bukan izin
+untuk membacanya**, dan empat aturan menegakkannya sebagai kode:
+
+| Aturan | Kenapa |
+|---|---|
+| Penyimpanan **di luar `public/`** | berkas statis tidak melewati satu pun penjaga — pelajaran #367, dan satu-satunya alasan rutenya ada |
+| Unduhan lewat **rute aplikasi**, dan rute itu men-STREAM byte-nya | ia tidak pernah memulangkan 302 ke penyimpanan mana pun. Redirect ke URL bertanda tangan membuat izin diperiksa SEKALI lalu tautannya hidup sendiri sampai kedaluwarsa — dan tautan itu bisa dibagikan, disimpan peramban, dan muncul di log proxy |
+| Izin diperiksa **saat mengunduh** | pekerjaan hidup berjam-jam; orang yang perannya dicabut di antaranya tidak boleh tetap menerima hasilnya |
+| **Izin per `kind`, DITAMBAH gerbang kedua dari muatannya** | satu izin tunggal membuat siapa pun yang boleh mengunduh satu dokumen juga boleh mengunduh ekspor neraca. Dan izin JENIS saja tidak cukup: `report.export` menjawab "boleh mengekspor laporan", bukan "boleh mengekspor laporan INI" (#355) — tanpa gerbang kedua, pekerjaan yang terbit ketika sebuah modul masih aktif tetap bisa diunduh sesudah modul itu dimatikan |
+
+Keduanya `Record` yang LENGKAP atas seluruh `kind`: jenis baru tidak akan
+mengompilasi sampai seseorang memutuskan siapa yang berhak mengunduh hasilnya,
+dan keputusan "tidak pernah bisa diunduh" ditulis `null` beserta alasannya —
+ketiadaan entri tidak bisa dibedakan dari entri yang lupa ditulis.
+
+⚠ **Manifest cadangan TIDAK diunduh lewat rute bertenant.** Ia menyebut nama
+basis data SELURUH tenant; jalannya runbook operator, bukan permukaan HTTP per
+PT. `tenant.backup` karena itu `null` di peta izin.
+
+**Bentuk `result_ref` divalidasi meski ia datang dari basis data kita sendiri:**
+tepat dua segmen dari kosakata sempit, dan jalur gabungannya diperiksa LAGI
+berada di bawah akarnya. `path.join` menormalkan `..` dengan rapi, dan rapi
+adalah persis yang membuat lolosnya tidak terlihat. Penjaganya
+`tests/job-result-authorization.test.ts` + `tests/job-result-store.test.ts`,
+yang kedua menjalankan berkas sungguhan.
+
+### 3.7 Kriptografi yang dipakai
 
 | Untuk | Algoritma | Catatan |
 |---|---|---|
@@ -114,9 +143,26 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 | Keutuhan arsip backup | **SHA-256 atas ciphertext**, dikirim bersama arsip | AES-CBC tidak membawa pemeriksaan keutuhan sendiri |
 | Webhook pembayaran | **SHA-512** | Fail-closed |
 | MFA operator | **TOTP** | `OPERATOR_MFA` |
+| Berkas lisensi on-premise | **Ed25519**, diverifikasi **luring** | `@sai/core/licence`; kunci publik **ditanam di kode** |
 | Transport | **TLS** (Let's Encrypt, HSTS `max-age=63072000; preload`) | Hanya Traefik yang mengikat :80/:443 |
 
-### 3.7 Pengerasan transport & peramban
+**Lisensi on-premise — empat keputusan, dan semuanya tidak simetris.**
+
+| Keputusan | Kalau sebaliknya |
+|---|---|
+| Kunci publik **ditanam di kode**, tidak pernah dibaca dari env | kunci publik bukan rahasia, tapi kunci yang dibaca dari env berarti siapa pun yang bisa menyetel env di mesin itu menukarnya dengan kuncinya sendiri lalu menandatangani lisensinya sendiri — seluruh tanda tangan jadi hiasan |
+| Kunci privat **tidak pernah** di repo maupun di CI | di repo: setiap orang yang pernah mengklon memilikinya selamanya, dan `git` tidak bisa melupakannya. Di CI: siapa pun yang bisa memicu satu workflow mencetak lisensi tak terbatas, dan jejaknya terlihat seperti build biasa. Penerbitan lisensi pekerjaan manusia yang jarang — dan yang jarang tapi berbahaya memang tidak boleh otomatis |
+| Formatnya **bukan JWT** | JWT membawa `alg` di dalam pesan yang **belum terverifikasi**, dengan sejarah `alg: none` dan penukaran asimetris→HMAC yang kuncinya justru kunci publik. Di sini algoritmanya tidak dapat dinegosiasikan |
+| Diverifikasi **di tempat pemakaian**, tidak pernah disimpan sebagai baris | memverifikasi sekali lalu menyimpan hasilnya di `control` memindahkan kewenangan lisensi dari tanda tangan ke baris yang bisa ditulis. Verifikasi Ed25519 berbiaya mikrodetik; berkasnya dipasang **hanya-baca** |
+
+⚠ **Dukungan yang berakhir tidak mematikan apa pun**, dan itu ditegakkan sebagai
+kode, bukan niat: satu tes menyapu modul lisensi dan menolak `throw`,
+`process.exit`, `blocked`, `denied` — supaya tidak satu pun pemanggil bisa
+menjadikannya pemadaman. Lisensinya **perpetual**: yang berakhir adalah hak atas
+versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
+adalah kesalahan kategori untuk produk akuntansi.
+
+### 3.8 Pengerasan transport & peramban
 
 Header lengkapnya ada di [03 API & Integrasi](./03-API-INTEGRASI.md). Ringkas: `frame-ancestors
 'none'` + `X-Frame-Options: DENY` · `object-src` dibatasi · `form-action 'self'`
@@ -140,7 +186,7 @@ sulit dikenali, dan itu yang perlu diingat saat menambah permukaan baru.
 | **`cache()` React tidak per-permintaan di route handler** (#333) | Di render halaman nilainya benar; **hanya** route handler yang 500 | Penyimpan dikunci pada hasil `await headers()` + `WeakMap` |
 | **`enterWith` tidak merambat setelah `await`** | Konteks terukur `null` di badan route, padahal sudah "dipasang" | Permintaan HTTP bertumpu pada penyimpan per-permintaan |
 | **Manifest PWA dijawab HTML halaman masuk** dengan status 307 | Peramban mengambilnya `no-cors`; PWA gagal **tanpa error** | `/manifest.webmanifest` masuk daftar jalur publik |
-| **Dua container dengan nama service Traefik yang sama** | Traefik membagi beban; permintaan operator bisa mendarat di container pelanggan, **tanpa error** | Nama service berbeda, dan konsol 404 untuk host lain |
+| **Dua container dengan nama service Traefik yang sama** | Traefik membagi beban; permintaan operator bisa mendarat di container customer, **tanpa error** | Nama service berbeda, dan konsol 404 untuk host lain |
 | **Tidak ada satu pun tes yang menyentuh header keamanan** | CSP yang dilemahkan atau dihapus **tidak menimbulkan gejala** | `tests/security-headers.test.ts`, termasuk dua tes yang menuntut sesuatu **tetap tidak ada** |
 | **`.dockerignore` menjangkar pola, `.gitignore` tidak** | Pola `backups/` membuat seluruh basis data produksi ikut masuk ke image yang di-deploy | Periksa **isi image**, bukan pohon berkas (`tests/dockerignore-migrations.test.ts`) |
 

@@ -373,32 +373,7 @@ export default async function ContractDetailPage({
         description={formatDate(contract.date)}
         actions={
           <>
-          <ContractPDFButtons
-            contract={{
-              contractNo: contract.contractNo,
-              date: contract.date.toISOString(),
-              buyer: contract.buyer,
-              consignee: consigneeName,
-              packaging: contract.packaging,
-              shipment: contract.shipment,
-              top1: contract.top1,
-              top2: contract.top2,
-              currency: contract.currency,
-              status: contract.status,
-              items: contract.items.map((i) => ({
-                itemName: i.itemName,
-                bags: Number(i.bags),
-                kgPerBag: Number(i.kgPerBag),
-                pricePerKg: Number(i.pricePerKg),
-              })),
-              payments: contract.payments.map((p) => ({
-                date: p.date.toISOString(),
-                amount: Number(p.amount),
-                currency: p.currency,
-                note: p.note,
-              })),
-            }}
-          />
+          <ContractPDFButtons contractId={contract.id} contractNo={contract.contractNo} />
           {/* Pola "Ambil" (issue #15): buka form faktur dengan kontrak ini terpilih,
               barisnya sudah terisi sisa yang belum difakturkan. */}
           {/* ── Utang potongan 2 (#267), dibayar di potongan 3 ──────────────

@@ -31,6 +31,11 @@ packages/db/generated
 # Local / runtime data
 logs
 data/audit/*.jsonl
+# Hasil pekerjaan (`result_ref`): ekspor laporan & dokumen, isinya buku besar
+# PT sungguhan. Alasan yang sama dengan `backups/` di anchor di bawah — satu
+# dump produksi pernah terpanggang ke dalam image yang digelar.
+data/hasil
+data/documents
 public/uploads/*
 !public/uploads/.gitkeep
 

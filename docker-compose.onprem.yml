@@ -1,0 +1,124 @@
+# Profil ON-PREMISE — dipakai bersama `docker-compose.yml`, bukan menggantinya.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
+#
+# Berkas ini hanya memuat yang BERBEDA di mesin customer: di sana tidak ada
+# Traefik milik SAI, tidak ada konsol operator, tidak ada MariaDB warisan, dan
+# — yang paling mudah terlewat — tidak ada CI yang membangun image.
+
+networks:
+  # Di SaaS ini jaringan Traefik bersama (`external: true`), dan compose GAGAL
+  # memvalidasi bila jaringannya tidak ada — itu celah on-premise #7: `up`
+  # berhenti sebelum satu container pun start. Di sini jaringannya dibuat
+  # lokal, jadi `app-customer` tetap punya tempat menempel; label Traefik di
+  # atasnya menjadi tidak berarti tanpa Traefik yang membacanya.
+  traefik:
+    name: sai-onprem-local
+    external: false
+
+services:
+  # Konsol operator tidak dipasang. Tanpa `OPERATOR_HOST` ia menjawab 404 di
+  # mana pun, jadi profil ini hanya membuat niat itu terbaca di compose.
+  app-operator:
+    profiles: ["tidak-dipasang"]
+
+  # MariaDB beku (#636) tidak pernah ada di pemasangan baru.
+  db:
+    profiles: ["tidak-dipasang"]
+
+  # ══ Celah #1: profil penyebaran dinyatakan DI SINI ══════════════════════
+  #
+  # `APP_DEPLOY_PROFILE` disetel lewat `environment:` (yang menimpa `env_file:`)
+  # dan bukan diserahkan ke `.env` customer — berkas override INILAH pernyataan
+  # "ini pemasangan on-premise", jadi memakainya sekaligus menyatakannya. Kalau
+  # ia hanya ada di `.env`, satu baris yang lupa disalin membuat pemasangan
+  # melaporkan penagihannya rusak selamanya: bidang penagihan yang memang tidak
+  # dipasang akan terbaca sebagai "tak terjangkau", bukan "tidak ada".
+  #
+  # Profilnya TIDAK pernah disimpulkan dari ada-tidaknya PLATFORM_DATABASE_URL
+  # — alasannya di `packages/core/src/deploy-profile.ts`.
+
+  # ══ Celah #4: tag versi WAJIB, dan image TIDAK dibangun di sini ══════════
+  #
+  # Dua hal yang berbeda, dan keduanya gagal diam-diam tanpa blok ini.
+  #
+  # 1. `${SAI_TAG:-latest}` di compose dasar berarti pemasangan on-premise
+  #    menarik `:latest` bila variabelnya lupa disetel — dan `:latest` berpindah
+  #    setiap kali CI mendorong. Customer yang menjalankan `up -d` untuk alasan
+  #    yang sama sekali lain (reboot, ganti disk) akan mendapat versi yang lebih
+  #    baru daripada yang pernah diuji di sana, tanpa pernah memintanya. Di
+  #    pemasangan akuntansi itu bukan kejutan operasional, itu angka yang
+  #    berubah tanpa ada yang memutuskannya. `:?` membuat compose BERHENTI
+  #    sebelum satu container pun start.
+  #
+  # 2. `build:` di compose dasar membuat `up` MEMBANGUN image bila tag-nya tidak
+  #    ada di mesin — sepuluh menit `next build` di kotak customer, yang
+  #    dilarang PRODUCTION.md dan tidak punya toolchain-nya. `pull_policy:
+  #    always` menutupnya: selalu tarik dari registry, jangan pernah bangun.
+  app-customer:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  migrate:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  job-scheduler:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  job-conformance:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  job-backup:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-backup:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  # Jalur `ledger` ikut dipasang di on-premise, dan itu bukan pilihan: sejak
+  # rancangan §4 penjadwal hanya MENERBITKAN, jadi tanpa layanan ini dokumen
+  # berulang tidak pernah terbit sama sekali — baris `jobs` menumpuk tanpa
+  # pengklaim, dan tidak ada satu pun halaman yang rusak untuk mengabarkannya.
+  svc-ledger:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  # Jalur `tenant` — cadangan per basis data (tahap 1b). Di on-premise ia LEBIH
+  # penting daripada di SaaS, dan bukan sebaliknya: di sini tidak ada bucket
+  # milik SAI, tidak ada mesin kedua, dan seringkali tidak ada S3 sama sekali —
+  # jadi direktori `cadangan` di mesin customer adalah satu-satunya salinan yang
+  # ada. Itu juga yang membuat aturan "yang terbaru tidak pernah dibuang"
+  # berlaku di sini, bukan hanya di jalur lokal (lihat `PilihUntukDibuang`).
+  #
+  # ⚠ Image-nya `-integrator`, BUKAN `-migrator`: ia satu-satunya layanan di
+  # pemasangan ini yang dibangun dari tahap Go. `docker compose pull` yang
+  # melewatkannya akan membiarkan jalur cadangan di image yang mendahului
+  # migration-nya — dan kegagalannya tidak terlihat di satu pun halaman, sebab
+  # layanan ini tidak melayani HTTP.
+  svc-tenant:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem
+
+  # Jalur `interactive` ikut dipasang: ekspor besar di on-premise sama
+  # mungkinnya dengan di SaaS, dan tanpa layanan ini permintaan di atas ambang
+  # penyerahan menumpuk sebagai baris `jobs` tanpa pengklaim — tanpa satu
+  # halaman pun yang rusak untuk mengabarkannya.
+  svc-interactive:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem

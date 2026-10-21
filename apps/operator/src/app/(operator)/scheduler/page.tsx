@@ -17,10 +17,22 @@
  *
  * Kolom "Galat" tetap MERAH HANYA saat angkanya bukan nol, dan angkanya sendiri
  * yang jadi penanda utama — warna bukan sinyal tunggal (MASTER.md).
+ *
+ * ── Kenapa ANTREAN PEKERJAAN ada di halaman ini (02 §5, §14) ───────────────
+ * Sejak tabel `jobs`, denyut jam berhenti MELAKSANAKAN dan hanya MENERBITKAN —
+ * jadi halaman ini bidang penerbitnya, dan antrean adalah tempat terbitannya
+ * jatuh. §11 menyuruh keduanya dibaca berpasangan, dan bukan demi kerapian:
+ * antrean yang kosong terbaca sehat justru ketika penerbitnya MATI, sebab tak
+ * ada baris yang pernah terbit. Yang membantah bacaan itu hanya riwayat putaran
+ * di bawah. Memisahkan keduanya ke dua halaman berarti memisahkan sebuah angka
+ * dari satu-satunya angka yang bisa membuktikannya bohong.
+ *
+ * Panelnya berdiri DI LUAR percabangan riwayat: riwayat yang kosong atau tak
+ * terbaca tidak boleh ikut menyembunyikan antreannya.
  */
 
 import { CalendarOutlined } from "@ant-design/icons";
-import { Badge } from "@sai/ui/badge";
+import { Badge, type BadgeVariant } from "@sai/ui/badge";
 import { EmptyState } from "@sai/ui/empty-state";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
@@ -32,7 +44,18 @@ import {
 } from "@op/components/operator/console-ui";
 import { PageHeader } from "@sai/ui/page-header";
 import { requireOperatorPage } from "@op/lib/operator/guard";
-import { schedulerRunsForOperator } from "@op/lib/operator/store";
+import {
+  jobMetricsForOperator,
+  queueSnapshotForOperator,
+  schedulerRunsForOperator,
+} from "@op/lib/operator/store";
+import { METRICS_WINDOW_MINUTES, drainMinutes, type LaneMetrics } from "@sai/platform/job-metrics";
+import {
+  QUEUE_AGE_LATE_SECONDS,
+  QUEUE_AGE_WARN_SECONDS,
+  type LaneQueueHealth,
+  type QueueHealthStatus,
+} from "@sai/core/queue-health";
 import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
@@ -88,14 +111,137 @@ function RunList({
   );
 }
 
+const QUEUE_STATUS_KEY: Record<QueueHealthStatus, string> = {
+  idle: "operator.scheduler.queueStatusIdle",
+  ok: "operator.scheduler.queueStatusOk",
+  warn: "operator.scheduler.queueStatusWarn",
+  late: "operator.scheduler.queueStatusLate",
+};
+
+/*
+ * `idle` TIDAK hijau, dan itu disengaja: antrean kosong bukan kabar baik maupun
+ * kabar buruk, dan mewarnainya hijau menyatakan sesuatu yang tidak diketahui
+ * halaman ini — apakah ada yang menerbitkan. Netral adalah jawaban yang jujur.
+ */
+const QUEUE_BADGE: Record<QueueHealthStatus, BadgeVariant> = {
+  idle: "outline",
+  ok: "success",
+  warn: "warning",
+  late: "danger",
+};
+
 type SchedulerRun = NonNullable<Awaited<ReturnType<typeof schedulerRunsForOperator>>>[number];
 
 export default async function OperatorSchedulerPage() {
   await requireOperatorPage();
   const t = await getT();
 
-  const runs = await schedulerRunsForOperator(10);
+  const [runs, queue, metrics] = await Promise.all([
+    schedulerRunsForOperator(10),
+    queueSnapshotForOperator(),
+    jobMetricsForOperator(),
+  ]);
   const latest = runs?.[0] ?? null;
+
+  const queueColumns: SaiColumns<LaneQueueHealth> = [
+    {
+      key: "lane",
+      title: t("operator.scheduler.queueColLane"),
+      align: "left",
+      render: (_v, lane) => lane.lane,
+    },
+    {
+      key: "status",
+      title: t("operator.scheduler.colStatus"),
+      align: "left",
+      render: (_v, lane) => (
+        <Badge variant={QUEUE_BADGE[lane.status]}>
+          {t(QUEUE_STATUS_KEY[lane.status] as Parameters<typeof t>[0])}
+        </Badge>
+      ),
+    },
+    {
+      key: "waiting",
+      title: t("operator.scheduler.queueColWaiting"),
+      align: "right",
+      render: (_v, lane) => <span style={TABULAR}>{lane.waiting}</span>,
+    },
+    {
+      key: "age",
+      /* Detik, satu satuan, tanpa pembulatan ke "beberapa menit": ambangnya
+         SENDIRI ditulis dalam detik (420/600), dan angka yang satuannya
+         berbeda dari ambangnya memaksa pembacanya menghitung di kepala tepat
+         saat ia sedang panik. */
+      title: t("operator.scheduler.queueColAge"),
+      align: "right",
+      render: (_v, lane) => (
+        <span style={TABULAR}>{lane.ageSeconds === null ? "—" : lane.ageSeconds}</span>
+      ),
+    },
+  ];
+
+  /*
+   * Kolom metrik (§11). `—` untuk setiap angka yang TIDAK ADA, dan itu bukan
+   * kerapian tampilan: jalur yang tidak menjalankan apa pun dan jalur yang
+   * menjalankan pekerjaan nol-milidetik terlihat sama bila keduanya dicetak
+   * `0`. Yang pertama berarti "tidak ada bahan", yang kedua "cepat".
+   */
+  const angkaAtauStrip = (n: number | null) => (
+    <span style={TABULAR}>{n === null ? "—" : n}</span>
+  );
+
+  const metricsColumns: SaiColumns<LaneMetrics> = [
+    {
+      key: "lane",
+      title: t("operator.scheduler.queueColLane"),
+      align: "left",
+      render: (_v, m) => m.lane,
+    },
+    {
+      key: "published",
+      title: t("operator.scheduler.metricsColPublished"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.publishedPerMin}</span>,
+    },
+    {
+      key: "completed",
+      title: t("operator.scheduler.metricsColCompleted"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.completedPerMin}</span>,
+    },
+    {
+      key: "drain",
+      /* `—` ketika antrean kosong DAN ketika laju selesai nol — dua sebab, dan
+         keduanya benar sebagai "tidak bisa diperkirakan". Yang kedua adalah
+         keadaan paling gawat (pekerja mati), dan ia tidak boleh muncul sebagai
+         angka besar: "4.812 menit" terbaca lambat, padahal tidak bergerak.
+         Keadaan itu dijawab kolom umur di panel di atas, yang punya ambang. */
+      title: t("operator.scheduler.metricsColDrain"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(drainMinutes(m)),
+    },
+    {
+      key: "p95",
+      title: t("operator.scheduler.metricsColP95"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(m.p95Ms),
+    },
+    {
+      key: "p99",
+      title: t("operator.scheduler.metricsColP99"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(m.p99Ms),
+    },
+    {
+      key: "samples",
+      /* Ditampilkan BERSAMA persentilnya, dan itu syarat bukan hiasan: p95 atas
+         tiga pekerjaan adalah angka, bukan fakta. Ambang per-jalur yang disetel
+         dari sampel sekecil itu akan berteriak untuk hal normal. */
+      title: t("operator.scheduler.metricsColSamples"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.samples}</span>,
+    },
+  ];
 
   /** Kolom hitungan — semuanya rata kanan + tabular (MASTER.md §Angka). */
   const countColumn = (
@@ -160,6 +306,35 @@ export default async function OperatorSchedulerPage() {
     <div>
       <PageHeader title={t("operator.scheduler.heading")} description={t("operator.scheduler.description")} />
       <div style={CONSOLE_PAGE}>
+
+      <ConsolePanel title={t("operator.scheduler.queueHeading")}>
+        {queue === null ? (
+          <ConsoleNotice>{t("operator.scheduler.queueUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable columns={queueColumns} rows={queue} rowKey={(lane) => lane.lane} />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.queueNote", {
+                warn: QUEUE_AGE_WARN_SECONDS,
+                late: QUEUE_AGE_LATE_SECONDS,
+              })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
+
+      <ConsolePanel title={t("operator.scheduler.metricsHeading")}>
+        {metrics === null ? (
+          <ConsoleNotice>{t("operator.scheduler.metricsUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            <StaticTable columns={metricsColumns} rows={metrics} rowKey={(m) => m.lane} />
+            <p style={{ ...MUTED, margin: 0 }}>
+              {t("operator.scheduler.metricsNote", { window: METRICS_WINDOW_MINUTES })}
+            </p>
+          </div>
+        )}
+      </ConsolePanel>
 
       {runs === null ? (
         <ConsoleNotice>{t("operator.scheduler.unavailable")}</ConsoleNotice>

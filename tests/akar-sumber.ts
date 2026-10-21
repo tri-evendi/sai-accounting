@@ -33,6 +33,115 @@ export function akarSumber(): string[] {
   return [SRC, ...di("packages"), ...di("apps")];
 }
 
+/**
+ * Akar pohon GO (`services/*`), untuk penjaga yang memindai kode Go.
+ *
+ * Terpisah dari `akarSumber()` dengan sengaja: `services/` bukan bagian
+ * workspace bun (glob-nya `packages/*` + `apps/*`), jadi penjaga yang
+ * menggabungkan keduanya akan memberi kode Go daftar aturan TypeScript yang
+ * tidak berlaku untuknya. Yang dibagi di sini hanya SATU hal — tempatnya —
+ * supaya penjaga Go kedua tidak mengetik `services/integrator` lagi dan
+ * tertinggal pada hari layanan Go kedua lahir.
+ *
+ * ⚠ 25 dari 306+ berkas tes memindai kode untuk menegakkan aturan struktural,
+ * dan semuanya berhenti di batas `services/`. Permukaan Go wajib punya
+ * penjaganya sendiri, dan penjaga itu memakai daftar ini.
+ */
+export function akarGo(): string[] {
+  const akar = join(AKAR_REPO, "services");
+  if (!existsSync(akar)) return [];
+  return readdirSync(akar, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => join(akar, d.name));
+}
+
+/** Setiap berkas `.go` di bawah `akarGo()`, beserta jalur relatif ke akar repo. */
+export function berkasGo(): { jalur: string; rel: string; isi: string }[] {
+  const hasil: { jalur: string; rel: string; isi: string }[] = [];
+  const telusuri = (dir: string) => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const penuh = join(dir, d.name);
+      if (d.isDirectory()) {
+        telusuri(penuh);
+      } else if (d.isFile() && d.name.endsWith(".go")) {
+        hasil.push({
+          jalur: penuh,
+          rel: relative(AKAR_REPO, penuh).split(sep).join("/"),
+          isi: readFileSync(penuh, "utf8"),
+        });
+      }
+    }
+  };
+  for (const akar of akarGo()) telusuri(akar);
+  return hasil;
+}
+
+/**
+ * Setiap berkas sumber berakhiran `akhiran`, di SELURUH akar sumber.
+ *
+ * Pasangan `berkasGo()` untuk sisi TypeScript, dan ia ada karena alternatifnya
+ * memanggil `grep` lewat `execFileSync` — yang **keluar dengan kode 1 ketika
+ * tak ada yang cocok**, sehingga penjaga yang seharusnya HIJAU (nol pelanggar)
+ * justru melempar galat. Itu sudah terjadi, dan kegagalannya terbaca seperti
+ * kode rusak padahal justru kode yang bersih.
+ */
+export function berkasSumber(akhiran: string[]): { jalur: string; rel: string; isi: string }[] {
+  const hasil: { jalur: string; rel: string; isi: string }[] = [];
+  const telusuri = (dir: string) => {
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const penuh = join(dir, d.name);
+      if (d.isDirectory()) {
+        telusuri(penuh);
+      } else if (d.isFile() && akhiran.some((a) => d.name.endsWith(a))) {
+        hasil.push({
+          jalur: penuh,
+          rel: relative(AKAR_REPO, penuh).split(sep).join("/"),
+          isi: readFileSync(penuh, "utf8"),
+        });
+      }
+    }
+  };
+  for (const akar of akarSumber()) telusuri(akar);
+  return hasil;
+}
+
+/**
+ * Teks sumber TANPA komentarnya.
+ *
+ * ══ KENAPA INI ADA DI SINI, DAN BUKAN DI SATU BERKAS TES ═══════════════════
+ * Satu bentuk penjaga yang keliru sudah muncul EMPAT kali: pemeriksaan
+ * "X TIDAK ADA" — atau "X muncul tepat sekali" — yang membaca seluruh teks
+ * lalu menuding KOMENTAR yang menjelaskan X. Repo ini menulis komentar yang
+ * panjang dengan sengaja, jadi komentar adalah tempat X paling sering disebut:
+ * `postgresql-client` tanpa versi, `sh scripts/backup.sh` yang tidak lagi
+ * dijadwalkan, `PLATFORM_DATABASE_URL` yang justru tidak dibaca, `doc.save()`
+ * yang sudah diganti. Penjaga yang menolaknya memaksa alasannya dihapus dari
+ * tempat ia paling berguna.
+ *
+ * Aturannya satu kalimat:
+ *
+ * > Penjaga **"X ADA"** boleh membaca teks penuh — komentar memang bagian dari
+ * > apa yang dijaga repo ini. Penjaga **"X TIDAK ADA"** dan setiap penjaga
+ * > yang MENGHITUNG wajib membaca `tanpaKomentar(...)`.
+ *
+ * Ia pengupas kasar, bukan pengurai: `//` di dalam string literal (`"http://"`)
+ * ikut terpotong. Itu dapat diterima untuk tujuannya — yang dicari keberadaan
+ * dan jumlah sebuah pola, bukan AST — dan jauh lebih mudah dipercaya daripada
+ * pengurai yang benar 99% dengan satu kasus yang tidak ada yang tahu.
+ */
+export function tanpaKomentar(teks: string): string {
+  return teks
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((baris) => {
+      const t = baris.trimStart();
+      if (t.startsWith("//") || t.startsWith("*") || t.startsWith("#")) return "";
+      const i = baris.indexOf("//");
+      return i >= 0 ? baris.slice(0, i) : baris;
+    })
+    .join("\n");
+}
+
 export function relSumber(jalur: string): string {
   const keSrc = relative(SRC, jalur);
   const rel = keSrc.startsWith("..") ? relative(AKAR_REPO, jalur) : keSrc;

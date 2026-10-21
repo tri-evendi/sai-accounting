@@ -1,17 +1,27 @@
 "use client";
 
 /**
- * Tombol dokumen PDF yang dipakai ulang: "Pratinjau" membuat PDF (via jsPDF,
- * di-load malas per dokumen), menampilkannya di `DocumentPreview`, lalu di sana
- * bisa Unduh & Cetak. Ganti tombol "Export PDF" lama yang langsung mengunduh
- * tanpa pratinjau.
+ * Tombol dokumen PDF yang dipakai ulang: "Pratinjau" mengambil PDF-nya,
+ * menampilkannya di `DocumentPreview`, lalu di sana bisa Unduh & Cetak. Ganti
+ * tombol "Export PDF" lama yang langsung mengunduh tanpa pratinjau.
  *
- * `generate` mengembalikan instance jsPDF (import dinamis di pemanggil agar
- * jsPDF tak masuk bundle utama). Blob dibuat dari doc dan URL-nya dibersihkan
- * saat pratinjau ditutup.
+ * ══ `generate` MEMULANGKAN BLOB, BUKAN INSTANCE jsPDF (tahap 1c) ═══════════
+ * Sampai tahap 1c kontraknya `() => Promise<jsPDF>`, dan itu memaku satu hal
+ * yang seharusnya bukan urusan tombol ini: BAHWA PDF-nya dibuat di peramban.
+ * Sejak §5 memindahkan generator ke server, sebagian dokumen datang sebagai
+ * byte dari sebuah rute — dan tombol yang menuntut instance jsPDF memaksa
+ * setiap pemanggil mengurainya kembali menjadi jsPDF hanya untuk dibongkar
+ * lagi menjadi Blob.
+ *
+ * Blob juga memperbaiki satu hal yang lebih halus. Dengan instance jsPDF,
+ * pratinjau memakai `output("blob")` dan unduhan memakai `doc.save()` — dua
+ * serialisasi. Diukur di sesi ini: dua `output()` dari SATU instance memang
+ * identik, jadi tidak ada cacat di sana hari ini. Tapi untuk dokumen yang
+ * datang dari server, dua panggilan berarti dua PERMINTAAN — dan dua instance
+ * jsPDF atas muatan yang sama berbeda pada `/ID` di trailer. Satu Blob
+ * menghapus kemungkinan itu alih-alih mengandalkan pemanggil mengingatnya.
  */
 import { useState } from "react";
-import type { jsPDF } from "jspdf";
 import { EyeOutlined } from "@ant-design/icons";
 import { Button } from "@sai/ui/button";
 import { useToast } from "@sai/ui/toast";
@@ -28,7 +38,7 @@ export function PdfDocumentButton({
 }: {
   title: string;
   filename: string;
-  generate: () => Promise<jsPDF>;
+  generate: () => Promise<Blob>;
   label?: string;
   variant?: "primary" | "secondary";
   disabled?: boolean;
@@ -38,14 +48,14 @@ export function PdfDocumentButton({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
-  const [doc, setDoc] = useState<jsPDF | null>(null);
+  const [blob, setBlob] = useState<Blob | null>(null);
 
   async function openPreview() {
     setLoading(true);
     try {
-      const generated = await generate();
-      const url = URL.createObjectURL(generated.output("blob"));
-      setDoc(generated);
+      const berkas = await generate();
+      const url = URL.createObjectURL(berkas);
+      setBlob(berkas);
       setSrc(url);
       setOpen(true);
     } catch (err) {
@@ -61,7 +71,7 @@ export function PdfDocumentButton({
     if (!next && src) {
       URL.revokeObjectURL(src);
       setSrc(null);
-      setDoc(null);
+      setBlob(null);
     }
   }
 
@@ -81,7 +91,21 @@ export function PdfDocumentButton({
           title={title}
           src={src}
           kind="pdf"
-          onDownload={() => doc?.save(filename)}
+          /* Diunduh dari Blob yang SAMA dengan yang sedang dilihat — bukan
+             dari pembangkitan atau permintaan kedua. Untuk dokumen dari
+             server, permintaan kedua menghasilkan `/ID` PDF yang berbeda:
+             yang dilihat pengguna dan yang ia simpan bukan berkas yang sama. */
+          onDownload={() => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+          }}
         />
       )}
     </>

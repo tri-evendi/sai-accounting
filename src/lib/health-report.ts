@@ -24,9 +24,13 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
+import { billingPlaneInstalled } from "@sai/core/deploy-profile";
+import { schemaGateVerdict, type SchemaGateVerdict } from "@sai/platform/schema-gate";
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
+import { queueHealth, type QueueHealthStatus } from "@sai/core/queue-health";
+import { queueSnapshot } from "@sai/platform/job-queue";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
 import { mailHealth, type MailHealthStatus } from "@sai/platform/mail-health";
@@ -44,10 +48,31 @@ import { outboxCount, resolveMailConfig } from "@sai/platform/mailer-core";
 export type MailStatus = { status: MailHealthStatus | "unknown" };
 
 /** Bidang yang jawabannya sekadar "terjangkau atau tidak diketahui". */
-export type ReachStatus = { status: "ok" | "unknown" };
+/**
+ * `not-installed` BUKAN varian kerapian. Tanpanya, pemasangan on-premise —
+ * yang memang tidak memasang bidang penagihan — melaporkan `unknown` selamanya,
+ * dan "tak terjangkau" yang permanen tidak bisa dibedakan dari kerusakan yang
+ * nyata oleh siapa pun yang membaca probe ini.
+ */
+export type ReachStatus = { status: "ok" | "unknown" | "not-installed" };
 
 /** Bidang PT contoh — punya keadaan ketiga; lihat `sampleCompany()`. */
 export type CompanyStatus = { status: "ok" | "unknown" | "error" };
+
+/**
+ * Kesehatan antrean — SATU KATA saja, dan itu rambu #317, bukan kemalasan.
+ *
+ * Umur tertua per jalur dan kedalamannya adalah sinyal utama §11, tapi keduanya
+ * menyiratkan VOLUME PEMAKAIAN — persis hal yang #317 melarang bocor ke
+ * permukaan publik, dan sebab yang sama membuat `outboxCount` surel tinggal di
+ * konsol operator. Jadi probe publik memuat putusan terburuk lintas jalur, dan
+ * angkanya dibaca di konsol (`/scheduler`).
+ *
+ * `unknown` bukan `idle`: tabel `jobs` yang belum dimigrasikan atau tak terbaca
+ * BUKAN antrean yang kosong, dan menyamakannya membuat pemasangan yang belum
+ * siap melapor sehat.
+ */
+export type QueueStatus = { status: QueueHealthStatus | "unknown" };
 
 /**
  * Denyut cadangan TANPA sebab kegagalannya.
@@ -82,12 +107,21 @@ export type PublicBackupHealth = Omit<BackupHealth, "lastError">;
  */
 export type HealthReport =
   | { status: "error"; database: "unreachable" }
+  /**
+   * Skema yang tidak sepadan dengan image ini (02 §12). Bentuknya
+   * TERPISAH, bukan bidang bernilai buruk — alasannya sama dengan
+   * `database: "unreachable"` di atas: ia satu-satunya keadaan lain yang berarti
+   * "jangan kirim lalu lintas ke sini", dan membedakannya di TIPE membuat
+   * pemanggil mustahil lupa menanganinya.
+   */
+  | { status: "error"; schema: SchemaGateVerdict }
   | {
       status: "ok";
       control: { status: "ok" };
       platform: ReachStatus;
       company: CompanyStatus;
       scheduler: SchedulerHealth;
+      queue: QueueStatus;
       backup: PublicBackupHealth;
       conformance: ConformanceHealth;
       mail: MailStatus;
@@ -115,21 +149,42 @@ async function mail(): Promise<MailStatus> {
   }
 }
 
+/**
+ * Putusan antrean, diringkas jadi satu kata.
+ *
+ * ⚠ Dibaca BERPASANGAN dengan `scheduler` di atas, dan pasangan itu bukan
+ * kerapian: bila penerbitnya mati, tak ada baris yang pernah terbit — antrean
+ * kosong, umur tertua nol, dan bidang ini melapor `idle` sementara pengingat,
+ * dokumen berulang, dan cadangan semuanya berhenti. Yang menangkap keadaan itu
+ * denyut penjadwal, yang diukur dari stempel waktu dan karena itu tidak
+ * bergantung pada isi antrean sama sekali. Bidang ini TIDAK bisa menggantikannya.
+ *
+ * Doktrin #137: kegagalan membacanya dilaporkan, tidak pernah menjatuhkan probe.
+ * Jalur pekerja hidup di container LAIN — keadaannya bukan keadaan container
+ * ini.
+ */
+async function queue(): Promise<QueueStatus> {
+  try {
+    return { status: queueHealth(await queueSnapshot()).status };
+  } catch {
+    return { status: "unknown" as const };
+  }
+}
+
 /** Putaran terakhir yang SELESAI. Tak terjangkau / belum ada = `null`, bukan lemparan. */
 async function lastSchedulerRun(): Promise<SchedulerHealth> {
   try {
-    const run = await platformDb.schedulerRun.findFirst({
+    const run = await controlDb.schedulerRun.findFirst({
       orderBy: { id: "desc" },
       select: { finishedAt: true },
     });
     return schedulerHealth(run?.finishedAt ?? null);
   } catch {
     /*
-     * Platform tak terjangkau, atau migration 0005 belum diterapkan. Keduanya
-     * "belum ada yang bisa dilaporkan" — pola yang sama dengan
-     * `schedulerRunsForOperator`, dan sengaja TIDAK dibedakan dari "belum
-     * pernah jalan": keduanya sama-sama berarti probe ini tidak tahu, dan
-     * jawaban yang jujur untuk tidak tahu adalah `unknown`.
+     * Kendali tak terjangkau, atau migration kendali 0005 belum diterapkan.
+     * Keduanya "belum ada yang bisa dilaporkan", dan sengaja TIDAK dibedakan
+     * dari "belum pernah jalan": keduanya sama-sama berarti probe ini tidak
+     * tahu, dan jawaban yang jujur untuk tidak tahu adalah `unknown`.
      */
     return schedulerHealth(null);
   }
@@ -150,7 +205,7 @@ async function lastSchedulerRun(): Promise<SchedulerHealth> {
  */
 async function lastConformanceRun(): Promise<ConformanceHealth> {
   try {
-    const run = await platformDb.conformanceRun.findFirst({
+    const run = await controlDb.conformanceRun.findFirst({
       orderBy: { id: "desc" },
       select: { finishedAt: true, findingCount: true, companiesFailed: true },
     });
@@ -187,12 +242,12 @@ function tanpaSebab({ lastError: _sebab, ...sisa }: BackupHealth): PublicBackupH
 async function lastBackup(): Promise<PublicBackupHealth> {
   try {
     const [sukses, percobaan] = await Promise.all([
-      platformDb.backupRun.findFirst({
+      controlDb.backupRun.findFirst({
         where: { status: "ok" },
         orderBy: { finishedAt: "desc" },
         select: { finishedAt: true },
       }),
-      platformDb.backupRun.findFirst({
+      controlDb.backupRun.findFirst({
         orderBy: { finishedAt: "desc" },
         select: { finishedAt: true, status: true, error: true },
       }),
@@ -236,6 +291,11 @@ async function lastBackup(): Promise<PublicBackupHealth> {
  * pemadaman layanan.
  */
 async function platform(): Promise<ReachStatus> {
+  /* Profil on-premise memang tidak memasangnya. Menanyainya di sana berarti
+     membuat satu koneksi yang pasti gagal pada setiap probe — dan melaporkan
+     keadaan yang benar sebagai `unknown`. */
+  if (!billingPlaneInstalled()) return { status: "not-installed" };
+
   try {
     await platformDb.$queryRaw`SELECT 1`;
     return { status: "ok" };
@@ -307,8 +367,25 @@ export async function healthReport(): Promise<HealthReport> {
     return { status: "error", database: "unreachable" };
   }
 
+  /*
+   * ══ GERBANG SKEMA (§3.2) ══════════════════════════════════════════════════
+   * Diperiksa SETELAH kendali terbukti terjangkau — urutannya penting: basis
+   * data yang sedang restart akan menghasilkan vonis "tak terbaca" yang tidak
+   * berarti apa-apa, dan melaporkannya sebagai skema tertinggal akan membuat
+   * setiap deploy gagal berdasarkan perlombaan waktu.
+   *
+   * Ini yang menggantikan `service_completed_successfully` pada container
+   * `migrate`: begitu pekerjaan latar menjadi layanan yang berjalan terus, tidak
+   * ada lagi apa pun yang "selesai" untuk ditunggu. Hanya arah TERTINGGAL dan
+   * MENGGANTUNG yang memblokir; skema yang mendahului image tetap dilayani,
+   * sebab itu keadaan rollback yang disengaja.
+   */
+  const gate = await schemaGateVerdict();
+  if (!gate.serve) return { status: "error", schema: gate };
+
   const [
     schedulerStatus,
+    queueStatus,
     mailStatus,
     platformStatus,
     companyStatus,
@@ -316,6 +393,7 @@ export async function healthReport(): Promise<HealthReport> {
     conformanceStatus,
   ] = await Promise.all([
     lastSchedulerRun(),
+    queue(),
     mail(),
     platform(),
     sampleCompany(),
@@ -338,6 +416,7 @@ export async function healthReport(): Promise<HealthReport> {
     platform: platformStatus,
     company: companyStatus,
     scheduler: schedulerStatus,
+    queue: queueStatus,
     backup: backupStatus,
     conformance: conformanceStatus,
     mail: mailStatus,

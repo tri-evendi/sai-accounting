@@ -1,6 +1,6 @@
 # 08 — Glosarium, Pengujian, Target & Katalog Rute
 
-> 18 Okt 2026 · diukur di `main@197e78c8` · [indeks](./README.md)
+> 20 Okt 2026 · diukur di cabang `feat/tahap-1c-dokumen-sisa` · produksi `main@ca0cd038` · [indeks](./README.md)
 
 ## 1. Glosarium
 
@@ -10,10 +10,14 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 
 | Kata | Artinya di repo ini | BUKAN |
 |---|---|---|
-| **Tenant** | Satu **pelanggan yang berlangganan** — pemilik paket, tagihan, kuota. Datanya di `sai_control` + `sai_platform` | Bukan perusahaan, bukan pengguna |
+| **Tenant** | Satu **customer yang berlangganan** — pemilik paket, tagihan, kuota. Datanya di `sai_control` + `sai_platform` | Bukan perusahaan, bukan pengguna |
 | **Perusahaan / PT** | Satu **buku besar**, dengan basis data sendiri (`sai_<slug>`). Satu tenant boleh punya banyak PT | Bukan tenant |
-| **Buku** | Isi satu basis data perusahaan: jurnal, dokumen, stok, aset | — |
-| **Plane** | Permukaan yang dipisahkan **host**: pelanggan (`APP_DOMAIN`) vs operator (`OPERATOR_DOMAIN`) | Bukan grup rute, bukan container |
+| **Buku** | Isi satu basis data perusahaan: jurnal, dokumen, stok, aset. Wadahnya disebut **basis data perusahaan** — itu nama yang dipakai dalam diagram dan rancangan; "buku PT" di dokumen lama berarti hal yang sama | Bukan nama tabel |
+| **Plane** | Permukaan yang dipisahkan **host**: customer (`APP_DOMAIN`) vs operator (`OPERATOR_DOMAIN`) | Bukan grup rute, bukan container |
+| **Profil penyebaran** | SaaS atau on-premise — `APP_DEPLOY_PROFILE`, **disetel**, tidak pernah disimpulkan dari env basis data. On-premise tidak memasang `sai_platform` | Bukan `NODE_ENV`, bukan plane |
+| **Jejak putaran** | Satu baris per putaran penjadwal, pemeriksa kesesuaian, atau cadangan — `scheduler_runs` · `conformance_runs` · `backup_runs`, di basis data **kendali** | Bukan log, bukan jejak audit |
+| **Jalur** (*lane*) | Unit **isolasi** antrean: kelas `kind` yang diklaim satu pekerja, satu PROSES tersendiri. Satu ekspor yang kehabisan memori hanya menjatuhkan jalurnya sendiri | Bukan layanan (satu layanan bisa melayani satu jalur, dan satu jalur bisa dilayani dua bahasa selama transisi), bukan `kind` |
+| **`kind`** | Satu **jenis** pekerjaan — `tenant.backup`, `ledger.recurring`. Milik tepat satu jalur, dan kosakatanya DIBANGKITKAN dari `contract/kinds.yaml` | Bukan jalur, bukan nama handler |
 
 ### 1.2 Istilah akuntansi yang punya arti teknis di sini
 
@@ -43,17 +47,31 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 | **Snapshot lintas-lapis** | Status & kuota tenant disalin platform → control |
 | **Heartbeat** | Baris jejak terakhir dari `*_runs`, diubah jadi status di `/api/health` |
 | **Skrip pembuktian** (`prove-*`) | Memeriksa keadaan nyata, bukan melaporkan hasil skrip lain |
-| **Gate rilis** | `bun run verify` **dan** build yang `EXIT=0`. Dua-duanya |
+| **Gate rilis** | TIGA sejak tahap 1b: `bun run verify` · `bun run go:test` + `go:lint` · build yang `EXIT=0`. Yang satu hijau tidak membuktikan apa pun tentang yang lain |
 | **Guard arsitektural** | Tes yang menjaga aturan, bukan perilaku |
 | **Allowlist** | Daftar izin yang disebut persis, bukan pola |
 | **Baseline** | Satu `0001_baseline` per basis data, menggantikan 99 migration MariaDB |
 | **Fallback** (MariaDB) | Service `db` yang masih hidup tetapi tidak ditulisi sejak 15 Okt 2026 (#636) |
+| **Antrean** | Tabel `jobs` di basis data **kendali** — bukan broker. Satu-satunya pertemuan penerbit dan pekerja; I-3 melarang layanan saling memanggil |
+| **Menerbitkan vs melaksanakan** | Penerbit menulis satu baris `jobs` dan selesai dalam milidetik; pelaksana mengurasnya. Langkah penjadwal yang MELAKSANAKAN menahan seluruh putaran berikutnya ketika ia menggantung |
+| **`dedupe_key`** | Kunci unik penerbitan. Ia yang **menggantikan *leader election***: denyut yang berjalan dua kali menerbitkan dua kali, yang kedua menabrak constraint, dan tidak ada apa pun yang perlu memutuskan siapa pemimpinnya |
+| ***Lease*** | Klaim pekerja atas satu baris, **diperpanjang selama bekerja**. Ambang basi = kelipatan interval pembaruan, bukan perkiraan durasi — pertanyaannya "apakah pekerjanya masih hidup?", bukan "apakah pekerjaan ini lama?" |
+| **Pintu posting** | `postForSource`. Wajib **TUNGGAL** (invarian I-2), dan ia TypeScript — kode Go tidak pernah mengklaim `kind` yang menulis buku |
+| **Daftar-izin tabel Go** | Dua nama: `jobs` dan `backup_runs`. Menambah baris di sana adalah **keputusan**, dan alasannya ditulis di tempat daftarnya |
+| **Putaran cadangan** | Satu direktori `<prefix>-<stempel>/` berisi satu objek `pg_dump -Fc` **per basis data** + peran tingkat server + berkas + manifest. Satu tenant bisa dipulihkan tanpa menyentuh yang lain |
+| **`started_at`** | Kapan percobaan INI mulai — disetel SEKALI pada klaim. BUKAN `claimed_at`, yang diperpanjang berkala sehingga selisihnya adalah jarak dari perpanjangan terakhir |
+| **Jumlah sampel** | Berapa pekerjaan yang menopang sebuah persentil. Ditampilkan BERSAMA persentilnya — p95 atas tiga pekerjaan adalah angka, bukan fakta |
+| **`result_ref`** | KUNCI objek hasil pekerjaan (`<kind>-<jobId>/<berkas>`), bukan tautan. **Memegang kuncinya bukan izin untuk membacanya**: unduhannya lewat rute aplikasi yang memeriksa izin SAAT MENGUNDUH, per `kind` dan per laporan |
+| **Ambang penyerahan** | `EXPORT_QUEUE_HANDOFF_ROWS`. Di bawahnya ekspor sinkron, di atasnya diserahkan ke antrean. BUKAN batas — plafon yang MENOLAK tetap `EXPORT_MAX_ROWS` |
+| **Manifest cadangan** | Satu-satunya objek putaran yang bisa dibaca **tanpa kunci**: nama basis data, peran, `companyId`, ukuran, sidik jari. Ia objek dan bukan hanya baris DB, sebab pada hari pemulihan basis data kendali bisa PERSIS yang hilang |
 
 ### 1.4 Kata yang sengaja TIDAK dipakai
 
 | Jangan tulis | Tulis | Alasan |
 |---|---|---|
 | `middleware.ts` | **`proxy.ts`** | Next versi ini menamainya `proxy`; `middleware.ts` tidak dijalankan |
+| `gofmt -l .` sebagai gerbang | **`bun run go:lint`** | `gofmt -l` keluar dengan kode **0** meski ia menyebut berkas yang belum di-format — gerbang yang selalu hijau lebih buruk daripada tidak ada gerbang. `gofmt` ada di dalam `golangci-lint` |
+| `go test ./...` dari akar repo | **`bun run go:test`** | Pohon Go ada di `services/integrator`, di luar workspace bun; dari akar repo tidak ada modul Go |
 | `className` / kelas Tailwind | Gaya sebaris + token | Dicabut #203. Kelas tidak gagal — tidak ada lembar gaya yang memaknainya, jadi ia **berhenti berlaku tanpa error** |
 | `db:migrate` | **`db:migrate:all`** | Yang tunggal hanya menyentuh satu basis data; sisanya tertinggal tanpa error |
 | `bun test` | **`bun run test`** | `bun test` memakai runner bawaan Bun dan melapor "no tests found" seolah suite rusak |
@@ -61,15 +79,51 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 
 ## 2. Strategi pengujian
 
-**306 berkas tes · 4.429 pemanggilan `it()`/`test()`**, dijalankan Vitest 3
-lewat `bun run test`.
+**331 berkas tes · 5.599 tes** dijalankan Vitest 3 lewat `bun run test` — ditambah **8 berkas tes Go · 61 fungsi `Test…`**
+lewat `bun run go:test`. Keduanya gerbang tersendiri, dan yang satu hijau
+**tidak** membuktikan apa pun tentang yang lain.
+
+> Angka 5.500 adalah yang DICETAK gerbangnya, bukan jumlah `it(` di dalam
+> sumber (4.879): `it.each` memekarkan satu pemanggilan menjadi satu tes per
+> baris data. Yang dicetak gerbangnya yang dipakai di sini, sebab itu yang bisa
+> diperiksa ulang oleh siapa pun dengan satu perintah.
 
 | Lapis | Berkas | Isinya |
 |---|---|---|
-| Guard arsitektural | **130** memindai kode sumber | Menjaga aturan: rute tanpa izin, impor terlarang, relasi tanpa indeks, bentuk impor ikon, warna mentah, paket yang keluar dari dirinya |
+| Guard arsitektural | **130+** memindai kode sumber | Menjaga aturan: rute tanpa izin, impor terlarang, relasi tanpa indeks, bentuk impor ikon, warna mentah, paket yang keluar dari dirinya, **pohon Go** |
 | Unit murni | mayoritas sisanya | Matriks izin, aturan posting, penyusun baris jurnal, retensi jejak, klasifikasi buku, format uang, i18n |
 | Komponen | **12** me-render React | Primitif `@sai/ui`, tabel, form, overlay |
 | Proxy ujung-ke-ujung | beberapa | Memanggil `proxy()` sungguhan |
+| Perilaku Go | **8** berkas `_test.go` | Aritmetika backoff & ambang lease, pembersih DSN, interop `openssl enc` (memanggil biner SUNGGUHAN), pemakaian SDK S3 terhadap server HTTP uji |
+
+**Satu penjaga memanggil generator PDF SUNGGUHAN, dan temuannya pantas dicatat
+di sini.** Rancangan §5 memakai klaim "byte tetap identik" untuk menyimpulkan
+pemindahan dokumen ke server tidak menuntut Go. Kesimpulannya benar; klaimnya
+punya batas, dan batasnya DIUKUR:
+
+| Dibandingkan | Hasil |
+|---|---|
+| dua `output()` dari **satu** instance jsPDF | identik |
+| dua **instance**, muatan sama, jam dibekukan | beda **60 byte**, seluruhnya `/ID` di trailer — pengenal berkas acak PDF |
+| dua instance, jam berjalan | ditambah `/CreationDate` |
+
+Jadi "byte identik" adalah sifat SATU pembangkitan, bukan sifat yang bisa
+diandalkan dari dua — dan syarat auditnya dipenuhi dengan membangkitkan sekali
+lalu memakai buffer itu untuk kedua tujuan. Penjaganya membandingkan dua
+instance dengan kedua medan metadata itu dinormalkan: ia membuktikan ISI
+laporan — tata letak, teks, setiap angka — hanya punya SATU implementasi.
+Ditambah penjaga di atasnya: normalisasinya memang harus MENORMALKAN sesuatu,
+kalau tidak ia akan meluluskan dua berkas yang sungguh berbeda.
+
+**Penjaga pohon Go ditulis dalam TypeScript bila aturannya bisa dibaca dari
+teks**, dan itu bukan kemalasan: gerbang yang tidak pernah dilewati orang adalah
+`bun run verify` — ia berjalan di CI pada setiap PR — bukan gerbang yang paling
+dekat dengan kodenya. Sisi Go menjaga yang hanya bisa dibuktikan dengan
+MENJALANKANNYA, dan satu di antaranya memanggil biner luar dengan sengaja:
+klaim "artefak cadangan bisa dibuka `openssl enc -d`" adalah klaim tentang
+PIHAK LAIN, dan tes yang memverifikasinya dengan dekriptor kita sendiri hanya
+membuktikan enkriptor dan dekriptor kita sepakat — yang tetap benar ketika
+keduanya salah bersama-sama.
 
 **Kenapa guard arsitektural jadi lapis tersendiri.** Sembilan regresi keamanan
 di [06 Keamanan](./06-KEAMANAN.md) semuanya lolos tes perilaku. Yang jebol
@@ -122,7 +176,7 @@ berkelanjutan: tidak ada metrik atau dasbor di sistem ini.
 | `typecheck` cold | 1.556 MB RSS / 82 s (batas kini 2048 MB) | 11 & 17 Okt 2026 |
 | Suite tes | ~74 s | 18 Okt 2026 |
 | Berat `DataTable` | +80 KB gzip per rute | — |
-| Standalone konsol vs pelanggan | 69 MB vs 299 MB | 18 Okt 2026 |
+| Standalone konsol vs customer | 69 MB vs 299 MB | 18 Okt 2026 |
 
 ### 3.2 Target yang BELUM ditetapkan
 
@@ -143,7 +197,7 @@ pengukurannya.
 
 1. **Satu VM: 2 vCPU · 8 GB · 80 GB SSD, dibagi enam aplikasi.** Setiap proses jangka-panjang baru harus diukur lebih dulu.
 2. **`max_connections` 100, satu proses per koneksi.** Setiap klien baru mengurangi anggaran yang lain.
-3. **Migration berjalan N kali per rilis.** Perubahan skema berbiaya linear terhadap jumlah pelanggan.
+3. **Migration berjalan N kali per rilis.** Perubahan skema berbiaya linear terhadap jumlah customer.
 4. **Tidak ada pemantauan luar.** Target yang tidak bisa diamati dari luar mesin tidak bisa dibuktikan.
 
 ## 4. Katalog rute
@@ -161,7 +215,7 @@ grep -rho 'requireApiPermission("[^"]*"' src/app/api --include=route.ts | sort |
 grep -rLE 'require[A-Z][A-Za-z]*\(' src/app/api --include=route.ts
 ```
 
-Angka per 18 Okt 2026: **131** halaman pelanggan · **128** rute API pelanggan ·
+Angka per 18 Okt 2026: **131** halaman customer · **128** rute API customer ·
 3 rute metadata/aset · **19** halaman konsol · 2 rute fungsional konsol ·
 **10** rute API tanpa penjaga (semuanya terdaftar sebagai pengecualian).
 
@@ -171,7 +225,7 @@ Sepuluh rute publik itu: enam alur autentikasi pra-sesi (`auth/[...nextauth]`,
 `health` dan `status/notices` (pembacanya Docker, Traefik, dan halaman status),
 serta `v1/openapi.json`.
 
-Rute API pelanggan per kelompok:
+Rute API customer per kelompok:
 
 | Kelompok | Rute |
 |---|---|

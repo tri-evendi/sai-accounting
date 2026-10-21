@@ -9,94 +9,78 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { useToast } from "@sai/ui/toast";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import { useT } from "@sai/core/i18n/client";
-import { useCompanyIdentity } from "@/lib/company-identity-client";
-import { downloadStatementWorkbook } from "@/lib/report-files";
+import {
+  downloadStatementWorkbook,
+  fetchDocumentPdfBlob,
+  fetchReportPdfBlob,
+  fetchStatementPdfBlob,
+} from "@/lib/report-files";
 
-interface ContractPDFData {
+/*
+ * `ContractPDFData` DICABUT di tahap 1c, alasan yang sama dengan
+ * `InvoicePDFData`: tipe yang tinggal sebagai "bentuk yang dikirim peramban"
+ * adalah tipe yang mengundang jalur kedua dibangun lagi di atasnya. Bentuknya
+ * kini hidup di satu tempat — `ContractData` di generatornya, yang diberi makan
+ * `document-loaders.ts` dari baris buku.
+ */
+
+export function ContractPDFButton({
+  contractId,
+  contractNo,
+}: {
+  contractId: number;
   contractNo: string;
-  date: string;
-  buyer: string;
-  consignee: string | null;
-  packaging: string | null;
-  shipment: string | null;
-  top1: string | null;
-  top2: string | null;
-  currency: string;
-  status: string;
-  items: { itemName: string; bags: number; kgPerBag: number; pricePerKg: number }[];
-  payments: { date: string; amount: number; currency: string; note: string | null }[];
-}
-
-export function ContractPDFButton({ contract }: { contract: ContractPDFData }) {
-  const company = useCompanyIdentity();
+}) {
+  /* DARI SERVER, dan ia mengirim ID — bukan muatan kontrak. Kontrak adalah
+     dokumen yang dikirim ke pembeli; angka di atas kertas diturunkan dari BUKU
+     (rancangan §5). */
   return (
     <PdfDocumentButton
-      title={`Kontrak ${contract.contractNo}`}
-      filename={`Contract_${contract.contractNo}.pdf`}
-      generate={async () => {
-        const { generateContractPDF } = await import("@/lib/pdf/contract-pdf");
-        return generateContractPDF(contract, company);
-      }}
+      title={`Kontrak ${contractNo}`}
+      filename={`Contract_${contractNo}.pdf`}
+      generate={() => fetchDocumentPdfBlob("contract", contractId)}
     />
   );
 }
 
-export function ShippingDocButton({ contract }: { contract: ContractPDFData }) {
-  const company = useCompanyIdentity();
+export function ShippingDocButton({
+  contractId,
+  contractNo,
+}: {
+  contractId: number;
+  contractNo: string;
+}) {
   const t = useT();
+  /*
+   * ⚠ `id`-nya id KONTRAK, bukan id `delivery_orders`. Tombolnya ada di halaman
+   * kontrak dan memakai data kontrak yang sama; membangun jalur kedua dari
+   * `delivery_orders` akan menghasilkan surat jalan yang berbeda dari yang
+   * dicetak orang hari ini — perubahan perilaku yang menyelinap di bawah nama
+   * "pindah ke server". Sebabnya ikut tertulis di `DOCUMENT_PDF`.
+   */
   return (
     <PdfDocumentButton
       label={t("nav.items.deliveryOrders")}
-      title={`Surat Jalan ${contract.contractNo}`}
-      filename={`SuratJalan_${contract.contractNo}.pdf`}
-      generate={async () => {
-        const { generateShippingPDF } = await import("@/lib/pdf/shipping-pdf");
-        return generateShippingPDF({
-          contractNo: contract.contractNo,
-          date: contract.date,
-          buyer: contract.buyer,
-          consignee: contract.consignee,
-          shipment: contract.shipment,
-          items: contract.items.map((i) => ({
-            itemName: i.itemName,
-            bags: i.bags,
-            kgPerBag: i.kgPerBag,
-          })),
-        }, company);
-      }}
+      title={`Surat Jalan ${contractNo}`}
+      filename={`SuratJalan_${contractNo}.pdf`}
+      generate={() => fetchDocumentPdfBlob("contract-shipping", contractId)}
     />
   );
 }
 
-interface InvoicePDFData {
-  invoiceNo: string;
-  date: string;
-  status: string;
-  currency?: string;
-  taxAmount?: number;
-  taxable?: boolean;
-  taxRate?: number | null;
-  pebNumber?: string | null;
-  pebDate?: string | null;
-  exportNote?: string | null;
-  customerName?: string | null;
-  items: { itemName: string; quantity: number; price: number; unit: string | null }[];
-  payments: { date: string; amount: number; currency: string; note: string | null }[];
-}
-
 export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }) {
-  const company = useCompanyIdentity();
   const t = useT();
+  /* DARI SERVER sejak tahap 1c (rancangan §5). Muatannya dikirim, bukan dimuat
+     ulang dari ID: lembar ini dicetak oleh orang yang sedang menatap
+     halamannya, dan yang harus dijamin adalah kertasnya sama dengan LAYARNYA.
+     Uraiannya di `lib/validations/report-pdf.ts`. */
   return (
     <PdfDocumentButton
       label={t("pdf.previewStock")}
       title="Laporan Stok"
       filename={`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       disabled={items.length === 0}
-      generate={async () => {
-        const { generateStockReportPDF } = await import("@/lib/pdf/stock-report-pdf");
-        return generateStockReportPDF(items, company);
-      }}
+      generate={() => fetchReportPdfBlob("stock", { items })}
     />
   );
 }
@@ -117,7 +101,6 @@ export function OpnameSheetPDFButton({
   date: string;
   showSystemQty: boolean;
 }) {
-  const company = useCompanyIdentity();
   const t = useT();
   return (
     <PdfDocumentButton
@@ -125,10 +108,10 @@ export function OpnameSheetPDFButton({
       title={t("inventory.opnameSheetTitle")}
       filename={`Lembar_Hitung_Stok_${date}.pdf`}
       disabled={items.length === 0}
-      generate={async () => {
-        const { generateOpnameSheetPDF } = await import("@/lib/pdf/opname-sheet-pdf");
-        return generateOpnameSheetPDF(items, company, { date, showSystemQty });
-      }}
+      /* DARI SERVER sejak tahap 1c. `showSystemQty` ikut dikirim — ia yang
+         memutuskan hitung-buta, dan keputusan itu milik orang yang mencetaknya,
+         bukan milik rutenya. */
+      generate={() => fetchReportPdfBlob("opname", { items, date, showSystemQty })}
     />
   );
 }
@@ -140,17 +123,17 @@ export function FinanceReportPDFButton({
   balances: FinanceBalanceRow[];
   transactions: FinanceReportRow[];
 }) {
-  const company = useCompanyIdentity();
   const t = useT();
+  /* DARI SERVER sejak tahap 1c. Keduanya dikirim sebagaimana halaman
+     menghitungnya: saldo per jenis & mata uang DAN transaksinya — dua bagian
+     di satu lembar, dan menurunkan yang satu dari yang lain di rute berarti
+     penjumlahan kedua yang bisa berbeda dari yang tampil di layar. */
   return (
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
       title="Laporan Kas & Bank"
       filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
-      generate={async () => {
-        const { generateFinanceReportPDF } = await import("@/lib/pdf/finance-report-pdf");
-        return generateFinanceReportPDF(balances, transactions, company);
-      }}
+      generate={() => fetchReportPdfBlob("finance", { balances, transactions })}
     />
   );
 }
@@ -162,7 +145,14 @@ export function FinanceReportPDFButton({
  * the page the user is looking at.
  */
 export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
-  const company = useCompanyIdentity();
+  /* Identitas & logo dirakit di SERVER (`serverPdfCompany`), dari basis data PT
+     yang sedang dibuka. Merakitnya di klien lalu mengirimkannya berarti nama
+     dan logo perusahaan di kertas ditentukan oleh apa yang dikirim peramban —
+     dan peramban bukan sumber kebenaran tentang PT mana ini.
+
+     Sejak tahap 1c SETIAP tombol di berkas ini dirender server, jadi
+     `useCompanyIdentity` tidak diimpor di sini lagi — satu impor yang tinggal
+     adalah satu jalan kembali yang masih terbuka. */
   const t = useT();
   const dateSlug = new Date().toISOString().slice(0, 10);
   return (
@@ -170,10 +160,14 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
       label={t("pdf.previewAndPrint")}
       title="Laporan Keuangan"
       filename={`Laporan_${dateSlug}.pdf`}
-      generate={async () => {
-        const { generateStatementPDF } = await import("@/lib/pdf/statement-pdf");
-        return generateStatementPDF(payload, company);
-      }}
+      /* DARI SERVER sejak tahap 1c (rancangan §5): peramban tidak lagi memuat
+         `statement-pdf` (1.097 baris) beserta jsPDF hanya untuk menggambar
+         laporan yang angkanya sudah ada di layar. Muatannya sudah bolak-balik
+         ke server untuk tombol Excel di sebelahnya, jadi yang hilang nol dan
+         yang dibeli tiga: byte yang bisa DISIMPAN sama dengan yang dikirim,
+         paket laporan yang bisa terbit sendiri, dan dokumen yang tidak
+         bergantung pada perangkat pengguna. */
+      generate={() => fetchStatementPdfBlob(payload)}
     />
   );
 }
@@ -214,18 +208,36 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
   );
 }
 
-export function InvoicePDFButton({ invoice }: { invoice: InvoicePDFData }) {
-  const company = useCompanyIdentity();
-  // Pratinjau + Unduh + Cetak lewat komponen dokumen bersama (contoh penerapan;
-  // dokumen lain menyusul dengan pola yang sama).
+export function InvoicePDFButton({
+  invoiceId,
+  invoiceNo,
+}: {
+  invoiceId: number;
+  invoiceNo: string;
+}) {
+  /*
+   * DARI SERVER sejak tahap 1c (rancangan §5), dan ia mengirim **ID** — bukan
+   * muatan faktur.
+   *
+   * Faktur adalah dokumen yang dikirim ke pelanggan dan disimpan sebagai
+   * bukti. Meneruskan muatannya ke server berarti angka di atas kertas tetap
+   * ditentukan oleh apa yang dikirim peramban, sementara server kini tampak
+   * menjaminnya — dan syarat audit §5 ("yang disimpan sama dengan yang dikirim
+   * ke customer") baru berarti sesuatu bila kertasnya diturunkan dari BUKU.
+   *
+   * Pintunya SAMA dengan lampiran surel faktur (`invoicePdfById`), jadi kertas
+   * yang dicetak dan yang dikirim tidak bisa berbeda — bukan karena keduanya
+   * memakai generator yang sama, tapi karena keduanya satu fungsi.
+   *
+   * Yang tinggal sebagai prop hanya `invoiceNo`, dan hanya untuk JUDUL serta
+   * nama berkas di layar; nama berkas yang sungguh dipakai datang dari
+   * `Content-Disposition` milik servernya.
+   */
   return (
     <PdfDocumentButton
-      title={`Faktur ${invoice.invoiceNo}`}
-      filename={`Invoice_${invoice.invoiceNo}.pdf`}
-      generate={async () => {
-        const { generateInvoicePDF } = await import("@/lib/pdf/invoice-pdf");
-        return generateInvoicePDF(invoice, company);
-      }}
+      title={`Faktur ${invoiceNo}`}
+      filename={`Invoice_${invoiceNo}.pdf`}
+      generate={() => fetchDocumentPdfBlob("invoice", invoiceId)}
     />
   );
 }

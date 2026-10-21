@@ -73,11 +73,28 @@ function fakeControl() {
 
 /** Platform MATI: setiap sentuhan model melempar — persis Proxy `platformDb`
  *  saat PLATFORM_DATABASE_URL kosong / basisnya tumbang. */
+type ControlClientTiruan = NonNullable<
+  Parameters<typeof schedulerRunsForOperator>[1]
+>["control"];
+
 function deadPlatform() {
   const boom = () => {
     throw new Error("PLATFORM_DATABASE_URL is not set");
   };
   return new Proxy({}, { get: boom }) as NonNullable<Deps>["platform"];
+}
+
+/**
+ * Klien KENDALI yang melempar pada sentuhan pertama — untuk fungsi riwayat yang
+ * jejaknya pindah ke kendali (migration kendali 0005). Pasangan `deadPlatform`
+ * di atas, dan dipisah dengan sengaja: dua bidang yang bisa mati sendiri-sendiri
+ * tidak boleh diuji dengan satu tiruan yang sama.
+ */
+function deadControl() {
+  const boom = () => {
+    throw new Error("CONTROL_DATABASE_URL is not set");
+  };
+  return new Proxy({}, { get: boom }) as { control: ControlClientTiruan }["control"];
 }
 
 function silenced<T>(fn: () => Promise<T>): Promise<T> {
@@ -269,13 +286,13 @@ describe("listPlansForOperator", () => {
 });
 
 describe("schedulerRunsForOperator", () => {
-  it("platform mati / tabel belum ada → null", async () => {
-    const runs = await silenced(() => schedulerRunsForOperator(5, { platform: deadPlatform() }));
+  it("kendali tak terjangkau / tabel belum ada → null", async () => {
+    const runs = await silenced(() => schedulerRunsForOperator(5, { control: deadControl() }));
     expect(runs).toBeNull();
   });
 
   it("baris ada → ringkasan + details JSON terurai (JSON korup → null yang tenang)", async () => {
-    const platform = {
+    const control = {
       schedulerRun: {
         findMany: vi.fn(async () => [
           {
@@ -310,9 +327,9 @@ describe("schedulerRunsForOperator", () => {
           },
         ]),
       },
-    } as unknown as NonNullable<Parameters<typeof schedulerRunsForOperator>[1]>["platform"];
+    } as unknown as NonNullable<Parameters<typeof schedulerRunsForOperator>[1]>["control"];
 
-    const runs = await schedulerRunsForOperator(5, { platform });
+    const runs = await schedulerRunsForOperator(5, { control });
     expect(runs).toHaveLength(2);
     expect(runs![0].status).toBe("error");
     expect(runs![0].details?.issued).toEqual(["PINV-2026-00031 (sub #3, total 166500.00)"]);

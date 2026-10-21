@@ -61,6 +61,27 @@ jobs:
           # seperti itu.
           - target: backup
             suffix: "-backup"
+          # ══ `integrator` — DITAMBAHKAN 20 Okt 2026, DAN IA SUDAH TERLAMBAT ══
+          #
+          # `docker-compose.yml` merujuk image ini untuk `svc-tenant` sejak
+          # tahap 1b, dan Dockerfile punya targetnya sejak hari yang sama —
+          # tetapi matriks ini tidak. Akibatnya image itu TIDAK PERNAH
+          # diterbitkan, dan `docker compose pull svc-tenant` gagal dengan
+          # `manifest unknown`: satu layanan di compose yang mustahil digelar,
+          # tanpa satu baris merah di mana pun.
+          #
+          # Kelalaian itu tidak terlihat karena jalur gelarnya memang belum
+          # pernah dijalankan untuk layanan ini. Yang menangkapnya akhirnya
+          # pemeriksaan manual menjelang gelar pertama — dan "ketemu saat mau
+          # deploy" adalah tempat paling mahal untuk menemukannya.
+          #
+          # Sejak sekarang `tests/image-compose-sepadan.test.ts` menolak setiap
+          # image yang dirujuk compose tanpa target di sini. Alasannya sama
+          # dengan yang sudah tertulis untuk `backup` di atas, dibalik: image
+          # yang dirujuk tapi tidak dibangun lebih buruk daripada image yang
+          # dibangun tapi tidak dipakai.
+          - target: integrator
+            suffix: "-integrator"
 
     steps:
       - uses: actions/checkout@v4

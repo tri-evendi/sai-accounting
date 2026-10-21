@@ -13,6 +13,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { tanpaKomentar } from "./akar-sumber";
 
 const script = readFileSync(join(process.cwd(), "scripts", "backup.sh"), "utf8");
 const compose = readFileSync(join(process.cwd(), "docker-compose.yml"), "utf8");
@@ -220,36 +221,56 @@ describe("skrip cadangan: kredensial tidak pernah terlihat", () => {
   });
 });
 
-describe("layanan cadangan di compose (#374)", () => {
-  // Nama layanan di-rename saat pemisahan bidang: `backup` → `job-backup`,
-  // dan `web` → `app-customer` + `app-operator`. Potongan diambil sampai
-  // layanan BERIKUTNYA, bukan sampai nama yang dipaku — supaya rename
-  // berikutnya tidak memecahkan tes ini lagi.
-  const service = (() => {
-    const mulai = compose.indexOf("\n  job-backup:");
-    const sisa = compose.slice(mulai + 1);
-    const habis = sisa.search(/\n {2}[a-z][a-z0-9-]*:$/m);
-    return habis > 0 ? sisa.slice(0, habis) : sisa;
-  })();
+/**
+ * Potongan satu layanan compose, sampai layanan BERIKUTNYA.
+ *
+ * Diambil sampai nama layanan berikutnya, bukan sampai nama yang dipaku —
+ * supaya rename berikutnya tidak memecahkan tes ini lagi (`backup` →
+ * `job-backup`, `web` → `app-customer` + `app-operator`).
+ */
+function layanan(nama: string): string {
+  const mulai = compose.indexOf(`\n  ${nama}:`);
+  expect(mulai, `layanan ${nama} tidak ada di compose`).toBeGreaterThan(-1);
+  const sisa = compose.slice(mulai + 1);
+  const habis = sisa.search(/\n {2}[a-z][a-z0-9-]*:$/m);
+  return habis > 0 ? sisa.slice(0, habis) : sisa;
+}
+
+/**
+ * Teks compose TANPA baris komentar.
+ *
+ * Pembungkus satu baris di atas `tanpaKomentar` yang bersama — aturannya,
+ * beserta empat kali ia terbukti perlu, ada di `tests/akar-sumber.ts`.
+ * Namanya dipertahankan karena di berkas ini yang dibaca memang PERINTAH
+ * compose, dan itu yang dicari orang saat membaca asersinya.
+ */
+const perintah = tanpaKomentar;
+
+describe("jalur `tenant` di compose — PELAKSANA cadangan sejak tahap 1b", () => {
+  const svc = layanan("svc-tenant");
 
   it("ada, dan hidup lagi setelah restart mesin", () => {
-    expect(service).toContain("restart: unless-stopped");
+    expect(svc).toContain("restart: unless-stopped");
+  });
+
+  it("dibangun dari tahap Go, bukan dari image migrator", () => {
+    /* Image yang salah di sini adalah bentuk kegagalan paling senyap di seluruh
+       penyebaran: layanan ini tidak melayani HTTP, jadi image yang keliru tidak
+       merusak satu halaman pun — ia hanya tidak mencadangkan. */
+    expect(svc).toMatch(/target: integrator/);
+    expect(svc).toMatch(/-integrator:\$\{SAI_TAG/);
   });
 
   it("volume yang DICADANGKAN tetap hanya-baca", () => {
-    // Layanan yang tugasnya menyalin tidak punya satu alasan pun untuk bisa
-    // menulis ke SUMBERNYA — dan bendera ini menghapus seluruh kelas kecelakaan
-    // di mana skrip cadangan justru merusak yang dicadangkannya.
-    //
-    // Sejak 12 Okt 2026 ia punya satu mount yang bisa ditulis (`cadangan`), dan
-    // justru karena itu tes ini menjadi lebih penting, bukan kurang: yang boleh
-    // ditulis hanya TUJUAN, tidak pernah sumbernya.
-    expect(service).toContain("/app/data/documents:ro");
-    expect(service).toContain("/app/data/audit:ro");
+    /* Layanan yang tugasnya menyalin tidak punya satu alasan pun untuk bisa
+       menulis, dan bendera itu menghapus seluruh kelas kecelakaan di mana jalur
+       cadangan justru merusak yang dicadangkannya. */
+    expect(svc).toMatch(/documents:\/app\/data\/documents:ro/);
+    expect(svc).toMatch(/audit:\/app\/data\/audit:ro/);
   });
 
   it("punya tepat SATU mount yang bisa ditulis, dan itu tujuannya sendiri", () => {
-    const mounts = service
+    const mounts = svc
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => /^- \w+:\/app\//.test(l));
@@ -257,25 +278,90 @@ describe("layanan cadangan di compose (#374)", () => {
     expect(bisaDitulis).toEqual(["- cadangan:/app/data/cadangan"]);
   });
 
-  it("satu cadangan gagal tidak mematikan jadwal berikutnya", () => {
-    expect(service).toContain("|| true");
+  it("menyambung LANGSUNG ke `pg`, melewati PgBouncer", () => {
+    /* Jalur ini MENDAFTAR seluruh basis data (`pg_database`) lalu menyambung ke
+       tiap-tiap basis data. PgBouncer hanya mengekspos yang terdaftar di
+       konfigurasinya, jadi lewat pooler pencacahan memulangkan SEBAGIAN — dan
+       sebagian itulah bentuk cadangan paling berbahaya: ia ada, ia tampak
+       berhasil, dan ia baru ketahuan kurang pada hari pemulihan. */
+    expect(svc).toMatch(/CONTROL_DATABASE_URL:\s*postgres:\/\/[^\n]*@pg:5432/);
+    expect(svc).not.toMatch(/@pgbouncer:/);
+  });
+
+  it("TIDAK bergantung pada pgbouncer", () => {
+    // Bergantung pada yang sengaja dilewati hanya menunda boot tanpa manfaat.
+    const dep = svc.slice(svc.indexOf("depends_on:"));
+    expect(dep).not.toContain("pgbouncer");
+  });
+
+  it("diberi jendela berhenti supaya objek yang sedang ditulis selesai rapi", () => {
+    expect(svc).toMatch(/stop_grace_period:/);
   });
 });
 
-describe("pembukti pemulihan: harus bisa membaca artefak yang BENAR-BENAR ada (12 Okt 2026)", () => {
+describe("cut-over: TEPAT SATU pelaksana cadangan", () => {
+  it("`job-backup` tidak lagi menjalankan `backup.sh` di sebuah putaran", () => {
+    /* Membiarkan putaran harian lama tetap hidup berarti DUA pelaksana untuk
+       satu pekerjaan, dan yang memisahkan keduanya hanya nama berkas yang
+       kebetulan berbeda. Cacat yang persis sama hampir lolos di tahap 1a,
+       ketika `recurring:run` masih di penjadwal sementara `svc-ledger` lahir. */
+    const jb = perintah(layanan("job-backup"));
+    expect(jb).not.toMatch(/sh scripts\/backup\.sh/);
+    expect(jb).not.toMatch(/sleep 86400/);
+  });
+
+  it("`job-backup` tidak ikut `docker compose up`", () => {
+    const jb = layanan("job-backup");
+    expect(jb).toMatch(/profiles:\s*\["perkakas"\]/);
+    /* Dan perintahnya tidak boleh `unless-stopped`: perintah yang berakhir di
+       bawah restart otomatis adalah crash-loop yang mengisi log tanpa
+       mengerjakan apa pun. */
+    expect(jb).toMatch(/restart: "no"/);
+  });
+
+  it("`job-backup` tetap bisa dipanggil sebagai PERKAKAS", () => {
+    /* Image-nya satu-satunya yang punya klien Prisma, `openssl`, `awscli`, DAN
+       klien MariaDB — yang terakhir supaya pembukti masih bisa membaca artefak
+       dari sebelum penukaran mesin. `svc-tenant` sengaja tidak memuat semua itu. */
+    const jb = layanan("job-backup");
+    expect(jb).toMatch(/target: backup/);
+    expect(jb).toMatch(/docker compose run --rm job-backup/);
+  });
+
+  it("tidak ada layanan LAIN yang menjalankan `backup.sh`", () => {
+    /* Penjaga atas penjaga di atas: cut-over yang hanya memeriksa satu layanan
+       akan lolos pada hari seseorang menyalin putaran lamanya ke layanan baru. */
+    expect(perintah(compose)).not.toMatch(/scripts\/backup\.sh/);
+  });
+
+  it("penjadwal MENERBITKAN pekerjaan cadangan", () => {
+    /* Tanpa langkah ini tidak ada yang menerbitkan `tenant.backup`, dan
+       `svc-tenant` akan hidup menganggur selamanya — antrean kosong, umur
+       tertua nol, setiap ambang HIJAU, sementara tidak satu salinan pun pernah
+       dibuat. Itu kegagalan total yang terbaca sebagai kesehatan sempurna. */
+    expect(layanan("job-scheduler")).toMatch(/langkah backup:publish bun run backup:publish/);
+  });
+});
+
+describe("pembukti pemulihan: harus bisa membaca artefak yang BENAR-BENAR ada", () => {
   const prover = readFileSync(join(process.cwd(), "scripts/prove-backup-restore.ts"), "utf8");
 
-  it("tidak lagi berhenti hanya karena BACKUP_S3_BUCKET kosong", () => {
+  it("tidak berhenti hanya karena BACKUP_S3_BUCKET kosong (12 Okt 2026)", () => {
     /*
-     * Cacat yang hampir lolos: `backup.sh` belajar menyimpan ke cakram, tapi
+     * Cacat yang hampir lolos: jalur cadangan belajar menyimpan ke cakram, tapi
      * pembuktinya masih menuntut bucket. Hasilnya jaring yang TIDAK BISA
      * dibuktikan — dan aturan repo ini jelas, cadangan yang belum pernah dibuka
      * bukan cadangan. Pembuktian yang tidak bisa membaca satu-satunya artefak
      * yang ada tidak membuktikan apa pun.
+     *
+     * Diperiksa dari PERILAKUNYA, bukan dari nama sebuah variabel: nama berubah
+     * saat pembukti ini ditulis ulang untuk tata letak per tenant, dan penjaga
+     * yang terpaku pada nama akan merah atas perubahan yang justru memperluas
+     * kemampuannya.
      */
     expect(prover).not.toMatch(/if \(!bucket\) fail/);
     expect(prover).toContain("BACKUP_LOCAL_DIR");
-    expect(prover).toContain("sumberLokal");
+    expect(prover).toMatch(/bucket \? sumberS3\([^)]*\) : sumberCakram\(/);
   });
 
   it("artefak lokal DISALIN ke direktori kerja, tidak dibuka di tempatnya", () => {
@@ -286,14 +372,86 @@ describe("pembukti pemulihan: harus bisa membaca artefak yang BENAR-BENAR ada (1
   });
 
   it("langkah pembuktiannya SAMA untuk kedua sumber — yang diuji artefaknya", () => {
-    // Satu sidik jari, satu dekripsi, satu pemeriksaan kelengkapan basis data.
-    // Dua jalur pembuktian akan menyimpang, dan yang menyimpang akan dipercaya
-    // justru pada hari ia salah.
+    /* Satu fungsi sidik jari, satu fungsi dekripsi. Dua jalur pembuktian akan
+       menyimpang, dan yang menyimpang akan dipercaya justru pada hari ia salah. */
     expect(prover.match(/createHash\("sha256"\)/g) ?? []).toHaveLength(1);
     expect(prover.match(/"enc", "-d"/g) ?? []).toHaveLength(1);
   });
 
   it("mode lokal MENGUMUMKAN batasnya, bukan lulus diam-diam", () => {
     expect(prover).toMatch(/TIDAK menyelamatkan dari kehilangan mesin/);
+  });
+
+  it("mengerti KEDUA tata letak — baru dan warisan", () => {
+    /* Pada hari cut-over, artefak TERBARU yang ada masih berbentuk lama. Pembukti
+       yang hanya mengerti bentuk baru akan menolak satu-satunya salinan yang ada,
+       justru pada hari ia paling dibutuhkan. Aturan yang sama sudah berlaku untuk
+       dump MariaDB sesudah penukaran PostgreSQL. */
+    expect(prover).toMatch(/async function buktikanPutaran/);
+    expect(prover).toMatch(/async function buktikanBerkasLama/);
+    /* Dan bentuknya dikenali dari NAMANYA, bukan dari bendera tambahan: satu
+       bendera lagi adalah satu hal lagi yang harus diingat benar pada hari
+       pemulihan. */
+    expect(prover).toMatch(/diminta\.endsWith\("\.enc"\)/);
+  });
+
+  it("memeriksa SETIAP objek, bukan satu", () => {
+    /* Satu dump PT yang rusak tidak boleh tersembunyi di balik putaran yang
+       "lampu hijau" — itu bentuk kegagalan yang sama dengan cadangan yang
+       kehilangan satu PT: gagal untuk satu customer saja, dan karena itu paling
+       mudah tidak terlihat. */
+    const i = prover.indexOf("for (const o of manifest.objek)");
+    expect(i, "manifest tidak dilalui satu per satu").toBeGreaterThan(-1);
+    const badan = prover.slice(i, prover.indexOf("\n  }", i));
+    expect(badan).toContain("SIDIK JARI TIDAK COCOK");
+    expect(badan).toContain("dekripsi(");
+  });
+
+  it("objek basis data dibuktikan `pg_restore --list`, bukan dengan menebak isinya", () => {
+    /* `pg_restore --list` membaca KATALOG dump format custom tanpa memuat satu
+       baris pun ke mana pun. Ia membuktikan dua hal yang pemeriksaan "memuat
+       teks .sql" tidak bisa: bahwa berkasnya memang dump PostgreSQL, dan bahwa
+       katalognya utuh. */
+    expect(prover).toMatch(/run\("pg_restore", \["--list"/);
+  });
+
+  it("manifest yang HILANG menggagalkan pembuktian", () => {
+    /* Manifest ditulis PALING AKHIR, jadi ketiadaannya berarti putaran itu
+       berhenti di tengah — objek di dalamnya tidak lengkap, dan tidak ada yang
+       bisa mengatakan apa yang kurang. */
+    expect(prover).toMatch(/BERHENTI DI TENGAH/);
+  });
+
+  it("menuntut peran & hak akses ikut", () => {
+    /* Dump per basis data tidak memuat satu pun peran, jadi pemasangan yang
+       dipulihkan dari dump-dump itu SAJA akan berisi data lengkap yang tidak
+       bisa dimasuki siapa pun. */
+    expect(prover).toMatch(/CREATE ROLE/);
+    expect(prover).toMatch(/tidak memuat objek `globals`/);
+  });
+
+  it("menuntut SETIAP PT terdaftar punya objek dumpnya SENDIRI", () => {
+    /* Inilah aturan kelengkapan §6, dan ia TIDAK BISA dijawab oleh dump besar:
+       "hadir di dalam satu dump" dan "punya objek dumpnya sendiri" adalah dua
+       janji yang berbeda, dan hanya yang kedua yang membuat satu tenant bisa
+       dipulihkan tanpa menyentuh tenant lain. */
+    expect(prover).toMatch(/tidak punya objeknya sendiri/);
+    expect(prover).toMatch(/CADANGAN TIDAK LENGKAP/);
+  });
+
+  it("mencetak perintah pemulihan SATU PT", () => {
+    /* Permintaan yang melahirkan celah #5: "pulihkan data kami saja ke keadaan
+       Selasa". Perintahnya dicetak di tempat orang membacanya — di akhir
+       pembuktian, bukan hanya di runbook. */
+    expect(prover).toMatch(/pg_restore -h <host-bayangan>/);
+    expect(prover).toMatch(/Pulihkan SATU PT saja/);
+  });
+
+  it("TIDAK memuat apa pun ke basis data mana pun", () => {
+    /* Satu perintah yang salah sasaran akan menimpa produksi dengan data lama,
+       dan tidak ada nilai pembuktian yang sepadan dengan risiko itu. */
+    expect(prover).not.toMatch(/run\("psql"/);
+    expect(prover).not.toMatch(/run\("pg_restore", \["(?!--list)/);
+    expect(prover).not.toMatch(/\$executeRaw|\$queryRaw/);
   });
 });

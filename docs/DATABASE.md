@@ -10,7 +10,7 @@
 > **Basis data platform (issue #137).** Skema ketiga,
 > `packages/db/prisma/platform/schema.prisma`, menjadi basis data `sai_platform`:
 > langganan dan penagihan SaaS, yaitu data bisnis penyedia, bukan buku
-> pelanggan. Ia opsional untuk pemasangan multi-PT satu grup usaha. Aturan
+> customer. Ia opsional untuk pemasangan multi-PT satu grup usaha. Aturan
 > operasionalnya di §11.
 
 Aturan ini wajib untuk setiap perubahan skema (model Prisma, migration, query).
@@ -34,6 +34,9 @@ Standar ini mengodifikasikan konvensi yang sudah dipakai di
 
 ### Tabel
 - `snake_case`, jamak, Bahasa Inggris: `accounts`, `contracts`, `cash_accounts`, `supplier_transactions`.
+  Jamak pada kata **intinya**, bukan selalu pada kata terakhir:
+  `bills_of_material` benar (yang jamak "bills"), begitu juga
+  `tenant_slug_history` — "histories" justru salah untuk kata benda massa.
 - Tanpa prefix (prefix legacy `tb_` sudah dihapus).
 - Tabel baris-detail: `<parent-singular>_items` atau `<domain>_lines` (mis. `invoice_items`, `journal_lines`).
 - Di Prisma: model PascalCase singular + `@@map("plural_snake_case")`.
@@ -90,6 +93,13 @@ Aturannya:
 | `id` | `Int @id @default(autoincrement())` | PK |
 | `created_at` | `DateTime @default(now()) @map("created_at")` | |
 | `updated_at` | `DateTime @updatedAt @map("updated_at")` | |
+
+> **Pengecualian tunggal: tabel HANYA-TAMBAH.** Jejak audit
+> (`audit_logs`, `tenant_audit_logs`, `operator_audit_logs`) tidak punya
+> `updated_at`, dan itu bukan kelalaian — baris jejak audit yang bisa
+> diperbarui bukan jejak audit. Tabel hanya-tambah baru **wajib menyatakan
+> sifat itu** di komentar modelnya, supaya pengecualiannya terbaca sebagai
+> keputusan, bukan sebagai kolom yang lupa.
 | `is_active` *(master data)* | `Boolean @default(true) @map("is_active")` | untuk nonaktif, bukan hapus |
 
 ---
@@ -160,7 +170,7 @@ pengguna tetap di disk (`lib/document-storage.ts`).
      bawaan formulir berikutnya.
 
   `packages/core/src/tax.ts` tetap memuat `DEFAULT_TAX_RATE` untuk dua hal yang
-  bukan milik pelanggan: benih tarif pertama perusahaan baru, dan PPN tingkat
+  bukan milik customer: benih tarif pertama perusahaan baru, dan PPN tingkat
   platform (tagihan langganan kita sendiri, lihat §11).
   `tests/tax-rates.test.ts` menolak formulir dokumen yang mengimpornya kembali.
 
@@ -173,6 +183,50 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 - Diterapkan via `prisma migrate deploy`: `bun run db:migrate:all` (control → platform → setiap PT). Di produksi `migrate` menyambung langsung ke `pg`, tidak lewat PgBouncer, karena advisory lock Prisma terikat sesi.
 - Gaya DDL mengikuti `prisma/postgresql/company/0001_baseline`: identifier berkutip ganda (`"created_at"`), `SERIAL` untuk `id`, `TIMESTAMP(3)`, `DECIMAL(15,2)`, FK ditambahkan via `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... ON DELETE ... ON UPDATE ...`. Prisma tidak membangkitkan trigger: tulis tangan, dan `tests/pg-trigger-parity.test.ts` menjaganya.
 - Setelah menulis model dan SQL, jalankan `bun run db:generate` (Prisma client). Perbarui `prisma/seed.ts` bila perlu data awal.
+
+### 7.1 Setiap migration WAJIB expand-only — dijaga `tests/expand-contract.test.ts`
+
+Satu pertanyaan memutuskan boleh atau tidaknya sebuah pernyataan:
+
+> **Bisakah versi aplikasi yang BERJALAN SEKARANG — yang belum tahu apa-apa
+> tentang migration ini — tetap membaca dan menulis setelah ia diterapkan?**
+
+Itu bukan kerapian. Migration diterapkan ke **19 basis data**, dan selama
+putarannya berjalan ada instans yang sudah bermigrasi dan ada yang belum,
+sementara aplikasinya satu. Rancangan §6 menyebut aturan ini **prasyarat** bagi
+apa pun yang memindahkan penerapan keluar dari gerbang pemblokir.
+
+**Yang DILARANG, beserta kode lama yang dipatahkannya:**
+
+| Dilarang | Kode lama patah sebab |
+|---|---|
+| `DROP TABLE` · `DROP COLUMN` | ia masih menyebutnya, di `SELECT` maupun `INSERT` |
+| `RENAME` (tabel/kolom) | ganti nama = DROP + ADD dalam satu langkah; tak ada saat di mana nama lama dan baru sama-sama benar |
+| `ALTER COLUMN ... SET NOT NULL` | ia menulis tanpa kolom itu; `INSERT`-nya mulai gagal |
+| `ADD COLUMN ... NOT NULL` **tanpa** `DEFAULT` | idem, **dan** gagal seketika pada tabel yang sudah berisi baris |
+| `ALTER COLUMN ... TYPE` | penyempitan memotong data; pelebaran pun mengubah apa yang dipulangkan driver (Decimal→Float = uang yang berubah nilainya) |
+| `CREATE UNIQUE INDEX` pada tabel yang **sudah ada** | ia tidak tahu nilainya harus unik dan akan menulis duplikat |
+| `UPDATE` / `DELETE` data | migration adalah perubahan SKEMA. Backfill berjalan sekali, tanpa transaksi yang bisa dibatalkan per tenant, tanpa jejak audit — ia **skrip**, dengan pemiliknya sendiri |
+
+**Yang JUSTRU AMAN, dan daftarnya tidak simetris dengan sengaja:** `ADD COLUMN`
+nullable · `ADD COLUMN ... NOT NULL DEFAULT ...` · `CREATE INDEX` non-unik ·
+`CREATE TABLE` (termasuk `NOT NULL` di dalamnya, dan indeks unik atas tabel yang
+dibuat migration **yang sama**) · `DROP CONSTRAINT` · `DROP INDEX` ·
+`ALTER COLUMN ... DROP NOT NULL`.
+
+Ketidaksimetrisannya satu kalimat: **melepas** batasan aman — kode lama tidak
+pernah bergantung pada sesuatu DITOLAK — sementara **menambah** batasan tidak.
+
+**Kalau memang harus mengontraksi:** pecah jadi dua rilis. Paruh *expand*
+sekarang (tambah yang baru, biarkan yang lama, tulis ke keduanya); paruh
+*contract* sesudah tak ada lagi instans yang memakai bentuk lama — lalu
+daftarkan di `KONTRAKSI_DIIZINKAN` beserta **rilis tempat paruh expand-nya
+terkirim**. Rilis itu wajib disebut sebab ia satu-satunya yang membuat kontraksi
+aman, dan satu-satunya yang tidak tersimpan di berkas SQL mana pun.
+
+⚠ Pada pemasangan **on-premise** pernyataan "tak ada lagi instans yang memakai
+bentuk lama" tidak bisa diperiksa dari repo ini. Itu sebabnya jendela dukungan
+(09 §12) harus tertulis sebelum kontraksi pertama.
 
 ---
 
@@ -188,8 +242,16 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 - [ ] `id`, `created_at`, `updated_at` ada; master data punya `is_active`.
 - [ ] Kolom `snake_case` via `@map`; FK `<entity>_id`.
 - [ ] Uang `Decimal(15,2)`, kuantitas `Decimal(15,3)`, kurs `Decimal(18,6)` — tidak ada Float.
+- **`rate` bukan satu hal.** `Decimal(18,6)` berlaku untuk **kurs mata uang**;
+  **persentase** (tarif pajak, diskon, margin) `Decimal(5,2)`. Namai kolomnya
+  sesuai jenisnya — `exchange_rate` dan `tax_rate_percent` — karena satu nama
+  `rate` untuk dua jenis angka adalah asal mula presisi yang salah.
 - [ ] Valas menyimpan `currency` + `rate` + `base_amount`.
 - [ ] Enum-like = `String @db.VarChar` + `z.enum` di Zod; nilai `snake_case` lowercase.
+- [ ] Kolom tersandi selalu **bertiga**: `<subjek>_ciphertext` ·
+      `<subjek>_iv` · `<subjek>_tag`. Jangan menyandikan ke satu kolom gabungan.
+- [ ] Kolom data pribadi diberi klasifikasi `/// @pii <kelas>` di komentar
+      modelnya (kontak · alamat · identitas-pajak · kredensial · perilaku).
 - [ ] `@unique` untuk code/number; `@@index` untuk date/status.
 - [ ] Setiap kolom FK punya `@@index` + `CREATE INDEX` di migration (PostgreSQL tidak membuatnya otomatis; `tests/index-fk-parity.test.ts`).
 - [ ] `onDelete`: Cascade (lines), Restrict (master).
@@ -217,11 +279,25 @@ sengaja: log mencatat keadaan saat itu.
 
 Lapisan ketiga di samping control dan perusahaan (rancangan dan alasannya:
 `docs/MULTI-TENANT.md` §4A). Isinya `plans`, `subscriptions`, `payments`,
-`platform_invoices`, `usage_counters`, `scheduler_runs`, `mail_settings`: data
-bisnis penyedia SaaS, tanpa angka akuntansi pelanggan. Skema
+`platform_invoices`, `usage_counters`, `mail_settings`, dan tabel situs publik:
+data bisnis penyedia SaaS, tanpa angka akuntansi customer. Skema
 `packages/db/prisma/platform/schema.prisma` → klien
 `packages/db/generated/platform`; konfigurasi `prisma.platform.config.ts`; klien
 runtime `packages/platform/src/platform-db.ts`.
+
+⚠ **Jejak putaran BUKAN di sini.** `scheduler_runs`, `conformance_runs`, dan
+`backup_runs` tinggal di basis data **kendali** (migration kendali
+`0005_jejak_putaran`) — alasannya di komentar model `SchedulerRun`, dan sama
+dengan yang menempatkan `operator_accounts` di sana.
+
+**Basis data ini boleh tidak ada**, dan itu sudah ditegakkan di kode: pembaca
+situs publik (`site_settings`, `status_notices`, `brand_assets`) dan
+`mail_settings` semuanya **gagal-lunak** — platform yang hilang membuat halaman
+pendaratan kembali ke kalimat bawaan dan surel kembali ke konfigurasi env, bukan
+membuat permintaan gagal. `operator_audit_logs` hanya dibaca konsol, yang tidak
+dipasang di on-premise. Jangan menambahkan pembaca yang **melempar** ke jalur
+yang melayani permintaan: itu mengubah "tanpa penagihan" menjadi "aplikasi
+mati".
 
 **Menyediakannya** (opsional; pemasangan multi-PT satu grup usaha tidak butuh):
 
@@ -308,6 +384,6 @@ menjadi `past_due`, tidak pernah langsung `suspended`.
 PPN tagihan platform dihitung lewat `packages/core/src/tax.ts`; sakelar
 `PLATFORM_PPN_DISABLED` adalah mekanisme untuk keputusan penasihat pajak.
 e-Faktur: `bun run efaktur:platform` memakai mesin `packages/core/src/efaktur.ts`,
-dengan NPWP pembeli dari `tenant_billing_profiles` (diisi pelanggan di
+dengan NPWP pembeli dari `tenant_billing_profiles` (diisi customer di
 /platform, dulu /tenant, issue #172). Data kartu tidak disimpan; yang disimpan
 hanya referensi gate, nomor VA, dan payload QR.

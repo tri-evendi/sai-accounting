@@ -104,7 +104,7 @@ sebelum dipakai di materi penjualan):
   pedoman penjualan: tidak dipajang dan tidak ada di katalog (kolom harga tetap
   0 + `contact_only`, guard di `plan-change`). Pembedanya dari Business adalah
   jasa: migrasi data (Accurate/Excel), pelatihan tim, SLA tertulis, kontrak dan
-  tagihan tahunan/PO. Kuota per pelanggan ditulis ke `tenants.max_*` saat
+  tagihan tahunan/PO. Kuota per customer ditulis ke `tenants.max_*` saat
   paketnya diberikan (`changeTenantPlan`).
 
 ## 3. Kebijakan yang menyertai (sudah berjalan di kode)
@@ -135,7 +135,7 @@ sebelum dipakai di materi penjualan):
 4. `tests/pricing-ladder.test.ts` menjaga seed, migration, dan dokumen ini
    memuat angka yang sama.
 5. Langganan berjalan tidak berubah (snapshot). Kalau memang ingin memindahkan
-   pelanggan lama ke harga baru, itu tindakan operator per tenant
+   customer lama ke harga baru, itu tindakan operator per tenant
    (`changeTenantPlan`), tidak terjadi sebagai efek samping katalog.
 
 Cache katalog publik 300 detik (`plan-catalog.ts`, tag `plan-catalog`).
@@ -157,7 +157,7 @@ tidak pernah lebih murah daripada naik paket.
 ## 6. Yang sengaja tidak dilakukan
 
 - **Paket gratis** — setiap PT adalah basis data sendiri (`docs/MULTI-COMPANY.md`)
-  di mesin yang juga menjalankan produksi lain. Pelanggan gratis punya biaya
+  di mesin yang juga menjalankan produksi lain. Customer gratis punya biaya
   marjinal nyata (basis data, backup, scheduler) dan beban dukungan yang tidak
   dibayar. Penggantinya: uji coba 14 hari + Starter tahunan.
 - **Gate fitur per paket** — lihat §1.

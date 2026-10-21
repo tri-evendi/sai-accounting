@@ -1,6 +1,6 @@
 # 03 — API, Integrasi & Titik Gagal
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
 
 Permukaan sistem dari luar: siapa boleh masuk lewat jalur mana, apa yang
 dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
@@ -11,24 +11,58 @@ dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
 |---|---|
 | HTTPS | Semua lalu lintas masuk; Traefik terminasi TLS, HTTP → 301 |
 | HTTP | Traefik → `app-*:3000` di jaringan Docker |
-| PostgreSQL | `app-*` + 2 job → `pgbouncer:5432`; `migrate` + `job-backup` → `pg:5432` langsung |
+| PostgreSQL | `app-*` + job & `svc-ledger` → `pgbouncer:5432`; `migrate` + `svc-tenant` → `pg:5432` langsung |
 | SMTP | `app-customer` / `job-scheduler` → penyedia surel |
 | HTTPS keluar | `app-customer` → Midtrans Core API — **satu-satunya** panggilan HTTP keluar |
-| S3 | `job-backup` → penyimpanan objek (`awscli`) |
+| S3 | `svc-tenant` → penyimpanan objek (SDK S3 di dalam biner Go; `awscli` hanya di image perkakas `job-backup`) |
+| — | Hasil pekerjaan TIDAK memakai penyimpanan objek: ia volume `hasil` di mesin ini, dan satu-satunya jalan keluarnya route handler ber-izin |
 
-Tidak ada gRPC, GraphQL, WebSocket, SSE, atau antrean. Layanan berkoordinasi
-lewat basis data bersama.
+Tidak ada gRPC, GraphQL, WebSocket, atau SSE. Layanan berkoordinasi lewat basis
+data bersama — termasuk **antrean pekerjaan**, yang adalah satu tabel (`jobs` di
+basis data kendali), bukan broker: [04 §8.9](./04-ALIRAN-DATA.md) dan
+[02 §5](./02-LAYANAN-INFRA.md). Pemindahan pembuatan dokumen ke server masih
+dirancang di [09 §5](./09-RANCANGAN-LAYANAN.md).
+
+### Dokumen & hasil pekerjaan — tiga rute, satu aturan
+
+Sejak tahap 1c pembuatan dokumen ada di SERVER (rancangan §5), dan permukaannya
+tiga rute. Semuanya bertenant (`/api/t/{tenant}/{company}/…`) kecuali yang
+menerima muatan laporan lewat `apiFetch`:
+
+| Rute | Masukan | Izin |
+|---|---|---|
+| `POST /api/reports/pdf` | muatan laporan (sama dengan tombol Excel) | `report.export` |
+| `POST /api/reports/export` | muatan laporan; di atas ambang penyerahan ia **202** beserta `jobId` | `report.export` + izin laporannya (#355) |
+| `GET /api/t/…/documents/pdf/{jenis}/{id}` | **ID saja**, tanpa badan | per JENIS: `invoice.read`, `contract.read`, `document.read`, `return.read` |
+| `GET /api/t/…/jobs/{kind}/{id}/result` | ID pekerjaan | per `kind` + gerbang kedua dari muatannya |
+
+**Aturan yang mengikat ketiganya: kertasnya diturunkan dari BUKU.** Rute dokumen
+menerima ID dan memuat barisnya sendiri; ia `GET` tanpa badan, jadi jalur
+"render apa yang dikirim klien" tidak ada untuk ditutup. Syarat audit §5 —
+"server menyimpan byte yang persis sama dengan yang dikirim ke customer" — baru
+berarti sesuatu bila angka di atas kertas bukan angka yang dikirim peramban.
+
+⚠ **Dua jenis untuk satu generator, dan itu disengaja.** `contract-shipping`
+dibangun dari KONTRAK, `delivery-order` dari baris `delivery_orders` (#16).
+Generatornya sama — satu tata letak — tapi sumbernya berbeda; satu kunci untuk
+keduanya akan membuat `id` berarti dua hal tergantung pemanggilnya.
+
+⚠ **`kind` ada di JALUR rute hasil**, dan itu urutan pemeriksaan bukan kerapian
+URL: izin yang dituntut bergantung pada jenis pekerjaan, dan jenis itu ada di
+BARISnya. Membacanya sebelum gerbang berjalan membuat penanya **anonim**
+menerima 401 untuk id yang ada dan 404 untuk yang tidak — dan dari dua jawaban
+itu volume pemakaian bisa dicacah, yang doktrin #317 melarang.
 
 ## 2. Tiga rezim autentikasi
 
-Sesi NextAuth dan token Bearer berjalan di aplikasi pelanggan, dipisahkan
+Sesi NextAuth dan token Bearer berjalan di aplikasi customer, dipisahkan
 **oleh jalur**. Sesi operator hidup di aplikasi tersendiri, dipisahkan **oleh
 host**.
 
 | Rezim | Untuk | Pemisah |
 |---|---|---|
 | Tanpa autentikasi | Daftar jalur publik yang dicocokkan persis | `isPublicPath(path)` |
-| Sesi NextAuth | Mayoritas halaman & API pelanggan | sisanya di `APP_DOMAIN` |
+| Sesi NextAuth | Mayoritas halaman & API customer | sisanya di `APP_DOMAIN` |
 | Token Bearer | `/api/v1/**` | `isBearerApiPath(path)` |
 | Sesi operator | Seluruh jalur di `OPERATOR_HOST` | `decideOperatorRouting()` |
 
@@ -84,7 +118,7 @@ Hanya-baca, lima sumber daya, semuanya `GET`. Bentuk jawaban ditetapkan di
 | Pencabutan sesi | Akun DB: `session_version` dibandingkan tiap permintaan · akun env: hapus entri atau putar secret |
 
 Fail-closed di empat tempat: `OPERATOR_HOST` kosong → 404 di mana pun · image
-pelanggan tidak memuat rute konsol · image konsol 404 untuk host lain ·
+customer tidak memuat rute konsol · image konsol 404 untuk host lain ·
 allowlist kosong → tolak semua.
 
 > ⚠ **Daftar IP & hitungan hop proxy.** Allowlist membaca `x-forwarded-for` dan
@@ -120,9 +154,9 @@ versi.
 
 | Permukaan | Jumlah (18 Okt 2026) |
 |---|---|
-| Halaman | 131 pelanggan + 19 konsol |
-| Rute API | 128 pelanggan + 2 konsol |
-| Rute aset | 3 pelanggan + 3 konsol |
+| Halaman | 131 customer + 19 konsol |
+| Rute API | 128 customer + 2 konsol |
+| Rute aset | 3 customer + 3 konsol |
 
 | Grup | Jumlah | Pola jalur | Guard |
 |---|---|---|---|
@@ -152,9 +186,71 @@ platform · autentikasi & infra. Daftar lengkap per rute beserta izinnya:
 |---|---|
 | Halaman · API internal | HTML (RSC) · JSON |
 | `/api/v1` | JSON + `meta` |
-| `/api/health` | JSON; **503 hanya bila control tak terjangkau** |
-| Ekspor laporan | XLSX (`exceljs`), PDF (`jspdf`), ZIP (`jszip`) |
+| `/api/health` | JSON; **503 hanya bila keadaan intrinsik container ini buruk** — lihat [02 §14](./02-LAYANAN-INFRA.md) |
+| Ekspor laporan | XLSX (`exceljs`) **di server** · PDF (`jspdf`) **di peramban** · ZIP (`jszip`) **di server, di-stream** |
+| Lampiran surel | PDF faktur dibuat **di server** dengan modul `jspdf` yang sama |
 | Berkas dokumen | Byte lewat route bertenant, bukan berkas statis |
+
+### Batas muatan masuk
+
+Dua batas berdiri di jalur ekspor laporan (`POST /api/reports/export`), dan
+keduanya ada karena rute itu satu-satunya tempat yang merakit lembar sebar dari
+muatan yang datang dari **luar** — peramban mengirim `StatementPayload` yang
+sudah dihitung halamannya.
+
+| Batas | Nilai | Di mana ia berdiri |
+|---|---|---|
+| Badan permintaan | **16 MiB** | **sebelum** diurai — `@/lib/request-body` |
+| Baris lembar sebar | **50.000** | pada `SheetModel` yang **sudah** dipetakan |
+| Kolom yang diminta | 64 | skema muatan |
+
+⚠ **Penempatannya yang menentukan, bukan angkanya.** `await request.json()`
+sudah mematerialkan DAN mengurai seluruh badan, jadi skema zod paling ketat pun
+tidak melindungi apa pun dari badan 500 MB — prosesnya mati sebelum baris pertama
+skema itu dibaca. Dan `content-length` saja tidak cukup: header itu tidak ada
+pada permintaan ber-*chunked encoding*, dan pada yang lain ia hanya pernyataan
+pengirim. Jadi byte yang sungguh datang **dihitung**, dan alirannya dibatalkan
+begitu melewati batas — batas yang menjawab 413 sambil membiarkan sisa
+unggahannya mengalir tidak membatasi apa pun.
+
+Batas barisnya dihitung pada model lembar, bukan pada muatannya: muatan tiap
+laporan berbeda bentuk (`rows`, seksi bersarang, grup arus kas), jadi penghitung
+per-jenis adalah penghitung yang akan melewatkan laporan berikutnya. Keduanya
+wajib **konsisten** — batas byte yang lebih ketat daripada yang dibutuhkan batas
+baris membuat batas baris tak pernah tercapai, dan penggunanya menerima galat
+yang menyebut sebab yang salah.
+
+Angkanya di `@sai/core/export-limits`, bukan di rutenya: begitu pembuatan dokumen
+pindah ke proses terpisah, pekerjanya menegakkan batas yang sama, dan batas yang
+hanya hidup di `src/lib` akan ditinggalkan pemakainya sendiri.
+
+### Batas periode laporan
+
+`resolvePeriod` (`src/lib/report-catalog.ts`) — satu titik tersempit untuk
+sebelas halaman laporan — menerapkan tiga aturan, dan ketiganya menutup
+kegagalan yang **sekelas**: semuanya menghasilkan laporan yang BENAR untuk
+periode yang tidak diminta.
+
+| Aturan | Perilakunya |
+|---|---|
+| Tanggal tak sah | jatuh ke bawaan |
+| Rentang terbalik | **ditukar** — konvensi yang sama dengan `resolveStockPeriod` |
+| Rentang keterlaluan | **awalnya** dipendekkan, akhirnya dipertahankan |
+
+Batas rentangnya **sepuluh tahun**, dan itu retensi wajib pembukuan (UU KUP),
+bukan tebakan kapasitas: periode tidak menentukan ongkos — laporan lima tahun di
+tenant berumur setahun membaca baris yang sama banyak dengan laporan setahun.
+Jadi ia batas **kewarasan**, yang hanya menolak yang mustahil. Yang memikul
+kapasitas adalah batas baris di atas.
+
+Batas yang sama berdiri di **kedua** pembaca periode: `?g=custom` di
+`src/lib/stock-period.ts` menerima `?from=&to=` mentah yang sama, dan batas yang
+hanya berdiri di satu pembaca adalah batas yang dilewati dengan menambahkan satu
+parameter.
+
+⚠ Ketiga aturan itu senyap, dan senyap adalah bagian yang berbahayanya. Penyaring
+periode membandingkan `?from=`/`?to=`/`?asOf=` **mentah** dengan nilai yang sudah
+diselesaikan dan mengatakan periode mana yang sungguh dipakai.
 
 ## 5. Header keamanan
 
@@ -188,20 +284,42 @@ frame-ancestors 'none'    base-uri 'self'    form-action 'self'
 
 ## 6. Komunikasi antar-layanan
 
-**Tidak ada panggilan jaringan antar-layanan.** Seluruh koordinasi lewat basis
-data bersama, dan karena itu tidak ada antrean.
+**Tidak ada panggilan jaringan antar-layanan**, dan itu invarian — bukan
+kebetulan: I-3 (`09` §2) melarangnya, sehingga integrator yang mati tidak
+membuat aplikasi gagal (permintaan menumpuk sebagai baris), bahasa pekerja bisa
+ditukar per `kind`, dan tidak ada *dual-write* karena tidak ada pihak kedua yang
+harus ikut berhasil.
+
+Seluruh koordinasi lewat basis data bersama. Sejak tahap 1a salah satu bentuknya
+adalah **antrean**: tabel `jobs` di basis data kendali, dengan klaim
+satu-pernyataan ber-`FOR UPDATE SKIP LOCKED`, *lease* yang diperpanjang,
+*backoff* ber-jitter, dan `dedupe_key` unik sebagai ganti *leader election*.
 
 | Jalur | Mekanisme | Jejaknya di |
 |---|---|---|
-| `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` | `/scheduler`, `/api/health` |
+| `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` (kendali) | `/scheduler`, `/api/health` |
+| `job-scheduler` → `svc-ledger` | **antrean** — `jobs`, `kind` `ledger.*` (`recurring:publish`) | `/api/health` → `queue` |
+| `job-scheduler` → `svc-tenant` | **antrean** — `jobs`, `kind` `tenant.backup` (`backup:publish`) | `/api/health` → `queue` |
+| `app-customer` → `svc-interactive` | **antrean** — `jobs`, `kind` `report.export`, diterbitkan rute ekspor di atas ambang penyerahan | `/api/health` → `queue`; hasilnya di `data/hasil` |
+| `svc-interactive` → `app-customer` | `jobs.result_ref` + berkas di volume `hasil`; aplikasi men-stream byte-nya lewat rute ber-izin | rute hasil (409 sampai siap, 200 beserta byte) |
 | `job-conformance` → `app-customer` | `conformance_runs` | `/api/health` |
-| `job-backup` → `app-customer` | `backup_runs` | `/api/health` |
-| `migrate` → semua | `depends_on: service_completed_successfully` | Keluaran container |
+| `svc-tenant` → `app-customer` | `backup_runs` + objek manifest di tujuan cadangan | `/api/health` |
+| `migrate` → semua | `depends_on: service_completed_successfully` + gerbang skema saat boot | Keluaran container, `/api/health` |
 | Midtrans → `app-customer` | Webhook HTTP | `payments`, `platform_invoices` |
 
-Konsekuensinya: tanpa *retry* per pekerjaan, *dead-letter*, atau
-*backpressure*. Gantinya setiap produser idempoten, sehingga putaran berikutnya
-menyelesaikan yang tertinggal. Terbuka sebagai P2-2.
+*Retry* per pekerjaan, *dead-letter*, dan *backpressure* karena itu **sudah ada
+untuk yang lewat antrean** — `attempts`/`max_attempts`, status `dead`, dan
+klaim yang dibatasi satu pekerjaan per pekerja. Yang BELUM lewat antrean
+(pengingat, kesesuaian data, migration) masih mengandalkan produser yang
+idempoten: putaran berikutnya menyelesaikan yang tertinggal. Terbuka sebagai
+P2-2 untuk sisa itu.
+
+⚠ **Dua pembacaan yang wajib berpasangan.** Umur antrean per jalur (`queue`)
+HIJAU ketika antreannya kosong — termasuk ketika penerbitnya mati dan tidak ada
+baris yang pernah terbit. Yang membantahnya denyut PENERBIT (`scheduler`), yang
+diukur dari stempel waktu putaran dan karena itu tidak bergantung pada isi
+antrean sama sekali. Satu di antaranya saja bisa berkata sehat untuk kegagalan
+total.
 
 ## 7. Dependensi luar
 
@@ -222,7 +340,7 @@ karena scheduler telat, satu masalah penagihan berubah jadi pemadaman total.
 **SMTP**, konfigurasinya tiga lapis dan urutannya menentukan:
 
 ```
-1. Pengaturan TENANT      control.tenant_mail_settings   (SMTP milik pelanggan)
+1. Pengaturan TENANT      control.tenant_mail_settings   (SMTP milik customer)
         ↓ tidak ada
 2. Pengaturan PLATFORM    platform.mail_settings         (disetel di /mail)
         ↓ tidak ada / tak terjangkau
@@ -231,7 +349,7 @@ karena scheduler telat, satu masalah penagihan berubah jadi pemadaman total.
 
 > ⚠ **Surel yang membawa TOKEN AKSES** (undangan, atur-ulang sandi, verifikasi)
 > **tidak pernah** lewat SMTP tenant — langsung ke lapis 2. SMTP tenant
-> dikendalikan pelanggan, dan token akses adalah kredensial.
+> dikendalikan customer, dan token akses adalah kredensial.
 
 `nodemailer` 7 di satu berkas (`@sai/platform/mailer-core`); sandi disimpan
 terenkripsi AES-256-GCM. Cache TTL 60s, sengaja tanpa kunci tenant karena
@@ -247,7 +365,7 @@ Status 18 Okt: tiga env kosong → `local_only`.
 masuk (tanda tangan SHA-512). Status 11 Okt: tanpa `MIDTRANS_*` → transport
 **MOCK**. Dua pemakaian yang harus tetap terpisah:
 
-1. **Penagihan platform** (kami menagih tenant) → kunci platform dari environment.
+1. **Penagihan platform** (SAI menagih tenant) → kunci platform dari environment.
 2. **Penagihan pelanggan** (tenant menagih pelanggannya) → kredensial milik tenant, terenkripsi per perusahaan. Karena itu `company-payment-settings.ts` **tidak pernah** membaca `process.env.MIDTRANS_*`.
 
 Gate efektif menuntut `NODE_ENV=production` **dan** `MIDTRANS_SERVER_KEY`; di
@@ -283,7 +401,7 @@ pesanan) · S3 (**seluruh** basis data + dokumen + audit, terenkripsi) ·
 perayap.
 
 `remind:customers` satu-satunya jalur yang menghubungi orang **di luar**
-organisasi pelanggan. Empat gate sebelum surel keluar: `reminder_enabled`
+organisasi customer. Empat gate sebelum surel keluar: `reminder_enabled`
 menyala (bawaan mati) · `reminder_tested_at` terisi, jadi seseorang pernah
 menerima sendiri kalimatnya · masih dalam jendela toleransi 2 hari · kunci unik
 `(invoice, kind, due_key)` belum terpakai.
@@ -295,7 +413,7 @@ menerima sendiri kalimatnya · masih dalam jendela toleransi 2 hari · kunci uni
 | 1 | **PostgreSQL tunggal** (+ PgBouncer tunggal) | Pemadaman total + kehilangan data | `restart: unless-stopped`, healthcheck, volume bernama | **Kritis** — diperburuk #2 |
 | 2 | **Backup tanpa salinan luar-mesin** | Kehilangan mesin = kehilangan buku **beserta** backup-nya | Salinan terenkripsi harian di mesin yang sama + peringatan | **Kritis — P0** |
 | 3 | **Mesin tunggal** (satu VM, 6 aplikasi) | Kehilangan semuanya | Tidak ada | Diterima sadar |
-| 4 | **`app-customer` tunggal** | Enam permukaan pelanggan padam; konsol **tidak** ikut jatuh | `restart` + healthcheck | Dapat diterima |
+| 4 | **`app-customer` tunggal** | Enam permukaan customer padam; konsol **tidak** ikut jatuh | `restart` + healthcheck | Dapat diterima |
 | 5 | **Traefik tunggal** | 6 aplikasi tak terjangkau | Di luar repo ini | Di luar lingkup |
 | 6 | **`AUTH_SECRET` tunggal** | Rotasi = seluruh sesi batal | Masa sesi 24 jam | Dapat diterima |
 | 7 | **`BACKUP_ENCRYPTION_KEY`** | Kunci hilang = backup tidak bisa dibuka | ❓ Penyimpanan luar belum dipastikan | **Perlu dipastikan segera** |

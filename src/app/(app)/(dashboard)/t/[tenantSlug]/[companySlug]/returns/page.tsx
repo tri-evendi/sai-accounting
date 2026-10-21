@@ -123,22 +123,9 @@ export default async function ReturnsPage({
       baseAmount: r.baseAmount == null ? null : Number(r.baseAmount),
       pdf: (
         <ReturnPdfButton
-          data={{
-            kind: isSales ? "sales" : "purchase",
-            returnNo: r.returnNo,
-            date: r.date.toISOString(),
-            originLabel,
-            partyName: partyName ?? undefined,
-            currency: r.currency,
-            taxAmount: tax,
-            taxRate: r.taxRate == null ? null : Number(r.taxRate),
-            reason: r.reason,
-            items: r.items.map((it) => ({
-              itemName: it.itemName,
-              quantity: Number(it.quantity),
-              price: Number(it.price),
-            })),
-          }}
+          kind={isSales ? "sales" : "purchase"}
+          returnId={r.id}
+          returnNo={r.returnNo}
         />
       ),
     };

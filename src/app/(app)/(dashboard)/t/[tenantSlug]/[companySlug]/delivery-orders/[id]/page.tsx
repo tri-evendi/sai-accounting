@@ -53,8 +53,9 @@ export default async function DeliveryOrderDetailPage({
   const totalBags = order.items.reduce((s, i) => s + i.bags, 0);
   const totalKg = order.items.reduce((s, i) => s + Number(i.quantity), 0);
 
-  // Buyer shown on the PDF: the linked contract's buyer, else the consignee name.
-  const buyer = order.contract?.buyer ?? order.consignee?.name ?? "-";
+  /* Turunan `buyer` PINDAH ke `document-loaders.ts` bersama PDF-nya (tahap 1c):
+     ia hanya pernah dipakai kertasnya, dan kertasnya kini dirender di server
+     dari baris buku. Satu turunan, satu tempat. */
 
   const info: [string, React.ReactNode][] = [
     [t("common.date"), formatDate(order.date)],
@@ -143,21 +144,7 @@ export default async function DeliveryOrderDetailPage({
               ? t("status.contract.canceled")
               : t("deliveryOrders.statusIssued")}
           </Badge>
-          <DeliveryOrderPdfButton
-            order={{
-              no: order.no,
-              date: order.date.toISOString(),
-              buyer,
-              consignee: order.consignee?.name ?? null,
-              vehicleNo: order.vehicleNo,
-              containerNo: order.containerNo,
-              items: order.items.map((i) => ({
-                itemName: i.itemName,
-                bags: i.bags,
-                kgPerBag: Number(i.kgPerBag),
-              })),
-            }}
-          />
+          <DeliveryOrderPdfButton orderId={order.id} orderNo={order.no} />
           </>
         }
       />

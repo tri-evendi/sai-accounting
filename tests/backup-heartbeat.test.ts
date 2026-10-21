@@ -183,8 +183,12 @@ describe("rantainya utuh: direkam, lalu ditanyai dari luar", () => {
        denyut mana pun dibaca. Dua berkas, satu rantai; keduanya diperiksa. */
     const route = baca("src/app/api/health/route.ts");
     const g = route.slice(route.indexOf("export async function GET()"));
-    expect((g.match(/status: 503/g) ?? []).length).toBe(1);
+    /* DUA sejak gerbang skema ada (§3.2): kendali tak terjangkau dan skema
+       tidak sepadan dengan image. Keduanya intrinsik pada container ini; yang
+       dijaga di sini adalah bahwa cadangan BUKAN salah satunya. */
+    expect((g.match(/status: 503/g) ?? []).length).toBe(2);
     expect(g).not.toContain("lastBackup");
+    expect(g).not.toContain("backup");
 
     const laporan = baca("src/lib/health-report.ts");
     const h = laporan.slice(laporan.indexOf("export async function healthReport()"));

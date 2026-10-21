@@ -34,12 +34,12 @@
  * terlindungi.
  */
 import "dotenv/config";
-import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
+import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 
 function clientFor(rawUrl: string) {
   const url = new URL(rawUrl);
-  return new PlatformClient({
+  return new ControlClient({
     adapter: buatAdapter(url.toString(), { batasKoneksi: 1 }),
   });
 }
@@ -54,11 +54,15 @@ async function main() {
      jalur yang paling butuh diperiksa. */
   const adaArtefak = ok || lokal;
 
-  const rawUrl = process.env.PLATFORM_DATABASE_URL;
+  const rawUrl = process.env.CONTROL_DATABASE_URL;
   if (!rawUrl) {
-    /* Bukan galat: pemasangan tanpa basis data platform tetap boleh mencadangkan.
-       Yang tidak ia dapat hanyalah riwayatnya. */
-    console.warn("[record:backup] PLATFORM_DATABASE_URL kosong — putaran tidak dicatat.");
+    /* Bukan galat: cadangan yang berjalan tetap lebih berharga daripada
+       riwayatnya. Tapi sejak jejak putaran pindah ke KENDALI (migration kendali
+       0005) cabang ini praktis tak terjangkau: basis data kendali adalah syarat
+       hidup aplikasi, jadi pemasangan yang bisa mencadangkan pasti punya
+       alamatnya — termasuk on-premise, yang dulu kehilangan riwayatnya di sini
+       justru karena `sai_platform` tidak dipasang di sana. */
+    console.warn("[record:backup] CONTROL_DATABASE_URL kosong — putaran tidak dicatat.");
     return;
   }
 
@@ -71,9 +75,9 @@ async function main() {
   const mulai = process.env.BACKUP_STARTED_AT;
   const startedAt = mulai ? new Date(mulai) : new Date();
 
-  const platform = clientFor(rawUrl);
+  const control = clientFor(rawUrl);
   try {
-    await platform.backupRun.create({
+    await control.backupRun.create({
       data: {
         startedAt: Number.isNaN(startedAt.getTime()) ? new Date() : startedAt,
         finishedAt: new Date(),
@@ -84,7 +88,7 @@ async function main() {
       },
     });
   } finally {
-    await platform.$disconnect().catch(() => {});
+    await control.$disconnect().catch(() => {});
   }
 }
 

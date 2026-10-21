@@ -364,15 +364,33 @@ export const LANDING_BREAKPOINT = 576;
  * ("no horizontal scroll") dan yang tidak terlihat di dua ukuran yang biasa
  * ditangkap layar (1920 dan 390).
  *
- * 768px memberi kelonggaran di atas 685px yang terukur itu, dan ia titik patah
- * tablet yang lazim. Di bawahnya tautan seksi disembunyikan — yang hilang tidak
- * ada: seksinya berurutan ke bawah, dan kolom PRODUK di kaki halaman memuat
- * jangkar yang sama.
+ * Dulu 768px, di atas 685px yang terukur saat itu. **Diukur ulang 21 Okt 2026
+ * di Chromium, dan angka 685 sudah basi:** sejak tautan Dokumentasi dan pemilih
+ * bahasa ikut di bilah itu, versi Indonesia (kata terpanjang dari ketiga
+ * bahasa) baru muat tanpa gulir mendatar DAN tanpa "Tanya jawab" patah dua
+ * baris mulai **848px**; EN dan ZH muat di 768. Di 768 halaman `/`, `/pricing`,
+ * dan `/status` menggulung 11px dan tombol Daftar — ajakan utamanya — terpotong
+ * di tepi kanan, di kedua tema.
  *
- * ⚠ Jangan menambah titik patah ketiga tanpa mengukur lebih dulu. Yang
- * membenarkan yang satu ini adalah angka, bukan selera.
+ * Maka tautan seksi tampil mulai 992px — titik patah yang SUDAH ada
+ * (`LANDING_WIDE_BREAKPOINT`), bukan angka baru — dengan kelonggaran ~140px
+ * untuk tautan atau terjemahan berikutnya. Di bawahnya tautan disembunyikan,
+ * dan yang hilang tidak ada: seksinya berurutan ke bawah, menu ringkas memuat
+ * tautan yang sama, dan kolom PRODUK di kaki halaman memuat jangkarnya.
+ *
+ * ⚠ Bilah ini tumbuh setiap kali tautan atau bahasa bertambah, dan
+ * kegagalannya tidak terlihat di 1440 maupun 390. Ukur ulang di bahasa
+ * TERPANJANG sebelum menurunkan angka ini.
  */
-export const LANDING_NAV_LINKS_BREAKPOINT = 768;
+export const LANDING_NAV_LINKS_BREAKPOINT = 992;
+
+/**
+ * Hero berkolom dua mulai 768px (#401) — dipisah dari bilah atas pada 21 Okt
+ * 2026, ketika bilah atas pindah ke 992px. Keduanya dulu kebetulan berbagi
+ * angka, padahal yang mengukurnya berbeda: hero diukur pada lebar kerangka
+ * aplikasi, bilah atas pada panjang kata. Alasan 768-nya di blok gayanya.
+ */
+export const LANDING_HERO_TWO_COLUMN_BREAKPOINT = 768;
 
 /**
  * Titik patah KETIGA — `screenLG` AntD (992px), dipakai oleh dua hal (#401):
@@ -685,6 +703,8 @@ export const LANDING_STYLE = `
   [data-landing-links]{display:flex}
   [data-landing-nav]{grid-template-columns:1fr auto 1fr}
   [data-landing-menu]{display:none}
+}
+@media (min-width:${LANDING_HERO_TWO_COLUMN_BREAKPOINT}px){
   /* == HERO DUA KOLOM MULAI 768px, BUKAN 576px (#401) -- DIUKUR ============
      Sampai #401 hero berkolom dua sejak 576px dengan purwarupa satu kartu
      ringkasan yang muat di 206px. Kerangka aplikasi (sidebar 40px + tiga ubin

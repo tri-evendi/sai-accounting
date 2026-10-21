@@ -73,6 +73,35 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.10.2",
+    tanggal: "2026-10-22",
+    sha: "b76a90f",
+    ringkas:
+      "Pencarian cepat (Ctrl+K) langsung bisa diketik, angka di grafik terbaca di tema gelap, dan sumbu grafik Arus Kas memakai format rupiah.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks:
+          "Pencarian cepat halaman (Ctrl+K / \u2318K) kini langsung siap diketik saat dibuka. Sebelumnya ketikan dan tombol panah tidak berbuat apa-apa sampai kolom pencariannya diklik lebih dulu.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Di tema gelap, nominal pada keterangan grafik Laba/Rugi dan Umur Piutang tertulis hitam di atas latar gelap sehingga tidak terbaca. Kini warnanya mengikuti tema.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Sumbu grafik di laporan Arus Kas kini memakai format rupiah (\u201c10 jt\u201d) seperti grafik lain, bukan \u201c10.0M\u201d.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Kolom kata sandi yang wajib diisi kini ikut bertanda bintang, sama seperti kolom wajib lainnya.",
+      },
+    ],
+  },
+  {
     versi: "0.10.1",
     tanggal: "2026-10-21",
     sha: "f79b76c",

@@ -73,6 +73,45 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.10.1",
+    tanggal: "2026-10-21",
+    sha: "f79b76c",
+    ringkas:
+      "Pratinjau Kas & Bank di beranda kembali bekerja, tombol di ponsel tidak lagi terpotong di tepi layar, dan beberapa panel kembali berwarna sebagaimana mestinya.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks:
+          "Tombol \u201cPratinjau Kas & Bank\u201d di beranda sejak rilis sebelumnya selalu berakhir dengan \u201cGagal membuat dokumen.\u201d Kini kembali menghasilkan laporannya. Tombol yang sama di halaman Kas & Bank tidak terdampak.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Di layar ponsel, tombol di kepala beberapa halaman \u2014 stok barang, rincian tagihan, aset tetap \u2014 berjajar melewati tepi layar, sehingga \u201cHapus Tagihan\u201d dan \u201cKembali\u201d tidak terjangkau. Kini tombolnya turun ke baris berikutnya. Isian tanggal di Neraca juga tidak lagi terjepit.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Panel \u201cRingkasan Bahasa Sehari-hari\u201d di laporan dan beberapa sorotan lain berlatar abu-abu tua di tema terang; kini kembali biru muda dan teksnya lebih mudah dibaca. Pilihan yang sedang terpilih di daftar pilihan ikut membaik.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Pesan peringatan berwarna merah \u2014 misalnya periode yang sudah ditutup \u2014 kini lebih kontras dan lebih mudah dibaca di kedua tema.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Pengguna papan ketik kini bisa langsung melompat ke isi halaman tanpa menyusuri seluruh menu samping lebih dulu, dan judul pratinjau laporan ikut berganti bahasa.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Halaman depan, Harga, dan Status tidak lagi bisa digeser ke samping di layar tablet, dan tombol Daftar tidak lagi terpotong.",
+      },
+    ],
+  },
+  {
     versi: "0.10.0",
     tanggal: "2026-10-21",
     sha: "a8d2749",

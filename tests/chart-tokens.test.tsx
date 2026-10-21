@@ -33,6 +33,7 @@ import { DefaultTooltipContent } from "recharts";
 import {
   chartPalette,
   tonedSlices,
+  tooltipItemStyle,
   tooltipSurface,
   type ChartToken,
 } from "@/components/shared/dashboard-charts";
@@ -429,5 +430,60 @@ describe("waterfall laba/rugi (#355)", () => {
     expect(body).toContain("palette.countPrimary");
     expect(body).toContain("palette.moneyOut");
     expect(body).toContain("palette.moneyIn");
+  });
+});
+
+/**
+ * Sapuan visual 21 Okt 2026, tema gelap: tooltip waterfall Laba/Rugi menulis
+ * nominalnya HITAM di atas panel gelap. Batang yang nadanya hanya hidup di
+ * `<Cell>` tidak mewariskan `entry.color`, dan recharts jatuh ke `#000`.
+ */
+describe("baris tooltip pada batang ber-Cell", () => {
+  const src = readFileSync(
+    join(__dirname, "..", "src", "components", "shared", "dashboard-charts.tsx"),
+    "utf8"
+  );
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const noColor = [{ name: "Beban", value: 1000, dataKey: "span" }];
+
+  it("bawaannya HITAM bila baris tak punya warna seri", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const markup = renderToStaticMarkup(<DefaultTooltipContent payload={noColor as any} />);
+    expect(markup).toContain("color:#000");
+  });
+
+  it.each(MODES)("%s: `tooltipItemStyle` menimpanya dengan teks bertema", (mode) => {
+    const token = TOKENS[mode];
+    const markup = renderToStaticMarkup(
+      <DefaultTooltipContent
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        payload={noColor as any}
+        contentStyle={tooltipSurface(token)}
+        itemStyle={tooltipItemStyle(token)}
+      />
+    );
+    expect(markup).not.toContain("color:#000");
+    expect(markup).toContain(`color:${token.colorText}`);
+  });
+
+  /*
+   * Setiap komponen yang memasang `<Cell>` DAN memakai tooltip bawaan wajib
+   * menyebut `itemStyle`. Komponen bertooltip sendiri (`content=`) dan Pie
+   * (yang `entry.color`-nya diisi dari `fill` irisan) tidak termasuk.
+   */
+  it("setiap Bar ber-Cell dengan tooltip bawaan menyebut tooltipItemStyle", () => {
+    const blocks = code.split(/\nexport function /).slice(1);
+    const offenders = blocks
+      .filter((b) => b.includes("<Bar") && b.includes("<Cell") && b.includes("<Tooltip") && !b.includes("content={"))
+      .filter((b) => !b.includes("itemStyle={tooltipItemStyle(token)}"))
+      .map((b) => b.slice(0, b.indexOf("(")));
+    expect(offenders).toEqual([]);
+  });
+
+  it("sumbu uang arus kas memakai pemendek rupiah, bukan 10.0M bergaya Inggris", () => {
+    const start = code.indexOf("export function CashFlowChart");
+    const block = code.slice(start, code.indexOf("\nexport function ", start + 1));
+    expect(block).toContain("compactMoney");
+    expect(code).not.toMatch(/toFixed\(1\)\}M`/);
   });
 });

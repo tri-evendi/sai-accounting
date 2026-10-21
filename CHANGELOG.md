@@ -20,6 +20,19 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.10.2 — 2026-10-22 (b76a90f)
+
+Pencarian cepat (Ctrl+K) langsung bisa diketik, angka di grafik terbaca di tema gelap, dan sumbu grafik Arus Kas memakai format rupiah.
+
+### Perbaikan
+
+- Pencarian cepat halaman (Ctrl+K / ⌘K) kini langsung siap diketik saat dibuka. Sebelumnya ketikan dan tombol panah tidak berbuat apa-apa sampai kolom pencariannya diklik lebih dulu.
+- Di tema gelap, nominal pada keterangan grafik Laba/Rugi dan Umur Piutang tertulis hitam di atas latar gelap sehingga tidak terbaca. Kini warnanya mengikuti tema.
+- Sumbu grafik di laporan Arus Kas kini memakai format rupiah (“10 jt”) seperti grafik lain, bukan “10.0M”.
+- Kolom kata sandi yang wajib diisi kini ikut bertanda bintang, sama seperti kolom wajib lainnya.
+
+---
+
 ## 0.10.1 — 2026-10-21 (f79b76c)
 
 Pratinjau Kas & Bank di beranda kembali bekerja, tombol di ponsel tidak lagi terpotong di tepi layar, dan beberapa panel kembali berwarna sebagaimana mestinya.

@@ -32,7 +32,7 @@
 import { Input, type InputRef } from "antd";
 
 import { describedByWith, isInvalidField } from "@sai/ui/input";
-import { Label } from "@sai/ui/label";
+import { Label, RequiredMark } from "@sai/ui/label";
 import { useId } from "react";
 
 type PasswordFieldProps = Omit<
@@ -79,7 +79,15 @@ function PasswordInput({
 
   return (
     <div style={{ display: "grid", gap: "var(--ant-margin-xxs)" }}>
-      {label && <Label htmlFor={inputId}>{label}</Label>}
+      {/* Tanda wajib dari atribut `required` native, sama dengan `Input` — tanpa
+          ini formulir login menandai "Nama akun *" tetapi tidak "Kata sandi",
+          padahal keduanya wajib (sapuan visual 21 Okt 2026). */}
+      {label && (
+        <Label htmlFor={inputId}>
+          {label}
+          {props.required && <RequiredMark />}
+        </Label>
+      )}
       <PasswordField
         id={inputId}
         disabled={disabled}

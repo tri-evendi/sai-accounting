@@ -186,6 +186,7 @@
     "compareSaving": "saves {amount}/month"
   },
   "common": {
+    "skipToContent": "Skip to content",
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
@@ -3965,7 +3966,13 @@
     "previewFinance": "Preview Cash & Bank",
     "previewAndPrint": "Preview & Print",
     "preparing": "Preparing…",
-    "generateFailed": "The document could not be generated."
+    "generateFailed": "The document could not be generated.",
+    "titleStockReport": "Stock Report",
+    "titleFinanceReport": "Cash & Bank Report",
+    "titleFinancialStatements": "Financial Statements",
+    "titleContract": "Contract {no}",
+    "titleShippingDoc": "Delivery Order {no}",
+    "titleInvoice": "Invoice {no}"
   },
   "reportSummary": {
     "isProfit": "{period}: a profit of {amount}, because sales ({revenue}) were larger than expenses ({expense}).",

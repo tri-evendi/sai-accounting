@@ -326,7 +326,14 @@ export function AuthShell({
             <ThemeToggle />
           </Flex>
 
+          {/* Tengara `<main>` (T14 #205): dasbor, tenant, dan penyiapan
+              mendapatkannya dari `Layout.Content`, layar auth tidak — isinya
+              dulu duduk di `Col` telanjang, sehingga pembaca layar tidak punya
+              lompatan langsung ke formulir. `component` mengganti TAG-nya saja;
+              tata letak flex-nya tidak berubah. Kepala sempit dan sakelar
+              preferensi di atasnya sengaja di luar: keduanya chrome, bukan isi. */}
           <Flex
+            component="main"
             align="center"
             justify="center"
             style={{

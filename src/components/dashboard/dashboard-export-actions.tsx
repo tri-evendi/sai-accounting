@@ -58,7 +58,7 @@ export function InventoryExportAction() {
   return (
     <PdfDocumentButton
       label={t("pdf.previewStock")}
-      title="Laporan Stok"
+      title={t("pdf.titleStockReport")}
       filename={`Stock_Report_${today()}.pdf`}
       generate={async () => {
         const res = await apiFetch("/api/inventory");
@@ -76,7 +76,7 @@ export function FinanceExportAction() {
   return (
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
-      title="Laporan Kas & Bank"
+      title={t("pdf.titleFinanceReport")}
       filename={`Finance_Report_${today()}.pdf`}
       generate={async () => {
         const res = await apiFetch("/api/finance");

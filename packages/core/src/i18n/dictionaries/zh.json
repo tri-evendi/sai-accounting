@@ -186,6 +186,7 @@
     "compareSaving": "每月节省 {amount}"
   },
   "common": {
+    "skipToContent": "跳到正文",
     "save": "保存",
     "cancel": "取消",
     "close": "关闭",
@@ -3965,7 +3966,13 @@
     "previewFinance": "预览现金与银行",
     "previewAndPrint": "预览并打印",
     "preparing": "正在准备…",
-    "generateFailed": "生成单据失败。"
+    "generateFailed": "生成单据失败。",
+    "titleStockReport": "库存报表",
+    "titleFinanceReport": "现金与银行报表",
+    "titleFinancialStatements": "财务报表",
+    "titleContract": "合同 {no}",
+    "titleShippingDoc": "送货单 {no}",
+    "titleInvoice": "发票 {no}"
   },
   "reportSummary": {
     "isProfit": "{period}：盈利 {amount}，因为销售额（{revenue}）大于费用（{expense}）。",

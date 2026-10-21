@@ -110,6 +110,7 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         host: process.env.OPERATOR_HOST ?? "",
         mainMenu: t("sidebar.mainMenu"),
         closeMenu: t("sidebar.closeMenu"),
+        skipToContent: t("common.skipToContent"),
       }}
       logout={logout}
     >

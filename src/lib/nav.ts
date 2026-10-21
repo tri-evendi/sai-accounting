@@ -29,6 +29,7 @@ import { isTenantPermission, type TenantPermission } from "@/lib/tenant-authz";
 import { effectiveAccountantMode, type AccountantModeUser } from "@/lib/accountant-mode";
 import type { TermKey } from "@sai/core/labels";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { REPORTS, reportTextKey, type ReportTextKey } from "@/lib/report-catalog";
 
 export interface NavItem {
   href: string;
@@ -427,4 +428,34 @@ export function activeNavHref(pathname: string, hrefs: string[]): string | null 
     }
   }
   return best;
+}
+
+/**
+ * Laporan dari katalog Pusat Laporan untuk palet perintah, disaring dengan
+ * aturan yang sama dengan menu (izin efektif, lalu Mode Akuntan).
+ *
+ * Dikelompokkan per `href` karena beberapa laporan berbagi halaman
+ * (mis. dua laporan di `/budget/report`).
+ */
+export interface ReportShortcut {
+  href: string;
+  /** Kunci `reports.catalogReport`; judul yang pertama dipakai sebagai label. */
+  textKeys: ReportTextKey[];
+}
+
+export function visibleReportShortcuts(
+  user: AccountantModeUser,
+  allowed?: AllowedPermissions
+): ReportShortcut[] {
+  const byHref = new Map<string, ReportTextKey[]>();
+  for (const report of REPORTS) {
+    if (report.status !== "available" || !report.href) continue;
+    if (!holdsPermission(user, report.permission, allowed)) continue;
+    if (report.accountingOnly && !effectiveAccountantMode(user)) continue;
+    const key = reportTextKey(report.id);
+    const keys = byHref.get(report.href);
+    if (keys) keys.push(key);
+    else byHref.set(report.href, [key]);
+  }
+  return [...byHref].map(([href, textKeys]) => ({ href, textKeys }));
 }

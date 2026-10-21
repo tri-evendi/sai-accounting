@@ -388,7 +388,8 @@
     "title": "查找页面",
     "placeholder": "输入页面名称…",
     "empty": "没有匹配的页面。",
-    "mainGroup": "主要"
+    "mainGroup": "主要",
+    "reportsGroup": "报表列表"
   },
   "accountantMode": {
     "label": "会计模式",

@@ -55,8 +55,7 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
               </Title>
             </Flex>
             <Text type="secondary">
-              {/* Tanpa MFA kalimatnya tidak boleh menjanjikan kode autentikator —
-                  tetapi juga tidak mengumumkan bahwa MFA mati. */}
+              {/* Tanpa MFA: tidak menyebut kode autentikator, juga tidak menyebut MFA mati. */}
               {t(mfaOff ? "operator.login.descriptionNoMfa" : "operator.login.description")}
             </Text>
           </Flex>

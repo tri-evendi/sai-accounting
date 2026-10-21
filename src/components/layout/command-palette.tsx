@@ -36,9 +36,10 @@ import {
   CommandList,
 } from "@sai/ui/command";
 import { Dialog, DialogContent, DialogTitle } from "@sai/ui/dialog";
-import { NAV_HOME, isNavItemVisible, visibleNavGroups } from "@/lib/nav";
+import { NAV_HOME, isNavItemVisible, visibleNavGroups, visibleReportShortcuts } from "@/lib/nav";
+import type { ReportTextKey } from "@/lib/report-catalog";
 import { useEffectivePermissions } from "@/lib/use-effective-permissions";
-import { useT } from "@sai/core/i18n/client";
+import { useDictionary, useT } from "@sai/core/i18n/client";
 
 /**
  * Teks yang hanya dibacakan pembaca layar — pengganti kelas `sr-only`
@@ -68,16 +69,13 @@ interface CommandPaletteProps {
 export function CommandPalette({ role, accountantMode, companyCount }: CommandPaletteProps) {
   const router = useAppRouter();
   const t = useT();
+  const catalog = useDictionary()?.reports.catalogReport;
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   /*
-   * Fokus jatuh ke kolom ketik, bukan ke tombol tutup. Tanpa ini perangkap
-   * fokus rc-dialog memilih elemen pertama yang bisa difokus di panel — tombol
-   * ✕ — sehingga ⌘K lalu mengetik "neraca" tidak menulis apa pun, dan panah
-   * atas/bawah tidak menggeser sorotan: cmdk hanya mendengar tombol dari
-   * dalam dirinya. Terlihat di sapuan visual 21 Okt 2026; pola yang sama
-   * dengan `focusFirstControl` di `ConfirmDialog`.
+   * Fokus awal ke kolom ketik. Tanpa ini rc-dialog memfokuskan tombol tutup,
+   * dan cmdk tidak menerima ketikan maupun tombol panah.
    */
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
 
@@ -88,6 +86,20 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
   );
   const groups = useMemo(() => visibleNavGroups(user, allowed), [user, allowed]);
   const homeVisible = isNavItemVisible(NAV_HOME, user, allowed);
+  // Tanpa kamus (di luar LocaleProvider) judul laporan tidak bisa dibaca; grupnya dilewati.
+  const reports = useMemo(
+    () => (catalog ? visibleReportShortcuts(user, allowed) : []),
+    [catalog, user, allowed]
+  );
+  // Laporan yang halamannya sudah ada di menu tidak dapat baris sendiri;
+  // judulnya ikut dicocokkan pada baris menu tersebut.
+  const navHrefs = useMemo(
+    () => new Set(groups.flatMap((g) => g.items.map((i) => i.href))),
+    [groups]
+  );
+  const titlesOf = (keys: readonly ReportTextKey[]) => keys.map((k) => catalog?.[k].title ?? "");
+  const reportTitlesFor = (href: string) =>
+    titlesOf(reports.find((r) => r.href === href)?.textKeys ?? []).join(" ");
 
   /*
    * Ctrl+K / ⌘K. Dipasang di `window` karena palet harus bisa dibuka dari mana
@@ -149,7 +161,7 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
                      * memunculkan isi grup Laporan, bukan hanya item yang
                      * kebetulan bernama begitu.
                      */
-                    value={`${t(item.labelKey)} ${t(group.labelKey)}`}
+                    value={`${t(item.labelKey)} ${t(group.labelKey)} ${reportTitlesFor(item.href)}`}
                     onSelect={() => go(item.href)}
                   >
                     {t(item.labelKey)}
@@ -157,6 +169,22 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
                 ))}
               </CommandGroup>
             ))}
+
+            {reports.some((r) => !navHrefs.has(r.href)) && (
+              <CommandGroup heading={t("commandPalette.reportsGroup")}>
+                {reports
+                  .filter((r) => !navHrefs.has(r.href))
+                  .map((r) => (
+                    <CommandItem
+                      key={r.href}
+                      value={`${titlesOf(r.textKeys).join(" ")} ${t("commandPalette.reportsGroup")}`}
+                      onSelect={() => go(r.href)}
+                    >
+                      {titlesOf(r.textKeys)[0]}
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </DialogContent>

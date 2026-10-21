@@ -1,11 +1,4 @@
-/**
- * Tanda wajib harus SAMA di setiap kontrol berlabel.
- *
- * Sapuan visual 21 Okt 2026, layar login konsol operator: "Nama akun *" dan
- * "Kata sandi" tanpa tanda — keduanya `required`. `Input` membaca atribut
- * `required` untuk menggambar `RequiredMark`, `PasswordInput` tidak. Pembaca
- * layar pun hanya mendengar "(wajib)" pada salah satunya.
- */
+/** `PasswordInput` menggambar tanda wajib yang sama dengan `Input` saat `required`. */
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 

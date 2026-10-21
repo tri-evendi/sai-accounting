@@ -20,6 +20,21 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.10.1 — 2026-10-21 (f79b76c)
+
+Pratinjau Kas & Bank di beranda kembali bekerja, tombol di ponsel tidak lagi terpotong di tepi layar, dan beberapa panel kembali berwarna sebagaimana mestinya.
+
+### Perbaikan
+
+- Tombol “Pratinjau Kas & Bank” di beranda sejak rilis sebelumnya selalu berakhir dengan “Gagal membuat dokumen.” Kini kembali menghasilkan laporannya. Tombol yang sama di halaman Kas & Bank tidak terdampak.
+- Di layar ponsel, tombol di kepala beberapa halaman — stok barang, rincian tagihan, aset tetap — berjajar melewati tepi layar, sehingga “Hapus Tagihan” dan “Kembali” tidak terjangkau. Kini tombolnya turun ke baris berikutnya. Isian tanggal di Neraca juga tidak lagi terjepit.
+- Panel “Ringkasan Bahasa Sehari-hari” di laporan dan beberapa sorotan lain berlatar abu-abu tua di tema terang; kini kembali biru muda dan teksnya lebih mudah dibaca. Pilihan yang sedang terpilih di daftar pilihan ikut membaik.
+- Pesan peringatan berwarna merah — misalnya periode yang sudah ditutup — kini lebih kontras dan lebih mudah dibaca di kedua tema.
+- Pengguna papan ketik kini bisa langsung melompat ke isi halaman tanpa menyusuri seluruh menu samping lebih dulu, dan judul pratinjau laporan ikut berganti bahasa.
+- Halaman depan, Harga, dan Status tidak lagi bisa digeser ke samping di layar tablet, dan tombol Daftar tidak lagi terpotong.
+
+---
+
 ## 0.10.0 — 2026-10-21 (a8d2749)
 
 Logo perusahaan Anda kini tercetak di dokumen, gangguan dan pemeliharaan diumumkan langsung di dalam aplikasi, dan setiap dokumen serta laporan PDF kini dibuat dari data yang tersimpan — bukan dari apa yang kebetulan tampil di layar.

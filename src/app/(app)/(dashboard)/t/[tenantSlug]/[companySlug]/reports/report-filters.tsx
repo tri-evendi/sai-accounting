@@ -93,6 +93,7 @@ export function AsOfFilter({
       <Flex
         component="form"
         onSubmit={submit}
+        wrap
         align="flex-end"
         gap={CONTROL_GAP}
         style={{ marginBottom: SECTION_GAP }}

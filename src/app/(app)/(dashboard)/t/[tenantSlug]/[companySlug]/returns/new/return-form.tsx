@@ -308,7 +308,7 @@ export function ReturnForm({
                   display: "block",
                   marginTop: token.marginXXS,
                   fontSize: token.fontSizeSM,
-                  color: token.colorError,
+                  color: "var(--ant-color-money-negative)",
                 }}
               >
                 {t("returns.overReturnable")}

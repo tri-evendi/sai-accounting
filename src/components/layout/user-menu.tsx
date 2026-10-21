@@ -72,12 +72,23 @@ const LEBAR_PANEL = 256;
 
 type BarisMenu = NonNullable<MenuProps["items"]>[number];
 
-/** Inisial dari nama untuk avatar (maks 2 huruf), fallback ikon bila kosong. */
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+/**
+ * Inisial dari nama untuk avatar (maks 2 huruf), fallback ikon bila kosong.
+ *
+ * Hanya kata yang DIAWALI huruf atau angka yang dihitung: nama seperti
+ * "Budi (Gudang)" atau "Rika - Admin" dulu menghasilkan "B(" dan "R-" —
+ * terlihat di sapuan visual 21 Okt 2026. `\p{L}` supaya nama beraksara Han
+ * tetap punya inisial.
+ */
+export function initials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p.replace(/^[^\p{L}\p{N}]+/u, ""))
+    .filter(Boolean);
   if (parts.length === 0) return "";
-  const first = parts[0][0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
+  const first = [...parts[0]][0] ?? "";
+  const last = parts.length > 1 ? [...parts[parts.length - 1]][0] ?? "" : "";
   return (first + last).toUpperCase();
 }
 

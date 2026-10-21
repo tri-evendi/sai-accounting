@@ -32,7 +32,7 @@
  * ber-`useState` akan menyeret bilah ini menjadi komponen klien. Panelnya
  * `position:absolute` di bawah bilah (tidak mendorong isi, tidak mengubah
  * tinggi bilah yang dipakai `scroll-margin-top`), berisi tautan seksi yang
- * SAMA dengan bilah lebar + pemilih bahasa untuk <576px (di 576–768 sakelar
+ * SAMA dengan bilah lebar + pemilih bahasa untuk <576px (di 576–991 sakelar
  * di bilah sudah tampil, jadi yang di panel disembunyikan lewat pasangan
  * `data-landing-chrome-narrow` yang sama dengan kaki).
  *
@@ -50,7 +50,7 @@
  * secara VISUAL (tetap di DOM untuk pembaca layar — `<a>` merek harus tetap
  * punya nama), lambangnya tetap. Bukan titik patah baru di 400px: `landing.md`
  * melarang titik patah ketiga tanpa pengukuran, dan yang tersedia (576px)
- * sudah cukup — di 576–768 teks merek muat bersama tombol menu.
+ * sudah cukup — di 576–991 teks merek muat bersama tombol menu.
  */
 import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
 import Link from "next/link";
@@ -302,7 +302,7 @@ export async function LandingNav() {
                   </li>
                 ))}
               </ul>
-              {/* Bahasa di <576px saja — di 576–768 sakelar di bilah sudah
+              {/* Bahasa di <576px saja — di 576–991 sakelar di bilah sudah
                   tampil (`data-landing-chrome`), dan dua sakelar untuk hal
                   yang sama di satu layar adalah satu terlalu banyak. */}
               <div

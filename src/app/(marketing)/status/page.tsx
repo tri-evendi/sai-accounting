@@ -109,10 +109,16 @@ export async function generateMetadata(): Promise<Metadata> {
  * membacanya sedang panik, dan sebagian membacanya dengan penglihatan warna
  * yang berbeda dari penulisnya.
  */
+/*
+ * Token `*-text`, bukan `colorSuccess`/`colorWarning`/`colorError` bawaan: warna
+ * ini mendarat pada LABEL keadaan (teks 14px), dan bawaannya gagal 4,5:1 —
+ * `colorError` 3,00:1 terang / 3,89:1 gelap (temuan T1 #205). Sejak #355 token
+ * `*-text` dialiaskan ke tangga uang (`statusTextTokens()`), yang lolos.
+ */
 const TONE: Record<ComponentState, { color: string; glyph: string }> = {
-  operational: { color: "var(--ant-color-success)", glyph: "●" },
-  degraded: { color: "var(--ant-color-warning)", glyph: "▲" },
-  down: { color: "var(--ant-color-error)", glyph: "■" },
+  operational: { color: "var(--ant-color-success-text)", glyph: "●" },
+  degraded: { color: "var(--ant-color-warning-text)", glyph: "▲" },
+  down: { color: "var(--ant-color-error-text)", glyph: "■" },
   unknown: { color: "var(--ant-color-text-tertiary)", glyph: "○" },
 };
 

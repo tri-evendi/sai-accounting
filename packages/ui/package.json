@@ -45,6 +45,7 @@
     "./quota-meter": "./src/components/quota-meter.tsx",
     "./searchable-select": "./src/components/searchable-select.tsx",
     "./select": "./src/components/select.tsx",
+    "./skip-link": "./src/components/skip-link.tsx",
     "./stat-card": "./src/components/stat-card.tsx",
     "./stat-tile": "./src/components/stat-tile.ts",
     "./static-table": "./src/components/static-table.tsx",

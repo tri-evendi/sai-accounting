@@ -373,7 +373,7 @@ export function DeliveryOrderForm({
                     alignItems: "flex-start",
                     gap: token.marginXXS,
                     fontSize: token.fontSizeSM,
-                    color: token.colorError,
+                    color: "var(--ant-color-money-negative)",
                   }}
                 >
                   <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />

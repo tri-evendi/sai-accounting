@@ -533,6 +533,37 @@ export function brandTone(resolved: ResolvedTheme): string {
   return resolved === "dark" ? BRAND_TONE_DARK : BRAND_TONE_LIGHT;
 }
 
+/**
+ * Tint merek untuk PERMUKAAN — `colorPrimaryBg` & `colorPrimaryBgHover`, TEMA
+ * TERANG SAJA.
+ *
+ * ══ KENAPA DISEBUT, PADAHAL BIASANYA TURUNAN ═══════════════════════════════
+ * AntD menurunkan keduanya dari anak tangga 1–2 palet `colorPrimary`. Untuk
+ * benih navy `#1E3A5F` tangga itu keluar ABU-ABU SEDANG: `#959a9e` dan
+ * `#898e91` — bukan tint biru muda. Terpotret di sapuan visual 21 Okt 2026
+ * sebagai panel "Ringkasan Bahasa Sehari-hari" yang berlatar abu-abu pekat di
+ * tema terang; token yang sama mengisi 23 pemanggil lain dan, lewat alias
+ * `controlItemBgActive`, opsi TERPILIH di setiap `Select` dan baris terpilih
+ * tabel. Sejak warna merek menjadi navy tidak ada penjaga yang mengukurnya,
+ * karena yang diukur selama ini benihnya.
+ *
+ * Tema gelap TIDAK disebut: turunannya `#344352` — navy redup yang memang
+ * permukaan bernada di atas `#141414`, dan yang sudah melayani tema itu.
+ *
+ * | Peran        | Nilai     | `colorText` di atasnya | teks merek `#1E3A5F` |
+ * |--------------|-----------|------------------------|----------------------|
+ * | latar        | `#E8EEF6` | 14,46:1                | 9,85:1               |
+ * | latar hover  | `#D7E1EE` | 13,04:1               | 8,71:1               |
+ * | (turunan lama) | `#959a9e` | 6,59:1             | **4,05:1** — gagal 4,5 |
+ */
+export const BRAND_PRIMARY_BG_LIGHT = { colorPrimaryBg: "#E8EEF6", colorPrimaryBgHover: "#D7E1EE" };
+
+export function brandPrimaryBgTokens(
+  resolved: ResolvedTheme
+): Partial<typeof BRAND_PRIMARY_BG_LIGHT> {
+  return resolved === "dark" ? {} : BRAND_PRIMARY_BG_LIGHT;
+}
+
 export function brandPrimary(resolved: ResolvedTheme): string {
   return resolved === "dark" ? BRAND_PRIMARY_DARK : BRAND_PRIMARY_LIGHT;
 }

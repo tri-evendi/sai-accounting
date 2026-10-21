@@ -186,6 +186,7 @@
     "compareSaving": "hemat {amount}/bulan"
   },
   "common": {
+    "skipToContent": "Langsung ke isi",
     "save": "Simpan",
     "cancel": "Batal",
     "close": "Tutup",
@@ -3965,7 +3966,13 @@
     "previewFinance": "Pratinjau Kas & Bank",
     "previewAndPrint": "Pratinjau & Cetak",
     "preparing": "Menyiapkan…",
-    "generateFailed": "Gagal membuat dokumen."
+    "generateFailed": "Gagal membuat dokumen.",
+    "titleStockReport": "Laporan Stok",
+    "titleFinanceReport": "Laporan Kas & Bank",
+    "titleFinancialStatements": "Laporan Keuangan",
+    "titleContract": "Kontrak {no}",
+    "titleShippingDoc": "Surat Jalan {no}",
+    "titleInvoice": "Faktur {no}"
   },
   "reportSummary": {
     "isProfit": "{period}: untung {amount}, karena penjualan ({revenue}) lebih besar daripada beban ({expense}).",

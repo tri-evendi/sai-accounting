@@ -116,7 +116,7 @@ export function CostCenterField({
     return (
       <Typography.Text
         role="alert"
-        style={{ fontSize: token.fontSizeSM, color: token.colorError }}
+        style={{ fontSize: token.fontSizeSM, color: "var(--ant-color-money-negative)" }}
       >
         {t("common.optionsLoadFailed")}
       </Typography.Text>

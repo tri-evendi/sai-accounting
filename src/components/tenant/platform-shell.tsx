@@ -90,6 +90,7 @@ import { PLATFORM_STYLE } from "@/components/tenant/platform-tone";
 import { UserMenu } from "@/components/layout/user-menu";
 import { BrandLockup } from "@sai/ui/brand-lockup";
 import { Button } from "@sai/ui/button";
+import { SkipLink, SKIP_TARGET_PROPS } from "@sai/ui/skip-link";
 import { BORDER_TOKENS_DARK, NEUTRAL_TEXT_DARK } from "@sai/ui/theme/antd-tokens";
 import { useT } from "@sai/core/i18n/client";
 
@@ -323,6 +324,8 @@ export function PlatformShell({ children, tenantName, nav, userName, role }: Pla
       <style href="sai-platform" precedence="default">
         {PLATFORM_STYLE}
       </style>
+      {/* T13 #205 — sebelum menu samping; pola yang sama dengan dasbor. */}
+      <SkipLink label={t("common.skipToContent")} />
       {/* Kolom tetap: laci tidak pernah ikut dirender, jadi tidak ada salinan
           kedua menu ini di mana pun. */}
       {lebar ? (
@@ -406,6 +409,7 @@ export function PlatformShell({ children, tenantName, nav, userName, role }: Pla
             longgarnya di layar lebar — supaya jarak tepi tidak bergeser saat
             pengguna berpindah antar-permukaan. */}
         <Layout.Content
+          {...SKIP_TARGET_PROPS}
           style={{
             flex: 1,
             minHeight: 0,

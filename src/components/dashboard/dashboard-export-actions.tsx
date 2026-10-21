@@ -45,7 +45,8 @@
 import { useT } from "@sai/core/i18n/client";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import type { ClientInventoryItem } from "@/lib/inventory";
-import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import type { FinanceBalanceRow } from "@/lib/pdf/finance-report-pdf";
+import { toFinanceReportRows, type FinanceRowSource } from "@/lib/finance-report-rows";
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchReportPdfBlob } from "@/lib/report-files";
 
@@ -57,7 +58,7 @@ export function InventoryExportAction() {
   return (
     <PdfDocumentButton
       label={t("pdf.previewStock")}
-      title="Laporan Stok"
+      title={t("pdf.titleStockReport")}
       filename={`Stock_Report_${today()}.pdf`}
       generate={async () => {
         const res = await apiFetch("/api/inventory");
@@ -75,16 +76,19 @@ export function FinanceExportAction() {
   return (
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
-      title="Laporan Kas & Bank"
+      title={t("pdf.titleFinanceReport")}
       filename={`Finance_Report_${today()}.pdf`}
       generate={async () => {
         const res = await apiFetch("/api/finance");
         if (!res.ok) throw new Error("finance fetch failed");
-        const data: { balances: FinanceBalanceRow[]; transactions: FinanceReportRow[] } =
+        /* `transactions` di sini baris Prisma mentah: `Decimal` tiba sebagai
+           STRING. Pemetanya yang sama dengan halaman Kas & Bank — lihat
+           `finance-report-rows.ts`. */
+        const data: { balances: FinanceBalanceRow[]; transactions: FinanceRowSource[] } =
           await res.json();
         return fetchReportPdfBlob("finance", {
           balances: data.balances,
-          transactions: data.transactions,
+          transactions: toFinanceReportRows(data.transactions),
         });
       }}
     />

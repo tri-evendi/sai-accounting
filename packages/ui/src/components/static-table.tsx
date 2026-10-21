@@ -96,9 +96,11 @@
  * seperti bisa diklik di 62 halaman.
  */
 
+import { cloneElement, isValidElement, type ReactElement } from "react";
 import { CaretDownOutlined, CaretUpOutlined, SwapOutlined } from "@ant-design/icons";
 
 import { Link } from "@sai/ui/app-link";
+import { EmptyState, type EmptyStateProps } from "@sai/ui/empty-state";
 import {
   Table,
   TableBody,
@@ -315,6 +317,12 @@ interface StaticTableProps<T> {
   /**
    * Ditampilkan menggantikan isi tabel ketika tidak ada baris. Wajib
    * `EmptyState` bermakna — satu kalimat dan, bila ada, satu aksi.
+   *
+   * `EmptyState` yang dioper ke sini dirender `flat` OTOMATIS (`flatEmpty`):
+   * tabelnya sendiri sudah permukaannya. Tanpa itu kotak keadaan-kosong
+   * menggambar tepi + bayangannya di DALAM tepi tabel — dua garis berjarak
+   * 1px di setiap sisi, terpotret di 43 pemanggil pada sapuan visual
+   * 21 Okt 2026 (beranda, daftar kontrak, faktur, jurnal, laporan, …).
    */
   empty?: React.ReactNode;
   /**
@@ -509,6 +517,17 @@ function spannedCells<T>(
   ).nodes;
 }
 
+/**
+ * `EmptyState` di dalam sel kosong → `flat`. Elemen lain diteruskan apa adanya:
+ * pemanggil yang mengoper kalimat sebaris memang tidak meminta permukaan.
+ */
+function flatEmpty(empty: React.ReactNode): React.ReactNode {
+  if (isValidElement(empty) && empty.type === EmptyState) {
+    return cloneElement(empty as ReactElement<EmptyStateProps>, { flat: true });
+  }
+  return empty;
+}
+
 export function StaticTable<T>({
   columns,
   rows,
@@ -606,7 +625,7 @@ export function StaticTable<T>({
           <TableRow data-hover="off">
             {/* Tanpa padding supaya EmptyState memakai lebarnya sendiri. */}
             <TableCell colSpan={columns.length} style={{ padding: 0 }}>
-              {empty}
+              {flatEmpty(empty)}
             </TableCell>
           </TableRow>
         ) : (

@@ -162,7 +162,7 @@ export function CustomerSelect({
            menambahkan yang sebenarnya sudah ada. */
         <Typography.Text
           role="alert"
-          style={{ fontSize: token.fontSizeSM, color: token.colorError }}
+          style={{ fontSize: token.fontSizeSM, color: "var(--ant-color-money-negative)" }}
         >
           {t("common.optionsLoadFailed")}
         </Typography.Text>

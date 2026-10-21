@@ -459,7 +459,7 @@ export function LandedCostForm() {
           ) : loadFailed ? (
             /* Kalimat yang BERBEDA dari "belum ada penerimaan": yang satu
                menyuruh menunggu dokumen, yang satu menyuruh memuat ulang. */
-            <Typography.Text role="alert" style={{ color: token.colorError }}>
+            <Typography.Text role="alert" style={{ color: "var(--ant-color-money-negative)" }}>
               {t("common.optionsLoadFailed")}
             </Typography.Text>
           ) : candidates.length === 0 ? (

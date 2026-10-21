@@ -1,23 +1,28 @@
 /**
- * PENJAGA: pelari jalur di `workers/` harus bisa DIMUAT di luar Next.
+ * PENJAGA: setiap skrip `tsx`/`bun` di `package.json` harus bisa DIMUAT di
+ * luar Next — yaitu tidak membawa `server-only/index.js` yang melempar.
  *
  * ══ KEJADIANNYA (21 Okt 2026, gelar main@d1baa77f) ═════════════════════════
- * `svc-ledger` dan `svc-interactive` crash-loop sejak detik pertama:
+ * `svc-ledger` dan `svc-interactive` crash-loop sejak detik pertama, dan tiga
+ * langkah `job-scheduler` (`recurring:publish`, `backup:publish`,
+ * `notify:invoice-due`) gagal setiap putaran:
  *
  *   error: This module cannot be imported from a Client Component module.
  *       at /app/node_modules/server-only/index.js:1:11
  *
- * `@sai/platform/job-queue` dan beberapa `src/lib/company-*` mengimpor
- * `server-only`. Paket itu cuma penanda: export `react-server`-nya `empty.js`,
- * export bawaannya `index.js` yang langsung MELEMPAR. Next memuat kode server
- * di bawah kondisi `react-server`; `bun workers/x.ts` tidak, jadi ia memilih
- * `index.js`. Seluruh tes lulus karena vitest tidak pernah memuat worker-nya
- * lewat resolusi yang dipakai container.
+ * `@sai/platform/job-queue` dan beberapa `src/lib/*` mengimpor `server-only`.
+ * Paket itu cuma penanda: export `react-server`-nya `empty.js`, export
+ * bawaannya `index.js` yang langsung MELEMPAR. Next memuat kode server di
+ * bawah kondisi `react-server`; `tsx`/`bun` biasa tidak. Seluruh tes lulus
+ * karena vitest tidak pernah memuat skrip lewat resolusi yang dipakai
+ * container. Antrean tidak kehilangan apa pun — tapi tidak ada yang
+ * diterbitkan, jadi juga tidak ada cadangan.
  *
- * Maka skrip `jobs:run:*` menjalankan bun dengan `--conditions=react-server`,
- * dan penjaga ini MEMBUNDEL setiap worker dengan kondisi dari skrip itu sendiri
- * (bukan dari daftar salinan di sini), lalu menolak bila `index.js` yang
- * melempar ikut masuk. Menghapus flag dari skrip = tes ini merah.
+ * Perbaikan pertama hanya menjaga `jobs:run:*`, dan karena itu luput tiga
+ * penerbitnya. Maka penjaga ini menyapu SETIAP skrip: skrip yang membundel
+ * `index.js` itu mati saat dimuat, siapa pun yang memanggilnya. Kondisi dibaca
+ * dari perintah skrip itu sendiri — menghapus `--conditions=react-server`
+ * dari skrip = tes ini merah.
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -30,49 +35,63 @@ const PKG = JSON.parse(readFileSync(join(AKAR_REPO, "package.json"), "utf8")) as
   scripts: Record<string, string>;
 };
 
-const pelari = Object.entries(PKG.scripts).filter(
-  ([nama, perintah]) => nama.startsWith("jobs:run:") && /\bworkers\/\S+\.ts\b/.test(perintah),
-);
+const POLA = /^(?:\S+=\S+ )*(?:tsx|bun)((?: --\S+)*) ((?:scripts|workers)\/\S+\.ts)\b/;
 
-describe("pelari jalur dimuat dengan resolusi yang sama dengan container", () => {
-  it("ada pelari yang diperiksa (daftar kosong = penjaga yang lulus diam-diam)", () => {
-    expect(pelari.length).toBeGreaterThanOrEqual(2);
+const skrip = Object.entries(PKG.scripts)
+  .filter(([nama]) => !nama.startsWith("_"))
+  .map(([nama, perintah]) => ({ nama, m: perintah.match(POLA) }))
+  .filter((s): s is { nama: string; m: RegExpMatchArray } => s.m !== null)
+  .map(({ nama, m }) => ({
+    nama,
+    berkas: m[2],
+    kondisi: [...m[1].matchAll(/--conditions[= ](\S+)/g)].map((k) => k[1]),
+  }));
+
+describe("skrip dimuat dengan resolusi yang sama dengan container", () => {
+  it("pelari jalur & penerbit penjadwal ikut tersapu (daftar kosong = lulus diam-diam)", () => {
+    const nama = skrip.map((s) => s.nama);
+    for (const wajib of ["jobs:run:ledger", "jobs:run:interactive", "recurring:publish", "backup:publish"]) {
+      expect(nama).toContain(wajib);
+    }
   });
 
-  it.each(pelari)("%s tidak membawa `server-only/index.js`", (_nama, perintah) => {
-    const berkas = perintah.match(/\bworkers\/\S+\.ts\b/)![0];
-    const kondisi = [...perintah.matchAll(/--conditions[= ](\S+)/g)].map((m) => m[1]);
-    const dir = mkdtempSync(join(tmpdir(), "worker-bundle-"));
+  it("tidak satu skrip pun membundel `server-only/index.js`", () => {
+    const dir = mkdtempSync(join(tmpdir(), "script-bundle-"));
+    const pelanggar: string[] = [];
     try {
-      const keluar = join(dir, "out.js");
-      execFileSync(
-        "bun",
-        [
-          "build",
-          berkas,
-          "--target",
+      for (const { nama, berkas, kondisi } of skrip) {
+        const keluar = join(dir, `${nama.replace(/\W/g, "_")}.js`);
+        execFileSync(
           "bun",
-          ...kondisi.flatMap((k) => ["--conditions", k]),
-          // Klien Prisma & driver tidak relevan dengan resolusi penanda ini,
-          // dan sebagian modulnya tidak terbundel tanpa berkas bangkitan.
-          "--external",
-          "@prisma/*",
-          "--external",
-          "pg",
-          "--external",
-          "@opentelemetry/*",
-          "--outfile",
-          keluar,
-        ],
-        { cwd: AKAR_REPO, stdio: "pipe" },
-      );
-      const isi = readFileSync(keluar, "utf8");
-      expect(
-        isi.includes("// node_modules/server-only/index.js"),
-        `${berkas} memuat server-only/index.js — tambahkan --conditions=react-server ke skripnya`,
-      ).toBe(false);
+          [
+            "build",
+            berkas,
+            "--target",
+            "node",
+            ...kondisi.flatMap((k) => ["--conditions", k]),
+            // Klien Prisma & driver tidak relevan dengan resolusi penanda ini,
+            // dan sebagian modulnya tidak terbundel tanpa berkas bangkitan.
+            "--external",
+            "@prisma/*",
+            "--external",
+            "pg",
+            "--external",
+            "@opentelemetry/*",
+            "--outfile",
+            keluar,
+          ],
+          { cwd: AKAR_REPO, stdio: "pipe" },
+        );
+        if (readFileSync(keluar, "utf8").includes("// node_modules/server-only/index.js")) {
+          pelanggar.push(`${nama} (${berkas})`);
+        }
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  }, 60_000);
+    expect(
+      pelanggar,
+      "skrip ini mati saat dimuat — tambahkan --conditions=react-server ke perintahnya, atau putus impor server-only-nya",
+    ).toEqual([]);
+  }, 180_000);
 });

@@ -170,7 +170,7 @@ describe("layanan `svc-ledger`", () => {
 
   it("menjalankan pelari jalur, bukan skrip langsung", () => {
     expect(svc).toContain('command: ["bun", "run", "jobs:run:ledger"]');
-    expect(PKG.scripts["jobs:run:ledger"]).toBe("bun workers/ledger.ts");
+    expect(PKG.scripts["jobs:run:ledger"]).toBe("bun --conditions=react-server workers/ledger.ts");
   });
 
   it("image `migrator` — ia butuh sumber TS, bukan keluaran `next build`", () => {

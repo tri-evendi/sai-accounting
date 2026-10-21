@@ -37,6 +37,7 @@ import { cashTypeLabels, monthNames } from "@/lib/i18n/labels";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
+import { toFinanceReportRows } from "@/lib/finance-report-rows";
 import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
 
 export const dynamic = "force-dynamic";
@@ -140,14 +141,7 @@ export default async function FinancePage({
     ...b,
     balance: b.debit - b.credit,
   }));
-  const financeTransactions: FinanceReportRow[] = allTransactions.map((tx) => ({
-    date: tx.date.toISOString(),
-    type: tx.type,
-    description: tx.description,
-    currency: tx.currency,
-    debit: Number(tx.debit),
-    credit: Number(tx.credit),
-  }));
+  const financeTransactions: FinanceReportRow[] = toFinanceReportRows(allTransactions);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);

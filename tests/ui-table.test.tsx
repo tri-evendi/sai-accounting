@@ -24,6 +24,7 @@ import { StaticTable } from "@sai/ui/static-table";
 import { qtyColumn, textColumn } from "@sai/ui/table-columns";
 import { moneyColumn } from "@sai/ui/money-column";
 import { Pagination } from "@sai/ui/pagination";
+import { EmptyState } from "@sai/ui/empty-state";
 import { stockMovementColumns, STOCK_MOVEMENT_HEADERS } from "@/lib/statement-layout";
 
 type Row = { doc: string; amount: number | null };
@@ -525,5 +526,28 @@ describe("MoneyCell", () => {
     const html = renderToStaticMarkup(<MoneyCell value={1000} />);
     expect(html).toContain("text-align:right");
     expect(html).toContain("font-variant-numeric:tabular-nums");
+  });
+});
+
+/*
+ * Sapuan visual 21 Okt 2026: `EmptyState` di slot `empty` menggambar tepi dan
+ * bayangannya di DALAM tepi tabel — garis dobel di 43 pemanggil. Tabelnya
+ * sendiri permukaannya, jadi `StaticTable` merendernya `flat`.
+ */
+describe("StaticTable — keadaan kosong tanpa permukaan kedua", () => {
+  it("EmptyState di slot empty dirender flat", () => {
+    const html = renderStatic({ rows: [], empty: <EmptyState title="Belum ada data" /> });
+    expect(html).toContain("Belum ada data");
+    expect(html).not.toMatch(/box-shadow/);
+    expect(html).not.toMatch(/min-height:280px/);
+  });
+
+  it("EmptyState yang berdiri sendiri tetap punya permukaan", () => {
+    const html = renderToStaticMarkup(<EmptyState title="Belum ada data" />);
+    expect(html).toMatch(/box-shadow/);
+  });
+
+  it("isi lain di slot empty diteruskan apa adanya", () => {
+    expect(renderStatic({ rows: [], empty: <span>tidak ada</span> })).toContain("<span>tidak ada</span>");
   });
 });

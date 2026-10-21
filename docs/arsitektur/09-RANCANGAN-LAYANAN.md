@@ -3,7 +3,8 @@
 > 🔶 **Seluruh dokumen ini RANCANGAN, bukan keadaan.** Delapan dokumen lain
 > menggambarkan yang sedang berjalan; yang ini menggambarkan yang hendak dituju.
 > Tidak ada bagian di sini yang sudah dibangun, kecuali yang ditandai ✅.
-> Disusun 19 Oktober 2026.
+> Disusun 19 Oktober 2026. Tahap 1a–1c **melayani produksi sejak 21 Okt 2026**
+> (`main@a8d2749d`, 0.10.0) — jalannya gelar di [07 §5](./07-RIWAYAT.md).
 
 ## 1. Yang patah lebih dulu saat tenant bertambah
 
@@ -14,7 +15,7 @@ jumlah tenant.** Keempatnya hari ini berurutan dan terikat *wall-clock*:
 |---|---|---|
 | Migration | ✅ *bounded concurrency* (tahap 1b) — masih di gerbang pemblokir | gerbangnya yang jadi pembatas, bukan jumlah langkahnya; §6 |
 | Cadangan | ✅ satu objek `pg_dump -Fc` **per basis data** (tahap 1b) | satu objek per tenant per hari — ongkos penyimpanan tumbuh linear, dan itu memang ongkos yang benar |
-| Kesesuaian data | per basis data, mingguan, **berurutan** | jendela mingguan menjadi pembatas |
+| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6) — masih langkah di `job-conformance` | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup |
 | Penjadwal | delapan langkah berurutan, tiap jam | satu putaran tidak muat dalam satu jam |
 
 Yang hilang dulu bukan hanya waktu, tapi satu kemampuan: **`pg_dumpall` berarti
@@ -455,8 +456,11 @@ perusahaan siap" menjadi "perusahaan ini siap" — satu yang gagal tidak lagi
 menahan 16 lainnya. Harganya: struktur lama dan baru hidup berdampingan beberapa
 rilis, jadi fase `contract` **wajib punya nomor issue saat `expand` ditulis**.
 
-⚠ Aturan ini belum berlaku hari ini. Pada 17 perusahaan gerbang pemblokir masih
-murah — detik, bukan menit. Ia harus menjadi aturan **sebelum** jumlahnya
+✅ Aturannya **berlaku sejak 20 Okt 2026** — ditegakkan `tests/expand-contract.test.ts`,
+rinciannya di `docs/DATABASE.md` §7.1. Yang belum adalah **memindahkan
+penerapannya** keluar dari gerbang pemblokir, dan pemicunya ongkos: pada 17
+perusahaan gerbang itu masih murah — **24 detik** pada gelar 21 Okt 2026
+(`COMPANY_MIGRATE_CONCURRENCY=2`), detik, bukan menit. Ia dijadikan aturan **sebelum** jumlahnya
 membuatnya mahal, karena mengubah kebiasaan migration lebih lambat daripada
 menambah tenant.
 
@@ -815,7 +819,7 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 
 | Bidang | Hilang |
 |---|---|
-| **Versi** | **semver + tag tetap + definisi GA** (hari ini `0.9.0`, tag `latest`) |
+| **Versi** | **definisi GA**. Semver + tag versi sudah ada (tahap 1a: setiap image juga ber-tag versi `package.json`, kini `0.10.0`) — yang belum adalah janji apa yang membuat sebuah versi "umum" |
 | ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). Prasyarat §6 karena itu terpenuhi; yang tersisa dari §6 adalah memindahkan penerapannya keluar dari gerbang pemblokir |
 | **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
 | **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |

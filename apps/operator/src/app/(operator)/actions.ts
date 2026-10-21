@@ -21,7 +21,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { writeOperatorAuditLog } from "@op/lib/operator/audit";
-import { verifyOperatorLogin } from "@op/lib/operator/credentials";
+import { operatorMfaOff, verifyOperatorLogin } from "@op/lib/operator/credentials";
 import { findDbOperatorCredential, recordOperatorLogin } from "@op/lib/operator/operator-accounts";
 import { controlDb } from "@sai/core/control-db";
 import { operatorPlaneViolation } from "@op/lib/operator/guard";
@@ -43,11 +43,14 @@ export async function operatorLogin(
   formData: FormData
 ): Promise<OperatorLoginState> {
   const t = await getT();
+  /* Pesan gagal tidak menyebut kode autentikator yang medannya tidak ada:
+   * dengan `OPERATOR_MFA=off` formulirnya hanya punya nama + sandi. */
+  const failed = t(operatorMfaOff() ? "operator.login.failedNoMfa" : "operator.login.failed");
 
   /* Tembok bidang: host salah / IP tak terdaftar → jawaban seragam, tanpa
    * membocorkan bahwa konsolnya ada. */
   if ((await operatorPlaneViolation()) !== null) {
-    return { error: t("operator.login.failed") };
+    return { error: failed };
   }
 
   const headerStore = await headers();
@@ -77,7 +80,7 @@ export async function operatorLogin(
       action: "operator.login.failed",
       ipAddress: ip,
     });
-    return { error: t("operator.login.failed") };
+    return { error: failed };
   }
 
   const token = issueOperatorToken(account.name, new Date(), process.env, {
@@ -90,7 +93,7 @@ export async function operatorLogin(
     console.error(
       "[operator] OPERATOR_SESSION_SECRET tidak diset / kurang dari 32 karakter — konsol menolak semua login."
     );
-    return { error: t("operator.login.failed") };
+    return { error: failed };
   }
 
   const secure = headerStore.get("x-forwarded-proto") === "https";

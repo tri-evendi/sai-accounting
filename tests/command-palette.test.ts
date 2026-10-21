@@ -18,6 +18,8 @@
  * ditawarkan?") sepenuhnya ditentukan fungsi murni ini.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { NAV_HOME, isNavItemVisible, visibleNavGroups, visibleNavHrefs } from "@/lib/nav";
 import { PERMISSIONS } from "@sai/core/authz";
@@ -93,5 +95,21 @@ describe("palet perintah memakai daftar yang sama dengan menu samping", () => {
       const hrefs = paletteHrefs({ role, accountantMode: null });
       expect(new Set(hrefs).size, role).toBe(hrefs.length);
     }
+  });
+});
+
+/**
+ * Sapuan visual 21 Okt 2026: ⌘K membuka palet dengan fokus di tombol tutup,
+ * jadi mengetik dan panah tidak berbuat apa-apa sampai pengguna menekan Tab.
+ * Komponennya tidak dirender di sini (lihat kepala berkas), jadi yang dikunci
+ * adalah kabelnya: kait fokus dialog dan ref pada kolom ketik.
+ */
+describe("palet: fokus awal di kolom ketik", () => {
+  const src = readFileSync(join(__dirname, "..", "src", "components", "layout", "command-palette.tsx"), "utf8");
+
+  it("DialogContent memanggil kait fokus, dan kait itu memfokuskan kolom ketik", () => {
+    expect(src).toMatch(/<DialogContent[^>]*onOpenAutoFocus=\{focusInput\}/);
+    expect(src).toMatch(/<CommandInput[^>]*ref=\{inputRef\}/);
+    expect(src).toContain("inputRef.current?.focus()");
   });
 });

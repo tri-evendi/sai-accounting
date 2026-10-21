@@ -253,6 +253,20 @@ describe("OPERATOR_MFA=off — formulirnya ikut, bukan hanya servernya", () => {
     expect(page).toMatch(/mfaOff=\{operatorMfaOff\(\)\}/);
   });
 
+  it("teksnya ikut: tanpa MFA tidak menjanjikan kode autentikator", () => {
+    /*
+     * Sapuan visual 21 Okt 2026: dengan MFA mati, medan TOTP sudah hilang
+     * tetapi kalimat di bawah judul masih berbunyi "kata sandi dan kode
+     * autentikator wajib", dan pesan gagalnya menyuruh memeriksa kode yang
+     * tidak pernah diminta. Teks penggantinya sengaja netral — halaman login
+     * publik tidak mengumumkan bahwa MFA mati.
+     */
+    expect(form).toMatch(/mfaOff \? "operator\.login\.descriptionNoMfa" : "operator\.login\.description"/);
+    const actions = readFileSync(join(process.cwd(), "apps/operator/src/app/(operator)/actions.ts"), "utf8");
+    expect(actions).toMatch(/operatorMfaOff\(\) \? "operator\.login\.failedNoMfa"/);
+    expect(actions).not.toContain('t("operator.login.failed")');
+  });
+
   it("sakelarnya dibaca di server — bukan diseberangkan sebagai NEXT_PUBLIC", () => {
     // `NEXT_PUBLIC_` akan menjahit keadaan MFA ke setiap bundel yang dikirim
     // ke SEMUA orang, bukan cuma pengunjung halaman login operator.

@@ -4672,12 +4672,14 @@
     "login": {
       "heading": "运营控制台登录",
       "description": "与客户应用完全分离的登录通道——必须提供密码和验证器代码。",
+      "descriptionNoMfa": "与客户应用完全分离的登录通道。",
       "username": "账号名",
       "password": "密码",
       "totp": "验证器代码（6 位）",
       "totpHint": "来自身份验证器应用（TOTP）。MFA 为强制项——没有 TOTP 的账号永远无法登录。",
       "submit": "登录",
       "failed": "登录失败。请检查账号名、密码和验证器代码。",
+      "failedNoMfa": "登录失败。请检查账号名和密码。",
       "rateLimited": "尝试次数过多，请几分钟后再试。"
     },
     "tenants": {

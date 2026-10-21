@@ -27,6 +27,7 @@ import {
   SIDER_BG_DARK,
   BORDER_TOKENS_DARK,
   BORDER_TOKENS_LIGHT,
+  BRAND_PRIMARY_BG_LIGHT,
   BRAND_PRIMARY_DARK,
   BRAND_PRIMARY_LIGHT,
   BRAND_SOLID_DARK,
@@ -45,6 +46,7 @@ import {
   TABLE_HEAD_BG_LIGHT,
   borderTokens,
   brandPrimary,
+  brandPrimaryBgTokens,
   brandTextTokens,
   dangerButtonTokens,
   moneyPalette,
@@ -1534,5 +1536,50 @@ describe("moneyTokens / moneyPalette", () => {
     expect(moneyPalette({ colorBgContainer: DARK.colorBgContainer })).toEqual(
       MONEY_TOKENS_DARK
     );
+  });
+});
+
+/*
+ * Sapuan visual 21 Okt 2026: `colorPrimaryBg` turunan navy keluar ABU-ABU
+ * (`#959a9e`) di tema terang — panel ringkasan laporan, opsi terpilih `Select`,
+ * dan 23 pemanggil lain. Yang diukur di sini nilai TERPAKAI (seed → map →
+ * alias), bukan konstanta.
+ */
+describe("tint permukaan merek (colorPrimaryBg)", () => {
+  const terpakai = (resolved: "light" | "dark") =>
+    theme.getDesignToken({
+      algorithm: resolved === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      token: { colorPrimary: brandPrimary(resolved), ...brandPrimaryBgTokens(resolved) },
+    });
+
+  it("turunan AntD dari navy memang abu-abu sedang — sebab override ini ada", () => {
+    const turunan = theme.getDesignToken({
+      algorithm: theme.defaultAlgorithm,
+      token: { colorPrimary: BRAND_PRIMARY_LIGHT },
+    });
+    expect(contrast(turunan.colorPrimaryBg, "#ffffff")).toBeGreaterThan(2.5);
+  });
+
+  it("tema terang: latar & hover sungguh TINT — dekat putih, teks tetap jauh di atas 4,5:1", () => {
+    const t = terpakai("light");
+    expect(t.colorPrimaryBg).toBe(BRAND_PRIMARY_BG_LIGHT.colorPrimaryBg);
+    expect(t.colorPrimaryBgHover).toBe(BRAND_PRIMARY_BG_LIGHT.colorPrimaryBgHover);
+    for (const bg of [t.colorPrimaryBg, t.colorPrimaryBgHover]) {
+      expect(contrast(bg, "#ffffff")).toBeLessThan(1.35);
+      expect(contrast(t.colorText, bg)).toBeGreaterThan(12);
+      expect(contrast(BRAND_PRIMARY_LIGHT, bg)).toBeGreaterThan(8);
+    }
+    // Opsi terpilih `Select` & baris terpilih tabel mengikuti lewat alias.
+    expect(t.controlItemBgActive).toBe(t.colorPrimaryBg);
+  });
+
+  it("tema gelap tetap turunan AntD", () => {
+    expect(brandPrimaryBgTokens("dark")).toEqual({});
+    expect(contrast(terpakai("dark").colorText, terpakai("dark").colorPrimaryBg)).toBeGreaterThan(7);
+  });
+
+  it("provider benar-benar mendaftarkannya", () => {
+    const provider = readFileSync(join(process.cwd(), "packages/ui/src/providers/antd-provider.tsx"), "utf8");
+    expect(provider).toContain("...brandPrimaryBgTokens(resolved)");
   });
 });

@@ -110,7 +110,19 @@ export function PageHeader({
           )}
         </div>
         {actions && (
-          <Flex wrap align="center" gap={token.marginXS} style={{ flexShrink: 0 }}>
+          /* `maxWidth: 100%`, BUKAN `flexShrink: 0` saja: tanpa batas lebar,
+             wadah ini selebar SEMUA tombolnya dalam satu baris, jadi `wrap` di
+             dalamnya tidak pernah sempat bekerja. Diukur di Chromium 21 Okt
+             2026 pada 375px: empat halaman (stok, rincian faktur, aset tetap,
+             neraca) menggulung mendatar dan "Hapus Tagihan" + "Kembali" berada
+             sepenuhnya di luar layar. Dengan batas ini wadahnya turun ke baris
+             sendiri di bawah judul, lalu tombolnya membungkus di dalamnya. */
+          <Flex
+            wrap
+            align="center"
+            gap={token.marginXS}
+            style={{ flexShrink: 0, maxWidth: "100%" }}
+          >
             {actions}
           </Flex>
         )}

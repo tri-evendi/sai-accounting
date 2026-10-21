@@ -54,6 +54,7 @@ import {
   PRIMARY_BUTTON_DARK,
   borderTokens,
   brandPrimary,
+  brandPrimaryBgTokens,
   brandSolid,
   brandSolidActive,
   brandSolidHover,
@@ -180,6 +181,9 @@ export function AntdProvider({
          * merek non-tautan tidak bisa berpisah warna.
          */
         colorPrimary: brandPrimary(resolved),
+        /* Tint permukaan merek — turunan AntD dari navy keluar abu-abu di tema
+           terang. Lihat `brandPrimaryBgTokens` di antd-tokens. */
+        ...brandPrimaryBgTokens(resolved),
         /* Bibit nada merek — peran permukaan, lihat `brandTone` di antd-tokens. */
         colorBrandTone: brandTone(resolved),
         /* Isian merek yang memikul teks TERANG (lambang). Berbeda dari

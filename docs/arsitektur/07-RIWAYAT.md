@@ -1,10 +1,10 @@
 # 07 — Riwayat & Keputusan Lama
 
-> Keadaan 18 Okt 2026 (`main@ca0cd038`) · [indeks](./README.md)
+> Keadaan 21 Okt 2026 (`main@a8d2749d`) · [indeks](./README.md)
 
 Kenapa sistem ini berbentuk seperti sekarang. Isinya hanya **keputusan yang
-masih mengikat** dan **apa yang masih terbuka** dari empat pekerjaan besar
-(migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku); jalannya
+masih mengikat** dan **apa yang masih terbuka** dari lima pekerjaan besar
+(migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar tahap 1a–1c); jalannya
 pekerjaan ada di riwayat git.
 
 ## 1. Migrasi ke PostgreSQL
@@ -165,3 +165,43 @@ uji dikecualikan dari laporan kesesuaian · ❓ apakah 3 buku `kosong` + 4
 `semai-dibersihkan` dirapikan. Modul klasifikasinya tidak pernah menyarankan
 penghapusan: "tampaknya tidak dipakai" bukan dasar yang memadai untuk tindakan
 yang tidak bisa dibalik.
+
+## 5. Tahap 1a–1c digelar (21 Okt 2026)
+
+Kode tahap 1a–1c ([09 §9](./09-RANCANGAN-LAYANAN.md)) selesai 20 Okt, tetapi
+**baru melayani 21 Okt** (`main@a8d2749d`, label **0.10.0**): tiga layanan baru
+(`svc-ledger`, `svc-interactive`, `svc-tenant`), image kelima `-integrator`,
+migration `control` 0005–0007, volume `hasil`, dan `job-backup` turun menjadi
+perkakas (profil `perkakas`, container lamanya dibuang dengan `rm -sf` — `up -d
+--no-deps` tidak menghentikannya sendiri).
+
+Gelar pertama (`main@d1baa77f`) **rusak di dua lapis, dan seluruh gerbang
+hijau**: `svc-ledger` & `svc-interactive` crash-loop, dan tiga langkah
+penjadwal (`recurring:publish`, `backup:publish`, `notify:invoice-due`) gagal
+setiap putaran. Sebabnya satu: `@sai/platform/job-queue` mengimpor
+`server-only`, yang di luar Next memilih export bawaan yang **melempar**
+(Next memuat kode server dengan kondisi `react-server` → `empty.js`). Antrean
+tidak kehilangan apa pun — tetapi tidak ada yang diterbitkan, jadi juga tidak
+ada cadangan.
+
+| Keputusan | Alasan |
+|---|---|
+| Skrip yang memuat kode server berjalan dengan `--conditions=react-server` | Memutus impor `server-only` dari setiap modul yang disentuh skrip tidak tahan lama — `job-queue` memang sisi-server. Selain penanda itu, kondisi ini hanya menukar build `react` yang dipakai `next/dist/server` (diperiksa lewat selisih daftar modul bundel) |
+| Penjaga menyapu **setiap** skrip `tsx`/`bun` di `package.json` (`tests/worker-server-only.test.ts`) | Perbaikan pertama hanya menjaga `jobs:run:*` dan meluputkan tiga penerbit — cakupan penjaga yang sempit itulah cacatnya |
+
+Pelajaran yang masih berlaku — sejalan dengan pelajaran 1 dan 3 di §1:
+**vitest tidak pernah memuat skrip lewat resolusi yang dipakai container.**
+Untuk layanan baru, bukti "berjalan" adalah log container pertamanya, bukan
+gerbang.
+
+Terbukti sesudah gelar: 16 `ledger.recurring` selesai (p95 ~200 ms), cadangan
+per basis data pertama di produksi (22 objek, status `local`) lulus
+`prove-backup-restore` dengan objek sendiri untuk ke-17 PT, kesesuaian 1.439
+temuan (= sebelum rilis).
+
+Pemicu tahap 1d **diukur, belum terpenuhi** (21 Okt): `app-customer` ~235 MiB
+tanpa `--max-old-space-size` saat jalan, dan ekspor besar kini di proses
+`svc-interactive` (~83 MiB), bukan di event loop aplikasi. Catatan sampingan:
+mesin ini kini **7,4 GB RAM** — angka ~3,6 GB di dokumen lain adalah potret
+lama; aturan "jangan build di server" tetap berlaku karena mesinnya dibagi
+dengan aplikasi lain.

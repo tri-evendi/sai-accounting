@@ -34,9 +34,10 @@ export function ContractPDFButton({
   /* DARI SERVER, dan ia mengirim ID — bukan muatan kontrak. Kontrak adalah
      dokumen yang dikirim ke pembeli; angka di atas kertas diturunkan dari BUKU
      (rancangan §5). */
+  const t = useT();
   return (
     <PdfDocumentButton
-      title={`Kontrak ${contractNo}`}
+      title={t("pdf.titleContract", { no: contractNo })}
       filename={`Contract_${contractNo}.pdf`}
       generate={() => fetchDocumentPdfBlob("contract", contractId)}
     />
@@ -61,7 +62,7 @@ export function ShippingDocButton({
   return (
     <PdfDocumentButton
       label={t("nav.items.deliveryOrders")}
-      title={`Surat Jalan ${contractNo}`}
+      title={t("pdf.titleShippingDoc", { no: contractNo })}
       filename={`SuratJalan_${contractNo}.pdf`}
       generate={() => fetchDocumentPdfBlob("contract-shipping", contractId)}
     />
@@ -77,7 +78,7 @@ export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }
   return (
     <PdfDocumentButton
       label={t("pdf.previewStock")}
-      title="Laporan Stok"
+      title={t("pdf.titleStockReport")}
       filename={`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       disabled={items.length === 0}
       generate={() => fetchReportPdfBlob("stock", { items })}
@@ -131,7 +132,7 @@ export function FinanceReportPDFButton({
   return (
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
-      title="Laporan Kas & Bank"
+      title={t("pdf.titleFinanceReport")}
       filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
       generate={() => fetchReportPdfBlob("finance", { balances, transactions })}
     />
@@ -158,7 +159,7 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
   return (
     <PdfDocumentButton
       label={t("pdf.previewAndPrint")}
-      title="Laporan Keuangan"
+      title={t("pdf.titleFinancialStatements")}
       filename={`Laporan_${dateSlug}.pdf`}
       /* DARI SERVER sejak tahap 1c (rancangan §5): peramban tidak lagi memuat
          `statement-pdf` (1.097 baris) beserta jsPDF hanya untuk menggambar
@@ -233,9 +234,10 @@ export function InvoicePDFButton({
    * nama berkas di layar; nama berkas yang sungguh dipakai datang dari
    * `Content-Disposition` milik servernya.
    */
+  const t = useT();
   return (
     <PdfDocumentButton
-      title={`Faktur ${invoiceNo}`}
+      title={t("pdf.titleInvoice", { no: invoiceNo })}
       filename={`Invoice_${invoiceNo}.pdf`}
       generate={() => fetchDocumentPdfBlob("invoice", invoiceId)}
     />

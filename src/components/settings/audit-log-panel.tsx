@@ -184,7 +184,7 @@ export function AuditLogPanel() {
       </CardHeader>
       <CardContent>
         {error && (
-          <p role="alert" style={{ marginBottom: token.margin, color: token.colorError }}>
+          <p role="alert" style={{ marginBottom: token.margin, color: "var(--ant-color-money-negative)" }}>
             {error}
           </p>
         )}

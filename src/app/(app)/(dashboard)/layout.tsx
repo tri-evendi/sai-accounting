@@ -17,6 +17,7 @@
  * satu-satunya pergeseran yang disengaja di sini.
  */
 import { useState } from "react";
+import { SkipLink, SKIP_TARGET_PROPS } from "@sai/ui/skip-link";
 import { useParams } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { SessionProvider } from "next-auth/react";
@@ -109,6 +110,10 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
      * penuh dasbor.
      */
     <Layout hasSider style={{ height: "100vh" }}>
+      {/* T13 #205: elemen yang bisa difokus PERTAMA, sebelum menu samping —
+          tanpa ini setiap pemuatan halaman memaksa pengguna papan ketik
+          menyusuri seluruh menu dulu. */}
+      <SkipLink label={t("common.skipToContent")} />
       <Sidebar
         role={role}
         accountantMode={session.user.accountantMode}
@@ -129,6 +134,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             permintaan. Padding tepi tetap agar tidak menempel ke sisi.
             `Layout.Content` merender `<main>`-nya sendiri. */}
         <Layout.Content
+          {...SKIP_TARGET_PROPS}
           style={{
             flex: 1,
             minHeight: 0,

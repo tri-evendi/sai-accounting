@@ -331,7 +331,8 @@ export function NewContractForm({
               />
               {periodIssue && (
                 /* Periode terkunci: ikon gembok + kalimat. Warnanya
-                   `colorError`; ikonnya penanda kedua supaya maknanya tidak
+                   `colorMoneyNegative` (bukan `colorError`, yang hanya 3,00:1
+                   sebagai teks — T1 #205); ikonnya penanda kedua supaya maknanya tidak
                    bergantung warna. */
                 <Typography.Paragraph
                   role="alert"
@@ -342,7 +343,7 @@ export function NewContractForm({
                     alignItems: "flex-start",
                     gap: token.marginXXS,
                     fontSize: token.fontSizeSM,
-                    color: token.colorError,
+                    color: "var(--ant-color-money-negative)",
                   }}
                 >
                   <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />

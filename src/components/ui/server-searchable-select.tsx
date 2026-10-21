@@ -223,7 +223,7 @@ export function ServerSearchableSelect({
             /* Kalimat yang BERBEDA, dan sengaja: "tidak ada yang cocok"
                menyuruh pengguna mengetik kata lain — nasihat yang mustahil
                berhasil ketika permintaannya sendiri yang ditolak. */
-            <span style={{ color: "var(--ant-color-error)" }}>
+            <span style={{ color: "var(--ant-color-money-negative)" }}>
               {t("common.optionsLoadFailed")}
             </span>
           ) : (

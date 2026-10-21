@@ -699,7 +699,7 @@ export function NewInvoiceForm({
                       alignItems: "flex-start",
                       gap: token.marginXXS,
                       fontSize: token.fontSizeSM,
-                      color: token.colorError,
+                      color: "var(--ant-color-money-negative)",
                     }}
                   >
                     <LockOutlined aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
@@ -854,7 +854,7 @@ export function NewInvoiceForm({
                           penanda tunggal. */}
                       <span
                         style={{
-                          color: over ? token.colorError : token.colorTextSecondary,
+                          color: over ? "var(--ant-color-money-negative)" : token.colorTextSecondary,
                           fontWeight: over ? token.fontWeightStrong : undefined,
                         }}
                       >

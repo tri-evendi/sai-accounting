@@ -72,6 +72,7 @@ import {
 
 import { Badge } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
+import { SkipLink, SKIP_TARGET_PROPS } from "@sai/ui/skip-link";
 import { APP_VERSION } from "@sai/core/constants";
 import {
   BORDER_TOKENS_DARK,
@@ -124,6 +125,8 @@ export interface OperatorShellLabels {
   host: string;
   mainMenu: string;
   closeMenu: string;
+  /** Tautan lewati-ke-isi (T13 #205). */
+  skipToContent: string;
 }
 
 interface OperatorShellProps {
@@ -318,6 +321,8 @@ export function OperatorShell({ children, nav, labels, logout }: OperatorShellPr
 
   return (
     <Layout style={{ height: "100vh" }}>
+      {/* T13 #205 — sebelum menu samping; pola yang sama dengan dasbor. */}
+      <SkipLink label={labels.skipToContent} />
       {lebar ? (
         panel
       ) : (
@@ -430,6 +435,7 @@ export function OperatorShell({ children, nav, labels, logout }: OperatorShellPr
             supaya tabel tenant tujuh kolom berhenti menggulung mendatar di
             monitor lebar (lihat kepala berkas). */}
         <Layout.Content
+          {...SKIP_TARGET_PROPS}
           style={{
             flex: 1,
             minHeight: 0,

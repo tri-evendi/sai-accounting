@@ -20,6 +20,16 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.10.3 — 2026-10-22 — belum digelar
+
+Laporan kini bisa dicari langsung dari pencarian cepat (Ctrl+K).
+
+### Baru
+
+- Ketik nama laporan di pencarian cepat (Ctrl+K / ⌘K), misalnya “neraca” atau “arus kas”, untuk langsung membukanya. Hanya laporan yang boleh Anda buka yang ditampilkan.
+
+---
+
 ## 0.10.2 — 2026-10-22 (b76a90f)
 
 Pencarian cepat (Ctrl+K) langsung bisa diketik, angka di grafik terbaca di tema gelap, dan sumbu grafik Arus Kas memakai format rupiah.

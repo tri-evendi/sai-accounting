@@ -73,6 +73,18 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.10.3",
+    tanggal: "2026-10-22",
+    ringkas: "Laporan kini bisa dicari langsung dari pencarian cepat (Ctrl+K).",
+    butir: [
+      {
+        jenis: "baru",
+        teks:
+          "Ketik nama laporan di pencarian cepat (Ctrl+K / \u2318K), misalnya \u201cneraca\u201d atau \u201carus kas\u201d, untuk langsung membukanya. Hanya laporan yang boleh Anda buka yang ditampilkan.",
+      },
+    ],
+  },
+  {
     versi: "0.10.2",
     tanggal: "2026-10-22",
     sha: "b76a90f",

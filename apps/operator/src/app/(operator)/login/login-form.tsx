@@ -54,7 +54,11 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
                 {t("operator.login.heading")}
               </Title>
             </Flex>
-            <Text type="secondary">{t("operator.login.description")}</Text>
+            <Text type="secondary">
+              {/* Tanpa MFA kalimatnya tidak boleh menjanjikan kode autentikator —
+                  tetapi juga tidak mengumumkan bahwa MFA mati. */}
+              {t(mfaOff ? "operator.login.descriptionNoMfa" : "operator.login.description")}
+            </Text>
           </Flex>
 
           <form action={formAction}>

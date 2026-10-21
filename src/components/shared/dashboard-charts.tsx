@@ -157,6 +157,21 @@ function tooltipLabelStyle(token: ChartToken): React.CSSProperties {
 }
 
 /**
+ * Baris tooltip untuk grafik yang warnanya dipasang per BATANG lewat `<Cell>`.
+ *
+ * `DefaultTooltipContent` mewarnai barisnya `entry.color`, dan warna itu
+ * diambil dari `fill` milik `<Bar>` — bukan dari `<Cell>` di dalamnya. Batang
+ * yang nadanya hanya hidup di `Cell` (waterfall laba/rugi, umur piutang) tidak
+ * punya `entry.color`, sehingga recharts jatuh ke `#000` bawaannya: di tema
+ * gelap itu teks hitam di atas `colorBgElevated`, ~1,2:1 — nominalnya tak
+ * terbaca sama sekali (terlihat di sapuan visual 21 Okt 2026). Grafik yang
+ * barisnya memang berwarna seri tidak memakai ini.
+ */
+export function tooltipItemStyle(token: ChartToken): React.CSSProperties {
+  return { color: token.colorText };
+}
+
+/**
  * Teks legenda dibuat NETRAL, bukan sewarna serinya seperti bawaan recharts
  * (`DefaultLegendContent` menyalin `entry.color` ke label). Legenda adalah
  * KUNCI — tugasnya menempelkan nama pada sebuah kotak warna, dan namanya
@@ -200,13 +215,6 @@ function ChartEmpty({ message }: { message: string }) {
       <Typography.Text type="secondary">{message}</Typography.Text>
     </Flex>
   );
-}
-
-function formatCompact(value: number): string {
-  if (Math.abs(value) >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-  return String(value);
 }
 
 function formatFull(value: number): string {
@@ -471,9 +479,9 @@ export function CashFlowChart({ data, currency }: CashFlowChartProps) {
         <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} vertical={false} />
         <XAxis dataKey="month" tick={{ fontSize: 11, fill: palette.tick }} axisLine={false} tickLine={false} />
         <YAxis
-          tick={{ fontSize: 10, fill: palette.tick }}
-          tickFormatter={formatCompact}
-          width={52}
+          tick={{ fontSize: 11, fill: palette.tick }}
+          tickFormatter={(v: number) => compactMoney(Number(v))}
+          width={72}
           axisLine={false}
           tickLine={false}
         />
@@ -576,6 +584,7 @@ export function AgingChart({
           cursor={{ fill: palette.cursor }}
           contentStyle={tooltipSurface(token)}
           labelStyle={tooltipLabelStyle(token)}
+          itemStyle={tooltipItemStyle(token)}
         />
         <Bar dataKey="amount" name={t("charts.seriesOutstanding")} radius={[4, 4, 0, 0]} maxBarSize={64}>
           {data.map((d, i) => (
@@ -725,6 +734,7 @@ export function IncomeWaterfallChart({
           cursor={{ fill: palette.cursor }}
           contentStyle={tooltipSurface(token)}
           labelStyle={tooltipLabelStyle(token)}
+          itemStyle={tooltipItemStyle(token)}
         />
         {/* Batang pengangkat: TIDAK TERLIHAT dan tidak masuk tooltip. */}
         <Bar dataKey="base" stackId="wf" fill="transparent" isAnimationActive={false} legendType="none" tooltipType="none" />

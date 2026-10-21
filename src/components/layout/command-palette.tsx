@@ -24,7 +24,7 @@
  * server. Palet hanya menentukan apa yang pantas ditawarkan.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppRouter } from "@sai/ui/app-link";
 
 import {
@@ -69,6 +69,17 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
   const router = useAppRouter();
   const t = useT();
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /*
+   * Fokus jatuh ke kolom ketik, bukan ke tombol tutup. Tanpa ini perangkap
+   * fokus rc-dialog memilih elemen pertama yang bisa difokus di panel — tombol
+   * ✕ — sehingga ⌘K lalu mengetik "neraca" tidak menulis apa pun, dan panah
+   * atas/bawah tidak menggeser sorotan: cmdk hanya mendengar tombol dari
+   * dalam dirinya. Terlihat di sapuan visual 21 Okt 2026; pola yang sama
+   * dengan `focusFirstControl` di `ConfirmDialog`.
+   */
+  const focusInput = useCallback(() => inputRef.current?.focus(), []);
 
   const allowed = useEffectivePermissions(role);
   const user = useMemo(
@@ -106,13 +117,13 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
+      <DialogContent onOpenAutoFocus={focusInput}>
         {/* Judul dibutuhkan `aria-labelledby` dialog untuk pengumuman pembaca
             layar; disembunyikan secara visual karena kolom ketiknya sudah
             menjelaskan dirinya. */}
         <DialogTitle style={HANYA_PEMBACA_LAYAR}>{t("commandPalette.title")}</DialogTitle>
         <Command>
-          <CommandInput placeholder={t("commandPalette.placeholder")} />
+          <CommandInput ref={inputRef} placeholder={t("commandPalette.placeholder")} />
           <CommandList>
             <CommandEmpty>{t("commandPalette.empty")}</CommandEmpty>
 

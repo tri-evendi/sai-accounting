@@ -4672,12 +4672,14 @@
     "login": {
       "heading": "Operator Console Sign-in",
       "description": "A sign-in plane separate from the customer app — password and authenticator code required.",
+      "descriptionNoMfa": "A sign-in plane separate from the customer app.",
       "username": "Account name",
       "password": "Password",
       "totp": "Authenticator code (6 digits)",
       "totpHint": "From your authenticator app (TOTP). MFA is mandatory — accounts without TOTP can never sign in.",
       "submit": "Sign in",
       "failed": "Sign-in failed. Check the account name, password, and authenticator code.",
+      "failedNoMfa": "Sign-in failed. Check the account name and password.",
       "rateLimited": "Too many attempts. Try again in a few minutes."
     },
     "tenants": {

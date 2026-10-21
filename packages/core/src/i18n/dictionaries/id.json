@@ -4671,13 +4671,15 @@
     "logout": "Keluar",
     "login": {
       "heading": "Masuk Konsol Operator",
-      "description": "Bidang masuk terpisah dari aplikasi pelanggan — kata sandi dan kode autentikator wajib.",
+      "description": "Bidang masuk terpisah dari aplikasi customer — kata sandi dan kode autentikator wajib.",
+      "descriptionNoMfa": "Bidang masuk terpisah dari aplikasi customer.",
       "username": "Nama akun",
       "password": "Kata sandi",
       "totp": "Kode autentikator (6 digit)",
       "totpHint": "Dari aplikasi authenticator (TOTP). MFA wajib — akun tanpa TOTP tidak pernah bisa masuk.",
       "submit": "Masuk",
       "failed": "Login gagal. Periksa nama akun, kata sandi, dan kode autentikator.",
+      "failedNoMfa": "Login gagal. Periksa nama akun dan kata sandi.",
       "rateLimited": "Terlalu banyak percobaan. Coba lagi beberapa menit lagi."
     },
     "tenants": {
@@ -5347,7 +5349,7 @@
     },
     "brand": {
       "heading": "Logo produk",
-      "description": "Lambang SAI yang tampil di aplikasi pelanggan, konsol ini, ikon tab peramban, ikon layar depan, dan pratinjau tautan.",
+      "description": "Lambang SAI yang tampil di aplikasi customer, konsol ini, ikon tab peramban, ikon layar depan, dan pratinjau tautan.",
       "current": "Yang sedang dipakai",
       "usingDefault": "Lambang bawaan dari kode",
       "usingCustom": "Diunggah {by} pada {at}",

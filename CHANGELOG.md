@@ -20,6 +20,28 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
+## 0.10.0 — 2026-10-21 (a8d2749)
+
+Logo perusahaan Anda kini tercetak di dokumen, gangguan dan pemeliharaan diumumkan langsung di dalam aplikasi, dan setiap dokumen serta laporan PDF kini dibuat dari data yang tersimpan — bukan dari apa yang kebetulan tampil di layar.
+
+### Baru
+
+- Logo perusahaan bisa diunggah di Pengaturan. Faktur, kontrak, surat jalan, dan nota retur berikutnya dicetak dengan logo itu; dokumen yang sudah dikirim tidak berubah, dan menghapus logo hanya berlaku untuk dokumen sesudahnya.
+- Jadwal pemeliharaan dan gangguan layanan kini diumumkan sebagai pita di bagian atas aplikasi dan di halaman Status. Pemeliharaan sudah tampil hingga tiga hari sebelum dimulai, dan gangguan yang sudah pulih masih tercantum sehari penuh sesudahnya.
+
+### Berubah
+
+- Faktur, kontrak, surat jalan, dan nota retur kini dicetak oleh server dari data yang tersimpan di buku, sama persis dengan lampiran yang dikirim lewat surel. Sebelumnya PDF digambar di peramban dari isi halaman yang sedang terbuka, sehingga hasilnya bisa bergantung pada perangkat yang dipakai.
+- PDF laporan — laporan keuangan, kas, stok, dan lembar opname — juga dibuat di server. Halaman laporan jadi lebih ringan dibuka, terutama di ponsel, dan isi kertasnya tetap sama.
+- Ekspor laporan yang sangat besar tidak lagi ditolak. Ekspor yang melewati batas baris kini dikerjakan di latar dan berkasnya terunduh begitu siap; ekspor berukuran biasa tetap seketika seperti sebelumnya.
+
+### Perbaikan
+
+- Grafik status di halaman kontrak dulu hanya menghitung tiga status, sehingga kontrak berstatus lain — seperti yang sudah selesai — tidak muncul di grafik walau tercantum di tabel di bawahnya. Kini setiap kontrak terhitung, dan warna tiga status utama tidak berpindah.
+- Alamat yang salah ketik dan halaman yang gagal dimuat kini menampilkan layar berbahasa Anda dengan jalan kembali, bukan layar polos berbahasa Inggris. Tombol “Coba lagi” kini benar-benar memuat ulang datanya.
+
+---
+
 ## 0.9.0 — 2026-10-11 (400698c)
 
 Lambang produk dirapikan dan dipakai di semua tempat — ikon tab, ikon layar depan, dan gambar pratinjau kini gambar yang sama dengan yang ada di dalam aplikasi.

@@ -388,7 +388,8 @@
     "title": "Cari halaman",
     "placeholder": "Ketik nama halaman…",
     "empty": "Tidak ada halaman yang cocok.",
-    "mainGroup": "Utama"
+    "mainGroup": "Utama",
+    "reportsGroup": "Daftar Laporan"
   },
   "accountantMode": {
     "label": "Mode Akuntan",

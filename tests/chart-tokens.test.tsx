@@ -433,11 +433,7 @@ describe("waterfall laba/rugi (#355)", () => {
   });
 });
 
-/**
- * Sapuan visual 21 Okt 2026, tema gelap: tooltip waterfall Laba/Rugi menulis
- * nominalnya HITAM di atas panel gelap. Batang yang nadanya hanya hidup di
- * `<Cell>` tidak mewariskan `entry.color`, dan recharts jatuh ke `#000`.
- */
+/** Batang ber-`<Cell>` tidak punya `entry.color`; tanpa `itemStyle` teksnya `#000`. */
 describe("baris tooltip pada batang ber-Cell", () => {
   const src = readFileSync(
     join(__dirname, "..", "src", "components", "shared", "dashboard-charts.tsx"),
@@ -466,11 +462,7 @@ describe("baris tooltip pada batang ber-Cell", () => {
     expect(markup).toContain(`color:${token.colorText}`);
   });
 
-  /*
-   * Setiap komponen yang memasang `<Cell>` DAN memakai tooltip bawaan wajib
-   * menyebut `itemStyle`. Komponen bertooltip sendiri (`content=`) dan Pie
-   * (yang `entry.color`-nya diisi dari `fill` irisan) tidak termasuk.
-   */
+  // Berlaku untuk Bar ber-Cell dengan tooltip bawaan; tooltip kustom (`content=`) dan Pie dikecualikan.
   it("setiap Bar ber-Cell dengan tooltip bawaan menyebut tooltipItemStyle", () => {
     const blocks = code.split(/\nexport function /).slice(1);
     const offenders = blocks

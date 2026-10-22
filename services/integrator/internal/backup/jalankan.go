@@ -10,8 +10,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
+
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
 )
 
 // Pendump adalah apa pun yang bisa menghasilkan dump.
@@ -190,8 +193,39 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 		return o.Kemajuan(langkah * 100 / langkahTotal)
 	}
 
+	// ══ INSTANS YANG GAGAL DI TENGAH PUTARAN ════════════════════════════════
+	//
+	// Instans tambahan bisa tercacah lalu gagal SAAT DUMP: servernya mati di
+	// tengah jalan, atau perannya bisa membaca bukunya tapi tidak `pg_authid`
+	// (`pg_dumpall --globals-only` menolak — terukur 23 Okt 2026 pada peran
+	// pemilik NOSUPERUSER tanpa `pg_read_all_data`). Galat SUMBER dari instans
+	// tambahan menandai instans itu gagal dan sisa objeknya dilewati; instans
+	// lain, berkas, dan manifest TETAP ditulis. Sebelum ini satu galat begitu
+	// menghentikan seluruh putaran — termasuk instans bawaan, tanpa manifest —
+	// setiap malam, sampai seseorang membaca log.
+	//
+	// Yang TETAP menghentikan putaran: galat instans bawaan (perilaku sebelum
+	// tahap 4, apa adanya), galat TUJUAN (S3/cakram — bukan milik satu
+	// instans), dan konteks yang dibatalkan.
+	gagalSaatJalan := map[string]string{}
+	isolasi := func(instans string, err error) error {
+		var sumber *galatSumber
+		if instans == "" || ctx.Err() != nil || !errors.As(err, &sumber) {
+			return err
+		}
+		gagalSaatJalan[instans] = err.Error()
+		o.catat("✗ instans %s GAGAL di tengah putaran (sisa objeknya dilewati): %v", instans, err)
+		return nil
+	}
+
 	// ── 1. Satu objek per basis data ──────────────────────────────────────
 	for _, b := range dicadangkan {
+		if _, sudah := gagalSaatJalan[b.Instans]; sudah {
+			if err := maju(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		kunci := KunciBasis(b.Instans, b.Nama)
 		o.catat("dump %s (%s)", labelBasis(b), b.Peran)
 		basis := b
@@ -199,10 +233,13 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 		obj, err := o.satuObjek(ctx, kerja, putaran, kunci, JenisBasis, &basis,
 			func(w io.Writer) error { return pd.DumpBasis(ctx, basis.Nama, w) })
 		if err != nil {
-			return nil, err
+			if err := isolasi(b.Instans, err); err != nil {
+				return nil, err
+			}
+		} else {
+			m.Objek = append(m.Objek, *obj)
+			total += obj.Bytes
 		}
-		m.Objek = append(m.Objek, *obj)
-		total += obj.Bytes
 		if err := maju(); err != nil {
 			return nil, err
 		}
@@ -228,19 +265,49 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 		return nil, err
 	}
 	for _, ins := range infoInstans {
+		if _, sudah := gagalSaatJalan[ins.Kunci]; sudah {
+			if err := maju(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		o.catat("dump peran & hak akses instans %s", ins.Kunci)
 		pd := pendump[ins.Kunci]
 		obj, err := o.satuObjek(ctx, kerja, putaran, KunciGlobals(ins.Kunci), JenisGlobals, nil,
 			func(w io.Writer) error { return pd.DumpGlobals(ctx, w) })
 		if err != nil {
-			return nil, err
+			if err := isolasi(ins.Kunci, err); err != nil {
+				return nil, err
+			}
+		} else {
+			obj.Instans = ins.Kunci
+			m.Objek = append(m.Objek, *obj)
+			total += obj.Bytes
 		}
-		obj.Instans = ins.Kunci
-		m.Objek = append(m.Objek, *obj)
-		total += obj.Bytes
 		if err := maju(); err != nil {
 			return nil, err
 		}
+	}
+
+	// Instans yang gagal di tengah jalan pindah dari `instans` ke
+	// `instansGagal`. Objeknya yang SUDAH terkirim tetap disebut manifest —
+	// mereka ada dan utuh — tapi putarannya sebagian, dan
+	// `prove-backup-restore` menolaknya sebagai bukti.
+	if len(gagalSaatJalan) > 0 {
+		tersisa := m.Instans[:0:0]
+		for _, ins := range m.Instans {
+			sebab, gagalIni := gagalSaatJalan[ins.Kunci]
+			if !gagalIni {
+				tersisa = append(tersisa, ins)
+				continue
+			}
+			gagal = append(gagal, InstansGagal{
+				Kunci: ins.Kunci, Sebab: sebab, Basis: perusahaanDi(o.Cacah, ins.Kunci),
+			})
+		}
+		m.Instans = tersisa
+		sort.SliceStable(gagal, func(a, b int) bool { return gagal[a].Kunci < gagal[b].Kunci })
+		m.InstansGagal = gagal
 	}
 
 	// ── 3. Berkas yang hidup di luar basis data (#367/#370) ───────────────
@@ -328,7 +395,7 @@ func (o Opsi) satuObjek(
 	}
 	if err := hasilkan(f); err != nil {
 		_ = f.Close()
-		return nil, err
+		return nil, &galatSumber{err: err}
 	}
 	if err := f.Close(); err != nil {
 		return nil, fmt.Errorf("tutup %s: %w", mentah, err)
@@ -398,7 +465,9 @@ func (o Opsi) satuObjek(
 // tertukar pada hari pemulihan.
 
 // AwalanInstans adalah direktori objek instans tambahan di dalam putaran.
-const AwalanInstans = "instans/"
+// Dibangkitkan dari `contract/db-instances.yaml`: `prove-backup-restore`
+// membaca kunci yang sama dari sisi TypeScript.
+const AwalanInstans = contract.BackupInstanceObjectPrefix
 
 // KunciBasis memulangkan kunci objek dump satu basis data.
 func KunciBasis(instans, nama string) string {
@@ -423,6 +492,14 @@ func labelBasis(b Basis) string {
 	}
 	return b.Nama + "@" + b.Instans
 }
+
+// galatSumber: kegagalan MENGHASILKAN byte sebuah objek (`pg_dump`,
+// `pg_dumpall`, pengemasan berkas) — dibedakan dari kegagalan sandi atau
+// pengiriman, sebab hanya yang pertama milik satu server.
+type galatSumber struct{ err error }
+
+func (g *galatSumber) Error() string { return g.err.Error() }
+func (g *galatSumber) Unwrap() error { return g.err }
 
 // GalatInstans: satu atau lebih instans tambahan tidak dicadangkan putaran ini.
 type GalatInstans struct {

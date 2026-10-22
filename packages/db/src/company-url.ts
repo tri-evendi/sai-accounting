@@ -26,6 +26,14 @@
  * tes memakai fungsi yang sama.
  */
 
+import {
+  DB_INSTANCE_URL_ENV_PREFIX,
+  DB_INSTANCE_URL_ENV_SUFFIX,
+  DEFAULT_DB_INSTANCE_LABEL,
+  DB_INSTANCE_KEY_PATTERN,
+  DB_INSTANCE_URL_ENV_PATTERN,
+} from "./generated/db-instances";
+
 /** Instans tambahan sebagaimana tercatat di `db_instances`. */
 export interface DbInstanceRef {
   readonly key: string;
@@ -42,14 +50,15 @@ export interface CompanyDatabaseTarget {
   readonly dbInstance: DbInstanceRef | null;
 }
 
-/** Label instans bawaan di log, laporan fan-out, dan argumen CLI. */
-export const DEFAULT_DB_INSTANCE_LABEL = "default";
-
-/** Bentuk kunci — sama dengan CHECK `db_instances_key_check` (migration 0009). */
-export const DB_INSTANCE_KEY_PATTERN = /^[a-z][a-z0-9_]{0,31}$/;
-
-/** Bentuk nama env var — sama dengan CHECK `db_instances_url_env_var_check`. */
-export const DB_INSTANCE_URL_ENV_PATTERN = /^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$/;
+/*
+ * Label instans bawaan, bentuk kunci (CHECK `db_instances_key_check`), dan
+ * bentuk nama env var (CHECK `db_instances_url_env_var_check`) DIBANGKITKAN
+ * dari `contract/db-instances.yaml`: jalur `tenant` Go membaca bentuk yang
+ * sama untuk mencadangkan tiap instans, dan dua regex tulisan tangan yang
+ * menyimpang membuat PT berjalan normal di aplikasi sementara bukunya TIDAK
+ * dicadangkan.
+ */
+export { DEFAULT_DB_INSTANCE_LABEL, DB_INSTANCE_KEY_PATTERN, DB_INSTANCE_URL_ENV_PATTERN };
 
 /** Nama basis data yang boleh ikut menyusun string koneksi. */
 export const SAFE_DATABASE_NAME = /^[A-Za-z0-9_]{1,64}$/;
@@ -69,7 +78,7 @@ type Env = Readonly<Record<string, string | undefined>>;
  * mendaftarkan instans dan oleh dokumen. Pohon Go mencerminkan rumus yang sama.
  */
 export function suggestedUrlEnvVar(key: string): string {
-  return `COMPANY_${key.toUpperCase()}_DATABASE_URL_TEMPLATE`;
+  return `${DB_INSTANCE_URL_ENV_PREFIX}${key.toUpperCase()}${DB_INSTANCE_URL_ENV_SUFFIX}`;
 }
 
 /** Periksa bentuk sebuah baris `db_instances`; melempar bila menyimpang. */

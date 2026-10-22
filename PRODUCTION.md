@@ -171,8 +171,14 @@ them, each such object carries `"instans": "<key>"` in the manifest, and
 registered on (a same-named leftover copy on another server is `other`).
 `svc-integrator` reads each instance's URL from the env var named in its
 `db_instances` row, so `COMPANY_<KEY>_DATABASE_URL_TEMPLATE` must be in `.env`
-(reaching every service via `env_file`), pointing **directly** at PostgreSQL.
-See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
+**and** its name listed (without a value) under `x-env.db-instances` in
+`docker-compose.yml` — that group is how it reaches every service — pointing
+**directly** at PostgreSQL. The role in that URL is also the backup role for
+that instance, and it must be superuser or inherit `pg_read_all_data`
+(`GRANT pg_read_all_data TO <role>;` on that server — `postgres-roles.py` only
+reaches the local `pg`). Without it `pg_dumpall --globals-only` is refused
+on `pg_authid`; the `tenant` lane checks this up front and fails that instance
+only. See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#peran-cadangan-per-instans).
 
 This is what closes on-premise gap #5. `pg_dumpall` meant one tenant could not
 be restored without touching the others — and "restore just our data to
@@ -195,8 +201,10 @@ written **last**, so a manifest that exists means every object it lists was
 sent.
 
 One deliberate exception: an **extra instance** that cannot be reached (env var
-unset, wrong name, server down, server newer than `pg_dump`) does not stop the
-other instances. The run still sends their objects, writes a manifest with
+unset, wrong name, server down, server newer than `pg_dump`, role without
+backup privileges), or whose `pg_dump`/`pg_dumpall` fails mid-run, does not
+stop the other instances. A failure on the default instance, a destination
+(S3/disk) failure, or a cancellation still fails the whole run. The run still sends their objects, writes a manifest with
 `instansGagal: [{kunci, sebab, basis}]`, records `error` in `backup_runs`, and
 **skips pruning**. `prove-backup-restore` rejects such a run. Use the previous
 complete run for the companies listed there.

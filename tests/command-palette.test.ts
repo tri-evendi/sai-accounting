@@ -153,3 +153,20 @@ describe("palet: laporan dari katalog", () => {
     expect(hrefs(md, withoutInventory)).not.toContain("/reports/stock-value");
   });
 });
+
+/** Kecocokan lemah dibuang supaya Enter tidak membuka halaman yang salah. */
+describe("palet: skor minimum", () => {
+  it("huruf tersebar tidak dihitung cocok, awal kata dan singkatan tetap", async () => {
+    const { strictFilter } = await import("@sai/ui/command");
+    expect(strictFilter("Ekspor e-Faktur Laporan Ekspor e-Faktur (DJP/CTAS)", "neraca")).toBe(0);
+    expect(strictFilter("Barang Milik Perusahaan Stok & Aset", "arus kas")).toBe(0);
+    expect(strictFilter("Neraca Daftar Laporan", "neraca")).toBeGreaterThan(0.5);
+    expect(strictFilter("Neraca Daftar Laporan", "nrc")).toBeGreaterThan(0);
+    expect(strictFilter("Faktur Penjualan Penjualan", "fktr")).toBeGreaterThan(0);
+  });
+
+  it("palet memakai penyaring itu", () => {
+    const src = readFileSync(join(__dirname, "..", "src", "components", "layout", "command-palette.tsx"), "utf8");
+    expect(src).toContain("<Command filter={strictFilter}>");
+  });
+});

@@ -161,6 +161,13 @@ const (
 
 	QueueAgeWarn = 420 * time.Second
 	QueueAgeLate = 600 * time.Second
+
+	// Denyut pagar jalur tunggal-instans (`jobs.LaneLock`; padanan Node
+	// `@sai/db/session-lock`). Dijamin generator:
+	// LaneLockProbe + LaneLockQueryTimeout < LaneLockIdleSession.
+	LaneLockProbe        = 15000 * time.Millisecond
+	LaneLockQueryTimeout = 10000 * time.Millisecond
+	LaneLockIdleSession  = 90000 * time.Millisecond
 )
 
 // ResultOwnerUID/GID: pemilik berkas hasil di volume `hasil` — pengguna

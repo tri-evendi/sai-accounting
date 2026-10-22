@@ -34,7 +34,9 @@ import (
 //  3. SIGTERM menyelesaikan yang sedang jalan, lalu berhenti mengklaim.
 //     `docker compose down` dan setiap rilis mengirim SIGTERM.
 //
-//  4. Jalur tunggal-instans dipagari advisory lock — lihat TryLaneLock.
+//  4. Jalur tunggal-instans dipagari advisory lock — lihat TryLaneLock —
+//     yang dibuktikan ulang tiap denyut; pagar yang hilang menghentikan
+//     pengklaiman dan `Run` pulang dengan galat (lihat LaneLock).
 
 // ErrLeaseLost dipulangkan ke handler lewat Context yang dibatalkan, dan
 // dipakai pelari untuk membedakan "pekerjaan ini gagal" dari "pekerjaan ini
@@ -123,8 +125,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	me := WorkerID(r.Lane)
 
+	var pagar *LaneLock
 	if spec.SingleInstance {
-		conn, dapat, err := r.Queue.TryLaneLock(ctx, r.Lane)
+		p, dapat, err := r.Queue.TryLaneLock(ctx, r.Lane)
 		if err != nil {
 			return err
 		}
@@ -133,7 +136,8 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.logf("  Jalur ini tunggal-instans di contract/kinds.yaml. Ini bukan galat.")
 			return nil
 		}
-		defer conn.Release()
+		pagar = p
+		defer pagar.Release(context.Background())
 	}
 
 	// SIGTERM membatalkan konteks BERHENTI, bukan konteks kerja: yang sedang
@@ -143,6 +147,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.Stop != nil {
 		lepas := context.AfterFunc(r.Stop, batalkanBerhenti)
 		defer lepas()
+	}
+	if pagar != nil {
+		r.jagaPagar(berhenti, batalkanBerhenti, pagar)
 	}
 
 	r.logf("mulai sebagai %s — mengklaim %v", me, kinds)
@@ -178,8 +185,37 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.kerjakan(ctx, me, job)
 	}
 
+	if pagar != nil {
+		if err := pagar.Err(); err != nil {
+			// Bukan-nol, dengan sengaja: pelari yang kehilangan pagarnya tidak
+			// boleh keluar seperti pelari yang diminta berhenti. `cmd/integrator`
+			// lalu keluar 1, dan `restart: unless-stopped` menghidupkannya
+			// kembali sebagai KANDIDAT — yang mengambil pagar hanya bila memang
+			// tidak ada pemegang lain.
+			r.logf("berhenti karena pagar jalur hilang.")
+			return err
+		}
+	}
 	r.logf("berhenti.")
 	return nil
+}
+
+// jagaPagar menjalankan denyut pembuktian pagar selama pelari hidup. Begitu
+// kunci HILANG, pengklaiman berikutnya dihentikan SEKETIKA (lewat `hentikan`,
+// jalan yang sama dengan SIGTERM): pelari yang terus mengklaim tanpa pagar
+// adalah instans kedua yang sedang menunggu terjadi. Pekerjaan yang sedang
+// jalan diselesaikan — lease-nya yang menjaga baris itu, bukan pagar ini —
+// dan `Run` lalu memulangkan galat kehilangannya.
+func (r *Runner) jagaPagar(berhenti context.Context, hentikan context.CancelFunc, pagar *LaneLock) {
+	go func() { _ = pagar.Watch(berhenti) }()
+	go func() {
+		select {
+		case <-berhenti.Done():
+		case <-pagar.Lost():
+			r.logf("⚠ %v — berhenti mengklaim.", pagar.Err())
+			hentikan()
+		}
+	}()
 }
 
 func (r *Runner) tidur(berhenti context.Context, d time.Duration) {

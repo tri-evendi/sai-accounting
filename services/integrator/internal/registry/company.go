@@ -40,14 +40,7 @@ func Lookup(ctx context.Context, pool *pgxpool.Pool, id *int32) (*Company, error
 	if id == nil || *id <= 0 {
 		return nil, ErrNoCompany
 	}
-	var c Company
-	var instanceKey, urlEnvVar *string
-	err := pool.QueryRow(ctx,
-		`SELECT c.id, c.slug, c.name, c.database_name, c.is_active, c.db_instance_key, i.url_env_var
-		   FROM companies c
-		   LEFT JOIN db_instances i ON i.key = c.db_instance_key
-		  WHERE c.id = $1`, *id,
-	).Scan(&c.ID, &c.Slug, &c.Name, &c.DatabaseName, &c.IsActive, &instanceKey, &urlEnvVar)
+	c, err := scanCompany(pool.QueryRow(ctx, pilihCompany+` WHERE c.id = $1`, *id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf(
 			"perusahaan #%d tidak ada di registry kendali — pekerjaan ini TIDAK "+
@@ -56,14 +49,56 @@ func Lookup(ctx context.Context, pool *pgxpool.Pool, id *int32) (*Company, error
 	if err != nil {
 		return nil, fmt.Errorf("baca registry perusahaan #%d: %w", *id, err)
 	}
-	if instanceKey != nil {
-		// Kunci instans tanpa baris `db_instances` (FK menolaknya, tapi kode
-		// tidak bersandar pada itu): melempar, bukan membaca server bawaan.
-		if urlEnvVar == nil || *urlEnvVar == "" {
-			return nil, fmt.Errorf(
-				"perusahaan #%d menunjuk instans %q yang tidak terdaftar di db_instances", *id, *instanceKey)
-		}
-		c.InstanceURLEnvVar = *urlEnvVar
+	return c, nil
+}
+
+// LookupByDatabase membaca satu perusahaan menurut `companies.database_name`
+// (unik). Dipakai perkakas yang menerima nama basis data, bukan id — mis.
+// `cmd/parity` — supaya mereka menyelesaikan instansnya PERSIS seperti pelari:
+// nama yang tidak ada di registry MELEMPAR, bukan dibaca dari server bawaan.
+func LookupByDatabase(ctx context.Context, pool *pgxpool.Pool, databaseName string) (*Company, error) {
+	if databaseName == "" {
+		return nil, ErrNoCompany
+	}
+	c, err := scanCompany(pool.QueryRow(ctx, pilihCompany+` WHERE c.database_name = $1`, databaseName))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf(
+			"basis data %q tidak terdaftar di registry kendali — instansnya tidak "+
+				"diketahui, dan ia TIDAK dibaca dari server bawaan sebagai gantinya (#104)", databaseName)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("baca registry basis data %q: %w", databaseName, err)
+	}
+	return c, nil
+}
+
+const pilihCompany = `SELECT c.id, c.slug, c.name, c.database_name, c.is_active, c.db_instance_key, i.url_env_var
+		   FROM companies c
+		   LEFT JOIN db_instances i ON i.key = c.db_instance_key`
+
+func scanCompany(row pgx.Row) (*Company, error) {
+	var c Company
+	var instanceKey, urlEnvVar *string
+	if err := row.Scan(&c.ID, &c.Slug, &c.Name, &c.DatabaseName, &c.IsActive, &instanceKey, &urlEnvVar); err != nil {
+		return nil, err
+	}
+	if err := c.setInstance(instanceKey, urlEnvVar); err != nil {
+		return nil, err
 	}
 	return &c, nil
+}
+
+// setInstance mengisi InstanceURLEnvVar dari hasil LEFT JOIN `db_instances`.
+// Kunci instans tanpa baris `db_instances` (FK menolaknya, tapi kode tidak
+// bersandar pada itu): melempar, bukan membaca server bawaan.
+func (c *Company) setInstance(instanceKey, urlEnvVar *string) error {
+	if instanceKey == nil {
+		return nil
+	}
+	if urlEnvVar == nil || *urlEnvVar == "" {
+		return fmt.Errorf(
+			"perusahaan #%d menunjuk instans %q yang tidak terdaftar di db_instances", c.ID, *instanceKey)
+	}
+	c.InstanceURLEnvVar = *urlEnvVar
+	return nil
 }

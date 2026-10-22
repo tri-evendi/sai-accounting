@@ -213,3 +213,17 @@ numbers:
   # Ambang umur antrean — satu pasang untuk semua jalur.
   queue_age_warn_seconds: 420
   queue_age_late_seconds: 600
+
+  # Pagar jalur tunggal-instans: denyut pembuktian kunci advisory. Dua bahasa
+  # memegang pagar yang SAMA (`sai.lane.<jalur>`) — Node lewat
+  # `@sai/db/session-lock`, Go lewat `jobs.LaneLock` — jadi waktunya satu angka.
+  # Tiap denyut memastikan backend yang menjawab masih backend yang mengambil
+  # kunci dan kuncinya masih di `pg_locks`; denyut yang gagal = kunci HILANG,
+  # pelari berhenti mengklaim. Sesinya diberi `idle_session_timeout` sebesar
+  # `lane_lock_idle_session_ms`, jadi pemegang yang terisolasi dibuang server
+  # sesudah itu — dan pemegang itu sudah tahu lebih dulu, paling lambat
+  # probe + query_timeout. Generator menegakkan
+  # probe + query_timeout < idle_session (jendela berhenti pemegang lama).
+  lane_lock_probe_ms: 15000
+  lane_lock_query_timeout_ms: 10000
+  lane_lock_idle_session_ms: 90000

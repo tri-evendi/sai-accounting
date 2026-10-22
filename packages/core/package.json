@@ -31,6 +31,7 @@
     "./job-result": "./src/job-result.ts",
     "./labels": "./src/labels.ts",
     "./licence": "./src/licence.ts",
+    "./licence-register": "./src/licence-register.ts",
     "./migration-manifest": "./src/migration-manifest.ts",
     "./money-format": "./src/money-format.ts",
     "./operator-plane": "./src/operator-plane.ts",

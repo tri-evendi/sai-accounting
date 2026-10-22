@@ -13,7 +13,7 @@
  */
 export const MIGRATION_TERAKHIR = {
   control: "0009_db_instances",
-  platform: "0005_brand_assets",
+  platform: "0006_licence_register",
   company: "0002_company_logos",
 } as const;
 

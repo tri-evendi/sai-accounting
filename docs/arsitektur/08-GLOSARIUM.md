@@ -240,9 +240,9 @@ Rute API customer per kelompok:
 | `companies` 1 · `company` 1 · `setup` 2 · `sample-data` 1 · `user` 4 · `tenant` 10 · `t` 7 | Tenant & platform |
 | `auth` 7 · `health` 1 · `status` 1 · `billing` 1 | Autentikasi & infra |
 
-Konsol operator: 19 halaman (`/`, `/accounts`, `/audit`, `/audit/tenants`,
+Konsol operator: 20 halaman (`/`, `/accounts`, `/audit`, `/audit/tenants`,
 `/backup`, `/brand`, `/conformance`, `/content`, `/deletions`, `/efaktur`,
-`/login`, `/mail`, `/plans`, `/reconciliation`, `/scheduler`, `/settings`,
+`/licences`, `/login`, `/mail`, `/plans`, `/reconciliation`, `/scheduler`, `/settings`,
 `/status-notices`, `/tenants`, `/tenants/{id}`) + 2 rute (`/api/health`
 publik, `/efaktur/unduh` dengan `tenant.billing`).
 

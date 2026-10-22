@@ -339,6 +339,12 @@ antara control dan perusahaan.
   (`packages/platform/src/mail-settings.ts`, TTL 60 detik) tunggal.
   `brand_assets` (logo produk, migration platform 0005) sama: singleton milik
   penyedia, cache tunggal 60 detik di `packages/platform/src/brand-assets.ts`.
+- **Register lisensi on-premise (`licence_customers`, `licence_register_entries`,
+  migration platform 0006) adalah ARSIP.** Satu-satunya penulis & pembaca
+  `packages/platform/src/licence-register-store.ts`, dipanggil konsol operator
+  saja; tidak ada yang membacanya untuk memutuskan status lisensi (kewenangan
+  ada pada tanda tangan berkas — 06-KEAMANAN §3.7). `source_tenant_id` = id
+  tenant kendali tanpa FK, untuk customer yang pindah dari SaaS.
 - **Satu-satunya rahasia di basis data adalah `mail_settings.password_ciphertext` (#169).**
   Kredensial lain tetap hidup di environment. Kolom ini disegel AES-256-GCM
   dengan kunci yang tetap di env (`SETTINGS_ENCRYPTION_KEY`, 64 karakter hex).

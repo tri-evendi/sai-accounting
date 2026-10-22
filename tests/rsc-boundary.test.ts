@@ -304,8 +304,12 @@ import { join } from "node:path";
  *     `brand-mark` (kini membaca konteks itu — glifnya sendiri tak berubah);
  *   + `brand-mark-panel` (konsol `/brand`) dan `company-logo-panel`
  *     (Pengaturan): formulir unggah dengan pratinjau. Halamannya tetap server.
+ * 201 → 202 (22 Okt 2026, register lisensi on-premise, migration platform 0006):
+ *   + `licence-register-panel` (konsol `/licences`): formulir draf (RHF),
+ *     salin perintah, pilih berkas `.sai`, unduhan yang disusun peramban.
+ *     Halamannya tetap server — perintahnya dirakit di sana.
  */
-const AMBANG_KLIEN = 201;
+const AMBANG_KLIEN = 202;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -470,6 +474,8 @@ const KLIEN_TERSAHKAN = [
      nilai bawaan + nilai tersimpan dihitung di server dan diturunkan sebagai
      daftar. */
   "apps/operator/src/components/operator/content-editor.tsx",
+  /* Register lisensi on-premise — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/licence-register-panel.tsx",
   "apps/operator/src/components/operator/mail-settings-form.tsx",
   /* Akun operator (migration kendali 0004) — kredensial sekali-tampil hidup
      di state peramban saja. Lihat catatan di `AMBANG_KLIEN`. */

@@ -12,6 +12,17 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    server: {
+      deps: {
+        /*
+         * `next-auth` mengimpor `next/server` tanpa `.js`; Node ESM menolaknya
+         * bila pustakanya dieksternalkan. Diproses Vite supaya
+         * `tests/auth-config-error-fails-closed.test.ts` bisa menguji
+         * `auth()` yang sungguhan (GHSA-8fpg-xm3f-6cx3).
+         */
+        inline: ["next-auth"],
+      },
+    },
     // `.tsx` ikut disertakan sejak issue #50: invarian primitif UI diuji lewat
     // markup hasil render (react-dom/server), jadi berkasnya memuat JSX.
     include: ["tests/**/*.test.{ts,tsx}"],

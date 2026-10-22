@@ -41,7 +41,7 @@ export default async function NotificationsPage({
   params: Promise<TenantScopedParams>;
 }) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { tenantSlug, companySlug } = await params;
   const scoped = await enterCompanyFromRoute({

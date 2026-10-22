@@ -514,7 +514,7 @@ Dihitung 22 Okt 2026 dari kode `develop`.
 | Halaman | 131 customer + 20 konsol |
 | Rute API | 131 customer + 2 konsol |
 | Model Prisma | 62 perusahaan + 22 control + 19 platform = 103 — **tiga di antaranya kembar sementara**: jejak putaran ada di kedua skema selama langkah expand (migration kendali 0005), dan hilang dari platform pada langkah contract |
-| Migration aktif | company 2 · control 10 · platform 6 (kepala: `0002_company_logos` · `0010_tenant_pindah_onprem` · `0006_licence_register`); arsip MariaDB hanya-baca: 99 |
+| Migration aktif | company 2 · control 10 · platform 7 (kepala: `0002_company_logos` · `0010_tenant_pindah_onprem` · `0007_licence_signing_keys`); arsip MariaDB hanya-baca: 99 |
 | Modul `src/lib` | 250 berkas |
 | Berkas tes | 360 berkas · 5.936 tes (`bun run verify`) |
 | Izin RBAC | 66 (perusahaan) + 6 (tenant) |

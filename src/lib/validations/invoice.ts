@@ -4,6 +4,7 @@ import { currencyEnum, rateField, requireRateForForeign } from "./fx";
 import { dueDateField } from "./common";
 import { paymentFormFields, requireBankForForeignCash } from "./payment";
 import { vmsg } from "@sai/core/i18n/validation";
+import { INVOICE_STATUSES } from "@sai/core/constants";
 
 export const invoiceItemSchema = z.object({
   /**
@@ -25,7 +26,9 @@ export const invoiceSchema = z
     // Optional: drives the "Jatuh Tempo" status and the overdue filter in
     // /receivables. Blank leaves the invoice aged from its issue date.
     dueDate: dueDateField,
-    status: z.enum(["signed", "pending", "canceled"]).default("pending"),
+    // Tiga status — faktur sengaja TIDAK memakai `completed` milik kontrak
+    // (alasannya di `INVOICE_STATUSES`, packages/core/src/constants.ts).
+    status: z.enum(INVOICE_STATUSES).default("pending"),
     // Nullable: legacy invoices carry no customer, and the picker may be left empty.
     customerId: z.coerce.number().int().positive().nullish(),
     /**

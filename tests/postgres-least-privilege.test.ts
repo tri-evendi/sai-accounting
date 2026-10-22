@@ -83,7 +83,7 @@ describe("siapa yang dihibahi buku baru", () => {
 });
 
 describe("setiap jalan yang MEMBUAT buku menghibahkannya", () => {
-  it("penyediaan di aplikasi: hibah SEBELUM registry", () => {
+  it("penyediaan PT (`svc-worker`): hibah SEBELUM registry", () => {
     const src = tanpaKomentar(baca("src/lib/company-provisioning.ts"));
     const hibah = src.indexOf("appRoleGrantSql(databaseName, appRole)");
     expect(hibah).toBeGreaterThan(-1);
@@ -111,13 +111,25 @@ describe("compose: peran per layanan", () => {
     }
   });
 
+  it("`svc-worker` memegang kredensial pemilik HANYA dari `.env`, tidak dirakit dari `PG_OWNER_*`", () => {
+    /* Ia penyedia PT sejak Okt 2026; nilainya diteruskan apa adanya, sama
+       seperti dulu di `app-customer`. Merakitnya di compose akan membuat sandi
+       pemilik muncul di layanan yang juga menjalankan tiga peran lain. */
+    expect(Object.keys(env("svc-worker"))).toContain("PROVISION_DATABASE_URL");
+    expect(env("svc-worker").PROVISION_DATABASE_URL ?? null).toBeNull();
+    for (const v of Object.values(env("svc-worker"))) expect(String(v)).not.toContain("PG_OWNER_");
+  });
+
   it("pagar `svc-worker` = peran aplikasi; jalur `tenant` = peran cadangan", () => {
     expect(String(env("svc-worker").CONTROL_DATABASE_DIRECT_URL)).toMatch(/^postgres:\/\/\$\{PG_APP_USER:-/);
     expect(String(env("svc-integrator").CONTROL_DATABASE_DIRECT_URL)).toMatch(/^postgres:\/\/\$\{PG_BACKUP_USER:-/);
   });
 
   it("kredensial pemilik tidak sampai ke layanan yang tidak membuat basis data", () => {
-    for (const s of ["app-operator", "svc-worker", "svc-integrator"]) {
+    /* `app-customer` ada di daftar ini sejak Okt 2026: penyediaan PT pindah ke
+       `svc-worker` (`company.provision`). Penjaga yang lebih luas — semua
+       berkas compose, plus graf impor — di `provisioning-off-app-customer`. */
+    for (const s of ["app-customer", "app-operator", "svc-integrator"]) {
       expect(Object.keys(env(s)), s).not.toContain("PROVISION_DATABASE_URL");
       for (const v of Object.values(env(s))) expect(String(v), s).not.toContain("PG_OWNER_");
     }

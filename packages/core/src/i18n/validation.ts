@@ -364,4 +364,8 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.licenceModulesInvalid":
     "Tulis all, atau daftar kunci modul berkoma (huruf kecil, angka, garis bawah).",
   "validation.licenceVersionInvalid": "Versi berbentuk angka bertitik, mis. 1.4 atau 1.4.0.",
+  // Frasa sandi kunci penanda lisensi (migration platform 0007).
+  "validation.licencePassphraseTooShort": "Frasa sandi minimal 12 karakter.",
+  "validation.licencePassphraseTooLong": "Frasa sandi terlalu panjang (maksimal 1024 karakter).",
+  "validation.licencePassphraseMismatch": "Kedua frasa sandi tidak sama.",
 };

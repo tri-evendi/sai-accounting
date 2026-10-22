@@ -25,13 +25,19 @@
  * value is counted in `unresolved` rather than summed at face value.
  */
 
-import { BUSINESS_TIME_ZONE, businessDayEnd, businessDayStart, businessISODate } from "@sai/core/business-date";
+import {
+  BUSINESS_TIME_ZONE,
+  businessDate,
+  businessDayEnd,
+  businessDayStart,
+  businessISODate,
+} from "@sai/core/business-date";
 
 /** The calendar month containing `now`, as both link params and query bounds. */
 export interface MonthRange {
-  /** Inclusive start, 00:00:00.000 local. */
+  /** Inclusive start, 00:00:00.000 WIB. */
   from: Date;
-  /** Inclusive end, 23:59:59.999 local. */
+  /** Inclusive end, 23:59:59.999 WIB. */
   to: Date;
   /** `YYYY-MM-DD` for the `?from=` link param. */
   fromISO: string;
@@ -42,13 +48,13 @@ export interface MonthRange {
 }
 
 /**
- * Local `YYYY-MM-DD`. Deliberately not `toISOString()`, which shifts to UTC and
- * hands back the previous day for anywhere east of Greenwich — including here.
+ * Jakarta `YYYY-MM-DD` — the business calendar day of `d`, whatever the process
+ * time zone. Deliberately not `toISOString()`, which shifts to UTC and hands
+ * back the previous day for anything stamped 00:00–06:59 WIB. Kept as a name
+ * for its callers; the conversion itself is `businessISODate`.
  */
 export function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
+  return businessISODate(d);
 }
 
 /**
@@ -62,8 +68,8 @@ export function toISODate(d: Date): string {
 export function monthRange(now: Date): MonthRange {
   // Bulan berjalan menurut jam Jakarta, bukan zona proses (`@sai/core/business-date`).
   const [y, m] = businessISODate(now).split("-").map(Number);
-  const fromISO = toISODate(new Date(y, m - 1, 1));
-  const toISO = toISODate(new Date(y, m, 0));
+  const fromISO = businessISODate(businessDate(y, m - 1, 1));
+  const toISO = businessISODate(businessDate(y, m, 0));
   return {
     fromISO,
     toISO,

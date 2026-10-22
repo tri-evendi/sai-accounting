@@ -187,7 +187,7 @@ satu commit, beberapa `command`.
 
 | Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi | Keadaan |
 |---|---|---|---|---|---|---|
-| `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna | berapa pun | — | pooler | tahap 1c |
+| `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
 | `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
@@ -256,6 +256,14 @@ ke `pg` (`CONTROL_DATABASE_DIRECT_URL`), `interactive` lewat PgBouncer
    membungkusnya dengan leader election).
 4. **Satu `mem_limit` untuk empat proses.** Batas memori per jalur — yang dulu
    bisa dinyatakan per container — kini tidak bisa.
+5. **Kredensial PEMILIK seproses-container dengan empat peran (Okt 2026).**
+   Penyediaan PT (`company.provision`) pindah dari `app-customer` ke peran
+   `interactive`, jadi `PROVISION_DATABASE_URL` (`sai_owner`) kini ada di
+   environment `svc-worker` — dan penyelia mewariskan environment yang SAMA ke
+   keempat perannya, termasuk yang mengurai parameter ekspor pengguna. Itu
+   pertukaran yang dipilih: kredensial itu keluar dari satu-satunya container
+   yang menghadap internet. Mencabutnya dari tiga peran lain (`env -u` di
+   skrip compose-nya) adalah penguatan murah berikutnya bila diperlukan.
 
 **Pemicu MEMISAHKAN lagi** (salah satunya cukup; memisahkannya kembali =
 satu layanan compose + `command` per peran, kodenya tidak berubah):
@@ -377,7 +385,7 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 | Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
 |---|---|---|
 | `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
-| `contract/accounting.yaml` — sisanya | `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas, **saldo normal per tipe akun** | laporan Go yang membacanya: materialitas bersama kesesuaian data. (Kategori, sisi laporan, band Laba Rugi, dan jenis jurnal penutup SUDAH masuk — lihat di bawah) |
+| `contract/accounting.yaml` — sisanya | ambang materialitas, **saldo normal per tipe akun** | laporan Go yang membacanya: materialitas bersama kesesuaian data. (Kategori, sisi laporan, band Laba Rugi, jenis jurnal penutup, mata uang, dan status dokumen SUDAH masuk — lihat di bawah) |
 | `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
 ✅ **`contract/accounting.yaml` LAHIR 22 Okt 2026, dengan dua kunci saja**:
@@ -411,6 +419,22 @@ kategori, kategori tanpa sisi) dan penimpa band untuk tipe yang bukan laba
 rugi. Yang tetap di luar: **saldo normal** — tidak satu laporan Go pun
 membacanya, dan `accumulated_depreciation` (aset bersaldo normal kredit)
 membuktikan ia bukan turunan kategori.
+
+✅ **Mata uang & status dokumen masuk 23 Okt 2026 — sebagai PENGECUALIAN YANG
+DISEBUT dari aturan "nol pembaca", atas keputusan pemilik.** Tiga kunci:
+`currencies` (`values` ISO 4217 + `base`), `invoice_statuses` (3), dan
+`contract_statuses` (4 — `completed` disahkan hari yang sama, temuan S3).
+`@sai/core/constants` me-re-ekspor bangkitannya (impor lama tetap bekerja),
+zod `validations/{contract,invoice,fx}.ts` dan `check-data-conformance`
+membacanya; label & warna tetap di TS. Generatornya menolak kode bukan ISO,
+duplikat, `base` di luar `values`, dan status kontrak yang tidak DIAWALI
+status faktur persis (posisi menentukan warna donat). Pembaca Go-nya BELUM ada
+— yang pertama adalah pemeriksa kesesuaian data bila ia pindah ke Go — dan
+`tests/contract-accounting.test.ts` menjaga pengecualian itu tetap jujur: ia
+merah begitu Go tulisan tangan memakai salah satu kunci itu, supaya kuncinya
+dicoret dari pengecualian dan pembacanya ikut dijaga. Kolom
+`contracts.status` kini juga dijaga CHECK constraint (migration perusahaan
+0003) yang daftarnya wajib sama dengan kontrak.
 
 ## 4. Yang belum terbangun dari antrean
 
@@ -1043,7 +1067,7 @@ Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 | **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
-| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |
+| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Cadangan Go per instans ✅ lolos gerbang Go 23 Okt 2026; pemindahan pertama menunggu peran cadangan di server instansnya | — |
 | **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
 
 **Tahap 3: yang sudah ada, dan yang hanya bisa dibuktikan di tiga host.**
@@ -1111,18 +1135,31 @@ server.
 |---|---|
 | Registry | `db_instances` + `companies.db_instance_key` (kendali 0009, expand saja). `NULL` = instans bawaan, jadi tabel kosong = perilaku hari ini |
 | Penyelesai | `@sai/db/company-url` — SATU penyusun URL buku PT untuk aplikasi, fan-out migration, kesesuaian, penyediaan, konsol, dan skrip. Instans tak terselesaikan **melempar**, tidak jatuh ke bawaan. Kunci kolam = instans + basis data |
-| Penyediaan | `provisionCompany({ dbInstanceKey })`; tanpa itu instans bawaan |
+| Penyediaan | `provisionCompany({ dbInstanceKey })`; tanpa itu instans bawaan. Sejak Okt 2026 dijalankan pekerjaan `company.provision` di `svc-worker` — layar `/companies/new` belum menawarkan pilihan instans, jadi PT dari layar selalu lahir di instans bawaan; instans lain lewat perkakas atau `tenant:move` |
 | Fan-out | `db:migrate:all` dan sapuan kesesuaian melapor per instans; instans yang tak terselesaikan menggagalkan PT-nya saja |
 | Pemindahan | `bun run tenant:move` — pratinjau bawaan, menolak PT aktif, `pg_dump \| pg_restore`, bandingkan jumlah baris per tabel, balik registry, ganti nama salinan asal (jalan balik) |
 | Penjaga | `tests/company-url-resolver.test.ts` (pemindai + penyelesai), `tests/tenant-move.test.ts` |
 
-⚠ **Satu yang sengaja TIDAK ikut: cadangan Go per instans.** `svc-tenant`
-(kini jalur `tenant` di `svc-integrator`) masih mencacah `pg_database` satu server. PT pertama yang dipindah akan masuk
-`Hilang` di bukti kelengkapannya. Itu bunyi yang benar, sebab bukunya memang
-belum dicadangkan, dan karena itu pekerjaan ini prasyarat pemindahan pertama.
-Ia ditahan karena toolchain Go tidak ada di mesin pembangunnya, sedangkan Go
-yang belum lolos `go:test` + `go:lint` tidak dikirim (AGENTS.md §Go). Bentuk
-dan runbook-nya di [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
+✅ **Cadangan Go per instans — lolos `go:test` + `go:lint` 23 Okt 2026.**
+Kodenya masuk 22 Okt bersama tahap 4, tetapi waktu itu toolchain Go tidak ada
+di mesin pembangunnya, jadi blok ini dulu menahannya. 23 Okt ia dijalankan:
+gerbang Go hijau, dan uji integrasi terhadap DUA server PostgreSQL 17 sekali
+pakai lolos ujung ke ujung (`pg_dump`/`pg_dumpall` sungguhan, objek dibuka
+dengan `openssl`). Yang ditambahkan sesudah pengukuran itu:
+
+| Bagian | Bentuk |
+|---|---|
+| Kontrak | pola kunci & nama env var instans, label `default`, dan awalan objek `instans/` dibangkitkan dari `contract/db-instances.yaml` — sebelumnya regex yang sama ditulis TIGA kali (TS, `internal/db`, `internal/ledgerread`) |
+| Hak peran | peran template instans tambahan yang bukan superuser dan tidak mewarisi `pg_read_all_data` ditolak DI DEPAN — terukur: pemilik NOSUPERUSER bisa `pg_dump` bukunya tetapi `pg_dumpall --globals-only` ditolak `pg_authid` |
+| Isolasi di tengah putaran | dump/globals instans tambahan yang gagal SESUDAH tercacah kini menandai instans itu saja (`instansGagal`), bukan menghentikan seluruh putaran tanpa manifest — galat bawaan, tujuan, dan pembatalan tetap menghentikan |
+
+Tanpa satu baris `db_instances` pun, pembuka instans tidak pernah dipanggil
+dan nama objek serta manifest sama byte demi byte dengan sebelum tahap 4
+(uji `TestTanpaBarisDbInstancesTIDAKADAInstansYangDibuka` terhadap server
+sungguhan, `TestTanpaInstansNamaObjekDanManifestSAMADenganSebelumTahap4`).
+Syarat pemindahan pertama di produksi tinggal operasional — peran cadangan di
+server instans dan satu putaran tanpa `instansGagal`:
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#peran-cadangan-per-instans).
 
 ⚠ Replika baca (tahap 3) hanya melayani instans **bawaan**. PT di instans lain
 membaca primary-nya sendiri sampai instans itu punya standby sendiri.

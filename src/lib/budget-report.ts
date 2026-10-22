@@ -29,6 +29,7 @@ import {
   type BudgetReport,
   type BudgetVarianceRow,
 } from "@/lib/budget";
+import { businessDate } from "@sai/core/business-date";
 
 type Client = typeof prisma;
 
@@ -38,8 +39,8 @@ const round2 = (n: number): number => Math.round(n * 100) / 100;
 function periodRange(year: number, month?: number): { start: Date; end: Date } {
   if (month !== undefined) return periodBounds(year, month);
   return {
-    start: new Date(year, 0, 1, 0, 0, 0, 0),
-    end: new Date(year, 11, 31, 23, 59, 59, 999),
+    start: businessDate(year, 0, 1),
+    end: businessDate(year, 11, 31, 23, 59, 59, 999),
   };
 }
 

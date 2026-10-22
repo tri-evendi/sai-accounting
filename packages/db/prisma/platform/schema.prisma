@@ -912,3 +912,46 @@ model LicenceRegisterEntry {
   @@map("licence_register_entries")
 }
 
+/// KUNCI PENANDA LISENSI TERSEGEL (konsol `/licences`, migration platform 0007).
+///
+/// Kunci privat Ed25519 yang dibuat di konsol, disimpan HANYA tersegel:
+/// AES-256-GCM dengan kunci turunan scrypt dari frasa sandi yang diketik
+/// operator setiap kali menandatangani. Frasanya tidak pernah disimpan. AAD
+/// segel mengikat `fingerprint`, jadi kunci publik yang ditukar di baris ini
+/// membuat segelnya gagal dibuka.
+///
+/// Baris ini BUKAN sumber kebenaran verifikasi: pemasangan on-premise
+/// memverifikasi terhadap `LICENCE_PUBLIC_KEY_PEM` yang ditanam di kode, dan
+/// konsol hanya menandatangani bila sidiknya sama. Paling banyak satu baris
+/// aktif (indeks unik parsial di migration). Satu-satunya modul yang
+/// menyentuhnya: `@sai/platform/licence-signing-key-store` — dijaga
+/// `tests/licence-register-archive.test.ts`.
+model LicenceSigningKey {
+  id Int @id @default(autoincrement())
+
+  /// SHA-256 heks atas DER SPKI kunci publik.
+  fingerprint  String @unique @db.Char(64)
+  publicKeyPem String @map("public_key_pem") @db.Text
+
+  /// `scrypt` — CHECK di migration menutup kosakata dan batas parameternya.
+  kdfName        String @map("kdf_name") @db.VarChar(20)
+  kdfCost        Int    @map("kdf_cost")
+  kdfBlockSize   Int    @map("kdf_block_size")
+  kdfParallelism Int    @map("kdf_parallelism")
+  kdfSalt        String @map("kdf_salt") @db.VarChar(64)
+
+  /// Segel AES-256-GCM atas DER PKCS#8 kunci privat (base64).
+  privateKeyCiphertext String @map("private_key_ciphertext") @db.Text
+  privateKeyIv         String @map("private_key_iv") @db.VarChar(64)
+  privateKeyTag        String @map("private_key_tag") @db.VarChar(64)
+
+  isActive  Boolean @default(true) @map("is_active")
+  createdBy String  @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@map("licence_signing_keys")
+}
+

@@ -57,6 +57,12 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>>
   "import.process": null,
   "mail.batch": null,
 
+  /* Penyediaan PT tidak menghasilkan berkas: hasilnya BARIS registry, dan
+     layar menunggunya lewat rute statusnya sendiri (`/api/companies/
+     provisioning/[id]`, penjaga tenant `company.create`), bukan rute hasil
+     bertenant — PT-nya belum ada ketika pekerjaan diterbitkan. */
+  "company.provision": null,
+
   /* Jalur pemeliharaan: hasilnya bukan untuk pengguna aplikasi.
      `tenant.backup` menghasilkan manifest, dan itu TIDAK diunduh lewat rute
      aplikasi — ia artefak operator di tujuan cadangan, dan jalannya runbook

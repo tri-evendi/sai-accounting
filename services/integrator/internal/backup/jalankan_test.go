@@ -23,8 +23,9 @@ import (
 
 // pendumpPalsu menuliskan teks yang bisa dikenali per basis data.
 type pendumpPalsu struct {
-	gagalPada string
-	dipanggil []string
+	gagalPada    string
+	gagalGlobals bool
+	dipanggil    []string
 }
 
 func (p *pendumpPalsu) DumpBasis(_ context.Context, nama string, w io.Writer) error {
@@ -38,6 +39,9 @@ func (p *pendumpPalsu) DumpBasis(_ context.Context, nama string, w io.Writer) er
 
 func (p *pendumpPalsu) DumpGlobals(_ context.Context, w io.Writer) error {
 	p.dipanggil = append(p.dipanggil, "(globals)")
+	if p.gagalGlobals {
+		return fmt.Errorf("pg_dumpall: permission denied for table pg_authid (disengaja)")
+	}
 	_, err := io.WriteString(w, "CREATE ROLE sai;\n")
 	return err
 }

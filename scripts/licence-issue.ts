@@ -9,11 +9,16 @@
  * `--modul` menerima `all` atau daftar berkoma. `--dukungan-sampai` boleh
  * dikosongkan untuk dukungan tanpa batas waktu.
  *
- * Biasanya perintah ini DISALIN dari konsol operator (`/licences`), lengkap
- * dengan `--id` draf register-nya; berkas hasilnya diunggah balik ke sana dan
- * diverifikasi dengan kunci publik. Konsol tidak pernah menandatangani —
- * `tests/licence-register-archive.test.ts` menjaga skrip ini tetap satu-satunya
- * penanda. Mengubah nama/bentuk argumen di sini wajib diikuti
+ * Ini jalur LURING. Sejak keputusan pemilik 22 Okt 2026 draf register juga
+ * bisa ditandatangani langsung di konsol operator (`/licences`, kunci tersegel
+ * + frasa sandi — 06-KEAMANAN §3.7). Jalur ini tetap ada untuk kunci yang
+ * hanya hidup sebagai berkas PEM di laptop: perintahnya DISALIN dari konsol
+ * lengkap dengan `--id` draf register-nya, berkas hasilnya diunggah balik dan
+ * diverifikasi dengan kunci publik. Tanda tangannya dibuat
+ * `@sai/platform/licence-signing` — modul yang sama dengan penanda konsol,
+ * jadi kedua jalur menghasilkan byte yang sama (dijaga
+ * `tests/licence-register-archive.test.ts`). Mengubah nama/bentuk argumen di
+ * sini wajib diikuti
  * `buildIssueCommand` (`@sai/core/licence-register`); `tests/licence-register.test.ts`
  * menjalankan perintah rakitan konsol terhadap skrip ini.
  *
@@ -22,14 +27,10 @@
  * dan menyimpan hasil verifikasinya sebagai baris yang bisa ditulis memindahkan
  * kewenangan itu ke tempat yang salah (docs/arsitektur/06-KEAMANAN.md §3.7).
  */
-import { createPrivateKey, createPublicKey, randomUUID, sign as signBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
-import {
-  licencePayloadBytes,
-  verifyLicence,
-  type Licence,
-  type LicenceModules,
-} from "@sai/core/licence";
+import type { Licence, LicenceModules } from "@sai/core/licence";
+import { readPrivateKeyPemFromOfflineFile, signLicenceFile } from "@sai/platform/licence-signing";
 
 const argv = process.argv.slice(2);
 const ambil = (nama: string): string | null => {
@@ -82,25 +83,20 @@ const licence: Licence = {
   maxVersion: ambil("--versi-maks"),
 };
 
-const payload = licencePayloadBytes(licence);
-
 let privateKey;
 try {
-  privateKey = createPrivateKey(readFileSync(jalurKunci, "utf8"));
+  privateKey = readPrivateKeyPemFromOfflineFile(readFileSync(jalurKunci, "utf8"));
 } catch (e) {
   mati(`kunci privat tidak dapat dibaca dari ${jalurKunci}: ${(e as Error).message}`);
 }
 
-const signature = signBytes(null, payload, privateKey!);
-const berkas = `${payload.toString("base64url")}.${signature.toString("base64url")}`;
-
-/* Diverifikasi SEBELUM ditulis, dengan kunci publik turunan kunci privat yang
-   baru dipakai. Lisensi yang tidak bisa dibaca ulang oleh kodenya sendiri akan
-   ditemukan oleh CUSTOMER, di mesin yang tidak bisa kita lihat — dan satu
-   pemeriksaan di sini berbiaya mikrodetik. */
-const publikPem = createPublicKey(privateKey!).export({ type: "spki", format: "pem" }).toString();
-const vonis = verifyLicence(berkas, publikPem);
-if (!vonis.ok) mati(`lisensi yang baru dibuat GAGAL diverifikasi: ${vonis.reason}`);
+/* `signLicenceFile` memverifikasi SEBELUM memulangkan, dengan kunci publik
+   turunan kunci privat yang baru dipakai. Lisensi yang tidak bisa dibaca ulang
+   oleh kodenya sendiri akan ditemukan oleh CUSTOMER, di mesin yang tidak bisa
+   kita lihat — dan satu pemeriksaan di sini berbiaya mikrodetik. */
+const hasil = signLicenceFile(licence, privateKey!);
+if (!hasil.ok) mati(`lisensi yang baru dibuat GAGAL diverifikasi: ${hasil.reason}`);
+const berkas = hasil.ok ? hasil.file : "";
 
 writeFileSync(keluar, `${berkas}\n`, { mode: 0o644 });
 

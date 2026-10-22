@@ -680,12 +680,13 @@ export interface ContractChainStage {
 }
 
 /**
- * A contract's own status as a chain stage. `signed` is a finished stage;
+ * A contract's own status as a chain stage. `signed` is a finished stage — and so
+ * is `completed` (the contract has run its course, a later state than signed);
  * `pending` is a document that exists but is not agreed yet; `canceled` never
  * reads as progress.
  */
 export function contractStageStatus(status: string): ChainStatus {
-  if (status === "signed") return "selesai";
+  if (status === "signed" || status === "completed") return "selesai";
   if (status === "canceled") return "belum";
   return "sebagian";
 }

@@ -82,7 +82,21 @@ salah, hanya `information_schema` basis data yang berjalan yang benar · untuk
 indeks yang sudah ada pakai `RENAME`, bukan `CREATE`, supaya tidak lahir indeks
 kedua pada kolom yang sama.
 
-### S3 — satu-satunya temuan yang masih terbuka
+### S3 — ✅ DIPUTUSKAN 23 Okt 2026
+
+**Keputusan pemilik:** ya, bisnis ini membedakan kontrak yang sudah
+ditandatangani dari yang sudah selesai dijalankan. Yang dikerjakan:
+
+| | |
+|---|---|
+| Kosakata | `completed` status kontrak KEEMPAT yang sah — dibangkitkan dari `contract/accounting.yaml` (`contract_statuses`), di-re-ekspor `@sai/core/constants`. Artinya "selesai/ditutup", **bukan** "lunas": hanya 4 dari 101 yang terbayar penuh. Faktur TETAP tiga status (`invoice_statuses`) — "selesai" faktur sudah dijawab pelunasannya |
+| Tampilan | label id/en/zh (Selesai · Completed · 已完成), badge netral, nada donat ke-4 (biru informasional), tombol saringan dari konstanta |
+| Perpindahan | `completed` hanya dari `signed` (bisa dibuka kembali ke `signed`, atau dibatalkan); kontrak baru tidak lahir `completed`. Ditegakkan route POST/PUT (`canTransitionContractStatus`), izinnya `contract.write` seperti status lain |
+| Data `pt-sai` | kode warisan `2` → `signed` (`bun run legacy:fix-contracts`, hanya `pending` berkode PERSIS `2`; `0` tetap `pending`); 101 `completed` tidak disentuh |
+| Kurs warisan `pt-sai` | skrip yang sama, keputusan yang sama: pembayaran kontrak valas tanpa kurs → kurs konversi SAI sendiri (`currency_conversions`) hari-sama (tertimbang) → terdekat ≤ 7 hari → kurs tengah BI; kontrak → kurs tengah BI di tanggalnya. Konversi #25 (USD 1963 → 14163) dan #325 (CNY 22460 → 2246) dikoreksi, #65 (kurs 0) dikecualikan. Kurs BI dari `scripts/data/bi-rates/` (data publik BI, USD & CNY 2019-04 s.d. 2026-10). Baris berjurnal dan mata uang `LC` dilewati; pembayaran berlabel `USD` atas kontrak CNY (label bawaan pengimpor) diberi kurs hanya dengan `--relabel-payment-currency` |
+| Penjaga | CHECK `contracts_status_check` (migration perusahaan 0003) — dipasang `NOT VALID` lalu di-`VALIDATE` hanya di buku yang bersih, jadi tidak pernah menggagalkan rilis |
+
+Catatan aslinya, untuk riwayat:
 
 `z.enum` hanya menjaga tulisan yang lewat aplikasi; CHECK constraint di buku
 produksi: **0**. `CONTRACT_STATUSES = ["signed", "pending", "canceled"]`,
@@ -253,6 +267,17 @@ dan `billing`). Keputusan yang mengikat:
 |---|---|
 | Register = **arsip, bukan kewenangan** | Konsol menyusun perintah `licence:issue`, penandatanganan terjadi di mesin luring, konsol hanya memverifikasi berkas yang diunggah. Tidak ada tempat untuk kunci privat, dan `app-customer` tidak membaca tabel register — dijaga `tests/licence-register-archive.test.ts` ([06 §3.7](./06-KEAMANAN.md)) |
 | "Dicabut" di register hanya catatan | Lisensi luring tidak bisa dicabut dari jauh; tombol yang berpura-pura bisa adalah janji palsu |
+
+**Penandatanganan pindah ke konsol** (keputusan pemilik 22 Okt 2026, belum
+digelar): migration platform `0007_licence_signing_keys`, izin `licence.sign`
+(owner saja). Baris pertama tabel di atas — "penandatanganan terjadi di mesin
+luring" — DIBALIK: konsol kini membuat kunci penanda dan menandatangani draf,
+dengan kunci privat tersegel (scrypt + AES-256-GCM) dan frasa sandi yang
+diketik setiap kali. Register tetap arsip; jangkarnya tetap kunci publik yang
+ditanam di kode, dan konsol hanya menandatangani bila sidiknya sama. Jalur
+luring tetap tersedia lewat modul penanda yang sama. Model dan risiko sisanya
+(RCE pada `app-operator` menangkap frasa saat diketik):
+[06 §3.7](./06-KEAMANAN.md).
 
 **Pindah tenant SaaS → on-premise** (#691, runbook
 [`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)): lima skrip

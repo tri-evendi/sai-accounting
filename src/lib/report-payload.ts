@@ -47,6 +47,7 @@ import {
 import { comparisonDate, comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@sai/core/utils";
+import { businessParts } from "@sai/core/business-date";
 
 /** Parameter mentah dari URL — bentuknya sama dengan `searchParams` halaman. */
 export interface ReportPayloadParams {
@@ -100,12 +101,14 @@ export function resolveBudgetPeriod(
   now: Date = new Date()
 ): { year: number; month: number | undefined } {
   const y = Number(yearRaw);
-  const year = Number.isInteger(y) && y >= 2000 && y <= 2100 ? y : now.getFullYear();
-  const m = monthRaw === undefined ? now.getMonth() + 1 : Number(monthRaw);
+  // "Sekarang" menurut kalender Jakarta, bukan zona proses.
+  const today = businessParts(now);
+  const year = Number.isInteger(y) && y >= 2000 && y <= 2100 ? y : today.year;
+  const m = monthRaw === undefined ? today.month + 1 : Number(monthRaw);
   if (m === 0) return { year, month: undefined };
   return {
     year,
-    month: Number.isInteger(m) && m >= 1 && m <= 12 ? m : now.getMonth() + 1,
+    month: Number.isInteger(m) && m >= 1 && m <= 12 ? m : today.month + 1,
   };
 }
 

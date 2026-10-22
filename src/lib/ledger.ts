@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@sai/db/client/company";
 import { assertPeriodOpen } from "@/lib/period";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
+import { businessParts } from "@sai/core/business-date";
 
 export interface JournalLineInput {
   accountId: number;
@@ -161,8 +162,9 @@ function runInTx<T>(
  * perbandingan rentang memakai indeks kolom apa adanya, tanpa LIKE.
  */
 async function nextNumber(tx: Prisma.TransactionClient, date: Date): Promise<string> {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
+  // Bulan kalender Jakarta, sama dengan `periodOf` (`@sai/core/business-date`).
+  const { year: y, month } = businessParts(date);
+  const m = String(month + 1).padStart(2, "0");
   const prefix = `JV.${y}.${m}.`;
   const count = await tx.journal.count({
     where: { number: { gte: prefix, lte: `${prefix}99999` } },

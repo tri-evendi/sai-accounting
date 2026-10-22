@@ -35,6 +35,7 @@ import { join } from "node:path";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
+import { DB_INSTANCE_URL_ENV_PATTERN } from "@sai/db/db-instances";
 import { AKAR_REPO } from "./akar-sumber";
 
 const read = (rel: string) => readFileSync(join(AKAR_REPO, rel), "utf8");
@@ -68,8 +69,8 @@ function blok(text: string, service: string): string {
   return lines.slice(i, end < 0 ? undefined : end).join("\n");
 }
 
-/** Bentuk nama env var instans — sama dengan `DB_INSTANCE_URL_ENV_PATTERN`. */
-const ENV_INSTANS = /\bCOMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE\b/;
+/** Bentuk nama env var instans — `DB_INSTANCE_URL_ENV_PATTERN` (kontrak), tanpa jangkar. */
+const ENV_INSTANS = new RegExp(`\\b${DB_INSTANCE_URL_ENV_PATTERN.source.slice(1, -1)}\\b`);
 
 const BERKAS_COMPOSE = readdirSync(AKAR_REPO).filter((f) => /^docker-compose(\..+)?\.ya?ml$/.test(f));
 const DASAR = tanpaKomentar(read("docker-compose.yml"));
@@ -108,7 +109,7 @@ describe("env var instans basis data: satu jalan masuk untuk semua layanan", () 
     const grup = doc["x-env"]?.["db-instances"];
     expect(grup, "grup x-env.db-instances hilang").toBeDefined();
     for (const [nama, nilai] of Object.entries(grup ?? {})) {
-      expect(nama).toMatch(/^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$/);
+      expect(nama).toMatch(DB_INSTANCE_URL_ENV_PATTERN);
       /* Nilainya dari `.env`. Nilai yang ditulis di sini = URL berkredensial di repo. */
       expect(nilai, nama).toBeNull();
     }
@@ -141,11 +142,13 @@ describe("env var instans basis data: satu jalan masuk untuk semua layanan", () 
   });
 
   it("pola nama env var di penjaga ini sama dengan penyelesai TS dan Go", () => {
+    /* Sejak `contract/db-instances.yaml` keduanya MEMBACA pola bangkitan —
+       kesamaan teksnya dijaga `tests/contract-db-instances.test.ts`. Yang
+       diperiksa di sini: keduanya memang membacanya, bukan menulis sendiri. */
     const ts = read("packages/db/src/company-url.ts");
     const go = read("services/integrator/internal/db/instans.go");
-    const pola = "^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$";
-    expect(ts).toContain(`/${pola}/`);
-    expect(go).toContain("`" + pola + "`");
+    expect(ts).toContain('from "./generated/db-instances"');
+    expect(go).toContain("regexp.MustCompile(contract.DBInstanceURLEnvPattern)");
     expect(ENV_INSTANS.test("COMPANY_DB2_DATABASE_URL_TEMPLATE")).toBe(true);
     // Env instans BAWAAN dan replika baca bukan env instans tambahan.
     expect(ENV_INSTANS.test("COMPANY_DATABASE_URL_TEMPLATE")).toBe(false);

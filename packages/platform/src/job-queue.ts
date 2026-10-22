@@ -92,6 +92,53 @@ export async function publishJob(input: PublishInput): Promise<{ id: number } | 
 }
 
 /**
+ * Lepaskan `dedupeKey` dari baris yang sudah BERAKHIR (`done`/`dead`).
+ *
+ * Kunci dedupe unik untuk SELURUH baris, termasuk yang sudah selesai — itu
+ * benar untuk denyut penjadwal (satu jam, satu pekerjaan, selamanya), tapi
+ * salah untuk pekerjaan yang dedupe-nya berarti "satu yang AKTIF": penyediaan
+ * PT yang gagal harus bisa dicoba lagi tanpa menunggu retensi 14 hari. Baris
+ * lamanya tetap ada (jejak kegagalannya berharga); hanya kuncinya yang
+ * dilepas. Dipanggil SEBELUM `publishJob` dengan kunci yang sama.
+ *
+ * @returns jumlah baris yang kuncinya dilepas.
+ */
+export async function releaseFinishedDedupeKey(dedupeKey: string): Promise<number> {
+  return controlDb.$executeRaw`
+    UPDATE jobs SET dedupe_key = NULL, updated_at = now()
+    WHERE dedupe_key = ${dedupeKey} AND status IN ('done', 'dead')`;
+}
+
+/** Status satu pekerjaan — untuk rute yang MENUNGGU-nya (tanpa hasil berkas). */
+export interface JobStatusRow {
+  id: number;
+  kind: JobKind;
+  status: JobStatus;
+  tenantId: number | null;
+  companyId: number | null;
+  /** ⚠ Dibaca gerbang/penerjemah status, TIDAK PERNAH dipulangkan ke HTTP. */
+  payload: unknown;
+  progress: number;
+  attempts: number;
+  maxAttempts: number;
+  /** ⚠ Teks log — TIDAK PERNAH ke layar. Lihat `decodeProvisionFailure`. */
+  lastError: string | null;
+  createdAt: Date;
+}
+
+/** Baca satu pekerjaan menurut id, atau menurut `dedupeKey`-nya. */
+export async function jobStatus(by: { id: number } | { dedupeKey: string }): Promise<JobStatusRow | null> {
+  const where =
+    "id" in by ? Prisma.sql`id = ${by.id}` : Prisma.sql`dedupe_key = ${by.dedupeKey}`;
+  const rows = await controlDb.$queryRaw<JobStatusRow[]>`
+    SELECT id, kind, status, tenant_id AS "tenantId", company_id AS "companyId", payload,
+           progress, attempts, max_attempts AS "maxAttempts", last_error AS "lastError",
+           created_at AS "createdAt"
+      FROM jobs WHERE ${where}`;
+  return rows[0] ?? null;
+}
+
+/**
  * Klaim satu pekerjaan dari daftar `kind` yang DIKLAIM pekerja ini.
  *
  * Klausa `kind IN (...)` itulah yang membuat jalur terpisah: proses jalur

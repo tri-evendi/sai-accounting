@@ -31,6 +31,12 @@
  *   • packages/core/src/generated/accounting.ts
  *   • services/integrator/internal/contract/accounting_gen.go
  *
+ * Tahap 4 menambah `contract/db-instances.yaml` (bentuk kunci & env var
+ * instans basis data, awalan objek cadangan per instans):
+ *
+ *   • packages/db/src/generated/db-instances.ts
+ *   • services/integrator/internal/contract/dbinstances_gen.go
+ *
  * Angka dipisahkan dari kosakata karena pembacanya berbeda: kosakata dibaca
  * penerbit dan pelari, angka dibaca pelari dan permukaan kesehatan. Di Go
  * keduanya satu berkas, sebab satu paket Go memang satu unit impor.
@@ -646,7 +652,13 @@ interface KontrakAkuntansi {
     category_default_sections: Record<string, string>;
   };
   closing_journal_type: string;
+  currencies: { base: string; values: string[] };
+  invoice_statuses: string[];
+  contract_statuses: string[];
 }
+
+/** Kode mata uang ISO 4217: tiga huruf besar. */
+const ISO_4217 = /^[A-Z]{3}$/;
 
 /** Sisi saldo — dua nilai, ditulis di sini karena ia kosakata generator, bukan data. */
 const SISI = ["debit", "credit"] as const;
@@ -751,6 +763,40 @@ function bacaAkuntansi(): KontrakAkuntansi {
     salah.push("`closing_journal_type` bukan snake_case");
   }
 
+  /* ── Mata uang (23 Okt 2026). Kode ISO tiga huruf besar, tanpa duplikat, dan
+     mata uang dasar WAJIB anggotanya — `base_amount` yang dinyatakan dalam mata
+     uang yang tidak bisa dipilih di formulir mana pun tidak bisa dibaca siapa pun. */
+  const mu = k.currencies;
+  if (!mu || typeof mu !== "object" || !Array.isArray(mu.values) || mu.values.length === 0) {
+    salah.push("`currencies.values` kosong");
+  } else {
+    const lihat = new Set<string>();
+    for (const c of mu.values) {
+      if (typeof c !== "string" || !ISO_4217.test(c)) salah.push(`currencies: ${JSON.stringify(c)} bukan kode ISO 4217`);
+      else if (lihat.has(c)) salah.push(`currencies: \`${c}\` tercantum dua kali`);
+      lihat.add(c);
+    }
+    if (typeof mu.base !== "string" || !mu.values.includes(mu.base)) {
+      salah.push(`currencies.base ${JSON.stringify(mu.base)} bukan salah satu dari currencies.values`);
+    }
+  }
+
+  /* ── Status dokumen. Status kontrak WAJIB diawali status faktur, persis dan
+     berurutan: posisi menentukan warna donat dan label badge yang dibagi kedua
+     dokumen, jadi status kontrak tambahan hanya boleh berdiri di BELAKANG. */
+  const statusFaktur = daftar("invoice_statuses", k.invoice_statuses);
+  const statusKontrak = daftar("contract_statuses", k.contract_statuses);
+  if (
+    statusFaktur.length > 0 &&
+    statusKontrak.length > 0 &&
+    statusFaktur.some((s, i) => statusKontrak[i] !== s)
+  ) {
+    salah.push(
+      `contract_statuses harus DIAWALI invoice_statuses dalam urutan yang sama ` +
+        `(${statusFaktur.join(", ")}); kini: ${statusKontrak.join(", ")}`
+    );
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/accounting.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -771,8 +817,10 @@ function bangkitkanAkuntansi(k: KontrakAkuntansi): string {
   return `/**
  * ${JANGAN_SUNTING_AKUNTANSI(k.version)}
  *
- * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label dan saldo
- * normal per tipe tetap di \`src/lib/accounting.ts\`.
+ * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5) — kecuali mata uang
+ * & status dokumen, pengecualian yang disebut (keputusan pemilik 23 Okt 2026).
+ * Label dan saldo normal per tipe tetap di \`src/lib/accounting.ts\`; label &
+ * warna status di \`@sai/core/constants\` dan \`status-badge.tsx\`.
  */
 
 /** Skala kolom uang \`Decimal(15,2)\`: satu sen = 10^-MONEY_SCALE rupiah. */
@@ -836,6 +884,32 @@ ${Object.entries(k.income_statement.category_default_sections).map(([c, v]) => `
 
 /** \`journals.type\` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
 export const CLOSING_JOURNAL_TYPE = "${k.closing_journal_type}";
+
+// ── Mata uang & status dokumen (23 Okt 2026) ──────────────────────────────
+// Dibaca lewat re-ekspor \`@sai/core/constants\`; label & warna tetap di TS.
+
+${union("Currency", k.currencies.values)}
+
+/** Mata uang yang ditransaksikan, dalam urutan pilihan formulir. */
+export const CURRENCIES = [
+${k.currencies.values.map((c) => `  "${c}",`).join("\n")}
+] as const satisfies readonly Currency[];
+
+/** Mata uang buku besar — satuan setiap \`base_amount\`. */
+export const BASE_CURRENCY = "${k.currencies.base}" satisfies Currency;
+
+${union("InvoiceStatus", k.invoice_statuses)}
+
+export const INVOICE_STATUSES = [
+${k.invoice_statuses.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly InvoiceStatus[];
+
+${union("ContractStatus", k.contract_statuses)}
+
+/** Diawali \`INVOICE_STATUSES\` persis (generator menolak selainnya); tambahan di belakang. */
+export const CONTRACT_STATUSES = [
+${k.contract_statuses.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly ContractStatus[];
 `;
 }
 
@@ -942,6 +1016,68 @@ ${ratakan(Object.entries(k.income_statement.category_default_sections).map(([c, 
 // ClosingJournalType: \`journals.type\` jurnal penutup tahunan (#555). Laba
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "${k.closing_journal_type}"
+
+// Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
+// \`currency\` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
+// sebelum pembaca Go pertamanya (pemeriksa kesesuaian data).
+type Currency string
+
+const (
+${ratakan(k.currencies.values.map((c) => ({ kiri: `Currency${pengenalGo(c)}`, kanan: `Currency = "${c}"` })))}
+)
+
+// Currencies dalam urutan kontrak (urutan pilihan formulir).
+var Currencies = []Currency{
+${k.currencies.values.map((c) => `\tCurrency${pengenalGo(c)},`).join("\n")}
+}
+
+// BaseCurrency: mata uang buku besar — satuan setiap base_amount.
+const BaseCurrency = Currency${pengenalGo(k.currencies.base)}
+
+// IsCurrency melaporkan apakah v adalah mata uang yang dikenal kontrak ini.
+func IsCurrency(v string) bool {
+\tfor _, c := range Currencies {
+\t\tif string(c) == v {
+\t\t\treturn true
+\t\t}
+\t}
+\treturn false
+}
+
+// InvoiceStatus adalah nilai kolom \`invoices.status\`.
+type InvoiceStatus string
+
+const (
+${ratakan(k.invoice_statuses.map((s) => ({ kiri: `InvoiceStatus${pengenalGo(s)}`, kanan: `InvoiceStatus = "${s}"` })))}
+)
+
+// InvoiceStatuses dalam urutan kontrak.
+var InvoiceStatuses = []InvoiceStatus{
+${k.invoice_statuses.map((s) => `\tInvoiceStatus${pengenalGo(s)},`).join("\n")}
+}
+
+// ContractStatus adalah nilai kolom \`contracts.status\` — diawali status
+// faktur persis, tambahan di belakang.
+type ContractStatus string
+
+const (
+${ratakan(k.contract_statuses.map((s) => ({ kiri: `ContractStatus${pengenalGo(s)}`, kanan: `ContractStatus = "${s}"` })))}
+)
+
+// ContractStatuses dalam urutan kontrak.
+var ContractStatuses = []ContractStatus{
+${k.contract_statuses.map((s) => `\tContractStatus${pengenalGo(s)},`).join("\n")}
+}
+
+// IsContractStatus melaporkan apakah v adalah status kontrak yang dikenal.
+func IsContractStatus(v string) bool {
+\tfor _, s := range ContractStatuses {
+\t\tif string(s) == v {
+\t\t\treturn true
+\t\t}
+\t}
+\treturn false
+}
 `;
 }
 
@@ -1237,8 +1373,169 @@ ${tabelLocaleCompare().map((k) => `\t${q(k)},`).join("\n")}
 `;
 }
 
+// ═══ contract/db-instances.yaml (tahap 4) ══════════════════════════════════
+//
+// Sumber KEEMPAT: bentuk instans basis data. Pembacanya penyelesai URL buku PT
+// (`@sai/db/company-url`) dan jalur `tenant` Go yang mencadangkan tiap
+// instans. Bangkitan TS-nya hidup di `packages/db` — bukan `packages/core` —
+// sebab pembacanya di `@sai/db`, dan arah paket tidak mengizinkan `db` →
+// `core`.
+
+const SUMBER_INSTANS = join(AKAR, "contract", "db-instances.yaml");
+const TUJUAN_INSTANS_TS = join(AKAR, "packages", "db", "src", "generated", "db-instances.ts");
+const TUJUAN_INSTANS_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "dbinstances_gen.go"
+);
+
+interface KontrakInstans {
+  version: number;
+  default_label: string;
+  key_pattern: string;
+  url_env_var: { prefix: string; suffix: string; pattern: string };
+  backup: { instance_object_prefix: string };
+}
+
+/**
+ * Pola yang artinya SAMA di RegExp JS dan RE2 Go: berjangkar penuh, tanpa
+ * lookaround/backreference/kelas Unicode. Pola di luar subset ini ditolak
+ * di sini — ia bisa mengompilasi di satu bahasa dan berarti lain di yang lain.
+ */
+function polaLintasBahasa(nama: string, pola: unknown, salah: string[]): void {
+  if (typeof pola !== "string" || !pola.startsWith("^") || !pola.endsWith("$")) {
+    salah.push(`\`${nama}\` wajib string berjangkar ^…$`);
+    return;
+  }
+  /* `/` juga ditolak: pola ditulis sebagai literal RegExp TS, dan `.source`-nya
+     wajib sama byte demi byte dengan YAML, Go, dan CHECK 0009. */
+  if (/\(\?|\\[1-9pPkbB]|\\u|\//.test(pola)) {
+    salah.push(`\`${nama}\` memakai konstruksi yang tidak sama di JS dan RE2: ${pola}`);
+    return;
+  }
+  try {
+    new RegExp(pola);
+  } catch (e) {
+    salah.push(`\`${nama}\` bukan regex sah: ${String(e)}`);
+  }
+}
+
+function bacaInstans(): KontrakInstans {
+  const k = load(readFileSync(SUMBER_INSTANS, "utf8")) as KontrakInstans;
+  const salah: string[] = [];
+  if (k.version !== 1) salah.push("`version` harus 1");
+  polaLintasBahasa("key_pattern", k.key_pattern, salah);
+  polaLintasBahasa("url_env_var.pattern", k.url_env_var?.pattern, salah);
+  if (salah.length === 0) {
+    const kunci = new RegExp(k.key_pattern);
+    const env = new RegExp(k.url_env_var.pattern);
+    /* Label bawaan berbentuk kunci, dan itu sebabnya ia ditolak eksplisit
+       sebagai kunci baris. Label yang TIDAK berbentuk kunci akan membuat
+       penolakan eksplisit itu kode mati yang terlihat menjaga sesuatu. */
+    if (!kunci.test(k.default_label)) {
+      salah.push(`\`default_label\` (${k.default_label}) tidak berbentuk kunci`);
+    }
+    const { prefix, suffix } = k.url_env_var;
+    if (!/^[A-Z][A-Z0-9_]*$/.test(prefix ?? "") || !/^[A-Z0-9_]+$/.test(suffix ?? "")) {
+      salah.push("`url_env_var.prefix`/`suffix` bukan nama env var");
+    } else if (!env.test(`${prefix}${k.default_label.toUpperCase()}${suffix}`)) {
+      /* Nama yang DISARANKAN (prefix + KUNCI + suffix) wajib lolos pola —
+         CLI yang menyarankan nama yang kemudian ditolak adalah jebakan. */
+      salah.push("nama yang disarankan (prefix + KUNCI + suffix) tidak lolos `url_env_var.pattern`");
+    }
+  }
+  const awalan = k.backup?.instance_object_prefix;
+  if (typeof awalan !== "string" || !/^[a-z][a-z0-9_]*\/$/.test(awalan)) {
+    salah.push("`backup.instance_object_prefix` wajib `nama/` huruf kecil");
+  }
+  if (salah.length > 0) {
+    console.error("✗ contract/db-instances.yaml tidak sah:");
+    for (const s of salah) console.error(`  • ${s}`);
+    process.exit(1);
+  }
+  return k;
+}
+
+const JANGAN_SUNTING_INSTANS = (versi: number) => `DIBANGKITKAN DARI \`contract/db-instances.yaml\` — JANGAN DISUNTING TANGAN.
+ *
+ * Jalankan \`bun run contract:gen\` setelah mengubah kontraknya, dan commit
+ * hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+ * berkas ini basi, dan penjaga \`tests/contract-db-instances.test.ts\` memanggilnya.
+ *
+ * Kontrak instans basis data versi ${versi}.`;
+
+function bangkitkanInstans(k: KontrakInstans): string {
+  const q = (v: string) => JSON.stringify(v);
+  return `/**
+ * ${JANGAN_SUNTING_INSTANS(k.version)}
+ *
+ * Dibaca \`company-url.ts\` (penyelesai URL buku PT) dan
+ * \`scripts/prove-backup-restore.ts\`; cermin Go-nya dibaca jalur \`tenant\`.
+ */
+
+/** Label instans bawaan di log, laporan fan-out, argumen CLI, dan cadangan. */
+export const DEFAULT_DB_INSTANCE_LABEL = ${q(k.default_label)};
+
+/** Bentuk \`db_instances.key\` — sama dengan CHECK migration kendali 0009. */
+export const DB_INSTANCE_KEY_PATTERN = /${k.key_pattern}/;
+
+/** Bentuk \`db_instances.url_env_var\` — sama dengan CHECK migration kendali 0009. */
+export const DB_INSTANCE_URL_ENV_PATTERN = /${k.url_env_var.pattern}/;
+
+/** Nama env var yang disarankan = PREFIX + KUNCI (huruf besar) + SUFFIX. */
+export const DB_INSTANCE_URL_ENV_PREFIX = ${q(k.url_env_var.prefix)};
+export const DB_INSTANCE_URL_ENV_SUFFIX = ${q(k.url_env_var.suffix)};
+
+/** Direktori objek instans tambahan di dalam putaran cadangan. */
+export const BACKUP_INSTANCE_OBJECT_PREFIX = ${q(k.backup.instance_object_prefix)};
+`;
+}
+
+function bangkitkanInstansGo(k: KontrakInstans): string {
+  const kepala = JANGAN_SUNTING_INSTANS(k.version)
+    .split("\n")
+    .map((b) => `// ${b.replace(/^ \* ?/, "")}`.trimEnd())
+    .join("\n");
+  /* Pola ditulis sebagai raw string Go: tanpa lolos-ganda, jadi teksnya sama
+     byte demi byte dengan YAML dan dengan \`.source\` di TS. */
+  const raw = (v: string) => {
+    if (v.includes("`")) throw new Error(`pola memuat backtick: ${v}`);
+    return `\`${v}\``;
+  };
+  const q = (v: string) => JSON.stringify(v);
+  return `${kepala}
+
+package contract
+
+// DBInstanceDefaultLabel: label instans bawaan, yang tidak punya baris
+// \`db_instances\`. Berbentuk kunci, dan karena itu ditolak eksplisit sebagai
+// kunci baris.
+const DBInstanceDefaultLabel = ${q(k.default_label)}
+
+// DBInstanceKeyPattern: bentuk \`db_instances.key\` (CHECK kendali 0009).
+const DBInstanceKeyPattern = ${raw(k.key_pattern)}
+
+// DBInstanceURLEnvPattern: bentuk \`db_instances.url_env_var\` (CHECK kendali 0009).
+const DBInstanceURLEnvPattern = ${raw(k.url_env_var.pattern)}
+
+// Nama env var yang disarankan = prefix + KUNCI (huruf besar) + suffix.
+const (
+	DBInstanceURLEnvPrefix = ${q(k.url_env_var.prefix)}
+	DBInstanceURLEnvSuffix = ${q(k.url_env_var.suffix)}
+)
+
+// BackupInstanceObjectPrefix: direktori objek instans tambahan di dalam
+// putaran cadangan.
+const BackupInstanceObjectPrefix = ${q(k.backup.instance_object_prefix)}
+`;
+}
+
 const kontrak = baca();
 const kontrakAkuntansi = bacaAkuntansi();
+const kontrakInstans = bacaInstans();
 
 const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_TS, isi: bangkitkan(kontrak) },
@@ -1247,6 +1544,8 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_AKUNTANSI_TS, isi: bangkitkanAkuntansi(kontrakAkuntansi) },
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo() },
+  { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
+  { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },
 ];
 
 if (CEK) {

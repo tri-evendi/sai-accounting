@@ -9,7 +9,7 @@
 import { prisma } from "@/lib/prisma";
 import { userDisplayName, userNamesByIds } from "@/lib/users-directory";
 import { getBalanceSheet, getTrialBalance } from "@/lib/reports";
-import { type PeriodStatus, periodBounds } from "@/lib/period";
+import { type PeriodStatus, periodBounds, periodOf } from "@/lib/period";
 import { openForeignCurrencies } from "@/lib/fx-revaluation-service";
 import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
@@ -374,12 +374,14 @@ export async function listPeriods(limit = 24) {
 
   const max = bounds._max.date ?? new Date();
   const min = bounds._min.date ?? max;
-  const cursor = new Date(max.getFullYear(), max.getMonth(), 1);
-  const floor = new Date(min.getFullYear(), min.getMonth(), 1);
+  // Bulan dibaca menurut kalender Jakarta (`periodOf`), bukan zona proses, dan
+  // dihitung mundur sebagai bilangan (tahun*12 + bulan) — tanpa `Date` lokal.
+  const top = periodOf(max);
+  const bottom = periodOf(min);
+  const floor = bottom.year * 12 + (bottom.month - 1);
 
-  while (cursor >= floor && months.length < limit) {
-    months.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
-    cursor.setMonth(cursor.getMonth() - 1);
+  for (let i = top.year * 12 + (top.month - 1); i >= floor && months.length < limit; i--) {
+    months.push({ year: Math.floor(i / 12), month: (i % 12) + 1 });
   }
   for (const r of rows) {
     if (!months.some((m) => m.year === r.year && m.month === r.month)) {

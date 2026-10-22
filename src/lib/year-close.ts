@@ -19,6 +19,7 @@
  * yang salah ke ekuitas, tempat kesalahan paling sulit ditemukan kembali.
  */
 
+import { businessDate, businessParts } from "@sai/core/business-date";
 import { CLOSING_JOURNAL_TYPE as CONTRACT_CLOSING_JOURNAL_TYPE } from "@sai/core/generated/accounting";
 
 /** Uang di buku ini `Decimal(15,2)`. */
@@ -42,19 +43,21 @@ export function fiscalYearBounds(
   fiscalYearStart: Date,
   year: number
 ): { start: Date; end: Date } {
-  const month = fiscalYearStart.getMonth();
-  const day = fiscalYearStart.getDate();
+  /* Bulan/tanggal dibaca menurut kalender JAKARTA, bukan zona proses: tanggal
+     mulai yang tersimpan 00:00 WIB (17:00Z hari sebelumnya) terbaca sehari
+     lebih awal di server ber-TZ UTC (`@sai/core/business-date`). */
+  const { month, day } = businessParts(fiscalYearStart);
 
-  const start = new Date(year, month, day, 0, 0, 0, 0);
+  const start = businessDate(year, month, day);
   /*
    * Akhirnya diturunkan dari AWAL tahun berikutnya dikurangi satu milidetik,
    * bukan dari "tanggal yang sama tahun depan minus sehari". Bentuk kedua salah
    * pada tahun kabisat dan pada tahun buku yang mulai tanggal 29–31, sebab
-   * `new Date(y, m, 31)` menggulung sendiri ke bulan berikutnya. Yang di bawah
+   * `businessDate(y, m, 31)` menggulung sendiri ke bulan berikutnya. Yang di bawah
    * ini tidak punya kasus tepi: ia hanya satu milidetik sebelum awal berikutnya,
    * apa pun kalendernya.
    */
-  const end = new Date(new Date(year + 1, month, day, 0, 0, 0, 0).getTime() - 1);
+  const end = new Date(businessDate(year + 1, month, day).getTime() - 1);
   return { start, end };
 }
 
@@ -200,7 +203,7 @@ export function planYearClose(
  * tanggal yang salah selama tiga bulan setiap tahunnya.
  */
 export function fiscalYearOf(fiscalYearStart: Date, date: Date): number {
-  const tahun = date.getFullYear();
+  const tahun = businessParts(date).year;
   /* Kalau tanggalnya mendahului awal tahun buku pada tahun kalender yang sama,
      ia masih milik tahun buku sebelumnya. */
   return date.getTime() < fiscalYearBounds(fiscalYearStart, tahun).start.getTime()

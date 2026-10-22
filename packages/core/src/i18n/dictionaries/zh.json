@@ -561,7 +561,8 @@
     "contract": {
       "signed": "已签署",
       "pending": "待处理",
-      "canceled": "已取消"
+      "canceled": "已取消",
+      "completed": "已完成"
     }
   },
   "statusPage": {
@@ -779,6 +780,7 @@
     "csvEmpty": "CSV 内容为空。",
     "csvInvalidRows": "CSV 中包含无效行。请修正后重新导入。",
     "contractInUse": "该合同已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该合同，以保持单据链完整。",
+    "contractStatusTransition": "合同状态不能从“{from}”改为“{to}”。新合同不能直接设为已完成，只有已签署的合同才能标记为已完成。",
     "invoiceInUse": "该发票已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该发票，以保持单据链完整。",
     "contractUsedInvoices": "{count} 张发票",
     "contractUsedDeliveryOrders": "{count} 张送货单",
@@ -4297,7 +4299,10 @@
     "licenceCustomerRequired": "客户名称为必填项，须为单行，且不能以减号开头。",
     "licenceLimitInvalid": "请输入 0 或以上的整数。",
     "licenceModulesInvalid": "填写 all，或以逗号分隔的模块键列表（小写字母、数字、下划线）。",
-    "licenceVersionInvalid": "版本为以点分隔的数字，如 1.4 或 1.4.0。"
+    "licenceVersionInvalid": "版本为以点分隔的数字，如 1.4 或 1.4.0。",
+    "licencePassphraseTooShort": "口令至少 12 个字符。",
+    "licencePassphraseTooLong": "口令过长（最多 1024 个字符）。",
+    "licencePassphraseMismatch": "两次输入的口令不一致。"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",
@@ -4428,21 +4433,23 @@
     "databasePreview": "数据库名称将为",
     "create": "创建公司",
     "creating": "正在准备…",
-    "dontClose": "完成前请勿关闭此页面。",
+    "dontClose": "配置在服务器上进行——您可以关闭此页面。完成后，公司会出现在公司选择器中。",
     "doneTitle": "公司已就绪",
     "doneBody": "数据库已创建，架构已完成。您已是其成员。",
     "openSetup": "设置这家公司的账簿",
     "openPicker": "打开公司选择器",
     "addAnother": "再添加一家",
     "errFailed": "无法创建公司。",
-    "errNetwork": "配置完成前连接已中断。",
-    "errSafeToRetry": "没有注册任何半成品公司——排除原因后可安全重试。",
+    "errNetwork": "无法连接服务器。配置仍在服务器上进行——重新加载此页面以查看进度。",
+    "errSafeToRetry": "没有注册任何半成品公司。排除原因后可安全重试——重试会从最后一个成功的步骤继续。",
     "errPermissionDenied": "无法创建公司数据库：应用的数据库用户无权在此服务器上创建新数据库。请联系服务器管理员——该权限只需授予一次（docs/MULTI-COMPANY.md §3）。",
     "errConfigMissing": "服务器配置中的数据库地址不完整，无法确定公司数据库应建在何处。请联系服务器管理员。",
     "errSlugTaken": "标识“{slug}”已被其他公司使用，请另选一个。",
     "errDatabaseTaken": "数据库“{database}”已登记给其他公司，请另选一个标识。",
     "errDatabaseNotEmpty": "数据库“{database}”已存在且含有 {tables} 张表。为避免覆盖仍在使用的数据，配置已停止——请联系服务器管理员检查该数据库。",
     "errDatabaseNameInvalid": "所请求的数据库名称不符合服务器的命名规则。请修改公司标识，或联系服务器管理员。",
+    "queued": "排队中——配置即将开始。",
+    "queuedSlow": "排队时间比平时长。配置仍会进行——您可以关闭此页面。",
     "progressTitle": "配置进度",
     "stepValidate": "检查名称与可用性",
     "stepDatabase": "创建数据库",
@@ -5455,13 +5462,13 @@
     },
     "licences": {
       "heading": "本地部署许可证",
-      "description": "本地部署客户许可证登记。控制台负责记录和核验；签名仍在离线笔记本上完成。",
+      "description": "本地部署客户许可证登记。控制台负责记录、用加封的签名密钥签名并核验。",
       "keyNotSet": "许可证公钥尚未嵌入代码（LICENCE_PUBLIC_KEY_PEM 仍为 \"BELUM-DISETEL\"）。仍可创建草稿，但无法验证 .sai 文件，因此上传已停用。所有者步骤：docs/ONPREM-SERAH-TERIMA.md §0。",
       "stepsTitle": "步骤",
       "steps": {
         "one": "填写下方表单，得到一份草稿和一条可直接复制的命令。",
-        "two": "复制该命令，在持有私钥的离线笔记本上运行——私钥永远不会带到这里。",
-        "three": "将生成的 .sai 文件上传到同一草稿。控制台会检查签名并与草稿核对内容。",
+        "two": "在控制台用签名密钥口令为草稿签名（所有者）——文件立即下载并记录为已签发。或者走离线流程：复制命令，在持有私钥文件的笔记本上运行。",
+        "three": "仅限离线流程：将生成的 .sai 文件上传到同一草稿。控制台会检查签名并与草稿核对内容。",
         "four": "从登记中下载文件并发送给客户；安装为 ./lisensi/licence.sai。",
         "five": "续期或修改限额：在客户上点击“签发新版本”——表单会按上一份许可证预填。"
       },
@@ -5542,7 +5549,50 @@
       "revokeNote": "离线许可证无法远程吊销：已安装的文件在客户机器上仍然有效。这只是登记中的一条记录。",
       "revokeReason": "理由（至少 5 个字符）",
       "revokeConfirm": "记录为已吊销",
-      "cancel": "取消"
+      "cancel": "取消",
+      "commandLabelOffline": "或在持有私钥文件的离线笔记本上运行（密钥路径不同时请修改）：",
+      "key": {
+        "title": "许可证签名密钥",
+        "description": "用于签署许可证的 Ed25519 密钥对。私钥加封保存在数据库中，只有在每次签名时输入口令才能打开。",
+        "riskNote": "口令从不保存。仅泄露数据库转储或环境变量不足以签名；控制了控制台服务器的攻击者可能在输入时截获口令。",
+        "createIntro": "密钥只创建一次。请把口令保存在密码管理器中：口令丢失无法恢复，没有它就无法再用此密钥签署新许可证。",
+        "passphrase": "口令",
+        "passphraseHint": "至少 12 个字符。长句子比复杂的短词更安全。",
+        "confirm": "再次输入口令",
+        "submit": "创建签名密钥",
+        "confirmTitle": "现在创建签名密钥？",
+        "confirmBody": "密钥无法在控制台中更换：第二把密钥意味着旧许可证不再能通过验证。创建后，必须把公钥粘贴到代码中并发布。",
+        "created": "签名密钥已创建。下一步：把下方公钥粘贴到代码中并发布。",
+        "errPassphrase": "口令至少 12 个字符，且两次输入必须一致。",
+        "errExists": "签名密钥已存在。控制台不会创建第二把——已签发的许可证将无法再通过验证。",
+        "errCompiled": "代码中已嵌入来自离线流程（licence:keygen）的公钥。控制台密钥永远不会与之匹配；请继续使用离线流程。",
+        "offlineInUse": "代码中已嵌入来自离线流程（licence:keygen）的公钥，因此不创建控制台密钥。请在每份草稿上通过离线命令签名。",
+        "noneReadOnly": "尚无签名密钥。创建需要所有者角色。",
+        "state": {
+          "matches": "与嵌入的密钥一致——可以签名",
+          "notSet": "尚未嵌入代码",
+          "differs": "与嵌入的密钥不一致"
+        },
+        "meta": "由 {by} 创建，{at}",
+        "fingerprint": "指纹（公钥的 SHA-256）",
+        "publicKeyLabel": "公钥（非机密）",
+        "copy": "复制公钥",
+        "pasteInstruction": "把此公钥粘贴到 packages/core/src/licence.ts 的 LICENCE_PUBLIC_KEY_PEM，替换断言占位符的测试，然后发布。本地部署按代码中的密钥验证，而不是按数据库——在该版本部署之前，控制台拒绝签名。",
+        "differsInstruction": "代码中嵌入的是另一把公钥（指纹 {fingerprint}）。控制台拒绝签名，因为任何安装都不会接受该许可证。请检查 packages/core/src/licence.ts 中粘贴的是哪把密钥。"
+      },
+      "sign": {
+        "start": "在控制台签名",
+        "intro": "输入签名密钥口令。此草稿将被签名、用嵌入的密钥验证、记录为已签发，文件立即下载。",
+        "passphrase": "签名密钥口令",
+        "submit": "签名并下载",
+        "done": "许可证已签名、有效并记录为已签发。文件已下载为 licence.sai。",
+        "errPassphrase": "口令错误。此次尝试已记录在审计日志中。",
+        "errRateLimited": "签名尝试过多。请等待 15 分钟后重试。",
+        "errNoKey": "控制台中尚无签名密钥。",
+        "errNotInstalled": "控制台公钥尚未嵌入正在运行的代码——请先粘贴并发布。",
+        "errMismatchKey": "控制台密钥与代码中嵌入的密钥不一致。签名被拒绝。",
+        "errFailed": "新签名的许可证未通过验证：{reason}"
+      }
     },
     "brand": {
       "heading": "产品标志",

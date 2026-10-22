@@ -3,26 +3,39 @@
  *
  *   bun run licence:keygen -- --keluar ~/sai-licence-key
  *
- * ══ DIJALANKAN DI MESIN LURING, SEKALI ═════════════════════════════════════
+ * ══ JALUR LURING — SALAH SATU DARI DUA ═════════════════════════════════════
+ * Sejak keputusan pemilik 22 Okt 2026 kunci penanda juga bisa dibuat di
+ * konsol operator (`/licences` → "Buat kunci penanda"): kunci privatnya
+ * disimpan TERSEGEL di `sai_platform` dan dibuka dengan frasa sandi yang
+ * diketik setiap kali menandatangani (06-KEAMANAN §3.7). Skrip ini tetap
+ * ada untuk jalur luring — kunci privat sebagai berkas PEM di laptop yang
+ * tidak pernah tersambung ke server. PILIH SATU: kunci konsol tidak bisa
+ * dibuat bila kunci tertanam sudah ada, dan kunci dari skrip ini tidak bisa
+ * dipakai konsol.
+ *
  * Kunci privat yang dihasilkan di sini adalah kewenangan untuk mencetak lisensi
  * SAI — termasuk lisensi tak terbatas. Ia TIDAK boleh berada di repo, di secret
- * CI, atau di mesin produksi:
+ * CI, atau di mesin produksi dalam bentuk mentah:
  *
  *   • di repo → setiap orang yang pernah mengklon punya kewenangan itu, selamanya,
  *     dan `git` tidak bisa melupakannya;
  *   • di CI → siapa pun yang bisa memicu satu workflow bisa mencetak lisensi,
  *     dan jejaknya terlihat seperti build biasa;
- *   • di produksi → satu RCE menjadi mesin pencetak lisensi.
+ *   • mentah di produksi → satu pembacaan berkas menjadi mesin pencetak lisensi.
  *
- * Penerbitan lisensi adalah pekerjaan manusia yang jarang. Yang jarang tapi
- * berbahaya memang tidak boleh otomatis.
+ * Pembuatan & ekspor kunci ada di `@sai/platform/licence-signing` — satu modul
+ * untuk dua jalur, dijaga `tests/licence-register-archive.test.ts`.
  *
  * Kunci PUBLIK-nya ditempel ke `packages/core/src/licence.ts` dan ikut
  * di-commit — ia bukan rahasia, dan justru harus sulit ditukar.
  */
-import { generateKeyPairSync } from "node:crypto";
 import { writeFileSync, existsSync, chmodSync } from "node:fs";
 import { resolve } from "node:path";
+
+import {
+  exportPrivateKeyPemForOfflineFile,
+  generateLicenceKeyPair,
+} from "@sai/platform/licence-signing";
 
 const argv = process.argv.slice(2);
 const ambil = (nama: string): string | null => {
@@ -44,10 +57,8 @@ for (const j of [jalurPrivat, jalurPublik]) {
   }
 }
 
-const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-
-const privatePem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
-const publicPem = publicKey.export({ type: "spki", format: "pem" }).toString();
+const { privateKey, publicKeyPem: publicPem } = generateLicenceKeyPair();
+const privatePem = exportPrivateKeyPemForOfflineFile(privateKey);
 
 writeFileSync(jalurPrivat, privatePem, { mode: 0o600 });
 chmodSync(jalurPrivat, 0o600);

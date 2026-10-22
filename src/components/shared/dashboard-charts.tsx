@@ -94,13 +94,19 @@ export function chartPalette(token: ChartToken) {
   const money = moneyPalette(token);
   return {
     /**
-     * Tiga nada status donat — **per POSISI**: [aman/sah, menipis/menunggu,
-     * habis/dibatalkan]. Jangan diurutkan ulang; lihat kepala berkas.
+     * Nada status donat — **per POSISI**: [aman/sah, menipis/menunggu,
+     * habis/dibatalkan, selesai]. Jangan diurutkan ulang; lihat kepala berkas.
+     *
+     * Yang keempat hanya dipakai donat KONTRAK (`completed`, disahkan 23 Okt
+     * 2026 — urutannya `CONTRACT_STATUSES`). Biru informasional, bukan hijau:
+     * kontrak selesai bukan berarti lunas. Donat stok hanya punya tiga irisan
+     * dan tidak pernah mencapainya.
      */
     statusTones: [
       money.colorMoneyPositive,
       money.colorMoneyPending,
       money.colorMoneyNegative,
+      money.colorMoneyInfo,
     ] as const,
     /** Arah uang — nada yang sama dengan `Money` dan tooltip arus kas. */
     moneyIn: money.colorMoneyPositive,
@@ -115,7 +121,7 @@ export function chartPalette(token: ChartToken) {
      */
     countPrimary: money.colorMoneyInfo,
     countSecondary: money.colorMoneyPending,
-    /** Irisan ke-4 dst. yang tak pernah diharapkan ada — netral, bukan warna berarti. */
+    /** Irisan sesudah nada status terakhir — status yang tak pernah diharapkan ada; netral, bukan warna berarti. */
     unknownTone: token.colorTextSecondary,
     /** Kisi bantu baca nilai — sederajat kisi tabel (#208, 3:1 non-teks). */
     grid: token.colorBorderSecondary,

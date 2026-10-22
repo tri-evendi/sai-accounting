@@ -14,6 +14,7 @@ import {
   planYearClose,
   type ClosingBalance,
 } from "@/lib/year-close";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
 const RE = 999; // akun Laba Ditahan
 
@@ -35,13 +36,13 @@ const seimbang = (lines: { debit: number; credit: number }[]) =>
 
 describe("batas tahun buku", () => {
   it("tahun buku kalender: 1 Jan – 31 Des", () => {
-    const { start, end } = fiscalYearBounds(new Date(2024, 0, 1), 2026);
-    expect(start.getFullYear()).toBe(2026);
-    expect(start.getMonth()).toBe(0);
-    expect(start.getDate()).toBe(1);
-    expect(end.getFullYear()).toBe(2026);
-    expect(end.getMonth()).toBe(11);
-    expect(end.getDate()).toBe(31);
+    const { start, end } = fiscalYearBounds(businessDate(2024, 0, 1), 2026);
+    expect(businessParts(start).year).toBe(2026);
+    expect(businessParts(start).month).toBe(0);
+    expect(businessParts(start).day).toBe(1);
+    expect(businessParts(end).year).toBe(2026);
+    expect(businessParts(end).month).toBe(11);
+    expect(businessParts(end).day).toBe(31);
   });
 
   it("⚠ tahun buku NON-kalender berakhir pada tanggal yang benar", () => {
@@ -51,17 +52,17 @@ describe("batas tahun buku", () => {
      * kesalahannya tidak berbunyi: jurnalnya tetap seimbang, hanya labanya yang
      * mendarat di tahun yang keliru.
      */
-    const { start, end } = fiscalYearBounds(new Date(2024, 3, 1), 2026); // 1 April
-    expect(start.getMonth()).toBe(3);
-    expect(start.getDate()).toBe(1);
-    expect(end.getFullYear()).toBe(2027);
-    expect(end.getMonth()).toBe(2); // Maret
-    expect(end.getDate()).toBe(31);
+    const { start, end } = fiscalYearBounds(businessDate(2024, 3, 1), 2026); // 1 April
+    expect(businessParts(start).month).toBe(3);
+    expect(businessParts(start).day).toBe(1);
+    expect(businessParts(end).year).toBe(2027);
+    expect(businessParts(end).month).toBe(2); // Maret
+    expect(businessParts(end).day).toBe(31);
   });
 
   it("akhirnya tepat satu milidetik sebelum awal tahun berikutnya", () => {
-    const a = fiscalYearBounds(new Date(2024, 6, 1), 2026);
-    const b = fiscalYearBounds(new Date(2024, 6, 1), 2027);
+    const a = fiscalYearBounds(businessDate(2024, 6, 1), 2026);
+    const b = fiscalYearBounds(businessDate(2024, 6, 1), 2027);
     expect(b.start.getTime() - a.end.getTime()).toBe(1);
   });
 
@@ -69,17 +70,17 @@ describe("batas tahun buku", () => {
     /* 2028 kabisat. Bentuk "tanggal sama tahun depan minus sehari" akan
        meleset di sini; bentuk "awal berikutnya minus 1 md" tidak punya kasus
        tepi sama sekali. */
-    const { end } = fiscalYearBounds(new Date(2024, 2, 1), 2028); // 1 Maret 2028
-    expect(end.getFullYear()).toBe(2029);
-    expect(end.getMonth()).toBe(1); // Februari
-    expect(end.getDate()).toBe(28);
+    const { end } = fiscalYearBounds(businessDate(2024, 2, 1), 2028); // 1 Maret 2028
+    expect(businessParts(end).year).toBe(2029);
+    expect(businessParts(end).month).toBe(1); // Februari
+    expect(businessParts(end).day).toBe(28);
   });
 
   it("tahun buku yang mulai 31 Januari tidak menggulung ke bulan lain", () => {
     /* `new Date(y, 0, 31)` sah; yang berbahaya adalah aritmetika hari. */
-    const { start } = fiscalYearBounds(new Date(2024, 0, 31), 2026);
-    expect(start.getMonth()).toBe(0);
-    expect(start.getDate()).toBe(31);
+    const { start } = fiscalYearBounds(businessDate(2024, 0, 31), 2026);
+    expect(businessParts(start).month).toBe(0);
+    expect(businessParts(start).day).toBe(31);
   });
 });
 
@@ -169,15 +170,15 @@ describe("jurnal penutup", () => {
  * pertanyaan apakah tahun itu boleh ditutup SEKARANG.
  */
 describe("tahun buku harus sudah berakhir sebelum boleh ditutup", () => {
-  const KALENDER = new Date(2026, 0, 1);
+  const KALENDER = businessDate(2026, 0, 1);
 
   it("tahun BERJALAN belum berakhir — kasus yang melahirkan #565", () => {
     /* Keadaan nyata buku demo pada 6 September 2026. */
-    expect(fiscalYearHasEnded(KALENDER, 2026, new Date(2026, 8, 6))).toBe(false);
+    expect(fiscalYearHasEnded(KALENDER, 2026, businessDate(2026, 8, 6))).toBe(false);
   });
 
   it("tahun LALU sudah berakhir", () => {
-    expect(fiscalYearHasEnded(KALENDER, 2025, new Date(2026, 8, 6))).toBe(true);
+    expect(fiscalYearHasEnded(KALENDER, 2025, businessDate(2026, 8, 6))).toBe(true);
   });
 
   it("tepat pada milidetik terakhir tahun buku, ia BELUM berakhir", () => {
@@ -193,9 +194,9 @@ describe("tahun buku harus sudah berakhir sebelum boleh ditutup", () => {
        berakhir 31 Maret 2027) BELUM berakhir — sementara kalender sudah
        berganti tahun. Menyamakan keduanya akan mengizinkan penutupan dua bulan
        terlalu awal, tiap tahun. */
-    const APRIL = new Date(2020, 3, 1);
-    expect(fiscalYearHasEnded(APRIL, 2026, new Date(2027, 1, 1))).toBe(false);
-    expect(fiscalYearHasEnded(APRIL, 2026, new Date(2027, 3, 1))).toBe(true);
+    const APRIL = businessDate(2020, 3, 1);
+    expect(fiscalYearHasEnded(APRIL, 2026, businessDate(2027, 1, 1))).toBe(false);
+    expect(fiscalYearHasEnded(APRIL, 2026, businessDate(2027, 3, 1))).toBe(true);
   });
 
   it("`now` disuntikkan, bukan dibaca dari jam sistem", () => {

@@ -55,10 +55,10 @@ names the first company database.
 | Variable | Production value |
 |----------|------------------|
 | `PG_USER`, `PG_PASSWORD` | Bootstrap **superuser** of the `pg` service. After the least-privilege cutover only `pg`, `pgbouncer` (password lookup) and the `job-backup` toolbox use it; until then it is also the fallback for the three role pairs below |
-| `PG_OWNER_USER`, `PG_OWNER_PASSWORD` | Owner role (`sai_owner`, NOSUPERUSER CREATEDB): `migrate` and company provisioning. Written by `python3 scripts/postgres-roles.py apply` — [§Least-privilege](#least-privilege-postgresql-roles--cutover) |
+| `PG_OWNER_USER`, `PG_OWNER_PASSWORD` | Owner role (`sai_owner`, NOSUPERUSER CREATEDB): `migrate` and company provisioning (`svc-worker`). Written by `python3 scripts/postgres-roles.py apply` — [§Least-privilege](#least-privilege-postgresql-roles--cutover) |
 | `PG_APP_USER`, `PG_APP_PASSWORD` | Application role (`sai_app`, DML only): every app/worker URL, and the `svc-worker` lane fence (`CONTROL_DATABASE_DIRECT_URL`) |
 | `PG_BACKUP_USER`, `PG_BACKUP_PASSWORD` | Backup role (`sai_backup` = `sai_app` + `pg_read_all_data`): the `svc-integrator` `tenant` lane (`CONTROL_DATABASE_DIRECT_URL`) |
-| `PROVISION_DATABASE_URL` | `postgres://<owner>:…@pgbouncer:5432/sai_control` — credentials `/companies/new` creates databases with. Set by `postgres-roles.py switch-urls`; unset = `CONTROL_DATABASE_URL` (correct only while that is still the superuser) |
+| `PROVISION_DATABASE_URL` | `postgres://<owner>:…@pgbouncer:5432/sai_control` — credentials company databases are created with. Read by `svc-worker` (the `company.provision` job that `/companies/new` enqueues), `migrate` and `job-backup` — **never** `app-customer` (since Oct 2026). Set by `postgres-roles.py switch-urls`; unset = `CONTROL_DATABASE_URL` (correct only while that is still the superuser) |
 | `DATABASE_URL` | `postgres://<user>:<pass>@pgbouncer:5432/sai_production` — company-book template (the database name is swapped per company) |
 | `CONTROL_DATABASE_URL` | `postgres://…@pgbouncer:5432/sai_control` — users, companies, memberships, tenants |
 | `PLATFORM_DATABASE_URL` | `postgres://…@pgbouncer:5432/sai_platform` — plans, subscriptions, invoices, operator audit |
@@ -229,8 +229,14 @@ them, each such object carries `"instans": "<key>"` in the manifest, and
 registered on (a same-named leftover copy on another server is `other`).
 `svc-integrator` reads each instance's URL from the env var named in its
 `db_instances` row, so `COMPANY_<KEY>_DATABASE_URL_TEMPLATE` must be in `.env`
-(reaching every service via `env_file`), pointing **directly** at PostgreSQL.
-See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
+**and** its name listed (without a value) under `x-env.db-instances` in
+`docker-compose.yml` — that group is how it reaches every service — pointing
+**directly** at PostgreSQL. The role in that URL is also the backup role for
+that instance, and it must be superuser or inherit `pg_read_all_data`
+(`GRANT pg_read_all_data TO <role>;` on that server — `postgres-roles.py` only
+reaches the local `pg`). Without it `pg_dumpall --globals-only` is refused
+on `pg_authid`; the `tenant` lane checks this up front and fails that instance
+only. See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#peran-cadangan-per-instans).
 
 This is what closes on-premise gap #5. `pg_dumpall` meant one tenant could not
 be restored without touching the others — and "restore just our data to
@@ -253,8 +259,10 @@ written **last**, so a manifest that exists means every object it lists was
 sent.
 
 One deliberate exception: an **extra instance** that cannot be reached (env var
-unset, wrong name, server down, server newer than `pg_dump`) does not stop the
-other instances. The run still sends their objects, writes a manifest with
+unset, wrong name, server down, server newer than `pg_dump`, role without
+backup privileges), or whose `pg_dump`/`pg_dumpall` fails mid-run, does not
+stop the other instances. A failure on the default instance, a destination
+(S3/disk) failure, or a cancellation still fails the whole run. The run still sends their objects, writes a manifest with
 `instansGagal: [{kunci, sebab, basis}]`, records `error` in `backup_runs`, and
 **skips pruning**. `prove-backup-restore` rejects such a run. Use the previous
 complete run for the companies listed there.
@@ -600,7 +608,7 @@ Three roles replace the superuser for everything that runs all the time:
 
 | Role (`.env` pair) | Attributes | Used by |
 |---|---|---|
-| `sai_owner` (`PG_OWNER_*`) | NOSUPERUSER **CREATEDB**, owns every app database and object | `migrate`; `/companies/new` via `PROVISION_DATABASE_URL`; toolbox scripts that create books |
+| `sai_owner` (`PG_OWNER_*`) | NOSUPERUSER **CREATEDB**, owns every app database and object | `migrate`; `svc-worker` (company provisioning, `company.provision` jobs from `/companies/new`) via `PROVISION_DATABASE_URL`; toolbox scripts that create books |
 | `sai_app` (`PG_APP_*`) | DML only (SELECT/INSERT/UPDATE/DELETE, sequences, EXECUTE) | `app-customer`, `app-operator`, `svc-worker`, integrator `interactive` lane — through PgBouncer; the `svc-worker` fence directly |
 | `sai_backup` (`PG_BACKUP_*`) | member of `sai_app` + `pg_read_all_data` | integrator `tenant` lane: `pg_dump` per book, `pg_dumpall --globals-only`, `backup_runs` |
 | `sai` (`PG_USER`) | superuser (bootstrap) | `pg`, PgBouncer's password lookup, the `job-backup` toolbox (restores `globals.sql` in `prove-backup-restore`) |
@@ -639,7 +647,7 @@ idempotent; each `.env` change leaves a `.env.sebelum-<…>` backup.**
 4. **Background services.**
    ```bash
    docker compose up -d --no-deps svc-worker svc-integrator
-   docker compose exec -T pg pg_dumpall --globals-only -U sai_backup -d postgres >/dev/null && echo globals-ok
+   docker compose exec -T pg pg_dumpall --globals-only -U sai_backup -l postgres >/dev/null && echo globals-ok
    docker compose exec -T pg pg_dump -Fc -U sai_backup -d sai_control >/dev/null && echo dump-ok
    docker compose logs --since 5m svc-worker svc-integrator | grep -E '28P01|42501|permission denied' || echo clean
    ```
@@ -659,7 +667,9 @@ idempotent; each `.env` change leaves a `.env.sebelum-<…>` backup.**
    Apps show as `sai_app`; the only `sai` sessions left are PgBouncer's lookup
    and your `psql`.
 6. **Provisioning** (test tenant, or the test host first): create a company at
-   `/companies/new`; it must open. `python3 scripts/postgres-roles.py check`
+   `/companies/new`; the page waits on a `company.provision` job that
+   `svc-worker` runs (`docker compose logs svc-worker | grep company.provision`),
+   and the new company must open. `python3 scripts/postgres-roles.py check`
    must stay ✓ afterwards.
 
 **Rollback** (any step): `python3 scripts/postgres-roles.py rollback
@@ -673,11 +683,42 @@ URLs work against the new ownership. The roles can stay.
 in `ps`), then `.env`, then only the running services whose environment
 changed (never `pg` itself), then `https://$APP_DOMAIN/api/health`.
 
-**Known residual risk:** `app-customer` still holds the *owner* credentials
-(`PROVISION_DATABASE_URL`) because `/companies/new` creates the database
-inside the request. Owner ≠ superuser (no server files, no programs, no
-roles), but it can run DDL on every app database. Moving provisioning onto the
-job queue would let `app-customer` hold `sai_app` only.
+**Residual risk closed (Oct 2026): `app-customer` holds `sai_app` only.**
+Until then `/companies/new` created the database inside the HTTP request, so
+the internet-facing container held the *owner* credentials
+(`PROVISION_DATABASE_URL`) — DDL on every app database. Provisioning is now a
+`company.provision` job (lane `interactive`, run by `svc-worker`):
+`POST /api/companies` enqueues it and answers `202 { jobId }`, the page polls
+`GET /api/companies/provisioning/<id>`, and the worker creates the database,
+applies migrations, grants `sai_app` and registers the company last. Double
+submits attach to the same job (dedupe key = database name); a failed attempt
+can be retried and resumes a half-built book (marked with
+`COMMENT ON DATABASE` until just before registration). Guarded by
+`tests/provisioning-off-app-customer.test.ts`; design and what remains in
+`docs/arsitektur/06-KEAMANAN.md` §3.10. What remains: `svc-worker` now holds
+the owner credentials, shared by its four roles; it is not internet-facing.
+
+**Deploy order for this change — a normal release, but the compose file must
+come with it.** Both halves ship in the same `SAI_TAG` (`app-customer` from
+the `runner` image, `svc-worker` from `-migrator`), and the usual
+`pull` + `up -d` swap is safe in either order:
+
+- *new `app-customer`, old `svc-worker`* — jobs are enqueued but the old
+  worker has no handler for `company.provision`, and a runner claims only the
+  kinds it has handlers for. They wait as `queued` (the page says so) and the
+  new `svc-worker` picks them up the moment it starts.
+- *old `app-customer`, new `svc-worker`* — the old app still provisions inline
+  for the seconds until it is replaced; nothing is enqueued.
+
+What is **not** safe is new images with the **old `docker-compose.yml`**: the
+new `svc-worker` would not receive `PROVISION_DATABASE_URL` / `PG_APP_USER`,
+fall back to `CONTROL_DATABASE_URL` (`sai_app`) and fail every new company
+with 42501 (shown as "permission denied"; nothing half-registered, and the
+retry resumes once fixed). Copy the release's compose file first; then
+`docker compose up -d` recreates `app-customer` (env shrinks) and `svc-worker`
+(env grows). Verify: `docker compose exec app-customer printenv
+PROVISION_DATABASE_URL` prints nothing, and create a company on the test
+tenant (step 6 above).
 
 ### MariaDB retired (issue #636, 22 Oct 2026)
 

@@ -111,9 +111,11 @@ erDiagram
 
 Hanya tujuh model yang berelasi. `LicenceCustomer` · `LicenceRegisterEntry`
 (migration platform `0006_licence_register`) adalah **arsip** lisensi
-on-premise yang ditandatangani luring, dibaca dan ditulis konsol operator saja;
-`source_tenant_id` menunjuk tenant SaaS asal tanpa FK. Tidak ada yang
-membacanya untuk memutuskan status lisensi. Sisanya **sengaja berdiri sendiri**, karena
+on-premise — ditandatangani di konsol atau luring — dibaca dan ditulis konsol
+operator saja; `source_tenant_id` menunjuk tenant SaaS asal tanpa FK. Tidak ada
+yang membacanya untuk memutuskan status lisensi. `LicenceSigningKey`
+(`0007_licence_signing_keys`, berdiri sendiri) memegang kunci penanda konsol
+yang **tersegel** dengan frasa sandi ([06 §3.7](./06-KEAMANAN.md)). Sisanya **sengaja berdiri sendiri**, karena
 masing-masing adalah catatan peristiwa, bukan entitas: `SchedulerRun` ·
 `BackupRun` · `ConformanceRun` (tiga heartbeat yang dibaca `/api/health`) ·
 `SubscriptionEvent` · `OperatorAuditLog` ·
@@ -588,28 +590,35 @@ stateDiagram-v2
 data lain); nama dicari saat ditampilkan, dan pengguna yang sudah dihapus
 tampil sebagai "—". Riwayat tutup/buka selengkapnya ada di jejak audit.
 
-### 8.4 Kontrak — `CONTRACT_STATUSES`, dan satu nilai liar
+### 8.4 Kontrak — `CONTRACT_STATUSES`
 
 ```mermaid
 stateDiagram-v2
     [*] --> pending: kontrak dibuat
+    [*] --> signed: dibuat sudah sah
     pending --> signed: ditandatangani
     pending --> canceled: dibatalkan
     signed --> canceled: dibatalkan
-    completed: completed ⚠ DI LUAR KOSAKATA
-    [*] --> completed: impor warisan, 18 Jul 2026
+    signed --> completed: selesai dijalankan
+    completed --> signed: dibuka kembali
+    completed --> canceled: dibatalkan
     note right of completed
-        101 baris di buku produksi memakai
-        `completed`, yang TIDAK ada di
-        CONTRACT_STATUSES dan tidak ada
-        di kode mana pun.
+        "Selesai", BUKAN "lunas" —
+        pelunasan tetap dihitung
+        dari pembayaran (§8.5).
     end note
 ```
 
-`packages/core/src/constants.ts` · tiga nilai yang sah: `signed` · `pending` ·
-`canceled`. `completed` adalah temuan S3 yang masih terbuka, bukan status yang
-dirancang; keputusan apakah ia disahkan atau dipetakan ke `signed` masih
-menunggu pemilik. Latar lengkapnya, termasuk kenapa grafik donat di halaman
+`contract/accounting.yaml` (`contract_statuses`, dibangkitkan untuk TS & Go,
+di-re-ekspor `@sai/core/constants`) · empat nilai: `signed` · `pending` ·
+`canceled` · `completed`. `completed` disahkan pemilik 23 Okt 2026 (temuan S3,
+sebelumnya nilai liar dari impor warisan). Perpindahannya —
+`CONTRACT_STATUS_TRANSITIONS` — hanya membatasi `completed`: ia dicapai dari
+`signed` saja, dan kontrak baru tidak lahir `completed`; perpindahan di antara
+tiga status lama tetap bebas seperti sebelumnya (tidak semuanya digambar di
+atas). Ditegakkan route POST/PUT kontrak; di basis data dijaga CHECK
+`contracts_status_check` (migration perusahaan 0003). Faktur tetap tiga status
+(`invoice_statuses`). Latar lengkapnya, termasuk kenapa grafik donat di halaman
 kontrak pernah kehilangan 16,6% datanya tanpa terlihat salah, ada di
 [07 Riwayat](./07-RIWAYAT.md).
 

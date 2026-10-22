@@ -9,6 +9,8 @@ import { writeAuditLog } from "@/lib/audit";
 import { approvalNotice, ensureApprovalRequest } from "@/lib/approval-requests";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
+import { canTransitionContractStatus } from "@sai/core/constants";
+import { contractStatusLabels } from "@/lib/i18n/labels";
 import { pickerParams, type PickerOption } from "@/lib/picker";
 
 /**
@@ -78,6 +80,23 @@ export async function POST(request: Request) {
   }
 
   const { items, date, dueDate, rate, ...contractData } = parsed.data;
+
+  // Kontrak baru tidak lahir `completed` — "selesai" hanya bisa dicapai dari
+  // kontrak yang sudah sah (CONTRACT_STATUS_TRANSITIONS).
+  if (!canTransitionContractStatus(null, contractData.status)) {
+    const { dictionary, t } = await getRequestI18n();
+    const labels = contractStatusLabels(dictionary);
+    return NextResponse.json(
+      {
+        error: t("errors.contractStatusTransition", {
+          from: "—",
+          to: labels[contractData.status] ?? contractData.status,
+        }),
+      },
+      { status: 400 }
+    );
+  }
+
   const fx = contractFx(contractData.currency, items, rate);
 
   let contract;

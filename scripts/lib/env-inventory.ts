@@ -35,6 +35,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 
+import { DB_INSTANCE_URL_ENV_PATTERN } from "@sai/db/db-instances";
+
 export const REPO = join(__dirname, "..", "..");
 
 const rel = (abs: string) => relative(REPO, abs).split(sep).join("/");
@@ -45,8 +47,9 @@ const ENV_NAME = "[A-Z][A-Z0-9_]+";
 /** Bentuk nama env untuk literal LEPAS (Go) — wajib bergaris bawah, supaya `"UTC"` bukan env. */
 const BARE_ENV_NAME = "[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+";
 
-/** Env instans basis data tambahan (tahap 4) — nama dinamis dari `db_instances`. */
-export const DB_INSTANCE_ENV = /^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$/;
+/** Env instans basis data tambahan (tahap 4) — nama dinamis dari `db_instances`.
+ *  Pola dari `contract/db-instances.yaml`, sama dengan penyelesai dan jalur `tenant`. */
+export const DB_INSTANCE_ENV = DB_INSTANCE_URL_ENV_PATTERN;
 
 // ── Pengupas komentar ─────────────────────────────────────────────────────
 

@@ -42,7 +42,7 @@ dan batas heap eksplisit di setiap perintah Node.
 | `app-operator` | `sai-app-operator` | Konsol operator | selalu hidup |
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
-| `svc-worker` | `sai-svc-worker` | **Empat peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`) | selalu hidup |
+| `svc-worker` | `sai-svc-worker` | **Empat peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`; penyediaan PT baru, `company.provision` — satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL`) | selalu hidup |
 | `svc-integrator` | `sai-svc-integrator` | **Dua jalur Go** dalam satu proses: `tenant` (cadangan **per basis data**) dan `interactive` sisi Go (lembar sebar ber-`engine: go`, `report.export_go`; hari ini Neraca Saldo) | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
@@ -423,7 +423,13 @@ tahap 4. Dengan instans tambahan, objeknya bertanda `instans` di manifest, dan
 Kelengkapan dibuktikan **per instans**. Env var instans
 `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-integrator` lewat
 grup `x-env.db-instances` yang sama dengan layanan lain, dan wajib langsung ke
-PostgreSQL. Rinciannya di
+PostgreSQL. Perannya peran di template itu, dan ia wajib superuser atau
+mewarisi `pg_read_all_data` — diperiksa di depan; tanpanya
+`pg_dumpall --globals-only` ditolak `pg_authid`. Instans tambahan yang gagal,
+saat dibuka maupun di tengah dump, menjadi `instansGagal` tanpa menghentikan
+instans lain; putarannya `error` dan tidak memangkas. Bentuk kunci, nama env
+var, dan awalan `instans/` dibangkitkan dari `contract/db-instances.yaml`.
+Rinciannya di
 [MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
 
 **Urutan:** cacah → periksa versi → per basis data (dump → sandi → sidik →
@@ -485,6 +491,25 @@ mengubah penolakan itu menjadi "akan dikerjakan".
 | Lewat **PgBouncer** | ia membaca buku SATU PT per pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data seperti jalur `tenant` |
 | **Node, bukan Go** | ia MENGHITUNG angka akuntansi (`buildReportPayload` membaca buku), dan §3.3 menahan Go di depan garis itu. Yang dibeli proses terpisah: event loop sendiri dan batas memori sendiri — ekspor yang kehabisan memori menjatuhkan PELARI, bukan aplikasi, dan pekerjaannya dipulangkan `reclaimStaleJobs` dengan `attempts + 1` |
 | Tidak membaca rahasia cadangan | Tidak satu peran pun di `svc-worker` membaca `BACKUP_ENCRYPTION_KEY`, dan sejak daftar izin env (Okt 2026) kunci itu memang tidak sampai ke container ini. ⚠ Pasangan Go-nya kini SEPROSES dengan kunci itu (09 §3.2) |
+
+#### `company.provision` — buku PT baru (Okt 2026)
+
+Pekerjaan kedua peran ini, dan alasannya HAK, bukan beban: sampai Okt 2026
+`/companies/new` membuat basis data di dalam permintaan HTTP, jadi
+`app-customer` — container yang menghadap internet — harus memegang kredensial
+PEMILIK PostgreSQL (`PROVISION_DATABASE_URL`, `sai_owner`). Kini
+`POST /api/companies` hanya menerbitkan pekerjaan dan menjawab `202 { jobId }`;
+layar menunggu di `GET /api/companies/provisioning/[id]`, dan peran ini yang
+membuat basis data, menerapkan migration, menghibahkan `sai_app`, lalu
+mendaftarkan PT paling akhir ([06 §3.10](./06-KEAMANAN.md)).
+
+| Keputusan | Alasan |
+|---|---|
+| Jalur `interactive`, bukan `schema` atau `ledger` | yang menunggu adalah orang di layar; `schema` tidak punya pelari yang hidup terus (`migrate` sekali jalan saat rilis); `ledger` tunggal-instans dan tidak boleh ditahan puluhan detik DDL yang tidak menulis buku |
+| `max_attempts: 1` | kegagalan ditampilkan SEGERA, bukan disembunyikan di balik backoff 30 detik; pengulangan oleh pengguna MELANJUTKAN buku setengah jadi (tanda `COMMENT ON DATABASE` + awalan `_prisma_migrations`), jadi tak ada yang hilang |
+| Dedupe = nama basis data | klik ganda dan tab kedua menempel ke pekerjaan yang sama; kunci pekerjaan yang sudah berakhir dilepas sebelum menerbitkan |
+| Kemajuan = `jobs.progress` | tahap dikodekan rentang angka (`PROVISION_PROGRESS`), sebab-gagal sebagai kode di `last_error` (`[[provision …]]`) — layar tidak pernah membaca teks driver |
+| Antrean macet terlihat | pekerjaan `queued` lebih dari semenit membuat layar berkata terus terang bahwa ia boleh ditutup; umur antrean `interactive` juga masuk sinyal §11 |
 
 **Perusahaan nonaktif TETAP dikerjakan**, berbeda dari peran `ledger` — dan
 bedanya bukan selera: jalur ini hanya MEMBACA, dan mengekspor buku yang akan
@@ -572,7 +597,7 @@ penghapusan tenant.
 
 | Bidang | Modul yang memegang keputusan |
 |---|---|
-| Data & konteks | `prisma.ts` · `company-clients.ts` (LRU, `POOL_MAX`=4) · `company-context.ts` · `current-company.ts` · `@sai/core/control-db` · `@sai/platform/platform-db` · `company-{registry,route,request,provisioning}.ts` · `users-directory.ts` · `@sai/core/tenant-cache` |
+| Data & konteks | `prisma.ts` · `company-clients.ts` (LRU, `POOL_MAX`=4) · `company-context.ts` · `current-company.ts` · `@sai/core/control-db` · `@sai/platform/platform-db` · `company-{registry,route,request,provisioning,provisioning-queue}.ts` · `users-directory.ts` · `@sai/core/tenant-cache` |
 | Otorisasi & sesi | `@sai/core/authz` · `authz-effective.ts` · `tenant-authz.ts` · `page-auth.ts` · `auth-guard.ts` · `api-token-guard.ts` · `auth.ts` · `business-modules.ts` · `company-unlock.ts` · `@sai/core/rate-limit{,-persistent}` · `@sai/core/operator-plane` · `apps/operator/src/lib/operator/*` |
 | Mesin akuntansi | `posting/{index,rules,mapping,rates,cogs}.ts` · `ledger.ts` · `accounting.ts` · `period-close.ts` · `year-close*.ts` · `fx-revaluation-service.ts` · `approvals.ts` · `document-{chain,writes}.ts` · `opening-balance.ts` |
 | Pelaporan | `statement-layout.ts` (79 KB) · `reports.ts` + `report-*.ts` · `receivables.ts` (39 KB) · `budget-report.ts` · `project-profit-report.ts` · `stock-value-report.ts` |

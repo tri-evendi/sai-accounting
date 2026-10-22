@@ -18,6 +18,8 @@ import {
 } from "@/lib/approval-requests";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
+import { canTransitionContractStatus } from "@sai/core/constants";
+import { contractStatusLabels } from "@/lib/i18n/labels";
 
 export async function GET(
   _request: Request,
@@ -78,6 +80,31 @@ export async function PUT(
 
   const { items, date, dueDate, rate, ...contractData } = parsed.data;
   const contractId = parseInt(id);
+
+  /* Perpindahan status (CONTRACT_STATUS_TRANSITIONS): `completed` hanya dari
+     `signed`. Dibaca sebelum transaksi — kontrak yang tidak ada dibiarkan jatuh
+     ke jalur lama (update melempar P2025 seperti sebelumnya). Celah balapan
+     antara baca ini dan update tidak dijaga: dua penyunting yang mengubah status
+     bersamaan sudah saling menimpa sebelum aturan ini ada, dan yang dijaga di
+     sini hanya pilihan yang mustahil dari status yang terlihat. */
+  const current = await prisma.contract.findUnique({
+    where: { id: contractId },
+    select: { status: true },
+  });
+  if (current && !canTransitionContractStatus(current.status, contractData.status)) {
+    const { dictionary, t } = await getRequestI18n();
+    const labels: Record<string, string> = contractStatusLabels(dictionary);
+    return NextResponse.json(
+      {
+        error: t("errors.contractStatusTransition", {
+          from: labels[current.status] ?? current.status,
+          to: labels[contractData.status] ?? contractData.status,
+        }),
+      },
+      { status: 400 }
+    );
+  }
+
   const fx = contractFx(contractData.currency, items, rate);
 
   try {

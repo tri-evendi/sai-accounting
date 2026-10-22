@@ -87,6 +87,22 @@ kinds:
     max_attempts: 3
     description: satu dokumen (faktur, surat jalan, kontrak) menjadi PDF
 
+  company.provision:
+    lane: interactive
+    max_attempts: 1
+    description: >
+      buku PT baru: CREATE DATABASE → skema → hibah peran aplikasi → registry.
+      Dipindah dari permintaan HTTP `app-customer` (Okt 2026) supaya container
+      yang menghadap internet tidak lagi memegang kredensial PEMILIK
+      (`PROVISION_DATABASE_URL`) — hanya `svc-worker` yang memegangnya.
+      Jalur `interactive`, bukan `schema`/`ledger`: yang menunggu adalah orang
+      di layar `/companies/new`, `schema` tidak punya pelari yang hidup terus,
+      dan `ledger` (tunggal-instans) tidak boleh ditahan puluhan detik DDL yang
+      tidak menulis buku. `max_attempts: 1` — penyediaan yang gagal ditampilkan
+      SEGERA ke penunggunya, bukan disembunyikan di balik backoff; pengulangan
+      oleh pengguna MELANJUTKAN buku yang setengah jadi (lihat
+      `src/lib/company-provisioning.ts`), jadi tidak ada yang hilang.
+
   report.package:
     lane: bulk
     max_attempts: 3

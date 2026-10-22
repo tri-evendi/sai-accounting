@@ -28,6 +28,7 @@ import {
 import { postingErrorResponse, NOT_SAVED_NOTICE } from "@/lib/api-errors";
 import { periodCloseSchema, periodReopenSchema } from "@/lib/validations/period";
 import { createFakeClient, type FakeMapping, type FakePeriod } from "./fake-client";
+import { businessParts } from "@sai/core/business-date";
 
 const ACC = { ar: 101, sales: 201, cash: 301 };
 
@@ -77,11 +78,13 @@ describe("period helpers", () => {
 
   it("bounds a month from its first instant to its last", () => {
     const { start, end } = periodBounds(2026, 2);
-    expect(start.getDate()).toBe(1);
-    expect(start.getMonth()).toBe(1);
+    expect(businessParts(start).day).toBe(1);
+    expect(businessParts(start).month).toBe(1);
     // 2026 is not a leap year — February ends on the 28th.
-    expect(end.getDate()).toBe(28);
-    expect(end.getHours()).toBe(23);
+    expect(businessParts(end).day).toBe(28);
+    // Exact instants: 1 Feb 00:00 WIB and 28 Feb 23:59:59.999 WIB, whatever the process zone.
+    expect(start.toISOString()).toBe("2026-01-31T17:00:00.000Z");
+    expect(end.toISOString()).toBe("2026-02-28T16:59:59.999Z");
   });
 
   it("treats a month with no row as open, so enabling the lock freezes nothing", async () => {

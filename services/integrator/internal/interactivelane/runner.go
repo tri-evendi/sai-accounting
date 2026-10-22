@@ -85,10 +85,15 @@ func Run(ctx, stop context.Context) error {
 }
 
 // muatanEkspor: bentuk `GoExportPayload` di `src/lib/report-export-go.ts`.
+// Laporan "per tanggal" membawa AsOfInstant; laporan berperiode (Laba Rugi)
+// FromInstant + ToInstant — semuanya dihitung PENERBIT (`resolveAsOf` /
+// `resolvePeriod`), tidak pernah di sini.
 type muatanEkspor struct {
 	ReportID    string            `json:"reportId"`
 	Params      map[string]string `json:"params"`
 	AsOfInstant string            `json:"asOfInstant"`
+	FromInstant string            `json:"fromInstant"`
+	ToInstant   string            `json:"toInstant"`
 }
 
 func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
@@ -121,6 +126,14 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 		switch m.ReportID {
 		case contract.ReportTrialBalance:
 			data, filename, err = neracaSaldo(c.Ctx, company, m, c.Progress)
+		// Laba Rugi & Neraca: penghasilnya SUDAH ada, tetapi selama register
+		// menyatakan `go-parity` keduanya tidak pernah sampai ke sini —
+		// `GoEngineReports` di atas menolaknya lebih dulu. Cabang ini menunggu
+		// paritas produksi, bukan sebaliknya.
+		case contract.ReportIncomeStatement:
+			data, filename, err = labaRugi(c.Ctx, company, m, c.Progress)
+		case contract.ReportBalanceSheet:
+			data, filename, err = neraca(c.Ctx, company, m, c.Progress)
 		default:
 			err = fmt.Errorf("laporan %q belum punya penghasil berkas Go", m.ReportID)
 		}
@@ -179,6 +192,95 @@ func neracaSaldo(ctx context.Context, company *registry.Company, m muatanEkspor,
 		return nil, "", err
 	}
 	return data, document.FileName(contract.TrialBalanceTitle, now), nil
+}
+
+func labaRugi(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+	}
+	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+	}
+	raw := m.Params["costCenter"]
+	cc, err := ledgerread.ParseCostCenterFilter(raw)
+	if err != nil {
+		return nil, "", err
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	is, err := r.IncomeStatement(ctx, &from, &to, cc)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(is.UnknownTypes) > 0 {
+		log.Printf("[interactive-go] ⚠ %s: akun bertipe di luar kontrak: %s",
+			company.Slug, strings.Join(is.UnknownTypes, ", "))
+	}
+	_ = progress(55)
+
+	ccLabel, err := document.CostCenterLabel(raw, cc, func(id int64) (string, string, bool, error) {
+		return r.CostCenter(ctx, id)
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], ccLabel)
+	if err != nil {
+		return nil, "", err
+	}
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.IncomeStatementWorkbook(is, name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(contract.IncomeStatementTitle, now), nil
+}
+
+func neraca(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	asOf, err := time.Parse(time.RFC3339Nano, m.AsOfInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
+	}
+	period, err := document.PeriodAsOf(m.Params["asOf"])
+	if err != nil {
+		return nil, "", err
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	bs, err := r.BalanceSheet(ctx, asOf)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(bs.UnknownTypes) > 0 {
+		log.Printf("[interactive-go] ⚠ %s: akun bertipe di luar kontrak: %s",
+			company.Slug, strings.Join(bs.UnknownTypes, ", "))
+	}
+	_ = progress(55)
+
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.BalanceSheetWorkbook(bs, name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(contract.BalanceSheetTitle, now), nil
 }
 
 // companyName: urutan `pickIdentity()` — setting wizard, lalu nama registry,

@@ -1,0 +1,42 @@
+{
+  "revenue": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "amount": "5000000.00"
+    }
+  ],
+  "expense": [],
+  "totalRevenue": "5000000.00",
+  "totalExpense": "0.00",
+  "netIncome": "5000000.00",
+  "sales": {
+    "lines": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "5000000.00"
+      }
+    ],
+    "total": "5000000.00"
+  },
+  "cogs": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "grossProfit": "5000000.00",
+  "operatingExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "operatingProfit": "5000000.00",
+  "otherIncome": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "otherExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "unknownTypes": []
+}

@@ -70,6 +70,26 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
        `bun run parity:trial-balance-xlsx`. */
     parityProven: { date: "2026-10-22", books: 17 },
   },
+  /*
+   * Laporan KEDUA dan KETIGA tahap 1d (keputusan pemilik 22 Okt 2026). Go
+   * menghitung keduanya (`statements.go`) dan menulis lembar sebarnya
+   * (`internal/document`), tetapi BERKAS masih dihasilkan TypeScript sampai
+   * sesi utama menjalankan paritas atas buku PRODUKSI — angka DAN isi berkas:
+   *   bun run parity:income-statement · parity:income-statement-xlsx
+   *   bun run parity:balance-sheet    · parity:balance-sheet-xlsx
+   * Pelari Go menolak keduanya selama `go-parity` (`GoEngineReports`
+   * dibangkitkan dari entri ber-`engine: "go"` saja).
+   */
+  "income-statement": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/statements.go",
+    parityScript: "parity:income-statement",
+  },
+  "balance-sheet": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/statements.go",
+    parityScript: "parity:balance-sheet",
+  },
 };
 
 /** Mesin yang menghasilkan BERKAS laporan ini hari ini. */

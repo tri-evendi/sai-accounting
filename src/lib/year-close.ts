@@ -19,6 +19,8 @@
  * yang salah ke ekuitas, tempat kesalahan paling sulit ditemukan kembali.
  */
 
+import { CLOSING_JOURNAL_TYPE as CONTRACT_CLOSING_JOURNAL_TYPE } from "@sai/core/generated/accounting";
+
 /** Uang di buku ini `Decimal(15,2)`. */
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
@@ -222,8 +224,13 @@ export function fiscalYearOf(fiscalYearStart: Date, date: Date): number {
  * Menyaring lewat `source_type` bisa saja, tetapi `type` yang tepat: ia sudah
  * menjadi sumbu yang dipakai buku besar untuk membedakan asal jurnal, dan
  * pembalikan (`reversal`) sudah lebih dulu memakainya begitu.
+ *
+ * NILAINYA dibangkitkan dari `contract/accounting.yaml` (`closing_journal_type`):
+ * Laba Rugi Go (`services/integrator/internal/ledgerread`) membuang jenis yang
+ * SAMA, dan dua salinan nilai ini akan menyimpang tanpa satu galat pun — Laba
+ * Rugi salah satu bahasa melaporkan laba nol untuk tahun yang sudah ditutup.
  */
-export const CLOSING_JOURNAL_TYPE = "closing";
+export const CLOSING_JOURNAL_TYPE = CONTRACT_CLOSING_JOURNAL_TYPE;
 
 /**
  * Klausa `where` Prisma yang mengecualikan jurnal penutup, ditulis SEKALI.

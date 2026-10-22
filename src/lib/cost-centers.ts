@@ -51,6 +51,15 @@ export function parseCostCenterFilter(raw: string | null | undefined): CostCente
   return id > 0 ? id : undefined;
 }
 
+/**
+ * Nama tampil satu pusat biaya: "KODE — Nama". Satu tempat, karena ia juga
+ * TERCETAK di label periode Laba Rugi yang disaring — dan pola Go-nya
+ * dibangkitkan dari fungsi ini (`report_layout_gen.go`).
+ */
+export function costCenterDisplayName(code: string, name: string): string {
+  return `${code} — ${name}`;
+}
+
 /** Kebalikan `parseCostCenterFilter` — nilai untuk `<select>` & querystring. */
 export function costCenterFilterValue(filter: CostCenterFilter): string {
   if (filter === undefined) return "";

@@ -377,7 +377,7 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 | Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
 |---|---|---|
 | `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
-| `contract/accounting.yaml` — sisanya | `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas, **kategori & saldo normal per tipe akun** | laporan Go yang membacanya: kategori bersama Laba Rugi, materialitas bersama kesesuaian data |
+| `contract/accounting.yaml` — sisanya | `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas, **saldo normal per tipe akun** | laporan Go yang membacanya: materialitas bersama kesesuaian data. (Kategori, sisi laporan, band Laba Rugi, dan jenis jurnal penutup SUDAH masuk — lihat di bawah) |
 | `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
 ✅ **`contract/accounting.yaml` LAHIR 22 Okt 2026, dengan dua kunci saja**:
@@ -397,6 +397,20 @@ yang tidak punya pembaca di Go tulisan tangan, dan menolak nilai tipe akun yang
 ditulis sebagai teks di luar berkas bangkitan. Itu sebabnya kategori tipe akun
 BELUM masuk: Neraca Saldo menaruh saldo di sisi yang ditunjuk TANDA selisihnya,
 bukan di sisi normal tipenya — ia tidak membaca kategori sama sekali.
+
+✅ **Kategori masuk BERSAMA Laba Rugi & Neraca Go (22 Okt 2026), dalam commit
+yang sama — persis seperti yang dijanjikan paragraf di atas.** Lima kunci baru,
+masing-masing dengan pembaca Go di `ledgerread/statements.go` dan pembaca TS:
+`account_categories` + `account_type_categories` (`accountCategoryFor` —
+`ACCOUNT_TYPE_TRAITS` tidak lagi mengetik kategori), `category_statement_side`
+(tanda per KATEGORI: `debit` = debit − kredit; `reports.ts` lewat
+`statementAmount`), `income_statement` (urutan band, penimpa per tipe, band
+bawaan per kategori; `incomeStatementSectionFor`), dan `closing_journal_type`
+(`year-close.ts`). Generatornya menolak peta yang tidak LENGKAP (tipe tanpa
+kategori, kategori tanpa sisi) dan penimpa band untuk tipe yang bukan laba
+rugi. Yang tetap di luar: **saldo normal** — tidak satu laporan Go pun
+membacanya, dan `accumulated_depreciation` (aset bersaldo normal kredit)
+membuktikan ia bukan turunan kategori.
 
 ## 4. Yang belum terbangun dari antrean
 
@@ -898,9 +912,81 @@ mengirim asalnya, dan pola segmen hasil Go = `SEGMEN` TS. Laporan berikutnya
 mengikuti pola yang sama, satu per satu: implementasi Go + kunci kontrak yang
 dibacanya + skrip paritas (angka DAN isi berkas) + entri `go-parity` → `go`.
 
+#### Laporan kedua & ketiga: Laba Rugi dan Neraca (`go-parity`, 22 Okt 2026)
+
+Keputusan pemilik 22 Okt 2026: lebih banyak laporan pindah ke Go. Keduanya
+mengikuti jalur Neraca Saldo selangkah demi selangkah, dan BERHENTI di
+`go-parity` — berkas tetap TS sampai sesi utama menjalankan paritas atas buku
+produksi.
+
+| Bagian | Di mana |
+|---|---|
+| Laba Rugi bertingkat + Neraca (dengan pecahan laba tahun berjalan / tahun lalu yang belum ditutup, #555), sen `int64`, SATU kueri `netsSQL` berparameter untuk setiap penyaring (tanggal, jurnal penutup, pusat biaya `IS NOT DISTINCT FROM`) | `ledgerread/statements.go` |
+| Kategori, sisi laporan, band, jurnal penutup — dari `contract/accounting.yaml` | `internal/contract/accounting_gen.go` |
+| Lembar sebar keduanya (kalimat, pola label periode & pusat biaya, pemisah angka id-ID, zona bisnis DIBANGKITKAN dari modul TS) | `internal/document/statements.go` · `report_layout_gen.go` |
+| Tepian JS yang ditiru teks laporan: `.trim()`, `Math.round` (setengah ke atas, −0), `Intl` id-ID | `internal/jscompat` |
+| Penghasil berkas di pelari `interactive` — DITOLAK selama `go-parity` (`GoEngineReports` hanya memuat `go`) | `internal/interactivelane` |
+| Bentuk muatan berperiode (`fromInstant`/`toInstant` dari `resolvePeriod`) — diuji, belum diterbitkan | `src/lib/report-export-go.ts` (`goExportPayloadShape`) |
+| Pembanding angka (baris per band/seksi, subtotal, anak tangga, tampilan datar, arah hasil, pecahan #555, vonis seimbang) | `src/lib/statement-parity.ts` |
+| Paritas atas buku sungguhan, READ ONLY di KEDUA sisi | `bun run parity:income-statement` · `parity:income-statement-xlsx` · `parity:balance-sheet` · `parity:balance-sheet-xlsx` |
+| Berkas emas lintas bahasa atas buku fixture bersama (kosong, timpang satu sen, valas, retur, kontra-aset, tipe asing, penutup, lintas tahun, batas hari WIB, tahun buku April, pusat biaya) | `ledgerread/testdata/statement_books.json` → `go test -update` → `tests/statements-golden.test.ts` (angka DAN isi berkas, setiap `verify`) |
+
+**Jebakan semantik yang disalin APA ADANYA (bukan diperbaiki):**
+
+1. **Batas tahun buku Neraca mengikuti zona PROSES di TS** (`fiscalYearBounds`
+   memakai `new Date(y, m, d)` lokal). Produksi `TZ=Asia/Jakarta`; Go memakai
+   `Asia/Jakarta` eksplisit (`time/tzdata` di dalam biner). Di proses UTC,
+   `fiscal_year_start` yang tersimpan sebagai tengah malam WIB terbaca SEHARI
+   lebih awal dan pecahan laba tahun berjalan bergeser — `tests/statements-golden.test.ts`
+   memaku zonanya (dan MERAH di UTC tanpa paku itu), skrip paritas Neraca
+   menolak zona lain.
+2. **Berkas Neraca TIDAK memuat pecahan #555.** Muatan ekspor (`buildReportPayload`)
+   dan muatan halaman sama-sama tidak membawa `currentYearIncome` /
+   `priorUnclosedIncome`, jadi lembar sebar selalu SATU baris "Akumulasi
+   Laba/Rugi". Go meniru itu; pecahannya tetap dihitung dan dibandingkan
+   (`parity:balance-sheet`).
+3. **Lembar sebar jalur berkas tidak komparatif.** Halaman mengirim `prior`
+   (#557) ke ekspor sinkron; jalur dari PARAMETER (pekerja, dan Go) tidak.
+   Peralihan ke `go` karena itu akan MENGHILANGKAN kolom pembanding dari
+   ekspor halaman — keputusan yang harus diambil sadar sebelum `go`, bukan
+   ditemukan sesudahnya.
+4. **Laba Rugi bersaring pusat biaya tidak bisa dirakit jalur TS di luar
+   permintaan HTTP**: `costCenterFilterLabel` memanggil `getT()` → `cookies()`,
+   yang melempar di pekerja. Go menyusun labelnya dalam bahasa dokumen cetak
+   (id): "Belum ditetapkan", "KODE — Nama" (juga untuk pusat biaya nonaktif),
+   atau `#<id>`; "unassigned" dicocokkan pada teks MENTAH seperti TS
+   (" unassigned" menyaring benar tetapi berlabel `#unassigned`).
+5. **Neraca membaca `company_settings` TANPA urutan** (`findFirst` tanpa
+   `orderBy`), sementara kop berkas memakai `ORDER BY id`. Disalin.
+6. **Arah hasil "Laba"/"Rugi" dan marjin kotor dihitung dari float di TS.**
+   Laba bersih yang impas bisa menjadi −0,0000001 di TS ("Rugi") dan 0 di Go
+   ("Laba"); marjin −0,04% tercetak "-0%" di keduanya (`Math.round` → −0,
+   `Intl` mencetak "-0"). Pembanding melaporkan arah hasil tersendiri.
+
+Perintah paritas produksi (sesi utama, SESUDAH `go-parity` ini dirilis, dengan
+biner dari checkout yang sama — pola Neraca Saldo di atas):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:income-statement parity:income-statement-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity \
+      --period "$(date +%Y)-01-01..$(date +%F),$(( $(date +%Y)-1 ))-01-01..$(( $(date +%Y)-1 ))-12-31,$(( $(date +%Y)-1 ))-07-01..$(date +%Y)-06-30"
+done
+for s in parity:balance-sheet parity:balance-sheet-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity \
+      --as-of "$(date +%F),$(( $(date +%Y)-1 ))-12-31,$(( $(date +%Y)-1 ))-06-30"
+done
+```
+
+Lulus keempatnya → `parityProven` di entri register yang sama, lalu `go-parity`
+→ `go` (dan halaman keduanya mengirim `sumber` ke tombol Excel, seperti Neraca
+Saldo — dijaga `tests/report-engine.test.ts`).
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 laporan pertama `go` (Neraca Saldo, 22 Okt 2026) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 laporan pertama `go` (Neraca Saldo, 22 Okt 2026); Laba Rugi & Neraca `go-parity` (menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |

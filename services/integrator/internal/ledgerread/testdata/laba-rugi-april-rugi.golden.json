@@ -1,0 +1,42 @@
+{
+  "revenue": [],
+  "expense": [
+    {
+      "code": "6101",
+      "name": "Beban Sewa",
+      "amount": "30000000.00"
+    }
+  ],
+  "totalRevenue": "0.00",
+  "totalExpense": "30000000.00",
+  "netIncome": "-30000000.00",
+  "sales": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "cogs": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "grossProfit": "0.00",
+  "operatingExpense": {
+    "lines": [
+      {
+        "code": "6101",
+        "name": "Beban Sewa",
+        "amount": "30000000.00"
+      }
+    ],
+    "total": "30000000.00"
+  },
+  "operatingProfit": "-30000000.00",
+  "otherIncome": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "otherExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "unknownTypes": []
+}

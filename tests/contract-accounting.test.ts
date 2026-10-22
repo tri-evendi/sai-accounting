@@ -90,13 +90,22 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
   });
 
   it("tidak ada tipe akun yang ditulis sebagai teks di Go tulisan tangan", () => {
+    /* Tag struct (`json:"equity"`) DIKECUALIKAN: ia nama MEDAN JSON yang harus
+       sama dengan bentuk TS (Neraca punya medan `equity`, Laba Rugi `revenue`,
+       `expense`, `cogs`), bukan nilai `accounts.type`. Yang dikecualikan hanya
+       isi backtick yang berbentuk tag — literal string biasa tetap ditolak. */
+    const tanpaTag = (isi: string) => isi.replace(/`(?:[a-z]+:"[^"]*"\s*)+`/g, "``");
     const pelanggar: string[] = [];
     for (const b of GO_PRODUKSI) {
+      const isi = tanpaTag(b.isi);
       for (const t of CONTRACT_TYPES) {
-        if (b.isi.includes(`"${t}"`)) pelanggar.push(`${b.rel}: "${t}"`);
+        if (isi.includes(`"${t}"`)) pelanggar.push(`${b.rel}: "${t}"`);
       }
     }
     expect(pelanggar).toEqual([]);
+    /* Penyaringnya tidak menelan literal biasa. */
+    expect(tanpaTag('x := "equity"')).toContain('"equity"');
+    expect(tanpaTag('Equity []L `json:"equity"`')).not.toContain('"equity"');
   });
 
   it("setiap konstanta kontrak PUNYA pembaca Go (09 §3.5)", () => {
@@ -107,10 +116,59 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
     const semua = GO_PRODUKSI.map((b) => b.isi).join("\n");
     expect(semua).toMatch(/contract\.MoneyScale/);
     expect(semua).toMatch(/contract\.(IsAccountType|AccountTypes)\b/);
+    /* Laba Rugi & Neraca Go (tahap 1d, `statements.go`). */
+    expect(semua, "account_categories / account_type_categories").toMatch(/contract\.CategoryOf\b/);
+    expect(semua, "category_statement_side").toMatch(/contract\.CategoryStatementSide\b/);
+    expect(semua, "income_statement.type_sections").toMatch(/contract\.IncomeStatementTypeSections\b/);
+    expect(semua, "income_statement.category_default_sections").toMatch(
+      /contract\.IncomeStatementCategoryDefaultSections\b/
+    );
+    expect(semua, "closing_journal_type").toMatch(/contract\.ClosingJournalType\b/);
 
     const y = load(baca("contract", "accounting.yaml")) as Record<string, unknown>;
     expect(Object.keys(y).sort(), "kunci baru butuh pembaca Go + baris di tes ini").toEqual(
-      ["account_types", "money", "version"]
+      [
+        "account_categories",
+        "account_type_categories",
+        "account_types",
+        "category_statement_side",
+        "closing_journal_type",
+        "income_statement",
+        "money",
+        "version",
+      ]
     );
+  });
+});
+
+describe("kontrak akuntansi: kategori, sisi, band, jurnal penutup (Laba Rugi & Neraca)", () => {
+  it("TS membaca kategori & band dari bangkitan, bukan daftar sendiri", () => {
+    const accounting = baca("src", "lib", "accounting.ts");
+    expect(accounting).toContain("ACCOUNT_TYPE_CATEGORIES");
+    expect(accounting, "kategori diketik ulang di ACCOUNT_TYPE_TRAITS").not.toMatch(/category:\s*"/);
+    const reports = baca("src", "lib", "reports.ts");
+    expect(reports).toContain("CATEGORY_STATEMENT_SIDE");
+    expect(reports).toContain("INCOME_STATEMENT_TYPE_SECTIONS");
+    /* Band dan sisi tidak ditulis sebagai cabang tipe di reports.ts lagi. */
+    expect(reports).not.toMatch(/type === "(other_income|cogs|other_expense)"/);
+    const yearClose = baca("src", "lib", "year-close.ts");
+    expect(yearClose).not.toMatch(/CLOSING_JOURNAL_TYPE = "/);
+  });
+
+  it("YAML dan bangkitan TS sepakat", async () => {
+    const gen = await import("@sai/core/generated/accounting");
+    const y = load(baca("contract", "accounting.yaml")) as {
+      account_categories: string[];
+      account_type_categories: Record<string, string>;
+      category_statement_side: Record<string, string>;
+      closing_journal_type: string;
+    };
+    expect([...gen.ACCOUNT_CATEGORY_VALUES]).toEqual(y.account_categories);
+    expect(gen.ACCOUNT_TYPE_CATEGORIES).toEqual(y.account_type_categories);
+    expect(gen.CATEGORY_STATEMENT_SIDE).toEqual(y.category_statement_side);
+    expect(gen.CLOSING_JOURNAL_TYPE).toBe(y.closing_journal_type);
+    /* Kontra-aset: aset, tetapi saldo normal KREDIT — bukti bahwa sisi
+       laporan per kategori BUKAN saldo normal per tipe. */
+    expect(gen.ACCOUNT_TYPE_CATEGORIES.accumulated_depreciation).toBe("asset");
   });
 });

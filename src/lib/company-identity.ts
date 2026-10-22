@@ -90,9 +90,16 @@ export function pickIdentity(source: {
   return FALLBACK_COMPANY_IDENTITY;
 }
 
-export async function getCompanyIdentity(): Promise<CompanyIdentity> {
+export async function getCompanyIdentity(
+  /**
+   * Klien buku. Bawaannya klien perusahaan biasa; skrip paritas tahap 1d
+   * menyerahkan klien transaksi READ ONLY supaya kop berkas pun terbaca di
+   * dalam transaksi yang sama.
+   */
+  client: Pick<typeof prisma, "companySetting"> = prisma
+): Promise<CompanyIdentity> {
   try {
-    const settings = await prisma.companySetting.findFirst({
+    const settings = await client.companySetting.findFirst({
       orderBy: { id: "asc" },
       select: { name: true, address: true },
     });

@@ -356,13 +356,14 @@ services/integrator/                 # pelari jalur GO — membaca buku, tidak p
     ├── jobs/                        # klaim · lease · reclaim — SQL antrean
     ├── db/                          # kolam koneksi kendali, pembersih DSN
     ├── registry/                    # `companies` (kendali) — company_id → buku PT
-    ├── ledgerread/                  # pembaca buku READ ONLY — Neraca Saldo (1d)
+    ├── ledgerread/                  # pembaca buku READ ONLY — Neraca Saldo; Laba Rugi & Neraca (1d, go-parity)
     ├── document/                    # penulis XLSX pustaka baku + penyimpanan hasil (1d)
+    ├── jscompat/                    # trim · Math.round · Intl id-ID — tepian JS yang ditiru teks laporan
     ├── backup/                      # dump · sandi · manifest · tujuan
     └── trail/                       # `backup_runs` — satu-satunya tulisan di luar `jobs`
 contract/                            # SATU sumber untuk kontrak lintas bahasa
 ├── kinds.yaml                       # kind · status · angka antrean · pemilik berkas hasil
-└── accounting.yaml                  # skala uang · tipe akun
+└── accounting.yaml                  # skala uang · tipe akun · kategori · sisi laporan · band Laba Rugi · jurnal penutup
 ```
 
 ### Poliglot: satu monorepo, dua bahasa, tiga workspace yang berbeda
@@ -416,7 +417,11 @@ berkasnya tertulis di `src/lib/report-engine.ts` (`ts` · `go-parity` · `go`) �
 rinciannya [09 §9](./09-RANCANGAN-LAYANAN.md). **Neraca Saldo kini `go`**
 (paritas produksi 22 Okt 2026, 17 buku × 3 tanggal): lembar sebarnya dihasilkan
 `internal/interactivelane` (`svc-integrator`), jalur berkas TS-nya dicabut, layarnya
-tetap TS. Sebabnya bukan ongkos melainkan kelas kerusakannya:
+tetap TS. **Laba Rugi dan Neraca menyusul sebagai `go-parity`** (keputusan pemilik
+22 Okt 2026): `ledgerread/statements.go` menghitung keduanya, `internal/document`
+menulis lembar sebarnya, dan `bun run parity:income-statement` /
+`parity:balance-sheet` (+ varian `-xlsx`) menunggu dijalankan atas buku produksi
+sebelum berkasnya berpindah ke Go. Sebabnya bukan ongkos melainkan kelas kerusakannya:
 `contract/` membangkitkan **konstanta**, bukan **aturan**, dan dua implementasi
 "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap
 berbeda hasilnya. Batas ini sudah menahan dua pemindahan:

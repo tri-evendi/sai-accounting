@@ -3,6 +3,17 @@
 //	parity trial-balance -database <nama_basis_data> -as-of <RFC3339>
 //	parity trial-balance-xlsx -database <nama> -as-of <RFC3339> -as-of-date <YYYY-MM-DD> \
 //	       -registry-name <nama registry> -out <berkas.xlsx>
+//	parity balance-sheet -database <nama> -as-of <RFC3339>
+//	parity balance-sheet-xlsx -database <nama> -as-of <RFC3339> -as-of-date <YYYY-MM-DD> \
+//	       -registry-name <nama registry> -out <berkas.xlsx>
+//	parity income-statement -database <nama> -from <RFC3339> -to <RFC3339> [-cost-center <mentah>]
+//	parity income-statement-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
+//	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> [-cost-center <mentah>] \
+//	       -registry-name <nama registry> -out <berkas.xlsx>
+//
+// Laba Rugi dan Neraca (`go-parity` di `src/lib/report-engine.ts`) memakai
+// pola yang sama: pembandingnya `scripts/parity-income-statement*.ts` dan
+// `scripts/parity-balance-sheet*.ts`.
 //
 // `trial-balance` mencetak SATU laporan sebagai JSON ke stdout;
 // `trial-balance-xlsx` menulis lembar sebarnya — lewat `internal/document`, kode
@@ -49,13 +60,22 @@ func main() {
 
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("pakai: parity trial-balance|trial-balance-xlsx -database <nama> -as-of <RFC3339> …")
+		return errors.New("pakai: parity trial-balance|trial-balance-xlsx|balance-sheet|balance-sheet-xlsx|" +
+			"income-statement|income-statement-xlsx -database <nama> …")
 	}
 	switch args[0] {
 	case "trial-balance":
 		return trialBalance(args[1:])
 	case "trial-balance-xlsx":
 		return trialBalanceXLSX(args[1:])
+	case "balance-sheet":
+		return balanceSheet(args[1:], false)
+	case "balance-sheet-xlsx":
+		return balanceSheet(args[1:], true)
+	case "income-statement":
+		return incomeStatement(args[1:], false)
+	case "income-statement-xlsx":
+		return incomeStatement(args[1:], true)
 	default:
 		return fmt.Errorf("laporan %q belum punya implementasi Go", args[0])
 	}
@@ -146,6 +166,153 @@ func trialBalanceXLSX(args []string) error {
 		name = contract.CompanyNameFallback
 	}
 	data, err := document.TrialBalanceWorkbook(tb, name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*out, data, 0o600)
+}
+
+// instant mengurai satu instan RFC3339 wajib — tanpa bawaan "sekarang", alasan
+// yang sama dengan `trial-balance`.
+func instant(name, raw string) (time.Time, error) {
+	if raw == "" {
+		return time.Time{}, fmt.Errorf("-%s wajib — instan yang SAMA dengan yang dipakai sisi TypeScript", name)
+	}
+	t, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("-%s: %w", name, err)
+	}
+	return t, nil
+}
+
+// headerName: kop berkas — setting wizard, lalu nama registry, lalu cadangan
+// (urutan `pickIdentity()`, sama dengan `trial-balance-xlsx`).
+func headerName(ctx context.Context, r *ledgerread.Reader, registryName string) (string, error) {
+	name, err := r.CompanySettingName(ctx)
+	if err != nil {
+		return "", err
+	}
+	if name = strings.TrimSpace(name); name == "" {
+		name = strings.TrimSpace(registryName)
+	}
+	if name == "" {
+		name = contract.CompanyNameFallback
+	}
+	return name, nil
+}
+
+// balanceSheet: Neraca sebagai JSON, atau (xlsx) lembar sebarnya lewat
+// `internal/document` — kode yang sama dengan pelari jalur `interactive`.
+func balanceSheet(args []string, xlsx bool) error {
+	fs := flag.NewFlagSet("balance-sheet", flag.ContinueOnError)
+	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
+	asOfRaw := fs.String("as-of", "", "batas tanggal INKLUSIF sebagai instan RFC3339")
+	asOfDate := fs.String("as-of-date", "", "xlsx: tanggal laporan YYYY-MM-DD (label periode)")
+	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
+	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
+	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	asOf, err := instant("as-of", *asOfRaw)
+	if err != nil {
+		return err
+	}
+	if xlsx && (*asOfDate == "" || *out == "") {
+		return errors.New("-as-of-date dan -out wajib")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	r, err := ledgerread.Open(ctx, *database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	bs, err := r.BalanceSheet(ctx, asOf)
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(bs)
+	}
+	period, err := document.PeriodAsOf(*asOfDate)
+	if err != nil {
+		return err
+	}
+	name, err := headerName(ctx, r, *registryName)
+	if err != nil {
+		return err
+	}
+	data, err := document.BalanceSheetWorkbook(bs, name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*out, data, 0o600)
+}
+
+// incomeStatement: Laba Rugi sebagai JSON, atau (xlsx) lembar sebarnya.
+func incomeStatement(args []string, xlsx bool) error {
+	fs := flag.NewFlagSet("income-statement", flag.ContinueOnError)
+	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
+	fromRaw := fs.String("from", "", "awal periode INKLUSIF sebagai instan RFC3339")
+	toRaw := fs.String("to", "", "akhir periode INKLUSIF sebagai instan RFC3339")
+	costCenter := fs.String("cost-center", "", "penyaring pusat biaya MENTAH (`?costCenter=`), mis. 3 atau unassigned")
+	fromDate := fs.String("from-date", "", "xlsx: awal periode YYYY-MM-DD (label)")
+	toDate := fs.String("to-date", "", "xlsx: akhir periode YYYY-MM-DD (label)")
+	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
+	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
+	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, err := instant("from", *fromRaw)
+	if err != nil {
+		return err
+	}
+	to, err := instant("to", *toRaw)
+	if err != nil {
+		return err
+	}
+	if xlsx && (*fromDate == "" || *toDate == "" || *out == "") {
+		return errors.New("-from-date, -to-date, dan -out wajib")
+	}
+	cc, err := ledgerread.ParseCostCenterFilter(*costCenter)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	r, err := ledgerread.Open(ctx, *database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	is, err := r.IncomeStatement(ctx, &from, &to, cc)
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(is)
+	}
+	ccLabel, err := document.CostCenterLabel(*costCenter, cc, func(id int64) (string, string, bool, error) {
+		return r.CostCenter(ctx, id)
+	})
+	if err != nil {
+		return err
+	}
+	period, err := document.PeriodRange(*fromDate, *toDate, ccLabel)
+	if err != nil {
+		return err
+	}
+	name, err := headerName(ctx, r, *registryName)
+	if err != nil {
+		return err
+	}
+	data, err := document.IncomeStatementWorkbook(is, name, period, time.Now())
 	if err != nil {
 		return err
 	}

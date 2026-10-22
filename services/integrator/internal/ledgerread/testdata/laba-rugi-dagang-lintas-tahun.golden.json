@@ -1,0 +1,109 @@
+{
+  "revenue": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "amount": "15500000.00"
+    },
+    {
+      "code": "4102",
+      "name": "Retur Penjualan",
+      "amount": "-1000000.25"
+    },
+    {
+      "code": "4201",
+      "name": "Pendapatan Bunga",
+      "amount": "250000.75"
+    }
+  ],
+  "expense": [
+    {
+      "code": "5101",
+      "name": "Harga Pokok Penjualan",
+      "amount": "9876543.21"
+    },
+    {
+      "code": "6101",
+      "name": "Beban Gaji",
+      "amount": "20000000.00"
+    },
+    {
+      "code": "6102",
+      "name": "Beban Penyusutan",
+      "amount": "1000000.00"
+    },
+    {
+      "code": "7101",
+      "name": "Rugi Selisih Kurs",
+      "amount": "100000.10"
+    }
+  ],
+  "totalRevenue": "14750000.50",
+  "totalExpense": "30976543.31",
+  "netIncome": "-16226542.81",
+  "sales": {
+    "lines": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "15500000.00"
+      },
+      {
+        "code": "4102",
+        "name": "Retur Penjualan",
+        "amount": "-1000000.25"
+      }
+    ],
+    "total": "14499999.75"
+  },
+  "cogs": {
+    "lines": [
+      {
+        "code": "5101",
+        "name": "Harga Pokok Penjualan",
+        "amount": "9876543.21"
+      }
+    ],
+    "total": "9876543.21"
+  },
+  "grossProfit": "4623456.54",
+  "operatingExpense": {
+    "lines": [
+      {
+        "code": "6101",
+        "name": "Beban Gaji",
+        "amount": "20000000.00"
+      },
+      {
+        "code": "6102",
+        "name": "Beban Penyusutan",
+        "amount": "1000000.00"
+      }
+    ],
+    "total": "21000000.00"
+  },
+  "operatingProfit": "-16376543.46",
+  "otherIncome": {
+    "lines": [
+      {
+        "code": "4201",
+        "name": "Pendapatan Bunga",
+        "amount": "250000.75"
+      }
+    ],
+    "total": "250000.75"
+  },
+  "otherExpense": {
+    "lines": [
+      {
+        "code": "7101",
+        "name": "Rugi Selisih Kurs",
+        "amount": "100000.10"
+      }
+    ],
+    "total": "100000.10"
+  },
+  "unknownTypes": [
+    "9999"
+  ]
+}

@@ -2,13 +2,14 @@
 // Enum-like values follow docs/DATABASE.md: lowercase snake_case, validated with z.enum.
 
 import {
+  ACCOUNT_TYPE_CATEGORIES,
   ACCOUNT_TYPE_VALUES as CONTRACT_ACCOUNT_TYPE_VALUES,
+  type AccountCategory,
   type AccountType,
 } from "@sai/core/generated/accounting";
 
-export type { AccountType };
+export type { AccountCategory, AccountType };
 export type NormalBalance = "debit" | "credit";
-export type AccountCategory = "asset" | "liability" | "equity" | "revenue" | "expense";
 
 export interface AccountTypeDef {
   /**
@@ -25,36 +26,40 @@ export interface AccountTypeDef {
 /**
  * Sifat per tipe akun — DIPETAKAN per nilai kontrak, bukan daftar kedua.
  *
- * NILAI tipe akun dibangkitkan dari `contract/accounting.yaml` (tahap 1d), sebab
- * sejak itu pembaca buku Go (`services/integrator/internal/ledgerread`) ikut
- * membacanya. Yang tinggal di sini hanya yang Go belum baca: label, kategori,
- * saldo normal. `Record<AccountType, …>` membuat tipe baru di kontrak yang lupa
- * diberi sifat di sini menjadi galat `tsc` — dua daftar tulis tangan akan
- * menyimpang tanpa bunyi, satu daftar + satu peta lengkap tidak bisa.
+ * NILAI tipe akun dan KATEGORI-nya dibangkitkan dari `contract/accounting.yaml`
+ * (tahap 1d), sebab pembaca buku Go (`services/integrator/internal/ledgerread`)
+ * ikut membacanya — Neraca Saldo membaca nilainya, Laba Rugi & Neraca membaca
+ * kategorinya. Yang tinggal di sini hanya yang Go tidak baca: label dan saldo
+ * normal. `Record<AccountType, …>` membuat tipe baru di kontrak yang lupa diberi
+ * sifat di sini menjadi galat `tsc` — dua daftar tulis tangan akan menyimpang
+ * tanpa bunyi, satu daftar + satu peta lengkap tidak bisa.
+ *
+ * Kolom `category` di bawah TIDAK diketik ulang: ia dibaca dari
+ * `ACCOUNT_TYPE_CATEGORIES` bangkitan saat `ACCOUNT_TYPES` dirakit.
  */
-const ACCOUNT_TYPE_TRAITS: Record<AccountType, Omit<AccountTypeDef, "value">> = {
+const ACCOUNT_TYPE_TRAITS: Record<AccountType, Omit<AccountTypeDef, "value" | "category">> = {
   // Assets (normal debit)
-  cash_bank: { label: "Kas & Bank", category: "asset", normalBalance: "debit" },
-  account_receivable: { label: "Piutang Usaha", category: "asset", normalBalance: "debit" },
-  inventory: { label: "Persediaan", category: "asset", normalBalance: "debit" },
-  other_current_asset: { label: "Aktiva Lancar Lainnya", category: "asset", normalBalance: "debit" },
-  fixed_asset: { label: "Aktiva Tetap", category: "asset", normalBalance: "debit" },
-  accumulated_depreciation: { label: "Akumulasi Penyusutan", category: "asset", normalBalance: "credit" },
-  other_asset: { label: "Aktiva Lainnya", category: "asset", normalBalance: "debit" },
+  cash_bank: { label: "Kas & Bank", normalBalance: "debit" },
+  account_receivable: { label: "Piutang Usaha", normalBalance: "debit" },
+  inventory: { label: "Persediaan", normalBalance: "debit" },
+  other_current_asset: { label: "Aktiva Lancar Lainnya", normalBalance: "debit" },
+  fixed_asset: { label: "Aktiva Tetap", normalBalance: "debit" },
+  accumulated_depreciation: { label: "Akumulasi Penyusutan", normalBalance: "credit" },
+  other_asset: { label: "Aktiva Lainnya", normalBalance: "debit" },
   // Liabilities (normal credit)
-  account_payable: { label: "Hutang Usaha", category: "liability", normalBalance: "credit" },
-  tax_payable: { label: "Hutang Pajak", category: "liability", normalBalance: "credit" },
-  other_current_liability: { label: "Hutang Lancar Lainnya", category: "liability", normalBalance: "credit" },
-  long_term_liability: { label: "Hutang Jangka Panjang", category: "liability", normalBalance: "credit" },
+  account_payable: { label: "Hutang Usaha", normalBalance: "credit" },
+  tax_payable: { label: "Hutang Pajak", normalBalance: "credit" },
+  other_current_liability: { label: "Hutang Lancar Lainnya", normalBalance: "credit" },
+  long_term_liability: { label: "Hutang Jangka Panjang", normalBalance: "credit" },
   // Equity (normal credit)
-  equity: { label: "Ekuitas", category: "equity", normalBalance: "credit" },
+  equity: { label: "Ekuitas", normalBalance: "credit" },
   // Revenue (normal credit)
-  revenue: { label: "Pendapatan", category: "revenue", normalBalance: "credit" },
-  other_income: { label: "Pendapatan Lain-lain", category: "revenue", normalBalance: "credit" },
+  revenue: { label: "Pendapatan", normalBalance: "credit" },
+  other_income: { label: "Pendapatan Lain-lain", normalBalance: "credit" },
   // Expense (normal debit)
-  cogs: { label: "Beban Pokok Penjualan", category: "expense", normalBalance: "debit" },
-  expense: { label: "Beban Operasional", category: "expense", normalBalance: "debit" },
-  other_expense: { label: "Beban Lain-lain", category: "expense", normalBalance: "debit" },
+  cogs: { label: "Beban Pokok Penjualan", normalBalance: "debit" },
+  expense: { label: "Beban Operasional", normalBalance: "debit" },
+  other_expense: { label: "Beban Lain-lain", normalBalance: "debit" },
 };
 
 /**
@@ -65,6 +70,7 @@ const ACCOUNT_TYPE_TRAITS: Record<AccountType, Omit<AccountTypeDef, "value">> = 
 export const ACCOUNT_TYPES: AccountTypeDef[] = CONTRACT_ACCOUNT_TYPE_VALUES.map((value) => ({
   value,
   ...ACCOUNT_TYPE_TRAITS[value],
+  category: ACCOUNT_TYPE_CATEGORIES[value],
 }));
 
 export const ACCOUNT_TYPE_VALUES = [...CONTRACT_ACCOUNT_TYPE_VALUES] as [string, ...string[]];

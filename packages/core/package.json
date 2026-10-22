@@ -37,6 +37,7 @@
     "./queue-health": "./src/queue-health.ts",
     "./rate-limit": "./src/rate-limit.ts",
     "./registration": "./src/registration.ts",
+    "./runtime-trigger": "./src/runtime-trigger.ts",
     "./scheduler-heartbeat": "./src/scheduler-heartbeat.ts",
     "./schema-version": "./src/schema-version.ts",
     "./settings-crypto": "./src/settings-crypto.ts",

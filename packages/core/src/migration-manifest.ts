@@ -12,7 +12,7 @@
  * yang lupa diumumkan di sini membuat tes merah, bukan konsol yang diam.
  */
 export const MIGRATION_TERAKHIR = {
-  control: "0007_jobs_started_at",
+  control: "0008_runtime_samples",
   platform: "0005_brand_assets",
   company: "0002_company_logos",
 } as const;

@@ -251,15 +251,16 @@ argumen tentang 1d — dan 1d belum dibangun:
 
 | Ongkos | Bentuknya |
 |---|---|
-| **Ini penulisan ulang aturan, bukan pemindahan proses** | 45 berkas · 14.625 baris TS. `contract/` (§3.5) membangkitkan **konstanta**, bukan **aturan**: dua implementasi "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap berbeda hasilnya |
-| **Dua implementasi hidup berdampingan selama transisi** | `app-customer` memakai tumpukan laporan yang sama untuk tampilan di layar — **174 pengimpor di `src/app`** — dan layar tidak bisa menunggu pekerjaan. Jadi TS untuk layar, Go untuk berkas — kelas kegagalan yang I-2 ada untuk mencegah |
+| **Ini penulisan ulang aturan, bukan pemindahan proses** | **39 berkas · 12.623 baris TS** (`bun run report:count`, 22 Okt 2026 — daftar berkasnya tertulis di skripnya). Angka lama "45 berkas · 14.625 baris" tidak punya daftar, jadi tak bisa diulang maupun dibantah. `contract/` (§3.5) membangkitkan **konstanta**, bukan **aturan**: dua implementasi "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap berbeda hasilnya |
+| **Dua implementasi hidup berdampingan selama transisi** | `app-customer` memakai tumpukan laporan yang sama untuk tampilan di layar — **48 berkas di `src/app`** mengimpornya langsung (skrip yang sama; angka lama "174 pengimpor" tanpa definisi yang bisa diulang) — dan layar tidak bisa menunggu pekerjaan. Jadi TS untuk layar, Go untuk berkas — kelas kegagalan yang I-2 ada untuk mencegah |
 | **Node sudah terbukti bisa di server** | `src/lib/invoice-send.ts` menjalankan jsPDF **di Node** hari ini (impor dinamis, `server-only`). Jadi §5 tidak menuntut Go — ia hanya menuntut generatornya pindah dari peramban ke server |
 | **25 penjaga tidak melihat Go** | dari 306 berkas tes, 25 memindai kode untuk menegakkan aturan struktural dan semuanya berhenti di batas `services/`. Permukaan Go wajib punya penjaga Go-nya sendiri |
 
 Maka: **tahap 1d (§9) dibuka oleh pengukuran, bukan oleh rencana.** Pemicunya
 satu dari dua — jalur ekspor memblokir event loop sampai p95 permintaan interaktif
-terpengaruh, atau memori jalur dokumen memaksa `--max-old-space-size` lagi. Sebelum
-pemicu itu terbaca, jalur `interactive` dan `bulk` berjalan sebagai **proses Node
+terpengaruh, atau memori jalur dokumen memaksa `--max-old-space-size` lagi. Sejak
+22 Okt 2026 keduanya **diukur** dan vonisnya terbaca di konsol `/scheduler` — bentuk
+pengukurannya di §11. Sebelum pemicu itu terbaca, jalur `interactive` dan `bulk` berjalan sebagai **proses Node
 terpisah** di luar `app-customer`: itu sudah membeli paralelisme dan isolasi
 memori yang dicari, tanpa menyentuh satu aturan akuntansi pun.
 
@@ -673,7 +674,7 @@ Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` | — |
@@ -809,6 +810,19 @@ baru ada hari ini, jadi ia belum punya sampel — dan `samples` ditampilkan di
 samping setiap persentil justru karena itu: **p95 atas tiga pekerjaan adalah
 angka, bukan fakta.** Tujuh jalur tetap memakai satu pasang ambang sampai
 angkanya layak dipercaya. Pemicunya pengukuran, sama seperti 1d.
+
+✅ **Pemicu 1d kini diukur (22 Okt 2026)** — tabel kendali `runtime_samples`
+(migration `0008`), panel ketiga di `/scheduler`. Rinciannya keadaan, jadi
+tempatnya [02 §14](./02-LAYANAN-INFRA.md). Dua hal yang ternyata tidak seperti
+yang ditulis pemicunya:
+
+- **"`--max-old-space-size` lagi" tidak bisa dibaca harfiah di jalur dokumen.**
+  Pelari jalur berjalan di **Bun**, yang mengabaikan flag itu — tidak ada batas
+  heap yang bisa didekati. Yang dinilai karena itu **puncak RSS** per pekerjaan
+  terhadap 768 MiB, pagar yang sudah terbukti wajib di kotak ini (Dockerfile).
+- **Node dan Bun mencatat histogram event loop dengan dasar berbeda.** Diukur:
+  Node menyertakan resolusinya (p50 10,11 ms saat menganggur), Bun tidak
+  (0,09 ms). Tanpa koreksi, dua proses yang sama sehatnya terbaca berbeda 10 ms.
 
 Penamaannya mengikuti konvensi OpenTelemetry (`queue.items.age`,
 `queue.items.size`, `job.duration`) dengan dimensi nama jalur.

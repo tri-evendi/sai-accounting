@@ -6,6 +6,7 @@
   "exports": {
     "./account-mail": "./src/account-mail.ts",
     "./authz": "./src/authz.ts",
+    "./build-info": "./src/build-info.ts",
     "./business-date": "./src/business-date.ts",
     "./client-ip": "./src/client-ip.ts",
     "./constants": "./src/constants.ts",

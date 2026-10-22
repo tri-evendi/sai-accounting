@@ -41,6 +41,7 @@
  */
 
 import "dotenv/config";
+import { buildDetails } from "@sai/core/build-info";
 import { businessISODate } from "@sai/core/business-date";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
@@ -735,7 +736,9 @@ async function main() {
         statusChanges: summary.transitions.length,
         adoptions: summary.adoptions.length,
         errorCount: errors.length,
-        details: JSON.stringify({ ...summary, errors }),
+        /* `build` = stempel image yang menjalankan putaran ini
+           (`@sai/core/build-info`) — dibaca panel "Versi layanan" konsol. */
+        details: JSON.stringify({ ...summary, errors, ...buildDetails() }),
       },
     });
   } catch (e) {

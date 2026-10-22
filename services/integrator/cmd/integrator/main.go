@@ -39,6 +39,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/interactivelane"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/tenantlane"
 )
@@ -50,6 +51,9 @@ type pelari struct {
 }
 
 func main() {
+	// Stempel build sekali per proses; tiap jalur mencetaknya lagi saat mulai
+	// (`jobs.Runner.Run`), supaya log yang disaring per jalur pun menyebutnya.
+	log.Printf("[integrator] %s", buildinfo.Get().Banner(buildinfo.Service))
 	diminta, lepas := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer lepas()
 	kode := jalankan(context.Background(), diminta, []pelari{

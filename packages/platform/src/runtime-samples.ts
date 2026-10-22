@@ -30,8 +30,10 @@
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { hostname } from "node:os";
 
+import { buildInfo, stampIdentity } from "@sai/core/build-info";
 import { controlDb } from "@sai/core/control-db";
 import {
+  APP_CUSTOMER_SOURCE,
   LOOP_TRIGGER_PERCENTILE,
   RUNTIME_EVAL_WINDOW_DAYS,
   RUNTIME_SAMPLE_RETENTION_DAYS,
@@ -54,8 +56,16 @@ const MEMORY_POLL_MS = 250;
 const IS_BUN = typeof process.versions.bun === "string";
 const RUNTIME = IS_BUN ? "bun" : "node";
 
-function instanceName(): string {
-  return `${hostname()}:${process.pid}`.slice(0, 100);
+/**
+ * `<host>:<pid> <layanan> v<versi>+<sha>` — stempel build ikut tertulis
+ * (`@sai/core/build-info`), sebab baris `loop` ditulis tiap 5 menit oleh SETIAP
+ * proses yang hidup: itulah satu-satunya jejak `app-customer` yang bisa dibaca
+ * konsol tanpa jaringan ke container lain. Layanannya diturunkan dari
+ * `source`: `app-customer` apa adanya, selebihnya pelari jalur `svc-worker`.
+ */
+function instanceName(source: string): string {
+  const service = source === APP_CUSTOMER_SOURCE ? APP_CUSTOMER_SOURCE : "svc-worker";
+  return stampIdentity(`${hostname()}:${process.pid}`, service, buildInfo());
 }
 
 /** `maxRSS` dari kernel dalam KiB → byte. */
@@ -83,7 +93,7 @@ export function startLoopSampler(source: string): () => void {
 
   const histogram = monitorEventLoopDelay({ resolution: RESOLUTION_MS });
   histogram.enable();
-  const instance = instanceName();
+  const instance = instanceName(source);
 
   const potret = async () => {
     /* Histogram dibaca LALU direset sebelum tulisan yang asinkron: putaran
@@ -172,7 +182,7 @@ export async function recordJobRun(input: {
     await controlDb.runtimeSample.create({
       data: {
         source: input.lane,
-        instance: instanceName(),
+        instance: instanceName(input.lane),
         runtime: RUNTIME,
         sampleKind: "job",
         jobId: input.jobId,

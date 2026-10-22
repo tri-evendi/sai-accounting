@@ -636,6 +636,27 @@ graph LR
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>`.
 
+### Stempel build — "versi tiap layanan" (22 Okt 2026)
+
+Nomor **rilis** tetap satu (`package.json`). Yang ditambahkan: setiap layanan
+bisa menyebut **build** yang ia jalankan, sebab layanan latar tidak melayani
+satu halaman pun dan satu yang tertinggal di image lama tidak terlihat di mana
+pun.
+
+| Lapis | Isinya |
+|---|---|
+| CI (`publish-image.yml`) | build-arg `APP_VERSION` (versi `package.json`), `GIT_SHA` (sha penuh), `BUILD_TIME` (UTC) ke **setiap** target, termasuk pendamping `backup` |
+| Dockerfile | `ARG` → `ENV` + label OCI `org.opencontainers.image.{version,revision,created}` di setiap tahap akhir, **sesudah `RUN` terakhir** supaya sha yang berubah tiap build tidak membatalkan cache `bun install`/`next build`. Biner Go juga lewat `-ldflags -X` (`internal/buildinfo`). Bawaan lokal: versi `package.json`, sha `dev` |
+| Pembaca | `@sai/core/build-info` (`buildInfo()`) dan Go `internal/buildinfo` (`Get()`) — satu bentuk keluaran |
+| Log start | `<layanan> v0.12.1 (abc1234, built …Z)` — kedua `app-*` (`instrumentation.ts`), penyelia `svc-worker` sekali + tiap peran, tiap pelari jalur Node, `svc-integrator` sekali + tiap jalur |
+| HTTP | `/api/health` kedua aplikasi: `version` + `build: {version, sha, builtAt}` |
+| Jejak | `jobs.claimed_by` dan `runtime_samples.instance` = `<kepala> <layanan> v<versi>+<sha>` (muat VARCHAR(100); kepala yang dipangkas, bukan stempel); `details.build` di `scheduler_runs`/`conformance_runs`. **Tanpa tabel & tanpa migration baru** — pohon Go tetap hanya menulis `jobs` dan `backup_runs` |
+| Konsol | `/scheduler` → panel **Versi layanan**: build konsol sebagai acuan; tiap layanan+peran yang terlihat dalam 26 jam terakhir dengan putusan *Sama* / *Tertinggal* / *Tidak diketahui* |
+
+Dijaga `tests/build-stamp.test.ts` (setiap tahap akhir terbitan berstempel,
+posisinya sesudah `RUN` terakhir, kedua langkah build meneruskan ketiga arg,
+tata letak TS = Go) dan `tests/build-info.test.ts` (perilaku).
+
 **Kedua image aplikasi wajib dari commit yang sama** — keduanya menulis basis
 data yang sama. Membangun image aplikasi **tidak** ikut membangun `migrator`,
 dan bila terlewat, dua job menjalankan kode lama tanpa tanda; karena itu
@@ -881,11 +902,11 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 
 | Yang ada | Isi |
 |---|---|
-| `GET /api/health` | `control`, `platform`, `company`, `scheduler`, **`queue`**, `backup`, `conformance`, `mail`. **503 hanya bila keadaan INTRINSIK container ini buruk** — control tak terjangkau, atau skema tak sepadan (§12). Bidang hilir dilaporkan, tidak pernah ikut memutuskan (doktrin #137) |
+| `GET /api/health` | `control`, `platform`, `company`, `scheduler`, **`queue`**, `backup`, `conformance`, `mail`, dan `version`/`build` (§9, stempel build). **503 hanya bila keadaan INTRINSIK container ini buruk** — control tak terjangkau, atau skema tak sepadan (§12). Bidang hilir dilaporkan, tidak pernah ikut memutuskan (doktrin #137) |
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah: yang pertama berambang, yang kedua belum), dan **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel); `/conformance` memuat **catatan per buku** beserta lamanya |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah: yang pertama berambang, yang kedua belum), **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel), dan **versi layanan** (build tiap layanan terhadap build konsol, §9); `/conformance` memuat **catatan per buku** beserta lamanya |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 

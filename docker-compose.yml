@@ -472,6 +472,18 @@ services:
       # Peran APLIKASI (`PG_APP_USER`, tanpa DDL) — kunci advisory tidak butuh
       # hak apa pun. Sebelum peralihan hak minimum jatuh ke `PG_USER`.
       CONTROL_DATABASE_DIRECT_URL: postgres://${PG_APP_USER:-${PG_USER:-sai}}:${PG_APP_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
+      # Penyediaan PT baru (`company.provision`, peran `interactive`) — dipindah
+      # dari `app-customer` Okt 2026 supaya layanan yang menghadap internet tidak
+      # memegang kredensial PEMILIK. Basis data dibuat sebagai PEMILIK
+      # (`sai_owner`, NOSUPERUSER CREATEDB) lalu dihibahkan ke peran aplikasi
+      # `PG_APP_USER`. Tanpa `PROVISION_DATABASE_URL` penyediaan memakai
+      # `CONTROL_DATABASE_URL` — benar sebelum peralihan hak minimum, ditolak
+      # 42501 sesudahnya (pesan yang jelas di layar, bukan kerusakan).
+      #
+      # Nilainya dari `.env` apa adanya (bukan dirakit dari `PG_OWNER_*` di sini),
+      # sama seperti sebelumnya di `app-customer` — satu baris `.env`, satu arti.
+      PROVISION_DATABASE_URL:
+      PG_APP_USER:
     depends_on:
       pg:
         condition: service_healthy
@@ -917,13 +929,12 @@ services:
       LICENCE_FILE:
       MAINTENANCE_FROM:
       MAINTENANCE_UNTIL:
-      # Penyediaan PT baru (`/companies/new`) membuat basis data sebagai PEMILIK
-      # (`sai_owner`, NOSUPERUSER CREATEDB) lalu menghibahkannya ke peran
-      # aplikasi `PG_APP_USER`. Tanpa `PROVISION_DATABASE_URL` penyediaan memakai
-      # `CONTROL_DATABASE_URL` — benar sebelum peralihan hak minimum, ditolak
-      # 42501 sesudahnya (pesan yang jelas, bukan kerusakan).
-      PROVISION_DATABASE_URL:
-      PG_APP_USER:
+      # ⚠ TANPA `PROVISION_DATABASE_URL` / `PG_OWNER_*` — DENGAN SENGAJA (Okt
+      # 2026). `/companies/new` hanya MENERBITKAN pekerjaan `company.provision`;
+      # basis datanya dibuat `svc-worker` (jalur `interactive`), satu-satunya
+      # layanan hidup-terus yang memegang kredensial PEMILIK. Container yang
+      # menghadap internet ini memegang `sai_app` saja (DML, tanpa DDL, tanpa
+      # CREATE DATABASE). Dijaga `tests/provisioning-off-app-customer.test.ts`.
       # Satu-satunya `OPERATOR_*` di sini selain penjaga di bawah, dan ia BUKAN
       # rahasia: jumlah proxy di depan aplikasi, dibaca `client-ip` untuk alamat
       # klien pembatas laju. Penjaga mengizinkannya dengan nama, bukan dengan pola.

@@ -172,6 +172,9 @@ const TENANT_API_ROUTES = new Set([
   // Membuat perusahaan = kewenangan tenant; pemilik tenant tanpa satu pun PT
   // adalah pemanggil yang sah, jadi penjaga perusahaan tidak bisa dipakai.
   "companies/route.ts",
+  // Status penyediaan PT (Okt 2026) — izin yang SAMA dengan penerbitnya; pekerjaan
+  // tenant lain dijawab 404 di dalam route-nya.
+  "companies/provisioning/[id]/route.ts",
   // Undangan staf (issue #139): mengundang orang ke tenant = kewenangan tenant
   // (`tenant.member.invite`, owner/admin) — bukan `user.manage` di salah satu
   // PT. PT tujuan dipakai sebagai KONTEKS (validasi peran, jejak audit) dan

@@ -56,8 +56,18 @@ const BODY_TEXT: React.CSSProperties = {
   color: "var(--ant-color-text-secondary)",
 };
 
-export default async function NewCompanyPage() {
+export default async function NewCompanyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ job?: string | string[] }>;
+}) {
   const { user, tenant } = await requireTenantPagePermission("company.create");
+  /* `?job=` = penyediaan yang sedang ditunggu (lihat `company-form`). Hanya
+     ANGKA yang diteruskan; kepemilikannya diperiksa rute status, yang menjawab
+     404 untuk pekerjaan tenant lain. */
+  const rawJob = (await searchParams).job;
+  const jobParam = Number.parseInt(Array.isArray(rawJob) ? (rawJob[0] ?? "") : (rawJob ?? ""), 10);
+  const initialJobId = Number.isInteger(jobParam) && jobParam > 0 ? jobParam : null;
   const t = await getT();
 
   return (
@@ -84,7 +94,7 @@ export default async function NewCompanyPage() {
              * ditekan, dan menyebut nama akunnya.
              *
              * Ini bukan hiasan: pembuat PT otomatis menjadi Administrator
-             * Sistem di PT yang baru lahir (`api/companies/route.ts` →
+             * Sistem di PT yang baru lahir (`workers/company-provision.ts` →
              * `ROLES.ADMINISTRATOR`, peran BERAKSES PENUH — lihat alasan
              * pemilihannya di sana), dan sampai kalimat ini ada, satu-satunya
              * cara mengetahuinya adalah membuat PT-nya lalu melihat hasilnya.
@@ -107,7 +117,11 @@ export default async function NewCompanyPage() {
               `requireTenantApiPermission`, tidak pernah dari klien. */}
           {/* `tenantSlug` dipakai menyusun jalan pintas ke wizard penyiapan
               perusahaan yang baru dibuat — lihat komentar di `company-form`. */}
-          <CompanyForm tenantId={tenant.tenantId} tenantSlug={tenant.tenantSlug} />
+          <CompanyForm
+            tenantId={tenant.tenantId}
+            tenantSlug={tenant.tenantSlug}
+            initialJobId={initialJobId}
+          />
         </CardContent>
       </Card>
     </>

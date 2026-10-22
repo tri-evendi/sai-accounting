@@ -60,6 +60,16 @@ export interface ServerBasisData {
   buat(nama: string): Promise<void>;
   /** Hapus. Di PostgreSQL koneksi lain diputus lebih dulu — lihat implementasinya. */
   hapus(nama: string): Promise<void>;
+  /**
+   * Komentar basis data (`COMMENT ON DATABASE`) — `null` bila tidak ada.
+   * Dipakai penyediaan sebagai TANDA "buku ini sedang disediakan dan belum
+   * terdaftar", supaya pengulangan bisa membedakan buku setengah jadi miliknya
+   * dari basis data lain yang kebetulan bernama sama (lihat
+   * `src/lib/company-provisioning.ts`).
+   */
+  catatan(nama: string): Promise<string | null>;
+  /** Setel (atau hapus, dengan `null`) komentar basis data. Menuntut pemiliknya. */
+  setelCatatan(nama: string, teks: string | null): Promise<void>;
   tutup(): Promise<void>;
 }
 
@@ -68,6 +78,18 @@ export interface KoneksiBasisData {
   readonly mesin: DbEngine;
   /** Jalankan SQL apa adanya — satu berkas migration bisa banyak pernyataan. */
   jalankan(sql: string): Promise<void>;
+  /**
+   * Jalankan satu berkas migration DAN catatannya di `_prisma_migrations`
+   * dalam SATU transaksi. Tanpa ini, mati di antara keduanya meninggalkan
+   * skema yang sudah berubah tanpa catatan — dan pengulangan menerapkannya
+   * dua kali (`relation already exists`).
+   */
+  terapkanMigration(sql: string, catatan: { id: string; checksum: string; nama: string }): Promise<void>;
+  /**
+   * Isi `_prisma_migrations` berurutan nama: nama, checksum, dan apakah ia
+   * SELESAI (bukan menggantung/dibatalkan). Tabel yang belum ada → `null`.
+   */
+  daftarMigration(): Promise<{ nama: string; checksum: string; selesai: boolean }[] | null>;
   /** Catat satu migration sebagai diterapkan di tabel pembukuan Prisma. */
   catatMigration(input: {
     id: string;
@@ -251,6 +273,27 @@ class ServerPostgres implements ServerBasisData {
     await this.c.query(`DROP DATABASE IF EXISTS "${nama}"`);
   }
 
+  async catatan(nama: string): Promise<string | null> {
+    pastikanNamaAman(nama);
+    const r = await this.c.query<{ c: string | null }>(
+      "SELECT shobj_description(oid, 'pg_database') AS c FROM pg_database WHERE datname = $1",
+      [nama]
+    );
+    return r.rows[0]?.c ?? null;
+  }
+
+  async setelCatatan(nama: string, teks: string | null): Promise<void> {
+    pastikanNamaAman(nama);
+    /* `COMMENT ON` tidak menerima parameter; teksnya dikutip sebagai literal
+       dengan `format('%L')` di server, bukan dirakit di sini. */
+    if (teks === null) {
+      await this.c.query(`COMMENT ON DATABASE "${nama}" IS NULL`);
+      return;
+    }
+    const r = await this.c.query<{ q: string }>("SELECT format('%L', $1::text) AS q", [teks]);
+    await this.c.query(`COMMENT ON DATABASE "${nama}" IS ${r.rows[0]!.q}`);
+  }
+
   async tutup(): Promise<void> {
     await this.c.end().catch(() => {});
   }
@@ -264,6 +307,35 @@ class KoneksiPostgres implements KoneksiBasisData {
     /* `pg` menjalankan banyak pernyataan dalam satu `query()` secara bawaan
        (protokol query sederhana, karena tanpa parameter). */
     await this.c.query(sql);
+  }
+
+  async terapkanMigration(
+    sql: string,
+    i: { id: string; checksum: string; nama: string }
+  ): Promise<void> {
+    const mulai = new Date();
+    await this.c.query("BEGIN");
+    try {
+      await this.c.query(sql);
+      await this.catatMigration({ ...i, mulai, selesai: new Date() });
+      await this.c.query("COMMIT");
+    } catch (error) {
+      await this.c.query("ROLLBACK").catch(() => {});
+      throw error;
+    }
+  }
+
+  async daftarMigration(): Promise<{ nama: string; checksum: string; selesai: boolean }[] | null> {
+    const ada = await this.c.query<{ t: string | null }>(
+      `SELECT to_regclass('public."_prisma_migrations"')::text AS t`
+    );
+    if (!ada.rows[0]?.t) return null;
+    const r = await this.c.query<{ nama: string; checksum: string; selesai: boolean }>(
+      `SELECT migration_name AS nama, checksum,
+              (finished_at IS NOT NULL AND rolled_back_at IS NULL) AS selesai
+         FROM "_prisma_migrations" ORDER BY migration_name`
+    );
+    return r.rows;
   }
 
   async catatMigration(i: {

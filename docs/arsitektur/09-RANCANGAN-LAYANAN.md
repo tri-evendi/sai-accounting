@@ -187,7 +187,7 @@ satu commit, beberapa `command`.
 
 | Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi | Keadaan |
 |---|---|---|---|---|---|---|
-| `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna | berapa pun | — | pooler | tahap 1c |
+| `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
 | `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
@@ -256,6 +256,14 @@ ke `pg` (`CONTROL_DATABASE_DIRECT_URL`), `interactive` lewat PgBouncer
    membungkusnya dengan leader election).
 4. **Satu `mem_limit` untuk empat proses.** Batas memori per jalur — yang dulu
    bisa dinyatakan per container — kini tidak bisa.
+5. **Kredensial PEMILIK seproses-container dengan empat peran (Okt 2026).**
+   Penyediaan PT (`company.provision`) pindah dari `app-customer` ke peran
+   `interactive`, jadi `PROVISION_DATABASE_URL` (`sai_owner`) kini ada di
+   environment `svc-worker` — dan penyelia mewariskan environment yang SAMA ke
+   keempat perannya, termasuk yang mengurai parameter ekspor pengguna. Itu
+   pertukaran yang dipilih: kredensial itu keluar dari satu-satunya container
+   yang menghadap internet. Mencabutnya dari tiga peran lain (`env -u` di
+   skrip compose-nya) adalah penguatan murah berikutnya bila diperlukan.
 
 **Pemicu MEMISAHKAN lagi** (salah satunya cukup; memisahkannya kembali =
 satu layanan compose + `command` per peran, kodenya tidak berubah):
@@ -1111,7 +1119,7 @@ server.
 |---|---|
 | Registry | `db_instances` + `companies.db_instance_key` (kendali 0009, expand saja). `NULL` = instans bawaan, jadi tabel kosong = perilaku hari ini |
 | Penyelesai | `@sai/db/company-url` — SATU penyusun URL buku PT untuk aplikasi, fan-out migration, kesesuaian, penyediaan, konsol, dan skrip. Instans tak terselesaikan **melempar**, tidak jatuh ke bawaan. Kunci kolam = instans + basis data |
-| Penyediaan | `provisionCompany({ dbInstanceKey })`; tanpa itu instans bawaan |
+| Penyediaan | `provisionCompany({ dbInstanceKey })`; tanpa itu instans bawaan. Sejak Okt 2026 dijalankan pekerjaan `company.provision` di `svc-worker` — layar `/companies/new` belum menawarkan pilihan instans, jadi PT dari layar selalu lahir di instans bawaan; instans lain lewat perkakas atau `tenant:move` |
 | Fan-out | `db:migrate:all` dan sapuan kesesuaian melapor per instans; instans yang tak terselesaikan menggagalkan PT-nya saja |
 | Pemindahan | `bun run tenant:move` — pratinjau bawaan, menolak PT aktif, `pg_dump \| pg_restore`, bandingkan jumlah baris per tabel, balik registry, ganti nama salinan asal (jalan balik) |
 | Penjaga | `tests/company-url-resolver.test.ts` (pemindai + penyelesai), `tests/tenant-move.test.ts` |

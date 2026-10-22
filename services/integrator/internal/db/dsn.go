@@ -129,6 +129,11 @@ type Sambungan struct {
 	User     string
 	Sandi    string
 	Database string
+	// SSLMode dari parameter `sslmode` URL-nya, apa adanya; kosong = bawaan
+	// libpq. Diteruskan ke `pg_dump` lewat PGSSLMODE: proses anak tidak
+	// membaca URL, dan sambungan yang kehilangan `sslmode=require` tetap
+	// tersambung — hanya tanpa TLS.
+	SSLMode string
 }
 
 // SambunganKendali menguraikan CONTROL_DATABASE_URL menjadi parameternya.
@@ -151,5 +156,14 @@ func SambunganKendali() (Sambungan, error) {
 		User:     cfg.User,
 		Sandi:    cfg.Password,
 		Database: cfg.Database,
+		SSLMode:  sslMode(dsn),
 	}, nil
+}
+
+func sslMode(dsn string) string {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return ""
+	}
+	return u.Query().Get("sslmode")
 }

@@ -20,6 +20,8 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
+import { COMPANY_DATABASE_TARGET_SELECT, toCompanyDatabaseTarget } from "@sai/db/company-url";
+import { registerSharedCache } from "@sai/platform/cache-bus";
 import type { CompanyContext } from "@/lib/company-context";
 
 export interface CompanyRecord extends CompanyContext {
@@ -38,11 +40,33 @@ const globalForRegistry = globalThis as unknown as {
 const cache = globalForRegistry.companyRegistryCache ?? new Map();
 if (process.env.NODE_ENV !== "production") globalForRegistry.companyRegistryCache = cache;
 
+/**
+ * Kolom yang dibaca untuk SETIAP `CompanyRecord`. Satu konstanta untuk ketiga
+ * pembaca di bawah: pembaca yang lupa memuat instansnya akan melempar di
+ * `toCompanyDatabaseTarget`, bukan diam-diam membuka server bawaan.
+ */
+const COMPANY_RECORD_SELECT = {
+  id: true,
+  slug: true,
+  name: true,
+  isActive: true,
+  isDemo: true,
+  ...COMPANY_DATABASE_TARGET_SELECT,
+} as const;
+
+/** Tahap 2: invalidasi sampai ke replika lain (`@sai/platform/cache-bus`). */
+const shared = registerSharedCache("company-registry", (key) => {
+  if (key === undefined) cache.clear();
+  else cache.delete(Number(key));
+});
+
 function toRecord(row: {
   id: number;
   slug: string;
   name: string;
   databaseName: string;
+  dbInstanceKey: string | null;
+  dbInstance: { key: string; urlEnvVar: string } | null;
   isActive: boolean;
   isDemo: boolean;
 }): CompanyRecord {
@@ -50,7 +74,7 @@ function toRecord(row: {
     companyId: row.id,
     slug: row.slug,
     name: row.name,
-    databaseName: row.databaseName,
+    ...toCompanyDatabaseTarget(row),
     isActive: row.isActive,
     isDemo: row.isDemo,
   };
@@ -59,11 +83,11 @@ function toRecord(row: {
 /** Satu perusahaan menurut id, dari cache bila masih segar. */
 export async function getCompany(companyId: number): Promise<CompanyRecord | null> {
   const hit = cache.get(companyId);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.record;
+  if (hit && Date.now() - hit.at < TTL_MS && shared.usable()) return hit.record;
 
   const row = await controlDb.company.findUnique({
     where: { id: companyId },
-    select: { id: true, slug: true, name: true, databaseName: true, isActive: true, isDemo: true },
+    select: COMPANY_RECORD_SELECT,
   });
   if (!row) {
     cache.delete(companyId);
@@ -78,6 +102,7 @@ export async function getCompany(companyId: number): Promise<CompanyRecord | nul
 /** WAJIB dipanggil setelah menulis baris `companies`. */
 export function invalidateCompany(companyId: number): void {
   cache.delete(companyId);
+  shared.publish(companyId);
 }
 
 /** Perusahaan yang boleh dibuka seorang pengguna, urut nama. */
@@ -87,7 +112,7 @@ export async function companiesForUser(userId: number): Promise<CompanyRecord[]>
     select: {
       role: true,
       company: {
-        select: { id: true, slug: true, name: true, databaseName: true, isActive: true, isDemo: true },
+        select: COMPANY_RECORD_SELECT,
       },
     },
     orderBy: { company: { name: "asc" } },
@@ -108,7 +133,7 @@ export async function membershipFor(
       accountantMode: true,
       isActive: true,
       company: {
-        select: { id: true, slug: true, name: true, databaseName: true, isActive: true, isDemo: true },
+        select: COMPANY_RECORD_SELECT,
       },
     },
   });

@@ -151,7 +151,7 @@ func neracaSaldo(ctx context.Context, company *registry.Company, m muatanEkspor,
 		return nil, "", err
 	}
 
-	r, err := ledgerread.Open(ctx, company.DatabaseName)
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
 	if err != nil {
 		return nil, "", err
 	}

@@ -29,6 +29,7 @@ import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
+import { companyDatabaseUrl } from "@sai/db/company-url";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "@sai/core/tenant-routes";
 import { ROLES, ROLE_LABELS } from "@sai/core/constants";
@@ -54,14 +55,10 @@ function controlClient(raw: string) {
   });
 }
 
+/** Skrip ini hanya menyediakan di instans BAWAAN (registry ditulis tanpa
+ *  `db_instance_key`); instans lain lewat penyediaan aplikasi. */
 function companyUrl(databaseName: string): string {
-  const raw =
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL!;
-  const url = new URL(raw);
-  url.pathname = `/${databaseName}`;
-  return url.toString();
+  return companyDatabaseUrl({ databaseName, dbInstance: null });
 }
 
 async function main() {

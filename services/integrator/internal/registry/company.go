@@ -25,6 +25,9 @@ type Company struct {
 	Name         string
 	DatabaseName string
 	IsActive     bool
+	// InstanceURLEnvVar: nama env var `db_instances.url_env_var` tempat
+	// bukunya hidup; kosong = instans bawaan (tahap 4).
+	InstanceURLEnvVar string
 }
 
 // ErrNoCompany: pekerjaan tanpa konteks perusahaan yang sah.
@@ -38,9 +41,13 @@ func Lookup(ctx context.Context, pool *pgxpool.Pool, id *int32) (*Company, error
 		return nil, ErrNoCompany
 	}
 	var c Company
+	var instanceKey, urlEnvVar *string
 	err := pool.QueryRow(ctx,
-		`SELECT id, slug, name, database_name, is_active FROM companies WHERE id = $1`, *id,
-	).Scan(&c.ID, &c.Slug, &c.Name, &c.DatabaseName, &c.IsActive)
+		`SELECT c.id, c.slug, c.name, c.database_name, c.is_active, c.db_instance_key, i.url_env_var
+		   FROM companies c
+		   LEFT JOIN db_instances i ON i.key = c.db_instance_key
+		  WHERE c.id = $1`, *id,
+	).Scan(&c.ID, &c.Slug, &c.Name, &c.DatabaseName, &c.IsActive, &instanceKey, &urlEnvVar)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf(
 			"perusahaan #%d tidak ada di registry kendali — pekerjaan ini TIDAK "+
@@ -48,6 +55,15 @@ func Lookup(ctx context.Context, pool *pgxpool.Pool, id *int32) (*Company, error
 	}
 	if err != nil {
 		return nil, fmt.Errorf("baca registry perusahaan #%d: %w", *id, err)
+	}
+	if instanceKey != nil {
+		// Kunci instans tanpa baris `db_instances` (FK menolaknya, tapi kode
+		// tidak bersandar pada itu): melempar, bukan membaca server bawaan.
+		if urlEnvVar == nil || *urlEnvVar == "" {
+			return nil, fmt.Errorf(
+				"perusahaan #%d menunjuk instans %q yang tidak terdaftar di db_instances", *id, *instanceKey)
+		}
+		c.InstanceURLEnvVar = *urlEnvVar
 	}
 	return &c, nil
 }

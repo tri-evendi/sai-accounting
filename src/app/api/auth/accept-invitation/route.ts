@@ -29,7 +29,8 @@ import {
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "@/lib/company-context";
+import { companyContextOf, runWithCompany } from "@/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { tenantPath } from "@sai/core/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
     select: {
       id: true,
       slug: true,
-      databaseName: true,
+      ...COMPANY_DATABASE_TARGET_SELECT,
       tenant: { select: { id: true, slug: true } },
     },
   });
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
     }
     if (company) {
       await runWithCompany(
-        { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+        companyContextOf(company),
         () =>
           writeAuditLog({
             userId: String(result.userId),

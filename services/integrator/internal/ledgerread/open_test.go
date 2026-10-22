@@ -56,3 +56,35 @@ func TestCompanyDSNThrowsInsteadOfFallingBack(t *testing.T) {
 		t.Error("tanpa template mesti galat")
 	}
 }
+
+func TestCompanyDSNAtInstansMemakaiEnvVarnyaSendiri(t *testing.T) {
+	env := map[string]string{
+		"COMPANY_DATABASE_URL_TEMPLATE":     "postgres://u:p@pgbouncer:5432/x",
+		"COMPANY_DB2_DATABASE_URL_TEMPLATE": "postgres://u:p@db2:5432/x",
+	}
+	getenv := func(k string) string { return env[k] }
+
+	got, err := CompanyDSNAt("sai_t1_pt", "COMPANY_DB2_DATABASE_URL_TEMPLATE", getenv)
+	if err != nil || got != "postgres://u:p@db2:5432/sai_t1_pt" {
+		t.Fatalf("instans db2: %q, %v", got, err)
+	}
+	got, err = CompanyDSNAt("sai_t1_pt", "", getenv)
+	if err != nil || got != "postgres://u:p@pgbouncer:5432/sai_t1_pt" {
+		t.Fatalf("instans bawaan: %q, %v", got, err)
+	}
+}
+
+func TestCompanyDSNAtTidakPernahJatuhKeServerBawaan(t *testing.T) {
+	getenv := func(k string) string {
+		if k == "COMPANY_DATABASE_URL_TEMPLATE" {
+			return "postgres://u:p@pgbouncer:5432/x"
+		}
+		return ""
+	}
+	if _, err := CompanyDSNAt("sai_t1_pt", "COMPANY_DB2_DATABASE_URL_TEMPLATE", getenv); err == nil {
+		t.Fatal("env var instans kosong harus melempar, bukan membaca server bawaan")
+	}
+	if _, err := CompanyDSNAt("sai_t1_pt", "CONTROL_DATABASE_URL", getenv); err == nil {
+		t.Fatal("env var di luar pola COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE harus ditolak")
+	}
+}

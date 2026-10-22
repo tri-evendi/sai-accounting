@@ -54,6 +54,12 @@ import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import { recordSubscriptionEvent } from "@sai/platform/subscription-events";
 import { bukaBasisData } from "@sai/db/server";
 import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyServerConnection,
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseTarget,
+} from "@sai/db/company-url";
+import {
   auditActor,
   changeTenantPlan,
   planChangeApplier,
@@ -328,7 +334,7 @@ export async function executeTenantDeletion(
    * basi. */
   deps: {
     control: ControlClient;
-    latestJournalDate: (databaseName: string) => Promise<Date | null>;
+    latestJournalDate: (company: CompanyDatabaseTarget) => Promise<Date | null>;
   },
   input: {
     tenantSlug: string;
@@ -361,7 +367,7 @@ export async function executeTenantDeletion(
 
   const companies = await deps.control.company.findMany({
     where: { tenantId: tenant.id },
-    select: { id: true, slug: true, databaseName: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
   });
   const users = await deps.control.user.findMany({
     where: { tenantId: tenant.id },
@@ -374,7 +380,7 @@ export async function executeTenantDeletion(
   for (const company of companies) {
     let d: Date | null;
     try {
-      d = await deps.latestJournalDate(company.databaseName);
+      d = await deps.latestJournalDate(toCompanyDatabaseTarget(company));
     } catch (error) {
       console.warn(
         `[operator-writes] buku ${company.databaseName} tak terbaca (${String(error)}) — jangkar retensi jatuh ke hari ini`
@@ -458,9 +464,12 @@ export async function executeTenantDeletion(
  */
 export function makeLatestJournalDateReader(
   controlUrl: string
-): (databaseName: string) => Promise<Date | null> {
-  return async (databaseName) => {
-    const db = await bukaBasisData(controlUrl, databaseName);
+): (company: CompanyDatabaseTarget) => Promise<Date | null> {
+  return async (company) => {
+    /* Instans bawaan: kredensial kendali seperti sebelum tahap 4. Instans lain:
+       template-nya sendiri — `@sai/db/company-url`, tidak pernah server bawaan. */
+    const { serverUrl, databaseName } = companyServerConnection(company, controlUrl);
+    const db = await bukaBasisData(serverUrl, databaseName);
     try {
       return await db.jurnalTermuda();
     } finally {

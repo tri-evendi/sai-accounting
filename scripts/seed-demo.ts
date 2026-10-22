@@ -72,7 +72,8 @@
  */
 import "dotenv/config";
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany, type CompanyContext } from "../src/lib/company-context";
+import { type CompanyContext, companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { bookActivity, seedSampleBook, SAMPLE_TAG } from "../src/lib/demo-seed";
 
 interface Args {
@@ -135,7 +136,7 @@ async function main(): Promise<void> {
   const companyId = args.companyId ?? (await slugToId(args.slug as string));
   const row = await controlDb.company.findUnique({
     where: { id: companyId },
-    select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, name: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
   });
   if (!row) {
     throw new Error(`Perusahaan dengan id ${companyId} tidak ditemukan di basis data kendali.`);
@@ -143,11 +144,7 @@ async function main(): Promise<void> {
   if (!row.isActive) {
     throw new Error(`Perusahaan "${row.slug}" nonaktif. Skrip demo berhenti.`);
   }
-  const company: CompanyContext = {
-    companyId: row.id,
-    slug: row.slug,
-    databaseName: row.databaseName,
-  };
+  const company: CompanyContext = companyContextOf(row);
 
   console.log(`\nMengisi data contoh ke: ${row.name} (${row.slug})`);
   console.log(`Periode: tiga bulan sebelum ${args.today.toISOString().slice(0, 10)}\n`);

@@ -135,7 +135,12 @@ vi.mock("@/lib/company-route", () => ({
     if (!entry || tenantSlug !== TENANT_SLUG) return { ok: false, reason: "not-found" };
     const [companyId, row] = entry;
     if (!row.isActive) return { ok: false, reason: "not-found" };
-    enterCompanyContext({ companyId, slug: row.slug, databaseName: row.databaseName });
+    enterCompanyContext({
+      companyId,
+      slug: row.slug,
+      databaseName: row.databaseName,
+      dbInstance: null,
+    });
     return {
       ok: true,
       companyId,
@@ -169,6 +174,8 @@ vi.mock("@sai/core/control-db", () => ({
           slug: row.slug,
           name: row.name,
           databaseName: row.databaseName,
+          dbInstanceKey: null,
+          dbInstance: null,
           isActive: row.isActive,
         };
       },

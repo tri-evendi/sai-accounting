@@ -40,6 +40,7 @@ import {
 import { APP_VERSION } from "@sai/core/constants";
 import type { SeatQuota } from "@sai/platform/invitation-store";
 import { CORE_MODULE } from "@/lib/business-modules";
+import { registerSharedCache } from "@sai/platform/cache-bus";
 
 /** Jalur berkas lisensi; di compose ia di-mount HANYA-BACA. */
 const JALUR_LISENSI = process.env.LICENCE_FILE?.trim() || "/etc/sai/licence.sai";
@@ -73,6 +74,11 @@ export type LicenceStanding =
     };
 
 let cache: { nilai: Entitlement; standing: LicenceStanding; at: number } | null = null;
+
+/** Tahap 2: batas paket dibaca dari basis data kendali — bisa berubah di replika lain. */
+const shared = registerSharedCache("entitlement", () => {
+  cache = null;
+});
 
 /** Entitlement tersempit yang masih bisa dipakai bekerja. */
 function cadanganTersempit(): Entitlement {
@@ -154,7 +160,7 @@ async function bacaPaket(): Promise<Entitlement> {
 
 /** Entitlement + keadaan lisensi, dibaca sekali per TTL. */
 async function loadCached(): Promise<{ nilai: Entitlement; standing: LicenceStanding }> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache;
+  if (cache && Date.now() - cache.at < TTL_MS && shared.usable()) return cache;
   const result = billingPlaneInstalled()
     ? { nilai: await bacaPaket(), standing: { status: "not-installed" } as const }
     : await bacaLisensi();
@@ -202,4 +208,5 @@ export async function seatQuotaOverride(): Promise<SeatQuota | undefined> {
 /** Dipakai tes dan server action yang memasang lisensi baru. */
 export function resetEntitlementCache(): void {
   cache = null;
+  shared.publish();
 }

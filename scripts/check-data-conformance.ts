@@ -41,6 +41,12 @@ import "dotenv/config";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyDatabaseUrl,
+  DEFAULT_DB_INSTANCE_LABEL,
+  toCompanyDatabaseTarget,
+} from "@sai/db/company-url";
 
 import { CONTRACT_STATUSES, CURRENCIES } from "@sai/core/constants";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
@@ -240,18 +246,12 @@ const CHECKS: Check[] = [
   },
 ];
 
-function adapterFor(raw: string, database?: string) {
-  const url = new URL(raw);
-  return buatAdapter(url.toString(), { batasKoneksi: 2, database: database ?? url.pathname.slice(1) });
+/** Adapter basis data KENDALI. Buku PT tidak dibuka lewat sini — URL-nya
+ *  dari `@sai/db/company-url` (tahap 4). */
+function adapterFor(raw: string) {
+  return buatAdapter(raw, { batasKoneksi: 2 });
 }
 
-function companyTemplate(): string {
-  return (
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL!
-  );
-}
 
 /**
  * Mencatat putaran ini ke `conformance_runs` (basis data PLATFORM).
@@ -314,6 +314,8 @@ function batasSerentak(): number {
 interface CatatanBuku {
   slug: string;
   databaseName: string;
+  /** Instans `db-postgres` buku ini (tahap 4); `default` = instans bawaan. */
+  instance: string;
   /** ok | findings | error — sama kosakatanya dengan status putaran. */
   status: "ok" | "findings" | "error";
   findingCount: number;
@@ -388,9 +390,11 @@ async function main() {
   const control = new ControlClient({ adapter: adapterFor(controlUrl) });
   const companies = await control.company.findMany({
     orderBy: { id: "asc" },
-    select: { slug: true, databaseName: true, isActive: true },
+    select: { slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
   });
   await control.$disconnect();
+  const instanceOf = (c: (typeof companies)[number]): string =>
+    c.dbInstanceKey ?? DEFAULT_DB_INSTANCE_LABEL;
 
   let totalTemuan = 0;
   const gagal: string[] = [];
@@ -412,10 +416,28 @@ async function main() {
     durationMs: number;
   }> {
     const mulai = Date.now();
-    const label = `${company.slug}${company.isActive ? "" : " [nonaktif]"}`;
-    const prisma = new PrismaClient({
-      adapter: adapterFor(companyTemplate(), company.databaseName),
-    });
+    const instance = instanceOf(company);
+    const label =
+      `${company.slug}${instance === DEFAULT_DB_INSTANCE_LABEL ? "" : ` @${instance}`}` +
+      (company.isActive ? "" : " [nonaktif]");
+    /* URL dari penyelesai tunggal (tahap 4). Instans tak terselesaikan = buku
+       ini GAGAL diperiksa — bukan diperiksa di server bawaan. */
+    let prisma: PrismaClient;
+    try {
+      prisma = new PrismaClient({
+        adapter: buatAdapter(companyDatabaseUrl(toCompanyDatabaseTarget(company)), {
+          batasKoneksi: 2,
+        }),
+      });
+    } catch (error) {
+      return {
+        baris: [],
+        temuanBaris: [],
+        jumlahTemuan: 0,
+        gagalPesan: `${company.slug}: ${error instanceof Error ? error.message : String(error)}`,
+        durationMs: Date.now() - mulai,
+      };
+    }
     const temuan: { check: Check; rows: { label: string }[] }[] = [];
 
     try {
@@ -501,6 +523,7 @@ async function main() {
     perCompany.push({
       slug: company.slug,
       databaseName: company.databaseName,
+      instance: instanceOf(company),
       status: r.gagalPesan !== null ? "error" : r.jumlahTemuan > 0 ? "findings" : "ok",
       findingCount: r.jumlahTemuan,
       durationMs: r.durationMs,
@@ -510,6 +533,20 @@ async function main() {
   console.log(
     `\n${totalTemuan === 0 ? "Bersih" : `${totalTemuan} temuan`} di ${companies.length} perusahaan.`
   );
+
+  /* Per instans (tahap 4) — hanya bila ada lebih dari instans bawaan, supaya
+     keluaran pemasangan satu server tidak berubah satu baris pun. */
+  const instansDipakai = [...new Set(perCompany.map((c) => c.instance))].sort();
+  if (instansDipakai.length > 1 || instansDipakai[0] !== DEFAULT_DB_INSTANCE_LABEL) {
+    for (const instans of instansDipakai) {
+      const buku = perCompany.filter((c) => c.instance === instans);
+      const galat = buku.filter((c) => c.status === "error").length;
+      const bertemuan = buku.filter((c) => c.status === "findings").length;
+      console.log(
+        `   instans ${instans}: ${buku.length} buku, ${bertemuan} bertemuan, ${galat} gagal diperiksa`
+      );
+    }
+  }
 
   if (gagal.length > 0) {
     console.error(`\n${gagal.length} perusahaan gagal diperiksa:`);

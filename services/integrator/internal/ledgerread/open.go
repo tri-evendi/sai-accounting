@@ -89,7 +89,49 @@ type Reader struct {
 // setiap laporan satu transaksi baca, dan koneksi ke basis data perusahaan
 // adalah koneksi yang tidak bisa dipakai `app-customer`.
 func Open(ctx context.Context, databaseName string) (*Reader, error) {
-	raw, err := CompanyDSN(databaseName, os.Getenv)
+	return OpenAt(ctx, databaseName, "")
+}
+
+// instanceURLEnv sama dengan `DB_INSTANCE_URL_ENV_PATTERN` di
+// `packages/db/src/company-url.ts` dan pola di `internal/backup/instans.go`.
+var instanceURLEnv = regexp.MustCompile(`^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$`)
+
+// CompanyDSNAt menyusun DSN buku di instans `db_instances` yang env var-nya
+// bernama urlEnvVar; urlEnvVar kosong = instans bawaan (`CompanyDSN`).
+//
+// Instans yang tidak bisa diselesaikan MELEMPAR, tidak pernah jatuh ke server
+// bawaan: selama pemindahan, server bawaan masih memegang salinan lama buku
+// yang sama namanya, dan berkas dari salinan itu salah tanpa galat (tahap 4).
+func CompanyDSNAt(databaseName, urlEnvVar string, getenv func(string) string) (string, error) {
+	if urlEnvVar == "" {
+		return CompanyDSN(databaseName, getenv)
+	}
+	if !safeDatabaseName.MatchString(databaseName) {
+		return "", fmt.Errorf("nama basis data tidak sah: %q", databaseName)
+	}
+	if !instanceURLEnv.MatchString(urlEnvVar) {
+		return "", fmt.Errorf(
+			"instans menunjuk env var %q — bentuk yang sah hanya COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE",
+			urlEnvVar)
+	}
+	raw := getenv(urlEnvVar)
+	if raw == "" {
+		return "", fmt.Errorf(
+			"%s tidak diset di proses ini — buku %s TIDAK dibaca dari server bawaan sebagai gantinya",
+			urlEnvVar, databaseName)
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("%s bukan URL yang sah: %w", urlEnvVar, err)
+	}
+	u.Path = "/" + databaseName
+	u.RawPath = ""
+	return u.String(), nil
+}
+
+// OpenAt membuka buku satu perusahaan di instansnya (lihat `CompanyDSNAt`).
+func OpenAt(ctx context.Context, databaseName, urlEnvVar string) (*Reader, error) {
+	raw, err := CompanyDSNAt(databaseName, urlEnvVar, os.Getenv)
 	if err != nil {
 		return nil, err
 	}

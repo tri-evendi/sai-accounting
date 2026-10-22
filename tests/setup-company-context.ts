@@ -19,6 +19,7 @@ export const TEST_COMPANY = {
   companyId: 1,
   slug: "pt-tes",
   databaseName: "sai_test",
+  dbInstance: null,
 } as const;
 
 beforeEach(() => {

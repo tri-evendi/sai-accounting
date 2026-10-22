@@ -171,8 +171,8 @@ function makeWorld() {
       paidAt: Date | null;
     }[],
     companies: [
-      { id: 21, tenantId: 7, slug: "pusat", databaseName: "sai_pusat", isActive: true },
-      { id: 22, tenantId: 7, slug: "cabang", databaseName: "sai_cabang", isActive: true },
+      { id: 21, tenantId: 7, slug: "pusat", databaseName: "sai_pusat", dbInstanceKey: null, dbInstance: null, isActive: true },
+      { id: 22, tenantId: 7, slug: "cabang", databaseName: "sai_cabang", dbInstanceKey: null, dbInstance: null, isActive: true },
     ],
     users: [
       {
@@ -370,7 +370,7 @@ function makeWorld() {
      * buku: eksekusi penghapusan tidak menyentuh `sai_platform` satu kali pun,
      * jadi bentuk dependensinya pun tidak boleh berpura-pura membutuhkannya.
      */
-    deletionDeps(latestJournalDate: (databaseName?: string) => Promise<Date | null>) {
+    deletionDeps(latestJournalDate: (company?: { databaseName: string }) => Promise<Date | null>) {
       return { control, latestJournalDate } as unknown as Parameters<
         typeof executeTenantDeletion
       >[0];
@@ -849,8 +849,8 @@ describe("executeTenantDeletion — eksekusi lewat masa tenggang (aksi #4)", () 
     withRequest(world.state, GRACE_PASSED);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const result = await executeTenantDeletion(
-      world.deletionDeps(async (databaseName?: string) => {
-        if (databaseName === "sai_cabang") throw new Error("connect ECONNREFUSED");
+      world.deletionDeps(async (company?: { databaseName: string }) => {
+        if (company?.databaseName === "sai_cabang") throw new Error("connect ECONNREFUSED");
         return new Date("2027-12-31T00:00:00Z");
       }),
       DELETE_INPUT,

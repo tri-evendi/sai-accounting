@@ -82,6 +82,12 @@ import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyDatabaseUrl,
+  DEFAULT_DB_INSTANCE_LABEL,
+  toCompanyDatabaseTarget,
+} from "@sai/db/company-url";
 
 function controlClient(): PrismaClient {
   const raw = process.env.CONTROL_DATABASE_URL;
@@ -93,17 +99,6 @@ function controlClient(): PrismaClient {
   return new PrismaClient({
     adapter: buatAdapter(url.toString(), { batasKoneksi: 2 }),
   });
-}
-
-/** URL basis data satu perusahaan: kredensial dari template, nama dari registry. */
-function companyUrl(databaseName: string): string {
-  const raw =
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL!;
-  const url = new URL(raw);
-  url.pathname = `/${databaseName}`;
-  return url.toString();
 }
 
 /**
@@ -138,7 +133,7 @@ async function main() {
   const control = controlClient();
   const companies = await control.company.findMany({
     orderBy: { id: "asc" },
-    select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, name: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
   });
   await control.$disconnect();
 
@@ -167,7 +162,12 @@ async function main() {
     process.exit(1);
   }
 
-  const failures: { slug: string; databaseName: string; detail: string }[] = [];
+  /* Label instans per perusahaan (tahap 4) — dari kolomnya, bukan dari
+     penyelesaian: baris yang instansnya tak terselesaikan tetap harus
+     terlaporkan di bawah instans yang ia sebut. */
+  const instanceOf = (c: (typeof companies)[number]): string =>
+    c.dbInstanceKey ?? DEFAULT_DB_INSTANCE_LABEL;
+  const failures: { slug: string; databaseName: string; instance: string; detail: string }[] = [];
   const mulai = Date.now();
 
   /* Pelaksana berikutnya diambil dari satu kursor bersama, bukan dari potongan
@@ -181,14 +181,29 @@ async function main() {
       const i = kursor++;
       if (i >= companies.length) return;
       const company = companies[i]!;
-      const label = `${company.slug} (${company.databaseName})${company.isActive ? "" : " [nonaktif]"}`;
+      const instance = instanceOf(company);
+      const label =
+        `${company.slug} (${company.databaseName} @${instance})` +
+        (company.isActive ? "" : " [nonaktif]");
+
+      /* URL dari penyelesai tunggal (`@sai/db/company-url`). Instans yang tak
+         terselesaikan = kegagalan PT ini saja; yang lain tetap berjalan. */
+      let databaseUrl: string;
+      try {
+        databaseUrl = companyDatabaseUrl(toCompanyDatabaseTarget(company));
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        failures.push({ slug: company.slug, databaseName: company.databaseName, instance, detail });
+        console.error(`\n── [p${nomor}] ${label}\n   GAGAL: ${detail}`);
+        continue;
+      }
 
       /* Keluarannya DITANGKAP, bukan diwariskan: N proses yang menulis ke
          terminal yang sama saling menyisip, dan yang tidak bisa dibaca adalah
          justru log pada hari satu di antaranya gagal. */
       const result = spawnSync("prisma", ["migrate", "deploy"], {
         encoding: "utf8",
-        env: { ...process.env, DATABASE_URL: companyUrl(company.databaseName) },
+        env: { ...process.env, DATABASE_URL: databaseUrl },
       });
 
       if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
@@ -208,7 +223,7 @@ async function main() {
       if (result.status !== 0) {
         const detail =
           result.error?.message ?? `prisma migrate deploy keluar dengan kode ${result.status}`;
-        failures.push({ slug: company.slug, databaseName: company.databaseName, detail });
+        failures.push({ slug: company.slug, databaseName: company.databaseName, instance, detail });
         console.error(`   GAGAL: ${detail} — perusahaan lain TIDAK terpengaruh.`);
       }
     }
@@ -233,9 +248,19 @@ async function main() {
     `\n═══ Ringkasan: ${companies.length - failures.length}/${companies.length} berhasil ` +
       `dalam ${Math.round((Date.now() - mulai) / 1000)}s`
   );
+  /* Per instans (tahap 4): satu server yang tak terjangkau terbaca sebagai
+     SATU baris merah, bukan sebagai sekian PT acak yang kebetulan gagal. */
+  const perInstans = new Map<string, number>();
+  for (const c of companies) perInstans.set(instanceOf(c), (perInstans.get(instanceOf(c)) ?? 0) + 1);
+  if (perInstans.size > 1 || !perInstans.has(DEFAULT_DB_INSTANCE_LABEL)) {
+    for (const [instans, jumlah] of [...perInstans].sort()) {
+      const gagal = failures.filter((f) => f.instance === instans).length;
+      console.log(`    instans ${instans}: ${jumlah - gagal}/${jumlah} berhasil`);
+    }
+  }
   if (failures.length > 0) {
     for (const f of failures) {
-      console.error(`   ✗ ${f.slug} (${f.databaseName}): ${f.detail}`);
+      console.error(`   ✗ ${f.slug} (${f.databaseName} @${f.instance}): ${f.detail}`);
     }
     console.error(
       "\nPerusahaan yang gagal MASIH memakai skema lama. Perbaiki lalu jalankan " +

@@ -50,6 +50,10 @@ type Opsi struct {
 }
 
 // Hasil adalah apa yang dicatat ke jejak putaran.
+//
+// Ia DIPULANGKAN BERSAMA galat `*GalatInstans` bila satu instans tambahan
+// gagal: objek instans lain sudah terkirim, dan jejak putarannya tetap harus
+// menyebut di mana mereka berada.
 type Hasil struct {
 	Manifest  Manifest
 	TotalByte int64
@@ -110,8 +114,43 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 		return nil, err
 	}
 
+	// ══ INSTANS TAMBAHAN (tahap 4) ══════════════════════════════════════════
+	//
+	// Instans yang tidak bisa dicacah, atau yang servernya lebih baru daripada
+	// `pg_dump` di sini, GAGAL SENDIRI: instans lain tetap dicadangkan, sebab
+	// satu env var yang lupa disalin tidak boleh membuat buku semua PT lain
+	// ikut tanpa salinan. Tapi putarannya berakhir `error` — tidak pernah
+	// `ok` — dan pemangkasan dilewati, sebab putaran lama mungkin satu-satunya
+	// salinan buku di instans yang gagal.
+	gagal := append([]InstansGagal(nil), o.Cacah.Gagal...)
+	pendump := map[string]Pendump{"": o.Perkakas}
+	var infoInstans []InfoInstans
+	for _, ins := range o.Cacah.Instans {
+		if err := PeriksaVersi(o.VersiKlien, ins.VersiServer); err != nil {
+			gagal = append(gagal, InstansGagal{
+				Kunci: ins.Kunci, Sebab: err.Error(), Basis: perusahaanDi(o.Cacah, ins.Kunci),
+			})
+			continue
+		}
+		pendump[ins.Kunci] = ins.Pendump
+		infoInstans = append(infoInstans, InfoInstans{Kunci: ins.Kunci, VersiServer: ins.VersiServer})
+	}
+	var dicadangkan []Basis
+	for _, b := range o.Cacah.Basis {
+		if _, ada := pendump[b.Instans]; ada {
+			dicadangkan = append(dicadangkan, b)
+			continue
+		}
+		if !instansGagal(gagal, b.Instans) {
+			return nil, fmt.Errorf("basis data %s menunjuk instans %q yang tidak tercacah", b.Nama, b.Instans)
+		}
+	}
+
 	putaran := NamaPutaran(o.Prefix, o.Saat)
-	o.catat("putaran %s → %s (%d basis data)", putaran, o.Tujuan.Nama(), len(o.Cacah.Basis))
+	o.catat("putaran %s → %s (%d basis data)", putaran, o.Tujuan.Nama(), len(dicadangkan))
+	for _, g := range gagal {
+		o.catat("✗ instans %s GAGAL (%d PT tanpa salinan putaran ini): %s", g.Kunci, len(g.Basis), g.Sebab)
+	}
 
 	kerja := filepath.Join(o.DirKerja, putaran)
 	if err := os.MkdirAll(kerja, 0o700); err != nil {
@@ -127,16 +166,21 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 		VersiServer:         o.VersiServer,
 		VersiKlien:          o.VersiKlien,
 		PerusahaanTerdaftar: 0,
+		Instans:             infoInstans,
+		InstansGagal:        gagal,
 	}
-	for _, b := range o.Cacah.Basis {
+	for _, b := range dicadangkan {
 		if b.Peran == PeranPerusahaan {
 			m.PerusahaanTerdaftar++
 		}
 	}
+	for _, g := range gagal {
+		m.PerusahaanTerdaftar += len(g.Basis)
+	}
 
 	var total int64
-	// Langkah = setiap basis data + globals + berkas + manifest.
-	langkahTotal := len(o.Cacah.Basis) + 3
+	// Langkah = setiap basis data + globals per server + berkas + manifest.
+	langkahTotal := len(dicadangkan) + len(infoInstans) + 3
 	langkah := 0
 	maju := func() error {
 		langkah++
@@ -147,12 +191,13 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 	}
 
 	// ── 1. Satu objek per basis data ──────────────────────────────────────
-	for _, b := range o.Cacah.Basis {
-		kunci := fmt.Sprintf("db-%s.dump.enc", b.Nama)
-		o.catat("dump %s (%s)", b.Nama, b.Peran)
+	for _, b := range dicadangkan {
+		kunci := KunciBasis(b.Instans, b.Nama)
+		o.catat("dump %s (%s)", labelBasis(b), b.Peran)
 		basis := b
+		pd := pendump[b.Instans]
 		obj, err := o.satuObjek(ctx, kerja, putaran, kunci, JenisBasis, &basis,
-			func(w io.Writer) error { return o.Perkakas.DumpBasis(ctx, basis.Nama, w) })
+			func(w io.Writer) error { return pd.DumpBasis(ctx, basis.Nama, w) })
 		if err != nil {
 			return nil, err
 		}
@@ -168,8 +213,11 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 	// WAJIB ada: dump per basis data tidak memuat satu pun peran, jadi
 	// pemasangan yang dipulihkan dari dump-dump itu saja akan berisi data
 	// lengkap yang tidak bisa dimasuki siapa pun.
+	//
+	// SATU PER SERVER: peran di server instans tambahan bukan peran di server
+	// bawaan, dan dump bukunya tidak bisa dimasuki tanpa peran servernya.
 	o.catat("dump peran & hak akses tingkat server")
-	obj, err := o.satuObjek(ctx, kerja, putaran, "globals.sql.enc", JenisGlobals, nil,
+	obj, err := o.satuObjek(ctx, kerja, putaran, KunciGlobals(""), JenisGlobals, nil,
 		func(w io.Writer) error { return o.Perkakas.DumpGlobals(ctx, w) })
 	if err != nil {
 		return nil, err
@@ -178,6 +226,21 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 	total += obj.Bytes
 	if err := maju(); err != nil {
 		return nil, err
+	}
+	for _, ins := range infoInstans {
+		o.catat("dump peran & hak akses instans %s", ins.Kunci)
+		pd := pendump[ins.Kunci]
+		obj, err := o.satuObjek(ctx, kerja, putaran, KunciGlobals(ins.Kunci), JenisGlobals, nil,
+			func(w io.Writer) error { return pd.DumpGlobals(ctx, w) })
+		if err != nil {
+			return nil, err
+		}
+		obj.Instans = ins.Kunci
+		m.Objek = append(m.Objek, *obj)
+		total += obj.Bytes
+		if err := maju(); err != nil {
+			return nil, err
+		}
 	}
 
 	// ── 3. Berkas yang hidup di luar basis data (#367/#370) ───────────────
@@ -215,6 +278,13 @@ func Jalankan(ctx context.Context, o Opsi) (*Hasil, error) {
 		status = "ok"
 	}
 
+	if len(gagal) > 0 {
+		// Putaran SEBAGIAN: objeknya terkirim dan manifest menyebut instans
+		// yang tidak ikut. Statusnya `error`, dan TIDAK ada pemangkasan.
+		status = "error"
+		return &Hasil{Manifest: m, TotalByte: total, Status: status}, &GalatInstans{Gagal: gagal}
+	}
+
 	// ── 5. Pangkas — hanya setelah seluruh pengiriman sukses ──────────────
 	dibuang, err := o.pangkas(ctx)
 	if err != nil {
@@ -244,6 +314,11 @@ func (o Opsi) satuObjek(
 		_ = os.Remove(mentah)
 		_ = os.Remove(tersandi)
 	}()
+
+	// Kunci instans tambahan memuat subdirektori (`instans/<kunci>/…`).
+	if err := os.MkdirAll(filepath.Dir(mentah), 0o700); err != nil {
+		return nil, fmt.Errorf("buat direktori kerja %s: %w", filepath.Dir(mentah), err)
+	}
 
 	// Dump ke cakram, bukan ke pipa. `PutObject` menuntut pembaca yang bisa
 	// di-seek untuk menandatangani payload-nya; pipa dari `pg_dump` tidak bisa.
@@ -304,8 +379,85 @@ func (o Opsi) satuObjek(
 		obj.Basis = basis.Nama
 		obj.Peran = basis.Peran
 		obj.CompanyID = basis.CompanyID
+		obj.Instans = basis.Instans
 	}
 	return obj, nil
+}
+
+// ══ NAMA OBJEK ═════════════════════════════════════════════════════════════
+//
+// Instans bawaan: `db-<nama>.dump.enc` dan `globals.sql.enc`, PERSIS seperti
+// sebelum tahap 4 — runbook pemulihan di PRODUCTION.md dan
+// `prove-backup-restore` menyebut nama-nama itu, dan pemasangan satu server
+// tidak boleh melihat satu byte pun berubah.
+//
+// Instans tambahan: `instans/<kunci>/db-<nama>.dump.enc` dan
+// `instans/<kunci>/globals.sql.enc`. Subdirektori, bukan sufiks: nama basis
+// data yang SAMA bisa hidup di dua server sekaligus (selama pemindahan), dan
+// dua objek yang namanya hanya berbeda sufiks adalah dua objek yang akan
+// tertukar pada hari pemulihan.
+
+// AwalanInstans adalah direktori objek instans tambahan di dalam putaran.
+const AwalanInstans = "instans/"
+
+// KunciBasis memulangkan kunci objek dump satu basis data.
+func KunciBasis(instans, nama string) string {
+	return awalan(instans) + "db-" + nama + ".dump.enc"
+}
+
+// KunciGlobals memulangkan kunci objek peran & hak akses satu server.
+func KunciGlobals(instans string) string {
+	return awalan(instans) + "globals.sql.enc"
+}
+
+func awalan(instans string) string {
+	if instans == "" {
+		return ""
+	}
+	return AwalanInstans + instans + "/"
+}
+
+func labelBasis(b Basis) string {
+	if b.Instans == "" {
+		return b.Nama
+	}
+	return b.Nama + "@" + b.Instans
+}
+
+// GalatInstans: satu atau lebih instans tambahan tidak dicadangkan putaran ini.
+type GalatInstans struct {
+	Gagal []InstansGagal
+}
+
+func (g *GalatInstans) Error() string {
+	bagian := make([]string, 0, len(g.Gagal))
+	for _, x := range g.Gagal {
+		bagian = append(bagian, fmt.Sprintf("%s (%d PT: %s): %s",
+			x.Kunci, len(x.Basis), strings.Join(x.Basis, ", "), x.Sebab))
+	}
+	return fmt.Sprintf(
+		"%d instans basis data TIDAK dicadangkan — %s. Objek instans lain sudah "+
+			"terkirim dan manifest menyebut yang tidak ikut; pemangkasan dilewati",
+		len(g.Gagal), strings.Join(bagian, "; "))
+}
+
+func perusahaanDi(c *Cacah, instans string) []string {
+	var out []string
+	for _, b := range c.Basis {
+		if b.Instans == instans && b.Peran == PeranPerusahaan {
+			out = append(out, b.Nama)
+		}
+	}
+	return out
+}
+
+func instansGagal(gagal []InstansGagal, kunci string) bool {
+	for _, g := range gagal {
+		if g.Kunci == kunci {
+			return true
+		}
+	}
+	return false
 }
 
 func (o Opsi) pangkas(ctx context.Context) ([]string, error) {

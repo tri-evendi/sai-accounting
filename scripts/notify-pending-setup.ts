@@ -32,21 +32,19 @@ import "dotenv/config";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyDatabaseUrl,
+  toCompanyDatabaseTarget,
+} from "@sai/db/company-url";
 
 /** Tahap pengingat, dalam hari sejak perusahaan dibuat. */
 const TAHAP = [1, 3, 7, 14] as const;
 
-function adapterFor(raw: string, database?: string) {
-  const url = new URL(raw);
-  return buatAdapter(url.toString(), { batasKoneksi: 2, database: database ?? url.pathname.slice(1) });
-}
-
-function companyTemplate(): string {
-  return (
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL!
-  );
+/** Adapter basis data KENDALI. Buku PT tidak dibuka lewat sini — URL-nya
+ *  dari `@sai/db/company-url` (tahap 4). */
+function adapterFor(raw: string) {
+  return buatAdapter(raw, { batasKoneksi: 2 });
 }
 
 /** Tahap TERTINGGI yang sudah terlewati, atau `null` bila belum satu pun. */
@@ -72,7 +70,7 @@ async function main() {
       id: true,
       name: true,
       slug: true,
-      databaseName: true,
+      ...COMPANY_DATABASE_TARGET_SELECT,
       createdAt: true,
       tenant: { select: { slug: true } },
       memberships: {
@@ -93,7 +91,7 @@ async function main() {
 
     /* Buku PT-nya sendiri yang menjawab "sudah disiapkan?" — bukan tebakan dari
        kendali. Gagal membaca satu buku tidak boleh menghentikan yang lain. */
-    const book = new PrismaClient({ adapter: adapterFor(companyTemplate(), company.databaseName) });
+    const book = new PrismaClient({ adapter: buatAdapter(companyDatabaseUrl(toCompanyDatabaseTarget(company)), { batasKoneksi: 2 }) });
     let sudahSiap = true;
     try {
       const setting = await book.companySetting.findFirst({ select: { isSetup: true } });

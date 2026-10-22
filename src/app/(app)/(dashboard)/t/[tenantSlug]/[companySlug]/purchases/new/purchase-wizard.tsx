@@ -61,6 +61,7 @@ import {
 import { useT } from "@sai/core/i18n/client";
 import { AppstoreAddOutlined, CheckCircleOutlined, DeleteOutlined, PlusOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { businessISODate } from "@sai/core/business-date";
 
 // Pemasok tidak lagi dikirim sebagai daftar statis (audit: `take: 500`
 // memotong daftar — pemasok lama tak terpilih). Pemilihnya mencari ke server;
@@ -79,7 +80,9 @@ interface PurchaseResult {
   receiptCount: number;
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+// Tanggal hari ini di Jakarta — `toISOString()` memberi tanggal UTC, yaitu kemarin
+// untuk transaksi yang dicatat pukul 00.00–07.00 WIB.
+const todayISO = () => businessISODate(new Date());
 
 /**
  * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti

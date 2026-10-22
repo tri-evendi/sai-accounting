@@ -43,6 +43,7 @@ import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
+import { businessDayEnd, businessISODate } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -75,8 +76,7 @@ const noteStyle: React.CSSProperties = {
 };
 
 function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return businessISODate(new Date());
 }
 
 export default async function PayablesPage({
@@ -96,7 +96,7 @@ export default async function PayablesPage({
   const asOfStr = /^\d{4}-\d{2}-\d{2}$/.test(asOfRaw) && !Number.isNaN(new Date(`${asOfRaw}T00:00:00`).getTime())
     ? asOfRaw
     : todayISO();
-  const asOf = new Date(`${asOfStr}T23:59:59.999`);
+  const asOf = businessDayEnd(asOfStr);
   const overdueOnly = sp.overdue === "1";
 
   const [{ rows, aging, byParty, overdueCount }, purchaseAdvances] = await Promise.all([

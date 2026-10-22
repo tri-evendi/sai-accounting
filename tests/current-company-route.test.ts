@@ -43,6 +43,7 @@ const SESSION_COMPANY = {
   slug: "pt-tab-sebelah",
   name: "PT Tab Sebelah",
   databaseName: "sai_t1_pt-tab-sebelah",
+  dbInstance: null,
   isActive: true,
 };
 
@@ -51,6 +52,7 @@ const ROUTE_COMPANY = {
   companyId: 11,
   slug: "cv-maju",
   databaseName: "sai_t1_cv-maju",
+  dbInstance: null,
 };
 
 /** PT di tab SEBELAH, yang permintaannya berjalan bersamaan. */
@@ -58,6 +60,7 @@ const OTHER_COMPANY = {
   companyId: 12,
   slug: "pt-sejahtera",
   databaseName: "sai_t1_pt-sejahtera",
+  dbInstance: null,
 };
 
 const auth = vi.hoisted(() => vi.fn());

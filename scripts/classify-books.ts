@@ -20,6 +20,12 @@
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyDatabaseUrl,
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseTarget,
+} from "@sai/db/company-url";
 
 import {
   classifyBook,
@@ -30,25 +36,21 @@ import {
 
 const JSON_OUT = process.argv.includes("--json");
 
-function adapterFor(raw: string, database?: string) {
-  const url = new URL(raw);
-  return buatAdapter(url.toString(), { batasKoneksi: 2, database: database ?? url.pathname.slice(1) });
-}
-
-/** Kredensial buku PT — NAMA basis datanya dari registry, bukan dari URL. */
-function companyTemplate(): string {
-  const raw =
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL;
-  if (!raw) throw new Error("Tidak ada sumber kredensial basis data perusahaan di .env.");
-  return raw;
+/** Adapter basis data KENDALI. Buku PT tidak dibuka lewat sini — URL-nya
+ *  dari `@sai/db/company-url` (tahap 4). */
+function adapterFor(raw: string) {
+  return buatAdapter(raw, { batasKoneksi: 2 });
 }
 
 const HARI = 24 * 3_600_000;
 
-async function evidenceFor(databaseName: string): Promise<BookEvidence> {
-  const prisma = new PrismaClient({ adapter: adapterFor(companyTemplate(), databaseName) });
+async function evidenceFor(target: CompanyDatabaseTarget): Promise<BookEvidence> {
+  const { databaseName } = target;
+  /* URL buku dari penyelesai tunggal (tahap 4) — instans PT ini, bukan
+     template bawaan. */
+  const prisma = new PrismaClient({
+    adapter: buatAdapter(companyDatabaseUrl(target), { batasKoneksi: 2 }),
+  });
   try {
     const [
       realCustomers,
@@ -105,7 +107,7 @@ async function main() {
   const control = new ControlClient({ adapter: adapterFor(controlUrl) });
   const companies = await control.company.findMany({
     orderBy: { id: "asc" },
-    select: { id: true, slug: true, databaseName: true, isActive: true, isDemo: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true, isDemo: true },
   });
   await control.$disconnect();
 
@@ -114,7 +116,7 @@ async function main() {
 
   for (const c of companies) {
     try {
-      verdicts.push(classifyBook(await evidenceFor(c.databaseName)));
+      verdicts.push(classifyBook(await evidenceFor(toCompanyDatabaseTarget(c))));
     } catch (error) {
       /* Buku yang tidak bisa dibaca BUKAN buku yang bersih — dilaporkan, tidak
          dilewati diam-diam (doktrin yang sama dengan check-data-conformance). */

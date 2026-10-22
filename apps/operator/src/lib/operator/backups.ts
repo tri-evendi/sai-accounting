@@ -11,6 +11,12 @@
 import "server-only";
 
 import { bukaBasisData } from "@sai/db/server";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyServerConnection,
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseRow,
+} from "@sai/db/company-url";
 import { uraikanUrl } from "@sai/db/engine";
 import { controlDb } from "@sai/core/control-db";
 import { MIGRATION_TERAKHIR, type JenisBasisData } from "@sai/core/migration-manifest";
@@ -65,6 +71,7 @@ export interface SchemaVersionRow {
 const PARALEL = 4;
 
 async function ringkasan(url: string, database: string): Promise<RingkasanMigrasiDb | null> {
+  if (!url) return null;
   try {
     const db = await bukaBasisData(url, database);
     try {
@@ -90,11 +97,16 @@ export async function schemaVersionsForOperator(): Promise<SchemaVersionRow[] | 
   const controlUrl = process.env.CONTROL_DATABASE_URL;
   if (!controlUrl) return null;
 
-  let companies: { slug: string; databaseName: string; isActive: boolean; tenant: { slug: string } | null }[];
+  let companies: ({ slug: string; isActive: boolean; tenant: { slug: string } | null } & CompanyDatabaseRow)[];
   try {
     companies = await controlDb.company.findMany({
       orderBy: { databaseName: "asc" },
-      select: { slug: true, databaseName: true, isActive: true, tenant: { select: { slug: true } } },
+      select: {
+        slug: true,
+        ...COMPANY_DATABASE_TARGET_SELECT,
+        isActive: true,
+        tenant: { select: { slug: true } },
+      },
     });
   } catch (error) {
     console.error("[operator-backups] daftar perusahaan tak terbaca:", error);
@@ -115,13 +127,22 @@ export async function schemaVersionsForOperator(): Promise<SchemaVersionRow[] | 
     });
   }
   for (const c of companies) {
+    /* Instans bawaan: URL kendali sebagai TEMPLAT kredensial — pola pembaca
+       retensi hapus-tenant. Instans lain (tahap 4): template-nya sendiri, dari
+       `@sai/db/company-url`. Instans yang tak terselesaikan menjadi baris
+       "tak terbaca", bukan pembacaan diam-diam di server bawaan. */
+    let url = "";
+    try {
+      url = companyServerConnection(toCompanyDatabaseTarget(c), controlUrl).serverUrl;
+    } catch (error) {
+      console.warn(`[operator-backups] instans ${c.databaseName} tak terselesaikan: ${String(error)}`);
+    }
+    const instans = c.dbInstanceKey ? ` @${c.dbInstanceKey}` : "";
     target.push({
       jenis: "company",
-      /* URL kendali sebagai TEMPLAT kredensial — pola pembaca retensi
-         hapus-tenant; nama basis datanya diganti per buku. */
-      url: controlUrl,
+      url,
       database: c.databaseName,
-      label: c.tenant ? `${c.tenant.slug} / ${c.slug}` : c.slug,
+      label: (c.tenant ? `${c.tenant.slug} / ${c.slug}` : c.slug) + instans,
       isActive: c.isActive,
     });
   }

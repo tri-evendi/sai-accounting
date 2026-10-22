@@ -150,6 +150,12 @@ langkah menulis hasilnya sendiri — tabel baru, migration, pembungkus di compos
 
 ### 🟡 P2-3 — Satu container `app-customer`, tanpa jalur penskalaan
 
+> **22 Okt 2026:** jalurnya kini ada sebagai konfigurasi opt-in — bus
+> invalidasi cache, buku tag Next bersama, batas PgBouncer per pengguna
+> (`MAX_USER_CONNECTIONS`, bukan `MAX_DB_CONNECTIONS` yang per basis data),
+> standby. Belum dinyalakan; yang belum terbukti tanpa host kedua:
+> [02 §19](./02-LAYANAN-INFRA.md). Temuan di bawah tetap potret 19 Okt.
+
 Cache dalam-memori: pengaturan surel (TTL 60s), keadaan tenant (TTL 60s),
 override izin pengguna, pool klien LRU, penyimpan konteks per permintaan — dan
 **cache data Next** untuk isi & pengaturan situs (`unstable_cache`, TTL 300s).

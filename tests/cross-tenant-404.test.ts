@@ -35,7 +35,15 @@ const state = vi.hoisted(() => ({
   } | null,
   companies: new Map<
     number,
-    { slug: string; name: string; databaseName: string; isActive: boolean; tenantId: number }
+    {
+      slug: string;
+      name: string;
+      databaseName: string;
+      dbInstanceKey: string | null;
+      dbInstance: null;
+      isActive: boolean;
+      tenantId: number;
+    }
   >(),
   platformInvoices: [] as Array<{
     id: number;
@@ -227,11 +235,11 @@ beforeEach(() => {
   state.companies = new Map([
     [
       COMPANY_A,
-      { slug: "pt-a", name: "PT A", databaseName: "sai_a", isActive: true, tenantId: TENANT_A },
+      { slug: "pt-a", name: "PT A", databaseName: "sai_a", dbInstanceKey: null, dbInstance: null, isActive: true, tenantId: TENANT_A },
     ],
     [
       COMPANY_B,
-      { slug: "pt-b", name: "PT B", databaseName: "sai_b", isActive: true, tenantId: TENANT_B },
+      { slug: "pt-b", name: "PT B", databaseName: "sai_b", dbInstanceKey: null, dbInstance: null, isActive: true, tenantId: TENANT_B },
     ],
   ]);
   state.platformInvoices = [

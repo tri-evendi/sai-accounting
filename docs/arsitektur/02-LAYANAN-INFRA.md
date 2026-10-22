@@ -53,7 +53,9 @@ dan batas heap eksplisit di setiap perintah Node.
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
 
 Ditambah `traefik`, dipakai bersama lima aplikasi lain dan tidak termasuk
-`docker-compose.yml` repo ini.
+`docker-compose.yml` repo ini. Dua layanan tahap 2 juga tidak dihitung, sebab
+tidak berjalan: `cache-redis` (profile `replika`) dan `db-postgres-standby`
+(hanya di `docker-compose.replika.yml`) — §19.
 
 ```mermaid
 graph TB
@@ -98,8 +100,9 @@ pernah berakhir — ia menguras antrean selama hidupnya. Nomenklaturnya di
 
 `app-customer` tidak memuat rute konsol, dan `OPERATOR_HOST` dikosongkan lewat
 `environment:` (menimpa `env_file:`) sebagai lapis tambahan. Satu container,
-tanpa replika: restart mengosongkan setiap cache dalam memori, dan cache
-per-proses itulah yang menghalangi penskalaan horizontal (P2-3).
+tanpa replika: restart mengosongkan setiap cache dalam memori. Cache per-proses
+yang dulu menghalangi penskalaan horizontal (P2-3) kini terdaftar di bus
+invalidasi tahap 2 — siap, belum dinyalakan (§19).
 
 > ⚠ **Jangan beri `app-operator` router `APP_DOMAIN`.** Customer yang diarahkan
 > ke sana menerima 404 untuk seluruh aplikasi.
@@ -117,6 +120,15 @@ per-proses itulah yang menghalangi penskalaan horizontal (P2-3).
 `app-*` dan dua job lewat `pgbouncer`; `migrate` dan `svc-tenant` **langsung**
 ke `pg` — Prisma Migrate memakai advisory lock yang terikat sesi, dan pooler
 `transaction` memulangkan dump sebagian.
+
+**Instans tambahan (tahap 4, opt-in, belum dipakai).** Buku PT boleh hidup di
+instans `db-postgres` lain: `db_instances` di kendali menyebut kunci dan
+**nama** env var-nya (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`), dan
+`companies.db_instance_key = NULL` berarti instans di tabel ini. Satu-satunya
+penyusun URL buku PT adalah `@sai/db/company-url`; pemindahan lewat
+`bun run tenant:move`. `svc-tenant` mencacah dan mendump **per instans**
+(`instans/<kunci>/…`). Runbook dan batasnya ada di
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
 
 **`pgbouncer`** (`edoburu/pgbouncer:v1.26.0-p0` — **versi dipatok**, bukan
 `latest`, sejak 19 Okt 2026) mendengarkan di **5432**, bukan 6432 —
@@ -323,6 +335,16 @@ sebagian, dan sebagian itulah bentuk cadangan paling berbahaya.
 | `berkas.tar.gz.enc` | `data/documents` + `data/audit` (#367/#370) |
 | `<objek>.sha256` | sidik jari atas **ciphertext**, untuk setiap objek |
 | `manifest.json` | satu-satunya objek yang terbaca **tanpa** kunci |
+| `instans/<kunci>/db-<nama>.dump.enc` · `instans/<kunci>/globals.sql.enc` | hanya bila ada instans tambahan (tahap 4): dump dan peran **dari server instans itu** |
+
+Tanpa instans tambahan, nama objek dan isi manifest sama persis dengan sebelum
+tahap 4. Dengan instans tambahan, objeknya bertanda `instans` di manifest, dan
+`companyId` hanya terisi pada objek dari instans tempat PT itu terdaftar.
+Kelengkapan dibuktikan **per instans**. Env var instans
+`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-tenant` lewat
+`env_file: .env` yang sama dengan layanan lain, dan wajib langsung ke
+PostgreSQL. Rinciannya di
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-tenant).
 
 **Urutan:** cacah → periksa versi → per basis data (dump → sandi → sidik →
 kirim → buang sementara) → globals → berkas → manifest → pangkas. Enkripsi
@@ -342,7 +364,11 @@ bila pengiriman sukses.
 **Empat hal yang menggagalkan putaran sebelum satu objek pun terkirim:** basis
 data terdaftar yang hilang dari server, `pg_dump` lebih tua daripada server,
 `BACKUP_ENCRYPTION_KEY` kosong, dan satu dump yang gagal. Manifest ditulis
-**paling akhir**, jadi manifest yang ada berarti putarannya lengkap.
+**paling akhir**, jadi manifest yang ada berarti setiap objek yang disebutnya
+terkirim. Satu pengecualian disengaja: **instans tambahan yang gagal** (env
+tak diset, server tak terjangkau) tidak menghentikan instans lain. Manifestnya
+memuat `instansGagal`, jejaknya `error`, pemangkasan dilewati, dan
+`prove-backup-restore` menolak putaran itu.
 
 > **⚠ Status 18 Okt 2026: `local_only`**, `lastSuccessAt: null`, tiga env S3
 > kosong. Kehilangan mesin = kehilangan buku **beserta** backup-nya. P0-1.
@@ -749,6 +775,7 @@ Hanya nama; nilainya tidak dicantumkan. Pemeriksa: `bun run check:env`.
 | `ALLOW_SEED` | **Jangan pernah** `true` di produksi |
 | `CONTROL_DATABASE_DIRECT_URL` | Profil HA saja. Kosong → pagar jalur `ledger` lewat PgBouncer (perilaku lama); `run-as-leader` menolak berjalan |
 | `COMPANY_DATABASE_READ_URL_TEMPLATE` · `COMPANY_DATABASE_READ_MAX_WAIT_MS` | Profil HA saja. Kosong → tidak ada replika baca, `runReadOnly(fn)` = `fn()` · bawaan 5.000 |
+| `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` | Tahap 4 saja, satu per baris `db_instances`. Tabel kosong → tidak dibaca. Baris yang env-nya kosong → buku PT di instans itu **melempar**, tidak jatuh ke bawaan |
 
 **Anggaran koneksi `app-customer`:** buku PT 2 × maks 4 klien = 8, control
 2 × 1, platform 1 × 1 → **11**. Ditambah `app-operator` dan ketiga job saat
@@ -1239,3 +1266,137 @@ Langkah 0–2 tidak menambah mesin dan tidak menunggu keputusan apa pun.
 | ❓ Agregasi log | Hanya `docker compose logs` |
 | ❓ Latihan restore kuartalan | Diwajibkan `package.json`; tanpa bukti dijalankan |
 | ❓ Basis data uji di produksi | Empat buku berpola uji hidup di instans produksi; dua putusan menunggu pemilik |
+
+## 19. Replika (tahap 2) — siap, belum dinyalakan
+
+Kode tahap 2 (09 §9) ada sejak 22 Okt 2026, dan **seluruhnya opt-in**. Produksi
+hari ini tidak memakainya: tanpa `CACHE_REDIS_URL` aplikasi tidak memuat klien
+Redis, setiap cache dibaca seperti sebelumnya, dan `docker compose up -d` biasa
+tidak menyalakan layanan baru apa pun (`cache-redis` di belakang profile
+`replika`). Dijaga `tests/cache-bus.test.ts` (bagian a) dan
+`tests/replica-compose.test.ts`.
+
+Menyalakannya:
+
+```bash
+docker compose exec -T -e PG_REPLICATION_PASSWORD=... pg \
+  sh -s < scripts/replika/pg-primary-prepare.sh      # sekali per primary
+docker compose -f docker-compose.yml -f docker-compose.replika.yml \
+  --profile replika up -d
+```
+
+| Bagian | Di mana | Tanpa Redis |
+|---|---|---|
+| Bus invalidasi cache — pub/sub, 8 cache data kendali terdaftar | `@sai/platform/cache-bus` | `publish` no-op, cache dibaca seperti hari ini |
+| Pembatas laju bersesi bersama (buka kunci PT, ganti sandi, undangan, masuk konsol) | `@sai/platform/rate-limit-shared` | penghitung memori `@sai/core/rate-limit`, persis |
+| Buku tag Next bersama (`updateTag` konsol sampai ke setiap replika) | `@sai/platform/next-cache-tags` | handler bawaan Next, tidak dipasang |
+| Penjaga penyimpanan bersama | `@sai/platform/replica-storage` | tidak berjalan |
+| Dua replika `app-customer`, standby, batas PgBouncer | `docker-compose.replika.yml` | berkasnya tidak dipakai |
+
+### Invalidasi: yang dijaga, dan yang tidak
+
+Risiko kebenarannya otorisasi: override izin yang ditulis lewat replika 1
+mengosongkan cache replika 1 saja, dan replika 2 memakai matriks lama sampai
+TTL 60 detik habis. Dengan bus menyala setiap `invalidate*()` mengumumkan id
+perusahaannya, dan replika lain membuang set loader izin perusahaan itu.
+Selama langganan pub/sub putus, cache terdaftar **dilewati** — pembacaan
+langsung ke basis data — dan saat pulih semuanya dikosongkan dulu sebelum
+dipakai lagi (pesan yang terlewat tidak bisa diputar ulang). Redis mati =
+lebih lambat, tidak basi (09 §3.4).
+
+Satu celah dibiarkan, dan TTL tetap penjaganya: partisi sebagian, saat replika
+penulis tidak menjangkau Redis tetapi replika pembaca masih tersambung. Karena
+itu TTL tidak diperpanjang meski bus hidup.
+
+Cache baru wajib diputuskan: `tests/shared-cache-registry.test.ts` memindai
+setiap penyimpan tingkat modul di `src/`, `packages/`, dan `apps/`, dan menolak
+yang belum terdaftar maupun dikecualikan dengan alasan.
+
+Isi `unstable_cache` **tidak** disalin ke Redis — tiga pemakainya membaca satu
+baris kecil, paling sering sekali per lima menit per replika. Yang dibagi buku
+tagnya; isinya tetap di cache bawaan Next tiap replika. Handler dipasang lewat
+kait global `Symbol.for('@next/cache-handlers')`, bukan `cacheHandlers` di
+`next.config.ts`, sebab konfigurasi dibekukan saat build dan image dibangun CI
+tanpa Redis. Kaitnya tidak terdokumentasi; `tests/next-cache-tags.test.ts`
+memeriksa bahwa Next yang terpasang masih membacanya.
+
+### Penyimpanan bersama
+
+`documents` dan `audit` volume lokal. Dua replika di **satu** host berbagi volume
+bernama yang sama — aman. Replika di host **lain** wajib memasang penyimpanan
+yang sama (NFS, atau penyimpanan objek setelah `document-storage.ts` pindah ke
+sana); tanpanya lampiran yang diunggah lewat replika 1 tidak ada di replika 2.
+
+Penjaganya sidik `.storage-id` di akar dokumen (`audit` hanya memuat berkas
+lama `.dipindahkan` — jejaknya sudah di basis data), disewa di Redis
+(`sai:storage:<nama>`, TTL tiga menit, diperpanjang tiap menit). Replika yang
+start dengan sidik berbeda dari sewa yang masih hidup **menolak start**. Redis
+tak terjangkau saat start hanya memperingatkan.
+
+### Anggaran koneksi
+
+Per proses Node yang memakai PgBouncer (client side), dari variabel yang sudah
+ada:
+
+| Kolam | Variabel | Bawaan |
+|---|---|---|
+| Buku PT | `COMPANY_CLIENT_POOL_MAX` × `DB_CONNECTION_LIMIT` | 4 × 2 = 8 |
+| Kendali | `CONTROL_DB_CONNECTION_LIMIT` | 2 |
+| Platform | `PLATFORM_DB_CONNECTION_LIMIT` | 1 |
+| **Per proses** | | **11** |
+
+Dua replika + konsol + `svc-ledger` + `svc-interactive` + `job-scheduler` +
+`job-conformance` = 7 × 11 = **77** koneksi klien, jauh di bawah
+`MAX_CLIENT_CONN` 200.
+
+Yang menentukan sisi server bukan angka itu, melainkan PgBouncer:
+`DEFAULT_POOL_SIZE` berlaku per pasangan (basis data, pengguna), dan dengan 19
+basis data bawaan 20 berarti sampai 380 koneksi server — `max_connections` 100.
+`MAX_DB_CONNECTIONS` (yang disebut 05 §P2-3) juga per basis data, jadi bukan
+batas global. Batas global yang benar `MAX_USER_CONNECTIONS`: semua basis data
+memakai satu pengguna (`sai`). Override menyetelnya:
+
+| Variabel (override) | Bawaan | Alasannya |
+|---|---|---|
+| `PGBOUNCER_MAX_USER_CONNECTIONS` | 70 | 100 − 3 (`superuser_reserved_connections`) − 27 untuk jalur langsung |
+| `PGBOUNCER_DEFAULT_POOL_SIZE` | 10 | per buku; batas global di atas yang menahan jumlahnya |
+| `PG_MAX_CONNECTIONS` | 100 | naikkan bersama `shared_buffers` di host basis data sendiri |
+
+Jalur langsung ke `pg` (melewati pooler, 27 tersisa): `migrate` (sekali per
+deploy), `svc-tenant` (2 + satu `pg_dump`), `job-backup` (perkakas). Pengirim
+WAL standby tidak dihitung terhadap `max_connections` sejak PostgreSQL 12.
+
+### Standby
+
+`db-postgres-standby` (override, profile `replika`) membuat `pg_basebackup`
+dari primary bila volumenya kosong, lalu menjadi hot standby yang menerima WAL
+lewat slot replikasi. Primary memasang `max_slot_wal_keep_size` (bawaan 2GB):
+standby yang mati lama membatalkan slotnya, bukan memenuhi disk primary.
+*Failover* tetap manual (`pg_ctl promote` + menukar host di URL) — yang
+otomatis milik tahap 3.
+
+### Yang hanya bisa dibuktikan dengan host kedua
+
+Yang sudah dibuktikan di VM ini: unit tes di atas, dan gladi dua proses Node
+lewat Redis sungguhan (container sementara) — invalidasi sampai, kuota pembatas
+laju terbagi, Redis dimatikan → cache dilewati dan pembatas jatuh ke memori,
+Redis kembali → semua cache dikosongkan lalu koheren lagi. Standby: gladi
+antara dua container sementara — `pg-primary-prepare.sh` dua kali (idempoten),
+basebackup + streaming (baris baru di primary terbaca di standby, slot
+`active`), lalu volume standby dikosongkan dan dibasebackup ulang memakai slot
+yang sudah ada.
+
+Yang **tidak** bisa dibuktikan di sini:
+
+- **Dua replika Next sungguhan di belakang Traefik.** Butuh `next build`, yang
+  tidak dijalankan di VM produksi berbagi memori. Termasuk di sini: bahwa
+  bundel Turbopack memakai satu instans `tags-manifest.external` bersama server
+  Next (konvensi `.external` menjanjikannya).
+- **Standby yang melindungi apa pun.** Di VM yang sama ia berbagi disk, host,
+  dan listrik dengan primary — gladi, bukan perlindungan. Lag replikasi lintas
+  jaringan, `PG_REPLICATION_CIDR` untuk subnet host lain, dan promosi manual
+  hanya bermakna di host kedua.
+- **Penyimpanan bersama lintas host.** Penjaga sidik menolak volume berbeda;
+  apakah NFS yang dipasang memenuhi kebutuhan `rename`/`fsync` dokumen hanya
+  terlihat di sana.
+- **Anggaran koneksi di bawah beban.** Angkanya hitungan, bukan pengukuran.

@@ -128,7 +128,7 @@ describe("PT contoh: satu, deterministik, dan jujur saat belum ada", () => {
   it("belum ada PT sama sekali = `unknown`, bukan `error`", () => {
     /* Pemasangan baru belum punya satu PT pun. Menyebutnya `error` membuat
        setiap pemasangan segar terlihat sakit sejak menit pertama. */
-    expect(report).toMatch(/if \(!databaseName\) return \{ status: "unknown" \};/);
+    expect(report).toMatch(/if \(!target\) return \{ status: "unknown" \};/);
   });
 
   it("basis data yang DISEBUT kendali tapi tak terjangkau = `error`", () => {
@@ -141,7 +141,7 @@ describe("PT contoh: satu, deterministik, dan jujur saat belum ada", () => {
     /* Bukan koneksi baru yang dirakit sendiri: probe yang memakai jalur berbeda
        dari aplikasinya bisa hijau justru ketika aplikasinya tidak bisa
        menyambung. */
-    expect(report).toMatch(/getCompanyClient\(databaseName\)/);
+    expect(report).toMatch(/getCompanyClient\(target\)/);
   });
 });
 

@@ -19,11 +19,12 @@ import {
   visibleMonthlySteps,
   type MonthlyRoutineProgress,
 } from "@/lib/monthly-routine";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
 describe("bulan yang dipertanggungjawabkan selalu bulan LALU", () => {
   it("mundur satu bulan di tengah tahun", () => {
     // 13 Agustus 2026 — tanggal audit yang melahirkan fitur ini.
-    expect(previousMonth(new Date(2026, 7, 13))).toEqual({ year: 2026, month: 7 });
+    expect(previousMonth(businessDate(2026, 7, 13))).toEqual({ year: 2026, month: 7 });
   });
 
   /*
@@ -32,34 +33,34 @@ describe("bulan yang dipertanggungjawabkan selalu bulan LALU", () => {
    * panel yang menutup periode yang keliru.
    */
   it("Januari mundur ke Desember tahun sebelumnya", () => {
-    expect(previousMonth(new Date(2026, 0, 1))).toEqual({ year: 2025, month: 12 });
-    expect(previousMonth(new Date(2026, 0, 31))).toEqual({ year: 2025, month: 12 });
+    expect(previousMonth(businessDate(2026, 0, 1))).toEqual({ year: 2025, month: 12 });
+    expect(previousMonth(businessDate(2026, 0, 31))).toEqual({ year: 2025, month: 12 });
   });
 
   it("bulannya 1–12 seperti kolom periods.month, bukan 0–11 milik Date", () => {
     // Desember (indeks 11) → November = 11. Kalau nilainya indeks Date, ini 10.
-    expect(previousMonth(new Date(2026, 11, 9)).month).toBe(11);
-    expect(previousMonth(new Date(2026, 2, 9)).month).toBe(2);
+    expect(previousMonth(businessDate(2026, 11, 9)).month).toBe(11);
+    expect(previousMonth(businessDate(2026, 2, 9)).month).toBe(2);
   });
 });
 
 describe("batas bulan menutup seluruh bulan, tanpa bocor ke tetangganya", () => {
   it("Februari tahun kabisat berakhir di tanggal 29", () => {
     const { start, end } = monthBounds(2024, 2);
-    expect(start.getDate()).toBe(1);
-    expect(end.getMonth()).toBe(1); // masih Februari
-    expect(end.getDate()).toBe(29);
+    expect(businessParts(start).day).toBe(1);
+    expect(businessParts(end).month).toBe(1); // masih Februari
+    expect(businessParts(end).day).toBe(29);
   });
 
   it("Februari tahun biasa berakhir di tanggal 28", () => {
-    expect(monthBounds(2026, 2).end.getDate()).toBe(28);
+    expect(businessParts(monthBounds(2026, 2).end).day).toBe(28);
   });
 
   it("Desember berakhir 31 Desember, bukan merembet ke Januari", () => {
     const { end } = monthBounds(2026, 12);
-    expect(end.getFullYear()).toBe(2026);
-    expect(end.getMonth()).toBe(11);
-    expect(end.getDate()).toBe(31);
+    expect(businessParts(end).year).toBe(2026);
+    expect(businessParts(end).month).toBe(11);
+    expect(businessParts(end).day).toBe(31);
   });
 
   /*
@@ -69,9 +70,8 @@ describe("batas bulan menutup seluruh bulan, tanpa bocor ke tetangganya", () => 
    */
   it("mencakup sampai milidetik terakhir hari terakhir", () => {
     const { end } = monthBounds(2026, 7);
-    expect([end.getHours(), end.getMinutes(), end.getSeconds(), end.getMilliseconds()]).toEqual([
-      23, 59, 59, 999,
-    ]);
+    // 31 Juli 23:59:59.999 WIB, apa pun zona prosesnya.
+    expect(end.toISOString()).toBe("2026-07-31T16:59:59.999Z");
   });
 });
 

@@ -43,6 +43,7 @@
 import { can, type Permission } from "@sai/core/authz";
 import type { AllowedPermissions } from "@/lib/nav";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
+import { BUSINESS_TIME_ZONE, businessDate, businessParts } from "@sai/core/business-date";
 
 export type MonthlyStepKey = "pengeluaran" | "cocokkan_bank" | "tutup_bulan";
 
@@ -130,8 +131,8 @@ export function visibleMonthlySteps(
  * Bulannya 1–12 (seperti kolom `periods.month`), BUKAN 0–11 milik `Date`.
  */
 export function previousMonth(today: Date): { year: number; month: number } {
-  const year = today.getFullYear();
-  const month = today.getMonth(); // 0-11; bulan lalu = indeks bulan ini − 1
+  // Kalender Jakarta, bukan zona proses (`@sai/core/business-date`).
+  const { year, month } = businessParts(today); // 0-11; bulan lalu = indeks bulan ini − 1
   if (month === 0) return { year: year - 1, month: 12 };
   return { year, month };
 }
@@ -147,10 +148,10 @@ export function previousMonth(today: Date): { year: number; month: number } {
  */
 export function monthBounds(year: number, month: number): { start: Date; end: Date } {
   return {
-    start: new Date(year, month - 1, 1, 0, 0, 0, 0),
+    start: businessDate(year, month - 1, 1),
     /* Milidetik terakhir bulan itu: hari ke-0 bulan BERIKUTNYA = hari terakhir
        bulan ini, jadi tak perlu tahu panjang bulan maupun tahun kabisat. */
-    end: new Date(year, month, 0, 23, 59, 59, 999),
+    end: businessDate(year, month, 0, 23, 59, 59, 999),
   };
 }
 
@@ -168,9 +169,11 @@ export function monthBounds(year: number, month: number): { start: Date; end: Da
  * peta "id" → "id-ID"; `Intl` menerimanya apa adanya.
  */
 export function formatMonthYear(year: number, month: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(
-    new Date(year, month - 1, 1)
-  );
+  return new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+    timeZone: BUSINESS_TIME_ZONE,
+  }).format(businessDate(year, month - 1, 1));
 }
 
 /**

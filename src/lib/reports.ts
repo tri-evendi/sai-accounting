@@ -315,8 +315,9 @@ export async function getIncomeStatement(
  * ⚠ TAHAP 1d: laporan ini punya implementasi KEDUA di Go
  * (`services/integrator/internal/ledgerread/statements.go`) — termasuk pecahan
  * Laba Tahun Berjalan / tahun lalu yang belum ditutup, yang memakai batas tahun
- * buku menurut zona PROSES (`fiscalYearBounds`; produksi `TZ=Asia/Jakarta`,
- * Go memakai `Asia/Jakarta` eksplisit). `bun run parity:balance-sheet`
+ * buku menurut kalender Jakarta (`fiscalYearBounds` lewat
+ * `@sai/core/business-date`, apa pun zona prosesnya; Go memakai `Asia/Jakarta`
+ * eksplisit). `bun run parity:balance-sheet`
  * membuktikan keduanya setara terhadap buku sungguhan; pemilik jalur berkasnya
  * di `src/lib/report-engine.ts`. Mengubah aturan di sini berarti mengubah
  * keduanya dalam satu commit.

@@ -70,6 +70,7 @@ import {
   unresolvedNote,
 } from "@/lib/statement-layout";
 import { drawCompanyLogo, type PdfCompany } from "./company-header";
+import { BUSINESS_TIME_ZONE, businessDayStart } from "@sai/core/business-date";
 
 /** A plain, serialisable line — server components pass these to the client button. */
 export interface StatementRow {
@@ -383,9 +384,14 @@ export type StatementPayload =
 
 /** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
 function opnameDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
+  const d = businessDayStart(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: BUSINESS_TIME_ZONE,
+  }).format(d);
 }
 
 /** Kuantitas bertanda: "+40" / "−12,5". Tanda adalah penanda NON-WARNA-nya. */

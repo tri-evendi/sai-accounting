@@ -25,6 +25,8 @@
  * sebab keduanya angka yang sama persis, dibaca sekali.
  */
 
+import { businessDate, businessParts } from "@sai/core/business-date";
+
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
@@ -145,6 +147,18 @@ export const COMPARISON_MODES = ["preceding", "previous_year"] as const;
 export type ComparisonMode = (typeof COMPARISON_MODES)[number];
 
 /**
+ * Instan yang sama pada jam dinding Jakarta, `years` tahun bergeser — hari
+ * kalender dan jam-dalam-hari dibaca dalam WIB, bukan zona proses
+ * (`@sai/core/business-date`). 29 Februari menggulung ke 1 Maret, persis seperti
+ * pembuat `Date`.
+ */
+function shiftBusinessYear(d: Date, years: number): Date {
+  const p = businessParts(d);
+  const msInDay = d.getTime() - businessDate(p.year, p.month, p.day).getTime();
+  return new Date(businessDate(p.year + years, p.month, p.day).getTime() + msInDay);
+}
+
+/**
  * Rentang pembanding untuk sebuah rentang.
  *
  * ⚠ `preceding` memakai PANJANG rentangnya, bukan "bulan lalu": rentang 45 hari
@@ -161,17 +175,10 @@ export function comparisonRange(
   mode: ComparisonMode
 ): { from: Date; to: Date } {
   if (mode === "previous_year") {
+    const f = businessParts(from);
     return {
-      from: new Date(from.getFullYear() - 1, from.getMonth(), from.getDate(), 0, 0, 0, 0),
-      to: new Date(
-        to.getFullYear() - 1,
-        to.getMonth(),
-        to.getDate(),
-        to.getHours(),
-        to.getMinutes(),
-        to.getSeconds(),
-        to.getMilliseconds()
-      ),
+      from: businessDate(f.year - 1, f.month, f.day),
+      to: shiftBusinessYear(to, -1),
     };
   }
 
@@ -191,15 +198,7 @@ export function comparisonRange(
  */
 export function comparisonDate(asOf: Date, mode: ComparisonMode, from?: Date): Date {
   if (mode === "previous_year") {
-    return new Date(
-      asOf.getFullYear() - 1,
-      asOf.getMonth(),
-      asOf.getDate(),
-      asOf.getHours(),
-      asOf.getMinutes(),
-      asOf.getSeconds(),
-      asOf.getMilliseconds()
-    );
+    return shiftBusinessYear(asOf, -1);
   }
   /* `preceding` untuk saldo berarti "tepat sebelum periode berjalan dimulai".
      Tanpa `from`, satu-satunya jawaban jujur adalah setahun sebelumnya —

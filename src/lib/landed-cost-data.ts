@@ -25,7 +25,7 @@
  *    penjaga periode.
  */
 import type { Prisma } from "@sai/db/client/company";
-import { businessISODate } from "@sai/core/business-date";
+import { businessISODate, businessParts } from "@sai/core/business-date";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { planLandedCost, type AdditionalCostBasis, type LandedCostPlan } from "@/lib/landed-cost";
@@ -59,7 +59,8 @@ export class LandedCostError extends Error {
 
 /** BIM.YYYY.MM.NNNNN — pola penomoran yang sama dengan retur (issue #27). */
 export async function nextLandedCostNo(tx: Tx, date: Date): Promise<string> {
-  const prefix = `BIM.${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.`;
+  const { year, month } = businessParts(date);
+  const prefix = `BIM.${year}.${String(month + 1).padStart(2, "0")}.`;
   const count = await tx.landedCostDocument.count({ where: { number: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }

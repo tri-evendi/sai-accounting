@@ -5,6 +5,7 @@
  * menolaknya. Alasannya di kepala `recurring-form.tsx`.
  */
 import { notFound } from "next/navigation";
+import { businessISODate } from "@sai/core/business-date";
 
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
@@ -34,8 +35,8 @@ export default async function EditRecurringPage({
         kind: template.kind as "invoice" | "journal",
         sourceId: template.sourceId,
         frequency: template.frequency as "weekly" | "monthly" | "yearly",
-        startDate: template.startDate.toISOString().slice(0, 10),
-        endDate: template.endDate ? template.endDate.toISOString().slice(0, 10) : null,
+        startDate: businessISODate(template.startDate),
+        endDate: template.endDate ? businessISODate(template.endDate) : null,
         maxOccurrences: template.maxOccurrences,
         isActive: template.isActive,
       }}

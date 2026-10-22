@@ -265,7 +265,10 @@ export async function POST(request: Request, ctx: TenantApiContext) {
 
     /* Tanggal dipulangkan sebagai `YYYY-MM-DD`: payload wisaya adalah JSON, dan
        `Date` yang diserialisasi menjadi ISO penuh akan membawa zona waktu yang
-       menggeser tanggal dokumen satu hari di sebagian peramban. */
+       menggeser tanggal dokumen satu hari di sebagian peramban.
+       `toISOString()` di sini SENGAJA (bukan `businessISODate`): pengurai
+       impor menghasilkan tengah malam UTC dari teks berkasnya, dan baris ini
+       memulangkan teks yang sama untuk diurai ulang saat disimpan. */
     return NextResponse.json({
       rows: parsedAssets.rows.map((a) => ({
         assetNo: a.assetNo,

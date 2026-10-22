@@ -24,6 +24,7 @@
  * app will not guess how much of one clears the other.
  */
 import { useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { useRouter } from "next/navigation";
 import { Alert, Flex, Spin, theme, Typography } from "antd";
 import { Button } from "@sai/ui/button";
@@ -108,7 +109,7 @@ export function AdvanceCompensationSection({
   const noun = { target: t(nounKeys.target), party: t(nounKeys.party) };
 
   const [amounts, setAmounts] = useState<Record<number, string>>({});
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => businessISODate(new Date()));
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);

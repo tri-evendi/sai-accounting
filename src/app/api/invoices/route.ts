@@ -17,6 +17,7 @@
  * so the tax recompute, the outstanding guard and the approval gate cannot drift.
  */
 import { NextResponse } from "next/server";
+import { businessISODate } from "@sai/core/business-date";
 import { prisma } from "@/lib/prisma";
 import { invoiceSchema } from "@/lib/validations/invoice";
 import { requireApiPermission } from "@/lib/auth-guard";
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
       options: invoices.map((i) => ({
         value: String(i.id),
         label: i.invoiceNo,
-        hint: `${i.currency} · ${i.customer?.name ?? "—"} · ${i.date.toISOString().slice(0, 10)}`,
+        hint: `${i.currency} · ${i.customer?.name ?? "—"} · ${businessISODate(i.date)}`,
       })),
     } satisfies { options: PickerOption[] });
   }

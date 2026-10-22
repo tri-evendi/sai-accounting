@@ -19,6 +19,7 @@ import {
   assertStatementUnlocked,
   ReconciliationLockedError,
 } from "@/lib/reconciliation";
+import { statementBounds } from "@/lib/bank-statements";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
@@ -91,9 +92,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       // period is never in the summary's book totals, so matching it would
       // shrink `unmatchedStatement` while `matchedBookTotal` never sees it —
       // the difference could then never reach zero and the lock stays 409.
-      const periodEnd = new Date(statement.periodEnd);
-      periodEnd.setHours(23, 59, 59, 999);
-      if (movement.date < statement.periodStart || movement.date > periodEnd) {
+      const { start, end } = statementBounds(statement);
+      if (movement.date < start || movement.date > end) {
         throw new MatchError("errors.bookMovementOutsidePeriod");
       }
       if (!canMatch({ amount: movementSigned(movement) }, { amount: Number(line.amount) })) {

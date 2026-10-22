@@ -31,6 +31,7 @@
  * There is no flag that rewrites invoice currency in bulk. That is on purpose.
  */
 import "dotenv/config";
+import { businessISODate } from "@sai/core/business-date";
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { repostForSource } from "../src/lib/posting";
@@ -85,7 +86,7 @@ async function report(prisma: PrismaClient) {
     for (const inv of suspectCurrency) {
       const currencies = [...new Set(inv.payments.map((p) => p.currency || "IDR"))];
       console.log(
-        `    #${inv.id} ${inv.invoiceNo} (${inv.date.toISOString().slice(0, 10)}) ` +
+        `    #${inv.id} ${inv.invoiceNo} (${businessISODate(inv.date)}) ` +
           `— payments in ${currencies.join(", ")}`
       );
     }

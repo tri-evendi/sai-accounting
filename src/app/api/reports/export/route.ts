@@ -30,6 +30,7 @@
  * menuduh peramban salah bentuk.
  */
 import { NextResponse } from "next/server";
+import { businessISODate } from "@sai/core/business-date";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { canEffective } from "@/lib/authz-effective";
 import { readBoundedText } from "@/lib/request-body";
@@ -227,7 +228,7 @@ export async function POST(request: Request) {
   const buffer = await buildWorkbookBuffer([sheet], await getCompanyIdentity());
 
   const slug = STATEMENT_TITLES[payload.kind].replace(/[^A-Za-z0-9]+/g, "_");
-  const filename = `${slug}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `${slug}_${businessISODate(new Date())}.xlsx`;
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

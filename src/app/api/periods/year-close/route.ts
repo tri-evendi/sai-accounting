@@ -13,6 +13,7 @@ import {
 import { MissingMappingError } from "@/lib/posting/mapping";
 import { ClosedPeriodError } from "@/lib/period";
 import { fiscalYearBounds, fiscalYearHasEnded } from "@/lib/year-close";
+import { toISODate } from "@/lib/dashboard-summary";
 import { prisma } from "@/lib/prisma";
 import { yearCloseSchema } from "@/lib/validations/period";
 import { getRequestI18n } from "@sai/platform/i18n/server";
@@ -177,7 +178,11 @@ async function knownError(e: unknown) {
       {
         error: t("periods.yearNotEnded", {
           year: e.year,
-          date: e.endsAt.toISOString().slice(0, 10),
+          /* `endsAt` dibangun `fiscalYearBounds` dengan pembuat `Date` LOKAL
+             (23.59.59,999 zona proses), jadi dibaca kembali dengan getter lokal
+             yang sama. `toISOString()` memberi hari berikutnya di host barat UTC,
+             dan `businessISODate` memberi hari berikutnya di host berzona UTC. */
+          date: toISODate(e.endsAt),
         }),
       },
       { status: 409 }

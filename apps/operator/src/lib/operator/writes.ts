@@ -863,6 +863,10 @@ export function extendPeriod(
  * Nomor tagihan KOMPENSASI — akhiran `-K` yang membedakannya dari nomor
  * deterministik penjadwal untuk periode yang sama, sekaligus menjadikannya
  * kunci idempotensi perpanjangan.
+ *
+ * Tanggalnya UTC SENGAJA: bentuknya wajib sama dengan `dateKey` nomor
+ * penjadwal (`@sai/billing/subscription-lifecycle`) dan nomor yang sudah
+ * terbit — ini kunci, bukan tanggal yang dibaca orang.
  */
 export function compedInvoiceNumber(subscriptionId: number, periodStart: Date): string {
   return `PINV-S${subscriptionId}-${periodStart.toISOString().slice(0, 10).replace(/-/g, "")}-K`;

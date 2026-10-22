@@ -7,6 +7,7 @@
  * dan penanganan galat servernya tidak disentuh.
  */
 import { useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { Alert, Col, Flex, Row, theme, Typography } from "antd";
 import { useAppRouter } from "@sai/ui/app-link";
 import { Button } from "@sai/ui/button";
@@ -60,7 +61,7 @@ export function NewReconciliationForm() {
     }
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = businessISODate(new Date());
   /** Saldo adalah nominal — rata kanan + tabular-nums, seperti kolom uang. */
   const numberStyle = { textAlign: "right", fontVariantNumeric: "tabular-nums" } as const;
 

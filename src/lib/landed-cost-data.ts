@@ -25,6 +25,7 @@
  *    penjaga periode.
  */
 import type { Prisma } from "@sai/db/client/company";
+import { businessISODate } from "@sai/core/business-date";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { planLandedCost, type AdditionalCostBasis, type LandedCostPlan } from "@/lib/landed-cost";
@@ -114,7 +115,7 @@ export async function listReceiptCandidates(
       itemCode: m.item.code,
       itemName: m.item.name,
       unit: m.item.unit,
-      date: m.date.toISOString().slice(0, 10),
+      date: businessISODate(m.date),
       quantity,
       unitCost,
       value: round2(quantity * unitCost),

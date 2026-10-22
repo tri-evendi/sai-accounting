@@ -7,6 +7,7 @@
  * zod, transaksi, jejak audit, dan penerjemahan galat.
  */
 import { NextResponse } from "next/server";
+import { businessISODate } from "@sai/core/business-date";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { handlePostingError } from "@/lib/api-errors";
@@ -117,7 +118,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       options: purchases.map((p) => ({
         value: String(p.id),
-        label: `TRX-${p.id} · ${p.supplier?.name ?? "—"} · ${p.date.toISOString().slice(0, 10)}`,
+        label: `TRX-${p.id} · ${p.supplier?.name ?? "—"} · ${businessISODate(p.date)}`,
         hint: `${p.currency || "IDR"} ${Number(p.amount).toFixed(2)}`,
       })),
     } satisfies { options: PickerOption[] });

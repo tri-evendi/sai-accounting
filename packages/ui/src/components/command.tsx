@@ -40,7 +40,7 @@
  */
 
 import * as React from "react";
-import { Command as CommandPrimitive } from "cmdk";
+import { Command as CommandPrimitive, defaultFilter } from "cmdk";
 import { SearchOutlined } from "@ant-design/icons";
 
 const COMMAND_RULES = `
@@ -55,6 +55,22 @@ const COMMAND_RULES = `
 [data-slot="command-input"]::placeholder{color:var(--ant-color-text-placeholder)}
 [data-slot="command-input"]:focus{outline:none}
 `;
+
+/**
+ * Skor minimum kecocokan. Kecocokan awal kata bernilai 0,8–0,99 dan singkatan
+ * ("nrc", "fktr") 0,017–0,03; huruf yang kebetulan tersebar di teks panjang
+ * (e-Faktur untuk "neraca") di bawah 0,005.
+ *
+ * Penyaring perlu membuang yang terakhir karena cmdk 1.1.1 tidak menyusun ulang
+ * GRUP menurut skor: Enter memilih butir pertama di grup teratas yang cocok,
+ * seberapa pun lemahnya.
+ */
+export const MIN_COMMAND_SCORE = 0.01;
+
+export function strictFilter(value: string, search: string, keywords?: string[]): number {
+  const score = defaultFilter(value, search, keywords);
+  return score < MIN_COMMAND_SCORE ? 0 : score;
+}
 
 function Command({ style, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (

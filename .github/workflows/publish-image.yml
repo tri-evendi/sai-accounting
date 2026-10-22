@@ -20,10 +20,21 @@
 # membangun KEDUANYA setiap kali, sehingga keduanya tidak bisa lagi menyimpang.
 name: Publish production images
 
+# ══ Dua saluran ═════════════════════════════════════════════════════════════
+# • dorongan ke `main` → SaaS: `:latest` + `:sha-<pendek>` + `:<versi>`, persis
+#   seperti sebelumnya.
+# • tag git `v*` → saluran STABIL on-premise: `:<versi>` + `:sha-<pendek>`,
+#   TANPA `:latest` (tag pada commit lama tidak boleh memundurkan SaaS), lalu
+#   job `offline-bundle` merakit bundel `docker save` + SHA-256 + compose
+#   on-premise sebagai aset GitHub Release, untuk customer tanpa akses
+#   registry. Tag yang tidak sama dengan `package.json` DITOLAK: rilis yang
+#   namanya bohong tentang isinya lebih buruk daripada rilis yang tidak terbit.
+#   Dijaga `tests/release-channel.test.ts`.
 on:
   workflow_dispatch:
   push:
     branches: [main]
+    tags: ["v*"]
 
 env:
   REGISTRY: ghcr.io
@@ -90,11 +101,33 @@ jobs:
         id: meta
         # Dipakai sebagai tag `0.6.0`. Dibaca dengan jq, bukan grep, supaya
         # tidak ikut menangkap "version" milik dependensi.
+        env:
+          SUFFIX: ${{ matrix.suffix }}
         run: |
-          echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
-          echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          version="$(jq -r .version package.json)"
+          sha_short="$(git rev-parse --short HEAD)"
           # Nama paket GHCR wajib huruf kecil; nama repo bisa tidak.
-          echo "repo_lc=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          repo_lc="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+
+          # Saluran stabil: tag `vX.Y.Z` WAJIB sama dengan package.json.
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} tidak sama dengan package.json ${version} — rilis ditolak."
+            exit 1
+          fi
+
+          base="${REGISTRY}/${repo_lc}${SUFFIX}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha_short=$sha_short" >> "$GITHUB_OUTPUT"
+          echo "repo_lc=$repo_lc" >> "$GITHUB_OUTPUT"
+          {
+            echo "tags<<__TAGS__"
+            # `:latest` HANYA dari main — tag git pada commit lama tidak boleh
+            # memundurkan apa yang ditarik SaaS.
+            [ "$GITHUB_REF_TYPE" = "tag" ] || echo "${base}:latest"
+            echo "${base}:sha-${sha_short}"
+            echo "${base}:${version}"
+            echo "__TAGS__"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -122,10 +155,10 @@ jobs:
           #
           # Dengan `sha-<pendek>` di registry, setiap rilis punya jangkarnya
           # sendiri secara otomatis. Tidak ada lagi langkah yang bisa dilupakan.
-          tags: |
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:latest
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:sha-${{ steps.meta.outputs.sha_short }}
-            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:${{ steps.meta.outputs.version }}
+          #
+          # Daftarnya dirakit langkah `meta` karena bergantung saluran (lihat
+          # kepala berkas): tag git tidak menyentuh `:latest`.
+          tags: ${{ steps.meta.outputs.tags }}
           # Cache antar-jalan: tanpa ini setiap build mengulang `bun install`
           # dan `prisma generate` dari nol.
           cache-from: type=gha,scope=${{ matrix.target }}
@@ -136,7 +169,44 @@ jobs:
         run: |
           echo "### ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:latest" >> "$GITHUB_STEP_SUMMARY"
-          echo "${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:sha-${{ steps.meta.outputs.sha_short }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "${{ env.REGISTRY }}/${{ steps.meta.outputs.repo_lc }}${{ matrix.suffix }}:${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.meta.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # ══ Bundel luring — HANYA untuk tag `v*` ════════════════════════════════
+  # Menunggu SEMUA image terbit (`needs: publish`), lalu menarik versi persis
+  # itu dari registry dan menyimpannya. Daftar image dibaca dari compose oleh
+  # skripnya, bukan ditulis di sini — lihat kepala `scripts/onprem-offline-bundle.sh`.
+  offline-bundle:
+    if: github.ref_type == 'tag'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login ke GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rakit bundel luring
+        run: sh scripts/onprem-offline-bundle.sh --tag "${GITHUB_REF_NAME#v}" --keluar dist-luring
+
+      - name: Terbitkan sebagai aset GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Rilis yang sudah dibuat tangan (catatan rilis ditulis pemilik) tidak
+        # ditimpa catatannya — asetnya saja yang diunggah.
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist-luring/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist-luring/* \
+              --verify-tag --title "SAI Accounting $GITHUB_REF_NAME" \
+              --notes-file dist-luring/BACA.txt
+          fi

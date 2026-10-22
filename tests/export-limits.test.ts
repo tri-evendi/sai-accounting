@@ -88,7 +88,7 @@ describe("clampPeriodStart: memendekkan AWAL, tidak pernah akhirnya", () => {
 });
 
 describe("resolvePeriod: perilaku lama utuh, tiga lubang tertutup", () => {
-  const kini = new Date(2026, 9, 20); // 20 Okt 2026, waktu lokal
+  const kini = new Date("2026-10-20T12:00:00+07:00"); // 20 Okt 2026, jam Jakarta
 
   it("tanpa parameter tetap tahun-berjalan, persis seperti sebelumnya", () => {
     const p = resolvePeriod(undefined, undefined, kini);

@@ -108,7 +108,10 @@ function kindDiklaim(): Map<JobKind, string[]> {
         .split(/[._-]/)
         .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
         .join("")}`;
-      if (blok.includes(pengenal)) catat(kind, b.rel);
+      /* Batas kata WAJIB: `contract.KindReportExport` adalah awalan
+         `contract.KindReportExportGo` (tahap 1d), dan pencocokan substring
+         membaca satu pengklaim sebagai pengklaim DUA kind. */
+      if (new RegExp(`${pengenal.replace(".", "\\.")}\\b`).test(blok)) catat(kind, b.rel);
     }
   }
   return hasil;

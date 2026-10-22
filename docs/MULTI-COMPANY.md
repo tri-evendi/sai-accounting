@@ -176,6 +176,12 @@ keanggotaan dengan cara yang sama seperti guard.
 **Kenapa diselesaikan saat dipanggil, bukan saat akses properti.** Membaca
 sesi itu async; akses properti tidak bisa menunggu, pemanggilan bisa.
 
+**Konteks membawa instansnya (tahap 4).** `CompanyContext` berisi
+`databaseName` **dan** `dbInstance` (`null` = instans bawaan). Medan itu wajib
+disebut, termasuk `null`: konteks yang lupa mengisinya tidak lolos `tsc`.
+Rakit konteks dari baris `companies` dengan `companyContextOf(row)`, dan baca
+barisnya dengan `COMPANY_DATABASE_TARGET_SELECT`. Detailnya di §6.
+
 ### Kenapa `enterWith` tidak boleh diandalkan
 
 Diukur di issue #333 (Node 22.22, serta di route handler dan render Next
@@ -436,3 +442,177 @@ pg_restore -U sai -d sai_gladi --no-owner /tmp/full.dump
 Tabel di basis data perusahaan **tidak boleh** punya foreign key ke pengguna,
 karena FK tidak bisa menyeberangi basis data. Simpan id global sebagai `Int`
 biasa dan cari namanya lewat `users-directory.ts`.
+
+## 6. Instans basis data (tahap 4)
+
+Rancangan [09 §9](./arsitektur/09-RANCANGAN-LAYANAN.md) tahap 4: buku PT
+dipecah ke beberapa instans `db-postgres`. Kodenya lengkap, dan sifatnya
+**opt-in**. Selama tabel `db_instances` kosong, semua PT memakai instans
+bawaan dan perilakunya sama dengan sebelum tahap 4.
+
+### Bentuknya
+
+| Di mana | Isi |
+|---|---|
+| `db_instances` (kendali, migration 0009) | `key`, `url_env_var`, `is_active`. Isinya **nama** env var. URL dan sandinya tetap di environment |
+| `companies.db_instance_key` | `NULL` = instans bawaan. Selain itu FK ke `db_instances.key` |
+| env `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` | URL template instans itu. Bentuk namanya dipaku CHECK, jadi baris registry tidak bisa menunjuk `CONTROL_DATABASE_URL` |
+
+Instans bawaan tidak punya baris. URL-nya tetap rantai yang sama:
+`COMPANY_DATABASE_URL_TEMPLATE` → `DATABASE_URL` → `CONTROL_DATABASE_URL`.
+Kunci `default` dicadangkan untuknya.
+
+### Satu penyelesai
+
+`@sai/db/company-url` adalah **satu-satunya** tempat yang menyusun URL buku
+PT. Pemakainya aplikasi (`company-clients.ts`), fan-out migration, sapuan
+kesesuaian, penyediaan, konsol operator, dan skrip cron. Aturannya tiga:
+
+1. **Instans yang tak terselesaikan melempar.** Penyebabnya bisa kunci tak
+   dikenal, relasi yang tidak ikut dimuat, nama env var di luar bentuknya,
+   atau env var yang kosong. Jatuh ke bawaan berarti membuka basis data
+   bernama sama di server bawaan. Di sana mungkin masih ada salinan lama buku
+   PT yang sudah pindah, dan tulisan ke salinan itu tidak menghasilkan galat
+   apa pun.
+2. **Kunci kolam klien = instans + basis data** (`db2/sai_t1_x`, bawaan
+   `/sai_t1_x`). Selama pemindahan, nama yang sama hidup di dua server.
+3. **Replika baca hanya untuk instans bawaan.** `COMPANY_DATABASE_READ_URL_TEMPLATE`
+   adalah standby server bawaan, jadi PT di instans lain selalu membaca
+   primary-nya sendiri.
+
+Penjaganya `tests/company-url-resolver.test.ts`. Ia menolak pembacaan
+`COMPANY_DATABASE_URL_TEMPLATE`, penggantian `url.pathname` dengan nama
+basis data, dan `bukaBasisData` di luar daftar. Pindaiannya mencakup `src/`, `packages/*`,
+`apps/*`, `scripts/`, dan `workers/`.
+
+### Menambah instans
+
+```sql
+-- di basis data kendali; CHECK menolak bentuk kunci / nama env var yang salah
+INSERT INTO db_instances (key, url_env_var, updated_at)
+VALUES ('db2', 'COMPANY_DB2_DATABASE_URL_TEMPLATE', now());
+```
+
+Lalu set `COMPANY_DB2_DATABASE_URL_TEMPLATE` di **setiap** layanan yang
+membuka buku: `app-customer`, `app-operator`, `migrate`, `svc-ledger`,
+`svc-interactive`, `svc-tenant`, `job-scheduler`, `job-conformance`, dan
+`job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
+saat membuka buku PT di instans tersebut. Untuk `svc-tenant` artinya buku PT
+di instans itu **tidak dicadangkan** (lihat *Cadangan per instans* di bawah).
+Pengguna kunci di URL itu wajib berhak `CREATEDB`.
+
+Jalannya **satu**: baris di `.env`, yang sampai ke semua layanan itu lewat
+`env_file: .env`. Jangan menulisnya di `environment:` satu layanan. Penimpaan
+per layanan adalah persis cara satu nilai sampai ke satu layanan dan terlewat
+di yang lain. `tests/db-instance-env-reaches-every-service.test.ts` menolak
+keduanya: layanan repo tanpa `env_file: .env`, dan env var berbentuk
+`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` di `environment:` berkas compose mana
+pun. Akibatnya URL itu dipakai apa adanya oleh semua layanan, jadi ia wajib
+**langsung** ke PostgreSQL, tidak lewat PgBouncer. `migrate` butuh advisory
+lock sesi, dan `svc-tenant` butuh `pg_database` yang utuh. Go menolak URL
+instans yang memuat `pgbouncer=true`.
+
+Untuk menyediakan PT baru di instans itu, isi `dbInstanceKey` pada
+`provisionCompany()`. Tanpa nilai itu, PT baru masuk instans bawaan.
+Penempatan otomatis belum ada, karena itu keputusan kapasitas yang belum
+punya pemilik.
+
+### Memindahkan satu PT — `bun run tenant:move`
+
+Jalankan di image `backup`. Image itu membawa `pg_dump`/`pg_restore` 17, dan
+env-nya menunjuk PostgreSQL langsung.
+
+1. **Nonaktifkan PT** (`companies.is_active = false`), lalu tunggu ≥ 60 detik
+   sampai cache registry aplikasi kedaluwarsa. Tanpa langkah ini skrip menolak
+   berjalan. Jangan memindah saat rilis sedang menjalankan `db:migrate:all`.
+2. **Pratinjau:**
+   `docker compose run --rm job-backup bun run tenant:move -- --database sai_t1_x --to db2`.
+   Pratinjau mencetak fakta, setiap alasan menolak, dan langkah yang akan
+   dijalankan.
+3. **Jalankan:** perintah yang sama, ditambah `--apply --reason "…"`. Urutannya:
+   - buat basis data di tujuan;
+   - `pg_dump -Fc | pg_restore --single-transaction`;
+   - bandingkan jumlah baris **setiap** tabel. Selisih satu baris pun
+     menghentikan proses, dan registry tidak disentuh;
+   - balik `db_instance_key` dengan syarat nilai lama masih sama;
+   - ganti nama salinan asal menjadi `<nama>_moved_<yyyymmdd>`;
+   - tulis jejak `tenant.company.move`.
+4. **Aktifkan lagi** PT itu, buka bukunya, dan periksa satu laporan.
+5. **Salinan `_moved_` adalah jalan balik.** Hapus dengan sadar setelah buku
+   di tujuan terbukti. Selama salinan itu ada, penjadwal melaporkannya sebagai
+   basis data yatim, dan itu disengaja.
+
+**Jalan balik** sebelum salinan lama dihapus: nonaktifkan PT, kembalikan nama
+`<nama>_moved_<yyyymmdd>` menjadi `<nama>` di server asal, lalu set
+`db_instance_key` kembali ke nilai lama (`NULL` untuk bawaan). Buku di tujuan
+tidak dibuka siapa pun begitu registry kembali.
+
+### Cadangan per instans (`svc-tenant`)
+
+`internal/backup` membaca `db_instances` dan `companies.db_instance_key` dari
+kendali, hanya-baca. Instans yang ikut adalah yang **aktif**, ditambah instans
+nonaktif yang masih ditempati satu PT. Menonaktifkan instans tidak memindahkan
+buku siapa pun. URL tiap instans diambil dari env var yang **namanya**
+tercatat di barisnya (`internal/db/instans.go`, cermin `company-url.ts`).
+Nama di luar bentuk `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` ditolak, begitu
+juga env yang kosong dan URL lewat PgBouncer. Tidak ada jalur yang jatuh ke
+server bawaan.
+
+Lalu, per instans:
+
+| Langkah | Instans bawaan | Instans `<kunci>` |
+|---|---|---|
+| Pencacahan | `pg_database` server `CONTROL_DATABASE_URL` | `pg_database` server instans itu (basis data `postgres`) |
+| Dump per basis data | `db-<nama>.dump.enc` | `instans/<kunci>/db-<nama>.dump.enc` |
+| Peran & hak akses | `globals.sql.enc` | `instans/<kunci>/globals.sql.enc` |
+| `companyId` di manifest | PT dengan `db_instance_key = NULL` | PT dengan `db_instance_key = '<kunci>'` |
+
+Nama objek instans bawaan **tidak berubah sama sekali**. Tanpa instans
+tambahan, manifest tidak memuat satu pun bidang baru, jadi runbook pemulihan di
+`PRODUCTION.md` tetap berlaku byte demi byte. Instans lain memakai
+subdirektori, bukan sufiks, karena selama pemindahan nama basis data yang sama
+hidup di dua server.
+
+**Kelengkapan per instans.** PT yang terdaftar di instans X wajib punya objek
+yang didump **dari X**. Basis data bernama sama di server lain, misalnya salinan
+lama yang belum diganti nama, didump sebagai `other` tanpa `companyId`. Ia
+tidak membuktikan apa pun tentang buku yang hidup. PT terdaftar yang tidak ada
+di server instansnya masuk `Hilang` sebagai `<nama>@<kunci>`. Seperti
+sebelumnya, `Hilang` menghentikan putaran sebelum satu objek pun dikirim.
+
+**Instans yang gagal** (env tak diset, nama salah, server tak terjangkau, atau
+server lebih baru daripada `pg_dump`) **tidak** menghentikan instans lain.
+Satu env var yang lupa disalin tidak boleh membuat semua PT tanpa salinan.
+Akibatnya:
+
+- objek instans lain tetap terkirim;
+- manifest memuat `instansGagal: [{kunci, sebab, basis}]`;
+- jejak `backup_runs` berstatus `error`, dengan nama putaran dan ukurannya,
+  sehingga `/api/health` dan `watch:health` berbunyi;
+- pemangkasan **dilewati**, sebab putaran lama mungkin satu-satunya salinan
+  buku di instans yang gagal. Harganya: selama instans itu gagal, cakram
+  atau bucket bertambah sampai dua putaran per hari (`max_attempts: 2`),
+  tanpa ada yang dibuang. Alarmnya berbunyi sejak hari pertama;
+  `local_only` di cakram yang penuh adalah bentuk yang harus dicegah lewat
+  alarm itu, bukan lewat membuang salinan terakhir;
+- `prove-backup-restore` menolak putaran itu.
+
+Konsol operator `/backup` membaca `backup_runs` (putaran, status, galat,
+ukuran), bukan manifest, jadi bentuknya tidak berubah. Label `@kunci` di
+daftar versi skema tetap berasal dari registry.
+
+**Urutan untuk pemindahan pertama di produksi:** set env var instans di
+`.env`, recreate `svc-tenant` (dan layanan lain), terbitkan satu putaran, dan
+pastikan manifestnya memuat `instans: [{kunci: …}]` tanpa `instansGagal`.
+Baru sesudah itu jalankan `tenant:move`.
+
+### Yang belum ikut
+
+- `cmd/parity` (`internal/ledgerread`) masih membuka buku lewat rantai instans
+  bawaan saja. Ia alat pembanding, bukan jalur produksi, tetapi paritas atas
+  PT yang sudah dipindah akan membaca salinan lamanya. Jalankan hanya untuk PT
+  di instans bawaan sampai pembacanya mengenal instans.
+- Konsol operator menampilkan instans di `/backup` (label `@kunci`), tetapi
+  belum di halaman kesesuaian. Jejak `conformance_runs` sudah mencatat
+  `instance` per buku.
+

@@ -35,6 +35,7 @@ import { EmptyState } from "@sai/ui/empty-state";
 import { BookOutlined } from "@ant-design/icons";
 import { PageHeader } from "@sai/ui/page-header";
 import { Link } from "@sai/ui/app-link";
+import { businessDayEnd, businessDayStart } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -81,8 +82,8 @@ export default async function LedgerPage({
   });
 
   const accountId = sp.accountId ? parseInt(sp.accountId) : undefined;
-  const from = sp.from ? new Date(`${sp.from}T00:00:00`) : undefined;
-  const to = sp.to ? new Date(`${sp.to}T23:59:59.999`) : undefined;
+  const from = sp.from ? businessDayStart(sp.from) : undefined;
+  const to = sp.to ? businessDayEnd(sp.to) : undefined;
   // issue #91 — pilahan per pusat biaya, termasuk saldo awalnya (lihat
   // `getAccountLedger`).
   const costCenter = parseCostCenterFilter(sp.costCenter);

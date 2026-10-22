@@ -45,6 +45,7 @@ import { controlDb } from "@sai/core/control-db";
 import { membershipFor } from "@/lib/company-registry";
 import { isValidSlug } from "@sai/core/tenant-routes";
 import { tenantIdUntukSlugLama } from "@sai/platform/tenant-slug";
+import { registerSharedCache } from "@sai/platform/cache-bus";
 
 export type RouteCompanyResult =
   | {
@@ -90,13 +91,23 @@ const globalForRoute = globalThis as unknown as {
 const cache = globalForRoute.tenantRouteCache ?? new Map();
 if (process.env.NODE_ENV !== "production") globalForRoute.tenantRouteCache = cache;
 
+/**
+ * Tahap 2: tanpa invalidasi eksplisit (lihat di atas) cache ini tidak punya
+ * pesan untuk dikirim — ia mendaftar supaya DILEWATI selama bus tidak koheren
+ * dan dikosongkan saat bus tersambung kembali, seperti cache lainnya.
+ */
+const shared = registerSharedCache("tenant-route", (key) => {
+  if (key === undefined) cache.clear();
+  else cache.delete(key);
+});
+
 async function resolveIds(
   tenantSlug: string,
   companySlug: string
 ): Promise<{ companyId: number; tenantId: number } | null> {
   const key = `${tenantSlug}/${companySlug}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < TTL_MS) {
+  if (hit && Date.now() - hit.at < TTL_MS && shared.usable()) {
     return { companyId: hit.companyId, tenantId: hit.tenantId };
   }
 
@@ -250,6 +261,7 @@ export async function enterCompanyFromRoute(params: {
     companyId: membership.company.companyId,
     slug: membership.company.slug,
     databaseName: membership.company.databaseName,
+    dbInstance: membership.company.dbInstance,
   };
   /*
    * `enterCompanyContext()` DICABUT di sini (issue #336).

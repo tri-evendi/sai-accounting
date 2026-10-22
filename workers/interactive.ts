@@ -45,11 +45,13 @@ import { runLane, type JobContext } from "./runner";
 import { dalamKonteksPerusahaan } from "./jalur-perusahaan";
 import { writeJobResult } from "@sai/platform/job-result-store";
 import { isExportable, reportById } from "../src/lib/report-catalog";
+import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
 import { buildReportSheet } from "../src/lib/report-export";
 import { STATEMENT_TITLES } from "../src/lib/statement-layout";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
 import { getCompanyIdentity } from "../src/lib/company-identity";
+import { runReadOnly } from "../src/lib/read-replica";
 
 /** Muatan `report.export` — PARAMETER saja. */
 interface MuatanEkspor {
@@ -94,6 +96,23 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
     throw new Error(`laporan \`${muatan.reportId}\` tidak ada di katalog atau tidak dapat diekspor`);
   }
 
+  if (reportEngine(report.id) === "go") {
+    /*
+     * Berkas laporan ini milik Go sejak tahap 1d (`src/lib/report-engine.ts`),
+     * dan versi TS untuk jalur berkas DICABUT — termasuk di sini. Yang bisa
+     * sampai ke cabang ini hanya pekerjaan `report.export` yang terbit SEBELUM
+     * peralihan; rute ekspor kini menerbitkannya sebagai `report.export_go`.
+     * Melempar, bukan "sekali ini saja dengan TS": jalan mundur diam-diam
+     * adalah dua implementasi tanpa pembanding — kelas kegagalan yang register
+     * itu ada untuk mencegah. Pengguna mengekspor ulang, dan berkas barunya
+     * datang dari Go.
+     */
+    throw new Error(
+      `laporan \`${report.id}\` dihasilkan Go (report.export_go) sejak tahap 1d — ` +
+        "ekspor ulang dari layar; jalur TS untuk berkas ini sudah dicabut"
+    );
+  }
+
   const params = (muatan.params ?? {}) as Record<string, string | undefined>;
 
   /* `false` = perusahaan NONAKTIF tetap dikerjakan: jalur ini hanya MEMBACA,
@@ -102,7 +121,14 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
      `dalamKonteksPerusahaan`. */
   const bytes = await dalamKonteksPerusahaan(ctx.job.companyId, false, async () => {
     await ctx.progress(10);
-    const payload = await buildReportPayload(report, params);
+    /* Jalur baca berat → replika baca bila terpasang (tahap 3). Tanpa
+       `COMPANY_DATABASE_READ_URL_TEMPLATE` ini `buildReportPayload(...)`
+       apa adanya. Aturan kesegarannya (replika memutar WAL sampai posisi
+       primary saat ini, atau primary) ada di `src/lib/read-replica.ts`, dan
+       itu yang membuat janji "dihitung saat dikerjakan" di kepala berkas ini
+       tetap benar. Identitas perusahaan di bawah sengaja tetap ke primary:
+       murah, dan bukan bacaan berat. */
+    const payload = await runReadOnly(() => buildReportPayload(report, params));
 
     await ctx.progress(55);
     const sheet = buildReportSheet(payload);

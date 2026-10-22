@@ -11,7 +11,8 @@ import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { controlDb } from "@sai/core/control-db";
 import { companyScopeFromRequest } from "@/lib/company-request";
 import { revokeInvitation } from "@sai/platform/invitation-store";
-import { runWithCompany } from "@/lib/company-context";
+import { companyContextOf, runWithCompany } from "@/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import { getRequestI18n } from "@sai/platform/i18n/server";
@@ -40,7 +41,7 @@ export async function DELETE(
           tenantId: result.tenant.tenantId,
           tenant: { slug: scope.tenantSlug },
         },
-        select: { id: true, slug: true, databaseName: true, isActive: true, tenantId: true },
+        select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true, tenantId: true },
       })
     : null;
   if (!company || !company.isActive) {
@@ -69,7 +70,7 @@ export async function DELETE(
     request,
   });
   await runWithCompany(
-    { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+    companyContextOf(company),
     () =>
       writeAuditLog({
         userId: result.session.user.id,

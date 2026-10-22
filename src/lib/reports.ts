@@ -17,6 +17,7 @@
  * the trial balance. The fix for such a row belongs at posting time, not in a
  * read-only report that must mirror the books.
  */
+import { MONEY_SCALE } from "@sai/core/generated/accounting";
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
@@ -78,7 +79,15 @@ async function accountNets(
   return map;
 }
 
-const eq = (a: number, b: number) => Math.round(a * 100) === Math.round(b * 100);
+/**
+ * Satu sen dalam rupiah-float, dari kontrak (`contract/accounting.yaml`) —
+ * bukan `100` yang diketik di sini. Pembaca buku Go (tahap 1d) membandingkan
+ * pada skala yang SAMA, dan dua laporan yang sepakat "seimbang" pada ketelitian
+ * berbeda akan berselisih tepat pada buku yang timpang satu sen.
+ */
+const UNITS_PER_RUPIAH = 10 ** MONEY_SCALE;
+const eq = (a: number, b: number) =>
+  Math.round(a * UNITS_PER_RUPIAH) === Math.round(b * UNITS_PER_RUPIAH);
 
 export interface TrialBalanceRow {
   code: string;
@@ -87,6 +96,16 @@ export interface TrialBalanceRow {
   credit: number;
 }
 
+/**
+ * Neraca Saldo.
+ *
+ * ⚠ TAHAP 1d: laporan ini punya implementasi KEDUA di Go
+ * (`services/integrator/internal/ledgerread/trial_balance.go`), dan keduanya
+ * wajib sepakat baris demi baris — `bun run parity:trial-balance` membuktikannya
+ * terhadap buku sungguhan. Siapa pemilik jalur berkasnya hari ini tertulis di
+ * `src/lib/report-engine.ts`. Mengubah aturan di sini (penyaring, urutan,
+ * kapan akun dilewati) berarti mengubah keduanya dalam satu commit.
+ */
 export async function getTrialBalance(asOf?: Date, client = prisma) {
   const nets = await accountNets(asOf ? { lte: asOf } : undefined, client);
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });

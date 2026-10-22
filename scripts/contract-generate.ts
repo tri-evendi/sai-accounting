@@ -25,6 +25,12 @@
  *   • packages/core/src/generated/job-numbers.ts  — angka antrean, TypeScript
  *   • services/integrator/internal/contract/jobs_gen.go — keduanya, Go
  *
+ * Tahap 1d menambah sumber kedua, `contract/accounting.yaml` (skala uang &
+ * tipe akun — hanya yang punya pembaca Go, 09 §3.5), dan dua berkas lagi:
+ *
+ *   • packages/core/src/generated/accounting.ts
+ *   • services/integrator/internal/contract/accounting_gen.go
+ *
  * Angka dipisahkan dari kosakata karena pembacanya berbeda: kosakata dibaca
  * penerbit dan pelari, angka dibaca pelari dan permukaan kesehatan. Di Go
  * keduanya satu berkas, sebab satu paket Go memang satu unit impor.
@@ -44,6 +50,24 @@ import { load } from "js-yaml";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { COMPANY_NAME } from "@sai/core/constants";
+import {
+  SHEET_NAMES,
+  STATEMENT_TITLES,
+  TRIAL_BALANCE_COLUMNS,
+  TRIAL_BALANCE_HEADERS,
+  TRIAL_BALANCE_PRINT_LABELS,
+  asOfPeriodLabel,
+  trialBalanceBalanceNote,
+} from "../src/lib/statement-layout";
+import {
+  IDR_NUMBER_FORMAT,
+  SHEET_BANNER_STYLE,
+  TRIAL_BALANCE_WIDTHS,
+  sheetPrintedLine,
+} from "../src/lib/report-export";
+import { REPORT_ENGINES } from "../src/lib/report-engine";
+
 const AKAR = process.cwd();
 const SUMBER = join(AKAR, "contract", "kinds.yaml");
 const TUJUAN_TS = join(AKAR, "packages", "core", "src", "generated", "job-kinds.ts");
@@ -55,6 +79,28 @@ const TUJUAN_GO = join(
   "internal",
   "contract",
   "jobs_gen.go"
+);
+
+const SUMBER_AKUNTANSI = join(AKAR, "contract", "accounting.yaml");
+const TUJUAN_AKUNTANSI_TS = join(AKAR, "packages", "core", "src", "generated", "accounting.ts");
+const TUJUAN_AKUNTANSI_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "accounting_gen.go"
+);
+
+/* Sumber KETIGA (tahap 1d): bukan YAML, melainkan modul TypeScript yang
+   SUDAH menjadi sumber tunggal layar, PDF, dan lembar sebar. */
+const TUJUAN_TATA_LETAK_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "report_layout_gen.go"
 );
 
 const CEK = process.argv.includes("--cek");
@@ -81,12 +127,18 @@ interface Numbers {
   queue_age_warn_seconds: number;
   queue_age_late_seconds: number;
 }
+/** Pemilik berkas hasil di volume `hasil` — ditulis dua bahasa, dibaca `node`. */
+interface Results {
+  owner_uid: number;
+  owner_gid: number;
+}
 interface Kontrak {
   version: number;
   statuses: string[];
   lanes: Record<string, Lane>;
   kinds: Record<string, Kind>;
   numbers: Numbers;
+  results: Results;
 }
 
 const KUNCI_ANGKA: (keyof Numbers)[] = [
@@ -160,6 +212,16 @@ function baca(): Kontrak {
         "numbers.queue_age_warn_seconds tidak di bawah queue_age_late_seconds — " +
           "ambang peringatan yang tidak pernah terlewat lebih dulu adalah ambang yang tak berarti"
       );
+    }
+  }
+
+  /* uid 0 DITOLAK: berkas hasil milik root adalah persis keadaan yang membuat
+     `app-customer` (pengguna `node`) tidak bisa membacanya — alasan kunci ini
+     ada sama sekali. */
+  for (const kunci of ["owner_uid", "owner_gid"] as const) {
+    const v = k.results?.[kunci];
+    if (!Number.isInteger(v) || v < 1) {
+      salah.push(`results.${kunci} harus bilangan bulat ≥ 1 (kini: ${String(v)})`);
     }
   }
 
@@ -291,6 +353,14 @@ export const DONE_RETENTION_DAYS = ${n.done_retention_days};
 
 export const QUEUE_AGE_WARN_SECONDS = ${n.queue_age_warn_seconds};
 export const QUEUE_AGE_LATE_SECONDS = ${n.queue_age_late_seconds};
+
+/**
+ * Pemilik berkas hasil di volume \`hasil\`: pengguna \`node\` tahap \`runner\`,
+ * yang MEMBACA volume itu. Penulisnya (pelari jalur, root) wajib \`chown\` ke
+ * sini — lihat \`@sai/platform/job-result-store\`.
+ */
+export const RESULT_OWNER_UID = ${k.results.owner_uid};
+export const RESULT_OWNER_GID = ${k.results.owner_gid};
 `;
 }
 
@@ -488,15 +558,283 @@ const (
 \tQueueAgeWarn = ${n.queue_age_warn_seconds} * time.Second
 \tQueueAgeLate = ${n.queue_age_late_seconds} * time.Second
 )
+
+// ResultOwnerUID/GID: pemilik berkas hasil di volume \`hasil\` — pengguna
+// \`node\` yang membacanya di \`app-customer\`. Pelari yang berjalan sebagai root
+// wajib chown ke sini, atau rute unduhan menjawab 404 untuk setiap hasil.
+const (
+\tResultOwnerUID = ${k.results.owner_uid}
+\tResultOwnerGID = ${k.results.owner_gid}
+)
+`;
+}
+
+// ═══ contract/accounting.yaml (tahap 1d) ═══════════════════════════════════
+//
+// Sumber KEDUA, dengan alasan yang sama dengan pemisahan angka antrean dari
+// kosakata: pembacanya berbeda. `kinds.yaml` dibaca pelari antrean;
+// `accounting.yaml` dibaca pembaca buku (`internal/ledgerread`) dan modul
+// akuntansi TypeScript. Satu berkas YAML untuk keduanya akan membuat setiap
+// perubahan tipe akun tampak seperti perubahan antrean di riwayat git.
+
+interface KontrakAkuntansi {
+  version: number;
+  money: { scale: number };
+  account_types: string[];
+}
+
+/** Nilai enum-like mengikuti docs/DATABASE.md: `snake_case` huruf kecil. */
+const SNAKE = /^[a-z][a-z0-9_]*$/;
+
+function bacaAkuntansi(): KontrakAkuntansi {
+  const k = load(readFileSync(SUMBER_AKUNTANSI, "utf8")) as KontrakAkuntansi;
+
+  const salah: string[] = [];
+  if (!Number.isInteger(k.version)) salah.push("`version` bukan bilangan bulat");
+
+  /* Skala dibatasi 0..6, dan batas atasnya bukan hiasan: pembaca Go
+     menjumlahkan uang sebagai SEN `int64`, dan skala yang lebih besar
+     menggerus ruang angka itu sampai jumlah buku yang wajar meluap. */
+  const scale = k.money?.scale;
+  if (!Number.isInteger(scale) || scale < 0 || scale > 6) {
+    salah.push(`money.scale harus bilangan bulat 0..6 (kini: ${String(scale)})`);
+  }
+
+  const tipe = k.account_types;
+  if (!Array.isArray(tipe) || tipe.length === 0) {
+    salah.push("`account_types` kosong");
+  } else {
+    const lihat = new Set<string>();
+    for (const t of tipe) {
+      if (typeof t !== "string" || !SNAKE.test(t)) {
+        salah.push(`tipe akun ${JSON.stringify(t)} bukan snake_case huruf kecil`);
+      } else if (lihat.has(t)) {
+        /* Duplikat bukan kosmetik: TS memetakan label per nilai, dan entri
+           ganda di daftar pilihan formulir menyimpan nilai yang sama dua kali. */
+        salah.push(`tipe akun \`${t}\` tercantum dua kali`);
+      }
+      lihat.add(t);
+    }
+  }
+
+  if (salah.length > 0) {
+    console.error("✗ contract/accounting.yaml tidak sah:");
+    for (const s of salah) console.error(`  • ${s}`);
+    process.exit(1);
+  }
+  return k;
+}
+
+const JANGAN_SUNTING_AKUNTANSI = (versi: number) => `DIBANGKITKAN DARI \`contract/accounting.yaml\` — JANGAN DISUNTING TANGAN.
+ *
+ * Jalankan \`bun run contract:gen\` setelah mengubah kontraknya, dan commit
+ * hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+ * berkas ini basi, dan penjaga \`tests/contract-accounting.test.ts\` memanggilnya.
+ *
+ * Kontrak akuntansi versi ${versi}.`;
+
+function bangkitkanAkuntansi(k: KontrakAkuntansi): string {
+  return `/**
+ * ${JANGAN_SUNTING_AKUNTANSI(k.version)}
+ *
+ * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label, kategori,
+ * dan saldo normal per tipe tetap di \`src/lib/accounting.ts\`.
+ */
+
+/** Skala kolom uang \`Decimal(15,2)\`: satu sen = 10^-MONEY_SCALE rupiah. */
+export const MONEY_SCALE = ${k.money.scale};
+
+${union("AccountType", k.account_types)}
+
+/** Urutan kontrak = urutan pilihan formulir; entri pertama bawaannya. */
+export const ACCOUNT_TYPE_VALUES = [
+${k.account_types.map((t) => `  "${t}",`).join("\n")}
+] as const satisfies readonly AccountType[];
+
+export const isAccountType = (v: string): v is AccountType =>
+  (ACCOUNT_TYPE_VALUES as readonly string[]).includes(v);
+`;
+}
+
+/** `cash_bank` → `AccountTypeCashBank`. */
+function bangkitkanAkuntansiGo(k: KontrakAkuntansi): string {
+  const kepala = JANGAN_SUNTING_AKUNTANSI(k.version)
+    .split("\n")
+    .map((b) => `// ${b.replace(/^ \* ?/, "")}`.trimEnd())
+    .join("\n");
+
+  const konstTipe = ratakan(
+    k.account_types.map((t) => ({
+      kiri: `AccountType${pengenalGo(t)}`,
+      kanan: `AccountType = "${t}"`,
+    }))
+  );
+
+  return `${kepala}
+
+package contract
+
+// MoneyScale adalah skala kolom uang Decimal(15,2): satu sen = 10^-MoneyScale
+// rupiah. Pembaca buku menjumlahkan uang sebagai sen int64 — tidak pernah
+// float — dan mengurai NUMERIC dengan skala ini.
+const MoneyScale = ${k.money.scale}
+
+// AccountType adalah nilai kolom \`accounts.type\`.
+type AccountType string
+
+const (
+${konstTipe}
+)
+
+// AccountTypes dalam urutan kontrak (urutan pilihan formulir), bukan abjad.
+var AccountTypes = []AccountType{
+${k.account_types.map((t) => `\tAccountType${pengenalGo(t)},`).join("\n")}
+}
+
+// IsAccountType melaporkan apakah v adalah tipe akun yang dikenal kontrak ini.
+func IsAccountType(v string) bool {
+\tfor _, t := range AccountTypes {
+\t\tif string(t) == v {
+\t\t\treturn true
+\t\t}
+\t}
+\treturn false
+}
+`;
+}
+
+// ═══ Tata letak berkas laporan (tahap 1d) ══════════════════════════════════
+//
+// Sumbernya BUKAN `contract/*.yaml`, dan itu disengaja: kalimat cetak, judul
+// kolom, dan format angka sudah punya SATU sumber — `statement-layout.ts`
+// (dipakai layar, PDF, dan lembar sebar) dan `report-export.ts` — yang dijaga
+// `tests/print-label-dictionary.test.ts` terhadap kamus. Memindahkannya ke YAML
+// akan memutus tiga permukaan itu dari sumbernya demi pembaca keempat. Yang
+// dilakukan di sini: modul TS itu DIIMPOR, dan Go menerima nilainya sebagai
+// berkas bangkitan — tetap satu sumber, tetap digerbang `--cek`.
+//
+// Kalimat yang memuat nilai (periode, baris "Dicetak") dibangkitkan dengan
+// MEMANGGIL fungsi TS-nya dengan penanda, lalu penanda itu menjadi `%s`. Jadi
+// yang sampai ke Go adalah kalimat yang sama persis, bukan salinannya.
+
+/** Kalimat TS → pola `fmt` Go: `%` asli digandakan, penandanya jadi `%s`. */
+function polaGo(fn: (isi: string) => string): string {
+  const PENANDA = "\u0000";
+  return fn(PENANDA).replace(/%/g, "%%").replace(PENANDA, "%s");
+}
+
+/** Nama bulan id-ID dari `Intl` — formatter yang SAMA dengan `formatDate`. */
+function namaBulan(): string[] {
+  const f = new Intl.DateTimeFormat("id-ID", { month: "long", timeZone: "UTC" });
+  return Array.from({ length: 12 }, (_, m) => f.format(new Date(Date.UTC(2026, m, 15))));
+}
+
+function bangkitkanTataLetakGo(): string {
+  const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
+dan \`@sai/core/constants\` — JANGAN DISUNTING TANGAN.
+
+Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
+hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+berkas ini basi (penjaga \`tests/contract-jobs.test.ts\`).
+
+Pembacanya \`internal/document\`: lembar sebar yang dihasilkan Go untuk laporan
+ber-\`engine: "go"\` di \`src/lib/report-engine.ts\`. Kalimat & rupa di sini
+wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
+\`bun run parity:trial-balance-xlsx\`.`
+    .split("\n")
+    .map((b) => `// ${b}`.trimEnd())
+    .join("\n");
+
+  const q = (v: string) => JSON.stringify(v);
+  const g = SHEET_BANNER_STYLE;
+  const konst = ratakan([
+    { kiri: "CompanyNameFallback", kanan: `= ${q(COMPANY_NAME)}` },
+    { kiri: "TrialBalanceSheetName", kanan: `= ${q(SHEET_NAMES["trial-balance"])}` },
+    { kiri: "TrialBalanceTitle", kanan: `= ${q(STATEMENT_TITLES["trial-balance"])}` },
+    { kiri: "TrialBalanceEmptyLabel", kanan: `= ${q(TRIAL_BALANCE_PRINT_LABELS.empty)}` },
+    { kiri: "TrialBalanceTotalLabel", kanan: `= ${q(TRIAL_BALANCE_PRINT_LABELS.total)}` },
+    { kiri: "TrialBalanceNoteBalanced", kanan: `= ${q(trialBalanceBalanceNote(true))}` },
+    { kiri: "TrialBalanceNoteUnbalanced", kanan: `= ${q(trialBalanceBalanceNote(false))}` },
+    { kiri: "AsOfPeriodFormat", kanan: `= ${q(polaGo(asOfPeriodLabel))}` },
+    { kiri: "SheetPrintedFormat", kanan: `= ${q(polaGo(sheetPrintedLine))}` },
+    { kiri: "MoneyNumberFormat", kanan: `= ${q(IDR_NUMBER_FORMAT)}` },
+    { kiri: "SheetCompanyFontSize", kanan: `= ${g.companyFontSize}` },
+    { kiri: "SheetTitleFontSize", kanan: `= ${g.titleFontSize}` },
+    { kiri: "SheetPrintedFontSize", kanan: `= ${g.printedFontSize}` },
+    { kiri: "SheetMutedARGB", kanan: `= ${q(g.mutedArgb)}` },
+    { kiri: "SheetHeaderFillARGB", kanan: `= ${q(g.headerFillArgb)}` },
+    { kiri: "SheetHeaderFontARGB", kanan: `= ${q(g.headerFontArgb)}` },
+  ]);
+
+  /* Register mesin → Go: id laporan yang PUNYA implementasi Go, dan himpunan
+     yang berkasnya hari ini milik Go. Pelari Go menolak pekerjaan untuk
+     laporan di luar himpunan kedua — register yang dikembalikan ke
+     `go-parity` tidak boleh meninggalkan pelari yang tetap menghasilkan
+     berkas dari antrean lama. */
+  const idLaporan = Object.keys(REPORT_ENGINES).sort();
+  const konstLaporan = ratakan(
+    idLaporan.map((id) => ({ kiri: `Report${pengenalGo(id)}`, kanan: `= ${q(id)}` }))
+  );
+  const milikGo = idLaporan
+    .filter((id) => REPORT_ENGINES[id as keyof typeof REPORT_ENGINES]?.engine === "go")
+    .map((id) => `\tReport${pengenalGo(id)}: true,`)
+    .join("\n");
+
+  const kolom = TRIAL_BALANCE_COLUMNS.map(
+    (c) => `\t{Header: ${q(TRIAL_BALANCE_HEADERS[c])}, Width: ${TRIAL_BALANCE_WIDTHS[c]}},`
+  ).join("\n");
+
+  return `${kepala}
+
+package contract
+
+// ReportColumn adalah satu kolom lembar sebar: judul dan lebar (karakter).
+type ReportColumn struct {
+\tHeader string
+\tWidth  float64
+}
+
+// Kalimat cetak, format angka, dan rupa kepala lembar. Pola ber-%s disusun
+// dengan fmt.Sprintf; nilainya dibangkitkan dengan memanggil fungsi TS-nya.
+const (
+${konst}
+)
+
+// Id laporan (katalog TS) yang punya implementasi Go — kunci register
+// src/lib/report-engine.ts.
+const (
+${konstLaporan}
+)
+
+// GoEngineReports: laporan yang BERKAS-nya hari ini dihasilkan Go
+// (\`engine: "go"\`). Pelari menolak pekerjaan untuk laporan di luar himpunan ini.
+var GoEngineReports = map[string]bool{
+${milikGo}
+}
+
+// TrialBalanceColumns: judul (TRIAL_BALANCE_HEADERS) dan lebar
+// (TRIAL_BALANCE_WIDTHS) kolom Neraca Saldo, dalam urutan TRIAL_BALANCE_COLUMNS.
+var TrialBalanceColumns = []ReportColumn{
+${kolom}
+}
+
+// MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.
+var MonthNamesID = [12]string{
+${namaBulan().map((m) => `\t${q(m)},`).join("\n")}
+}
 `;
 }
 
 const kontrak = baca();
+const kontrakAkuntansi = bacaAkuntansi();
 
 const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_TS, isi: bangkitkan(kontrak) },
   { jalur: TUJUAN_ANGKA, isi: bangkitkanAngka(kontrak) },
   { jalur: TUJUAN_GO, isi: bangkitkanGo(kontrak) },
+  { jalur: TUJUAN_AKUNTANSI_TS, isi: bangkitkanAkuntansi(kontrakAkuntansi) },
+  { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
+  { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo() },
 ];
 
 if (CEK) {
@@ -509,7 +847,7 @@ if (CEK) {
     if (readFileSync(jalur, "utf8") !== isi) basi.push(`${jalur} BASI`);
   }
   if (basi.length > 0) {
-    console.error("✗ berkas bangkitan tidak sinkron dengan contract/kinds.yaml:");
+    console.error("✗ berkas bangkitan tidak sinkron dengan contract/*.yaml:");
     for (const b of basi) console.error(`  • ${b}`);
     console.error("  Jalankan `bun run contract:gen` lalu commit hasilnya.");
     process.exit(1);
@@ -525,5 +863,6 @@ for (const { jalur, isi } of berkas) {
 }
 console.log(
   `  ${Object.keys(kontrak.kinds).length} kind · ${Object.keys(kontrak.lanes).length} jalur · ` +
-    `${kontrak.statuses.length} status · ${KUNCI_ANGKA.length} angka`
+    `${kontrak.statuses.length} status · ${KUNCI_ANGKA.length} angka · ` +
+    `${kontrakAkuntansi.account_types.length} tipe akun`
 );

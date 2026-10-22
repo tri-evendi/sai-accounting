@@ -46,6 +46,11 @@ import JSZip from "jszip";
 import { controlDb } from "@sai/core/control-db";
 import { mesinPerusahaan } from "@sai/db/engine-runtime";
 import { getCompanyClient } from "@/lib/company-clients";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  toCompanyDatabaseTarget,
+  type DbInstanceRef,
+} from "@sai/db/company-url";
 import { resolveDocumentPath } from "@/lib/document-storage";
 import { toCsv } from "@/lib/export-csv";
 
@@ -66,6 +71,7 @@ interface CompanyToExport {
   slug: string;
   name: string;
   databaseName: string;
+  dbInstance: DbInstanceRef | null;
   isActive: boolean;
 }
 
@@ -84,7 +90,7 @@ async function exportCompanyInto(
   zip: JSZip,
   company: CompanyToExport
 ): Promise<{ tables: number; rows: number }> {
-  const db = getCompanyClient(company.databaseName);
+  const db = getCompanyClient(company);
   const folder = zip.folder(company.slug)!;
 
   /*
@@ -238,7 +244,7 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
 
   const companies = await controlDb.company.findMany({
     where: { tenantId },
-    select: { id: true, slug: true, name: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, name: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
     orderBy: { slug: "asc" },
   });
 
@@ -248,7 +254,7 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
   let tables = 0;
   let rows = 0;
   for (const company of companies) {
-    const result = await exportCompanyInto(zip, company);
+    const result = await exportCompanyInto(zip, { ...company, ...toCompanyDatabaseTarget(company) });
     tables += result.tables;
     rows += result.rows;
   }

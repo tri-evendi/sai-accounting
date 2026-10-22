@@ -19,7 +19,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+# Tanggal bisnis = jam Jakarta (keputusan pemilik 22 Okt 2026). Batas laporan
+# memakai offset eksplisit (`@sai/core/business-date`), tetapi hitungan
+# kalender lain — tahun buku, periode stok — masih memakai jam lokal proses.
+# Bawaan ini menjaganya tetap WIB di image mana pun, termasuk on-premise;
+# `.env` boleh menimpanya.
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    TZ=Asia/Jakarta
 
 
 # ─── Bun (pemasang paket + peluncur skrip) ───────────────────
@@ -246,9 +252,14 @@ COPY services/integrator/ ./
 # runtime tipis tanpa glibc yang harus cocok. `-trimpath` menghapus jalur mesin
 # pembangun dari biner; `-s -w` membuang tabel simbol debug (~30% ukuran).
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-tenant ./cmd/tenant
+# Biner KEDUA, image yang SAMA (09 §3.2: satu image, beberapa `command`): pelari
+# jalur `interactive` sisi Go — lembar sebar laporan ber-`engine: "go"`
+# (tahap 1d). Ia tidak memakai `pg_dump`; yang dibelinya dari image ini hanya
+# biner statis + `ca-certificates`.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-interactive ./cmd/interactive
 
 
-# ─── Runtime integrator (service `svc-tenant` di compose) ────
+# ─── Runtime integrator (service `svc-tenant` + `svc-interactive-go`) ────
 #
 # ══ KENAPA BUKAN `FROM scratch` ════════════════════════════════════════════
 # Biner-nya statis, jadi `scratch` cukup untuk MENJALANKANNYA — tapi jalur
@@ -303,6 +314,7 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=go-build /out/svc-tenant /usr/local/bin/svc-tenant
+COPY --from=go-build /out/svc-interactive /usr/local/bin/svc-interactive
 # Direktori kerja cadangan: satu basis data pada satu waktu, lalu dibuang.
 # Di dalam container, bukan di volume — isinya plaintext seumur beberapa detik,
 # dan ia tidak boleh selamat dari restart.

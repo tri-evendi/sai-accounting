@@ -1,0 +1,22 @@
+# Pemilik kode (09 §12, temuan P3-3). Baris terakhir yang cocok menang.
+#
+# Hari ini satu pemilik untuk seluruh repo. Jalur di bawahnya disebut TERPISAH
+# dengan sengaja walau pemiliknya sama: begitu pemilik kedua ada, yang perlu
+# diubah hanya kolom kanan — dan jalur yang paling berbahaya sudah terdaftar.
+
+*                                   @tri-evendi
+
+# Kewenangan lisensi, kriptografi, dan otorisasi.
+/packages/core/src/licence.ts       @tri-evendi
+/packages/core/src/authz.ts         @tri-evendi
+/scripts/licence-*.ts               @tri-evendi
+
+# Skema & migration — menyentuh 19 basis data produksi.
+/packages/db/prisma/                @tri-evendi
+/prisma/postgresql/                 @tri-evendi
+
+# Jalur rilis dan penyebaran.
+/.github/                           @tri-evendi
+/Dockerfile                         @tri-evendi
+/docker-compose*.yml                @tri-evendi
+/SECURITY.md                        @tri-evendi

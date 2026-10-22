@@ -42,7 +42,8 @@
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { prisma } from "../src/lib/prisma";
 import {
   aliasTakTerpakai,
@@ -250,7 +251,7 @@ async function main() {
 
   const companies = await controlDb.company.findMany({
     where: { isActive: true, ...(SLUG ? { slug: SLUG } : {}) },
-    select: { id: true, slug: true, databaseName: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
     orderBy: { id: "asc" },
   });
 
@@ -289,7 +290,7 @@ async function main() {
       // Satu buku yang gagal dibaca tidak menghentikan buku lain — doktrin yang
       // sama dengan `run-recurring.ts`.
       const r = await runWithCompany(
-        { companyId: c.id, slug: c.slug, databaseName: c.databaseName },
+        companyContextOf(c),
         () => kerjakanSatuBuku(c.slug, aliasPerBuku.get(c.slug) ?? new Map())
       );
       if (r.kontrak > 0) laporkan(r);

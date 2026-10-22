@@ -176,7 +176,9 @@ describe("jalur `ledger`: pintu posting tetap tunggal (I-2)", () => {
     expect(KONTEKS).toContain("controlDb.company.findUnique");
     const i = KONTEKS.indexOf("runWithCompany(");
     const pakai = KONTEKS.slice(i, i + 300);
-    expect(pakai).toContain("company.databaseName");
+    /* Sejak tahap 4 konteksnya dirakit `companyContextOf` dari baris registry
+       — nama basis data DAN instansnya, dua-duanya dari kendali. */
+    expect(pakai).toContain("companyContextOf(company)");
     expect(pakai).not.toMatch(/p\.databaseName|payload\.databaseName/);
   });
 

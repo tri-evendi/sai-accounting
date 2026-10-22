@@ -134,6 +134,34 @@ export const IDR_NUMBER_FORMAT = '"Rp" #,##0;[Red]("Rp" #,##0)';
  */
 export const QUANTITY_NUMBER_FORMAT = "#,##0.###;[Red]-#,##0.###";
 
+/**
+ * Gaya kepala lembar (nama perusahaan, judul, periode, baris "Dicetak") dan
+ * baris judul kolom. Dipakai `@/lib/xlsx` — dan DIBANGKITKAN ke Go
+ * (`bun run contract:gen` → `internal/contract/report_layout_gen.go`) untuk
+ * laporan yang berkasnya dihasilkan Go (`src/lib/report-engine.ts`). Satu
+ * sumber: lembar dari dua bahasa tidak boleh berbeda rupa karena dua salinan.
+ *
+ * Warna ARGB, bukan token tema: lembar sebar tidak melihat variabel CSS dan
+ * tidak punya tema gelap — alasan yang sama dengan `lib/pdf/brand.ts`.
+ */
+export const SHEET_BANNER_STYLE = {
+  companyFontSize: 14,
+  titleFontSize: 12,
+  printedFontSize: 9,
+  mutedArgb: "FF64748B",
+  headerFillArgb: "FF1E40AF",
+  headerFontArgb: "FFFFFFFF",
+} as const;
+
+/**
+ * Baris keempat kepala lembar. `stamp` = waktu cetak yang sudah diformat
+ * (`toLocaleString("id-ID")` di TS). Fungsi, bukan template di tempat, supaya
+ * generator kontrak bisa membangkitkan pola Go-nya dari kalimat yang SAMA.
+ */
+export function sheetPrintedLine(stamp: string): string {
+  return `Dicetak: ${stamp} · Nilai dalam IDR`;
+}
+
 const money = (value: number, bold = false): SheetCell => ({
   value,
   format: "money",
@@ -292,7 +320,7 @@ function buildBalanceSheetSheet(
  * kolomnya lain); judulnya TIDAK — itu datang dari `TRIAL_BALANCE_HEADERS`
  * bersama cetakan.
  */
-const TRIAL_BALANCE_WIDTHS: Record<TrialBalanceColumnId, number> = {
+export const TRIAL_BALANCE_WIDTHS: Record<TrialBalanceColumnId, number> = {
   code: 12,
   name: 40,
   debit: 20,

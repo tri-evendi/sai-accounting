@@ -33,8 +33,11 @@ import {
   tenantSeatCount,
 } from "@sai/platform/invitation-store";
 import { userQuotaExceeded } from "@sai/core/invitations";
-import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
-import { runWithCompany } from "@/lib/company-context";
+import { seatQuotaOverride } from "@/lib/entitlement-source";
+import { RATE_LIMITS } from "@sai/core/rate-limit";
+import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
+import { companyContextOf, runWithCompany } from "@/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { activeRoleKeys } from "@/lib/roles";
 import { sendMail } from "@sai/platform/mailer";
 import { invitationMail } from "@sai/core/account-mail";
@@ -72,7 +75,14 @@ async function companyOfTenant(tenantId: number) {
   if (!scope) return null;
   const company = await controlDb.company.findFirst({
     where: { slug: scope.companySlug, tenantId, tenant: { slug: scope.tenantSlug } },
-    select: { id: true, slug: true, name: true, databaseName: true, isActive: true, tenantId: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      ...COMPANY_DATABASE_TARGET_SELECT,
+      isActive: true,
+      tenantId: true,
+    },
   });
   if (!company || !company.isActive) return null;
   return company;
@@ -119,14 +129,14 @@ export async function POST(request: Request) {
   const invitedByUserId = Number.parseInt(result.session.user.id, 10);
 
   /* Pembatas laju per PENGUNDANG — undangan mengirim surel atas nama kita. */
-  const limit = checkRateLimit(`invite:user:${invitedByUserId}`, RATE_LIMITS.invitation);
+  const limit = await checkSharedRateLimit(`invite:user:${invitedByUserId}`, RATE_LIMITS.invitation);
   if (!limit.allowed) {
     return NextResponse.json({ error: t("invitations.tooMany") }, { status: 429 });
   }
 
   /* Peran harus ada & aktif DI PT TUJUAN (peran = data per perusahaan). */
   const roleKeys = await runWithCompany(
-    { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+    companyContextOf(company),
     () => activeRoleKeys()
   );
   if (!roleKeys.includes(parsed.data.role)) {
@@ -138,10 +148,16 @@ export async function POST(request: Request) {
    * kalau kuota hanya berlaku untuk calon akun baru, "422" vs "200" langsung
    * membocorkan apakah alamat itu sudah punya akun (lihat lib/invitations.ts).
    */
-  const seats = await tenantSeatCount(result.tenant.tenantId);
+  const seatQuota = await seatQuotaOverride();
+  const seats = await tenantSeatCount(result.tenant.tenantId, seatQuota);
   if (userQuotaExceeded(seats)) {
     return NextResponse.json(
-      { error: t("invitations.quotaExceeded"), code: "quota_exceeded" },
+      {
+        error: seatQuota
+          ? t("invitations.licenceLimitReached", { max: seatQuota.maxUsers })
+          : t("invitations.quotaExceeded"),
+        code: "quota_exceeded",
+      },
       { status: 422 }
     );
   }
@@ -228,7 +244,7 @@ export async function POST(request: Request) {
         request,
       });
       await runWithCompany(
-        { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+        companyContextOf(company),
         () =>
           writeAuditLog({
             userId: result.session.user.id,

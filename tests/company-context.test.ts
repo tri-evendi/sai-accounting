@@ -31,8 +31,8 @@ import {
 } from "@/lib/company-context";
 import { prisma, currentCompanyClient } from "@/lib/prisma";
 
-const PT_A: CompanyContext = { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a" };
-const PT_B: CompanyContext = { companyId: 2, slug: "pt-b", databaseName: "sai_pt_b" };
+const PT_A: CompanyContext = { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a", dbInstance: null };
+const PT_B: CompanyContext = { companyId: 2, slug: "pt-b", databaseName: "sai_pt_b", dbInstance: null };
 
 /** Klien palsu yang mencatat basis data mana yang diminta. */
 function fakeClientFor(databaseName: string) {
@@ -48,7 +48,9 @@ function fakeClientFor(databaseName: string) {
 
 beforeEach(() => {
   getCompanyClient.mockReset();
-  getCompanyClient.mockImplementation((databaseName: string) => fakeClientFor(databaseName));
+  getCompanyClient.mockImplementation((target: { databaseName: string }) =>
+    fakeClientFor(target.databaseName)
+  );
 });
 
 describe("konteks perusahaan", () => {
@@ -157,7 +159,7 @@ describe("proxy prisma", () => {
     await runWithCompany(PT_A, async () => {
       await expect(prisma.invoice.findMany()).resolves.toEqual(["faktur milik sai_pt_a"]);
     });
-    expect(getCompanyClient).toHaveBeenCalledWith("sai_pt_a");
+    expect(getCompanyClient).toHaveBeenCalledWith(expect.objectContaining({ databaseName: "sai_pt_a" }));
   });
 
   it("permintaan berikutnya untuk perusahaan lain memakai basis data lain", async () => {
@@ -167,8 +169,14 @@ describe("proxy prisma", () => {
     await runWithCompany(PT_B, async () => {
       await expect(prisma.invoice.findMany()).resolves.toEqual(["faktur milik sai_pt_b"]);
     });
-    expect(getCompanyClient).toHaveBeenNthCalledWith(1, "sai_pt_a");
-    expect(getCompanyClient).toHaveBeenNthCalledWith(2, "sai_pt_b");
+    expect(getCompanyClient).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ databaseName: "sai_pt_a" })
+    );
+    expect(getCompanyClient).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ databaseName: "sai_pt_b" })
+    );
   });
 
   it("MELEMPAR saat dipakai tanpa konteks — bukan memilih basis data mana pun", async () => {

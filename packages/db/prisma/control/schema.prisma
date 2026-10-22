@@ -185,6 +185,19 @@ model Company {
   tenantId Int?    @map("tenant_id")
   tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
+  /// Instans `db-postgres` tempat basis data PT ini hidup (rancangan 09 §9,
+  /// tahap 4). `NULL` = instans BAWAAN — template di environment hari ini
+  /// (`COMPANY_DATABASE_URL_TEMPLATE`), jadi setiap baris lama tidak berubah
+  /// arti. Selain NULL, nilainya WAJIB kunci `db_instances` (FK), dan
+  /// penyelesaiannya ada di SATU tempat: `@sai/db/company-url`. Kunci yang tak
+  /// dikenali MELEMPAR — jatuh ke bawaan berarti menulis ke salinan lama buku
+  /// PT ini di server yang sudah ia tinggalkan.
+  ///
+  /// FK ke `key`, bukan ke `id`: kunci itulah yang dicerminkan nama env var
+  /// dan konfigurasi pohon Go, dan ia tidak berubah seumur instansnya.
+  dbInstanceKey String?     @map("db_instance_key") @db.VarChar(32)
+  dbInstance    DbInstance? @relation(fields: [dbInstanceKey], references: [key], onDelete: Restrict)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -202,7 +215,41 @@ model Company {
   @@index([isActive])
   @@index([tenantId])
   @@index([isDemo])
+  @@index([dbInstanceKey])
   @@map("companies")
+}
+
+/// Instans `db-postgres` TAMBAHAN tempat buku PT boleh hidup (rancangan 09 §9,
+/// tahap 4). Instans BAWAAN tidak punya baris di sini: ia `companies.
+/// db_instance_key = NULL`, dan template-nya tetap env hari ini. Tabel kosong =
+/// perilaku persis seperti sebelum tahap 4.
+///
+/// ══ TIDAK ADA RAHASIA DI SINI ══════════════════════════════════════════════
+/// Yang disimpan NAMA env var yang memegang URL template, bukan URL-nya —
+/// alasan yang sama dengan `companies.database_name`: satu SELECT tidak boleh
+/// membawa pergi kredensial setiap instans.
+model DbInstance {
+  id  Int    @id @default(autoincrement())
+  /// Huruf kecil/angka/garis bawah, diawali huruf; `default` dicadangkan.
+  /// Dijaga CHECK di migration 0009 DAN `@sai/db/company-url`.
+  key String @unique @db.VarChar(32)
+
+  /// Nama env var berisi URL template instans ini, berbentuk
+  /// `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`. Bentuknya dipaku supaya baris ini
+  /// tidak bisa menunjuk `CONTROL_DATABASE_URL` atau rahasia lain di proses.
+  urlEnvVar String @map("url_env_var") @db.VarChar(100)
+
+  /// `false` = tidak dipilih untuk penyediaan PT baru. PT yang SUDAH di sini
+  /// tetap dibuka seperti biasa — menonaktifkan instans bukan memutus buku.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  companies Company[]
+
+  @@index([isActive])
+  @@map("db_instances")
 }
 
 /// Identitas orang. Satu baris per manusia, berapa pun perusahaan yang dipegangnya.
@@ -1076,4 +1123,57 @@ model Job {
   @@index([tenantId, companyId, status])
   @@index([finishedAt])
   @@map("jobs")
+}
+
+/// Potret runtime proses Node/Bun — bahan vonis pemicu tahap 1d (09 §3.3, §9).
+/// Dua bentuk baris di satu tabel, dibedakan `sampleKind`:
+///   `loop` — satu per proses per jendela 5 menit: tunda event loop p50/p99/max
+///            + memori saat dipotret;
+///   `job`  — satu per percobaan pekerjaan di pelari jalur Node: puncak memori
+///            dan lamanya.
+/// Dipangkas `pruneRuntimeSamples` setelah 14 hari, seperti baris `jobs` `done`.
+/// Lihat migration `0008_runtime_samples` untuk kenapa ini tabel sendiri dan
+/// bukan kolom di `jobs`.
+model RuntimeSample {
+  id Int @id @default(autoincrement())
+
+  /// `app-customer`, atau nama JALUR untuk pelari (`interactive`, `ledger`, …).
+  source String @db.VarChar(40)
+
+  /// `hostname:pid` — menunjuk container yang memotret; replika kedua tidak
+  /// boleh terbaca sebagai proses yang sama.
+  instance String @db.VarChar(100)
+
+  /// `node` | `bun` — keduanya mencatat histogram event loop dengan dasar
+  /// berbeda (lihat `loopDelayMs`), dan pembaca angka perlu tahu yang mana.
+  runtime String @db.VarChar(10)
+
+  /// `loop` | `job` — String + union TS, konvensi docs/DATABASE.md.
+  sampleKind String @map("sample_kind") @db.VarChar(10)
+
+  /// Hanya `loop`. Milidetik TUNDA (sudah dikoreksi per runtime).
+  windowMs  Int?     @map("window_ms")
+  loopP50Ms Decimal? @map("loop_p50_ms") @db.Decimal(10, 2)
+  loopP99Ms Decimal? @map("loop_p99_ms") @db.Decimal(10, 2)
+  loopMaxMs Decimal? @map("loop_max_ms") @db.Decimal(10, 2)
+
+  /// Hanya `job`. Bukan FK: baris `jobs` dipangkas pada retensi yang sama dan
+  /// sampel yang ikut terhapus bersama pekerjaannya kehilangan gunanya lebih
+  /// cepat daripada yang perlu.
+  jobId      Int?    @map("job_id")
+  jobKind    String? @map("job_kind") @db.VarChar(40)
+  durationMs Int?    @map("duration_ms")
+
+  /// `loop`: nilai saat dipotret. `job`: PUNCAK selama percobaan (heap = batas
+  /// bawah tercuplik; RSS = tepat bila percobaan ini mencetak tanda air proses).
+  heapUsedBytes BigInt @map("heap_used_bytes")
+  rssBytes      BigInt @map("rss_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sampleKind, source, createdAt])
+  @@index([createdAt])
+  @@index([jobId])
+  @@map("runtime_samples")
 }

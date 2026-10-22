@@ -22,7 +22,6 @@ import {
   reportById,
   isExportable,
 } from "@/lib/report-catalog";
-import { toISODate } from "@/lib/dashboard-summary";
 import { resolveBudgetPeriod } from "@/lib/report-payload";
 
 describe("catalogue integrity", () => {
@@ -81,7 +80,7 @@ describe("isValidISODate", () => {
 });
 
 describe("resolvePeriod", () => {
-  const now = new Date(2026, 6, 20); // 20 Jul 2026
+  const now = new Date("2026-07-20T12:00:00+07:00"); // 20 Jul 2026, jam Jakarta
 
   it("defaults to year-to-date when no params are given", () => {
     const p = resolvePeriod(undefined, undefined, now);
@@ -93,10 +92,9 @@ describe("resolvePeriod", () => {
     const p = resolvePeriod("2026-03-01", "2026-03-31", now);
     expect(p.fromISO).toBe("2026-03-01");
     expect(p.toISO).toBe("2026-03-31");
-    expect(toISODate(p.from)).toBe("2026-03-01");
-    expect(toISODate(p.to)).toBe("2026-03-31");
-    expect(p.to.getHours()).toBe(23);
-    expect(p.to.getMilliseconds()).toBe(999);
+    // Batas hari jam Jakarta (WIB, UTC+7), apa pun zona proses tesnya.
+    expect(p.from.toISOString()).toBe("2026-02-28T17:00:00.000Z");
+    expect(p.to.toISOString()).toBe("2026-03-31T16:59:59.999Z");
   });
 
   it("falls back to the default for an invalid date instead of Invalid Date", () => {
@@ -109,7 +107,7 @@ describe("resolvePeriod", () => {
 });
 
 describe("resolveAsOf", () => {
-  const now = new Date(2026, 6, 20);
+  const now = new Date("2026-07-20T12:00:00+07:00");
 
   it("defaults to today", () => {
     expect(resolveAsOf(undefined, now).asOfISO).toBe("2026-07-20");
@@ -118,8 +116,7 @@ describe("resolveAsOf", () => {
   it("uses a valid date as an end-of-day bound", () => {
     const r = resolveAsOf("2026-05-15", now);
     expect(r.asOfISO).toBe("2026-05-15");
-    expect(toISODate(r.asOf)).toBe("2026-05-15");
-    expect(r.asOf.getHours()).toBe(23);
+    expect(r.asOf.toISOString()).toBe("2026-05-15T16:59:59.999Z");
   });
 
   it("falls back to today for an invalid date", () => {

@@ -118,3 +118,48 @@ export function overLimit(
     users: pakai.users > entitlement.maxUsers,
   };
 }
+
+/**
+ * Batas yang berlaku di titik PEMBUATAN perusahaan / pengguna baru.
+ *
+ * Satu pintu untuk dua sumber, dan keduanya menjawab pertanyaan yang sama
+ * dengan lingkup berbeda:
+ *
+ *   • **SaaS** — snapshot paket di baris tenant itu sendiri (`tenants.max_*`),
+ *     dihitung PER TENANT. Persis perilaku sebelum pintu ini ada; angka paket
+ *     di `Entitlement` SaaS diabaikan, sebab ia dibaca dari satu baris tenant
+ *     sembarang dan bukan milik tenant yang sedang membuat.
+ *   • **Lisensi (on-premise)** — angka lisensi, dihitung atas SELURUH
+ *     pemasangan: lisensi dijual per mesin, bukan per baris tenant. Angka
+ *     `tenants.max_*` di sana sisa pendaftaran dan tidak berarti apa-apa.
+ *
+ * Yang dibatasi hanya PEMBUATAN yang baru. Perusahaan dan pengguna yang sudah
+ * ada tidak pernah disentuh — lihat `overLimit` dan kepala `licence.ts`.
+ */
+export interface CreationQuota {
+  maxCompanies: number;
+  maxUsers: number;
+  /** `tenant` = hitung milik tenant ini; `installation` = hitung semua. */
+  scope: "tenant" | "installation";
+  source: Entitlement["source"];
+}
+
+export function creationQuota(
+  entitlement: Entitlement,
+  tenant: { maxCompanies: number; maxUsers: number }
+): CreationQuota {
+  if (entitlement.source === "saas") {
+    return {
+      maxCompanies: tenant.maxCompanies,
+      maxUsers: tenant.maxUsers,
+      scope: "tenant",
+      source: "saas",
+    };
+  }
+  return {
+    maxCompanies: entitlement.maxCompanies,
+    maxUsers: entitlement.maxUsers,
+    scope: "installation",
+    source: "licence",
+  };
+}

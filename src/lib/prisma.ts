@@ -40,11 +40,31 @@
 import type { PrismaClient } from "@sai/db/client/company";
 import { getCompanyClient } from "@/lib/company-clients";
 import { currentCompany } from "@/lib/current-company";
+import {
+  ReadScopeWriteError,
+  WRITE_CLIENT_METHODS,
+  WRITE_METHODS,
+  inReadScope,
+  routeReadClient,
+} from "@/lib/read-replica";
 
 /** Klien milik perusahaan yang sedang dibuka — atau melempar. */
 export async function currentCompanyClient(): Promise<PrismaClient> {
-  const { databaseName } = await currentCompany();
-  return getCompanyClient(databaseName);
+  return getCompanyClient(await currentCompany());
+}
+
+/**
+ * Klien untuk satu panggilan lewat proxy ini.
+ *
+ * Di luar `runReadOnly` (keadaan SETIAP jalur hari ini, dan seluruh produksi
+ * selama `COMPANY_DATABASE_READ_URL_TEMPLATE` kosong) jawabannya PERSIS
+ * `currentCompanyClient()`. Di dalamnya, primary atau replika menurut aturan
+ * kesegaran `@/lib/read-replica`. Konteks perusahaan yang hilang tetap
+ * melempar di kedua jalan — `currentCompany()` dipanggil lebih dulu.
+ */
+async function clientForCall(): Promise<PrismaClient> {
+  if (!inReadScope()) return currentCompanyClient();
+  return routeReadClient(await currentCompany());
 }
 
 /** Properti klien yang BUKAN model — dipanggil langsung pada objek `prisma`. */
@@ -68,7 +88,10 @@ function modelProxy(model: string) {
       get(_t, method) {
         if (typeof method !== "string") return undefined;
         return async (...args: unknown[]) => {
-          const client = await currentCompanyClient();
+          if (inReadScope() && WRITE_METHODS.has(method)) {
+            throw new ReadScopeWriteError(`prisma.${model}.${method}`);
+          }
+          const client = await clientForCall();
           const delegate = (client as unknown as Record<string, Record<string, unknown>>)[model];
           const fn = delegate?.[method];
           if (typeof fn !== "function") {
@@ -89,7 +112,23 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
 
     if (CLIENT_METHODS.has(property)) {
       return async (...args: unknown[]) => {
-        const client = await currentCompanyClient();
+        if (inReadScope()) {
+          if (WRITE_CLIENT_METHODS.has(property)) {
+            throw new ReadScopeWriteError(`prisma.${property}`);
+          }
+          if (property === "$transaction" && typeof args[0] === "function") {
+            /* Transaksi di dalam cakupan baca dibuka READ ONLY: tulisan lewat
+               `tx` di dalam callback ditolak PostgreSQL sendiri, juga saat
+               cakupan jatuh ke primary. */
+            const client = await clientForCall();
+            const cb = args[0] as (tx: unknown) => Promise<unknown>;
+            return client.$transaction(async (tx) => {
+              await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
+              return cb(tx);
+            }, args[1] as Parameters<PrismaClient["$transaction"]>[1]);
+          }
+        }
+        const client = await clientForCall();
         const fn = (client as unknown as Record<string, unknown>)[property];
         return (fn as (...a: unknown[]) => unknown).apply(client, args);
       };

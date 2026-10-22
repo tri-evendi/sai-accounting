@@ -37,7 +37,8 @@
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { getReceivables } from "../src/lib/receivables";
 import { canEffective } from "../src/lib/authz-effective";
 import { planInvoiceDueDigests, type InvoiceDueDigest } from "../src/lib/invoice-due-digest";
@@ -53,11 +54,13 @@ async function rencanaUntuk(company: {
   name: string;
   slug: string;
   databaseName: string;
+  dbInstanceKey: string | null;
+  dbInstance: { key: string; urlEnvVar: string } | null;
   tenant: { slug: string } | null;
   memberships: { userId: number; role: string }[];
 }): Promise<RencanaPerusahaan> {
   return runWithCompany(
-    { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+    companyContextOf(company),
     async () => {
       const asOf = new Date();
       const { rows } = await getReceivables({ asOf });
@@ -100,7 +103,7 @@ async function main() {
       id: true,
       name: true,
       slug: true,
-      databaseName: true,
+      ...COMPANY_DATABASE_TARGET_SELECT,
       tenant: { select: { slug: true } },
       memberships: { where: { isActive: true }, select: { userId: true, role: true } },
     },

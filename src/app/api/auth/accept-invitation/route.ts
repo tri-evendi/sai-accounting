@@ -23,12 +23,14 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 
 import { acceptInvitation, invitationInfoByToken } from "@sai/platform/invitation-store";
+import { seatQuotaOverride } from "@/lib/entitlement-source";
 import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
 } from "@/lib/rate-limit-persistent";
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "@/lib/company-context";
+import { companyContextOf, runWithCompany } from "@/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { tenantPath } from "@sai/core/tenant-routes";
 import { writeAuditLog } from "@/lib/audit";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
@@ -107,10 +109,12 @@ export async function POST(request: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const result = await acceptInvitation(parsed.data.token, {
-    name: parsed.data.name,
-    passwordHash,
-  });
+  const seatQuota = await seatQuotaOverride();
+  const result = await acceptInvitation(
+    parsed.data.token,
+    { name: parsed.data.name, passwordHash },
+    seatQuota
+  );
 
   switch (result.status) {
     case "accepted":
@@ -133,7 +137,12 @@ export async function POST(request: Request) {
       );
     case "quota_exceeded":
       return NextResponse.json(
-        { error: t("invitations.quotaExceededAccept"), code: "quota_exceeded" },
+        {
+          error: seatQuota
+            ? t("invitations.licenceLimitReachedAccept")
+            : t("invitations.quotaExceededAccept"),
+          code: "quota_exceeded",
+        },
         { status: 422 }
       );
   }
@@ -148,7 +157,7 @@ export async function POST(request: Request) {
     select: {
       id: true,
       slug: true,
-      databaseName: true,
+      ...COMPANY_DATABASE_TARGET_SELECT,
       tenant: { select: { id: true, slug: true } },
     },
   });
@@ -168,7 +177,7 @@ export async function POST(request: Request) {
     }
     if (company) {
       await runWithCompany(
-        { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
+        companyContextOf(company),
         () =>
           writeAuditLog({
             userId: String(result.userId),

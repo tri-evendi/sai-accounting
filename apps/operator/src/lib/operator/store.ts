@@ -31,6 +31,7 @@ import "server-only";
 import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@sai/platform/platform-db";
 import { makeLatestJournalDateReader } from "@op/lib/operator/writes";
+import { COMPANY_DATABASE_TARGET_SELECT, toCompanyDatabaseTarget } from "@sai/db/company-url";
 import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@op/lib/operator/tenant-health";
 /* Inti rekonsiliasi tinggal di `src/lib/`, BUKAN di `scripts/`: mengimpor skrip
  * CLI dari sini menyeret impor gaya-skrip ke bundel aplikasi dan mematikan
@@ -38,6 +39,7 @@ import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@o
 import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
 import { queueSnapshot } from "@sai/platform/job-queue";
 import { jobMetrics, type LaneMetrics } from "@sai/platform/job-metrics";
+import { runtimeSummary, type RuntimeSummary } from "@sai/platform/runtime-samples";
 import type { LaneQueueHealth } from "@sai/core/queue-health";
 import {
   mailSettingsView,
@@ -693,6 +695,25 @@ export async function jobMetricsForOperator(
   }
 }
 
+/**
+ * Ringkasan pemicu tahap 1d — `null` bila tak terbaca, pola yang sama.
+ *
+ * Tabel `runtime_samples` baru ada sejak migration `0008`. Pemasangan yang
+ * belum menerapkannya mendapat "belum bisa dibaca", BUKAN vonis "belum
+ * terpicu": yang kedua adalah pernyataan tentang beban kerja, dan tanpa tabel
+ * tidak ada yang diketahui tentang beban kerja.
+ */
+export async function runtimeSummaryForOperator(
+  deps: { summary: () => Promise<RuntimeSummary> } = { summary: runtimeSummary }
+): Promise<RuntimeSummary | null> {
+  try {
+    return await deps.summary();
+  } catch (error) {
+    console.error("[operator-store] potret runtime tak terbaca:", error);
+    return null;
+  }
+}
+
 export async function schedulerRunsForOperator(
   limit = 10,
   deps: { control: ControlClient } = { control: controlDb }
@@ -1201,7 +1222,7 @@ export async function tenantHealthForOperator(tenant: {
   const controlUrl = process.env.CONTROL_DATABASE_URL;
   const companies = await controlDb.company.findMany({
     where: { tenantId: tenant.id, isActive: true },
-    select: { slug: true, databaseName: true },
+    select: { slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
   });
 
   const reader = controlUrl ? makeLatestJournalDateReader(controlUrl) : null;
@@ -1209,7 +1230,7 @@ export async function tenantHealthForOperator(tenant: {
     companies.map(async (c) => {
       if (!reader) return { slug: c.slug, latestJournal: "unreadable" as const };
       try {
-        return { slug: c.slug, latestJournal: await reader(c.databaseName) };
+        return { slug: c.slug, latestJournal: await reader(toCompanyDatabaseTarget(c)) };
       } catch (error) {
         console.warn(`[operator-health] buku ${c.databaseName} tak terbaca: ${String(error)}`);
         return { slug: c.slug, latestJournal: "unreadable" as const };

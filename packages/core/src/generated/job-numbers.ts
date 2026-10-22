@@ -28,3 +28,11 @@ export const DONE_RETENTION_DAYS = 14;
 
 export const QUEUE_AGE_WARN_SECONDS = 420;
 export const QUEUE_AGE_LATE_SECONDS = 600;
+
+/**
+ * Pemilik berkas hasil di volume `hasil`: pengguna `node` tahap `runner`,
+ * yang MEMBACA volume itu. Penulisnya (pelari jalur, root) wajib `chown` ke
+ * sini — lihat `@sai/platform/job-result-store`.
+ */
+export const RESULT_OWNER_UID = 1000;
+export const RESULT_OWNER_GID = 1000;

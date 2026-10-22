@@ -27,7 +27,8 @@
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import {
   planRemindersForCompany,
   sendReminder,
@@ -50,7 +51,7 @@ async function main() {
 
   const companies = await controlDb.company.findMany({
     where: { isActive: true, isDemo: false },
-    select: { id: true, name: true, slug: true, databaseName: true },
+    select: { id: true, name: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
     orderBy: { id: "asc" },
   });
 
@@ -60,11 +61,7 @@ async function main() {
   let gagal = 0;
 
   for (const company of companies) {
-    const scope = {
-      companyId: company.id,
-      slug: company.slug,
-      databaseName: company.databaseName,
-    };
+    const scope = companyContextOf(company);
 
     let rencana: ReminderPlanResult;
     try {

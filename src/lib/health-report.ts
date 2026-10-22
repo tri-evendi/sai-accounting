@@ -28,12 +28,19 @@ import { billingPlaneInstalled } from "@sai/core/deploy-profile";
 import { schemaGateVerdict, type SchemaGateVerdict } from "@sai/platform/schema-gate";
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseTarget,
+} from "@sai/db/company-url";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { queueHealth, type QueueHealthStatus } from "@sai/core/queue-health";
 import { queueSnapshot } from "@sai/platform/job-queue";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
 import { mailHealth, type MailHealthStatus } from "@sai/platform/mail-health";
+import { currentLicenceStanding, type LicenceStanding } from "@/lib/entitlement-source";
+import type { LicenceNotice } from "@sai/core/licence";
 import { outboxCount, resolveMailConfig } from "@sai/platform/mailer-core";
 
 /**
@@ -125,7 +132,22 @@ export type HealthReport =
       backup: PublicBackupHealth;
       conformance: ConformanceHealth;
       mail: MailStatus;
+      licence: LicenceHealth;
     };
+
+/**
+ * Keadaan lisensi untuk probe PUBLIK — status dan kode pemberitahuan saja.
+ * Nama customer, batas, dan id lisensi TIDAK ikut: probe ini terbuka tanpa
+ * sesi. Bundel diagnostik membacanya dari sini (`kesehatan.txt`), sebab
+ * skripnya dilarang menyentuh berkas lisensi sendiri.
+ *
+ * DILAPORKAN, TIDAK IKUT MEMUTUSKAN: lisensi yang hilang atau kunci yang belum
+ * ditanam tidak pernah menjadi 503 — pembukuan tetap dilayani.
+ */
+export type LicenceHealth = {
+  status: LicenceStanding["status"] | "unknown";
+  notices?: LicenceNotice[];
+};
 
 /**
  * Kesiapan surel — SATU KATA saja (#317).
@@ -135,6 +157,17 @@ export type HealthReport =
  * jumlah antrean (yang menyiratkan volume pemakaian) tinggal di konsol
  * operator. Kegagalan membacanya tidak boleh menjatuhkan probe.
  */
+async function licence(): Promise<LicenceHealth> {
+  try {
+    const standing = await currentLicenceStanding();
+    return standing.status === "ok"
+      ? { status: "ok", notices: standing.notices }
+      : { status: standing.status };
+  } catch {
+    return { status: "unknown" };
+  }
+}
+
 async function mail(): Promise<MailStatus> {
   try {
     const [config, count] = await Promise.all([resolveMailConfig(), outboxCount()]);
@@ -320,25 +353,25 @@ async function platform(): Promise<ReachStatus> {
  * skemanya benar.
  */
 async function sampleCompany(): Promise<CompanyStatus> {
-  let databaseName: string | null = null;
+  let target: CompanyDatabaseTarget | null = null;
   try {
     /* PT mana pun, asal deterministik — `id` menaik supaya jawabannya tidak
        berpindah-pindah antar-panggilan dan sebuah kegagalan bisa ditelusuri. */
     const company = await controlDb.company.findFirst({
       orderBy: { id: "asc" },
-      select: { databaseName: true },
+      select: COMPANY_DATABASE_TARGET_SELECT,
     });
-    databaseName = company?.databaseName ?? null;
+    target = company ? toCompanyDatabaseTarget(company) : null;
   } catch {
     return { status: "unknown" };
   }
 
   /* Belum ada satu PT pun — pemasangan baru. Itu bukan kegagalan, dan
      menyebutnya `error` akan membuat setiap pemasangan segar terlihat sakit. */
-  if (!databaseName) return { status: "unknown" };
+  if (!target) return { status: "unknown" };
 
   try {
-    await getCompanyClient(databaseName).$queryRaw`SELECT 1`;
+    await getCompanyClient(target).$queryRaw`SELECT 1`;
     return { status: "ok" };
   } catch {
     /*
@@ -391,6 +424,7 @@ export async function healthReport(): Promise<HealthReport> {
     companyStatus,
     backupStatus,
     conformanceStatus,
+    licenceStatus,
   ] = await Promise.all([
     lastSchedulerRun(),
     queue(),
@@ -399,6 +433,7 @@ export async function healthReport(): Promise<HealthReport> {
     sampleCompany(),
     lastBackup(),
     lastConformanceRun(),
+    licence(),
   ]);
 
   /*
@@ -420,5 +455,6 @@ export async function healthReport(): Promise<HealthReport> {
     backup: backupStatus,
     conformance: conformanceStatus,
     mail: mailStatus,
+    licence: licenceStatus,
   };
 }

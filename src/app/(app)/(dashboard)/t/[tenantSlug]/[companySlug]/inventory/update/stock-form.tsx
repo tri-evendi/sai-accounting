@@ -75,6 +75,7 @@ import {
   type ItemInput,
   type StockUpdateInput,
 } from "@/lib/validations/inventory";
+import { businessISODate } from "@sai/core/business-date";
 
 /** `marginLG` 24 · `margin` 16 · `marginSM` 12 — token AntD sebagai angka. */
 const FIELD_GAP = 16;
@@ -180,8 +181,9 @@ const STOCK_FIELDS = [
 /** Isian barang baru yang ada di layar. */
 const ITEM_FIELDS = ["code", "name", "unit"] as const;
 
+// Tanggal hari ini di Jakarta, bukan tanggal UTC (`toISOString()`).
 function todayISO() {
-  return new Date().toISOString().split("T")[0];
+  return businessISODate(new Date());
 }
 
 export function StockUpdateForm({

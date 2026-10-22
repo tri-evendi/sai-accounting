@@ -340,18 +340,24 @@ workers/                             # pelari jalur NODE
 ├── runner.ts                        # pelari jalur bersama (klaim · lease · upkeep)
 ├── jalur-perusahaan.ts              # masuk konteks PT — satu tempat, satu aturan
 ├── ledger.ts                        # jalur `ledger` — satu-satunya penulis buku
-└── interactive.ts                   # jalur `interactive` — ekspor besar
-services/integrator/                 # pelari jalur GO — nol aturan akuntansi
+└── interactive.ts                   # jalur `interactive` — ekspor besar (`report.export`)
+services/integrator/                 # pelari jalur GO — membaca buku, tidak pernah menulisnya
 ├── go.mod · .golangci.yml           # DI LUAR workspace bun
 ├── cmd/tenant/                      # jalur `tenant` — cadangan per basis data
+├── cmd/interactive/                 # jalur `interactive` sisi Go — `report.export_go` (1d)
+├── cmd/parity/                      # perkakas paritas TS ⇄ Go (bukan layanan)
 └── internal/
-    ├── contract/  (DIBANGKITKAN)    # kosakata & angka antrean
+    ├── contract/  (DIBANGKITKAN)    # kosakata, angka antrean, akuntansi, tata letak berkas
     ├── jobs/                        # klaim · lease · reclaim — SQL antrean
     ├── db/                          # kolam koneksi kendali, pembersih DSN
+    ├── registry/                    # `companies` (kendali) — company_id → buku PT
+    ├── ledgerread/                  # pembaca buku READ ONLY — Neraca Saldo (1d)
+    ├── document/                    # penulis XLSX pustaka baku + penyimpanan hasil (1d)
     ├── backup/                      # dump · sandi · manifest · tujuan
     └── trail/                       # `backup_runs` — satu-satunya tulisan di luar `jobs`
 contract/                            # SATU sumber untuk kontrak lintas bahasa
-└── kinds.yaml                       # kind · status · angka antrean
+├── kinds.yaml                       # kind · status · angka antrean · pemilik berkas hasil
+└── accounting.yaml                  # skala uang · tipe akun
 ```
 
 ### Poliglot: satu monorepo, dua bahasa, tiga workspace yang berbeda
@@ -383,12 +389,29 @@ dijaga `tests/services-go.test.ts`.
 > baris `queued` yang menumpuk selamanya tanpa pengklaim, dan `lease_renew_ms`
 > yang berbeda di satu sisi membuat pekerja sisi itu kehilangan pekerjaannya di
 > tengah jalan. Generatornya menolak kombinasi yang tidak konsisten, jadi
-> kombinasi yang salah tidak bisa LAHIR ke bahasa mana pun.
+> kombinasi yang salah tidak bisa LAHIR ke bahasa mana pun. Sejak tahap 1d
+> sumbernya tiga: `contract/kinds.yaml` (antrean + pemilik berkas hasil),
+> `contract/accounting.yaml` (skala uang + tipe akun — **hanya** yang punya
+> pembaca Go; tes `contract-accounting` menolak kunci tanpa pembaca), dan —
+> untuk tata letak berkas laporan — modul TS yang SUDAH menjadi sumber tunggal
+> layar, PDF, dan lembar sebar (`statement-layout.ts`, `report-export.ts`,
+> `report-engine.ts`): generator mengimpornya dan membangkitkan
+> `internal/contract/report_layout_gen.go`. Satu sumber, satu gerbang
+> (`contract:gen --cek`).
 
-**⚠ Batas Go: ia berhenti SEBELUM perhitungan akuntansi.** Jalur yang nol
+**⚠ Batas Go: ia berhenti SEBELUM perhitungan akuntansi — kecuali laporan
+yang paritasnya dibuktikan (tahap 1d).** Jalur yang nol
 aturan akuntansi pindah tanpa perdebatan (cadangan, migration, integrasi luar,
 penerbitan). Jalur yang MENGHITUNG angka akuntansi tidak — sampai ada pemicu
-**terukur**, bukan rencana. Sebabnya bukan ongkos melainkan kelas kerusakannya:
+**terukur**, bukan rencana. Sejak 22 Okt 2026 garis itu dilewati SATU laporan
+sekaligus: `internal/ledgerread` (baca-saja, transaksi `READ ONLY`) menghitung
+Neraca Saldo dalam sen `int64`, `bun run parity:trial-balance` membandingkannya
+baris demi baris dengan TS terhadap buku sungguhan, dan siapa pemilik jalur
+berkasnya tertulis di `src/lib/report-engine.ts` (`ts` · `go-parity` · `go`) —
+rinciannya [09 §9](./09-RANCANGAN-LAYANAN.md). **Neraca Saldo kini `go`**
+(paritas produksi 22 Okt 2026, 17 buku × 3 tanggal): lembar sebarnya dihasilkan
+`cmd/interactive` (`svc-interactive-go`), jalur berkas TS-nya dicabut, layarnya
+tetap TS. Sebabnya bukan ongkos melainkan kelas kerusakannya:
 `contract/` membangkitkan **konstanta**, bukan **aturan**, dan dua implementasi
 "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap
 berbeda hasilnya. Batas ini sudah menahan dua pemindahan:
@@ -421,6 +444,8 @@ apps/operator ─┘          │
 | Scanner wajib memakai akar `src/` + `apps/operator/src` + `packages/*/src` | `tests/akar-sumber.ts` |
 | Pohon Go tidak menulis tabel buku; kosakata & angka antrean tidak ditulis tangan di sana | `tests/services-go.test.ts` |
 | `kind` yang DITERBITKAN punya tepat satu pengklaim, di jalurnya sendiri | `tests/kind-punya-pengklaim.test.ts` |
+| Konstanta akuntansi dua-bahasa dari `contract/accounting.yaml`; setiap kuncinya punya pembaca Go | `tests/contract-accounting.test.ts` |
+| Register mesin laporan jujur: Go & skrip paritas yang disebut ada; `go` hanya dengan bukti paritas | `tests/report-engine.test.ts` · `trial-balance-parity.test.ts` |
 | Versi Go di image = versi di `go.mod` | `tests/go-image-version.test.ts` |
 | Hasil pekerjaan: izin per `kind` + gerbang kedua, nol redirect, jalur divalidasi dua kali | `tests/job-result-authorization.test.ts` · `job-result-store.test.ts` |
 | Durasi diukur dari `started_at`, bukan dari `claimed_at` yang diperpanjang | `tests/metrik-antrean.test.ts` |

@@ -1,0 +1,41 @@
+[
+  {
+    "name": "buku-bergerak",
+    "companyName": "PT Contoh Sejahtera & \"Mitra\" <Uji>",
+    "asOf": "2026-06-30",
+    "printedAt": "2026-07-01T03:04:05Z",
+    "rows": [
+      { "code": "1-100", "name": "Kas", "debit": "1234567.89", "credit": "0" },
+      { "code": "1-2a0", "name": "Piutang Usaha", "debit": "0.01", "credit": "0" },
+      { "code": "2-100", "name": "Utang & Akrual <lain>", "debit": "0", "credit": "1000000.5" },
+      { "code": "3-100", "name": "Modal Disetor", "debit": "0", "credit": "234567.4" },
+      { "code": "5-900", "name": "Beban Netral", "debit": "0", "credit": "0" }
+    ],
+    "totalDebit": "1234567.9",
+    "totalCredit": "1234567.9",
+    "balanced": true
+  },
+  {
+    "name": "buku-timpang",
+    "companyName": "PT Timpang Satu Sen",
+    "asOf": "2025-12-31",
+    "printedAt": "2026-01-05T01:02:03Z",
+    "rows": [
+      { "code": "1-100", "name": "Kas", "debit": "100.01", "credit": "0" },
+      { "code": "4-100", "name": "Penjualan", "debit": "0", "credit": "100" }
+    ],
+    "totalDebit": "100.01",
+    "totalCredit": "100",
+    "balanced": false
+  },
+  {
+    "name": "buku-kosong",
+    "companyName": "PT Baru Lahir",
+    "asOf": "2026-01-01",
+    "printedAt": "2026-01-01T00:00:00Z",
+    "rows": [],
+    "totalDebit": "0",
+    "totalCredit": "0",
+    "balanced": true
+  }
+]

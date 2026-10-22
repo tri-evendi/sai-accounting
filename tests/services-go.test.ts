@@ -28,9 +28,14 @@ import { JOB_KINDS, JOB_STATUSES } from "@sai/core/generated/job-kinds";
 
 const GO = berkasGo();
 const GEN = "services/integrator/internal/contract/jobs_gen.go";
+/** Bangkitan kedua sejak tahap 1d: `contract/accounting.yaml`. */
+const GEN_AKUNTANSI = "services/integrator/internal/contract/accounting_gen.go";
+/** Bangkitan ketiga (tahap 1d): tata letak berkas laporan, dari modul TS-nya. */
+const GEN_TATA_LETAK = "services/integrator/internal/contract/report_layout_gen.go";
+const BANGKITAN = [GEN, GEN_AKUNTANSI, GEN_TATA_LETAK];
 
 /** Berkas Go tulisan TANGAN — yang dibangkitkan tunduk pada aturan lain. */
-const TANGAN = GO.filter((b) => b.rel !== GEN);
+const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel));
 
 /**
  * Tulisan tangan yang BUKAN tes, untuk aturan "jangan menulis kosakata".
@@ -209,6 +214,24 @@ describe("kontrak: Go tidak punya daftarnya sendiri", () => {
     expect(gen, GEN).toBeDefined();
     expect(gen!.isi).toContain("JANGAN DISUNTING TANGAN");
     expect(gen!.isi).toContain("contract/kinds.yaml");
+
+    const akuntansi = GO.find((b) => b.rel === GEN_AKUNTANSI);
+    expect(akuntansi, GEN_AKUNTANSI).toBeDefined();
+    expect(akuntansi!.isi).toContain("JANGAN DISUNTING TANGAN");
+    expect(akuntansi!.isi).toContain("contract/accounting.yaml");
+
+    const tataLetak = GO.find((b) => b.rel === GEN_TATA_LETAK);
+    expect(tataLetak, GEN_TATA_LETAK).toBeDefined();
+    expect(tataLetak!.isi).toContain("JANGAN DISUNTING TANGAN");
+    expect(tataLetak!.isi).toContain("src/lib/statement-layout.ts");
+  });
+
+  it("setiap berkas di `internal/contract/` adalah bangkitan", () => {
+    /* Berkas tulisan tangan di paket kontrak adalah daftar kedua yang
+       menyamar sebagai kontrak — penjaga `TANGAN` di atas melewatinya hanya
+       bila namanya terdaftar sebagai bangkitan. */
+    const diKontrak = GO.filter((b) => b.rel.includes("/internal/contract/")).map((b) => b.rel);
+    expect(diKontrak.sort()).toEqual([...BANGKITAN].sort());
   });
 
   it("tidak ada `kind` pekerjaan yang ditulis sebagai teks di luar berkas bangkitan", () => {

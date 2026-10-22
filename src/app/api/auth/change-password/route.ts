@@ -3,7 +3,8 @@ import bcrypt from "bcrypt";
 import { auth } from "@/lib/auth";
 import { controlDb } from "@sai/core/control-db";
 import { changePasswordApiSchema } from "@/lib/validations/auth";
-import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
+import { RATE_LIMITS } from "@sai/core/rate-limit";
+import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   const rateKey = `change-password:${session.user.id}`;
-  const rateCheck = checkRateLimit(rateKey, RATE_LIMITS.changePassword);
+  const rateCheck = await checkSharedRateLimit(rateKey, RATE_LIMITS.changePassword);
   if (!rateCheck.allowed) {
     const minutes = Math.ceil((rateCheck.retryAfterMs ?? 0) / 60_000);
     const { t } = await getRequestI18n();

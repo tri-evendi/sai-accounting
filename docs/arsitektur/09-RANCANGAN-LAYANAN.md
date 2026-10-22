@@ -241,7 +241,7 @@ menahan sebagiannya.
 | `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
 | Integrasi luar (e-faktur, feed bank) | **Go** | belum dibangun — HTTP+XML, SFTP; tidak menyentuh pembukuan |
 | `schedule` — penerbitan | **Go** | belum dibangun — hanya menerbitkan baris `jobs`. Penerbitan hari ini masih langkah di `job-scheduler` (Node), dan itu memadai |
-| `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah |
+| `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan `svc-interactive-go` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
 | Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
 
 ⚠ **Batas yang berlaku: Go berhenti sebelum perhitungan akuntansi, sampai ada
@@ -251,15 +251,23 @@ argumen tentang 1d — dan 1d belum dibangun:
 
 | Ongkos | Bentuknya |
 |---|---|
-| **Ini penulisan ulang aturan, bukan pemindahan proses** | 45 berkas · 14.625 baris TS. `contract/` (§3.5) membangkitkan **konstanta**, bukan **aturan**: dua implementasi "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap berbeda hasilnya |
-| **Dua implementasi hidup berdampingan selama transisi** | `app-customer` memakai tumpukan laporan yang sama untuk tampilan di layar — **174 pengimpor di `src/app`** — dan layar tidak bisa menunggu pekerjaan. Jadi TS untuk layar, Go untuk berkas — kelas kegagalan yang I-2 ada untuk mencegah |
+| **Ini penulisan ulang aturan, bukan pemindahan proses** | **39 berkas · 12.623 baris TS** (`bun run report:count`, 22 Okt 2026 — daftar berkasnya tertulis di skripnya). Angka lama "45 berkas · 14.625 baris" tidak punya daftar, jadi tak bisa diulang maupun dibantah. `contract/` (§3.5) membangkitkan **konstanta**, bukan **aturan**: dua implementasi "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap berbeda hasilnya |
+| **Dua implementasi hidup berdampingan selama transisi** | `app-customer` memakai tumpukan laporan yang sama untuk tampilan di layar — **48 berkas di `src/app`** mengimpornya langsung (skrip yang sama; angka lama "174 pengimpor" tanpa definisi yang bisa diulang) — dan layar tidak bisa menunggu pekerjaan. Jadi TS untuk layar, Go untuk berkas — kelas kegagalan yang I-2 ada untuk mencegah |
 | **Node sudah terbukti bisa di server** | `src/lib/invoice-send.ts` menjalankan jsPDF **di Node** hari ini (impor dinamis, `server-only`). Jadi §5 tidak menuntut Go — ia hanya menuntut generatornya pindah dari peramban ke server |
 | **25 penjaga tidak melihat Go** | dari 306 berkas tes, 25 memindai kode untuk menegakkan aturan struktural dan semuanya berhenti di batas `services/`. Permukaan Go wajib punya penjaga Go-nya sendiri |
 
+⚠ **Ongkos baris kedua kini DIBAYAR per laporan, bukan sekaligus.** Selama
+transisi, satu laporan boleh punya dua implementasi HANYA bila register
+`src/lib/report-engine.ts` menyebutnya dan skrip paritasnya ada — dan layar
+tetap TS sampai diputuskan lain. Dua implementasi tanpa pembanding adalah
+kelas kegagalan di atas; dua implementasi yang dibandingkan baris demi baris
+terhadap buku sungguhan adalah migrasi yang bisa diperiksa.
+
 Maka: **tahap 1d (§9) dibuka oleh pengukuran, bukan oleh rencana.** Pemicunya
 satu dari dua — jalur ekspor memblokir event loop sampai p95 permintaan interaktif
-terpengaruh, atau memori jalur dokumen memaksa `--max-old-space-size` lagi. Sebelum
-pemicu itu terbaca, jalur `interactive` dan `bulk` berjalan sebagai **proses Node
+terpengaruh, atau memori jalur dokumen memaksa `--max-old-space-size` lagi. Sejak
+22 Okt 2026 keduanya **diukur** dan vonisnya terbaca di konsol `/scheduler` — bentuk
+pengukurannya di §11. Sebelum pemicu itu terbaca, jalur `interactive` dan `bulk` berjalan sebagai **proses Node
 terpisah** di luar `app-customer`: itu sudah membeli paralelisme dan isolasi
 memori yang dicari, tanpa menyentuh satu aturan akuntansi pun.
 
@@ -285,6 +293,19 @@ Runtime Node yang tersisa tetap **Node, bukan Bun**: pagar
 > **Apa pun yang hilang bila Redis dikosongkan harus boleh hilang.** Redis mati
 > = aplikasi melambat. Redis mati ≠ pekerjaan hilang atau tagihan terlewat.
 
+Yang kini ada di Redis (kode tahap 2, opt-in — [02 §19](./02-LAYANAN-INFRA.md)),
+dan ke mana masing-masing jatuh tanpanya:
+
+| Isi | Tanpa Redis |
+|---|---|
+| Pesan invalidasi 8 cache data kendali (izin, registry, surel, entitlement…) | cache **dilewati** sampai langganan pulih, lalu dikosongkan — lebih lambat, tidak basi |
+| Penghitung pembatas laju bersesi | penghitung memori per replika — longgar, tetap berbatas |
+| Buku tag Next (`updateTag`) | tag berlaku lokal; replika lain menyusul lewat `revalidate` |
+| Sewa sidik penyimpanan bersama | peringatan saat start, bukan penolakan |
+
+Tanpa persistensi (`--save ""`, tanpa AOF) dan dengan pengusiran LRU —
+konfigurasinya sendiri menyatakan bahwa isinya boleh hilang.
+
 ### 3.5 Kontrak lintas bahasa — yang belum dibangkitkan
 
 ✅ **Struktur pohonnya dan aturan "setiap konstanta dua-bahasa DIBANGKITKAN"
@@ -297,15 +318,26 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 | Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
 |---|---|---|
 | `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
-| `contract/accounting.yaml` | `ACCOUNT_TYPE_VALUES`, `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas | jalur Go pertama yang MEMBACA angka akuntansi — yaitu kesesuaian data atau 1d, dan keduanya masih tertahan (§3.3) |
-| `internal/ledgerread/` · `internal/document/` | — | tahap 1d |
+| `contract/accounting.yaml` — sisanya | `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas, **kategori & saldo normal per tipe akun** | laporan Go yang membacanya: kategori bersama Laba Rugi, materialitas bersama kesesuaian data |
+| `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
-⚠ **`accounting.yaml` sengaja BELUM dibuat, dan itu bukan penundaan.** Kontrak
-yang dibangkitkan untuk nol pembaca adalah berkas yang menyimpang tanpa ada yang
-menyadarinya: ia tidak punya sisi kedua yang bisa membantahnya. Komentar di
-`scripts/check-data-conformance.ts` sudah melarang MENYALIN konstanta itu sejak
-sebelum Go masuk, dan larangan itu yang menjaganya hari ini — bukan generator
-yang belum punya tujuan.
+✅ **`contract/accounting.yaml` LAHIR 22 Okt 2026, dengan dua kunci saja**:
+`money.scale` (2 — `Decimal(15,2)`) dan `account_types` (17 nilai, urutan
+formulir). Keduanya punya pembaca Go hari ini — `internal/ledgerread` mengurai
+NUMERIC ke sen dengan skala itu dan melaporkan akun bertipe asing — dan sisi
+TS-nya MEMBACA bangkitan, bukan daftar sendiri: `ACCOUNT_TYPES` di
+`src/lib/accounting.ts` kini dirakit dari `ACCOUNT_TYPE_VALUES` bangkitan +
+peta `Record<AccountType, …>` (label/kategori/saldo normal), jadi tipe baru di
+kontrak tanpa label adalah galat `tsc`, dan vonis seimbang `reports.ts` memakai
+`MONEY_SCALE`. Generatornya menolak duplikat, nilai bukan `snake_case`, dan
+skala di luar 0..6 (int64 sen).
+
+⚠ **Aturan "nol pembaca" kini DITEGAKKAN, bukan hanya ditulis.**
+`tests/contract-accounting.test.ts` menolak kunci baru di `accounting.yaml`
+yang tidak punya pembaca di Go tulisan tangan, dan menolak nilai tipe akun yang
+ditulis sebagai teks di luar berkas bangkitan. Itu sebabnya kategori tipe akun
+BELUM masuk: Neraca Saldo menaruh saldo di sisi yang ditunjuk TANDA selisihnya,
+bukan di sisi normal tipenya — ia tidak membaca kategori sama sekali.
 
 ## 4. Yang belum terbangun dari antrean
 
@@ -544,7 +576,7 @@ docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
 | `svc-pooler` | dipasang untuk **keseragaman konfigurasi**, bukan untuk beban |
 | Reverse proxy **milik customer** | **wajib** — TLS harus berhenti di suatu tempat; Traefik SAI tidak dikirim |
 | Volume `pg_data` · `documents` · `audit` · cadangan | **wajib** — dokumen dan jejak audit **tidak** ada di basis data |
-| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` — [06 §3.7](./06-KEAMANAN.md) |
+| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` (hari ini `job-scheduler`) — [06 §3.7](./06-KEAMANAN.md). Yang di-mount **direktori** `${SAI_LICENCE_DIR:-./lisensi}` → `/etc/sai:ro`, bukan berkasnya: bind-mount satu berkas mematok inode, jadi lisensi pengganti tidak terlihat sampai restart |
 | Jalur `schema` | **wajib setiap pembaruan**, dijalankan customer |
 | `cache-redis` · `app-operator` · basis data `platform` | **tidak dipasang** |
 
@@ -581,6 +613,23 @@ kedua tujuan, bukan hanya di jalur lokal.
 
 Hanya tiga hal menyeberang batas customer, dan ketiganya **manual**: image rilis
 bertag versi (masuk), berkas lisensi (masuk), bundel diagnostik (keluar).
+
+✅ **Tahap D — kode lengkap, 22 Okt 2026.** Yang ditambahkan:
+
+| Butir | Keadaan |
+|---|---|
+| Mount lisensi | hanya-baca ke `app-customer` + `job-scheduler`, `LICENCE_FILE` disetel profil (`tests/onprem-profile.test.ts`) |
+| Batas lisensi | ditegakkan di titik **pembuatan** PT dan undangan/penerimaan pengguna lewat `creationQuotaFor` / `seatQuotaOverride` (`src/lib/entitlement-source.ts`); di on-premise dihitung atas seluruh pemasangan. SaaS tidak berubah. Yang sudah ada tidak pernah ditutup (`tests/licence-limits.test.ts`) |
+| Dukungan & versi | `supportEndsAt` lewat / versi berjalan > `maxVersion` → pita **informasi** di `/platform` bagi pengelola + `licence` di `/api/health` (ikut bundel diagnostik) |
+| Saluran rilis | tag git `v*` → image `:<versi>` (tanpa `:latest`, tag ≠ `package.json` ditolak) + bundel luring `docker save` + `SHA256SUMS` + compose sebagai aset GitHub Release (`tests/release-channel.test.ts`) |
+| Kunci publik belum ditanam | peringatan `[start]` (`src/instrumentation.ts`), `licence.status: "key-not-set"` di probe & bundel |
+| Serah terima | templat [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) — kunci cadangan, reverse proxy/TLS, bantahan DRC |
+
+⚠ **Satu langkah tersisa, dan sengaja bukan kode:** kunci publik produksi.
+`LICENCE_PUBLIC_KEY_PEM` masih `"BELUM-DISETEL"` sampai pemilik membuat pasangan
+kunci di mesin luring dan menempel kunci publiknya ([serah terima
+§0](../ONPREM-SERAH-TERIMA.md)). Kunci privat tidak pernah dibuat oleh agen,
+CI, atau di repo.
 
 ### DC/DRC customer menggantikan HA SAI — bukan cadangannya
 
@@ -671,13 +720,147 @@ Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 (§5). Jumlahnya DICACAH penjaga, jadi ia tidak bisa diam-diam berubah menjadi
 "sudah semuanya".
 
+🔶 **Tahap 1d DIMULAI 22 Okt 2026 — laporan PERTAMA sudah dipindah (`go`).**
+Pengukurannya (§11, vonis di `/scheduler`) sudah ada, dan pemilik meminta
+seluruh tahap dikerjakan. Yang dibangun untuk laporan PERTAMA, Neraca Saldo:
+
+| Bagian | Di mana |
+|---|---|
+| Pembaca buku baca-saja: satu kolam per PT (template kredensial & urutan env SAMA dengan `company-clients.ts`), transaksi `READ ONLY` + `REPEATABLE READ`, nama kosong MELEMPAR | `services/integrator/internal/ledgerread/open.go` |
+| Neraca Saldo dalam **sen `int64`** — NUMERIC diurai TEPAT dari teks, tanpa float; `asOf` dikirim sebagai teks UTC `::timestamp` supaya mode PgBouncer & zona sesi tidak mengubahnya | `ledgerread/trial_balance.go` · `money.go` |
+| Perkakas paritas (bukan layanan, tanpa tahap Dockerfile) | `services/integrator/cmd/parity` |
+| Pembanding baris demi baris: kode & URUTAN akun, nama, debit, kredit, kedua total, vonis seimbang — pada ketelitian sen kontrak | `src/lib/trial-balance-parity.ts` · `bun run parity:trial-balance` |
+| Register pemilik jalur berkas per laporan: `ts` · `go-parity` · `go` | `src/lib/report-engine.ts`, dijaga `tests/report-engine.test.ts` |
+
+**Register itu yang menyatakan keadaan peralihan, bukan saklar env.** Arti
+ketiga nilainya:
+
+| Nilai | Jalur BERKAS | Layar | Syarat masuk |
+|---|---|---|---|
+| `ts` (bawaan) | TypeScript | TypeScript | — |
+| `go-parity` | TypeScript | TypeScript | implementasi Go + skrip paritas ADA (penjaga memeriksa keduanya) |
+| `go` | **Go** — versi TS untuk berkas dicabut | TypeScript sampai diputuskan | `parityProven: { date, books }` di entri yang sama, dari paritas atas buku **produksi** |
+
+Paritas lokal sudah lulus (22 Okt 2026, Postgres sekali pakai, 2 buku × 3
+tanggal): 3.000 jurnal berpecahan sen, valas ber-`base_*`, akun netral 0/0,
+baris bernilai nol, kode berhuruf campuran, tipe akun asing, retur bersaldo
+abnormal, jurnal penutup tahunan (IKUT, #555), batas tanggal tepat
+`23:59:59.999` lawan `00:00` hari berikutnya, buku timpang satu sen — juga di
+bawah `TZ=Asia/Jakarta` dan mode `pgbouncer=true`. **Yang BELUM: paritas atas
+buku produksi** — langkah sesi utama, dan satu-satunya syarat `go-parity` → `go`:
+
+```bash
+# 1. biner statis dari checkout yang memuat tahap ini
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+# 2. di jaringan compose, lewat migrator (DATABASE_URL langsung ke `pg`, bukan PgBouncer)
+docker compose run --rm --no-deps \
+  -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+  migrate bun run parity:trial-balance -- \
+    --go-bin /usr/local/bin/sai-parity --as-of "$(date +%F),2025-12-31"
+```
+
+Image migrator harus sudah memuat `scripts/parity-trial-balance.ts` (yaitu
+SESUDAH rilis); sebelum itu, pasang sumber checkout di atasnya (`-v
+"$PWD/scripts:/app/scripts:ro" -v "$PWD/src:/app/src:ro" -v
+"$PWD/package.json:/app/package.json:ro" -v
+"$PWD/packages/core:/app/packages/core:ro"`).
+Keduanya HANYA MEMBACA. Keluar bukan-nol pada satu selisih atau satu buku yang
+gagal dibaca.
+
+✅ **Paritas produksi LULUS 22 Okt 2026** (sesi utama): `bun run
+parity:trial-balance` → "17 buku × 3 tanggal: 51 setara · 0 berselisih · 0
+gagal". Buktinya tercatat di entri register yang sama
+(`parityProven: { date: "2026-10-22", books: 17 }`), dan Neraca Saldo
+berpindah `go-parity` → `go` pada hari yang sama.
+
+#### Peralihan pertama: lembar sebar Neraca Saldo dihasilkan Go
+
+| Bagian | Di mana |
+|---|---|
+| Register `go` + bukti paritas; `exportJobKind(id)` — satu tempat "TS atau Go" menjadi antrean | `src/lib/report-engine.ts` |
+| Rute ekspor membaca register SEBELUM merakit: laporan `go` **selalu** diterbitkan ke `report.export_go` (202), berapa pun barisnya; tanpa `?id=` dijawab 400, tidak pernah dirakit TS | `src/app/api/reports/export/route.ts` · `src/lib/report-export-go.ts` |
+| Pelari Node MENOLAK laporan `go` yang datang lewat `report.export` (pekerjaan lama dari sebelum peralihan) | `workers/interactive.ts` |
+| `kind` baru `report.export_go`, jalur `interactive`; izin unduh & gerbang kedua SAMA dengan `report.export` | `contract/kinds.yaml` · `packages/core/src/job-result.ts` · `src/lib/job-result-gate.ts` |
+| Pelari Go jalur `interactive` — registry → buku PT (READ ONLY) → XLSX → volume `hasil`; menolak laporan yang register-nya bukan `go` | `services/integrator/cmd/interactive` → `svc-interactive-go` |
+| Penulis XLSX pustaka baku + penyimpanan hasil berbentuk sama dengan `job-result-store` | `internal/document` |
+| Kalimat, kolom, lebar, format angka, rupa kepala lembar, nama bulan, id laporan `go` — DIBANGKITKAN dari modul TS-nya | `internal/contract/report_layout_gen.go` (`bun run contract:gen`) |
+| Paritas ISI lembar sebar (definisinya: nilai & tipe tiap sel — angka pada sen —, format angka, tebal, ukuran/warna huruf, isi, perataan, lebar kolom, nama lembar, pembuat) | `src/lib/xlsx-content-parity.ts` · `bun run parity:trial-balance-xlsx` (buku sungguhan) · `tests/trial-balance-xlsx-golden.test.ts` (berkas emas Go dari fixture bersama, di setiap `verify`) |
+
+**Tiga keputusan yang patut diketahui orang berikutnya:**
+
+1. **Selalu antre, tidak ada jalur sinkron "kecil".** Ekspor sinkron di bawah
+   `EXPORT_QUEUE_HANDOFF_ROWS` ADALAH versi TS-nya; menyisakannya berarti dua
+   implementasi berkas hidup berdampingan tanpa pembanding — persis yang
+   register ini ada untuk mencegah. Harganya beberapa detik penantian (klien
+   sudah menunggu di rute hasil untuk ekspor besar; tidak ada UI baru).
+2. **Instan batas tanggal dihitung PENERBIT.** `asOfInstant` = `resolveAsOf`
+   yang sama dengan layar, dikirim sebagai ISO UTC; Go tidak menghitung "akhir
+   hari" sendiri, jadi zona waktu container Go tidak bisa memindahkan satu
+   jurnal pun ke sisi lain batas (temuan paritas lokal di atas).
+3. **"Berkas" = lembar sebar.** PDF Neraca Saldo (`/api/reports/pdf`) tetap TS,
+   digambar dari muatan layar seperti layarnya. Memindahkannya keputusan
+   tersendiri.
+
+⚠ **Temuan di jalan, dan ia bukan Go:** pelari jalur berjalan sebagai ROOT
+sementara `app-customer` membaca volume `hasil` sebagai `node`; hasil 0600 di
+direktori 0700 milik root tidak terbaca, jadi SETIAP hasil berantre — termasuk
+ekspor besar `svc-interactive` sejak 1c — dijawab 404. Kedua pelari kini
+`chown` ke `contract/kinds.yaml` → `results` (uid/gid 1000 = `node`). Paritas
+isi lokal (Postgres sekali pakai, 2 buku × 3 tanggal, buku berwizard + buku
+kosong ber-registry `&"…"`): 6 setara; temuan pertamanya: baris "Belum ada
+saldo" TEBAL di TS, dan Go sudah mengikutinya.
+
+**Yang tersisa bagi sesi utama:** `bun run parity:trial-balance-xlsx` atas buku
+produksi (perintah sama dengan di atas, biner yang sama — subperintah
+`trial-balance-xlsx`), lalu rilis dengan `svc-interactive-go` ikut `pull` +
+`up`.
+
+✅ **Batas tanggal laporan = jam Jakarta (keputusan pemilik, 22 Okt 2026).**
+Dulu `resolveAsOf` membuat `asOf` = akhir hari menurut zona PROSES, jadi buku
+yang sama per `2026-06-30` pernah memberi 14 baris di `TZ=Asia/Jakarta` dan 15
+di UTC. Kini batas per tanggal dan periode laporan, beranda, buku besar, dan
+umur piutang/utang memakai offset eksplisit +07:00 (`@sai/core/business-date`),
+apa pun zona proses — CI, skrip dari host, dan perkakas paritas memberi angka
+yang sama dengan `app-customer`. Hitungan kalender yang masih memakai jam lokal
+(tahun buku di `year-close.ts`, periode stok) dijaga oleh `TZ=Asia/Jakarta`
+bawaan di Dockerfile. Data produksi tidak bergeser: tidak ada jurnal yang
+tersimpan pukul 17.00 UTC ke atas, dan produksi sudah berjalan di WIB.
+
+✅ **Penjaga "jalur ekspor BELUM memanggil Go" sudah DIGANTI, bukan dihapus.**
+`tests/report-engine.test.ts` kini menuntut: rute ekspor membaca register
+sebelum merakit, laporan `go` diterbitkan ke `report.export_go`, pelari Node
+menolak laporan `go`, pelari Go menolak yang bukan `go`, halaman laporan `go`
+mengirim asalnya, dan pola segmen hasil Go = `SEGMEN` TS. Laporan berikutnya
+mengikuti pola yang sama, satu per satu: implementasi Go + kunci kontrak yang
+dibacanya + skrip paritas (angka DAN isi berkas) + entri `go-parity` → `go`.
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
-| **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
-| **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` | 5–7 |
-| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` | — |
-| **D — on-premise** | customer on-prem pertama | penanda profil · artefak lisensi · satu pintu entitlement · saluran rilis · bundel diagnostik | di customer |
+| **1d — Go ke perhitungan laporan** 🔶 laporan pertama `go` (Neraca Saldo, 22 Okt 2026) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
+| **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
+| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |
+| **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
+
+**Tahap 3: yang sudah ada, dan yang hanya bisa dibuktikan di tiga host.**
+Semuanya opt-in lewat `docker-compose.ha.yml` dan tiga variabel yang tidak ada
+di `.env` produksi; tanpa keduanya tidak satu perilaku pun berubah. Rinciannya
+dan runbook-nya di [02 §15.1](./02-LAYANAN-INFRA.md).
+
+| Butir | Wujudnya | Bukti di satu VM |
+|---|---|---|
+| *Leader election* `job-scheduler` | `scripts/run-as-leader.ts` sebagai `entrypoint`; kunci sesi di koneksi LANGSUNG yang dibuktikan ulang tiap denyut (`@sai/db/session-lock`) | tes unit: satu replika = perintah sama, sekali, kode keluar sama; kandidat tak menjalankan apa pun; kunci hilang → putaran dihentikan sebelum pemilihan ulang |
+| Pagar jalur tunggal-instans | Node: koneksi langsung bila `CONTROL_DATABASE_DIRECT_URL` ada | penjaga: advisory lock TS hanya di dua berkas, URL HA lolos penolak pooler; cacat jalan lama DIREPRODUKSI terhadap PgBouncer sekali-pakai (02 §15.1) |
+| Replika baca | `runReadOnly` → replika bila sudah memutar WAL sampai LSN primary, selain itu primary; tulisan ditolak | tes unit atas aturan LSN, penolakan tulisan, konteks PT yang hilang tetap melempar; daftar-izin pemanggil |
+| *Failover* otomatis | Patroni + etcd (witness di host ketiga) + `pg` sebagai HAProxy | `docker compose config` saja — **failover sungguhan belum pernah terjadi** |
+| Replika `svc-integrator` | jalur jamak: `--scale`; jalur tunggal: kandidat panas lewat restart | — |
+
+⚠ **Satu temuan di jalan, dan ia bukan tahap 3.** Pagar jalur `ledger` di Node
+mengambil kunci SESI lewat PgBouncer mode TRANSAKSI — cacat yang sama dengan
+P1002 `migrate` 15 Okt 2026, hanya tanpa gejala karena satu replika dan
+PgBouncer yang memakai ulang backend yang sama. Ia diperbaiki hanya di profil
+HA; menyalakannya di produksi satu-VM adalah keputusan terpisah (satu baris
+`environment:` di `svc-ledger`), bukan bagian diam-diam dari tahap ini.
 
 ⚠ **Tahap 1 dipecah empat, dan urutannya mengikuti satu garis: aturan akuntansi
 disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.
@@ -710,12 +893,49 @@ standby-nya.
 
 Tahap 1 seluruhnya di **satu VM yang sudah ada**. Sesudahnya, tahap 2 dan 3
 menjadi perubahan konfigurasi — bukan penulisan ulang. Itu arti "siap secara
-desain". Tahap 4 mungkin karena #104: tenant bisa dipindah ke instans lain tanpa
-menyentuh skema atau kode.
+desain". Tahap 4 mungkin karena #104 — satu basis data per PT — tetapi tidak
+"tanpa menyentuh kode" seperti yang dulu ditulis di sini: rumus URL buku PT
+ternyata disalin di delapan tempat, dan setiap salinan hanya mengenal satu
+server.
+
+✅ **Tahap 4, kode lengkap 22 Okt 2026, opt-in.** Yang dibangun:
+
+| Bagian | Bentuk |
+|---|---|
+| Registry | `db_instances` + `companies.db_instance_key` (kendali 0009, expand saja). `NULL` = instans bawaan, jadi tabel kosong = perilaku hari ini |
+| Penyelesai | `@sai/db/company-url` — SATU penyusun URL buku PT untuk aplikasi, fan-out migration, kesesuaian, penyediaan, konsol, dan skrip. Instans tak terselesaikan **melempar**, tidak jatuh ke bawaan. Kunci kolam = instans + basis data |
+| Penyediaan | `provisionCompany({ dbInstanceKey })`; tanpa itu instans bawaan |
+| Fan-out | `db:migrate:all` dan sapuan kesesuaian melapor per instans; instans yang tak terselesaikan menggagalkan PT-nya saja |
+| Pemindahan | `bun run tenant:move` — pratinjau bawaan, menolak PT aktif, `pg_dump \| pg_restore`, bandingkan jumlah baris per tabel, balik registry, ganti nama salinan asal (jalan balik) |
+| Penjaga | `tests/company-url-resolver.test.ts` (pemindai + penyelesai), `tests/tenant-move.test.ts` |
+
+⚠ **Satu yang sengaja TIDAK ikut: cadangan Go per instans.** `svc-tenant`
+masih mencacah `pg_database` satu server. PT pertama yang dipindah akan masuk
+`Hilang` di bukti kelengkapannya. Itu bunyi yang benar, sebab bukunya memang
+belum dicadangkan, dan karena itu pekerjaan ini prasyarat pemindahan pertama.
+Ia ditahan karena toolchain Go tidak ada di mesin pembangunnya, sedangkan Go
+yang belum lolos `go:test` + `go:lint` tidak dikirim (AGENTS.md §Go). Bentuk
+dan runbook-nya di [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
+
+⚠ Replika baca (tahap 3) hanya melayani instans **bawaan**. PT di instans lain
+membaca primary-nya sendiri sampai instans itu punya standby sendiri.
 
 ⚠ `cacheHandler`-nya **ditulis sendiri**, apa pun penyimpanannya: pustaka yang
 beredar menyasar Next 13–15, sementara versi di sini memakai model
-`updateTags`/`refreshTags` yang baru.
+`updateTags`/`refreshTags` yang baru. Terbangun 22 Okt 2026
+(`@sai/platform/next-cache-tags`), dengan dua keputusan yang tidak tertulis di
+sini sebelumnya: yang dibagi **buku tag**, bukan isi cache (tiga `unstable_cache`
+masing-masing satu baris kecil — yang salah dengan dua replika invalidasinya,
+bukan biaya bacanya); dan handler dipasang lewat kait global Next saat
+`register`, bukan lewat `next.config.ts`, supaya image yang sama berperilaku
+identik dengan bawaan Next selama `CACHE_REDIS_URL` tidak disetel.
+
+✅ **Tahap 2 siap sebagai konfigurasi, 22 Okt 2026** — tanpa satu pun yang
+dinyalakan di produksi. Satu VM tidak bisa membuktikan bagian yang paling
+penting: dua replika Next sungguhan di belakang Traefik, standby yang
+melindungi sesuatu (di VM yang sama ia berbagi disk dengan primary), dan
+penyimpanan dokumen bersama lintas host. Daftar lengkap yang sudah dan belum
+terbukti: [02 §19](./02-LAYANAN-INFRA.md).
 
 ## 10. Nomenklatur
 
@@ -810,6 +1030,19 @@ samping setiap persentil justru karena itu: **p95 atas tiga pekerjaan adalah
 angka, bukan fakta.** Tujuh jalur tetap memakai satu pasang ambang sampai
 angkanya layak dipercaya. Pemicunya pengukuran, sama seperti 1d.
 
+✅ **Pemicu 1d kini diukur (22 Okt 2026)** — tabel kendali `runtime_samples`
+(migration `0008`), panel ketiga di `/scheduler`. Rinciannya keadaan, jadi
+tempatnya [02 §14](./02-LAYANAN-INFRA.md). Dua hal yang ternyata tidak seperti
+yang ditulis pemicunya:
+
+- **"`--max-old-space-size` lagi" tidak bisa dibaca harfiah di jalur dokumen.**
+  Pelari jalur berjalan di **Bun**, yang mengabaikan flag itu — tidak ada batas
+  heap yang bisa didekati. Yang dinilai karena itu **puncak RSS** per pekerjaan
+  terhadap 768 MiB, pagar yang sudah terbukti wajib di kotak ini (Dockerfile).
+- **Node dan Bun mencatat histogram event loop dengan dasar berbeda.** Diukur:
+  Node menyertakan resolusinya (p50 10,11 ms saat menganggur), Bun tidak
+  (0,09 ms). Tanpa koreksi, dua proses yang sama sehatnya terbaca berbeda 10 ms.
+
 Penamaannya mengikuti konvensi OpenTelemetry (`queue.items.age`,
 `queue.items.size`, `job.duration`) dengan dimensi nama jalur.
 
@@ -823,11 +1056,11 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 | ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). Prasyarat §6 karena itu terpenuhi; yang tersisa dari §6 adalah memindahkan penerapannya keluar dari gerbang pemblokir |
 | **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
 | **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |
-| Keamanan | `SECURITY.md` — jalur pengungkapan kerentanan |
+| ~~Keamanan~~ | ✅ `SECURITY.md` ada (22 Okt 2026) — **kontak & sasaran waktunya masih placeholder** yang wajib diisi pemilik |
 | Deprecation | jendela tertulis: ditandai satu rilis minor, dicabut sesudahnya |
 | Data | retensi tertulis per jenis data + perjanjian pengolahan data |
-| On-premise | jendela dukungan, kebijakan backport, serah terima kunci |
-| Kepemilikan kode | `CODEOWNERS` (P3-3) |
+| On-premise | jendela dukungan, kebijakan backport. Serah terima kunci ✅ sebagai templat: [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) |
+| ~~Kepemilikan kode~~ | ✅ `.github/CODEOWNERS` (P3-3), satu pemilik: `@tri-evendi` |
 
 Dua di antaranya memblokir komersialisasi, bukan sekadar kerapian: **disiplin
 versi** — tanpa artefak bernomor tidak ada yang bisa dijual atau didukung — dan

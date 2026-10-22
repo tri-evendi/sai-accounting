@@ -357,7 +357,7 @@ describe("penjaga halaman & API benar-benar memakai gerbang modul", () => {
 
     const enabled = await runWithoutCompany(() =>
       runWithCompany(
-        { companyId: 7, slug: "pt-lain", databaseName: "sai_lain" },
+        { companyId: 7, slug: "pt-lain", databaseName: "sai_lain", dbInstance: null },
         () => getEnabledModules()
       )
     );

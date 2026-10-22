@@ -22,6 +22,8 @@ import {
   type StatusNoticeRecord,
 } from "@sai/core/status-notices";
 
+import { registerSharedCache } from "./cache-bus";
+
 type Deps = { platform: PlatformClient };
 
 const SELECT = {
@@ -50,9 +52,14 @@ export async function readStatusNoticeRecords(deps: Deps, now: Date = new Date()
 const TTL_MS = 60 * 1000;
 let cache: { at: number; rows: StatusNoticeRecord[] } | null = null;
 
+/** Tahap 2: penulisnya konsol operator, pembacanya setiap replika — lewat bus. */
+const shared = registerSharedCache("status-notices", () => {
+  cache = null;
+});
+
 /** Pembaca BANNER: ber-cache, gagal-lunak (`[]`). */
 export async function cachedStatusNoticeRecords(deps: Deps, now: Date = new Date()): Promise<StatusNoticeRecord[]> {
-  if (cache && now.getTime() - cache.at < TTL_MS) return cache.rows;
+  if (cache && now.getTime() - cache.at < TTL_MS && shared.usable()) return cache.rows;
   try {
     const rows = await readStatusNoticeRecords(deps, now);
     cache = { at: now.getTime(), rows };
@@ -68,6 +75,7 @@ export async function cachedStatusNoticeRecords(deps: Deps, now: Date = new Date
 /** Dipanggil sesudah operator menulis, supaya banner tidak menunggu 60 detik. */
 export function invalidateStatusNoticeCache(): void {
   cache = null;
+  shared.publish();
 }
 
 export type NoticeWriteResult =

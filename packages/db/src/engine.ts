@@ -12,8 +12,11 @@
  *
  * == KENAPA DARI URL, BUKAN DARI SAKELAR ENV ==============================
  * Sakelar terpisah (`DB_ENGINE=postgres`) bisa menyimpang dari URL-nya: satu
- * disetel, satunya lupa. Lalu aplikasinya menyambung ke MariaDB sambil mengirim
- * SQL PostgreSQL, dan pesan galatnya tidak akan menyebut penyebabnya.
+ * disetel, satunya lupa. Lalu aplikasinya menyambung ke mesin yang satu sambil
+ * mengirim SQL mesin yang lain, dan pesan galatnya tidak menyebut penyebabnya.
+ *
+ * Sejak Fase E (#636) mesinnya tinggal PostgreSQL, dan berkas ini tetap ada
+ * untuk satu tugas: MENOLAK URL `mysql://` dengan pesan yang jelas.
  *
  * URL-nya SUDAH menyatakan mesinnya. Satu sumber kebenaran, nol kemungkinan
  * menyimpang.
@@ -22,24 +25,34 @@
  * alasan yang sama dengan `conformance-heartbeat.ts`.
  */
 
-export type DbEngine = "mariadb" | "postgresql";
+/**
+ * Sejak Fase E (#636, 22 Okt 2026) hanya ada SATU mesin. Tipenya dipertahankan
+ * sebagai literal tunggal, bukan dilipat jadi `string`: pemanggil yang masih
+ * membandingkan `=== "mariadb"` gagal di `tsc`, bukan diam-diam selalu salah.
+ */
+export type DbEngine = "postgresql";
 
 /** Skema URL yang dikenali, dipetakan ke mesinnya. */
 const SKEMA: Record<string, DbEngine> = {
-  "mysql:": "mariadb",
-  "mariadb:": "mariadb",
   "postgres:": "postgresql",
   "postgresql:": "postgresql",
 };
 
 /**
+ * Skema mesin yang SUDAH DICABUT. Dikenali hanya untuk ditolak dengan pesan
+ * yang menyebut sebabnya: `.env` lama yang masih memuat `mysql://` lebih baik
+ * berhenti dengan "MariaDB sudah dicabut" daripada dengan "skema tak dikenal"
+ * yang membuat orang mencari salah ketik.
+ */
+const SKEMA_DICABUT = new Set(["mysql:", "mariadb:"]);
+
+/**
  * Mesin apa yang dituju URL ini.
  *
- * MELEMPAR untuk skema yang tidak dikenali, tidak pernah menebak. Menebak
- * "mariadb" sebagai bawaan berarti satu salah ketik pada URL PostgreSQL akan
- * diam-diam menyambung ke mesin lama — dan pada hari penukaran, "sebagian
- * layanan masih di mesin lama" adalah keadaan terburuk yang mungkin: data
- * tertulis ke dua tempat sekaligus.
+ * MELEMPAR untuk skema yang tidak dikenali, tidak pernah menebak — dan
+ * MELEMPAR untuk `mysql://`/`mariadb://`: MariaDB dicabut di Fase E (#636).
+ * Satu-satunya jalan kembali ke sana adalah memulihkan dump terakhirnya ke
+ * image lama, bukan mengganti URL.
  */
 export function dbEngineDariUrl(url: string): DbEngine {
   let protokol: string;
@@ -47,6 +60,12 @@ export function dbEngineDariUrl(url: string): DbEngine {
     protokol = new URL(url).protocol.toLowerCase();
   } catch {
     throw new Error("URL basis data tidak sah — mesinnya tidak bisa ditentukan.");
+  }
+  if (SKEMA_DICABUT.has(protokol)) {
+    throw new Error(
+      `URL basis data ber-skema "${protokol}" ditolak: MariaDB sudah dicabut (#636, Okt 2026). ` +
+        "Arahkan URL ini ke PostgreSQL (postgres://…)."
+    );
   }
   const mesin = SKEMA[protokol];
   if (!mesin) {
@@ -59,12 +78,10 @@ export function dbEngineDariUrl(url: string): DbEngine {
 }
 
 /** Port bawaan bila URL-nya tidak menyebutkan port. */
-export function portBawaan(mesin: DbEngine): number {
-  return mesin === "postgresql" ? 5432 : 3306;
-}
+export const PORT_BAWAAN = 5432;
 
 /**
- * Bagian URL yang dibutuhkan kedua adapter, diurai sekali.
+ * Bagian URL yang dibutuhkan adapter & operasi server, diurai sekali.
  *
  * Kata sandi di-`decodeURIComponent`: sandi yang memuat `@` atau `/` WAJIB
  * ter-encode di dalam URL, dan meneruskannya apa adanya ke driver menghasilkan
@@ -85,7 +102,7 @@ export function uraikanUrl(url: string): BagianKoneksi {
   return {
     mesin,
     host: u.hostname,
-    port: Number(u.port) || portBawaan(mesin),
+    port: Number(u.port) || PORT_BAWAAN,
     user: decodeURIComponent(u.username),
     password: decodeURIComponent(u.password),
     database: u.pathname.replace(/^\//, ""),

@@ -134,16 +134,15 @@ async function main() {
       }
       console.log(`  menghancurkan buku ${company.slug} (${company.databaseName})…`);
       /*
-       * ══ `DROP DATABASE` TIDAK SAMA DI KEDUA MESIN ════════════════════════
+       * ══ `DROP DATABASE` DITOLAK SELAMA ADA KONEKSI ═══════════════════════
        * PostgreSQL MENOLAK menghapus basis data selama masih ada satu koneksi
-       * ke sana; MySQL tidak peduli. Di jalur ini penolakan itu berbahaya: ia
+       * ke sana (MySQL dulu tidak peduli). Di jalur ini penolakan itu berbahaya: ia
        * terjadi SETELAH gerbang persetujuan dilewati dan setelah beberapa buku
        * lain sudah dihancurkan — jadi kegagalan di tengah meninggalkan tenant
        * separuh terhapus, keadaan yang paling sulit dibaca orang berikutnya.
        *
-       * `@sai/db/server#hapus` memutus koneksi lain lebih dulu di PostgreSQL dan
-       * tidak menambah apa pun di MariaDB, jadi pemanggil di sini berhenti
-       * peduli mesinnya apa.
+       * `@sai/db/server#hapus` memutus koneksi lain lebih dulu, jadi pemanggil
+       * di sini tidak perlu memikirkannya.
        */
       /* Klien dilepaskan DULU: PostgreSQL menolak `DROP DATABASE` selama ada
          koneksi, dan koneksi yang diputus dari sisi server menjatuhkan proses

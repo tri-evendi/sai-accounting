@@ -1126,7 +1126,7 @@ describe("tagihan kompensasi: `comped`, bukan `paid`", () => {
 
   it("migration 0015 memperbaiki DATA lama dengan syarat yang sempit", () => {
     const sql = readFileSync(
-      join(__dirname, "..", "prisma", "platform", "migrations", "0015_comped_invoice_status", "migration.sql"),
+      join(__dirname, "..", "prisma", "_arsip-mariadb", "platform", "0015_comped_invoice_status", "migration.sql"),
       "utf8"
     );
     /* Ketiganya harus benar bersamaan — tanpa salah satu pun, migration ini

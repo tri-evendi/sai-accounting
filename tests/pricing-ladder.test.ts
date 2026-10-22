@@ -14,12 +14,12 @@ import { describe, expect, it } from "vitest";
 
 const SEED = readFileSync("scripts/seed-plans.ts", "utf8");
 const MIGRATION = readFileSync(
-  "prisma/platform/migrations/0009_plans_pricing_ladder/migration.sql",
+  "prisma/_arsip-mariadb/platform/0009_plans_pricing_ladder/migration.sql",
   "utf8"
 );
 const DOCS = readFileSync("docs/PRICING.md", "utf8");
 const MIGRATION_0010 = readFileSync(
-  "prisma/platform/migrations/0010_enterprise_not_public/migration.sql",
+  "prisma/_arsip-mariadb/platform/0010_enterprise_not_public/migration.sql",
   "utf8"
 );
 

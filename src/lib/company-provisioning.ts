@@ -29,7 +29,7 @@
  * tengah hanya meninggalkan basis data yatim yang tidak terlihat siapa pun.
  *
  * ══ KENAPA MIGRATION DITERAPKAN SENDIRI, BUKAN LEWAT PRISMA CLI ════════════
- * Image produksi sengaja ramping: ia memuat berkas `prisma/migrations/**` TAPI
+ * Image produksi sengaja ramping: ia memuat berkas `prisma/postgresql/**` TAPI
  * TIDAK memuat Prisma CLI (lihat tahap `runner` di Dockerfile). Memasukkan CLI
  * beserta seluruh node_modules ke sana akan melipatgandakan ukuran image demi
  * satu operasi yang jarang.
@@ -48,11 +48,14 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-/* Driver `mariadb` TIDAK diimpor lagi di sini. Operasi tingkat server kini
-   hidup di `@sai/db/server`, yang menjawab untuk KEDUA mesin — jadi berkas ini
-   tidak bisa lagi memegang SQL yang hanya benar di salah satunya. */
-import { bukaServer, bukaBasisData, ddlPembukuan, direktoriMigration } from "@sai/db/server";
-import type { DbEngine } from "@sai/db/engine";
+/* Operasi tingkat server hidup di `@sai/db/server` — berkas ini tidak memegang
+   SQL tingkat server sendiri. */
+import {
+  bukaServer,
+  bukaBasisData,
+  DDL_PEMBUKUAN,
+  DIREKTORI_MIGRATION_PERUSAHAAN,
+} from "@sai/db/server";
 
 import { controlDb } from "@sai/core/control-db";
 import {
@@ -74,19 +77,16 @@ import {
 } from "@/lib/company-provisioning-shared";
 
 /**
- * Direktori migration, PER MESIN.
+ * Direktori migration buku baru: `prisma/postgresql/company` — SATU-SATUNYA.
  *
- * ⚠ PostgreSQL TIDAK memakai 65 migration MariaDB: ia memakai **baseline** yang
- * yang dibangkitkan sekali dari skema saat penukaran (15 Okt 2026) plus migration tambahan
- * tulis-tangan. 5.241 baris SQL MariaDB tidak punya nilai di mesin baru, dan
- * menjalankannya di sana akan gagal pada pernyataan pertama.
- *
- * Perusahaan BARU yang disediakan sesudah penukaran mendapat baseline itu — dan
- * karena baseline diturunkan dari skema yang SAMA, hasilnya identik dengan buku
- * yang bermigrasi lewat 65 langkah.
+ * Buku baru mendapat baseline PostgreSQL (dibangkitkan dari skema saat
+ * penukaran 15 Okt 2026) plus migration tambahan tulis-tangan. Riwayat 65
+ * migration MariaDB sejak #636 hidup di `prisma/_arsip-mariadb/` dan tidak ada
+ * jalur kode yang bisa menunjuknya — dulu sebuah parameter `mesin = "mariadb"`
+ * masih bisa.
  */
-function akarMigration(mesin: DbEngine): string {
-  return join(process.cwd(), ...direktoriMigration(mesin)[0]!.split("/"));
+function akarMigration(): string {
+  return join(process.cwd(), ...DIREKTORI_MIGRATION_PERUSAHAAN.split("/"));
 }
 
 /** Checksum yang DICOCOKKAN Prisma: sha256 atas isi berkas migration.sql. */
@@ -94,16 +94,9 @@ export function migrationChecksum(sql: string | Buffer): string {
   return createHash("sha256").update(sql).digest("hex");
 }
 
-/**
- * Nama migration terurut — urutannya menentukan hasil akhir skema.
- *
- * `mesin` opsional dan bawaannya `postgresql` sejak 15 Okt 2026 — mesin
- * kanonik. Bawaan `mariadb` yang lama akan menunjuk ARSIP (65 migration MySQL)
- * dan menghasilkan basis data yang gagal dibuat; bawaan harus menunjuk yang
- * benar, bukan yang historis.
- */
-export async function migrationNames(mesin: DbEngine = "postgresql"): Promise<string[]> {
-  const entries = await readdir(akarMigration(mesin), { withFileTypes: true });
+/** Nama migration terurut — urutannya menentukan hasil akhir skema. */
+export async function migrationNames(): Promise<string[]> {
+  const entries = await readdir(akarMigration(), { withFileTypes: true });
   return entries
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
@@ -269,30 +262,30 @@ export async function provisionCompany(
       });
     } else {
       try {
-        /* Nama tidak bisa jadi parameter di mesin mana pun; keamanannya dari
+        /* Nama tidak bisa jadi parameter; keamanannya dari
            `assertSafeDatabaseName` di sini DAN pemeriksaan kedua di
-           `@sai/db/server`. Sintaksis per mesin hidup di sana — penyediaan ini
-           tidak lagi menulis satu baris SQL pun. */
+           `@sai/db/server`. Sintaksisnya hidup di sana — penyediaan ini tidak
+           menulis satu baris SQL tingkat server pun. */
         await server.buat(databaseName);
       } catch (error) {
         /*
          * ── KEGAGALAN YANG PALING SERING, DAN SATU-SATUNYA YANG BUKAN BUG ───
-         * Galat 1044/1045: pengguna basis data aplikasi tidak berhak membuat
-         * basis data baru. Itu keadaan PEMASANGAN — banyak hosting memang
-         * tidak memberikannya, dan hak itu diberikan sekali lewat pola nama
+         * SQLSTATE 42501: role basis data aplikasi tidak berhak membuat basis
+         * data baru (tanpa `CREATEDB`). Itu keadaan PEMASANGAN — banyak hosting
+         * memang tidak memberikannya, dan hak itu diberikan sekali
          * (docs/MULTI-COMPANY.md §3), bukan lewat kode.
          *
          * Yang dilempar karena itu kode, bukan kalimat, dan galat aslinya
          * dititipkan sebagai `cause` supaya ia sampai ke LOG SERVER tanpa
-         * pernah melewati layar: pesan mentah mariadb membawa nomor koneksi,
-         * SQLState, pernyataan `CREATE DATABASE` utuh, dan nama pengguna basis
-         * datanya — empat hal yang tidak menolong pemilik PT dan tidak boleh
-         * dibaca orang lain.
+         * pernah melewati layar: pesan mentah driver basis data membawa
+         * SQLSTATE, nama basis data, dan nama role-nya — hal yang tidak
+         * menolong pemilik PT dan tidak boleh dibaca orang lain. (Di masa
+         * MariaDB pesan itu sempat sampai ke layar utuh, Agt 2026.)
          */
         if (isAccessDeniedError(error)) {
           throw new ProvisionError(
-            `CREATE DATABASE \`${databaseName}\` ditolak server basis data ` +
-              "(galat 1044/1045) — pengguna basis datanya tidak berhak membuat basis data baru.",
+            `CREATE DATABASE "${databaseName}" ditolak server basis data ` +
+              "(SQLSTATE 42501) — role basis datanya tidak berhak membuat basis data baru.",
             "create_database",
             { code: "database_permission_denied", cause: error }
           );
@@ -303,10 +296,10 @@ export async function provisionCompany(
 
     // ── 3. Skema ─────────────────────────────────────────────
     phase = "migrate";
-    const names = await migrationNames(server.mesin);
+    const names = await migrationNames();
     const db = await bukaBasisData(url.toString(), databaseName);
     try {
-      await db.jalankan(ddlPembukuan(db.mesin));
+      await db.jalankan(DDL_PEMBUKUAN);
 
       for (const [index, migration] of names.entries()) {
         await emit({
@@ -316,7 +309,7 @@ export async function provisionCompany(
           progress: (index + 1) / names.length,
         });
 
-        const file = join(akarMigration(server.mesin), migration, "migration.sql");
+        const file = join(akarMigration(), migration, "migration.sql");
         const sql = await readFile(file);
         const startedAt = new Date();
         await db.jalankan(sql.toString("utf8"));
@@ -359,14 +352,14 @@ export async function provisionCompany(
   } catch (error) {
     /*
      * Jaring pengaman untuk "tidak berhak" yang datang dari LUAR pernyataan
-     * `CREATE DATABASE`: kredensial yang ditolak saat menyambung (1045), atau
-     * basis data yang bisa dibuat tapi tidak boleh diisi (1044 di tahap
-     * skema). Ketiganya satu tindak lanjut bagi yang menunggu, dan ketiganya
-     * tidak boleh muncul sebagai teks mariadb.
+     * `CREATE DATABASE`: kredensial yang ditolak saat menyambung (28P01/28000),
+     * atau basis data yang bisa dibuat tapi tidak boleh diisi (42501 di tahap
+     * skema). Semuanya satu tindak lanjut bagi yang menunggu, dan semuanya
+     * tidak boleh muncul sebagai teks mentah driver.
      */
     if (!(error instanceof ProvisionError) && isAccessDeniedError(error)) {
       throw new ProvisionError(
-        `Server basis data menolak akses (galat 1044/1045) pada tahap "${phase}" ` +
+        `Server basis data menolak akses (SQLSTATE ${String((error as { code?: unknown }).code)}) pada tahap "${phase}" ` +
           `untuk basis data ${databaseName}.`,
         phase,
         { code: "database_permission_denied", cause: error }
@@ -389,21 +382,3 @@ export async function provisionCompany(
 
   return { companyId, databaseName, dbInstance };
 }
-
-/**
- * DDL tabel pembukuan Prisma — disalin PERSIS dari basis data yang selama ini
- * dimigrasi Prisma CLI (`SHOW CREATE TABLE`), bukan ditulis dari ingatan.
- * Perbedaan sekecil tipe kolom akan membuat `migrate deploy` berikutnya
- * mengeluh tentang tabel yang bukan miliknya.
- */
-const BOOKKEEPING_TABLE_DDL = `CREATE TABLE IF NOT EXISTS \`_prisma_migrations\` (
-  \`id\` varchar(36) NOT NULL,
-  \`checksum\` varchar(64) NOT NULL,
-  \`finished_at\` datetime(3) DEFAULT NULL,
-  \`migration_name\` varchar(255) NOT NULL,
-  \`logs\` text DEFAULT NULL,
-  \`rolled_back_at\` datetime(3) DEFAULT NULL,
-  \`started_at\` datetime(3) NOT NULL DEFAULT current_timestamp(3),
-  \`applied_steps_count\` int(10) unsigned NOT NULL DEFAULT 0,
-  PRIMARY KEY (\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;

@@ -27,7 +27,7 @@ const AKAR = process.cwd();
 
 /** Semua berkas migration MariaDB, dari ketiga basis data. */
 function migrationMariaDb(): { path: string; isi: string }[] {
-  const akar = ["prisma/migrations", "prisma/control/migrations", "prisma/platform/migrations"];
+  const akar = ["prisma/_arsip-mariadb/company", "prisma/_arsip-mariadb/control", "prisma/_arsip-mariadb/platform"];
   const keluar: { path: string; isi: string }[] = [];
   for (const dir of akar) {
     const penuh = join(AKAR, dir);

@@ -6,8 +6,8 @@
  *
  * Kenapa perlu dibuktikan di lingkungan yang hidup, bukan cukup di tes: yang
  * menegakkan aturan ini bukan kode aplikasi melainkan trigger di basis data,
- * dan trigger adalah objek yang bisa RAIB tanpa suara — satu `mysqldump`
- * tanpa `--triggers`, satu pemulihan dari cadangan yang dibuat begitu, satu
+ * dan trigger adalah objek yang bisa RAIB tanpa suara — satu dump yang
+ * dipulihkan hanya datanya (`pg_restore --data-only`), satu
  * migration berikutnya yang me-rebuild `companies`. Tidak satu pun dari itu
  * mengubah kode, jadi tidak satu pun terlihat di CI. Yang bisa melihatnya
  * hanya pertanyaan yang diajukan ke basis data ITU SENDIRI.
@@ -52,9 +52,10 @@ async function main() {
 
   // ── 1. Triggernya ada ────────────────────────────────────────────────────
   const triggers = await control.$queryRawUnsafe<{ trigger_name: string }[]>(
-    "SELECT trigger_name FROM information_schema.triggers " +
-      "WHERE trigger_schema = ? AND trigger_name = ?",
-    schema,
+    /* `trigger_schema` di PostgreSQL adalah SKEMA (`public`), bukan nama basis
+       data; dan parameternya `$n`, bukan `?` milik MySQL (#636). */
+    "SELECT DISTINCT trigger_name FROM information_schema.triggers " +
+      "WHERE trigger_schema = current_schema() AND trigger_name = $1",
     TRIGGER
   );
   if (triggers.length === 0) {
@@ -88,7 +89,7 @@ async function main() {
         // Yang HARUS boleh — kalau ini gagal, penjaganya terlalu lebar.
         try {
           await tx.$executeRawUnsafe(
-            "UPDATE companies SET name = CONCAT(name, ' (uji #161)') WHERE id = ?",
+            "UPDATE companies SET name = CONCAT(name, ' (uji #161)') WHERE id = $1",
             sample.id
           );
           nameChangeAllowed = true;
@@ -99,7 +100,7 @@ async function main() {
         // ORM yang menulis seluruh kolom menyertakan slug lamanya. Itu bukan
         // perubahan, dan tidak boleh ditolak.
         try {
-          await tx.$executeRawUnsafe("UPDATE companies SET slug = slug WHERE id = ?", sample.id);
+          await tx.$executeRawUnsafe("UPDATE companies SET slug = slug WHERE id = $1", sample.id);
           selfAssignAllowed = true;
         } catch (error) {
           failures.push(`\`SET slug = slug\` ikut DITOLAK: ${(error as Error).message}`);
@@ -108,7 +109,7 @@ async function main() {
         // Yang HARUS ditolak.
         try {
           await tx.$executeRawUnsafe(
-            "UPDATE companies SET slug = CONCAT(slug, '-uji161') WHERE id = ?",
+            "UPDATE companies SET slug = CONCAT(slug, '-uji161') WHERE id = $1",
             sample.id
           );
         } catch (error) {

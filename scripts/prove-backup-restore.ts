@@ -22,9 +22,11 @@
  * dan pembukti yang hanya mengerti bentuk baru akan menolak satu-satunya
  * salinan yang ada, justru pada hari ia paling dibutuhkan.
  *
- * Itu bukan kehati-hatian baru. Berkas ini sudah menerapkan aturan yang sama
- * untuk dump MariaDB sesudah penukaran PostgreSQL: yang diperiksa ARTEFAKNYA,
- * bukan mesin atau versi yang sedang dipakai.
+ * Itu bukan kehati-hatian baru. Berkas ini dulu menerapkan aturan yang sama
+ * untuk dump MariaDB selama jendela transisi PostgreSQL: yang diperiksa
+ * ARTEFAKNYA, bukan mesin atau versi yang sedang dipakai. Jalur MariaDB itu
+ * dicabut di Fase E (#636, 22 Okt 2026), sesudah dump MariaDB terakhir
+ * dibuktikan terpulihkan ke `mariadb:11` sekali pakai — di luar image ini.
  *
  * ══ APA YANG DIBUKTIKAN (tata letak baru) ══════════════════════════════════
  *   1. Manifestnya ada dan terbaca TANPA kunci — pada hari pemulihan, basis
@@ -516,19 +518,11 @@ async function buktikanBerkasLama(sumber: Sumber, nama: string, kerja: string): 
     ];
 
     /*
-     * == DUA MESIN MENULIS DUMP DENGAN BENTUK YANG BERBEDA ==================
-     * `mariadb-dump --all-databases` menandai tiap basis data dengan
-     * `CREATE DATABASE ... `nama`` lalu `USE `nama``. `pg_dumpall` memakai
-     * `CREATE DATABASE "nama"` lalu `\connect nama`.
-     *
-     * Pemeriksaan ini SENGAJA menerima keduanya alih-alih bercabang pada mesin
-     * yang sedang dipakai: yang diperiksa adalah ARTEFAKNYA. Pembukti yang hanya
-     * mengerti dump mesin sekarang akan menolak cadangan terakhir dari mesin
-     * sebelumnya — justru pada hari ia paling dibutuhkan.
+     * `pg_dumpall` menandai tiap basis data dengan `CREATE DATABASE "nama"`
+     * lalu `\connect nama`. Penanda `mariadb-dump --all-databases`
+     * (`USE \`nama\``) dicabut bersama MariaDB (#636).
      */
     const adaDiDump = (db: string): boolean =>
-      sql.includes("CREATE DATABASE /*!32312 IF NOT EXISTS*/ `" + db + "`") ||
-      sql.includes("USE `" + db + "`") ||
       sql.includes('CREATE DATABASE "' + db + '"') ||
       new RegExp("^\\\\connect " + db + "\\s*$", "m").test(sql);
 
@@ -537,7 +531,7 @@ async function buktikanBerkasLama(sumber: Sumber, nama: string, kerja: string): 
       fail(
         `CADANGAN TIDAK LENGKAP — ${hilang.length} basis data tidak ada di dumpnya:\n` +
           hilang.map((d) => `  - ${d}`).join("\n") +
-          "\n  Kredensial dump tidak berhak membacanya? (`--all-databases` menuntut root.)"
+          "\n  Kredensial dump tidak berhak membacanya? (`pg_dumpall` menuntut peran super.)"
       );
     }
     console.log(`✓ ${diharapkan.length} basis data ada di dalam dump (${terdaftar.length} buku PT)`);

@@ -61,7 +61,7 @@ const SLUG = process.argv
   .find((a) => a.startsWith("--perusahaan="))
   ?.slice("--perusahaan=".length);
 
-/* Aturan penjodohannya hidup di modul MURNI supaya bisa diuji tanpa MySQL —
+/* Aturan penjodohannya hidup di modul MURNI supaya bisa diuji tanpa basis data —
    lihat `src/lib/contract-buyer-match.ts` untuk alasan setiap langkahnya. */
 
 interface Ringkasan {

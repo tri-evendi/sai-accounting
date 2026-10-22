@@ -16,8 +16,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // sudah berdiri sebelum itu.
 vi.hoisted(() => {
   process.env.COMPANY_CLIENT_POOL_MAX = "2";
-  process.env.COMPANY_DATABASE_URL_TEMPLATE = "mysql://user:pass@db:3306/template";
-  process.env.COMPANY_DB2_DATABASE_URL_TEMPLATE = "mysql://user2:pass2@db2:3306/template";
+  process.env.COMPANY_DATABASE_URL_TEMPLATE = "postgres://user:pass@db:5432/template";
+  process.env.COMPANY_DB2_DATABASE_URL_TEMPLATE = "postgres://user2:pass2@db2:5432/template";
   process.env.POOL_DISCONNECT_GRACE_MS = "1";
 });
 
@@ -39,8 +39,8 @@ vi.mock("@sai/db/client/company", () => ({
   },
 }));
 
-vi.mock("@prisma/adapter-mariadb", () => ({
-  PrismaMariaDb: class {
+vi.mock("@prisma/adapter-pg", () => ({
+  PrismaPg: class {
     databaseName: string;
     constructor(config: { database: string; host: string }) {
       this.databaseName = config.database;
@@ -161,7 +161,7 @@ describe("instans basis data (tahap 4, rancangan 09 §9)", () => {
   });
 
   it("replika baca bawaan tidak pernah melayani PT di instans lain", () => {
-    process.env.COMPANY_DATABASE_READ_URL_TEMPLATE = "mysql://ro:ro@replica:3306/template";
+    process.env.COMPANY_DATABASE_READ_URL_TEMPLATE = "postgres://ro:ro@replica:5432/template";
     try {
       expect(getCompanyReadClient({ databaseName: "sai_pt_a", dbInstance: DB2 })).toBeNull();
       expect(getCompanyReadClient(db("sai_pt_a"))).not.toBeNull();

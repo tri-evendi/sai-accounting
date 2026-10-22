@@ -42,7 +42,6 @@ dan batas heap eksplisit di setiap perintah Node.
 | `app-operator` | `sai-app-operator` | Konsol operator | selalu hidup |
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
-| `db` | `sai-db` | MariaDB 11, fallback, tidak ditulisi (#636) | sementara |
 | `svc-worker` | `sai-svc-worker` | **Empat peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`) | selalu hidup |
 | `svc-integrator` | `sai-svc-integrator` | **Dua jalur Go** dalam satu proses: `tenant` (cadangan **per basis data**) dan `interactive` sisi Go (lembar sebar ber-`engine: go`, `report.export_go`; hari ini Neraca Saldo) | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
@@ -67,7 +66,6 @@ graph TB
     JOB[sai-svc-worker · sai-svc-integrator] --> PGB
     PGB --> PG[(sai-pg)]
     LANGSUNG[sai-svc-integrator jalur tenant · pagar sai-svc-worker · sai-migrate] --> PG
-    OLD[(sai-db — MariaDB, fallback)]
 
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
     style WEBO fill:#ffeaea,stroke:#b55
@@ -221,9 +219,12 @@ memeriksanya lebih dulu. Hanya **membaca**; `--dry-run` menyebutkan isi tanpa
 menulis. Dijaga `tests/support-bundle-script.test.ts`, yang **menjalankan**
 fungsi penyuntingan yang dikirim, bukan salinannya.
 
-**`db`** (MariaDB 11) masih hidup sejak 15 Okt tetapi tidak ditulisi. Kembali
-ke MariaDB berarti men-deploy image `sha-` lama **sekaligus** menukar URL,
-karena image yang berjalan dibangun dari skema `provider = "postgresql"`.
+**`db`** (MariaDB 11) hidup sebagai fallback tak-ditulisi 15–22 Okt 2026, lalu
+**dicabut** (Fase E, #636): container `sai-db` dihentikan 22 Okt, service-nya
+hilang dari compose, dan rilis pertama sesudahnya (`--remove-orphans`)
+menghapus container yang berhenti itu. Volume `sai-accounting_db_data` tetap di
+cakram sampai dihapus tangan. Jalan mundur ke MariaDB kini hanya lewat dump
+terakhirnya + image `sha-c9b5d9c` (v0.12.0) — [07 §9](./07-RIWAYAT.md).
 
 Dua hal berbeda dari MariaDB dan masih terbuka sebagai risiko: collation `C`
 (teks peka huruf besar-kecil) dan role aplikasi `sai` adalah **SUPERUSER**.
@@ -524,8 +525,8 @@ menyerah.
 Sejak tahap 1b ia tidak mencadangkan apa pun. Profil `perkakas` membuatnya
 tidak ikut `docker compose up -d`, sementara `docker compose run` tetap bisa
 memanggilnya. Ia tetap ada karena image-nya satu-satunya yang memuat klien
-Prisma, `openssl`, `awscli`, **dan** klien MariaDB — yang terakhir supaya
-pembukti masih bisa membaca artefak dari sebelum penukaran mesin.
+Prisma, `openssl`, `awscli`, **dan** `postgresql-client-17` sekaligus. Klien
+MariaDB-nya dicabut di #636.
 
 Membiarkan putaran hariannya hidup berdampingan dengan jalur `tenant` berarti
 **dua pelaksana untuk satu pekerjaan**; dijaga `tests/backup-script.test.ts`.
@@ -544,7 +545,7 @@ kuartalan manusia (❓ belum ada bukti dijalankan).
 | Volume | Dipasang di | Isi | Dicadangkan? |
 |---|---|---|---|
 | `pg_data` | `pg` | 19 basis data | Ya — satu objek `pg_dump -Fc` per basis data |
-| `db_data` | `db` | MariaDB fallback, beku sejak 15 Okt | Tidak lagi; arsipkan dump terakhir sebelum dihapus (#636) |
+| `db_data` (`sai-accounting_db_data`) | — | MariaDB, beku sejak 15 Okt; deklarasinya dicabut dari compose (#636) | Tidak. Dump terakhir 22 Okt 2026; volumenya dihapus tangan sesudah dump itu tersalin ke luar server |
 | `documents` | `app-customer` (RW), `svc-integrator` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — objek `berkas.tar.gz.enc` |
 | `audit` | kedua `app-*` (RW), `svc-integrator` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — objek `berkas.tar.gz.enc` |
 | `cadangan` | `svc-integrator` (RW) | Satu direktori per putaran: objek terenkripsi + `.sha256` + `manifest.json` | — (ia *adalah* backup-nya) |
@@ -801,9 +802,10 @@ mengatakan "basis datanya memang memilikinya" — dan pada hari keduanya berbeda
 hanya yang kedua benar.
 
 Diterapkan 18 Okt 2026: control **4/4** · platform **4/4** · perusahaan
-**1/1** per buku. `prisma/migrations/` dan `prisma/{control,platform}/
-migrations/` adalah arsip MariaDB hanya-baca (99 migration) — yang ditulis di
-sana tidak akan diterapkan.
+**1/1** per buku. `prisma/_arsip-mariadb/{company,control,platform}/` adalah
+arsip MariaDB hanya-baca (99 migration; dipindah dari `prisma/migrations/` dan
+`prisma/{control,platform}/migrations/` di #636) — yang ditulis di sana tidak
+akan diterapkan dan tidak masuk image.
 
 Migration ditulis **tangan** di
 `prisma/postgresql/<db>/NNNN_<nama>/migration.sql` (lihat
@@ -849,7 +851,7 @@ Hanya nama; nilainya tidak dicantumkan. Pemeriksa: `bun run check:env`.
 | Kelompok | Terisi di `.env` produksi |
 |---|---|
 | Domain & auth | `APP_DOMAIN`, `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST` |
-| Basis data | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL`, `PG_USER`, `PG_PASSWORD`, `DB_*` (MariaDB fallback) |
+| Basis data | `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL`, `PG_USER`, `PG_PASSWORD`, `DB_NAME`. `DB_USER`/`DB_PASSWORD`/`DB_ROOT_PASSWORD` (MariaDB) tidak dibaca apa pun sejak #636 dan boleh dihapus |
 | Operator | `OPERATOR_DOMAIN`, `OPERATOR_HOST`, `OPERATOR_IP_ALLOWLIST`, `OPERATOR_MFA`, `OPERATOR_SESSION_SECRET`, `OPERATOR_USERS` |
 | Enkripsi | `SETTINGS_ENCRYPTION_KEY`, `BACKUP_ENCRYPTION_KEY` |
 | Backup · Kontak · Lain | `BACKUP_RETENTION_DAYS`, `BACKUP_S3_PREFIX` · `PLATFORM_CONTACT_EMAIL`, `PLATFORM_CONTACT_WHATSAPP` · `NODE_ENV`, `TZ`, `NEXT_PUBLIC_APP_NAME` |

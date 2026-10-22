@@ -20,7 +20,18 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.12.0 — 2026-10-22 — belum digelar
+## 0.12.1 — 2026-10-22 — belum digelar
+
+Ekspor data perusahaan kembali berfungsi, dan mesin basis data lama dipensiunkan.
+
+### Perbaikan
+
+- Ekspor seluruh data perusahaan (hak portabilitas data) kembali menghasilkan berkas; sejak pindah mesin basis data 15 Oktober ia gagal di tabel pertama.
+- Ketika server menolak pembuatan buku perusahaan baru karena hak akses, pesannya kini menjelaskan sebabnya, bukan pesan umum.
+
+---
+
+## 0.12.0 — 2026-10-22 (c9b5d9c)
 
 Perusahaan bisa dipindahkan dari langganan ke server sendiri dengan data utuh, dan layanan latar dirampingkan.
 

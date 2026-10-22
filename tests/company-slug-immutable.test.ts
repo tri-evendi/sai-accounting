@@ -3,7 +3,7 @@
  *
  * Penegakan yang sebenarnya ada di basis data: trigger
  * `companies_slug_immutable` (migration kendali 0010) menolak setiap UPDATE
- * yang mengubah NILAI `slug`, dari jalur mana pun — termasuk `mariadb` di
+ * yang mengubah NILAI `slug`, dari jalur mana pun — termasuk `psql` di
  * terminal dan skrip perbaikan sekali pakai. Tes ini tidak menggantikannya; ia
  * menjawab pertanyaan yang tidak bisa dijawab trigger:
  *
@@ -36,8 +36,8 @@ const GENERATED_DIR = join(SRC_DIR, "generated");
 const MIGRATION = join(
   ROOT,
   "prisma",
+  "_arsip-mariadb",
   "control",
-  "migrations",
   "0010_companies_slug_immutable",
   "migration.sql"
 );

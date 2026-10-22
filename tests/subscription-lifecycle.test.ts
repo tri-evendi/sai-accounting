@@ -341,7 +341,7 @@ describe("gerbang mode penagihan: hanya `auto` yang boleh ditagih", () => {
     expect(billingModeIsAutomatic(DEFAULT_BILLING_MODE)).toBe(false);
 
     const migrasi = readFileSync(
-      join(__dirname, "..", "prisma", "platform", "migrations", "0014_subscription_billing_mode", "migration.sql"),
+      join(__dirname, "..", "prisma", "_arsip-mariadb", "platform", "0014_subscription_billing_mode", "migration.sql"),
       "utf8"
     );
     expect(migrasi).toMatch(/DEFAULT\s+'none'/i);

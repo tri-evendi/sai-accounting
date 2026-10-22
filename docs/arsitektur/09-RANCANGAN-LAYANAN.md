@@ -1027,7 +1027,7 @@ lebih aman:**
 |---|---|---|
 | 1 | Pengenal kode, nama berkas & tes | tanpa menyentuh produksi; dijaga `tsc` |
 | 2 | Env var | **satu pembaca env terpusat lebih dulu** — menerima nama baru, jatuh ke nama lama sambil memperingatkan. Sesudah itu rename jadi satu baris |
-| 3 | Nama service compose | nama service adalah **nama DNS**, jadi seluruh URL basis data berubah pada rilis yang sama. Prasyarat: pencabutan `db` (MariaDB) lebih dulu |
+| 3 | Nama service compose | nama service adalah **nama DNS**, jadi seluruh URL basis data berubah pada rilis yang sama. Prasyarat pencabutan `db` (MariaDB) sudah terpenuhi (#636, 22 Okt 2026) |
 | 4 | Nama volume | volume Docker tidak bisa diganti nama — isinya disalin, lalu volume lama dibuang setelah terbukti. Perlu jendela pemeliharaan |
 
 > ⚠ Satu catatan terhadap gelombang 4: **`pg_data` memuat seluruh basis data.**

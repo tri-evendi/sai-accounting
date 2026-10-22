@@ -40,7 +40,7 @@
 | 04 | [ALIRAN-DATA.md](./04-ALIRAN-DATA.md) | ERD ketiga skema, enam alur data, daur hidup status tiap dokumen |
 | 05 | [PENILAIAN.md](./05-PENILAIAN.md) | Kekuatan, temuan terbuka berprioritas, portabilitas VM, pemicu, keputusan yang menunggu pemilik |
 | 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman (**termasuk `result_ref` sebagai kunci, bukan kapabilitas**), regresi yang pernah terjadi |
-| 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Pekerjaan besar yang selesai (PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar 1a–1c, rilis 22 Okt 2026): keputusan yang masih mengikat dan yang masih terbuka |
+| 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Pekerjaan besar yang selesai (PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar 1a–1c, rilis 22 Okt 2026, pencabutan MariaDB): keputusan yang masih mengikat dan yang masih terbuka |
 | 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
 | 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, jalur yang BELUM pindah & batas Go, kontrak yang belum dibangkitkan, outbox & otorisasi hasil, dokumen di server, fan-out per tenant yang belum (kesesuaian, expand/contract), SaaS vs On-Premise, tahapan & pemicu, nomenklatur, observabilitas yang belum terukur, tata kelola |
 

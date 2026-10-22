@@ -23,8 +23,8 @@ export default defineConfig({
     // Kredensial contoh untuk pembentukan klien; tes tidak pernah membuka
     // koneksi — mesinnya dijalankan lewat fake client di memori.
     env: {
-      DATABASE_URL: "mysql://test:test@127.0.0.1:3306/test",
-      CONTROL_DATABASE_URL: "mysql://test:test@127.0.0.1:3306/test_control",
+      DATABASE_URL: "postgres://test:test@127.0.0.1:5432/test",
+      CONTROL_DATABASE_URL: "postgres://test:test@127.0.0.1:5432/test_control",
       /*
        * Rahasia penandatangan kunci buku (`lib/company-unlock.ts`). Nilainya
        * sembarang; yang penting ADA — modul itu sengaja MELEMPAR tanpa rahasia,

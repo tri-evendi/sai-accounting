@@ -163,7 +163,7 @@ describe("ringkasanVarians", () => {
   });
 });
 
-// ─── Pembaca laporan (klien dalam-ingatan, tanpa MySQL) ────────────────────
+// ─── Pembaca laporan (klien dalam-ingatan, tanpa basis data) ────────────────────
 
 describe("variansPerintahProduksi", () => {
   const client = (order: unknown) =>

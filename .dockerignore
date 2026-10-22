@@ -82,10 +82,10 @@ docker-compose*.yml
 # dijaga `tests/dockerignore-migrations.test.ts`: setiap pohon yang memuat
 # `*/migration.sql` di bawah `prisma/` wajib punya pengecualiannya di sini.
 **/*.sql
-!prisma/migrations/**/*.sql
-!prisma/control/migrations/**/*.sql
-!prisma/platform/migrations/**/*.sql
 !prisma/postgresql/**/*.sql
+# Arsip migration MariaDB (#636) SENGAJA tidak masuk image: tidak ada perkakas
+# yang membacanya saat berjalan, dan satu-satunya pembacanya adalah tes.
+/prisma/_arsip-mariadb/
 
 # ⚠️ `backups/` DI SINI TIDAK SAMA DENGAN `backups/` DI `.gitignore`.
 # Pola git tanpa garis miring depan cocok di KEDALAMAN MANA PUN; pola

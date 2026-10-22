@@ -129,7 +129,7 @@ function runInTx<T>(
  *
  * `startsWith` membuat Prisma memancarkan `LIKE CONCAT(?, '%')`, dan pada
  * MariaDB 11.8 bentuk itu MELEDAK ketika dikirim sebagai prepared statement
- * (yang memang dilakukan `@prisma/adapter-mariadb`):
+ * (yang memang dilakukan adapter MariaDB Prisma — dicabut di #636):
  *
  *     Error 1267: Illegal mix of collations
  *     (utf8mb4_unicode_ci, IMPLICIT) and (utf8mb4_bin, NONE) for operation 'like'

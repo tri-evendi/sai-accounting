@@ -114,13 +114,15 @@ function maxWaitMs(): number {
 }
 
 /**
- * Replika baca terpasang? Hanya PostgreSQL: aturan kesegarannya LSN, dan
- * MariaDB tidak punya padanan yang sama ketatnya.
+ * Replika baca terpasang? Aturan kesegarannya LSN PostgreSQL. `mesinDari`
+ * MELEMPAR untuk URL yang bukan PostgreSQL (termasuk `mysql://`, #636), jadi
+ * template yang salah gagal keras, bukan diam-diam mematikan replika.
  */
 export function readReplicaEnabled(): boolean {
   const url = readTemplateUrl();
   if (!url) return false;
-  return mesinDari(url.toString()) === "postgresql";
+  mesinDari(url.toString());
+  return true;
 }
 
 /** Sedang di dalam `runReadOnly` yang aktif? */

@@ -86,13 +86,11 @@ next-env.d.ts
 
 # database dumps (never commit production data)
 *.sql
-!prisma/migrations/**/*.sql
-# Sejak #104 ada DUA folder migration. Tanpa baris ini, `*.sql` di atas menelan
-# migration basis data KENDALI: repo mengira dirinya lengkap, lalu
-# `db:migrate:control` di mesin baru berhenti dengan "No migration found".
-!prisma/control/migrations/**/*.sql
-# … dan sejak #137 TIGA: migration basis data PLATFORM ikut dikecualikan.
-!prisma/platform/migrations/**/*.sql
+# Riwayat migration MariaDB (perusahaan/kendali/platform), ARSIP hanya-baca
+# sejak #636. Dulu tiga baris terpisah — `prisma/migrations`, lalu kendali
+# (#104), lalu platform (#137) — masing-masing lahir dari folder yang ditelan
+# `*.sql` di atas tanpa suara.
+!prisma/_arsip-mariadb/**/*.sql
 # Dan sejak 12 Okt 2026 ada baseline PostgreSQL yang DIBANGKITKAN
 # (`bun run pg:baseline`). Ia tertangkap `*.sql` di atas — dan tertangkapnya
 # tidak terlihat: `git add -A` berhasil tanpa keluhan, lalu baseline-nya hilang

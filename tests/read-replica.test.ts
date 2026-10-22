@@ -130,9 +130,12 @@ describe("mati secara bawaan", () => {
     expect(state.replicaRequests).toEqual([]);
   });
 
-  it("template MariaDB tidak menyalakan replika — aturan kesegarannya LSN", async () => {
+  it("template `mysql://` GAGAL KERAS — MariaDB sudah dicabut (#636)", async () => {
+    /* Dulu template MariaDB diam-diam mematikan replika. Sejak Fase E tidak ada
+       mesin kedua: URL semacam itu salah konfigurasi, dan mendiamkannya berarti
+       pemasangan yang yakin punya replika padahal tidak. */
     vi.stubEnv("COMPANY_DATABASE_READ_URL_TEMPLATE", "mysql://u:p@replica:3306/template");
-    await runReadOnly(async () => expect(inReadScope()).toBe(false));
+    await expect(runReadOnly(async () => inReadScope())).rejects.toThrow(/MariaDB sudah dicabut/);
   });
 });
 

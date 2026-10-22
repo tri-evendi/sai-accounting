@@ -2,7 +2,7 @@
  * Menjodohkan teks pembeli kontrak dengan master Pelanggan (migrasi 0057).
  *
  * Modul MURNI — tidak menyentuh Prisma, jaringan, atau `server-only`, sehingga
- * aturannya bisa diuji tanpa MySQL DAN tetap bisa diimpor skrip `tsx`
+ * aturannya bisa diuji tanpa basis data DAN tetap bisa diimpor skrip `tsx`
  * (`scripts/link-contract-customers.ts`). Sikap yang sama dengan
  * `@/lib/document-chain`: yang menentukan hidup di modul yang bisa dibaca ulang,
  * bukan di dalam satu berkas skrip yang hanya jalan sekali.

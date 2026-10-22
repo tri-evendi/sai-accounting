@@ -3,7 +3,7 @@
  *
  * Modul MURNI — tanpa Prisma, tanpa I/O. Sikap yang sama dengan
  * `@/lib/document-chain` dan `@/lib/manufacturing`: aritmetika yang menentukan
- * harga pokok harus bisa diuji tanpa MySQL, sebab itulah bagian yang salahnya
+ * harga pokok harus bisa diuji tanpa basis data, sebab itulah bagian yang salahnya
  * paling mahal dan paling sulit terlihat.
  *
  * ══ TIDAK ADA MESIN PERSEDIAAN KEDUA ═══════════════════════════════════════

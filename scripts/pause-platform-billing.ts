@@ -105,14 +105,17 @@ const USAGE =
  * query yang gagal karena kolom hilang akan menggagalkan transaksi/koneksi pada
  * sebagian driver, dan "gagal" juga bisa berarti hal lain (hak akses, basis
  * data salah). Pertanyaannya spesifik, jadi jawabannya pun harus spesifik.
+ *
+ * `current_schema()`, bukan `DATABASE()` milik MySQL: di PostgreSQL
+ * `table_schema` adalah SKEMA di dalam basis data yang disambungi (#636).
  */
 async function kolomBillingModeAda(platform: PlatformClient): Promise<boolean> {
   const rows = await platform.$queryRaw<{ jumlah: bigint | number }[]>`
     SELECT COUNT(*) AS jumlah
-      FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'subscriptions'
-       AND COLUMN_NAME = 'billing_mode'`;
+      FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'subscriptions'
+       AND column_name = 'billing_mode'`;
   return Number(rows[0]?.jumlah ?? 0) > 0;
 }
 

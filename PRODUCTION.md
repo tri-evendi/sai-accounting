@@ -31,16 +31,18 @@
 
 PostgreSQL 17 and PgBouncer come from the compose file itself (services `pg`
 and `pgbouncer`, private network). Node and Bun are not needed on the
-server — they live inside the images. (The MariaDB service `db` is still in the
-compose file as a frozen read-only fallback until issue #636; nothing writes to
-it.)
+server — they live inside the images. MariaDB (service `db`) was retired in
+issue #636 on 22 Oct 2026 — see [§MariaDB retired](#mariadb-retired-issue-636-22-oct-2026).
 
 ## 1. Configure environment
 
 `.env` lives next to `docker-compose.yml`; Compose reads it for interpolation
 and injects it into every container via `env_file`. `.env.docker.example` is
-the template, but it still shows `mysql://` URLs and lacks the PostgreSQL and
-operator variables. Use the table below as the reference.
+the template (PostgreSQL since #636); the table below is the reference for
+production values. `mysql://` URLs are rejected at start-up with a message
+naming #636. `DB_USER`, `DB_PASSWORD` and `DB_ROOT_PASSWORD` (MariaDB) are no
+longer read by anything and can be deleted from `.env`; `DB_NAME` stays — it
+names the first company database.
 
 | Variable | Production value |
 |----------|------------------|
@@ -124,7 +126,7 @@ is the emergency `owner`; further operators are managed from the console at
 | `audit` | `/app/data/audit` | Archive only: the old `audit.jsonl` files, renamed `.dipindahkan` after their move. The live trails are tables — `audit_logs` (each company DB), `tenant_audit_logs` (control), `operator_audit_logs` (platform) |
 | `cadangan` | `svc-integrator:/app/data/cadangan` | Encrypted local backup artifacts — one directory per run since stage 1b |
 | `hasil` | `svc-worker` (its `interactive` role) + `svc-integrator`:`/app/data/hasil` (RW, files chowned to `node` — `contract/kinds.yaml` → `results`), `app-customer` (RO) | Job results since stage 1c: `<kind>-<jobId>/<file>`. **Not backed up** — regenerated from the book, and pruned together with its `jobs` row after `DONE_RETENTION_DAYS`. Outside `public/`: the only way out is a permission-checked route |
-| `db_data` | `db` | Frozen MariaDB fallback, removed in #636 |
+| `db_data` (`sai-accounting_db_data`) | — | **No longer declared** (#636). The frozen MariaDB data stays on disk until deleted by hand — [§MariaDB retired](#mariadb-retired-issue-636-22-oct-2026) |
 
 ### Automated backups (issue #374; per-database since stage 1b)
 
@@ -188,8 +190,8 @@ or a lost account — which is why the status is not `ok`.
 > ⚠ **`job-backup` no longer backs anything up.** It is now a *toolbox*
 > container (compose profile `perkakas`, so `up -d` does not start it), and it
 > stays because its image is the only one carrying the Prisma clients, `openssl`,
-> `awscli` **and** the MariaDB client — the last so the restore prover can still
-> read artifacts from before the engine swap. Leaving its daily loop running
+> `awscli` **and** `postgresql-client-17` together. (Its MariaDB client was
+> removed in #636.) Leaving its daily loop running
 > alongside `svc-integrator` would be two executors for one job.
 
 ```bash
@@ -230,8 +232,8 @@ you restore one tenant.
 
 It reads **both layouts**. On cut-over day the newest artifact on disk is still
 the old single archive, and a prover that only understands the new shape would
-reject the only copy you have — the same rule that already makes it accept
-MariaDB dumps from before the engine swap.
+reject the only copy you have. (It no longer reads MariaDB dumps: the last one
+was proven restorable by hand before #636 removed that path.)
 
 It deliberately loads nothing, because one mis-aimed `psql -f` overwrites
 production with old data. Loading into a shadow server is a quarterly drill run
@@ -410,7 +412,9 @@ survive across commands.
 
 > ⚠ **A rollback must not cross two boundaries.** Tags from before the
 > PostgreSQL switch (15 Oct 2026) speak MariaDB and cannot read the current
-> data. Tags from before the console split (18 Oct 2026) have no `-operator`
+> data. Tags from the switch up to `sha-c9b5d9c` (v0.12.0) still *carry* the
+> MariaDB path but run on PostgreSQL like later ones; rolling back to them
+> does not need `db` back. Tags from before the console split (18 Oct 2026) have no `-operator`
 > image, so they also need the `docker-compose.yml` of that time — and a schema
 > migrated forward is not rolled back by re-pinning an image.
 >
@@ -420,6 +424,40 @@ survive across commands.
 > `docker-compose.yml` of that time (six background services) and run
 > `up -d --remove-orphans`. Rolling back `app-customer`/`app-operator` alone, as
 > above, is not affected.
+
+### MariaDB retired (issue #636, 22 Oct 2026)
+
+Already done on the server by the main session, before the PR that removed
+MariaDB from the repo:
+
+- `sai-db` **stopped** 22 Oct 2026 08:47 UTC (not removed). Volume
+  `sai-accounting_db_data` **kept**.
+- Final dump `/home/vyn/backups/mariadb-terakhir-20261022-164624.sql.gz`,
+  sha256 `bb2b52c1297b2f4ea242e009ff3150881f5bbbf505d3e39437e72aab2a7192b4`,
+  proven restorable into a throwaway `mariadb:11` (19 databases, identical
+  table counts, sample row counts equal).
+- Last images that still carry the MariaDB code path: **`sha-c9b5d9c`**
+  (v0.12.0), all five images. From here on the only way back to MariaDB is
+  restoring that dump and deploying those images — not swapping a URL.
+
+**First release after the PR:** the swap in step 4 **must** carry
+`--remove-orphans` (it already does for the "1 image = 1 container" release).
+`db` is no longer in `docker-compose.yml`, so the stopped `sai-db` container is
+an orphan and `--remove-orphans` deletes it. Removing a container does **not**
+remove its volume. Afterwards:
+
+```bash
+docker ps -a --format '{{.Names}}' | grep -x sai-db && echo 'sai-db STILL PRESENT' || echo 'sai-db gone'
+docker volume ls --format '{{.Name}}' | grep -x sai-accounting_db_data   # still there, by design
+```
+
+**Owner steps, in this order, by hand:**
+
+1. Copy the final dump **off this server** and check its sha256 there against
+   the value above.
+2. Only then: `docker volume rm sai-accounting_db_data`. There is no undo, and
+   no compose command in this repo removes it for you.
+3. `DB_USER`, `DB_PASSWORD`, `DB_ROOT_PASSWORD` can be deleted from `.env`.
 
 ### One-time: package visibility
 

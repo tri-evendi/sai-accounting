@@ -1043,7 +1043,7 @@ Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 | **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
-| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |
+| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Cadangan Go per instans ✅ lolos gerbang Go 23 Okt 2026; pemindahan pertama menunggu peran cadangan di server instansnya | — |
 | **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
 
 **Tahap 3: yang sudah ada, dan yang hanya bisa dibuktikan di tiga host.**
@@ -1116,13 +1116,26 @@ server.
 | Pemindahan | `bun run tenant:move` — pratinjau bawaan, menolak PT aktif, `pg_dump \| pg_restore`, bandingkan jumlah baris per tabel, balik registry, ganti nama salinan asal (jalan balik) |
 | Penjaga | `tests/company-url-resolver.test.ts` (pemindai + penyelesai), `tests/tenant-move.test.ts` |
 
-⚠ **Satu yang sengaja TIDAK ikut: cadangan Go per instans.** `svc-tenant`
-(kini jalur `tenant` di `svc-integrator`) masih mencacah `pg_database` satu server. PT pertama yang dipindah akan masuk
-`Hilang` di bukti kelengkapannya. Itu bunyi yang benar, sebab bukunya memang
-belum dicadangkan, dan karena itu pekerjaan ini prasyarat pemindahan pertama.
-Ia ditahan karena toolchain Go tidak ada di mesin pembangunnya, sedangkan Go
-yang belum lolos `go:test` + `go:lint` tidak dikirim (AGENTS.md §Go). Bentuk
-dan runbook-nya di [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
+✅ **Cadangan Go per instans — lolos `go:test` + `go:lint` 23 Okt 2026.**
+Kodenya masuk 22 Okt bersama tahap 4, tetapi waktu itu toolchain Go tidak ada
+di mesin pembangunnya, jadi blok ini dulu menahannya. 23 Okt ia dijalankan:
+gerbang Go hijau, dan uji integrasi terhadap DUA server PostgreSQL 17 sekali
+pakai lolos ujung ke ujung (`pg_dump`/`pg_dumpall` sungguhan, objek dibuka
+dengan `openssl`). Yang ditambahkan sesudah pengukuran itu:
+
+| Bagian | Bentuk |
+|---|---|
+| Kontrak | pola kunci & nama env var instans, label `default`, dan awalan objek `instans/` dibangkitkan dari `contract/db-instances.yaml` — sebelumnya regex yang sama ditulis TIGA kali (TS, `internal/db`, `internal/ledgerread`) |
+| Hak peran | peran template instans tambahan yang bukan superuser dan tidak mewarisi `pg_read_all_data` ditolak DI DEPAN — terukur: pemilik NOSUPERUSER bisa `pg_dump` bukunya tetapi `pg_dumpall --globals-only` ditolak `pg_authid` |
+| Isolasi di tengah putaran | dump/globals instans tambahan yang gagal SESUDAH tercacah kini menandai instans itu saja (`instansGagal`), bukan menghentikan seluruh putaran tanpa manifest — galat bawaan, tujuan, dan pembatalan tetap menghentikan |
+
+Tanpa satu baris `db_instances` pun, pembuka instans tidak pernah dipanggil
+dan nama objek serta manifest sama byte demi byte dengan sebelum tahap 4
+(uji `TestTanpaBarisDbInstancesTIDAKADAInstansYangDibuka` terhadap server
+sungguhan, `TestTanpaInstansNamaObjekDanManifestSAMADenganSebelumTahap4`).
+Syarat pemindahan pertama di produksi tinggal operasional — peran cadangan di
+server instans dan satu putaran tanpa `instansGagal`:
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#peran-cadangan-per-instans).
 
 ⚠ Replika baca (tahap 3) hanya melayani instans **bawaan**. PT di instans lain
 membaca primary-nya sendiri sampai instans itu punya standby sendiri.

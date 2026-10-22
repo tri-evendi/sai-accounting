@@ -78,6 +78,11 @@ import path from "node:path";
 
 import { buatAdapter } from "@sai/db/adapter";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
+import {
+  BACKUP_INSTANCE_OBJECT_PREFIX,
+  DB_INSTANCE_KEY_PATTERN,
+  DEFAULT_DB_INSTANCE_LABEL,
+} from "@sai/db/db-instances";
 
 function argValue(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
@@ -117,11 +122,16 @@ interface Manifest {
 }
 
 /** Bentuk kunci objek yang ditulis jalur `tenant`. Apa pun yang lain — `..`,
- *  jalur mutlak — ditolak sebelum menyentuh cakram. */
-const KUNCI_OBJEK_SAH = /^(instans\/[a-z][a-z0-9_]{0,31}\/)?[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
+ *  jalur mutlak — ditolak sebelum menyentuh cakram. Awalan dan bentuk kunci
+ *  instansnya dibangkitkan dari `contract/db-instances.yaml`, sumber yang sama
+ *  dengan penulisnya di Go (`internal/backup/jalankan.go`). */
+const KUNCI_OBJEK_SAH = new RegExp(
+  `^(${BACKUP_INSTANCE_OBJECT_PREFIX.replace(/[/.]/g, "\\$&")}` +
+    `${DB_INSTANCE_KEY_PATTERN.source.slice(1, -1)}\\/)?[A-Za-z0-9_][A-Za-z0-9_.-]*$`
+);
 
-/** Label instans bawaan, sama dengan `DEFAULT_DB_INSTANCE_LABEL`. */
-const INSTANS_BAWAAN = "default";
+/** Label instans bawaan. */
+const INSTANS_BAWAAN = DEFAULT_DB_INSTANCE_LABEL;
 
 const NAMA_MANIFEST = "manifest.json";
 

@@ -423,7 +423,13 @@ tahap 4. Dengan instans tambahan, objeknya bertanda `instans` di manifest, dan
 Kelengkapan dibuktikan **per instans**. Env var instans
 `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-integrator` lewat
 grup `x-env.db-instances` yang sama dengan layanan lain, dan wajib langsung ke
-PostgreSQL. Rinciannya di
+PostgreSQL. Perannya peran di template itu, dan ia wajib superuser atau
+mewarisi `pg_read_all_data` — diperiksa di depan; tanpanya
+`pg_dumpall --globals-only` ditolak `pg_authid`. Instans tambahan yang gagal,
+saat dibuka maupun di tengah dump, menjadi `instansGagal` tanpa menghentikan
+instans lain; putarannya `error` dan tidak memangkas. Bentuk kunci, nama env
+var, dan awalan `instans/` dibangkitkan dari `contract/db-instances.yaml`.
+Rinciannya di
 [MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
 
 **Urutan:** cacah → periksa versi → per basis data (dump → sandi → sidik →

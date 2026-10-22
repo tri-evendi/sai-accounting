@@ -219,7 +219,7 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     const gen = baca("services", "integrator", "internal", "contract", "report_layout_gen.go");
     const himpunan = /var GoEngineReports = map\[string\]bool\{([\s\S]*?)\}/.exec(gen)?.[1] ?? "";
     for (const [id, e] of ENTRIES) {
-      const ada = new RegExp(`Report${id.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())}: true`).test(himpunan);
+      const ada = new RegExp(`Report${id.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())}:\\s+true`).test(himpunan);
       expect(ada, `${id} (${e.engine}) di GoEngineReports`).toBe(e.engine === "go");
     }
   });

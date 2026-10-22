@@ -162,12 +162,14 @@ async function main(): Promise<number> {
   const width = Math.max(...roles.map((r) => r.name.length), "penyelia".length);
   const log = (m: string) => process.stdout.write(`${"penyelia".padEnd(width)} | ${m}\n`);
 
-  log(
-    `memulai ${roles.length} peran: ` +
-      roles.map((r) => (leaders.has(r.name) ? `${r.name} (lewat pemimpin)` : r.name)).join(", ")
-  );
-  const running = roles.map((r) => start(r, leaders.has(r.name), width));
-
+  /*
+   * Penangan sinyal DIPASANG SEBELUM peran pertama lahir. Urutan sebaliknya
+   * meninggalkan celah: SIGTERM yang tiba di antaranya memakai tindakan bawaan
+   * (penyelia mati seketika), dan peran yang sudah lahir di grup prosesnya
+   * sendiri (`detached`) tertinggal tanpa induk. Tes SIGTERM di
+   * `tests/worker-role-exit-stops-container.test.ts` pernah jatuh di celah itu.
+   */
+  const running: Running[] = [];
   let requested = false;
   const stopAll = (sig: NodeJS.Signals) => {
     for (const r of running) signalGroup(r, sig);
@@ -180,6 +182,19 @@ async function main(): Promise<number> {
   };
   process.on("SIGTERM", () => onSignal("SIGTERM"));
   process.on("SIGINT", () => onSignal("SIGINT"));
+
+  log(
+    `memulai ${roles.length} peran: ` +
+      roles.map((r) => (leaders.has(r.name) ? `${r.name} (lewat pemimpin)` : r.name)).join(", ")
+  );
+  for (const r of roles) {
+    /* Sinyal yang tiba di tengah peluncuran: peran sisanya tidak dilahirkan. */
+    if (requested) break;
+    running.push(start(r, leaders.has(r.name), width));
+  }
+
+  /* Dihentikan sebelum satu peran pun lahir: tidak ada yang ditunggu. */
+  if (running.length === 0) return 0;
 
   /* Peran PERTAMA yang berakhir menentukan nasib container. */
   const first = await Promise.race(running.map((r) => r.exited.then((code) => ({ r, code }))));

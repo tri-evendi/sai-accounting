@@ -1,14 +1,17 @@
 /**
- * BERKAS HASIL WAJIB TERBACA PEMBACANYA — `node` di `app-customer`.
+ * BERKAS HASIL WAJIB TERBACA PEMBACANYA — `node` (uid 1000) di `app-customer`.
  *
- * Pelari jalur `interactive` (Node: peran di `svc-worker`, Go: `svc-integrator`)
- * berjalan sebagai ROOT — tahap `migrator` dan `integrator` tidak punya
- * `USER` — dan menulis hasil 0600 di direktori 0700. `app-customer` membaca
- * volume `hasil` sebagai `node` (`USER node` di tahap `runner`), jadi tanpa
- * `chown` setiap `stat` dari rute unduhan ditolak dan SETIAP hasil berantre
- * dijawab 404: pekerjaan `done`, berkas ada di cakram, tombol unduh gagal.
- * Tidak ada galat di log mana pun — rute unduhan memang dirancang menjawab 404
- * untuk berkas yang tak terjangkau.
+ * `app-customer` membaca volume `hasil` sebagai `node` (`USER node` di tahap
+ * `runner`) dan berkas hasil ditulis 0600 di direktori 0700. Bila pemiliknya
+ * bukan uid pembaca, setiap `stat` dari rute unduhan ditolak dan SETIAP hasil
+ * berantre dijawab 404: pekerjaan `done`, berkas ada di cakram, tombol unduh
+ * gagal — tanpa galat di log mana pun.
+ *
+ * Sejak Okt 2026 kedua penulis (peran `interactive` di `svc-worker`, pelari Go
+ * di `svc-integrator`) berjalan sebagai uid 1000 SENDIRI — `USER node` di tahap
+ * `migrator`, `USER 1000:1000` di tahap `integrator` — jadi berkasnya lahir
+ * dengan pemilik yang benar. `chown` di kedua penulis TETAP ada dan berlaku bila
+ * prosesnya root (image lama saat rollback), dan pemiliknya tetap dari kontrak.
  *
  * Penjaga ini teks, bukan perilaku: `chown` ke uid lain hanya bisa dijalankan
  * root, dan tes tidak berjalan sebagai root.
@@ -40,11 +43,12 @@ describe("pemilik berkas hasil", () => {
     expect(RESULT_OWNER_GID).toBe(1000);
   });
 
-  it("kedua penulis berjalan sebagai root — itu sebabnya `chown` wajib", () => {
-    /* Bila suatu hari salah satunya diberi `USER`, penjaga ini merah dan
-       keputusan `chown`-nya perlu ditinjau — bukan dibiarkan diam-diam. */
-    expect(tahap("migrator")).not.toMatch(/^USER /m);
-    expect(tahap("integrator")).not.toMatch(/^USER /m);
+  it("kedua penulis berjalan sebagai uid PEMBACA — 1000, sama dengan kontrak", () => {
+    /* Bila suatu hari salah satunya kembali root atau pindah ke uid lain,
+       penjaga ini merah: uid lain = setiap hasil 404 di rute unduhan. */
+    expect(tahap("migrator")).toMatch(/^USER node$/m);
+    expect(tahap("integrator")).toMatch(/^USER 1000:1000$/m);
+    expect(tahap("integrator")).toMatch(/useradd --uid 1000 --gid 1000/);
   });
 
   it("penulis TS menyerahkan hasil ke pemiliknya bila ia root", () => {

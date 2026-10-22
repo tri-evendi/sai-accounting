@@ -123,6 +123,55 @@ const DDL_PEMBUKUAN_POSTGRES = `CREATE TABLE IF NOT EXISTS "_prisma_migrations" 
 /** DDL tabel pembukuan Prisma (`_prisma_migrations`) untuk buku baru. */
 export const DDL_PEMBUKUAN = DDL_PEMBUKUAN_POSTGRES;
 
+/**
+ * Bentuk nama PERAN yang boleh ditanam sebagai teks SQL. Sama dengan
+ * `ROLE_NAME` di `scripts/postgres-roles.py` — keduanya menanam nama yang sama.
+ */
+export const SAFE_ROLE_NAME = /^[a-z_][a-z0-9_]{0,62}$/;
+
+/**
+ * HAK PERAN APLIKASI ATAS SATU BUKU — hak minimum (Okt 2026).
+ *
+ * Aplikasi tidak lagi menyambung sebagai superuser. Basis data dan setiap
+ * objeknya dimiliki peran PEMILIK (`sai_owner`, NOSUPERUSER CREATEDB — dipakai
+ * `migrate` dan penyediaan), dan peran APLIKASI (`sai_app`) hanya mendapat DML:
+ * baca-tulis baris, tanpa DDL, tanpa `CREATE DATABASE`, tanpa membaca berkas
+ * server atau menjalankan program di sana (yang dimungkinkan superuser).
+ *
+ * Dijalankan SEBAGAI PEMILIK, di dalam buku itu: `ALTER DEFAULT PRIVILEGES`
+ * tanpa `FOR ROLE` berlaku untuk peran yang menjalankannya — yaitu peran yang
+ * kelak juga menjalankan migration berikutnya, jadi tabel yang lahir di rilis
+ * mendatang langsung terbaca aplikasi. `scripts/postgres-roles.py` menjalankan
+ * baris yang SAMA PERSIS (sesudah `SET ROLE` ke pemilik) untuk buku yang sudah
+ * ada; `tests/postgres-least-privilege.test.ts` menolak bila keduanya menyimpang.
+ *
+ * Idempoten: GRANT yang sudah ada tidak berubah apa pun.
+ *
+ * `%DB%` / `%ROLE%` diganti nama yang sudah divalidasi — nama tidak bisa menjadi
+ * parameter di pernyataan DDL/DCL.
+ */
+export const APP_ROLE_GRANT_TEMPLATE: readonly string[] = [
+  'GRANT CONNECT, TEMPORARY ON DATABASE "%DB%" TO "%ROLE%";',
+  'GRANT USAGE ON SCHEMA public TO "%ROLE%";',
+  'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "%ROLE%";',
+  'GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "%ROLE%";',
+  'GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO "%ROLE%";',
+  'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "%ROLE%";',
+  'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "%ROLE%";',
+  'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO "%ROLE%";',
+];
+
+/** SQL hibah peran aplikasi untuk satu buku (lihat `APP_ROLE_GRANT_TEMPLATE`). */
+export function appRoleGrantSql(databaseName: string, appRole: string): string {
+  pastikanNamaAman(databaseName);
+  if (!SAFE_ROLE_NAME.test(appRole)) {
+    throw new Error(`Nama peran tidak sah: ${JSON.stringify(appRole)}`);
+  }
+  return APP_ROLE_GRANT_TEMPLATE.map((l) => l.replaceAll("%DB%", databaseName).replaceAll("%ROLE%", appRole)).join(
+    "\n"
+  );
+}
+
 async function klienPg(url: string, database?: string): Promise<PgClient> {
   const b = uraikanUrl(url);
   const c = new PgClient({

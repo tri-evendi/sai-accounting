@@ -244,7 +244,8 @@ describe("kunci TIDAK PERNAH lewat pooler transaksi", () => {
     /* `svc-integrator` TIDAK menimpa `CONTROL_DATABASE_URL`: jalur
        `interactive` di proses yang sama memakainya lewat PgBouncer. */
     const envGo = svc["svc-integrator"]?.environment as Record<string, string>;
-    expect(envGo).not.toHaveProperty("CONTROL_DATABASE_URL");
+    /* Sejak daftar izin env (Okt 2026): disebut TANPA nilai = diteruskan dari `.env`. */
+    expect(envGo.CONTROL_DATABASE_URL ?? null).toBeNull();
   });
 
   it("advisory lock di kode TS hanya di tempat yang disebut", () => {

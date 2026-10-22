@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.13.0 — 2026-10-22 — belum digelar
+## 0.13.1 — 2026-10-22 — belum digelar
+
+Pengerasan keamanan di sisi server; tidak ada perubahan pada tampilan maupun data.
+
+### Berubah
+
+- Setiap layanan di server kini hanya menerima pengaturan yang memang dibutuhkannya, dan layanan latar berjalan tanpa hak administrator.
+
+---
+
+## 0.13.0 — 2026-10-22 (17462f3)
 
 Ekspor Laba Rugi dan Neraca kini memuat kolom pembanding, tanggal pagi hari tidak lagi mundur sehari, dan pembaruan keamanan.
 

@@ -493,20 +493,24 @@ INSERT INTO db_instances (key, url_env_var, updated_at)
 VALUES ('db2', 'COMPANY_DB2_DATABASE_URL_TEMPLATE', now());
 ```
 
-Lalu set `COMPANY_DB2_DATABASE_URL_TEMPLATE` di **setiap** layanan yang
-membuka buku: `app-customer`, `app-operator`, `migrate`, `svc-worker`,
-`svc-integrator`, dan `job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
+Lalu set `COMPANY_DB2_DATABASE_URL_TEMPLATE` di `.env` **dan** tulis namanya
+(tanpa nilai) di grup `x-env.db-instances` di `docker-compose.yml` — grup itu
+digabung ke **setiap** layanan yang membuka buku: `app-customer`,
+`app-operator`, `migrate`, `svc-worker`, `svc-integrator`, dan `job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
 saat membuka buku PT di instans tersebut. Untuk `svc-integrator` artinya buku PT
 di instans itu **tidak dicadangkan** (lihat *Cadangan per instans* di bawah).
 Pengguna kunci di URL itu wajib berhak `CREATEDB`.
 
-Jalannya **satu**: baris di `.env`, yang sampai ke semua layanan itu lewat
-`env_file: .env`. Jangan menulisnya di `environment:` satu layanan. Penimpaan
-per layanan adalah persis cara satu nilai sampai ke satu layanan dan terlewat
-di yang lain. `tests/db-instance-env-reaches-every-service.test.ts` menolak
-keduanya: layanan repo tanpa `env_file: .env`, dan env var berbentuk
-`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` di `environment:` berkas compose mana
-pun. Akibatnya URL itu dipakai apa adanya oleh semua layanan, jadi ia wajib
+Jalannya **satu**: nilai di `.env`, nama di grup `x-env.db-instances`, yang
+sampai ke semua layanan itu lewat `<<: *env-db-instances`. (Sampai Okt 2026
+jalannya `env_file: .env`; itu dicabut karena membawa SELURUH rahasia ke setiap
+container — PRODUCTION.md §Env allowlist.) Jangan menulisnya di `environment:`
+satu layanan. Penimpaan per layanan adalah persis cara satu nilai sampai ke
+satu layanan dan terlewat di yang lain.
+`tests/db-instance-env-reaches-every-service.test.ts` menolak keduanya: layanan
+repo yang tidak menggabungkan grup itu, dan env var berbentuk
+`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` di `environment:` sebuah layanan di
+berkas compose mana pun. Akibatnya URL itu dipakai apa adanya oleh semua layanan, jadi ia wajib
 **langsung** ke PostgreSQL, tidak lewat PgBouncer. `migrate` butuh advisory
 lock sesi, dan jalur `tenant` butuh `pg_database` yang utuh. Go menolak URL
 instans yang memuat `pgbouncer=true`.

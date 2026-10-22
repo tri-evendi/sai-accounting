@@ -121,7 +121,11 @@ Nomenklaturnya di `AGENTS.md`.
 | Standalone | 299 MB | 69 MB |
 
 `app-customer` tidak memuat rute konsol, dan `OPERATOR_HOST` dikosongkan lewat
-`environment:` (menimpa `env_file:`) sebagai lapis tambahan. Satu container,
+`environment:` sebagai lapis tambahan. Sejak Okt 2026 tidak ada lagi
+`env_file: .env`: setiap container menerima HANYA env yang disebut daftar
+izinnya (grup `x-env` di compose), jadi `app-customer` tidak memegang rahasia
+konsol, kunci cadangan, kredensial S3, atau sandi superuser PostgreSQL —
+`tests/compose-env-allowlist.test.ts`, inventarisnya `bun run env:inventory`. Satu container,
 tanpa replika: restart mengosongkan setiap cache dalam memori. Cache per-proses
 yang dulu menghalangi penskalaan horizontal (P2-3) kini terdaftar di bus
 invalidasi tahap 2 — siap, belum dinyalakan (§19).
@@ -174,7 +178,7 @@ pengganti: `docker compose -f docker-compose.yml -f docker-compose.onprem.yml up
 | `app-operator` · `db` tidak dipasang | profil `tidak-dipasang` |
 | Tag image **wajib**: `${SAI_TAG:?…}` | `latest` berpindah setiap kali CI mendorong, jadi `up -d` karena reboot atau ganti disk bisa memasang versi yang belum pernah diuji di sana |
 | `pull_policy: always` | `build:` di berkas utama membuat `up` **membangun image di kotak customer** — sepuluh menit `next build` tanpa toolchain-nya, dilarang PRODUCTION.md |
-| `APP_DEPLOY_PROFILE: onprem` | lewat `environment:` (menimpa `env_file:`) di kelima service SAI — override ini sendiri yang menyatakan profilnya, jadi tidak ada baris yang bisa lupa disalin |
+| `APP_DEPLOY_PROFILE: onprem` | lewat `environment:` di kelima service SAI — override ini sendiri yang menyatakan profilnya, jadi tidak ada baris yang bisa lupa disalin |
 
 Dijaga `tests/onprem-profile.test.ts`, yang menuntut **setiap** service
 ber-`image: ${SAI_IMAGE…}` di berkas utama disebut di override — dipatok, atau
@@ -227,7 +231,12 @@ cakram sampai dihapus tangan. Jalan mundur ke MariaDB kini hanya lewat dump
 terakhirnya + image `sha-c9b5d9c` (v0.12.0) — [07 §9](./07-RIWAYAT.md).
 
 Dua hal berbeda dari MariaDB dan masih terbuka sebagai risiko: collation `C`
-(teks peka huruf besar-kecil) dan role aplikasi `sai` adalah **SUPERUSER**.
+(teks peka huruf besar-kecil) dan role aplikasi `sai` adalah **SUPERUSER** —
+yang kedua punya jalan keluar sejak Okt 2026: tiga peran (`sai_owner` pemilik
+NOSUPERUSER CREATEDB, `sai_app` DML saja, `sai_backup` = `sai_app` +
+`pg_read_all_data`) yang dibuat `scripts/postgres-roles.py` dan dialihkan
+bertahap (PRODUCTION.md §Least-privilege). Sampai peralihan itu dijalankan di
+sebuah pemasangan, ia tetap superuser.
 
 ## 5. Pekerjaan latar
 
@@ -413,7 +422,7 @@ tahap 4. Dengan instans tambahan, objeknya bertanda `instans` di manifest, dan
 `companyId` hanya terisi pada objek dari instans tempat PT itu terdaftar.
 Kelengkapan dibuktikan **per instans**. Env var instans
 `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-integrator` lewat
-`env_file: .env` yang sama dengan layanan lain, dan wajib langsung ke
+grup `x-env.db-instances` yang sama dengan layanan lain, dan wajib langsung ke
 PostgreSQL. Rinciannya di
 [MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
 
@@ -444,12 +453,15 @@ memuat `instansGagal`, jejaknya `error`, pemangkasan dilewati, dan
 > **⚠ Status 18 Okt 2026: `local_only`**, `lastSuccessAt: null`, tiga env S3
 > kosong. Kehilangan mesin = kehilangan buku **beserta** backup-nya. P0-1.
 
-> **⚠ `svc-integrator` berjalan sebagai root**, dan itu tertunda — bukan selesai.
-> Ia satu-satunya container yang memegang `BACKUP_ENCRYPTION_KEY` — dan sejak
-> 22 Okt 2026 juga mengurai parameter laporan pengguna — jadi justru ia yang
-> paling pantas non-root. Yang menahannya: volume `cadangan` sudah ada
-> di mesin produksi, dibuat root, dan Docker tidak menerapkan kepemilikan image
-> ke volume bernama yang sudah ada. Langkahnya di PRODUCTION.md.
+> **`svc-integrator` berjalan sebagai uid 1000 sejak Okt 2026** (`USER 1000:1000`
+> di tahap `integrator`). Ia satu-satunya container yang hidup terus dan
+> memegang `BACKUP_ENCRYPTION_KEY` — dan sejak 22 Okt 2026 juga mengurai
+> parameter laporan pengguna — jadi justru ia yang paling pantas non-root. Yang
+> dulu menahannya (volume `cadangan` milik root, dan Docker tidak menerapkan
+> kepemilikan image ke volume bernama yang sudah ada) kini satu langkah rilis
+> sekali-jalan: `chown -R 1000:1000` volume itu sebelum swap (PRODUCTION.md
+> §Env allowlist). Jalur `tenant`-nya menyambung sebagai `sai_backup` sesudah
+> peralihan hak minimum.
 
 ### Peran `interactive` (`svc-worker`) — jalur `interactive`, ekspor besar
 
@@ -469,10 +481,10 @@ mengubah penolakan itu menjadi "akan dikerjakan".
 |---|---|
 | Muatan pekerjaan = **parameter**, bukan angka | `jobs` hidup di basis data **kendali**, dan kendali tidak memuat satu angka akuntansi pun (#104). Pekerjanya menghitung ulang dengan pembangun payload yang SAMA — dan laporan karena itu dihitung saat ia DIKERJAKAN, yang untuk ekspor yang menunggu beberapa menit justru lebih berguna |
 | Instansnya **berapa pun** | ia tidak menulis buku dan tidak menerbitkan apa pun; `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan dua kali |
-| Penulis volume `hasil` (bersama jalur `interactive` Go di `svc-integrator` sejak tahap 1d) | `app-customer` memasangnya `:ro` dan hanya men-stream. Kedua pelari berjalan sebagai root dan `chown` setiap hasil ke `node` (`contract/kinds.yaml` → `results`) — tanpa itu berkas 0600 milik root tidak terbaca rute unduhan dan setiap hasil dijawab 404 |
+| Penulis volume `hasil` (bersama jalur `interactive` Go di `svc-integrator` sejak tahap 1d) | `app-customer` memasangnya `:ro` dan hanya men-stream. Sejak Okt 2026 kedua pelari berjalan sebagai uid 1000 — uid pembacanya (`contract/kinds.yaml` → `results`) — jadi berkas lahir dengan pemilik yang benar; `chown` di penulisnya hanya berlaku bila prosesnya root. Pemilik yang salah = berkas 0600 tidak terbaca rute unduhan dan setiap hasil dijawab 404 |
 | Lewat **PgBouncer** | ia membaca buku SATU PT per pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data seperti jalur `tenant` |
 | **Node, bukan Go** | ia MENGHITUNG angka akuntansi (`buildReportPayload` membaca buku), dan §3.3 menahan Go di depan garis itu. Yang dibeli proses terpisah: event loop sendiri dan batas memori sendiri — ekspor yang kehabisan memori menjatuhkan PELARI, bukan aplikasi, dan pekerjaannya dipulangkan `reclaimStaleJobs` dengan `attempts + 1` |
-| Tidak membaca rahasia cadangan | Tidak satu peran pun di `svc-worker` membaca `BACKUP_ENCRYPTION_KEY` (`env_file` memang membawanya — utang yang disebut di compose). ⚠ Pasangan Go-nya kini SEPROSES dengan kunci itu (09 §3.2) |
+| Tidak membaca rahasia cadangan | Tidak satu peran pun di `svc-worker` membaca `BACKUP_ENCRYPTION_KEY`, dan sejak daftar izin env (Okt 2026) kunci itu memang tidak sampai ke container ini. ⚠ Pasangan Go-nya kini SEPROSES dengan kunci itu (09 §3.2) |
 
 **Perusahaan nonaktif TETAP dikerjakan**, berbeda dari peran `ledger` — dan
 bedanya bukan selera: jalur ini hanya MEMBACA, dan mengekspor buku yang akan
@@ -630,9 +642,9 @@ graph LR
 | `deps` | `bun install --frozen-lockfile` | — |
 | `prepared` · `builder*` | 3× `prisma generate`; lalu `next build` | 768 MB |
 | `runner*` | Standalone, `USER node` | — |
-| `migrator` | 3× `prisma generate`; `CMD` `db:migrate:all` | 512 MB |
+| `migrator` | 3× `prisma generate`; `CMD` `db:migrate:all`; `USER node` sejak Okt 2026 (`/app` milik root, hanya `/app/data` milik `node`) | 512 MB |
 | `backup` | `migrator` + `postgresql-client-17` + `awscli`; di CI dibangun di atas `-migrator` yang baru didorong (dirujuk digest) sejak 22 Okt 2026 | — |
-| `go-build` · `integrator` | `golang` → biner statis `cmd/integrator` di `debian:bookworm-slim` + `postgresql-client-17` | — |
+| `go-build` · `integrator` | `golang` → biner statis `cmd/integrator` di `debian:bookworm-slim` + `postgresql-client-17`; `USER 1000:1000` sejak Okt 2026 | — |
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>`.
 
@@ -1482,7 +1494,9 @@ Yang menentukan sisi server bukan angka itu, melainkan PgBouncer:
 basis data bawaan 20 berarti sampai 380 koneksi server — `max_connections` 100.
 `MAX_DB_CONNECTIONS` (yang disebut 05 §P2-3) juga per basis data, jadi bukan
 batas global. Batas global yang benar `MAX_USER_CONNECTIONS`: semua basis data
-memakai satu pengguna (`sai`). Override menyetelnya:
+memakai satu pengguna (`sai`; sesudah peralihan hak minimum `sai_app`, yang
+menggantikannya — jumlah kolamnya tidak bertambah, `sai_owner` hanya hadir saat
+penyediaan). Override menyetelnya:
 
 | Variabel (override) | Bawaan | Alasannya |
 |---|---|---|

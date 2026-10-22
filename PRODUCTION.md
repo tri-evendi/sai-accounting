@@ -36,17 +36,29 @@ issue #636 on 22 Oct 2026 — see [§MariaDB retired](#mariadb-retired-issue-636
 
 ## 1. Configure environment
 
-`.env` lives next to `docker-compose.yml`; Compose reads it for interpolation
-and injects it into every container via `env_file`. `.env.docker.example` is
-the template (PostgreSQL since #636); the table below is the reference for
-production values. `mysql://` URLs are rejected at start-up with a message
+`.env` lives next to `docker-compose.yml`; Compose reads it for interpolation.
+It is **not** injected wholesale (no `env_file` since Oct 2026): every service
+receives only the variables named in its `environment:` allowlist in
+`docker-compose.yml` (shared groups under `x-env`), so the public
+`app-customer` never holds the console session secret, the backup key or the
+S3 credentials. A variable you add to `.env` therefore reaches **nothing**
+until its name is added to the service(s) that read it — `bun run
+env:inventory` prints, from the code, which service reads which variable, and
+`tests/compose-env-allowlist.test.ts` fails when code reads a variable its
+service is not given. Details: [§Env allowlist](#env-allowlist-non-root-containers-least-privilege-roles-oct-2026).
+`.env.docker.example` is the template (PostgreSQL since #636); the table below
+is the reference for production values. `mysql://` URLs are rejected at start-up with a message
 naming #636. `DB_USER`, `DB_PASSWORD` and `DB_ROOT_PASSWORD` (MariaDB) are no
 longer read by anything and can be deleted from `.env`; `DB_NAME` stays — it
 names the first company database.
 
 | Variable | Production value |
 |----------|------------------|
-| `PG_USER`, `PG_PASSWORD` | Credentials of the `pg` service (also used by `migrate`, and by `svc-worker`/`svc-integrator` through `CONTROL_DATABASE_DIRECT_URL`, which connect to `pg` directly) |
+| `PG_USER`, `PG_PASSWORD` | Bootstrap **superuser** of the `pg` service. After the least-privilege cutover only `pg`, `pgbouncer` (password lookup) and the `job-backup` toolbox use it; until then it is also the fallback for the three role pairs below |
+| `PG_OWNER_USER`, `PG_OWNER_PASSWORD` | Owner role (`sai_owner`, NOSUPERUSER CREATEDB): `migrate` and company provisioning. Written by `python3 scripts/postgres-roles.py apply` — [§Least-privilege](#least-privilege-postgresql-roles--cutover) |
+| `PG_APP_USER`, `PG_APP_PASSWORD` | Application role (`sai_app`, DML only): every app/worker URL, and the `svc-worker` lane fence (`CONTROL_DATABASE_DIRECT_URL`) |
+| `PG_BACKUP_USER`, `PG_BACKUP_PASSWORD` | Backup role (`sai_backup` = `sai_app` + `pg_read_all_data`): the `svc-integrator` `tenant` lane (`CONTROL_DATABASE_DIRECT_URL`) |
+| `PROVISION_DATABASE_URL` | `postgres://<owner>:…@pgbouncer:5432/sai_control` — credentials `/companies/new` creates databases with. Set by `postgres-roles.py switch-urls`; unset = `CONTROL_DATABASE_URL` (correct only while that is still the superuser) |
 | `DATABASE_URL` | `postgres://<user>:<pass>@pgbouncer:5432/sai_production` — company-book template (the database name is swapped per company) |
 | `CONTROL_DATABASE_URL` | `postgres://…@pgbouncer:5432/sai_control` — users, companies, memberships, tenants |
 | `PLATFORM_DATABASE_URL` | `postgres://…@pgbouncer:5432/sai_platform` — plans, subscriptions, invoices, operator audit |
@@ -113,9 +125,18 @@ when `--operator-name` is given; standalone it is
 Scan the URI into an authenticator first (MFA is mandatory; an entry
 without a TOTP secret is rejected), put the line in `.env`, then recreate the
 console: `docker compose up -d --force-recreate --no-deps app-operator`
-(`env_file` is read at container creation, not on restart). That env account
+(the environment is read at container creation, not on restart). That env account
 is the emergency `owner`; further operators are managed from the console at
 `/accounts`.
+
+`OPERATOR_USERS` reaches **only** `app-operator`. To print a current TOTP code
+with `bun run operator-code <name>` (locked-out operator), hand it to that one
+run from the shell — through the environment, never as an argument:
+
+```bash
+set -a; . ./.env; set +a
+docker compose run --rm -e OPERATOR_USERS migrate bun run operator-code <name>
+```
 
 ## 4. Persistent data
 
@@ -441,6 +462,165 @@ survive across commands.
 > `up -d --remove-orphans`. Rolling back `app-customer`/`app-operator` alone, as
 > above, is not affected.
 
+### Env allowlist, non-root containers, least-privilege roles (Oct 2026)
+
+Three hardening changes ship together; the first two take effect with the
+normal release steps above, the third is a separate, staged cutover
+([§Least-privilege](#least-privilege-postgresql-roles--cutover)) that this
+release only *prepares* (every new variable falls back to today's value).
+
+| Change | What it closes | Guard |
+|---|---|---|
+| **Env allowlist** — no `env_file: .env`; each service lists what it reads | An RCE in the public `app-customer` read `OPERATOR_SESSION_SECRET` (forge console sessions), `BACKUP_ENCRYPTION_KEY` + S3 keys (decrypt/delete every backup) and the PostgreSQL superuser password | `tests/compose-env-allowlist.test.ts` (deny-list + "every variable the code reads is provided", built from the import graph — `bun run env:inventory`) |
+| **Non-root** — `svc-worker`, `migrate`, `job-backup` run as `node` (1000), `svc-integrator` as 1000:1000 | Root in the two long-running background containers, one of which holds the backup key and parses user report parameters | `tests/containers-non-root.test.ts` |
+| **Role split prepared** — `migrate` → owner role, fences → app/backup roles, provisioning grants the app role | The app talking to PostgreSQL as superuser (`COPY … TO PROGRAM`, `pg_authid`) | `tests/postgres-least-privilege.test.ts` |
+
+`pg` itself is unchanged and already non-root where it matters: the official
+image's `docker-entrypoint.sh` starts as root only to `chown` the data
+directory, then `exec gosu postgres …` — the server processes run as
+`postgres` (uid 70). `docker top sai-pg` shows it.
+
+**Before pulling (once):**
+
+1. Additional database instances (stage 4). Their URL variable has a dynamic
+   name, and it now reaches services only through the `x-env.db-instances`
+   group in `docker-compose.yml`:
+   ```bash
+   grep -oE '^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE' .env
+   ```
+   Must print nothing (true as of 22 Oct 2026). Every name it prints must be
+   added — valueless — under `x-env.db-instances` in a commit **before** this
+   release, or the books on that instance stop opening.
+2. Variables that live only in `.env` and are no longer delivered anywhere:
+   ```bash
+   for k in $(grep -oE '^[A-Z_][A-Z0-9_]*' .env); do grep -qw "$k" docker-compose.yml || echo "$k"; done
+   ```
+   Expected: `DB_USER DB_PASSWORD DB_ROOT_PASSWORD` (MariaDB, obsolete),
+   `NEXT_PUBLIC_APP_NAME` (build-time only), `ALLOW_SEED` if present. Anything
+   else: `bun run env:inventory` (on a dev box) says whether code reads it.
+
+**After `docker compose pull`, before the swap (once) — volume ownership:**
+
+Docker applies an image's directory ownership only to a named volume that is
+*new*. `cadangan` was created by root (and `hasil` must stay 1000), so:
+
+```bash
+docker compose run --rm --no-deps --user root --entrypoint sh svc-integrator -c \
+  'chown -R 1000:1000 /app/data/cadangan /app/data/hasil && ls -ldn /app/data/cadangan /app/data/hasil \
+   && echo "files in documents/audit NOT owned by 1000:" && find /app/data/documents /app/data/audit ! -uid 1000 | head'
+```
+
+Both directories must show `1000 1000`. If the `find` lists files, the backup
+lane (now uid 1000) cannot read them; give them to 1000 the same way through a
+read-write mount, e.g.
+`docker run --rm --user root -v sai-accounting_documents:/d -v sai-accounting_audit:/a --entrypoint chown ghcr.io/tri-evendi/sai-accounting-integrator:${SAI_TAG:-latest} -R 1000:1000 /d /a`.
+
+Then the usual swap (§Updates step 4).
+
+**Verify:**
+
+```bash
+# no console/backup secret in the public app (names only — values never printed)
+docker compose exec app-customer sh -c 'env | cut -d= -f1' \
+  | grep -E '^(OPERATOR_(SESSION_SECRET|USERS|MFA|IP_ALLOWLIST)|BACKUP_|AWS_|PG_[A-Z_]*PASSWORD)' && echo LEAK || echo clean
+# every SAI container runs as 1000
+for s in app-customer app-operator svc-worker svc-integrator; do printf '%s ' $s; docker compose exec $s id -u; done
+# the background roles still write: next export lands in `hasil`, next daily run in `/api/health` → backup
+docker compose logs --since 30m svc-worker svc-integrator | grep -iE 'EACCES|permission denied' || echo 'no permission errors'
+```
+
+(`PG_APP_USER` in `app-customer` is expected: a role *name*, used to grant new
+books to the app role.)
+
+**Rollback:** previous `SAI_TAG` plus the `docker-compose.yml` of the previous
+release, then `up -d`. Old images run as root and read the chowned volumes
+fine; nothing to undo.
+
+### Least-privilege PostgreSQL roles — cutover
+
+Three roles replace the superuser for everything that runs all the time:
+
+| Role (`.env` pair) | Attributes | Used by |
+|---|---|---|
+| `sai_owner` (`PG_OWNER_*`) | NOSUPERUSER **CREATEDB**, owns every app database and object | `migrate`; `/companies/new` via `PROVISION_DATABASE_URL`; toolbox scripts that create books |
+| `sai_app` (`PG_APP_*`) | DML only (SELECT/INSERT/UPDATE/DELETE, sequences, EXECUTE) | `app-customer`, `app-operator`, `svc-worker`, integrator `interactive` lane — through PgBouncer; the `svc-worker` fence directly |
+| `sai_backup` (`PG_BACKUP_*`) | member of `sai_app` + `pg_read_all_data` | integrator `tenant` lane: `pg_dump` per book, `pg_dumpall --globals-only`, `backup_runs` |
+| `sai` (`PG_USER`) | superuser (bootstrap) | `pg`, PgBouncer's password lookup, the `job-backup` toolbox (restores `globals.sql` in `prove-backup-restore`) |
+
+New books get the grants from code (`appRoleForNewBook` +
+`appRoleGrantSql`, run before the company is registered) and from the
+default privileges `apply` sets, so tables created by later migrations are
+readable by the app the moment they exist.
+
+**PgBouncer needs no change.** `edoburu/pgbouncer` writes
+`* = host=pg port=5432 auth_user=<PG_USER>` and a userlist with only
+`PG_USER`; any other role is looked up with PgBouncer's default `auth_query`
+on `pg_authid` as that user — checked in the entrypoint of
+`v1.26.0-p0`. Pools are per (database, user): `sai_app` replaces `sai`, so the
+server-connection count does not grow (`sai_owner` only during provisioning).
+
+**Run on the host, in the compose directory, in this order. Every step is
+idempotent; each `.env` change leaves a `.env.sebelum-<…>` backup.**
+
+1. **Baseline.** `python3 scripts/postgres-roles.py check` — expect "peran …
+   tidak ada" (roles not created yet).
+2. **Roles, ownership, grants.** Low-traffic window (each book is one
+   transaction with `lock_timeout = 5s`; `ALTER … OWNER` takes a short
+   exclusive lock per table — a timeout aborts that book only; rerun).
+   ```bash
+   python3 scripts/postgres-roles.py apply
+   python3 scripts/postgres-roles.py check     # must print ✓
+   ```
+   Databases come from the **registry** (control, platform, `DB_NAME`, every
+   company on the default instance); anything else in `pg_database` is listed
+   and left alone. `apply` writes `PG_OWNER_*`, `PG_APP_*`, `PG_BACKUP_*` to
+   `.env` only after `check` passes. Running apps are unaffected — they still
+   connect as `sai`, which bypasses ownership.
+3. **Migrate as owner.** `docker compose run --rm migrate bun run db:migrate:all`
+   — no pending migrations, exit 0. Proves `sai_owner` logs in and owns the schema.
+4. **Background services.**
+   ```bash
+   docker compose up -d --no-deps svc-worker svc-integrator
+   docker compose exec -T pg pg_dumpall --globals-only -U sai_backup -d postgres >/dev/null && echo globals-ok
+   docker compose exec -T pg pg_dump -Fc -U sai_backup -d sai_control >/dev/null && echo dump-ok
+   docker compose logs --since 5m svc-worker svc-integrator | grep -E '28P01|42501|permission denied' || echo clean
+   ```
+   (The two dumps use the container's local socket, so they prove the
+   *privileges* of `sai_backup`; the containers starting cleanly proves the
+   passwords.)
+5. **Application URLs.** `python3 scripts/postgres-roles.py switch-urls` —
+   rewrites `DATABASE_URL`, `CONTROL_DATABASE_URL`, `PLATFORM_DATABASE_URL`,
+   `COMPANY_DATABASE_URL_TEMPLATE` to `sai_app`, adds `PROVISION_DATABASE_URL`
+   (owner, same host as the control URL), recreates exactly the running
+   services whose environment changed, and prints `/api/health`. Then: log in,
+   open a book, post a draft, run a large export (queued), open the console.
+   ```bash
+   docker compose exec -T pg psql -U "$PG_USER" -d postgres -Atc \
+     "SELECT usename, count(*) FROM pg_stat_activity WHERE backend_type = 'client backend' GROUP BY 1"
+   ```
+   Apps show as `sai_app`; the only `sai` sessions left are PgBouncer's lookup
+   and your `psql`.
+6. **Provisioning** (test tenant, or the test host first): create a company at
+   `/companies/new`; it must open. `python3 scripts/postgres-roles.py check`
+   must stay ✓ afterwards.
+
+**Rollback** (any step): `python3 scripts/postgres-roles.py rollback
+.env.sebelum-<…>` with the backup that step wrote — it restores `.env`,
+re-applies any password that differs, and recreates the changed services.
+Ownership and grants need no rollback: the superuser bypasses both, so the old
+URLs work against the new ownership. The roles can stay.
+
+**Rotating a password afterwards:** `bash scripts/rotate-postgres-password.sh
+<superuser|owner|app|backup>` — server first (SCRAM verifier over stdin, never
+in `ps`), then `.env`, then only the running services whose environment
+changed (never `pg` itself), then `https://$APP_DOMAIN/api/health`.
+
+**Known residual risk:** `app-customer` still holds the *owner* credentials
+(`PROVISION_DATABASE_URL`) because `/companies/new` creates the database
+inside the request. Owner ≠ superuser (no server files, no programs, no
+roles), but it can run DDL on every app database. Moving provisioning onto the
+job queue would let `app-customer` hold `sai_app` only.
+
 ### MariaDB retired (issue #636, 22 Oct 2026)
 
 Already done on the server by the main session, before the PR that removed
@@ -499,8 +679,10 @@ Until that is done, `docker compose pull` answers `denied`.
 ## Troubleshooting
 
 **500 on `/api/auth/session`** — Almost always a missing env var in the
-container (not in the build). `.env` must sit in the compose directory, and
-`env_file` is only read when a container is created — after editing it, use
+container (not in the build). `.env` must sit in the compose directory, the
+variable must be named in the service's `environment:` allowlist (a name that
+is only in `.env` reaches no container), and the environment is only read when
+a container is created — after editing either, use
 `docker compose up -d --force-recreate --no-deps app-customer`. Check what the
 container actually received:
 

@@ -73,8 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.12.1",
+    tanggal: "2026-10-22",
+    ringkas: "Ekspor data perusahaan kembali berfungsi, dan mesin basis data lama dipensiunkan.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Ekspor seluruh data perusahaan (hak portabilitas data) kembali menghasilkan berkas; sejak pindah mesin basis data 15 Oktober ia gagal di tabel pertama.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Ketika server menolak pembuatan buku perusahaan baru karena hak akses, pesannya kini menjelaskan sebabnya, bukan pesan umum.",
+      },
+    ],
+  },
+  {
     versi: "0.12.0",
     tanggal: "2026-10-22",
+    sha: "c9b5d9c",
     ringkas:
       "Perusahaan bisa dipindahkan dari langganan ke server sendiri dengan data utuh, dan layanan latar dirampingkan.",
     butir: [

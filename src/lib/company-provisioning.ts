@@ -51,6 +51,7 @@ import { join } from "node:path";
 /* Operasi tingkat server hidup di `@sai/db/server` — berkas ini tidak memegang
    SQL tingkat server sendiri. */
 import {
+  appRoleGrantSql,
   bukaServer,
   bukaBasisData,
   DDL_PEMBUKUAN,
@@ -59,6 +60,7 @@ import {
 
 import { controlDb } from "@sai/core/control-db";
 import {
+  appRoleForNewBook,
   DEFAULT_DB_INSTANCE_LABEL,
   findDbInstance,
   instanceServerUrl,
@@ -320,6 +322,23 @@ export async function provisionCompany(
           mulai: startedAt,
           selesai: new Date(),
         });
+      }
+
+      /*
+       * ── 3b. Hak peran aplikasi (hak minimum, Okt 2026) ─────────────────
+       * Basis data ini baru saja dibuat oleh peran PEMILIK, jadi peran
+       * aplikasi — yang akan membukanya di setiap permintaan — belum berhak
+       * atas satu tabel pun. Tanpa langkah ini PT baru lahir "siap dibuka"
+       * lalu setiap halamannya gagal 42501. Dijalankan SEBELUM registry:
+       * buku yang tidak bisa dibaca aplikasi tidak boleh terdaftar.
+       *
+       * `null` = pemilik dan aplikasi peran yang sama (sebelum peralihan),
+       * tidak ada yang perlu dihibahkan.
+       */
+      const appRole = appRoleForNewBook(dbInstance);
+      if (appRole) {
+        await emit({ phase: "migrate", message: "Menghibahkan hak peran aplikasi…", detail: appRole });
+        await db.jalankan(appRoleGrantSql(databaseName, appRole));
       }
     } finally {
       await db.tutup();

@@ -24,7 +24,7 @@ services:
 
   # ══ Celah #1: profil penyebaran dinyatakan DI SINI ══════════════════════
   #
-  # `APP_DEPLOY_PROFILE` disetel lewat `environment:` (yang menimpa `env_file:`)
+  # `APP_DEPLOY_PROFILE` disetel lewat `environment:` di berkas INI
   # dan bukan diserahkan ke `.env` customer — berkas override INILAH pernyataan
   # "ini pemasangan on-premise", jadi memakainya sekaligus menyatakannya. Kalau
   # ia hanya ada di `.env`, satu baris yang lupa disalin membuat pemasangan

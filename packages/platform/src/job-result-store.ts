@@ -77,10 +77,12 @@ export type OpsiAkar = { akar?: string };
  * Serahkan berkas hasil ke pembacanya, bila penulisnya root.
  *
  * ══ KENAPA ══════════════════════════════════════════════════════════════════
- * Pelari jalur berjalan sebagai ROOT (tahap `migrator` dan `integrator` tidak
- * punya `USER`), sementara `app-customer` — satu-satunya pembaca volume
- * `hasil` — berjalan sebagai `node`. Berkasnya 0600 di direktori 0700 milik
- * root, jadi `stat` dari rute unduhan ditolak dan SETIAP hasil dijawab 404:
+ * Sejak Okt 2026 pelari jalur berjalan sebagai `node` (uid 1000, `USER` di tahap
+ * `migrator` dan `integrator`) — uid yang sama dengan `app-customer`, satu-
+ * satunya pembaca volume `hasil` — jadi fungsi ini tidak melakukan apa pun di
+ * image yang sekarang. Ia tetap ada untuk proses yang dijalankan sebagai root
+ * (`docker compose run --user root …`, pemasangan yang menimpa `user:`): tanpa
+ * penyerahan, berkasnya 0600 di direktori 0700 milik root, jadi `stat` dari rute unduhan ditolak dan SETIAP hasil dijawab 404:
  * pekerjaan `done`, berkas ada di cakram, dan tidak satu pun bisa diunduh.
  * Modenya tidak dilonggarkan — yang diperbaiki PEMILIKNYA, ke uid yang memang
  * membacanya (`contract/kinds.yaml` → `results`, dibaca juga pelari Go).

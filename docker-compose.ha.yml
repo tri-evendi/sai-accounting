@@ -53,7 +53,9 @@
 # autentikasi: hanya untuk jaringan privat antar-host. Membukanya ke internet
 # berarti siapa pun bisa memaksa failover.
 
-x-control-direct: &control-direct postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+# Peran APLIKASI (hak minimum, Okt 2026) — sama persis dengan compose dasar;
+# jatuh ke superuser `PG_USER` sebelum peralihan (PRODUCTION.md §Least-privilege).
+x-control-direct: &control-direct postgres://${PG_APP_USER:-${PG_USER:-sai}}:${PG_APP_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
 
 configs:
   # Router TCP: port 5432 → anggota yang menjawab `GET /primary` 200 di REST
@@ -162,7 +164,7 @@ services:
     environment:
       WORKER_LEADER_ROLES: scheduler,ledger,conformance
       CONTROL_DATABASE_DIRECT_URL: *control-direct
-      COMPANY_DATABASE_READ_URL_TEMPLATE: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5433/template
+      COMPANY_DATABASE_READ_URL_TEMPLATE: postgres://${PG_APP_USER:-${PG_USER:-sai}}:${PG_APP_PASSWORD:-${PG_PASSWORD}}@pg:5433/template
 
   # ══ ANGGOTA KLUSTER (host A & B) ═══════════════════════════════════════════
   #

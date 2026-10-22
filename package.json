@@ -124,7 +124,15 @@
     "adopt-company": "tsx scripts/adopt-existing-company.ts",
     "adopt-tenant": "tsx scripts/adopt-tenant.ts",
     "prove-tenant": "tsx scripts/prove-tenant-adoption.ts",
-    "check:env": "node scripts/check-env.mjs"
+    "check:env": "node scripts/check-env.mjs",
+    "env:inventory": "bun scripts/env-inventory.ts",
+    "_env_inventory_note": "Tabel env × layanan, DIBANGUN dari graf impor titik masuk tiap layanan compose (`scripts/lib/env-inventory.ts`): env yang dibaca kode, berkas pertama yang membacanya, dan apakah `environment:` layanan itu menyediakannya. `-- --md` mencetak tabel markdown (untuk PR/runbook). Sejak Okt 2026 tidak ada lagi `env_file: .env` — setiap container menerima HANYA yang disebut di daftar izinnya — jadi variabel baru di `.env` tidak sampai ke mana pun sampai namanya ditambahkan; `tests/compose-env-allowlist.test.ts` merah begitu kode membaca env yang tidak disediakan, atau rahasia sampai ke layanan yang salah. Hanya membaca berkas repo.",
+    "db:roles:apply": "python3 scripts/postgres-roles.py apply",
+    "_db_roles_note": "PERAN POSTGRESQL HAK MINIMUM (Okt 2026) — `sai_owner` (pemilik, NOSUPERUSER CREATEDB: `migrate` + penyediaan PT), `sai_app` (DML saja: aplikasi & pekerja), `sai_backup` (`sai_app` + `pg_read_all_data`: jalur `tenant`). `apply` idempoten: buat/selaraskan peran, alihkan kepemilikan setiap basis data di REGISTRY (kendali, platform, setiap PT di instans bawaan) ke pemilik, hibahkan DML + default privileges, periksa, BARU tulis nama & sandi peran ke `.env`. `check` hanya membaca dan keluar 1 bila ada yang menyimpang. `switch-urls` mengalihkan URL aplikasi di `.env` ke `sai_app` + menambah PROVISION_DATABASE_URL lalu membuat ulang layanan yang environment-nya berubah. Python standar, DIJALANKAN DI HOST (server tidak punya bun): `python3 scripts/postgres-roles.py <subperintah>` — skrip `bun run` di sini hanya penunjuk. SQL & sandi lewat STDIN `docker compose exec -T <pg> psql`, sandi dikirim sebagai verifier SCRAM — tidak pernah di argv atau log server. Urutan peralihan, verifikasi, dan jalan mundur: PRODUCTION.md §Least-privilege. Dijaga `tests/postgres-least-privilege.test.ts` + `tests/postgres-roles-script.test.ts`.",
+    "db:roles:check": "python3 scripts/postgres-roles.py check",
+    "db:roles:switch-urls": "python3 scripts/postgres-roles.py switch-urls",
+    "db:password:rotate": "bash scripts/rotate-postgres-password.sh",
+    "_db_password_rotate_note": "Putar sandi SATU peran: `bash scripts/rotate-postgres-password.sh <superuser|owner|app|backup>` (di host). Server dulu (verifier SCRAM lewat stdin), lalu `.env` (dengan cadangan), lalu `up -d --no-deps` HANYA layanan yang environment-nya berubah menurut `docker compose config` sebelum vs sesudah DAN sedang berjalan — `pg` sendiri tidak pernah dibuat ulang — lalu `https://$APP_DOMAIN/api/health`. Berhenti SEBELUM menyentuh server bila sandi lama masih tersisa di `.env` sesudah penggantian. Jalan mundur: `python3 scripts/postgres-roles.py rollback <cadangan>`."
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",

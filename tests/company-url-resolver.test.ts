@@ -253,6 +253,11 @@ const PEMBUKA_MENTAH: Record<string, string> = {
   "src/lib/company-provisioning.ts": "penyediaan — instanceServerUrl(instans sasaran)",
   "apps/operator/src/lib/operator/writes.ts": "jangkar retensi — companyServerConnection",
   "apps/operator/src/lib/operator/backups.ts": "versi skema per buku — companyServerConnection",
+  /* Hibah peran aplikasi (hak minimum, Okt 2026): dibuka di server yang SAMA
+     yang baru saja membuat/memulihkan buku itu, lalu `appRoleForNewBook`. */
+  "scripts/create-company.ts": "hibah peran aplikasi — server yang membuat buku (CONTROL di `migrate`)",
+  "scripts/tenant-move.ts": "hibah peran aplikasi — instanceServerUrl(instans tujuan)",
+  "scripts/tenant-import-onprem.ts": "hibah peran aplikasi — instanceServerUrl(null)",
 };
 
 /** `buatAdapter(…, { database: … })` — menimpa basis data di URL. */

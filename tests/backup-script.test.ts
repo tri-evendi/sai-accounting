@@ -296,7 +296,10 @@ describe("jalur `tenant` di compose — PELAKSANA cadangan sejak tahap 1b", () =
   it("`CONTROL_DATABASE_URL` TIDAK ditimpa — jalur `interactive` memakainya lewat PgBouncer", () => {
     /* Dulu `svc-tenant` menimpanya ke `pg`. Di satu proses penimpaan itu
        akan menarik jalur `interactive` keluar dari PgBouncer diam-diam. */
-    expect(svc).not.toMatch(/^\s+CONTROL_DATABASE_URL:/m);
+    /* Sejak daftar izin env (Okt 2026) namanya DISEBUT tanpa nilai — nilainya
+       dari `.env` (PgBouncer). Yang ditolak: nilai yang ditulis di sini. */
+    expect(svc).not.toMatch(/^\s+CONTROL_DATABASE_URL:[ \t]*\S/m);
+    expect(svc).toMatch(/^\s+CONTROL_DATABASE_URL:[ \t]*$/m);
     const dep = svc.slice(svc.indexOf("depends_on:"));
     expect(dep).toContain("pgbouncer");
   });

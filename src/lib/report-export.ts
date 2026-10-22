@@ -183,7 +183,7 @@ function opnameSheetDate(iso: string): string {
  * bersama cetakan. Angkanya sama dengan Neraca karena tabelnya memang sama
  * bentuknya: keterangan lebar, satu kolom nominal.
  */
-const INCOME_STATEMENT_WIDTHS: Record<IncomeStatementColumnId, number> = {
+export const INCOME_STATEMENT_WIDTHS: Record<IncomeStatementColumnId, number> = {
   item: 48,
   amount: 22,
 };
@@ -251,7 +251,7 @@ function buildIncomeStatementSheet(
  * kolomnya lain); judulnya TIDAK — itu datang dari `BALANCE_SHEET_HEADERS`
  * bersama cetakan.
  */
-const BALANCE_SHEET_WIDTHS: Record<BalanceSheetColumnId, number> = {
+export const BALANCE_SHEET_WIDTHS: Record<BalanceSheetColumnId, number> = {
   item: 48,
   amount: 22,
 };

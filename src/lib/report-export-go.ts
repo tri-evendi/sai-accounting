@@ -26,24 +26,68 @@
 import "server-only";
 
 import { publishJob } from "@sai/platform/job-queue";
-import { resolveAsOf, type ReportDefinition } from "@/lib/report-catalog";
+import { resolveAsOf, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { reportEngine } from "@/lib/report-engine";
 
-/** Muatan `report.export_go`. Dibaca `services/integrator/cmd/interactive`. */
+/** Muatan `report.export_go`. Dibaca `services/integrator/internal/interactivelane`. */
 export type GoExportPayload = {
   reportId: string;
   params: Record<string, string>;
-  /** Batas tanggal INKLUSIF sebagai instan ISO UTC — lihat kepala berkas. */
-  asOfInstant: string;
+  /** `as_of`: batas tanggal INKLUSIF sebagai instan ISO UTC — lihat kepala berkas. */
+  asOfInstant?: string;
+  /**
+   * `period` (Laba Rugi, tahap 1d): awal & akhir INKLUSIF sebagai instan ISO
+   * UTC, dari `resolvePeriod` — fungsi yang SAMA dengan layar, termasuk
+   * penukaran rentang terbalik dan pemendekan rentang keterlaluan. `params.from`
+   * / `params.to` ditimpa dengan tanggal hasil penyelesaian itu, sebab dari
+   * situlah Go menyusun label periodenya.
+   */
+  fromInstant?: string;
+  toInstant?: string;
 };
 
 /**
+ * Bentuk muatan per `paramKind`, TANPA memeriksa register. Dipisah dari
+ * `goExportPayload` supaya bentuk laporan `go-parity` (Laba Rugi berperiode)
+ * teruji SEBELUM peralihannya — pelari Go sudah membacanya, dan bentuk yang baru
+ * diuji pada hari peralihan adalah bentuk yang diuji di produksi. MURNI.
+ */
+export function goExportPayloadShape(
+  report: ReportDefinition,
+  params: Record<string, string>,
+  now: Date = new Date()
+): GoExportPayload {
+  switch (report.paramKind) {
+    case "as_of": {
+      const { asOf, asOfISO } = resolveAsOf(params.asOf, now);
+      return {
+        reportId: report.id,
+        params: { ...params, asOf: asOfISO },
+        asOfInstant: asOf.toISOString(),
+      };
+    }
+    case "period": {
+      const { from, to, fromISO, toISO } = resolvePeriod(params.from, params.to, now);
+      return {
+        reportId: report.id,
+        params: { ...params, from: fromISO, to: toISO },
+        fromInstant: from.toISOString(),
+        toInstant: to.toISOString(),
+      };
+    }
+    default:
+      /* Melempar lebih jujur daripada menerbitkan pekerjaan yang pekerjanya
+         tidak tahu cara membacanya. */
+      throw new Error(
+        `laporan \`${report.id}\` ber-paramKind \`${report.paramKind}\` — penerbit Go baru ` +
+          "mengenal `as_of` dan `period`"
+      );
+  }
+}
+
+/**
  * Muatan pekerjaan dari laporan + parameternya. MURNI — diuji tanpa antrean.
- *
- * Hanya laporan ber-`paramKind: "as_of"` yang didukung hari ini, karena hanya
- * itu yang punya implementasi Go. Laporan berperiode yang pindah kelak
- * menambah cabangnya DI SINI — dan sampai itu, melempar lebih jujur daripada
- * menerbitkan pekerjaan yang pekerjanya tidak tahu cara membacanya.
+ * Hanya untuk laporan yang register-nya `go`.
  */
 export function goExportPayload(
   report: ReportDefinition,
@@ -53,18 +97,7 @@ export function goExportPayload(
   if (reportEngine(report.id) !== "go") {
     throw new Error(`laporan \`${report.id}\` bukan milik mesin Go (src/lib/report-engine.ts)`);
   }
-  if (report.paramKind !== "as_of") {
-    throw new Error(
-      `laporan \`${report.id}\` ber-paramKind \`${report.paramKind}\` — penerbit Go baru ` +
-        "mengenal `as_of`"
-    );
-  }
-  const { asOf, asOfISO } = resolveAsOf(params.asOf, now);
-  return {
-    reportId: report.id,
-    params: { ...params, asOf: asOfISO },
-    asOfInstant: asOf.toISOString(),
-  };
+  return goExportPayloadShape(report, params, now);
 }
 
 /** Terbitkan satu ekspor Go. `null` hanya bila `dedupeKey` bertabrakan — dan ia tidak dipakai. */

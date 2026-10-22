@@ -1,0 +1,65 @@
+{
+  "revenue": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "amount": "100000000.50"
+    }
+  ],
+  "expense": [
+    {
+      "code": "5101",
+      "name": "Harga Pokok Penjualan",
+      "amount": "60000000.00"
+    },
+    {
+      "code": "6101",
+      "name": "Beban Gaji",
+      "amount": "20000000.00"
+    }
+  ],
+  "totalRevenue": "100000000.50",
+  "totalExpense": "80000000.00",
+  "netIncome": "20000000.50",
+  "sales": {
+    "lines": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "100000000.50"
+      }
+    ],
+    "total": "100000000.50"
+  },
+  "cogs": {
+    "lines": [
+      {
+        "code": "5101",
+        "name": "Harga Pokok Penjualan",
+        "amount": "60000000.00"
+      }
+    ],
+    "total": "60000000.00"
+  },
+  "grossProfit": "40000000.50",
+  "operatingExpense": {
+    "lines": [
+      {
+        "code": "6101",
+        "name": "Beban Gaji",
+        "amount": "20000000.00"
+      }
+    ],
+    "total": "20000000.00"
+  },
+  "operatingProfit": "20000000.50",
+  "otherIncome": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "otherExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "unknownTypes": []
+}

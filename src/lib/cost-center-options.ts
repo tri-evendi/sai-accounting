@@ -20,7 +20,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getT } from "@sai/platform/i18n/server";
-import { UNASSIGNED_COST_CENTER } from "@/lib/cost-centers";
+import { UNASSIGNED_COST_CENTER, costCenterDisplayName } from "@/lib/cost-centers";
 
 export interface CostCenterOption {
   value: string;
@@ -37,8 +37,8 @@ export async function costCenterFilterOptions(client = prisma): Promise<CostCent
     ...costCenters.map((c) => ({
       value: String(c.id),
       label: c.isActive
-        ? `${c.code} — ${c.name}`
-        : `${c.code} — ${c.name} (${t("common.inactive")})`,
+        ? costCenterDisplayName(c.code, c.name)
+        : `${costCenterDisplayName(c.code, c.name)} (${t("common.inactive")})`,
     })),
   ];
 }
@@ -54,5 +54,5 @@ export async function costCenterFilterLabel(
   const id = Number.parseInt(raw, 10);
   if (!/^\d+$/.test(raw.trim()) || !(id > 0)) return null;
   const costCenter = await client.costCenter.findUnique({ where: { id } });
-  return costCenter ? `${costCenter.code} — ${costCenter.name}` : null;
+  return costCenter ? costCenterDisplayName(costCenter.code, costCenter.name) : null;
 }

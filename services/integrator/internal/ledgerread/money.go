@@ -93,3 +93,19 @@ func (c Cents) String() string {
 func (c Cents) MarshalJSON() ([]byte, error) {
 	return []byte(strconv.Quote(c.String())), nil
 }
+
+// UnmarshalJSON membaca kebalikan MarshalJSON — string desimal, diurai TEPAT.
+// Dipakai berkas emas (`testdata/*.golden.json`) yang dibaca ulang
+// `internal/document`; angka JSON polos ditolak, sebab ia sudah melewati float.
+func (c *Cents) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return fmt.Errorf("sen harus string desimal, bukan %s", b)
+	}
+	v, err := ParseCents(s)
+	if err != nil {
+		return err
+	}
+	*c = v
+	return nil
+}

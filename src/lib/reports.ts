@@ -17,7 +17,15 @@
  * the trial balance. The fix for such a row belongs at posting time, not in a
  * read-only report that must mirror the books.
  */
-import { MONEY_SCALE } from "@sai/core/generated/accounting";
+import {
+  CATEGORY_STATEMENT_SIDE,
+  INCOME_STATEMENT_CATEGORY_DEFAULT_SECTIONS,
+  INCOME_STATEMENT_TYPE_SECTIONS,
+  MONEY_SCALE,
+  type AccountCategory,
+  type AccountType,
+  type IncomeStatementSectionKey,
+} from "@sai/core/generated/accounting";
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
@@ -152,13 +160,23 @@ export interface IncomeStatementSection {
  * the number a trading business reads first, and a single-step statement — one
  * "Beban" bucket holding cost of goods, salaries and FX losses together — cannot
  * show it at all.
+ *
+ * The values (and which type lands in which band) are GENERATED from
+ * `contract/accounting.yaml` → `income_statement`: the Go income statement
+ * (`services/integrator/internal/ledgerread/statements.go`) reads the same rules.
  */
-export type IncomeStatementSectionKey =
-  | "sales"
-  | "cogs"
-  | "operating_expense"
-  | "other_income"
-  | "other_expense";
+export type { IncomeStatementSectionKey };
+
+/**
+ * The amount a statement reports for one account, signed by its CATEGORY's
+ * statement side (`contract/accounting.yaml` → `category_statement_side`):
+ * `debit` = debit − credit, `credit` = credit − debit. Per category, not per
+ * type — Retur Penjualan nets itself out of revenue and Akumulasi Penyusutan
+ * prints NEGATIVE inside assets (a contra-asset), on both engines.
+ */
+function statementAmount(category: AccountCategory, n: { debit: number; credit: number }): number {
+  return CATEGORY_STATEMENT_SIDE[category] === "debit" ? n.debit - n.credit : n.credit - n.debit;
+}
 
 /**
  * The section an account belongs to, from its TYPE.
@@ -174,13 +192,10 @@ export type IncomeStatementSectionKey =
  */
 export function incomeStatementSectionFor(type: string): IncomeStatementSectionKey | undefined {
   const category = accountCategoryFor(type);
-  if (category === "revenue") return type === "other_income" ? "other_income" : "sales";
-  if (category === "expense") {
-    if (type === "cogs") return "cogs";
-    if (type === "other_expense") return "other_expense";
-    return "operating_expense";
-  }
-  return undefined;
+  if (category === undefined) return undefined;
+  const fallback = INCOME_STATEMENT_CATEGORY_DEFAULT_SECTIONS[category];
+  if (fallback === undefined) return undefined;
+  return INCOME_STATEMENT_TYPE_SECTIONS[type as AccountType] ?? fallback;
 }
 
 export interface IncomeStatement {
@@ -221,6 +236,15 @@ export interface IncomeStatement {
  * only want actuals per account (`budget-report.ts`) keep reading the flat
  * arrays, which stay in account-code order exactly as before.
  */
+/*
+ * ⚠ TAHAP 1d: Laba Rugi punya implementasi KEDUA di Go
+ * (`services/integrator/internal/ledgerread/statements.go`), dan keduanya wajib
+ * sepakat baris demi baris — `bun run parity:income-statement` membuktikannya
+ * terhadap buku sungguhan. Pemilik jalur berkasnya tertulis di
+ * `src/lib/report-engine.ts`. Mengubah aturan di sini (penyaring jurnal
+ * penutup, pusat biaya, kapan akun dilewati, band, tanda) berarti mengubah
+ * keduanya dalam satu commit.
+ */
 export async function getIncomeStatement(
   from?: Date,
   to?: Date,
@@ -251,12 +275,12 @@ export async function getIncomeStatement(
   for (const a of accounts) {
     const key = incomeStatementSectionFor(a.type);
     if (!key) continue;
-    const cat = accountCategoryFor(a.type);
+    const cat = accountCategoryFor(a.type)!;
     const n = nets.get(a.id) ?? { debit: 0, credit: 0 };
     // Sign normalisation stays per CATEGORY, not per section: revenue is
     // credit−debit (so Retur Penjualan nets itself back out), expense is
     // debit−credit. A section only decides where the line is printed.
-    const amount = cat === "revenue" ? n.credit - n.debit : n.debit - n.credit;
+    const amount = statementAmount(cat, n);
     if (amount === 0) continue;
     const line: StatementLine = { code: a.code, name: a.name, amount };
     sections[key].lines.push(line);
@@ -285,6 +309,18 @@ export async function getIncomeStatement(
   };
 }
 
+/**
+ * Neraca.
+ *
+ * ⚠ TAHAP 1d: laporan ini punya implementasi KEDUA di Go
+ * (`services/integrator/internal/ledgerread/statements.go`) — termasuk pecahan
+ * Laba Tahun Berjalan / tahun lalu yang belum ditutup, yang memakai batas tahun
+ * buku menurut zona PROSES (`fiscalYearBounds`; produksi `TZ=Asia/Jakarta`,
+ * Go memakai `Asia/Jakarta` eksplisit). `bun run parity:balance-sheet`
+ * membuktikan keduanya setara terhadap buku sungguhan; pemilik jalur berkasnya
+ * di `src/lib/report-engine.ts`. Mengubah aturan di sini berarti mengubah
+ * keduanya dalam satu commit.
+ */
 export async function getBalanceSheet(asOf?: Date, client = prisma) {
   const nets = await accountNets(asOf ? { lte: asOf } : undefined, client);
   const accounts = await client.account.findMany({ orderBy: { code: "asc" } });
@@ -302,27 +338,27 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
     const cat = accountCategoryFor(a.type);
     const n = nets.get(a.id) ?? { debit: 0, credit: 0 };
     if (cat === "asset") {
-      const amount = n.debit - n.credit; // contra-assets net negative
+      const amount = statementAmount(cat, n); // contra-assets net negative
       if (amount !== 0) {
         assets.push({ code: a.code, name: a.name, amount });
         totalAssets += amount;
       }
     } else if (cat === "liability") {
-      const amount = n.credit - n.debit;
+      const amount = statementAmount(cat, n);
       if (amount !== 0) {
         liabilities.push({ code: a.code, name: a.name, amount });
         totalLiabilities += amount;
       }
     } else if (cat === "equity") {
-      const amount = n.credit - n.debit;
+      const amount = statementAmount(cat, n);
       if (amount !== 0) {
         equity.push({ code: a.code, name: a.name, amount });
         totalEquity += amount;
       }
     } else if (cat === "revenue") {
-      revenue += n.credit - n.debit;
+      revenue += statementAmount(cat, n);
     } else if (cat === "expense") {
-      expense += n.debit - n.credit;
+      expense += statementAmount(cat, n);
     }
   }
 
@@ -367,8 +403,8 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
       const cat = accountCategoryFor(a.type);
       if (cat !== "revenue" && cat !== "expense") continue;
       const n = currentNets.get(a.id) ?? { debit: 0, credit: 0 };
-      if (cat === "revenue") curRevenue += n.credit - n.debit;
-      else curExpense += n.debit - n.credit;
+      if (cat === "revenue") curRevenue += statementAmount(cat, n);
+      else curExpense += statementAmount(cat, n);
     }
     currentYearIncome = curRevenue - curExpense;
     /* Diturunkan, bukan dihitung sendiri: dua penjumlahan atas hal yang sama

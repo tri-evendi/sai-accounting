@@ -314,6 +314,13 @@ export interface FakeSeedLine {
    * berperilaku persis seperti sebelumnya.
    */
   costCenterId?: number | null;
+  /**
+   * Rupiah dasar EKSPLISIT (tahap 1d). Dihilangkan ⇒ `round2(debit × rate)`
+   * seperti sebelumnya. Buku fixture bersama Go ⇄ TS menyebutnya langsung,
+   * supaya kedua bahasa membaca angka dasar yang sama tanpa aritmetika kurs.
+   */
+  baseDebit?: number;
+  baseCredit?: number;
 }
 
 export interface FakeSeedJournal {
@@ -382,6 +389,8 @@ export function createFakeReportClient(seed: {
   journals: FakeSeedJournal[];
   /** Awal tahun buku (issue #555). Dihilangkan = buku belum menyetelnya. */
   fiscalYearStart?: Date;
+  /** Pusat biaya (issue #91) — dibaca label penyaring Laba Rugi. */
+  costCenters?: { id: number; code: string; name: string; isActive?: boolean }[];
 }) {
   const accounts = seed.accounts.map((a) => ({
     normalBalance: "debit",
@@ -413,8 +422,8 @@ export function createFakeReportClient(seed: {
         credit,
         currency: l.currency ?? "IDR",
         rate,
-        baseDebit: round2(debit * rate),
-        baseCredit: round2(credit * rate),
+        baseDebit: l.baseDebit ?? round2(debit * rate),
+        baseCredit: l.baseCredit ?? round2(credit * rate),
         memo: l.memo ?? null,
         costCenterId: l.costCenterId ?? null,
         journal,
@@ -451,6 +460,12 @@ export function createFakeReportClient(seed: {
     companySetting: {
       findFirst: async () =>
         seed.fiscalYearStart ? { fiscalYearStart: seed.fiscalYearStart } : null,
+    },
+    costCenter: {
+      findUnique: async ({ where }: { where: { id: number } }) => {
+        const c = (seed.costCenters ?? []).find((x) => x.id === where.id);
+        return c ? { isActive: true, ...c } : null;
+      },
     },
     account: {
       /*

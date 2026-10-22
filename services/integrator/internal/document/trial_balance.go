@@ -34,15 +34,10 @@ var isoDate = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
 // padanan `asOfPeriodLabel(formatDate(asOf))`. Hari TANPA nol di depan, seperti
 // `Intl.DateTimeFormat("id-ID", { day: "numeric" })`.
 func PeriodAsOf(date string) (string, error) {
-	m := isoDate.FindStringSubmatch(date)
-	if m == nil {
-		return "", fmt.Errorf("tanggal %q bukan YYYY-MM-DD", date)
-	}
-	t, err := time.Parse("2006-01-02", date)
+	teks, err := dateTextID(date)
 	if err != nil {
-		return "", fmt.Errorf("tanggal %q tidak sah: %w", date, err)
+		return "", err
 	}
-	teks := fmt.Sprintf("%d %s %d", t.Day(), contract.MonthNamesID[t.Month()-1], t.Year())
 	return fmt.Sprintf(contract.AsOfPeriodFormat, teks), nil
 }
 

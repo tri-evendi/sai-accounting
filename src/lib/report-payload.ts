@@ -38,7 +38,8 @@ import { parseCostCenterFilter } from "@/lib/cost-centers";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { resolveAsOf, resolveColumns, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { resolveStockPeriod } from "@/lib/stock-period";
-import { asOfPeriodLabel } from "@/lib/statement-layout";
+import { asOfPeriodLabel, costCenterPeriodSuffix, periodRangeLabel } from "@/lib/statement-layout";
+import { prisma } from "@/lib/prisma";
 import { formatDate } from "@sai/core/utils";
 
 /** Parameter mentah dari URL — bentuknya sama dengan `searchParams` halaman. */
@@ -107,8 +108,8 @@ type ExportableReport = ReportDefinition & { payloadKind: StatementPayload["kind
  */
 function periodLabel(from: Date, to: Date, costCenter: string | null): string {
   return (
-    `Periode ${formatDate(from)} – ${formatDate(to)}` +
-    (costCenter ? ` · Pusat Biaya: ${costCenter}` : "")
+    periodRangeLabel(formatDate(from), formatDate(to)) +
+    (costCenter ? costCenterPeriodSuffix(costCenter) : "")
   );
 }
 
@@ -262,12 +263,19 @@ export function budgetPayload(
 
 export async function buildReportPayload(
   report: ExportableReport,
-  params: ReportPayloadParams
+  params: ReportPayloadParams,
+  /**
+   * Klien buku untuk TIGA laporan keuangan (Neraca Saldo, Neraca, Laba Rugi).
+   * Bawaannya klien perusahaan biasa; skrip paritas tahap 1d menyerahkan klien
+   * transaksi READ ONLY supaya perbandingan atas buku produksi terbukti hanya
+   * membaca. Laporan lain mengabaikannya.
+   */
+  client = prisma
 ): Promise<StatementPayload> {
   switch (report.payloadKind) {
     case "trial-balance": {
       const { asOf } = resolveAsOf(params.asOf);
-      const tb = await getTrialBalance(asOf);
+      const tb = await getTrialBalance(asOf, client);
       return {
         kind: "trial-balance",
         period: asOfPeriodLabel(formatDate(asOf)),
@@ -280,10 +288,10 @@ export async function buildReportPayload(
 
     case "balance-sheet": {
       const { asOf } = resolveAsOf(params.asOf);
-      const bs = await getBalanceSheet(asOf);
+      const bs = await getBalanceSheet(asOf, client);
       return {
         kind: "balance-sheet",
-        period: `Per ${formatDate(asOf)}`,
+        period: asOfPeriodLabel(formatDate(asOf)),
         assets: bs.assets,
         liabilities: bs.liabilities,
         equity: bs.equity,
@@ -303,9 +311,10 @@ export async function buildReportPayload(
       // lolos parse) tetap harus TERCETAK sebagai `#<id>`: dokumen yang hanya
       // memuat sebagian angka tanpa mengatakannya adalah yang paling mudah
       // salah dibaca setelah lepas dari layarnya.
-      const name = costCenter !== undefined ? await costCenterFilterLabel(params.costCenter) : null;
+      const name =
+        costCenter !== undefined ? await costCenterFilterLabel(params.costCenter, client) : null;
       const label = costCenter !== undefined ? name ?? `#${costCenter}` : null;
-      const is = await getIncomeStatement(from, to, undefined, costCenter);
+      const is = await getIncomeStatement(from, to, client, costCenter);
       return {
         kind: "income-statement",
         period: periodLabel(from, to, label),

@@ -847,6 +847,24 @@ export function asOfPeriodLabel(dateText: string): string {
   return `Per ${dateText}`;
 }
 
+/**
+ * Label periode laporan "dari–sampai" (Laba Rugi, Arus Kas) untuk DOKUMEN
+ * CETAK — kedua tanggal sudah diformat `formatDate`. Fungsi dengan alasan yang
+ * sama dengan `asOfPeriodLabel`: pola Go-nya dibangkitkan dari kalimat ini.
+ */
+export function periodRangeLabel(fromText: string, toText: string): string {
+  return `Periode ${fromText} – ${toText}`;
+}
+
+/**
+ * Ekor label periode bila laporan disaring per pusat biaya (#91). Dokumen yang
+ * hanya memuat sebagian angka tanpa mengatakannya adalah yang paling mudah
+ * salah dibaca setelah lepas dari layarnya.
+ */
+export function costCenterPeriodSuffix(costCenterLabel: string): string {
+  return ` · Pusat Biaya: ${costCenterLabel}`;
+}
+
 export type TrialBalanceColumnId = (typeof TRIAL_BALANCE_COLUMNS)[number];
 
 /**

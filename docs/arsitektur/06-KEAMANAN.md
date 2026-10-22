@@ -31,7 +31,8 @@ Urutan ini menentukan prioritas kontrol.
 | **Midtrans (dipalsukan)** | Tahu alamat webhook | Webhook palsu → tenant naik kelas tanpa bayar |
 | **Operator (SAI)** | Akses semua tenant | Tindakan tanpa jejak · kredensial operator yang bocor |
 | **Penyerang yang menguasai satu arsip backup** | Satu berkas `.enc` | Seluruh basis data, **bila** kuncinya ikut |
-| **Penyerang dengan satu lubang injeksi SQL** | Satu `$queryRawUnsafe` yang salah | Hari ini: akses penuh ke server basis data, karena role aplikasi superuser |
+| **Penyerang dengan satu lubang injeksi SQL** | Satu `$queryRawUnsafe` yang salah | Sebelum peralihan hak minimum: akses penuh ke server basis data (role aplikasi superuser). Sesudahnya: DML atas buku yang dibuka `sai_app` — tanpa DDL, tanpa `COPY … TO PROGRAM`, tanpa `pg_authid` (§3.9) |
+| **Penyerang dengan RCE di satu container** | Eksekusi kode di `app-customer` (atau pekerja latar) | Sejak Okt 2026: hanya env yang dibaca container itu (tanpa rahasia konsol/cadangan), uid 1000, bukan root (§3.9) |
 
 ## 3. Kontrol, per ancaman
 
@@ -197,6 +198,25 @@ Header lengkapnya ada di [03 API & Integrasi](./03-API-INTEGRASI.md). Ringkas: `
 produksi. Basis data **tidak pernah** terbit ke host — `pg`, `pgbouncer`, dan
 `db` hanya ada di jaringan Docker `internal`.
 
+### 3.9 Isolasi container: env, uid, peran basis data (Okt 2026)
+
+Tiga lapis yang membatasi apa yang didapat penyerang dari SATU container yang
+jebol. Sampai Okt 2026 ketiganya terbuka sekaligus: setiap container menerima
+seluruh `.env`, dua pekerja latar berjalan sebagai root, dan semuanya
+menyambung ke PostgreSQL sebagai superuser.
+
+| Lapis | Kontrol | Penjaga |
+|---|---|---|
+| **Env** | Tidak ada `env_file`. Setiap layanan menyebut env yang dibacanya (grup `x-env` di compose); rahasia punya daftar tolak: `OPERATOR_*` hanya `app-operator` (kecuali `OPERATOR_HOST` yang dipaksa kosong dan `OPERATOR_TRUSTED_PROXY_HOPS` yang bukan rahasia, di `app-customer`), `BACKUP_*`/`AWS_*` hanya `svc-integrator` + `job-backup`, `AUTH_SECRET` hanya `app-customer`, `PROVISION_DATABASE_URL` hanya yang membuat basis data. Daftar izinnya DIHITUNG dari graf impor titik masuk tiap layanan, jadi yang kurang satu nama ketahuan di CI, bukan di produksi | `tests/compose-env-allowlist.test.ts` · `bun run env:inventory` |
+| **uid** | Setiap tahap runtime berakhir dengan `USER` non-root, uid 1000 — pemilik bersama `hasil`/`cadangan`/`documents`/`audit`. `/app` tetap milik root: kode tidak bisa mengubah dirinya. `pg` diturunkan entrypoint resmi ke `postgres` (`gosu`) sebelum server jalan | `tests/containers-non-root.test.ts` |
+| **Peran PostgreSQL** | `sai_owner` (NOSUPERUSER CREATEDB, pemilik; `migrate` + penyediaan) · `sai_app` (DML; aplikasi & pekerja) · `sai_backup` (`sai_app` + `pg_read_all_data`; jalur `tenant`). Superuser hanya untuk `pg`, pencari sandi PgBouncer, dan perkakas `job-backup`. Buku baru dihibahkan ke `sai_app` SEBELUM didaftarkan. Sisa: `app-customer` memegang kredensial PEMILIK untuk penyediaan PT | `tests/postgres-least-privilege.test.ts` · `scripts/postgres-roles.py check` |
+
+Sandi peran tidak pernah lewat argv: `scripts/postgres-roles.py` mengirim
+verifier SCRAM lewat stdin `psql`, dan memutar sandi dengan membuat ulang
+hanya layanan yang environment-nya berubah menurut `docker compose config`
+(`tests/postgres-roles-script.test.ts`). Urutan peralihan, verifikasi, dan jalan
+mundurnya: PRODUCTION.md §Least-privilege.
+
 ## 4. Sembilan kelas kegagalan yang dijaga
 
 Sembilan lubang di tabel ini pernah terbuka di repo ini, semuanya lolos
@@ -227,7 +247,7 @@ Lima hal, dengan prioritasnya di [05 Penilaian](./05-PENILAIAN.md).
 |---|---|---|---|
 | 1 | **Backup tanpa salinan luar-mesin** | Kehilangan mesin = kehilangan buku beserta backup-nya | **P0-1** |
 | 2 | **`BACKUP_ENCRYPTION_KEY` 🔶 hanya di mesin yang sama dengan datanya** | Backup yang berhasil pun tidak bisa dibuka setelah mesinnya hilang | **P0-2** |
-| 3 | **Role aplikasi adalah SUPERUSER PostgreSQL** | Satu injeksi SQL di `$queryRawUnsafe` mana pun memberi akses penuh ke server (`pg_authid`, `COPY … TO PROGRAM`), tidak hanya ke data. Pembatasan pola `sai\_t%` yang ada di MariaDB hilang saat pindah mesin | [07 Riwayat](./07-RIWAYAT.md) |
+| 3 | **Role aplikasi adalah SUPERUSER PostgreSQL** 🔶 mekanismenya ada (§3.9), peralihannya belum dijalankan | Satu injeksi SQL di `$queryRawUnsafe` mana pun memberi akses penuh ke server (`pg_authid`, `COPY … TO PROGRAM`), tidak hanya ke data. Pembatasan pola `sai\_t%` yang ada di MariaDB hilang saat pindah mesin | [07 Riwayat](./07-RIWAYAT.md) |
 | 4 | **CSP `script-src 'unsafe-inline'`** | Pertahanan XSS melemah, padahal aplikasi menampilkan nama pelanggan, catatan, dan nama berkas unggahan. `'unsafe-eval'` sudah dicabut; `style-src` struktural (#203) | **P2-4** |
 | 5 | **Tidak ada pembaca `/api/health` dari luar mesin** | `watch:health` berjalan di dalam peran `scheduler` (`svc-worker`) dan ikut mati bersamanya, jadi scheduler yang mati total tidak melaporkan apa pun | [02 Layanan & Infrastruktur](./02-LAYANAN-INFRA.md) |
 
@@ -248,4 +268,5 @@ Daftar periksa pendek; aturan penuhnya di [`docs/RBAC.md`](../RBAC.md) dan
 - [ ] Pekerjaan latar baru → `runWithCompany()`; cache tingkat modul → berkunci tenant.
 - [ ] Dokumen → jurnal → lewat `postForSource`, jangan menulis `journals` langsung.
 - [ ] Kolom rahasia baru → segel `settings-crypto`, bukan teks biasa.
+- [ ] Env baru → sebut namanya di `environment:` layanan yang membacanya (atau grup `x-env`); rahasia baru → tambahkan ke daftar tolak di `tests/compose-env-allowlist.test.ts`. Baris di `.env` saja tidak sampai ke container mana pun.
 - [ ] Tabel baru → `@@index` untuk setiap FK (PostgreSQL tidak membuatnya sendiri).

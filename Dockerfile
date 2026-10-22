@@ -195,6 +195,10 @@ COPY . .
 RUN NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate \
     && NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate --config prisma.control.config.ts \
     && NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate --config prisma.platform.config.ts
+# Direktori bisa-tulis untuk `USER node` di ujung tahap ini (lihat "NON-ROOT"
+# di bawah) — SEBELUM stempel build, supaya lapisan ini tetap ter-cache.
+RUN mkdir -p /app/data/hasil /app/data/cadangan /app/data/mail-outbox \
+    && chown -R node:node /app/data
 # Stempel build — juga dibaca `svc-worker`, yang berjalan di image ini (lihat "STEMPEL BUILD" di kepala berkas).
 ARG APP_VERSION=""
 ARG GIT_SHA=dev
@@ -205,6 +209,26 @@ ENV APP_VERSION=$APP_VERSION \
 LABEL org.opencontainers.image.version=$APP_VERSION \
       org.opencontainers.image.revision=$GIT_SHA \
       org.opencontainers.image.created=$BUILD_TIME
+# ══ NON-ROOT (Okt 2026) ═════════════════════════════════════════════════════
+# Image ini menjalankan `migrate` (perkakas) dan `svc-worker` (empat peran latar
+# yang hidup terus, satu di antaranya mengurai parameter ekspor pengguna).
+# Root di sini berarti RCE di peran mana pun = root di container, dengan volume
+# `hasil` bisa-tulis dan sambungan langsung ke `pg`.
+#
+# `node` = uid/gid 1000 di image resmi `node:*` — uid yang sama dengan pembaca
+# volume `hasil` di `app-customer` (`contract/kinds.yaml` → `results`), jadi
+# berkas hasil lahir dengan pemilik yang benar dan `chown` di penulisnya hanya
+# berjalan bila image lama (root) yang dipakai.
+#
+# `/app` tetap milik root dan HANYA-BACA bagi proses: kode tidak boleh bisa
+# mengubah dirinya sendiri. Yang bisa ditulis hanya `data/`:
+#   • `data/hasil`   — volume `hasil` (sudah milik 1000 di produksi);
+#   • `data/cadangan`— volume `cadangan` di `job-backup` (lihat tahap itu);
+#   • `data/mail-outbox` — transport surel `file` (bawaan bila SMTP belum diset).
+# Direktori yang dibuat DI IMAGE dengan pemilik `node` membuat volume bernama
+# BARU mewarisi pemilik itu pada pemasangan pertamanya. Volume yang SUDAH ADA
+# tidak — itu langkah sekali-jalan di PRODUCTION.md §Env allowlist.
+USER node
 CMD ["bun", "run", "db:migrate:all"]
 
 
@@ -241,6 +265,9 @@ CMD ["bun", "run", "db:migrate:all"]
 # lokal tetap bekerja seperti biasa: tanpa konteks bernama, `migrator` adalah
 # tahap di atas.
 FROM migrator AS backup
+# `migrator` berakhir dengan `USER node`; `apt-get` di bawah butuh root. Kembali
+# ke `node` di ujung tahap ini.
+USER root
 # ⚠ `postgresql-client` Debian bookworm adalah versi **15**, dan `pg_dump`
 # MENOLAK server yang lebih baru daripada dirinya. Service `pg` di compose
 # adalah PostgreSQL **17**, jadi klien bawaan Debian akan gagal dengan
@@ -277,6 +304,10 @@ ENV APP_VERSION=$APP_VERSION \
 LABEL org.opencontainers.image.version=$APP_VERSION \
       org.opencontainers.image.revision=$GIT_SHA \
       org.opencontainers.image.created=$BUILD_TIME
+# Non-root seperti `migrator`. Volume `cadangan` dari masa root WAJIB di-`chown`
+# sekali ke 1000:1000 (PRODUCTION.md §Env allowlist); volume baru mewarisi pemilik
+# `data/cadangan` di atas.
+USER node
 CMD ["sh", "scripts/backup.sh"]
 
 
@@ -379,30 +410,33 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=go-build /out/svc-integrator /usr/local/bin/svc-integrator
+# ══ NON-ROOT: uid 1000 (Okt 2026) ═══════════════════════════════════════════
+# Layanan INI yang paling pantas tidak root: ia satu-satunya yang hidup terus
+# dan memegang `BACKUP_ENCRYPTION_KEY` — dan sejak 22 Okt 2026 ia juga mengurai
+# parameter laporan pengguna di proses yang sama (09 §3.2).
+#
+# Yang dulu menahannya satu kenyataan: volume `cadangan` SUDAH ADA di produksi,
+# dibuat root, dan Docker TIDAK menerapkan kepemilikan image ke volume bernama
+# yang sudah ada — jadi non-root yang digelar begitu saja lolos setiap
+# pemeriksaan di repo lalu gagal menulis pada putaran PERTAMA, dengan galat izin
+# yang terbaca seperti cakram penuh. Syaratnya kini DITULIS sebagai langkah
+# rilis: `chown -R 1000:1000` volume `cadangan` SEBELUM image ini digelar
+# (PRODUCTION.md §Env allowlist), dan `/api/health` → `backup` membuktikannya pada
+# putaran berikutnya.
+#
+# uid 1000, bukan uid acak: sama dengan `node` di image Node — pembaca volume
+# `hasil` (`contract/kinds.yaml` → `results`) dan pemilik berkas `documents`/
+# `audit` yang dibaca hanya-baca di sini. Satu uid untuk semua pemilik data
+# berarti tidak ada `chown` lintas layanan yang bisa terlupa.
+RUN groupadd --gid 1000 sai \
+    && useradd --uid 1000 --gid 1000 --home-dir /home/sai --create-home --shell /usr/sbin/nologin sai
 # Direktori kerja cadangan: satu basis data pada satu waktu, lalu dibuang.
 # Di dalam container, bukan di volume — isinya plaintext seumur beberapa detik,
-# dan ia tidak boleh selamat dari restart.
-RUN install -d -m 700 /tmp/backup
+# dan ia tidak boleh selamat dari restart. Milik uid pelari, 0700.
+RUN install -d -m 700 -o 1000 -g 1000 /tmp/backup \
+    && install -d -m 755 /app \
+    && install -d -m 755 -o 1000 -g 1000 /app/data /app/data/cadangan /app/data/hasil
 WORKDIR /app
-#
-# ⚠ TETAP ROOT, dan itu keputusan — bukan kelalaian.
-#
-# Dua tahap runtime lain di berkas ini memakai `USER node`, jadi non-root
-# memang konvensi di sini, dan layanan INILAH yang paling pantas
-# mendapatkannya: ia satu-satunya yang memegang `BACKUP_ENCRYPTION_KEY` — dan
-# sejak 22 Okt 2026 ia juga mengurai parameter laporan pengguna di proses yang
-# sama (09 §3.2), yang membuat argumen ini lebih kuat, bukan lebih lemah.
-#
-# Yang menahannya bukan prinsip melainkan satu kenyataan yang tidak bisa diuji
-# dari sini: volume `cadangan` SUDAH ADA di mesin produksi, dibuat root oleh
-# `job-backup`, dan Docker TIDAK menerapkan kepemilikan dari image ke volume
-# bernama yang sudah ada. `USER nobody` karena itu akan lolos setiap
-# pemeriksaan di repo ini lalu gagal menulis pada putaran PERTAMA di mesin yang
-# sudah berjalan — dengan galat izin yang terbaca seperti cakram penuh.
-#
-# Syarat untuk memindahkannya, supaya tidak perlu ditemukan ulang:
-# `chown -R` volume `cadangan` ke uid yang dipakai, lalu pindahkan baris ini.
-# Itu langkah penyebaran, bukan perubahan kode, jadi tempatnya PRODUCTION.md.
 # Stempel build — cadangan untuk nilai yang sudah tertanam di biner (lihat "STEMPEL BUILD" di kepala berkas).
 ARG APP_VERSION=""
 ARG GIT_SHA=dev
@@ -413,6 +447,7 @@ ENV APP_VERSION=$APP_VERSION \
 LABEL org.opencontainers.image.version=$APP_VERSION \
       org.opencontainers.image.revision=$GIT_SHA \
       org.opencontainers.image.created=$BUILD_TIME
+USER 1000:1000
 CMD ["svc-integrator"]
 
 
@@ -431,7 +466,7 @@ COPY --from=builder /app/public ./public
 
 # Runtime-writable dirs. Creating + chowning them here means Docker named
 # volumes mounted at these paths inherit `node` ownership on first use.
-RUN mkdir -p ./public/uploads ./data/audit ./data/documents \
+RUN mkdir -p ./public/uploads ./data/audit ./data/documents ./data/hasil \
     && chown -R node:node /app
 
 # Stempel build — sesudah `RUN` terakhir supaya tidak membatalkan cache (lihat "STEMPEL BUILD" di kepala berkas).

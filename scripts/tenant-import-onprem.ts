@@ -44,8 +44,8 @@ import path from "node:path";
 
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
-import { bukaServer } from "@sai/db/server";
-import { instanceServerUrl } from "@sai/db/company-url";
+import { appRoleGrantSql, bukaBasisData, bukaServer } from "@sai/db/server";
+import { appRoleForNewBook, instanceServerUrl } from "@sai/db/company-url";
 import { MIGRATION_TERAKHIR } from "@sai/core/migration-manifest";
 import { encryptionKey, encryptionKeyAvailable, sealSecret } from "@sai/core/settings-crypto";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
@@ -249,6 +249,17 @@ async function main(): Promise<void> {
         await s.tutup();
       }
       await restoreFromFile(server, c.databaseName, path.join(work, "companies", `${c.databaseName}.pgdump`));
+      /* `--no-owner --no-acl`: tanpa hibah, peran aplikasi tidak bisa membaca
+         buku yang baru dipulihkan (hak minimum, Okt 2026). */
+      const appRole = appRoleForNewBook(null);
+      if (appRole) {
+        const db = await bukaBasisData(server.toString(), c.databaseName);
+        try {
+          await db.jalankan(appRoleGrantSql(c.databaseName, appRole));
+        } finally {
+          await db.tutup();
+        }
+      }
       const counts = await rowCounts(server, c.databaseName);
       const mismatch = countMismatches(c.rowCounts, counts);
       if (mismatch.length > 0) throw new Error(`jumlah baris ${c.slug} tidak sama:\n   ${mismatch.join("\n   ")}`);

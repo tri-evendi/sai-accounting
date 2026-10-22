@@ -10,9 +10,107 @@
 # Images are built by CI and pulled from GHCR; never build on the server.
 # Release steps: PRODUCTION.md §Updates.
 #
-# `.env` is auto-loaded by Compose for the ${...} interpolation below and
-# injected at run time via env_file. Requires an existing Traefik instance
-# attached to the external `traefik_default` network with a `le` cert resolver.
+# `.env` is auto-loaded by Compose for the ${...} interpolation below. It is
+# NOT injected wholesale any more: each service receives only the variables it
+# names under `environment:` (allowlist, see `x-env` below). Requires an
+# existing Traefik instance attached to the external `traefik_default` network
+# with a `le` cert resolver.
+
+# ══ DAFTAR IZIN ENV — TIDAK ADA LAGI `env_file: .env` ═══════════════════════
+#
+# Sampai Okt 2026 SETIAP container menerima seluruh `.env`. Akibatnya
+# `app-customer` — satu-satunya proses yang menghadap internet tanpa daftar IP —
+# memegang `OPERATOR_SESSION_SECRET` (memalsukan sesi konsol operator),
+# `BACKUP_ENCRYPTION_KEY` + kredensial S3 (membuka dan menghapus setiap
+# cadangan), dan sandi superuser PostgreSQL. Satu RCE di sana = seluruh rumah.
+#
+# Sekarang setiap layanan MENYEBUT variabel yang dibacanya. Baris tanpa nilai
+# (`AUTH_SECRET:`) mengambil nilainya dari `.env` lewat Compose, dan variabel
+# yang tidak ada di `.env` TIDAK diset di container (bukan string kosong) —
+# perilakunya identik dengan `env_file` untuk nama yang disebut.
+#
+# Daftarnya TIDAK ditebak. `bun run env:inventory` menelusuri graf impor dari
+# titik masuk tiap layanan dan mencetak setiap env yang dibaca kodenya;
+# `tests/compose-env-allowlist.test.ts` MENOLAK compose yang tidak menyediakan
+# salah satunya, dan menolak rahasia yang sampai ke layanan yang salah.
+#
+# ⚠ VARIABEL BARU DI `.env` TIDAK OTOMATIS SAMPAI KE MANA PUN. Itu memang
+#   intinya. Kode baru yang membaca env baru → tes merah sampai namanya
+#   ditambahkan di layanan (atau grup di bawah) yang membacanya.
+#
+# Grup bersama ditulis sebagai anchor YAML dan digabung dengan `<<:` — satu
+# daftar per kelompok kebutuhan, supaya "sampai ke satu layanan, terlewat di
+# yang lain" tidak bisa terjadi untuk variabel yang sama.
+x-env:
+  # Setiap layanan Node yang membuka buku PT, registry, atau basis data platform.
+  books: &env-books
+    DATABASE_URL:
+    CONTROL_DATABASE_URL:
+    PLATFORM_DATABASE_URL:
+    COMPANY_DATABASE_URL_TEMPLATE:
+    COMPANY_DATABASE_READ_URL_TEMPLATE:
+    COMPANY_DATABASE_READ_MAX_WAIT_MS:
+    DB_CONNECTION_LIMIT:
+    COMPANY_CLIENT_POOL_MAX:
+    CONTROL_DB_CONNECTION_LIMIT:
+    PLATFORM_DB_CONNECTION_LIMIT:
+    POOL_DISCONNECT_GRACE_MS:
+    TZ:
+    # Profil penyebaran dan URL Redis SENGAJA tidak di sini: yang pertama
+    # dinyatakan override on-premise, yang kedua override replika — compose
+    # dasar (produksi SaaS satu-replika) tidak menyatakan keduanya.
+  # ══ INSTANS BASIS DATA TAMBAHAN (tahap 4) — SATU-SATUNYA TEMPATNYA ═══════
+  # `db_instances.url_env_var` menyebut NAMA env (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`)
+  # dan nilainya dibaca dari environment proses. Instans baru = satu baris di
+  # `.env` DAN satu baris di sini (tanpa nilai), lalu `up -d` ulang semua
+  # layanan pembuka buku. Grup ini digabung ke SETIAP layanan yang membuka
+  # buku — `tests/db-instance-env-reaches-every-service.test.ts` menjaganya —
+  # jadi satu baris di sini sampai ke semuanya sekaligus.
+  #
+  # ⚠ Sebelum gelar pertama berkas ini: `grep -E '^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE=' .env`
+  #   — setiap nama yang muncul WAJIB ditulis di sini, atau buku PT di instans
+  #   itu berhenti terbuka (PRODUCTION.md §Env allowlist).
+  db-instances: &env-db-instances {}
+  # Surel keluar (SMTP env atau `mail_settings` tersandi) + alamat alarm.
+  mail: &env-mail
+    MAIL_TRANSPORT:
+    SMTP_URL:
+    MAIL_FROM:
+    MAIL_ARCHIVE_BCC:
+    MAIL_OUTBOX_DIR:
+    MAIL_SETTINGS_CACHE_MS:
+    SETTINGS_ENCRYPTION_KEY:
+    PLATFORM_ALERT_EMAIL:
+    PLATFORM_CONTACT_EMAIL:
+    PLATFORM_CONTACT_WHATSAPP:
+  # Penagihan platform & gerbang pembayaran.
+  billing: &env-billing
+    PAYMENT_GATEWAY:
+    MIDTRANS_SERVER_KEY:
+    MIDTRANS_IS_PRODUCTION:
+    MANUAL_PAYMENT_INSTRUCTIONS:
+    PAYMENT_DEFAULT_VA_BANK:
+    PLATFORM_PPN_DISABLED:
+    PLATFORM_SELLER_NPWP:
+    PLATFORM_SELLER_NAME:
+    SELF_SERVE_SIGNUP:
+  # ⚠ RAHASIA CADANGAN — hanya `svc-integrator` (jalur `tenant`) dan perkakas
+  # `job-backup`. Ditolak di layanan lain oleh penjaga.
+  backup: &env-backup
+    BACKUP_ENCRYPTION_KEY:
+    BACKUP_S3_BUCKET:
+    BACKUP_S3_ENDPOINT:
+    BACKUP_S3_PREFIX:
+    BACKUP_S3_PATH_STYLE:
+    BACKUP_LOCAL_DIR:
+    BACKUP_RETENTION_DAYS:
+    BACKUP_PREFIX:
+    BACKUP_WORK_DIR:
+    BACKUP_DATA_DIR:
+    AWS_ACCESS_KEY_ID:
+    AWS_SECRET_ACCESS_KEY:
+    AWS_DEFAULT_REGION:
+    AWS_REGION:
 
 services:
   # ══ PostgreSQL — MESIN UTAMA sejak 15 Okt 2026 ═════════════════════════════
@@ -103,7 +201,6 @@ services:
       target: migrator
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
     container_name: sai-migrate
-    env_file: .env
     # ══ MIGRATE MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ═════════════
     #
     # Bukan pilihan gaya — Prisma Migrate memakai `pg_advisory_lock` untuk
@@ -116,18 +213,40 @@ services:
     #   Error: P1002 — Timed out trying to acquire a postgres advisory lock
     #   (SELECT pg_advisory_lock(72707369)). Timeout: 10000ms.
     #
-    # Terukur di penukaran 15 Okt 2026. `environment:` menimpa `env_file:`,
-    # jadi tiga baris di bawah ini mengalahkan URL PgBouncer di `.env` — dan
-    # HANYA untuk service ini. Aplikasi tetap lewat PgBouncer, yang memang
-    # alasan PgBouncer ada.
+    # Terukur di penukaran 15 Okt 2026. Baris eksplisit di bawah MENIMPA grup
+    # `*env-books` (kunci eksplisit menang atas `<<:`), jadi URL-URL ini
+    # mengalahkan URL PgBouncer di `.env` — dan HANYA untuk service ini.
+    # Aplikasi tetap lewat PgBouncer, yang memang alasan PgBouncer ada.
     #
     # `DATABASE_URL` juga menjadi TEMPLATE untuk 17 buku PT
     # (`migrate-all-companies.ts` mengganti nama basis datanya), jadi satu baris
     # ini membuat seluruh buku ikut dimigrasikan lewat koneksi langsung.
+    #
+    # ══ PERAN PEMILIK, BUKAN SUPERUSER (hak minimum, Okt 2026) ═══════════════
+    # `PG_OWNER_USER` = pemilik seluruh basis data & objek aplikasi (`sai_owner`,
+    # NOSUPERUSER CREATEDB) — peran yang boleh DDL. Sebelum peralihan
+    # (`bun run db:roles:apply`, PRODUCTION.md §Least-privilege) variabelnya
+    # belum ada di `.env` dan baris ini jatuh ke superuser `PG_USER` — persis
+    # perilaku lama, jadi berkas ini aman digelar SEBELUM perannya dibuat.
+    #
+    # Perkakas di container ini (`bootstrap`, `create-company`, …) ikut memakai
+    # URL yang sama — dan karena itu pula `PROVISION_DATABASE_URL` serta template
+    # buku ditimpa: perkakas yang MEMBUAT basis data harus melakukannya sebagai
+    # pemilik, bukan sebagai peran aplikasi dari `.env`.
     environment:
-      DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/${DB_NAME:-sai_production}
-      CONTROL_DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
-      PLATFORM_DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_platform
+      <<: [*env-books, *env-db-instances, *env-mail, *env-billing]
+      DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/${DB_NAME:-sai_production}
+      CONTROL_DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
+      PLATFORM_DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_platform
+      COMPANY_DATABASE_URL_TEMPLATE: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/template
+      PROVISION_DATABASE_URL: postgres://${PG_OWNER_USER:-${PG_USER:-sai}}:${PG_OWNER_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
+      # Peran aplikasi yang DIHIBAHI hak atas buku yang dibuat perkakas di sini
+      # (`create-company`, `tenant:import-onprem`). Kosong = tidak ada hibah —
+      # sebelum peralihan, ketika pemilik dan aplikasi masih satu peran.
+      PG_APP_USER:
+      COMPANY_MIGRATE_CONCURRENCY:
+      LICENCE_FILE:
+      TENANT_AUDIT_DIR:
     restart: "no"
     depends_on:
       pg:
@@ -316,17 +435,21 @@ services:
   #     `single_instance: false`.
   #  2. **Ia butuh volume `hasil` BISA-TULIS** — bersama pasangan Go-nya di
   #     `svc-integrator` (tahap 1d), dan hanya keduanya; `app-customer`
-  #     memasangnya hanya-baca dan hanya men-stream. Keduanya root, jadi setiap
-  #     hasil di-`chown` ke `node` (`contract/kinds.yaml` → `results`). Sejak
+  #     memasangnya hanya-baca dan hanya men-stream. Keduanya berjalan sebagai
+  #     uid 1000 = `node`, pembacanya (`contract/kinds.yaml` → `results`). Sejak
   #     penyatuan, tiga peran lain di container ini ikut melihat mount itu;
   #     tidak satu pun menulisnya, dan volume ini tidak memuat buku.
   #  3. **Lewat PgBouncer**, bukan langsung ke `pg`: ia membaca buku SATU PT per
   #     pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data
   #     seperti jalur `tenant`.
   #
-  # Container ini TIDAK membaca `BACKUP_ENCRYPTION_KEY`: tidak satu pun dari
-  # empat perannya memakainya. `env_file: .env` memang membawa seluruh berkas —
-  # utang yang sama yang disebut di `svc-integrator`.
+  # Container ini TIDAK menerima `BACKUP_ENCRYPTION_KEY`: tidak satu pun dari
+  # empat perannya memakainya, dan sejak daftar izin env (Okt 2026) ia memang
+  # tidak lagi sampai ke sini (penjaga: `tests/compose-env-allowlist.test.ts`).
+  #
+  # Berjalan sebagai `node` (uid 1000, `USER node` di tahap `migrator`), bukan
+  # root. Satu-satunya yang ditulisnya di cakram adalah volume `hasil` — milik
+  # 1000 — dan `data/mail-outbox` di image (juga milik `node`).
   svc-worker:
     build:
       context: .
@@ -335,13 +458,20 @@ services:
     container_name: sai-svc-worker
     restart: unless-stopped
     init: true
-    env_file: .env
     environment:
+      <<: [*env-books, *env-db-instances, *env-mail, *env-billing]
+      LICENCE_FILE:
+      # `WORKER_LEADER_ROLES` hanya dari override HA — compose dasar tidak
+      # pernah menyalakan leader election (`tests/leader-election.test.ts`).
+      CONFORMANCE_CONCURRENCY:
       # Pagar jalur `ledger` di koneksi LANGSUNG (lihat kepala blok ini) —
       # disetujui pemilik 22 Okt 2026. LANGSUNG ke `pg`, bukan PgBouncer;
       # `assertDirectUrl` menolak URL pooler sebelum satu byte dikirim. Dijaga
       # `tests/leader-election.test.ts`.
-      CONTROL_DATABASE_DIRECT_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+      #
+      # Peran APLIKASI (`PG_APP_USER`, tanpa DDL) — kunci advisory tidak butuh
+      # hak apa pun. Sebelum peralihan hak minimum jatuh ke `PG_USER`.
+      CONTROL_DATABASE_DIRECT_URL: postgres://${PG_APP_USER:-${PG_USER:-sai}}:${PG_APP_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
     depends_on:
       pg:
         condition: service_healthy
@@ -525,7 +655,6 @@ services:
     # keluar dengan kode 0 (lihat di bawah), dan `unless-stopped` atas perintah
     # yang berakhir adalah crash-loop yang mengisi log tanpa mengerjakan apa pun.
     restart: "no"
-    env_file: .env
     # ══ CADANGAN MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ═══════════
     #
     # `pg_dumpall` harus MENDAFTAR seluruh basis data lebih dulu (`pg_database`)
@@ -537,8 +666,24 @@ services:
     #
     # `scripts/backup.sh` menurunkan host, port, peran, dan sandi dari URL ini,
     # jadi satu baris mengatur keempatnya sekaligus.
+    #
+    # ⚠ SUPERUSER, DAN ITU DIPUTUSKAN (hak minimum, Okt 2026). Layanan ini
+    # PERKAKAS yang dijalankan tangan (`run --rm`), tidak pernah hidup terus,
+    # tidak punya port, dan tidak memproses masukan siapa pun. Yang
+    # dikerjakannya butuh hak superuser sungguhan: `pg_dumpall` lengkap dengan
+    # peran & sandinya, dan `prove-backup-restore` yang memulihkan `globals.sql`
+    # (CREATE ROLE) ke basis data bayangan. Layanan yang HIDUP TERUS memakai
+    # peran tersempit: aplikasi `sai_app`, jalur `tenant` `sai_backup`.
+    #
+    # `PROVISION_DATABASE_URL` + `PG_APP_USER` dari `.env`: `tenant:move`
+    # membuat basis data di instans tujuan sebagai PEMILIK dan menghibahkannya
+    # ke peran aplikasi, sama seperti penyediaan di aplikasi.
     environment:
+      <<: [*env-books, *env-db-instances, *env-backup]
       DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/${DB_NAME:-sai_production}
+      PROVISION_DATABASE_URL:
+      PG_APP_USER:
+      SETTINGS_ENCRYPTION_KEY:
     depends_on:
       pg:
         condition: service_healthy
@@ -623,10 +768,16 @@ services:
   # apa yang membuat kita memisahkannya lagi: 09-RANCANGAN-LAYANAN.md §3.2
   # ("Keputusan 22 Okt 2026").
   #
-  # ⚠ `env_file: .env` memang membawa seluruh berkas, termasuk variabel yang
-  # tidak dibutuhkannya. Memisahkannya menuntut berkas env kedua di mesin
-  # customer, dan berkas kedua yang lupa disalin adalah kegagalan boot yang
-  # pesannya menyalahkan hal lain.
+  # Sejak daftar izin env (Okt 2026) container ini menerima HANYA yang
+  # dibacanya — tanpa berkas env kedua di mesin customer: nilainya tetap dari
+  # `.env` yang sama, yang disaring adalah NAMA-nya. Ia satu-satunya layanan
+  # yang hidup terus dan memegang `BACKUP_*`/`AWS_*`; tidak lagi memegang
+  # `OPERATOR_*`, `AUTH_SECRET`, kunci gerbang pembayaran, atau SMTP.
+  #
+  # Berjalan sebagai uid 1000 (`USER 1000:1000` di tahap `integrator`), bukan
+  # root: volume `cadangan` dan `hasil` milik 1000, `documents`/`audit` dibaca
+  # hanya-baca. Volume `cadangan` yang lahir sebelum perubahan ini milik root
+  # dan WAJIB di-`chown` sekali sebelum gelar (PRODUCTION.md §Env allowlist).
   #
   # ══ DUA JALAN KE BASIS DATA, DAN KEDUANYA DIPERTAHANKAN ════════════════════
   #
@@ -653,9 +804,9 @@ services:
   #
   # Buku PT di instans lain dicadangkan dari server instans itu, dengan URL dari
   # env var yang NAMANYA tercatat di `db_instances`
-  # (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`). Env itu datang lewat `env_file`
-  # di atas, sama seperti ke setiap layanan lain yang membuka buku — JANGAN
-  # menulisnya di `environment:` (ditolak
+  # (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`). Namanya sampai ke sini lewat
+  # grup `*env-db-instances`, sama seperti ke setiap layanan lain yang membuka
+  # buku — JANGAN menulisnya per layanan (ditolak
   # `tests/db-instance-env-reaches-every-service.test.ts`). Nilainya wajib
   # LANGSUNG ke PostgreSQL; Go menolak URL yang menyatakan `pgbouncer=true`.
   #
@@ -677,11 +828,25 @@ services:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:-latest}
     container_name: sai-svc-integrator
     restart: unless-stopped
-    env_file: .env
     environment:
+      <<: [*env-db-instances, *env-backup]
+      # Jalur `interactive`: registry & antrean lewat PgBouncer, buku satu PT
+      # per pekerjaan dari template (`internal/ledgerread`).
+      CONTROL_DATABASE_URL:
+      DATABASE_URL:
+      COMPANY_DATABASE_URL_TEMPLATE:
+      TZ:
+      PG_DUMP_BIN:
+      PG_DUMPALL_BIN:
       # Jalur `tenant` SAJA. `CONTROL_DATABASE_URL` sengaja TIDAK ditimpa di
       # sini: jalur `interactive` di proses yang sama memakainya lewat PgBouncer.
-      CONTROL_DATABASE_DIRECT_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+      #
+      # Peran CADANGAN (`PG_BACKUP_USER` = `sai_backup`: anggota `sai_app` +
+      # `pg_read_all_data`) — cukup untuk `pg_dump` setiap buku, `pg_dumpall
+      # --globals-only`, jejak `backup_runs`, dan pagar advisory lock; tidak
+      # cukup untuk DDL atau membuat peran. Sebelum peralihan hak minimum jatuh
+      # ke superuser `PG_USER`, persis perilaku lama.
+      CONTROL_DATABASE_DIRECT_URL: postgres://${PG_BACKUP_USER:-${PG_USER:-sai}}:${PG_BACKUP_PASSWORD:-${PG_PASSWORD}}@pg:5432/sai_control
     depends_on:
       pg:
         condition: service_healthy
@@ -697,9 +862,10 @@ services:
       # Artefak cadangan terenkripsi ketika `BACKUP_S3_BUCKET` belum disetel:
       # mendarat di sini alih-alih tidak dibuat sama sekali.
       - cadangan:/app/data/cadangan
-      # Hasil ekspor jalur `interactive` sisi Go. Berjalan sebagai root dan
-      # `chown` setiap hasil ke `node`, pembaca volume itu di `app-customer`
-      # (`contract/kinds.yaml` → `results`).
+      # Hasil ekspor jalur `interactive` sisi Go. Berjalan sebagai uid 1000 —
+      # uid yang sama dengan `node`, pembaca volume itu di `app-customer`
+      # (`contract/kinds.yaml` → `results`) — jadi berkasnya lahir dengan
+      # pemilik yang benar; `chown` hanya terjadi bila image lama (root) dipakai.
       - hasil:/app/data/hasil
     networks:
       - internal
@@ -741,13 +907,32 @@ services:
     expose:
       - "3000"
     environment:
+      <<: [*env-books, *env-db-instances, *env-mail, *env-billing]
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      AUTH_SECRET:
+      AUTH_URL:
+      AUTH_TRUST_HOST:
+      LICENCE_FILE:
+      MAINTENANCE_FROM:
+      MAINTENANCE_UNTIL:
+      # Penyediaan PT baru (`/companies/new`) membuat basis data sebagai PEMILIK
+      # (`sai_owner`, NOSUPERUSER CREATEDB) lalu menghibahkannya ke peran
+      # aplikasi `PG_APP_USER`. Tanpa `PROVISION_DATABASE_URL` penyediaan memakai
+      # `CONTROL_DATABASE_URL` — benar sebelum peralihan hak minimum, ditolak
+      # 42501 sesudahnya (pesan yang jelas, bukan kerusakan).
+      PROVISION_DATABASE_URL:
+      PG_APP_USER:
+      # Satu-satunya `OPERATOR_*` di sini selain penjaga di bawah, dan ia BUKAN
+      # rahasia: jumlah proxy di depan aplikasi, dibaca `client-ip` untuk alamat
+      # klien pembatas laju. Penjaga mengizinkannya dengan nama, bukan dengan pola.
+      OPERATOR_TRUSTED_PROXY_HOPS:
       # ⚠ DIKOSONGKAN DENGAN SENGAJA — ini penjaga, bukan kelalaian.
       #
-      # `environment:` menimpa `env_file:` di Compose, jadi walau `.env` memuat
-      # OPERATOR_HOST (dan ia HARUS memuatnya, untuk container di bawah),
+      # Sejak daftar izin env, `.env` tidak lagi mengalir ke sini, jadi
+      # OPERATOR_HOST memang tidak akan sampai. Baris ini tetap ditulis sebagai
+      # PERNYATAAN: walau seseorang kelak menambahkannya ke grup bersama,
       # container INI menerimanya kosong. `configuredOperatorHost()` lalu
       # menjawab null, dan `decideOperatorRouting` menjawab `blocked` untuk
       # setiap /operator — 404.
@@ -756,7 +941,6 @@ services:
       # berhasil mengirim Host operator langsung ke container ini, melewati
       # Traefik. Itu lapis yang tidak dimiliki susunan satu-container.
       OPERATOR_HOST: ""
-    env_file: .env
     depends_on:
       pg:
         condition: service_healthy
@@ -865,14 +1049,25 @@ services:
     expose:
       - "3000"
     environment:
+      <<: [*env-books, *env-db-instances, *env-mail, *env-billing]
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
-    # `OPERATOR_HOST` datang dari `.env` apa adanya — TIDAK ditimpa di sini.
-    # Tanpa nilainya, `decideOperatorRouting` menjawab `blocked` untuk setiap
-    # /operator dan container ini tidak melayani apa pun yang berguna. Itu
-    # gagal-tertutup: konsol yang salah konfigurasi menjadi 404, bukan terbuka.
-    env_file: .env
+      # Tautan surel ke host PELANGGAN (bukan host konsol).
+      AUTH_URL:
+      # `OPERATOR_HOST` datang dari `.env` apa adanya — TIDAK ditimpa di sini.
+      # Tanpa nilainya, `decideOperatorRouting` menjawab `blocked` untuk setiap
+      # /operator dan container ini tidak melayani apa pun yang berguna. Itu
+      # gagal-tertutup: konsol yang salah konfigurasi menjadi 404, bukan terbuka.
+      #
+      # ⚠ RAHASIA KONSOL — HANYA di container ini. Penjaga menolak `OPERATOR_*`
+      # di layanan lain (kecuali dua nama non-rahasia di `app-customer`).
+      OPERATOR_HOST:
+      OPERATOR_SESSION_SECRET:
+      OPERATOR_USERS:
+      OPERATOR_MFA:
+      OPERATOR_IP_ALLOWLIST:
+      OPERATOR_TRUSTED_PROXY_HOPS:
     depends_on:
       pg:
         condition: service_healthy
@@ -1001,6 +1196,7 @@ volumes:
   #
   # Penulisnya pelari jalur `interactive`: peran `interactive` di `svc-worker`
   # (Node, tahap 1c) dan `svc-integrator` (Go, tahap 1d). Pembacanya
-  # `app-customer` (`:ro`), sebagai `node` — maka penulis yang root `chown` setiap hasil ke `node`;
-  # tanpa itu berkas 0600 milik root dijawab 404 oleh rute unduhan.
+  # `app-customer` (`:ro`), sebagai `node` — dan sejak Okt 2026 kedua penulis
+  # juga uid 1000, jadi berkasnya lahir milik pembacanya. Pemilik lain = berkas
+  # 0600 dijawab 404 oleh rute unduhan (`chown` di penulis hanya bila ia root).
   hasil:

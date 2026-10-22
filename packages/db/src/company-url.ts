@@ -193,6 +193,29 @@ export function companyReadReplicaUrl(target: CompanyDatabaseTarget, readTemplat
   return url.toString();
 }
 
+/**
+ * Peran APLIKASI yang wajib DIHIBAHI hak atas buku baru di instans bawaan —
+ * atau `null` bila tidak ada yang perlu dihibahkan (hak minimum, Okt 2026).
+ *
+ * Penyedia membuat basis data dengan kredensial PEMILIK
+ * (`PROVISION_DATABASE_URL`), sedangkan aplikasi membukanya dengan kredensial
+ * template. Bila keduanya peran yang SAMA — setiap pemasangan sebelum peralihan
+ * hak minimum, dan setiap instans tambahan (template-nya sekaligus penyedianya)
+ * — pemiliknya sudah berhak atas semuanya dan jawabannya `null`.
+ *
+ * `PG_APP_USER` menang bila diset: di container `migrate` template buku
+ * SENGAJA ditimpa ke kredensial pemilik, jadi nama peran aplikasi tidak bisa
+ * dibaca dari sana.
+ */
+export function appRoleForNewBook(instance: DbInstanceRef | null, env: Env = process.env): string | null {
+  if (instance !== null) return null;
+  const owner = decodeURIComponent(instanceServerUrl(null, env).username);
+  const explicit = env.PG_APP_USER?.trim();
+  const app = explicit || decodeURIComponent(instanceTemplateUrl(null, env).username);
+  if (!app || app === owner) return null;
+  return app;
+}
+
 /** Label instans untuk log dan laporan per instans. */
 export function dbInstanceLabel(instance: DbInstanceRef | null): string {
   return instance?.key ?? DEFAULT_DB_INSTANCE_LABEL;

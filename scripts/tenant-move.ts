@@ -37,8 +37,9 @@ import { spawn } from "node:child_process";
 
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
-import { bukaServer } from "@sai/db/server";
+import { appRoleGrantSql, bukaBasisData, bukaServer } from "@sai/db/server";
 import {
+  appRoleForNewBook,
   COMPANY_DATABASE_TARGET_SELECT,
   DEFAULT_DB_INSTANCE_LABEL,
   assertDbInstanceRef,
@@ -219,6 +220,21 @@ async function main(): Promise<void> {
     // ── 2. Salin ─────────────────────────────────────────────────────
     await dumpRestore(sourceServer, tujuanUrl, source.databaseName);
     console.log("✓ pg_dump | pg_restore selesai");
+
+    /* `pg_restore --no-owner --no-acl`: objeknya milik peran yang memulihkan,
+       tanpa satu hibah pun. Di instans bawaan peran aplikasi bukan peran itu
+       (hak minimum, Okt 2026) — tanpa langkah ini buku yang baru pindah gagal
+       42501 di halaman pertamanya. */
+    const appRole = appRoleForNewBook(targetRef);
+    if (appRole) {
+      const db = await bukaBasisData(tujuanUrl.toString(), source.databaseName);
+      try {
+        await db.jalankan(appRoleGrantSql(source.databaseName, appRole));
+      } finally {
+        await db.tutup();
+      }
+      console.log(`✓ hak ${appRole} dihibahkan`);
+    }
 
     // ── 3. Bukti isi ─────────────────────────────────────────────────
     const [hitungAsal, hitungTujuan] = await Promise.all([

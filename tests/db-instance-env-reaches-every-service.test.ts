@@ -1,13 +1,14 @@
 /**
  * PENJAGA: env var instans basis data (tahap 4) sampai ke SETIAP layanan yang
- * membuka buku PT — lewat SATU jalan, yaitu `env_file: .env`.
+ * membuka buku PT — lewat SATU jalan, yaitu grup `x-env.db-instances`
+ * (anchor `*env-db-instances`) di `docker-compose.yml`.
  *
  * `db_instances.url_env_var` hanya menyebut NAMA env var; nilainya dibaca dari
  * environment proses (`packages/db/src/company-url.ts`, cermin Go-nya
  * `services/integrator/internal/db/instans.go`). Instans baru berarti satu
- * baris baru di `.env` — dan baris itu wajib sampai ke `app-customer`,
- * `app-operator`, `migrate`, `svc-worker`, `job-backup`, DAN `svc-integrator`
- * sekaligus.
+ * baris baru di `.env` DAN satu baris tanpa nilai di grup itu — dan baris itu
+ * wajib sampai ke `app-customer`, `app-operator`, `migrate`, `svc-worker`,
+ * `job-backup`, DAN `svc-integrator` sekaligus.
  *
  * Bentuk kegagalan yang dijaga tidak menghasilkan galat di tempat yang salah:
  * layanan yang tidak menerima env itu tetap jalan, lalu melempar hanya saat
@@ -16,10 +17,13 @@
  * sesudah pemindahan). Satu jalan masuk untuk semua layanan membuat "sampai ke
  * satu, terlewat di yang lain" tidak bisa terjadi:
  *
- *   1. Setiap layanan yang dibangun dari repo ini memakai `env_file: .env`.
+ *   1. Setiap layanan yang dibangun dari repo ini menggabungkan
+ *      `*env-db-instances` ke `environment:`-nya.
+ *      (Sampai Okt 2026 jalannya `env_file: .env`; itu dicabut karena membawa
+ *      SELURUH rahasia ke setiap container — `tests/compose-env-allowlist.test.ts`.)
  *   2. Tidak satu berkas compose pun menulis `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`
- *      di `environment:` — penimpaan per layanan adalah persis cara satu nilai
- *      sampai ke satu layanan dan tidak ke yang lain.
+ *      di `environment:` sebuah layanan — penimpaan per layanan adalah persis
+ *      cara satu nilai sampai ke satu layanan dan tidak ke yang lain.
  *
  * Akibat aturan 2: URL instans di `.env` dipakai apa adanya oleh SEMUA layanan,
  * jadi ia wajib LANGSUNG ke PostgreSQL (bukan PgBouncer) — `migrate` butuh
@@ -28,6 +32,7 @@
  */
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
 import { AKAR_REPO } from "./akar-sumber";
@@ -91,9 +96,22 @@ describe("env var instans basis data: satu jalan masuk untuk semua layanan", () 
     expect(BERKAS_COMPOSE).toContain("docker-compose.yml");
   });
 
-  it("setiap layanan yang dibangun dari repo ini memakai `env_file: .env`", () => {
-    const tanpa = LAYANAN_REPO.filter((s) => !/^\s+env_file: \.env\s*$/m.test(blok(DASAR, s)));
-    expect(tanpa, "layanan tanpa `env_file: .env` tidak menerima env var instans").toEqual([]);
+  it("setiap layanan yang dibangun dari repo ini menggabungkan `*env-db-instances`", () => {
+    const tanpa = LAYANAN_REPO.filter(
+      (s) => !/^\s+<<:\s*\[?[^\n]*\*env-db-instances\b/m.test(blok(DASAR, s))
+    );
+    expect(tanpa, "layanan tanpa `<<: *env-db-instances` tidak menerima env var instans").toEqual([]);
+  });
+
+  it("grup `x-env.db-instances` hanya berisi nama env instans, tanpa nilai", () => {
+    const doc = load(read("docker-compose.yml")) as { "x-env"?: { "db-instances"?: Record<string, unknown> } };
+    const grup = doc["x-env"]?.["db-instances"];
+    expect(grup, "grup x-env.db-instances hilang").toBeDefined();
+    for (const [nama, nilai] of Object.entries(grup ?? {})) {
+      expect(nama).toMatch(/^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$/);
+      /* Nilainya dari `.env`. Nilai yang ditulis di sini = URL berkredensial di repo. */
+      expect(nilai, nama).toBeNull();
+    }
   });
 
   it("tidak satu berkas compose pun menimpa env var instans per layanan", () => {
@@ -109,17 +127,14 @@ describe("env var instans basis data: satu jalan masuk untuk semua layanan", () 
     expect(pelanggar).toEqual([]);
   });
 
-  it("tidak satu berkas override pun mengganti `env_file` layanan repo", () => {
-    /* `env_file:` di override MENGGANTI daftar dasar — layanan itu lalu tidak
-       lagi membaca `.env` yang sama dengan layanan lain. */
+  it("tidak satu berkas compose pun menghidupkan lagi `env_file`", () => {
+    /* `env_file:` mana pun membawa SELURUH berkasnya — termasuk rahasia yang
+       tidak dibutuhkan layanan itu. */
     const pelanggar: string[] = [];
-    for (const f of BERKAS_COMPOSE.filter((x) => x !== "docker-compose.yml")) {
+    for (const f of BERKAS_COMPOSE) {
       const isi = tanpaKomentar(read(f));
       for (const s of layanan(isi)) {
-        const b = blok(isi, s);
-        if (/^\s+env_file:/m.test(b) && !/^\s+env_file: \.env\s*$/m.test(b)) {
-          pelanggar.push(`${f} → ${s}`);
-        }
+        if (/^\s+env_file:/m.test(blok(isi, s))) pelanggar.push(`${f} → ${s}`);
       }
     }
     expect(pelanggar).toEqual([]);

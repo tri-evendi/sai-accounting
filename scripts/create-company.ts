@@ -29,8 +29,8 @@ import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
-import { bukaServer } from "@sai/db/server";
-import { companyDatabaseUrl } from "@sai/db/company-url";
+import { appRoleGrantSql, bukaBasisData, bukaServer } from "@sai/db/server";
+import { appRoleForNewBook, companyDatabaseUrl } from "@sai/db/company-url";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "@sai/core/tenant-routes";
 import { ROLES, ROLE_LABELS } from "@sai/core/constants";
@@ -192,6 +192,21 @@ async function main() {
         `masih ada dan bisa dihapus (DROP DATABASE "${databaseName}") sebelum mencoba lagi.`
     );
     process.exit(1);
+  }
+
+  // ── 2b. Hak peran aplikasi (hak minimum, Okt 2026) ───────────────────────
+  /* Basis data dibuat & dimigrasikan sebagai PEMILIK; peran aplikasi belum
+     berhak atas satu tabel pun. Sama persis dengan penyediaan di aplikasi
+     (`src/lib/company-provisioning.ts`). */
+  const appRole = appRoleForNewBook(null);
+  if (appRole) {
+    console.log(`2b/3 menghibahkan hak ${appRole} atas ${databaseName}`);
+    const db = await bukaBasisData(controlUrl, databaseName);
+    try {
+      await db.jalankan(appRoleGrantSql(databaseName, appRole));
+    } finally {
+      await db.tutup();
+    }
   }
 
   // ── 3. Registry (paling akhir — lihat komentar kepala berkas) ────────────

@@ -2217,6 +2217,7 @@
     "periodWithCurrency": "Periode {from} – {to} · nilai dalam IDR",
     "exportTooLarge": "Laporan ini terlalu besar untuk satu berkas ({rows} baris, maksimal {max}). Sempitkan periodenya atau kurangi kolomnya.",
     "exportPayloadTooLarge": "Permintaan ekspornya terlalu besar untuk diproses.",
+    "exportNeedsSource": "Ekspor laporan ini wajib menyebut laporan dan tanggalnya. Muat ulang halamannya lalu coba lagi.",
     "periodAdjusted": "Periode yang diminta tidak dipakai; laporan ini memuat {from} – {to}.",
     "asOfAdjusted": "Tanggal yang diminta tidak dipakai; laporan ini per {date}.",
     "asOfDate": "Per Tanggal",

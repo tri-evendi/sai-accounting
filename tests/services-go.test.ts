@@ -30,7 +30,9 @@ const GO = berkasGo();
 const GEN = "services/integrator/internal/contract/jobs_gen.go";
 /** Bangkitan kedua sejak tahap 1d: `contract/accounting.yaml`. */
 const GEN_AKUNTANSI = "services/integrator/internal/contract/accounting_gen.go";
-const BANGKITAN = [GEN, GEN_AKUNTANSI];
+/** Bangkitan ketiga (tahap 1d): tata letak berkas laporan, dari modul TS-nya. */
+const GEN_TATA_LETAK = "services/integrator/internal/contract/report_layout_gen.go";
+const BANGKITAN = [GEN, GEN_AKUNTANSI, GEN_TATA_LETAK];
 
 /** Berkas Go tulisan TANGAN — yang dibangkitkan tunduk pada aturan lain. */
 const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel));
@@ -217,6 +219,11 @@ describe("kontrak: Go tidak punya daftarnya sendiri", () => {
     expect(akuntansi, GEN_AKUNTANSI).toBeDefined();
     expect(akuntansi!.isi).toContain("JANGAN DISUNTING TANGAN");
     expect(akuntansi!.isi).toContain("contract/accounting.yaml");
+
+    const tataLetak = GO.find((b) => b.rel === GEN_TATA_LETAK);
+    expect(tataLetak, GEN_TATA_LETAK).toBeDefined();
+    expect(tataLetak!.isi).toContain("JANGAN DISUNTING TANGAN");
+    expect(tataLetak!.isi).toContain("src/lib/statement-layout.ts");
   });
 
   it("setiap berkas di `internal/contract/` adalah bangkitan", () => {

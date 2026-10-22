@@ -11,7 +11,13 @@
  * pre-formatted strings that would lose both precision and the ability to total.
  */
 import ExcelJS from "exceljs";
-import { IDR_NUMBER_FORMAT, QUANTITY_NUMBER_FORMAT, type SheetModel } from "@/lib/report-export";
+import {
+  IDR_NUMBER_FORMAT,
+  QUANTITY_NUMBER_FORMAT,
+  SHEET_BANNER_STYLE as GAYA,
+  sheetPrintedLine,
+  type SheetModel,
+} from "@/lib/report-export";
 
 /**
  * Render one or more sheet models into a single workbook buffer.
@@ -44,12 +50,12 @@ export async function buildWorkbookBuffer(
     const colCount = model.columns.length;
 
     // Banner: company, report title, period. Kept visually distinct via weight.
-    ws.addRow([company.name]).font = { bold: true, size: 14 };
-    ws.addRow([model.title]).font = { bold: true, size: 12 };
-    ws.addRow([model.period]).font = { color: { argb: "FF64748B" } };
-    ws.addRow([`Dicetak: ${new Date().toLocaleString("id-ID")} · Nilai dalam IDR`]).font = {
-      size: 9,
-      color: { argb: "FF64748B" },
+    ws.addRow([company.name]).font = { bold: true, size: GAYA.companyFontSize };
+    ws.addRow([model.title]).font = { bold: true, size: GAYA.titleFontSize };
+    ws.addRow([model.period]).font = { color: { argb: GAYA.mutedArgb } };
+    ws.addRow([sheetPrintedLine(new Date().toLocaleString("id-ID"))]).font = {
+      size: GAYA.printedFontSize,
+      color: { argb: GAYA.mutedArgb },
     };
     ws.addRow([]);
 
@@ -58,10 +64,10 @@ export async function buildWorkbookBuffer(
       ws.getColumn(i + 1).width = c.width;
     });
     const headerRow = ws.addRow(model.columns.map((c) => c.header));
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.font = { bold: true, color: { argb: GAYA.headerFontArgb } };
     for (let i = 1; i <= colCount; i += 1) {
       const cell = headerRow.getCell(i);
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: GAYA.headerFillArgb } };
       cell.alignment = { horizontal: i === 1 ? "left" : "right" };
     }
 

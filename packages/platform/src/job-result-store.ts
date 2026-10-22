@@ -46,11 +46,12 @@
  * memutuskan izin apa pun. Izinnya diputuskan rute unduhan.
  */
 
-import { mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chown, mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { isValidResultRef } from "@sai/core/job-result";
 import type { JobKind } from "@sai/core/generated/job-kinds";
+import { RESULT_OWNER_GID, RESULT_OWNER_UID } from "@sai/core/generated/job-numbers";
 
 /** Akar penyimpanan hasil. Sejajar `data/documents` & `data/audit` — volume. */
 export const RESULTS_ROOT = path.join(process.cwd(), "data", "hasil");
@@ -71,6 +72,26 @@ export const RESULTS_ROOT = path.join(process.cwd(), "data", "hasil");
  * boleh mengubahnya adalah pemanggil di dalam kode, yaitu tes.
  */
 export type OpsiAkar = { akar?: string };
+
+/**
+ * Serahkan berkas hasil ke pembacanya, bila penulisnya root.
+ *
+ * ══ KENAPA ══════════════════════════════════════════════════════════════════
+ * Pelari jalur berjalan sebagai ROOT (tahap `migrator` dan `integrator` tidak
+ * punya `USER`), sementara `app-customer` — satu-satunya pembaca volume
+ * `hasil` — berjalan sebagai `node`. Berkasnya 0600 di direktori 0700 milik
+ * root, jadi `stat` dari rute unduhan ditolak dan SETIAP hasil dijawab 404:
+ * pekerjaan `done`, berkas ada di cakram, dan tidak satu pun bisa diunduh.
+ * Modenya tidak dilonggarkan — yang diperbaiki PEMILIKNYA, ke uid yang memang
+ * membacanya (`contract/kinds.yaml` → `results`, dibaca juga pelari Go).
+ *
+ * Bukan root (pengembang, tes) → tidak ada yang perlu diserahkan, dan
+ * `chown` ke uid lain memang akan ditolak.
+ */
+async function serahkanKePembaca(...jalur: string[]): Promise<void> {
+  if (typeof process.getuid !== "function" || process.getuid() !== 0) return;
+  for (const j of jalur) await chown(j, RESULT_OWNER_UID, RESULT_OWNER_GID);
+}
 
 /**
  * Nama direktori putaran untuk satu pekerjaan.
@@ -139,6 +160,9 @@ export async function writeJobResult(
   await mkdir(path.dirname(absolute), { recursive: true, mode: 0o700 });
   const sementara = `${absolute}.partial`;
   await writeFile(sementara, bytes, { mode: 0o600 });
+  /* Diserahkan SEBELUM `rename`: berkas yang namanya sudah sah tidak pernah
+     terlihat dengan pemilik yang salah. */
+  await serahkanKePembaca(path.dirname(absolute), sementara);
   await rename(sementara, absolute);
   return ref;
 }

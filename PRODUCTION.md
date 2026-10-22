@@ -66,7 +66,7 @@ operator variables. Use the table below as the reference.
 docker compose pull
 docker compose up -d pg pgbouncer
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
+docker compose up -d app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
 ```
 
 `db:migrate:all` applies `prisma/postgresql/control/`, then `platform/`, then
@@ -121,7 +121,7 @@ is the emergency `owner`; further operators are managed from the console at
 | `documents` | `/app/data/documents` | Uploaded documents, one directory per company (issue #367), served only through `/api/documents/<id>/file` |
 | `audit` | `/app/data/audit` | Archive only: the old `audit.jsonl` files, renamed `.dipindahkan` after their move. The live trails are tables — `audit_logs` (each company DB), `tenant_audit_logs` (control), `operator_audit_logs` (platform) |
 | `cadangan` | `svc-tenant:/app/data/cadangan` | Encrypted local backup artifacts — one directory per run since stage 1b |
-| `hasil` | `svc-interactive:/app/data/hasil` (RW), `app-customer` (RO) | Job results since stage 1c: `<kind>-<jobId>/<file>`. **Not backed up** — regenerated from the book, and pruned together with its `jobs` row after `DONE_RETENTION_DAYS`. Outside `public/`: the only way out is a permission-checked route |
+| `hasil` | `svc-interactive` + `svc-interactive-go`:`/app/data/hasil` (RW, files chowned to `node` — `contract/kinds.yaml` → `results`), `app-customer` (RO) | Job results since stage 1c: `<kind>-<jobId>/<file>`. **Not backed up** — regenerated from the book, and pruned together with its `jobs` row after `DONE_RETENTION_DAYS`. Outside `public/`: the only way out is a permission-checked route |
 | `db_data` | `db` | Frozen MariaDB fallback, removed in #636 |
 
 ### Automated backups (issue #374; per-database since stage 1b)
@@ -306,7 +306,7 @@ OOM (exit 137).
 2. Pull:
    ```bash
    git pull                                  # compose file + migrations only
-   docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
+   docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
    ```
 3. Only if the release brings new migrations under `prisma/postgresql/`:
    ```bash
@@ -314,7 +314,7 @@ OOM (exit 137).
    ```
 4. Swap:
    ```bash
-   docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
+   docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
    ```
 5. Check that both app containers run images from the same `sha-` tag / build
    date:

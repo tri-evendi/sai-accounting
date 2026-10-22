@@ -43,6 +43,7 @@ const (
 	KindLedgerRecurring     JobKind = "ledger.recurring"
 	KindMailBatch           JobKind = "mail.batch"
 	KindReportExport        JobKind = "report.export"
+	KindReportExportGo      JobKind = "report.export_go"
 	KindReportPackage       JobKind = "report.package"
 	KindScheduleTick        JobKind = "schedule.tick"
 	KindSchemaMigrate       JobKind = "schema.migrate"
@@ -83,6 +84,7 @@ var JobKinds = map[JobKind]KindSpec{
 	KindLedgerRecurring:     {Lane: LaneLedger, MaxAttempts: 3, WritesLedger: true},
 	KindMailBatch:           {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
 	KindReportExport:        {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
+	KindReportExportGo:      {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindReportPackage:       {Lane: LaneBulk, MaxAttempts: 3, WritesLedger: false},
 	KindScheduleTick:        {Lane: LaneSchedule, MaxAttempts: 1, WritesLedger: false},
 	KindSchemaMigrate:       {Lane: LaneSchema, MaxAttempts: 1, WritesLedger: false},
@@ -111,7 +113,7 @@ var JobLanes = map[JobLane]LaneSpec{
 var KindsByLane = map[JobLane][]JobKind{
 	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage},
 	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfaktur},
-	LaneInteractive: {KindDocumentGenerate, KindReportExport},
+	LaneInteractive: {KindDocumentGenerate, KindReportExport, KindReportExportGo},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},
@@ -159,4 +161,12 @@ const (
 
 	QueueAgeWarn = 420 * time.Second
 	QueueAgeLate = 600 * time.Second
+)
+
+// ResultOwnerUID/GID: pemilik berkas hasil di volume `hasil` — pengguna
+// `node` yang membacanya di `app-customer`. Pelari yang berjalan sebagai root
+// wajib chown ke sini, atau rute unduhan menjawab 404 untuk setiap hasil.
+const (
+	ResultOwnerUID = 1000
+	ResultOwnerGID = 1000
 )

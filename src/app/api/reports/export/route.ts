@@ -39,7 +39,9 @@ import {
   EXPORT_QUEUE_HANDOFF_ROWS,
 } from "@sai/core/export-limits";
 import { publishJob } from "@sai/platform/job-queue";
-import { isExportable, reportById } from "@/lib/report-catalog";
+import { REPORTS, isExportable, reportById } from "@/lib/report-catalog";
+import { exportJobKind, reportEngine } from "@/lib/report-engine";
+import { publishGoExport } from "@/lib/report-export-go";
 import { statementPayloadSchema } from "@/lib/validations/report-export";
 import { buildReportSheet } from "@/lib/report-export";
 import { buildWorkbookBuffer } from "@/lib/xlsx";
@@ -90,6 +92,51 @@ export async function POST(request: Request) {
   // Lock-step with the PDF payload: if the two shapes ever diverge this fails to
   // compile, rather than silently exporting a different structure.
   const payload: StatementPayload = parsed.data;
+  const url = new URL(request.url);
+
+  /*
+   * ── REGISTER MESIN DIBACA LEBIH DULU (tahap 1d) ─────────────────────────
+   *
+   * Laporan yang register-nya `go` (`src/lib/report-engine.ts`) TIDAK pernah
+   * dirakit di sini, berapa pun barisnya: jalur sinkron di bawah adalah versi
+   * TS-nya, dan "versi TS untuk jalur berkas dicabut" (09 §9) berarti ia tak
+   * boleh terjangkau — bukan hanya jarang terjangkau. Lembar sebarnya dihitung
+   * pelari Go dari PARAMETER, dan klien menunggunya di rute hasil seperti
+   * ekspor berantre lainnya (202).
+   *
+   * Karena itu laporan `go` WAJIB menyebut asalnya (`?id=&asOf=`). Muatan
+   * tanpa asal dijawab 400, bukan dirakit "sekali ini saja" dengan TS: jalan
+   * mundur diam-diam adalah dua implementasi yang hidup tanpa pembanding.
+   */
+  const goReport = REPORTS.find(
+    (r) => isExportable(r) && r.payloadKind === payload.kind && reportEngine(r.id) === "go"
+  );
+  if (goReport) {
+    const asked = reportById(url.searchParams.get("id") ?? "");
+    if (!asked || asked.id !== goReport.id) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("reports.exportNeedsSource") }, { status: 400 });
+    }
+    /* Gerbang KEDUA — sama dengan cabang antrean di bawah. */
+    if (!(await canEffective(authz.session.user, goReport.permission))) {
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("errors.notFound") }, { status: 404 });
+    }
+    const params: Record<string, string> = {};
+    for (const [k, v] of url.searchParams) if (k !== "id" && v) params[k] = v;
+
+    const row = await publishGoExport(goReport, params, authz.companyId);
+    if (!row) {
+      /* Tak terjangkau tanpa `dedupeKey` (lihat cabang di bawah) — tapi bila
+         terjadi, jawabannya 503 yang jujur, BUKAN jatuh ke perakitan TS. */
+      const { t } = await getRequestI18n();
+      return NextResponse.json({ error: t("excel.failed") }, { status: 503 });
+    }
+    return NextResponse.json(
+      { queued: true, jobId: row.id, kind: exportJobKind(goReport.id) },
+      { status: 202 }
+    );
+  }
 
   const sheet = buildReportSheet(payload);
 
@@ -115,7 +162,6 @@ export async function POST(request: Request) {
    * pekerjaan yang pasti gagal lebih buruk daripada menolaknya sekarang.
    */
   if (sheet.rows.length > EXPORT_QUEUE_HANDOFF_ROWS) {
-    const url = new URL(request.url);
     const report = reportById(url.searchParams.get("id") ?? "");
 
     if (report && isExportable(report)) {

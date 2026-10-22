@@ -837,6 +837,16 @@ export function trialBalancePrintAmount(
 
 export const TRIAL_BALANCE_COLUMNS = ["code", "name", "debit", "credit"] as const;
 
+/**
+ * Label periode laporan "per tanggal" (Neraca Saldo, Neraca) untuk DOKUMEN
+ * CETAK — `dateText` sudah diformat `formatDate` (id-ID, "5 Januari 2026").
+ * Fungsi, bukan template di tiap pemanggil, supaya generator kontrak bisa
+ * membangkitkan pola Go-nya dari kalimat yang SAMA (`report_layout_gen.go`).
+ */
+export function asOfPeriodLabel(dateText: string): string {
+  return `Per ${dateText}`;
+}
+
 export type TrialBalanceColumnId = (typeof TRIAL_BALANCE_COLUMNS)[number];
 
 /**

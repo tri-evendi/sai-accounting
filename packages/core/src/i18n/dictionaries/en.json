@@ -2217,6 +2217,7 @@
     "periodWithCurrency": "Period {from} – {to} · figures in IDR",
     "exportTooLarge": "This report is too large for one file ({rows} rows, maximum {max}). Narrow the period or drop some columns.",
     "exportPayloadTooLarge": "The export request is too large to process.",
+    "exportNeedsSource": "This report export must name the report and its date. Reload the page and try again.",
     "periodAdjusted": "The requested period was not used; this report covers {from} – {to}.",
     "asOfAdjusted": "The requested date was not used; this report is as of {date}.",
     "asOfDate": "As of date",

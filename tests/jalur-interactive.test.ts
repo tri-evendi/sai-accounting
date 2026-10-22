@@ -220,12 +220,19 @@ describe("layanan di compose", () => {
     return habis > 0 ? sisa.slice(0, habis) : sisa;
   })();
 
-  it("SATU-SATUNYA penulis volume `hasil`", () => {
+  it("penulis volume `hasil` hanya pelari jalur `interactive` — Node dan Go", () => {
     expect(svc).toMatch(/- hasil:\/app\/data\/hasil$/m);
     /* `app-customer` memasangnya hanya-baca: aplikasi men-stream byte-nya dan
-       tidak punya satu alasan pun untuk menulisnya. */
-    const penulis = [...compose.matchAll(/- hasil:\/app\/data\/hasil(?!:ro)/g)];
-    expect(penulis).toHaveLength(1);
+       tidak punya satu alasan pun untuk menulisnya. Sejak tahap 1d jalur
+       `interactive` punya DUA pelari (`svc-interactive` Node, mengklaim
+       `report.export`; `svc-interactive-go`, mengklaim `report.export_go`),
+       dan keduanya — HANYA keduanya — menulis hasil. */
+    const pemilik = (i: number) =>
+      [...compose.slice(0, i).matchAll(/\n {2}([a-z][a-z0-9-]*):\n/g)].at(-1)?.[1];
+    const penulis = [...compose.matchAll(/- hasil:\/app\/data\/hasil(?!:ro)/g)].map((m) =>
+      pemilik(m.index!)
+    );
+    expect(penulis.sort()).toEqual(["svc-interactive", "svc-interactive-go"]);
   });
 
   it("TIDAK memasang dokumen maupun jejak audit", () => {

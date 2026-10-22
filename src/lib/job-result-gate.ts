@@ -55,6 +55,10 @@ export async function bolehAmbilHasil(
 ): Promise<boolean> {
   switch (kind) {
     case "report.export":
+    /* Ekspor yang dihitung Go (tahap 1d) — muatannya membawa `reportId` yang
+       sama bentuknya (`src/lib/report-export-go.ts`), jadi gerbang keduanya
+       SAMA, bukan versi kedua yang bisa menyimpang. */
+    case "report.export_go":
     case "report.package": {
       /*
        * Muatannya WAJIB menyebut laporan mana. Muatan tanpa `reportId` adalah

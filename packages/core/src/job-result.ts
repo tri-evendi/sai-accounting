@@ -43,6 +43,10 @@ import { tenantApiPath } from "./tenant-routes";
 export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>> = {
   /* Berkas yang ditunggu pengguna di layar. */
   "report.export": "report.export",
+  /* Lembar sebar yang sama, dihitung Go (tahap 1d) — izinnya SAMA dengan
+     `report.export`: yang diunduh pengguna satu jenis berkas, siapa pun
+     mesin yang menghitungnya. */
+  "report.export_go": "report.export",
   "report.package": "report.export",
   "document.generate": "document.read",
 

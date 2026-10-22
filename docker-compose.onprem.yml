@@ -143,3 +143,11 @@ services:
     pull_policy: always
     environment:
       APP_DEPLOY_PROFILE: onprem
+
+  # Pasangan Go-nya (tahap 1d): lembar sebar laporan ber-`engine: go` hanya
+  # dikerjakan di sini. Tanpanya ekspor Neraca Saldo menumpuk tanpa pengklaim.
+  svc-interactive-go:
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
+    pull_policy: always
+    environment:
+      APP_DEPLOY_PROFILE: onprem

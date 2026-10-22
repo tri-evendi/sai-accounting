@@ -14,7 +14,7 @@
 export const MIGRATION_TERAKHIR = {
   control: "0010_tenant_pindah_onprem",
   platform: "0007_licence_signing_keys",
-  company: "0002_company_logos",
+  company: "0003_contracts_status_check",
 } as const;
 
 export type JenisBasisData = keyof typeof MIGRATION_TERAKHIR;

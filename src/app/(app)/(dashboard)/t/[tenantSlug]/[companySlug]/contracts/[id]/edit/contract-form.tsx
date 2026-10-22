@@ -63,6 +63,14 @@ const twoColumnGrid = (gap: number): React.CSSProperties => ({
 /** Urutan pilihan status di formulir — alur kerja, bukan urutan konstanta. */
 const EDIT_STATUS_ORDER: readonly ContractStatus[] = ["pending", "signed", "completed", "canceled"];
 
+/** Kunci kamus per status — ditulis utuh supaya penjaga kunci yatim melihatnya. */
+const STATUS_LABEL_KEY = {
+  pending: "status.contract.pending",
+  signed: "status.contract.signed",
+  canceled: "status.contract.canceled",
+  completed: "status.contract.completed",
+} as const satisfies Record<ContractStatus, string>;
+
 interface ContractItem {
   /** Barang dari master (#491). `null` pada baris kontrak lama yang tak tertaut. */
   itemId: number | null;
@@ -360,7 +368,7 @@ export function EditContractForm() {
                   defaultValue={contract.status}
                   options={EDIT_STATUS_ORDER.filter((s) =>
                     canTransitionContractStatus(contract.status, s)
-                  ).map((s) => ({ value: s, label: t(`status.contract.${s}`) }))}
+                  ).map((s) => ({ value: s, label: t(STATUS_LABEL_KEY[s]) }))}
                 />
               </Col>
               {/* PPN kontrak (migrasi 0062). Mengubahnya di sini TIDAK menyentuh

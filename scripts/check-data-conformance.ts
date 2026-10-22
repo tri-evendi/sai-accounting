@@ -84,7 +84,7 @@ interface Check {
    * Ada karena tidak setiap aturan pantas ditulis sebagai SQL: pagar
    * materialitas (#444) butuh membandingkan tiap akun dengan TOTAL seluruh
    * akun, dan menuliskannya sebagai SQL berarti menaruh aturan akuntansi di
-   * tempat yang tidak bisa diuji tanpa MySQL. Yang dipulangkan tetap bentuk
+   * tempat yang tidak bisa diuji tanpa basis data. Yang dipulangkan tetap bentuk
    * yang sama — daftar `label` — jadi pelapornya tidak perlu tahu bedanya.
    */
   nilai?: (rows: Record<string, unknown>[]) => { label: string }[];
@@ -198,7 +198,7 @@ const CHECKS: Check[] = [
     judul: "Akun penampung beban berskala material",
     /* SQL-nya sengaja BODOH: ia cuma menjumlahkan beban per akun. Yang tahu
        apa itu "penampung" dan apa itu "material" adalah `@/lib/materiality`,
-       dan di sanalah aturannya diuji — tanpa MySQL. */
+       dan di sanalah aturannya diuji — tanpa basis data. */
     sql: `SELECT a.code AS code, a.name AS name, a.type AS type,
                  a.expense_nature AS nature,
                  SUM(l.base_debit - l.base_credit) AS amount

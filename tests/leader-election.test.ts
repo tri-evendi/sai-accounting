@@ -208,7 +208,8 @@ describe("kunci TIDAK PERNAH lewat pooler transaksi", () => {
     expect(() => assertDirectUrl("postgres://u:p@db.internal:6432/sai_control")).toThrow(
       PooledLockUrlError
     );
-    expect(() => assertDirectUrl("mysql://u:p@db:3306/sai_control")).toThrow(PooledLockUrlError);
+    /* `mysql://` ditolak lebih awal oleh `@sai/db/engine`, dengan pesan #636. */
+    expect(() => assertDirectUrl("mysql://u:p@db:3306/sai_control")).toThrow(/#636/);
     expect(() => assertDirectUrl("postgres://u:p@pg:5432/sai_control")).not.toThrow();
   });
 

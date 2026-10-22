@@ -157,7 +157,7 @@ describe("migrasi 0052 tidak menebak", () => {
     const { readFileSync } = await import("node:fs");
     const { join } = await import("node:path");
     const sql = readFileSync(
-      join(__dirname, "..", "prisma", "migrations", "0052_contract_item_link", "migration.sql"),
+      join(__dirname, "..", "prisma", "_arsip-mariadb", "company", "0052_contract_item_link", "migration.sql"),
       "utf8"
     );
     /* Pagar `COUNT(*) = 1`: nama yang menunjuk dua barang (justru kasus

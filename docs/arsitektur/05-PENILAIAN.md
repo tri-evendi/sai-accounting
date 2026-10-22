@@ -366,8 +366,8 @@ Butir di sini baru dikerjakan bila pemicunya terjadi.
 | 1 | Nyalakan perpanjangan otomatis VM, atau pasang pengingat sebelum 3 Jun 2027 | Satu sakelar |
 | 2 | Setel 3 env S3, jalankan backup, buktikan dengan `prove-backup-restore` | Rendah |
 | 3 | Simpan `BACKUP_ENCRYPTION_KEY` di luar mesin + catat lokasinya | Rendah |
-| 4 | Tutup risiko PostgreSQL yang terbuka (superuser, pencarian peka huruf, 3 skrip berdialek MySQL, login username) | Rendah–sedang |
-| 5 | #636: cabut MariaDB (≥ 22 Okt 2026), dump terakhir di luar mesin | Sedang |
+| 4 | Tutup risiko PostgreSQL yang terbuka (superuser, pencarian peka huruf, login username; 3 skrip berdialek MySQL ✅ #636) | Rendah–sedang |
+| 5 | ✅ #636: cabut MariaDB — dicabut 22 Okt 2026. Sisa: salin dump terakhir ke luar mesin, lalu `docker volume rm sai-accounting_db_data` | Rendah |
 | 6 | Jawab dua keputusan pemilik soal buku uji | — |
 
 Nomor 2 dan 3 dikerjakan **bersama**, dan langkah pembuktiannya jangan

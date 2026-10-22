@@ -16,8 +16,8 @@ export default defineConfig({
   migrations: {
     /*
      * == JALUR MIGRATION PINDAH KE PostgreSQL (15 Okt 2026) ==============
-     * Riwayat MariaDB TIDAK dihapus — ia tetap di `prisma/<db>/migrations`
-     * sebagai ARSIP hanya-baca. Di sana tercatat transformasi data yang
+     * Riwayat MariaDB TIDAK dihapus — sejak #636 ia ada di
+     * `prisma/_arsip-mariadb/<db>/` sebagai ARSIP hanya-baca. Di sana tercatat transformasi data yang
      * pernah diterapkan, dan itu riwayat yang akan dicari orang saat
      * menelusuri kenapa sebuah nilai berbentuk begitu.
      *

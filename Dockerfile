@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ─────────────────────────────────────────────────────────────
-# SAI LuckyHands — Next.js 16 (standalone) + Prisma 7 + MariaDB
+# SAI LuckyHands — Next.js 16 (standalone) + Prisma 7 + PostgreSQL
 #
 # Stages:
 #   base     → node + system libs (openssl for Prisma engines)
@@ -12,7 +12,7 @@
 #   runner   → lean production image, runs server.js as non-root
 # ─────────────────────────────────────────────────────────────
 
-# Node 22 (Debian slim) — reliable for native modules: bcrypt, mariadb, sharp.
+# Node 22 (Debian slim) — reliable for native modules: bcrypt, sharp.
 FROM node:22-bookworm-slim AS base
 # openssl + ca-certificates are required by Prisma's engines at runtime.
 RUN apt-get update \
@@ -81,7 +81,7 @@ ENV NODE_ENV=production
 # Placeholders so module-load code (e.g. src/lib/prisma.ts) doesn't throw while
 # Next collects page/route data at build time. No DB connection is made here,
 # and these are overridden by the real runtime env (env_file) at container start.
-ENV DATABASE_URL="mysql://build:build@localhost:3306/build" \
+ENV DATABASE_URL="postgres://build:build@localhost:5432/build" \
     AUTH_SECRET="build-time-placeholder" \
     AUTH_URL="http://localhost:3000"
 COPY --from=deps /app/node_modules ./node_modules
@@ -181,17 +181,17 @@ CMD ["bun", "run", "db:migrate:all"]
 # sudah lahir di sana, dan membangunnya dua kali berarti dua kali waktu build
 # di mesin yang sudah sempit.
 #
-# Tiga perkakas yang belum ada di image mana pun: `mariadb-client` (untuk
-# `mariadb-dump`), `postgresql-client` (untuk `pg_dumpall`), dan `awscli` (untuk
-# `aws s3`, yang berbicara ke penyedia S3-compatible mana pun lewat
-# `--endpoint-url`). `openssl` sudah ada dari tahap `base` — ia dipasang di sana
-# untuk Prisma, dan dipakai ulang di sini untuk menyandikan arsipnya.
+# Dua perkakas yang belum ada di image mana pun: `postgresql-client` (untuk
+# `pg_dump`/`pg_dumpall`) dan `awscli` (untuk `aws s3`, yang berbicara ke
+# penyedia S3-compatible mana pun lewat `--endpoint-url`). `openssl` sudah ada
+# dari tahap `base` — ia dipasang di sana untuk Prisma, dan dipakai ulang di
+# sini untuk menyandikan arsipnya.
 #
-# ⚠ KEDUA klien dipasang, bukan salah satunya. Alasannya bukan ragu-ragu:
-# `prove-backup-restore` harus bisa memeriksa artefak dari mesin SEBELUMNYA
-# sesudah penukaran — dan image yang hanya punya klien mesin sekarang akan
-# menolak cadangan terakhir dari mesin lama, justru pada hari ia paling
-# dibutuhkan. Biayanya ~30 MB; harga kehilangan jalan mundur tidak terukur.
+# `mariadb-client` DICABUT di Fase E (#636, 22 Okt 2026). Ia dipasang selama
+# jendela transisi supaya `prove-backup-restore` masih bisa membaca cadangan
+# MariaDB terakhir; dump terakhir itu kini dibuktikan sekali dengan `mariadb:11`
+# sekali pakai, dan image `sha-c9b5d9c` (v0.12.0) adalah image terakhir yang
+# masih membawa klien itu.
 #
 # ⚠ awscli DIPAKAI, BUKAN SigV4 buatan sendiri. Menandatangani permintaan S3
 # sendiri hanya butuh ~60 baris, dan itulah jebakannya: ia akan terlihat benar
@@ -223,7 +223,7 @@ FROM migrator AS backup
 # bisa mendump server yang lebih tua, jadi arah ini aman; kebalikannya tidak.
 # `tests/pg-client-version.test.ts` menolak kalau keduanya menyimpang.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends mariadb-client awscli curl gnupg \
+    && apt-get install -y --no-install-recommends awscli curl gnupg \
     && install -d /usr/share/postgresql-common/pgdg \
     && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
          https://www.postgresql.org/media/keys/ACCC4CF8.asc \

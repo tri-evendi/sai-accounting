@@ -3,7 +3,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
 #
 # Berkas ini hanya memuat yang BERBEDA di mesin customer: di sana tidak ada
-# Traefik milik SAI, tidak ada konsol operator, tidak ada MariaDB warisan, dan
+# Traefik milik SAI, tidak ada konsol operator, dan
 # — yang paling mudah terlewat — tidak ada CI yang membangun image.
 
 networks:
@@ -20,10 +20,6 @@ services:
   # Konsol operator tidak dipasang. Tanpa `OPERATOR_HOST` ia menjawab 404 di
   # mana pun, jadi profil ini hanya membuat niat itu terbaca di compose.
   app-operator:
-    profiles: ["tidak-dipasang"]
-
-  # MariaDB beku (#636) tidak pernah ada di pemasangan baru.
-  db:
     profiles: ["tidak-dipasang"]
 
   # ══ Celah #1: profil penyebaran dinyatakan DI SINI ══════════════════════

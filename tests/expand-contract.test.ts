@@ -28,7 +28,7 @@
  * tanpa mengetahuinya).
  *
  * ══ ARSIP MariaDB TIDAK DIPINDAI, DAN ITU BUKAN KELONGGARAN ═══════════════
- * `prisma/migrations/` dan `prisma/{control,platform}/migrations/` adalah arsip
+ * `prisma/_arsip-mariadb/company/` dan `prisma/_arsip-mariadb/{control,platform}/` adalah arsip
  * hanya-baca: migration yang ditulis di sana tidak akan pernah diterapkan
  * (AGENTS.md §Database). Ia memuat **33 `RENAME`, satu `DROP TABLE`, satu
  * `DROP COLUMN`, delapan `MODIFY COLUMN`** — riwayat yang sudah terjadi, pada
@@ -412,7 +412,7 @@ describe("penjaganya sendiri harus benar-benar MENANGKAP sesuatu", () => {
      * pun — dan penjaga yang merah karena hal yang tak bisa diperbaiki adalah
      * penjaga yang dimatikan orang.
      */
-    const arsip = join(AKAR_REPO, "prisma/migrations");
+    const arsip = join(AKAR_REPO, "prisma/_arsip-mariadb/company");
     if (!existsSync(arsip)) return;
     const semua = readdirSync(arsip)
       .map((m) => join(arsip, m, "migration.sql"))

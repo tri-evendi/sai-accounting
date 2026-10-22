@@ -33,7 +33,15 @@ describe(".dockerignore tidak membuang SQL migration", () => {
     expect(saringSql).toBeGreaterThanOrEqual(0);
   });
 
-  const pohon = pohonMigration("prisma");
+  /* Arsip MariaDB (#636) bukan pohon yang DITERAPKAN: ia sengaja tidak masuk
+     image, jadi tidak dituntut pengecualian — justru dituntut sebaliknya. */
+  const ARSIP = "prisma/_arsip-mariadb";
+  const pohon = pohonMigration("prisma").filter((p) => p !== ARSIP && !p.startsWith(`${ARSIP}/`));
+
+  it("arsip MariaDB TIDAK masuk image", () => {
+    expect(baris).toContain(`/${ARSIP}/`);
+    expect(pengecualian.some((e) => e === ARSIP || e.startsWith(`${ARSIP}/`) || ARSIP.startsWith(`${e}/`))).toBe(false);
+  });
   it("menemukan pohon migration PostgreSQL yang diterapkan", () => {
     expect(pohon).toEqual(expect.arrayContaining(["prisma/postgresql/company", "prisma/postgresql/control", "prisma/postgresql/platform"]));
   });

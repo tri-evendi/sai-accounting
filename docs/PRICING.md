@@ -129,7 +129,7 @@ sebelum dipakai di materi penjualan):
    baris yang sudah ada, karena seed yang mengubah harga akan mengejutkan
    penagihan setiap kali dijalankan. Migration diterapkan sekali, dan
    `migrate status` menjawab apakah ia sudah diterapkan. Preseden (arsip
-   MariaDB `prisma/platform/migrations/`; baseline PostgreSQL hanya memuat
+   MariaDB `prisma/_arsip-mariadb/platform/`; baseline PostgreSQL hanya memuat
    skema, baris harganya ikut tersalin saat penukaran 15 Okt 2026):
    `0009_plans_pricing_ladder` (harga), `0010_enterprise_not_public` (bendera).
 4. `tests/pricing-ladder.test.ts` menjaga seed, migration, dan dokumen ini

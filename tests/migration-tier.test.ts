@@ -4,9 +4,14 @@
  * ══ KENAPA PENJAGA INI ADA ═════════════════════════════════════════════════
  * Repo ini punya TIGA basis data dengan tiga skema dan tiga direktori migrasi:
  *
- *   prisma/migrations           → basis data PERUSAHAAN (satu per PT, #104)
- *   prisma/control/migrations   → basis data KENDALI (pengguna, tenant, PT)
- *   prisma/platform/migrations  → basis data PLATFORM (paket, tagihan kami)
+ *   prisma/postgresql/company  → basis data PERUSAHAAN (satu per PT, #104)
+ *   prisma/postgresql/control  → basis data KENDALI (pengguna, tenant, PT)
+ *   prisma/postgresql/platform → basis data PLATFORM (paket, tagihan kami)
+ *
+ * …ditambah riwayat MariaDB-nya di `prisma/_arsip-mariadb/<tingkat>` (arsip
+ * hanya-baca sejak #636). Sampai #636 penjaga ini HANYA memindai pohon MariaDB,
+ * jadi migration PostgreSQL yang ditulis sejak 15 Okt 2026 tidak dijaga sama
+ * sekali — kini keduanya.
  *
  * Menaruh migrasi di direktori yang salah TIDAK BERBUNYI di `bun run verify`:
  * tidak ada basis data yang disentuh tes. Ia berbunyi pertama kali di
@@ -15,7 +20,7 @@
  * perusahaan, satu per satu, di tengah deploy.
  *
  * Itu bukan hipotesis: migrasi `0048_registrations_account_name` ditulis ke
- * `prisma/migrations/` di PR #459 dan baru ketahuan saat pemeriksaan sebelum
+ * `prisma/migrations/` (kini `prisma/_arsip-mariadb/company/`) di PR #459 dan baru ketahuan saat pemeriksaan sebelum
  * deploy. Penjaga ini menggantikan pemeriksaan itu dengan sesuatu yang tidak
  * bergantung pada seseorang yang kebetulan ingat.
  *
@@ -31,11 +36,12 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "..");
 
-const TINGKAT = [
-  { nama: "perusahaan", migrasi: "prisma/migrations", skema: "packages/db/prisma/company/schema.prisma" },
-  { nama: "kendali", migrasi: "prisma/control/migrations", skema: "packages/db/prisma/control/schema.prisma" },
-  { nama: "platform", migrasi: "prisma/platform/migrations", skema: "packages/db/prisma/platform/schema.prisma" },
-] as const;
+const TINGKAT = (["company", "control", "platform"] as const).map((t) => ({
+  nama: { company: "perusahaan", control: "kendali", platform: "platform" }[t],
+  /** Pohon yang DITERAPKAN lebih dulu — itu yang disebut pesan "pindahkan ke". */
+  migrasi: [`prisma/postgresql/${t}`, `prisma/_arsip-mariadb/${t}`],
+  skema: `packages/db/prisma/${t}/schema.prisma`,
+}));
 
 /**
  * Tabel yang PERNAH ada di tingkat itu lalu pindah/dicabut — beserta sebabnya.
@@ -52,7 +58,8 @@ const PERNAH_ADA: Readonly<Record<string, string>> = {
   stock: "Dicabut — saldo stok dihitung dari mutasi, bukan disimpan sebagai tabel tersendiri.",
 };
 
-const POLA_TABEL = /(?:ALTER|CREATE|DROP)\s+TABLE\s+(?:IF (?:NOT )?EXISTS\s+)?`?([a-z0-9_]+)`?/gi;
+/* Pengutip identifier: backtick (arsip MariaDB) ATAU tanda kutip ganda (PostgreSQL). */
+const POLA_TABEL = /(?:ALTER|CREATE|DROP)\s+TABLE\s+(?:IF (?:NOT )?EXISTS\s+)?(?:ONLY\s+)?[`"]?([a-z0-9_]+)[`"]?/gi;
 
 function tabelDiSkema(path: string): Set<string> {
   return new Set(
@@ -60,18 +67,22 @@ function tabelDiSkema(path: string): Set<string> {
   );
 }
 
-function tabelDiMigrasi(dir: string): Map<string, string[]> {
+function tabelDiMigrasi(dirs: readonly string[]): Map<string, string[]> {
   const hasil = new Map<string, string[]>();
-  const penuh = join(ROOT, dir);
-  if (!existsSync(penuh)) return hasil;
+  for (const dir of dirs) {
+    const penuh = join(ROOT, dir);
+    if (!existsSync(penuh)) continue;
 
-  for (const entri of readdirSync(penuh, { withFileTypes: true })) {
-    if (!entri.isDirectory()) continue;
-    const sql = join(penuh, entri.name, "migration.sql");
-    if (!existsSync(sql)) continue;
-    for (const m of readFileSync(sql, "utf8").matchAll(POLA_TABEL)) {
-      const tabel = m[1].toLowerCase();
-      hasil.set(tabel, [...(hasil.get(tabel) ?? []), entri.name]);
+    for (const entri of readdirSync(penuh, { withFileTypes: true })) {
+      if (!entri.isDirectory()) continue;
+      const sql = join(penuh, entri.name, "migration.sql");
+      if (!existsSync(sql)) continue;
+      /* Komentar SQL dibuang: "Satu CREATE TABLE baru" di prosa bukan tabel `baru`. */
+      const isi = readFileSync(sql, "utf8").replace(/--.*$/gm, "");
+      for (const m of isi.matchAll(POLA_TABEL)) {
+        const tabel = m[1].toLowerCase();
+        hasil.set(tabel, [...(hasil.get(tabel) ?? []), `${dir}/${entri.name}`]);
+      }
     }
   }
   return hasil;
@@ -91,7 +102,7 @@ describe("migrasi berdiri di tingkat basis data yang benar", () => {
         const rumah = TINGKAT.find((t) => t !== tingkat && tabelDiSkema(t.skema).has(tabel));
         salahTempat.push(
           `${migrasi.join(", ")} → \`${tabel}\`` +
-            (rumah ? ` (tabel itu milik basis data ${rumah.nama} — pindahkan ke ${rumah.migrasi}/)` : "")
+            (rumah ? ` (tabel itu milik basis data ${rumah.nama} — pindahkan ke ${rumah.migrasi[0]}/)` : "")
         );
       }
 

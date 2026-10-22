@@ -93,7 +93,7 @@ describe("registry & skema membawa flagnya", () => {
   it("kolomnya default FALSE — baris lama tidak berubah arti", () => {
     const schema = read("packages/db/prisma/control/schema.prisma");
     expect(schema).toContain("isDemo Boolean @default(false) @map(\"is_demo\")");
-    const migration = read("prisma/control/migrations/0011_companies_is_demo/migration.sql");
+    const migration = read("prisma/_arsip-mariadb/control/0011_companies_is_demo/migration.sql");
     expect(migration).toContain("NOT NULL DEFAULT FALSE");
   });
 });

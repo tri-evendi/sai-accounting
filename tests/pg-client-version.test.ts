@@ -125,10 +125,15 @@ describe("versi klien PostgreSQL vs servernya", () => {
     expect(dockerfile).toMatch(/bookworm-pgdg/);
   });
 
-  it("klien MariaDB tetap ada — pembukti harus bisa membaca artefak mesin lama", () => {
-    /* Sesudah penukaran, cadangan terakhir dari MariaDB masih satu-satunya
-       salinan dari sebelum penukaran. Image yang hanya punya klien baru akan
-       menolaknya justru pada hari ia paling dibutuhkan. */
-    expect(dockerfile).toMatch(/mariadb-client/);
+  it("klien MariaDB SUDAH dicabut (#636) — dump terakhirnya dibuktikan di luar image", () => {
+    /* Selama jendela transisi klien ini wajib ada: cadangan MariaDB terakhir
+       adalah satu-satunya salinan dari sebelum penukaran. Dump terakhir itu
+       kini dibuktikan sekali dengan `mariadb:11` sekali pakai (22 Okt 2026),
+       dan image `sha-c9b5d9c` adalah yang terakhir membawanya. */
+    const kode = dockerfile
+      .split("\n")
+      .filter((b) => !/^\s*#/.test(b))
+      .join("\n");
+    expect(kode).not.toMatch(/mariadb-client/);
   });
 });

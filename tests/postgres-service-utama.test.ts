@@ -75,11 +75,12 @@ describe("PostgreSQL sebagai mesin utama", () => {
     ).not.toMatch(/depends_on:[\s\S]*?\bdb:\s*\n\s*condition:/);
   });
 
-  it("`db` (MariaDB) MASIH ADA — ia jalan mundur selama jendela transisi", () => {
-    /* Kalau ia hilang dari compose, jalan mundur hilang bersamanya — dan
-       mencabutnya harus langkah yang disengaja, bukan efek samping. */
-    expect(service("db")).not.toBe("");
-    expect(service("db")).toMatch(/image:\s*mariadb/);
+  it("`db` (MariaDB) SUDAH dicabut (#636) — jendela transisinya berakhir 22 Okt 2026", () => {
+    /* Selama jendela transisi penjaga ini MENUNTUT `db` ada (jalan mundur).
+       Pencabutannya langkah yang disengaja, sesudah dump terakhirnya terbukti
+       terpulihkan — bukan efek samping. */
+    expect(service("db")).toBe("");
+    expect(compose).not.toMatch(/image:\s*mariadb/);
   });
 
   it("PgBouncer memakai pooling TRANSACTION, bukan session", () => {
@@ -154,8 +155,10 @@ describe("PostgreSQL sebagai mesin utama", () => {
     }
   });
 
-  it("volume MariaDB `db_data` TIDAK dihapus", () => {
-    /* Membuang volumenya membuang jalan mundurnya, dan itu tidak bisa dibatalkan. */
-    expect(compose).toMatch(/^ {2}db_data:$/m);
+  it("deklarasi volume MariaDB `db_data` dicabut — volumenya sendiri dihapus TANGAN", () => {
+    /* Mencabut deklarasi tidak menghapus `sai-accounting_db_data` di cakram;
+       `docker volume rm` adalah langkah pemilik sesudah dump terakhir tersalin
+       ke luar server (PRODUCTION.md). */
+    expect(compose).not.toMatch(/^ {2}db_data:$/m);
   });
 });

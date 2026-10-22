@@ -46,7 +46,7 @@
  */
 import { Client } from "pg";
 
-import { dbEngineDariUrl, uraikanUrl } from "./engine";
+import { uraikanUrl } from "./engine";
 
 /** Nama host & port yang terbaca sebagai pooler — bukan daftar lengkap. */
 const POOLER_HOST = /bouncer|pooler|pgcat|odyssey|supavisor/i;
@@ -71,9 +71,8 @@ export class PooledLockUrlError extends Error {
  * SAMA dengan yang dipakai saat berjalan, bukan salinannya.
  */
 export function assertDirectUrl(url: string): void {
-  if (dbEngineDariUrl(url) !== "postgresql") {
-    throw new PooledLockUrlError("bukan URL PostgreSQL");
-  }
+  /* `uraikanUrl` MELEMPAR untuk URL yang bukan PostgreSQL — termasuk
+     `mysql://`, dengan pesan yang menyebut #636. */
   const { host, port } = uraikanUrl(url);
   if (POOLER_HOST.test(host)) throw new PooledLockUrlError(`host \`${host}\` adalah pooler`);
   if (POOLER_PORTS.has(port)) throw new PooledLockUrlError(`port ${port} adalah port pooler`);

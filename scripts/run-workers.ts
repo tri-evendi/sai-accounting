@@ -222,7 +222,7 @@ async function main(): Promise<number> {
 }
 
 /* `import.meta.main` milik Bun belum ada di tipe bawaan TypeScript — pola yang
-   sama dengan `scripts/pg-migrate-data.ts`. Diimpor tes (vitest) tanpa
+   yang dulu dipakai alat migrasi data MariaDB (dicabut, #636). Diimpor tes (vitest) tanpa
    menjalankan apa pun. */
 if ((import.meta as unknown as { main?: boolean }).main) {
   main().then(

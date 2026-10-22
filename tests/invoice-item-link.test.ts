@@ -186,7 +186,7 @@ describe("isiannya kotak teks, bukan pemilih wajib", () => {
 describe("migrasi 0053 tidak menebak", () => {
   it("hanya menautkan nama yang cocok ke TEPAT SATU barang", () => {
     const sql = readFileSync(
-      join(__dirname, "..", "prisma", "migrations", "0053_invoice_item_link", "migration.sql"),
+      join(__dirname, "..", "prisma", "_arsip-mariadb", "company", "0053_invoice_item_link", "migration.sql"),
       "utf8"
     );
     expect(sql).toMatch(/COUNT\(\*\)[\s\S]*?\)\s*=\s*1/);

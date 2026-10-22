@@ -44,7 +44,6 @@ import { stat } from "node:fs/promises";
 import JSZip from "jszip";
 
 import { controlDb } from "@sai/core/control-db";
-import { mesinPerusahaan } from "@sai/db/engine-runtime";
 import { getCompanyClient } from "@/lib/company-clients";
 import {
   COMPANY_DATABASE_TARGET_SELECT,
@@ -94,34 +93,22 @@ async function exportCompanyInto(
   const folder = zip.folder(company.slug)!;
 
   /*
-   * ══ `DATABASE()` vs `current_schema()` — pergeseran MAKNA, bukan sintaksis ═
-   * `table_schema = DATABASE()` di MySQL berarti "basis data yang sedang
-   * disambungi". Di PostgreSQL `information_schema.tables` ADA dengan nama yang
-   * sama, tetapi `table_schema` di sana berarti **skema** — dan `DATABASE()`
-   * bukan fungsi yang dikenal, jadi query ini akan GAGAL, bukan salah menjawab.
-   *
-   * Gagal lebih baik daripada diam. Tapi ekspor mandiri adalah hak pengguna
-   * (#200), jadi ia tidak boleh patah pada hari penukaran.
+   * `table_schema = current_schema()`: di PostgreSQL `table_schema` berarti
+   * **skema** di dalam basis data yang sedang disambungi, bukan basis datanya
+   * (padanan MySQL `DATABASE()` sudah dicabut bersama MariaDB, #636).
    */
   const tables = await db.$queryRawUnsafe<{ table_name: string }[]>(
-    mesinPerusahaan() === "postgresql"
-      ? "SELECT table_name FROM information_schema.tables " +
-          "WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' " +
-          "AND table_name <> '_prisma_migrations' ORDER BY table_name"
-      : "SELECT table_name FROM information_schema.tables " +
-          "WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' " +
-          "AND table_name <> '_prisma_migrations' ORDER BY table_name"
+    "SELECT table_name FROM information_schema.tables " +
+      "WHERE table_schema = current_schema() AND table_type = 'BASE TABLE' " +
+      "AND table_name <> '_prisma_migrations' ORDER BY table_name"
   );
 
   let totalRows = 0;
   for (const t of tables) {
     const table = assertSafeIdentifier(String(t.table_name));
     const columns = await db.$queryRawUnsafe<{ column_name: string }[]>(
-      mesinPerusahaan() === "postgresql"
-        ? "SELECT column_name FROM information_schema.columns " +
-            "WHERE table_schema = current_schema() AND table_name = $1 ORDER BY ordinal_position"
-        : "SELECT column_name FROM information_schema.columns " +
-            "WHERE table_schema = DATABASE() AND table_name = ? ORDER BY ordinal_position",
+      "SELECT column_name FROM information_schema.columns " +
+        "WHERE table_schema = current_schema() AND table_name = $1 ORDER BY ordinal_position",
       table
     );
     const header = columns.map((c) => assertSafeIdentifier(String(c.column_name)));
@@ -129,8 +116,12 @@ async function exportCompanyInto(
     const parts: string[] = [];
     let offset = 0;
     for (;;) {
+      /* Pengutip identifier PostgreSQL adalah tanda kutip GANDA. Sampai #636
+         baris ini masih memakai backtick MySQL — sintaks yang DITOLAK
+         PostgreSQL — jadi sejak penukaran 15 Okt setiap ekspor mandiri gagal
+         pada tabel pertama. Namanya sudah dipagari `assertSafeIdentifier`. */
       const rows = await db.$queryRawUnsafe<Record<string, unknown>[]>(
-        `SELECT * FROM \`${table}\` ORDER BY \`${header[0]}\` LIMIT ${CHUNK} OFFSET ${offset}`
+        `SELECT * FROM "${table}" ORDER BY "${header[0]}" LIMIT ${CHUNK} OFFSET ${offset}`
       );
       if (rows.length === 0 && offset === 0) break;
       parts.push(

@@ -346,17 +346,14 @@ async function main() {
       console.error(
         "✗ penyediaan perusahaan gagal.\n" +
           "\n" +
-          "  Penyebab paling sering: pengguna basis data aplikasi tidak boleh\n" +
-          "  CREATE DATABASE (galat 1044 `Access denied`). Itu bukan salah\n" +
+          "  Penyebab paling sering: role basis data aplikasi tidak boleh\n" +
+          "  CREATE DATABASE (SQLSTATE 42501, tanpa `CREATEDB`). Itu bukan salah\n" +
           "  konfigurasi — banyak pemasangan memang sengaja tidak memberikannya.\n" +
           "\n" +
-          "  Buat basis datanya sebagai root — DAN beri hak pakainya, karena\n" +
-          "  membuat saja tidak cukup:\n" +
+          "  Buat basis datanya sebagai superuser, DIMILIKI role aplikasi:\n" +
           "\n" +
-          "    CREATE DATABASE `<nama>` DEFAULT CHARACTER SET utf8mb4\n" +
-          "      COLLATE utf8mb4_unicode_ci;\n" +
-          "    GRANT ALL PRIVILEGES ON `<nama>`.* TO '<pengguna-app>'@'%';\n" +
-          "    FLUSH PRIVILEGES;\n" +
+          "    CREATE DATABASE \"<nama>\" OWNER <role-app>\n" +
+          "      TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C';\n" +
           "\n" +
           "  Lalu ulangi bootstrap dengan `--company-database <nama>`. Tenant dan\n" +
           "  paket yang sudah dibuat TIDAK diulang — skrip ini idempoten."

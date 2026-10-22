@@ -11,8 +11,8 @@
 // ║  dan produksi mati +-9 menit sebelum dikembalikan.                       ║
 // ║                                                                          ║
 // ║  KONSEKUENSI: image yang dibangun dari skema ini TIDAK BISA dipakai      ║
-// ║  dengan URL `mysql://`. Jalan mundur ke MariaDB berarti menggelar IMAGE  ║
-// ║  LAMA (tag `sha-` di GHCR), bukan sekadar menukar URL.                   ║
+// ║  dengan URL `mysql://` (ditolak saat start sejak #636). MariaDB dicabut  ║
+// ║  22 Okt 2026; jalan mundurnya kini dump terakhir + image `sha-c9b5d9c`.  ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 generator client {

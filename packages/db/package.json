@@ -5,7 +5,6 @@
   "description": "Lapis basis data bersama: tiga skema Prisma + klien hasil bangkitannya, mesin dari URL, pabrik adapter, operasi tingkat server. Dipakai aplikasi (Next) dan skrip (tsx/bun).",
   "exports": {
     "./engine": "./src/engine.ts",
-    "./engine-runtime": "./src/engine-runtime.ts",
     "./adapter": "./src/adapter.ts",
     "./server": "./src/server.ts",
     "./company-url": "./src/company-url.ts",
@@ -15,10 +14,8 @@
     "./client/platform": "./generated/platform/client.ts"
   },
   "dependencies": {
-    "@prisma/adapter-mariadb": "^7.5.0",
     "@prisma/adapter-pg": "7.5.0",
     "@prisma/client": "^7.5.0",
-    "mariadb": "^3.5.2",
     "pg": "^8.23.1"
   }
 }

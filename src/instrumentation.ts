@@ -12,6 +12,10 @@
  *     gejala yang dibaca customer sebagai "lisensinya rusak", padahal yang
  *     belum ada adalah langkah pemilik SAI (docs/ONPREM-SERAH-TERIMA.md §0).
  *     PERINGATAN, bukan galat: lisensi tidak pernah menghentikan aplikasi.
+ *   • MODE REPLIKA tahap 2 (`@sai/platform/replica-mode`) — hanya bila
+ *     `CACHE_REDIS_URL` disetel; tanpanya modulnya bahkan tidak dimuat. Ia
+ *     SATU-SATUNYA bagian hook ini yang boleh menolak start: replika di host
+ *     lain tanpa penyimpanan dokumen bersama (02 §Replika).
  *
  * Runtime edge tidak punya `perf_hooks` maupun `node:crypto`, jadi keduanya
  * hanya untuk proses Node. Impornya dinamis, mengikuti saran dokumentasinya.
@@ -20,6 +24,16 @@ export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   await warnMissingLicenceKey();
+
+  if (process.env.CACHE_REDIS_URL) {
+    const { startReplicaMode } = await import("@sai/platform/replica-mode");
+    const path = await import("node:path");
+    await startReplicaMode({
+      app: "app-customer",
+      // Hanya dokumen: jejak audit sudah di basis data (#370/#484).
+      storageRoots: [{ name: "documents", dir: path.join(process.cwd(), "data", "documents") }],
+    });
+  }
 
   // Pekerja `next build` bukan proses yang melayani siapa pun; barisnya hanya
   // akan mencemari sampel.

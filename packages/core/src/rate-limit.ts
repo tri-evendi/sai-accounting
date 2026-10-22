@@ -13,8 +13,10 @@
  * Yang tersisa di sini semuanya menuntut sesi yang sah lebih dulu, jadi
  * penyerangnya bukan orang asing di internet melainkan sesi yang dibajak —
  * permukaan yang jauh lebih sempit, dan penghitung memori memadai untuknya.
- * Untuk produksi multi-instance, tukar penyimpanannya (Redis, atau penghitung
- * persisten yang sama).
+ * Untuk produksi multi-instance, penyimpanannya kini bisa ditukar ke Redis
+ * (tahap 2): pemanggil memakai `checkSharedRateLimit` dari
+ * `@sai/platform/rate-limit-shared`, yang jatuh ke penghitung DI SINI bila
+ * `CACHE_REDIS_URL` tidak disetel atau Redis tak terjangkau.
  */
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
@@ -23,7 +25,8 @@ export type RateLimitOptions = {
   maxAttempts?: number;
 };
 
-const DEFAULT_OPTIONS: Required<RateLimitOptions> = {
+/** Diekspor untuk `@sai/platform/rate-limit-shared` — satu bawaan untuk dua penyimpanan. */
+export const DEFAULT_RATE_LIMIT_OPTIONS: Required<RateLimitOptions> = {
   windowMs: 15 * 60 * 1000,
   maxAttempts: 10,
 };
@@ -56,7 +59,7 @@ export function checkRateLimit(
   key: string,
   options: RateLimitOptions = {}
 ): { allowed: boolean; remaining: number; retryAfterMs?: number } {
-  const { windowMs, maxAttempts } = { ...DEFAULT_OPTIONS, ...options };
+  const { windowMs, maxAttempts } = { ...DEFAULT_RATE_LIMIT_OPTIONS, ...options };
   const now = Date.now();
   const record = attempts.get(key);
 

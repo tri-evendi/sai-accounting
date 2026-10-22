@@ -1,0 +1,120 @@
+# ══ TAHAP 2 "PASAR AWAL" — OVERRIDE, BUKAN BAWAAN (09 §9, 02 §19) ═══════════
+#
+# Berkas ini MEMPERAGAKAN bentuk tahap 2 di atas compose dasar. Produksi hari
+# ini TIDAK memakainya; `docker compose up -d` tanpa `-f` berkas ini tidak
+# berubah satu bit pun. Dipakai:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.replika.yml \
+#     --profile replika up -d
+#
+# Isinya empat hal, dan masing-masing punya prasyarat yang TIDAK bisa dibuktikan
+# di satu VM — daftar lengkapnya di 02 §19:
+#
+#   1. `cache-redis` menyala, dan kedua aplikasi mendapat `CACHE_REDIS_URL`
+#      (bus invalidasi cache, pembatas laju bersama, handler cache Next).
+#   2. `app-customer` dua replika: `container_name` dicabut (nama tetap tidak
+#      bisa dipakai dua container), Traefik membagi beban per SERVICE label
+#      `sai-app` — label yang sama di setiap replika, tanpa perubahan router.
+#   3. `pg` menyalakan pengaturan WAL untuk standby + batas koneksi yang bisa
+#      disetel; `db-postgres-standby` menyalin WAL-nya secara streaming.
+#   4. PgBouncer mendapat batas server GLOBAL (`MAX_USER_CONNECTIONS`).
+#
+# ⚠ HANYA `app-customer` yang direplikasi. `job-scheduler`, `svc-*`, dan
+# `migrate` tunggal-instans menurut kontraknya (`contract/kinds.yaml`,
+# `pg_try_advisory_lock`); `app-operator` satu instans karena konsol tidak
+# butuh lebih.
+#
+# ⚠ Kedua replika WAJIB menjalankan IMAGE YANG SAMA (satu `SAI_TAG`). Kunci
+# enkripsi server action dan id build Next lahir saat `next build`; dua build
+# berbeda di belakang satu router berarti formulir yang gagal separuh waktu.
+services:
+  cache-redis:
+    # Menyala tanpa `--profile replika` begitu berkas ini dipakai.
+    profiles: !reset []
+
+  app-customer:
+    # Nama tetap = satu container. Replika butuh nama bangkitan compose.
+    container_name: !reset null
+    deploy:
+      replicas: ${APP_CUSTOMER_REPLICAS:-2}
+    environment:
+      CACHE_REDIS_URL: redis://cache-redis:6379/0
+    depends_on:
+      cache-redis:
+        condition: service_started
+        # Redis mati ≠ aplikasi mati (09 §3.4): aplikasi start tanpa menunggu,
+        # dan cache-nya dilewati sampai bus tersambung.
+        required: false
+
+  app-operator:
+    # Konsol penulis data kendali yang dibaca replika — ia ikut bus supaya
+    # pengosongan cache-nya sampai ke `app-customer` seketika.
+    environment:
+      CACHE_REDIS_URL: redis://cache-redis:6379/0
+    depends_on:
+      cache-redis:
+        condition: service_started
+        required: false
+
+  pgbouncer:
+    environment:
+      # Satu pengguna (`sai`) untuk semua basis data, jadi batas per PENGGUNA
+      # adalah batas koneksi server GLOBAL. `MAX_DB_CONNECTIONS` per basis
+      # data, bukan global — 19 basis data × batasnya tetap bisa melampaui
+      # `max_connections`. Hitungannya di 02 §19.
+      MAX_USER_CONNECTIONS: ${PGBOUNCER_MAX_USER_CONNECTIONS:-70}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-10}
+
+  pg:
+    command:
+      - postgres
+      # Nilai bawaan PostgreSQL 17 untuk tiga yang pertama — ditulis eksplisit
+      # supaya standby tidak bergantung pada bawaan yang bisa berubah.
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=5
+      - -c
+      - max_replication_slots=5
+      # Standby yang mati lama TIDAK BOLEH memenuhi disk primary: lewat batas
+      # ini slotnya dibatalkan dan standby dibasebackup ulang.
+      - -c
+      - max_slot_wal_keep_size=${PG_MAX_SLOT_WAL_KEEP_SIZE:-2GB}
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-100}
+
+  # Standby STREAMING. Di VM yang sama ia hanya GLADI — disk, host, dan
+  # listriknya sama dengan primary, jadi ia tidak melindungi dari apa pun yang
+  # mematikan primary. Nilainya baru ada di host lain (`PG_PRIMARY_HOST`).
+  #
+  # Prasyarat sekali jalan di primary (peran replikasi + pg_hba):
+  #   docker compose exec -T -e PG_REPLICATION_PASSWORD=... pg \
+  #     sh -s < scripts/replika/pg-primary-prepare.sh
+  db-postgres-standby:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    profiles: ["replika"]
+    entrypoint: ["/bin/sh", "/replika/pg-standby-entrypoint.sh"]
+    environment:
+      PG_PRIMARY_HOST: ${PG_PRIMARY_HOST:-pg}
+      PG_REPLICATION_USER: ${PG_REPLICATION_USER:-replikator}
+      PG_REPLICATION_PASSWORD: ${PG_REPLICATION_PASSWORD:?setel PG_REPLICATION_PASSWORD (scripts/replika/pg-primary-prepare.sh)}
+      PG_STANDBY_SLOT: ${PG_STANDBY_SLOT:-standby_1}
+      TZ: ${TZ:-Asia/Jakarta}
+    volumes:
+      - pg_standby_data:/var/lib/postgresql/data
+      - ./scripts/replika/pg-standby-entrypoint.sh:/replika/pg-standby-entrypoint.sh:ro
+    depends_on:
+      pg:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-sai} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks:
+      - internal
+
+volumes:
+  pg_standby_data:

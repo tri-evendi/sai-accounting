@@ -8,6 +8,7 @@
     "./billing/platform-efaktur": "./src/billing/platform-efaktur.ts",
     "./brand-assets": "./src/brand-assets.ts",
     "./brand-routes": "./src/brand-routes.tsx",
+    "./cache-bus": "./src/cache-bus.ts",
     "./i18n/server": "./src/i18n/server.ts",
     "./invitation-store": "./src/invitation-store.ts",
     "./job-queue": "./src/job-queue.ts",
@@ -18,10 +19,14 @@
     "./mailer": "./src/mailer.ts",
     "./mailer-core": "./src/mailer-core.ts",
     "./membership-upsert": "./src/membership-upsert.ts",
+    "./next-cache-tags": "./src/next-cache-tags.ts",
     "./password-reset-store": "./src/password-reset-store.ts",
     "./payment-webhook": "./src/payment-webhook.ts",
     "./platform-db": "./src/platform-db.ts",
     "./platform-reconciliation": "./src/platform-reconciliation.ts",
+    "./rate-limit-shared": "./src/rate-limit-shared.ts",
+    "./replica-mode": "./src/replica-mode.ts",
+    "./replica-storage": "./src/replica-storage.ts",
     "./runtime-samples": "./src/runtime-samples.ts",
     "./schema-gate": "./src/schema-gate.ts",
     "./site-content-store": "./src/site-content-store.ts",
@@ -36,7 +41,8 @@
     "@sai/billing": "workspace:*",
     "@sai/core": "workspace:*",
     "@sai/db": "workspace:*",
-    "@sai/ui": "workspace:*"
+    "@sai/ui": "workspace:*",
+    "ioredis": "5.4.1"
   },
   "peerDependencies": {
     "next": "*",

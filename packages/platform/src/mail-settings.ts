@@ -40,6 +40,8 @@ import {
   type SealedSecret,
 } from "@sai/core/settings-crypto";
 
+import { registerSharedCache } from "./cache-bus";
+
 export type MailTransport = "file" | "smtp";
 
 /** Baris `mail_settings` apa adanya — TERMASUK segel kata sandi. Internal. */
@@ -163,9 +165,15 @@ const CACHE_TTL_MS = Number(process.env.MAIL_SETTINGS_CACHE_MS) || 60_000;
 
 let cache: { row: MailSettingsRow | null; at: number } | null = null;
 
+/** Tahap 2: penulisnya konsol operator, pembacanya setiap replika — lewat bus. */
+const shared = registerSharedCache("platform-mail-settings", () => {
+  cache = null;
+});
+
 /** Jatuhkan cache — dipanggil server action setiap kali pengaturan disimpan. */
 export function invalidateMailSettingsCache(): void {
   cache = null;
+  shared.publish();
 }
 
 /**
@@ -177,7 +185,7 @@ export async function cachedMailSettings(
   client?: MailSettingsClient
 ): Promise<MailSettingsRow | null> {
   const now = Date.now();
-  if (cache && now - cache.at < CACHE_TTL_MS) return cache.row;
+  if (cache && now - cache.at < CACHE_TTL_MS && shared.usable()) return cache.row;
 
   let row: MailSettingsRow | null = null;
   try {

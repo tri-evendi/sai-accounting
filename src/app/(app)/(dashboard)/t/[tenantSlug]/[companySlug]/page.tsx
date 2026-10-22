@@ -187,7 +187,7 @@ export default async function DashboardPage({
   params: Promise<TenantScopedParams>;
 }) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   /*
    * Beranda menjaga dirinya sendiri (terdaftar di tests/authz-coverage.test.ts):

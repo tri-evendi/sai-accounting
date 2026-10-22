@@ -552,7 +552,7 @@ sesuai Fase A di [`KOMERSIALISASI.md`](../KOMERSIALISASI.md).
 
 | Lapis | Pilihan | Catatan |
 |---|---|---|
-| Kerangka | Next.js 16.2.1 (App Router, `output: standalone`) | `typescript.ignoreBuildErrors = true` |
+| Kerangka | Next.js 16.4.2 (App Router, `output: standalone`) | `typescript.ignoreBuildErrors = true` |
 | Runtime | Node 22 | Bun 1.3 hanya pemasang paket & peluncur skrip |
 | UI | React 19.2.4 + Ant Design v6 | Tanpa Tailwind & `className` sejak #203 |
 | ORM | Prisma 7.5 + `@prisma/adapter-pg` | Tiga klien dari tiga skema |

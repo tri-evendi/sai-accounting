@@ -76,7 +76,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PricingPage() {
   const session = await auth();
-  if (session) redirect("/dashboard");
+  if (session?.user) redirect("/dashboard");
 
   return (
     <LandingShell>

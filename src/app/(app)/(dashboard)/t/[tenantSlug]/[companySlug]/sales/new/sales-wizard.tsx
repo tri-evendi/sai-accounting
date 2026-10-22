@@ -79,6 +79,7 @@ import {
 import { useT } from "@sai/core/i18n/client";
 import { CheckCircleOutlined, ContainerOutlined, DeleteOutlined, DownloadOutlined, FileTextOutlined, PlusOutlined, TruckOutlined } from "@ant-design/icons";
 import { apiFetch } from "@/lib/api-fetch";
+import { businessISODate } from "@sai/core/business-date";
 
 // ── Data yang disiapkan server shell ──────────────────────────────────────
 // Pelanggan / kontrak / penerima tidak lagi dikirim sebagai daftar statis
@@ -117,7 +118,9 @@ interface SalesResult {
   approval: { message: string } | null;
 }
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+// Tanggal hari ini di Jakarta — `toISOString()` memberi tanggal UTC, yaitu kemarin
+// untuk transaksi yang dicatat pukul 00.00–07.00 WIB.
+const todayISO = () => businessISODate(new Date());
 
 /**
  * Kisi DUA kolom yang runtuh jadi satu di layar sempit — pengganti

@@ -43,6 +43,7 @@ import { clampPeriodStart } from "@sai/core/export-limits";
 import { toISODate } from "@/lib/dashboard-summary";
 import type { Dictionary, DictionaryKey } from "@sai/core/i18n/dictionary";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { businessDayEnd, businessDayStart, businessISODate } from "@sai/core/business-date";
 
 /**
  * Kategori — TERIKAT pada kamus (issue #316).
@@ -758,7 +759,7 @@ export function resolvePeriod(
   toStr: string | undefined,
   now: Date = new Date()
 ): PeriodParams {
-  const diminta = toStr && isValidISODate(toStr) ? toStr : toISODate(now);
+  const diminta = toStr && isValidISODate(toStr) ? toStr : businessISODate(now);
   /*
    * Bawaan awal = 1 Januari TAHUN AKHIR PERIODE, bukan tahun ini.
    *
@@ -780,8 +781,8 @@ export function resolvePeriod(
   return {
     fromISO,
     toISO,
-    from: new Date(`${fromISO}T00:00:00`),
-    to: new Date(`${toISO}T23:59:59.999`),
+    from: businessDayStart(fromISO),
+    to: businessDayEnd(toISO),
   };
 }
 
@@ -790,8 +791,8 @@ export interface AsOfParams {
   asOfISO: string;
 }
 
-/** Resolve `?asOf=` into an inclusive end-of-day bound. Defaults to today. */
+/** Resolve `?asOf=` into an inclusive end-of-day bound (jam Jakarta). Defaults to today in Jakarta. */
 export function resolveAsOf(asOfStr: string | undefined, now: Date = new Date()): AsOfParams {
-  const asOfISO = asOfStr && isValidISODate(asOfStr) ? asOfStr : toISODate(now);
-  return { asOfISO, asOf: new Date(`${asOfISO}T23:59:59.999`) };
+  const asOfISO = asOfStr && isValidISODate(asOfStr) ? asOfStr : businessISODate(now);
+  return { asOfISO, asOf: businessDayEnd(asOfISO) };
 }

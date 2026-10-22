@@ -25,6 +25,8 @@
  * value is counted in `unresolved` rather than summed at face value.
  */
 
+import { BUSINESS_TIME_ZONE, businessDayEnd, businessDayStart, businessISODate } from "@sai/core/business-date";
+
 /** The calendar month containing `now`, as both link params and query bounds. */
 export interface MonthRange {
   /** Inclusive start, 00:00:00.000 local. */
@@ -58,14 +60,20 @@ export function toISODate(d: Date): string {
  * statement page derives from the same params — see the file header.
  */
 export function monthRange(now: Date): MonthRange {
-  const fromISO = toISODate(new Date(now.getFullYear(), now.getMonth(), 1));
-  const toISO = toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  // Bulan berjalan menurut jam Jakarta, bukan zona proses (`@sai/core/business-date`).
+  const [y, m] = businessISODate(now).split("-").map(Number);
+  const fromISO = toISODate(new Date(y, m - 1, 1));
+  const toISO = toISODate(new Date(y, m, 0));
   return {
     fromISO,
     toISO,
-    from: new Date(`${fromISO}T00:00:00`),
-    to: new Date(`${toISO}T23:59:59.999`),
-    label: new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(now),
+    from: businessDayStart(fromISO),
+    to: businessDayEnd(toISO),
+    label: new Intl.DateTimeFormat("id-ID", {
+      month: "long",
+      year: "numeric",
+      timeZone: BUSINESS_TIME_ZONE,
+    }).format(now),
   };
 }
 

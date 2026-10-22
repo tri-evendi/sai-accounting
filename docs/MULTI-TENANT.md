@@ -93,7 +93,7 @@ ada di riwayat git berkas ini; komentar kode masih merujuk nomornya.
 | 4.5 | "Satu login banyak PT" tanpa UI (`addExistingUserToCompany` tanpa pemanggil) | #139 |
 | 4.6 | Pembatas laju hanya di memori | #138 (persisten di basis data control) |
 | 4.7 | Jejak audit tanpa tingkat tenant | #142 (`tenant_audit_logs` di control) |
-| 4.8 | Tidak ada scheduler | #140 (kini layanan `job-scheduler`) |
+| 4.8 | Tidak ada scheduler | #140 (kini peran `scheduler` di layanan `svc-worker`) |
 
 ---
 

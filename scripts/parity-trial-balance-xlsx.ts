@@ -11,7 +11,7 @@
  * yang dicabut merakitnya (`buildReportPayload` → `buildReportSheet` →
  * `buildWorkbookBuffer` dengan `getCompanyIdentity()`), lembar Go dirakit
  * `cmd/parity trial-balance-xlsx` — kode `internal/document` yang SAMA dengan
- * pelari `svc-interactive-go` — dan keduanya dibandingkan ISI-nya oleh
+ * pelari Go di `svc-integrator` — dan keduanya dibandingkan ISI-nya oleh
  * `src/lib/xlsx-content-parity.ts` (definisi paritasnya ada di sana). Keluar
  * bukan-nol pada satu selisih atau satu buku yang gagal.
  *

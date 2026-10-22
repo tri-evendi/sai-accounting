@@ -46,7 +46,7 @@ kosong. `/api/health` → `backup: local_only`, `lastSuccessAt: null`.
 **Yang sudah berjalan.** Sejak 12 Okt artefak terenkripsi harian dibuat di
 volume `cadangan`, dan artefak itu **terbukti bisa di-restore** (fingerprint
 cocok, dekripsi berhasil, 19 basis data ikut). Sejak 20 Okt pelakunya
-`svc-tenant` dan bentuknya **satu objek per basis data** — lihat
+`svc-tenant` (sejak 22 Okt 2026 jalur `tenant` di `svc-integrator`) dan bentuknya **satu objek per basis data** — lihat
 [02 §5](./02-LAYANAN-INFRA.md); itu yang menutup P1-1, dan ia TIDAK mengubah
 temuan ini: satu objek per basis data di cakram yang sama tetap bukan salinan
 di luar mesin.
@@ -59,7 +59,7 @@ pembukuan wajib disimpan sepuluh tahun (UU KUP).
 # 1. Lengkapi .env: AWS_ACCESS_KEY_ID · AWS_SECRET_ACCESS_KEY · BACKUP_S3_BUCKET
 # 2. Putaran berikutnya diterbitkan penjadwal sendiri (backup:publish, berbutir hari).
 #    Untuk memaksa sekarang — hapus baris `jobs` hari ini, atau tunggu tengah malam UTC.
-docker compose logs svc-tenant --tail 60                            # ← apa yang ia kerjakan
+docker compose logs svc-integrator --tail 60                        # ← apa yang ia kerjakan
 docker compose run --rm job-backup bun run prove-backup-restore     # ← BUKTIKAN
 ```
 

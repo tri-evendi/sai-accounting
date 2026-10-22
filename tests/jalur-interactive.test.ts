@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { AKAR_REPO, tanpaKomentar } from "./akar-sumber";
+import { workerRole } from "./compose-worker";
 import { EXPORT_MAX_ROWS, EXPORT_QUEUE_HANDOFF_ROWS } from "@sai/core/export-limits";
 
 const pekerja = readFileSync(join(AKAR_REPO, "workers/interactive.ts"), "utf8");
@@ -214,27 +215,35 @@ describe("klien menunggu DI RUTE HASIL, bukan di rute status kedua", () => {
 });
 
 describe("layanan di compose", () => {
+  /* Sejak "1 image = 1 container" (22 Okt 2026) pelari Node jalur ini adalah
+     PERAN `interactive` di `svc-worker`, dan pasangan Go-nya jalur di
+     `svc-integrator`. */
   const svc = (() => {
-    const mulai = compose.indexOf("\n  svc-interactive:");
-    expect(mulai, "svc-interactive tidak ada di compose").toBeGreaterThan(-1);
+    const mulai = compose.indexOf("\n  svc-worker:");
+    expect(mulai, "svc-worker tidak ada di compose").toBeGreaterThan(-1);
     const sisa = compose.slice(mulai + 1);
     const habis = sisa.search(/\n {2}[a-z][a-z0-9-]*:$/m);
     return habis > 0 ? sisa.slice(0, habis) : sisa;
   })();
 
+  it("peran `interactive` menjalankan pelari jalurnya", () => {
+    expect(workerRole("interactive")).toBe("exec bun run jobs:run:interactive");
+  });
+
   it("penulis volume `hasil` hanya pelari jalur `interactive` — Node dan Go", () => {
     expect(svc).toMatch(/- hasil:\/app\/data\/hasil$/m);
     /* `app-customer` memasangnya hanya-baca: aplikasi men-stream byte-nya dan
        tidak punya satu alasan pun untuk menulisnya. Sejak tahap 1d jalur
-       `interactive` punya DUA pelari (`svc-interactive` Node, mengklaim
-       `report.export`; `svc-interactive-go`, mengklaim `report.export_go`),
-       dan keduanya — HANYA keduanya — menulis hasil. */
+       `interactive` punya DUA pelari (peran `interactive` di `svc-worker`,
+       Node, mengklaim `report.export`; `svc-integrator`, Go, mengklaim
+       `report.export_go`), dan container keduanya — HANYA keduanya —
+       memasang hasil bisa-tulis. */
     const pemilik = (i: number) =>
       [...compose.slice(0, i).matchAll(/\n {2}([a-z][a-z0-9-]*):\n/g)].at(-1)?.[1];
     const penulis = [...compose.matchAll(/- hasil:\/app\/data\/hasil(?!:ro)/g)].map((m) =>
       pemilik(m.index!)
     );
-    expect(penulis.sort()).toEqual(["svc-interactive", "svc-interactive-go"]);
+    expect(penulis.sort()).toEqual(["svc-integrator", "svc-worker"]);
   });
 
   it("TIDAK memasang dokumen maupun jejak audit", () => {

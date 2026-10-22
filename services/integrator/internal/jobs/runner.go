@@ -64,6 +64,14 @@ type Runner struct {
 	Queue    *Queue
 	Handlers map[contract.JobKind]Handler
 	Log      *log.Logger
+
+	// Stop, bila tidak nil, berperan sama dengan SIGTERM: begitu selesai,
+	// pelari berhenti MENGKLAIM, tetapi pekerjaan yang sedang jalan
+	// diselesaikan. Dipakai `cmd/integrator`, yang menjalankan dua pelari di
+	// satu proses: pelari yang berakhir menghentikan saudaranya lewat ini —
+	// bukan dengan membatalkan konteks kerja, yang akan memotong dump atau
+	// ekspor di tengah jalan.
+	Stop context.Context
 }
 
 func (r *Runner) logf(format string, args ...any) {
@@ -83,7 +91,7 @@ func WorkerID(lane contract.JobLane) string {
 	return fmt.Sprintf("%s@%s:%d", lane, host, os.Getpid())
 }
 
-// Run menguras jalur ini sampai SIGTERM/SIGINT.
+// Run menguras jalur ini sampai SIGTERM/SIGINT (atau sampai Stop selesai).
 func (r *Runner) Run(ctx context.Context) error {
 	spec, ada := contract.JobLanes[r.Lane]
 	if !ada {
@@ -132,6 +140,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	// jalan diselesaikan, dan yang berhenti hanyalah pengklaiman berikutnya.
 	berhenti, batalkanBerhenti := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer batalkanBerhenti()
+	if r.Stop != nil {
+		lepas := context.AfterFunc(r.Stop, batalkanBerhenti)
+		defer lepas()
+	}
 
 	r.logf("mulai sebagai %s — mengklaim %v", me, kinds)
 

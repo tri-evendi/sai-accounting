@@ -21,6 +21,8 @@ import {
   schedulerHealth,
 } from "@sai/core/scheduler-heartbeat";
 
+import { serviceBlock, workerRole, workerRoles } from "./compose-worker";
+
 const now = new Date("2026-08-15T12:00:00.000Z");
 const minutesAgo = (n: number) => new Date(now.getTime() - n * 60_000);
 
@@ -98,22 +100,17 @@ describe("penjadwal sebagai layanan (#373)", () => {
     return hasil;
   }
 
-  it("ada layanan `job-scheduler` yang lahir bersama deploy", () => {
-    expect(compose).toMatch(/^ {2}job-scheduler:$/m);
-    expect(compose).toContain("scheduler:subscriptions");
-    expect(compose).toContain("restart: unless-stopped");
+  it("ada peran `scheduler` yang lahir bersama deploy", () => {
+    /* Sejak "1 image = 1 container" (22 Okt 2026) penjadwal adalah PERAN di
+       `svc-worker`, bukan layanan sendiri. Yang dijaga tetap sama: ia lahir
+       bersama `up -d`, bukan crontab yang dipasang tangan. */
+    expect(compose).toMatch(/^ {2}svc-worker:$/m);
+    expect(workerRole("scheduler")).toContain("scheduler:subscriptions");
+    expect(serviceBlock(compose, "svc-worker")).toContain("restart: unless-stopped");
   });
 
-  /** Badan layanan `job-scheduler` saja, tanpa baris komentar. */
-  const badanPenjadwal = () => {
-    const mulai = compose.indexOf("\n  job-scheduler:");
-    const habis = compose.indexOf("\n  job-conformance:");
-    return compose
-      .slice(mulai, habis)
-      .split("\n")
-      .filter((b) => !b.trim().startsWith("#"))
-      .join("\n");
-  };
+  /** Skrip peran `scheduler` saja — persis string yang diserahkan ke `sh -c`. */
+  const badanPenjadwal = () => workerRole("scheduler");
 
   it("satu putaran gagal tidak mematikan putaran berikutnya", () => {
     // Loop yang mati karena satu galat mengembalikan kita persis ke kegagalan
@@ -194,12 +191,16 @@ describe("penjadwal sebagai layanan (#373)", () => {
     // ⚠ Daftar layanannya DITURUNKAN dari compose, bukan diketik di sini.
     // Versi pertama penjaga ini menyebut `["job-conformance", "job-backup"]`,
     // dan daftar itu salah dua kali di tahap 1b: `job-backup` berhenti punya
-    // loop (cadangan pindah ke `svc-tenant` lewat antrean), sementara layanan
+    // loop (cadangan pindah ke jalur `tenant` Go lewat antrean), sementara layanan
     // berikutnya yang MENAMBAH loop tidak akan pernah masuk daftarnya. Penjaga
     // yang daftarnya diketik tangan menjaga masa lalu.
-    const berloop = Object.entries(semuaLayanan()).filter(([, badan]) =>
-      badan.includes("while true")
-    );
+    const berloop = [
+      ...Object.entries(semuaLayanan()),
+      /* Peran `svc-worker` diperiksa SATU PER SATU: badan layanannya memuat
+         `timeout -k` dari peran mana pun, jadi pemeriksaan per layanan akan
+         lulus untuk loop tanpa timeout selama tetangganya punya. */
+      ...[...workerRoles()].map(([peran, skrip]) => [`svc-worker:${peran}`, skrip] as const),
+    ].filter(([, badan]) => badan.includes("while true"));
     expect(
       berloop.length,
       "tidak ada satu pun loop layanan di compose — penjaga ini tidak lagi melihat apa pun"
@@ -210,11 +211,7 @@ describe("penjadwal sebagai layanan (#373)", () => {
   });
 
   it("menunggu migration selesai — tabelnya harus ada sebelum putaran pertama", () => {
-    const service = compose.slice(
-      compose.indexOf("\n  job-scheduler:"),
-      compose.indexOf("\n  job-conformance:")
-    );
-    expect(service).toContain("service_completed_successfully");
+    expect(serviceBlock(compose, "svc-worker")).toContain("service_completed_successfully");
   });
 });
 

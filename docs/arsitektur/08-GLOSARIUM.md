@@ -140,7 +140,7 @@ lahir dari kegagalan nyata:
 
 | Tidak diuji otomatis | Gantinya |
 |---|---|
-| Basis data sungguhan | Fungsi murni + `job-conformance` mingguan di data nyata |
+| Basis data sungguhan | Fungsi murni + peran `conformance` (`svc-worker`) mingguan di data nyata |
 | Browser sungguhan | Tes proxy + tes komponen + pemeriksaan manual |
 | Restore backup ke basis data | `prove-backup-restore` sengaja tidak memuat dump; pemuatan sungguhan adalah latihan kuartalan manusia (❓ belum ada bukti) |
 | Beban / performa | Tidak ada; angka yang ada pengukuran satu kali |

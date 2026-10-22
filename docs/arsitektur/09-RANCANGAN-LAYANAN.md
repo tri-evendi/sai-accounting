@@ -15,7 +15,7 @@ jumlah tenant.** Keempatnya hari ini berurutan dan terikat *wall-clock*:
 |---|---|---|
 | Migration | ✅ *bounded concurrency* (tahap 1b) — masih di gerbang pemblokir | gerbangnya yang jadi pembatas, bukan jumlah langkahnya; §6 |
 | Cadangan | ✅ satu objek `pg_dump -Fc` **per basis data** (tahap 1b) | satu objek per tenant per hari — ongkos penyimpanan tumbuh linear, dan itu memang ongkos yang benar |
-| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6) — masih langkah di `job-conformance` | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup |
+| Kesesuaian data | ✅ *bounded concurrency* + jejak per basis data (§6) — masih peran `conformance` di `svc-worker` | jendela mingguan menjadi pembatas bila konkurensinya tak lagi cukup |
 | Penjadwal | delapan langkah berurutan, tiap jam | satu putaran tidak muat dalam satu jam |
 
 Yang hilang dulu bukan hanya waktu, tapi satu kemampuan: **`pg_dumpall` berarti
@@ -152,7 +152,7 @@ Itu sebabnya migration dan cadangan hidup di `svc-integrator`:
 
 | Pembeda | Cara jalur memenuhinya |
 |---|---|
-| Rahasia | `BACKUP_ENCRYPTION_KEY` + kredensial S3 hanya disuntikkan ke container jalur `tenant` |
+| Rahasia | `BACKUP_ENCRYPTION_KEY` + kredensial S3 hanya DIBACA jalur `tenant` — sejak 22 Okt 2026 jalur itu seproses dengan `interactive` sisi Go di `svc-integrator` (keputusan pemilik, §3.2) |
 | Jalur koneksi | jalur `tenant` dan `schema` menunjuk `db-postgres` langsung; jalur lain lewat pooler |
 | Jumlah instans | `schedule` dan `schema` berjalan satu; `interactive` dan `bulk` berapa pun |
 | Image | satu image Go untuk jalur yang sudah pindah; jalur Node (`ledger`, dokumen) image tersendiri — §3.3 |
@@ -188,10 +188,10 @@ satu commit, beberapa `command`.
 |---|---|---|---|---|---|---|
 | `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna | berapa pun | — | pooler | tahap 1c |
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
-| `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di `job-scheduler` |
-| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-tenant` + `job-conformance` |
+| `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) |
+| `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
 | `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate`, *bounded concurrency* |
-| `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler | ✅ `svc-ledger` |
+| `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler (pagar: **langsung**) | ✅ peran `ledger` di `svc-worker` |
 
 ¹ Dimulai sebagai proses Node terpisah, pindah ke Go per generator bila ada
 pemicunya — §3.3 menjelaskan kenapa jalur yang **menghitung angka akuntansi**
@@ -207,9 +207,67 @@ dirancang **tidak** diterbitkan ke antrean (paragraf terakhir bagian ini), jadi
 yang tersisa hanya pilihan bahasa penerapnya — dan penerap kedua atas pembukuan
 `_prisma_migrations` tidak membeli apa pun yang belum ada.
 
-Hanya satu jalur menerima rahasia, dan ia jalur yang **tidak memproses masukan
-pengguna** — ✅ `svc-tenant` satu-satunya container yang memegang
-`BACKUP_ENCRYPTION_KEY`.
+Hanya satu jalur MEMBACA rahasia — jalur `tenant`. Sampai 22 Okt 2026 ia juga
+satu-satunya container yang memegangnya, dan container itu tidak memproses
+masukan pengguna. **Itu tidak lagi benar**, dengan keputusan — lihat di bawah.
+
+#### Keputusan 22 Okt 2026 — "1 image = 1 container"
+
+**Diputuskan pemilik** sesudah diberi tahu harganya. Sebelumnya image
+`-migrator` menjalankan EMPAT container (`svc-ledger`, `svc-interactive`,
+`job-scheduler`, `job-conformance`) dan image `-integrator` DUA (`svc-tenant`,
+`svc-interactive-go`). Sesudahnya satu layanan per image:
+
+| Image | Layanan | Isinya | Cara menyatukan |
+|---|---|---|---|
+| `-migrator` | **`svc-worker`** | peran `scheduler`, `conformance`, `ledger`, `interactive` — empat PROSES | penyelia `scripts/run-workers.ts` (bun, tanpa dependensi): grup proses per peran, SIGTERM diteruskan, awalan log per peran, satu peran berakhir → container keluar bukan-nol |
+| `-integrator` | **`svc-integrator`** | jalur `tenant` + jalur `interactive` sisi Go — SATU proses | `cmd/integrator`: kedua pelari bersamaan, satu berakhir → yang lain dihentikan → keluar bukan-nol; logika di `internal/tenantlane` & `internal/interactivelane` |
+
+Yang **tetap** dari rancangan ini: setiap jalur Node masih PROSES tersendiri
+(satu ekspor yang kehabisan heap tidak menjatuhkan proses pelari `ledger`),
+skrip tiap peran masih satu salinan di compose, dan pagar jalur tunggal
+(`ledger`, `tenant`) tetap advisory lock di koneksi langsung —
+`CONTROL_DATABASE_DIRECT_URL`, kini disetel compose dasar untuk kedua layanan.
+Dua jalan koneksi di `svc-integrator` sengaja dipertahankan: `tenant` langsung
+ke `pg` (`CONTROL_DATABASE_DIRECT_URL`), `interactive` lewat PgBouncer
+(`CONTROL_DATABASE_URL`).
+
+**Risiko yang DITERIMA, dan bukan disembunyikan:**
+
+1. **Rahasia cadangan seproses dengan masukan pengguna.** `BACKUP_ENCRYPTION_KEY`,
+   kredensial S3, dan sambungan LANGSUNG ke `pg` (yang bisa mencacah seluruh
+   basis data) kini hidup di proses yang juga mengurai parameter laporan
+   (`report.export_go`). Klaim lama "TANPA RAHASIA" di kepala pelari
+   `interactive` Go karena itu dicabut. Yang tersisa sebagai batas: muatan
+   diurai ke struktur bertipe sempit (`reportId` yang wajib ada di register
+   bangkitan, `asOf` yang diurai sebagai tanggal) dan tidak pernah dirangkai ke
+   SQL maupun perintah; paket `interactivelane` tidak mengimpor
+   `internal/backup` dan tidak membaca variabel cadangan. Celah memori Go (atau
+   satu dependensi yang bisa dipaksa membaca berkas/env) kini cukup untuk
+   membocorkan kunci yang membuka SELURUH cadangan.
+2. **Satu peran jatuh = semua peran restart.** OOM di peran `interactive` kini
+   juga memutus putaran penjadwal dan pelari `ledger` yang sedang bekerja
+   (lease yang menjaga pekerjaannya; putarannya diulang sejak awal). Dan karena
+   putaran `conformance` mulai SAAT container naik, setiap restart memicu satu
+   sapuan kesesuaian penuh — crash-loop berarti sapuan berulang.
+3. **Skala tidak lagi per jalur.** `--scale` menggandakan keempat peran; peran
+   tunggal di replika kedua hanya aman di profil HA (`WORKER_LEADER_ROLES`
+   membungkusnya dengan leader election).
+4. **Satu `mem_limit` untuk empat proses.** Batas memori per jalur — yang dulu
+   bisa dinyatakan per container — kini tidak bisa.
+
+**Pemicu MEMISAHKAN lagi** (salah satunya cukup; memisahkannya kembali =
+satu layanan compose + `command` per peran, kodenya tidak berubah):
+
+- jalur `interactive` sisi Go menerima masukan pengguna yang lebih kaya
+  daripada `reportId` + tanggal (filter bebas, templat, unggahan) — atau
+  laporan Go kedua ber-parameter teks bebas;
+- customer, auditor, atau sertifikasi menuntut pemisahan rahasia per proses;
+- OOM atau crash-loop satu peran terukur menunda penjadwal / pelari `ledger`
+  (restart `sai-svc-worker` > 1× sepekan di luar rilis), atau sapuan
+  `conformance` yang berulang karena restart terlihat di `conformance_runs`;
+- jalur `interactive` perlu diskalakan sendiri (antrean ekspor menumpuk
+  sementara peran lain menganggur).
 
 **Gerbang skemanya sudah terpasang**, dan ia prasyarat pemindahan ini: begitu
 pekerjaan latar menjadi layanan yang berjalan terus, tidak ada lagi apa pun yang
@@ -236,12 +294,12 @@ menahan sebagiannya.
 
 | Jalur | Bahasa | Keadaan |
 |---|---|---|
-| `tenant` — cadangan | **Go** | ✅ `svc-tenant`, tahap 1b — [02 §5](./02-LAYANAN-INFRA.md) |
+| `tenant` — cadangan | **Go** | ✅ `svc-integrator` (jalur `tenant`), tahap 1b — [02 §5](./02-LAYANAN-INFRA.md) |
 | `tenant` — kesesuaian data | TypeScript | **tertahan** — 2 dari 11 pemeriksaannya menghitung materialitas; pemicunya sama dengan 1d (§9) |
 | `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
 | Integrasi luar (e-faktur, feed bank) | **Go** | belum dibangun — HTTP+XML, SFTP; tidak menyentuh pembukuan |
-| `schedule` — penerbitan | **Go** | belum dibangun — hanya menerbitkan baris `jobs`. Penerbitan hari ini masih langkah di `job-scheduler` (Node), dan itu memadai |
-| `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan `svc-interactive-go` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
+| `schedule` — penerbitan | **Go** | belum dibangun — hanya menerbitkan baris `jobs`. Penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`, Node), dan itu memadai |
+| `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan jalur `interactive` Go di `svc-integrator` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
 | Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
 
 ⚠ **Batas yang berlaku: Go berhenti sebelum perhitungan akuntansi, sampai ada
@@ -466,8 +524,8 @@ Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 |---|---|---|---|
 | Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ ketiganya ada (tahap 1b) — tapi masih di gerbang pemblokir, dan masih TypeScript. Alasannya di bawah |
 | **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
-| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. Masih langkah di `job-conformance`, bukan jalur tersendiri: belum ada `kind` yang diterbitkan untuknya |
-| Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di `job-scheduler`, bukan jalur `schedule` tersendiri |
+| Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. Masih peran `conformance` di `svc-worker`, bukan jalur tersendiri: belum ada `kind` yang diterbitkan untuknya |
+| Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di peran `scheduler` (`svc-worker`), bukan jalur `schedule` tersendiri |
 
 ✅ **Bukti kelengkapan cadangan sudah diperluas**: setiap basis data terdaftar
 wajib punya objek dumpnya sendiri, bukan hanya hadir di dalam satu dump besar —
@@ -576,7 +634,7 @@ docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
 | `svc-pooler` | dipasang untuk **keseragaman konfigurasi**, bukan untuk beban |
 | Reverse proxy **milik customer** | **wajib** — TLS harus berhenti di suatu tempat; Traefik SAI tidak dikirim |
 | Volume `pg_data` · `documents` · `audit` · cadangan | **wajib** — dokumen dan jejak audit **tidak** ada di basis data |
-| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` (hari ini `job-scheduler`) — [06 §3.7](./06-KEAMANAN.md). Yang di-mount **direktori** `${SAI_LICENCE_DIR:-./lisensi}` → `/etc/sai:ro`, bukan berkasnya: bind-mount satu berkas mematok inode, jadi lisensi pengganti tidak terlihat sampai restart |
+| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` (hari ini `svc-worker`) — [06 §3.7](./06-KEAMANAN.md). Yang di-mount **direktori** `${SAI_LICENCE_DIR:-./lisensi}` → `/etc/sai:ro`, bukan berkasnya: bind-mount satu berkas mematok inode, jadi lisensi pengganti tidak terlihat sampai restart |
 | Jalur `schema` | **wajib setiap pembaruan**, dijalankan customer |
 | `cache-redis` · `app-operator` · basis data `platform` | **tidak dipasang** |
 
@@ -602,7 +660,7 @@ dipakai ulang. Yang terakhir, **#5 cadangan per tenant**, ditutup tahap 1b:
 `pg_dumpall` diganti satu objek `pg_dump -Fc` **per basis data** + satu
 `pg_dumpall --globals-only` + satu manifest, sehingga satu tenant bisa
 dipulihkan tanpa menyentuh tenant lain. Keadaannya kini
-[02 §5 `svc-tenant`](./02-LAYANAN-INFRA.md); prosedur pemulihan satu PT ada di
+[02 §5 `svc-integrator`](./02-LAYANAN-INFRA.md); prosedur pemulihan satu PT ada di
 `PRODUCTION.md`.
 
 Profil ini yang membutuhkannya paling dulu, dan itu terbukti dua kali: di
@@ -618,7 +676,7 @@ bertag versi (masuk), berkas lisensi (masuk), bundel diagnostik (keluar).
 
 | Butir | Keadaan |
 |---|---|
-| Mount lisensi | hanya-baca ke `app-customer` + `job-scheduler`, `LICENCE_FILE` disetel profil (`tests/onprem-profile.test.ts`) |
+| Mount lisensi | hanya-baca ke `app-customer` + `svc-worker`, `LICENCE_FILE` disetel profil (`tests/onprem-profile.test.ts`) |
 | Batas lisensi | ditegakkan di titik **pembuatan** PT dan undangan/penerimaan pengguna lewat `creationQuotaFor` / `seatQuotaOverride` (`src/lib/entitlement-source.ts`); di on-premise dihitung atas seluruh pemasangan. SaaS tidak berubah. Yang sudah ada tidak pernah ditutup (`tests/licence-limits.test.ts`) |
 | Dukungan & versi | `supportEndsAt` lewat / versi berjalan > `maxVersion` → pita **informasi** di `/platform` bagi pengelola + `licence` di `/api/health` (ikut bundel diagnostik) |
 | Saluran rilis | tag git `v*` → image `:<versi>` (tanpa `:latest`, tag ≠ `package.json` ditolak) + bundel luring `docker save` + `SHA256SUMS` + compose sebagai aset GitHub Release (`tests/release-channel.test.ts`) |
@@ -677,7 +735,7 @@ sekarang [02](./02-LAYANAN-INFRA.md) dan [04](./04-ALIRAN-DATA.md).
 ✅ **Tahap 1b selesai 20 Okt 2026.** Yang dibangun: modul Go
 `services/integrator` (di luar workspace bun, dependensi dua), kontrak lintas
 bahasa diperluas ke **angka** antrean dan dibangkitkan ke keduanya, SQL antrean
-+ pelari jalur di Go, jalur `tenant` sebagai `svc-tenant` dengan **cadangan per
++ pelari jalur di Go, jalur `tenant` sebagai `svc-tenant` (kini di `svc-integrator`) dengan **cadangan per
 basis data** (celah #5), gerbang rilis ketiga (`go:test` + `go:lint`), dan
 *bounded concurrency* pada fan-out migration. Tempatnya sekarang
 [01 §10](./01-ARSITEKTUR.md) (pohon poliglot, dua aturan yang menahannya, batas
@@ -713,7 +771,7 @@ kehabisan waktu:
 |---|---|
 | **Outbox + relay** | §4 menyebut sendiri ia "menunggu pemakai pertamanya", dan pemakai yang dinamainya adalah fitur yang `invoice-send.ts` SENGAJA menolak mengotomatiskan. Pemicunya keputusan produk, bukan tahap: hari pertama ada pengiriman dokumen tanpa seseorang menekan tombol |
 | **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
-| Jalur `bulk` & `schedule` sebagai proses sendiri | belum ada `kind` yang diterbitkan untuk keduanya. Penerbitan hari ini masih langkah di `job-scheduler` dan itu memadai; pelari tanpa penerbit adalah kode mati yang terlihat hidup |
+| Jalur `bulk` & `schedule` sebagai proses sendiri | belum ada `kind` yang diterbitkan untuk keduanya. Penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) dan itu memadai; pelari tanpa penerbit adalah kode mati yang terlihat hidup |
 
 Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 `stock-report`) — ketiganya bukan dokumen satuan, dan jalurnya `/api/reports/pdf`
@@ -781,7 +839,7 @@ berpindah `go-parity` → `go` pada hari yang sama.
 | Rute ekspor membaca register SEBELUM merakit: laporan `go` **selalu** diterbitkan ke `report.export_go` (202), berapa pun barisnya; tanpa `?id=` dijawab 400, tidak pernah dirakit TS | `src/app/api/reports/export/route.ts` · `src/lib/report-export-go.ts` |
 | Pelari Node MENOLAK laporan `go` yang datang lewat `report.export` (pekerjaan lama dari sebelum peralihan) | `workers/interactive.ts` |
 | `kind` baru `report.export_go`, jalur `interactive`; izin unduh & gerbang kedua SAMA dengan `report.export` | `contract/kinds.yaml` · `packages/core/src/job-result.ts` · `src/lib/job-result-gate.ts` |
-| Pelari Go jalur `interactive` — registry → buku PT (READ ONLY) → XLSX → volume `hasil`; menolak laporan yang register-nya bukan `go` | `services/integrator/cmd/interactive` → `svc-interactive-go` |
+| Pelari Go jalur `interactive` — registry → buku PT (READ ONLY) → XLSX → volume `hasil`; menolak laporan yang register-nya bukan `go` | `services/integrator/internal/interactivelane` → `svc-integrator` (sampai 22 Okt 2026 `cmd/interactive` → `svc-interactive-go`) |
 | Penulis XLSX pustaka baku + penyimpanan hasil berbentuk sama dengan `job-result-store` | `internal/document` |
 | Kalimat, kolom, lebar, format angka, rupa kepala lembar, nama bulan, id laporan `go` — DIBANGKITKAN dari modul TS-nya | `internal/contract/report_layout_gen.go` (`bun run contract:gen`) |
 | Paritas ISI lembar sebar (definisinya: nilai & tipe tiap sel — angka pada sen —, format angka, tebal, ukuran/warna huruf, isi, perataan, lebar kolom, nama lembar, pembuat) | `src/lib/xlsx-content-parity.ts` · `bun run parity:trial-balance-xlsx` (buku sungguhan) · `tests/trial-balance-xlsx-golden.test.ts` (berkas emas Go dari fixture bersama, di setiap `verify`) |
@@ -813,7 +871,7 @@ saldo" TEBAL di TS, dan Go sudah mengikutinya.
 **Yang tersisa bagi sesi utama:** `bun run parity:trial-balance-xlsx` atas buku
 produksi (perintah sama dengan di atas, biner yang sama — subperintah
 `trial-balance-xlsx`), lalu rilis dengan `svc-interactive-go` ikut `pull` +
-`up`.
+`up`. (Sejak 22 Okt 2026 pelari itu jalur di `svc-integrator` — §3.2.)
 
 ✅ **Batas tanggal laporan = jam Jakarta (keputusan pemilik, 22 Okt 2026).**
 Dulu `resolveAsOf` membuat `asOf` = akhir hari menurut zona PROSES, jadi buku
@@ -849,7 +907,7 @@ dan runbook-nya di [02 §15.1](./02-LAYANAN-INFRA.md).
 
 | Butir | Wujudnya | Bukti di satu VM |
 |---|---|---|
-| *Leader election* `job-scheduler` | `scripts/run-as-leader.ts` sebagai `entrypoint`; kunci sesi di koneksi LANGSUNG yang dibuktikan ulang tiap denyut (`@sai/db/session-lock`) | tes unit: satu replika = perintah sama, sekali, kode keluar sama; kandidat tak menjalankan apa pun; kunci hilang → putaran dihentikan sebelum pemilihan ulang |
+| *Leader election* peran tunggal `svc-worker` (`scheduler`, `ledger`, `conformance`) | `scripts/run-as-leader.ts` dipanggil penyelia untuk peran di `WORKER_LEADER_ROLES` (override HA); kunci sesi di koneksi LANGSUNG yang dibuktikan ulang tiap denyut (`@sai/db/session-lock`) | tes unit: satu replika = perintah sama, sekali, kode keluar sama; kandidat tak menjalankan apa pun; kunci hilang → putaran dihentikan sebelum pemilihan ulang |
 | Pagar jalur tunggal-instans | Node: koneksi langsung bila `CONTROL_DATABASE_DIRECT_URL` ada | penjaga: advisory lock TS hanya di dua berkas, URL HA lolos penolak pooler; cacat jalan lama DIREPRODUKSI terhadap PgBouncer sekali-pakai (02 §15.1) |
 | Replika baca | `runReadOnly` → replika bila sudah memutar WAL sampai LSN primary, selain itu primary; tulisan ditolak | tes unit atas aturan LSN, penolakan tulisan, konteks PT yang hilang tetap melempar; daftar-izin pemanggil |
 | *Failover* otomatis | Patroni + etcd (witness di host ketiga) + `pg` sebagai HAProxy | `docker compose config` saja — **failover sungguhan belum pernah terjadi** |
@@ -861,6 +919,9 @@ P1002 `migrate` 15 Okt 2026, hanya tanpa gejala karena satu replika dan
 PgBouncer yang memakai ulang backend yang sama. Ia diperbaiki hanya di profil
 HA; menyalakannya di produksi satu-VM adalah keputusan terpisah (satu baris
 `environment:` di `svc-ledger`), bukan bagian diam-diam dari tahap ini.
+✅ **Diputuskan 22 Okt 2026** (pemilik): `CONTROL_DATABASE_DIRECT_URL` kini
+disetel compose dasar di `svc-worker`, bersama penyatuan "1 image = 1
+container" (§3.2), dan dijaga `tests/leader-election.test.ts`.
 
 ⚠ **Tahap 1 dipecah empat, dan urutannya mengikuti satu garis: aturan akuntansi
 disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.
@@ -910,7 +971,7 @@ server.
 | Penjaga | `tests/company-url-resolver.test.ts` (pemindai + penyelesai), `tests/tenant-move.test.ts` |
 
 ⚠ **Satu yang sengaja TIDAK ikut: cadangan Go per instans.** `svc-tenant`
-masih mencacah `pg_database` satu server. PT pertama yang dipindah akan masuk
+(kini jalur `tenant` di `svc-integrator`) masih mencacah `pg_database` satu server. PT pertama yang dipindah akan masuk
 `Hilang` di bukti kelengkapannya. Itu bunyi yang benar, sebab bukunya memang
 belum dicadangkan, dan karena itu pekerjaan ini prasyarat pemindahan pertama.
 Ia ditahan karena toolchain Go tidak ada di mesin pembangunnya, sedangkan Go
@@ -947,7 +1008,7 @@ lama ke aturan itu. Keadaan terukur hari ini:
 |---|---|
 | Skrip (55) | **35 pakai pola `<domain>:<aksi>`, 20 tidak** |
 | Volume (6) | `pg_data`, `db_data` · `documents`, `audit` · **`cadangan`** (Indonesia) |
-| Service | `app-*`/`job-*` konsisten; `db`, `pg`, `pgbouncer`, `migrate` tidak — dan **`db` vs `pg` aktif menyesatkan** |
+| Service | `app-*`/`svc-*`/`job-*` konsisten (sejak 22 Okt 2026 latar = `svc-worker` + `svc-integrator`); `db`, `pg`, `pgbouncer`, `migrate` tidak — dan **`db` vs `pg` aktif menyesatkan** |
 | Env var | `DATABASE_URL` tanpa prefiks padahal saudaranya berprefiks |
 
 Sebabnya: lapisan basis data punya aturan tertulis dan patuh (95 model, nol

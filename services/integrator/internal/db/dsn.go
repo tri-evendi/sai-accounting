@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -80,28 +81,104 @@ func Bersih(raw string) (dsn string, lewatPgBouncer bool, err error) {
 	return u.String(), lewatPgBouncer, nil
 }
 
-// Kendali membuka kolam koneksi ke basis data kendali dari lingkungan.
+// EnvKendali dan EnvKendaliLangsung: DUA jalan ke basis data kendali, dan
+// keduanya hidup di satu proses sejak `svc-integrator` (22 Okt 2026).
+//
+// Dulu `svc-tenant` menimpa `CONTROL_DATABASE_URL` di compose supaya menunjuk
+// `pg` langsung, sementara `svc-interactive-go` memakai nilai `.env` (lewat
+// PgBouncer). Satu proses tidak bisa punya dua nilai untuk satu nama, jadi
+// jalan langsung kini bernama sendiri — nama yang SAMA dengan yang dipakai
+// pagar jalur Node (`workers/runner.ts`) dan pembungkus pemimpin.
+const (
+	// EnvKendali: antrean & registry untuk jalur yang membaca satu PT per
+	// pekerjaan. Boleh lewat PgBouncer.
+	EnvKendali = "CONTROL_DATABASE_URL"
+	// EnvKendaliLangsung: jalur `tenant` — pencacahan `pg_database`, pagar
+	// advisory lock, dan parameter `pg_dump`. WAJIB langsung ke PostgreSQL.
+	EnvKendaliLangsung = "CONTROL_DATABASE_DIRECT_URL"
+)
+
+// Kendali membuka kolam koneksi ke basis data kendali dari lingkungan
+// (`CONTROL_DATABASE_URL`).
 //
 // Jumlah koneksinya kecil dengan alasan yang sudah tertulis di sisi Node
 // (`packages/core/src/control-db.ts`): `control` juga melayani autentikasi,
 // dan setiap koneksi di sini adalah koneksi yang tidak bisa dipakai basis data
 // perusahaan. PostgreSQL memakai satu PROSES per koneksi, bukan thread.
 func Kendali(ctx context.Context, maxConns int32) (*pgxpool.Pool, error) {
-	raw := os.Getenv("CONTROL_DATABASE_URL")
+	raw := os.Getenv(EnvKendali)
 	if raw == "" {
 		return nil, errors.New(
 			"CONTROL_DATABASE_URL belum diset. Tabel `jobs` hidup di basis data " +
 				"kendali (#104), dan integrator tidak punya basis data bawaan untuk " +
 				"jatuh ke sana — konteks yang hilang harus MELEMPAR")
 	}
+	return buka(ctx, EnvKendali, raw, maxConns)
+}
+
+// KendaliLangsung membuka kolam ke basis data kendali lewat
+// `CONTROL_DATABASE_DIRECT_URL` — koneksi LANGSUNG ke PostgreSQL.
+//
+// Kosong MELEMPAR, dan TIDAK jatuh ke `CONTROL_DATABASE_URL`: di produksi
+// nama itu menunjuk PgBouncer, dan pencacahan `pg_database` lewat pooler
+// memulangkan SEBAGIAN basis data — cadangan yang ada, tampak berhasil, dan
+// baru ketahuan kurang pada hari pemulihan. URL yang terbaca sebagai pooler
+// juga DITOLAK (lihat LangsungKePostgres).
+func KendaliLangsung(ctx context.Context, maxConns int32) (*pgxpool.Pool, error) {
+	raw := os.Getenv(EnvKendaliLangsung)
+	if raw == "" {
+		return nil, errors.New(
+			"CONTROL_DATABASE_DIRECT_URL belum diset. Jalur `tenant` mencacah " +
+				"seluruh basis data dan memegang pagar advisory lock — keduanya wajib " +
+				"LANGSUNG ke PostgreSQL, dan jalur ini tidak jatuh ke " +
+				"CONTROL_DATABASE_URL (PgBouncer) sebagai gantinya: konteks yang " +
+				"hilang harus MELEMPAR")
+	}
+	if err := LangsungKePostgres(raw); err != nil {
+		return nil, fmt.Errorf("%s: %w", EnvKendaliLangsung, err)
+	}
+	return buka(ctx, EnvKendaliLangsung, raw, maxConns)
+}
+
+// poolerHost: cermin `POOLER_HOST` di `packages/db/src/session-lock.ts`. Bukan
+// daftar lengkap — heuristik nama yang menangkap salah tempel yang paling
+// mungkin (`pgbouncer:5432` dari `.env`).
+var poolerHost = regexp.MustCompile(`(?i)bouncer|pooler|pgcat|odyssey|supavisor`)
+
+// LangsungKePostgres menolak URL yang menyatakan atau terbaca sebagai pooler:
+// `pgbouncer=true`, host bernama pooler, atau port 6432. Aturannya sama dengan
+// `assertDirectUrl` sisi Node, supaya satu nilai `CONTROL_DATABASE_DIRECT_URL`
+// tidak diterima satu bahasa dan ditolak yang lain.
+func LangsungKePostgres(raw string) error {
 	dsn, lewatPgBouncer, err := Bersih(raw)
 	if err != nil {
-		return nil, fmt.Errorf("CONTROL_DATABASE_URL: %w", err)
+		return err
+	}
+	if lewatPgBouncer {
+		return errors.New("URL menyatakan pgbouncer=true — jalan ini wajib LANGSUNG ke PostgreSQL")
+	}
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return fmt.Errorf("tidak bisa diurai: %w", err)
+	}
+	if poolerHost.MatchString(cfg.Host) {
+		return fmt.Errorf("host %q adalah pooler — jalan ini wajib LANGSUNG ke PostgreSQL", cfg.Host)
+	}
+	if cfg.Port == 6432 {
+		return errors.New("port 6432 adalah port pooler — jalan ini wajib LANGSUNG ke PostgreSQL")
+	}
+	return nil
+}
+
+func buka(ctx context.Context, nama, raw string, maxConns int32) (*pgxpool.Pool, error) {
+	dsn, lewatPgBouncer, err := Bersih(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", nama, err)
 	}
 
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("CONTROL_DATABASE_URL tidak bisa diurai: %w", err)
+		return nil, fmt.Errorf("%s tidak bisa diurai: %w", nama, err)
 	}
 	cfg.MaxConns = maxConns
 
@@ -136,19 +213,23 @@ type Sambungan struct {
 	SSLMode string
 }
 
-// SambunganKendali menguraikan CONTROL_DATABASE_URL menjadi parameternya.
-func SambunganKendali() (Sambungan, error) {
-	raw := os.Getenv("CONTROL_DATABASE_URL")
+// SambunganKendaliLangsung menguraikan CONTROL_DATABASE_DIRECT_URL menjadi
+// parameternya — sambungan yang sama dengan KendaliLangsung, untuk `pg_dump`.
+func SambunganKendaliLangsung() (Sambungan, error) {
+	raw := os.Getenv(EnvKendaliLangsung)
 	if raw == "" {
-		return Sambungan{}, errors.New("CONTROL_DATABASE_URL belum diset")
+		return Sambungan{}, errors.New("CONTROL_DATABASE_DIRECT_URL belum diset")
+	}
+	if err := LangsungKePostgres(raw); err != nil {
+		return Sambungan{}, fmt.Errorf("%s: %w", EnvKendaliLangsung, err)
 	}
 	dsn, _, err := Bersih(raw)
 	if err != nil {
-		return Sambungan{}, fmt.Errorf("CONTROL_DATABASE_URL: %w", err)
+		return Sambungan{}, fmt.Errorf("%s: %w", EnvKendaliLangsung, err)
 	}
 	cfg, err := pgx.ParseConfig(dsn)
 	if err != nil {
-		return Sambungan{}, fmt.Errorf("CONTROL_DATABASE_URL tidak bisa diurai: %w", err)
+		return Sambungan{}, fmt.Errorf("%s tidak bisa diurai: %w", EnvKendaliLangsung, err)
 	}
 	return Sambungan{
 		Host:     cfg.Host,

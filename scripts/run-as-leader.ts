@@ -2,16 +2,17 @@
  * Jalankan satu perintah HANYA selama proses ini pemimpin (rancangan 09 §9,
  * tahap 3).
  *
- *   bun scripts/run-as-leader.ts --name job-scheduler -- sh -c '<putaran>'
+ *   bun scripts/run-as-leader.ts --name scheduler -- sh -c '<putaran>'
  *
- * Dipasang sebagai `entrypoint` `job-scheduler` oleh `docker-compose.ha.yml`
+ * Dipanggil penyelia `svc-worker` (`scripts/run-workers.ts`) untuk peran yang
+ * disebut `WORKER_LEADER_ROLES` — variabel yang disetel `docker-compose.ha.yml`
  * SAJA. Compose dasar tidak memakainya, jadi pemasangan satu-VM hari ini
  * berjalan persis seperti sebelum berkas ini ada — itu yang dijaga
  * `tests/leader-election.test.ts`.
  *
- * Karena `entrypoint` di-override sementara `command` dibiarkan, putaran
- * delapan langkah berikut seluruh komentar anggaran `timeout`-nya tetap SATU
- * salinan di `docker-compose.yml`. Override yang menyalin putarannya akan
+ * Karena override HA hanya menambah variabel sementara `command` dibiarkan,
+ * putaran delapan langkah berikut seluruh komentar anggaran `timeout`-nya tetap
+ * SATU salinan di `docker-compose.yml`. Override yang menyalin putarannya akan
  * menyimpang pada langkah kesembilan.
  *
  * ⚠ URL kuncinya `CONTROL_DATABASE_DIRECT_URL`, bukan `CONTROL_DATABASE_URL`:
@@ -20,9 +21,11 @@
  * pembungkus MENOLAK berjalan — election lewat pooler lebih buruk daripada
  * tanpa election, sebab ia terlihat seperti perlindungan.
  *
- * ⚠ Pembungkus ini wajib menjadi akar pohon proses container (di belakang
- * `init: true`). Kalau ia mati mendadak (OOM), container ikut berhenti dan
- * putarannya ikut mati — tidak ada anak yatim yang terus menjalankan putaran
+ * ⚠ Pembungkus ini wajib berada di bawah penyelia yang MENGAKHIRI container
+ * begitu ia mati (`scripts/run-workers.ts`, di belakang `init: true`). Kalau ia
+ * mati mendadak (OOM), penyelia keluar, tini ikut keluar, dan seluruh pohon
+ * proses container — termasuk putaran yang ia lahirkan di grup prosesnya
+ * sendiri — ikut mati. Tidak ada anak yatim yang terus menjalankan putaran
  * setelah kuncinya lepas.
  */
 import "dotenv/config";

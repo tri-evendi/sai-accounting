@@ -4,7 +4,7 @@
  *
  * ⚠ Yang dijaga di sini adalah DUA PELAKSANA UNTUK SATU PEKERJAAN, dan itu
  * bukan kekhawatiran teoretis: `recurring:run` sudah berjalan sebagai langkah
- * di `job-scheduler` sebelum commit ini, dan `workers/ledger.ts` mengerjakan
+ * di penjadwal (dulu layanan `job-scheduler`) sebelum commit ini, dan `workers/ledger.ts` mengerjakan
  * hal yang sama. Menambahkan layanannya tanpa mencabut langkahnya berarti dua
  * proses memanggil `runRecurringForCompany` untuk buku yang sama — dan yang
  * menahannya hanya kunci unik `(template_id, occurrence_date)` di lapis
@@ -19,6 +19,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { workerRole } from "./compose-worker";
 
 const akar = process.cwd();
 const baca = (...p: string[]) => readFileSync(join(akar, ...p), "utf8");
@@ -56,7 +58,8 @@ const blokLayanan = (berkas: string, layanan: string): string => {
 };
 
 describe("satu pelaksana, bukan dua", () => {
-  const scheduler = blokLayanan(COMPOSE_KODE, "job-scheduler");
+  /* Sejak 22 Okt 2026 penjadwal adalah PERAN `scheduler` di `svc-worker`. */
+  const scheduler = workerRole("scheduler");
 
   it("penjadwal MENERBITKAN", () => {
     expect(scheduler).toContain("bun run recurring:publish");
@@ -160,16 +163,20 @@ describe("kunci idempotensi: berbutir JAM, di UTC", () => {
   });
 });
 
-describe("layanan `svc-ledger`", () => {
-  const svc = blokLayanan(COMPOSE_KODE, "svc-ledger");
+describe("peran `ledger` di layanan `svc-worker`", () => {
+  /* "1 image = 1 container" (22 Okt 2026): pelari jalur `ledger` bukan lagi
+     layanan sendiri, melainkan peran di bawah penyelia `svc-worker`. Setiap
+     janji di bawah tetap berlaku — kini terhadap layanan yang memuatnya. */
+  const svc = blokLayanan(COMPOSE_KODE, "svc-worker");
 
   it("`svc-`, bukan `job-`: ia berjalan terus, tidak sekali-jalan", () => {
-    expect(COMPOSE).toContain("  svc-ledger:");
+    expect(COMPOSE).toContain("  svc-worker:");
     expect(COMPOSE).not.toContain("  job-ledger:");
+    expect(COMPOSE).not.toContain("  svc-ledger:");
   });
 
   it("menjalankan pelari jalur, bukan skrip langsung", () => {
-    expect(svc).toContain('command: ["bun", "run", "jobs:run:ledger"]');
+    expect(workerRole("ledger")).toBe("exec bun run jobs:run:ledger");
     expect(PKG.scripts["jobs:run:ledger"]).toBe("bun --conditions=react-server workers/ledger.ts");
   });
 
@@ -196,10 +203,11 @@ describe("layanan `svc-ledger`", () => {
   });
 
   it("ikut dipasang di on-premise", () => {
-    // Tanpa layanan ini, penjadwal yang hanya menerbitkan berarti dokumen
+    // Tanpa peran ini, penjadwal yang hanya menerbitkan berarti dokumen
     // berulang tidak pernah terbit — dan tidak ada halaman yang rusak untuk
     // mengabarkannya.
-    expect(ONPREM).toContain("  svc-ledger:");
-    expect(blokLayanan(ONPREM, "svc-ledger")).toContain("pull_policy: always");
+    expect(ONPREM).toContain("  svc-worker:");
+    expect(blokLayanan(ONPREM, "svc-worker")).toContain("pull_policy: always");
+    expect(blokLayanan(ONPREM, "svc-worker")).not.toMatch(/^\s+profiles:/m);
   });
 });

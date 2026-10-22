@@ -47,8 +47,8 @@ const BUTUH_BASIS_DATA = [
   "migrate",
   "app-customer",
   "app-operator",
-  "job-scheduler",
-  "job-conformance",
+  "svc-worker",
+  "svc-integrator",
   "job-backup",
 ] as const;
 

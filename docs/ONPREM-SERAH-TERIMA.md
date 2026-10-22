@@ -40,7 +40,7 @@ tiga tempat — peringatan `[start]` di log `app-customer`, `licence.status:
 
 - Diterbitkan pemilik SAI di mesin luring: `bun run licence:issue -- …`.
 - Dipasang di `./lisensi/licence.sai` (atau `SAI_LICENCE_DIR`), di-mount
-  **hanya-baca** ke `app-customer` dan `job-scheduler`. Penggantian berkas
+  **hanya-baca** ke `app-customer` dan `svc-worker`. Penggantian berkas
   berlaku dalam ±60 detik tanpa restart.
 - Lisensi **tidak pernah menutup pembukuan.** Dukungan yang berakhir atau versi
   yang melampaui `maxVersion` hanya dipajang; batas perusahaan/pengguna hanya

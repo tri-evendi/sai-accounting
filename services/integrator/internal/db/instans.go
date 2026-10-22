@@ -58,7 +58,7 @@ func SambunganInstans(kunci, namaEnv string, getenv func(string) string) (Sambun
 	if raw == "" {
 		return Sambungan{}, "", errors.New(
 			"instans " + kunci + " terdaftar, tetapi " + namaEnv + " tidak diset di " +
-				"environment svc-tenant. Buku PT di instans itu TIDAK dicadangkan dari " +
+				"environment svc-integrator. Buku PT di instans itu TIDAK dicadangkan dari " +
 				"server bawaan sebagai gantinya — konteks yang hilang MELEMPAR")
 	}
 	dsn, lewatPgBouncer, err := Bersih(raw)

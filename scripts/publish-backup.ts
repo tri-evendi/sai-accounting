@@ -3,8 +3,8 @@
  *
  *   bun run backup:publish
  *
- * Dijalankan sebagai satu langkah di putaran `job-scheduler` (tiap jam), dan
- * yang MELAKSANAKAN adalah `svc-tenant` (Go). Pembagian itu bukan kerapian:
+ * Dijalankan sebagai satu langkah di putaran peran `scheduler` di `svc-worker`
+ * (tiap jam), dan yang MELAKSANAKAN adalah jalur `tenant` di `svc-integrator` (Go). Pembagian itu bukan kerapian:
  * sejak rancangan §4 penjadwal hanya menerbitkan, sebab langkah yang
  * MELAKSANAKAN menahan seluruh putaran berikutnya ketika ia menggantung — dan
  * dump seluruh pemasangan adalah langkah paling mungkin menggantung di antara
@@ -28,7 +28,7 @@
  * siapa yang menerbitkan hari ini.
  *
  * ⚠ KONSEKUENSINYA: jam berapa cadangan berjalan ditentukan oleh jam berapa
- * `job-scheduler` naik, bukan oleh sebuah jadwal. Itu sama dengan perilaku
+ * `svc-worker` naik, bukan oleh sebuah jadwal. Itu sama dengan perilaku
  * `job-backup` sebelumnya (`sleep 86400` dari saat container start), jadi tidak
  * ada yang berubah untuk operator — tapi ia pantas disebut, sebab orang yang
  * mencari "jam berapa cadangan jalan" akan mencari sebuah cron yang tidak ada.

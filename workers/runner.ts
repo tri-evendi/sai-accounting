@@ -122,7 +122,7 @@ function workerId(lane: JobLane): string {
  * sama ikut "mendapatkannya". Di satu VM dengan satu replika cacat itu jinak —
  * PgBouncer memakai ulang backend yang sama (LIFO), dan `dedupe_key` yang
  * memikul kebenaran — tapi pagar itu tidak memagari apa pun begitu ada host
- * kedua. Go tidak punya cacat ini: `svc-tenant` menyambung langsung ke `pg`
+ * kedua. Go tidak punya cacat ini: jalur `tenant` di `svc-integrator` menyambung langsung ke `pg`
  * dan memegang satu koneksi (`TryLaneLock`).
  *
  * Jalan baru dipakai HANYA bila `CONTROL_DATABASE_DIRECT_URL` disetel

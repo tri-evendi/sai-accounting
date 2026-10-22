@@ -155,8 +155,8 @@ kinds:
 #
 # uid/gid yang MEMBACA volume `hasil`: pengguna `node` di tahap `runner`
 # (`USER node` di Dockerfile — uid 1000 di image resmi `node:*`). Volume itu
-# DITULIS pelari jalur `interactive` — Node (`svc-interactive`) dan Go
-# (`svc-interactive-go`), keduanya root — dan DIBACA `app-customer` sebagai
+# DITULIS pelari jalur `interactive` — Node (peran `interactive` di `svc-worker`)
+# dan Go (`svc-integrator`), keduanya root — dan DIBACA `app-customer` sebagai
 # `node`. Berkasnya ditulis 0600 di direktori 0700 (tidak terbaca siapa pun
 # lain), jadi tanpa `chown` ke pemilik ini rute unduhan menjawab 404 untuk
 # setiap hasil: `stat` atas berkas milik root ditolak sebelum satu byte pun

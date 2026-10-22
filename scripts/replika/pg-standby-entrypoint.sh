@@ -14,7 +14,7 @@
 #
 # ⚠ Standby menyalin SETIAP perintah, termasuk yang salah (`DROP`, `DELETE`
 # tanpa `WHERE`). Ia melindungi dari host yang mati, bukan dari kesalahan —
-# yang terakhir urusan cadangan per basis data (`svc-tenant`) dan PITR (02 §17).
+# yang terakhir urusan cadangan per basis data (jalur `tenant` di `svc-integrator`) dan PITR (02 §17).
 set -eu
 
 : "${PG_REPLICATION_PASSWORD:?setel PG_REPLICATION_PASSWORD}"

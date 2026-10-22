@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tanpaKomentar } from "./akar-sumber";
+import { workerRole } from "./compose-worker";
 
 const script = readFileSync(join(process.cwd(), "scripts", "backup.sh"), "utf8");
 const compose = readFileSync(join(process.cwd(), "docker-compose.yml"), "utf8");
@@ -247,7 +248,9 @@ function layanan(nama: string): string {
 const perintah = tanpaKomentar;
 
 describe("jalur `tenant` di compose — PELAKSANA cadangan sejak tahap 1b", () => {
-  const svc = layanan("svc-tenant");
+  /* Sejak "1 image = 1 container" (22 Okt 2026) jalur ini hidup di
+     `svc-integrator`, seproses dengan jalur `interactive` sisi Go. */
+  const svc = layanan("svc-integrator");
 
   it("ada, dan hidup lagi setelah restart mesin", () => {
     expect(svc).toContain("restart: unless-stopped");
@@ -269,13 +272,17 @@ describe("jalur `tenant` di compose — PELAKSANA cadangan sejak tahap 1b", () =
     expect(svc).toMatch(/audit:\/app\/data\/audit:ro/);
   });
 
-  it("punya tepat SATU mount yang bisa ditulis, dan itu tujuannya sendiri", () => {
+  it("mount yang bisa ditulis hanya TUJUAN kedua jalurnya sendiri", () => {
+    /* `cadangan` untuk artefak jalur `tenant`; `hasil` untuk berkas ekspor
+       jalur `interactive` sisi Go yang kini seproses. Yang DICADANGKAN tetap
+       `:ro` (asersi di atas) — tambahan mount `hasil` tidak membuka satu pun
+       jalan ke dokumen atau jejak. */
     const mounts = svc
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => /^- \w+:\/app\//.test(l));
-    const bisaDitulis = mounts.filter((l) => !l.endsWith(":ro"));
-    expect(bisaDitulis).toEqual(["- cadangan:/app/data/cadangan"]);
+    const bisaDitulis = mounts.filter((l) => !l.endsWith(":ro")).sort();
+    expect(bisaDitulis).toEqual(["- cadangan:/app/data/cadangan", "- hasil:/app/data/hasil"]);
   });
 
   it("menyambung LANGSUNG ke `pg`, melewati PgBouncer", () => {
@@ -284,14 +291,26 @@ describe("jalur `tenant` di compose — PELAKSANA cadangan sejak tahap 1b", () =
        konfigurasinya, jadi lewat pooler pencacahan memulangkan SEBAGIAN — dan
        sebagian itulah bentuk cadangan paling berbahaya: ia ada, ia tampak
        berhasil, dan ia baru ketahuan kurang pada hari pemulihan. */
-    expect(svc).toMatch(/CONTROL_DATABASE_URL:\s*postgres:\/\/[^\n]*@pg:5432/);
+    expect(svc).toMatch(/CONTROL_DATABASE_DIRECT_URL:\s*postgres:\/\/[^\n]*@pg:5432/);
     expect(svc).not.toMatch(/@pgbouncer:/);
+    /* Dan sisi Go memang MEMBACA nama itu untuk jalur `tenant` — bukan
+       `CONTROL_DATABASE_URL`, yang di proses yang sama menunjuk PgBouncer
+       untuk jalur `interactive`. */
+    const go = readFileSync(
+      join(process.cwd(), "services/integrator/internal/tenantlane/runner.go"),
+      "utf8"
+    );
+    expect(go).toContain("db.KendaliLangsung(");
+    expect(go).toContain("db.SambunganKendaliLangsung()");
+    expect(go).not.toMatch(/db\.Kendali\(/);
   });
 
-  it("TIDAK bergantung pada pgbouncer", () => {
-    // Bergantung pada yang sengaja dilewati hanya menunda boot tanpa manfaat.
+  it("`CONTROL_DATABASE_URL` TIDAK ditimpa — jalur `interactive` memakainya lewat PgBouncer", () => {
+    /* Dulu `svc-tenant` menimpanya ke `pg`. Di satu proses penimpaan itu
+       akan menarik jalur `interactive` keluar dari PgBouncer diam-diam. */
+    expect(svc).not.toMatch(/^\s+CONTROL_DATABASE_URL:/m);
     const dep = svc.slice(svc.indexOf("depends_on:"));
-    expect(dep).not.toContain("pgbouncer");
+    expect(dep).toContain("pgbouncer");
   });
 
   it("diberi jendela berhenti supaya objek yang sedang ditulis selesai rapi", () => {
@@ -304,7 +323,7 @@ describe("cut-over: TEPAT SATU pelaksana cadangan", () => {
     /* Membiarkan putaran harian lama tetap hidup berarti DUA pelaksana untuk
        satu pekerjaan, dan yang memisahkan keduanya hanya nama berkas yang
        kebetulan berbeda. Cacat yang persis sama hampir lolos di tahap 1a,
-       ketika `recurring:run` masih di penjadwal sementara `svc-ledger` lahir. */
+       ketika `recurring:run` masih di penjadwal sementara pelari `ledger` lahir. */
     const jb = perintah(layanan("job-backup"));
     expect(jb).not.toMatch(/sh scripts\/backup\.sh/);
     expect(jb).not.toMatch(/sleep 86400/);
@@ -322,7 +341,7 @@ describe("cut-over: TEPAT SATU pelaksana cadangan", () => {
   it("`job-backup` tetap bisa dipanggil sebagai PERKAKAS", () => {
     /* Image-nya satu-satunya yang punya klien Prisma, `openssl`, `awscli`, DAN
        klien MariaDB — yang terakhir supaya pembukti masih bisa membaca artefak
-       dari sebelum penukaran mesin. `svc-tenant` sengaja tidak memuat semua itu. */
+       dari sebelum penukaran mesin. `svc-integrator` sengaja tidak memuat semua itu. */
     const jb = layanan("job-backup");
     expect(jb).toMatch(/target: backup/);
     expect(jb).toMatch(/docker compose run --rm job-backup/);
@@ -336,10 +355,10 @@ describe("cut-over: TEPAT SATU pelaksana cadangan", () => {
 
   it("penjadwal MENERBITKAN pekerjaan cadangan", () => {
     /* Tanpa langkah ini tidak ada yang menerbitkan `tenant.backup`, dan
-       `svc-tenant` akan hidup menganggur selamanya — antrean kosong, umur
+       jalur `tenant` akan hidup menganggur selamanya — antrean kosong, umur
        tertua nol, setiap ambang HIJAU, sementara tidak satu salinan pun pernah
        dibuat. Itu kegagalan total yang terbaca sebagai kesehatan sempurna. */
-    expect(layanan("job-scheduler")).toMatch(/langkah backup:publish bun run backup:publish/);
+    expect(workerRole("scheduler")).toMatch(/langkah backup:publish bun run backup:publish/);
   });
 });
 

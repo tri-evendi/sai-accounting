@@ -357,7 +357,7 @@ Butir di sini baru dikerjakan bila pemicunya terjadi.
 | 6 | Siapa/apa yang membaca `/api/health` selain `watch:health`? | Lingkup pemantauan |
 | 7 | Kapan `billing_mode` dibuka dari `none`? | [`KOMERSIALISASI.md`](../KOMERSIALISASI.md) |
 | 8 | `timestamptz` untuk kolom peristiwa? | Temuan S3 |
-| 9 | Kosakata status kontrak: `completed` sah, atau dipetakan ke `signed`? | Temuan S3 |
+| ~~9~~ | ~~Kosakata status kontrak: `completed` sah, atau dipetakan ke `signed`?~~ ✅ Diputuskan 23 Okt 2026: `completed` status keempat yang sah; kode warisan `2` → `signed`; kurs warisan diisi aturan "gabungan" — [07 Riwayat §S3](./07-RIWAYAT.md) | ~~Temuan S3~~ |
 
 ## 9. Langkah berikutnya
 

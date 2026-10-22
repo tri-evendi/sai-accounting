@@ -561,7 +561,8 @@
     "contract": {
       "signed": "已签署",
       "pending": "待处理",
-      "canceled": "已取消"
+      "canceled": "已取消",
+      "completed": "已完成"
     }
   },
   "statusPage": {
@@ -779,6 +780,7 @@
     "csvEmpty": "CSV 内容为空。",
     "csvInvalidRows": "CSV 中包含无效行。请修正后重新导入。",
     "contractInUse": "该合同已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该合同，以保持单据链完整。",
+    "contractStatusTransition": "合同状态不能从“{from}”改为“{to}”。新合同不能直接设为已完成，只有已签署的合同才能标记为已完成。",
     "invoiceInUse": "该发票已被{used}使用，因此无法删除。请先删除或解除这些单据的关联，或直接作废该发票，以保持单据链完整。",
     "contractUsedInvoices": "{count} 张发票",
     "contractUsedDeliveryOrders": "{count} 张送货单",

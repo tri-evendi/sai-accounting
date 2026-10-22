@@ -652,7 +652,13 @@ interface KontrakAkuntansi {
     category_default_sections: Record<string, string>;
   };
   closing_journal_type: string;
+  currencies: { base: string; values: string[] };
+  invoice_statuses: string[];
+  contract_statuses: string[];
 }
+
+/** Kode mata uang ISO 4217: tiga huruf besar. */
+const ISO_4217 = /^[A-Z]{3}$/;
 
 /** Sisi saldo — dua nilai, ditulis di sini karena ia kosakata generator, bukan data. */
 const SISI = ["debit", "credit"] as const;
@@ -757,6 +763,40 @@ function bacaAkuntansi(): KontrakAkuntansi {
     salah.push("`closing_journal_type` bukan snake_case");
   }
 
+  /* ── Mata uang (23 Okt 2026). Kode ISO tiga huruf besar, tanpa duplikat, dan
+     mata uang dasar WAJIB anggotanya — `base_amount` yang dinyatakan dalam mata
+     uang yang tidak bisa dipilih di formulir mana pun tidak bisa dibaca siapa pun. */
+  const mu = k.currencies;
+  if (!mu || typeof mu !== "object" || !Array.isArray(mu.values) || mu.values.length === 0) {
+    salah.push("`currencies.values` kosong");
+  } else {
+    const lihat = new Set<string>();
+    for (const c of mu.values) {
+      if (typeof c !== "string" || !ISO_4217.test(c)) salah.push(`currencies: ${JSON.stringify(c)} bukan kode ISO 4217`);
+      else if (lihat.has(c)) salah.push(`currencies: \`${c}\` tercantum dua kali`);
+      lihat.add(c);
+    }
+    if (typeof mu.base !== "string" || !mu.values.includes(mu.base)) {
+      salah.push(`currencies.base ${JSON.stringify(mu.base)} bukan salah satu dari currencies.values`);
+    }
+  }
+
+  /* ── Status dokumen. Status kontrak WAJIB diawali status faktur, persis dan
+     berurutan: posisi menentukan warna donat dan label badge yang dibagi kedua
+     dokumen, jadi status kontrak tambahan hanya boleh berdiri di BELAKANG. */
+  const statusFaktur = daftar("invoice_statuses", k.invoice_statuses);
+  const statusKontrak = daftar("contract_statuses", k.contract_statuses);
+  if (
+    statusFaktur.length > 0 &&
+    statusKontrak.length > 0 &&
+    statusFaktur.some((s, i) => statusKontrak[i] !== s)
+  ) {
+    salah.push(
+      `contract_statuses harus DIAWALI invoice_statuses dalam urutan yang sama ` +
+        `(${statusFaktur.join(", ")}); kini: ${statusKontrak.join(", ")}`
+    );
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/accounting.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -777,8 +817,10 @@ function bangkitkanAkuntansi(k: KontrakAkuntansi): string {
   return `/**
  * ${JANGAN_SUNTING_AKUNTANSI(k.version)}
  *
- * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label dan saldo
- * normal per tipe tetap di \`src/lib/accounting.ts\`.
+ * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5) — kecuali mata uang
+ * & status dokumen, pengecualian yang disebut (keputusan pemilik 23 Okt 2026).
+ * Label dan saldo normal per tipe tetap di \`src/lib/accounting.ts\`; label &
+ * warna status di \`@sai/core/constants\` dan \`status-badge.tsx\`.
  */
 
 /** Skala kolom uang \`Decimal(15,2)\`: satu sen = 10^-MONEY_SCALE rupiah. */
@@ -842,6 +884,32 @@ ${Object.entries(k.income_statement.category_default_sections).map(([c, v]) => `
 
 /** \`journals.type\` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
 export const CLOSING_JOURNAL_TYPE = "${k.closing_journal_type}";
+
+// ── Mata uang & status dokumen (23 Okt 2026) ──────────────────────────────
+// Dibaca lewat re-ekspor \`@sai/core/constants\`; label & warna tetap di TS.
+
+${union("Currency", k.currencies.values)}
+
+/** Mata uang yang ditransaksikan, dalam urutan pilihan formulir. */
+export const CURRENCIES = [
+${k.currencies.values.map((c) => `  "${c}",`).join("\n")}
+] as const satisfies readonly Currency[];
+
+/** Mata uang buku besar — satuan setiap \`base_amount\`. */
+export const BASE_CURRENCY = "${k.currencies.base}" satisfies Currency;
+
+${union("InvoiceStatus", k.invoice_statuses)}
+
+export const INVOICE_STATUSES = [
+${k.invoice_statuses.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly InvoiceStatus[];
+
+${union("ContractStatus", k.contract_statuses)}
+
+/** Diawali \`INVOICE_STATUSES\` persis (generator menolak selainnya); tambahan di belakang. */
+export const CONTRACT_STATUSES = [
+${k.contract_statuses.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly ContractStatus[];
 `;
 }
 
@@ -948,6 +1016,68 @@ ${ratakan(Object.entries(k.income_statement.category_default_sections).map(([c, 
 // ClosingJournalType: \`journals.type\` jurnal penutup tahunan (#555). Laba
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "${k.closing_journal_type}"
+
+// Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
+// \`currency\` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
+// sebelum pembaca Go pertamanya (pemeriksa kesesuaian data).
+type Currency string
+
+const (
+${ratakan(k.currencies.values.map((c) => ({ kiri: `Currency${pengenalGo(c)}`, kanan: `Currency = "${c}"` })))}
+)
+
+// Currencies dalam urutan kontrak (urutan pilihan formulir).
+var Currencies = []Currency{
+${k.currencies.values.map((c) => `\tCurrency${pengenalGo(c)},`).join("\n")}
+}
+
+// BaseCurrency: mata uang buku besar — satuan setiap base_amount.
+const BaseCurrency = Currency${pengenalGo(k.currencies.base)}
+
+// IsCurrency melaporkan apakah v adalah mata uang yang dikenal kontrak ini.
+func IsCurrency(v string) bool {
+\tfor _, c := range Currencies {
+\t\tif string(c) == v {
+\t\t\treturn true
+\t\t}
+\t}
+\treturn false
+}
+
+// InvoiceStatus adalah nilai kolom \`invoices.status\`.
+type InvoiceStatus string
+
+const (
+${ratakan(k.invoice_statuses.map((s) => ({ kiri: `InvoiceStatus${pengenalGo(s)}`, kanan: `InvoiceStatus = "${s}"` })))}
+)
+
+// InvoiceStatuses dalam urutan kontrak.
+var InvoiceStatuses = []InvoiceStatus{
+${k.invoice_statuses.map((s) => `\tInvoiceStatus${pengenalGo(s)},`).join("\n")}
+}
+
+// ContractStatus adalah nilai kolom \`contracts.status\` — diawali status
+// faktur persis, tambahan di belakang.
+type ContractStatus string
+
+const (
+${ratakan(k.contract_statuses.map((s) => ({ kiri: `ContractStatus${pengenalGo(s)}`, kanan: `ContractStatus = "${s}"` })))}
+)
+
+// ContractStatuses dalam urutan kontrak.
+var ContractStatuses = []ContractStatus{
+${k.contract_statuses.map((s) => `\tContractStatus${pengenalGo(s)},`).join("\n")}
+}
+
+// IsContractStatus melaporkan apakah v adalah status kontrak yang dikenal.
+func IsContractStatus(v string) bool {
+\tfor _, s := range ContractStatuses {
+\t\tif string(s) == v {
+\t\t\treturn true
+\t\t}
+\t}
+\treturn false
+}
 `;
 }
 

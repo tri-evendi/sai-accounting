@@ -7,8 +7,10 @@
  *
  * Kontrak akuntansi versi 1.
  *
- * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label dan saldo
- * normal per tipe tetap di `src/lib/accounting.ts`.
+ * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5) — kecuali mata uang
+ * & status dokumen, pengecualian yang disebut (keputusan pemilik 23 Okt 2026).
+ * Label dan saldo normal per tipe tetap di `src/lib/accounting.ts`; label &
+ * warna status di `@sai/core/constants` dan `status-badge.tsx`.
  */
 
 /** Skala kolom uang `Decimal(15,2)`: satu sen = 10^-MONEY_SCALE rupiah. */
@@ -146,3 +148,46 @@ export const INCOME_STATEMENT_CATEGORY_DEFAULT_SECTIONS: Readonly<
 
 /** `journals.type` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
 export const CLOSING_JOURNAL_TYPE = "closing";
+
+// ── Mata uang & status dokumen (23 Okt 2026) ──────────────────────────────
+// Dibaca lewat re-ekspor `@sai/core/constants`; label & warna tetap di TS.
+
+export type Currency =
+  | "USD"
+  | "CNY"
+  | "IDR";
+
+/** Mata uang yang ditransaksikan, dalam urutan pilihan formulir. */
+export const CURRENCIES = [
+  "USD",
+  "CNY",
+  "IDR",
+] as const satisfies readonly Currency[];
+
+/** Mata uang buku besar — satuan setiap `base_amount`. */
+export const BASE_CURRENCY = "IDR" satisfies Currency;
+
+export type InvoiceStatus =
+  | "signed"
+  | "pending"
+  | "canceled";
+
+export const INVOICE_STATUSES = [
+  "signed",
+  "pending",
+  "canceled",
+] as const satisfies readonly InvoiceStatus[];
+
+export type ContractStatus =
+  | "signed"
+  | "pending"
+  | "canceled"
+  | "completed";
+
+/** Diawali `INVOICE_STATUSES` persis (generator menolak selainnya); tambahan di belakang. */
+export const CONTRACT_STATUSES = [
+  "signed",
+  "pending",
+  "canceled",
+  "completed",
+] as const satisfies readonly ContractStatus[];

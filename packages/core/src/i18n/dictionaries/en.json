@@ -561,7 +561,8 @@
     "contract": {
       "signed": "Signed",
       "pending": "Pending",
-      "canceled": "Cancelled"
+      "canceled": "Cancelled",
+      "completed": "Completed"
     }
   },
   "statusPage": {
@@ -779,6 +780,7 @@
     "csvEmpty": "The CSV is empty.",
     "csvInvalidRows": "The CSV contains invalid rows. Fix them, then import again.",
     "contractInUse": "This contract is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the contract so the document chain stays intact.",
+    "contractStatusTransition": "A contract's status cannot change from \"{from}\" to \"{to}\". A new contract cannot start as Completed, and only a Signed contract can be marked Completed.",
     "invoiceInUse": "This invoice is already used by {used}, so it cannot be deleted. Delete or detach those documents first, or simply cancel the invoice so the document chain stays intact.",
     "contractUsedInvoices": "{count} invoice(s)",
     "contractUsedDeliveryOrders": "{count} delivery order(s)",

@@ -14,6 +14,7 @@
     "./efaktur": "./src/efaktur.ts",
     "./entitlement": "./src/entitlement.ts",
     "./export-limits": "./src/export-limits.ts",
+    "./generated/accounting": "./src/generated/accounting.ts",
     "./generated/job-kinds": "./src/generated/job-kinds.ts",
     "./generated/job-numbers": "./src/generated/job-numbers.ts",
     "./i18n/client": "./src/i18n/client.tsx",

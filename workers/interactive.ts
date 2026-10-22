@@ -45,6 +45,7 @@ import { runLane, type JobContext } from "./runner";
 import { dalamKonteksPerusahaan } from "./jalur-perusahaan";
 import { writeJobResult } from "@sai/platform/job-result-store";
 import { isExportable, reportById } from "../src/lib/report-catalog";
+import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
 import { buildReportSheet } from "../src/lib/report-export";
 import { STATEMENT_TITLES } from "../src/lib/statement-layout";
@@ -93,6 +94,23 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
      * `result_ref` kosong, dan tombol unduhnya 404 tanpa sebab di mana pun.
      */
     throw new Error(`laporan \`${muatan.reportId}\` tidak ada di katalog atau tidak dapat diekspor`);
+  }
+
+  if (reportEngine(report.id) === "go") {
+    /*
+     * Berkas laporan ini milik Go sejak tahap 1d (`src/lib/report-engine.ts`),
+     * dan versi TS untuk jalur berkas DICABUT — termasuk di sini. Yang bisa
+     * sampai ke cabang ini hanya pekerjaan `report.export` yang terbit SEBELUM
+     * peralihan; rute ekspor kini menerbitkannya sebagai `report.export_go`.
+     * Melempar, bukan "sekali ini saja dengan TS": jalan mundur diam-diam
+     * adalah dua implementasi tanpa pembanding — kelas kegagalan yang register
+     * itu ada untuk mencegah. Pengguna mengekspor ulang, dan berkas barunya
+     * datang dari Go.
+     */
+    throw new Error(
+      `laporan \`${report.id}\` dihasilkan Go (report.export_go) sejak tahap 1d — ` +
+        "ekspor ulang dari layar; jalur TS untuk berkas ini sudah dicabut"
+    );
   }
 
   const params = (muatan.params ?? {}) as Record<string, string | undefined>;

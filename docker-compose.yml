@@ -589,8 +589,10 @@ services:
   #     menerbitkan apa pun, jadi dua pelari hanya berarti dua ekspor berjalan
   #     bersamaan — `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan
   #     dua kali. `contract/kinds.yaml` menyatakannya `single_instance: false`.
-  #  2. **Ia memasang volume `hasil` BISA-TULIS.** Satu-satunya layanan yang
-  #     boleh; `app-customer` memasangnya hanya-baca dan hanya men-stream.
+  #  2. **Ia memasang volume `hasil` BISA-TULIS** — bersama pasangan Go-nya
+  #     `svc-interactive-go` (tahap 1d), dan hanya keduanya; `app-customer`
+  #     memasangnya hanya-baca dan hanya men-stream. Keduanya root, jadi setiap
+  #     hasil di-`chown` ke `node` (`contract/kinds.yaml` → `results`).
   #  3. **Lewat PgBouncer**, bukan langsung ke `pg`: ia membaca buku SATU PT per
   #     pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data
   #     seperti jalur `tenant`.
@@ -617,7 +619,8 @@ services:
       migrate:
         condition: service_completed_successfully
     volumes:
-      # SATU-SATUNYA penulis volume ini. `app-customer` memasangnya `:ro`.
+      # Penulis volume ini bersama `svc-interactive-go`. `app-customer`
+      # memasangnya `:ro`.
       # Dokumen & jejak TIDAK dipasang: jalur ini membaca BUKU, bukan berkas,
       # dan mount yang tidak dibutuhkan adalah permukaan yang tidak perlu ada.
       - hasil:/app/data/hasil
@@ -629,6 +632,60 @@ services:
     # yang terpotong dipulangkan `reclaimStaleJobs` lalu diklaim lagi.
     stop_grace_period: 60s
     command: ["bun", "run", "jobs:run:interactive"]
+
+  # ── JALUR `interactive`, SISI GO — LEMBAR SEBAR YANG DIHITUNG GO (tahap 1d) ─
+  #
+  # Satu jalur, DUA pelari — pola yang sama dengan jalur `tenant` (`svc-tenant`
+  # Go + `job-conformance` Node). `svc-interactive` (Node) mengklaim
+  # `report.export`; layanan ini mengklaim `report.export_go`. Laporan mana yang
+  # sampai ke sini diputuskan register `src/lib/report-engine.ts` (`engine: go`
+  # — hari ini Neraca Saldo), dan untuk laporan itu rute ekspor SELALU
+  # mengantre, berapa pun barisnya: jalur sinkron adalah versi TS-nya, dan
+  # versi itu dicabut (09 §9).
+  #
+  # ⚠ WAJIB ikut `pull` + `up` sejak rilis ini. Tanpanya ekspor Neraca Saldo
+  # menumpuk sebagai baris `queued` tanpa pengklaim — tombol unduhnya menunggu
+  # sepuluh menit lalu menyerah, dan tidak satu halaman pun rusak untuk
+  # mengabarkannya.
+  #
+  # Image `-integrator` yang SAMA dengan `svc-tenant`, `command` yang berbeda
+  # (09 §3.2) — jadi tidak ada image baru dan tidak ada entri matriks baru.
+  # Bedanya dari `svc-tenant`, dan semuanya disengaja:
+  #
+  #  1. **TANPA rahasia cadangan.** Jalur ini memproses masukan pengguna;
+  #     `BACKUP_ENCRYPTION_KEY` tetap hanya di `svc-tenant` (`env_file` memang
+  #     membawa seluruh `.env` — utang yang sama yang disebut di sana, dan
+  #     biner ini tidak membaca variabel itu).
+  #  2. **Lewat PgBouncer**, bukan langsung ke `pg`: satu buku PT per
+  #     pekerjaan, bukan pencacahan seluruh server.
+  #  3. **Volume `hasil` bisa-tulis** — penulis KEDUA sesudah `svc-interactive`.
+  #     Ia berjalan sebagai root dan `chown` setiap hasil ke `node`, pembaca
+  #     volume itu di `app-customer` (`contract/kinds.yaml` → `results`).
+  #  4. **Instans berapa pun** (`single_instance: false`) — `FOR UPDATE SKIP
+  #     LOCKED` menjamin satu pekerjaan tidak dikerjakan dua kali.
+  #
+  # Memori: biner statis Go, tanpa Node — puluhan MB saat diam (09 §3.3).
+  svc-interactive-go:
+    build:
+      context: .
+      target: integrator
+    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:-latest}
+    container_name: sai-svc-interactive-go
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      pg:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - hasil:/app/data/hasil
+    networks:
+      - internal
+    stop_grace_period: 60s
+    command: ["svc-interactive"]
 
   # ── JALUR `tenant` — CADANGAN PER BASIS DATA (tahap 1b, §6) ────────────────
   #
@@ -993,10 +1050,8 @@ volumes:
   # di atas: isinya buku besar PT sungguhan, dan direktori runtime di pohon repo
   # bisa ikut terpanggang ke dalam image (lihat .dockerignore §anchor).
   #
-  # ⚠ Siapa yang MENULISnya belum ada. Jalur `interactive` & `bulk` lahir di
-  # tahap 1c; sampai itu `app-customer` memasangnya hanya-baca dan setiap
-  # permintaan unduh dijawab 404 — jawaban yang benar untuk hasil yang memang
-  # belum pernah ada. Mount-nya dipasang SEKARANG karena rute unduhannya sudah
-  # ada: mount yang menyusul kemudian adalah celah penyebaran yang ditemukan
-  # terlambat, dengan gejala 404 yang terbaca seperti pekerjaan yang gagal.
+  # Penulisnya pelari jalur `interactive`: `svc-interactive` (Node, tahap 1c)
+  # dan `svc-interactive-go` (Go, tahap 1d). Pembacanya `app-customer` (`:ro`),
+  # sebagai `node` — maka penulis yang root `chown` setiap hasil ke `node`;
+  # tanpa itu berkas 0600 milik root dijawab 404 oleh rute unduhan.
   hasil:

@@ -38,6 +38,7 @@ import { parseCostCenterFilter } from "@/lib/cost-centers";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { resolveAsOf, resolveColumns, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { resolveStockPeriod } from "@/lib/stock-period";
+import { asOfPeriodLabel } from "@/lib/statement-layout";
 import { formatDate } from "@sai/core/utils";
 
 /** Parameter mentah dari URL — bentuknya sama dengan `searchParams` halaman. */
@@ -269,7 +270,7 @@ export async function buildReportPayload(
       const tb = await getTrialBalance(asOf);
       return {
         kind: "trial-balance",
-        period: `Per ${formatDate(asOf)}`,
+        period: asOfPeriodLabel(formatDate(asOf)),
         rows: tb.rows,
         totalDebit: tb.totalDebit,
         totalCredit: tb.totalCredit,

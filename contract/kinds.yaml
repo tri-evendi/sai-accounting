@@ -71,6 +71,17 @@ kinds:
     max_attempts: 3
     description: satu laporan menjadi berkas yang diunduh pengguna
 
+  report.export_go:
+    lane: interactive
+    max_attempts: 3
+    description: >
+      satu laporan menjadi berkas, DIHITUNG GO (tahap 1d). Jenis tersendiri,
+      bukan `report.export` yang sama, sebab pelari mengklaim per `kind`: jalur
+      `interactive` dilayani DUA bahasa selama transisi, dan satu `kind` dengan
+      dua pengklaim adalah dua pelaksana untuk satu pekerjaan. Laporan mana yang
+      diterbitkan ke sini diputuskan register `src/lib/report-engine.ts`
+      (`engine: go`), bukan penerbitnya.
+
   document.generate:
     lane: interactive
     max_attempts: 3
@@ -139,6 +150,21 @@ kinds:
     lane: integration
     max_attempts: 5
     description: tarik mutasi bank
+
+# ── Pemilik berkas hasil ──────────────────────────────────────────────────
+#
+# uid/gid yang MEMBACA volume `hasil`: pengguna `node` di tahap `runner`
+# (`USER node` di Dockerfile — uid 1000 di image resmi `node:*`). Volume itu
+# DITULIS pelari jalur `interactive` — Node (`svc-interactive`) dan Go
+# (`svc-interactive-go`), keduanya root — dan DIBACA `app-customer` sebagai
+# `node`. Berkasnya ditulis 0600 di direktori 0700 (tidak terbaca siapa pun
+# lain), jadi tanpa `chown` ke pemilik ini rute unduhan menjawab 404 untuk
+# setiap hasil: `stat` atas berkas milik root ditolak sebelum satu byte pun
+# terbaca. Dua bahasa menulis, satu angka — maka ia di kontrak, bukan diketik
+# dua kali. Dijaga `tests/job-result-owner.test.ts`.
+results:
+  owner_uid: 1000
+  owner_gid: 1000
 
 # ── Angka antrean ──────────────────────────────────────────────────────────
 #

@@ -241,7 +241,7 @@ menahan sebagiannya.
 | `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
 | Integrasi luar (e-faktur, feed bank) | **Go** | belum dibangun — HTTP+XML, SFTP; tidak menyentuh pembukuan |
 | `schedule` — penerbitan | **Go** | belum dibangun — hanya menerbitkan baris `jobs`. Penerbitan hari ini masih langkah di `job-scheduler` (Node), dan itu memadai |
-| `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`) berstatus `go-parity` — jalur berkasnya MASIH TS sampai paritas produksi lulus (§9) |
+| `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan `svc-interactive-go` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
 | Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
 
 ⚠ **Batas yang berlaku: Go berhenti sebelum perhitungan akuntansi, sampai ada
@@ -319,7 +319,7 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 |---|---|---|
 | `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
 | `contract/accounting.yaml` — sisanya | `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas, **kategori & saldo normal per tipe akun** | laporan Go yang membacanya: kategori bersama Laba Rugi, materialitas bersama kesesuaian data |
-| `internal/document/` | — | tahap 1d, bila dokumen satuan ikut pindah |
+| `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
 ✅ **`contract/accounting.yaml` LAHIR 22 Okt 2026, dengan dua kunci saja**:
 `money.scale` (2 — `Decimal(15,2)`) dan `account_types` (17 nilai, urutan
@@ -720,7 +720,7 @@ Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 (§5). Jumlahnya DICACAH penjaga, jadi ia tidak bisa diam-diam berubah menjadi
 "sudah semuanya".
 
-🔶 **Tahap 1d DIMULAI 22 Okt 2026 — satu laporan, berstatus `go-parity`.**
+🔶 **Tahap 1d DIMULAI 22 Okt 2026 — laporan PERTAMA sudah dipindah (`go`).**
 Pengukurannya (§11, vonis di `/scheduler`) sudah ada, dan pemilik meminta
 seluruh tahap dikerjakan. Yang dibangun untuk laporan PERTAMA, Neraca Saldo:
 
@@ -767,6 +767,54 @@ SESUDAH rilis); sebelum itu, pasang sumber checkout di atasnya (`-v
 Keduanya HANYA MEMBACA. Keluar bukan-nol pada satu selisih atau satu buku yang
 gagal dibaca.
 
+✅ **Paritas produksi LULUS 22 Okt 2026** (sesi utama): `bun run
+parity:trial-balance` → "17 buku × 3 tanggal: 51 setara · 0 berselisih · 0
+gagal". Buktinya tercatat di entri register yang sama
+(`parityProven: { date: "2026-10-22", books: 17 }`), dan Neraca Saldo
+berpindah `go-parity` → `go` pada hari yang sama.
+
+#### Peralihan pertama: lembar sebar Neraca Saldo dihasilkan Go
+
+| Bagian | Di mana |
+|---|---|
+| Register `go` + bukti paritas; `exportJobKind(id)` — satu tempat "TS atau Go" menjadi antrean | `src/lib/report-engine.ts` |
+| Rute ekspor membaca register SEBELUM merakit: laporan `go` **selalu** diterbitkan ke `report.export_go` (202), berapa pun barisnya; tanpa `?id=` dijawab 400, tidak pernah dirakit TS | `src/app/api/reports/export/route.ts` · `src/lib/report-export-go.ts` |
+| Pelari Node MENOLAK laporan `go` yang datang lewat `report.export` (pekerjaan lama dari sebelum peralihan) | `workers/interactive.ts` |
+| `kind` baru `report.export_go`, jalur `interactive`; izin unduh & gerbang kedua SAMA dengan `report.export` | `contract/kinds.yaml` · `packages/core/src/job-result.ts` · `src/lib/job-result-gate.ts` |
+| Pelari Go jalur `interactive` — registry → buku PT (READ ONLY) → XLSX → volume `hasil`; menolak laporan yang register-nya bukan `go` | `services/integrator/cmd/interactive` → `svc-interactive-go` |
+| Penulis XLSX pustaka baku + penyimpanan hasil berbentuk sama dengan `job-result-store` | `internal/document` |
+| Kalimat, kolom, lebar, format angka, rupa kepala lembar, nama bulan, id laporan `go` — DIBANGKITKAN dari modul TS-nya | `internal/contract/report_layout_gen.go` (`bun run contract:gen`) |
+| Paritas ISI lembar sebar (definisinya: nilai & tipe tiap sel — angka pada sen —, format angka, tebal, ukuran/warna huruf, isi, perataan, lebar kolom, nama lembar, pembuat) | `src/lib/xlsx-content-parity.ts` · `bun run parity:trial-balance-xlsx` (buku sungguhan) · `tests/trial-balance-xlsx-golden.test.ts` (berkas emas Go dari fixture bersama, di setiap `verify`) |
+
+**Tiga keputusan yang patut diketahui orang berikutnya:**
+
+1. **Selalu antre, tidak ada jalur sinkron "kecil".** Ekspor sinkron di bawah
+   `EXPORT_QUEUE_HANDOFF_ROWS` ADALAH versi TS-nya; menyisakannya berarti dua
+   implementasi berkas hidup berdampingan tanpa pembanding — persis yang
+   register ini ada untuk mencegah. Harganya beberapa detik penantian (klien
+   sudah menunggu di rute hasil untuk ekspor besar; tidak ada UI baru).
+2. **Instan batas tanggal dihitung PENERBIT.** `asOfInstant` = `resolveAsOf`
+   yang sama dengan layar, dikirim sebagai ISO UTC; Go tidak menghitung "akhir
+   hari" sendiri, jadi zona waktu container Go tidak bisa memindahkan satu
+   jurnal pun ke sisi lain batas (temuan paritas lokal di atas).
+3. **"Berkas" = lembar sebar.** PDF Neraca Saldo (`/api/reports/pdf`) tetap TS,
+   digambar dari muatan layar seperti layarnya. Memindahkannya keputusan
+   tersendiri.
+
+⚠ **Temuan di jalan, dan ia bukan Go:** pelari jalur berjalan sebagai ROOT
+sementara `app-customer` membaca volume `hasil` sebagai `node`; hasil 0600 di
+direktori 0700 milik root tidak terbaca, jadi SETIAP hasil berantre — termasuk
+ekspor besar `svc-interactive` sejak 1c — dijawab 404. Kedua pelari kini
+`chown` ke `contract/kinds.yaml` → `results` (uid/gid 1000 = `node`). Paritas
+isi lokal (Postgres sekali pakai, 2 buku × 3 tanggal, buku berwizard + buku
+kosong ber-registry `&"…"`): 6 setara; temuan pertamanya: baris "Belum ada
+saldo" TEBAL di TS, dan Go sudah mengikutinya.
+
+**Yang tersisa bagi sesi utama:** `bun run parity:trial-balance-xlsx` atas buku
+produksi (perintah sama dengan di atas, biner yang sama — subperintah
+`trial-balance-xlsx`), lalu rilis dengan `svc-interactive-go` ikut `pull` +
+`up`.
+
 ✅ **Batas tanggal laporan = jam Jakarta (keputusan pemilik, 22 Okt 2026).**
 Dulu `resolveAsOf` membuat `asOf` = akhir hari menurut zona PROSES, jadi buku
 yang sama per `2026-06-30` pernah memberi 14 baris di `TZ=Asia/Jakarta` dan 15
@@ -778,17 +826,17 @@ yang sama dengan `app-customer`. Hitungan kalender yang masih memakai jam lokal
 bawaan di Dockerfile. Data produksi tidak bergeser: tidak ada jurnal yang
 tersimpan pukul 17.00 UTC ke atas, dan produksi sudah berjalan di WIB.
 
-⚠ **Yang 1d sengaja BELUM lakukan:** memindah jalur ekspor ke Go. Itu
-perubahan `report-engine.ts` → `go` bersama pemanggil Go di jalur
-`interactive`, dan `tests/report-engine.test.ts` sekarang MENOLAK entri `go`
-sampai penjaganya diganti dengan yang memastikan jalur ekspor membaca
-register. Laporan berikutnya mengikuti pola yang sama, satu per satu:
-implementasi Go + kunci kontrak yang dibacanya + skrip paritas + entri
-`go-parity`.
+✅ **Penjaga "jalur ekspor BELUM memanggil Go" sudah DIGANTI, bukan dihapus.**
+`tests/report-engine.test.ts` kini menuntut: rute ekspor membaca register
+sebelum merakit, laporan `go` diterbitkan ke `report.export_go`, pelari Node
+menolak laporan `go`, pelari Go menolak yang bukan `go`, halaman laporan `go`
+mengirim asalnya, dan pola segmen hasil Go = `SEGMEN` TS. Laporan berikutnya
+mengikuti pola yang sama, satu per satu: implementasi Go + kunci kontrak yang
+dibacanya + skrip paritas (angka DAN isi berkas) + entri `go-parity` → `go`.
 
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 dimulai | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 laporan pertama `go` (Neraca Saldo, 22 Okt 2026) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |

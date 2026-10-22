@@ -32,6 +32,7 @@ import { TrialBalanceStatement } from "@/components/reports/trial-balance-statem
 import { reportById, resolveAsOf } from "@/lib/report-catalog";
 import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { asOfPeriodLabel } from "@/lib/statement-layout";
 import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -78,7 +79,7 @@ export default async function TrialBalancePage({
   const payload: StatementPayload = {
     kind: "trial-balance",
     // Isi dokumen cetak tetap bahasa Indonesia (lihat lib/pdf/statement-pdf).
-    period: `Per ${formatDate(asOf)}`,
+    period: asOfPeriodLabel(formatDate(asOf)),
     rows: tb.rows,
     totalDebit: tb.totalDebit,
     totalCredit: tb.totalCredit,
@@ -97,7 +98,13 @@ export default async function TrialBalancePage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` WAJIB di sini: berkas Neraca Saldo dihitung Go dari
+                PARAMETER, bukan dari muatan layar (`report-engine.ts` → `go`),
+                jadi tanpa asalnya rute ekspor tidak tahu tanggal mana. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{ reportId: "trial-balance", params: { asOf: asOfISO } }}
+            />
           </>
         }
       />

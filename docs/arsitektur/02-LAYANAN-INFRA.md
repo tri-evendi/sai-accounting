@@ -47,7 +47,8 @@ dan batas heap eksplisit di setiap perintah Node.
 | `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
 | `svc-ledger` | `sai-svc-ledger` | Pelari jalur `ledger` — menguras tabel `jobs` | selalu hidup |
 | `svc-tenant` | `sai-svc-tenant` | Pelari jalur `tenant` (Go) — cadangan **per basis data** | selalu hidup |
-| `svc-interactive` | `sai-svc-interactive` | Pelari jalur `interactive` — ekspor besar yang ditunggu pengguna | selalu hidup |
+| `svc-interactive` | `sai-svc-interactive` | Pelari jalur `interactive` (Node) — ekspor besar yang ditunggu pengguna (`report.export`) | selalu hidup |
+| `svc-interactive-go` | `sai-svc-interactive-go` | Pelari jalur `interactive` (**Go**, image `-integrator`) — lembar sebar laporan ber-`engine: go` (`report.export_go`; hari ini Neraca Saldo) | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
 
@@ -62,7 +63,7 @@ graph TB
     TR --> WEBO[sai-app-operator]
     WEBC --> PGB[sai-pgbouncer]
     WEBO --> PGB
-    JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger · sai-svc-interactive] --> PGB
+    JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger · sai-svc-interactive · sai-svc-interactive-go] --> PGB
     PGB --> PG[(sai-pg)]
     LANGSUNG[sai-svc-tenant · sai-migrate] --> PG
     OLD[(sai-db — MariaDB, fallback)]
@@ -396,7 +397,7 @@ mengubah penolakan itu menjadi "akan dikerjakan".
 |---|---|
 | Muatan pekerjaan = **parameter**, bukan angka | `jobs` hidup di basis data **kendali**, dan kendali tidak memuat satu angka akuntansi pun (#104). Pekerjanya menghitung ulang dengan pembangun payload yang SAMA — dan laporan karena itu dihitung saat ia DIKERJAKAN, yang untuk ekspor yang menunggu beberapa menit justru lebih berguna |
 | Instansnya **berapa pun** | ia tidak menulis buku dan tidak menerbitkan apa pun; `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan dua kali |
-| Satu-satunya penulis volume `hasil` | `app-customer` memasangnya `:ro` dan hanya men-stream |
+| Penulis volume `hasil` (bersama `svc-interactive-go` sejak tahap 1d) | `app-customer` memasangnya `:ro` dan hanya men-stream. Kedua pelari berjalan sebagai root dan `chown` setiap hasil ke `node` (`contract/kinds.yaml` → `results`) — tanpa itu berkas 0600 milik root tidak terbaca rute unduhan dan setiap hasil dijawab 404 |
 | Lewat **PgBouncer** | ia membaca buku SATU PT per pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data seperti jalur `tenant` |
 | **Node, bukan Go** | ia MENGHITUNG angka akuntansi (`buildReportPayload` membaca buku), dan §3.3 menahan Go di depan garis itu. Yang dibeli proses terpisah: event loop sendiri dan batas memori sendiri — ekspor yang kehabisan memori menjatuhkan PELARI, bukan aplikasi, dan pekerjaannya dipulangkan `reclaimStaleJobs` dengan `attempts + 1` |
 | TANPA rahasia cadangan | `BACKUP_ENCRYPTION_KEY` hanya di `svc-tenant`. Jalur ini memproses MASUKAN PENGGUNA, dan jalur yang memproses masukan pengguna tidak boleh berada di dalam proses yang bisa membaca kunci cadangan |
@@ -419,6 +420,33 @@ terpakai. Dua pagar menjaga pembersihnya: himpunan id memuat SELURUH baris
 `jobs` (bukan hanya yang punya `result_ref` — berkasnya ditulis SEBELUM kolomnya,
 jadi saringan itu akan menghapus hasil pekerjaan yang masih berjalan), dan
 direktori yang lebih baru dari 24 jam tidak pernah dibuang.
+
+### `svc-interactive-go` — jalur `interactive`, sisi Go (tahap 1d)
+
+Menguras `report.export_go`: lembar sebar laporan yang register
+`src/lib/report-engine.ts` nyatakan `engine: "go"` — sejak 22 Okt 2026 **Neraca
+Saldo**. Satu jalur, dua pelari, pola yang sama dengan jalur `tenant`
+(`svc-tenant` Go + `job-conformance` Node); yang memisahkan keduanya adalah
+`kind`, bukan jalur.
+
+| Keputusan | Alasan |
+|---|---|
+| `kind` tersendiri (`report.export_go`), bukan `report.export` | pelari mengklaim per `kind`; satu `kind` dengan dua pengklaim adalah dua pelaksana untuk satu pekerjaan (`tests/kind-punya-pengklaim.test.ts`) |
+| Laporan `go` **selalu** diantre, berapa pun barisnya | jalur sinkron `/api/reports/export` ADALAH versi TS-nya, dan "versi TS untuk jalur berkas dicabut" (09 §9) berarti ia tak terjangkau — bukan jarang terjangkau. Ongkosnya beberapa detik penantian untuk Neraca Saldo kecil; klien sudah menunggu di rute hasil untuk ekspor besar, jadi tidak ada UI baru |
+| Muatan = parameter + **instan** `asOfInstant` | instan dihitung penerbit dengan `resolveAsOf` yang sama dengan layar; pelari Go tidak menghitung "akhir hari" sendiri, jadi TZ container-nya tidak bisa menggeser satu jurnal pun ke sisi lain batas tanggal |
+| Image `-integrator` yang sama dengan `svc-tenant`, `command: svc-interactive` | 09 §3.2: satu image, beberapa `command`. Tidak ada image baru, tidak ada entri matriks baru |
+| Penulis XLSX pustaka baku (`internal/document`), tanpa excelize | dependensi Go dijaga sedikit (kepala `go.mod`); lembar laporan hanya butuh teks, angka, format angka, tebal, isi, perataan, lebar |
+| TANPA rahasia, lewat PgBouncer, instans berapa pun | sama dengan `svc-interactive` |
+
+**Paritas isinya** dibuktikan dua kali: berkas emas Go dari fixture bersama
+dibandingkan dengan lembar ExcelJS di setiap `bun run verify`
+(`tests/trial-balance-xlsx-golden.test.ts`), dan atas buku sungguhan dengan
+`bun run parity:trial-balance-xlsx` — definisi "setara"-nya di
+`src/lib/xlsx-content-parity.ts`.
+
+⚠ **Wajib ikut `pull` + `up`.** Tanpanya ekspor Neraca Saldo menumpuk sebagai
+baris `queued` tanpa pengklaim — tombol unduhnya menunggu sepuluh menit lalu
+menyerah.
 
 ### `job-backup` — PERKAKAS, bukan lagi pelaksana
 
@@ -449,7 +477,7 @@ kuartalan manusia (❓ belum ada bukti dijalankan).
 | `documents` | `app-customer` (RW), `svc-tenant` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — objek `berkas.tar.gz.enc` |
 | `audit` | kedua `app-*` (RW), `svc-tenant` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — objek `berkas.tar.gz.enc` |
 | `cadangan` | `svc-tenant` (RW) | Satu direktori per putaran: objek terenkripsi + `.sha256` + `manifest.json` | — (ia *adalah* backup-nya) |
-| `hasil` | `svc-interactive` (RW), `app-customer` (RO) | Hasil pekerjaan (`result_ref`): `<kind>-<jobId>/<berkas>`. Di luar `public/` — satu-satunya jalan keluarnya route handler ber-izin | Tidak — ia dibangkitkan ulang dari buku, dan dibuang bersama baris `jobs`-nya |
+| `hasil` | `svc-interactive` + `svc-interactive-go` (RW, `chown` ke `node`), `app-customer` (RO) | Hasil pekerjaan (`result_ref`): `<kind>-<jobId>/<berkas>`. Di luar `public/` — satu-satunya jalan keluarnya route handler ber-izin | Tidak — ia dibangkitkan ulang dari buku, dan dibuang bersama baris `jobs`-nya |
 
 Jejak audit ada di **tiga** tabel: `audit_logs` (tiap buku PT),
 `tenant_audit_logs` (control), `operator_audit_logs` (platform).
@@ -584,21 +612,22 @@ server   ──▶  git pull → compose pull → [migrate] → up -d        (TA
 
 ```bash
 git pull
-docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
+docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
 # HANYA bila ada migration baru di prisma/postgresql/:
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive
+docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
 ```
 
-⚠ **`svc-ledger`, `svc-tenant`, dan `svc-interactive` wajib ikut `pull` dan
-`up`**, dan itu bukan kelengkapan daftar: ketiganya tidak melayani satu pun
+⚠ **`svc-ledger`, `svc-tenant`, `svc-interactive`, dan `svc-interactive-go`
+wajib ikut `pull` dan `up`**, dan itu bukan kelengkapan daftar: ketiganya tidak melayani satu pun
 permintaan HTTP, jadi
 layanan yang tertinggal di versi lama tidak membuat satu halaman pun rusak.
 `svc-ledger` hanya menulis buku besar dengan image yang mendahului
 migration-nya; `svc-tenant` hanya **berhenti mencadangkan**, atau mencadangkan
 dengan pencacahan yang mendahului PT terbaru; `svc-interactive` hanya membuat
 setiap ekspor besar **menggantung** di antrean, dan tombol unduhnya menunggu
-sampai batas waktu lalu menyerah. Ketiganya bentuk kegagalan yang paling mahal
+sampai batas waktu lalu menyerah — `svc-interactive-go` yang tertinggal berbuat
+sama untuk SETIAP ekspor Neraca Saldo. Ketiganya bentuk kegagalan yang paling mahal
 di repo ini: yang tidak terlihat.
 
 ⚠ **`job-backup` dicabut dari daftar ini sejak tahap 1b**, dan itu bukan

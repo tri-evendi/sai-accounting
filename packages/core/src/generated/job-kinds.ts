@@ -32,6 +32,7 @@ export type JobKind =
   | "ledger.recurring"
   | "mail.batch"
   | "report.export"
+  | "report.export_go"
   | "report.package"
   | "schedule.tick"
   | "schema.migrate"
@@ -63,6 +64,7 @@ export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
   "ledger.recurring": { lane: "ledger", maxAttempts: 3, writesLedger: true },
   "mail.batch": { lane: "bulk", maxAttempts: 3, writesLedger: false },
   "report.export": { lane: "interactive", maxAttempts: 3, writesLedger: false },
+  "report.export_go": { lane: "interactive", maxAttempts: 3, writesLedger: false },
   "report.package": { lane: "bulk", maxAttempts: 3, writesLedger: false },
   "schedule.tick": { lane: "schedule", maxAttempts: 1, writesLedger: false },
   "schema.migrate": { lane: "schema", maxAttempts: 1, writesLedger: false },
@@ -89,7 +91,7 @@ export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
 export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
   bulk: ["import.process", "mail.batch", "report.package"],
   integration: ["integration.bank_feed", "integration.efaktur"],
-  interactive: ["document.generate", "report.export"],
+  interactive: ["document.generate", "report.export", "report.export_go"],
   ledger: ["ledger.dunning", "ledger.recurring"],
   schedule: ["schedule.tick"],
   schema: ["schema.migrate"],

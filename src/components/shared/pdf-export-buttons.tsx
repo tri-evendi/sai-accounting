@@ -14,6 +14,7 @@ import {
   fetchDocumentPdfBlob,
   fetchReportPdfBlob,
   fetchStatementPdfBlob,
+  type SumberLaporan,
 } from "@/lib/report-files";
 
 /*
@@ -180,7 +181,19 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
  * the numbers are identical to the page and to the PDF, and money lands in real
  * (summable, exact) number cells rather than pre-formatted strings.
  */
-export function StatementExcelButton({ payload }: { payload: StatementPayload }) {
+export function StatementExcelButton({
+  payload,
+  sumber,
+}: {
+  payload: StatementPayload;
+  /**
+   * Asal laporannya (`reportId` + parameter). WAJIB untuk laporan yang
+   * berkasnya dihasilkan Go (`src/lib/report-engine.ts` → `go`): pekerja Go
+   * menghitung dari PARAMETER, bukan dari muatan layar. Untuk laporan lain ia
+   * membuka penyerahan ke antrean di atas ambang baris.
+   */
+  sumber?: SumberLaporan;
+}) {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -191,7 +204,7 @@ export function StatementExcelButton({ payload }: { payload: StatementPayload })
       // Unduhannya sendiri hidup di `lib/report-files` — dipakai bersama dialog
       // parameter di Pusat Laporan, yang mengunduh laporan yang sama tanpa
       // membuka halamannya lebih dulu.
-      await downloadStatementWorkbook(payload);
+      await downloadStatementWorkbook(payload, sumber);
       toast(t("excel.downloaded"));
     } catch (err) {
       console.error(err);

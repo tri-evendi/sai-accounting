@@ -73,8 +73,41 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.13.0",
+    tanggal: "2026-10-22",
+    ringkas:
+      "Ekspor Laba Rugi dan Neraca kini memuat kolom pembanding, tanggal pagi hari tidak lagi mundur sehari, dan pembaruan keamanan.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Ekspor Excel dan PDF Laba Rugi serta Neraca dengan mode pembanding kini benar-benar memuat kolom periode pembanding dan persentase perubahannya.",
+      },
+      {
+        jenis: "ubah",
+        teks: "Ekspor Excel Laba Rugi dan Neraca disiapkan di latar, seperti Neraca Saldo — halaman tetap bisa dipakai selama berkasnya dibuat.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Ekspor Laba Rugi yang disaring per pusat biaya tidak lagi gagal saat disiapkan di latar.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Antara pukul 00.00 dan 07.00 WIB, tanggal bawaan di formulir kas/bank, rekonsiliasi, stok opname, dan dialog laporan kini hari ini, bukan kemarin; pengingat faktur dan transaksi berulang tidak lagi terlambat sehari.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Faktur yang dibuat dini hari tanggal 1 kini masuk masa pajak e-Faktur bulan itu.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Pembaruan keamanan pada komponen aplikasi dan login.",
+      },
+    ],
+  },
+  {
     versi: "0.12.1",
     tanggal: "2026-10-22",
+    sha: "806ce68",
     ringkas: "Ekspor data perusahaan kembali berfungsi, dan mesin basis data lama dipensiunkan.",
     butir: [
       {

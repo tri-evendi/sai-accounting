@@ -20,7 +20,25 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.12.1 — 2026-10-22 — belum digelar
+## 0.13.0 — 2026-10-22 — belum digelar
+
+Ekspor Laba Rugi dan Neraca kini memuat kolom pembanding, tanggal pagi hari tidak lagi mundur sehari, dan pembaruan keamanan.
+
+### Berubah
+
+- Ekspor Excel Laba Rugi dan Neraca disiapkan di latar, seperti Neraca Saldo — halaman tetap bisa dipakai selama berkasnya dibuat.
+
+### Perbaikan
+
+- Ekspor Excel dan PDF Laba Rugi serta Neraca dengan mode pembanding kini benar-benar memuat kolom periode pembanding dan persentase perubahannya.
+- Ekspor Laba Rugi yang disaring per pusat biaya tidak lagi gagal saat disiapkan di latar.
+- Antara pukul 00.00 dan 07.00 WIB, tanggal bawaan di formulir kas/bank, rekonsiliasi, stok opname, dan dialog laporan kini hari ini, bukan kemarin; pengingat faktur dan transaksi berulang tidak lagi terlambat sehari.
+- Faktur yang dibuat dini hari tanggal 1 kini masuk masa pajak e-Faktur bulan itu.
+- Pembaruan keamanan pada komponen aplikasi dan login.
+
+---
+
+## 0.12.1 — 2026-10-22 (806ce68)
 
 Ekspor data perusahaan kembali berfungsi, dan mesin basis data lama dipensiunkan.
 

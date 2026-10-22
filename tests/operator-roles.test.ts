@@ -27,11 +27,15 @@ beforeAll(() => {
 });
 
 describe("matriks izin operator", () => {
-  it("owner memegang SEMUA izin; viewer tidak satu pun", () => {
+  it("owner memegang SEMUA izin; viewer hanya kredensial miliknya sendiri", () => {
     for (const p of OPERATOR_PERMISSIONS) {
       expect(operatorCan("owner", p), p).toBe(true);
-      expect(operatorCan("viewer", p), p).toBe(false);
+      expect(operatorCan("viewer", p), p).toBe(p === "operator.self");
     }
+  });
+
+  it("setiap peran bisa memasang authenticator-nya sendiri (operator.self)", () => {
+    for (const role of OPERATOR_ROLES) expect(operatorCan(role, "operator.self"), role).toBe(true);
   });
 
   it("instruksi transfer (site.settings) & eksekusi hapus hanya milik owner", () => {

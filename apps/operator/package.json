@@ -13,6 +13,7 @@
     "@sai/core": "workspace:*",
     "@sai/db": "workspace:*",
     "@sai/platform": "workspace:*",
-    "@sai/ui": "workspace:*"
+    "@sai/ui": "workspace:*",
+    "uqr": "0.1.3"
   }
 }

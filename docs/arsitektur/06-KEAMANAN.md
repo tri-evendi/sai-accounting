@@ -61,7 +61,7 @@ Setiap baris menyebut penjaganya di kode dan tes yang menahannya.
 | Matriks **efektif** = bawaan + override peran + override pengguna + modul usaha | `tests/authz-overrides*.test.ts` |
 | **Modul usaha tidak pernah menggerbangi buku besar** — laporan tetap rekonsiliasi | `tests/business-modules-ledger.test.ts` |
 | Matriks tenant **terpisah** dari matriks perusahaan (kunci izinnya saling lepas, jadi salah matriks ditolak `tsc`) | `tests/tenant-authz.test.ts` |
-| Peran operator membagi **tindakan**: setiap server action memanggil `requireOperatorActionSession(izin)`. Register lisensi (`licence.register`) hanya `owner` dan `billing` | `tests/operator-roles.test.ts` |
+| Peran operator membagi **tindakan**: setiap server action memanggil `requireOperatorActionSession(izin)`. Register lisensi (`licence.register`) hanya `owner` dan `billing`; `operator.self` (pasang authenticator akun SENDIRI, sesudah otentikasi ulang) dipegang semua peran | `tests/operator-roles.test.ts` · `tests/operator-authenticator.test.tsx` |
 | **Kunci buku**: otentikasi ulang sebelum buku bisa ditulis | `tests/company-unlock.test.ts` |
 
 ### 3.3 Keutuhan buku besar
@@ -143,7 +143,7 @@ yang kedua menjalankan berkas sungguhan.
 | Arsip backup | **AES-256-CBC** + PBKDF2 200.000 iterasi + salt | Dienkripsi **sebelum** berkas meninggalkan mesin |
 | Keutuhan arsip backup | **SHA-256 atas ciphertext**, dikirim bersama arsip | AES-CBC tidak membawa pemeriksaan keutuhan sendiri |
 | Webhook pembayaran | **SHA-512** | Fail-closed |
-| MFA operator | **TOTP** | `OPERATOR_MFA` |
+| MFA operator | **TOTP**; QR dikodekan di server (`uqr`, SVG sebaris — rahasia tidak pernah ke layanan QR luar), konfirmasi dicatat dengan sidik SHA-256 rahasia, bukan rahasianya | `OPERATOR_MFA`; runbook menyalakan: `PRODUCTION.md` §Turning console MFA on |
 | Berkas lisensi on-premise | **Ed25519**, diverifikasi **luring** | `@sai/core/licence`; kunci publik **ditanam di kode** |
 | Transport | **TLS** (Let's Encrypt, HSTS `max-age=63072000; preload`) | Hanya Traefik yang mengikat :80/:443 |
 

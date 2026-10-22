@@ -41,7 +41,20 @@ const nextConfig: NextConfig = {
     root: AKAR,
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders(isProduction) }];
+    return [
+      { source: "/:path*", headers: securityHeaders(isProduction) },
+      /*
+       * Halaman QR authenticator: `force-dynamic` sudah membuat Next mengirim
+       * `private, no-cache, no-store`, tetapi itu PERILAKU bawaan yang bisa
+       * berubah bersama versi/konfigurasi. Jalur yang menjawab dengan rahasia
+       * TOTP menyatakannya sendiri — termasuk jawaban server action-nya (POST
+       * ke jalur yang sama).
+       */
+      {
+        source: "/accounts/authenticator",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
+    ];
   },
   /*
    * Konsol dulu berawalan `/operator` (sejak #154, ketika ia grup rute di

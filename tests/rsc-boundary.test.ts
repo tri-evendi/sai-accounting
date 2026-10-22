@@ -308,8 +308,13 @@ import { join } from "node:path";
  *   + `licence-register-panel` (konsol `/licences`): formulir draf (RHF),
  *     salin perintah, pilih berkas `.sai`, unduhan yang disusun peramban.
  *     Halamannya tetap server — perintahnya dirakit di sana.
+ * 202 → 203 (23 Okt 2026, pasang authenticator konsol operator):
+ *   + `authenticator-setup` (konsol `/accounts/authenticator`): bukti ulang →
+ *     QR → konfirmasi kode. Rahasia hanya hidup di state peramban; QR-nya
+ *     dikodekan di server dan `QrCode` sendiri tetap tanpa `"use client"`.
+ *     Halaman dan tabel kesiapannya tetap server.
  */
-const AMBANG_KLIEN = 202;
+const AMBANG_KLIEN = 203;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -467,6 +472,8 @@ const KLIEN_TERSAHKAN = [
   "apps/operator/src/app/(operator)/error.tsx",
   "apps/operator/src/app/(operator)/login/login-form.tsx",
   "apps/operator/src/app/global-error.tsx",
+  /* Pasang authenticator — lihat `AMBANG_KLIEN`. */
+  "apps/operator/src/components/operator/authenticator-setup.tsx",
   "apps/operator/src/components/operator/brand-mark-panel.tsx",
   /* Editor konten pendaratan: pulau client karena isinya memang interaksi —
      satu formulir per bagian, hasil simpan yang muncul tanpa memuat ulang, dan

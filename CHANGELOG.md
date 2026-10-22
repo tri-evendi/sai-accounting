@@ -20,7 +20,26 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.13.1 — 2026-10-22 — belum digelar
+## 0.14.0 — 2026-10-23 — belum digelar
+
+Kontrak bisa ditandai selesai, MFA konsol bisa dipasang dengan aplikasi authenticator, dan tanggal periode tidak lagi bergantung pada zona waktu server.
+
+### Baru
+
+- Kontrak punya status keempat, Selesai, untuk kontrak yang sudah ditandatangani dan pekerjaannya rampung — terpisah dari status pembayarannya.
+
+### Berubah
+
+- Perusahaan baru disiapkan di latar; halaman pembuatan menampilkan kemajuannya sampai selesai.
+
+### Perbaikan
+
+- Batas periode, tahun buku, dan penomoran dokumen selalu mengikuti kalender WIB, apa pun zona waktu servernya.
+- Kurs penyelesaian uang muka valas kini diambil dari tanggal yang tepat.
+
+---
+
+## 0.13.1 — 2026-10-22 (827e5a9)
 
 Pengerasan keamanan di sisi server; tidak ada perubahan pada tampilan maupun data.
 

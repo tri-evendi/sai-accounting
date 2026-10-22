@@ -80,15 +80,15 @@ describe("register mesin laporan", () => {
     expect(REPORT_ENGINES["trial-balance"]!.parityProven).toEqual({ date: "2026-10-22", books: 17 });
   });
 
-  it("Laba Rugi & Neraca: `go-parity` — Go ada, BERKAS masih TS sampai paritas produksi", () => {
+  it("Laba Rugi & Neraca: `go` — paritas PRODUKSI tercatat bersama peralihannya", () => {
     for (const id of ["income-statement", "balance-sheet"] as const) {
-      expect(reportEngine(id), id).toBe("go-parity");
-      /* Tanpa bukti produksi: `parityProven` ditulis bersama perpindahan ke
-         `go`, bukan sebelumnya — bukti yang mendahului paritasnya bohong. */
-      expect(REPORT_ENGINES[id]!.parityProven, id).toBeUndefined();
-      expect(exportJobKind(id), id).toBe("report.export");
+      expect(reportEngine(id), id).toBe("go");
+      /* Bukti ditulis bersama perpindahan ke `go`, bukan sebelumnya — bukti
+         yang mendahului paritasnya bohong (22 Okt 2026, 17 buku produksi). */
+      expect(REPORT_ENGINES[id]!.parityProven, id).toEqual({ date: "2026-10-22", books: 17 });
+      expect(exportJobKind(id), id).toBe("report.export_go");
     }
-    /* Setiap `go-parity` punya skrip paritas ISI berkas juga (`-xlsx`) —
+    /* Setiap laporan Go punya skrip paritas ISI berkas juga (`-xlsx`) —
        pelajaran Neraca Saldo: angka setara belum berarti berkas setara. */
     for (const [id, e] of ENTRIES) {
       expect(PKG.scripts[`${e.parityScript}-xlsx`], `${id}: ${e.parityScript}-xlsx`).toBeDefined();
@@ -161,8 +161,8 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(p.fromInstant).toBe(r.from.toISOString());
     expect(p.toInstant).toBe(r.to.toISOString());
     expect(p.asOfInstant).toBeUndefined();
-    /* Selama `go-parity`, penerbitnya sendiri MENOLAK — berkasnya milik TS. */
-    expect(() => goExportPayload(report, {})).toThrow(/bukan milik mesin Go/);
+    /* Sejak `go`, penerbitnya menerima laporan berperiode lewat jalur yang sama. */
+    expect(goExportPayload(report, {}, now).reportId).toBe("income-statement");
   });
 
   it("kolom pembanding (#557) ikut muatan Go — instan dari `comparisonRange`/`comparisonDate`", () => {
@@ -219,7 +219,7 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     const gen = baca("services", "integrator", "internal", "contract", "report_layout_gen.go");
     const himpunan = /var GoEngineReports = map\[string\]bool\{([\s\S]*?)\}/.exec(gen)?.[1] ?? "";
     for (const [id, e] of ENTRIES) {
-      const ada = new RegExp(`Report${id.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())}: true`).test(himpunan);
+      const ada = new RegExp(`Report${id.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())}:\\s+true`).test(himpunan);
       expect(ada, `${id} (${e.engine}) di GoEngineReports`).toBe(e.engine === "go");
     }
   });

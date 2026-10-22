@@ -87,14 +87,20 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * ketiga bentuknya (satu kolom, `preceding`, `previous_year`).
    */
   "income-statement": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/statements.go",
     parityScript: "parity:income-statement",
+    /* Paritas PRODUKSI 22 Okt 2026 (hanya baca, 17 buku, sesi utama):
+       102 setara (angka, 3 periode × tanpa/`unassigned`) · isi XLSX 153 setara (3 periode × 3 bentuk pembanding) · pusat biaya `unassigned` 51 setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-22", books: 17 },
   },
   "balance-sheet": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/statements.go",
     parityScript: "parity:balance-sheet",
+    /* Paritas PRODUKSI 22 Okt 2026 (hanya baca, 17 buku, sesi utama):
+       51 setara (angka, 3 tanggal) · isi XLSX 153 setara (3 tanggal × 3 bentuk pembanding) — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-22", books: 17 },
   },
 };
 

@@ -912,7 +912,9 @@ mengirim asalnya, dan pola segmen hasil Go = `SEGMEN` TS. Laporan berikutnya
 mengikuti pola yang sama, satu per satu: implementasi Go + kunci kontrak yang
 dibacanya + skrip paritas (angka DAN isi berkas) + entri `go-parity` → `go`.
 
-#### Laporan kedua & ketiga: Laba Rugi dan Neraca (`go-parity`, 22 Okt 2026)
+#### Laporan kedua & ketiga: Laba Rugi dan Neraca (`go` sejak 22 Okt 2026)
+
+✅ **Paritas produksi LULUS 22 Okt 2026** (sesi utama, hanya baca, 17 buku): Laba Rugi angka 102 setara · isi XLSX 153 setara (3 periode × tanpa/`preceding`/`previous_year`) · pusat biaya `unassigned` 51 setara; Neraca angka 51 setara · isi XLSX 153 setara — 0 berselisih · 0 gagal. Register dialihkan ke `go` dengan `parityProven: { date: "2026-10-22", books: 17 }`.
 
 Keputusan pemilik 22 Okt 2026: lebih banyak laporan pindah ke Go. Keduanya
 mengikuti jalur Neraca Saldo selangkah demi selangkah, dan BERHENTI di
@@ -1038,7 +1040,7 @@ Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 laporan pertama `go` (Neraca Saldo, 22 Okt 2026); Laba Rugi & Neraca `go-parity` (menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |

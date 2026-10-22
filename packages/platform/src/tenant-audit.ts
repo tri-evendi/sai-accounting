@@ -144,6 +144,8 @@ export async function writeTenantAuditLog(params: {
   action: TenantAuditAction;
   details?: Record<string, unknown>;
   request?: Request;
+  /** Alamat klien yang sudah diturunkan (penulis tanpa permintaan HTTP). Menang atas `request`. */
+  ipAddress?: string | null;
 }): Promise<void> {
   try {
     await controlDb.tenantAuditLog.create({
@@ -161,7 +163,12 @@ export async function writeTenantAuditLog(params: {
            pilihan penyerang menyesatkan penyelidikan yang membacanya — dan
            jejak tenant adalah tempat pendaftaran, penghapusan akun, dan
            tindakan operator tercatat. */
-        ipAddress: params.request ? clientIpFrom(params.request.headers) : null,
+        ipAddress:
+          params.ipAddress !== undefined
+            ? params.ipAddress
+            : params.request
+              ? clientIpFrom(params.request.headers)
+              : null,
       },
     });
   } catch (error) {

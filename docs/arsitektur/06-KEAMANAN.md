@@ -207,15 +207,53 @@ menyambung ke PostgreSQL sebagai superuser.
 
 | Lapis | Kontrol | Penjaga |
 |---|---|---|
-| **Env** | Tidak ada `env_file`. Setiap layanan menyebut env yang dibacanya (grup `x-env` di compose); rahasia punya daftar tolak: `OPERATOR_*` hanya `app-operator` (kecuali `OPERATOR_HOST` yang dipaksa kosong dan `OPERATOR_TRUSTED_PROXY_HOPS` yang bukan rahasia, di `app-customer`), `BACKUP_*`/`AWS_*` hanya `svc-integrator` + `job-backup`, `AUTH_SECRET` hanya `app-customer`, `PROVISION_DATABASE_URL` hanya yang membuat basis data. Daftar izinnya DIHITUNG dari graf impor titik masuk tiap layanan, jadi yang kurang satu nama ketahuan di CI, bukan di produksi | `tests/compose-env-allowlist.test.ts` · `bun run env:inventory` |
+| **Env** | Tidak ada `env_file`. Setiap layanan menyebut env yang dibacanya (grup `x-env` di compose); rahasia punya daftar tolak: `OPERATOR_*` hanya `app-operator` (kecuali `OPERATOR_HOST` yang dipaksa kosong dan `OPERATOR_TRUSTED_PROXY_HOPS` yang bukan rahasia, di `app-customer`), `BACKUP_*`/`AWS_*` hanya `svc-integrator` + `job-backup`, `AUTH_SECRET` hanya `app-customer`, `PROVISION_DATABASE_URL` hanya yang membuat basis data (`svc-worker`, `migrate`, `job-backup` — TIDAK `app-customer`). Daftar izinnya DIHITUNG dari graf impor titik masuk tiap layanan, jadi yang kurang satu nama ketahuan di CI, bukan di produksi | `tests/compose-env-allowlist.test.ts` · `bun run env:inventory` |
 | **uid** | Setiap tahap runtime berakhir dengan `USER` non-root, uid 1000 — pemilik bersama `hasil`/`cadangan`/`documents`/`audit`. `/app` tetap milik root: kode tidak bisa mengubah dirinya. `pg` diturunkan entrypoint resmi ke `postgres` (`gosu`) sebelum server jalan | `tests/containers-non-root.test.ts` |
-| **Peran PostgreSQL** | `sai_owner` (NOSUPERUSER CREATEDB, pemilik; `migrate` + penyediaan) · `sai_app` (DML; aplikasi & pekerja) · `sai_backup` (`sai_app` + `pg_read_all_data`; jalur `tenant`). Superuser hanya untuk `pg`, pencari sandi PgBouncer, dan perkakas `job-backup`. Buku baru dihibahkan ke `sai_app` SEBELUM didaftarkan. Sisa: `app-customer` memegang kredensial PEMILIK untuk penyediaan PT | `tests/postgres-least-privilege.test.ts` · `scripts/postgres-roles.py check` |
+| **Peran PostgreSQL** | `sai_owner` (NOSUPERUSER CREATEDB, pemilik; `migrate` + penyediaan) · `sai_app` (DML; aplikasi & pekerja) · `sai_backup` (`sai_app` + `pg_read_all_data`; jalur `tenant`). Superuser hanya untuk `pg`, pencari sandi PgBouncer, dan perkakas `job-backup`. Buku baru dihibahkan ke `sai_app` SEBELUM didaftarkan. Sejak Okt 2026 `app-customer` memegang `sai_app` SAJA: penyediaan PT adalah pekerjaan antrean `company.provision` yang dikerjakan `svc-worker` (jalur `interactive`), satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL` (§3.10) | `tests/postgres-least-privilege.test.ts` · `tests/provisioning-off-app-customer.test.ts` · `scripts/postgres-roles.py check` |
 
 Sandi peran tidak pernah lewat argv: `scripts/postgres-roles.py` mengirim
 verifier SCRAM lewat stdin `psql`, dan memutar sandi dengan membuat ulang
 hanya layanan yang environment-nya berubah menurut `docker compose config`
 (`tests/postgres-roles-script.test.ts`). Urutan peralihan, verifikasi, dan jalan
 mundurnya: PRODUCTION.md §Least-privilege.
+
+### 3.10 Penyediaan PT di luar container yang menghadap internet (Okt 2026)
+
+Sesudah peralihan hak minimum, satu risiko sisa tercatat: `/companies/new`
+membuat basis data PT **di dalam permintaan HTTP**, jadi `app-customer`
+memegang `PROVISION_DATABASE_URL` (`sai_owner`, CREATEDB, pemilik setiap buku).
+Pemilik bukan superuser — tanpa berkas server, program, atau peran — tetapi
+RCE di `app-customer` tetap berarti DDL di setiap buku PT.
+
+Penyediaan kini pekerjaan antrean `company.provision` (jalur `interactive`):
+
+| Sisi | Yang dipegang | Yang dikerjakan |
+|---|---|---|
+| `app-customer` | `sai_app` saja | `POST /api/companies` → gerbang kuota + validasi → `publishJob` (dedupe = nama basis data) → `202 { jobId }`; `GET /api/companies/provisioning/[id]` menjawab tahap/hasil, tidak pernah `payload` atau `last_error` |
+| `svc-worker` (peran `interactive`) | `sai_app` + `PROVISION_DATABASE_URL` | `provisionCompany`: CREATE DATABASE → migration (tiap berkas + catatannya satu transaksi) → hibah `sai_app` → registry PALING AKHIR → dua jejak audit |
+
+Yang dijaga bentuknya sama dengan versi HTTP, plus dua yang baru:
+
+- **Registry paling akhir** — PT terdaftar hanya sesudah bukunya lengkap dan
+  terhibah; kegagalan di tengah tidak meninggalkan PT setengah jadi yang terlihat.
+- **Klik ganda / dua tab = satu basis data** — kunci dedupe `company.provision:<nama basis data>`;
+  penerbitan kedua MENEMPEL ke pekerjaan aktif. Kunci pekerjaan yang sudah
+  berakhir dilepas sebelum menerbitkan, jadi kegagalan bisa diulang.
+- **Pengulangan melanjutkan, tidak menimpa** — buku setengah jadi membawa tanda
+  `COMMENT ON DATABASE 'sai:provisioning t<tenant> <slug>'` sampai tepat sebelum
+  registry; pengulangan atas permintaan yang sama melanjutkan dari migration
+  terakhir yang tercatat. Basis data berisi tanpa tanda itu (mis. buku PT
+  terhapus yang disimpan untuk retensi) tetap ditolak `database_not_empty`.
+
+**Sisa yang disadari.** `svc-worker` kini pemegang kredensial pemilik yang hidup
+terus, dan keempat perannya berbagi environment (penyelia satu container,
+09 §3.2). Ia tidak menghadap internet; masukannya baris `jobs` di basis data
+kendali. RCE di `app-customer` (DML atas kendali lewat `sai_app`) bisa
+menerbitkan `company.provision` sendiri — yang didapatnya: basis data baru
+berawalan `sai_` yang namanya lolos `assertSafeDatabaseName`, bukan DDL atas buku
+yang sudah ada (berisi + tanpa tanda = ditolak). Penguatan berikutnya yang
+murah, bila diperlukan: mencabut `PROVISION_DATABASE_URL` dari tiga peran lain
+di skrip compose-nya (`env -u`).
 
 ## 4. Sembilan kelas kegagalan yang dijaga
 

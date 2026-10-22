@@ -11,8 +11,19 @@
  * ada yang terlanjur dibuat di server. Dengan langkah yang tercetak satu per
  * satu, layar yang gagal masih menceritakan sejauh mana ia sampai.
  *
- * Aliran datanya NDJSON (satu objek JSON per baris) dari `POST /api/companies`.
- * Dibaca dengan `fetch` + `ReadableStream` — tanpa pustaka, tanpa polling.
+ * ══ SEJAK OKT 2026: PEKERJAAN DI SERVER, LAYAR MENUNGGU ════════════════════
+ * `POST /api/companies` tidak lagi membuat basis data di dalam permintaannya
+ * (kredensial PEMILIK PostgreSQL pindah dari `app-customer` ke `svc-worker`).
+ * Ia menjawab `202 { jobId }`, dan layar ini MENANYAKAN status pekerjaan itu
+ * (`GET /api/companies/provisioning/[id]`) sampai selesai atau gagal. Tahap
+ * yang ditampilkan tetap empat tahap yang sama, kini dibaca dari angka
+ * kemajuan pekerjaan (`phaseFromProgress`), ditambah satu keadaan baru yang
+ * jujur: MENUNGGU GILIRAN di antrean.
+ *
+ * Id pekerjaannya ditulis ke alamat halaman (`?job=`): pekerjaannya tidak lagi
+ * mati bersama tabnya, jadi tab yang dimuat ulang — atau dibuka lagi nanti —
+ * kembali menunggu pekerjaan yang SAMA alih-alih menawarkan formulir kosong
+ * yang mengundang penyediaan kedua.
  *
  * ══ SATU LANGKAH YANG SENGAJA TIDAK OTOMATIS ═══════════════════════════════
  * Setelah selesai, pengguna TIDAK dilempar ke perusahaan baru. Berpindah
@@ -33,7 +44,7 @@
  * kegagalan yang tidak diumumkan adalah kegagalan yang tidak diketahui.
  */
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Alert, Flex, Typography, theme } from "antd";
@@ -48,6 +59,7 @@ import {
   normalizeSlug,
   type ProvisionPhase,
 } from "@/lib/company-provisioning-shared";
+import type { ProvisionStatus } from "@/lib/company-provisioning-queue";
 import {
   ProvisionAnnouncer,
   ProvisionProgress,
@@ -59,6 +71,26 @@ import {
 const { Text } = Typography;
 
 const IDLE: ProvisionState = { current: null, completed: new Set() };
+
+/** Selang tanya status. Penyediaan puluhan detik; 1,5 detik cukup terasa hidup. */
+const POLL_MS = 1500;
+/** Antrean yang lebih lama dari ini disebut terus terang (lihat `queuedSlow`). */
+const SLOW_QUEUE_SECONDS = 60;
+/** Kegagalan jaringan BERUNTUN sebelum layar berhenti bertanya. */
+const MAX_NETWORK_FAILURES = 4;
+
+/** Jawaban rute status — `failed` membawa kalimat yang sudah diterjemahkan. */
+type StatusResponse =
+  | Exclude<ProvisionStatus, { state: "failed" }>
+  | { state: "failed"; phase: ProvisionPhase; message: string };
+
+/** Tulis/hapus `?job=` tanpa navigasi — lihat kepala berkas. */
+function rememberJob(jobId: number | null) {
+  const url = new URL(window.location.href);
+  if (jobId === null) url.searchParams.delete("job");
+  else url.searchParams.set("job", String(jobId));
+  window.history.replaceState(window.history.state, "", url);
+}
 
 export function CompanyForm({
   /**
@@ -72,15 +104,28 @@ export function CompanyForm({
    * penyiapan perusahaan yang baru dibuat (`/t/{tenant}/{company}/setup`).
    */
   tenantSlug,
+  /**
+   * Pekerjaan penyediaan yang sedang berjalan (`?job=`), bila halaman dimuat
+   * ulang di tengah penyediaan — layar langsung kembali menunggunya.
+   */
+  initialJobId = null,
 }: {
   tenantId: number;
   tenantSlug: string;
+  initialJobId?: number | null;
 }) {
   const t = useT();
   const { token } = theme.useToken();
   const router = useRouter();
   /* Sesi dibaca DAN ditulis di sini (issue #339) — lihat `selectIfUnset`. */
   const { data: session, update } = useSession();
+  /* Penanya status hidup lebih lama daripada satu render (halaman yang dimuat
+     ulang di tengah penyediaan bahkan mulai SEBELUM sesi selesai dimuat), jadi
+     sesi dibaca lewat ref — bukan dari closure render saat penanya dimulai. */
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -90,6 +135,10 @@ export function CompanyForm({
   const [announcement, setAnnouncement] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [createdSlug, setCreatedSlug] = useState<string | null>(null);
+  /* `null` = tidak sedang antre; angka = detik menunggu giliran. */
+  const [queuedFor, setQueuedFor] = useState<number | null>(null);
+  /* Penanya status yang aktif — dihentikan saat komponen dilepas. */
+  const following = useRef<number | null>(null);
 
   /*
    * Slug mengikuti nama sampai pengguna menyentuhnya sendiri. Setelah itu ia
@@ -145,10 +194,123 @@ export function CompanyForm({
    * keanggotaan di server (callback `jwt`, `lib/auth.ts`).
    */
   async function selectIfUnset(createdCompanyId: number | undefined) {
-    const adopt = companyToAdoptAfterCreate(session?.user?.companyId, createdCompanyId);
+    const adopt = companyToAdoptAfterCreate(sessionRef.current?.user?.companyId, createdCompanyId);
     if (adopt == null) return;
     await update({ companyId: adopt });
   }
+
+  const stepLabel = useCallback(
+    (phase: ProvisionPhase): string =>
+      ({
+        validate: t("companies.stepValidate"),
+        create_database: t("companies.stepDatabase"),
+        migrate: t("companies.stepMigrate"),
+        register: t("companies.stepRegister"),
+        done: t("companies.doneTitle"),
+      })[phase],
+    [t]
+  );
+
+  /**
+   * Tanya status pekerjaan `jobId` sampai ia selesai atau gagal.
+   *
+   * Satu penanya pada satu waktu (`following`): pengiriman kedua atau efek
+   * yang terpasang dua kali (Strict Mode) tidak boleh melahirkan dua putaran
+   * yang saling menimpa keadaan layar.
+   */
+  const follow = useCallback(
+    async (jobId: number) => {
+      if (following.current === jobId) return;
+      following.current = jobId;
+      setRunning(true);
+
+      let lastPhase: string | null = null;
+      let networkFailures = 0;
+      const announce = (key: string, message: string) => {
+        if (key === lastPhase) return;
+        lastPhase = key;
+        setAnnouncement(message);
+      };
+
+      try {
+        while (following.current === jobId) {
+          let status: StatusResponse;
+          try {
+            const res = await fetch(`/api/companies/provisioning/${jobId}`, { cache: "no-store" });
+            if (res.status === 404) {
+              /* Pekerjaan yang tidak ada (atau bukan milik tenant ini) — alamat
+                 basi. Kembali ke formulir kosong, tanpa pesan galat palsu. */
+              rememberJob(null);
+              return;
+            }
+            if (!res.ok) throw new Error(String(res.status));
+            status = (await res.json()) as StatusResponse;
+            networkFailures = 0;
+          } catch {
+            networkFailures += 1;
+            if (networkFailures >= MAX_NETWORK_FAILURES) {
+              /* `?job=` SENGAJA dibiarkan: muat ulang melanjutkan penantian. */
+              setError(t("companies.errNetwork"));
+              return;
+            }
+            await new Promise((r) => setTimeout(r, POLL_MS * networkFailures));
+            continue;
+          }
+
+          if (status.state === "queued") {
+            setQueuedFor(status.waitingSeconds);
+            announce("queued", t("companies.queued"));
+          } else if (status.state === "running") {
+            setQueuedFor(null);
+            /* Diklaim tapi belum melapor = tahap pertama sudah dimulai. */
+            const phase = status.phase ?? "validate";
+            applyEvent({ phase, progress: status.migrateProgress });
+            announce(phase, stepLabel(phase));
+          } else if (status.state === "done") {
+            setQueuedFor(null);
+            applyEvent({ phase: "done" });
+            announce("done", stepLabel("done"));
+            rememberJob(null);
+            setCreatedSlug(status.slug);
+            /* Sesudah kartu sukses tampil, bukan sebelumnya: pemilihan sesi
+               tidak boleh menahan kabar bahwa perusahaannya sudah jadi. */
+            await selectIfUnset(status.companyId);
+            return;
+          } else {
+            setQueuedFor(null);
+            const failedAt = PROVISION_STEPS.indexOf(status.phase as (typeof PROVISION_STEPS)[number]);
+            setProgress((prev) => ({
+              ...prev,
+              current: status.phase,
+              completed: new Set(PROVISION_STEPS.slice(0, Math.max(0, failedAt))),
+              failed: true,
+            }));
+            setError(status.message);
+            setAnnouncement(status.message);
+            rememberJob(null);
+            return;
+          }
+
+          await new Promise((r) => setTimeout(r, POLL_MS));
+        }
+      } finally {
+        if (following.current === jobId) following.current = null;
+        setRunning(false);
+      }
+    },
+    // `applyEvent`/`selectIfUnset` membaca setter & sesi terbaru lewat closure
+    // render ini; penanya yang sudah berjalan tidak perlu dimulai ulang.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, stepLabel]
+  );
+
+  /* Halaman yang dibuka dengan `?job=` langsung kembali menunggu. */
+  useEffect(() => {
+    if (initialJobId != null) void follow(initialJobId);
+    return () => {
+      following.current = null;
+    };
+  }, [initialJobId, follow]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -159,79 +321,32 @@ export function CompanyForm({
     setProgress({ current: null, completed: new Set() });
     setAnnouncement(null);
     setCreatedSlug(null);
+    setQueuedFor(null);
 
+    let jobId: number;
     try {
       const res = await fetch("/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), slug: effectiveSlug }),
       });
-
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => null);
+      const data = await res.json().catch(() => null);
+      if (res.status !== 202 || typeof data?.jobId !== "number") {
         const fieldErrors = data?.details?.fieldErrors as Record<string, string[]> | undefined;
         const first = fieldErrors ? Object.values(fieldErrors).flat().find(Boolean) : undefined;
         setError(first ?? data?.error ?? t("companies.errFailed"));
+        setRunning(false);
         return;
       }
-
-      let lastPhase: string | null = null;
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      // Membaca NDJSON: potongan bisa berhenti di tengah baris, jadi hanya
-      // baris yang sudah lengkap (punya "\n") yang diurai.
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const raw of lines) {
-          if (!raw.trim()) continue;
-          let event: {
-            phase: string;
-            message: string;
-            detail?: string;
-            progress?: number;
-            /** Hanya pada `done` — lihat `selectIfUnset` (issue #339). */
-            companyId?: number;
-          };
-          try {
-            event = JSON.parse(raw);
-          } catch {
-            continue;
-          }
-
-          if (event.phase === "error") {
-            setError(event.message);
-            setProgress((prev) => ({ ...prev, failed: true }));
-            setAnnouncement(event.message);
-            return;
-          }
-
-          applyEvent(event);
-          // Diumumkan hanya saat TAHAP berpindah — bukan tiap berkas migration.
-          if (event.phase !== lastPhase) {
-            lastPhase = event.phase;
-            setAnnouncement(event.message);
-          }
-
-          if (event.phase === "done") {
-            setCreatedSlug(effectiveSlug);
-            /* Sesudah kartu sukses tampil, bukan sebelumnya: pemilihan sesi
-               tidak boleh menahan kabar bahwa perusahaannya sudah jadi. */
-            await selectIfUnset(event.companyId);
-          }
-        }
-      }
+      jobId = data.jobId;
     } catch {
       setError(t("companies.errNetwork"));
-    } finally {
       setRunning(false);
+      return;
     }
+
+    rememberJob(jobId);
+    await follow(jobId);
   }
 
   if (createdSlug) {
@@ -374,6 +489,19 @@ export function CompanyForm({
           </div>
         )}
 
+        {queuedFor !== null && (
+          /* Antrean disebut terus terang — layar yang diam tanpa tahap aktif
+             tak bisa dibedakan dari layar yang macet. Lebih dari semenit
+             berarti pekerja latar sedang sibuk atau mati, dan penunggunya
+             berhak tahu bahwa ia tidak harus tetap di sini. */
+          <Alert
+            type={queuedFor >= SLOW_QUEUE_SECONDS ? "warning" : "info"}
+            showIcon
+            message={
+              queuedFor >= SLOW_QUEUE_SECONDS ? t("companies.queuedSlow") : t("companies.queued")
+            }
+          />
+        )}
         {(running || progress.current !== null || progress.failed) && (
           <ProvisionProgress state={progress} />
         )}

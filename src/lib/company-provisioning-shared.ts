@@ -290,3 +290,167 @@ export function assertSafeDatabaseName(name: string): void {
     );
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// PENYEDIAAN LEWAT ANTREAN (Okt 2026)
+//
+// Sejak `company.provision` dikerjakan `svc-worker` — bukan di dalam permintaan
+// HTTP `app-customer` — tiga hal harus menyeberang lewat baris `jobs` di basis
+// data kendali: TAHAP yang sedang berjalan, SEBAB kegagalan, dan apakah buku
+// setengah jadi boleh DILANJUTKAN. Ketiganya murni dan teruji di sini, sebab
+// pekerja (penulis) dan rute status (pembaca) hidup di proses yang berbeda dan
+// satu-satunya yang mereka bagi adalah aturan di berkas ini.
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Tahap → angka `jobs.progress` (0–100). Kolom itu satu-satunya kanal kemajuan
+ * antrean, jadi TAHAP dikodekan sebagai rentang angka — bukan kolom baru yang
+ * hanya dipakai satu `kind`. Rentang `migrate` 20–85 membawa pecahan berkas
+ * migration yang sudah diterapkan.
+ */
+export const PROVISION_PROGRESS = {
+  validate: 5,
+  create_database: 15,
+  migrateFrom: 20,
+  migrateTo: 85,
+  register: 92,
+  done: 100,
+} as const;
+
+/** Angka kemajuan untuk satu peristiwa penyediaan. */
+export function progressForEvent(event: Pick<ProvisionEvent, "phase" | "progress">): number {
+  switch (event.phase) {
+    case "validate":
+      return PROVISION_PROGRESS.validate;
+    case "create_database":
+      return PROVISION_PROGRESS.create_database;
+    case "migrate": {
+      const f = Math.min(1, Math.max(0, event.progress ?? 0));
+      return Math.round(
+        PROVISION_PROGRESS.migrateFrom +
+          (PROVISION_PROGRESS.migrateTo - PROVISION_PROGRESS.migrateFrom) * f
+      );
+    }
+    case "register":
+      return PROVISION_PROGRESS.register;
+    case "done":
+      return PROVISION_PROGRESS.done;
+  }
+}
+
+/**
+ * Kebalikan `progressForEvent`: tahap (dan pecahan migration) dari angka
+ * `jobs.progress`. `0` = belum mulai (masih antre, atau baru diklaim).
+ */
+export function phaseFromProgress(progress: number): {
+  phase: ProvisionPhase | null;
+  migrateProgress?: number;
+} {
+  if (progress <= 0) return { phase: null };
+  if (progress >= PROVISION_PROGRESS.done) return { phase: "done", migrateProgress: 1 };
+  if (progress >= PROVISION_PROGRESS.register) return { phase: "register", migrateProgress: 1 };
+  if (progress >= PROVISION_PROGRESS.migrateFrom) {
+    const span = PROVISION_PROGRESS.migrateTo - PROVISION_PROGRESS.migrateFrom;
+    return {
+      phase: "migrate",
+      migrateProgress: Math.min(1, (progress - PROVISION_PROGRESS.migrateFrom) / span),
+    };
+  }
+  if (progress >= PROVISION_PROGRESS.create_database) return { phase: "create_database" };
+  return { phase: "validate" };
+}
+
+/**
+ * SEBAB kegagalan sebagai teks yang bisa diurai kembali.
+ *
+ * Pelari menulis `last_error` = `${name}: ${message}`; teks itu milik LOG dan
+ * konsol operator, tidak pernah layar. Yang boleh menyeberang ke layar hanya
+ * KODE-nya (lalu dikalimatkan kamus, `provisionErrorMessage`), jadi kode itu
+ * ditanam dalam penanda yang bentuknya kita kendalikan: `[[provision {...}]]`.
+ * `values` dibatasi ke string/angka pendek — slug, nama basis data, jumlah tabel.
+ */
+const PENANDA_GAGAL = /\[\[provision (\{[^\]]*\})\]\]/;
+
+export function encodeProvisionFailure(error: ProvisionError): string {
+  const values: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(error.values ?? {})) {
+    if (typeof v === "number") values[k] = v;
+    else values[k] = String(v).replace(/[[\]{}"\\]/g, "").slice(0, 80);
+  }
+  const json = JSON.stringify({ code: error.code ?? null, phase: error.phase, values });
+  return `[[provision ${json}]] ${error.message}`;
+}
+
+export interface DecodedProvisionFailure {
+  code: ProvisionErrorCode | null;
+  phase: ProvisionPhase | null;
+  values: Record<string, string | number>;
+}
+
+export function decodeProvisionFailure(lastError: string | null | undefined): DecodedProvisionFailure {
+  const kosong: DecodedProvisionFailure = { code: null, phase: null, values: {} };
+  const m = lastError ? PENANDA_GAGAL.exec(lastError) : null;
+  if (!m) return kosong;
+  try {
+    const raw = JSON.parse(m[1]!) as { code?: unknown; phase?: unknown; values?: unknown };
+    const code = (PROVISION_ERROR_CODES as readonly string[]).includes(String(raw.code))
+      ? (raw.code as ProvisionErrorCode)
+      : null;
+    const phases: readonly string[] = ["validate", "create_database", "migrate", "register"];
+    const phase = phases.includes(String(raw.phase)) ? (raw.phase as ProvisionPhase) : null;
+    const values: Record<string, string | number> = {};
+    if (raw.values && typeof raw.values === "object") {
+      for (const [k, v] of Object.entries(raw.values as Record<string, unknown>)) {
+        if (typeof v === "string" || typeof v === "number") values[k] = v;
+      }
+    }
+    return { code, phase, values };
+  } catch {
+    return kosong;
+  }
+}
+
+/**
+ * Kunci dedupe satu penyediaan: NAMA BASIS DATA, bukan slug atau pengguna.
+ * Nama basis data adalah ruang nama fisik server — dua pekerjaan aktif untuk
+ * satu nama berarti dua `CREATE DATABASE`/migration yang saling tabrak di buku
+ * yang sama. Klik ganda, dua tab, atau dua admin tenant yang sama-sama menekan
+ * tombol berakhir di SATU pekerjaan.
+ */
+export function provisionDedupeKey(databaseName: string): string {
+  return `company.provision:${databaseName}`;
+}
+
+/**
+ * Tanda di `COMMENT ON DATABASE` selama buku disediakan dan BELUM terdaftar.
+ *
+ * Pengulangan hanya boleh MELANJUTKAN buku yang membawa tanda ini untuk
+ * permintaan yang sama (tenant + slug). Tanpanya, "basis data sudah ada dan
+ * berisi tabel" tidak bisa dibedakan dari buku PT yang dihapus dari registry
+ * tetapi DISIMPAN (retensi UU KUP) — dan melanjutkannya berarti mendaftarkan
+ * perusahaan baru di atas buku lama orang lain. Tanda dihapus SEBELUM registry
+ * ditulis, jadi buku yang sudah pernah terdaftar tidak pernah membawanya.
+ */
+export function provisioningMarker(tenantId: number, slug: string): string {
+  return `sai:provisioning t${tenantId} ${normalizeSlug(slug)}`;
+}
+
+/**
+ * Dari migration ke-berapa sebuah buku setengah jadi boleh dilanjutkan.
+ *
+ * `null` = TIDAK boleh: ada migration yang menggantung, nama yang bukan milik
+ * kita, urutan yang melompat, atau checksum yang berbeda (berkasnya berubah
+ * sejak percobaan sebelumnya — buku itu dibangun dari skema lain). Yang
+ * diterima hanya AWALAN yang persis dari daftar migration kita.
+ */
+export function resumeIndex(
+  applied: ReadonlyArray<{ nama: string; checksum: string; selesai: boolean }>,
+  ours: ReadonlyArray<{ nama: string; checksum: string }>
+): number | null {
+  if (applied.length > ours.length) return null;
+  for (const [i, a] of applied.entries()) {
+    const o = ours[i]!;
+    if (!a.selesai || a.nama !== o.nama || a.checksum !== o.checksum) return null;
+  }
+  return applied.length;
+}

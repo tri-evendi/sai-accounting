@@ -396,6 +396,12 @@ export async function writeAuditLog(params: {
   entityId?: number;
   details?: Record<string, unknown>;
   request?: Request;
+  /**
+   * Alamat klien yang SUDAH diturunkan di tempat lain — untuk penulis tanpa
+   * permintaan HTTP (pekerja `company.provision` mencatat alamat yang
+   * diturunkan rute penerbitnya). Menang atas `request` bila disebut.
+   */
+  ipAddress?: string | null;
 }) {
   try {
     await prisma.auditLog.create({
@@ -410,7 +416,7 @@ export async function writeAuditLog(params: {
         entity: params.entity,
         entityId: params.entityId ?? null,
         details: params.details ? JSON.stringify(params.details) : null,
-        ipAddress: getClientIp(params.request),
+        ipAddress: params.ipAddress !== undefined ? params.ipAddress : getClientIp(params.request),
       },
     });
   } catch (err) {

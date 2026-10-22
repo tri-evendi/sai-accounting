@@ -350,24 +350,35 @@ describe("pesan kegagalan penyediaan: berbahasa tugas, bukan berbahasa driver", 
     }
   });
 
-  it("route handler tidak punya jalan lain untuk mengirim galat ke layar", () => {
+  it("rute STATUS tidak punya jalan lain untuk mengirim galat ke layar", () => {
     /*
      * Penjaga tingkat sumber, karena inilah bentuk regresi yang paling mudah
      * terjadi: satu `error.message` yang ditambahkan "supaya lebih informatif"
      * mengembalikan kebocoran nomor koneksi, SQLState, dan nama pengguna basis
      * data — dan tidak ada tes perilaku yang akan menyebutkannya.
      */
-    const source = readFileSync(
-      join(__dirname, "..", "src", "app", "api", "companies", "route.ts"),
+    /* Sejak Okt 2026 galatnya tidak lagi lahir di route penerbit, melainkan
+       di pekerja (`svc-worker`) — dan menyeberang ke layar HANYA lewat rute
+       status + pembacanya. Keduanya dijaga: kalimat kamus, bukan teks log. */
+    const pembaca = readFileSync(
+      join(__dirname, "..", "src", "lib", "company-provisioning-queue.ts"),
       "utf8"
     );
+    const rute = readFileSync(
+      join(__dirname, "..", "src", "app", "api", "companies", "provisioning", "[id]", "route.ts"),
+      "utf8"
+    );
+    const source = pembaca + rute;
     // Komentar dibuang lebih dulu — catatan yang MENJELASKAN kebocoran lama
     // (dan mengutip bentuknya) bukan kebocoran, dan penjaga yang melarang
     // penjelasannya akan dilucuti pada review berikutnya.
     const kode = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(kode).toContain("provisionErrorMessage(");
-    expect(kode).toContain("console.error(");
     expect(kode).not.toMatch(/\berror\.message\b/);
+    /* `last_error` dibaca untuk DIURAI, tidak pernah dipulangkan apa adanya. */
+    expect(kode).toContain("decodeProvisionFailure(row.lastError)");
+    const ruteKode = rute.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    expect(ruteKode).not.toMatch(/lastError|payload/);
   });
 });
 

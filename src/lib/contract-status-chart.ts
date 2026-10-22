@@ -29,10 +29,18 @@
  *
  * Dan sesudah perbaikan ini, grafiknya sendiri menjadi bukti untuk keputusan
  * itu: irisan "Completed" akan terlihat, dengan jumlahnya.
+ *
+ * == KEPUTUSANNYA (23 Okt 2026) ===========================================
+ * Pemilik mengesahkan `completed` sebagai status keempat. Daftar di bawah kini
+ * DIBACA dari `CONTRACT_STATUSES`, bukan disalin — salinan tiga-nilai itulah
+ * yang dulu menjatuhkan 16,6% data. Invarian "setiap kontrak terhitung" tetap
+ * berlaku untuk status kelima yang mungkin muncul di data.
  */
 
-/** Tiga status yang kosakata aplikasi kenal, dalam urutan yang MENENTUKAN warna. */
-const DIKENAL = ["signed", "pending", "canceled"] as const;
+import { CONTRACT_STATUSES } from "@sai/core/constants";
+
+/** Status yang kosakata aplikasi kenal, dalam urutan yang MENENTUKAN warna. */
+const DIKENAL = CONTRACT_STATUSES;
 
 export type StatusDikenal = (typeof DIKENAL)[number];
 
@@ -53,13 +61,13 @@ export function labelCadangan(status: string): string {
 }
 
 /**
- * Irisan donat: tiga yang dikenal dalam urutan tetap, lalu sisanya.
+ * Irisan donat: yang dikenal dalam urutan tetap, lalu sisanya.
  *
- * Urutan tiga yang pertama TIDAK boleh berubah — `statusTones` di
- * `dashboard-charts.tsx` dipasangkan per POSISI, jadi hijau/kuning/merah
- * menempel pada sah/menunggu/dibatalkan lewat urutan ini, bukan lewat namanya.
- * Status di luar kosakata jatuh ke posisi ≥ 3 dan mendapat `unknownTone`, yang
- * memang sudah menjadi cadangan di sana.
+ * Urutan yang dikenal TIDAK boleh berubah — `statusTones` di
+ * `dashboard-charts.tsx` dipasangkan per POSISI, jadi hijau/kuning/merah/biru
+ * menempel pada sah/menunggu/dibatalkan/selesai lewat urutan ini, bukan lewat
+ * namanya. Status di luar kosakata jatuh ke posisi ≥ 4 dan mendapat
+ * `unknownTone`, yang memang sudah menjadi cadangan di sana.
  *
  * Yang tak dikenal diurutkan menurut namanya — bukan menurut jumlahnya — supaya
  * warna satu status tidak berpindah hanya karena datanya bergerak.

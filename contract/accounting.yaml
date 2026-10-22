@@ -28,8 +28,20 @@
 #   • `closing_journal_type` — jenis jurnal penutup tahunan (#555) yang DIBUANG
 #                       Laba Rugi; dibaca `year-close.ts` dan Laba Rugi Go.
 #
-# Yang SENGAJA BELUM ada: saldo normal per tipe, `CONTRACT_STATUSES`,
-# `CURRENCIES`, ambang materialitas. Tidak satu pun laporan Go membacanya —
+#   • `currencies`, `invoice_statuses`, `contract_statuses` — PENGECUALIAN
+#                       yang DISEBUT dari aturan di atas: dibangkitkan atas
+#                       keputusan pemilik (23 Okt 2026) SEBELUM pembaca Go
+#                       pertamanya ada, supaya pemeriksa kesesuaian data &
+#                       materialitas yang kelak pindah ke Go mewarisi kosakata
+#                       yang sama dengan zod — bukan salinan ketiga. Pembaca TS
+#                       hari ini: `packages/core/src/constants.ts` (re-ekspor),
+#                       zod `validations/{contract,invoice,fx}.ts`, dan
+#                       `scripts/check-data-conformance.ts`. Daftar
+#                       pengecualiannya di `tests/contract-accounting.test.ts`;
+#                       pembaca Go pertama MENCORETNYA dari sana.
+#
+# Yang SENGAJA BELUM ada: saldo normal per tipe, ambang materialitas. Tidak
+# satu pun laporan Go membacanya —
 # saldo normal hanya dibaca formulir bagan akun & buku besar (TS), dan
 # `accumulated_depreciation` membuktikan ia BUKAN turunan kategori (aset,
 # saldo normal kredit). Laba Rugi & Neraca memakai sisi KATEGORI, bukan sisi
@@ -145,3 +157,40 @@ income_statement:
 # baru ditutup melaporkan laba NOL); Neraca dan Neraca Saldo MEMASUKKANNYA —
 # di situlah Laba Ditahan memperoleh saldonya.
 closing_journal_type: closing
+
+# ── Mata uang ──────────────────────────────────────────────────────────────
+# Kode ISO 4217 (tiga huruf besar) yang ditransaksikan aplikasi. URUTANNYA
+# BERMAKNA: urutan pilihan formulir. `base` = mata uang buku besar — setiap
+# `base_amount` dinyatakan dalam mata uang ini, dan ia wajib salah satu
+# `values`. Kode lain di data (mis. `LC` warisan — cara bayar, bukan mata uang)
+# adalah temuan `check-data-conformance`, bukan anggota daftar ini.
+currencies:
+  base: IDR
+  values:
+    - USD
+    - CNY
+    - IDR
+
+# ── Status dokumen ─────────────────────────────────────────────────────────
+# Faktur: tiga nilai. Kontrak: tiga nilai yang SAMA, dalam urutan yang sama,
+# ditambah `completed` (disahkan pemilik 23 Okt 2026 — kontrak yang selesai
+# dijalankan; BUKAN "lunas", pelunasan tetap dihitung dari pembayaran).
+#
+# Generator menolak `contract_statuses` yang tidak DIAWALI `invoice_statuses`
+# persis: tiga posisi pertama dipasangkan dengan nada donat status (sah →
+# hijau, menunggu → kuning, dibatalkan → merah), dan label badge dibagi kedua
+# dokumen — status yang bergeser posisi akan berganti warna tanpa satu galat.
+# Status baru kontrak karena itu selalu DITAMBAH DI BELAKANG.
+#
+# Mengubah daftar ini menyentuh basis data: `contracts.status` dijaga CHECK
+# constraint (migration perusahaan 0003) yang daftarnya wajib sama — dijaga
+# `tests/contract-status-check.test.ts`.
+invoice_statuses:
+  - signed
+  - pending
+  - canceled
+contract_statuses:
+  - signed
+  - pending
+  - canceled
+  - completed

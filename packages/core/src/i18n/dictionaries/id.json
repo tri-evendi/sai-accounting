@@ -561,7 +561,8 @@
     "contract": {
       "signed": "Sah",
       "pending": "Menunggu",
-      "canceled": "Dibatalkan"
+      "canceled": "Dibatalkan",
+      "completed": "Selesai"
     }
   },
   "statusPage": {
@@ -779,6 +780,7 @@
     "csvEmpty": "Isi CSV kosong.",
     "csvInvalidRows": "CSV memuat baris yang tidak valid. Perbaiki lalu impor ulang.",
     "contractInUse": "Kontrak ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan kontraknya saja agar rantai dokumen tetap utuh.",
+    "contractStatusTransition": "Status kontrak tidak bisa diubah dari \"{from}\" menjadi \"{to}\". Kontrak baru tidak bisa langsung Selesai, dan hanya kontrak yang sudah Sah yang bisa ditandai Selesai.",
     "invoiceInUse": "Tagihan ini sudah dipakai oleh {used}, jadi tidak bisa dihapus. Hapus atau lepaskan dokumen tersebut lebih dulu, atau batalkan tagihannya saja agar rantai dokumen tetap utuh.",
     "contractUsedInvoices": "{count} faktur",
     "contractUsedDeliveryOrders": "{count} surat jalan",

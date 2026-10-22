@@ -125,6 +125,7 @@ const seriesRoles = (mode: ResolvedTheme) => {
     "status aman/sah": p.statusTones[0],
     "status menipis/menunggu": p.statusTones[1],
     "status habis/dibatalkan": p.statusTones[2],
+    "status selesai (kontrak)": p.statusTones[3],
     "uang masuk": p.moneyIn,
     "uang keluar": p.moneyOut,
     "hitungan utama": p.countPrimary,
@@ -141,6 +142,7 @@ describe("warna grafik datang dari token, bukan dari sumbernya sendiri", () => {
       money.colorMoneyPositive,
       money.colorMoneyPending,
       money.colorMoneyNegative,
+      money.colorMoneyInfo,
     ]);
   });
 
@@ -224,7 +226,7 @@ describe("urutan nada status menentukan artinya", () => {
 
   it.each(MODES)("%s: irisan ke-n mendapat nada ke-n, bukan nada menurut namanya", (mode) => {
     const palette = chartPalette(TOKENS[mode]);
-    expect(tonedSlices(data, palette).map((d) => d.fill)).toEqual([...palette.statusTones]);
+    expect(tonedSlices(data, palette).map((d) => d.fill)).toEqual(palette.statusTones.slice(0, 3));
   });
 
   it("status bernilai NOL tidak menggeser warna status sesudahnya", () => {
@@ -243,10 +245,17 @@ describe("urutan nada status menentukan artinya", () => {
     ]);
   });
 
-  it("irisan ke-4 yang tak diharapkan mendapat netral, bukan mengulang hijau", () => {
+  it("irisan ke-4 = `completed` kontrak: biru informasional, bukan hijau", () => {
     const palette = chartPalette(TOKENS.light);
-    const four = [...data, { name: "Entah", value: 1 }];
-    expect(tonedSlices(four, palette).at(-1)?.fill).toBe(palette.unknownTone);
+    const four = [...data, { name: "Selesai", value: 1 }];
+    expect(tonedSlices(four, palette).at(-1)?.fill).toBe(palette.statusTones[3]);
+    expect(palette.statusTones[3]).not.toBe(palette.statusTones[0]);
+  });
+
+  it("irisan sesudah nada terakhir (status tak diharapkan) mendapat netral, bukan mengulang hijau", () => {
+    const palette = chartPalette(TOKENS.light);
+    const five = [...data, { name: "Selesai", value: 1 }, { name: "Entah", value: 1 }];
+    expect(tonedSlices(five, palette).at(-1)?.fill).toBe(palette.unknownTone);
   });
 });
 

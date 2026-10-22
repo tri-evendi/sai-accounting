@@ -377,7 +377,7 @@ Yang tinggal di sini: kontrak yang **belum** ada, beserta pemakai pertamanya.
 | Kontrak | Dibangkitkan jadi | Pemakai pertamanya |
 |---|---|---|
 | `contract/jobs.sql` → `sqlc` | kueri Go bertipe atas tabel `jobs` | belum ada. SQL antrean Go hari ini ditulis tangan dengan parameter terikat, dan bentuknya dijaga `tests/services-go.test.ts` — `sqlc` membeli pengetikan, bukan keamanan yang belum ada |
-| `contract/accounting.yaml` — sisanya | `CONTRACT_STATUSES`, `CURRENCIES`, ambang materialitas, **saldo normal per tipe akun** | laporan Go yang membacanya: materialitas bersama kesesuaian data. (Kategori, sisi laporan, band Laba Rugi, dan jenis jurnal penutup SUDAH masuk — lihat di bawah) |
+| `contract/accounting.yaml` — sisanya | ambang materialitas, **saldo normal per tipe akun** | laporan Go yang membacanya: materialitas bersama kesesuaian data. (Kategori, sisi laporan, band Laba Rugi, jenis jurnal penutup, mata uang, dan status dokumen SUDAH masuk — lihat di bawah) |
 | `internal/document/` | ✅ lahir 22 Okt 2026 — penulis XLSX pustaka baku + penyimpanan hasil; kalimat/kolom/format/rupa dibaca dari `internal/contract/report_layout_gen.go`, yang DIBANGKITKAN dari `statement-layout.ts` + `report-export.ts` (sumber tunggal layar, PDF, dan lembar sebar) | lembar sebar Neraca Saldo. Dokumen satuan (PDF) belum — menunggu keputusannya sendiri |
 
 ✅ **`contract/accounting.yaml` LAHIR 22 Okt 2026, dengan dua kunci saja**:
@@ -411,6 +411,22 @@ kategori, kategori tanpa sisi) dan penimpa band untuk tipe yang bukan laba
 rugi. Yang tetap di luar: **saldo normal** — tidak satu laporan Go pun
 membacanya, dan `accumulated_depreciation` (aset bersaldo normal kredit)
 membuktikan ia bukan turunan kategori.
+
+✅ **Mata uang & status dokumen masuk 23 Okt 2026 — sebagai PENGECUALIAN YANG
+DISEBUT dari aturan "nol pembaca", atas keputusan pemilik.** Tiga kunci:
+`currencies` (`values` ISO 4217 + `base`), `invoice_statuses` (3), dan
+`contract_statuses` (4 — `completed` disahkan hari yang sama, temuan S3).
+`@sai/core/constants` me-re-ekspor bangkitannya (impor lama tetap bekerja),
+zod `validations/{contract,invoice,fx}.ts` dan `check-data-conformance`
+membacanya; label & warna tetap di TS. Generatornya menolak kode bukan ISO,
+duplikat, `base` di luar `values`, dan status kontrak yang tidak DIAWALI
+status faktur persis (posisi menentukan warna donat). Pembaca Go-nya BELUM ada
+— yang pertama adalah pemeriksa kesesuaian data bila ia pindah ke Go — dan
+`tests/contract-accounting.test.ts` menjaga pengecualian itu tetap jujur: ia
+merah begitu Go tulisan tangan memakai salah satu kunci itu, supaya kuncinya
+dicoret dari pengecualian dan pembacanya ikut dijaga. Kolom
+`contracts.status` kini juga dijaga CHECK constraint (migration perusahaan
+0003) yang daftarnya wajib sama dengan kontrak.
 
 ## 4. Yang belum terbangun dari antrean
 

@@ -42,6 +42,7 @@ import { FileTextOutlined } from "@ant-design/icons";
 import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { contractStatusLabels, statusFilterLabels } from "@/lib/i18n/labels";
 import { irisanStatusKontrak } from "@/lib/contract-status-chart";
+import { CONTRACT_STATUSES } from "@sai/core/constants";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { TermTooltip } from "@sai/ui/term-tooltip";
 import { LearnMore } from "@sai/ui/learn-more";
@@ -262,7 +263,10 @@ export default async function ContractsPage({
           marginBottom: CONTROL_GAP * 2,
         }}
       >
-        {["all", "signed", "pending", "canceled"].map((status) => {
+        {/* Dari `CONTRACT_STATUSES`, bukan daftar yang dipaku: daftar tiga
+            nilai yang dulu di sini membuat 101 kontrak `completed` tak
+            mungkin disaring (temuan S3). */}
+        {["all", ...CONTRACT_STATUSES].map((status) => {
           const query = new URLSearchParams();
           if (status !== "all") query.set("status", status);
           if (filters.search) query.set("search", filters.search);

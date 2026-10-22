@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { canTransitionContractStatus, type ContractStatus } from "@sai/core/constants";
 import { businessISODate } from "@sai/core/business-date";
 import { useParams } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
@@ -58,6 +59,9 @@ const twoColumnGrid = (gap: number): React.CSSProperties => ({
   gap,
   gridTemplateColumns: `repeat(auto-fit, minmax(max(${FIELD_MIN}px, calc((100% - ${gap}px) / 2)), 1fr))`,
 });
+
+/** Urutan pilihan status di formulir — alur kerja, bukan urutan konstanta. */
+const EDIT_STATUS_ORDER: readonly ContractStatus[] = ["pending", "signed", "completed", "canceled"];
 
 interface ContractItem {
   /** Barang dari master (#491). `null` pada baris kontrak lama yang tak tertaut. */
@@ -347,15 +351,16 @@ export function EditContractForm() {
               </Col>
               <Col xs={24} sm={12}>
                 {/* Status lewat peta label bahasa tugas; nilai enum DB tidak
-                    pernah tampil mentah. */}
+                    pernah tampil mentah. Pilihannya hanya perpindahan yang SAH
+                    dari status sekarang (`CONTRACT_STATUS_TRANSITIONS`) —
+                    "Selesai" muncul hanya untuk kontrak yang sudah Sah, dan
+                    route menolak sisanya dengan aturan yang sama. */}
                 <Select
                   id="status" name="status" label={t("common.status")}
                   defaultValue={contract.status}
-                  options={[
-                    { value: "pending", label: t("status.contract.pending") },
-                    { value: "signed", label: t("status.contract.signed") },
-                    { value: "canceled", label: t("status.contract.canceled") },
-                  ]}
+                  options={EDIT_STATUS_ORDER.filter((s) =>
+                    canTransitionContractStatus(contract.status, s)
+                  ).map((s) => ({ value: s, label: t(`status.contract.${s}`) }))}
                 />
               </Col>
               {/* PPN kontrak (migrasi 0062). Mengubahnya di sini TIDAK menyentuh

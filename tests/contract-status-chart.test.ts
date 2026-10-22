@@ -18,11 +18,12 @@ import {
   totalIrisan,
 } from "@/lib/contract-status-chart";
 
-const LABEL = { signed: "Sah", pending: "Menunggu", canceled: "Dibatalkan" };
+const LABEL = { signed: "Sah", pending: "Menunggu", canceled: "Dibatalkan", completed: "Selesai" };
 
 describe("donat status: setiap kontrak terhitung", () => {
-  it("status di luar kosakata TETAP mendapat irisannya", () => {
-    /* Keadaan produksi apa adanya: 609 kontrak, `signed` nol, `completed` 101. */
+  it("keadaan produksi 12 Okt: `completed` kini DIKENAL dan berlabel", () => {
+    /* 609 kontrak, `signed` nol, `completed` 101 — status keempat yang disahkan
+       pemilik 23 Okt 2026, jadi ia mendapat labelnya sendiri, bukan cadangan. */
     const jumlah = new Map([
       ["pending", 469],
       ["completed", 101],
@@ -30,7 +31,14 @@ describe("donat status: setiap kontrak terhitung", () => {
     ]);
     const irisan = irisanStatusKontrak(jumlah, LABEL);
     expect(totalIrisan(irisan)).toBe(609);
-    expect(irisan.map((i) => i.name)).toContain("Completed");
+    expect(irisan).toHaveLength(4);
+    expect(irisan[3]).toEqual({ name: "Selesai", value: 101 });
+  });
+
+  it("status di luar kosakata TETAP mendapat irisannya", () => {
+    const irisan = irisanStatusKontrak(new Map([["cancelled", 2], ["pending", 1]]), LABEL);
+    expect(totalIrisan(irisan)).toBe(3);
+    expect(irisan.map((i) => i.name)).toContain("Cancelled");
   });
 
   it("invarian: jumlah irisan = jumlah kontrak, apa pun statusnya", () => {
@@ -55,17 +63,17 @@ describe("donat status: setiap kontrak terhitung", () => {
     }
   });
 
-  it("TIGA yang dikenal selalu di posisi 0-1-2, meski nol", () => {
+  it("EMPAT yang dikenal selalu di posisi 0-1-2-3, meski nol", () => {
     /*
      * `statusTones` di `dashboard-charts.tsx` dipasangkan per POSISI, bukan per
      * nama. Kalau irisan bernilai nol dibuang "karena rapi", hijau/kuning/merah
      * akan berpindah ke status yang salah — dan pembacanya akan melihat
      * "dibatalkan" berwarna hijau tanpa satu pun galat.
      */
-    const irisan = irisanStatusKontrak(new Map([["completed", 3]]), LABEL);
-    expect(irisan.slice(0, 3).map((i) => i.name)).toEqual(["Sah", "Menunggu", "Dibatalkan"]);
-    expect(irisan.slice(0, 3).map((i) => i.value)).toEqual([0, 0, 0]);
-    expect(irisan[3]).toEqual({ name: "Completed", value: 3 });
+    const irisan = irisanStatusKontrak(new Map([["draft", 3]]), LABEL);
+    expect(irisan.slice(0, 4).map((i) => i.name)).toEqual(["Sah", "Menunggu", "Dibatalkan", "Selesai"]);
+    expect(irisan.slice(0, 4).map((i) => i.value)).toEqual([0, 0, 0, 0]);
+    expect(irisan[4]).toEqual({ name: "Draft", value: 3 });
   });
 
   it("yang tak dikenal diurutkan menurut NAMA, bukan jumlahnya", () => {
@@ -79,7 +87,7 @@ describe("donat status: setiap kontrak terhitung", () => {
       ]),
       LABEL
     );
-    expect(irisan.slice(3).map((i) => i.name)).toEqual(["Alpha", "Zeta"]);
+    expect(irisan.slice(4).map((i) => i.name)).toEqual(["Alpha", "Zeta"]);
   });
 
   it("label cadangannya SAMA dengan StatusBadge", () => {
@@ -90,11 +98,11 @@ describe("donat status: setiap kontrak terhitung", () => {
     expect(labelCadangan("")).toBe("");
   });
 
-  it("peta kosong tetap memulangkan tiga irisan nol — bukan larik kosong", () => {
+  it("peta kosong tetap memulangkan empat irisan nol — bukan larik kosong", () => {
     /* Grafik tanpa irisan sama sekali terlihat seperti grafik yang rusak; tiga
        irisan nol terlihat seperti buku yang belum punya kontrak, yang benar. */
     const irisan = irisanStatusKontrak(new Map(), LABEL);
-    expect(irisan).toHaveLength(3);
+    expect(irisan).toHaveLength(4);
     expect(totalIrisan(irisan)).toBe(0);
   });
 });
@@ -113,5 +121,7 @@ describe("halaman kontrak memakai putusan ini, bukan daftar yang dipaku", () => 
     expect(halaman).toContain("irisanStatusKontrak");
     /* Penjaga atas kambuhnya cacat yang sama: daftar tiga yang dipaku. */
     expect(halaman).not.toMatch(/countByStatus\.get\("signed"\)/);
+    /* …dan saringan status yang dipaku (dulu tanpa `completed`). */
+    expect(halaman).not.toMatch(/\["all", "signed", "pending", "canceled"\]/);
   });
 });

@@ -1,3 +1,5 @@
+import { CONTRACT_STATUSES, type ContractStatus } from "./generated/accounting";
+
 /**
  * Nama PRODUK (bukan identitas pelanggan). Aman dipakai langsung di UI.
  *
@@ -166,21 +168,84 @@ export const TENANT_ROLE_VALUES = [
 ] as const;
 export type TenantRole = (typeof TENANT_ROLE_VALUES)[number];
 
-export const CURRENCIES = ["USD", "CNY", "IDR"] as const;
-export type Currency = (typeof CURRENCIES)[number];
+/*
+ * Mata uang & status dokumen DIBANGKITKAN dari `contract/accounting.yaml`
+ * (`bun run contract:gen`) untuk TS dan Go sekaligus — keputusan pemilik
+ * 23 Okt 2026. Di-re-ekspor di sini supaya setiap `import … from
+ * "@sai/core/constants"` yang sudah ada tetap bekerja. Label & warna TIDAK ikut
+ * kontrak: itu tampilan, dan tetap di bawah / di `status-badge.tsx`.
+ *
+ * Status FAKTUR — tiga nilai. Dulu faktur dan kontrak berbagi satu daftar; sejak
+ * `completed` menjadi status kontrak (temuan S3) keduanya berpisah, dan faktur
+ * SENGAJA tidak ikut: "selesai" untuk faktur sudah dijawab oleh pelunasannya
+ * (`receivables.ts` menurunkan lunas/sebagian dari pembayaran), dan status
+ * tersimpan kedua untuk hal yang sama akan menyimpang begitu satu pembayaran
+ * dibalik.
+ *
+ * Status KONTRAK — diawali status faktur persis (generator menolak
+ * selainnya), lalu `completed`: kontrak yang sudah SELESAI dijalankan (barang
+ * terkirim, urusan ditutup). BUKAN "lunas": di buku `pt-sai` hanya 4 dari 101
+ * kontrak `completed` yang terbayar penuh. Pelunasan tetap DIHITUNG dari
+ * pembayaran, tidak disimpan. Urutannya bermakna: posisi dipasangkan dengan
+ * nada donat (`contract-status-chart.ts` → `statusTones`).
+ */
+export {
+  CURRENCIES,
+  BASE_CURRENCY,
+  INVOICE_STATUSES,
+  CONTRACT_STATUSES,
+} from "./generated/accounting";
+export type { Currency, InvoiceStatus, ContractStatus } from "./generated/accounting";
 
-export const CONTRACT_STATUSES = ["signed", "pending", "canceled"] as const;
-export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
+/**
+ * Perpindahan status kontrak yang diizinkan — dari (kunci) ke (nilai).
+ *
+ * Yang dibatasi hanya `completed`: ia hanya bisa dicapai dari `signed` (kontrak
+ * yang belum disepakati tidak bisa "selesai"), dan bisa dibuka kembali ke
+ * `signed` bila ditutup terlalu cepat, atau dibatalkan. Perpindahan di antara
+ * tiga status lama dibiarkan sebebas sebelumnya — mengetatkannya adalah
+ * keputusan tersendiri, bukan efek samping status baru.
+ *
+ * `null` = kontrak BARU: lahir sebagai pending/signed/canceled, tidak pernah
+ * langsung `completed`.
+ *
+ * Siapa yang boleh: izin `contract.write` (sama dengan status lain) — status
+ * adalah bagian dokumen kontrak, bukan tindakan tersendiri di matriks izin.
+ */
+export const CONTRACT_STATUS_TRANSITIONS: Record<ContractStatus | "new", readonly ContractStatus[]> = {
+  new: ["pending", "signed", "canceled"],
+  pending: ["pending", "signed", "canceled"],
+  signed: ["signed", "pending", "canceled", "completed"],
+  canceled: ["canceled", "pending", "signed"],
+  completed: ["completed", "signed", "canceled"],
+};
+
+/**
+ * Apakah kontrak boleh berpindah dari `from` (null = kontrak baru) ke `to`.
+ * Status lama di LUAR kosakata (data warisan) diperlakukan seperti `pending`:
+ * menyuntingnya tidak boleh mustahil, tetapi juga tidak membuka jalan pintas
+ * ke `completed`.
+ */
+export function canTransitionContractStatus(from: string | null, to: string): boolean {
+  const key: ContractStatus | "new" =
+    from == null
+      ? "new"
+      : (CONTRACT_STATUSES as readonly string[]).includes(from)
+        ? (from as ContractStatus)
+        : "pending";
+  return (CONTRACT_STATUS_TRANSITIONS[key] as readonly string[]).includes(to);
+}
 
 /**
  * Label status dokumen dalam bahasa tugas (issue #1). Nilai yang disimpan di
- * database TIDAK berubah (`signed` / `pending` / `canceled`) — ini murni lapisan
- * tampilan untuk badge dan tombol saringan.
+ * database TIDAK berubah (`signed` / `pending` / `canceled` / `completed`) —
+ * ini murni lapisan tampilan untuk badge dan tombol saringan.
  */
 export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
   signed: "Sah",
   pending: "Menunggu",
   canceled: "Dibatalkan",
+  completed: "Selesai",
 };
 
 /** Label untuk tombol saringan, termasuk pilihan "semua". */

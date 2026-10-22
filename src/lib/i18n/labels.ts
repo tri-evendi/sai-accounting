@@ -149,6 +149,7 @@ export function contractStatusLabels(
     signed: dictionary.status.contract.signed,
     pending: dictionary.status.contract.pending,
     canceled: dictionary.status.contract.canceled,
+    completed: dictionary.status.contract.completed,
   };
 }
 

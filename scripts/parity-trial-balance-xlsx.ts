@@ -34,7 +34,8 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { disconnectAllCompanyClients } from "../src/lib/company-clients";
 import { getCompanyIdentity } from "../src/lib/company-identity";
 import { isExportable, reportById, resolveAsOf } from "../src/lib/report-catalog";
@@ -104,7 +105,7 @@ async function main() {
       ...(process.argv.includes("--include-inactive") ? {} : { isActive: true }),
       ...(slugs.length > 0 ? { slug: { in: slugs } } : {}),
     },
-    select: { id: true, slug: true, name: true, databaseName: true },
+    select: { id: true, slug: true, name: true, ...COMPANY_DATABASE_TARGET_SELECT },
     orderBy: { id: "asc" },
   });
   const missing = slugs.filter((s) => !companies.some((c) => c.slug === s));
@@ -132,8 +133,14 @@ async function main() {
       for (const { asOf, asOfISO } of asOfs) {
         const label = `${c.slug} (${c.databaseName}) per ${asOfISO}`;
         try {
+          /* Perkakas paritas Go menyambung lewat template bawaan saja; PT di
+             instans lain ditolak sebagai gagal (tahap 4, MULTI-COMPANY §6). */
+          const context = companyContextOf(c);
+          if (context.dbInstance !== null) {
+            throw new Error(`instans "${context.dbInstance.key}" belum didukung perkakas paritas Go`);
+          }
           const ts = await runWithCompany(
-            { companyId: c.id, slug: c.slug, databaseName: c.databaseName },
+            context,
             async () => {
               const payload = await buildReportPayload(report, { asOf: asOfISO });
               const buf = await buildWorkbookBuffer(

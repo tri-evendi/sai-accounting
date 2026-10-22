@@ -20,6 +20,8 @@
  * `clsx` dan `tailwind-merge` ikut keluar dari `package.json` bersamanya.
  */
 
+import { BUSINESS_TIME_ZONE } from "./business-date";
+
 export function formatCurrency(amount: number, currency: string = "IDR") {
   const localeMap: Record<string, string> = {
     IDR: "id-ID",
@@ -43,11 +45,19 @@ export function formatCurrency(amount: number, currency: string = "IDR") {
   }
 }
 
+/*
+ * Semua format tanggal di bawah memakai jam Jakarta (`@sai/core/business-date`),
+ * bukan zona proses atau peramban. Tanggal tersimpan (tengah malam UTC hari
+ * kalendernya = 07.00 WIB) dan batas laporan (23:59:59.999 WIB) sama-sama jatuh
+ * di hari yang benar di Jakarta; di zona lain batas laporan bisa terbaca
+ * sebagai hari berikutnya ("Per 1 Juli" untuk laporan per 30 Juni).
+ */
 export function formatDate(date: Date | string) {
   return new Intl.DateTimeFormat("id-ID", {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: BUSINESS_TIME_ZONE,
   }).format(new Date(date));
 }
 
@@ -56,6 +66,7 @@ export function formatDateShort(date: Date | string) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    timeZone: BUSINESS_TIME_ZONE,
   }).format(new Date(date));
 }
 
@@ -72,14 +83,19 @@ export function formatDateShort(date: Date | string) {
  * terlewat akan berdiri persis di sebelah yang tidak.
  */
 export function formatDateMedium(date: Date | string) {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(date));
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeZone: BUSINESS_TIME_ZONE,
+  }).format(new Date(date));
 }
 
 /** Tanggal + jam — untuk batas waktu yang jamnya memang menentukan (mis. kedaluwarsa VA/QRIS). */
 export function formatDateTime(date: Date | string) {
-  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date(date)
-  );
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: BUSINESS_TIME_ZONE,
+  }).format(new Date(date));
 }
 
 export function formatNumber(value: number) {

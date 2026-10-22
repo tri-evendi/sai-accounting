@@ -1,10 +1,11 @@
 # 07 — Riwayat & Keputusan Lama
 
-> Keadaan 21 Okt 2026 (`main@a8d2749d`) · [indeks](./README.md)
+> Keadaan 22 Okt 2026 (produksi `main@3a6d1d35`, v0.11.0; §6 dan §8 tergabung di `develop`, belum digelar) · [indeks](./README.md)
 
 Kenapa sistem ini berbentuk seperti sekarang. Isinya hanya **keputusan yang
-masih mengikat** dan **apa yang masih terbuka** dari lima pekerjaan besar
-(migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar tahap 1a–1c); jalannya
+masih mengikat** dan **apa yang masih terbuka** dari pekerjaan besar
+(migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar tahap 1a–1c,
+rilis 0.11.0, penyatuan container, register lisensi & pindah SaaS → on-premise); jalannya
 pekerjaan ada di riwayat git.
 
 ## 1. Migrasi ke PostgreSQL
@@ -32,7 +33,7 @@ Empat pelajaran yang masih berlaku:
 
 | # | Risiko | Usul |
 |---|---|---|
-| 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`svc-tenant` (jalur yang mendump SETIAP basis data) |
+| 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`svc-integrator` (jalur `tenant`, yang mendump SETIAP basis data) |
 | 2 | **Pencarian jadi peka huruf besar-kecil.** Filter `contains`/`startsWith` tanpa `mode: "insensitive"` — `abadi` tidak lagi menemukan `PT ABADI` | Tambahkan `mode: "insensitive"` di jalur pencarian |
 | 3 | **Collation `C` di semua basis data.** `ORDER BY name` mengurutkan per byte, dan `@unique` pada kode/nomor mengizinkan `ABC` dan `abc` sekaligus | `citext` atau indeks `lower(...)`, per kolom |
 | 4 | **Tiga skrip operator masih berdialek MySQL** — `pause-platform-billing.ts`, `adopt-existing-company.ts`, `prove-company-slug-immutable.ts` | Port ke dialek PostgreSQL |
@@ -205,3 +206,71 @@ tanpa `--max-old-space-size` saat jalan, dan ekspor besar kini di proses
 mesin ini kini **7,4 GB RAM** — angka ~3,6 GB di dokumen lain adalah potret
 lama; aturan "jangan build di server" tetap berlaku karena mesinnya dibagi
 dengan aplikasi lain.
+
+## 6. Satu image = satu container (22 Okt 2026, belum digelar)
+
+Keputusan pemilik, sesudah diberi tahu harganya: enam layanan latar menjadi
+dua. Image `-migrator` → `svc-worker` (penyelia `scripts/run-workers.ts`,
+empat peran: `scheduler`, `conformance`, `ledger`, `interactive`); image
+`-integrator` → `svc-integrator` (`cmd/integrator`, jalur `tenant` + jalur
+`interactive` Go dalam satu proses). Pagar jalur `ledger` sekaligus pindah ke
+koneksi langsung (`CONTROL_DATABASE_DIRECT_URL` di compose dasar). Risiko yang
+diterima — kunci cadangan seproses dengan parameter laporan pengguna, satu peran
+jatuh = semua restart — dan pemicu memisahkannya lagi:
+[09 §3.2](./09-RANCANGAN-LAYANAN.md).
+
+Bersamaan: CI membangun `-backup` di atas `-migrator` yang baru didorong
+(`build-contexts`, dirujuk digest) karena di job terpisah lapisan
+`node_modules`-nya sama isi tetapi beda digest — terukur 2,035 GB unik di cakram
+produksi untuk image yang seharusnya hanya menambah ~336 MB.
+
+Gelar pertamanya wajib `--remove-orphans`: compose tidak menghentikan layanan
+yang hilang dari berkasnya, dan enam container lama yang tetap hidup mengklaim
+pekerjaan yang sama dengan dua yang baru.
+
+## 7. Rilis 0.11.0 — tahap 1d sampai D (22 Okt 2026)
+
+Digelar 22 Okt 2026 (`main@3a6d1d35`, label **0.11.0**), masih dengan enam
+layanan latar lama — penyatuan §6 datang sesudahnya. Isinya:
+
+| Bagian | Keadaan sesudah rilis |
+|---|---|
+| Tahap 1d | Laporan PERTAMA yang berkasnya dibuat Go: lembar sebar Neraca Saldo (`engine: go`, `report.export_go`). Paritas angka dibuktikan atas buku produksi — 17 buku × 3 tanggal, 51 setara (`parityProven` di `src/lib/report-engine.ts`); paritas isi berkas diuji lokal ([09 §9](./09-RANCANGAN-LAYANAN.md)) |
+| Tanggal laporan | Batas "per tanggal" dan periode laporan, beranda, buku besar, dan umur piutang/utang memakai jam **Jakarta** eksplisit (`@sai/core/business-date`), bukan zona proses — keputusan pemilik |
+| Tahap 2, 3, 4 | Kode siap dan **opt-in**: tanpa berkas override dan variabelnya tidak satu perilaku pun berubah ([02 §19](./02-LAYANAN-INFRA.md), 09 §9) |
+| Tahap D | Profil on-premise lengkap kecuali satu langkah pemilik: kunci publik lisensi ([`ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) §0) |
+| Hasil berantre | Ekspor besar yang disiapkan di latar kini bisa diunduh: pelari jalur `chown` ke `node` (sebelumnya setiap hasil dijawab 404) |
+
+## 8. Register lisensi & pindah SaaS → on-premise (22 Okt 2026, belum digelar)
+
+Dua pekerjaan yang tergabung ke `develop` pada hari yang sama dengan §6
+(PR #690 dan #691) dan menunggu rilis berikutnya bersamanya.
+
+**Register lisensi di konsol operator** (#690): halaman `/licences`, migration
+platform `0006_licence_register` (`licence_customers`,
+`licence_register_entries`), izin operator `licence.register` (peran `owner`
+dan `billing`). Keputusan yang mengikat:
+
+| Keputusan | Alasan |
+|---|---|
+| Register = **arsip, bukan kewenangan** | Konsol menyusun perintah `licence:issue`, penandatanganan terjadi di mesin luring, konsol hanya memverifikasi berkas yang diunggah. Tidak ada tempat untuk kunci privat, dan `app-customer` tidak membaca tabel register — dijaga `tests/licence-register-archive.test.ts` ([06 §3.7](./06-KEAMANAN.md)) |
+| "Dicabut" di register hanya catatan | Lisensi luring tidak bisa dicabut dari jauh; tombol yang berpura-pura bisa adalah janji palsu |
+
+**Pindah tenant SaaS → on-premise** (#691, runbook
+[`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)): lima skrip
+(`tenant:export-onprem`, `tenant:import-onprem`, `tenant:mark-migrated-out`,
+`tenant:unfreeze`, `tenant:prove-onprem`) dan migration kendali
+`0010_tenant_pindah_onprem` (`tenants.frozen_at`, `tenants.migrated_out_at`,
+status tenant `migrated_out`).
+
+| Keputusan | Alasan |
+|---|---|
+| Pembekuan = kolom `frozen_at`, **bukan** nilai `status` | `status` ditulis ulang penjadwal, webhook, dan konsol; pembekuan yang dicairkan diam-diam di tengah dump berarti tulisan yang hilang |
+| Satu bundel bersandi; `SETTINGS_ENCRYPTION_KEY` SaaS tidak pernah ikut | Rahasia dibuka di SaaS dan disegel ulang dengan kunci customer |
+| Impor hanya ke pemasangan **kosong** | id tenant/pengguna/perusahaan dibawa apa adanya karena buku besar merujuknya |
+| `migrated_out` tidak menghapus apa pun | Penghapusan tetap lewat alur #142 dengan permintaan dan masa tenggang |
+
+Yang masih terbuka (rinciannya di runbook): tombol konsol untuk bekukan /
+cairkan / nyatakan pindah · tagihan terbuka saat `migrated_out` · `change-plan`
+atas tenant `migrated_out` yang belum dipagari · siapa yang boleh meminta
+penghapusan data SaaS sesudah penggunanya tidak bisa masuk lagi.

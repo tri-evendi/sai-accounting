@@ -1,7 +1,7 @@
 /**
  * BERKAS HASIL WAJIB TERBACA PEMBACANYA — `node` di `app-customer`.
  *
- * Pelari jalur `interactive` (Node `svc-interactive`, Go `svc-interactive-go`)
+ * Pelari jalur `interactive` (Node: peran di `svc-worker`, Go: `svc-integrator`)
  * berjalan sebagai ROOT — tahap `migrator` dan `integrator` tidak punya
  * `USER` — dan menulis hasil 0600 di direktori 0700. `app-customer` membaca
  * volume `hasil` sebagai `node` (`USER node` di tahap `runner`), jadi tanpa

@@ -8,7 +8,7 @@
  *
  *   • menilai SAMPEL KURANG sebagai fakta — p95 atas tiga jendela adalah angka,
  *     bukan fakta (kejujuran yang sama dengan `samples` di `job-metrics`);
- *   • menilai proses yang SALAH — loop pelari `svc-interactive` yang tertahan
+ *   • menilai proses yang SALAH — loop pelari `interactive` (`svc-worker`) yang tertahan
  *     tidak membuat siapa pun menunggu halaman, jadi ia tidak boleh memicu (a).
  */
 import { describe, expect, it } from "vitest";

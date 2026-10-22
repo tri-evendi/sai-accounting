@@ -34,11 +34,9 @@
  */
 import "dotenv/config";
 import { spawn } from "node:child_process";
-import { Client as PgClient } from "pg";
 
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
-import { uraikanUrl } from "@sai/db/engine";
 import { bukaServer } from "@sai/db/server";
 import {
   COMPANY_DATABASE_TARGET_SELECT,
@@ -50,6 +48,8 @@ import {
 } from "@sai/db/company-url";
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 
+import { libpqEnv, pgFor, rowCounts, where } from "./lib/pg-tools";
+
 import {
   countMismatches,
   moveRefusals,
@@ -59,50 +59,6 @@ import {
 } from "../src/lib/tenant-move";
 
 const label = (key: string | null) => key ?? DEFAULT_DB_INSTANCE_LABEL;
-
-/** Host:port tanpa kredensial — untuk dicetak. */
-function where(url: URL): string {
-  return `${url.hostname}:${url.port || "5432"}`;
-}
-
-async function pgFor(serverUrl: URL, database: string): Promise<PgClient> {
-  const b = uraikanUrl(serverUrl.toString());
-  const c = new PgClient({ host: b.host, port: b.port, user: b.user, password: b.password, database });
-  await c.connect();
-  return c;
-}
-
-/** Jumlah baris setiap tabel `public` — `count(*)` sungguhan, bukan statistik. */
-async function rowCounts(serverUrl: URL, database: string): Promise<Record<string, number>> {
-  const c = await pgFor(serverUrl, database);
-  try {
-    const tables = await c.query<{ t: string }>(
-      `SELECT table_name AS t FROM information_schema.tables
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY 1`
-    );
-    const out: Record<string, number> = {};
-    for (const { t } of tables.rows) {
-      const r = await c.query<{ n: string }>(`SELECT count(*)::text AS n FROM "${t.replace(/"/g, '""')}"`);
-      out[t] = Number(r.rows[0]?.n ?? 0);
-    }
-    return out;
-  } finally {
-    await c.end().catch(() => {});
-  }
-}
-
-/** Env libpq untuk proses anak — sandi lewat env, tidak pernah di argv. */
-function libpqEnv(serverUrl: URL, database: string): NodeJS.ProcessEnv {
-  const b = uraikanUrl(serverUrl.toString());
-  return {
-    ...process.env,
-    PGHOST: b.host,
-    PGPORT: String(b.port),
-    PGUSER: b.user,
-    PGPASSWORD: b.password,
-    PGDATABASE: database,
-  };
-}
 
 /** `pg_dump -Fc` asal → `pg_restore` tujuan, lewat pipa; tanpa berkas antara. */
 function dumpRestore(source: URL, target: URL, database: string): Promise<void> {

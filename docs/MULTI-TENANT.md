@@ -93,7 +93,7 @@ ada di riwayat git berkas ini; komentar kode masih merujuk nomornya.
 | 4.5 | "Satu login banyak PT" tanpa UI (`addExistingUserToCompany` tanpa pemanggil) | #139 |
 | 4.6 | Pembatas laju hanya di memori | #138 (persisten di basis data control) |
 | 4.7 | Jejak audit tanpa tingkat tenant | #142 (`tenant_audit_logs` di control) |
-| 4.8 | Tidak ada scheduler | #140 (kini layanan `job-scheduler`) |
+| 4.8 | Tidak ada scheduler | #140 (kini peran `scheduler` di layanan `svc-worker`) |
 
 ---
 
@@ -177,6 +177,7 @@ model Tenant {
   name      String @db.VarChar(150)
 
   /// pending_verification | trialing | active | past_due | suspended | cancelled
+  /// | migrated_out (pindah ke on-premise, migration kendali 0010)
   /// String + z.enum, snake_case — konvensi docs/DATABASE.md, bukan enum Prisma.
   status    String @default("pending_verification") @db.VarChar(30)
 
@@ -189,6 +190,11 @@ model Tenant {
   /// mempersempit customer yang sudah berjalan.
   maxCompanies Int @default(1) @map("max_companies")
   maxUsers     Int @default(3) @map("max_users")
+
+  /// Pindah ke on-premise (migration kendali 0010): tidak NULL = buku tenant
+  /// HANYA-BACA, apa pun statusnya. Lihat docs/ONPREM-PINDAH-DARI-SAAS.md.
+  frozenAt      DateTime? @map("frozen_at")
+  migratedOutAt DateTime? @map("migrated_out_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -325,7 +331,16 @@ suspended ──(berhenti)──> cancelled          [buku besar TIDAK PERNAH di
 
 trialing/active/past_due ──(operator_suspend)──> suspended     [manual, issue #155]
 suspended ──(operator_restore)──> active                       [manual, issue #155]
+
+(status apa pun, tenant beku) ──(tenant:mark-migrated-out)──> migrated_out   [pindah ke on-premise]
 ```
+
+`migrated_out` dan pembekuan (`tenants.frozen_at`, dengan `migrated_out_at`)
+datang dari jalur pindah SaaS → on-premise (migration kendali
+`0010_tenant_pindah_onprem`): pembekuan membuat buku hanya-baca selama dump,
+dan sengaja kolom sendiri, bukan nilai `status`, karena `status` ditulis ulang
+siklus di atas. Langkah dan jalan baliknya di
+[`ONPREM-PINDAH-DARI-SAAS.md`](./ONPREM-PINDAH-DARI-SAAS.md).
 
 Dua perpindahan terakhir adalah tindakan manual operator di luar siklus dunning
 (permintaan customer, penyalahgunaan). Keduanya tetap lewat mesin siklus hidup,

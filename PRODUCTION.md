@@ -13,6 +13,8 @@
 > | Set up backups | [§Automated backups](#automated-backups-issue-374) |
 > | Read the logs | [§Reading the logs](#reading-the-logs-issue-374) |
 > | Install on a brand-new box | §1 → §2 → §3 → §Updates |
+> | Move a SaaS tenant to on-premise | [`docs/ONPREM-PINDAH-DARI-SAAS.md`](docs/ONPREM-PINDAH-DARI-SAAS.md) (Indonesian) |
+> | Record an on-premise licence | operator console `/licences` — [`docs/ONPREM-SERAH-TERIMA.md`](docs/ONPREM-SERAH-TERIMA.md) §1 |
 
 ## Prerequisites
 
@@ -42,7 +44,7 @@ operator variables. Use the table below as the reference.
 
 | Variable | Production value |
 |----------|------------------|
-| `PG_USER`, `PG_PASSWORD` | Credentials of the `pg` service (also used by `migrate`/`svc-tenant`, which connect to `pg` directly) |
+| `PG_USER`, `PG_PASSWORD` | Credentials of the `pg` service (also used by `migrate`, and by `svc-worker`/`svc-integrator` through `CONTROL_DATABASE_DIRECT_URL`, which connect to `pg` directly) |
 | `DATABASE_URL` | `postgres://<user>:<pass>@pgbouncer:5432/sai_production` — company-book template (the database name is swapped per company) |
 | `CONTROL_DATABASE_URL` | `postgres://…@pgbouncer:5432/sai_control` — users, companies, memberships, tenants |
 | `PLATFORM_DATABASE_URL` | `postgres://…@pgbouncer:5432/sai_platform` — plans, subscriptions, invoices, operator audit |
@@ -53,7 +55,7 @@ operator variables. Use the table below as the reference.
 | `OPERATOR_HOST` | Same hostname as `OPERATOR_DOMAIN`. Without it the console answers 404 everywhere (fail-closed); `app-customer` deliberately receives it empty |
 | `OPERATOR_SESSION_SECRET`, `SETTINGS_ENCRYPTION_KEY` | Random secrets for console sessions and encrypted mail settings |
 | `OPERATOR_USERS` | Emergency `owner` account(s) for the console — see [§3](#3-create-the-first-accounts) |
-| `BACKUP_ENCRYPTION_KEY` | Required by `svc-tenant` — see [§Automated backups](#automated-backups-issue-374-per-database-since-stage-1b) |
+| `BACKUP_ENCRYPTION_KEY` | Required by `svc-integrator` (its `tenant` lane) — see [§Automated backups](#automated-backups-issue-374-per-database-since-stage-1b) |
 | `COMPANY_MIGRATE_CONCURRENCY` | How many company databases migrate at once (default 2, ceiling 8). Each worker is a Prisma CLI process plus a PostgreSQL backend, and migrations run while the apps are still serving — a large number here is a self-scheduled OOM on the release step that must not half-fail |
 | `CONFORMANCE_CONCURRENCY` | How many books the conformance sweep scans at once (default **3**, ceiling 8). Deliberately *not* the same as the migrate default: this sweep spawns no child process and only reads, so what bounds it is `db-postgres`, not memory — eleven checks per book are eleven table scans on the same server that serves the apps. A conformance sweep that slows down someone posting entries is a sweep that eventually gets switched off |
 | `NODE_ENV` | `production` (set in the image) |
@@ -66,7 +68,7 @@ operator variables. Use the table below as the reference.
 docker compose pull
 docker compose up -d pg pgbouncer
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
+docker compose up -d --remove-orphans app-customer app-operator svc-worker svc-integrator
 ```
 
 `db:migrate:all` applies `prisma/postgresql/control/`, then `platform/`, then
@@ -120,14 +122,14 @@ is the emergency `owner`; further operators are managed from the console at
 | `pg_data` | `pg:/var/lib/postgresql/data` | Every database (control, platform, one per company) |
 | `documents` | `/app/data/documents` | Uploaded documents, one directory per company (issue #367), served only through `/api/documents/<id>/file` |
 | `audit` | `/app/data/audit` | Archive only: the old `audit.jsonl` files, renamed `.dipindahkan` after their move. The live trails are tables — `audit_logs` (each company DB), `tenant_audit_logs` (control), `operator_audit_logs` (platform) |
-| `cadangan` | `svc-tenant:/app/data/cadangan` | Encrypted local backup artifacts — one directory per run since stage 1b |
-| `hasil` | `svc-interactive` + `svc-interactive-go`:`/app/data/hasil` (RW, files chowned to `node` — `contract/kinds.yaml` → `results`), `app-customer` (RO) | Job results since stage 1c: `<kind>-<jobId>/<file>`. **Not backed up** — regenerated from the book, and pruned together with its `jobs` row after `DONE_RETENTION_DAYS`. Outside `public/`: the only way out is a permission-checked route |
+| `cadangan` | `svc-integrator:/app/data/cadangan` | Encrypted local backup artifacts — one directory per run since stage 1b |
+| `hasil` | `svc-worker` (its `interactive` role) + `svc-integrator`:`/app/data/hasil` (RW, files chowned to `node` — `contract/kinds.yaml` → `results`), `app-customer` (RO) | Job results since stage 1c: `<kind>-<jobId>/<file>`. **Not backed up** — regenerated from the book, and pruned together with its `jobs` row after `DONE_RETENTION_DAYS`. Outside `public/`: the only way out is a permission-checked route |
 | `db_data` | `db` | Frozen MariaDB fallback, removed in #636 |
 
 ### Automated backups (issue #374; per-database since stage 1b)
 
-**One object per database, not one archive.** `svc-tenant` (the Go `tenant`
-lane) drains `tenant.backup` from the queue and writes, into a single run
+**One object per database, not one archive.** The Go `tenant` lane inside
+`svc-integrator` drains `tenant.backup` from the queue and writes, into a single run
 directory `sai-<stamp>/`:
 
 | Object | What it is |
@@ -144,10 +146,10 @@ they were before stage 4, so every command below still applies unchanged. With
 them, each such object carries `"instans": "<key>"` in the manifest, and
 `companyId` is set only on the object from the instance the company is
 registered on (a same-named leftover copy on another server is `other`).
-`svc-tenant` reads each instance's URL from the env var named in its
+`svc-integrator` reads each instance's URL from the env var named in its
 `db_instances` row, so `COMPANY_<KEY>_DATABASE_URL_TEMPLATE` must be in `.env`
 (reaching every service via `env_file`), pointing **directly** at PostgreSQL.
-See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#cadangan-per-instans-svc-tenant).
+See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
 
 This is what closes on-premise gap #5. `pg_dumpall` meant one tenant could not
 be restored without touching the others — and "restore just our data to
@@ -157,10 +159,10 @@ restores (`pg_restore --table=...`), which a text dump never does.
 The manifest is an object and not only a `backup_runs` row on purpose: on the
 day you restore, the control database may be exactly what you lost.
 
-**Schedule.** `job-scheduler` publishes `tenant.backup` once a day via
+**Schedule.** The `scheduler` role of `svc-worker` publishes `tenant.backup` once a day via
 `backup:publish` (UTC day-grained dedupe key — the first round of the day
 publishes, the other 23 hit the unique constraint and do nothing). So the hour a
-backup runs follows the hour `job-scheduler` came up, not a cron entry; the same
+backup runs follows the hour `svc-worker` came up, not a cron entry; the same
 was true of the old `sleep 86400` loop.
 
 **Four conditions that fail the run before a single object is sent**: a
@@ -188,25 +190,26 @@ or a lost account — which is why the status is not `ok`.
 > stays because its image is the only one carrying the Prisma clients, `openssl`,
 > `awscli` **and** the MariaDB client — the last so the restore prover can still
 > read artifacts from before the engine swap. Leaving its daily loop running
-> alongside `svc-tenant` would be two executors for one job.
+> alongside `svc-integrator` would be two executors for one job.
 
 ```bash
-docker compose logs svc-tenant --tail 60                            # what the lane did
+docker compose logs svc-integrator --tail 60 | grep '\[tenant\]'   # what the lane did
 docker compose run --rm job-backup bun run prove-backup-restore     # prove the newest run opens
 docker compose run --rm job-backup sh scripts/backup.sh --dry-run   # the OLD path, by hand only
-docker compose run --rm job-scheduler bun run watch:health --dry-run  # what the alert would say
+docker compose exec svc-worker bun run watch:health --dry-run      # what the alert would say
 docker compose run --rm job-backup ls -lh /app/data/cadangan        # local artifacts, if any
 ```
 
-> **`svc-tenant` runs as root, and that is pending, not settled.** It is the one
-> container holding `BACKUP_ENCRYPTION_KEY`, so it is the one that most deserves
-> a non-root user — but the `cadangan` volume already exists on this machine,
+> **`svc-integrator` runs as root, and that is pending, not settled.** It is the
+> one container holding `BACKUP_ENCRYPTION_KEY` (and, since 22 Oct 2026, it also
+> parses user report parameters in the same process), so it is the one that most
+> deserves a non-root user — but the `cadangan` volume already exists on this machine,
 > created root, and Docker does not apply image ownership to an existing named
 > volume. To move it: `chown -R` that volume to the uid you pick, then set
 > `USER` in the `integrator` stage. That is a deployment step, which is why it
 > is written here and not left as a code comment.
 
-**Who notices when it breaks.** `job-scheduler` runs `watch:health` hourly; it
+**Who notices when it breaks.** The `scheduler` role of `svc-worker` runs `watch:health` hourly; it
 reads the state (not the event) and emails `PLATFORM_ALERT_EMAIL`, falling back
 to `PLATFORM_CONTACT_EMAIL`, with one mail per status per 24 h. It lives in the
 scheduler, not in the backup service, on purpose: the costliest failure is no
@@ -274,7 +277,7 @@ than reviewed by eye: `tests/public-status.test.ts`.
 
 Backup health is deliberately not on it. Backups are operator recovery
 posture, not a service the reader consumes. The on-duty answer lives in
-`/api/health`, in `backup_runs`, and in `docker compose logs svc-tenant`.
+`/api/health`, in `backup_runs`, and in `docker compose logs svc-integrator`.
 `/api/health` itself is public (Docker and Traefik call it without
 credentials), so it carries `backup.status` but never `backup.lastError`.
 
@@ -313,8 +316,9 @@ passed disappears on its own.
 
 Images are built by GitHub Actions (`.github/workflows/publish-image.yml`) on
 every push to `main` and pushed to GHCR. Do not build on the production
-server. That box has ~3.6 GB of RAM shared with five other apps (as of Oct
-2026, `docs/arsitektur/02-LAYANAN-INFRA.md`); building there took
+server. That box (2 vCPU, 8 GB plan, ~7.4 GB visible) is shared with five other
+apps (as of Oct 2026, `docs/arsitektur/02-LAYANAN-INFRA.md`; it was ~3.6 GB
+when the measurements below were taken); building there took
 ~19 minutes at 58-92% iowait, starved the container still serving (about half
 the health probes answered 503), and two concurrent builds have produced an
 OOM (exit 137).
@@ -323,8 +327,9 @@ OOM (exit 137).
    `sai-accounting`, `-operator`, `-migrator`, `-backup`, `-integrator`).
 
    > `-integrator` was added to the matrix on 20 Oct 2026, and it was overdue:
-   > `svc-tenant` had referenced that image since stage 1b while nothing ever
-   > built it, so `docker compose pull svc-tenant` would have failed with
+   > `svc-tenant` (now `svc-integrator`) had referenced that image since stage 1b
+   > while nothing ever built it, so `docker compose pull svc-tenant` would have
+   > failed with
    > `manifest unknown`. The count in this line is now guarded
    > (`tests/image-compose-sepadan.test.ts`) — a stale number here makes someone
    > wait for four images and then deploy with the fifth missing, which is the
@@ -332,20 +337,52 @@ OOM (exit 137).
 2. Pull:
    ```bash
    git pull                                  # compose file + migrations only
-   docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
+   docker compose pull app-customer app-operator migrate svc-worker svc-integrator
    ```
+   `job-backup` (image `-backup`) is a toolbox and not part of every release.
+   Pull it too on the day you run `prove-backup-restore` or move a tenant to
+   on-premise (`tenant:export-onprem`, `tenant:mark-migrated-out` and
+   `tenant:unfreeze` run in it), otherwise it runs an older tag:
+   `docker compose pull job-backup`.
 3. Only if the release brings new migrations under `prisma/postgresql/`:
    ```bash
    docker compose run --rm migrate bun run db:migrate:all
    ```
 4. Swap:
    ```bash
-   docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
+   docker compose up -d --no-deps app-customer app-operator svc-worker svc-integrator
    ```
-5. Check that both app containers run images from the same `sha-` tag / build
-   date:
+
+   > ⚠ **First release after 22 Oct 2026 ("1 image = 1 container"): add
+   > `--remove-orphans`, once.** The six background services `job-scheduler`,
+   > `job-conformance`, `svc-ledger`, `svc-interactive`, `svc-tenant` and
+   > `svc-interactive-go` became two (`svc-worker`, `svc-integrator`). Compose
+   > does not stop services that left the file: without `--remove-orphans` the
+   > six old containers keep running next to the two new ones and **claim the
+   > same jobs** — two schedulers publishing, two `report.export` and two
+   > `report.export_go` claimers, two backup runners racing for the lane lock.
+   > Nothing turns red; the duplicates only show in `jobs` and in mail sent twice.
+   > That release's swap is therefore:
+   > ```bash
+   > docker compose up -d --no-deps --remove-orphans app-customer app-operator svc-worker svc-integrator
+   > docker compose ps -a --format '{{.Name}}' | grep -E 'job-scheduler|job-conformance|svc-ledger|svc-interactive|svc-tenant' \
+   >   && echo 'OLD CONTAINERS STILL PRESENT' || echo 'clean'
+   > ```
+   > `--remove-orphans` only removes containers of services no longer in any
+   > loaded compose file; `job-backup` (profile `perkakas`) is still declared
+   > and is not touched.
+   >
+   > Each role logs with its name as prefix:
+   > `docker compose logs svc-worker | grep ' ledger *|'`. One role ending
+   > ends the container (exit ≠ 0) and `restart: unless-stopped` restarts all
+   > four — a rising `docker inspect -f '{{.RestartCount}}' sai-svc-worker` is
+   > the signal to read the log.
+5. Check that every SAI container runs an image from the same `sha-` tag /
+   build date — the background services serve no page, so a stale one breaks
+   nothing visible:
    ```bash
-   docker inspect --format '{{.Config.Image}} {{.Created}}' sai-app-customer sai-app-operator
+   docker inspect --format '{{.Name}} {{.Config.Image}} {{.Created}}' \
+     sai-app-customer sai-app-operator sai-svc-worker sai-svc-integrator
    ```
 
 **Order matters when a release carries migrations:** pull, then migrate, then
@@ -376,11 +413,18 @@ survive across commands.
 > data. Tags from before the console split (18 Oct 2026) have no `-operator`
 > image, so they also need the `docker-compose.yml` of that time — and a schema
 > migrated forward is not rolled back by re-pinning an image.
+>
+> Rolling the **background services** back across 22 Oct 2026 ("1 image = 1
+> container") is a third boundary: older `-migrator` images do not contain
+> `scripts/run-workers.ts`, so `svc-worker` cannot start on them. Restore the
+> `docker-compose.yml` of that time (six background services) and run
+> `up -d --remove-orphans`. Rolling back `app-customer`/`app-operator` alone, as
+> above, is not affected.
 
 ### One-time: package visibility
 
 GHCR packages are created private even for a public repo. Either make the
-four packages public once (GitHub -> Packages -> each package -> Package
+five packages public once (GitHub -> Packages -> each package -> Package
 settings -> Change visibility), or authenticate the server:
 
 ```bash

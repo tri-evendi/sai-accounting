@@ -130,10 +130,11 @@ describe("profil on-premise: jaringan (celah #7)", () => {
 });
 
 describe("profil on-premise: berkas lisensi hanya-baca (09 §7, 06 §3.7)", () => {
-  /* Pembacanya `app-customer`; jalur `schedule` hari ini langkah di
-     `job-scheduler`. Tanpa mount, aplikasi tetap start — dengan entitlement
-     tersempit, selamanya, dan tanpa satu pun galat yang menyebut sebabnya. */
-  const PEMBACA = ["app-customer", "job-scheduler"];
+  /* Pembacanya `app-customer`; jalur `schedule` hari ini langkah di putaran
+     peran `scheduler` di `svc-worker`. Tanpa mount, aplikasi tetap start —
+     dengan entitlement tersempit, selamanya, dan tanpa satu pun galat yang
+     menyebut sebabnya. */
+  const PEMBACA = ["app-customer", "svc-worker"];
 
   it.each(PEMBACA)("`%s` menyetel LICENCE_FILE dan me-mount direktorinya `:ro`", (s) => {
     const b = blok(onpremKode, s);

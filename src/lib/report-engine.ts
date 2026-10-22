@@ -26,7 +26,7 @@
  * ══ BAGAIMANA `go` DITEGAKKAN ══════════════════════════════════════════════
  *   1. `/api/reports/export` MEMBACA register sebelum merakit apa pun: laporan
  *      `go` SELALU diterbitkan ke `report.export_go` (pelari Go
- *      `svc-interactive-go`), berapa pun barisnya — tidak ada ambang
+ *      `svc-integrator`), berapa pun barisnya — tidak ada ambang
  *      "kecil, rakit di sini", sebab jalur sinkron itulah versi TS-nya.
  *   2. `workers/interactive.ts` MENOLAK laporan `go` yang datang lewat
  *      `report.export` (pekerjaan lama dari sebelum peralihan) — melempar,

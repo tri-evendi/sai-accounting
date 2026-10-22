@@ -41,6 +41,13 @@ export const OPERATOR_PERMISSIONS = [
   "platform.status",
   /** Membuat, mengubah, menonaktifkan akun operator & mencabut sesinya. */
   "operator.accounts",
+  /**
+   * Register lisensi on-premise (migration platform 0006): buat draf, unggah
+   * berkas `.sai` yang ditandatangani LURING, unduh ulang arsipnya, catat
+   * pencabutan. Tidak pernah memegang kunci privat — penandatanganan tidak
+   * terjadi di konsol.
+   */
+  "licence.register",
 ] as const;
 export type OperatorPermission = (typeof OPERATOR_PERMISSIONS)[number];
 
@@ -53,7 +60,8 @@ export type OperatorPermission = (typeof OPERATOR_PERMISSIONS)[number];
  */
 const MATRIKS: Record<OperatorRole, readonly OperatorPermission[]> = {
   owner: OPERATOR_PERMISSIONS,
-  billing: ["tenant.billing"],
+  /* Lisensi on-premise adalah urusan dagang yang sama dengan penagihan SaaS. */
+  billing: ["tenant.billing", "licence.register"],
   support: ["tenant.lifecycle", "tenant.users", "site.content", "platform.status"],
   viewer: [],
 };

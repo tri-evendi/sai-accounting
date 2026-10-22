@@ -6,11 +6,12 @@
  * environment proses (`packages/db/src/company-url.ts`, cermin Go-nya
  * `services/integrator/internal/db/instans.go`). Instans baru berarti satu
  * baris baru di `.env` — dan baris itu wajib sampai ke `app-customer`,
- * `app-operator`, `migrate`, `svc-*`, `job-*`, DAN `svc-tenant` sekaligus.
+ * `app-operator`, `migrate`, `svc-worker`, `job-backup`, DAN `svc-integrator`
+ * sekaligus.
  *
  * Bentuk kegagalan yang dijaga tidak menghasilkan galat di tempat yang salah:
  * layanan yang tidak menerima env itu tetap jalan, lalu melempar hanya saat
- * membuka buku PT di instans tersebut. Untuk `svc-tenant` itu berarti buku PT
+ * membuka buku PT di instans tersebut. Untuk `svc-integrator` itu berarti buku PT
  * yang dipindah TIDAK dicadangkan (putarannya `error`, tapi baru ketahuan
  * sesudah pemindahan). Satu jalan masuk untuk semua layanan membuat "sampai ke
  * satu, terlewat di yang lain" tidak bisa terjadi:
@@ -22,7 +23,7 @@
  *
  * Akibat aturan 2: URL instans di `.env` dipakai apa adanya oleh SEMUA layanan,
  * jadi ia wajib LANGSUNG ke PostgreSQL (bukan PgBouncer) — `migrate` butuh
- * advisory lock sesi dan `svc-tenant` butuh `pg_database` utuh. Go menolak URL
+ * advisory lock sesi dan jalur `tenant` butuh `pg_database` utuh. Go menolak URL
  * instans yang menyatakan `pgbouncer=true`.
  */
 import { readFileSync, readdirSync } from "node:fs";
@@ -79,12 +80,9 @@ describe("env var instans basis data: satu jalan masuk untuk semua layanan", () 
     /* Penjaga yang tidak menemukan apa pun lulus dengan nol pelanggar. */
     for (const wajib of [
       "migrate",
-      "job-scheduler",
-      "job-conformance",
       "job-backup",
-      "svc-ledger",
-      "svc-interactive",
-      "svc-tenant",
+      "svc-worker",
+      "svc-integrator",
       "app-customer",
       "app-operator",
     ]) {

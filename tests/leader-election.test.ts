@@ -1,5 +1,6 @@
 /**
- * LEADER ELECTION `job-scheduler` & pagar jalur (rancangan 09 §9, tahap 3).
+ * LEADER ELECTION peran tunggal `svc-worker` & pagar jalur (rancangan 09 §9,
+ * tahap 3).
  *
  * Tiga hal yang dijaga, sesuai urutan bahayanya:
  *
@@ -26,8 +27,10 @@ import {
   type LeaderLock,
 } from "../scripts/leader-election";
 import { AKAR_REPO, berkasSumber, tanpaKomentar } from "./akar-sumber";
+import { composeServices, serviceBlock, workerRoles } from "./compose-worker";
+import { leaderRoles, parseRoles } from "../scripts/run-workers";
 
-const OPTS = { ...LEADER_DEFAULTS, name: "job-scheduler", retryMs: 1, killGraceMs: 5 };
+const OPTS = { ...LEADER_DEFAULTS, name: "scheduler", retryMs: 1, killGraceMs: 5 };
 
 interface Harness {
   deps: LeaderDeps;
@@ -216,8 +219,31 @@ describe("kunci TIDAK PERNAH lewat pooler transaksi", () => {
     expect(m).not.toBeNull();
     const url = m![1]!.replace(/\$\{[^}]+\}/g, "x");
     expect(() => assertDirectUrl(url)).not.toThrow();
-    expect(HA).toMatch(/job-scheduler:[\s\S]*?CONTROL_DATABASE_DIRECT_URL: \*control-direct/);
-    expect(HA).toMatch(/svc-ledger:[\s\S]*?CONTROL_DATABASE_DIRECT_URL: \*control-direct/);
+    expect(tanpaKomentar(serviceBlock(HA, "svc-worker"))).toContain(
+      "CONTROL_DATABASE_DIRECT_URL: *control-direct"
+    );
+  });
+
+  it("compose DASAR menyetel URL langsung untuk pagar `ledger` & jalur `tenant`", () => {
+    /*
+     * Disetujui pemilik 22 Okt 2026. Tanpanya pagar jalur `ledger` jatuh ke
+     * jalan lama — kunci sesi lewat PgBouncer mode transaksi, yang tertinggal
+     * di backend milik kolam (`workers/runner.ts` → `ambilPagar`) — dan jalur
+     * Go `tenant` MENOLAK boot (`db.KendaliLangsung`). Nilainya wajib lolos
+     * penolak pooler yang SAMA dengan yang dipakai saat berjalan.
+     */
+    const svc = composeServices();
+    for (const nama of ["svc-worker", "svc-integrator"]) {
+      const env = svc[nama]?.environment as Record<string, string> | undefined;
+      const url = env?.CONTROL_DATABASE_DIRECT_URL;
+      expect(url, `${nama}: CONTROL_DATABASE_DIRECT_URL`).toBeDefined();
+      expect(() => assertDirectUrl(url!.replace(/\$\{[^}]+\}/g, "x"))).not.toThrow();
+      expect(url).toMatch(/@pg:5432\/sai_control$/);
+    }
+    /* `svc-integrator` TIDAK menimpa `CONTROL_DATABASE_URL`: jalur
+       `interactive` di proses yang sama memakainya lewat PgBouncer. */
+    const envGo = svc["svc-integrator"]?.environment as Record<string, string>;
+    expect(envGo).not.toHaveProperty("CONTROL_DATABASE_URL");
   });
 
   it("advisory lock di kode TS hanya di tempat yang disebut", () => {
@@ -251,25 +277,39 @@ describe("compose dasar TIDAK berubah — election hanya lewat override", () => 
   const HA = readFileSync(join(AKAR_REPO, "docker-compose.ha.yml"), "utf8");
 
   const blok = (teks: string, nama: string) => {
-    const mulai = teks.indexOf(`\n  ${nama}:\n`);
-    expect(mulai).toBeGreaterThan(-1);
-    const sisa = teks.slice(mulai + 1);
-    const habis = sisa.slice(1).search(/\n {2}[a-z][a-z0-9-]*:\n/);
-    return habis === -1 ? sisa : sisa.slice(0, habis + 1);
+    const b = serviceBlock(teks, nama);
+    expect(b, nama).not.toBe("");
+    return b;
   };
 
-  it("job-scheduler dasar: tanpa entrypoint, tanpa pembungkus, putarannya `sh -c`", () => {
-    const b = tanpaKomentar(blok(BASE, "job-scheduler"));
+  it("svc-worker dasar: tanpa entrypoint, tanpa pembungkus pemimpin, di belakang tini", () => {
+    const b = tanpaKomentar(blok(BASE, "svc-worker"));
     expect(b).not.toMatch(/entrypoint:/);
     expect(b).not.toContain("run-as-leader");
-    expect(b).toMatch(/command:\s*\n\s*- sh\s*\n\s*- -c/);
+    expect(b).not.toContain("WORKER_LEADER_ROLES");
+    expect(b).toMatch(/init: true/);
+    expect(b).toMatch(/command:\s*\n\s*- bun\s*\n\s*- scripts\/run-workers\.ts/);
+    expect(workerRoles().get("scheduler")).toMatch(/while true/);
   });
 
-  it("override HA mengganti entrypoint SAJA — putarannya tetap satu salinan", () => {
-    const b = tanpaKomentar(blok(HA, "job-scheduler"));
-    expect(b).toContain('entrypoint: ["bun", "scripts/run-as-leader.ts", "--name", "job-scheduler", "--"]');
+  it("override HA menambah variabel SAJA — skrip peran tetap satu salinan", () => {
+    const b = tanpaKomentar(blok(HA, "svc-worker"));
     expect(b).not.toMatch(/^\s+command:/m);
-    expect(b).toMatch(/init: true/);
+    expect(b).not.toMatch(/^\s+entrypoint:/m);
+    expect(b).toMatch(/WORKER_LEADER_ROLES: scheduler,ledger,conformance/);
+  });
+
+  it("peran pemimpin HA = peran tunggal; `interactive` (jamak) tidak pernah dibungkus", () => {
+    /* Peran yang salah ketik di override = election yang tidak terpasang;
+       penyelia MENOLAK boot, dan penjaga ini menolaknya lebih awal. */
+    const m = /WORKER_LEADER_ROLES: (\S+)/.exec(HA);
+    expect(m).not.toBeNull();
+    const roles = [...workerRoles()].map(([name, script]) => ({ name, script }));
+    const pemimpin = leaderRoles(m![1], roles);
+    expect([...pemimpin].sort()).toEqual(["conformance", "ledger", "scheduler"]);
+    expect(pemimpin.has("interactive")).toBe(false);
+    expect(() => leaderRoles("scheduler,penjadwal", roles)).toThrow(/bukan peran/);
+    expect(() => parseRoles(["ledger", "exec true", "ledger", "exec true"])).toThrow(/dua kali/);
   });
 
   it("anggota kluster & witness di belakang profil — tidak pernah start tanpa diminta", () => {

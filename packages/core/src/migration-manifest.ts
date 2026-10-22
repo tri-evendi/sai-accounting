@@ -12,8 +12,8 @@
  * yang lupa diumumkan di sini membuat tes merah, bukan konsol yang diam.
  */
 export const MIGRATION_TERAKHIR = {
-  control: "0009_db_instances",
-  platform: "0005_brand_assets",
+  control: "0010_tenant_pindah_onprem",
+  platform: "0006_licence_register",
   company: "0002_company_logos",
 } as const;
 

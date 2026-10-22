@@ -84,7 +84,8 @@ services:
   #
   # MariaDB memakai THREAD per koneksi; PostgreSQL memakai PROSES. Puncak koneksi
   # di kotak ini TERUKUR 62 (`MAX_USED_CONNECTIONS`), dan 62 proses backend pada
-  # mesin 3,6 GB yang dibagi lima aplikasi lain bukan hal sepele.
+  # mesin yang dibagi lima aplikasi lain (3,6 GB saat diukur; kini 8 GB) bukan
+  # hal sepele.
   #
   # Dan pola klien per-perusahaan memperbesarnya: jumlah koneksi tumbuh mengikuti
   # jumlah BUKU yang aktif bersamaan, bukan jumlah pengguna.
@@ -159,7 +160,40 @@ services:
     networks:
       - internal
 
-  # ── PENJADWAL LANGGANAN (issue #373) ──────────────────────────────────────
+  # ══ `svc-worker` — EMPAT PERAN LATAR NODE, SATU CONTAINER ══════════════════
+  #
+  # Keputusan pemilik 22 Okt 2026: **1 image = 1 container**. Image `-migrator`
+  # dulu menjalankan EMPAT container — `job-scheduler`, `job-conformance`,
+  # `svc-ledger`, `svc-interactive` — dan kini satu, dengan empat PROSES di
+  # bawah penyelia kecil `scripts/run-workers.ts` (tanpa dependensi, tanpa
+  # supervisord). Harga dan alasannya: docs/arsitektur/09-RANCANGAN-LAYANAN.md
+  # §3.2.
+  #
+  # `svc-`, bukan `job-`: container ini BERJALAN TERUS. Dua perannya memang
+  # putaran (penjadwal per jam, kesesuaian mingguan), tapi container-nya tidak
+  # pernah berakhir.
+  #
+  # ⚠ GELAR PERTAMA WAJIB `docker compose up -d --remove-orphans`. Tanpanya
+  # empat container lama tetap hidup di samping yang baru dan MENGKLAIM
+  # pekerjaan yang sama — dua penjadwal, dua pelari `interactive`. Pagar jalur
+  # `ledger` menahan yang terburuk, tapi tidak yang lain. PRODUCTION.md §Updates.
+  #
+  # ══ SATU PERAN MATI = CONTAINER MATI, DAN ITU DISENGAJA ═══════════════════
+  # Penyelia keluar BUKAN-NOL begitu satu peran berakhir (apa pun kodenya),
+  # sesudah menghentikan tiga lainnya. `restart: unless-stopped` lalu
+  # menghidupkan ulang keempatnya utuh. Kebalikannya — container yang tetap
+  # "Up" dengan satu peran yang sudah mati — adalah kegagalan paling senyap
+  # yang bisa dibuat penyatuan ini: pelari `ledger` yang mati sejak kemarin
+  # tidak merusak satu halaman pun.
+  #
+  # Setiap baris log berawalan nama perannya (`scheduler   | …`), jadi
+  # `docker compose logs svc-worker` tetap terbaca, dan satu peran bisa
+  # disaring: `docker compose logs svc-worker | grep ' scheduler *|'`.
+  #
+  # `init: true`: penyelia di belakang tini. Ia tidak memanen proses yatim, dan
+  # tini yang membuat kematian penyelia menghentikan seluruh pohon proses.
+  #
+  # ── PERAN `scheduler` — PENJADWAL LANGGANAN (issue #373) ──────────────────
   # Trial berakhir, tagihan terbit, dunning, suspensi, pengingat H-7/H-3/H-1.
   #
   # ⚠ KENAPA LAYANAN, BUKAN CRON HOST. Sampai #373 ini sebaris crontab yang
@@ -177,24 +211,160 @@ services:
   # satu-satunya cara menjangkau service `db` yang tidak memublikasikan port
   # (alasan yang sama dengan migration; docs/MULTI-COMPANY.md §3).
   #
-  # `|| true` disengaja: satu putaran yang gagal TIDAK BOLEH mematikan
-  # putaran-putaran berikutnya. Skripnya idempoten, jadi putaran berikutnya
-  # menyembuhkan yang tertinggal — sedangkan loop yang mati karena satu galat
-  # mengembalikan kita persis ke kegagalan senyap yang layanan ini tutup.
+  # Langkah yang gagal DITELAN dengan sengaja: satu putaran yang gagal TIDAK
+  # BOLEH mematikan putaran-putaran berikutnya. Skripnya idempoten, jadi
+  # putaran berikutnya menyembuhkan yang tertinggal — sedangkan loop yang mati
+  # karena satu galat mengembalikan kita persis ke kegagalan senyap yang
+  # layanan ini tutup (dan sejak penyatuan juga menjatuhkan tiga peran lain).
   # Kegagalannya tetap terbaca: tercatat di `scheduler_runs` (status `error`),
   # tampil di konsol `/scheduler`, dan terbaca `prove-scheduler-alive`.
   #
   # Tidur 3600 detik, BUKAN cron di dalam container: satu proses shell yang
   # tidur tidak memakan apa pun, dan menambah daemon cron ke image berarti satu
   # hal lagi yang bisa mati diam-diam di kotak yang sudah padat.
-  job-scheduler:
+  #
+  # ── PERAN `conformance` — PEMERIKSA KESESUAIAN DATA (mingguan) ───────────
+  # Penjaga zod hanya berlaku di jalur TULIS. Impor sekali-jalan, perbaikan SQL
+  # manual, dan penyemai tidak melewati satu penjaga pun — dan audit 20-21
+  # Agustus 2026 menemukan ENAM kelas cacat yang masuk lewat pintu itu di buku
+  # produksi: status kontrak di luar enum, mata uang `LC`, 609 kontrak valas
+  # tanpa kurs, 720 pembayaran salah label mata uang, faktur kelebihan bayar,
+  # dan kuantitas faktur yang termigrasi salah senilai Rp 774 juta.
+  #
+  # Semuanya ditemukan dengan menggali manual selama dua hari. Peran ini ada
+  # supaya penggalian itu tidak perlu terulang.
+  #
+  # MINGGUAN, bukan sejam sekali seperti `scheduler`: yang dicarinya bergeser
+  # lambat. Cacat seperti ini lahir dari peristiwa jarang — impor sistem lama,
+  # perbaikan tangan — bukan dari lalu lintas harian. Memeriksanya tiap jam
+  # hanya memindahkan beban tanpa menemukan apa pun lebih cepat.
+  #
+  # PERAN SENDIRI, bukan langkah di putaran `scheduler`: cadensinya berbeda, dan
+  # yang lebih penting — kegagalan penagihan dan temuan kesesuaian data adalah
+  # dua kabar berbeda yang tidak boleh bercampur di satu aliran log (awalan
+  # peran yang memisahkannya sejak penyatuan).
+  #
+  # Kode keluarnya DITELAN dengan alasan yang sama seperti tetangganya: skrip
+  # ini SENGAJA keluar bukan-nol saat menemukan sesuatu (supaya berguna di CI),
+  # dan tanpa penelan itu setiap temuan akan mengakhiri perannya — yang kini
+  # berarti seluruh container mati lalu dihidupkan ulang tanpa henti: temuan
+  # berubah jadi crash-loop empat peran.
+  #
+  # Membacanya ADA DUA:
+  #   • `docker compose logs svc-worker --tail 200 | grep ' conformance *|'` —
+  #     rincian lengkapnya;
+  #   • `/api/health` → `conformance` — PUTUSAN denyutnya (ok | findings | late
+  #     | unknown) beserta jumlah temuan terakhir, dari tabel `conformance_runs`
+  #     (migration platform 0018).
+  #
+  # Yang kedua ada karena yang pertama saja sudah terbukti tidak cukup: pada
+  # cadensi MINGGUAN, temuan yang hanya hidup di log container bisa berumur
+  # berbulan-bulan sebelum ada yang membukanya.
+  #
+  # Putaran pertama jalan SAAT container naik, bukan tujuh hari kemudian,
+  # sehingga rilis yang merusak data ketahuan di hari yang sama.
+  #
+  # Ia tidak mengubah satu angka akuntansi pun: buku PT hanya DIBACA, dan
+  # satu-satunya tulisannya adalah satu baris jejak ke basis data PLATFORM.
+  # Dijaga `tests/check-data-conformance.test.ts`.
+  #
+  # ── PERAN `ledger` — SATU-SATUNYA PENULIS BUKU BESAR DI LATAR ────────────
+  #
+  # ══ KENAPA PERAN TERSENDIRI, BUKAN SATU LANGKAH LAGI DI PUTARAN `scheduler`
+  #
+  # Karena justru ITU yang dibongkar (rancangan §4). `recurring:run` dulu satu
+  # langkah di putaran penjadwal, dan bentuk itu punya tiga cacat yang tidak
+  # kelihatan sampai salah satunya kejadian:
+  #
+  #   • satu PT yang gagal menunggu SEJAM untuk dicoba lagi, karena yang
+  #     diulang adalah seluruh putaran — bukan yang gagal;
+  #   • langkah itu memikul batas `timeout` putaran, dan batas itu harus
+  #     diturunkan setiap kali ada langkah baru. Memposting dokumen berulang
+  #     untuk SEMUA PT di bawah satu stopwatch yang menyusut adalah ongkos yang
+  #     tumbuh seiring jumlah pelanggan;
+  #   • putaran yang mati di tengah daftar meninggalkan separuh PT tak tergarap
+  #     tanpa satu baris pun yang mencatat sampai mana ia sempat.
+  #
+  # Sekarang penjadwal MENERBITKAN (satu baris `jobs` per PT, selesai dalam
+  # milidetik) dan peran ini MELAKSANAKAN, dengan `attempts` dan backoff per
+  # PT. Itu sekaligus menutup P2-2: tiap langkah punya barisnya sendiri.
+  #
+  # ⚠ SATU REPLIKA, DAN ITU BUKAN PILIHAN PENYEBARAN. Jalur ini tunggal-instans
+  # di `contract/kinds.yaml`, dan pelarinya memagari diri dengan
+  # `pg_try_advisory_lock`: instans kedua KELUAR tanpa bekerja alih-alih ikut
+  # mengklaim. Pagar itu tidak memikul kebenaran — `dedupe_key` yang unik sudah
+  # melakukannya — tapi ia mencegah kesalahan konfigurasi yang jauh lebih mudah
+  # dilakukan daripada dibayangkan. Sejak penyatuan, pelari yang keluar karena
+  # pagar juga mengakhiri container (janji penyelia), jadi menaikkan
+  # `deploy.replicas` di sini menghasilkan satu container yang hidup dan satu
+  # yang crash-loop — skala jamak hanya lewat profil HA, yang membungkus peran
+  # tunggal di belakang leader election (`WORKER_LEADER_ROLES`).
+  #
+  # Pagarnya memakai `CONTROL_DATABASE_DIRECT_URL` (di `environment:` di bawah):
+  # satu koneksi LANGSUNG yang dipegang selama pelari hidup dan dibuktikan
+  # ulang tiap denyut (`workers/runner.ts` → `ambilPagar`). Tanpanya pagar
+  # lewat PgBouncer mode transaksi — kunci yang tertinggal di backend milik
+  # kolam, bukan milik pelari ini.
+  #
+  # ⚠ INVARIAN I-2 ADA DI SINI, BUKAN DI DOKUMEN. Ini satu-satunya peran latar
+  # yang menulis buku besar, dan handler-nya MENDELEGASIKAN ke
+  # `src/lib/recurring-run.ts` — mesin yang sama yang dipakai `recurring:run`
+  # tangan. Dua mesin untuk satu aturan akuntansi akan menyimpang tanpa satu
+  # galat pun, dan yang menyimpang adalah buku.
+  #
+  # TANPA `timeout` pembungkus, dan itu disengaja — berbeda dari dua putaran
+  # di atas. Yang dijaga `timeout` di sana adalah PUTARAN yang menggantung lalu
+  # menahan putaran berikutnya selamanya; di sini tidak ada putaran berikutnya
+  # yang bisa tertahan. Pekerjaan yang menggantung dijaga oleh LEASE: ia
+  # berhenti diperpanjang, ambang reclaim melewatinya, dan barisnya pulang ke
+  # `queued` dengan `attempts + 1` — mekanisme yang tahu jenis pekerjaannya,
+  # yang tidak bisa dilakukan satu angka detik di compose.
+  #
+  # ── PERAN `interactive` — EKSPOR YANG DITUNGGU PENGGUNA (tahap 1c, §5) ────
+  #
+  # ══ IA TIDAK MENGGANTIKAN RUTE EKSPOR SINKRON ══════════════════════════════
+  #
+  # Ekspor berukuran biasa tetap dirakit di dalam permintaan HTTP dan selesai
+  # dalam milidetik — itu jawaban yang benar, dan antrean untuknya hanya
+  # menambah penantian. Yang diserahkan ke sini hanya yang di atas
+  # `EXPORT_QUEUE_HANDOFF_ROWS`, dan sebabnya bukan ukuran berkasnya melainkan
+  # EVENT LOOP: perakitan ExcelJS sinkron dan menahan SETIAP permintaan lain di
+  # proses yang sama, termasuk halaman yang sedang dibuka orang lain.
+  #
+  # ══ TIGA BEDANYA DARI PERAN `ledger`, DAN KETIGANYA DISENGAJA ══════════════
+  #
+  #  1. **Instansnya boleh BERAPA PUN.** Jalur ini tidak menulis buku dan tidak
+  #     menerbitkan apa pun — `FOR UPDATE SKIP LOCKED` memastikan tak ada yang
+  #     dikerjakan dua kali. `contract/kinds.yaml` menyatakannya
+  #     `single_instance: false`.
+  #  2. **Ia butuh volume `hasil` BISA-TULIS** — bersama pasangan Go-nya di
+  #     `svc-integrator` (tahap 1d), dan hanya keduanya; `app-customer`
+  #     memasangnya hanya-baca dan hanya men-stream. Keduanya root, jadi setiap
+  #     hasil di-`chown` ke `node` (`contract/kinds.yaml` → `results`). Sejak
+  #     penyatuan, tiga peran lain di container ini ikut melihat mount itu;
+  #     tidak satu pun menulisnya, dan volume ini tidak memuat buku.
+  #  3. **Lewat PgBouncer**, bukan langsung ke `pg`: ia membaca buku SATU PT per
+  #     pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data
+  #     seperti jalur `tenant`.
+  #
+  # Container ini TIDAK membaca `BACKUP_ENCRYPTION_KEY`: tidak satu pun dari
+  # empat perannya memakainya. `env_file: .env` memang membawa seluruh berkas —
+  # utang yang sama yang disebut di `svc-integrator`.
+  svc-worker:
     build:
       context: .
       target: migrator
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
-    container_name: sai-job-scheduler
+    container_name: sai-svc-worker
     restart: unless-stopped
+    init: true
     env_file: .env
+    environment:
+      # Pagar jalur `ledger` di koneksi LANGSUNG (lihat kepala blok ini) —
+      # disetujui pemilik 22 Okt 2026. LANGSUNG ke `pg`, bukan PgBouncer;
+      # `assertDirectUrl` menolak URL pooler sebelum satu byte dikirim. Dijaga
+      # `tests/leader-election.test.ts`.
+      CONTROL_DATABASE_DIRECT_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
     depends_on:
       pg:
         condition: service_healthy
@@ -202,11 +372,31 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+    volumes:
+      # Penulisnya peran `interactive` di sini dan pasangan Go-nya di
+      # `svc-integrator`. `app-customer` memasangnya `:ro`.
+      # Dokumen & jejak TIDAK dipasang: tidak satu peran pun membaca berkas,
+      # dan mount yang tidak dibutuhkan adalah permukaan yang tidak perlu ada.
+      - hasil:/app/data/hasil
     networks:
       - internal
+    # Pelari jalur menyelesaikan pekerjaan yang sedang jalan lalu berhenti
+    # mengklaim. 60s bukan "cukup untuk menyelesaikan ekspor" — ekspor besar bisa
+    # lebih lama, dan yang menanganinya bukan jendela ini melainkan *lease*:
+    # pekerjaan yang terpotong dipulangkan `reclaimStaleJobs` lalu diklaim lagi.
+    # Penyelia sendiri memaksa KILL 45 detik sesudah satu peran mati — di bawah
+    # jendela ini, supaya ia yang memutuskan, bukan Docker.
+    stop_grace_period: 60s
+    # Pasangan `<peran>` + `<skrip sh>`. Skrip tiap peran ditulis DI SINI, satu
+    # salinan; penyelia tidak tahu apa pun tentang isinya.
     command:
-      - sh
-      - -c
+      - bun
+      - scripts/run-workers.ts
+      - ledger
+      - exec bun run jobs:run:ledger
+      - interactive
+      - exec bun run jobs:run:interactive
+      - scheduler
       # `notify:setup`, `notify:invoice-due`, dan `remind:customers` menumpang
       # putaran yang SAMA, bukan layanan sendiri-sendiri: cadensinya identik
       # (per jam), semuanya membaca daftar perusahaan yang sama, dan semuanya
@@ -257,7 +447,7 @@ services:
       # tidak diturunkan karena jumlah langkah tidak berubah. Yang berubah lebih
       # dalam daripada namanya: langkah itu berhenti MELAKSANAKAN. Ia kini
       # menulis satu baris `jobs` per PT dan selesai dalam milidetik, dan yang
-      # memposting dokumen berulang adalah `svc-ledger`. Perhitungan di atas
+      # memposting dokumen berulang adalah peran `ledger`. Perhitungan di atas
       # memang dibuat terhadap langkah yang melaksanakan, jadi satu langkah yang
       # keluar dari perhitungan itu adalah ruang yang bertambah, bukan berkurang.
       #
@@ -314,71 +504,7 @@ services:
           langkah prune:trails bun run prune:trails
           sleep 3600
         done
-
-  # ── PEMERIKSA KESESUAIAN DATA (mingguan) ──────────────────────────────────
-  # Penjaga zod hanya berlaku di jalur TULIS. Impor sekali-jalan, perbaikan SQL
-  # manual, dan penyemai tidak melewati satu penjaga pun — dan audit 20-21
-  # Agustus 2026 menemukan ENAM kelas cacat yang masuk lewat pintu itu di buku
-  # produksi: status kontrak di luar enum, mata uang `LC`, 609 kontrak valas
-  # tanpa kurs, 720 pembayaran salah label mata uang, faktur kelebihan bayar,
-  # dan kuantitas faktur yang termigrasi salah senilai Rp 774 juta.
-  #
-  # Semuanya ditemukan dengan menggali manual selama dua hari. Layanan ini ada
-  # supaya penggalian itu tidak perlu terulang.
-  #
-  # MINGGUAN, bukan sejam sekali seperti `scheduler`: yang dicarinya bergeser
-  # lambat. Cacat seperti ini lahir dari peristiwa jarang — impor sistem lama,
-  # perbaikan tangan — bukan dari lalu lintas harian. Memeriksanya tiap jam
-  # hanya memindahkan beban tanpa menemukan apa pun lebih cepat.
-  #
-  # LAYANAN SENDIRI, bukan disisipkan ke `job-scheduler`: cadensinya berbeda, dan
-  # yang lebih penting — kegagalan penagihan dan temuan kesesuaian data adalah
-  # dua kabar berbeda yang tidak boleh bercampur di satu aliran log.
-  #
-  # `|| true` dengan alasan yang sama seperti tetangganya: skrip ini SENGAJA
-  # keluar bukan-nol saat menemukan sesuatu (supaya berguna di CI), dan tanpa
-  # penjaga itu setiap temuan akan membuat container mati lalu dihidupkan ulang
-  # tanpa henti — temuan berubah jadi crash-loop.
-  #
-  # Membacanya ADA DUA, dan yang kedua baru:
-  #   • `docker compose logs job-conformance --tail 60` — rincian lengkapnya;
-  #   • `/api/health` → `conformance` — PUTUSAN denyutnya (ok | findings | late
-  #     | unknown) beserta jumlah temuan terakhir, dari tabel `conformance_runs`
-  #     (migration platform 0018).
-  #
-  # Yang kedua ada karena yang pertama saja sudah terbukti tidak cukup: pada
-  # cadensi MINGGUAN, temuan yang hanya hidup di log container bisa berumur
-  # berbulan-bulan sebelum ada yang membukanya. Dua layanan latar lain
-  # (`job-scheduler`, `job-backup`) sudah punya jejak yang bisa DITANYAI; yang
-  # ini dulu satu-satunya yang tidak.
-  #
-  # Putaran pertama jalan SAAT layanan naik, bukan tujuh hari kemudian,
-  # sehingga rilis yang merusak data ketahuan di hari yang sama.
-  #
-  # Ia tidak mengubah satu angka akuntansi pun: buku PT hanya DIBACA, dan
-  # satu-satunya tulisannya adalah satu baris jejak ke basis data PLATFORM.
-  # Dijaga `tests/check-data-conformance.test.ts`, yang kini menuntut sifat itu
-  # secara presisi — bukan sekadar ketiadaan kata SQL.
-  job-conformance:
-    build:
-      context: .
-      target: migrator
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
-    container_name: sai-job-conformance
-    restart: unless-stopped
-    env_file: .env
-    depends_on:
-      pg:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      migrate:
-        condition: service_completed_successfully
-    networks:
-      - internal
-    command:
-      - sh
-      - -c
+      - conformance
       # Tanggalnya dicetak sebagai perintah TERSENDIRI, bukan `$(date)` di dalam
       # string: compose menafsirkan `$` sebagai interpolasi variabelnya sendiri,
       # dan aturan pelolosannya adalah hal yang tidak perlu ditebak-tebak untuk
@@ -454,8 +580,8 @@ services:
       - internal
     # ══ LAYANAN INI BERHENTI MENCADANGKAN (tahap 1b) ═══════════════════════
     #
-    # Yang mencadangkan sekarang `svc-tenant` (Go), dan ia mencadangkan SATU
-    # OBJEK PER BASIS DATA — menutup celah on-premise #5: `pg_dumpall` berarti
+    # Yang mencadangkan sekarang jalur `tenant` di `svc-integrator` (Go), dan ia
+    # mencadangkan SATU OBJEK PER BASIS DATA — menutup celah on-premise #5: `pg_dumpall` berarti
     # satu tenant tidak bisa dipulihkan tanpa menyentuh tenant lain, padahal
     # "pulihkan data kami saja ke keadaan Selasa" adalah permintaan biasa di
     # SaaS berbayar (§1, §6).
@@ -475,7 +601,7 @@ services:
     #
     # Image-nya satu-satunya yang punya klien Prisma (untuk mencocokkan registry
     # PT), `openssl`, `awscli`, DAN klien MariaDB — yang terakhir supaya pembukti
-    # masih bisa membaca artefak dari sebelum penukaran mesin. `svc-tenant`
+    # masih bisa membaca artefak dari sebelum penukaran mesin. `svc-integrator`
     # sengaja tidak memuat semua itu.
     #
     # `profiles` membuatnya TIDAK ikut `docker compose up -d`, sementara
@@ -489,239 +615,62 @@ services:
       - -c
       - |
         echo "[backup] Layanan ini PERKAKAS, bukan pelaksana (tahap 1b)."
-        echo "[backup] Yang mencadangkan: svc-tenant — satu objek per basis data."
+        echo "[backup] Yang mencadangkan: svc-integrator (jalur tenant) — satu objek per basis data."
         echo "[backup] Pakai: docker compose run --rm job-backup bun run prove-backup-restore"
         exit 0
 
-  # ── JALUR `ledger` — SATU-SATUNYA PENULIS BUKU BESAR DI LATAR ──────────────
+  # ══ `svc-integrator` — DUA JALUR GO, SATU PROSES ══════════════════════════
   #
-  # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean, bukan sekali-jalan
-  # lalu keluar. Tiga tetangganya di atas memang `job-` karena masing-masing
-  # satu putaran yang berakhir; yang ini tidak pernah berakhir.
-  #
-  # ══ KENAPA LAYANAN TERSENDIRI, BUKAN SATU LANGKAH LAGI DI `job-scheduler` ══
-  #
-  # Karena justru ITU yang dibongkar (rancangan §4). `recurring:run` dulu satu
-  # langkah di putaran penjadwal, dan bentuk itu punya tiga cacat yang tidak
-  # kelihatan sampai salah satunya kejadian:
-  #
-  #   • satu PT yang gagal menunggu SEJAM untuk dicoba lagi, karena yang
-  #     diulang adalah seluruh putaran — bukan yang gagal;
-  #   • langkah itu memikul batas `timeout` putaran, dan batas itu harus
-  #     diturunkan setiap kali ada langkah baru. Memposting dokumen berulang
-  #     untuk SEMUA PT di bawah satu stopwatch yang menyusut adalah ongkos yang
-  #     tumbuh seiring jumlah pelanggan;
-  #   • putaran yang mati di tengah daftar meninggalkan separuh PT tak tergarap
-  #     tanpa satu baris pun yang mencatat sampai mana ia sempat.
-  #
-  # Sekarang penjadwal MENERBITKAN (satu baris `jobs` per PT, selesai dalam
-  # milidetik) dan layanan ini MELAKSANAKAN, dengan `attempts` dan backoff per
-  # PT. Itu sekaligus menutup P2-2: tiap langkah punya barisnya sendiri.
-  #
-  # ⚠ SATU REPLIKA, DAN ITU BUKAN PILIHAN PENYEBARAN. Jalur ini tunggal-instans
-  # di `contract/kinds.yaml`, dan pelarinya memagari diri dengan
-  # `pg_try_advisory_lock`: instans kedua KELUAR tanpa bekerja alih-alih ikut
-  # mengklaim. Pagar itu tidak memikul kebenaran — `dedupe_key` yang unik sudah
-  # melakukannya — tapi ia mencegah kesalahan konfigurasi yang jauh lebih mudah
-  # dilakukan daripada dibayangkan. Menaikkan `deploy.replicas` di sini tidak
-  # akan menggandakan throughput; ia hanya menghasilkan satu container yang
-  # hidup dan satu yang keluar.
-  #
-  # ⚠ INVARIAN I-2 ADA DI SINI, BUKAN DI DOKUMEN. Ini satu-satunya layanan latar
-  # yang menulis buku besar, dan handler-nya MENDELEGASIKAN ke
-  # `src/lib/recurring-run.ts` — mesin yang sama yang dipakai `recurring:run`
-  # tangan. Dua mesin untuk satu aturan akuntansi akan menyimpang tanpa satu
-  # galat pun, dan yang menyimpang adalah buku.
-  #
-  # Image `migrator`, sama seperti tiga tetangga latar lain: ia butuh sumber TS
-  # dan `node_modules`, bukan keluaran `next build`.
-  #
-  # TANPA `timeout` pembungkus, dan itu disengaja — berbeda dari tiga tetangga
-  # di atas. Yang dijaga `timeout` di sana adalah PUTARAN yang menggantung lalu
-  # menahan putaran berikutnya selamanya; di sini tidak ada putaran berikutnya
-  # yang bisa tertahan. Pekerjaan yang menggantung dijaga oleh LEASE: ia
-  # berhenti diperpanjang, ambang reclaim melewatinya, dan barisnya pulang ke
-  # `queued` dengan `attempts + 1` — mekanisme yang tahu jenis pekerjaannya,
-  # yang tidak bisa dilakukan satu angka detik di compose.
-  svc-ledger:
-    build:
-      context: .
-      target: migrator
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
-    container_name: sai-svc-ledger
-    restart: unless-stopped
-    env_file: .env
-    depends_on:
-      pg:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      migrate:
-        condition: service_completed_successfully
-    networks:
-      - internal
-    # `-k 30` saat berhenti: pelari menyelesaikan pekerjaan yang sedang jalan
-    # lalu keluar sendiri, tapi Prisma yang menahan event loop tidak selalu
-    # pergi karena TERM saja — alasan yang sama dengan `job-scheduler`.
-    stop_grace_period: 60s
-    command: ["bun", "run", "jobs:run:ledger"]
-
-  # ── JALUR `interactive` — EKSPOR YANG DITUNGGU PENGGUNA (tahap 1c, §5) ─────
+  # Keputusan pemilik 22 Okt 2026: **1 image = 1 container**. Image
+  # `-integrator` dulu menjalankan DUA container — `svc-tenant` (cadangan) dan
+  # `svc-interactive-go` (lembar sebar laporan) — dan kini satu biner
+  # (`cmd/integrator`) yang menjalankan kedua pelari bersamaan. Satu pelari
+  # berakhir → yang lain dihentikan → proses keluar bukan-nol →
+  # `restart: unless-stopped` menghidupkan keduanya utuh. Tidak ada container
+  # setengah-hidup.
   #
   # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean.
   #
-  # ══ IA TIDAK MENGGANTIKAN RUTE EKSPOR SINKRON ══════════════════════════════
+  # ⚠ GELAR PERTAMA WAJIB `--remove-orphans` — alasan yang sama dengan
+  # `svc-worker`: `svc-tenant` dan `svc-interactive-go` lama yang tetap hidup
+  # berarti dua pengklaim `report.export_go` dan dua pelari cadangan yang
+  # berebut pagar.
   #
-  # Ekspor berukuran biasa tetap dirakit di dalam permintaan HTTP dan selesai
-  # dalam milidetik — itu jawaban yang benar, dan antrean untuknya hanya
-  # menambah penantian. Yang diserahkan ke sini hanya yang di atas
-  # `EXPORT_QUEUE_HANDOFF_ROWS`, dan sebabnya bukan ukuran berkasnya melainkan
-  # EVENT LOOP: perakitan ExcelJS sinkron dan menahan SETIAP permintaan lain di
-  # proses yang sama, termasuk halaman yang sedang dibuka orang lain.
+  # ══ RAHASIA CADANGAN KINI SEPROSES DENGAN MASUKAN PENGGUNA — DIPUTUSKAN ════
   #
-  # Sampai tahap 1c, ekspor di atas `EXPORT_MAX_ROWS` dijawab 413 — DITOLAK.
-  # Layanan ini mengubah penolakan itu menjadi "akan dikerjakan", dan itulah
-  # satu kemampuan yang benar-benar bertambah.
-  #
-  # ══ TIGA BEDANYA DARI `svc-ledger`, DAN KETIGANYA DISENGAJA ════════════════
-  #
-  #  1. **Instansnya boleh BERAPA PUN.** Jalur ini tidak menulis buku dan tidak
-  #     menerbitkan apa pun, jadi dua pelari hanya berarti dua ekspor berjalan
-  #     bersamaan — `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan
-  #     dua kali. `contract/kinds.yaml` menyatakannya `single_instance: false`.
-  #  2. **Ia memasang volume `hasil` BISA-TULIS** — bersama pasangan Go-nya
-  #     `svc-interactive-go` (tahap 1d), dan hanya keduanya; `app-customer`
-  #     memasangnya hanya-baca dan hanya men-stream. Keduanya root, jadi setiap
-  #     hasil di-`chown` ke `node` (`contract/kinds.yaml` → `results`).
-  #  3. **Lewat PgBouncer**, bukan langsung ke `pg`: ia membaca buku SATU PT per
-  #     pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data
-  #     seperti jalur `tenant`.
-  #
-  # ⚠ TANPA rahasia cadangan. `BACKUP_ENCRYPTION_KEY` dan kredensial S3 hanya di
-  # `svc-tenant`; jalur ini MEMPROSES MASUKAN PENGGUNA (parameter laporan), dan
-  # jalur yang memproses masukan pengguna tidak boleh berada di dalam proses
-  # yang bisa membaca kunci cadangan. `env_file: .env` memang membawa seluruh
-  # berkas — itu utang yang disebut di `svc-tenant`, dan arah yang penting tetap
-  # terjaga: kunci cadangan tidak ikut ke container yang tidak membutuhkannya.
-  svc-interactive:
-    build:
-      context: .
-      target: migrator
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:-latest}
-    container_name: sai-svc-interactive
-    restart: unless-stopped
-    env_file: .env
-    depends_on:
-      pg:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      migrate:
-        condition: service_completed_successfully
-    volumes:
-      # Penulis volume ini bersama `svc-interactive-go`. `app-customer`
-      # memasangnya `:ro`.
-      # Dokumen & jejak TIDAK dipasang: jalur ini membaca BUKU, bukan berkas,
-      # dan mount yang tidak dibutuhkan adalah permukaan yang tidak perlu ada.
-      - hasil:/app/data/hasil
-    networks:
-      - internal
-    # Pelari menyelesaikan pekerjaan yang sedang jalan lalu berhenti mengklaim.
-    # 60s bukan "cukup untuk menyelesaikan ekspor" — ekspor besar bisa lebih
-    # lama, dan yang menanganinya bukan jendela ini melainkan *lease*: pekerjaan
-    # yang terpotong dipulangkan `reclaimStaleJobs` lalu diklaim lagi.
-    stop_grace_period: 60s
-    command: ["bun", "run", "jobs:run:interactive"]
-
-  # ── JALUR `interactive`, SISI GO — LEMBAR SEBAR YANG DIHITUNG GO (tahap 1d) ─
-  #
-  # Satu jalur, DUA pelari — pola yang sama dengan jalur `tenant` (`svc-tenant`
-  # Go + `job-conformance` Node). `svc-interactive` (Node) mengklaim
-  # `report.export`; layanan ini mengklaim `report.export_go`. Laporan mana yang
-  # sampai ke sini diputuskan register `src/lib/report-engine.ts` (`engine: go`
-  # — hari ini Neraca Saldo), dan untuk laporan itu rute ekspor SELALU
-  # mengantre, berapa pun barisnya: jalur sinkron adalah versi TS-nya, dan
-  # versi itu dicabut (09 §9).
-  #
-  # ⚠ WAJIB ikut `pull` + `up` sejak rilis ini. Tanpanya ekspor Neraca Saldo
-  # menumpuk sebagai baris `queued` tanpa pengklaim — tombol unduhnya menunggu
-  # sepuluh menit lalu menyerah, dan tidak satu halaman pun rusak untuk
-  # mengabarkannya.
-  #
-  # Image `-integrator` yang SAMA dengan `svc-tenant`, `command` yang berbeda
-  # (09 §3.2) — jadi tidak ada image baru dan tidak ada entri matriks baru.
-  # Bedanya dari `svc-tenant`, dan semuanya disengaja:
-  #
-  #  1. **TANPA rahasia cadangan.** Jalur ini memproses masukan pengguna;
-  #     `BACKUP_ENCRYPTION_KEY` tetap hanya di `svc-tenant` (`env_file` memang
-  #     membawa seluruh `.env` — utang yang sama yang disebut di sana, dan
-  #     biner ini tidak membaca variabel itu).
-  #  2. **Lewat PgBouncer**, bukan langsung ke `pg`: satu buku PT per
-  #     pekerjaan, bukan pencacahan seluruh server.
-  #  3. **Volume `hasil` bisa-tulis** — penulis KEDUA sesudah `svc-interactive`.
-  #     Ia berjalan sebagai root dan `chown` setiap hasil ke `node`, pembaca
-  #     volume itu di `app-customer` (`contract/kinds.yaml` → `results`).
-  #  4. **Instans berapa pun** (`single_instance: false`) — `FOR UPDATE SKIP
-  #     LOCKED` menjamin satu pekerjaan tidak dikerjakan dua kali.
-  #
-  # Memori: biner statis Go, tanpa Node — puluhan MB saat diam (09 §3.3).
-  svc-interactive-go:
-    build:
-      context: .
-      target: integrator
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:-latest}
-    container_name: sai-svc-interactive-go
-    restart: unless-stopped
-    env_file: .env
-    depends_on:
-      pg:
-        condition: service_healthy
-      pgbouncer:
-        condition: service_started
-      migrate:
-        condition: service_completed_successfully
-    volumes:
-      - hasil:/app/data/hasil
-    networks:
-      - internal
-    stop_grace_period: 60s
-    command: ["svc-interactive"]
-
-  # ── JALUR `tenant` — CADANGAN PER BASIS DATA (tahap 1b, §6) ────────────────
-  #
-  # Menggantikan putaran harian `job-backup`, dan yang berubah bukan bahasanya
-  # melainkan BENTUK ARTEFAKNYA: satu objek `pg_dump -Fc` per basis data +
-  # satu `pg_dumpall --globals-only` + satu manifest, bukan satu arsip raksasa.
-  # Itulah yang menutup celah on-premise #5 — "pulihkan data kami saja ke
-  # keadaan Selasa" bisa dijawab tanpa menyentuh tenant lain.
-  #
-  # `svc-`, bukan `job-`: ia BERJALAN TERUS menguras antrean, bukan sekali-jalan
-  # lalu keluar. Yang menjadwalkannya `backup:publish` di putaran
-  # `job-scheduler`, berbutir HARI — alasannya di `scripts/publish-backup.ts`.
-  #
-  # ══ SATU-SATUNYA CONTAINER YANG MEMEGANG RAHASIA CADANGAN ══════════════════
-  #
-  # `BACKUP_ENCRYPTION_KEY` dan kredensial S3 hidup DI SINI dan tidak di jalur
-  # mana pun yang memproses masukan pengguna. Itu sebabnya ia jalur tersendiri
-  # dan bukan satu handler di pelari lain.
+  # Sampai penyatuan ini `BACKUP_ENCRYPTION_KEY` dan kredensial S3 hidup di
+  # proses yang TIDAK memproses masukan pengguna, dan itu alasan jalur `tenant`
+  # punya container sendiri. Pemilik menerima risikonya dengan sadar: parameter
+  # laporan (jalur `interactive`) kini diurai di proses yang bisa membaca kunci
+  # cadangan dan punya sambungan LANGSUNG ke `pg`. Risikonya, mitigasinya, dan
+  # apa yang membuat kita memisahkannya lagi: 09-RANCANGAN-LAYANAN.md §3.2
+  # ("Keputusan 22 Okt 2026").
   #
   # ⚠ `env_file: .env` memang membawa seluruh berkas, termasuk variabel yang
   # tidak dibutuhkannya. Memisahkannya menuntut berkas env kedua di mesin
   # customer, dan berkas kedua yang lupa disalin adalah kegagalan boot yang
-  # pesannya menyalahkan hal lain. Yang penting arah sebaliknya: kunci cadangan
-  # TIDAK ikut ke container yang tidak membutuhkannya.
+  # pesannya menyalahkan hal lain.
   #
-  # ══ MENYAMBUNG LANGSUNG KE `pg`, MELEWATI PgBouncer ════════════════════════
+  # ══ DUA JALAN KE BASIS DATA, DAN KEDUANYA DIPERTAHANKAN ════════════════════
   #
-  # Alasan yang sama yang sudah berlaku untuk `job-backup`, dan kini berlaku dua
-  # kali: jalur ini MENDAFTAR seluruh basis data (`pg_database`) lalu menyambung
-  # ke tiap-tiap basis data satu per satu. PgBouncer hanya mengekspos basis data
-  # yang terdaftar di konfigurasinya, jadi lewat pooler pencacahan akan
-  # memulangkan sebagian — dan sebagian itulah bentuk cadangan paling berbahaya:
-  # ia ADA, ia tampak berhasil, dan ia baru ketahuan kurang pada hari pemulihan.
+  #  • Jalur `tenant` menyambung LANGSUNG ke `pg` lewat
+  #    `CONTROL_DATABASE_DIRECT_URL`, MELEWATI PgBouncer. Ia MENDAFTAR seluruh
+  #    basis data (`pg_database`) lalu menyambung ke tiap-tiap basis data satu
+  #    per satu; PgBouncer hanya mengekspos basis data yang terdaftar di
+  #    konfigurasinya, jadi lewat pooler pencacahan akan memulangkan sebagian —
+  #    dan sebagian itulah bentuk cadangan paling berbahaya: ia ADA, ia tampak
+  #    berhasil, dan ia baru ketahuan kurang pada hari pemulihan. URL yang sama
+  #    memegang pagar advisory lock jalur tunggal-instans ini, dan menjadi
+  #    parameter sambungan `pg_dump` (`internal/db/dsn.go`). Go MENOLAK URL itu
+  #    bila terbaca sebagai pooler.
+  #  • Jalur `interactive` membaca registry & antrean lewat `CONTROL_DATABASE_URL`
+  #    dari `.env` (PgBouncer) dan buku satu PT per pekerjaan — bukan
+  #    pencacahan seluruh server.
   #
-  # Satu URL mengatur keduanya: antrean `jobs` DAN parameter sambungan yang
-  # diserahkan ke `pg_dump` (`internal/db/dsn.go` → `SambunganKendali`).
+  # Dulu satu nama (`CONTROL_DATABASE_URL`) ditimpa di `environment:` khusus
+  # untuk `svc-tenant`. Satu proses tidak bisa punya dua nilai untuk satu nama,
+  # jadi jalan langsung kini bernama sendiri — nama yang SAMA dengan yang
+  # dipakai pagar Node di `svc-worker`.
   #
   # ══ INSTANS BASIS DATA TAMBAHAN (tahap 4) ══════════════════════════════════
   #
@@ -732,19 +681,35 @@ services:
   # menulisnya di `environment:` (ditolak
   # `tests/db-instance-env-reaches-every-service.test.ts`). Nilainya wajib
   # LANGSUNG ke PostgreSQL; Go menolak URL yang menyatakan `pgbouncer=true`.
-  svc-tenant:
+  #
+  # ══ JALUR `interactive` SISI GO (tahap 1d) ═════════════════════════════════
+  #
+  # Satu jalur, DUA pelari: peran `interactive` (Node) di `svc-worker` mengklaim
+  # `report.export`; pelari Go di sini mengklaim `report.export_go`. Laporan
+  # mana yang sampai ke sini diputuskan register `src/lib/report-engine.ts`
+  # (`engine: go` — hari ini Neraca Saldo), dan untuk laporan itu rute ekspor
+  # SELALU mengantre, berapa pun barisnya. Tanpa layanan ini ekspor Neraca
+  # Saldo menumpuk sebagai baris `queued` tanpa pengklaim — tombol unduhnya
+  # menunggu sepuluh menit lalu menyerah, dan tidak satu halaman pun rusak.
+  #
+  # Memori: biner statis Go, tanpa Node — puluhan MB saat diam (09 §3.3).
+  svc-integrator:
     build:
       context: .
       target: integrator
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:-latest}
-    container_name: sai-svc-tenant
+    container_name: sai-svc-integrator
     restart: unless-stopped
     env_file: .env
     environment:
-      CONTROL_DATABASE_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+      # Jalur `tenant` SAJA. `CONTROL_DATABASE_URL` sengaja TIDAK ditimpa di
+      # sini: jalur `interactive` di proses yang sama memakainya lewat PgBouncer.
+      CONTROL_DATABASE_DIRECT_URL: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
     depends_on:
       pg:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     volumes:
@@ -752,10 +717,13 @@ services:
       # cadangan justru merusak yang dicadangkannya.
       - documents:/app/data/documents:ro
       - audit:/app/data/audit:ro
-      # ⚠ SATU-SATUNYA mount yang bisa DITULIS, dan hanya untuk hasilnya
-      # sendiri. Dipakai ketika `BACKUP_S3_BUCKET` belum disetel: artefak
-      # terenkripsi mendarat di sini alih-alih tidak dibuat sama sekali.
+      # Artefak cadangan terenkripsi ketika `BACKUP_S3_BUCKET` belum disetel:
+      # mendarat di sini alih-alih tidak dibuat sama sekali.
       - cadangan:/app/data/cadangan
+      # Hasil ekspor jalur `interactive` sisi Go. Berjalan sebagai root dan
+      # `chown` setiap hasil ke `node`, pembaca volume itu di `app-customer`
+      # (`contract/kinds.yaml` → `results`).
+      - hasil:/app/data/hasil
     networks:
       - internal
     # Pelari menyelesaikan pekerjaan yang sedang jalan lalu berhenti mengklaim.
@@ -764,6 +732,7 @@ services:
     # terpotong dipulangkan oleh `ReclaimStale` lalu diklaim lagi. Yang dibeli
     # 60 detik adalah penulisan objek yang sedang berjalan selesai rapi.
     stop_grace_period: 60s
+    command: ["svc-integrator"]
 
   # ── DUA APLIKASI, DUA IMAGE ────────────────────────────────────────────────
   #
@@ -1050,8 +1019,8 @@ volumes:
   # di atas: isinya buku besar PT sungguhan, dan direktori runtime di pohon repo
   # bisa ikut terpanggang ke dalam image (lihat .dockerignore §anchor).
   #
-  # Penulisnya pelari jalur `interactive`: `svc-interactive` (Node, tahap 1c)
-  # dan `svc-interactive-go` (Go, tahap 1d). Pembacanya `app-customer` (`:ro`),
-  # sebagai `node` — maka penulis yang root `chown` setiap hasil ke `node`;
+  # Penulisnya pelari jalur `interactive`: peran `interactive` di `svc-worker`
+  # (Node, tahap 1c) dan `svc-integrator` (Go, tahap 1d). Pembacanya
+  # `app-customer` (`:ro`), sebagai `node` — maka penulis yang root `chown` setiap hasil ke `node`;
   # tanpa itu berkas 0600 milik root dijawab 404 oleh rute unduhan.
   hasil:

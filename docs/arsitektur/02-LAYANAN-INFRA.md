@@ -1,6 +1,6 @@
 # 02 — Layanan & Infrastruktur
 
-> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 22 Okt 2026 (kode `develop`) · terakhir diukur terhadap produksi `main@ca0cd038` · [indeks](./README.md)
 
 Apa yang berjalan, di mesin apa, dan bagaimana rilis sampai ke sana. Dua bagian
 terakhir berisi **target**, bukan keadaan.
@@ -34,7 +34,7 @@ Ukuran mesin ini adalah alasan langsung empat keputusan: tipe diperiksa di luar
 `next build`, image dibangun di CI, tahap `migrator` tidak mewarisi `builder`,
 dan batas heap eksplisit di setiap perintah Node.
 
-## 2. Sebelas layanan
+## 2. Sembilan layanan
 
 | Layanan | Container | Peran | Kadens |
 |---|---|---|---|
@@ -43,14 +43,15 @@ dan batas heap eksplisit di setiap perintah Node.
 | `pg` | `sai-pg` | PostgreSQL 17 — 17 buku PT + control + platform | selalu hidup |
 | `pgbouncer` | `sai-pgbouncer` | Pool koneksi `transaction` | selalu hidup |
 | `db` | `sai-db` | MariaDB 11, fallback, tidak ditulisi (#636) | sementara |
-| `job-scheduler` | `sai-job-scheduler` | 8 langkah penagihan & pemeliharaan | tiap jam |
-| `job-conformance` | `sai-job-conformance` | Sapuan kesesuaian data (hanya-baca) | mingguan |
-| `svc-ledger` | `sai-svc-ledger` | Pelari jalur `ledger` — menguras tabel `jobs` | selalu hidup |
-| `svc-tenant` | `sai-svc-tenant` | Pelari jalur `tenant` (Go) — cadangan **per basis data** | selalu hidup |
-| `svc-interactive` | `sai-svc-interactive` | Pelari jalur `interactive` (Node) — ekspor besar yang ditunggu pengguna (`report.export`) | selalu hidup |
-| `svc-interactive-go` | `sai-svc-interactive-go` | Pelari jalur `interactive` (**Go**, image `-integrator`) — lembar sebar laporan ber-`engine: go` (`report.export_go`; hari ini Neraca Saldo) | selalu hidup |
+| `svc-worker` | `sai-svc-worker` | **Empat peran Node** di bawah penyelia `scripts/run-workers.ts`: `scheduler` (8 langkah penagihan & pemeliharaan, tiap jam), `conformance` (sapuan kesesuaian, mingguan), `ledger` (pelari jalur `ledger`), `interactive` (ekspor besar, `report.export`) | selalu hidup |
+| `svc-integrator` | `sai-svc-integrator` | **Dua jalur Go** dalam satu proses: `tenant` (cadangan **per basis data**) dan `interactive` sisi Go (lembar sebar ber-`engine: go`, `report.export_go`; hari ini Neraca Saldo) | selalu hidup |
 | `job-backup` | `sai-job-backup` | **Perkakas saja** sejak tahap 1b (profil `perkakas`) — pembukti pemulihan & jalur lama bertangan | tidak dijadwalkan |
 | `migrate` | `sai-migrate` | Migration, lalu keluar (`restart: "no"`) | sekali per deploy |
+
+**1 image = 1 container** sejak 22 Okt 2026 (keputusan pemilik, 09 §3.2):
+sampai hari itu enam layanan latar — `job-scheduler`, `job-conformance`,
+`svc-ledger`, `svc-interactive` (image `-migrator`) serta `svc-tenant` dan
+`svc-interactive-go` (image `-integrator`) — berjalan sebagai enam container.
 
 Ditambah `traefik`, dipakai bersama lima aplikasi lain dan tidak termasuk
 `docker-compose.yml` repo ini. Dua layanan tahap 2 juga tidak dihitung, sebab
@@ -63,9 +64,9 @@ graph TB
     TR --> WEBO[sai-app-operator]
     WEBC --> PGB[sai-pgbouncer]
     WEBO --> PGB
-    JOB[sai-job-scheduler · sai-job-conformance · sai-svc-ledger · sai-svc-interactive · sai-svc-interactive-go] --> PGB
+    JOB[sai-svc-worker · sai-svc-integrator] --> PGB
     PGB --> PG[(sai-pg)]
-    LANGSUNG[sai-svc-tenant · sai-migrate] --> PG
+    LANGSUNG[sai-svc-integrator jalur tenant · pagar sai-svc-worker · sai-migrate] --> PG
     OLD[(sai-db — MariaDB, fallback)]
 
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
@@ -75,16 +76,39 @@ graph TB
 
 Hanya kedua `app-*` yang berada di dua jaringan (`traefik_default` +
 `internal`). Sisanya hanya di `internal`, jadi tidak terjangkau dari luar mesin
-— itu sebabnya ketiga job memakai ulang image `migrator`.
+— itu sebabnya `svc-worker` memakai ulang image `migrator`.
 
-**Empat image dari satu commit:** `app-customer` (`runner`), `app-operator`
-(`runner-operator`), `migrator`, `backup`. `job-scheduler`, `job-conformance`,
-dan `svc-ledger` memakai ulang `migrator`.
+**Lima image dari satu commit:** `app-customer` (`runner`), `app-operator`
+(`runner-operator`), `migrator`, `backup`, `integrator`. `svc-worker` memakai
+ulang `migrator`; `svc-integrator` memakai `integrator`. Sejak 22 Okt 2026 CI
+membangun `backup` di atas `-migrator` yang baru didorong (konteks bernama,
+dirujuk digest), jadi host hanya membayar lapisan apt-nya — bukan
+`node_modules` kedua.
 
-⚠ `svc-ledger` ber-awalan `svc-`, bukan `job-`, dan bedanya bukan selera:
-ketiga `job-` adalah satu putaran yang BERAKHIR, sementara yang ini tidak
-pernah berakhir — ia menguras antrean selama hidupnya. Nomenklaturnya di
-`AGENTS.md`.
+**Memori & ukuran image — terukur 22 Okt 2026, SEBELUM penyatuan** (produksi
+v0.11.0, masih enam layanan latar). Angka untuk `svc-worker` dan
+`svc-integrator` sendiri belum diukur; jumlah lama di bawah adalah perkiraan
+kasarnya, bukan pengukuran.
+
+| Container (lama → baru) | RAM |
+|---|---|
+| `app-customer` | 324 MiB |
+| `app-operator` | 151 MiB |
+| `svc-ledger` + `svc-interactive` + `job-scheduler` + `job-conformance` → `svc-worker` | 110 + 50 + 3 + 4 MiB |
+| `svc-tenant` + `svc-interactive-go` → `svc-integrator` | 8 + 7 MiB |
+| `pg` · `pgbouncer` | 75 MiB · 1 MiB |
+
+| Image | Ukuran |
+|---|---|
+| `sai-accounting` (`app-customer`) | 797 MB |
+| `-operator` | 557 MB |
+| `-migrator` | 2,1 GB |
+| `-backup` | 2,5 GB — 2,0 GB di antaranya unik di cakram, sebab belum berbagi lapisan dengan `-migrator` (diperbaiki CI 22 Okt 2026, belum terbukti di cakram) |
+| `-integrator` | 235 MB |
+
+⚠ `svc-worker` ber-awalan `svc-`, bukan `job-`, meski dua perannya putaran:
+yang dinamai adalah CONTAINER, dan container itu tidak pernah berakhir.
+Nomenklaturnya di `AGENTS.md`.
 
 ## 3. Dua aplikasi web
 
@@ -95,7 +119,7 @@ pernah berakhir — ia menguras antrean selama hidupnya. Nomenklaturnya di
 | Domain | `APP_DOMAIN` + `www.` (301 ke apex) | hanya `OPERATOR_DOMAIN` |
 | Volume | `documents` (RW) · `audit` (RW) | `audit` (RW); **tanpa** `documents` |
 | Healthcheck | `/api/health` tiap 30s | `/api/health` konsol sendiri |
-| Isi | Enam grup rute + PDF/Excel + surel | 19 halaman konsol; `/operator/*` lama → 308 |
+| Isi | Enam grup rute + PDF/Excel + surel | 20 halaman konsol (termasuk register lisensi `/licences` sejak 22 Okt 2026); `/operator/*` lama → 308 |
 | Standalone | 299 MB | 69 MB |
 
 `app-customer` tidak memuat rute konsol, dan `OPERATOR_HOST` dikosongkan lewat
@@ -117,16 +141,18 @@ invalidasi tahap 2 — siap, belum dinyalakan (§19).
 | Batas | `pg_isready` tiap 10s · `max_connections = 100` |
 | Isi | 19 basis data, 227 MB (16 Okt 2026) |
 
-`app-*` dan dua job lewat `pgbouncer`; `migrate` dan `svc-tenant` **langsung**
-ke `pg` — Prisma Migrate memakai advisory lock yang terikat sesi, dan pooler
-`transaction` memulangkan dump sebagian.
+`app-*`, `svc-worker`, dan jalur `interactive` Go lewat `pgbouncer`; `migrate`,
+jalur `tenant` di `svc-integrator`, dan pagar jalur `ledger` **langsung** ke
+`pg` (`CONTROL_DATABASE_DIRECT_URL`) — Prisma Migrate dan pagar jalur memakai
+advisory lock yang terikat sesi, dan pooler `transaction` memulangkan dump
+sebagian.
 
 **Instans tambahan (tahap 4, opt-in, belum dipakai).** Buku PT boleh hidup di
 instans `db-postgres` lain: `db_instances` di kendali menyebut kunci dan
 **nama** env var-nya (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`), dan
 `companies.db_instance_key = NULL` berarti instans di tabel ini. Satu-satunya
 penyusun URL buku PT adalah `@sai/db/company-url`; pemindahan lewat
-`bun run tenant:move`. `svc-tenant` mencacah dan mendump **per instans**
+`bun run tenant:move`. Jalur `tenant` (`svc-integrator`) mencacah dan mendump **per instans**
 (`instans/<kunci>/…`). Runbook dan batasnya ada di
 [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
 
@@ -139,8 +165,10 @@ koneksi; mode `session` menghapus manfaatnya.
 
 **Profil on-premise.** `docker-compose.onprem.yml` adalah override, bukan berkas
 pengganti: `docker compose -f docker-compose.yml -f docker-compose.onprem.yml up
--d`. Hasilnya **tujuh service** — `pg`, `pgbouncer`, `migrate`, `app-customer`,
-dan ketiga `job-*`.
+-d`. Hasilnya **enam service** — `pg`, `pgbouncer`, `migrate`, `app-customer`,
+`svc-worker`, `svc-integrator` — ditambah `job-backup` sebagai perkakas
+(profil `perkakas`, tidak ikut `up`; dipakai `prove-backup-restore` dan
+`tenant:import-onprem`).
 
 | Yang berbeda di mesin customer | Sebabnya |
 |---|---|
@@ -212,7 +240,30 @@ menghentikan yang lain. Image-nya dibangun dari `bunbase`, bukan `builder`.
 > ditunjuk `DATABASE_URL`; control, platform, dan buku PT lain tertinggal
 > **tanpa error**.
 
-### `job-scheduler` — delapan langkah, tiap jam
+### `svc-worker` — empat peran Node, satu container
+
+Sejak 22 Okt 2026 (09 §3.2) penjadwal, pemeriksa kesesuaian, dan kedua pelari
+jalur Node adalah empat PROSES di satu container, di bawah penyelia
+`scripts/run-workers.ts`: `command` compose berisi pasangan `<peran>` +
+`<skrip sh>`, dan skrip tiap peran tetap satu salinan di compose.
+
+| Janji penyelia | Kenapa |
+|---|---|
+| Satu peran berakhir (kode apa pun) → peran lain dihentikan → container keluar **bukan-nol** | container "Up" dengan satu peran mati adalah kegagalan paling senyap; `restart: unless-stopped` menghidupkan keempatnya utuh, dan hitungan restart mencatatnya |
+| SIGTERM diteruskan ke **grup proses** tiap peran | `timeout`, `bun run`, dan `sleep 3600` di bawah `sh` ikut berhenti; pelari jalur menyelesaikan pekerjaan yang sedang jalan |
+| Setiap baris berawalan nama perannya | `docker compose logs svc-worker \| grep ' ledger *\|'` |
+| `WORKER_LEADER_ROLES` (HA saja) membungkus peran dengan `run-as-leader` | peran tunggal di replika kedua menunggu sebagai kandidat |
+| Di belakang `init: true` | tini memanen yatim dan menghentikan seluruh pohon saat penyelia mati |
+
+`CONTROL_DATABASE_DIRECT_URL` disetel compose dasar (pagar jalur `ledger` di
+koneksi langsung — keputusan pemilik 22 Okt 2026). Volume: `hasil` (RW, untuk
+peran `interactive`).
+
+⚠ **Harga penyatuan:** OOM di satu peran memutus tiga lainnya, dan karena
+putaran `conformance` mulai saat container naik, setiap restart memicu satu
+sapuan kesesuaian penuh. Pemicu memisahkannya lagi: 09 §3.2.
+
+#### Peran `scheduler` — delapan langkah, tiap jam
 
 `sleep 3600`, `timeout -k 30 420` per langkah (8 × 420s = 56 menit < 1 jam).
 Aritmetikanya DIJAGA (`tests/scheduler-heartbeat.test.ts`): jumlah langkah ×
@@ -225,8 +276,8 @@ tidak menumpuk lebih dari satu.
 | 2 | `notify:setup` | Kabar penyiapan mandek (H+1/+3/+7/+14) | `dedupe_key`, maks 4 seumur hidup |
 | 3 | `notify:invoice-due` | Kabar jatuh tempo + ringkasan mingguan | `dedupe_key` |
 | 4 | `remind:customers` | **Surel ke pelanggan** (H-3/H+1/H+7) | Kunci unik (invoice, kind, due_key) |
-| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting `svc-ledger` | `dedupe_key` berbutir jam UTC |
-| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan `svc-tenant` | `dedupe_key` berbutir hari UTC |
+| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting peran `ledger` | `dedupe_key` berbutir jam UTC |
+| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan jalur `tenant` di `svc-integrator` | `dedupe_key` berbutir hari UTC |
 | 7 | `watch:health` | Baca 3 heartbeat, kirim surel peringatan | Satu surel per status per 24 jam |
 | 8 | `prune:trails` | Pangkas jejak putaran > 90 hari | Putaran kosong = satu `SELECT` per tabel |
 
@@ -256,17 +307,18 @@ gagal); langkah itu memikul batas `timeout` yang harus **turun** setiap kali ada
 langkah baru, padahal ongkosnya tumbuh seiring jumlah pelanggan; dan putaran
 yang mati di tengah daftar meninggalkan separuh PT tak tergarap tanpa satu baris
 pun yang mencatat sampai mana ia sempat. Sekarang langkah ini menulis satu baris
-`jobs` per PT dan selesai dalam milidetik; `svc-ledger` melaksanakannya dengan
+`jobs` per PT dan selesai dalam milidetik; peran `ledger` melaksanakannya dengan
 `attempts` dan *backoff* per PT.
 
 **Leader election — hanya di profil HA (tahap 3, `docker-compose.ha.yml`).**
 Compose dasar menjalankan putaran ini tanpa kunci, dan itu benar selama ia satu
 replika. Dua replika di dua host akan menerbitkan setiap langkah dua kali;
 `dedupe_key` menyelamatkan buku, tapi tidak menyelamatkan surel ganda ke
-pelanggan. Profil HA mengganti `entrypoint` saja menjadi
-`scripts/run-as-leader.ts`: proses yang memegang `pg_try_advisory_lock` di
-koneksi LANGSUNG (`CONTROL_DATABASE_DIRECT_URL`) menjalankan putaran ini; yang
-lain menunggu tiap 30 detik. Putaran delapan langkah beserta anggaran
+pelanggan. Profil HA menyetel `WORKER_LEADER_ROLES=scheduler,ledger,conformance`
+saja, dan penyelia membungkus peran-peran itu dengan `scripts/run-as-leader.ts`:
+proses yang memegang `pg_try_advisory_lock` di koneksi LANGSUNG
+(`CONTROL_DATABASE_DIRECT_URL`) menjalankan putaran ini; yang lain menunggu
+tiap 30 detik. Putaran delapan langkah beserta anggaran
 `timeout`-nya tetap satu salinan di compose dasar, dan denyut `/api/health` →
 `scheduler` tidak berubah artinya — hanya pemimpin yang menulis
 `scheduler_runs`. Kunci yang hilang (denyut 15 detik gagal, backend berganti,
@@ -274,7 +326,7 @@ primary pindah) menghentikan putaran **sebelum** kandidat lain bisa mengambil
 kunci: server membunuh sesi diam sesudah 90 detik, pemimpin lama sudah berhenti
 paling lambat 15 + 10 + 20 detik. Dijaga `tests/leader-election.test.ts`.
 
-### `svc-ledger` — pelari jalur `ledger`
+#### Peran `ledger` — pelari jalur `ledger`
 
 Menguras `kind` `ledger.*` dari tabel `jobs` (basis data `control`). Satu-satunya
 layanan latar yang **menulis buku besar**, dan karena itu ia memikul invarian
@@ -285,7 +337,7 @@ tanpa satu galat pun, dan yang menyimpang adalah buku.
 
 | Hal | Bentuknya |
 |---|---|
-| Replika | **Satu, dan bukan pilihan penyebaran** — jalurnya tunggal-instans di `contract/kinds.yaml`; instans kedua keluar sendiri, dipagari `pg_try_advisory_lock` |
+| Replika | **Satu, dan bukan pilihan penyebaran** — jalurnya tunggal-instans di `contract/kinds.yaml`; instans kedua keluar sendiri, dipagari `pg_try_advisory_lock` di koneksi langsung (`CONTROL_DATABASE_DIRECT_URL`) — dan sejak penyatuan, keluarnya mengakhiri container (crash-loop), jadi replika kedua hanya lewat profil HA |
 | Pekerjaan menggantung | Dijaga **lease**, bukan `timeout` compose: perpanjangan berhenti, ambang reclaim melewatinya, barisnya pulang ke `queued` dengan `attempts + 1` |
 | Berhenti | SIGTERM menyelesaikan pekerjaan yang sedang jalan lalu berhenti mengklaim (`stop_grace_period: 60s`) |
 | Pemeliharaan | Tiap 60 detik: memulangkan lease kedaluwarsa, membuang baris `done` > 14 hari. Baris **gagal tidak pernah** dipangkas |
@@ -297,7 +349,7 @@ umur tertua nol, dan setiap ambang hijau sementara dokumen berulang berhenti
 sama sekali. Yang membantahnya hanya denyut penjadwal, yang diukur dari stempel
 waktu putaran. Itu sebabnya keduanya dibaca di **satu halaman**.
 
-### `job-conformance` — mingguan
+#### Peran `conformance` — mingguan
 
 `bun run check-data-conformance`, `sleep 604800`, `timeout -k 30 1800`, **hanya
 membaca** (dijaga `tests/check-data-conformance.test.ts`).
@@ -310,19 +362,37 @@ material (#444, ambang 5%).
 Ada karena guard zod hanya berlaku di jalur tulis; impor sekali jalan,
 perbaikan SQL manual, dan seeder tidak melewatinya. Audit 20–21 Agu 2026
 menemukan enam kelas cacat yang masuk lewat jalur itu — termasuk kuantitas
-faktur termigrasi senilai **Rp 774 juta**. `|| true` di sini wajib: skrip
-sengaja keluar bukan-nol saat menemukan sesuatu, dan tanpa `|| true` setiap
-temuan jadi *crash-loop*.
+faktur termigrasi senilai **Rp 774 juta**. Kode keluarnya wajib DITELAN: skrip
+sengaja keluar bukan-nol saat menemukan sesuatu, dan tanpa penelan itu setiap
+temuan mengakhiri perannya — sejak penyatuan berarti *crash-loop* seluruh
+`svc-worker`.
 
-### `svc-tenant` — jalur `tenant`, cadangan PER BASIS DATA
+### `svc-integrator` — dua jalur Go, satu proses
+
+Sejak 22 Okt 2026 (09 §3.2) satu biner, `cmd/integrator`, menjalankan pelari
+jalur `tenant` dan jalur `interactive` sisi Go bersamaan; logikanya di
+`internal/tenantlane` dan `internal/interactivelane`. Satu pelari berakhir →
+yang lain berhenti mengklaim → proses keluar **bukan-nol** → restart utuh.
+`cmd/tenant` dan `cmd/interactive` tetap ada untuk mengembangkan satu jalur,
+tapi tidak masuk image.
+
+| Jalur | Sambungan kendali | Kenapa |
+|---|---|---|
+| `tenant` | `CONTROL_DATABASE_DIRECT_URL` — **langsung** ke `pg`; Go menolak URL pooler | pencacahan `pg_database`, pagar advisory lock, parameter `pg_dump` |
+| `interactive` (Go) | `CONTROL_DATABASE_URL` dari `.env` — PgBouncer | satu buku PT per pekerjaan |
+
+⚠ **Rahasia cadangan kini seproses dengan masukan pengguna** — diputuskan
+pemilik, risikonya dan pemicu memisahkannya lagi di 09 §3.2.
+
+#### Jalur `tenant` — cadangan PER BASIS DATA
 
 Pelari Go yang menguras `tenant.backup` dari tabel `jobs`. Yang menjadwalkannya
 langkah `backup:publish` di putaran penjadwal, berbutir **hari** UTC: putaran
 pertama hari itu menerbitkan, 23 berikutnya menabrak `dedupe_key` dan tidak
 melakukan apa pun. RPO 1 hari, disengaja.
 
-Volume: `documents` (:ro) · `audit` (:ro) · `cadangan` (RW). Menyambung
-**langsung** ke `pg`, melewati PgBouncer — pooler hanya mengekspos basis data
+Volume: `documents` (:ro) · `audit` (:ro) · `cadangan` (RW) · `hasil` (RW, milik
+jalur `interactive` Go). Menyambung **langsung** ke `pg`, melewati PgBouncer — pooler hanya mengekspos basis data
 yang terdaftar di konfigurasinya, jadi pencacahan lewat pooler memulangkan
 sebagian, dan sebagian itulah bentuk cadangan paling berbahaya.
 
@@ -341,10 +411,10 @@ Tanpa instans tambahan, nama objek dan isi manifest sama persis dengan sebelum
 tahap 4. Dengan instans tambahan, objeknya bertanda `instans` di manifest, dan
 `companyId` hanya terisi pada objek dari instans tempat PT itu terdaftar.
 Kelengkapan dibuktikan **per instans**. Env var instans
-`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-tenant` lewat
+`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-integrator` lewat
 `env_file: .env` yang sama dengan layanan lain, dan wajib langsung ke
 PostgreSQL. Rinciannya di
-[MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-tenant).
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-integrator).
 
 **Urutan:** cacah → periksa versi → per basis data (dump → sandi → sidik →
 kirim → buang sementara) → globals → berkas → manifest → pangkas. Enkripsi
@@ -373,13 +443,14 @@ memuat `instansGagal`, jejaknya `error`, pemangkasan dilewati, dan
 > **⚠ Status 18 Okt 2026: `local_only`**, `lastSuccessAt: null`, tiga env S3
 > kosong. Kehilangan mesin = kehilangan buku **beserta** backup-nya. P0-1.
 
-> **⚠ `svc-tenant` berjalan sebagai root**, dan itu tertunda — bukan selesai.
-> Ia satu-satunya container yang memegang `BACKUP_ENCRYPTION_KEY`, jadi justru
-> ia yang paling pantas non-root. Yang menahannya: volume `cadangan` sudah ada
+> **⚠ `svc-integrator` berjalan sebagai root**, dan itu tertunda — bukan selesai.
+> Ia satu-satunya container yang memegang `BACKUP_ENCRYPTION_KEY` — dan sejak
+> 22 Okt 2026 juga mengurai parameter laporan pengguna — jadi justru ia yang
+> paling pantas non-root. Yang menahannya: volume `cadangan` sudah ada
 > di mesin produksi, dibuat root, dan Docker tidak menerapkan kepemilikan image
 > ke volume bernama yang sudah ada. Langkahnya di PRODUCTION.md.
 
-### `svc-interactive` — jalur `interactive`, ekspor besar
+### Peran `interactive` (`svc-worker`) — jalur `interactive`, ekspor besar
 
 Menguras `report.export` dari tabel `jobs`. Ia **tidak** menggantikan
 `/api/reports/export`: ekspor berukuran biasa tetap dirakit di dalam permintaan
@@ -397,12 +468,12 @@ mengubah penolakan itu menjadi "akan dikerjakan".
 |---|---|
 | Muatan pekerjaan = **parameter**, bukan angka | `jobs` hidup di basis data **kendali**, dan kendali tidak memuat satu angka akuntansi pun (#104). Pekerjanya menghitung ulang dengan pembangun payload yang SAMA — dan laporan karena itu dihitung saat ia DIKERJAKAN, yang untuk ekspor yang menunggu beberapa menit justru lebih berguna |
 | Instansnya **berapa pun** | ia tidak menulis buku dan tidak menerbitkan apa pun; `FOR UPDATE SKIP LOCKED` memastikan tak ada yang dikerjakan dua kali |
-| Penulis volume `hasil` (bersama `svc-interactive-go` sejak tahap 1d) | `app-customer` memasangnya `:ro` dan hanya men-stream. Kedua pelari berjalan sebagai root dan `chown` setiap hasil ke `node` (`contract/kinds.yaml` → `results`) — tanpa itu berkas 0600 milik root tidak terbaca rute unduhan dan setiap hasil dijawab 404 |
+| Penulis volume `hasil` (bersama jalur `interactive` Go di `svc-integrator` sejak tahap 1d) | `app-customer` memasangnya `:ro` dan hanya men-stream. Kedua pelari berjalan sebagai root dan `chown` setiap hasil ke `node` (`contract/kinds.yaml` → `results`) — tanpa itu berkas 0600 milik root tidak terbaca rute unduhan dan setiap hasil dijawab 404 |
 | Lewat **PgBouncer** | ia membaca buku SATU PT per pekerjaan lewat klien per-perusahaan — bukan mencacah seluruh basis data seperti jalur `tenant` |
 | **Node, bukan Go** | ia MENGHITUNG angka akuntansi (`buildReportPayload` membaca buku), dan §3.3 menahan Go di depan garis itu. Yang dibeli proses terpisah: event loop sendiri dan batas memori sendiri — ekspor yang kehabisan memori menjatuhkan PELARI, bukan aplikasi, dan pekerjaannya dipulangkan `reclaimStaleJobs` dengan `attempts + 1` |
-| TANPA rahasia cadangan | `BACKUP_ENCRYPTION_KEY` hanya di `svc-tenant`. Jalur ini memproses MASUKAN PENGGUNA, dan jalur yang memproses masukan pengguna tidak boleh berada di dalam proses yang bisa membaca kunci cadangan |
+| Tidak membaca rahasia cadangan | Tidak satu peran pun di `svc-worker` membaca `BACKUP_ENCRYPTION_KEY` (`env_file` memang membawanya — utang yang disebut di compose). ⚠ Pasangan Go-nya kini SEPROSES dengan kunci itu (09 §3.2) |
 
-**Perusahaan nonaktif TETAP dikerjakan**, berbeda dari `svc-ledger` — dan
+**Perusahaan nonaktif TETAP dikerjakan**, berbeda dari peran `ledger` — dan
 bedanya bukan selera: jalur ini hanya MEMBACA, dan mengekspor buku yang akan
 diarsipkan adalah justru alasan orang menonaktifkannya. Keduanya memakai
 `dalamKonteksPerusahaan` yang sama dengan satu parameter yang membedakannya.
@@ -421,12 +492,12 @@ terpakai. Dua pagar menjaga pembersihnya: himpunan id memuat SELURUH baris
 jadi saringan itu akan menghapus hasil pekerjaan yang masih berjalan), dan
 direktori yang lebih baru dari 24 jam tidak pernah dibuang.
 
-### `svc-interactive-go` — jalur `interactive`, sisi Go (tahap 1d)
+#### Jalur `interactive` sisi Go (`svc-integrator`, tahap 1d)
 
 Menguras `report.export_go`: lembar sebar laporan yang register
 `src/lib/report-engine.ts` nyatakan `engine: "go"` — sejak 22 Okt 2026 **Neraca
 Saldo**. Satu jalur, dua pelari, pola yang sama dengan jalur `tenant`
-(`svc-tenant` Go + `job-conformance` Node); yang memisahkan keduanya adalah
+(Go di `svc-integrator` + peran `conformance` Node); yang memisahkan keduanya adalah
 `kind`, bukan jalur.
 
 | Keputusan | Alasan |
@@ -434,9 +505,9 @@ Saldo**. Satu jalur, dua pelari, pola yang sama dengan jalur `tenant`
 | `kind` tersendiri (`report.export_go`), bukan `report.export` | pelari mengklaim per `kind`; satu `kind` dengan dua pengklaim adalah dua pelaksana untuk satu pekerjaan (`tests/kind-punya-pengklaim.test.ts`) |
 | Laporan `go` **selalu** diantre, berapa pun barisnya | jalur sinkron `/api/reports/export` ADALAH versi TS-nya, dan "versi TS untuk jalur berkas dicabut" (09 §9) berarti ia tak terjangkau — bukan jarang terjangkau. Ongkosnya beberapa detik penantian untuk Neraca Saldo kecil; klien sudah menunggu di rute hasil untuk ekspor besar, jadi tidak ada UI baru |
 | Muatan = parameter + **instan** `asOfInstant` | instan dihitung penerbit dengan `resolveAsOf` yang sama dengan layar; pelari Go tidak menghitung "akhir hari" sendiri, jadi TZ container-nya tidak bisa menggeser satu jurnal pun ke sisi lain batas tanggal |
-| Image `-integrator` yang sama dengan `svc-tenant`, `command: svc-interactive` | 09 §3.2: satu image, beberapa `command`. Tidak ada image baru, tidak ada entri matriks baru |
+| Image `-integrator`, proses yang SAMA dengan jalur `tenant` (`svc-integrator`) | 09 §3.2, keputusan 22 Okt 2026: 1 image = 1 container. Tidak ada image baru, tidak ada entri matriks baru |
 | Penulis XLSX pustaka baku (`internal/document`), tanpa excelize | dependensi Go dijaga sedikit (kepala `go.mod`); lembar laporan hanya butuh teks, angka, format angka, tebal, isi, perataan, lebar |
-| TANPA rahasia, lewat PgBouncer, instans berapa pun | sama dengan `svc-interactive` |
+| Lewat PgBouncer, instans berapa pun | sama dengan peran `interactive` Node. ⚠ TIDAK lagi "tanpa rahasia": seproses dengan jalur `tenant` (09 §3.2) |
 
 **Paritas isinya** dibuktikan dua kali: berkas emas Go dari fixture bersama
 dibandingkan dengan lembar ExcelJS di setiap `bun run verify`
@@ -444,7 +515,7 @@ dibandingkan dengan lembar ExcelJS di setiap `bun run verify`
 `bun run parity:trial-balance-xlsx` — definisi "setara"-nya di
 `src/lib/xlsx-content-parity.ts`.
 
-⚠ **Wajib ikut `pull` + `up`.** Tanpanya ekspor Neraca Saldo menumpuk sebagai
+⚠ **`svc-integrator` wajib ikut `pull` + `up`.** Tanpanya ekspor Neraca Saldo menumpuk sebagai
 baris `queued` tanpa pengklaim — tombol unduhnya menunggu sepuluh menit lalu
 menyerah.
 
@@ -456,7 +527,7 @@ memanggilnya. Ia tetap ada karena image-nya satu-satunya yang memuat klien
 Prisma, `openssl`, `awscli`, **dan** klien MariaDB — yang terakhir supaya
 pembukti masih bisa membaca artefak dari sebelum penukaran mesin.
 
-Membiarkan putaran hariannya hidup berdampingan dengan `svc-tenant` berarti
+Membiarkan putaran hariannya hidup berdampingan dengan jalur `tenant` berarti
 **dua pelaksana untuk satu pekerjaan**; dijaga `tests/backup-script.test.ts`.
 
 `prove-backup-restore` memeriksa manifest, lalu untuk **setiap** objek:
@@ -474,10 +545,10 @@ kuartalan manusia (❓ belum ada bukti dijalankan).
 |---|---|---|---|
 | `pg_data` | `pg` | 19 basis data | Ya — satu objek `pg_dump -Fc` per basis data |
 | `db_data` | `db` | MariaDB fallback, beku sejak 15 Okt | Tidak lagi; arsipkan dump terakhir sebelum dihapus (#636) |
-| `documents` | `app-customer` (RW), `svc-tenant` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — objek `berkas.tar.gz.enc` |
-| `audit` | kedua `app-*` (RW), `svc-tenant` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — objek `berkas.tar.gz.enc` |
-| `cadangan` | `svc-tenant` (RW) | Satu direktori per putaran: objek terenkripsi + `.sha256` + `manifest.json` | — (ia *adalah* backup-nya) |
-| `hasil` | `svc-interactive` + `svc-interactive-go` (RW, `chown` ke `node`), `app-customer` (RO) | Hasil pekerjaan (`result_ref`): `<kind>-<jobId>/<berkas>`. Di luar `public/` — satu-satunya jalan keluarnya route handler ber-izin | Tidak — ia dibangkitkan ulang dari buku, dan dibuang bersama baris `jobs`-nya |
+| `documents` | `app-customer` (RW), `svc-integrator` (RO) | `data/documents/<companyId>/<uuid>.<ext>` | Ya — objek `berkas.tar.gz.enc` |
+| `audit` | kedua `app-*` (RW), `svc-integrator` (RO) | Berkas JSONL lama `.dipindahkan` | Ya — objek `berkas.tar.gz.enc` |
+| `cadangan` | `svc-integrator` (RW) | Satu direktori per putaran: objek terenkripsi + `.sha256` + `manifest.json` | — (ia *adalah* backup-nya) |
+| `hasil` | `svc-worker` + `svc-integrator` (RW, `chown` ke `node`), `app-customer` (RO) | Hasil pekerjaan (`result_ref`): `<kind>-<jobId>/<berkas>`. Di luar `public/` — satu-satunya jalan keluarnya route handler ber-izin | Tidak — ia dibangkitkan ulang dari buku, dan dibuang bersama baris `jobs`-nya |
 
 Jejak audit ada di **tiga** tabel: `audit_logs` (tiap buku PT),
 `tenant_audit_logs` (control), `operator_audit_logs` (platform).
@@ -545,6 +616,7 @@ graph LR
     PREP --> BUILD[builder] --> RUN[runner]
     PREP --> BUILDO[builder-operator] --> RUNO[runner-operator]
     BUN --> MIGR[migrator] --> BAK[backup]
+    GOB[go-build] --> INT[integrator]
 
     style RUN fill:#e8f0ff,stroke:#4a6fa5
     style RUNO fill:#ffeaea,stroke:#b55
@@ -558,14 +630,15 @@ graph LR
 | `prepared` · `builder*` | 3× `prisma generate`; lalu `next build` | 768 MB |
 | `runner*` | Standalone, `USER node` | — |
 | `migrator` | 3× `prisma generate`; `CMD` `db:migrate:all` | 512 MB |
-| `backup` | `migrator` + `postgresql-client-17` + `awscli` | — |
+| `backup` | `migrator` + `postgresql-client-17` + `awscli`; di CI dibangun di atas `-migrator` yang baru didorong (dirujuk digest) sejak 22 Okt 2026 | — |
+| `go-build` · `integrator` | `golang` → biner statis `cmd/integrator` di `debian:bookworm-slim` + `postgresql-client-17` | — |
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>`.
 
 **Kedua image aplikasi wajib dari commit yang sama** — keduanya menulis basis
 data yang sama. Membangun image aplikasi **tidak** ikut membangun `migrator`,
 dan bila terlewat, dua job menjalankan kode lama tanpa tanda; karena itu
-matriks CI membangun keempat image setiap kali.
+matriks CI membangun kelima image setiap kali.
 
 **Bun = pemasang paket & peluncur skrip, Node = runtime.** `bun run`
 menghormati shebang `#!/usr/bin/env node`, jadi `next`, `tsc`, `prisma`, `tsx`
@@ -606,36 +679,46 @@ gagal di repo ini gagal di sana, padahal tiap branch-nya hijau.
 
 ```
 develop  ──(verify + build hijau di atas hasil gabungan)──▶  PR ke main
-main     ──push──▶  CI: build matriks 4 image  ──▶  GHCR
+main     ──push──▶  CI: build matriks 5 image  ──▶  GHCR
 server   ──▶  git pull → compose pull → [migrate] → up -d        (TANPA membangun)
 ```
 
 ```bash
 git pull
-docker compose pull app-customer app-operator migrate job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
+docker compose pull app-customer app-operator migrate svc-worker svc-integrator
 # HANYA bila ada migration baru di prisma/postgresql/:
 docker compose run --rm migrate bun run db:migrate:all
-docker compose up -d --no-deps app-customer app-operator job-scheduler job-conformance svc-ledger svc-tenant svc-interactive svc-interactive-go
+docker compose up -d --no-deps app-customer app-operator svc-worker svc-integrator
 ```
 
-⚠ **`svc-ledger`, `svc-tenant`, `svc-interactive`, dan `svc-interactive-go`
-wajib ikut `pull` dan `up`**, dan itu bukan kelengkapan daftar: ketiganya tidak melayani satu pun
-permintaan HTTP, jadi
+⚠ **Rilis pertama sesudah 22 Okt 2026 (1 image = 1 container): tambahkan
+`--remove-orphans`, sekali.** Enam layanan latar lama (`job-scheduler`,
+`job-conformance`, `svc-ledger`, `svc-interactive`, `svc-tenant`,
+`svc-interactive-go`) hilang dari compose, dan compose TIDAK menghentikan
+layanan yang hilang dari berkasnya: tanpa `--remove-orphans` keenam container
+lama tetap hidup di samping dua yang baru dan **mengklaim pekerjaan yang sama** —
+dua penjadwal, dua pengklaim `report.export` dan `report.export_go`, dua
+pelari cadangan yang berebut pagar. Perintah persisnya di PRODUCTION.md
+§Updates.
+
+⚠ **`svc-worker` dan `svc-integrator` wajib ikut `pull` dan `up`**, dan itu
+bukan kelengkapan daftar: keduanya tidak melayani satu pun permintaan HTTP, jadi
 layanan yang tertinggal di versi lama tidak membuat satu halaman pun rusak.
-`svc-ledger` hanya menulis buku besar dengan image yang mendahului
-migration-nya; `svc-tenant` hanya **berhenti mencadangkan**, atau mencadangkan
-dengan pencacahan yang mendahului PT terbaru; `svc-interactive` hanya membuat
-setiap ekspor besar **menggantung** di antrean, dan tombol unduhnya menunggu
-sampai batas waktu lalu menyerah — `svc-interactive-go` yang tertinggal berbuat
-sama untuk SETIAP ekspor Neraca Saldo. Ketiganya bentuk kegagalan yang paling mahal
-di repo ini: yang tidak terlihat.
+Peran `ledger` yang basi menulis buku besar dengan image yang mendahului
+migration-nya; jalur `tenant` yang basi **berhenti mencadangkan**, atau
+mencadangkan dengan pencacahan yang mendahului PT terbaru; pelari `interactive`
+(Node maupun Go) yang basi membuat setiap ekspor besar — dan SETIAP ekspor
+Neraca Saldo — **menggantung** di antrean sampai tombol unduhnya menyerah.
+Semuanya bentuk kegagalan yang paling mahal di repo ini: yang tidak terlihat.
 
 ⚠ **`job-backup` dicabut dari daftar ini sejak tahap 1b**, dan itu bukan
 kelalaian: ia kini perkakas ber-profil `perkakas` yang tidak ikut `up`. Yang
-mencadangkan `svc-tenant`. Satu-satunya image-nya yang masih dipakai adalah
+mencadangkan jalur `tenant` di `svc-integrator`. Satu-satunya image-nya yang masih dipakai adalah
 untuk `docker compose run --rm job-backup bun run prove-backup-restore`, jadi
-ia tetap layak di-`pull` **pada hari latihan pemulihan** — bukan pada setiap
-rilis.
+ia tetap layak di-`pull` **pada hari latihan pemulihan** dan **pada hari
+memindah tenant ke on-premise** (`tenant:export-onprem` / `mark-migrated-out` /
+`unfreeze` berjalan di image itu karena butuh `pg_dump` langsung ke `pg`) —
+bukan pada setiap rilis.
 
 Tunggu **semua** job matriks hijau sebelum `pull`; bila satu target belum
 terdorong, layanan berjalan di versi berbeda-beda. Bila rilis membawa
@@ -650,6 +733,13 @@ Memeriksa apakah rilis membawa migration:
 ```bash
 SAI_TAG=sha-573d9cf docker compose up -d --no-deps app-customer app-operator
 ```
+
+⚠ **Rollback melintasi 22 Okt 2026 (1 image = 1 container):** `svc-worker`
+menjalankan `scripts/run-workers.ts`, yang tidak ada di image `-migrator` yang
+lebih tua; dan compose lama memuat enam layanan latar, bukan dua. Mengembalikan
+layanan latar ke tag sebelum penyatuan = kembalikan juga `docker-compose.yml`
+versi itu, lalu `up -d --remove-orphans`. Rollback `app-*` saja (perintah di
+atas) tidak terpengaruh.
 
 ⚠ **Rollback ke sebelum 18 Okt 2026:** tag `sha-` yang lebih tua dari pemisahan
 monorepo tidak punya image `…-operator`. Kembalikan juga `docker-compose.yml`
@@ -693,7 +783,7 @@ db:migrate:all
 **Fan-out per perusahaan: *bounded concurrency*, dan angkanya kecil karena
 memori.** Tiap pelaksana adalah satu proses Prisma CLI (ratusan MB) plus satu
 backend PostgreSQL, dan migration berjalan **sementara aplikasi masih
-melayani** — pada kotak 3,6 GB yang dibagi enam aplikasi, dan yang sudah pernah
+melayani** — pada kotak 8 GB (7,4 GB terlihat; dulu dicatat ~3,6 GB) yang dibagi enam aplikasi, dan yang sudah pernah
 kehilangan proses ke OOM-killer. Dua pelaksana memotong *wall-clock* separuh di
 17 perusahaan; menaikkannya menuntut ruang memori yang terukur.
 
@@ -773,7 +863,7 @@ Hanya nama; nilainya tidak dicantumkan. Pemeriksa: `bun run check:env`.
 | `COMPANY_CLIENT_POOL_MAX` · `CONTROL_DB_CONNECTION_LIMIT` · `PLATFORM_DB_CONNECTION_LIMIT` · `POOL_DISCONNECT_GRACE_MS` | Bawaan 4 · 2 · 1 · 15.000 |
 | `COMPANY_DATABASE_URL_TEMPLATE` · `SMTP_*` | Jatuh ke `DATABASE_URL` · SMTP dari `platform.mail_settings` |
 | `ALLOW_SEED` | **Jangan pernah** `true` di produksi |
-| `CONTROL_DATABASE_DIRECT_URL` | Profil HA saja. Kosong → pagar jalur `ledger` lewat PgBouncer (perilaku lama); `run-as-leader` menolak berjalan |
+| `CONTROL_DATABASE_DIRECT_URL` | **Disetel compose** (`environment:` di `svc-worker` & `svc-integrator`, sejak 22 Okt 2026) — bukan di `.env`. Kosong → pagar jalur `ledger` lewat PgBouncer (perilaku lama), `run-as-leader` menolak berjalan, dan jalur `tenant` Go **menolak boot** (tidak jatuh ke `CONTROL_DATABASE_URL`) |
 | `COMPANY_DATABASE_READ_URL_TEMPLATE` · `COMPANY_DATABASE_READ_MAX_WAIT_MS` | Profil HA saja. Kosong → tidak ada replika baca, `runReadOnly(fn)` = `fn()` · bawaan 5.000 |
 | `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` | Tahap 4 saja, satu per baris `db_instances`. Tabel kosong → tidak dibaca. Baris yang env-nya kosong → buku PT di instans itu **melempar**, tidak jatuh ke bawaan |
 
@@ -859,7 +949,7 @@ membawa cap waktunya sendiri**, jadi lajunya satu `COUNT(*)` berjendela. Riwayat
 yang dicari sudah ada di tabelnya, lengkap dengan retensi 14 hari dari
 `archiveDoneJobs`.
 
-Kotak ini ~3,6 GB RAM dengan produksi hidup di atasnya; dua proses lagi untuk
+Kotak ini 8 GB RAM (7,4 GB terlihat) dibagi enam aplikasi, dengan produksi hidup di atasnya; dua proses lagi untuk
 menyimpan angka yang **sudah** tersimpan adalah ongkos tanpa imbalan.
 
 ⚠ **Durasi TIDAK bisa dihitung dari `claimed_at`, dan itu sebabnya `started_at`
@@ -902,7 +992,7 @@ tujuh yang dikarang.
 | Dasbor & tren > 14 hari | Durasi hilang bersama barisnya saat `archiveDoneJobs` memangkasnya; "apakah ini lebih lambat dibanding kuartal lalu" tak terjawab. **Pemicu** rollup per jam: ada yang sungguh menanyakannya |
 | Pelacakan error | Error runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
-| Peringatan saat scheduler mati total | `watch:health` berjalan **di dalam** `job-scheduler` dan ikut mati |
+| Peringatan saat scheduler mati total | `watch:health` berjalan **di dalam** peran `scheduler` (`svc-worker`) dan ikut mati |
 
 ### Pemicu tahap 1d: tunda event loop & memori per pekerjaan
 
@@ -922,7 +1012,7 @@ diuji `tests/stage-1d-trigger.test.ts`); pengukurnya `@sai/platform/runtime-samp
 |---|---|
 | Tabel sendiri, **bukan kolom di `jobs`** | `jobs` dibagi dengan pelari Go (kolom yang Go tinggalkan NULL selamanya), ia tabel terpanas di kendali, dan pemicu (a) bukan peristiwa pekerjaan — `app-customer` tidak menjalankan `jobs` |
 | Tiga keadaan: terpicu · belum · **sampel kurang** | sampel kurang tidak pernah menjadi "terpicu", seburuk apa pun angkanya — 1d adalah penulisan ulang yang tak bisa ditarik dengan satu commit |
-| Loop pelari **tidak** dinilai (a) | ekspor besar sudah di `svc-interactive`; loop yang ditahannya tidak membuat halaman siapa pun menunggu. Angkanya konteks |
+| Loop pelari **tidak** dinilai (a) | ekspor besar sudah di proses pelari `interactive` (`svc-worker`); loop yang ditahannya tidak membuat halaman siapa pun menunggu. Angkanya konteks |
 | RSS, bukan heap, untuk (b) | pelari berjalan di Bun, yang mengabaikan `--max-old-space-size`. RSS dikoreksi tanda air kernel (`resourceUsage().maxRSS`), sebab blok sinkron menahan timer cuplikan juga |
 | Penulis fail-soft, `runtime-samples` tanpa `server-only` | galat tulis menurunkan jumlah sampel (terlihat sebagai "sampel kurang"), tidak menjatuhkan permintaan; `server-only` di hook `register` berisiko melempar saat boot |
 
@@ -991,11 +1081,11 @@ Produksi hari ini satu VM, jadi berkas itu tidak dipakai di mana pun.
 |---|---|---|
 | Menemukan primary | Service `pg` menjadi HAProxy: `:5432` → anggota yang menjawab `GET /primary` di REST Patroni, `:5433` → `GET /replica` | Driver Node (`pg` 8.23.1) tidak mengenal URL multi-host maupun `target_session_attrs` — diperiksa di `node_modules/pg/lib`. Satu router untuk semua klien, bukan dua cara menemukan primary |
 | Koneksi lama ke bekas primary | `on-marked-down shutdown-sessions` | Tanpanya pemimpin lama tetap memegang kunci di server yang sudah turun pangkat |
-| `job-scheduler` | `run-as-leader` di koneksi langsung | §5 |
-| Pagar `svc-ledger` | Koneksi langsung, dibuktikan ulang tiap 15 detik (`@sai/db/session-lock`) | Pagar lewat PgBouncer mode transaksi tertinggal di backend kolam — jinak di satu host, kosong di dua |
-| Replika baca | `svc-interactive` saja, lewat `:5433`, aturan LSN (`src/lib/read-replica.ts`) | Ekspor dari replika memuat setiap commit sebelum ekspor dimulai, atau ia membaca primary |
-| `svc-interactive` lebih dari satu | `container_name` dilepas; `--scale` | Klaim `FOR UPDATE SKIP LOCKED`. ⚠ Volume `hasil` lokal per host — skala LINTAS host menunggu penyimpanan objek untuk hasil |
-| `svc-tenant` lebih dari satu | Instans kedua keluar tanpa bekerja lalu di-restart: kandidat panas | Pagar Go memegang satu koneksi langsung. ⚠ Ia **tidak** membuktikan ulang kuncinya sesudah failover — lihat di bawah |
+| Peran tunggal `svc-worker` (`scheduler`, `ledger`, `conformance`) | `WORKER_LEADER_ROLES` → penyelia membungkusnya dengan `run-as-leader` di koneksi langsung | §5 |
+| Pagar jalur `ledger` | Koneksi langsung, dibuktikan ulang tiap 15 detik (`@sai/db/session-lock`) — sejak 22 Okt 2026 juga di compose dasar | Pagar lewat PgBouncer mode transaksi tertinggal di backend kolam — jinak di satu host, kosong di dua |
+| Replika baca | peran `interactive` saja (`runReadOnly`), lewat `:5433`, aturan LSN (`src/lib/read-replica.ts`) | Ekspor dari replika memuat setiap commit sebelum ekspor dimulai, atau ia membaca primary |
+| `svc-worker` lebih dari satu | `container_name` dilepas; `--scale` — `interactive` jamak, tiga peran lain kandidat | Klaim `FOR UPDATE SKIP LOCKED`. ⚠ Volume `hasil` lokal per host — skala LINTAS host menunggu penyimpanan objek untuk hasil |
+| `svc-integrator` lebih dari satu | Jalur `tenant` instans kedua keluar tanpa bekerja → proses keluar → restart: kandidat panas (jalur `interactive` Go-nya ikut restart) | Pagar Go memegang satu koneksi langsung. ⚠ Ia **tidak** membuktikan ulang kuncinya sesudah failover — lihat di bawah |
 
 **Runbook failover.** Patroni yang memutuskan; operator memeriksa.
 
@@ -1003,7 +1093,7 @@ Produksi hari ini satu VM, jadi berkas itu tidak dipakai di mana pun.
    baru dan *lag* anggota lain.
 2. `docker compose logs pg --tail 50` di host aplikasi — HAProxy menandai
    anggota lama DOWN dan anggota baru UP.
-3. `docker compose logs job-scheduler --tail 30` di kedua host — tepat satu
+3. `docker compose logs svc-worker --tail 200 | grep ' scheduler *|'` di kedua host — tepat satu
    `memegang kunci`, dan bekas pemimpin mencatat `KUNCI HILANG` lalu kembali
    menunggu.
 4. `/api/health` → `scheduler: ok` dalam satu putaran.
@@ -1034,7 +1124,7 @@ kodenya, dan satu percobaan 22 Okt 2026 terhadap PostgreSQL 17 + PgBouncer
 | `run-as-leader` dua instans | kedua menunggu, tidak menjalankan perintahnya; pemimpin keluar dengan kode anaknya (3) |
 
 **Dua utang yang disebut.** (1) Pelari Go (`TryLaneLock`) memegang koneksinya
-tetapi tidak membuktikan ulang kuncinya; sesudah failover, `svc-tenant` lama
+tetapi tidak membuktikan ulang kuncinya; sesudah failover, jalur `tenant` lama
 terus mengklaim sementara kandidat di host lain mengambil kunci di primary baru.
 Kebenaran tetap dipikul `dedupe_key` + lease, tapi dua cadangan bisa berjalan
 bersamaan. Perbaikannya denyut yang sama dengan `@sai/db/session-lock`, di Go,
@@ -1345,8 +1435,9 @@ ada:
 | Platform | `PLATFORM_DB_CONNECTION_LIMIT` | 1 |
 | **Per proses** | | **11** |
 
-Dua replika + konsol + `svc-ledger` + `svc-interactive` + `job-scheduler` +
-`job-conformance` = 7 × 11 = **77** koneksi klien, jauh di bawah
+Dua replika + konsol + empat peran `svc-worker` (`ledger`, `interactive`,
+`scheduler`, `conformance` — proses terpisah, jadi tetap empat kolam) = 7 × 11 =
+**77** koneksi klien, jauh di bawah
 `MAX_CLIENT_CONN` 200.
 
 Yang menentukan sisi server bukan angka itu, melainkan PgBouncer:
@@ -1363,7 +1454,8 @@ memakai satu pengguna (`sai`). Override menyetelnya:
 | `PG_MAX_CONNECTIONS` | 100 | naikkan bersama `shared_buffers` di host basis data sendiri |
 
 Jalur langsung ke `pg` (melewati pooler, 27 tersisa): `migrate` (sekali per
-deploy), `svc-tenant` (2 + satu `pg_dump`), `job-backup` (perkakas). Pengirim
+deploy), jalur `tenant` di `svc-integrator` (2 + satu `pg_dump`), pagar jalur
+`ledger` di `svc-worker` (1), `job-backup` (perkakas). Pengirim
 WAL standby tidak dihitung terhadap `max_connections` sejak PostgreSQL 12.
 
 ### Standby

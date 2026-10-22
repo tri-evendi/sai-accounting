@@ -7,6 +7,7 @@ import { tenantCan } from "@/lib/tenant-authz";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { loginSchema } from "@/lib/validations/auth";
 import { clientIpFrom } from "@sai/core/client-ip";
+import { isMigratedOut } from "@sai/core/tenant-migration";
 import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
@@ -139,6 +140,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
          */
         const companies = await companiesForUser(user.id);
         if (companies.length === 0) {
+          /*
+           * Tenant rumahnya sudah PINDAH ke on-premise (docs/ONPREM-PINDAH-
+           * DARI-SAAS.md). Bukunya dinonaktifkan di sini, jadi daftar di atas
+           * kosong — tetapi "belum diberi akses" adalah kalimat yang salah: ia
+           * menyuruh orang meminta akses ke pemasangan yang sudah ditinggalkan.
+           * Diperiksa SEBELUM cabang `company.create`, kalau tidak pemilik akan
+           * masuk lalu diantar membuat perusahaan baru di SaaS.
+           * Pengguna yang masih punya PT aktif di tenant lain tidak sampai ke
+           * sini: daftarnya tidak kosong, dan ia masuk seperti biasa.
+           */
+          if (user.tenantId != null) {
+            const home = await controlDb.tenant.findUnique({
+              where: { id: user.tenantId },
+              select: { status: true },
+            });
+            if (isMigratedOut(home?.status)) throw new Error("TenantMigratedOut");
+          }
           const membership = await tenantMembershipForUser(user.id);
           if (!tenantCan(membership, "company.create")) {
             throw new Error("NoCompanyAccess");

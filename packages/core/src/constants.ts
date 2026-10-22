@@ -134,6 +134,10 @@ export const TENANT_STATUSES = [
   "past_due",
   "suspended",
   "cancelled",
+  /* Pindah ke on-premise (docs/ONPREM-PINDAH-DARI-SAAS.md) — BUKAN dihapus:
+   * buku tetap tersimpan di SaaS sampai alur penghapusan #142 dijalankan.
+   * Konstanta & penjaganya: `@sai/core/tenant-migration`. */
+  "migrated_out",
 ] as const;
 export type TenantStatus = (typeof TENANT_STATUSES)[number];
 

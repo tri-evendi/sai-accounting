@@ -34,6 +34,7 @@ namanya di catatan rilis.
 | Kebocoran data antar-perusahaan atau antar-tenant | Temuan pemindai otomatis tanpa bukti dampak |
 | Lolos dari matriks izin (`docs/RBAC.md`) | Rekayasa sosial terhadap staf SAI |
 | Verifikasi lisensi on-premise (`packages/core/src/licence.ts`) | Penolakan layanan volumetrik |
+| Register lisensi di konsol (`/licences`) dan bundel pindah SaaS → on-premise (`tenant:export-onprem` / `tenant:import-onprem`: sandi bundel, penyegelan ulang rahasia) | |
 
 ## Versi yang didukung
 

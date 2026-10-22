@@ -821,3 +821,94 @@ model BrandAsset {
   @@map("brand_assets")
 }
 
+/// REGISTER LISENSI ON-PREMISE — customer (konsol `/licences`, migration
+/// platform 0006). Satu baris per customer on-premise; penerbitannya di
+/// `LicenceRegisterEntry`.
+///
+/// ⚠ ARSIP, BUKAN KEWENANGAN. Kewenangan lisensi ada pada tanda tangan Ed25519
+/// berkasnya, diverifikasi di mesin customer (06-KEAMANAN §3.7, rancangan §8).
+/// Tidak satu pun kode di `app-customer` atau di mana pun boleh membaca tabel
+/// ini untuk memutuskan status lisensi — dijaga
+/// `tests/licence-register-archive.test.ts`.
+///
+/// @pii kontak (`contact`)
+model LicenceCustomer {
+  id Int @id @default(autoincrement())
+
+  /// Nama tampilan customer — ikut nama di penerbitan terakhir.
+  name    String  @db.VarChar(200)
+  /// Kontak bebas (nama, surel, telepon). Opsional.
+  contact String? @db.VarChar(300)
+
+  /// Tenant SaaS asal bila customer pindah dari SaaS. Id basis data KENDALI,
+  /// tanpa FK lintas basis data (docs/DATABASE.md).
+  sourceTenantId Int? @map("source_tenant_id")
+
+  isActive  Boolean @default(true) @map("is_active")
+  createdBy String  @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  entries LicenceRegisterEntry[]
+
+  @@index([name])
+  @@index([sourceTenantId])
+  @@map("licence_customers")
+}
+
+/// REGISTER LISENSI ON-PREMISE — satu baris per PENERBITAN (versi).
+///
+/// ⚠ ARSIP, BUKAN KEWENANGAN — lihat `LicenceCustomer`. Status `revoked` hanya
+/// CATATAN: lisensi luring tidak bisa dicabut dari jauh. Kunci privat tidak
+/// pernah disimpan di mana pun di sini; penandatanganan terjadi di laptop
+/// luring (`bun run licence:issue`), konsol hanya MEMVERIFIKASI berkas hasilnya
+/// dengan kunci publik yang ditanam di kode.
+model LicenceRegisterEntry {
+  id Int @id @default(autoincrement())
+
+  customerId Int             @map("customer_id")
+  customer   LicenceCustomer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  /// 1, 2, 3 … per customer. Terbit ulang = versi baru.
+  version Int
+
+  /// draft | issued | superseded | revoked — `LICENCE_ENTRY_STATUSES`; CHECK di migration.
+  status String @default("draft") @db.VarChar(20)
+
+  /// Diberikan ke `licence:issue --id` — berkas unggahan wajib membawa id yang sama.
+  licenceId     String    @unique @map("licence_id") @db.VarChar(64)
+  /// Isian `customer` di dalam lisensi.
+  licenseeName  String    @map("licensee_name") @db.VarChar(200)
+  maxCompanies  Int       @map("max_companies")
+  maxUsers      Int       @map("max_users")
+  /// `all` atau daftar kunci modul berkoma.
+  modules       String    @db.VarChar(500)
+  supportEndsOn DateTime? @map("support_ends_on") @db.Date
+  maxVersion    String?   @map("max_version") @db.VarChar(40)
+  notes         String?   @db.Text
+
+  /// Berkas `.sai` apa adanya — diisi hanya bila LULUS verifikasi + pencocokan.
+  fileContent String?   @map("file_content") @db.Text
+  fileSha256  String?   @map("file_sha256") @db.Char(64)
+  /// Payload yang sudah diverifikasi (JSON) — untuk dipajang, bukan diputuskan.
+  payloadJson String?   @map("payload_json") @db.Text
+  issuedAt    DateTime? @map("issued_at")
+  uploadedBy  String?   @map("uploaded_by") @db.VarChar(100)
+  uploadedAt  DateTime? @map("uploaded_at")
+
+  revokedBy    String?   @map("revoked_by") @db.VarChar(100)
+  revokedAt    DateTime? @map("revoked_at")
+  revokeReason String?   @map("revoke_reason") @db.VarChar(500)
+
+  createdBy String @map("created_by") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([customerId, version])
+  @@index([customerId])
+  @@index([status])
+  @@map("licence_register_entries")
+}
+

@@ -15,7 +15,7 @@
  * di tempat yang benar sepanjang waktu, dan tidak ada yang menanyakannya.
  *
  * == IA BERJALAN DARI JADWAL YANG BERBEDA, DAN ITU INTINYA ==================
- * Dipanggil `job-scheduler`. Untuk cadangan itu menentukan: penjaga yang hidup
+ * Dipanggil peran `scheduler` di `svc-worker`. Untuk cadangan itu menentukan: penjaga yang hidup
  * di dalam layanan cadangan akan ikut mati bersama container yang mati, dan
  * "tidak ada putaran sama sekali" justru bentuk kegagalan paling sunyi —
  * `backup_runs` pernah 0 baris berbulan-bulan karena persis itu.

@@ -99,7 +99,7 @@ export function decideSchedulerAlert(input: SchedulerWatchdogInput): WatchdogDec
           "Jadi tidak ada yang akan terlihat salah dari luar: container `Up`,\n" +
           "putaran tepat waktu, `/api/health` menjawab `scheduler: ok`.\n\n" +
           "Rinciannya ada di kolom `details` baris terakhir `scheduler_runs`, dan\n" +
-          "di log:  docker compose logs --tail=120 job-scheduler",
+          "di log:  docker compose logs --tail=400 svc-worker | grep ' scheduler *|'",
         [
           ["status denyut", input.status],
           ["status putaran", "error"],
@@ -120,13 +120,13 @@ export function decideSchedulerAlert(input: SchedulerWatchdogInput): WatchdogDec
       ? "TIDAK ADA SATU PUN PUTARAN PENJADWAL yang tercatat.\n\n" +
         "Langganan tidak diperbarui, pengingat tidak terkirim, dan jejak putaran\n" +
         "tidak tumbuh. Kalau pemasangan ini baru lahir, ini normal — sekali saja.\n\n" +
-        "Periksa:  docker compose ps job-scheduler && docker compose logs --tail=50 job-scheduler"
+        "Periksa:  docker compose ps svc-worker && docker compose logs --tail=200 svc-worker | grep ' scheduler *|'"
       : "PENJADWAL TERLAMBAT — tidak ada putaran yang selesai dalam ambang.\n\n" +
         "Penyebab yang paling sering BUKAN kegagalan, melainkan KEMACETAN: satu\n" +
         "langkah yang menggantung tidak meninggalkan baris log, container tetap\n" +
         '"Up", dan log terakhir tetap berbunyi "selesai tanpa masalah". Itu sudah\n' +
         "terjadi di produksi — dua jam, CPU 0,09%.\n\n" +
-        "Periksa:  docker top sai-job-scheduler && docker compose logs --tail=80 job-scheduler";
+        "Periksa:  docker top sai-svc-worker && docker compose logs --tail=300 svc-worker | grep ' scheduler *|'";
 
   return {
     alert: true,
@@ -173,7 +173,7 @@ export function decideConformanceAlert(input: ConformanceWatchdogInput): Watchdo
         "TIDAK ADA SATU PUN PEMERIKSAAN KESESUAIAN yang tercatat.\n\n" +
         "Artinya tidak ada yang tahu apakah pembukuan ke-17 buku masih konsisten.\n" +
         "Ketiadaan temuan BUKAN berarti bersih.\n\n" +
-        "Periksa:  docker compose logs --tail=50 job-conformance";
+        "Periksa:  docker compose logs --tail=300 svc-worker | grep ' conformance *|'";
       break;
     case "late":
       pesan =
@@ -182,7 +182,7 @@ export function decideConformanceAlert(input: ConformanceWatchdogInput): Watchdo
             "Buku yang tak terperiksa tidak sama dengan buku yang bersih — dan\n" +
             "inilah sebabnya kegagalan memeriksa diperlakukan sekeras temuan.\n\n"
           : "PEMERIKSAAN KESESUAIAN SUDAH TERLALU LAMA tidak berjalan.\n\n") +
-        "Periksa:  docker compose ps job-conformance";
+        "Periksa:  docker compose ps svc-worker";
       break;
     case "findings":
       pesan =

@@ -31,6 +31,7 @@
     "./job-result": "./src/job-result.ts",
     "./labels": "./src/labels.ts",
     "./licence": "./src/licence.ts",
+    "./licence-register": "./src/licence-register.ts",
     "./migration-manifest": "./src/migration-manifest.ts",
     "./money-format": "./src/money-format.ts",
     "./operator-plane": "./src/operator-plane.ts",
@@ -49,6 +50,7 @@
     "./tax": "./src/tax.ts",
     "./tenant-cache": "./src/tenant-cache.ts",
     "./tenant-deletion": "./src/tenant-deletion.ts",
+    "./tenant-migration": "./src/tenant-migration.ts",
     "./tenant-routes": "./src/tenant-routes.ts",
     "./utils": "./src/utils.ts"
   },

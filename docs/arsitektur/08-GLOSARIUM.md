@@ -1,6 +1,6 @@
 # 08 — Glosarium, Pengujian, Target & Katalog Rute
 
-> 20 Okt 2026 · diukur di cabang `feat/tahap-1c-dokumen-sisa` · produksi `main@ca0cd038` · [indeks](./README.md)
+> 22 Okt 2026 (kode `develop`; §1–2 diukur 20 Okt di cabang `feat/tahap-1c-dokumen-sisa`) · terakhir diukur terhadap produksi `main@ca0cd038` · [indeks](./README.md)
 
 ## 1. Glosarium
 
@@ -16,7 +16,7 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 | **Plane** | Permukaan yang dipisahkan **host**: customer (`APP_DOMAIN`) vs operator (`OPERATOR_DOMAIN`) | Bukan grup rute, bukan container |
 | **Profil penyebaran** | SaaS atau on-premise — `APP_DEPLOY_PROFILE`, **disetel**, tidak pernah disimpulkan dari env basis data. On-premise tidak memasang `sai_platform` | Bukan `NODE_ENV`, bukan plane |
 | **Jejak putaran** | Satu baris per putaran penjadwal, pemeriksa kesesuaian, atau cadangan — `scheduler_runs` · `conformance_runs` · `backup_runs`, di basis data **kendali** | Bukan log, bukan jejak audit |
-| **Jalur** (*lane*) | Unit **isolasi** antrean: kelas `kind` yang diklaim satu pekerja, satu PROSES tersendiri. Satu ekspor yang kehabisan memori hanya menjatuhkan jalurnya sendiri | Bukan layanan (satu layanan bisa melayani satu jalur, dan satu jalur bisa dilayani dua bahasa selama transisi), bukan `kind` |
+| **Jalur** (*lane*) | Unit **isolasi** antrean: kelas `kind` yang diklaim satu pekerja. Jalur Node masing-masing PROSES tersendiri (peran di `svc-worker`), jadi satu ekspor yang kehabisan heap hanya menjatuhkan prosesnya sendiri — meski sejak 22 Okt 2026 penyelia lalu me-restart seluruh container. Kedua jalur Go berbagi SATU proses `svc-integrator` | Bukan layanan (satu layanan bisa melayani satu jalur, dan satu jalur bisa dilayani dua bahasa selama transisi), bukan `kind` |
 | **`kind`** | Satu **jenis** pekerjaan — `tenant.backup`, `ledger.recurring`. Milik tepat satu jalur, dan kosakatanya DIBANGKITKAN dari `contract/kinds.yaml` | Bukan jalur, bukan nama handler |
 
 ### 1.2 Istilah akuntansi yang punya arti teknis di sini
@@ -64,6 +64,10 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 | **`result_ref`** | KUNCI objek hasil pekerjaan (`<kind>-<jobId>/<berkas>`), bukan tautan. **Memegang kuncinya bukan izin untuk membacanya**: unduhannya lewat rute aplikasi yang memeriksa izin SAAT MENGUNDUH, per `kind` dan per laporan |
 | **Ambang penyerahan** | `EXPORT_QUEUE_HANDOFF_ROWS`. Di bawahnya ekspor sinkron, di atasnya diserahkan ke antrean. BUKAN batas — plafon yang MENOLAK tetap `EXPORT_MAX_ROWS` |
 | **Manifest cadangan** | Satu-satunya objek putaran yang bisa dibaca **tanpa kunci**: nama basis data, peran, `companyId`, ukuran, sidik jari. Ia objek dan bukan hanya baris DB, sebab pada hari pemulihan basis data kendali bisa PERSIS yang hilang |
+| **Penyelia** (`svc-worker`) | `scripts/run-workers.ts`: menjalankan empat peran Node sebagai proses terpisah dalam satu container, meneruskan SIGTERM ke grup proses tiap peran, mengawali log dengan nama peran, dan keluar bukan-nol bila SATU peran berakhir — container setengah-hidup tidak pernah tampil "Up" |
+| **Beku** (`frozen_at`) | Tenant yang bukunya hanya-baca karena sedang dipindah ke on-premise. Kolom sendiri, BUKAN nilai `status` — `status` ditulis ulang mesin penagihan. Dicairkan `tenant:unfreeze` |
+| **`migrated_out`** | Status tenant sesudah pindah ke on-premise dinyatakan selesai. Bukunya di SaaS **tidak dihapus**; jalan baliknya manual. Runbook: `docs/ONPREM-PINDAH-DARI-SAAS.md` |
+| **Register lisensi** | Arsip lisensi on-premise di konsol (`/licences`). **Arsip, bukan kewenangan**: kewenangannya tanda tangan Ed25519 di berkasnya, dan "dicabut" di register hanya catatan |
 
 ### 1.4 Kata yang sengaja TIDAK dipakai
 
@@ -140,7 +144,7 @@ lahir dari kegagalan nyata:
 
 | Tidak diuji otomatis | Gantinya |
 |---|---|
-| Basis data sungguhan | Fungsi murni + `job-conformance` mingguan di data nyata |
+| Basis data sungguhan | Fungsi murni + peran `conformance` (`svc-worker`) mingguan di data nyata |
 | Browser sungguhan | Tes proxy + tes komponen + pemeriksaan manual |
 | Restore backup ke basis data | `prove-backup-restore` sengaja tidak memuat dump; pemuatan sungguhan adalah latihan kuartalan manusia (❓ belum ada bukti) |
 | Beban / performa | Tidak ada; angka yang ada pengukuran satu kali |
@@ -215,9 +219,10 @@ grep -rho 'requireApiPermission("[^"]*"' src/app/api --include=route.ts | sort |
 grep -rLE 'require[A-Z][A-Za-z]*\(' src/app/api --include=route.ts
 ```
 
-Angka per 18 Okt 2026: **131** halaman customer · **128** rute API customer ·
-3 rute metadata/aset · **19** halaman konsol · 2 rute fungsional konsol ·
-**10** rute API tanpa penjaga (semuanya terdaftar sebagai pengecualian).
+Angka per 22 Okt 2026: **131** halaman customer · **131** rute API customer ·
+3 rute metadata/aset · **20** halaman konsol · 2 rute fungsional konsol.
+Per 18 Okt 2026: **10** rute API tanpa penjaga (semuanya terdaftar sebagai
+pengecualian).
 
 Sepuluh rute publik itu: enam alur autentikasi pra-sesi (`auth/[...nextauth]`,
 `register`, `verify-email`, `forgot-password`, `reset-password`,
@@ -240,9 +245,9 @@ Rute API customer per kelompok:
 | `companies` 1 · `company` 1 · `setup` 2 · `sample-data` 1 · `user` 4 · `tenant` 10 · `t` 7 | Tenant & platform |
 | `auth` 7 · `health` 1 · `status` 1 · `billing` 1 | Autentikasi & infra |
 
-Konsol operator: 19 halaman (`/`, `/accounts`, `/audit`, `/audit/tenants`,
+Konsol operator: 20 halaman (`/`, `/accounts`, `/audit`, `/audit/tenants`,
 `/backup`, `/brand`, `/conformance`, `/content`, `/deletions`, `/efaktur`,
-`/login`, `/mail`, `/plans`, `/reconciliation`, `/scheduler`, `/settings`,
+`/licences`, `/login`, `/mail`, `/plans`, `/reconciliation`, `/scheduler`, `/settings`,
 `/status-notices`, `/tenants`, `/tenants/{id}`) + 2 rute (`/api/health`
 publik, `/efaktur/unduh` dengan `tenant.billing`).
 

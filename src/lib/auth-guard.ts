@@ -6,6 +6,7 @@ import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromRequest } from "@/lib/company-request";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
+import { migrationWriteRefusal } from "@sai/core/tenant-migration";
 import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@sai/platform/tenant-state";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
@@ -200,7 +201,11 @@ async function gateAfterCompany(
    */
   if (isWritePermission(permission)) {
     const tenantState = await tenantStateForCompany(companyId);
-    const refusal = readOnlyRefusal(tenantState?.status, permission);
+    /* Gerbang langganan dulu, lalu pembekuan pindah ke on-premise
+       (`@sai/core/tenant-migration`) — dua keadaan, dua kalimat. */
+    const refusal =
+      readOnlyRefusal(tenantState?.status, permission) ??
+      migrationWriteRefusal(tenantState, permission);
     if (refusal) {
       return {
         authorized: false,

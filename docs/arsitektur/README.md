@@ -3,18 +3,25 @@
 > **01–08 menggambarkan sistem yang sedang berjalan**, disusun dari kode,
 > konfigurasi, dan keluaran perintah. **09 adalah satu-satunya dokumen
 > rancangan** — isinya belum dibangun, dan setiap bagiannya ditandai demikian.
-> Dimutakhirkan 20 Oktober 2026 · produksi `main@ca0cd038`.
+> Dimutakhirkan 22 Oktober 2026 · produksi `main@3a6d1d35` (v0.11.0).
 >
 > ⚠ **"Sedang berjalan" di sini berarti keadaan KODE yang tergabung, dan
 > stempel `main@…` di tiap dokumen menyebut kapan ia terakhir diukur terhadap
-> produksi.** Keduanya bisa berbeda beberapa hari, dan tahap 1a–1c
-> membedakannya sekarang: `svc-ledger`, `svc-tenant`, dan `svc-interactive` ada
-> di compose dan dijelaskan [02 §5](./02-LAYANAN-INFRA.md), tetapi **belum
-> tergelar** — ketiganya naik pada rilis berikutnya, dan ketiganya wajib ikut
-> `pull` dan `up` ([02 §11](./02-LAYANAN-INFRA.md), `PRODUCTION.md`). Dokumen yang menunggu
+> produksi.** Keduanya bisa berbeda beberapa hari. Dokumen yang menunggu
 > penyebaran sebelum mencatat sesuatu adalah dokumen yang selalu tertinggal satu
 > rilis, dan orang yang membacanya saat menggelar justru tidak menemukan
 > layanan yang harus ia gelar.
+>
+> Yang hari ini berbeda antara kode dan produksi (22 Okt 2026): **"1 image = 1
+> container"** (09 §3.2) — enam layanan latar (`job-scheduler`,
+> `job-conformance`, `svc-ledger`, `svc-interactive`, `svc-tenant`,
+> `svc-interactive-go`) menjadi dua, `svc-worker` (empat peran Node) dan
+> `svc-integrator` (dua jalur Go); rilis pertamanya wajib `--remove-orphans`
+> (`PRODUCTION.md` §Updates). Bersamanya belum tergelar: register lisensi
+> on-premise di konsol (`/licences`, migration platform 0006) dan pindah
+> tenant SaaS → on-premise (migration kendali 0010,
+> [`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)). Jalannya
+> di [07 §6 dan §8](./07-RIWAYAT.md); rilis 0.11.0 di 07 §7.
 >
 > Tahap **1a, 1b, dan 1c** rancangan 09 selesai dan sudah dipindahkan ke 01–08
 > sebagai keadaan; 09 memuat sisanya saja — ditambah lima hal yang sengaja
@@ -28,12 +35,12 @@
 | # | Dokumen | Menjawab |
 |---|---|---|
 | 01 | [ARSITEKTUR.md](./01-ARSITEKTUR.md) | Produk, dua aplikasi, diagram konteks & container, pola, empat batas keamanan, tiga lapis basis data, konteks perusahaan, otorisasi, mesin posting, struktur kode **& pohon poliglot (batas Go, kontrak bangkitan, tiga gerbang rilis)**, ukuran |
-| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, **sebelas** layanan, pekerjaan latar (**jalur `ledger`, `tenant` & `interactive`**), image & build, gate rilis, deploy & rollback, migration (**pemilik skema, fan-out**), env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
+| 02 | [LAYANAN-INFRA.md](./02-LAYANAN-INFRA.md) | Mesin, **sembilan** layanan (`svc-worker` + `svc-integrator` sejak 22 Okt 2026), pekerjaan latar (**jalur `ledger`, `tenant` & `interactive`**), image & build, gate rilis, deploy & rollback, migration (**pemilik skema, fan-out**), env, pemantauan, DR, **tiga bentuk arsitektur infra**, **profil on-premise & profil penyebaran** |
 | 03 | [API-INTEGRASI.md](./03-API-INTEGRASI.md) | Permukaan HTTP (**termasuk dokumen & hasil pekerjaan**), tiga rezim autentikasi, header keamanan, dependensi luar, titik gagal tunggal, larangan impor |
 | 04 | [ALIRAN-DATA.md](./04-ALIRAN-DATA.md) | ERD ketiga skema, enam alur data, daur hidup status tiap dokumen |
 | 05 | [PENILAIAN.md](./05-PENILAIAN.md) | Kekuatan, temuan terbuka berprioritas, portabilitas VM, pemicu, keputusan yang menunggu pemilik |
 | 06 | [KEAMANAN.md](./06-KEAMANAN.md) | Aset yang dilindungi, aktor & ancaman, kontrol per ancaman (**termasuk `result_ref` sebagai kunci, bukan kapabilitas**), regresi yang pernah terjadi |
-| 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Empat pekerjaan selesai: keputusan yang masih mengikat dan yang masih terbuka |
+| 07 | [RIWAYAT.md](./07-RIWAYAT.md) | Pekerjaan besar yang selesai (PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar 1a–1c, rilis 22 Okt 2026): keputusan yang masih mengikat dan yang masih terbuka |
 | 08 | [GLOSARIUM.md](./08-GLOSARIUM.md) | Istilah, strategi pengujian, target non-fungsional, katalog rute |
 | 09 | [RANCANGAN-LAYANAN.md](./09-RANCANGAN-LAYANAN.md) | 🔶 **Rancangan:** tiga invarian, bentuk layanan target & inventaris image, jalur yang BELUM pindah & batas Go, kontrak yang belum dibangkitkan, outbox & otorisasi hasil, dokumen di server, fan-out per tenant yang belum (kesesuaian, expand/contract), SaaS vs On-Premise, tahapan & pemicu, nomenklatur, observabilitas yang belum terukur, tata kelola |
 
@@ -50,6 +57,7 @@
 | Menambah halaman / rute | 06 (daftar periksa) → 08 |
 | Meninjau keamanan | 06 → 03 |
 | Menelusuri kenapa sesuatu dibuat begini | 07 |
+| Memasang on-premise, atau memindah customer SaaS ke sana | 09 §7 → [`ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) · [`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md) |
 
 ## Tiga tingkat keyakinan
 
@@ -68,6 +76,7 @@ Angka runtime selalu disertai tanggal pengambilannya.
 | [`MULTI-COMPANY.md`](../MULTI-COMPANY.md) · [`MULTI-TENANT.md`](../MULTI-TENANT.md) | Satu basis data per PT (#104) · lapis tenant/SaaS (#133) |
 | [`RBAC.md`](../RBAC.md) · [`MODUL-USAHA.md`](../MODUL-USAHA.md) | Matriks izin, penegakan, kunci buku · modul per jenis usaha (#99) |
 | [`DATABASE.md`](../DATABASE.md) | Standar skema, tipe data, workflow migration |
+| [`ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) · [`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md) | Templat serah terima on-premise · runbook pindah tenant SaaS → on-premise |
 | [`COMPLIANCE.md`](../COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi |
 | [`KOMERSIALISASI.md`](../KOMERSIALISASI.md) · [`PRICING.md`](../PRICING.md) | Strategi komersial & katalog harga |
 | [`AGENTS.md`](../../AGENTS.md) · [`PRODUCTION.md`](../../PRODUCTION.md) | Aturan kerja · runbook deploy |

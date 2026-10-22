@@ -5,7 +5,7 @@
  * Sejak tahap 1b, pelari mengklaim hanya `kind` yang punya handler padanya —
  * bukan seluruh `kind` jalurnya. Itu perubahan yang perlu: selama transisi
  * 1b–1d sebuah jalur bisa dilayani DUA bahasa untuk `kind` yang berbeda (jalur
- * `tenant` adalah contoh pertamanya, dan alasannya di `cmd/tenant/main.go`).
+ * `tenant` adalah contoh pertamanya, dan alasannya di `internal/tenantlane/runner.go`).
  *
  * Harganya adalah satu lubang. Sebelumnya, `kind` tanpa handler akan diklaim
  * lalu digagalkan — berisik, tapi terlihat. Sekarang ia tidak diklaim siapa
@@ -149,7 +149,7 @@ describe("setiap `kind` yang DITERBITKAN punya pengklaim", () => {
        pekerjaan, dan yang memisahkannya hanya `dedupe_key` — yaitu kunci yang
        dirancang untuk idempotensi PENERBITAN, bukan untuk arbitrase
        pelaksanaan. Cacat ini sudah hampir terjadi sekali di tahap 1a, ketika
-       `recurring:run` masih berjalan di penjadwal sementara `svc-ledger` lahir. */
+       `recurring:run` masih berjalan di penjadwal sementara pelari `ledger` (dulu `svc-ledger`) lahir. */
     const ganda = [...kindDiklaim()].filter(([, oleh]) => new Set(oleh).size > 1);
     expect(
       ganda.map(([k, oleh]) => `${k}: ${[...new Set(oleh)].join(" + ")}`),
@@ -169,7 +169,7 @@ describe("isolasi jalur tetap jalur", () => {
       expect(lanes, `jalur ${lane}`).toContain(lane);
       for (const berkas of oleh) {
         /* Nama berkas pelarinya menyebut jalurnya: `workers/ledger.ts`,
-           `cmd/tenant/main.go`. Itu konvensi, dan penjaga ini yang
+           `internal/tenantlane/runner.go`. Itu konvensi, dan penjaga ini yang
            menegakkannya — pelari yang namanya tidak menyebut jalurnya adalah
            pelari yang jalurnya harus dibaca dari isi berkasnya. */
         expect(

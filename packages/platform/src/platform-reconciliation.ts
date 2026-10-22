@@ -22,6 +22,7 @@
 import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import type { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { tenantStatusForSubscription } from "@sai/billing/subscription-lifecycle";
+import { isMigratedOut } from "@sai/core/tenant-migration";
 
 export type Finding = { check: string; detail: string };
 
@@ -121,6 +122,21 @@ export async function runReconciliation(
       const subs = subsByTenant.get(tenant.id);
       if (!subs || subs.length === 0) continue; // sudah tertangkap pemeriksaan 2
       const latest = subs[subs.length - 1];
+      /* `migrated_out` (pindah ke on-premise) bukan salinan status langganan:
+         langganannya DIHENTIKAN (`cancelled`) oleh `tenant:mark-migrated-out`,
+         lalu kendali ditandai sendiri. Pasangan itu serasi; selainnya tidak. */
+      if (isMigratedOut(tenant.status)) {
+        if (latest.status !== "cancelled") {
+          findings.push({
+            check: "status-tak-serasi",
+            detail:
+              `tenant #${tenant.id} berstatus \`migrated_out\`, tetapi langganan terbarunya ` +
+              `(#${latest.id}) masih \`${latest.status}\` — penagihannya belum berhenti; ` +
+              "jalankan ulang bun run tenant:mark-migrated-out",
+          });
+        }
+        continue;
+      }
       if (tenantStatusForSubscription(latest.status as never) !== tenant.status) {
         findings.push({
           check: "status-tak-serasi",

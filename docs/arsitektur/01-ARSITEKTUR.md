@@ -1,6 +1,6 @@
 # 01 — Arsitektur
 
-> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 22 Okt 2026 (kode `develop`) · terakhir diukur terhadap produksi `main@ca0cd038` · [indeks](./README.md)
 
 ## 1. Produk
 
@@ -79,9 +79,9 @@ graph TB
     TR --> WEBO[app-operator]
     WEBC --> PGB[PgBouncer]
     WEBO --> PGB
-    JOB[job-scheduler · job-conformance · svc-ledger] --> PGB
+    JOB[svc-worker · svc-integrator jalur interactive] --> PGB
     PGB --> DB[(pg)]
-    LANGSUNG[svc-tenant · migrate] --> DB
+    LANGSUNG[svc-integrator jalur tenant · migrate] --> DB
 
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
     style WEBO fill:#ffeaea,stroke:#b55
@@ -92,9 +92,9 @@ graph TB
 |---|---|
 | Traefik | Terminasi TLS; memilih aplikasi dari header `Host` |
 | `app-*` | Dua aplikasi Next, dua image. **Tidak saling memanggil lewat HTTP** |
-| `job-*` | Loop shell yang tidur; dua langkahnya kini hanya MENERBITKAN ke antrean |
-| `svc-*` | Pelari jalur yang menguras tabel `jobs` — `ledger` (Node), `tenant` (Go) |
-| `svc-tenant` · `migrate` | Langsung ke `pg`, melewati pooler: keduanya mencacah/menyentuh SETIAP basis data, dan pooler hanya mengekspos yang terdaftar di konfigurasinya |
+| `svc-worker` | Empat peran Node, satu PROSES per peran di bawah penyelia `scripts/run-workers.ts`: `scheduler` & `conformance` (loop shell yang tidur; langkahnya kini sebagian besar MENERBITKAN ke antrean), `ledger` & `interactive` (pelari jalur yang menguras tabel `jobs`). Sampai 22 Okt 2026 empat container: `job-scheduler`, `job-conformance`, `svc-ledger`, `svc-interactive` |
+| `svc-integrator` | Pelari jalur Go dalam SATU proses (`cmd/integrator`): `tenant` (cadangan) dan `interactive` sisi Go (lembar sebar `engine: go`). Sampai 22 Okt 2026 dua container: `svc-tenant`, `svc-interactive-go` |
+| `svc-integrator` (jalur `tenant`) · `migrate` | Langsung ke `pg`, melewati pooler: keduanya mencacah/menyentuh SETIAP basis data, dan pooler hanya mengekspos yang terdaftar di konfigurasinya |
 | `pg` | PostgreSQL 17: `control` + `platform` + 17 buku PT |
 
 ## 4. Pola
@@ -293,7 +293,7 @@ Gate persetujuan dan periode ada di sini, bukan di route, karena setiap jalur
 yang mengubah dokumen jadi jurnal melewati `postForSource`/`repostForSource`.
 
 **Pintunya tetap tunggal sesudah antrean masuk**, dan itu yang menentukan bentuk
-pekerjaan latar: jalur `ledger` (`svc-ledger`) adalah **satu-satunya** layanan
+pekerjaan latar: jalur `ledger` (peran `ledger` di `svc-worker`) adalah **satu-satunya** layanan
 latar yang menulis buku besar, dan handler-nya **mendelegasikan** ke mesin yang
 sama (`src/lib/recurring-run.ts` → `postForSource`). Enam jalur lain membaca
 buku, menulis tabel `jobs`, dan menghasilkan berkas — tidak pernah `INSERT`/
@@ -308,17 +308,19 @@ yang menyimpang adalah **buku**, tanpa satu galat pun.
 
 ## 10. Struktur kode
 
+Jumlah berkas dihitung 22 Okt 2026.
+
 ```
 packages/                         # diimpor sebagai @sai/<paket>/<subpath>
-├── db/        (4 berkas)         # mesin dari URL, pabrik adapter, operasi server
+├── db/        (6 berkas)         # mesin dari URL, pabrik adapter, operasi server
 │   ├── prisma/{company,control,platform}/schema.prisma
 │   └── generated/…               # gitignored — lahir saat build
-├── core/      (34 berkas)        # MURNI: authz, constants, utils, i18n inti, tax, control-db
-├── ui/        (54 berkas)        # primitif AntD v6, provider & shell, tema & token
+├── core/      (52 berkas)        # MURNI: authz, constants, utils, i18n inti, tax, control-db
+├── ui/        (60 berkas)        # primitif AntD v6, provider & shell, tema & token
 ├── billing/   (7 berkas)         # aturan penagihan MURNI
-└── platform/  (20 berkas)        # SISI-SERVER: platform-db, surel, jejak, isi situs
-apps/operator/ (61 berkas)        # KONSOL — image `…-operator`
-├── src/app/(operator)/           # 19 halaman, TANPA prefix /operator
+└── platform/  (33 berkas)        # SISI-SERVER: platform-db, surel, jejak, isi situs
+apps/operator/ (75 berkas)        # KONSOL — image `…-operator`
+├── src/app/(operator)/           # 20 halaman, TANPA prefix /operator
 ├── src/lib/operator/             # sesi, guard, TOTP, store, tulisan, jejak
 ├── src/proxy.ts                  # host ≠ OPERATOR_HOST → 404
 └── tsconfig.json                 # alias `@op/*` (TANPA `@/`)
@@ -328,14 +330,15 @@ src/                              # APLIKASI CUSTOMER
 │   ├── (app)/(auth)/             # login, daftar, lupa sandi, undangan, unlock
 │   ├── (app)/(dashboard)/t/[tenantSlug]/[companySlug]/   # ← 102 halaman buku
 │   ├── (app)/(setup)/ (tenant)/(panel)/ (docs)/
-│   └── api/                      # 128 rute
-├── lib/                          # 231 berkas — logika domain PEMBUKUAN
+│   └── api/                      # 131 rute
+├── lib/                          # 250 berkas — logika domain PEMBUKUAN
 │   └── posting/                  # mesin jurnal (5 berkas)
 ├── components/ui/                # 5 wrapper yang bergantung pada aplikasi
 ├── proxy.ts                      # ⚠ BUKAN middleware.ts
 prisma/
 ├── postgresql/{company,control,platform}/NNNN_*/   # migration yang DITERAPKAN
 └── migrations/ control/ platform/                  # arsip MariaDB — hanya-baca
+scripts/run-workers.ts               # penyelia `svc-worker` — empat peran, satu proses per peran
 workers/                             # pelari jalur NODE
 ├── runner.ts                        # pelari jalur bersama (klaim · lease · upkeep)
 ├── jalur-perusahaan.ts              # masuk konteks PT — satu tempat, satu aturan
@@ -343,11 +346,13 @@ workers/                             # pelari jalur NODE
 └── interactive.ts                   # jalur `interactive` — ekspor besar (`report.export`)
 services/integrator/                 # pelari jalur GO — membaca buku, tidak pernah menulisnya
 ├── go.mod · .golangci.yml           # DI LUAR workspace bun
-├── cmd/tenant/                      # jalur `tenant` — cadangan per basis data
-├── cmd/interactive/                 # jalur `interactive` sisi Go — `report.export_go` (1d)
+├── cmd/integrator/                  # `svc-integrator` — jalur `tenant` + `interactive` dalam SATU proses (produksi)
+├── cmd/tenant/ · cmd/interactive/   # satu jalur saja — untuk pengembangan, TIDAK dijalankan produksi
 ├── cmd/parity/                      # perkakas paritas TS ⇄ Go (bukan layanan)
 └── internal/
     ├── contract/  (DIBANGKITKAN)    # kosakata, angka antrean, akuntansi, tata letak berkas
+    ├── tenantlane/                  # jalur `tenant` — cadangan per basis data
+    ├── interactivelane/             # jalur `interactive` sisi Go — `report.export_go` (1d)
     ├── jobs/                        # klaim · lease · reclaim — SQL antrean
     ├── db/                          # kolam koneksi kendali, pembersih DSN
     ├── registry/                    # `companies` (kendali) — company_id → buku PT
@@ -410,7 +415,7 @@ baris demi baris dengan TS terhadap buku sungguhan, dan siapa pemilik jalur
 berkasnya tertulis di `src/lib/report-engine.ts` (`ts` · `go-parity` · `go`) —
 rinciannya [09 §9](./09-RANCANGAN-LAYANAN.md). **Neraca Saldo kini `go`**
 (paritas produksi 22 Okt 2026, 17 buku × 3 tanggal): lembar sebarnya dihasilkan
-`cmd/interactive` (`svc-interactive-go`), jalur berkas TS-nya dicabut, layarnya
+`internal/interactivelane` (`svc-integrator`), jalur berkas TS-nya dicabut, layarnya
 tetap TS. Sebabnya bukan ongkos melainkan kelas kerusakannya:
 `contract/` membangkitkan **konstanta**, bukan **aturan**, dan dua implementasi
 "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap
@@ -497,23 +502,23 @@ Sumber kebenaran desain:
 
 ## 13. Ukuran & keadaan produksi
 
-Dihitung 18 Okt 2026.
+Dihitung 22 Okt 2026 dari kode `develop`.
 
 | | |
 |---|---|
-| Halaman | 131 customer + 19 konsol |
-| Rute API | 128 customer + 2 konsol |
-| Model Prisma | 62 perusahaan + 19 control + 17 platform = 98 — **tiga di antaranya kembar sementara**: jejak putaran ada di kedua skema selama langkah expand (migration kendali 0005), dan hilang dari platform pada langkah contract |
-| Migration aktif | company 1 · control 4 · platform 4; arsip MariaDB hanya-baca: 99 |
-| Modul `src/lib` | 231 berkas |
-| Berkas tes | 306 berkas · 4.429 tes |
+| Halaman | 131 customer + 20 konsol |
+| Rute API | 131 customer + 2 konsol |
+| Model Prisma | 62 perusahaan + 22 control + 19 platform = 103 — **tiga di antaranya kembar sementara**: jejak putaran ada di kedua skema selama langkah expand (migration kendali 0005), dan hilang dari platform pada langkah contract |
+| Migration aktif | company 2 · control 10 · platform 6 (kepala: `0002_company_logos` · `0010_tenant_pindah_onprem` · `0006_licence_register`); arsip MariaDB hanya-baca: 99 |
+| Modul `src/lib` | 250 berkas |
+| Berkas tes | 360 berkas · 5.936 tes (`bun run verify`) |
 | Izin RBAC | 66 (perusahaan) + 6 (tenant) |
 
 Keadaan produksi, dibaca 16–18 Okt 2026:
 
 | | |
 |---|---|
-| Container naik | `app-customer`, `app-operator`, 3 job, `pgbouncer`, `pg`, plus `sai-db` (MariaDB fallback, dicabut di #636) |
+| Container naik | `app-customer`, `app-operator`, 3 job, `pgbouncer`, `pg`, plus `sai-db` (MariaDB fallback, dicabut di #636). Sejak 21 Okt 2026 ditambah tiga `svc-*` (tahap 1a–1c) dan `svc-interactive-go` (22 Okt); keenam layanan latar itu menjadi `svc-worker` + `svc-integrator` pada rilis pertama sesudah 22 Okt 2026 ([02 §2](./02-LAYANAN-INFRA.md)) |
 | Basis data | 19 di PostgreSQL 17.11, total 227 MB |
 | Tenant / PT / pengguna / keanggotaan | 11 / 17 / 13 / 17 |
 | Langganan | 11: 10 `active`, 1 `trialing`; `billing_mode` 11/11 `none`; 0 pembayaran |
@@ -535,7 +540,8 @@ sesuai Fase A di [`KOMERSIALISASI.md`](../KOMERSIALISASI.md).
 | Kas & bank | Transaksi kas/bank · konversi mata uang · kurs · rekonsiliasi bank |
 | Laporan | Neraca · laba-rugi · arus kas · perubahan ekuitas · beban menurut sifat · laba per proyek · penjualan per pelanggan · pembelian per pemasok · nilai persediaan · anggaran — semuanya dengan ekspor Excel & PDF |
 | Tata kelola | RBAC 66 izin × 4 peran + override · persetujuan berambang · jejak audit · kunci buku · dokumen berulang · anggaran · pajak + e-Faktur · 11 modul usaha · i18n · token API + `/api/v1` + OpenAPI |
-| Platform | Pendaftaran mandiri · wisaya penyiapan · undangan staf · paket & langganan · tagihan · gate Midtrans · scheduler · konsol operator · halaman status · ekspor data tenant · permintaan hapus akun · backup otomatis |
+| Platform | Pendaftaran mandiri · wisaya penyiapan · undangan staf · paket & langganan · tagihan · gate Midtrans · scheduler · konsol operator · halaman status · ekspor data tenant · permintaan hapus akun · backup otomatis per basis data |
+| On-premise | Profil penyebaran `onprem` · berkas lisensi Ed25519 luring · register lisensi di konsol (`/licences`) · pindah tenant SaaS → on-premise (`tenant:export-onprem` → `tenant:import-onprem` → `tenant:mark-migrated-out`) · saluran rilis bertag + bundel luring · bundel diagnostik |
 
 ## 15. Stack
 
@@ -549,5 +555,5 @@ sesuai Fase A di [`KOMERSIALISASI.md`](../KOMERSIALISASI.md).
 | Autentikasi | NextAuth v5 beta (Credentials, JWT 24 jam) | Plus token Bearer dan sesi operator |
 | Validasi | Zod 4 + `react-hook-form` | Satu modul validasi per domain |
 | Grafik · Surel | Recharts 3 · Nodemailer 7 | |
-| Uji | Vitest 3 — 306 berkas | Gate-nya `bun run verify` |
-| Proxy · Registry | Traefik · GHCR | 4 image dibangun CI; jangan build di server |
+| Uji | Vitest 3 — 360 berkas (22 Okt 2026) | Gate-nya `bun run verify` |
+| Proxy · Registry | Traefik · GHCR | 5 image dibangun CI (`-backup` sebagai pendamping `-migrator`); jangan build di server |

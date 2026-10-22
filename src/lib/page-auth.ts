@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
+import { migrationWriteRefusal } from "@sai/core/tenant-migration";
 import { getCompany } from "@/lib/company-registry";
 import { tenantStateForCompany } from "@sai/platform/tenant-state";
 import { COMPANY_HOME_PATH, parseTenantPath, tenantPath } from "@sai/core/tenant-routes";
@@ -306,6 +307,11 @@ async function gateAfterCompany(
   if (isWritePermission(permission)) {
     const tenantState = await tenantStateForCompany(companyId);
     if (readOnlyRefusal(tenantState?.status, permission)) {
+      redirect(homePath);
+    }
+    /* Pembekuan pindah ke on-premise — kolom sendiri, lepas dari status
+       langganan (`@sai/core/tenant-migration`). Cerminannya di auth-guard. */
+    if (migrationWriteRefusal(tenantState, permission)) {
       redirect(homePath);
     }
     /*

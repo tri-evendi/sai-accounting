@@ -71,6 +71,7 @@ model Tenant {
   name String @db.VarChar(150)
 
   /// pending_verification | trialing | active | past_due | suspended | cancelled
+  /// | migrated_out (pindah ke on-premise, migration kendali 0010)
   /// String + z.enum (`TENANT_STATUSES` di src/lib/constants.ts), snake_case —
   /// konvensi docs/DATABASE.md, bukan enum Prisma.
   status String @default("pending_verification") @db.VarChar(30)
@@ -84,6 +85,19 @@ model Tenant {
   /// mempersempit pelanggan yang sudah berjalan.
   maxCompanies Int @default(1) @map("max_companies")
   maxUsers     Int @default(3) @map("max_users")
+
+  /// PEMBEKUAN serah-terima ke on-premise (migration kendali 0010). Bukan
+  /// NULL = seluruh buku tenant ini HANYA-BACA, apa pun status langganannya.
+  /// Kolom sendiri, BUKAN nilai `status`: `status` adalah salinan status
+  /// langganan yang ditulis ulang mesin penagihan (penjadwal, webhook, konsol),
+  /// jadi pembekuan yang disimpan di sana bisa dicairkan diam-diam oleh
+  /// putaran penjadwal di tengah ekspor — dan tulisan yang lolos sesudah dump
+  /// adalah tulisan yang hilang. Ditulis `tenant:export-onprem`, dicabut
+  /// `tenant:unfreeze` (jalan balik).
+  frozenAt DateTime? @map("frozen_at")
+
+  /// Kapan tenant dinyatakan `migrated_out` (`tenant:mark-migrated-out`).
+  migratedOutAt DateTime? @map("migrated_out_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

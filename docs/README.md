@@ -17,15 +17,18 @@ satunya sudah basi.
 | Mengerjakan UI | [`../design-system/sai-accounting/MASTER.md`](../design-system/sai-accounting/MASTER.md) |
 | Mengambil keputusan teknis | [`arsitektur/05`](./arsitektur/05-PENILAIAN.md) |
 | Mengambil keputusan komersial | [`KOMERSIALISASI.md`](./KOMERSIALISASI.md) + [`PRICING.md`](./PRICING.md) |
+| Memasang on-premise / memindah customer SaaS ke sana | [`ONPREM-SERAH-TERIMA.md`](./ONPREM-SERAH-TERIMA.md) + [`ONPREM-PINDAH-DARI-SAAS.md`](./ONPREM-PINDAH-DARI-SAAS.md) + [`arsitektur/09`](./arsitektur/09-RANCANGAN-LAYANAN.md) §7 |
 
 ## Arsitektur & peta layanan
 
-[`arsitektur/`](./arsitektur/README.md) — **8 berkas + indeks**: snapshot
-keadaan yang berjalan. Arsitektur dan diagramnya (01), layanan & infrastruktur
-termasuk tiga bentuk arsitektur infra (02), API dan integrasi (03), ERD +
-aliran data + daur hidup status (04), penilaian berprioritas (05), keamanan &
-model ancaman (06), riwayat empat pekerjaan besar (07), serta glosarium,
-strategi pengujian, target non-fungsional dan katalog rute (08).
+[`arsitektur/`](./arsitektur/README.md) — **9 berkas + indeks**: 01–08 snapshot
+keadaan yang berjalan, 09 satu-satunya rancangan. Arsitektur dan diagramnya
+(01), layanan & infrastruktur termasuk tiga bentuk arsitektur infra (02), API
+dan integrasi (03), ERD + aliran data + daur hidup status (04), penilaian
+berprioritas (05), keamanan & model ancaman (06), riwayat pekerjaan besar
+sampai rilis 22 Okt 2026 (07), glosarium, strategi pengujian, target
+non-fungsional dan katalog rute (08), serta rancangan layanan, profil SaaS vs
+on-premise, dan tahapan beserta pemicunya (09).
 
 ## Dokumen domain
 
@@ -34,6 +37,8 @@ strategi pengujian, target non-fungsional dan katalog rute (08).
 | [`MULTI-COMPANY.md`](./MULTI-COMPANY.md) | Satu basis data per PT (#104) — aturan & penambahan PT | Aktif |
 | [`MULTI-TENANT.md`](./MULTI-TENANT.md) | Lapis tenant/SaaS (#133) — model data & pemisahan tiga lapis | Aktif |
 | [`RBAC.md`](./RBAC.md) | Matriks izin, empat lapis penegakan, kunci buku | Aktif |
+| [`ONPREM-SERAH-TERIMA.md`](./ONPREM-SERAH-TERIMA.md) | Templat serah terima pemasangan on-premise | Aktif |
+| [`ONPREM-PINDAH-DARI-SAAS.md`](./ONPREM-PINDAH-DARI-SAAS.md) | Runbook memindah satu tenant SaaS ke on-premise — bekukan, bundel, impor, `migrated_out` | Aktif |
 | [`DATABASE.md`](./DATABASE.md) | Standar skema, tipe data, workflow migration | Aktif |
 | [`MODUL-USAHA.md`](./MODUL-USAHA.md) | Modul per jenis usaha (#99) | Aktif |
 | [`COMPLIANCE.md`](./COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi | Aktif |

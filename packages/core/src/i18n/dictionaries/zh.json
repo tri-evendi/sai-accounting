@@ -452,6 +452,7 @@
       "checkingSession": "正在检查您的登录状态...",
       "forgotPassword": "忘记密码？通过邮箱重置",
       "invalidCredentials": "用户名或密码不正确，请重试。",
+      "migratedOut": "此账户已迁移到贵公司自己的服务器，不再在此使用。请通过贵公司的安装地址登录；如需地址，请联系系统管理员。",
       "registerPrompt": "还没有账号？",
       "registerLink": "立即注册"
     },
@@ -4292,7 +4293,11 @@
     "pickBom": "请选择物料清单",
     "producedPositive": "产出须大于零。耗用物料而无产出的，应记为过程损耗。",
     "siteContentTooLong": "这句文案对着陆页来说过长。",
-    "whatsappDigitsOnly": "WhatsApp 号码只能是数字，不含 + 或空格（例如 628123456789）。"
+    "whatsappDigitsOnly": "WhatsApp 号码只能是数字，不含 + 或空格（例如 628123456789）。",
+    "licenceCustomerRequired": "客户名称为必填项，须为单行，且不能以减号开头。",
+    "licenceLimitInvalid": "请输入 0 或以上的整数。",
+    "licenceModulesInvalid": "填写 all，或以逗号分隔的模块键列表（小写字母、数字、下划线）。",
+    "licenceVersionInvalid": "版本为以点分隔的数字，如 1.4 或 1.4.0。"
   },
   "taxSettings": {
     "sectionTitle": "增值税（PPN）",
@@ -4556,7 +4561,8 @@
       "active": "生效中",
       "past_due": "已逾期",
       "suspended": "已暂停(只读)",
-      "cancelled": "已终止"
+      "cancelled": "已终止",
+      "migrated_out": "已迁移至本地部署"
     },
     "invoiceStatus": {
       "draft": "草稿",
@@ -4625,7 +4631,8 @@
       "plans": "套餐目录",
       "efaktur": "平台 e-Faktur",
       "statusNotices": "状态公告",
-      "brand": "产品标志"
+      "brand": "产品标志",
+      "licences": "本地部署许可证"
     },
     "attention": {
       "heading": "需要处理",
@@ -4820,7 +4827,7 @@
         "runtimeColRuns": "尝试次数",
         "runtimeColRssPeak": "RSS 峰值（MiB）",
         "runtimeColHeapPeak": "堆峰值（MiB）",
-        "runtimeNote": "触发条件 (a) 只评估 app-customer 的事件循环延迟：大型导出已在 svc-interactive 进程中运行，运行器的事件循环不会阻塞任何人的页面 —— 其数字仅作参考。触发条件 (b) 读取 RSS 而非堆：运行器运行在 Bun 上，而 Bun 会忽略 --max-old-space-size。因内存耗尽而被终止的作业不会留下样本；其痕迹是尝试次数增加后被回收的作业。“已触发”表示在查明原因后值得考虑 1d，而不是立即开始构建。",
+        "runtimeNote": "触发条件 (a) 只评估 app-customer 的事件循环延迟：大型导出已在 svc-worker 的运行器进程中运行，运行器的事件循环不会阻塞任何人的页面 —— 其数字仅作参考。触发条件 (b) 读取 RSS 而非堆：运行器运行在 Bun 上，而 Bun 会忽略 --max-old-space-size。因内存耗尽而被终止的作业不会留下样本；其痕迹是尝试次数增加后被回收的作业。“已触发”表示在查明原因后值得考虑 1d，而不是立即开始构建。",
       "colStarted": "开始",
       "colFinished": "结束",
       "colStatus": "状态",
@@ -4841,7 +4848,7 @@
       "heading": "数据一致性",
       "description": "每周扫描每一套公司账簿——枚举之外的状态、缺少汇率的外币、不平衡的日记账、笼统的费用科目。Zod 校验只作用于写入路径；本扫描捕捉经由导入、手工 SQL 修复和种子数据进入的问题。",
       "unavailable": "暂时无法读取扫描历史——平台数据库不可达，或迁移 0018 尚未应用。",
-      "empty": "尚无扫描记录。`job-conformance` 服务每周扫描一次，首次运行在服务启动时发生。",
+      "empty": "尚无扫描记录。`svc-worker` 服务的 `conformance` 角色每周扫描一次，首次运行在服务启动时发生。",
       "colStarted": "开始",
       "colFinished": "结束",
       "colStatus": "状态",
@@ -4855,7 +4862,7 @@
       "listFindings": "发现",
       "listFailures": "检查失败的账簿",
       "listEmpty": "无。",
-      "findingsTruncated": "显示 {total} 条发现中的 {shown} 条。其余见 `docker compose logs job-conformance`。",
+      "findingsTruncated": "显示 {total} 条发现中的 {shown} 条。其余见 `docker compose logs svc-worker`（以 `conformance` 开头的行）。",
       "perBookHeading": "按账套",
       "perBookLegacy": "本次运行记录于并发扫描之前，因此没有按账套的记录。下一次运行将包含。",
       "perBookColDuration": "耗时（毫秒）",
@@ -5165,7 +5172,7 @@
       "keyMissing": "尚未设置 SETTINGS_ENCRYPTION_KEY：无法创建新账户，数据库账户也无法登录，因为其 TOTP 密钥既无法加密也无法解密。",
       "unavailable": "暂时无法读取账户列表：控制数据库无法访问。环境变量账户仍可登录。",
       "dbHeading": "控制台账户",
-      "rolesNote": "所有者：全部操作。计费：标记已付、延期、更换套餐、计费模式。支持：停用/恢复及网站内容。观察者：只读。所有角色均可查看整个控制台。停用和重置会同时撤销会话。",
+      "rolesNote": "所有者：全部操作。计费：标记已付、延期、更换套餐、计费模式、本地部署许可证登记。支持：停用/恢复及网站内容。观察者：只读。所有角色均可查看整个控制台。停用和重置会同时撤销会话。",
       "envHeading": "应急账户（环境变量）",
       "envNote": "来自 OPERATOR_USERS，始终为所有者，且有意不可在界面上修改：应急入口不应被被盗会话撤销。请在环境变量中修改，然后重建容器。",
       "roles": {
@@ -5386,6 +5393,97 @@
       "done": "已根据报价 {quote} 激活使用权。",
       "partial": "尚未完成——{steps}。剩余步骤可通过各自的按钮继续。",
       "errInput": "输入不完整：报价编号、套餐、1–24 个周期和原因均为必填。"
+    },
+    "licences": {
+      "heading": "本地部署许可证",
+      "description": "本地部署客户许可证登记。控制台负责记录和核验；签名仍在离线笔记本上完成。",
+      "keyNotSet": "许可证公钥尚未嵌入代码（LICENCE_PUBLIC_KEY_PEM 仍为 \"BELUM-DISETEL\"）。仍可创建草稿，但无法验证 .sai 文件，因此上传已停用。所有者步骤：docs/ONPREM-SERAH-TERIMA.md §0。",
+      "stepsTitle": "步骤",
+      "steps": {
+        "one": "填写下方表单，得到一份草稿和一条可直接复制的命令。",
+        "two": "复制该命令，在持有私钥的离线笔记本上运行——私钥永远不会带到这里。",
+        "three": "将生成的 .sai 文件上传到同一草稿。控制台会检查签名并与草稿核对内容。",
+        "four": "从登记中下载文件并发送给客户；安装为 ./lisensi/licence.sai。",
+        "five": "续期或修改限额：在客户上点击“签发新版本”——表单会按上一份许可证预填。"
+      },
+      "archiveNote": "此登记只是存档，不是依据：客户应用只信任文件的签名，从不读取此列表。",
+      "unavailable": "无法读取登记：sai_platform 不可达。",
+      "readOnly": "您的角色仅可查看。记录许可证需要许可证登记权限。",
+      "empty": "尚未记录任何许可证。",
+      "fromTenant": "由 SaaS 租户 #{id} 迁移",
+      "renew": "签发新版本",
+      "errInvalid": "输入无效或该行已变更。请刷新页面后重试。",
+      "created": "草稿已创建。复制命令并在离线笔记本上运行。",
+      "uploaded": "许可证文件有效且与草稿一致——已记录为已签发。",
+      "revoked": "已在登记中标记为吊销。",
+      "discarded": "草稿已丢弃。",
+      "err": {
+        "empty": "文件为空或过大。",
+        "tooLarge": "文件过大，不像是许可证。",
+        "notDraft": "只有草稿可以上传文件或丢弃。",
+        "badSignature": "文件被拒绝——签名无效：{reason}",
+        "mismatch": "文件有效，但内容与草稿不一致。请按原样重新运行此草稿的命令："
+      },
+      "mismatchLine": "{field}：草稿为 {expected}，文件为 {actual}",
+      "field": {
+        "licenceId": "许可证 ID",
+        "customer": "客户名称",
+        "maxCompanies": "公司上限",
+        "maxUsers": "用户上限",
+        "modules": "模块",
+        "supportEndsOn": "支持截止",
+        "maxVersion": "最高版本",
+        "contact": "联系方式",
+        "notes": "备注",
+        "sourceTenantId": "来源 SaaS 租户 ID"
+      },
+      "form": {
+        "newTitle": "新许可证",
+        "renewTitle": "{name} 的新版本",
+        "newHint": "仅包含签发命令所需的字段。可选字段可以留空。",
+        "renewHint": "已按上一份许可证预填——只改需要改的。新文件上传后旧版本标记为已替代。",
+        "customerHint": "按原样印在许可证中。",
+        "modulesHint": "all，或以逗号分隔的模块键列表。",
+        "supportHint": "留空 = 无截止日期的支持。过了此日期应用不会停止。",
+        "versionHint": "留空 = 不限版本。\"1.4\" 涵盖全部 1.4.x。",
+        "optional": "可选",
+        "sourceTenantHint": "客户由 SaaS 迁移时填写。",
+        "submit": "创建草稿和命令",
+        "cancelRenewal": "取消"
+      },
+      "status": {
+        "draft": "草稿",
+        "issued": "已签发",
+        "superseded": "已替代",
+        "revoked": "已吊销（记录）"
+      },
+      "summary": {
+        "limits": "{companies} 家公司 / {users} 个用户",
+        "modules": "模块 {modules}",
+        "supportUntil": "支持至 {date}",
+        "supportForever": "支持无截止日期",
+        "maxVersion": "版本至 {version}"
+      },
+      "versionLabel": "版本 {n}",
+      "meta": {
+        "created": "由 {by} 创建，{at}",
+        "uploaded": "由 {by} 上传，{at}",
+        "revoked": "由 {by} 于 {at} 标记吊销：{reason}"
+      },
+      "commandLabel": "在离线笔记本上运行（密钥路径不同时请修改）：",
+      "copy": "复制命令",
+      "copied": "已复制",
+      "uploadLabel": "上传 .sai 文件",
+      "uploadDisabled": "嵌入公钥之前上传已停用。",
+      "discard": "丢弃草稿",
+      "discardTitle": "丢弃此草稿？",
+      "discardDescription": "草稿尚未签名，丢失的只是其字段。如果命令已运行，生成的文件将无法再上传。",
+      "download": "下载文件",
+      "revoke": "标记吊销",
+      "revokeNote": "离线许可证无法远程吊销：已安装的文件在客户机器上仍然有效。这只是登记中的一条记录。",
+      "revokeReason": "理由（至少 5 个字符）",
+      "revokeConfirm": "记录为已吊销",
+      "cancel": "取消"
     },
     "brand": {
       "heading": "产品标志",

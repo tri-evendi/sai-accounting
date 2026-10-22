@@ -301,7 +301,7 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
           .map((g) => `  - ${g.kunci}: ${g.sebab}${g.basis?.length ? ` (PT: ${g.basis.join(", ")})` : ""}`)
           .join("\n") +
         "\n  Pakai putaran lengkap sebelumnya untuk PT di instans itu, dan perbaiki\n" +
-        "  env var instansnya di svc-tenant (docs/MULTI-COMPANY.md §6)."
+        "  env var instansnya di svc-integrator (docs/MULTI-COMPANY.md §6)."
     );
   }
 
@@ -594,7 +594,7 @@ async function main(): Promise<void> {
   if (putaranTerurut.length === 0 && lamaTerurut.length === 0) {
     fail(
       `tidak ada satu pun cadangan di ${sumber.nama}/ — jalur \`tenant\` sudah pernah jalan?\n` +
-        "  Periksa `docker compose logs svc-tenant` dan `/api/health` → `backup`."
+        "  Periksa `docker compose logs svc-integrator` dan `/api/health` → `backup`."
     );
   }
 

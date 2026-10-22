@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.13.1",
+    tanggal: "2026-10-22",
+    ringkas: "Pengerasan keamanan di sisi server; tidak ada perubahan pada tampilan maupun data.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Setiap layanan di server kini hanya menerima pengaturan yang memang dibutuhkannya, dan layanan latar berjalan tanpa hak administrator.",
+      },
+    ],
+  },
+  {
     versi: "0.13.0",
     tanggal: "2026-10-22",
+    sha: "17462f3",
     ringkas:
       "Ekspor Laba Rugi dan Neraca kini memuat kolom pembanding, tanggal pagi hari tidak lagi mundur sehari, dan pembaruan keamanan.",
     butir: [

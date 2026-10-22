@@ -173,6 +173,10 @@ model Contract {
   rate        Decimal? @db.Decimal(18, 6)
   /// Contract value (sum of items) in IDR base, at `rate`.
   baseAmount  Decimal? @map("base_amount") @db.Decimal(15, 2)
+  /// enum-like `CONTRACT_STATUSES` (dibangkitkan dari `contract/accounting.yaml`):
+  /// signed · pending · canceled · completed. Dijaga CHECK `contracts_status_check`
+  /// (migration perusahaan 0003) — Prisma tidak memodelkan CHECK, jadi
+  /// constraint itu hidup di SQL saja.
   status      String   @default("pending") @db.VarChar(20)
   /// Kesepakatan PPN kontrak ini (migrasi 0062). TIGA keadaan, dan NULL bukan
   /// salah satu yang bisa dihapus: `true` = kena PPN, `false` = Non-PPN,

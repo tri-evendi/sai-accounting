@@ -25,6 +25,7 @@ import { Select } from "@sai/ui/select";
 import { StaticTable } from "@sai/ui/static-table";
 import type { SaiColumns } from "@sai/ui/table-columns";
 import { CONSOLE_MUTED, CONSOLE_TABULAR } from "@op/components/operator/console-ui";
+import { QrCode } from "@op/components/operator/qr-code";
 import { useT } from "@sai/core/i18n/client";
 import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 import { OPERATOR_ROLES, type OperatorRole } from "@op/lib/operator/roles";
@@ -89,6 +90,8 @@ function CredentialBox({
           <span>
             {t("operator.accounts.credentialPassword")}: <code style={CODE}>{credential.password}</code>
           </span>
+          {/* QR dulu — itu yang dipindai; teks di bawahnya cadangan entri manual. */}
+          <QrCode qr={credential.qr} label={t("operator.authenticator.qrLabel", { name: credential.name })} />
           <span>
             {t("operator.accounts.credentialTotp")}: <code style={CODE}>{credential.totpSecret}</code>
           </span>

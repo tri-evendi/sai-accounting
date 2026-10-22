@@ -138,6 +138,64 @@ set -a; . ./.env; set +a
 docker compose run --rm -e OPERATOR_USERS migrate bun run operator-code <name>
 ```
 
+### Turning console MFA on (from `OPERATOR_MFA=off`)
+
+`OPERATOR_MFA=off` (exact value `off`) skips the TOTP check at console sign-in;
+any other value, or no variable at all, means MFA is **on**. The TOTP secrets
+are never removed while it is off, so turning it back on needs no new
+credentials, only an authenticator that holds the secret that is already
+there. The console shows the QR code for that secret. Do not remove the switch
+until every account that will sign in shows **Confirmed**: an account whose
+phone does not have the secret is locked out the moment MFA comes back.
+
+**(a) Scan and confirm, one account at a time.** Do this from each account that
+will be used.
+
+1. Sign in to the console and open **Accounts → Set up authenticator**
+   (`/accounts/authenticator`).
+2. Re-enter the password (plus a current code if MFA is already on) and press
+   **Show QR code**. The QR code is generated on the server as inline SVG and
+   no external QR service is involved. The secret is also shown as text for
+   manual entry (TOTP, 6 digits, 30 s, SHA1).
+3. Scan it with Google Authenticator, Authy, Microsoft Authenticator,
+   1Password or another authenticator app, type the 6-digit code it shows, and
+   press **Confirm**. The operator audit trail records
+   `operator.authenticator.confirm` with a fingerprint of the secret. The secret
+   itself is never recorded.
+4. Check the **MFA readiness** table, which `/accounts` shows at the top while MFA is
+   off. Every account you need must read **Confirmed**. *Secret changed*
+   means the account was confirmed against a secret it no longer has (the env
+   entry was replaced, or a database account was reset), so confirm it again.
+
+Re-authentication is rate-limited to 5 attempts per 15 minutes per account, and
+confirmation to 10. A database account can also issue itself a **new secret**
+on the same page. The old secret stays valid until a code from the new one is
+confirmed. An env account (`OPERATOR_USERS`) cannot rotate from the console:
+generate a new entry with `scripts/operator-credential.ts <name>` (§3), replace
+it in `.env`, recreate `app-operator`, then repeat (a).
+
+**(b) Remove the switch.** Delete the `OPERATOR_MFA=off` line from `.env`. Do not
+set it to `false` or `0`. Those values also mean "on", but they leave a line
+that reads as if it might not. Then recreate the console:
+
+```bash
+docker compose up -d --no-deps app-operator
+docker compose exec app-operator printenv OPERATOR_MFA   # expect no output
+```
+
+If `up -d` reports the container as already running and `printenv` still prints
+`off`, add `--force-recreate`. The environment is read only when the container
+is created.
+
+**(c) Prove it.** Sign out, then sign in again. The form now asks for the
+6-digit code, and a sign-in without the correct code fails. Keep that session
+open until a second sign-in from another browser has worked.
+
+**Rollback.** Put `OPERATOR_MFA=off` back in `.env` and run the same
+`docker compose up -d --no-deps app-operator`. Every sign-in while it is off is
+logged as a warning (`OPERATOR_MFA=off — kode TOTP TIDAK diperiksa`), so the
+switch cannot quietly become permanent.
+
 ## 4. Persistent data
 
 | Volume | Mounted at | Purpose |

@@ -48,6 +48,14 @@ export const OPERATOR_PERMISSIONS = [
    */
   "licence.register",
   /**
+   * Kredensial MILIK SENDIRI: melihat QR authenticator akun yang sedang masuk
+   * (sesudah memasukkan ulang kata sandi), mengonfirmasinya, dan memutar
+   * rahasia TOTP akun basis data sendiri. Dipegang SEMUA peran — pengamat pun
+   * wajib bisa memasang faktor keduanya sendiri sebelum MFA dinyalakan; yang
+   * dijaga di sini "hanya akun sendiri", bukan "hanya peran tertentu".
+   */
+  "operator.self",
+  /**
    * PENANDA LISENSI di konsol (migration platform 0007): buat kunci penanda
    * tersegel, dan tandatangani draf dengan frasa sandinya. Ini kewenangan
    * mencetak lisensi — termasuk lisensi tak terbatas — jadi milik owner SAJA,
@@ -68,9 +76,9 @@ const MATRIKS: Record<OperatorRole, readonly OperatorPermission[]> = {
   owner: OPERATOR_PERMISSIONS,
   /* Lisensi on-premise adalah urusan dagang yang sama dengan penagihan SaaS —
      MENCATAT-nya; menandatanganinya (`licence.sign`) tetap milik owner. */
-  billing: ["tenant.billing", "licence.register"],
-  support: ["tenant.lifecycle", "tenant.users", "site.content", "platform.status"],
-  viewer: [],
+  billing: ["tenant.billing", "licence.register", "operator.self"],
+  support: ["tenant.lifecycle", "tenant.users", "site.content", "platform.status", "operator.self"],
+  viewer: ["operator.self"],
 };
 
 export function isOperatorRole(value: unknown): value is OperatorRole {

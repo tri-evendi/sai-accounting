@@ -10,6 +10,10 @@
  * owner yang dicuri bisa mencabut jalan masuk darurat itu sendiri.
  */
 import { ConsoleNotice, ConsolePanel, CONSOLE_PAGE } from "@op/components/operator/console-ui";
+import { AuthenticatorReadinessPanel } from "@op/components/operator/authenticator-readiness";
+import { ButtonLink } from "@sai/ui/button";
+import { loadAuthenticatorReadiness } from "@op/lib/operator/authenticator-status";
+import { operatorMfaOff } from "@op/lib/operator/credentials";
 import { OperatorAccounts, type OperatorAccountView } from "@op/components/operator/operator-accounts";
 import { PageHeader } from "@sai/ui/page-header";
 import { controlDb } from "@sai/core/control-db";
@@ -45,11 +49,26 @@ export default async function OperatorAccountsPage() {
   }
   const envNames = parseOperatorAccounts(process.env.OPERATOR_USERS).map((a) => a.name);
   const canManage = operatorCan(operator.role, "operator.accounts");
+  const mfaOff = operatorMfaOff();
+  const readiness = await loadAuthenticatorReadiness();
 
   return (
     <div>
-      <PageHeader title={t("operator.accounts.heading")} description={t("operator.accounts.description")} />
+      <PageHeader
+        title={t("operator.accounts.heading")}
+        description={t("operator.accounts.description")}
+        actions={
+          <ButtonLink href="/accounts/authenticator" variant="outline" size="sm">
+            {t("operator.authenticator.heading")}
+          </ButtonLink>
+        }
+      />
       <div style={CONSOLE_PAGE}>
+        {/* Selama MFA mati, kesiapan duduk PALING ATAS: itulah satu-satunya
+            pertanyaan yang menahan saklarnya dicabut. */}
+        {mfaOff && (
+          <AuthenticatorReadinessPanel rows={readiness} mfaOff={mfaOff} />
+        )}
         {!canManage && <ConsoleNotice>{t("operator.accounts.readOnly")}</ConsoleNotice>}
         {canManage && !encryptionKeyAvailable() && (
           <ConsoleNotice>{t("operator.accounts.keyMissing")}</ConsoleNotice>
@@ -72,6 +91,10 @@ export default async function OperatorAccountsPage() {
         <ConsolePanel title={t("operator.accounts.envHeading")} footnote={t("operator.accounts.envNote")}>
           <p style={{ margin: 0 }}>{envNames.length > 0 ? envNames.join(", ") : "—"}</p>
         </ConsolePanel>
+
+        {!mfaOff && (
+          <AuthenticatorReadinessPanel rows={readiness} mfaOff={mfaOff} />
+        )}
       </div>
     </div>
   );

@@ -56,6 +56,11 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { constants } from "node:os";
 import type { Readable, Writable } from "node:stream";
 
+import { buildBanner } from "@sai/core/build-info";
+
+/** Layanan compose yang dijalankan penyelia ini — ikut tertulis di baris stempel. */
+const SERVICE = "svc-worker";
+
 /** Jeda TERM → KILL saat SATU peran mati dan sisanya harus dihentikan. Di
  *  bawah `stop_grace_period: 60s` compose, supaya penyelia sendiri yang
  *  memutuskan, bukan Docker. */
@@ -133,6 +138,10 @@ function start(role: Role, leader: boolean, width: number): Running {
     env: process.env,
   });
   const prefix = `${role.name.padEnd(width)} | `;
+  /* Stempel build per peran, berawalan nama perannya — `docker compose logs
+     svc-worker | grep ' scheduler *|'` lalu menyebut build yang menjalankan
+     peran itu tanpa harus mencari baris penyelia. */
+  process.stdout.write(`${prefix}${buildBanner(SERVICE)}\n`);
   prefixLines(child.stdout, process.stdout, prefix);
   prefixLines(child.stderr, process.stderr, prefix);
   const exited = new Promise<number>((resolve) => {
@@ -183,6 +192,7 @@ async function main(): Promise<number> {
   process.on("SIGTERM", () => onSignal("SIGTERM"));
   process.on("SIGINT", () => onSignal("SIGINT"));
 
+  log(buildBanner(SERVICE));
   log(
     `memulai ${roles.length} peran: ` +
       roles.map((r) => (leaders.has(r.name) ? `${r.name} (lewat pemimpin)` : r.name)).join(", ")

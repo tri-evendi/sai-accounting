@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
 )
 
@@ -84,13 +85,22 @@ func (r *Runner) logf(format string, args ...any) {
 	l.Printf("["+string(r.Lane)+"] "+format, args...)
 }
 
-// WorkerID: cukup untuk menunjuk container yang memegang lease.
+// WorkerID: cukup untuk menunjuk container yang memegang lease, DITAMBAH
+// build yang ia jalankan — `tenant@<host>:<pid> svc-integrator v0.12.1+abc1234`.
+//
+// Stempel di sini, bukan di tabel baru: pohon Go hanya boleh menulis `jobs`
+// dan `backup_runs` (aturan 1, daftar-izin), dan kolom ini SUDAH ditulis setiap
+// klaim. Konsol operator (`/scheduler` → "Versi layanan") membacanya untuk
+// melihat pelari yang tertinggal di image lama. Bentuknya
+// `buildinfo.StampIdentity`, sama persis dengan `workerId` di
+// `workers/runner.ts`. Dihitung SEKALI per pelari, jadi `claimed_by = $2` pada
+// perpanjangan lease tetap cocok.
 func WorkerID(lane contract.JobLane) string {
 	host, err := os.Hostname()
 	if err != nil || host == "" {
 		host = "lokal"
 	}
-	return fmt.Sprintf("%s@%s:%d", lane, host, os.Getpid())
+	return buildinfo.StampIdentity(fmt.Sprintf("%s@%s:%d", lane, host, os.Getpid()), buildinfo.Service, buildinfo.Get())
 }
 
 // Run menguras jalur ini sampai SIGTERM/SIGINT (atau sampai Stop selesai).
@@ -152,6 +162,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.jagaPagar(berhenti, batalkanBerhenti, pagar)
 	}
 
+	// Baris stempel build per jalur — bentuk `buildBanner` TypeScript.
+	r.logf("%s", buildinfo.Get().Banner(buildinfo.Service))
 	r.logf("mulai sebagai %s — mengklaim %v", me, kinds)
 
 	// Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah

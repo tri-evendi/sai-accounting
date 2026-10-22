@@ -143,6 +143,10 @@ jobs:
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "sha_short=$sha_short" >> "$GITHUB_OUTPUT"
+          # Stempel build (lihat "STEMPEL BUILD" di kepala Dockerfile). Waktunya
+          # dihitung SEKALI per job, supaya target dan pendampingnya membawa
+          # waktu yang sama persis.
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
           echo "repo_lc=$repo_lc" >> "$GITHUB_OUTPUT"
 
           # Tag satu image. Dipanggil untuk target matriks DAN pendampingnya
@@ -201,6 +205,15 @@ jobs:
           # Daftarnya dirakit langkah `meta` karena bergantung saluran (lihat
           # kepala berkas): tag git tidak menyentuh `:latest`.
           tags: ${{ steps.meta.outputs.tags }}
+          # ══ Stempel build — SETIAP target, termasuk pendamping di bawah ══
+          # Tanpanya layanan latar tidak bisa menyebut build yang ia jalankan,
+          # dan satu yang tertinggal di image lama tidak terlihat di mana pun
+          # (konsol `/scheduler` → "Versi layanan"). Ketiganya dibaca
+          # `tests/build-stamp.test.ts` di kedua langkah build.
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.meta.outputs.build_time }}
           # Cache antar-jalan: tanpa ini setiap build mengulang `bun install`
           # dan `prisma generate` dari nol.
           cache-from: type=gha,scope=${{ matrix.target }}
@@ -223,6 +236,12 @@ jobs:
           build-contexts: |
             ${{ matrix.target }}=docker-image://${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}
           tags: ${{ steps.meta.outputs.companion_tags }}
+          # Sama dengan target utamanya — `-backup` menyebut build yang sama
+          # dengan `-migrator` di bawahnya.
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ steps.meta.outputs.build_time }}
           cache-from: |
             type=gha,scope=${{ matrix.target }}
             type=gha,scope=${{ matrix.companion_target }}

@@ -36,6 +36,7 @@
  */
 import "dotenv/config";
 
+import { buildBanner, buildInfo, stampIdentity, type BuildStamp } from "@sai/core/build-info";
 import { controlDb } from "@sai/core/control-db";
 import {
   JOB_LANES,
@@ -106,9 +107,31 @@ export class LeaseLostError extends Error {
   }
 }
 
-/** Nama pekerja: cukup untuk menunjuk container yang memegang lease. */
-function workerId(lane: JobLane): string {
-  return `${lane}@${process.env.HOSTNAME ?? "lokal"}:${process.pid}`;
+/**
+ * Layanan compose yang menjalankan pelari Node — ikut tertulis di
+ * `jobs.claimed_by` supaya konsol bisa membedakannya dari pelari Go
+ * (`svc-integrator`) yang melayani jalur `interactive` yang sama.
+ */
+export const WORKER_SERVICE = "svc-worker";
+
+/**
+ * Nama pekerja: cukup untuk menunjuk container yang memegang lease, DITAMBAH
+ * build yang ia jalankan (`interactive@<host>:<pid> svc-worker v0.12.1+abc1234`).
+ *
+ * Stempel di sini — bukan tabel baru — karena kolom ini SUDAH ditulis setiap
+ * klaim, oleh kedua bahasa; konsol (`/scheduler` → "Versi layanan") membacanya
+ * untuk melihat pelari yang tertinggal di image lama. Bentuknya
+ * `@sai/core/build-info` (`stampIdentity`), sama persis dengan `jobs.WorkerID`
+ * di Go. Identitas dihitung SEKALI per pelari, jadi `claimed_by = ${me}` pada
+ * perpanjangan lease tetap cocok.
+ */
+export function workerId(
+  lane: JobLane,
+  host: string = process.env.HOSTNAME ?? "lokal",
+  pid: number = process.pid,
+  build: BuildStamp = buildInfo()
+): string {
+  return stampIdentity(`${lane}@${host}:${pid}`, WORKER_SERVICE, build);
 }
 
 /**
@@ -290,6 +313,7 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
     return;
   }
 
+  console.log(`[${lane}] ${buildBanner(WORKER_SERVICE)}`);
   console.log(`[${lane}] mulai sebagai ${me} — mengklaim ${kinds.join(", ")}`);
 
   /* Potret event loop jalur ini (pemicu 1d, `@sai/core/runtime-trigger`).

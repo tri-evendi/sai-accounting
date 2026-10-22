@@ -10,6 +10,29 @@
 #   builder  → prisma generate + next build (standalone output)
 #   migrator → runs `prisma migrate deploy` (has full deps + CLI)
 #   runner   → lean production image, runs server.js as non-root
+#
+# ══ STEMPEL BUILD (permintaan pemilik 22 Okt 2026: "versi tiap layanan") ══
+# Nomor rilis tetap SATU (`package.json`). Yang ditanam di sini adalah build
+# mana yang dijalankan sebuah container: `APP_VERSION`, `GIT_SHA`, `BUILD_TIME`
+# — build-arg dari `publish-image.yml`, dijadikan `ENV` (dibaca
+# `@sai/core/build-info` dan Go `internal/buildinfo`) + label OCI
+# `org.opencontainers.image.{version,revision,created}` (dibaca `docker
+# inspect`). Layanan latar tidak melayani satu halaman pun; tanpa stempel,
+# satu yang tertinggal di image lama tidak terlihat di mana pun.
+#
+# ⚠ Blok stempel ditaruh SEDEKAT MUNGKIN DENGAN AKHIR setiap tahap akhir,
+# SESUDAH `RUN` terakhirnya. `GIT_SHA` dan `BUILD_TIME` berubah di SETIAP
+# build, dan sebuah `ARG` yang dideklarasikan sebelum `RUN` ikut menjadi kunci
+# cache `RUN` itu — dua baris di tempat yang salah membatalkan cache
+# `bun install`/`next build` (~10 menit) pada setiap dorongan. `ENV`/`LABEL`
+# sesudah `RUN` terakhir hanya metadata: nol lapisan dibangun ulang.
+# Pengecualiannya `go-build`: `-ldflags -X` memang menuntut nilainya SAAT
+# `go build`, dan lapisan itu toh batal setiap kali sumber Go berubah.
+#
+# Bawaan untuk build lokal: versi kosong (pembacanya jatuh ke `package.json`
+# lewat `NEXT_PUBLIC_APP_VERSION`/`npm_package_version`), sha `dev`. Setiap
+# tahap akhir image terbitan WAJIB membawa blok ini — dijaga
+# `tests/build-stamp.test.ts`, bersama build-arg di matriks publish.
 # ─────────────────────────────────────────────────────────────
 
 # Node 22 (Debian slim) — reliable for native modules: bcrypt, sharp.
@@ -172,6 +195,16 @@ COPY . .
 RUN NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate \
     && NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate --config prisma.control.config.ts \
     && NODE_OPTIONS="--max-old-space-size=512" bunx prisma generate --config prisma.platform.config.ts
+# Stempel build — juga dibaca `svc-worker`, yang berjalan di image ini (lihat "STEMPEL BUILD" di kepala berkas).
+ARG APP_VERSION=""
+ARG GIT_SHA=dev
+ARG BUILD_TIME=""
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.revision=$GIT_SHA \
+      org.opencontainers.image.created=$BUILD_TIME
 CMD ["bun", "run", "db:migrate:all"]
 
 
@@ -234,6 +267,16 @@ RUN apt-get update \
     && apt-get purge -y gnupg \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
+# Stempel build — dideklarasikan ULANG walau `FROM migrator` sudah mewarisinya: di CI tahap `migrator` diganti image yang didorong, dan penjaga membaca setiap tahap akhir apa adanya (lihat "STEMPEL BUILD" di kepala berkas).
+ARG APP_VERSION=""
+ARG GIT_SHA=dev
+ARG BUILD_TIME=""
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.revision=$GIT_SHA \
+      org.opencontainers.image.created=$BUILD_TIME
 CMD ["sh", "scripts/backup.sh"]
 
 
@@ -267,7 +310,18 @@ COPY services/integrator/ ./
 # dalam satu proses. `cmd/tenant` dan `cmd/interactive` tetap ada untuk
 # mengembangkan satu jalur, tapi TIDAK masuk image — biner yang tidak
 # dijalankan compose mana pun hanya permukaan.
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-integrator ./cmd/integrator
+# Stempel build DITANAM di biner (`-ldflags -X`, paket `internal/buildinfo`) —
+# satu-satunya tahap yang membutuhkannya sebelum `RUN`. Biner yang disalin ke
+# mana pun tetap tahu build-nya; `ENV` di tahap `integrator` hanya cadangan.
+ARG APP_VERSION=""
+ARG GIT_SHA=dev
+ARG BUILD_TIME=""
+RUN CGO_ENABLED=0 go build -trimpath \
+      -ldflags="-s -w \
+        -X github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo.Version=${APP_VERSION} \
+        -X github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo.Sha=${GIT_SHA} \
+        -X github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo.BuiltAt=${BUILD_TIME}" \
+      -o /out/svc-integrator ./cmd/integrator
 
 
 # ─── Runtime integrator (service `svc-integrator`) ───────────────────────
@@ -349,6 +403,16 @@ WORKDIR /app
 # Syarat untuk memindahkannya, supaya tidak perlu ditemukan ulang:
 # `chown -R` volume `cadangan` ke uid yang dipakai, lalu pindahkan baris ini.
 # Itu langkah penyebaran, bukan perubahan kode, jadi tempatnya PRODUCTION.md.
+# Stempel build — cadangan untuk nilai yang sudah tertanam di biner (lihat "STEMPEL BUILD" di kepala berkas).
+ARG APP_VERSION=""
+ARG GIT_SHA=dev
+ARG BUILD_TIME=""
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.revision=$GIT_SHA \
+      org.opencontainers.image.created=$BUILD_TIME
 CMD ["svc-integrator"]
 
 
@@ -369,6 +433,17 @@ COPY --from=builder /app/public ./public
 # volumes mounted at these paths inherit `node` ownership on first use.
 RUN mkdir -p ./public/uploads ./data/audit ./data/documents \
     && chown -R node:node /app
+
+# Stempel build — sesudah `RUN` terakhir supaya tidak membatalkan cache (lihat "STEMPEL BUILD" di kepala berkas).
+ARG APP_VERSION=""
+ARG GIT_SHA=dev
+ARG BUILD_TIME=""
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.revision=$GIT_SHA \
+      org.opencontainers.image.created=$BUILD_TIME
 
 USER node
 EXPOSE 3000
@@ -397,6 +472,17 @@ COPY --from=builder-operator /app/apps/operator/.next/static ./apps/operator/.ne
 
 # Volume jejak lama (`audit`) masih dipasang compose ke /app/data/audit.
 RUN mkdir -p ./data/audit && chown -R node:node /app
+
+# Stempel build — sesudah `RUN` terakhir supaya tidak membatalkan cache (lihat "STEMPEL BUILD" di kepala berkas).
+ARG APP_VERSION=""
+ARG GIT_SHA=dev
+ARG BUILD_TIME=""
+ENV APP_VERSION=$APP_VERSION \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME
+LABEL org.opencontainers.image.version=$APP_VERSION \
+      org.opencontainers.image.revision=$GIT_SHA \
+      org.opencontainers.image.created=$BUILD_TIME
 
 USER node
 EXPOSE 3000

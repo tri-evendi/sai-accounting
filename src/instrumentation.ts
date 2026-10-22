@@ -23,6 +23,13 @@
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  /* Baris stempel build — satu per proses, bentuknya sama dengan setiap
+     layanan lain (`@sai/core/build-info`). */
+  if (process.env.NEXT_PHASE !== "phase-production-build") {
+    const { buildBanner } = await import("@sai/core/build-info");
+    console.log(`[start] ${buildBanner("app-customer")}`);
+  }
+
   await warnMissingLicenceKey();
 
   if (process.env.CACHE_REDIS_URL) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { healthBuildFields } from "@sai/core/build-info";
 import { healthReport } from "@/lib/health-report";
 
 // Never cache or prerender — this must reflect live readiness.
@@ -49,6 +50,11 @@ export const runtime = "nodejs";
  */
 export async function GET() {
   const report = await healthReport();
+  /* Build ikut di jawaban sehat DAN di 503 skema: "skema tidak sepadan dengan
+     image ini" baru bisa ditindaklanjuti bila image-nya ikut disebut. Jawaban
+     "kendali tak terjangkau" dibiarkan persis seperti dijaga
+     `tests/health-probe-scope.test.ts` — build tidak mengubah tindakannya. */
+  const build = healthBuildFields();
 
   if (report.status === "error") {
     /* Dua sebab berbeda, satu kode: 503 berarti "jangan kirim lalu lintas ke
@@ -58,12 +64,12 @@ export async function GET() {
        tidak boleh harus menebak yang mana. */
     if ("schema" in report) {
       return NextResponse.json(
-        { status: "error", schema: report.schema },
+        { status: "error", schema: report.schema, ...build },
         { status: 503 }
       );
     }
     return NextResponse.json({ status: "error", database: "unreachable" }, { status: 503 });
   }
 
-  return NextResponse.json(report);
+  return NextResponse.json({ ...report, ...build });
 }

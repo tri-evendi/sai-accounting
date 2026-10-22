@@ -48,6 +48,7 @@ import {
   toCompanyDatabaseTarget,
 } from "@sai/db/company-url";
 
+import { buildDetails } from "@sai/core/build-info";
 import { CONTRACT_STATUSES, CURRENCIES } from "@sai/core/constants";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
 import {
@@ -365,6 +366,9 @@ async function rekam(hasil: {
           findings: hasil.findings.slice(0, 200),
           failures: hasil.failures,
           perCompany: hasil.perCompany,
+          /* Stempel image yang menjalankan sapuan ini — panel "Versi
+             layanan" konsol (`@sai/core/build-info`). */
+          ...buildDetails(),
         }),
       },
     });

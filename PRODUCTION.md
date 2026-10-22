@@ -387,6 +387,22 @@ OOM (exit 137).
      sai-app-customer sai-app-operator sai-svc-worker sai-svc-integrator
    ```
 
+   Since 22 Oct 2026 every image also carries a build stamp (`APP_VERSION`,
+   `GIT_SHA`, `BUILD_TIME`, plus OCI labels). One line compares what each
+   container *says* it runs — all four must print the same version and sha:
+   ```bash
+   docker inspect --format '{{.Name}} {{index .Config.Labels "org.opencontainers.image.version"}} {{index .Config.Labels "org.opencontainers.image.revision"}}' \
+     sai-app-customer sai-app-operator sai-svc-worker sai-svc-integrator
+   ```
+   Both web apps report it on `/api/health` as well (`.version` and
+   `.build = {version, sha, builtAt}`):
+   `docker compose exec app-customer node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>console.log(j.build))"`.
+   The operator console's **Scheduler → Service versions** panel shows the
+   same comparison from the running processes' own traces (claims in `jobs`,
+   `runtime_samples`, run trails), and marks any service whose build differs
+   from the console's as *Tertinggal* (behind). A row still *Tertinggal* a few
+   minutes after the swap is a container that did not get the new image.
+
 **Order matters when a release carries migrations:** pull, then migrate, then
 swap. A single `docker compose up --build -d` is wrong: it swaps the container
 before migrations run, so the new code briefly meets the old schema.

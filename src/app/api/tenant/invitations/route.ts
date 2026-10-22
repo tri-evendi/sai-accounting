@@ -33,6 +33,7 @@ import {
   tenantSeatCount,
 } from "@sai/platform/invitation-store";
 import { userQuotaExceeded } from "@sai/core/invitations";
+import { seatQuotaOverride } from "@/lib/entitlement-source";
 import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
 import { runWithCompany } from "@/lib/company-context";
 import { activeRoleKeys } from "@/lib/roles";
@@ -138,10 +139,16 @@ export async function POST(request: Request) {
    * kalau kuota hanya berlaku untuk calon akun baru, "422" vs "200" langsung
    * membocorkan apakah alamat itu sudah punya akun (lihat lib/invitations.ts).
    */
-  const seats = await tenantSeatCount(result.tenant.tenantId);
+  const seatQuota = await seatQuotaOverride();
+  const seats = await tenantSeatCount(result.tenant.tenantId, seatQuota);
   if (userQuotaExceeded(seats)) {
     return NextResponse.json(
-      { error: t("invitations.quotaExceeded"), code: "quota_exceeded" },
+      {
+        error: seatQuota
+          ? t("invitations.licenceLimitReached", { max: seatQuota.maxUsers })
+          : t("invitations.quotaExceeded"),
+        code: "quota_exceeded",
+      },
       { status: 422 }
     );
   }

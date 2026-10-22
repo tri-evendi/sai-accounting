@@ -24,6 +24,7 @@
     "test:watch": "vitest",
     "record:backup": "bun scripts/record-backup-run.ts",
     "support:bundle": "sh scripts/support-bundle.sh",
+    "onprem:bundle": "sh scripts/onprem-offline-bundle.sh",
     "contract:gen": "bun scripts/contract-generate.ts",
     "report:count": "bun scripts/report-stack-count.ts",
     "_contract_gen_note": "Rancangan §3.5. Membangkitkan kode dari `contract/kinds.yaml` — satu sumber untuk `kind`, status, dan jalur pekerjaan, dibaca TypeScript sekarang dan Go di tahap 1b. Dibangkitkan, TIDAK dibaca saat runtime: mengurai YAML saat runtime berarti satu pustaka pengurai di image produksi, satu berkas yang harus ada saat boot, dan `kind` salah tulis yang baru berbunyi saat pekerjaan pertama diterbitkan — sementara TypeScript bangkitan memindahkan semua itu ke `tsc`. Generator juga MENEGAKKAN invarian I-2: `kind` ber-`writes_ledger` di luar jalur `ledger` ditolak, sebab itu pintu posting kedua. `-- --cek` gagal bila berkas bangkitan di disk basi; dipanggil `tests/contract-jobs.test.ts`, karena berkas bangkitan yang basi tetap mengompilasi dan karena itu penyimpangan yang paling sulit terlihat.",

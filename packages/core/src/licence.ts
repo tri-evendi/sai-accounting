@@ -215,3 +215,68 @@ export function licencePayloadBytes(licence: Licence): Buffer {
   );
   return Buffer.from(JSON.stringify(urut), "utf8");
 }
+
+/**
+ * Apakah kunci publik produksi sudah ditanam? Selama belum, tidak ada lisensi
+ * yang sah — dan pemasangan on-premise memperingatkannya saat start (lihat
+ * `src/instrumentation.ts`) serta di `/api/health` (dibaca bundel diagnostik).
+ */
+export function licenceKeyInstalled(publicKeyPem: string = LICENCE_PUBLIC_KEY_PEM): boolean {
+  return publicKeyPem !== "BELUM-DISETEL";
+}
+
+/** Komponen angka `major.minor.patch` — `null` bila bukan bentuk itu. */
+function versionParts(version: string): number[] | null {
+  const core = version.trim().replace(/^v/, "").split(/[-+]/)[0] ?? "";
+  if (!/^\d+(\.\d+){0,2}$/.test(core)) return null;
+  return core.split(".").map((n) => Number.parseInt(n, 10));
+}
+
+/**
+ * Apakah versi yang BERJALAN melampaui `maxVersion` lisensi?
+ *
+ * `maxVersion` dibandingkan sepanjang komponen yang DITULISNYA: `"0.10"`
+ * mencakup seluruh `0.10.x`, `"1"` seluruh `1.x.y`. Itu bentuk yang dipakai
+ * orang saat menjual "pembaruan sampai seri 0.10"; menuntut `0.10.0` membuat
+ * rilis tambalan pertama terbaca melampaui lisensi.
+ *
+ * Bentuk yang tak terbaca (di sisi mana pun) menjawab `false`: pemberitahuan
+ * palsu lebih merugikan daripada pemberitahuan yang tidak muncul — dan jawaban
+ * ini memang tidak pernah memutuskan apa pun.
+ */
+export function versionBeyondLicence(running: string, maxVersion: string | null): boolean {
+  if (maxVersion === null) return false;
+  const run = versionParts(running);
+  const max = versionParts(maxVersion);
+  if (!run || !max) return false;
+  for (let i = 0; i < max.length; i++) {
+    const a = run[i] ?? 0;
+    const b = max[i] ?? 0;
+    if (a !== b) return a > b;
+  }
+  return false;
+}
+
+/**
+ * Pemberitahuan lisensi untuk ADMINISTRATOR — fakta yang dipajang, bukan
+ * gerbang. "Dukungan berakhir" berarti pembaruan & bantuan tidak lagi dicakup;
+ * "versi melebihi lisensi" berarti image yang terpasang lebih baru daripada
+ * yang dicakup. Tidak satu pun mengubah apa yang boleh dibuka atau dicatat —
+ * lihat kepala berkas.
+ */
+export type LicenceNotice = "support_ended" | "version_beyond_licence";
+
+export function licenceNotices(
+  licence: Pick<Licence, "supportEndsAt" | "maxVersion">,
+  runningVersion: string,
+  now: Date = new Date()
+): LicenceNotice[] {
+  const notices: LicenceNotice[] = [];
+  if (licence.supportEndsAt !== null && Date.parse(licence.supportEndsAt) < now.getTime()) {
+    notices.push("support_ended");
+  }
+  if (versionBeyondLicence(runningVersion, licence.maxVersion)) {
+    notices.push("version_beyond_licence");
+  }
+  return notices;
+}

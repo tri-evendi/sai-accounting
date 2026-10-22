@@ -23,6 +23,7 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 
 import { acceptInvitation, invitationInfoByToken } from "@sai/platform/invitation-store";
+import { seatQuotaOverride } from "@/lib/entitlement-source";
 import {
   PERSISTENT_RATE_LIMITS,
   checkPersistentRateLimit,
@@ -107,10 +108,12 @@ export async function POST(request: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  const result = await acceptInvitation(parsed.data.token, {
-    name: parsed.data.name,
-    passwordHash,
-  });
+  const seatQuota = await seatQuotaOverride();
+  const result = await acceptInvitation(
+    parsed.data.token,
+    { name: parsed.data.name, passwordHash },
+    seatQuota
+  );
 
   switch (result.status) {
     case "accepted":
@@ -133,7 +136,12 @@ export async function POST(request: Request) {
       );
     case "quota_exceeded":
       return NextResponse.json(
-        { error: t("invitations.quotaExceededAccept"), code: "quota_exceeded" },
+        {
+          error: seatQuota
+            ? t("invitations.licenceLimitReachedAccept")
+            : t("invitations.quotaExceededAccept"),
+          code: "quota_exceeded",
+        },
         { status: 422 }
       );
   }

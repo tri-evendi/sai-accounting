@@ -25,21 +25,34 @@ import {
 import { upsertMembership } from "@sai/platform/membership-upsert";
 import { TENANT_ROLES } from "@sai/core/constants";
 
+/**
+ * Batas kursi yang ditetapkan PEMANGGIL lewat pintu entitlement
+ * (`creationQuotaFor` di aplikasi — paket ini tidak boleh mengimpornya).
+ * Tanpa argumen ini perilakunya persis SaaS: `tenants.max_users`, per tenant.
+ * On-premise mengisinya dengan angka lisensi dan lingkup `installation`.
+ */
+export interface SeatQuota {
+  maxUsers: number;
+  scope: "tenant" | "installation";
+}
+
 /** Kursi terpakai sebuah tenant: pengguna hidup + undangan yang masih menunggu. */
 export async function tenantSeatCount(
-  tenantId: number
+  tenantId: number,
+  quota?: SeatQuota
 ): Promise<{ currentUsers: number; pendingInvitations: number; maxUsers: number }> {
+  const wide = quota?.scope === "installation";
   const [tenant, currentUsers, pendingInvitations] = await Promise.all([
     controlDb.tenant.findUnique({ where: { id: tenantId }, select: { maxUsers: true } }),
-    controlDb.user.count({ where: { tenantId } }),
+    controlDb.user.count(wide ? undefined : { where: { tenantId } }),
     controlDb.invitation.count({
-      where: { tenantId, usedAt: null, expiresAt: { gt: new Date() } },
+      where: { ...(wide ? {} : { tenantId }), usedAt: null, expiresAt: { gt: new Date() } },
     }),
   ]);
   return {
     currentUsers,
     pendingInvitations,
-    maxUsers: tenant?.maxUsers ?? 0,
+    maxUsers: quota?.maxUsers ?? tenant?.maxUsers ?? 0,
   };
 }
 
@@ -195,7 +208,9 @@ export type AcceptResult =
  */
 export async function acceptInvitation(
   token: string,
-  input: { name?: string | null; passwordHash: string }
+  input: { name?: string | null; passwordHash: string },
+  /** Batas dari pintu entitlement; tanpa ini = `tenants.max_users` (SaaS). */
+  quota?: SeatQuota
 ): Promise<AcceptResult> {
   const tokenHash = hashInvitationToken(token);
 
@@ -224,13 +239,15 @@ export async function acceptInvitation(
      */
     const [tenant, currentUsers] = await Promise.all([
       tx.tenant.findUnique({ where: { id: row.tenantId }, select: { maxUsers: true } }),
-      tx.user.count({ where: { tenantId: row.tenantId } }),
+      tx.user.count(
+        quota?.scope === "installation" ? undefined : { where: { tenantId: row.tenantId } }
+      ),
     ]);
     if (
       userQuotaExceeded({
         currentUsers,
         pendingInvitations: 0,
-        maxUsers: tenant?.maxUsers ?? 0,
+        maxUsers: quota?.maxUsers ?? tenant?.maxUsers ?? 0,
       })
     ) {
       return { status: "quota_exceeded" };

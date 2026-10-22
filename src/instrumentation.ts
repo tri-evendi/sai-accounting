@@ -2,24 +2,55 @@
  * Hook `register` Next — dipanggil SEKALI per instans server sebelum ia
  * melayani permintaan (node_modules/next/dist/docs/01-app/02-guides/instrumentation.md).
  *
- * Satu-satunya isinya: potret tunda event loop `app-customer` untuk pemicu (a)
- * tahap 1d (09 §3.3, §9). Pengukuran itu HARUS di proses yang melayani halaman
- * — tunda di proses lain tidak membuat siapa pun menunggu.
+ * Isinya dua:
+ *   • potret tunda event loop `app-customer` untuk pemicu (a) tahap 1d
+ *     (09 §3.3, §9). Pengukuran itu HARUS di proses yang melayani halaman —
+ *     tunda di proses lain tidak membuat siapa pun menunggu;
+ *   • PERINGATAN START on-premise bila kunci publik lisensi belum ditanam di
+ *     image (`LICENCE_PUBLIC_KEY_PEM = "BELUM-DISETEL"`). Tanpa baris ini
+ *     keadaan itu hanya terlihat sebagai menu yang menyempit ke modul inti —
+ *     gejala yang dibaca customer sebagai "lisensinya rusak", padahal yang
+ *     belum ada adalah langkah pemilik SAI (docs/ONPREM-SERAH-TERIMA.md §0).
+ *     PERINGATAN, bukan galat: lisensi tidak pernah menghentikan aplikasi.
  *
- * Dua pagar, keduanya karena `register` dipanggil di lebih banyak tempat
- * daripada server produksi:
- *   • `NEXT_RUNTIME === "nodejs"` — runtime edge tidak punya `perf_hooks`;
- *   • bukan fase build — pekerja `next build` bukan proses yang melayani
- *     siapa pun, dan barisnya hanya akan mencemari sampel.
- *
- * Impornya dinamis, mengikuti saran dokumentasinya: modul Node-only tidak
- * boleh ikut terevaluasi di runtime yang tidak mendukungnya.
+ * Runtime edge tidak punya `perf_hooks` maupun `node:crypto`, jadi keduanya
+ * hanya untuk proses Node. Impornya dinamis, mengikuti saran dokumentasinya.
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  await warnMissingLicenceKey();
+
+  // Pekerja `next build` bukan proses yang melayani siapa pun; barisnya hanya
+  // akan mencemari sampel.
   if (process.env.NEXT_PHASE === "phase-production-build") return;
 
   const { startLoopSampler } = await import("@sai/platform/runtime-samples");
   const { APP_CUSTOMER_SOURCE } = await import("@sai/core/runtime-trigger");
   startLoopSampler(APP_CUSTOMER_SOURCE);
+}
+
+async function warnMissingLicenceKey(): Promise<void> {
+  const { deployProfile } = await import("@sai/core/deploy-profile");
+  const { licenceKeyInstalled } = await import("@sai/core/licence");
+
+  let onprem = false;
+  try {
+    onprem = deployProfile() === "onprem";
+  } catch (error) {
+    // Salah tulis profil dilaporkan keras oleh pemakainya sendiri; di sini
+    // cukup dicatat supaya baris pertama log sudah menyebutnya.
+    console.error("[start]", error);
+    return;
+  }
+
+  if (onprem && !licenceKeyInstalled()) {
+    console.warn(
+      "[start] ⚠ PROFIL ON-PREMISE TANPA KUNCI PUBLIK LISENSI. Image ini dibangun " +
+        "dengan LICENCE_PUBLIC_KEY_PEM placeholder, jadi TIDAK ADA berkas lisensi " +
+        "yang bisa sah: modul dibatasi ke inti, batas 1 perusahaan / 3 pengguna. " +
+        "Pembukuan tetap terbuka. Pemilik SAI wajib menanam kunci publik produksi " +
+        "lalu merilis image baru — docs/ONPREM-SERAH-TERIMA.md §0."
+    );
+  }
 }

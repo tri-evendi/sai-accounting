@@ -123,7 +123,11 @@ trap 'rm -rf "$KERJA"' EXIT
   if [ "$HITUNGAN" = "1" ]; then
     echo "  hitungan.txt     JUMLAH baris per tabel — angka, tanpa satu pun isinya"
   fi
-  echo "  kesehatan.txt    keluaran /api/health"
+  echo "  kesehatan.txt    keluaran /api/health, termasuk bidang \"licence\": statusnya saja"
+  echo "                   (ok | key-not-set | missing | invalid) dan kode pemberitahuan."
+  echo "                   key-not-set = image belum memuat kunci publik lisensi — langkah"
+  echo "                   pemilik SAI, bukan kerusakan di mesin ini. Isi berkas lisensi,"
+  echo "                   nama customer, dan batasnya TIDAK ikut."
   echo "  log/*.log        hanya baris log yang cocok bentuk diagnostik, lalu disunting"
   echo
   echo "YANG SENGAJA TIDAK IKUT"

@@ -500,7 +500,11 @@ SELECT 'aplikasi tak berhak DML: ' || c.relname FROM pg_class c JOIN pg_namespac
    AND NOT has_table_privilege('{app}', c.oid, 'SELECT, INSERT, UPDATE, DELETE')
 UNION ALL
 SELECT 'aplikasi tak berhak sekuens: ' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
- WHERE n.nspname = 'public' AND c.relkind = 'S' AND NOT has_sequence_privilege('{app}', c.oid, 'USAGE')
+ WHERE n.nspname = 'public' AND c.relkind = 'S'
+   -- CASE, bukan AND: perencana boleh menilai predikat dalam urutan apa pun,
+   -- dan has_sequence_privilege MELEMPAR untuk relasi yang bukan sekuens
+   -- (`"pg_statistic" is not a sequence` — terjadi di produksi 22 Okt 2026).
+   AND CASE WHEN c.relkind = 'S' THEN NOT has_sequence_privilege('{app}', c.oid, 'USAGE') ELSE false END
 UNION ALL
 SELECT 'skema di luar public: ' || nspname FROM pg_namespace
  WHERE nspname NOT IN ('public', 'information_schema') AND nspname NOT LIKE 'pg\\_%'

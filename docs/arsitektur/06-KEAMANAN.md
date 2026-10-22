@@ -145,6 +145,7 @@ yang kedua menjalankan berkas sungguhan.
 | Webhook pembayaran | **SHA-512** | Fail-closed |
 | MFA operator | **TOTP** | `OPERATOR_MFA` |
 | Berkas lisensi on-premise | **Ed25519**, diverifikasi **luring** | `@sai/core/licence`; kunci publik **ditanam di kode** |
+| Kunci penanda lisensi di konsol | **scrypt** (N=2^17, r=8, p=1, salt 16 B) → **AES-256-GCM**, AAD = sidik kunci publik | `@sai/platform/licence-signing`; dibuka dengan **frasa sandi yang diketik setiap kali**, tidak pernah disimpan |
 | Transport | **TLS** (Let's Encrypt, HSTS `max-age=63072000; preload`) | Hanya Traefik yang mengikat :80/:443 |
 
 **Lisensi on-premise — empat keputusan, dan semuanya tidak simetris.**
@@ -152,7 +153,7 @@ yang kedua menjalankan berkas sungguhan.
 | Keputusan | Kalau sebaliknya |
 |---|---|
 | Kunci publik **ditanam di kode**, tidak pernah dibaca dari env | kunci publik bukan rahasia, tapi kunci yang dibaca dari env berarti siapa pun yang bisa menyetel env di mesin itu menukarnya dengan kuncinya sendiri lalu menandatangani lisensinya sendiri — seluruh tanda tangan jadi hiasan |
-| Kunci privat **tidak pernah** di repo maupun di CI | di repo: setiap orang yang pernah mengklon memilikinya selamanya, dan `git` tidak bisa melupakannya. Di CI: siapa pun yang bisa memicu satu workflow mencetak lisensi tak terbatas, dan jejaknya terlihat seperti build biasa. Penerbitan lisensi pekerjaan manusia yang jarang — dan yang jarang tapi berbahaya memang tidak boleh otomatis |
+| Kunci privat **tidak pernah** di repo maupun di CI, dan di server **hanya tersegel** | di repo: setiap orang yang pernah mengklon memilikinya selamanya, dan `git` tidak bisa melupakannya. Di CI: siapa pun yang bisa memicu satu workflow mencetak lisensi tak terbatas, dan jejaknya terlihat seperti build biasa. Mentah di server: satu pembacaan berkas atau dump menjadi mesin pencetak lisensi. Penerbitan lisensi pekerjaan manusia yang jarang — dan yang jarang tapi berbahaya memang tidak boleh otomatis: setiap tanda tangan menuntut manusia mengetik frasa sandi |
 | Formatnya **bukan JWT** | JWT membawa `alg` di dalam pesan yang **belum terverifikasi**, dengan sejarah `alg: none` dan penukaran asimetris→HMAC yang kuncinya justru kunci publik. Di sini algoritmanya tidak dapat dinegosiasikan |
 | Diverifikasi **di tempat pemakaian**, tidak pernah disimpan sebagai baris | memverifikasi sekali lalu menyimpan hasilnya di `control` memindahkan kewenangan lisensi dari tanda tangan ke baris yang bisa ditulis. Verifikasi Ed25519 berbiaya mikrodetik; berkasnya dipasang **hanya-baca** |
 
@@ -164,13 +165,45 @@ versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
 adalah kesalahan kategori untuk produk akuntansi.
 
 **Register lisensi di konsol (`/licences`, migration platform 0006) adalah
-arsip, bukan kewenangan.** Konsol menyusun perintah `licence:issue`, operator
-menjalankannya di laptop luring, lalu mengunggah berkas `.sai`-nya; konsol
-hanya **memverifikasi** dengan kunci publik tertanam dan mencocokkan isinya
-dengan draf. Tidak ada kolom, unggahan, atau env untuk kunci privat, dan tidak
-satu pun kode `app-customer` membaca tabel register — keduanya dijaga
-`tests/licence-register-archive.test.ts`. Status "dicabut" di register hanya
-catatan: lisensi luring tidak bisa dicabut dari jauh.
+arsip, bukan kewenangan.** Draf dicatat di konsol lalu ditandatangani lewat
+salah satu dari dua jalur di bawah; keduanya berakhir di pemeriksaan yang sama
+— verifikasi dengan kunci publik **tertanam** dan pencocokan dengan draf.
+Tidak satu pun kode `app-customer` membaca tabel register, dan status
+"dicabut" hanya catatan: lisensi luring tidak bisa dicabut dari jauh.
+
+**Penandatanganan di konsol (migration platform 0007, keputusan pemilik
+22 Okt 2026).** Sampai tanggal itu aturannya "konsol tidak pernah
+menandatangani": kunci privat hanya ada sebagai berkas PEM di laptop luring.
+Pemilik membalik keputusan itu demi alur satu layar, dengan model berikut:
+
+| Unsur | Bentuk |
+|---|---|
+| Penyimpanan | `licence_signing_keys`: DER PKCS#8 kunci privat **tersegel** AES-256-GCM (`private_key_ciphertext`/`_iv`/`_tag`), kunci segel = scrypt(frasa sandi, salt acak). AAD mengikat sidik kunci publik; sesudah dibuka, kunci publik turunannya dibandingkan lagi dengan sidik baris |
+| Frasa sandi | Minimal 12 karakter, diketik dua kali saat kunci dibuat dan **setiap kali** menandatangani. Tidak pernah disimpan di basis data, env, log, maupun jejak audit; dikosongkan dari state peramban sebelum permintaan berangkat |
+| Siapa | Izin operator `licence.sign`, **owner saja** — terpisah dari `licence.register` milik peran penagihan |
+| Satu kunci | Indeks unik parsial + penolakan di kode: kunci kedua berarti lisensi lama tak lagi terverifikasi. Konsol juga menolak membuat kunci bila kode sudah memuat kunci tertanam dari jalur luring |
+| Jangkar | Konsol **hanya menandatangani bila sidik kunci aktif = sidik `LICENCE_PUBLIC_KEY_PEM`** di kode yang berjalan. Pemasangan customer tetap memverifikasi terhadap konstanta itu, tidak pernah terhadap baris basis data — baris kunci yang ditukar orang tidak menghasilkan lisensi yang diterima siapa pun |
+| Tebakan daring | 10 percobaan / 15 menit per operator (`checkSharedRateLimit`); setiap kegagalan tercatat `operator.licence.sign.failed` |
+| Jejak | `operator.licence.key.create` (sidik + parameter KDF) dan `operator.licence.sign` (siapa, kapan, id baris, `licenceId`, sidik kunci, sha256 berkas) |
+| Jalur luring | Tetap ada — `licence:keygen`/`licence:issue` memakai modul penanda yang SAMA, jadi kedua jalur menghasilkan byte yang sama. Pilih satu kunci: kunci konsol dan kunci luring tidak bisa hidup bersama |
+
+**Risiko sisa, dinyatakan apa adanya.** Dump basis data atau env yang bocor
+**sendirian** tidak bisa menandatangani — penyerangnya masih harus menebak frasa
+sandi melawan scrypt (±128 MiB per tebakan). Tetapi **RCE pada `app-operator`**
+bisa menangkap frasa sandi saat diketik dan kunci yang sedang terbuka di
+memori; itu harga alur satu layar yang diterima pemilik. Peran basis data
+`app-customer` juga bisa MEMBACA baris tersegelnya (satu basis data platform),
+yang tidak memberinya apa pun tanpa frasa sandi. `KeyObject` Node tidak bisa
+di-nol-kan; turunan kunci segel dan DER mentahnya di-nol-kan sesudah dipakai.
+
+Penjaga invarian di atas (`tests/licence-register-archive.test.ts`):
+`@sai/platform/licence-signing` satu-satunya pemegang kunci privat; modul itu
+diimpor hanya oleh store kuncinya dan dua skrip luring; store kunci hanya oleh
+`/licences` konsol; membuat kunci & menandatangani hanya dari server action-nya
+di balik `licence.sign`; `app-customer` dan kulit klien konsol tidak
+menyentuhnya; kolom `private_*` di migration mana pun hanya
+ciphertext/iv/tag; tanpa env kunci atau frasa, tanpa `console.*`, tanpa frasa
+sandi di `details` jejak audit. Perilakunya: `tests/licence-signing.test.ts`.
 
 **Pindah tenant SaaS → on-premise membawa seluruh buku keluar dari mesin SAI**
 ([`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)). Kontrolnya:

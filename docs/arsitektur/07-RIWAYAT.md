@@ -254,6 +254,17 @@ dan `billing`). Keputusan yang mengikat:
 | Register = **arsip, bukan kewenangan** | Konsol menyusun perintah `licence:issue`, penandatanganan terjadi di mesin luring, konsol hanya memverifikasi berkas yang diunggah. Tidak ada tempat untuk kunci privat, dan `app-customer` tidak membaca tabel register — dijaga `tests/licence-register-archive.test.ts` ([06 §3.7](./06-KEAMANAN.md)) |
 | "Dicabut" di register hanya catatan | Lisensi luring tidak bisa dicabut dari jauh; tombol yang berpura-pura bisa adalah janji palsu |
 
+**Penandatanganan pindah ke konsol** (keputusan pemilik 22 Okt 2026, belum
+digelar): migration platform `0007_licence_signing_keys`, izin `licence.sign`
+(owner saja). Baris pertama tabel di atas — "penandatanganan terjadi di mesin
+luring" — DIBALIK: konsol kini membuat kunci penanda dan menandatangani draf,
+dengan kunci privat tersegel (scrypt + AES-256-GCM) dan frasa sandi yang
+diketik setiap kali. Register tetap arsip; jangkarnya tetap kunci publik yang
+ditanam di kode, dan konsol hanya menandatangani bila sidiknya sama. Jalur
+luring tetap tersedia lewat modul penanda yang sama. Model dan risiko sisanya
+(RCE pada `app-operator` menangkap frasa saat diketik):
+[06 §3.7](./06-KEAMANAN.md).
+
 **Pindah tenant SaaS → on-premise** (#691, runbook
 [`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)): lima skrip
 (`tenant:export-onprem`, `tenant:import-onprem`, `tenant:mark-migrated-out`,

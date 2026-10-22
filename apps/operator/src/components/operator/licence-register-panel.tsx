@@ -3,12 +3,20 @@
 /**
  * Layar REGISTER LISENSI ON-PREMISE di konsol (`/licences`).
  *
- * Disusun untuk SATU jalur, sesederhana mungkin (keputusan pemilik 22 Okt
- * 2026): satu formulir → satu perintah yang disalin ke laptop luring → satu
- * unggahan. Perpanjangan mengisi formulir dari penerbitan sebelumnya, jadi
- * yang diketik ulang hanya yang berubah.
+ * Satu formulir → satu draf, lalu draf ditandatangani lewat salah satu dari
+ * dua jalur (keputusan pemilik 22 Okt 2026):
  *
- * Tidak ada apa pun di sini yang menyentuh kunci privat. Perintahnya dirakit
+ *   • DI KONSOL — owner mengetik frasa sandi kunci penanda; server membuka
+ *     kunci tersegel, menandatangani, memverifikasi, mencatat terbit, dan
+ *     memulangkan berkasnya untuk diunduh;
+ *   • LURING — perintah `licence:issue` disalin ke laptop, berkas hasilnya
+ *     diunggah balik.
+ *
+ * Perpanjangan mengisi formulir dari penerbitan sebelumnya, jadi yang diketik
+ * ulang hanya yang berubah.
+ *
+ * Tidak ada apa pun di sini yang menyentuh kunci privat. Frasa sandi hidup di
+ * state sampai dikirim ke server action, lalu dikosongkan. Perintahnya dirakit
  * di SERVER (`buildIssueCommand`) dan turun sebagai teks; berkas yang diunggah
  * diverifikasi di server dengan kunci publik tertanam. Selisih isi ditampilkan
  * sebagai kalimat "di draf … / di berkas …", bukan kode galat.
@@ -21,7 +29,7 @@ import { useRouter } from "next/navigation";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Flex, Typography, theme } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { SafetyCertificateOutlined, UploadOutlined } from "@ant-design/icons";
 
 import { Badge, type BadgeProps } from "@sai/ui/badge";
 import { Button } from "@sai/ui/button";
@@ -36,6 +44,8 @@ import {
   FormMessage,
 } from "@sai/ui/form";
 import { Input, TextInput } from "@sai/ui/input";
+import { Label } from "@sai/ui/label";
+import { PasswordField } from "@sai/ui/password-input";
 import { Textarea } from "@sai/ui/textarea";
 import { ConsolePanel, CONSOLE_MUTED, CONSOLE_TABULAR } from "@op/components/operator/console-ui";
 import { useT } from "@sai/core/i18n/client";
@@ -46,6 +56,7 @@ import { licenceDraftSchema, type LicenceDraftFormInput } from "@op/lib/validati
 import type {
   LicenceActionResult,
   LicenceDownloadResult,
+  LicenceSignResult,
 } from "@op/app/(operator)/licences/actions";
 
 const { Text, Paragraph } = Typography;
@@ -88,6 +99,11 @@ export interface LicenceRegisterPanelProps {
   canEdit: boolean;
   /** Kunci publik tertanam? Tanpa itu unggahan tidak bisa diverifikasi. */
   keyInstalled: boolean;
+  /** Izin `licence.sign` (owner). */
+  canSign: boolean;
+  /** Kunci konsol ada DAN sidiknya = kunci tertanam — tanda tangan konsol bisa dipakai. */
+  signReady: boolean;
+  sign: (input: { entryId: number; passphrase: string }) => Promise<LicenceSignResult>;
   createDraft: (input: LicenceDraftFormInput) => Promise<LicenceActionResult>;
   upload: (input: { entryId: number; fileText: string }) => Promise<LicenceActionResult>;
   download: (input: { entryId: number }) => Promise<LicenceDownloadResult>;
@@ -338,10 +354,23 @@ function ResultAlert({ result }: { result: LicenceActionResult }) {
   );
 }
 
+/** Peramban menyusun unduhan dari isi berkas (< 1 KB teks). */
+function saveTextFile(fileName: string, content: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function EntryRow({
   entry: e,
   canEdit,
   keyInstalled,
+  canSign,
+  signReady,
+  sign,
   upload,
   download,
   revoke,
@@ -352,9 +381,28 @@ function EntryRow({
   const { token } = theme.useToken();
   const router = useRouter();
   const inputId = useId();
+  const passphraseId = useId();
   const [pending, startTransition] = useTransition();
   const [revoking, setRevoking] = useState(false);
   const [reason, setReason] = useState("");
+  const [signing, setSigning] = useState(false);
+  const [passphrase, setPassphrase] = useState("");
+
+  const onSign = () => {
+    const typed = passphrase;
+    /* Dikosongkan SEBELUM permintaan berangkat: gagal atau berhasil, frasa
+       tidak tinggal di state komponen. */
+    setPassphrase("");
+    startTransition(async () => {
+      const r = await sign({ entryId: e.id, passphrase: typed });
+      onResult({ ok: r.ok, message: r.message, mismatches: r.ok ? undefined : r.mismatches });
+      if (r.ok) {
+        saveTextFile(r.fileName, r.content);
+        setSigning(false);
+        router.refresh();
+      }
+    });
+  };
 
   const run = (p: () => Promise<LicenceActionResult>) =>
     startTransition(async () => {
@@ -379,12 +427,7 @@ function EntryRow({
         onResult(r);
         return;
       }
-      const url = URL.createObjectURL(new Blob([r.content], { type: "text/plain" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = r.fileName;
-      a.click();
-      URL.revokeObjectURL(url);
+      saveTextFile(r.fileName, r.content);
     });
 
   const ringkas = [
@@ -432,9 +475,64 @@ function EntryRow({
         </Text>
       )}
 
+      {e.status === "draft" && canSign && signReady && (
+        <Flex vertical gap={token.marginSM} style={{ maxWidth: 560 }}>
+          {!signing ? (
+            <div>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={pending}
+                onClick={() => setSigning(true)}
+              >
+                <SafetyCertificateOutlined aria-hidden="true" style={{ fontSize: 16 }} />
+                {t("operator.licences.sign.start")}
+              </Button>
+            </div>
+          ) : (
+            <form
+              onSubmit={(ev) => {
+                ev.preventDefault();
+                if (passphrase.length > 0) onSign();
+              }}
+              noValidate
+            >
+              <Flex vertical gap={token.marginSM}>
+                <Text>{t("operator.licences.sign.intro")}</Text>
+                <Label htmlFor={passphraseId}>{t("operator.licences.sign.passphrase")}</Label>
+                <PasswordField
+                  id={passphraseId}
+                  value={passphrase}
+                  autoComplete="off"
+                  autoFocus
+                  onChange={(ev) => setPassphrase(ev.target.value)}
+                />
+                <Flex wrap gap={token.marginSM}>
+                  <Button type="submit" variant="primary" size="sm" disabled={pending || passphrase.length === 0}>
+                    {t("operator.licences.sign.submit")}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setPassphrase("");
+                      setSigning(false);
+                    }}
+                  >
+                    {t("operator.licences.cancel")}
+                  </Button>
+                </Flex>
+              </Flex>
+            </form>
+          )}
+        </Flex>
+      )}
+
       {e.status === "draft" && e.command && (
         <Flex vertical gap={token.marginXS}>
-          <Text>{t("operator.licences.commandLabel")}</Text>
+          <Text>
+            {canSign && signReady ? t("operator.licences.commandLabelOffline") : t("operator.licences.commandLabel")}
+          </Text>
           <Paragraph
             copyable={{ text: e.command, tooltips: [t("operator.licences.copy"), t("operator.licences.copied")] }}
             style={{

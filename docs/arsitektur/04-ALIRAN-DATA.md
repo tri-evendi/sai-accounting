@@ -111,9 +111,11 @@ erDiagram
 
 Hanya tujuh model yang berelasi. `LicenceCustomer` · `LicenceRegisterEntry`
 (migration platform `0006_licence_register`) adalah **arsip** lisensi
-on-premise yang ditandatangani luring, dibaca dan ditulis konsol operator saja;
-`source_tenant_id` menunjuk tenant SaaS asal tanpa FK. Tidak ada yang
-membacanya untuk memutuskan status lisensi. Sisanya **sengaja berdiri sendiri**, karena
+on-premise — ditandatangani di konsol atau luring — dibaca dan ditulis konsol
+operator saja; `source_tenant_id` menunjuk tenant SaaS asal tanpa FK. Tidak ada
+yang membacanya untuk memutuskan status lisensi. `LicenceSigningKey`
+(`0007_licence_signing_keys`, berdiri sendiri) memegang kunci penanda konsol
+yang **tersegel** dengan frasa sandi ([06 §3.7](./06-KEAMANAN.md)). Sisanya **sengaja berdiri sendiri**, karena
 masing-masing adalah catatan peristiwa, bukan entitas: `SchedulerRun` ·
 `BackupRun` · `ConformanceRun` (tiga heartbeat yang dibaca `/api/health`) ·
 `SubscriptionEvent` · `OperatorAuditLog` ·

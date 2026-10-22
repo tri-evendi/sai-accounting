@@ -917,6 +917,43 @@ services:
       - "traefik.http.services.sai-ops.loadbalancer.healthcheck.path=/api/health"
       - "traefik.http.services.sai-ops.loadbalancer.healthcheck.interval=30s"
       - "traefik.http.services.sai-ops.loadbalancer.healthcheck.timeout=5s"
+
+  # ══ cache-redis — TAHAP 2, OPT-IN (09 §3.4, §9) ═══════════════════════════
+  #
+  # DI BELAKANG PROFILE `replika`: `docker compose up -d` biasa TIDAK
+  # menyalakannya, dan produksi satu-replika tidak berubah satu bit pun. Yang
+  # menyalakannya `docker-compose.replika.yml` (yang juga menyetel
+  # `CACHE_REDIS_URL` di aplikasi) — tanpa variabel itu aplikasi bahkan tidak
+  # memuat klien Redis-nya.
+  #
+  # Isinya HANYA yang boleh hilang (09 §3.4): pesan invalidasi cache antar-
+  # replika, penghitung pembatas laju bersesi, sewa penyimpanan, buku tag Next.
+  # Karena itu tanpa persistensi sama sekali (`--save ""`, tanpa AOF) dan
+  # dengan pengusiran LRU: Redis yang dikosongkan = aplikasi melambat sebentar,
+  # tidak pernah pekerjaan hilang. Ia BUKAN antrean — antreannya tabel `jobs`.
+  cache-redis:
+    image: redis:7.2-alpine
+    container_name: sai-cache-redis
+    restart: unless-stopped
+    profiles: ["replika"]
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - ${CACHE_REDIS_MAXMEMORY:-64mb}
+      - --maxmemory-policy
+      - allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - internal
+
 networks:
   traefik:
     name: traefik_default

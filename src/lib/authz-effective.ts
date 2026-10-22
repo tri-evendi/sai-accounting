@@ -53,6 +53,7 @@ import {
   rolePermissionSet,
 } from "@/lib/authz-user-overrides";
 import type { Role } from "@sai/core/constants";
+import { registerSharedCache } from "@sai/platform/cache-bus";
 
 /**
  * ══ SETIAP CACHE DI SINI DIKUNCI PER PERUSAHAAN (issue #104) ═══════════════
@@ -84,6 +85,24 @@ interface CompanyAuthzLoaders {
 }
 
 const perCompany = new Map<number, CompanyAuthzLoaders>();
+
+/**
+ * Tahap 2 — RISIKO KEBENARAN UTAMA replika kedua: izin yang dicabut di replika
+ * 1 tidak boleh tetap berlaku di replika 2 selama satu TTL. Setiap
+ * `invalidate*()` di bawah mengumumkan id perusahaannya; replika lain membuang
+ * SELURUH set loader perusahaan itu (lebih lebar dari yang diubah, tapi tiga
+ * query murah lebih baik daripada format pesan per loader). Selama bus tidak
+ * koheren, `loaders()` membuat set baru per panggilan — tidak ada yang dibaca
+ * dari cache. Tanpa `CACHE_REDIS_URL` keduanya tidak melakukan apa pun.
+ */
+const shared = registerSharedCache("authz", (key) => {
+  if (key === undefined) perCompany.clear();
+  else perCompany.delete(Number(key));
+});
+
+async function announce(): Promise<void> {
+  shared.publish(await currentCompanyId());
+}
 
 
 function createLoaders(): CompanyAuthzLoaders {
@@ -147,6 +166,7 @@ function createLoaders(): CompanyAuthzLoaders {
  */
 async function loaders(): Promise<CompanyAuthzLoaders> {
   const companyId = await currentCompanyId();
+  if (!shared.usable()) return createLoaders();
   let entry = perCompany.get(companyId);
   if (!entry) {
     entry = createLoaders();
@@ -159,6 +179,7 @@ async function loaders(): Promise<CompanyAuthzLoaders> {
  *  keanggotaan/registry berubah, dan oleh tes. */
 export function resetAuthzCachesForCompany(companyId: number): void {
   perCompany.delete(companyId);
+  shared.publish(companyId);
 }
 
 /** Modul yang aktif untuk perusahaan ini, dari cache bila masih segar. */
@@ -169,6 +190,7 @@ export async function getEnabledModules(): Promise<ReadonlySet<BusinessModule>> 
 /** WAJIB dipanggil setelah setiap tulis ke `company_settings.enabled_modules`. */
 export async function invalidateEnabledModules(): Promise<void> {
   (await loaders()).modules.invalidate();
+  await announce();
 }
 
 /**
@@ -198,6 +220,7 @@ export async function getEffectiveMatrix(): Promise<EffectiveMatrix> {
 /** WAJIB dipanggil setelah setiap tulis ke `role_permission_overrides`. */
 export async function invalidateEffectiveMatrix(): Promise<void> {
   (await loaders()).matrix.invalidate();
+  await announce();
 }
 
 /** Peran yang efektif memegang sebuah izin. */
@@ -209,6 +232,7 @@ export async function effectiveRolesFor(permission: Permission): Promise<readonl
  *  untuk pengguna itu (issue #75). Cache pengguna lain tidak tersentuh. */
 export async function invalidateUserOverrides(userId: number): Promise<void> {
   (await loaders()).users.invalidate(userId);
+  await announce();
 }
 
 /**

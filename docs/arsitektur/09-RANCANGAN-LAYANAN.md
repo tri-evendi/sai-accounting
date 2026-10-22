@@ -286,6 +286,19 @@ Runtime Node yang tersisa tetap **Node, bukan Bun**: pagar
 > **Apa pun yang hilang bila Redis dikosongkan harus boleh hilang.** Redis mati
 > = aplikasi melambat. Redis mati ≠ pekerjaan hilang atau tagihan terlewat.
 
+Yang kini ada di Redis (kode tahap 2, opt-in — [02 §19](./02-LAYANAN-INFRA.md)),
+dan ke mana masing-masing jatuh tanpanya:
+
+| Isi | Tanpa Redis |
+|---|---|
+| Pesan invalidasi 8 cache data kendali (izin, registry, surel, entitlement…) | cache **dilewati** sampai langganan pulih, lalu dikosongkan — lebih lambat, tidak basi |
+| Penghitung pembatas laju bersesi | penghitung memori per replika — longgar, tetap berbatas |
+| Buku tag Next (`updateTag`) | tag berlaku lokal; replika lain menyusul lewat `revalidate` |
+| Sewa sidik penyimpanan bersama | peringatan saat start, bukan penolakan |
+
+Tanpa persistensi (`--save ""`, tanpa AOF) dan dengan pengusiran LRU —
+konfigurasinya sendiri menyatakan bahwa isinya boleh hilang.
+
 ### 3.5 Kontrak lintas bahasa — yang belum dibangkitkan
 
 ✅ **Struktur pohonnya dan aturan "setiap konstanta dua-bahasa DIBANGKITKAN"
@@ -692,7 +705,7 @@ Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
 | **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
-| **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
+| **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` | — |
 | **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
@@ -733,7 +746,20 @@ menyentuh skema atau kode.
 
 ⚠ `cacheHandler`-nya **ditulis sendiri**, apa pun penyimpanannya: pustaka yang
 beredar menyasar Next 13–15, sementara versi di sini memakai model
-`updateTags`/`refreshTags` yang baru.
+`updateTags`/`refreshTags` yang baru. Terbangun 22 Okt 2026
+(`@sai/platform/next-cache-tags`), dengan dua keputusan yang tidak tertulis di
+sini sebelumnya: yang dibagi **buku tag**, bukan isi cache (tiga `unstable_cache`
+masing-masing satu baris kecil — yang salah dengan dua replika invalidasinya,
+bukan biaya bacanya); dan handler dipasang lewat kait global Next saat
+`register`, bukan lewat `next.config.ts`, supaya image yang sama berperilaku
+identik dengan bawaan Next selama `CACHE_REDIS_URL` tidak disetel.
+
+✅ **Tahap 2 siap sebagai konfigurasi, 22 Okt 2026** — tanpa satu pun yang
+dinyalakan di produksi. Satu VM tidak bisa membuktikan bagian yang paling
+penting: dua replika Next sungguhan di belakang Traefik, standby yang
+melindungi sesuatu (di VM yang sama ia berbagi disk dengan primary), dan
+penyimpanan dokumen bersama lintas host. Daftar lengkap yang sudah dan belum
+terbukti: [02 §19](./02-LAYANAN-INFRA.md).
 
 ## 10. Nomenklatur
 

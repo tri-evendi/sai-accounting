@@ -35,7 +35,8 @@ import {
 } from "@/lib/company-unlock";
 import { controlDb } from "@sai/core/control-db";
 import { getT } from "@sai/platform/i18n/server";
-import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
+import { RATE_LIMITS } from "@sai/core/rate-limit";
+import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
 
 const schema = z.object({
   companySlug: z.string().min(1).max(64),
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
 
-  const rate = checkRateLimit(`unlock:${userId}`, RATE_LIMITS.passwordGuess);
+  const rate = await checkSharedRateLimit(`unlock:${userId}`, RATE_LIMITS.passwordGuess);
   if (!rate.allowed) {
     return NextResponse.json({ error: t("unlock.tooMany") }, { status: 429 });
   }

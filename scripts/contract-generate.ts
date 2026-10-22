@@ -126,6 +126,9 @@ interface Numbers {
   done_retention_days: number;
   queue_age_warn_seconds: number;
   queue_age_late_seconds: number;
+  lane_lock_probe_ms: number;
+  lane_lock_query_timeout_ms: number;
+  lane_lock_idle_session_ms: number;
 }
 /** Pemilik berkas hasil di volume `hasil` — ditulis dua bahasa, dibaca `node`. */
 interface Results {
@@ -151,6 +154,9 @@ const KUNCI_ANGKA: (keyof Numbers)[] = [
   "done_retention_days",
   "queue_age_warn_seconds",
   "queue_age_late_seconds",
+  "lane_lock_probe_ms",
+  "lane_lock_query_timeout_ms",
+  "lane_lock_idle_session_ms",
 ];
 
 function baca(): Kontrak {
@@ -211,6 +217,18 @@ function baca(): Kontrak {
       salah.push(
         "numbers.queue_age_warn_seconds tidak di bawah queue_age_late_seconds — " +
           "ambang peringatan yang tidak pernah terlewat lebih dulu adalah ambang yang tak berarti"
+      );
+    }
+    /* Pemegang pagar yang terisolasi wajib TAHU kuncinya hilang (denyut gagal
+       paling lambat probe + query_timeout) SEBELUM server membuang sesinya dan
+       membebaskan kunci untuk kandidat lain (idle_session). Urutan sebaliknya
+       = dua pelari jalur tunggal-instans sekaligus, di kedua bahasa. */
+    const tahu = n.lane_lock_probe_ms + n.lane_lock_query_timeout_ms;
+    if (tahu >= n.lane_lock_idle_session_ms) {
+      salah.push(
+        `numbers.lane_lock_probe_ms + lane_lock_query_timeout_ms (${tahu}) tidak di bawah ` +
+          `lane_lock_idle_session_ms (${n.lane_lock_idle_session_ms}) — pemegang pagar lama ` +
+          "baru tahu kuncinya hilang SESUDAH kandidat lain bisa mengambilnya"
       );
     }
   }
@@ -353,6 +371,15 @@ export const DONE_RETENTION_DAYS = ${n.done_retention_days};
 
 export const QUEUE_AGE_WARN_SECONDS = ${n.queue_age_warn_seconds};
 export const QUEUE_AGE_LATE_SECONDS = ${n.queue_age_late_seconds};
+
+/**
+ * Denyut pagar jalur tunggal-instans — dipakai \`workers/runner.ts\` untuk
+ * \`@sai/db/session-lock\` dan oleh \`jobs.LaneLock\` di Go. Dijamin generator:
+ * \`LANE_LOCK_PROBE_MS + LANE_LOCK_QUERY_TIMEOUT_MS < LANE_LOCK_IDLE_SESSION_MS\`.
+ */
+export const LANE_LOCK_PROBE_MS = ${n.lane_lock_probe_ms};
+export const LANE_LOCK_QUERY_TIMEOUT_MS = ${n.lane_lock_query_timeout_ms};
+export const LANE_LOCK_IDLE_SESSION_MS = ${n.lane_lock_idle_session_ms};
 
 /**
  * Pemilik berkas hasil di volume \`hasil\`: pengguna \`node\` tahap \`runner\`,
@@ -557,6 +584,13 @@ const (
 
 \tQueueAgeWarn = ${n.queue_age_warn_seconds} * time.Second
 \tQueueAgeLate = ${n.queue_age_late_seconds} * time.Second
+
+\t// Denyut pagar jalur tunggal-instans (\`jobs.LaneLock\`; padanan Node
+\t// \`@sai/db/session-lock\`). Dijamin generator:
+\t// LaneLockProbe + LaneLockQueryTimeout < LaneLockIdleSession.
+\tLaneLockProbe        = ${n.lane_lock_probe_ms} * time.Millisecond
+\tLaneLockQueryTimeout = ${n.lane_lock_query_timeout_ms} * time.Millisecond
+\tLaneLockIdleSession  = ${n.lane_lock_idle_session_ms} * time.Millisecond
 )
 
 // ResultOwnerUID/GID: pemilik berkas hasil di volume \`hasil\` — pengguna

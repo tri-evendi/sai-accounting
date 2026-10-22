@@ -607,10 +607,11 @@ Baru sesudah itu jalankan `tenant:move`.
 
 ### Yang belum ikut
 
-- `cmd/parity` (`internal/ledgerread`) masih membuka buku lewat rantai instans
-  bawaan saja. Ia alat pembanding, bukan jalur produksi, tetapi paritas atas
-  PT yang sudah dipindah akan membaca salinan lamanya. Jalankan hanya untuk PT
-  di instans bawaan sampai pembacanya mengenal instans.
+✅ `cmd/parity` mengenal instans sejak 22 Okt 2026: `-database` diselesaikan
+lewat registry kendali (`registry.LookupByDatabase` → `ledgerread.OpenAt`),
+sama dengan pelari. Nama yang tidak terdaftar, atau instans yang env var-nya
+tidak diset, MELEMPAR — tidak lagi membandingkan salinan lama di server bawaan.
+
 - Konsol operator menampilkan instans di `/backup` (label `@kunci`), tetapi
   belum di halaman kesesuaian. Jejak `conformance_runs` sudah mencatat
   `instance` per buku.

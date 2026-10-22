@@ -43,7 +43,13 @@ import {
   type JobLane,
 } from "@sai/core/generated/job-kinds";
 import { LEASE_RENEW_MS } from "@sai/core/job-backoff";
-import { IDLE_MS, UPKEEP_MS as UPKEEP_MS_KONTRAK } from "@sai/core/generated/job-numbers";
+import {
+  IDLE_MS,
+  LANE_LOCK_IDLE_SESSION_MS,
+  LANE_LOCK_PROBE_MS,
+  LANE_LOCK_QUERY_TIMEOUT_MS,
+  UPKEEP_MS as UPKEEP_MS_KONTRAK,
+} from "@sai/core/generated/job-numbers";
 import {
   archiveDoneJobs,
   claimJob,
@@ -137,7 +143,15 @@ function workerId(lane: JobLane): string {
 async function ambilPagar(lane: JobLane): Promise<SessionLock | "pooled" | null> {
   const direct = process.env.CONTROL_DATABASE_DIRECT_URL;
   if (direct) {
-    return tryAcquireSessionLock(direct, `sai.lane.${lane}`);
+    /* Waktu denyutnya dari kontrak, bukan bawaan `session-lock`: pagar yang
+       sama dipegang Go (`jobs.LaneLock`), dan dua pemegang satu pagar yang
+       berbeda pendapat tentang kapan kunci dinyatakan hilang adalah dua
+       jendela berhenti yang berbeda. */
+    return tryAcquireSessionLock(direct, `sai.lane.${lane}`, {
+      probeIntervalMs: LANE_LOCK_PROBE_MS,
+      queryTimeoutMs: LANE_LOCK_QUERY_TIMEOUT_MS,
+      idleSessionTimeoutMs: LANE_LOCK_IDLE_SESSION_MS,
+    });
   }
   /* Id kunci diturunkan dari nama jalur secara stabil — dua jalur berbeda tidak
      boleh berebut kunci yang sama. `hashtext` deterministik di satu versi

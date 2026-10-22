@@ -23,6 +23,17 @@
 // ══ HANYA MEMBACA ══════════════════════════════════════════════════════════
 // Setiap pembacaan lewat `internal/ledgerread`, di dalam transaksi READ ONLY.
 // Aman diarahkan ke buku produksi.
+//
+// ══ INSTANS DISELESAIKAN SEPERTI PELARI (tahap 4) ═════════════════════════
+// `-database` hanya NAMA. Instans tempat buku itu hidup dibaca dari registry
+// kendali (`companies.db_instance_key` → `db_instances.url_env_var`, lewat
+// `registry.LookupByDatabase`) lalu dibuka dengan `ledgerread.OpenAt` — jalan
+// yang sama dengan pelari `cmd/interactive`. Sampai 22 Okt 2026 perkakas ini
+// selalu membuka instans bawaan, dan untuk PT yang sudah dipindah itu berarti
+// membandingkan salinan LAMA di server bawaan: paritas yang lolos atas buku
+// yang salah tidak membuktikan apa pun. Kini nama yang tidak terdaftar, atau
+// instans yang env var-nya tidak diset, MELEMPAR. Butuh `CONTROL_DATABASE_URL`
+// — skrip pembandingnya sudah mewajibkannya.
 package main
 
 import (
@@ -36,9 +47,59 @@ import (
 	"time"
 
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/db"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/document"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/ledgerread"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/registry"
 )
+
+// companyLookup menyelesaikan nama basis data → baris registry (dengan
+// instansnya). Disuntik supaya penyelesaiannya teruji tanpa basis data.
+type companyLookup func(ctx context.Context, databaseName string) (*registry.Company, error)
+
+// bookOpener membuka buku di instansnya — `ledgerread.OpenAt` saat berjalan.
+type bookOpener func(ctx context.Context, databaseName, urlEnvVar string) (*ledgerread.Reader, error)
+
+// registryLookup membuka kolam kecil ke basis data kendali.
+func registryLookup(ctx context.Context) (companyLookup, func(), error) {
+	kolam, err := db.Kendali(ctx, 1)
+	if err != nil {
+		return nil, nil, err
+	}
+	return func(c context.Context, nama string) (*registry.Company, error) {
+		return registry.LookupByDatabase(c, kolam, nama)
+	}, kolam.Close, nil
+}
+
+// openBook membuka buku `databaseName` di instans yang dicatat registry —
+// tidak pernah di instans bawaan karena registry diam.
+func openBook(ctx context.Context, databaseName string, lookup companyLookup, open bookOpener) (*ledgerread.Reader, *registry.Company, error) {
+	if databaseName == "" {
+		return nil, nil, errors.New("-database wajib — nama basis data perusahaan (companies.database_name)")
+	}
+	company, err := lookup(ctx, databaseName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if company.DatabaseName != databaseName {
+		return nil, nil, fmt.Errorf("registry memulangkan %q untuk %q", company.DatabaseName, databaseName)
+	}
+	r, err := open(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, nil, err
+	}
+	return r, company, nil
+}
+
+// openFromRegistry: openBook dengan registry kendali sungguhan.
+func openFromRegistry(ctx context.Context, databaseName string) (*ledgerread.Reader, *registry.Company, error) {
+	lookup, tutup, err := registryLookup(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tutup()
+	return openBook(ctx, databaseName, lookup, ledgerread.OpenAt)
+}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -82,7 +143,7 @@ func trialBalance(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	r, err := ledgerread.Open(ctx, *database)
+	r, _, err := openFromRegistry(ctx, *database)
 	if err != nil {
 		return err
 	}
@@ -104,7 +165,7 @@ func trialBalanceXLSX(args []string) error {
 	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
 	asOfRaw := fs.String("as-of", "", "batas tanggal INKLUSIF sebagai instan RFC3339")
 	asOfDate := fs.String("as-of-date", "", "tanggal laporan YYYY-MM-DD (label periode)")
-	registryName := fs.String("registry-name", "", "companies.name — cadangan bila setting wizard kosong")
+	registryName := fs.String("registry-name", "", "companies.name — cadangan bila setting wizard kosong (kosong = dari registry)")
 	out := fs.String("out", "", "berkas .xlsx keluaran")
 	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
 	if err := fs.Parse(args); err != nil {
@@ -125,7 +186,7 @@ func trialBalanceXLSX(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()
 
-	r, err := ledgerread.Open(ctx, *database)
+	r, company, err := openFromRegistry(ctx, *database)
 	if err != nil {
 		return err
 	}
@@ -141,6 +202,10 @@ func trialBalanceXLSX(args []string) error {
 	}
 	if name = strings.TrimSpace(name); name == "" {
 		name = strings.TrimSpace(*registryName)
+	}
+	if name == "" {
+		// Sama dengan pelari: nama registry dari baris yang baru dibaca.
+		name = strings.TrimSpace(company.Name)
 	}
 	if name == "" {
 		name = contract.CompanyNameFallback

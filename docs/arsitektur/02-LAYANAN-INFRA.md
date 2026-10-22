@@ -1087,7 +1087,7 @@ Produksi hari ini satu VM, jadi berkas itu tidak dipakai di mana pun.
 | Pagar jalur `ledger` | Koneksi langsung, dibuktikan ulang tiap 15 detik (`@sai/db/session-lock`) — sejak 22 Okt 2026 juga di compose dasar | Pagar lewat PgBouncer mode transaksi tertinggal di backend kolam — jinak di satu host, kosong di dua |
 | Replika baca | peran `interactive` saja (`runReadOnly`), lewat `:5433`, aturan LSN (`src/lib/read-replica.ts`) | Ekspor dari replika memuat setiap commit sebelum ekspor dimulai, atau ia membaca primary |
 | `svc-worker` lebih dari satu | `container_name` dilepas; `--scale` — `interactive` jamak, tiga peran lain kandidat | Klaim `FOR UPDATE SKIP LOCKED`. ⚠ Volume `hasil` lokal per host — skala LINTAS host menunggu penyimpanan objek untuk hasil |
-| `svc-integrator` lebih dari satu | Jalur `tenant` instans kedua keluar tanpa bekerja → proses keluar → restart: kandidat panas (jalur `interactive` Go-nya ikut restart) | Pagar Go memegang satu koneksi langsung. ⚠ Ia **tidak** membuktikan ulang kuncinya sesudah failover — lihat di bawah |
+| `svc-integrator` lebih dari satu | Jalur `tenant` instans kedua keluar tanpa bekerja → proses keluar → restart: kandidat panas (jalur `interactive` Go-nya ikut restart) | Pagar Go memegang satu koneksi langsung dan membuktikannya ulang tiap 15 detik (`jobs.LaneLock`, waktu dari `contract/kinds.yaml`) — kunci yang hilang sesudah failover menghentikan klaim dan proses keluar 1 |
 
 **Runbook failover.** Patroni yang memutuskan; operator memeriksa.
 
@@ -1125,13 +1125,27 @@ kodenya, dan satu percobaan 22 Okt 2026 terhadap PostgreSQL 17 + PgBouncer
 | Sesi kunci tanpa denyut, `idle_session_timeout` 1 s | server memutusnya dalam 1.005 ms |
 | `run-as-leader` dua instans | kedua menunggu, tidak menjalankan perintahnya; pemimpin keluar dengan kode anaknya (3) |
 
-**Dua utang yang disebut.** (1) Pelari Go (`TryLaneLock`) memegang koneksinya
-tetapi tidak membuktikan ulang kuncinya; sesudah failover, jalur `tenant` lama
-terus mengklaim sementara kandidat di host lain mengambil kunci di primary baru.
-Kebenaran tetap dipikul `dedupe_key` + lease, tapi dua cadangan bisa berjalan
-bersamaan. Perbaikannya denyut yang sama dengan `@sai/db/session-lock`, di Go,
-dengan gerbang `go:test`/`go:lint`. (2) etcd dan REST Patroni tanpa TLS:
-jaringan privat antar-host saja.
+**Satu utang yang disebut:** etcd dan REST Patroni tanpa TLS — jaringan privat
+antar-host saja.
+
+✅ **Dibayar 22 Okt 2026: pagar Go dibuktikan ulang.** Sampai tanggal itu pelari
+Go (`TryLaneLock`) memegang koneksinya tetapi tidak membuktikan ulang kuncinya;
+sesudah failover jalur `tenant` lama terus mengklaim sementara kandidat di host
+lain mengambil kunci di primary baru — dua pelari cadangan. Kini
+`jobs.LaneLock` menjalankan denyut yang sama dengan `@sai/db/session-lock`:
+`pg_backend_pid()` dicatat saat kunci diambil, tiap denyut memastikan backend
+yang menjawab masih backend itu dan kuncinya masih di `pg_locks`; denyut yang
+gagal, lambat, atau menjawab salah = kunci HILANG → klaim berikutnya dihentikan
+seketika, pekerjaan yang sedang jalan diselesaikan (lease-nya yang menjaga),
+`tenantlane.Run` pulang dengan galat, dan `svc-integrator` keluar 1 —
+`restart: unless-stopped` menghidupkannya kembali sebagai kandidat. Sesinya
+diberi `idle_session_timeout`. Ketiga angkanya (denyut 15 s, batas query 10 s,
+`idle_session_timeout` 90 s) kini di `contract/kinds.yaml` (`lane_lock_*`) dan
+dipakai KEDUA bahasa untuk pagar `sai.lane.*`; generator menolak
+denyut + batas query ≥ idle. Bukti: tes Go tanpa basis data
+(`internal/jobs/lanelock_test.go` — backend berganti, kunci lepas dari
+`pg_locks`, koneksi mati, server tak menjawab, pengklaiman dihentikan).
+Failover sungguhan tetap belum pernah terjadi (daftar di atas).
 
 ## 16. Tiga bentuk arsitektur infrastruktur
 

@@ -1,20 +1,36 @@
 /**
- * Kait start server Next (`register` dipanggil SEKALI per proses).
+ * Hook `register` Next — dipanggil SEKALI per instans server sebelum ia
+ * melayani permintaan (node_modules/next/dist/docs/01-app/02-guides/instrumentation.md).
  *
- * Isinya hari ini satu: PERINGATAN START on-premise bila kunci publik lisensi
- * belum ditanam di image (`LICENCE_PUBLIC_KEY_PEM = "BELUM-DISETEL"`). Tanpa
- * baris ini keadaan itu hanya terlihat sebagai menu yang menyempit ke modul
- * inti — gejala yang dibaca customer sebagai "lisensinya rusak", padahal yang
- * belum ada adalah langkah pemilik SAI (docs/ONPREM-SERAH-TERIMA.md §0).
+ * Isinya dua:
+ *   • potret tunda event loop `app-customer` untuk pemicu (a) tahap 1d
+ *     (09 §3.3, §9). Pengukuran itu HARUS di proses yang melayani halaman —
+ *     tunda di proses lain tidak membuat siapa pun menunggu;
+ *   • PERINGATAN START on-premise bila kunci publik lisensi belum ditanam di
+ *     image (`LICENCE_PUBLIC_KEY_PEM = "BELUM-DISETEL"`). Tanpa baris ini
+ *     keadaan itu hanya terlihat sebagai menu yang menyempit ke modul inti —
+ *     gejala yang dibaca customer sebagai "lisensinya rusak", padahal yang
+ *     belum ada adalah langkah pemilik SAI (docs/ONPREM-SERAH-TERIMA.md §0).
+ *     PERINGATAN, bukan galat: lisensi tidak pernah menghentikan aplikasi.
  *
- * PERINGATAN, bukan galat: lisensi tidak pernah menghentikan aplikasi
- * (`packages/core/src/licence.ts`). Pemasangan tanpa kunci tetap start,
- * tetap membuka buku, dan memakai entitlement tersempit.
+ * Runtime edge tidak punya `perf_hooks` maupun `node:crypto`, jadi keduanya
+ * hanya untuk proses Node. Impornya dinamis, mengikuti saran dokumentasinya.
  */
 export async function register(): Promise<void> {
-  // Runtime edge tidak punya `node:crypto`; peringatannya milik proses Node.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  await warnMissingLicenceKey();
+
+  // Pekerja `next build` bukan proses yang melayani siapa pun; barisnya hanya
+  // akan mencemari sampel.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+
+  const { startLoopSampler } = await import("@sai/platform/runtime-samples");
+  const { APP_CUSTOMER_SOURCE } = await import("@sai/core/runtime-trigger");
+  startLoopSampler(APP_CUSTOMER_SOURCE);
+}
+
+async function warnMissingLicenceKey(): Promise<void> {
   const { deployProfile } = await import("@sai/core/deploy-profile");
   const { licenceKeyInstalled } = await import("@sai/core/licence");
 

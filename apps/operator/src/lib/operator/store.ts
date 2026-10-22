@@ -38,6 +38,7 @@ import { attributeConformance, tenantHealthSignals, type HealthSignal } from "@o
 import { runReconciliation, type ReconciliationReport } from "@sai/platform/platform-reconciliation";
 import { queueSnapshot } from "@sai/platform/job-queue";
 import { jobMetrics, type LaneMetrics } from "@sai/platform/job-metrics";
+import { runtimeSummary, type RuntimeSummary } from "@sai/platform/runtime-samples";
 import type { LaneQueueHealth } from "@sai/core/queue-health";
 import {
   mailSettingsView,
@@ -689,6 +690,25 @@ export async function jobMetricsForOperator(
     return await deps.metrics();
   } catch (error) {
     console.error("[operator-store] metrik antrean tak terbaca:", error);
+    return null;
+  }
+}
+
+/**
+ * Ringkasan pemicu tahap 1d — `null` bila tak terbaca, pola yang sama.
+ *
+ * Tabel `runtime_samples` baru ada sejak migration `0008`. Pemasangan yang
+ * belum menerapkannya mendapat "belum bisa dibaca", BUKAN vonis "belum
+ * terpicu": yang kedua adalah pernyataan tentang beban kerja, dan tanpa tabel
+ * tidak ada yang diketahui tentang beban kerja.
+ */
+export async function runtimeSummaryForOperator(
+  deps: { summary: () => Promise<RuntimeSummary> } = { summary: runtimeSummary }
+): Promise<RuntimeSummary | null> {
+  try {
+    return await deps.summary();
+  } catch (error) {
+    console.error("[operator-store] potret runtime tak terbaca:", error);
     return null;
   }
 }

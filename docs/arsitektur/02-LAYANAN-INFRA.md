@@ -720,7 +720,7 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur** dan **laju & durasi pekerjaan** (dua panel, sengaja terpisah: yang pertama berambang, yang kedua belum); `/conformance` memuat **catatan per buku** beserta lamanya |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah: yang pertama berambang, yang kedua belum), dan **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel); `/conformance` memuat **catatan per buku** beserta lamanya |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 
@@ -830,6 +830,34 @@ tujuh yang dikarang.
 | Pelacakan error | Error runtime hanya di log |
 | Pemantauan luar | ❓ `/api/health` ada; pembacanya belum dipastikan |
 | Peringatan saat scheduler mati total | `watch:health` berjalan **di dalam** `job-scheduler` dan ikut mati |
+
+### Pemicu tahap 1d: tunda event loop & memori per pekerjaan
+
+Panel ketiga `/scheduler` membaca vonis dua pemicu 1d ([09 §3.3](./09-RANCANGAN-LAYANAN.md))
+dari tabel kendali `runtime_samples` (migration `0008`), jendela 7 hari, retensi
+14 hari (sama dengan `jobs`; dipangkas upkeep setiap pelari).
+
+| Pemicu | Yang diukur | Ambang | Sampel minimum |
+|---|---|---|---|
+| (a) event loop | `app-customer` (hook `register`, `src/instrumentation.ts`) dan setiap pelari jalur memotret `monitorEventLoopDelay` per jendela 5 menit. Yang **dinilai** hanya `app-customer`: p95 atas p99-per-jendela | 100 ms | 288 jendela (satu hari) |
+| (b) memori | puncak RSS setiap percobaan pekerjaan di pelari Node, jalur `interactive` + `bulk` — **tertinggi**, bukan persentil | 768 MiB | 20 percobaan |
+
+Ambang, minimum, dan fungsi vonisnya di `@sai/core/runtime-trigger` (murni,
+diuji `tests/stage-1d-trigger.test.ts`); pengukurnya `@sai/platform/runtime-samples`.
+
+| Keputusan | Alasan |
+|---|---|
+| Tabel sendiri, **bukan kolom di `jobs`** | `jobs` dibagi dengan pelari Go (kolom yang Go tinggalkan NULL selamanya), ia tabel terpanas di kendali, dan pemicu (a) bukan peristiwa pekerjaan — `app-customer` tidak menjalankan `jobs` |
+| Tiga keadaan: terpicu · belum · **sampel kurang** | sampel kurang tidak pernah menjadi "terpicu", seburuk apa pun angkanya — 1d adalah penulisan ulang yang tak bisa ditarik dengan satu commit |
+| Loop pelari **tidak** dinilai (a) | ekspor besar sudah di `svc-interactive`; loop yang ditahannya tidak membuat halaman siapa pun menunggu. Angkanya konteks |
+| RSS, bukan heap, untuk (b) | pelari berjalan di Bun, yang mengabaikan `--max-old-space-size`. RSS dikoreksi tanda air kernel (`resourceUsage().maxRSS`), sebab blok sinkron menahan timer cuplikan juga |
+| Penulis fail-soft, `runtime-samples` tanpa `server-only` | galat tulis menurunkan jumlah sampel (terlihat sebagai "sampel kurang"), tidak menjatuhkan permintaan; `server-only` di hook `register` berisiko melempar saat boot |
+
+⚠ Yang tidak terlihat: pekerjaan yang **mati** kehabisan memori tidak
+meninggalkan sampel — jejaknya pekerjaan yang dipulangkan `reclaimStaleJobs`
+dengan `attempts` bertambah. Dan "terpicu" (a) tidak tahu penyebabnya: loop
+`app-customer` bisa tertahan ekspor sinkron di bawah `EXPORT_QUEUE_HANDOFF_ROWS`
+atau render berat. Vonis itu membuka **penimbangan** 1d, bukan pembangunannya.
 
 ### Sapuan kesesuaian berjalan SERENTAK, dan yang membatasinya basis datanya
 

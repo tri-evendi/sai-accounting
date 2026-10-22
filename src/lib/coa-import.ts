@@ -4,7 +4,7 @@
  * Modul ini TIDAK menyentuh DB dan TIDAK membaca file: ia menerima baris mentah
  * (array of array, hasil parse `@/lib/xlsx-read`) dan mengubahnya menjadi baris
  * akun tervalidasi atau daftar galat per-baris. Dipisah begini supaya seluruh
- * aturan impor bisa diuji tanpa MySQL maupun ExcelJS (lihat tests/coa-import).
+ * aturan impor bisa diuji tanpa basis data maupun ExcelJS (lihat tests/coa-import).
  *
  * Format mengikuti konvensi Accurate yang biasa dipakai staff:
  *   - Baris pertama = judul kolom, TIDAK diimpor.

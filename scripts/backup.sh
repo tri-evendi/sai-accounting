@@ -13,12 +13,10 @@
 # menyentuh tenant lain, padahal "pulihkan data kami saja ke keadaan Selasa"
 # adalah permintaan biasa di SaaS berbayar (rancangan §1, §6).
 #
-# Skrip ini TETAP ADA, dan bukan karena belum dibereskan. Tiga gunanya:
+# Skrip ini TETAP ADA, dan bukan karena belum dibereskan. Dua gunanya:
 #
 #   1. jalan mundur bertangan bila jalur antrean sedang tidak bisa dipakai;
-#   2. satu-satunya yang bisa mendump MariaDB — artefak dari sebelum penukaran
-#      15 Okt 2026 masih satu-satunya salinan dari masa itu;
-#   3. rujukan FORMAT. Artefak jalur `tenant` memakai `openssl enc` yang sama
+#   2. rujukan FORMAT. Artefak jalur `tenant` memakai `openssl enc` yang sama
 #      persis seperti di bawah, byte per byte — supaya prosedur pemulihan tidak
 #      bercabang, dan supaya hari pemulihan tidak menuntut biner Go.
 #
@@ -31,8 +29,8 @@
 # objek yang harus dicadangkan tumbuh seiring jumlah pelanggan. Dan sejak
 # #367/#370 daftarnya bukan lagi hanya basis data:
 #
-#   • SELURUH basis data (kendali, platform, dan setiap buku PT) — satu dump
-#     `--all-databases`, bukan daftar yang diketik tangan. Daftar yang diketik
+#   • SELURUH basis data (kendali, platform, dan setiap buku PT) — satu
+#     `pg_dumpall`, bukan daftar yang diketik tangan. Daftar yang diketik
 #     tangan pasti tertinggal saat pelanggan baru mendaftar, dan cadangan
 #     "hampir semua" adalah janji yang diingkari diam-diam (aturan yang sama
 #     dengan sapuan `information_schema` di ekspor mandiri).
@@ -41,7 +39,7 @@
 #
 # ══ KENAPA SHELL, BUKAN TYPESCRIPT ═════════════════════════════════════════
 # Setiap langkah di sini adalah satu perkakas baku yang sudah terbukti:
-# `mariadb-dump`, `tar`, `gzip`, `openssl`, `aws s3`. Menulis ulang orkestrasi
+# `pg_dumpall`, `tar`, `gzip`, `openssl`, `aws s3`. Menulis ulang orkestrasi
 # sesederhana ini di TypeScript berarti menambah runtime dan lapisan yang harus
 # dipercaya, tanpa menambah satu jaminan pun. Yang tidak sepele — apa yang
 # dijamin skrip ini — dijaga `tests/backup-script.test.ts`.
@@ -55,8 +53,8 @@
 # hanya bila pengirimannya berhasil.
 #
 # ══ YANG TIDAK PERNAH DILAKUKAN SKRIP INI ══════════════════════════════════
-# Tidak mencetak kredensial (kata sandi lewat berkas opsi, bukan argumen —
-# argumen terbaca `ps`). Tidak menghapus apa pun sebelum unggahan sukses.
+# Tidak mencetak kredensial (kata sandi lewat environment `PGPASSWORD`, bukan
+# argumen — argumen terbaca `ps`). Tidak menghapus apa pun sebelum unggahan sukses.
 # Tidak pernah menyentuh basis data selain MEMBACA.
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -104,15 +102,15 @@ die() {
 
 # ── Konfigurasi ────────────────────────────────────────────────────────────
 
-# ── Mesin basis data: DITURUNKAN dari URL, bukan sakelar terpisah ──────────
+# ── Mesin basis data: hanya PostgreSQL ────────────────────────────────────
 #
-# Sakelar sendiri (`DB_ENGINE=postgres`) bisa menyimpang dari URL-nya — satu
-# disetel, satunya lupa — dan cadangan yang memakai perkakas mesin yang SALAH
-# gagal dengan pesan yang tidak menyebut sebabnya. URL-nya sudah menyatakan
-# mesinnya; satu sumber kebenaran.
+# Cabang MariaDB (`mariadb-dump --all-databases`) dicabut di Fase E (#636,
+# 22 Okt 2026). URL selain `postgres://` DITOLAK, bukan ditebak: dulu URL yang
+# tidak dikenali jatuh ke cabang MariaDB, dan sekarang tidak ada lagi tempat
+# untuk jatuh.
 case "${DATABASE_URL:-}" in
   postgres://*|postgresql://*) MESIN=postgres ;;
-  *) MESIN=mariadb ;;
+  *) die "DATABASE_URL harus postgres://… — MariaDB sudah dicabut (#636)." ;;
 esac
 
 # ── Host, port, dan kredensial: dari URL YANG SAMA ────────────────────────
@@ -131,51 +129,41 @@ esac
 # dan penjadwalnya tetap melapor `ok`.
 #
 # == KENAPA KREDENSIALNYA JUGA DARI URL ===================================
-# `DB_ROOT_PASSWORD` adalah sandi root MariaDB. Memakainya untuk PostgreSQL
-# berarti dua rahasia berbeda dipaksa menjadi satu, dan rotasi salah satunya
-# akan mematahkan yang lain tanpa menyebutkannya.
+# Sampai #636 cabang MariaDB memakai `DB_ROOT_PASSWORD` (sandi root MariaDB).
+# Memakainya untuk PostgreSQL berarti dua rahasia berbeda dipaksa menjadi satu;
+# kini satu-satunya sumber adalah URL-nya.
 uri_decode() {
   # Kredensial di URL ter-persen-encode. Dua skrip di repo ini pernah lupa
   # men-decode-nya dan gagal hanya ketika sandinya kebetulan memuat `@` / `%`.
   printf '%b' "$(printf '%s' "$1" | sed 's/+/ /g; s/%\(..\)/\\x\1/g')"
 }
 
-if [ "$MESIN" = "postgres" ]; then
-  _netloc=${DATABASE_URL#*://}
-  _netloc=${_netloc%%/*}
-  case "$_netloc" in
-    *@*) _userinfo=${_netloc%@*} ; _hostport=${_netloc##*@} ;;
-    *)   _userinfo=""            ; _hostport=$_netloc ;;
-  esac
-  case "$_hostport" in
-    *:*) _host=${_hostport%:*} ; _port=${_hostport##*:} ;;
-    *)   _host=$_hostport      ; _port=5432 ;;
-  esac
-  case "$_userinfo" in
-    *:*) _user=${_userinfo%%:*} ; _pass=${_userinfo#*:} ;;
-    *)   _user=$_userinfo       ; _pass="" ;;
-  esac
-  : "${DB_HOST:=$_host}"
-  : "${DB_PORT:=$_port}"
-  : "${DB_USER:=$(uri_decode "$_user")}"
-  DB_SANDI=$(uri_decode "$_pass")
-else
-  : "${DB_HOST:=db}"
-  : "${DB_PORT:=3306}"
-  : "${DB_USER:=root}"
-  DB_SANDI=${DB_ROOT_PASSWORD:-}
-fi
+_netloc=${DATABASE_URL#*://}
+_netloc=${_netloc%%/*}
+case "$_netloc" in
+  *@*) _userinfo=${_netloc%@*} ; _hostport=${_netloc##*@} ;;
+  *)   _userinfo=""            ; _hostport=$_netloc ;;
+esac
+case "$_hostport" in
+  *:*) _host=${_hostport%:*} ; _port=${_hostport##*:} ;;
+  *)   _host=$_hostport      ; _port=5432 ;;
+esac
+case "$_userinfo" in
+  *:*) _user=${_userinfo%%:*} ; _pass=${_userinfo#*:} ;;
+  *)   _user=$_userinfo       ; _pass="" ;;
+esac
+: "${DB_HOST:=$_host}"
+: "${DB_PORT:=$_port}"
+: "${DB_USER:=$(uri_decode "$_user")}"
+DB_SANDI=$(uri_decode "$_pass")
+
 : "${BACKUP_RETENTION_DAYS:=30}"
 : "${BACKUP_PREFIX:=sai}"
 : "${BACKUP_DATA_DIR:=/app/data}"
 : "${BACKUP_WORK_DIR:=/tmp/backup}"
 
-if [ "$MESIN" = "postgres" ]; then
-  [ -n "$DB_SANDI" ] || die "DATABASE_URL tidak memuat sandi — dump seluruh basis data menuntut kredensial."
-  [ -n "$DB_HOST" ] || die "DATABASE_URL tidak memuat host."
-else
-  [ -n "$DB_SANDI" ] || die "DB_ROOT_PASSWORD belum diset — dump seluruh basis data menuntut root."
-fi
+[ -n "$DB_SANDI" ] || die "DATABASE_URL tidak memuat sandi — dump seluruh basis data menuntut kredensial."
+[ -n "$DB_HOST" ] || die "DATABASE_URL tidak memuat host."
 [ -n "${BACKUP_ENCRYPTION_KEY:-}" ] || die "BACKUP_ENCRYPTION_KEY belum diset. Cadangan TIDAK PERNAH dikirim tanpa sandi: isinya seluruh pembukuan setiap pelanggan."
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 NAME="${BACKUP_PREFIX}-${STAMP}"
@@ -221,49 +209,34 @@ mkdir -p "$BACKUP_WORK_DIR"
 ARCHIVE="${BACKUP_WORK_DIR}/${NAME}.tar.gz"
 SEALED="${ARCHIVE}.enc"
 
-# Berkas opsi: kata sandi TIDAK PERNAH jadi argumen baris perintah — argumen
-# terbaca siapa pun yang bisa menjalankan `ps` di dalam container.
-OPTFILE="${BACKUP_WORK_DIR}/my.cnf"
+# Kata sandi TIDAK PERNAH jadi argumen baris perintah — argumen terbaca siapa
+# pun yang bisa menjalankan `ps` di dalam container. Ia lewat `PGPASSWORD` di
+# environment proses `pg_dumpall` saja (lihat langkah 1).
 umask 077
-if [ "$MESIN" = "mariadb" ]; then
-  printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword=%s\n' \
-    "$DB_HOST" "$DB_PORT" "$DB_USER" "$DB_SANDI" > "$OPTFILE"
-fi
 
 cleanup() { rm -rf "$BACKUP_WORK_DIR"; }
 trap cleanup EXIT INT TERM
 
 # ── 1. Dump SELURUH basis data ─────────────────────────────────────────────
-# `--single-transaction` = snapshot konsisten tanpa mengunci tabel InnoDB;
-# produksi tetap melayani permintaan selama dump berjalan.
-# `--routines --events --triggers` supaya yang dipulihkan benar-benar sama.
 DUMP="${BACKUP_WORK_DIR}/semua-basis-data.sql"
 log "dump seluruh basis data (${MESIN}) → $(basename "$DUMP")"
 if [ "$DRY_RUN" = "0" ]; then
-  if [ "$MESIN" = "postgres" ]; then
-    # `pg_dumpall` dan BUKAN `pg_dump`: yang dibutuhkan SELURUH basis data —
-    # kendali, platform, dan setiap buku PT — persis alasan `--all-databases`
-    # dipakai di jalur MariaDB. `pg_dump` hanya satu basis data, dan daftar
-    # yang diketik tangan pasti tertinggal saat pelanggan baru mendaftar.
-    #
-    # `--clean --if-exists` supaya hasilnya bisa dipulihkan ke server yang sudah
-    # berisi, bukan hanya ke server kosong — pada hari pemulihan, menuntut
-    # server kosong adalah syarat yang mahal.
-    #
-    # Perannya diambil dari URL, BUKAN dipaku `postgres`. Peran yang dipaku
-    # akan gagal di pemasangan mana pun yang memberi nama lain pada peran
-    # super-nya — dan di sini namanya memang bukan `postgres`.
-    PGPASSWORD="$DB_SANDI" pg_dumpall \
-      --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
-      --clean --if-exists > "$DUMP" \
-      || die "pg_dumpall gagal — cadangan TIDAK dikirim."
-  else
-    mariadb-dump --defaults-extra-file="$OPTFILE" \
-      --all-databases --single-transaction --quick \
-      --routines --events --triggers \
-      --default-character-set=utf8mb4 > "$DUMP" \
-      || die "mariadb-dump gagal — cadangan TIDAK dikirim."
-  fi
+  # `pg_dumpall` dan BUKAN `pg_dump`: yang dibutuhkan SELURUH basis data —
+  # kendali, platform, dan setiap buku PT. `pg_dump` hanya satu basis data,
+  # dan daftar yang diketik tangan pasti tertinggal saat pelanggan baru
+  # mendaftar.
+  #
+  # `--clean --if-exists` supaya hasilnya bisa dipulihkan ke server yang sudah
+  # berisi, bukan hanya ke server kosong — pada hari pemulihan, menuntut
+  # server kosong adalah syarat yang mahal.
+  #
+  # Perannya diambil dari URL, BUKAN dipaku `postgres`. Peran yang dipaku
+  # akan gagal di pemasangan mana pun yang memberi nama lain pada peran
+  # super-nya — dan di sini namanya memang bukan `postgres`.
+  PGPASSWORD="$DB_SANDI" pg_dumpall \
+    --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
+    --clean --if-exists > "$DUMP" \
+    || die "pg_dumpall gagal — cadangan TIDAK dikirim."
 else
   log "  (dry-run) dilewati"
   : > "$DUMP"

@@ -51,7 +51,7 @@ Salah memahami keempat ini berarti menulis baris ke basis data yang salah.
 | **Guard arsitektural** | Tes yang menjaga aturan, bukan perilaku |
 | **Allowlist** | Daftar izin yang disebut persis, bukan pola |
 | **Baseline** | Satu `0001_baseline` per basis data, menggantikan 99 migration MariaDB |
-| **Fallback** (MariaDB) | Service `db` yang masih hidup tetapi tidak ditulisi sejak 15 Okt 2026 (#636) |
+| **Fallback** (MariaDB) | Service `db` yang hidup tetapi tidak ditulisi 15–22 Okt 2026; dicabut di Fase E (#636) |
 | **Antrean** | Tabel `jobs` di basis data **kendali** — bukan broker. Satu-satunya pertemuan penerbit dan pekerja; I-3 melarang layanan saling memanggil |
 | **Menerbitkan vs melaksanakan** | Penerbit menulis satu baris `jobs` dan selesai dalam milidetik; pelaksana mengurasnya. Langkah penjadwal yang MELAKSANAKAN menahan seluruh putaran berikutnya ketika ia menggantung |
 | **`dedupe_key`** | Kunci unik penerbitan. Ia yang **menggantikan *leader election***: denyut yang berjalan dua kali menerbitkan dua kali, yang kedua menabrak constraint, dan tidak ada apa pun yang perlu memutuskan siapa pemimpinnya |

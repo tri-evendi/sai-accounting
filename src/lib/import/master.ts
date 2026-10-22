@@ -12,7 +12,7 @@
  * ══ YANG SENGAJA TIDAK ADA DI SINI ══════════════════════════════════════════
  * Tidak ada Prisma dan tidak ada ExcelJS: modul ini menerima matriks sel dan
  * memulangkan baris tervalidasi atau galat per-baris — aturan #381 butir 1,
- * dan alasan seluruh aturan impor bisa diuji tanpa MySQL.
+ * dan alasan seluruh aturan impor bisa diuji tanpa basis data.
  *
  * Tidak ada penulisan. Yang MENGABAIKAN baris yang sudah ada di basis data
  * (bukan menimpanya) adalah route-nya, dengan pola yang sama seperti impor

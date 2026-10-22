@@ -29,6 +29,7 @@ import "dotenv/config";
 import { spawnSync } from "node:child_process";
 import { PrismaClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
+import { bukaServer } from "@sai/db/server";
 import { companyDatabaseUrl } from "@sai/db/company-url";
 import { firstConflict, resolveDatabaseName } from "../src/lib/company-provisioning-shared";
 import { isReservedCompanySlug } from "@sai/core/tenant-routes";
@@ -159,10 +160,13 @@ async function main() {
     console.log(`1/3  memakai basis data yang sudah ada: ${databaseName}`);
   } else {
     console.log(`1/3  membuat basis data ${databaseName}`);
+    /* Lewat `@sai/db/server` — sintaks PostgreSQL (`TEMPLATE template0`,
+       collation eksplisit) hidup di satu tempat. Sampai #636 baris ini masih
+       `CREATE DATABASE \`nama\` … utf8mb4` milik MariaDB, yang DITOLAK
+       PostgreSQL. */
+    const server = await bukaServer(controlUrl);
     try {
-      await control.$executeRawUnsafe(
-        `CREATE DATABASE \`${databaseName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-      );
+      await server.buat(databaseName);
     } catch (error) {
       console.error(
         `GAGAL membuat basis data: ${(error as Error).message}\n` +
@@ -171,6 +175,8 @@ async function main() {
           databaseName
       );
       process.exit(1);
+    } finally {
+      await server.tutup();
     }
   }
 
@@ -183,7 +189,7 @@ async function main() {
   if (migrate.status !== 0) {
     console.error(
       "GAGAL menerapkan migration. Perusahaan TIDAK didaftarkan — basis datanya\n" +
-        `masih ada dan bisa dihapus (DROP DATABASE \`${databaseName}\`) sebelum mencoba lagi.`
+        `masih ada dan bisa dihapus (DROP DATABASE "${databaseName}") sebelum mencoba lagi.`
     );
     process.exit(1);
   }

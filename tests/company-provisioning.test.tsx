@@ -79,14 +79,16 @@ describe("nama basis data — ini penjaga keamanan, bukan kerapian", () => {
     expect(() => assertSafeDatabaseName("sai_A")).toThrow(ProvisionError);
   });
 
-  it("menegakkan batas 64 karakter — batas identifier MySQL/MariaDB, bukan pilihan", () => {
-    expect(MAX_DATABASE_NAME_LENGTH).toBe(64);
+  it("menegakkan batas 63 karakter — batas identifier PostgreSQL, bukan pilihan", () => {
+    /* PostgreSQL MEMOTONG identifier >63 dengan sekadar NOTICE: basis data jadi
+       63 karakter, registry mencatat 64, bukunya tak pernah terbuka lagi. */
+    expect(MAX_DATABASE_NAME_LENGTH).toBe(63);
     expect(() => assertSafeDatabaseName("sai_" + "a".repeat(80))).toThrow(ProvisionError);
-    expect(() => assertSafeDatabaseName("sai_" + "a".repeat(61))).toThrow(ProvisionError); // 65
-    expect(() => assertSafeDatabaseName("sai_" + "a".repeat(60))).not.toThrow(); // tepat 64
+    expect(() => assertSafeDatabaseName("sai_" + "a".repeat(60))).toThrow(ProvisionError); // 64
+    expect(() => assertSafeDatabaseName("sai_" + "a".repeat(59))).not.toThrow(); // tepat 63
     // …dan penurunan dari slug + awalan tenant tidak pernah melewatinya,
     // bahkan dengan id tenant terbesar dan slug terpanjang.
-    expect(databaseNameForSlug("x".repeat(200), 2147483647).length).toBeLessThanOrEqual(64);
+    expect(databaseNameForSlug("x".repeat(200), 2147483647).length).toBeLessThanOrEqual(63);
     expect(() =>
       assertSafeDatabaseName(databaseNameForSlug("x".repeat(200), 2147483647))
     ).not.toThrow();
@@ -233,9 +235,11 @@ describe("checksum migration — kontrak dengan `prisma migrate deploy`", () => 
 
 /**
  * Galat 1044 apa adanya dari PRODUKSI (2026-08-09, pembuatan PT Movin
- * Nusantara Cakrawala) — bukan karangan. Bentuk inilah yang dulu ditampilkan
- * utuh di layar pemilik PT, lengkap dengan nomor koneksi, SQLState, pernyataan
- * SQL, dan nama pengguna basis data.
+ * Nusantara Cakrawala, masih di MariaDB) — bukan karangan. Bentuk inilah yang
+ * dulu ditampilkan utuh di layar pemilik PT, lengkap dengan nomor koneksi,
+ * SQLState, pernyataan SQL, dan nama pengguna basis data. Dipertahankan
+ * sebagai contoh galat MENTAH: aturan "tidak pernah sampai ke layar" tidak
+ * bergantung pada mesinnya.
  */
 const GALAT_1044 = Object.assign(
   new Error(
@@ -247,6 +251,16 @@ const GALAT_1044 = Object.assign(
   { errno: 1044, sqlState: "42000", code: "ER_DBACCESS_DENIED_ERROR" }
 );
 
+/**
+ * Padanannya di PostgreSQL: `CREATE DATABASE` oleh role tanpa `CREATEDB`.
+ * Bentuk galat driver `pg` — `code` berisi SQLSTATE.
+ */
+const GALAT_42501 = Object.assign(new Error("permission denied to create database"), {
+  code: "42501",
+  severity: "ERROR",
+  routine: "createdb",
+});
+
 /** Yang tidak boleh ada satu pun di kalimat yang dibaca pengguna. */
 const BOCORAN = ["SQLState", "conn:", "CREATE DATABASE", "'sai'@'%'", "errno", "1044"];
 
@@ -257,29 +271,33 @@ const KAMUS: ReadonlyArray<{ nama: string; kamus: Dictionary; admin: string }> =
 ];
 
 describe("hak akses basis data dikenali dari NOMOR galatnya, bukan dari teksnya", () => {
-  it("1044/1045 — dua-duanya 'tidak berhak', dan keduanya harus tertangkap", () => {
-    // Teks pesan mariadb berubah antar versi dan antar bahasa server; nomornya
-    // tidak. Karena itu yang dibaca `errno`/`code`, bukan `message`.
-    expect(isAccessDeniedError(GALAT_1044)).toBe(true);
-    expect(isAccessDeniedError({ errno: 1045 })).toBe(true);
-    expect(isAccessDeniedError({ code: "ER_DBACCESS_DENIED_ERROR" })).toBe(true);
-    expect(isAccessDeniedError({ code: "ER_ACCESS_DENIED_ERROR" })).toBe(true);
+  it("42501/28P01/28000 — semuanya 'tidak berhak', dan semuanya harus tertangkap", () => {
+    // Teks pesan berubah antar versi dan antar `lc_messages` server; SQLSTATE
+    // tidak. Karena itu yang dibaca `code`, bukan `message`.
+    expect(isAccessDeniedError(GALAT_42501)).toBe(true);
+    expect(isAccessDeniedError({ code: "28P01" })).toBe(true);
+    expect(isAccessDeniedError({ code: "28000" })).toBe(true);
+  });
+
+  it("nomor MariaDB tidak lagi dikenali — driver-nya sudah dicabut (#636)", () => {
+    expect(isAccessDeniedError(GALAT_1044)).toBe(false);
+    expect(isAccessDeniedError({ errno: 1045 })).toBe(false);
   });
 
   it("kegagalan lain TIDAK ikut terbawa — tindak lanjutnya berbeda", () => {
     // Kalau semua kegagalan disebut "hubungi admin soal hak akses", pesan itu
     // akan menyesatkan pada hari nama bentrok atau koneksi putus.
-    expect(isAccessDeniedError({ errno: 1007 })).toBe(false); // basis data sudah ada
-    expect(isAccessDeniedError({ errno: 2006 })).toBe(false); // koneksi putus
+    expect(isAccessDeniedError({ code: "42P04" })).toBe(false); // basis data sudah ada
+    expect(isAccessDeniedError({ code: "57P01" })).toBe(false); // koneksi diputus admin
     expect(isAccessDeniedError({ code: "ECONNREFUSED" })).toBe(false);
     expect(isAccessDeniedError(new Error("Access denied for user"))).toBe(false);
-    expect(isAccessDeniedError("1044")).toBe(false);
+    expect(isAccessDeniedError("42501")).toBe(false);
     expect(isAccessDeniedError(null)).toBe(false);
     expect(isAccessDeniedError(undefined)).toBe(false);
   });
 });
 
-describe("pesan kegagalan penyediaan: berbahasa tugas, bukan berbahasa mariadb", () => {
+describe("pesan kegagalan penyediaan: berbahasa tugas, bukan berbahasa driver", () => {
   it("galat SQL mentah tidak pernah jadi kalimat pengguna — ia jatuh ke pesan umum", () => {
     const { key } = provisionErrorMessage(GALAT_1044);
     expect(key).toBe("companies.errFailed");
@@ -289,10 +307,10 @@ describe("pesan kegagalan penyediaan: berbahasa tugas, bukan berbahasa mariadb",
     }
   });
 
-  it("1044 yang sudah dikenali penyedia menyebut APA yang gagal DAN langkah berikutnya", () => {
-    const error = new ProvisionError("CREATE DATABASE `sai_t3_x` ditolak (1044).", "create_database", {
+  it("42501 yang sudah dikenali penyedia menyebut APA yang gagal DAN langkah berikutnya", () => {
+    const error = new ProvisionError('CREATE DATABASE "sai_t3_x" ditolak (42501).', "create_database", {
       code: "database_permission_denied",
-      cause: GALAT_1044,
+      cause: GALAT_42501,
     });
     const { key } = provisionErrorMessage(error);
     expect(key).toBe("companies.errPermissionDenied");
@@ -306,7 +324,7 @@ describe("pesan kegagalan penyediaan: berbahasa tugas, bukan berbahasa mariadb",
     }
 
     // Galat aslinya tetap ada — di `cause`, yang perginya ke log server.
-    expect(error.cause).toBe(GALAT_1044);
+    expect(error.cause).toBe(GALAT_42501);
   });
 
   it("bentrok nama tetap bisa dibedakan dari kegagalan hak akses", () => {

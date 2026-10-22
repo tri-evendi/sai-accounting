@@ -177,7 +177,7 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 ---
 
 ## 7. Migrations (workflow proyek ini)
-> **Mesin: PostgreSQL 17 sejak 15 Okt 2026.** Riwayat MariaDB (`prisma/migrations/` 0001–0065, `prisma/control/migrations/`, `prisma/platform/migrations/`) adalah arsip hanya-baca. Berkas baru di sana tidak akan diterapkan. Latar dan validasinya: [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md).
+> **Mesin: PostgreSQL 17 sejak 15 Okt 2026.** Riwayat MariaDB (`prisma/_arsip-mariadb/company/` 0001–0065, `prisma/_arsip-mariadb/control/`, `prisma/_arsip-mariadb/platform/` — sampai #636 di `prisma/migrations/` dan `prisma/{control,platform}/migrations/`) adalah arsip hanya-baca; MariaDB sendiri dicabut 22 Okt 2026 (#636). Berkas baru di sana tidak akan diterapkan. Latar dan validasinya: [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md).
 
 - Proyek ini tidak memakai `prisma migrate dev`. Migration ditulis tangan sebagai folder berurutan di `prisma/postgresql/<db>/NNNN_<nama>/migration.sql`, dengan `<db>` = `company` (buku tiap PT), `control`, atau `platform`. Contoh: `prisma/postgresql/control/0002_slug_permanen`.
 - Diterapkan via `prisma migrate deploy`: `bun run db:migrate:all` (control → platform → setiap PT). Di produksi `migrate` menyambung langsung ke `pg`, tidak lewat PgBouncer, karena advisory lock Prisma terikat sesi.

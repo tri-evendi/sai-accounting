@@ -15,29 +15,28 @@ import type { DictionaryKey } from "@sai/core/i18n/dictionary";
 /**
  * Awalan WAJIB untuk nama basis data perusahaan.
  *
- * Bukan sekadar kerapian penamaan — ini setengah dari pengamannya. Hak akses
- * pengguna basis data aplikasi dibatasi pola yang sama; bentuk yang dianjurkan
- * hari ini menyempitkannya lagi ke basis data yang memang DIBUAT penyediaan
- * (`sai_t{tenantId}_{slug}`, issue #153):
- *
- *   GRANT CREATE, ALTER, DROP, INDEX, REFERENCES,
- *         SELECT, INSERT, UPDATE, DELETE
- *     ON `sai\_t%`.* TO 'sai'@'%'
- *
- * Jadi meskipun ada celah yang membuat penyerang mengendalikan nama, ia tetap
- * tidak bisa menyentuh basis data di luar pola itu. Kode menegakkan sisi
- * satunya, dan keduanya harus tetap sejalan — lihat docs/MULTI-COMPANY.md §3,
- * termasuk apa yang terjadi bila hibahnya belum pernah dijalankan (galat 1044).
+ * Di masa MariaDB awalan ini juga menjadi pola hibah hak (`GRANT … ON
+ * \`sai\_t%\`.*`). PostgreSQL tidak punya pembatasan pola nama — hak membuat
+ * basis data adalah `CREATEDB` pada role, berlaku untuk nama apa pun — jadi
+ * sejak penukaran KODE inilah satu-satunya yang menegakkan awalannya (nama
+ * `sai_t{tenantId}_{slug}` sejak issue #153). Lihat docs/MULTI-COMPANY.md §3,
+ * termasuk apa yang terjadi bila role-nya belum berhak (`42501`).
  */
 export const COMPANY_DATABASE_PREFIX = "sai_";
 
 /**
- * Batas keras panjang identifier MySQL/MariaDB — bukan pilihan kami. Sejak
- * awalan tenant ikut di nama (issue #153) batas ini yang dijaga eksplisit:
- * nama turunan dipotong sampai muat, nama eksplisit ditolak bila melewatinya.
- * Kolom registry `database_name` juga VARCHAR(64), sengaja sama.
+ * Batas keras panjang identifier PostgreSQL (`NAMEDATALEN - 1`) — bukan pilihan
+ * kami. Sejak awalan tenant ikut di nama (issue #153) batas ini yang dijaga
+ * eksplisit: nama turunan dipotong sampai muat, nama eksplisit ditolak bila
+ * melewatinya.
+ *
+ * Sampai #636 angkanya 64 (batas MySQL). PostgreSQL MEMOTONG identifier yang
+ * lebih panjang dengan sekadar NOTICE — basis data bernama 63 karakter, registry
+ * mencatat 64, dan buku itu tak pernah bisa dibuka lagi. `@sai/db/server`
+ * sudah menolak >63 lebih dulu; angka ini kini sepakat dengannya. Kolom registry
+ * `database_name` tetap VARCHAR(64), cukup untuk keduanya.
  */
-export const MAX_DATABASE_NAME_LENGTH = 64;
+export const MAX_DATABASE_NAME_LENGTH = 63;
 
 export type ProvisionPhase = "validate" | "create_database" | "migrate" | "register" | "done";
 
@@ -90,7 +89,7 @@ export function normalizeSlug(raw: string): string {
  * menyimpan `database_name` per perusahaan, jadi skema baru hanya berlaku
  * untuk penyediaan berikutnya.
  *
- * Pemotongan ke 64 memotong EKOR (bagian slug), tidak pernah awalannya — id
+ * Pemotongan ke 63 memotong EKOR (bagian slug), tidak pernah awalannya — id
  * tenant selalu utuh, jadi keunikan lintas tenant tetap terjaga. Dalam
  * praktiknya tidak pernah terpotong: `sai_t` (5) + id (≤10 digit) + `_` (1)
  * + slug (≤40) = maksimal 56.
@@ -128,12 +127,12 @@ export function resolveDatabaseName(
  *    dengan §4.4 docs/MULTI-TENANT.md pada username).
  *
  *  • `database` berbenturan GLOBAL: nama basis data adalah ruang nama fisik
- *    satu server MariaDB, tidak peduli tenant. Untuk nama turunan ini tak
+ *    satu server PostgreSQL, tidak peduli tenant. Untuk nama turunan ini tak
  *    pernah terjadi lintas tenant (id tenant ada di awalan); ia tinggal
  *    menjaga nama EKSPLISIT (jalur adopsi).
  *
- * Perbandingan memakai huruf kecil — kolom registry berkolasi
- * `utf8mb4_unicode_ci`, jadi itulah perbandingan yang ditegakkan indeksnya.
+ * Perbandingan memakai huruf kecil — warisan kolasi `utf8mb4_unicode_ci` masa
+ * MariaDB; nama yang sah toh hanya huruf kecil (`assertSafeDatabaseName`).
  */
 export function firstConflict(
   existing: ReadonlyArray<{ tenantId: number | null; slug: string; databaseName: string }>,
@@ -158,7 +157,7 @@ export function firstConflict(
  * dibaca skrip baris perintah (`scripts/create-company.ts`) dan log server.
  */
 export const PROVISION_ERROR_CODES = [
-  /** Pengguna basis datanya tidak berhak — galat MySQL/MariaDB 1044 / 1045. */
+  /** Pengguna basis datanya tidak berhak — SQLSTATE PostgreSQL 42501 / 28P01 / 28000. */
   "database_permission_denied",
   /** Alamat basis data kendali/penyedia belum diset di environment. */
   "config_missing",
@@ -204,30 +203,29 @@ export class ProvisionError extends Error {
 }
 
 /**
- * "Tidak berhak" dari MySQL/MariaDB, dikenali dari NOMORNYA — bukan dari
- * mencocokkan teks pesan (teks berubah antar versi dan antar bahasa server).
+ * "Tidak berhak" dari PostgreSQL, dikenali dari SQLSTATE-nya (`code` pada galat
+ * driver `pg`) — bukan dari mencocokkan teks pesan (teks berubah antar versi
+ * dan antar `lc_messages` server).
  *
- *  • **1044** `ER_DBACCESS_DENIED_ERROR` — kredensialnya benar, tetapi
- *    penggunanya tidak berhak atas basis data itu. Inilah yang terjadi ketika
- *    pengguna aplikasi tidak diberi hak `CREATE` pada pola nama basis data
- *    perusahaan (docs/MULTI-COMPANY.md §3) — terukur di produksi.
- *  • **1045** `ER_ACCESS_DENIED_ERROR` — kredensialnya sendiri ditolak.
+ *  • **42501** `insufficient_privilege` — kredensialnya benar, tetapi role-nya
+ *    tidak berhak (mis. `CREATE DATABASE` tanpa `CREATEDB`,
+ *    docs/MULTI-COMPANY.md §3).
+ *  • **28P01** `invalid_password` / **28000** `invalid_authorization_specification`
+ *    — kredensialnya sendiri ditolak.
  *
- * Keduanya berujung pada tindakan yang sama bagi yang menunggu di layar
- * ("hubungi administrator"), dan keduanya harus DIBEDAKAN dari kegagalan lain
- * (nama bentrok, koneksi putus) yang tindak lanjutnya lain sama sekali.
+ * Ketiganya berujung pada tindakan yang sama bagi yang menunggu di layar
+ * ("hubungi administrator"), dan harus DIBEDAKAN dari kegagalan lain (nama
+ * bentrok, koneksi putus) yang tindak lanjutnya lain sama sekali.
+ *
+ * Sampai #636 fungsi ini hanya mengenali nomor MariaDB 1044/1045, jadi sejak
+ * penukaran 15 Okt penolakan hak di PostgreSQL jatuh ke pesan umum.
  */
-const ACCESS_DENIED_ERRNO: ReadonlySet<number> = new Set([1044, 1045]);
-const ACCESS_DENIED_CODES: ReadonlySet<string> = new Set([
-  "ER_DBACCESS_DENIED_ERROR",
-  "ER_ACCESS_DENIED_ERROR",
-]);
+const ACCESS_DENIED_SQLSTATE: ReadonlySet<string> = new Set(["42501", "28P01", "28000"]);
 
 export function isAccessDeniedError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
-  const candidate = error as { errno?: unknown; code?: unknown };
-  if (typeof candidate.errno === "number" && ACCESS_DENIED_ERRNO.has(candidate.errno)) return true;
-  return typeof candidate.code === "string" && ACCESS_DENIED_CODES.has(candidate.code);
+  const candidate = error as { code?: unknown };
+  return typeof candidate.code === "string" && ACCESS_DENIED_SQLSTATE.has(candidate.code);
 }
 
 /**
@@ -286,7 +284,7 @@ export function assertSafeDatabaseName(name: string): void {
   if (name.length > MAX_DATABASE_NAME_LENGTH) {
     throw new ProvisionError(
       `Nama basis data terlalu panjang (maks ${MAX_DATABASE_NAME_LENGTH} karakter — ` +
-        "batas identifier MySQL/MariaDB).",
+        "batas identifier PostgreSQL).",
       "validate",
       { code: "database_name_invalid" }
     );

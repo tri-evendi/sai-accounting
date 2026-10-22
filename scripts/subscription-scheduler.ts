@@ -64,7 +64,6 @@ import { ppnEnabledFrom, readSiteSettingsRow } from "@sai/core/site-settings-cor
 import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
 import type { SubscriptionStatus } from "@sai/billing/platform-constants";
 import { sendMail } from "@sai/platform/mailer-core";
-import { mesinKendali } from "@sai/db/engine-runtime";
 import { resolvePaymentGateway } from "@sai/billing/payment-gateway";
 /* Inti rekonsiliasi pindah ke `src/lib/` saat penggelaran #151 — lihat komentar
  * kepala berkas itu. Skrip mengimpor dari lib, bukan dari skrip lain. */
@@ -673,14 +672,9 @@ async function main() {
      * Tidak ada galat, tidak ada baris log — hanya penjaga yang berhenti
      * menjaga. `pg_database` adalah katalog yang benar di sana.
      */
-    const rows =
-      mesinKendali() === "postgresql"
-        ? await control.$queryRaw<Array<{ name: string }>>`
-            SELECT datname AS name FROM pg_database
-            WHERE datname LIKE 'sai\\_%' AND NOT datistemplate`
-        : await control.$queryRaw<Array<{ name: string }>>`
-            SELECT SCHEMA_NAME AS name FROM information_schema.SCHEMATA
-            WHERE SCHEMA_NAME LIKE 'sai\\_%'`;
+    const rows = await control.$queryRaw<Array<{ name: string }>>`
+      SELECT datname AS name FROM pg_database
+      WHERE datname LIKE 'sai\\_%' AND NOT datistemplate`;
     /* Hanya buku di instans BAWAAN — server yang katalognya dibaca di atas
        (tahap 4). Buku PT yang sudah dipindah ke instans lain bukan milik
        katalog ini; nama sisa di sini justru yatim yang harus terlihat. */

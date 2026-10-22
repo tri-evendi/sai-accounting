@@ -5,7 +5,8 @@
 Kenapa sistem ini berbentuk seperti sekarang. Isinya hanya **keputusan yang
 masih mengikat** dan **apa yang masih terbuka** dari pekerjaan besar
 (migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar tahap 1a–1c,
-rilis 0.11.0, penyatuan container, register lisensi & pindah SaaS → on-premise); jalannya
+rilis 0.11.0, penyatuan container, register lisensi & pindah SaaS → on-premise,
+pencabutan MariaDB); jalannya
 pekerjaan ada di riwayat git.
 
 ## 1. Migrasi ke PostgreSQL
@@ -27,7 +28,7 @@ Empat pelajaran yang masih berlaku:
 1. **Uji lapisan yang dipakai produksi.** Fase persiapan menguji adapter, skema, indeks, data, dan trigger — tetapi tidak menjalankan klien Prisma hasil bangkitan terhadap PostgreSQL. Lapisan itulah yang menentukan dialek.
 2. **Yang tidak ada di skema Prisma tidak ikut dibangkitkan.** Trigger, fungsi, view, grant harus diperiksa manual setiap pindah mesin.
 3. **Sebagian kegagalan baru muncul pada hari pertama sesudah penukaran** — klien `pg_dump` terlalu tua, `backup.sh` memaku host `db`, `SUM(boolean)` di pemeriksa kesesuaian. Ketiganya lolos `verify` dan build.
-4. **Fallback adalah syarat.** Penukaran pertama bisa dipulihkan dalam hitungan menit karena MariaDB dibiarkan hidup dan tidak ditulisi.
+4. **Fallback adalah syarat.** Penukaran pertama bisa dipulihkan dalam hitungan menit karena MariaDB dibiarkan hidup dan tidak ditulisi — sampai dicabut di Fase E (§9).
 
 ### Yang masih terbuka
 
@@ -36,13 +37,10 @@ Empat pelajaran yang masih berlaku:
 | 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`svc-integrator` (jalur `tenant`, yang mendump SETIAP basis data) |
 | 2 | **Pencarian jadi peka huruf besar-kecil.** Filter `contains`/`startsWith` tanpa `mode: "insensitive"` — `abadi` tidak lagi menemukan `PT ABADI` | Tambahkan `mode: "insensitive"` di jalur pencarian |
 | 3 | **Collation `C` di semua basis data.** `ORDER BY name` mengurutkan per byte, dan `@unique` pada kode/nomor mengizinkan `ABC` dan `abc` sekaligus | `citext` atau indeks `lower(...)`, per kolom |
-| 4 | **Tiga skrip operator masih berdialek MySQL** — `pause-platform-billing.ts`, `adopt-existing-company.ts`, `prove-company-slug-immutable.ts` | Port ke dialek PostgreSQL |
+| 4 | ~~**Tiga skrip operator masih berdialek MySQL**~~ — ✅ di-port ke PostgreSQL di #636 (`current_schema()`, parameter `$n`), bersama `create-company.ts` yang masih menulis `CREATE DATABASE` gaya MySQL | — |
 | 5 | **Login username tidak dinormalkan.** `auth.ts` mencari `username: parsed.data.identifier`, bukan `identifier` yang sudah di-`toLowerCase()` | Pakai `identifier` yang sudah dinormalkan |
 
-Ditambah **#636, cabut MariaDB** (service `db`, volume `db_data`,
-`@prisma/adapter-mariadb`, branch MySQL di `packages/db`). Paling cepat 22 Okt
-2026, sesudah dump terakhir disimpan di luar mesin. Butir 1–4 sebaiknya ditutup
-lebih dulu.
+**#636, cabut MariaDB: ✅ selesai 22 Okt 2026** — lihat §9.
 
 ## 2. Monorepo
 
@@ -274,3 +272,51 @@ Yang masih terbuka (rinciannya di runbook): tombol konsol untuk bekukan /
 cairkan / nyatakan pindah · tagihan terbuka saat `migrated_out` · `change-plan`
 atas tenant `migrated_out` yang belum dipagari · siapa yang boleh meminta
 penghapusan data SaaS sesudah penggunanya tidak bisa masuk lagi.
+
+## 9. Fase E: MariaDB dicabut (22 Okt 2026, #636)
+
+Penutup migrasi PostgreSQL (§1). Produksi berjalan di PostgreSQL sejak 15 Okt
+2026 tanpa insiden selama jendela tujuh hari; pemilik memutuskan melepas jalan
+mundur "detik" (tukar URL) pada 22 Okt 2026.
+
+**Langkah produksi (sesi utama, sebelum PR-nya):** container `sai-db`
+dihentikan 22 Okt 08:47 UTC; volume `sai-accounting_db_data` DIPERTAHANKAN.
+Dump terakhir `mariadb-terakhir-20261022-164624.sql.gz` (sha256
+`bb2b52c1…a7192b4`) dibuktikan terpulihkan ke `mariadb:11` sekali pakai: 19
+basis data, jumlah tabel identik, contoh jumlah baris sama. Image terakhir yang
+masih membawa jalur MariaDB: **`sha-c9b5d9c` (v0.12.0)**, kelima image. Sesudah
+ini jalan mundur ke MariaDB = memulihkan dump itu + menggelar image tersebut.
+
+**Yang dicabut dari repo:**
+
+| Bagian | Sesudahnya |
+|---|---|
+| Compose | Service `db` dan deklarasi volume `db_data` hilang (dasar + on-premise). Rilis pertama sesudahnya `--remove-orphans` menghapus container `sai-db` yang berhenti; volumenya tetap sampai `docker volume rm` tangan |
+| `@sai/db` | `engine.ts` hanya mengenal `postgres://`; `mysql://`/`mariadb://` **ditolak** dengan pesan yang menyebut #636. `engine-runtime.ts` (yang memulangkan `"mariadb"` untuk URL kosong) dihapus — pemakainya tinggal satu cabang PostgreSQL. `adapter.ts`/`server.ts` tanpa cabang MariaDB |
+| Paket | `@prisma/adapter-mariadb` dan `mariadb` keluar dari `package.json` + `packages/db/package.json` + `bun.lock` |
+| Image | `mariadb-client` keluar dari tahap `backup`; `DATABASE_URL` waktu build `postgres://` |
+| Skrip | `backup.sh` hanya `pg_dumpall` (URL lain → `die`); pembukti pemulihan tanpa penanda dump MariaDB; `pg:data`/`pg:prove` (`pg-migrate-data.ts`, `pg-prove-parity.ts`, `src/lib/pg-coerce.ts`) **dihapus** — alat sekali pakai penukaran; sumber datanya kini dump terakhir, kodenya tetap ada di riwayat repo |
+| Riwayat migration | `prisma/migrations/`, `prisma/{control,platform}/migrations/` → `prisma/_arsip-mariadb/{company,control,platform}/` (dipertahankan karena penjaga paritas trigger & beberapa tes membaca transformasi data lama), dan tidak lagi masuk image |
+| Penjaga | `tests/mariadb-retired.test.ts`: nol impor `mariadb`/`@prisma/adapter-mariadb` di `src`, `packages`, `apps`, `scripts`, `tests`; nol URL `mysql://` berkredensial di compose, Dockerfile, contoh env, config tes; arsip hanya di `_arsip-mariadb` |
+
+**Sisa MySQL yang ditemukan dalam sapuan dan ikut diperbaiki** — semuanya
+gagal SENYAP di PostgreSQL sejak 15 Okt, karena tidak satu pun punya tes yang
+menyentuh mesin:
+
+- `makeLatestJournalDateReader` (jangkar retensi UU KUP hapus-tenant) sudah
+  dipindah ke `@sai/db/server` sebelum PR ini; kini punya tes
+  (`tests/latest-journal-date-reader.test.ts`).
+- Ekspor mandiri tenant (`tenant-export.ts`) mengutip tabel dengan backtick —
+  sintaks yang ditolak PostgreSQL, jadi setiap ekspor gagal pada tabel pertama.
+- `isAccessDeniedError` hanya mengenal nomor MariaDB 1044/1045; penolakan hak
+  PostgreSQL (SQLSTATE `42501`/`28P01`/`28000`) jatuh ke pesan umum.
+- Batas nama basis data 64 (MySQL) — PostgreSQL memotong di 63 dengan sekadar
+  NOTICE; kini 63, sepakat dengan pemeriksaan kedua di `@sai/db/server`.
+- `create-company.ts` (dipakai `bootstrap`) masih `CREATE DATABASE` ber-backtick
+  dengan `utf8mb4`; kini lewat `bukaServer().buat()`.
+- `tests/migration-tier.test.ts` hanya memindai pohon migration MariaDB, jadi
+  migration PostgreSQL sejak 15 Okt tidak dijaga tingkatnya; kini keduanya.
+
+Yang masih terbuka: menyalin dump terakhir ke luar server, lalu
+`docker volume rm sai-accounting_db_data` (langkah pemilik); butir 1–3 dan 5 di
+§1 "Yang masih terbuka".

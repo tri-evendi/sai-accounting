@@ -28,7 +28,7 @@ const at = (needle: string): number => {
 
 describe("skrip cadangan: syarat yang menolak berjalan (#374)", () => {
   it("berhenti pada galat pertama, bukan melanjutkan setengah jalan", () => {
-    // Tanpa ini, `mariadb-dump` yang gagal tetap diikuti tar, enkripsi, dan
+    // Tanpa ini, `pg_dumpall` yang gagal tetap diikuti tar, enkripsi, dan
     // unggah — menghasilkan "cadangan" berisi arsip kosong yang lampunya hijau.
     expect(script).toMatch(/^set -eu$/m);
   });
@@ -96,8 +96,8 @@ describe("skrip cadangan: syarat yang menolak berjalan (#374)", () => {
   it("mencadangkan SELURUH basis data, bukan daftar yang diketik tangan", () => {
     // Daftar yang diketik tangan pasti tertinggal saat pelanggan baru mendaftar
     // — dan cadangan "hampir semua" adalah janji yang diingkari diam-diam.
-    expect(script).toContain("--all-databases");
-    expect(script).toContain("--single-transaction");
+    expect(script).toContain("pg_dumpall");
+    expect(script).not.toMatch(/^\s*pg_dump\s/m);
   });
 
   it("berkas di luar basis data ikut (#367 dokumen, #370 jejak)", () => {
@@ -158,33 +158,22 @@ describe("skrip cadangan: tujuan diturunkan dari URL, bukan sakelar sendiri", ()
     .filter((b) => !/^\s*#/.test(b))
     .join("\n");
 
-  /** Cabang `then` dan `else` dari percabangan mesin, terpisah. */
-  const cabang = (() => {
-    const mulai = kode.indexOf('if [ "$MESIN" = "postgres" ]');
-    const sisa = kode.slice(mulai);
-    const iElse = sisa.indexOf("\nelse\n");
-    const iFi = sisa.indexOf("\nfi\n");
-    return { pg: sisa.slice(0, iElse), maria: sisa.slice(iElse, iFi) };
-  })();
-
-  it("percabangan mesinnya ketemu — penjaga atas tes ini sendiri", () => {
-    expect(cabang.pg.length).toBeGreaterThan(50);
-    expect(cabang.maria.length).toBeGreaterThan(20);
-  });
-
   it("host, port, peran, dan sandi PostgreSQL diambil dari DATABASE_URL", () => {
     expect(kode).toMatch(/DATABASE_URL#\*:\/\//);
-    expect(cabang.pg).toMatch(/DB_HOST:=\$_host/);
-    expect(cabang.pg).toMatch(/DB_PORT:=\$_port/);
+    expect(kode).toMatch(/DB_HOST:=\$_host/);
+    expect(kode).toMatch(/DB_PORT:=\$_port/);
   });
 
-  it("`db` hanya boleh menjadi bawaan di cabang MariaDB", () => {
-    /* Bawaan `db` yang berdiri di luar percabangan berlaku untuk KEDUA mesin —
-       itulah bentuk persis cacat yang sudah terjadi. */
-    expect(cabang.pg, "cabang PostgreSQL tidak boleh menyebut host `db`").not.toMatch(
-      /DB_HOST:=db/
-    );
-    expect(cabang.maria).toMatch(/DB_HOST:=db/);
+  it("`db` tidak pernah menjadi host bawaan — cabang MariaDB-nya sudah dicabut (#636)", () => {
+    /* Bawaan `db` dulu hidup di cabang MariaDB, dan sekali bocor ke jalur
+       PostgreSQL itulah bentuk persis cacat yang sudah terjadi. */
+    expect(kode).not.toMatch(/DB_HOST:=db/);
+    expect(kode).not.toMatch(/mariadb-dump|DB_ROOT_PASSWORD/);
+  });
+
+  it("URL selain postgres:// DITOLAK, tidak jatuh ke mesin lain", () => {
+    expect(kode).toMatch(/postgres:\/\/\*\|postgresql:\/\/\*\) MESIN=postgres ;;/);
+    expect(kode).toMatch(/\*\) die "DATABASE_URL harus postgres/);
   });
 
   it("peran PostgreSQL TIDAK dipaku `postgres`", () => {
@@ -203,11 +192,10 @@ describe("skrip cadangan: tujuan diturunkan dari URL, bukan sakelar sendiri", ()
 });
 
 describe("skrip cadangan: kredensial tidak pernah terlihat", () => {
-  it("kata sandi basis data lewat berkas opsi, bukan argumen", () => {
+  it("kata sandi basis data lewat environment, bukan argumen", () => {
     // Argumen baris perintah terbaca siapa pun yang bisa menjalankan `ps` di
     // dalam container.
-    expect(script).toContain("--defaults-extra-file");
-    expect(script).not.toMatch(/-p\$\{?DB_ROOT_PASSWORD/);
+    expect(script).toContain('PGPASSWORD="$DB_SANDI" pg_dumpall');
     expect(script).not.toMatch(/--password=\$/);
   });
 
@@ -340,8 +328,8 @@ describe("cut-over: TEPAT SATU pelaksana cadangan", () => {
 
   it("`job-backup` tetap bisa dipanggil sebagai PERKAKAS", () => {
     /* Image-nya satu-satunya yang punya klien Prisma, `openssl`, `awscli`, DAN
-       klien MariaDB — yang terakhir supaya pembukti masih bisa membaca artefak
-       dari sebelum penukaran mesin. `svc-integrator` sengaja tidak memuat semua itu. */
+       `postgresql-client` sekaligus. `svc-integrator` sengaja tidak memuat
+       semua itu. (Klien MariaDB-nya dicabut di #636.) */
     const jb = layanan("job-backup");
     expect(jb).toMatch(/target: backup/);
     expect(jb).toMatch(/docker compose run --rm job-backup/);
@@ -404,8 +392,8 @@ describe("pembukti pemulihan: harus bisa membaca artefak yang BENAR-BENAR ada", 
   it("mengerti KEDUA tata letak — baru dan warisan", () => {
     /* Pada hari cut-over, artefak TERBARU yang ada masih berbentuk lama. Pembukti
        yang hanya mengerti bentuk baru akan menolak satu-satunya salinan yang ada,
-       justru pada hari ia paling dibutuhkan. Aturan yang sama sudah berlaku untuk
-       dump MariaDB sesudah penukaran PostgreSQL. */
+       justru pada hari ia paling dibutuhkan. Aturan yang sama dulu berlaku untuk
+       dump MariaDB selama jendela transisi PostgreSQL (dicabut #636). */
     expect(prover).toMatch(/async function buktikanPutaran/);
     expect(prover).toMatch(/async function buktikanBerkasLama/);
     /* Dan bentuknya dikenali dari NAMANYA, bukan dari bendera tambahan: satu

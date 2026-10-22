@@ -4,7 +4,7 @@
  * ══ KENAPA DIGENERALISASI ═══════════════════════════════════════════════════
  * Impor daftar akun (`coa-import.ts`) sudah membuktikan bentuknya benar: inti
  * MURNI yang menerima matriks sel dan memulangkan baris tervalidasi atau galat
- * per-baris, sehingga seluruh aturannya bisa diuji tanpa MySQL maupun ExcelJS.
+ * per-baris, sehingga seluruh aturannya bisa diuji tanpa basis data maupun ExcelJS.
  *
  * F-2 menuntut LIMA jenis berkas lagi — pelanggan, pemasok, barang, stok awal,
  * piutang/utang terbuka, aset tetap. Menyalin bentuk itu enam kali berarti enam

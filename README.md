@@ -27,7 +27,7 @@ template) · [`docs/ONPREM-PINDAH-DARI-SAAS.md`](./docs/ONPREM-PINDAH-DARI-SAAS.
 ## Stack
 
 - Next.js 16 (App Router)
-- PostgreSQL 17 + PgBouncer + Prisma (`@prisma/adapter-pg`) since 15 Oct 2026; MariaDB before that
+- PostgreSQL 17 + PgBouncer + Prisma (`@prisma/adapter-pg`) since 15 Oct 2026; MariaDB before that (retired from code and compose in #636, 22 Oct 2026)
 - NextAuth (credentials)
 - Ant Design v6 (no Tailwind since issue #203; inline styles on top of AntD tokens)
 - Bun as package installer & script runner; Node remains the runtime
@@ -61,10 +61,9 @@ bun run db:generate    # all three Prisma clients
 bun run dev            # http://localhost:3000  (operator console: bun run dev:operator → :3001)
 ```
 
-> `.env.example` still contains sample `mysql://` URLs even though the engine is
-> PostgreSQL; write `postgres://…`. `bun run setup` (`scripts/setup.sh`) has not
-> been updated: it only applies migrations to a single `DATABASE_URL` and still
-> mentions MySQL. Use the steps above.
+> `mysql://` URLs are rejected at start-up: MariaDB was retired in #636
+> (22 Oct 2026). `bun run setup` (`scripts/setup.sh`) only applies migrations to
+> a single `DATABASE_URL`; use the steps above.
 
 > After pulling changes that touch `package.json`, run `bun install` again. A
 > `node_modules` older than the new `package.json` only fails once the affected

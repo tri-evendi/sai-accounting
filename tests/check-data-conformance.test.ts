@@ -71,7 +71,7 @@ describe("bentuk daftar pemeriksaan", () => {
    * di TypeScript. Itu ada karena tidak setiap aturan pantas ditulis sebagai
    * SQL — pagar materialitas membandingkan tiap akun dengan TOTAL seluruh akun,
    * dan menuliskannya sebagai SQL berarti menaruh aturan akuntansi di tempat
-   * yang tidak bisa diuji tanpa MySQL.
+   * yang tidak bisa diuji tanpa basis data.
    *
    * Yang dijaga tetap sama: TIDAK ADA pemeriksaan yang diam-diam tak punya cara
    * memberi tahu orang apa yang ditemukannya.

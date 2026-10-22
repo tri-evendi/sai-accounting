@@ -337,7 +337,7 @@ src/                              # APLIKASI CUSTOMER
 ├── proxy.ts                      # ⚠ BUKAN middleware.ts
 prisma/
 ├── postgresql/{company,control,platform}/NNNN_*/   # migration yang DITERAPKAN
-└── migrations/ control/ platform/                  # arsip MariaDB — hanya-baca
+└── _arsip-mariadb/{company,control,platform}/       # arsip MariaDB — hanya-baca, tidak masuk image (#636)
 scripts/run-workers.ts               # penyelia `svc-worker` — empat peran, satu proses per peran
 workers/                             # pelari jalur NODE
 ├── runner.ts                        # pelari jalur bersama (klaim · lease · upkeep)
@@ -518,7 +518,7 @@ Keadaan produksi, dibaca 16–18 Okt 2026:
 
 | | |
 |---|---|
-| Container naik | `app-customer`, `app-operator`, 3 job, `pgbouncer`, `pg`, plus `sai-db` (MariaDB fallback, dicabut di #636). Sejak 21 Okt 2026 ditambah tiga `svc-*` (tahap 1a–1c) dan `svc-interactive-go` (22 Okt); keenam layanan latar itu menjadi `svc-worker` + `svc-integrator` pada rilis pertama sesudah 22 Okt 2026 ([02 §2](./02-LAYANAN-INFRA.md)) |
+| Container naik | `app-customer`, `app-operator`, 3 job, `pgbouncer`, `pg`, plus `sai-db` (MariaDB fallback — dihentikan 22 Okt 2026 dan dicabut dari compose di #636). Sejak 21 Okt 2026 ditambah tiga `svc-*` (tahap 1a–1c) dan `svc-interactive-go` (22 Okt); keenam layanan latar itu menjadi `svc-worker` + `svc-integrator` pada rilis pertama sesudah 22 Okt 2026 ([02 §2](./02-LAYANAN-INFRA.md)) |
 | Basis data | 19 di PostgreSQL 17.11, total 227 MB |
 | Tenant / PT / pengguna / keanggotaan | 11 / 17 / 13 / 17 |
 | Langganan | 11: 10 `active`, 1 `trialing`; `billing_mode` 11/11 `none`; 0 pembayaran |

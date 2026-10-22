@@ -64,7 +64,14 @@ function tanpaKomentar(f: string): string {
 }
 
 describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
-  const semua = [...berkasTs("scripts"), ...berkasTs("src"), ...berkasTs("packages")];
+  /* `apps` ikut: sejak monorepo Fase 3d konsol operator hidup di sana, dan
+     pembaca jurnal yang memaku driver `mariadb` (#636) justru pindah ke sana. */
+  const semua = [
+    ...berkasTs("scripts"),
+    ...berkasTs("src"),
+    ...berkasTs("packages"),
+    ...berkasTs("apps"),
+  ];
 
   it("ada berkas untuk diperiksa — penjaga atas tes ini sendiri", () => {
     expect(semua.length).toBeGreaterThan(50);
@@ -72,7 +79,6 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
   });
 
   it.each([
-    ["@prisma/adapter-mariadb", /@prisma\/adapter-mariadb/],
     ["@prisma/adapter-pg", /@prisma\/adapter-pg/],
   ])("hanya @sai/db/adapter yang mengimpor %s", (_nama, pola) => {
     const pelanggar = semua.filter(
@@ -104,31 +110,13 @@ describe("adapter basis data dipilih dari URL, tidak pernah dipaku", () => {
     ).toEqual([]);
   });
 
-  it("driver `mariadb` mentah hanya di @sai/db/server (+ dua alat migrasi data)", () => {
-    /* Bentuk ketiga dari cacat yang sama, dan yang paling senyap: tanpa Prisma
-       sama sekali. `makeLatestJournalDateReader` memaku `createPool` milik
-       `mariadb`; sesudah penukaran setiap pembacaan gagal tersambung, galatnya
-       ditelan, dan jangkar retensi hapus-tenant jatuh ke hari ini (#636).
-       Kedua alat `pg-*` memang membaca MariaDB: itu tugasnya, dan keduanya
-       ikut dicabut di Fase E. */
-    const BOLEH = [
-      "packages/db/src/server.ts",
-      "scripts/pg-migrate-data.ts",
-      "scripts/pg-prove-parity.ts",
-    ];
-    const pelanggar = semua.filter(
-      (f) => !BOLEH.includes(f) && /from\s+["']mariadb["']|require\(\s*["']mariadb["']/.test(tanpaKomentar(f))
-    );
-    expect(
-      pelanggar,
-      "Driver per mesin MEMAKU mesinnya. Pakai `bukaBasisData(url, nama)` dari `@sai/db/server`."
-    ).toEqual([]);
-  });
+  /* Driver `mariadb` mentah dan `@prisma/adapter-mariadb` kini ditolak di
+     MANA PUN — `tests/mariadb-retired.test.ts` (#636). */
 
-  it("pabriknya sendiri memilih dari MESIN, bukan dari sakelar env", () => {
+  it("pabriknya sendiri mengurai URL, bukan membaca sakelar env", () => {
     const isi = readFileSync(join(AKAR, PABRIK), "utf8");
+    /* `uraikanUrl` juga yang MENOLAK `mysql://` (#636). */
     expect(isi).toMatch(/uraikanUrl/);
-    expect(isi).toMatch(/mesin === "postgresql"/);
     /* Sakelar env terpisah bisa menyimpang dari URL-nya — satu disetel, satunya
        lupa — lalu aplikasi menyambung ke mesin A sambil mengirim SQL mesin B. */
     expect(isi).not.toMatch(/process\.env\.\w*ENGINE/);

@@ -562,7 +562,7 @@ export interface ContractBuyerRef {
  *     padahal jawabannya ada, tepat di kontrak yang sedang ditarik.
  *  3. **Keduanya ada dan berbeda** — dilempar. Lihat `ContractBuyerMismatchError`.
  *
- * Murni: tidak menyentuh basis data, jadi aturannya bisa diuji tanpa MySQL —
+ * Murni: tidak menyentuh basis data, jadi aturannya bisa diuji tanpa basis data —
  * sikap yang sama dengan `findOverInvoiced` di atas.
  */
 export function resolveInvoiceCustomer(

@@ -24,7 +24,7 @@ import { ROLES, ROLE_LABELS, ROLE_VALUES } from "@sai/core/constants";
 
 const MIGRATION_PATH = path.join(
   process.cwd(),
-  "prisma/migrations/0032_standard_role_positions/migration.sql"
+  "prisma/_arsip-mariadb/company/0032_standard_role_positions/migration.sql"
 );
 const sql = readFileSync(MIGRATION_PATH, "utf8");
 /** Perbandingan tanpa peduli spasi berlebih / huruf besar-kecil kata kunci. */

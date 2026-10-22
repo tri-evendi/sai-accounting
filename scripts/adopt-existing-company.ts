@@ -129,7 +129,7 @@ async function main() {
 
   // ── Penjaga urutan: `users` harus masih ada di basis data perusahaan ──────
   const tables = await company.$queryRawUnsafe<{ c: bigint }[]>(
-    "SELECT COUNT(*) AS c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'"
+    "SELECT COUNT(*) AS c FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'users'"
   );
   if (Number(tables[0]?.c ?? 0) === 0) {
     console.error(
@@ -181,7 +181,7 @@ async function main() {
    */
   const columns = await company.$queryRawUnsafe<{ column_name: string }[]>(
     "SELECT column_name FROM information_schema.columns " +
-      "WHERE table_schema = DATABASE() AND table_name = 'users' " +
+      "WHERE table_schema = current_schema() AND table_name = 'users' " +
       "AND column_name IN ('status','must_change_password')"
   );
   const names = new Set(columns.map((c) => String(c.column_name).toLowerCase()));

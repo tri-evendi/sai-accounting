@@ -1,8 +1,11 @@
 # SAI Accounting — fronted by Traefik (same convention as movin-partner /
 # wedding-movin). Traefik terminates TLS and routes ${APP_DOMAIN} to
 # app-customer and ${OPERATOR_DOMAIN} to app-operator over the shared external
-# `traefik` network; neither app is published on the host directly. PostgreSQL (`pg`, via `pgbouncer`) + one-shot Prisma migrations
-# run on a private network. `db` (MariaDB) is a read-only fallback until #636.
+# `traefik` network; neither app is published on the host directly. PostgreSQL
+# (`pg`, via `pgbouncer`) + one-shot Prisma migrations run on a private network.
+# MariaDB (`db`) was retired in #636 (22 Oct 2026); its volume
+# `sai-accounting_db_data` is no longer declared here and stays on disk until
+# removed by hand (PRODUCTION.md §MariaDB retired).
 #
 # Images are built by CI and pulled from GHCR; never build on the server.
 # Release steps: PRODUCTION.md §Updates.
@@ -12,27 +15,6 @@
 # attached to the external `traefik_default` network with a `le` cert resolver.
 
 services:
-  db:
-    image: mariadb:11
-    container_name: sai-db
-    restart: unless-stopped
-    environment:
-      MARIADB_DATABASE: ${DB_NAME:-sai_production}
-      MARIADB_USER: ${DB_USER:-sai}
-      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
-      TZ: ${TZ:-Asia/Jakarta}
-    volumes:
-      - db_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
-    networks:
-      - internal
-
   # ══ PostgreSQL — MESIN UTAMA sejak 15 Okt 2026 ═════════════════════════════
   #
   # Keduanya kini service BAWAAN — `profiles:` dicabut 15 Okt 2026 saat
@@ -41,15 +23,9 @@ services:
   # mesin ini; menjadikannya opsional berarti aplikasi yang naik tanpa basis
   # data sama sekali.
   #
-  # ⚠ `db` (MariaDB) SENGAJA MASIH HIDUP, dan itu bukan kelalaian: ia jalan
-  # mundur selama jendela transisi. Datanya tidak ditulisi siapa pun sejak
-  # penukaran — aplikasi hanya bicara ke `pgbouncer`. Mencabutnya adalah langkah
-  # terpisah yang dilakukan setelah beberapa hari tenang, dan dengan dump
-  # terakhir disimpan di luar mesin ini lebih dulu.
-  #
-  # Jalan mundurnya BUKAN sekadar menukar URL: image yang dibangun dari skema
-  # PostgreSQL tidak bisa memakai `mysql://`. Kembali berarti menggelar image
-  # lama (tag `sha-` di GHCR) DAN menukar URL. Lihat
+  # `db` (MariaDB) hidup sebagai jalan mundur selama jendela transisi 15–22 Okt
+  # 2026 dan DICABUT di Fase E (#636). Jalan mundur ke sana kini hanya lewat
+  # dump terakhirnya + image `sha-c9b5d9c` (v0.12.0) — bukan menukar URL. Lihat
   # docs/arsitektur/07-RIWAYAT.md
   pg:
     # ⚠ Versi mayor di sini HARUS sejajar dengan `postgresql-client-17` di
@@ -82,9 +58,10 @@ services:
 
   # ══ PgBouncer — WAJIB, bukan penyetelan ═══════════════════════════════════
   #
-  # MariaDB memakai THREAD per koneksi; PostgreSQL memakai PROSES. Puncak koneksi
-  # di kotak ini TERUKUR 62 (`MAX_USED_CONNECTIONS`), dan 62 proses backend pada
-  # mesin yang dibagi lima aplikasi lain (3,6 GB saat diukur; kini 8 GB) bukan
+  # MariaDB dulu memakai THREAD per koneksi; PostgreSQL memakai PROSES. Puncak
+  # koneksi di kotak ini TERUKUR 62 (`MAX_USED_CONNECTIONS`, masa MariaDB), dan
+  # 62 proses backend pada mesin yang dibagi lima aplikasi lain (3,6 GB saat
+  # diukur; kini 8 GB) bukan
   # hal sepele.
   #
   # Dan pola klien per-perusahaan memperbesarnya: jumlah koneksi tumbuh mengikuti
@@ -600,9 +577,9 @@ services:
     #   docker compose run --rm job-backup ls -lh /app/data/cadangan
     #
     # Image-nya satu-satunya yang punya klien Prisma (untuk mencocokkan registry
-    # PT), `openssl`, `awscli`, DAN klien MariaDB — yang terakhir supaya pembukti
-    # masih bisa membaca artefak dari sebelum penukaran mesin. `svc-integrator`
-    # sengaja tidak memuat semua itu.
+    # PT), `openssl`, `awscli`, DAN `postgresql-client-17` sekaligus (klien
+    # MariaDB-nya dicabut di #636). `svc-integrator` sengaja tidak memuat semua
+    # itu.
     #
     # `profiles` membuatnya TIDAK ikut `docker compose up -d`, sementara
     # `docker compose run` tetap bisa memanggilnya. Dan `command`-nya diganti
@@ -998,13 +975,16 @@ networks:
     driver: bridge
 
 volumes:
-  db_data:
+  # `db_data` (MariaDB) TIDAK lagi dideklarasikan (#636). Menghapus deklarasinya
+  # TIDAK menghapus volumenya: `sai-accounting_db_data` tetap di cakram sampai
+  # `docker volume rm` dijalankan tangan, sesudah dump terakhir tersalin ke luar
+  # server (PRODUCTION.md §MariaDB retired).
   documents:
   audit:
   # Data PostgreSQL, mesin kanonik sejak 15 Okt 2026 (dulu dideklarasikan lebih
   # awal, saat `pg` masih di belakang profile, supaya penukaran tidak perlu
   # menyentuh daftar volume: satu-satunya bagian compose yang kesalahannya
-  # membuat data yatim). `db_data` di atas = MariaDB beku, dicabut di #636.
+  # membuat data yatim).
   pg_data:
   # Artefak cadangan terenkripsi saat `BACKUP_S3_BUCKET` belum disetel. Volume
   # BERNAMA, bukan bind mount ke pohon repo: ia harus bertahan melewati

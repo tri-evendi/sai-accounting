@@ -120,12 +120,14 @@ describe("profil on-premise: jaringan (celah #7)", () => {
     );
   });
 
-  it("konsol operator dan MariaDB warisan tidak dipasang", () => {
-    for (const s of ["app-operator", "db"]) {
-      expect(blok(onprem, s), `\`${s}\` masih terpasang di on-premise`).toContain(
-        'profiles: ["tidak-dipasang"]',
-      );
-    }
+  it("konsol operator tidak dipasang", () => {
+    expect(blok(onprem, "app-operator"), "`app-operator` masih terpasang di on-premise").toContain(
+      'profiles: ["tidak-dipasang"]',
+    );
+  });
+
+  it("tidak ada lagi `db` (MariaDB) untuk dipagari — ia dicabut dari compose dasar (#636)", () => {
+    expect(onprem).not.toMatch(/^ {2}db:$/m);
   });
 });
 

@@ -38,7 +38,7 @@ if [ ! -f .env ]; then
   cp .env.example .env
   echo ""
   echo "  IMPORTANT: Edit .env and configure:"
-  echo "    1. DATABASE_URL — your MySQL connection string"
+  echo "    1. DATABASE_URL — your PostgreSQL connection string (postgres://…)"
   echo "    2. AUTH_SECRET  — run: openssl rand -base64 32"
   echo ""
   echo "  Then re-run this script."
@@ -55,7 +55,7 @@ fi
 # Check DATABASE_URL is not placeholder
 if grep -q 'username:password' .env; then
   echo "ERROR: DATABASE_URL still has placeholder credentials in .env"
-  echo "  Update it with your actual MySQL connection string."
+  echo "  Update it with your actual PostgreSQL connection string."
   exit 1
 fi
 

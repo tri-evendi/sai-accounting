@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { Alert, Col, Flex, Row, theme } from "antd";
 import { DueDateField } from "@/components/shared/due-date-field";
 import { useRouter } from "next/navigation";
@@ -273,7 +274,7 @@ export function SupplierTransactionForm({ supplierId }: { supplierId: number }) 
               name="date"
               type="date"
               label={t("common.date")}
-              defaultValue={new Date().toISOString().split("T")[0]}
+              defaultValue={businessISODate(new Date())}
               required
             />
           </Col>

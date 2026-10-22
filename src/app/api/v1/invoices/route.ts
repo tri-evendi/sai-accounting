@@ -15,6 +15,7 @@
  * Sisanya mengikuti `/api/v1/customers`.
  */
 import { NextResponse } from "next/server";
+import { businessISODate } from "@sai/core/business-date";
 
 import { prisma } from "@/lib/prisma";
 import { requireApiToken } from "@/lib/api-token-guard";
@@ -72,8 +73,8 @@ export async function GET(request: Request) {
         invoiceNo: r.invoiceNo,
         /* Tanggal dokumen adalah tanggal KALENDER, bukan momen. ISO penuh akan
            membawa zona waktu yang menggesernya sehari di sebagian klien. */
-        date: r.date.toISOString().slice(0, 10),
-        dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
+        date: businessISODate(r.date),
+        dueDate: r.dueDate ? businessISODate(r.dueDate) : null,
         status: r.status,
         customerId: r.customerId,
         customerName: r.customer?.name ?? null,

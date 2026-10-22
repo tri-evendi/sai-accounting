@@ -25,6 +25,7 @@
  * membaca buku besarnya langsung.
  */
 import { NextResponse } from "next/server";
+import { businessISODate } from "@sai/core/business-date";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
@@ -108,7 +109,7 @@ export async function POST(request: Request, ctx: TenantApiContext) {
 
   if (mode === "opening-draft") {
     const buffer = await buildOpeningDraftWorkbook(report, draft);
-    const stamp = (period?.to ?? new Date()).toISOString().slice(0, 10);
+    const stamp = businessISODate(period?.to ?? new Date());
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

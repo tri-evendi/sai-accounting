@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { useParams } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@sai/ui/app-link";
@@ -244,9 +245,9 @@ export function EditContractForm() {
     );
   }
 
-  const dateStr = new Date(contract.date).toISOString().split("T")[0];
+  const dateStr = businessISODate(new Date(contract.date));
   // Blank when null — an unknown due date must not default to the document date.
-  const dueDateStr = contract.dueDate ? new Date(contract.dueDate).toISOString().split("T")[0] : "";
+  const dueDateStr = contract.dueDate ? businessISODate(new Date(contract.dueDate)) : "";
 
   /** Label mikro di atas satu isian baris barang. */
   const itemLabel = (htmlFor: string, text: string) => (

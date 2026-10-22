@@ -20,6 +20,7 @@ import { NextResponse } from "next/server";
 import { requireApiPermission, type TenantApiContext } from "@/lib/auth-guard";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { efakturToCsv } from "@sai/core/efaktur";
+import { businessISODate } from "@sai/core/business-date";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 
 function parseDate(value: string | null): Date | null {
@@ -60,8 +61,8 @@ export async function GET(request: Request, ctx: TenantApiContext) {
   const csv = efakturToCsv(built.rows);
   // Prepend a UTF-8 BOM so Excel/DJP tooling reads unicode names correctly.
   const body = "﻿" + csv;
-  const fromStr = from.toISOString().slice(0, 10);
-  const toStr = to.toISOString().slice(0, 10);
+  const fromStr = businessISODate(from);
+  const toStr = businessISODate(to);
 
   return new NextResponse(body, {
     status: 200,

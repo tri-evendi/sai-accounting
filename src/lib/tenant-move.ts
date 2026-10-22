@@ -121,6 +121,7 @@ const PG_IDENTIFIER_MAX = 63;
  * salinan yang sudah ditinggalkan tanpa satu galat pun.
  */
 export function retiredDatabaseName(databaseName: string, now: Date): string {
+  // Stempel UTC: nama basis data teknis, bukan tanggal bisnis.
   const stamp = now.toISOString().slice(0, 10).replace(/-/g, "");
   const suffix = `_moved_${stamp}`;
   return databaseName.slice(0, PG_IDENTIFIER_MAX - suffix.length) + suffix;

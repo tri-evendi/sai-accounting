@@ -224,6 +224,11 @@ export type ReminderKind = "trial_ending" | "invoice_due";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/* UTC SENGAJA: hasilnya KUNCI — `reminder_logs.due_key` dan nomor tagihan
+   `PINV-S…` — yang sudah tersimpan. Menggesernya ke tanggal Jakarta mengubah
+   kunci untuk target yang sama, lalu pengingat terkirim ulang dan nomor tagihan
+   deterministiknya tak lagi bertemu barisnya. Tanggal yang DIBACA orang
+   (badan surel) memakai `businessISODate` di penjadwal. */
 function dateKey(d: Date): string {
   return d.toISOString().slice(0, 10);
 }

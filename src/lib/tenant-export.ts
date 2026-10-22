@@ -37,6 +37,7 @@
  */
 
 import "server-only";
+import { businessISODate } from "@sai/core/business-date";
 
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
@@ -290,7 +291,7 @@ export async function buildTenantExport(tenantId: number): Promise<TenantExportR
       "disimpan 10 (sepuluh) tahun.\r\n"
   );
 
-  const stamp = generatedAt.toISOString().slice(0, 10);
+  const stamp = businessISODate(generatedAt);
   return {
     filename: `ekspor-${tenant.slug}-${stamp}.zip`,
     openStream: () =>

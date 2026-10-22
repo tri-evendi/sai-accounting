@@ -7,6 +7,7 @@
  * isian di form ini yang bisa mengarang isinya.
  */
 import { notFound, redirect } from "next/navigation";
+import { businessISODate } from "@sai/core/business-date";
 
 import { requirePagePermission } from "@/lib/page-auth";
 import type { TenantScopedParams } from "@sai/core/tenant-routes";
@@ -50,7 +51,7 @@ export default async function NewRecurringPage({
         frequency: "monthly",
         /* Mulai dari tanggal faktur sumbernya: ia juga JANGKAR tanggalnya, dan
            faktur sewa tanggal 31 memang harus berjangkar di 31. */
-        startDate: source.date.toISOString().slice(0, 10),
+        startDate: businessISODate(source.date),
         endDate: null,
         maxOccurrences: null,
         isActive: true,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { Button } from "@sai/ui/button";
 import { FileExcelOutlined } from "@ant-design/icons";
 import type { ClientInventoryItem } from "@/lib/inventory";
@@ -80,7 +81,7 @@ export function StockReportPDFButton({ items }: { items: ClientInventoryItem[] }
     <PdfDocumentButton
       label={t("pdf.previewStock")}
       title={t("pdf.titleStockReport")}
-      filename={`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
+      filename={`Stock_Report_${businessISODate(new Date())}.pdf`}
       disabled={items.length === 0}
       generate={() => fetchReportPdfBlob("stock", { items })}
     />
@@ -134,7 +135,7 @@ export function FinanceReportPDFButton({
     <PdfDocumentButton
       label={t("pdf.previewFinance")}
       title={t("pdf.titleFinanceReport")}
-      filename={`Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`}
+      filename={`Finance_Report_${businessISODate(new Date())}.pdf`}
       generate={() => fetchReportPdfBlob("finance", { balances, transactions })}
     />
   );
@@ -156,7 +157,7 @@ export function StatementPDFButton({ payload }: { payload: StatementPayload }) {
      `useCompanyIdentity` tidak diimpor di sini lagi — satu impor yang tinggal
      adalah satu jalan kembali yang masih terbuka. */
   const t = useT();
-  const dateSlug = new Date().toISOString().slice(0, 10);
+  const dateSlug = businessISODate(new Date());
   return (
     <PdfDocumentButton
       label={t("pdf.previewAndPrint")}

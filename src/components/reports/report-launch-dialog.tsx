@@ -53,6 +53,7 @@
  * fokus sama sekali.
  */
 import { useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { ArrowRightOutlined, EyeOutlined, FileExcelOutlined, FileTextOutlined } from "@ant-design/icons";
 import { Flex } from "antd";
 import {
@@ -106,10 +107,10 @@ const TRIGGER_STYLE: React.CSSProperties = {
 
 /** Hari ini & awal tahun dalam bentuk ISO — bawaan yang sama dengan `resolvePeriod`. */
 function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return businessISODate(new Date());
 }
 function isoStartOfYear(): string {
-  return `${new Date().getFullYear()}-01-01`;
+  return `${isoToday().slice(0, 4)}-01-01`;
 }
 function iso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

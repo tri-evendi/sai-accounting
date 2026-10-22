@@ -21,6 +21,7 @@
  * `execute-tenant-deletion.ts`): skrip ini hanya merakit klien & mencetak.
  */
 import "dotenv/config";
+import { businessISODate } from "@sai/core/business-date";
 
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
@@ -143,7 +144,7 @@ async function main(): Promise<void> {
           if (r.openInvoices.length > 0) {
             console.log(`  ⚠ ${r.openInvoices.length} tagihan masih terbuka — TIDAK disentuh (keputusan uang):`);
             for (const i of r.openInvoices) {
-              console.log(`     ${i.number} ${i.status} Rp ${i.total} jatuh tempo ${i.dueDate.toISOString().slice(0, 10)}`);
+              console.log(`     ${i.number} ${i.status} Rp ${i.total} jatuh tempo ${businessISODate(i.dueDate)}`);
             }
           }
           console.log(

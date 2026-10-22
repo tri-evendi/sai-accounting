@@ -23,6 +23,7 @@
  */
 
 import { revalidatePath } from "next/cache";
+import { businessISODate } from "@sai/core/business-date";
 
 import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@sai/platform/platform-db";
@@ -244,7 +245,7 @@ export async function operatorExtendSubscription(
       return {
         ok: true,
         message: t("operator.actions.extend.success", {
-          to: result.to.toISOString().slice(0, 10),
+          to: businessISODate(result.to),
           invoice: result.invoiceNumber,
         }),
       };

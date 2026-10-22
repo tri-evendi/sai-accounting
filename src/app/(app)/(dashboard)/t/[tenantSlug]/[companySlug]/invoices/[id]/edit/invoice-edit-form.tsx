@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { useParams } from "next/navigation";
 import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@sai/ui/app-link";
@@ -116,9 +117,9 @@ export function EditInvoiceForm() {
       })
       .then((data) => {
         setInvoiceNo(data.invoiceNo);
-        setDate(new Date(data.date).toISOString().split("T")[0]);
+        setDate(businessISODate(new Date(data.date)));
         // Blank stays blank: a null due date is "unknown", not "today".
-        setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "");
+        setDueDate(data.dueDate ? businessISODate(new Date(data.dueDate)) : "");
         setStatus(data.status);
         setContractId(data.contractId ?? null);
         setCostCenterId(data.costCenterId ? String(data.costCenterId) : "");
@@ -144,7 +145,7 @@ export function EditInvoiceForm() {
           taxable: Boolean(data.taxable),
           taxRate: String(inferredRate),
           pebNumber: data.pebNumber || "",
-          pebDate: data.pebDate ? new Date(data.pebDate).toISOString().split("T")[0] : "",
+          pebDate: data.pebDate ? businessISODate(new Date(data.pebDate)) : "",
           exportNote: data.exportNote || "",
         });
         setItems(

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { calculateStockTotals } from "@/lib/inventory";
 import { OPNAME_ADJUSTMENT_NOTE } from "@sai/core/constants";
+import { businessDayEnd, businessISODate } from "@sai/core/business-date";
 import { weightedAverageUnitCost } from "@/lib/posting/cogs";
 import { opnameSchema } from "@/lib/validations/inventory";
 import { requireApiPermission } from "@/lib/auth-guard";
@@ -56,9 +57,9 @@ export async function POST(request: Request) {
   // ini: hitungan yang di-backdate ("saya menghitung fisik 30 Juni") harus
   // dibandingkan dengan buku 30 Juni. Membandingkannya dengan saldo sekarang
   // lalu menstempel jurnalnya ke tanggal lama diam-diam menulis ulang saldo
-  // awal/akhir periode lama di Kartu Stok.
-  const cutoff = new Date(when);
-  cutoff.setHours(23, 59, 59, 999);
+  // awal/akhir periode lama di Kartu Stok. Akhir harinya akhir hari JAKARTA,
+  // bukan akhir hari zona proses (`@sai/core/business-date`).
+  const cutoff = businessDayEnd(businessISODate(when));
 
   type Adjustment = {
     stockId: number;

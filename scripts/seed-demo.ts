@@ -71,6 +71,7 @@
  * `CompanyContext`-nya dirakit di sini.
  */
 import "dotenv/config";
+import { businessISODate } from "@sai/core/business-date";
 import { controlDb } from "@sai/core/control-db";
 import { type CompanyContext, companyContextOf, runWithCompany } from "../src/lib/company-context";
 import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
@@ -147,7 +148,7 @@ async function main(): Promise<void> {
   const company: CompanyContext = companyContextOf(row);
 
   console.log(`\nMengisi data contoh ke: ${row.name} (${row.slug})`);
-  console.log(`Periode: tiga bulan sebelum ${args.today.toISOString().slice(0, 10)}\n`);
+  console.log(`Periode: tiga bulan sebelum ${businessISODate(args.today)}\n`);
 
   await runWithCompany(company, async () => {
     await refuseIfInUse();

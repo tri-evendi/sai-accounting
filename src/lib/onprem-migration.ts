@@ -208,6 +208,7 @@ export function passphraseProblem(p: string | null | undefined): string | null {
 }
 
 export function bundleFileName(tenantSlug: string, now: Date): string {
+  // Stempel UTC: nama berkas teknis untuk operator/pemindahan, bukan tanggal bisnis.
   const stamp = now.toISOString().slice(0, 10).replace(/-/g, "");
   return `${tenantSlug}-onprem-${stamp}${BUNDLE_EXTENSION}`;
 }

@@ -20,7 +20,24 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.10.3 — 2026-10-22 — belum digelar
+## 0.11.0 — 2026-10-22 — belum digelar
+
+Ekspor Neraca Saldo disiapkan di latar, unduhan ekspor besar kembali bisa dibuka, dan tanggal mengikuti jam Jakarta.
+
+### Berubah
+
+- Ekspor Excel Neraca Saldo kini selalu disiapkan di latar. Setelah menekan tombol ekspor, tunggu beberapa detik sampai tautan unduhannya muncul.
+- Batas “per tanggal” dan periode laporan, beserta tanggal yang tertulis di laporan, kini selalu mengikuti jam Jakarta.
+
+### Perbaikan
+
+- Ekspor laporan berukuran besar yang disiapkan di latar sebelumnya gagal diunduh. Kini berkasnya bisa dibuka.
+- Tanggal bawaan di formulir penjualan, pembelian, dan perubahan stok kini mengikuti jam Jakarta. Sebelumnya transaksi yang dicatat pukul 00.00–07.00 WIB terisi tanggal kemarin.
+- Pencarian cepat (Ctrl+K / ⌘K) tidak lagi membuka halaman yang tidak dicari. Misalnya mengetik “neraca” lalu Enter dulu bisa membuka Ekspor e-Faktur.
+
+---
+
+## 0.10.3 — 2026-10-22 (46d2190)
 
 Laporan kini bisa dicari langsung dari pencarian cepat (Ctrl+K).
 

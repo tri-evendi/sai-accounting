@@ -73,8 +73,42 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.11.0",
+    tanggal: "2026-10-22",
+    ringkas:
+      "Ekspor Neraca Saldo disiapkan di latar, unduhan ekspor besar kembali bisa dibuka, dan tanggal mengikuti jam Jakarta.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks:
+          "Ekspor Excel Neraca Saldo kini selalu disiapkan di latar. Setelah menekan tombol ekspor, tunggu beberapa detik sampai tautan unduhannya muncul.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Ekspor laporan berukuran besar yang disiapkan di latar sebelumnya gagal diunduh. Kini berkasnya bisa dibuka.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Tanggal bawaan di formulir penjualan, pembelian, dan perubahan stok kini mengikuti jam Jakarta. Sebelumnya transaksi yang dicatat pukul 00.00\u201307.00 WIB terisi tanggal kemarin.",
+      },
+      {
+        jenis: "ubah",
+        teks:
+          "Batas \u201cper tanggal\u201d dan periode laporan, beserta tanggal yang tertulis di laporan, kini selalu mengikuti jam Jakarta.",
+      },
+      {
+        jenis: "perbaikan",
+        teks:
+          "Pencarian cepat (Ctrl+K / \u2318K) tidak lagi membuka halaman yang tidak dicari. Misalnya mengetik \u201cneraca\u201d lalu Enter dulu bisa membuka Ekspor e-Faktur.",
+      },
+    ],
+  },
+  {
     versi: "0.10.3",
     tanggal: "2026-10-22",
+    sha: "46d2190",
     ringkas: "Laporan kini bisa dicari langsung dari pencarian cepat (Ctrl+K).",
     butir: [
       {

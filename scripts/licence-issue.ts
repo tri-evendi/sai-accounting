@@ -9,6 +9,14 @@
  * `--modul` menerima `all` atau daftar berkoma. `--dukungan-sampai` boleh
  * dikosongkan untuk dukungan tanpa batas waktu.
  *
+ * Biasanya perintah ini DISALIN dari konsol operator (`/licences`), lengkap
+ * dengan `--id` draf register-nya; berkas hasilnya diunggah balik ke sana dan
+ * diverifikasi dengan kunci publik. Konsol tidak pernah menandatangani —
+ * `tests/licence-register-archive.test.ts` menjaga skrip ini tetap satu-satunya
+ * penanda. Mengubah nama/bentuk argumen di sini wajib diikuti
+ * `buildIssueCommand` (`@sai/core/licence-register`); `tests/licence-register.test.ts`
+ * menjalankan perintah rakitan konsol terhadap skrip ini.
+ *
  * Yang TIDAK dikerjakan skrip ini: menyentuh basis data apa pun. Lisensi adalah
  * artefak bertanda tangan, bukan baris — kewenangannya ada pada tanda tangan,
  * dan menyimpan hasil verifikasinya sebagai baris yang bisa ditulis memindahkan

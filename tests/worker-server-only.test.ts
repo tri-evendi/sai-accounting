@@ -3,7 +3,8 @@
  * luar Next — yaitu tidak membawa `server-only/index.js` yang melempar.
  *
  * ══ KEJADIANNYA (21 Okt 2026, gelar main@d1baa77f) ═════════════════════════
- * `svc-ledger` dan `svc-interactive` crash-loop sejak detik pertama, dan tiga
+ * `svc-ledger` dan `svc-interactive` (kini peran di `svc-worker`) crash-loop sejak
+ * detik pertama, dan tiga
  * langkah `job-scheduler` (`recurring:publish`, `backup:publish`,
  * `notify:invoice-due`) gagal setiap putaran:
  *

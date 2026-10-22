@@ -19,7 +19,7 @@
 #      disetel; `db-postgres-standby` menyalin WAL-nya secara streaming.
 #   4. PgBouncer mendapat batas server GLOBAL (`MAX_USER_CONNECTIONS`).
 #
-# ⚠ HANYA `app-customer` yang direplikasi. `job-scheduler`, `svc-*`, dan
+# ⚠ HANYA `app-customer` yang direplikasi. `svc-worker`, `svc-integrator`, dan
 # `migrate` tunggal-instans menurut kontraknya (`contract/kinds.yaml`,
 # `pg_try_advisory_lock`); `app-operator` satu instans karena konsol tidak
 # butuh lebih.

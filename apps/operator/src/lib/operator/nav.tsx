@@ -31,6 +31,7 @@ import {
   SettingOutlined,
   TeamOutlined,
   FileSearchOutlined,
+  SafetyCertificateOutlined,
 } from "@ant-design/icons";
 
 import type { OperatorShellNavItem } from "@op/components/operator/operator-shell";
@@ -73,6 +74,12 @@ export function operatorNav(t: TerjemahFn): OperatorShellNavItem[] {
       href: "/plans",
       label: t("operator.nav.plans"),
       icon: <AppstoreOutlined style={UKURAN_IKON} />,
+      group: pelanggan,
+    },
+    {
+      href: "/licences",
+      label: t("operator.nav.licences"),
+      icon: <SafetyCertificateOutlined style={UKURAN_IKON} />,
       group: pelanggan,
     },
     {

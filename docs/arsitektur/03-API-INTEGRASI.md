@@ -11,10 +11,10 @@ dipanggil ke luar, dan apa yang berhenti bila salah satunya mati.
 |---|---|
 | HTTPS | Semua lalu lintas masuk; Traefik terminasi TLS, HTTP → 301 |
 | HTTP | Traefik → `app-*:3000` di jaringan Docker |
-| PostgreSQL | `app-*` + job & `svc-ledger` → `pgbouncer:5432`; `migrate` + `svc-tenant` → `pg:5432` langsung |
-| SMTP | `app-customer` / `job-scheduler` → penyedia surel |
+| PostgreSQL | `app-*` + `svc-worker` + jalur `interactive` Go → `pgbouncer:5432`; `migrate` + jalur `tenant` (`svc-integrator`) + pagar jalur `ledger` → `pg:5432` langsung |
+| SMTP | `app-customer` / `svc-worker` (peran `scheduler`) → penyedia surel |
 | HTTPS keluar | `app-customer` → Midtrans Core API — **satu-satunya** panggilan HTTP keluar |
-| S3 | `svc-tenant` → penyimpanan objek (SDK S3 di dalam biner Go; `awscli` hanya di image perkakas `job-backup`) |
+| S3 | `svc-integrator` (jalur `tenant`) → penyimpanan objek (SDK S3 di dalam biner Go; `awscli` hanya di image perkakas `job-backup`) |
 | — | Hasil pekerjaan TIDAK memakai penyimpanan objek: ia volume `hasil` di mesin ini, dan satu-satunya jalan keluarnya route handler ber-izin |
 
 Tidak ada gRPC, GraphQL, WebSocket, atau SSE. Layanan berkoordinasi lewat basis
@@ -297,13 +297,13 @@ satu-pernyataan ber-`FOR UPDATE SKIP LOCKED`, *lease* yang diperpanjang,
 
 | Jalur | Mekanisme | Jejaknya di |
 |---|---|---|
-| `job-scheduler` → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` (kendali) | `/scheduler`, `/api/health` |
-| `job-scheduler` → `svc-ledger` | **antrean** — `jobs`, `kind` `ledger.*` (`recurring:publish`) | `/api/health` → `queue` |
-| `job-scheduler` → `svc-tenant` | **antrean** — `jobs`, `kind` `tenant.backup` (`backup:publish`) | `/api/health` → `queue` |
-| `app-customer` → `svc-interactive` | **antrean** — `jobs`, `kind` `report.export`, diterbitkan rute ekspor di atas ambang penyerahan | `/api/health` → `queue`; hasilnya di `data/hasil` |
-| `svc-interactive` → `app-customer` | `jobs.result_ref` + berkas di volume `hasil`; aplikasi men-stream byte-nya lewat rute ber-izin | rute hasil (409 sampai siap, 200 beserta byte) |
-| `job-conformance` → `app-customer` | `conformance_runs` | `/api/health` |
-| `svc-tenant` → `app-customer` | `backup_runs` + objek manifest di tujuan cadangan | `/api/health` |
+| `svc-worker` (`scheduler`) → `app-customer` | `notifications`, `platform_invoices`, `scheduler_runs` (kendali) | `/scheduler`, `/api/health` |
+| `svc-worker` (`scheduler`) → `svc-worker` (`ledger`) | **antrean** — `jobs`, `kind` `ledger.*` (`recurring:publish`) | `/api/health` → `queue` |
+| `svc-worker` (`scheduler`) → `svc-integrator` (`tenant`) | **antrean** — `jobs`, `kind` `tenant.backup` (`backup:publish`) | `/api/health` → `queue` |
+| `app-customer` → `svc-worker` (`interactive`) | **antrean** — `jobs`, `kind` `report.export`, diterbitkan rute ekspor di atas ambang penyerahan | `/api/health` → `queue`; hasilnya di `data/hasil` |
+| `svc-worker` (`interactive`) → `app-customer` | `jobs.result_ref` + berkas di volume `hasil`; aplikasi men-stream byte-nya lewat rute ber-izin | rute hasil (409 sampai siap, 200 beserta byte) |
+| `svc-worker` (`conformance`) → `app-customer` | `conformance_runs` | `/api/health` |
+| `svc-integrator` (`tenant`) → `app-customer` | `backup_runs` + objek manifest di tujuan cadangan | `/api/health` |
 | `migrate` → semua | `depends_on: service_completed_successfully` + gerbang skema saat boot | Keluaran container, `/api/health` |
 | Midtrans → `app-customer` | Webhook HTTP | `payments`, `platform_invoices` |
 
@@ -392,7 +392,7 @@ Keduanya tanpa panggilan jaringan maupun kredensial.
 | Webhook Midtrans | Tidak — tanda tangan SHA-512, fail-closed |
 | Integrator API | Tidak — `requireApiToken` + izin |
 | Unggahan berkas | Tidak — validasi tipe & bentuk |
-| Dump sistem lama | Tidak — **tidak melewati guard zod**; alasan `job-conformance` ada |
+| Dump sistem lama | Tidak — **tidak melewati guard zod**; alasan peran `conformance` (`svc-worker`) ada |
 | Ekspor Accurate | Tidak — pengurai sendiri |
 
 Keluar: peramban (HTML/JSON/PDF/XLSX) · pelanggan tenant lewat SMTP (faktur +

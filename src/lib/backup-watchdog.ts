@@ -21,7 +21,7 @@
  * `rekam` sendiri yang galat — dan itu BUKAN hipotesis, tabel `backup_runs`
  * pernah kosong 0 baris berbulan-bulan karena persis sebab terakhir.
  *
- * Maka penjaga ini berjalan dari jadwal yang BERBEDA (`job-scheduler`) dan
+ * Maka penjaga ini berjalan dari jadwal yang BERBEDA (peran `scheduler` di `svc-worker`) dan
  * menanyai KEADAAN, bukan peristiwa. Ia berbunyi untuk "tidak ada putaran sama
  * sekali" dengan kekerasan yang sama seperti "putaran terakhir gagal".
  *
@@ -82,10 +82,11 @@ function kalimat(input: WatchdogInput): string {
       return (
         "TIDAK ADA SATU PUN PUTARAN CADANGAN yang tercatat.\n\n" +
         "Ini bentuk kegagalan yang paling berbahaya, sebab ia tidak melapor diri:\n" +
-        "layanan `job-backup` bisa mati, loop-nya menggantung, atau image-nya basi\n" +
-        "sehingga perekamnya sendiri yang galat. Yang terlihat dari luar hanya\n" +
-        "ketiadaan — dan ketiadaan tidak berbunyi dengan sendirinya.\n\n" +
-        "Periksa:  docker compose ps job-backup && docker compose logs --tail=50 job-backup"
+        "layanan `svc-integrator` (jalur `tenant`) bisa mati, penerbitnya di\n" +
+        "`svc-worker` bisa berhenti, atau image-nya basi sehingga perekamnya\n" +
+        "sendiri yang galat. Yang terlihat dari luar hanya ketiadaan — dan\n" +
+        "ketiadaan tidak berbunyi dengan sendirinya.\n\n" +
+        "Periksa:  docker compose ps svc-integrator && docker compose logs --tail=80 svc-integrator"
       );
     case "failing":
       return (
@@ -141,7 +142,7 @@ export function decideBackupAlert(input: WatchdogInput): WatchdogDecision {
       `  percobaan terakhir: ${input.lastAttemptAt ?? "(belum pernah)"}\n` +
       `  berhasil terakhir : ${input.lastSuccessAt ?? "(belum pernah)"}\n` +
       `  ambang basi       : ${input.staleAfterHours} jam\n\n` +
-      "Diperiksa penjaga job-scheduler; lihat /api/health medan \"backup\".\n" +
+      "Diperiksa penjaga svc-worker (peran scheduler); lihat /api/health medan \"backup\".\n" +
       `Surel berikutnya untuk status yang sama paling cepat 24 jam lagi.\n`,
     fingerprint: `backup:${input.status}`,
   };

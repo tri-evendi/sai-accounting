@@ -144,7 +144,9 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
   });
 
   it("pelari Go menolak laporan yang register-nya bukan `go`", () => {
-    const main = baca("services", "integrator", "cmd", "interactive", "main.go");
+    /* Logika pelari Go jalur `interactive` di paket bersama sejak
+       `svc-integrator` (22 Okt 2026); `cmd/interactive` tinggal pintu. */
+    const main = baca("services", "integrator", "internal", "interactivelane", "runner.go");
     expect(main).toContain("contract.GoEngineReports[m.ReportID]");
     expect(main).toContain("contract.KindReportExportGo");
     /* Himpunannya DIBANGKITKAN dari register ini (`contract:gen --cek`). */

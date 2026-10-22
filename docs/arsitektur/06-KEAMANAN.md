@@ -75,7 +75,7 @@ Setiap baris menyebut penjaganya di kode dan tes yang menahannya.
 | **Idempoten**: sumber yang sudah punya jurnal hidup tidak diposting dua kali | `posting/index.ts` |
 | **Atomik**: `tx` dioper, posting commit/rollback bersama tulisan sumbernya | `posting/index.ts` |
 | **Slug PT tidak boleh berubah** (trigger basis data + skrip pembuktian) | `0002_slug_permanen` |
-| **Pemeriksa kesesuaian data mingguan** untuk jalur yang tidak melewati zod | `job-conformance` |
+| **Pemeriksa kesesuaian data mingguan** untuk jalur yang tidak melewati zod | peran `conformance` di `svc-worker` |
 
 ### 3.4 Batas plane operator
 
@@ -100,7 +100,7 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 | Token Bearer | `requireApiToken(izin)`; tes menuntut izin yang dipakai **sama** dengan yang didokumentasikan (`tests/api-v1-spec.test.ts`) |
 | Unggahan berkas | Validasi tipe & ukuran; disimpan **di luar `public/`** dengan nama `uuid`; hanya terjangkau lewat route bertenant yang menuntut `document.read` **dan** menemukan barisnya di buku PT aktif |
 | Alur pra-sesi (daftar, lupa sandi, undangan) | Token sekali-pakai ter-hash + **jawaban seragam** (anti-enumerasi) + pembatasan laju per-IP/per-email |
-| Impor & dump sistem lama | **Tidak melewati zod** — itu justru alasan `job-conformance` ada |
+| Impor & dump sistem lama | **Tidak melewati zod** — itu justru alasan peran `conformance` ada |
 
 ### 3.6 Hasil pekerjaan: `result_ref` adalah KUNCI, bukan kapabilitas
 
@@ -162,6 +162,15 @@ menjadikannya pemadaman. Lisensinya **perpetual**: yang berakhir adalah hak atas
 versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
 adalah kesalahan kategori untuk produk akuntansi.
 
+**Register lisensi di konsol (`/licences`, migration platform 0006) adalah
+arsip, bukan kewenangan.** Konsol menyusun perintah `licence:issue`, operator
+menjalankannya di laptop luring, lalu mengunggah berkas `.sai`-nya; konsol
+hanya **memverifikasi** dengan kunci publik tertanam dan mencocokkan isinya
+dengan draf. Tidak ada kolom, unggahan, atau env untuk kunci privat, dan tidak
+satu pun kode `app-customer` membaca tabel register — keduanya dijaga
+`tests/licence-register-archive.test.ts`. Status "dicabut" di register hanya
+catatan: lisensi luring tidak bisa dicabut dari jauh.
+
 Batas perusahaan/pengguna dari lisensi hanya menahan pembuatan yang **baru**
 (`creationQuotaFor`, `seatQuotaOverride`). Selama kunci publik produksi belum
 ditanam (`"BELUM-DISETEL"`), pemasangan on-premise memperingatkannya saat start
@@ -210,7 +219,7 @@ Lima hal, dengan prioritasnya di [05 Penilaian](./05-PENILAIAN.md).
 | 2 | **`BACKUP_ENCRYPTION_KEY` 🔶 hanya di mesin yang sama dengan datanya** | Backup yang berhasil pun tidak bisa dibuka setelah mesinnya hilang | **P0-2** |
 | 3 | **Role aplikasi adalah SUPERUSER PostgreSQL** | Satu injeksi SQL di `$queryRawUnsafe` mana pun memberi akses penuh ke server (`pg_authid`, `COPY … TO PROGRAM`), tidak hanya ke data. Pembatasan pola `sai\_t%` yang ada di MariaDB hilang saat pindah mesin | [07 Riwayat](./07-RIWAYAT.md) |
 | 4 | **CSP `script-src 'unsafe-inline'`** | Pertahanan XSS melemah, padahal aplikasi menampilkan nama pelanggan, catatan, dan nama berkas unggahan. `'unsafe-eval'` sudah dicabut; `style-src` struktural (#203) | **P2-4** |
-| 5 | **Tidak ada pembaca `/api/health` dari luar mesin** | `watch:health` berjalan di dalam `job-scheduler` dan ikut mati bersamanya, jadi scheduler yang mati total tidak melaporkan apa pun | [02 Layanan & Infrastruktur](./02-LAYANAN-INFRA.md) |
+| 5 | **Tidak ada pembaca `/api/health` dari luar mesin** | `watch:health` berjalan di dalam peran `scheduler` (`svc-worker`) dan ikut mati bersamanya, jadi scheduler yang mati total tidak melaporkan apa pun | [02 Layanan & Infrastruktur](./02-LAYANAN-INFRA.md) |
 
 Ditambah dua yang sifatnya operasional: rahasia hanya ada di `.env` di disk yang
 sama dengan data, dan `OPERATOR_TRUSTED_PROXY_HOPS` harus dinaikkan **pada

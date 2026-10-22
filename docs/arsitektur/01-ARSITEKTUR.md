@@ -79,9 +79,9 @@ graph TB
     TR --> WEBO[app-operator]
     WEBC --> PGB[PgBouncer]
     WEBO --> PGB
-    JOB[job-scheduler · job-conformance · svc-ledger] --> PGB
+    JOB[svc-worker · svc-integrator jalur interactive] --> PGB
     PGB --> DB[(pg)]
-    LANGSUNG[svc-tenant · migrate] --> DB
+    LANGSUNG[svc-integrator jalur tenant · migrate] --> DB
 
     style WEBC fill:#e8f0ff,stroke:#4a6fa5
     style WEBO fill:#ffeaea,stroke:#b55
@@ -94,7 +94,7 @@ graph TB
 | `app-*` | Dua aplikasi Next, dua image. **Tidak saling memanggil lewat HTTP** |
 | `job-*` | Loop shell yang tidur; dua langkahnya kini hanya MENERBITKAN ke antrean |
 | `svc-*` | Pelari jalur yang menguras tabel `jobs` — `ledger` (Node), `tenant` (Go) |
-| `svc-tenant` · `migrate` | Langsung ke `pg`, melewati pooler: keduanya mencacah/menyentuh SETIAP basis data, dan pooler hanya mengekspos yang terdaftar di konfigurasinya |
+| `svc-integrator` (jalur `tenant`) · `migrate` | Langsung ke `pg`, melewati pooler: keduanya mencacah/menyentuh SETIAP basis data, dan pooler hanya mengekspos yang terdaftar di konfigurasinya |
 | `pg` | PostgreSQL 17: `control` + `platform` + 17 buku PT |
 
 ## 4. Pola
@@ -293,7 +293,7 @@ Gate persetujuan dan periode ada di sini, bukan di route, karena setiap jalur
 yang mengubah dokumen jadi jurnal melewati `postForSource`/`repostForSource`.
 
 **Pintunya tetap tunggal sesudah antrean masuk**, dan itu yang menentukan bentuk
-pekerjaan latar: jalur `ledger` (`svc-ledger`) adalah **satu-satunya** layanan
+pekerjaan latar: jalur `ledger` (peran `ledger` di `svc-worker`) adalah **satu-satunya** layanan
 latar yang menulis buku besar, dan handler-nya **mendelegasikan** ke mesin yang
 sama (`src/lib/recurring-run.ts` → `postForSource`). Enam jalur lain membaca
 buku, menulis tabel `jobs`, dan menghasilkan berkas — tidak pernah `INSERT`/
@@ -410,7 +410,7 @@ baris demi baris dengan TS terhadap buku sungguhan, dan siapa pemilik jalur
 berkasnya tertulis di `src/lib/report-engine.ts` (`ts` · `go-parity` · `go`) —
 rinciannya [09 §9](./09-RANCANGAN-LAYANAN.md). **Neraca Saldo kini `go`**
 (paritas produksi 22 Okt 2026, 17 buku × 3 tanggal): lembar sebarnya dihasilkan
-`cmd/interactive` (`svc-interactive-go`), jalur berkas TS-nya dicabut, layarnya
+`internal/interactivelane` (`svc-integrator`), jalur berkas TS-nya dicabut, layarnya
 tetap TS. Sebabnya bukan ongkos melainkan kelas kerusakannya:
 `contract/` membangkitkan **konstanta**, bukan **aturan**, dan dua implementasi
 "laba ditahan periode ini" bisa sama-sama konsisten di dalam dirinya dan tetap

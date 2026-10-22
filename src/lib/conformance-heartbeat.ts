@@ -24,7 +24,7 @@
  */
 
 /**
- * Sapuan berjalan MINGGUAN (`docker-compose.yml`, layanan `job-conformance`:
+ * Sapuan berjalan MINGGUAN (`docker-compose.yml`, peran `conformance` di `svc-worker`:
  * `sleep 604800`).
  *
  * Ambangnya SEMBILAN HARI, bukan tujuh: satu putaran yang bergeser karena

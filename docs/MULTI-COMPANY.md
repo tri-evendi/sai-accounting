@@ -307,7 +307,7 @@ role itu dimiliki role itu.
 
 > ⚠ Per 16 Okt 2026 role `sai` juga `SUPERUSER`, jadi aplikasi berhak atas
 > seluruh server. Usulannya role `NOSUPERUSER CREATEDB` untuk aplikasi, dan
-> superuser hanya untuk `migrate`/`svc-tenant`; lihat
+> superuser hanya untuk `migrate`/`svc-integrator` (jalur `tenant`); lihat
 > [`arsitektur/07-RIWAYAT.md`](./arsitektur/07-RIWAYAT.md#yang-masih-terbuka)
 > butir 4.
 
@@ -494,10 +494,9 @@ VALUES ('db2', 'COMPANY_DB2_DATABASE_URL_TEMPLATE', now());
 ```
 
 Lalu set `COMPANY_DB2_DATABASE_URL_TEMPLATE` di **setiap** layanan yang
-membuka buku: `app-customer`, `app-operator`, `migrate`, `svc-ledger`,
-`svc-interactive`, `svc-tenant`, `job-scheduler`, `job-conformance`, dan
-`job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
-saat membuka buku PT di instans tersebut. Untuk `svc-tenant` artinya buku PT
+membuka buku: `app-customer`, `app-operator`, `migrate`, `svc-worker`,
+`svc-integrator`, dan `job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
+saat membuka buku PT di instans tersebut. Untuk `svc-integrator` artinya buku PT
 di instans itu **tidak dicadangkan** (lihat *Cadangan per instans* di bawah).
 Pengguna kunci di URL itu wajib berhak `CREATEDB`.
 
@@ -509,7 +508,7 @@ keduanya: layanan repo tanpa `env_file: .env`, dan env var berbentuk
 `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` di `environment:` berkas compose mana
 pun. Akibatnya URL itu dipakai apa adanya oleh semua layanan, jadi ia wajib
 **langsung** ke PostgreSQL, tidak lewat PgBouncer. `migrate` butuh advisory
-lock sesi, dan `svc-tenant` butuh `pg_database` yang utuh. Go menolak URL
+lock sesi, dan jalur `tenant` butuh `pg_database` yang utuh. Go menolak URL
 instans yang memuat `pgbouncer=true`.
 
 Untuk menyediakan PT baru di instans itu, isi `dbInstanceKey` pada
@@ -547,7 +546,7 @@ env-nya menunjuk PostgreSQL langsung.
 `db_instance_key` kembali ke nilai lama (`NULL` untuk bawaan). Buku di tujuan
 tidak dibuka siapa pun begitu registry kembali.
 
-### Cadangan per instans (`svc-tenant`)
+### Cadangan per instans (`svc-integrator`)
 
 `internal/backup` membaca `db_instances` dan `companies.db_instance_key` dari
 kendali, hanya-baca. Instans yang ikut adalah yang **aktif**, ditambah instans
@@ -602,7 +601,7 @@ ukuran), bukan manifest, jadi bentuknya tidak berubah. Label `@kunci` di
 daftar versi skema tetap berasal dari registry.
 
 **Urutan untuk pemindahan pertama di produksi:** set env var instans di
-`.env`, recreate `svc-tenant` (dan layanan lain), terbitkan satu putaran, dan
+`.env`, recreate `svc-integrator` (dan layanan lain), terbitkan satu putaran, dan
 pastikan manifestnya memuat `instans: [{kunci: …}]` tanpa `instansGagal`.
 Baru sesudah itu jalankan `tenant:move`.
 

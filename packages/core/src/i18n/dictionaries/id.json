@@ -4293,7 +4293,11 @@
     "pickBom": "Pilih resep produksi",
     "producedPositive": "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses.",
     "siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan.",
-    "whatsappDigitsOnly": "Nomor WhatsApp hanya angka, tanpa + atau spasi (mis. 628123456789)."
+    "whatsappDigitsOnly": "Nomor WhatsApp hanya angka, tanpa + atau spasi (mis. 628123456789).",
+    "licenceCustomerRequired": "Nama customer wajib diisi, satu baris, dan tidak diawali tanda minus.",
+    "licenceLimitInvalid": "Isi bilangan bulat 0 atau lebih.",
+    "licenceModulesInvalid": "Tulis all, atau daftar kunci modul berkoma (huruf kecil, angka, garis bawah).",
+    "licenceVersionInvalid": "Versi berbentuk angka bertitik, mis. 1.4 atau 1.4.0."
   },
   "taxSettings": {
     "sectionTitle": "PPN",
@@ -4627,7 +4631,8 @@
       "plans": "Katalog paket",
       "efaktur": "e-Faktur platform",
       "statusNotices": "Pengumuman status",
-      "brand": "Logo produk"
+      "brand": "Logo produk",
+      "licences": "Lisensi on-premise"
     },
     "attention": {
       "heading": "Perlu ditangani",
@@ -4822,7 +4827,7 @@
         "runtimeColRuns": "Percobaan",
         "runtimeColRssPeak": "Puncak RSS (MiB)",
         "runtimeColHeapPeak": "Puncak heap (MiB)",
-        "runtimeNote": "Hanya tunda event loop app-customer yang dinilai pemicu (a): ekspor besar sudah di proses svc-interactive, jadi loop pelari tidak menahan halaman siapa pun — angkanya konteks. Pemicu (b) membaca RSS, bukan heap: pelari berjalan di Bun, yang mengabaikan --max-old-space-size. Pekerjaan yang mati kehabisan memori tidak meninggalkan sampel; jejaknya pekerjaan yang dipulangkan dengan percobaan bertambah. \"Terpicu\" berarti 1d pantas ditimbang setelah penyebabnya diperiksa, bukan langsung dibangun.",
+        "runtimeNote": "Hanya tunda event loop app-customer yang dinilai pemicu (a): ekspor besar sudah di proses pelari svc-worker, jadi loop pelari tidak menahan halaman siapa pun — angkanya konteks. Pemicu (b) membaca RSS, bukan heap: pelari berjalan di Bun, yang mengabaikan --max-old-space-size. Pekerjaan yang mati kehabisan memori tidak meninggalkan sampel; jejaknya pekerjaan yang dipulangkan dengan percobaan bertambah. \"Terpicu\" berarti 1d pantas ditimbang setelah penyebabnya diperiksa, bukan langsung dibangun.",
       "colStarted": "Mulai",
       "colFinished": "Selesai",
       "colStatus": "Status",
@@ -4843,7 +4848,7 @@
       "heading": "Kesesuaian Data",
       "description": "Sapuan mingguan atas setiap buku PT — status di luar enum, valas tanpa kurs, jurnal timpang, akun penampung beban. Penjaga zod hanya berlaku di jalur tulis; sapuan ini menangkap yang masuk lewat impor, perbaikan SQL manual, dan penyemai.",
       "unavailable": "Riwayat sapuan belum bisa dibaca — basis data platform tak terjangkau, atau migrasi 0018 belum diterapkan.",
-      "empty": "Belum ada sapuan yang tercatat. Layanan `job-conformance` menyapu sekali seminggu, dan putaran pertamanya jalan saat layanan naik.",
+      "empty": "Belum ada sapuan yang tercatat. Peran `conformance` di layanan `svc-worker` menyapu sekali seminggu, dan putaran pertamanya jalan saat layanan naik.",
       "colStarted": "Mulai",
       "colFinished": "Selesai",
       "colStatus": "Status",
@@ -4857,7 +4862,7 @@
       "listFindings": "Temuan",
       "listFailures": "Buku yang gagal diperiksa",
       "listEmpty": "Tidak ada.",
-      "findingsTruncated": "Menampilkan {shown} dari {total} temuan. Sisanya ada di `docker compose logs job-conformance`.",
+      "findingsTruncated": "Menampilkan {shown} dari {total} temuan. Sisanya ada di `docker compose logs svc-worker` (baris berawalan `conformance`).",
       "perBookHeading": "Per buku",
       "perBookLegacy": "Putaran ini dicatat sebelum sapuannya berjalan serentak — catatan per buku belum ada. Putaran berikutnya memuatnya.",
       "perBookColDuration": "Lama (ms)",
@@ -5167,7 +5172,7 @@
       "keyMissing": "SETTINGS_ENCRYPTION_KEY belum diset: akun baru tidak bisa dibuat dan akun basis data tidak bisa masuk, sebab rahasia TOTP-nya tidak bisa disegel maupun dibuka.",
       "unavailable": "Daftar akun belum bisa dibaca: basis data kendali tak terjangkau. Akun env tetap bisa masuk.",
       "dbHeading": "Akun konsol",
-      "rolesNote": "Pemilik: semua tindakan. Penagihan: lunas, perpanjangan, ganti paket, mode penagihan. Dukungan: suspensi/pemulihan dan isi situs. Pengamat: hanya melihat. Semua peran bisa membaca seluruh konsol. Nonaktif dan atur ulang ikut mencabut sesi.",
+      "rolesNote": "Pemilik: semua tindakan. Penagihan: lunas, perpanjangan, ganti paket, mode penagihan, register lisensi on-premise. Dukungan: suspensi/pemulihan dan isi situs. Pengamat: hanya melihat. Semua peran bisa membaca seluruh konsol. Nonaktif dan atur ulang ikut mencabut sesi.",
       "envHeading": "Akun darurat (env)",
       "envNote": "Dari OPERATOR_USERS, selalu berperan owner, dan sengaja tidak bisa diubah dari layar: jalan masuk darurat tidak boleh bisa dicabut oleh sesi yang dicuri. Ubah lewat env, lalu buat ulang container.",
       "roles": {
@@ -5388,6 +5393,97 @@
       "done": "Hak pakai aktif dari penawaran {quote}.",
       "partial": "Belum selesai — {steps}. Langkah yang tersisa bisa dilanjutkan dengan tombolnya masing-masing.",
       "errInput": "Isian tidak lengkap: nomor penawaran, paket, periode 1–24, dan alasan wajib."
+    },
+    "licences": {
+      "heading": "Lisensi on-premise",
+      "description": "Register lisensi customer on-premise. Konsol mencatat dan memeriksa; penandatanganan tetap di laptop luring.",
+      "keyNotSet": "Kunci publik lisensi belum ditanam di kode (LICENCE_PUBLIC_KEY_PEM masih \"BELUM-DISETEL\"). Draf tetap bisa dibuat, tetapi berkas .sai belum bisa diverifikasi, jadi unggahan dimatikan. Langkah pemiliknya: docs/ONPREM-SERAH-TERIMA.md §0.",
+      "stepsTitle": "Langkah",
+      "steps": {
+        "one": "Isi formulir di bawah. Hasilnya draf beserta satu perintah siap salin.",
+        "two": "Salin perintah itu dan jalankan di laptop luring yang memegang kunci privat — kunci privat tidak pernah dibawa ke sini.",
+        "three": "Unggah berkas .sai hasilnya ke draf yang sama. Konsol memeriksa tanda tangan dan mencocokkan isinya dengan draf.",
+        "four": "Unduh berkasnya dari register dan kirim ke customer; dipasang sebagai ./lisensi/licence.sai.",
+        "five": "Perpanjangan atau ubah batas: tekan \"Terbitkan versi baru\" pada customer — formulir terisi dari lisensi sebelumnya."
+      },
+      "archiveNote": "Register ini ARSIP, bukan penentu: aplikasi customer hanya percaya tanda tangan berkasnya, tidak pernah membaca daftar ini.",
+      "unavailable": "Register belum bisa dibaca: sai_platform tak terjangkau.",
+      "readOnly": "Peran Anda hanya bisa melihat. Mencatat lisensi membutuhkan izin register lisensi.",
+      "empty": "Belum ada lisensi yang dicatat.",
+      "fromTenant": "pindahan tenant SaaS #{id}",
+      "renew": "Terbitkan versi baru",
+      "errInvalid": "Isian tidak sah atau barisnya sudah berubah. Muat ulang halaman lalu coba lagi.",
+      "created": "Draf dibuat. Salin perintahnya dan jalankan di laptop luring.",
+      "uploaded": "Berkas lisensi sah dan cocok dengan draf — tercatat sebagai terbit.",
+      "revoked": "Ditandai dicabut di register.",
+      "discarded": "Draf dibuang.",
+      "err": {
+        "empty": "Berkas kosong atau terlalu besar.",
+        "tooLarge": "Berkas terlalu besar untuk sebuah lisensi.",
+        "notDraft": "Hanya draf yang bisa diberi berkas atau dibuang.",
+        "badSignature": "Berkas ditolak — tanda tangannya tidak sah: {reason}",
+        "mismatch": "Berkas sah, tetapi isinya tidak sama dengan draf. Jalankan ulang perintah dari draf ini tanpa mengubahnya:"
+      },
+      "mismatchLine": "{field}: di draf {expected}, di berkas {actual}",
+      "field": {
+        "licenceId": "Id lisensi",
+        "customer": "Nama customer",
+        "maxCompanies": "Batas perusahaan",
+        "maxUsers": "Batas pengguna",
+        "modules": "Modul",
+        "supportEndsOn": "Dukungan sampai",
+        "maxVersion": "Versi tertinggi",
+        "contact": "Kontak",
+        "notes": "Catatan",
+        "sourceTenantId": "Id tenant SaaS asal"
+      },
+      "form": {
+        "newTitle": "Lisensi baru",
+        "renewTitle": "Versi baru untuk {name}",
+        "newHint": "Hanya isian yang dibutuhkan perintah penerbitan. Yang bertanda opsional boleh dikosongkan.",
+        "renewHint": "Terisi dari lisensi sebelumnya — ubah yang berubah saja. Versi lama ditandai digantikan setelah berkas baru diunggah.",
+        "customerHint": "Tercetak di lisensi apa adanya.",
+        "modulesHint": "all, atau daftar kunci modul berkoma.",
+        "supportHint": "Kosong = dukungan tanpa batas waktu. Lewat tanggal ini aplikasi TIDAK berhenti.",
+        "versionHint": "Kosong = tanpa batas versi. \"1.4\" mencakup seluruh 1.4.x.",
+        "optional": "Opsional",
+        "sourceTenantHint": "Isi bila customer pindah dari SaaS.",
+        "submit": "Buat draf & perintah",
+        "cancelRenewal": "Batal"
+      },
+      "status": {
+        "draft": "Draf",
+        "issued": "Terbit",
+        "superseded": "Digantikan",
+        "revoked": "Dicabut (catatan)"
+      },
+      "summary": {
+        "limits": "{companies} perusahaan / {users} pengguna",
+        "modules": "modul {modules}",
+        "supportUntil": "dukungan s.d. {date}",
+        "supportForever": "dukungan tanpa batas waktu",
+        "maxVersion": "versi s.d. {version}"
+      },
+      "versionLabel": "Versi {n}",
+      "meta": {
+        "created": "Dibuat {by}, {at}",
+        "uploaded": "diunggah {by}, {at}",
+        "revoked": "Ditandai dicabut oleh {by}, {at}: {reason}"
+      },
+      "commandLabel": "Jalankan di laptop luring (ganti jalur kunci bila berbeda):",
+      "copy": "Salin perintah",
+      "copied": "Tersalin",
+      "uploadLabel": "Unggah berkas .sai",
+      "uploadDisabled": "Unggahan mati sampai kunci publik ditanam.",
+      "discard": "Buang draf",
+      "discardTitle": "Buang draf ini?",
+      "discardDescription": "Draf belum ditandatangani, jadi tidak ada yang hilang selain isiannya. Bila perintahnya sudah dijalankan, berkas hasilnya tidak bisa diunggah lagi.",
+      "download": "Unduh berkas",
+      "revoke": "Tandai dicabut",
+      "revokeNote": "Lisensi luring TIDAK bisa dicabut dari jauh: berkas yang sudah dipasang tetap sah di mesin customer. Ini hanya catatan di register.",
+      "revokeReason": "Alasan (minimal 5 karakter)",
+      "revokeConfirm": "Catat sebagai dicabut",
+      "cancel": "Batal"
     },
     "brand": {
       "heading": "Logo produk",

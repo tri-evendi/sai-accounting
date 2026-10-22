@@ -356,4 +356,12 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   // `parseWhatsappNumber`: `wa.me` menolak + dan spasi.
   "validation.whatsappDigitsOnly":
     "Nomor WhatsApp hanya angka, tanpa + atau spasi (mis. 628123456789).",
+  // Register lisensi on-premise (migration platform 0006) — bentuk yang sama
+  // yang diterima `scripts/licence-issue.ts` dan `verifyLicence`.
+  "validation.licenceCustomerRequired":
+    "Nama customer wajib diisi, satu baris, dan tidak diawali tanda minus.",
+  "validation.licenceLimitInvalid": "Isi bilangan bulat 0 atau lebih.",
+  "validation.licenceModulesInvalid":
+    "Tulis all, atau daftar kunci modul berkoma (huruf kecil, angka, garis bawah).",
+  "validation.licenceVersionInvalid": "Versi berbentuk angka bertitik, mis. 1.4 atau 1.4.0.",
 };

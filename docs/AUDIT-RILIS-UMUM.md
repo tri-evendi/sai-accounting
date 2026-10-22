@@ -440,10 +440,10 @@ disajikan di `/docs` yang sudah ada), pembatas laju per-token, dan versi jalur
 
 | Kebutuhan | Bentuk |
 |---|---|
-| **Backup** | SUDAH: Layanan `svc-tenant` di compose (#374; per basis data sejak tahap 1b): satu objek `pg_dump -Fc` **per basis data** + `pg_dumpall --globals-only` + `data/documents` + `data/audit`, terenkripsi sebelum meninggalkan mesin, dikirim ke luar server (S3/B2) bila bucket disetel. Retensi 30 hari, dan yang TERBARU tidak pernah dibuang. Satu tenant bisa dipulihkan tanpa menyentuh yang lain. |
+| **Backup** | SUDAH: Jalur `tenant` di layanan `svc-integrator` (dulu `svc-tenant`) di compose (#374; per basis data sejak tahap 1b): satu objek `pg_dump -Fc` **per basis data** + `pg_dumpall --globals-only` + `data/documents` + `data/audit`, terenkripsi sebelum meninggalkan mesin, dikirim ke luar server (S3/B2) bila bucket disetel. Retensi 30 hari, dan yang TERBARU tidak pernah dibuang. Satu tenant bisa dipulihkan tanpa menyentuh yang lain. |
 | **Restore** | BELUM: **Latihan restore yang dijadwalkan**, bukan dokumen. `prove-backup-restore` ada (#374); latihan penuhnya belum pernah dijalankan. Sekali per kuartal: pulihkan backup acak ke server bayangan, jalankan `bun run verify`, buka satu PT, cocokkan neraca saldonya. Yang tidak pernah di-restore bukan backup. |
 | **Pemantauan** | SUDAH: Log terstruktur + peringatan surel teredam (#374); `/api/health` menyebut denyut scheduler (#373). BELUM: pemeriksaan platform & satu PT contoh di probe yang sama. |
-| **Scheduler** | SUDAH: Layanan `job-scheduler` di compose (#373) — bukan lagi cron host. |
+| **Scheduler** | SUDAH: Peran `scheduler` di layanan `svc-worker` (dulu `job-scheduler`) di compose (#373) — bukan lagi cron host. |
 | **Kapasitas** | Naikkan `COMPANY_CLIENT_POOL_MAX` seiring RAM; tetapkan **ambang tenant per instans MariaDB** dan rencana pemecahannya (satu instans per rentang tenant) **sebelum** ambangnya tersentuh. |
 | **Status** | Halaman status publik + jendela pemeliharaan yang diumumkan. Customer yang membayar berhak tahu sebelum bertanya. |
 

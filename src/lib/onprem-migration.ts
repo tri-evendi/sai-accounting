@@ -18,7 +18,7 @@
  *                              SaaS — disegel ulang dengan kunci TUJUAN saat impor
  *     companies/<db>.pgdump    `pg_dump -Fc` per buku PT
  *     documents/<id>/<uuid>.*  berkas dokumen per PT
- * Format sandinya SAMA dengan arsip cadangan (`scripts/backup.sh`, `svc-tenant`):
+ * Format sandinya SAMA dengan arsip cadangan (`scripts/backup.sh`, `svc-integrator`):
  * satu format, satu cara membuka di keadaan darurat — `openssl` biasa.
  * Kunci SaaS TIDAK PERNAH ikut: yang ikut adalah nilai rahasianya, di dalam
  * bundel bersandi, dan sandi bundel tidak pernah ditulis ke berkas mana pun.

@@ -93,9 +93,10 @@ configs:
 services:
   # ══ `pg` MENJADI ROUTER, NAMANYA TETAP ═════════════════════════════════════
   #
-  # Nama service `pg` dipakai empat URL langsung di compose dasar (`migrate`,
-  # `job-backup`, `svc-tenant`, dan PgBouncer). Mengganti ISINYA, bukan
-  # namanya, membuat keempatnya mengikuti primary tanpa satu baris pun diubah —
+  # Nama service `pg` dipakai URL langsung di compose dasar (`migrate`,
+  # `job-backup`, `svc-worker`, `svc-integrator`, dan PgBouncer). Mengganti
+  # ISINYA, bukan namanya, membuat semuanya mengikuti primary tanpa satu baris
+  # pun diubah —
   # dan aturan Nomenklatur melarang rename diam-diam.
   #
   # Kenapa router dan bukan URL multi-host libpq (`host=a,b
@@ -118,46 +119,49 @@ services:
     healthcheck:
       test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/pg.cfg"]
 
-  # ══ LEADER ELECTION `job-scheduler` ════════════════════════════════════════
+  # ══ LEADER ELECTION + REPLIKA BACA — `svc-worker` ══════════════════════════
   #
-  # Hanya `entrypoint` yang diganti; `command` (putaran delapan langkah beserta
-  # anggaran `timeout`-nya) tetap satu salinan di compose dasar. Replika kedua
-  # di host lain menunggu sebagai kandidat dan tidak menjalankan satu langkah
-  # pun sampai kuncinya bebas. Dijaga `tests/leader-election.test.ts`.
+  # Sejak "1 image = 1 container" (22 Okt 2026) penjadwal, pemeriksa
+  # kesesuaian, dan kedua pelari jalur Node hidup di SATU container di bawah
+  # penyelia `scripts/run-workers.ts`. Override ini TIDAK menyalin satu pun
+  # skrip peran: `command` (putaran delapan langkah beserta anggaran
+  # `timeout`-nya) tetap satu salinan di compose dasar. Yang ditambahkan hanya
+  # variabel.
   #
-  # `init: true`: pembungkus di belakang tini, sehingga pembungkus yang mati
-  # mendadak menghentikan container beserta putarannya — tidak ada anak yatim
-  # yang terus berputar sesudah kuncinya lepas.
-  job-scheduler:
-    init: true
-    entrypoint: ["bun", "scripts/run-as-leader.ts", "--name", "job-scheduler", "--"]
-    environment:
-      # LANGSUNG ke router `pg`, BUKAN PgBouncer: kunci sesi lewat pooler mode
-      # transaksi bukan kunci (`packages/db/src/session-lock.ts`).
-      CONTROL_DATABASE_DIRECT_URL: *control-direct
-
-  # Pagar jalur `ledger` pindah ke koneksi langsung yang dibuktikan ulang tiap
-  # denyut (`workers/runner.ts` → `ambilPagar`). Tanpa baris ini pagarnya
-  # lewat PgBouncer — jinak di satu host, kosong di dua.
-  svc-ledger:
-    environment:
-      CONTROL_DATABASE_DIRECT_URL: *control-direct
-
-  # ══ REPLIKA BACA ═══════════════════════════════════════════════════════════
+  # `WORKER_LEADER_ROLES` membuat penyelia membungkus peran yang disebut dengan
+  # `scripts/run-as-leader.ts --name <peran>`: replika kedua di host lain
+  # menunggu sebagai kandidat untuk ketiga peran tunggal itu dan tidak
+  # menjalankan satu langkah pun sampai kuncinya bebas. Ketiganya, bukan hanya
+  # `scheduler`:
+  #   • `ledger` — tunggal-instans di kontrak; tanpa pembungkus, pelari di
+  #     replika kedua keluar karena pagar, dan penyelia (yang mengakhiri
+  #     container begitu satu peran berakhir) membuat replika itu crash-loop;
+  #   • `conformance` — dua pemeriksaan mingguan hanya berarti dua kali sapuan
+  #     seluruh buku dan dua baris jejak.
+  # `interactive` TIDAK disebut: ia jamak, dan berjalan di setiap replika.
+  # Dijaga `tests/leader-election.test.ts`.
   #
-  # Hanya `svc-interactive` (ekspor berantre) yang membaca replika; aturan
-  # kesegarannya di `src/lib/read-replica.ts`. Lewat router port 5433, tidak
-  # lewat PgBouncer: anggaran koneksinya kecil (satu klien per PT yang sedang
-  # diekspor) dan PgBouncer kedua untuk replika belum membeli apa pun.
+  # `CONTROL_DATABASE_DIRECT_URL` di sini menunjuk router `pg` — LANGSUNG,
+  # BUKAN PgBouncer: kunci sesi lewat pooler mode transaksi bukan kunci
+  # (`packages/db/src/session-lock.ts`). Compose dasar sudah menyetelnya ke
+  # nilai yang sama; ditulis ulang di sini supaya override ini tetap benar
+  # sendiri bila dasarnya berubah.
   #
-  # `container_name` dilepas supaya jalur jamak ini bisa diskalakan
-  # (`--scale svc-interactive=2`) — `FOR UPDATE SKIP LOCKED` menjamin satu
-  # pekerjaan tidak diklaim dua kali. ⚠ Volume `hasil` lokal per host: replika
-  # di host LAIN menulis berkas yang tidak terlihat `app-customer` di host ini.
-  # Skala lintas host menunggu penyimpanan objek untuk hasil (02 §15.1).
-  svc-interactive:
+  # Replika baca: hanya peran `interactive` yang membacanya
+  # (`runReadOnly(...)` di `workers/interactive.ts`; aturan kesegarannya di
+  # `src/lib/read-replica.ts`) — tiga peran lain mewarisi variabelnya tapi
+  # tidak pernah memanggil jalan itu. Lewat router port 5433, tidak lewat
+  # PgBouncer.
+  #
+  # `container_name` dilepas supaya container ini bisa diskalakan
+  # (`--scale svc-worker=2`). ⚠ Volume `hasil` lokal per host: replika di host
+  # LAIN menulis berkas yang tidak terlihat `app-customer` di host ini. Skala
+  # lintas host menunggu penyimpanan objek untuk hasil (02 §15.1).
+  svc-worker:
     container_name: !reset null
     environment:
+      WORKER_LEADER_ROLES: scheduler,ledger,conformance
+      CONTROL_DATABASE_DIRECT_URL: *control-direct
       COMPANY_DATABASE_READ_URL_TEMPLATE: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5433/template
 
   # ══ ANGGOTA KLUSTER (host A & B) ═══════════════════════════════════════════

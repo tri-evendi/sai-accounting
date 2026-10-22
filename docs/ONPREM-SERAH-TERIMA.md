@@ -43,20 +43,38 @@ tiga tempat — peringatan `[start]` di log `app-customer`, `licence.status:
 
 ## 1. Lisensi
 
-- Diterbitkan pemilik SAI di mesin luring: `bun run licence:issue -- …`.
+Dicatat di konsol operator, halaman **Lisensi on-premise** (`/licences`);
+ditandatangani **luring**. Kunci privat tidak pernah dibawa ke konsol.
+
+1. Konsol: isi formulir (nama customer, batas, modul, dukungan, versi) →
+   **Buat draf & perintah**. Perpanjangan: **Terbitkan versi baru** pada
+   customer — formulir terisi dari lisensi sebelumnya.
+2. Salin perintah `bun run licence:issue -- …` yang tampil, jalankan di
+   **laptop luring** yang memegang kunci privat.
+3. Unggah berkas `.sai` hasilnya ke draf yang sama. Konsol memverifikasi tanda
+   tangannya dengan kunci publik tertanam dan mencocokkan isinya dengan draf;
+   selisih ditampilkan per isian. Lulus → **Terbit**, versi lama → **Digantikan**.
+4. **Unduh berkas** dari konsol, kirim ke customer.
+
+Register ini **arsip, bukan penentu**: aplikasi customer hanya memercayai tanda
+tangan berkasnya dan tidak pernah membaca register (06 §3.7). "Dicabut" di
+register hanya catatan — lisensi luring tidak bisa dicabut dari jauh. Selama
+kunci publik belum ditanam (§0), draf bisa dibuat tetapi unggahan mati.
+
 - Dipasang di `./lisensi/licence.sai` (atau `SAI_LICENCE_DIR`), di-mount
-  **hanya-baca** ke `app-customer` dan `job-scheduler`. Penggantian berkas
+  **hanya-baca** ke `app-customer` dan `svc-worker`. Penggantian berkas
   berlaku dalam ±60 detik tanpa restart.
 - Lisensi **tidak pernah menutup pembukuan.** Dukungan yang berakhir atau versi
   yang melampaui `maxVersion` hanya dipajang; batas perusahaan/pengguna hanya
   menahan pembuatan yang **baru**.
 
+Isi lisensi (batas, modul, dukungan, versi) tidak lagi disalin ke dokumen ini —
+sumbernya register konsol. Yang dicatat di serah terima hanya rujukannya:
+
 | Butir | Nilai |
 |---|---|
-| Batas perusahaan / pengguna | **[ISI]** |
-| Modul | **[ISI]** (`all` atau daftar) |
-| Dukungan sampai | **[ISI]** |
-| Versi tertinggi yang dicakup | **[ISI]** |
+| Customer & versi di register `/licences` | **[ISI]** (mis. "PT Maju Jaya, versi 2") |
+| Id lisensi | **[ISI]** |
 
 ## 2. Kunci cadangan — siapa memegang apa
 

@@ -86,6 +86,20 @@ func handlerCadangan(kolam *pgxpool.Pool) jobs.Handler {
 		mulai := time.Now().UTC()
 
 		hasil, err := satuPutaran(c, kolam, mulai)
+		if err != nil && hasil != nil {
+			// Putaran SEBAGIAN (tahap 4): satu instans tambahan gagal, instans
+			// lain terkirim. Jejaknya `error` — permukaan kesehatan dan
+			// `watch:health` wajib berbunyi — tapi tetap menyebut putaran dan
+			// ukurannya, sebab objek yang terkirim itu nyata dan bisa dipulihkan.
+			sebab := err.Error()
+			putaran := hasil.Manifest.Putaran
+			ukuran := hasil.TotalByte
+			rekam(c.Ctx, kolam, trail.PutaranCadangan{
+				MulaiPada: mulai, SelesaiPada: time.Now().UTC(),
+				Status: hasil.Status, Galat: &sebab, Artifact: &putaran, SizeBytes: &ukuran,
+			})
+			return nil, err
+		}
 		if err != nil {
 			// Jejaknya ditulis untuk KEGAGALAN juga, dan itu bagian yang paling
 			// mudah terlupa: tanpa baris `error`, sebuah putaran yang gagal
@@ -128,6 +142,7 @@ func satuPutaran(c jobs.Ctx, kolam *pgxpool.Pool, mulai time.Time) (*backup.Hasi
 		Port:      sambungan.Port,
 		User:      sambungan.User,
 		Sandi:     sambungan.Sandi,
+		SSLMode:   sambungan.SSLMode,
 	}
 
 	versiKlien, err := perkakas.VersiKlien(c.Ctx)
@@ -144,7 +159,11 @@ func satuPutaran(c jobs.Ctx, kolam *pgxpool.Pool, mulai time.Time) (*backup.Hasi
 		return nil, err
 	}
 
-	cacah, err := backup.Daftar(c.Ctx, kolam, sambungan.Database)
+	// Instans tambahan (tahap 4): URL-nya dari env var yang NAMANYA tercatat di
+	// `db_instances` — svc-tenant wajib menerima env var itu, sama seperti
+	// setiap layanan lain yang membuka buku (docs/MULTI-COMPANY.md §6).
+	cacah, err := backup.Daftar(c.Ctx, kolam, sambungan.Database,
+		backup.BukaInstansDariLingkungan(perkakas, os.Getenv))
 	if err != nil {
 		return nil, err
 	}

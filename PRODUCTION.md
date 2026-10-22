@@ -137,6 +137,17 @@ directory `sai-<stamp>/`:
 | `berkas.tar.gz.enc` | `data/documents` + `data/audit` (issues #367/#370) |
 | `<object>.sha256` | fingerprint over the **ciphertext**, for every object |
 | `manifest.json` | the only object readable **without** the key: database names, roles, `companyId`, sizes, fingerprints, server version |
+| `instans/<key>/db-<name>.dump.enc`, `instans/<key>/globals.sql.enc` | only when a company book lives on an extra `db-postgres` instance (stage 4, `db_instances`): dumps and roles taken **from that instance's server** |
+
+Without extra instances, object names and the manifest are byte-for-byte what
+they were before stage 4, so every command below still applies unchanged. With
+them, each such object carries `"instans": "<key>"` in the manifest, and
+`companyId` is set only on the object from the instance the company is
+registered on (a same-named leftover copy on another server is `other`).
+`svc-tenant` reads each instance's URL from the env var named in its
+`db_instances` row, so `COMPANY_<KEY>_DATABASE_URL_TEMPLATE` must be in `.env`
+(reaching every service via `env_file`), pointing **directly** at PostgreSQL.
+See [docs/MULTI-COMPANY.md §6](docs/MULTI-COMPANY.md#cadangan-per-instans-svc-tenant).
 
 This is what closes on-premise gap #5. `pg_dumpall` meant one tenant could not
 be restored without touching the others — and "restore just our data to
@@ -155,7 +166,15 @@ was true of the old `sleep 86400` loop.
 **Four conditions that fail the run before a single object is sent**: a
 registered database missing from the server, a `pg_dump` older than the server,
 an empty `BACKUP_ENCRYPTION_KEY`, and any single dump failing. The manifest is
-written **last**, so a manifest that exists means the run was complete.
+written **last**, so a manifest that exists means every object it lists was
+sent.
+
+One deliberate exception: an **extra instance** that cannot be reached (env var
+unset, wrong name, server down, server newer than `pg_dump`) does not stop the
+other instances. The run still sends their objects, writes a manifest with
+`instansGagal: [{kunci, sebab, basis}]`, records `error` in `backup_runs`, and
+**skips pruning**. `prove-backup-restore` rejects such a run. Use the previous
+complete run for the companies listed there.
 
 Without `BACKUP_S3_BUCKET` (the state today) it dumps, encrypts, and writes to
 the `cadangan` volume instead, and records the run as `local`, not `ok`.
@@ -230,6 +249,13 @@ openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
 # 3. restore into a SHADOW database, never production
 pg_restore -h <shadow-host> -U <role> -d <shadow-db> --clean --if-exists db-<name>.dump
 ```
+
+For a company on an extra instance, step 1 shows `"instans": "<key>"` and a
+`kunci` of `instans/<key>/db-<name>.dump.enc`. Decrypt that object instead.
+Its roles are in `instans/<key>/globals.sql.enc`, not in the top-level
+`globals.sql.enc`. Do not pick a `db-<name>.dump.enc` at the top level just
+because the name matches: after a move, that is the old copy from the default
+server.
 
 The artifact format is deliberately plain `openssl enc`, byte-for-byte the same
 as the old `backup.sh` wrote. On the day you restore, the tool you need must be

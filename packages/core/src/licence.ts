@@ -25,13 +25,15 @@
  * bisa memakai pasangan kunci sendiri. Kode produksi memanggilnya tanpa argumen.
  *
  * ══ KUNCI PRIVATNYA TIDAK PERNAH ADA DI REPO MAUPUN DI CI ══════════════════
- * Penandatangan (`scripts/licence-issue.ts`) membaca kunci privat dari berkas
- * yang jalurnya diberikan saat dipakai. Ia TIDAK dibaca dari secret CI, dan itu
- * disengaja: kunci penanda lisensi di CI berarti siapa pun yang bisa memicu
- * satu workflow bisa mencetak lisensi — termasuk lisensi tak terbatas untuk
- * dirinya sendiri. Penerbitan lisensi adalah pekerjaan manusia yang jarang,
- * jadi ia tidak perlu otomatis, dan yang jarang tapi berbahaya memang tidak
- * boleh otomatis.
+ * Modul ini hanya MEMVERIFIKASI. Kunci privat dipegang satu modul,
+ * `@sai/platform/licence-signing`, lewat dua jalur: konsol operator (kunci
+ * TERSEGEL di `sai_platform`, dibuka dengan frasa sandi yang diketik setiap
+ * kali — keputusan pemilik 22 Okt 2026) atau berkas PEM di laptop luring
+ * (`scripts/licence-issue.ts`). Tidak pernah dari secret CI, dan itu disengaja:
+ * kunci penanda lisensi di CI berarti siapa pun yang bisa memicu satu workflow
+ * bisa mencetak lisensi — termasuk lisensi tak terbatas untuk dirinya sendiri.
+ * Penerbitan lisensi adalah pekerjaan manusia yang jarang, jadi setiap tanda
+ * tangan menuntut manusia (06-KEAMANAN §3.7).
  *
  * ══ FORMAT: DUA BAGIAN, TANPA KOLOM ALGORITMA ══════════════════════════════
  *   <base64url(payload JSON)>.<base64url(signature)>
@@ -47,8 +49,11 @@ import { createPublicKey, verify as verifySignature } from "node:crypto";
 /**
  * Kunci publik penanda lisensi SAI (Ed25519, SPKI/PEM).
  *
- * ⚠ PLACEHOLDER sampai pasangan kunci produksi dibuat di mesin luring dan
- * kunci publiknya ditempel di sini — lihat `scripts/licence-keygen.ts`. Selama
+ * ⚠ PLACEHOLDER sampai pasangan kunci produksi dibuat — di konsol operator
+ * (`/licences` → "Buat kunci penanda") atau di mesin luring
+ * (`scripts/licence-keygen.ts`) — dan kunci publiknya ditempel di sini. Konsol
+ * hanya menandatangani bila sidik kuncinya SAMA dengan konstanta ini; jangan
+ * pernah menggantinya dengan pembacaan env atau basis data. Selama
  * nilainya masih placeholder, `verifyLicence` MENOLAK setiap berkas dengan
  * alasan yang jelas; ia tidak pernah menerima apa pun "sementara".
  */
@@ -159,8 +164,9 @@ export function verifyLicence(
       ok: false,
       reason:
         "kunci publik lisensi belum ditanam di `packages/core/src/licence.ts` — " +
-        "buat pasangan kunci dengan `bun run licence:keygen` di mesin luring, " +
-        "lalu tempel kunci publiknya. Sampai itu dilakukan tidak ada lisensi yang sah.",
+        "buat pasangan kunci di konsol operator (`/licences`) atau dengan " +
+        "`bun run licence:keygen` di mesin luring, lalu tempel kunci publiknya. " +
+        "Sampai itu dilakukan tidak ada lisensi yang sah.",
     };
   }
 

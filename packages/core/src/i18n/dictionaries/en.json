@@ -4297,7 +4297,10 @@
     "licenceCustomerRequired": "Customer name is required, on one line, and must not start with a minus sign.",
     "licenceLimitInvalid": "Enter a whole number, 0 or more.",
     "licenceModulesInvalid": "Write all, or a comma-separated list of module keys (lowercase letters, digits, underscore).",
-    "licenceVersionInvalid": "A version is dotted numbers, e.g. 1.4 or 1.4.0."
+    "licenceVersionInvalid": "A version is dotted numbers, e.g. 1.4 or 1.4.0.",
+    "licencePassphraseTooShort": "The passphrase must be at least 12 characters.",
+    "licencePassphraseTooLong": "The passphrase is too long (at most 1024 characters).",
+    "licencePassphraseMismatch": "The two passphrases do not match."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -5412,13 +5415,13 @@
     },
     "licences": {
       "heading": "On-premise licences",
-      "description": "Register of on-premise customer licences. The console records and checks; signing stays on the offline laptop.",
+      "description": "Register of on-premise customer licences. The console records, signs with the sealed signing key, and checks.",
       "keyNotSet": "The licence public key is not embedded in the code yet (LICENCE_PUBLIC_KEY_PEM is still \"BELUM-DISETEL\"). Drafts can still be created, but .sai files cannot be verified, so uploads are disabled. Owner steps: docs/ONPREM-SERAH-TERIMA.md §0.",
       "stepsTitle": "Steps",
       "steps": {
         "one": "Fill in the form below. You get a draft and one ready-to-copy command.",
-        "two": "Copy that command and run it on the offline laptop holding the private key — the private key never comes here.",
-        "three": "Upload the resulting .sai file to the same draft. The console checks the signature and matches its contents against the draft.",
+        "two": "Sign the draft in the console with the signing key passphrase (owner) — the file downloads immediately and is recorded as issued. Or, the offline path: copy the command and run it on the laptop holding the private key file.",
+        "three": "Offline path only: upload the resulting .sai file to the same draft. The console checks the signature and matches its contents against the draft.",
         "four": "Download the file from the register and send it to the customer; it is installed as ./lisensi/licence.sai.",
         "five": "Renewal or limit change: press \"Issue new version\" on the customer — the form is pre-filled from the previous licence."
       },
@@ -5499,7 +5502,50 @@
       "revokeNote": "Offline licences CANNOT be revoked remotely: an installed file stays valid on the customer's machine. This is only a note in the register.",
       "revokeReason": "Reason (at least 5 characters)",
       "revokeConfirm": "Record as revoked",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "commandLabelOffline": "Or run on the offline laptop holding the private key file (change the key path if different):",
+      "key": {
+        "title": "Licence signing key",
+        "description": "The Ed25519 key pair that signs licences. Its private key is stored sealed in the database and only opens with the passphrase typed on every signing.",
+        "riskNote": "The passphrase is never stored. A leaked database dump or env alone is not enough to sign; an attacker controlling the console server could capture the passphrase as it is typed.",
+        "createIntro": "The key is created ONCE. Keep the passphrase in a password manager: a lost passphrase cannot be recovered, and without it no new licence can be signed with this key.",
+        "passphrase": "Passphrase",
+        "passphraseHint": "At least 12 characters. A long sentence is stronger than a short complicated word.",
+        "confirm": "Repeat passphrase",
+        "submit": "Create signing key",
+        "confirmTitle": "Create the signing key now?",
+        "confirmBody": "The key cannot be replaced from the console: a second key means older licences no longer verify. Once created, its public key must be pasted into the code and released.",
+        "created": "Signing key created. Next step: paste the public key below into the code and release.",
+        "errPassphrase": "The passphrase must be at least 12 characters and both fields must match.",
+        "errExists": "A signing key already exists. The console will not create a second one — licences already issued would stop verifying.",
+        "errCompiled": "The code already embeds a public key from the offline path (licence:keygen). A console key would never match it; keep using the offline path.",
+        "offlineInUse": "The code already embeds a public key from the offline path (licence:keygen), so no console key is created. Sign through the offline command on each draft.",
+        "noneReadOnly": "There is no signing key yet. Creating one requires the owner role.",
+        "state": {
+          "matches": "Matches the embedded key — ready to sign",
+          "notSet": "Not embedded in the code yet",
+          "differs": "Does NOT match the embedded key"
+        },
+        "meta": "Created by {by}, {at}",
+        "fingerprint": "Fingerprint (SHA-256 of the public key)",
+        "publicKeyLabel": "Public key (not a secret)",
+        "copy": "Copy public key",
+        "pasteInstruction": "Paste this public key into LICENCE_PUBLIC_KEY_PEM in packages/core/src/licence.ts, replace the test asserting the placeholder, then release. On-premise installs verify against the key in the code, not the database — until that release is deployed, the console refuses to sign.",
+        "differsInstruction": "The code embeds a different public key (fingerprint {fingerprint}). The console refuses to sign, because no install would accept the licence. Check which key was pasted into packages/core/src/licence.ts."
+      },
+      "sign": {
+        "start": "Sign in the console",
+        "intro": "Type the signing key passphrase. This draft is signed, verified against the embedded key, recorded as issued, and the file downloads immediately.",
+        "passphrase": "Signing key passphrase",
+        "submit": "Sign & download",
+        "done": "Licence signed, valid, and recorded as issued. The file downloaded as licence.sai.",
+        "errPassphrase": "Wrong passphrase. This attempt is recorded in the audit trail.",
+        "errRateLimited": "Too many signing attempts. Wait 15 minutes and try again.",
+        "errNoKey": "There is no signing key in the console yet.",
+        "errNotInstalled": "The console public key is not embedded in the running code yet — paste it and release first.",
+        "errMismatchKey": "The console key does not match the key embedded in the code. Signing refused.",
+        "errFailed": "The newly signed licence failed verification: {reason}"
+      }
     },
     "brand": {
       "heading": "Product logo",

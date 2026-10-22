@@ -378,3 +378,35 @@ export const licenceRevokeSchema = z.object({
 export type LicenceRevokeFormInput = z.infer<typeof licenceRevokeSchema>;
 
 export const licenceEntryIdSchema = z.object({ entryId: z.number().int().positive() });
+
+/* ── 10. Penanda lisensi di konsol (migration platform 0007) ──────────────── */
+
+/**
+ * Frasa sandi kunci penanda. Batas panjangnya SAMA dengan
+ * `@sai/platform/licence-signing` (12–1024) — disalin sebagai angka, bukan
+ * diimpor, karena skema ini juga dimuat peramban dan modul penanda tidak
+ * boleh ikut ke bundel klien. `tests/licence-signing.test.ts` menyamakan
+ * keduanya.
+ */
+export const LICENCE_PASSPHRASE_MIN = 12;
+export const LICENCE_PASSPHRASE_MAX = 1024;
+
+const licencePassphrase = z
+  .string()
+  .min(LICENCE_PASSPHRASE_MIN, vmsg("validation.licencePassphraseTooShort"))
+  .max(LICENCE_PASSPHRASE_MAX, vmsg("validation.licencePassphraseTooLong"));
+
+export const licenceKeyCreateSchema = z
+  .object({ passphrase: licencePassphrase, confirm: z.string() })
+  .refine((v) => v.passphrase === v.confirm, {
+    path: ["confirm"],
+    message: vmsg("validation.licencePassphraseMismatch"),
+  });
+export type LicenceKeyCreateInput = z.infer<typeof licenceKeyCreateSchema>;
+
+export const licenceSignSchema = z.object({
+  entryId: z.number().int().positive(),
+  /* Tidak menuntut panjang minimum di sini: frasa yang salah harus dijawab
+     "frasa salah", bukan pesan validasi yang membocorkan aturan bentuknya. */
+  passphrase: z.string().min(1).max(LICENCE_PASSPHRASE_MAX),
+});

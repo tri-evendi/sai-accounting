@@ -86,7 +86,18 @@ export type OperatorAuditAction =
   | "operator.licence.upload.rejected"
   | "operator.licence.download"
   | "operator.licence.revoke"
-  | "operator.licence.discard";
+  | "operator.licence.discard"
+  /**
+   * PENANDA KONSOL (migration platform 0007). `details` memuat sidik kunci,
+   * id baris, `licenceId`, dan sidik berkas — TIDAK PERNAH frasa sandi, kunci
+   * privat, maupun segelnya. `sign.failed` mencatat setiap percobaan yang
+   * gagal (frasa salah, kunci tak cocok, laju terlampaui): frasa sandi yang
+   * berulang kali salah adalah peristiwa yang layak ditinjau.
+   */
+  | "operator.licence.key.create"
+  | "operator.licence.key.rejected"
+  | "operator.licence.sign"
+  | "operator.licence.sign.failed";
 
 export interface OperatorAuditEntry {
   id: string;

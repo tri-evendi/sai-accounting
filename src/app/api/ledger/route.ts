@@ -3,6 +3,7 @@ import { getAccountLedger } from "@/lib/ledger";
 import { requireApiPermission } from "@/lib/auth-guard";
 import { parseCostCenterFilter } from "@/lib/cost-centers";
 import { getRequestI18n } from "@sai/platform/i18n/server";
+import { businessDayEnd, businessDayStart } from "@sai/core/business-date";
 
 export async function GET(request: Request) {
   const result = await requireApiPermission("ledger.read");
@@ -17,8 +18,8 @@ export async function GET(request: Request) {
 
   const fromStr = searchParams.get("from");
   const toStr = searchParams.get("to");
-  const from = fromStr ? new Date(`${fromStr}T00:00:00`) : undefined;
-  const to = toStr ? new Date(`${toStr}T23:59:59.999`) : undefined;
+  const from = fromStr ? businessDayStart(fromStr) : undefined;
+  const to = toStr ? businessDayEnd(toStr) : undefined;
 
   // issue #91 — pilahan per pusat biaya, sama seperti halaman /ledger.
   // "" / tak dikirim = semua; "unassigned" = yang belum ditetapkan.

@@ -19,7 +19,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+# Tanggal bisnis = jam Jakarta (keputusan pemilik 22 Okt 2026). Batas laporan
+# memakai offset eksplisit (`@sai/core/business-date`), tetapi hitungan
+# kalender lain — tahun buku, periode stok — masih memakai jam lokal proses.
+# Bawaan ini menjaganya tetap WIB di image mana pun, termasuk on-premise;
+# `.env` boleh menimpanya.
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    TZ=Asia/Jakarta
 
 
 # ─── Bun (pemasang paket + peluncur skrip) ───────────────────

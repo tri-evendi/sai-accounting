@@ -767,15 +767,16 @@ SESUDAH rilis); sebelum itu, pasang sumber checkout di atasnya (`-v
 Keduanya HANYA MEMBACA. Keluar bukan-nol pada satu selisih atau satu buku yang
 gagal dibaca.
 
-⚠ **Zona waktu PROSES ikut menentukan angkanya, bukan hanya paritasnya.**
-`resolveAsOf` membuat `asOf` = akhir hari menurut zona proses Node, sementara
-`journals.date` disimpan sebagai jam dinding UTC. Paritas lokal memperlihatkan
-akibatnya: buku yang sama per `2026-06-30` memberi 14 baris di
-`TZ=Asia/Jakarta` dan 15 di UTC (jurnal `23:59:59.999` jatuh di sisi
-berbeda; per `2025-12-31` begitu pula jurnal penutup tahunan `23:59:59`). Kedua mesin tetap SETARA — keduanya
-menerima instan yang sama — tetapi paritas hanya bermakna bila dijalankan di
-zona yang sama dengan `app-customer`. Container compose berbagi `.env`, jadi
-`migrate` memenuhi itu; menjalankannya dari shell host belum tentu.
+✅ **Batas tanggal laporan = jam Jakarta (keputusan pemilik, 22 Okt 2026).**
+Dulu `resolveAsOf` membuat `asOf` = akhir hari menurut zona PROSES, jadi buku
+yang sama per `2026-06-30` pernah memberi 14 baris di `TZ=Asia/Jakarta` dan 15
+di UTC. Kini batas per tanggal dan periode laporan, beranda, buku besar, dan
+umur piutang/utang memakai offset eksplisit +07:00 (`@sai/core/business-date`),
+apa pun zona proses — CI, skrip dari host, dan perkakas paritas memberi angka
+yang sama dengan `app-customer`. Hitungan kalender yang masih memakai jam lokal
+(tahun buku di `year-close.ts`, periode stok) dijaga oleh `TZ=Asia/Jakarta`
+bawaan di Dockerfile. Data produksi tidak bergeser: tidak ada jurnal yang
+tersimpan pukul 17.00 UTC ke atas, dan produksi sudah berjalan di WIB.
 
 ⚠ **Yang 1d sengaja BELUM lakukan:** memindah jalur ekspor ke Go. Itu
 perubahan `report-engine.ts` → `go` bersama pemanggil Go di jalur

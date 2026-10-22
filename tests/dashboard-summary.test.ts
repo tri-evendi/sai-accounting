@@ -11,17 +11,10 @@
  */
 import { describe, it, expect } from "vitest";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
+import { resolvePeriod } from "@/lib/report-catalog";
 
-/**
- * How `/reports/income-statement` turns its `?from=&to=` params back into dates.
- * Copied verbatim from that page so the round-trip test is meaningful.
- */
-function parseLikeIncomeStatementPage(fromStr: string, toStr: string) {
-  return {
-    from: new Date(`${fromStr}T00:00:00`),
-    to: new Date(`${toStr}T23:59:59.999`),
-  };
-}
+/** Instan pada jam Jakarta (WIB, UTC+7), tak bergantung zona waktu proses tes. */
+const wib = (y: number, m: number, d: number, h = 12) => new Date(Date.UTC(y, m, d, h - 7));
 
 describe("toISODate", () => {
   it("formats a local date as YYYY-MM-DD", () => {
@@ -40,56 +33,59 @@ describe("toISODate", () => {
 
 describe("monthRange — bounds of the calendar month", () => {
   it("spans the first to the last day of the month containing the date", () => {
-    const r = monthRange(new Date(2026, 6, 20));
+    const r = monthRange(wib(2026, 6, 20));
     expect(r.fromISO).toBe("2026-07-01");
     expect(r.toISO).toBe("2026-07-31");
   });
 
   it("is unchanged whichever day of the month you ask from", () => {
-    const first = monthRange(new Date(2026, 6, 1));
-    const last = monthRange(new Date(2026, 6, 31));
+    const first = monthRange(wib(2026, 6, 1));
+    const last = monthRange(wib(2026, 6, 31));
     expect(first.fromISO).toBe(last.fromISO);
     expect(first.toISO).toBe(last.toISO);
   });
 
   it("handles a 30-day month", () => {
-    expect(monthRange(new Date(2026, 8, 15)).toISO).toBe("2026-09-30");
+    expect(monthRange(wib(2026, 8, 15)).toISO).toBe("2026-09-30");
   });
 
   it("handles February in a leap year", () => {
-    expect(monthRange(new Date(2024, 1, 10)).toISO).toBe("2024-02-29");
+    expect(monthRange(wib(2024, 1, 10)).toISO).toBe("2024-02-29");
   });
 
   it("handles February in a non-leap year", () => {
-    expect(monthRange(new Date(2025, 1, 10)).toISO).toBe("2025-02-28");
+    expect(monthRange(wib(2025, 1, 10)).toISO).toBe("2025-02-28");
   });
 
   it("does not spill into the next year in December", () => {
-    const r = monthRange(new Date(2026, 11, 9));
+    const r = monthRange(wib(2026, 11, 9));
     expect(r.fromISO).toBe("2026-12-01");
     expect(r.toISO).toBe("2026-12-31");
   });
 
-  it("covers the whole first and last day, not just midnight", () => {
-    const r = monthRange(new Date(2026, 6, 20));
-    expect(r.from.getHours()).toBe(0);
-    expect(r.from.getMinutes()).toBe(0);
-    expect(r.to.getHours()).toBe(23);
-    expect(r.to.getMinutes()).toBe(59);
-    expect(r.to.getMilliseconds()).toBe(999);
+  it("covers the whole first and last day in Jakarta time, not just midnight", () => {
+    const r = monthRange(wib(2026, 6, 20));
+    expect(r.from.toISOString()).toBe("2026-06-30T17:00:00.000Z"); // 1 Jul 00:00 WIB
+    expect(r.to.toISOString()).toBe("2026-07-31T16:59:59.999Z"); // 31 Jul 23:59:59.999 WIB
+  });
+
+  it("follows the Jakarta calendar date at 01:00 WIB on the 1st", () => {
+    const r = monthRange(wib(2026, 6, 1, 1));
+    expect(r.fromISO).toBe("2026-07-01");
   });
 
   it("round-trips: the link params reproduce the exact dates the card queried", () => {
     // This is the traceability guarantee. If it ever fails, a card and the
     // report behind its link are showing different periods.
-    const r = monthRange(new Date(2026, 6, 20));
-    const reparsed = parseLikeIncomeStatementPage(r.fromISO, r.toISO);
+    const r = monthRange(wib(2026, 6, 20));
+    // `/reports/income-statement` membaca `?from=&to=` lewat `resolvePeriod`.
+    const reparsed = resolvePeriod(r.fromISO, r.toISO);
     expect(reparsed.from.getTime()).toBe(r.from.getTime());
     expect(reparsed.to.getTime()).toBe(r.to.getTime());
   });
 
   it("labels the month in Indonesian", () => {
-    expect(monthRange(new Date(2026, 6, 20)).label).toBe("Juli 2026");
+    expect(monthRange(wib(2026, 6, 20)).label).toBe("Juli 2026");
   });
 });
 

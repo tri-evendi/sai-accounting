@@ -56,7 +56,7 @@ import {
 import type { FinanceBalanceRow } from "@/lib/pdf/finance-report-pdf";
 import { getIncomeStatement, getCashBalanceBase } from "@/lib/reports";
 import { getReceivables, getPayables } from "@/lib/receivables";
-import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
+import { monthRange, summarizeByCurrency } from "@/lib/dashboard-summary";
 import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { cashTypeLabels } from "@/lib/i18n/labels";
 import { buildDashboardInsights } from "@/lib/dashboard-insights";
@@ -64,6 +64,7 @@ import { getBudgetReport } from "@/lib/budget-report";
 import { getSalesByCustomer, getPurchasesBySupplier } from "@/lib/party-recap";
 import { CARD_GAP } from "@sai/ui/layout-scale";
 import { InsightPanel } from "@/components/dashboard/insight-panel";
+import { businessDayEnd, businessISODate } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -460,16 +461,14 @@ export default async function DashboardPage({
    * "every number is traceable" criterion rather than serve it.
    */
   const period = monthRange(new Date());
-  const arAsOf = new Date(`${toISODate(new Date())}T23:59:59.999`);
+  const arAsOf = businessDayEnd(businessISODate(new Date()));
   const canViewReports = allowed.has("report.read");
 
   /*
    * Bulan LALU, untuk kalimat arah kas (#472). Hari ke-0 sebuah bulan adalah
    * hari terakhir bulan sebelumnya — jadi ini akhir bulan lalu, bukan awalnya.
    */
-  const lastMonthEnd = new Date(
-    `${toISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 0))}T23:59:59.999`
-  );
+  const lastMonthEnd = businessDayEnd(businessISODate(new Date(period.from.getTime() - 1)));
 
   const [
     incomeStatement,

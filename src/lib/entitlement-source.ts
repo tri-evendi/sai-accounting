@@ -24,12 +24,21 @@ import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
 import { billingPlaneInstalled } from "@sai/core/deploy-profile";
-import { verifyLicence } from "@sai/core/licence";
 import {
+  licenceKeyInstalled,
+  licenceNotices,
+  verifyLicence,
+  type LicenceNotice,
+} from "@sai/core/licence";
+import {
+  creationQuota,
   entitlementFromLicence,
   entitlementFromPlan,
+  type CreationQuota,
   type Entitlement,
 } from "@sai/core/entitlement";
+import { APP_VERSION } from "@sai/core/constants";
+import type { SeatQuota } from "@sai/platform/invitation-store";
 import { CORE_MODULE } from "@/lib/business-modules";
 
 /** Jalur berkas lisensi; di compose ia di-mount HANYA-BACA. */
@@ -42,7 +51,28 @@ const JALUR_LISENSI = process.env.LICENCE_FILE?.trim() || "/etc/sai/licence.sai"
  */
 const TTL_MS = 60_000;
 
-let cache: { nilai: Entitlement; at: number } | null = null;
+/**
+ * Keadaan berkas lisensi, untuk DIPAJANG (halaman akun, `/api/health`,
+ * bundel diagnostik). Tidak satu pun cabangnya menutup pembukuan.
+ *
+ *   • `not-installed` — profil SaaS; lisensi memang tidak dipakai.
+ *   • `key-not-set`   — kunci publik produksi belum ditanam di kode, jadi
+ *                       TIDAK ADA berkas yang bisa sah (langkah pemilik).
+ *   • `missing` / `invalid` — berkasnya tidak terbaca / tidak lolos verifikasi.
+ */
+export type LicenceStanding =
+  | { status: "not-installed" }
+  | { status: "key-not-set" | "missing" | "invalid" }
+  | {
+      status: "ok";
+      licenceId: string;
+      customer: string;
+      supportEndsAt: string | null;
+      maxVersion: string | null;
+      notices: LicenceNotice[];
+    };
+
+let cache: { nilai: Entitlement; standing: LicenceStanding; at: number } | null = null;
 
 /** Entitlement tersempit yang masih bisa dipakai bekerja. */
 function cadanganTersempit(): Entitlement {
@@ -56,7 +86,16 @@ function cadanganTersempit(): Entitlement {
   };
 }
 
-async function bacaLisensi(): Promise<Entitlement> {
+async function bacaLisensi(): Promise<{ nilai: Entitlement; standing: LicenceStanding }> {
+  if (!licenceKeyInstalled()) {
+    console.error(
+      "[entitlement] kunci publik lisensi BELUM ditanam di image ini — tidak ada " +
+        "berkas lisensi yang bisa sah. Memakai entitlement tersempit (modul inti " +
+        "saja). Pembukuan tetap terbuka. Langkah pemilik: docs/ONPREM-SERAH-TERIMA.md."
+    );
+    return { nilai: cadanganTersempit(), standing: { status: "key-not-set" } };
+  }
+
   let isi: string;
   try {
     const { readFile } = await import("node:fs/promises");
@@ -66,7 +105,7 @@ async function bacaLisensi(): Promise<Entitlement> {
       `[entitlement] berkas lisensi tidak terbaca di ${JALUR_LISENSI} — ` +
         "memakai entitlement tersempit (modul inti saja). Pembukuan tetap terbuka."
     );
-    return cadanganTersempit();
+    return { nilai: cadanganTersempit(), standing: { status: "missing" } };
   }
 
   const vonis = verifyLicence(isi);
@@ -75,13 +114,24 @@ async function bacaLisensi(): Promise<Entitlement> {
       `[entitlement] lisensi TIDAK sah (${vonis.reason}) — memakai entitlement ` +
         "tersempit (modul inti saja). Pembukuan tetap terbuka."
     );
-    return cadanganTersempit();
+    return { nilai: cadanganTersempit(), standing: { status: "invalid" } };
   }
 
   /* `supportExpired` TIDAK mengubah entitlement. Ia dilaporkan di tempat lain
      (kesehatan, bundel diagnostik); dukungan yang berakhir bukan hak yang
      dicabut — rancangan §7. */
-  return entitlementFromLicence(vonis.licence);
+  const { licence } = vonis;
+  return {
+    nilai: entitlementFromLicence(licence),
+    standing: {
+      status: "ok",
+      licenceId: licence.licenceId,
+      customer: licence.customer,
+      supportEndsAt: licence.supportEndsAt,
+      maxVersion: licence.maxVersion,
+      notices: licenceNotices(licence, APP_VERSION),
+    },
+  };
 }
 
 async function bacaPaket(): Promise<Entitlement> {
@@ -102,12 +152,51 @@ async function bacaPaket(): Promise<Entitlement> {
   }
 }
 
+/** Entitlement + keadaan lisensi, dibaca sekali per TTL. */
+async function loadCached(): Promise<{ nilai: Entitlement; standing: LicenceStanding }> {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache;
+  const result = billingPlaneInstalled()
+    ? { nilai: await bacaPaket(), standing: { status: "not-installed" } as const }
+    : await bacaLisensi();
+  cache = { ...result, at: Date.now() };
+  return result;
+}
+
 /** Entitlement pemasangan ini, ber-cache. */
 export async function currentEntitlement(): Promise<Entitlement> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.nilai;
-  const nilai = billingPlaneInstalled() ? await bacaPaket() : await bacaLisensi();
-  cache = { nilai, at: Date.now() };
-  return nilai;
+  return (await loadCached()).nilai;
+}
+
+/** Keadaan lisensi pemasangan ini — untuk dipajang, tidak untuk memutuskan. */
+export async function currentLicenceStanding(): Promise<LicenceStanding> {
+  return (await loadCached()).standing;
+}
+
+/**
+ * Batas di titik PEMBUATAN perusahaan/pengguna — SATU-SATUNYA tempat route
+ * membaca angka batas (`tests/licence-limits.test.ts`).
+ *
+ * SaaS tidak membaca berkas maupun cache di sini: jawabannya snapshot paket
+ * tenant itu sendiri, sama persis dengan sebelum pintu ini ada. On-premise
+ * memakai angka lisensi atas seluruh pemasangan (`creationQuota`).
+ */
+export async function creationQuotaFor(tenant: {
+  maxCompanies: number;
+  maxUsers: number;
+}): Promise<CreationQuota> {
+  if (billingPlaneInstalled()) return creationQuota(entitlementFromPlan(tenant), tenant);
+  return creationQuota(await currentEntitlement(), tenant);
+}
+
+/**
+ * Batas kursi untuk diteruskan ke `@sai/platform/invitation-store` (paket itu
+ * tidak boleh mengimpor `@/…`). `undefined` di SaaS — paketnya lalu memakai
+ * `tenants.max_users` tenant itu sendiri, perilaku sebelum pintu ini ada.
+ */
+export async function seatQuotaOverride(): Promise<SeatQuota | undefined> {
+  if (billingPlaneInstalled()) return undefined;
+  const quota = creationQuota(await currentEntitlement(), { maxCompanies: 0, maxUsers: 0 });
+  return { maxUsers: quota.maxUsers, scope: quota.scope };
 }
 
 /** Dipakai tes dan server action yang memasang lisensi baru. */

@@ -55,11 +55,27 @@ services:
   #    ada di mesin — sepuluh menit `next build` di kotak customer, yang
   #    dilarang PRODUCTION.md dan tidak punya toolchain-nya. `pull_policy:
   #    always` menutupnya: selalu tarik dari registry, jangan pernah bangun.
+  # ══ Berkas lisensi: HANYA-BACA, ke app-customer dan jalur `schedule` ════
+  #
+  # Rancangan 09 §7 & 06 §3.7. Yang di-mount DIREKTORI, bukan berkasnya, dan
+  # itu bukan selera: bind-mount satu berkas mematok inode-nya, jadi lisensi
+  # baru yang disalin dengan `cp`/`mv` (atau disunting editor yang menulis
+  # berkas baru lalu menukarnya) TIDAK terlihat di container sampai restart —
+  # padahal pembacanya sengaja membaca ulang tiap 60 detik supaya pembaruan
+  # lisensi tidak menuntut restart. Direktori yang belum ada dibuat kosong
+  # oleh Docker; tanpa berkas di dalamnya aplikasi tetap start dengan
+  # entitlement tersempit (lisensi TIDAK PERNAH menutup buku).
+  #
+  # `:ro` wajib: tidak ada proses di container yang berhak menulis lisensinya
+  # sendiri — penulis berkas itu satu, dan ia penanda SAI di mesin luring.
   app-customer:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
     pull_policy: always
     environment:
       APP_DEPLOY_PROFILE: onprem
+      LICENCE_FILE: /etc/sai/licence.sai
+    volumes:
+      - ${SAI_LICENCE_DIR:-./lisensi}:/etc/sai:ro
 
   migrate:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
@@ -67,11 +83,16 @@ services:
     environment:
       APP_DEPLOY_PROFILE: onprem
 
+  # Jalur `schedule` hari ini = langkah di `job-scheduler` (09 §9: belum ada
+  # `kind` yang diterbitkan untuknya), jadi lisensinya di-mount DI SINI.
   job-scheduler:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
     pull_policy: always
     environment:
       APP_DEPLOY_PROFILE: onprem
+      LICENCE_FILE: /etc/sai/licence.sai
+    volumes:
+      - ${SAI_LICENCE_DIR:-./lisensi}:/etc/sai:ro
 
   job-conformance:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}

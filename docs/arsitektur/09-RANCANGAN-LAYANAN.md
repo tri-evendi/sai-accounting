@@ -544,7 +544,7 @@ docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d
 | `svc-pooler` | dipasang untuk **keseragaman konfigurasi**, bukan untuk beban |
 | Reverse proxy **milik customer** | **wajib** — TLS harus berhenti di suatu tempat; Traefik SAI tidak dikirim |
 | Volume `pg_data` · `documents` · `audit` · cadangan | **wajib** — dokumen dan jejak audit **tidak** ada di basis data |
-| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` — [06 §3.7](./06-KEAMANAN.md) |
+| Berkas lisensi | **wajib**, hanya-baca ke `app-customer` dan jalur `schedule` (hari ini `job-scheduler`) — [06 §3.7](./06-KEAMANAN.md). Yang di-mount **direktori** `${SAI_LICENCE_DIR:-./lisensi}` → `/etc/sai:ro`, bukan berkasnya: bind-mount satu berkas mematok inode, jadi lisensi pengganti tidak terlihat sampai restart |
 | Jalur `schema` | **wajib setiap pembaruan**, dijalankan customer |
 | `cache-redis` · `app-operator` · basis data `platform` | **tidak dipasang** |
 
@@ -581,6 +581,23 @@ kedua tujuan, bukan hanya di jalur lokal.
 
 Hanya tiga hal menyeberang batas customer, dan ketiganya **manual**: image rilis
 bertag versi (masuk), berkas lisensi (masuk), bundel diagnostik (keluar).
+
+✅ **Tahap D — kode lengkap, 22 Okt 2026.** Yang ditambahkan:
+
+| Butir | Keadaan |
+|---|---|
+| Mount lisensi | hanya-baca ke `app-customer` + `job-scheduler`, `LICENCE_FILE` disetel profil (`tests/onprem-profile.test.ts`) |
+| Batas lisensi | ditegakkan di titik **pembuatan** PT dan undangan/penerimaan pengguna lewat `creationQuotaFor` / `seatQuotaOverride` (`src/lib/entitlement-source.ts`); di on-premise dihitung atas seluruh pemasangan. SaaS tidak berubah. Yang sudah ada tidak pernah ditutup (`tests/licence-limits.test.ts`) |
+| Dukungan & versi | `supportEndsAt` lewat / versi berjalan > `maxVersion` → pita **informasi** di `/platform` bagi pengelola + `licence` di `/api/health` (ikut bundel diagnostik) |
+| Saluran rilis | tag git `v*` → image `:<versi>` (tanpa `:latest`, tag ≠ `package.json` ditolak) + bundel luring `docker save` + `SHA256SUMS` + compose sebagai aset GitHub Release (`tests/release-channel.test.ts`) |
+| Kunci publik belum ditanam | peringatan `[start]` (`src/instrumentation.ts`), `licence.status: "key-not-set"` di probe & bundel |
+| Serah terima | templat [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) — kunci cadangan, reverse proxy/TLS, bantahan DRC |
+
+⚠ **Satu langkah tersisa, dan sengaja bukan kode:** kunci publik produksi.
+`LICENCE_PUBLIC_KEY_PEM` masih `"BELUM-DISETEL"` sampai pemilik membuat pasangan
+kunci di mesin luring dan menempel kunci publiknya ([serah terima
+§0](../ONPREM-SERAH-TERIMA.md)). Kunci privat tidak pernah dibuat oleh agen,
+CI, atau di repo.
 
 ### DC/DRC customer menggantikan HA SAI — bukan cadangannya
 
@@ -677,7 +694,7 @@ Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` | — |
-| **D — on-premise** | customer on-prem pertama | penanda profil · artefak lisensi · satu pintu entitlement · saluran rilis · bundel diagnostik | di customer |
+| **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
 
 ⚠ **Tahap 1 dipecah empat, dan urutannya mengikuti satu garis: aturan akuntansi
 disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.
@@ -823,11 +840,11 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 | ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). Prasyarat §6 karena itu terpenuhi; yang tersisa dari §6 adalah memindahkan penerapannya keluar dari gerbang pemblokir |
 | **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
 | **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |
-| Keamanan | `SECURITY.md` — jalur pengungkapan kerentanan |
+| ~~Keamanan~~ | ✅ `SECURITY.md` ada (22 Okt 2026) — **kontak & sasaran waktunya masih placeholder** yang wajib diisi pemilik |
 | Deprecation | jendela tertulis: ditandai satu rilis minor, dicabut sesudahnya |
 | Data | retensi tertulis per jenis data + perjanjian pengolahan data |
-| On-premise | jendela dukungan, kebijakan backport, serah terima kunci |
-| Kepemilikan kode | `CODEOWNERS` (P3-3) |
+| On-premise | jendela dukungan, kebijakan backport. Serah terima kunci ✅ sebagai templat: [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) |
+| ~~Kepemilikan kode~~ | ✅ `.github/CODEOWNERS` (P3-3), satu pemilik: `@tri-evendi` |
 
 Dua di antaranya memblokir komersialisasi, bukan sekadar kerapian: **disiplin
 versi** — tanpa artefak bernomor tidak ada yang bisa dijual atau didukung — dan

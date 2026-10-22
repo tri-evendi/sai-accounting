@@ -128,3 +128,37 @@ describe("profil on-premise: jaringan (celah #7)", () => {
     }
   });
 });
+
+describe("profil on-premise: berkas lisensi hanya-baca (09 §7, 06 §3.7)", () => {
+  /* Pembacanya `app-customer`; jalur `schedule` hari ini langkah di
+     `job-scheduler`. Tanpa mount, aplikasi tetap start — dengan entitlement
+     tersempit, selamanya, dan tanpa satu pun galat yang menyebut sebabnya. */
+  const PEMBACA = ["app-customer", "job-scheduler"];
+
+  it.each(PEMBACA)("`%s` menyetel LICENCE_FILE dan me-mount direktorinya `:ro`", (s) => {
+    const b = blok(onpremKode, s);
+    expect(b, `\`${s}\` tanpa LICENCE_FILE`).toContain("LICENCE_FILE: /etc/sai/licence.sai");
+    expect(b, `\`${s}\` tanpa mount lisensi hanya-baca`).toMatch(
+      /- \$\{SAI_LICENCE_DIR:-[^}]+\}:\/etc\/sai:ro\s*$/m,
+    );
+  });
+
+  it("tidak ada mount /etc/sai yang bisa ditulis, di layanan mana pun", () => {
+    // Penulis berkas lisensi satu: penanda SAI di mesin luring.
+    const mount = onpremKode.split("\n").filter((l) => l.includes(":/etc/sai"));
+    expect(mount.length).toBeGreaterThanOrEqual(PEMBACA.length);
+    for (const l of mount) expect(l.trim(), `mount lisensi tanpa :ro → ${l}`).toMatch(/:ro$/);
+  });
+
+  it("yang di-mount DIREKTORI, bukan berkas — lisensi baru terbaca tanpa restart", () => {
+    /* Bind-mount satu berkas mematok inode: lisensi yang ditukar `mv` tidak
+       terlihat di container, sementara pembacanya sengaja membaca ulang tiap
+       60 detik justru supaya pembaruan lisensi tidak menuntut restart. */
+    expect(onpremKode).not.toMatch(/:\/etc\/sai\/licence\.sai(:ro)?\s*$/m);
+  });
+
+  it("jalur di compose = jalur bawaan pembacanya", () => {
+    const sumber = readFileSync(join(process.cwd(), "src/lib/entitlement-source.ts"), "utf8");
+    expect(sumber).toContain('"/etc/sai/licence.sai"');
+  });
+});

@@ -67,7 +67,7 @@
  * Aturannya satu kalimat: di halaman yang menampilkan uang, hue yang sudah
  * punya arti tidak pernah dipakai ulang sebagai hiasan (#186/#187).
  */
-import { PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, PlusOutlined, ShopOutlined, WarningOutlined } from "@ant-design/icons";
 import { StatCard } from "@sai/ui/stat-card";
 import {
   platformChip,
@@ -92,6 +92,13 @@ import { tenantCan } from "@/lib/tenant-authz";
 import { requireTenantPagePermission } from "@/lib/tenant-guard";
 import { tenantPath } from "@sai/core/tenant-routes";
 import { resolvePpnEnabled } from "@sai/platform/site-settings";
+import {
+  creationQuotaFor,
+  currentEntitlement,
+  currentLicenceStanding,
+} from "@/lib/entitlement-source";
+import { overLimit } from "@sai/core/entitlement";
+import { APP_VERSION } from "@sai/core/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +111,22 @@ const READ_ONLY_NOTE: React.CSSProperties = {
   border: "1px solid var(--ant-color-warning-border)",
   background: "var(--ant-color-warning-bg)",
   color: "var(--ant-color-money-pending)",
+};
+
+/**
+ * Pemberitahuan lisensi on-premise — INFORMASI, bukan peringatan. Nadanya
+ * `info` dengan sengaja: dukungan yang berakhir atau versi yang melampaui
+ * lisensi tidak mengubah apa pun yang bisa dikerjakan di buku, dan pita kuning
+ * akan terbaca seperti `READ_ONLY_NOTE` — keadaan yang memang menutup tulis.
+ */
+const LICENCE_NOTE: React.CSSProperties = {
+  display: "flex",
+  gap: 12,
+  padding: 16,
+  borderRadius: 8,
+  border: "1px solid var(--ant-color-info-border)",
+  background: "var(--ant-color-info-bg)",
+  color: "var(--ant-color-text)",
 };
 
 /**
@@ -257,6 +280,43 @@ export default async function PlatformPage() {
    * basis data kendali & platform tidak pernah berjalan sama sekali. */
   const overview = canSeeBilling ? await billingOverviewForTenant(tenant.tenantId) : null;
 
+  /* Batas meter lewat pintu yang SAMA dengan titik pembuatan: di SaaS angka
+   * paket tenant (tidak berubah), di on-premise angka lisensi. Meter yang
+   * menyebut 1 PT sementara lisensi mengizinkan 10 akan bohong dua arah. */
+  const limits = overview ? await creationQuotaFor(overview.tenant) : null;
+
+  /* Pemberitahuan lisensi — HANYA untuk pengelola (izin tagihan) dan hanya di
+   * on-premise. Isinya fakta (dukungan berakhir, versi melampaui lisensi,
+   * berkas tak sah); tidak satu pun menutup buku. */
+  const licence = canSeeBilling ? await currentLicenceStanding() : null;
+  const licenceLines: string[] = [];
+  if (licence && licence.status !== "not-installed") {
+    if (licence.status === "key-not-set") licenceLines.push(t("tenantSettings.licenceKeyNotSet"));
+    else if (licence.status === "missing") licenceLines.push(t("tenantSettings.licenceMissing"));
+    else if (licence.status === "invalid") licenceLines.push(t("tenantSettings.licenceInvalid"));
+    else if (licence.status === "ok") {
+      if (licence.notices.includes("support_ended") && licence.supportEndsAt) {
+        licenceLines.push(
+          t("tenantSettings.licenceSupportEnded", {
+            date: formatDateMedium(new Date(licence.supportEndsAt)),
+          })
+        );
+      }
+      if (licence.notices.includes("version_beyond_licence") && licence.maxVersion) {
+        licenceLines.push(
+          t("tenantSettings.licenceVersionBeyond", {
+            running: APP_VERSION,
+            max: licence.maxVersion,
+          })
+        );
+      }
+      if (overview) {
+        const over = overLimit(await currentEntitlement(), overview.usage);
+        if (over.companies || over.users) licenceLines.push(t("tenantSettings.licenceOverLimit"));
+      }
+    }
+  }
+
   /* ── Dua pertanyaan uang yang selama ini hanya bisa dijawab dengan menggulung
    * ke tabel tagihan dan menghitung sendiri: "kapan & berapa berikutnya" dan
    * "apakah saya sedang menunggak". Keduanya dihitung DI SINI dari data yang
@@ -321,6 +381,29 @@ export default async function PlatformPage() {
           </div>
         )}
 
+        {/* Lisensi on-premise — ikon + kata, bukan warna saja. Kalimat
+            penutupnya selalu ikut: pembaca pita lisensi pertama-tama bertanya
+            "apakah pembukuan saya berhenti", dan jawabannya tidak. */}
+        {licenceLines.length > 0 && (
+          <section role="status" aria-label={t("tenantSettings.licenceHeading")} style={LICENCE_NOTE}>
+            <InfoCircleOutlined
+              aria-hidden="true"
+              style={{ fontSize: 16, marginTop: 2, flexShrink: 0, color: "var(--ant-color-info)" }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 14, lineHeight: 1.625 }}>
+              <strong>{t("tenantSettings.licenceHeading")}</strong>
+              {licenceLines.map((line) => (
+                <p key={line} style={{ margin: 0 }}>
+                  {line}
+                </p>
+              ))}
+              <p style={{ margin: 0, color: "var(--ant-color-text-secondary)" }}>
+                {t("tenantSettings.licenceBooksOpen")}
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* Baris ringkasan. Untuk pemilik ia adalah PEMAKAIAN vs kuota — angka
             yang paling sering dicari dan dulu terkubur di tengah gulungan;
             untuk anggota biasa cukup satu kartu, sebab kuota bukan urusannya
@@ -342,13 +425,13 @@ export default async function PlatformPage() {
                 <QuotaMeter
                   label={t("tenantSettings.usageCompanies")}
                   used={overview.usage.companies}
-                  max={overview.tenant.maxCompanies}
+                  max={limits?.maxCompanies ?? overview.tenant.maxCompanies}
                   valueLabel={t("tenantSettings.usageOf", {
                     used: overview.usage.companies,
-                    max: overview.tenant.maxCompanies,
+                    max: limits?.maxCompanies ?? overview.tenant.maxCompanies,
                   })}
                   stateLabel={
-                    overview.usage.companies >= overview.tenant.maxCompanies
+                    overview.usage.companies >= (limits?.maxCompanies ?? overview.tenant.maxCompanies)
                       ? t("tenantSettings.quotaFull")
                       : t("tenantSettings.quotaNearlyFull")
                   }
@@ -356,13 +439,13 @@ export default async function PlatformPage() {
                 <QuotaMeter
                   label={t("tenantSettings.usageUsers")}
                   used={overview.usage.users}
-                  max={overview.tenant.maxUsers}
+                  max={limits?.maxUsers ?? overview.tenant.maxUsers}
                   valueLabel={t("tenantSettings.usageOf", {
                     used: overview.usage.users,
-                    max: overview.tenant.maxUsers,
+                    max: limits?.maxUsers ?? overview.tenant.maxUsers,
                   })}
                   stateLabel={
-                    overview.usage.users >= overview.tenant.maxUsers
+                    overview.usage.users >= (limits?.maxUsers ?? overview.tenant.maxUsers)
                       ? t("tenantSettings.quotaFull")
                       : t("tenantSettings.quotaNearlyFull")
                   }

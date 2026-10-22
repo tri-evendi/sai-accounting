@@ -13,6 +13,7 @@ import type { TenantScopedParams } from "@sai/core/tenant-routes";
 import { getActiveRoles } from "@/lib/roles";
 import { tenantCan } from "@/lib/tenant-authz";
 import { tenantSeatCount } from "@sai/platform/invitation-store";
+import { seatQuotaOverride } from "@/lib/entitlement-source";
 import { tenantMembershipForUser } from "@/lib/tenant-directory";
 import { UsersClient } from "./users-client";
 
@@ -46,7 +47,10 @@ export default async function UsersPage({
    * Hanya untuk yang boleh mengundang: bagi yang lain angka kuota tenant bukan
    * urusannya, dan querinya pun tidak berjalan.
    */
-  const seats = canInvite && membership ? await tenantSeatCount(membership.tenantId) : null;
+  const seats =
+    canInvite && membership
+      ? await tenantSeatCount(membership.tenantId, await seatQuotaOverride())
+      : null;
 
   return (
     <UsersClient

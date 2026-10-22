@@ -40,6 +40,7 @@ import { runWithCompany } from "@/lib/company-context";
 import { ROLES } from "@sai/core/constants";
 import { controlDb } from "@sai/core/control-db";
 import { refuseProvisioning } from "@sai/core/registration";
+import { creationQuotaFor } from "@/lib/entitlement-source";
 
 export async function POST(request: Request) {
   const result = await requireTenantApiPermission("company.create");
@@ -55,23 +56,37 @@ export async function POST(request: Request) {
    * murni (`refuseProvisioning`, teruji); jumlah dihitung DI SINI supaya UI
    * yang menyembunyikan tombol tidak pernah dianggap pagar.
    */
-  const [tenantRow, companyCount] = await Promise.all([
-    controlDb.tenant.findUnique({
-      where: { id: result.tenant.tenantId },
-      select: { status: true, maxCompanies: true },
-    }),
-    controlDb.company.count({ where: { tenantId: result.tenant.tenantId } }),
-  ]);
-  const refusal = tenantRow
-    ? refuseProvisioning({ ...tenantRow, companyCount })
-    : "tenant_not_active";
+  /*
+   * Angka batasnya lewat SATU pintu entitlement (`creationQuotaFor`): di SaaS
+   * snapshot paket tenant ini, persis seperti sebelumnya; di on-premise angka
+   * LISENSI, dihitung atas seluruh pemasangan. Yang dibatasi hanya PT BARU —
+   * buku yang sudah ada tidak pernah ditutup oleh lisensi (licence.ts).
+   */
+  const tenantRow = await controlDb.tenant.findUnique({
+    where: { id: result.tenant.tenantId },
+    select: { status: true, maxCompanies: true, maxUsers: true },
+  });
+  const quota = tenantRow ? await creationQuotaFor(tenantRow) : null;
+  const companyCount = await controlDb.company.count(
+    quota?.scope === "installation" ? undefined : { where: { tenantId: result.tenant.tenantId } }
+  );
+  const refusal =
+    tenantRow && quota
+      ? refuseProvisioning({
+          status: tenantRow.status,
+          maxCompanies: quota.maxCompanies,
+          companyCount,
+        })
+      : "tenant_not_active";
   if (refusal) {
     const { t } = await getRequestI18n();
     return NextResponse.json(
       {
         error:
           refusal === "company_quota_reached"
-            ? t("errors.companyQuotaReached")
+            ? quota?.source === "licence"
+              ? t("errors.companyLicenceLimitReached", { max: quota.maxCompanies })
+              : t("errors.companyQuotaReached")
             : t("errors.tenantNotActive"),
         code: refusal,
       },

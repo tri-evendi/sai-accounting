@@ -34,6 +34,8 @@ import { queueSnapshot } from "@sai/platform/job-queue";
 import { backupHealth, type BackupHealth } from "@/lib/backup-heartbeat";
 import { conformanceHealth, type ConformanceHealth } from "@/lib/conformance-heartbeat";
 import { mailHealth, type MailHealthStatus } from "@sai/platform/mail-health";
+import { currentLicenceStanding, type LicenceStanding } from "@/lib/entitlement-source";
+import type { LicenceNotice } from "@sai/core/licence";
 import { outboxCount, resolveMailConfig } from "@sai/platform/mailer-core";
 
 /**
@@ -125,7 +127,22 @@ export type HealthReport =
       backup: PublicBackupHealth;
       conformance: ConformanceHealth;
       mail: MailStatus;
+      licence: LicenceHealth;
     };
+
+/**
+ * Keadaan lisensi untuk probe PUBLIK — status dan kode pemberitahuan saja.
+ * Nama customer, batas, dan id lisensi TIDAK ikut: probe ini terbuka tanpa
+ * sesi. Bundel diagnostik membacanya dari sini (`kesehatan.txt`), sebab
+ * skripnya dilarang menyentuh berkas lisensi sendiri.
+ *
+ * DILAPORKAN, TIDAK IKUT MEMUTUSKAN: lisensi yang hilang atau kunci yang belum
+ * ditanam tidak pernah menjadi 503 — pembukuan tetap dilayani.
+ */
+export type LicenceHealth = {
+  status: LicenceStanding["status"] | "unknown";
+  notices?: LicenceNotice[];
+};
 
 /**
  * Kesiapan surel — SATU KATA saja (#317).
@@ -135,6 +152,17 @@ export type HealthReport =
  * jumlah antrean (yang menyiratkan volume pemakaian) tinggal di konsol
  * operator. Kegagalan membacanya tidak boleh menjatuhkan probe.
  */
+async function licence(): Promise<LicenceHealth> {
+  try {
+    const standing = await currentLicenceStanding();
+    return standing.status === "ok"
+      ? { status: "ok", notices: standing.notices }
+      : { status: standing.status };
+  } catch {
+    return { status: "unknown" };
+  }
+}
+
 async function mail(): Promise<MailStatus> {
   try {
     const [config, count] = await Promise.all([resolveMailConfig(), outboxCount()]);
@@ -391,6 +419,7 @@ export async function healthReport(): Promise<HealthReport> {
     companyStatus,
     backupStatus,
     conformanceStatus,
+    licenceStatus,
   ] = await Promise.all([
     lastSchedulerRun(),
     queue(),
@@ -399,6 +428,7 @@ export async function healthReport(): Promise<HealthReport> {
     sampleCompany(),
     lastBackup(),
     lastConformanceRun(),
+    licence(),
   ]);
 
   /*
@@ -420,5 +450,6 @@ export async function healthReport(): Promise<HealthReport> {
     backup: backupStatus,
     conformance: conformanceStatus,
     mail: mailStatus,
+    licence: licenceStatus,
   };
 }

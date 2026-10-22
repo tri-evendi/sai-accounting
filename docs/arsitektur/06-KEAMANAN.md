@@ -162,6 +162,13 @@ menjadikannya pemadaman. Lisensinya **perpetual**: yang berakhir adalah hak atas
 versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
 adalah kesalahan kategori untuk produk akuntansi.
 
+Batas perusahaan/pengguna dari lisensi hanya menahan pembuatan yang **baru**
+(`creationQuotaFor`, `seatQuotaOverride`). Selama kunci publik produksi belum
+ditanam (`"BELUM-DISETEL"`), pemasangan on-premise memperingatkannya saat start
+dan di `/api/health`; langkah pemiliknya di
+[`docs/ONPREM-SERAH-TERIMA.md` §0](../ONPREM-SERAH-TERIMA.md). Laporan
+kerentanan: [`SECURITY.md`](../../SECURITY.md).
+
 ### 3.8 Pengerasan transport & peramban
 
 Header lengkapnya ada di [03 API & Integrasi](./03-API-INTEGRASI.md). Ringkas: `frame-ancestors

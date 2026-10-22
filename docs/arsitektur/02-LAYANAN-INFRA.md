@@ -1,6 +1,6 @@
 # 02 — Layanan & Infrastruktur
 
-> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 22 Okt 2026 (kode `develop`) · terakhir diukur terhadap produksi `main@ca0cd038` · [indeks](./README.md)
 
 Apa yang berjalan, di mesin apa, dan bagaimana rilis sampai ke sana. Dua bagian
 terakhir berisi **target**, bukan keadaan.
@@ -85,6 +85,27 @@ membangun `backup` di atas `-migrator` yang baru didorong (konteks bernama,
 dirujuk digest), jadi host hanya membayar lapisan apt-nya — bukan
 `node_modules` kedua.
 
+**Memori & ukuran image — terukur 22 Okt 2026, SEBELUM penyatuan** (produksi
+v0.11.0, masih enam layanan latar). Angka untuk `svc-worker` dan
+`svc-integrator` sendiri belum diukur; jumlah lama di bawah adalah perkiraan
+kasarnya, bukan pengukuran.
+
+| Container (lama → baru) | RAM |
+|---|---|
+| `app-customer` | 324 MiB |
+| `app-operator` | 151 MiB |
+| `svc-ledger` + `svc-interactive` + `job-scheduler` + `job-conformance` → `svc-worker` | 110 + 50 + 3 + 4 MiB |
+| `svc-tenant` + `svc-interactive-go` → `svc-integrator` | 8 + 7 MiB |
+| `pg` · `pgbouncer` | 75 MiB · 1 MiB |
+
+| Image | Ukuran |
+|---|---|
+| `sai-accounting` (`app-customer`) | 797 MB |
+| `-operator` | 557 MB |
+| `-migrator` | 2,1 GB |
+| `-backup` | 2,5 GB — 2,0 GB di antaranya unik di cakram, sebab belum berbagi lapisan dengan `-migrator` (diperbaiki CI 22 Okt 2026, belum terbukti di cakram) |
+| `-integrator` | 235 MB |
+
 ⚠ `svc-worker` ber-awalan `svc-`, bukan `job-`, meski dua perannya putaran:
 yang dinamai adalah CONTAINER, dan container itu tidak pernah berakhir.
 Nomenklaturnya di `AGENTS.md`.
@@ -98,7 +119,7 @@ Nomenklaturnya di `AGENTS.md`.
 | Domain | `APP_DOMAIN` + `www.` (301 ke apex) | hanya `OPERATOR_DOMAIN` |
 | Volume | `documents` (RW) · `audit` (RW) | `audit` (RW); **tanpa** `documents` |
 | Healthcheck | `/api/health` tiap 30s | `/api/health` konsol sendiri |
-| Isi | Enam grup rute + PDF/Excel + surel | 19 halaman konsol; `/operator/*` lama → 308 |
+| Isi | Enam grup rute + PDF/Excel + surel | 20 halaman konsol (termasuk register lisensi `/licences` sejak 22 Okt 2026); `/operator/*` lama → 308 |
 | Standalone | 299 MB | 69 MB |
 
 `app-customer` tidak memuat rute konsol, dan `OPERATOR_HOST` dikosongkan lewat
@@ -144,8 +165,10 @@ koneksi; mode `session` menghapus manfaatnya.
 
 **Profil on-premise.** `docker-compose.onprem.yml` adalah override, bukan berkas
 pengganti: `docker compose -f docker-compose.yml -f docker-compose.onprem.yml up
--d`. Hasilnya **tujuh service** — `pg`, `pgbouncer`, `migrate`, `app-customer`,
-dan ketiga `job-*`.
+-d`. Hasilnya **enam service** — `pg`, `pgbouncer`, `migrate`, `app-customer`,
+`svc-worker`, `svc-integrator` — ditambah `job-backup` sebagai perkakas
+(profil `perkakas`, tidak ikut `up`; dipakai `prove-backup-restore` dan
+`tenant:import-onprem`).
 
 | Yang berbeda di mesin customer | Sebabnya |
 |---|---|
@@ -593,6 +616,7 @@ graph LR
     PREP --> BUILD[builder] --> RUN[runner]
     PREP --> BUILDO[builder-operator] --> RUNO[runner-operator]
     BUN --> MIGR[migrator] --> BAK[backup]
+    GOB[go-build] --> INT[integrator]
 
     style RUN fill:#e8f0ff,stroke:#4a6fa5
     style RUNO fill:#ffeaea,stroke:#b55
@@ -606,14 +630,15 @@ graph LR
 | `prepared` · `builder*` | 3× `prisma generate`; lalu `next build` | 768 MB |
 | `runner*` | Standalone, `USER node` | — |
 | `migrator` | 3× `prisma generate`; `CMD` `db:migrate:all` | 512 MB |
-| `backup` | `migrator` + `postgresql-client-17` + `awscli` | — |
+| `backup` | `migrator` + `postgresql-client-17` + `awscli`; di CI dibangun di atas `-migrator` yang baru didorong (dirujuk digest) sejak 22 Okt 2026 | — |
+| `go-build` · `integrator` | `golang` → biner statis `cmd/integrator` di `debian:bookworm-slim` + `postgresql-client-17` | — |
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>`.
 
 **Kedua image aplikasi wajib dari commit yang sama** — keduanya menulis basis
 data yang sama. Membangun image aplikasi **tidak** ikut membangun `migrator`,
 dan bila terlewat, dua job menjalankan kode lama tanpa tanda; karena itu
-matriks CI membangun keempat image setiap kali.
+matriks CI membangun kelima image setiap kali.
 
 **Bun = pemasang paket & peluncur skrip, Node = runtime.** `bun run`
 menghormati shebang `#!/usr/bin/env node`, jadi `next`, `tsc`, `prisma`, `tsx`
@@ -690,8 +715,10 @@ Semuanya bentuk kegagalan yang paling mahal di repo ini: yang tidak terlihat.
 kelalaian: ia kini perkakas ber-profil `perkakas` yang tidak ikut `up`. Yang
 mencadangkan jalur `tenant` di `svc-integrator`. Satu-satunya image-nya yang masih dipakai adalah
 untuk `docker compose run --rm job-backup bun run prove-backup-restore`, jadi
-ia tetap layak di-`pull` **pada hari latihan pemulihan** — bukan pada setiap
-rilis.
+ia tetap layak di-`pull` **pada hari latihan pemulihan** dan **pada hari
+memindah tenant ke on-premise** (`tenant:export-onprem` / `mark-migrated-out` /
+`unfreeze` berjalan di image itu karena butuh `pg_dump` langsung ke `pg`) —
+bukan pada setiap rilis.
 
 Tunggu **semua** job matriks hijau sebelum `pull`; bila satu target belum
 terdorong, layanan berjalan di versi berbeda-beda. Bila rilis membawa
@@ -706,6 +733,13 @@ Memeriksa apakah rilis membawa migration:
 ```bash
 SAI_TAG=sha-573d9cf docker compose up -d --no-deps app-customer app-operator
 ```
+
+⚠ **Rollback melintasi 22 Okt 2026 (1 image = 1 container):** `svc-worker`
+menjalankan `scripts/run-workers.ts`, yang tidak ada di image `-migrator` yang
+lebih tua; dan compose lama memuat enam layanan latar, bukan dua. Mengembalikan
+layanan latar ke tag sebelum penyatuan = kembalikan juga `docker-compose.yml`
+versi itu, lalu `up -d --remove-orphans`. Rollback `app-*` saja (perintah di
+atas) tidak terpengaruh.
 
 ⚠ **Rollback ke sebelum 18 Okt 2026:** tag `sha-` yang lebih tua dari pemisahan
 monorepo tidak punya image `…-operator`. Kembalikan juga `docker-compose.yml`
@@ -749,7 +783,7 @@ db:migrate:all
 **Fan-out per perusahaan: *bounded concurrency*, dan angkanya kecil karena
 memori.** Tiap pelaksana adalah satu proses Prisma CLI (ratusan MB) plus satu
 backend PostgreSQL, dan migration berjalan **sementara aplikasi masih
-melayani** — pada kotak 3,6 GB yang dibagi enam aplikasi, dan yang sudah pernah
+melayani** — pada kotak 8 GB (7,4 GB terlihat; dulu dicatat ~3,6 GB) yang dibagi enam aplikasi, dan yang sudah pernah
 kehilangan proses ke OOM-killer. Dua pelaksana memotong *wall-clock* separuh di
 17 perusahaan; menaikkannya menuntut ruang memori yang terukur.
 
@@ -915,7 +949,7 @@ membawa cap waktunya sendiri**, jadi lajunya satu `COUNT(*)` berjendela. Riwayat
 yang dicari sudah ada di tabelnya, lengkap dengan retensi 14 hari dari
 `archiveDoneJobs`.
 
-Kotak ini ~3,6 GB RAM dengan produksi hidup di atasnya; dua proses lagi untuk
+Kotak ini 8 GB RAM (7,4 GB terlihat) dibagi enam aplikasi, dengan produksi hidup di atasnya; dua proses lagi untuk
 menyimpan angka yang **sudah** tersimpan adalah ongkos tanpa imbalan.
 
 ⚠ **Durasi TIDAK bisa dihitung dari `claimed_at`, dan itu sebabnya `started_at`

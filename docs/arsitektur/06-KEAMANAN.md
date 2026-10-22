@@ -1,6 +1,6 @@
 # 06 — Keamanan & Model Ancaman
 
-> 20 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 22 Okt 2026 (kode `develop`) · terakhir diukur terhadap produksi `main@ca0cd038` · [indeks](./README.md)
 
 Apa yang dilindungi, dari siapa, dengan kontrol apa, dan apa yang belum ditutup.
 Temuan keamanan yang masih terbuka dilacak berprioritas di
@@ -60,7 +60,7 @@ Setiap baris menyebut penjaganya di kode dan tes yang menahannya.
 | Matriks **efektif** = bawaan + override peran + override pengguna + modul usaha | `tests/authz-overrides*.test.ts` |
 | **Modul usaha tidak pernah menggerbangi buku besar** — laporan tetap rekonsiliasi | `tests/business-modules-ledger.test.ts` |
 | Matriks tenant **terpisah** dari matriks perusahaan (kunci izinnya saling lepas, jadi salah matriks ditolak `tsc`) | `tests/tenant-authz.test.ts` |
-| Peran operator membagi **tindakan**: setiap server action memanggil `requireOperatorActionSession(izin)` | `tests/operator-roles.test.ts` |
+| Peran operator membagi **tindakan**: setiap server action memanggil `requireOperatorActionSession(izin)`. Register lisensi (`licence.register`) hanya `owner` dan `billing` | `tests/operator-roles.test.ts` |
 | **Kunci buku**: otentikasi ulang sebelum buku bisa ditulis | `tests/company-unlock.test.ts` |
 
 ### 3.3 Keutuhan buku besar
@@ -170,6 +170,16 @@ dengan draf. Tidak ada kolom, unggahan, atau env untuk kunci privat, dan tidak
 satu pun kode `app-customer` membaca tabel register — keduanya dijaga
 `tests/licence-register-archive.test.ts`. Status "dicabut" di register hanya
 catatan: lisensi luring tidak bisa dicabut dari jauh.
+
+**Pindah tenant SaaS → on-premise membawa seluruh buku keluar dari mesin SAI**
+([`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)). Kontrolnya:
+satu bundel **bersandi** (sandi dibangkitkan dan dicetak sekali saat ekspor, atau
+lewat env `SAI_BUNDLE_PASSPHRASE`; tidak pernah argumen baris perintah); `SETTINGS_ENCRYPTION_KEY` SaaS **tidak pernah ikut** — rahasia dibuka
+di SaaS lalu disegel ulang dengan kunci customer, dan ciphertext SaaS
+dikosongkan dari baris kendali; tenant **dibekukan** (`frozen_at`) sebelum dump
+supaya tidak ada tulisan yang tertinggal; impor hanya ke pemasangan kosong; dan
+setiap langkah tercatat di `tenant_audit_logs` (`tenant.onprem.*`, ekspor
+beserta sha256 bundelnya).
 
 Batas perusahaan/pengguna dari lisensi hanya menahan pembuatan yang **baru**
 (`creationQuotaFor`, `seatQuotaOverride`). Selama kunci publik produksi belum

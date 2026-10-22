@@ -19,7 +19,10 @@ Domain documents: [`docs/MULTI-COMPANY.md`](./docs/MULTI-COMPANY.md) ·
 [`docs/MODUL-USAHA.md`](./docs/MODUL-USAHA.md) ·
 [`docs/KOMERSIALISASI.md`](./docs/KOMERSIALISASI.md) ·
 [`docs/PRICING.md`](./docs/PRICING.md) ·
-[`docs/COMPLIANCE.md`](./docs/COMPLIANCE.md). Working rules: [`AGENTS.md`](./AGENTS.md).
+[`docs/COMPLIANCE.md`](./docs/COMPLIANCE.md). On-premise:
+[`docs/ONPREM-SERAH-TERIMA.md`](./docs/ONPREM-SERAH-TERIMA.md) (handover
+template) · [`docs/ONPREM-PINDAH-DARI-SAAS.md`](./docs/ONPREM-PINDAH-DARI-SAAS.md)
+(moving a SaaS tenant on-premise). Working rules: [`AGENTS.md`](./AGENTS.md).
 
 ## Stack
 
@@ -84,8 +87,8 @@ not on the server.
 `pull` → (migrate if there are new migrations) → `up -d`. That is the only
 deployment path; the steps are not copied here so that only one version exists.
 
-> ⚠ **Never build on the server.** The ~3.6 GB production box is shared with five
-> other applications (as of Oct 2026). A `next build` there once took ~19 minutes
+> ⚠ **Never build on the server.** The production box (2 vCPU, 8 GB) is shared
+> with five other applications (as of Oct 2026). A `next build` there once took ~19 minutes
 > with 58–92% iowait, and half the health probes answered 503 during the rebuild.
 > See `AGENTS.md`.
 

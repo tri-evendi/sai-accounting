@@ -13,6 +13,8 @@
 > | Set up backups | [§Automated backups](#automated-backups-issue-374) |
 > | Read the logs | [§Reading the logs](#reading-the-logs-issue-374) |
 > | Install on a brand-new box | §1 → §2 → §3 → §Updates |
+> | Move a SaaS tenant to on-premise | [`docs/ONPREM-PINDAH-DARI-SAAS.md`](docs/ONPREM-PINDAH-DARI-SAAS.md) (Indonesian) |
+> | Record an on-premise licence | operator console `/licences` — [`docs/ONPREM-SERAH-TERIMA.md`](docs/ONPREM-SERAH-TERIMA.md) §1 |
 
 ## Prerequisites
 
@@ -314,8 +316,9 @@ passed disappears on its own.
 
 Images are built by GitHub Actions (`.github/workflows/publish-image.yml`) on
 every push to `main` and pushed to GHCR. Do not build on the production
-server. That box has ~3.6 GB of RAM shared with five other apps (as of Oct
-2026, `docs/arsitektur/02-LAYANAN-INFRA.md`); building there took
+server. That box (2 vCPU, 8 GB plan, ~7.4 GB visible) is shared with five other
+apps (as of Oct 2026, `docs/arsitektur/02-LAYANAN-INFRA.md`; it was ~3.6 GB
+when the measurements below were taken); building there took
 ~19 minutes at 58-92% iowait, starved the container still serving (about half
 the health probes answered 503), and two concurrent builds have produced an
 OOM (exit 137).
@@ -336,6 +339,11 @@ OOM (exit 137).
    git pull                                  # compose file + migrations only
    docker compose pull app-customer app-operator migrate svc-worker svc-integrator
    ```
+   `job-backup` (image `-backup`) is a toolbox and not part of every release.
+   Pull it too on the day you run `prove-backup-restore` or move a tenant to
+   on-premise (`tenant:export-onprem`, `tenant:mark-migrated-out` and
+   `tenant:unfreeze` run in it), otherwise it runs an older tag:
+   `docker compose pull job-backup`.
 3. Only if the release brings new migrations under `prisma/postgresql/`:
    ```bash
    docker compose run --rm migrate bun run db:migrate:all
@@ -369,10 +377,12 @@ OOM (exit 137).
    > ends the container (exit ≠ 0) and `restart: unless-stopped` restarts all
    > four — a rising `docker inspect -f '{{.RestartCount}}' sai-svc-worker` is
    > the signal to read the log.
-5. Check that both app containers run images from the same `sha-` tag / build
-   date:
+5. Check that every SAI container runs an image from the same `sha-` tag /
+   build date — the background services serve no page, so a stale one breaks
+   nothing visible:
    ```bash
-   docker inspect --format '{{.Config.Image}} {{.Created}}' sai-app-customer sai-app-operator
+   docker inspect --format '{{.Name}} {{.Config.Image}} {{.Created}}' \
+     sai-app-customer sai-app-operator sai-svc-worker sai-svc-integrator
    ```
 
 **Order matters when a release carries migrations:** pull, then migrate, then
@@ -403,11 +413,18 @@ survive across commands.
 > data. Tags from before the console split (18 Oct 2026) have no `-operator`
 > image, so they also need the `docker-compose.yml` of that time — and a schema
 > migrated forward is not rolled back by re-pinning an image.
+>
+> Rolling the **background services** back across 22 Oct 2026 ("1 image = 1
+> container") is a third boundary: older `-migrator` images do not contain
+> `scripts/run-workers.ts`, so `svc-worker` cannot start on them. Restore the
+> `docker-compose.yml` of that time (six background services) and run
+> `up -d --remove-orphans`. Rolling back `app-customer`/`app-operator` alone, as
+> above, is not affected.
 
 ### One-time: package visibility
 
 GHCR packages are created private even for a public repo. Either make the
-four packages public once (GitHub -> Packages -> each package -> Package
+five packages public once (GitHub -> Packages -> each package -> Package
 settings -> Change visibility), or authenticate the server:
 
 ```bash

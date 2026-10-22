@@ -144,9 +144,9 @@ satu di kode; tabel ini mengelompokkannya.
 **Tidak ikut sama sekali** — langganan, tagihan, pembayaran, paket. Yang
 dibawa hanya ringkasannya: `plan_key` dan kuota di manifes, dan saran
 `licence:issue` = maks(pemakaian, kuota paket), modul `all`. Daftar lisensi
-yang diterbitkan dicatat di register lisensi konsol operator (pekerjaan
-terpisah; baris register punya `sourceTenantId` yang bisa menunjuk tenant
-SaaS asal).
+yang diterbitkan dicatat di register lisensi konsol operator (`/licences`,
+migration platform 0006); customer register punya `sourceTenantId` yang bisa
+menunjuk tenant SaaS asal.
 
 ## Keamanan
 

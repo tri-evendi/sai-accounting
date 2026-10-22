@@ -15,7 +15,7 @@ ketahanan data, bukan struktur.
 | Mode kegagalan dipilih sengaja | Kegagalan yang tidak terlihat diubah jadi kegagalan yang terlihat — tabel di bawah |
 | Isolasi buku besar secara fisik | Kueri yang lupa `WHERE company_id` tidak bisa memulangkan baris PT lain, karena baris itu tidak ada di basis data tersebut |
 | Satu pintu menuju buku besar | Gate persetujuan dan kunci periode di `postForSource`, bukan di route |
-| Aturan dijaga tes | 306 berkas tes; banyak menjaga aturan arsitektural, bukan perilaku |
+| Aturan dijaga tes | 360 berkas tes (22 Okt 2026); banyak menjaga aturan arsitektural, bukan perilaku |
 | Skrip pembuktian, bukan laporan | `prove-*` memeriksa keadaan nyata; migrasi dibuktikan lewat angka pra/pasca |
 | Pemeriksa kesesuaian data | Menyapu jalur yang tidak melewati zod; lahir dari enam kelas cacat nyata |
 | Dokumentasi di dekat keputusannya | Komentar menyimpan ukuran dan tanggal, sehingga bisa ditinjau ulang |
@@ -256,7 +256,7 @@ yang sudah diambil, dan tidak boleh dibatalkan tanpa sengaja:
 | Named volume, tanpa bind-mount host | Tidak ada jalur absolut yang mengikat ke mesin ini |
 | Skema deklaratif, `db:migrate:all` idempoten | VM baru bisa dibangun dari nol, berulang |
 | Traefik lewat label | Routing ikut pindah bersama `docker-compose.yml` |
-| `app-*` dan `job-*` stateless | Seluruh state di `pg` + tiga volume |
+| `app-*` dan layanan latar (`svc-worker`, `svc-integrator`) stateless | Seluruh state di `pg` + tiga volume |
 | Kredensial dari environment | Satu `.env` baru cukup |
 
 Yang menghalangi: backup luar-mesin (P0-1) · kunci enkripsi (P0-2) · prosedur

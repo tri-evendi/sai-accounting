@@ -83,14 +83,14 @@ function templateUrl(): URL {
  */
 const SAFE_DATABASE_NAME = /^[A-Za-z0-9_]{1,64}$/;
 
-function createClient(databaseName: string): PrismaClient {
+function createClient(databaseName: string, base: URL = templateUrl()): PrismaClient {
   if (!SAFE_DATABASE_NAME.test(databaseName)) {
     throw new Error(`Nama basis data tidak sah: ${JSON.stringify(databaseName)}`);
   }
 
   /* URL template dipakai untuk kredensial & host; nama basis datanya DIGANTI
      per perusahaan — itu inti model satu-basis-data-per-PT (#104). */
-  const url = templateUrl();
+  const url = new URL(base.toString());
   url.pathname = `/${databaseName}`;
   const adapter = buatAdapter(url.toString(), { batasKoneksi: CONNECTION_LIMIT });
 
@@ -108,12 +108,12 @@ function scheduleDisconnect(entry: PoolEntry): void {
 }
 
 /** Buang yang paling depan (paling lama tak dipakai) sampai muat dalam batas. */
-function evictIfNeeded(): void {
-  while (pool.size > POOL_MAX) {
-    const oldestKey = pool.keys().next().value;
+function evictIfNeeded(target: Map<string, PoolEntry> = pool): void {
+  while (target.size > POOL_MAX) {
+    const oldestKey = target.keys().next().value;
     if (oldestKey === undefined) return;
-    const evicted = pool.get(oldestKey)!;
-    pool.delete(oldestKey);
+    const evicted = target.get(oldestKey)!;
+    target.delete(oldestKey);
     scheduleDisconnect(evicted);
   }
 }
@@ -131,6 +131,48 @@ export function getCompanyClient(databaseName: string): PrismaClient {
   const client = createClient(databaseName);
   pool.set(databaseName, { client });
   evictIfNeeded();
+  return client;
+}
+
+/* ══ REPLIKA BACA (rancangan 09 §9, tahap 3) ═══════════════════════════════
+ *
+ * Kolam KEDUA, terpisah dari kolam primary, dengan kunci yang sama
+ * (`databaseName` — satu-satu dengan `companyId`, jadi isi satu PT tidak
+ * pernah tersaji untuk PT lain). Terpisah, bukan satu peta berkunci ganda:
+ * penggusuran klien replika tidak boleh menggusur klien primary yang sedang
+ * dipakai menulis, dan sebaliknya.
+ *
+ * Kosong selamanya bila `COMPANY_DATABASE_READ_URL_TEMPLATE` tidak disetel —
+ * keadaan produksi satu-VM hari ini. Pemakainya HANYA `@/lib/read-replica`,
+ * yang memutuskan kapan replika boleh dipakai (kesegaran) dan menolak tulisan;
+ * jalur lain yang memanggil `getCompanyReadClient` langsung ditolak
+ * `tests/read-replica.test.ts`.
+ */
+const readPool: Map<string, PoolEntry> = new Map();
+
+/** URL template replika, atau `null` bila replika baca tidak dipasang. */
+export function readTemplateUrl(): URL | null {
+  const raw = process.env.COMPANY_DATABASE_READ_URL_TEMPLATE;
+  return raw ? new URL(raw) : null;
+}
+
+/**
+ * Klien REPLIKA untuk satu basis data perusahaan, atau `null` bila replika
+ * baca tidak dipasang. Kredensial & host dari env, nama basis data dari
+ * registry — aturan yang sama dengan primary.
+ */
+export function getCompanyReadClient(databaseName: string): PrismaClient | null {
+  const base = readTemplateUrl();
+  if (!base) return null;
+  const existing = readPool.get(databaseName);
+  if (existing) {
+    readPool.delete(databaseName);
+    readPool.set(databaseName, existing);
+    return existing.client;
+  }
+  const client = createClient(databaseName, base);
+  readPool.set(databaseName, { client });
+  evictIfNeeded(readPool);
   return client;
 }
 
@@ -155,6 +197,14 @@ export function getCompanyClient(databaseName: string): PrismaClient {
  * untuk kedua mesin lebih mudah dipercaya daripada dua.
  */
 export async function releaseCompanyClient(databaseName: string): Promise<void> {
+  /* Klien replika ikut dilepas: basis data yang dihapus di primary lenyap juga
+     di replika begitu WAL-nya diputar, dan klien yang tertinggal hanya
+     menunggu galat. */
+  const read = readPool.get(databaseName);
+  if (read) {
+    readPool.delete(databaseName);
+    await read.client.$disconnect().catch(() => {});
+  }
   const entry = pool.get(databaseName);
   if (!entry) return;
   pool.delete(databaseName);
@@ -163,8 +213,9 @@ export async function releaseCompanyClient(databaseName: string): Promise<void> 
 
 /** Untuk tes & pematian proses: putus semuanya dan kosongkan peta. */
 export async function disconnectAllCompanyClients(): Promise<void> {
-  const entries = [...pool.values()];
+  const entries = [...pool.values(), ...readPool.values()];
   pool.clear();
+  readPool.clear();
   await Promise.allSettled(entries.map((e) => e.client.$disconnect()));
 }
 

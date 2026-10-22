@@ -693,9 +693,29 @@ Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 |---|---|---|---|
 | **1d — Go ke perhitungan laporan** | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** | 3–4 |
-| **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` | 5–7 |
+| **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` | — |
 | **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
+
+**Tahap 3: yang sudah ada, dan yang hanya bisa dibuktikan di tiga host.**
+Semuanya opt-in lewat `docker-compose.ha.yml` dan tiga variabel yang tidak ada
+di `.env` produksi; tanpa keduanya tidak satu perilaku pun berubah. Rinciannya
+dan runbook-nya di [02 §15.1](./02-LAYANAN-INFRA.md).
+
+| Butir | Wujudnya | Bukti di satu VM |
+|---|---|---|
+| *Leader election* `job-scheduler` | `scripts/run-as-leader.ts` sebagai `entrypoint`; kunci sesi di koneksi LANGSUNG yang dibuktikan ulang tiap denyut (`@sai/db/session-lock`) | tes unit: satu replika = perintah sama, sekali, kode keluar sama; kandidat tak menjalankan apa pun; kunci hilang → putaran dihentikan sebelum pemilihan ulang |
+| Pagar jalur tunggal-instans | Node: koneksi langsung bila `CONTROL_DATABASE_DIRECT_URL` ada | penjaga: advisory lock TS hanya di dua berkas, URL HA lolos penolak pooler; cacat jalan lama DIREPRODUKSI terhadap PgBouncer sekali-pakai (02 §15.1) |
+| Replika baca | `runReadOnly` → replika bila sudah memutar WAL sampai LSN primary, selain itu primary; tulisan ditolak | tes unit atas aturan LSN, penolakan tulisan, konteks PT yang hilang tetap melempar; daftar-izin pemanggil |
+| *Failover* otomatis | Patroni + etcd (witness di host ketiga) + `pg` sebagai HAProxy | `docker compose config` saja — **failover sungguhan belum pernah terjadi** |
+| Replika `svc-integrator` | jalur jamak: `--scale`; jalur tunggal: kandidat panas lewat restart | — |
+
+⚠ **Satu temuan di jalan, dan ia bukan tahap 3.** Pagar jalur `ledger` di Node
+mengambil kunci SESI lewat PgBouncer mode TRANSAKSI — cacat yang sama dengan
+P1002 `migrate` 15 Okt 2026, hanya tanpa gejala karena satu replika dan
+PgBouncer yang memakai ulang backend yang sama. Ia diperbaiki hanya di profil
+HA; menyalakannya di produksi satu-VM adalah keputusan terpisah (satu baris
+`environment:` di `svc-ledger`), bukan bagian diam-diam dari tahap ini.
 
 ⚠ **Tahap 1 dipecah empat, dan urutannya mengikuti satu garis: aturan akuntansi
 disentuh paling akhir.** 1a membangun fondasi antreannya tanpa satu baris Go.

@@ -15,8 +15,9 @@ import {
   reportEngine,
   type ReportEngineEntry,
 } from "@/lib/report-engine";
-import { REPORTS, isExportable, resolveAsOf, type ReportId } from "@/lib/report-catalog";
-import { goExportPayload } from "@/lib/report-export-go";
+import { REPORTS, isExportable, resolveAsOf, resolvePeriod, type ReportId } from "@/lib/report-catalog";
+import { COMPARABLE_REPORTS, goExportPayload, goExportPayloadShape } from "@/lib/report-export-go";
+import { comparisonDate, comparisonRange } from "@/lib/statement-compare";
 import { isValidResultRef } from "@sai/core/job-result";
 import { resultDir } from "@sai/platform/job-result-store";
 import { AKAR_REPO } from "./akar-sumber";
@@ -78,6 +79,21 @@ describe("register mesin laporan", () => {
     expect(reportEngine("trial-balance")).toBe("go");
     expect(REPORT_ENGINES["trial-balance"]!.parityProven).toEqual({ date: "2026-10-22", books: 17 });
   });
+
+  it("Laba Rugi & Neraca: `go` — paritas PRODUKSI tercatat bersama peralihannya", () => {
+    for (const id of ["income-statement", "balance-sheet"] as const) {
+      expect(reportEngine(id), id).toBe("go");
+      /* Bukti ditulis bersama perpindahan ke `go`, bukan sebelumnya — bukti
+         yang mendahului paritasnya bohong (22 Okt 2026, 17 buku produksi). */
+      expect(REPORT_ENGINES[id]!.parityProven, id).toEqual({ date: "2026-10-22", books: 17 });
+      expect(exportJobKind(id), id).toBe("report.export_go");
+    }
+    /* Setiap laporan Go punya skrip paritas ISI berkas juga (`-xlsx`) —
+       pelajaran Neraca Saldo: angka setara belum berarti berkas setara. */
+    for (const [id, e] of ENTRIES) {
+      expect(PKG.scripts[`${e.parityScript}-xlsx`], `${id}: ${e.parityScript}-xlsx`).toBeDefined();
+    }
+  });
 });
 
 /**
@@ -133,6 +149,79 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     /* Laporan yang bukan milik Go tidak bisa diterbitkan ke jalur Go. */
     const ts = REPORTS.find((r) => isExportable(r) && reportEngine(r.id) === "ts")!;
     expect(() => goExportPayload(ts, {})).toThrow(/bukan milik mesin Go/);
+  });
+
+  it("bentuk muatan laporan BERPERIODE (Laba Rugi) — instan dari `resolvePeriod`", () => {
+    const report = REPORTS.find((r) => r.id === "income-statement")!;
+    const now = new Date(2026, 9, 22, 10, 0, 0);
+    /* Rentang terbalik DITUKAR oleh resolvePeriod — Go menerima hasilnya. */
+    const p = goExportPayloadShape(report, { from: "2026-06-30", to: "2026-01-01", costCenter: "3" }, now);
+    const r = resolvePeriod("2026-06-30", "2026-01-01", now);
+    expect(p.params).toEqual({ from: r.fromISO, to: r.toISO, costCenter: "3" });
+    expect(p.fromInstant).toBe(r.from.toISOString());
+    expect(p.toInstant).toBe(r.to.toISOString());
+    expect(p.asOfInstant).toBeUndefined();
+    /* Sejak `go`, penerbitnya menerima laporan berperiode lewat jalur yang sama. */
+    expect(goExportPayload(report, {}, now).reportId).toBe("income-statement");
+  });
+
+  it("kolom pembanding (#557) ikut muatan Go — instan dari `comparisonRange`/`comparisonDate`", () => {
+    const now = new Date(2026, 9, 22, 10, 0, 0);
+    const is = REPORTS.find((r) => r.id === "income-statement")!;
+    const p = goExportPayloadShape(is, { from: "2026-01-01", to: "2026-06-30", compare: "previous_year" }, now);
+    const { from, to } = resolvePeriod("2026-01-01", "2026-06-30", now);
+    const r = comparisonRange(from, to, "previous_year");
+    expect(p.params.compare).toBe("previous_year");
+    expect(p.priorFromInstant).toBe(r.from.toISOString());
+    expect(p.priorToInstant).toBe(r.to.toISOString());
+
+    const bs = REPORTS.find((x) => x.id === "balance-sheet")!;
+    const q = goExportPayloadShape(bs, { asOf: "2026-06-30", compare: "preceding" }, now);
+    expect(q.priorAsOfInstant).toBe(comparisonDate(resolveAsOf("2026-06-30", now).asOf, "preceding").toISOString());
+
+    /* Mode tak dikenal DIBUANG (seperti halaman: laporan biasa), dan laporan
+       tanpa pembanding tidak membawa `compare` sama sekali. */
+    const asing = goExportPayloadShape(is, { from: "2026-01-01", to: "2026-06-30", compare: "bulan_lalu" }, now);
+    expect(asing.params).not.toHaveProperty("compare");
+    expect(asing.priorFromInstant).toBeUndefined();
+    const tb = REPORTS.find((x) => x.id === "trial-balance")!;
+    const nt = goExportPayloadShape(tb, { asOf: "2026-06-30", compare: "previous_year" }, now);
+    expect(nt.params).not.toHaveProperty("compare");
+    expect(nt.priorAsOfInstant).toBeUndefined();
+  });
+
+  it("halaman laporan komparatif mengirim asal BESERTA `compare` ke tombol Excel", () => {
+    /* Begitu register beralih ke `go`, lembar sebarnya dihitung dari
+       PARAMETER — `compare` yang tertinggal di halaman berarti berkas tanpa
+       kolom pembanding, tanpa satu galat pun. Dijaga SELAGI `go-parity`,
+       supaya peralihannya hanya menyunting register. */
+    for (const id of COMPARABLE_REPORTS) {
+      const r = REPORTS.find((x) => x.id === id)!;
+      const halaman = baca(
+        "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]",
+        ...(r.href ?? "").split("/").filter(Boolean),
+        "page.tsx"
+      );
+      expect(halaman, `${r.href}/page.tsx`).toMatch(
+        new RegExp(`<StatementExcelButton[\\s\\S]*?sumber=\\{\\{[\\s\\S]*?reportId: "${id}"[\\s\\S]*?compare: compare \\?\\? undefined`)
+      );
+    }
+  });
+
+  it("pelari Go punya penghasil Laba Rugi & Neraca, tetapi register yang memutuskan", () => {
+    const runner = baca("services", "integrator", "internal", "interactivelane", "runner.go");
+    expect(runner).toContain("case contract.ReportIncomeStatement:");
+    expect(runner).toContain("case contract.ReportBalanceSheet:");
+    /* Penolakan register mendahului percabangan per laporan. */
+    expect(runner.indexOf("contract.GoEngineReports[m.ReportID]")).toBeLessThan(
+      runner.indexOf("case contract.ReportIncomeStatement:")
+    );
+    const gen = baca("services", "integrator", "internal", "contract", "report_layout_gen.go");
+    const himpunan = /var GoEngineReports = map\[string\]bool\{([\s\S]*?)\}/.exec(gen)?.[1] ?? "";
+    for (const [id, e] of ENTRIES) {
+      const ada = new RegExp(`Report${id.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())}:\\s+true`).test(himpunan);
+      expect(ada, `${id} (${e.engine}) di GoEngineReports`).toBe(e.engine === "go");
+    }
   });
 
   it("pelari Node MENOLAK laporan `go` sebelum menghitung apa pun", () => {

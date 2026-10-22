@@ -6,6 +6,7 @@
  * the same summary by construction. Nothing here posts a journal.
  */
 import { prisma } from "@/lib/prisma";
+import { businessDayEnd, businessDayStart, businessISODate } from "@sai/core/business-date";
 import {
   summarizeReconciliation,
   movementSigned,
@@ -16,11 +17,20 @@ import type { BankStatement, BankStatementLine, CashMovement } from "@sai/db/cli
 
 type Client = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
-/** End of the period's last day, so a movement any time that day is in scope. */
-function endOfDay(d: Date): Date {
-  const end = new Date(d);
-  end.setHours(23, 59, 59, 999);
-  return end;
+/**
+ * Batas periode rekening koran menurut HARI KALENDER JAKARTA: 00.00 WIB hari
+ * pertama sampai 23.59.59,999 WIB hari terakhir, apa pun zona prosesnya.
+ * `setHours` lokal dulu menggeser batasnya mengikuti `TZ` host. Rute
+ * pencocokan memakai fungsi yang sama, supaya cakupan ringkasan dan cakupan
+ * pencocokan tidak pernah berbeda.
+ */
+export function statementBounds(
+  statement: Pick<BankStatement, "periodStart" | "periodEnd">
+): { start: Date; end: Date } {
+  return {
+    start: businessDayStart(businessISODate(statement.periodStart)),
+    end: businessDayEnd(businessISODate(statement.periodEnd)),
+  };
 }
 
 export interface ReconciliationView {
@@ -42,7 +52,7 @@ export async function scopedMovements(
     where: {
       type: statement.cashType,
       currency: statement.currency,
-      date: { gte: statement.periodStart, lte: endOfDay(statement.periodEnd) },
+      date: { gte: statementBounds(statement).start, lte: statementBounds(statement).end },
     },
     orderBy: [{ date: "asc" }, { id: "asc" }],
   });

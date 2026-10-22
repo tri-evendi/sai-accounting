@@ -44,9 +44,20 @@ const trialBalance = z.object({
 
 const section = z.object({ lines: rows(line), total: money });
 
-const incomeStatement = z.object({
-  kind: z.literal("income-statement"),
-  period: z.string(),
+/**
+ * Kolom PEMBANDING Laba Rugi & Neraca (#557) — OPSIONAL, dan DIBAWA.
+ *
+ * Sampai 22 Okt 2026 skema ini tidak menyebut `priorPeriod`/`prior`, dan
+ * `z.object` MEMBUANG kunci yang tidak disebutnya. Halaman mengirim
+ * pembandingnya, `buildReportSheet`/PDF sanggup menggambarnya — dan berkas
+ * yang diunduh dari halaman komparatif tetap SATU kolom, tanpa satu galat pun.
+ * Dua sisi yang benar sendiri-sendiri dengan satu batas kepercayaan yang
+ * diam-diam memotong di tengahnya; `tests/report-export-compare.test.ts`
+ * menjaganya kini.
+ *
+ * Batasnya sama dengan muatan berjalan: setiap array baris lewat `rows()`.
+ */
+const incomeStatementPrior = z.object({
   sales: section,
   cogs: section,
   grossProfit: money,
@@ -57,9 +68,46 @@ const incomeStatement = z.object({
   netIncome: money,
 });
 
+const incomeStatement = z.object({
+  kind: z.literal("income-statement"),
+  period: z.string(),
+  priorPeriod: z.string().optional(),
+  prior: incomeStatementPrior.optional(),
+  sales: section,
+  cogs: section,
+  grossProfit: money,
+  operatingExpense: section,
+  operatingProfit: money,
+  otherIncome: section,
+  otherExpense: section,
+  netIncome: money,
+});
+
+/**
+ * Neraca pembanding — termasuk pecahan #555 (`currentYearIncome` /
+ * `priorUnclosedIncome`) yang dikirim halaman bersama `prior`, sebab
+ * `balanceSheetLayout` membacanya untuk memecah blok ekuitas pembanding. Lihat
+ * `balanceSheetPrior` di `report-payload.ts` untuk akibatnya.
+ */
+const balanceSheetPrior = z.object({
+  assets: rows(line),
+  liabilities: rows(line),
+  equity: rows(line),
+  totalAssets: money,
+  totalLiabilities: money,
+  totalEquity: money,
+  netIncome: money,
+  currentYearIncome: money.optional(),
+  priorUnclosedIncome: money.optional(),
+  totalLiabilitiesEquity: money,
+  balanced: z.boolean(),
+});
+
 const balanceSheet = z.object({
   kind: z.literal("balance-sheet"),
   period: z.string(),
+  priorPeriod: z.string().optional(),
+  prior: balanceSheetPrior.optional(),
   assets: rows(line),
   liabilities: rows(line),
   equity: rows(line),

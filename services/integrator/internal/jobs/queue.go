@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -312,29 +314,63 @@ func (q *Queue) ArchiveDone(ctx context.Context, retensiHari int) (int64, error)
 // ia mencegah dua pelari berjalan bersamaan karena salah konfigurasi, dan
 // kesalahan itu jauh lebih mudah dilakukan daripada dibayangkan.
 //
-// Koneksinya DIPEGANG dan dipulangkan ke pemanggil: kunci advisory milik
-// koneksi, jadi melepas koneksinya ke kolam akan melepas kuncinya juga —
-// diam-diam, dan hanya di bawah beban ketika kolam memang memakai ulang
-// koneksi.
-func (q *Queue) TryLaneLock(ctx context.Context, lane contract.JobLane) (*pgxpool.Conn, bool, error) {
+// Koneksinya DIPEGANG di dalam `LaneLock`: kunci advisory milik koneksi, jadi
+// melepas koneksinya ke kolam akan melepas kuncinya juga — diam-diam, dan
+// hanya di bawah beban ketika kolam memang memakai ulang koneksi.
+//
+// Memegang koneksi saja TIDAK cukup, dan itu utang yang dibayar di sini: sesi
+// yang mati (PostgreSQL dimulai ulang, failover ke standby, jaringan putus)
+// melepas kuncinya di server sementara proses ini masih merasa memegangnya.
+// Maka `pg_backend_pid()` dicatat saat kunci diambil, dan `LaneLock.Watch`
+// membuktikannya ulang tiap `contract.LaneLockProbe` — padanan Go
+// `@sai/db/session-lock`.
+func (q *Queue) TryLaneLock(ctx context.Context, lane contract.JobLane) (*LaneLock, bool, error) {
+	var conn *pgxpool.Conn
 	conn, err := q.pool.Acquire(ctx)
 	if err != nil {
 		return nil, false, fmt.Errorf("ambil koneksi untuk pagar jalur: %w", err)
 	}
+	// Koneksi pagar TIDAK pernah kembali ke kolam dalam keadaan hidup: ia
+	// membawa `idle_session_timeout` yang tidak boleh diwarisi koneksi kerja.
+	buang := func() {
+		_ = conn.Conn().Close(context.Background())
+		conn.Release()
+	}
+	nama := "sai.lane." + string(lane)
+
+	// `idle_session_timeout` (PostgreSQL ≥ 14): pemegang yang terisolasi
+	// dibuang server sesudah angka ini — dan denyutnya sudah gagal lebih dulu
+	// (kontrak menjamin probe + query_timeout < idle_session). Gagal di server
+	// lama bukan alasan menolak pagar; jendelanya hanya memanjang ke TCP
+	// keepalive server. `set_config` dan bukan `SET`, supaya nilainya terikat
+	// sebagai parameter.
+	if _, err := conn.Exec(ctx, `SELECT set_config('idle_session_timeout', $1, false)`,
+		strconv.FormatInt(contract.LaneLockIdleSession.Milliseconds(), 10)); err != nil {
+		log.Printf("[%s] ⚠ idle_session_timeout tidak bisa disetel pada sesi pagar: %v", lane, err)
+	}
+
 	var ok bool
+	var pid int32
 	// Id kunci diturunkan dari nama jalur secara stabil — dua jalur berbeda tidak
 	// boleh berebut kunci yang sama. `hashtext` deterministik di satu versi
 	// server, dan itu cukup: yang dibandingkan hanya dua proses jalur yang sama
 	// di server yang sama. Nama kuncinya PERSIS sama dengan sisi Node
 	// (`workers/runner.ts`), karena pagar yang tidak saling melihat bukan pagar.
 	if err := conn.QueryRow(ctx,
-		`SELECT pg_try_advisory_lock(hashtext($1))`, "sai.lane."+string(lane)).Scan(&ok); err != nil {
-		conn.Release()
+		`SELECT pg_try_advisory_lock(hashtext($1)), pg_backend_pid()`, nama).Scan(&ok, &pid); err != nil {
+		buang()
 		return nil, false, fmt.Errorf("pagar jalur %s: %w", lane, err)
 	}
 	if !ok {
-		conn.Release()
+		buang()
 		return nil, false, nil
 	}
-	return conn, true, nil
+	return newLaneLock(nama, pid, conn, func(c context.Context, lepasKunci bool) {
+		if lepasKunci {
+			// Pelepasan eksplisit dulu: penutupan saja sudah melepasnya, tapi
+			// dengan ini kandidat berikutnya tidak perlu menunggu FIN sampai.
+			_, _ = conn.Exec(c, `SELECT pg_advisory_unlock(hashtext($1))`, nama)
+		}
+		buang()
+	}), true, nil
 }

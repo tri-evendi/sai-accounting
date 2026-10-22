@@ -29,6 +29,7 @@
  * MURNI: tanpa Prisma, tanpa I/O, tanpa `Date.now()` implisit — hari ini
  * SELALU dioper.
  */
+import { businessISODate } from "@sai/core/business-date";
 
 export const RECURRENCE_FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
 export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number];
@@ -54,7 +55,24 @@ function dayStart(d: Date): number {
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
-/** `YYYY-MM-DD` dari sebuah tanggal (UTC) — bentuk kunci idempotensinya. */
+/**
+ * "Hari ini" menurut kalender JAKARTA, dalam bentuk yang sama dengan
+ * `dayStart` (tengah malam UTC tanggal itu). `dayStart(today)` dulu mengambil
+ * tanggal UTC dari sebuah INSTAN: pukul 00.00–06.59 WIB masih terbaca kemarin,
+ * jadi kejadian tanggal 1 baru terbit sehari kemudian bila penjadwal berjalan
+ * dini hari. Tanggal jadwal (`startDate`, kejadian) tetap tanggal kalender
+ * murni dan tetap lewat `dayStart`.
+ */
+function todayStart(now: Date): number {
+  return Date.parse(`${businessISODate(now)}T00:00:00.000Z`);
+}
+
+/**
+ * `YYYY-MM-DD` dari sebuah tanggal (UTC) — bentuk kunci idempotensinya.
+ * Sengaja UTC: masukannya tanggal KALENDER yang dihitung modul ini sendiri
+ * sebagai tengah malam UTC (`occurrenceAt`), bukan instan; dan kuncinya sudah
+ * tersimpan di basis data, jadi bentuknya tidak boleh berubah.
+ */
 export function occurrenceKey(date: Date): string {
   return new Date(dayStart(date)).toISOString().slice(0, 10);
 }
@@ -137,7 +155,7 @@ export function planOccurrences(input: {
   today: Date;
   sudahTerbit?: ReadonlySet<string>;
 }): PlannedOccurrence[] {
-  const today = dayStart(input.today);
+  const today = todayStart(input.today);
   const terbit = input.sudahTerbit ?? new Set<string>();
   const out: PlannedOccurrence[] = [];
 
@@ -177,7 +195,7 @@ const MAX_SCAN = 5000;
  * bukan dijawab dengan tanggal karangan.
  */
 export function nextOccurrence(rule: RecurrenceRule, today: Date): Date | null {
-  const at = dayStart(today);
+  const at = todayStart(today);
   for (let n = 0; n < MAX_SCAN; n++) {
     const date = occurrenceAt(rule, n);
     if (!withinBounds(rule, n, date)) return null;

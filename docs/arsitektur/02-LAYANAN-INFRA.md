@@ -636,6 +636,27 @@ graph LR
 
 Tag per jalan CI: `latest` · `sha-<pendek>` · `<versi>`.
 
+### Stempel build — "versi tiap layanan" (22 Okt 2026)
+
+Nomor **rilis** tetap satu (`package.json`). Yang ditambahkan: setiap layanan
+bisa menyebut **build** yang ia jalankan, sebab layanan latar tidak melayani
+satu halaman pun dan satu yang tertinggal di image lama tidak terlihat di mana
+pun.
+
+| Lapis | Isinya |
+|---|---|
+| CI (`publish-image.yml`) | build-arg `APP_VERSION` (versi `package.json`), `GIT_SHA` (sha penuh), `BUILD_TIME` (UTC) ke **setiap** target, termasuk pendamping `backup` |
+| Dockerfile | `ARG` → `ENV` + label OCI `org.opencontainers.image.{version,revision,created}` di setiap tahap akhir, **sesudah `RUN` terakhir** supaya sha yang berubah tiap build tidak membatalkan cache `bun install`/`next build`. Biner Go juga lewat `-ldflags -X` (`internal/buildinfo`). Bawaan lokal: versi `package.json`, sha `dev` |
+| Pembaca | `@sai/core/build-info` (`buildInfo()`) dan Go `internal/buildinfo` (`Get()`) — satu bentuk keluaran |
+| Log start | `<layanan> v0.12.1 (abc1234, built …Z)` — kedua `app-*` (`instrumentation.ts`), penyelia `svc-worker` sekali + tiap peran, tiap pelari jalur Node, `svc-integrator` sekali + tiap jalur |
+| HTTP | `/api/health` kedua aplikasi: `version` + `build: {version, sha, builtAt}` |
+| Jejak | `jobs.claimed_by` dan `runtime_samples.instance` = `<kepala> <layanan> v<versi>+<sha>` (muat VARCHAR(100); kepala yang dipangkas, bukan stempel); `details.build` di `scheduler_runs`/`conformance_runs`. **Tanpa tabel & tanpa migration baru** — pohon Go tetap hanya menulis `jobs` dan `backup_runs` |
+| Konsol | `/scheduler` → panel **Versi layanan**: build konsol sebagai acuan; tiap layanan+peran yang terlihat dalam 26 jam terakhir dengan putusan *Sama* / *Tertinggal* / *Tidak diketahui* |
+
+Dijaga `tests/build-stamp.test.ts` (setiap tahap akhir terbitan berstempel,
+posisinya sesudah `RUN` terakhir, kedua langkah build meneruskan ketiga arg,
+tata letak TS = Go) dan `tests/build-info.test.ts` (perilaku).
+
 **Kedua image aplikasi wajib dari commit yang sama** — keduanya menulis basis
 data yang sama. Membangun image aplikasi **tidak** ikut membangun `migrator`,
 dan bila terlewat, dua job menjalankan kode lama tanpa tanda; karena itu
@@ -881,11 +902,11 @@ Lingkungan: pengembangan `bun run dev` (transport surel `file` →
 
 | Yang ada | Isi |
 |---|---|
-| `GET /api/health` | `control`, `platform`, `company`, `scheduler`, **`queue`**, `backup`, `conformance`, `mail`. **503 hanya bila keadaan INTRINSIK container ini buruk** — control tak terjangkau, atau skema tak sepadan (§12). Bidang hilir dilaporkan, tidak pernah ikut memutuskan (doktrin #137) |
+| `GET /api/health` | `control`, `platform`, `company`, `scheduler`, **`queue`**, `backup`, `conformance`, `mail`, dan `version`/`build` (§9, stempel build). **503 hanya bila keadaan INTRINSIK container ini buruk** — control tak terjangkau, atau skema tak sepadan (§12). Bidang hilir dilaporkan, tidak pernah ikut memutuskan (doktrin #137) |
 | `GET /status` | Versi untuk manusia: 4 keadaan per komponen, tanpa nama basis data atau kalimat error |
 | Healthcheck Docker & Traefik | Kedua `app-*` tiap 30s · `pg` tiap 10s |
 | `scheduler_runs` · `conformance_runs` · `backup_runs` | Jejak per putaran, dipangkas > 90 hari (baris `error`, baris terakhir, dan `ok` terakhir ditahan selamanya) |
-| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah: yang pertama berambang, yang kedua belum), dan **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel); `/conformance` memuat **catatan per buku** beserta lamanya |
+| Halaman konsol `/scheduler`, `/conformance` | Denyut di layar — `/scheduler` memuat **umur antrean per jalur**, **laju & durasi pekerjaan** (sengaja terpisah: yang pertama berambang, yang kedua belum), **pemicu tahap 1d** (tunda event loop & memori per pekerjaan, berambang + jumlah sampel), dan **versi layanan** (build tiap layanan terhadap build konsol, §9); `/conformance` memuat **catatan per buku** beserta lamanya |
 | `prove-scheduler-alive` · `prove-backup-restore` | Memeriksa keadaan nyata |
 | CI `Verify` | *Required status check* pada `main` sejak 11 Okt 2026 |
 
@@ -1087,7 +1108,7 @@ Produksi hari ini satu VM, jadi berkas itu tidak dipakai di mana pun.
 | Pagar jalur `ledger` | Koneksi langsung, dibuktikan ulang tiap 15 detik (`@sai/db/session-lock`) — sejak 22 Okt 2026 juga di compose dasar | Pagar lewat PgBouncer mode transaksi tertinggal di backend kolam — jinak di satu host, kosong di dua |
 | Replika baca | peran `interactive` saja (`runReadOnly`), lewat `:5433`, aturan LSN (`src/lib/read-replica.ts`) | Ekspor dari replika memuat setiap commit sebelum ekspor dimulai, atau ia membaca primary |
 | `svc-worker` lebih dari satu | `container_name` dilepas; `--scale` — `interactive` jamak, tiga peran lain kandidat | Klaim `FOR UPDATE SKIP LOCKED`. ⚠ Volume `hasil` lokal per host — skala LINTAS host menunggu penyimpanan objek untuk hasil |
-| `svc-integrator` lebih dari satu | Jalur `tenant` instans kedua keluar tanpa bekerja → proses keluar → restart: kandidat panas (jalur `interactive` Go-nya ikut restart) | Pagar Go memegang satu koneksi langsung. ⚠ Ia **tidak** membuktikan ulang kuncinya sesudah failover — lihat di bawah |
+| `svc-integrator` lebih dari satu | Jalur `tenant` instans kedua keluar tanpa bekerja → proses keluar → restart: kandidat panas (jalur `interactive` Go-nya ikut restart) | Pagar Go memegang satu koneksi langsung dan membuktikannya ulang tiap 15 detik (`jobs.LaneLock`, waktu dari `contract/kinds.yaml`) — kunci yang hilang sesudah failover menghentikan klaim dan proses keluar 1 |
 
 **Runbook failover.** Patroni yang memutuskan; operator memeriksa.
 
@@ -1125,13 +1146,27 @@ kodenya, dan satu percobaan 22 Okt 2026 terhadap PostgreSQL 17 + PgBouncer
 | Sesi kunci tanpa denyut, `idle_session_timeout` 1 s | server memutusnya dalam 1.005 ms |
 | `run-as-leader` dua instans | kedua menunggu, tidak menjalankan perintahnya; pemimpin keluar dengan kode anaknya (3) |
 
-**Dua utang yang disebut.** (1) Pelari Go (`TryLaneLock`) memegang koneksinya
-tetapi tidak membuktikan ulang kuncinya; sesudah failover, jalur `tenant` lama
-terus mengklaim sementara kandidat di host lain mengambil kunci di primary baru.
-Kebenaran tetap dipikul `dedupe_key` + lease, tapi dua cadangan bisa berjalan
-bersamaan. Perbaikannya denyut yang sama dengan `@sai/db/session-lock`, di Go,
-dengan gerbang `go:test`/`go:lint`. (2) etcd dan REST Patroni tanpa TLS:
-jaringan privat antar-host saja.
+**Satu utang yang disebut:** etcd dan REST Patroni tanpa TLS — jaringan privat
+antar-host saja.
+
+✅ **Dibayar 22 Okt 2026: pagar Go dibuktikan ulang.** Sampai tanggal itu pelari
+Go (`TryLaneLock`) memegang koneksinya tetapi tidak membuktikan ulang kuncinya;
+sesudah failover jalur `tenant` lama terus mengklaim sementara kandidat di host
+lain mengambil kunci di primary baru — dua pelari cadangan. Kini
+`jobs.LaneLock` menjalankan denyut yang sama dengan `@sai/db/session-lock`:
+`pg_backend_pid()` dicatat saat kunci diambil, tiap denyut memastikan backend
+yang menjawab masih backend itu dan kuncinya masih di `pg_locks`; denyut yang
+gagal, lambat, atau menjawab salah = kunci HILANG → klaim berikutnya dihentikan
+seketika, pekerjaan yang sedang jalan diselesaikan (lease-nya yang menjaga),
+`tenantlane.Run` pulang dengan galat, dan `svc-integrator` keluar 1 —
+`restart: unless-stopped` menghidupkannya kembali sebagai kandidat. Sesinya
+diberi `idle_session_timeout`. Ketiga angkanya (denyut 15 s, batas query 10 s,
+`idle_session_timeout` 90 s) kini di `contract/kinds.yaml` (`lane_lock_*`) dan
+dipakai KEDUA bahasa untuk pagar `sai.lane.*`; generator menolak
+denyut + batas query ≥ idle. Bukti: tes Go tanpa basis data
+(`internal/jobs/lanelock_test.go` — backend berganti, kunci lepas dari
+`pg_locks`, koneksi mati, server tak menjawab, pengklaiman dihentikan).
+Failover sungguhan tetap belum pernah terjadi (daftar di atas).
 
 ## 16. Tiga bentuk arsitektur infrastruktur
 

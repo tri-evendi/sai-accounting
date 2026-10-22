@@ -1,0 +1,54 @@
+{
+  "revenue": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "amount": "100.00"
+    }
+  ],
+  "expense": [
+    {
+      "code": "5101",
+      "name": "HPP",
+      "amount": "100.01"
+    }
+  ],
+  "totalRevenue": "100.00",
+  "totalExpense": "100.01",
+  "netIncome": "-0.01",
+  "sales": {
+    "lines": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "100.00"
+      }
+    ],
+    "total": "100.00"
+  },
+  "cogs": {
+    "lines": [
+      {
+        "code": "5101",
+        "name": "HPP",
+        "amount": "100.01"
+      }
+    ],
+    "total": "100.01"
+  },
+  "grossProfit": "-0.01",
+  "operatingExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "operatingProfit": "-0.01",
+  "otherIncome": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "otherExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "unknownTypes": []
+}

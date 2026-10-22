@@ -36,28 +36,31 @@
  * rate is unknown. Amounts across currencies are NEVER summed here — this is a
  * per-row export, and any totalling is the caller's concern per currency.
  */
+import { businessISODate } from "./business-date";
 
 /** Money → a plain decimal string (2 dp, dot separator, no thousands grouping). */
 function money(n: number): string {
   return (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2);
 }
 
-/** ISO date/string → `YYYY-MM-DD` (DJP date form). Empty string for null. */
+/**
+ * ISO date/string → `YYYY-MM-DD` (DJP date form). Empty string for null.
+ * Hari kalender JAKARTA: tanggal faktur yang tersimpan sebagai tengah malam
+ * UTC tetap jatuh di hari yang sama, dan instan pukul 00.00–06.59 WIB tidak
+ * lagi mundur sehari (dan tidak pindah masa pajak di pergantian bulan).
+ */
 function isoDate(value: string | Date | null | undefined): string {
   if (value == null || value === "") return "";
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
+  return businessISODate(d);
 }
 
-/** Tax period (masa/tahun) from an invoice date. */
+/** Tax period (masa/tahun) from an invoice date — dari tanggal yang sama dengan `isoDate`. */
 function masaTahun(value: string | Date): { masa: string; tahun: string } {
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return { masa: "", tahun: "" };
-  return {
-    masa: String(d.getUTCMonth() + 1).padStart(2, "0"),
-    tahun: String(d.getUTCFullYear()),
-  };
+  const iso = isoDate(value);
+  if (!iso) return { masa: "", tahun: "" };
+  return { masa: iso.slice(5, 7), tahun: iso.slice(0, 4) };
 }
 
 /**

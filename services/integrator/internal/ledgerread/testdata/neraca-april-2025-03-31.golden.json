@@ -1,0 +1,34 @@
+{
+  "asOf": "2025-03-31T16:59:59.999Z",
+  "assets": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "amount": "10000000.00"
+    }
+  ],
+  "liabilities": [
+    {
+      "code": "2101",
+      "name": "Hutang Sewa",
+      "amount": "30000000.00"
+    }
+  ],
+  "equity": [
+    {
+      "code": "3101",
+      "name": "Modal",
+      "amount": "10000000.00"
+    }
+  ],
+  "totalAssets": "10000000.00",
+  "totalLiabilities": "30000000.00",
+  "totalEquity": "10000000.00",
+  "netIncome": "-30000000.00",
+  "currentYearIncome": "-30000000.00",
+  "priorUnclosedIncome": "0.00",
+  "totalLiabilitiesEquity": "10000000.00",
+  "balanced": true,
+  "equitySplitJS": false,
+  "unknownTypes": []
+}

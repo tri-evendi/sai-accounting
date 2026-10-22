@@ -43,6 +43,7 @@
  */
 
 import { useT } from "@sai/core/i18n/client";
+import { businessISODate } from "@sai/core/business-date";
 import { PdfDocumentButton } from "@/components/shared/pdf-document-button";
 import type { ClientInventoryItem } from "@/lib/inventory";
 import type { FinanceBalanceRow } from "@/lib/pdf/finance-report-pdf";
@@ -50,7 +51,7 @@ import { toFinanceReportRows, type FinanceRowSource } from "@/lib/finance-report
 import { apiFetch } from "@/lib/api-fetch";
 import { fetchReportPdfBlob } from "@/lib/report-files";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => businessISODate(new Date());
 
 export function InventoryExportAction() {
   const t = useT();

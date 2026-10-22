@@ -41,6 +41,7 @@
  */
 
 import { translate, type Dictionary } from "@sai/core/i18n/dictionary";
+import { businessISODate } from "@sai/core/business-date";
 
 /** Satu titik pengingat: kunci tersimpan + geseran hari dari jatuh tempo. */
 export interface ReminderPoint {
@@ -120,7 +121,21 @@ function dayStart(d: Date): number {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** `YYYY-MM-DD` dari sebuah tanggal (UTC). */
+/**
+ * "Hari ini" menurut kalender JAKARTA, sebagai tengah malam UTC tanggal itu —
+ * bentuk yang sama dengan `dayStart(dueDate)`. `dayStart(today)` dulu membaca
+ * tanggal UTC dari sebuah instan, sehingga putaran pukul 00.00–06.59 WIB masih
+ * menganggapnya kemarin dan pengingat H-3/H+1 terlambat sehari.
+ */
+function todayStart(now: Date): number {
+  return Date.parse(`${businessISODate(now)}T00:00:00.000Z`);
+}
+
+/**
+ * `YYYY-MM-DD` dari sebuah tanggal (UTC). Sengaja UTC: jatuh tempo tersimpan
+ * sebagai tanggal kalender (tengah malam UTC), dan hasilnya kunci idempotensi
+ * yang sudah ada di riwayat — bentuknya tidak boleh bergeser.
+ */
 export function dueKeyOf(dueDate: Date): string {
   return new Date(dayStart(dueDate)).toISOString().slice(0, 10);
 }
@@ -159,7 +174,7 @@ export function planInvoiceReminders(input: {
   points: readonly ReminderPoint[];
   sudahTerkirim?: ReadonlySet<string>;
 }): PlannedReminder[] {
-  const today = dayStart(input.today);
+  const today = todayStart(input.today);
   const sent = input.sudahTerkirim ?? new Set<string>();
   const out: PlannedReminder[] = [];
 

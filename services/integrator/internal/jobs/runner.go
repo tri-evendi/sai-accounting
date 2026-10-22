@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
 )
 
@@ -34,7 +35,9 @@ import (
 //  3. SIGTERM menyelesaikan yang sedang jalan, lalu berhenti mengklaim.
 //     `docker compose down` dan setiap rilis mengirim SIGTERM.
 //
-//  4. Jalur tunggal-instans dipagari advisory lock — lihat TryLaneLock.
+//  4. Jalur tunggal-instans dipagari advisory lock — lihat TryLaneLock —
+//     yang dibuktikan ulang tiap denyut; pagar yang hilang menghentikan
+//     pengklaiman dan `Run` pulang dengan galat (lihat LaneLock).
 
 // ErrLeaseLost dipulangkan ke handler lewat Context yang dibatalkan, dan
 // dipakai pelari untuk membedakan "pekerjaan ini gagal" dari "pekerjaan ini
@@ -82,13 +85,22 @@ func (r *Runner) logf(format string, args ...any) {
 	l.Printf("["+string(r.Lane)+"] "+format, args...)
 }
 
-// WorkerID: cukup untuk menunjuk container yang memegang lease.
+// WorkerID: cukup untuk menunjuk container yang memegang lease, DITAMBAH
+// build yang ia jalankan — `tenant@<host>:<pid> svc-integrator v0.12.1+abc1234`.
+//
+// Stempel di sini, bukan di tabel baru: pohon Go hanya boleh menulis `jobs`
+// dan `backup_runs` (aturan 1, daftar-izin), dan kolom ini SUDAH ditulis setiap
+// klaim. Konsol operator (`/scheduler` → "Versi layanan") membacanya untuk
+// melihat pelari yang tertinggal di image lama. Bentuknya
+// `buildinfo.StampIdentity`, sama persis dengan `workerId` di
+// `workers/runner.ts`. Dihitung SEKALI per pelari, jadi `claimed_by = $2` pada
+// perpanjangan lease tetap cocok.
 func WorkerID(lane contract.JobLane) string {
 	host, err := os.Hostname()
 	if err != nil || host == "" {
 		host = "lokal"
 	}
-	return fmt.Sprintf("%s@%s:%d", lane, host, os.Getpid())
+	return buildinfo.StampIdentity(fmt.Sprintf("%s@%s:%d", lane, host, os.Getpid()), buildinfo.Service, buildinfo.Get())
 }
 
 // Run menguras jalur ini sampai SIGTERM/SIGINT (atau sampai Stop selesai).
@@ -123,8 +135,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	me := WorkerID(r.Lane)
 
+	var pagar *LaneLock
 	if spec.SingleInstance {
-		conn, dapat, err := r.Queue.TryLaneLock(ctx, r.Lane)
+		p, dapat, err := r.Queue.TryLaneLock(ctx, r.Lane)
 		if err != nil {
 			return err
 		}
@@ -133,7 +146,8 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.logf("  Jalur ini tunggal-instans di contract/kinds.yaml. Ini bukan galat.")
 			return nil
 		}
-		defer conn.Release()
+		pagar = p
+		defer pagar.Release(context.Background())
 	}
 
 	// SIGTERM membatalkan konteks BERHENTI, bukan konteks kerja: yang sedang
@@ -144,7 +158,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		lepas := context.AfterFunc(r.Stop, batalkanBerhenti)
 		defer lepas()
 	}
+	if pagar != nil {
+		r.jagaPagar(berhenti, batalkanBerhenti, pagar)
+	}
 
+	// Baris stempel build per jalur — bentuk `buildBanner` TypeScript.
+	r.logf("%s", buildinfo.Get().Banner(buildinfo.Service))
 	r.logf("mulai sebagai %s — mengklaim %v", me, kinds)
 
 	// Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah
@@ -178,8 +197,37 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.kerjakan(ctx, me, job)
 	}
 
+	if pagar != nil {
+		if err := pagar.Err(); err != nil {
+			// Bukan-nol, dengan sengaja: pelari yang kehilangan pagarnya tidak
+			// boleh keluar seperti pelari yang diminta berhenti. `cmd/integrator`
+			// lalu keluar 1, dan `restart: unless-stopped` menghidupkannya
+			// kembali sebagai KANDIDAT — yang mengambil pagar hanya bila memang
+			// tidak ada pemegang lain.
+			r.logf("berhenti karena pagar jalur hilang.")
+			return err
+		}
+	}
 	r.logf("berhenti.")
 	return nil
+}
+
+// jagaPagar menjalankan denyut pembuktian pagar selama pelari hidup. Begitu
+// kunci HILANG, pengklaiman berikutnya dihentikan SEKETIKA (lewat `hentikan`,
+// jalan yang sama dengan SIGTERM): pelari yang terus mengklaim tanpa pagar
+// adalah instans kedua yang sedang menunggu terjadi. Pekerjaan yang sedang
+// jalan diselesaikan — lease-nya yang menjaga baris itu, bukan pagar ini —
+// dan `Run` lalu memulangkan galat kehilangannya.
+func (r *Runner) jagaPagar(berhenti context.Context, hentikan context.CancelFunc, pagar *LaneLock) {
+	go func() { _ = pagar.Watch(berhenti) }()
+	go func() {
+		select {
+		case <-berhenti.Done():
+		case <-pagar.Lost():
+			r.logf("⚠ %v — berhenti mengklaim.", pagar.Err())
+			hentikan()
+		}
+	}()
 }
 
 func (r *Runner) tidur(berhenti context.Context, d time.Duration) {

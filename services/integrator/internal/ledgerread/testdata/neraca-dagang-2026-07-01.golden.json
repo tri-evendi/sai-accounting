@@ -1,0 +1,66 @@
+{
+  "asOf": "2026-07-01T16:59:59.999Z",
+  "assets": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "amount": "404861112.44"
+    },
+    {
+      "code": "1102",
+      "name": "Bank USD",
+      "amount": "13900000.00"
+    },
+    {
+      "code": "1201",
+      "name": "Piutang Usaha",
+      "amount": "109000000.30"
+    },
+    {
+      "code": "1501",
+      "name": "Peralatan",
+      "amount": "36000000.00"
+    },
+    {
+      "code": "1509",
+      "name": "Akumulasi Penyusutan Peralatan",
+      "amount": "-1000000.00"
+    }
+  ],
+  "liabilities": [
+    {
+      "code": "2101",
+      "name": "Hutang Usaha",
+      "amount": "36000000.00"
+    },
+    {
+      "code": "2201",
+      "name": "Hutang PPN",
+      "amount": "10000000.05"
+    }
+  ],
+  "equity": [
+    {
+      "code": "3101",
+      "name": "Modal Disetor",
+      "amount": "500000000.00"
+    },
+    {
+      "code": "3102",
+      "name": "Laba Ditahan",
+      "amount": "20000000.50"
+    }
+  ],
+  "totalAssets": "562761112.74",
+  "totalLiabilities": "46000000.05",
+  "totalEquity": "520000000.50",
+  "netIncome": "-3226542.81",
+  "currentYearIncome": "-3226542.81",
+  "priorUnclosedIncome": "0.00",
+  "totalLiabilitiesEquity": "562773457.74",
+  "balanced": false,
+  "equitySplitJS": true,
+  "unknownTypes": [
+    "9999"
+  ]
+}

@@ -70,6 +70,38 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
        `bun run parity:trial-balance-xlsx`. */
     parityProven: { date: "2026-10-22", books: 17 },
   },
+  /*
+   * Laporan KEDUA dan KETIGA tahap 1d (keputusan pemilik 22 Okt 2026). Go
+   * menghitung keduanya (`statements.go`) dan menulis lembar sebarnya
+   * (`internal/document`), tetapi BERKAS masih dihasilkan TypeScript sampai
+   * sesi utama menjalankan paritas atas buku PRODUKSI — angka DAN isi berkas:
+   *   bun run parity:income-statement · parity:income-statement-xlsx
+   *   bun run parity:balance-sheet    · parity:balance-sheet-xlsx
+   * Pelari Go menolak keduanya selama `go-parity` (`GoEngineReports`
+   * dibangkitkan dari entri ber-`engine: "go"` saja).
+   *
+   * Kolom pembanding (#557) SUDAH ikut jalur Go (`?compare=` → instan
+   * pembanding di muatan, lembar empat kolom di `internal/document/compare.go`),
+   * dan kedua halaman sudah mengirim `sumber` beserta `compare`: peralihan ke
+   * `go` cukup menyunting entri di bawah, SESUDAH skrip `-xlsx` lulus di
+   * ketiga bentuknya (satu kolom, `preceding`, `previous_year`).
+   */
+  "income-statement": {
+    engine: "go",
+    goSource: "services/integrator/internal/ledgerread/statements.go",
+    parityScript: "parity:income-statement",
+    /* Paritas PRODUKSI 22 Okt 2026 (hanya baca, 17 buku, sesi utama):
+       102 setara (angka, 3 periode × tanpa/`unassigned`) · isi XLSX 153 setara (3 periode × 3 bentuk pembanding) · pusat biaya `unassigned` 51 setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-22", books: 17 },
+  },
+  "balance-sheet": {
+    engine: "go",
+    goSource: "services/integrator/internal/ledgerread/statements.go",
+    parityScript: "parity:balance-sheet",
+    /* Paritas PRODUKSI 22 Okt 2026 (hanya baca, 17 buku, sesi utama):
+       51 setara (angka, 3 tanggal) · isi XLSX 153 setara (3 tanggal × 3 bentuk pembanding) — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-22", books: 17 },
+  },
 };
 
 /** Mesin yang menghasilkan BERKAS laporan ini hari ini. */

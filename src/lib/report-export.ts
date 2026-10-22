@@ -28,6 +28,7 @@ import {
   cashBankColumns,
   cashFlowLayout,
   cashFlowReconciliationNote,
+  comparePercentText,
   incomeStatementLayout,
   partyRecapColumns,
   splitBalanceSheetRows,
@@ -48,6 +49,7 @@ import {
   PARTY_RECAP_HEADERS,
   PARTY_RECAP_NO_PARTY,
   SHEET_NAMES,
+  STATEMENT_COMPARE_CHANGE_HEADER,
   STATEMENT_TITLES,
   STOCK_MOVEMENT_HEADERS,
   STOCK_VALUE_HEADERS,
@@ -178,12 +180,19 @@ function opnameSheetDate(iso: string): string {
 }
 
 /**
+ * Lebar kolom persen perubahan pada lembar KOMPARATIF (#557) — Laba Rugi dan
+ * Neraca. Kolom nominal pembandingnya memakai lebar kolom nominal laporannya.
+ * Dibangkitkan ke Go (`report_layout_gen.go`).
+ */
+export const COMPARE_CHANGE_WIDTH = 14;
+
+/**
  * Lebar kolom Laba/Rugi. Lebarnya urusan lembar sebar sendiri (PDF mengatur
  * kolomnya lain); judulnya TIDAK — itu datang dari `INCOME_STATEMENT_HEADERS`
  * bersama cetakan. Angkanya sama dengan Neraca karena tabelnya memang sama
  * bentuknya: keterangan lebar, satu kolom nominal.
  */
-const INCOME_STATEMENT_WIDTHS: Record<IncomeStatementColumnId, number> = {
+export const INCOME_STATEMENT_WIDTHS: Record<IncomeStatementColumnId, number> = {
   item: 48,
   amount: 22,
 };
@@ -219,12 +228,7 @@ function buildIncomeStatementSheet(
       text(label, bold),
       r.amount === null ? text(null) : money(r.amount, bold),
       r.prior === null || r.prior === undefined ? text(null) : money(r.prior, bold),
-      text(
-        r.percent === null || r.percent === undefined
-          ? null
-          : `${r.percent > 0 ? "+" : ""}${r.percent.toLocaleString("id-ID")}%`,
-        bold
-      ),
+      text(r.percent === null || r.percent === undefined ? null : comparePercentText(r.percent), bold),
     ];
   };
   return {
@@ -236,7 +240,7 @@ function buildIncomeStatementSheet(
           { header: INCOME_STATEMENT_HEADERS.item, width: INCOME_STATEMENT_WIDTHS.item },
           { header: p.period, width: INCOME_STATEMENT_WIDTHS.amount },
           { header: p.priorPeriod ?? "", width: INCOME_STATEMENT_WIDTHS.amount },
-          { header: "Perubahan", width: 14 },
+          { header: STATEMENT_COMPARE_CHANGE_HEADER, width: COMPARE_CHANGE_WIDTH },
         ]
       : INCOME_STATEMENT_COLUMNS.map((c) => ({
           header: INCOME_STATEMENT_HEADERS[c],
@@ -251,7 +255,7 @@ function buildIncomeStatementSheet(
  * kolomnya lain); judulnya TIDAK — itu datang dari `BALANCE_SHEET_HEADERS`
  * bersama cetakan.
  */
-const BALANCE_SHEET_WIDTHS: Record<BalanceSheetColumnId, number> = {
+export const BALANCE_SHEET_WIDTHS: Record<BalanceSheetColumnId, number> = {
   item: 48,
   amount: 22,
 };
@@ -280,12 +284,7 @@ function buildBalanceSheetSheet(
       text(label, bold),
       r.amount === null ? text(null) : money(r.amount, bold),
       r.prior === null || r.prior === undefined ? text(null) : money(r.prior, bold),
-      text(
-        r.percent === null || r.percent === undefined
-          ? null
-          : `${r.percent > 0 ? "+" : ""}${r.percent.toLocaleString("id-ID")}%`,
-        bold
-      ),
+      text(r.percent === null || r.percent === undefined ? null : comparePercentText(r.percent), bold),
     ];
   };
   const rows: SheetCell[][] = [
@@ -305,7 +304,7 @@ function buildBalanceSheetSheet(
           { header: BALANCE_SHEET_HEADERS.item, width: BALANCE_SHEET_WIDTHS.item },
           { header: p.period, width: BALANCE_SHEET_WIDTHS.amount },
           { header: p.priorPeriod ?? "", width: BALANCE_SHEET_WIDTHS.amount },
-          { header: "Perubahan", width: 14 },
+          { header: STATEMENT_COMPARE_CHANGE_HEADER, width: COMPARE_CHANGE_WIDTH },
         ]
       : BALANCE_SHEET_COLUMNS.map((c) => ({
           header: BALANCE_SHEET_HEADERS[c],

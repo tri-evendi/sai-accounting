@@ -41,6 +41,8 @@
  */
 
 import "dotenv/config";
+import { buildDetails } from "@sai/core/build-info";
+import { businessISODate } from "@sai/core/business-date";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { billingPlaneInstalled } from "@sai/core/deploy-profile";
@@ -614,9 +616,9 @@ async function main() {
               : `Tagihan langganan jatuh tempo ${dayLabel} — SAI Accounting`,
           text:
             kind === "trial_ending"
-              ? `Halo,\n\nMasa uji coba langganan Anda berakhir pada ${target.toISOString().slice(0, 10)}.\n` +
+              ? `Halo,\n\nMasa uji coba langganan Anda berakhir pada ${businessISODate(target)}.\n` +
                 "Setelah itu siklus tagih dimulai dan tagihan pertama terbit otomatis.\n\n— SAI Accounting"
-              : `Halo,\n\nTagihan langganan Anda jatuh tempo pada ${target.toISOString().slice(0, 10)}.\n` +
+              : `Halo,\n\nTagihan langganan Anda jatuh tempo pada ${businessISODate(target)}.\n` +
                 paymentInstructionText(invoiceBySub.get(sub.id) && paymentByInvoice.get(invoiceBySub.get(sub.id)!.id)) +
                 "Bila terlewat, langganan menunggak dan setelah masa tenggang buku besar\n" +
                 "menjadi HANYA-BACA (data Anda tidak dihapus).\n\n— SAI Accounting",
@@ -734,7 +736,9 @@ async function main() {
         statusChanges: summary.transitions.length,
         adoptions: summary.adoptions.length,
         errorCount: errors.length,
-        details: JSON.stringify({ ...summary, errors }),
+        /* `build` = stempel image yang menjalankan putaran ini
+           (`@sai/core/build-info`) — dibaca panel "Versi layanan" konsol. */
+        details: JSON.stringify({ ...summary, errors, ...buildDetails() }),
       },
     });
   } catch (e) {

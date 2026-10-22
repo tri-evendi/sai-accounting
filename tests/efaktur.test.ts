@@ -149,7 +149,10 @@ describe("buildEfaktur — seller NPWP is required for every row", () => {
 describe("withinPeriod / buildEfaktur — period filtering", () => {
   it("includes the boundary days and excludes outside, at day granularity", () => {
     expect(withinPeriod("2026-07-01", { from: "2026-07-01", to: "2026-07-31" })).toBe(true);
-    expect(withinPeriod("2026-07-31T23:00:00Z", { from: "2026-07-01", to: "2026-07-31" })).toBe(true);
+    // Hari diukur di jam Jakarta: 31 Juli 23.00 WIB masih Juli, 31 Juli 23.00 UTC
+    // sudah 1 Agustus 06.00 WIB (masa pajak berikutnya).
+    expect(withinPeriod("2026-07-31T16:00:00Z", { from: "2026-07-01", to: "2026-07-31" })).toBe(true);
+    expect(withinPeriod("2026-07-31T23:00:00Z", { from: "2026-07-01", to: "2026-07-31" })).toBe(false);
     expect(withinPeriod("2026-06-30", { from: "2026-07-01", to: "2026-07-31" })).toBe(false);
     expect(withinPeriod("2026-08-01", { from: "2026-07-01", to: "2026-07-31" })).toBe(false);
   });

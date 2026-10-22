@@ -1,0 +1,39 @@
+{
+  "asOf": "2025-06-30T16:59:59.999Z",
+  "assets": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "amount": "440000000.00"
+    },
+    {
+      "code": "1201",
+      "name": "Piutang Usaha",
+      "amount": "110000000.55"
+    }
+  ],
+  "liabilities": [
+    {
+      "code": "2201",
+      "name": "Hutang PPN",
+      "amount": "10000000.05"
+    }
+  ],
+  "equity": [
+    {
+      "code": "3101",
+      "name": "Modal Disetor",
+      "amount": "500000000.00"
+    }
+  ],
+  "totalAssets": "550000000.55",
+  "totalLiabilities": "10000000.05",
+  "totalEquity": "500000000.00",
+  "netIncome": "40000000.50",
+  "currentYearIncome": "40000000.50",
+  "priorUnclosedIncome": "0.00",
+  "totalLiabilitiesEquity": "550000000.55",
+  "balanced": true,
+  "equitySplitJS": false,
+  "unknownTypes": []
+}

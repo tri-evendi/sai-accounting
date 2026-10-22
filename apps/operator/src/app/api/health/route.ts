@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { healthBuildFields } from "@sai/core/build-info";
 import { controlDb } from "@sai/core/control-db";
 import { platformDb } from "@sai/platform/platform-db";
 
@@ -21,10 +22,16 @@ export const runtime = "nodejs";
  * pemantauan isi.
  */
 export async function GET() {
+  /* Build konsol — pasangan medan yang sama di `/api/health` pelanggan, supaya
+     ritual rilis bisa membandingkan keduanya (PRODUCTION.md §Updates). */
+  const build = healthBuildFields();
   try {
     await controlDb.$queryRaw`SELECT 1`;
   } catch {
-    return NextResponse.json({ status: "error", database: "unreachable" }, { status: 503 });
+    return NextResponse.json(
+      { status: "error", database: "unreachable", ...build },
+      { status: 503 }
+    );
   }
   let platform: "ok" | "unknown" = "unknown";
   try {
@@ -33,5 +40,10 @@ export async function GET() {
   } catch {
     /* dilaporkan, tidak memutuskan */
   }
-  return NextResponse.json({ status: "ok", control: { status: "ok" }, platform: { status: platform } });
+  return NextResponse.json({
+    status: "ok",
+    control: { status: "ok" },
+    platform: { status: platform },
+    ...build,
+  });
 }

@@ -27,6 +27,16 @@
 export const UNASSIGNED_COST_CENTER = "unassigned";
 
 /**
+ * Label "belum ditetapkan" untuk DOKUMEN CETAK — bahasa Indonesia, seperti
+ * seluruh isi `lib/pdf`: berkas yang lepas dari layarnya (pekerja antrean,
+ * pelari Go) tidak membawa bahasa penggunanya, dan tidak punya permintaan HTTP
+ * untuk membacanya. Bunyinya SAMA PERSIS dengan `costCenters.filterUnassigned`
+ * di `id.json` (dijaga `tests/print-label-dictionary.test.ts`), dan pola Go-nya
+ * dibangkitkan dari konstanta ini (`report_layout_gen.go`).
+ */
+export const COST_CENTER_UNASSIGNED_PRINT_LABEL = "Belum ditetapkan";
+
+/**
  * Penyaring pusat biaya yang sudah dinormalkan.
  * `undefined` = tanpa penyaring · angka = satu pusat biaya · `"unassigned"` = NULL.
  */
@@ -49,6 +59,15 @@ export function parseCostCenterFilter(raw: string | null | undefined): CostCente
   if (!/^\d+$/.test(value)) return undefined;
   const id = Number.parseInt(value, 10);
   return id > 0 ? id : undefined;
+}
+
+/**
+ * Nama tampil satu pusat biaya: "KODE — Nama". Satu tempat, karena ia juga
+ * TERCETAK di label periode Laba Rugi yang disaring — dan pola Go-nya
+ * dibangkitkan dari fungsi ini (`report_layout_gen.go`).
+ */
+export function costCenterDisplayName(code: string, name: string): string {
+  return `${code} — ${name}`;
 }
 
 /** Kebalikan `parseCostCenterFilter` — nilai untuk `<select>` & querystring. */

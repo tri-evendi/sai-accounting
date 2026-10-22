@@ -16,6 +16,7 @@
  * menghitung ulang apa pun.
  */
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { businessISODate } from "@sai/core/business-date";
 import type { ReportPdfKind } from "@/lib/report-pdf-kinds";
 import { apiFetch } from "@/lib/api-fetch";
 import { documentPdfHref, parseTenantPath } from "@sai/core/tenant-routes";
@@ -26,7 +27,7 @@ import { STATEMENT_TITLES } from "@/lib/statement-layout";
 
 /** Tanggal berkas — hari ini, bukan periode laporan (dua hal berbeda). */
 function stamp(): string {
-  return new Date().toISOString().slice(0, 10);
+  return businessISODate(new Date());
 }
 
 /** Nama berkas yang aman lintas sistem berkas: hanya huruf, angka, garis bawah. */

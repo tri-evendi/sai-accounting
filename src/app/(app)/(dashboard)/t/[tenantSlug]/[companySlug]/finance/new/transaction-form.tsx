@@ -25,6 +25,7 @@
  */
 
 import { Suspense, useEffect, useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { Alert, Flex, theme, Typography } from "antd";
 import { useSearchParams } from "next/navigation";
 import { useForm, useWatch, type FieldErrors, type Resolver } from "react-hook-form";
@@ -192,7 +193,7 @@ function NewTransactionForm({ closedPeriods }: { closedPeriods: ClosedPeriodRef[
     >,
     defaultValues: {
       type: "bank",
-      date: new Date().toISOString().split("T")[0],
+      date: businessISODate(new Date()),
       description: "",
       debit: "0",
       credit: "0",

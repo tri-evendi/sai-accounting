@@ -76,6 +76,7 @@
  */
 
 import "dotenv/config";
+import { businessISODate } from "@sai/core/business-date";
 import { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
@@ -290,7 +291,7 @@ async function main() {
 
     /* ── c. trial_ends_at → NULL (ikat pinggang untuk image lama) ────────── */
     if (sub.status === "trialing" && sub.trialEndsAt !== null) {
-      baris.push(`trial_ends_at: ${sub.trialEndsAt.toISOString().slice(0, 10)} → NULL`);
+      baris.push(`trial_ends_at: ${businessISODate(sub.trialEndsAt)} → NULL`);
       if (apply) {
         await platform.subscription.update({
           where: { id: sub.id },

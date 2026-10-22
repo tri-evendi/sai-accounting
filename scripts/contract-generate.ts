@@ -51,22 +51,44 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { COMPANY_NAME } from "@sai/core/constants";
+import { BUSINESS_TIME_ZONE } from "@sai/core/business-date";
 import {
+  BALANCE_SHEET_COLUMNS,
+  BALANCE_SHEET_HEADERS,
+  BALANCE_SHEET_PRINT_LABELS,
+  INCOME_STATEMENT_COLUMNS,
+  INCOME_STATEMENT_HEADERS,
+  INCOME_STATEMENT_PRINT_LABELS,
   SHEET_NAMES,
   STATEMENT_TITLES,
   TRIAL_BALANCE_COLUMNS,
   TRIAL_BALANCE_HEADERS,
   TRIAL_BALANCE_PRINT_LABELS,
+  STATEMENT_COMPARE_CHANGE_HEADER,
   asOfPeriodLabel,
+  balanceSheetBalanceNote,
+  comparePercentText,
+  comparePeriodLabel,
+  costCenterPeriodSuffix,
+  periodRangeLabel,
   trialBalanceBalanceNote,
 } from "../src/lib/statement-layout";
 import {
+  BALANCE_SHEET_WIDTHS,
+  COMPARE_CHANGE_WIDTH,
   IDR_NUMBER_FORMAT,
+  INCOME_STATEMENT_WIDTHS,
   SHEET_BANNER_STYLE,
   TRIAL_BALANCE_WIDTHS,
   sheetPrintedLine,
 } from "../src/lib/report-export";
 import { REPORT_ENGINES } from "../src/lib/report-engine";
+import {
+  COST_CENTER_UNASSIGNED_PRINT_LABEL,
+  UNASSIGNED_COST_CENTER,
+  costCenterDisplayName,
+} from "../src/lib/cost-centers";
+import { COMPARISON_MODES } from "../src/lib/statement-compare";
 
 const AKAR = process.cwd();
 const SUMBER = join(AKAR, "contract", "kinds.yaml");
@@ -126,6 +148,9 @@ interface Numbers {
   done_retention_days: number;
   queue_age_warn_seconds: number;
   queue_age_late_seconds: number;
+  lane_lock_probe_ms: number;
+  lane_lock_query_timeout_ms: number;
+  lane_lock_idle_session_ms: number;
 }
 /** Pemilik berkas hasil di volume `hasil` — ditulis dua bahasa, dibaca `node`. */
 interface Results {
@@ -151,6 +176,9 @@ const KUNCI_ANGKA: (keyof Numbers)[] = [
   "done_retention_days",
   "queue_age_warn_seconds",
   "queue_age_late_seconds",
+  "lane_lock_probe_ms",
+  "lane_lock_query_timeout_ms",
+  "lane_lock_idle_session_ms",
 ];
 
 function baca(): Kontrak {
@@ -211,6 +239,18 @@ function baca(): Kontrak {
       salah.push(
         "numbers.queue_age_warn_seconds tidak di bawah queue_age_late_seconds — " +
           "ambang peringatan yang tidak pernah terlewat lebih dulu adalah ambang yang tak berarti"
+      );
+    }
+    /* Pemegang pagar yang terisolasi wajib TAHU kuncinya hilang (denyut gagal
+       paling lambat probe + query_timeout) SEBELUM server membuang sesinya dan
+       membebaskan kunci untuk kandidat lain (idle_session). Urutan sebaliknya
+       = dua pelari jalur tunggal-instans sekaligus, di kedua bahasa. */
+    const tahu = n.lane_lock_probe_ms + n.lane_lock_query_timeout_ms;
+    if (tahu >= n.lane_lock_idle_session_ms) {
+      salah.push(
+        `numbers.lane_lock_probe_ms + lane_lock_query_timeout_ms (${tahu}) tidak di bawah ` +
+          `lane_lock_idle_session_ms (${n.lane_lock_idle_session_ms}) — pemegang pagar lama ` +
+          "baru tahu kuncinya hilang SESUDAH kandidat lain bisa mengambilnya"
       );
     }
   }
@@ -353,6 +393,15 @@ export const DONE_RETENTION_DAYS = ${n.done_retention_days};
 
 export const QUEUE_AGE_WARN_SECONDS = ${n.queue_age_warn_seconds};
 export const QUEUE_AGE_LATE_SECONDS = ${n.queue_age_late_seconds};
+
+/**
+ * Denyut pagar jalur tunggal-instans — dipakai \`workers/runner.ts\` untuk
+ * \`@sai/db/session-lock\` dan oleh \`jobs.LaneLock\` di Go. Dijamin generator:
+ * \`LANE_LOCK_PROBE_MS + LANE_LOCK_QUERY_TIMEOUT_MS < LANE_LOCK_IDLE_SESSION_MS\`.
+ */
+export const LANE_LOCK_PROBE_MS = ${n.lane_lock_probe_ms};
+export const LANE_LOCK_QUERY_TIMEOUT_MS = ${n.lane_lock_query_timeout_ms};
+export const LANE_LOCK_IDLE_SESSION_MS = ${n.lane_lock_idle_session_ms};
 
 /**
  * Pemilik berkas hasil di volume \`hasil\`: pengguna \`node\` tahap \`runner\`,
@@ -557,6 +606,13 @@ const (
 
 \tQueueAgeWarn = ${n.queue_age_warn_seconds} * time.Second
 \tQueueAgeLate = ${n.queue_age_late_seconds} * time.Second
+
+\t// Denyut pagar jalur tunggal-instans (\`jobs.LaneLock\`; padanan Node
+\t// \`@sai/db/session-lock\`). Dijamin generator:
+\t// LaneLockProbe + LaneLockQueryTimeout < LaneLockIdleSession.
+\tLaneLockProbe        = ${n.lane_lock_probe_ms} * time.Millisecond
+\tLaneLockQueryTimeout = ${n.lane_lock_query_timeout_ms} * time.Millisecond
+\tLaneLockIdleSession  = ${n.lane_lock_idle_session_ms} * time.Millisecond
 )
 
 // ResultOwnerUID/GID: pemilik berkas hasil di volume \`hasil\` — pengguna
@@ -581,7 +637,19 @@ interface KontrakAkuntansi {
   version: number;
   money: { scale: number };
   account_types: string[];
+  account_categories: string[];
+  account_type_categories: Record<string, string>;
+  category_statement_side: Record<string, string>;
+  income_statement: {
+    sections: string[];
+    type_sections: Record<string, string>;
+    category_default_sections: Record<string, string>;
+  };
+  closing_journal_type: string;
 }
+
+/** Sisi saldo — dua nilai, ditulis di sini karena ia kosakata generator, bukan data. */
+const SISI = ["debit", "credit"] as const;
 
 /** Nilai enum-like mengikuti docs/DATABASE.md: `snake_case` huruf kecil. */
 const SNAKE = /^[a-z][a-z0-9_]*$/;
@@ -617,6 +685,72 @@ function bacaAkuntansi(): KontrakAkuntansi {
     }
   }
 
+  /* ── Kategori, sisi laporan, band Laba Rugi, jurnal penutup (Laba Rugi &
+     Neraca Go). Setiap peta diperiksa LENGKAP terhadap daftar kuncinya: peta
+     yang kurang satu tipe adalah tipe yang hilang dari laporan di satu bahasa
+     dan tidak di bahasa lain — tanpa satu galat pun. */
+  const daftar = (nama: string, v: unknown): string[] => {
+    if (!Array.isArray(v) || v.length === 0) {
+      salah.push(`\`${nama}\` kosong`);
+      return [];
+    }
+    const lihat = new Set<string>();
+    for (const x of v) {
+      if (typeof x !== "string" || !SNAKE.test(x)) salah.push(`${nama}: ${JSON.stringify(x)} bukan snake_case`);
+      else if (lihat.has(x)) salah.push(`${nama}: \`${x}\` tercantum dua kali`);
+      lihat.add(x);
+    }
+    return v as string[];
+  };
+  const peta = (
+    nama: string,
+    v: unknown,
+    kunciSah: readonly string[],
+    nilaiSah: readonly string[],
+    lengkap: boolean
+  ): void => {
+    if (!v || typeof v !== "object" || Array.isArray(v)) {
+      salah.push(`\`${nama}\` bukan peta`);
+      return;
+    }
+    const m = v as Record<string, unknown>;
+    for (const [kunci, nilai] of Object.entries(m)) {
+      if (!kunciSah.includes(kunci)) salah.push(`${nama}: kunci \`${kunci}\` tidak dikenal`);
+      if (typeof nilai !== "string" || !nilaiSah.includes(nilai)) {
+        salah.push(`${nama}.${kunci}: ${JSON.stringify(nilai)} bukan salah satu dari ${nilaiSah.join(", ")}`);
+      }
+    }
+    if (lengkap) {
+      for (const kunci of kunciSah) {
+        if (!(kunci in m)) salah.push(`${nama}: \`${kunci}\` belum dipetakan`);
+      }
+    }
+  };
+
+  const kategori = daftar("account_categories", k.account_categories);
+  peta("account_type_categories", k.account_type_categories, tipe ?? [], kategori, true);
+  peta("category_statement_side", k.category_statement_side, kategori, SISI, true);
+  const is = k.income_statement;
+  if (!is || typeof is !== "object") {
+    salah.push("`income_statement` kosong");
+  } else {
+    const band = daftar("income_statement.sections", is.sections);
+    peta("income_statement.category_default_sections", is.category_default_sections, kategori, band, false);
+    peta("income_statement.type_sections", is.type_sections, tipe ?? [], band, false);
+    /* Penimpa band per tipe hanya bermakna untuk tipe LABA RUGI — tipe yang
+       kategorinya tak punya band bawaan tidak pernah masuk Laba Rugi, dan
+       penimpanya akan menjadi aturan yang dibaca satu bahasa saja. */
+    for (const t of Object.keys(is.type_sections ?? {})) {
+      const kat = k.account_type_categories?.[t];
+      if (kat === undefined || !(kat in (is.category_default_sections ?? {}))) {
+        salah.push(`income_statement.type_sections.${t}: kategori \`${String(kat)}\` tidak punya band bawaan`);
+      }
+    }
+  }
+  if (typeof k.closing_journal_type !== "string" || !SNAKE.test(k.closing_journal_type)) {
+    salah.push("`closing_journal_type` bukan snake_case");
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/accounting.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -637,8 +771,8 @@ function bangkitkanAkuntansi(k: KontrakAkuntansi): string {
   return `/**
  * ${JANGAN_SUNTING_AKUNTANSI(k.version)}
  *
- * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label, kategori,
- * dan saldo normal per tipe tetap di \`src/lib/accounting.ts\`.
+ * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label dan saldo
+ * normal per tipe tetap di \`src/lib/accounting.ts\`.
  */
 
 /** Skala kolom uang \`Decimal(15,2)\`: satu sen = 10^-MONEY_SCALE rupiah. */
@@ -653,6 +787,55 @@ ${k.account_types.map((t) => `  "${t}",`).join("\n")}
 
 export const isAccountType = (v: string): v is AccountType =>
   (ACCOUNT_TYPE_VALUES as readonly string[]).includes(v);
+
+// ── Kategori & sisi laporan — dibaca Laba Rugi dan Neraca (TS dan Go) ─────
+
+${union("AccountCategory", k.account_categories)}
+
+export const ACCOUNT_CATEGORY_VALUES = [
+${k.account_categories.map((t) => `  "${t}",`).join("\n")}
+] as const satisfies readonly AccountCategory[];
+
+/** Kategori setiap tipe akun. Lengkap — generator menolak tipe tanpa kategori. */
+export const ACCOUNT_TYPE_CATEGORIES: Readonly<Record<AccountType, AccountCategory>> = {
+${k.account_types.map((t) => `  ${t}: "${k.account_type_categories[t]}",`).join("\n")}
+};
+
+export type StatementSide = "debit" | "credit";
+
+/**
+ * Sisi yang dilaporkan POSITIF per kategori di Laba Rugi & Neraca:
+ * \`debit\` = debit − kredit, \`credit\` = kredit − debit.
+ */
+export const CATEGORY_STATEMENT_SIDE: Readonly<Record<AccountCategory, StatementSide>> = {
+${k.account_categories.map((c) => `  ${c}: "${k.category_statement_side[c]}",`).join("\n")}
+};
+
+// ── Laba Rugi bertingkat (#123) ───────────────────────────────────────────
+
+${union("IncomeStatementSectionKey", k.income_statement.sections)}
+
+/** Urutan band di laporan. */
+export const INCOME_STATEMENT_SECTION_KEYS = [
+${k.income_statement.sections.map((t) => `  "${t}",`).join("\n")}
+] as const satisfies readonly IncomeStatementSectionKey[];
+
+/** Tipe yang punya band SENDIRI; tipe laba rugi lainnya ikut bawaan kategorinya. */
+export const INCOME_STATEMENT_TYPE_SECTIONS: Readonly<
+  Partial<Record<AccountType, IncomeStatementSectionKey>>
+> = {
+${Object.entries(k.income_statement.type_sections).map(([t, v]) => `  ${t}: "${v}",`).join("\n")}
+};
+
+/** Band bawaan per kategori. Kategori tanpa entri = bukan akun Laba Rugi. */
+export const INCOME_STATEMENT_CATEGORY_DEFAULT_SECTIONS: Readonly<
+  Partial<Record<AccountCategory, IncomeStatementSectionKey>>
+> = {
+${Object.entries(k.income_statement.category_default_sections).map(([c, v]) => `  ${c}: "${v}",`).join("\n")}
+};
+
+/** \`journals.type\` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
+export const CLOSING_JOURNAL_TYPE = "${k.closing_journal_type}";
 `;
 }
 
@@ -700,6 +883,65 @@ func IsAccountType(v string) bool {
 \t}
 \treturn false
 }
+
+// AccountCategory adalah kategori laporan keuangan sebuah tipe akun.
+type AccountCategory string
+
+const (
+${ratakan(k.account_categories.map((c) => ({ kiri: `AccountCategory${pengenalGo(c)}`, kanan: `AccountCategory = "${c}"` })))}
+)
+
+// AccountTypeCategories: kategori setiap tipe akun kontrak (lengkap).
+var AccountTypeCategories = map[AccountType]AccountCategory{
+${ratakan(k.account_types.map((t) => ({ kiri: `AccountType${pengenalGo(t)}:`, kanan: `AccountCategory${pengenalGo(k.account_type_categories[t]!)},` })))}
+}
+
+// CategoryOf: kategori tipe akun mentah dari basis data; false bila tipenya di
+// luar kontrak — akun seperti itu tidak masuk Laba Rugi maupun Neraca.
+func CategoryOf(accountType string) (AccountCategory, bool) {
+\tc, ok := AccountTypeCategories[AccountType(accountType)]
+\treturn c, ok
+}
+
+// StatementSide: sisi yang dilaporkan POSITIF di Laba Rugi & Neraca.
+type StatementSide string
+
+const (
+\tStatementSideDebit  StatementSide = "debit"
+\tStatementSideCredit StatementSide = "credit"
+)
+
+// CategoryStatementSide: debit = debit − kredit, credit = kredit − debit.
+var CategoryStatementSide = map[AccountCategory]StatementSide{
+${ratakan(k.account_categories.map((c) => ({ kiri: `AccountCategory${pengenalGo(c)}:`, kanan: `StatementSide${pengenalGo(k.category_statement_side[c]!)},` })))}
+}
+
+// IncomeStatementSection adalah satu band Laba Rugi bertingkat (#123).
+type IncomeStatementSection string
+
+const (
+${ratakan(k.income_statement.sections.map((c) => ({ kiri: `IncomeStatementSection${pengenalGo(c)}`, kanan: `IncomeStatementSection = "${c}"` })))}
+)
+
+// IncomeStatementSections dalam urutan band laporan.
+var IncomeStatementSections = []IncomeStatementSection{
+${k.income_statement.sections.map((c) => `\tIncomeStatementSection${pengenalGo(c)},`).join("\n")}
+}
+
+// IncomeStatementTypeSections: tipe yang punya band SENDIRI.
+var IncomeStatementTypeSections = map[AccountType]IncomeStatementSection{
+${ratakan(Object.entries(k.income_statement.type_sections).map(([t, v]) => ({ kiri: `AccountType${pengenalGo(t)}:`, kanan: `IncomeStatementSection${pengenalGo(v)},` })))}
+}
+
+// IncomeStatementCategoryDefaultSections: band bawaan per kategori; kategori
+// tanpa entri bukan akun Laba Rugi.
+var IncomeStatementCategoryDefaultSections = map[AccountCategory]IncomeStatementSection{
+${ratakan(Object.entries(k.income_statement.category_default_sections).map(([c, v]) => ({ kiri: `AccountCategory${pengenalGo(c)}:`, kanan: `IncomeStatementSection${pengenalGo(v)},` })))}
+}
+
+// ClosingJournalType: \`journals.type\` jurnal penutup tahunan (#555). Laba
+// Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
+const ClosingJournalType = "${k.closing_journal_type}"
 `;
 }
 
@@ -718,9 +960,87 @@ func IsAccountType(v string) bool {
 // yang sampai ke Go adalah kalimat yang sama persis, bukan salinannya.
 
 /** Kalimat TS → pola `fmt` Go: `%` asli digandakan, penandanya jadi `%s`. */
-function polaGo(fn: (isi: string) => string): string {
-  const PENANDA = "\u0000";
-  return fn(PENANDA).replace(/%/g, "%%").replace(PENANDA, "%s");
+function polaGo(fn: (...isi: string[]) => string, jumlah = 1): string {
+  const penanda = Array.from({ length: jumlah }, (_, i) => `\u0000${i}\u0000`);
+  let hasil = fn(...penanda).replace(/%/g, "%%");
+  for (const p of penanda) {
+    if (!hasil.includes(p)) throw new Error(`pola Go: penanda hilang dari ${JSON.stringify(hasil)}`);
+    hasil = hasil.replace(p, "%s");
+  }
+  return hasil;
+}
+
+/**
+ * Kalimat TS yang menerima ANGKA (diformat `Intl` di dalamnya) → pola Go.
+ * Angka penanda diformat dengan formatter yang SAMA (`Intl.NumberFormat
+ * ("id-ID")`), dan bentuk terformatnya yang diganti `%s` — pemformatan angka
+ * di Go memakai pemisah yang juga dibangkitkan di sini (`NumberGroupSeparatorID`
+ * dst.).
+ */
+function polaGoAngka(fn: (n: number) => string): string {
+  const PENANDA = 987654.3;
+  const teks = new Intl.NumberFormat("id-ID").format(PENANDA);
+  const kalimat = fn(PENANDA);
+  if (!kalimat.includes(teks)) throw new Error(`pola Go: angka penanda hilang dari ${kalimat}`);
+  return kalimat.replace(/%/g, "%%").replace(teks.replace(/%/g, "%%"), "%s");
+}
+
+/** Bagian-bagian `Intl.NumberFormat("id-ID")`: pemisah ribuan, desimal, tanda minus. */
+function bagianAngkaId(): { group: string; decimal: string; minus: string } {
+  const parts = new Intl.NumberFormat("id-ID").formatToParts(-1234.5);
+  const ambil = (t: string) => {
+    const v = parts.find((p) => p.type === t)?.value;
+    if (v === undefined) throw new Error(`Intl id-ID tanpa bagian ${t}`);
+    return v;
+  };
+  return { group: ambil("group"), decimal: ambil("decimal"), minus: ambil("minusSign") };
+}
+
+/**
+ * `comparePercentText` → dua pola Go: untuk persen POSITIF (berawalan "+") dan
+ * selainnya (nol, negatif, −0). Angka penanda diformat `toLocaleString
+ * ("id-ID")` — formatter yang SAMA dengan fungsinya — dan bentuk terformatnya,
+ * tanda minus ikut, yang menjadi `%s` (Go: `jscompat.FormatNumberID`).
+ */
+function polaPersenGo(): { positive: string; other: string } {
+  const pola = (n: number) => {
+    const angka = n.toLocaleString("id-ID");
+    const kalimat = comparePercentText(n);
+    if (!kalimat.includes(angka)) throw new Error(`pola Go: angka penanda hilang dari ${kalimat}`);
+    return kalimat.replace(/%/g, "%%").replace(angka, "%s");
+  };
+  return { positive: pola(987654.3), other: pola(-987654.3) };
+}
+
+/**
+ * Tabel `localeCompare` untuk karakter ASCII cetak (0x20–0x7E), dari
+ * `Intl.Collator` runtime ini — collator yang dipakai `compareLines`
+ * (`String.prototype.localeCompare`, lokal bawaan proses).
+ *
+ * Bentuknya KELOMPOK berurutan: karakter dalam satu kelompok setara pada
+ * tingkat dasar (`sensitivity: "base"` — huruf besar/kecil), dan urutan di
+ * dalam kelompok adalah urutan tersiernya. Itu cukup bagi Go untuk meniru
+ * perbandingan bertingkat UCA atas teks ASCII (`jscompat.LocaleCompare`).
+ */
+function tabelLocaleCompare(): string[] {
+  const huruf: string[] = [];
+  for (let c = 0x20; c < 0x7f; c += 1) huruf.push(String.fromCharCode(c));
+  const urut = [...huruf].sort((a, b) => a.localeCompare(b));
+  const dasar = new Intl.Collator(undefined, { sensitivity: "base" });
+  const kelompok: string[][] = [];
+  for (const h of urut) {
+    const akhir = kelompok[kelompok.length - 1];
+    if (akhir && dasar.compare(akhir[0]!, h) === 0) akhir.push(h);
+    else kelompok.push([h]);
+  }
+  /* Tertib total yang diandaikan Go: tidak ada dua karakter yang setara
+     sepenuhnya, dan setiap kelompok diurutkan tegas. */
+  for (const k of kelompok) {
+    for (let i = 1; i < k.length; i += 1) {
+      if (k[i - 1]!.localeCompare(k[i]!) >= 0) throw new Error(`localeCompare: ${k.join("")} tidak tertib`);
+    }
+  }
+  return kelompok.map((k) => k.join(""));
 }
 
 /** Nama bulan id-ID dari `Intl` — formatter yang SAMA dengan `formatDate`. */
@@ -731,7 +1051,8 @@ function namaBulan(): string[] {
 
 function bangkitkanTataLetakGo(): string {
   const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
-dan \`@sai/core/constants\` — JANGAN DISUNTING TANGAN.
+\`src/lib/cost-centers.ts\`, \`@sai/core/constants\`, \`@sai/core/business-date\`, dan
+kamus \`id.json\` — JANGAN DISUNTING TANGAN.
 
 Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
 hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
@@ -766,6 +1087,61 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
     { kiri: "SheetHeaderFontARGB", kanan: `= ${q(g.headerFontArgb)}` },
   ]);
 
+  /* Laba Rugi & Neraca (tahap 1d, `go-parity`). */
+  const isl = INCOME_STATEMENT_PRINT_LABELS;
+  const bsl = BALANCE_SHEET_PRINT_LABELS;
+  const angka = bagianAngkaId();
+  const persen = polaPersenGo();
+  const konstLaporan2 = ratakan([
+    { kiri: "BusinessTimeZone", kanan: `= ${q(BUSINESS_TIME_ZONE)}` },
+    { kiri: "PeriodRangeFormat", kanan: `= ${q(polaGo(periodRangeLabel, 2))}` },
+    { kiri: "CostCenterPeriodSuffixFormat", kanan: `= ${q(polaGo(costCenterPeriodSuffix))}` },
+    { kiri: "CostCenterDisplayFormat", kanan: `= ${q(polaGo(costCenterDisplayName, 2))}` },
+    { kiri: "CostCenterUnassigned", kanan: `= ${q(UNASSIGNED_COST_CENTER)}` },
+    { kiri: "CostCenterUnassignedLabel", kanan: `= ${q(COST_CENTER_UNASSIGNED_PRINT_LABEL)}` },
+    { kiri: "NumberGroupSeparatorID", kanan: `= ${q(angka.group)}` },
+    { kiri: "NumberDecimalSeparatorID", kanan: `= ${q(angka.decimal)}` },
+    { kiri: "NumberMinusSignID", kanan: `= ${q(angka.minus)}` },
+    { kiri: "IncomeStatementSheetName", kanan: `= ${q(SHEET_NAMES["income-statement"])}` },
+    { kiri: "IncomeStatementTitle", kanan: `= ${q(STATEMENT_TITLES["income-statement"])}` },
+    { kiri: "IncomeStatementSalesLabel", kanan: `= ${q(isl.sales)}` },
+    { kiri: "IncomeStatementCogsLabel", kanan: `= ${q(isl.cogs)}` },
+    { kiri: "IncomeStatementOperatingExpenseLabel", kanan: `= ${q(isl.operatingExpense)}` },
+    { kiri: "IncomeStatementOtherIncomeLabel", kanan: `= ${q(isl.otherIncome)}` },
+    { kiri: "IncomeStatementOtherExpenseLabel", kanan: `= ${q(isl.otherExpense)}` },
+    { kiri: "IncomeStatementSectionTotalFormat", kanan: `= ${q(polaGo(isl.sectionTotal))}` },
+    { kiri: "IncomeStatementGrossProfitLabel", kanan: `= ${q(isl.grossProfit)}` },
+    { kiri: "IncomeStatementOperatingProfitLabel", kanan: `= ${q(isl.operatingProfit)}` },
+    { kiri: "IncomeStatementNetIncomeLabel", kanan: `= ${q(isl.netIncome)}` },
+    { kiri: "IncomeStatementEmptyLabel", kanan: `= ${q(isl.empty)}` },
+    { kiri: "IncomeStatementGrossMarginFormat", kanan: `= ${q(polaGoAngka(isl.grossMargin))}` },
+    { kiri: "IncomeStatementResultProfit", kanan: `= ${q(isl.result(true))}` },
+    { kiri: "IncomeStatementResultLoss", kanan: `= ${q(isl.result(false))}` },
+    { kiri: "BalanceSheetSheetName", kanan: `= ${q(SHEET_NAMES["balance-sheet"])}` },
+    { kiri: "BalanceSheetTitle", kanan: `= ${q(STATEMENT_TITLES["balance-sheet"])}` },
+    { kiri: "BalanceSheetAssetsLabel", kanan: `= ${q(bsl.assets)}` },
+    { kiri: "BalanceSheetLiabilitiesLabel", kanan: `= ${q(bsl.liabilities)}` },
+    { kiri: "BalanceSheetEquityLabel", kanan: `= ${q(bsl.equity)}` },
+    { kiri: "BalanceSheetSectionTotalFormat", kanan: `= ${q(polaGo(bsl.sectionTotal))}` },
+    { kiri: "BalanceSheetCurrentNetIncomeLabel", kanan: `= ${q(bsl.currentNetIncome)}` },
+    { kiri: "BalanceSheetEmptyLabel", kanan: `= ${q(bsl.empty)}` },
+    { kiri: "BalanceSheetTotalAssetsLabel", kanan: `= ${q(bsl.totalAssets)}` },
+    { kiri: "BalanceSheetTotalLiabilitiesEquityLabel", kanan: `= ${q(bsl.totalLiabilitiesEquity)}` },
+    { kiri: "BalanceSheetNoteBalanced", kanan: `= ${q(balanceSheetBalanceNote(true))}` },
+    { kiri: "BalanceSheetNoteUnbalanced", kanan: `= ${q(balanceSheetBalanceNote(false))}` },
+    { kiri: "ComparePeriodFormat", kanan: `= ${q(polaGo(comparePeriodLabel, 2))}` },
+    { kiri: "CompareChangeHeader", kanan: `= ${q(STATEMENT_COMPARE_CHANGE_HEADER)}` },
+    { kiri: "CompareChangeWidth", kanan: `= ${COMPARE_CHANGE_WIDTH}` },
+    { kiri: "ComparePercentPositiveFormat", kanan: `= ${q(persen.positive)}` },
+    { kiri: "ComparePercentFormat", kanan: `= ${q(persen.other)}` },
+  ]);
+  const kolomIs = INCOME_STATEMENT_COLUMNS.map(
+    (c) => `\t{Header: ${q(INCOME_STATEMENT_HEADERS[c])}, Width: ${INCOME_STATEMENT_WIDTHS[c]}},`
+  ).join("\n");
+  const kolomBs = BALANCE_SHEET_COLUMNS.map(
+    (c) => `\t{Header: ${q(BALANCE_SHEET_HEADERS[c])}, Width: ${BALANCE_SHEET_WIDTHS[c]}},`
+  ).join("\n");
+
   /* Register mesin → Go: id laporan yang PUNYA implementasi Go, dan himpunan
      yang berkasnya hari ini milik Go. Pelari Go menolak pekerjaan untuk
      laporan di luar himpunan kedua — register yang dikembalikan ke
@@ -775,10 +1151,14 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const konstLaporan = ratakan(
     idLaporan.map((id) => ({ kiri: `Report${pengenalGo(id)}`, kanan: `= ${q(id)}` }))
   );
-  const milikGo = idLaporan
-    .filter((id) => REPORT_ENGINES[id as keyof typeof REPORT_ENGINES]?.engine === "go")
-    .map((id) => `\tReport${pengenalGo(id)}: true,`)
-    .join("\n");
+  /* Lewat `ratakan`: begitu himpunan ini berisi lebih dari satu laporan,
+     `gofmt` meratakan nilainya — keluaran tanpa perataan lolos selama isinya
+     satu baris, lalu jatuh di `go:lint` pada laporan kedua (22 Okt 2026). */
+  const milikGo = ratakan(
+    idLaporan
+      .filter((id) => REPORT_ENGINES[id as keyof typeof REPORT_ENGINES]?.engine === "go")
+      .map((id) => ({ kiri: `Report${pengenalGo(id)}:`, kanan: "true," }))
+  );
 
   const kolom = TRIAL_BALANCE_COLUMNS.map(
     (c) => `\t{Header: ${q(TRIAL_BALANCE_HEADERS[c])}, Width: ${TRIAL_BALANCE_WIDTHS[c]}},`
@@ -800,6 +1180,13 @@ const (
 ${konst}
 )
 
+// Laba Rugi & Neraca (tahap 1d): kalimat cetak, pola label periode & pusat
+// biaya, pemisah angka id-ID, dan zona waktu bisnis — semuanya dari modul TS
+// yang sama dengan layar, PDF, dan lembar sebar TS.
+const (
+${konstLaporan2}
+)
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -818,9 +1205,34 @@ var TrialBalanceColumns = []ReportColumn{
 ${kolom}
 }
 
+// IncomeStatementColumns: judul (INCOME_STATEMENT_HEADERS) dan lebar
+// (INCOME_STATEMENT_WIDTHS) kolom Laba Rugi satu periode.
+var IncomeStatementColumns = []ReportColumn{
+${kolomIs}
+}
+
+// BalanceSheetColumns: judul (BALANCE_SHEET_HEADERS) dan lebar
+// (BALANCE_SHEET_WIDTHS) kolom Neraca satu tanggal.
+var BalanceSheetColumns = []ReportColumn{
+${kolomBs}
+}
+
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.
 var MonthNamesID = [12]string{
 ${namaBulan().map((m) => `\t${q(m)},`).join("\n")}
+}
+
+// ComparisonModes: kosakata \`?compare=\` (COMPARISON_MODES,
+// src/lib/statement-compare.ts) — kolom pembanding Laba Rugi & Neraca (#557).
+var ComparisonModes = map[string]bool{
+${COMPARISON_MODES.map((m) => `\t${`${q(m)}:`.padEnd(Math.max(...COMPARISON_MODES.map((x) => q(x).length)) + 1)} true,`).join("\n")}
+}
+
+// LocaleCompareASCII: urutan \`localeCompare\` atas ASCII cetak, dari
+// Intl.Collator runtime pembangkit — kelompok setara-dasar (huruf besar/kecil),
+// berurutan; di dalam kelompok, urutan tersier. Dibaca jscompat.LocaleCompare.
+var LocaleCompareASCII = []string{
+${tabelLocaleCompare().map((k) => `\t${q(k)},`).join("\n")}
 }
 `;
 }

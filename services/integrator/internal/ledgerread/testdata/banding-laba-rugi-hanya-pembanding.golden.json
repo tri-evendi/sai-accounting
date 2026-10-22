@@ -1,0 +1,153 @@
+{
+  "current": {
+    "revenue": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "100.10"
+      }
+    ],
+    "expense": [
+      {
+        "code": "6101",
+        "name": "Beban Umum",
+        "amount": "20.00"
+      }
+    ],
+    "totalRevenue": "100.10",
+    "totalExpense": "20.00",
+    "netIncome": "80.10",
+    "sales": {
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "amount": "100.10"
+        }
+      ],
+      "total": "100.10"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "100.10",
+    "operatingExpense": {
+      "lines": [
+        {
+          "code": "6101",
+          "name": "Beban Umum",
+          "amount": "20.00"
+        }
+      ],
+      "total": "20.00"
+    },
+    "operatingProfit": "80.10",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "prior": {
+    "revenue": [
+      {
+        "code": "4_01",
+        "name": "Penjualan Ekspor",
+        "amount": "300.00"
+      },
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "0.30"
+      },
+      {
+        "code": "4a01",
+        "name": "Pendapatan Jasa",
+        "amount": "25.00"
+      },
+      {
+        "code": "4B01",
+        "name": "Pendapatan Sewa",
+        "amount": "50.00"
+      },
+      {
+        "code": "8101",
+        "name": "Pendapatan Bunga",
+        "amount": "5.00"
+      }
+    ],
+    "expense": [
+      {
+        "code": "5101",
+        "name": "Harga Pokok Penjualan",
+        "amount": "10.00"
+      }
+    ],
+    "totalRevenue": "380.30",
+    "totalExpense": "10.00",
+    "netIncome": "370.30",
+    "sales": {
+      "lines": [
+        {
+          "code": "4_01",
+          "name": "Penjualan Ekspor",
+          "amount": "300.00"
+        },
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "amount": "0.30"
+        },
+        {
+          "code": "4a01",
+          "name": "Pendapatan Jasa",
+          "amount": "25.00"
+        },
+        {
+          "code": "4B01",
+          "name": "Pendapatan Sewa",
+          "amount": "50.00"
+        }
+      ],
+      "total": "375.30"
+    },
+    "cogs": {
+      "lines": [
+        {
+          "code": "5101",
+          "name": "Harga Pokok Penjualan",
+          "amount": "10.00"
+        }
+      ],
+      "total": "10.00"
+    },
+    "grossProfit": "365.30",
+    "operatingExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "operatingProfit": "365.30",
+    "otherIncome": {
+      "lines": [
+        {
+          "code": "8101",
+          "name": "Pendapatan Bunga",
+          "amount": "5.00"
+        }
+      ],
+      "total": "5.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "priorFrom": "2024-12-31T17:00:00Z",
+  "priorTo": "2025-06-30T16:59:59.999Z"
+}

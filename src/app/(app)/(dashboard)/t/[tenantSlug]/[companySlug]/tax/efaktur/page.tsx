@@ -22,7 +22,7 @@ import { moneyColumn } from "@sai/ui/money-column";
 import { textColumn, type SaiColumns } from "@sai/ui/table-columns";
 import type { EfakturRow } from "@sai/core/efaktur";
 import { formatDateShort } from "@sai/core/utils";
-import { toISODate } from "@/lib/dashboard-summary";
+import { monthRange } from "@/lib/dashboard-summary";
 import { getEfakturExport } from "@/lib/efaktur-data";
 import { SellerIdentityForm } from "./seller-identity-form";
 import { EmptyState } from "@sai/ui/empty-state";
@@ -71,18 +71,13 @@ function CardTitleBar({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * First and last day of the current month as `YYYY-MM-DD`, in LOCAL time —
- * the same convention as every other report (`resolvePeriod`). UTC month
- * bounds land on the previous month during the first hours of the 1st under
- * TZ=Asia/Jakarta, so the default period would disagree with the rest of the
- * app.
+ * Hari pertama dan terakhir bulan berjalan menurut jam JAKARTA — bulan yang
+ * sama dengan beranda (`monthRange`). Waktu lokal proses dulu dipakai di sini:
+ * benar di produksi (`TZ=Asia/Jakarta`), tetapi bergeser di host berzona lain.
  */
 function currentMonthRange(): { from: string; to: string } {
-  const now = new Date();
-  return {
-    from: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)),
-    to: toISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
-  };
+  const { fromISO, toISO } = monthRange(new Date());
+  return { from: fromISO, to: toISO };
 }
 
 function parseDate(value: string | undefined): Date | null {

@@ -55,7 +55,8 @@ export function goUnits(s: string): bigint {
   return m[1] === "-" ? -v : v;
 }
 
-const fmt = (units: bigint) => {
+/** Satuan terkecil → teks desimal berskala kontrak (`-1234.50`), untuk pesan selisih. */
+export const formatUnits = (units: bigint) => {
   const neg = units < BigInt(0);
   const digits = (neg ? -units : units).toString().padStart(MONEY_SCALE + 1, "0");
   const cut = digits.length - MONEY_SCALE;
@@ -91,15 +92,15 @@ export function compareTrialBalance(ts: TsTrialBalance, go: GoTrialBalance): str
     if (!g) continue;
     if (t.name !== g.name) diffs.push(`akun ${t.code}: nama TS ${JSON.stringify(t.name)} ⇄ Go ${JSON.stringify(g.name)}`);
     const [td, gd] = [tsUnits(t.debit), goUnits(g.debit)];
-    if (td !== gd) diffs.push(`akun ${t.code}: debit TS ${fmt(td)} ⇄ Go ${fmt(gd)}`);
+    if (td !== gd) diffs.push(`akun ${t.code}: debit TS ${formatUnits(td)} ⇄ Go ${formatUnits(gd)}`);
     const [tc, gc] = [tsUnits(t.credit), goUnits(g.credit)];
-    if (tc !== gc) diffs.push(`akun ${t.code}: kredit TS ${fmt(tc)} ⇄ Go ${fmt(gc)}`);
+    if (tc !== gc) diffs.push(`akun ${t.code}: kredit TS ${formatUnits(tc)} ⇄ Go ${formatUnits(gc)}`);
   }
 
   const [tTD, gTD] = [tsUnits(ts.totalDebit), goUnits(go.totalDebit)];
-  if (tTD !== gTD) diffs.push(`total debit TS ${fmt(tTD)} ⇄ Go ${fmt(gTD)}`);
+  if (tTD !== gTD) diffs.push(`total debit TS ${formatUnits(tTD)} ⇄ Go ${formatUnits(gTD)}`);
   const [tTC, gTC] = [tsUnits(ts.totalCredit), goUnits(go.totalCredit)];
-  if (tTC !== gTC) diffs.push(`total kredit TS ${fmt(tTC)} ⇄ Go ${fmt(gTC)}`);
+  if (tTC !== gTC) diffs.push(`total kredit TS ${formatUnits(tTC)} ⇄ Go ${formatUnits(gTC)}`);
   if (ts.balanced !== go.balanced) {
     diffs.push(`vonis seimbang TS ${ts.balanced} ⇄ Go ${go.balanced}`);
   }

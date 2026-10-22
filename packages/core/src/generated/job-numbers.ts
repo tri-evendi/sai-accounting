@@ -30,6 +30,15 @@ export const QUEUE_AGE_WARN_SECONDS = 420;
 export const QUEUE_AGE_LATE_SECONDS = 600;
 
 /**
+ * Denyut pagar jalur tunggal-instans — dipakai `workers/runner.ts` untuk
+ * `@sai/db/session-lock` dan oleh `jobs.LaneLock` di Go. Dijamin generator:
+ * `LANE_LOCK_PROBE_MS + LANE_LOCK_QUERY_TIMEOUT_MS < LANE_LOCK_IDLE_SESSION_MS`.
+ */
+export const LANE_LOCK_PROBE_MS = 15000;
+export const LANE_LOCK_QUERY_TIMEOUT_MS = 10000;
+export const LANE_LOCK_IDLE_SESSION_MS = 90000;
+
+/**
  * Pemilik berkas hasil di volume `hasil`: pengguna `node` tahap `runner`,
  * yang MEMBACA volume itu. Penulisnya (pelari jalur, root) wajib `chown` ke
  * sini — lihat `@sai/platform/job-result-store`.

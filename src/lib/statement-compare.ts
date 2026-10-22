@@ -131,12 +131,18 @@ export function compareTotals(current: number, prior: number): ComparedLine {
   return compareLines([{ code: "", name: "", amount: current }], [{ code: "", name: "", amount: prior }])[0];
 }
 
-/** Bentuk periode pembanding yang bisa dipilih. */
-export type ComparisonMode =
-  /** Periode setara TEPAT SEBELUMNYA — bulan lalu untuk rentang sebulan. */
-  | "preceding"
-  /** Periode yang sama TAHUN LALU — bentuk statutori yang paling lazim. */
-  | "previous_year";
+/**
+ * Bentuk periode pembanding yang bisa dipilih — `preceding` (periode setara
+ * TEPAT SEBELUMNYA, bulan lalu untuk rentang sebulan) dan `previous_year`
+ * (periode yang sama TAHUN LALU, bentuk statutori yang paling lazim).
+ *
+ * Daftar, bukan hanya tipe: pelari Go membaca kosakata yang SAMA lewat berkas
+ * bangkitan (`ComparisonModes` di `report_layout_gen.go`) untuk menolak muatan
+ * ekspor yang menyebut mode tanpa membawa instan pembandingnya.
+ */
+export const COMPARISON_MODES = ["preceding", "previous_year"] as const;
+
+export type ComparisonMode = (typeof COMPARISON_MODES)[number];
 
 /**
  * Rentang pembanding untuk sebuah rentang.
@@ -210,5 +216,5 @@ export function comparisonDate(asOf: Date, mode: ComparisonMode, from?: Date): D
  * pembacanya datang untuk angkanya, bukan untuk dikoreksi soal query string.
  */
 export function parseComparison(raw: string | undefined | null): ComparisonMode | null {
-  return raw === "preceding" || raw === "previous_year" ? raw : null;
+  return (COMPARISON_MODES as readonly string[]).includes(raw ?? "") ? (raw as ComparisonMode) : null;
 }

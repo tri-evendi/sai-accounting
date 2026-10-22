@@ -14,6 +14,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { getCompanySettings } from "@/lib/opening-balance";
+import { businessDayEnd, businessDayStart, businessISODate } from "@sai/core/business-date";
 import {
   buildEfaktur,
   type EfakturInvoiceInput,
@@ -36,17 +37,19 @@ export interface EfakturExport {
 
 /**
  * Gather and build the e-Faktur export for the inclusive date range [from, to].
- * `to` is treated as the whole day (extended to 23:59:59.999).
+ * Kedua batas dibaca sebagai HARI KALENDER JAKARTA: dari 00.00 WIB hari `from`
+ * sampai 23.59.59,999 WIB hari `to`, apa pun zona proses. `setHours` lokal dulu
+ * menggeser akhir masa pajak mengikuti `TZ` host.
  */
 export async function getEfakturExport(from: Date, to: Date): Promise<EfakturExport> {
-  const rangeEnd = new Date(to);
-  rangeEnd.setHours(23, 59, 59, 999);
+  const rangeStart = businessDayStart(businessISODate(from));
+  const rangeEnd = businessDayEnd(businessISODate(to));
 
   const [settings, invoices] = await Promise.all([
     getCompanySettings(),
     prisma.invoice.findMany({
       where: {
-        date: { gte: from, lte: rangeEnd },
+        date: { gte: rangeStart, lte: rangeEnd },
         // A canceled invoice posted no VAT (the posting engine refuses it), so
         // exporting it would file output tax the ledger never carries.
         status: { not: "canceled" },
@@ -87,7 +90,7 @@ export async function getEfakturExport(from: Date, to: Date): Promise<EfakturExp
 
   // Belt-and-suspenders: the SQL already narrowed by date; the pure builder
   // re-applies the period so an out-of-range row can never slip through.
-  const result = buildEfaktur(seller, inputs, { from, to: rangeEnd });
+  const result = buildEfaktur(seller, inputs, { from: rangeStart, to: rangeEnd });
 
   return {
     seller: {

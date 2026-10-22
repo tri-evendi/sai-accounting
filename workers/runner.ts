@@ -36,6 +36,7 @@
  */
 import "dotenv/config";
 
+import { buildBanner, buildInfo, stampIdentity, type BuildStamp } from "@sai/core/build-info";
 import { controlDb } from "@sai/core/control-db";
 import {
   JOB_LANES,
@@ -43,7 +44,13 @@ import {
   type JobLane,
 } from "@sai/core/generated/job-kinds";
 import { LEASE_RENEW_MS } from "@sai/core/job-backoff";
-import { IDLE_MS, UPKEEP_MS as UPKEEP_MS_KONTRAK } from "@sai/core/generated/job-numbers";
+import {
+  IDLE_MS,
+  LANE_LOCK_IDLE_SESSION_MS,
+  LANE_LOCK_PROBE_MS,
+  LANE_LOCK_QUERY_TIMEOUT_MS,
+  UPKEEP_MS as UPKEEP_MS_KONTRAK,
+} from "@sai/core/generated/job-numbers";
 import {
   archiveDoneJobs,
   claimJob,
@@ -100,9 +107,31 @@ export class LeaseLostError extends Error {
   }
 }
 
-/** Nama pekerja: cukup untuk menunjuk container yang memegang lease. */
-function workerId(lane: JobLane): string {
-  return `${lane}@${process.env.HOSTNAME ?? "lokal"}:${process.pid}`;
+/**
+ * Layanan compose yang menjalankan pelari Node — ikut tertulis di
+ * `jobs.claimed_by` supaya konsol bisa membedakannya dari pelari Go
+ * (`svc-integrator`) yang melayani jalur `interactive` yang sama.
+ */
+export const WORKER_SERVICE = "svc-worker";
+
+/**
+ * Nama pekerja: cukup untuk menunjuk container yang memegang lease, DITAMBAH
+ * build yang ia jalankan (`interactive@<host>:<pid> svc-worker v0.12.1+abc1234`).
+ *
+ * Stempel di sini — bukan tabel baru — karena kolom ini SUDAH ditulis setiap
+ * klaim, oleh kedua bahasa; konsol (`/scheduler` → "Versi layanan") membacanya
+ * untuk melihat pelari yang tertinggal di image lama. Bentuknya
+ * `@sai/core/build-info` (`stampIdentity`), sama persis dengan `jobs.WorkerID`
+ * di Go. Identitas dihitung SEKALI per pelari, jadi `claimed_by = ${me}` pada
+ * perpanjangan lease tetap cocok.
+ */
+export function workerId(
+  lane: JobLane,
+  host: string = process.env.HOSTNAME ?? "lokal",
+  pid: number = process.pid,
+  build: BuildStamp = buildInfo()
+): string {
+  return stampIdentity(`${lane}@${host}:${pid}`, WORKER_SERVICE, build);
 }
 
 /**
@@ -137,7 +166,15 @@ function workerId(lane: JobLane): string {
 async function ambilPagar(lane: JobLane): Promise<SessionLock | "pooled" | null> {
   const direct = process.env.CONTROL_DATABASE_DIRECT_URL;
   if (direct) {
-    return tryAcquireSessionLock(direct, `sai.lane.${lane}`);
+    /* Waktu denyutnya dari kontrak, bukan bawaan `session-lock`: pagar yang
+       sama dipegang Go (`jobs.LaneLock`), dan dua pemegang satu pagar yang
+       berbeda pendapat tentang kapan kunci dinyatakan hilang adalah dua
+       jendela berhenti yang berbeda. */
+    return tryAcquireSessionLock(direct, `sai.lane.${lane}`, {
+      probeIntervalMs: LANE_LOCK_PROBE_MS,
+      queryTimeoutMs: LANE_LOCK_QUERY_TIMEOUT_MS,
+      idleSessionTimeoutMs: LANE_LOCK_IDLE_SESSION_MS,
+    });
   }
   /* Id kunci diturunkan dari nama jalur secara stabil — dua jalur berbeda tidak
      boleh berebut kunci yang sama. `hashtext` deterministik di satu versi
@@ -276,6 +313,7 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
     return;
   }
 
+  console.log(`[${lane}] ${buildBanner(WORKER_SERVICE)}`);
   console.log(`[${lane}] mulai sebagai ${me} — mengklaim ${kinds.join(", ")}`);
 
   /* Potret event loop jalur ini (pemicu 1d, `@sai/core/runtime-trigger`).

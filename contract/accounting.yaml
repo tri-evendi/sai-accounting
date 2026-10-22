@@ -18,11 +18,23 @@
 #                       Neraca Saldo dilaporkan, bukan ditelan) dan
 #                       `src/lib/accounting.ts` (daftar tipe akun aplikasi).
 #
-# Yang SENGAJA BELUM ada: kategori & saldo normal per tipe, `CONTRACT_STATUSES`,
-# `CURRENCIES`, ambang materialitas. Neraca Saldo tidak membacanya — ia menaruh
-# saldo di sisi yang ditunjuk TANDA selisihnya, bukan di sisi normal tipenya.
-# Kategori masuk ke sini bersama laporan Go pertama yang memakainya (Laba Rugi),
-# dalam commit yang sama.
+#   • `account_categories` + `account_type_categories` — dibaca Laba Rugi dan
+#                       Neraca Go (`internal/ledgerread/statements.go`) dan
+#                       `src/lib/accounting.ts` (`accountCategoryFor`).
+#   • `category_statement_side` — sisi yang dilaporkan POSITIF per kategori di
+#                       Laba Rugi & Neraca; dibaca kedua sisi (`reports.ts`).
+#   • `income_statement` — band Laba Rugi bertingkat (#123); dibaca
+#                       `incomeStatementSectionFor` dan Laba Rugi Go.
+#   • `closing_journal_type` — jenis jurnal penutup tahunan (#555) yang DIBUANG
+#                       Laba Rugi; dibaca `year-close.ts` dan Laba Rugi Go.
+#
+# Yang SENGAJA BELUM ada: saldo normal per tipe, `CONTRACT_STATUSES`,
+# `CURRENCIES`, ambang materialitas. Tidak satu pun laporan Go membacanya —
+# saldo normal hanya dibaca formulir bagan akun & buku besar (TS), dan
+# `accumulated_depreciation` membuktikan ia BUKAN turunan kategori (aset,
+# saldo normal kredit). Laba Rugi & Neraca memakai sisi KATEGORI, bukan sisi
+# normal tipe: akumulasi penyusutan tampil NEGATIF di blok aset (kontra-aset),
+# bukan positif di sisi lain.
 #
 # ══ MENGUBAH ═══════════════════════════════════════════════════════════════
 #   1. ubah di bawah;
@@ -61,3 +73,75 @@ account_types:
   - cogs
   - expense
   - other_expense
+
+# ── Kategori akun ──────────────────────────────────────────────────────────
+# Lima kategori laporan keuangan. Tipe akun yang TIDAK punya kategori (nilai
+# basis data di luar kontrak) tidak masuk Laba Rugi maupun Neraca di KEDUA
+# bahasa — Neraca Saldo tetap menghitungnya (lihat `unknownTypes` Go).
+account_categories:
+  - asset
+  - liability
+  - equity
+  - revenue
+  - expense
+
+# Setiap tipe di `account_types` tepat SATU kategori — generator menolak tipe
+# tanpa kategori, kategori asing, dan kunci yang bukan tipe.
+account_type_categories:
+  cash_bank: asset
+  account_receivable: asset
+  inventory: asset
+  other_current_asset: asset
+  fixed_asset: asset
+  accumulated_depreciation: asset
+  other_asset: asset
+  account_payable: liability
+  tax_payable: liability
+  other_current_liability: liability
+  long_term_liability: liability
+  equity: equity
+  revenue: revenue
+  other_income: revenue
+  cogs: expense
+  expense: expense
+  other_expense: expense
+
+# Sisi saldo yang dilaporkan POSITIF di Laba Rugi dan Neraca, per KATEGORI:
+# `debit` = debit − kredit, `credit` = kredit − debit. Per kategori, bukan per
+# tipe — itu yang membuat Retur Penjualan menetralkan dirinya di pendapatan dan
+# Akumulasi Penyusutan tampil negatif di aset.
+category_statement_side:
+  asset: debit
+  liability: credit
+  equity: credit
+  revenue: credit
+  expense: debit
+
+# ── Laba Rugi bertingkat (#123) ────────────────────────────────────────────
+# Penjualan − HPP = Laba Kotor, − Beban Operasional = Laba Usaha, ± lain-lain
+# = Laba Bersih. Urutan `sections` = urutan band di laporan.
+#
+# Aturannya TOTAL atas akun laba rugi: tipe di `type_sections` mendapat band
+# sendiri, SISANYA jatuh ke band bawaan kategorinya. Tipe pendapatan/beban
+# yang ditambahkan kelak karena itu tetap mendarat di band yang terlihat —
+# bukan hilang dari rincian sambil tetap terjumlah di total.
+income_statement:
+  sections:
+    - sales
+    - cogs
+    - operating_expense
+    - other_income
+    - other_expense
+  type_sections:
+    other_income: other_income
+    cogs: cogs
+    other_expense: other_expense
+  category_default_sections:
+    revenue: sales
+    expense: operating_expense
+
+# ── Tutup buku tahunan (#555) ──────────────────────────────────────────────
+# `journals.type` jurnal penutup. Laba Rugi MEMBUANGNYA (tanpanya tahun yang
+# baru ditutup melaporkan laba NOL); Neraca dan Neraca Saldo MEMASUKKANNYA —
+# di situlah Laba Ditahan memperoleh saldonya.
+closing_journal_type: closing

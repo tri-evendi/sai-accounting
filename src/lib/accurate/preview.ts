@@ -114,6 +114,9 @@ export interface AccuratePreview {
   };
 }
 
+/* UTC SENGAJA: tanggal Accurate diurai `accurate/dates.ts` sebagai tengah
+   malam UTC (tanggal kalender murni), jadi bagian tanggal ISO-nya adalah
+   tanggal berkasnya sendiri — bukan sebuah instan yang perlu digeser ke WIB. */
 const iso = (d: Date): string => d.toISOString().slice(0, 10);
 
 const toEntry = (e: AccurateLedgerEntry): PreviewEntry => ({

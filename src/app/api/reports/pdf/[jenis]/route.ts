@@ -51,6 +51,7 @@
  * pembangkitan, bukan sifat yang bisa diandalkan dari dua.
  */
 import { NextResponse } from "next/server";
+import { businessISODate } from "@sai/core/business-date";
 
 import { requireApiPermission } from "@/lib/auth-guard";
 import { readBoundedText } from "@/lib/request-body";
@@ -136,7 +137,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ jenis: str
   const doc = await spec.gambar(muatan, company);
   const bytes = new Uint8Array(doc.output("arraybuffer") as ArrayBuffer);
 
-  const filename = `${spec.slug(muatan)}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = `${spec.slug(muatan)}_${businessISODate(new Date())}.pdf`;
 
   return new NextResponse(bytes, {
     status: 200,

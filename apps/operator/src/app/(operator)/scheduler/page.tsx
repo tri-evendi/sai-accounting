@@ -35,6 +35,15 @@
  * menjawab "jalur mana yang lambat", panel ini menjawab "apakah kelambatan itu
  * menahan halaman atau memori" — pertanyaan yang membuka 1d. Vonisnya dari
  * `@sai/core/runtime-trigger`, bukan dihitung di sini.
+ *
+ * ── Panel pertama: VERSI LAYANAN (22 Okt 2026) ────────────────────────────
+ * Build yang dijalankan setiap layanan, dibandingkan dengan build konsol ini.
+ * Di halaman ini karena sumbernya jejak yang sama yang dibaca panel lain
+ * (`jobs`, `runtime_samples`, jejak putaran) — dan karena layanan latar yang
+ * tertinggal di image lama adalah jawaban pertama untuk "kenapa antrean ini
+ * berperilaku aneh sesudah rilis". Putusan "tertinggal" dari
+ * `@sai/core/build-info` (`compareBuild`), bukan dihitung di sini; bacaannya
+ * `@op/lib/operator/service-builds`.
  */
 
 import { CalendarOutlined } from "@ant-design/icons";
@@ -71,6 +80,11 @@ import {
   type TriggerStatus,
   type TriggerVerdict,
 } from "@sai/core/runtime-trigger";
+import {
+  SERVICE_BUILD_WINDOW_HOURS,
+  serviceBuildsForOperator,
+} from "@op/lib/operator/service-builds";
+import { buildLabel, type BuildVerdict, type ServiceBuildRow } from "@sai/core/build-info";
 import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
@@ -125,6 +139,31 @@ function RunList({
     </div>
   );
 }
+
+/*
+ * Putusan versi. `unknown` NETRAL — alasan yang sama dengan `idle` di bawah:
+ * "belum berstempel" tidak menyatakan layanan itu tertinggal, ia menyatakan
+ * halaman ini belum tahu. `differs` kuning, bukan merah: layanan yang
+ * tertinggal masih melayani, dan tindakannya (tarik + naikkan ulang) rutin.
+ */
+const VERSION_KEY: Record<BuildVerdict, string> = {
+  same: "operator.scheduler.versionsSame",
+  differs: "operator.scheduler.versionsDiffers",
+  unknown: "operator.scheduler.versionsUnknown",
+};
+
+const VERSION_BADGE: Record<BuildVerdict, BadgeVariant> = {
+  same: "success",
+  differs: "warning",
+  unknown: "outline",
+};
+
+/** Build ditulis dengan huruf lebar-tetap: sha dibandingkan per karakter. */
+const MONO: React.CSSProperties = {
+  fontFamily: "var(--ant-font-family-code)",
+  fontVariantNumeric: "tabular-nums",
+  whiteSpace: "nowrap",
+};
 
 const QUEUE_STATUS_KEY: Record<QueueHealthStatus, string> = {
   idle: "operator.scheduler.queueStatusIdle",
@@ -188,12 +227,59 @@ export default async function OperatorSchedulerPage() {
   await requireOperatorPage();
   const t = await getT();
 
-  const [runs, queue, metrics, runtime] = await Promise.all([
+  const [runs, queue, metrics, runtime, builds] = await Promise.all([
     schedulerRunsForOperator(10),
     queueSnapshotForOperator(),
     jobMetricsForOperator(),
     runtimeSummaryForOperator(),
+    serviceBuildsForOperator(),
   ]);
+
+  const versionBadge = (verdict: BuildVerdict) => (
+    <Badge variant={VERSION_BADGE[verdict]}>
+      {t(VERSION_KEY[verdict] as Parameters<typeof t>[0])}
+    </Badge>
+  );
+
+  const versionColumns: SaiColumns<ServiceBuildRow> = [
+    {
+      key: "service",
+      title: t("operator.scheduler.versionsColService"),
+      align: "left",
+      render: (_v, r) => r.service,
+    },
+    {
+      key: "role",
+      title: t("operator.scheduler.versionsColRole"),
+      align: "left",
+      render: (_v, r) => r.role,
+    },
+    {
+      key: "build",
+      title: t("operator.scheduler.versionsColBuild"),
+      align: "left",
+      render: (_v, r) =>
+        r.build ? (
+          <span style={MONO}>{buildLabel(r.build)}</span>
+        ) : (
+          <span style={MUTED}>{t("operator.scheduler.versionsUnstamped")}</span>
+        ),
+    },
+    {
+      key: "seen",
+      title: t("operator.scheduler.versionsColSeen"),
+      align: "left",
+      render: (_v, r) => <span style={NOWRAP_MUTED}>{formatDateTime(r.lastSeen)}</span>,
+    },
+    {
+      key: "status",
+      title: t("operator.scheduler.colStatus"),
+      align: "left",
+      /* Teks selalu ikut lencana — warna bukan sinyal tunggal (MASTER.md). */
+      render: (_v, r) => versionBadge(r.verdict),
+    },
+  ];
+  const tertinggal = builds?.rows.filter((r) => r.verdict === "differs").length ?? 0;
   const latest = runs?.[0] ?? null;
 
   const queueColumns: SaiColumns<LaneQueueHealth> = [
@@ -493,6 +579,54 @@ export default async function OperatorSchedulerPage() {
     <div>
       <PageHeader title={t("operator.scheduler.heading")} description={t("operator.scheduler.description")} />
       <div style={CONSOLE_PAGE}>
+
+      <ConsolePanel
+        title={t("operator.scheduler.versionsHeading")}
+        description={
+          builds === null
+            ? undefined
+            : t("operator.scheduler.versionsDescription", {
+                self: `app-operator ${buildLabel(builds.self)}`,
+                hours: SERVICE_BUILD_WINDOW_HOURS,
+              })
+        }
+        actions={
+          builds === null || builds.rows.length === 0 ? undefined : (
+            <Badge variant={tertinggal > 0 ? "warning" : "success"}>
+              {tertinggal > 0
+                ? t("operator.scheduler.versionsSummaryDiffers", { count: tertinggal })
+                : t("operator.scheduler.versionsSummaryOk")}
+            </Badge>
+          )
+        }
+      >
+        {builds === null ? (
+          <ConsoleNotice>{t("operator.scheduler.versionsUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+            {builds.rows.length === 0 ? (
+              <p style={{ ...MUTED, margin: 0 }}>
+                {t("operator.scheduler.versionsEmpty", { hours: SERVICE_BUILD_WINDOW_HOURS })}
+              </p>
+            ) : (
+              <StaticTable
+                columns={versionColumns}
+                rows={builds.rows}
+                rowKey={(r) => `${r.service}|${r.role}|${r.build ? buildLabel(r.build) : ""}`}
+              />
+            )}
+            {builds.unseen.length > 0 && (
+              <p style={{ ...MUTED, margin: 0 }}>
+                {t("operator.scheduler.versionsUnseen", {
+                  hours: SERVICE_BUILD_WINDOW_HOURS,
+                  list: builds.unseen.map((u) => `${u.service}/${u.role}`).join(", "),
+                })}
+              </p>
+            )}
+            <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.versionsNote")}</p>
+          </div>
+        )}
+      </ConsolePanel>
 
       <ConsolePanel title={t("operator.scheduler.queueHeading")}>
         {queue === null ? (

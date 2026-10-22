@@ -1,0 +1,16 @@
+{
+  "asOf": "2026-01-05T16:59:59.999Z",
+  "assets": [],
+  "liabilities": [],
+  "equity": [],
+  "totalAssets": "0.00",
+  "totalLiabilities": "0.00",
+  "totalEquity": "0.00",
+  "netIncome": "0.00",
+  "currentYearIncome": "0.00",
+  "priorUnclosedIncome": "0.00",
+  "totalLiabilitiesEquity": "0.00",
+  "balanced": true,
+  "equitySplitJS": false,
+  "unknownTypes": []
+}

@@ -10,6 +10,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { businessISODate } from "@sai/core/business-date";
 import { useRouter } from "next/navigation";
 import { Flex } from "antd";
 import { Button } from "@sai/ui/button";
@@ -47,7 +48,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
   const t = useT();
   const router = useRouter();
   const { toast } = useToast();
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => businessISODate(new Date()));
   const [counts, setCounts] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -203,7 +204,7 @@ export function OpnameForm({ items }: { items: OpnameItem[] }) {
           type="date"
           label={t("inventory.opnameDateField")}
           value={date}
-          max={new Date().toISOString().slice(0, 10)}
+          max={businessISODate(new Date())}
           onChange={(e) => setDate(e.target.value)}
         />
         <Input

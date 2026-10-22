@@ -1,0 +1,88 @@
+{
+  "current": {
+    "revenue": [],
+    "expense": [
+      {
+        "code": "6103",
+        "name": "Beban Netral",
+        "amount": "-500.00"
+      }
+    ],
+    "totalRevenue": "0.00",
+    "totalExpense": "-500.00",
+    "netIncome": "500.00",
+    "sales": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "0.00",
+    "operatingExpense": {
+      "lines": [
+        {
+          "code": "6103",
+          "name": "Beban Netral",
+          "amount": "-500.00"
+        }
+      ],
+      "total": "-500.00"
+    },
+    "operatingProfit": "500.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "prior": {
+    "revenue": [],
+    "expense": [
+      {
+        "code": "6101",
+        "name": "Beban Gaji",
+        "amount": "20000000.00"
+      }
+    ],
+    "totalRevenue": "0.00",
+    "totalExpense": "20000000.00",
+    "netIncome": "-20000000.00",
+    "sales": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "0.00",
+    "operatingExpense": {
+      "lines": [
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "amount": "20000000.00"
+        }
+      ],
+      "total": "20000000.00"
+    },
+    "operatingProfit": "-20000000.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "priorFrom": "2024-12-31T17:00:00Z",
+  "priorTo": "2025-12-31T16:59:59.999Z"
+}

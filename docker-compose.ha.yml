@@ -1,0 +1,215 @@
+# Profil HA — TAHAP 3 rancangan 09 §9: witness & failover otomatis, replika
+# baca, leader election. Dipakai BERSAMA `docker-compose.yml`, tidak pernah
+# sendirian, dan tidak pernah di produksi satu-VM hari ini.
+#
+# ⚠ BUTUH ≥ 3 HOST. Dua anggota PostgreSQL di bawah Patroni (host A & B) dan
+#   satu WITNESS (host C, hanya etcd, tanpa data). Tiga anggota etcd adalah
+#   kuorum terkecil yang selamat dari hilangnya satu host; dengan dua host,
+#   partisi jaringan memaksa memilih antara "tidak ada primary" dan "dua
+#   primary", dan Patroni benar memilih yang pertama — failover otomatis di dua
+#   host adalah failover yang tidak pernah terjadi.
+#
+# ⚠ BELUM PERNAH DIJALANKAN. Repo ini hidup di satu VM; yang terbukti di sini
+#   hanya `docker compose config` (berkasnya sah dan tergabung benar) dan tes
+#   unit kode aplikasinya. Failover sungguhan, kuorum etcd, dan perilaku
+#   HAProxy saat primary pindah BELUM terbukti — runbook-nya di
+#   docs/arsitektur/02-LAYANAN-INFRA.md §15.1 menulis apa yang harus diuji
+#   sebelum berkas ini menyentuh customer.
+#
+# ── Cara pakai ─────────────────────────────────────────────────────────────
+#
+#   # host A & B (anggota basis data):
+#   docker compose -f docker-compose.yml -f docker-compose.ha.yml \
+#     --profile ha-db up -d db-patroni svc-etcd
+#   # host C (witness):
+#   docker compose -f docker-compose.yml -f docker-compose.ha.yml \
+#     --profile ha-witness up -d svc-etcd
+#   # host aplikasi (boleh sama dengan A/B):
+#   docker compose -f docker-compose.yml [-f docker-compose.replika.yml] \
+#     -f docker-compose.ha.yml up -d
+#
+# ── Bersama `docker-compose.replika.yml` (tahap 2) ────────────────────────
+# Berkas ini DITARUH TERAKHIR. Replika `app-customer` kedua dari tahap 2 tetap
+# berlaku apa adanya: ia lewat PgBouncer, dan PgBouncer di sini menyambung ke
+# router `pg` yang selalu menunjuk primary. Satu-satunya yang TIDAK boleh ikut:
+# `pg-standby` tahap 2. Di HA, standby dikelola Patroni (anggota B), dan
+# standby kedua yang mengikuti primary LAMA akan tertinggal tanpa galat setelah
+# failover pertama. Jalankan dengan `--scale pg-standby=0`.
+#
+# ── Variabel yang WAJIB (tidak ada di `.env` produksi, dengan sengaja) ────
+#   PG_MEMBER_A_HOST · PG_MEMBER_B_HOST · ETCD_WITNESS_HOST — alamat ketiga host
+#   PG_REPLICATION_PASSWORD — sandi pengguna replikasi Patroni
+# `:?` membuat compose BERHENTI sebelum satu container pun start bila salah
+# satunya kosong, pola yang sama dengan `SAI_TAG` di profil on-premise.
+#
+# Dua lagi PER HOST, hanya di host yang menjalankan `svc-etcd`:
+#   ETCD_MEMBER_NAME (`a` | `b` | `witness`) · ETCD_ADVERTISE_HOST
+# Tanpa `:?` dengan sengaja — host aplikasi tidak menjalankan etcd, dan compose
+# menginterpolasi seluruh berkas. Nama yang kosong membuat etcd menolak start
+# ("couldn't find local name in the initial cluster"), jadi kekosongannya tetap
+# berbunyi, hanya di tempat yang tepat.
+#
+# ⚠ etcd (2379/2380) dan REST Patroni (8008) di sini TANPA TLS dan tanpa
+# autentikasi: hanya untuk jaringan privat antar-host. Membukanya ke internet
+# berarti siapa pun bisa memaksa failover.
+
+x-control-direct: &control-direct postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5432/sai_control
+
+configs:
+  # Router TCP: port 5432 → anggota yang menjawab `GET /primary` 200 di REST
+  # API Patroni; port 5433 → anggota yang menjawab `GET /replica` 200.
+  #
+  # `on-marked-down shutdown-sessions` adalah baris yang paling penting di
+  # sini: tanpanya koneksi lama ke bekas primary tetap terbuka sesudah
+  # failover. Dengan ia, sesi itu DIPUTUS — dan kunci sesi pemimpin
+  # (`@sai/db/session-lock`) ikut hilang, sehingga pemimpin lama berhenti
+  # sebelum kandidat lain mengambil alih di primary baru.
+  pg-router:
+    content: |
+      global
+        maxconn 400
+      defaults
+        mode tcp
+        timeout connect 5s
+        timeout client 30m
+        timeout server 30m
+        timeout check 3s
+      listen primary
+        bind *:5432
+        option httpchk GET /primary
+        http-check expect status 200
+        default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+        server a ${PG_MEMBER_A_HOST:?set PG_MEMBER_A_HOST}:5432 check port 8008
+        server b ${PG_MEMBER_B_HOST:?set PG_MEMBER_B_HOST}:5432 check port 8008
+      listen replicas
+        bind *:5433
+        balance roundrobin
+        option httpchk GET /replica
+        http-check expect status 200
+        default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+        server a ${PG_MEMBER_A_HOST}:5432 check port 8008
+        server b ${PG_MEMBER_B_HOST}:5432 check port 8008
+
+services:
+  # ══ `pg` MENJADI ROUTER, NAMANYA TETAP ═════════════════════════════════════
+  #
+  # Nama service `pg` dipakai empat URL langsung di compose dasar (`migrate`,
+  # `job-backup`, `svc-tenant`, dan PgBouncer). Mengganti ISINYA, bukan
+  # namanya, membuat keempatnya mengikuti primary tanpa satu baris pun diubah —
+  # dan aturan Nomenklatur melarang rename diam-diam.
+  #
+  # Kenapa router dan bukan URL multi-host libpq (`host=a,b
+  # target_session_attrs=read-write`): driver Node di repo ini (`pg` 8.23.1,
+  # lewat `@prisma/adapter-pg`) TIDAK mendukungnya — diperiksa di
+  # `node_modules/pg/lib`, tidak ada `target_session_attrs` maupun daftar host.
+  # pgx (Go) dan `pg_dump` mendukungnya, tapi dua cara menemukan primary untuk
+  # satu kluster adalah dua cara untuk tidak sepakat saat failover.
+  pg:
+    image: haproxy:3.0.5-alpine
+    environment: !reset {}
+    volumes: !reset []
+    command: ["haproxy", "-f", "/usr/local/etc/haproxy/pg.cfg"]
+    configs:
+      - source: pg-router
+        target: /usr/local/etc/haproxy/pg.cfg
+    # Memeriksa konfigurasi, bukan keberadaan primary: tanpa primary, router
+    # menolak koneksi dan setiap klien mencoba ulang — keadaan yang sama
+    # dengan `pg` yang sedang restart hari ini.
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/pg.cfg"]
+
+  # ══ LEADER ELECTION `job-scheduler` ════════════════════════════════════════
+  #
+  # Hanya `entrypoint` yang diganti; `command` (putaran delapan langkah beserta
+  # anggaran `timeout`-nya) tetap satu salinan di compose dasar. Replika kedua
+  # di host lain menunggu sebagai kandidat dan tidak menjalankan satu langkah
+  # pun sampai kuncinya bebas. Dijaga `tests/leader-election.test.ts`.
+  #
+  # `init: true`: pembungkus di belakang tini, sehingga pembungkus yang mati
+  # mendadak menghentikan container beserta putarannya — tidak ada anak yatim
+  # yang terus berputar sesudah kuncinya lepas.
+  job-scheduler:
+    init: true
+    entrypoint: ["bun", "scripts/run-as-leader.ts", "--name", "job-scheduler", "--"]
+    environment:
+      # LANGSUNG ke router `pg`, BUKAN PgBouncer: kunci sesi lewat pooler mode
+      # transaksi bukan kunci (`packages/db/src/session-lock.ts`).
+      CONTROL_DATABASE_DIRECT_URL: *control-direct
+
+  # Pagar jalur `ledger` pindah ke koneksi langsung yang dibuktikan ulang tiap
+  # denyut (`workers/runner.ts` → `ambilPagar`). Tanpa baris ini pagarnya
+  # lewat PgBouncer — jinak di satu host, kosong di dua.
+  svc-ledger:
+    environment:
+      CONTROL_DATABASE_DIRECT_URL: *control-direct
+
+  # ══ REPLIKA BACA ═══════════════════════════════════════════════════════════
+  #
+  # Hanya `svc-interactive` (ekspor berantre) yang membaca replika; aturan
+  # kesegarannya di `src/lib/read-replica.ts`. Lewat router port 5433, tidak
+  # lewat PgBouncer: anggaran koneksinya kecil (satu klien per PT yang sedang
+  # diekspor) dan PgBouncer kedua untuk replika belum membeli apa pun.
+  #
+  # `container_name` dilepas supaya jalur jamak ini bisa diskalakan
+  # (`--scale svc-interactive=2`) — `FOR UPDATE SKIP LOCKED` menjamin satu
+  # pekerjaan tidak diklaim dua kali. ⚠ Volume `hasil` lokal per host: replika
+  # di host LAIN menulis berkas yang tidak terlihat `app-customer` di host ini.
+  # Skala lintas host menunggu penyimpanan objek untuk hasil (02 §15.1).
+  svc-interactive:
+    container_name: !reset null
+    environment:
+      COMPANY_DATABASE_READ_URL_TEMPLATE: postgres://${PG_USER:-sai}:${PG_PASSWORD}@pg:5433/template
+
+  # ══ ANGGOTA KLUSTER (host A & B) ═══════════════════════════════════════════
+  #
+  # Spilo = PostgreSQL 17 + Patroni dalam satu image. Tag-nya DIPATOK, dan
+  # wajib diperiksa ulang terhadap registry sebelum gelar pertama — berkas ini
+  # belum pernah menariknya.
+  db-patroni:
+    profiles: ["ha-db"]
+    image: ghcr.io/zalando/spilo-17:4.0-p2
+    container_name: sai-db-patroni
+    restart: unless-stopped
+    # Anggota saling menjangkau lintas host (5432 replikasi, 8008 REST);
+    # jaringan bridge compose tidak melintasi host.
+    network_mode: host
+    environment:
+      SCOPE: sai
+      PGVERSION: "17"
+      ETCD3_HOSTS: "'${PG_MEMBER_A_HOST}:2379','${PG_MEMBER_B_HOST}:2379','${ETCD_WITNESS_HOST:?set ETCD_WITNESS_HOST}:2379'"
+      PGUSER_SUPERUSER: ${PG_USER:-sai}
+      PGPASSWORD_SUPERUSER: ${PG_PASSWORD}
+      PGUSER_STANDBY: replicator
+      PGPASSWORD_STANDBY: ${PG_REPLICATION_PASSWORD:?set PG_REPLICATION_PASSWORD}
+      TZ: ${TZ:-Asia/Jakarta}
+    volumes:
+      - patroni_data:/home/postgres/pgdata
+
+  # ══ KUORUM (host A, B, dan C sebagai WITNESS) ═════════════════════════════
+  #
+  # Witness = anggota etcd ketiga di host tanpa data. Ia tidak pernah menjadi
+  # primary; satu-satunya tugasnya memberi suara supaya sisi partisi yang
+  # memegang dua dari tiga suara boleh memilih primary.
+  svc-etcd:
+    profiles: ["ha-db", "ha-witness"]
+    image: quay.io/coreos/etcd:v3.5.17
+    container_name: sai-svc-etcd
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - etcd
+      - --name=${ETCD_MEMBER_NAME:-}
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://${ETCD_ADVERTISE_HOST:-}:2379
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-advertise-peer-urls=http://${ETCD_ADVERTISE_HOST:-}:2380
+      - --initial-cluster=a=http://${PG_MEMBER_A_HOST}:2380,b=http://${PG_MEMBER_B_HOST}:2380,witness=http://${ETCD_WITNESS_HOST}:2380
+      - --initial-cluster-state=new
+      - --initial-cluster-token=sai-etcd
+    volumes:
+      - etcd_data:/etcd-data
+
+volumes:
+  patroni_data:
+  etcd_data:

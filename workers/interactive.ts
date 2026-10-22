@@ -50,6 +50,7 @@ import { buildReportSheet } from "../src/lib/report-export";
 import { STATEMENT_TITLES } from "../src/lib/statement-layout";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
 import { getCompanyIdentity } from "../src/lib/company-identity";
+import { runReadOnly } from "../src/lib/read-replica";
 
 /** Muatan `report.export` — PARAMETER saja. */
 interface MuatanEkspor {
@@ -102,7 +103,14 @@ async function eksporLaporan(ctx: JobContext): Promise<string | null> {
      `dalamKonteksPerusahaan`. */
   const bytes = await dalamKonteksPerusahaan(ctx.job.companyId, false, async () => {
     await ctx.progress(10);
-    const payload = await buildReportPayload(report, params);
+    /* Jalur baca berat → replika baca bila terpasang (tahap 3). Tanpa
+       `COMPANY_DATABASE_READ_URL_TEMPLATE` ini `buildReportPayload(...)`
+       apa adanya. Aturan kesegarannya (replika memutar WAL sampai posisi
+       primary saat ini, atau primary) ada di `src/lib/read-replica.ts`, dan
+       itu yang membuat janji "dihitung saat dikerjakan" di kepala berkas ini
+       tetap benar. Identitas perusahaan di bawah sengaja tetap ke primary:
+       murah, dan bukan bacaan berat. */
+    const payload = await runReadOnly(() => buildReportPayload(report, params));
 
     await ctx.progress(55);
     const sheet = buildReportSheet(payload);

@@ -56,6 +56,7 @@ import {
   type JobRow,
 } from "@sai/platform/job-queue";
 import { pruneOrphanResults } from "@sai/platform/job-result-store";
+import { tryAcquireSessionLock, type SessionLock } from "@sai/db/session-lock";
 import {
   pruneRuntimeSamples,
   recordJobRun,
@@ -111,15 +112,40 @@ function workerId(lane: JobLane): string {
  * proses mati — termasuk mati mendadak, yang justru kasus yang penting. Kunci
  * yang disimpan sebagai baris akan tertinggal setelah OOM dan memblokir
  * pengganti yang sehat.
+ *
+ * ══ DUA JALAN, DAN YANG LAMA PUNYA CACAT YANG DISEBUT (tahap 3, 22 Okt 2026)
+ *
+ * Jalan lama (`controlDb`) mengambil kunci SESI lewat klien Prisma — dan di
+ * produksi `CONTROL_DATABASE_URL` menunjuk PgBouncer mode TRANSAKSI. Kuncinya
+ * tertinggal di backend milik kolam PgBouncer, bukan milik pelari ini: pelari
+ * yang mati tidak melepasnya, dan pelari lain yang mendarat di backend yang
+ * sama ikut "mendapatkannya". Di satu VM dengan satu replika cacat itu jinak —
+ * PgBouncer memakai ulang backend yang sama (LIFO), dan `dedupe_key` yang
+ * memikul kebenaran — tapi pagar itu tidak memagari apa pun begitu ada host
+ * kedua. Go tidak punya cacat ini: `svc-tenant` menyambung langsung ke `pg`
+ * dan memegang satu koneksi (`TryLaneLock`).
+ *
+ * Jalan baru dipakai HANYA bila `CONTROL_DATABASE_DIRECT_URL` disetel
+ * (`docker-compose.ha.yml`): satu koneksi langsung yang dipegang selama
+ * pelari hidup, dibuktikan ulang tiap denyut (`@sai/db/session-lock`). Tanpa
+ * variabel itu perilakunya PERSIS seperti sebelum tahap 3 — produksi satu-VM
+ * tidak berubah sampai seseorang memutuskannya.
+ *
+ * Nama kuncinya SAMA di kedua jalan dan di Go (`sai.lane.<jalur>`), sebab pagar
+ * yang tidak saling melihat bukan pagar.
  */
-async function ambilPagar(lane: JobLane): Promise<boolean> {
+async function ambilPagar(lane: JobLane): Promise<SessionLock | "pooled" | null> {
+  const direct = process.env.CONTROL_DATABASE_DIRECT_URL;
+  if (direct) {
+    return tryAcquireSessionLock(direct, `sai.lane.${lane}`);
+  }
   /* Id kunci diturunkan dari nama jalur secara stabil — dua jalur berbeda tidak
      boleh berebut kunci yang sama. `hashtext` deterministik di satu versi
      server, dan itu cukup: yang dibandingkan hanya dua proses jalur yang sama
      di server yang sama. */
   const rows = await controlDb.$queryRaw<{ ok: boolean }[]>`
     SELECT pg_try_advisory_lock(hashtext(${`sai.lane.${lane}`})) AS ok`;
-  return rows[0]?.ok === true;
+  return rows[0]?.ok === true ? "pooled" : null;
 }
 
 /**
@@ -203,8 +229,10 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
   const me = workerId(lane);
   const spec = JOB_LANES[lane];
 
+  let pagar: SessionLock | "pooled" | null = null;
   if (spec.singleInstance) {
-    if (!(await ambilPagar(lane))) {
+    pagar = await ambilPagar(lane);
+    if (!pagar) {
       console.log(
         `[${lane}] instans lain sudah memegang jalur ini — keluar tanpa bekerja.\n` +
           `  Jalur ini tunggal-instans di contract/kinds.yaml. Ini bukan galat; ` +
@@ -224,11 +252,26 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
   process.on("SIGTERM", () => minta("SIGTERM"));
   process.on("SIGINT", () => minta("SIGINT"));
 
+  /* Pagar yang HILANG (koneksi langsung putus, primary berganti) menghentikan
+     klaim berikutnya: pelari yang terus mengklaim tanpa pagar adalah instans
+     kedua yang sedang menunggu terjadi. Pekerjaan yang sedang jalan tetap
+     diselesaikan — lease-nya yang menjaga, bukan pagar ini. Proses lalu keluar
+     biasa, dan `restart: unless-stopped` (yang memulai ulang apa pun kode
+     keluarnya) membuatnya mencoba pagar lagi — kali ini sebagai kandidat. */
+  if (pagar && pagar !== "pooled") {
+    void pagar.lost.then((e) => {
+      if (berhenti) return;
+      console.error(`[${lane}] ⚠ pagar jalur HILANG (${e.message}).`);
+      minta("pagar hilang");
+    });
+  }
+
   /* Hanya `kind` yang punya handler yang diklaim — lihat `claimJob`. Diurutkan
      supaya log dan kueri bisa diulang. */
   const kinds = (Object.keys(handlers) as JobKind[]).filter((k) => handlers[k]).sort();
   if (kinds.length === 0) {
     console.error(`[${lane}] tidak punya satu handler pun — keluar tanpa mengklaim apa pun.`);
+    if (pagar && pagar !== "pooled") await pagar.release();
     await controlDb.$disconnect().catch(() => {});
     return;
   }
@@ -281,6 +324,7 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
 
   clearInterval(pemeliharaan);
   hentikanPotret();
+  if (pagar && pagar !== "pooled") await pagar.release();
   await controlDb.$disconnect().catch(() => {});
   console.log(`[${lane}] berhenti.`);
 }

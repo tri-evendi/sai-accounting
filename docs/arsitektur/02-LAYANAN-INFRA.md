@@ -249,6 +249,21 @@ pun yang mencatat sampai mana ia sempat. Sekarang langkah ini menulis satu baris
 `jobs` per PT dan selesai dalam milidetik; `svc-ledger` melaksanakannya dengan
 `attempts` dan *backoff* per PT.
 
+**Leader election — hanya di profil HA (tahap 3, `docker-compose.ha.yml`).**
+Compose dasar menjalankan putaran ini tanpa kunci, dan itu benar selama ia satu
+replika. Dua replika di dua host akan menerbitkan setiap langkah dua kali;
+`dedupe_key` menyelamatkan buku, tapi tidak menyelamatkan surel ganda ke
+pelanggan. Profil HA mengganti `entrypoint` saja menjadi
+`scripts/run-as-leader.ts`: proses yang memegang `pg_try_advisory_lock` di
+koneksi LANGSUNG (`CONTROL_DATABASE_DIRECT_URL`) menjalankan putaran ini; yang
+lain menunggu tiap 30 detik. Putaran delapan langkah beserta anggaran
+`timeout`-nya tetap satu salinan di compose dasar, dan denyut `/api/health` →
+`scheduler` tidak berubah artinya — hanya pemimpin yang menulis
+`scheduler_runs`. Kunci yang hilang (denyut 15 detik gagal, backend berganti,
+primary pindah) menghentikan putaran **sebelum** kandidat lain bisa mengambil
+kunci: server membunuh sesi diam sesudah 90 detik, pemimpin lama sudah berhenti
+paling lambat 15 + 10 + 20 detik. Dijaga `tests/leader-election.test.ts`.
+
 ### `svc-ledger` — pelari jalur `ledger`
 
 Menguras `kind` `ledger.*` dari tabel `jobs` (basis data `control`). Satu-satunya
@@ -706,6 +721,8 @@ Hanya nama; nilainya tidak dicantumkan. Pemeriksa: `bun run check:env`.
 | `COMPANY_CLIENT_POOL_MAX` · `CONTROL_DB_CONNECTION_LIMIT` · `PLATFORM_DB_CONNECTION_LIMIT` · `POOL_DISCONNECT_GRACE_MS` | Bawaan 4 · 2 · 1 · 15.000 |
 | `COMPANY_DATABASE_URL_TEMPLATE` · `SMTP_*` | Jatuh ke `DATABASE_URL` · SMTP dari `platform.mail_settings` |
 | `ALLOW_SEED` | **Jangan pernah** `true` di produksi |
+| `CONTROL_DATABASE_DIRECT_URL` | Profil HA saja. Kosong → pagar jalur `ledger` lewat PgBouncer (perilaku lama); `run-as-leader` menolak berjalan |
+| `COMPANY_DATABASE_READ_URL_TEMPLATE` · `COMPANY_DATABASE_READ_MAX_WAIT_MS` | Profil HA saja. Kosong → tidak ada replika baca, `runReadOnly(fn)` = `fn()` · bawaan 5.000 |
 
 **Anggaran koneksi `app-customer`:** buku PT 2 × maks 4 klien = 8, control
 2 × 1, platform 1 × 1 → **11**. Ditambah `app-operator` dan ketiga job saat
@@ -910,6 +927,66 @@ dikueri, jadi "buku mana yang paling sering gagal" belum terjawab SQL.
 > ⚠ `.dockerignore` menjangkar polanya, `.gitignore` tidak. Karena itu pola
 > `backups/` pernah membuat seluruh basis data produksi ikut masuk ke image
 > yang di-deploy. **Periksa isi image, bukan pohon berkas.**
+
+### 15.1 Failover otomatis — tahap 3, BELUM DIGELAR
+
+`docker-compose.ha.yml` adalah konfigurasinya, dan ia **butuh tiga host**: dua
+anggota PostgreSQL di bawah Patroni (A, B) dan satu witness (C, hanya etcd).
+Produksi hari ini satu VM, jadi berkas itu tidak dipakai di mana pun.
+
+| Bagian | Bentuknya | Kenapa begitu |
+|---|---|---|
+| Menemukan primary | Service `pg` menjadi HAProxy: `:5432` → anggota yang menjawab `GET /primary` di REST Patroni, `:5433` → `GET /replica` | Driver Node (`pg` 8.23.1) tidak mengenal URL multi-host maupun `target_session_attrs` — diperiksa di `node_modules/pg/lib`. Satu router untuk semua klien, bukan dua cara menemukan primary |
+| Koneksi lama ke bekas primary | `on-marked-down shutdown-sessions` | Tanpanya pemimpin lama tetap memegang kunci di server yang sudah turun pangkat |
+| `job-scheduler` | `run-as-leader` di koneksi langsung | §5 |
+| Pagar `svc-ledger` | Koneksi langsung, dibuktikan ulang tiap 15 detik (`@sai/db/session-lock`) | Pagar lewat PgBouncer mode transaksi tertinggal di backend kolam — jinak di satu host, kosong di dua |
+| Replika baca | `svc-interactive` saja, lewat `:5433`, aturan LSN (`src/lib/read-replica.ts`) | Ekspor dari replika memuat setiap commit sebelum ekspor dimulai, atau ia membaca primary |
+| `svc-interactive` lebih dari satu | `container_name` dilepas; `--scale` | Klaim `FOR UPDATE SKIP LOCKED`. ⚠ Volume `hasil` lokal per host — skala LINTAS host menunggu penyimpanan objek untuk hasil |
+| `svc-tenant` lebih dari satu | Instans kedua keluar tanpa bekerja lalu di-restart: kandidat panas | Pagar Go memegang satu koneksi langsung. ⚠ Ia **tidak** membuktikan ulang kuncinya sesudah failover — lihat di bawah |
+
+**Runbook failover.** Patroni yang memutuskan; operator memeriksa.
+
+1. `patronictl -c /home/postgres/postgres.yml list` di host A atau B — pemimpin
+   baru dan *lag* anggota lain.
+2. `docker compose logs pg --tail 50` di host aplikasi — HAProxy menandai
+   anggota lama DOWN dan anggota baru UP.
+3. `docker compose logs job-scheduler --tail 30` di kedua host — tepat satu
+   `memegang kunci`, dan bekas pemimpin mencatat `KUNCI HILANG` lalu kembali
+   menunggu.
+4. `/api/health` → `scheduler: ok` dalam satu putaran.
+5. Bekas primary bergabung kembali sebagai replika lewat `pg_rewind` (Patroni,
+   otomatis). Bila tidak: hapus volume `patroni_data` di host itu dan biarkan
+   Patroni mengkloning ulang. **Jangan** pernah menyalakannya sebagai primary
+   tangan.
+
+**Yang TIDAK terbukti di satu VM, dan harus diuji sebelum customer:**
+failover sungguhan (matikan host A, ukur detik sampai tulisan pertama sukses);
+partisi jaringan dengan witness (A terisolasi: ia harus turun pangkat, B naik);
+`idle_session_timeout` benar-benar membebaskan kunci pemimpin yang terisolasi;
+tag image Spilo `spilo-17:4.0-p2` ada di registry; migrasi data dari `pg_data`
+hari ini ke kluster Patroni (rencananya: `pg_basebackup` dari `pg` lama ke
+anggota A sebagai *standby leader*, lalu promosi — belum dilatih).
+
+Yang terbukti: `docker compose config` atas gabungan berkasnya, tes unit
+kodenya, dan satu percobaan 22 Okt 2026 terhadap PostgreSQL 17 + PgBouncer
+1.26 (mode transaksi) sekali-pakai di mesin ini — bukan produksi:
+
+| Diukur | Hasil |
+|---|---|
+| Kunci sesi lewat PgBouncer, lalu klien pergi | kunci **tetap** di `pg_locks` (tertinggal di backend kolam) |
+| Pengganti lewat PgBouncer mencoba kunci yang sama | **dapat** — backend yang sama, kunci reentrant: dua "pemegang" |
+| `@sai/db/session-lock` lewat PgBouncer, backend-nya lalu dipakai klien lain | denyut melapor `PooledLockUrlError` dalam 307 ms |
+| Sesi kunci diputus (`pg_terminate_backend`) | `lost` dalam 9 ms; kandidat berikutnya mendapat kunci |
+| Sesi kunci tanpa denyut, `idle_session_timeout` 1 s | server memutusnya dalam 1.005 ms |
+| `run-as-leader` dua instans | kedua menunggu, tidak menjalankan perintahnya; pemimpin keluar dengan kode anaknya (3) |
+
+**Dua utang yang disebut.** (1) Pelari Go (`TryLaneLock`) memegang koneksinya
+tetapi tidak membuktikan ulang kuncinya; sesudah failover, `svc-tenant` lama
+terus mengklaim sementara kandidat di host lain mengambil kunci di primary baru.
+Kebenaran tetap dipikul `dedupe_key` + lease, tapi dua cadangan bisa berjalan
+bersamaan. Perbaikannya denyut yang sama dengan `@sai/db/session-lock`, di Go,
+dengan gerbang `go:test`/`go:lint`. (2) etcd dan REST Patroni tanpa TLS:
+jaringan privat antar-host saja.
 
 ## 16. Tiga bentuk arsitektur infrastruktur
 

@@ -1,0 +1,64 @@
+{
+  "current": {
+    "revenue": [],
+    "expense": [],
+    "totalRevenue": "0.00",
+    "totalExpense": "0.00",
+    "netIncome": "0.00",
+    "sales": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "0.00",
+    "operatingExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "operatingProfit": "0.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "prior": {
+    "revenue": [],
+    "expense": [],
+    "totalRevenue": "0.00",
+    "totalExpense": "0.00",
+    "netIncome": "0.00",
+    "sales": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "0.00",
+    "operatingExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "operatingProfit": "0.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "priorFrom": "2024-12-31T17:00:00Z",
+  "priorTo": "2025-01-05T16:59:59.999Z"
+}

@@ -34,5 +34,6 @@
   "priorUnclosedIncome": "0.00",
   "totalLiabilitiesEquity": "550000000.55",
   "balanced": true,
+  "equitySplitJS": false,
   "unknownTypes": []
 }

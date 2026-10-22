@@ -2,6 +2,8 @@ package jscompat
 
 import (
 	"math"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -35,6 +37,33 @@ func TestRoundMatchesJS(t *testing.T) {
 		if got := Round(in); got != 0 || !math.Signbit(got) {
 			t.Errorf("Round(%v) = %v, mau -0", in, got)
 		}
+	}
+}
+
+func TestLocaleCompareMatchesJS(t *testing.T) {
+	// `[...xs].sort((a, b) => a.localeCompare(b))` di Node 22 DAN Bun (keduanya
+	// ICU, lokal bawaan en-US), 22 Okt 2026. Urutan byte akan memberi
+	// "4101" < "4B01" < "4_01" < "4a01" — di sini "4_01" < "4101" < "4a01" < "4B01".
+	want := []string{
+		"", "-11", "1-10", "1.10", "1.9", "1/2", "1+2", "1~2", "1$2", "11", "110",
+		"4 1", "4_01", "4-100", "4.100", "41", "410", "4101", "4101a", "4101A",
+		"4a01", "4B01", "a_1", "a-1", "a1", "A1", "ab", "aB", "Ab", "AB",
+	}
+	got := append([]string{}, want...)
+	// Diacak dulu (dibalik) supaya urutan masukan tidak membantu.
+	for i, j := 0, len(got)-1; i < j; i, j = i+1, j-1 {
+		got[i], got[j] = got[j], got[i]
+	}
+	sort.SliceStable(got, func(i, j int) bool { return LocaleCompare(got[i], got[j]) < 0 })
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("urutan LocaleCompare:\n got  %q\n mau  %q", got, want)
+	}
+	// Kendali ASCII diabaikan seluruhnya — setara, bukan lebih kecil.
+	if c := LocaleCompare("x\u0001y", "xy"); c != 0 {
+		t.Errorf("LocaleCompare(x\\u0001y, xy) = %d, mau 0", c)
+	}
+	if LocaleCompare("a", "a") != 0 || LocaleCompare("b", "a") != 1 || LocaleCompare("a", "B") != -1 {
+		t.Error("tanda dasar LocaleCompare salah")
 	}
 }
 

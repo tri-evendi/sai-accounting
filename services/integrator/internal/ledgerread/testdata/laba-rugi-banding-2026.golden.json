@@ -1,0 +1,54 @@
+{
+  "revenue": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "amount": "100.10"
+    }
+  ],
+  "expense": [
+    {
+      "code": "6101",
+      "name": "Beban Umum",
+      "amount": "20.00"
+    }
+  ],
+  "totalRevenue": "100.10",
+  "totalExpense": "20.00",
+  "netIncome": "80.10",
+  "sales": {
+    "lines": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "100.10"
+      }
+    ],
+    "total": "100.10"
+  },
+  "cogs": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "grossProfit": "100.10",
+  "operatingExpense": {
+    "lines": [
+      {
+        "code": "6101",
+        "name": "Beban Umum",
+        "amount": "20.00"
+      }
+    ],
+    "total": "20.00"
+  },
+  "operatingProfit": "80.10",
+  "otherIncome": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "otherExpense": {
+    "lines": [],
+    "total": "0.00"
+  },
+  "unknownTypes": []
+}

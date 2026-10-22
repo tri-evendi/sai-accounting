@@ -1,0 +1,133 @@
+{
+  "current": {
+    "revenue": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "15500000.00"
+      },
+      {
+        "code": "4102",
+        "name": "Retur Penjualan",
+        "amount": "-1000000.25"
+      },
+      {
+        "code": "4201",
+        "name": "Pendapatan Bunga",
+        "amount": "250000.75"
+      }
+    ],
+    "expense": [
+      {
+        "code": "5101",
+        "name": "Harga Pokok Penjualan",
+        "amount": "9876543.21"
+      },
+      {
+        "code": "6103",
+        "name": "Beban Netral",
+        "amount": "500.00"
+      },
+      {
+        "code": "7101",
+        "name": "Rugi Selisih Kurs",
+        "amount": "100000.10"
+      }
+    ],
+    "totalRevenue": "14750000.50",
+    "totalExpense": "9977043.31",
+    "netIncome": "4772957.19",
+    "sales": {
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "amount": "15500000.00"
+        },
+        {
+          "code": "4102",
+          "name": "Retur Penjualan",
+          "amount": "-1000000.25"
+        }
+      ],
+      "total": "14499999.75"
+    },
+    "cogs": {
+      "lines": [
+        {
+          "code": "5101",
+          "name": "Harga Pokok Penjualan",
+          "amount": "9876543.21"
+        }
+      ],
+      "total": "9876543.21"
+    },
+    "grossProfit": "4623456.54",
+    "operatingExpense": {
+      "lines": [
+        {
+          "code": "6103",
+          "name": "Beban Netral",
+          "amount": "500.00"
+        }
+      ],
+      "total": "500.00"
+    },
+    "operatingProfit": "4622956.54",
+    "otherIncome": {
+      "lines": [
+        {
+          "code": "4201",
+          "name": "Pendapatan Bunga",
+          "amount": "250000.75"
+        }
+      ],
+      "total": "250000.75"
+    },
+    "otherExpense": {
+      "lines": [
+        {
+          "code": "7101",
+          "name": "Rugi Selisih Kurs",
+          "amount": "100000.10"
+        }
+      ],
+      "total": "100000.10"
+    },
+    "unknownTypes": [
+      "9999"
+    ]
+  },
+  "prior": {
+    "revenue": [],
+    "expense": [],
+    "totalRevenue": "0.00",
+    "totalExpense": "0.00",
+    "netIncome": "0.00",
+    "sales": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "0.00",
+    "operatingExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "operatingProfit": "0.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "priorFrom": "2025-07-03T17:00:00Z",
+  "priorTo": "2025-12-31T16:59:59.999Z"
+}

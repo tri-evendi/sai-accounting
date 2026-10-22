@@ -29,6 +29,7 @@ import { comparisonDate, parseComparison } from "@/lib/statement-compare";
 import { balanceSheetSummary } from "@/lib/report-summary";
 import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { balanceSheetPrior } from "@/lib/report-payload";
 import { getT } from "@sai/platform/i18n/server";
 
 export const dynamic = "force-dynamic";
@@ -66,9 +67,10 @@ export default async function BalanceSheetPage({
   const payload: StatementPayload = {
     kind: "balance-sheet",
     period: asOfLabel,
-    ...(prior && priorAsOf
-      ? { priorPeriod: `Per ${formatDate(priorAsOf)}`, prior }
-      : {}),
+    // Fungsi yang SAMA dengan jalur berkas (`buildReportPayload`) — termasuk
+    // jebakannya: `prior` hasil `getBalanceSheet` UTUH (lihat
+    // `balanceSheetPrior`).
+    ...(prior && priorAsOf ? balanceSheetPrior(prior, priorAsOf) : {}),
     assets: bs.assets,
     liabilities: bs.liabilities,
     equity: bs.equity,
@@ -93,7 +95,13 @@ export default async function BalanceSheetPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` ikut SELALU, termasuk `compare` (#557) — alasan yang
+                sama dengan Laba Rugi: begitu register beralih ke `go`, pelari
+                Go menghitung lembar sebarnya dari PARAMETER. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{ reportId: "balance-sheet", params: { asOf: asOfISO, compare: compare ?? undefined } }}
+            />
           </>
         }
       />

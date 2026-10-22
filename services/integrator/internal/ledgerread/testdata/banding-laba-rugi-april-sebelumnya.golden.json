@@ -1,0 +1,88 @@
+{
+  "current": {
+    "revenue": [
+      {
+        "code": "4101",
+        "name": "Penjualan",
+        "amount": "5000000.00"
+      }
+    ],
+    "expense": [],
+    "totalRevenue": "5000000.00",
+    "totalExpense": "0.00",
+    "netIncome": "5000000.00",
+    "sales": {
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "amount": "5000000.00"
+        }
+      ],
+      "total": "5000000.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "5000000.00",
+    "operatingExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "operatingProfit": "5000000.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "prior": {
+    "revenue": [],
+    "expense": [
+      {
+        "code": "6101",
+        "name": "Beban Sewa",
+        "amount": "30000000.00"
+      }
+    ],
+    "totalRevenue": "0.00",
+    "totalExpense": "30000000.00",
+    "netIncome": "-30000000.00",
+    "sales": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "cogs": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "grossProfit": "0.00",
+    "operatingExpense": {
+      "lines": [
+        {
+          "code": "6101",
+          "name": "Beban Sewa",
+          "amount": "30000000.00"
+        }
+      ],
+      "total": "30000000.00"
+    },
+    "operatingProfit": "-30000000.00",
+    "otherIncome": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "otherExpense": {
+      "lines": [],
+      "total": "0.00"
+    },
+    "unknownTypes": []
+  },
+  "priorFrom": "2024-12-30T17:00:00Z",
+  "priorTo": "2025-03-31T16:59:59.999Z"
+}

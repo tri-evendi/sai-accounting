@@ -79,6 +79,12 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    *   bun run parity:balance-sheet    · parity:balance-sheet-xlsx
    * Pelari Go menolak keduanya selama `go-parity` (`GoEngineReports`
    * dibangkitkan dari entri ber-`engine: "go"` saja).
+   *
+   * Kolom pembanding (#557) SUDAH ikut jalur Go (`?compare=` → instan
+   * pembanding di muatan, lembar empat kolom di `internal/document/compare.go`),
+   * dan kedua halaman sudah mengirim `sumber` beserta `compare`: peralihan ke
+   * `go` cukup menyunting entri di bawah, SESUDAH skrip `-xlsx` lulus di
+   * ketiga bentuknya (satu kolom, `preceding`, `previous_year`).
    */
   "income-statement": {
     engine: "go-parity",

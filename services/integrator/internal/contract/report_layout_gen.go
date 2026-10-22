@@ -80,6 +80,11 @@ const (
 	BalanceSheetTotalLiabilitiesEquityLabel = "Total Liabilitas + Ekuitas"
 	BalanceSheetNoteBalanced                = "(Seimbang)"
 	BalanceSheetNoteUnbalanced              = "(TIDAK SEIMBANG — periksa jurnal)"
+	ComparePeriodFormat                     = "%s – %s"
+	CompareChangeHeader                     = "Perubahan"
+	CompareChangeWidth                      = 14
+	ComparePercentPositiveFormat            = "+%s%%"
+	ComparePercentFormat                    = "%s%%"
 )
 
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
@@ -133,4 +138,86 @@ var MonthNamesID = [12]string{
 	"Oktober",
 	"November",
 	"Desember",
+}
+
+// ComparisonModes: kosakata `?compare=` (COMPARISON_MODES,
+// src/lib/statement-compare.ts) — kolom pembanding Laba Rugi & Neraca (#557).
+var ComparisonModes = map[string]bool{
+	"preceding":     true,
+	"previous_year": true,
+}
+
+// LocaleCompareASCII: urutan `localeCompare` atas ASCII cetak, dari
+// Intl.Collator runtime pembangkit — kelompok setara-dasar (huruf besar/kecil),
+// berurutan; di dalam kelompok, urutan tersier. Dibaca jscompat.LocaleCompare.
+var LocaleCompareASCII = []string{
+	" ",
+	"_",
+	"-",
+	",",
+	";",
+	":",
+	"!",
+	"?",
+	".",
+	"'",
+	"\"",
+	"(",
+	")",
+	"[",
+	"]",
+	"{",
+	"}",
+	"@",
+	"*",
+	"/",
+	"\\",
+	"&",
+	"#",
+	"%",
+	"`",
+	"^",
+	"+",
+	"<",
+	"=",
+	">",
+	"|",
+	"~",
+	"$",
+	"0",
+	"1",
+	"2",
+	"3",
+	"4",
+	"5",
+	"6",
+	"7",
+	"8",
+	"9",
+	"aA",
+	"bB",
+	"cC",
+	"dD",
+	"eE",
+	"fF",
+	"gG",
+	"hH",
+	"iI",
+	"jJ",
+	"kK",
+	"lL",
+	"mM",
+	"nN",
+	"oO",
+	"pP",
+	"qQ",
+	"rR",
+	"sS",
+	"tT",
+	"uU",
+	"vV",
+	"wW",
+	"xX",
+	"yY",
+	"zZ",
 }

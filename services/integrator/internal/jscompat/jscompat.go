@@ -80,3 +80,80 @@ func FormatNumberID(x float64) string {
 	}
 	return b.String()
 }
+
+// collationWeight: bobot dasar & tersier satu rune untuk LocaleCompare.
+// ignorable = true untuk kendali ASCII (U+0000–U+001F, U+007F), yang di UCA
+// akar diabaikan seluruhnya.
+type collationWeight struct {
+	primary, tertiary int
+	ignorable         bool
+}
+
+var asciiWeights = func() map[rune]collationWeight {
+	w := map[rune]collationWeight{}
+	for p, group := range contract.LocaleCompareASCII {
+		t := 0
+		for _, r := range group {
+			w[r] = collationWeight{primary: p, tertiary: t}
+			t++
+		}
+	}
+	return w
+}()
+
+func weightOf(r rune) collationWeight {
+	if w, ok := asciiWeights[r]; ok {
+		return w
+	}
+	if r < 0x20 || r == 0x7f {
+		return collationWeight{ignorable: true}
+	}
+	// Di luar ASCII cetak: SESUDAH semua huruf ASCII, menurut titik kode. Ini
+	// PERKIRAAN, bukan UCA — kode akun di buku ini ASCII; kode yang tidak
+	// ASCII akan terlihat sebagai selisih urutan di paritas isi berkas, bukan
+	// lolos diam-diam.
+	return collationWeight{primary: len(contract.LocaleCompareASCII) + int(r)}
+}
+
+func collationWeights(s string) []collationWeight {
+	out := make([]collationWeight, 0, len(s))
+	for _, r := range s {
+		if w := weightOf(r); !w.ignorable {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// LocaleCompare: padanan tanda `a.localeCompare(b)` (Intl.Collator bawaan,
+// lokal akar/en) untuk teks ASCII — dipakai mengurutkan baris yang HANYA ada
+// di periode pembanding (`compareLines`, #557). Perbandingan bertingkat UCA:
+// seluruh bobot DASAR lebih dulu (spasi < tanda baca < angka < huruf; huruf
+// besar/kecil setara), baru bobot TERSIER (huruf kecil sebelum besar). Bukan
+// urutan byte: "4_01" < "4101" < "4a01" < "4B01".
+//
+// Tabelnya dibangkitkan dari Intl.Collator (`contract.LocaleCompareASCII`).
+func LocaleCompare(a, b string) int {
+	wa, wb := collationWeights(a), collationWeights(b)
+	for _, tertiary := range []bool{false, true} {
+		for i := 0; i < len(wa) && i < len(wb); i++ {
+			x, y := wa[i].primary, wb[i].primary
+			if tertiary {
+				x, y = wa[i].tertiary, wb[i].tertiary
+			}
+			if x != y {
+				if x < y {
+					return -1
+				}
+				return 1
+			}
+		}
+		if len(wa) != len(wb) {
+			if len(wa) < len(wb) {
+				return -1
+			}
+			return 1
+		}
+	}
+	return 0
+}

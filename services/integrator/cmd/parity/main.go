@@ -5,11 +5,17 @@
 //	       -registry-name <nama registry> -out <berkas.xlsx>
 //	parity balance-sheet -database <nama> -as-of <RFC3339>
 //	parity balance-sheet-xlsx -database <nama> -as-of <RFC3339> -as-of-date <YYYY-MM-DD> \
-//	       -registry-name <nama registry> -out <berkas.xlsx>
+//	       [-compare <mode> -prior-as-of <RFC3339>] -registry-name <nama registry> -out <berkas.xlsx>
 //	parity income-statement -database <nama> -from <RFC3339> -to <RFC3339> [-cost-center <mentah>]
 //	parity income-statement-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
 //	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> [-cost-center <mentah>] \
+//	       [-compare <mode> -prior-from <RFC3339> -prior-to <RFC3339>] \
 //	       -registry-name <nama registry> -out <berkas.xlsx>
+//
+// `-compare` (#557, kolom pembanding): mode `?compare=` dan instan pembanding
+// yang dihitung PENERBIT TS (`goExportPayloadShape` → `comparisonRange` /
+// `comparisonDate`) — perkakas ini, seperti pelari, tidak menghitung "tahun
+// lalu" sendiri.
 //
 // Laba Rugi dan Neraca (`go-parity` di `src/lib/report-engine.ts`) memakai
 // pola yang sama: pembandingnya `scripts/parity-income-statement*.ts` dan
@@ -250,6 +256,22 @@ func instant(name, raw string) (time.Time, error) {
 	return t, nil
 }
 
+// compareMode memeriksa `-compare`: kosong, atau mode dari kosakata
+// `contract.ComparisonModes` — dan hanya untuk lembar sebar (angka periode
+// pembanding dibandingkan sebagai periode/tanggal biasa).
+func compareMode(mode string, xlsx bool) error {
+	if mode == "" {
+		return nil
+	}
+	if !xlsx {
+		return errors.New("-compare hanya untuk *-xlsx — angka periode pembanding adalah periode biasa")
+	}
+	if !contract.ComparisonModes[mode] {
+		return fmt.Errorf("-compare %q di luar kosakata (src/lib/statement-compare.ts)", mode)
+	}
+	return nil
+}
+
 // headerName: kop berkas — setting wizard, lalu nama registry, lalu cadangan
 // (urutan `pickIdentity()`, sama dengan `trial-balance-xlsx`).
 func headerName(ctx context.Context, r *ledgerread.Reader, registryName string) (string, error) {
@@ -273,6 +295,8 @@ func balanceSheet(args []string, xlsx bool) error {
 	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
 	asOfRaw := fs.String("as-of", "", "batas tanggal INKLUSIF sebagai instan RFC3339")
 	asOfDate := fs.String("as-of-date", "", "xlsx: tanggal laporan YYYY-MM-DD (label periode)")
+	compare := fs.String("compare", "", "xlsx: kolom pembanding (#557) — preceding | previous_year")
+	priorAsOfRaw := fs.String("prior-as-of", "", "xlsx: tanggal pembanding INKLUSIF sebagai instan RFC3339 (dari penerbit TS)")
 	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
 	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
 	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
@@ -285,6 +309,15 @@ func balanceSheet(args []string, xlsx bool) error {
 	}
 	if xlsx && (*asOfDate == "" || *out == "") {
 		return errors.New("-as-of-date dan -out wajib")
+	}
+	if err := compareMode(*compare, xlsx); err != nil {
+		return err
+	}
+	var priorAsOf time.Time
+	if *compare != "" {
+		if priorAsOf, err = instant("prior-as-of", *priorAsOfRaw); err != nil {
+			return err
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -310,7 +343,19 @@ func balanceSheet(args []string, xlsx bool) error {
 	if err != nil {
 		return err
 	}
-	data, err := document.BalanceSheetWorkbook(bs, name, period, time.Now())
+	var prior *document.BalanceSheetPrior
+	if *compare != "" {
+		pbs, err := r.BalanceSheet(ctx, priorAsOf)
+		if err != nil {
+			return err
+		}
+		label, err := document.PriorPeriodAsOf(priorAsOf)
+		if err != nil {
+			return err
+		}
+		prior = &document.BalanceSheetPrior{Statement: pbs, Period: label}
+	}
+	data, err := document.BalanceSheetWorkbook(bs, prior, name, period, time.Now())
 	if err != nil {
 		return err
 	}
@@ -326,6 +371,9 @@ func incomeStatement(args []string, xlsx bool) error {
 	costCenter := fs.String("cost-center", "", "penyaring pusat biaya MENTAH (`?costCenter=`), mis. 3 atau unassigned")
 	fromDate := fs.String("from-date", "", "xlsx: awal periode YYYY-MM-DD (label)")
 	toDate := fs.String("to-date", "", "xlsx: akhir periode YYYY-MM-DD (label)")
+	compare := fs.String("compare", "", "xlsx: kolom pembanding (#557) — preceding | previous_year")
+	priorFromRaw := fs.String("prior-from", "", "xlsx: awal periode pembanding INKLUSIF, instan RFC3339 (dari penerbit TS)")
+	priorToRaw := fs.String("prior-to", "", "xlsx: akhir periode pembanding INKLUSIF, instan RFC3339 (dari penerbit TS)")
 	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
 	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
 	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
@@ -342,6 +390,18 @@ func incomeStatement(args []string, xlsx bool) error {
 	}
 	if xlsx && (*fromDate == "" || *toDate == "" || *out == "") {
 		return errors.New("-from-date, -to-date, dan -out wajib")
+	}
+	if err := compareMode(*compare, xlsx); err != nil {
+		return err
+	}
+	var priorFrom, priorTo time.Time
+	if *compare != "" {
+		if priorFrom, err = instant("prior-from", *priorFromRaw); err != nil {
+			return err
+		}
+		if priorTo, err = instant("prior-to", *priorToRaw); err != nil {
+			return err
+		}
 	}
 	cc, err := ledgerread.ParseCostCenterFilter(*costCenter)
 	if err != nil {
@@ -377,7 +437,20 @@ func incomeStatement(args []string, xlsx bool) error {
 	if err != nil {
 		return err
 	}
-	data, err := document.IncomeStatementWorkbook(is, name, period, time.Now())
+	var prior *document.IncomeStatementPrior
+	if *compare != "" {
+		// Penyaring pusat biaya yang SAMA dengan periode berjalan.
+		pis, err := r.IncomeStatement(ctx, &priorFrom, &priorTo, cc)
+		if err != nil {
+			return err
+		}
+		label, err := document.PriorPeriodRange(priorFrom, priorTo)
+		if err != nil {
+			return err
+		}
+		prior = &document.IncomeStatementPrior{Statement: pis, Period: label}
+	}
+	data, err := document.IncomeStatementWorkbook(is, prior, name, period, time.Now())
 	if err != nil {
 		return err
 	}

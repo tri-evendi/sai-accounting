@@ -945,17 +945,26 @@ produksi.
    `priorUnclosedIncome`, jadi lembar sebar selalu SATU baris "Akumulasi
    Laba/Rugi". Go meniru itu; pecahannya tetap dihitung dan dibandingkan
    (`parity:balance-sheet`).
-3. **Lembar sebar jalur berkas tidak komparatif.** Halaman mengirim `prior`
-   (#557) ke ekspor sinkron; jalur dari PARAMETER (pekerja, dan Go) tidak.
-   Peralihan ke `go` karena itu akan MENGHILANGKAN kolom pembanding dari
-   ekspor halaman — keputusan yang harus diambil sadar sebelum `go`, bukan
-   ditemukan sesudahnya.
-4. **Laba Rugi bersaring pusat biaya tidak bisa dirakit jalur TS di luar
-   permintaan HTTP**: `costCenterFilterLabel` memanggil `getT()` → `cookies()`,
-   yang melempar di pekerja. Go menyusun labelnya dalam bahasa dokumen cetak
-   (id): "Belum ditetapkan", "KODE — Nama" (juga untuk pusat biaya nonaktif),
-   atau `#<id>`; "unassigned" dicocokkan pada teks MENTAH seperti TS
-   (" unassigned" menyaring benar tetapi berlabel `#unassigned`).
+3. ✅ **Kolom pembanding (#557) sampai ke SEMUA jalur berkas** (22 Okt 2026,
+   "bangun pembanding di Go dulu" — keputusan pemilik). Lihat
+   [Kolom pembanding](#kolom-pembanding-557-di-jalur-berkas-22-okt-2026) di
+   bawah. Yang ditemukan di tengah jalan lebih buruk daripada yang dicari:
+   `statementPayloadSchema` tidak menyebut `priorPeriod`/`prior`, `z.object`
+   membuangnya, dan ekspor SINKRON halaman — Excel maupun PDF — sudah SATU
+   kolom sejak rute memvalidasi muatannya. Peralihan ke `go` tidak akan
+   menghilangkan kolom pembanding; kolomnya sudah hilang, tanpa satu galat.
+4. ✅ **Laba Rugi bersaring pusat biaya kini bisa dirakit di luar permintaan
+   HTTP.** `costCenterFilterLabel` dulu memanggil `getT()` → `cookies()` lebih
+   dulu, untuk penyaring apa pun, dan pekerja `report.export` gagal. Jalur
+   berkas (`buildReportPayload`) kini menyerahkan label cetaknya sendiri
+   (`COST_CENTER_UNASSIGNED_PRINT_LABEL`, bahasa dokumen cetak — sumber pola
+   Go yang sama), dan `getT()` hanya dipanggil halaman untuk "belum
+   ditetapkan". Berkas emas memalsukan `getT()` MELEMPAR, bukan kamus
+   palsu. Label Go: "Belum ditetapkan", "KODE — Nama" (juga untuk pusat biaya
+   nonaktif), atau `#<id>`; "unassigned" dicocokkan pada teks MENTAH seperti
+   TS (" unassigned" menyaring benar tetapi berlabel `#unassigned`). Beda yang
+   DISENGAJA: halaman berbahasa Inggris mencetak "Unassigned" di berkas
+   sinkronnya; berkas berantre (TS atau Go) selalu "Belum ditetapkan".
 5. **Neraca membaca `company_settings` TANPA urutan** (`findFirst` tanpa
    `orderBy`), sementara kop berkas memakai `ORDER BY id`. Disalin.
 6. **Arah hasil "Laba"/"Rugi" dan marjin kotor dihitung dari float di TS.**
@@ -963,8 +972,50 @@ produksi.
    ("Laba"); marjin −0,04% tercetak "-0%" di keduanya (`Math.round` → −0,
    `Intl` mencetak "-0"). Pembanding melaporkan arah hasil tersendiri.
 
+#### Kolom pembanding (#557) di jalur berkas (22 Okt 2026)
+
+| Bagian | Di mana |
+|---|---|
+| Skema rute ekspor/PDF MEMBAWA `priorPeriod` + `prior` (berbatas `rows()` seperti muatan berjalan), termasuk pecahan #555 pembanding | `src/lib/validations/report-export.ts` · `tests/report-export-compare.test.ts` |
+| Bagian pembanding muatan disusun SATU fungsi untuk halaman dan jalur berkas | `incomeStatementPrior` / `balanceSheetPrior` (`src/lib/report-payload.ts`) |
+| `?compare=` dibawa pekerja `report.export` (`buildReportPayload`), rute payload Pusat Laporan, dan penerbit Go (`compare` + `priorFromInstant`/`priorToInstant` atau `priorAsOfInstant` — instan dari `comparisonRange`/`comparisonDate` TS; mode tak dikenal DIBUANG, laporan tanpa pembanding tidak membawanya) | `src/lib/report-export-go.ts` (`COMPARABLE_REPORTS`) |
+| Pelari Go: muatan setengah-setengah (mode tanpa instan, instan tanpa mode, mode asing) DITOLAK | `interactivelane/runner.go` (`comparative`) |
+| Lembar empat kolom (gabungan baris kedua periode, `localeCompare` untuk baris yang hanya ada di pembanding, persen `percentChange`, band dari periode berjalan) | `internal/document/compare.go` |
+| Kalimat & kosakata dibangkitkan: judul kolom pembanding, "Perubahan" + lebarnya, pola persen, `ComparisonModes`, tabel `localeCompare` ASCII dari `Intl.Collator` | `report_layout_gen.go` (`contract:gen`) · `internal/jscompat` (`LocaleCompare`) |
+| Halaman Laba Rugi & Neraca mengirim `sumber` BESERTA `compare` ke tombol Excel — SELAGI `go-parity`, supaya peralihan hanya menyunting register | `tests/report-engine.test.ts` |
+| Berkas emas: 13 kasus pembanding atas buku fixture bersama (`incomeComparisons`/`balanceComparisons`, buku baru `buku-banding`) — angka kedua periode, instan pembanding, dan ISI lembar, juga sesudah melewati skema rute sinkron | `tests/statements-golden.test.ts` |
+| Paritas atas buku sungguhan: `--compare none,preceding,previous_year` (bawaan: ketiganya) | `parity:income-statement-xlsx` · `parity:balance-sheet-xlsx` |
+
+**Jebakan yang disalin APA ADANYA (bukan diperbaiki):**
+
+7. **Blok ekuitas Neraca PEMBANDING bisa terpecah sementara yang berjalan
+   tidak.** Halaman (dan kini jalur berkas, lewat fungsi yang sama) mengirim
+   `prior` = hasil `getBalanceSheet` UTUH, berikut pecahan #555; muatan
+   berjalan tidak. `balanceSheetLayout` memasangkan baris ekuitas sintetis
+   menurut URUTAN, jadi "Akumulasi Laba/Rugi" berjalan bersanding dengan
+   "Laba/Rugi Tahun Lalu" pembanding, dan laba tahun berjalan pembanding
+   tidak tercetak.
+8. **…dan kebenaran pecahan itu kebenaran FLOAT.** TS memecah bila
+   `priorUnclosedIncome` ≠ 0 sebagai float; pada buku yang tahun lalunya SUDAH
+   ditutup, laba sepanjang buku dan laba tahun berjalan dijumlahkan dari
+   jumlah per akun yang berbeda (100,4 − 0,3 = 100,10000000000001 ≠ 100,1):
+   sen-nya nol, `!!1.4e-14` benar — baris "Akumulasi" pembanding tercetak
+   Rp 0. Go meniru kebenarannya (`EquitySplitJS`, penjumlahan float dalam
+   urutan akun TS), `parity:balance-sheet` membandingkannya, dan buku fixture
+   `buku-banding` memuatnya.
+9. **Band Laba Rugi diputuskan periode BERJALAN saja**: HPP atau pendapatan/
+   beban lain-lain yang hanya ada di periode pembanding tidak tercetak, dan
+   kolom pembanding tidak lagi berjumlah laba bersihnya.
+10. **Baris yang hanya ada di pembanding diurutkan `localeCompare`**, bukan
+   urutan basis data: `4_01` < `4101` < `4a01` < `4B01`. Go: tabel bobot
+   ASCII dari `Intl.Collator` (dibangkitkan); kode non-ASCII diurutkan
+   titik kode SESUDAH huruf — perkiraan yang akan terlihat sebagai selisih
+   urutan di paritas isi, bukan lolos diam-diam.
+
 Perintah paritas produksi (sesi utama, SESUDAH `go-parity` ini dirilis, dengan
-biner dari checkout yang sama — pola Neraca Saldo di atas):
+biner dari checkout yang sama — pola Neraca Saldo di atas). Skrip `-xlsx`
+memeriksa ketiga bentuk lembar (satu kolom, `preceding`, `previous_year`)
+untuk setiap periode/tanggal:
 
 ```bash
 (cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
@@ -981,8 +1032,9 @@ done
 ```
 
 Lulus keempatnya → `parityProven` di entri register yang sama, lalu `go-parity`
-→ `go` (dan halaman keduanya mengirim `sumber` ke tombol Excel, seperti Neraca
-Saldo — dijaga `tests/report-engine.test.ts`).
+→ `go`. Halaman keduanya SUDAH mengirim `sumber` (beserta `compare`) ke tombol
+Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
+`bun run contract:gen` (`GoEngineReports`).
 
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|

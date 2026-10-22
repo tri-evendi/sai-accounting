@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/jscompat"
 )
 
 // Berkas emas Laba Rugi & Neraca ditulis ulang dengan `-update`. Berkas yang
@@ -68,6 +70,73 @@ type statementBook struct {
 		Case string `json:"case"`
 		AsOf string `json:"asOf"`
 	} `json:"balanceSheets"`
+	// Kolom pembanding (#557): periode/tanggal berjalan + mode `?compare=`.
+	IncomeComparisons []struct {
+		Case       string `json:"case"`
+		From       string `json:"from"`
+		To         string `json:"to"`
+		CostCenter string `json:"costCenter"`
+		Compare    string `json:"compare"`
+	} `json:"incomeComparisons"`
+	BalanceComparisons []struct {
+		Case    string `json:"case"`
+		AsOf    string `json:"asOf"`
+		Compare string `json:"compare"`
+	} `json:"balanceComparisons"`
+}
+
+// IncomeComparisonGolden: berkas emas Laba Rugi komparatif — kedua periode dan
+// instan pembandingnya. Dibaca `internal/document` dan
+// `tests/statements-golden.test.ts`.
+type IncomeComparisonGolden struct {
+	Current   *IncomeStatement `json:"current"`
+	Prior     *IncomeStatement `json:"prior"`
+	PriorFrom time.Time        `json:"priorFrom"`
+	PriorTo   time.Time        `json:"priorTo"`
+}
+
+// BalanceComparisonGolden: berkas emas Neraca komparatif.
+type BalanceComparisonGolden struct {
+	Current   *BalanceSheet `json:"current"`
+	Prior     *BalanceSheet `json:"prior"`
+	PriorAsOf time.Time     `json:"priorAsOf"`
+}
+
+// comparisonRange: padanan `comparisonRange` TS DI ZONA PROSES Asia/Jakarta
+// (zona produksi, dan zona yang dipaku `tests/statements-golden.test.ts`) —
+// HANYA untuk berkas emas. Saat berjalan, instan pembanding dihitung penerbit
+// TS dan Go menerimanya apa adanya; sisi TS berkas emas memeriksa bahwa
+// `comparisonRange` miliknya memberi instan yang SAMA dengan yang ditulis di
+// sini.
+func comparisonRange(t *testing.T, mode string, from, to time.Time) (time.Time, time.Time) {
+	t.Helper()
+	loc, err := BusinessLocation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	switch mode {
+	case "previous_year":
+		f, e := from.In(loc), to.In(loc)
+		return time.Date(f.Year()-1, f.Month(), f.Day(), 0, 0, 0, 0, loc),
+			time.Date(e.Year()-1, e.Month(), e.Day(), e.Hour(), e.Minute(), e.Second(), e.Nanosecond(), loc)
+	case "preceding":
+		end := from.Add(-time.Millisecond)
+		return end.Add(-to.Sub(from)), end
+	}
+	t.Fatalf("mode %q", mode)
+	return time.Time{}, time.Time{}
+}
+
+// comparisonDate: padanan `comparisonDate(asOf, mode)` TANPA `from` — kedua
+// mode jatuh ke tanggal yang sama tahun lalu (zona Asia/Jakarta, lihat di atas).
+func comparisonDate(t *testing.T, asOf time.Time) time.Time {
+	t.Helper()
+	loc, err := BusinessLocation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := asOf.In(loc)
+	return time.Date(a.Year()-1, a.Month(), a.Day(), a.Hour(), a.Minute(), a.Second(), a.Nanosecond(), loc)
 }
 
 func loadStatementBooks(t *testing.T) []statementBook {
@@ -121,7 +190,12 @@ func (b statementBook) sumLines(t *testing.T, f netsFilter) []accountSums {
 	t.Helper()
 	sums := map[int]*accountSums{}
 	accounts := append([]fixtureAccount{}, b.Accounts...)
-	sort.SliceStable(accounts, func(i, j int) bool { return accounts[i].Code < accounts[j].Code })
+	// Urutan kode = `localeCompare`, sama dengan klien palsu TS
+	// (`tests/fake-client.ts`) — untuk kode yang hanya angka sama dengan
+	// urutan byte; buku "buku-banding" memuat kode yang tidak.
+	sort.SliceStable(accounts, func(i, j int) bool {
+		return jscompat.LocaleCompare(accounts[i].Code, accounts[j].Code) < 0
+	})
 	var out []accountSums
 	for _, a := range accounts {
 		out = append(out, accountSums{code: a.Code, name: a.Name, accountType: a.Type})
@@ -179,11 +253,24 @@ func (b statementBook) incomeStatement(t *testing.T, from, to, costCenter string
 
 func (b statementBook) balanceSheet(t *testing.T, asOfISO string) *BalanceSheet {
 	t.Helper()
+	return b.balanceSheetAt(t, businessDay(t, asOfISO, true))
+}
+
+func (b statementBook) incomeStatementAt(t *testing.T, from, to time.Time, costCenter string) *IncomeStatement {
+	t.Helper()
+	cc, err := ParseCostCenterFilter(costCenter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return BuildIncomeStatement(b.sumLines(t, netsFilter{from: &from, to: &to, excludeClosing: true, costCenter: cc}))
+}
+
+func (b statementBook) balanceSheetAt(t *testing.T, asOf time.Time) *BalanceSheet {
+	t.Helper()
 	loc, err := BusinessLocation()
 	if err != nil {
 		t.Fatal(err)
 	}
-	asOf := businessDay(t, asOfISO, true)
 	all := b.sumLines(t, netsFilter{to: &asOf})
 	var current []accountSums
 	if b.FiscalYearStart != nil {
@@ -236,6 +323,60 @@ func TestStatementGoldens(t *testing.T) {
 			seen[c.Case] = true
 			t.Run(c.Case, func(t *testing.T) { golden(t, c.Case, b.balanceSheet(t, c.AsOf)) })
 		}
+		for _, c := range b.IncomeComparisons {
+			if seen[c.Case] {
+				t.Fatalf("kasus %s ganda", c.Case)
+			}
+			seen[c.Case] = true
+			t.Run(c.Case, func(t *testing.T) {
+				from, to := businessDay(t, c.From, false), businessDay(t, c.To, true)
+				pf, pt := comparisonRange(t, c.Compare, from, to)
+				golden(t, c.Case, IncomeComparisonGolden{
+					Current:   b.incomeStatementAt(t, from, to, c.CostCenter),
+					Prior:     b.incomeStatementAt(t, pf, pt, c.CostCenter),
+					PriorFrom: pf.UTC(),
+					PriorTo:   pt.UTC(),
+				})
+			})
+		}
+		for _, c := range b.BalanceComparisons {
+			if seen[c.Case] {
+				t.Fatalf("kasus %s ganda", c.Case)
+			}
+			seen[c.Case] = true
+			t.Run(c.Case, func(t *testing.T) {
+				asOf := businessDay(t, c.AsOf, true)
+				prior := comparisonDate(t, asOf)
+				golden(t, c.Case, BalanceComparisonGolden{
+					Current:   b.balanceSheetAt(t, asOf),
+					Prior:     b.balanceSheetAt(t, prior),
+					PriorAsOf: prior.UTC(),
+				})
+			})
+		}
+	}
+}
+
+func TestEquitySplitFollowsJSFloat(t *testing.T) {
+	b := bookByName(t, "buku-banding")
+	// Tahun 2025 SUDAH ditutup: sen laba tahun lalu yang belum ditutup NOL,
+	// tetapi dalam float TS 100,4 − 0,3 = 100,10000000000001 ≠ 100,1 — dan
+	// `!!priorUnclosedIncome` benar. Neraca pembanding TS memecah ekuitasnya.
+	bs := b.balanceSheet(t, "2026-03-31")
+	if bs.PriorUnclosedIncome != 0 || !bs.EquitySplitJS {
+		t.Fatalf("lalu %s, pecah JS %v; mau 0 dan true", bs.PriorUnclosedIncome, bs.EquitySplitJS)
+	}
+	// Tanpa tahun lalu sama sekali: dua jumlah float identik, tidak pecah.
+	if bs := b.balanceSheet(t, "2025-06-30"); bs.EquitySplitJS {
+		t.Fatal("buku tanpa tahun lalu terpecah")
+	}
+	// Pecahan sungguhan (rugi tahun lalu belum ditutup) tetap pecah.
+	if bs := bookByName(t, "buku-tahun-buku-april").balanceSheet(t, "2025-06-30"); !bs.EquitySplitJS {
+		t.Fatal("tahun lalu yang belum ditutup tidak memecah ekuitas")
+	}
+	// Tanpa setelan tahun buku TS tidak pernah memecah.
+	if bs := bookByName(t, "buku-timpang").balanceSheet(t, "2025-12-31"); bs.EquitySplitJS {
+		t.Fatal("buku tanpa setelan terpecah")
 	}
 }
 

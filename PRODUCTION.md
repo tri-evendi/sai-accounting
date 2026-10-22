@@ -581,7 +581,7 @@ idempotent; each `.env` change leaves a `.env.sebelum-<…>` backup.**
 4. **Background services.**
    ```bash
    docker compose up -d --no-deps svc-worker svc-integrator
-   docker compose exec -T pg pg_dumpall --globals-only -U sai_backup -d postgres >/dev/null && echo globals-ok
+   docker compose exec -T pg pg_dumpall --globals-only -U sai_backup -l postgres >/dev/null && echo globals-ok
    docker compose exec -T pg pg_dump -Fc -U sai_backup -d sai_control >/dev/null && echo dump-ok
    docker compose logs --since 5m svc-worker svc-integrator | grep -E '28P01|42501|permission denied' || echo clean
    ```

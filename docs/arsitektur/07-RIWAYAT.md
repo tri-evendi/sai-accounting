@@ -1,10 +1,11 @@
 # 07 — Riwayat & Keputusan Lama
 
-> Keadaan 21 Okt 2026 (`main@a8d2749d`) · [indeks](./README.md)
+> Keadaan 22 Okt 2026 (produksi `main@3a6d1d35`, v0.11.0; §6 dan §8 tergabung di `develop`, belum digelar) · [indeks](./README.md)
 
 Kenapa sistem ini berbentuk seperti sekarang. Isinya hanya **keputusan yang
-masih mengikat** dan **apa yang masih terbuka** dari lima pekerjaan besar
-(migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar tahap 1a–1c); jalannya
+masih mengikat** dan **apa yang masih terbuka** dari pekerjaan besar
+(migrasi PostgreSQL, monorepo, audit skema, klasifikasi buku, gelar tahap 1a–1c,
+rilis 0.11.0, penyatuan container, register lisensi & pindah SaaS → on-premise); jalannya
 pekerjaan ada di riwayat git.
 
 ## 1. Migrasi ke PostgreSQL
@@ -226,3 +227,50 @@ produksi untuk image yang seharusnya hanya menambah ~336 MB.
 Gelar pertamanya wajib `--remove-orphans`: compose tidak menghentikan layanan
 yang hilang dari berkasnya, dan enam container lama yang tetap hidup mengklaim
 pekerjaan yang sama dengan dua yang baru.
+
+## 7. Rilis 0.11.0 — tahap 1d sampai D (22 Okt 2026)
+
+Digelar 22 Okt 2026 (`main@3a6d1d35`, label **0.11.0**), masih dengan enam
+layanan latar lama — penyatuan §6 datang sesudahnya. Isinya:
+
+| Bagian | Keadaan sesudah rilis |
+|---|---|
+| Tahap 1d | Laporan PERTAMA yang berkasnya dibuat Go: lembar sebar Neraca Saldo (`engine: go`, `report.export_go`). Paritas angka dibuktikan atas buku produksi — 17 buku × 3 tanggal, 51 setara (`parityProven` di `src/lib/report-engine.ts`); paritas isi berkas diuji lokal ([09 §9](./09-RANCANGAN-LAYANAN.md)) |
+| Tanggal laporan | Batas "per tanggal" dan periode laporan, beranda, buku besar, dan umur piutang/utang memakai jam **Jakarta** eksplisit (`@sai/core/business-date`), bukan zona proses — keputusan pemilik |
+| Tahap 2, 3, 4 | Kode siap dan **opt-in**: tanpa berkas override dan variabelnya tidak satu perilaku pun berubah ([02 §19](./02-LAYANAN-INFRA.md), 09 §9) |
+| Tahap D | Profil on-premise lengkap kecuali satu langkah pemilik: kunci publik lisensi ([`ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) §0) |
+| Hasil berantre | Ekspor besar yang disiapkan di latar kini bisa diunduh: pelari jalur `chown` ke `node` (sebelumnya setiap hasil dijawab 404) |
+
+## 8. Register lisensi & pindah SaaS → on-premise (22 Okt 2026, belum digelar)
+
+Dua pekerjaan yang tergabung ke `develop` pada hari yang sama dengan §6
+(PR #690 dan #691) dan menunggu rilis berikutnya bersamanya.
+
+**Register lisensi di konsol operator** (#690): halaman `/licences`, migration
+platform `0006_licence_register` (`licence_customers`,
+`licence_register_entries`), izin operator `licence.register` (peran `owner`
+dan `billing`). Keputusan yang mengikat:
+
+| Keputusan | Alasan |
+|---|---|
+| Register = **arsip, bukan kewenangan** | Konsol menyusun perintah `licence:issue`, penandatanganan terjadi di mesin luring, konsol hanya memverifikasi berkas yang diunggah. Tidak ada tempat untuk kunci privat, dan `app-customer` tidak membaca tabel register — dijaga `tests/licence-register-archive.test.ts` ([06 §3.7](./06-KEAMANAN.md)) |
+| "Dicabut" di register hanya catatan | Lisensi luring tidak bisa dicabut dari jauh; tombol yang berpura-pura bisa adalah janji palsu |
+
+**Pindah tenant SaaS → on-premise** (#691, runbook
+[`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)): lima skrip
+(`tenant:export-onprem`, `tenant:import-onprem`, `tenant:mark-migrated-out`,
+`tenant:unfreeze`, `tenant:prove-onprem`) dan migration kendali
+`0010_tenant_pindah_onprem` (`tenants.frozen_at`, `tenants.migrated_out_at`,
+status tenant `migrated_out`).
+
+| Keputusan | Alasan |
+|---|---|
+| Pembekuan = kolom `frozen_at`, **bukan** nilai `status` | `status` ditulis ulang penjadwal, webhook, dan konsol; pembekuan yang dicairkan diam-diam di tengah dump berarti tulisan yang hilang |
+| Satu bundel bersandi; `SETTINGS_ENCRYPTION_KEY` SaaS tidak pernah ikut | Rahasia dibuka di SaaS dan disegel ulang dengan kunci customer |
+| Impor hanya ke pemasangan **kosong** | id tenant/pengguna/perusahaan dibawa apa adanya karena buku besar merujuknya |
+| `migrated_out` tidak menghapus apa pun | Penghapusan tetap lewat alur #142 dengan permintaan dan masa tenggang |
+
+Yang masih terbuka (rinciannya di runbook): tombol konsol untuk bekukan /
+cairkan / nyatakan pindah · tagihan terbuka saat `migrated_out` · `change-plan`
+atas tenant `migrated_out` yang belum dipagari · siapa yang boleh meminta
+penghapusan data SaaS sesudah penggunanya tidak bisa masuk lagi.

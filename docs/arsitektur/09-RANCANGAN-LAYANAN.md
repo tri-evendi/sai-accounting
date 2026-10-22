@@ -4,7 +4,8 @@
 > menggambarkan yang sedang berjalan; yang ini menggambarkan yang hendak dituju.
 > Tidak ada bagian di sini yang sudah dibangun, kecuali yang ditandai ✅.
 > Disusun 19 Oktober 2026. Tahap 1a–1c **melayani produksi sejak 21 Okt 2026**
-> (`main@a8d2749d`, 0.10.0) — jalannya gelar di [07 §5](./07-RIWAYAT.md).
+> (`main@a8d2749d`, 0.10.0) — jalannya gelar di [07 §5](./07-RIWAYAT.md);
+> tahap 1d–D dirilis 22 Okt 2026 (`main@3a6d1d35`, 0.11.0) — [07 §7](./07-RIWAYAT.md).
 
 ## 1. Yang patah lebih dulu saat tenant bertambah
 
@@ -117,7 +118,7 @@ graph TB
 |---|---|---|
 | `app-customer` | tahap `runner` — keluaran `standalone` Next.js | **SAI** |
 | `svc-integrator` | **Go** — binary statis + `postgresql-client-17`; menggantikan `migrator` dan `backup` | **SAI** |
-| jalur Node (`ledger` + dokumen) | Node, dari pohon sumber yang sama dengan `app-customer` | **SAI** |
+| jalur Node (`ledger` + dokumen) | Node, dari pohon sumber yang sama dengan `app-customer` — hari ini image `-migrator`, layanan `svc-worker` (§3.2) | **SAI** |
 | `app-operator` | tahap `runner-operator` | SAI, **hanya SaaS** |
 | `db-postgres` · `svc-pooler` · `cache-redis` | `postgres:17-alpine` · `edoburu/pgbouncer` · `redis:<versi>-alpine` | hulu, **versi dipatok** |
 
@@ -494,7 +495,7 @@ Angkanya dan penjaganya di [08 §2](./08-GLOSARIUM.md).
 ⚠ **Ongkosnya CPU yang hari ini gratis — dan ia sudah dibayar sebagian.**
 Perakitan PDF dulu berjalan di mesin pengguna: satu peramban per pengguna,
 paralel sempurna, nol beban server. Memindahkannya memindahkan beban itu ke
-mesin 3,6 GB yang dibagi enam aplikasi.
+mesin 2 vCPU · 8 GB yang dibagi enam aplikasi.
 
 Yang dibangun karena itu membelah pembayarannya menurut ONGKOS, bukan menurut
 jenis dokumen — dan pembelahnya satu angka: `EXPORT_QUEUE_HANDOFF_ROWS`. Di
@@ -682,6 +683,8 @@ bertag versi (masuk), berkas lisensi (masuk), bundel diagnostik (keluar).
 | Saluran rilis | tag git `v*` → image `:<versi>` (tanpa `:latest`, tag ≠ `package.json` ditolak) + bundel luring `docker save` + `SHA256SUMS` + compose sebagai aset GitHub Release (`tests/release-channel.test.ts`) |
 | Kunci publik belum ditanam | peringatan `[start]` (`src/instrumentation.ts`), `licence.status: "key-not-set"` di probe & bundel |
 | Serah terima | templat [`docs/ONPREM-SERAH-TERIMA.md`](../ONPREM-SERAH-TERIMA.md) — kunci cadangan, reverse proxy/TLS, bantahan DRC |
+| Register lisensi (sisi SAI) | konsol operator `/licences` (migration platform 0006, izin `licence.register`): menyusun perintah `licence:issue`, mengarsipkan berkas `.sai` yang ditandatangani luring — **arsip, bukan kewenangan** ([06 §3.7](./06-KEAMANAN.md)) |
+| Pindah dari SaaS | runbook [`docs/ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md): `tenant:export-onprem` (bekukan + bundel bersandi) → `tenant:import-onprem` (pemasangan kosong) → `tenant:mark-migrated-out`; jalan balik `tenant:unfreeze`; bukti `tenant:prove-onprem`. Migration kendali 0010 (`frozen_at`, `migrated_out_at`, status `migrated_out`) |
 
 ⚠ **Satu langkah tersisa, dan sengaja bukan kode:** kunci publik produksi.
 `LICENCE_PUBLIC_KEY_PEM` masih `"BELUM-DISETEL"` sampai pemilik membuat pasangan
@@ -717,7 +720,9 @@ perlu" harus **tertulis dan dibantah** di dokumen serah terima.
 > yang mematikan buku adalah kesalahan kategori untuk produk akuntansi.
 
 **Kesimpulan: arsitekturnya siap, produknya belum.** Yang kurang pipa komersial,
-bukan desain ulang.
+bukan desain ulang. Sejak 22 Okt 2026 dua potong pipa itu ada di kode — register lisensi
+dan jalur pindah dari SaaS (tabel di atas); yang tersisa kunci publik produksi
+dan customer on-premise pertama.
 
 > §8 pensiun 20 Okt 2026: entitlement sudah terbangun dan pindah ke
 > [01 §8](./01-ARSITEKTUR.md). Nomor bagian **tidak dipakai ulang**, mengikuti
@@ -868,10 +873,11 @@ isi lokal (Postgres sekali pakai, 2 buku × 3 tanggal, buku berwizard + buku
 kosong ber-registry `&"…"`): 6 setara; temuan pertamanya: baris "Belum ada
 saldo" TEBAL di TS, dan Go sudah mengikutinya.
 
-**Yang tersisa bagi sesi utama:** `bun run parity:trial-balance-xlsx` atas buku
-produksi (perintah sama dengan di atas, biner yang sama — subperintah
-`trial-balance-xlsx`), lalu rilis dengan `svc-interactive-go` ikut `pull` +
-`up`. (Sejak 22 Okt 2026 pelari itu jalur di `svc-integrator` — §3.2.)
+**Dirilis 22 Okt 2026** (0.11.0, `main@3a6d1d35`), saat itu dengan
+`svc-interactive-go` sebagai container sendiri; sejak penyatuan §3.2 pelari itu
+jalur di `svc-integrator`. ❓ Paritas ISI (`bun run parity:trial-balance-xlsx`,
+subperintah `trial-balance-xlsx` dari biner yang sama) atas buku **produksi**
+belum tercatat di sini — yang tercatat hanya paritas lokal di atas.
 
 ✅ **Batas tanggal laporan = jam Jakarta (keputusan pemilik, 22 Okt 2026).**
 Dulu `resolveAsOf` membuat `asOf` = akhir hari menurut zona PROSES, jadi buku
@@ -1077,7 +1083,7 @@ jenis yang melambat tidak akan pernah terlihat, dan tidak ada gejala yang
 memberi tahu pembacanya.
 
 **Konsekuensi keputusan ini besar dan disebut apa adanya: tidak ada Prometheus,
-tidak ada Grafana, tidak ada layanan kedua belas.** Kotak ini ~3,6 GB RAM dengan
+tidak ada Grafana, tidak ada layanan tambahan.** Kotak ini 8 GB RAM dibagi enam aplikasi, dengan
 produksi hidup di atasnya; dua proses lagi untuk menyimpan angka yang sudah
 tersimpan adalah ongkos yang dibayar tanpa membeli apa pun. Yang hilang satu dan
 nyata: **tren di luar 14 hari tidak bisa dijawab.** Itu diterima karena bukan

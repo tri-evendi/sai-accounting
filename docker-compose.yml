@@ -84,7 +84,8 @@ services:
   #
   # MariaDB memakai THREAD per koneksi; PostgreSQL memakai PROSES. Puncak koneksi
   # di kotak ini TERUKUR 62 (`MAX_USED_CONNECTIONS`), dan 62 proses backend pada
-  # mesin 3,6 GB yang dibagi lima aplikasi lain bukan hal sepele.
+  # mesin yang dibagi lima aplikasi lain (3,6 GB saat diukur; kini 8 GB) bukan
+  # hal sepele.
   #
   # Dan pola klien per-perusahaan memperbesarnya: jumlah koneksi tumbuh mengikuti
   # jumlah BUKU yang aktif bersamaan, bukan jumlah pengguna.

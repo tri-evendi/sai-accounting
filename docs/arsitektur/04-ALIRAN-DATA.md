@@ -1,6 +1,6 @@
 # 04 — Aliran Data & Model Data
 
-> 18 Okt 2026 · produksi `main@ca0cd038` · [indeks](./README.md)
+> 22 Okt 2026 (kode `develop`) · terakhir diukur terhadap produksi `main@ca0cd038` · [indeks](./README.md)
 
 Model datanya, alur dari masukan sampai keluaran, lalu daur hidup status tiap
 dokumen.
@@ -59,6 +59,7 @@ erDiagram
     Company ||--o{ Membership : ""
     Company ||--o{ ApiToken : "berlingkup PT"
     Company ||--o{ Invitation : ""
+    DbInstance |o--o{ Company : "dbInstanceKey (tahap 4)"
 ```
 
 Dua matriks keanggotaan, dan itu bukan duplikasi: `TenantMembership`
@@ -73,7 +74,14 @@ selamat** sesudah tenant-nya hilang · **`Job`**, antrean pekerjaan latar: ia
 memuat `tenant_id`/`company_id` sebagai angka tanpa FK, karena pekerjaan harus
 tetap bisa dibaca sesudah perusahaannya nonaktif — sebuah pekerjaan yang hilang
 bersama barisnya adalah kegagalan yang tidak meninggalkan jejak · `SchedulerRun`
-· `BackupRun` · `ConformanceRun` (jejak putaran).
+· `BackupRun` · `ConformanceRun` (jejak putaran) · `RuntimeSample` (sampel
+runtime, migration kendali 0008).
+
+**`Tenant` membawa dua kolom pindah on-premise** (migration kendali
+`0010_tenant_pindah_onprem`): `frozen_at` — tidak `NULL` = seluruh buku tenant
+**hanya-baca**, apa pun status langganannya — dan `migrated_out_at`. Pembekuan
+sengaja kolom sendiri, bukan nilai `status`, sebab `status` ditulis ulang
+penjadwal, webhook, dan konsol ([§8.7](#87-tenant--langganan--dua-tangga-yang-berjalan-bersamaan)).
 
 **`jobs` di `control`, bukan di `platform` maupun di basis data sendiri.**
 Aplikasi sudah punya koneksi ke `control` (2 dianggarkan) dan `tenant_id`/
@@ -98,9 +106,14 @@ erDiagram
     Plan |o--o{ PlatformInvoice : "targetPlanId — paket tujuan saat naik kelas"
     PlatformInvoice ||--o{ Payment : ""
     Subscription ||--o{ ReminderLog : "H-7 / H-3 / H-1"
+    LicenceCustomer ||--o{ LicenceRegisterEntry : "register lisensi on-premise"
 ```
 
-Hanya lima model yang berelasi. Sisanya **sengaja berdiri sendiri**, karena
+Hanya tujuh model yang berelasi. `LicenceCustomer` · `LicenceRegisterEntry`
+(migration platform `0006_licence_register`) adalah **arsip** lisensi
+on-premise yang ditandatangani luring, dibaca dan ditulis konsol operator saja;
+`source_tenant_id` menunjuk tenant SaaS asal tanpa FK. Tidak ada yang
+membacanya untuk memutuskan status lisensi. Sisanya **sengaja berdiri sendiri**, karena
 masing-masing adalah catatan peristiwa, bukan entitas: `SchedulerRun` ·
 `BackupRun` · `ConformanceRun` (tiga heartbeat yang dibaca `/api/health`) ·
 `SubscriptionEvent` · `OperatorAuditLog` ·
@@ -659,20 +672,24 @@ stateDiagram-v2
     suspended --> active: dibayar
     suspended --> cancelled: berhenti
     active --> cancelled: berhenti
+    active --> migrated_out: mark-migrated-out — tenant harus beku, status asal apa pun
     cancelled --> [*]
+    migrated_out --> [*]
 ```
 
-`TENANT_STATUSES` (control, 6 nilai: + `pending_verification`) dan
+`TENANT_STATUSES` (control, 7 nilai: + `pending_verification`, + `migrated_out`
+sejak migration kendali 0010) dan
 `SUBSCRIPTION_STATUSES` (platform, 5 nilai) berjalan **berpasangan**: status
 tenant adalah snapshot dari status langganan, disalin platform → control dengan
 urutan tulis yang tidak boleh dibalik.
 
-Tiga hal yang mudah salah di sini:
+Empat hal yang mudah salah di sini:
 
 | Hal | Kenyataannya |
 |---|---|
 | `suspended` dan `cancelled` | **Hanya-baca, bukan hilang.** `READ_ONLY_TENANT_STATUSES` — customer yang berhenti tetap **wajib** bisa membaca dan mengekspor pembukuannya |
 | Pindah status otomatis | Semuanya digerakkan `scheduler:subscriptions` tiap jam, dan **tiap langkahnya idempoten** |
+| `migrated_out` | Tenant yang pindah ke on-premise ([`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)). Ditulis `tenant:mark-migrated-out` bersamaan dengan langganan → `cancelled`, PT dinonaktifkan, sesi dicabut; buku SaaS **tidak dihapus**. Pembekuan sebelumnya (`frozen_at`) adalah sumbu terpisah dari tangga ini |
 | Keadaan hari ini | Seluruh 11 langganan ber-`billing_mode = none`, jadi tangga ini tidak digerakkan — gate-nya ditutup di tingkat data, bukan di kode |
 
 ### 8.8 Permintaan penghapusan tenant

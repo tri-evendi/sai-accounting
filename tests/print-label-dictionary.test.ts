@@ -127,6 +127,7 @@ import { describe, expect, it } from "vitest";
 import id from "@sai/core/i18n/dictionaries/id.json";
 import { translate } from "@sai/core/i18n/dictionary";
 import { CASH_FLOW_CATEGORY_LABELS } from "@/lib/reports";
+import { COST_CENTER_UNASSIGNED_PRINT_LABEL } from "@/lib/cost-centers";
 import { formatNumber } from "@sai/core/utils";
 import {
   AGING_HEADERS,
@@ -260,6 +261,9 @@ const PADANAN: Padanan[] = [
   },
   { di: "INCOME_STATEMENT_PRINT_LABELS.result(laba)", cetak: INCOME_STATEMENT_PRINT_LABELS.result(true), kunci: "reports.profit" },
   { di: "INCOME_STATEMENT_PRINT_LABELS.result(rugi)", cetak: INCOME_STATEMENT_PRINT_LABELS.result(false), kunci: "reports.loss" },
+  // Label periode Laba Rugi yang disaring "belum ditetapkan" — dicetak pekerja
+  // antrean & pelari Go tanpa bahasa pengguna (#702, jebakan 4).
+  { di: "COST_CENTER_UNASSIGNED_PRINT_LABEL", cetak: COST_CENTER_UNASSIGNED_PRINT_LABEL, kunci: "costCenters.filterUnassigned" },
 
   // ── Riwayat Stok ──────────────────────────────────────────────────────────
   { di: "STOCK_MOVEMENT_HEADERS.name", cetak: STOCK_MOVEMENT_HEADERS.name, kunci: "common.item" },

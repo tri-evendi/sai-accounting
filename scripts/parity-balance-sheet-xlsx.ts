@@ -4,7 +4,13 @@
  *
  *   TZ=Asia/Jakarta bun run parity:balance-sheet-xlsx           # semua PT aktif, per hari ini
  *   bun run parity:balance-sheet-xlsx -- --company pt-a,pt-b --as-of 2025-12-31,2026-06-30
+ *   bun run parity:balance-sheet-xlsx -- --compare none,previous_year   # bawaan: none,preceding,previous_year
  *   bun run parity:balance-sheet-xlsx -- --go-bin ./parity
+ *
+ * KOLOM PEMBANDING (#557): setiap tanggal diperiksa dalam setiap mode
+ * `--compare` — satu kolom, dan empat kolom per mode. Parameter Go diturunkan
+ * lewat `goExportPayloadShape`, PENERBIT yang sama dengan rute ekspor, jadi
+ * tanggal pembanding yang diterima Go adalah yang akan diterima pelarinya.
  *
  * Lembar TS dirakit PERSIS seperti jalur berkas TS (`buildReportPayload` →
  * `buildReportSheet` → `buildWorkbookBuffer` dengan `getCompanyIdentity()`) di
@@ -34,11 +40,13 @@ import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
 import { buildReportSheet } from "../src/lib/report-export";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
+import { goExportPayloadShape } from "../src/lib/report-export-go";
 import { compareWorkbookContent } from "../src/lib/xlsx-content-parity";
 import { controlDb } from "@sai/core/control-db";
 import {
   arg,
   asOfDates,
+  compareModes,
   defaultInstanceOnly,
   failed,
   finish,
@@ -59,29 +67,33 @@ async function main() {
   );
   const companies = await loadCompanies();
   const asOfs = asOfDates(arg("--as-of"));
+  const modes = compareModes(arg("--compare"));
 
   const kerja = await mkdtemp(join(tmpdir(), "parity-bs-xlsx-"));
   const tally: Tally = { setara: 0, berselisih: 0, gagal: 0 };
   try {
     for (const c of companies) {
-      for (const { asOf, asOfISO } of asOfs) {
-        const label = `${c.slug} (${c.databaseName}) per ${asOfISO}`;
+      for (const { asOfISO } of asOfs) for (const mode of modes) {
+        const label = `${c.slug} (${c.databaseName}) per ${asOfISO}` + (mode ? ` · banding ${mode}` : "");
         try {
           const context = defaultInstanceOnly(companyContextOf(c));
+          const params = { asOf: asOfISO, ...(mode ? { compare: mode } : {}) };
           const ts = await runWithCompany(context, () =>
             readOnlyBook(async (tx) => {
-              const payload = await buildReportPayload(def, { asOf: asOfISO }, tx as never);
+              const payload = await buildReportPayload(def, params, tx as never);
               const buf = await buildWorkbookBuffer([buildReportSheet(payload)], await getCompanyIdentity(tx));
               return new Uint8Array(buf);
             })
           );
-          const out = join(kerja, `${c.id}-${asOfISO}.xlsx`);
+          const muatan = goExportPayloadShape(def, params);
+          const out = join(kerja, `${c.id}-${asOfISO}-${mode || "satu"}.xlsx`);
           await runGo(
             [
               "balance-sheet-xlsx",
               "-database", c.databaseName,
-              "-as-of", asOf.toISOString(),
-              "-as-of-date", asOfISO,
+              "-as-of", muatan.asOfInstant!,
+              "-as-of-date", muatan.params.asOf!,
+              ...(mode ? ["-compare", mode, "-prior-as-of", muatan.priorAsOfInstant!] : []),
               "-registry-name", c.name,
               "-out", out,
             ],
@@ -102,7 +114,7 @@ async function main() {
   } finally {
     await rm(kerja, { recursive: true, force: true });
   }
-  finish(companies.length, asOfs.length, "tanggal", tally);
+  finish(companies.length, asOfs.length * modes.length, "tanggal × mode pembanding", tally);
 }
 
 main()

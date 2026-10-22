@@ -87,13 +87,43 @@ func Run(ctx, stop context.Context) error {
 // muatanEkspor: bentuk `GoExportPayload` di `src/lib/report-export-go.ts`.
 // Laporan "per tanggal" membawa AsOfInstant; laporan berperiode (Laba Rugi)
 // FromInstant + ToInstant — semuanya dihitung PENERBIT (`resolveAsOf` /
-// `resolvePeriod`), tidak pernah di sini.
+// `resolvePeriod`), tidak pernah di sini. Kolom pembanding (#557):
+// `params.compare` + PriorFromInstant/PriorToInstant (Laba Rugi) atau
+// PriorAsOfInstant (Neraca), dari `comparisonRange`/`comparisonDate` penerbit.
 type muatanEkspor struct {
-	ReportID    string            `json:"reportId"`
-	Params      map[string]string `json:"params"`
-	AsOfInstant string            `json:"asOfInstant"`
-	FromInstant string            `json:"fromInstant"`
-	ToInstant   string            `json:"toInstant"`
+	ReportID         string            `json:"reportId"`
+	Params           map[string]string `json:"params"`
+	AsOfInstant      string            `json:"asOfInstant"`
+	FromInstant      string            `json:"fromInstant"`
+	ToInstant        string            `json:"toInstant"`
+	PriorFromInstant string            `json:"priorFromInstant"`
+	PriorToInstant   string            `json:"priorToInstant"`
+	PriorAsOfInstant string            `json:"priorAsOfInstant"`
+}
+
+// comparative memutuskan apakah muatan meminta kolom pembanding, dan MENOLAK
+// muatan yang setengah-setengah: mode tanpa instannya, instan tanpa mode, atau
+// mode di luar kosakata (`contract.ComparisonModes`). Penerbit TS membuang
+// `compare` yang tak dikenal sebelum menerbitkan, jadi muatan seperti itu
+// bukan permintaan pengguna — dan mencetak lembar SATU kolom untuknya berarti
+// menelan kolom pembanding tanpa satu galat pun.
+func comparative(m muatanEkspor, instants ...string) (bool, error) {
+	mode := m.Params["compare"]
+	present := 0
+	for _, v := range instants {
+		if v != "" {
+			present++
+		}
+	}
+	switch {
+	case mode == "" && present == 0:
+		return false, nil
+	case mode != "" && !contract.ComparisonModes[mode]:
+		return false, fmt.Errorf("compare %q di luar kosakata (src/lib/statement-compare.ts)", mode)
+	case mode == "" || present != len(instants):
+		return false, fmt.Errorf("muatan pembanding tidak lengkap: compare %q, %d dari %d instan", mode, present, len(instants))
+	}
+	return true, nil
 }
 
 func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
@@ -235,11 +265,15 @@ func labaRugi(ctx context.Context, company *registry.Company, m muatanEkspor, pr
 	if err != nil {
 		return nil, "", err
 	}
+	prior, err := priorIncomeStatement(ctx, r, m, cc)
+	if err != nil {
+		return nil, "", err
+	}
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
 	now := time.Now()
-	data, err := document.IncomeStatementWorkbook(is, name, period, now)
+	data, err := document.IncomeStatementWorkbook(is, prior, name, period, now)
 	if err != nil {
 		return nil, "", err
 	}
@@ -270,17 +304,69 @@ func neraca(ctx context.Context, company *registry.Company, m muatanEkspor, prog
 		log.Printf("[interactive-go] ⚠ %s: akun bertipe di luar kontrak: %s",
 			company.Slug, strings.Join(bs.UnknownTypes, ", "))
 	}
+	prior, err := priorBalanceSheet(ctx, r, m)
+	if err != nil {
+		return nil, "", err
+	}
 	_ = progress(55)
 
 	name := companyName(ctx, r, company)
 	_ = progress(70)
 
 	now := time.Now()
-	data, err := document.BalanceSheetWorkbook(bs, name, period, now)
+	data, err := document.BalanceSheetWorkbook(bs, prior, name, period, now)
 	if err != nil {
 		return nil, "", err
 	}
 	return data, document.FileName(contract.BalanceSheetTitle, now), nil
+}
+
+// priorIncomeStatement: Laba Rugi periode pembanding (#557), atau nil bila
+// tidak diminta — penyaring pusat biaya yang SAMA dengan periode berjalan,
+// seperti halaman (`getIncomeStatement(prior…, costCenter)`).
+func priorIncomeStatement(ctx context.Context, r *ledgerread.Reader, m muatanEkspor, cc ledgerread.CostCenterFilter) (*document.IncomeStatementPrior, error) {
+	ok, err := comparative(m, m.PriorFromInstant, m.PriorToInstant)
+	if err != nil || !ok {
+		return nil, err
+	}
+	from, err := time.Parse(time.RFC3339Nano, m.PriorFromInstant)
+	if err != nil {
+		return nil, fmt.Errorf("priorFromInstant %q: %w", m.PriorFromInstant, err)
+	}
+	to, err := time.Parse(time.RFC3339Nano, m.PriorToInstant)
+	if err != nil {
+		return nil, fmt.Errorf("priorToInstant %q: %w", m.PriorToInstant, err)
+	}
+	is, err := r.IncomeStatement(ctx, &from, &to, cc)
+	if err != nil {
+		return nil, err
+	}
+	label, err := document.PriorPeriodRange(from, to)
+	if err != nil {
+		return nil, err
+	}
+	return &document.IncomeStatementPrior{Statement: is, Period: label}, nil
+}
+
+// priorBalanceSheet: Neraca tanggal pembanding (#557), atau nil.
+func priorBalanceSheet(ctx context.Context, r *ledgerread.Reader, m muatanEkspor) (*document.BalanceSheetPrior, error) {
+	ok, err := comparative(m, m.PriorAsOfInstant)
+	if err != nil || !ok {
+		return nil, err
+	}
+	asOf, err := time.Parse(time.RFC3339Nano, m.PriorAsOfInstant)
+	if err != nil {
+		return nil, fmt.Errorf("priorAsOfInstant %q: %w", m.PriorAsOfInstant, err)
+	}
+	bs, err := r.BalanceSheet(ctx, asOf)
+	if err != nil {
+		return nil, err
+	}
+	label, err := document.PriorPeriodAsOf(asOf)
+	if err != nil {
+		return nil, err
+	}
+	return &document.BalanceSheetPrior{Statement: bs, Period: label}, nil
 }
 
 // companyName: urutan `pickIdentity()` — setting wizard, lalu nama registry,

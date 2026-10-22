@@ -43,14 +43,33 @@ export async function costCenterFilterOptions(client = prisma): Promise<CostCent
   ];
 }
 
-/** Nama yang ditampilkan untuk penyaring yang sedang aktif, untuk judul & ekspor. */
+/**
+ * Nama yang ditampilkan untuk penyaring yang sedang aktif, untuk judul & ekspor.
+ *
+ * ── DI LUAR PERMINTAAN HTTP (#702, jebakan 4) ──────────────────────────────
+ * Sampai 22 Okt 2026 fungsi ini SELALU memanggil `getT()` lebih dulu — dan
+ * `getT()` membaca cookie bahasa lewat `cookies()`, yang MELEMPAR di luar
+ * permintaan. Akibatnya ekspor Laba Rugi bersaring pusat biaya yang dirakit
+ * pekerja antrean (`report.export`) GAGAL, apa pun pusat biayanya.
+ *
+ * `unassignedLabel` memutus ketergantungan itu: pemanggil yang merakit DOKUMEN
+ * CETAK (`buildReportPayload`) menyerahkan `COST_CENTER_UNASSIGNED_PRINT_LABEL`
+ * — bahasa dokumen cetak (id), sama dengan yang dicetak pelari Go — dan kamus
+ * tidak disentuh sama sekali. Tanpa argumen itu perilakunya tetap seperti
+ * dulu: halaman memakai bahasa penggunanya. `getT()` kini hanya dipanggil bila
+ * memang dibutuhkan (penyaring "belum ditetapkan" tanpa label cetak).
+ */
 export async function costCenterFilterLabel(
   raw: string | null | undefined,
-  client = prisma
+  client = prisma,
+  unassignedLabel?: string
 ): Promise<string | null> {
   if (!raw) return null;
-  const t = await getT();
-  if (raw === UNASSIGNED_COST_CENTER) return t("costCenters.filterUnassigned");
+  if (raw === UNASSIGNED_COST_CENTER) {
+    if (unassignedLabel !== undefined) return unassignedLabel;
+    const t = await getT();
+    return t("costCenters.filterUnassigned");
+  }
   const id = Number.parseInt(raw, 10);
   if (!/^\d+$/.test(raw.trim()) || !(id > 0)) return null;
   const costCenter = await client.costCenter.findUnique({ where: { id } });

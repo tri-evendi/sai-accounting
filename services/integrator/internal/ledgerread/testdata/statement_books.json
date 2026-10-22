@@ -97,6 +97,14 @@
       { "case": "neraca-dagang-2025-12-31", "asOf": "2025-12-31" },
       { "case": "neraca-dagang-2026-06-30", "asOf": "2026-06-30" },
       { "case": "neraca-dagang-2026-07-01", "asOf": "2026-07-01" }
+    ],
+    "incomeComparisons": [
+      { "case": "banding-laba-rugi-dagang-pusat-biaya-1", "from": "2026-01-01", "to": "2026-12-31", "costCenter": "1", "compare": "previous_year" },
+      { "case": "banding-laba-rugi-dagang-belum-ditetapkan", "from": "2026-01-01", "to": "2026-06-30", "costCenter": "unassigned", "compare": "preceding" },
+      { "case": "banding-laba-rugi-dagang-tahun-lalu", "from": "2026-01-01", "to": "2026-06-30", "compare": "previous_year" }
+    ],
+    "balanceComparisons": [
+      { "case": "banding-neraca-dagang-tahun-lalu", "asOf": "2026-06-30", "compare": "previous_year" }
     ]
   },
   {
@@ -130,6 +138,12 @@
     "balanceSheets": [
       { "case": "neraca-april-2025-03-31", "asOf": "2025-03-31" },
       { "case": "neraca-april-2025-06-30", "asOf": "2025-06-30" }
+    ],
+    "incomeComparisons": [
+      { "case": "banding-laba-rugi-april-sebelumnya", "from": "2025-04-01", "to": "2025-06-30", "compare": "preceding" }
+    ],
+    "balanceComparisons": [
+      { "case": "banding-neraca-april-terpecah", "asOf": "2026-06-30", "compare": "previous_year" }
     ]
   },
   {
@@ -149,6 +163,12 @@
     ],
     "balanceSheets": [
       { "case": "neraca-kosong", "asOf": "2026-01-05" }
+    ],
+    "incomeComparisons": [
+      { "case": "banding-laba-rugi-kosong", "from": "2026-01-01", "to": "2026-01-05", "compare": "previous_year" }
+    ],
+    "balanceComparisons": [
+      { "case": "banding-neraca-kosong", "asOf": "2026-01-05", "compare": "previous_year" }
     ]
   },
   {
@@ -175,6 +195,85 @@
     ],
     "balanceSheets": [
       { "case": "neraca-timpang", "asOf": "2025-12-31" }
+    ],
+    "balanceComparisons": [
+      { "case": "banding-neraca-timpang", "asOf": "2025-12-31", "compare": "preceding" }
+    ]
+  },
+  {
+    "name": "buku-banding",
+    "companyName": "PT Banding Dua Periode",
+    "printedAt": "2027-04-01T01:02:03Z",
+    "fiscalYearStart": "2024-12-31T17:00:00.000Z",
+    "costCenters": [],
+    "accounts": [
+      { "id": 1, "code": "1101", "name": "Kas", "type": "cash_bank" },
+      { "id": 2, "code": "3101", "name": "Modal", "type": "equity" },
+      { "id": 3, "code": "3201", "name": "Laba Ditahan", "type": "equity" },
+      { "id": 4, "code": "4101", "name": "Penjualan", "type": "revenue" },
+      { "id": 5, "code": "4_01", "name": "Penjualan Ekspor", "type": "revenue" },
+      { "id": 6, "code": "4a01", "name": "Pendapatan Jasa", "type": "revenue" },
+      { "id": 7, "code": "4B01", "name": "Pendapatan Sewa", "type": "revenue" },
+      { "id": 8, "code": "5101", "name": "Harga Pokok Penjualan", "type": "cogs" },
+      { "id": 9, "code": "6101", "name": "Beban Umum", "type": "expense" },
+      { "id": 10, "code": "8101", "name": "Pendapatan Bunga", "type": "other_income" }
+    ],
+    "journals": [
+      { "date": "2025-01-05T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "1000" },
+        { "accountId": 2, "credit": "1000" } ] },
+      { "date": "2025-03-10T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "0.1" },
+        { "accountId": 4, "credit": "0.1" } ] },
+      { "date": "2025-04-10T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "0.2" },
+        { "accountId": 4, "credit": "0.2" } ] },
+      { "date": "2025-05-10T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "300" },
+        { "accountId": 5, "credit": "300" } ] },
+      { "date": "2025-05-11T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "50" },
+        { "accountId": 7, "credit": "50" } ] },
+      { "date": "2025-05-12T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "25" },
+        { "accountId": 6, "credit": "25" } ] },
+      { "date": "2025-06-01T03:00:00.000Z", "lines": [
+        { "accountId": 8, "debit": "10" },
+        { "accountId": 1, "credit": "10" } ] },
+      { "date": "2025-06-02T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "5" },
+        { "accountId": 10, "credit": "5" } ] },
+      { "date": "2025-12-31T16:59:59.999Z", "type": "closing", "lines": [
+        { "accountId": 4, "debit": "0.3" },
+        { "accountId": 5, "debit": "300" },
+        { "accountId": 7, "debit": "50" },
+        { "accountId": 6, "debit": "25" },
+        { "accountId": 10, "debit": "5" },
+        { "accountId": 8, "credit": "10" },
+        { "accountId": 3, "credit": "370.3" } ] },
+      { "date": "2026-02-10T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "100.1" },
+        { "accountId": 4, "credit": "100.1" } ] },
+      { "date": "2026-03-05T03:00:00.000Z", "lines": [
+        { "accountId": 9, "debit": "20" },
+        { "accountId": 1, "credit": "20" } ] },
+      { "date": "2027-02-01T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "7" },
+        { "accountId": 4, "credit": "7" } ] }
+    ],
+    "incomeStatements": [
+      { "case": "laba-rugi-banding-2026", "from": "2026-01-01", "to": "2026-06-30" }
+    ],
+    "balanceSheets": [
+      { "case": "neraca-banding-2026-03-31", "asOf": "2026-03-31" }
+    ],
+    "incomeComparisons": [
+      { "case": "banding-laba-rugi-hanya-pembanding", "from": "2026-01-01", "to": "2026-06-30", "compare": "previous_year" },
+      { "case": "banding-laba-rugi-berjalan-kosong", "from": "2026-04-01", "to": "2026-06-30", "compare": "preceding" }
+    ],
+    "balanceComparisons": [
+      { "case": "banding-neraca-sisa-float", "asOf": "2027-03-31", "compare": "previous_year" },
+      { "case": "banding-neraca-sebelumnya", "asOf": "2026-06-30", "compare": "preceding" }
     ]
   }
 ]

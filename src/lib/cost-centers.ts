@@ -27,6 +27,16 @@
 export const UNASSIGNED_COST_CENTER = "unassigned";
 
 /**
+ * Label "belum ditetapkan" untuk DOKUMEN CETAK — bahasa Indonesia, seperti
+ * seluruh isi `lib/pdf`: berkas yang lepas dari layarnya (pekerja antrean,
+ * pelari Go) tidak membawa bahasa penggunanya, dan tidak punya permintaan HTTP
+ * untuk membacanya. Bunyinya SAMA PERSIS dengan `costCenters.filterUnassigned`
+ * di `id.json` (dijaga `tests/print-label-dictionary.test.ts`), dan pola Go-nya
+ * dibangkitkan dari konstanta ini (`report_layout_gen.go`).
+ */
+export const COST_CENTER_UNASSIGNED_PRINT_LABEL = "Belum ditetapkan";
+
+/**
  * Penyaring pusat biaya yang sudah dinormalkan.
  * `undefined` = tanpa penyaring · angka = satu pusat biaya · `"unassigned"` = NULL.
  */

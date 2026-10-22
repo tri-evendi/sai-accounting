@@ -23,6 +23,7 @@ import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import type { CompanyContext } from "../../src/lib/company-context";
 import { prisma } from "../../src/lib/prisma";
 import { resolveAsOf, resolvePeriod } from "../../src/lib/report-catalog";
+import { COMPARISON_MODES, type ComparisonMode } from "../../src/lib/statement-compare";
 
 const run = promisify(execFile);
 
@@ -81,6 +82,26 @@ export function asOfDates(raw: string | undefined, now = new Date()) {
 }
 
 /** PT yang diperiksa: aktif (atau semua dengan `--include-inactive`), opsional per slug. */
+/**
+ * `--compare none,previous_year,preceding` → mode kolom pembanding (#557) yang
+ * diperiksa paritas ISI lembar sebar. `none` = lembar satu kolom. Bawaannya
+ * KETIGANYA: peralihan register ke `go` memindahkan tombol Excel halaman ke
+ * jalur Go untuk ketiga bentuk itu sekaligus, jadi paritas yang hanya
+ * membuktikan satu bentuk membuktikan sepertiganya.
+ */
+export function compareModes(raw: string | undefined): ("" | ComparisonMode)[] {
+  const asked = list(raw);
+  const wanted = asked.length > 0 ? asked : ["none", ...COMPARISON_MODES];
+  return wanted.map((m) => {
+    if (m === "none") return "";
+    if (!(COMPARISON_MODES as readonly string[]).includes(m)) {
+      console.error(`--compare bukan none|${COMPARISON_MODES.join("|")}: ${m}`);
+      process.exit(2);
+    }
+    return m as ComparisonMode;
+  });
+}
+
 export async function loadCompanies() {
   if (!process.env.CONTROL_DATABASE_URL) {
     console.error("CONTROL_DATABASE_URL belum diset — tidak tahu di mana daftar perusahaannya.");

@@ -14,15 +14,16 @@ import (
 // `buildBalanceSheetSheet` + `xlsx.ts` ═══════════════════════════════════════
 //
 // Bentuknya mengikuti JALUR BERKAS TS, yaitu `buildReportPayload` →
-// `buildReportSheet` — bukan halaman layar. Dua akibatnya, keduanya disengaja:
+// `buildReportSheet` — yang sejak 22 Okt 2026 menyusun muatan yang SAMA
+// dengan halaman (`incomeStatementPrior` / `balanceSheetPrior`). Dua akibatnya:
 //
-//  1. SATU kolom nilai, tanpa pembanding (#557): muatan dari parameter tidak
-//     membawa `prior`, jadi lembar TS yang dirakit pekerja pun satu kolom.
-//  2. Neraca SELALU satu baris "Akumulasi Laba/Rugi" = netIncome: muatan
-//     ekspor TS tidak membawa `currentYearIncome`/`priorUnclosedIncome`, jadi
-//     `equityLines()` tidak pernah memecahnya di berkas. Pecahan #555 tetap
-//     DIHITUNG Go (dan dibandingkan `parity:balance-sheet`), hanya tidak
-//     dicetak — persis TS.
+//  1. Tanpa `?compare=` SATU kolom nilai; dengan `?compare=` empat kolom
+//     (#557) — lembar komparatif ada di `compare.go`.
+//  2. Neraca BERJALAN selalu satu baris "Akumulasi Laba/Rugi" = netIncome:
+//     muatan ekspor TS tidak membawa `currentYearIncome`/`priorUnclosedIncome`
+//     periode berjalan, jadi `equityLines()` tidak pernah memecahnya. Pecahan
+//     #555 tetap DIHITUNG Go (dan dibandingkan `parity:balance-sheet`). Neraca
+//     PEMBANDING membawanya — lihat `compare.go`.
 //
 // Rupa (dibuktikan `bun run parity:income-statement-xlsx` / `…balance-sheet-xlsx`
 // dan berkas emas di setiap verify):
@@ -169,8 +170,12 @@ func GrossMarginNote(grossProfit, sales ledgerread.Cents) string {
 }
 
 // IncomeStatementSheet memetakan Laba Rugi ke satu lembar — padanan
-// `incomeStatementLayout()` + `buildIncomeStatementSheet` tanpa pembanding. MURNI.
-func IncomeStatementSheet(is *ledgerread.IncomeStatement, companyName, period string, printedAt time.Time) Sheet {
+// `incomeStatementLayout()` + `buildIncomeStatementSheet`; prior != nil =
+// lembar komparatif (#557). MURNI.
+func IncomeStatementSheet(is *ledgerread.IncomeStatement, prior *IncomeStatementPrior, companyName, period string, printedAt time.Time) Sheet {
+	if prior != nil {
+		return incomeStatementCompareSheet(is, *prior, companyName, period, printedAt)
+	}
 	rows, widths := banner(companyName, contract.IncomeStatementTitle, period, printedAt, contract.IncomeStatementColumns)
 
 	section := func(title string, band ledgerread.StatementSection) {
@@ -221,19 +226,23 @@ func IncomeStatementSheet(is *ledgerread.IncomeStatement, companyName, period st
 }
 
 // IncomeStatementWorkbook merakit berkas .xlsx Laba Rugi.
-func IncomeStatementWorkbook(is *ledgerread.IncomeStatement, companyName, period string, printedAt time.Time) ([]byte, error) {
+func IncomeStatementWorkbook(is *ledgerread.IncomeStatement, prior *IncomeStatementPrior, companyName, period string, printedAt time.Time) ([]byte, error) {
 	wb := Workbook{
 		Creator: companyName,
 		Created: printedAt,
-		Sheets:  []Sheet{IncomeStatementSheet(is, companyName, period, printedAt)},
+		Sheets:  []Sheet{IncomeStatementSheet(is, prior, companyName, period, printedAt)},
 	}
 	return wb.Bytes()
 }
 
 // BalanceSheetSheet memetakan Neraca ke satu lembar — padanan
-// `balanceSheetLayout()` + `buildBalanceSheetSheet` tanpa pembanding, atas
-// muatan ekspor (tanpa pecahan #555; lihat kepala berkas). MURNI.
-func BalanceSheetSheet(bs *ledgerread.BalanceSheet, companyName, period string, printedAt time.Time) Sheet {
+// `balanceSheetLayout()` + `buildBalanceSheetSheet`, atas muatan ekspor (tanpa
+// pecahan #555 periode berjalan; lihat kepala berkas); prior != nil = lembar
+// komparatif (#557). MURNI.
+func BalanceSheetSheet(bs *ledgerread.BalanceSheet, prior *BalanceSheetPrior, companyName, period string, printedAt time.Time) Sheet {
+	if prior != nil {
+		return balanceSheetCompareSheet(bs, *prior, companyName, period, printedAt)
+	}
 	rows, widths := banner(companyName, contract.BalanceSheetTitle, period, printedAt, contract.BalanceSheetColumns)
 
 	section := func(title string, lines []ledgerread.StatementLine, total ledgerread.Cents) {
@@ -267,11 +276,11 @@ func BalanceSheetSheet(bs *ledgerread.BalanceSheet, companyName, period string, 
 }
 
 // BalanceSheetWorkbook merakit berkas .xlsx Neraca.
-func BalanceSheetWorkbook(bs *ledgerread.BalanceSheet, companyName, period string, printedAt time.Time) ([]byte, error) {
+func BalanceSheetWorkbook(bs *ledgerread.BalanceSheet, prior *BalanceSheetPrior, companyName, period string, printedAt time.Time) ([]byte, error) {
 	wb := Workbook{
 		Creator: companyName,
 		Created: printedAt,
-		Sheets:  []Sheet{BalanceSheetSheet(bs, companyName, period, printedAt)},
+		Sheets:  []Sheet{BalanceSheetSheet(bs, prior, companyName, period, printedAt)},
 	}
 	return wb.Bytes()
 }

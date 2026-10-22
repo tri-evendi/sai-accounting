@@ -4,7 +4,8 @@
  *
  *   bun run parity:income-statement-xlsx                  # semua PT aktif, 3 periode bawaan
  *   bun run parity:income-statement-xlsx -- --company pt-a --period 2026-01-01..2026-10-22
- *   bun run parity:income-statement-xlsx -- --cost-center 3   # id pusat biaya (per buku)
+ *   bun run parity:income-statement-xlsx -- --cost-center 3   # id pusat biaya (per buku) / unassigned
+ *   bun run parity:income-statement-xlsx -- --compare none,preceding   # bawaan: none,preceding,previous_year
  *   bun run parity:income-statement-xlsx -- --go-bin ./parity
  *
  * Lembar TS dirakit PERSIS seperti jalur berkas TS (`buildReportPayload` →
@@ -14,13 +15,17 @@
  * jalur `interactive` — dan keduanya dibandingkan ISI-nya oleh
  * `src/lib/xlsx-content-parity.ts`. Paritas ANGKA: `parity:income-statement`.
  *
- * ⚠ `--cost-center` di sini memanggil `costCenterFilterLabel()`, yang meminta
- * `getT()` — dan `getT()` membaca cookie permintaan HTTP. Di luar permintaan ia
- * MELEMPAR, jadi Laba Rugi bersaring pusat biaya TIDAK BISA dirakit jalur TS di
- * luar halaman (pekerja `report.export` pun sama). Skrip ini karena itu tanpa
- * penyaring secara bawaan; kasus ber-penyaring dibuktikan berkas emas
- * (`tests/statements-golden.test.ts`, kamus id dipalsukan) dan angkanya oleh
- * `parity:income-statement --cost-center`.
+ * KOLOM PEMBANDING (#557): setiap periode diperiksa dalam setiap mode
+ * `--compare` — satu kolom, dan empat kolom per mode. Parameter Go diturunkan
+ * lewat `goExportPayloadShape`, PENERBIT yang sama dengan rute ekspor, jadi
+ * rentang pembanding yang diterima Go adalah yang akan diterima pelarinya.
+ * Zona proses wajib Asia/Jakarta (bawaan skripnya): `comparisonRange`
+ * menggeser tahun di kalender zona PROSES, seperti `app-customer`.
+ *
+ * `--cost-center` BISA dipakai sejak 22 Okt 2026: `costCenterFilterLabel()`
+ * dulu memanggil `getT()` (cookie permintaan HTTP) dan MELEMPAR di luar
+ * halaman; jalur berkas kini menyerahkan label cetaknya sendiri (#702,
+ * jebakan 4).
  *
  * ══ HANYA MEMBACA ══════════════════════════════════════════════════════════
  * TS: transaksi `REPEATABLE READ, READ ONLY`. Go: `READ ONLY`. Berkas keduanya
@@ -40,10 +45,12 @@ import { reportEngine } from "../src/lib/report-engine";
 import { buildReportPayload } from "../src/lib/report-payload";
 import { buildReportSheet } from "../src/lib/report-export";
 import { buildWorkbookBuffer } from "../src/lib/xlsx";
+import { goExportPayloadShape } from "../src/lib/report-export-go";
 import { compareWorkbookContent } from "../src/lib/xlsx-content-parity";
 import { controlDb } from "@sai/core/control-db";
 import {
   arg,
+  compareModes,
   defaultInstanceOnly,
   failed,
   finish,
@@ -51,11 +58,13 @@ import {
   loadCompanies,
   readOnlyBook,
   report,
+  requireBusinessTimeZone,
   runGo,
   type Tally,
 } from "./lib/parity";
 
 async function main() {
+  requireBusinessTimeZone();
   const def = reportById("income-statement");
   if (!def || !isExportable(def)) throw new Error("income-statement hilang dari katalog");
   console.log(
@@ -64,16 +73,25 @@ async function main() {
   const companies = await loadCompanies();
   const ranges = incomePeriods(arg("--period"));
   const cc = arg("--cost-center") ?? "";
+  const modes = compareModes(arg("--compare"));
 
   const kerja = await mkdtemp(join(tmpdir(), "parity-is-xlsx-"));
   const tally: Tally = { setara: 0, berselisih: 0, gagal: 0 };
   try {
     for (const c of companies) {
-      for (const r of ranges) {
-        const label = `${c.slug} (${c.databaseName}) ${r.fromISO}..${r.toISO}` + (cc ? ` · pusat biaya ${cc}` : "");
+      for (const r of ranges) for (const mode of modes) {
+        const label =
+          `${c.slug} (${c.databaseName}) ${r.fromISO}..${r.toISO}` +
+          (cc ? ` · pusat biaya ${cc}` : "") +
+          (mode ? ` · banding ${mode}` : "");
         try {
           const context = defaultInstanceOnly(companyContextOf(c));
-          const params = { from: r.fromISO, to: r.toISO, ...(cc ? { costCenter: cc } : {}) };
+          const params = {
+            from: r.fromISO,
+            to: r.toISO,
+            ...(cc ? { costCenter: cc } : {}),
+            ...(mode ? { compare: mode } : {}),
+          };
           const ts = await runWithCompany(context, () =>
             readOnlyBook(async (tx) => {
               const payload = await buildReportPayload(def, params, tx as never);
@@ -81,16 +99,20 @@ async function main() {
               return new Uint8Array(buf);
             })
           );
-          const out = join(kerja, `${c.id}-${r.fromISO}-${r.toISO}.xlsx`);
+          const muatan = goExportPayloadShape(def, params);
+          const out = join(kerja, `${c.id}-${r.fromISO}-${r.toISO}-${mode || "satu"}.xlsx`);
           await runGo(
             [
               "income-statement-xlsx",
               "-database", c.databaseName,
-              "-from", r.from.toISOString(),
-              "-to", r.to.toISOString(),
-              "-from-date", r.fromISO,
-              "-to-date", r.toISO,
+              "-from", muatan.fromInstant!,
+              "-to", muatan.toInstant!,
+              "-from-date", muatan.params.from!,
+              "-to-date", muatan.params.to!,
               "-cost-center", cc,
+              ...(mode
+                ? ["-compare", mode, "-prior-from", muatan.priorFromInstant!, "-prior-to", muatan.priorToInstant!]
+                : []),
               "-registry-name", c.name,
               "-out", out,
             ],
@@ -111,7 +133,7 @@ async function main() {
   } finally {
     await rm(kerja, { recursive: true, force: true });
   }
-  finish(companies.length, ranges.length, "periode", tally);
+  finish(companies.length, ranges.length * modes.length, "periode × mode pembanding", tally);
 }
 
 main()

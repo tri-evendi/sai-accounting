@@ -34,11 +34,17 @@ import {
   type PaymentStatus,
 } from "@/lib/receivables";
 import { costCenterFilterLabel } from "@/lib/cost-center-options";
-import { parseCostCenterFilter } from "@/lib/cost-centers";
+import { COST_CENTER_UNASSIGNED_PRINT_LABEL, parseCostCenterFilter } from "@/lib/cost-centers";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { resolveAsOf, resolveColumns, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { resolveStockPeriod } from "@/lib/stock-period";
-import { asOfPeriodLabel, costCenterPeriodSuffix, periodRangeLabel } from "@/lib/statement-layout";
+import {
+  asOfPeriodLabel,
+  comparePeriodLabel,
+  costCenterPeriodSuffix,
+  periodRangeLabel,
+} from "@/lib/statement-layout";
+import { comparisonDate, comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@sai/core/utils";
 
@@ -51,6 +57,12 @@ export interface ReportPayloadParams {
   month?: string;
   costCenter?: string;
   cols?: string;
+  /**
+   * Kolom pembanding Laba Rugi & Neraca (#557) — `?compare=` halaman,
+   * `preceding` | `previous_year`. Nilai lain DIABAIKAN (`parseComparison`),
+   * persis seperti halaman: ini parameter tampilan, bukan perintah.
+   */
+  compare?: string;
 }
 
 /** Nama bulan untuk DOKUMEN CETAK — bahasa Indonesia, seperti isi `lib/pdf`. */
@@ -98,6 +110,62 @@ export function resolveBudgetPeriod(
 }
 
 type ExportableReport = ReportDefinition & { payloadKind: StatementPayload["kind"] };
+
+type IncomeStatementPayload = Extract<StatementPayload, { kind: "income-statement" }>;
+type BalanceSheetPayload = Extract<StatementPayload, { kind: "balance-sheet" }>;
+
+/**
+ * Bagian PEMBANDING muatan Laba Rugi (#557) — MURNI, dan SATU-SATUNYA tempat
+ * ia disusun: halaman laporan dan jalur berkas (`buildReportPayload`, dipakai
+ * pekerja antrean & skrip paritas) sama-sama memanggilnya. Sampai tahap 1d
+ * halaman menyusunnya sendiri di dalam JSX-nya, dan jalur berkas tidak
+ * menyusunnya sama sekali — dua bentuk yang hanya kebetulan sama pada hari
+ * keduanya ditulis.
+ *
+ * Judul kolomnya tanggal pembandingnya sendiri (`comparePeriodLabel`), bukan
+ * "tahun lalu": pembandingnya bisa periode sebelumnya ATAU tahun lalu.
+ */
+export function incomeStatementPrior(
+  prior: NonNullable<IncomeStatementPayload["prior"]>,
+  range: { from: Date; to: Date }
+): Pick<IncomeStatementPayload, "priorPeriod" | "prior"> {
+  return {
+    priorPeriod: comparePeriodLabel(formatDate(range.from), formatDate(range.to)),
+    prior: {
+      sales: prior.sales,
+      cogs: prior.cogs,
+      grossProfit: prior.grossProfit,
+      operatingExpense: prior.operatingExpense,
+      operatingProfit: prior.operatingProfit,
+      otherIncome: prior.otherIncome,
+      otherExpense: prior.otherExpense,
+      netIncome: prior.netIncome,
+    },
+  };
+}
+
+/**
+ * Bagian PEMBANDING muatan Neraca (#557) — MURNI, dipakai halaman dan jalur
+ * berkas.
+ *
+ * ⚠ `prior` adalah hasil `getBalanceSheet` UTUH — termasuk pecahan #555
+ * (`currentYearIncome` / `priorUnclosedIncome`) — sementara muatan periode
+ * BERJALAN tidak membawanya. Itu bentuk yang sudah dikirim halaman sejak #557,
+ * dan disalin APA ADANYA (bukan diperbaiki, 09 §9): bila tahun buku lalu di
+ * tanggal pembanding belum ditutup, blok ekuitas pembanding terpecah DUA baris
+ * sementara blok berjalan SATU, dan `balanceSheetLayout` memasangkan baris
+ * sintetisnya menurut urutan — baris "Akumulasi Laba/Rugi" berjalan
+ * bersanding dengan "Laba/Rugi Tahun Lalu" pembanding, dan "Laba/Rugi Tahun
+ * Berjalan" pembanding tidak tercetak. Kebenaran `priorUnclosedIncome` di sini
+ * kebenaran FLOAT JavaScript: buku yang sudah ditutup bisa tersisa 1e-14.
+ * Pelari Go meniru keduanya (`EquitySplitJS`).
+ */
+export function balanceSheetPrior<T extends NonNullable<BalanceSheetPayload["prior"]>>(
+  prior: T,
+  priorAsOf: Date
+): { priorPeriod: string; prior: T } {
+  return { priorPeriod: asOfPeriodLabel(formatDate(priorAsOf)), prior };
+}
 
 /**
  * Label periode yang IKUT TERCETAK di kepala dokumen.
@@ -289,9 +357,14 @@ export async function buildReportPayload(
     case "balance-sheet": {
       const { asOf } = resolveAsOf(params.asOf);
       const bs = await getBalanceSheet(asOf, client);
+      // Kolom pembanding (#557) — aturan yang SAMA dengan halaman Neraca.
+      const compare = parseComparison(params.compare);
+      const priorAsOf = compare === null ? null : comparisonDate(asOf, compare);
+      const prior = priorAsOf ? await getBalanceSheet(priorAsOf, client) : null;
       return {
         kind: "balance-sheet",
         period: asOfPeriodLabel(formatDate(asOf)),
+        ...(prior && priorAsOf ? balanceSheetPrior(prior, priorAsOf) : {}),
         assets: bs.assets,
         liabilities: bs.liabilities,
         equity: bs.equity,
@@ -311,13 +384,27 @@ export async function buildReportPayload(
       // lolos parse) tetap harus TERCETAK sebagai `#<id>`: dokumen yang hanya
       // memuat sebagian angka tanpa mengatakannya adalah yang paling mudah
       // salah dibaca setelah lepas dari layarnya.
+      //
+      // Label "belum ditetapkan" dalam bahasa DOKUMEN CETAK, diserahkan
+      // langsung: jalur ini juga dijalankan pekerja antrean, yang tidak punya
+      // permintaan HTTP untuk dibaca `getT()` (#702, jebakan 4).
       const name =
-        costCenter !== undefined ? await costCenterFilterLabel(params.costCenter, client) : null;
+        costCenter !== undefined
+          ? await costCenterFilterLabel(params.costCenter, client, COST_CENTER_UNASSIGNED_PRINT_LABEL)
+          : null;
       const label = costCenter !== undefined ? name ?? `#${costCenter}` : null;
       const is = await getIncomeStatement(from, to, client, costCenter);
+      // Kolom pembanding (#557): rentang dari `comparisonRange`, penyaring
+      // pusat biaya yang SAMA — aturan halaman Laba Rugi.
+      const compare = parseComparison(params.compare);
+      const priorRange = compare === null ? null : comparisonRange(from, to, compare);
+      const prior = priorRange
+        ? await getIncomeStatement(priorRange.from, priorRange.to, client, costCenter)
+        : null;
       return {
         kind: "income-statement",
         period: periodLabel(from, to, label),
+        ...(prior && priorRange ? incomeStatementPrior(prior, priorRange) : {}),
         sales: is.sales,
         cogs: is.cogs,
         grossProfit: is.grossProfit,

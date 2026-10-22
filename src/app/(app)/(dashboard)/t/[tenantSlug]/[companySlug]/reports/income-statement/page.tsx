@@ -32,6 +32,7 @@ import { costCenterFilterLabel, costCenterFilterOptions } from "@/lib/cost-cente
 import { incomeStatementSummary } from "@/lib/report-summary";
 import { formatDate } from "@sai/core/utils";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
+import { incomeStatementPrior } from "@/lib/report-payload";
 import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { InfoCircleOutlined } from "@ant-design/icons";
@@ -97,21 +98,10 @@ export default async function IncomeStatementPage({
   const payload: StatementPayload = {
     kind: "income-statement",
     period: periodLabel,
-    ...(prior && priorRange
-      ? {
-          priorPeriod: `${formatDate(priorRange.from)} – ${formatDate(priorRange.to)}`,
-          prior: {
-            sales: prior.sales,
-            cogs: prior.cogs,
-            grossProfit: prior.grossProfit,
-            operatingExpense: prior.operatingExpense,
-            operatingProfit: prior.operatingProfit,
-            otherIncome: prior.otherIncome,
-            otherExpense: prior.otherExpense,
-            netIncome: prior.netIncome,
-          },
-        }
-      : {}),
+    // Bagian pembanding disusun fungsi yang SAMA dengan jalur berkas
+    // (`buildReportPayload`), jadi berkas berantre — TS maupun Go — tidak bisa
+    // menyusun kolom yang berbeda dari layar ini.
+    ...(prior && priorRange ? incomeStatementPrior(prior, priorRange) : {}),
     sales: is.sales,
     cogs: is.cogs,
     grossProfit: is.grossProfit,
@@ -138,7 +128,16 @@ export default async function IncomeStatementPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` ikut SELALU, termasuk `compare` (#557): laporan ini
+                `go-parity` (src/lib/report-engine.ts), dan begitu register
+                beralih ke `go` lembar sebarnya dihitung pelari Go dari
+                PARAMETER — tanpa `sumber` rute ekspor menjawab 400, dan tanpa
+                `compare` kolom pembandingnya hilang. Selama TS, ia hanya
+                membuka penyerahan ke antrean di atas ambang baris. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{ reportId: "income-statement", params: { from: fromISO, to: toISO, costCenter: sp.costCenter, compare: compare ?? undefined } }}
+            />
           </>
         }
       />

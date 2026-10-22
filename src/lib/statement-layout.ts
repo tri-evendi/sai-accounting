@@ -857,6 +857,34 @@ export function periodRangeLabel(fromText: string, toText: string): string {
 }
 
 /**
+ * Judul kolom periode PEMBANDING Laba Rugi (#557) — "1 Januari 2025 –
+ * 30 Juni 2025", tanpa awalan "Periode": kolomnya bersebelahan dengan kolom
+ * periode berjalan yang sudah menyebutnya. Kedua tanggal sudah diformat
+ * `formatDate`. Pola Go-nya dibangkitkan dari kalimat ini.
+ *
+ * (Neraca memakai `asOfPeriodLabel` untuk tanggal pembandingnya — bentuk yang
+ * sama dengan kolom berjalannya.)
+ */
+export function comparePeriodLabel(fromText: string, toText: string): string {
+  return `${fromText} – ${toText}`;
+}
+
+/** Judul kolom persen perubahan pada laporan KOMPARATIF (#557) — cetak & lembar sebar. */
+export const STATEMENT_COMPARE_CHANGE_HEADER = "Perubahan";
+
+/**
+ * Persen perubahan sebagai TEKS (#557) — "+12,5%", "-3%", "-0%". Satu tempat
+ * untuk PDF dan lembar sebar; pelari Go meniru bentuk yang sama
+ * (`ComparePercent*Format`, dibangkitkan dari fungsi ini).
+ *
+ * `toLocaleString("id-ID")` apa adanya, termasuk tepiannya: −0 (dari
+ * `Math.round` atas perubahan negatif yang kecil) tercetak "-0%".
+ */
+export function comparePercentText(percent: number): string {
+  return `${percent > 0 ? "+" : ""}${percent.toLocaleString("id-ID")}%`;
+}
+
+/**
  * Ekor label periode bila laporan disaring per pusat biaya (#91). Dokumen yang
  * hanya memuat sebagian angka tanpa mengatakannya adalah yang paling mudah
  * salah dibaca setelah lepas dari layarnya.
@@ -1240,9 +1268,7 @@ export function incomeStatementCompareCells(
       (row.note === undefined ? "" : ` (${row.note})`),
     row.amount === null ? "" : rp(row.amount),
     row.prior === null || row.prior === undefined ? "" : rp(row.prior),
-    row.percent === null || row.percent === undefined
-      ? "—"
-      : `${row.percent > 0 ? "+" : ""}${row.percent.toLocaleString("id-ID")}%`,
+    row.percent === null || row.percent === undefined ? "—" : comparePercentText(row.percent),
   ];
 }
 

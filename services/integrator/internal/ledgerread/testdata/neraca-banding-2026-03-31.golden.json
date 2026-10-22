@@ -1,0 +1,33 @@
+{
+  "asOf": "2026-03-31T16:59:59.999Z",
+  "assets": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "amount": "1450.40"
+    }
+  ],
+  "liabilities": [],
+  "equity": [
+    {
+      "code": "3101",
+      "name": "Modal",
+      "amount": "1000.00"
+    },
+    {
+      "code": "3201",
+      "name": "Laba Ditahan",
+      "amount": "370.30"
+    }
+  ],
+  "totalAssets": "1450.40",
+  "totalLiabilities": "0.00",
+  "totalEquity": "1370.30",
+  "netIncome": "80.10",
+  "currentYearIncome": "80.10",
+  "priorUnclosedIncome": "0.00",
+  "totalLiabilitiesEquity": "1450.40",
+  "balanced": true,
+  "equitySplitJS": true,
+  "unknownTypes": []
+}

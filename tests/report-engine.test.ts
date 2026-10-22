@@ -16,7 +16,8 @@ import {
   type ReportEngineEntry,
 } from "@/lib/report-engine";
 import { REPORTS, isExportable, resolveAsOf, resolvePeriod, type ReportId } from "@/lib/report-catalog";
-import { goExportPayload, goExportPayloadShape } from "@/lib/report-export-go";
+import { COMPARABLE_REPORTS, goExportPayload, goExportPayloadShape } from "@/lib/report-export-go";
+import { comparisonDate, comparisonRange } from "@/lib/statement-compare";
 import { isValidResultRef } from "@sai/core/job-result";
 import { resultDir } from "@sai/platform/job-result-store";
 import { AKAR_REPO } from "./akar-sumber";
@@ -162,6 +163,49 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(p.asOfInstant).toBeUndefined();
     /* Selama `go-parity`, penerbitnya sendiri MENOLAK — berkasnya milik TS. */
     expect(() => goExportPayload(report, {})).toThrow(/bukan milik mesin Go/);
+  });
+
+  it("kolom pembanding (#557) ikut muatan Go — instan dari `comparisonRange`/`comparisonDate`", () => {
+    const now = new Date(2026, 9, 22, 10, 0, 0);
+    const is = REPORTS.find((r) => r.id === "income-statement")!;
+    const p = goExportPayloadShape(is, { from: "2026-01-01", to: "2026-06-30", compare: "previous_year" }, now);
+    const { from, to } = resolvePeriod("2026-01-01", "2026-06-30", now);
+    const r = comparisonRange(from, to, "previous_year");
+    expect(p.params.compare).toBe("previous_year");
+    expect(p.priorFromInstant).toBe(r.from.toISOString());
+    expect(p.priorToInstant).toBe(r.to.toISOString());
+
+    const bs = REPORTS.find((x) => x.id === "balance-sheet")!;
+    const q = goExportPayloadShape(bs, { asOf: "2026-06-30", compare: "preceding" }, now);
+    expect(q.priorAsOfInstant).toBe(comparisonDate(resolveAsOf("2026-06-30", now).asOf, "preceding").toISOString());
+
+    /* Mode tak dikenal DIBUANG (seperti halaman: laporan biasa), dan laporan
+       tanpa pembanding tidak membawa `compare` sama sekali. */
+    const asing = goExportPayloadShape(is, { from: "2026-01-01", to: "2026-06-30", compare: "bulan_lalu" }, now);
+    expect(asing.params).not.toHaveProperty("compare");
+    expect(asing.priorFromInstant).toBeUndefined();
+    const tb = REPORTS.find((x) => x.id === "trial-balance")!;
+    const nt = goExportPayloadShape(tb, { asOf: "2026-06-30", compare: "previous_year" }, now);
+    expect(nt.params).not.toHaveProperty("compare");
+    expect(nt.priorAsOfInstant).toBeUndefined();
+  });
+
+  it("halaman laporan komparatif mengirim asal BESERTA `compare` ke tombol Excel", () => {
+    /* Begitu register beralih ke `go`, lembar sebarnya dihitung dari
+       PARAMETER — `compare` yang tertinggal di halaman berarti berkas tanpa
+       kolom pembanding, tanpa satu galat pun. Dijaga SELAGI `go-parity`,
+       supaya peralihannya hanya menyunting register. */
+    for (const id of COMPARABLE_REPORTS) {
+      const r = REPORTS.find((x) => x.id === id)!;
+      const halaman = baca(
+        "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]",
+        ...(r.href ?? "").split("/").filter(Boolean),
+        "page.tsx"
+      );
+      expect(halaman, `${r.href}/page.tsx`).toMatch(
+        new RegExp(`<StatementExcelButton[\\s\\S]*?sumber=\\{\\{[\\s\\S]*?reportId: "${id}"[\\s\\S]*?compare: compare \\?\\? undefined`)
+      );
+    }
   });
 
   it("pelari Go punya penghasil Laba Rugi & Neraca, tetapi register yang memutuskan", () => {

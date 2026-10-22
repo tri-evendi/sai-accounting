@@ -61,6 +61,13 @@ export interface GoBalanceSheet {
   priorUnclosedIncome: string;
   totalLiabilitiesEquity: string;
   balanced: boolean;
+  /**
+   * `!!priorUnclosedIncome` menurut float TS — yang memecah blok ekuitas
+   * Neraca PEMBANDING (#557, 09 §9). Opsional hanya supaya keluaran biner Go
+   * yang lebih tua tetap terbaca; biner dari checkout yang sama selalu
+   * memuatnya.
+   */
+  equitySplitJS?: boolean;
   unknownTypes: string[];
 }
 
@@ -165,5 +172,14 @@ export function compareBalanceSheet(ts: TsBalanceSheet, go: GoBalanceSheet): str
   compareAmount(diffs, "laba tahun lalu belum ditutup", ts.priorUnclosedIncome, go.priorUnclosedIncome);
   compareAmount(diffs, "total liabilitas + ekuitas", ts.totalLiabilitiesEquity, go.totalLiabilitiesEquity);
   if (ts.balanced !== go.balanced) diffs.push(`vonis seimbang TS ${ts.balanced} ⇄ Go ${go.balanced}`);
+  /* Bukan angka, melainkan KEBENARAN float-nya: pada buku yang tahun lalunya
+     sudah ditutup, sen `priorUnclosedIncome` nol di kedua sisi, sementara TS
+     bisa menyimpan 1e-14 — dan itu yang memutuskan apakah Neraca pembanding
+     mencetak satu atau dua baris laba. */
+  if (go.equitySplitJS !== undefined && Boolean(ts.priorUnclosedIncome) !== go.equitySplitJS) {
+    diffs.push(
+      `pecahan ekuitas (float JS): TS ${Boolean(ts.priorUnclosedIncome)} (${ts.priorUnclosedIncome}) ⇄ Go ${go.equitySplitJS}`
+    );
+  }
   return diffs;
 }

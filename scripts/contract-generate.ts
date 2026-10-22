@@ -52,7 +52,6 @@ import { dirname, join } from "node:path";
 
 import { COMPANY_NAME } from "@sai/core/constants";
 import { BUSINESS_TIME_ZONE } from "@sai/core/business-date";
-import idDictionary from "@sai/core/i18n/dictionaries/id.json";
 import {
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
@@ -65,14 +64,18 @@ import {
   TRIAL_BALANCE_COLUMNS,
   TRIAL_BALANCE_HEADERS,
   TRIAL_BALANCE_PRINT_LABELS,
+  STATEMENT_COMPARE_CHANGE_HEADER,
   asOfPeriodLabel,
   balanceSheetBalanceNote,
+  comparePercentText,
+  comparePeriodLabel,
   costCenterPeriodSuffix,
   periodRangeLabel,
   trialBalanceBalanceNote,
 } from "../src/lib/statement-layout";
 import {
   BALANCE_SHEET_WIDTHS,
+  COMPARE_CHANGE_WIDTH,
   IDR_NUMBER_FORMAT,
   INCOME_STATEMENT_WIDTHS,
   SHEET_BANNER_STYLE,
@@ -80,7 +83,12 @@ import {
   sheetPrintedLine,
 } from "../src/lib/report-export";
 import { REPORT_ENGINES } from "../src/lib/report-engine";
-import { UNASSIGNED_COST_CENTER, costCenterDisplayName } from "../src/lib/cost-centers";
+import {
+  COST_CENTER_UNASSIGNED_PRINT_LABEL,
+  UNASSIGNED_COST_CENTER,
+  costCenterDisplayName,
+} from "../src/lib/cost-centers";
+import { COMPARISON_MODES } from "../src/lib/statement-compare";
 
 const AKAR = process.cwd();
 const SUMBER = join(AKAR, "contract", "kinds.yaml");
@@ -988,6 +996,53 @@ function bagianAngkaId(): { group: string; decimal: string; minus: string } {
   return { group: ambil("group"), decimal: ambil("decimal"), minus: ambil("minusSign") };
 }
 
+/**
+ * `comparePercentText` → dua pola Go: untuk persen POSITIF (berawalan "+") dan
+ * selainnya (nol, negatif, −0). Angka penanda diformat `toLocaleString
+ * ("id-ID")` — formatter yang SAMA dengan fungsinya — dan bentuk terformatnya,
+ * tanda minus ikut, yang menjadi `%s` (Go: `jscompat.FormatNumberID`).
+ */
+function polaPersenGo(): { positive: string; other: string } {
+  const pola = (n: number) => {
+    const angka = n.toLocaleString("id-ID");
+    const kalimat = comparePercentText(n);
+    if (!kalimat.includes(angka)) throw new Error(`pola Go: angka penanda hilang dari ${kalimat}`);
+    return kalimat.replace(/%/g, "%%").replace(angka, "%s");
+  };
+  return { positive: pola(987654.3), other: pola(-987654.3) };
+}
+
+/**
+ * Tabel `localeCompare` untuk karakter ASCII cetak (0x20–0x7E), dari
+ * `Intl.Collator` runtime ini — collator yang dipakai `compareLines`
+ * (`String.prototype.localeCompare`, lokal bawaan proses).
+ *
+ * Bentuknya KELOMPOK berurutan: karakter dalam satu kelompok setara pada
+ * tingkat dasar (`sensitivity: "base"` — huruf besar/kecil), dan urutan di
+ * dalam kelompok adalah urutan tersiernya. Itu cukup bagi Go untuk meniru
+ * perbandingan bertingkat UCA atas teks ASCII (`jscompat.LocaleCompare`).
+ */
+function tabelLocaleCompare(): string[] {
+  const huruf: string[] = [];
+  for (let c = 0x20; c < 0x7f; c += 1) huruf.push(String.fromCharCode(c));
+  const urut = [...huruf].sort((a, b) => a.localeCompare(b));
+  const dasar = new Intl.Collator(undefined, { sensitivity: "base" });
+  const kelompok: string[][] = [];
+  for (const h of urut) {
+    const akhir = kelompok[kelompok.length - 1];
+    if (akhir && dasar.compare(akhir[0]!, h) === 0) akhir.push(h);
+    else kelompok.push([h]);
+  }
+  /* Tertib total yang diandaikan Go: tidak ada dua karakter yang setara
+     sepenuhnya, dan setiap kelompok diurutkan tegas. */
+  for (const k of kelompok) {
+    for (let i = 1; i < k.length; i += 1) {
+      if (k[i - 1]!.localeCompare(k[i]!) >= 0) throw new Error(`localeCompare: ${k.join("")} tidak tertib`);
+    }
+  }
+  return kelompok.map((k) => k.join(""));
+}
+
 /** Nama bulan id-ID dari `Intl` — formatter yang SAMA dengan `formatDate`. */
 function namaBulan(): string[] {
   const f = new Intl.DateTimeFormat("id-ID", { month: "long", timeZone: "UTC" });
@@ -1036,13 +1091,14 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const isl = INCOME_STATEMENT_PRINT_LABELS;
   const bsl = BALANCE_SHEET_PRINT_LABELS;
   const angka = bagianAngkaId();
+  const persen = polaPersenGo();
   const konstLaporan2 = ratakan([
     { kiri: "BusinessTimeZone", kanan: `= ${q(BUSINESS_TIME_ZONE)}` },
     { kiri: "PeriodRangeFormat", kanan: `= ${q(polaGo(periodRangeLabel, 2))}` },
     { kiri: "CostCenterPeriodSuffixFormat", kanan: `= ${q(polaGo(costCenterPeriodSuffix))}` },
     { kiri: "CostCenterDisplayFormat", kanan: `= ${q(polaGo(costCenterDisplayName, 2))}` },
     { kiri: "CostCenterUnassigned", kanan: `= ${q(UNASSIGNED_COST_CENTER)}` },
-    { kiri: "CostCenterUnassignedLabel", kanan: `= ${q(idDictionary.costCenters.filterUnassigned)}` },
+    { kiri: "CostCenterUnassignedLabel", kanan: `= ${q(COST_CENTER_UNASSIGNED_PRINT_LABEL)}` },
     { kiri: "NumberGroupSeparatorID", kanan: `= ${q(angka.group)}` },
     { kiri: "NumberDecimalSeparatorID", kanan: `= ${q(angka.decimal)}` },
     { kiri: "NumberMinusSignID", kanan: `= ${q(angka.minus)}` },
@@ -1073,6 +1129,11 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
     { kiri: "BalanceSheetTotalLiabilitiesEquityLabel", kanan: `= ${q(bsl.totalLiabilitiesEquity)}` },
     { kiri: "BalanceSheetNoteBalanced", kanan: `= ${q(balanceSheetBalanceNote(true))}` },
     { kiri: "BalanceSheetNoteUnbalanced", kanan: `= ${q(balanceSheetBalanceNote(false))}` },
+    { kiri: "ComparePeriodFormat", kanan: `= ${q(polaGo(comparePeriodLabel, 2))}` },
+    { kiri: "CompareChangeHeader", kanan: `= ${q(STATEMENT_COMPARE_CHANGE_HEADER)}` },
+    { kiri: "CompareChangeWidth", kanan: `= ${COMPARE_CHANGE_WIDTH}` },
+    { kiri: "ComparePercentPositiveFormat", kanan: `= ${q(persen.positive)}` },
+    { kiri: "ComparePercentFormat", kanan: `= ${q(persen.other)}` },
   ]);
   const kolomIs = INCOME_STATEMENT_COLUMNS.map(
     (c) => `\t{Header: ${q(INCOME_STATEMENT_HEADERS[c])}, Width: ${INCOME_STATEMENT_WIDTHS[c]}},`
@@ -1155,6 +1216,19 @@ ${kolomBs}
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.
 var MonthNamesID = [12]string{
 ${namaBulan().map((m) => `\t${q(m)},`).join("\n")}
+}
+
+// ComparisonModes: kosakata \`?compare=\` (COMPARISON_MODES,
+// src/lib/statement-compare.ts) — kolom pembanding Laba Rugi & Neraca (#557).
+var ComparisonModes = map[string]bool{
+${COMPARISON_MODES.map((m) => `\t${`${q(m)}:`.padEnd(Math.max(...COMPARISON_MODES.map((x) => q(x).length)) + 1)} true,`).join("\n")}
+}
+
+// LocaleCompareASCII: urutan \`localeCompare\` atas ASCII cetak, dari
+// Intl.Collator runtime pembangkit — kelompok setara-dasar (huruf besar/kecil),
+// berurutan; di dalam kelompok, urutan tersier. Dibaca jscompat.LocaleCompare.
+var LocaleCompareASCII = []string{
+${tabelLocaleCompare().map((k) => `\t${q(k)},`).join("\n")}
 }
 `;
 }

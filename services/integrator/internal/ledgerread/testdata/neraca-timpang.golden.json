@@ -11,5 +11,6 @@
   "priorUnclosedIncome": "0.00",
   "totalLiabilitiesEquity": "-0.01",
   "balanced": false,
+  "equitySplitJS": false,
   "unknownTypes": []
 }

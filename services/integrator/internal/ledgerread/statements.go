@@ -116,7 +116,19 @@ type BalanceSheet struct {
 	PriorUnclosedIncome    Cents           `json:"priorUnclosedIncome"`
 	TotalLiabilitiesEquity Cents           `json:"totalLiabilitiesEquity"`
 	Balanced               bool            `json:"balanced"`
-	UnknownTypes           []string        `json:"unknownTypes"`
+	// EquitySplitJS: apakah `priorUnclosedIncome` TS bernilai BENAR (≠ 0)
+	// menurut aritmetika FLOAT JavaScript — yang memutuskan apakah
+	// `balanceSheetLayout()` memecah blok ekuitas menjadi dua baris (#555).
+	//
+	// Tidak sama dengan `PriorUnclosedIncome != 0`. TS menurunkan pecahan itu
+	// sebagai selisih DUA jumlah float (laba sepanjang buku − laba tahun
+	// berjalan), dan pada buku yang tahun lalunya SUDAH ditutup kedua jumlah
+	// itu bisa berbeda di digit ke-14 (100,4 − 0,3 = 100,10000000000001 ≠
+	// 100,1): sen-nya nol, tetapi `!!1.4e-14` benar. Neraca PEMBANDING membawa
+	// pecahan ini ke berkas (09 §9, jebakan 3) — jadi Go meniru kebenarannya,
+	// bukan hanya angkanya. Dihitung `jsSplit`, urutan penjumlahan TS.
+	EquitySplitJS bool     `json:"equitySplitJS"`
+	UnknownTypes  []string `json:"unknownTypes"`
 }
 
 // netsFilter: penyaring jumlah per akun — padanan argumen `accountNets` TS.
@@ -403,7 +415,47 @@ func BuildBalanceSheet(all, current []accountSums, hasSetting bool) *BalanceShee
 	}
 	bs.TotalLiabilitiesEquity = bs.TotalLiabilities + (bs.TotalEquity + bs.NetIncome)
 	bs.Balanced = bs.TotalAssets == bs.TotalLiabilitiesEquity
+	bs.EquitySplitJS = hasSetting && jsSplit(all, current)
 	return bs
+}
+
+// jsFloat: rupiah-float TS satu jumlah sen — `Number(decimal)` atas jumlah
+// `NUMERIC(…,2)` adalah double terdekat ke desimal itu, dan begitu pula
+// pembagian bilangan bulat sen dengan 100 (dibulatkan benar oleh IEEE 754).
+func jsFloat(c Cents) float64 { return float64(c) / 100 }
+
+// jsStatementAmount: `statementAmount` TS dalam float — `n.debit − n.credit`
+// atau sebaliknya, per sisi kategorinya.
+func jsStatementAmount(cat contract.AccountCategory, a accountSums) float64 {
+	if contract.CategoryStatementSide[cat] == contract.StatementSideDebit {
+		return jsFloat(a.debit) - jsFloat(a.credit)
+	}
+	return jsFloat(a.credit) - jsFloat(a.debit)
+}
+
+// jsIncome: `revenue − expense` TS dalam float, dijumlahkan dalam urutan akun
+// yang SAMA (ORDER BY code) — penjumlahan float tidak asosiatif, dan urutan
+// lain bisa memberi digit ke-14 yang lain.
+func jsIncome(accounts []accountSums) float64 {
+	var revenue, expense float64
+	for _, a := range accounts {
+		cat, ok := contract.CategoryOf(a.accountType)
+		if !ok {
+			continue
+		}
+		switch cat {
+		case contract.AccountCategoryRevenue:
+			revenue += jsStatementAmount(cat, a)
+		case contract.AccountCategoryExpense:
+			expense += jsStatementAmount(cat, a)
+		}
+	}
+	return revenue - expense
+}
+
+// jsSplit: `!!(netIncome − currentYearIncome)` dalam float TS.
+func jsSplit(all, current []accountSums) bool {
+	return jsIncome(all)-jsIncome(current) != 0
 }
 
 // ParseCostCenterFilter: padanan `parseCostCenterFilter` (`src/lib/cost-centers.ts`).

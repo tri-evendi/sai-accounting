@@ -28,6 +28,7 @@ import "server-only";
 import { publishJob } from "@sai/platform/job-queue";
 import { resolveAsOf, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { reportEngine } from "@/lib/report-engine";
+import { comparisonDate, comparisonRange, parseComparison } from "@/lib/statement-compare";
 
 /** Muatan `report.export_go`. Dibaca `services/integrator/internal/interactivelane`. */
 export type GoExportPayload = {
@@ -44,7 +45,44 @@ export type GoExportPayload = {
    */
   fromInstant?: string;
   toInstant?: string;
+  /**
+   * Kolom PEMBANDING (#557), hanya bila `params.compare` sah dan laporannya
+   * komparatif (`COMPARABLE_REPORTS`). Instan, bukan tanggal, dengan alasan
+   * yang sama dengan `asOfInstant`: `comparisonRange`/`comparisonDate` memakai
+   * kalender zona PROSES (`new Date(y - 1, m, d, …)`), dan pelari Go yang
+   * menghitung ulang "tahun lalu" sendiri akan bergantung pada TZ
+   * container-nya. Go membaca label kolomnya dari instan ini (tanggal bisnis
+   * Jakarta = `formatDate`).
+   *
+   *   • `period` (Laba Rugi): `priorFromInstant` + `priorToInstant`
+   *   • `as_of`  (Neraca):    `priorAsOfInstant`
+   */
+  priorFromInstant?: string;
+  priorToInstant?: string;
+  priorAsOfInstant?: string;
 };
+
+/**
+ * Laporan yang punya kolom pembanding (#557) — halaman keduanya membaca
+ * `?compare=`. Laporan lain mengabaikan `compare`; ia DIBUANG dari parameter
+ * muatan, supaya pekerjaan tidak membawa permintaan yang tidak akan dipenuhi
+ * siapa pun.
+ */
+export const COMPARABLE_REPORTS: readonly string[] = ["income-statement", "balance-sheet"];
+
+/**
+ * `compare` yang sah untuk laporan ini, atau `null` — dan parameter tanpa
+ * `compare` yang tidak sah. Nilai tak dikenal DIABAIKAN, seperti halaman
+ * (`parseComparison`): tautan lama memulangkan laporan biasa, bukan galat.
+ */
+function comparisonParams(
+  report: ReportDefinition,
+  params: Record<string, string>
+): { compare: ReturnType<typeof parseComparison>; params: Record<string, string> } {
+  const compare = COMPARABLE_REPORTS.includes(report.id) ? parseComparison(params.compare) : null;
+  const rest = Object.fromEntries(Object.entries(params).filter(([k]) => k !== "compare"));
+  return { compare, params: compare === null ? rest : { ...rest, compare } };
+}
 
 /**
  * Bentuk muatan per `paramKind`, TANPA memeriksa register. Dipisah dari
@@ -60,19 +98,27 @@ export function goExportPayloadShape(
   switch (report.paramKind) {
     case "as_of": {
       const { asOf, asOfISO } = resolveAsOf(params.asOf, now);
+      const c = comparisonParams(report, params);
+      const priorAsOf = c.compare === null ? null : comparisonDate(asOf, c.compare);
       return {
         reportId: report.id,
-        params: { ...params, asOf: asOfISO },
+        params: { ...c.params, asOf: asOfISO },
         asOfInstant: asOf.toISOString(),
+        ...(priorAsOf ? { priorAsOfInstant: priorAsOf.toISOString() } : {}),
       };
     }
     case "period": {
       const { from, to, fromISO, toISO } = resolvePeriod(params.from, params.to, now);
+      const c = comparisonParams(report, params);
+      const prior = c.compare === null ? null : comparisonRange(from, to, c.compare);
       return {
         reportId: report.id,
-        params: { ...params, from: fromISO, to: toISO },
+        params: { ...c.params, from: fromISO, to: toISO },
         fromInstant: from.toISOString(),
         toInstant: to.toISOString(),
+        ...(prior
+          ? { priorFromInstant: prior.from.toISOString(), priorToInstant: prior.to.toISOString() }
+          : {}),
       };
     }
     default:

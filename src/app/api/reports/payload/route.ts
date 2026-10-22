@@ -60,6 +60,9 @@ export async function GET(request: Request) {
     month: params.get("month") ?? undefined,
     costCenter: params.get("costCenter") ?? undefined,
     cols: params.get("cols") ?? undefined,
+    // Kolom pembanding (#557) — bentuk `?compare=` halaman; nilai tak dikenal
+    // diabaikan `buildReportPayload`.
+    compare: params.get("compare") ?? undefined,
   });
 
   return NextResponse.json(payload, { headers: { "Cache-Control": "no-store" } });

@@ -22,7 +22,7 @@ const row = (
   type: string,
   quantity: number
 ): OpnameAdjustmentInput => ({
-  date: new Date(`${date}T09:00:00`),
+  date: new Date(`${date}T09:00:00+07:00`),
   itemName,
   unit: "kg",
   type,
@@ -77,8 +77,8 @@ describe("buildOpnameHistory — sessions", () => {
 
   it("groups by calendar DAY, so times within a day do not split a count", () => {
     const h = buildOpnameHistory([
-      { ...row("2026-07-15", "Kopi", "in", 40), date: new Date("2026-07-15T08:00:00") },
-      { ...row("2026-07-15", "Teh", "out", 5), date: new Date("2026-07-15T17:30:00") },
+      { ...row("2026-07-15", "Kopi", "in", 40), date: new Date("2026-07-15T08:00:00+07:00") },
+      { ...row("2026-07-15", "Teh", "out", 5), date: new Date("2026-07-15T17:30:00+07:00") },
     ]);
     expect(h.sessionCount).toBe(1);
   });

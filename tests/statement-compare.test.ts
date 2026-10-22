@@ -16,6 +16,7 @@ import {
   comparisonRange,
   type ComparableLine,
 } from "@/lib/statement-compare";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
 const l = (code: string, name: string, amount: number): ComparableLine => ({ code, name, amount });
 
@@ -85,16 +86,16 @@ describe("persen atas dasar nol", () => {
 });
 
 describe("rentang pembanding", () => {
-  const dari = new Date(2026, 0, 1, 0, 0, 0, 0);
-  const sampai = new Date(2026, 0, 31, 23, 59, 59, 999);
+  const dari = businessDate(2026, 0, 1, 0, 0, 0, 0);
+  const sampai = businessDate(2026, 0, 31, 23, 59, 59, 999);
 
   it("`previous_year` menggeser tahunnya, bukan panjangnya", () => {
     const r = comparisonRange(dari, sampai, "previous_year");
-    expect(r.from.getFullYear()).toBe(2025);
-    expect(r.from.getMonth()).toBe(0);
-    expect(r.from.getDate()).toBe(1);
-    expect(r.to.getFullYear()).toBe(2025);
-    expect(r.to.getDate()).toBe(31);
+    expect(businessParts(r.from).year).toBe(2025);
+    expect(businessParts(r.from).month).toBe(0);
+    expect(businessParts(r.from).day).toBe(1);
+    expect(businessParts(r.to).year).toBe(2025);
+    expect(businessParts(r.to).day).toBe(31);
   });
 
   it("`preceding` berakhir tepat satu milidetik sebelum rentang berjalan", () => {
@@ -113,23 +114,23 @@ describe("rentang pembanding", () => {
 });
 
 describe("tanggal pembanding untuk Neraca", () => {
-  const asOf = new Date(2026, 11, 31, 23, 59, 59, 999);
+  const asOf = businessDate(2026, 11, 31, 23, 59, 59, 999);
 
   it("`previous_year` = tanggal yang sama tahun lalu", () => {
     const d = comparisonDate(asOf, "previous_year");
-    expect(d.getFullYear()).toBe(2025);
-    expect(d.getMonth()).toBe(11);
-    expect(d.getDate()).toBe(31);
+    expect(businessParts(d).year).toBe(2025);
+    expect(businessParts(d).month).toBe(11);
+    expect(businessParts(d).day).toBe(31);
   });
 
   it("`preceding` = tepat sebelum periode berjalan dimulai", () => {
-    const from = new Date(2026, 0, 1);
+    const from = businessDate(2026, 0, 1);
     expect(from.getTime() - comparisonDate(asOf, "preceding", from).getTime()).toBe(1);
   });
 
   it("`preceding` tanpa `from` jatuh ke tahun lalu, bukan menebak sebulan", () => {
     /* Menebak "sebulan" akan salah untuk rentang panjang mana pun, dan
        neraca yang salah tanggal tetap seimbang — jadi tak ada yang berbunyi. */
-    expect(comparisonDate(asOf, "preceding").getFullYear()).toBe(2025);
+    expect(businessParts(comparisonDate(asOf, "preceding")).year).toBe(2025);
   });
 });

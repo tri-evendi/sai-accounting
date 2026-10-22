@@ -64,7 +64,7 @@ import { getBudgetReport } from "@/lib/budget-report";
 import { getSalesByCustomer, getPurchasesBySupplier } from "@/lib/party-recap";
 import { CARD_GAP } from "@sai/ui/layout-scale";
 import { InsightPanel } from "@/components/dashboard/insight-panel";
-import { businessDayEnd, businessISODate } from "@sai/core/business-date";
+import { businessDayEnd, businessISODate, businessParts } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -501,7 +501,7 @@ export default async function DashboardPage({
     /* `hasBudgets: false` adalah jawaban "modul anggaran belum dipakai" — dan
        kueri pertamanya memang berhenti di situ, tanpa membaca laba/rugi. */
     canViewReports
-      ? getBudgetReport(period.from.getFullYear(), period.from.getMonth() + 1)
+      ? getBudgetReport(businessParts(period.from).year, businessParts(period.from).month + 1)
       : Promise.resolve(null),
     canViewReports ? getSalesByCustomer(period.from, period.to) : Promise.resolve(null),
     canViewReports ? getPurchasesBySupplier(period.from, period.to) : Promise.resolve(null),

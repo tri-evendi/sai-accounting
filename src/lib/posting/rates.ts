@@ -53,6 +53,7 @@
  * either fail en masse or, worse, succeed against a guessed rate.
  */
 import type { Prisma, PrismaClient } from "@sai/db/client/company";
+import { businessISODate } from "@sai/core/business-date";
 
 /** Type-only Prisma import, as in ./mapping — callers pass the client. */
 type Client = Prisma.TransactionClient | PrismaClient;
@@ -83,22 +84,20 @@ export class MissingSettlementRateError extends Error {
 }
 
 /**
- * First and last instant of `date`'s calendar day.
+ * The `rate_date` (a `DATE` column) that `date` settles on.
  *
- * Mirrors `periodBounds` in @/lib/period: local-time components, which is the
- * convention the whole codebase already reads transaction dates with. The
- * bounds exist so a stored `rate_date` (a DATE) matches a payment date that may
- * carry a time component — NOT to widen the search. Exactly one row can satisfy
- * them, because `exchange_rates` is unique on (currency, rate_date).
+ * The calendar day is read on Jakarta time (`@sai/core/business-date`), not the
+ * process zone, and the result is that day at 00:00 UTC — the form Prisma
+ * reads and writes a `@db.Date` in (same as `tax-rates.ts`). Matching by
+ * EQUALITY rather than by a `[start, end]` instant range matters for a DATE
+ * column: the previous bounds were 00:00–23:59 WIB, i.e. 17:00Z the day before
+ * to 16:59Z, and a DATE compared against that range admits BOTH the day before
+ * and the day itself — with no `orderBy`, `findFirst` could then pick the wrong
+ * day's rate whenever two consecutive days had one. Exactly one row can match
+ * an equality, because `exchange_rates` is unique on (currency, rate_date).
  */
-export function dayBounds(date: Date): { start: Date; end: Date } {
-  const y = date.getFullYear();
-  const m = date.getMonth();
-  const d = date.getDate();
-  return {
-    start: new Date(y, m, d, 0, 0, 0, 0),
-    end: new Date(y, m, d, 23, 59, 59, 999),
-  };
+export function settlementRateDate(date: Date): Date {
+  return new Date(`${businessISODate(date)}T00:00:00.000Z`);
 }
 
 /**
@@ -119,9 +118,8 @@ export async function resolveSettlementRate(
 ): Promise<number> {
   if (currency === "IDR") return 1;
 
-  const { start, end } = dayBounds(date);
   const row = await client.exchangeRate.findFirst({
-    where: { currency, isActive: true, rateDate: { gte: start, lte: end } },
+    where: { currency, isActive: true, rateDate: settlementRateDate(date) },
   });
 
   const rate = row ? Number(row.rate) : 0;

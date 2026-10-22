@@ -130,6 +130,11 @@ const matchesIn = (value: unknown, cond: unknown): boolean => {
     if (lte !== undefined && t > new Date(lte).getTime()) return false;
     return true;
   }
+  // A Date compared for equality (the exchange-rate lookup pins a `@db.Date`
+  // by equality): two Date objects are never `===`, so compare their instants.
+  if (cond instanceof Date) {
+    return value instanceof Date && value.getTime() === cond.getTime();
+  }
   return value === cond;
 };
 

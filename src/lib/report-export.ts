@@ -74,6 +74,7 @@ import {
   unratedNote,
   unresolvedNote,
 } from "@/lib/statement-layout";
+import { BUSINESS_TIME_ZONE, businessDayStart } from "@sai/core/business-date";
 
 /**
  * How a cell's value should be rendered by the spreadsheet, without changing it.
@@ -174,9 +175,14 @@ const text = (value: string | null, bold = false): SheetCell => ({ value, bold }
 
 /** Tanggal hitung ulang, format layar (id-ID) — bukan ISO mentah "2026-07-30". */
 function opnameSheetDate(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
+  const d = businessDayStart(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "long", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: BUSINESS_TIME_ZONE,
+  }).format(d);
 }
 
 /**

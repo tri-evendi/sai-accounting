@@ -36,6 +36,7 @@ import { getDictionary, getLocale, getT } from "@sai/platform/i18n/server";
 import { monthNames } from "@/lib/i18n/labels";
 import { CARD_GAP, SECTION_GAP } from "@sai/ui/layout-scale";
 import { DashboardOutlined, WarningOutlined } from "@ant-design/icons";
+import { businessParts } from "@sai/core/business-date";
 export const dynamic = "force-dynamic";
 
 /** `marginLG` 24 · `margin` 16 — token AntD sebagai angka (berkas ini server). */
@@ -82,21 +83,22 @@ export default async function BudgetReportPage({
   const t = await getT();
   const months = monthNames(await getDictionary(await getLocale()));
   const sp = await searchParams;
-  const now = new Date();
+  // "Sekarang" menurut kalender Jakarta, bukan zona proses.
+  const today = businessParts(new Date());
   // URL bisa diedit tangan: `Number("abc")` = NaN yang lolos ke periodBounds/
   // Prisma dan berujung 500. Rentang mengikuti validations/period.ts
   // (tahun 2000–2100, bulan 1–12); nilai tak sah jatuh ke bawaan halaman
   // (tahun ini / bulan ini), bulan 0 tetap berarti setahun penuh.
   const yearRaw = Number(sp.year);
   const year =
-    Number.isInteger(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100 ? yearRaw : now.getFullYear();
-  const monthRaw = sp.month === undefined ? now.getMonth() + 1 : Number(sp.month);
+    Number.isInteger(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100 ? yearRaw : today.year;
+  const monthRaw = sp.month === undefined ? today.month + 1 : Number(sp.month);
   const month =
     monthRaw === 0
       ? undefined
       : Number.isInteger(monthRaw) && monthRaw >= 1 && monthRaw <= 12
         ? monthRaw
-        : now.getMonth() + 1;
+        : today.month + 1;
 
   const [{ report, hasBudgets }, sales] = await Promise.all([
     getBudgetReport(year, month),

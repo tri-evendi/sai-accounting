@@ -43,7 +43,7 @@ import { reportById, resolveColumns, columnLabels } from "@/lib/report-catalog";
 import { agingColumns, type AgingColumnId } from "@/lib/statement-layout";
 import { SECTION_GAP, SPACE_XS } from "@sai/ui/layout-scale";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
-import { businessDayEnd, businessISODate } from "@sai/core/business-date";
+import { businessDayEnd, businessDayStart, businessISODate } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +93,7 @@ export default async function PayablesPage({
   // membuat `ageInDays` NaN dan MENJATUHKAN semua baris ke ember ">90 hari"
   // tanpa satu pun galat (audit 2026-07) — validasi dulu, mundur ke hari ini.
   const asOfRaw = sp.asOf ?? todayISO();
-  const asOfStr = /^\d{4}-\d{2}-\d{2}$/.test(asOfRaw) && !Number.isNaN(new Date(`${asOfRaw}T00:00:00`).getTime())
+  const asOfStr = /^\d{4}-\d{2}-\d{2}$/.test(asOfRaw) && !Number.isNaN(businessDayStart(asOfRaw).getTime())
     ? asOfRaw
     : todayISO();
   const asOf = businessDayEnd(asOfStr);

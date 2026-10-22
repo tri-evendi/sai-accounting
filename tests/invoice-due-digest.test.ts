@@ -26,11 +26,12 @@ import {
   planInvoiceDueDigests,
   type DueInvoiceRow,
 } from "@/lib/invoice-due-digest";
+import { businessDate } from "@sai/core/business-date";
 
-const HARI_INI = new Date(2026, 7, 25); // 25 Agu 2026, Selasa
+const HARI_INI = businessDate(2026, 7, 25); // 25 Agu 2026, Selasa
 
 /** Tanggal N hari dari `HARI_INI` (negatif = ke belakang). */
-const geser = (hari: number) => new Date(2026, 7, 25 + hari);
+const geser = (hari: number) => businessDate(2026, 7, 25 + hari);
 
 function faktur(over: Partial<DueInvoiceRow> = {}): DueInvoiceRow {
   return {
@@ -115,7 +116,7 @@ describe("cadensi — bentuk kunci dedupe", () => {
     /* Inilah yang membuat faktur jatuh tempo 25 Agu berbunyi sekali, bukan
        empat kali (22, 23, 24, 25). Diterbitkan dari tiga hari yang berbeda,
        kuncinya harus tetap sama persis. */
-    const jatuhTempo = new Date(2026, 7, 25);
+    const jatuhTempo = businessDate(2026, 7, 25);
     const kunci = new Set(
       [-3, -2, -1, 0].map(
         (h) => rencana([faktur({ dueDate: jatuhTempo })], geser(h))[0]?.dedupeKey
@@ -149,9 +150,9 @@ describe("cadensi — bentuk kunci dedupe", () => {
 
   it("tunggakan berbunyi sekali per PEKAN, bukan sekali per hari", () => {
     const tertunggak = [faktur({ dueDate: geser(-30) })];
-    const senin = new Date(2026, 7, 24);
-    const jumat = new Date(2026, 7, 28);
-    const pekanDepan = new Date(2026, 7, 31);
+    const senin = businessDate(2026, 7, 24);
+    const jumat = businessDate(2026, 7, 28);
+    const pekanDepan = businessDate(2026, 7, 31);
 
     expect(rencana(tertunggak, senin)[0].dedupeKey).toBe(
       rencana(tertunggak, jumat)[0].dedupeKey
@@ -177,15 +178,15 @@ describe("cadensi — bentuk kunci dedupe", () => {
 describe("pekanKunci", () => {
   it("mengikuti ISO-8601: pekan milik Kamisnya", () => {
     // 31 Des 2026 adalah Kamis → pekan 53 tahun 2026; 1 Jan 2027 (Jumat) ikut.
-    expect(pekanKunci(new Date(2026, 11, 31))).toBe("2026-W53");
-    expect(pekanKunci(new Date(2027, 0, 1))).toBe("2026-W53");
+    expect(pekanKunci(businessDate(2026, 11, 31))).toBe("2026-W53");
+    expect(pekanKunci(businessDate(2027, 0, 1))).toBe("2026-W53");
   });
 
   it("hari-hari dalam satu pekan berbagi kunci yang sama", () => {
-    const senin = new Date(2026, 7, 24);
-    const minggu = new Date(2026, 7, 30);
+    const senin = businessDate(2026, 7, 24);
+    const minggu = businessDate(2026, 7, 30);
     expect(pekanKunci(senin)).toBe(pekanKunci(minggu));
-    expect(pekanKunci(new Date(2026, 7, 31))).not.toBe(pekanKunci(senin));
+    expect(pekanKunci(businessDate(2026, 7, 31))).not.toBe(pekanKunci(senin));
   });
 });
 

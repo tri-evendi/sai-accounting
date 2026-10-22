@@ -713,7 +713,7 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  */
 export function isValidISODate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false;
-  const d = new Date(`${value}T00:00:00`);
+  const d = businessDayStart(value);
   return !Number.isNaN(d.getTime()) && toISODate(d) === value;
 }
 

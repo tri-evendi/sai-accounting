@@ -56,6 +56,12 @@ import {
   type JobRow,
 } from "@sai/platform/job-queue";
 import { pruneOrphanResults } from "@sai/platform/job-result-store";
+import {
+  pruneRuntimeSamples,
+  recordJobRun,
+  startLoopSampler,
+  trackJobMemory,
+} from "@sai/platform/runtime-samples";
 
 /**
  * Jeda antar putaran UPKEEP — memulangkan lease kedaluwarsa & membuang baris
@@ -147,6 +153,11 @@ async function upkeep(lane: JobLane): Promise<void> {
   } catch (e) {
     console.error(`[${lane}] upkeep: gagal membuang baris \`done\`:`, e);
   }
+  try {
+    await pruneRuntimeSamples();
+  } catch (e) {
+    console.error(`[${lane}] upkeep: gagal memangkas \`runtime_samples\`:`, e);
+  }
 
   /*
    * ══ HASIL YATIM — pembayaran atas peringatan yang ditulis sebelum ada hasil
@@ -224,6 +235,11 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
 
   console.log(`[${lane}] mulai sebagai ${me} — mengklaim ${kinds.join(", ")}`);
 
+  /* Potret event loop jalur ini (pemicu 1d, `@sai/core/runtime-trigger`).
+     Dimulai SESUDAH pagar & daftar handler: pelari yang keluar tanpa bekerja
+     tidak boleh meninggalkan baris yang terbaca sebagai jalur yang sehat. */
+  const hentikanPotret = startLoopSampler(lane);
+
   /* Putaran pertama SEGERA, bukan sesudah jeda: pelari yang baru hidup sesudah
      sebuah crash harus memulangkan pekerjaan yang tertinggal sekarang, bukan
      satu menit dari sekarang. */
@@ -264,6 +280,7 @@ export async function runLane({ lane, handlers }: RunnerOptions): Promise<void> 
   }
 
   clearInterval(pemeliharaan);
+  hentikanPotret();
   await controlDb.$disconnect().catch(() => {});
   console.log(`[${lane}] berhenti.`);
 }
@@ -305,6 +322,9 @@ async function kerjakan(
   }, LEASE_RENEW_MS);
 
   const mulai = Date.now();
+  /* Puncak memori PERCOBAAN ini — pemicu (b) tahap 1d. Dicatat di `finally`,
+     apa pun hasilnya: ekspor yang gagal tetap memakan memori yang sama. */
+  const memori = trackJobMemory();
   try {
     const resultRef = await handler({
       job,
@@ -340,6 +360,13 @@ async function kerjakan(
     );
   } finally {
     clearInterval(perpanjang);
+    await recordJobRun({
+      lane,
+      jobId: job.id,
+      jobKind: job.kind,
+      durationMs: Date.now() - mulai,
+      memory: memori.finish(),
+    });
   }
 }
 

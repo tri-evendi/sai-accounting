@@ -1077,3 +1077,56 @@ model Job {
   @@index([finishedAt])
   @@map("jobs")
 }
+
+/// Potret runtime proses Node/Bun — bahan vonis pemicu tahap 1d (09 §3.3, §9).
+/// Dua bentuk baris di satu tabel, dibedakan `sampleKind`:
+///   `loop` — satu per proses per jendela 5 menit: tunda event loop p50/p99/max
+///            + memori saat dipotret;
+///   `job`  — satu per percobaan pekerjaan di pelari jalur Node: puncak memori
+///            dan lamanya.
+/// Dipangkas `pruneRuntimeSamples` setelah 14 hari, seperti baris `jobs` `done`.
+/// Lihat migration `0008_runtime_samples` untuk kenapa ini tabel sendiri dan
+/// bukan kolom di `jobs`.
+model RuntimeSample {
+  id Int @id @default(autoincrement())
+
+  /// `app-customer`, atau nama JALUR untuk pelari (`interactive`, `ledger`, …).
+  source String @db.VarChar(40)
+
+  /// `hostname:pid` — menunjuk container yang memotret; replika kedua tidak
+  /// boleh terbaca sebagai proses yang sama.
+  instance String @db.VarChar(100)
+
+  /// `node` | `bun` — keduanya mencatat histogram event loop dengan dasar
+  /// berbeda (lihat `loopDelayMs`), dan pembaca angka perlu tahu yang mana.
+  runtime String @db.VarChar(10)
+
+  /// `loop` | `job` — String + union TS, konvensi docs/DATABASE.md.
+  sampleKind String @map("sample_kind") @db.VarChar(10)
+
+  /// Hanya `loop`. Milidetik TUNDA (sudah dikoreksi per runtime).
+  windowMs  Int?     @map("window_ms")
+  loopP50Ms Decimal? @map("loop_p50_ms") @db.Decimal(10, 2)
+  loopP99Ms Decimal? @map("loop_p99_ms") @db.Decimal(10, 2)
+  loopMaxMs Decimal? @map("loop_max_ms") @db.Decimal(10, 2)
+
+  /// Hanya `job`. Bukan FK: baris `jobs` dipangkas pada retensi yang sama dan
+  /// sampel yang ikut terhapus bersama pekerjaannya kehilangan gunanya lebih
+  /// cepat daripada yang perlu.
+  jobId      Int?    @map("job_id")
+  jobKind    String? @map("job_kind") @db.VarChar(40)
+  durationMs Int?    @map("duration_ms")
+
+  /// `loop`: nilai saat dipotret. `job`: PUNCAK selama percobaan (heap = batas
+  /// bawah tercuplik; RSS = tepat bila percobaan ini mencetak tanda air proses).
+  heapUsedBytes BigInt @map("heap_used_bytes")
+  rssBytes      BigInt @map("rss_bytes")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([sampleKind, source, createdAt])
+  @@index([createdAt])
+  @@index([jobId])
+  @@map("runtime_samples")
+}

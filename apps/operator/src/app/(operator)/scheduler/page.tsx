@@ -29,6 +29,12 @@
  *
  * Panelnya berdiri DI LUAR percabangan riwayat: riwayat yang kosong atau tak
  * terbaca tidak boleh ikut menyembunyikan antreannya.
+ *
+ * ── Panel ketiga: pemicu tahap 1d (09 §3.3, §9) ───────────────────────────
+ * Di halaman ini karena ia bersebelahan dengan histogram durasi: durasi
+ * menjawab "jalur mana yang lambat", panel ini menjawab "apakah kelambatan itu
+ * menahan halaman atau memori" — pertanyaan yang membuka 1d. Vonisnya dari
+ * `@sai/core/runtime-trigger`, bukan dihitung di sini.
  */
 
 import { CalendarOutlined } from "@ant-design/icons";
@@ -47,6 +53,7 @@ import { requireOperatorPage } from "@op/lib/operator/guard";
 import {
   jobMetricsForOperator,
   queueSnapshotForOperator,
+  runtimeSummaryForOperator,
   schedulerRunsForOperator,
 } from "@op/lib/operator/store";
 import { METRICS_WINDOW_MINUTES, drainMinutes, type LaneMetrics } from "@sai/platform/job-metrics";
@@ -56,6 +63,14 @@ import {
   type LaneQueueHealth,
   type QueueHealthStatus,
 } from "@sai/core/queue-health";
+import {
+  RUNTIME_EVAL_WINDOW_DAYS,
+  stage1dTriggered,
+  type JobMemorySummary,
+  type LoopSummary,
+  type TriggerStatus,
+  type TriggerVerdict,
+} from "@sai/core/runtime-trigger";
 import { getT } from "@sai/platform/i18n/server";
 import { formatDateTime } from "@sai/core/utils";
 import { SPACE_XS } from "@sai/ui/layout-scale";
@@ -130,16 +145,54 @@ const QUEUE_BADGE: Record<QueueHealthStatus, BadgeVariant> = {
   late: "danger",
 };
 
+/*
+ * Vonis pemicu 1d. `insufficient` NETRAL, bukan hijau — alasan yang sama dengan
+ * `idle` di atas: "sampel kurang" tidak menyatakan beban kerjanya sehat, ia
+ * menyatakan halaman ini belum tahu. Teksnya selalu ikut; warna bukan sinyal
+ * tunggal (MASTER.md).
+ */
+const TRIGGER_KEY: Record<TriggerStatus, string> = {
+  triggered: "operator.scheduler.runtimeVerdictTriggered",
+  not_triggered: "operator.scheduler.runtimeVerdictNotTriggered",
+  insufficient: "operator.scheduler.runtimeVerdictInsufficient",
+};
+
+const TRIGGER_BADGE: Record<TriggerStatus, BadgeVariant> = {
+  triggered: "warning",
+  not_triggered: "success",
+  insufficient: "outline",
+};
+
+/** Byte → MiB bulat. `—` untuk yang tak terukur, sama seperti panel metrik. */
+const mib = (bytes: number | null) => (bytes === null ? null : Math.round(bytes / 1048576));
+
+const SUBHEADING: React.CSSProperties = {
+  margin: 0,
+  fontSize: 14,
+  fontWeight: 600,
+  color: "var(--ant-color-text)",
+};
+
+interface TriggerRow {
+  key: "loop" | "memory";
+  label: string;
+  verdict: TriggerVerdict;
+  /** Angka teramati & ambang dalam satuan tampilannya. */
+  observed: number | null;
+  threshold: number;
+}
+
 type SchedulerRun = NonNullable<Awaited<ReturnType<typeof schedulerRunsForOperator>>>[number];
 
 export default async function OperatorSchedulerPage() {
   await requireOperatorPage();
   const t = await getT();
 
-  const [runs, queue, metrics] = await Promise.all([
+  const [runs, queue, metrics, runtime] = await Promise.all([
     schedulerRunsForOperator(10),
     queueSnapshotForOperator(),
     jobMetricsForOperator(),
+    runtimeSummaryForOperator(),
   ]);
   const latest = runs?.[0] ?? null;
 
@@ -243,6 +296,140 @@ export default async function OperatorSchedulerPage() {
     },
   ];
 
+  /*
+   * Panel pemicu 1d (09 §3.3, §9). Jumlah sampel dicetak BERSAMA minimumnya
+   * ("12 / 288"): vonis "belum terpicu" atas dua belas jendela bukan bukti
+   * apa pun, dan pembaca yang hanya melihat lencananya tidak bisa tahu itu.
+   */
+  const verdictBadge = (status: TriggerStatus) => (
+    <Badge variant={TRIGGER_BADGE[status]}>
+      {t(TRIGGER_KEY[status] as Parameters<typeof t>[0])}
+    </Badge>
+  );
+
+  const triggerRows: TriggerRow[] =
+    runtime === null
+      ? []
+      : [
+          {
+            key: "loop",
+            label: t("operator.scheduler.runtimeTriggerLoop"),
+            verdict: runtime.loopVerdict,
+            observed: runtime.loopVerdict.observed,
+            threshold: runtime.loopVerdict.threshold,
+          },
+          {
+            key: "memory",
+            label: t("operator.scheduler.runtimeTriggerMemory"),
+            verdict: runtime.memoryVerdict,
+            observed: mib(runtime.memoryVerdict.observed),
+            threshold: mib(runtime.memoryVerdict.threshold) ?? 0,
+          },
+        ];
+
+  const triggerColumns: SaiColumns<TriggerRow> = [
+    {
+      key: "trigger",
+      title: t("operator.scheduler.runtimeColTrigger"),
+      align: "left",
+      render: (_v, r) => r.label,
+    },
+    {
+      key: "verdict",
+      title: t("operator.scheduler.runtimeColVerdict"),
+      align: "left",
+      render: (_v, r) => verdictBadge(r.verdict.status),
+    },
+    {
+      key: "observed",
+      title: t("operator.scheduler.runtimeColObserved"),
+      align: "right",
+      render: (_v, r) => angkaAtauStrip(r.observed),
+    },
+    {
+      key: "threshold",
+      title: t("operator.scheduler.runtimeColThreshold"),
+      align: "right",
+      render: (_v, r) => <span style={TABULAR}>{r.threshold}</span>,
+    },
+    {
+      key: "samples",
+      title: t("operator.scheduler.runtimeColSamples"),
+      align: "right",
+      render: (_v, r) => (
+        <span style={TABULAR}>
+          {r.verdict.samples} / {r.verdict.minSamples}
+        </span>
+      ),
+    },
+  ];
+
+  const loopColumns: SaiColumns<LoopSummary> = [
+    {
+      key: "source",
+      title: t("operator.scheduler.runtimeColSource"),
+      align: "left",
+      render: (_v, l) => l.source,
+    },
+    {
+      key: "snapshots",
+      title: t("operator.scheduler.runtimeColSnapshots"),
+      align: "right",
+      render: (_v, l) => <span style={TABULAR}>{l.snapshots}</span>,
+    },
+    {
+      key: "p50",
+      title: t("operator.scheduler.runtimeColP50"),
+      align: "right",
+      render: (_v, l) => angkaAtauStrip(l.p50Ms),
+    },
+    {
+      key: "p99",
+      title: t("operator.scheduler.runtimeColP99"),
+      align: "right",
+      render: (_v, l) => angkaAtauStrip(l.p99Ms),
+    },
+    {
+      key: "max",
+      title: t("operator.scheduler.runtimeColMax"),
+      align: "right",
+      render: (_v, l) => angkaAtauStrip(l.maxMs),
+    },
+    {
+      key: "rss",
+      title: t("operator.scheduler.runtimeColRss"),
+      align: "right",
+      render: (_v, l) => angkaAtauStrip(mib(l.rssMaxBytes)),
+    },
+  ];
+
+  const memoryColumns: SaiColumns<JobMemorySummary> = [
+    {
+      key: "lane",
+      title: t("operator.scheduler.queueColLane"),
+      align: "left",
+      render: (_v, m) => m.lane,
+    },
+    {
+      key: "runs",
+      title: t("operator.scheduler.runtimeColRuns"),
+      align: "right",
+      render: (_v, m) => <span style={TABULAR}>{m.runs}</span>,
+    },
+    {
+      key: "rssPeak",
+      title: t("operator.scheduler.runtimeColRssPeak"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(mib(m.rssPeakMaxBytes)),
+    },
+    {
+      key: "heapPeak",
+      title: t("operator.scheduler.runtimeColHeapPeak"),
+      align: "right",
+      render: (_v, m) => angkaAtauStrip(mib(m.heapPeakMaxBytes)),
+    },
+  ];
+
   /** Kolom hitungan — semuanya rata kanan + tabular (MASTER.md §Angka). */
   const countColumn = (
     key: string,
@@ -332,6 +519,48 @@ export default async function OperatorSchedulerPage() {
             <p style={{ ...MUTED, margin: 0 }}>
               {t("operator.scheduler.metricsNote", { window: METRICS_WINDOW_MINUTES })}
             </p>
+          </div>
+        )}
+      </ConsolePanel>
+
+      <ConsolePanel
+        title={t("operator.scheduler.runtimeHeading")}
+        description={t("operator.scheduler.runtimeDescription", { days: RUNTIME_EVAL_WINDOW_DAYS })}
+        actions={
+          runtime === null
+            ? undefined
+            : verdictBadge(
+                stage1dTriggered(runtime.loopVerdict, runtime.memoryVerdict)
+                  ? "triggered"
+                  : "not_triggered"
+              )
+        }
+      >
+        {runtime === null ? (
+          <ConsoleNotice>{t("operator.scheduler.runtimeUnavailable")}</ConsoleNotice>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--ant-margin)" }}>
+            <StaticTable columns={triggerColumns} rows={triggerRows} rowKey={(r) => r.key} />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+              <h3 style={SUBHEADING}>{t("operator.scheduler.runtimeLoopHeading")}</h3>
+              {runtime.loop.length === 0 ? (
+                <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeLoopEmpty")}</p>
+              ) : (
+                <StaticTable columns={loopColumns} rows={runtime.loop} rowKey={(l) => l.source} />
+              )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: SPACE_XS }}>
+              <h3 style={SUBHEADING}>{t("operator.scheduler.runtimeMemoryHeading")}</h3>
+              {runtime.jobs.length === 0 ? (
+                <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeMemoryEmpty")}</p>
+              ) : (
+                <StaticTable columns={memoryColumns} rows={runtime.jobs} rowKey={(m) => m.lane} />
+              )}
+            </div>
+
+            <p style={{ ...MUTED, margin: 0 }}>{t("operator.scheduler.runtimeNote")}</p>
           </div>
         )}
       </ConsolePanel>

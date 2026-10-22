@@ -105,7 +105,15 @@ export type TenantAuditAction =
   | "tenant.deletion.execute"
   /** Buku sebuah PT dipindah ke instans `db-postgres` lain (tahap 4,
    *  `bun run tenant:move`): asal, tujuan, dan nama salinan lama tercatat. */
-  | "tenant.company.move";
+  | "tenant.company.move"
+  /** Pindah SaaS → on-premise (docs/ONPREM-PINDAH-DARI-SAAS.md): bekukan,
+   *  bundel diambil, cairkan (jalan balik), dinyatakan pindah; dan di sisi
+   *  on-premise, bundel dipasang. */
+  | "tenant.onprem.freeze"
+  | "tenant.onprem.export"
+  | "tenant.onprem.unfreeze"
+  | "tenant.onprem.migrated_out"
+  | "tenant.onprem.import";
 
 export interface TenantAuditEntry {
   id: string;

@@ -452,6 +452,7 @@
       "checkingSession": "Memeriksa sesi Anda...",
       "forgotPassword": "Lupa kata sandi? Atur ulang lewat email",
       "invalidCredentials": "Nama pengguna atau kata sandi salah. Silakan coba lagi.",
+      "migratedOut": "Akun ini sudah dipindahkan ke server milik perusahaan Anda sendiri dan tidak lagi dipakai di sini. Masuklah lewat alamat pemasangan perusahaan Anda; tanyakan alamatnya kepada pengelola sistem.",
       "registerPrompt": "Belum punya akun?",
       "registerLink": "Daftar sekarang"
     },
@@ -4556,7 +4557,8 @@
       "active": "Aktif",
       "past_due": "Menunggak",
       "suspended": "Ditangguhkan (hanya-baca)",
-      "cancelled": "Berhenti"
+      "cancelled": "Berhenti",
+      "migrated_out": "Pindah ke on-premise"
     },
     "invoiceStatus": {
       "draft": "Draf",

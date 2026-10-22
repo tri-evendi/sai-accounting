@@ -7,6 +7,11 @@ dibiarkan kosong adalah keputusan yang belum dibuat, bukan keputusan "tidak".
 Rancangannya: [09 §7](./arsitektur/09-RANCANGAN-LAYANAN.md) (profil
 on-premise), [06 §3.7](./arsitektur/06-KEAMANAN.md) (kriptografi lisensi).
 
+**Customer pindah dari SaaS?** Ikuti
+[`ONPREM-PINDAH-DARI-SAAS.md`](./ONPREM-PINDAH-DARI-SAAS.md) bersama templat
+ini: pemasangannya sama, tetapi **tanpa `bootstrap`** — buku, pengguna, dan
+kata sandinya datang dari bundel serah-terima.
+
 | | |
 |---|---|
 | Customer | **[ISI]** |

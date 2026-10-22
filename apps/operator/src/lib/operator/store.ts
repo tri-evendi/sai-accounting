@@ -959,6 +959,8 @@ export async function operatorOverview(
 export const TENANT_READ_ONLY_STATUSES: ReadonlySet<string> = new Set([
   "suspended",
   "cancelled",
+  /* Pindah ke on-premise: bukunya di SaaS nonaktif — keadaan akhir. */
+  "migrated_out",
 ]);
 
 export function tenantStatusVariant(status: string): "success" | "warning" | "danger" {

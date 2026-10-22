@@ -21,12 +21,14 @@ import { TenantKeyedCache } from "@sai/core/tenant-cache";
 
 export interface TenantState {
   tenantId: number;
-  /** pending_verification | trialing | active | past_due | suspended | cancelled */
+  /** pending_verification | trialing | active | past_due | suspended | cancelled | migrated_out */
   status: string;
   planKey: string;
   maxCompanies: number;
   maxUsers: number;
   trialEndsAt: Date | null;
+  /** Pembekuan serah-terima on-premise (`@sai/core/tenant-migration`). */
+  frozenAt: Date | null;
 }
 
 const TTL_MS = 60_000;
@@ -65,6 +67,7 @@ export async function tenantStateForCompany(companyId: number): Promise<TenantSt
           maxCompanies: true,
           maxUsers: true,
           trialEndsAt: true,
+          frozenAt: true,
         },
       },
     },
@@ -78,6 +81,7 @@ export async function tenantStateForCompany(companyId: number): Promise<TenantSt
         maxCompanies: company.tenant.maxCompanies,
         maxUsers: company.tenant.maxUsers,
         trialEndsAt: company.tenant.trialEndsAt,
+        frozenAt: company.tenant.frozenAt,
       }
     : null;
 

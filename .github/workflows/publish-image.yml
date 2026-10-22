@@ -14,9 +14,10 @@
 #
 # ══ Dua image, bukan satu ═══════════════════════════════════════════════════
 # `docker compose build web` TIDAK membangun image `migrate` — pelajaran yang
-# terulang beberapa rilis: `scheduler` dan `conformance` berjalan di atas image
-# migrator, yang ikut memuat kode aplikasi, jadi melewatkannya berarti dua
-# layanan menjalankan kode basi tanpa satu pun tanda. Matriks di bawah
+# terulang beberapa rilis: `svc-worker` (penjadwal, pemeriksa kesesuaian, dan
+# pelari jalur Node) berjalan di atas image migrator, yang ikut memuat kode
+# aplikasi, jadi melewatkannya berarti empat peran latar menjalankan kode basi
+# tanpa satu pun tanda. Matriks di bawah
 # membangun KEDUANYA setiap kali, sehingga keduanya tidak bisa lagi menyimpang.
 name: Publish production images
 
@@ -63,19 +64,43 @@ jobs:
           # tag `sha-` keduanya sama.
           - target: runner-operator
             suffix: "-operator"
-          - target: migrator
-            suffix: "-migrator"
-          # `backup` ikut, meski jarang berubah dan tidak ada di jalur
+          # ══ `migrator` + `backup` — SATU JOB, BUKAN DUA (22 Okt 2026) ══════
+          #
+          # `backup` dulu entri matriks sendiri. Karena tiap entri adalah job
+          # TERPISAH dengan cache `scope` sendiri, `FROM migrator` di tahap
+          # `backup` dibangun ULANG di runner lain — dan `bun install` +
+          # `prisma generate` tidak reproduksibel byte demi byte (stempel waktu,
+          # urutan berkas). Lapisannya sama isinya, BEDA digest-nya. Diukur di
+          # mesin produksi: `-backup` 2,5 GB dengan 2,035 GB UNIK, sebab
+          # `node_modules` (1,3 GB) tersimpan DUA KALI di cakram yang dipakai
+          # bersama PostgreSQL — padahal satu-satunya yang benar-benar baru di
+          # `backup` adalah lapisan apt ~336 MB.
+          #
+          # Sekarang `backup` dibangun SESUDAH `migrator`, di job dan builder
+          # yang SAMA, dengan tahap `migrator`-nya DIGANTI image yang baru saja
+          # didorong — dirujuk lewat DIGEST-nya (`build-contexts:
+          # migrator=docker-image://…@sha256:…`). Lapisan bawah `-backup`
+          # karena itu PERSIS lapisan `-migrator`, digest demi digest, dan host
+          # yang sudah menarik `-migrator` hanya membayar lapisan apt. Digest,
+          # bukan tag: tag bisa bergeser di antara dua langkah, digest tidak.
+          #
+          # `companion_*` dibaca `tests/image-compose-sepadan.test.ts` sebagai
+          # target terbitan — `-backup` dirujuk compose (`job-backup`), jadi ia
+          # tetap wajib terbit setiap dorongan.
+          #
+          # `backup` ikut terbit meski jarang berubah dan tidak ada di jalur
           # penggelaran. Justru itu sebabnya: image yang tidak pernah dibangun
           # ulang adalah image yang membasi tanpa ada yang menyadarinya, dan
           # layanan cadangan sudah pernah mati berbulan-bulan karena akar
           # seperti itu.
-          - target: backup
-            suffix: "-backup"
+          - target: migrator
+            suffix: "-migrator"
+            companion_target: backup
+            companion_suffix: "-backup"
           # ══ `integrator` — DITAMBAHKAN 20 Okt 2026, DAN IA SUDAH TERLAMBAT ══
           #
-          # `docker-compose.yml` merujuk image ini untuk `svc-tenant` sejak
-          # tahap 1b, dan Dockerfile punya targetnya sejak hari yang sama —
+          # `docker-compose.yml` merujuk image ini untuk `svc-tenant` (kini
+          # `svc-integrator`) sejak tahap 1b, dan Dockerfile punya targetnya sejak hari yang sama —
           # tetapi matriks ini tidak. Akibatnya image itu TIDAK PERNAH
           # diterbitkan, dan `docker compose pull svc-tenant` gagal dengan
           # `manifest unknown`: satu layanan di compose yang mustahil digelar,
@@ -103,6 +128,7 @@ jobs:
         # tidak ikut menangkap "version" milik dependensi.
         env:
           SUFFIX: ${{ matrix.suffix }}
+          COMPANION_SUFFIX: ${{ matrix.companion_suffix }}
         run: |
           version="$(jq -r .version package.json)"
           sha_short="$(git rev-parse --short HEAD)"
@@ -115,19 +141,34 @@ jobs:
             exit 1
           fi
 
-          base="${REGISTRY}/${repo_lc}${SUFFIX}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "sha_short=$sha_short" >> "$GITHUB_OUTPUT"
           echo "repo_lc=$repo_lc" >> "$GITHUB_OUTPUT"
-          {
-            echo "tags<<__TAGS__"
+
+          # Tag satu image. Dipanggil untuk target matriks DAN pendampingnya
+          # (`companion_suffix`), supaya aturan saluran di bawah satu salinan.
+          tag_image() {
+            base="${REGISTRY}/${repo_lc}$1"
             # `:latest` HANYA dari main — tag git pada commit lama tidak boleh
             # memundurkan apa yang ditarik SaaS.
             [ "$GITHUB_REF_TYPE" = "tag" ] || echo "${base}:latest"
             echo "${base}:sha-${sha_short}"
             echo "${base}:${version}"
+          }
+
+          echo "image=${REGISTRY}/${repo_lc}${SUFFIX}" >> "$GITHUB_OUTPUT"
+          {
+            echo "tags<<__TAGS__"
+            tag_image "$SUFFIX"
             echo "__TAGS__"
           } >> "$GITHUB_OUTPUT"
+          if [ -n "$COMPANION_SUFFIX" ]; then
+            {
+              echo "companion_tags<<__TAGS__"
+              tag_image "$COMPANION_SUFFIX"
+              echo "__TAGS__"
+            } >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: docker/setup-buildx-action@v3
 
@@ -139,6 +180,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push ${{ matrix.target }}
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -165,11 +207,34 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
 
+      # Pendamping (hari ini: `backup` di atas `migrator`). Tahap
+      # `${{ matrix.target }}` di Dockerfile DIGANTI image yang baru saja
+      # didorong, dirujuk lewat digest-nya — lihat komentar matriks. Builder
+      # yang sama juga masih memegang lapisan itu di cache lokalnya, jadi tidak
+      # ada yang dibangun ulang.
+      - name: Build & push ${{ matrix.companion_target }} (di atas ${{ matrix.target }} yang baru didorong)
+        if: matrix.companion_target != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.companion_target }}
+          platforms: linux/amd64
+          push: true
+          build-contexts: |
+            ${{ matrix.target }}=docker-image://${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}
+          tags: ${{ steps.meta.outputs.companion_tags }}
+          cache-from: |
+            type=gha,scope=${{ matrix.target }}
+            type=gha,scope=${{ matrix.companion_target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.companion_target }}
+          provenance: false
+
       - name: Sebutkan yang terdorong
         run: |
           echo "### ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "${{ steps.meta.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.meta.outputs.companion_tags }}" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   # ══ Bundel luring — HANYA untuk tag `v*` ════════════════════════════════

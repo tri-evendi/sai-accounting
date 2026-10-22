@@ -83,9 +83,21 @@ services:
     environment:
       APP_DEPLOY_PROFILE: onprem
 
-  # Jalur `schedule` hari ini = langkah di `job-scheduler` (09 §9: belum ada
-  # `kind` yang diterbitkan untuknya), jadi lisensinya di-mount DI SINI.
-  job-scheduler:
+  # `svc-worker` — penjadwal, pemeriksa kesesuaian, dan pelari jalur `ledger`
+  # serta `interactive` Node dalam SATU container (1 image = 1 container,
+  # 22 Okt 2026). Ketiga alasan yang dulu tertulis per layanan tetap berlaku:
+  #
+  #  • Jalur `schedule` hari ini = langkah di putaran peran `scheduler` (09 §9:
+  #    belum ada `kind` yang diterbitkan untuknya), jadi lisensinya di-mount DI
+  #    SINI.
+  #  • Jalur `ledger` wajib ada di on-premise: sejak rancangan §4 penjadwal
+  #    hanya MENERBITKAN, jadi tanpa pelarinya dokumen berulang tidak pernah
+  #    terbit — baris `jobs` menumpuk tanpa pengklaim, dan tidak ada satu pun
+  #    halaman yang rusak untuk mengabarkannya.
+  #  • Jalur `interactive` juga: ekspor besar di on-premise sama mungkinnya
+  #    dengan di SaaS, dan tanpanya permintaan di atas ambang penyerahan
+  #    menumpuk tanpa pengklaim.
+  svc-worker:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
     pull_policy: always
     environment:
@@ -94,59 +106,30 @@ services:
     volumes:
       - ${SAI_LICENCE_DIR:-./lisensi}:/etc/sai:ro
 
-  job-conformance:
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
-    pull_policy: always
-    environment:
-      APP_DEPLOY_PROFILE: onprem
-
   job-backup:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-backup:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
     pull_policy: always
     environment:
       APP_DEPLOY_PROFILE: onprem
 
-  # Jalur `ledger` ikut dipasang di on-premise, dan itu bukan pilihan: sejak
-  # rancangan §4 penjadwal hanya MENERBITKAN, jadi tanpa layanan ini dokumen
-  # berulang tidak pernah terbit sama sekali — baris `jobs` menumpuk tanpa
-  # pengklaim, dan tidak ada satu pun halaman yang rusak untuk mengabarkannya.
-  svc-ledger:
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
-    pull_policy: always
-    environment:
-      APP_DEPLOY_PROFILE: onprem
-
-  # Jalur `tenant` — cadangan per basis data (tahap 1b). Di on-premise ia LEBIH
-  # penting daripada di SaaS, dan bukan sebaliknya: di sini tidak ada bucket
-  # milik SAI, tidak ada mesin kedua, dan seringkali tidak ada S3 sama sekali —
-  # jadi direktori `cadangan` di mesin customer adalah satu-satunya salinan yang
-  # ada. Itu juga yang membuat aturan "yang terbaru tidak pernah dibuang"
-  # berlaku di sini, bukan hanya di jalur lokal (lihat `PilihUntukDibuang`).
+  # `svc-integrator` — jalur `tenant` (cadangan per basis data, tahap 1b) dan
+  # jalur `interactive` sisi Go (lembar sebar laporan ber-`engine: go`, tahap
+  # 1d) dalam SATU proses.
+  #
+  # Cadangannya di on-premise LEBIH penting daripada di SaaS, dan bukan
+  # sebaliknya: di sini tidak ada bucket milik SAI, tidak ada mesin kedua, dan
+  # seringkali tidak ada S3 sama sekali — jadi direktori `cadangan` di mesin
+  # customer adalah satu-satunya salinan yang ada. Itu juga yang membuat aturan
+  # "yang terbaru tidak pernah dibuang" berlaku di sini, bukan hanya di jalur
+  # lokal (lihat `PilihUntukDibuang`).
   #
   # ⚠ Image-nya `-integrator`, BUKAN `-migrator`: ia satu-satunya layanan di
   # pemasangan ini yang dibangun dari tahap Go. `docker compose pull` yang
   # melewatkannya akan membiarkan jalur cadangan di image yang mendahului
   # migration-nya — dan kegagalannya tidak terlihat di satu pun halaman, sebab
-  # layanan ini tidak melayani HTTP.
-  svc-tenant:
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
-    pull_policy: always
-    environment:
-      APP_DEPLOY_PROFILE: onprem
-
-  # Jalur `interactive` ikut dipasang: ekspor besar di on-premise sama
-  # mungkinnya dengan di SaaS, dan tanpa layanan ini permintaan di atas ambang
-  # penyerahan menumpuk sebagai baris `jobs` tanpa pengklaim — tanpa satu
-  # halaman pun yang rusak untuk mengabarkannya.
-  svc-interactive:
-    image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-migrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
-    pull_policy: always
-    environment:
-      APP_DEPLOY_PROFILE: onprem
-
-  # Pasangan Go-nya (tahap 1d): lembar sebar laporan ber-`engine: go` hanya
-  # dikerjakan di sini. Tanpanya ekspor Neraca Saldo menumpuk tanpa pengklaim.
-  svc-interactive-go:
+  # layanan ini tidak melayani HTTP. Tanpanya pula ekspor Neraca Saldo menumpuk
+  # tanpa pengklaim.
+  svc-integrator:
     image: ${SAI_IMAGE:-ghcr.io/tri-evendi/sai-accounting}-integrator:${SAI_TAG:?setel SAI_TAG ke tag versi (mis. 0.9.0) — on-premise tidak boleh menarik :latest}
     pull_policy: always
     environment:

@@ -152,7 +152,7 @@ function verdict(
  * Pemicu (a) — dinilai HANYA dari `app-customer`.
  *
  * Event loop pelari jalur sendiri TIDAK ikut dinilai, dan itu inti jalurnya:
- * ekspor besar sudah di proses `svc-interactive`, jadi loop yang ditahannya
+ * ekspor besar sudah di proses pelari `interactive` (`svc-worker`), jadi loop yang ditahannya
  * adalah loop pelari, bukan loop yang melayani halaman. Angka pelari tetap
  * ditampilkan sebagai konteks — ia memperlihatkan seberapa keras ekspor
  * menahan loop bila suatu saat ia dikerjakan di dalam permintaan lagi.

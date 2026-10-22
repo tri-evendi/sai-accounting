@@ -82,7 +82,7 @@ Aturannya:
 - Skrip impor memetakan lewat `src/lib/legacy-values.ts` dan melempar error
   untuk nilai tak dikenal. Menebak (mis. jatuh ke `'in'`) menghasilkan angka
   salah tanpa jejak.
-- `bun run check-data-conformance` (juga layanan `job-conformance`) memeriksa
+- `bun run check-data-conformance` (juga peran `conformance` di layanan `svc-worker`) memeriksa
   data yang sudah tertulis terhadap kosakata ini.
 
 ---
@@ -367,7 +367,7 @@ habis (+ tagihan pertama), dunning, suspensi setelah tenggang, pengingat
 H-7/H-3/H-1, sinkronisasi `usage_counters`, deteksi basis data yatim (lapor
 saja), dan rekonsiliasi. Ia idempoten (nomor tagihan deterministik +
 `reminder_logs` unik), jadi dua kali jalan tidak menagih atau mengirim dua kali.
-Di produksi ia dijalankan tiap jam oleh layanan compose `job-scheduler`, dan
+Di produksi ia dijalankan tiap jam oleh peran `scheduler` di layanan compose `svc-worker`, dan
 hanya menagih tenant dengan `billing_mode` otomatis (lihat
 `docs/KOMERSIALISASI.md`).
 

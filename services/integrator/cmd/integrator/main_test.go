@@ -1,0 +1,74 @@
+// PENJAGA janji `svc-integrator`: satu jalur berakhir → jalur lain dihentikan
+// → proses keluar BUKAN-NOL. Kebalikannya — proses yang tetap hidup dengan
+// satu jalur mati — adalah container "Up" tanpa cadangan (#374).
+package main
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+)
+
+// menunggu: pelari palsu yang hidup sampai `stop` selesai, lalu mencatatnya.
+func menunggu(dihentikan *bool) func(ctx, stop context.Context) error {
+	return func(_, stop context.Context) error {
+		select {
+		case <-stop.Done():
+			*dihentikan = true
+			return nil
+		case <-time.After(5 * time.Second):
+			return errors.New("tidak pernah dihentikan")
+		}
+	}
+}
+
+func TestSatuJalurGagalMenghentikanYangLainDanKeluarBukanNol(t *testing.T) {
+	var dihentikan bool
+	kode := jalankan(context.Background(), context.Background(), []pelari{
+		{"tenant", func(context.Context, context.Context) error { return errors.New("pg tak terjangkau") }},
+		{"interactive-go", menunggu(&dihentikan)},
+	})
+	if kode == 0 {
+		t.Fatal("kode keluar 0 padahal satu jalur gagal")
+	}
+	if !dihentikan {
+		t.Fatal("jalur saudara tidak dihentikan")
+	}
+}
+
+func TestJalurYangBerakhirRapiTanpaDimintaTetapBukanNol(t *testing.T) {
+	// Pagar `tenant` dipegang instans lain → pelari pulang nil tanpa bekerja.
+	// Proses yang terus hidup tanpa jalur cadangan terbaca sehat.
+	var dihentikan bool
+	kode := jalankan(context.Background(), context.Background(), []pelari{
+		{"tenant", func(context.Context, context.Context) error { return nil }},
+		{"interactive-go", menunggu(&dihentikan)},
+	})
+	if kode == 0 {
+		t.Fatal("kode keluar 0 padahal satu jalur berakhir tanpa diminta")
+	}
+	if !dihentikan {
+		t.Fatal("jalur saudara tidak dihentikan")
+	}
+}
+
+func TestBerhentiYangDimintaKeluarNol(t *testing.T) {
+	diminta, minta := context.WithCancel(context.Background())
+	// Kedua pelari berhenti karena "SIGTERM" — di sini: `diminta` selesai.
+	pelariSinyal := func(context.Context, context.Context) error {
+		<-diminta.Done()
+		return nil
+	}
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		minta()
+	}()
+	kode := jalankan(context.Background(), diminta, []pelari{
+		{"tenant", pelariSinyal},
+		{"interactive-go", pelariSinyal},
+	})
+	if kode != 0 {
+		t.Fatalf("berhenti yang diminta keluar dengan kode %d", kode)
+	}
+}

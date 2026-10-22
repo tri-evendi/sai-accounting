@@ -14,7 +14,7 @@
  * tesnya — bukan pembacanya.
  *
  * ══ KENAPA MENUMPANG PUTARAN PENJADWAL ══════════════════════════════════════
- * Dipanggil layanan `job-scheduler` tiap jam, bersama lima produser lain.
+ * Dipanggil peran `scheduler` di `svc-worker` tiap jam, bersama lima produser lain.
  * Alasan yang sama yang sudah ditulis di `docker-compose.yml` untuk
  * `notify:*`: cadensinya tidak perlu sendiri, idempoten, dan layanan tersendiri
  * hanya menambah container yang bisa mati diam-diam di kotak yang sudah padat.

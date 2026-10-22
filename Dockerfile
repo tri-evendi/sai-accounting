@@ -134,7 +134,7 @@ FROM prepared AS builder-operator
 RUN NODE_OPTIONS="--max-old-space-size=768" bun run build:operator
 
 
-# ─── Migrator (dipakai service `migrate` di compose) ─────────
+# ─── Migrator (dipakai service `migrate` dan `svc-worker` di compose) ─
 # Menyimpan node_modules penuh + Prisma CLI + skema, jadi migration bisa jalan.
 #
 # ══ KENAPA BUKAN `prisma migrate deploy` LANGSUNG (issue #104) ═══════════════
@@ -198,6 +198,15 @@ CMD ["bun", "run", "db:migrate:all"]
 # di uji dan gagal pada penyedia pertama yang menormalkan header sedikit
 # berbeda — pada hari kita mencoba MEMULIHKAN. Protokol yang sudah dipakai
 # jutaan orang tidak layak ditulis ulang demi menghemat satu paket.
+#
+# ⚠ DI CI, tahap `migrator` di bawah ini DIGANTI image `-migrator` yang baru
+# saja didorong, dirujuk lewat digest-nya (`build-contexts:` di
+# `.github/workflows/publish-image.yml`). Tanpa itu `-migrator` dan `-backup`
+# dibangun di job terpisah dengan lapisan `node_modules` yang sama isinya
+# tetapi BEDA digest — terukur 2,035 GB unik untuk image yang seharusnya hanya
+# menambah ~336 MB lapisan apt di cakram produksi. Membangun tahap ini secara
+# lokal tetap bekerja seperti biasa: tanpa konteks bernama, `migrator` adalah
+# tahap di atas.
 FROM migrator AS backup
 # ⚠ `postgresql-client` Debian bookworm adalah versi **15**, dan `pg_dump`
 # MENOLAK server yang lebih baru daripada dirinya. Service `pg` di compose
@@ -251,15 +260,17 @@ COPY services/integrator/ ./
 # `CGO_ENABLED=0` → biner statis, yang memang seluruh alasan Go dipilih (§3.3):
 # runtime tipis tanpa glibc yang harus cocok. `-trimpath` menghapus jalur mesin
 # pembangun dari biner; `-s -w` membuang tabel simbol debug (~30% ukuran).
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-tenant ./cmd/tenant
-# Biner KEDUA, image yang SAMA (09 §3.2: satu image, beberapa `command`): pelari
-# jalur `interactive` sisi Go — lembar sebar laporan ber-`engine: "go"`
-# (tahap 1d). Ia tidak memakai `pg_dump`; yang dibelinya dari image ini hanya
-# biner statis + `ca-certificates`.
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-interactive ./cmd/interactive
+#
+# SATU biner sejak "1 image = 1 container" (keputusan pemilik 22 Okt 2026):
+# `svc-integrator` menjalankan jalur `tenant` (cadangan) DAN jalur
+# `interactive` sisi Go (lembar sebar laporan ber-`engine: "go"`, tahap 1d)
+# dalam satu proses. `cmd/tenant` dan `cmd/interactive` tetap ada untuk
+# mengembangkan satu jalur, tapi TIDAK masuk image — biner yang tidak
+# dijalankan compose mana pun hanya permukaan.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc-integrator ./cmd/integrator
 
 
-# ─── Runtime integrator (service `svc-tenant` + `svc-interactive-go`) ────
+# ─── Runtime integrator (service `svc-integrator`) ───────────────────────
 #
 # ══ KENAPA BUKAN `FROM scratch` ════════════════════════════════════════════
 # Biner-nya statis, jadi `scratch` cukup untuk MENJALANKANNYA — tapi jalur
@@ -313,8 +324,7 @@ RUN apt-get update \
     && apt-get purge -y curl gnupg \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=go-build /out/svc-tenant /usr/local/bin/svc-tenant
-COPY --from=go-build /out/svc-interactive /usr/local/bin/svc-interactive
+COPY --from=go-build /out/svc-integrator /usr/local/bin/svc-integrator
 # Direktori kerja cadangan: satu basis data pada satu waktu, lalu dibuang.
 # Di dalam container, bukan di volume — isinya plaintext seumur beberapa detik,
 # dan ia tidak boleh selamat dari restart.
@@ -325,7 +335,9 @@ WORKDIR /app
 #
 # Dua tahap runtime lain di berkas ini memakai `USER node`, jadi non-root
 # memang konvensi di sini, dan layanan INILAH yang paling pantas
-# mendapatkannya: ia satu-satunya yang memegang `BACKUP_ENCRYPTION_KEY`.
+# mendapatkannya: ia satu-satunya yang memegang `BACKUP_ENCRYPTION_KEY` — dan
+# sejak 22 Okt 2026 ia juga mengurai parameter laporan pengguna di proses yang
+# sama (09 §3.2), yang membuat argumen ini lebih kuat, bukan lebih lemah.
 #
 # Yang menahannya bukan prinsip melainkan satu kenyataan yang tidak bisa diuji
 # dari sini: volume `cadangan` SUDAH ADA di mesin produksi, dibuat root oleh
@@ -337,7 +349,7 @@ WORKDIR /app
 # Syarat untuk memindahkannya, supaya tidak perlu ditemukan ulang:
 # `chown -R` volume `cadangan` ke uid yang dipakai, lalu pindahkan baris ini.
 # Itu langkah penyebaran, bukan perubahan kode, jadi tempatnya PRODUCTION.md.
-CMD ["svc-tenant"]
+CMD ["svc-integrator"]
 
 
 # ─── Runtime ─────────────────────────────────────────────────

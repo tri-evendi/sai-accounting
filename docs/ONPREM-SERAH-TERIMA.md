@@ -57,7 +57,7 @@ register hanya catatan — lisensi luring tidak bisa dicabut dari jauh. Selama
 kunci publik belum ditanam (§0), draf bisa dibuat tetapi unggahan mati.
 
 - Dipasang di `./lisensi/licence.sai` (atau `SAI_LICENCE_DIR`), di-mount
-  **hanya-baca** ke `app-customer` dan `job-scheduler`. Penggantian berkas
+  **hanya-baca** ke `app-customer` dan `svc-worker`. Penggantian berkas
   berlaku dalam ±60 detik tanpa restart.
 - Lisensi **tidak pernah menutup pembukuan.** Dukungan yang berakhir atau versi
   yang melampaui `maxVersion` hanya dipajang; batas perusahaan/pengguna hanya

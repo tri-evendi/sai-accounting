@@ -16,6 +16,10 @@
 > rilis, dan orang yang membacanya saat menggelar justru tidak menemukan
 > layanan yang harus ia gelar.
 >
+> Sejak 22 Okt 2026 ("1 image = 1 container", 09 §3.2) keenam layanan latar
+> itu menjadi dua: `svc-worker` (empat peran Node) dan `svc-integrator` (dua
+> jalur Go). Rilis pertamanya wajib `--remove-orphans` (`PRODUCTION.md`).
+>
 > Tahap **1a, 1b, dan 1c** rancangan 09 selesai dan sudah dipindahkan ke 01–08
 > sebagai keadaan; 09 memuat sisanya saja — ditambah lima hal yang sengaja
 > TIDAK dibangun, masing-masing beserta pemicunya (§9). Tiga di antaranya

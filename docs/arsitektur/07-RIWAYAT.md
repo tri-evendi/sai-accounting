@@ -32,7 +32,7 @@ Empat pelajaran yang masih berlaku:
 
 | # | Risiko | Usul |
 |---|---|---|
-| 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`svc-tenant` (jalur yang mendump SETIAP basis data) |
+| 1 | **Aplikasi tersambung sebagai superuser.** Role `sai` adalah `rolsuper`, jadi pembatasan pola `sai\_t%` yang ada di MariaDB hilang. Satu injeksi SQL di `$queryRawUnsafe` memberi akses penuh ke **server** | Role aplikasi `NOSUPERUSER CREATEDB`; superuser hanya untuk `migrate`/`svc-integrator` (jalur `tenant`, yang mendump SETIAP basis data) |
 | 2 | **Pencarian jadi peka huruf besar-kecil.** Filter `contains`/`startsWith` tanpa `mode: "insensitive"` — `abadi` tidak lagi menemukan `PT ABADI` | Tambahkan `mode: "insensitive"` di jalur pencarian |
 | 3 | **Collation `C` di semua basis data.** `ORDER BY name` mengurutkan per byte, dan `@unique` pada kode/nomor mengizinkan `ABC` dan `abc` sekaligus | `citext` atau indeks `lower(...)`, per kolom |
 | 4 | **Tiga skrip operator masih berdialek MySQL** — `pause-platform-billing.ts`, `adopt-existing-company.ts`, `prove-company-slug-immutable.ts` | Port ke dialek PostgreSQL |
@@ -205,3 +205,24 @@ tanpa `--max-old-space-size` saat jalan, dan ekspor besar kini di proses
 mesin ini kini **7,4 GB RAM** — angka ~3,6 GB di dokumen lain adalah potret
 lama; aturan "jangan build di server" tetap berlaku karena mesinnya dibagi
 dengan aplikasi lain.
+
+## 6. Satu image = satu container (22 Okt 2026, belum digelar)
+
+Keputusan pemilik, sesudah diberi tahu harganya: enam layanan latar menjadi
+dua. Image `-migrator` → `svc-worker` (penyelia `scripts/run-workers.ts`,
+empat peran: `scheduler`, `conformance`, `ledger`, `interactive`); image
+`-integrator` → `svc-integrator` (`cmd/integrator`, jalur `tenant` + jalur
+`interactive` Go dalam satu proses). Pagar jalur `ledger` sekaligus pindah ke
+koneksi langsung (`CONTROL_DATABASE_DIRECT_URL` di compose dasar). Risiko yang
+diterima — kunci cadangan seproses dengan parameter laporan pengguna, satu peran
+jatuh = semua restart — dan pemicu memisahkannya lagi:
+[09 §3.2](./09-RANCANGAN-LAYANAN.md).
+
+Bersamaan: CI membangun `-backup` di atas `-migrator` yang baru didorong
+(`build-contexts`, dirujuk digest) karena di job terpisah lapisan
+`node_modules`-nya sama isi tetapi beda digest — terukur 2,035 GB unik di cakram
+produksi untuk image yang seharusnya hanya menambah ~336 MB.
+
+Gelar pertamanya wajib `--remove-orphans`: compose tidak menghentikan layanan
+yang hilang dari berkasnya, dan enam container lama yang tetap hidup mengklaim
+pekerjaan yang sama dengan dua yang baru.

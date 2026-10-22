@@ -31,7 +31,7 @@ func TestBersihMEMPERTAHANKANParameterLibpq(t *testing.T) {
 	// TLS. Itu sebabnya daftar di `prismaOnly` menyebut yang DIBUANG, bukan yang
 	// disimpan.
 	dsn, _, err := Bersih(
-		"postgres://sai:rahasia@pg:5432/sai_control?sslmode=require&application_name=svc-tenant&connect_timeout=5")
+		"postgres://sai:rahasia@pg:5432/sai_control?sslmode=require&application_name=svc-integrator&connect_timeout=5")
 	if err != nil {
 		t.Fatalf("galat: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestBersihMEMPERTAHANKANParameterLibpq(t *testing.T) {
 	q := u.Query()
 	for p, mau := range map[string]string{
 		"sslmode":          "require",
-		"application_name": "svc-tenant",
+		"application_name": "svc-integrator",
 		"connect_timeout":  "5",
 	} {
 		if got := q.Get(p); got != mau {
@@ -126,5 +126,34 @@ func TestBersihMenolakYangKosong(t *testing.T) {
 		if _, _, err := Bersih(raw); err == nil {
 			t.Errorf("DSN kosong (%q) diterima", raw)
 		}
+	}
+}
+
+func TestLangsungKePostgresMenolakPooler(t *testing.T) {
+	// `CONTROL_DATABASE_DIRECT_URL` yang tersalin dari `CONTROL_DATABASE_URL`
+	// (`pgbouncer:5432`) adalah salah tempel yang paling mungkin — dan lewat
+	// pooler pencacahan `pg_database` memulangkan SEBAGIAN basis data.
+	for _, raw := range []string{
+		"postgres://sai:x@pgbouncer:5432/sai_control",
+		"postgres://sai:x@db.internal:6432/sai_control",
+		"postgres://sai:x@pg:5432/sai_control?pgbouncer=true",
+		"mysql://sai:x@db:3306/sai_control",
+	} {
+		if err := LangsungKePostgres(raw); err == nil {
+			t.Errorf("%s DITERIMA sebagai sambungan langsung", raw)
+		}
+	}
+	if err := LangsungKePostgres("postgres://sai:x@pg:5432/sai_control"); err != nil {
+		t.Errorf("URL compose yang sah ditolak: %v", err)
+	}
+}
+
+func TestKendaliLangsungTidakJatuhKeUrlPooler(t *testing.T) {
+	// Kosong MELEMPAR — tidak meminjam `CONTROL_DATABASE_URL`, yang di
+	// produksi menunjuk PgBouncer.
+	t.Setenv(EnvKendaliLangsung, "")
+	t.Setenv(EnvKendali, "postgres://sai:x@pgbouncer:5432/sai_control")
+	if _, err := SambunganKendaliLangsung(); err == nil {
+		t.Fatal("CONTROL_DATABASE_DIRECT_URL kosong diterima")
 	}
 }

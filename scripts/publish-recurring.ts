@@ -1,6 +1,6 @@
 /**
  * TERBITKAN pekerjaan dokumen berulang — satu baris antrean per perusahaan
- * (02 §5, langkah 5 `job-scheduler`).
+ * (02 §5, langkah 5 peran `scheduler` di `svc-worker`).
  *
  *   bun run recurring:publish
  *

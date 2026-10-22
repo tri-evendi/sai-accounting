@@ -3,7 +3,7 @@
  *
  * ══ KENAPA BERKAS INI ADA ══════════════════════════════════════════════════
  * `docker-compose.yml` merujuk `sai-accounting-integrator` untuk `svc-tenant`
- * sejak tahap 1b, dan `Dockerfile` punya target `integrator` sejak hari yang
+ * (kini `svc-integrator`) sejak tahap 1b, dan `Dockerfile` punya target `integrator` sejak hari yang
  * sama — tetapi matriks di `publish-image.yml` tidak. Image itu karena itu
  * **tidak pernah diterbitkan**, dan `docker compose pull svc-tenant` gagal
  * dengan `manifest unknown`.
@@ -61,12 +61,38 @@ function sufiksDiCompose(): Set<string> {
   return hasil;
 }
 
-/** `{ target, suffix }` dari matriks publish. */
+/**
+ * `{ target, suffix }` dari matriks publish — termasuk PENDAMPING
+ * (`companion_target` + `companion_suffix`) yang dibangun di job yang sama
+ * dengan target utamanya. Sejak 22 Okt 2026 `backup` terbit sebagai pendamping
+ * `migrator`, supaya lapisan bawahnya berbagi digest (lihat komentar matriks);
+ * pembaca yang hanya mengenal `target:` akan melaporkan `-backup` sebagai
+ * image yang tak pernah terbit.
+ */
 function targetDiPublish(): { target: string; suffix: string }[] {
   const bersih = tanpaKomentarYaml(publish);
   const hasil: { target: string; suffix: string }[] = [];
   const re = /-\s*target:\s*([a-z0-9-]+)\s*\n\s*suffix:\s*"([^"]*)"/g;
   for (const m of bersih.matchAll(re)) hasil.push({ target: m[1], suffix: m[2] });
+  const pendamping = /companion_target:\s*([a-z0-9-]+)\s*\n\s*companion_suffix:\s*"([^"]*)"/g;
+  for (const m of bersih.matchAll(pendamping)) hasil.push({ target: m[1], suffix: m[2] });
+  return hasil;
+}
+
+/** Setiap layanan compose (tanpa komentar) → badannya. */
+function semuaLayanan(): Record<string, string> {
+  const hasil: Record<string, string> = {};
+  let nama: string | null = null;
+  for (const b of tanpaKomentarYaml(compose).split("\n")) {
+    const m = /^ {2}([a-z][a-z0-9-]*):$/.exec(b);
+    if (m) {
+      nama = m[1]!;
+      hasil[nama] = "";
+      continue;
+    }
+    if (/^\S/.test(b)) nama = null;
+    if (nama) hasil[nama] += b + "\n";
+  }
   return hasil;
 }
 
@@ -145,16 +171,43 @@ describe("setiap target di matriks publish BISA dibangun", () => {
 describe("layanan yang memakai image non-utama ikut daftar `pull`/`up`", () => {
   const produksi = readFileSync(join(AKAR_REPO, "PRODUCTION.md"), "utf8");
 
-  it("`svc-tenant`, `svc-ledger`, `svc-interactive` disebut runbook", () => {
+  it("`svc-worker` dan `svc-integrator` disebut runbook", () => {
     /*
-     * Ketiganya tidak melayani satu pun permintaan HTTP, jadi yang tidak ikut
+     * Keduanya tidak melayani satu pun permintaan HTTP, jadi yang tidak ikut
      * `up` TIDAK terlihat di mana pun: ia hanya berhenti bekerja. Gerbang image
      * di atas memastikan ia BISA ditarik; baris ini memastikan ada yang
-     * menariknya.
+     * menariknya. (Sampai 22 Okt 2026 keduanya enam layanan; 1 image = 1
+     * container.)
      */
-    for (const svc of ["svc-tenant", "svc-ledger", "svc-interactive"]) {
+    for (const svc of ["svc-worker", "svc-integrator"]) {
       expect(produksi, `${svc} di runbook`).toContain(svc);
     }
+  });
+
+  it("satu image = satu layanan yang BERJALAN", () => {
+    /*
+     * Keputusan pemilik 22 Okt 2026. Yang dihitung layanan yang naik dengan
+     * `docker compose up -d` — `job-backup` di belakang profil `perkakas`
+     * (perkakas `run --rm`) tidak termasuk. Layanan kedua untuk image yang
+     * sama adalah jalan pulang ke empat container `-migrator`, dan ia lolos
+     * setiap penjaga lain di berkas ini.
+     */
+    const layanan = Object.entries(semuaLayanan()).filter(
+      ([, badan]) => !/^\s*profiles:/m.test(badan)
+    );
+    const perImage = new Map<string, string[]>();
+    for (const [nama, badan] of layanan) {
+      const m = /image:\s*\$\{SAI_IMAGE:-[^}]+\}(-[a-z0-9-]+)?:\$\{SAI_TAG/.exec(badan);
+      if (!m) continue;
+      const sufiks = m[1] ?? "";
+      perImage.set(sufiks, [...(perImage.get(sufiks) ?? []), nama]);
+    }
+    /* `migrate` sekali-jalan, bukan container yang berjalan terus. */
+    const berjalan = [...perImage].map(([s, n]) => [s, n.filter((x) => x !== "migrate")] as const);
+    const ganda = berjalan.filter(([, n]) => n.length > 1).map(([s, n]) => `${s || "(utama)"}: ${n.join(", ")}`);
+    expect(ganda, "image yang menjalankan lebih dari satu layanan").toEqual([]);
+    expect(perImage.get("-migrator")).toEqual(expect.arrayContaining(["svc-worker"]));
+    expect(perImage.get("-integrator")).toEqual(["svc-integrator"]);
   });
 
   it("jumlah image yang diterbitkan disebut runbook dengan BENAR", () => {

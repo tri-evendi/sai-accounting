@@ -34,6 +34,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  strictFilter,
 } from "@sai/ui/command";
 import { Dialog, DialogContent, DialogTitle } from "@sai/ui/dialog";
 import { NAV_HOME, isNavItemVisible, visibleNavGroups, visibleReportShortcuts } from "@/lib/nav";
@@ -134,7 +135,7 @@ export function CommandPalette({ role, accountantMode, companyCount }: CommandPa
             layar; disembunyikan secara visual karena kolom ketiknya sudah
             menjelaskan dirinya. */}
         <DialogTitle style={HANYA_PEMBACA_LAYAR}>{t("commandPalette.title")}</DialogTitle>
-        <Command>
+        <Command filter={strictFilter}>
           <CommandInput ref={inputRef} placeholder={t("commandPalette.placeholder")} />
           <CommandList>
             <CommandEmpty>{t("commandPalette.empty")}</CommandEmpty>

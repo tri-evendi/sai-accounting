@@ -1151,10 +1151,14 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const konstLaporan = ratakan(
     idLaporan.map((id) => ({ kiri: `Report${pengenalGo(id)}`, kanan: `= ${q(id)}` }))
   );
-  const milikGo = idLaporan
-    .filter((id) => REPORT_ENGINES[id as keyof typeof REPORT_ENGINES]?.engine === "go")
-    .map((id) => `\tReport${pengenalGo(id)}: true,`)
-    .join("\n");
+  /* Lewat `ratakan`: begitu himpunan ini berisi lebih dari satu laporan,
+     `gofmt` meratakan nilainya — keluaran tanpa perataan lolos selama isinya
+     satu baris, lalu jatuh di `go:lint` pada laporan kedua (22 Okt 2026). */
+  const milikGo = ratakan(
+    idLaporan
+      .filter((id) => REPORT_ENGINES[id as keyof typeof REPORT_ENGINES]?.engine === "go")
+      .map((id) => ({ kiri: `Report${pengenalGo(id)}:`, kanan: "true," }))
+  );
 
   const kolom = TRIAL_BALANCE_COLUMNS.map(
     (c) => `\t{Header: ${q(TRIAL_BALANCE_HEADERS[c])}, Width: ${TRIAL_BALANCE_WIDTHS[c]}},`

@@ -98,9 +98,9 @@ const (
 // GoEngineReports: laporan yang BERKAS-nya hari ini dihasilkan Go
 // (`engine: "go"`). Pelari menolak pekerjaan untuk laporan di luar himpunan ini.
 var GoEngineReports = map[string]bool{
-	ReportBalanceSheet: true,
+	ReportBalanceSheet:    true,
 	ReportIncomeStatement: true,
-	ReportTrialBalance: true,
+	ReportTrialBalance:    true,
 }
 
 // TrialBalanceColumns: judul (TRIAL_BALANCE_HEADERS) dan lebar

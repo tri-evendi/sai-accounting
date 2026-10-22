@@ -48,6 +48,7 @@ import {
 } from "@sai/core/settings-crypto";
 import type { MailConfig } from "@sai/platform/mailer-core";
 import type { MailTransport } from "@sai/platform/mail-settings";
+import { registerSharedCache } from "@sai/platform/cache-bus";
 
 /** Baris apa adanya — TERMASUK segel kata sandi. Internal. */
 export interface TenantMailRow {
@@ -135,10 +136,17 @@ const TTL_MS = 60_000;
  */
 const cache = new Map<number, { at: number; row: TenantMailRow | null }>();
 
+/** Tahap 2: pengosongan sampai ke replika lain (`@sai/platform/cache-bus`). */
+const shared = registerSharedCache("tenant-mail", (key) => {
+  if (key === undefined) cache.clear();
+  else cache.delete(Number(key));
+});
+
 /** Buang cache satu tenant (dipanggil setelah menyimpan), atau seluruhnya. */
 export function dropTenantMailCache(tenantId?: number): void {
   if (tenantId === undefined) cache.clear();
   else cache.delete(tenantId);
+  shared.publish(tenantId);
 }
 
 /**
@@ -151,7 +159,7 @@ export function dropTenantMailCache(tenantId?: number): void {
  */
 export async function cachedTenantMail(tenantId: number): Promise<TenantMailRow | null> {
   const hit = cache.get(tenantId);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.row;
+  if (hit && Date.now() - hit.at < TTL_MS && shared.usable()) return hit.row;
 
   let row: TenantMailRow | null = null;
   try {

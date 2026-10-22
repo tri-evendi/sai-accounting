@@ -31,7 +31,7 @@ import {
   issueOperatorToken,
   verifyOperatorToken,
 } from "@op/lib/operator/session";
-import { checkRateLimit } from "@sai/core/rate-limit";
+import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
 import { getT } from "@sai/platform/i18n/server";
 
 export interface OperatorLoginState {
@@ -55,7 +55,7 @@ export async function operatorLogin(
   const headerStore = await headers();
   const ip = clientIpFrom(headerStore) ?? "unknown";
 
-  const limit = checkRateLimit(`operator-login:${ip}`, {
+  const limit = await checkSharedRateLimit(`operator-login:${ip}`, {
     windowMs: 15 * 60 * 1000,
     maxAttempts: 10,
   });

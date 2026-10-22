@@ -25,6 +25,12 @@
  *   • packages/core/src/generated/job-numbers.ts  — angka antrean, TypeScript
  *   • services/integrator/internal/contract/jobs_gen.go — keduanya, Go
  *
+ * Tahap 1d menambah sumber kedua, `contract/accounting.yaml` (skala uang &
+ * tipe akun — hanya yang punya pembaca Go, 09 §3.5), dan dua berkas lagi:
+ *
+ *   • packages/core/src/generated/accounting.ts
+ *   • services/integrator/internal/contract/accounting_gen.go
+ *
  * Angka dipisahkan dari kosakata karena pembacanya berbeda: kosakata dibaca
  * penerbit dan pelari, angka dibaca pelari dan permukaan kesehatan. Di Go
  * keduanya satu berkas, sebab satu paket Go memang satu unit impor.
@@ -55,6 +61,17 @@ const TUJUAN_GO = join(
   "internal",
   "contract",
   "jobs_gen.go"
+);
+
+const SUMBER_AKUNTANSI = join(AKAR, "contract", "accounting.yaml");
+const TUJUAN_AKUNTANSI_TS = join(AKAR, "packages", "core", "src", "generated", "accounting.ts");
+const TUJUAN_AKUNTANSI_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "accounting_gen.go"
 );
 
 const CEK = process.argv.includes("--cek");
@@ -491,12 +508,149 @@ const (
 `;
 }
 
+// ═══ contract/accounting.yaml (tahap 1d) ═══════════════════════════════════
+//
+// Sumber KEDUA, dengan alasan yang sama dengan pemisahan angka antrean dari
+// kosakata: pembacanya berbeda. `kinds.yaml` dibaca pelari antrean;
+// `accounting.yaml` dibaca pembaca buku (`internal/ledgerread`) dan modul
+// akuntansi TypeScript. Satu berkas YAML untuk keduanya akan membuat setiap
+// perubahan tipe akun tampak seperti perubahan antrean di riwayat git.
+
+interface KontrakAkuntansi {
+  version: number;
+  money: { scale: number };
+  account_types: string[];
+}
+
+/** Nilai enum-like mengikuti docs/DATABASE.md: `snake_case` huruf kecil. */
+const SNAKE = /^[a-z][a-z0-9_]*$/;
+
+function bacaAkuntansi(): KontrakAkuntansi {
+  const k = load(readFileSync(SUMBER_AKUNTANSI, "utf8")) as KontrakAkuntansi;
+
+  const salah: string[] = [];
+  if (!Number.isInteger(k.version)) salah.push("`version` bukan bilangan bulat");
+
+  /* Skala dibatasi 0..6, dan batas atasnya bukan hiasan: pembaca Go
+     menjumlahkan uang sebagai SEN `int64`, dan skala yang lebih besar
+     menggerus ruang angka itu sampai jumlah buku yang wajar meluap. */
+  const scale = k.money?.scale;
+  if (!Number.isInteger(scale) || scale < 0 || scale > 6) {
+    salah.push(`money.scale harus bilangan bulat 0..6 (kini: ${String(scale)})`);
+  }
+
+  const tipe = k.account_types;
+  if (!Array.isArray(tipe) || tipe.length === 0) {
+    salah.push("`account_types` kosong");
+  } else {
+    const lihat = new Set<string>();
+    for (const t of tipe) {
+      if (typeof t !== "string" || !SNAKE.test(t)) {
+        salah.push(`tipe akun ${JSON.stringify(t)} bukan snake_case huruf kecil`);
+      } else if (lihat.has(t)) {
+        /* Duplikat bukan kosmetik: TS memetakan label per nilai, dan entri
+           ganda di daftar pilihan formulir menyimpan nilai yang sama dua kali. */
+        salah.push(`tipe akun \`${t}\` tercantum dua kali`);
+      }
+      lihat.add(t);
+    }
+  }
+
+  if (salah.length > 0) {
+    console.error("✗ contract/accounting.yaml tidak sah:");
+    for (const s of salah) console.error(`  • ${s}`);
+    process.exit(1);
+  }
+  return k;
+}
+
+const JANGAN_SUNTING_AKUNTANSI = (versi: number) => `DIBANGKITKAN DARI \`contract/accounting.yaml\` — JANGAN DISUNTING TANGAN.
+ *
+ * Jalankan \`bun run contract:gen\` setelah mengubah kontraknya, dan commit
+ * hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+ * berkas ini basi, dan penjaga \`tests/contract-accounting.test.ts\` memanggilnya.
+ *
+ * Kontrak akuntansi versi ${versi}.`;
+
+function bangkitkanAkuntansi(k: KontrakAkuntansi): string {
+  return `/**
+ * ${JANGAN_SUNTING_AKUNTANSI(k.version)}
+ *
+ * HANYA konstanta yang punya pembaca Go hari ini (09 §3.5). Label, kategori,
+ * dan saldo normal per tipe tetap di \`src/lib/accounting.ts\`.
+ */
+
+/** Skala kolom uang \`Decimal(15,2)\`: satu sen = 10^-MONEY_SCALE rupiah. */
+export const MONEY_SCALE = ${k.money.scale};
+
+${union("AccountType", k.account_types)}
+
+/** Urutan kontrak = urutan pilihan formulir; entri pertama bawaannya. */
+export const ACCOUNT_TYPE_VALUES = [
+${k.account_types.map((t) => `  "${t}",`).join("\n")}
+] as const satisfies readonly AccountType[];
+
+export const isAccountType = (v: string): v is AccountType =>
+  (ACCOUNT_TYPE_VALUES as readonly string[]).includes(v);
+`;
+}
+
+/** `cash_bank` → `AccountTypeCashBank`. */
+function bangkitkanAkuntansiGo(k: KontrakAkuntansi): string {
+  const kepala = JANGAN_SUNTING_AKUNTANSI(k.version)
+    .split("\n")
+    .map((b) => `// ${b.replace(/^ \* ?/, "")}`.trimEnd())
+    .join("\n");
+
+  const konstTipe = ratakan(
+    k.account_types.map((t) => ({
+      kiri: `AccountType${pengenalGo(t)}`,
+      kanan: `AccountType = "${t}"`,
+    }))
+  );
+
+  return `${kepala}
+
+package contract
+
+// MoneyScale adalah skala kolom uang Decimal(15,2): satu sen = 10^-MoneyScale
+// rupiah. Pembaca buku menjumlahkan uang sebagai sen int64 — tidak pernah
+// float — dan mengurai NUMERIC dengan skala ini.
+const MoneyScale = ${k.money.scale}
+
+// AccountType adalah nilai kolom \`accounts.type\`.
+type AccountType string
+
+const (
+${konstTipe}
+)
+
+// AccountTypes dalam urutan kontrak (urutan pilihan formulir), bukan abjad.
+var AccountTypes = []AccountType{
+${k.account_types.map((t) => `\tAccountType${pengenalGo(t)},`).join("\n")}
+}
+
+// IsAccountType melaporkan apakah v adalah tipe akun yang dikenal kontrak ini.
+func IsAccountType(v string) bool {
+\tfor _, t := range AccountTypes {
+\t\tif string(t) == v {
+\t\t\treturn true
+\t\t}
+\t}
+\treturn false
+}
+`;
+}
+
 const kontrak = baca();
+const kontrakAkuntansi = bacaAkuntansi();
 
 const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_TS, isi: bangkitkan(kontrak) },
   { jalur: TUJUAN_ANGKA, isi: bangkitkanAngka(kontrak) },
   { jalur: TUJUAN_GO, isi: bangkitkanGo(kontrak) },
+  { jalur: TUJUAN_AKUNTANSI_TS, isi: bangkitkanAkuntansi(kontrakAkuntansi) },
+  { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
 ];
 
 if (CEK) {
@@ -509,7 +663,7 @@ if (CEK) {
     if (readFileSync(jalur, "utf8") !== isi) basi.push(`${jalur} BASI`);
   }
   if (basi.length > 0) {
-    console.error("✗ berkas bangkitan tidak sinkron dengan contract/kinds.yaml:");
+    console.error("✗ berkas bangkitan tidak sinkron dengan contract/*.yaml:");
     for (const b of basi) console.error(`  • ${b}`);
     console.error("  Jalankan `bun run contract:gen` lalu commit hasilnya.");
     process.exit(1);
@@ -525,5 +679,6 @@ for (const { jalur, isi } of berkas) {
 }
 console.log(
   `  ${Object.keys(kontrak.kinds).length} kind · ${Object.keys(kontrak.lanes).length} jalur · ` +
-    `${kontrak.statuses.length} status · ${KUNCI_ANGKA.length} angka`
+    `${kontrak.statuses.length} status · ${KUNCI_ANGKA.length} angka · ` +
+    `${kontrakAkuntansi.account_types.length} tipe akun`
 );

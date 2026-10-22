@@ -34,7 +34,8 @@ import {
 } from "@sai/platform/invitation-store";
 import { userQuotaExceeded } from "@sai/core/invitations";
 import { seatQuotaOverride } from "@/lib/entitlement-source";
-import { checkRateLimit, RATE_LIMITS } from "@sai/core/rate-limit";
+import { RATE_LIMITS } from "@sai/core/rate-limit";
+import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
 import { companyContextOf, runWithCompany } from "@/lib/company-context";
 import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { activeRoleKeys } from "@/lib/roles";
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
   const invitedByUserId = Number.parseInt(result.session.user.id, 10);
 
   /* Pembatas laju per PENGUNDANG — undangan mengirim surel atas nama kita. */
-  const limit = checkRateLimit(`invite:user:${invitedByUserId}`, RATE_LIMITS.invitation);
+  const limit = await checkSharedRateLimit(`invite:user:${invitedByUserId}`, RATE_LIMITS.invitation);
   if (!limit.allowed) {
     return NextResponse.json({ error: t("invitations.tooMany") }, { status: 429 });
   }

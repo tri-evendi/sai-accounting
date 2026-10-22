@@ -7,7 +7,8 @@
  * `/brand/mark`, favicon, manifest, gambar OG), jadi metadatanya di-cache 60
  * detik per proses. Cache ini GLOBAL, bukan per perusahaan: isinya milik
  * platform. Konsol mengosongkan cache-nya sendiri sesudah menulis; aplikasi
- * pelanggan menyusul paling lambat 60 detik kemudian.
+ * pelanggan menyusul paling lambat 60 detik kemudian — atau seketika bila bus
+ * invalidasi tahap 2 menyala (`cache-bus.ts`).
  *
  * Fail-soft (doktrin #137): `sai_platform` yang tak terjangkau berarti
  * lambang bawaan, bukan halaman yang gagal.
@@ -16,6 +17,8 @@
  */
 import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { sha256Hex, validateLogo, type ImageMime, type LogoRejection } from "@sai/core/image-file";
+
+import { registerSharedCache } from "./cache-bus";
 
 type Deps = { platform: PlatformClient };
 
@@ -43,9 +46,19 @@ const TTL_MS = 60 * 1000;
 let metaCache: { at: number; meta: BrandMarkMeta | null } | null = null;
 let contentCache: { sha256: string; content: Uint8Array } | null = null;
 
+/**
+ * Tahap 2: penulisnya konsol operator, pembacanya setiap replika — lewat bus.
+ * `contentCache` dikunci SIDIK isinya, jadi ia tidak pernah basi; yang perlu
+ * dibagi hanya metadata "logo mana yang aktif".
+ */
+const shared = registerSharedCache("brand-mark", () => {
+  metaCache = null;
+  contentCache = null;
+});
+
 /** Metadata logo aktif, ber-cache dan fail-soft (`null` = pakai lambang bawaan). */
 export async function cachedBrandMark(deps: Deps, now: number = Date.now()): Promise<BrandMarkMeta | null> {
-  if (metaCache && now - metaCache.at < TTL_MS) return metaCache.meta;
+  if (metaCache && now - metaCache.at < TTL_MS && shared.usable()) return metaCache.meta;
   try {
     const meta = await readActiveBrandMark(deps);
     metaCache = { at: now, meta };
@@ -80,6 +93,7 @@ export async function cachedBrandMarkContent(deps: Deps): Promise<{ meta: BrandM
 export function invalidateBrandMarkCache(): void {
   metaCache = null;
   contentCache = null;
+  shared.publish();
 }
 
 /** URL logo aktif untuk `<img>`/`<link>`. Sidik di kueri membuat cache peramban aman selamanya. */

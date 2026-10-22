@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KONTRAK AKUNTANSI — konstanta yang dibaca DUA bahasa (09 §3.5, tahap 1d)
+#
+# Dari sini dibangkitkan (`bun run contract:gen`):
+#   • TypeScript → packages/core/src/generated/accounting.ts
+#   • Go         → services/integrator/internal/contract/accounting_gen.go
+#
+# ══ YANG BOLEH MASUK: HANYA YANG PUNYA PEMBACA GO HARI INI ═════════════════
+# Kontrak yang dibangkitkan untuk nol pembaca adalah berkas yang menyimpang
+# tanpa ada yang menyadarinya — ia tidak punya sisi kedua yang bisa
+# membantahnya (09 §3.5). Jadi isi berkas ini mengikuti laporan yang SUDAH
+# pindah ke Go, bukan rencana:
+#
+#   • `money.scale`   — dibaca `internal/ledgerread` (urai NUMERIC jadi sen
+#                       bilangan bulat) dan `src/lib/reports.ts` (cek seimbang
+#                       Neraca Saldo pada ketelitian sen).
+#   • `account_types` — dibaca `internal/ledgerread` (akun bertipe asing di
+#                       Neraca Saldo dilaporkan, bukan ditelan) dan
+#                       `src/lib/accounting.ts` (daftar tipe akun aplikasi).
+#
+# Yang SENGAJA BELUM ada: kategori & saldo normal per tipe, `CONTRACT_STATUSES`,
+# `CURRENCIES`, ambang materialitas. Neraca Saldo tidak membacanya — ia menaruh
+# saldo di sisi yang ditunjuk TANDA selisihnya, bukan di sisi normal tipenya.
+# Kategori masuk ke sini bersama laporan Go pertama yang memakainya (Laba Rugi),
+# dalam commit yang sama.
+#
+# ══ MENGUBAH ═══════════════════════════════════════════════════════════════
+#   1. ubah di bawah;
+#   2. `bun run contract:gen`;
+#   3. commit berkas bangkitannya bersama perubahan ini — `contract:gen --cek`
+#      (dipanggil `tests/contract-accounting.test.ts`) menolak yang basi.
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: 1
+
+money:
+  # Skala kolom uang `Decimal(15,2)` (docs/DATABASE.md). Satu SEN adalah
+  # 10^-scale rupiah; kedua bahasa membandingkan uang pada ketelitian ini.
+  scale: 2
+
+# ── Tipe akun ──────────────────────────────────────────────────────────────
+# URUTANNYA BERMAKNA: ini urutan pilihan di formulir bagan akun, dan entri
+# pertama adalah bawaannya. Label, kategori, dan saldo normal tetap di
+# `src/lib/accounting.ts`, dipetakan per nilai lewat `Record<AccountType, …>`
+# — tipe baru di sini yang lupa diberi label di sana adalah galat `tsc`.
+account_types:
+  - cash_bank
+  - account_receivable
+  - inventory
+  - other_current_asset
+  - fixed_asset
+  - accumulated_depreciation
+  - other_asset
+  - account_payable
+  - tax_payable
+  - other_current_liability
+  - long_term_liability
+  - equity
+  - revenue
+  - other_income
+  - cogs
+  - expense
+  - other_expense

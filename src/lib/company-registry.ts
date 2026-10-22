@@ -21,6 +21,7 @@ import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
 import { COMPANY_DATABASE_TARGET_SELECT, toCompanyDatabaseTarget } from "@sai/db/company-url";
+import { registerSharedCache } from "@sai/platform/cache-bus";
 import type { CompanyContext } from "@/lib/company-context";
 
 export interface CompanyRecord extends CompanyContext {
@@ -53,6 +54,12 @@ const COMPANY_RECORD_SELECT = {
   ...COMPANY_DATABASE_TARGET_SELECT,
 } as const;
 
+/** Tahap 2: invalidasi sampai ke replika lain (`@sai/platform/cache-bus`). */
+const shared = registerSharedCache("company-registry", (key) => {
+  if (key === undefined) cache.clear();
+  else cache.delete(Number(key));
+});
+
 function toRecord(row: {
   id: number;
   slug: string;
@@ -76,7 +83,7 @@ function toRecord(row: {
 /** Satu perusahaan menurut id, dari cache bila masih segar. */
 export async function getCompany(companyId: number): Promise<CompanyRecord | null> {
   const hit = cache.get(companyId);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.record;
+  if (hit && Date.now() - hit.at < TTL_MS && shared.usable()) return hit.record;
 
   const row = await controlDb.company.findUnique({
     where: { id: companyId },
@@ -95,6 +102,7 @@ export async function getCompany(companyId: number): Promise<CompanyRecord | nul
 /** WAJIB dipanggil setelah menulis baris `companies`. */
 export function invalidateCompany(companyId: number): void {
   cache.delete(companyId);
+  shared.publish(companyId);
 }
 
 /** Perusahaan yang boleh dibuka seorang pengguna, urut nama. */

@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.11.0 — 2026-10-22 — belum digelar
+## 0.12.0 — 2026-10-22 — belum digelar
+
+Perusahaan bisa dipindahkan dari langganan ke server sendiri dengan data utuh, dan layanan latar dirampingkan.
+
+### Baru
+
+- Langganan yang pindah ke server sendiri (Enterprise on-premise) kini membawa seluruh buku, pengguna beserta sandinya, hak akses, dan dokumen — tanpa input ulang.
+- Selama pemindahan berlangsung, buku tetap bisa dibuka dan diekspor, tetapi perubahan ditolak dengan pesan yang menjelaskan alasannya.
+
+### Berubah
+
+- Akun yang sudah pindah ke server sendiri melihat pesan khusus saat mencoba masuk ke versi langganan, bukan pesan sandi salah.
+
+---
+
+## 0.11.0 — 2026-10-22 (3a6d1d3)
 
 Ekspor Neraca Saldo disiapkan di latar, unduhan ekspor besar kembali bisa dibuka, dan tanggal mengikuti jam Jakarta.
 

@@ -18,8 +18,9 @@ import {
   startOfISOWeek,
   isStockPeriodGranularity,
 } from "@/lib/stock-period";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
-const D = (iso: string) => new Date(`${iso}T12:00:00`);
+const D = (iso: string) => new Date(`${iso}T12:00:00+07:00`);
 /** The bounds as plain ISO dates — what the assertions below actually care about. */
 const bounds = (p: { fromISO: string; toISO: string }) => [p.fromISO, p.toISO];
 
@@ -27,15 +28,15 @@ describe("startOfISOWeek — Monday starts the week", () => {
   it("maps every day of one week back to the same Monday", () => {
     // Mon 2026-07-27 … Sun 2026-08-02
     for (const day of ["2026-07-27", "2026-07-28", "2026-07-31", "2026-08-01", "2026-08-02"]) {
-      expect(startOfISOWeek(D(day)).getDate()).toBe(27);
-      expect(startOfISOWeek(D(day)).getMonth()).toBe(6); // July
+      expect(businessParts(startOfISOWeek(D(day))).day).toBe(27);
+      expect(businessParts(startOfISOWeek(D(day))).month).toBe(6); // July
     }
   });
 
   it("treats Sunday as the END of a week, not the start", () => {
     // The most common off-by-one: JS getDay() calls Sunday 0.
     const sunday = D("2026-08-02");
-    expect(startOfISOWeek(sunday).getDate()).toBe(27);
+    expect(businessParts(startOfISOWeek(sunday)).day).toBe(27);
   });
 });
 
@@ -73,9 +74,9 @@ describe("resolveStockPeriod — bounds per granularity", () => {
     const p = resolveStockPeriod("week", "2026-07-30");
     expect(bounds(p)).toEqual(["2026-07-27", "2026-08-02"]);
     expect(p.weekNumber).toBe(31);
-    expect(p.from.getHours()).toBe(0);
-    expect(p.to.getHours()).toBe(23);
-    expect(p.to.getMilliseconds()).toBe(999);
+    // 00:00 WIB of the Monday and 23:59:59.999 WIB of the Sunday.
+    expect(p.from.toISOString()).toBe("2026-07-26T17:00:00.000Z");
+    expect(p.to.toISOString()).toBe("2026-08-02T16:59:59.999Z");
   });
 
   it("widens a week that straddles a month end without clipping it", () => {
@@ -179,7 +180,7 @@ describe("resolveStockPeriod — bad input falls back, never poisons", () => {
  * dan tanpa aturan ini pilihan periodenya dibuang tanpa satu pun tanda di layar.
  */
 describe("granularitas tersirat dari rentang", () => {
-  const now = new Date(2026, 6, 20);
+  const now = businessDate(2026, 6, 20);
 
   it("menganggap rentang tanpa `g` sebagai custom", () => {
     const p = resolveStockPeriod(undefined, undefined, "2026-05-01", "2026-05-31", now);

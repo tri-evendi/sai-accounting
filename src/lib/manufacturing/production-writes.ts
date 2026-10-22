@@ -28,6 +28,7 @@ import { calculateStockTotals } from "@/lib/inventory";
 import { assertStockAvailable } from "@/lib/delivery-orders";
 import { akumulasiBiaya, hargaPokokKeluaran, ProductionCostError } from "./production-cost";
 import { round2, round3 } from "./bom";
+import { businessParts } from "@sai/core/business-date";
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,7 +36,8 @@ const num = (v: unknown): number => (v == null ? 0 : Number(v));
 
 /** Nomor perintah produksi: `PO.YYYY.MM.NNNNN` — pola `nextDeliveryOrderNo`. */
 export async function nextProductionOrderNo(tx: Tx, date: Date): Promise<string> {
-  const prefix = `PO.${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.`;
+  const { year, month } = businessParts(date);
+  const prefix = `PO.${year}.${String(month + 1).padStart(2, "0")}.`;
   const count = await tx.productionOrder.count({ where: { orderNo: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }

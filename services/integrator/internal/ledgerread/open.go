@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/db"
 )
 
@@ -92,9 +93,10 @@ func Open(ctx context.Context, databaseName string) (*Reader, error) {
 	return OpenAt(ctx, databaseName, "")
 }
 
-// instanceURLEnv sama dengan `DB_INSTANCE_URL_ENV_PATTERN` di
-// `packages/db/src/company-url.ts` dan pola di `internal/backup/instans.go`.
-var instanceURLEnv = regexp.MustCompile(`^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$`)
+// instanceURLEnv: `DB_INSTANCE_URL_ENV_PATTERN` — satu pola yang dibangkitkan
+// dari `contract/db-instances.yaml`, dipegang `db.PolaEnvInstans` dan dibaca
+// juga oleh jalur `tenant` yang mencadangkan instans yang sama.
+var instanceURLEnv = db.PolaEnvInstans
 
 // CompanyDSNAt menyusun DSN buku di instans `db_instances` yang env var-nya
 // bernama urlEnvVar; urlEnvVar kosong = instans bawaan (`CompanyDSN`).
@@ -111,8 +113,8 @@ func CompanyDSNAt(databaseName, urlEnvVar string, getenv func(string) string) (s
 	}
 	if !instanceURLEnv.MatchString(urlEnvVar) {
 		return "", fmt.Errorf(
-			"instans menunjuk env var %q — bentuk yang sah hanya COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE",
-			urlEnvVar)
+			"instans menunjuk env var %q — bentuk yang sah hanya %s<KUNCI>%s",
+			urlEnvVar, contract.DBInstanceURLEnvPrefix, contract.DBInstanceURLEnvSuffix)
 	}
 	raw := getenv(urlEnvVar)
 	if raw == "" {

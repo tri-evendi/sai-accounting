@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { createFakeReportClient } from "./fake-client";
 import { getBalanceSheet, getIncomeStatement, getTrialBalance } from "@/lib/reports";
 import { CLOSING_JOURNAL_TYPE } from "@/lib/year-close";
+import { businessDate } from "@sai/core/business-date";
 
 const KAS = 1;
 const PENJUALAN = 2;
@@ -35,20 +36,20 @@ const ACCOUNTS = [
   { id: LABA_DITAHAN, code: "3102", name: "Laba Ditahan", type: "equity", normalBalance: "credit" },
 ];
 
-const AWAL = new Date(2026, 0, 1);
-const AKHIR = new Date(2026, 11, 31, 23, 59, 59, 999);
+const AWAL = businessDate(2026, 0, 1);
+const AKHIR = businessDate(2026, 11, 31, 23, 59, 59, 999);
 
 /** Setahun perdagangan: jual 1 M tunai, bayar beban 400 jt. Laba 600 jt. */
 const OPERASIONAL = [
   {
-    date: new Date(2026, 2, 10),
+    date: businessDate(2026, 2, 10),
     lines: [
       { accountId: KAS, debit: 1_000_000_000 },
       { accountId: PENJUALAN, credit: 1_000_000_000 },
     ],
   },
   {
-    date: new Date(2026, 5, 20),
+    date: businessDate(2026, 5, 20),
     lines: [
       { accountId: BEBAN, debit: 400_000_000 },
       { accountId: KAS, credit: 400_000_000 },
@@ -178,12 +179,12 @@ describe("penjaganya benar-benar bisa merah", () => {
  * justru kabar yang paling perlu diketahui.
  */
 describe("pemisahan Laba Tahun Berjalan dari tahun lalu yang belum ditutup", () => {
-  const AWAL_TAHUN_BUKU = new Date(2020, 0, 1); // tahun buku kalender
+  const AWAL_TAHUN_BUKU = businessDate(2020, 0, 1); // tahun buku kalender
 
   /** 2025 menghasilkan 100 jt, 2026 menghasilkan 600 jt. Tak satu pun ditutup. */
   const DUA_TAHUN = [
     {
-      date: new Date(2025, 4, 5),
+      date: businessDate(2025, 4, 5),
       lines: [
         { accountId: KAS, debit: 100_000_000 },
         { accountId: PENJUALAN, credit: 100_000_000 },
@@ -215,7 +216,7 @@ describe("pemisahan Laba Tahun Berjalan dari tahun lalu yang belum ditutup", () 
     const buku = createFakeReportClient({
       accounts: ACCOUNTS,
       journals: DUA_TAHUN,
-      fiscalYearStart: new Date(2020, 3, 1),
+      fiscalYearStart: businessDate(2020, 3, 1),
     });
     const neraca = await getBalanceSheet(AKHIR, buku as never);
 
@@ -244,7 +245,7 @@ describe("pemisahan Laba Tahun Berjalan dari tahun lalu yang belum ditutup", () 
 
   it("sesudah 2025 ditutup, sisa tahun lalu menjadi nol", async () => {
     const penutup2025 = {
-      date: new Date(2025, 11, 31, 23, 59, 59, 999),
+      date: businessDate(2025, 11, 31, 23, 59, 59, 999),
       type: CLOSING_JOURNAL_TYPE,
       lines: [
         { accountId: PENJUALAN, debit: 100_000_000 },

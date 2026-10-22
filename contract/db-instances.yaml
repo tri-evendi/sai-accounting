@@ -1,0 +1,59 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# KONTRAK INSTANS BASIS DATA — bentuk yang dibaca DUA bahasa (09 §9, tahap 4)
+#
+# Dari sini dibangkitkan (`bun run contract:gen`):
+#   • TypeScript → packages/db/src/generated/db-instances.ts
+#   • Go         → services/integrator/internal/contract/dbinstances_gen.go
+#
+# ══ PEMBACANYA HARI INI ════════════════════════════════════════════════════
+#   • `packages/db/src/company-url.ts` — penyelesai URL buku PT (aplikasi,
+#     fan-out migration, kesesuaian, penyediaan, `tenant:move`).
+#   • `services/integrator/internal/db/instans.go` — jalur `tenant` membuka
+#     server tiap instans untuk mencadangkannya.
+#   • `services/integrator/internal/backup/jalankan.go` dan
+#     `scripts/prove-backup-restore.ts` — kunci objek instans di putaran.
+#
+# ══ KENAPA DI SINI, BUKAN DUA REGEX TULISAN TANGAN ══════════════════════════
+# Sebelum berkas ini, pola kunci dan pola nama env var ditulis dua kali (TS +
+# Go). Bentuk penyimpangannya diam: nama env var yang diterima Node tetapi
+# ditolak Go membuat PT di instans itu berjalan normal di aplikasi — dan TIDAK
+# dicadangkan sama sekali. Kebalikannya: Go yang lebih longgar membaca env var
+# yang tidak pernah boleh menunjuk buku.
+#
+# CHECK di `prisma/postgresql/control/0009_db_instances/migration.sql` memuat
+# pola yang sama; migration ditulis tangan, jadi kesepakatannya dijaga
+# `tests/company-url-resolver.test.ts`, bukan dibangkitkan.
+#
+# ══ MENGUBAH ═══════════════════════════════════════════════════════════════
+#   1. ubah di bawah (pola: subset yang sama artinya di RegExp JS DAN RE2 Go —
+#      tanpa lookaround, tanpa backreference; generator menolaknya);
+#   2. `bun run contract:gen`;
+#   3. commit berkas bangkitannya bersama perubahan ini — `contract:gen --cek`
+#      (dipanggil `tests/contract-db-instances.test.ts`) menolak yang basi.
+# ═══════════════════════════════════════════════════════════════════════════
+
+version: 1
+
+# Label instans bawaan (yang TIDAK punya baris `db_instances`; `companies.
+# db_instance_key IS NULL`). Ia cocok dengan `key_pattern`, dan karena itu
+# ditolak eksplisit sebagai kunci baris — kedua bahasa dan CHECK 0009.
+default_label: default
+
+# Bentuk `db_instances.key`.
+key_pattern: '^[a-z][a-z0-9_]{0,31}$'
+
+# Bentuk `db_instances.url_env_var`: hanya NAMA env var, nilainya dari
+# environment proses. Prefix + suffix menyusun nama yang DISARANKAN untuk
+# sebuah kunci (`suggestedUrlEnvVar`); pola menolak nama lain — tanpa itu satu
+# baris registry bisa menunjuk `CONTROL_DATABASE_URL`, dan "instans db2" diam-
+# diam menjadi server bawaan.
+url_env_var:
+  prefix: COMPANY_
+  suffix: _DATABASE_URL_TEMPLATE
+  pattern: '^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$'
+
+backup:
+  # Direktori objek instans tambahan di dalam putaran cadangan:
+  # `<prefix><kunci>/db-<nama>.dump.enc` + `<prefix><kunci>/globals.sql.enc`.
+  # Instans bawaan tidak berawalan apa pun (nama sebelum tahap 4, apa adanya).
+  instance_object_prefix: instans/

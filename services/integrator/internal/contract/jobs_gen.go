@@ -35,6 +35,7 @@ var JobStatuses = []JobStatus{
 type JobKind string
 
 const (
+	KindCompanyProvision    JobKind = "company.provision"
 	KindDocumentGenerate    JobKind = "document.generate"
 	KindImportProcess       JobKind = "import.process"
 	KindIntegrationBankFeed JobKind = "integration.bank_feed"
@@ -76,6 +77,7 @@ type KindSpec struct {
 
 // JobKinds memetakan setiap jenis ke sifatnya.
 var JobKinds = map[JobKind]KindSpec{
+	KindCompanyProvision:    {Lane: LaneInteractive, MaxAttempts: 1, WritesLedger: false},
 	KindDocumentGenerate:    {Lane: LaneInteractive, MaxAttempts: 3, WritesLedger: false},
 	KindImportProcess:       {Lane: LaneBulk, MaxAttempts: 1, WritesLedger: false},
 	KindIntegrationBankFeed: {Lane: LaneIntegration, MaxAttempts: 5, WritesLedger: false},
@@ -113,7 +115,7 @@ var JobLanes = map[JobLane]LaneSpec{
 var KindsByLane = map[JobLane][]JobKind{
 	LaneBulk:        {KindImportProcess, KindMailBatch, KindReportPackage},
 	LaneIntegration: {KindIntegrationBankFeed, KindIntegrationEfaktur},
-	LaneInteractive: {KindDocumentGenerate, KindReportExport, KindReportExportGo},
+	LaneInteractive: {KindCompanyProvision, KindDocumentGenerate, KindReportExport, KindReportExportGo},
 	LaneLedger:      {KindLedgerDunning, KindLedgerRecurring},
 	LaneSchedule:    {KindScheduleTick},
 	LaneSchema:      {KindSchemaMigrate},

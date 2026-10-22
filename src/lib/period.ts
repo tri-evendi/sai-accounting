@@ -22,6 +22,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@sai/db/client/company";
 import { MONTH_NAMES } from "@/lib/month-names";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
 // Re-exported so server code can keep importing MONTH_NAMES from here; the array
 // itself lives in the Prisma-free `@/lib/month-names` so client components can
@@ -39,16 +40,20 @@ export function periodLabel(year: number, month: number): string {
   return `${MONTH_NAMES[month - 1] ?? month} ${year}`;
 }
 
-/** The (year, month) a transaction date belongs to. */
+/**
+ * The (year, month) a transaction date belongs to — on the Jakarta calendar,
+ * not the process time zone (`@sai/core/business-date`).
+ */
 export function periodOf(date: Date): { year: number; month: number } {
-  return { year: date.getFullYear(), month: date.getMonth() + 1 };
+  const { year, month } = businessParts(date);
+  return { year, month: month + 1 };
 }
 
-/** First instant of the month and the last instant of its final day. */
+/** First instant of the month and the last instant of its final day (WIB). */
 export function periodBounds(year: number, month: number): { start: Date; end: Date } {
   return {
-    start: new Date(year, month - 1, 1, 0, 0, 0, 0),
-    end: new Date(year, month, 0, 23, 59, 59, 999),
+    start: businessDate(year, month - 1, 1),
+    end: businessDate(year, month, 0, 23, 59, 59, 999),
   };
 }
 

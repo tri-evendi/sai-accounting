@@ -7,6 +7,8 @@ import (
 	"regexp"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/contract"
 )
 
 // ══ INSTANS BASIS DATA TAMBAHAN (tahap 4, docs/MULTI-COMPANY.md §6) ═══════
@@ -25,14 +27,20 @@ import (
 //     bawaan: di sana mungkin masih ada salinan lama buku PT yang sudah
 //     dipindah, dan cadangan atas salinan itu terbaca lengkap padahal bukan.
 
-// PolaKunciInstans sama dengan `DB_INSTANCE_KEY_PATTERN` (CHECK migration 0009).
-var PolaKunciInstans = regexp.MustCompile(`^[a-z][a-z0-9_]{0,31}$`)
+// Ketiga bentuk di bawah DIBANGKITKAN dari `contract/db-instances.yaml` —
+// sumber yang sama dengan `@sai/db/company-url`. Sebelum tahap 4 selesai
+// keduanya regex tulisan tangan; nama env var yang diterima Node tetapi
+// ditolak di sini membuat PT berjalan normal di aplikasi sementara bukunya
+// TIDAK dicadangkan.
 
-// PolaEnvInstans sama dengan `DB_INSTANCE_URL_ENV_PATTERN`.
-var PolaEnvInstans = regexp.MustCompile(`^COMPANY_[A-Z0-9_]+_DATABASE_URL_TEMPLATE$`)
+// PolaKunciInstans: `DB_INSTANCE_KEY_PATTERN` (CHECK migration kendali 0009).
+var PolaKunciInstans = regexp.MustCompile(contract.DBInstanceKeyPattern)
+
+// PolaEnvInstans: `DB_INSTANCE_URL_ENV_PATTERN` (CHECK migration kendali 0009).
+var PolaEnvInstans = regexp.MustCompile(contract.DBInstanceURLEnvPattern)
 
 // KunciInstansBawaan dicadangkan untuk instans bawaan, yang tidak punya baris.
-const KunciInstansBawaan = "default"
+const KunciInstansBawaan = contract.DBInstanceDefaultLabel
 
 // SambunganInstans menguraikan template URL sebuah instans tambahan menjadi
 // parameter untuk `pg_dump` DAN DSN pgx untuk membaca `pg_database`.
@@ -51,8 +59,8 @@ func SambunganInstans(kunci, namaEnv string, getenv func(string) string) (Sambun
 	}
 	if !PolaEnvInstans.MatchString(namaEnv) {
 		return Sambungan{}, "", fmt.Errorf(
-			"instans %q menunjuk env var %q — bentuk yang sah hanya "+
-				"COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE", kunci, namaEnv)
+			"instans %q menunjuk env var %q — bentuk yang sah hanya %s<KUNCI>%s",
+			kunci, namaEnv, contract.DBInstanceURLEnvPrefix, contract.DBInstanceURLEnvSuffix)
 	}
 	raw := getenv(namaEnv)
 	if raw == "" {

@@ -15,6 +15,7 @@
  * on the document; only the kg total drives the stock-out and the over-issue check.
  */
 import type { Prisma, PrismaClient } from "@sai/db/client/company";
+import { businessParts } from "@sai/core/business-date";
 
 /** Type-only client (no `@/lib/prisma` singleton) so number-gen stays importable. */
 type Client = Prisma.TransactionClient | PrismaClient;
@@ -131,7 +132,8 @@ export function assertStockAvailable(
  * legacy shipping PDF already saved (`SuratJalan_…`).
  */
 export async function nextDeliveryOrderNo(tx: Client, date: Date): Promise<string> {
-  const prefix = `SJ.${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.`;
+  const { year, month } = businessParts(date);
+  const prefix = `SJ.${year}.${String(month + 1).padStart(2, "0")}.`;
   const count = await tx.deliveryOrder.count({ where: { no: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }

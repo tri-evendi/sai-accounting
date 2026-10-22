@@ -12,22 +12,23 @@
 import { describe, it, expect } from "vitest";
 import { monthRange, summarizeByCurrency, toISODate } from "@/lib/dashboard-summary";
 import { resolvePeriod } from "@/lib/report-catalog";
+import { businessDate } from "@sai/core/business-date";
 
 /** Instan pada jam Jakarta (WIB, UTC+7), tak bergantung zona waktu proses tes. */
 const wib = (y: number, m: number, d: number, h = 12) => new Date(Date.UTC(y, m, d, h - 7));
 
 describe("toISODate", () => {
-  it("formats a local date as YYYY-MM-DD", () => {
-    expect(toISODate(new Date(2026, 6, 20))).toBe("2026-07-20");
+  it("formats a Jakarta date as YYYY-MM-DD", () => {
+    expect(toISODate(businessDate(2026, 6, 20))).toBe("2026-07-20");
   });
 
   it("zero-pads single-digit months and days", () => {
-    expect(toISODate(new Date(2026, 0, 5))).toBe("2026-01-05");
+    expect(toISODate(businessDate(2026, 0, 5))).toBe("2026-01-05");
   });
 
-  it("keeps the local day late in the evening, where toISOString() would roll over", () => {
-    // 23:30 local is already tomorrow in UTC for any positive offset (WIB is +7).
-    expect(toISODate(new Date(2026, 6, 20, 23, 30))).toBe("2026-07-20");
+  it("keeps the Jakarta day late in the evening, where toISOString() would roll over", () => {
+    // 23:30 WIB is already 16:30Z — but 00:30 WIB would be the previous day in UTC.
+    expect(toISODate(businessDate(2026, 6, 20, 23, 30))).toBe("2026-07-20");
   });
 });
 

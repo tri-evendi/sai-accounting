@@ -56,10 +56,12 @@ const TIDAK_DISEDIAKAN: Record<string, Record<string, string>> = {
     WORKER_LEADER_ROLES: "disetel HANYA oleh override HA; compose dasar tidak menyalakan leader election",
   },
   "svc-worker": {
-    PROVISION_DATABASE_URL:
-      "hanya terimpor lewat `@sai/db/company-url`; tidak satu peran pun membuat basis data — kredensial PEMILIK tidak boleh di sini",
     OPERATOR_TRUSTED_PROXY_HOPS: "`client-ip` terimpor transitif; container ini tidak melayani HTTP",
-    PG_APP_USER: "`appRoleForNewBook` terimpor transitif; hanya jalur yang MEMBUAT buku memanggilnya",
+  },
+  "app-customer": {
+    PROVISION_DATABASE_URL:
+      "hanya terimpor lewat `@sai/db/company-url`; sejak Okt 2026 penyediaan PT dikerjakan `svc-worker` — kredensial PEMILIK tidak boleh di container yang menghadap internet",
+    PG_APP_USER: "`appRoleForNewBook` terimpor transitif; hanya jalur yang MEMBUAT buku memanggilnya (`svc-worker`)",
   },
   "app-operator": {
     PG_APP_USER: "`appRoleForNewBook` terimpor transitif; konsol tidak membuat buku",
@@ -114,8 +116,9 @@ const BOLEH: { pola: RegExp; layanan: string[]; kecuali?: Record<string, string[
   { pola: /^AUTH_SECRET$/, layanan: ["app-customer"] },
   /* Menagih uang sungguhan. */
   { pola: /^MIDTRANS_SERVER_KEY$/, layanan: ["app-customer", "app-operator", "svc-worker", "migrate"] },
-  /* Kredensial PEMILIK (DDL, CREATE DATABASE). */
-  { pola: /^PROVISION_DATABASE_URL$/, layanan: ["app-customer", "migrate", "job-backup"] },
+  /* Kredensial PEMILIK (DDL, CREATE DATABASE). `svc-worker` = penyediaan PT
+     (`company.provision`); BUKAN `app-customer` sejak Okt 2026. */
+  { pola: /^PROVISION_DATABASE_URL$/, layanan: ["svc-worker", "migrate", "job-backup"] },
   /* Sandi peran — hanya dipakai untuk merakit URL di compose, tidak pernah sebagai env container. */
   { pola: /^PG_(OWNER_|APP_|BACKUP_)?PASSWORD$/, layanan: [] },
 ];

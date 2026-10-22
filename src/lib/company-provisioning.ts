@@ -1,25 +1,26 @@
 /**
- * Menyediakan PERUSAHAAN BARU dari dalam aplikasi (issue #104).
+ * Menyediakan PERUSAHAAN BARU (issue #104) — dikerjakan PEKERJA LATAR.
  *
- * Sampai sekarang ini pekerjaan baris perintah (`scripts/create-company.ts`):
- * buat basis data, terapkan migration, daftarkan di registry. Modul ini
- * melakukan hal yang sama dari proses web, sambil melaporkan kemajuannya
- * langkah demi langkah — sebab yang menunggu adalah orang yang menatap layar,
- * bukan terminal yang mencetak baris.
+ * Buat basis data, terapkan migration, hibahkan hak peran aplikasi, daftarkan
+ * di registry — sambil melaporkan kemajuannya langkah demi langkah, sebab yang
+ * menunggu adalah orang yang menatap layar `/companies/new`.
  *
- * ══ KENAPA TANPA PEKERJA LATAR (WORKER) ════════════════════════════════════
- * Pertanyaannya wajar: ini pekerjaan puluhan detik. Tiga fakta membuat pekerja
- * latar tidak sepadan di sini:
+ * ══ KENAPA DI PEKERJA LATAR, BUKAN DI PERMINTAAN HTTP (Okt 2026) ═══════════
+ * Sampai Okt 2026 modul ini berjalan di dalam `POST /api/companies`, dan
+ * alasannya waktu itu masuk akal: server Node yang hidup terus, pekerjaan
+ * puluhan detik, kemajuan dialirkan NDJSON. Yang mengubah jawabannya bukan
+ * waktu, melainkan HAK: sejak peran PostgreSQL hak minimum (`sai_owner` /
+ * `sai_app`), membuat basis data menuntut kredensial PEMILIK
+ * (`PROVISION_DATABASE_URL`) — dan selama penyediaan hidup di permintaan HTTP,
+ * kredensial itu harus hidup di `app-customer`, satu-satunya container yang
+ * menghadap internet. RCE di sana = DDL di setiap buku PT.
  *
- *  1. Aplikasinya server Node yang hidup terus, BUKAN fungsi tanpa-server —
- *     tidak ada batas waktu permintaan yang memutus pekerjaan di tengah.
- *  2. Pekerjaannya DDL di basis data kosong: puluhan detik, bukan menit.
- *  3. Urutannya membuat kegagalan tidak berbahaya (lihat di bawah), jadi tidak
- *     ada state setengah jadi yang perlu dijaga pekerja latar.
- *
- * Yang dibutuhkan hanyalah cara MELAPORKAN kemajuan, dan itu dipenuhi respons
- * streaming. Pekerja latar baru sepadan bila penyediaan tumbuh jadi hitungan
- * menit, atau harus selamat ketika peramban ditutup.
+ * Kini `app-customer` hanya MENERBITKAN pekerjaan `company.provision`
+ * (`company-provisioning-queue.ts`) dan menanyakan statusnya; modul ini
+ * dijalankan pelari jalur `interactive` di `svc-worker`
+ * (`workers/company-provision.ts`), satu-satunya layanan yang hidup terus dan
+ * memegang `PROVISION_DATABASE_URL`. Dijaga
+ * `tests/provisioning-off-app-customer.test.ts`.
  *
  * ══ URUTAN: BUAT → MIGRASI → DAFTARKAN ═════════════════════════════════════
  * Registry ditulis PALING AKHIR — aturan yang sama dengan skrip CLI, dan
@@ -27,6 +28,15 @@
  * akan muncul di pemilih perusahaan, bisa dibuka, dan menyambut penggunanya
  * dengan galat yang tidak menjelaskan apa pun. Dengan urutan ini, kegagalan di
  * tengah hanya meninggalkan basis data yatim yang tidak terlihat siapa pun.
+ *
+ * ══ PENGULANGAN MELANJUTKAN, TIDAK MENIMPA ═════════════════════════════════
+ * Pekerja bisa mati di tengah (rilis, OOM). Basis data yatim yang ditinggalkan
+ * membawa TANDA di komentarnya (`provisioningMarker`) selama ia belum
+ * terdaftar, dan setiap migration diterapkan BERSAMA catatannya dalam satu
+ * transaksi. Pengulangan atas permintaan yang sama (tenant + slug) karena itu
+ * bisa membuktikan buku itu miliknya dan melanjutkan dari migration terakhir
+ * yang tercatat (`resumeIndex`). Basis data berisi TANPA tanda itu — mis. buku
+ * PT terhapus yang disimpan untuk retensi — tetap ditolak `database_not_empty`.
  *
  * ══ KENAPA MIGRATION DITERAPKAN SENDIRI, BUKAN LEWAT PRISMA CLI ════════════
  * Image produksi sengaja ramping: ia memuat berkas `prisma/postgresql/**` TAPI
@@ -56,6 +66,7 @@ import {
   bukaBasisData,
   DDL_PEMBUKUAN,
   DIREKTORI_MIGRATION_PERUSAHAAN,
+  type ServerBasisData,
 } from "@sai/db/server";
 
 import { controlDb } from "@sai/core/control-db";
@@ -73,7 +84,9 @@ import {
   isAccessDeniedError,
   normalizeSlug,
   ProvisionError,
+  provisioningMarker,
   resolveDatabaseName,
+  resumeIndex,
   type ProvisionEvent,
   type ProvisionPhase,
 } from "@/lib/company-provisioning-shared";
@@ -142,6 +155,55 @@ async function targetInstance(key: string | null | undefined): Promise<DbInstanc
       error instanceof Error ? error.message : String(error),
       "validate",
       { code: "config_missing", cause: error }
+    );
+  }
+}
+
+/**
+ * Dari migration ke-berapa buku yang SUDAH berisi boleh dilanjutkan — atau
+ * `null` bila ia bukan buku setengah jadi milik permintaan ini.
+ *
+ * Dua bukti, dua-duanya wajib: tanda di komentar basis data SAMA dengan tanda
+ * permintaan ini, DAN `_prisma_migrations` adalah awalan persis daftar
+ * migration kita (`resumeIndex`). Gagal membaca = `null` — tidak pernah
+ * "anggap saja milik kita".
+ */
+async function titikLanjut(
+  server: ServerBasisData,
+  url: URL,
+  databaseName: string,
+  tanda: string,
+  ours: ReadonlyArray<{ nama: string; checksum: string }>
+): Promise<number | null> {
+  try {
+    if ((await server.catatan(databaseName)) !== tanda) return null;
+    const db = await bukaBasisData(url.toString(), databaseName);
+    try {
+      const applied = await db.daftarMigration();
+      return applied === null ? null : resumeIndex(applied, ours);
+    } finally {
+      await db.tutup();
+    }
+  } catch (error) {
+    console.error(`[penyediaan] ${databaseName}: gagal memeriksa buku setengah jadi:`, error);
+    return null;
+  }
+}
+
+/**
+ * Pasang/cabut tanda "sedang disediakan". BEST-EFFORT dengan sengaja: basis
+ * data yang dibuat administrator lebih dulu (jalur pemasangan tanpa
+ * `CREATEDB`) bisa dimiliki peran lain, dan `COMMENT ON DATABASE` menuntut
+ * pemiliknya. Tanpa tanda, penyediaan tetap berjalan — yang hilang hanya
+ * kemampuan MELANJUTKAN bila ia mati di tengah (gagal tertutup).
+ */
+async function setelTanda(server: ServerBasisData, databaseName: string, teks: string | null): Promise<void> {
+  try {
+    await server.setelCatatan(databaseName, teks);
+  } catch (error) {
+    console.warn(
+      `[penyediaan] ${databaseName}: tanda penyediaan tidak bisa ${teks === null ? "dicabut" : "dipasang"}:`,
+      error
     );
   }
 }
@@ -238,6 +300,18 @@ export async function provisionCompany(
     // ── 2. Basis data ────────────────────────────────────────
     await emit({ phase: "create_database", message: `Membuat basis data ${databaseName}…` });
 
+    /* Seluruh berkas migration dibaca LEBIH DULU: checksum-nya dibutuhkan
+       untuk memutuskan apakah buku setengah jadi boleh dilanjutkan. */
+    const ours = await Promise.all(
+      (await migrationNames()).map(async (nama) => {
+        const sql = await readFile(join(akarMigration(), nama, "migration.sql"));
+        return { nama, sql: sql.toString("utf8"), checksum: migrationChecksum(sql) };
+      })
+    );
+    const tanda = provisioningMarker(input.tenantId, slug);
+    /* Migration pertama yang BELUM diterapkan — 0 untuk buku baru. */
+    let mulaiDari = 0;
+
     const already = await server.adakah(databaseName);
     if (already) {
       /*
@@ -247,7 +321,10 @@ export async function provisionCompany(
        * Yang tidak boleh: menimpa basis data yang sudah ada isinya.
        */
       const tables = await server.jumlahTabel(databaseName);
-      if (tables > 0) {
+      /* Buku setengah jadi dari percobaan sebelumnya ATAS PERMINTAAN YANG SAMA
+         — dibuktikan tanda di komentarnya, lalu isi `_prisma_migrations`-nya. */
+      const titik = tables > 0 ? await titikLanjut(server, url, databaseName, tanda, ours) : null;
+      if (tables > 0 && titik === null) {
         throw new ProvisionError(
           `Basis data "${databaseName}" sudah ada DAN sudah berisi ${tables} tabel. ` +
             "Penyediaan dihentikan supaya tidak menimpa data yang mungkin masih dipakai.",
@@ -258,9 +335,13 @@ export async function provisionCompany(
           }
         );
       }
+      if (titik !== null) mulaiDari = titik;
       await emit({
         phase: "create_database",
-        message: `Basis data ${databaseName} sudah ada dan masih kosong — dipakai apa adanya.`,
+        message:
+          titik !== null
+            ? `Basis data ${databaseName} dari percobaan sebelumnya — dilanjutkan dari migration ke-${titik + 1}.`
+            : `Basis data ${databaseName} sudah ada dan masih kosong — dipakai apa adanya.`,
       });
     } else {
       try {
@@ -296,31 +377,30 @@ export async function provisionCompany(
       }
     }
 
+    /* Tanda "sedang disediakan" — SEBELUM tabel pertama lahir, supaya setiap
+       keadaan setengah jadi sesudah titik ini bisa dilanjutkan. */
+    await setelTanda(server, databaseName, tanda);
+
     // ── 3. Skema ─────────────────────────────────────────────
     phase = "migrate";
-    const names = await migrationNames();
     const db = await bukaBasisData(url.toString(), databaseName);
     try {
       await db.jalankan(DDL_PEMBUKUAN);
 
-      for (const [index, migration] of names.entries()) {
+      for (const [index, migration] of ours.entries()) {
+        if (index < mulaiDari) continue;
         await emit({
           phase: "migrate",
-          message: `Menerapkan skema (${index + 1}/${names.length})`,
-          detail: migration,
-          progress: (index + 1) / names.length,
+          message: `Menerapkan skema (${index + 1}/${ours.length})`,
+          detail: migration.nama,
+          progress: (index + 1) / ours.length,
         });
 
-        const file = join(akarMigration(), migration, "migration.sql");
-        const sql = await readFile(file);
-        const startedAt = new Date();
-        await db.jalankan(sql.toString("utf8"));
-        await db.catatMigration({
+        /* Berkas + catatannya dalam SATU transaksi — lihat kepala berkas. */
+        await db.terapkanMigration(migration.sql, {
           id: randomUUID(),
-          checksum: migrationChecksum(sql),
-          nama: migration,
-          mulai: startedAt,
-          selesai: new Date(),
+          checksum: migration.checksum,
+          nama: migration.nama,
         });
       }
 
@@ -337,7 +417,7 @@ export async function provisionCompany(
        */
       const appRole = appRoleForNewBook(dbInstance);
       if (appRole) {
-        await emit({ phase: "migrate", message: "Menghibahkan hak peran aplikasi…", detail: appRole });
+        await emit({ phase: "migrate", message: "Menghibahkan hak peran aplikasi…", detail: appRole, progress: 1 });
         await db.jalankan(appRoleGrantSql(databaseName, appRole));
       }
     } finally {
@@ -347,6 +427,14 @@ export async function provisionCompany(
     // ── 4. Registry — PALING AKHIR ───────────────────────────
     phase = "register";
     await emit({ phase: "register", message: "Mendaftarkan perusahaan…" });
+
+    /* Tanda dicabut SEBELUM registry: buku yang pernah terdaftar tidak boleh
+       membawanya, sebab kelak (dihapus dari registry, disimpan untuk retensi)
+       tanda itu akan mengizinkan penyediaan lain "melanjutkannya". Mati tepat
+       di antara keduanya meninggalkan buku lengkap tanpa tanda dan tanpa
+       registry — ditolak `database_not_empty` dan dilaporkan deteksi yatim
+       penjadwal: gagal TERTUTUP, bukan terbuka. */
+    await setelTanda(server, databaseName, null);
 
     const company = await controlDb.company.create({
       data: {

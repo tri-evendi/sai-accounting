@@ -13,6 +13,7 @@ import { PeriodPicker } from "@/components/shared/period-picker";
 import { SalesTargetClient } from "./sales-target-client";
 import { getT } from "@sai/platform/i18n/server";
 import { SECTION_GAP } from "@sai/ui/layout-scale";
+import { businessParts } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -28,21 +29,22 @@ export default async function SalesTargetsPage({
   await requirePagePermission("budget.manage", params);
   const t = await getT();
   const sp = await searchParams;
-  const now = new Date();
+  // "Sekarang" menurut kalender Jakarta, bukan zona proses.
+  const today = businessParts(new Date());
   // URL bisa diedit tangan: `Number("abc")` = NaN yang lolos ke periodBounds/
   // Prisma dan berujung 500. Rentang mengikuti validations/period.ts
   // (tahun 2000–2100, bulan 1–12); nilai tak sah jatuh ke bawaan halaman
   // (tahun ini / bulan ini), bulan 0 tetap berarti setahun penuh.
   const yearRaw = Number(sp.year);
   const year =
-    Number.isInteger(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100 ? yearRaw : now.getFullYear();
-  const monthRaw = sp.month === undefined ? now.getMonth() + 1 : Number(sp.month);
+    Number.isInteger(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100 ? yearRaw : today.year;
+  const monthRaw = sp.month === undefined ? today.month + 1 : Number(sp.month);
   const month =
     monthRaw === 0
       ? undefined
       : Number.isInteger(monthRaw) && monthRaw >= 1 && monthRaw <= 12
         ? monthRaw
-        : now.getMonth() + 1;
+        : today.month + 1;
 
   const [customers, items, targets] = await Promise.all([
     // `isActive: true` — target penjualan adalah rencana ke DEPAN, jadi master
@@ -81,7 +83,7 @@ export default async function SalesTargetsPage({
         items={items}
         targets={targets}
         defaultYear={year}
-        defaultMonth={month ?? now.getMonth() + 1}
+        defaultMonth={month ?? today.month + 1}
       />
     </div>
   );

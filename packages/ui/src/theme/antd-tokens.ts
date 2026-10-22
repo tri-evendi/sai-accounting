@@ -263,6 +263,17 @@ export const BRAND_HEX = BRAND_SOLID_LIGHT_HEX;
 /** Latar layar pembuka aplikasi terpasang. Light-first, sesuai MASTER.md. */
 export const APP_BACKGROUND_HEX = "#ffffff";
 
+/**
+ * Warna KODE QR (authenticator konsol operator) — SENGAJA tidak ikut tema.
+ *
+ * Pemindai aplikasi authenticator mencari modul GELAP di atas zona tenang
+ * TERANG; QR yang dibalik oleh tema gelap (modul terang di latar gelap) tidak
+ * terbaca sebagian aplikasi, dan kegagalannya tidak bersuara — kameranya
+ * hanya tidak pernah "menangkap". Karena itu dua nilai mutlak, di dua tema.
+ */
+export const QR_MODULE_HEX = "#000000";
+export const QR_QUIET_ZONE_HEX = "#ffffff";
+
 /* ------------------------------------------------------------------------ */
 /* Warna merek sebagai TEKS dan sebagai ISIAN TOMBOL                          */
 /* ------------------------------------------------------------------------ */

@@ -15,6 +15,8 @@
     "./job-queue": "./src/job-queue.ts",
     "./job-result-store": "./src/job-result-store.ts",
     "./licence-register-store": "./src/licence-register-store.ts",
+    "./licence-signing": "./src/licence-signing.ts",
+    "./licence-signing-key-store": "./src/licence-signing-key-store.ts",
     "./mail-health": "./src/mail-health.ts",
     "./mail-settings": "./src/mail-settings.ts",
     "./mailer": "./src/mailer.ts",

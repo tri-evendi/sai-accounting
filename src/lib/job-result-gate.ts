@@ -97,6 +97,7 @@ export async function bolehAmbilHasil(
      * `switch`-nya LENGKAP, sehingga `kind` baru tidak bisa lolos tanpa
      * keputusan.
      */
+    case "company.provision":
     case "import.process":
     case "mail.batch":
     case "tenant.backup":

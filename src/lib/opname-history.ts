@@ -21,6 +21,8 @@
  * report where surplus and shrinkage look alike is worse than no report.
  */
 
+import { businessISODate } from "@sai/core/business-date";
+
 /** One adjustment movement, as fetched: quantity always positive, direction in `type`. */
 export interface OpnameAdjustmentInput {
   date: Date | string;
@@ -59,11 +61,9 @@ export interface OpnameHistory {
   netVariance: number;
 }
 
-/** Local calendar day of a date, as `YYYY-MM-DD`. */
+/** Jakarta calendar day of a date, as `YYYY-MM-DD` (`@sai/core/business-date`). */
 function dayKey(value: Date | string): string {
-  const d = value instanceof Date ? value : new Date(value);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return businessISODate(value instanceof Date ? value : new Date(value));
 }
 
 export function buildOpnameHistory(rows: OpnameAdjustmentInput[]): OpnameHistory {

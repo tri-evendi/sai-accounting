@@ -61,7 +61,7 @@ Setiap baris menyebut penjaganya di kode dan tes yang menahannya.
 | Matriks **efektif** = bawaan + override peran + override pengguna + modul usaha | `tests/authz-overrides*.test.ts` |
 | **Modul usaha tidak pernah menggerbangi buku besar** — laporan tetap rekonsiliasi | `tests/business-modules-ledger.test.ts` |
 | Matriks tenant **terpisah** dari matriks perusahaan (kunci izinnya saling lepas, jadi salah matriks ditolak `tsc`) | `tests/tenant-authz.test.ts` |
-| Peran operator membagi **tindakan**: setiap server action memanggil `requireOperatorActionSession(izin)`. Register lisensi (`licence.register`) hanya `owner` dan `billing` | `tests/operator-roles.test.ts` |
+| Peran operator membagi **tindakan**: setiap server action memanggil `requireOperatorActionSession(izin)`. Register lisensi (`licence.register`) hanya `owner` dan `billing`; `operator.self` (pasang authenticator akun SENDIRI, sesudah otentikasi ulang) dipegang semua peran | `tests/operator-roles.test.ts` · `tests/operator-authenticator.test.tsx` |
 | **Kunci buku**: otentikasi ulang sebelum buku bisa ditulis | `tests/company-unlock.test.ts` |
 
 ### 3.3 Keutuhan buku besar
@@ -143,8 +143,9 @@ yang kedua menjalankan berkas sungguhan.
 | Arsip backup | **AES-256-CBC** + PBKDF2 200.000 iterasi + salt | Dienkripsi **sebelum** berkas meninggalkan mesin |
 | Keutuhan arsip backup | **SHA-256 atas ciphertext**, dikirim bersama arsip | AES-CBC tidak membawa pemeriksaan keutuhan sendiri |
 | Webhook pembayaran | **SHA-512** | Fail-closed |
-| MFA operator | **TOTP** | `OPERATOR_MFA` |
+| MFA operator | **TOTP**; QR dikodekan di server (`uqr`, SVG sebaris — rahasia tidak pernah ke layanan QR luar), konfirmasi dicatat dengan sidik SHA-256 rahasia, bukan rahasianya | `OPERATOR_MFA`; runbook menyalakan: `PRODUCTION.md` §Turning console MFA on |
 | Berkas lisensi on-premise | **Ed25519**, diverifikasi **luring** | `@sai/core/licence`; kunci publik **ditanam di kode** |
+| Kunci penanda lisensi di konsol | **scrypt** (N=2^17, r=8, p=1, salt 16 B) → **AES-256-GCM**, AAD = sidik kunci publik | `@sai/platform/licence-signing`; dibuka dengan **frasa sandi yang diketik setiap kali**, tidak pernah disimpan |
 | Transport | **TLS** (Let's Encrypt, HSTS `max-age=63072000; preload`) | Hanya Traefik yang mengikat :80/:443 |
 
 **Lisensi on-premise — empat keputusan, dan semuanya tidak simetris.**
@@ -152,7 +153,7 @@ yang kedua menjalankan berkas sungguhan.
 | Keputusan | Kalau sebaliknya |
 |---|---|
 | Kunci publik **ditanam di kode**, tidak pernah dibaca dari env | kunci publik bukan rahasia, tapi kunci yang dibaca dari env berarti siapa pun yang bisa menyetel env di mesin itu menukarnya dengan kuncinya sendiri lalu menandatangani lisensinya sendiri — seluruh tanda tangan jadi hiasan |
-| Kunci privat **tidak pernah** di repo maupun di CI | di repo: setiap orang yang pernah mengklon memilikinya selamanya, dan `git` tidak bisa melupakannya. Di CI: siapa pun yang bisa memicu satu workflow mencetak lisensi tak terbatas, dan jejaknya terlihat seperti build biasa. Penerbitan lisensi pekerjaan manusia yang jarang — dan yang jarang tapi berbahaya memang tidak boleh otomatis |
+| Kunci privat **tidak pernah** di repo maupun di CI, dan di server **hanya tersegel** | di repo: setiap orang yang pernah mengklon memilikinya selamanya, dan `git` tidak bisa melupakannya. Di CI: siapa pun yang bisa memicu satu workflow mencetak lisensi tak terbatas, dan jejaknya terlihat seperti build biasa. Mentah di server: satu pembacaan berkas atau dump menjadi mesin pencetak lisensi. Penerbitan lisensi pekerjaan manusia yang jarang — dan yang jarang tapi berbahaya memang tidak boleh otomatis: setiap tanda tangan menuntut manusia mengetik frasa sandi |
 | Formatnya **bukan JWT** | JWT membawa `alg` di dalam pesan yang **belum terverifikasi**, dengan sejarah `alg: none` dan penukaran asimetris→HMAC yang kuncinya justru kunci publik. Di sini algoritmanya tidak dapat dinegosiasikan |
 | Diverifikasi **di tempat pemakaian**, tidak pernah disimpan sebagai baris | memverifikasi sekali lalu menyimpan hasilnya di `control` memindahkan kewenangan lisensi dari tanda tangan ke baris yang bisa ditulis. Verifikasi Ed25519 berbiaya mikrodetik; berkasnya dipasang **hanya-baca** |
 
@@ -164,13 +165,45 @@ versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
 adalah kesalahan kategori untuk produk akuntansi.
 
 **Register lisensi di konsol (`/licences`, migration platform 0006) adalah
-arsip, bukan kewenangan.** Konsol menyusun perintah `licence:issue`, operator
-menjalankannya di laptop luring, lalu mengunggah berkas `.sai`-nya; konsol
-hanya **memverifikasi** dengan kunci publik tertanam dan mencocokkan isinya
-dengan draf. Tidak ada kolom, unggahan, atau env untuk kunci privat, dan tidak
-satu pun kode `app-customer` membaca tabel register — keduanya dijaga
-`tests/licence-register-archive.test.ts`. Status "dicabut" di register hanya
-catatan: lisensi luring tidak bisa dicabut dari jauh.
+arsip, bukan kewenangan.** Draf dicatat di konsol lalu ditandatangani lewat
+salah satu dari dua jalur di bawah; keduanya berakhir di pemeriksaan yang sama
+— verifikasi dengan kunci publik **tertanam** dan pencocokan dengan draf.
+Tidak satu pun kode `app-customer` membaca tabel register, dan status
+"dicabut" hanya catatan: lisensi luring tidak bisa dicabut dari jauh.
+
+**Penandatanganan di konsol (migration platform 0007, keputusan pemilik
+22 Okt 2026).** Sampai tanggal itu aturannya "konsol tidak pernah
+menandatangani": kunci privat hanya ada sebagai berkas PEM di laptop luring.
+Pemilik membalik keputusan itu demi alur satu layar, dengan model berikut:
+
+| Unsur | Bentuk |
+|---|---|
+| Penyimpanan | `licence_signing_keys`: DER PKCS#8 kunci privat **tersegel** AES-256-GCM (`private_key_ciphertext`/`_iv`/`_tag`), kunci segel = scrypt(frasa sandi, salt acak). AAD mengikat sidik kunci publik; sesudah dibuka, kunci publik turunannya dibandingkan lagi dengan sidik baris |
+| Frasa sandi | Minimal 12 karakter, diketik dua kali saat kunci dibuat dan **setiap kali** menandatangani. Tidak pernah disimpan di basis data, env, log, maupun jejak audit; dikosongkan dari state peramban sebelum permintaan berangkat |
+| Siapa | Izin operator `licence.sign`, **owner saja** — terpisah dari `licence.register` milik peran penagihan |
+| Satu kunci | Indeks unik parsial + penolakan di kode: kunci kedua berarti lisensi lama tak lagi terverifikasi. Konsol juga menolak membuat kunci bila kode sudah memuat kunci tertanam dari jalur luring |
+| Jangkar | Konsol **hanya menandatangani bila sidik kunci aktif = sidik `LICENCE_PUBLIC_KEY_PEM`** di kode yang berjalan. Pemasangan customer tetap memverifikasi terhadap konstanta itu, tidak pernah terhadap baris basis data — baris kunci yang ditukar orang tidak menghasilkan lisensi yang diterima siapa pun |
+| Tebakan daring | 10 percobaan / 15 menit per operator (`checkSharedRateLimit`); setiap kegagalan tercatat `operator.licence.sign.failed` |
+| Jejak | `operator.licence.key.create` (sidik + parameter KDF) dan `operator.licence.sign` (siapa, kapan, id baris, `licenceId`, sidik kunci, sha256 berkas) |
+| Jalur luring | Tetap ada — `licence:keygen`/`licence:issue` memakai modul penanda yang SAMA, jadi kedua jalur menghasilkan byte yang sama. Pilih satu kunci: kunci konsol dan kunci luring tidak bisa hidup bersama |
+
+**Risiko sisa, dinyatakan apa adanya.** Dump basis data atau env yang bocor
+**sendirian** tidak bisa menandatangani — penyerangnya masih harus menebak frasa
+sandi melawan scrypt (±128 MiB per tebakan). Tetapi **RCE pada `app-operator`**
+bisa menangkap frasa sandi saat diketik dan kunci yang sedang terbuka di
+memori; itu harga alur satu layar yang diterima pemilik. Peran basis data
+`app-customer` juga bisa MEMBACA baris tersegelnya (satu basis data platform),
+yang tidak memberinya apa pun tanpa frasa sandi. `KeyObject` Node tidak bisa
+di-nol-kan; turunan kunci segel dan DER mentahnya di-nol-kan sesudah dipakai.
+
+Penjaga invarian di atas (`tests/licence-register-archive.test.ts`):
+`@sai/platform/licence-signing` satu-satunya pemegang kunci privat; modul itu
+diimpor hanya oleh store kuncinya dan dua skrip luring; store kunci hanya oleh
+`/licences` konsol; membuat kunci & menandatangani hanya dari server action-nya
+di balik `licence.sign`; `app-customer` dan kulit klien konsol tidak
+menyentuhnya; kolom `private_*` di migration mana pun hanya
+ciphertext/iv/tag; tanpa env kunci atau frasa, tanpa `console.*`, tanpa frasa
+sandi di `details` jejak audit. Perilakunya: `tests/licence-signing.test.ts`.
 
 **Pindah tenant SaaS → on-premise membawa seluruh buku keluar dari mesin SAI**
 ([`ONPREM-PINDAH-DARI-SAAS.md`](../ONPREM-PINDAH-DARI-SAAS.md)). Kontrolnya:
@@ -207,15 +240,53 @@ menyambung ke PostgreSQL sebagai superuser.
 
 | Lapis | Kontrol | Penjaga |
 |---|---|---|
-| **Env** | Tidak ada `env_file`. Setiap layanan menyebut env yang dibacanya (grup `x-env` di compose); rahasia punya daftar tolak: `OPERATOR_*` hanya `app-operator` (kecuali `OPERATOR_HOST` yang dipaksa kosong dan `OPERATOR_TRUSTED_PROXY_HOPS` yang bukan rahasia, di `app-customer`), `BACKUP_*`/`AWS_*` hanya `svc-integrator` + `job-backup`, `AUTH_SECRET` hanya `app-customer`, `PROVISION_DATABASE_URL` hanya yang membuat basis data. Daftar izinnya DIHITUNG dari graf impor titik masuk tiap layanan, jadi yang kurang satu nama ketahuan di CI, bukan di produksi | `tests/compose-env-allowlist.test.ts` · `bun run env:inventory` |
+| **Env** | Tidak ada `env_file`. Setiap layanan menyebut env yang dibacanya (grup `x-env` di compose); rahasia punya daftar tolak: `OPERATOR_*` hanya `app-operator` (kecuali `OPERATOR_HOST` yang dipaksa kosong dan `OPERATOR_TRUSTED_PROXY_HOPS` yang bukan rahasia, di `app-customer`), `BACKUP_*`/`AWS_*` hanya `svc-integrator` + `job-backup`, `AUTH_SECRET` hanya `app-customer`, `PROVISION_DATABASE_URL` hanya yang membuat basis data (`svc-worker`, `migrate`, `job-backup` — TIDAK `app-customer`). Daftar izinnya DIHITUNG dari graf impor titik masuk tiap layanan, jadi yang kurang satu nama ketahuan di CI, bukan di produksi | `tests/compose-env-allowlist.test.ts` · `bun run env:inventory` |
 | **uid** | Setiap tahap runtime berakhir dengan `USER` non-root, uid 1000 — pemilik bersama `hasil`/`cadangan`/`documents`/`audit`. `/app` tetap milik root: kode tidak bisa mengubah dirinya. `pg` diturunkan entrypoint resmi ke `postgres` (`gosu`) sebelum server jalan | `tests/containers-non-root.test.ts` |
-| **Peran PostgreSQL** | `sai_owner` (NOSUPERUSER CREATEDB, pemilik; `migrate` + penyediaan) · `sai_app` (DML; aplikasi & pekerja) · `sai_backup` (`sai_app` + `pg_read_all_data`; jalur `tenant`). Superuser hanya untuk `pg`, pencari sandi PgBouncer, dan perkakas `job-backup`. Buku baru dihibahkan ke `sai_app` SEBELUM didaftarkan. Sisa: `app-customer` memegang kredensial PEMILIK untuk penyediaan PT | `tests/postgres-least-privilege.test.ts` · `scripts/postgres-roles.py check` |
+| **Peran PostgreSQL** | `sai_owner` (NOSUPERUSER CREATEDB, pemilik; `migrate` + penyediaan) · `sai_app` (DML; aplikasi & pekerja) · `sai_backup` (`sai_app` + `pg_read_all_data`; jalur `tenant`). Superuser hanya untuk `pg`, pencari sandi PgBouncer, dan perkakas `job-backup`. Buku baru dihibahkan ke `sai_app` SEBELUM didaftarkan. Sejak Okt 2026 `app-customer` memegang `sai_app` SAJA: penyediaan PT adalah pekerjaan antrean `company.provision` yang dikerjakan `svc-worker` (jalur `interactive`), satu-satunya layanan hidup-terus dengan `PROVISION_DATABASE_URL` (§3.10) | `tests/postgres-least-privilege.test.ts` · `tests/provisioning-off-app-customer.test.ts` · `scripts/postgres-roles.py check` |
 
 Sandi peran tidak pernah lewat argv: `scripts/postgres-roles.py` mengirim
 verifier SCRAM lewat stdin `psql`, dan memutar sandi dengan membuat ulang
 hanya layanan yang environment-nya berubah menurut `docker compose config`
 (`tests/postgres-roles-script.test.ts`). Urutan peralihan, verifikasi, dan jalan
 mundurnya: PRODUCTION.md §Least-privilege.
+
+### 3.10 Penyediaan PT di luar container yang menghadap internet (Okt 2026)
+
+Sesudah peralihan hak minimum, satu risiko sisa tercatat: `/companies/new`
+membuat basis data PT **di dalam permintaan HTTP**, jadi `app-customer`
+memegang `PROVISION_DATABASE_URL` (`sai_owner`, CREATEDB, pemilik setiap buku).
+Pemilik bukan superuser — tanpa berkas server, program, atau peran — tetapi
+RCE di `app-customer` tetap berarti DDL di setiap buku PT.
+
+Penyediaan kini pekerjaan antrean `company.provision` (jalur `interactive`):
+
+| Sisi | Yang dipegang | Yang dikerjakan |
+|---|---|---|
+| `app-customer` | `sai_app` saja | `POST /api/companies` → gerbang kuota + validasi → `publishJob` (dedupe = nama basis data) → `202 { jobId }`; `GET /api/companies/provisioning/[id]` menjawab tahap/hasil, tidak pernah `payload` atau `last_error` |
+| `svc-worker` (peran `interactive`) | `sai_app` + `PROVISION_DATABASE_URL` | `provisionCompany`: CREATE DATABASE → migration (tiap berkas + catatannya satu transaksi) → hibah `sai_app` → registry PALING AKHIR → dua jejak audit |
+
+Yang dijaga bentuknya sama dengan versi HTTP, plus dua yang baru:
+
+- **Registry paling akhir** — PT terdaftar hanya sesudah bukunya lengkap dan
+  terhibah; kegagalan di tengah tidak meninggalkan PT setengah jadi yang terlihat.
+- **Klik ganda / dua tab = satu basis data** — kunci dedupe `company.provision:<nama basis data>`;
+  penerbitan kedua MENEMPEL ke pekerjaan aktif. Kunci pekerjaan yang sudah
+  berakhir dilepas sebelum menerbitkan, jadi kegagalan bisa diulang.
+- **Pengulangan melanjutkan, tidak menimpa** — buku setengah jadi membawa tanda
+  `COMMENT ON DATABASE 'sai:provisioning t<tenant> <slug>'` sampai tepat sebelum
+  registry; pengulangan atas permintaan yang sama melanjutkan dari migration
+  terakhir yang tercatat. Basis data berisi tanpa tanda itu (mis. buku PT
+  terhapus yang disimpan untuk retensi) tetap ditolak `database_not_empty`.
+
+**Sisa yang disadari.** `svc-worker` kini pemegang kredensial pemilik yang hidup
+terus, dan keempat perannya berbagi environment (penyelia satu container,
+09 §3.2). Ia tidak menghadap internet; masukannya baris `jobs` di basis data
+kendali. RCE di `app-customer` (DML atas kendali lewat `sai_app`) bisa
+menerbitkan `company.provision` sendiri — yang didapatnya: basis data baru
+berawalan `sai_` yang namanya lolos `assertSafeDatabaseName`, bukan DDL atas buku
+yang sudah ada (berisi + tanpa tanda = ditolak). Penguatan berikutnya yang
+murah, bila diperlukan: mencabut `PROVISION_DATABASE_URL` dari tiga peran lain
+di skrip compose-nya (`env -u`).
 
 ## 4. Sembilan kelas kegagalan yang dijaga
 

@@ -133,11 +133,82 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
         "account_types",
         "category_statement_side",
         "closing_journal_type",
+        "contract_statuses",
+        "currencies",
         "income_statement",
+        "invoice_statuses",
         "money",
         "version",
       ]
     );
+  });
+
+  /*
+   * PENGECUALIAN YANG DISEBUT dari aturan "nol pembaca" — keputusan pemilik
+   * 23 Okt 2026: mata uang & status dokumen dibangkitkan SEBELUM pembaca Go
+   * pertamanya, supaya pemeriksa kesesuaian data yang kelak pindah ke Go
+   * mewarisi kosakata zod, bukan salinan ketiga. Sisi keduanya hari ini TS
+   * (zod + `check-data-conformance`).
+   *
+   * Tes ini sengaja menjadi PEMICU: begitu Go tulisan tangan memakai salah satu
+   * kunci ini, ia merah — coret kuncinya dari daftar, dan pindahkan ke
+   * `expect(...).toMatch` di tes di atas, supaya pembacanya ikut dijaga.
+   */
+  it("pengecualian tanpa-pembaca-Go masih benar-benar tanpa pembaca", () => {
+    const semua = GO_PRODUKSI.map((b) => b.isi).join("\n");
+    const tanpaPembaca: Record<string, RegExp> = {
+      currencies: /contract\.(Currencies|IsCurrency|BaseCurrency|Currency[A-Z]{3})\b/,
+      invoice_statuses: /contract\.(InvoiceStatuses|InvoiceStatus[A-Z]\w*)\b/,
+      contract_statuses: /contract\.(ContractStatuses|IsContractStatus|ContractStatus[A-Z]\w*)\b/,
+    };
+    for (const [kunci, pola] of Object.entries(tanpaPembaca)) {
+      expect(semua, `\`${kunci}\` kini punya pembaca Go — coret dari pengecualian`).not.toMatch(pola);
+    }
+  });
+});
+
+describe("kontrak akuntansi: mata uang & status dokumen (23 Okt 2026)", () => {
+  it("YAML, bangkitan TS, dan re-ekspor @sai/core/constants sepakat", async () => {
+    const gen = await import("@sai/core/generated/accounting");
+    const constants = await import("@sai/core/constants");
+    const y = load(baca("contract", "accounting.yaml")) as {
+      currencies: { base: string; values: string[] };
+      invoice_statuses: string[];
+      contract_statuses: string[];
+    };
+    expect([...gen.CURRENCIES]).toEqual(y.currencies.values);
+    expect(gen.BASE_CURRENCY).toBe(y.currencies.base);
+    expect([...gen.INVOICE_STATUSES]).toEqual(y.invoice_statuses);
+    expect([...gen.CONTRACT_STATUSES]).toEqual(y.contract_statuses);
+    expect(constants.CONTRACT_STATUSES).toBe(gen.CONTRACT_STATUSES);
+    expect(constants.INVOICE_STATUSES).toBe(gen.INVOICE_STATUSES);
+    expect(constants.CURRENCIES).toBe(gen.CURRENCIES);
+  });
+
+  it("status kontrak DIAWALI status faktur, `completed` di belakang", () => {
+    const gen = { c: ["signed", "pending", "canceled", "completed"] };
+    const y = load(baca("contract", "accounting.yaml")) as {
+      invoice_statuses: string[];
+      contract_statuses: string[];
+    };
+    expect(y.contract_statuses.slice(0, y.invoice_statuses.length)).toEqual(y.invoice_statuses);
+    expect(y.contract_statuses).toEqual(gen.c);
+  });
+
+  it("bangkitan Go memuat setiap mata uang dan status", () => {
+    const go = baca(GEN_GO);
+    for (const c of ["USD", "CNY", "IDR"]) expect(go).toContain(`Currency = "${c}"`);
+    expect(go).toContain("const BaseCurrency = CurrencyIDR");
+    expect(go).toContain('ContractStatusCompleted ContractStatus = "completed"');
+    expect(go).not.toContain('InvoiceStatus = "completed"');
+  });
+
+  it("zod & pemeriksa kesesuaian membaca daftar bangkitan, bukan salinan", () => {
+    const fx = baca("src", "lib", "validations", "fx.ts");
+    expect(fx).not.toMatch(/\[\s*"USD",\s*"CNY",\s*"IDR"\s*\]/);
+    for (const f of ["contract.ts", "invoice.ts"]) {
+      expect(baca("src", "lib", "validations", f)).not.toMatch(/z\.enum\(\[\s*"signed"/);
+    }
   });
 });
 

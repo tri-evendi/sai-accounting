@@ -24,6 +24,7 @@ export const JOB_STATUSES: readonly JobStatus[] = [
 ];
 
 export type JobKind =
+  | "company.provision"
   | "document.generate"
   | "import.process"
   | "integration.bank_feed"
@@ -56,6 +57,7 @@ export interface JobKindSpec {
 }
 
 export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
+  "company.provision": { lane: "interactive", maxAttempts: 1, writesLedger: false },
   "document.generate": { lane: "interactive", maxAttempts: 3, writesLedger: false },
   "import.process": { lane: "bulk", maxAttempts: 1, writesLedger: false },
   "integration.bank_feed": { lane: "integration", maxAttempts: 5, writesLedger: false },
@@ -91,7 +93,7 @@ export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
 export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
   bulk: ["import.process", "mail.batch", "report.package"],
   integration: ["integration.bank_feed", "integration.efaktur"],
-  interactive: ["document.generate", "report.export", "report.export_go"],
+  interactive: ["company.provision", "document.generate", "report.export", "report.export_go"],
   ledger: ["ledger.dunning", "ledger.recurring"],
   schedule: ["schedule.tick"],
   schema: ["schema.migrate"],

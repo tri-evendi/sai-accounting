@@ -43,6 +43,7 @@ import "dotenv/config";
 
 import { runLane, type JobContext } from "./runner";
 import { dalamKonteksPerusahaan } from "./jalur-perusahaan";
+import { provisionCompanyJob } from "./company-provision";
 import { writeJobResult } from "@sai/platform/job-result-store";
 import { isExportable, reportById } from "../src/lib/report-catalog";
 import { reportEngine } from "../src/lib/report-engine";
@@ -167,5 +168,12 @@ void runLane({
      * DITERBITKAN tanpa pengklaim.
      */
     "report.export": eksporLaporan,
+    /*
+     * Buku PT baru (Okt 2026). Di jalur ini karena yang menunggu adalah orang
+     * di layar `/companies/new` — kontrak `company.provision` menulis kenapa
+     * bukan `schema` atau `ledger`. Pelari ini karena itu satu-satunya proses
+     * yang hidup terus dengan `PROVISION_DATABASE_URL` (kredensial PEMILIK).
+     */
+    "company.provision": provisionCompanyJob,
   },
 });

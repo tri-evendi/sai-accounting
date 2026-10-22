@@ -3,13 +3,18 @@ import { z } from "zod";
 // components import.
 import { round2 } from "@/lib/posting/rules";
 import { vmsg, type ValidationKey } from "@sai/core/i18n/validation";
+import { BASE_CURRENCY as CONTRACT_BASE_CURRENCY, CURRENCIES } from "@sai/core/constants";
 
-/** Currencies the app transacts in. IDR is the reporting/base currency. */
-export const CURRENCY_VALUES = ["USD", "CNY", "IDR"] as const;
+/**
+ * Currencies the app transacts in. IDR is the reporting/base currency. Both are
+ * GENERATED from `contract/accounting.yaml` (shared with Go) — never a second
+ * hand-written list here.
+ */
+export const CURRENCY_VALUES = CURRENCIES;
 export const currencyEnum = z.enum(CURRENCY_VALUES);
 export type CurrencyCode = (typeof CURRENCY_VALUES)[number];
 
-export const BASE_CURRENCY: CurrencyCode = "IDR";
+export const BASE_CURRENCY: CurrencyCode = CONTRACT_BASE_CURRENCY;
 
 /**
  * Mata uang yang TERSIMPAN (kolom `VarChar(5)`) menjadi mata uang yang DIKENAL.

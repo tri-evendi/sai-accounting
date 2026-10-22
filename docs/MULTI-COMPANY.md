@@ -462,6 +462,15 @@ Instans bawaan tidak punya baris. URL-nya tetap rantai yang sama:
 `COMPANY_DATABASE_URL_TEMPLATE` → `DATABASE_URL` → `CONTROL_DATABASE_URL`.
 Kunci `default` dicadangkan untuknya.
 
+Bentuk kunci, bentuk nama env var, label `default`, dan awalan objek cadangan
+`instans/` **dibangkitkan** dari `contract/db-instances.yaml` (`bun run
+contract:gen`) ke `packages/db/src/generated/db-instances.ts` dan
+`services/integrator/internal/contract/dbinstances_gen.go`. Dua regex tulisan
+tangan yang menyimpang berarti PT berjalan normal di aplikasi sementara jalur
+`tenant` menolak instansnya, dan bukunya tidak dicadangkan. Penjaganya
+`tests/contract-db-instances.test.ts`. CHECK migration 0009 ditulis tangan;
+kesamaannya dengan kontrak dijaga `tests/company-url-resolver.test.ts`.
+
 ### Satu penyelesai
 
 `@sai/db/company-url` adalah **satu-satunya** tempat yang menyusun URL buku
@@ -499,7 +508,9 @@ digabung ke **setiap** layanan yang membuka buku: `app-customer`,
 `app-operator`, `migrate`, `svc-worker`, `svc-integrator`, dan `job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
 saat membuka buku PT di instans tersebut. Untuk `svc-integrator` artinya buku PT
 di instans itu **tidak dicadangkan** (lihat *Cadangan per instans* di bawah).
-Pengguna kunci di URL itu wajib berhak `CREATEDB`.
+Pengguna di URL itu wajib berhak `CREATEDB`, **dan** superuser atau
+mewarisi `pg_read_all_data` — tanpa yang kedua cadangan instans itu gagal
+setiap malam (lihat *Peran cadangan per instans* di bawah).
 
 Jalannya **satu**: nilai di `.env`, nama di grup `x-env.db-instances`, yang
 sampai ke semua layanan itu lewat `<<: *env-db-instances`. (Sampai Okt 2026
@@ -565,7 +576,8 @@ Lalu, per instans:
 
 | Langkah | Instans bawaan | Instans `<kunci>` |
 |---|---|---|
-| Pencacahan | `pg_database` server `CONTROL_DATABASE_URL` | `pg_database` server instans itu (basis data `postgres`) |
+| Kredensial | `CONTROL_DATABASE_DIRECT_URL` (peran `sai_backup`) | template instans itu (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`), pathname diganti `postgres` |
+| Pencacahan | `pg_database` server `CONTROL_DATABASE_DIRECT_URL` | `pg_database` server instans itu (basis data `postgres`) |
 | Dump per basis data | `db-<nama>.dump.enc` | `instans/<kunci>/db-<nama>.dump.enc` |
 | Peran & hak akses | `globals.sql.enc` | `instans/<kunci>/globals.sql.enc` |
 | `companyId` di manifest | PT dengan `db_instance_key = NULL` | PT dengan `db_instance_key = '<kunci>'` |
@@ -583,10 +595,17 @@ tidak membuktikan apa pun tentang buku yang hidup. PT terdaftar yang tidak ada
 di server instansnya masuk `Hilang` sebagai `<nama>@<kunci>`. Seperti
 sebelumnya, `Hilang` menghentikan putaran sebelum satu objek pun dikirim.
 
-**Instans yang gagal** (env tak diset, nama salah, server tak terjangkau, atau
-server lebih baru daripada `pg_dump`) **tidak** menghentikan instans lain.
-Satu env var yang lupa disalin tidak boleh membuat semua PT tanpa salinan.
-Akibatnya:
+**Instans yang gagal** (env tak diset, nama salah, server tak terjangkau,
+server lebih baru daripada `pg_dump`, peran tanpa hak cadangan — atau, sejak
+23 Okt 2026, `pg_dump`/`pg_dumpall` instans itu yang gagal **di tengah**
+putaran) **tidak** menghentikan instans lain. Satu env var yang lupa disalin
+tidak boleh membuat semua PT tanpa salinan. Instans yang gagal di tengah
+berhenti pada galat pertamanya: sisa buku dan globals-nya dilewati, objeknya
+yang sudah terkirim tetap disebut manifest (mereka ada dan utuh), dan ia
+pindah dari `instans` ke `instansGagal`. Yang **tetap** menghentikan seluruh
+putaran: galat instans bawaan (ia memegang basis data kendali — perilaku
+sebelum tahap 4, apa adanya), galat tujuan (S3/cakram bukan milik satu
+instans), dan pembatalan (SIGTERM). Akibatnya:
 
 - objek instans lain tetap terkirim;
 - manifest memuat `instansGagal: [{kunci, sebab, basis}]`;
@@ -604,10 +623,65 @@ Konsol operator `/backup` membaca `backup_runs` (putaran, status, galat,
 ukuran), bukan manifest, jadi bentuknya tidak berubah. Label `@kunci` di
 daftar versi skema tetap berasal dari registry.
 
-**Urutan untuk pemindahan pertama di produksi:** set env var instans di
-`.env`, recreate `svc-integrator` (dan layanan lain), terbitkan satu putaran, dan
-pastikan manifestnya memuat `instans: [{kunci: …}]` tanpa `instansGagal`.
-Baru sesudah itu jalankan `tenant:move`.
+### Peran cadangan per instans
+
+Instans bawaan dicadangkan sebagai `sai_backup` (anggota `sai_app` +
+`pg_read_all_data`, dibuat `scripts/postgres-roles.py apply`). Instans
+tambahan mengikuti konvensi `company-url`: **satu** URL per instans, dan
+template itu sekaligus penyedianya — jadi jalur `tenant` memakai peran di
+template itu juga. Tidak ada env var kredensial cadangan kedua per instans;
+dua kredensial untuk satu server adalah dua hal yang harus sampai ke setiap
+layanan, dan satu di antaranya akan tertinggal.
+
+Peran itu biasanya **pemilik** buku di instansnya (NOSUPERUSER CREATEDB). Ia
+bisa `pg_dump` setiap buku miliknya, tetapi `pg_dumpall --globals-only`
+membaca `pg_authid` dan ditolak:
+
+```
+pg_dumpall: error: query failed: ERROR:  permission denied for table pg_authid
+```
+
+Terukur 23 Okt 2026 terhadap `postgres:17`. Jadi di **setiap** instans
+tambahan, peran di template-nya wajib superuser atau mewarisi
+`pg_read_all_data` (PostgreSQL ≥ 14). Jalur `tenant` memeriksanya **di depan**
+(`backup.PeriksaHakCadangan`), sebelum satu buku pun didump, dan instans yang
+gagal pemeriksaan masuk `instansGagal` dengan kalimat yang menyebut GRANT-nya.
+
+`scripts/postgres-roles.py` **tidak** menjangkau instans tambahan: ia bekerja
+lewat `docker compose exec` ke layanan `pg` di mesin ini, sebagai superuser di
+soket lokalnya, dan servernya tidak ada di compose ini. Opsi `--instance`
+sengaja tidak ditambahkan — memperluasnya berarti menulis sandi superuser
+server lain ke `.env` produksi. Di server instans itu, sebagai superuser-nya:
+
+```sql
+-- <peran> = pengguna di COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE
+ALTER ROLE "<peran>" LOGIN NOSUPERUSER CREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS INHERIT;
+GRANT pg_read_all_data TO "<peran>";
+```
+
+Lalu buktikan dari host yang menjalankan `svc-integrator`, dengan peran itu:
+
+```bash
+docker compose run --rm --no-deps job-backup sh -c \
+  'pg_dumpall --globals-only -d "$COMPANY_DB2_DATABASE_URL_TEMPLATE" -l postgres >/dev/null && echo globals-ok'
+```
+
+(`-d` di `pg_dumpall` adalah **string koneksi**, jadi URL template itu dipakai
+apa adanya; `-l postgres` memilih basis data tempat ia membaca. Parameter
+khusus Prisma di URL itu — `connection_limit`, `schema`, … — ditolak libpq;
+jalur `tenant` membuangnya sendiri (`db.Bersih`), perintah uji ini tidak.)
+
+Harganya diterima dengan sadar: `pg_read_all_data` membuat peran template —
+yang juga dipakai aplikasi untuk instans itu — bisa membaca hash sandi peran
+lain di server tersebut. Instans tambahan hanya berisi buku SAI, dan peran itu
+sudah pemilik setiap buku di sana. Bila instans itu kelak berbagi server
+dengan basis data lain, pisahkan perannya dulu (rancangan 09 §9).
+
+**Urutan untuk pemindahan pertama di produksi:** siapkan peran di server
+instans (di atas), set env var instans di `.env` dan namanya di
+`x-env.db-instances`, recreate `svc-integrator` (dan layanan lain), terbitkan
+satu putaran, dan pastikan manifestnya memuat `instans: [{kunci: …}]` tanpa
+`instansGagal`. Baru sesudah itu jalankan `tenant:move`.
 
 ### Yang belum ikut
 

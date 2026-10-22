@@ -52,6 +52,7 @@
  */
 import { ageInDays, type PaymentStatus } from "@/lib/receivables";
 import { formatCurrency, formatDateMedium } from "@sai/core/utils";
+import { businessISODate, businessParts } from "@sai/core/business-date";
 
 /** Jenis pemberitahuan yang diterbitkan modul ini. Harus ada di
  *  `NOTIFICATION_KINDS` — dijaga `tests/invoice-due-digest.test.ts`. */
@@ -108,10 +109,9 @@ function potong(teks: string, batas: number): string {
   return teks.length <= batas ? teks : `${teks.slice(0, batas - 1)}…`;
 }
 
-/** `YYYY-MM-DD` waktu setempat — kunci hari, bukan cap waktu. */
+/** `YYYY-MM-DD` kalender Jakarta — kunci hari, bukan cap waktu. */
 export function hariKunci(date: Date): string {
-  const dua = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${dua(date.getMonth() + 1)}-${dua(date.getDate())}`;
+  return businessISODate(date);
 }
 
 /**
@@ -122,7 +122,8 @@ export function hariKunci(date: Date): string {
  * sebuah tunggakan paling mungkin masih menganggur.
  */
 export function pekanKunci(date: Date): string {
-  const t = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const p = businessParts(date);
+  const t = new Date(Date.UTC(p.year, p.month, p.day));
   const hari = t.getUTCDay() || 7; // Senin=1 … Minggu=7
   t.setUTCDate(t.getUTCDate() + 4 - hari); // Kamis menentukan tahun pekan itu
   const tahun = t.getUTCFullYear();

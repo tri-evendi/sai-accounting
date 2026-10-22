@@ -30,6 +30,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { buildContractOutstanding } from "@/lib/document-chain";
+import { businessParts } from "@sai/core/business-date";
 
 /** Half a cent — money is Decimal(15,2), so anything under this is rounding noise. */
 const EPSILON = 0.005;
@@ -90,8 +91,11 @@ export function toBase(row: MoneyRow): number | null {
 /** Whole days between two dates, floored. Negative when `date` is in the future. */
 export function ageInDays(date: Date, asOf: Date): number {
   const MS_PER_DAY = 86_400_000;
-  const a = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  const b = Date.UTC(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
+  // Hari kalender Jakarta, bukan zona proses (`@sai/core/business-date`).
+  const p = businessParts(date);
+  const q = businessParts(asOf);
+  const a = Date.UTC(p.year, p.month, p.day);
+  const b = Date.UTC(q.year, q.month, q.day);
   return Math.floor((b - a) / MS_PER_DAY);
 }
 

@@ -19,6 +19,7 @@ import { getAdvances, summarizeAdvances, type AdvanceType } from "@/lib/advances
 import { writeAuditLog } from "@/lib/audit";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
+import { businessParts } from "@sai/core/business-date";
 
 /**
  * Document number: `UMP.YYYY.MM.NNNNN` for sales, `UMB.…` for purchases.
@@ -31,9 +32,8 @@ async function nextAdvanceNo(
   type: AdvanceType,
   date: Date
 ): Promise<string> {
-  const prefix = `${type === "sales" ? "UMP" : "UMB"}.${date.getFullYear()}.${String(
-    date.getMonth() + 1
-  ).padStart(2, "0")}.`;
+  const { year, month } = businessParts(date);
+  const prefix = `${type === "sales" ? "UMP" : "UMB"}.${year}.${String(month + 1).padStart(2, "0")}.`;
   const count = await tx.advancePayment.count({ where: { advanceNo: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }

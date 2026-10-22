@@ -8,6 +8,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@sai/db/client/company";
+import { businessParts } from "@sai/core/business-date";
 
 type Client = Prisma.TransactionClient | typeof prisma;
 
@@ -55,7 +56,8 @@ export async function nextSalesReturnNo(
   tx: Prisma.TransactionClient,
   date: Date
 ): Promise<string> {
-  const prefix = `RSJ.${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.`;
+  const { year, month } = businessParts(date);
+  const prefix = `RSJ.${year}.${String(month + 1).padStart(2, "0")}.`;
   const count = await tx.salesReturn.count({ where: { returnNo: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }
@@ -65,7 +67,8 @@ export async function nextPurchaseReturnNo(
   tx: Prisma.TransactionClient,
   date: Date
 ): Promise<string> {
-  const prefix = `RSB.${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.`;
+  const { year, month } = businessParts(date);
+  const prefix = `RSB.${year}.${String(month + 1).padStart(2, "0")}.`;
   const count = await tx.purchaseReturn.count({ where: { returnNo: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }

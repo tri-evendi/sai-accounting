@@ -8,6 +8,7 @@
     "./adapter": "./src/adapter.ts",
     "./server": "./src/server.ts",
     "./company-url": "./src/company-url.ts",
+    "./db-instances": "./src/generated/db-instances.ts",
     "./session-lock": "./src/session-lock.ts",
     "./client/company": "./generated/company/client.ts",
     "./client/control": "./generated/control/client.ts",

@@ -1,30 +1,23 @@
 /**
- * Membuat perusahaan baru — dengan KEMAJUAN yang dialirkan (issue #104).
+ * Membuat perusahaan baru — MENERBITKAN penyediaan, tidak mengerjakannya.
  *
- * ══ KENAPA RESPONS STREAMING, BUKAN "POST LALU TUNGGU" ═════════════════════
- * Pekerjaannya puluhan detik: membuat basis data, menerapkan 40-an migration,
- * lalu mendaftarkannya. Satu POST yang menggantung selama itu memberi pengguna
- * layar diam yang tidak bisa dibedakan dari aplikasi yang macet — dan yang
- * paling mungkin ia lakukan berikutnya adalah menekan tombolnya lagi.
- *
- * Karena itu setiap langkah dikirim begitu ia terjadi, sebagai baris JSON
- * (NDJSON). Bukan SSE: yang dibutuhkan hanya satu arah tanpa penyambungan
- * ulang otomatis, dan `fetch` + `ReadableStream` membacanya tanpa pustaka apa
- * pun. Galat pun dikirim sebagai baris, bukan sebagai status HTTP — pada saat
- * kegagalan terjadi, status 200 sudah terlanjur terkirim bersama byte pertama.
+ * ══ SEJAK OKT 2026: 202 + PEKERJAAN, BUKAN ALIRAN NDJSON ═══════════════════
+ * Sampai Okt 2026 route ini membuat basis data di dalam permintaannya sendiri
+ * dan mengalirkan kemajuannya sebagai NDJSON. Itu menuntut `app-customer`
+ * memegang kredensial PEMILIK PostgreSQL (`PROVISION_DATABASE_URL`) — satu
+ * RCE di container yang menghadap internet = DDL di setiap buku PT. Kini route
+ * ini hanya menerbitkan pekerjaan `company.provision` dan menjawab
+ * `202 { jobId }`; pekerjanya pelari jalur `interactive` di `svc-worker`, dan
+ * layar menunggu lewat `GET /api/companies/provisioning/[id]`. Alasan lengkap:
+ * `lib/company-provisioning.ts`; janji dedupe & pengulangan:
+ * `lib/company-provisioning-queue.ts`.
  *
  * ══ PENJAGANYA TINGKAT TENANT (issue #135) ═════════════════════════════════
  * `company.create` pindah ke matriks tenant: membuat PT adalah kewenangan
- * pelanggan (owner/admin tenant), bukan peran di salah satu PT — dan pemilik
+ * customer (owner/admin tenant), bukan peran di salah satu PT — dan pemilik
  * tenant TANPA satu pun perusahaan justru pemakai terpenting route ini.
  * `requireTenantApiPermission` karena itu TIDAK menuntut konteks perusahaan,
  * dan tenant pemilik perusahaan baru diambil dari keanggotaan PEMBUATNYA.
- *
- * ══ KENAPA TANPA PEKERJA LATAR ═════════════════════════════════════════════
- * Lihat catatan panjang di `lib/company-provisioning.ts`: prosesnya server Node
- * yang hidup terus (tidak ada batas waktu yang memutus), pekerjaannya puluhan
- * detik, dan urutannya membuat kegagalan di tengah tidak meninggalkan apa pun
- * yang terlihat pengguna.
  */
 import { NextResponse } from "next/server";
 
@@ -32,12 +25,8 @@ import { requireTenantApiPermission } from "@/lib/tenant-guard";
 import { getRequestI18n } from "@sai/platform/i18n/server";
 import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { companyCreateSchema } from "@/lib/validations/company";
-import { provisionCompany } from "@/lib/company-provisioning";
-import { provisionErrorMessage, type ProvisionEvent } from "@/lib/company-provisioning-shared";
-import { writeAuditLog } from "@/lib/audit";
-import { writeTenantAuditLog } from "@sai/platform/tenant-audit";
-import { runWithCompany } from "@/lib/company-context";
-import { ROLES } from "@sai/core/constants";
+import { enqueueCompanyProvision } from "@/lib/company-provisioning-queue";
+import { getClientIp } from "@/lib/audit";
 import { controlDb } from "@sai/core/control-db";
 import { refuseProvisioning } from "@sai/core/registration";
 import { creationQuotaFor } from "@/lib/entitlement-source";
@@ -47,7 +36,7 @@ export async function POST(request: Request) {
   if (!result.authorized) return result.response;
 
   /*
-   * ══ GERBANG KUOTA & STATUS — DI SERVER, SEBELUM SATU BYTE PUN DIALIRKAN ══
+   * ══ GERBANG KUOTA & STATUS — DI SERVER, SEBELUM PEKERJAAN DITERBITKAN ══
    * (issue #138, §9). Dengan pendaftaran mandiri, siapa pun yang lolos
    * verifikasi bisa meminta pembuatan SEBUAH BASIS DATA — dan `db:migrate:all`
    * menyusuri semuanya pada setiap rilis. Kuota `max_companies` adalah
@@ -107,136 +96,39 @@ export async function POST(request: Request) {
   const session = result.session;
   const userId = Number.parseInt(session.user.id, 10);
 
-  /*
-   * Penerjemah diambil SEBELUM aliran dibuka, bukan di dalam `catch`-nya:
-   * `getRequestI18n` membaca cookie & header permintaan, dan pekerjaan di
-   * dalam `start()` berlanjut setelah penanganan permintaan berpindah tangan.
-   * Mengambilnya di sini membuat bahasa pesan galat pasti bahasa penggunanya.
-   */
-  const { t } = await getRequestI18n();
-
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const send = (event: ProvisionEvent | { phase: "error"; message: string }) => {
-        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
-      };
-
-      try {
-        const { companyId, databaseName, dbInstance } = await provisionCompany(
-          {
-            slug: parsed.data.slug,
-            name: parsed.data.name,
-            databaseName: parsed.data.databaseName,
-            createdByUserId: userId,
-            /*
-             * Pembuatnya menjadi ADMINISTRATOR SISTEM di perusahaan yang BARU
-             * LAHIR — bukan "perannya di perusahaan yang sedang dibuka"
-             * (`session.user.role!` yang lama): pelanggan yang membuat PT
-             * pertamanya tidak punya peran per-PT sama sekali, dan tanda seru
-             * itu bohong untuknya (issue #135). Nilainya dari konstanta
-             * `ROLES`, bukan perbandingan string peran.
-             *
-             * BUKAN `managing_director`, meski dulu begitu. "Direktur Utama"
-             * adalah NAMA JABATAN, dan ia ikut terbaca di daftar pengguna,
-             * jejak audit, dan pilihan penyetuju — sementara yang mendaftar
-             * biasanya staf akunting, IT, atau konsultan yang menyiapkan buku.
-             * Menuliskan jabatan yang bukan miliknya membuat buku berbohong
-             * sejak baris pertama, lalu melahirkan Direktur Utama KEDUA begitu
-             * direktur aslinya dibuatkan akun. "Administrator Sistem" justru
-             * menyebut persis yang ia kerjakan di sini.
-             *
-             * Tak ada kuasa yang hilang karenanya: `administrator` memang
-             * dirancang kembar dengan `managing_director` (FULL_ACCESS_ROLES,
-             * migration 0032). Matriks izin, bawaan Mode Akuntan, dan kuasa
-             * memutuskan pengajuan mana pun mengikuti PERAN BERAKSES PENUH,
-             * bukan `managing_director` saja — dan perusahaan yang baru lahir
-             * belum punya satu pun `approval_rules` yang bisa menguncinya.
-             * Kepemilikan langganan pun tidak lewat sini sama sekali; rumahnya
-             * `tenant_memberships.role = owner` (TENANT_ROLES).
-             *
-             * Kalau pendaftarnya memang Direktur Utama, ia tinggal mengubah
-             * perannya sendiri di /users: yang dijaga di sana hanya hapus-diri,
-             * bukan ubah-peran-diri — dan administrator → managing_director
-             * adalah perpindahan antar-peran berakses penuh, jadi tak ada
-             * momen ia kehilangan pintu masuknya.
-             */
-            role: ROLES.ADMINISTRATOR,
-            /* Tenant pemilik = tenant PEMBUATNYA, dari penjaga — bukan input. */
-            tenantId: result.tenant.tenantId,
-          },
-          send
-        );
-
-        /*
-         * Dicatat DUA KALI dengan sengaja (issue #142), karena pertanyaannya
-         * dua: "siapa yang membuat PT ini" dicari di jejak PT ITU SENDIRI
-         * (satu-satunya jejak per-PT yang pasti ada — pembuatnya boleh jadi
-         * belum membuka perusahaan mana pun); "PT apa saja yang lahir di
-         * tenant ini, kapan" milik jejak TENANT — rumah yang dulu tidak ada
-         * dan kini ada (lib/tenant-audit.ts).
-         */
-        await writeTenantAuditLog({
-          tenantId: result.tenant.tenantId,
-          tenantSlug: result.tenant.tenantSlug,
-          userId: session.user.id,
-          username: session.user.name ?? session.user.email ?? session.user.id,
-          tenantRole: result.tenant.role,
-          action: "tenant.company.create",
-          details: { slug: parsed.data.slug, name: parsed.data.name, databaseName },
-          request,
-        });
-        await runWithCompany(
-          { companyId, slug: parsed.data.slug, databaseName, dbInstance },
-          async () => {
-            await writeAuditLog({
-              userId: session.user.id,
-              username: session.user.name ?? session.user.email ?? session.user.id,
-              role: result.tenant.role,
-              action: "company.create",
-              entity: "company",
-              entityId: companyId,
-              details: {
-                slug: parsed.data.slug,
-                name: parsed.data.name,
-                databaseName,
-              },
-              request,
-            });
-          }
-        );
-      } catch (error) {
-        /*
-         * ══ GALAT MENTAH TIDAK PERNAH SAMPAI KE LAYAR ═════════════════════
-         * Sebelumnya `error.message` dikirim apa adanya, dan di produksi yang
-         * mendarat di layar pemilik PT adalah:
-         *
-         *   (conn:67709, no: 1044, SQLState: 42000) Access denied for user
-         *   'sai'@'%' to database 'sai_t3_…'  sql: CREATE DATABASE `sai_t3_…`
-         *
-         * Dua kerugian sekaligus: tak seorang pun bisa menindaklanjuti
-         * "SQLState: 42000", dan kalimat itu membocorkan nama pengguna basis
-         * data beserta bentuk pernyataan internal. Yang dikirim sekarang
-         * adalah kalimat berbahasa tugas dari kamus (`provisionErrorMessage`,
-         * murni & teruji) — sementara galat aslinya, LENGKAP dengan `cause`,
-         * dicatat di log server tempat operator memang mencarinya.
-         */
-        console.error("[companies] penyediaan gagal:", error);
-        const { key, values } = provisionErrorMessage(error);
-        send({ phase: "error", message: t(key, values) });
-      } finally {
-        controller.close();
-      }
+  const queued = await enqueueCompanyProvision(result.tenant.tenantId, {
+    slug: parsed.data.slug,
+    name: parsed.data.name,
+    databaseName: parsed.data.databaseName,
+    createdByUserId: userId,
+    actor: {
+      userId: session.user.id,
+      username: session.user.name ?? session.user.email ?? session.user.id,
+      tenantRole: result.tenant.role,
+      tenantSlug: result.tenant.tenantSlug,
+      /* Diturunkan DI SINI, satu-satunya tempat yang punya permintaan HTTP —
+         pekerja yang menulis jejak auditnya tidak punya. */
+      ipAddress: getClientIp(request),
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-store, no-transform",
-      // Proksi yang menyangga respons akan menahan seluruh aliran sampai
-      // selesai — persis meniadakan gunanya. Traefik menghormati ini.
-      "X-Accel-Buffering": "no",
-    },
-  });
+  if (!queued.ok) {
+    /* Kunci dedupe (= nama basis data) sedang dipegang penyediaan lain yang
+       bukan milik tenant ini — hanya mungkin lewat nama basis data EKSPLISIT.
+       Jawabannya sama dengan nama yang sudah terdaftar, supaya tidak ada
+       bentuk respons yang membedakan keduanya. */
+    const { t } = await getRequestI18n();
+    const database = parsed.data.databaseName ?? "";
+    return NextResponse.json(
+      { error: t("companies.errDatabaseTaken", { database }), code: "database_taken" },
+      { status: 409 }
+    );
+  }
+
+  /* 202: diterima, belum selesai. `attached` = klik ganda / tab kedua yang
+     menempel ke penyediaan yang SAMA — layarnya menunggu pekerjaan itu. */
+  return NextResponse.json(
+    { queued: true, jobId: queued.jobId, attached: queued.attached },
+    { status: 202 }
+  );
 }

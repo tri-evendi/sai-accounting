@@ -21,20 +21,30 @@
  * "biar rapi".
  */
 
+import {
+  BUSINESS_TIME_ZONE,
+  businessDate,
+  businessISODate,
+  businessParts,
+} from "@sai/core/business-date";
+
 /** Nilai numerik apa adanya dari Prisma (Decimal), API (string), atau kode. */
 export type Numeric = number | string | { toString(): string };
 
 /** Satu bulan pada sumbu waktu: kunci pencocokan + label sumbu. */
 export interface MonthBucket {
-  /** `YYYY-MM` lokal — kunci pencocokan, tidak pernah tampil. */
+  /** `YYYY-MM` kalender Jakarta — kunci pencocokan, tidak pernah tampil. */
   key: string;
   /** Nama bulan singkat untuk sumbu X. */
   label: string;
 }
 
-/** `YYYY-MM` lokal. Sengaja bukan `toISOString()`, yang menggeser ke UTC. */
+/**
+ * `YYYY-MM` kalender Jakarta (`@sai/core/business-date`). Sengaja bukan
+ * `toISOString()`, yang menggeser ke UTC.
+ */
 export function monthKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return businessISODate(d).slice(0, 7);
 }
 
 /**
@@ -46,11 +56,12 @@ export function monthKey(d: Date): string {
  */
 export function monthlyBuckets(monthsBack: number, now: Date = new Date()): MonthBucket[] {
   const buckets: MonthBucket[] = [];
+  const { year, month } = businessParts(now);
   for (let i = monthsBack - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const d = businessDate(year, month - i, 1);
     buckets.push({
       key: monthKey(d),
-      label: d.toLocaleDateString("id-ID", { month: "short" }),
+      label: d.toLocaleDateString("id-ID", { month: "short", timeZone: BUSINESS_TIME_ZONE }),
     });
   }
   return buckets;
@@ -61,7 +72,8 @@ export const CHART_MONTHS_BACK = 6;
 
 /** Batas bawah kueri untuk `CHART_MONTHS_BACK` bulan tren (awal bulan tertua). */
 export function chartPeriodStart(now: Date = new Date()): Date {
-  return new Date(now.getFullYear(), now.getMonth() - (CHART_MONTHS_BACK - 1), 1);
+  const { year, month } = businessParts(now);
+  return businessDate(year, month - (CHART_MONTHS_BACK - 1), 1);
 }
 
 export interface MonthlyActivityPoint {

@@ -5,10 +5,16 @@ import { type ContractStatus } from "@sai/core/constants";
 import { useDictionary } from "@sai/core/i18n/client";
 import { contractStatusLabels } from "@/lib/i18n/labels";
 
-const statusVariants: Record<ContractStatus, "success" | "warning" | "danger"> = {
+/*
+ * `completed` NETRAL, bukan hijau: "selesai" bukan "lunas" (di buku `pt-sai`
+ * hanya 4 dari 101 kontrak selesai yang terbayar penuh), dan hijau di aplikasi
+ * ini berarti uang masuk / sehat. Labelnya yang membawa arti, bukan warnanya.
+ */
+const statusVariants: Record<ContractStatus, "success" | "warning" | "danger" | "default"> = {
   signed: "success",
   pending: "warning",
   canceled: "danger",
+  completed: "default",
 };
 
 /**

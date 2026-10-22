@@ -4,6 +4,7 @@ import { BASE_CURRENCY, currencyEnum, fxAmounts, rateField, requireRateForForeig
 import { dueDateField, nullableBooleanField } from "./common";
 import { paymentFormFields, requireBankForForeignCash } from "./payment";
 import { vmsg } from "@sai/core/i18n/validation";
+import { CONTRACT_STATUSES } from "@sai/core/constants";
 
 export const contractItemSchema = z.object({
   /**
@@ -81,7 +82,13 @@ export const contractSchema = z
      * edit no longer has to re-enter it and a repost recovers the same value.
      */
     rate: rateField,
-    status: z.enum(["signed", "pending", "canceled"]).default("pending"),
+    /**
+     * Empat status (`completed` disahkan 23 Okt 2026). Skema ini hanya menjaga
+     * KOSAKATA; perpindahannya (mis. `completed` hanya dari `signed`) dijaga
+     * route lewat `canTransitionContractStatus`, sebab skema tidak tahu status
+     * yang tersimpan sekarang.
+     */
+    status: z.enum(CONTRACT_STATUSES).default("pending"),
     /**
      * Kena PPN, Non-PPN, atau belum dinyatakan (migrasi 0062) — kesepakatan yang
      * dibuat SEKALI di kontrak, lalu diwarisi setiap faktur yang ditarik

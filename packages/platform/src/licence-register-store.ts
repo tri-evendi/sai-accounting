@@ -8,9 +8,11 @@
  * memutuskan status lisensi (rancangan §8; dijaga
  * `tests/licence-register-archive.test.ts`).
  *
- * Yang dikerjakan di sini hanya MEMVERIFIKASI berkas yang ditandatangani di
- * laptop luring — dengan kunci PUBLIK yang ditanam di `@sai/core/licence`.
- * Tidak ada penandatanganan dan tidak ada kunci privat.
+ * Yang dikerjakan di sini hanya MEMVERIFIKASI berkas yang sudah
+ * ditandatangani — di laptop luring, atau oleh penanda konsol
+ * (`licence-signing-key-store`, yang berakhir di `attachIssuedLicence` yang
+ * sama) — dengan kunci PUBLIK yang ditanam di `@sai/core/licence`. Modul ini
+ * sendiri tidak menandatangani dan tidak pernah melihat kunci privat.
  *
  * Tanpa `server-only`, klien disuntik (pola `writes.ts`) supaya bisa diuji.
  */
@@ -267,7 +269,9 @@ export type AttachResult =
  * draf menjadi `issued`, dan penerbitan `issued` lain milik customer yang sama
  * menjadi `superseded`.
  *
- * @param publicKeyPem HANYA untuk tes (pola `verifyLicence`).
+ * @param publicKeyPem kunci tertanam — bawaannya konstanta di kode. Tes
+ *   menyuntik pasangan kunci sendiri; penanda konsol meneruskan kunci tertanam
+ *   yang SAMA yang sudah dicocokkan dengan sidik kunci konsol.
  */
 export async function attachIssuedLicence(
   deps: Deps,
@@ -311,6 +315,22 @@ export async function attachIssuedLicence(
     }),
   ]);
   return { outcome: "ok", licenceId: row.licenceId, sha256, superseded: lama.count };
+}
+
+/**
+ * Status + isian satu baris — dibaca penanda konsol
+ * (`licence-signing-key-store`) sebelum frasa sandi diuji, supaya tabel
+ * register tetap hanya disentuh modul ini.
+ */
+export async function readLicenceEntryTerms(
+  deps: Deps,
+  entryId: number
+): Promise<{ status: LicenceEntryStatus; terms: LicenceTerms } | null> {
+  const row = await deps.platform.licenceRegisterEntry.findUnique({
+    where: { id: entryId },
+    select: ENTRY_SELECT,
+  });
+  return row ? { status: row.status as LicenceEntryStatus, terms: termsOf(row) } : null;
 }
 
 export type RevokeResult = { outcome: "ok"; licenceId: string } | { outcome: "not_found" | "not_issued" };

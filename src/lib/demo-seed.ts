@@ -29,6 +29,7 @@ import { prisma } from "@/lib/prisma";
 import { postForSource, unpostForSource } from "@/lib/posting";
 import { MAPPING_KEYS, resolveAccountId } from "@/lib/posting/mapping";
 import { OPENING_BALANCE_SOURCE } from "@/lib/opening-balance";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
 /** Penanda baris contoh — muncul di layar, jadi tak pernah menyamar jadi data asli. */
 export const SAMPLE_TAG = "[CONTOH]";
@@ -90,7 +91,8 @@ export const SAMPLE_EXPENSES = [
 
 /** Hari ke-`day` pada bulan yang `monthsAgo` bulan sebelum `today`. */
 export function dateIn(today: Date, monthsAgo: number, day: number): Date {
-  return new Date(today.getFullYear(), today.getMonth() - monthsAgo, day, 10, 0, 0, 0);
+  const { year, month } = businessParts(today);
+  return businessDate(year, month - monthsAgo, day, 10);
 }
 
 /**

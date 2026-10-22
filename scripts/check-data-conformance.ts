@@ -18,7 +18,8 @@
  *   • 39 kontrak berstatus `cancelled` (dua L) sementara kode mengenal
  *     `canceled` — saringan laporan piutang tidak pernah cocok, jadi kontrak
  *     BATAL ikut terhitung sebagai piutang;
- *   • 101 kontrak berstatus `completed`, nilai yang tidak ada di enum mana pun;
+ *   • 101 kontrak berstatus `completed`, nilai yang tidak ada di enum mana pun
+ *     (disahkan sebagai status kontrak keempat, 23 Okt 2026);
  *   • 720 pembayaran kontrak berlabel USD padahal uangnya CNY;
  *   • 6 pembayaran faktur berlabel USD padahal rupiah;
  *   • 609 kontrak valas tanpa kurs, sehingga tak satu pun bernilai IDR;
@@ -49,7 +50,7 @@ import {
 } from "@sai/db/company-url";
 
 import { buildDetails } from "@sai/core/build-info";
-import { CONTRACT_STATUSES, CURRENCIES } from "@sai/core/constants";
+import { CONTRACT_STATUSES, CURRENCIES, INVOICE_STATUSES } from "@sai/core/constants";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
 import {
   DEFAULT_CATCH_ALL_THRESHOLD,
@@ -113,11 +114,11 @@ const CHECKS: Check[] = [
   {
     key: "status-faktur",
     judul: "Status faktur di luar kosakata aplikasi",
-    /* Faktur memakai triple yang sama dengan kontrak — lihat
-       `validations/invoice.ts:22`. Bila suatu saat keduanya berpisah, daftar ini
-       ikut berpisah di sana, bukan di sini. */
+    /* Faktur dan kontrak BERPISAH kosakata sejak 23 Okt 2026: kontrak
+       mendapat `completed`, faktur tidak (alasannya di `INVOICE_STATUSES`).
+       Faktur `completed` karena itu tetap sebuah temuan. */
     sql: `SELECT CONCAT(invoice_no, ' → ', status) AS label FROM invoices
-          WHERE status NOT IN (${list(CONTRACT_STATUSES)})`,
+          WHERE status NOT IN (${list(INVOICE_STATUSES)})`,
   },
   {
     key: "mata-uang-tak-dikenal",

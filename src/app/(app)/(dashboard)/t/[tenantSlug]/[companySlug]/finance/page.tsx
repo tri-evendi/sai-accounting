@@ -39,6 +39,7 @@ import { LearnMore } from "@sai/ui/learn-more";
 import type { FinanceBalanceRow, FinanceReportRow } from "@/lib/pdf/finance-report-pdf";
 import { toFinanceReportRows } from "@/lib/finance-report-rows";
 import { CARD_GAP, SECTION_GAP, SPACE_SM } from "@sai/ui/layout-scale";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
 export const dynamic = "force-dynamic";
 
@@ -93,15 +94,16 @@ export default async function FinancePage({
   const effectiveYear = Number.isFinite(yearNum)
     ? yearNum
     : monthValid
-      ? new Date().getFullYear()
+      ? businessParts(new Date()).year
       : null;
   if (effectiveYear != null) {
+    // Batas bulan/tahun menurut kalender Jakarta (`@sai/core/business-date`).
     const startDate = monthValid
-      ? new Date(effectiveYear, monthNum - 1, 1)
-      : new Date(effectiveYear, 0, 1);
+      ? businessDate(effectiveYear, monthNum - 1, 1)
+      : businessDate(effectiveYear, 0, 1);
     const endDate = monthValid
-      ? new Date(effectiveYear, monthNum, 1)
-      : new Date(effectiveYear + 1, 0, 1);
+      ? businessDate(effectiveYear, monthNum, 1)
+      : businessDate(effectiveYear + 1, 0, 1);
     where.date = { gte: startDate, lt: endDate };
   }
 
@@ -143,7 +145,7 @@ export default async function FinancePage({
   }));
   const financeTransactions: FinanceReportRow[] = toFinanceReportRows(allTransactions);
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = businessParts(new Date()).year;
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = monthNames(dictionary);
 

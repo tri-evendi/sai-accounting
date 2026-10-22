@@ -19,8 +19,9 @@ import {
   stockLevelChartHeight,
   stockLevelSeries,
 } from "@/lib/chart-data";
+import { businessDate, businessParts } from "@sai/core/business-date";
 
-const NOW = new Date(2026, 6, 25); // 25 Juli 2026
+const NOW = businessDate(2026, 6, 25); // 25 Juli 2026
 
 describe("monthlyBuckets", () => {
   it("mengembalikan 6 bulan terakhir, tertua dulu, termasuk bulan berjalan", () => {
@@ -37,7 +38,7 @@ describe("monthlyBuckets", () => {
   });
 
   it("menyeberangi pergantian tahun tanpa bulan ke-13", () => {
-    expect(monthlyBuckets(3, new Date(2026, 0, 15)).map((b) => b.key)).toEqual([
+    expect(monthlyBuckets(3, businessDate(2026, 0, 15)).map((b) => b.key)).toEqual([
       "2025-11",
       "2025-12",
       "2026-01",
@@ -47,20 +48,20 @@ describe("monthlyBuckets", () => {
   it("chartPeriodStart menunjuk awal bulan tertua yang ditampilkan", () => {
     const start = chartPeriodStart(NOW);
     expect(monthKey(start)).toBe(monthlyBuckets(CHART_MONTHS_BACK, NOW)[0].key);
-    expect(start.getDate()).toBe(1);
+    expect(businessParts(start).day).toBe(1);
   });
 
-  it("monthKey memakai bulan lokal, bukan pergeseran UTC", () => {
-    // 1 Januari 00:30 lokal masih Januari; toISOString() akan bilang Desember.
-    expect(monthKey(new Date(2026, 0, 1, 0, 30))).toBe("2026-01");
+  it("monthKey memakai bulan Jakarta, bukan pergeseran UTC", () => {
+    // 1 Januari 00:30 WIB masih Januari; toISOString() akan bilang Desember.
+    expect(monthKey(businessDate(2026, 0, 1, 0, 30))).toBe("2026-01");
   });
 });
 
 describe("monthlyActivitySeries", () => {
   it("menghitung kontrak & tagihan per bulan dan menyisakan nol untuk bulan sepi", () => {
     const series = monthlyActivitySeries(
-      [{ createdAt: new Date(2026, 6, 2) }, { createdAt: new Date(2026, 6, 20) }],
-      [{ createdAt: new Date(2026, 4, 9) }],
+      [{ createdAt: businessDate(2026, 6, 2) }, { createdAt: businessDate(2026, 6, 20) }],
+      [{ createdAt: businessDate(2026, 4, 9) }],
       NOW
     );
     expect(series).toHaveLength(6);
@@ -70,13 +71,13 @@ describe("monthlyActivitySeries", () => {
   });
 
   it("mengabaikan baris di luar jendela tanpa melempar", () => {
-    const series = monthlyActivitySeries([{ createdAt: new Date(2020, 1, 1) }], [], NOW);
+    const series = monthlyActivitySeries([{ createdAt: businessDate(2020, 1, 1) }], [], NOW);
     expect(series.reduce((s, p) => s + p.contracts, 0)).toBe(0);
   });
 
   it("tanpa baris tagihan tetap mengembalikan seri kontrak yang utuh", () => {
     // Pengguna tanpa izin baca tagihan: barisnya tidak pernah diambil.
-    const series = monthlyActivitySeries([{ createdAt: new Date(2026, 6, 2) }], [], NOW);
+    const series = monthlyActivitySeries([{ createdAt: businessDate(2026, 6, 2) }], [], NOW);
     expect(series.every((p) => p.invoices === 0)).toBe(true);
     expect(series.at(-1)!.contracts).toBe(1);
   });
@@ -84,9 +85,9 @@ describe("monthlyActivitySeries", () => {
 
 describe("cashFlowSeriesByCurrency", () => {
   const rows = [
-    { date: new Date(2026, 6, 3), debit: 1000, credit: 0, currency: "IDR" },
-    { date: new Date(2026, 6, 9), debit: "500.50", credit: 200, currency: "IDR" },
-    { date: new Date(2026, 5, 1), debit: 0, credit: 75, currency: "USD" },
+    { date: businessDate(2026, 6, 3), debit: 1000, credit: 0, currency: "IDR" },
+    { date: businessDate(2026, 6, 9), debit: "500.50", credit: 200, currency: "IDR" },
+    { date: businessDate(2026, 5, 1), debit: 0, credit: 75, currency: "USD" },
   ];
 
   it("memisah per mata uang tanpa menjumlahkan lintas mata uang", () => {

@@ -93,6 +93,14 @@ export type AuditAction =
   | "api_token.revoke"
   | "master.import"
   | "sample_data.clear"
+  /**
+   * Perbaikan data warisan sekali-jalan oleh SKRIP, bukan pengguna — status &
+   * kurs kontrak warisan (`bun run legacy:fix-contracts`, keputusan pemilik
+   * 23 Okt 2026). Ditulis di DALAM transaksi perbaikannya: perbaikan yang
+   * mengubah ratusan angka tanpa jejak tidak boleh ada, jadi jejak yang gagal
+   * di sini MEMBATALKAN perbaikannya (kebalikan sifat `writeAuditLog`).
+   */
+  | "data_fix.legacy_contracts"
   | "period.close"
   /**
    * Revaluasi valas (issue #554) — dibedakan dari `period.close` walau keduanya
@@ -329,6 +337,8 @@ export type AuditEntity =
   | "company_settings"
   /** Bukan sebuah tabel — kumpulan baris bertanda `[CONTOH]` di banyak tabel. */
   | "sample_data"
+  /** Bukan sebuah tabel — satu perbaikan data skrip yang menyentuh banyak tabel. */
+  | "data_fix"
   | "fixed_asset_category"
   | "fixed_asset"
   | "delivery_order"
@@ -396,6 +406,12 @@ export async function writeAuditLog(params: {
   entityId?: number;
   details?: Record<string, unknown>;
   request?: Request;
+  /**
+   * Alamat klien yang SUDAH diturunkan di tempat lain — untuk penulis tanpa
+   * permintaan HTTP (pekerja `company.provision` mencatat alamat yang
+   * diturunkan rute penerbitnya). Menang atas `request` bila disebut.
+   */
+  ipAddress?: string | null;
 }) {
   try {
     await prisma.auditLog.create({
@@ -410,7 +426,7 @@ export async function writeAuditLog(params: {
         entity: params.entity,
         entityId: params.entityId ?? null,
         details: params.details ? JSON.stringify(params.details) : null,
-        ipAddress: getClientIp(params.request),
+        ipAddress: params.ipAddress !== undefined ? params.ipAddress : getClientIp(params.request),
       },
     });
   } catch (err) {

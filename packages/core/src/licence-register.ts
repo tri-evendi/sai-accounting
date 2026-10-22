@@ -2,18 +2,22 @@
  * REGISTER LISENSI ON-PREMISE — bagian MURNI (konsol `/licences`, migration
  * platform 0006; keputusan pemilik 22 Okt 2026 "opsi a").
  *
- * Alurnya tiga langkah, dan hanya satu yang menyentuh kunci privat:
+ * Konsol membuat DRAF dari formulir, lalu draf itu ditandatangani lewat salah
+ * satu dari dua jalur yang menghasilkan byte yang sama:
  *
- *   1. konsol membuat DRAF dari formulir;
- *   2. konsol menyusun SATU perintah `bun run licence:issue -- …` dari draf itu
- *      (`buildIssueCommand`) — operator menjalankannya di LAPTOP LURING yang
- *      memegang kunci privat;
- *   3. berkas `.sai` hasilnya diunggah balik, diverifikasi dengan kunci PUBLIK
- *      yang ditanam di kode, dan dicocokkan dengan draf (`compareLicenceToTerms`).
+ *   a. DI KONSOL (keputusan pemilik 22 Okt 2026, migration platform 0007):
+ *      operator mengetik frasa sandi, kunci tersegel dibuka di server action
+ *      konsol, lisensi dari `licenceFromTerms` ditandatangani;
+ *   b. LURING: konsol menyusun SATU perintah `bun run licence:issue -- …`
+ *      (`buildIssueCommand`), operator menjalankannya di laptop yang memegang
+ *      kunci privat, lalu mengunggah berkas `.sai` hasilnya.
+ *
+ * Keduanya berakhir di pemeriksaan yang sama: verifikasi dengan kunci PUBLIK
+ * yang ditanam di kode, lalu pencocokan dengan draf (`compareLicenceToTerms`).
  *
  * ══ YANG SENGAJA TIDAK ADA DI SINI ═════════════════════════════════════════
- * Penandatanganan. Kunci privat tidak pernah menyentuh server, CI, maupun repo
- * (06-KEAMANAN §3.7); satu-satunya penanda adalah `scripts/licence-issue.ts`.
+ * Penandatanganan. Modul ini MURNI dan ikut terbaca `app-customer`; kunci
+ * privat hanya disentuh `@sai/platform/licence-signing` (06-KEAMANAN §3.7).
  * Dijaga `tests/licence-register-archive.test.ts`.
  *
  * ══ ARSIP, BUKAN KEWENANGAN ════════════════════════════════════════════════
@@ -169,6 +173,24 @@ export function compareLicenceToTerms(licence: Licence, terms: LicenceTerms): Li
   );
   cek("maxVersion", terms.maxVersion ?? KOSONG, licence.maxVersion ?? KOSONG);
   return out;
+}
+
+/**
+ * Lisensi yang ditandatangani PENANDA KONSOL dari sebuah draf — bentuknya
+ * sama persis dengan yang dihasilkan `licence:issue` dari perintah rakitan
+ * `buildIssueCommand`, jadi keduanya lolos `compareLicenceToTerms` yang sama.
+ */
+export function licenceFromTerms(terms: LicenceTerms, issuedAt: Date): Licence {
+  return {
+    licenceId: terms.licenceId,
+    customer: terms.customer,
+    issuedAt: issuedAt.toISOString(),
+    supportEndsAt: expectedSupportIso(terms.supportEndsOn),
+    maxCompanies: terms.maxCompanies,
+    maxUsers: terms.maxUsers,
+    modules: terms.modules,
+    maxVersion: terms.maxVersion,
+  };
 }
 
 /** Bentuk berkas yang disimpan: tanpa spasi tepi, satu baris baru di akhir. */

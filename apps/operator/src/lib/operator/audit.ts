@@ -67,6 +67,19 @@ export type OperatorAuditAction =
   | "operator.account.activate"
   | "operator.account.revoke"
   | "operator.account.reset"
+  /**
+   * PASANG AUTHENTICATOR (`/accounts/authenticator`). `reveal` = operator
+   * melihat QR akunnya sendiri sesudah bukti ulang; `confirm` = kode dari
+   * aplikasinya diterima; `rotate` = akun basis data mengganti rahasianya
+   * (sekaligus terkonfirmasi). `details` memuat sumber akun dan SIDIK rahasia
+   * (`secretFingerprint`) — TIDAK PERNAH rahasianya. Sidik itulah yang membuat
+   * konfirmasi lama otomatis basi ketika rahasianya berganti.
+   */
+  | "operator.authenticator.reveal"
+  | "operator.authenticator.reveal.failed"
+  | "operator.authenticator.confirm"
+  | "operator.authenticator.confirm.failed"
+  | "operator.authenticator.rotate"
   /** Unduhan CSV e-Faktur tagihan platform — periode + jumlah baris. */
   | "operator.efaktur.export"
   /** Pengumuman status dibuat / fasenya berpindah (migration platform 0004). */
@@ -86,7 +99,18 @@ export type OperatorAuditAction =
   | "operator.licence.upload.rejected"
   | "operator.licence.download"
   | "operator.licence.revoke"
-  | "operator.licence.discard";
+  | "operator.licence.discard"
+  /**
+   * PENANDA KONSOL (migration platform 0007). `details` memuat sidik kunci,
+   * id baris, `licenceId`, dan sidik berkas — TIDAK PERNAH frasa sandi, kunci
+   * privat, maupun segelnya. `sign.failed` mencatat setiap percobaan yang
+   * gagal (frasa salah, kunci tak cocok, laju terlampaui): frasa sandi yang
+   * berulang kali salah adalah peristiwa yang layak ditinjau.
+   */
+  | "operator.licence.key.create"
+  | "operator.licence.key.rejected"
+  | "operator.licence.sign"
+  | "operator.licence.sign.failed";
 
 export interface OperatorAuditEntry {
   id: string;
@@ -147,6 +171,35 @@ export async function readOperatorAuditPage(
     })),
     total,
   };
+}
+
+/** Tindakan jejak yang MENGONFIRMASI authenticator untuk satu sidik rahasia. */
+export const AUTHENTICATOR_CONFIRM_ACTIONS = [
+  "operator.authenticator.confirm",
+  "operator.authenticator.rotate",
+] as const satisfies readonly OperatorAuditAction[];
+
+/**
+ * Konfirmasi authenticator dari jejak, terbaru dulu — bahan layar kesiapan
+ * MFA. Baris tanpa sidik (rincian rusak) dilewati: konfirmasi yang tidak bisa
+ * dicocokkan dengan rahasia mana pun tidak boleh terbaca "siap".
+ */
+export async function readAuthenticatorConfirmations(): Promise<
+  { operator: string; fingerprint: string; at: Date }[]
+> {
+  const rows = await platformDb.operatorAuditLog.findMany({
+    where: { action: { in: [...AUTHENTICATOR_CONFIRM_ACTIONS] } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 500,
+  });
+  const out: { operator: string; fingerprint: string; at: Date }[] = [];
+  for (const row of rows) {
+    const fingerprint = parseDetails(row.details)?.fingerprint;
+    if (typeof fingerprint === "string" && fingerprint) {
+      out.push({ operator: row.operator, fingerprint, at: row.createdAt });
+    }
+  }
+  return out;
 }
 
 /** Rincian yang tak terurai TIDAK menggagalkan pembacaan — satu baris rusak

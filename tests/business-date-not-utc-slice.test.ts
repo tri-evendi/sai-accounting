@@ -74,6 +74,10 @@ const DIIZINKAN: Record<string, { jumlah: number; alasan: string }> = {
     jumlah: 1,
     alasan: "`occurrenceKey` — kunci idempotensi atas tanggal kalender `Date.UTC` buatan modul itu",
   },
+  "src/lib/legacy-contract-fix.ts": {
+    jumlah: 1,
+    alasan: "`isoDay` — hari kalender kolom tanggal WARISAN, yang ditulis pengimpor sebagai `Date.UTC(y, m, d)`; dicocokkan ke tanggal konversi & kurs BI",
+  },
   "src/lib/invoice-reminder.ts": {
     jumlah: 1,
     alasan: "`dueKeyOf` — kunci idempotensi riwayat pengingat atas jatuh tempo bertanggal kalender",

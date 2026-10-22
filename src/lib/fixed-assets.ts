@@ -33,6 +33,7 @@ import {
   type DepreciationParams,
 } from "@/lib/depreciation";
 import { assertPeriodOpen, periodBounds } from "@/lib/period";
+import { businessParts } from "@sai/core/business-date";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 
@@ -50,7 +51,7 @@ export async function nextAssetNo(
   tx: Prisma.TransactionClient,
   acquisitionDate: Date
 ): Promise<string> {
-  const prefix = `FA.${acquisitionDate.getFullYear()}.`;
+  const prefix = `FA.${businessParts(acquisitionDate).year}.`;
   const count = await tx.fixedAsset.count({ where: { assetNo: { startsWith: prefix } } });
   return `${prefix}${String(count + 1).padStart(5, "0")}`;
 }

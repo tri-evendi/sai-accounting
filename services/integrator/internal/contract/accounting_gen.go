@@ -160,3 +160,79 @@ var IncomeStatementCategoryDefaultSections = map[AccountCategory]IncomeStatement
 // ClosingJournalType: `journals.type` jurnal penutup tahunan (#555). Laba
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "closing"
+
+// Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
+// `currency` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
+// sebelum pembaca Go pertamanya (pemeriksa kesesuaian data).
+type Currency string
+
+const (
+	CurrencyUSD Currency = "USD"
+	CurrencyCNY Currency = "CNY"
+	CurrencyIDR Currency = "IDR"
+)
+
+// Currencies dalam urutan kontrak (urutan pilihan formulir).
+var Currencies = []Currency{
+	CurrencyUSD,
+	CurrencyCNY,
+	CurrencyIDR,
+}
+
+// BaseCurrency: mata uang buku besar — satuan setiap base_amount.
+const BaseCurrency = CurrencyIDR
+
+// IsCurrency melaporkan apakah v adalah mata uang yang dikenal kontrak ini.
+func IsCurrency(v string) bool {
+	for _, c := range Currencies {
+		if string(c) == v {
+			return true
+		}
+	}
+	return false
+}
+
+// InvoiceStatus adalah nilai kolom `invoices.status`.
+type InvoiceStatus string
+
+const (
+	InvoiceStatusSigned   InvoiceStatus = "signed"
+	InvoiceStatusPending  InvoiceStatus = "pending"
+	InvoiceStatusCanceled InvoiceStatus = "canceled"
+)
+
+// InvoiceStatuses dalam urutan kontrak.
+var InvoiceStatuses = []InvoiceStatus{
+	InvoiceStatusSigned,
+	InvoiceStatusPending,
+	InvoiceStatusCanceled,
+}
+
+// ContractStatus adalah nilai kolom `contracts.status` — diawali status
+// faktur persis, tambahan di belakang.
+type ContractStatus string
+
+const (
+	ContractStatusSigned    ContractStatus = "signed"
+	ContractStatusPending   ContractStatus = "pending"
+	ContractStatusCanceled  ContractStatus = "canceled"
+	ContractStatusCompleted ContractStatus = "completed"
+)
+
+// ContractStatuses dalam urutan kontrak.
+var ContractStatuses = []ContractStatus{
+	ContractStatusSigned,
+	ContractStatusPending,
+	ContractStatusCanceled,
+	ContractStatusCompleted,
+}
+
+// IsContractStatus melaporkan apakah v adalah status kontrak yang dikenal.
+func IsContractStatus(v string) bool {
+	for _, s := range ContractStatuses {
+		if string(s) == v {
+			return true
+		}
+	}
+	return false
+}

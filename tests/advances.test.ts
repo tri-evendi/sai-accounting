@@ -33,6 +33,7 @@ import {
 } from "@/lib/advances";
 import { advancePaymentSchema, advanceApplicationsSchema } from "@/lib/validations/advance";
 import { getReceivables } from "@/lib/receivables";
+import { businessDayStart } from "@sai/core/business-date";
 import {
   createFakeClient,
   type FakeExchangeRate,
@@ -40,7 +41,7 @@ import {
   type FakeLine,
 } from "./fake-client";
 
-const d = (s: string) => new Date(`${s}T00:00:00`);
+const d = (s: string) => businessDayStart(s);
 
 /* ─────────────────────────────── Assertions ────────────────────────────────── */
 
@@ -946,8 +947,9 @@ describe("dokumen tujuan tanpa kurs — dibukukan flat", () => {
 
   it("compensates a CNY advance into a USD invoice, relieving the USD receivable", async () => {
     const client = crossCurrencyApplication([
-      { currency: "CNY", rateDate: d("2026-07-20"), rate: 2_250 },
-      { currency: "USD", rateDate: d("2026-07-20"), rate: 16_500 },
+      // `rate_date` is a DATE: Prisma hands it back at 00:00 UTC.
+      { currency: "CNY", rateDate: new Date("2026-07-20T00:00:00.000Z"), rate: 2_250 },
+      { currency: "USD", rateDate: new Date("2026-07-20T00:00:00.000Z"), rate: 16_500 },
     ]);
 
     await postForSource({ sourceType: "advance_application", sourceId: 7, tx: client });

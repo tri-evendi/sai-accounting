@@ -31,35 +31,49 @@ tiga tempat — peringatan `[start]` di log `app-customer`, `licence.status:
 "key-not-set"` di `/api/health` (ikut ke bundel diagnostik), dan pita
 "Lisensi pemasangan" di halaman `/platform` bagi pengelola.
 
-1. Di mesin **luring**: `bun run licence:keygen`. Kunci **privat** tidak pernah
-   masuk repo, secret CI, maupun server produksi (alasannya di 06 §3.7).
-   Simpan dua salinannya di dua tempat fisik berbeda; kehilangan keduanya
-   berarti tidak ada lisensi yang bisa diterbitkan atau diperpanjang lagi.
-2. Tempel kunci **publik** ke `LICENCE_PUBLIC_KEY_PEM`, ganti tes
-   `tests/licence-entitlement.test.ts` yang menegaskan placeholder, commit lewat
-   PR biasa.
+1. Buat pasangan kunci — **pilih satu jalur**, keduanya tidak bisa hidup
+   bersama (06 §3.7):
+   - **Konsol** (bawaan sejak 22 Okt 2026): `/licences` → **Buat kunci
+     penanda**, owner, frasa sandi minimal 12 karakter diketik dua kali. Kunci
+     privat tersimpan **tersegel** di `sai_platform`; frasa sandinya tidak
+     pernah disimpan — simpan di pengelola sandi. Frasa yang hilang = tidak ada
+     lisensi baru yang bisa ditandatangani dengan kunci itu.
+   - **Luring**: `bun run licence:keygen` di laptop yang tidak tersambung ke
+     server. Kunci **privat** tidak pernah masuk repo, secret CI, maupun server
+     produksi. Simpan dua salinannya di dua tempat fisik berbeda.
+2. Tempel kunci **publik** (konsol memajangnya beserta sidiknya) ke
+   `LICENCE_PUBLIC_KEY_PEM`, ganti tes `tests/licence-entitlement.test.ts` yang
+   menegaskan placeholder, commit lewat PR biasa. Sampai rilis itu digelar,
+   konsol menolak menandatangani — ia hanya menandatangani bila sidik kuncinya
+   sama dengan kunci tertanam di kode yang berjalan.
 3. Rilis lewat tag `vX.Y.Z` (bagian 3). Image sebelum commit itu tetap tanpa
    kunci — jangan serahkan versi lama ke customer on-premise.
 
 ## 1. Lisensi
 
-Dicatat di konsol operator, halaman **Lisensi on-premise** (`/licences`);
-ditandatangani **luring**. Kunci privat tidak pernah dibawa ke konsol.
+Dicatat di konsol operator, halaman **Lisensi on-premise** (`/licences`).
 
 1. Konsol: isi formulir (nama customer, batas, modul, dukungan, versi) →
    **Buat draf & perintah**. Perpanjangan: **Terbitkan versi baru** pada
    customer — formulir terisi dari lisensi sebelumnya.
-2. Salin perintah `bun run licence:issue -- …` yang tampil, jalankan di
-   **laptop luring** yang memegang kunci privat.
-3. Unggah berkas `.sai` hasilnya ke draf yang sama. Konsol memverifikasi tanda
-   tangannya dengan kunci publik tertanam dan mencocokkan isinya dengan draf;
-   selisih ditampilkan per isian. Lulus → **Terbit**, versi lama → **Digantikan**.
-4. **Unduh berkas** dari konsol, kirim ke customer.
+2. Tandatangani draf:
+   - **di konsol** (owner): **Tandatangani di konsol** → ketik frasa sandi
+     kunci penanda → berkas `licence.sai` langsung terunduh dan draf tercatat
+     **Terbit**; atau
+   - **luring**: salin perintah `bun run licence:issue -- …` yang tampil,
+     jalankan di laptop yang memegang berkas kunci privat, lalu unggah berkas
+     `.sai` hasilnya ke draf yang sama.
+
+   Keduanya diverifikasi dengan kunci publik tertanam dan dicocokkan dengan
+   draf; selisih ditampilkan per isian. Lulus → **Terbit**, versi lama →
+   **Digantikan**.
+3. **Unduh berkas** dari konsol (bila belum terunduh), kirim ke customer.
 
 Register ini **arsip, bukan penentu**: aplikasi customer hanya memercayai tanda
 tangan berkasnya dan tidak pernah membaca register (06 §3.7). "Dicabut" di
 register hanya catatan — lisensi luring tidak bisa dicabut dari jauh. Selama
-kunci publik belum ditanam (§0), draf bisa dibuat tetapi unggahan mati.
+kunci publik belum ditanam (§0), draf bisa dibuat tetapi unggahan dan tanda
+tangan konsol mati.
 
 - Dipasang di `./lisensi/licence.sai` (atau `SAI_LICENCE_DIR`), di-mount
   **hanya-baca** ke `app-customer` dan `svc-worker`. Penggantian berkas

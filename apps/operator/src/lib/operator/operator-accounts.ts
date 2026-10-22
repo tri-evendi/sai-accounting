@@ -22,6 +22,7 @@ import { openSecret, sealSecret, encryptionKeyAvailable } from "@sai/core/settin
 import { NAME_PATTERN, type DbOperatorCredential } from "./credentials";
 import type { DbOperatorState } from "./identity";
 import { isOperatorRole, type OperatorRole } from "./roles";
+import { qrSvgData, type QrSvgData } from "./qr";
 import { otpauthUri, randomTotpSecret } from "./totp";
 
 /** Penerbit di aplikasi authenticator — SAMA dengan `scripts/operator-credential.ts`. */
@@ -110,6 +111,8 @@ export interface IssuedCredential {
   password: string;
   totpSecret: string;
   otpauthUri: string;
+  /** QR dari `otpauthUri`, dikodekan DI SERVER (`qr.ts`) — hanya geometri. */
+  qr: QrSvgData;
 }
 
 async function freshCredential(name: string) {
@@ -118,8 +121,9 @@ async function freshCredential(name: string) {
   const password = randomBytes(18).toString("base64url");
   const totpSecret = randomTotpSecret();
   const sealed = sealSecret(totpSecret);
+  const uri = otpauthUri(TOTP_ISSUER, name, totpSecret);
   return {
-    issued: { name, password, totpSecret, otpauthUri: otpauthUri(TOTP_ISSUER, name, totpSecret) },
+    issued: { name, password, totpSecret, otpauthUri: uri, qr: qrSvgData(uri) },
     data: {
       passwordHash: await hash(password, BCRYPT_COST),
       totpCiphertext: sealed.ciphertext,

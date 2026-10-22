@@ -17,9 +17,10 @@
  * year. That matches the Indonesian working week and is the only week
  * definition that is stable across years; "the first 7 days of January" is not.
  *
- * ── Bounds are inclusive and local ──────────────────────────────────────────
+ * ── Bounds are inclusive and on Jakarta time ────────────────────────────────
  * `from` is 00:00:00.000 of the first day, `to` is 23:59:59.999 of the last, in
- * the server's local zone — identical to `resolvePeriod` and `periodBounds`, so
+ * WIB regardless of the process time zone (`@sai/core/business-date`) —
+ * identical to `resolvePeriod` and `periodBounds`, so
  * a movement dated on a boundary day falls in exactly one period no matter which
  * reader asks. Invalid input never produces an `Invalid Date`: it falls back to
  * the period containing today, because a report showing the wrong period is a
@@ -28,6 +29,12 @@
 import { toISODate } from "@/lib/dashboard-summary";
 import { isValidISODate } from "@/lib/report-catalog";
 import { clampPeriodStart } from "@sai/core/export-limits";
+import {
+  businessDate,
+  businessDayEnd,
+  businessDayStart,
+  businessParts,
+} from "@sai/core/business-date";
 
 export const STOCK_PERIOD_GRANULARITIES = ["week", "month", "year", "custom"] as const;
 export type StockPeriodGranularity = (typeof STOCK_PERIOD_GRANULARITIES)[number];
@@ -56,13 +63,18 @@ export interface StockPeriod {
 
 const DAY_MS = 86_400_000;
 
-/** Monday of the ISO week containing `date`, at 00:00 local. */
+/** Monday of the ISO week containing `date`, at 00:00 WIB. */
 export function startOfISOWeek(date: Date): Date {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  // getDay(): Sunday = 0. Shift so Monday = 0, Sunday = 6.
-  const dayIndex = (d.getDay() + 6) % 7;
-  d.setDate(d.getDate() - dayIndex);
-  return d;
+  const { year, month, day, weekday } = businessParts(date);
+  // weekday: Sunday = 0. Shift so Monday = 0, Sunday = 6.
+  const dayIndex = (weekday + 6) % 7;
+  return businessDate(year, month, day - dayIndex);
+}
+
+/** `date` shifted by whole Jakarta calendar days, at 00:00 WIB. */
+function addBusinessDays(date: Date, days: number): Date {
+  const { year, month, day } = businessParts(date);
+  return businessDate(year, month, day + days);
 }
 
 /**
@@ -75,19 +87,26 @@ export function startOfISOWeek(date: Date): Date {
  * a daylight-saving boundary would otherwise introduce.
  */
 export function isoWeekNumber(date: Date): number {
-  const thursday = startOfISOWeek(date);
-  thursday.setDate(thursday.getDate() + 3);
-  const firstThursday = startOfISOWeek(new Date(thursday.getFullYear(), 0, 4));
-  firstThursday.setDate(firstThursday.getDate() + 3);
+  const thursday = addBusinessDays(startOfISOWeek(date), 3);
+  const firstThursday = addBusinessDays(
+    startOfISOWeek(businessDate(businessParts(thursday).year, 0, 4)),
+    3
+  );
   return 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / (7 * DAY_MS));
 }
 
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+const startOfDay = (d: Date) => {
+  const p = businessParts(d);
+  return businessDate(p.year, p.month, p.day);
+};
+const endOfDay = (d: Date) => {
+  const p = businessParts(d);
+  return businessDate(p.year, p.month, p.day, 23, 59, 59, 999);
+};
 
 /** Parse an anchor param, falling back to `now` for anything that is not a real date. */
 function parseAnchor(raw: string | undefined, now: Date): Date {
-  if (raw && isValidISODate(raw)) return new Date(`${raw}T00:00:00`);
+  if (raw && isValidISODate(raw)) return businessDayStart(raw);
   return startOfDay(now);
 }
 
@@ -118,6 +137,7 @@ export function resolveStockPeriod(
         ? "custom"
         : "month";
   const anchor = parseAnchor(anchorRaw, now);
+  const a = businessParts(anchor);
 
   let from: Date;
   let to: Date;
@@ -126,21 +146,21 @@ export function resolveStockPeriod(
 
   if (granularity === "week") {
     from = startOfISOWeek(anchor);
-    to = endOfDay(new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6));
-    prev = new Date(from.getFullYear(), from.getMonth(), from.getDate() - 7);
-    next = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 7);
+    to = endOfDay(addBusinessDays(from, 6));
+    prev = addBusinessDays(from, -7);
+    next = addBusinessDays(from, 7);
   } else if (granularity === "year") {
-    from = new Date(anchor.getFullYear(), 0, 1, 0, 0, 0, 0);
-    to = new Date(anchor.getFullYear(), 11, 31, 23, 59, 59, 999);
-    prev = new Date(anchor.getFullYear() - 1, 0, 1);
-    next = new Date(anchor.getFullYear() + 1, 0, 1);
+    from = businessDate(a.year, 0, 1);
+    to = businessDate(a.year, 11, 31, 23, 59, 59, 999);
+    prev = businessDate(a.year - 1, 0, 1);
+    next = businessDate(a.year + 1, 0, 1);
   } else if (granularity === "custom") {
     // A half-supplied range is not an error: the missing end falls back to the
     // anchor's month, so the report still shows a real period rather than nothing.
-    const monthStart = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-    const monthEnd = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-    from = fromRaw && isValidISODate(fromRaw) ? new Date(`${fromRaw}T00:00:00`) : monthStart;
-    to = toRaw && isValidISODate(toRaw) ? new Date(`${toRaw}T23:59:59.999`) : monthEnd;
+    const monthStart = businessDate(a.year, a.month, 1);
+    const monthEnd = businessDate(a.year, a.month + 1, 0, 23, 59, 59, 999);
+    from = fromRaw && isValidISODate(fromRaw) ? businessDayStart(fromRaw) : monthStart;
+    to = toRaw && isValidISODate(toRaw) ? businessDayEnd(toRaw) : monthEnd;
     // A reversed range would silently report nothing; swap it instead.
     if (from.getTime() > to.getTime()) {
       const swap = from;
@@ -156,14 +176,14 @@ export function resolveStockPeriod(
      * `?g=custom` — dan batas yang punya pintu samping bukan batas.
      */
     const dipendekkan = clampPeriodStart(toISODate(from), toISODate(to));
-    if (dipendekkan !== toISODate(from)) from = new Date(`${dipendekkan}T00:00:00`);
+    if (dipendekkan !== toISODate(from)) from = businessDayStart(dipendekkan);
     prev = null;
     next = null;
   } else {
-    from = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-    to = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-    prev = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1);
-    next = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
+    from = businessDate(a.year, a.month, 1);
+    to = businessDate(a.year, a.month + 1, 0, 23, 59, 59, 999);
+    prev = businessDate(a.year, a.month - 1, 1);
+    next = businessDate(a.year, a.month + 1, 1);
   }
 
   return {
@@ -176,7 +196,7 @@ export function resolveStockPeriod(
     prevAnchorISO: prev ? toISODate(prev) : null,
     nextAnchorISO: next ? toISODate(next) : null,
     weekNumber: granularity === "week" ? isoWeekNumber(from) : null,
-    year: from.getFullYear(),
-    month: anchor.getMonth() + 1,
+    year: businessParts(from).year,
+    month: a.month + 1,
   };
 }

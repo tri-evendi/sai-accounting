@@ -4292,7 +4292,11 @@
     "pickBom": "Choose a bill of materials",
     "producedPositive": "Output must be more than zero. Materials consumed with no output are recorded as process shrinkage.",
     "siteContentTooLong": "This sentence is too long for the landing page.",
-    "whatsappDigitsOnly": "The WhatsApp number must be digits only, without + or spaces (e.g. 628123456789)."
+    "whatsappDigitsOnly": "The WhatsApp number must be digits only, without + or spaces (e.g. 628123456789).",
+    "licenceCustomerRequired": "Customer name is required, on one line, and must not start with a minus sign.",
+    "licenceLimitInvalid": "Enter a whole number, 0 or more.",
+    "licenceModulesInvalid": "Write all, or a comma-separated list of module keys (lowercase letters, digits, underscore).",
+    "licenceVersionInvalid": "A version is dotted numbers, e.g. 1.4 or 1.4.0."
   },
   "taxSettings": {
     "sectionTitle": "PPN (VAT)",
@@ -4625,7 +4629,8 @@
       "plans": "Plan catalog",
       "efaktur": "Platform e-Faktur",
       "statusNotices": "Status notices",
-      "brand": "Product logo"
+      "brand": "Product logo",
+      "licences": "On-premise licences"
     },
     "attention": {
       "heading": "Needs attention",
@@ -5165,7 +5170,7 @@
       "keyMissing": "SETTINGS_ENCRYPTION_KEY is not set: new accounts cannot be created and database accounts cannot sign in, because their TOTP secret can be neither sealed nor opened.",
       "unavailable": "The account list cannot be read yet: the control database is unreachable. Env accounts can still sign in.",
       "dbHeading": "Console accounts",
-      "rolesNote": "Owner: every action. Billing: mark paid, extensions, plan changes, billing mode. Support: suspension/restoration and site content. Viewer: read only. Every role can read the whole console. Deactivating and resetting also revoke sessions.",
+      "rolesNote": "Owner: every action. Billing: mark paid, extensions, plan changes, billing mode, on-premise licence register. Support: suspension/restoration and site content. Viewer: read only. Every role can read the whole console. Deactivating and resetting also revoke sessions.",
       "envHeading": "Emergency accounts (env)",
       "envNote": "From OPERATOR_USERS, always owners, and deliberately not editable on screen: the emergency way in must not be revocable by a stolen session. Change them in the env, then recreate the container.",
       "roles": {
@@ -5386,6 +5391,97 @@
       "done": "Entitlement active from quote {quote}.",
       "partial": "Not finished — {steps}. The remaining steps can be continued with their own buttons.",
       "errInput": "Incomplete input: quote number, plan, 1–24 periods and a reason are required."
+    },
+    "licences": {
+      "heading": "On-premise licences",
+      "description": "Register of on-premise customer licences. The console records and checks; signing stays on the offline laptop.",
+      "keyNotSet": "The licence public key is not embedded in the code yet (LICENCE_PUBLIC_KEY_PEM is still \"BELUM-DISETEL\"). Drafts can still be created, but .sai files cannot be verified, so uploads are disabled. Owner steps: docs/ONPREM-SERAH-TERIMA.md §0.",
+      "stepsTitle": "Steps",
+      "steps": {
+        "one": "Fill in the form below. You get a draft and one ready-to-copy command.",
+        "two": "Copy that command and run it on the offline laptop holding the private key — the private key never comes here.",
+        "three": "Upload the resulting .sai file to the same draft. The console checks the signature and matches its contents against the draft.",
+        "four": "Download the file from the register and send it to the customer; it is installed as ./lisensi/licence.sai.",
+        "five": "Renewal or limit change: press \"Issue new version\" on the customer — the form is pre-filled from the previous licence."
+      },
+      "archiveNote": "This register is an ARCHIVE, not an authority: the customer app only trusts the file's signature and never reads this list.",
+      "unavailable": "The register cannot be read: sai_platform is unreachable.",
+      "readOnly": "Your role is view-only. Recording licences requires the licence register permission.",
+      "empty": "No licences recorded yet.",
+      "fromTenant": "moved from SaaS tenant #{id}",
+      "renew": "Issue new version",
+      "errInvalid": "Invalid input, or the row has changed. Reload the page and try again.",
+      "created": "Draft created. Copy the command and run it on the offline laptop.",
+      "uploaded": "The licence file is valid and matches the draft — recorded as issued.",
+      "revoked": "Marked as revoked in the register.",
+      "discarded": "Draft discarded.",
+      "err": {
+        "empty": "The file is empty or too large.",
+        "tooLarge": "The file is too large to be a licence.",
+        "notDraft": "Only drafts can receive a file or be discarded.",
+        "badSignature": "File rejected — its signature is not valid: {reason}",
+        "mismatch": "The file is valid, but its contents differ from the draft. Re-run this draft's command without changing it:"
+      },
+      "mismatchLine": "{field}: draft has {expected}, file has {actual}",
+      "field": {
+        "licenceId": "Licence id",
+        "customer": "Customer name",
+        "maxCompanies": "Company limit",
+        "maxUsers": "User limit",
+        "modules": "Modules",
+        "supportEndsOn": "Support until",
+        "maxVersion": "Highest version",
+        "contact": "Contact",
+        "notes": "Notes",
+        "sourceTenantId": "Source SaaS tenant id"
+      },
+      "form": {
+        "newTitle": "New licence",
+        "renewTitle": "New version for {name}",
+        "newHint": "Only the fields the issue command needs. Optional fields may be left empty.",
+        "renewHint": "Pre-filled from the previous licence — change only what changes. The old version is marked superseded once the new file is uploaded.",
+        "customerHint": "Printed in the licence as-is.",
+        "modulesHint": "all, or a comma-separated list of module keys.",
+        "supportHint": "Empty = support without an end date. Passing this date does NOT stop the app.",
+        "versionHint": "Empty = no version cap. \"1.4\" covers all of 1.4.x.",
+        "optional": "Optional",
+        "sourceTenantHint": "Fill in if the customer moved from SaaS.",
+        "submit": "Create draft & command",
+        "cancelRenewal": "Cancel"
+      },
+      "status": {
+        "draft": "Draft",
+        "issued": "Issued",
+        "superseded": "Superseded",
+        "revoked": "Revoked (note)"
+      },
+      "summary": {
+        "limits": "{companies} companies / {users} users",
+        "modules": "modules {modules}",
+        "supportUntil": "support until {date}",
+        "supportForever": "support without end date",
+        "maxVersion": "versions up to {version}"
+      },
+      "versionLabel": "Version {n}",
+      "meta": {
+        "created": "Created by {by}, {at}",
+        "uploaded": "uploaded by {by}, {at}",
+        "revoked": "Marked revoked by {by}, {at}: {reason}"
+      },
+      "commandLabel": "Run on the offline laptop (change the key path if different):",
+      "copy": "Copy command",
+      "copied": "Copied",
+      "uploadLabel": "Upload .sai file",
+      "uploadDisabled": "Uploads are disabled until the public key is embedded.",
+      "discard": "Discard draft",
+      "discardTitle": "Discard this draft?",
+      "discardDescription": "The draft is not signed yet, so nothing but its fields is lost. If its command was already run, the resulting file can no longer be uploaded.",
+      "download": "Download file",
+      "revoke": "Mark revoked",
+      "revokeNote": "Offline licences CANNOT be revoked remotely: an installed file stays valid on the customer's machine. This is only a note in the register.",
+      "revokeReason": "Reason (at least 5 characters)",
+      "revokeConfirm": "Record as revoked",
+      "cancel": "Cancel"
     },
     "brand": {
       "heading": "Product logo",

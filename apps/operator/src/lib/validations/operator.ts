@@ -305,3 +305,76 @@ export const siteContentSchema = z.object({
   ),
 });
 export type SiteContentFormInput = z.infer<typeof siteContentSchema>;
+
+/* ── 9. Register lisensi on-premise (migration platform 0006) ──────────────── */
+
+/**
+ * Formulir DRAF lisensi — isiannya PERSIS yang dibutuhkan
+ * `bun run licence:issue`, tidak lebih (keputusan pemilik 22 Okt 2026: satu
+ * formulir → satu perintah → satu unggahan). Kontak, catatan, dan tenant SaaS
+ * asal opsional.
+ *
+ * Angka & tanggal dibawa sebagai TEKS — bentuk yang dipegang `<input>` — dan
+ * diubah di server action. Bentuknya sama dengan yang diterima skrip
+ * penandatangan, supaya draf yang lolos di sini tidak pernah ditolak skripnya
+ * di laptop luring.
+ *
+ * `reason` tidak diminta: draf tidak mengubah apa pun di luar register, dan
+ * setiap langkahnya tetap tercatat di jejak audit operator.
+ */
+const licenceCount = z
+  .string()
+  .trim()
+  .regex(/^\d{1,6}$/, vmsg("validation.licenceLimitInvalid"));
+
+export const licenceDraftSchema = z.object({
+  /** Kosong = customer baru; terisi = versi berikutnya customer itu. */
+  customerId: z.string().regex(/^\d*$/),
+  customer: z
+    .string()
+    .trim()
+    .min(1, vmsg("validation.licenceCustomerRequired"))
+    .max(200)
+    /* Satu baris (kolom & argumen shell), dan bukan `--…`: skrip membaca
+       argumen sesudah `--customer` apa adanya. */
+    .refine((v) => !/[\u0000-\u001f\u007f]/.test(v) && !v.startsWith("-"), {
+      message: vmsg("validation.licenceCustomerRequired"),
+    }),
+  maxCompanies: licenceCount,
+  maxUsers: licenceCount,
+  /** `all` atau daftar kunci berkoma — diurai ulang `parseModules` di server. */
+  modules: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((v) => v === "all" || /^[a-z][a-z0-9_]*(\s*,\s*[a-z][a-z0-9_]*)*,?$/.test(v), {
+      message: vmsg("validation.licenceModulesInvalid"),
+    }),
+  /** `YYYY-MM-DD` atau kosong = dukungan tanpa batas waktu. */
+  supportEndsOn: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/),
+  maxVersion: z
+    .string()
+    .trim()
+    .max(40)
+    .refine((v) => v === "" || /^v?\d+(\.\d+){0,2}$/.test(v), {
+      message: vmsg("validation.licenceVersionInvalid"),
+    }),
+  contact: z.string().trim().max(300),
+  notes: z.string().trim().max(2000),
+  sourceTenantId: z.string().trim().regex(/^\d{0,9}$/),
+});
+export type LicenceDraftFormInput = z.infer<typeof licenceDraftSchema>;
+
+export const licenceUploadSchema = z.object({
+  entryId: z.number().int().positive(),
+  /** Isi berkas `.sai` — dibaca peramban sebagai teks. */
+  fileText: z.string().min(1).max(16 * 1024),
+});
+
+export const licenceRevokeSchema = z.object({
+  entryId: z.number().int().positive(),
+  reason: operatorReasonField,
+});
+export type LicenceRevokeFormInput = z.infer<typeof licenceRevokeSchema>;
+
+export const licenceEntryIdSchema = z.object({ entryId: z.number().int().positive() });

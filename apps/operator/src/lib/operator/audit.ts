@@ -74,7 +74,19 @@ export type OperatorAuditAction =
   | "operator.status.phase"
   /* Logo produk (migration platform 0005). `details` memuat sidik, format, dan ukurannya — bukan isi berkasnya. */
   | "operator.brand.update"
-  | "operator.brand.reset";
+  | "operator.brand.reset"
+  /**
+   * Register lisensi on-premise (migration platform 0006). `details` memuat id
+   * baris, `licenceId`, versi, batas, dan sidik berkas — TIDAK PERNAH isi
+   * berkasnya. `upload.rejected` mencatat unggahan yang gagal verifikasi atau
+   * tidak cocok dengan draf, beserta isian yang berbeda.
+   */
+  | "operator.licence.create"
+  | "operator.licence.upload"
+  | "operator.licence.upload.rejected"
+  | "operator.licence.download"
+  | "operator.licence.revoke"
+  | "operator.licence.discard";
 
 export interface OperatorAuditEntry {
   id: string;

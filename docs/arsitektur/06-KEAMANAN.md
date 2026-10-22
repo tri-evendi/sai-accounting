@@ -162,6 +162,15 @@ menjadikannya pemadaman. Lisensinya **perpetual**: yang berakhir adalah hak atas
 versi baru dan dukungan, bukan akses ke pembukuan. Lisensi yang mematikan buku
 adalah kesalahan kategori untuk produk akuntansi.
 
+**Register lisensi di konsol (`/licences`, migration platform 0006) adalah
+arsip, bukan kewenangan.** Konsol menyusun perintah `licence:issue`, operator
+menjalankannya di laptop luring, lalu mengunggah berkas `.sai`-nya; konsol
+hanya **memverifikasi** dengan kunci publik tertanam dan mencocokkan isinya
+dengan draf. Tidak ada kolom, unggahan, atau env untuk kunci privat, dan tidak
+satu pun kode `app-customer` membaca tabel register — keduanya dijaga
+`tests/licence-register-archive.test.ts`. Status "dicabut" di register hanya
+catatan: lisensi luring tidak bisa dicabut dari jauh.
+
 Batas perusahaan/pengguna dari lisensi hanya menahan pembuatan yang **baru**
 (`creationQuotaFor`, `seatQuotaOverride`). Selama kunci publik produksi belum
 ditanam (`"BELUM-DISETEL"`), pemasangan on-premise memperingatkannya saat start

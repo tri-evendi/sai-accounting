@@ -24,6 +24,8 @@ type Perkakas struct {
 	Port      int
 	User      string
 	Sandi     string
+	// SSLMode diteruskan sebagai PGSSLMODE bila diset; kosong = bawaan libpq.
+	SSLMode string
 }
 
 // Pernyataan waktu-kompilasi: `Perkakas` memenuhi `Pendump`. Tanpa baris ini,
@@ -37,7 +39,11 @@ var _ Pendump = Perkakas{}
 // container — aturan yang sama yang membuat `scripts/backup.sh` memakai berkas
 // opsi alih-alih `--password=`.
 func (p Perkakas) lingkungan() []string {
-	return []string{"PGPASSWORD=" + p.Sandi}
+	env := []string{"PGPASSWORD=" + p.Sandi}
+	if p.SSLMode != "" {
+		env = append(env, "PGSSLMODE="+p.SSLMode)
+	}
+	return env
 }
 
 func (p Perkakas) argSambungan() []string {

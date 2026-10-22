@@ -495,12 +495,22 @@ VALUES ('db2', 'COMPANY_DB2_DATABASE_URL_TEMPLATE', now());
 
 Lalu set `COMPANY_DB2_DATABASE_URL_TEMPLATE` di **setiap** layanan yang
 membuka buku: `app-customer`, `app-operator`, `migrate`, `svc-ledger`,
-`svc-interactive`, `job-scheduler`, `job-conformance`, dan `job-backup`.
-Layanan yang tidak punya env itu tetap jalan, tetapi melempar saat membuka
-buku PT di instans tersebut. Pengguna kunci di URL itu wajib berhak
-`CREATEDB`. Seperti `migrate` dan `job-backup` di instans bawaan, URL untuk
-`migrate` dan `job-backup` wajib **langsung** ke PostgreSQL, tidak lewat
-PgBouncer.
+`svc-interactive`, `svc-tenant`, `job-scheduler`, `job-conformance`, dan
+`job-backup`. Layanan yang tidak punya env itu tetap jalan, tetapi melempar
+saat membuka buku PT di instans tersebut. Untuk `svc-tenant` artinya buku PT
+di instans itu **tidak dicadangkan** (lihat *Cadangan per instans* di bawah).
+Pengguna kunci di URL itu wajib berhak `CREATEDB`.
+
+Jalannya **satu**: baris di `.env`, yang sampai ke semua layanan itu lewat
+`env_file: .env`. Jangan menulisnya di `environment:` satu layanan. Penimpaan
+per layanan adalah persis cara satu nilai sampai ke satu layanan dan terlewat
+di yang lain. `tests/db-instance-env-reaches-every-service.test.ts` menolak
+keduanya: layanan repo tanpa `env_file: .env`, dan env var berbentuk
+`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` di `environment:` berkas compose mana
+pun. Akibatnya URL itu dipakai apa adanya oleh semua layanan, jadi ia wajib
+**langsung** ke PostgreSQL, tidak lewat PgBouncer. `migrate` butuh advisory
+lock sesi, dan `svc-tenant` butuh `pg_database` yang utuh. Go menolak URL
+instans yang memuat `pgbouncer=true`.
 
 Untuk menyediakan PT baru di instans itu, isi `dbInstanceKey` pada
 `provisionCompany()`. Tanpa nilai itu, PT baru masuk instans bawaan.
@@ -537,19 +547,71 @@ env-nya menunjuk PostgreSQL langsung.
 `db_instance_key` kembali ke nilai lama (`NULL` untuk bawaan). Buku di tujuan
 tidak dibuka siapa pun begitu registry kembali.
 
+### Cadangan per instans (`svc-tenant`)
+
+`internal/backup` membaca `db_instances` dan `companies.db_instance_key` dari
+kendali, hanya-baca. Instans yang ikut adalah yang **aktif**, ditambah instans
+nonaktif yang masih ditempati satu PT. Menonaktifkan instans tidak memindahkan
+buku siapa pun. URL tiap instans diambil dari env var yang **namanya**
+tercatat di barisnya (`internal/db/instans.go`, cermin `company-url.ts`).
+Nama di luar bentuk `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` ditolak, begitu
+juga env yang kosong dan URL lewat PgBouncer. Tidak ada jalur yang jatuh ke
+server bawaan.
+
+Lalu, per instans:
+
+| Langkah | Instans bawaan | Instans `<kunci>` |
+|---|---|---|
+| Pencacahan | `pg_database` server `CONTROL_DATABASE_URL` | `pg_database` server instans itu (basis data `postgres`) |
+| Dump per basis data | `db-<nama>.dump.enc` | `instans/<kunci>/db-<nama>.dump.enc` |
+| Peran & hak akses | `globals.sql.enc` | `instans/<kunci>/globals.sql.enc` |
+| `companyId` di manifest | PT dengan `db_instance_key = NULL` | PT dengan `db_instance_key = '<kunci>'` |
+
+Nama objek instans bawaan **tidak berubah sama sekali**. Tanpa instans
+tambahan, manifest tidak memuat satu pun bidang baru, jadi runbook pemulihan di
+`PRODUCTION.md` tetap berlaku byte demi byte. Instans lain memakai
+subdirektori, bukan sufiks, karena selama pemindahan nama basis data yang sama
+hidup di dua server.
+
+**Kelengkapan per instans.** PT yang terdaftar di instans X wajib punya objek
+yang didump **dari X**. Basis data bernama sama di server lain, misalnya salinan
+lama yang belum diganti nama, didump sebagai `other` tanpa `companyId`. Ia
+tidak membuktikan apa pun tentang buku yang hidup. PT terdaftar yang tidak ada
+di server instansnya masuk `Hilang` sebagai `<nama>@<kunci>`. Seperti
+sebelumnya, `Hilang` menghentikan putaran sebelum satu objek pun dikirim.
+
+**Instans yang gagal** (env tak diset, nama salah, server tak terjangkau, atau
+server lebih baru daripada `pg_dump`) **tidak** menghentikan instans lain.
+Satu env var yang lupa disalin tidak boleh membuat semua PT tanpa salinan.
+Akibatnya:
+
+- objek instans lain tetap terkirim;
+- manifest memuat `instansGagal: [{kunci, sebab, basis}]`;
+- jejak `backup_runs` berstatus `error`, dengan nama putaran dan ukurannya,
+  sehingga `/api/health` dan `watch:health` berbunyi;
+- pemangkasan **dilewati**, sebab putaran lama mungkin satu-satunya salinan
+  buku di instans yang gagal. Harganya: selama instans itu gagal, cakram
+  atau bucket bertambah sampai dua putaran per hari (`max_attempts: 2`),
+  tanpa ada yang dibuang. Alarmnya berbunyi sejak hari pertama;
+  `local_only` di cakram yang penuh adalah bentuk yang harus dicegah lewat
+  alarm itu, bukan lewat membuang salinan terakhir;
+- `prove-backup-restore` menolak putaran itu.
+
+Konsol operator `/backup` membaca `backup_runs` (putaran, status, galat,
+ukuran), bukan manifest, jadi bentuknya tidak berubah. Label `@kunci` di
+daftar versi skema tetap berasal dari registry.
+
+**Urutan untuk pemindahan pertama di produksi:** set env var instans di
+`.env`, recreate `svc-tenant` (dan layanan lain), terbitkan satu putaran, dan
+pastikan manifestnya memuat `instans: [{kunci: …}]` tanpa `instansGagal`.
+Baru sesudah itu jalankan `tenant:move`.
+
 ### Yang belum ikut
 
-- **Cadangan Go (`svc-tenant`) masih mencacah SATU server.** Pada PT
-  pertama yang dipindah, bukti kelengkapannya akan berbunyi: buku itu masuk
-  `Hilang` karena tidak ada di `pg_database` server bawaan. Bunyi itu benar,
-  sebab buku di instans baru memang belum dicadangkan. Jadi pekerjaan
-  lanjutan ini **prasyarat** pemindahan pertama di produksi. Bentuknya:
-  `internal/backup` membaca `db_instances` dari kendali, mengambil URL
-  per instans dari env dengan nama yang sama, lalu mencacah dan membuktikan
-  kelengkapan per instans. Pekerjaan ini tidak dikerjakan di tahap 4 karena
-  toolchain Go tidak tersedia di mesin tempat tahap ini dibangun, dan Go yang
-  belum pernah lolos `go test` + `golangci-lint` tidak boleh dikirim
-  (AGENTS.md §Go).
+- `cmd/parity` (`internal/ledgerread`) masih membuka buku lewat rantai instans
+  bawaan saja. Ia alat pembanding, bukan jalur produksi, tetapi paritas atas
+  PT yang sudah dipindah akan membaca salinan lamanya. Jalankan hanya untuk PT
+  di instans bawaan sampai pembacanya mengenal instans.
 - Konsol operator menampilkan instans di `/backup` (label `@kunci`), tetapi
   belum di halaman kesesuaian. Jejak `conformance_runs` sudah mencatat
   `instance` per buku.

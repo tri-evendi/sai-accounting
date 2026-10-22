@@ -38,7 +38,11 @@ type Objek struct {
 	Basis     string     `json:"basis,omitempty"`
 	Peran     Peran      `json:"peran,omitempty"`
 	CompanyID *int32     `json:"companyId,omitempty"`
-	Bytes     int64      `json:"bytes"`
+	// Instans: kunci `db_instances` server asal objek ini. KOSONG (dan tidak
+	// ditulis) untuk instans bawaan, supaya manifest pemasangan satu server
+	// tetap sama persis dengan sebelum tahap 4.
+	Instans string `json:"instans,omitempty"`
+	Bytes   int64  `json:"bytes"`
 	// SHA256 atas CIPHERTEXT. AES-CBC tidak membawa pemeriksaan keutuhan
 	// sendiri, jadi tanpa angka ini cadangan yang rusak di tengah jalan baru
 	// ketahuan pada hari kita paling tidak ingin menemukannya.
@@ -65,6 +69,22 @@ type Manifest struct {
 	// ini yang membuat "apakah cadangannya melewatkan PT baru?" bisa dijawab
 	// tanpa menebak — bandingkan dengan jumlah objek ber-peran `company`.
 	PerusahaanTerdaftar int `json:"perusahaanTerdaftar"`
+
+	// Instans tambahan yang ikut dicadangkan (tahap 4). Tidak ditulis bila
+	// hanya ada instans bawaan.
+	Instans []InfoInstans `json:"instans,omitempty"`
+
+	// Instans yang TIDAK ikut. Manifest yang memuat bidang ini adalah putaran
+	// SEBAGIAN: setiap objek yang disebutnya ada dan utuh, tapi buku PT yang
+	// tercantum di sini tidak punya salinan di putaran ini. Jejaknya `error`,
+	// dan `prove-backup-restore` menolak putaran ini.
+	InstansGagal []InstansGagal `json:"instansGagal,omitempty"`
+}
+
+// InfoInstans: satu instans tambahan di dalam putaran.
+type InfoInstans struct {
+	Kunci       string `json:"kunci"`
+	VersiServer int    `json:"versiServer"`
 }
 
 // NamaManifest adalah kunci manifest di dalam putarannya.
@@ -91,6 +111,9 @@ func (m Manifest) JSON() ([]byte, error) {
 // Inilah yang menjawab permintaan yang melahirkan celah #5: "pulihkan data
 // kami saja ke keadaan Selasa". Tanpa objek per basis data, jawabannya menuntut
 // memulihkan SELURUH pemasangan ke server bayangan lebih dulu.
+//
+// `companyId` hanya terisi pada objek dari instans tempat PT itu TERDAFTAR,
+// jadi salinan bernama sama di server lain tidak pernah terpilih di sini.
 func (m Manifest) BasisPerusahaan(companyID int32) *Objek {
 	for i := range m.Objek {
 		o := &m.Objek[i]

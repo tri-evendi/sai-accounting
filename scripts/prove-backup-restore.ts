@@ -41,6 +41,14 @@
  *   6. Peran & hak akses ikut (`globals.sql.enc`), dan berkas dokumen & jejak
  *      audit ikut (#367/#370).
  *
+ * ══ INSTANS BASIS DATA (tahap 4) ═══════════════════════════════════════════
+ * Buku PT yang dipindah ke instans `db-postgres` lain didump DARI instans itu,
+ * ke `instans/<kunci>/db-<nama>.dump.enc` (+ `instans/<kunci>/globals.sql.enc`).
+ * Instans bawaan tetap memakai nama lama apa adanya. Kelengkapan dicocokkan
+ * PER INSTANS: PT yang terdaftar di instans X wajib punya objek bertanda
+ * `instans: X` — salinan bernama sama dari server lain tidak dihitung. Putaran
+ * yang manifestnya memuat `instansGagal` adalah putaran SEBAGIAN dan ditolak.
+ *
  * ══ APA YANG TIDAK DILAKUKAN ═══════════════════════════════════════════════
  * TIDAK memuat dumpnya ke basis data mana pun. Skrip ini hanya-baca terhadap
  * seluruh dunia: satu perintah `psql <` yang salah sasaran akan menimpa
@@ -57,6 +65,7 @@ import { createHash } from "node:crypto";
 import {
   copyFileSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -93,11 +102,24 @@ interface Manifest {
     basis?: string;
     peran?: string;
     companyId?: number;
+    /** Tahap 4: kunci `db_instances`; TIDAK ADA untuk instans bawaan. */
+    instans?: string;
     bytes: number;
     sha256: string;
   }[];
   perusahaanTerdaftar: number;
+  /** Tahap 4: instans tambahan yang ikut; tidak ada di putaran satu server. */
+  instans?: { kunci: string; versiServer: number }[];
+  /** Tahap 4: instans yang TIDAK ikut — putaran sebagian. */
+  instansGagal?: { kunci: string; sebab: string; basis?: string[] }[];
 }
+
+/** Bentuk kunci objek yang ditulis jalur `tenant`. Apa pun yang lain — `..`,
+ *  jalur mutlak — ditolak sebelum menyentuh cakram. */
+const KUNCI_OBJEK_SAH = /^(instans\/[a-z][a-z0-9_]{0,31}\/)?[A-Za-z0-9_][A-Za-z0-9_.-]*$/;
+
+/** Label instans bawaan, sama dengan `DEFAULT_DB_INSTANCE_LABEL`. */
+const INSTANS_BAWAAN = "default";
 
 const NAMA_MANIFEST = "manifest.json";
 
@@ -206,7 +228,7 @@ function dekripsi(tersandi: string): string {
   return keluar;
 }
 
-async function basisDataTerdaftar(): Promise<{ nama: string; slug: string }[] | null> {
+async function basisDataTerdaftar(): Promise<{ nama: string; slug: string; instans: string }[] | null> {
   const controlUrl = process.env.CONTROL_DATABASE_URL;
   if (!controlUrl) return null;
   const url = new URL(controlUrl);
@@ -215,10 +237,14 @@ async function basisDataTerdaftar(): Promise<{ nama: string; slug: string }[] | 
   });
   try {
     const companies = await control.company.findMany({
-      select: { slug: true, databaseName: true },
+      select: { slug: true, databaseName: true, dbInstanceKey: true },
       orderBy: { id: "asc" },
     });
-    return companies.map((c) => ({ nama: c.databaseName, slug: c.slug }));
+    return companies.map((c) => ({
+      nama: c.databaseName,
+      slug: c.slug,
+      instans: c.dbInstanceKey ?? INSTANS_BAWAAN,
+    }));
   } finally {
     await control.$disconnect();
   }
@@ -261,6 +287,23 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
     `✓ manifest terbaca: ${manifest.objek.length} objek, ` +
       `server PostgreSQL ${manifest.versiServer}, sandi "${manifest.enkripsi}"`
   );
+  for (const i of manifest.instans ?? []) {
+    console.log(`✓ instans ${i.kunci} ikut (server PostgreSQL ${i.versiServer})`);
+  }
+
+  /* Putaran SEBAGIAN (tahap 4): satu instans tambahan tidak bisa dicadangkan.
+     Objek yang ada tetap nyata, tapi buku PT di instans itu tidak punya
+     salinan di putaran ini — jadi putaran ini tidak bisa disebut terpulihkan. */
+  if (manifest.instansGagal && manifest.instansGagal.length > 0) {
+    fail(
+      `PUTARAN SEBAGIAN — ${manifest.instansGagal.length} instans basis data tidak ikut:\n` +
+        manifest.instansGagal
+          .map((g) => `  - ${g.kunci}: ${g.sebab}${g.basis?.length ? ` (PT: ${g.basis.join(", ")})` : ""}`)
+          .join("\n") +
+        "\n  Pakai putaran lengkap sebelumnya untuk PT di instans itu, dan perbaiki\n" +
+        "  env var instansnya di svc-tenant (docs/MULTI-COMPANY.md §6)."
+    );
+  }
 
   /* ── 2+3+4. SETIAP objek: ada, cocok, terbuka, dan benar isinya ───────
    *
@@ -269,12 +312,15 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
    * dengan "cadangan yang kehilangan satu PT" — ia gagal untuk satu customer
    * saja, dan karena itu paling mudah tidak terlihat.
    */
-  const dibukaBasis: { basis: string; jalur: string }[] = [];
+  const dibukaBasis: { basis: string; instans: string; jalur: string }[] = [];
   let adaGlobals = false;
   let adaBerkas = false;
   let totalByte = 0;
 
   for (const o of manifest.objek) {
+    if (!KUNCI_OBJEK_SAH.test(o.kunci)) {
+      fail(`manifest menyebut kunci objek yang tidak sah: ${JSON.stringify(o.kunci)}`);
+    }
     const relatif = `${putaran}/${o.kunci}`;
     if (!sumber.ada(relatif)) {
       fail(
@@ -284,6 +330,7 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
       );
     }
     const lokal = path.join(kerja, o.kunci);
+    mkdirSync(path.dirname(lokal), { recursive: true });
     sumber.ambil(relatif, lokal);
 
     const terhitung = sidikJari(lokal);
@@ -317,8 +364,10 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
           );
         }
         const entri = daftar.split("\n").filter((b) => b.trim() && !b.startsWith(";")).length;
-        console.log(`✓ ${o.basis ?? o.kunci}: ${entri} entri katalog (${(ukuran / 1024 / 1024).toFixed(1)} MB)`);
-        dibukaBasis.push({ basis: o.basis ?? o.kunci, jalur: terbuka });
+        const instans = o.instans ?? INSTANS_BAWAAN;
+        const label = instans === INSTANS_BAWAAN ? (o.basis ?? o.kunci) : `${o.basis ?? o.kunci} @${instans}`;
+        console.log(`✓ ${label}: ${entri} entri katalog (${(ukuran / 1024 / 1024).toFixed(1)} MB)`);
+        dibukaBasis.push({ basis: o.basis ?? o.kunci, instans, jalur: terbuka });
         break;
       }
       case "globals": {
@@ -372,12 +421,17 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
   if (terdaftar === null) {
     console.warn("⚠ CONTROL_DATABASE_URL belum diset — kelengkapan per PT tidak dicocokkan.");
   } else {
-    const adaObjek = new Set(dibukaBasis.map((b) => b.basis));
-    const hilang = terdaftar.filter((c) => !adaObjek.has(c.nama));
+    /* PER INSTANS (tahap 4): PT yang terdaftar di instans X wajib punya objek
+       yang didump DARI X. Salinan bernama sama dari server lain — sisa
+       pemindahan — tidak membuktikan apa pun tentang buku yang hidup. */
+    const adaObjek = new Set(dibukaBasis.map((b) => `${b.instans}/${b.basis}`));
+    const hilang = terdaftar.filter((c) => !adaObjek.has(`${c.instans}/${c.nama}`));
     if (hilang.length > 0) {
       fail(
         `CADANGAN TIDAK LENGKAP — ${hilang.length} basis data terdaftar tidak punya objeknya sendiri:\n` +
-          hilang.map((c) => `  - ${c.nama} (${c.slug})`).join("\n") +
+          hilang
+            .map((c) => `  - ${c.nama} (${c.slug})${c.instans === INSTANS_BAWAAN ? "" : ` @${c.instans}`}`)
+            .join("\n") +
           "\n  Cadangan yang kehilangan satu PT adalah cadangan yang gagal untuk\n" +
           "  customer itu saja — dan itulah bentuk kegagalan yang paling mudah\n" +
           "  tidak terlihat."
@@ -397,6 +451,7 @@ async function buktikanPutaran(sumber: Sumber, putaran: string, kerja: string): 
       `Pulihkan SELURUH pemasangan (ke server BAYANGAN — jangan pernah ke produksi):\n` +
       `  1. psql -h <host-bayangan> -U <peran> -d postgres -f ${path.join(kerja, "globals.sql")}\n` +
       `  2. createdb + pg_restore untuk tiap db-*.dump\n` +
+      `     (instans tambahan: globals + dump di instans/<kunci>/, ke server instans itu)\n` +
       `  3. tar -xzf ${path.join(kerja, "berkas.tar.gz")} -C <volume-data>\n\n` +
       `lalu buka satu PT dan cocokkan Neraca Saldonya.\n\n` +
       `Buang setelah selesai:  rm -rf ${kerja}`

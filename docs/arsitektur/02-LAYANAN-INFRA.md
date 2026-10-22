@@ -125,8 +125,9 @@ instans `db-postgres` lain: `db_instances` di kendali menyebut kunci dan
 **nama** env var-nya (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`), dan
 `companies.db_instance_key = NULL` berarti instans di tabel ini. Satu-satunya
 penyusun URL buku PT adalah `@sai/db/company-url`; pemindahan lewat
-`bun run tenant:move`. Cadangan `svc-tenant` masih satu server — runbook dan
-batasnya di [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
+`bun run tenant:move`. `svc-tenant` mencacah dan mendump **per instans**
+(`instans/<kunci>/…`). Runbook dan batasnya ada di
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
 
 **`pgbouncer`** (`edoburu/pgbouncer:v1.26.0-p0` — **versi dipatok**, bukan
 `latest`, sejak 19 Okt 2026) mendengarkan di **5432**, bukan 6432 —
@@ -333,6 +334,16 @@ sebagian, dan sebagian itulah bentuk cadangan paling berbahaya.
 | `berkas.tar.gz.enc` | `data/documents` + `data/audit` (#367/#370) |
 | `<objek>.sha256` | sidik jari atas **ciphertext**, untuk setiap objek |
 | `manifest.json` | satu-satunya objek yang terbaca **tanpa** kunci |
+| `instans/<kunci>/db-<nama>.dump.enc` · `instans/<kunci>/globals.sql.enc` | hanya bila ada instans tambahan (tahap 4): dump dan peran **dari server instans itu** |
+
+Tanpa instans tambahan, nama objek dan isi manifest sama persis dengan sebelum
+tahap 4. Dengan instans tambahan, objeknya bertanda `instans` di manifest, dan
+`companyId` hanya terisi pada objek dari instans tempat PT itu terdaftar.
+Kelengkapan dibuktikan **per instans**. Env var instans
+`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` sampai ke `svc-tenant` lewat
+`env_file: .env` yang sama dengan layanan lain, dan wajib langsung ke
+PostgreSQL. Rinciannya di
+[MULTI-COMPANY §6](../MULTI-COMPANY.md#cadangan-per-instans-svc-tenant).
 
 **Urutan:** cacah → periksa versi → per basis data (dump → sandi → sidik →
 kirim → buang sementara) → globals → berkas → manifest → pangkas. Enkripsi
@@ -352,7 +363,11 @@ bila pengiriman sukses.
 **Empat hal yang menggagalkan putaran sebelum satu objek pun terkirim:** basis
 data terdaftar yang hilang dari server, `pg_dump` lebih tua daripada server,
 `BACKUP_ENCRYPTION_KEY` kosong, dan satu dump yang gagal. Manifest ditulis
-**paling akhir**, jadi manifest yang ada berarti putarannya lengkap.
+**paling akhir**, jadi manifest yang ada berarti setiap objek yang disebutnya
+terkirim. Satu pengecualian disengaja: **instans tambahan yang gagal** (env
+tak diset, server tak terjangkau) tidak menghentikan instans lain. Manifestnya
+memuat `instansGagal`, jejaknya `error`, pemangkasan dilewati, dan
+`prove-backup-restore` menolak putaran itu.
 
 > **⚠ Status 18 Okt 2026: `local_only`**, `lastSuccessAt: null`, tiga env S3
 > kosong. Kehilangan mesin = kehilangan buku **beserta** backup-nya. P0-1.

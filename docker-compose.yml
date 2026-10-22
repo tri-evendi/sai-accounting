@@ -665,6 +665,16 @@ services:
   #
   # Satu URL mengatur keduanya: antrean `jobs` DAN parameter sambungan yang
   # diserahkan ke `pg_dump` (`internal/db/dsn.go` → `SambunganKendali`).
+  #
+  # ══ INSTANS BASIS DATA TAMBAHAN (tahap 4) ══════════════════════════════════
+  #
+  # Buku PT di instans lain dicadangkan dari server instans itu, dengan URL dari
+  # env var yang NAMANYA tercatat di `db_instances`
+  # (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`). Env itu datang lewat `env_file`
+  # di atas, sama seperti ke setiap layanan lain yang membuka buku — JANGAN
+  # menulisnya di `environment:` (ditolak
+  # `tests/db-instance-env-reaches-every-service.test.ts`). Nilainya wajib
+  # LANGSUNG ke PostgreSQL; Go menolak URL yang menyatakan `pgbouncer=true`.
   svc-tenant:
     build:
       context: .

@@ -34,6 +34,8 @@ strategi pengujian, target non-fungsional dan katalog rute (08).
 | [`MULTI-COMPANY.md`](./MULTI-COMPANY.md) | Satu basis data per PT (#104) — aturan & penambahan PT | Aktif |
 | [`MULTI-TENANT.md`](./MULTI-TENANT.md) | Lapis tenant/SaaS (#133) — model data & pemisahan tiga lapis | Aktif |
 | [`RBAC.md`](./RBAC.md) | Matriks izin, empat lapis penegakan, kunci buku | Aktif |
+| [`ONPREM-SERAH-TERIMA.md`](./ONPREM-SERAH-TERIMA.md) | Templat serah terima pemasangan on-premise | Aktif |
+| [`ONPREM-PINDAH-DARI-SAAS.md`](./ONPREM-PINDAH-DARI-SAAS.md) | Runbook memindah satu tenant SaaS ke on-premise — bekukan, bundel, impor, `migrated_out` | Aktif |
 | [`DATABASE.md`](./DATABASE.md) | Standar skema, tipe data, workflow migration | Aktif |
 | [`MODUL-USAHA.md`](./MODUL-USAHA.md) | Modul per jenis usaha (#99) | Aktif |
 | [`COMPLIANCE.md`](./COMPLIANCE.md) | Retensi, UU PDP, persetujuan ber-versi | Aktif |

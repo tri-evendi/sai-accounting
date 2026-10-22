@@ -50,6 +50,7 @@
     "./tax": "./src/tax.ts",
     "./tenant-cache": "./src/tenant-cache.ts",
     "./tenant-deletion": "./src/tenant-deletion.ts",
+    "./tenant-migration": "./src/tenant-migration.ts",
     "./tenant-routes": "./src/tenant-routes.ts",
     "./utils": "./src/utils.ts"
   },

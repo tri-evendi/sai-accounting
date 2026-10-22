@@ -109,6 +109,11 @@ __pycache__/
 
 # Local DB dumps / backups — never commit
 backups/
+# Bundel serah-terima on-premise (`tenant:export-onprem`) & direktori kerjanya:
+# seluruh buku satu tenant + hash kata sandi penggunanya.
+*.saibundle
+*.pgdump
+/data/cadangan/
 
 # Keadaan RUNTIME di dalam `data/`, bukan kode.
 #   mail-outbox/  surel yang DITANGKAP transport `file` (MAIL_TRANSPORT=file);

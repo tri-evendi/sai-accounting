@@ -43,6 +43,7 @@
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
+import { NOT_FROZEN_COMPANY_WHERE } from "@sai/core/tenant-migration";
 import { publishJob } from "@sai/platform/job-queue";
 
 /** `YYYY-MM-DDTHH` di UTC — butir kunci idempotensi satu putaran. */
@@ -60,7 +61,8 @@ async function main() {
      demo tidak menerbitkan dokumen. Dua daftar yang berbeda antara penerbit dan
      pelaksana berarti pekerjaan yang terbit lalu selalu dilempar pelaksananya. */
   const companies = await controlDb.company.findMany({
-    where: { isActive: true, isDemo: false },
+    /* Tenant yang DIBEKUKAN untuk pindah ke on-premise dilewati — @sai/core/tenant-migration. */
+    where: { isActive: true, isDemo: false, ...NOT_FROZEN_COMPANY_WHERE },
     select: { id: true, slug: true },
     orderBy: { id: "asc" },
   });

@@ -452,6 +452,7 @@
       "checkingSession": "正在检查您的登录状态...",
       "forgotPassword": "忘记密码？通过邮箱重置",
       "invalidCredentials": "用户名或密码不正确，请重试。",
+      "migratedOut": "此账户已迁移到贵公司自己的服务器，不再在此使用。请通过贵公司的安装地址登录；如需地址，请联系系统管理员。",
       "registerPrompt": "还没有账号？",
       "registerLink": "立即注册"
     },
@@ -4560,7 +4561,8 @@
       "active": "生效中",
       "past_due": "已逾期",
       "suspended": "已暂停(只读)",
-      "cancelled": "已终止"
+      "cancelled": "已终止",
+      "migrated_out": "已迁移至本地部署"
     },
     "invoiceStatus": {
       "draft": "草稿",

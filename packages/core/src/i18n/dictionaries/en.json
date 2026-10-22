@@ -452,6 +452,7 @@
       "checkingSession": "Checking your session...",
       "forgotPassword": "Forgot your password? Reset it via email",
       "invalidCredentials": "Invalid username or password. Please try again.",
+      "migratedOut": "This account has moved to your company's own server and is no longer used here. Sign in at your company's installation address; ask your system administrator for it.",
       "registerPrompt": "No account yet?",
       "registerLink": "Sign up now"
     },
@@ -4560,7 +4561,8 @@
       "active": "Active",
       "past_due": "Past Due",
       "suspended": "Suspended (read-only)",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "migrated_out": "Moved on-premise"
     },
     "invoiceStatus": {
       "draft": "Draft",

@@ -80,7 +80,7 @@ ditulis.
 | Model & field Prisma | Inggris, PascalCase / camelCase | `JournalLine.invoiceDate` |
 | Pengenal kode (fungsi, tipe, konstanta) | **Inggris**, camelCase / PascalCase / SCREAMING_SNAKE | `buildAdapter` · `CACHE_TTL_SECONDS` |
 | Berkas & berkas tes | Inggris `kebab-case`; tes menamai **aturan** yang dijaganya | `company-clients.ts` · `packages-standalone.test.ts` |
-| Service compose | `<jenis>-<peran>`, jenis dari daftar di bawah | `app-customer` · `svc-tenant` · `job-scheduler` · `db-postgres` |
+| Service compose | `<jenis>-<peran>`, jenis dari daftar di bawah | `app-customer` · `svc-worker` · `job-migrate` · `db-postgres` |
 | Paket & pengenal Go | Inggris; paket pendek **tanpa garis bawah**; `gofmt` wajib | `internal/ledgerread` · `ClaimJob` |
 | Volume compose | `<pemilik>_<isi>` | `postgres_data` · `app_documents` · `backup_archive` |
 | Env var | `<PLANE>_<SUBJEK>_<ATRIBUT>` | `COMPANY_DATABASE_URL` · `CONTROL_DB_CONNECTION_LIMIT` |
@@ -123,8 +123,8 @@ memuatnya selalu menyesatkan begitu penempatannya berubah:
 | Jenis | Artinya | Contoh |
 |---|---|---|
 | `app-` | aplikasi yang **dikonsumsi pengguna langsung** | `app-customer` · `app-operator` |
-| `svc-` | layanan internal yang berjalan terus; penggunanya layanan lain | `svc-ledger` · `svc-tenant` · `svc-pooler` |
-| `job-` | tugas yang berjalan lalu **keluar** — berjadwal atau sekali-jalan | `job-scheduler` · `job-conformance` · `job-migrate` |
+| `svc-` | layanan internal yang berjalan terus; penggunanya layanan lain | `svc-worker` · `svc-integrator` · `svc-pooler` |
+| `job-` | tugas yang berjalan lalu **keluar** — berjadwal atau sekali-jalan | `job-migrate` · `job-backup` (perkakas, `run --rm`) |
 | `db-` | penyimpan **tahan-lama** | `db-postgres` |
 | `cache-` | penyimpan **boleh hilang** — namanya sendiri yang menjaga batas itu | `cache-redis` |
 
@@ -132,8 +132,11 @@ memuatnya selalu menyesatkan begitu penempatannya berubah:
 
 `services/integrator` **sudah ada** (tahap 1b). Peta pohonnya, dua aturan yang
 menahannya, dan batas Go: `docs/arsitektur/01-ARSITEKTUR.md` §10. Yang berjalan
-hari ini: `cmd/tenant` → service `svc-tenant`, cadangan satu objek per basis
-data.
+hari ini: `cmd/integrator` → service `svc-integrator`, SATU proses yang
+menjalankan jalur `tenant` (cadangan satu objek per basis data) dan jalur
+`interactive` (ekspor Neraca Saldo). Satu image = satu container sejak 22 Okt
+2026 (keputusan pemilik, risikonya di `09-RANCANGAN-LAYANAN.md` §3.2); pekerja
+Node keempatnya kini satu container `svc-worker` (`scripts/run-workers.ts`).
 
 ```bash
 bun run go:test    # cd services/integrator && go test ./...

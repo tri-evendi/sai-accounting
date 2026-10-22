@@ -36,6 +36,11 @@ function formatSignInError(message: string | undefined, t: TranslateFn) {
   if (message.includes("NoCompanyAccess")) {
     return t("auth.selectCompany.noAccessBody");
   }
+  /* Tenant sudah pindah ke pemasangan on-premise milik perusahaannya sendiri
+     (docs/ONPREM-PINDAH-DARI-SAAS.md) — penanda dari `authorize()`. */
+  if (message.includes("TenantMigratedOut")) {
+    return t("auth.login.migratedOut");
+  }
   return message;
 }
 

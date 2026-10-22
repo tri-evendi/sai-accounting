@@ -106,6 +106,13 @@ backups/
 **/*.sql.*
 **/*.dump
 **/*.dump.*
+# Bundel serah-terima on-premise (`tenant:export-onprem`): seluruh buku SATU
+# tenant + hash kata sandi penggunanya. Bersandi, tetapi tetap tidak punya
+# urusan di dalam image. Bawaan keluarannya `data/cadangan/` — disebut juga.
+**/*.saibundle
+data/cadangan
+**/.*-onprem-*
+**/*.pgdump
 
 # Worktree agent & artefak alat (issue: konteks build 375 MB)
 # `.claude/worktrees/` berisi salinan pohon kerja LENGKAP — masing-masing dengan

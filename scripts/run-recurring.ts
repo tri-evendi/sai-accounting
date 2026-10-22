@@ -23,6 +23,7 @@
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
+import { NOT_FROZEN_COMPANY_WHERE } from "@sai/core/tenant-migration";
 import { companyContextOf, runWithCompany } from "../src/lib/company-context";
 import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { runRecurringForCompany, type OccurrenceOutcome } from "../src/lib/recurring-run";
@@ -68,7 +69,8 @@ async function main() {
   }
 
   const companies = await controlDb.company.findMany({
-    where: { isActive: true, isDemo: false },
+    /* Tenant yang DIBEKUKAN untuk pindah ke on-premise dilewati — @sai/core/tenant-migration. */
+    where: { isActive: true, isDemo: false, ...NOT_FROZEN_COMPANY_WHERE },
     select: { id: true, name: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
     orderBy: { id: "asc" },
   });

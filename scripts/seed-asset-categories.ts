@@ -26,12 +26,18 @@ import "dotenv/config";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyDatabaseUrl,
+  toCompanyDatabaseTarget,
+} from "@sai/db/company-url";
 
 import { seedDefaultAssetCategories } from "../src/lib/asset-categories";
 
-function adapterFor(raw: string, database?: string) {
-  const url = new URL(raw);
-  return buatAdapter(url.toString(), { batasKoneksi: 2, database: database ?? url.pathname.slice(1) });
+/** Adapter basis data KENDALI. Buku PT tidak dibuka lewat sini — URL-nya
+ *  dari `@sai/db/company-url` (tahap 4). */
+function adapterFor(raw: string) {
+  return buatAdapter(raw, { batasKoneksi: 2 });
 }
 
 function controlClient(): ControlClient {
@@ -43,22 +49,13 @@ function controlClient(): ControlClient {
   return new ControlClient({ adapter: adapterFor(raw) });
 }
 
-/** Kredensial dari template, nama basis data dari registry (pola #104). */
-function companyTemplate(): string {
-  return (
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL!
-  );
-}
-
 async function main() {
   const dryRun = process.argv.includes("--dry");
 
   const control = controlClient();
   const companies = await control.company.findMany({
     orderBy: { id: "asc" },
-    select: { slug: true, databaseName: true, isActive: true },
+    select: { slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
   });
   await control.$disconnect();
 
@@ -74,7 +71,7 @@ async function main() {
   for (const company of companies) {
     const label = `${company.slug} (${company.databaseName})${company.isActive ? "" : " [nonaktif]"}`;
     const prisma = new PrismaClient({
-      adapter: adapterFor(companyTemplate(), company.databaseName),
+      adapter: buatAdapter(companyDatabaseUrl(toCompanyDatabaseTarget(company)), { batasKoneksi: 2 }),
     });
 
     try {

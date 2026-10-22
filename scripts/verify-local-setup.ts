@@ -10,12 +10,12 @@
  */
 import "dotenv/config";
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
 import { prisma } from "../src/lib/prisma";
 
 async function main() {
   const companies = await controlDb.company.findMany({
-    include: { memberships: { include: { user: true } } },
+    include: { memberships: { include: { user: true } }, dbInstance: true },
     orderBy: { id: "asc" },
   });
   console.log(`KENDALI: ${companies.length} perusahaan terdaftar`);
@@ -29,7 +29,7 @@ async function main() {
 
   for (const c of companies) {
     await runWithCompany(
-      { companyId: c.id, slug: c.slug, databaseName: c.databaseName },
+      companyContextOf(c),
       async () => {
         const [invoices, accounts, movements, cashMovements, settings] = await Promise.all([
           prisma.invoice.count(),

@@ -36,7 +36,8 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { controlDb } from "@sai/core/control-db";
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { disconnectAllCompanyClients } from "../src/lib/company-clients";
 import { getTrialBalance } from "../src/lib/reports";
 import { resolveAsOf } from "../src/lib/report-catalog";
@@ -88,7 +89,7 @@ async function main() {
       ...(process.argv.includes("--include-inactive") ? {} : { isActive: true }),
       ...(slugs.length > 0 ? { slug: { in: slugs } } : {}),
     },
-    select: { id: true, slug: true, databaseName: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
     orderBy: { id: "asc" },
   });
   const missing = slugs.filter((s) => !companies.some((c) => c.slug === s));
@@ -117,10 +118,14 @@ async function main() {
     for (const { asOf, asOfISO } of asOfs) {
       const label = `${c.slug} (${c.databaseName}) per ${asOfISO}`;
       try {
-        const ts = await runWithCompany(
-          { companyId: c.id, slug: c.slug, databaseName: c.databaseName },
-          () => getTrialBalance(asOf)
-        );
+        /* Perkakas Go menyambung lewat template bawaan saja. PT di instans lain
+           ditolak sebagai gagal, bukan dibandingkan dengan basis data senama
+           di server bawaan (tahap 4, docs/MULTI-COMPANY.md §6). */
+        const context = companyContextOf(c);
+        if (context.dbInstance !== null) {
+          throw new Error(`instans "${context.dbInstance.key}" belum didukung perkakas paritas Go`);
+        }
+        const ts = await runWithCompany(context, () => getTrialBalance(asOf));
         const go = await goTrialBalance(c.databaseName, asOf);
         const diffs = compareTrialBalance(ts, go);
 

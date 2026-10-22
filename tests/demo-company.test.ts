@@ -84,8 +84,10 @@ describe("registry & skema membawa flagnya", () => {
   it("CompanyRecord punya isDemo, dan ketiga query memilihnya", () => {
     const registry = src("lib/company-registry.ts");
     expect(registry).toContain("isDemo: boolean");
-    // getCompany + companiesForUser + membershipFor
-    expect(registry.match(/isDemo: true/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    // getCompany + companiesForUser + membershipFor — sejak tahap 4 lewat SATU
+    // pilihan kolom bersama, supaya ketiganya juga memuat instans basis datanya.
+    expect(registry).toMatch(/const COMPANY_RECORD_SELECT = \{[^}]*isDemo: true/);
+    expect(registry.match(/select: COMPANY_RECORD_SELECT/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
   it("kolomnya default FALSE — baris lama tidak berubah arti", () => {

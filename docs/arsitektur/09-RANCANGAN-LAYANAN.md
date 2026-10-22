@@ -790,7 +790,7 @@ implementasi Go + kunci kontrak yang dibacanya + skrip paritas + entri
 | **1d — Go ke perhitungan laporan** 🔶 dimulai | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
-| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` | — |
+| **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Tersisa: cadangan Go per instans, prasyarat pemindahan pertama | — |
 | **D — on-premise** | customer on-prem pertama | ✅ kode lengkap 22 Okt 2026 (§7). Tersisa langkah pemilik: kunci publik lisensi | di customer |
 
 **Tahap 3: yang sudah ada, dan yang hanya bisa dibuktikan di tiga host.**
@@ -844,8 +844,32 @@ standby-nya.
 
 Tahap 1 seluruhnya di **satu VM yang sudah ada**. Sesudahnya, tahap 2 dan 3
 menjadi perubahan konfigurasi — bukan penulisan ulang. Itu arti "siap secara
-desain". Tahap 4 mungkin karena #104: tenant bisa dipindah ke instans lain tanpa
-menyentuh skema atau kode.
+desain". Tahap 4 mungkin karena #104 — satu basis data per PT — tetapi tidak
+"tanpa menyentuh kode" seperti yang dulu ditulis di sini: rumus URL buku PT
+ternyata disalin di delapan tempat, dan setiap salinan hanya mengenal satu
+server.
+
+✅ **Tahap 4, kode lengkap 22 Okt 2026, opt-in.** Yang dibangun:
+
+| Bagian | Bentuk |
+|---|---|
+| Registry | `db_instances` + `companies.db_instance_key` (kendali 0009, expand saja). `NULL` = instans bawaan, jadi tabel kosong = perilaku hari ini |
+| Penyelesai | `@sai/db/company-url` — SATU penyusun URL buku PT untuk aplikasi, fan-out migration, kesesuaian, penyediaan, konsol, dan skrip. Instans tak terselesaikan **melempar**, tidak jatuh ke bawaan. Kunci kolam = instans + basis data |
+| Penyediaan | `provisionCompany({ dbInstanceKey })`; tanpa itu instans bawaan |
+| Fan-out | `db:migrate:all` dan sapuan kesesuaian melapor per instans; instans yang tak terselesaikan menggagalkan PT-nya saja |
+| Pemindahan | `bun run tenant:move` — pratinjau bawaan, menolak PT aktif, `pg_dump \| pg_restore`, bandingkan jumlah baris per tabel, balik registry, ganti nama salinan asal (jalan balik) |
+| Penjaga | `tests/company-url-resolver.test.ts` (pemindai + penyelesai), `tests/tenant-move.test.ts` |
+
+⚠ **Satu yang sengaja TIDAK ikut: cadangan Go per instans.** `svc-tenant`
+masih mencacah `pg_database` satu server. PT pertama yang dipindah akan masuk
+`Hilang` di bukti kelengkapannya. Itu bunyi yang benar, sebab bukunya memang
+belum dicadangkan, dan karena itu pekerjaan ini prasyarat pemindahan pertama.
+Ia ditahan karena toolchain Go tidak ada di mesin pembangunnya, sedangkan Go
+yang belum lolos `go:test` + `go:lint` tidak dikirim (AGENTS.md §Go). Bentuk
+dan runbook-nya di [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
+
+⚠ Replika baca (tahap 3) hanya melayani instans **bawaan**. PT di instans lain
+membaca primary-nya sendiri sampai instans itu punya standby sendiri.
 
 ⚠ `cacheHandler`-nya **ditulis sendiri**, apa pun penyimpanannya: pustaka yang
 beredar menyasar Next 13–15, sementara versi di sini memakai model

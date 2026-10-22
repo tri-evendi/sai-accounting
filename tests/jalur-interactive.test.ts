@@ -126,7 +126,9 @@ describe("pekerja: konteks perusahaan, dan bedanya dari jalur `ledger`", () => {
     /* Muatan datang dari penerbit dan bisa BASI: perusahaan yang slug-nya
        berubah atau yang sudah dihapus tidak boleh menentukan basis data mana. */
     expect(konteks).toContain("controlDb.company.findUnique");
-    expect(konteks).toMatch(/select: \{ id: true, slug: true, databaseName: true, isActive: true \}/);
+    expect(konteks).toMatch(
+      /select: \{ id: true, slug: true, \.\.\.COMPANY_DATABASE_TARGET_SELECT, isActive: true \}/
+    );
   });
 
   it("perusahaan NONAKTIF: ditolak jalur `ledger`, diterima jalur `interactive`", () => {

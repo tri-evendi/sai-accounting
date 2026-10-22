@@ -63,6 +63,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { PrismaClient } from "@sai/db/client/company";
 import { mesinDari } from "@sai/db/adapter";
+import { companyPoolKey, type CompanyDatabaseTarget } from "@sai/db/company-url";
 
 import { getCompanyClient, getCompanyReadClient, readTemplateUrl } from "@/lib/company-clients";
 
@@ -199,15 +200,18 @@ export async function chooseReadClient(
  * Klien untuk BACAAN di dalam cakupan — dipanggil proxy `@/lib/prisma` saja.
  * Di luar cakupan: primary, selalu.
  */
-export function routeReadClient(databaseName: string): Promise<PrismaClient> {
-  const primary = getCompanyClient(databaseName);
+export function routeReadClient(target: CompanyDatabaseTarget): Promise<PrismaClient> {
+  const primary = getCompanyClient(target);
   const scope = als.getStore();
   if (!scope) return Promise.resolve(primary);
-  let decision = scope.decisions.get(databaseName);
+  const key = companyPoolKey(target);
+  let decision = scope.decisions.get(key);
   if (!decision) {
-    const replica = getCompanyReadClient(databaseName);
-    decision = replica ? chooseReadClient(databaseName, primary, replica) : Promise.resolve(primary);
-    scope.decisions.set(databaseName, decision);
+    const replica = getCompanyReadClient(target);
+    decision = replica
+      ? chooseReadClient(target.databaseName, primary, replica)
+      : Promise.resolve(primary);
+    scope.decisions.set(key, decision);
   }
   return decision;
 }

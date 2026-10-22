@@ -38,6 +38,11 @@ import "dotenv/config";
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
 import { bukaServer } from "@sai/db/server";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyServerConnection,
+  toCompanyDatabaseTarget,
+} from "@sai/db/company-url";
 import { releaseCompanyClient } from "../src/lib/company-clients";
 
 import { removeCompanyDocuments } from "../src/lib/document-storage";
@@ -92,7 +97,7 @@ async function main() {
 
   const companies = await control.company.findMany({
     where: { tenantId: tenant.id },
-    select: { id: true, slug: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
   });
   const users = await control.user.findMany({
     where: { tenantId: tenant.id },
@@ -144,8 +149,11 @@ async function main() {
          koneksi, dan koneksi yang diputus dari sisi server menjatuhkan proses
          ini lewat event `error` yang tak terdengar. Lihat
          `company-clients.ts#releaseCompanyClient`. */
-      await releaseCompanyClient(company.databaseName);
-      const server = await bukaServer(controlUrl);
+      const target = toCompanyDatabaseTarget(company);
+      await releaseCompanyClient(target);
+      /* Server tempat buku itu HIDUP (tahap 4) — bawaan: kredensial kendali,
+         seperti sebelumnya. */
+      const server = await bukaServer(companyServerConnection(target, controlUrl).serverUrl);
       try {
         await server.hapus(company.databaseName);
       } finally {

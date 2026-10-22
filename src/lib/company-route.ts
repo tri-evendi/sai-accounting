@@ -261,6 +261,7 @@ export async function enterCompanyFromRoute(params: {
     companyId: membership.company.companyId,
     slug: membership.company.slug,
     databaseName: membership.company.databaseName,
+    dbInstance: membership.company.dbInstance,
   };
   /*
    * `enterCompanyContext()` DICABUT di sini (issue #336).

@@ -52,6 +52,11 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import {
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseRow,
+  type DbInstanceRef,
+} from "@sai/db/company-url";
 
 export interface CompanyContext {
   /** `companies.id` di basis data kendali. */
@@ -60,6 +65,24 @@ export interface CompanyContext {
   readonly slug: string;
   /** Nama basis data perusahaan ini. Kredensialnya TIDAK ada di sini. */
   readonly databaseName: string;
+  /**
+   * Instans `db-postgres` tempat basis data itu hidup (tahap 4, rancangan 09
+   * §9); `null` = instans bawaan. WAJIB disebut — termasuk `null` — oleh
+   * siapa pun yang menyusun konteks: medan opsional akan membuat konteks yang
+   * lupa mengisinya membuka server bawaan, tempat salinan LAMA buku PT yang
+   * sudah dipindah mungkin masih ada. Isinya nama env var, bukan rahasia.
+   */
+  readonly dbInstance: DbInstanceRef | null;
+}
+
+/**
+ * Baris `companies` → konteks. Barisnya wajib dibaca dengan
+ * `COMPANY_DATABASE_TARGET_SELECT` (`@sai/db/company-url`); baris yang mencatat
+ * instans tetapi tidak membawa relasinya MELEMPAR di sini, tidak pernah
+ * menjadi "instans bawaan".
+ */
+export function companyContextOf(row: { id: number; slug: string } & CompanyDatabaseRow): CompanyContext {
+  return { companyId: row.id, slug: row.slug, ...toCompanyDatabaseTarget(row) };
 }
 
 /** Dilempar saat kode menyentuh basis data tanpa tahu perusahaan mana. */

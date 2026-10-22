@@ -175,11 +175,14 @@ beforeEach(() => {
         slug: company.slug,
         name: company.name,
         databaseName: company.databaseName,
+        dbInstance: null,
         isActive: true,
       },
     };
   });
-  getCompanyClient.mockImplementation((databaseName: string) => fakeClientFor(databaseName));
+  getCompanyClient.mockImplementation((target: { databaseName: string }) =>
+    fakeClientFor(target.databaseName)
+  );
   tenantStateForCompany.mockResolvedValue({ status: "active" });
 });
 

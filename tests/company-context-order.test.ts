@@ -54,8 +54,8 @@ const { runWithCompany, runWithoutCompany, MissingCompanyContextError } = await 
   "@/lib/company-context"
 );
 
-const PT_A = { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a" };
-const PT_B = { companyId: 2, slug: "pt-b", databaseName: "sai_pt_b" };
+const PT_A = { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a", dbInstance: null };
+const PT_B = { companyId: 2, slug: "pt-b", databaseName: "sai_pt_b", dbInstance: null };
 
 /** Menjalankan `fn` seolah di dalam satu permintaan HTTP dengan jangkar sendiri. */
 async function withRequest<T>(fn: () => Promise<T>): Promise<T> {

@@ -20,7 +20,8 @@
  */
 import { controlDb } from "@sai/core/control-db";
 
-import { runWithCompany } from "../src/lib/company-context";
+import { companyContextOf, runWithCompany } from "../src/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 
 /**
  * Jalankan `fn` di dalam konteks perusahaan `companyId`.
@@ -50,7 +51,7 @@ export async function dalamKonteksPerusahaan<T>(
 
   const company = await controlDb.company.findUnique({
     where: { id: companyId },
-    select: { id: true, slug: true, databaseName: true, isActive: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true },
   });
   if (!company) {
     throw new Error(
@@ -63,8 +64,5 @@ export async function dalamKonteksPerusahaan<T>(
     throw new Error(`perusahaan #${companyId} (${company.slug}) nonaktif — tidak dikerjakan`);
   }
 
-  return runWithCompany(
-    { companyId: company.id, slug: company.slug, databaseName: company.databaseName },
-    fn
-  );
+  return runWithCompany(companyContextOf(company), fn);
 }

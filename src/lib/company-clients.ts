@@ -29,6 +29,12 @@
 
 import { PrismaClient } from "@sai/db/client/company";
 import { buatAdapter } from "@sai/db/adapter";
+import {
+  companyDatabaseUrl,
+  companyPoolKey,
+  companyReadReplicaUrl,
+  type CompanyDatabaseTarget,
+} from "@sai/db/company-url";
 
 /** Berapa klien perusahaan boleh hidup bersamaan. */
 const POOL_MAX = Number(process.env.COMPANY_CLIENT_POOL_MAX) || 4;
@@ -56,44 +62,16 @@ const pool: Map<string, PoolEntry> = globalForPool.companyClientPool ?? new Map(
 if (process.env.NODE_ENV !== "production") globalForPool.companyClientPool = pool;
 
 /**
- * URL contoh yang kredensialnya dipinjam untuk setiap perusahaan. `DATABASE_URL`
- * lama tetap dipakai sebagai cadangan supaya pemasangan yang sudah ada tidak
- * perlu mengubah `.env` sebelum sempat mendaftarkan perusahaan pertamanya.
+ * URL buku satu perusahaan datang dari `@sai/db/company-url` — SATU penyelesai
+ * untuk aplikasi, fan-out, dan skrip (tahap 4, rancangan 09 §9). Instans
+ * bawaan menjawab persis seperti sebelumnya; instans yang tak dikenal MELEMPAR.
+ * `readTemplate` hanya dipakai kolam replika (instans bawaan, lihat di bawah).
  */
-function templateUrl(): URL {
-  const raw =
-    process.env.COMPANY_DATABASE_URL_TEMPLATE ??
-    process.env.DATABASE_URL ??
-    process.env.CONTROL_DATABASE_URL;
-  if (!raw) {
-    throw new Error(
-      "Tidak ada sumber kredensial basis data perusahaan. Set " +
-        "COMPANY_DATABASE_URL_TEMPLATE (atau DATABASE_URL) di .env — nama basis " +
-        "datanya sendiri diambil dari companies.database_name, bukan dari URL ini."
-    );
-  }
-  return new URL(raw);
-}
-
-/**
- * Nama basis data hanya boleh berupa identifier MySQL yang wajar. Nilainya
- * berasal dari tabel `companies`, jadi ia bukan masukan pengguna langsung —
- * tapi ia ikut menyusun string koneksi, dan sesuatu yang menyusun string
- * koneksi layak diperiksa apa pun asalnya.
- */
-const SAFE_DATABASE_NAME = /^[A-Za-z0-9_]{1,64}$/;
-
-function createClient(databaseName: string, base: URL = templateUrl()): PrismaClient {
-  if (!SAFE_DATABASE_NAME.test(databaseName)) {
-    throw new Error(`Nama basis data tidak sah: ${JSON.stringify(databaseName)}`);
-  }
-
-  /* URL template dipakai untuk kredensial & host; nama basis datanya DIGANTI
-     per perusahaan — itu inti model satu-basis-data-per-PT (#104). */
-  const url = new URL(base.toString());
-  url.pathname = `/${databaseName}`;
-  const adapter = buatAdapter(url.toString(), { batasKoneksi: CONNECTION_LIMIT });
-
+function createClient(target: CompanyDatabaseTarget, readTemplate?: URL): PrismaClient {
+  const url = readTemplate
+    ? companyReadReplicaUrl(target, readTemplate)
+    : companyDatabaseUrl(target);
+  const adapter = buatAdapter(url, { batasKoneksi: CONNECTION_LIMIT });
   return new PrismaClient({ adapter });
 }
 
@@ -118,18 +96,23 @@ function evictIfNeeded(target: Map<string, PoolEntry> = pool): void {
   }
 }
 
-/** Klien untuk satu basis data perusahaan, dibuat bila perlu. */
-export function getCompanyClient(databaseName: string): PrismaClient {
-  const existing = pool.get(databaseName);
+/**
+ * Klien untuk satu basis data perusahaan, dibuat bila perlu. Kunci kolamnya
+ * instans + basis data (`companyPoolKey`): selama pemindahan nama yang sama
+ * hidup di dua server, dan klien ke salinan lama tidak boleh dipakai ulang.
+ */
+export function getCompanyClient(target: CompanyDatabaseTarget): PrismaClient {
+  const key = companyPoolKey(target);
+  const existing = pool.get(key);
   if (existing) {
     // Dipakai = pindah ke belakang antrean penggusuran.
-    pool.delete(databaseName);
-    pool.set(databaseName, existing);
+    pool.delete(key);
+    pool.set(key, existing);
     return existing.client;
   }
 
-  const client = createClient(databaseName);
-  pool.set(databaseName, { client });
+  const client = createClient(target);
+  pool.set(key, { client });
   evictIfNeeded();
   return client;
 }
@@ -161,17 +144,23 @@ export function readTemplateUrl(): URL | null {
  * baca tidak dipasang. Kredensial & host dari env, nama basis data dari
  * registry — aturan yang sama dengan primary.
  */
-export function getCompanyReadClient(databaseName: string): PrismaClient | null {
+export function getCompanyReadClient(target: CompanyDatabaseTarget): PrismaClient | null {
+  /* Replika baca hanya untuk instans BAWAAN. `COMPANY_DATABASE_READ_URL_TEMPLATE`
+     adalah standby server bawaan; PT yang dipindah ke instans lain akan
+     menemukan di sana salinan LAMA bukunya — bacaan basi tanpa galat. Instans
+     tambahan membaca primary-nya sendiri sampai ia punya replikanya sendiri. */
+  if (target.dbInstance !== null) return null;
   const base = readTemplateUrl();
   if (!base) return null;
-  const existing = readPool.get(databaseName);
+  const key = companyPoolKey(target);
+  const existing = readPool.get(key);
   if (existing) {
-    readPool.delete(databaseName);
-    readPool.set(databaseName, existing);
+    readPool.delete(key);
+    readPool.set(key, existing);
     return existing.client;
   }
-  const client = createClient(databaseName, base);
-  readPool.set(databaseName, { client });
+  const client = createClient(target, base);
+  readPool.set(key, { client });
   evictIfNeeded(readPool);
   return client;
 }
@@ -196,18 +185,19 @@ export function getCompanyReadClient(databaseName: string): PrismaClient | null 
  * MariaDB langkah ini tidak dibutuhkan, tetapi tidak merugikan — dan satu urutan
  * untuk kedua mesin lebih mudah dipercaya daripada dua.
  */
-export async function releaseCompanyClient(databaseName: string): Promise<void> {
+export async function releaseCompanyClient(target: CompanyDatabaseTarget): Promise<void> {
   /* Klien replika ikut dilepas: basis data yang dihapus di primary lenyap juga
      di replika begitu WAL-nya diputar, dan klien yang tertinggal hanya
      menunggu galat. */
-  const read = readPool.get(databaseName);
+  const key = companyPoolKey(target);
+  const read = readPool.get(key);
   if (read) {
-    readPool.delete(databaseName);
+    readPool.delete(key);
     await read.client.$disconnect().catch(() => {});
   }
-  const entry = pool.get(databaseName);
+  const entry = pool.get(key);
   if (!entry) return;
-  pool.delete(databaseName);
+  pool.delete(key);
   await entry.client.$disconnect().catch(() => {});
 }
 
@@ -220,6 +210,7 @@ export async function disconnectAllCompanyClients(): Promise<void> {
 }
 
 /** Keadaan pool — untuk diagnosis & tes, bukan untuk logika aplikasi. */
+/** `databases` berisi kunci kolam: `<instans>/<basis data>`, instans bawaan kosong. */
 export function companyPoolStats(): { size: number; max: number; databases: string[] } {
   return { size: pool.size, max: POOL_MAX, databases: [...pool.keys()] };
 }

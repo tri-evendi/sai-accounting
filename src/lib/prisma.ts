@@ -50,8 +50,7 @@ import {
 
 /** Klien milik perusahaan yang sedang dibuka — atau melempar. */
 export async function currentCompanyClient(): Promise<PrismaClient> {
-  const { databaseName } = await currentCompany();
-  return getCompanyClient(databaseName);
+  return getCompanyClient(await currentCompany());
 }
 
 /**
@@ -65,8 +64,7 @@ export async function currentCompanyClient(): Promise<PrismaClient> {
  */
 async function clientForCall(): Promise<PrismaClient> {
   if (!inReadScope()) return currentCompanyClient();
-  const { databaseName } = await currentCompany();
-  return routeReadClient(databaseName);
+  return routeReadClient(await currentCompany());
 }
 
 /** Properti klien yang BUKAN model — dipanggil langsung pada objek `prisma`. */

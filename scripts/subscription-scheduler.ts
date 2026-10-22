@@ -681,10 +681,16 @@ async function main() {
         : await control.$queryRaw<Array<{ name: string }>>`
             SELECT SCHEMA_NAME AS name FROM information_schema.SCHEMATA
             WHERE SCHEMA_NAME LIKE 'sai\\_%'`;
+    /* Hanya buku di instans BAWAAN — server yang katalognya dibaca di atas
+       (tahap 4). Buku PT yang sudah dipindah ke instans lain bukan milik
+       katalog ini; nama sisa di sini justru yatim yang harus terlihat. */
     const registered = new Set(
-      (await control.company.findMany({ select: { databaseName: true } })).map(
-        (c) => c.databaseName
-      )
+      (
+        await control.company.findMany({
+          where: { dbInstanceKey: null },
+          select: { databaseName: true },
+        })
+      ).map((c) => c.databaseName)
     );
     const infra = new Set(
       [platformUrl, controlUrl].map((u) => new URL(u).pathname.slice(1))

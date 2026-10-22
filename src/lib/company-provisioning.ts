@@ -55,6 +55,12 @@ import { bukaServer, bukaBasisData, ddlPembukuan, direktoriMigration } from "@sa
 import type { DbEngine } from "@sai/db/engine";
 
 import { controlDb } from "@sai/core/control-db";
+import {
+  DEFAULT_DB_INSTANCE_LABEL,
+  findDbInstance,
+  instanceServerUrl,
+  type DbInstanceRef,
+} from "@sai/db/company-url";
 import { invalidateCompany } from "@/lib/company-registry";
 import {
   assertSafeDatabaseName,
@@ -105,21 +111,44 @@ export async function migrationNames(mesin: DbEngine = "postgresql"): Promise<st
 }
 
 /**
- * Kredensial penyedia. Bawaannya kredensial basis data KENDALI — pemakainya
- * sama-sama "di luar satu perusahaan". `PROVISION_DATABASE_URL` disediakan
- * supaya hak `CREATE DATABASE` bisa dipisahkan ke kredensial tersendiri tanpa
- * mengubah kode, bila suatu saat itu dikehendaki.
+ * Kredensial penyedia untuk instans sasaran. Instans bawaan: kredensial basis
+ * data KENDALI (`PROVISION_DATABASE_URL` → `CONTROL_DATABASE_URL`), persis
+ * seperti sebelum tahap 4. Instans lain: template-nya sendiri — keputusannya
+ * di `@sai/db/company-url`, satu penyelesai untuk semua pembuka buku.
  */
-function provisioningUrl(): URL {
-  const raw = process.env.PROVISION_DATABASE_URL ?? process.env.CONTROL_DATABASE_URL;
-  if (!raw) {
+function provisioningUrl(instance: DbInstanceRef | null): URL {
+  try {
+    return instanceServerUrl(instance);
+  } catch (error) {
     throw new ProvisionError(
-      "CONTROL_DATABASE_URL belum diset — tidak tahu di server mana basis data dibuat.",
+      error instanceof Error ? error.message : String(error),
       "validate",
-      { code: "config_missing" }
+      { code: "config_missing", cause: error }
     );
   }
-  return new URL(raw);
+}
+
+/**
+ * Instans sasaran penyediaan. Tanpa pilihan eksplisit: instans BAWAAN — bukan
+ * "instans yang paling longgar", karena penempatan otomatis adalah keputusan
+ * kapasitas yang belum ada pemiliknya. Kunci yang disebut WAJIB terdaftar dan
+ * aktif; kunci tak dikenal MELEMPAR, tidak pernah jatuh ke bawaan.
+ */
+async function targetInstance(key: string | null | undefined): Promise<DbInstanceRef | null> {
+  if (key == null || key === "" || key === DEFAULT_DB_INSTANCE_LABEL) return null;
+  const rows = await controlDb.dbInstance.findMany({
+    where: { isActive: true },
+    select: { key: true, urlEnvVar: true },
+  });
+  try {
+    return findDbInstance(key, rows);
+  } catch (error) {
+    throw new ProvisionError(
+      error instanceof Error ? error.message : String(error),
+      "validate",
+      { code: "config_missing", cause: error }
+    );
+  }
 }
 
 export interface ProvisionInput {
@@ -139,6 +168,12 @@ export interface ProvisionInput {
    * dari input klien.
    */
   tenantId: number;
+  /**
+   * Instans `db-postgres` sasaran (tahap 4, rancangan 09 §9). Kosong/`null`/
+   * `"default"` = instans bawaan — perilaku sebelum tahap 4. Selain itu WAJIB
+   * kunci `db_instances` yang aktif.
+   */
+  dbInstanceKey?: string | null;
 }
 
 /**
@@ -148,7 +183,7 @@ export interface ProvisionInput {
 export async function provisionCompany(
   input: ProvisionInput,
   onProgress: (event: ProvisionEvent) => void | Promise<void>
-): Promise<{ companyId: number; databaseName: string }> {
+): Promise<{ companyId: number; databaseName: string; dbInstance: DbInstanceRef | null }> {
   const slug = normalizeSlug(input.slug);
   const name = input.name.trim();
   // Turunan memuat id tenant (`sai_t{tenantId}_{slug}`, issue #153); eksplisit
@@ -194,7 +229,8 @@ export async function provisionCompany(
     );
   }
 
-  const url = provisioningUrl();
+  const dbInstance = await targetInstance(input.dbInstanceKey);
+  const url = provisioningUrl(dbInstance);
   /* Mesinnya diputuskan dari URL (`@sai/db/engine`). Penyediaan tidak pernah tahu
      mesin apa yang dipakainya, dan itu disengaja: satu pemanggil yang tahu akan
      segera punya cabang `if` yang kelak menyimpang dari yang lain. */
@@ -305,6 +341,7 @@ export async function provisionCompany(
         slug,
         name,
         databaseName,
+        dbInstanceKey: dbInstance?.key ?? null,
         tenantId: input.tenantId,
         isActive: true,
         memberships: {
@@ -350,7 +387,7 @@ export async function provisionCompany(
     companyId,
   });
 
-  return { companyId, databaseName };
+  return { companyId, databaseName, dbInstance };
 }
 
 /**

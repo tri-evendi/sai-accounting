@@ -36,6 +36,12 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 import { buatAdapter, type AdapterBasisData } from "@sai/db/adapter";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  companyServerConnection,
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseRow,
+} from "@sai/db/company-url";
 
 import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { PrismaClient as CompanyClient } from "@sai/db/client/company";
@@ -140,7 +146,7 @@ interface Tally {
 
 async function migrateCompany(
   controlUrl: string,
-  company: { id: number; slug: string; databaseName: string }
+  company: { id: number; slug: string } & CompanyDatabaseRow
 ): Promise<Tally | null> {
   const file = path.join(AUDIT_ROOT, company.slug, "audit.jsonl");
   try {
@@ -149,7 +155,10 @@ async function migrateCompany(
     return null; // Tidak punya berkas jejak — perusahaan baru, atau sudah pindah.
   }
 
-  const db = companyClient(controlUrl, company.databaseName);
+  /* Instans bawaan: kredensial kendali seperti sebelumnya; instans lain dari
+     penyelesai tunggal (tahap 4). */
+  const conn = companyServerConnection(toCompanyDatabaseTarget(company), controlUrl);
+  const db = companyClient(conn.serverUrl, conn.databaseName);
   const tally: Tally = { inserted: 0, skipped: 0, corrupt: 0 };
   let batch: Row[] = [];
 
@@ -204,7 +213,7 @@ async function main() {
 
   const control = controlClient(controlUrl);
   const companies = await control.company.findMany({
-    select: { id: true, slug: true, databaseName: true },
+    select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT },
     orderBy: { id: "asc" },
   });
 

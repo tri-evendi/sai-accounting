@@ -117,6 +117,14 @@ per-proses itulah yang menghalangi penskalaan horizontal (P2-3).
 ke `pg` — Prisma Migrate memakai advisory lock yang terikat sesi, dan pooler
 `transaction` memulangkan dump sebagian.
 
+**Instans tambahan (tahap 4, opt-in, belum dipakai).** Buku PT boleh hidup di
+instans `db-postgres` lain: `db_instances` di kendali menyebut kunci dan
+**nama** env var-nya (`COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`), dan
+`companies.db_instance_key = NULL` berarti instans di tabel ini. Satu-satunya
+penyusun URL buku PT adalah `@sai/db/company-url`; pemindahan lewat
+`bun run tenant:move`. Cadangan `svc-tenant` masih satu server — runbook dan
+batasnya di [MULTI-COMPANY §6](../MULTI-COMPANY.md#6-instans-basis-data-tahap-4).
+
 **`pgbouncer`** (`edoburu/pgbouncer:v1.26.0-p0` — **versi dipatok**, bukan
 `latest`, sejak 19 Okt 2026) mendengarkan di **5432**, bukan 6432 —
 salah port ini sebab pertama penukaran 15 Okt gagal. `POOL_MODE=transaction`,
@@ -720,6 +728,7 @@ Hanya nama; nilainya tidak dicantumkan. Pemeriksa: `bun run check:env`.
 | `ALLOW_SEED` | **Jangan pernah** `true` di produksi |
 | `CONTROL_DATABASE_DIRECT_URL` | Profil HA saja. Kosong → pagar jalur `ledger` lewat PgBouncer (perilaku lama); `run-as-leader` menolak berjalan |
 | `COMPANY_DATABASE_READ_URL_TEMPLATE` · `COMPANY_DATABASE_READ_MAX_WAIT_MS` | Profil HA saja. Kosong → tidak ada replika baca, `runReadOnly(fn)` = `fn()` · bawaan 5.000 |
+| `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE` | Tahap 4 saja, satu per baris `db_instances`. Tabel kosong → tidak dibaca. Baris yang env-nya kosong → buku PT di instans itu **melempar**, tidak jatuh ke bawaan |
 
 **Anggaran koneksi `app-customer`:** buku PT 2 × maks 4 klien = 8, control
 2 × 1, platform 1 × 1 → **11**. Ditambah `app-operator` dan ketiga job saat

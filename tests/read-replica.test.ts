@@ -55,8 +55,8 @@ const state = vi.hoisted(() => ({
   primaries: new Map<string, unknown>(),
   replicas: new Map<string, unknown>(),
   replicaRequests: [] as string[],
-  company: { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a" } as
-    | { companyId: number; slug: string; databaseName: string }
+  company: { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a", dbInstance: null } as
+    | { companyId: number; slug: string; databaseName: string; dbInstance: null }
     | Error,
 }));
 
@@ -68,8 +68,8 @@ vi.mock("@/lib/current-company", () => ({
 }));
 
 vi.mock("@/lib/company-clients", () => ({
-  getCompanyClient: (db: string) => state.primaries.get(db),
-  getCompanyReadClient: (db: string) => {
+  getCompanyClient: ({ databaseName: db }: { databaseName: string }) => state.primaries.get(db),
+  getCompanyReadClient: ({ databaseName: db }: { databaseName: string }) => {
     state.replicaRequests.push(db);
     return process.env.COMPANY_DATABASE_READ_URL_TEMPLATE ? state.replicas.get(db) : null;
   },
@@ -102,7 +102,7 @@ beforeEach(() => {
   state.replicaRequests.length = 0;
   state.primaries.set("sai_pt_a", primaryA);
   state.replicas.set("sai_pt_a", replicaA);
-  state.company = { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a" };
+  state.company = { companyId: 1, slug: "pt-a", databaseName: "sai_pt_a", dbInstance: null };
 });
 
 afterEach(() => {
@@ -230,7 +230,7 @@ describe("di dalam cakupan (replika terpasang)", () => {
     await runReadOnly(async () => {
       expect(await prisma.invoice.findMany()).toBe("replica-a");
       expect(await prisma.invoice.findMany()).toBe("replica-a");
-      state.company = { companyId: 2, slug: "pt-b", databaseName: "sai_pt_b" };
+      state.company = { companyId: 2, slug: "pt-b", databaseName: "sai_pt_b", dbInstance: null };
       expect(await prisma.invoice.findMany()).toBe("primary-b");
     });
     expect(state.replicaRequests).toEqual(["sai_pt_a", "sai_pt_b"]);

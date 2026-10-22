@@ -185,6 +185,19 @@ model Company {
   tenantId Int?    @map("tenant_id")
   tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 
+  /// Instans `db-postgres` tempat basis data PT ini hidup (rancangan 09 §9,
+  /// tahap 4). `NULL` = instans BAWAAN — template di environment hari ini
+  /// (`COMPANY_DATABASE_URL_TEMPLATE`), jadi setiap baris lama tidak berubah
+  /// arti. Selain NULL, nilainya WAJIB kunci `db_instances` (FK), dan
+  /// penyelesaiannya ada di SATU tempat: `@sai/db/company-url`. Kunci yang tak
+  /// dikenali MELEMPAR — jatuh ke bawaan berarti menulis ke salinan lama buku
+  /// PT ini di server yang sudah ia tinggalkan.
+  ///
+  /// FK ke `key`, bukan ke `id`: kunci itulah yang dicerminkan nama env var
+  /// dan konfigurasi pohon Go, dan ia tidak berubah seumur instansnya.
+  dbInstanceKey String?     @map("db_instance_key") @db.VarChar(32)
+  dbInstance    DbInstance? @relation(fields: [dbInstanceKey], references: [key], onDelete: Restrict)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -202,7 +215,41 @@ model Company {
   @@index([isActive])
   @@index([tenantId])
   @@index([isDemo])
+  @@index([dbInstanceKey])
   @@map("companies")
+}
+
+/// Instans `db-postgres` TAMBAHAN tempat buku PT boleh hidup (rancangan 09 §9,
+/// tahap 4). Instans BAWAAN tidak punya baris di sini: ia `companies.
+/// db_instance_key = NULL`, dan template-nya tetap env hari ini. Tabel kosong =
+/// perilaku persis seperti sebelum tahap 4.
+///
+/// ══ TIDAK ADA RAHASIA DI SINI ══════════════════════════════════════════════
+/// Yang disimpan NAMA env var yang memegang URL template, bukan URL-nya —
+/// alasan yang sama dengan `companies.database_name`: satu SELECT tidak boleh
+/// membawa pergi kredensial setiap instans.
+model DbInstance {
+  id  Int    @id @default(autoincrement())
+  /// Huruf kecil/angka/garis bawah, diawali huruf; `default` dicadangkan.
+  /// Dijaga CHECK di migration 0009 DAN `@sai/db/company-url`.
+  key String @unique @db.VarChar(32)
+
+  /// Nama env var berisi URL template instans ini, berbentuk
+  /// `COMPANY_<KUNCI>_DATABASE_URL_TEMPLATE`. Bentuknya dipaku supaya baris ini
+  /// tidak bisa menunjuk `CONTROL_DATABASE_URL` atau rahasia lain di proses.
+  urlEnvVar String @map("url_env_var") @db.VarChar(100)
+
+  /// `false` = tidak dipilih untuk penyediaan PT baru. PT yang SUDAH di sini
+  /// tetap dibuka seperti biasa — menonaktifkan instans bukan memutus buku.
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  companies Company[]
+
+  @@index([isActive])
+  @@map("db_instances")
 }
 
 /// Identitas orang. Satu baris per manusia, berapa pun perusahaan yang dipegangnya.

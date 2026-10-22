@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       };
 
       try {
-        const { companyId, databaseName } = await provisionCompany(
+        const { companyId, databaseName, dbInstance } = await provisionCompany(
           {
             slug: parsed.data.slug,
             name: parsed.data.name,
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
           request,
         });
         await runWithCompany(
-          { companyId, slug: parsed.data.slug, databaseName },
+          { companyId, slug: parsed.data.slug, databaseName, dbInstance },
           async () => {
             await writeAuditLog({
               userId: session.user.id,

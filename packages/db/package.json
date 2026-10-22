@@ -8,6 +8,7 @@
     "./engine-runtime": "./src/engine-runtime.ts",
     "./adapter": "./src/adapter.ts",
     "./server": "./src/server.ts",
+    "./company-url": "./src/company-url.ts",
     "./session-lock": "./src/session-lock.ts",
     "./client/company": "./generated/company/client.ts",
     "./client/control": "./generated/control/client.ts",

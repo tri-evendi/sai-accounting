@@ -28,6 +28,11 @@ import { billingPlaneInstalled } from "@sai/core/deploy-profile";
 import { schemaGateVerdict, type SchemaGateVerdict } from "@sai/platform/schema-gate";
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
+import {
+  COMPANY_DATABASE_TARGET_SELECT,
+  toCompanyDatabaseTarget,
+  type CompanyDatabaseTarget,
+} from "@sai/db/company-url";
 import { schedulerHealth, type SchedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { queueHealth, type QueueHealthStatus } from "@sai/core/queue-health";
 import { queueSnapshot } from "@sai/platform/job-queue";
@@ -348,25 +353,25 @@ async function platform(): Promise<ReachStatus> {
  * skemanya benar.
  */
 async function sampleCompany(): Promise<CompanyStatus> {
-  let databaseName: string | null = null;
+  let target: CompanyDatabaseTarget | null = null;
   try {
     /* PT mana pun, asal deterministik — `id` menaik supaya jawabannya tidak
        berpindah-pindah antar-panggilan dan sebuah kegagalan bisa ditelusuri. */
     const company = await controlDb.company.findFirst({
       orderBy: { id: "asc" },
-      select: { databaseName: true },
+      select: COMPANY_DATABASE_TARGET_SELECT,
     });
-    databaseName = company?.databaseName ?? null;
+    target = company ? toCompanyDatabaseTarget(company) : null;
   } catch {
     return { status: "unknown" };
   }
 
   /* Belum ada satu PT pun — pemasangan baru. Itu bukan kegagalan, dan
      menyebutnya `error` akan membuat setiap pemasangan segar terlihat sakit. */
-  if (!databaseName) return { status: "unknown" };
+  if (!target) return { status: "unknown" };
 
   try {
-    await getCompanyClient(databaseName).$queryRaw`SELECT 1`;
+    await getCompanyClient(target).$queryRaw`SELECT 1`;
     return { status: "ok" };
   } catch {
     /*

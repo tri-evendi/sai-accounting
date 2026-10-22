@@ -41,7 +41,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { controlDb } from "@sai/core/control-db";
-import { enterCompanyContext } from "@/lib/company-context";
+import { companyContextOf, enterCompanyContext } from "@/lib/company-context";
+import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { canEffective } from "@/lib/authz-effective";
 import type { Permission } from "@sai/core/authz";
 import {
@@ -108,7 +109,7 @@ export async function requireApiToken(permission: Permission): Promise<ApiTokenR
       role: true,
       revokedAt: true,
       lastUsedAt: true,
-      company: { select: { id: true, slug: true, databaseName: true, isActive: true } },
+      company: { select: { id: true, slug: true, ...COMPANY_DATABASE_TARGET_SELECT, isActive: true } },
     },
   });
   if (!row) return { authorized: false, response: unauthorized() };
@@ -123,11 +124,7 @@ export async function requireApiToken(permission: Permission): Promise<ApiTokenR
 
   // (5) Konteks perusahaan — dari TOKENNYA, tidak pernah dari permintaan.
   // Doktrin #104: konteks yang hilang MELEMPAR, tidak pernah jatuh ke bawaan.
-  enterCompanyContext({
-    companyId: row.company.id,
-    slug: row.company.slug,
-    databaseName: row.company.databaseName,
-  });
+  enterCompanyContext(companyContextOf(row.company));
 
   // (6) Izin — matriks yang sama dengan manusia.
   const allowed = await canEffective({ role: row.role }, permission);

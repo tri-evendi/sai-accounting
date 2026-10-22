@@ -102,7 +102,10 @@ export type TenantAuditAction =
   /** Siklus permintaan penghapusan (#142). */
   | "tenant.deletion.request"
   | "tenant.deletion.cancel"
-  | "tenant.deletion.execute";
+  | "tenant.deletion.execute"
+  /** Buku sebuah PT dipindah ke instans `db-postgres` lain (tahap 4,
+   *  `bun run tenant:move`): asal, tujuan, dan nama salinan lama tercatat. */
+  | "tenant.company.move";
 
 export interface TenantAuditEntry {
   id: string;

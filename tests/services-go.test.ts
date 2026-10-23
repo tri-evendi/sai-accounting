@@ -445,7 +445,11 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
       kolom.forEach((k, i) => {
         if (!new RegExp(`^(${KOLOM})$`).test(k)) return;
         const v = nilai[i] ?? "";
-        if (ins[1] === "jobs" && v.includes("$")) pel.push(`INSERT jobs.${k} = ${v}`);
+        /* Satu bentuk ber-`$` yang SAH: DURASI dari `now()` server — konvensi
+           yang sama dengan `UPDATE … run_after = now() + $n::bigint * interval`
+           di `Fail` (jeda putaran PJAP, jalur `integration`). */
+        const durasi = /^now\(\) \+ \$\d+::bigint \* interval '1 (microsecond|millisecond)'$/.test(v);
+        if (ins[1] === "jobs" && v.includes("$") && !durasi) pel.push(`INSERT jobs.${k} = ${v}`);
         if (ins[1] === "backup_runs" && !/^\$\d+::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
           pel.push(`INSERT backup_runs.${k} = ${v}`);
         }
@@ -468,6 +472,10 @@ describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", ()
       periksa("INSERT INTO backup_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())")
     ).not.toEqual([]);
     expect(periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, $2, now())")).not.toEqual([]);
+    expect(periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, $2::timestamp + interval '1 second', now())")).not.toEqual([]);
+    expect(
+      periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, now() + $2::bigint * interval '1 microsecond', now())")
+    ).toEqual([]);
     // …dan menerima bentuk yang benar.
     expect(periksa("UPDATE jobs SET run_after = now() + $4::bigint * interval '1 microsecond' WHERE id = $1")).toEqual([]);
     expect(

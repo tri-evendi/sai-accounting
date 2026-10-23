@@ -40,6 +40,10 @@
  *
  * MURNI: tanpa Prisma, tanpa I/O.
  */
+import {
+  MATERIALITY_CATCH_ALL_NAME_PATTERN,
+  MATERIALITY_CATCH_ALL_THRESHOLD,
+} from "@sai/core/generated/accounting";
 import { CATCH_ALL_EXPENSE_TYPE, accountTypeLabel } from "@/lib/accounting";
 
 /**
@@ -49,8 +53,12 @@ import { CATCH_ALL_EXPENSE_TYPE, accountTypeLabel } from "@/lib/accounting";
  * untuk ini. Ia ambang PRAKTIK: cukup rendah untuk menangkap penampung yang
  * benar-benar menyembunyikan sesuatu, cukup tinggi agar buku kecil yang wajar
  * tidak berbunyi tiap bulan. Bisa ditimpa pemanggilnya, dan memang harus bisa.
+ *
+ * Angkanya di `contract/accounting.yaml` (`materiality.catch_all_threshold`)
+ * sejak sapuan kesesuaian punya kembaran Go (23 Okt 2026): dua pemeriksa
+ * dengan dua ambang bawaan menuduh akun berbeda untuk buku yang sama.
  */
-export const DEFAULT_CATCH_ALL_THRESHOLD = 0.05;
+export const DEFAULT_CATCH_ALL_THRESHOLD = MATERIALITY_CATCH_ALL_THRESHOLD;
 
 /**
  * Nama yang menyatakan dirinya penampung.
@@ -58,9 +66,12 @@ export const DEFAULT_CATCH_ALL_THRESHOLD = 0.05;
  * Sengaja hanya kata yang MAKNANYA memang "apa saja yang lain" — bukan daftar
  * kata mencurigakan. `lainnya` ikut karena "Beban Operasional Lainnya" adalah
  * penampung dengan nama yang lebih sopan, dan ia sama persis masalahnya.
+ *
+ * Polanya di `contract/accounting.yaml` (`materiality.catch_all_name_pattern`):
+ * Go mencocokkan terjemahan RE2-nya, dan generator menolak pola yang artinya
+ * berbeda di kedua mesin. Bendera `i` TANPA `u` — lipatan huruf ASCII saja.
  */
-const CATCH_ALL_NAME =
-  /(lain[-\s]?lain|lainnya|serba[-\s]?serbi|\bdll\b|\bdsb\b|miscellaneous|\bmisc\b|\bsundry\b|\bother\b|\bothers\b)/i;
+const CATCH_ALL_NAME = new RegExp(MATERIALITY_CATCH_ALL_NAME_PATTERN, "i");
 
 export function isCatchAllName(name: string): boolean {
   return CATCH_ALL_NAME.test(name ?? "");

@@ -133,8 +133,11 @@ memuatnya selalu menyesatkan begitu penempatannya berubah:
 `services/integrator` **sudah ada** (tahap 1b). Peta pohonnya, dua aturan yang
 menahannya, dan batas Go: `docs/arsitektur/01-ARSITEKTUR.md` §10. Yang berjalan
 hari ini: `cmd/integrator` → service `svc-integrator`, SATU proses yang
-menjalankan jalur `tenant` (cadangan satu objek per basis data) dan jalur
-`interactive` (ekspor Neraca Saldo). Satu image = satu container sejak 22 Okt
+menjalankan jalur `tenant` (cadangan satu objek per basis data, per instans),
+jalur `interactive` (berkas laporan yang register-nya `go` di
+`src/lib/report-engine.ts`), dan jalur `schedule` (penerbit denyut — diam
+selama `publisher: node` di `contract/kinds.yaml`). Jalur `bulk` ada sebagai
+kerangka tanpa kind. Satu image = satu container sejak 22 Okt
 2026 (keputusan pemilik, risikonya di `09-RANCANGAN-LAYANAN.md` §3.2); pekerja
 Node keempatnya kini satu container `svc-worker` (`scripts/run-workers.ts`).
 

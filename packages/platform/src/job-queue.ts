@@ -35,7 +35,14 @@
  *
  *   tulis:      run_after = now() + ${ms}::bigint * interval '1 millisecond'
  *   bandingkan: claimed_at < LOCALTIMESTAMP - ${ms}::bigint * interval '1 millisecond'
- *   baca:       created_at AT TIME ZONE current_setting('TimeZone')  → instan sejati
+ *   baca:       (created_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC'
+ *
+ * Dua langkah pada pembacaan itu disengaja: langkah pertama menafsirkan jam
+ * dinding kolom dalam zona sesi (→ `timestamptz`, instan sejati), langkah
+ * kedua menuliskannya sebagai jam dinding UTC — bentuk yang dibaca Prisma
+ * dengan benar. `timestamptz` saja TIDAK cukup: `@prisma/adapter-pg`
+ * (`normalize_timestamptz`) MENGGANTI offset teksnya dengan `+00:00`, jadi
+ * `16:00+07` terbaca 16:00 UTC — tujuh jam meleset lagi.
  *
  * JS hanya menyebut DURASI; jamnya selalu jam server yang sama dengan yang
  * menulis kolomnya. Padanannya di Go: `services/integrator/internal/jobs/queue.go`.
@@ -159,7 +166,7 @@ export async function jobStatus(by: { id: number } | { dedupeKey: string }): Pro
   const rows = await controlDb.$queryRaw<JobStatusRow[]>`
     SELECT id, kind, status, tenant_id AS "tenantId", company_id AS "companyId", payload,
            progress, attempts, max_attempts AS "maxAttempts", last_error AS "lastError",
-           created_at AT TIME ZONE current_setting('TimeZone') AS "createdAt"
+           (created_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS "createdAt"
       FROM jobs WHERE ${where}`;
   return rows[0] ?? null;
 }
@@ -380,7 +387,7 @@ const JALUR_TAK_DIKENAL = "(tak dikenal)";
 export async function queueSnapshot(now: Date = new Date()): Promise<LaneQueueHealth[]> {
   const rows = await controlDb.$queryRaw<{ kind: string; waiting: bigint; oldest: Date | null }[]>`
     SELECT kind, COUNT(*)::bigint AS waiting,
-           MIN(run_after) AT TIME ZONE current_setting('TimeZone') AS oldest
+           (MIN(run_after) AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS oldest
       FROM jobs
      WHERE status = 'queued' AND run_after <= now()
      GROUP BY kind`;

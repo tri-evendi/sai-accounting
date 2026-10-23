@@ -21,7 +21,8 @@
  *
  * Aturannya: JS hanya mengirim DURASI dan SQL menghitung waktunya dari
  * `now()`/`LOCALTIMESTAMP`; nilai yang DIBACA dikonversi ke instan sejati
- * dengan `AT TIME ZONE current_setting('TimeZone')`. Padanan Go: penjaga "jam
+ * dengan `(… AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC'` —
+ * dua langkah, sebab adapter-pg membuang offset `timestamptz`. Padanan Go: penjaga "jam
  * kolom waktu" di `tests/services-go.test.ts`. Perilakunya dibuktikan
  * `tests/jobs-time-columns.integration.test.ts` terhadap PostgreSQL sungguhan.
  */
@@ -136,6 +137,11 @@ function periksa(sql: string, fragmenAman: Set<string> = new Set()): string[] {
   /* Dibaca ke JS tanpa konversi: Prisma menafsirkannya sebagai UTC. */
   const baca = new RegExp(`(?:\\b(?:MIN|MAX)\\(\\s*(?:${KOLOM})\\s*\\)|\\b(?:${KOLOM}))\\s+AS\\s+"?\\w`, "g");
   for (const m of sql.matchAll(baca)) pel.push(`dibaca tanpa AT TIME ZONE: ${m[0]}`);
+  /* `timestamptz` saja tidak cukup: adapter-pg mengganti offset teksnya dengan
+     `+00:00`. Yang dibaca wajib jam dinding UTC (`… AT TIME ZONE 'UTC'`). */
+  for (const m of sql.matchAll(/current_setting\('TimeZone'\)\s*\)?\s+AS\b/g)) {
+    pel.push(`timestamptz dibaca tanpa AT TIME ZONE 'UTC': ${m[0]}`);
+  }
   return pel;
 }
 
@@ -186,6 +192,11 @@ describe("jam kolom `jobs`: JS tidak mengikat `Date` ke TIMESTAMP tanpa zona", (
     expect(periksa("DELETE FROM jobs WHERE finished_at < LOCALTIMESTAMP - ${d}::int * interval '1 day'")).toEqual([]);
     expect(
       periksa(`SELECT MIN(run_after) AT TIME ZONE current_setting('TimeZone') AS oldest FROM jobs`)
+    ).not.toEqual([]);
+    expect(
+      periksa(
+        `SELECT (MIN(run_after) AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS oldest FROM jobs`
+      )
     ).toEqual([]);
     expect(periksa("SELECT 1 FROM jobs WHERE created_at > ${batas}", new Set(["batas"]))).toEqual([]);
     expect(periksaOrm("control.job.count({ where: { tenantId: 1 } })")).toEqual([]);

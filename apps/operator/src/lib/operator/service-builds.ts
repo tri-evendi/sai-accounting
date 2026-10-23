@@ -117,7 +117,7 @@ export async function serviceBuildsForOperator(
        `lastSeen` dikonversi ke instan sejati sebelum sampai ke JS. */
     control.$queryRaw<BarisPengklaim[]>`
       SELECT claimed_by AS "claimedBy",
-             MAX(updated_at) AT TIME ZONE current_setting('TimeZone') AS "lastSeen"
+             (MAX(updated_at) AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS "lastSeen"
         FROM jobs
        WHERE claimed_by IS NOT NULL
          AND updated_at > LOCALTIMESTAMP - ${SERVICE_BUILD_WINDOW_HOURS}::int * interval '1 hour'

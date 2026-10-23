@@ -126,7 +126,10 @@ const (
 // (`engine: "go"`). Pelari menolak pekerjaan untuk laporan di luar himpunan ini.
 var GoEngineReports = map[string]bool{
 	ReportBalanceSheet:    true,
+	ReportCashFlow:        true,
 	ReportIncomeStatement: true,
+	ReportPayables:        true,
+	ReportReceivables:     true,
 	ReportTrialBalance:    true,
 }
 

@@ -5525,7 +5525,22 @@
       "download": "Download CSV",
       "note": "UTF-8 CSV with BOM. Every download is recorded in the operator trail.",
       "noProblems": "All paid invoices in this period are complete.",
-      "missing": "empty columns"
+      "missing": "empty columns",
+      "pjapTitle": "PJAP connection per company",
+      "pjapDescription": "Customer e-Faktur through a PJAP. Credentials belong to the company and are not shown here.",
+      "colCompany": "Company",
+      "colProvider": "Provider",
+      "colMode": "Mode",
+      "colCredential": "Credentials",
+      "colSubmissions": "Submissions",
+      "providerNone": "None",
+      "production": "Production",
+      "sandbox": "Sandbox",
+      "credentialStored": "Saved",
+      "credentialMissing": "Not set",
+      "unreadable": "Unreadable",
+      "pjapEmpty": "No active companies yet.",
+      "pjapUnavailable": "The company list cannot be read yet."
     },
     "slug": {
       "title": "Change account address",

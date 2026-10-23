@@ -5525,7 +5525,22 @@
       "download": "Unduh CSV",
       "note": "CSV UTF-8 dengan BOM. Setiap unduhan tercatat di jejak operator.",
       "noProblems": "Semua tagihan lunas di periode ini lengkap.",
-      "missing": "kolom kosong"
+      "missing": "kolom kosong",
+      "pjapTitle": "Sambungan PJAP per perusahaan",
+      "pjapDescription": "e-Faktur pelanggan lewat PJAP. Kredensial milik PT dan tidak terlihat di sini.",
+      "colCompany": "Perusahaan",
+      "colProvider": "Penyedia",
+      "colMode": "Mode",
+      "colCredential": "Kredensial",
+      "colSubmissions": "Kiriman",
+      "providerNone": "Tidak ada",
+      "production": "Produksi",
+      "sandbox": "Sandbox",
+      "credentialStored": "Tersimpan",
+      "credentialMissing": "Belum ada",
+      "unreadable": "Tak terbaca",
+      "pjapEmpty": "Belum ada perusahaan aktif.",
+      "pjapUnavailable": "Daftar perusahaan belum bisa dibaca."
     },
     "slug": {
       "title": "Ganti alamat akun",

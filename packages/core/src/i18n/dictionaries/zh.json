@@ -5525,7 +5525,22 @@
       "download": "下载 CSV",
       "note": "带 BOM 的 UTF-8 CSV。每次下载都会记入运营者日志。",
       "noProblems": "本期所有已付账单信息完整。",
-      "missing": "空栏位"
+      "missing": "空栏位",
+      "pjapTitle": "各公司的 PJAP 连接",
+      "pjapDescription": "客户通过 PJAP 提交电子发票。凭据归公司所有，此处不显示。",
+      "colCompany": "公司",
+      "colProvider": "服务商",
+      "colMode": "模式",
+      "colCredential": "凭据",
+      "colSubmissions": "提交",
+      "providerNone": "无",
+      "production": "生产",
+      "sandbox": "沙盒",
+      "credentialStored": "已保存",
+      "credentialMissing": "未设置",
+      "unreadable": "无法读取",
+      "pjapEmpty": "暂无启用的公司。",
+      "pjapUnavailable": "暂时无法读取公司列表。"
     },
     "slug": {
       "title": "更改账户地址",

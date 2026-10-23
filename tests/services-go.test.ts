@@ -21,6 +21,7 @@
  * TIDAK menghasilkan galat apa pun.
  */
 import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { AKAR_REPO, akarGo, berkasGo } from "./akar-sumber";
@@ -493,6 +494,16 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
     expect(pelanggar).toEqual([]);
     // Bangkitannya memang memuat kueri itu — pemindai di atas tidak buta.
     expect(GEN_ANTREAN).toContain("FOR UPDATE SKIP LOCKED");
+  });
+
+  it("sumber kueri `contract/*.sql` TIDAK tertelan `.gitignore` (`*.sql`)", () => {
+    /* Sudah terjadi: bangkitan dan `sqlc.sum` ter-commit tanpa sumbernya,
+       semuanya hijau di mesin penulisnya, dan `contract:gen --cek` merah di
+       CI saja. `git check-ignore` keluar 1 bila berkasnya TIDAK diabaikan. */
+    for (const f of ["contract/jobs.sql", "contract/trail.sql", "contract/sqlc.yaml"]) {
+      const r = spawnSync("git", ["check-ignore", "-q", f], { cwd: AKAR_REPO });
+      expect(r.status, `${f} diabaikan .gitignore`).toBe(1);
+    }
   });
 
   it("bangkitan `sqlc` memakai versi yang dipatok perkakasnya, dan integrator tidak menariknya", () => {

@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.16.0 — 2026-10-23 — belum digelar
+## 0.16.1 — 2026-10-23 — belum digelar
+
+Ekspor Laporan Perubahan Ekuitas kini disiapkan di latar.
+
+### Berubah
+
+- Ekspor Excel Laporan Perubahan Ekuitas disiapkan di latar seperti laporan keuangan lain.
+
+---
+
+## 0.16.0 — 2026-10-23 (b13b14e)
 
 Laporan Perubahan Ekuitas bisa diunduh, dan pencocokan barang kontrak di Umur Piutang kini sama dengan halaman kontrak.
 

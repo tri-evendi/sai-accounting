@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.16.1",
+    tanggal: "2026-10-23",
+    ringkas: "Ekspor Laporan Perubahan Ekuitas kini disiapkan di latar.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Ekspor Excel Laporan Perubahan Ekuitas disiapkan di latar seperti laporan keuangan lain.",
+      },
+    ],
+  },
+  {
     versi: "0.16.0",
     tanggal: "2026-10-23",
+    sha: "b13b14e",
     ringkas: "Laporan Perubahan Ekuitas bisa diunduh, dan pencocokan barang kontrak di Umur Piutang kini sama dengan halaman kontrak.",
     butir: [
       {

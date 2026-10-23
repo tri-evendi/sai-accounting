@@ -51,8 +51,9 @@ describe("register mesin laporan", () => {
        sampai sesi utama menjalankan paritas angka DAN isi berkasnya atas buku
        produksi. */
     expect(isExportable(REPORTS.find((r) => r.id === "equity-changes")!)).toBe(true);
-    expect(reportEngine("equity-changes")).toBe("go-parity");
-    expect(exportJobKind("equity-changes")).toBe("report.export");
+    expect(reportEngine("equity-changes")).toBe("go");
+    expect(REPORT_ENGINES["equity-changes"]!.parityProven).toEqual({ date: "2026-10-23", books: 17 });
+    expect(exportJobKind("equity-changes")).toBe("report.export_go");
   });
 
   it("implementasi Go yang disebut ADA", () => {
@@ -283,7 +284,7 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(COMPARABLE_REPORTS).not.toContain("cash-flow");
   });
 
-  it("Perubahan Ekuitas (`go-parity`, berberkas 23 Okt 2026): muatan berperiode TANPA pembanding", () => {
+  it("Perubahan Ekuitas (`go`, paritas produksi 23 Okt 2026): muatan berperiode TANPA pembanding", () => {
     const report = REPORTS.find((r) => r.id === "equity-changes")!;
     const now = new Date(2026, 9, 23, 10, 0, 0);
     const p = goExportPayloadShape(report, { from: "2025-12-01", to: "2026-03-31", compare: "preceding" }, now);
@@ -295,8 +296,8 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(p.toInstant).toBe(r.to.toISOString());
     expect(p.priorFromInstant).toBeUndefined();
     expect(COMPARABLE_REPORTS).not.toContain("equity-changes");
-    /* Selama `go-parity` penerbit Go MENOLAKNYA — register yang memutuskan. */
-    expect(() => goExportPayload(report, {}, now)).toThrow(/bukan milik mesin Go/);
+    /* Sejak `go`, penerbit Go menerimanya — register yang memutuskan. */
+    expect(goExportPayload(report, {}, now).reportId).toBe("equity-changes");
   });
 
   it("halaman laporan BERBERKAS di register (`go-parity` maupun `go`) sudah mengirim asalnya", () => {

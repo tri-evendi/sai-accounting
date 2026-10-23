@@ -136,6 +136,7 @@ const (
 var GoEngineReports = map[string]bool{
 	ReportBalanceSheet:    true,
 	ReportCashFlow:        true,
+	ReportEquityChanges:   true,
 	ReportIncomeStatement: true,
 	ReportPayables:        true,
 	ReportReceivables:     true,

@@ -157,3 +157,22 @@ func TestKendaliLangsungTidakJatuhKeUrlPooler(t *testing.T) {
 		t.Fatal("CONTROL_DATABASE_DIRECT_URL kosong diterima")
 	}
 }
+
+func TestBersihMenolakZonaSesi(t *testing.T) {
+	// Kolom waktu `jobs` adalah jam `now()` dalam zona SESI, dan Node memakai
+	// zona bawaan server. Zona sesi yang hanya disetel di sisi Go menggeser
+	// setiap `claimed_at` yang ditulisnya relatif terhadap baris milik Node.
+	for _, raw := range []string{
+		"postgres://sai:r@pg:5432/sai_control?timezone=UTC",
+		"postgres://sai:r@pg:5432/sai_control?TimeZone=America%2FNew_York",
+		"postgres://sai:r@pg:5432/sai_control?options=-c%20TimeZone%3DUTC",
+	} {
+		if _, _, err := Bersih(raw); err == nil {
+			t.Errorf("%s diterima — zona sesi Go tidak boleh menyimpang dari Node", raw)
+		}
+	}
+	// `options` lain tetap boleh.
+	if _, _, err := Bersih("postgres://sai:r@pg:5432/sai_control?options=-c%20statement_timeout%3D5000"); err != nil {
+		t.Errorf("options tanpa TimeZone ditolak: %v", err)
+	}
+}

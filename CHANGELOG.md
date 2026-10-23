@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.15.0 — 2026-10-23 — belum digelar
+## 0.15.1 — 2026-10-23 — belum digelar
+
+Ekspor Excel Arus Kas, Umur Piutang, dan Umur Utang kini disiapkan di latar.
+
+### Berubah
+
+- Ekspor Excel Arus Kas, Umur Piutang, dan Umur Utang disiapkan di latar seperti laporan keuangan lain — halaman tetap bisa dipakai selama berkasnya dibuat.
+
+---
+
+## 0.15.0 — 2026-10-23 (d769335)
 
 Pembaruan basis data tidak lagi menghentikan seluruh layanan, dan pembuatan perusahaan baru lebih terjaga.
 

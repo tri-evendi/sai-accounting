@@ -142,7 +142,7 @@ export type RunnerSwitchedKind =
  * pelaksana melewati pekerjaannya (keluar 0 / selesai tanpa bekerja).
  */
 export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
-  "tenant.conformance": "node",
+  "tenant.conformance": "go",
 };
 
 export const isJobKind = (v: string): v is JobKind =>

@@ -1,5 +1,6 @@
 /**
- * Bagian bersama skrip paritas Laba Rugi & Neraca (tahap 1d, 09 §9).
+ * Bagian bersama skrip paritas Laba Rugi, Neraca, Umur Piutang & Umur Utang
+ * (tahap 1d, 09 §9).
  *
  * Skrip Neraca Saldo (`parity-trial-balance*.ts`) lahir lebih dulu dan menulis
  * semuanya sendiri; yang di sini adalah yang SAMA persis di empat skrip
@@ -219,4 +220,53 @@ export function finish(books: number, cases: number, unit: string, tally: Tally)
     process.exitCode = 1;
   }
   if (tally.berselisih > 0 || tally.gagal > 0) process.exitCode = 1;
+}
+
+// ── Umur Piutang & Umur Utang (tahap 1d) ──────────────────────────────────
+
+/** Laporan umur yang diminta — argumen posisi pertama skrip (`package.json`). */
+export function agingKind(): "receivables" | "payables" {
+  const k = process.argv[2];
+  if (k !== "receivables" && k !== "payables") {
+    console.error(`argumen pertama harus receivables|payables, bukan ${String(k)}`);
+    process.exit(2);
+  }
+  return k;
+}
+
+/**
+ * Tanggal Umur Piutang/Utang: `--as-of a,b`, atau TIGA bawaan — hari ini,
+ * 30 Juni (tahun ini bila sudah lewat, kalau belum tahun lalu), dan
+ * 31 Desember tahun lalu. Tanggal lampau menguji potret historis (pelunasan
+ * sesudah asOf belum melunasi apa pun), yang tak teruji per hari ini.
+ */
+export function agingAsOfDates(raw: string | undefined, now = new Date()) {
+  if (list(raw).length > 0) return asOfDates(raw, now);
+  const today = businessISODate(now);
+  const year = Number(today.slice(0, 4));
+  const midYear = `${year}-06-30` <= today ? `${year}-06-30` : `${year - 1}-06-30`;
+  return [today, midYear, `${year - 1}-12-31`].map((d) => resolveAsOf(d, now));
+}
+
+/** `--overdue all,only` → saringan "hanya jatuh tempo" yang diperiksa (bawaan keduanya). */
+export function overdueModes(raw: string | undefined): boolean[] {
+  const asked = list(raw);
+  const wanted = asked.length > 0 ? asked : ["all", "only"];
+  return wanted.map((m) => {
+    if (m !== "all" && m !== "only") {
+      console.error(`--overdue bukan all|only: ${m}`);
+      process.exit(2);
+    }
+    return m === "only";
+  });
+}
+
+/**
+ * `--cols "|party|documentNo,age"` → varian `?cols=` yang diperiksa paritas
+ * ISI lembar; `|` memisahkan varian (koma milik nilainya), varian kosong =
+ * kolom bawaan. Bawaannya: bawaan, `party` saja, dan sebagian kolom.
+ */
+export function columnVariants(raw: string | undefined): string[] {
+  if (raw === undefined) return ["", "party", "documentNo,dueDate,age,outstanding"];
+  return raw.split("|").map((v) => v.trim());
 }

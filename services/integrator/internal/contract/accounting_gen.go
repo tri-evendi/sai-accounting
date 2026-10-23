@@ -290,3 +290,30 @@ func IsContractStatus(v string) bool {
 	}
 	return false
 }
+
+// AgingBucket adalah satu ember Umur Piutang & Umur Utang (#12).
+type AgingBucket string
+
+const (
+	AgingBucketB030    AgingBucket = "b0_30"
+	AgingBucketB3160   AgingBucket = "b31_60"
+	AgingBucketB6190   AgingBucket = "b61_90"
+	AgingBucketB90Plus AgingBucket = "b90_plus"
+)
+
+// AgingBucketSpec: satu ember beserta batas atas INKLUSIF-nya (hari kalender
+// Jakarta). Bounded=false hanya untuk ember terakhir, yang menampung sisanya.
+type AgingBucketSpec struct {
+	Key     AgingBucket
+	MaxDays int
+	Bounded bool
+}
+
+// AgingBuckets dalam urutan kontrak, dari yang termuda. Umur <= 0 mendarat di
+// ember pertama.
+var AgingBuckets = []AgingBucketSpec{
+	{Key: AgingBucketB030, MaxDays: 30, Bounded: true},
+	{Key: AgingBucketB3160, MaxDays: 60, Bounded: true},
+	{Key: AgingBucketB6190, MaxDays: 90, Bounded: true},
+	{Key: AgingBucketB90Plus},
+}

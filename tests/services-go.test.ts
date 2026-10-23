@@ -34,7 +34,9 @@ const GEN_AKUNTANSI = "services/integrator/internal/contract/accounting_gen.go";
 const GEN_TATA_LETAK = "services/integrator/internal/contract/report_layout_gen.go";
 /** Bangkitan keempat (tahap 4): bentuk instans basis data, `contract/db-instances.yaml`. */
 const GEN_INSTANS = "services/integrator/internal/contract/dbinstances_gen.go";
-const BANGKITAN = [GEN, GEN_AKUNTANSI, GEN_TATA_LETAK, GEN_INSTANS];
+/* Umur Piutang & Umur Utang (tahap 1d): berkas bangkitan tersendiri. */
+const GEN_TATA_LETAK_UMUR = "services/integrator/internal/contract/aging_layout_gen.go";
+const BANGKITAN = [GEN, GEN_AKUNTANSI, GEN_TATA_LETAK, GEN_TATA_LETAK_UMUR, GEN_INSTANS];
 
 /** Berkas Go tulisan TANGAN — yang dibangkitkan tunduk pada aturan lain. */
 const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel));
@@ -227,6 +229,9 @@ describe("kontrak: Go tidak punya daftarnya sendiri", () => {
     expect(tataLetak!.isi).toContain("JANGAN DISUNTING TANGAN");
     expect(tataLetak!.isi).toContain("src/lib/statement-layout.ts");
 
+    const umur = GO.find((b) => b.rel === GEN_TATA_LETAK_UMUR);
+    expect(umur, GEN_TATA_LETAK_UMUR).toBeDefined();
+    expect(umur!.isi).toContain("JANGAN DISUNTING TANGAN");
     const instans = GO.find((b) => b.rel === GEN_INSTANS);
     expect(instans, GEN_INSTANS).toBeDefined();
     expect(instans!.isi).toContain("JANGAN DISUNTING TANGAN");

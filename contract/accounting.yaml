@@ -44,6 +44,13 @@
 #                       pembaca Go pertama MENCORETNYA dari sana.
 #                       ✅ `currencies` sudah dicoret (23 Okt 2026): Arus Kas
 #                       Go membaca `BaseCurrency` untuk baris valas berkurs 1.
+#                       ✅ `invoice_statuses` & `contract_statuses` dicoret
+#                       bersama Umur Piutang/Utang (`internal/ledgerread/aging.go`,
+#                       status "dibatalkan") — daftar pengecualiannya kini kosong.
+#
+#   • `aging`         — ember Umur Piutang & Umur Utang (#12); dibaca
+#                       `src/lib/receivables.ts` (`agingBucket`) dan
+#                       `internal/ledgerread/aging.go`.
 #
 # Yang SENGAJA BELUM ada: saldo normal per tipe, ambang materialitas. Tidak
 # satu pun laporan Go membacanya —
@@ -244,3 +251,24 @@ contract_statuses:
   - pending
   - canceled
   - completed
+
+# ── Umur piutang & utang (#12) ─────────────────────────────────────────────
+# Ember umur, berurutan dari yang termuda. `max_days` = batas atas INKLUSIF
+# dalam hari kalender Jakarta (umur 30 masih `b0_30`, 31 sudah `b31_60`);
+# umur <= 0 (belum jatuh tempo / jatuh tempo hari ini) mendarat di ember
+# PERTAMA. Ember TERAKHIR tanpa `max_days` — ia menampung sisanya. Generator
+# menolak batas yang tidak naik tegas, ember tanpa batas di tengah, dan ember
+# terakhir yang berbatas: umur yang tidak masuk ember mana pun adalah piutang
+# yang hilang dari ringkasan di satu bahasa dan tidak di bahasa lain.
+#
+# Label tampilannya ("0–30 hari") tetap di `src/lib/receivables.ts` dan sampai
+# ke Go lewat `report_layout`-nya, bukan dari sini.
+aging:
+  buckets:
+    - key: b0_30
+      max_days: 30
+    - key: b31_60
+      max_days: 60
+    - key: b61_90
+      max_days: 90
+    - key: b90_plus

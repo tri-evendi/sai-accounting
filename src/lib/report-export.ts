@@ -22,6 +22,8 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import {
   agingColumns,
   agingHeaders,
+  agingIssueAgeText,
+  AGING_SHEET_LABELS,
   balanceSheetBalanceNote,
   balanceSheetLayout,
   budgetColumns,
@@ -598,7 +600,8 @@ function buildPartyRecapSheet(
   };
 }
 
-const AGING_WIDTHS: Record<AgingColumnId, number> = {
+/** Lebar kolom Umur Piutang/Utang — diekspor untuk `contract:gen` (lembar Go, tahap 1d). */
+export const AGING_WIDTHS: Record<AgingColumnId, number> = {
   party: 30,
   documentNo: 20,
   date: 14,
@@ -635,14 +638,14 @@ function buildAgingSheet(
 
   // Ringkasan ember sebagai baris berlabel, bukan kolom terpisah: satu lembar
   // dengan dua tabel bersebelahan tak bisa disortir maupun dijumlahkan.
-  rows.push(pad([text("Ringkasan umur", true)]));
+  rows.push(pad([text(AGING_SHEET_LABELS.summary, true)]));
   for (const b of p.buckets) {
     rows.push(summary(text(b.label), money(b.amount)));
   }
-  rows.push(summary(text("Total", true), money(p.total, true)));
+  rows.push(summary(text(AGING_SHEET_LABELS.total, true), money(p.total, true)));
   rows.push(pad([]));
 
-  rows.push(pad([text("Rincian dokumen", true)]));
+  rows.push(pad([text(AGING_SHEET_LABELS.details, true)]));
   if (p.rows.length === 0) {
     rows.push(pad([text(EXPORT_EMPTY.unpaidDocuments)]));
   }
@@ -655,13 +658,13 @@ function buildAgingSheet(
       case "date":
         return text(r.date);
       case "dueDate":
-        return text(r.dueDate ?? "-");
+        return text(r.dueDate ?? AGING_SHEET_LABELS.noDueDate);
       // Umur yang dihitung dari TANGGAL DOKUMEN (karena jatuh temponya tidak
       // ada) diberi tanda bintang: dua angka yang artinya berbeda tak boleh
       // berdiri tanpa penanda di kolom yang sama. Karena itu ia teks, bukan
       // angka — dan penjelasannya ada di catatan kaki lembar ini.
       case "age":
-        return { value: r.ageFromIssue ? `${r.ageDays} *` : r.ageDays, align: "right" };
+        return { value: r.ageFromIssue ? agingIssueAgeText(r.ageDays) : r.ageDays, align: "right" };
       case "status":
         return text(r.status);
       // Nilai dokumen dalam MATA UANGNYA SENDIRI — kolomnya bercampur mata

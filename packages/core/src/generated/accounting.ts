@@ -233,3 +233,30 @@ export const CONTRACT_STATUSES = [
   "canceled",
   "completed",
 ] as const satisfies readonly ContractStatus[];
+
+// ── Umur piutang & utang (#12) — dibaca `receivables.ts` dan Go ─────────
+
+export type AgingBucket =
+  | "b0_30"
+  | "b31_60"
+  | "b61_90"
+  | "b90_plus";
+
+/** Ember umur, dari yang termuda. */
+export const AGING_BUCKETS = [
+  "b0_30",
+  "b31_60",
+  "b61_90",
+  "b90_plus",
+] as const satisfies readonly AgingBucket[];
+
+/**
+ * Batas atas INKLUSIF tiap ember dalam hari kalender Jakarta; `null` = ember
+ * terakhir, tanpa batas. Umur <= 0 mendarat di ember pertama.
+ */
+export const AGING_BUCKET_MAX_DAYS: Readonly<Record<AgingBucket, number | null>> = {
+  b0_30: 30,
+  b31_60: 60,
+  b61_90: 90,
+  b90_plus: null,
+};

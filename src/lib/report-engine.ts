@@ -108,7 +108,7 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * pemasok), bukan baris jurnal. Go menghitung keduanya (`aging.go`, sen
    * eksak: NUMERIC → rasional, dibulatkan ke sen di titik `round2` TS yang
    * sama) dan menulis lembar sebarnya (`internal/document/aging.go`). Berkas
-   * masih TypeScript sampai sesi utama menjalankan paritas atas buku PRODUKSI:
+   * dari Go sejak paritas PRODUKSI 23 Okt 2026 (entri di bawah); skripnya tetap:
    *   bun run parity:receivables · parity:receivables-xlsx
    *   bun run parity:payables    · parity:payables-xlsx
    * Halaman keduanya SUDAH mengirim `sumber` (asOf, cols, overdue), dan
@@ -116,19 +116,25 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * bawah + `bun run contract:gen`.
    */
   receivables: {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/aging.go",
     parityScript: "parity:receivables",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, sesi utama, sesudah perbaikan data pt-sai):
+       102 setara (angka, 6 tanggal × semua/jatuh tempo) · isi XLSX 306 setara (18 tanggal × saringan × 3 pilihan kolom) — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   payables: {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/aging.go",
     parityScript: "parity:payables",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, sesi utama, sesudah perbaikan data pt-sai):
+       102 setara (angka, 6 tanggal × semua/jatuh tempo) · isi XLSX 306 setara (18 tanggal × saringan × 3 pilihan kolom) — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   /*
-   * Laporan KEEMPAT dan KELIMA tahap 1d (23 Okt 2026) — berhenti di
-   * `go-parity`, pola yang sama dengan Laba Rugi & Neraca sebelum paritas
-   * produksinya.
+   * Laporan KEEMPAT dan KELIMA tahap 1d (23 Okt 2026). Arus Kas `go` sejak
+   * paritas produksi hari yang sama; Perubahan Ekuitas tetap `go-parity`
+   * (lihat di bawah).
    *
    * Arus Kas: Go menghitung (`cash_flow.go`) dan menulis lembar sebarnya
    * (`internal/document/cash_flow.go`); halaman SUDAH mengirim `sumber`
@@ -148,9 +154,12 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * keputusan produk tersendiri, bukan efek samping tahap 1d.
    */
   "cash-flow": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/cash_flow.go",
     parityScript: "parity:cash-flow",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, sesi utama, sesudah perbaikan data pt-sai):
+       51 setara (angka, 3 periode) · isi XLSX 51 setara (3 periode) — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   "equity-changes": {
     engine: "go-parity",

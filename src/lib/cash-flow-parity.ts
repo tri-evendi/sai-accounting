@@ -83,7 +83,7 @@ export function compareRows<T extends { code: string; name: string }, G extends 
     const g = goByCode.get(t.code);
     if (!g) continue;
     for (const f of ["name", ...texts] as const) {
-      const [a, b] = [t[f as keyof T], g[f as keyof G]];
+      const [a, b]: unknown[] = [t[f as keyof T], g[f as keyof G]];
       if (a !== b) diffs.push(`${label} ${t.code}: ${f} TS ${JSON.stringify(a)} ⇄ Go ${JSON.stringify(b)}`);
     }
     for (const f of money) {

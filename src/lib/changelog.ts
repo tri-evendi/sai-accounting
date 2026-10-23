@@ -73,8 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.16.3",
+    tanggal: "2026-10-23",
+    ringkas: "Perusahaan baru yang berhasil dibuat tidak lagi dilaporkan gagal, dan pekerjaan latar yang gagal kini menunggu sebelum dicoba ulang.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Halaman pembuatan perusahaan kini langsung menampilkan perusahaan yang sudah siap, bukan pesan gagal.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Pekerjaan latar yang gagal dicoba ulang dengan jeda, bukan seketika berulang-ulang.",
+      },
+    ],
+  },
+  {
     versi: "0.16.2",
     tanggal: "2026-10-23",
+    sha: "af720db",
     ringkas: "Penjadwalan dokumen berulang kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.",
     butir: [
       {

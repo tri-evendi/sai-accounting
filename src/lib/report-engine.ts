@@ -102,6 +102,29 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
        51 setara (angka, 3 tanggal) · isi XLSX 153 setara (3 tanggal × 3 bentuk pembanding) — 0 berselisih · 0 gagal. */
     parityProven: { date: "2026-10-22", books: 17 },
   },
+  /*
+   * Umur Piutang & Umur Utang — laporan pertama tahap 1d yang membaca DOKUMEN
+   * sub-buku (faktur, kontrak, pembayaran, uang muka, retur, transaksi
+   * pemasok), bukan baris jurnal. Go menghitung keduanya (`aging.go`, sen
+   * eksak: NUMERIC → rasional, dibulatkan ke sen di titik `round2` TS yang
+   * sama) dan menulis lembar sebarnya (`internal/document/aging.go`). Berkas
+   * masih TypeScript sampai sesi utama menjalankan paritas atas buku PRODUKSI:
+   *   bun run parity:receivables · parity:receivables-xlsx
+   *   bun run parity:payables    · parity:payables-xlsx
+   * Halaman keduanya SUDAH mengirim `sumber` (asOf, cols, overdue), dan
+   * pelari Go sudah punya cabangnya — peralihan ke `go` = sunting entri di
+   * bawah + `bun run contract:gen`.
+   */
+  receivables: {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/aging.go",
+    parityScript: "parity:receivables",
+  },
+  payables: {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/aging.go",
+    parityScript: "parity:payables",
+  },
 };
 
 /** Mesin yang menghasilkan BERKAS laporan ini hari ini. */

@@ -303,7 +303,19 @@ export default async function ReceivablesPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` = parameter halaman ini, dengan bunyi URL-nya (`asOf`,
+                `cols`, `overdue`). Hari ini ia membuka penyerahan ke antrean
+                di atas ambang baris; sesudah peralihan register ke `go`
+                (`report-engine.ts`, tahap 1d) pekerja Go menghitung berkasnya
+                DARI parameter ini — tanpa `overdue`, berkasnya memuat semua
+                dokumen sementara layarnya hanya yang jatuh tempo. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{
+                reportId: "receivables",
+                params: { asOf: asOfStr, cols: sp.cols, overdue: overdueOnly ? "1" : undefined },
+              }}
+            />
           </>
         }
         description={

@@ -92,6 +92,8 @@ const (
 const (
 	ReportBalanceSheet    = "balance-sheet"
 	ReportIncomeStatement = "income-statement"
+	ReportPayables        = "payables"
+	ReportReceivables     = "receivables"
 	ReportTrialBalance    = "trial-balance"
 )
 

@@ -87,8 +87,24 @@ import {
   SHEET_BANNER_STYLE,
   TRIAL_BALANCE_WIDTHS,
   sheetPrintedLine,
+  AGING_WIDTHS,
 } from "../src/lib/report-export";
 import { REPORT_ENGINES } from "../src/lib/report-engine";
+import { REPORTS } from "../src/lib/report-catalog";
+import {
+  AGING_BUCKET_PRINT_LABELS,
+  AGING_COLUMNS,
+  AGING_SHEET_LABELS,
+  AGING_UNDATED_NOTE,
+  EXPORT_EMPTY,
+  PARTY_RECAP_NO_PARTY,
+  PAYMENT_STATUS_PRINT_LABELS,
+  agingHeaders,
+  agingIssueAgeText,
+  payableDocumentNo,
+  unresolvedNote,
+  type AgingKind,
+} from "../src/lib/statement-layout";
 import {
   COST_CENTER_UNASSIGNED_PRINT_LABEL,
   UNASSIGNED_COST_CENTER,
@@ -129,6 +145,19 @@ const TUJUAN_TATA_LETAK_GO = join(
   "internal",
   "contract",
   "report_layout_gen.go"
+);
+
+/* Umur Piutang & Umur Utang (tahap 1d, `go-parity`): berkas TERSENDIRI, bukan
+   bagian `report_layout_gen.go` — laporan berikutnya yang dipindah paralel
+   menambah ke berkas itu, dan dua cabang yang menyunting satu fungsi
+   pembangkit adalah konflik yang tidak perlu. Sumbernya sama: modul TS cetak. */
+const TUJUAN_TATA_LETAK_UMUR_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "aging_layout_gen.go"
 );
 
 const CEK = process.argv.includes("--cek");
@@ -655,6 +684,7 @@ interface KontrakAkuntansi {
   currencies: { base: string; values: string[] };
   invoice_statuses: string[];
   contract_statuses: string[];
+  aging: { buckets: { key: string; max_days?: number }[] };
 }
 
 /** Kode mata uang ISO 4217: tiga huruf besar. */
@@ -797,6 +827,31 @@ function bacaAkuntansi(): KontrakAkuntansi {
     );
   }
 
+  /* ── Ember umur (#12). Batas atas INKLUSIF, naik tegas, ember terakhir
+     tanpa batas: setiap umur jatuh ke TEPAT satu ember, di kedua bahasa. */
+  const ember = k.aging?.buckets;
+  if (!Array.isArray(ember) || ember.length < 2) {
+    salah.push("`aging.buckets` butuh sedikitnya dua ember");
+  } else {
+    const lihat = new Set<string>();
+    let sebelum = 0;
+    ember.forEach((e, i) => {
+      const akhir = i === ember.length - 1;
+      if (typeof e?.key !== "string" || !SNAKE.test(e.key)) {
+        salah.push(`aging.buckets[${i}].key ${JSON.stringify(e?.key)} bukan snake_case`);
+      } else if (lihat.has(e.key)) {
+        salah.push(`aging.buckets: \`${e.key}\` tercantum dua kali`);
+      } else lihat.add(e.key);
+      if (akhir) {
+        if (e?.max_days !== undefined) salah.push("aging.buckets: ember TERAKHIR tidak boleh berbatas (`max_days`)");
+      } else if (!Number.isInteger(e?.max_days) || (e.max_days as number) <= sebelum) {
+        salah.push(
+          `aging.buckets[${i}].max_days ${JSON.stringify(e?.max_days)} harus bilangan bulat > ${sebelum}`
+        );
+      } else sebelum = e.max_days as number;
+    });
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/accounting.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -910,6 +965,23 @@ ${union("ContractStatus", k.contract_statuses)}
 export const CONTRACT_STATUSES = [
 ${k.contract_statuses.map((s) => `  "${s}",`).join("\n")}
 ] as const satisfies readonly ContractStatus[];
+
+// ── Umur piutang & utang (#12) — dibaca \`receivables.ts\` dan Go ─────────
+
+${union("AgingBucket", k.aging.buckets.map((b) => b.key))}
+
+/** Ember umur, dari yang termuda. */
+export const AGING_BUCKETS = [
+${k.aging.buckets.map((b) => `  "${b.key}",`).join("\n")}
+] as const satisfies readonly AgingBucket[];
+
+/**
+ * Batas atas INKLUSIF tiap ember dalam hari kalender Jakarta; \`null\` = ember
+ * terakhir, tanpa batas. Umur <= 0 mendarat di ember pertama.
+ */
+export const AGING_BUCKET_MAX_DAYS: Readonly<Record<AgingBucket, number | null>> = {
+${k.aging.buckets.map((b) => `  ${b.key}: ${b.max_days ?? "null"},`).join("\n")}
+};
 `;
 }
 
@@ -1077,6 +1149,27 @@ func IsContractStatus(v string) bool {
 \t\t}
 \t}
 \treturn false
+}
+
+// AgingBucket adalah satu ember Umur Piutang & Umur Utang (#12).
+type AgingBucket string
+
+const (
+${ratakan(k.aging.buckets.map((b) => ({ kiri: `AgingBucket${pengenalGo(b.key)}`, kanan: `AgingBucket = "${b.key}"` })))}
+)
+
+// AgingBucketSpec: satu ember beserta batas atas INKLUSIF-nya (hari kalender
+// Jakarta). Bounded=false hanya untuk ember terakhir, yang menampung sisanya.
+type AgingBucketSpec struct {
+\tKey     AgingBucket
+\tMaxDays int
+\tBounded bool
+}
+
+// AgingBuckets dalam urutan kontrak, dari yang termuda. Umur <= 0 mendarat di
+// ember pertama.
+var AgingBuckets = []AgingBucketSpec{
+${k.aging.buckets.map((b) => b.max_days === undefined ? `\t{Key: AgingBucket${pengenalGo(b.key)}},` : `\t{Key: AgingBucket${pengenalGo(b.key)}, MaxDays: ${b.max_days}, Bounded: true},`).join("\n")}
 }
 `;
 }
@@ -1373,6 +1466,133 @@ ${tabelLocaleCompare().map((k) => `\t${q(k)},`).join("\n")}
 `;
 }
 
+// ═══ Tata letak Umur Piutang & Umur Utang (tahap 1d) ═══════════════════════
+//
+// Sumbernya `statement-layout.ts` (kalimat, judul, label ember & status),
+// `report-export.ts` (lebar), dan `report-catalog.ts` (kolom yang bisa dipilih
+// `?cols=` — `resolveColumns`). Kalimat ber-angka dibangkitkan dengan
+// MEMANGGIL fungsinya dengan angka penanda, seperti `polaGo`.
+
+/** Kalimat TS yang menerima BILANGAN BULAT (`${n}`, bukan Intl) → pola `%d`. */
+function polaGoBulat(fn: (n: number) => string): string {
+  const PENANDA = 987654321;
+  const kalimat = fn(PENANDA);
+  if (!kalimat.includes(String(PENANDA))) throw new Error(`pola Go: angka penanda hilang dari ${kalimat}`);
+  return kalimat.replace(/%/g, "%%").replace(String(PENANDA), "%d");
+}
+
+function bangkitkanTataLetakUmurGo(k: KontrakAkuntansi): string {
+  const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
+\`src/lib/report-catalog.ts\`, dan \`contract/accounting.yaml\` — JANGAN DISUNTING TANGAN.
+
+Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
+hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+berkas ini basi (penjaga \`tests/contract-jobs.test.ts\`).
+
+Pembacanya \`internal/ledgerread/aging.go\` (kosakata status pembayaran) dan
+\`internal/document/aging.go\` (lembar sebar Umur Piutang & Umur Utang). Isi
+lembarnya wajib sama dengan \`buildAgingSheet\` — dibuktikan
+\`bun run parity:receivables-xlsx\` dan \`bun run parity:payables-xlsx\`.`
+    .split("\n")
+    .map((b) => `// ${b}`.trimEnd())
+    .join("\n");
+  const q = (v: string) => JSON.stringify(v);
+
+  /* Kolom katalog WAJIB = AGING_COLUMNS, berurutan: Go menyaring kolom
+     tampil (`resolveColumns` → `agingColumns`) dari satu daftar ini. */
+  const kolom = (kind: AgingKind) => {
+    const def = REPORTS.find((r) => r.id === kind);
+    const spesifikasi = def?.columns ?? [];
+    const ids = spesifikasi.map((c) => c.id);
+    if (ids.join(",") !== AGING_COLUMNS.join(",")) {
+      throw new Error(`kolom katalog ${kind} (${ids.join(",")}) ≠ AGING_COLUMNS (${AGING_COLUMNS.join(",")})`);
+    }
+    const judul = agingHeaders(kind);
+    return spesifikasi
+      .map(
+        (c) =>
+          `\t{ID: ${q(c.id)}, Header: ${q(judul[c.id as keyof typeof judul])}, ` +
+          `Width: ${AGING_WIDTHS[c.id as keyof typeof AGING_WIDTHS]}, Fixed: ${c.fixed === true}, ` +
+          `DefaultOn: ${c.defaultOn !== false}},`
+      )
+      .join("\n");
+  };
+
+  const kunciEmber = k.aging.buckets.map((b) => b.key);
+  const kunciLabel = Object.keys(AGING_BUCKET_PRINT_LABELS);
+  if (kunciLabel.join(",") !== kunciEmber.join(",")) {
+    throw new Error(`AGING_BUCKET_PRINT_LABELS (${kunciLabel.join(",")}) ≠ aging.buckets (${kunciEmber.join(",")})`);
+  }
+  const statusBayar = Object.entries(PAYMENT_STATUS_PRINT_LABELS);
+
+  const konst = ratakan([
+    { kiri: "ReceivablesSheetName", kanan: `= ${q(SHEET_NAMES.receivables)}` },
+    { kiri: "ReceivablesTitle", kanan: `= ${q(STATEMENT_TITLES.receivables)}` },
+    { kiri: "PayablesSheetName", kanan: `= ${q(SHEET_NAMES.payables)}` },
+    { kiri: "PayablesTitle", kanan: `= ${q(STATEMENT_TITLES.payables)}` },
+    { kiri: "AgingSummaryLabel", kanan: `= ${q(AGING_SHEET_LABELS.summary)}` },
+    { kiri: "AgingDetailsLabel", kanan: `= ${q(AGING_SHEET_LABELS.details)}` },
+    { kiri: "AgingTotalLabel", kanan: `= ${q(AGING_SHEET_LABELS.total)}` },
+    { kiri: "AgingNoDueDate", kanan: `= ${q(AGING_SHEET_LABELS.noDueDate)}` },
+    { kiri: "AgingIssueAgeFormat", kanan: `= ${q(polaGoBulat(agingIssueAgeText))}` },
+    { kiri: "AgingEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.unpaidDocuments)}` },
+    { kiri: "AgingUndatedNote", kanan: `= ${q(AGING_UNDATED_NOTE)}` },
+    { kiri: "AgingUnresolvedNoteFormat", kanan: `= ${q(polaGoBulat(unresolvedNote))}` },
+    { kiri: "AgingPartyColumn", kanan: `= ${q(AGING_COLUMNS[0])}` },
+    /* \`RECEIVABLES_NO_CUSTOMER\` (receivables.ts) — faktur tanpa pelanggan. */
+    { kiri: "PayablesDocumentNoFormat", kanan: `= ${q(polaGoBulat(payableDocumentNo))}` },
+    { kiri: "ReceivablesNoCustomer", kanan: `= ${q(PARTY_RECAP_NO_PARTY["sales-by-customer"])}` },
+  ]);
+
+  return `${kepala}
+
+package contract
+
+// AgingColumn adalah satu kolom lembar Umur Piutang/Utang: id katalog (nilai
+// \`?cols=\`), judul, lebar, dan aturan pilihnya (\`resolveColumns\`).
+type AgingColumn struct {
+\tID        string
+\tHeader    string
+\tWidth     float64
+\tFixed     bool
+\tDefaultOn bool
+}
+
+// Kalimat cetak lembar Umur Piutang/Utang. Pola ber-%d disusun fmt.Sprintf.
+const (
+${konst}
+)
+
+// ReceivablesColumns: kolom Umur Piutang dalam urutan AGING_COLUMNS.
+var ReceivablesColumns = []AgingColumn{
+${kolom("receivables")}
+}
+
+// PayablesColumns: kolom Umur Utang dalam urutan AGING_COLUMNS.
+var PayablesColumns = []AgingColumn{
+${kolom("payables")}
+}
+
+// AgingBucketLabels: label cetak tiap ember (AGING_BUCKET_PRINT_LABELS).
+var AgingBucketLabels = map[AgingBucket]string{
+${ratakan(k.aging.buckets.map((b) => ({ kiri: `AgingBucket${pengenalGo(b.key)}:`, kanan: `${q(AGING_BUCKET_PRINT_LABELS[b.key as keyof typeof AGING_BUCKET_PRINT_LABELS])},` })))}
+}
+
+// PaymentStatus: status pembayaran turunan (\`deriveStatus\`, receivables.ts) —
+// dihitung saat dibaca, tidak pernah disimpan.
+type PaymentStatus string
+
+const (
+${ratakan(statusBayar.map(([s]) => ({ kiri: `PaymentStatus${pengenalGo(s)}`, kanan: `PaymentStatus = ${q(s)}` })))}
+)
+
+// PaymentStatusLabels: label cetak tiap status (PAYMENT_STATUS_PRINT_LABELS).
+var PaymentStatusLabels = map[PaymentStatus]string{
+${ratakan(statusBayar.map(([s, l]) => ({ kiri: `PaymentStatus${pengenalGo(s)}:`, kanan: `${q(l)},` })))}
+}
+`;
+}
+
 // ═══ contract/db-instances.yaml (tahap 4) ══════════════════════════════════
 //
 // Sumber KEEMPAT: bentuk instans basis data. Pembacanya penyelesai URL buku PT
@@ -1544,6 +1764,7 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_AKUNTANSI_TS, isi: bangkitkanAkuntansi(kontrakAkuntansi) },
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo() },
+  { jalur: TUJUAN_TATA_LETAK_UMUR_GO, isi: bangkitkanTataLetakUmurGo(kontrakAkuntansi) },
   { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
   { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },
 ];

@@ -9,6 +9,7 @@
     "./brand-assets": "./src/brand-assets.ts",
     "./brand-routes": "./src/brand-routes.tsx",
     "./cache-bus": "./src/cache-bus.ts",
+    "./cache-signals": "./src/cache-signals.ts",
     "./i18n/server": "./src/i18n/server.ts",
     "./invitation-store": "./src/invitation-store.ts",
     "./job-metrics": "./src/job-metrics.ts",

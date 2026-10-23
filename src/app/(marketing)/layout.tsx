@@ -28,6 +28,7 @@
  * jangan pasang providernya.
  */
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 export { viewport } from "@sai/ui/viewport";
 
@@ -36,6 +37,8 @@ import { APP_NAME } from "@sai/core/constants";
 import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { getTheme } from "@sai/ui/theme/server";
 import { activeBrandMarkSrc } from "@sai/platform/brand-routes";
+import { SITE_CONTENT_PREVIEW_TOKEN_PATTERN } from "@sai/core/site-content";
+import { PreviewLinkKeeper } from "./preview-link-keeper";
 
 /* Cadangan bila sebuah halaman pemasaran lupa metadata-nya sendiri; `/` dan
    `/pricing` masing-masing menimpanya dengan judul, deskripsi & kanoniknya. */
@@ -53,10 +56,17 @@ export default async function MarketingLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getLocale();
-  const [theme, brandMarkSrc] = await Promise.all([getTheme(), activeBrandMarkSrc()]);
+  const [theme, brandMarkSrc, requestHeaders] = await Promise.all([getTheme(), activeBrandMarkSrc(), headers()]);
+  /* `x-sai-preview` hanya dipasang `proxy.ts` dari `?preview=` (header kiriman
+     klien dibuang di sana). Sah-tidaknya token diputuskan `getDictionary`;
+     di sini cukup bentuknya, sebab yang dilakukan hanya membawa parameter itu
+     ke tautan berikutnya. */
+  const previewToken = requestHeaders.get("x-sai-preview");
+  const isPreview = previewToken !== null && SITE_CONTENT_PREVIEW_TOKEN_PATTERN.test(previewToken);
 
   return (
     <RootDocument locale={locale} theme={theme} brandMarkSrc={brandMarkSrc}>
+      {isPreview && <PreviewLinkKeeper token={previewToken} />}
       {children}
     </RootDocument>
   );

@@ -26,6 +26,7 @@
  */
 import { unstable_cache } from "next/cache";
 
+import { cacheSignalVersion } from "@sai/platform/cache-signals";
 import { platformDb } from "@sai/platform/platform-db";
 
 export interface PlanOption {
@@ -69,6 +70,11 @@ export interface PlanOption {
  * basi lima menit paling buruk berarti seseorang melihat harga lama beberapa
  * menit setelah operator mengubahnya — bukan ditagih harga lama.
  *
+ * Penulis katalog (`scripts/seed-plans.ts`) menaikkan sinyal `plan-catalog`
+ * (`@sai/platform/cache-signals`), dan versinya bagian dari kunci cache di
+ * bawah — jadi perubahan lewat skrip tampil dalam `CACHE_SIGNAL_POLL_SECONDS`.
+ * Lima menit tinggal sebagai jaring untuk SQL tangan.
+ *
  * ⚠ Kegagalan TIDAK ikut ter-cache: `null` dikembalikan dari luar pembungkus
  * (lihat `activePlans` di bawah). Kalau `null` masuk ke cache, satu detik
  * platform tak terjangkau akan membuat halaman harga kosong selama lima menit
@@ -77,8 +83,9 @@ export interface PlanOption {
 const UMUR_CACHE_DETIK = 300;
 
 const katalogTersimpan = unstable_cache(
-  async () => ambilKatalog(),
-  ["plan-catalog", "active-public"],
+  /* `_versi` = versi sinyal; ada hanya supaya menjadi bagian kunci cache. */
+  async (_versi: number) => ambilKatalog(),
+  ["plan-catalog", "active-public", "signal"],
   { revalidate: UMUR_CACHE_DETIK, tags: ["plan-catalog"] },
 );
 
@@ -90,7 +97,7 @@ const katalogTersimpan = unstable_cache(
  */
 export async function activePlans(): Promise<PlanOption[] | null> {
   try {
-    return await katalogTersimpan();
+    return await katalogTersimpan((await cacheSignalVersion(platformDb, "plan-catalog")) ?? -1);
   } catch {
     return null;
   }

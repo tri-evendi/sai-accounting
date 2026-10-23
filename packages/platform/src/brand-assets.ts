@@ -6,9 +6,11 @@
  * Pembaca dipakai setiap muatan halaman di kedua aplikasi (root layout, rute
  * `/brand/mark`, favicon, manifest, gambar OG), jadi metadatanya di-cache 60
  * detik per proses. Cache ini GLOBAL, bukan per perusahaan: isinya milik
- * platform. Konsol mengosongkan cache-nya sendiri sesudah menulis; aplikasi
- * pelanggan menyusul paling lambat 60 detik kemudian — atau seketika bila bus
- * invalidasi tahap 2 menyala (`cache-bus.ts`).
+ * platform. Konsol mengosongkan cache-nya sendiri sesudah menulis dan
+ * menaikkan sinyal `brand-mark` (`cache-signals.ts`); aplikasi pelanggan
+ * menyusul dalam `CACHE_SIGNAL_POLL_SECONDS` — atau seketika bila bus
+ * invalidasi tahap 2 menyala (`cache-bus.ts`). 60 detik tinggal sebagai jaring
+ * bila sinyalnya tak terbaca.
  *
  * Fail-soft (doktrin #137): `sai_platform` yang tak terjangkau berarti
  * lambang bawaan, bukan halaman yang gagal.
@@ -19,6 +21,7 @@ import type { PrismaClient as PlatformClient } from "@sai/db/client/platform";
 import { sha256Hex, validateLogo, type ImageMime, type LogoRejection } from "@sai/core/image-file";
 
 import { registerSharedCache } from "./cache-bus";
+import { bumpCacheSignal, cacheSignalVersion, signalAllows } from "./cache-signals";
 
 type Deps = { platform: PlatformClient };
 
@@ -43,7 +46,7 @@ export async function readActiveBrandMark(deps: Deps): Promise<BrandMarkMeta | n
 }
 
 const TTL_MS = 60 * 1000;
-let metaCache: { at: number; meta: BrandMarkMeta | null } | null = null;
+let metaCache: { at: number; version: number | null; meta: BrandMarkMeta | null } | null = null;
 let contentCache: { sha256: string; content: Uint8Array } | null = null;
 
 /**
@@ -58,10 +61,13 @@ const shared = registerSharedCache("brand-mark", () => {
 
 /** Metadata logo aktif, ber-cache dan fail-soft (`null` = pakai lambang bawaan). */
 export async function cachedBrandMark(deps: Deps, now: number = Date.now()): Promise<BrandMarkMeta | null> {
-  if (metaCache && now - metaCache.at < TTL_MS && shared.usable()) return metaCache.meta;
+  const version = await cacheSignalVersion(deps.platform, "brand-mark", now);
+  if (metaCache && now - metaCache.at < TTL_MS && shared.usable() && signalAllows(metaCache.version, version)) {
+    return metaCache.meta;
+  }
   try {
     const meta = await readActiveBrandMark(deps);
-    metaCache = { at: now, meta };
+    metaCache = { at: now, version, meta };
     return meta;
   } catch (error) {
     console.error("[brand] logo produk tak terbaca — memakai lambang bawaan:", error);
@@ -130,6 +136,7 @@ export async function setBrandMark(
     });
   });
   invalidateBrandMarkCache();
+  await bumpCacheSignal(deps.platform, "brand-mark");
   return { outcome: "ok", meta: { ...created, mimeType: created.mimeType as ImageMime } };
 }
 
@@ -140,6 +147,7 @@ export async function resetBrandMark(deps: Deps): Promise<{ deactivated: number 
     data: { isActive: false },
   });
   invalidateBrandMarkCache();
+  await bumpCacheSignal(deps.platform, "brand-mark");
   return { deactivated: result.count };
 }
 

@@ -37,6 +37,7 @@
  * `tests/site-content.test.ts` tanpa basis data maupun DOM.
  */
 
+import { CACHE_SIGNAL_POLL_SECONDS } from "@sai/core/cache-signals";
 import type { Dictionary, DictionaryKey } from "@sai/core/i18n/dictionary";
 import { LOCALES, type Locale } from "@sai/core/i18n/config";
 
@@ -292,12 +293,12 @@ export const SITE_CONTENT_KEY_PATTERN = /^landing\.[A-Za-z][A-Za-z0-9]*$/;
 export const SITE_CONTENT_NOTE_MAX = 200;
 
 /**
- * Berapa lama sampai penerbitan terlihat di halaman depan: umur cache baca di
- * `app-customer` (`site-content-store.ts`). Konsol menyebut angka ini apa
- * adanya, karena `updateTag` dari proses konsol tidak menjangkau proses
- * customer.
+ * Berapa lama sampai penerbitan terlihat di halaman depan: selang baca sinyal
+ * invalidasi (`@sai/core/cache-signals`). Penerbitan menaikkan sinyal
+ * `site-content`, dan `app-customer` membaca sinyal itu paling lambat sekali
+ * per selang ini. Konsol menyebut angka ini apa adanya.
  */
-export const SITE_CONTENT_LIVE_DELAY_SECONDS = 30;
+export const SITE_CONTENT_LIVE_DELAY_SECONDS = CACHE_SIGNAL_POLL_SECONDS;
 
 /** Umur token pratinjau draf. */
 export const SITE_CONTENT_PREVIEW_TTL_MINUTES = 30;
@@ -307,6 +308,33 @@ export const SITE_CONTENT_PREVIEW_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
 /** Nama parameter alamat pratinjau di aplikasi customer (`/?preview=…`). */
 export const SITE_CONTENT_PREVIEW_PARAM = "preview";
+
+/**
+ * Ke mana sebuah tautan harus pergi SELAMA pratinjau, atau `null` bila
+ * tautannya dibiarkan apa adanya.
+ *
+ * Pratinjau hidup di parameter alamat (`proxy.ts` hanya membacanya dari sana),
+ * jadi tautan biasa di halaman depan (`/pricing`, `/#tanya`, `/status`)
+ * membawa operator keluar dari pratinjau tanpa terasa: halaman berikutnya
+ * memperlihatkan yang TAYANG, dan terbaca seolah drafnya hilang. Hanya tautan
+ * ke halaman ber-isi-situs di origin yang sama yang dibawa; `/register`,
+ * `/docs`, tautan luar, dan `mailto:` tidak pernah memuat token.
+ */
+export function previewLinkTarget(href: string, current: string, token: string): string | null {
+  if (!SITE_CONTENT_PREVIEW_TOKEN_PATTERN.test(token)) return null;
+  let here: URL;
+  let target: URL;
+  try {
+    here = new URL(current);
+    target = new URL(href, here);
+  } catch {
+    return null;
+  }
+  if (target.origin !== here.origin || !isSiteContentPath(target.pathname)) return null;
+  if (target.searchParams.get(SITE_CONTENT_PREVIEW_PARAM) === token) return null;
+  target.searchParams.set(SITE_CONTENT_PREVIEW_PARAM, token);
+  return target.toString();
+}
 
 /** Jumlah karakter seperti `char_length` PostgreSQL (code point, bukan UTF-16). */
 export function contentLength(value: string): number {

@@ -374,9 +374,9 @@ antara control dan perusahaan.
   punya satu jalur tulis (`publishSiteContentDrafts`). `site_content_previews`
   menyimpan SHA-256 token pratinjau (30 menit); draf hanya dibaca jalur publik
   lewat token itu. Satu-satunya penulis `packages/platform/src/site-content-store.ts`.
-  Cache baca di `app-customer` 30 detik dan tunggal (milik penyedia, bukan
-  tenant); `updateTag` dari konsol tidak menjangkau proses customer, jadi
-  angka 30 detik itulah yang dikatakan konsol.
+  Cache baca di `app-customer` tunggal (milik penyedia, bukan tenant) dan
+  dibatalkan lewat sinyal `site-content` di `cache_signals` (di bawah):
+  penerbitan tampil dalam 5 detik, dan angka itulah yang dikatakan konsol.
 
   **Expand/contract:** `site_contents` (bentuk lama) tetap ada dan ditulis
   ulang di transaksi yang sama setiap kali yang tayang berubah (dual-write),
@@ -388,6 +388,21 @@ antara control dan perusahaan.
   image LAMA selama jendela penukaran (antara migrate dan swap) hanya
   mendarat di `site_contents` dan tidak terbawa; produksi berisi 0 baris
   saat 0008 ditulis.
+- **`cache_signals` (migration platform 0009): sinyal invalidasi cache lintas
+  proses.** Satu baris per nama cache (`CACHE_SIGNAL_NAMES` di
+  `packages/core/src/cache-signals.ts`; CHECK menutup bentuk namanya). Nilai
+  yang ditulis konsol (`app-operator`) atau skrip tetapi dibaca proses lain
+  (`app-customer`, `svc-worker`) — pengaturan situs, isi halaman depan,
+  katalog paket, logo, pengumuman status, pengaturan surel — menaikkan
+  `version` sesudah tulisannya berhasil (`bumpCacheSignal`); pembaca membaca
+  seluruh tabel paling sering sekali per 5 detik per proses
+  (`cacheSignalVersion`) dan membaca ulang sumbernya begitu versinya berubah.
+  `updateTag`/`invalidate*()` hanya membuang cache proses penulis, jadi
+  tanpa sinyal ini halaman publik menunggu umur cache-nya. Bukan data: tabel
+  kosong = versi 0, jadi tanpa `is_active`. Tabel yang belum ada / tak
+  terbaca = kembali ke umur cache saja (gagal-lunak). Nilai baru yang
+  ditulis satu proses dan di-cache proses lain wajib menambah nama di sana;
+  `tests/cache-signals.test.ts` menolak nama tanpa penulis atau tanpa pembaca.
 - **Register lisensi on-premise (`licence_customers`, `licence_register_entries`,
   migration platform 0006) adalah ARSIP.** Satu-satunya penulis & pembaca
   `packages/platform/src/licence-register-store.ts`, dipanggil konsol operator

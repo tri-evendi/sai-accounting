@@ -1067,3 +1067,24 @@ model LicenceSigningKey {
   @@map("licence_signing_keys")
 }
 
+/// SINYAL INVALIDASI CACHE lintas proses (migration 0009). Satu baris per nama
+/// (`CACHE_SIGNAL_NAMES`, `@sai/core/cache-signals`); penulis menaikkan
+/// `version` sesudah tulisannya berhasil, pembaca di proses lain membaca semua
+/// baris paling sering sekali per lima detik dan membaca ulang sumbernya bila
+/// versinya berubah. Lihat `@sai/platform/cache-signals`.
+///
+/// Bukan data: tabel kosong hanya berarti versi 0 untuk semua nama, jadi
+/// tanpa `is_active`.
+model CacheSignal {
+  id Int @id @default(autoincrement())
+
+  /// Nama cache — CHECK di migration menutup bentuknya, kosakatanya di kode.
+  name    String @unique @db.VarChar(60)
+  version Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("cache_signals")
+}
+

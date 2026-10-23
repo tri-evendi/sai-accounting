@@ -83,6 +83,20 @@ Setiap baris menyebut penjaganya di kode dan tes yang menahannya.
 Empat syarat berurutan, semuanya fail-closed: host = `OPERATOR_HOST` →
 IP ∈ allowlist → cookie bertanda tangan → TOTP.
 
+**Pemasangan authenticator wajib (Okt 2026).** Dengan MFA hidup, akun yang
+belum terkonfirmasi untuk rahasia TOTP-nya yang berlaku (belum pernah, atau
+sidik rahasianya berganti sejak konfirmasi terakhir) tidak mendapat sesi konsol
+dari kata sandi yang benar. Ia mendapat **sesi pemasangan** 10 menit: cookie
+lain (`sai_operator_enrol`), tanda tangan berdomain lain (`enrol.`), dan hanya
+membuka `/login/authenticator` (QR + satu kode → sesi konsol). Penjaga halaman,
+action, dan route hanya membaca cookie sesi konsol, jadi sesi pemasangan tidak
+membuka apa pun di sana sekalipun proxy diubah. Akun yang sudah terkonfirmasi
+tetap kata sandi + kode. Kode di halaman pemasangan berbagi pembatas laju
+`/accounts/authenticator` (10 per 15 menit per akun); setiap langkah tercatat
+(`operator.authenticator.enroll.start/confirm/failed`, sidik, bukan rahasia),
+dan konfirmasi ditulis **sebelum** sesi terbit. Jejak audit tak terbaca → akun
+dibaca sudah terkonfirmasi (kode wajib, pemasangan tidak ditawarkan).
+
 | Sifat | Akibatnya |
 |---|---|
 | `OPERATOR_HOST` kosong | Konsol **404 di host mana pun** |
@@ -91,6 +105,8 @@ IP ∈ allowlist → cookie bertanda tangan → TOTP.
 | Image konsol | 404 untuk setiap host selain `OPERATOR_HOST`, **dan** tidak punya rute customer |
 | Volume | Konsol **tidak pernah** memasang `documents`, jadi berkas customer di luar jangkauannya |
 | Pencabutan sesi | `session_version` dibandingkan tiap permintaan (akun DB) atau putar `OPERATOR_SESSION_SECRET` (akun env) |
+| Sesi pemasangan | Hanya `/login/authenticator`, 10 menit, terikat sidik rahasia + versi sesi; tidak pernah lolos `verifyOperatorToken` (`tests/operator-enrolment.test.ts`) |
+| `OPERATOR_MFA=off` | Kata sandi saja; spanduk peringatan di setiap halaman konsol + peringatan log tiap login |
 
 ### 3.5 Masukan yang tidak dipercaya
 
@@ -321,6 +337,13 @@ Lima hal, dengan prioritasnya di [05 Penilaian](./05-PENILAIAN.md).
 | 3 | **Role aplikasi adalah SUPERUSER PostgreSQL** 🔶 mekanismenya ada (§3.9), peralihannya belum dijalankan | Satu injeksi SQL di `$queryRawUnsafe` mana pun memberi akses penuh ke server (`pg_authid`, `COPY … TO PROGRAM`), tidak hanya ke data. Pembatasan pola `sai\_t%` yang ada di MariaDB hilang saat pindah mesin | [07 Riwayat](./07-RIWAYAT.md) |
 | 4 | **CSP `script-src 'unsafe-inline'`** | Pertahanan XSS melemah, padahal aplikasi menampilkan nama pelanggan, catatan, dan nama berkas unggahan. `'unsafe-eval'` sudah dicabut; `style-src` struktural (#203) | **P2-4** |
 | 5 | **Tidak ada pembaca `/api/health` dari luar mesin** | `watch:health` berjalan di dalam peran `scheduler` (`svc-worker`) dan ikut mati bersamanya, jadi scheduler yang mati total tidak melaporkan apa pun | [02 Layanan & Infrastruktur](./02-LAYANAN-INFRA.md) |
+
+**Risiko sisa yang diterima: pemasangan pertama.** Sampai sebuah akun operator
+memasang authenticator, siapa pun yang tahu kata sandinya bisa memasang
+ponselnya sendiri, pertukaran baku pemasangan pertama. Batasnya: hanya akun
+yang belum terkonfirmasi untuk rahasia yang berlaku; akun terkonfirmasi yang
+butuh ponsel baru memutar rahasia sambil masuk atau diatur ulang pemilik; dan
+setiap pemasangan terlihat di jejak audit operator (`enroll.start` + IP).
 
 Ditambah dua yang sifatnya operasional: rahasia hanya ada di `.env` di disk yang
 sama dengan data, dan `OPERATOR_TRUSTED_PROXY_HOPS` harus dinaikkan **pada

@@ -3,8 +3,12 @@
 /**
  * Form masuk konsol operator (issue #154) — tiga isian, satu langkah:
  * nama akun + kata sandi + kode TOTP diverifikasi BERSAMA di server action
- * (`operatorLogin`), dan jawab gagalnya seragam. MFA bukan langkah kedua yang
- * bisa dilewati — tanpa kode, tombolnya memang tidak mengirim.
+ * (`operatorLogin`), dan jawab gagalnya seragam.
+ *
+ * Kode TIDAK `required`: akun yang belum memasang authenticator belum punya
+ * kode, dan server yang memutuskan — akun terkonfirmasi tanpa kode gagal
+ * seragam, akun yang belum diarahkan ke pemasangan (`lib/operator/enrolment.ts`).
+ * Memaksa isian di peramban hanya membuat akun baru tidak pernah bisa masuk.
  *
  * Pola form login pelanggan (isian terkendali sederhana + pesan galat
  * `role="alert"`), bukan react-hook-form: tidak ada validasi per-field yang
@@ -30,6 +34,7 @@ import { Input } from "@sai/ui/input";
 import { PasswordInput } from "@sai/ui/password-input";
 import { useT } from "@sai/core/i18n/client";
 import { operatorLogin, type OperatorLoginState } from "../actions";
+import { enrolmentConfirm, type EnrolmentFormState } from "./authenticator/actions";
 
 const { Title, Text } = Typography;
 
@@ -77,11 +82,11 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
                 required
               />
               {/*
-                * Medan TOTP HILANG sepenuhnya saat `OPERATOR_MFA=off`, bukan
-                * sekadar tidak `required`.
+                * Medan TOTP HILANG sepenuhnya saat `OPERATOR_MFA=off`.
                 *
-                * Sebabnya cacat sungguhan: sakelar itu melewati verifikasi di
-                * SERVER, tetapi medan ini `required` + `pattern="[0-9]{6}"`,
+                * Sebabnya cacat sungguhan (sebelum pemasangan wajib): sakelar
+                * itu melewati verifikasi di SERVER, tetapi medan ini dulu
+                * `required` + `pattern="[0-9]{6}"`,
                 * jadi peramban menolak mengirim formulirnya sampai enam angka
                 * diisi. Akibatnya MFA "sudah dimatikan" tetapi tidak ada yang
                 * bisa masuk — dan penyebabnya tak terlihat di log mana pun,
@@ -100,7 +105,6 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
                     pattern="[0-9]{6}"
                     maxLength={6}
                     autoComplete="one-time-code"
-                    required
                   />
                   <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                     {t("operator.login.totpHint")}
@@ -121,5 +125,57 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
         </Flex>
       </CardContent>
     </Card>
+  );
+}
+
+const ENROLMENT_INITIAL_STATE: EnrolmentFormState = { error: null };
+
+/**
+ * Isian kode di halaman PEMASANGAN (`/login/authenticator`): satu kode dari
+ * aplikasi yang baru memindai QR-nya. Semua aturan di server action
+ * (`enrolmentConfirm`). Tinggal di berkas ini, bukan modul client baru: ia
+ * formulir masuk yang kedua, dengan pola yang sama.
+ *
+ * Sesi pemasangan habis → pesan + tombol kembali ke login (pemuatan penuh
+ * yang disengaja: halaman login digambar ulang tanpa cookie lama).
+ */
+export function OperatorEnrolmentForm() {
+  const t = useT();
+  const [state, formAction, pending] = useActionState(enrolmentConfirm, ENROLMENT_INITIAL_STATE);
+
+  if (state.expired) {
+    return (
+      <Flex vertical gap="middle">
+        <Alert type="warning" showIcon message={state.error} />
+        <Button href="/login" variant="primary">
+          {t("operator.enrol.backToLogin")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <form action={formAction}>
+      <Flex vertical gap="middle">
+        <div style={{ width: "100%", maxWidth: 240 }}>
+          <Input
+            name="code"
+            label={t("operator.authenticator.confirmCode")}
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            autoComplete="one-time-code"
+            autoFocus
+            required
+          />
+        </div>
+        {state.error && <Alert type="error" showIcon message={state.error} />}
+        <div>
+          <Button type="submit" variant="primary" disabled={pending}>
+            {pending ? t("common.loading") : t("operator.enrol.submit")}
+          </Button>
+        </div>
+      </Flex>
+    </form>
   );
 }

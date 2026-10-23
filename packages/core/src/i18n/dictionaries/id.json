@@ -4703,6 +4703,7 @@
     },
     "signedInAs": "Masuk sebagai {name}",
     "logout": "Keluar",
+    "mfaOffBanner": "MFA mati (OPERATOR_MFA=off). Konsol hanya dijaga nama dan kata sandi.",
     "login": {
       "heading": "Masuk konsol operator",
       "description": "Akun terpisah dari aplikasi customer. Wajib kata sandi dan kode authenticator.",
@@ -4710,11 +4711,21 @@
       "username": "Nama akun",
       "password": "Kata sandi",
       "totp": "Kode authenticator (6 digit)",
-      "totpHint": "Dari aplikasi authenticator (TOTP).",
+      "totpHint": "Dari aplikasi authenticator. Belum memasangnya? Kosongkan, Anda akan dipandu memasangnya.",
       "submit": "Masuk",
       "failed": "Gagal masuk. Periksa nama akun, kata sandi, dan kode authenticator.",
       "failedNoMfa": "Gagal masuk. Periksa nama akun dan kata sandi.",
       "rateLimited": "Terlalu banyak percobaan. Coba lagi dalam beberapa menit."
+    },
+    "enrol": {
+      "heading": "Pasang authenticator",
+      "description": "Akun {name} belum punya authenticator. Pasang sekarang untuk masuk; setelah ini setiap login meminta kode dari aplikasinya.",
+      "submit": "Konfirmasi dan masuk",
+      "expiryNote": "Halaman ini berlaku 10 menit.",
+      "cancel": "Batal",
+      "expired": "Sesi pemasangan sudah habis atau tidak berlaku lagi. Masuk lagi untuk memulai ulang.",
+      "unavailable": "Konfirmasi tidak bisa dicatat sekarang. Coba lagi sebentar lagi.",
+      "backToLogin": "Kembali ke halaman masuk"
     },
     "tenants": {
       "heading": "Tenant",
@@ -5255,8 +5266,8 @@
     },
     "authenticator": {
       "heading": "Pasang authenticator",
-      "description": "Pindai kode QR ke aplikasi authenticator, lalu konfirmasi dengan satu kode. Wajib sebelum MFA dinyalakan.",
-      "mfaOffNotice": "MFA sedang mati (OPERATOR_MFA=off): masuk hanya dengan nama dan kata sandi. Konfirmasi authenticator setiap akun, lalu hapus OPERATOR_MFA dari .env dan buat ulang container app-operator.",
+      "description": "Pindai kode QR ke aplikasi authenticator, lalu konfirmasi dengan satu kode.",
+      "mfaOffNotice": "MFA sedang mati (OPERATOR_MFA=off): masuk cukup dengan nama dan kata sandi. Untuk menyalakannya, hapus OPERATOR_MFA dari .env dan buat ulang container app-operator. Akun yang belum terkonfirmasi dipandu memasang authenticator saat masuk berikutnya.",
       "setupHeading": "Authenticator untuk {name}",
       "qrLabel": "Kode QR authenticator untuk {name}",
       "stateConfirmed": "Terkonfirmasi",
@@ -5265,8 +5276,8 @@
       "envRotate": "Akun darurat: rahasia TOTP ada di .env (OPERATOR_USERS) dan tidak bisa diganti dari konsol. Buat rahasia baru dengan scripts/operator-credential.ts, ganti entrinya di .env, buat ulang container, lalu pasang ulang di sini.",
       "dbRotateNote": "Rahasia lama tetap berlaku sampai kode dari rahasia baru dikonfirmasi.",
       "readinessHeading": "Kesiapan MFA",
-      "readinessOff": "MFA masih mati. Nyalakan setelah setiap akun yang dipakai berstatus Terkonfirmasi; akun yang belum bisa terkunci.",
-      "readinessOn": "MFA menyala. Akun yang belum terkonfirmasi tetap bisa masuk bila rahasianya sudah ada di aplikasi.",
+      "readinessOff": "MFA masih mati. Setelah dinyalakan, akun yang belum terkonfirmasi diminta memasang authenticator saat masuk berikutnya.",
+      "readinessOn": "MFA menyala. Akun yang belum terkonfirmasi diminta memasang authenticator saat masuk berikutnya.",
       "readinessUnavailable": "Kesiapan tidak bisa dibaca: basis data kendali atau jejak audit tidak terjangkau.",
       "colSource": "Sumber",
       "sourceEnv": "Env (darurat)",

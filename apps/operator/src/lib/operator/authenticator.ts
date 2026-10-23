@@ -46,6 +46,19 @@ import { findDbOperatorCredential, TOTP_ISSUER } from "./operator-accounts";
 import { qrSvgData, type QrSvgData } from "./qr";
 import { otpauthUri, randomTotpSecret, verifyTotp } from "./totp";
 
+/* ── Pembatas laju ─────────────────────────────────────────────────────────
+ * Satu jendela untuk semua langkah authenticator, per AKUN (bukan per IP).
+ * Konfirmasi kode — di `/accounts/authenticator` maupun di pemasangan saat
+ * masuk — memakai ember yang SAMA (`AUTHENTICATOR_CONFIRM_BUCKET`), jadi
+ * berganti jalur tidak menambah jatah tebakan. */
+export const AUTHENTICATOR_RATE_WINDOW_MS = 15 * 60 * 1000;
+/** Bukti ulang: lebih ketat dari login (10) — ini sesi yang SUDAH masuk. */
+export const AUTHENTICATOR_REAUTH_MAX = 5;
+export const AUTHENTICATOR_CONFIRM_MAX = 10;
+export function authenticatorConfirmBucket(name: string): string {
+  return `operator-authenticator-confirm:${name.toLowerCase()}`;
+}
+
 /* ── Sidik & bentuk yang dipajang ─────────────────────────────────────────── */
 
 /** Sidik rahasia TOTP untuk jejak audit — lihat kepala berkas. */

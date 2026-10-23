@@ -54,6 +54,11 @@ const nextConfig: NextConfig = {
         source: "/accounts/authenticator",
         headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       },
+      /* Halaman pemasangan wajib saat masuk: QR + rahasia dirender di server. */
+      {
+        source: "/login/authenticator",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
     ];
   },
   /*

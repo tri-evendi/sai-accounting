@@ -67,7 +67,7 @@ async function main() {
       const label = `${c.slug} (${c.databaseName}) per ${asOfISO}${overdueOnly ? " · hanya jatuh tempo" : ""}`;
       try {
         const ts = (await runWithCompany(companyContextOf(c), () =>
-          readOnlyBook((tx) =>
+          readOnlyBook(async (tx): Promise<unknown> =>
             kind === "receivables"
               ? getReceivables({ asOf, overdueOnly }, tx as never)
               : getPayables({ asOf, overdueOnly }, tx as never)

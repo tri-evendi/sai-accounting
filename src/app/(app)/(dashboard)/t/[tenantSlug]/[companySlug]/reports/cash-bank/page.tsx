@@ -146,7 +146,13 @@ export default async function CashBankReportPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber`: sesudah peralihan register ke `go` (tahap 1d) pekerja Go
+                menghitung berkasnya DARI parameter ini — `cols` ikut, supaya berkas
+                memuat kolom yang sama dengan layar. */}
+            <StatementExcelButton
+              payload={payload}
+              sumber={{ reportId: "cash-bank", params: { from: fromISO, to: toISO, cols: sp.cols } }}
+            />
           </>
         }
       />

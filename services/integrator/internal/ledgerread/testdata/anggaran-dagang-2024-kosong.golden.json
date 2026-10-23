@@ -1,0 +1,23 @@
+{
+  "year": 2024,
+  "month": 0,
+  "from": "2023-12-31T17:00:00Z",
+  "to": "2024-12-31T16:59:59.999Z",
+  "rows": [],
+  "totals": {
+    "budget": "0.00",
+    "actual": "0.00",
+    "variance": "0.00",
+    "variancePct": null,
+    "alertCount": 0
+  },
+  "hasBudgets": false,
+  "salesTarget": {
+    "totalTarget": "0.00",
+    "actualSales": "0.00",
+    "variance": "0.00",
+    "targetCount": 0,
+    "hasTargets": false
+  },
+  "unknownTypes": []
+}

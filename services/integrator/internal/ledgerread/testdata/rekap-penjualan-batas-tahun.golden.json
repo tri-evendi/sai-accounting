@@ -1,0 +1,25 @@
+{
+  "kind": "sales-by-customer",
+  "from": "2025-12-30T17:00:00Z",
+  "to": "2026-01-05T16:59:59.999Z",
+  "rows": [
+    {
+      "partyId": 1,
+      "partyName": "PT Alfa",
+      "docCount": 2,
+      "grossBase": "1110123.00",
+      "returnCount": 0,
+      "returnBase": "0.00",
+      "netBase": "1110123.00",
+      "unratedCount": 0
+    }
+  ],
+  "totals": {
+    "docCount": 2,
+    "grossBase": "1110123.00",
+    "returnCount": 0,
+    "returnBase": "0.00",
+    "netBase": "1110123.00",
+    "unratedCount": 0
+  }
+}

@@ -282,6 +282,24 @@ interface Efaktur {
   providers: string[];
   poll_max_rounds: number;
 }
+/**
+ * Outbox transaksional (09 §4). Dibaca Node SAJA — Go tidak menyentuh
+ * `outbox` — jadi bagian ini dibangkitkan ke TypeScript, tidak ke Go.
+ */
+interface OutboxEvent {
+  aggregate: string;
+  description: string;
+  consumers: string[];
+}
+interface Outbox {
+  events: Record<string, OutboxEvent>;
+  relay_poll_ms: number;
+  relay_batch_size: number;
+  published_retention_days: number;
+  lag_warn_seconds: number;
+  lag_late_seconds: number;
+  relay_stale_seconds: number;
+}
 interface Kontrak {
   version: number;
   statuses: string[];
@@ -290,6 +308,7 @@ interface Kontrak {
   numbers: Numbers;
   results: Results;
   efaktur: Efaktur;
+  outbox: Outbox;
 }
 
 const KUNCI_ANGKA: (keyof Numbers)[] = [
@@ -468,6 +487,59 @@ function baca(): Kontrak {
     }
   }
 
+  /* Outbox: setiap konsumen WAJIB kind yang sah — relay menerbitkan kind dari
+     peta ini, dan kind yang tak dikenal kontrak adalah baris outbox yang
+     ditolak `publishJob` selamanya. Kind ber-`schedule:` ditolak: ia sudah
+     punya penerbit (denyut), dan dua penerbit untuk satu kind adalah dua
+     jawaban atas "siapa yang memicunya". */
+  const o = k.outbox;
+  if (!o || typeof o !== "object") {
+    salah.push("`outbox` tidak ada — kosakata peristiwa outbox wajib di kontrak (09 §4)");
+  } else {
+    const tipe = /^[a-z][a-z_]*\.[a-z][a-z_]*$/;
+    const peristiwa = Object.entries(o.events ?? {});
+    if (peristiwa.length === 0) salah.push("`outbox.events` kosong");
+    for (const [nama, ev] of peristiwa) {
+      if (!tipe.test(nama)) salah.push(`outbox.events: \`${nama}\` bukan bentuk <agregat>.<kata_kerja>`);
+      if (typeof ev?.aggregate !== "string" || !ejaan.test(ev.aggregate)) {
+        salah.push(`outbox.events.${nama}.aggregate harus snake_case`);
+      }
+      if (!Array.isArray(ev?.consumers) || ev.consumers.length === 0) {
+        salah.push(`outbox.events.${nama}.consumers kosong — peristiwa tanpa konsumen tidak perlu ditulis`);
+      }
+      for (const c of ev?.consumers ?? []) {
+        const spec = k.kinds?.[c];
+        if (!spec) salah.push(`outbox.events.${nama}: konsumen \`${c}\` bukan kind di \`kinds:\``);
+        else if (spec.schedule !== undefined) {
+          salah.push(`outbox.events.${nama}: konsumen \`${c}\` ber-\`schedule:\` — sudah punya penerbit denyut`);
+        }
+      }
+      if (new Set(ev?.consumers ?? []).size !== (ev?.consumers ?? []).length) {
+        salah.push(`outbox.events.${nama}: konsumen disebut dua kali`);
+      }
+    }
+    for (const kunci of [
+      "relay_poll_ms",
+      "relay_batch_size",
+      "published_retention_days",
+      "lag_warn_seconds",
+      "lag_late_seconds",
+      "relay_stale_seconds",
+    ] as const) {
+      const v = o[kunci];
+      if (!Number.isInteger(v) || v < 1) salah.push(`outbox.${kunci} harus bilangan bulat ≥ 1 (kini: ${String(v)})`);
+    }
+    if (o.lag_warn_seconds >= o.lag_late_seconds) {
+      salah.push("outbox.lag_warn_seconds tidak di bawah lag_late_seconds");
+    }
+    if (o.relay_poll_ms >= o.lag_warn_seconds * 1000) {
+      salah.push("outbox.relay_poll_ms tidak lebih rapat daripada lag_warn_seconds — relay yang sehat akan selalu terbaca terlambat");
+    }
+    if (o.relay_stale_seconds * 1000 <= o.relay_poll_ms) {
+      salah.push("outbox.relay_stale_seconds tidak melampaui satu putaran relay");
+    }
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/kinds.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -628,6 +700,8 @@ function bangkitkanAngka(k: Kontrak): string {
  * bahwa angkanya datang dari kontrak.
  */
 
+import type { JobKind } from "./job-kinds";
+
 export const BACKOFF_BASE_MS = ${n.backoff_base_ms};
 export const BACKOFF_MAX_MS = ${n.backoff_max_ms};
 
@@ -683,6 +757,33 @@ ${k.efaktur.providers.map((s) => `  "${s}",`).join("\n")}
 
 /** Batas putaran \`integration.efaktur_poll\` sebelum orang diminta memeriksa Coretax. */
 export const EFAKTUR_POLL_MAX_ROUNDS = ${k.efaktur.poll_max_rounds};
+
+// ── Outbox transaksional (09 §4) — Node saja ───────────────────────────────
+
+${union("OutboxEventType", Object.keys(k.outbox.events))}
+
+/** Tipe peristiwa \`outbox.event_type\` — kosakata \`z.enum\` pintu tulisnya. */
+export const OUTBOX_EVENT_TYPES = [
+${Object.keys(k.outbox.events).map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly OutboxEventType[];
+
+/** Agregat & kind konsumen per tipe peristiwa. Relay menerbitkan SETIAP kind di \`consumers\`. */
+export const OUTBOX_EVENTS = {
+${Object.entries(k.outbox.events)
+  .map(
+    ([nama, ev]) =>
+      `  "${nama}": { aggregate: "${ev.aggregate}", consumers: [${ev.consumers.map((c) => `"${c}"`).join(", ")}] },`
+  )
+  .join("\n")}
+} as const satisfies Record<OutboxEventType, { aggregate: string; consumers: readonly JobKind[] }>;
+
+export const OUTBOX_RELAY_POLL_MS = ${k.outbox.relay_poll_ms};
+export const OUTBOX_RELAY_BATCH_SIZE = ${k.outbox.relay_batch_size};
+export const OUTBOX_PUBLISHED_RETENTION_DAYS = ${k.outbox.published_retention_days};
+/** Dijamin generator: \`OUTBOX_LAG_WARN_SECONDS < OUTBOX_LAG_LATE_SECONDS\`. */
+export const OUTBOX_LAG_WARN_SECONDS = ${k.outbox.lag_warn_seconds};
+export const OUTBOX_LAG_LATE_SECONDS = ${k.outbox.lag_late_seconds};
+export const OUTBOX_RELAY_STALE_SECONDS = ${k.outbox.relay_stale_seconds};
 `;
 }
 

@@ -278,6 +278,70 @@ kinds:
     max_attempts: 5
     description: tarik mutasi bank
 
+  # ── Pemakai outbox (09 §4, keputusan pemilik 23 Okt 2026) ─────────────────
+  document.invoice_send:
+    lane: interactive
+    max_attempts: 3
+    description: >
+      kirim faktur yang baru DIPOSTING ke surel pelanggan, PDF terlampir —
+      pemakai pertama outbox transaksional. Diterbitkan HANYA oleh relay outbox
+      (`workers/outbox-relay.ts`) dari peristiwa `invoice.posted`, tidak pernah
+      dari permintaan HTTP. Pelaksananya diam (selesai tanpa mengirim) selama
+      `company_settings.invoice_auto_send` mati — bawaannya MATI, jadi peristiwa
+      yang mengalir tidak mengubah perilaku siapa pun sampai PT-nya
+      menyalakannya. Idempoten lewat kunci unik riwayat kirim
+      (`invoice_sends`: reminder_kind `on_post`), jadi pengiriman
+      sekurang-kurangnya-sekali dari relay tidak pernah menjadi dua surel.
+
+# ── Outbox transaksional (09 §4, dibangun 23 Okt 2026) ────────────────────
+#
+# Tabel `outbox` di SETIAP buku PT, ditulis dalam TRANSAKSI YANG SAMA dengan
+# tulisan domainnya (`src/lib/outbox.ts` — pintu tulisnya satu). Relay Node
+# (peran `outbox` di `svc-worker`) memindahkannya ke `jobs` di basis data
+# KENDALI. Kosakatanya di sini, bukan di kode, karena relay MENERBITKAN kind
+# dari peta ini: peristiwa yang konsumennya bukan kind sah adalah baris outbox
+# yang tidak pernah bisa terbit.
+#
+# Hanya Node yang membaca bagian ini. Pohon Go tidak menulis maupun membaca
+# `outbox` (daftar-izin tulisan Go tetap `jobs` + `backup_runs`), jadi tidak
+# ada bangkitan Go — dan itu disengaja: konstanta yang dibangkitkan ke bahasa
+# yang tidak memakainya adalah kode mati yang terlihat hidup.
+#
+#   • `events.<tipe>.aggregate`  — jenis agregat (`snake_case`), kolom
+#     `outbox.aggregate_type`.
+#   • `events.<tipe>.consumers`  — kind yang diterbitkan relay untuk SETIAP
+#     baris bertipe ini; satu baris `jobs` per (baris outbox, kind), kunci
+#     dedupe `outbox:<companyId>:<outboxId>:<kind>`.
+#
+# Generator menolak: tipe di luar bentuk `<agregat>.<kata_kerja>`, konsumen
+# yang bukan kind, konsumen ber-`schedule:` (dua penerbit untuk satu kind),
+# ambang peringatan yang tidak di bawah ambang terlambat, dan putaran relay
+# yang tidak lebih rapat daripada ambang peringatannya.
+outbox:
+  events:
+    invoice.posted:
+      aggregate: invoice
+      description: >
+        faktur penjualan mendapat jurnal PERTAMANYA (postForSource /
+        repostForSource) — sekali per faktur seumur hidupnya, dedupe
+        `invoice.posted:<invoiceId>`; edit yang memposting ulang tidak
+        menerbitkan lagi.
+      consumers:
+        - document.invoice_send
+  # Jeda putaran relay ketika tidak ada yang dipindahkan (polling, bukan CDC).
+  relay_poll_ms: 2000
+  # Baris paling banyak per buku per putaran (satu transaksi buku).
+  relay_batch_size: 100
+  # Baris yang SUDAH terbit dibuang sesudah sekian hari — lebih lama daripada
+  # retensi `done` di `jobs` tidak berguna: kunci dedupe-nya sudah hilang di sana.
+  published_retention_days: 14
+  # Ambang umur baris tertua yang BELUM terbit, lintas buku.
+  lag_warn_seconds: 120
+  lag_late_seconds: 600
+  # Jejak putaran relay per buku yang lebih tua dari ini = relay MATI (atau
+  # buku itu tak terjangkau) — umur nol yang tak diperbarui bukan umur nol.
+  relay_stale_seconds: 300
+
 # ── Pemilik berkas hasil ──────────────────────────────────────────────────
 #
 # uid/gid yang MEMBACA volume `hasil`: pengguna `node` di tahap `runner`

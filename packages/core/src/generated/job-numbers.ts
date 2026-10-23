@@ -14,6 +14,8 @@
  * bahwa angkanya datang dari kontrak.
  */
 
+import type { JobKind } from "./job-kinds";
+
 export const BACKOFF_BASE_MS = 30000;
 export const BACKOFF_MAX_MS = 3600000;
 
@@ -89,3 +91,26 @@ export const EFAKTUR_PROVIDERS = [
 
 /** Batas putaran `integration.efaktur_poll` sebelum orang diminta memeriksa Coretax. */
 export const EFAKTUR_POLL_MAX_ROUNDS = 24;
+
+// ── Outbox transaksional (09 §4) — Node saja ───────────────────────────────
+
+export type OutboxEventType =
+  | "invoice.posted";
+
+/** Tipe peristiwa `outbox.event_type` — kosakata `z.enum` pintu tulisnya. */
+export const OUTBOX_EVENT_TYPES = [
+  "invoice.posted",
+] as const satisfies readonly OutboxEventType[];
+
+/** Agregat & kind konsumen per tipe peristiwa. Relay menerbitkan SETIAP kind di `consumers`. */
+export const OUTBOX_EVENTS = {
+  "invoice.posted": { aggregate: "invoice", consumers: ["document.invoice_send"] },
+} as const satisfies Record<OutboxEventType, { aggregate: string; consumers: readonly JobKind[] }>;
+
+export const OUTBOX_RELAY_POLL_MS = 2000;
+export const OUTBOX_RELAY_BATCH_SIZE = 100;
+export const OUTBOX_PUBLISHED_RETENTION_DAYS = 14;
+/** Dijamin generator: `OUTBOX_LAG_WARN_SECONDS < OUTBOX_LAG_LATE_SECONDS`. */
+export const OUTBOX_LAG_WARN_SECONDS = 120;
+export const OUTBOX_LAG_LATE_SECONDS = 600;
+export const OUTBOX_RELAY_STALE_SECONDS = 300;

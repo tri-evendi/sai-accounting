@@ -311,10 +311,9 @@ export default async function ReceivablesPage({
                 dokumen sementara layarnya hanya yang jatuh tempo. */}
             <StatementExcelButton
               payload={payload}
-              sumber={{
-                reportId: "receivables",
-                params: { asOf: asOfStr, cols: sp.cols, overdue: overdueOnly ? "1" : undefined },
-              }}
+              sumber={{ reportId: "receivables", params: {
+                asOf: asOfStr, cols: sp.cols, overdue: overdueOnly ? "1" : undefined,
+              } }}
             />
           </>
         }

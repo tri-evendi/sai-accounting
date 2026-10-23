@@ -88,6 +88,23 @@ export type CashFlowCategoryId = "operating" | "investing" | "financing" | "unca
 /** Ember diagnostik, bukan seksi laporan — lihat keputusan 3 di atas. */
 const UNCATEGORISED: CashFlowCategoryId = "uncategorised";
 
+/**
+ * Nama kelompok Arus Kas untuk DOKUMEN CETAK. Layar memakai
+ * `cashFlowCategory.*` dari kamus, yang berbunyi SAMA PERSIS — diikat
+ * `tests/print-label-dictionary.test.ts` (issue #298), jadi kalimatnya tidak
+ * bisa berganti di satu sisi saja.
+ *
+ * Tinggal di sini (dulu di `lib/reports.ts`, yang masih mengekspornya ulang)
+ * supaya generator kontrak bisa membacanya untuk lembar sebar Go (tahap 1d)
+ * tanpa menyeret Prisma.
+ */
+export const CASH_FLOW_CATEGORY_LABELS: Record<CashFlowCategoryId, string> = {
+  operating: "Aktivitas Operasi",
+  investing: "Aktivitas Investasi",
+  financing: "Aktivitas Pendanaan",
+  uncategorised: "Belum Terkategori",
+};
+
 export interface CashFlowLineShape {
   code: string;
   name: string;
@@ -158,7 +175,7 @@ export interface CashFlowLabels {
    * `printLabel` = `group.label`; layar mengabaikannya dan memakai kamus.
    *
    * Dua sumber untuk satu bunyi, dan itu disengaja (#298): `printLabel` datang
-   * dari `CASH_FLOW_CATEGORY_LABELS` di `lib/reports.ts`, layar dari
+   * dari `CASH_FLOW_CATEGORY_LABELS` di modul ini, layar dari
    * `cashFlowCategory.*`. Keduanya diikat `tests/print-label-dictionary.test.ts`
    * — kalau salah satunya berganti kata, tesnya merah.
    */

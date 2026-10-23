@@ -387,6 +387,8 @@ type LineWhere = {
     /** Issue #555 — dipakai Laba Rugi untuk membuang jurnal penutup tahunan. */
     type?: { not?: string };
   };
+  /** Tipe akun baris — dipakai mutasi Laporan Perubahan Ekuitas (`type: "equity"`). */
+  account?: { type?: string };
 };
 
 export function createFakeReportClient(seed: {
@@ -448,7 +450,11 @@ export function createFakeReportClient(seed: {
            diam-diam, dan tes yang mengandalkannya lulus tanpa menguji apa pun —
            jadi ia dimengerti di sini, bukan diasumsikan di sana. */
         (where?.journal?.type?.not === undefined ||
-          l.journal.type !== where.journal.type.not)
+          l.journal.type !== where.journal.type.not) &&
+        /* Penyaring tipe akun relasi (Laporan Perubahan Ekuitas) — dimengerti,
+           bukan diabaikan, dengan alasan yang sama dengan penyaring di atas. */
+        (where?.account?.type === undefined ||
+          accounts.find((a) => a.id === l.accountId)?.type === where.account.type)
     );
 
   const client = {

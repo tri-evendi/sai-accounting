@@ -83,6 +83,17 @@ type statementBook struct {
 		AsOf    string `json:"asOf"`
 		Compare string `json:"compare"`
 	} `json:"balanceComparisons"`
+	// Arus Kas & Laporan Perubahan Ekuitas (tahap 1d, 23 Okt 2026): periode
+	// tanggal bisnis [from, to] — `cash_flow_test.go`.
+	CashFlows        []periodCase `json:"cashFlows"`
+	EquityStatements []periodCase `json:"equityStatements"`
+}
+
+// periodCase: satu kasus berperiode (tanggal bisnis Jakarta, INKLUSIF).
+type periodCase struct {
+	Case string `json:"case"`
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // IncomeComparisonGolden: berkas emas Laba Rugi komparatif — kedua periode dan
@@ -216,6 +227,9 @@ func (b statementBook) sumLines(t *testing.T, f netsFilter) []accountSums {
 			continue
 		}
 		if f.to != nil && j.Date.After(*f.to) {
+			continue
+		}
+		if f.before != nil && !j.Date.Before(*f.before) {
 			continue
 		}
 		if f.excludeClosing && typ == "closing" {
@@ -537,6 +551,7 @@ func TestNetsSQLShape(t *testing.T) {
 	for _, must := range []string{
 		"SUM(jl.base_debit)", "SUM(jl.base_credit)", // rupiah dasar
 		"j.date >= $1::timestamp", "j.date <= $2::timestamp", // kedua batas INKLUSIF
+		"j.date < $6::timestamp",                 // batas EKSKLUSIF (saldo awal Arus Kas)
 		"j.type <> $3::text",                     // jurnal penutup (Laba Rugi saja)
 		"cost_center_id IS NOT DISTINCT FROM $5", // NULL = belum ditetapkan
 		"ORDER BY a.code", "LEFT JOIN",

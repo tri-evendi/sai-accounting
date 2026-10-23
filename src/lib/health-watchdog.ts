@@ -30,6 +30,7 @@
 import type { WatchdogDecision } from "@/lib/backup-watchdog";
 import type { SchedulerHealthStatus } from "@sai/core/scheduler-heartbeat";
 import type { ConformanceHealthStatus } from "@/lib/conformance-heartbeat";
+import type { MigrationsHealth } from "@sai/core/schema-version";
 
 const DIAM: WatchdogDecision = { alert: false, subject: "", body: "", fingerprint: "" };
 
@@ -210,5 +211,68 @@ export function decideConformanceAlert(input: ConformanceWatchdogInput): Watchdo
       ["ambang", `${input.staleAfterHours} jam`],
     ]),
     fingerprint: `conformance:${input.status}`,
+  };
+}
+
+/* ══ FAN-OUT MIGRATION BUKU (09 §6) ═════════════════════════════════════════ */
+
+export interface MigrationsWatchdogInput {
+  status: MigrationsHealth;
+  /** Migration buku yang dibawa image penjaga ini. */
+  expected: string;
+  /** Target putaran terakhir, atau `null` bila belum ada putaran. */
+  lastTarget: string | null;
+  lastRunAt: string | null;
+  /** Slug buku yang gagal di putaran terakhir — surel operator, bukan probe publik. */
+  failedSlugs: string[];
+}
+
+/**
+ * Berbunyi untuk buku yang TERTINGGAL — keadaan yang sejak `db:migrate:release`
+ * tidak lagi menahan rilis, dan karena itu bisa bertahan tanpa ada yang
+ * melihat: buku itu ditutup gerbang skema (pemiliknya melihat "buku sedang
+ * diperbarui"), sementara 16 buku lain sehat dan `/api/health` tetap 200.
+ *
+ * `unknown` DIAM, dengan sengaja: ia berarti "belum ada putaran tercatat" —
+ * keadaan setiap pemasangan sebelum rilis pertamanya dengan migration kendali
+ * 0011 — dan rilis berikutnya pasti menulis baris pertamanya.
+ */
+export function decideMigrationsAlert(input: MigrationsWatchdogInput): WatchdogDecision {
+  if (input.status === "ok" || input.status === "unknown") return DIAM;
+
+  let pesan: string;
+  switch (input.status) {
+    case "pending":
+      pesan =
+        "MIGRATION BUKU UNTUK RILIS INI BELUM BERJALAN.\n\n" +
+        `Image ini membawa ${input.expected}, putaran terakhir menargetkan ` +
+        `${input.lastTarget ?? "(tidak ada)"}. Setiap buku yang belum di kepala DITUTUP\n` +
+        "gerbang skema sampai putaran berikutnya.\n\n" +
+        "Jalankan:  docker compose run --rm migrate bun run db:migrate:release";
+      break;
+    case "partial":
+    case "error":
+      pesan =
+        `${input.failedSlugs.length} BUKU TERTINGGAL dari migration rilis ini` +
+        (input.status === "error" ? " — TIDAK SATU PUN berhasil" : "") +
+        ".\n\n" +
+        "Buku itu DITUTUP (pemiliknya melihat \"buku sedang diperbarui\"); buku lain\n" +
+        "dilayani seperti biasa. Perbaiki sebabnya (log di bawah), lalu ulangi — buku yang\n" +
+        "sudah di kepala dilewati:\n\n" +
+        "  docker compose run --rm migrate bun run db:migrate:release\n\n" +
+        `Buku: ${input.failedSlugs.join(", ") || "(lihat schema_migration_runs.details)"}`;
+      break;
+  }
+
+  return {
+    alert: true,
+    subject: `[SAI] migration buku: ${input.status}`,
+    body: badan(pesan, [
+      ["status", input.status],
+      ["image membawa", input.expected],
+      ["target putaran", input.lastTarget ?? "(belum pernah)"],
+      ["putaran terakhir", input.lastRunAt ?? "(belum pernah)"],
+    ]),
+    fingerprint: `migrations:${input.status}:${input.expected}`,
   };
 }

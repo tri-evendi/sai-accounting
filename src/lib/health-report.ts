@@ -26,6 +26,8 @@ import "server-only";
 import { controlDb } from "@sai/core/control-db";
 import { billingPlaneInstalled } from "@sai/core/deploy-profile";
 import { schemaGateVerdict, type SchemaGateVerdict } from "@sai/platform/schema-gate";
+import { MIGRATION_TERAKHIR } from "@sai/core/migration-manifest";
+import { migrationsHealth, type MigrationsHealth } from "@sai/core/schema-version";
 import { platformDb } from "@sai/platform/platform-db";
 import { getCompanyClient } from "@/lib/company-clients";
 import {
@@ -131,6 +133,12 @@ export type HealthReport =
       queue: QueueStatus;
       backup: PublicBackupHealth;
       conformance: ConformanceHealth;
+      /**
+       * Fan-out migration BUKU (09 §6) — SATU KATA, tanpa jumlah buku (rambu
+       * #317: jumlah buku = volume pemakaian). Berapa dan yang mana dibaca di
+       * konsol operator `/backup` dan di `schema_migration_runs`.
+       */
+      migrations: { status: MigrationsHealth };
       mail: MailStatus;
       licence: LicenceHealth;
     };
@@ -247,6 +255,30 @@ async function lastConformanceRun(): Promise<ConformanceHealth> {
     /* Platform tak terjangkau, atau migration 0018 belum diterapkan. Keduanya
        "belum ada yang bisa dilaporkan" — alasan yang sama dengan di atas. */
     return conformanceHealth(null);
+  }
+}
+
+/**
+ * Putaran fan-out migration BUKU terakhir (09 §6), dibandingkan dengan
+ * migration buku yang dibawa image INI.
+ *
+ * DILAPORKAN, tidak ikut memutuskan: buku yang tertinggal sudah ditutup satu
+ * per satu oleh gerbang skema per perusahaan, jadi menjatuhkan probe karena
+ * satu buku akan membuat Traefik menolak SEMUA buku — persis yang 09 §6
+ * hapus. `partial`/`pending` adalah sinyal untuk pemantau dan untuk orang yang
+ * melanjutkan rilis, bukan untuk penyeimbang beban.
+ */
+async function lastMigrationRun(): Promise<{ status: MigrationsHealth }> {
+  try {
+    const run = await controlDb.schemaMigrationRun.findFirst({
+      orderBy: { id: "desc" },
+      select: { status: true, targetMigration: true },
+    });
+    return { status: migrationsHealth(run, MIGRATION_TERAKHIR.company) };
+  } catch {
+    /* Migration kendali 0011 belum diterapkan, atau kendali tersendat di
+       antara dua kueri. "Belum ada yang bisa dilaporkan" — bukan `ok`. */
+    return { status: "unknown" };
   }
 }
 
@@ -424,6 +456,7 @@ export async function healthReport(): Promise<HealthReport> {
     companyStatus,
     backupStatus,
     conformanceStatus,
+    migrationsStatus,
     licenceStatus,
   ] = await Promise.all([
     lastSchedulerRun(),
@@ -433,6 +466,7 @@ export async function healthReport(): Promise<HealthReport> {
     sampleCompany(),
     lastBackup(),
     lastConformanceRun(),
+    lastMigrationRun(),
     licence(),
   ]);
 
@@ -454,6 +488,7 @@ export async function healthReport(): Promise<HealthReport> {
     queue: queueStatus,
     backup: backupStatus,
     conformance: conformanceStatus,
+    migrations: migrationsStatus,
     mail: mailStatus,
     licence: licenceStatus,
   };

@@ -5,6 +5,8 @@ import type { Permission } from "@sai/core/authz";
 import { canEffective, isModuleActiveFor } from "@/lib/authz-effective";
 import { moduleForPermission } from "@/lib/business-modules";
 import { enterCompanyFromRequest } from "@/lib/company-request";
+import { companySchemaRefusal } from "@/lib/company-schema-response";
+import { currentCompany } from "@/lib/current-company";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
 import { migrationWriteRefusal } from "@sai/core/tenant-migration";
 import { getCompany } from "@/lib/company-registry";
@@ -158,6 +160,14 @@ async function gateAfterCompany(
   permission: Permission,
   companyId: number
 ): Promise<AuthResult> {
+  /*
+   * Gerbang SKEMA BUKU (09 §6) — PALING AWAL, sebab gerbang modul di bawah
+   * sudah membaca buku. Buku yang migration-nya belum sampai dijawab 503 yang
+   * bisa diulang; perusahaan lain tidak terpengaruh.
+   */
+  const schemaRefusal = await companySchemaRefusal(await currentCompany());
+  if (schemaRefusal) return { authorized: false, response: schemaRefusal };
+
   /*
    * Gerbang MODUL (issue #99). Menyembunyikan menu saja tidak pernah dianggap
    * pengamanan — route-nya ikut tertutup, kalau tidak fitur yang "dimatikan"

@@ -62,6 +62,10 @@ import {
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
   BALANCE_SHEET_PRINT_LABELS,
+  CASH_FLOW_CATEGORY_LABELS,
+  CASH_FLOW_COLUMNS,
+  CASH_FLOW_HEADERS,
+  CASH_FLOW_PRINT_LABELS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
@@ -73,7 +77,9 @@ import {
   STATEMENT_COMPARE_CHANGE_HEADER,
   asOfPeriodLabel,
   balanceSheetBalanceNote,
+  cashFlowReconciliationNote,
   comparePercentText,
+  type CashFlowCategoryId,
   comparePeriodLabel,
   costCenterPeriodSuffix,
   periodRangeLabel,
@@ -81,6 +87,7 @@ import {
 } from "../src/lib/statement-layout";
 import {
   BALANCE_SHEET_WIDTHS,
+  CASH_FLOW_WIDTHS,
   COMPARE_CHANGE_WIDTH,
   IDR_NUMBER_FORMAT,
   INCOME_STATEMENT_WIDTHS,
@@ -681,6 +688,12 @@ interface KontrakAkuntansi {
     category_default_sections: Record<string, string>;
   };
   closing_journal_type: string;
+  cash_flow: {
+    cash_account_type: string;
+    categories: string[];
+    fallback_category: string;
+    type_categories: Record<string, string>;
+  };
   currencies: { base: string; values: string[] };
   invoice_statuses: string[];
   contract_statuses: string[];
@@ -791,6 +804,34 @@ function bacaAkuntansi(): KontrakAkuntansi {
   }
   if (typeof k.closing_journal_type !== "string" || !SNAKE.test(k.closing_journal_type)) {
     salah.push("`closing_journal_type` bukan snake_case");
+  }
+
+  /* ── Arus Kas (tahap 1d). Akun kas WAJIB tipe kontrak; kelompok cadangan
+     WAJIB anggota daftar kelompok dan TIDAK boleh menjadi tujuan pemetaan —
+     ia hanya dicapai oleh tipe yang tidak dipetakan, jadi tipe yang
+     "dipetakan ke cadangan" adalah dua cara menulis satu aturan. Pemetaan
+     sengaja TIDAK wajib lengkap (lihat YAML). */
+  const cf = k.cash_flow;
+  if (!cf || typeof cf !== "object") {
+    salah.push("`cash_flow` kosong");
+  } else {
+    if (!(tipe ?? []).includes(cf.cash_account_type)) {
+      salah.push(`cash_flow.cash_account_type ${JSON.stringify(cf.cash_account_type)} bukan tipe akun kontrak`);
+    }
+    const kelompok = daftar("cash_flow.categories", cf.categories);
+    if (!kelompok.includes(cf.fallback_category)) {
+      salah.push(`cash_flow.fallback_category ${JSON.stringify(cf.fallback_category)} bukan salah satu cash_flow.categories`);
+    }
+    peta(
+      "cash_flow.type_categories",
+      cf.type_categories,
+      tipe ?? [],
+      kelompok.filter((c) => c !== cf.fallback_category),
+      false
+    );
+    if (cf.type_categories && cf.cash_account_type in cf.type_categories) {
+      salah.push("cash_flow.type_categories: akun kas tidak pernah menjadi akun lawan arus kas");
+    }
   }
 
   /* ── Mata uang (23 Okt 2026). Kode ISO tiga huruf besar, tanpa duplikat, dan
@@ -940,6 +981,26 @@ ${Object.entries(k.income_statement.category_default_sections).map(([c, v]) => `
 /** \`journals.type\` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
 export const CLOSING_JOURNAL_TYPE = "${k.closing_journal_type}";
 
+// ── Arus Kas (PSAK 2 / IAS 7) — dibaca \`getCashFlow\` dan Arus Kas Go ─────
+
+/** Tipe akun sisi KAS: arus kas = gerakan yang menyeberangi batas akun ini. */
+export const CASH_ACCOUNT_TYPE = "${k.cash_flow.cash_account_type}" satisfies AccountType;
+
+${union("CashFlowCategory", k.cash_flow.categories)}
+
+/** Urutan kelompok di laporan. */
+export const CASH_FLOW_CATEGORY_KEYS = [
+${k.cash_flow.categories.map((c) => `  "${c}",`).join("\n")}
+] as const satisfies readonly CashFlowCategory[];
+
+/** Kelompok tipe yang TIDAK dipetakan — kelompok yang terlihat, bukan operasi. */
+export const CASH_FLOW_FALLBACK_CATEGORY = "${k.cash_flow.fallback_category}" satisfies CashFlowCategory;
+
+/** Kelompok arus kas per tipe AKUN LAWAN; tipe lain jatuh ke cadangan. */
+export const CASH_FLOW_TYPE_CATEGORIES: Readonly<Partial<Record<AccountType, CashFlowCategory>>> = {
+${Object.entries(k.cash_flow.type_categories).map(([t, c]) => `  ${t}: "${c}",`).join("\n")}
+};
+
 // ── Mata uang & status dokumen (23 Okt 2026) ──────────────────────────────
 // Dibaca lewat re-ekspor \`@sai/core/constants\`; label & warna tetap di TS.
 
@@ -1088,6 +1149,39 @@ ${ratakan(Object.entries(k.income_statement.category_default_sections).map(([c, 
 // ClosingJournalType: \`journals.type\` jurnal penutup tahunan (#555). Laba
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "${k.closing_journal_type}"
+
+// CashAccountType: tipe akun sisi KAS — arus kas adalah gerakan yang
+// menyeberangi batas akun bertipe ini.
+const CashAccountType = AccountType${pengenalGo(k.cash_flow.cash_account_type)}
+
+// CashFlowCategory adalah satu kelompok Arus Kas (PSAK 2 / IAS 7).
+type CashFlowCategory string
+
+const (
+${ratakan(k.cash_flow.categories.map((c) => ({ kiri: `CashFlowCategory${pengenalGo(c)}`, kanan: `CashFlowCategory = "${c}"` })))}
+)
+
+// CashFlowCategories dalam urutan kelompok laporan.
+var CashFlowCategories = []CashFlowCategory{
+${k.cash_flow.categories.map((c) => `\tCashFlowCategory${pengenalGo(c)},`).join("\n")}
+}
+
+// CashFlowFallbackCategory: kelompok tipe akun lawan yang TIDAK dipetakan.
+const CashFlowFallbackCategory = CashFlowCategory${pengenalGo(k.cash_flow.fallback_category)}
+
+// CashFlowTypeCategories: kelompok arus kas per tipe AKUN LAWAN.
+var CashFlowTypeCategories = map[AccountType]CashFlowCategory{
+${ratakan(Object.entries(k.cash_flow.type_categories).map(([t, c]) => ({ kiri: `AccountType${pengenalGo(t)}:`, kanan: `CashFlowCategory${pengenalGo(c)},` })))}
+}
+
+// CashFlowCategoryOf: kelompok arus kas tipe akun lawan MENTAH dari basis
+// data — padanan \`cashFlowCategoryFor\`; tipe tak dipetakan → cadangan.
+func CashFlowCategoryOf(accountType string) CashFlowCategory {
+\tif c, ok := CashFlowTypeCategories[AccountType(accountType)]; ok {
+\t\treturn c
+\t}
+\treturn CashFlowFallbackCategory
+}
 
 // Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
 // \`currency\` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
@@ -1278,7 +1372,7 @@ function namaBulan(): string[] {
   return Array.from({ length: 12 }, (_, m) => f.format(new Date(Date.UTC(2026, m, 15))));
 }
 
-function bangkitkanTataLetakGo(): string {
+function bangkitkanTataLetakGo(k: KontrakAkuntansi): string {
   const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
 \`src/lib/cost-centers.ts\`, \`@sai/core/constants\`, \`@sai/core/business-date\`, dan
 kamus \`id.json\` — JANGAN DISUNTING TANGAN.
@@ -1367,6 +1461,33 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const kolomIs = INCOME_STATEMENT_COLUMNS.map(
     (c) => `\t{Header: ${q(INCOME_STATEMENT_HEADERS[c])}, Width: ${INCOME_STATEMENT_WIDTHS[c]}},`
   ).join("\n");
+  /* Arus Kas (tahap 1d, `go-parity`). */
+  const cfl = CASH_FLOW_PRINT_LABELS;
+  const konstArusKas = ratakan([
+    { kiri: "CashFlowSheetName", kanan: `= ${q(SHEET_NAMES["cash-flow"])}` },
+    { kiri: "CashFlowTitle", kanan: `= ${q(STATEMENT_TITLES["cash-flow"])}` },
+    { kiri: "CashFlowOpeningLabel", kanan: `= ${q(cfl.opening)}` },
+    { kiri: "CashFlowClosingLabel", kanan: `= ${q(cfl.closing)}` },
+    { kiri: "CashFlowTotalLabel", kanan: `= ${q(cfl.total)}` },
+    { kiri: "CashFlowEmptyLabel", kanan: `= ${q(cfl.empty)}` },
+    { kiri: "CashFlowSubtotalFormat", kanan: `= ${q(polaGo(cfl.subtotal))}` },
+    { kiri: "CashFlowNoteReconciled", kanan: `= ${q(cashFlowReconciliationNote(true))}` },
+    { kiri: "CashFlowNoteUnreconciled", kanan: `= ${q(cashFlowReconciliationNote(false))}` },
+  ]);
+  /* Nama kelompok CETAK — `labels.group(category, label)` lembar sebar TS
+     memulangkan `label` = `CASH_FLOW_CATEGORY_LABELS[category]`. Dipanggil,
+     bukan dibaca, supaya penimpa `group` kelak ikut sampai ke Go. */
+  const labelKelompok = ratakan(
+    /* Kelompok dari YAML, bukan dari bangkitan TS: berkas ini dibangkitkan
+       dalam putaran yang SAMA dengan bangkitan itu. */
+    k.cash_flow.categories.map((c) => ({
+      kiri: `CashFlowCategory${pengenalGo(c)}:`,
+      kanan: `${q(cfl.group(c as CashFlowCategoryId, CASH_FLOW_CATEGORY_LABELS[c as CashFlowCategoryId]))},`,
+    }))
+  );
+  const kolomCf = CASH_FLOW_COLUMNS.map(
+    (c) => `\t{Header: ${q(CASH_FLOW_HEADERS[c])}, Width: ${CASH_FLOW_WIDTHS[c]}},`
+  ).join("\n");
   const kolomBs = BALANCE_SHEET_COLUMNS.map(
     (c) => `\t{Header: ${q(BALANCE_SHEET_HEADERS[c])}, Width: ${BALANCE_SHEET_WIDTHS[c]}},`
   ).join("\n");
@@ -1416,6 +1537,18 @@ const (
 ${konstLaporan2}
 )
 
+// Arus Kas (tahap 1d): kalimat cetak & anotasi rekonsiliasi dari
+// \`CASH_FLOW_PRINT_LABELS\` / \`cashFlowReconciliationNote\`.
+const (
+${konstArusKas}
+)
+
+// CashFlowCategoryLabels: nama kelompok Arus Kas di DOKUMEN CETAK
+// (\`CASH_FLOW_CATEGORY_LABELS\` lewat \`CASH_FLOW_PRINT_LABELS.group\`).
+var CashFlowCategoryLabels = map[CashFlowCategory]string{
+${labelKelompok}
+}
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -1444,6 +1577,12 @@ ${kolomIs}
 // (BALANCE_SHEET_WIDTHS) kolom Neraca satu tanggal.
 var BalanceSheetColumns = []ReportColumn{
 ${kolomBs}
+}
+
+// CashFlowColumns: judul (CASH_FLOW_HEADERS) dan lebar (CASH_FLOW_WIDTHS)
+// kolom Arus Kas, dalam urutan CASH_FLOW_COLUMNS.
+var CashFlowColumns = []ReportColumn{
+${kolomCf}
 }
 
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.
@@ -1763,7 +1902,7 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_GO, isi: bangkitkanGo(kontrak) },
   { jalur: TUJUAN_AKUNTANSI_TS, isi: bangkitkanAkuntansi(kontrakAkuntansi) },
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
-  { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo() },
+  { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_UMUR_GO, isi: bangkitkanTataLetakUmurGo(kontrakAkuntansi) },
   { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
   { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },

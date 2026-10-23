@@ -1,0 +1,110 @@
+{
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-06-30T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "type": "revenue",
+          "inflow": "15500000.00",
+          "outflow": "0.00",
+          "net": "15500000.00"
+        },
+        {
+          "code": "4201",
+          "name": "Pendapatan Bunga",
+          "type": "other_income",
+          "inflow": "250000.75",
+          "outflow": "0.00",
+          "net": "250000.75"
+        },
+        {
+          "code": "5101",
+          "name": "Harga Pokok Penjualan",
+          "type": "cogs",
+          "inflow": "0.00",
+          "outflow": "9876543.21",
+          "net": "-9876543.21"
+        },
+        {
+          "code": "6103",
+          "name": "Beban Netral",
+          "type": "expense",
+          "inflow": "500.00",
+          "outflow": "500.00",
+          "net": "0.00"
+        },
+        {
+          "code": "7101",
+          "name": "Rugi Selisih Kurs",
+          "type": "other_expense",
+          "inflow": "0.00",
+          "outflow": "100000.10",
+          "net": "-100000.10"
+        }
+      ],
+      "inflow": "15750500.75",
+      "outflow": "9977043.31",
+      "net": "5773457.44"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [
+        {
+          "code": "9999",
+          "name": "Akun Bertipe Asing",
+          "type": "liabilitas_aneh",
+          "inflow": "0.00",
+          "outflow": "12345.00",
+          "net": "-12345.00"
+        }
+      ],
+      "inflow": "0.00",
+      "outflow": "12345.00",
+      "net": "-12345.00"
+    }
+  ],
+  "totalInflow": "15750500.75",
+  "totalOutflow": "9989388.31",
+  "netChange": "5761112.44",
+  "openingCash": "420000000.00",
+  "closingCash": "425761112.44",
+  "cashAccounts": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "opening": "420000000.00",
+      "closing": "411861112.44",
+      "net": "-8138887.56"
+    },
+    {
+      "code": "1102",
+      "name": "Bank USD",
+      "opening": "0.00",
+      "closing": "13900000.00",
+      "net": "13900000.00"
+    }
+  ],
+  "reconciled": true,
+  "suspectUnrated": 0,
+  "unknownTypes": [
+    "9999"
+  ]
+}

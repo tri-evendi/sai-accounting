@@ -1,0 +1,13 @@
+{
+  "from": "2025-11-30T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "components": [],
+  "unclosedIncome": {
+    "opening": "0.00",
+    "movement": "-0.01",
+    "closing": "-0.01"
+  },
+  "totalOpening": "0.00",
+  "totalClosing": "-0.01",
+  "unknownTypes": []
+}

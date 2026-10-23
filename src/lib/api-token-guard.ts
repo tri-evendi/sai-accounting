@@ -42,6 +42,7 @@ import { NextResponse } from "next/server";
 
 import { controlDb } from "@sai/core/control-db";
 import { companyContextOf, enterCompanyContext } from "@/lib/company-context";
+import { companySchemaRefusal } from "@/lib/company-schema-response";
 import { COMPANY_DATABASE_TARGET_SELECT } from "@sai/db/company-url";
 import { canEffective } from "@/lib/authz-effective";
 import type { Permission } from "@sai/core/authz";
@@ -124,7 +125,13 @@ export async function requireApiToken(permission: Permission): Promise<ApiTokenR
 
   // (5) Konteks perusahaan — dari TOKENNYA, tidak pernah dari permintaan.
   // Doktrin #104: konteks yang hilang MELEMPAR, tidak pernah jatuh ke bawaan.
-  enterCompanyContext(companyContextOf(row.company));
+  const context = companyContextOf(row.company);
+  enterCompanyContext(context);
+
+  /* (5b) Gerbang skema buku (09 §6) — buku yang migration-nya belum sampai
+     dijawab 503 + Retry-After, bukan 500 dari query pertama. */
+  const schemaRefusal = await companySchemaRefusal(context);
+  if (schemaRefusal) return { authorized: false, response: schemaRefusal };
 
   // (6) Izin — matriks yang sama dengan manusia.
   const allowed = await canEffective({ role: row.role }, permission);

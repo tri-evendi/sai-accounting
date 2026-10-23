@@ -133,7 +133,10 @@ type BalanceSheet struct {
 
 // netsFilter: penyaring jumlah per akun — padanan argumen `accountNets` TS.
 type netsFilter struct {
-	from, to       *time.Time // nil = tanpa batas di sisi itu
+	from, to *time.Time // nil = tanpa batas di sisi itu; keduanya INKLUSIF
+	// before: batas atas EKSKLUSIF (`lt` TS) — saldo AWAL Arus Kas
+	// (`accountNets({ lt: from })`). nil = tanpa batas.
+	before         *time.Time
 	excludeClosing bool
 	costCenter     CostCenterFilter
 }
@@ -157,6 +160,7 @@ SELECT a.code, a.name, a.type,
            AND ($2::timestamp IS NULL OR j.date <= $2::timestamp)
            AND ($3::text IS NULL OR j.type <> $3::text)
            AND (NOT $4::boolean OR jl.cost_center_id IS NOT DISTINCT FROM $5::integer)
+           AND ($6::timestamp IS NULL OR j.date < $6::timestamp)
          GROUP BY jl.account_id
        ) n ON n.account_id = a.id
  ORDER BY a.code`
@@ -176,7 +180,7 @@ func (r *Reader) nets(ctx context.Context, tx pgx.Tx, f netsFilter) ([]accountSu
 		closing = &c
 	}
 	rows, err := tx.Query(ctx, netsSQL,
-		tsParam(f.from), tsParam(f.to), closing, f.costCenter.Active, f.costCenter.ID)
+		tsParam(f.from), tsParam(f.to), closing, f.costCenter.Active, f.costCenter.ID, tsParam(f.before))
 	if err != nil {
 		return nil, fmt.Errorf("kueri jumlah per akun: %w", err)
 	}

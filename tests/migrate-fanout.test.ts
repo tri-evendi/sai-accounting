@@ -42,6 +42,20 @@ describe("fan-out: beberapa perusahaan dimigrasikan BERSAMAAN", () => {
     expect(kode).toContain("batasSerentak()");
   });
 
+  it("proses anaknya ASINKRON — `spawnSync` membuat pelaksana kedua tak pernah mulai", () => {
+    /* Ditemukan 23 Okt 2026: sejak tahap 1b pelaksananya memanggil `spawnSync`
+       di loop tanpa satu `await` pun. `spawnSync` memblokir event loop, jadi
+       pelaksana pertama menghabiskan SELURUH daftar sebelum yang kedua sempat
+       mulai — `COMPANY_MIGRATE_CONCURRENCY` tidak pernah berlaku, dan setiap
+       blok log berlabel `[p1]`. Kode yang TERBACA paralel, jam dinding yang
+       berurutan. */
+    expect(kode).not.toMatch(/spawnSync/);
+    expect(kode).toMatch(/import \{ spawn \} from "node:child_process"/);
+    const i = skrip.indexOf("async function pelaksana(");
+    const badan = skrip.slice(i, skrip.indexOf("\n  }\n", i));
+    expect(badan).toMatch(/await migrateDeploy\(/);
+  });
+
   it("pelaksana mengambil dari KURSOR bersama, bukan dari potongan yang dibagi rata", () => {
     /* Perusahaan tidak sama besar. Pembagian rata membuat satu pelaksana
        selesai lebih dulu lalu menganggur sementara yang lain masih punya
@@ -79,7 +93,7 @@ describe("fan-out: log rilis tetap bisa dibaca", () => {
        dan hasilnya saling menyisip — tidak bisa dibaca justru pada hari satu di
        antaranya gagal. */
     expect(kode).not.toMatch(/stdio:\s*"inherit"/);
-    expect(kode).toMatch(/encoding:\s*"utf8"/);
+    expect(kode).toMatch(/stdio:\s*\["ignore", "pipe", "pipe"\]/);
   });
 
   it("label dicetak DI ATAS keluarannya, dengan nomor pelaksananya", () => {
@@ -103,13 +117,35 @@ describe("fan-out: kegagalan satu perusahaan tidak menggantung yang lain (#104)"
        aplikasinya sudah versi baru — satu basis data bermasalah menjatuhkan
        seluruh pemasangan. */
     expect(kode).toMatch(/failures\.push\(/);
-    expect(kode).not.toMatch(/result\.status !== 0[\s\S]{0,200}process\.exit/);
+    expect(kode).not.toMatch(/result\.code !== 0[\s\S]{0,200}process\.exit/);
   });
 
-  it("exit code akhirnya bukan nol bila ada yang gagal", () => {
-    /* Yang berhasil sudah benar-benar naik, tapi CI/deploy tetap harus tahu. */
-    expect(kode).toMatch(/failures\.length > 0[\s\S]{0,600}process\.exit\(1\)/);
+  it("kode keluar diputuskan fungsi MURNI yang teruji, bukan cabang di skrip", () => {
+    /* Mode ketat: kegagalan apa pun = 1. Mode `--release`: sebagian gagal = 0
+       (09 §6), tidak satu buku pun di kepala = 1. Tabel kebenarannya di
+       `tests/schema-rollout.test.ts`. */
+    expect(kode).toMatch(/process\.exit\(rolloutExitCode\(status, MODE\)\)/);
+    expect(kode).toMatch(/rolloutStatus\(\{ atHead: dimigrasikan \+ dilewati, failed: failures\.length \}\)/);
+    expect(kode).toMatch(/process\.argv\.includes\("--release"\)/);
   });
+
+  it("db:migrate:release = kendali → platform → buku --release, dan itulah CMD image migrator", () => {
+    const pkg = JSON.parse(readFileSync(join(AKAR_REPO, "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    expect(pkg.scripts["db:migrate:release"]).toBe(
+      "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies -- --release"
+    );
+    /* Yang manusia & CI pakai tetap KETAT. */
+    expect(pkg.scripts["db:migrate:all"]).not.toContain("--release");
+    expect(pkg.scripts["db:migrate:companies"]).not.toContain("--release");
+    const dockerfile = readFileSync(join(AKAR_REPO, "Dockerfile"), "utf8");
+    const migrator = dockerfile.slice(dockerfile.indexOf("AS migrator"));
+    expect(migrator.slice(0, migrator.indexOf("\nFROM "))).toContain(
+      'CMD ["bun", "run", "db:migrate:release"]'
+    );
+  });
+
 
   it("perusahaan NONAKTIF ikut dimigrasikan", () => {
     /* Nonaktif berarti "tidak bisa dibuka", bukan "boleh tertinggal": begitu ia
@@ -135,12 +171,40 @@ describe("fan-out: penerap migration tetap TUNGGAL", () => {
        checksum-nya — dan dua penulis pembukuan skema yang menyimpang TIDAK
        menghasilkan galat: `migrate deploy` berikutnya akan menerapkan ulang,
        atau melaporkan drift, pada basis data yang sebenarnya benar. */
-    expect(kode).toMatch(/spawnSync\("prisma", \["migrate", "deploy"\]/);
+    expect(kode).toMatch(/spawn\("prisma", \["migrate", "deploy"\]/);
     expect(kode).not.toMatch(/_prisma_migrations/);
+  });
+
+  it("riwayat dibaca lewat pembaca BERSAMA (hanya-baca), bukan SQL di skrip ini", () => {
+    /* Melewati buku yang sudah di kepala menuntut membaca riwayatnya — dan
+       pembacaan itu tinggal di `@sai/core/migration-summary`, satu definisi
+       "menggantung" untuk skrip ini DAN gerbang skema. */
+    expect(kode).toContain('from "@sai/core/migration-summary"');
+    expect(kode).toMatch(/readMigrationSummary\(client\)/);
   });
 
   it("tidak ada SQL migration yang dirangkai di skrip ini", () => {
     // Ia mengorkestrasi, tidak menerapkan.
     expect(kode).not.toMatch(/\bCREATE TABLE\b|\bALTER TABLE\b|\$executeRaw/);
+  });
+});
+
+describe("fan-out: dapat dilanjutkan dari tengah, hasil per buku dicatat", () => {
+  it("buku yang sudah di kepala DILEWATI sebelum proses Prisma dilahirkan", () => {
+    const i = skrip.indexOf("async function pelaksana(");
+    const badan = skrip.slice(i);
+    const lewati = badan.indexOf('catat("skipped"');
+    const lahir = badan.indexOf("await migrateDeploy(");
+    expect(lewati).toBeGreaterThan(-1);
+    expect(lahir).toBeGreaterThan(lewati);
+  });
+
+  it("kode keluar 0 dari Prisma DIPERIKSA ULANG terhadap riwayat buku", () => {
+    expect(kode).toMatch(/const sesudah = await vonisBuku\(databaseUrl\)/);
+  });
+
+  it("satu baris jejak per putaran di basis data kendali", () => {
+    expect(kode).toMatch(/control\.schemaMigrationRun\.create\(/);
+    expect(kode).toMatch(/targetMigration: MIGRATION_TERAKHIR\.company/);
   });
 });

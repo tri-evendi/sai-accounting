@@ -124,11 +124,17 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
       /contract\.IncomeStatementCategoryDefaultSections\b/
     );
     expect(semua, "closing_journal_type").toMatch(/contract\.ClosingJournalType\b/);
-    /* Umur Piutang & Umur Utang Go (tahap 1d, `aging.go`) — pembaca Go
-       PERTAMA mata uang & status dokumen, yang sampai saat itu pengecualian
-       tanpa pembaca (keputusan pemilik 23 Okt 2026). */
-    expect(semua, "aging.buckets").toMatch(/contract\.AgingBuckets\b/);
+    /* Arus Kas Go (tahap 1d, `cash_flow.go`, 23 Okt 2026). */
+    expect(semua, "cash_flow.cash_account_type").toMatch(/contract\.CashAccountType\b/);
+    expect(semua, "cash_flow.categories").toMatch(/contract\.CashFlowCategories\b/);
+    expect(semua, "cash_flow.fallback_category").toMatch(/contract\.CashFlowFallbackCategory\b/);
+    expect(semua, "cash_flow.type_categories").toMatch(/contract\.CashFlowCategoryOf\b/);
+    /* `currencies.base` — pembaca Go PERTAMA dari pengecualian 23 Okt 2026:
+       baris "valas berkurs 1" Arus Kas. Dicoret dari pengecualian di bawah. */
     expect(semua, "currencies.base").toMatch(/contract\.BaseCurrency\b/);
+    /* Umur Piutang & Umur Utang Go (tahap 1d, `aging.go`) — pembaca Go
+       PERTAMA status dokumen, pengecualian terakhir 23 Okt 2026. */
+    expect(semua, "aging.buckets").toMatch(/contract\.AgingBuckets\b/);
     expect(semua, "invoice_statuses").toMatch(/contract\.InvoiceStatusCanceled\b/);
     expect(semua, "contract_statuses").toMatch(/contract\.ContractStatusCanceled\b/);
 
@@ -139,6 +145,7 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
         "account_type_categories",
         "account_types",
         "aging",
+        "cash_flow",
         "category_statement_side",
         "closing_journal_type",
         "contract_statuses",

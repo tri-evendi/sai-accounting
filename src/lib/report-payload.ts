@@ -339,7 +339,7 @@ export async function buildReportPayload(
   params: ReportPayloadParams,
   /**
    * Klien buku untuk laporan yang punya padanan Go (Neraca Saldo, Neraca, Laba
-   * Rugi, Umur Piutang, Umur Utang).
+   * Rugi, Arus Kas, Umur Piutang, Umur Utang).
    * Bawaannya klien perusahaan biasa; skrip paritas tahap 1d menyerahkan klien
    * transaksi READ ONLY supaya perbandingan atas buku produksi terbukti hanya
    * membaca. Laporan lain mengabaikannya.
@@ -424,7 +424,9 @@ export async function buildReportPayload(
 
     case "cash-flow": {
       const { from, to } = resolvePeriod(params.from, params.to);
-      const cf = await getCashFlow(from, to);
+      /* Klien diteruskan sejak tahap 1d (Arus Kas `go-parity`): skrip paritas
+         menyerahkan klien transaksi READ ONLY, dan berkas emas klien palsu. */
+      const cf = await getCashFlow(from, to, client);
       return {
         kind: "cash-flow",
         period: periodLabel(from, to, null),

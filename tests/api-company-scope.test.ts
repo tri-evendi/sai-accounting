@@ -71,7 +71,13 @@ const tenantStateForCompany = vi.hoisted(() => vi.fn());
 vi.mock("server-only", () => ({}));
 vi.mock("@sai/core/control-db", () => ({ controlDb }));
 vi.mock("@/lib/company-registry", () => ({ membershipFor, getCompany }));
-vi.mock("@/lib/current-company", () => ({ setRouteCompany, routeCompany }));
+vi.mock("@/lib/current-company", () => ({
+  setRouteCompany,
+  routeCompany,
+  currentCompany: async () => routeCompany(),
+}));
+/* Gerbang skema per buku diuji di `tests/company-schema-gate.test.ts`. */
+vi.mock("@/lib/company-schema-response", () => ({ companySchemaRefusal: async () => null }));
 vi.mock("@/lib/auth", () => ({ auth: authFn }));
 vi.mock("next/headers", () => ({ headers: headersFn }));
 vi.mock("@/lib/authz-effective", () => ({ canEffective, isModuleActiveFor }));

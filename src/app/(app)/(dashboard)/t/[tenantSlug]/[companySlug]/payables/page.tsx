@@ -293,10 +293,9 @@ export default async function PayablesPage({
                 dokumen sementara layarnya hanya yang jatuh tempo. */}
             <StatementExcelButton
               payload={payload}
-              sumber={{
-                reportId: "payables",
-                params: { asOf: asOfStr, cols: sp.cols, overdue: overdueOnly ? "1" : undefined },
-              }}
+              sumber={{ reportId: "payables", params: {
+                asOf: asOfStr, cols: sp.cols, overdue: overdueOnly ? "1" : undefined,
+              } }}
             />
           </>
         }

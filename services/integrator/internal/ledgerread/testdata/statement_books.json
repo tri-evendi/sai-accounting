@@ -83,6 +83,14 @@
         { "accountId": 15, "debit": "7000000" },
         { "accountId": 1, "credit": "7000000" } ] }
     ],
+    "cashFlows": [
+      { "case": "arus-kas-dagang-ytd-2026", "from": "2026-01-01", "to": "2026-06-30" },
+      { "case": "arus-kas-dagang-2025", "from": "2025-01-01", "to": "2025-12-31" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-dagang-2025", "from": "2025-01-01", "to": "2025-12-31" },
+      { "case": "ekuitas-dagang-2026", "from": "2026-01-01", "to": "2026-06-30" }
+    ],
     "incomeStatements": [
       { "case": "laba-rugi-dagang-ytd-2026", "from": "2026-01-01", "to": "2026-06-30" },
       { "case": "laba-rugi-dagang-2025-ditutup", "from": "2025-01-01", "to": "2025-12-31" },
@@ -131,6 +139,13 @@
         { "accountId": 1, "debit": "5000000" },
         { "accountId": 4, "credit": "5000000" } ] }
     ],
+    "cashFlows": [
+      { "case": "arus-kas-april-batas-hari", "from": "2025-03-01", "to": "2025-03-31" },
+      { "case": "arus-kas-april-q2", "from": "2025-04-01", "to": "2025-06-30" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-april", "from": "2025-04-01", "to": "2025-06-30" }
+    ],
     "incomeStatements": [
       { "case": "laba-rugi-april-rugi", "from": "2025-01-01", "to": "2025-03-31" },
       { "case": "laba-rugi-april-laba", "from": "2025-04-01", "to": "2025-06-30" }
@@ -158,6 +173,12 @@
       { "id": 3, "code": "4101", "name": "Penjualan", "type": "revenue" }
     ],
     "journals": [],
+    "cashFlows": [
+      { "case": "arus-kas-kosong", "from": "2026-01-01", "to": "2026-01-05" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-kosong", "from": "2026-01-01", "to": "2026-01-05" }
+    ],
     "incomeStatements": [
       { "case": "laba-rugi-kosong", "from": "2026-01-01", "to": "2026-01-05" }
     ],
@@ -189,6 +210,12 @@
       { "date": "2025-12-02T03:00:00.000Z", "lines": [
         { "accountId": 3, "debit": "100.01" },
         { "accountId": 1, "credit": "100.01" } ] }
+    ],
+    "cashFlows": [
+      { "case": "arus-kas-timpang", "from": "2025-12-01", "to": "2025-12-31" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-timpang", "from": "2025-12-01", "to": "2025-12-31" }
     ],
     "incomeStatements": [
       { "case": "laba-rugi-timpang", "from": "2025-12-01", "to": "2025-12-31" }
@@ -261,6 +288,13 @@
         { "accountId": 1, "debit": "7" },
         { "accountId": 4, "credit": "7" } ] }
     ],
+    "cashFlows": [
+      { "case": "arus-kas-banding-2025", "from": "2025-01-01", "to": "2025-12-31" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-banding-2026", "from": "2026-01-01", "to": "2026-12-31" },
+      { "case": "ekuitas-banding-lintas-tutup", "from": "2025-07-01", "to": "2026-06-30" }
+    ],
     "incomeStatements": [
       { "case": "laba-rugi-banding-2026", "from": "2026-01-01", "to": "2026-06-30" }
     ],
@@ -275,5 +309,104 @@
       { "case": "banding-neraca-sisa-float", "asOf": "2027-03-31", "compare": "previous_year" },
       { "case": "banding-neraca-sebelumnya", "asOf": "2026-06-30", "compare": "preceding" }
     ]
+  },
+  {
+    "name": "buku-arus-kas",
+    "companyName": "PT Arus & \"Kas\" <Uji>",
+    "printedAt": "2026-04-01T02:03:04Z",
+    "fiscalYearStart": "2024-12-31T17:00:00.000Z",
+    "costCenters": [],
+    "accounts": [
+      { "id": 1, "code": "1101", "name": "Kas Kecil", "type": "cash_bank" },
+      { "id": 2, "code": "1102", "name": "Bank USD", "type": "cash_bank" },
+      { "id": 3, "code": "1103", "name": "Bank Lama (tak tersentuh)", "type": "cash_bank" },
+      { "id": 4, "code": "1201", "name": "Piutang Usaha", "type": "account_receivable" },
+      { "id": 5, "code": "1501", "name": "Peralatan", "type": "fixed_asset" },
+      { "id": 6, "code": "2501", "name": "Pinjaman Bank", "type": "long_term_liability" },
+      { "id": 7, "code": "3101", "name": "Modal Disetor", "type": "equity" },
+      { "id": 8, "code": "3102", "name": "Laba Ditahan", "type": "equity" },
+      { "id": 9, "code": "3103", "name": "Prive", "type": "equity" },
+      { "id": 10, "code": "3104", "name": "Modal Tak Bergerak", "type": "equity" },
+      { "id": 11, "code": "4101", "name": "Penjualan", "type": "revenue" },
+      { "id": 12, "code": "6101", "name": "Beban Umum", "type": "expense" },
+      { "id": 13, "code": "6102", "name": "Beban Netral", "type": "expense" },
+      { "id": 14, "code": "9999", "name": "Akun Bertipe Asing", "type": "kas_aneh" }
+    ],
+    "journals": [
+      { "date": "2025-12-15T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "1000000" },
+        { "accountId": 7, "credit": "1000000" } ] },
+      { "date": "2025-12-20T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "5000.05" },
+        { "accountId": 11, "credit": "5000.05" } ] },
+      { "date": "2025-12-31T16:59:59.999Z", "type": "closing", "lines": [
+        { "accountId": 11, "debit": "5000.05" },
+        { "accountId": 8, "credit": "5000.05" } ] },
+      { "date": "2025-12-31T17:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "200.1" },
+        { "accountId": 11, "credit": "200.1" } ] },
+      { "date": "2026-01-03T03:00:00.000Z", "lines": [
+        { "accountId": 2, "debit": "10", "currency": "USD", "rate": "15500", "baseDebit": "155000" },
+        { "accountId": 1, "credit": "155000" } ] },
+      { "date": "2026-01-10T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "300.33" },
+        { "accountId": 4, "credit": "100.11" },
+        { "accountId": 11, "credit": "250.22" },
+        { "accountId": 12, "debit": "50" } ] },
+      { "date": "2026-01-11T03:00:00.000Z", "lines": [
+        { "accountId": 11, "debit": "20.05" },
+        { "accountId": 1, "credit": "20.05" } ] },
+      { "date": "2026-01-20T03:00:00.000Z", "lines": [
+        { "accountId": 5, "debit": "400000" },
+        { "accountId": 1, "credit": "400000" } ] },
+      { "date": "2026-02-01T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "250000.5" },
+        { "accountId": 6, "credit": "250000.5" } ] },
+      { "date": "2026-02-05T03:00:00.000Z", "lines": [
+        { "accountId": 9, "debit": "10000" },
+        { "accountId": 1, "credit": "10000" } ] },
+      { "date": "2026-02-06T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "2500" },
+        { "accountId": 7, "credit": "2500" } ] },
+      { "date": "2026-02-10T03:00:00.000Z", "lines": [
+        { "accountId": 14, "debit": "1.23" },
+        { "accountId": 1, "credit": "1.23" } ] },
+      { "date": "2026-02-15T03:00:00.000Z", "lines": [
+        { "accountId": 4, "debit": "5", "currency": "USD", "rate": "1" },
+        { "accountId": 11, "credit": "5" } ] },
+      { "date": "2026-02-16T03:00:00.000Z", "lines": [
+        { "accountId": 2, "debit": "0", "currency": "CNY" },
+        { "accountId": 1, "debit": "3" },
+        { "accountId": 11, "credit": "3" } ] },
+      { "date": "2026-03-01T03:00:00.000Z", "lines": [
+        { "accountId": 13, "debit": "7" },
+        { "accountId": 1, "credit": "7" } ] },
+      { "date": "2026-03-02T03:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "7" },
+        { "accountId": 13, "credit": "7" } ] },
+      { "date": "2026-03-03T03:00:00.000Z", "lines": [
+        { "accountId": 12, "debit": "0" },
+        { "accountId": 1, "debit": "11" },
+        { "accountId": 11, "credit": "11" } ] },
+      { "date": "2026-03-31T16:59:59.999Z", "lines": [
+        { "accountId": 1, "debit": "1" },
+        { "accountId": 11, "credit": "1" } ] },
+      { "date": "2026-03-31T17:00:00.000Z", "lines": [
+        { "accountId": 1, "debit": "2" },
+        { "accountId": 11, "credit": "2" } ] }
+    ],
+    "cashFlows": [
+      { "case": "arus-kas-q1-2026", "from": "2026-01-01", "to": "2026-03-31" },
+      { "case": "arus-kas-des-2025", "from": "2025-12-01", "to": "2025-12-31" },
+      { "case": "arus-kas-seluruh", "from": "2025-01-01", "to": "2026-12-31" },
+      { "case": "arus-kas-tanpa-gerak", "from": "2025-01-01", "to": "2025-11-30" }
+    ],
+    "equityStatements": [
+      { "case": "ekuitas-q1-2026", "from": "2026-01-01", "to": "2026-03-31" },
+      { "case": "ekuitas-lintas-tutup", "from": "2025-12-01", "to": "2026-03-31" },
+      { "case": "ekuitas-sebelum-buku", "from": "2025-01-01", "to": "2025-11-30" }
+    ],
+    "incomeStatements": [],
+    "balanceSheets": []
   }
 ]

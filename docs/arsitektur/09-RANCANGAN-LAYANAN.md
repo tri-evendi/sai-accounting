@@ -191,7 +191,7 @@ satu commit, beberapa `command`.
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
 | `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
-| `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate`, *bounded concurrency* |
+| `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
 | `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler (pagar: **langsung**) | ✅ peran `ledger` di `svc-worker` |
 
 ¹ Dimulai sebagai proses Node terpisah, pindah ke Go per generator bila ada
@@ -262,8 +262,13 @@ ke `pg` (`CONTROL_DATABASE_DIRECT_URL`), `interactive` lewat PgBouncer
    environment `svc-worker` — dan penyelia mewariskan environment yang SAMA ke
    keempat perannya, termasuk yang mengurai parameter ekspor pengguna. Itu
    pertukaran yang dipilih: kredensial itu keluar dari satu-satunya container
-   yang menghadap internet. Mencabutnya dari tiga peran lain (`env -u` di
-   skrip compose-nya) adalah penguatan murah berikutnya bila diperlukan.
+   yang menghadap internet. ✅ **Dipersempit 23 Okt 2026:** penyelia kini
+   membuang `PROVISION_DATABASE_URL` dan `PG_APP_USER` dari environment setiap
+   peran selain `interactive` (`OWNER_ONLY_ENV` di `scripts/run-workers.ts` —
+   di penyelia, bukan `env -u` per skrip compose, supaya peran kelima otomatis
+   TIDAK menerimanya; dijaga `tests/worker-owner-env.test.ts`). Yang tersisa
+   dari risiko ini: kredensial pemilik seproses dengan pengurai parameter
+   ekspor di peran `interactive` itu sendiri, dan dengan penyelianya.
 
 **Pemicu MEMISAHKAN lagi** (salah satunya cukup; memisahkannya kembali =
 satu layanan compose + `command` per peran, kodenya tidak berubah):
@@ -282,12 +287,15 @@ satu layanan compose + `command` per peran, kodenya tidak berubah):
 pekerjaan latar menjadi layanan yang berjalan terus, tidak ada lagi apa pun yang
 "selesai" untuk ditunggu `service_completed_successfully`. Aturan dan arah
 vonisnya kini **keadaan**, bukan rancangan — [02 §12](./02-LAYANAN-INFRA.md).
-Yang belum: gerbangnya masih per-image, bukan **per perusahaan**, dan
-expand/contract (§6) menuntut yang kedua.
+✅ Sejak 23 Okt 2026 gerbangnya DUA: per image untuk basis data kendali (boot,
+`/api/health`), dan **per perusahaan** untuk buku (`src/lib/company-schema-gate.ts`)
+— yang kedua itulah yang dituntut expand/contract (§6).
 
 Jalur `schema` tetap dijalankan **sekali** saat rilis (`docker compose run --rm`),
 bukan diterbitkan ke antrean: migration adalah langkah rilis, dan pelaksananya
-harus melihat kode keluarnya. Di on-premise, pelaksananya customer.
+harus melihat kode keluarnya. Di on-premise, pelaksananya customer. Yang
+berubah sejak 23 Okt 2026 (§6) adalah **apa yang membuat kode keluarnya
+bukan-nol**: kendali, platform, atau tidak satu buku pun — bukan satu buku.
 
 ### 3.3 Bahasa & runtime: Go
 
@@ -561,7 +569,7 @@ Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 
 | Operasi | Jalur | Perubahan | Keadaan |
 |---|---|---|---|
-| Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ ketiganya ada (tahap 1b) — tapi masih di gerbang pemblokir, dan masih TypeScript. Alasannya di bawah |
+| Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ **keluar dari gerbang pemblokir 23 Okt 2026** — buku yang gagal tidak lagi menahan rilis; buku itu sendiri yang ditutup. Masih TypeScript, masih langkah rilis (bukan antrean). Rinciannya di bawah |
 | **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
 | Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. Masih peran `conformance` di `svc-worker`, bukan jalur tersendiri: belum ada `kind` yang diterbitkan untuknya |
 | Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di peran `scheduler` (`svc-worker`), bukan jalur `schedule` tersendiri |
@@ -598,9 +606,48 @@ Memindahkan migration ke antrean tanpa expand/contract berarti aplikasi melayani
 buku yang skemanya lebih tua daripada kodenya, yaitu persis keadaan yang
 expand/contract ada untuk membuatnya aman. Jadi urutannya terbalik dari yang
 terbaca di tabel §9: **expand/contract lebih dulu, jalur `schema` menyusul.**
-Sampai itu, yang dibutuhkan §6 dari jalur ini sudah ada tanpa penerap migration
-kedua — dan penerap kedua atas pembukuan `_prisma_migrations` adalah kelas
-kerusakan yang tidak menghasilkan galat (§3.5: Prisma tetap pemilik skema).
+Penerap kedua atas pembukuan `_prisma_migrations` tetap kelas kerusakan yang
+tidak menghasilkan galat (§3.5: Prisma tetap pemilik skema).
+
+#### ✅ Keluar dari gerbang pemblokir (23 Okt 2026)
+
+**Keputusannya: gerbang berpindah dari RILIS ke BUKU, penerapnya tidak
+berpindah.** Expand/contract hanya menjamin satu arah — kode LAMA di skema
+BARU. Arah sebaliknya (kode baru, buku yang belum termigrasi) tidak dijamin
+aturan migration mana pun: kode baru boleh menyebut kolom yang dibawa migration
+yang belum sampai. Jadi "rilis berhenti memblokir" butuh potongan kedua yang
+tidak disebut versi lama bagian ini, dan potongan itulah yang dibangun:
+
+| Potongan | Bentuk | Dijaga |
+|---|---|---|
+| **Gerbang skema per perusahaan** | `src/lib/company-schema-gate.ts`. Buku yang `tertinggal`/`menggantung` terhadap image ini DITUTUP — hanya buku itu: proxy `prisma` melempar `CompanySchemaBehindError` (setiap query, termasuk pekerja `ledger` & skrip), penjaga halaman memantulkan ke `/book-updating`, penjaga API sesi & token menjawab `503 book_schema_updating` + `Retry-After`. Vonis `mutakhir`/`mendahului` di-cache seumur proses (satu query per buku per proses); vonis yang menutup ditanya ulang tiap 5 detik — buku yang baru termigrasi terbuka sendiri | `tests/company-schema-gate.test.ts` (perilaku + setiap jalan masuk) |
+| **Mode keluar rilis** | `db:migrate:release` (= CMD image migrator): kendali & platform tetap memblokir; buku yang gagal **sebagian** = keluar 0 (`partial`); **tidak satu buku pun** di kepala = keluar 1 (`error` — migration-nya yang rusak, dan aplikasi lama yang melayani semua buku lebih baik daripada aplikasi baru yang menutup semuanya). `db:migrate:all`/`:companies` tetap ketat | `tests/schema-rollout.test.ts`, `tests/migrate-fanout.test.ts` |
+| **Dilanjutkan dari tengah, murah** | riwayat buku dibaca SEBELUM proses Prisma dilahirkan; buku di kepala dilewati tanpa proses CLI. Sesudah `migrate deploy` keluar 0, riwayatnya dibaca lagi — kode keluar klaim, riwayat kebenaran | `tests/migrate-fanout.test.ts` |
+| **Hasil per buku dicatat** | `schema_migration_runs` (kendali, migration 0011): satu baris per putaran, hasil per buku di `details` | — |
+| **Terlihat** | `/api/health` → `migrations` (satu kata: `ok`/`pending`/`partial`/`error`/`unknown`, tanpa jumlah — rambu #317); `watch:health` komponen `migrasi-buku` (surel berisi slug buku); konsol `/backup` (versi per buku dari `_prisma_migrations`) | `tests/schema-rollout.test.ts` |
+
+**Yang SENGAJA tidak dilakukan, dan kenapa:**
+
+- **Bukan `kind` di antrean.** §3.2 sudah memutuskan migration adalah langkah
+  rilis yang pelaksananya harus melihat kode keluarnya, dan `kind` baru menuntut
+  pengklaim yang hidup terus — jalur `schema` tidak punya, dan memberinya satu
+  berarti proses berkredensial PEMILIK yang hidup terus. Yang dibeli antrean
+  (dilanjutkan dari tengah, hasil per buku, tidak memblokir) kini ada tanpanya.
+- **Bukan Go.** Penerap kedua atas `_prisma_migrations` — alasan §3.5 tidak
+  berubah.
+- **Tetap dijalankan SEBELUM swap secara bawaan**, dan itu pilihan dari angka:
+  karena setiap migration expand-only, menjalankannya sebelum swap tidak
+  menutup satu buku pun bila semuanya berhasil, sedangkan swap-dulu menutup
+  setiap buku selama gilirannya. Pada 17 buku fan-out-nya puluhan detik.
+  Gerbang per buku sudah membuat urutan sebaliknya AMAN; PRODUCTION.md
+  §Updates menuliskan tiga perintahnya, dan pemicunya: fase buku > ~2 menit.
+
+⚠ **Ditemukan saat mengerjakannya:** *bounded concurrency* tahap 1b TIDAK
+pernah berlaku. Pelaksananya memanggil `spawnSync` di loop tanpa satu `await`,
+jadi pelaksana pertama menghabiskan seluruh daftar sebelum yang kedua mulai —
+fan-out berurutan sejak tahap 1b, dan "24 detik" di atas adalah angka
+berurutan. Kini `spawn` asinkron; `tests/migrate-fanout.test.ts` menolak
+`spawnSync` kembali.
 
 ## 7. Dua profil penyebaran: SaaS dan On-Premise
 
@@ -1062,7 +1109,56 @@ Lulus keempatnya → `parityProven` di entri register yang sama, lalu `go-parity
 Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 `bun run contract:gen` (`GoEngineReports`).
 
-#### Laporan keempat & kelima: Umur Piutang dan Umur Utang (`go-parity`, 23 Okt 2026)
+#### Laporan keempat & kelima: Arus Kas dan Laporan Perubahan Ekuitas (`go-parity`, 23 Okt 2026)
+
+Pola Laba Rugi & Neraca, selangkah demi selangkah, dan BERHENTI di
+`go-parity`: berkas tetap TS sampai sesi utama menjalankan paritas atas buku
+produksi.
+
+| Bagian | Di mana |
+|---|---|
+| Arus Kas (metode langsung, per jurnal, kelompok dari tipe akun LAWAN), sen `int64`, SATU transaksi baca: saldo kas awal (`< from`, batas EKSKLUSIF baru `before` di `netsSQL`), akhir (`<= to`), dan baris periode yang dialirkan jurnal demi jurnal (`ORDER BY journal_id, id`) | `ledgerread/cash_flow.go` |
+| Laporan Perubahan Ekuitas — kedua ujung diturunkan dari `BuildBalanceSheet` (`from − 1 ms`, `to`), mutasi per akun `equity` di [from, to] TERMASUK jurnal penutup | `ledgerread/equity_statement.go` |
+| Akun kas, kelompok & urutannya, kelompok cadangan, pemetaan tipe akun lawan → kelompok — dari `contract/accounting.yaml` (`cash_flow`). `getCashFlow` TS membaca bangkitan yang sama (dulu peta tulisan tangan di `reports.ts`). `currencies.base` kini punya pembaca Go pertama (baris valas berkurs 1) dan dicoret dari pengecualian | `internal/contract/accounting_gen.go` · `packages/core/src/generated/accounting.ts` |
+| Lembar sebar Arus Kas (kalimat cetak, nama kelompok, anotasi rekonsiliasi, kolom & lebar DIBANGKITKAN dari `statement-layout.ts` / `report-export.ts`; `CASH_FLOW_CATEGORY_LABELS` pindah ke `statement-layout.ts` supaya generator tak menyeret Prisma) | `internal/document/cash_flow.go` · `report_layout_gen.go` |
+| Penghasil berkas di pelari `interactive` — DITOLAK selama `go-parity`; muatan Arus Kas yang membawa pembanding DITOLAK sebelum buku dibuka | `internal/interactivelane` |
+| Halaman Arus Kas mengirim `sumber` (`from`/`to`); muatan berperiode dari `goExportPayloadShape` (tanpa `compare` — halamannya tidak membacanya) | `reports/cash-flow/page.tsx` · `tests/report-engine.test.ts` |
+| Pembanding angka | `src/lib/cash-flow-parity.ts` · `src/lib/equity-statement-parity.ts` |
+| Paritas atas buku sungguhan, READ ONLY di KEDUA sisi; Go membuka buku lewat registry (instans sungguhan PT) | `bun run parity:cash-flow` · `parity:cash-flow-xlsx` · `parity:equity-changes` |
+| Berkas emas lintas bahasa atas buku fixture bersama (+ buku `buku-arus-kas`: pindah antarakun kas, satu akun masuk DAN keluar, akun netral, baris nol, valas ber-base & berkurs 1, tipe asing, batas hari WIB di kedua ujung, penutup, setoran + prive, akun ekuitas diam) | `statement_books.json` → `go test -update` → `tests/cash-flow-equity-golden.test.ts` (angka, instan penerbit, DAN isi lembar) |
+
+**Laporan Perubahan Ekuitas TIDAK punya berkas** — katalog tanpa `payloadKind`,
+layar saja. Entri `go-parity`-nya karena itu hanya tentang ANGKA, dan penjaga
+register kini menolak `go` untuk laporan tanpa berkas (sebelumnya penjaga
+menolak SEMUA entri tanpa berkas — padahal implementasi Go kedua yang
+disembunyikan dari register adalah kelas kegagalan yang register ini cegah).
+Membangun berkasnya keputusan produk tersendiri.
+
+Paritas lokal (23 Okt 2026, Postgres 17 sekali pakai, 2 buku: 3.068 jurnal
+berpecahan sen dengan valas ber-`base_*`, baris valas berkurs 1, pindah
+antarakun kas, tipe asing, baris nol, jurnal penutup 2025, jurnal tepat di
+`T17:00:00.000Z` dan `T16:59:59.999Z` pada setiap batas periode; buku kedua
+tanpa wizard dengan satu jurnal kas timpang satu sen): `parity:cash-flow`
+12/12 setara (6 periode, termasuk satu hari & periode yang belum berjalan
+penuh; buku timpang TIDAK terekonsiliasi di kedua sisi), `parity:cash-flow-xlsx`
+10/10, `parity:equity-changes` 12/12 — juga 3 × 6/6 dalam mode
+`pgbouncer=true`.
+
+Perintah paritas produksi (sesi utama, biner dari checkout yang sama):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:cash-flow parity:cash-flow-xlsx parity:equity-changes; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity \
+      --period "$(date +%Y)-01-01..$(date +%F),$(( $(date +%Y)-1 ))-01-01..$(( $(date +%Y)-1 ))-12-31,$(( $(date +%Y)-1 ))-07-01..$(date +%Y)-06-30"
+done
+```
+
+Lulus `parity:cash-flow` + `parity:cash-flow-xlsx` → `parityProven` di entri
+`cash-flow`, lalu `go-parity` → `go` (register + `bun run contract:gen`).
+
+#### Laporan keenam & ketujuh: Umur Piutang dan Umur Utang (`go-parity`, 23 Okt 2026)
 
 Laporan tahap 1d PERTAMA yang tidak membaca baris jurnal, melainkan DOKUMEN
 sub-buku — faktur, kontrak, pembayaran, uang muka yang dikompensasikan, retur,
@@ -1136,7 +1232,7 @@ register, lalu `go-parity` → `go` + `bun run contract:gen`.
 
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Umur Piutang & Umur Utang `go-parity` (23 Okt 2026, menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Arus Kas, Laporan Perubahan Ekuitas, Umur Piutang & Umur Utang `go-parity` (23 Okt 2026, menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Cadangan Go per instans ✅ lolos gerbang Go 23 Okt 2026; pemindahan pertama menunggu peran cadangan di server instansnya | — |
@@ -1369,7 +1465,7 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 | Bidang | Hilang |
 |---|---|
 | **Versi** | **definisi GA**. Semver + tag versi sudah ada (tahap 1a: setiap image juga ber-tag versi `package.json`, kini `0.10.0`) — yang belum adalah janji apa yang membuat sebuah versi "umum" |
-| ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). Prasyarat §6 karena itu terpenuhi; yang tersisa dari §6 adalah memindahkan penerapannya keluar dari gerbang pemblokir |
+| ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). ✅ Penerapannya keluar dari gerbang pemblokir **23 Okt 2026** (§6): gerbang per perusahaan + `db:migrate:release` |
 | **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
 | **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |
 | ~~Keamanan~~ | ✅ `SECURITY.md` ada (22 Okt 2026) — **kontak & sasaran waktunya masih placeholder** yang wajib diisi pemilik |
@@ -1381,6 +1477,8 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 Dua di antaranya memblokir komersialisasi, bukan sekadar kerapian: **disiplin
 versi** — tanpa artefak bernomor tidak ada yang bisa dijual atau didukung — dan
 **severity insiden**, tanpanya tidak ada SLA yang bisa dijanjikan.
+
+🔶 **Draf jawabannya ada (23 Okt 2026): [`docs/TATA-KELOLA.md`](../TATA-KELOLA.md)** — usulan angka per butir, menunggu pengesahan pemilik.
 
 ⚠ **Delapan sisanya KEBIJAKAN, bukan kode — dan itu sebabnya ia tidak
 dikerjakan di sini.** Jendela dukungan, retensi data, severity insiden, sasaran

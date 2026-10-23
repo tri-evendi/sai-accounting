@@ -1,0 +1,30 @@
+{
+  "from": "2025-06-30T17:00:00Z",
+  "to": "2026-06-30T16:59:59.999Z",
+  "components": [
+    {
+      "code": "3101",
+      "name": "Modal",
+      "opening": "1000.00",
+      "additions": "0.00",
+      "reductions": "0.00",
+      "closing": "1000.00"
+    },
+    {
+      "code": "3201",
+      "name": "Laba Ditahan",
+      "opening": "0.00",
+      "additions": "370.30",
+      "reductions": "0.00",
+      "closing": "370.30"
+    }
+  ],
+  "unclosedIncome": {
+    "opening": "370.30",
+    "movement": "-290.20",
+    "closing": "80.10"
+  },
+  "totalOpening": "1370.30",
+  "totalClosing": "1450.40",
+  "unknownTypes": []
+}

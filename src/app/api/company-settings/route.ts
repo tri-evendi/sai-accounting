@@ -24,6 +24,7 @@ export async function GET() {
     npwp: settings?.npwp ?? null,
     taxName: settings?.taxName ?? null,
     taxAddress: settings?.taxAddress ?? null,
+    nitku: settings?.nitku ?? null,
     name: settings?.name ?? null,
     address: settings?.address ?? null,
   });
@@ -67,6 +68,8 @@ export async function PATCH(request: Request) {
       npwp: parsed.data.npwp?.trim() || null,
       taxName: parsed.data.taxName?.trim() || null,
       taxAddress: parsed.data.taxAddress?.trim() || null,
+      // Hanya bila dikirim: formulir lama yang tidak mengenalnya tidak menghapusnya.
+      ...(parsed.data.nitku !== undefined ? { nitku: parsed.data.nitku || null } : {}),
     },
   });
 
@@ -74,5 +77,6 @@ export async function PATCH(request: Request) {
     npwp: updated.npwp,
     taxName: updated.taxName,
     taxAddress: updated.taxAddress,
+    nitku: updated.nitku,
   });
 }

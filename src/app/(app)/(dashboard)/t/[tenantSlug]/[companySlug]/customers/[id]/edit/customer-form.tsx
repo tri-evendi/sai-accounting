@@ -11,6 +11,7 @@ import { Alert, Col, Flex, Row, theme } from "antd";
 import { useAppRouter } from "@sai/ui/app-link";
 import { Button } from "@sai/ui/button";
 import { Input } from "@sai/ui/input";
+import { Select } from "@sai/ui/select";
 import { Checkbox } from "@sai/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { PageLoader } from "@sai/ui/loading";
@@ -33,6 +34,9 @@ export function EditCustomerForm() {
     email: "",
     pic: "",
     npwp: "",
+    nik: "",
+    nitku: "",
+    efakturTrxCode: "",
     taxExempt: false,
     isActive: true,
   });
@@ -51,6 +55,9 @@ export function EditCustomerForm() {
           email: data.email || "",
           pic: data.pic || "",
           npwp: data.npwp || "",
+          nik: data.nik || "",
+          nitku: data.nitku || "",
+          efakturTrxCode: data.efakturTrxCode || "",
           taxExempt: Boolean(data.taxExempt),
           isActive: data.isActive !== false,
         });
@@ -160,6 +167,24 @@ export function EditCustomerForm() {
               </Col>
               <Col {...half}>
                 <Input id="npwp" label={t("customers.npwp")} value={form.npwp} onChange={(e) => setForm({ ...form, npwp: e.target.value })} />
+              </Col>
+              <Col {...half}>
+                <Input id="nik" inputMode="numeric" label={t("customers.nik")} value={form.nik} onChange={(e) => setForm({ ...form, nik: e.target.value })} />
+              </Col>
+              <Col {...half}>
+                <Input id="nitku" inputMode="numeric" label={t("customers.nitku")} value={form.nitku} onChange={(e) => setForm({ ...form, nitku: e.target.value })} />
+              </Col>
+              <Col {...half}>
+                <Select
+                  label={t("customers.efakturTrxCode")}
+                  value={form.efakturTrxCode}
+                  onChange={(e) => setForm({ ...form, efakturTrxCode: e.target.value })}
+                  options={[
+                    { value: "", label: t("customers.efakturTrxCodeNone") },
+                    { value: "02", label: t("customers.efakturTrxCode02") },
+                    { value: "03", label: t("customers.efakturTrxCode03") },
+                  ]}
+                />
               </Col>
               <Col {...half}>
                 {toggle(

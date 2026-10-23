@@ -161,6 +161,8 @@ export const companyTaxIdentitySchema = z.object({
   isPkp: booleanField(true),
   taxName: z.string().max(150).trim().optional(),
   taxAddress: z.string().max(1000).trim().optional(),
+  /** ID TKU penjual, 22 digit (Coretax). Kosong = kantor pusat (NPWP + 000000). */
+  nitku: z.string().trim().regex(/^(\d{22})?$/, vmsg("validation.nitkuInvalid")).optional(),
 });
 
 export const companyIdentitySchema = z

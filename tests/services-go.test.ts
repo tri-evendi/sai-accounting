@@ -170,6 +170,17 @@ describe("invarian I-2: pintu posting tunggal, dan ia TypeScript", () => {
    * Dan ia bukan tabel buku: nol angka akuntansi, dan menghapus seluruh isinya
    * tidak mengubah satu laporan pun. Invarian I-2 tidak tersentuh.
    *
+   * `efaktur_submissions` (Okt 2026) TIDAK masuk, dan itu juga keputusan yang
+   * ditulis di sini. Status kiriman ke PJAP memang bukan buku (nol angka
+   * akuntansi), jadi ia LOLOS syarat yang sama dengan `backup_runs` — tetapi
+   * syarat kedua `backup_runs` (Go tidak punya jalan lain) TIDAK berlaku:
+   * jalur `integration` melaporkan setiap hasil PJAP sebagai pekerjaan
+   * `efaktur.record`, dan pelari `interactive` Node yang menuliskannya ke buku
+   * PT. Antrean adalah perantaranya, jadi I-3 tetap utuh dan daftar ini tetap
+   * dua. Tabelnya pun hidup di basis data PERUSAHAAN, yang seluruhnya dibaca
+   * penjaga di atas sebagai tabel buku — memasukkannya berarti melubangi
+   * penjaga itu untuk satu tabel. docs/EFAKTUR.md §Keputusan.
+   *
    * ⚠ MENAMBAH BARIS DI SINI ADALAH KEPUTUSAN. Setiap tambahan memperluas apa
    * yang bisa ditulis bahasa yang bukan pemilik pintu posting, dan alasannya
    * ditulis DI SINI — bukan di pesan commit yang tak akan dibaca orang

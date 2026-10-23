@@ -615,7 +615,7 @@ function parseConformanceDetails(raw: string | null): ConformanceRunDetails | nu
         : [];
 
     const p = parsed as { runner?: unknown; service?: unknown };
-    const runner =
+    const runner: ConformanceRunDetails["runner"] =
       p.runner === "node" || p.runner === "go"
         ? {
             runner: p.runner,

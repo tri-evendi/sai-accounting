@@ -21,7 +21,7 @@ import { z } from "zod";
 import { LOCALES } from "@sai/core/i18n/config";
 import { BILLING_MODES } from "@sai/billing/platform-constants";
 import { vmsg } from "@sai/core/i18n/validation";
-import { SITE_CONTENT_VALUE_MAX } from "@sai/core/site-content";
+import { SITE_CONTENT_NOTE_MAX, SITE_CONTENT_VALUE_MAX } from "@sai/core/site-content";
 
 /** Alasan yang diketik operator — masuk ke jejak audit apa adanya. */
 export const operatorReasonField = z
@@ -269,42 +269,57 @@ export const mailTestSchema = z.object({
 });
 export type MailTestFormInput = z.infer<typeof mailTestSchema>;
 
-/* ── 6. Isi halaman pendaratan (CMS) ──────────────────────────────────────── */
+/* ── 6. Isi halaman depan (CMS, migration platform 0008) ─────────────────── */
 
 /**
- * Penimpa isi pendaratan untuk SATU bahasa dan SATU bagian halaman.
+ * DRAF satu bagian halaman, ketiga bahasa sekaligus (editor berdampingan).
  *
- * ══ KUNCINYA NAMA TELANJANG, BUKAN JALUR-TITIK ═════════════════════════════
- * `entries` berkunci nama tanpa awalan (`heroHeading`), bukan jalur-titik penuh
- * (`landing.heroHeading`), dan itu bukan kerapian: react-hook-form memperlakukan
- * titik di dalam nama field sebagai JALUR BERSARANG, jadi field bernama
- * `entries.landing.heroHeading` akan tersimpan sebagai objek tiga tingkat dan
- * tidak pernah cocok dengan skema ini. Awalannya ditambahkan kembali di satu
- * tempat — server action, lewat `SITE_CONTENT_PREFIX` — sehingga client dan
- * server tidak bisa menyimpang soal bentuk kuncinya.
+ * `entries[locale][nama]`. Nama telanjang (`heroHeading`), bukan jalur-titik:
+ * react-hook-form membaca titik sebagai jalur BERSARANG, jadi
+ * `entries.id.landing.heroHeading` akan menjadi objek empat tingkat. Awalan
+ * `landing.` ditambahkan kembali di server action lewat `SITE_CONTENT_PREFIX`.
  *
- * `reason` TIDAK diminta, sama seperti pengaturan surel di atas: ini isi milik
- * penyedia sendiri, bukan tindakan terhadap data pelanggan. Jejaknya tetap
- * tercatat lengkap — aktor, bahasa, kunci mana saja yang berubah, dan
- * panjangnya — di jejak audit operator.
+ * NILAI KOSONG SAH: artinya "kembali ke kalimat bawaan saat diterbitkan".
+ * Batas per isian, penanda `{…}`, dan larangan tag HTML diperiksa di kedua
+ * sisi lewat `contentValueProblem` (`@sai/core/site-content`), karena batasnya
+ * diturunkan dari kamus dan skema ini tidak memuat kamus. Yang di sini hanya
+ * batas mutlak kolomnya.
  *
- * NILAI KOSONG SAH, dan ia punya arti: "kembalikan ke kalimat bawaan"
- * (`saveSiteContent` menghapus barisnya). Karena itu TIDAK ada `.min(1)` di
- * sini — menambahkannya akan mencabut satu-satunya jalan untuk membatalkan
- * sebuah suntingan.
+ * `reason` tidak diminta: ini isi milik penyedia sendiri. Jejaknya tetap
+ * lengkap di riwayat penerbitan dan jejak audit operator.
  */
-export const siteContentSchema = z.object({
-  locale: z.enum(LOCALES),
-  /** Bagian halaman yang sedang disunting — ikut supaya jawaban server bisa
-   *  menyebutkan apa yang disimpan, dan supaya satu simpanan tidak pernah
-   *  menyentuh kunci di luar layar yang terbuka. */
+const siteContentLocaleEntries = z.record(
+  z.string().max(80),
+  z.string().max(SITE_CONTENT_VALUE_MAX, vmsg("validation.siteContentTooLong"))
+);
+
+export const siteContentDraftSchema = z.object({
+  /** Bagian yang sedang disunting, untuk jawaban dan jejak. */
   section: z.string().trim().min(1).max(40),
-  entries: z.record(
-    z.string(),
-    z.string().max(SITE_CONTENT_VALUE_MAX, vmsg("validation.siteContentTooLong"))
-  ),
+  entries: z.object({
+    id: siteContentLocaleEntries,
+    en: siteContentLocaleEntries,
+    zh: siteContentLocaleEntries,
+  } satisfies Record<(typeof LOCALES)[number], typeof siteContentLocaleEntries>),
 });
-export type SiteContentFormInput = z.infer<typeof siteContentSchema>;
+export type SiteContentDraftFormInput = z.infer<typeof siteContentDraftSchema>;
+
+/** Terbitkan semua draf. Catatan opsional masuk ke riwayat. */
+export const siteContentPublishSchema = z.object({
+  note: z
+    .string()
+    .trim()
+    .max(SITE_CONTENT_NOTE_MAX, vmsg("validation.siteContentTooLong"))
+    .optional(),
+});
+export type SiteContentPublishFormInput = z.infer<typeof siteContentPublishSchema>;
+
+/** Kembalikan dari riwayat: seluruh penerbitan (`undo`) atau satu revisi (`restore`). */
+export const siteContentHistorySchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("undo"), publicationId: z.number().int().positive() }),
+  z.object({ mode: z.literal("restore"), revisionId: z.number().int().positive() }),
+]);
+export type SiteContentHistoryInput = z.infer<typeof siteContentHistorySchema>;
 
 /* ── 9. Register lisensi on-premise (migration platform 0006) ──────────────── */
 

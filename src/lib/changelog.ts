@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.15.1",
+    tanggal: "2026-10-23",
+    ringkas: "Ekspor Excel Arus Kas, Umur Piutang, dan Umur Utang kini disiapkan di latar.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Ekspor Excel Arus Kas, Umur Piutang, dan Umur Utang disiapkan di latar seperti laporan keuangan lain — halaman tetap bisa dipakai selama berkasnya dibuat.",
+      },
+    ],
+  },
+  {
     versi: "0.15.0",
     tanggal: "2026-10-23",
+    sha: "d769335",
     ringkas:
       "Pembaruan basis data tidak lagi menghentikan seluruh layanan, dan pembuatan perusahaan baru lebih terjaga.",
     butir: [

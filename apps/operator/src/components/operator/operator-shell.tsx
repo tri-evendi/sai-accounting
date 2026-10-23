@@ -60,7 +60,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
+import { Alert, Drawer, Flex, Grid, Layout, Menu, theme } from "antd";
 import type { MenuProps } from "antd";
 import {
   CloseOutlined,
@@ -127,6 +127,12 @@ export interface OperatorShellLabels {
   closeMenu: string;
   /** Tautan lewati-ke-isi (T13 #205). */
   skipToContent: string;
+  /**
+   * Spanduk `OPERATOR_MFA=off` di SETIAP halaman konsol. Saklar keamanan yang
+   * mati hanya terlihat di `.env` dan di log adalah saklar yang dilupakan;
+   * spanduk ini membuatnya terlihat oleh setiap orang yang masuk.
+   */
+  mfaOffBanner?: string;
 }
 
 interface OperatorShellProps {
@@ -443,6 +449,14 @@ export function OperatorShell({ children, nav, labels, logout }: OperatorShellPr
             padding: lebar ? token.paddingLG : token.padding,
           }}
         >
+          {labels.mfaOffBanner && (
+            <Alert
+              type="warning"
+              showIcon
+              message={labels.mfaOffBanner}
+              style={{ marginBottom: token.margin }}
+            />
+          )}
           {children}
         </Layout.Content>
       </Layout>

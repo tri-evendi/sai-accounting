@@ -80,6 +80,17 @@ export type OperatorAuditAction =
   | "operator.authenticator.confirm"
   | "operator.authenticator.confirm.failed"
   | "operator.authenticator.rotate"
+  /**
+   * PEMASANGAN WAJIB saat masuk (MFA hidup, akun belum terkonfirmasi untuk
+   * rahasia yang berlaku). `start` = kata sandi benar dan sesi pemasangan
+   * terbit; `confirm` = kode dari aplikasi diterima, sesi biasa terbit
+   * (sekaligus konfirmasi — memuat SIDIK); `failed` = kode salah atau sesi
+   * pemasangan tidak lagi sah. Inilah yang membuat pemasangan oleh orang yang
+   * hanya tahu kata sandi TERLIHAT di jejak pemilik.
+   */
+  | "operator.authenticator.enroll.start"
+  | "operator.authenticator.enroll.confirm"
+  | "operator.authenticator.enroll.failed"
   /** Unduhan CSV e-Faktur tagihan platform — periode + jumlah baris. */
   | "operator.efaktur.export"
   /** Pengumuman status dibuat / fasenya berpindah (migration platform 0004). */
@@ -122,25 +133,36 @@ export interface OperatorAuditEntry {
   createdAt: string;
 }
 
-/** Tulis satu peristiwa. Gagal menulis dicatat ke log server, tidak melempar. */
-export async function writeOperatorAuditLog(params: {
+interface AuditWrite {
   operator: string;
   action: OperatorAuditAction;
   details?: Record<string, unknown>;
   ipAddress?: string | null;
-}): Promise<void> {
+}
+
+/** Tulis satu peristiwa. Gagal menulis dicatat ke log server, tidak melempar. */
+export async function writeOperatorAuditLog(params: AuditWrite): Promise<void> {
   try {
-    await platformDb.operatorAuditLog.create({
-      data: {
-        operator: params.operator.slice(0, 100),
-        action: params.action,
-        details: params.details === undefined ? null : JSON.stringify(params.details),
-        ipAddress: params.ipAddress ? params.ipAddress.slice(0, 45) : null,
-      },
-    });
+    await writeOperatorAuditLogOrThrow(params);
   } catch (error) {
     console.error("[operator-audit] gagal menulis jejak:", error);
   }
+}
+
+/**
+ * Sama, tetapi MELEMPAR bila gagal — untuk baris yang menjadi KEADAAN, bukan
+ * sekadar catatan: konfirmasi pemasangan authenticator. Sesi yang terbit tanpa
+ * barisnya berarti akun yang terbaca "belum terpasang" padahal sudah.
+ */
+export async function writeOperatorAuditLogOrThrow(params: AuditWrite): Promise<void> {
+  await platformDb.operatorAuditLog.create({
+    data: {
+      operator: params.operator.slice(0, 100),
+      action: params.action,
+      details: params.details === undefined ? null : JSON.stringify(params.details),
+      ipAddress: params.ipAddress ? params.ipAddress.slice(0, 45) : null,
+    },
+  });
 }
 
 /**
@@ -177,6 +199,7 @@ export async function readOperatorAuditPage(
 export const AUTHENTICATOR_CONFIRM_ACTIONS = [
   "operator.authenticator.confirm",
   "operator.authenticator.rotate",
+  "operator.authenticator.enroll.confirm",
 ] as const satisfies readonly OperatorAuditAction[];
 
 /**
@@ -212,4 +235,34 @@ function parseDetails(raw: string | null): Record<string, unknown> | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Konfirmasi SATU akun — bahan keputusan login (sudah terkonfirmasi → kode
+ * wajib; belum → pemasangan). Dibaca per akun, bukan lewat 500 baris terbaru
+ * seluruh konsol: konfirmasi lama tidak boleh "hilang" hanya karena jejaknya
+ * ramai, sebab hilangnya berarti akun yang sudah terpasang dibuka lagi untuk
+ * pemasangan oleh siapa pun yang tahu kata sandinya.
+ *
+ * MELEMPAR bila jejak tak terbaca; pemanggil wajib gagal-tertutup.
+ */
+export async function readAuthenticatorConfirmationsFor(
+  operator: string
+): Promise<{ operator: string; fingerprint: string; at: Date }[]> {
+  const rows = await platformDb.operatorAuditLog.findMany({
+    where: {
+      action: { in: [...AUTHENTICATOR_CONFIRM_ACTIONS] },
+      operator: { equals: operator, mode: "insensitive" },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 200,
+  });
+  const out: { operator: string; fingerprint: string; at: Date }[] = [];
+  for (const row of rows) {
+    const fingerprint = parseDetails(row.details)?.fingerprint;
+    if (typeof fingerprint === "string" && fingerprint) {
+      out.push({ operator: row.operator, fingerprint, at: row.createdAt });
+    }
+  }
+  return out;
 }

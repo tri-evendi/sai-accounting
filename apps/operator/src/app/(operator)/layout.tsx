@@ -33,6 +33,7 @@
 
 import { Button } from "@sai/ui/button";
 import { OperatorShell } from "@op/components/operator/operator-shell";
+import { operatorMfaOff } from "@op/lib/operator/credentials";
 import { optionalOperatorSession } from "@op/lib/operator/guard";
 import { operatorNav } from "@op/lib/operator/nav";
 import { getT } from "@sai/platform/i18n/server";
@@ -111,6 +112,7 @@ export default async function OperatorLayout({ children }: { children: React.Rea
         mainMenu: t("sidebar.mainMenu"),
         closeMenu: t("sidebar.closeMenu"),
         skipToContent: t("common.skipToContent"),
+        mfaOffBanner: operatorMfaOff() ? t("operator.mfaOffBanner") : undefined,
       }}
       logout={logout}
     >

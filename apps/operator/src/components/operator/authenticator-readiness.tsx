@@ -2,10 +2,11 @@
  * KESIAPAN MFA — akun mana yang authenticator-nya sudah terkonfirmasi untuk
  * rahasia yang berlaku sekarang. Server component (tabel statis, tanpa JS).
  *
- * Ditampilkan di `/accounts` dan `/accounts/authenticator`. Gunanya satu:
- * pemilik tahu kapan AMAN mencabut `OPERATOR_MFA=off` — saat setiap akun yang
- * akan dipakai masuk sudah "Terkonfirmasi". Layar ini tidak pernah mengubah
- * env; mencabut saklarnya tetap langkah tangan di server (PRODUCTION.md).
+ * Ditampilkan di `/accounts` dan `/accounts/authenticator`. Sejak pemasangan
+ * wajib saat masuk (`lib/operator/enrolment.ts`), tabel ini bukan lagi syarat
+ * mencabut `OPERATOR_MFA=off`: akun yang belum terkonfirmasi dipandu memasang
+ * di login berikutnya. Gunanya kini: melihat siapa yang belum, dan siapa yang
+ * rahasianya berganti. Layar ini tidak pernah mengubah env (PRODUCTION.md).
  */
 import { Badge } from "@sai/ui/badge";
 import { StaticTable } from "@sai/ui/static-table";

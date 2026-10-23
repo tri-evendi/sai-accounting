@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.16.3 — 2026-10-23 — belum digelar
+## 0.17.0 — 2026-10-23 — belum digelar
+
+Konsol operator kini mewajibkan aplikasi authenticator saat masuk.
+
+### Baru
+
+- Operator yang belum memasang authenticator dipandu memindai kode QR saat masuk; sesudahnya setiap login memakai kode 6 digit.
+
+---
+
+## 0.16.3 — 2026-10-23 (e7ea52d)
 
 Perusahaan baru yang berhasil dibuat tidak lagi dilaporkan gagal, dan pekerjaan latar yang gagal kini menunggu sebelum dicoba ulang.
 

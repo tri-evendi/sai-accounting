@@ -215,6 +215,17 @@ interface Results {
   owner_uid: number;
   owner_gid: number;
 }
+/**
+ * Kosakata e-Faktur yang dibaca DUA bahasa (docs/EFAKTUR.md): Node menulis
+ * `efaktur_submissions.status`, Go membacanya untuk memutuskan apakah masih
+ * perlu menanyai PJAP, dan Go MELAPORKAN `outcomes` lewat `efaktur.record`.
+ */
+interface Efaktur {
+  submission_statuses: string[];
+  outcomes: string[];
+  providers: string[];
+  poll_max_rounds: number;
+}
 interface Kontrak {
   version: number;
   statuses: string[];
@@ -222,6 +233,7 @@ interface Kontrak {
   kinds: Record<string, Kind>;
   numbers: Numbers;
   results: Results;
+  efaktur: Efaktur;
 }
 
 const KUNCI_ANGKA: (keyof Numbers)[] = [
@@ -349,6 +361,32 @@ function baca(): Kontrak {
     const v = k.results?.[kunci];
     if (!Number.isInteger(v) || v < 1) {
       salah.push(`results.${kunci} harus bilangan bulat ≥ 1 (kini: ${String(v)})`);
+    }
+  }
+
+  /* e-Faktur: `outcomes` WAJIB himpunan bagian `submission_statuses` — hasil
+     yang dilaporkan Go tapi tak dikenal kolom status adalah baris yang ditolak
+     CHECK di buku PT, dan pekerjaan `efaktur.record` yang mati karenanya. */
+  const e = k.efaktur;
+  const ejaan = /^[a-z][a-z_]*$/;
+  if (!e || !Array.isArray(e.submission_statuses) || e.submission_statuses.length === 0) {
+    salah.push("`efaktur.submission_statuses` kosong");
+  } else {
+    for (const v of e.submission_statuses) {
+      if (!ejaan.test(v)) salah.push(`efaktur.submission_statuses: \`${v}\` bukan snake_case`);
+    }
+    if (!Array.isArray(e.outcomes) || e.outcomes.length === 0) salah.push("`efaktur.outcomes` kosong");
+    for (const v of e.outcomes ?? []) {
+      if (!e.submission_statuses.includes(v)) {
+        salah.push(`efaktur.outcomes: \`${v}\` tidak ada di submission_statuses`);
+      }
+    }
+    if (!Array.isArray(e.providers) || e.providers.length === 0) salah.push("`efaktur.providers` kosong");
+    for (const v of e.providers ?? []) {
+      if (!ejaan.test(v)) salah.push(`efaktur.providers: \`${v}\` bukan snake_case`);
+    }
+    if (!Number.isInteger(e.poll_max_rounds) || e.poll_max_rounds < 1) {
+      salah.push(`efaktur.poll_max_rounds harus bilangan bulat ≥ 1 (kini: ${String(e.poll_max_rounds)})`);
     }
   }
 
@@ -527,6 +565,30 @@ export const LANE_LOCK_IDLE_SESSION_MS = ${n.lane_lock_idle_session_ms};
  */
 export const RESULT_OWNER_UID = ${k.results.owner_uid};
 export const RESULT_OWNER_GID = ${k.results.owner_gid};
+
+// ── e-Faktur (docs/EFAKTUR.md) ─────────────────────────────────────────────
+
+${union("EfakturSubmissionStatus", k.efaktur.submission_statuses)}
+
+/** Nilai \`efaktur_submissions.status\` — sama dengan CHECK di migration 0004. */
+export const EFAKTUR_SUBMISSION_STATUSES = [
+${k.efaktur.submission_statuses.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly EfakturSubmissionStatus[];
+
+/** Hasil yang boleh DILAPORKAN jalur \`integration\` Go lewat \`efaktur.record\`. */
+export const EFAKTUR_OUTCOMES = [
+${k.efaktur.outcomes.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly EfakturSubmissionStatus[];
+
+${union("EfakturProvider", k.efaktur.providers)}
+
+/** Nilai \`company_settings.efaktur_provider\` — dibaca Go untuk memilih penyedia. */
+export const EFAKTUR_PROVIDERS = [
+${k.efaktur.providers.map((s) => `  "${s}",`).join("\n")}
+] as const satisfies readonly EfakturProvider[];
+
+/** Batas putaran \`integration.efaktur_poll\` sebelum orang diminta memeriksa Coretax. */
+export const EFAKTUR_POLL_MAX_ROUNDS = ${k.efaktur.poll_max_rounds};
 `;
 }
 
@@ -789,6 +851,31 @@ const (
 \tResultOwnerUID = ${k.results.owner_uid}
 \tResultOwnerGID = ${k.results.owner_gid}
 )
+
+// EfakturStatus adalah nilai \`efaktur_submissions.status\` di buku PT —
+// ditulis Node, DIBACA Go (docs/EFAKTUR.md).
+type EfakturStatus string
+
+const (
+${ratakan(k.efaktur.submission_statuses.map((s) => ({ kiri: `EfakturStatus${pengenalGo(s)}`, kanan: `EfakturStatus = "${s}"` })))}
+)
+
+// EfakturOutcomes: hasil yang boleh dilaporkan jalur \`integration\` lewat
+// \`efaktur.record\` — himpunan bagian EfakturStatus, dijamin generator.
+var EfakturOutcomes = map[EfakturStatus]bool{
+${ratakan(k.efaktur.outcomes.map((s) => ({ kiri: `EfakturStatus${pengenalGo(s)}:`, kanan: "true," })))}
+}
+
+// EfakturProvider adalah nilai \`company_settings.efaktur_provider\` — dipilih
+// pengguna (Node), dipetakan ke implementasi oleh \`internal/efaktur\` (Go).
+type EfakturProvider string
+
+const (
+${ratakan(k.efaktur.providers.map((s) => ({ kiri: `EfakturProvider${pengenalGo(s)}`, kanan: `EfakturProvider = "${s}"` })))}
+)
+
+// EfakturPollMaxRounds: batas putaran \`integration.efaktur_poll\`.
+const EfakturPollMaxRounds = ${k.efaktur.poll_max_rounds}
 `;
 }
 

@@ -64,3 +64,8 @@ ALTER TABLE "efaktur_submissions"
 ALTER TABLE "efaktur_submissions"
     ADD CONSTRAINT "efaktur_submissions_status_check"
     CHECK ("status" IN ('queued', 'submitted', 'approved', 'rejected', 'failed', 'cancel_requested', 'canceled'));
+
+-- Penyedia: kolom baru, semua baris NULL — constraint aman dipasang langsung.
+ALTER TABLE "company_settings"
+    ADD CONSTRAINT "company_settings_efaktur_provider_check"
+    CHECK ("efaktur_provider" IS NULL OR "efaktur_provider" IN ('mock', 'pjap'));

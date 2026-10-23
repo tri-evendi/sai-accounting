@@ -15,6 +15,7 @@
     "./coretax-xml": "./src/coretax-xml.ts",
     "./deploy-profile": "./src/deploy-profile.ts",
     "./efaktur": "./src/efaktur.ts",
+    "./efaktur-submission": "./src/efaktur-submission.ts",
     "./entitlement": "./src/entitlement.ts",
     "./export-limits": "./src/export-limits.ts",
     "./generated/accounting": "./src/generated/accounting.ts",

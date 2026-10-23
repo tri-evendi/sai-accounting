@@ -45,3 +45,47 @@ export const LANE_LOCK_IDLE_SESSION_MS = 90000;
  */
 export const RESULT_OWNER_UID = 1000;
 export const RESULT_OWNER_GID = 1000;
+
+// ── e-Faktur (docs/EFAKTUR.md) ─────────────────────────────────────────────
+
+export type EfakturSubmissionStatus =
+  | "queued"
+  | "submitted"
+  | "approved"
+  | "rejected"
+  | "failed"
+  | "cancel_requested"
+  | "canceled";
+
+/** Nilai `efaktur_submissions.status` — sama dengan CHECK di migration 0004. */
+export const EFAKTUR_SUBMISSION_STATUSES = [
+  "queued",
+  "submitted",
+  "approved",
+  "rejected",
+  "failed",
+  "cancel_requested",
+  "canceled",
+] as const satisfies readonly EfakturSubmissionStatus[];
+
+/** Hasil yang boleh DILAPORKAN jalur `integration` Go lewat `efaktur.record`. */
+export const EFAKTUR_OUTCOMES = [
+  "submitted",
+  "approved",
+  "rejected",
+  "failed",
+  "canceled",
+] as const satisfies readonly EfakturSubmissionStatus[];
+
+export type EfakturProvider =
+  | "mock"
+  | "pjap";
+
+/** Nilai `company_settings.efaktur_provider` — dibaca Go untuk memilih penyedia. */
+export const EFAKTUR_PROVIDERS = [
+  "mock",
+  "pjap",
+] as const satisfies readonly EfakturProvider[];
+
+/** Batas putaran `integration.efaktur_poll` sebelum orang diminta memeriksa Coretax. */
+export const EFAKTUR_POLL_MAX_ROUNDS = 24;

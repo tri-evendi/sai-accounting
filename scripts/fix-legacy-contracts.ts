@@ -21,6 +21,11 @@
  *                                 uang KONTRAKNYA sebelum kurs diisi (lihat di bawah).
  *   --actor <nama>                nama pelaksana di jejak audit.
  *   --detail                      cetak SEMUA baris yang tak bisa diisi.
+ *   --skip-missing-bi             baris yang kurs BI-nya tidak ada (mis. tanggal
+ *                                 isian kosong 2000-01-01 dari aplikasi lama)
+ *                                 DILEWATI — tetap tanpa kurs, tercantum di
+ *                                 laporan — alih-alih menahan seluruh penerapan.
+ *                                 Keputusan pemilik 23 Okt 2026 untuk pt-sai.
  *   --apply                       tulis. Tanpa ini tidak ada satu baris pun ditulis.
  *
  * ══ YANG DILAKUKAN — urutan di dalam SATU transaksi ═══════════════════════
@@ -112,6 +117,7 @@ const flag = (name: string) => process.argv.includes(name);
 const APPLY = flag("--apply");
 const RELABEL = flag("--relabel-payment-currency");
 const DETAIL = flag("--detail");
+const SKIP_MISSING_BI = flag("--skip-missing-bi");
 const SLUG = arg("--company");
 const DUMP = arg("--dump");
 const BI = arg("--bi-rates") ?? DEFAULT_BI;
@@ -506,8 +512,13 @@ async function main() {
       for (const m of missing) per.set(m.currency, (per.get(m.currency) ?? new Set()).add(m.date));
       console.error("\n✗ Kurs BI dibutuhkan untuk tanggal berikut tetapi tidak ada di berkasnya:");
       for (const [cur, days] of per) console.error(`  ${cur} (${days.size} hari): ${[...days].sort().join(", ")}`);
-      console.error("  Lengkapi CSV (lihat scripts/data/bi-rates/README.md). Tidak ada yang diterapkan.");
-      return 3;
+      if (!SKIP_MISSING_BI) {
+        console.error("  Lengkapi CSV (lihat scripts/data/bi-rates/README.md). Tidak ada yang diterapkan.");
+        return 3;
+      }
+      // Baris-baris ini sudah ada di `unfillable` dan tidak ikut `fills`:
+      // melewatinya berarti membiarkannya tanpa kurs, bukan mengarang kurs.
+      console.error(`  --skip-missing-bi: ${missing.length} baris DILEWATI dan tetap tanpa kurs.`);
     }
     const bad = plan.corrections.filter((c) => c.verdict === "mismatch" || c.verdict === "missing");
     if (bad.length > 0) {

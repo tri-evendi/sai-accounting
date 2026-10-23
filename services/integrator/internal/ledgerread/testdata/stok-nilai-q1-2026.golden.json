@@ -48,6 +48,21 @@
       "revaluation": 0
     },
     {
+      "id": 15,
+      "code": "B015",
+      "name": "Kayu Manis",
+      "unit": "kg",
+      "openingQty": 0,
+      "inQty": 0.5,
+      "outQty": 0,
+      "closingQty": 0.5,
+      "openingValue": null,
+      "inValue": 1,
+      "outValue": null,
+      "closingValue": 1,
+      "revaluation": 0
+    },
+    {
       "id": 1,
       "code": "B001",
       "name": "Kopi Arabika",
@@ -178,9 +193,9 @@
       "closingQty": 3,
       "openingValue": null,
       "inValue": 4.02,
-      "outValue": 1,
-      "closingValue": 3,
-      "revaluation": -0.02
+      "outValue": 1.01,
+      "closingValue": 3.03,
+      "revaluation": 0.02
     },
     {
       "id": 12,
@@ -199,10 +214,10 @@
     }
   ],
   "totalOpeningValue": 1162135.19,
-  "totalInValue": 12237429.98,
-  "totalOutValue": 4296714.22,
-  "totalClosingValue": 10033886.68,
-  "totalRevaluation": 931035.73,
+  "totalInValue": 12237430.98,
+  "totalOutValue": 4296714.23,
+  "totalClosingValue": 10033887.71,
+  "totalRevaluation": 931035.77,
   "uncostedCount": 3,
   "dormantCount": 1
 }

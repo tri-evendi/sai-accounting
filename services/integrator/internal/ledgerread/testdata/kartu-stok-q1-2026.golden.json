@@ -33,6 +33,16 @@
       "closing": 20.75
     },
     {
+      "id": 15,
+      "name": "Kayu Manis",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 0.5,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 0.5
+    },
+    {
       "id": 1,
       "name": "Kopi Arabika",
       "unit": "kg",
@@ -134,10 +144,10 @@
     }
   ],
   "totalOpening": 34.375,
-  "totalIn": 180.675,
+  "totalIn": 181.175,
   "totalOut": 82.634,
   "totalProcessed": 7.375,
-  "totalClosing": 132.416,
+  "totalClosing": 132.916,
   "hasProcess": true,
   "dormantCount": 1
 }

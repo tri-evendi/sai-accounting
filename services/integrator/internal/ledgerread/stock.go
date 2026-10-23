@@ -455,9 +455,23 @@ type StockValueReport struct {
 	DormantCount      int             `json:"dormantCount"`
 }
 
-// Round2JS: `round2` TS (`Math.round(n * 100) / 100`) atas float64.
+// Round2JS: `round2` `src/lib/reconciliation.ts` (`Math.round(n * 100) /
+// 100`) atas float64 — pembulatan NILAI di `stock-value-report.ts`.
 func Round2JS(n float64) float64 {
 	return jscompat.Round(n*100) / 100
+}
+
+// jsEpsilon: `Number.EPSILON` (2^-52).
+const jsEpsilon = 0x1p-52
+
+// Round2PostingJS: `round2` `@sai/core/money-format` — `Math.round((n +
+// Number.EPSILON) * 100) / 100`, pembulatan MESIN POSTING yang dipakai
+// `weightedAverageUnitCost`. BUKAN fungsi yang sama dengan Round2JS: laporan
+// ini memakai keduanya (rata-rata lewat yang ini, nilai lewat yang itu), dan
+// keduanya berbeda tepat pada nilai setengah sen yang tersimpan sedikit di
+// bawahnya (1,005 → 1,01 di sini, 1,00 di sana).
+func Round2PostingJS(n float64) float64 {
+	return jscompat.Round(float64(n+jsEpsilon)*100) / 100
 }
 
 // WeightedAverageUnitCost: `weightedAverageUnitCost` TS atas gerakan
@@ -489,7 +503,7 @@ func WeightedAverageUnitCost(ms []ValuationMovementIn, asOfMs int64) float64 {
 	if qty <= 0 {
 		return 0
 	}
-	return Round2JS(value / qty)
+	return Round2PostingJS(value / qty)
 }
 
 // unitCostAsOf: rata-rata pada sebuah saat, atau nil bila tak ada dasar biaya.

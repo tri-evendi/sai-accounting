@@ -265,11 +265,21 @@ func TestStockEdges(t *testing.T) {
 	if sv.UncostedCount < 1 {
 		t.Error("sisa float tak berbiaya tidak terhitung")
 	}
-	// Vanili: rata-rata (2 × 1,00 + 2 × 1,01) / 4 = 1,005 → float TS 1,00.
+	// Vanili: rata-rata (2 × 1,00 + 2 × 1,01) / 4 = 1,005 (float 1,00499…).
+	// `weightedAverageUnitCost` membulatkan dengan `round2` + EPSILON mesin
+	// posting → 1,01; `round2` polos (yang dipakai nilai laporan ini) → 1,00.
 	if got := WeightedAverageUnitCost([]ValuationMovementIn{
 		{Quantity: 2, Type: "in", UnitCost: ptrF(1.00)}, {Quantity: 2, Type: "in", UnitCost: ptrF(1.01)},
-	}, math.MaxInt64); got != 1 {
-		t.Errorf("rata-rata setengah sen = %v, TS 1", got)
+	}, math.MaxInt64); got != 1.01 {
+		t.Errorf("rata-rata setengah sen = %v, TS 1.01", got)
+	}
+	half := 4.02
+	if Round2JS(half/4) != 1 || Round2PostingJS(half/4) != 1.01 {
+		t.Errorf("dua round2 TS: %v / %v", Round2JS(half/4), Round2PostingJS(half/4))
+	}
+	// Kayu Manis: nilai 0,5 × 2,01 = 1,005 lewat `round2` POLOS → 1,00.
+	if k := row("B015"); k.ClosingValue == nil || *k.ClosingValue != 1 || k.InValue == nil || *k.InValue != 1 {
+		t.Errorf("Kayu Manis: akhir %v masuk %v, TS 1 / 1", k.ClosingValue, k.InValue)
 	}
 	// Minyak Kelapa: saldo NEGATIF dinilai negatif.
 	if m := row("B007"); m.ClosingQty != -3.5 || m.ClosingValue == nil || *m.ClosingValue != -87500 {

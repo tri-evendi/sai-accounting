@@ -86,6 +86,12 @@
         "code": "B014",
         "name": "Vanili",
         "unit": "g"
+      },
+      {
+        "id": 15,
+        "code": "B015",
+        "name": "Kayu Manis",
+        "unit": "kg"
       }
     ],
     "movements": [
@@ -443,6 +449,14 @@
       },
       {
         "id": 47,
+        "itemId": 15,
+        "type": "in",
+        "quantity": "0.5",
+        "date": "2026-01-06T03:00:00.000Z",
+        "unitCost": "2.01"
+      },
+      {
+        "id": 48,
         "itemId": 3,
         "type": "in",
         "quantity": "1.25",

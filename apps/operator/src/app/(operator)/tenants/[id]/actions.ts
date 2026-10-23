@@ -143,7 +143,7 @@ function quotaWarningText(t: T, warning: QuotaWarning | null): string | null {
     parts.push(t("operator.actions.plan.quotaWarningCompanies", warning.companies));
   }
   if (warning.users) parts.push(t("operator.actions.plan.quotaWarningUsers", warning.users));
-  return `${parts.join("; ")} — ${t("operator.actions.plan.quotaWarningNote")}`;
+  return `${parts.join("; ")}. ${t("operator.actions.plan.quotaWarningNote")}`;
 }
 
 export async function operatorChangePlan(input: unknown): Promise<OperatorActionResult> {

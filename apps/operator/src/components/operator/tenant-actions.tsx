@@ -932,7 +932,7 @@ function ExtendPanel({
             if (!next) setConfirming(null);
           }}
           title={t("operator.actions.extend.title")}
-          message={t("operator.actions.extend.description") + " — " + tenantName}
+          message={`${tenantName}: ${t("operator.actions.extend.description")}`}
           confirmVariant="primary"
           confirmLabel={t("operator.actions.extend.submit")}
           onConfirm={async () => {

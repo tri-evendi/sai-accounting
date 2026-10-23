@@ -108,9 +108,10 @@ services:
     environment:
       APP_DEPLOY_PROFILE: onprem
 
-  # `svc-integrator` — jalur `tenant` (cadangan per basis data, tahap 1b) dan
+  # `svc-integrator` — jalur `tenant` (cadangan per basis data, tahap 1b),
   # jalur `interactive` sisi Go (lembar sebar laporan ber-`engine: go`, tahap
-  # 1d) dalam SATU proses.
+  # 1d), dan jalur `schedule` (denyut penerbitan; diam selama kontrak
+  # menyatakan Node penerbitnya) dalam SATU proses.
   #
   # Cadangannya di on-premise LEBIH penting daripada di SaaS, dan bukan
   # sebaliknya: di sini tidak ada bucket milik SAI, tidak ada mesin kedua, dan

@@ -53,14 +53,14 @@ export const goSheet = (name: string) =>
 
 /** Σ desimal TEPAT (skala 3, Decimal(15,3)) → teks desimal, seperti `SUM` NUMERIC. */
 function exactSum(values: string[]): string {
-  let total = 0n;
+  let total = BigInt(0);
   for (const v of values) {
     const neg = v.startsWith("-");
     const [whole, frac = ""] = v.replace("-", "").split(".");
     const units = BigInt(whole! + frac.padEnd(3, "0").slice(0, 3));
     total += neg ? -units : units;
   }
-  const neg = total < 0n;
+  const neg = total < BigInt(0);
   const abs = (neg ? -total : total).toString().padStart(4, "0");
   const text = `${abs.slice(0, -3)}.${abs.slice(-3)}`.replace(/\.?0+$/, "");
   return `${neg ? "-" : ""}${text || "0"}`;

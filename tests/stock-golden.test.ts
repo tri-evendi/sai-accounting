@@ -33,7 +33,8 @@
 import { describe, expect, it } from "vitest";
 
 import { getOpnameHistory, getStockMovementReport, getStockValuePeriodReport } from "@/lib/stock-report";
-import { isExportable, reportById, resolvePeriod, type ExportableReport } from "@/lib/report-catalog";
+import { isExportable, reportById, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
+import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { resolveStockPeriod } from "@/lib/stock-period";
 import { goExportPayloadShape } from "@/lib/report-export-go";
 import { buildReportPayload } from "@/lib/report-payload";
@@ -50,6 +51,8 @@ import {
   type GoStockValue,
 } from "@/lib/stock-report-parity";
 import { STOCK_BOOKS, goNumbers, goSheet, stockClient, type StockCase } from "./stock-books";
+
+type ExportableReport = ReportDefinition & { payloadKind: StatementPayload["kind"] };
 
 function exportable(id: "stock-value" | "stock-movement" | "opname-history"): ExportableReport {
   const def = reportById(id);

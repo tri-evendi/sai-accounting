@@ -43,6 +43,8 @@
 import { Prisma } from "@sai/db/client/company";
 
 import { prisma } from "@/lib/prisma";
+import { companyContextOf, runWithCompany } from "@/lib/company-context";
+import type { CompanyDatabaseRow } from "@sai/db/company-url";
 import {
   OUTBOX_EVENTS,
   OUTBOX_PUBLISHED_RETENTION_DAYS,
@@ -201,6 +203,60 @@ export async function pruneOutbox(
     WHERE published_at IS NOT NULL
       AND published_at < (now() AT TIME ZONE 'UTC')
         - ${Math.max(1, Math.round(retentionDays))}::int * interval '1 day'`;
+}
+
+/** Satu buku registry sebagaimana dibaca relay (`COMPANY_DATABASE_TARGET_SELECT`). */
+export type RelayBook = { id: number; slug: string; tenantId: number | null } & CompanyDatabaseRow;
+
+export interface RelayPassEntry {
+  book: RelayBook;
+  result: RelayBookResult | null;
+  /** Galat buku ini (tak terjangkau, skema tertinggal, …); `null` = sehat. */
+  error: string | null;
+}
+
+/**
+ * Satu putaran atas SETIAP buku, *bounded concurrency* (I-1).
+ *
+ * Konteks perusahaan DIMASUKI per buku dari baris registry
+ * (`companyContextOf` → penyelesai URL tunggal) — tidak pernah ditebak, dan
+ * buku yang tidak bisa dipetakan ke servernya MELEMPAR lalu tercatat sebagai
+ * galat buku itu saja (#104). Satu buku yang gagal tidak menghentikan yang
+ * lain. Hasil diindeks menurut urutan daftar, bukan urutan selesai.
+ */
+export async function relayPass(
+  books: readonly RelayBook[],
+  opts: { publish: PublishFn; concurrency: number; prune?: boolean; batchSize?: number }
+): Promise<RelayPassEntry[]> {
+  const hasil = new Array<RelayPassEntry>(books.length);
+  let berikut = 0;
+  const pelaksana = async () => {
+    for (;;) {
+      const i = berikut++;
+      if (i >= books.length) return;
+      const book = books[i]!;
+      try {
+        const result = await runWithCompany(companyContextOf(book), async () => {
+          const r = await relayBook({ id: book.id, tenantId: book.tenantId }, opts.publish, {
+            batchSize: opts.batchSize,
+          });
+          if (opts.prune) await pruneOutbox();
+          return r;
+        });
+        hasil[i] = { book, result, error: null };
+      } catch (e) {
+        const error = isMissingOutboxTable(e)
+          ? "tabel outbox belum ada — buku belum menerima migration 0005"
+          : e instanceof Error
+            ? `${e.name}: ${e.message}`
+            : String(e);
+        hasil[i] = { book, result: null, error: error.slice(0, 2000) };
+      }
+    }
+  };
+  const serentak = Math.max(1, Math.min(Math.floor(opts.concurrency), books.length));
+  await Promise.all(Array.from({ length: serentak }, () => pelaksana()));
+  return hasil;
 }
 
 /** Galat Prisma tabel tak ada — buku yang belum menerima migration 0005. */

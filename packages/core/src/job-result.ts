@@ -84,6 +84,10 @@ export const JOB_RESULT_PERMISSION: Readonly<Record<JobKind, Permission | null>>
   "integration.efaktur_cancel": null,
   "efaktur.record": null,
   "integration.bank_feed": null,
+
+  /* Kirim faktur saat diposting (outbox, 09 §4): hasilnya SUREL dan satu
+     baris riwayat kirim di buku, bukan berkas yang diunduh. */
+  "document.invoice_send": null,
 };
 
 /** Apakah hasil jenis ini boleh diunduh lewat rute aplikasi? */

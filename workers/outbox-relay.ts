@@ -47,13 +47,7 @@ import type { SessionLock } from "@sai/db/session-lock";
 import { publishJob } from "@sai/platform/job-queue";
 
 import { ambilPagarBernama } from "./runner";
-import { companyContextOf, runWithCompany } from "../src/lib/company-context";
-import {
-  isMissingOutboxTable,
-  pruneOutbox,
-  relayBook,
-  type RelayBookResult,
-} from "../src/lib/outbox-relay";
+import { relayPass, type RelayBook, type RelayBookResult } from "../src/lib/outbox-relay";
 
 const LAYANAN = "svc-worker";
 const PAGAR = "sai.outbox.relay";
@@ -85,9 +79,7 @@ export function relayConcurrency(raw: string | undefined = process.env.OUTBOX_RE
   return n;
 }
 
-type Buku = Awaited<ReturnType<typeof bacaRegistry>>[number];
-
-async function bacaRegistry() {
+async function bacaRegistry(): Promise<RelayBook[]> {
   /* SEMUA perusahaan, termasuk nonaktif & contoh: peristiwa yang sudah tertulis
      di buku yang kemudian dinonaktifkan tetap harus sampai (pelaksananya yang
      memutuskan), dan buku tanpa peristiwa hanya berharga satu SELECT. */
@@ -180,7 +172,7 @@ async function main(): Promise<void> {
       `jejak basi sesudah ${OUTBOX_RELAY_STALE_SECONDS} s`
   );
 
-  let buku: Buku[] = [];
+  let buku: RelayBook[] = [];
   let registryDibaca = 0;
   let pruneTerakhir = 0;
   const jejak = new Map<number, JejakTerakhir>();
@@ -200,49 +192,25 @@ async function main(): Promise<void> {
     const pangkas = mulai - pruneTerakhir >= PRUNE_EVERY_MS;
     if (pangkas) pruneTerakhir = mulai;
 
+    const putaran = await relayPass(buku, { publish: publishJob, concurrency: serentak, prune: pangkas });
     let dipindah = 0;
-    let berikut = 0;
-    const pelaksana = async () => {
-      for (;;) {
-        const i = berikut++;
-        if (i >= buku.length) return;
-        const b = buku[i]!;
-        try {
-          const hasil = await runWithCompany(companyContextOf(b), async () => {
-            const r = await relayBook({ id: b.id, tenantId: b.tenantId }, publishJob);
-            if (pangkas) {
-              const dibuang = await pruneOutbox();
-              if (dibuang > 0) console.log(`[outbox] ${b.slug}: ${dibuang} baris terbit lewat retensi dibuang`);
-            }
-            return r;
-          });
-          dipindah += hasil.published;
-          if (hasil.published > 0 || hasil.failed > 0) {
-            console.log(
-              `[outbox] ${b.slug}: ${hasil.published} terbit` +
-                (hasil.alreadyPublished > 0 ? ` (${hasil.alreadyPublished} sudah ada di jobs)` : "") +
-                (hasil.failed > 0 ? `, ${hasil.failed} GAGAL (ditunda)` : "")
-            );
-          }
-          galatTercetak.delete(b.id);
-          await catatJejak(b.id, hasil, null, jejak);
-        } catch (e) {
-          const pesan = isMissingOutboxTable(e)
-            ? "tabel outbox belum ada — buku belum menerima migration 0005"
-            : e instanceof Error
-              ? `${e.name}: ${e.message}`
-              : String(e);
-          if (galatTercetak.get(b.id) !== pesan) {
-            console.error(`[outbox] ${b.slug}: ${pesan}`);
-            galatTercetak.set(b.id, pesan);
-          }
-          await catatJejak(b.id, null, pesan.slice(0, 2000), jejak);
+    for (const { book: b, result: hasil, error } of putaran) {
+      if (hasil) {
+        dipindah += hasil.published;
+        if (hasil.published > 0 || hasil.failed > 0) {
+          console.log(
+            `[outbox] ${b.slug}: ${hasil.published} terbit` +
+              (hasil.alreadyPublished > 0 ? ` (${hasil.alreadyPublished} sudah ada di jobs)` : "") +
+              (hasil.failed > 0 ? `, ${hasil.failed} GAGAL (ditunda)` : "")
+          );
         }
+        galatTercetak.delete(b.id);
+      } else if (error && galatTercetak.get(b.id) !== error) {
+        console.error(`[outbox] ${b.slug}: ${error}`);
+        galatTercetak.set(b.id, error);
       }
-    };
-    await Promise.all(
-      Array.from({ length: Math.max(1, Math.min(serentak, buku.length)) }, () => pelaksana())
-    );
+      await catatJejak(b.id, hasil, error, jejak);
+    }
 
     /* Ada yang dipindah = mungkin masih ada lagi (batch penuh): putaran
        berikutnya SEGERA. Tidak ada = tidur satu interval polling. */

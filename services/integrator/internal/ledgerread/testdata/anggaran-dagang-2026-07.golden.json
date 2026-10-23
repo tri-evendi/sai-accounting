@@ -1,0 +1,34 @@
+{
+  "year": 2026,
+  "month": 7,
+  "from": "2026-06-30T17:00:00Z",
+  "to": "2026-07-31T16:59:59.999Z",
+  "rows": [
+    {
+      "code": "6101",
+      "name": "Beban Gaji",
+      "category": "expense",
+      "budget": "7000000.00",
+      "actual": "7000000.00",
+      "variance": "0.00",
+      "variancePct": 0,
+      "status": "on_target"
+    }
+  ],
+  "totals": {
+    "budget": "7000000.00",
+    "actual": "7000000.00",
+    "variance": "0.00",
+    "variancePct": 0,
+    "alertCount": 0
+  },
+  "hasBudgets": true,
+  "salesTarget": {
+    "totalTarget": "0.00",
+    "actualSales": "0.00",
+    "variance": "0.00",
+    "targetCount": 0,
+    "hasTargets": false
+  },
+  "unknownTypes": []
+}

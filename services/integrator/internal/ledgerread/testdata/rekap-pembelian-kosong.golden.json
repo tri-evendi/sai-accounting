@@ -1,0 +1,14 @@
+{
+  "kind": "purchases-by-supplier",
+  "from": "2023-12-31T17:00:00Z",
+  "to": "2024-12-31T16:59:59.999Z",
+  "rows": [],
+  "totals": {
+    "docCount": 0,
+    "grossBase": "0.00",
+    "returnCount": 0,
+    "returnBase": "0.00",
+    "netBase": "0.00",
+    "unratedCount": 0
+  }
+}

@@ -271,7 +271,13 @@ export default async function BudgetReportPage({
           payload ? (
             <>
               <StatementPDFButton payload={payload} />
-              <StatementExcelButton payload={payload} />
+              {/* `sumber`: sesudah peralihan register ke `go` (tahap 1d) pekerja Go
+                  menghitung berkasnya DARI tahun & bulan yang SUDAH diselesaikan
+                  halaman (bulan 0 = setahun). */}
+              <StatementExcelButton
+                payload={payload}
+                sumber={{ reportId: "budget-realization", params: { year: String(year), month: String(month ?? 0) } }}
+              />
             </>
           ) : undefined
         }

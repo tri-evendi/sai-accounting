@@ -1,0 +1,48 @@
+{
+  "kind": "purchases-by-supplier",
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-01-31T16:59:59.999Z",
+  "rows": [
+    {
+      "partyId": 3,
+      "partyName": "Pemasok Valas",
+      "docCount": 2,
+      "grossBase": "19259444.64",
+      "returnCount": 1,
+      "returnBase": "0.00",
+      "netBase": "19259444.64",
+      "unratedCount": 2,
+      "halfCentTie": false
+    },
+    {
+      "partyId": 1,
+      "partyName": "Pemasok Satu",
+      "docCount": 1,
+      "grossBase": "2220000.00",
+      "returnCount": 1,
+      "returnBase": "222000.00",
+      "netBase": "1998000.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    },
+    {
+      "partyId": 2,
+      "partyName": "Pemasok Dua",
+      "docCount": 2,
+      "grossBase": "2000050.00",
+      "returnCount": 1,
+      "returnBase": "2500000.00",
+      "netBase": "-499950.00",
+      "unratedCount": 0,
+      "halfCentTie": false
+    }
+  ],
+  "totals": {
+    "docCount": 5,
+    "grossBase": "23479494.64",
+    "returnCount": 3,
+    "returnBase": "2722000.00",
+    "netBase": "20757494.64",
+    "unratedCount": 2
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "year": 2026,
+  "month": 1,
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-01-31T16:59:59.999Z",
+  "rows": [
+    {
+      "code": "4101",
+      "name": "Penjualan",
+      "category": "revenue",
+      "budget": "15500000.00",
+      "actual": "15500000.00",
+      "variance": "0.00",
+      "variancePct": 0,
+      "status": "on_target"
+    }
+  ],
+  "totals": {
+    "budget": "15500000.00",
+    "actual": "15500000.00",
+    "variance": "0.00",
+    "variancePct": 0,
+    "alertCount": 0
+  },
+  "hasBudgets": true,
+  "salesTarget": {
+    "totalTarget": "15000000.50",
+    "actualSales": "15500000.00",
+    "variance": "499999.50",
+    "targetCount": 2,
+    "hasTargets": true
+  },
+  "unknownTypes": []
+}

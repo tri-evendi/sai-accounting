@@ -39,6 +39,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 	// Basis data zona waktu di DALAM biner: image `debian:bookworm-slim`
@@ -177,6 +178,15 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 		// register yang memutuskan kapan cabang ini terjangkau.
 		case contract.ReportReceivables, contract.ReportPayables:
 			data, filename, err = umur(c.Ctx, company, m, c.Progress)
+		// Gelombang A berikutnya (`go-parity`, 23 Okt 2026): Rekap per Pihak,
+		// Laporan Kas & Bank, Realisasi vs Anggaran — penghasilnya ada,
+		// `GoEngineReports` di atas yang memutuskan kapan terjangkau.
+		case contract.ReportSalesByCustomer, contract.ReportPurchasesBySupplier:
+			data, filename, err = rekapPihak(c.Ctx, company, m, c.Progress)
+		case contract.ReportCashBank:
+			data, filename, err = kasBank(c.Ctx, company, m, c.Progress)
+		case contract.ReportBudgetRealization:
+			data, filename, err = anggaran(c.Ctx, company, m, c.Progress)
 		// Laporan stok (tahap 1d, `go-parity`): penghasilnya ada, register yang
 		// memutuskan kapan cabang ini terjangkau.
 		case contract.ReportStockValue, contract.ReportStockMovement, contract.ReportOpnameHistory:
@@ -561,6 +571,170 @@ func stok(ctx context.Context, company *registry.Company, m muatanEkspor, progre
 		return nil, "", fmt.Errorf("laporan stok %q tidak dikenal", m.ReportID)
 	}
 	return data, document.FileName(title, now), nil
+}
+
+// tanpaPembanding menolak muatan berperiode yang membawa kolom pembanding —
+// laporan-laporan di bawah tidak punya, dan mencetak lembar satu kolom diam-diam
+// berarti menelan permintaan itu.
+func tanpaPembanding(m muatanEkspor, nama string) error {
+	if m.Params["compare"] != "" || m.PriorFromInstant != "" || m.PriorToInstant != "" || m.PriorAsOfInstant != "" {
+		return fmt.Errorf("%s tidak punya kolom pembanding (compare %q)", nama, m.Params["compare"])
+	}
+	return nil
+}
+
+// periodeInstan: [fromInstant, toInstant] yang dihitung PENERBIT
+// (`resolvePeriod` / `budgetPeriodRange`), diterima apa adanya.
+func periodeInstan(m muatanEkspor) (time.Time, time.Time, error) {
+	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+	}
+	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+	}
+	return from, to, nil
+}
+
+// rekapPihak: Penjualan per Pelanggan / Pembelian per Pemasok [fromInstant,
+// toInstant]. Parameter halaman yang ikut: `cols` (`resolveColumns`).
+func rekapPihak(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	if err := tanpaPembanding(m, m.ReportID); err != nil {
+		return nil, "", err
+	}
+	from, to, err := periodeInstan(m)
+	if err != nil {
+		return nil, "", err
+	}
+	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
+	if err != nil {
+		return nil, "", err
+	}
+	specs, err := document.PartyRecapColumnsFor(m.ReportID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	rep, err := r.PartyRecap(ctx, m.ReportID, from, to)
+	if err != nil {
+		return nil, "", err
+	}
+	_ = progress(55)
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.PartyRecapWorkbook(rep, document.CatalogVisibleColumns(specs, m.Params["cols"]), name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(document.PartyRecapTitle(m.ReportID), now), nil
+}
+
+// kasBank: Laporan Kas & Bank [fromInstant, toInstant] — Arus Kas periode yang
+// sama; `cols` ikut seperti halaman.
+func kasBank(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	if err := tanpaPembanding(m, "laporan kas & bank"); err != nil {
+		return nil, "", err
+	}
+	from, to, err := periodeInstan(m)
+	if err != nil {
+		return nil, "", err
+	}
+	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
+	if err != nil {
+		return nil, "", err
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	cb, err := r.CashBank(ctx, from, to)
+	if err != nil {
+		return nil, "", err
+	}
+	_ = progress(55)
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.CashBankWorkbook(cb, document.CatalogVisibleColumns(contract.CashBankColumns, m.Params["cols"]), name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(contract.CashBankTitle, now), nil
+}
+
+// anggaran: Realisasi vs Anggaran. `params.year` + `params.month` (0 =
+// setahun) sudah diselesaikan penerbit (`resolveBudgetPeriod`), dan
+// [fromInstant, toInstant] = `budgetPeriodRange` — batas Laba Rugi realisasinya.
+// Nilai di luar bentuk itu DITOLAK: penerbit tidak pernah mengirimnya, jadi
+// muatan seperti itu bukan permintaan pengguna.
+func anggaran(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	if err := tanpaPembanding(m, "realisasi vs anggaran"); err != nil {
+		return nil, "", err
+	}
+	year, month, err := budgetYearMonth(m.Params["year"], m.Params["month"])
+	if err != nil {
+		return nil, "", err
+	}
+	from, to, err := periodeInstan(m)
+	if err != nil {
+		return nil, "", err
+	}
+	period, err := document.BudgetPeriod(year, month)
+	if err != nil {
+		return nil, "", err
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	rep, err := r.BudgetRealization(ctx, year, month, from, to)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(rep.UnknownTypes) > 0 {
+		log.Printf("[interactive-go] ⚠ %s: akun bergerak bertipe di luar kontrak: %s",
+			company.Slug, strings.Join(rep.UnknownTypes, ", "))
+	}
+	_ = progress(55)
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.BudgetWorkbook(rep, name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(contract.BudgetTitle, now), nil
+}
+
+// budgetYearMonth: tahun 2000–2100 dan bulan 0–12 dalam bentuk desimal polos —
+// bentuk yang ditulis `goExportPayloadShape` (`String(year)`, `String(month ?? 0)`).
+func budgetYearMonth(yearRaw, monthRaw string) (int, int, error) {
+	year, err := strconv.Atoi(yearRaw)
+	if err != nil || year < 2000 || year > 2100 || strconv.Itoa(year) != yearRaw {
+		return 0, 0, fmt.Errorf("params.year %q bukan tahun 2000–2100", yearRaw)
+	}
+	month, err := strconv.Atoi(monthRaw)
+	if err != nil || month < 0 || month > 12 || strconv.Itoa(month) != monthRaw {
+		return 0, 0, fmt.Errorf("params.month %q bukan bulan 0–12", monthRaw)
+	}
+	return year, month, nil
 }
 
 // priorIncomeStatement: Laba Rugi periode pembanding (#557), atau nil bila

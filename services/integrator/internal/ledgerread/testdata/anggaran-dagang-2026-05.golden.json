@@ -1,0 +1,44 @@
+{
+  "year": 2026,
+  "month": 5,
+  "from": "2026-04-30T17:00:00Z",
+  "to": "2026-05-31T16:59:59.999Z",
+  "rows": [
+    {
+      "code": "4201",
+      "name": "Pendapatan Bunga",
+      "category": "revenue",
+      "budget": "250000.00",
+      "actual": "250000.75",
+      "variance": "0.75",
+      "variancePct": 0,
+      "status": "on_target"
+    },
+    {
+      "code": "6103",
+      "name": "Beban Netral",
+      "category": "expense",
+      "budget": "100.00",
+      "actual": "0.00",
+      "variance": "-100.00",
+      "variancePct": -100,
+      "status": "under"
+    }
+  ],
+  "totals": {
+    "budget": "250100.00",
+    "actual": "250000.75",
+    "variance": "-99.25",
+    "variancePct": -0.04,
+    "alertCount": 1
+  },
+  "hasBudgets": true,
+  "salesTarget": {
+    "totalTarget": "0.00",
+    "actualSales": "0.00",
+    "variance": "0.00",
+    "targetCount": 0,
+    "hasTargets": false
+  },
+  "unknownTypes": []
+}

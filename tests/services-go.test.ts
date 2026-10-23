@@ -38,7 +38,17 @@ const GEN_INSTANS = "services/integrator/internal/contract/dbinstances_gen.go";
 const GEN_TATA_LETAK_UMUR = "services/integrator/internal/contract/aging_layout_gen.go";
 /* Laporan stok (tahap 1d): berkas bangkitan tersendiri. */
 const GEN_TATA_LETAK_STOK = "services/integrator/internal/contract/stock_layout_gen.go";
-const BANGKITAN = [GEN, GEN_AKUNTANSI, GEN_TATA_LETAK, GEN_TATA_LETAK_UMUR, GEN_TATA_LETAK_STOK, GEN_INSTANS];
+/* Rekap per Pihak, Kas & Bank, Realisasi vs Anggaran (tahap 1d, gelombang A). */
+const GEN_TATA_LETAK_REKAP = "services/integrator/internal/contract/recap_layout_gen.go";
+const BANGKITAN = [
+  GEN,
+  GEN_AKUNTANSI,
+  GEN_TATA_LETAK,
+  GEN_TATA_LETAK_UMUR,
+  GEN_TATA_LETAK_STOK,
+  GEN_TATA_LETAK_REKAP,
+  GEN_INSTANS,
+];
 
 /** Berkas Go tulisan TANGAN — yang dibangkitkan tunduk pada aturan lain. */
 const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel));
@@ -234,6 +244,9 @@ describe("kontrak: Go tidak punya daftarnya sendiri", () => {
     const umur = GO.find((b) => b.rel === GEN_TATA_LETAK_UMUR);
     expect(umur, GEN_TATA_LETAK_UMUR).toBeDefined();
     expect(umur!.isi).toContain("JANGAN DISUNTING TANGAN");
+    const rekap = GO.find((b) => b.rel === GEN_TATA_LETAK_REKAP);
+    expect(rekap, GEN_TATA_LETAK_REKAP).toBeDefined();
+    expect(rekap!.isi).toContain("JANGAN DISUNTING TANGAN");
     const instans = GO.find((b) => b.rel === GEN_INSTANS);
     expect(instans, GEN_INSTANS).toBeDefined();
     expect(instans!.isi).toContain("JANGAN DISUNTING TANGAN");

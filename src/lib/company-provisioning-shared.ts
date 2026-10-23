@@ -169,6 +169,16 @@ export const PROVISION_ERROR_CODES = [
   "database_not_empty",
   /** Nama basis data yang diminta melanggar aturan penamaan. */
   "database_name_invalid",
+  /**
+   * Kuota PT tenant habis SAAT PEKERJAANNYA DIKERJAKAN — pemeriksaan ulang di
+   * pekerja (`company-provisioning-quota.ts`): permintaan yang lolos di route
+   * lalu antre di belakang penyediaan lain milik tenant yang sama.
+   */
+  "company_quota_reached",
+  /** Sama, dengan batas dari LISENSI on-premise (`values.max`). */
+  "company_licence_limit_reached",
+  /** Tenant tidak lagi `trialing`/`active` saat pekerjaannya dikerjakan. */
+  "tenant_not_active",
 ] as const;
 
 export type ProvisionErrorCode = (typeof PROVISION_ERROR_CODES)[number];
@@ -240,6 +250,9 @@ const PESAN_PER_KODE: Record<ProvisionErrorCode, DictionaryKey> = {
   database_taken: "companies.errDatabaseTaken",
   database_not_empty: "companies.errDatabaseNotEmpty",
   database_name_invalid: "companies.errDatabaseNameInvalid",
+  company_quota_reached: "errors.companyQuotaReached",
+  company_licence_limit_reached: "errors.companyLicenceLimitReached",
+  tenant_not_active: "errors.tenantNotActive",
 };
 
 /**

@@ -262,8 +262,13 @@ ke `pg` (`CONTROL_DATABASE_DIRECT_URL`), `interactive` lewat PgBouncer
    environment `svc-worker` — dan penyelia mewariskan environment yang SAMA ke
    keempat perannya, termasuk yang mengurai parameter ekspor pengguna. Itu
    pertukaran yang dipilih: kredensial itu keluar dari satu-satunya container
-   yang menghadap internet. Mencabutnya dari tiga peran lain (`env -u` di
-   skrip compose-nya) adalah penguatan murah berikutnya bila diperlukan.
+   yang menghadap internet. ✅ **Dipersempit 23 Okt 2026:** penyelia kini
+   membuang `PROVISION_DATABASE_URL` dan `PG_APP_USER` dari environment setiap
+   peran selain `interactive` (`OWNER_ONLY_ENV` di `scripts/run-workers.ts` —
+   di penyelia, bukan `env -u` per skrip compose, supaya peran kelima otomatis
+   TIDAK menerimanya; dijaga `tests/worker-owner-env.test.ts`). Yang tersisa
+   dari risiko ini: kredensial pemilik seproses dengan pengurai parameter
+   ekspor di peran `interactive` itu sendiri, dan dengan penyelianya.
 
 **Pemicu MEMISAHKAN lagi** (salah satunya cukup; memisahkannya kembali =
 satu layanan compose + `command` per peran, kodenya tidak berubah):

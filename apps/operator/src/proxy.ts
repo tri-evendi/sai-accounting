@@ -8,6 +8,7 @@ import {
   ipAllowed,
   operatorCookieName,
 } from "@sai/core/operator-plane";
+import { decideConsoleGate, enrolmentCookieName } from "@op/lib/operator/enrolment-gate";
 
 /**
  * Tembok terluar KONSOL OPERATOR sebagai aplikasi tersendiri (monorepo Fase 3d).
@@ -22,7 +23,8 @@ import {
  *   • Host lain (Traefik salah arah) → 404, BUKAN rute pelanggan.
  *   • `OPERATOR_IP_ALLOWLIST` kosong → semua IP ditolak; `/api/health`
  *     dikecualikan untuk probe load-balancer.
- *   • Tanpa cookie sesi → `/login`. Verifikasi kriptografisnya tetap
+ *   • Tanpa cookie sesi → `/login`. Hanya cookie PEMASANGAN → halaman
+ *     pemasangan saja (`decideConsoleGate`). Verifikasi kriptografisnya tetap
  *     di `requireOperatorPage()` / `requireOperatorActionSession()`.
  */
 export async function proxy(request: NextRequest) {
@@ -46,9 +48,12 @@ export async function proxy(request: NextRequest) {
   }
 
   if (decision.kind === "operator") {
-    const hasOperatorCookie =
-      request.cookies.has(operatorCookieName(true)) || request.cookies.has(operatorCookieName(false));
-    if (!hasOperatorCookie) return NextResponse.redirect(new URL("/login", request.url));
+    const gate = decideConsoleGate(pathname, {
+      session: request.cookies.has(operatorCookieName(true)) || request.cookies.has(operatorCookieName(false)),
+      enrolment:
+        request.cookies.has(enrolmentCookieName(true)) || request.cookies.has(enrolmentCookieName(false)),
+    });
+    if (gate.kind === "redirect") return NextResponse.redirect(new URL(gate.to, request.url));
   }
 
   const headers = new Headers(request.headers);

@@ -3,8 +3,12 @@
 /**
  * Form masuk konsol operator (issue #154) — tiga isian, satu langkah:
  * nama akun + kata sandi + kode TOTP diverifikasi BERSAMA di server action
- * (`operatorLogin`), dan jawab gagalnya seragam. MFA bukan langkah kedua yang
- * bisa dilewati — tanpa kode, tombolnya memang tidak mengirim.
+ * (`operatorLogin`), dan jawab gagalnya seragam.
+ *
+ * Kode TIDAK `required`: akun yang belum memasang authenticator belum punya
+ * kode, dan server yang memutuskan — akun terkonfirmasi tanpa kode gagal
+ * seragam, akun yang belum diarahkan ke pemasangan (`lib/operator/enrolment.ts`).
+ * Memaksa isian di peramban hanya membuat akun baru tidak pernah bisa masuk.
  *
  * Pola form login pelanggan (isian terkendali sederhana + pesan galat
  * `role="alert"`), bukan react-hook-form: tidak ada validasi per-field yang
@@ -77,11 +81,11 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
                 required
               />
               {/*
-                * Medan TOTP HILANG sepenuhnya saat `OPERATOR_MFA=off`, bukan
-                * sekadar tidak `required`.
+                * Medan TOTP HILANG sepenuhnya saat `OPERATOR_MFA=off`.
                 *
-                * Sebabnya cacat sungguhan: sakelar itu melewati verifikasi di
-                * SERVER, tetapi medan ini `required` + `pattern="[0-9]{6}"`,
+                * Sebabnya cacat sungguhan (sebelum pemasangan wajib): sakelar
+                * itu melewati verifikasi di SERVER, tetapi medan ini dulu
+                * `required` + `pattern="[0-9]{6}"`,
                 * jadi peramban menolak mengirim formulirnya sampai enam angka
                 * diisi. Akibatnya MFA "sudah dimatikan" tetapi tidak ada yang
                 * bisa masuk — dan penyebabnya tak terlihat di log mana pun,
@@ -100,7 +104,6 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
                     pattern="[0-9]{6}"
                     maxLength={6}
                     autoComplete="one-time-code"
-                    required
                   />
                   <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
                     {t("operator.login.totpHint")}

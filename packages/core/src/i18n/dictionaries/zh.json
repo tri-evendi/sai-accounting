@@ -4703,6 +4703,7 @@
     },
     "signedInAs": "当前登录：{name}",
     "logout": "退出",
+    "mfaOffBanner": "MFA 已关闭（OPERATOR_MFA=off）。控制台仅受名称和密码保护。",
     "login": {
       "heading": "登录运营控制台",
       "description": "与客户应用分开登录。需要密码和身份验证码。",
@@ -4710,11 +4711,21 @@
       "username": "账号名",
       "password": "密码",
       "totp": "身份验证码（6 位）",
-      "totpHint": "来自身份验证器应用（TOTP）。",
+      "totpHint": "来自身份验证器应用。尚未设置？留空即可，系统会引导您完成设置。",
       "submit": "登录",
       "failed": "登录失败。请检查账户名、密码和身份验证码。",
       "failedNoMfa": "登录失败。请检查账户名和密码。",
       "rateLimited": "尝试次数过多。请几分钟后再试。"
+    },
+    "enrol": {
+      "heading": "设置身份验证器",
+      "description": "账户 {name} 尚未设置身份验证器。请立即设置以登录；此后每次登录都需要应用中的验证码。",
+      "submit": "确认并登录",
+      "expiryNote": "此页面有效期为 10 分钟。",
+      "cancel": "取消",
+      "expired": "设置会话已过期或不再有效。请重新登录以重新开始。",
+      "unavailable": "暂时无法记录确认。请稍后再试。",
+      "backToLogin": "返回登录页面"
     },
     "tenants": {
       "heading": "租户",
@@ -5255,8 +5266,8 @@
     },
     "authenticator": {
       "heading": "设置身份验证器",
-      "description": "用身份验证器应用扫描二维码，然后输入一个代码确认。开启 MFA 之前必须完成。",
-      "mfaOffNotice": "MFA 已关闭（OPERATOR_MFA=off）：登录只需名称和密码。请为每个账户确认身份验证器，然后从 .env 删除 OPERATOR_MFA 并重建 app-operator 容器。",
+      "description": "用身份验证器应用扫描二维码，然后输入一个验证码确认。",
+      "mfaOffNotice": "MFA 已关闭（OPERATOR_MFA=off）：登录只需名称和密码。如需开启，请从 .env 删除 OPERATOR_MFA 并重建 app-operator 容器。未确认的账户会在下次登录时被引导设置身份验证器。",
       "setupHeading": "{name} 的身份验证器",
       "qrLabel": "{name} 的身份验证器二维码",
       "stateConfirmed": "已确认",
@@ -5265,8 +5276,8 @@
       "envRotate": "紧急账户：TOTP 密钥位于 .env（OPERATOR_USERS），无法在控制台中更换。请用 scripts/operator-credential.ts 生成新密钥，替换 .env 中的条目，重建容器，然后在此重新设置。",
       "dbRotateNote": "在确认新密钥的代码之前，旧密钥仍然有效。",
       "readinessHeading": "MFA 就绪状态",
-      "readinessOff": "MFA 仍处于关闭状态。请在所有使用中的账户均为“已确认”后再开启；未确认的账户可能被锁定。",
-      "readinessOn": "MFA 已开启。未确认的账户若应用中已有密钥，仍可登录。",
+      "readinessOff": "MFA 仍处于关闭状态。开启后，未确认的账户会在下次登录时被要求设置身份验证器。",
+      "readinessOn": "MFA 已开启。未确认的账户会在下次登录时被要求设置身份验证器。",
       "readinessUnavailable": "无法读取就绪状态：控制数据库或审计记录无法连接。",
       "colSource": "来源",
       "sourceEnv": "环境变量（应急）",

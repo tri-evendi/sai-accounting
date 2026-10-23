@@ -24,6 +24,10 @@ import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
 import { getT } from "@sai/platform/i18n/server";
 import { writeOperatorAuditLog } from "@op/lib/operator/audit";
 import {
+  AUTHENTICATOR_CONFIRM_MAX,
+  AUTHENTICATOR_RATE_WINDOW_MS,
+  AUTHENTICATOR_REAUTH_MAX,
+  authenticatorConfirmBucket,
   confirmAuthenticator,
   finishRotation,
   revealAuthenticator,
@@ -42,10 +46,6 @@ export interface AuthenticatorActionResult {
   ticket?: string;
 }
 
-const RATE_WINDOW_MS = 15 * 60 * 1000;
-/** Bukti ulang: lebih ketat dari login (10) — ini sesi yang SUDAH masuk. */
-const REAUTH_MAX = 5;
-const CONFIRM_MAX = 10;
 
 const revealSchema = z.object({
   password: z.string().min(1).max(200),
@@ -74,8 +74,8 @@ export async function authenticatorReveal(input: unknown): Promise<Authenticator
   if (!parsed.success) return { ok: false, message: t("operator.authenticator.errReauth") };
 
   const limit = await checkSharedRateLimit(`operator-authenticator-reauth:${operator.name.toLowerCase()}`, {
-    windowMs: RATE_WINDOW_MS,
-    maxAttempts: REAUTH_MAX,
+    windowMs: AUTHENTICATOR_RATE_WINDOW_MS,
+    maxAttempts: AUTHENTICATOR_REAUTH_MAX,
   });
   if (!limit.allowed) return { ok: false, message: t("operator.login.rateLimited") };
 
@@ -146,9 +146,9 @@ export async function authenticatorConfirm(input: unknown): Promise<Authenticato
   const parsed = confirmSchema.safeParse(input);
   if (!parsed.success) return { ok: false, message: t("operator.authenticator.errCode") };
 
-  const limit = await checkSharedRateLimit(`operator-authenticator-confirm:${operator.name.toLowerCase()}`, {
-    windowMs: RATE_WINDOW_MS,
-    maxAttempts: CONFIRM_MAX,
+  const limit = await checkSharedRateLimit(authenticatorConfirmBucket(operator.name), {
+    windowMs: AUTHENTICATOR_RATE_WINDOW_MS,
+    maxAttempts: AUTHENTICATOR_CONFIRM_MAX,
   });
   if (!limit.allowed) return { ok: false, message: t("operator.login.rateLimited") };
 

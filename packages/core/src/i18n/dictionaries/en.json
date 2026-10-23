@@ -4703,6 +4703,7 @@
     },
     "signedInAs": "Signed in as {name}",
     "logout": "Sign out",
+    "mfaOffBanner": "MFA is off (OPERATOR_MFA=off). The console is protected by name and password only.",
     "login": {
       "heading": "Sign in to the operator console",
       "description": "Separate from the customer app. Password and authenticator code required.",
@@ -4710,11 +4711,21 @@
       "username": "Account name",
       "password": "Password",
       "totp": "Authenticator code (6 digits)",
-      "totpHint": "From your authenticator app (TOTP).",
+      "totpHint": "From your authenticator app. Not set up yet? Leave it empty and you will be guided through setup.",
       "submit": "Sign in",
       "failed": "Sign-in failed. Check the account name, password, and authenticator code.",
       "failedNoMfa": "Sign-in failed. Check the account name and password.",
       "rateLimited": "Too many attempts. Try again in a few minutes."
+    },
+    "enrol": {
+      "heading": "Set up authenticator",
+      "description": "Account {name} has no authenticator yet. Set it up now to sign in; from then on every sign-in asks for a code from the app.",
+      "submit": "Confirm and sign in",
+      "expiryNote": "This page is valid for 10 minutes.",
+      "cancel": "Cancel",
+      "expired": "The setup session has expired or is no longer valid. Sign in again to start over.",
+      "unavailable": "The confirmation cannot be recorded right now. Try again shortly.",
+      "backToLogin": "Back to sign-in"
     },
     "tenants": {
       "heading": "Tenants",
@@ -5255,8 +5266,8 @@
     },
     "authenticator": {
       "heading": "Set up authenticator",
-      "description": "Scan the QR code into an authenticator app, then confirm with one code. Required before MFA is turned on.",
-      "mfaOffNotice": "MFA is off (OPERATOR_MFA=off): sign-in only needs a name and password. Confirm an authenticator for every account, then remove OPERATOR_MFA from .env and recreate the app-operator container.",
+      "description": "Scan the QR code into an authenticator app, then confirm with one code.",
+      "mfaOffNotice": "MFA is off (OPERATOR_MFA=off): sign-in only needs a name and password. To turn it on, remove OPERATOR_MFA from .env and recreate the app-operator container. Unconfirmed accounts are guided through authenticator setup at their next sign-in.",
       "setupHeading": "Authenticator for {name}",
       "qrLabel": "Authenticator QR code for {name}",
       "stateConfirmed": "Confirmed",
@@ -5265,8 +5276,8 @@
       "envRotate": "Emergency account: its TOTP secret is in .env (OPERATOR_USERS) and cannot be changed from the console. Create a new secret with scripts/operator-credential.ts, replace the entry in .env, recreate the container, then set it up again here.",
       "dbRotateNote": "The old secret keeps working until a code from the new one is confirmed.",
       "readinessHeading": "MFA readiness",
-      "readinessOff": "MFA is still off. Turn it on once every account in use is Confirmed; unconfirmed accounts may be locked out.",
-      "readinessOn": "MFA is on. Unconfirmed accounts can still sign in if the secret is already in their app.",
+      "readinessOff": "MFA is still off. Once it is on, unconfirmed accounts are asked to set up an authenticator at their next sign-in.",
+      "readinessOn": "MFA is on. Unconfirmed accounts are asked to set up an authenticator at their next sign-in.",
       "readinessUnavailable": "Readiness cannot be read: the control database or audit trail is unreachable.",
       "colSource": "Source",
       "sourceEnv": "Env (emergency)",

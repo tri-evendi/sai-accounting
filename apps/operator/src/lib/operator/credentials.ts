@@ -125,6 +125,34 @@ export async function verifyOperatorLogin(params: {
   now?: Date;
   findDbAccount?: (name: string) => Promise<DbOperatorCredential | null>;
 }): Promise<VerifiedOperator | null> {
+  const checked = await verifyOperatorPassword(params);
+  const totpOk = mfaDisabled()
+    ? true
+    : checked
+      ? verifyTotp(checked.totpSecret, params.totpCode.trim(), params.now)
+      : false;
+  return checked && totpOk ? checked.account : null;
+}
+
+/** Kata sandi benar → akun + rahasia TOTP-nya (untuk langkah MFA berikutnya). */
+export interface PasswordVerified {
+  account: VerifiedOperator;
+  totpSecret: string;
+}
+
+/**
+ * Langkah PERTAMA login: nama + kata sandi saja, dengan aturan yang sama
+ * (env dulu, bcrypt waktu-tetap, pencari yang melempar = tidak ada). Hasilnya
+ * BUKAN izin masuk: pemanggil wajib memutuskan langkah MFA-nya
+ * (`decideOperatorLogin` di `login-flow.ts`, atau `verifyOperatorLogin`).
+ * Rahasia TOTP yang dikembalikan tidak pernah boleh dicatat.
+ */
+export async function verifyOperatorPassword(params: {
+  username: string;
+  password: string;
+  accountsRaw?: string;
+  findDbAccount?: (name: string) => Promise<DbOperatorCredential | null>;
+}): Promise<PasswordVerified | null> {
   const wanted = params.username.trim().toLowerCase();
   const accounts = parseOperatorAccounts(params.accountsRaw ?? process.env.OPERATOR_USERS);
   const envAccount = accounts.find((a) => a.name.toLowerCase() === wanted);
@@ -146,23 +174,24 @@ export async function verifyOperatorLogin(params: {
   const secret = envAccount?.totpSecret ?? dbAccount?.totpSecret ?? null;
 
   const passwordOk = await compare(params.password, hash);
-  const totpOk = mfaDisabled()
-    ? true
-    : secret
-      ? verifyTotp(secret, params.totpCode.trim(), params.now)
-      : false;
 
-  if (!passwordOk || !totpOk) return null;
+  if (!passwordOk || !secret) return null;
   if (envAccount) {
-    return { name: envAccount.name, role: "owner", source: "env", sessionVersion: null, id: null };
+    return {
+      account: { name: envAccount.name, role: "owner", source: "env", sessionVersion: null, id: null },
+      totpSecret: secret,
+    };
   }
   if (dbAccount) {
     return {
-      name: dbAccount.name,
-      role: dbAccount.role,
-      source: "db",
-      sessionVersion: dbAccount.sessionVersion,
-      id: dbAccount.id,
+      account: {
+        name: dbAccount.name,
+        role: dbAccount.role,
+        source: "db",
+        sessionVersion: dbAccount.sessionVersion,
+        id: dbAccount.id,
+      },
+      totpSecret: secret,
     };
   }
   return null;
@@ -207,7 +236,7 @@ export function operatorMfaOff(): boolean {
  * kali orang membukanya, dan peringatan yang muncul karena seseorang MELIHAT
  * halaman akan menenggelamkan peringatan yang muncul karena seseorang MASUK.
  */
-function mfaDisabled(): boolean {
+export function mfaDisabled(): boolean {
   const off = operatorMfaOff();
   if (off) {
     console.warn(

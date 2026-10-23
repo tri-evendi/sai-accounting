@@ -10,6 +10,10 @@
  * proxy DAN diperiksa ulang di sini (`operatorPlaneViolation`) — action tidak
  * boleh bisa dipanggil dari host pelanggan sekalipun proxy berubah.
  *
+ * MFA hidup + authenticator belum terpasang → sesi PEMASANGAN, bukan sesi
+ * konsol (`lib/operator/enrolment.ts`); halaman pemasangannya di
+ * `login/authenticator`.
+ *
  * Kredensial dari `OPERATOR_USERS` (env), MFA TOTP wajib, jawaban gagal
  * SERAGAM (tidak membedakan "akun tidak ada" dari "kode salah"), dibatasi
  * laju per-IP (penghitung memori cukup: permukaannya sudah di belakang
@@ -21,16 +25,20 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { writeOperatorAuditLog } from "@op/lib/operator/audit";
-import { operatorMfaOff, verifyOperatorLogin } from "@op/lib/operator/credentials";
+import { readAuthenticatorConfirmationsFor } from "@op/lib/operator/audit";
+import { operatorMfaOff } from "@op/lib/operator/credentials";
+import { decideOperatorLogin } from "@op/lib/operator/enrolment";
+import { ENROLMENT_PATH } from "@op/lib/operator/enrolment-gate";
 import { findDbOperatorCredential, recordOperatorLogin } from "@op/lib/operator/operator-accounts";
 import { controlDb } from "@sai/core/control-db";
 import { operatorPlaneViolation } from "@op/lib/operator/guard";
 import { clientIpFrom, operatorCookieName } from "@sai/core/operator-plane";
+import { issueEnrolmentToken, issueOperatorToken, verifyOperatorToken } from "@op/lib/operator/session";
 import {
-  OPERATOR_SESSION_TTL_MS,
-  issueOperatorToken,
-  verifyOperatorToken,
-} from "@op/lib/operator/session";
+  clearEnrolmentCookies,
+  setEnrolmentCookie,
+  setOperatorSessionCookie,
+} from "@op/lib/operator/session-cookies";
 import { checkSharedRateLimit } from "@sai/platform/rate-limit-shared";
 import { getT } from "@sai/platform/i18n/server";
 
@@ -64,16 +72,21 @@ export async function operatorLogin(
   }
 
   const username = String(formData.get("username") ?? "").trim();
-  const account = await verifyOperatorLogin({
-    username,
-    password: String(formData.get("password") ?? ""),
-    totpCode: String(formData.get("totp") ?? ""),
-    /* Akun basis data (migration kendali 0004). Akun env dicari lebih dulu
-       dan tidak menyentuh basis data sama sekali. */
-    findDbAccount: (name) => findDbOperatorCredential({ control: controlDb }, name),
-  });
+  const decision = await decideOperatorLogin(
+    {
+      /* Akun basis data (migration kendali 0004). Akun env dicari lebih dulu
+         dan tidak menyentuh basis data sama sekali. */
+      findDbAccount: (name) => findDbOperatorCredential({ control: controlDb }, name),
+      readConfirmations: readAuthenticatorConfirmationsFor,
+    },
+    {
+      username,
+      password: String(formData.get("password") ?? ""),
+      totpCode: String(formData.get("totp") ?? ""),
+    }
+  );
 
-  if (!account) {
+  if (decision.kind === "denied") {
     await writeOperatorAuditLog({
       operator: username || "(kosong)",
       action: "operator.login.failed",
@@ -82,6 +95,29 @@ export async function operatorLogin(
     return { error: failed };
   }
 
+  if (decision.kind === "enrol") {
+    /* Kata sandi benar, authenticator belum terpasang: sesi PEMASANGAN saja
+       (lihat `lib/operator/enrolment.ts`). Tidak ada sesi konsol sampai satu
+       kode dari aplikasinya diterima. */
+    const { account, fingerprint } = decision;
+    const enrolToken = issueEnrolmentToken(account, fingerprint);
+    if (!enrolToken) {
+      console.error(
+        "[operator] OPERATOR_SESSION_SECRET tidak diset / kurang dari 32 karakter — konsol menolak semua login."
+      );
+      return { error: failed };
+    }
+    await setEnrolmentCookie(enrolToken);
+    await writeOperatorAuditLog({
+      operator: account.name,
+      action: "operator.authenticator.enroll.start",
+      details: { source: account.source, role: account.role, fingerprint },
+      ipAddress: ip,
+    });
+    redirect(ENROLMENT_PATH);
+  }
+
+  const { account } = decision;
   const token = issueOperatorToken(account.name, new Date(), process.env, {
     source: account.source,
     sessionVersion: account.sessionVersion,
@@ -95,15 +131,8 @@ export async function operatorLogin(
     return { error: failed };
   }
 
-  const secure = headerStore.get("x-forwarded-proto") === "https";
-  const cookieStore = await cookies();
-  cookieStore.set(operatorCookieName(secure), token, {
-    httpOnly: true,
-    secure,
-    sameSite: "strict",
-    path: "/",
-    maxAge: Math.floor(OPERATOR_SESSION_TTL_MS / 1000),
-  });
+  await setOperatorSessionCookie(token);
+  await clearEnrolmentCookies();
 
   if (account.id !== null) {
     /* "Masuk terakhir" di layar akun — gagal mencatatnya tidak menggagalkan
@@ -133,6 +162,7 @@ export async function operatorLogout(): Promise<void> {
    * penghapusannya diterima browser. */
   cookieStore.set(operatorCookieName(true), "", { httpOnly: true, secure: true, path: "/", maxAge: 0 });
   cookieStore.set(operatorCookieName(false), "", { httpOnly: true, path: "/", maxAge: 0 });
+  await clearEnrolmentCookies();
 
   if (session) {
     await writeOperatorAuditLog({

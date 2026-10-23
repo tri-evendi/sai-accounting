@@ -75,6 +75,12 @@ const OPERATOR_PAGE_EXCEPTIONS = new Set([
   // diri lewat `operatorPlaneViolation()` — pemeriksaan host + daftar IP yang
   // sama, yang gagal-TERTUTUP bila `OPERATOR_HOST` tidak diset.
   "(operator)/login/page.tsx",
+  // Pemasangan authenticator wajib saat masuk: pembukanya baru punya sesi
+  // PEMASANGAN, bukan sesi konsol. Ia menjaga diri lewat
+  // `operatorPlaneViolation()` + verifikasi token pemasangan
+  // (`lib/operator/enrolment.ts`); tests/operator-enrolment.test.ts menjaga
+  // bahwa sesi itu tidak membuka halaman lain.
+  "(operator)/login/authenticator/page.tsx",
 ]);
 
 /**

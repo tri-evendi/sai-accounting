@@ -355,11 +355,11 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
 describe("gelombang A (23 Okt 2026): Rekap per Pihak, Kas & Bank, Realisasi vs Anggaran", () => {
   const IDS = ["sales-by-customer", "purchases-by-supplier", "cash-bank", "budget-realization"] as const;
 
-  it("keempatnya `go-parity` — berkas masih TS sampai paritas PRODUKSI", () => {
+  it("keempatnya `go` sesudah paritas PRODUKSI 23 Okt 2026 — berkasnya dari Go", () => {
     for (const id of IDS) {
-      expect(reportEngine(id), id).toBe("go-parity");
-      expect(REPORT_ENGINES[id]!.parityProven, id).toBeUndefined();
-      expect(exportJobKind(id), id).toBe("report.export");
+      expect(reportEngine(id), id).toBe("go");
+      expect(REPORT_ENGINES[id]!.parityProven, id).toEqual({ date: "2026-10-23", books: 17 });
+      expect(exportJobKind(id), id).toBe("report.export_go");
     }
   });
 

@@ -192,7 +192,7 @@ kinds:
     #
     # Generator menolak nilai di luar node/go, `runner` bersama `schedule:`,
     # dan `runner` pada penulis buku.
-    runner: node
+    runner: go
 
   schema.migrate:
     lane: schema

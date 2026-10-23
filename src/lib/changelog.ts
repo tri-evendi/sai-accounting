@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.19.1",
+    tanggal: "2026-10-23",
+    ringkas: "Ekspor Rekap Penjualan, Rekap Pembelian, Kas & Bank, dan Realisasi Anggaran kini disiapkan di latar.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Ekspor Excel Rekap Penjualan per Pelanggan, Rekap Pembelian per Pemasok, Kas & Bank, dan Realisasi Anggaran disiapkan di latar.",
+      },
+    ],
+  },
+  {
     versi: "0.19.0",
     tanggal: "2026-10-23",
+    sha: "b7cf615",
     ringkas: "Faktur pajak keluaran bisa diekspor sebagai XML Coretax, dan ekspor laporan stok kini disiapkan di latar.",
     butir: [
       {

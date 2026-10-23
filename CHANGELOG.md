@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.19.0 — 2026-10-23 — belum digelar
+## 0.19.1 — 2026-10-23 — belum digelar
+
+Ekspor Rekap Penjualan, Rekap Pembelian, Kas & Bank, dan Realisasi Anggaran kini disiapkan di latar.
+
+### Berubah
+
+- Ekspor Excel Rekap Penjualan per Pelanggan, Rekap Pembelian per Pemasok, Kas & Bank, dan Realisasi Anggaran disiapkan di latar.
+
+---
+
+## 0.19.0 — 2026-10-23 (b7cf615)
 
 Faktur pajak keluaran bisa diekspor sebagai XML Coretax, dan ekspor laporan stok kini disiapkan di latar.
 

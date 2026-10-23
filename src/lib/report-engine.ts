@@ -227,24 +227,32 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
    * Anggaran memakai pembaca Laba Rugi Go (sudah `go`) untuk realisasinya.
    */
   "sales-by-customer": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/party_recap.go",
     parityScript: "parity:sales-by-customer",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.19.0): angka 51 · isi XLSX 153 setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   "purchases-by-supplier": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/party_recap.go",
     parityScript: "parity:purchases-by-supplier",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.19.0): angka 51 · isi XLSX 153 setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   "cash-bank": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/cash_bank.go",
     parityScript: "parity:cash-bank",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.19.0): angka 51 · isi XLSX 153 setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
   "budget-realization": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/budget.go",
     parityScript: "parity:budget-realization",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.19.0): angka 85 · isi XLSX 85 setara — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
 };
 

@@ -141,16 +141,20 @@ const (
 // GoEngineReports: laporan yang BERKAS-nya hari ini dihasilkan Go
 // (`engine: "go"`). Pelari menolak pekerjaan untuk laporan di luar himpunan ini.
 var GoEngineReports = map[string]bool{
-	ReportBalanceSheet:    true,
-	ReportCashFlow:        true,
-	ReportEquityChanges:   true,
-	ReportIncomeStatement: true,
-	ReportOpnameHistory:   true,
-	ReportPayables:        true,
-	ReportReceivables:     true,
-	ReportStockMovement:   true,
-	ReportStockValue:      true,
-	ReportTrialBalance:    true,
+	ReportBalanceSheet:        true,
+	ReportBudgetRealization:   true,
+	ReportCashBank:            true,
+	ReportCashFlow:            true,
+	ReportEquityChanges:       true,
+	ReportIncomeStatement:     true,
+	ReportOpnameHistory:       true,
+	ReportPayables:            true,
+	ReportPurchasesBySupplier: true,
+	ReportReceivables:         true,
+	ReportSalesByCustomer:     true,
+	ReportStockMovement:       true,
+	ReportStockValue:          true,
+	ReportTrialBalance:        true,
 }
 
 // TrialBalanceColumns: judul (TRIAL_BALANCE_HEADERS) dan lebar

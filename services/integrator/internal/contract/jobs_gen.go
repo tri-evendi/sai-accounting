@@ -175,7 +175,7 @@ const (
 // menyelesaikannya tanpa bekerja — dua pelaksana untuk satu putaran adalah
 // persis yang sakelar ini cegah. Padanan TS `KIND_RUNNERS`.
 var KindRunners = map[JobKind]KindRunner{
-	KindTenantConformance: RunnerNode,
+	KindTenantConformance: RunnerGo,
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.

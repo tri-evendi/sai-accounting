@@ -975,6 +975,44 @@ model ConformanceRun {
   @@map("conformance_runs")
 }
 
+/// Satu baris per putaran fan-out migration BUKU (`db:migrate:companies`,
+/// 09 §6). Kebenaran skema satu buku tetap `_prisma_migrations` buku itu;
+/// baris ini mencatat apa yang dicoba putaran dan jawabannya — dibaca
+/// `/api/health` (`migrations`) dan orang yang melanjutkan rilis dari tengah.
+model SchemaMigrationRun {
+  id Int @id @default(autoincrement())
+
+  startedAt  DateTime @map("started_at")
+  finishedAt DateTime @map("finished_at")
+
+  /// ok | partial | error — `partial` = sebagian buku gagal, sisanya di
+  /// kepala (rilis boleh lanjut, buku yang gagal ditutup gerbang skema);
+  /// `error` = tidak satu buku pun berhasil. Konvensi String + union TS.
+  status String @db.VarChar(12)
+
+  /// Migration buku terakhir yang dibawa image penerapnya
+  /// (`MIGRATION_TERAKHIR.company`). Membandingkannya dengan image yang
+  /// melayani menjawab "fan-out untuk rilis INI sudah berjalan?".
+  targetMigration String @map("target_migration") @db.VarChar(191)
+
+  companiesTotal    Int @default(0) @map("companies_total")
+  /// Buku yang `migrate deploy`-nya dijalankan putaran ini dan berhasil.
+  companiesMigrated Int @default(0) @map("companies_migrated")
+  /// Buku yang SUDAH di kepala sebelum putaran — dilewati tanpa proses Prisma.
+  companiesSkipped  Int @default(0) @map("companies_skipped")
+  companiesFailed   Int @default(0) @map("companies_failed")
+
+  /// JSON `{companies: [{slug, instance, outcome, before, after, ms, error}]}`.
+  /// Text, bukan Json: bentuk barisnya boleh berubah tanpa migration.
+  details String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([finishedAt])
+  @@map("schema_migration_runs")
+}
+
 /// Satu baris per putaran cadangan (#374).
 model BackupRun {
   id Int @id @default(autoincrement())

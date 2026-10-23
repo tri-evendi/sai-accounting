@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { requireSetupDone, requireUnlockedCompany } from "@/lib/page-auth";
+import { requireCompanySchemaReady, requireSetupDone, requireUnlockedCompany } from "@/lib/page-auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@sai/ui/card";
 import { StaticTable } from "@sai/ui/static-table";
@@ -223,6 +223,13 @@ export default async function DashboardPage({
    * pintu yang tidak menuntut bukti kehadiran.
    */
   await requireUnlockedCompany(session.user.id, scoped.companyId, {
+    tenantSlug: scoped.tenantSlug,
+    companySlug: scoped.companySlug,
+  });
+
+  /* Gerbang skema buku (09 §6) — sebelum `requireSetupDone`, yang sudah
+     membaca buku. Alasannya di `page-auth.ts`. */
+  await requireCompanySchemaReady({
     tenantSlug: scoped.tenantSlug,
     companySlug: scoped.companySlug,
   });

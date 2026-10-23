@@ -228,6 +228,16 @@ aman, dan satu-satunya yang tidak tersimpan di berkas SQL mana pun.
 bentuk lama" tidak bisa diperiksa dari repo ini. Itu sebabnya jendela dukungan
 (09 §12) harus tertulis sebelum kontraksi pertama.
 
+**Arah sebaliknya dijaga GERBANG, bukan aturan ini.** Expand-only menjamin
+kode LAMA di skema BARU. Sejak 23 Okt 2026 (`db:migrate:release`, 09 §6) ada
+juga keadaan kode BARU di buku yang belum termigrasi — buku yang gagal tidak
+lagi menahan rilis. Aturan migration tidak bisa membuat itu aman (kode baru
+memang boleh memakai kolom barunya); yang membuatnya aman adalah gerbang skema
+per perusahaan (`src/lib/company-schema-gate.ts`), yang menutup buku itu
+sampai migration-nya sampai. Jadi: **jangan pernah melonggarkan gerbang itu
+dengan alasan "migration-nya expand-only"** — keduanya menjaga arah yang
+berbeda.
+
 ---
 
 ## 8. Prisma (konvensi teknis)

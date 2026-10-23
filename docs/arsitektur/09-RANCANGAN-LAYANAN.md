@@ -191,7 +191,7 @@ satu commit, beberapa `command`.
 | `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
 | `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
-| `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate`, *bounded concurrency* |
+| `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
 | `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler (pagar: **langsung**) | ✅ peran `ledger` di `svc-worker` |
 
 ¹ Dimulai sebagai proses Node terpisah, pindah ke Go per generator bila ada
@@ -287,12 +287,15 @@ satu layanan compose + `command` per peran, kodenya tidak berubah):
 pekerjaan latar menjadi layanan yang berjalan terus, tidak ada lagi apa pun yang
 "selesai" untuk ditunggu `service_completed_successfully`. Aturan dan arah
 vonisnya kini **keadaan**, bukan rancangan — [02 §12](./02-LAYANAN-INFRA.md).
-Yang belum: gerbangnya masih per-image, bukan **per perusahaan**, dan
-expand/contract (§6) menuntut yang kedua.
+✅ Sejak 23 Okt 2026 gerbangnya DUA: per image untuk basis data kendali (boot,
+`/api/health`), dan **per perusahaan** untuk buku (`src/lib/company-schema-gate.ts`)
+— yang kedua itulah yang dituntut expand/contract (§6).
 
 Jalur `schema` tetap dijalankan **sekali** saat rilis (`docker compose run --rm`),
 bukan diterbitkan ke antrean: migration adalah langkah rilis, dan pelaksananya
-harus melihat kode keluarnya. Di on-premise, pelaksananya customer.
+harus melihat kode keluarnya. Di on-premise, pelaksananya customer. Yang
+berubah sejak 23 Okt 2026 (§6) adalah **apa yang membuat kode keluarnya
+bukan-nol**: kendali, platform, atau tidak satu buku pun — bukan satu buku.
 
 ### 3.3 Bahasa & runtime: Go
 
@@ -566,7 +569,7 @@ Menutup §1, dan inilah pekerjaan yang paling menentukan kesiapan pasar.
 
 | Operasi | Jalur | Perubahan | Keadaan |
 |---|---|---|---|
-| Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ ketiganya ada (tahap 1b) — tapi masih di gerbang pemblokir, dan masih TypeScript. Alasannya di bawah |
+| Migration | `schema` | `for` loop → *bounded concurrency*, hasil per perusahaan dicatat, rilis dapat dilanjutkan dari tengah | ✅ **keluar dari gerbang pemblokir 23 Okt 2026** — buku yang gagal tidak lagi menahan rilis; buku itu sendiri yang ditutup. Masih TypeScript, masih langkah rilis (bukan antrean). Rinciannya di bawah |
 | **Cadangan** | `tenant` | `pg_dumpall` → **`pg_dump` per basis data** + satu `pg_dumpall --globals-only`. Satu tenant bisa dipulihkan tanpa menyentuh yang lain | ✅ [02 §5](./02-LAYANAN-INFRA.md) · celah on-premise #5 tertutup |
 | Kesesuaian | `tenant` | *bounded concurrency* + baris jejak per basis data | ✅ **selesai 20 Okt 2026** — `CONFORMANCE_CONCURRENCY` (bawaan 3, plafon 8) + catatan per buku di jejaknya, terbaca di konsol. Masih peran `conformance` di `svc-worker`, bukan jalur tersendiri: belum ada `kind` yang diterbitkan untuknya |
 | Denyut jam | `schedule` | menerbitkan satu pekerjaan per (tenant, langkah) — §4 | sebagian: dua langkah sudah MENERBITKAN (`recurring:publish`, `backup:publish`), tapi penerbitnya masih langkah di peran `scheduler` (`svc-worker`), bukan jalur `schedule` tersendiri |
@@ -603,9 +606,48 @@ Memindahkan migration ke antrean tanpa expand/contract berarti aplikasi melayani
 buku yang skemanya lebih tua daripada kodenya, yaitu persis keadaan yang
 expand/contract ada untuk membuatnya aman. Jadi urutannya terbalik dari yang
 terbaca di tabel §9: **expand/contract lebih dulu, jalur `schema` menyusul.**
-Sampai itu, yang dibutuhkan §6 dari jalur ini sudah ada tanpa penerap migration
-kedua — dan penerap kedua atas pembukuan `_prisma_migrations` adalah kelas
-kerusakan yang tidak menghasilkan galat (§3.5: Prisma tetap pemilik skema).
+Penerap kedua atas pembukuan `_prisma_migrations` tetap kelas kerusakan yang
+tidak menghasilkan galat (§3.5: Prisma tetap pemilik skema).
+
+#### ✅ Keluar dari gerbang pemblokir (23 Okt 2026)
+
+**Keputusannya: gerbang berpindah dari RILIS ke BUKU, penerapnya tidak
+berpindah.** Expand/contract hanya menjamin satu arah — kode LAMA di skema
+BARU. Arah sebaliknya (kode baru, buku yang belum termigrasi) tidak dijamin
+aturan migration mana pun: kode baru boleh menyebut kolom yang dibawa migration
+yang belum sampai. Jadi "rilis berhenti memblokir" butuh potongan kedua yang
+tidak disebut versi lama bagian ini, dan potongan itulah yang dibangun:
+
+| Potongan | Bentuk | Dijaga |
+|---|---|---|
+| **Gerbang skema per perusahaan** | `src/lib/company-schema-gate.ts`. Buku yang `tertinggal`/`menggantung` terhadap image ini DITUTUP — hanya buku itu: proxy `prisma` melempar `CompanySchemaBehindError` (setiap query, termasuk pekerja `ledger` & skrip), penjaga halaman memantulkan ke `/book-updating`, penjaga API sesi & token menjawab `503 book_schema_updating` + `Retry-After`. Vonis `mutakhir`/`mendahului` di-cache seumur proses (satu query per buku per proses); vonis yang menutup ditanya ulang tiap 5 detik — buku yang baru termigrasi terbuka sendiri | `tests/company-schema-gate.test.ts` (perilaku + setiap jalan masuk) |
+| **Mode keluar rilis** | `db:migrate:release` (= CMD image migrator): kendali & platform tetap memblokir; buku yang gagal **sebagian** = keluar 0 (`partial`); **tidak satu buku pun** di kepala = keluar 1 (`error` — migration-nya yang rusak, dan aplikasi lama yang melayani semua buku lebih baik daripada aplikasi baru yang menutup semuanya). `db:migrate:all`/`:companies` tetap ketat | `tests/schema-rollout.test.ts`, `tests/migrate-fanout.test.ts` |
+| **Dilanjutkan dari tengah, murah** | riwayat buku dibaca SEBELUM proses Prisma dilahirkan; buku di kepala dilewati tanpa proses CLI. Sesudah `migrate deploy` keluar 0, riwayatnya dibaca lagi — kode keluar klaim, riwayat kebenaran | `tests/migrate-fanout.test.ts` |
+| **Hasil per buku dicatat** | `schema_migration_runs` (kendali, migration 0011): satu baris per putaran, hasil per buku di `details` | — |
+| **Terlihat** | `/api/health` → `migrations` (satu kata: `ok`/`pending`/`partial`/`error`/`unknown`, tanpa jumlah — rambu #317); `watch:health` komponen `migrasi-buku` (surel berisi slug buku); konsol `/backup` (versi per buku dari `_prisma_migrations`) | `tests/schema-rollout.test.ts` |
+
+**Yang SENGAJA tidak dilakukan, dan kenapa:**
+
+- **Bukan `kind` di antrean.** §3.2 sudah memutuskan migration adalah langkah
+  rilis yang pelaksananya harus melihat kode keluarnya, dan `kind` baru menuntut
+  pengklaim yang hidup terus — jalur `schema` tidak punya, dan memberinya satu
+  berarti proses berkredensial PEMILIK yang hidup terus. Yang dibeli antrean
+  (dilanjutkan dari tengah, hasil per buku, tidak memblokir) kini ada tanpanya.
+- **Bukan Go.** Penerap kedua atas `_prisma_migrations` — alasan §3.5 tidak
+  berubah.
+- **Tetap dijalankan SEBELUM swap secara bawaan**, dan itu pilihan dari angka:
+  karena setiap migration expand-only, menjalankannya sebelum swap tidak
+  menutup satu buku pun bila semuanya berhasil, sedangkan swap-dulu menutup
+  setiap buku selama gilirannya. Pada 17 buku fan-out-nya puluhan detik.
+  Gerbang per buku sudah membuat urutan sebaliknya AMAN; PRODUCTION.md
+  §Updates menuliskan tiga perintahnya, dan pemicunya: fase buku > ~2 menit.
+
+⚠ **Ditemukan saat mengerjakannya:** *bounded concurrency* tahap 1b TIDAK
+pernah berlaku. Pelaksananya memanggil `spawnSync` di loop tanpa satu `await`,
+jadi pelaksana pertama menghabiskan seluruh daftar sebelum yang kedua mulai —
+fan-out berurutan sejak tahap 1b, dan "24 detik" di atas adalah angka
+berurutan. Kini `spawn` asinkron; `tests/migrate-fanout.test.ts` menolak
+`spawnSync` kembali.
 
 ## 7. Dua profil penyebaran: SaaS dan On-Premise
 
@@ -1302,7 +1344,7 @@ Gerbang rilis dan register keputusan sudah utuh. Yang berlubang:
 | Bidang | Hilang |
 |---|---|
 | **Versi** | **definisi GA**. Semver + tag versi sudah ada (tahap 1a: setiap image juga ber-tag versi `package.json`, kini `0.10.0`) — yang belum adalah janji apa yang membuat sebuah versi "umum" |
-| ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). Prasyarat §6 karena itu terpenuhi; yang tersisa dari §6 adalah memindahkan penerapannya keluar dari gerbang pemblokir |
+| ~~Rollback skema~~ | ✅ **selesai 20 Okt 2026** — expand/contract ditegakkan `tests/expand-contract.test.ts`, aturannya di [`docs/DATABASE.md` §7.1](../DATABASE.md). ✅ Penerapannya keluar dari gerbang pemblokir **23 Okt 2026** (§6): gerbang per perusahaan + `db:migrate:release` |
 | **Insiden** | severity **insiden** (yang ada baru severity temuan P0–P3), siapa dihubungi |
 | **SLO** | satu sasaran per permukaan + ***error budget***-nya; tanpa itu metrik §11 hanya grafik |
 | ~~Keamanan~~ | ✅ `SECURITY.md` ada (22 Okt 2026) — **kontak & sasaran waktunya masih placeholder** yang wajib diisi pemilik |

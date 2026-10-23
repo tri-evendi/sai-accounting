@@ -38,6 +38,9 @@ const EXEMPT: Record<string, string> = {
   "src/lib/prisma.ts:modelCache": "pegangan model Prisma (proxy), bukan data",
   "src/lib/setup-gate.ts:completedCompanies": "latch satu arah false → true; replika yang belum melihatnya hanya bertanya lagi",
   "src/lib/company-clients.ts:pool": "kolam KONEKSI per replika — anggarannya di 02 §19, bukan invalidasi",
+  "src/lib/company-schema-gate.ts:cache":
+    "vonis skema per buku: yang membuka disimpan seumur proses (skema hanya maju selama image hidup), yang menutup 5 detik — bukan data kendali",
+  "src/lib/company-schema-gate.ts:inflight": "penggabung pertanyaan yang sedang berjalan, bukan cache",
   "src/lib/company-clients.ts:readPool": "kolam KONEKSI ke replika baca (tahap 3) — sama seperti `pool`, bukan data",
   "packages/core/src/rate-limit.ts:attempts": "penyimpanan cadangan `rate-limit-shared` saat Redis tidak ada",
   "packages/platform/src/brand-assets.ts:contentCache": "dikunci sidik isi (sha256) — tidak bisa basi; dikosongkan bersama metaCache",

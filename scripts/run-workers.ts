@@ -160,8 +160,11 @@ export const OWNER_ONLY_ENV: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** Environment untuk SATU peran: salinan, tanpa env pemilik yang bukan haknya. */
-export function roleEnv(role: string, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const out: NodeJS.ProcessEnv = { ...env };
+export function roleEnv(
+  role: string,
+  env: Readonly<Record<string, string | undefined>>
+): NodeJS.ProcessEnv {
+  const out = { ...env } as NodeJS.ProcessEnv;
   for (const [name, allowed] of Object.entries(OWNER_ONLY_ENV)) {
     if (!allowed.includes(role)) delete out[name];
   }

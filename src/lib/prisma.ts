@@ -40,6 +40,7 @@
 import type { PrismaClient } from "@sai/db/client/company";
 import { getCompanyClient } from "@/lib/company-clients";
 import { currentCompany } from "@/lib/current-company";
+import { assertCompanySchemaServable } from "@/lib/company-schema-gate";
 import {
   ReadScopeWriteError,
   WRITE_CLIENT_METHODS,
@@ -48,9 +49,19 @@ import {
   routeReadClient,
 } from "@/lib/read-replica";
 
-/** Klien milik perusahaan yang sedang dibuka — atau melempar. */
+/**
+ * Klien milik perusahaan yang sedang dibuka — atau melempar.
+ *
+ * Melempar DUA hal: konteks yang hilang (`MissingCompanyContextError`), dan
+ * buku yang skemanya belum sepadan dengan image ini
+ * (`CompanySchemaBehindError`, `company-schema-gate.ts`). Yang kedua ada sejak
+ * migration buku boleh gagal sebagian tanpa menahan rilis (09 §6): ia menutup
+ * SATU buku — bukan aplikasinya — sampai migration-nya sampai.
+ */
 export async function currentCompanyClient(): Promise<PrismaClient> {
-  return getCompanyClient(await currentCompany());
+  const company = await currentCompany();
+  await assertCompanySchemaServable(company);
+  return getCompanyClient(company);
 }
 
 /**
@@ -64,7 +75,11 @@ export async function currentCompanyClient(): Promise<PrismaClient> {
  */
 async function clientForCall(): Promise<PrismaClient> {
   if (!inReadScope()) return currentCompanyClient();
-  return routeReadClient(await currentCompany());
+  /* Gerbang skema juga untuk bacaan replika: replika memutar WAL primary, jadi
+     skemanya tidak pernah lebih maju daripada primary-nya. */
+  const company = await currentCompany();
+  await assertCompanySchemaServable(company);
+  return routeReadClient(company);
 }
 
 /** Properti klien yang BUKAN model — dipanggil langsung pada objek `prisma`. */

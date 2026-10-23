@@ -435,8 +435,52 @@ OOM (exit 137).
    `docker compose pull job-backup`.
 3. Only if the release brings new migrations under `prisma/postgresql/`:
    ```bash
-   docker compose run --rm migrate bun run db:migrate:all
+   docker compose run --rm migrate bun run db:migrate:release
+   echo "exit=$?"
    ```
+   `db:migrate:release` (since 23 Oct 2026, design §6) runs control → platform
+   → every company book, like `db:migrate:all`, with **one** difference: a
+   book that fails no longer holds the release for every other book.
+
+   | Exit | Meaning | Next |
+   |---|---|---|
+   | `0`, summary ends `— ok` | every book at head | swap (step 4) |
+   | `0`, summary ends `— partial` | some books failed, the rest are at head | **swap anyway** (step 4), then fix the listed books and re-run this same command |
+   | `1` | control/platform migration failed, the registry is empty, or **no** book reached head (the migration itself is broken) | **stop** — do not swap; the old containers keep serving every book |
+
+   Why `partial` may swap: every migration is expand-only
+   (`docs/DATABASE.md` §7.1), so the old code that keeps serving while this
+   runs is unaffected; and the new image will not touch a book whose schema is
+   older than its code — the **per-company schema gate**
+   (`src/lib/company-schema-gate.ts`) closes that one book: pages show
+   "this book is being updated" (`/book-updating`), APIs answer
+   `503 book_schema_updating` with `Retry-After`, background jobs for it fail
+   and retry. Other books are served normally.
+
+   A book left behind is visible in three places: `/api/health` →
+   `"migrations": {"status": "partial"}`, the hourly `watch:health` mail
+   (`[SAI] migration buku: partial`, listing the books), and the operator
+   console `/backup` (per-book version from `_prisma_migrations`). The per-book
+   result of every run is in `schema_migration_runs.details` (control DB).
+
+   **Resuming is the same command.** Books already at head are skipped
+   without spawning Prisma, so a re-run touches only the books left behind;
+   a book opens by itself within 5 s of its migration landing — no restart.
+
+   `db:migrate:all` / `db:migrate:companies` stay **strict** (any failed book
+   = exit 1) for humans, CI and development.
+
+   > **When the book fan-out gets long** (trigger: the companies phase above
+   > takes more than ~2 minutes), the gate also allows swapping *before* the
+   > books migrate, so the release no longer waits on N books at all — the
+   > price is that each book is briefly closed until its turn:
+   > ```bash
+   > docker compose run --rm migrate sh -c 'bun run db:migrate:control && bun run db:migrate:platform'
+   > docker compose up -d --no-deps app-customer app-operator svc-worker svc-integrator
+   > docker compose run --rm migrate bun run db:migrate:companies -- --release
+   > ```
+   > Control and platform must still go first: the boot gate refuses to serve
+   > (503) while the *control* schema is behind the image.
 4. Swap:
    ```bash
    docker compose up -d --no-deps app-customer app-operator svc-worker svc-integrator
@@ -798,6 +842,16 @@ Check the container logs for `[auth][error]` — `MissingSecret` means `AUTH_SEC
 **Audit log empty** — The company audit trail is the `audit_logs` table in that
 company's database (created by the company baseline migration): check that
 `db:migrate:all` reached that company.
+
+**"This book is being updated" / `503 book_schema_updating`** — that company's
+book is behind the migrations this image carries (a release ran with
+`db:migrate:release` and that book failed). Only that book is closed. Read the
+reason in the last `schema_migration_runs` row (control DB, `details` →
+`companies[].error`) or in the migrate log, fix it, then re-run
+`docker compose run --rm migrate bun run db:migrate:release` — books already
+at head are skipped. A book stuck *mid*-migration (`menggantung`) needs
+`prisma migrate resolve` on that database first, exactly as `migrate deploy`'s
+own P3009 message says.
 
 **Upload fails** — Check the `documents` volume's permissions, and Traefik's body-size limit (`traefik.http.middlewares.*.buffering.maxRequestBodyBytes`) if the file is large.
 

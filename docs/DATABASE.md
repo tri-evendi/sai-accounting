@@ -132,6 +132,20 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 2. `rate` (kurs ke IDR pada tanggal transaksi),
 3. `base_amount` (nilai dalam IDR), dasar buku besar dan laporan.
 
+**Kolom waktu `TIMESTAMP(3)` tanpa zona: isinya bergantung pada SIAPA yang
+menulisnya.** Prisma (model dan parameter `Date` di `$queryRaw`) menulis dan
+membaca jam dinding **UTC**. `now()`/`CURRENT_TIMESTAMP` di SQL menulis jam
+dinding **zona sesi**, dan zona sesi = zona bawaan server (`TZ` container `pg`,
+`Asia/Jakarta` di produksi), sebab baik node-pg maupun pgx tidak menyetelnya.
+Dua konvensi itu berselisih tujuh jam di produksi. Tabel yang dibaca Prisma
+memakai UTC, sedangkan `jobs` memakai jam `now()` sesi, sebab hampir seluruh
+tulisannya adalah `now()` dan DEFAULT kolomnya, dan predikat klaimnya
+`run_after <= now()`. Integrator Go mematuhi keduanya
+(`services/integrator/internal/jobs/queue.go`, `internal/trail/backup.go`): ia
+tidak pernah mengikat `time.Time` ke kolom seperti itu, sebab pgx mengodekannya
+menurut mode koneksi (jam proses atau zona sesi). Penjaganya
+`tests/services-go.test.ts`.
+
 ---
 
 ## 5. Relasi & index

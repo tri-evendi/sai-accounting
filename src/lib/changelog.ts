@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.16.2",
+    tanggal: "2026-10-23",
+    ringkas: "Penjadwalan dokumen berulang kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Dokumen berulang dijadwalkan oleh layanan latar yang baru, sama seperti cadangan harian.",
+      },
+    ],
+  },
+  {
     versi: "0.16.1",
     tanggal: "2026-10-23",
+    sha: "9bb3d81",
     ringkas: "Ekspor Laporan Perubahan Ekuitas kini disiapkan di latar.",
     butir: [
       {

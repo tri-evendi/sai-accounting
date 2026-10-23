@@ -206,7 +206,7 @@ kinds:
     schedule:
       grain: hour
       per_company: true
-      publisher: node
+      publisher: go
 
   ledger.dunning:
     lane: ledger

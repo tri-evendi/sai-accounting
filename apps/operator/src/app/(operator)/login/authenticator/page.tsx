@@ -4,7 +4,7 @@
  * Dibuka dengan sesi PEMASANGAN (bukan sesi konsol), yang terbit ketika MFA
  * hidup, kata sandinya benar, dan akunnya belum terkonfirmasi untuk rahasia
  * yang berlaku (`lib/operator/enrolment.ts`). Satu-satunya halaman yang bisa
- * dibuka sesi itu (`enrolment-gate.ts` di proxy; penjaga halaman lain hanya
+ * dibuka sesi itu (`lib/console-gate.ts` di proxy; penjaga halaman lain hanya
  * membaca cookie sesi konsol).
  *
  * SENGAJA tanpa `requireOperatorPage()` — pemanggilnya belum bersesi konsol.
@@ -15,7 +15,6 @@
  * sandinya. `Cache-Control: no-store` untuk jalur ini di `next.config.ts`.
  */
 import { notFound, redirect } from "next/navigation";
-import { Flex } from "antd";
 import { SafetyOutlined } from "@ant-design/icons";
 
 import { Button } from "@sai/ui/button";
@@ -33,9 +32,11 @@ import { verifyEnrolmentToken } from "@op/lib/operator/session";
 import { readEnrolmentCookie } from "@op/lib/operator/session-cookies";
 
 import { enrolmentCancel } from "./actions";
-import { EnrolmentForm } from "./enrolment-form";
+import { OperatorEnrolmentForm } from "../login-form";
 
 export const dynamic = "force-dynamic";
+
+const COLUMN: React.CSSProperties = { display: "flex", flexDirection: "column" };
 
 const CODE: React.CSSProperties = {
   fontFamily: "var(--ant-font-family-code)",
@@ -65,16 +66,16 @@ export default async function OperatorEnrolmentPage() {
     <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", padding: "40px 0" }}>
       <Card>
         <CardContent>
-          <Flex vertical gap="large">
-            <Flex vertical gap={4}>
-              <Flex align="center" gap="small">
+          <div style={{ ...COLUMN, gap: "var(--ant-margin-lg)" }}>
+            <div style={{ ...COLUMN, gap: "var(--ant-margin-xxs)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--ant-margin-xs)" }}>
                 <SafetyOutlined aria-hidden="true" style={{ fontSize: 20, color: "var(--ant-color-primary)" }} />
                 <h1 style={{ margin: 0, fontSize: "var(--ant-font-size-heading-4)", fontWeight: 600 }}>
                   {t("operator.enrol.heading")}
                 </h1>
-              </Flex>
+              </div>
               <p style={CONSOLE_MUTED}>{t("operator.enrol.description", { name: enrolment.account })}</p>
-            </Flex>
+            </div>
 
             <ol style={{ margin: 0, paddingInlineStart: "var(--ant-padding-lg)", lineHeight: 1.625 }}>
               <li>{t("operator.authenticator.step1")}</li>
@@ -82,9 +83,9 @@ export default async function OperatorEnrolmentPage() {
               <li>{t("operator.authenticator.step3")}</li>
             </ol>
 
-            <Flex gap="large" wrap align="flex-start">
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "var(--ant-margin-lg)" }}>
               <QrCode qr={enrolment.qr} label={t("operator.authenticator.qrLabel", { name: enrolment.account })} />
-              <Flex vertical gap="small" style={{ flex: "1 1 200px", minWidth: 0 }}>
+              <div style={{ ...COLUMN, gap: "var(--ant-margin-xs)", flex: "1 1 200px", minWidth: 0 }}>
                 <span style={CONSOLE_MUTED}>{t("operator.authenticator.manualEntry")}</span>
                 <span>
                   {t("operator.authenticator.accountLabel")}: <code style={CODE}>{enrolment.account}</code>
@@ -93,20 +94,20 @@ export default async function OperatorEnrolmentPage() {
                   {t("operator.accounts.credentialTotp")}: <code style={CODE}>{enrolment.secretGrouped}</code>
                 </span>
                 <span style={CONSOLE_MUTED}>{t("operator.authenticator.manualParams")}</span>
-              </Flex>
-            </Flex>
+              </div>
+            </div>
 
-            <EnrolmentForm />
+            <OperatorEnrolmentForm />
 
-            <Flex justify="space-between" align="center" gap="small" wrap>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "var(--ant-margin-xs)" }}>
               <span style={CONSOLE_MUTED}>{t("operator.enrol.expiryNote")}</span>
               <form action={enrolmentCancel}>
                 <Button type="submit" variant="ghost" size="sm">
                   {t("operator.enrol.cancel")}
                 </Button>
               </form>
-            </Flex>
-          </Flex>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

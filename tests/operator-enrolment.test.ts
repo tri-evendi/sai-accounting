@@ -94,7 +94,7 @@ vi.mock("@op/lib/operator/audit", () => ({
 
 import { secretFingerprint, authenticatorReadiness } from "@op/lib/operator/authenticator";
 import { confirmEnrolment, decideOperatorLogin, resolveEnrolment, type LoginFlowDeps } from "@op/lib/operator/enrolment";
-import { decideConsoleGate, ENROLMENT_PATH, enrolmentCookieName } from "@op/lib/operator/enrolment-gate";
+import { decideConsoleGate, ENROLMENT_PATH, enrolmentCookieName } from "@op/lib/console-gate";
 import {
   OPERATOR_ENROLMENT_TTL_MS,
   issueEnrolmentToken,
@@ -394,7 +394,7 @@ describe("gerbang cookie konsol", () => {
 
   it("cookie pemasangan hanya dibaca/ditulis di tempat yang disebut", () => {
     const allowed = new Set([
-      "apps/operator/src/lib/operator/enrolment-gate.ts",
+      "apps/operator/src/lib/console-gate.ts",
       "apps/operator/src/lib/operator/session-cookies.ts",
       "apps/operator/src/proxy.ts",
     ]);

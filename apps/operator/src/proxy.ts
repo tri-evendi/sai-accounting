@@ -8,7 +8,7 @@ import {
   ipAllowed,
   operatorCookieName,
 } from "@sai/core/operator-plane";
-import { decideConsoleGate, enrolmentCookieName } from "@op/lib/operator/enrolment-gate";
+import { decideConsoleGate, enrolmentCookieName } from "@op/lib/console-gate";
 
 /**
  * Tembok terluar KONSOL OPERATOR sebagai aplikasi tersendiri (monorepo Fase 3d).

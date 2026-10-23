@@ -34,6 +34,7 @@ import { Input } from "@sai/ui/input";
 import { PasswordInput } from "@sai/ui/password-input";
 import { useT } from "@sai/core/i18n/client";
 import { operatorLogin, type OperatorLoginState } from "../actions";
+import { enrolmentConfirm, type EnrolmentFormState } from "./authenticator/actions";
 
 const { Title, Text } = Typography;
 
@@ -124,5 +125,57 @@ export function OperatorLoginForm({ mfaOff = false }: { mfaOff?: boolean }) {
         </Flex>
       </CardContent>
     </Card>
+  );
+}
+
+const ENROLMENT_INITIAL_STATE: EnrolmentFormState = { error: null };
+
+/**
+ * Isian kode di halaman PEMASANGAN (`/login/authenticator`): satu kode dari
+ * aplikasi yang baru memindai QR-nya. Semua aturan di server action
+ * (`enrolmentConfirm`). Tinggal di berkas ini, bukan modul client baru: ia
+ * formulir masuk yang kedua, dengan pola yang sama.
+ *
+ * Sesi pemasangan habis → pesan + tombol kembali ke login (pemuatan penuh
+ * yang disengaja: halaman login digambar ulang tanpa cookie lama).
+ */
+export function OperatorEnrolmentForm() {
+  const t = useT();
+  const [state, formAction, pending] = useActionState(enrolmentConfirm, ENROLMENT_INITIAL_STATE);
+
+  if (state.expired) {
+    return (
+      <Flex vertical gap="middle">
+        <Alert type="warning" showIcon message={state.error} />
+        <Button href="/login" variant="primary">
+          {t("operator.enrol.backToLogin")}
+        </Button>
+      </Flex>
+    );
+  }
+
+  return (
+    <form action={formAction}>
+      <Flex vertical gap="middle">
+        <div style={{ width: "100%", maxWidth: 240 }}>
+          <Input
+            name="code"
+            label={t("operator.authenticator.confirmCode")}
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            autoComplete="one-time-code"
+            autoFocus
+            required
+          />
+        </div>
+        {state.error && <Alert type="error" showIcon message={state.error} />}
+        <div>
+          <Button type="submit" variant="primary" disabled={pending}>
+            {pending ? t("common.loading") : t("operator.enrol.submit")}
+          </Button>
+        </div>
+      </Flex>
+    </form>
   );
 }

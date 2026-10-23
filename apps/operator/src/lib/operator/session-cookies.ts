@@ -9,7 +9,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 
 import { operatorCookieName } from "@sai/core/operator-plane";
-import { enrolmentCookieName } from "./enrolment-gate";
+import { enrolmentCookieName } from "../console-gate";
 import { OPERATOR_ENROLMENT_TTL_MS, OPERATOR_SESSION_TTL_MS } from "./session";
 
 async function isSecure(): Promise<boolean> {

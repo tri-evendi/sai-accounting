@@ -28,7 +28,7 @@ import { writeOperatorAuditLog } from "@op/lib/operator/audit";
 import { readAuthenticatorConfirmationsFor } from "@op/lib/operator/audit";
 import { operatorMfaOff } from "@op/lib/operator/credentials";
 import { decideOperatorLogin } from "@op/lib/operator/enrolment";
-import { ENROLMENT_PATH } from "@op/lib/operator/enrolment-gate";
+import { ENROLMENT_PATH } from "@op/lib/console-gate";
 import { findDbOperatorCredential, recordOperatorLogin } from "@op/lib/operator/operator-accounts";
 import { controlDb } from "@sai/core/control-db";
 import { operatorPlaneViolation } from "@op/lib/operator/guard";

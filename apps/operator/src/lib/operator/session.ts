@@ -145,7 +145,7 @@ export function verifyOperatorToken(
  * terkonfirmasi untuk rahasia yang berlaku. Ia bukan sesi konsol dan tidak
  * bisa menjadi sesi konsol:
  *
- *   • cookie-nya lain (`enrolment-gate.ts`), dan penjaga halaman, action, serta
+ *   • cookie-nya lain (`lib/console-gate.ts`), dan penjaga halaman, action, serta
  *     route hanya membaca cookie sesi biasa;
  *   • tanda tangannya dipisah domain (`enrol.` di depan badan yang
  *     ditandatangani), jadi token ini tidak lolos `verifyOperatorToken`

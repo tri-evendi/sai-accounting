@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.18.0 — 2026-10-23 — belum digelar
+## 0.18.1 — 2026-10-23 — belum digelar
+
+Perubahan pengaturan situs, logo, pengumuman, dan teks halaman depan dari konsol kini tampil dalam 5 detik.
+
+### Perbaikan
+
+- Pengaturan pendaftaran, PPN, kontak, logo, pengumuman status, dan teks halaman depan yang diubah dari konsol tampil di situs dalam 5 detik.
+
+---
+
+## 0.18.0 — 2026-10-23 (47f497a)
 
 Teks halaman depan kini disunting sebagai draf, dipratinjau, lalu diterbitkan dengan riwayat yang bisa dikembalikan.
 

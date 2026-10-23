@@ -73,8 +73,20 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.18.1",
+    tanggal: "2026-10-23",
+    ringkas: "Perubahan pengaturan situs, logo, pengumuman, dan teks halaman depan dari konsol kini tampil dalam 5 detik.",
+    butir: [
+      {
+        jenis: "perbaikan",
+        teks: "Pengaturan pendaftaran, PPN, kontak, logo, pengumuman status, dan teks halaman depan yang diubah dari konsol tampil di situs dalam 5 detik.",
+      },
+    ],
+  },
+  {
     versi: "0.18.0",
     tanggal: "2026-10-23",
+    sha: "47f497a",
     ringkas: "Teks halaman depan kini disunting sebagai draf, dipratinjau, lalu diterbitkan dengan riwayat yang bisa dikembalikan.",
     butir: [
       {

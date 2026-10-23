@@ -409,6 +409,7 @@ model Invoice {
   salesReturns SalesReturn[]
   /// Riwayat pengiriman faktur ini ke pelanggan (issue #465).
   sends InvoiceSend[]
+  efakturSubmissions EfakturSubmission[]
 
   @@index([customerId])
   @@index([contractId])
@@ -1010,6 +1011,16 @@ model Customer {
   /// on a PEB is name/country), and legacy customers were never captured. Stored
   /// as free text (digits/dots/dashes) — not validated as a check-digit here.
   npwp String? @db.VarChar(30)
+  /// Coretax (2025+) — pembeli TANPA NPWP diidentifikasi dengan NIK 16 digit
+  /// (`BuyerDocument = National ID`).
+  nik String? @db.VarChar(16)
+  /// ID TKU pembeli, 22 digit. Kosong = kantor pusat (NPWP + `000000`).
+  nitku String? @db.VarChar(22)
+  /// Kode transaksi Coretax untuk pelanggan PEMUNGUT PPN: `02` (instansi
+  /// pemerintah) atau `03` (selain instansi pemerintah). Kosong = diturunkan
+  /// dari tarif (04 DPP Nilai Lain / 01 barang mewah). Kosakata:
+  /// `CUSTOMER_TRX_CODE_OVERRIDES` di `@sai/core/coretax-xml`.
+  efakturTrxCode String? @map("efaktur_trx_code") @db.VarChar(2)
 
 
   /// Master data dinonaktifkan, bukan dihapus (docs/DATABASE.md §1.3). Pelanggan
@@ -1878,6 +1889,9 @@ model CompanySetting {
   /// Nama sesuai NPWP, when it differs from the trading `name` above. NULL → the
   /// e-Faktur export falls back to `name`.
   taxName String? @map("tax_name") @db.VarChar(150)
+  /// ID TKU penjual (Coretax `SellerIDTKU`), 22 digit. Kosong = kantor pusat
+  /// (NPWP 16 digit + `000000`).
+  nitku String? @db.VarChar(22)
   /// Alamat sesuai NPWP, when it differs from `address`. NULL → falls back to
   /// `address`. Reported on the seller identity line of any e-Faktur output.
   taxAddress String? @map("tax_address") @db.Text
@@ -1961,6 +1975,24 @@ model CompanySetting {
   /// dipakai di produksi tidak pernah gagal dengan berisik — ia menerbitkan VA
   /// yang tampak sah dan tidak pernah menerima satu rupiah pun.
   paymentIsProduction Boolean @default(false) @map("payment_is_production")
+
+  // ── e-Faktur lewat PJAP (docs/EFAKTUR.md) ─────────────────────────────────
+  //
+  // Pola yang SAMA dengan gerbang pembayaran di atas: kontrak PJAP milik PT,
+  // jadi kredensialnya milik PT dan duduk di basis data PT. NULL = fitur
+  // MATI (berkas XML untuk unggah manual tetap ada). Rahasianya bertiga
+  // (ciphertext · iv · tag, AES-256-GCM, `SETTINGS_ENCRYPTION_KEY`); yang
+  // membukanya hanya jalur `integration` di `svc-integrator` saat mengirim.
+  //
+  // `efaktur_provider`: `mock` (uji, tanpa jaringan) · `pjap` (penyedia
+  // sungguhan — kerangka, menunggu pemilik memilih PJAP). Kosakata:
+  // `EFAKTUR_PROVIDERS` di `@sai/core/efaktur-submission`.
+  efakturProvider String? @map("efaktur_provider") @db.VarChar(20)
+  efakturClientId String? @map("efaktur_client_id") @db.VarChar(120)
+  efakturSecretCiphertext String? @map("efaktur_secret_ciphertext") @db.Text
+  efakturSecretIv         String? @map("efaktur_secret_iv") @db.VarChar(32)
+  efakturSecretTag        String? @map("efaktur_secret_tag") @db.VarChar(32)
+  efakturIsProduction Boolean @default(false) @map("efaktur_is_production")
 
 }
 
@@ -2866,3 +2898,56 @@ model CompanyLogo {
   @@map("company_logos")
 }
 
+
+// ─── e-Faktur: pengiriman faktur keluaran ke DJP lewat PJAP (docs/EFAKTUR.md) ─
+//
+// SATU baris = SATU upaya kirim satu faktur. Upaya yang ditolak/dibatalkan/
+// gagal tidak ditimpa; kiriman ulang adalah baris BARU dengan `revision` + 1,
+// dan `idempotency_key`-nya ikut berganti — kunci itulah yang dikirim ke PJAP,
+// jadi pengulangan otomatis atas upaya yang SAMA tidak menerbitkan dua faktur.
+//
+// ══ BUKAN TABEL BUKU — DAN TETAP DITULIS NODE SAJA ════════════════════════
+// Isinya status kiriman ke sistem luar: nol angka akuntansi, menghapusnya
+// tidak mengubah satu laporan pun. Meski begitu pohon Go TIDAK menulisnya:
+// jalur `integration` (Go) melaporkan setiap hasil PJAP sebagai pekerjaan
+// `efaktur.record`, dan pelari `interactive` Node yang menuliskannya ke sini.
+// Daftar-izin tulisan Go tetap `jobs` + `backup_runs` (keputusannya ditulis di
+// `tests/services-go.test.ts`).
+//
+// `xml` = berkas yang DIKIRIM, dibekukan saat antre: faktur yang disunting
+// sesudahnya tidak mengubah diam-diam apa yang sudah sampai di DJP.
+// `requested_by_user_id` = id GLOBAL pengguna (basis data kendali) — tanpa FK
+// (docs/MULTI-COMPANY.md).
+model EfakturSubmission {
+  id        Int    @id @default(autoincrement())
+  invoiceId Int    @map("invoice_id")
+  revision  Int    @default(1)
+  idempotencyKey String @unique @map("idempotency_key") @db.VarChar(80)
+  provider  String @db.VarChar(20)
+  /// `queued` · `submitted` · `approved` · `rejected` · `failed` ·
+  /// `cancel_requested` · `canceled` — `EFAKTUR_SUBMISSION_STATUSES`.
+  status    String @default("queued") @db.VarChar(20)
+  xml       String @db.Text
+  providerRef String? @map("provider_ref") @db.VarChar(100)
+  /// Nomor faktur pajak (NSFP, 17 digit) yang diberikan Coretax saat disetujui.
+  taxInvoiceNumber String? @map("tax_invoice_number") @db.VarChar(30)
+  statusMessage String? @map("status_message") @db.Text
+  /// Instan hasil PJAP terakhir yang DITERAPKAN — kejadian yang lebih tua
+  /// (pekerjaan yang tiba tidak berurutan) tidak menimpa yang lebih baru.
+  statusObservedAt DateTime? @map("status_observed_at")
+  requestedByUserId Int @map("requested_by_user_id")
+  submittedAt DateTime? @map("submitted_at")
+  approvedAt  DateTime? @map("approved_at")
+  canceledAt  DateTime? @map("canceled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceId, revision])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([requestedByUserId])
+  @@map("efaktur_submissions")
+}

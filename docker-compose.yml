@@ -877,6 +877,12 @@ services:
       TZ:
       PG_DUMP_BIN:
       PG_DUMPALL_BIN:
+      # Jalur `integration` SAJA (e-Faktur lewat PJAP, docs/EFAKTUR.md): kunci
+      # yang SAMA dengan `app-customer` — Node menyegel kredensial PJAP milik PT,
+      # pelari ini membukanya tepat sebelum mengirim. Tanpa kunci ini kiriman
+      # ke penyedia `pjap` gagal `failed` dengan pesan yang terbaca; `mock` dan
+      # unggah XML manual tidak terpengaruh.
+      SETTINGS_ENCRYPTION_KEY:
       # Jalur `tenant` SAJA. `CONTROL_DATABASE_URL` sengaja TIDAK ditimpa di
       # sini: jalur `interactive` di proses yang sama memakainya lewat PgBouncer.
       #

@@ -367,4 +367,6 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.licencePassphraseTooShort": "Frasa sandi minimal 12 karakter.",
   "validation.licencePassphraseTooLong": "Frasa sandi terlalu panjang (maksimal 1024 karakter).",
   "validation.licencePassphraseMismatch": "Kedua frasa sandi tidak sama.",
+  "validation.nikInvalid": "NIK harus 16 digit",
+  "validation.nitkuInvalid": "NITKU harus 22 digit",
 };

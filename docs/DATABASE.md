@@ -133,18 +133,69 @@ pengguna tetap di disk (`lib/document-storage.ts`).
 3. `base_amount` (nilai dalam IDR), dasar buku besar dan laporan.
 
 **Kolom waktu `TIMESTAMP(3)` tanpa zona: isinya bergantung pada SIAPA yang
-menulisnya.** Prisma (model dan parameter `Date` di `$queryRaw`) menulis dan
-membaca jam dinding **UTC**. `now()`/`CURRENT_TIMESTAMP` di SQL menulis jam
-dinding **zona sesi**, dan zona sesi = zona bawaan server (`TZ` container `pg`,
-`Asia/Jakarta` di produksi), sebab baik node-pg maupun pgx tidak menyetelnya.
-Dua konvensi itu berselisih tujuh jam di produksi. Tabel yang dibaca Prisma
-memakai UTC, sedangkan `jobs` memakai jam `now()` sesi, sebab hampir seluruh
-tulisannya adalah `now()` dan DEFAULT kolomnya, dan predikat klaimnya
-`run_after <= now()`. Integrator Go mematuhi keduanya
-(`services/integrator/internal/jobs/queue.go`, `internal/trail/backup.go`): ia
-tidak pernah mengikat `time.Time` ke kolom seperti itu, sebab pgx mengodekannya
-menurut mode koneksi (jam proses atau zona sesi). Penjaganya
-`tests/services-go.test.ts`.
+menulisnya.** Satu konvensi untuk semua tabel kecuali satu:
+
+| Tabel | Isi kolom waktu | Siapa menulisnya |
+|---|---|---|
+| semua tabel **kecuali `jobs`** | jam dinding **UTC** | Prisma (model, dan parameter `Date` di `$queryRaw`); SQL mentah wajib `now() AT TIME ZONE 'UTC'`; Go mengirim teks UTC `$n::timestamp` |
+| `jobs` | jam dinding `now()` **zona sesi** | `now()`/`LOCALTIMESTAMP` di kedua bahasa + DEFAULT `CURRENT_TIMESTAMP`; dibaca lewat `(col AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC'` (#741/#744) |
+
+Zona sesi = zona bawaan server (`TZ` container `pg`, `Asia/Jakarta` di
+produksi), sebab node-pg, `@prisma/adapter-pg`, dan pgx tidak menyetelnya.
+
+**Prisma mengisi `@default(now())` dan `@updatedAt` SENDIRI**, dengan jam UTC
+proses, dan menyebut kolomnya di setiap `INSERT`: DEFAULT `CURRENT_TIMESTAMP`
+di DDL tidak pernah menyala untuk tulisan Prisma. Diukur di produksi 23 Okt
+2026 (hanya-baca): 273 tabel berisi yang punya `created_at`+`updated_at` di 19 basis data,
+35 239 baris, **nol** baris yang kedua kolomnya berselisih tujuh jam; kolom
+yang nilainya jatuh di jendela "masa depan UTC" (jejak jam WIB yang baru
+ditulis) hanya ada di `jobs`. Tanggal akuntansi (`journals.date`,
+`invoices.date`, `cash_movements.date`, …) adalah tengah malam UTC hari
+kalendernya (diukur: 26 170 baris `sai_production`, semuanya 00:00 kecuali
+7 baris alur produksi 30 Agu 2026 yang tanggalnya instan UTC `new Date()` — selaras dengan `created_at`-nya — dan 1 baris warisan impor), ditulis Prisma, dan tidak tersentuh
+zona sesi sama sekali. Layar memformat semuanya dengan `BUSINESS_TIME_ZONE`
+(`@sai/core/business-date`), jadi tampilan sudah benar.
+
+Yang menulis jam ZONA SESI ke tabel selain `jobs` hanya tiga bentuk, dan
+ketiganya ditolak `tests/sql-clock-utc.test.ts`:
+
+1. `now()` / `CURRENT_TIMESTAMP` / `LOCALTIMESTAMP` polos di SQL mentah — tulis
+   `now() AT TIME ZONE 'UTC'`. (Satu-satunya pelanggar sampai 23 Okt 2026:
+   `rate-limit-persistent.ts`; diperbaiki tanpa migrasi data, baris lamanya
+   terbaca "di masa depan" dan diperlakukan sebagai jendela kedaluwarsa.)
+2. `INSERT` mentah yang tidak menyebut `created_at`, sehingga DEFAULT
+   `CURRENT_TIMESTAMP` menyala — sebut `created_at` (dan `updated_at`)
+   dengan bentuk UTC.
+3. Data yang diisi migration (`INSERT … SELECT … CURRENT_TIMESTAMP`) —
+   aturannya sama; migration lama yang sudah diterapkan tidak disunting.
+
+`tests/sql-clock-utc.integration.test.ts` membuktikan ketiganya terhadap
+PostgreSQL sungguhan dengan zona sesi × zona proses {UTC, New York, Jakarta}.
+Integrator Go mematuhi konvensi yang sama (`internal/trail/backup.go`,
+`internal/jobs/queue.go`): ia tidak pernah mengikat `time.Time` ke kolom
+seperti itu, sebab pgx mengodekannya menurut mode koneksi (jam proses atau
+zona sesi). Penjaganya `tests/services-go.test.ts`.
+
+**Yang sengaja TIDAK dilakukan (keputusan 23 Okt 2026):**
+
+- **Zona basis data/sesi tidak diubah ke UTC** (`ALTER DATABASE … SET timezone`).
+  Untuk tabel selain `jobs` tidak ada yang diperbaiki olehnya (Prisma tidak
+  bersandar pada DEFAULT), sementara untuk `jobs` ia memindah jam `now()` tujuh
+  jam di tengah antrean yang hidup: `run_after` baris `queued` mendadak tujuh
+  jam di masa depan dan lease yang sedang dipegang tampak berumur negatif,
+  sampai setiap koneksi di pool Node, pgx, dan PgBouncer berganti — yang
+  waktunya tidak bisa dikendalikan. Pemasangan on-premise dengan zona lain
+  sudah benar tanpa itu, sebab kodenya tidak bergantung pada zona sesi.
+- **DEFAULT DDL tidak diganti** menjadi `(now() AT TIME ZONE 'UTC')`, dan
+  `@default(now())` tidak menjadi `dbgenerated(...)`. Mengganti DEFAULT
+  ±100 tabel × 19 basis data mengambil kunci `ACCESS EXCLUSIVE` per tabel di
+  basis data yang hidup demi kolom yang tidak pernah diisi DEFAULT-nya; yang
+  bisa memicunya (SQL mentah dan Go) dijaga di sumbernya.
+- **Tidak ada migrasi data.** Tidak ada baris yang terbukti salah selain
+  `jobs` (yang benar menurut konvensinya sendiri) dan `rate_limit_counters`
+  (penghitung berumur pendek yang memulihkan dirinya). Pengurangan tujuh jam
+  "hanya pada yang ditulis DEFAULT" tidak bisa dibuktikan per baris, dan
+  migration memang tidak boleh menulis data (§7.1).
 
 ---
 

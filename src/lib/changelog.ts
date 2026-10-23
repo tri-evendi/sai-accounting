@@ -73,8 +73,24 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.16.0",
+    tanggal: "2026-10-23",
+    ringkas: "Laporan Perubahan Ekuitas bisa diunduh, dan pencocokan barang kontrak di Umur Piutang kini sama dengan halaman kontrak.",
+    butir: [
+      {
+        jenis: "baru",
+        teks: "Laporan Perubahan Ekuitas kini bisa diunduh sebagai Excel dan PDF.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Umur Piutang, halaman detail kontrak, dan batas penagihan faktur kini mencocokkan barang kontrak berdasarkan barangnya, bukan hanya namanya — dua barang bernama sama tidak lagi tertukar.",
+      },
+    ],
+  },
+  {
     versi: "0.15.2",
     tanggal: "2026-10-23",
+    sha: "ef6b7b7",
     ringkas: "Penjadwalan cadangan harian kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.",
     butir: [
       {

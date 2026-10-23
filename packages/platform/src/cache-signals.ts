@@ -67,7 +67,15 @@ export interface CacheSignalClient {
  * model ini. Tanpa model = sinyal tidak dipakai, bukan galat.
  */
 function signalClient(client: unknown): CacheSignalClient | null {
-  const model = (client as { cacheSignal?: Partial<CacheSignalClient["cacheSignal"]> } | null)?.cacheSignal;
+  /* Proksi klien platform MELEMPAR saat diakses bila PLATFORM_DATABASE_URL
+     tidak disetel — dan itu keadaan normal saat `next build` di CI merender
+     halaman statis. Versi tak diketahui (null), bukan build yang gagal. */
+  let model: Partial<CacheSignalClient["cacheSignal"]> | undefined;
+  try {
+    model = (client as { cacheSignal?: Partial<CacheSignalClient["cacheSignal"]> } | null)?.cacheSignal;
+  } catch {
+    return null;
+  }
   return model && typeof model.findMany === "function" && typeof model.upsert === "function"
     ? (client as CacheSignalClient)
     : null;

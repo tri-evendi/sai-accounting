@@ -1686,6 +1686,8 @@ export const STOCK_SHEET_LABELS = {
   opnameDecrease: "Susut",
   /** Sel satuan barang yang satuannya kosong. */
   noUnit: "-",
+  /** Awalan nama barang di bawah baris judul sesi hitung ulang. */
+  opnameItemIndent: "   ",
 } as const;
 
 /** Catatan kaki Riwayat Stok: barang tanpa saldo awal dan tanpa mutasi. */

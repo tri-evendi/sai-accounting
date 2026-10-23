@@ -526,7 +526,7 @@ function buildOpnameHistorySheet(
     rows.push([text(opnameSessionLabel(opnameSheetDate(s.dateISO)), true), text(null), q(s.increase, true), q(s.decrease, true)]);
     for (const a of s.adjustments) {
       rows.push([
-        text(`   ${a.itemName}`),
+        text(`${STOCK_SHEET_LABELS.opnameItemIndent}${a.itemName}`),
         text(a.unit || STOCK_SHEET_LABELS.noUnit),
         a.variance > 0 ? q(a.variance) : text(null),
         a.variance < 0 ? q(-a.variance) : text(null),

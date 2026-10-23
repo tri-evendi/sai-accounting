@@ -2155,6 +2155,7 @@ Riwayat Stok, Riwayat Hitung Ulang Stok). Isi lembarnya wajib sama dengan
     { kiri: "OpnameHistorySheetName", kanan: `= ${q(SHEET_NAMES["opname-history"])}` },
     { kiri: "OpnameHistoryTitle", kanan: `= ${q(STATEMENT_TITLES["opname-history"])}` },
     { kiri: "OpnameHistoryEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.opnameHistory)}` },
+    { kiri: "OpnameItemIndent", kanan: `= ${q(STOCK_SHEET_LABELS.opnameItemIndent)}` },
     { kiri: "OpnameSessionFormat", kanan: `= ${q(polaGo(opnameSessionLabel))}` },
     { kiri: "OpnameSummaryFormat", kanan: `= ${q(polaGoBulat2(opnameSummaryLabel))}` },
   ]);

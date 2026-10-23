@@ -53,6 +53,7 @@ const (
 	OpnameHistorySheetName         = "Riwayat Opname"
 	OpnameHistoryTitle             = "Riwayat Hitung Ulang Stok (Stok Opname)"
 	OpnameHistoryEmptyLabel        = "Tidak ada hitung ulang stok pada periode ini."
+	OpnameItemIndent               = "   "
 	OpnameSessionFormat            = "Hitung ulang %s"
 	OpnameSummaryFormat            = "%[1]d kali hitung ulang · %[2]d penyesuaian · Selisih bersih"
 )

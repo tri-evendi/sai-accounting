@@ -38,7 +38,7 @@ import { getDictionary, getLocale } from "@sai/platform/i18n/server";
 import { getTheme } from "@sai/ui/theme/server";
 import { activeBrandMarkSrc } from "@sai/platform/brand-routes";
 import { SITE_CONTENT_PREVIEW_TOKEN_PATTERN } from "@sai/core/site-content";
-import { PreviewLinkKeeper } from "@/components/landing/preview-link-keeper";
+import { PreviewLinkKeeper } from "./preview-link-keeper";
 
 /* Cadangan bila sebuah halaman pemasaran lupa metadata-nya sendiri; `/` dan
    `/pricing` masing-masing menimpanya dengan judul, deskripsi & kanoniknya. */

@@ -107,20 +107,28 @@ erDiagram
     PlatformInvoice ||--o{ Payment : ""
     Subscription ||--o{ ReminderLog : "H-7 / H-3 / H-1"
     LicenceCustomer ||--o{ LicenceRegisterEntry : "register lisensi on-premise"
+    SiteContentPublication ||--o{ SiteContentRevision : "isi halaman depan: sebelum/sesudah"
 ```
 
-Hanya tujuh model yang berelasi. `LicenceCustomer` · `LicenceRegisterEntry`
+Hanya sembilan model yang berelasi. `LicenceCustomer` · `LicenceRegisterEntry`
 (migration platform `0006_licence_register`) adalah **arsip** lisensi
 on-premise — ditandatangani di konsol atau luring — dibaca dan ditulis konsol
 operator saja; `source_tenant_id` menunjuk tenant SaaS asal tanpa FK. Tidak ada
 yang membacanya untuk memutuskan status lisensi. `LicenceSigningKey`
 (`0007_licence_signing_keys`, berdiri sendiri) memegang kunci penanda konsol
-yang **tersegel** dengan frasa sandi ([06 §3.7](./06-KEAMANAN.md)). Sisanya **sengaja berdiri sendiri**, karena
+yang **tersegel** dengan frasa sandi ([06 §3.7](./06-KEAMANAN.md)).
+Isi halaman depan (`0008_site_content_publishing`) berbentuk draf → terbit:
+`SiteContentEntry` memegang yang tayang dan drafnya per kunci+bahasa,
+`SiteContentPublication` + `SiteContentRevision` mencatat setiap penerbitan
+beserta nilai sebelum/sesudah, dan `SiteContentPreview` menyimpan hash token
+pratinjau berumur 30 menit. `SiteContent` (tabel lama) tinggal sebagai paruh
+expand yang ditulis ulang setiap penerbitan sampai migration contract-nya.
+Sisanya **sengaja berdiri sendiri**, karena
 masing-masing adalah catatan peristiwa, bukan entitas: `SchedulerRun` ·
 `BackupRun` · `ConformanceRun` (tiga heartbeat yang dibaca `/api/health`) ·
 `SubscriptionEvent` · `OperatorAuditLog` ·
-`UsageCounter` · `TenantBillingProfile` · `MailSetting` · `SiteContent` ·
-`SiteSetting` · `StatusNotice` · `BrandAsset`.
+`UsageCounter` · `TenantBillingProfile` · `MailSetting` · `SiteContentEntry` ·
+`SiteContentPreview` · `SiteSetting` · `StatusNotice` · `BrandAsset`.
 
 > **Tidak ada satu pun angka akuntansi di lapis ini.** Tabel transaksi di
 > platform akan membatalkan isolasi #104.

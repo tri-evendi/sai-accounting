@@ -367,7 +367,6 @@ export function contentValueProblem(
   if (text.length === 0) return null;
   if (contentLength(text) > spec.maxLength) return "too_long";
   if (/<\/?[A-Za-z!?][^>]*>/.test(text)) return "markup";
-  // eslint-disable-next-line no-control-regex -- karakter kendali memang yang dicari
   if (/[\u0000-\u0009\u000B-\u001F\u007F]/.test(text)) return "control";
   const want = placeholdersOf(defaultValue);
   const got = placeholdersOf(text);

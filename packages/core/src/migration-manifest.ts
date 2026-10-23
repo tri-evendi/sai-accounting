@@ -13,7 +13,7 @@
  */
 export const MIGRATION_TERAKHIR = {
   control: "0011_schema_migration_runs",
-  platform: "0007_licence_signing_keys",
+  platform: "0008_site_content_publishing",
   company: "0003_contracts_status_check",
 } as const;
 

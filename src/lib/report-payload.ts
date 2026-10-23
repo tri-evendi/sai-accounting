@@ -51,6 +51,7 @@ import {
   comparePeriodLabel,
   costCenterPeriodSuffix,
   periodRangeLabel,
+  stockValuePeriodLabel,
 } from "@/lib/statement-layout";
 import { comparisonDate, comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { prisma } from "@/lib/prisma";
@@ -503,7 +504,9 @@ export async function buildReportPayload(
       // tahun). Memakai dua penentu periode berarti berkas dan layar bisa
       // menyebut periode berbeda dari parameter yang sama.
       const { from, to } = resolveStockPeriod(undefined, undefined, params.from, params.to);
-      const r = await getStockMovementReport(from, to);
+      /* Klien diteruskan: Riwayat Stok `go-parity` — skrip paritas
+         menyerahkan transaksi READ ONLY, berkas emas klien palsu. */
+      const r = await getStockMovementReport(from, to, client);
       return {
         kind: "stock-movement",
         period: periodLabel(from, to, null),
@@ -553,10 +556,10 @@ export async function buildReportPayload(
        * memakai fungsi yang SAMA alih-alih menulis aturan costing kedua.
        */
       const { from, to } = resolvePeriod(params.from, params.to);
-      const r = await getStockValuePeriodReport(from, to);
+      const r = await getStockValuePeriodReport(from, to, client);
       return {
         kind: "stock-value",
-        period: `${formatDate(from)} — ${formatDate(to)}`,
+        period: stockValuePeriodLabel(formatDate(from), formatDate(to)),
         rows: r.rows,
         /* Nilai pada AKHIR periode — angka yang dicocokkan ke neraca per
            tanggal itu, bukan penjumlahan mutasi. */
@@ -621,7 +624,7 @@ export async function buildReportPayload(
 
     case "opname-history": {
       const { from, to } = resolveStockPeriod(undefined, undefined, params.from, params.to);
-      const h = await getOpnameHistory(from, to);
+      const h = await getOpnameHistory(from, to, client);
       return {
         kind: "opname-history",
         period: periodLabel(from, to, null),

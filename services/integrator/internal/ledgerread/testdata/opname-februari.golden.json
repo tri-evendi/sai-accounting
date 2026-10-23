@@ -1,0 +1,28 @@
+{
+  "from": "2026-01-31T17:00:00Z",
+  "to": "2026-02-28T16:59:59.999Z",
+  "sessions": [
+    {
+      "dateISO": "2026-02-01",
+      "adjustments": [
+        {
+          "itemName": "Cengkeh",
+          "unit": "kg",
+          "variance": -1.25
+        },
+        {
+          "itemName": "Cengkeh",
+          "unit": "kg",
+          "variance": 0.5
+        }
+      ],
+      "increase": 0.5,
+      "decrease": 1.25
+    }
+  ],
+  "sessionCount": 1,
+  "adjustmentCount": 2,
+  "totalIncrease": 0.5,
+  "totalDecrease": 1.25,
+  "netVariance": -0.75
+}

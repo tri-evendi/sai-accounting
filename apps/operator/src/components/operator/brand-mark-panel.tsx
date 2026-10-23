@@ -25,6 +25,7 @@ import { useT } from "@sai/core/i18n/client";
 import { formatDateTime } from "@sai/core/utils";
 import { SIDER_BG_DARK } from "@sai/ui/theme/antd-tokens";
 import { LOGO_MAX_BYTES } from "@sai/core/image-file";
+import { CACHE_SIGNAL_POLL_SECONDS } from "@sai/core/cache-signals";
 import type { BrandActionResult } from "@op/app/(operator)/brand/actions";
 
 const { Text } = Typography;
@@ -165,7 +166,7 @@ export function BrandMarkPanel({ active, canEdit, upload, reset }: BrandMarkPane
             {active && (
               <ConfirmDialog
                 title={t("operator.brand.resetTitle")}
-                message={t("operator.brand.resetDescription")}
+                message={t("operator.brand.resetDescription", { seconds: CACHE_SIGNAL_POLL_SECONDS })}
                 confirmLabel={t("operator.brand.reset")}
                 onConfirm={() => run(reset)}
                 trigger={

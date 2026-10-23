@@ -31,6 +31,7 @@ import { reportEngine } from "@/lib/report-engine";
 import { comparisonDate, comparisonRange, parseComparison } from "@/lib/statement-compare";
 import { resolveBudgetPeriod } from "@/lib/report-payload";
 import { budgetPeriodRange } from "@/lib/budget-report";
+import { resolveStockPeriod } from "@/lib/stock-period";
 
 /** Muatan `report.export_go`. Dibaca `services/integrator/internal/interactivelane`. */
 export type GoExportPayload = {
@@ -78,6 +79,12 @@ export type GoExportPayload = {
 export const COMPARABLE_REPORTS: readonly string[] = ["income-statement", "balance-sheet"];
 
 /**
+ * Laporan berperiode yang rentangnya diselesaikan `resolveStockPeriod`, bukan
+ * `resolvePeriod` — sama dengan cabangnya di `buildReportPayload`.
+ */
+export const STOCK_PERIOD_REPORTS: readonly string[] = ["stock-movement", "opname-history"];
+
+/**
  * `compare` yang sah untuk laporan ini, atau `null` — dan parameter tanpa
  * `compare` yang tidak sah. Nilai tak dikenal DIABAIKAN, seperti halaman
  * (`parseComparison`): tautan lama memulangkan laporan biasa, bukan galat.
@@ -115,7 +122,14 @@ export function goExportPayloadShape(
       };
     }
     case "period": {
-      const { from, to, fromISO, toISO } = resolvePeriod(params.from, params.to, now);
+      /* Riwayat Stok & Riwayat Hitung Ulang Stok memakai penentu periode
+         MILIKNYA (`resolveStockPeriod`), persis `buildReportPayload` dan
+         halamannya: bawaannya bulan berjalan, bukan awal tahun. Dengan dua
+         penentu, muatan tanpa `from`/`to` akan menyebut periode lain dari
+         berkas TS-nya. */
+      const { from, to, fromISO, toISO } = STOCK_PERIOD_REPORTS.includes(report.id)
+        ? resolveStockPeriod(undefined, undefined, params.from, params.to, now)
+        : resolvePeriod(params.from, params.to, now);
       const c = comparisonParams(report, params);
       const prior = c.compare === null ? null : comparisonRange(from, to, c.compare);
       return {

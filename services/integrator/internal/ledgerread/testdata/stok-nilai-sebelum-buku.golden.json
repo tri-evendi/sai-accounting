@@ -1,0 +1,12 @@
+{
+  "from": "2019-12-31T17:00:00Z",
+  "to": "2020-12-31T16:59:59.999Z",
+  "rows": [],
+  "totalOpeningValue": 0,
+  "totalInValue": 0,
+  "totalOutValue": 0,
+  "totalClosingValue": 0,
+  "totalRevaluation": 0,
+  "uncostedCount": 0,
+  "dormantCount": 15
+}

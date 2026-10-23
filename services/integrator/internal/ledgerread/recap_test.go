@@ -353,8 +353,6 @@ func TestComputeVarianceFollowsJSFloat(t *testing.T) {
 	}
 }
 
-func ptrF(f float64) *float64 { return &f }
-
 func deref(p *float64) any {
 	if p == nil {
 		return nil

@@ -128,10 +128,13 @@ const (
 	ReportCashFlow            = "cash-flow"
 	ReportEquityChanges       = "equity-changes"
 	ReportIncomeStatement     = "income-statement"
+	ReportOpnameHistory       = "opname-history"
 	ReportPayables            = "payables"
 	ReportPurchasesBySupplier = "purchases-by-supplier"
 	ReportReceivables         = "receivables"
 	ReportSalesByCustomer     = "sales-by-customer"
+	ReportStockMovement       = "stock-movement"
+	ReportStockValue          = "stock-value"
 	ReportTrialBalance        = "trial-balance"
 )
 

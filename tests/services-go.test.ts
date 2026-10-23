@@ -36,9 +36,19 @@ const GEN_TATA_LETAK = "services/integrator/internal/contract/report_layout_gen.
 const GEN_INSTANS = "services/integrator/internal/contract/dbinstances_gen.go";
 /* Umur Piutang & Umur Utang (tahap 1d): berkas bangkitan tersendiri. */
 const GEN_TATA_LETAK_UMUR = "services/integrator/internal/contract/aging_layout_gen.go";
+/* Laporan stok (tahap 1d): berkas bangkitan tersendiri. */
+const GEN_TATA_LETAK_STOK = "services/integrator/internal/contract/stock_layout_gen.go";
 /* Rekap per Pihak, Kas & Bank, Realisasi vs Anggaran (tahap 1d, gelombang A). */
 const GEN_TATA_LETAK_REKAP = "services/integrator/internal/contract/recap_layout_gen.go";
-const BANGKITAN = [GEN, GEN_AKUNTANSI, GEN_TATA_LETAK, GEN_TATA_LETAK_UMUR, GEN_TATA_LETAK_REKAP, GEN_INSTANS];
+const BANGKITAN = [
+  GEN,
+  GEN_AKUNTANSI,
+  GEN_TATA_LETAK,
+  GEN_TATA_LETAK_UMUR,
+  GEN_TATA_LETAK_STOK,
+  GEN_TATA_LETAK_REKAP,
+  GEN_INSTANS,
+];
 
 /** Berkas Go tulisan TANGAN — yang dibangkitkan tunduk pada aturan lain. */
 const TANGAN = GO.filter((b) => !BANGKITAN.includes(b.rel));

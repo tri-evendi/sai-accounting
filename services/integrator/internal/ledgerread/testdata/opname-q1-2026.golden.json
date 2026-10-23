@@ -1,0 +1,84 @@
+{
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-03-31T16:59:59.999Z",
+  "sessions": [
+    {
+      "dateISO": "2026-03-20",
+      "adjustments": [
+        {
+          "itemName": "Pala",
+          "unit": "kg",
+          "variance": 0.2
+        },
+        {
+          "itemName": "Teh Hijau",
+          "unit": "",
+          "variance": 0.1
+        }
+      ],
+      "increase": 0.30000000000000004,
+      "decrease": 0
+    },
+    {
+      "dateISO": "2026-03-15",
+      "adjustments": [
+        {
+          "itemName": "Kopi Arabika",
+          "unit": "kg",
+          "variance": -1
+        },
+        {
+          "itemName": "kopi Robusta",
+          "unit": "kg",
+          "variance": 1
+        },
+        {
+          "itemName": "Kopi-Luwak",
+          "unit": "kg",
+          "variance": 1
+        }
+      ],
+      "increase": 2,
+      "decrease": 1
+    },
+    {
+      "dateISO": "2026-02-01",
+      "adjustments": [
+        {
+          "itemName": "Cengkeh",
+          "unit": "kg",
+          "variance": -1.25
+        },
+        {
+          "itemName": "Cengkeh",
+          "unit": "kg",
+          "variance": 0.5
+        }
+      ],
+      "increase": 0.5,
+      "decrease": 1.25
+    },
+    {
+      "dateISO": "2026-01-31",
+      "adjustments": [
+        {
+          "itemName": "Biji Kakao",
+          "unit": "kg",
+          "variance": -2
+        },
+        {
+          "itemName": "Cengkeh",
+          "unit": "kg",
+          "variance": -2
+        }
+      ],
+      "increase": 0,
+      "decrease": 4
+    }
+  ],
+  "sessionCount": 4,
+  "adjustmentCount": 9,
+  "totalIncrease": 2.8,
+  "totalDecrease": 6.25,
+  "netVariance": -3.45
+}

@@ -33,8 +33,9 @@ import "server-only";
  * penagihan yang mati tidak boleh mencabut jalan menghubungi penjual.
  */
 
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
 
+import { bumpCacheSignal, cacheSignalVersion } from "@sai/platform/cache-signals";
 import { contactChannels, type ContactChannels } from "@sai/core/contact-channels";
 import { platformDb } from "@sai/platform/platform-db";
 import {
@@ -51,20 +52,28 @@ import {
 export { effectiveSetting, ppnEnabledFrom, signupOpenFrom } from "@sai/core/site-settings-core";
 export type { SiteSettingsRow } from "@sai/core/site-settings-core";
 
-/** Tag revalidasi — satu untuk barisnya; penulisnya memanggil ini. */
+/** Tag cache baca (berlaku di dalam satu proses). */
 export const SITE_SETTINGS_TAG = "site-settings";
 
-/** Jaring untuk perubahan di luar jalur konsol. Lima menit, sama dengan katalog. */
+/**
+ * Jaring untuk perubahan yang tidak menaikkan sinyal (SQL tangan, sinyal tak
+ * terbaca). Jalur konsol tampil dalam `CACHE_SIGNAL_POLL_SECONDS`: versi
+ * sinyal `site-settings` ikut menjadi argumen, jadi bagian dari kunci cache
+ * (`cache-signals.ts`).
+ */
 const UMUR_CACHE_DETIK = 300;
 
 async function ambilBaris(): Promise<SiteSettingsRow | null> {
   return readSiteSettingsRow(platformDb);
 }
 
-const barisTersimpan = unstable_cache(async () => ambilBaris(), ["site-settings", "row"], {
-  revalidate: UMUR_CACHE_DETIK,
-  tags: [SITE_SETTINGS_TAG],
-});
+const barisTersimpan = unstable_cache(
+  /* `_versi` tidak dipakai di badan: ia ada supaya versi sinyal menjadi
+     bagian kunci cache. Versi baru = entri baru = baca ulang. */
+  async (_versi: number) => ambilBaris(),
+  ["site-settings", "row", "signal"],
+  { revalidate: UMUR_CACHE_DETIK, tags: [SITE_SETTINGS_TAG] }
+);
 
 /**
  * Baris pengaturan, atau `null` bila belum ada / platform tak terjangkau.
@@ -76,7 +85,9 @@ const barisTersimpan = unstable_cache(async () => ambilBaris(), ["site-settings"
  */
 export async function siteSettings(): Promise<SiteSettingsRow | null> {
   try {
-    return await barisTersimpan();
+    /* -1 = versi tidak diketahui (tabel sinyal belum ada / tak terbaca):
+       satu entri tetap, umur cache yang memutuskan. */
+    return await barisTersimpan((await cacheSignalVersion(platformDb, "site-settings")) ?? -1);
   } catch (error) {
     console.error("[site-settings] baris tak terbaca — memakai environment:", error);
     return null;
@@ -132,15 +143,10 @@ export interface SaveSiteSettingsInput {
 /**
  * Simpan pengaturan. Satu baris, `upsert` atas `singleton = 1`.
  *
- * `updateTag` (bukan `revalidateTag`): operator yang menyimpan lalu membuka `/`
- * untuk memeriksa nomornya harus melihat nomor BARU, bukan yang lama selama
- * lima menit. Batasannya: "hanya sah di dalam server action".
- *
- * ⚠ Sejak konsol menjadi aplikasi tersendiri (`app-operator`), `updateTag`
- * hanya membuang cache PROSES KONSOL. Halaman depan dirender `app-customer`,
- * yang cache-nya terpisah, jadi di sana perubahan tetap menunggu umur cache-nya.
- * Isi halaman depan sudah menyesuaikan diri dengan ini (`site-content-store.ts`);
- * pengaturan situs belum.
+ * Sesudahnya sinyal `site-settings` dinaikkan, bukan tag Next: penulisnya
+ * `app-operator`, pembacanya `app-customer`, dan invalidasi tag hanya membuang
+ * cache proses penulis. Dengan sinyal, gerbang pendaftaran, sakelar PPN, dan
+ * kanal kontak berubah di halaman publik dalam `CACHE_SIGNAL_POLL_SECONDS`.
  */
 export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<void> {
   const data = {
@@ -156,7 +162,7 @@ export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<vo
     create: { singleton: 1, ...data },
     update: data,
   });
-  updateTag(SITE_SETTINGS_TAG);
+  await bumpCacheSignal(platformDb, "site-settings");
 }
 
 /**
@@ -169,7 +175,7 @@ export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<vo
  */
 export async function resetSiteSettings(): Promise<void> {
   await platformDb.siteSetting.deleteMany({ where: { singleton: 1 } });
-  updateTag(SITE_SETTINGS_TAG);
+  await bumpCacheSignal(platformDb, "site-settings");
 }
 
 /**

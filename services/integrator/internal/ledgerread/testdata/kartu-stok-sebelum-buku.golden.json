@@ -1,0 +1,12 @@
+{
+  "from": "2019-12-31T17:00:00Z",
+  "to": "2020-12-31T16:59:59.999Z",
+  "rows": [],
+  "totalOpening": 0,
+  "totalIn": 0,
+  "totalOut": 0,
+  "totalProcessed": 0,
+  "totalClosing": 0,
+  "hasProcess": false,
+  "dormantCount": 15
+}

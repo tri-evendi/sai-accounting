@@ -1,0 +1,43 @@
+{
+  "from": "2024-12-31T17:00:00Z",
+  "to": "2025-12-31T16:59:59.999Z",
+  "rows": [
+    {
+      "id": 2,
+      "name": "Gula Aren",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 25.5,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 25.5
+    },
+    {
+      "id": 1,
+      "name": "Kopi Arabika",
+      "unit": "kg",
+      "opening": 0,
+      "movedIn": 10.125,
+      "movedOut": 2.5,
+      "processed": 0,
+      "closing": 7.625
+    },
+    {
+      "id": 3,
+      "name": "Teh Hijau",
+      "unit": "",
+      "opening": 0,
+      "movedIn": 1.25,
+      "movedOut": 0,
+      "processed": 0,
+      "closing": 1.25
+    }
+  ],
+  "totalOpening": 0,
+  "totalIn": 36.875,
+  "totalOut": 2.5,
+  "totalProcessed": 0,
+  "totalClosing": 34.375,
+  "hasProcess": false,
+  "dormantCount": 12
+}

@@ -323,7 +323,12 @@ import { join } from "node:path";
  *     di state peramban (tokennya tidak boleh masuk HTML hasil render server).
  *     Daftar draf dan riwayat tetap server; "kembalikan versi" adalah
  *     `<form action>` server tanpa JS.
- * 205 → 207 (23 Okt 2026, e-Faktur lewat PJAP — docs/EFAKTUR.md):
+ * 205 → 206 (23 Okt 2026, pratinjau isi halaman depan membawa tokennya):
+ *   + `app/(marketing)/preview-link-keeper.tsx`: pendengar klik yang hanya
+ *     dirender layout pemasaran SELAMA `?preview=`; ia menambahkan token ke
+ *     tautan `/`, `/pricing`, `/status`. Merender `null`; kunjungan biasa
+ *     tidak memuatnya.
+ * 206 → 208 (23 Okt 2026, e-Faktur lewat PJAP — docs/EFAKTUR.md):
  *   + `tax/efaktur/pjap-actions` — tombol kirim/kirim ulang/batalkan yang
  *     mengantre lewat API lalu `router.refresh()`; pembatalan lewat
  *     `ConfirmDialog`.
@@ -331,7 +336,7 @@ import { join } from "node:path";
  *     (tulis-saja; tidak pernah dikirim balik). Halaman `/tax/efaktur` sendiri
  *     tetap server, termasuk tabel status dan berkas XML.
  */
-const AMBANG_KLIEN = 207;
+const AMBANG_KLIEN = 208;
 
 /**
  * Daftar modul yang SAH memikul `"use client"` per 2026-08-05.
@@ -489,6 +494,7 @@ const KLIEN_TERSAHKAN = [
   /* Halaman galat & 404 (2026-10-18) — lihat catatan di `AMBANG_KLIEN`. */
   "app/(app)/error.tsx",
   "app/(marketing)/error.tsx",
+  "app/(marketing)/preview-link-keeper.tsx",
   "app/global-error.tsx",
   "apps/operator/src/app/(operator)/error.tsx",
   "apps/operator/src/app/(operator)/login/login-form.tsx",

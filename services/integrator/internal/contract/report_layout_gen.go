@@ -126,8 +126,11 @@ const (
 	ReportCashFlow        = "cash-flow"
 	ReportEquityChanges   = "equity-changes"
 	ReportIncomeStatement = "income-statement"
+	ReportOpnameHistory   = "opname-history"
 	ReportPayables        = "payables"
 	ReportReceivables     = "receivables"
+	ReportStockMovement   = "stock-movement"
+	ReportStockValue      = "stock-value"
 	ReportTrialBalance    = "trial-balance"
 )
 
@@ -138,8 +141,11 @@ var GoEngineReports = map[string]bool{
 	ReportCashFlow:        true,
 	ReportEquityChanges:   true,
 	ReportIncomeStatement: true,
+	ReportOpnameHistory:   true,
 	ReportPayables:        true,
 	ReportReceivables:     true,
+	ReportStockMovement:   true,
+	ReportStockValue:      true,
 	ReportTrialBalance:    true,
 }
 

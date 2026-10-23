@@ -8,6 +8,7 @@
     "./authz": "./src/authz.ts",
     "./build-info": "./src/build-info.ts",
     "./business-date": "./src/business-date.ts",
+    "./cache-signals": "./src/cache-signals.ts",
     "./client-ip": "./src/client-ip.ts",
     "./constants": "./src/constants.ts",
     "./contact-channels": "./src/contact-channels.ts",

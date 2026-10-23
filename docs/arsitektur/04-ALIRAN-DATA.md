@@ -123,12 +123,16 @@ Isi halaman depan (`0008_site_content_publishing`) berbentuk draf → terbit:
 beserta nilai sebelum/sesudah, dan `SiteContentPreview` menyimpan hash token
 pratinjau berumur 30 menit. `SiteContent` (tabel lama) tinggal sebagai paruh
 expand yang ditulis ulang setiap penerbitan sampai migration contract-nya.
+`CacheSignal` (`0009_cache_signals`) bukan data: satu versi per cache yang
+ditulis konsol tetapi dibaca `app-customer` / `svc-worker`; penulis
+menaikkannya, pembaca membacanya sekali per 5 detik per proses dan membaca
+ulang sumbernya bila berubah (`packages/platform/src/cache-signals.ts`).
 Sisanya **sengaja berdiri sendiri**, karena
 masing-masing adalah catatan peristiwa, bukan entitas: `SchedulerRun` ·
 `BackupRun` · `ConformanceRun` (tiga heartbeat yang dibaca `/api/health`) ·
 `SubscriptionEvent` · `OperatorAuditLog` ·
 `UsageCounter` · `TenantBillingProfile` · `MailSetting` · `SiteContentEntry` ·
-`SiteContentPreview` · `SiteSetting` · `StatusNotice` · `BrandAsset`.
+`SiteContentPreview` · `SiteSetting` · `StatusNotice` · `BrandAsset` · `CacheSignal`.
 
 > **Tidak ada satu pun angka akuntansi di lapis ini.** Tabel transaksi di
 > platform akan membatalkan isolasi #104.

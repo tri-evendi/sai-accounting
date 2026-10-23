@@ -73,6 +73,8 @@ export const CONTROL_MODEL_DECISIONS = {
   SchedulerRun: "exclude",
   ConformanceRun: "exclude",
   BackupRun: "exclude",
+  /* Jejak fan-out migration buku SaaS — riwayat PEMASANGAN ini, bukan milik tenant. */
+  SchemaMigrationRun: "exclude",
   Job: "exclude",
   RuntimeSample: "exclude",
 } as const satisfies Record<string, "include" | "exclude">;

@@ -433,6 +433,13 @@
     "brandPoint1": "Jurnal & buku besar berpasangan, sesuai kaidah akuntansi baku.",
     "brandPoint2": "Rupiah dan mata uang asing, lengkap dengan kurs dan nilai dasarnya.",
     "brandPoint3": "Banyak PT dalam satu pemasangan, dengan buku yang benar-benar terpisah.",
+    "bookUpdating": {
+      "heading": "Buku sedang diperbarui",
+      "description": "Buku perusahaan ini sedang dinaikkan ke versi aplikasi terbaru.",
+      "body": "Selama pembaruan berjalan, buku ini sengaja ditutup sebentar supaya tidak ada transaksi yang tercatat setengah. Data Anda aman dan tidak berubah. Perusahaan lain tidak terpengaruh.",
+      "whoCanFix": "Biasanya selesai dalam beberapa menit. Bila halaman ini masih muncul lebih dari satu jam, hubungi administrator.",
+      "retry": "Coba buka lagi"
+    },
     "setupRequired": {
       "heading": "Aplikasi belum disiapkan",
       "description": "Data perusahaan belum diisi, jadi aplikasi belum bisa dipakai.",

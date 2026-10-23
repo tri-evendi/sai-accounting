@@ -8,6 +8,8 @@ import { isSetupDone } from "@/lib/setup-gate";
 import { headers } from "next/headers";
 
 import { enterCompanyFromRoute, type TenantRouteParams } from "@/lib/company-route";
+import { companySchemaVerdict } from "@/lib/company-schema-gate";
+import { currentCompany } from "@/lib/current-company";
 import { demoWriteRefusal, isWritePermission, readOnlyRefusal } from "@sai/billing/subscription-lifecycle";
 import { migrationWriteRefusal } from "@sai/core/tenant-migration";
 import { getCompany } from "@/lib/company-registry";
@@ -185,6 +187,32 @@ export async function requireUnlockedCompany(
 }
 
 /**
+ * Gerbang SKEMA BUKU (09 §6) — buku yang migration-nya belum sampai dipantulkan
+ * ke layar "buku sedang diperbarui", bukan dibiarkan jatuh ke layar galat.
+ *
+ * Proxy `prisma` sudah MENOLAK setiap query ke buku seperti itu
+ * (`CompanySchemaBehindError`); gerbang ini ada supaya penolakannya terbaca
+ * manusia. Di produksi pesan galat server component disamarkan Next, jadi
+ * batas galat tidak bisa membedakan "buku diperbarui" dari kerusakan — hanya
+ * penjaga yang bisa.
+ *
+ * Diekspor dengan alasan yang sama dengan `requireUnlockedCompany`: beranda
+ * perusahaan dan notifikasi menjaga dirinya sendiri, dan
+ * `tests/company-schema-gate.test.ts` menolak halaman berpenjaga-sendiri yang
+ * memanggil yang satu tanpa yang lain.
+ */
+export async function requireCompanySchemaReady(home: {
+  tenantSlug: string;
+  companySlug: string;
+}): Promise<void> {
+  const verdict = await companySchemaVerdict(await currentCompany());
+  if (verdict.serve) return;
+  redirect(
+    `/book-updating?tenant=${encodeURIComponent(home.tenantSlug)}&company=${encodeURIComponent(home.companySlug)}`
+  );
+}
+
+/**
  * Gerbang "perusahaan ini belum disiapkan" — dipakai DUA pihak.
  *
  * ── KENAPA DIEKSPOR, BUKAN TINGGAL DI `gateAfterCompany` ───────────────────
@@ -255,6 +283,14 @@ async function gateAfterCompany(
    * — di kepala `lib/company-unlock.ts`.
    */
   await requireUnlockedCompany(session.user.id, companyId, home);
+
+  /*
+   * Gerbang SKEMA BUKU — sesudah kunci (ia menjawab pertanyaan tentang buku,
+   * lihat di atas) dan SEBELUM gerbang mana pun yang membaca buku:
+   * `isSetupDone()` di bawah sudah menyentuh buku, dan buku yang tertinggal
+   * akan menjawabnya dengan galat, bukan dengan layar.
+   */
+  await requireCompanySchemaReady(home);
 
   /*
    * Gerbang "belum disiapkan" (lihat lib/setup-gate.ts).

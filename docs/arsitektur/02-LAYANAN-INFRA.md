@@ -817,11 +817,13 @@ ketahuan tidak punya pemanggil.
 ## 12. Migration
 
 ```
-db:migrate:all
+db:migrate:all               (KETAT — manusia, CI, dev)
+db:migrate:release           (langkah RILIS & CMD image migrator — 09 §6)
 ├─ 1. db:migrate:control     prisma migrate deploy --config prisma.control.config.ts
 ├─ 2. db:migrate:platform    scripts/migrate-platform.ts  (dilewati dengan peringatan bila env kosong)
 └─ 3. db:migrate:companies   scripts/migrate-all-companies.ts  (setiap PT terdaftar,
-                             COMPANY_MIGRATE_CONCURRENCY bersamaan — bawaan 2, plafon 8)
+                             COMPANY_MIGRATE_CONCURRENCY bersamaan — bawaan 2, plafon 8;
+                             `--release` = buku yang gagal sebagian tidak menahan rilis)
 ```
 
 > **PRISMA TETAP PEMILIK SKEMA, dan itu aturan — bukan keadaan sementara.**
@@ -850,10 +852,15 @@ Keluaran tiap perusahaan **ditangkap** lalu dicetak sebagai satu blok: dengan
 `stdio: "inherit"`, N proses Prisma menulis ke terminal yang sama dan saling
 menyisip — tidak bisa dibaca justru pada hari satu di antaranya gagal.
 
-Satu perusahaan yang gagal **tidak** menghentikan yang lain (#104), dan exit
-code akhirnya bukan nol — jadi `migrate` yang dirantai
-`service_completed_successfully` tetap menahan rilis, sementara yang berhasil
-sudah benar-benar naik. Hasil per perusahaan ditanyakan ke konsol operator
+Satu perusahaan yang gagal **tidak** menghentikan yang lain (#104). Kode
+keluarnya bergantung mode (`rolloutExitCode`, `@sai/core/schema-version`):
+KETAT (`db:migrate:all`) = bukan nol bila ada yang gagal; `--release`
+(`db:migrate:release`, CMD image migrator sejak 23 Okt 2026) = nol bila
+setidaknya satu buku di kepala — buku yang gagal DITUTUP gerbang skema per
+perusahaan (di bawah), yang lain dilayani image baru — dan bukan nol bila
+tidak satu buku pun di kepala. Buku yang sudah di kepala dilewati tanpa proses
+Prisma, jadi putaran ulang = melanjutkan dari tengah; hasil per buku tercatat
+di `schema_migration_runs` (kendali). Hasil per perusahaan ditanyakan ke konsol operator
 `/backup`, yang membacanya dari `_prisma_migrations` **sendiri** alih-alih dari
 tabel jejak: jejak mengatakan "rilis melaporkan sukses", `_prisma_migrations`
 mengatakan "basis datanya memang memilikinya" — dan pada hari keduanya berbeda,
@@ -901,6 +908,15 @@ sempurna, jadi yang terlihat adalah aplikasi "sebagian rusak" — dan sebagian
 rusak pada pembukuan berarti ada angka yang masuk dan ada yang diam-diam tidak.
 Terlalu ketat → rollback darurat ikut terblokir, tepat pada saat jalan keluar
 dari insiden paling dibutuhkan.
+
+**Gerbang per perusahaan (23 Okt 2026).** Gerbang boot di atas memeriksa
+basis data KENDALI. Buku memakai tabel vonis yang SAMA, per buku
+(`src/lib/company-schema-gate.ts`): `tertinggal`/`menggantung` menutup buku
+itu saja — proxy `prisma` melempar `CompanySchemaBehindError`, halaman
+memantul ke `/book-updating`, API menjawab `503 book_schema_updating` — dan
+`/api/health` TETAP 200 (bidang `migrations` melaporkannya). Menjatuhkan probe
+karena satu buku akan membuat penyeimbang beban menolak SEMUA buku, persis
+yang dihapus 09 §6.
 
 ## 13. Variabel lingkungan
 

@@ -433,6 +433,13 @@
     "brandPoint1": "Double-entry journals and a general ledger that follow standard accounting rules.",
     "brandPoint2": "Rupiah and foreign currencies, each with its rate and base-currency value.",
     "brandPoint3": "Several companies in one installation, each with genuinely separate books.",
+    "bookUpdating": {
+      "heading": "This book is being updated",
+      "description": "This company's book is being upgraded to the latest app version.",
+      "body": "While the update runs, the book is briefly closed so that no transaction is recorded halfway. Your data is safe and unchanged. Other companies are not affected.",
+      "whoCanFix": "This usually finishes within a few minutes. If this page still shows after an hour, contact your administrator.",
+      "retry": "Try again"
+    },
     "setupRequired": {
       "heading": "This app is not set up yet",
       "description": "Company details have not been filled in, so the app cannot be used yet.",

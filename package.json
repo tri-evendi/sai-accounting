@@ -56,6 +56,8 @@
     "db:migrate:platform": "tsx scripts/migrate-platform.ts",
     "db:migrate:companies": "tsx scripts/migrate-all-companies.ts",
     "db:migrate:all": "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies",
+    "_db_migrate_release_note": "LANGKAH RILIS & CMD image migrator (09 §6, 23 Okt 2026). Sama dengan db:migrate:all — kendali → platform → setiap buku — dengan SATU beda: buku yang gagal SEBAGIAN tidak menahan rilis (keluar 0 bila setidaknya satu buku di kepala). Kendali/platform yang gagal, registry kosong, atau tidak satu buku pun di kepala tetap keluar 1. Buku yang tertinggal DITUTUP gerbang skema per perusahaan (src/lib/company-schema-gate.ts: 503 / layar /book-updating) sampai putaran berikutnya — perusahaan lain tidak terpengaruh. Hasil per buku tercatat di `schema_migration_runs` (kendali) dan terbaca di /api/health `migrations`. Diulang = melanjutkan dari tengah: buku yang sudah di kepala dilewati tanpa proses Prisma. db:migrate:all & db:migrate:companies tetap KETAT (kegagalan apa pun = 1).",
+    "db:migrate:release": "bun run db:migrate:control && bun run db:migrate:platform && bun run db:migrate:companies -- --release",
     "migrate:audit": "tsx scripts/migrate-audit.ts",
     "_migrate_tenant_audit_note": "LANGKAH RILIS #484. Memindahkan `data/audit/tenants/<slug>/audit.jsonl` ke tabel `tenant_audit_logs` di basis data KENDALI, lalu MENGGANTI NAMA berkasnya jadi `.dipindahkan`. Idempoten lewat `legacy_id` UNIK + skipDuplicates. WAJIB sesudah `db:migrate:all`. Tabelnya SENGAJA tanpa FK ke `tenants`: jejak ini mencatat penghapusan tenant, jadi ia harus selamat dari penghapusan itu.",
     "migrate:tenant-audit": "tsx scripts/migrate-tenant-audit.ts",

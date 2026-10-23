@@ -132,7 +132,7 @@ ada model kendali yang tidak diputuskan atau tidak disebut di sini.
 | `RateLimitCounter` | **tidak** | keadaan sementara |
 | `DbInstance` | **tidak** | topologi server SaaS; on-premise satu instans |
 | `OperatorAccount` | **tidak** | akun operator SAI — tidak pernah ke customer |
-| `SchedulerRun` / `ConformanceRun` / `BackupRun` | **tidak** | jejak operasi server SaaS |
+| `SchedulerRun` / `ConformanceRun` / `BackupRun` / `SchemaMigrationRun` | **tidak** | jejak operasi server SaaS |
 | `Job` | **tidak** | antrean SaaS; ekspor menunggu antrean PT-nya kosong lebih dulu |
 | `RuntimeSample` | **tidak** | metrik proses SaaS |
 

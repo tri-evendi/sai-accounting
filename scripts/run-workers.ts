@@ -49,8 +49,25 @@
  * container beserta seluruh pohonnya — tidak ada putaran penjadwal yang terus
  * berjalan sesudah pembungkus pemimpinnya mati.
  *
- * Tanpa dependensi dan tanpa `.env`: lingkungan datang dari `env_file:` compose
- * dan diwariskan apa adanya ke setiap peran.
+ * Tanpa dependensi dan tanpa `.env`: lingkungan datang dari daftar izin
+ * `environment:` compose dan diwariskan ke setiap peran — KECUALI kredensial
+ * pemilik, lihat di bawah.
+ *
+ * ══ KREDENSIAL PEMILIK HANYA UNTUK PERAN YANG MENYEDIAKAN PT ═══════════════
+ * `PROVISION_DATABASE_URL` (`sai_owner`, NOSUPERUSER CREATEDB) dan
+ * `PG_APP_USER` sampai di container ini karena SATU `kind` —
+ * `company.provision`, diklaim peran `interactive`. Compose menyatakan env per
+ * CONTAINER, bukan per proses, jadi sebelum ini keempat peran mewarisinya —
+ * termasuk `scheduler` yang mengirim surel ke luar dan `conformance` yang
+ * menyapu setiap buku. Risiko itu diterima dengan sadar di 09 §3.2 (risiko 5),
+ * dengan "mencabutnya dari tiga peran lain" sebagai penguatan murah berikutnya.
+ * Ini penguatannya: `roleEnv()` membuang setiap nama di `OWNER_ONLY_ENV` dari
+ * environment peran yang tidak disebut di sana.
+ *
+ * Di sini, bukan `env -u` di skrip compose: penyelia satu-satunya tempat yang
+ * melihat SETIAP peran (termasuk yang dibungkus pemimpin di profil HA), dan
+ * fungsinya bisa diuji sebagai fungsi — `tests/worker-owner-env.test.ts`.
+ * `env -u` yang lupa ditulis di peran kelima adalah kebocoran tanpa galat.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { constants } from "node:os";
@@ -127,6 +144,33 @@ function prefixLines(src: Readable | null, dst: Writable, prefix: string): void 
   });
 }
 
+/**
+ * Env yang HANYA boleh sampai ke peran tertentu — nama → peran yang berhak.
+ *
+ * Daftar-izin, bukan daftar-tolak per peran: peran baru yang ditambahkan ke
+ * compose otomatis TIDAK menerima kredensial pemilik, dan memberikannya
+ * menuntut baris di sini yang terbaca di review.
+ */
+export const OWNER_ONLY_ENV: Readonly<Record<string, readonly string[]>> = {
+  /* `company.provision` membuat basis data sebagai PEMILIK (06 §3.10). */
+  PROVISION_DATABASE_URL: ["interactive"],
+  /* Peran aplikasi yang DIHIBAHI hak atas buku baru — dibaca hanya penyedia
+     (`appRoleForNewBook`); di peran lain ia petunjuk tanpa guna. */
+  PG_APP_USER: ["interactive"],
+};
+
+/** Environment untuk SATU peran: salinan, tanpa env pemilik yang bukan haknya. */
+export function roleEnv(
+  role: string,
+  env: Readonly<Record<string, string | undefined>>
+): NodeJS.ProcessEnv {
+  const out = { ...env } as NodeJS.ProcessEnv;
+  for (const [name, allowed] of Object.entries(OWNER_ONLY_ENV)) {
+    if (!allowed.includes(role)) delete out[name];
+  }
+  return out;
+}
+
 function start(role: Role, leader: boolean, width: number): Running {
   const argv = leader
     ? ["bun", "scripts/run-as-leader.ts", "--name", role.name, "--", "sh", "-c", role.script]
@@ -135,7 +179,7 @@ function start(role: Role, leader: boolean, width: number): Running {
     /* Grup proses sendiri: TERM ke `-pid` sampai ke seluruh pohon peran. */
     detached: true,
     stdio: ["ignore", "pipe", "pipe"],
-    env: process.env,
+    env: roleEnv(role.name, process.env),
   });
   const prefix = `${role.name.padEnd(width)} | `;
   /* Stempel build per peran, berawalan nama perannya — `docker compose logs

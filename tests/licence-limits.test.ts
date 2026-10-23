@@ -87,15 +87,18 @@ describe("pemberitahuan lisensi — fakta, bukan gerbang", () => {
 });
 
 describe("titik pembuatan membaca batas dari pintu entitlement", () => {
+  /* Pembacaan kuota pindah ke `company-provisioning-quota.ts` — dipakai route
+     DAN pekerja `company.provision` (pemeriksaan ulang, lihat
+     `tests/provisioning-quota-recheck.test.ts`). */
   it("pembuatan PT: `creationQuotaFor`, bukan `tenants.max_companies` mentah", () => {
-    const src = kode("src/app/api/companies/route.ts");
+    const src = kode("src/lib/company-provisioning-quota.ts");
     expect(src).toContain("creationQuotaFor(tenantRow)");
     expect(src).toContain("maxCompanies: quota.maxCompanies");
     expect(src).not.toMatch(/refuseProvisioning\(\{\s*\.\.\.tenantRow/);
   });
 
   it("lingkup `installation` menghitung SELURUH PT pemasangan", () => {
-    const src = kode("src/app/api/companies/route.ts");
+    const src = kode("src/lib/company-provisioning-quota.ts");
     expect(src).toMatch(/quota\?\.scope === "installation" \? undefined/);
   });
 

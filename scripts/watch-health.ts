@@ -37,7 +37,13 @@ import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { backupHealth } from "../src/lib/backup-heartbeat";
 import { decideBackupAlert } from "../src/lib/backup-watchdog";
-import { decideSchedulerAlert, decideConformanceAlert } from "../src/lib/health-watchdog";
+import {
+  decideConformanceAlert,
+  decideMigrationsAlert,
+  decideSchedulerAlert,
+} from "../src/lib/health-watchdog";
+import { MIGRATION_TERAKHIR } from "@sai/core/migration-manifest";
+import { migrationsHealth } from "@sai/core/schema-version";
 import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
 import { conformanceHealth } from "../src/lib/conformance-heartbeat";
 import { sendMail } from "@sai/platform/mailer-core";
@@ -72,6 +78,19 @@ function penerima(): string | null {
 interface Komponen {
   nama: string;
   putusan: import("../src/lib/backup-watchdog").WatchdogDecision;
+}
+
+/** Slug buku yang gagal dari `schema_migration_runs.details` — teks bebas, jadi diurai hati-hati. */
+function bukuGagal(details: string | null): string[] {
+  if (!details) return [];
+  try {
+    const d = JSON.parse(details) as { companies?: { slug?: unknown; outcome?: unknown }[] };
+    return (d.companies ?? [])
+      .filter((c) => c.outcome === "failed" && typeof c.slug === "string")
+      .map((c) => c.slug as string);
+  } catch {
+    return [];
+  }
 }
 
 async function main() {
@@ -163,6 +182,27 @@ async function main() {
       }),
     });
 
+    /* ── 4. Migration buku (09 §6) ───────────────────────────────────────── */
+    /* Buku yang tertinggal tidak lagi menahan rilis — jadi ia juga tidak lagi
+       TERLIHAT di rilis. Komponen ini yang membuatnya terdengar. Tabelnya lahir
+       di migration kendali 0011; sebelum itu putusannya `unknown` (diam). */
+    const putaranMigrasi = await control.schemaMigrationRun
+      .findFirst({
+        orderBy: { id: "desc" },
+        select: { status: true, targetMigration: true, finishedAt: true, details: true },
+      })
+      .catch(() => null);
+    komponen.push({
+      nama: "migrasi-buku",
+      putusan: decideMigrationsAlert({
+        status: migrationsHealth(putaranMigrasi, MIGRATION_TERAKHIR.company),
+        expected: MIGRATION_TERAKHIR.company,
+        lastTarget: putaranMigrasi?.targetMigration ?? null,
+        lastRunAt: putaranMigrasi?.finishedAt.toISOString() ?? null,
+        failedSlugs: bukuGagal(putaranMigrasi?.details ?? null),
+      }),
+    });
+
     log(
       komponen
         .map((k) => `${k.nama}=${k.putusan.alert ? k.putusan.fingerprint : "ok"}`)
@@ -171,7 +211,7 @@ async function main() {
 
     const berbunyi = komponen.filter((k) => k.putusan.alert);
     if (berbunyi.length === 0) {
-      log("ketiganya sehat — tidak ada yang dikirim.");
+      log("semuanya sehat — tidak ada yang dikirim.");
       return;
     }
 

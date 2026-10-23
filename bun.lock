@@ -33,6 +33,7 @@
         "zod": "^4.3.6",
       },
       "devDependencies": {
+        "@electric-sql/pglite": "0.3.15",
         "@types/bcrypt": "^6.0.0",
         "@types/js-yaml": "^4.0.9",
         "@types/node": "^20",

@@ -14,6 +14,11 @@ import {
 } from "@sai/core/tenant-routes";
 
 import { configuredOperatorHost, decideOperatorRouting } from "@sai/core/operator-plane";
+import {
+  SITE_CONTENT_PREVIEW_PARAM,
+  SITE_CONTENT_PREVIEW_TOKEN_PATTERN,
+  isSiteContentPath,
+} from "@sai/core/site-content";
 
 /** NextAuth routes only — not change-password API. */
 function isPublicPath(pathname: string): boolean {
@@ -449,7 +454,35 @@ export async function proxy(request: NextRequest) {
 function teruskan(request: NextRequest): NextResponse {
   const headers = new Headers(request.headers);
   headers.set("x-sai-path", request.nextUrl.pathname);
-  return NextResponse.next({ request: { headers } });
+
+  /*
+   * PRATINJAU DRAF ISI HALAMAN DEPAN (`/?preview=<token>` dari konsol).
+   *
+   * `x-sai-preview` selalu dibuang dulu, sama seperti `x-sai-path`: header
+   * kiriman klien tidak pernah dipercaya. Ia hanya dipasang dari parameter
+   * alamat, hanya di halaman pemasaran, dan hanya bila bentuknya bentuk token.
+   * Sah atau tidaknya token diputuskan `getDictionary` lewat basis data;
+   * proxy tidak menyentuh basis data (doktrin #137).
+   *
+   * Responsnya tidak boleh disimpan atau diindeks: halaman yang memuat draf
+   * tidak boleh muncul di mesin pencari maupun cache bersama, dan tokennya
+   * tidak boleh ikut ke situs lain lewat `Referer`.
+   */
+  headers.delete("x-sai-preview");
+  const preview = request.nextUrl.searchParams.get(SITE_CONTENT_PREVIEW_PARAM);
+  const isPreview =
+    preview !== null &&
+    SITE_CONTENT_PREVIEW_TOKEN_PATTERN.test(preview) &&
+    isSiteContentPath(request.nextUrl.pathname);
+  if (isPreview) headers.set("x-sai-preview", preview);
+
+  const response = NextResponse.next({ request: { headers } });
+  if (isPreview) {
+    response.headers.set("Cache-Control", "private, no-store");
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    response.headers.set("Referrer-Policy", "no-referrer");
+  }
+  return response;
 }
 
 export const config = {

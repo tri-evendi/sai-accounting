@@ -43,6 +43,18 @@ export type OperatorAuditAction =
    * dari layar yang dirender server. */
   | "operator.content.update"
   | "operator.content.rejected"
+  /* Draf → terbit (migration platform 0008). Sama: kunci dan panjang, bukan
+   * nilai. Nilainya sendiri ada di `site_content_revisions`, yang memang
+   * riwayat isi. `draft` = draf disimpan · `publish` = draf diterbitkan
+   * (memuat id penerbitan) · `discard` = semua draf dibuang · `revert` = versi
+   * lama dijadikan draf · `preview` = token pratinjau diterbitkan · `purge` =
+   * kunci yatim dibersihkan. */
+  | "operator.content.draft"
+  | "operator.content.publish"
+  | "operator.content.discard"
+  | "operator.content.revert"
+  | "operator.content.preview"
+  | "operator.content.purge"
   /**
    * PENGATURAN SITUS (migration 0016): nomor WhatsApp, surel penjualan,
    * instruksi transfer manual. `details` memuat nilai LAMA dan BARU untuk dua

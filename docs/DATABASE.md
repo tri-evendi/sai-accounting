@@ -363,6 +363,31 @@ antara control dan perusahaan.
   (`packages/platform/src/mail-settings.ts`, TTL 60 detik) tunggal.
   `brand_assets` (logo produk, migration platform 0005) sama: singleton milik
   penyedia, cache tunggal 60 detik di `packages/platform/src/brand-assets.ts`.
+- **Isi halaman depan (migration platform 0008): draf → terbit, dengan
+  riwayat.** `site_content_entries` memegang paling banyak satu baris
+  `published` dan satu `draft` per kunci+bahasa (UNIQUE `locale, content_key,
+  status`); draf `value = NULL` berarti "kembali ke bawaan saat terbit".
+  Setiap penerbitan menulis satu `site_content_publications` dan satu
+  `site_content_revisions` per kunci+bahasa yang berubah (nilai sebelum dan
+  sesudah; NULL = bawaan kamus). Mengembalikan versi lama membuat draf dari
+  revisi, lalu diterbitkan seperti suntingan lain, jadi yang tayang hanya
+  punya satu jalur tulis (`publishSiteContentDrafts`). `site_content_previews`
+  menyimpan SHA-256 token pratinjau (30 menit); draf hanya dibaca jalur publik
+  lewat token itu. Satu-satunya penulis `packages/platform/src/site-content-store.ts`.
+  Cache baca di `app-customer` 30 detik dan tunggal (milik penyedia, bukan
+  tenant); `updateTag` dari konsol tidak menjangkau proses customer, jadi
+  angka 30 detik itulah yang dikatakan konsol.
+
+  **Expand/contract:** `site_contents` (bentuk lama) tetap ada dan ditulis
+  ulang di transaksi yang sama setiap kali yang tayang berubah (dual-write),
+  supaya image sebelum 0008 menampilkan kalimat yang sama bila rilis
+  di-rollback. Paruh contract = migration platform berikutnya yang
+  `DROP TABLE "site_contents"` + cabut dual-write + model `SiteContent`,
+  didaftarkan di `KONTRAKSI_DIIZINKAN` dengan rilis 0008 sebagai
+  `expandDiRilis`, setelah tidak ada image yang membaca tabel itu. Tulisan
+  image LAMA selama jendela penukaran (antara migrate dan swap) hanya
+  mendarat di `site_contents` dan tidak terbawa; produksi berisi 0 baris
+  saat 0008 ditulis.
 - **Register lisensi on-premise (`licence_customers`, `licence_register_entries`,
   migration platform 0006) adalah ARSIP.** Satu-satunya penulis & pembaca
   `packages/platform/src/licence-register-store.ts`, dipanggil konsol operator

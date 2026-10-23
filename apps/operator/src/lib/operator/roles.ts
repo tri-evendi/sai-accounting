@@ -31,8 +31,16 @@ export const OPERATOR_PERMISSIONS = [
   "tenant.users",
   /** Eksekusi penghapusan akun (UU PDP) — tidak bisa dibalik. */
   "tenant.delete",
-  /** Isi halaman pendaratan. */
+  /** Isi halaman depan: menyunting DRAF, pratinjau, mengembalikan versi lama
+   *  sebagai draf, membuang draf. Tidak ada yang tayang berubah. */
   "site.content",
+  /**
+   * Menerbitkan draf isi halaman depan dan membersihkan kunci yatim: yang
+   * mengubah apa yang dibaca calon customer, termasuk harga, pajak, dan janji
+   * layanan di FAQ. Dipisah dari `site.content` supaya dukungan bisa
+   * menyiapkan perbaikan tanpa bisa menayangkannya sendiri.
+   */
+  "site.publish",
   /** Kontak publik & instruksi transfer — mengubah ke mana UANG dikirim. */
   "site.settings",
   /** Pengaturan surel penyedia (kredensial SMTP). */
@@ -71,6 +79,9 @@ export type OperatorPermission = (typeof OPERATOR_PERMISSIONS)[number];
  * `site.settings` milik owner SAJA, bukan support: salah satu nilainya adalah
  * instruksi transfer manual — rekening tujuan pembayaran pelanggan. Mengubah
  * ke mana uang dikirim bukan pekerjaan dukungan.
+ *
+ * `site.publish` juga milik owner saja: support menyiapkan draf, owner yang
+ * menayangkannya. Halaman depan menyebut harga, PPN, dan janji layanan.
  */
 const MATRIKS: Record<OperatorRole, readonly OperatorPermission[]> = {
   owner: OPERATOR_PERMISSIONS,

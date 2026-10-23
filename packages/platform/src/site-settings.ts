@@ -134,8 +134,13 @@ export interface SaveSiteSettingsInput {
  *
  * `updateTag` (bukan `revalidateTag`): operator yang menyimpan lalu membuka `/`
  * untuk memeriksa nomornya harus melihat nomor BARU, bukan yang lama selama
- * lima menit. Alasan penuh — beserta batasan "hanya sah di dalam server
- * action" — ada di `site-content-store.ts`.
+ * lima menit. Batasannya: "hanya sah di dalam server action".
+ *
+ * ⚠ Sejak konsol menjadi aplikasi tersendiri (`app-operator`), `updateTag`
+ * hanya membuang cache PROSES KONSOL. Halaman depan dirender `app-customer`,
+ * yang cache-nya terpisah, jadi di sana perubahan tetap menunggu umur cache-nya.
+ * Isi halaman depan sudah menyesuaikan diri dengan ini (`site-content-store.ts`);
+ * pengaturan situs belum.
  */
 export async function saveSiteSettings(input: SaveSiteSettingsInput): Promise<void> {
   const data = {

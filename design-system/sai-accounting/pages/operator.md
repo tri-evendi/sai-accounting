@@ -89,19 +89,38 @@ dan tidak ada `UserMenu`; rute pelanggan tidak ada di aplikasi ini.
   yang bisa disalin ke tiket dukungan, tanpa JS tambahan. Berlaku untuk
   daftar tenant dan pemilih bahasa/bagian di konsol `/content`.
 
-### konsol `/content` — isi halaman pendaratan
+### konsol `/content` — isi halaman depan
 
 - **Yang disimpan hanya penimpa.** Kamus (`packages/core/src/i18n/dictionaries/*.json`) tetap
-  sumber bawaan; `site_contents` hanya memuat kalimat yang sudah diganti. Isian
-  kosong = "pakai bawaan" (barisnya dihapus), dan bawaannya tampil sebagai
-  `placeholder` isian itu.
+  sumber bawaan; basis data hanya memuat teks yang sudah diganti. Isian kosong
+  = "pakai bawaan", dan bawaannya selalu tampil di bawah isian (bukan hanya
+  sebagai `placeholder`).
+- **Draf → pratinjau → terbit.** Menyimpan di editor membuat DRAF; halaman
+  publik tidak berubah. Tampilan Tinjau memperlihatkan "tayang sekarang →
+  sesudah terbit" per kunci+bahasa, membuat tautan pratinjau bertoken
+  (30 menit, host customer), dan menerbitkan. Riwayat menyimpan nilai
+  sebelum/sesudah; "batalkan penerbitan" dan "pakai versi ini" membuat draf,
+  tidak pernah langsung menayangkan.
+- **Tiga tampilan di URL** (`?view=edit|review|history`, `?section=`,
+  `?show=`, `?q=`), chip tampilan `secondary`/`ghost`. Satu aksi utama per
+  tampilan: "Simpan draf" (Sunting) dan "Terbitkan" (Tinjau).
+- **Ketiga bahasa berdampingan.** Status berteks per isian (Bawaan / Diganti /
+  Draf), penghitung karakter terhadap batas yang diturunkan dari kamus
+  (`contentFieldSpec`), dan peringatan "terjemahan tertinggal" bila sebuah
+  kunci diganti di sebagian bahasa saja.
+- **Teks biasa.** Tag HTML, karakter kendali, dan penanda `{…}` yang berbeda
+  dari bawaan ditolak di editor dan di server dengan aturan yang sama
+  (`contentValueProblem`).
+- **Izin:** `site.content` (support, owner) menyunting draf, pratinjau,
+  membuang draf, dan mengembalikan versi sebagai draf; `site.publish` (owner)
+  menerbitkan dan membersihkan kunci yatim.
 - **Hanya `landing.*`.** Namespace lain tidak boleh bisa disunting dari konsol:
-  `errors.*`/`validation.*` adalah perilaku, bukan pemasaran. Dijaga dua lapis
-  (skema zod lalu `isEditableContentKey`) dan `tests/site-content.test.ts`.
-- **Label barisnya nama kunci** (`heroHeading`), bukan kalimat: hanya nama itu
-  yang sama di konsol, di kamus, dan di jejak audit.
-- **Jejak audit mencatat kunci, bukan nilai.** Jejak yang memuat setiap kalimat
-  pemasaran yang pernah diketik tidak lagi bisa dibaca sebagai jejak.
+  `errors.*`/`validation.*` adalah perilaku, bukan pemasaran. Kuncinya harus ada
+  di ketiga kamus (`isEditableInAll`). Dijaga `tests/site-content.test.ts`.
+- **Label isian nama kunci** (`heroHeading`): hanya nama itu yang sama di
+  konsol, di kamus, dan di jejak audit.
+- **Jejak audit mencatat kunci, bukan nilai.** Nilainya ada di riwayat
+  penerbitan, yang memang riwayat isi.
 
 ## Jangan
 

@@ -20,7 +20,18 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.16.2 — 2026-10-23 — belum digelar
+## 0.16.3 — 2026-10-23 — belum digelar
+
+Perusahaan baru yang berhasil dibuat tidak lagi dilaporkan gagal, dan pekerjaan latar yang gagal kini menunggu sebelum dicoba ulang.
+
+### Perbaikan
+
+- Halaman pembuatan perusahaan kini langsung menampilkan perusahaan yang sudah siap, bukan pesan gagal.
+- Pekerjaan latar yang gagal dicoba ulang dengan jeda, bukan seketika berulang-ulang.
+
+---
+
+## 0.16.2 — 2026-10-23 (af720db)
 
 Penjadwalan dokumen berulang kini dijalankan layanan latar yang baru; tidak ada perubahan pada tampilan.
 

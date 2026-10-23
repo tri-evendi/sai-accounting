@@ -49,6 +49,7 @@
 import "server-only";
 
 import { controlDb } from "@sai/core/control-db";
+import { Prisma } from "@sai/db/client/control";
 import { JOB_KINDS, JOB_LANES, type JobKind } from "@sai/core/generated/job-kinds";
 
 /** Jendela bawaan — cukup panjang untuk punya sampel, cukup pendek untuk masih berarti. */
@@ -104,11 +105,9 @@ interface BarisMetrik {
  * `CASE WHEN` di dalam SQL berarti dua daftar yang menyimpang tanpa galat.
  */
 export async function jobMetrics(
-  windowMinutes: number = METRICS_WINDOW_MINUTES,
-  now: Date = new Date()
+  windowMinutes: number = METRICS_WINDOW_MINUTES
 ): Promise<LaneMetrics[]> {
   const menit = Math.max(1, Math.floor(windowMinutes));
-  const batas = new Date(now.getTime() - menit * 60_000);
 
   /*
    * `EXTRACT(EPOCH FROM ...) * 1000` — milidetik, dan `percentile_cont` atas
@@ -121,9 +120,18 @@ export async function jobMetrics(
    * `claimed_at` berarti nilai fiktif masuk ke sana. Keduanya ditolak, dan
    * harganya `samples` yang kecil selama 14 hari pertama.
    */
+  /*
+   * Jendela dihitung SERVER dari `LOCALTIMESTAMP` — jam yang sama dengan yang
+   * menulis `created_at`/`finished_at` (`now()`/DEFAULT). `Date` JS terikat
+   * akan dikirim sebagai jam dinding UTC dan, di server WIB, melebarkan
+   * jendela "N menit" menjadi N menit + tujuh jam (lihat "JAM KOLOM `jobs`" di
+   * `job-queue.ts`). `batas` dibangun sekali sebagai fragmen supaya enam
+   * pemakaiannya tidak bisa menyimpang satu sama lain.
+   */
+  const batas = Prisma.sql`(LOCALTIMESTAMP - ${menit}::int * interval '1 minute')`;
   const rows = await controlDb.$queryRaw<BarisMetrik[]>`
     SELECT kind,
-           COUNT(*) FILTER (WHERE status = 'queued' AND run_after <= ${now})::bigint AS depth,
+           COUNT(*) FILTER (WHERE status = 'queued' AND run_after <= LOCALTIMESTAMP)::bigint AS depth,
            COUNT(*) FILTER (WHERE created_at > ${batas})::bigint AS published,
            COUNT(*) FILTER (WHERE status = 'done' AND finished_at > ${batas})::bigint AS completed,
            COUNT(*) FILTER (

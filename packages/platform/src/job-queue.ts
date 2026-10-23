@@ -19,6 +19,34 @@
  * ══ `$queryRaw`, BUKAN API PRISMA ══════════════════════════════════════════
  * Prisma tidak bisa menyatakan `FOR UPDATE SKIP LOCKED`. Parameternya tetap
  * TERIKAT (`$1`, `$2`) — tidak ada interpolasi string di berkas ini.
+ *
+ * ══ JAM KOLOM `jobs` ADALAH JAM `now()` SESI — JS TIDAK MENGIRIM `Date` ══════
+ * Kolom waktu `jobs` bertipe TIMESTAMP(3) TANPA zona, dan isinya jam dinding
+ * `now()` dalam TimeZone SESI = zona bawaan server (`Asia/Jakarta` di
+ * produksi): klaim, perpanjangan, dan selesai di kedua bahasa menulis `now()`,
+ * dan DEFAULT `run_after`/`created_at` adalah `CURRENT_TIMESTAMP`.
+ *
+ * `Date` JS yang diikat ke kolom seperti itu dikirim `@prisma/adapter-pg`
+ * sebagai jam dinding UTC (`getUTC*`), dan Prisma MEMBACA kolomnya kembali
+ * sebagai UTC. Di server WIB dua-duanya meleset tujuh jam dari isi kolom:
+ * backoff `failJob` mendarat tujuh jam di masa lalu (percobaan ulang tanpa
+ * jeda), lease basi baru dipulangkan tujuh jam kemudian, dan `created_at`
+ * yang dibaca tampak tujuh jam di masa depan. Maka:
+ *
+ *   tulis:      run_after = now() + ${ms}::bigint * interval '1 millisecond'
+ *   bandingkan: claimed_at < LOCALTIMESTAMP - ${ms}::bigint * interval '1 millisecond'
+ *   baca:       (created_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC'
+ *
+ * Dua langkah pada pembacaan itu disengaja: langkah pertama menafsirkan jam
+ * dinding kolom dalam zona sesi (→ `timestamptz`, instan sejati), langkah
+ * kedua menuliskannya sebagai jam dinding UTC — bentuk yang dibaca Prisma
+ * dengan benar. `timestamptz` saja TIDAK cukup: `@prisma/adapter-pg`
+ * (`normalize_timestamptz`) MENGGANTI offset teksnya dengan `+00:00`, jadi
+ * `16:00+07` terbaca 16:00 UTC — tujuh jam meleset lagi.
+ *
+ * JS hanya menyebut DURASI; jamnya selalu jam server yang sama dengan yang
+ * menulis kolomnya. Padanannya di Go: `services/integrator/internal/jobs/queue.go`.
+ * Dijaga `tests/jobs-time-columns.test.ts`.
  */
 import "server-only";
 
@@ -61,7 +89,11 @@ export interface PublishInput {
   /** Kunci idempotensi. Tanpanya pekerjaan boleh berulang — lihat model `Job`. */
   dedupeKey?: string | null;
   priority?: number;
-  runAfter?: Date;
+  /**
+   * Tunda klaim sejauh ini (ms) dari SEKARANG menurut jam server. Durasi, bukan
+   * `Date` — lihat "JAM KOLOM `jobs`" di kepala berkas.
+   */
+  delayMs?: number;
 }
 
 /**
@@ -84,7 +116,8 @@ export async function publishJob(input: PublishInput): Promise<{ id: number } | 
     VALUES (${input.kind}, ${input.tenantId ?? null}, ${input.companyId ?? null},
             ${JSON.stringify(input.payload)}::jsonb, 'queued',
             ${input.dedupeKey ?? null}, ${spec.maxAttempts},
-            ${input.runAfter ?? new Date()}, ${input.priority ?? 0}, now())
+            now() + ${Math.max(0, Math.round(input.delayMs ?? 0))}::bigint * interval '1 millisecond',
+            ${input.priority ?? 0}, now())
     ON CONFLICT (dedupe_key) DO NOTHING
     RETURNING id`;
 
@@ -133,7 +166,7 @@ export async function jobStatus(by: { id: number } | { dedupeKey: string }): Pro
   const rows = await controlDb.$queryRaw<JobStatusRow[]>`
     SELECT id, kind, status, tenant_id AS "tenantId", company_id AS "companyId", payload,
            progress, attempts, max_attempts AS "maxAttempts", last_error AS "lastError",
-           created_at AS "createdAt"
+           (created_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS "createdAt"
       FROM jobs WHERE ${where}`;
   return rows[0] ?? null;
 }
@@ -279,10 +312,12 @@ export async function failJob(
     return { status: "dead" };
   }
 
-  const runAfter = new Date(Date.now() + backoffMs(attempts, acak));
+  /* Backoff sebagai DURASI; jam server yang menjadikannya waktu. */
+  const tunda = Math.round(backoffMs(attempts, acak));
   await controlDb.$executeRaw`
     UPDATE jobs SET status = 'queued', attempts = ${attempts}, last_error = ${pesan},
-                    run_after = ${runAfter}, claimed_at = NULL, claimed_by = NULL,
+                    run_after = now() + ${tunda}::bigint * interval '1 millisecond',
+                    claimed_at = NULL, claimed_by = NULL,
                     updated_at = now()
     WHERE id = ${id}`;
   return { status: "queued" };
@@ -297,7 +332,6 @@ export async function failJob(
  * @returns jumlah pekerjaan yang dipulangkan.
  */
 export async function reclaimStaleJobs(staleMs: number = LEASE_STALE_MS): Promise<number> {
-  const ambang = new Date(Date.now() - staleMs);
   /* `attempts + 1` ikut dinaikkan: pekerja yang mati di tengah pekerjaan yang
      SELALU membunuh pekerjanya (kehabisan memori pada ekspor yang terlalu
      besar) harus akhirnya menjadi `dead`, bukan berputar selamanya memulangkan
@@ -310,7 +344,8 @@ export async function reclaimStaleJobs(staleMs: number = LEASE_STALE_MS): Promis
                         || 'lease kedaluwarsa — pekerja diduga mati',
            finished_at = CASE WHEN attempts + 1 >= max_attempts THEN now() ELSE NULL END,
            claimed_at = NULL, claimed_by = NULL, updated_at = now()
-     WHERE status = 'claimed' AND claimed_at < ${ambang}`;
+     WHERE status = 'claimed'
+       AND claimed_at < LOCALTIMESTAMP - ${Math.round(staleMs)}::bigint * interval '1 millisecond'`;
 }
 
 /** Minta pembatalan. Pekerja memeriksanya DI ANTARA langkah, tidak dipaksakan. */
@@ -351,7 +386,8 @@ const JALUR_TAK_DIKENAL = "(tak dikenal)";
  */
 export async function queueSnapshot(now: Date = new Date()): Promise<LaneQueueHealth[]> {
   const rows = await controlDb.$queryRaw<{ kind: string; waiting: bigint; oldest: Date | null }[]>`
-    SELECT kind, COUNT(*)::bigint AS waiting, MIN(run_after) AS oldest
+    SELECT kind, COUNT(*)::bigint AS waiting,
+           (MIN(run_after) AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE 'UTC' AS oldest
       FROM jobs
      WHERE status = 'queued' AND run_after <= now()
      GROUP BY kind`;
@@ -398,9 +434,10 @@ export async function jobCounts(): Promise<Record<string, number>> {
  * @returns jumlah baris yang dibuang.
  */
 export async function archiveDoneJobs(retentionDays: number = DONE_RETENTION_DAYS): Promise<number> {
-  const ambang = new Date(Date.now() - retentionDays * 86_400_000);
   return controlDb.$executeRaw`
-    DELETE FROM jobs WHERE status = 'done' AND finished_at < ${ambang}`;
+    DELETE FROM jobs
+     WHERE status = 'done'
+       AND finished_at < LOCALTIMESTAMP - ${Math.round(retentionDays)}::int * interval '1 day'`;
 }
 
 /**

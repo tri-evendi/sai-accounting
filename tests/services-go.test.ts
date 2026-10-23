@@ -408,6 +408,13 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
     const k = kueri("ClaimJob");
     expect(k).toContain("FOR UPDATE SKIP LOCKED");
     expect(k).toMatch(/UPDATE jobs SET status = 'claimed'[\s\S]*WHERE id = \(\s*SELECT id/);
+    /* `started_at` bersama `claimed_at`, persis klaim Node: tanpa ia durasi
+       pekerjaan Go tidak terukur (`claimed_at` diperpanjang tiap lease), dan
+       histogram/ambang durasi per jalur (09 §11) melewatkan setiap jalur Go. */
+    expect(k).toContain("started_at = now()");
+    expect(readFileSync(join(AKAR_REPO, "packages", "platform", "src", "job-queue.ts"), "utf8")).toContain(
+      "started_at = now()"
+    );
     const b = badan("Claim");
     expect(b.match(/q\.sql\.\w+\(/g) ?? []).toEqual(["q.sql.ClaimJob("]);
     expect(b).not.toMatch(/pool\.(Query|QueryRow|Exec)\(/);

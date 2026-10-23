@@ -6,7 +6,7 @@
 # pembangkitan ulang, atau keluaran yang disunting tangan, ditolak.
 # Sumber: contract/sqlc.yaml · contract/jobs.sql · contract/trail.sql.
 in  9ed7488da117e678a2b93b33910a4c712c34b9d483719d6dfeef6b1d186af118  contract/sqlc.yaml
-in  b08ebdc076fe6b00b27420d6b7d8ae1ee042ca4ae1bc3c8c6cc12319707f7244  contract/jobs.sql
+in  4b2a0375d83b11935dde35456d4bf6eb27d06d4f394b8e600fce3d2bc15c93c4  contract/jobs.sql
 in  0dc684af25fd911dc23f3ae821ab01c21cae5b0cc3de74981afb236cc80383ac  contract/trail.sql
 in  779b58ac3f860b8aa55821fd56492d676006218143a1933cd347320adeb47a7e  prisma/postgresql/control/0001_baseline/migration.sql
 in  27a450cb50241fc420b433ff089d05eb1c1102e4efd3c7241d825b30764d113d  prisma/postgresql/control/0002_slug_permanen/migration.sql
@@ -22,6 +22,6 @@ in  b9d8eb2c883af5ed2a250e7aa629f2b872626848bb48b36b5e3938fd488c178c  prisma/pos
 in  1bd7a0fdcc70b6819483ed6f07f7b9dc7859191e80c0e723db371a655412e770  services/integrator/tools/sqlc/go.mod
 in  53ccde379861d84e10a37cc44d6f640ba70785a81d614b656c53c6d8a53a9037  services/integrator/tools/sqlc/go.sum
 out 0507ecf1c8202fc9bf85c8f729cb419288d2b353557ce62e8e32f1c61642e422  services/integrator/internal/controlsql/db_gen.go
-out afd4c57c62714a2b458aac9b541560fe93f8d0383c1205b0e70519b28b1f8290  services/integrator/internal/controlsql/jobs.sql_gen.go
+out 38e08b9352cddb8d03ab143cd0314e21e6fff54d220c315293ddd44b80044169  services/integrator/internal/controlsql/jobs.sql_gen.go
 out eb96560927bd0a190e5af272abce925b4f2a71ce97246ec2ae2534b5d46e3f4c  services/integrator/internal/controlsql/models_gen.go
 out 75fe4c26585dcfde39e29742144a35475c6078f0879eec03abb6ad5dba2d0dfe  services/integrator/internal/controlsql/trail.sql_gen.go

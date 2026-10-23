@@ -40,7 +40,7 @@ func (q *Queries) CancelRequested(ctx context.Context, id int64) (bool, error) {
 
 const claimJob = `-- name: ClaimJob :one
 UPDATE jobs SET status = 'claimed', claimed_at = now(), claimed_by = $1,
-                updated_at = now()
+                started_at = now(), updated_at = now()
 WHERE id = (
   SELECT id FROM jobs
   WHERE status = 'queued'
@@ -74,6 +74,11 @@ type ClaimJobRow struct {
 
 // Klausa `kind = ANY(...)` yang membuat jalur terpisah. `kinds` diserahkan
 // PEMANGGIL (pelari mengklaim kind yang punya handler padanya).
+//
+// `started_at = now()` BERSAMA `claimed_at`, persis klaim Node
+// (`packages/platform/src/job-queue.ts`): `claimed_at` diperpanjang tiap
+// lease, jadi tanpa `started_at` durasi pekerjaan Go tidak terukur sama
+// sekali — histogram per jalur (09 §11) melewatkan setiap jalur Go.
 func (q *Queries) ClaimJob(ctx context.Context, arg ClaimJobParams) (ClaimJobRow, error) {
 	row := q.db.QueryRow(ctx, claimJob, arg.WorkerID, arg.Kinds)
 	var i ClaimJobRow

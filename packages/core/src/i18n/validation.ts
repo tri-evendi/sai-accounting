@@ -348,10 +348,9 @@ export const VALIDATION_MESSAGES: Record<ValidationKey, string> = {
   "validation.pickBom": "Pilih resep produksi",
   "validation.producedPositive":
     "Jumlah hasil harus lebih dari nol. Bahan yang habis tanpa hasil dicatat sebagai susut proses.",
-  // Isi halaman pendaratan dari konsol operator — batasnya kewarasan, bukan
-  // penyimpanan: kolomnya `TEXT`, tapi kalimat pemasaran 4.000 karakter adalah
-  // tempelan yang salah sasaran (lihat `SITE_CONTENT_VALUE_MAX`).
-  "validation.siteContentTooLong": "Kalimat ini terlalu panjang untuk halaman pendaratan.",
+  // Isi halaman depan dari konsol operator (isian & catatan penerbitan). Batas
+  // per isian yang lebih ketat dijelaskan lewat `operator.content.problem*`.
+  "validation.siteContentTooLong": "Teks ini terlalu panjang.",
   // Pengaturan situs (migration 0016) — bentuk yang sama yang diterima
   // `parseWhatsappNumber`: `wa.me` menolak + dan spasi.
   "validation.whatsappDigitsOnly":

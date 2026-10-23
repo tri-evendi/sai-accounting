@@ -46,6 +46,17 @@ describe("matriks izin operator", () => {
     }
   });
 
+  it("isi halaman depan: support menyunting draf, hanya owner yang menerbitkan", () => {
+    expect(operatorCan("support", "site.content")).toBe(true);
+    expect(operatorCan("owner", "site.content")).toBe(true);
+    expect(operatorCan("owner", "site.publish")).toBe(true);
+    for (const role of OPERATOR_ROLES.filter((r) => r !== "owner")) {
+      expect(operatorCan(role, "site.publish"), role).toBe(false);
+    }
+    expect(operatorCan("billing", "site.content")).toBe(false);
+    expect(operatorCan("viewer", "site.content")).toBe(false);
+  });
+
   it("peran tak dikenal = nol izin, bukan galat", () => {
     expect(operatorCan("admin", "tenant.billing")).toBe(false);
     expect(operatorCan("", "tenant.billing")).toBe(false);

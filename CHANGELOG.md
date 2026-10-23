@@ -20,7 +20,17 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.17.0 — 2026-10-23 — belum digelar
+## 0.18.0 — 2026-10-23 — belum digelar
+
+Teks halaman depan kini disunting sebagai draf, dipratinjau, lalu diterbitkan dengan riwayat yang bisa dikembalikan.
+
+### Berubah
+
+- Perubahan teks halaman depan tampil di situs dalam 30 detik setelah diterbitkan.
+
+---
+
+## 0.17.0 — 2026-10-23 (42c3b1a)
 
 Konsol operator kini mewajibkan aplikasi authenticator saat masuk.
 

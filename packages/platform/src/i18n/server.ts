@@ -84,8 +84,11 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
   const dictionary = await loadDictionary(locale);
 
   let pathname: string | null = null;
+  let previewToken: string | null = null;
   try {
-    pathname = (await headers()).get("x-sai-path");
+    const h = await headers();
+    pathname = h.get("x-sai-path");
+    previewToken = h.get("x-sai-preview");
   } catch {
     /* Di luar konteks permintaan (tidak terjadi pada halaman, tetapi mungkin
        pada pemanggil masa depan): tanpa jalur, tanpa penimpa. */
@@ -93,8 +96,15 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
   }
   if (!isSiteContentPath(pathname)) return dictionary;
 
-  const { publishedSiteContent } = await import("@sai/platform/site-content-store");
-  return applySiteContent(dictionary, await publishedSiteContent(locale));
+  /* PRATINJAU DRAF: `x-sai-preview` ditulis ulang `proxy.ts` dari `?preview=`
+     pada setiap permintaan (nilai kiriman klien dibuang), dan drafnya hanya
+     dipakai bila hash tokennya ada dan belum kedaluwarsa di basis data. Token
+     yang tidak sah = yang tayang, tanpa galat. */
+  const store = await import("@sai/platform/site-content-store");
+  const overrides = previewToken
+    ? await store.previewSiteContent(locale, previewToken)
+    : await store.publishedSiteContent(locale);
+  return applySiteContent(dictionary, overrides);
 }
 
 /**

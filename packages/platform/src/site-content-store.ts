@@ -1,211 +1,498 @@
 import "server-only";
 
 /**
- * ISI HALAMAN PENDARATAN — sisi BASIS DATAnya (tabel `site_contents`).
+ * ISI HALAMAN DEPAN — sisi BASIS DATAnya (migration platform 0008).
  *
  * KODE PENAGIHAN menurut doktrin #137: bersama `operator/store.ts`,
  * `subscription-store.ts`, dan `plan-catalog.ts`, jenis modul yang boleh
- * mengimpor `lib/platform-db.ts`. JANGAN PERNAH mengimpornya dari penjaga atau
- * proxy — dan jangan pernah mengimpor BERKAS INI dari sana.
+ * mengimpor `platform-db.ts`. JANGAN PERNAH mengimpornya dari penjaga atau
+ * proxy, dan jangan pernah mengimpor BERKAS INI dari sana.
  *
- * ══ GAGAL-LUNAK, BUKAN GAGAL-TERTUTUP ═════════════════════════════════════
- * Di hampir seluruh repo ini "gagal" berarti "tolak" (penjaga, kuota, konteks
- * perusahaan). Di sini justru sebaliknya, dan bedanya perlu dinyatakan: yang
- * gagal dibaca adalah KALIMAT PEMASARAN. Platform yang mati karena itu berarti
- * halaman pendaratan kembali ke kalimat bawaan dari kamus — bukan halaman
- * pendaratan yang memulangkan 500 kepada setiap pengunjung dan setiap perayap.
+ * ══ BENTUKNYA ═════════════════════════════════════════════════════════════
+ *   • `site_content_entries`: per kunci+bahasa paling banyak satu `published`
+ *     (yang tayang) dan satu `draft`. Draf `value = NULL` = "kembali ke bawaan".
+ *   • `site_content_publications` + `site_content_revisions`: setiap penerbitan
+ *     dan nilai sebelum/sesudah tiap kunci yang berubah. Mengembalikan versi
+ *     lama = membuat DRAF dari revisi, lalu menerbitkannya seperti biasa. Satu
+ *     jalur tulis ke yang tayang: `publishSiteContentDrafts`.
+ *   • `site_content_previews`: hash token pratinjau berumur pendek.
  *
- * Tidak ada keputusan keamanan maupun uang yang bergantung pada tabel ini. Satu
- * kalimat yang tertinggal lima menit adalah harga yang jelas lebih murah
- * daripada permukaan penjualan yang ikut mati bersama basis data penagihan.
+ * ══ DUAL-WRITE KE `site_contents` (paruh expand) ═════════════════════════
+ * Setiap perubahan pada yang tayang juga ditulis ke tabel lama di transaksi
+ * yang sama, supaya image sebelum migration 0008 (yang hanya membaca
+ * `site_contents`) menampilkan kalimat yang sama bila rilis ini di-rollback.
+ * Dicabut bersama tabelnya di migration contract berikutnya.
  *
- * ══ CACHE: QUERYNYA, BUKAN HALAMANNYA (pola `plan-catalog.ts`) ═════════════
- * `/` adalah `force-dynamic` dan harus tetap begitu (ia memanggil `auth()`
- * untuk memantulkan pengunjung bersesi). Tanpa cache, SETIAP kunjungan anonim —
- * termasuk setiap kunjungan perayap — menarik seluruh penimpa dari basis data
- * platform. Yang di-cache karena itu querynya; pemantulan bersesi tetap
- * berjalan per permintaan.
+ * ══ GAGAL-LUNAK DI JALUR PUBLIK ═══════════════════════════════════════════
+ * Yang gagal dibaca di sini adalah kalimat pemasaran. Platform yang mati
+ * berarti halaman depan memakai kalimat bawaan kamus, bukan 500. Pembaca
+ * konsol memulangkan `null` dan halamannya menyebutnya dalam satu kalimat.
  *
- * Penyimpanan dari konsol memanggil `updateTag`, jadi perubahan terlihat
- * SEKETIKA — umur cache di bawah hanyalah jaring untuk perubahan yang terjadi
- * di luar jalur itu (SQL langsung, pemulihan cadangan).
+ * ══ CACHE: 30 DETIK, DAN KENAPA BUKAN `updateTag` ═════════════════════════
+ * Yang menulis adalah `app-operator`; yang membaca adalah `app-customer`. Dua
+ * proses, dua cache Next yang terpisah (tanpa `cacheHandler` bersama), jadi
+ * `updateTag` dari konsol tidak pernah sampai ke halaman depan. Versi sebelum
+ * 0008 tetap memanggilnya dan mengatakan perubahan tampil "seketika"; yang
+ * sebenarnya terjadi adalah umur cache 5 menit di sisi customer. Umurnya kini
+ * 30 detik, dan konsol mengatakannya apa adanya. Bebannya satu query kecil per
+ * bahasa per 30 detik.
  *
  * ⚠ KEGAGALAN TIDAK IKUT TER-CACHE: lemparan ditangkap DI LUAR pembungkus
  * cache. Kalau `{}` hasil kegagalan masuk ke cache, satu detik platform tak
- * terjangkau akan memaksa halaman pendaratan memakai kalimat bawaan selama
- * seluruh umur cache sesudah platformnya pulih — jebakan yang sama yang sudah
- * dicatat di `plan-catalog.ts`.
+ * terjangkau akan membuat halaman depan memakai kalimat bawaan sepanjang umur
+ * cache sesudah platformnya pulih (jebakan yang sama di `plan-catalog.ts`).
  */
 
-import { unstable_cache, updateTag } from "next/cache";
+import { createHash, randomBytes } from "node:crypto";
+import { unstable_cache } from "next/cache";
 
 import type { Locale } from "@sai/core/i18n/config";
 import { platformDb } from "@sai/platform/platform-db";
 import {
-  SITE_CONTENT_PREFIX,
+  SITE_CONTENT_KEY_PATTERN,
+  SITE_CONTENT_LIVE_DELAY_SECONDS,
+  SITE_CONTENT_NOTE_MAX,
+  SITE_CONTENT_PREVIEW_TOKEN_PATTERN,
+  SITE_CONTENT_PREVIEW_TTL_MINUTES,
   SITE_CONTENT_VALUE_MAX,
+  contentLength,
+  draftIntent,
   isSiteContentLocale,
+  resolveSiteContent,
+  type SiteContentPublicationKind,
 } from "@sai/core/site-content";
 
-/** Tag revalidasi — satu untuk seluruh tabel; penulisnya memanggil ini. */
+/** Tag cache baca halaman depan (berlaku di dalam proses `app-customer`). */
 export const SITE_CONTENT_TAG = "site-content";
 
-/** Jaring untuk perubahan di luar jalur konsol. Lima menit, sama dengan katalog. */
-const UMUR_CACHE_DETIK = 300;
+/** Umur cache yang tayang di `app-customer` — lihat kepala berkas. */
+export const SITE_CONTENT_CACHE_SECONDS = SITE_CONTENT_LIVE_DELAY_SECONDS;
 
-export interface SiteContentRow {
-  key: string;
-  value: string;
-  updatedBy: string;
-  updatedAt: Date;
-}
+/* ─────────────────────────────── Jalur publik ─────────────────────────────── */
 
-async function ambilPenimpa(locale: Locale): Promise<Record<string, string>> {
-  const rows = await platformDb.siteContent.findMany({
-    where: { locale },
+async function readPublished(locale: Locale): Promise<Record<string, string>> {
+  const rows = await platformDb.siteContentEntry.findMany({
+    where: { locale, status: "published" },
     select: { key: true, value: true },
   });
   const out: Record<string, string> = {};
-  for (const row of rows) out[row.key] = row.value;
+  for (const row of rows) if (row.value !== null) out[row.key] = row.value;
   return out;
 }
 
-const penimpaTersimpan = unstable_cache(
-  async (locale: Locale) => ambilPenimpa(locale),
-  ["site-content", "published"],
-  { revalidate: UMUR_CACHE_DETIK, tags: [SITE_CONTENT_TAG] }
+const cachedPublished = unstable_cache(
+  async (locale: Locale) => readPublished(locale),
+  /* Kunci baru (`entries`): entri cache versi lama berisi baca `site_contents`
+     dan tidak boleh dipakai ulang sesudah penukaran image. */
+  ["site-content", "entries", "published"],
+  { revalidate: SITE_CONTENT_CACHE_SECONDS, tags: [SITE_CONTENT_TAG] }
 );
 
 /**
- * Penimpa untuk satu bahasa, atau `{}` bila platform tak terjangkau.
- *
- * `{}` dan bukan `null`: pemanggilnya (`lib/i18n/server.ts`) tidak punya cabang
- * "tidak terjangkau" untuk ditampilkan — ia hanya merender kamus. Objek kosong
- * ADALAH jawaban yang benar, yaitu "tidak ada yang diganti".
+ * Penimpa yang TAYANG untuk satu bahasa, atau `{}` bila platform tak
+ * terjangkau. Tidak pernah memuat draf.
  */
 export async function publishedSiteContent(locale: Locale): Promise<Record<string, string>> {
   try {
-    return await penimpaTersimpan(locale);
+    return await cachedPublished(locale);
   } catch (error) {
-    console.error("[site-content] penimpa tak terbaca — memakai kamus bawaan:", error);
+    console.error("[site-content] penimpa tak terbaca, memakai kamus bawaan:", error);
     return {};
   }
 }
 
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 /**
- * Baris penimpa lengkap (beserta siapa & kapan) untuk KONSOL — tanpa cache.
- *
- * Sengaja tidak ikut cache di atas: layar yang baru saja dipakai menyimpan
- * harus memperlihatkan apa yang BARU tersimpan, bukan apa yang tersimpan lima
- * menit lalu. `null` = platform tak terjangkau; halaman mengatakannya sebagai
- * kalimat, bukan sebagai 500.
+ * Penimpa untuk PRATINJAU: yang tayang + draf di atasnya, hanya bila token
+ * sah dan belum kedaluwarsa. Token yang salah bentuk, tidak dikenal, atau
+ * kedaluwarsa memulangkan yang tayang saja, tanpa membedakan ketiganya.
+ * Tanpa cache: pratinjau harus memperlihatkan draf yang baru disimpan.
  */
-export async function siteContentForOperator(locale: Locale): Promise<SiteContentRow[] | null> {
+export async function previewSiteContent(
+  locale: Locale,
+  token: string
+): Promise<Record<string, string>> {
+  if (!SITE_CONTENT_PREVIEW_TOKEN_PATTERN.test(token)) return publishedSiteContent(locale);
   try {
-    return await platformDb.siteContent.findMany({
+    const preview = await platformDb.siteContentPreview.findUnique({
+      where: { tokenHash: hashToken(token) },
+      select: { expiresAt: true },
+    });
+    if (!preview || preview.expiresAt.getTime() <= Date.now()) {
+      return publishedSiteContent(locale);
+    }
+    const rows = await platformDb.siteContentEntry.findMany({
       where: { locale },
-      orderBy: { key: "asc" },
-      select: { key: true, value: true, updatedBy: true, updatedAt: true },
+      select: { key: true, status: true, value: true },
+    });
+    const published: Record<string, string> = {};
+    const drafts: Record<string, string | null> = {};
+    for (const row of rows) {
+      if (row.status === "published" && row.value !== null) published[row.key] = row.value;
+      if (row.status === "draft") drafts[row.key] = row.value;
+    }
+    return resolveSiteContent(published, drafts);
+  } catch (error) {
+    console.error("[site-content] pratinjau tak terbaca, memakai yang tayang:", error);
+    return publishedSiteContent(locale);
+  }
+}
+
+/* ──────────────────────────────── Bacaan konsol ───────────────────────────── */
+
+export interface SiteContentEntryRow {
+  locale: string;
+  key: string;
+  status: string;
+  value: string | null;
+  updatedBy: string;
+  updatedAt: Date;
+}
+
+/** Seluruh baris (tayang + draf, ketiga bahasa) untuk konsol. Tanpa cache. */
+export async function siteContentEntriesForOperator(): Promise<SiteContentEntryRow[] | null> {
+  try {
+    return await platformDb.siteContentEntry.findMany({
+      orderBy: [{ key: "asc" }, { locale: "asc" }],
+      select: {
+        locale: true,
+        key: true,
+        status: true,
+        value: true,
+        updatedBy: true,
+        updatedAt: true,
+      },
     });
   } catch (error) {
-    console.error("[site-content] daftar penimpa tak terbaca:", error);
+    console.error("[site-content] daftar isi tak terbaca:", error);
     return null;
   }
 }
 
-export interface SaveSiteContentInput {
-  locale: Locale;
-  /** Kunci → nilai. Nilai KOSONG berarti "kembalikan ke bawaan" (baris dihapus). */
-  entries: Record<string, string>;
-  /** Nama akun operator — tersimpan di baris DAN di jejak audit. */
-  actor: string;
+export interface SiteContentRevisionRow {
+  id: number;
+  locale: string;
+  key: string;
+  previousValue: string | null;
+  value: string | null;
 }
 
-export interface SaveSiteContentResult {
-  /** Kunci yang nilainya ditulis/diperbarui. */
-  updated: string[];
-  /** Kunci yang barisnya dihapus — kembali memakai kalimat bawaan. */
-  reset: string[];
+export interface SiteContentPublicationRow {
+  id: number;
+  kind: string;
+  note: string | null;
+  changeCount: number;
+  publishedBy: string;
+  createdAt: Date;
+  revisions: SiteContentRevisionRow[];
+}
+
+/** Penerbitan terbaru beserta revisinya, terbaru dulu. */
+export async function siteContentPublications(
+  limit = 30
+): Promise<SiteContentPublicationRow[] | null> {
+  try {
+    return await platformDb.siteContentPublication.findMany({
+      orderBy: { id: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        kind: true,
+        note: true,
+        changeCount: true,
+        publishedBy: true,
+        createdAt: true,
+        revisions: {
+          orderBy: [{ key: "asc" }, { locale: "asc" }],
+          select: { id: true, locale: true, key: true, previousValue: true, value: true },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("[site-content] riwayat tak terbaca:", error);
+    return null;
+  }
+}
+
+/* ──────────────────────────────────── Draf ─────────────────────────────────── */
+
+export interface DraftInput {
+  locale: Locale;
+  key: string;
+  /** Isi isian editor apa adanya. Kosong = kembali ke bawaan. */
+  input: string;
+}
+
+export interface SaveDraftsResult {
+  /** `locale:key` yang kini punya draf. */
+  drafted: string[];
+  /** `locale:key` yang drafnya dihapus karena isiannya sama dengan yang tayang. */
+  cleared: string[];
+}
+
+function assertShape(locale: string, key: string, value: string | null) {
+  if (!isSiteContentLocale(locale)) throw new Error(`[site-content] bahasa tidak dikenal: ${locale}`);
+  if (!SITE_CONTENT_KEY_PATTERN.test(key)) throw new Error(`[site-content] kunci tidak sah: ${key}`);
+  if (value !== null && (value.length === 0 || contentLength(value) > SITE_CONTENT_VALUE_MAX)) {
+    throw new Error(`[site-content] nilai di luar batas untuk ${key}`);
+  }
+}
+
+type Tx = Parameters<Parameters<typeof platformDb.$transaction>[0]>[0];
+
+/**
+ * Tulis draf sebuah target (`null` = kembali ke bawaan), dibandingkan dengan
+ * yang TAYANG saat ini di basis data, bukan dengan yang dikira editor.
+ */
+async function writeDraft(
+  tx: Tx,
+  locale: Locale,
+  key: string,
+  input: string,
+  actor: string
+): Promise<"drafted" | "cleared" | "none"> {
+  const published = await tx.siteContentEntry.findUnique({
+    where: { locale_key_status: { locale, key, status: "published" } },
+    select: { value: true },
+  });
+  const intent = draftIntent(input, published?.value ?? null);
+  if (intent.action === "clear") {
+    const removed = await tx.siteContentEntry.deleteMany({ where: { locale, key, status: "draft" } });
+    return removed.count > 0 ? "cleared" : "none";
+  }
+  assertShape(locale, key, intent.value);
+  await tx.siteContentEntry.upsert({
+    where: { locale_key_status: { locale, key, status: "draft" } },
+    create: { locale, key, status: "draft", value: intent.value, updatedBy: actor },
+    update: { value: intent.value, updatedBy: actor },
+  });
+  return "drafted";
 }
 
 /**
- * Simpan penimpa untuk satu bahasa.
+ * Simpan isian editor sebagai DRAF. Tidak ada yang tayang berubah.
  *
- * ══ KOSONG = KEMBALI KE BAWAAN, DAN ITU SATU-SATUNYA JALANNYA ══════════════
- * Tidak ada aksi "reset" tersendiri, dan itu disengaja: dua jalur tulis untuk
- * satu maksud berarti dua tempat yang harus sama-sama benar soal apa yang
- * dicatat di jejak audit dan apa yang direvalidasi. Mengosongkan kolom lalu
- * menyimpan sudah merupakan bentuk yang paling jujur — dan ia juga yang
- * mencegah baris berisi `""` masuk ke basis data, yaitu penimpa yang akan
- * menghapus satu kalimat dari halaman tanpa bersuara.
- *
- * ⚠ Pemanggil WAJIB sudah memvalidasi kuncinya (`isEditableContentKey`).
- * Fungsi ini menegakkan bentuk yang tidak butuh kamus — bahasa yang dikenal dan
- * panjang nilai — tetapi ia TIDAK bisa tahu kunci mana yang ada di kamus tanpa
- * memuat kamusnya, dan memuat kamus di dalam jalur tulis basis data adalah
- * ketergantungan yang tidak dibutuhkan siapa pun di sini.
+ * ⚠ Pemanggil WAJIB sudah memvalidasi kunci terhadap kamus
+ * (`isEditableContentKey`) dan nilainya (`contentValueProblem`). Di sini hanya
+ * bentuk yang tidak butuh kamus yang ditegakkan; CHECK di basis data adalah
+ * lapis terakhirnya.
  */
-export async function saveSiteContent(
-  input: SaveSiteContentInput
-): Promise<SaveSiteContentResult> {
-  if (!isSiteContentLocale(input.locale)) {
-    throw new Error(`[site-content] bahasa tidak dikenal: ${input.locale}`);
+export async function saveSiteContentDrafts(
+  inputs: readonly DraftInput[],
+  actor: string
+): Promise<SaveDraftsResult> {
+  const drafted: string[] = [];
+  const cleared: string[] = [];
+  await platformDb.$transaction(async (tx) => {
+    for (const { locale, key, input } of inputs) {
+      const result = await writeDraft(tx, locale, key, input, actor);
+      if (result === "drafted") drafted.push(`${locale}:${key}`);
+      if (result === "cleared") cleared.push(`${locale}:${key}`);
+    }
+  });
+  return { drafted, cleared };
+}
+
+/** Buang SEMUA draf. Yang tayang tidak berubah. Memulangkan jumlah yang dibuang. */
+export async function discardSiteContentDrafts(): Promise<number> {
+  const removed = await platformDb.siteContentEntry.deleteMany({ where: { status: "draft" } });
+  return removed.count;
+}
+
+/**
+ * Kembalikan versi dari riwayat sebagai DRAF.
+ *
+ *   • `undo`    — seluruh penerbitan `publicationId` dibalik: setiap kunci yang
+ *                 berubah di sana kembali ke nilai SEBELUMnya;
+ *   • `restore` — satu revisi: kunci itu kembali ke nilai SESUDAH penerbitan
+ *                 tersebut.
+ *
+ * Hasilnya draf biasa: diperiksa di tinjauan, bisa dipratinjau, lalu
+ * diterbitkan. Draf yang sudah ada pada kunci yang sama ditimpa.
+ */
+export async function draftsFromHistory(
+  target: { mode: "undo"; publicationId: number } | { mode: "restore"; revisionId: number },
+  actor: string,
+  isEditable: (key: string) => boolean
+): Promise<SaveDraftsResult> {
+  const revisions =
+    target.mode === "undo"
+      ? await platformDb.siteContentRevision.findMany({
+          where: { publicationId: target.publicationId },
+          select: { locale: true, key: true, previousValue: true, value: true },
+        })
+      : await platformDb.siteContentRevision.findMany({
+          where: { id: target.revisionId },
+          select: { locale: true, key: true, previousValue: true, value: true },
+        });
+
+  const inputs: DraftInput[] = [];
+  for (const rev of revisions) {
+    if (!isSiteContentLocale(rev.locale) || !isEditable(rev.key)) continue;
+    const wanted = target.mode === "undo" ? rev.previousValue : rev.value;
+    inputs.push({ locale: rev.locale, key: rev.key, input: wanted ?? "" });
   }
+  return saveSiteContentDrafts(inputs, actor);
+}
 
-  const updated: string[] = [];
-  const reset: string[] = [];
+/* ───────────────────────────────── Penerbitan ──────────────────────────────── */
 
-  for (const [key, raw] of Object.entries(input.entries)) {
-    if (!key.startsWith(SITE_CONTENT_PREFIX)) continue;
-    /* Spasi di tepi dibuang: penimpa yang isinya hanya spasi adalah kalimat
-       yang hilang, bukan kalimat yang diganti. */
-    const value = typeof raw === "string" ? raw.trim() : "";
+export interface ContentChange {
+  locale: string;
+  key: string;
+  previousValue: string | null;
+  value: string | null;
+}
 
-    if (value.length === 0) {
-      /* `deleteMany`, bukan `delete`: baris yang memang belum ada bukan galat —
-         ia maksud yang sudah terpenuhi. */
-      const hasil = await platformDb.siteContent.deleteMany({
-        where: { locale: input.locale, key },
-      });
-      if (hasil.count > 0) reset.push(key);
-      continue;
-    }
+export interface PublishResult {
+  publicationId: number | null;
+  changes: ContentChange[];
+}
 
-    if (value.length > SITE_CONTENT_VALUE_MAX) {
-      throw new Error(`[site-content] nilai terlalu panjang untuk ${key}`);
-    }
+/**
+ * Tulis satu perubahan ke yang tayang, beserta salinannya di `site_contents`.
+ * `value = null` = kembali ke bawaan (baris dihapus di kedua tabel).
+ */
+async function applyPublished(tx: Tx, change: ContentChange, actor: string) {
+  const { locale, key, value } = change;
+  if (value === null) {
+    await tx.siteContentEntry.deleteMany({ where: { locale, key, status: "published" } });
+    await tx.siteContent.deleteMany({ where: { locale, key } });
+    return;
+  }
+  await tx.siteContentEntry.upsert({
+    where: { locale_key_status: { locale, key, status: "published" } },
+    create: { locale, key, status: "published", value, updatedBy: actor },
+    update: { value, updatedBy: actor },
+  });
+  await tx.siteContent.upsert({
+    where: { locale_key: { locale, key } },
+    create: { locale, key, value, updatedBy: actor },
+    update: { value, updatedBy: actor },
+  });
+}
 
-    /* `upsert` atas UNIQUE (locale, content_key) — idempotensi ditegakkan basis
-       data, bukan periksa-lalu-tulis: dua operator yang menyimpan bersamaan
-       menghasilkan satu baris, bukan dua kebenaran tentang kalimat yang sama. */
-    await platformDb.siteContent.upsert({
-      where: { locale_key: { locale: input.locale, key } },
-      create: { locale: input.locale, key, value, updatedBy: input.actor },
-      update: { value, updatedBy: input.actor },
+async function recordPublication(
+  tx: Tx,
+  kind: SiteContentPublicationKind,
+  changes: readonly ContentChange[],
+  actor: string,
+  note: string | null
+): Promise<number> {
+  const publication = await tx.siteContentPublication.create({
+    data: {
+      kind,
+      note: note ? note.slice(0, SITE_CONTENT_NOTE_MAX) : null,
+      changeCount: changes.length,
+      publishedBy: actor,
+    },
+    select: { id: true },
+  });
+  await tx.siteContentRevision.createMany({
+    data: changes.map((c) => ({
+      publicationId: publication.id,
+      locale: c.locale,
+      key: c.key,
+      previousValue: c.previousValue,
+      value: c.value,
+    })),
+  });
+  return publication.id;
+}
+
+/**
+ * Terbitkan SEMUA draf dalam satu transaksi: yang tayang berubah, satu
+ * penerbitan + revisinya tercatat, draf terhapus, `site_contents` ikut.
+ *
+ * Draf untuk kunci yang sudah tidak ada di kamus (`isEditable` false) tidak
+ * diterbitkan dan tetap tinggal sebagai draf; konsol menampilkannya sebagai
+ * kunci yatim. Draf yang hasilnya sama dengan yang tayang dihapus tanpa revisi.
+ * Draf yang disimpan orang lain SELAMA transaksi ini berjalan tidak ikut
+ * terhapus: yang dihapus hanya baris yang dibaca di awal.
+ */
+export async function publishSiteContentDrafts(input: {
+  actor: string;
+  note: string | null;
+  isEditable: (key: string) => boolean;
+}): Promise<PublishResult> {
+  return platformDb.$transaction(async (tx) => {
+    const drafts = await tx.siteContentEntry.findMany({
+      where: { status: "draft" },
+      select: { id: true, locale: true, key: true, value: true },
     });
-    updated.push(key);
-  }
+    const usable = drafts.filter((d) => isSiteContentLocale(d.locale) && input.isEditable(d.key));
+    if (usable.length === 0) return { publicationId: null, changes: [] };
 
-  if (updated.length > 0 || reset.length > 0) {
-    /*
-     * Halaman pendaratan berubah SEKETIKA — bukan setelah umur cache habis.
-     * Operator yang menyimpan lalu membuka `/` untuk memeriksanya harus melihat
-     * hasil suntingannya, bukan versi sebelumnya.
-     *
-     * `updateTag`, BUKAN `revalidateTag`: di Next versi terpasang yang kedua
-     * menuntut profil `cacheLife` sebagai argumen kedua dan memberi semantik
-     * "sajikan yang basi dulu, segarkan di belakang" — benar untuk katalog
-     * produk, salah untuk layar yang baru saja dipakai menyimpan. `updateTag`
-     * memberi read-your-writes: kedaluwarsa + segar dalam permintaan yang sama.
-     *
-     * ⚠ Harganya satu batasan yang harus dinyatakan: `updateTag` hanya sah
-     * DI DALAM server action. Hari ini jalur tulis ini memang hanya punya satu
-     * pemanggil (`operator/content/actions.ts`); skrip CLI yang kelak menulis
-     * tabel ini harus memanggil `saveSiteContent` dari sebuah action, atau
-     * memindahkan baris ini ke pemanggilnya.
-     */
-    updateTag(SITE_CONTENT_TAG);
-  }
+    const published = await tx.siteContentEntry.findMany({
+      where: {
+        status: "published",
+        OR: usable.map((d) => ({ locale: d.locale, key: d.key })),
+      },
+      select: { locale: true, key: true, value: true },
+    });
+    const live = new Map(published.map((p) => [`${p.locale}:${p.key}`, p.value]));
 
-  return { updated, reset };
+    const changes: ContentChange[] = [];
+    for (const d of usable) {
+      const previousValue = live.get(`${d.locale}:${d.key}`) ?? null;
+      if (previousValue === d.value) continue;
+      changes.push({ locale: d.locale, key: d.key, previousValue, value: d.value });
+    }
+
+    let publicationId: number | null = null;
+    if (changes.length > 0) {
+      publicationId = await recordPublication(tx, "publish", changes, input.actor, input.note);
+      for (const change of changes) await applyPublished(tx, change, input.actor);
+    }
+    await tx.siteContentEntry.deleteMany({ where: { id: { in: usable.map((d) => d.id) } } });
+    return { publicationId, changes };
+  });
+}
+
+/**
+ * Hapus semua baris (tayang + draf) untuk kunci yang sudah dicabut dari kamus.
+ * Yang tayang dicatat sebagai penerbitan `purge` supaya nilainya tetap bisa
+ * dibaca di riwayat.
+ */
+export async function purgeSiteContentKeys(keys: readonly string[], actor: string): Promise<PublishResult> {
+  const valid = keys.filter((k) => SITE_CONTENT_KEY_PATTERN.test(k));
+  if (valid.length === 0) return { publicationId: null, changes: [] };
+  return platformDb.$transaction(async (tx) => {
+    const rows = await tx.siteContentEntry.findMany({
+      where: { key: { in: valid } },
+      select: { locale: true, key: true, status: true, value: true },
+    });
+    const changes: ContentChange[] = rows
+      .filter((r) => r.status === "published" && r.value !== null)
+      .map((r) => ({ locale: r.locale, key: r.key, previousValue: r.value, value: null }));
+    let publicationId: number | null = null;
+    if (changes.length > 0) {
+      publicationId = await recordPublication(tx, "purge", changes, actor, null);
+    }
+    await tx.siteContentEntry.deleteMany({ where: { key: { in: valid } } });
+    await tx.siteContent.deleteMany({ where: { key: { in: valid } } });
+    return { publicationId, changes };
+  });
+}
+
+/* ───────────────────────────────── Pratinjau ───────────────────────────────── */
+
+/**
+ * Terbitkan token pratinjau baru. Token mentahnya hanya dipulangkan ke
+ * pemanggil (untuk tautan); yang disimpan hanya SHA-256-nya. Token yang sudah
+ * kedaluwarsa dibersihkan di sini.
+ */
+export async function createSiteContentPreview(
+  actor: string
+): Promise<{ token: string; expiresAt: Date }> {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SITE_CONTENT_PREVIEW_TTL_MINUTES * 60_000);
+  await platformDb.siteContentPreview.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  await platformDb.siteContentPreview.create({
+    data: { tokenHash: hashToken(token), expiresAt, createdBy: actor },
+  });
+  return { token, expiresAt };
 }

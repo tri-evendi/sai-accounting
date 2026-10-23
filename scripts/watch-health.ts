@@ -7,7 +7,9 @@
  * == KENAPA SKRIP INI ADA, PADAHAL DENYUTNYA SUDAH BENAR ===================
  * Tiga denyut — cadangan (#374), penjadwal (#373), kesesuaian — sudah menjawab
  * dengan tepat, dan `/api/health` sudah mengeluarkan jawabannya. Yang tidak ada
- * adalah PEMBACANYA.
+ * adalah PEMBACANYA. (Denyut keempat, penerbit Go jalur `schedule`, ikut dibaca
+ * begitu kontrak menyerahkan penerbitan ke Go — komponen `penerbit-go`, diam
+ * selama Node penerbitnya.)
  *
  * Buktinya terukur: produksi menjalankan 54 putaran cadangan yang gagal
  * berturut-turut, penjadwal pernah menggantung dua jam, dan 1.439 temuan
@@ -40,11 +42,13 @@ import { decideBackupAlert } from "../src/lib/backup-watchdog";
 import {
   decideConformanceAlert,
   decideMigrationsAlert,
+  decideScheduleLaneAlert,
   decideSchedulerAlert,
 } from "../src/lib/health-watchdog";
 import { MIGRATION_TERAKHIR } from "@sai/core/migration-manifest";
 import { migrationsHealth } from "@sai/core/schema-version";
-import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
+import { scheduleLaneHealth, schedulerHealth } from "@sai/core/scheduler-heartbeat";
+import { goPublishedKinds } from "@sai/core/schedule-due";
 import { conformanceHealth } from "../src/lib/conformance-heartbeat";
 import { sendMail } from "@sai/platform/mailer-core";
 
@@ -161,6 +165,32 @@ async function main() {
         statusPutaran: putaran?.status === "error" ? "error" : putaran ? "ok" : null,
         jumlahGalat: putaran?.errorCount ?? null,
       }),
+    });
+
+    /* ── 2b. Penerbit Go (jalur `schedule`, svc-integrator) ─────────────── */
+    /* Hanya bila kontrak menyerahkan sedikitnya satu kind berjadwal ke Go —
+       selama Node penerbit semuanya, komponen ini `node` dan DIAM. Denyut
+       penjadwal di atas TIDAK menangkap penerbit Go yang mati: putaran Node
+       tetap selesai tepat waktu sambil melewati langkahnya. */
+    const milikGo = goPublishedKinds();
+    const tickTerakhir =
+      milikGo.length === 0
+        ? null
+        : await control.job
+            .findFirst({
+              where: { kind: "schedule.tick", status: "done" },
+              orderBy: { finishedAt: "desc" },
+              select: { finishedAt: true },
+            })
+            .catch(() => null);
+    const penerbitGo = scheduleLaneHealth(tickTerakhir?.finishedAt ?? null, milikGo);
+    komponen.push({
+      nama: "penerbit-go",
+      putusan: decideScheduleLaneAlert(
+        penerbitGo.status === "node"
+          ? { status: "node", goKinds: [], lastRunAt: null, ageMinutes: null, staleAfterMinutes: 0 }
+          : penerbitGo
+      ),
     });
 
     /* ── 3. Kesesuaian data ───────────────────────────────────────────────── */

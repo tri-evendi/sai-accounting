@@ -142,6 +142,50 @@ export function decideSchedulerAlert(input: SchedulerWatchdogInput): WatchdogDec
   };
 }
 
+/**
+ * Penerbit Go (jalur `schedule`): `node` dan `ok` diam, sisanya berbunyi.
+ *
+ * `unknown` BERBUNYI, berbeda dari kebiasaan "pemasangan baru": di sini ia
+ * berarti kontrak sudah menyerahkan penerbitan ke Go, tetapi tidak satu pun
+ * denyut Go pernah selesai — persis keadaan di mana dokumen berulang dan
+ * cadangan berhenti terbit tanpa satu baris pun yang menua di antrean. Denyut
+ * pertama selesai dalam hitungan detik sesudah `svc-integrator` naik, jadi
+ * `unknown` yang bertahan sampai putaran penjaga ini bukan kebetulan.
+ */
+export interface ScheduleLaneWatchdogInput {
+  status: "node" | SchedulerHealthStatus;
+  goKinds: readonly string[];
+  lastRunAt: string | null;
+  ageMinutes: number | null;
+  staleAfterMinutes: number;
+}
+
+export function decideScheduleLaneAlert(input: ScheduleLaneWatchdogInput): WatchdogDecision {
+  if (input.status === "node" || input.status === "ok") return DIAM;
+  const pesan =
+    (input.status === "unknown"
+      ? "PENERBIT GO TIDAK PERNAH BERDETAK — tidak ada satu pun `schedule.tick` yang selesai.\n\n"
+      : "PENERBIT GO TERLAMBAT — tidak ada `schedule.tick` yang selesai dalam ambang.\n\n") +
+    "Kontrak (`contract/kinds.yaml` → `schedule.publisher: go`) menyerahkan penerbitan\n" +
+    `${input.goKinds.join(", ")} ke jalur \`schedule\` di svc-integrator, dan langkah Node\n` +
+    "di peran `scheduler` sengaja MELEWATI dirinya. Jadi bila jalur Go diam, tidak ada\n" +
+    "yang menerbitkan — dan antrean yang kosong terbaca sehat.\n\n" +
+    "Periksa:  docker compose logs --tail=300 svc-integrator | grep '\\[schedule\\]'\n" +
+    "Jalan mundur (Node menerbitkan lagi): PRODUCTION.md §Penerbit denyut.";
+  return {
+    alert: true,
+    subject: `[SAI] penerbit Go: ${input.status}`,
+    body: badan(pesan, [
+      ["status", input.status],
+      ["kind milik Go", input.goKinds.join(", ")],
+      ["tick terakhir", input.lastRunAt ?? "(belum pernah)"],
+      ["umurnya", input.ageMinutes === null ? "-" : `${input.ageMinutes} menit`],
+      ["ambang", `${input.staleAfterMinutes} menit`],
+    ]),
+    fingerprint: `schedule-lane:${input.status}`,
+  };
+}
+
 export interface ConformanceWatchdogInput {
   status: ConformanceHealthStatus;
   lastRunAt: string | null;

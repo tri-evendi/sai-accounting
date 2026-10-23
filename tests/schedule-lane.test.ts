@@ -27,6 +27,9 @@ import { describe, expect, it } from "vitest";
 
 import { JOB_KINDS, JOB_LANES, SCHEDULED_KINDS, type ScheduledKind } from "@sai/core/generated/job-kinds";
 import { NOT_FROZEN_COMPANY_WHERE } from "@sai/core/tenant-migration";
+import { goPublishedKinds } from "@sai/core/schedule-due";
+import { scheduleLaneHealth } from "@sai/core/scheduler-heartbeat";
+import { decideScheduleLaneAlert } from "../src/lib/health-watchdog";
 import { AKAR_REPO, berkasGo } from "./akar-sumber";
 import { workerRole, composeServices } from "./compose-worker";
 
@@ -176,6 +179,53 @@ describe("compose: denyut Go hidup di `svc-integrator`, tanpa env baru", () => {
        nama pun ke daftar izin. */
     expect(Object.keys(svc.environment ?? {})).toEqual(
       expect.arrayContaining(["CONTROL_DATABASE_URL", "CONTROL_DATABASE_DIRECT_URL"])
+    );
+  });
+});
+
+describe("denyut penerbit Go: penerbit yang mati TIDAK terbaca sehat", () => {
+  const jam = (iso: string) => new Date(iso);
+
+  it("selama Node penerbit semuanya: `node`, diam", () => {
+    expect(scheduleLaneHealth(null, []).status).toBe("node");
+    expect(
+      decideScheduleLaneAlert({ status: "node", goKinds: [], lastRunAt: null, ageMinutes: null, staleAfterMinutes: 0 })
+        .alert
+    ).toBe(false);
+  });
+
+  it("milik Go, tick segar: ok, diam", () => {
+    const h = scheduleLaneHealth(jam("2026-10-23T05:00:01Z"), ["tenant.backup"], jam("2026-10-23T05:30:00Z"));
+    if (h.status === "node") throw new Error("milik Go terbaca node");
+    expect(h.status).toBe("ok");
+    expect(decideScheduleLaneAlert(h).alert).toBe(false);
+  });
+
+  it("milik Go, tick terakhir > 2 jam: late, BERBUNYI dengan sidik jarinya sendiri", () => {
+    const h = scheduleLaneHealth(jam("2026-10-23T01:00:00Z"), ["tenant.backup"], jam("2026-10-23T05:30:00Z"));
+    if (h.status === "node") throw new Error("milik Go terbaca node");
+    const d = decideScheduleLaneAlert(h);
+    expect(h.status).toBe("late");
+    expect(d.alert).toBe(true);
+    /* Terpisah dari `scheduler:*`: penjadwal Node yang sehat tidak boleh
+       meredam penerbit Go yang mati, atau sebaliknya. */
+    expect(d.fingerprint).toBe("schedule-lane:late");
+    expect(d.body).toContain("svc-integrator");
+  });
+
+  it("milik Go, belum pernah satu tick pun: BERBUNYI (bukan 'pemasangan baru')", () => {
+    const h = scheduleLaneHealth(null, ["ledger.recurring"]);
+    if (h.status === "node") throw new Error("milik Go terbaca node");
+    expect(decideScheduleLaneAlert(h).alert).toBe(true);
+  });
+
+  it("penjaga kesehatan membaca jejak `schedule.tick`, hanya bila Go penerbitnya", () => {
+    const w = kode(baca("scripts", "watch-health.ts"));
+    expect(w).toContain("goPublishedKinds()");
+    expect(w).toMatch(/where: \{ kind: "schedule\.tick", status: "done" \}/);
+    expect(w).toContain("decideScheduleLaneAlert(");
+    expect(goPublishedKinds()).toEqual(
+      BERJADWAL.filter((k) => SCHEDULED_KINDS[k].publisher === "go").sort()
     );
   });
 });

@@ -132,6 +132,13 @@ export function nodePublishes(kind: ScheduledKind): boolean {
   return SCHEDULED_KINDS[kind].publisher === "node";
 }
 
+/** Kind berjadwal yang DITERBITKAN Go — padanan `GoOwned()` di `schedulelane`. */
+export function goPublishedKinds(): ScheduledKind[] {
+  return (Object.keys(SCHEDULED_KINDS) as ScheduledKind[])
+    .filter((k) => SCHEDULED_KINDS[k].publisher === "go")
+    .sort();
+}
+
 /** Kalimat log yang sama untuk setiap penerbit Node yang melewati langkahnya. */
 export function skippedPublisherNote(kind: ScheduledKind): string {
   return (

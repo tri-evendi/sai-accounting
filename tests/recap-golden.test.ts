@@ -25,8 +25,9 @@
  * pembelian tanpa pemasok (jatuh ke pemasok pembelian asal), faktur tanpa
  * pelanggan, dokumen tepat di batas hari Jakarta di kedua sisi, retur melebihi
  * penjualan (bersih negatif), seri bersih (urut nama), periode kosong;
- * anggaran: akun neraca & tipe asing diabaikan, anggaran nol, dua baris satu
- * akun-bulan, realisasi nol, jurnal di batas bulan Jakarta, setahun penuh,
+ * anggaran: akun neraca & tipe asing diabaikan, anggaran nol, satu akun di
+ * beberapa bulan (dijumlah setahun), realisasi nol, jurnal di batas bulan
+ * Jakarta, setahun penuh,
  * jurnal penutup dikecualikan, target penjualan (pendapatan lain-lain
  * dikecualikan), tahun tanpa anggaran, buku tanpa jurnal.
  */

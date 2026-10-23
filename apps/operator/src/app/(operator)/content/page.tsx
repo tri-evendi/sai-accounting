@@ -60,6 +60,7 @@ import {
   CONSOLE_PAGE,
   ConsoleNotice,
   ConsolePanel,
+  ConsoleSection,
 } from "@op/components/operator/console-ui";
 import {
   ContentEditor,
@@ -613,7 +614,10 @@ async function HistoryView({
   return (
     <>
       {reverted === "error" && <ConsoleNotice>{t("operator.content.errSave")}</ConsoleNotice>}
-      <p style={CONSOLE_MUTED}>{t("operator.content.historyDescription", { count: HISTORY_LIMIT })}</p>
+      <ConsoleSection
+        title={t("operator.content.historyHeading")}
+        description={t("operator.content.historyDescription", { count: HISTORY_LIMIT })}
+      >
       {publications.map((pub) => {
         const rows: RevisionRow[] = pub.revisions.map((r) => ({
           id: r.id,
@@ -698,6 +702,7 @@ async function HistoryView({
           </ConsolePanel>
         );
       })}
+      </ConsoleSection>
     </>
   );
 }

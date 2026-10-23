@@ -276,7 +276,7 @@ export function ContentEditor({
                                 color: length > row.spec.maxLength ? token.colorErrorText : token.colorTextTertiary,
                               }}
                             >
-                              {t("operator.content.charCount", { count: length, max: row.spec.maxLength })}
+                              {`${length}/${row.spec.maxLength}`}
                             </span>
                             <span lang={locale} style={{ display: "block", color: token.colorTextTertiary }}>
                               {t("operator.content.defaultIs", { text: cell.defaultValue })}

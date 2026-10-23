@@ -1352,7 +1352,34 @@ yang dipindah hanya yang belum dimiliki Go:
 | Berkas emas lintas bahasa: rekap pihak dari dokumen fixture sendiri, anggaran dari jurnal `statement_books.json` + baris anggaran/target, Kas & Bank dari setiap kasus Arus Kas | `ledgerread/testdata/recap_books.json` → `go test -update` → `tests/recap-golden.test.ts` |
 | Paritas atas buku sungguhan, READ ONLY di kedua sisi, angka DAN isi berkas | `bun run parity:{sales-by-customer,purchases-by-supplier,cash-bank,budget-realization}[-xlsx]` |
 
-PARITAS_LOKAL_GELOMBANG_A
+Paritas lokal (23 Okt 2026, Postgres 17 sekali pakai, 3 buku sintetis: buku
+dagang 610 jurnal + 704 faktur / 1.422 baris + 150 retur penjualan + 450
+transaksi pemasok + 90 retur pembelian + 191 anggaran + 36 target; buku valas;
+buku kosong — IDR/USD/SGD/EUR/JPY, valas ber-`base_amount`, berkurs tanpa base,
+TANPA kurs dan berkurs 0, mata uang kosong, dokumen & retur dibatalkan,
+`payment` di tengah pembelian, retur pembelian tanpa pemasok, faktur tanpa
+pelanggan, seri bersih dua pihak yang namanya beda huruf besar, dokumen dan
+jurnal tepat di `T17:00:00.000Z`/`T16:59:59.999Z` pada setiap batas,
+jurnal penutup 2025, akun tipe asing):
+
+| Skrip | Hasil |
+|---|---|
+| `parity:cash-bank` · `-xlsx` | 9/9 · 27/27 setara |
+| `parity:budget-realization` · `-xlsx` | 15/15 · 15/15 setara |
+| `parity:sales-by-customer` · `-xlsx` | 6/9 · 21/27 setara |
+| `parity:purchases-by-supplier` · `-xlsx` | 6/9 · 21/27 setara |
+
+**Setiap** selisih rekap pihak bertanda `[seri setengah sen — float TS]`: nilai
+eksak satu pihak jatuh TEPAT di setengah sen (mis. `1183104892,985`, dari
+`kuantitas 0,25 × harga …,50` atau kurs berpecahan `,25`), dan `Math.round` atas
+penjumlahan FLOAT TS membulatkannya ke bawah sementara Go — eksak, setengah ke
+atas seperti `round2` yang dimaksud — ke atas. Nol selisih tanpa tanda itu.
+Ini temuan tentang sisi TS (pola Umur Piutang, `aging-parity.ts`), dan gerbang
+TIDAK dilonggarkan: buku produksi yang punya seri akan berselisih di skrip ini
+sampai pemilik memutuskan sisi mana yang benar. Sebelum datanya dibuat
+realistis, total di atas ~10^13 rupiah juga berselisih satu sen — float TS
+kehilangan sen di skala itu (ulp ≈ 0,004); di bawah plafon kolom
+`Decimal(15,2)` tidak terjadi.
 
 Perintah paritas produksi (sesi utama, buku PRODUKSI, hanya baca; biner dan
 skrip dari checkout yang sama):

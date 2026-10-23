@@ -161,9 +161,13 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(p.asOfInstant).toBe(resolveAsOf("2025-12-31", now).asOf.toISOString());
     /* Tanpa tanggal → hari ini, persis seperti layar. */
     expect(goExportPayload(report, {}, now).params.asOf).toBe(resolveAsOf(undefined, now).asOfISO);
-    /* Laporan yang bukan milik Go tidak bisa diterbitkan ke jalur Go. */
-    const ts = REPORTS.find((r) => isExportable(r) && reportEngine(r.id) === "ts")!;
-    expect(() => goExportPayload(ts, {})).toThrow(/bukan milik mesin Go/);
+    /* Laporan yang bukan milik Go tidak bisa diterbitkan ke jalur Go. Sejak
+       gelombang A + laporan stok, SETIAP laporan berberkas tercatat di
+       register — yang belum `go` kini `go-parity`, jadi yang diuji adalah
+       "bukan `go`", bukan "`ts`". Bila semuanya kelak `go`, uji ini tidak
+       punya contoh lagi dan pernyataannya cukup dilewati. */
+    const bukanGo = REPORTS.find((r) => isExportable(r) && reportEngine(r.id) !== "go");
+    if (bukanGo) expect(() => goExportPayload(bukanGo, {})).toThrow(/bukan milik mesin Go/);
   });
 
   it("bentuk muatan laporan BERPERIODE (Laba Rugi) — instan dari `resolvePeriod`", () => {

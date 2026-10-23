@@ -144,7 +144,7 @@ func TestStatusPrecedence(t *testing.T) {
 
 func TestNormalizeItemNameMatchesJS(t *testing.T) {
 	cases := map[string]string{
-		"  Black  Pepper\t": "black pepper",
+		"  Black  Pepper\t":   "black pepper",
 		"CLOVE\u00a0 Grade A": "clove grade a",
 		"\ufeffNutmeg":        "nutmeg",
 	}

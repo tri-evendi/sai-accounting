@@ -124,6 +124,13 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
       /contract\.IncomeStatementCategoryDefaultSections\b/
     );
     expect(semua, "closing_journal_type").toMatch(/contract\.ClosingJournalType\b/);
+    /* Umur Piutang & Umur Utang Go (tahap 1d, `aging.go`) — pembaca Go
+       PERTAMA mata uang & status dokumen, yang sampai saat itu pengecualian
+       tanpa pembaca (keputusan pemilik 23 Okt 2026). */
+    expect(semua, "aging.buckets").toMatch(/contract\.AgingBuckets\b/);
+    expect(semua, "currencies.base").toMatch(/contract\.BaseCurrency\b/);
+    expect(semua, "invoice_statuses").toMatch(/contract\.InvoiceStatusCanceled\b/);
+    expect(semua, "contract_statuses").toMatch(/contract\.ContractStatusCanceled\b/);
 
     const y = load(baca("contract", "accounting.yaml")) as Record<string, unknown>;
     expect(Object.keys(y).sort(), "kunci baru butuh pembaca Go + baris di tes ini").toEqual(
@@ -131,6 +138,7 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
         "account_categories",
         "account_type_categories",
         "account_types",
+        "aging",
         "category_statement_side",
         "closing_journal_type",
         "contract_statuses",
@@ -144,27 +152,12 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
   });
 
   /*
-   * PENGECUALIAN YANG DISEBUT dari aturan "nol pembaca" — keputusan pemilik
-   * 23 Okt 2026: mata uang & status dokumen dibangkitkan SEBELUM pembaca Go
-   * pertamanya, supaya pemeriksa kesesuaian data yang kelak pindah ke Go
-   * mewarisi kosakata zod, bukan salinan ketiga. Sisi keduanya hari ini TS
-   * (zod + `check-data-conformance`).
-   *
-   * Tes ini sengaja menjadi PEMICU: begitu Go tulisan tangan memakai salah satu
-   * kunci ini, ia merah — coret kuncinya dari daftar, dan pindahkan ke
-   * `expect(...).toMatch` di tes di atas, supaya pembacanya ikut dijaga.
+   * Sampai tahap 1d Umur Piutang/Utang, mata uang & status dokumen adalah
+   * PENGECUALIAN yang disebut dari aturan "nol pembaca" (keputusan pemilik
+   * 23 Okt 2026). `internal/ledgerread/aging.go` adalah pembaca Go pertamanya,
+   * jadi ketiganya kini dijaga di tes di atas — dan daftar pengecualiannya
+   * kosong. Kunci baru tanpa pembaca Go tetap ditolak tes di atas.
    */
-  it("pengecualian tanpa-pembaca-Go masih benar-benar tanpa pembaca", () => {
-    const semua = GO_PRODUKSI.map((b) => b.isi).join("\n");
-    const tanpaPembaca: Record<string, RegExp> = {
-      currencies: /contract\.(Currencies|IsCurrency|BaseCurrency|Currency[A-Z]{3})\b/,
-      invoice_statuses: /contract\.(InvoiceStatuses|InvoiceStatus[A-Z]\w*)\b/,
-      contract_statuses: /contract\.(ContractStatuses|IsContractStatus|ContractStatus[A-Z]\w*)\b/,
-    };
-    for (const [kunci, pola] of Object.entries(tanpaPembaca)) {
-      expect(semua, `\`${kunci}\` kini punya pembaca Go — coret dari pengecualian`).not.toMatch(pola);
-    }
-  });
 });
 
 describe("kontrak akuntansi: mata uang & status dokumen (23 Okt 2026)", () => {

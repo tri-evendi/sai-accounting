@@ -1062,9 +1062,81 @@ Lulus keempatnya → `parityProven` di entri register yang sama, lalu `go-parity
 Excel — peralihannya hanya menyunting `src/lib/report-engine.ts` lalu
 `bun run contract:gen` (`GoEngineReports`).
 
+#### Laporan keempat & kelima: Umur Piutang dan Umur Utang (`go-parity`, 23 Okt 2026)
+
+Laporan tahap 1d PERTAMA yang tidak membaca baris jurnal, melainkan DOKUMEN
+sub-buku — faktur, kontrak, pembayaran, uang muka yang dikompensasikan, retur,
+transaksi pemasok beserta alokasinya. Aturannya disalin dari
+`src/lib/receivables.ts`, bukan dirancang ulang.
+
+| Bagian | Di mana |
+|---|---|
+| Pembaca: rupiah dasar (`base_amount` → `amount` IDR → `amount × rate` → TIDAK ADA), status turunan, umur hari kalender Jakarta, potret historis, bagian kontrak yang sudah difakturkan (penjodohan NAMA, #15), alokasi tercatat lalu FIFO (#37), urutan tanggal ↓ id ↓ | `ledgerread/aging.go` |
+| Lembar sebar (kolom `?cols=`, saringan `?overdue=1`, ringkasan ember, catatan kaki) | `document/aging.go` |
+| Ember umur (batas atas inklusif 30/60/90) | `contract/accounting.yaml` → `aging` — dibaca `receivables.ts` DAN Go |
+| Kalimat, judul, lebar, label ember & status, kolom katalog | `statement-layout.ts` / `report-export.ts` / `report-catalog.ts` → `contract/aging_layout_gen.go` (berkas bangkitan tersendiri) |
+| Paritas | `parity:receivables` · `parity:receivables-xlsx` · `parity:payables` · `parity:payables-xlsx` (`scripts/parity-aging*.ts`, `src/lib/aging-parity.ts`) |
+
+Keputusan & temuan yang lahir di jalan:
+
+1. **Aritmetika EKSAK, bukan float.** Go mengurai NUMERIC menjadi rasional
+   (`math/big`) dan membulatkan ke sen PERSIS di titik `round2` TS (setengah
+   ke atas, `Math.round`). Hasilnya sama dengan TS di mana pun KECUALI nilai
+   eksak yang TEPAT setengah sen — `5,01 USD × 15.750,5 = 78.910,005`: double
+   terdekatnya sedikit di bawah, TS turun ke ,00 sementara Go naik ke ,01. Go
+   menandai dokumen yang pembulatannya menyentuh titik seri (`halfCentTie`),
+   dan pembanding menulis selisihnya dengan penanda
+   `[seri setengah sen — float TS]` — **tetap dihitung berselisih**. Seri
+   hanya mungkin pada baris yang nilai IDR-nya dihitung `amount × rate`
+   (tanpa `base_amount`) atau kuantitas berdesimal × harga.
+2. **Urutan bertanggal sama kini ditentukan.** `getReceivables`/`getPayables`
+   dulu `orderBy: { date: "desc" }` saja — dokumen sehari keluar dalam urutan
+   sesuka PostgreSQL. Kini `[date desc, id desc]` (`NEWEST_FIRST`) di TS dan Go.
+   Hanya urutan tampilan; angka tidak berubah.
+3. **`?overdue=1` ikut berkas yang dihitung dari parameter.** `buildReportPayload`
+   dulu mengabaikannya, jadi ekspor berantre dari halaman ber-saringan memuat
+   SEMUA dokumen. Kini dibaca dengan bunyi URL halaman, dan halaman keduanya
+   mengirim `sumber` (`asOf`, `cols`, `overdue`).
+4. **Penjodohan bagian kontrak yang difakturkan memakai NAMA saja** — receivables
+   tidak meneruskan `itemId` ke `buildContractOutstanding`, berbeda dengan
+   halaman detail kontrak (#491). Disalin apa adanya ke Go; dilaporkan, tidak
+   diubah.
+
+Paritas LOKAL (23 Okt 2026, PostgreSQL 17 sekali pakai, buku sintetis +
+buku kosong; tepi ember 30/31/60/61/90/91, jatuh tempo hari ini, jatuh tempo
+00:00 WIB vs 23:59:59.999 WIB, valas dengan/tanpa kurs, `base_amount` vs kurs,
+bayar sebagian/lebih/tepat/dalam setengah sen, dibatalkan/`completed`, retur
+diposting/dibatalkan/sesudah asOf, uang muka, faktur tarikan kontrak, faktur
+tanpa pelanggan, transaksi `adjustment`, alokasi berlebih, pembayaran valas
+tanpa kurs): 4 skrip × 5 tanggal (angka) / 3 tanggal × 3 pilihan kolom
+(berkas) × 2 saringan — **0 selisih**; dengan satu dokumen seri sengaja ditanam,
+satu-satunya selisih adalah dokumen itu (bertanda). Lewat PgBouncer 1.26 mode
+transaksi dengan `timezone` sesi `America/New_York`: sama. Keluaran Go di
+`TZ` UTC / Los Angeles / Jakarta: identik byte demi byte.
+
+Perintah paritas produksi (sesi utama, buku PRODUKSI, hanya baca; biner dan
+skrip dari checkout yang sama — image `migrate` yang sedang berjalan belum
+memuat skripnya):
+
+```bash
+(cd services/integrator && CGO_ENABLED=0 go build -trimpath -o /tmp/sai-parity ./cmd/parity)
+for s in parity:receivables parity:payables parity:receivables-xlsx parity:payables-xlsx; do
+  docker compose run --rm --no-deps -v /tmp/sai-parity:/usr/local/bin/sai-parity:ro \
+    -v $PWD/scripts:/app/scripts:ro -v $PWD/src:/app/src:ro -v $PWD/package.json:/app/package.json:ro \
+    -v $PWD/packages/core:/app/packages/core:ro -v $PWD/packages/billing:/app/packages/billing:ro \
+    -v $PWD/packages/platform:/app/packages/platform:ro -v $PWD/contract:/app/contract:ro \
+    migrate bun run "$s" -- --go-bin /usr/local/bin/sai-parity
+done
+```
+
+Bawaannya tiga tanggal (hari ini, 30 Juni, 31 Desember tahun lalu) × dua
+saringan (semua, hanya jatuh tempo); `-xlsx` juga × tiga pilihan kolom
+(bawaan, `party` saja, sebagian). Lulus keempatnya → `parityProven` di entri
+register, lalu `go-parity` → `go` + `bun run contract:gen`.
+
 | Tahap | Pemicu | Isi | VM |
 |---|---|---|---|
-| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
+| **1d — Go ke perhitungan laporan** 🔶 Neraca Saldo, Laba Rugi & Neraca `go` (22 Okt 2026, paritas produksi lulus); Umur Piutang & Umur Utang `go-parity` (23 Okt 2026, menunggu paritas produksi) | **pengukuran**, bukan jadwal: event loop ekspor memengaruhi p95 interaktif, atau memori memaksa `--max-old-space-size` lagi — vonisnya di konsol `/scheduler` (§11) | generator per laporan pindah ke Go · **paritas dibuktikan per laporan, lalu versi TS dicabut** | 1 |
 | **2 — pasar awal** | tenant berbayar, SLA pertama | replika `app-customer` kedua · **`cache-redis` + cache bersama** · `db-postgres` pindah host · **standby** — ✅ kode siap 22 Okt 2026, opt-in ([02 §19](./02-LAYANAN-INFRA.md)); tersisa host-nya | 3–4 |
 | **3 — pasar tumbuh** | putaran fan-out tak muat di jendelanya | witness & *failover* otomatis · replika baca · replika `svc-integrator` — **kode & konfigurasi siap 22 Okt 2026, opt-in, belum digelar** (di bawah) | 5–7 |
 | **4 — besar** | satu instans tidak cukup | tenant dipecah ke beberapa instans `db-postgres` — ✅ kode lengkap 22 Okt 2026, **opt-in** (di bawah). Cadangan Go per instans ✅ lolos gerbang Go 23 Okt 2026; pemindahan pertama menunggu peran cadangan di server instansnya | — |

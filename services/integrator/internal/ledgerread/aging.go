@@ -61,10 +61,21 @@ func (d Decimal) MarshalJSON() ([]byte, error) {
 }
 
 // String menulis rasional berpenyebut 2^a·5^b sebagai desimal TEPAT.
-func (d Decimal) String() string { return ratText(d.r) }
+// Nilai nol Decimal (tanpa rasional) adalah 0.
+func (d Decimal) String() string {
+	if d.r == nil {
+		return "0"
+	}
+	return ratText(d.r)
+}
 
 // Rat memulangkan salinan nilainya.
-func (d Decimal) Rat() *big.Rat { return new(big.Rat).Set(d.r) }
+func (d Decimal) Rat() *big.Rat {
+	if d.r == nil {
+		return new(big.Rat)
+	}
+	return new(big.Rat).Set(d.r)
+}
 
 // ratText: desimal tepat. Semua nilai di laporan ini berasal dari NUMERIC
 // berskala ≤ 6 dan perkaliannya, jadi penyebutnya membagi 10^n untuk n kecil;
@@ -81,12 +92,36 @@ func ratText(r *big.Rat) string {
 }
 
 // parseRat mengurai teks NUMERIC menjadi rasional TEPAT.
+//
+// Diurai sendiri, bukan `Rat.SetString`: teks NUMERIC PostgreSQL tidak pernah
+// berbentuk eksponen, dan SetString menerima "1e1000000000" — bentuk yang
+// mestinya ditolak, bukan dimekarkan jadi bilangan raksasa (gosec G113).
 func parseRat(s string) (*big.Rat, error) {
-	r, ok := new(big.Rat).SetString(strings.TrimSpace(s))
+	t := strings.TrimSpace(s)
+	neg := strings.HasPrefix(t, "-")
+	t = strings.TrimPrefix(t, "-")
+	whole, frac, _ := strings.Cut(t, ".")
+	if whole == "" || !onlyDecimal(whole) || !onlyDecimal(frac) {
+		return nil, fmt.Errorf("%q bukan angka desimal", s)
+	}
+	num, ok := new(big.Int).SetString(whole+frac, 10)
 	if !ok {
 		return nil, fmt.Errorf("%q bukan angka desimal", s)
 	}
-	return r, nil
+	if neg {
+		num.Neg(num)
+	}
+	den := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(len(frac))), nil)
+	return new(big.Rat).SetFrac(num, den), nil
+}
+
+func onlyDecimal(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // parseRatPtr: kolom NUMERIC yang boleh NULL.

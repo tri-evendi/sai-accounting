@@ -87,11 +87,38 @@ const (
 	ComparePercentFormat                    = "%s%%"
 )
 
+// Arus Kas (tahap 1d): kalimat cetak & anotasi rekonsiliasi dari
+// `CASH_FLOW_PRINT_LABELS` / `cashFlowReconciliationNote`.
+const (
+	CashFlowSheetName        = "Laporan Arus Kas"
+	CashFlowTitle            = "Laporan Arus Kas"
+	CashFlowOpeningLabel     = "Kas & setara kas awal periode"
+	CashFlowClosingLabel     = "Kas & setara kas akhir periode"
+	CashFlowTotalLabel       = "Kenaikan / Penurunan Kas"
+	CashFlowEmptyLabel       = "Tidak ada pergerakan kas pada periode ini."
+	CashFlowSubtotalFormat   = "Jumlah %s"
+	CashFlowNoteReconciled   = "(cocok dengan buku besar)"
+	CashFlowNoteUnreconciled = "(TIDAK COCOK — periksa buku besar)"
+)
+
+// CashFlowCategoryLabels: nama kelompok Arus Kas di DOKUMEN CETAK
+// (`CASH_FLOW_CATEGORY_LABELS` lewat `CASH_FLOW_PRINT_LABELS.group`).
+var CashFlowCategoryLabels = map[CashFlowCategory]string{
+	CashFlowCategoryOperating:     "Aktivitas Operasi",
+	CashFlowCategoryInvesting:     "Aktivitas Investasi",
+	CashFlowCategoryFinancing:     "Aktivitas Pendanaan",
+	CashFlowCategoryUncategorised: "Belum Terkategori",
+}
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
 	ReportBalanceSheet    = "balance-sheet"
+	ReportCashFlow        = "cash-flow"
+	ReportEquityChanges   = "equity-changes"
 	ReportIncomeStatement = "income-statement"
+	ReportPayables        = "payables"
+	ReportReceivables     = "receivables"
 	ReportTrialBalance    = "trial-balance"
 )
 
@@ -124,6 +151,15 @@ var IncomeStatementColumns = []ReportColumn{
 var BalanceSheetColumns = []ReportColumn{
 	{Header: "Keterangan", Width: 48},
 	{Header: "Jumlah (IDR)", Width: 22},
+}
+
+// CashFlowColumns: judul (CASH_FLOW_HEADERS) dan lebar (CASH_FLOW_WIDTHS)
+// kolom Arus Kas, dalam urutan CASH_FLOW_COLUMNS.
+var CashFlowColumns = []ReportColumn{
+	{Header: "Sumber / Penggunaan Kas", Width: 44},
+	{Header: "Kas Masuk (IDR)", Width: 20},
+	{Header: "Kas Keluar (IDR)", Width: 20},
+	{Header: "Bersih (IDR)", Width: 20},
 }
 
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.

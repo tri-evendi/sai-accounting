@@ -62,6 +62,10 @@ import {
   BALANCE_SHEET_COLUMNS,
   BALANCE_SHEET_HEADERS,
   BALANCE_SHEET_PRINT_LABELS,
+  CASH_FLOW_CATEGORY_LABELS,
+  CASH_FLOW_COLUMNS,
+  CASH_FLOW_HEADERS,
+  CASH_FLOW_PRINT_LABELS,
   INCOME_STATEMENT_COLUMNS,
   INCOME_STATEMENT_HEADERS,
   INCOME_STATEMENT_PRINT_LABELS,
@@ -73,7 +77,9 @@ import {
   STATEMENT_COMPARE_CHANGE_HEADER,
   asOfPeriodLabel,
   balanceSheetBalanceNote,
+  cashFlowReconciliationNote,
   comparePercentText,
+  type CashFlowCategoryId,
   comparePeriodLabel,
   costCenterPeriodSuffix,
   periodRangeLabel,
@@ -81,14 +87,31 @@ import {
 } from "../src/lib/statement-layout";
 import {
   BALANCE_SHEET_WIDTHS,
+  CASH_FLOW_WIDTHS,
   COMPARE_CHANGE_WIDTH,
   IDR_NUMBER_FORMAT,
   INCOME_STATEMENT_WIDTHS,
   SHEET_BANNER_STYLE,
   TRIAL_BALANCE_WIDTHS,
   sheetPrintedLine,
+  AGING_WIDTHS,
 } from "../src/lib/report-export";
 import { REPORT_ENGINES } from "../src/lib/report-engine";
+import { REPORTS } from "../src/lib/report-catalog";
+import {
+  AGING_BUCKET_PRINT_LABELS,
+  AGING_COLUMNS,
+  AGING_SHEET_LABELS,
+  AGING_UNDATED_NOTE,
+  EXPORT_EMPTY,
+  PARTY_RECAP_NO_PARTY,
+  PAYMENT_STATUS_PRINT_LABELS,
+  agingHeaders,
+  agingIssueAgeText,
+  payableDocumentNo,
+  unresolvedNote,
+  type AgingKind,
+} from "../src/lib/statement-layout";
 import {
   COST_CENTER_UNASSIGNED_PRINT_LABEL,
   UNASSIGNED_COST_CENTER,
@@ -131,17 +154,42 @@ const TUJUAN_TATA_LETAK_GO = join(
   "report_layout_gen.go"
 );
 
+/* Umur Piutang & Umur Utang (tahap 1d, `go-parity`): berkas TERSENDIRI, bukan
+   bagian `report_layout_gen.go` — laporan berikutnya yang dipindah paralel
+   menambah ke berkas itu, dan dua cabang yang menyunting satu fungsi
+   pembangkit adalah konflik yang tidak perlu. Sumbernya sama: modul TS cetak. */
+const TUJUAN_TATA_LETAK_UMUR_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "aging_layout_gen.go"
+);
+
 const CEK = process.argv.includes("--cek");
 
 interface Lane {
   description: string;
   single_instance: boolean;
+  /** Pagar memori per pekerjaan (MiB heap Go); tanpa kunci = tanpa pagar. */
+  memory_fence_mib?: number;
+}
+/** Butir kunci idempotensi denyut — SELALU UTC. */
+const SCHEDULE_GRAINS = ["hour", "day"] as const;
+/** Penerbit kind berjadwal: tepat satu bahasa. */
+const SCHEDULE_PUBLISHERS = ["node", "go"] as const;
+interface Schedule {
+  grain: (typeof SCHEDULE_GRAINS)[number];
+  per_company: boolean;
+  publisher: (typeof SCHEDULE_PUBLISHERS)[number];
 }
 interface Kind {
   lane: string;
   max_attempts: number;
   description: string;
   writes_ledger?: boolean;
+  schedule?: Schedule;
 }
 /** Setiap angka yang dibaca DUA bahasa. Semuanya bilangan bulat ≥ 1. */
 interface Numbers {
@@ -208,6 +256,35 @@ function baca(): Kontrak {
         `kind \`${nama}\` menulis buku besar di jalur \`${kind.lane}\` — ` +
           "hanya jalur `ledger` boleh (invarian I-2, pintu posting tunggal)"
       );
+    }
+    /* Kind berjadwal: penerbitnya TEPAT SATU bahasa, dan butirnya salah satu
+       dari dua yang dimengerti kedua penerbit. Nilai asing ditolak DI SINI —
+       penerbit yang tidak mengenali `publisher` akan mengira dirinya bukan
+       penerbit, dan kind itu berhenti terbit tanpa satu galat pun. */
+    const j = kind.schedule;
+    if (j !== undefined) {
+      if (kind.lane === "schedule") {
+        salah.push(`kind \`${nama}\`: \`schedule:\` pada jalur \`schedule\` sendiri — denyut tidak menerbitkan dirinya lewat dirinya`);
+      }
+      if (!(SCHEDULE_GRAINS as readonly string[]).includes(j?.grain)) {
+        salah.push(`kind \`${nama}\`: schedule.grain harus salah satu dari ${SCHEDULE_GRAINS.join("/")} (kini: ${String(j?.grain)})`);
+      }
+      if (typeof j?.per_company !== "boolean") {
+        salah.push(`kind \`${nama}\`: schedule.per_company harus boolean`);
+      }
+      if (!(SCHEDULE_PUBLISHERS as readonly string[]).includes(j?.publisher)) {
+        salah.push(
+          `kind \`${nama}\`: schedule.publisher harus salah satu dari ${SCHEDULE_PUBLISHERS.join("/")} ` +
+            `(kini: ${String(j?.publisher)}) — tepat SATU penerbit, tidak pernah dua`
+        );
+      }
+    }
+  }
+
+  for (const [nama, lane] of Object.entries(k.lanes ?? {})) {
+    const f = lane.memory_fence_mib;
+    if (f !== undefined && (!Number.isInteger(f) || f < 64)) {
+      salah.push(`jalur \`${nama}\`: memory_fence_mib harus bilangan bulat ≥ 64 (kini: ${String(f)})`);
     }
   }
 
@@ -308,7 +385,15 @@ function bangkitkan(k: Kontrak): string {
   const barisLane = lanes
     .map((nama) => {
       const d = k.lanes[nama]!;
-      return `  ${nama}: { singleInstance: ${d.single_instance === true} },`;
+      return `  ${nama}: { singleInstance: ${d.single_instance === true}, memoryFenceMiB: ${d.memory_fence_mib ?? 0} },`;
+    })
+    .join("\n");
+
+  const berjadwal = kinds.filter((kk) => k.kinds[kk]!.schedule !== undefined);
+  const barisJadwal = berjadwal
+    .map((nama) => {
+      const j = k.kinds[nama]!.schedule!;
+      return `  "${nama}": { grain: "${j.grain}", perCompany: ${j.per_company}, publisher: "${j.publisher}" },`;
     })
     .join("\n");
 
@@ -347,6 +432,8 @@ ${barisKind}
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
+  /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
+  memoryFenceMiB: number;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
@@ -356,6 +443,26 @@ ${barisLane}
 /** \`kind\` milik setiap jalur — klausa \`WHERE kind IN (…)\` pekerjanya. */
 export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
 ${jalurKind}
+};
+
+${union("ScheduledKind", berjadwal)}
+
+/** Butir kunci idempotensi denyut — SELALU UTC (\`contract/kinds.yaml\`). */
+export type ScheduleGrain = ${SCHEDULE_GRAINS.map((g) => `"${g}"`).join(" | ")};
+
+/** Penerbit kind berjadwal — tepat SATU bahasa. */
+export type SchedulePublisher = ${SCHEDULE_PUBLISHERS.map((g) => `"${g}"`).join(" | ")};
+
+export interface ScheduleSpec {
+  grain: ScheduleGrain;
+  /** Satu baris per perusahaan aktif (\`<kind>:<id>:<butir>\`), atau satu untuk seluruh pemasangan. */
+  perCompany: boolean;
+  publisher: SchedulePublisher;
+}
+
+/** Kind yang diterbitkan DENYUT, beserta penerbitnya. Dibaca \`@sai/core/schedule-due\`. */
+export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
+${barisJadwal}
 };
 
 export const isJobKind = (v: string): v is JobKind =>
@@ -485,9 +592,28 @@ function bangkitkanGo(k: Kontrak): string {
       const d = k.lanes[nama]!;
       return {
         kiri: `Lane${pengenalGo(nama)}:`,
-        kanan: `{SingleInstance: ${d.single_instance === true}},`,
+        kanan: `{SingleInstance: ${d.single_instance === true}, MemoryFenceMiB: ${d.memory_fence_mib ?? 0}},`,
       };
     })
+  );
+
+  const berjadwal = kinds.filter((kk) => k.kinds[kk]!.schedule !== undefined);
+  const petaJadwal = ratakan(
+    berjadwal.map((nama) => {
+      const j = k.kinds[nama]!.schedule!;
+      return {
+        kiri: `Kind${pengenalGo(nama)}:`,
+        kanan:
+          `{Grain: Grain${pengenalGo(j.grain)}, PerCompany: ${j.per_company}, ` +
+          `Publisher: Publisher${pengenalGo(j.publisher)}},`,
+      };
+    })
+  );
+  const konstGrain = ratakan(
+    SCHEDULE_GRAINS.map((g) => ({ kiri: `Grain${pengenalGo(g)}`, kanan: `ScheduleGrain = "${g}"` }))
+  );
+  const konstPenerbit = ratakan(
+    SCHEDULE_PUBLISHERS.map((g) => ({ kiri: `Publisher${pengenalGo(g)}`, kanan: `SchedulePublisher = "${g}"` }))
   );
 
   const petaJalurKind = ratakan(
@@ -559,6 +685,8 @@ ${petaKind}
 // konfigurasi, bukan penskalaan.
 type LaneSpec struct {
 \tSingleInstance bool
+\t// MemoryFenceMiB: pagar memori per pekerjaan (MiB heap Go); 0 = tanpa pagar.
+\tMemoryFenceMiB int
 }
 
 // JobLanes memetakan setiap jalur ke sifatnya.
@@ -569,6 +697,35 @@ ${petaLane}
 // KindsByLane adalah klausa WHERE kind = ANY(…) milik setiap pelari.
 var KindsByLane = map[JobLane][]JobKind{
 ${petaJalurKind}
+}
+
+// ScheduleGrain: butir kunci idempotensi denyut — SELALU UTC.
+type ScheduleGrain string
+
+const (
+${konstGrain}
+)
+
+// SchedulePublisher: bahasa yang MENERBITKAN satu kind berjadwal — tepat satu.
+type SchedulePublisher string
+
+const (
+${konstPenerbit}
+)
+
+// ScheduleSpec: bagaimana denyut menerbitkan satu kind, dan siapa penerbitnya.
+type ScheduleSpec struct {
+\tGrain ScheduleGrain
+\t// PerCompany: satu baris per perusahaan aktif (\`<kind>:<id>:<butir>\`),
+\t// atau satu untuk seluruh pemasangan (\`<kind>:<butir>\`).
+\tPerCompany bool
+\tPublisher  SchedulePublisher
+}
+
+// ScheduledKinds: kind yang diterbitkan DENYUT. Dibaca \`internal/schedulelane\`;
+// padanan TS \`SCHEDULED_KINDS\` dibaca \`@sai/core/schedule-due\`.
+var ScheduledKinds = map[JobKind]ScheduleSpec{
+${petaJadwal}
 }
 
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.
@@ -652,9 +809,16 @@ interface KontrakAkuntansi {
     category_default_sections: Record<string, string>;
   };
   closing_journal_type: string;
+  cash_flow: {
+    cash_account_type: string;
+    categories: string[];
+    fallback_category: string;
+    type_categories: Record<string, string>;
+  };
   currencies: { base: string; values: string[] };
   invoice_statuses: string[];
   contract_statuses: string[];
+  aging: { buckets: { key: string; max_days?: number }[] };
 }
 
 /** Kode mata uang ISO 4217: tiga huruf besar. */
@@ -763,6 +927,34 @@ function bacaAkuntansi(): KontrakAkuntansi {
     salah.push("`closing_journal_type` bukan snake_case");
   }
 
+  /* ── Arus Kas (tahap 1d). Akun kas WAJIB tipe kontrak; kelompok cadangan
+     WAJIB anggota daftar kelompok dan TIDAK boleh menjadi tujuan pemetaan —
+     ia hanya dicapai oleh tipe yang tidak dipetakan, jadi tipe yang
+     "dipetakan ke cadangan" adalah dua cara menulis satu aturan. Pemetaan
+     sengaja TIDAK wajib lengkap (lihat YAML). */
+  const cf = k.cash_flow;
+  if (!cf || typeof cf !== "object") {
+    salah.push("`cash_flow` kosong");
+  } else {
+    if (!(tipe ?? []).includes(cf.cash_account_type)) {
+      salah.push(`cash_flow.cash_account_type ${JSON.stringify(cf.cash_account_type)} bukan tipe akun kontrak`);
+    }
+    const kelompok = daftar("cash_flow.categories", cf.categories);
+    if (!kelompok.includes(cf.fallback_category)) {
+      salah.push(`cash_flow.fallback_category ${JSON.stringify(cf.fallback_category)} bukan salah satu cash_flow.categories`);
+    }
+    peta(
+      "cash_flow.type_categories",
+      cf.type_categories,
+      tipe ?? [],
+      kelompok.filter((c) => c !== cf.fallback_category),
+      false
+    );
+    if (cf.type_categories && cf.cash_account_type in cf.type_categories) {
+      salah.push("cash_flow.type_categories: akun kas tidak pernah menjadi akun lawan arus kas");
+    }
+  }
+
   /* ── Mata uang (23 Okt 2026). Kode ISO tiga huruf besar, tanpa duplikat, dan
      mata uang dasar WAJIB anggotanya — `base_amount` yang dinyatakan dalam mata
      uang yang tidak bisa dipilih di formulir mana pun tidak bisa dibaca siapa pun. */
@@ -795,6 +987,31 @@ function bacaAkuntansi(): KontrakAkuntansi {
       `contract_statuses harus DIAWALI invoice_statuses dalam urutan yang sama ` +
         `(${statusFaktur.join(", ")}); kini: ${statusKontrak.join(", ")}`
     );
+  }
+
+  /* ── Ember umur (#12). Batas atas INKLUSIF, naik tegas, ember terakhir
+     tanpa batas: setiap umur jatuh ke TEPAT satu ember, di kedua bahasa. */
+  const ember = k.aging?.buckets;
+  if (!Array.isArray(ember) || ember.length < 2) {
+    salah.push("`aging.buckets` butuh sedikitnya dua ember");
+  } else {
+    const lihat = new Set<string>();
+    let sebelum = 0;
+    ember.forEach((e, i) => {
+      const akhir = i === ember.length - 1;
+      if (typeof e?.key !== "string" || !SNAKE.test(e.key)) {
+        salah.push(`aging.buckets[${i}].key ${JSON.stringify(e?.key)} bukan snake_case`);
+      } else if (lihat.has(e.key)) {
+        salah.push(`aging.buckets: \`${e.key}\` tercantum dua kali`);
+      } else lihat.add(e.key);
+      if (akhir) {
+        if (e?.max_days !== undefined) salah.push("aging.buckets: ember TERAKHIR tidak boleh berbatas (`max_days`)");
+      } else if (!Number.isInteger(e?.max_days) || (e.max_days as number) <= sebelum) {
+        salah.push(
+          `aging.buckets[${i}].max_days ${JSON.stringify(e?.max_days)} harus bilangan bulat > ${sebelum}`
+        );
+      } else sebelum = e.max_days as number;
+    });
   }
 
   if (salah.length > 0) {
@@ -885,6 +1102,26 @@ ${Object.entries(k.income_statement.category_default_sections).map(([c, v]) => `
 /** \`journals.type\` jurnal penutup tahunan (#555) — DIBUANG Laba Rugi saja. */
 export const CLOSING_JOURNAL_TYPE = "${k.closing_journal_type}";
 
+// ── Arus Kas (PSAK 2 / IAS 7) — dibaca \`getCashFlow\` dan Arus Kas Go ─────
+
+/** Tipe akun sisi KAS: arus kas = gerakan yang menyeberangi batas akun ini. */
+export const CASH_ACCOUNT_TYPE = "${k.cash_flow.cash_account_type}" satisfies AccountType;
+
+${union("CashFlowCategory", k.cash_flow.categories)}
+
+/** Urutan kelompok di laporan. */
+export const CASH_FLOW_CATEGORY_KEYS = [
+${k.cash_flow.categories.map((c) => `  "${c}",`).join("\n")}
+] as const satisfies readonly CashFlowCategory[];
+
+/** Kelompok tipe yang TIDAK dipetakan — kelompok yang terlihat, bukan operasi. */
+export const CASH_FLOW_FALLBACK_CATEGORY = "${k.cash_flow.fallback_category}" satisfies CashFlowCategory;
+
+/** Kelompok arus kas per tipe AKUN LAWAN; tipe lain jatuh ke cadangan. */
+export const CASH_FLOW_TYPE_CATEGORIES: Readonly<Partial<Record<AccountType, CashFlowCategory>>> = {
+${Object.entries(k.cash_flow.type_categories).map(([t, c]) => `  ${t}: "${c}",`).join("\n")}
+};
+
 // ── Mata uang & status dokumen (23 Okt 2026) ──────────────────────────────
 // Dibaca lewat re-ekspor \`@sai/core/constants\`; label & warna tetap di TS.
 
@@ -910,6 +1147,23 @@ ${union("ContractStatus", k.contract_statuses)}
 export const CONTRACT_STATUSES = [
 ${k.contract_statuses.map((s) => `  "${s}",`).join("\n")}
 ] as const satisfies readonly ContractStatus[];
+
+// ── Umur piutang & utang (#12) — dibaca \`receivables.ts\` dan Go ─────────
+
+${union("AgingBucket", k.aging.buckets.map((b) => b.key))}
+
+/** Ember umur, dari yang termuda. */
+export const AGING_BUCKETS = [
+${k.aging.buckets.map((b) => `  "${b.key}",`).join("\n")}
+] as const satisfies readonly AgingBucket[];
+
+/**
+ * Batas atas INKLUSIF tiap ember dalam hari kalender Jakarta; \`null\` = ember
+ * terakhir, tanpa batas. Umur <= 0 mendarat di ember pertama.
+ */
+export const AGING_BUCKET_MAX_DAYS: Readonly<Record<AgingBucket, number | null>> = {
+${k.aging.buckets.map((b) => `  ${b.key}: ${b.max_days ?? "null"},`).join("\n")}
+};
 `;
 }
 
@@ -1017,6 +1271,39 @@ ${ratakan(Object.entries(k.income_statement.category_default_sections).map(([c, 
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "${k.closing_journal_type}"
 
+// CashAccountType: tipe akun sisi KAS — arus kas adalah gerakan yang
+// menyeberangi batas akun bertipe ini.
+const CashAccountType = AccountType${pengenalGo(k.cash_flow.cash_account_type)}
+
+// CashFlowCategory adalah satu kelompok Arus Kas (PSAK 2 / IAS 7).
+type CashFlowCategory string
+
+const (
+${ratakan(k.cash_flow.categories.map((c) => ({ kiri: `CashFlowCategory${pengenalGo(c)}`, kanan: `CashFlowCategory = "${c}"` })))}
+)
+
+// CashFlowCategories dalam urutan kelompok laporan.
+var CashFlowCategories = []CashFlowCategory{
+${k.cash_flow.categories.map((c) => `\tCashFlowCategory${pengenalGo(c)},`).join("\n")}
+}
+
+// CashFlowFallbackCategory: kelompok tipe akun lawan yang TIDAK dipetakan.
+const CashFlowFallbackCategory = CashFlowCategory${pengenalGo(k.cash_flow.fallback_category)}
+
+// CashFlowTypeCategories: kelompok arus kas per tipe AKUN LAWAN.
+var CashFlowTypeCategories = map[AccountType]CashFlowCategory{
+${ratakan(Object.entries(k.cash_flow.type_categories).map(([t, c]) => ({ kiri: `AccountType${pengenalGo(t)}:`, kanan: `CashFlowCategory${pengenalGo(c)},` })))}
+}
+
+// CashFlowCategoryOf: kelompok arus kas tipe akun lawan MENTAH dari basis
+// data — padanan \`cashFlowCategoryFor\`; tipe tak dipetakan → cadangan.
+func CashFlowCategoryOf(accountType string) CashFlowCategory {
+\tif c, ok := CashFlowTypeCategories[AccountType(accountType)]; ok {
+\t\treturn c
+\t}
+\treturn CashFlowFallbackCategory
+}
+
 // Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
 // \`currency\` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
 // sebelum pembaca Go pertamanya (pemeriksa kesesuaian data).
@@ -1077,6 +1364,27 @@ func IsContractStatus(v string) bool {
 \t\t}
 \t}
 \treturn false
+}
+
+// AgingBucket adalah satu ember Umur Piutang & Umur Utang (#12).
+type AgingBucket string
+
+const (
+${ratakan(k.aging.buckets.map((b) => ({ kiri: `AgingBucket${pengenalGo(b.key)}`, kanan: `AgingBucket = "${b.key}"` })))}
+)
+
+// AgingBucketSpec: satu ember beserta batas atas INKLUSIF-nya (hari kalender
+// Jakarta). Bounded=false hanya untuk ember terakhir, yang menampung sisanya.
+type AgingBucketSpec struct {
+\tKey     AgingBucket
+\tMaxDays int
+\tBounded bool
+}
+
+// AgingBuckets dalam urutan kontrak, dari yang termuda. Umur <= 0 mendarat di
+// ember pertama.
+var AgingBuckets = []AgingBucketSpec{
+${k.aging.buckets.map((b) => b.max_days === undefined ? `\t{Key: AgingBucket${pengenalGo(b.key)}},` : `\t{Key: AgingBucket${pengenalGo(b.key)}, MaxDays: ${b.max_days}, Bounded: true},`).join("\n")}
 }
 `;
 }
@@ -1185,7 +1493,7 @@ function namaBulan(): string[] {
   return Array.from({ length: 12 }, (_, m) => f.format(new Date(Date.UTC(2026, m, 15))));
 }
 
-function bangkitkanTataLetakGo(): string {
+function bangkitkanTataLetakGo(k: KontrakAkuntansi): string {
   const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
 \`src/lib/cost-centers.ts\`, \`@sai/core/constants\`, \`@sai/core/business-date\`, dan
 kamus \`id.json\` — JANGAN DISUNTING TANGAN.
@@ -1274,6 +1582,33 @@ wajib sama dengan lembar yang dihasilkan \`src/lib/xlsx.ts\` — dibuktikan
   const kolomIs = INCOME_STATEMENT_COLUMNS.map(
     (c) => `\t{Header: ${q(INCOME_STATEMENT_HEADERS[c])}, Width: ${INCOME_STATEMENT_WIDTHS[c]}},`
   ).join("\n");
+  /* Arus Kas (tahap 1d, `go-parity`). */
+  const cfl = CASH_FLOW_PRINT_LABELS;
+  const konstArusKas = ratakan([
+    { kiri: "CashFlowSheetName", kanan: `= ${q(SHEET_NAMES["cash-flow"])}` },
+    { kiri: "CashFlowTitle", kanan: `= ${q(STATEMENT_TITLES["cash-flow"])}` },
+    { kiri: "CashFlowOpeningLabel", kanan: `= ${q(cfl.opening)}` },
+    { kiri: "CashFlowClosingLabel", kanan: `= ${q(cfl.closing)}` },
+    { kiri: "CashFlowTotalLabel", kanan: `= ${q(cfl.total)}` },
+    { kiri: "CashFlowEmptyLabel", kanan: `= ${q(cfl.empty)}` },
+    { kiri: "CashFlowSubtotalFormat", kanan: `= ${q(polaGo(cfl.subtotal))}` },
+    { kiri: "CashFlowNoteReconciled", kanan: `= ${q(cashFlowReconciliationNote(true))}` },
+    { kiri: "CashFlowNoteUnreconciled", kanan: `= ${q(cashFlowReconciliationNote(false))}` },
+  ]);
+  /* Nama kelompok CETAK — `labels.group(category, label)` lembar sebar TS
+     memulangkan `label` = `CASH_FLOW_CATEGORY_LABELS[category]`. Dipanggil,
+     bukan dibaca, supaya penimpa `group` kelak ikut sampai ke Go. */
+  const labelKelompok = ratakan(
+    /* Kelompok dari YAML, bukan dari bangkitan TS: berkas ini dibangkitkan
+       dalam putaran yang SAMA dengan bangkitan itu. */
+    k.cash_flow.categories.map((c) => ({
+      kiri: `CashFlowCategory${pengenalGo(c)}:`,
+      kanan: `${q(cfl.group(c as CashFlowCategoryId, CASH_FLOW_CATEGORY_LABELS[c as CashFlowCategoryId]))},`,
+    }))
+  );
+  const kolomCf = CASH_FLOW_COLUMNS.map(
+    (c) => `\t{Header: ${q(CASH_FLOW_HEADERS[c])}, Width: ${CASH_FLOW_WIDTHS[c]}},`
+  ).join("\n");
   const kolomBs = BALANCE_SHEET_COLUMNS.map(
     (c) => `\t{Header: ${q(BALANCE_SHEET_HEADERS[c])}, Width: ${BALANCE_SHEET_WIDTHS[c]}},`
   ).join("\n");
@@ -1323,6 +1658,18 @@ const (
 ${konstLaporan2}
 )
 
+// Arus Kas (tahap 1d): kalimat cetak & anotasi rekonsiliasi dari
+// \`CASH_FLOW_PRINT_LABELS\` / \`cashFlowReconciliationNote\`.
+const (
+${konstArusKas}
+)
+
+// CashFlowCategoryLabels: nama kelompok Arus Kas di DOKUMEN CETAK
+// (\`CASH_FLOW_CATEGORY_LABELS\` lewat \`CASH_FLOW_PRINT_LABELS.group\`).
+var CashFlowCategoryLabels = map[CashFlowCategory]string{
+${labelKelompok}
+}
+
 // Id laporan (katalog TS) yang punya implementasi Go — kunci register
 // src/lib/report-engine.ts.
 const (
@@ -1353,6 +1700,12 @@ var BalanceSheetColumns = []ReportColumn{
 ${kolomBs}
 }
 
+// CashFlowColumns: judul (CASH_FLOW_HEADERS) dan lebar (CASH_FLOW_WIDTHS)
+// kolom Arus Kas, dalam urutan CASH_FLOW_COLUMNS.
+var CashFlowColumns = []ReportColumn{
+${kolomCf}
+}
+
 // MonthNamesID: nama bulan id-ID dari Intl — formatter yang dipakai formatDate.
 var MonthNamesID = [12]string{
 ${namaBulan().map((m) => `\t${q(m)},`).join("\n")}
@@ -1369,6 +1722,133 @@ ${COMPARISON_MODES.map((m) => `\t${`${q(m)}:`.padEnd(Math.max(...COMPARISON_MODE
 // berurutan; di dalam kelompok, urutan tersier. Dibaca jscompat.LocaleCompare.
 var LocaleCompareASCII = []string{
 ${tabelLocaleCompare().map((k) => `\t${q(k)},`).join("\n")}
+}
+`;
+}
+
+// ═══ Tata letak Umur Piutang & Umur Utang (tahap 1d) ═══════════════════════
+//
+// Sumbernya `statement-layout.ts` (kalimat, judul, label ember & status),
+// `report-export.ts` (lebar), dan `report-catalog.ts` (kolom yang bisa dipilih
+// `?cols=` — `resolveColumns`). Kalimat ber-angka dibangkitkan dengan
+// MEMANGGIL fungsinya dengan angka penanda, seperti `polaGo`.
+
+/** Kalimat TS yang menerima BILANGAN BULAT (`${n}`, bukan Intl) → pola `%d`. */
+function polaGoBulat(fn: (n: number) => string): string {
+  const PENANDA = 987654321;
+  const kalimat = fn(PENANDA);
+  if (!kalimat.includes(String(PENANDA))) throw new Error(`pola Go: angka penanda hilang dari ${kalimat}`);
+  return kalimat.replace(/%/g, "%%").replace(String(PENANDA), "%d");
+}
+
+function bangkitkanTataLetakUmurGo(k: KontrakAkuntansi): string {
+  const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
+\`src/lib/report-catalog.ts\`, dan \`contract/accounting.yaml\` — JANGAN DISUNTING TANGAN.
+
+Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
+hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+berkas ini basi (penjaga \`tests/contract-jobs.test.ts\`).
+
+Pembacanya \`internal/ledgerread/aging.go\` (kosakata status pembayaran) dan
+\`internal/document/aging.go\` (lembar sebar Umur Piutang & Umur Utang). Isi
+lembarnya wajib sama dengan \`buildAgingSheet\` — dibuktikan
+\`bun run parity:receivables-xlsx\` dan \`bun run parity:payables-xlsx\`.`
+    .split("\n")
+    .map((b) => `// ${b}`.trimEnd())
+    .join("\n");
+  const q = (v: string) => JSON.stringify(v);
+
+  /* Kolom katalog WAJIB = AGING_COLUMNS, berurutan: Go menyaring kolom
+     tampil (`resolveColumns` → `agingColumns`) dari satu daftar ini. */
+  const kolom = (kind: AgingKind) => {
+    const def = REPORTS.find((r) => r.id === kind);
+    const spesifikasi = def?.columns ?? [];
+    const ids = spesifikasi.map((c) => c.id);
+    if (ids.join(",") !== AGING_COLUMNS.join(",")) {
+      throw new Error(`kolom katalog ${kind} (${ids.join(",")}) ≠ AGING_COLUMNS (${AGING_COLUMNS.join(",")})`);
+    }
+    const judul = agingHeaders(kind);
+    return spesifikasi
+      .map(
+        (c) =>
+          `\t{ID: ${q(c.id)}, Header: ${q(judul[c.id as keyof typeof judul])}, ` +
+          `Width: ${AGING_WIDTHS[c.id as keyof typeof AGING_WIDTHS]}, Fixed: ${c.fixed === true}, ` +
+          `DefaultOn: ${c.defaultOn !== false}},`
+      )
+      .join("\n");
+  };
+
+  const kunciEmber = k.aging.buckets.map((b) => b.key);
+  const kunciLabel = Object.keys(AGING_BUCKET_PRINT_LABELS);
+  if (kunciLabel.join(",") !== kunciEmber.join(",")) {
+    throw new Error(`AGING_BUCKET_PRINT_LABELS (${kunciLabel.join(",")}) ≠ aging.buckets (${kunciEmber.join(",")})`);
+  }
+  const statusBayar = Object.entries(PAYMENT_STATUS_PRINT_LABELS);
+
+  const konst = ratakan([
+    { kiri: "ReceivablesSheetName", kanan: `= ${q(SHEET_NAMES.receivables)}` },
+    { kiri: "ReceivablesTitle", kanan: `= ${q(STATEMENT_TITLES.receivables)}` },
+    { kiri: "PayablesSheetName", kanan: `= ${q(SHEET_NAMES.payables)}` },
+    { kiri: "PayablesTitle", kanan: `= ${q(STATEMENT_TITLES.payables)}` },
+    { kiri: "AgingSummaryLabel", kanan: `= ${q(AGING_SHEET_LABELS.summary)}` },
+    { kiri: "AgingDetailsLabel", kanan: `= ${q(AGING_SHEET_LABELS.details)}` },
+    { kiri: "AgingTotalLabel", kanan: `= ${q(AGING_SHEET_LABELS.total)}` },
+    { kiri: "AgingNoDueDate", kanan: `= ${q(AGING_SHEET_LABELS.noDueDate)}` },
+    { kiri: "AgingIssueAgeFormat", kanan: `= ${q(polaGoBulat(agingIssueAgeText))}` },
+    { kiri: "AgingEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.unpaidDocuments)}` },
+    { kiri: "AgingUndatedNote", kanan: `= ${q(AGING_UNDATED_NOTE)}` },
+    { kiri: "AgingUnresolvedNoteFormat", kanan: `= ${q(polaGoBulat(unresolvedNote))}` },
+    { kiri: "AgingPartyColumn", kanan: `= ${q(AGING_COLUMNS[0])}` },
+    /* \`RECEIVABLES_NO_CUSTOMER\` (receivables.ts) — faktur tanpa pelanggan. */
+    { kiri: "PayablesDocumentNoFormat", kanan: `= ${q(polaGoBulat(payableDocumentNo))}` },
+    { kiri: "ReceivablesNoCustomer", kanan: `= ${q(PARTY_RECAP_NO_PARTY["sales-by-customer"])}` },
+  ]);
+
+  return `${kepala}
+
+package contract
+
+// AgingColumn adalah satu kolom lembar Umur Piutang/Utang: id katalog (nilai
+// \`?cols=\`), judul, lebar, dan aturan pilihnya (\`resolveColumns\`).
+type AgingColumn struct {
+\tID        string
+\tHeader    string
+\tWidth     float64
+\tFixed     bool
+\tDefaultOn bool
+}
+
+// Kalimat cetak lembar Umur Piutang/Utang. Pola ber-%d disusun fmt.Sprintf.
+const (
+${konst}
+)
+
+// ReceivablesColumns: kolom Umur Piutang dalam urutan AGING_COLUMNS.
+var ReceivablesColumns = []AgingColumn{
+${kolom("receivables")}
+}
+
+// PayablesColumns: kolom Umur Utang dalam urutan AGING_COLUMNS.
+var PayablesColumns = []AgingColumn{
+${kolom("payables")}
+}
+
+// AgingBucketLabels: label cetak tiap ember (AGING_BUCKET_PRINT_LABELS).
+var AgingBucketLabels = map[AgingBucket]string{
+${ratakan(k.aging.buckets.map((b) => ({ kiri: `AgingBucket${pengenalGo(b.key)}:`, kanan: `${q(AGING_BUCKET_PRINT_LABELS[b.key as keyof typeof AGING_BUCKET_PRINT_LABELS])},` })))}
+}
+
+// PaymentStatus: status pembayaran turunan (\`deriveStatus\`, receivables.ts) —
+// dihitung saat dibaca, tidak pernah disimpan.
+type PaymentStatus string
+
+const (
+${ratakan(statusBayar.map(([s]) => ({ kiri: `PaymentStatus${pengenalGo(s)}`, kanan: `PaymentStatus = ${q(s)}` })))}
+)
+
+// PaymentStatusLabels: label cetak tiap status (PAYMENT_STATUS_PRINT_LABELS).
+var PaymentStatusLabels = map[PaymentStatus]string{
+${ratakan(statusBayar.map(([s, l]) => ({ kiri: `PaymentStatus${pengenalGo(s)}:`, kanan: `${q(l)},` })))}
 }
 `;
 }
@@ -1543,7 +2023,8 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_GO, isi: bangkitkanGo(kontrak) },
   { jalur: TUJUAN_AKUNTANSI_TS, isi: bangkitkanAkuntansi(kontrakAkuntansi) },
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
-  { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo() },
+  { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo(kontrakAkuntansi) },
+  { jalur: TUJUAN_TATA_LETAK_UMUR_GO, isi: bangkitkanTataLetakUmurGo(kontrakAkuntansi) },
   { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
   { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },
 ];

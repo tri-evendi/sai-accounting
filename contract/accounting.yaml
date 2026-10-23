@@ -27,6 +27,9 @@
 #                       `incomeStatementSectionFor` dan Laba Rugi Go.
 #   • `closing_journal_type` — jenis jurnal penutup tahunan (#555) yang DIBUANG
 #                       Laba Rugi; dibaca `year-close.ts` dan Laba Rugi Go.
+#   • `cash_flow`     — akun kas & kelompok arus kas per tipe akun lawan;
+#                       dibaca `getCashFlow` (`reports.ts`) dan Arus Kas Go
+#                       (`internal/ledgerread/cash_flow.go`).
 #
 #   • `currencies`, `invoice_statuses`, `contract_statuses` — PENGECUALIAN
 #                       yang DISEBUT dari aturan di atas: dibangkitkan atas
@@ -39,6 +42,15 @@
 #                       `scripts/check-data-conformance.ts`. Daftar
 #                       pengecualiannya di `tests/contract-accounting.test.ts`;
 #                       pembaca Go pertama MENCORETNYA dari sana.
+#                       ✅ `currencies` sudah dicoret (23 Okt 2026): Arus Kas
+#                       Go membaca `BaseCurrency` untuk baris valas berkurs 1.
+#                       ✅ `invoice_statuses` & `contract_statuses` dicoret
+#                       bersama Umur Piutang/Utang (`internal/ledgerread/aging.go`,
+#                       status "dibatalkan") — daftar pengecualiannya kini kosong.
+#
+#   • `aging`         — ember Umur Piutang & Umur Utang (#12); dibaca
+#                       `src/lib/receivables.ts` (`agingBucket`) dan
+#                       `internal/ledgerread/aging.go`.
 #
 # Yang SENGAJA BELUM ada: saldo normal per tipe, ambang materialitas. Tidak
 # satu pun laporan Go membacanya —
@@ -158,6 +170,51 @@ income_statement:
 # di situlah Laba Ditahan memperoleh saldonya.
 closing_journal_type: closing
 
+# ── Arus Kas (PSAK 2 / IAS 7, metode langsung) ────────────────────────────
+# Dibaca `getCashFlow` (`src/lib/reports.ts`) dan Arus Kas Go
+# (`internal/ledgerread/cash_flow.go`, tahap 1d).
+#
+#   • `cash_account_type` — sisi KAS buku: gerakan menjadi arus kas hanya bila
+#     ia menyeberangi batas akun bertipe ini.
+#   • `categories` — urutan kelompok di laporan. `fallback_category` WAJIB
+#     salah satunya: tipe yang tidak dipetakan (tipe kontrak baru yang lupa
+#     dipetakan, atau tipe asing di basis data) mendarat di kelompok yang
+#     TERLIHAT, bukan dilipat diam-diam ke operasi.
+#   • `type_categories` — kelompok arus kas per tipe AKUN LAWAN (sisi lain
+#     jurnal), bukan per akun kas itu sendiri. Sengaja TIDAK wajib lengkap:
+#     itulah gunanya `fallback_category`. Generator menolak tipe yang tidak
+#     ada di `account_types`, kelompok asing, dan pemetaan ke kelompok
+#     cadangan (yang hanya boleh dicapai karena TIDAK dipetakan).
+cash_flow:
+  cash_account_type: cash_bank
+  categories:
+    - operating
+    - investing
+    - financing
+    - uncategorised
+  fallback_category: uncategorised
+  type_categories:
+    # Operasi — siklus dagang …
+    revenue: operating
+    other_income: operating
+    cogs: operating
+    expense: operating
+    other_expense: operating
+    # … dan modal kerjanya (waktu dari siklus yang sama).
+    account_receivable: operating
+    account_payable: operating
+    inventory: operating
+    tax_payable: operating
+    other_current_asset: operating
+    other_current_liability: operating
+    # Investasi — aset tidak lancar.
+    fixed_asset: investing
+    accumulated_depreciation: investing
+    other_asset: investing
+    # Pendanaan — cara usaha dibiayai.
+    equity: financing
+    long_term_liability: financing
+
 # ── Mata uang ──────────────────────────────────────────────────────────────
 # Kode ISO 4217 (tiga huruf besar) yang ditransaksikan aplikasi. URUTANNYA
 # BERMAKNA: urutan pilihan formulir. `base` = mata uang buku besar — setiap
@@ -194,3 +251,24 @@ contract_statuses:
   - pending
   - canceled
   - completed
+
+# ── Umur piutang & utang (#12) ─────────────────────────────────────────────
+# Ember umur, berurutan dari yang termuda. `max_days` = batas atas INKLUSIF
+# dalam hari kalender Jakarta (umur 30 masih `b0_30`, 31 sudah `b31_60`);
+# umur <= 0 (belum jatuh tempo / jatuh tempo hari ini) mendarat di ember
+# PERTAMA. Ember TERAKHIR tanpa `max_days` — ia menampung sisanya. Generator
+# menolak batas yang tidak naik tegas, ember tanpa batas di tengah, dan ember
+# terakhir yang berbatas: umur yang tidak masuk ember mana pun adalah piutang
+# yang hilang dari ringkasan di satu bahasa dan tidak di bahasa lain.
+#
+# Label tampilannya ("0–30 hari") tetap di `src/lib/receivables.ts` dan sampai
+# ke Go lewat `report_layout`-nya, bukan dari sini.
+aging:
+  buckets:
+    - key: b0_30
+      max_days: 30
+    - key: b31_60
+      max_days: 60
+    - key: b61_90
+      max_days: 90
+    - key: b90_plus

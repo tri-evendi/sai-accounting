@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime/metrics"
 	"sort"
 	"sync/atomic"
 	"syscall"
@@ -75,6 +76,28 @@ type Runner struct {
 	// bukan dengan membatalkan konteks kerja, yang akan memotong dump atau
 	// ekspor di tengah jalan.
 	Stop context.Context
+
+	// LockQueue, bila tidak nil, adalah antrean yang koneksinya MEMEGANG pagar
+	// jalur tunggal-instans; nil = Queue. Ada untuk jalur yang bekerja lewat
+	// PgBouncer tetapi wajib memagari diri di koneksi LANGSUNG — padanan
+	// "pooler (pagar: langsung)" jalur `ledger` Node. Kunci advisory lewat
+	// pooler mode transaksi tertinggal di backend milik kolam, bukan milik
+	// pelari ini.
+	LockQueue *Queue
+
+	// Beside, bila tidak nil, dijalankan di goroutine sendiri SESUDAH pagar
+	// didapat (jalur tunggal-instans) dan dihentikan bersama pengklaiman
+	// (SIGTERM, Stop, atau pagar hilang). Jalur `schedule` memakainya untuk
+	// denyut yang MENERBITKAN — sesuatu yang hanya boleh dikerjakan
+	// pemegang pagar, dan yang berhenti pada saat yang sama dengan klaimnya.
+	// `Run` menunggunya selesai sebelum pulang.
+	Beside func(ctx context.Context)
+
+	// tryLock: jahitan untuk tes; nil = (LockQueue atau Queue).TryLaneLock.
+	tryLock func(ctx context.Context, lane contract.JobLane) (*LaneLock, bool, error)
+
+	// heapBytes: jahitan untuk tes pagar memori; nil = heap proses ini.
+	heapBytes func() uint64
 }
 
 func (r *Runner) logf(format string, args ...any) {
@@ -137,7 +160,15 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	var pagar *LaneLock
 	if spec.SingleInstance {
-		p, dapat, err := r.Queue.TryLaneLock(ctx, r.Lane)
+		ambil := r.tryLock
+		if ambil == nil {
+			q := r.LockQueue
+			if q == nil {
+				q = r.Queue
+			}
+			ambil = q.TryLaneLock
+		}
+		p, dapat, err := ambil(ctx, r.Lane)
 		if err != nil {
 			return err
 		}
@@ -160,6 +191,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	if pagar != nil {
 		r.jagaPagar(berhenti, batalkanBerhenti, pagar)
+	}
+	if r.Beside != nil {
+		// Ditunggu sebelum `Run` pulang: penerbit yang masih menulis sesudah
+		// pelarinya "berhenti" adalah pemegang pagar yang sudah melepasnya.
+		samping := make(chan struct{})
+		go func() {
+			defer close(samping)
+			r.Beside(berhenti)
+		}()
+		defer func() { <-samping }()
 	}
 
 	// Baris stempel build per jalur — bentuk `buildBanner` TypeScript.
@@ -310,6 +351,16 @@ func (r *Runner) kerjakan(ctx context.Context, me string, job *Job) {
 		}
 	}()
 
+	// Pagar memori jalur (`contract/kinds.yaml` → `memory_fence_mib`): pekerjaan
+	// yang membuat heap proses melewatinya DIBATALKAN dan digagalkan dengan
+	// sebab yang terbaca — sebelum OOM-killer memilih korban, yang di
+	// `svc-integrator` berarti seluruh container beserta dump cadangan yang
+	// sedang berjalan (09 §3.2, risiko 2 & 4).
+	var lewatPagar atomic.Uint64
+	if fence := spec(r.Lane).MemoryFenceMiB; fence > 0 {
+		go r.jagaMemori(kerja, selesai, uint64(fence)<<20, &lewatPagar, batalkanKerja)
+	}
+
 	mulai := time.Now()
 	resultRef, err := handler(Ctx{
 		Ctx:     kerja,
@@ -329,6 +380,22 @@ func (r *Runner) kerjakan(ctx context.Context, me string, job *Job) {
 		// TIDAK dilaporkan sebagai kegagalan pekerjaan: barisnya sudah
 		// dipulangkan dan mungkin sudah diklaim pekerja lain.
 		r.logf("#%d dilepas karena lease hilang", job.ID)
+		return
+	}
+
+	if heap := lewatPagar.Load(); heap > 0 {
+		pesan := fmt.Sprintf("pagar memori jalur %s: heap %d MiB melewati %d MiB — pekerjaan dibatalkan "+
+			"supaya container (dan jalur lain di dalamnya) tidak dibunuh OOM-killer",
+			r.Lane, heap>>20, spec(r.Lane).MemoryFenceMiB)
+		hasil, e := r.Queue.Fail(ctx, job.ID, me, pesan, nil)
+		if e != nil {
+			r.logf("#%d gagal mencatat pagar memori: %v", job.ID, e)
+		}
+		status := "tidak diketahui"
+		if hasil != nil {
+			status = string(hasil.Status)
+		}
+		r.logf("#%d %s DIHENTIKAN pagar memori (%s): %s", job.ID, job.Kind, status, pesan)
 		return
 	}
 
@@ -358,4 +425,48 @@ func (r *Runner) kerjakan(ctx context.Context, me string, job *Job) {
 		return
 	}
 	r.logf("#%d %s selesai (%s)", job.ID, job.Kind, time.Since(mulai).Round(time.Millisecond))
+}
+
+// spec membaca sifat jalur dari kontrak; jalur tak dikenal = tanpa sifat
+// (Run sudah menolaknya lebih dulu).
+func spec(lane contract.JobLane) contract.LaneSpec { return contract.JobLanes[lane] }
+
+// selangPagarMemori: seberapa sering heap diperiksa selama pekerjaan berpagar
+// berjalan. Bukan angka antrean (tidak dibaca Node), jadi ia tidak di kontrak.
+const selangPagarMemori = time.Second
+
+// jagaMemori memeriksa heap tiap selangPagarMemori sampai `selesai`; begitu
+// melewati `batas`, mencatat angkanya di `lewat` dan membatalkan pekerjaan.
+func (r *Runner) jagaMemori(kerja context.Context, selesai <-chan struct{}, batas uint64, lewat *atomic.Uint64, batalkan context.CancelFunc) {
+	baca := r.heapBytes
+	if baca == nil {
+		baca = heapProses
+	}
+	t := time.NewTicker(selangPagarMemori)
+	defer t.Stop()
+	for {
+		select {
+		case <-selesai:
+			return
+		case <-kerja.Done():
+			return
+		case <-t.C:
+			if h := baca(); h > batas {
+				lewat.Store(h)
+				batalkan()
+				return
+			}
+		}
+	}
+}
+
+// heapProses: byte objek heap yang hidup — `runtime/metrics`, bukan
+// `ReadMemStats` (yang menghentikan dunia sejenak di setiap pembacaan).
+func heapProses() uint64 {
+	s := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
+	metrics.Read(s)
+	if s[0].Value.Kind() != metrics.KindUint64 {
+		return 0
+	}
+	return s[0].Value.Uint64()
 }

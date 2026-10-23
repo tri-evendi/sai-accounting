@@ -27,9 +27,7 @@ import { translateFieldErrors } from "@sai/core/i18n/validation";
 import { companyCreateSchema } from "@/lib/validations/company";
 import { enqueueCompanyProvision } from "@/lib/company-provisioning-queue";
 import { getClientIp } from "@/lib/audit";
-import { controlDb } from "@sai/core/control-db";
-import { refuseProvisioning } from "@sai/core/registration";
-import { creationQuotaFor } from "@/lib/entitlement-source";
+import { provisioningVerdict } from "@/lib/company-provisioning-quota";
 
 export async function POST(request: Request) {
   const result = await requireTenantApiPermission("company.create");
@@ -51,22 +49,9 @@ export async function POST(request: Request) {
    * LISENSI, dihitung atas seluruh pemasangan. Yang dibatasi hanya PT BARU —
    * buku yang sudah ada tidak pernah ditutup oleh lisensi (licence.ts).
    */
-  const tenantRow = await controlDb.tenant.findUnique({
-    where: { id: result.tenant.tenantId },
-    select: { status: true, maxCompanies: true, maxUsers: true },
-  });
-  const quota = tenantRow ? await creationQuotaFor(tenantRow) : null;
-  const companyCount = await controlDb.company.count(
-    quota?.scope === "installation" ? undefined : { where: { tenantId: result.tenant.tenantId } }
-  );
-  const refusal =
-    tenantRow && quota
-      ? refuseProvisioning({
-          status: tenantRow.status,
-          maxCompanies: quota.maxCompanies,
-          companyCount,
-        })
-      : "tenant_not_active";
+  /* Pembacaannya bersama pekerja `company.provision`, yang mengulanginya
+     sesaat sebelum basis data dibuat (`company-provisioning-quota.ts`). */
+  const { refusal, quota } = await provisioningVerdict(result.tenant.tenantId);
   if (refusal) {
     const { t } = await getRequestI18n();
     return NextResponse.json(

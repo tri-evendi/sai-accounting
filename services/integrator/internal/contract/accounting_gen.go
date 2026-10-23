@@ -161,6 +161,60 @@ var IncomeStatementCategoryDefaultSections = map[AccountCategory]IncomeStatement
 // Rugi MEMBUANGNYA; Neraca dan Neraca Saldo memasukkannya.
 const ClosingJournalType = "closing"
 
+// CashAccountType: tipe akun sisi KAS — arus kas adalah gerakan yang
+// menyeberangi batas akun bertipe ini.
+const CashAccountType = AccountTypeCashBank
+
+// CashFlowCategory adalah satu kelompok Arus Kas (PSAK 2 / IAS 7).
+type CashFlowCategory string
+
+const (
+	CashFlowCategoryOperating     CashFlowCategory = "operating"
+	CashFlowCategoryInvesting     CashFlowCategory = "investing"
+	CashFlowCategoryFinancing     CashFlowCategory = "financing"
+	CashFlowCategoryUncategorised CashFlowCategory = "uncategorised"
+)
+
+// CashFlowCategories dalam urutan kelompok laporan.
+var CashFlowCategories = []CashFlowCategory{
+	CashFlowCategoryOperating,
+	CashFlowCategoryInvesting,
+	CashFlowCategoryFinancing,
+	CashFlowCategoryUncategorised,
+}
+
+// CashFlowFallbackCategory: kelompok tipe akun lawan yang TIDAK dipetakan.
+const CashFlowFallbackCategory = CashFlowCategoryUncategorised
+
+// CashFlowTypeCategories: kelompok arus kas per tipe AKUN LAWAN.
+var CashFlowTypeCategories = map[AccountType]CashFlowCategory{
+	AccountTypeRevenue:                 CashFlowCategoryOperating,
+	AccountTypeOtherIncome:             CashFlowCategoryOperating,
+	AccountTypeCogs:                    CashFlowCategoryOperating,
+	AccountTypeExpense:                 CashFlowCategoryOperating,
+	AccountTypeOtherExpense:            CashFlowCategoryOperating,
+	AccountTypeAccountReceivable:       CashFlowCategoryOperating,
+	AccountTypeAccountPayable:          CashFlowCategoryOperating,
+	AccountTypeInventory:               CashFlowCategoryOperating,
+	AccountTypeTaxPayable:              CashFlowCategoryOperating,
+	AccountTypeOtherCurrentAsset:       CashFlowCategoryOperating,
+	AccountTypeOtherCurrentLiability:   CashFlowCategoryOperating,
+	AccountTypeFixedAsset:              CashFlowCategoryInvesting,
+	AccountTypeAccumulatedDepreciation: CashFlowCategoryInvesting,
+	AccountTypeOtherAsset:              CashFlowCategoryInvesting,
+	AccountTypeEquity:                  CashFlowCategoryFinancing,
+	AccountTypeLongTermLiability:       CashFlowCategoryFinancing,
+}
+
+// CashFlowCategoryOf: kelompok arus kas tipe akun lawan MENTAH dari basis
+// data — padanan `cashFlowCategoryFor`; tipe tak dipetakan → cadangan.
+func CashFlowCategoryOf(accountType string) CashFlowCategory {
+	if c, ok := CashFlowTypeCategories[AccountType(accountType)]; ok {
+		return c
+	}
+	return CashFlowFallbackCategory
+}
+
 // Currency adalah kode ISO 4217 yang ditransaksikan aplikasi (kolom
 // `currency` dokumen). Dibangkitkan atas keputusan pemilik 23 Okt 2026,
 // sebelum pembaca Go pertamanya (pemeriksa kesesuaian data).
@@ -235,4 +289,31 @@ func IsContractStatus(v string) bool {
 		}
 	}
 	return false
+}
+
+// AgingBucket adalah satu ember Umur Piutang & Umur Utang (#12).
+type AgingBucket string
+
+const (
+	AgingBucketB030    AgingBucket = "b0_30"
+	AgingBucketB3160   AgingBucket = "b31_60"
+	AgingBucketB6190   AgingBucket = "b61_90"
+	AgingBucketB90Plus AgingBucket = "b90_plus"
+)
+
+// AgingBucketSpec: satu ember beserta batas atas INKLUSIF-nya (hari kalender
+// Jakarta). Bounded=false hanya untuk ember terakhir, yang menampung sisanya.
+type AgingBucketSpec struct {
+	Key     AgingBucket
+	MaxDays int
+	Bounded bool
+}
+
+// AgingBuckets dalam urutan kontrak, dari yang termuda. Umur <= 0 mendarat di
+// ember pertama.
+var AgingBuckets = []AgingBucketSpec{
+	{Key: AgingBucketB030, MaxDays: 30, Bounded: true},
+	{Key: AgingBucketB3160, MaxDays: 60, Bounded: true},
+	{Key: AgingBucketB6190, MaxDays: 90, Bounded: true},
+	{Key: AgingBucketB90Plus},
 }

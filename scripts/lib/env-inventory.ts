@@ -293,6 +293,7 @@ export function scriptFiles(name: string, seen = new Set<string>()): { js: strin
  */
 export const MIGRATE_TOOLBOX = [
   "db:migrate:all",
+  "db:migrate:release",
   "db:migrate",
   "db:migrate:control",
   "db:migrate:platform",

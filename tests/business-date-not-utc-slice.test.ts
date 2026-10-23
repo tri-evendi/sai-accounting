@@ -42,6 +42,10 @@ const DIIZINKAN: Record<string, { jumlah: number; alasan: string }> = {
     jumlah: 1,
     alasan: "implementasi `businessISODate` itu sendiri — instan digeser +07:00 lebih dulu",
   },
+  "packages/core/src/schedule-due.ts": {
+    jumlah: 1,
+    alasan: "butir kunci idempotensi denyut — UTC menurut `contract/kinds.yaml`; kembaran Go dibuktikan fikstur bersama",
+  },
   "packages/core/src/export-limits.ts": {
     jumlah: 1,
     alasan: "aritmetika kalender murni atas teks ISO yang diurai sebagai tengah malam UTC",
@@ -97,10 +101,6 @@ const DIIZINKAN: Record<string, { jumlah: number; alasan: string }> = {
   "src/lib/tenant-move.ts": {
     jumlah: 1,
     alasan: "stempel nama basis data yang dipensiunkan — teknis, bukan tanggal bisnis",
-  },
-  "scripts/publish-backup.ts": {
-    jumlah: 1,
-    alasan: "butir kunci idempotensi cadangan harian (UTC)",
   },
   "scripts/report-stack-count.ts": {
     jumlah: 1,

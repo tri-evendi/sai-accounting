@@ -77,16 +77,18 @@ export const JOB_KINDS: Readonly<Record<JobKind, JobKindSpec>> = {
 export interface JobLaneSpec {
   /** Lebih dari satu proses jalur ini adalah kesalahan konfigurasi. */
   singleInstance: boolean;
+  /** Pagar memori per pekerjaan, MiB heap; 0 = tanpa pagar. */
+  memoryFenceMiB: number;
 }
 
 export const JOB_LANES: Readonly<Record<JobLane, JobLaneSpec>> = {
-  bulk: { singleInstance: false },
-  integration: { singleInstance: false },
-  interactive: { singleInstance: false },
-  ledger: { singleInstance: true },
-  schedule: { singleInstance: true },
-  schema: { singleInstance: true },
-  tenant: { singleInstance: true },
+  bulk: { singleInstance: false, memoryFenceMiB: 512 },
+  integration: { singleInstance: false, memoryFenceMiB: 0 },
+  interactive: { singleInstance: false, memoryFenceMiB: 0 },
+  ledger: { singleInstance: true, memoryFenceMiB: 0 },
+  schedule: { singleInstance: true, memoryFenceMiB: 0 },
+  schema: { singleInstance: true, memoryFenceMiB: 0 },
+  tenant: { singleInstance: true, memoryFenceMiB: 0 },
 };
 
 /** `kind` milik setiap jalur — klausa `WHERE kind IN (…)` pekerjanya. */
@@ -98,6 +100,29 @@ export const KINDS_BY_LANE: Readonly<Record<JobLane, readonly JobKind[]>> = {
   schedule: ["schedule.tick"],
   schema: ["schema.migrate"],
   tenant: ["tenant.backup", "tenant.conformance"],
+};
+
+export type ScheduledKind =
+  | "ledger.recurring"
+  | "tenant.backup";
+
+/** Butir kunci idempotensi denyut — SELALU UTC (`contract/kinds.yaml`). */
+export type ScheduleGrain = "hour" | "day";
+
+/** Penerbit kind berjadwal — tepat SATU bahasa. */
+export type SchedulePublisher = "node" | "go";
+
+export interface ScheduleSpec {
+  grain: ScheduleGrain;
+  /** Satu baris per perusahaan aktif (`<kind>:<id>:<butir>`), atau satu untuk seluruh pemasangan. */
+  perCompany: boolean;
+  publisher: SchedulePublisher;
+}
+
+/** Kind yang diterbitkan DENYUT, beserta penerbitnya. Dibaca `@sai/core/schedule-due`. */
+export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
+  "ledger.recurring": { grain: "hour", perCompany: true, publisher: "node" },
+  "tenant.backup": { grain: "day", perCompany: false, publisher: "node" },
 };
 
 export const isJobKind = (v: string): v is JobKind =>

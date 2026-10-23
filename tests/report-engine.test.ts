@@ -33,14 +33,21 @@ describe("register mesin laporan", () => {
     expect(reportEngine("trial-balance")).not.toBe("ts");
   });
 
-  it("setiap entri adalah laporan yang PUNYA jalur berkas", () => {
+  it("`go` hanya untuk laporan yang PUNYA jalur berkas", () => {
     /* Laporan tanpa `payloadKind` tidak punya berkas yang diunduh — memindah
-       "mesin berkas"-nya adalah keputusan tentang sesuatu yang tidak ada. */
-    for (const [id] of ENTRIES) {
+       "mesin berkas"-nya ke `go` adalah keputusan tentang sesuatu yang tidak
+       ada. Laporan seperti itu BOLEH `go-parity` (23 Okt 2026, Laporan
+       Perubahan Ekuitas): implementasi Go kedua yang hidup berdampingan dengan
+       layar TS wajib tercatat di register beserta skrip paritas ANGKA-nya —
+       menyembunyikannya dari register justru kelas kegagalan yang register ini
+       cegah (09 §3.3). */
+    for (const [id, e] of ENTRIES) {
       const def = REPORTS.find((r) => r.id === id);
       expect(def, id).toBeDefined();
-      expect(isExportable(def!), id).toBe(true);
+      if (!isExportable(def!)) expect(e.engine, `${id} tanpa berkas`).toBe("go-parity");
     }
+    expect(isExportable(REPORTS.find((r) => r.id === "equity-changes")!)).toBe(false);
+    expect(reportEngine("equity-changes")).toBe("go-parity");
   });
 
   it("implementasi Go yang disebut ADA", () => {
@@ -88,9 +95,11 @@ describe("register mesin laporan", () => {
       expect(REPORT_ENGINES[id]!.parityProven, id).toEqual({ date: "2026-10-22", books: 17 });
       expect(exportJobKind(id), id).toBe("report.export_go");
     }
-    /* Setiap laporan Go punya skrip paritas ISI berkas juga (`-xlsx`) —
-       pelajaran Neraca Saldo: angka setara belum berarti berkas setara. */
+    /* Setiap laporan BERBERKAS di register punya skrip paritas ISI berkas
+       juga (`-xlsx`) — pelajaran Neraca Saldo: angka setara belum berarti
+       berkas setara. Laporan tanpa berkas tidak punya isi untuk dibandingkan. */
     for (const [id, e] of ENTRIES) {
+      if (!isExportable(REPORTS.find((r) => r.id === id)!)) continue;
       expect(PKG.scripts[`${e.parityScript}-xlsx`], `${id}: ${e.parityScript}-xlsx`).toBeDefined();
     }
   });
@@ -208,10 +217,14 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     }
   });
 
-  it("pelari Go punya penghasil Laba Rugi & Neraca, tetapi register yang memutuskan", () => {
+  it("pelari Go punya penghasil Laba Rugi, Neraca & Arus Kas, tetapi register yang memutuskan", () => {
     const runner = baca("services", "integrator", "internal", "interactivelane", "runner.go");
     expect(runner).toContain("case contract.ReportIncomeStatement:");
     expect(runner).toContain("case contract.ReportBalanceSheet:");
+    expect(runner).toContain("case contract.ReportCashFlow:");
+    /* Laporan tanpa berkas tidak punya penghasil — cabangnya akan menjadi
+       kode mati yang terlihat hidup. */
+    expect(runner).not.toContain("case contract.ReportEquityChanges:");
     /* Penolakan register mendahului percabangan per laporan. */
     expect(runner.indexOf("contract.GoEngineReports[m.ReportID]")).toBeLessThan(
       runner.indexOf("case contract.ReportIncomeStatement:")
@@ -241,6 +254,39 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     /* Himpunannya DIBANGKITKAN dari register ini (`contract:gen --cek`). */
     const gen = baca("services", "integrator", "internal", "contract", "report_layout_gen.go");
     for (const id of GO_IDS) expect(gen, id).toContain(`"${id}"`);
+  });
+
+  it("Arus Kas (`go-parity`): muatan berperiode TANPA pembanding, halaman sudah mengirim asalnya", () => {
+    const report = REPORTS.find((r) => r.id === "cash-flow")!;
+    const now = new Date(2026, 9, 23, 10, 0, 0);
+    const p = goExportPayloadShape(report, { from: "2026-01-01", to: "2026-03-31", compare: "previous_year" }, now);
+    const r = resolvePeriod("2026-01-01", "2026-03-31", now);
+    /* `compare` DIBUANG: halaman Arus Kas tidak membacanya, dan pelari Go
+       menolak muatan Arus Kas yang membawanya. */
+    expect(p.params).toEqual({ from: r.fromISO, to: r.toISO });
+    expect(p.fromInstant).toBe(r.from.toISOString());
+    expect(p.toInstant).toBe(r.to.toISOString());
+    expect(p.priorFromInstant).toBeUndefined();
+    /* Selagi `go-parity`, penerbit Go menolaknya — register yang memutuskan. */
+    expect(() => goExportPayload(report, {}, now)).toThrow(/bukan milik mesin Go/);
+    expect(COMPARABLE_REPORTS).not.toContain("cash-flow");
+  });
+
+  it("halaman laporan BERBERKAS di register (`go-parity` maupun `go`) sudah mengirim asalnya", () => {
+    /* Supaya peralihan `go-parity` → `go` hanya menyunting register: halaman
+       yang belum mengirim `sumber` akan menjawab 400 di hari peralihan. */
+    for (const [id] of ENTRIES) {
+      const r = REPORTS.find((x) => x.id === id)!;
+      if (!isExportable(r)) continue;
+      const halaman = baca(
+        "src", "app", "(app)", "(dashboard)", "t", "[tenantSlug]", "[companySlug]",
+        ...(r.href ?? "").split("/").filter(Boolean),
+        "page.tsx"
+      );
+      expect(halaman, `${r.href}/page.tsx`).toMatch(
+        new RegExp(`<StatementExcelButton[\\s\\S]*?sumber=\\{\\{ reportId: "${id}"`)
+      );
+    }
   });
 
   it("halaman laporan `go` mengirim asalnya ke tombol Excel", () => {

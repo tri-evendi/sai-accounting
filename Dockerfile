@@ -171,8 +171,9 @@ RUN NODE_OPTIONS="--max-old-space-size=768" bun run build:operator
 # beserta hash kata sandinya, dan satu-satunya jalan pulang adalah cadangan.
 # Container yang naik otomatis tidak boleh punya kemampuan itu.
 #
-# `db:migrate:all` aman terhadap urutan: ia menerapkan migration kendali lebih
-# dulu, lalu HANYA ke perusahaan yang SUDAH TERDAFTAR di registry. Pemasangan
+# `db:migrate:release` (dan `db:migrate:all`) aman terhadap urutan: ia
+# menerapkan migration kendali lebih dulu, lalu HANYA ke perusahaan yang SUDAH
+# TERDAFTAR di registry. Pemasangan
 # yang belum diadopsi tidak punya satu pun perusahaan terdaftar, jadi tidak ada
 # yang disentuh — skripnya berhenti dan menyebutkan perintah adopsi yang harus
 # dijalankan lebih dulu.
@@ -229,7 +230,13 @@ LABEL org.opencontainers.image.version=$APP_VERSION \
 # BARU mewarisi pemilik itu pada pemasangan pertamanya. Volume yang SUDAH ADA
 # tidak — itu langkah sekali-jalan di PRODUCTION.md §Env allowlist.
 USER node
-CMD ["bun", "run", "db:migrate:all"]
+# `db:migrate:release`, bukan `db:migrate:all` (09 §6, 23 Okt 2026): kendali &
+# platform tetap MEMBLOKIR; buku yang gagal sebagian TIDAK menahan rilis —
+# buku itu ditutup gerbang skema per perusahaan, yang lain dilayani. Tidak
+# satu buku pun di kepala = tetap keluar 1. CMD inilah yang dijalankan ulang
+# setiap `docker compose up -d` lewat `depends_on: migrate`, jadi mode KETAT di
+# sini berarti satu buku rusak menahan SETIAP `up -d` berikutnya.
+CMD ["bun", "run", "db:migrate:release"]
 
 
 # ─── Cadangan (dipakai service `backup` di compose) ──────────
@@ -336,11 +343,11 @@ COPY services/integrator/ ./
 # pembangun dari biner; `-s -w` membuang tabel simbol debug (~30% ukuran).
 #
 # SATU biner sejak "1 image = 1 container" (keputusan pemilik 22 Okt 2026):
-# `svc-integrator` menjalankan jalur `tenant` (cadangan) DAN jalur
-# `interactive` sisi Go (lembar sebar laporan ber-`engine: "go"`, tahap 1d)
-# dalam satu proses. `cmd/tenant` dan `cmd/interactive` tetap ada untuk
-# mengembangkan satu jalur, tapi TIDAK masuk image — biner yang tidak
-# dijalankan compose mana pun hanya permukaan.
+# `svc-integrator` menjalankan jalur `tenant` (cadangan), jalur `interactive`
+# sisi Go (lembar sebar laporan ber-`engine: "go"`, tahap 1d), dan jalur
+# `schedule` (denyut penerbitan, Okt 2026) dalam satu proses. `cmd/tenant` dan
+# `cmd/interactive` tetap ada untuk mengembangkan satu jalur, tapi TIDAK
+# masuk image — biner yang tidak dijalankan compose mana pun hanya permukaan.
 # Stempel build DITANAM di biner (`-ldflags -X`, paket `internal/buildinfo`) —
 # satu-satunya tahap yang membutuhkannya sebelum `RUN`. Biner yang disalin ke
 # mana pun tetap tahu build-nya; `ENV` di tahap `integrator` hanya cadangan.

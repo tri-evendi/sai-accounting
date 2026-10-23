@@ -7,7 +7,9 @@
  * == KENAPA SKRIP INI ADA, PADAHAL DENYUTNYA SUDAH BENAR ===================
  * Tiga denyut — cadangan (#374), penjadwal (#373), kesesuaian — sudah menjawab
  * dengan tepat, dan `/api/health` sudah mengeluarkan jawabannya. Yang tidak ada
- * adalah PEMBACANYA.
+ * adalah PEMBACANYA. (Denyut keempat, penerbit Go jalur `schedule`, ikut dibaca
+ * begitu kontrak menyerahkan penerbitan ke Go — komponen `penerbit-go`, diam
+ * selama Node penerbitnya.)
  *
  * Buktinya terukur: produksi menjalankan 54 putaran cadangan yang gagal
  * berturut-turut, penjadwal pernah menggantung dua jam, dan 1.439 temuan
@@ -37,8 +39,16 @@ import { PrismaClient as ControlClient } from "@sai/db/client/control";
 import { buatAdapter } from "@sai/db/adapter";
 import { backupHealth } from "../src/lib/backup-heartbeat";
 import { decideBackupAlert } from "../src/lib/backup-watchdog";
-import { decideSchedulerAlert, decideConformanceAlert } from "../src/lib/health-watchdog";
-import { schedulerHealth } from "@sai/core/scheduler-heartbeat";
+import {
+  decideConformanceAlert,
+  decideMigrationsAlert,
+  decideScheduleLaneAlert,
+  decideSchedulerAlert,
+} from "../src/lib/health-watchdog";
+import { MIGRATION_TERAKHIR } from "@sai/core/migration-manifest";
+import { migrationsHealth } from "@sai/core/schema-version";
+import { scheduleLaneHealth, schedulerHealth } from "@sai/core/scheduler-heartbeat";
+import { goPublishedKinds } from "@sai/core/schedule-due";
 import { conformanceHealth } from "../src/lib/conformance-heartbeat";
 import { sendMail } from "@sai/platform/mailer-core";
 
@@ -72,6 +82,19 @@ function penerima(): string | null {
 interface Komponen {
   nama: string;
   putusan: import("../src/lib/backup-watchdog").WatchdogDecision;
+}
+
+/** Slug buku yang gagal dari `schema_migration_runs.details` — teks bebas, jadi diurai hati-hati. */
+function bukuGagal(details: string | null): string[] {
+  if (!details) return [];
+  try {
+    const d = JSON.parse(details) as { companies?: { slug?: unknown; outcome?: unknown }[] };
+    return (d.companies ?? [])
+      .filter((c) => c.outcome === "failed" && typeof c.slug === "string")
+      .map((c) => c.slug as string);
+  } catch {
+    return [];
+  }
 }
 
 async function main() {
@@ -144,6 +167,32 @@ async function main() {
       }),
     });
 
+    /* ── 2b. Penerbit Go (jalur `schedule`, svc-integrator) ─────────────── */
+    /* Hanya bila kontrak menyerahkan sedikitnya satu kind berjadwal ke Go —
+       selama Node penerbit semuanya, komponen ini `node` dan DIAM. Denyut
+       penjadwal di atas TIDAK menangkap penerbit Go yang mati: putaran Node
+       tetap selesai tepat waktu sambil melewati langkahnya. */
+    const milikGo = goPublishedKinds();
+    const tickTerakhir =
+      milikGo.length === 0
+        ? null
+        : await control.job
+            .findFirst({
+              where: { kind: "schedule.tick", status: "done" },
+              orderBy: { finishedAt: "desc" },
+              select: { finishedAt: true },
+            })
+            .catch(() => null);
+    const penerbitGo = scheduleLaneHealth(tickTerakhir?.finishedAt ?? null, milikGo);
+    komponen.push({
+      nama: "penerbit-go",
+      putusan: decideScheduleLaneAlert(
+        penerbitGo.status === "node"
+          ? { status: "node", goKinds: [], lastRunAt: null, ageMinutes: null, staleAfterMinutes: 0 }
+          : penerbitGo
+      ),
+    });
+
     /* ── 3. Kesesuaian data ───────────────────────────────────────────────── */
     const kesesuaian = conformanceHealth(
       await control.conformanceRun.findFirst({
@@ -163,6 +212,27 @@ async function main() {
       }),
     });
 
+    /* ── 4. Migration buku (09 §6) ───────────────────────────────────────── */
+    /* Buku yang tertinggal tidak lagi menahan rilis — jadi ia juga tidak lagi
+       TERLIHAT di rilis. Komponen ini yang membuatnya terdengar. Tabelnya lahir
+       di migration kendali 0011; sebelum itu putusannya `unknown` (diam). */
+    const putaranMigrasi = await control.schemaMigrationRun
+      .findFirst({
+        orderBy: { id: "desc" },
+        select: { status: true, targetMigration: true, finishedAt: true, details: true },
+      })
+      .catch(() => null);
+    komponen.push({
+      nama: "migrasi-buku",
+      putusan: decideMigrationsAlert({
+        status: migrationsHealth(putaranMigrasi, MIGRATION_TERAKHIR.company),
+        expected: MIGRATION_TERAKHIR.company,
+        lastTarget: putaranMigrasi?.targetMigration ?? null,
+        lastRunAt: putaranMigrasi?.finishedAt.toISOString() ?? null,
+        failedSlugs: bukuGagal(putaranMigrasi?.details ?? null),
+      }),
+    });
+
     log(
       komponen
         .map((k) => `${k.nama}=${k.putusan.alert ? k.putusan.fingerprint : "ok"}`)
@@ -171,7 +241,7 @@ async function main() {
 
     const berbunyi = komponen.filter((k) => k.putusan.alert);
     if (berbunyi.length === 0) {
-      log("ketiganya sehat — tidak ada yang dikirim.");
+      log("semuanya sehat — tidak ada yang dikirim.");
       return;
     }
 

@@ -58,6 +58,8 @@ export interface ReportPayloadParams {
   month?: string;
   costCenter?: string;
   cols?: string;
+  /** Umur Piutang/Utang: `"1"` = hanya dokumen jatuh tempo (`?overdue=1` halaman). */
+  overdue?: string;
   /**
    * Kolom pembanding Laba Rugi & Neraca (#557) — `?compare=` halaman,
    * `preceding` | `previous_year`. Nilai lain DIABAIKAN (`parseComparison`),
@@ -214,7 +216,7 @@ export function agingPayload(
 ): Extract<StatementPayload, { kind: "receivables" | "payables" }> {
   return {
     kind,
-    period: `Per ${formatDate(asOf)}`,
+    period: asOfPeriodLabel(formatDate(asOf)),
     rows: rows.map((r) => ({
       partyName: r.partyName,
       documentNo: r.documentNo,
@@ -336,7 +338,8 @@ export async function buildReportPayload(
   report: ExportableReport,
   params: ReportPayloadParams,
   /**
-   * Klien buku untuk TIGA laporan keuangan (Neraca Saldo, Neraca, Laba Rugi).
+   * Klien buku untuk laporan yang punya padanan Go (Neraca Saldo, Neraca, Laba
+   * Rugi, Arus Kas, Umur Piutang, Umur Utang).
    * Bawaannya klien perusahaan biasa; skrip paritas tahap 1d menyerahkan klien
    * transaksi READ ONLY supaya perbandingan atas buku produksi terbukti hanya
    * membaca. Laporan lain mengabaikannya.
@@ -421,7 +424,9 @@ export async function buildReportPayload(
 
     case "cash-flow": {
       const { from, to } = resolvePeriod(params.from, params.to);
-      const cf = await getCashFlow(from, to);
+      /* Klien diteruskan sejak tahap 1d (Arus Kas `go-parity`): skrip paritas
+         menyerahkan klien transaksi READ ONLY, dan berkas emas klien palsu. */
+      const cf = await getCashFlow(from, to, client);
       return {
         kind: "cash-flow",
         period: periodLabel(from, to, null),
@@ -525,10 +530,17 @@ export async function buildReportPayload(
     case "receivables":
     case "payables": {
       const { asOf } = resolveAsOf(params.asOf);
+      /* `?overdue=1` — saringan "hanya jatuh tempo" halaman piutang/utang,
+         dengan bunyi yang SAMA dengan URL halamannya. Tanpa ini, ekspor yang
+         dihitung ulang dari parameter (antrean di atas ambang baris; lembar
+         Go, tahap 1d) memuat SEMUA dokumen sementara layarnya hanya yang
+         jatuh tempo. Klien buku diteruskan — skrip paritas menyerahkan
+         transaksi READ ONLY. */
+      const query = { asOf, overdueOnly: params.overdue === "1" };
       const result =
         report.payloadKind === "receivables"
-          ? await getReceivables({ asOf })
-          : await getPayables({ asOf });
+          ? await getReceivables(query, client)
+          : await getPayables(query, client);
       return agingPayload(
         report.payloadKind,
         asOf,

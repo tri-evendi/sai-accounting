@@ -88,3 +88,34 @@ export function schedulerHealth(
     staleAfterMinutes,
   };
 }
+
+/**
+ * DENYUT PENERBIT GO — jalur `schedule` di `svc-integrator` (09 §3.2).
+ *
+ * Denyut di atas diukur dari `scheduler_runs`, yang ditulis putaran NODE.
+ * Begitu sebuah kind berjadwal berpindah penerbit ke Go
+ * (`contract/kinds.yaml` → `schedule.publisher: go`), putaran Node itu tetap
+ * berdetak — langkahnya hanya melewati dirinya — sementara yang sungguh
+ * menerbitkan adalah proses LAIN. Penerbit Go yang mati karenanya tidak
+ * terlihat di denyut mana pun: antrean kosong, umur tertua nol, penjadwal
+ * `ok`. Itulah lubang yang `queue-health.ts` sebut terbesar di seluruh
+ * rancangan, kini untuk penerbit kedua.
+ *
+ * Jejak denyut Go adalah baris `schedule.tick` ber-status `done` (pohon Go
+ * tidak boleh menulis tabel jejak lain) — satu per jam UTC. Ambangnya SAMA
+ * dengan penjadwal Node: dua jam, dua denyut yang hilang berturut-turut.
+ *
+ * `node` = tidak ada kind milik Go; tidak ada yang perlu diperiksa, DIAM.
+ */
+export type ScheduleLaneHealth =
+  | { status: "node"; goKinds: readonly string[] }
+  | (SchedulerHealth & { goKinds: readonly string[] });
+
+export function scheduleLaneHealth(
+  lastTickAt: Date | null | undefined,
+  goKinds: readonly string[],
+  now: Date = new Date()
+): ScheduleLaneHealth {
+  if (goKinds.length === 0) return { status: "node", goKinds };
+  return { ...schedulerHealth(lastTickAt, now), goKinds };
+}

@@ -1,7 +1,7 @@
 /**
  * Financial reports derived from journal lines (IDR base):
  * Neraca Saldo (trial balance), Laba/Rugi (income statement), Neraca (balance sheet),
- * Arus Kas (cash flow).
+ * Arus Kas (cash flow), Laporan Perubahan Ekuitas.
  * All balances are aggregated from posted journals so they always reconcile with the ledger.
  *
  * ── IDR base only ────────────────────────────────────────────────────────────
@@ -18,18 +18,24 @@
  * read-only report that must mirror the books.
  */
 import {
+  BASE_CURRENCY,
+  CASH_ACCOUNT_TYPE,
+  CASH_FLOW_CATEGORY_KEYS,
+  CASH_FLOW_FALLBACK_CATEGORY,
+  CASH_FLOW_TYPE_CATEGORIES,
   CATEGORY_STATEMENT_SIDE,
   INCOME_STATEMENT_CATEGORY_DEFAULT_SECTIONS,
   INCOME_STATEMENT_TYPE_SECTIONS,
   MONEY_SCALE,
   type AccountCategory,
   type AccountType,
+  type CashFlowCategory,
   type IncomeStatementSectionKey,
 } from "@sai/core/generated/accounting";
 import { prisma } from "@/lib/prisma";
 import { accountCategoryFor } from "@/lib/accounting";
 import { costCenterLineWhere, type CostCenterFilter } from "@/lib/cost-centers";
-import { balanceSheetEquityTotal } from "@/lib/statement-layout";
+import { CASH_FLOW_CATEGORY_LABELS, balanceSheetEquityTotal } from "@/lib/statement-layout";
 import { fiscalYearBounds, fiscalYearOf, NOT_CLOSING } from "@/lib/year-close";
 import { buildEquityStatement, type EquityStatement } from "@/lib/equity-statement";
 
@@ -442,10 +448,16 @@ export async function getBalanceSheet(asOf?: Date, client = prisma) {
  * "cash flow" only when it crosses this boundary — a transfer between two cash
  * accounts nets to zero inside its own journal and is correctly reported as no
  * flow at all.
+ *
+ * ⚠ TAHAP 1d: the cash type, the categories, their order, and the per-type
+ * mapping below are GENERATED from `contract/accounting.yaml` (`cash_flow`) —
+ * the Go implementation (`services/integrator/internal/ledgerread/cash_flow.go`)
+ * reads the same contract, and `bun run parity:cash-flow` compares both
+ * against real books. Changing the rule = editing the YAML + `contract:gen`.
  */
-const CASH_TYPE = "cash_bank";
+const CASH_TYPE = CASH_ACCOUNT_TYPE;
 
-export type CashFlowCategory = "operating" | "investing" | "financing" | "uncategorised";
+export type { CashFlowCategory };
 
 /**
  * ── Categorisation rule (stated explicitly, per PSAK 2 / IAS 7) ──────────────
@@ -466,58 +478,27 @@ export type CashFlowCategory = "operating" | "investing" | "financing" | "uncate
  *   financing  — funding the business: owner equity contributions/withdrawals
  *                and long-term borrowings.
  *
- * Any account type not named below falls to `uncategorised`. That bucket is
- * deliberate: a type added to `ACCOUNT_TYPES` later, or a hand-posted account
- * with an unrecognised type, must show up as its own visible section rather
- * than being silently dropped or quietly folded into operating — which would
- * misstate operating cash flow, the single most-read line in this report.
+ * Any account type not mapped (`CASH_FLOW_TYPE_CATEGORIES`) falls to
+ * `uncategorised` (`CASH_FLOW_FALLBACK_CATEGORY`). That bucket is deliberate: a
+ * type added to `ACCOUNT_TYPES` later, or a hand-posted account with an
+ * unrecognised type, must show up as its own visible section rather than being
+ * silently dropped or quietly folded into operating — which would misstate
+ * operating cash flow, the single most-read line in this report.
  */
-const CATEGORY_BY_ACCOUNT_TYPE: Record<string, CashFlowCategory> = {
-  // Operating — trading cycle …
-  revenue: "operating",
-  other_income: "operating",
-  cogs: "operating",
-  expense: "operating",
-  other_expense: "operating",
-  // … and its working capital (timing of the same cycle).
-  account_receivable: "operating",
-  account_payable: "operating",
-  inventory: "operating",
-  tax_payable: "operating",
-  other_current_asset: "operating",
-  other_current_liability: "operating",
-  // Investing — non-current assets.
-  fixed_asset: "investing",
-  accumulated_depreciation: "investing",
-  other_asset: "investing",
-  // Financing — how the business is funded.
-  equity: "financing",
-  long_term_liability: "financing",
-};
-
-/** Category of a cash movement, from its counter-account type. Unknown ⇒ visible bucket. */
 export function cashFlowCategoryFor(accountType: string): CashFlowCategory {
-  return CATEGORY_BY_ACCOUNT_TYPE[accountType] ?? "uncategorised";
+  return (
+    CASH_FLOW_TYPE_CATEGORIES[accountType as AccountType] ?? CASH_FLOW_FALLBACK_CATEGORY
+  );
 }
 
 /**
- * Nama kelompok untuk DOKUMEN CETAK. Layar memakai `cashFlowCategory.*` dari
- * kamus, yang berbunyi SAMA PERSIS — diikat `tests/print-label-dictionary.test.ts`
- * (issue #298), jadi kalimatnya tidak bisa berganti di satu sisi saja.
+ * Nama kelompok untuk DOKUMEN CETAK — kini hidup di `statement-layout.ts`
+ * (modul murni yang juga dibaca generator kontrak untuk lembar sebar Go),
+ * diekspor ulang di sini untuk pemanggil lamanya.
  */
-export const CASH_FLOW_CATEGORY_LABELS: Record<CashFlowCategory, string> = {
-  operating: "Aktivitas Operasi",
-  investing: "Aktivitas Investasi",
-  financing: "Aktivitas Pendanaan",
-  uncategorised: "Belum Terkategori",
-};
+export { CASH_FLOW_CATEGORY_LABELS };
 
-export const CASH_FLOW_CATEGORIES: CashFlowCategory[] = [
-  "operating",
-  "investing",
-  "financing",
-  "uncategorised",
-];
+export const CASH_FLOW_CATEGORIES: readonly CashFlowCategory[] = CASH_FLOW_CATEGORY_KEYS;
 
 /** One counter-account's contribution to cash flow over the period (IDR base). */
 export interface CashFlowLine {
@@ -646,7 +627,7 @@ export async function getCashFlow(from?: Date, to?: Date, client = prisma) {
   for (const journalLines of perJournal.values()) {
     let netCash = 0;
     for (const l of journalLines) {
-      if (l.currency !== "IDR" && Number(l.rate) === 1) suspectUnrated += 1;
+      if (l.currency !== BASE_CURRENCY && Number(l.rate) === 1) suspectUnrated += 1;
       if (cashIds.has(l.accountId)) netCash += Number(l.baseDebit) - Number(l.baseCredit);
     }
     // No cash crossed the boundary (or only moved between cash accounts).

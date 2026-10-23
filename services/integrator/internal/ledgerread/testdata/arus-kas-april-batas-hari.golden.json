@@ -1,0 +1,51 @@
+{
+  "from": "2025-02-28T17:00:00Z",
+  "to": "2025-03-31T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "investing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "financing",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [],
+      "inflow": "0.00",
+      "outflow": "0.00",
+      "net": "0.00"
+    }
+  ],
+  "totalInflow": "0.00",
+  "totalOutflow": "0.00",
+  "netChange": "0.00",
+  "openingCash": "10000000.00",
+  "closingCash": "10000000.00",
+  "cashAccounts": [
+    {
+      "code": "1101",
+      "name": "Kas",
+      "opening": "10000000.00",
+      "closing": "10000000.00",
+      "net": "0.00"
+    }
+  ],
+  "reconciled": true,
+  "suspectUnrated": 0,
+  "unknownTypes": []
+}

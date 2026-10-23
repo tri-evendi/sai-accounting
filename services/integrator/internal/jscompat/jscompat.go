@@ -30,6 +30,10 @@ func isJSWhitespace(r rune) bool {
 	return r >= '\u2000' && r <= '\u200a'
 }
 
+// IsWhitespace: kelas `\s` RegExp JS — WhiteSpace + LineTerminator, sama
+// dengan yang dibuang `Trim`.
+func IsWhitespace(r rune) bool { return isJSWhitespace(r) }
+
 // Trim: padanan `String.prototype.trim()`.
 func Trim(s string) string {
 	return strings.TrimFunc(s, isJSWhitespace)

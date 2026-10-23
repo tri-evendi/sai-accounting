@@ -67,6 +67,12 @@ vi.mock("@/lib/current-company", () => ({
   },
 }));
 
+/* Gerbang skema per buku diuji di `tests/company-schema-gate.test.ts`; di sini
+   ia akan menambah satu `$queryRaw` ke primary yang dihitung tes routing. */
+vi.mock("@/lib/company-schema-gate", () => ({
+  assertCompanySchemaServable: async () => {},
+}));
+
 vi.mock("@/lib/company-clients", () => ({
   getCompanyClient: ({ databaseName: db }: { databaseName: string }) => state.primaries.get(db),
   getCompanyReadClient: ({ databaseName: db }: { databaseName: string }) => {

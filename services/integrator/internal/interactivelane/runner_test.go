@@ -1,6 +1,9 @@
 package interactivelane
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 // Muatan pembanding (#557) yang setengah-setengah DITOLAK — mencetak lembar
 // satu kolom untuknya berarti menelan kolom pembanding tanpa satu galat pun.
@@ -31,6 +34,21 @@ func TestComparativePayloadIsAllOrNothing(t *testing.T) {
 		got, err := comparative(c.m, c.instants...)
 		if got != c.want || (err != nil) != c.wantErr {
 			t.Errorf("%s: comparative = %v, %v; mau %v, galat %v", c.name, got, err, c.want, c.wantErr)
+		}
+	}
+}
+
+// Arus Kas tidak punya kolom pembanding: muatan yang membawanya DITOLAK
+// sebelum buku mana pun dibuka — bukan dicetak satu kolom diam-diam.
+func TestCashFlowRejectsComparative(t *testing.T) {
+	period := map[string]string{"from": "2026-01-01", "to": "2026-06-30"}
+	withCompare := map[string]string{"from": "2026-01-01", "to": "2026-06-30", "compare": "preceding"}
+	for name, m := range map[string]muatanEkspor{
+		"compare":     {Params: withCompare},
+		"instan saja": {Params: period, PriorFromInstant: "2025-01-01T00:00:00Z"},
+	} {
+		if _, _, err := arusKas(context.Background(), nil, m, func(int) error { return nil }); err == nil {
+			t.Errorf("%s: muatan pembanding diterima", name)
 		}
 	}
 }

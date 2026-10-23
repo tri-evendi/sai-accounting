@@ -11,6 +11,24 @@
 //	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> [-cost-center <mentah>] \
 //	       [-compare <mode> -prior-from <RFC3339> -prior-to <RFC3339>] \
 //	       -registry-name <nama registry> -out <berkas.xlsx>
+//	parity receivables|payables -database <nama> -as-of <RFC3339> [-overdue]
+//	parity receivables-xlsx|payables-xlsx -database <nama> -as-of <RFC3339> -as-of-date <YYYY-MM-DD> \
+//	       [-overdue] [-cols <id,id>] -registry-name <nama registry> -out <berkas.xlsx>
+//
+// Umur Piutang & Umur Utang (`go-parity`): pembandingnya
+// `scripts/parity-aging.ts` / `scripts/parity-aging-xlsx.ts`
+// (`bun run parity:receivables` dst.). `-overdue` = `?overdue=1` halaman,
+// `-cols` = `?cols=` — opsi yang sama dengan berkas TS.
+//
+//	parity cash-flow -database <nama> -from <RFC3339> -to <RFC3339>
+//	parity cash-flow-xlsx -database <nama> -from <RFC3339> -to <RFC3339> \
+//	       -from-date <YYYY-MM-DD> -to-date <YYYY-MM-DD> -registry-name <nama registry> -out <berkas.xlsx>
+//	parity equity-changes -database <nama> -from <RFC3339> -to <RFC3339>
+//
+// Arus Kas dan Laporan Perubahan Ekuitas (tahap 1d, 23 Okt 2026) membuka
+// bukunya lewat registry kendali (`openFromRegistry`) seperti Neraca Saldo —
+// instans tempat buku itu hidup, bukan instans bawaan. Laporan Perubahan
+// Ekuitas tidak punya varian -xlsx: laporan itu tidak punya berkas di TS.
 //
 // `-compare` (#557, kolom pembanding): mode `?compare=` dan instan pembanding
 // yang dihitung PENERBIT TS (`goExportPayloadShape` → `comparisonRange` /
@@ -128,7 +146,8 @@ func main() {
 func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("pakai: parity trial-balance|trial-balance-xlsx|balance-sheet|balance-sheet-xlsx|" +
-			"income-statement|income-statement-xlsx -database <nama> …")
+			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|" +
+			"receivables|receivables-xlsx|payables|payables-xlsx -database <nama> …")
 	}
 	switch args[0] {
 	case "trial-balance":
@@ -143,6 +162,18 @@ func run(args []string) error {
 		return incomeStatement(args[1:], false)
 	case "income-statement-xlsx":
 		return incomeStatement(args[1:], true)
+	case "cash-flow":
+		return cashFlow(args[1:], false)
+	case "cash-flow-xlsx":
+		return cashFlow(args[1:], true)
+	case "equity-changes":
+		return equityChanges(args[1:])
+	case "receivables", "payables":
+		return aging(args[0], args[1:], false)
+	case "receivables-xlsx":
+		return aging("receivables", args[1:], true)
+	case "payables-xlsx":
+		return aging("payables", args[1:], true)
 	default:
 		return fmt.Errorf("laporan %q belum punya implementasi Go", args[0])
 	}
@@ -451,6 +482,169 @@ func incomeStatement(args []string, xlsx bool) error {
 		prior = &document.IncomeStatementPrior{Statement: pis, Period: label}
 	}
 	data, err := document.IncomeStatementWorkbook(is, prior, name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*out, data, 0o600)
+}
+
+// cashFlow: Arus Kas sebagai JSON, atau (xlsx) lembar sebarnya lewat
+// `internal/document` — kode yang sama dengan pelari jalur `interactive`.
+// Tanpa `-compare`: halaman Arus Kas tidak membaca `?compare=`.
+func cashFlow(args []string, xlsx bool) error {
+	fs := flag.NewFlagSet("cash-flow", flag.ContinueOnError)
+	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
+	fromRaw := fs.String("from", "", "awal periode INKLUSIF sebagai instan RFC3339")
+	toRaw := fs.String("to", "", "akhir periode INKLUSIF sebagai instan RFC3339")
+	fromDate := fs.String("from-date", "", "xlsx: awal periode YYYY-MM-DD (label)")
+	toDate := fs.String("to-date", "", "xlsx: akhir periode YYYY-MM-DD (label)")
+	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
+	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
+	timeout := fs.Duration("timeout", 5*time.Minute, "batas waktu satu laporan")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, err := instant("from", *fromRaw)
+	if err != nil {
+		return err
+	}
+	to, err := instant("to", *toRaw)
+	if err != nil {
+		return err
+	}
+	if xlsx && (*fromDate == "" || *toDate == "" || *out == "") {
+		return errors.New("-from-date, -to-date, dan -out wajib")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	r, company, err := openFromRegistry(ctx, *database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	cf, err := r.CashFlow(ctx, &from, &to)
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(cf)
+	}
+	period, err := document.PeriodRange(*fromDate, *toDate, "")
+	if err != nil {
+		return err
+	}
+	reg := *registryName
+	if strings.TrimSpace(reg) == "" {
+		reg = company.Name
+	}
+	name, err := headerName(ctx, r, reg)
+	if err != nil {
+		return err
+	}
+	data, err := document.CashFlowWorkbook(cf, name, period, time.Now())
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(*out, data, 0o600)
+}
+
+// equityChanges: Laporan Perubahan Ekuitas sebagai JSON. Angka saja — laporan
+// ini tidak punya berkas di TS (src/lib/report-engine.ts).
+func equityChanges(args []string) error {
+	fs := flag.NewFlagSet("equity-changes", flag.ContinueOnError)
+	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
+	fromRaw := fs.String("from", "", "awal periode INKLUSIF sebagai instan RFC3339")
+	toRaw := fs.String("to", "", "akhir periode INKLUSIF sebagai instan RFC3339")
+	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	from, err := instant("from", *fromRaw)
+	if err != nil {
+		return err
+	}
+	to, err := instant("to", *toRaw)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	r, _, err := openFromRegistry(ctx, *database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	es, err := r.EquityStatement(ctx, from, to)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(es)
+}
+
+// aging: Umur Piutang / Umur Utang sebagai JSON, atau (xlsx) lembar sebarnya
+// lewat `internal/document` — kode yang sama dengan pelari jalur `interactive`.
+func aging(kind string, args []string, xlsx bool) error {
+	fs := flag.NewFlagSet(kind, flag.ContinueOnError)
+	database := fs.String("database", "", "nama basis data perusahaan (companies.database_name)")
+	asOfRaw := fs.String("as-of", "", "batas tanggal INKLUSIF sebagai instan RFC3339")
+	overdue := fs.Bool("overdue", false, "hanya dokumen jatuh tempo (`?overdue=1` halaman)")
+	asOfDate := fs.String("as-of-date", "", "xlsx: tanggal laporan YYYY-MM-DD (label periode)")
+	cols := fs.String("cols", "", "xlsx: kolom tampil MENTAH (`?cols=`), mis. party,outstanding")
+	registryName := fs.String("registry-name", "", "xlsx: companies.name — cadangan bila setting wizard kosong")
+	out := fs.String("out", "", "xlsx: berkas .xlsx keluaran")
+	timeout := fs.Duration("timeout", 2*time.Minute, "batas waktu satu laporan")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	asOf, err := instant("as-of", *asOfRaw)
+	if err != nil {
+		return err
+	}
+	if xlsx && (*asOfDate == "" || *out == "") {
+		return errors.New("-as-of-date dan -out wajib")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	r, company, err := openFromRegistry(ctx, *database)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	var rep *ledgerread.AgingReport
+	if kind == "receivables" {
+		rep, err = r.Receivables(ctx, asOf, *overdue)
+	} else {
+		rep, err = r.Payables(ctx, asOf, *overdue)
+	}
+	if err != nil {
+		return err
+	}
+	if !xlsx {
+		return json.NewEncoder(os.Stdout).Encode(rep)
+	}
+	period, err := document.PeriodAsOf(*asOfDate)
+	if err != nil {
+		return err
+	}
+	specs, err := document.AgingColumnsFor(kind)
+	if err != nil {
+		return err
+	}
+	fallback := strings.TrimSpace(*registryName)
+	if fallback == "" {
+		fallback = company.Name
+	}
+	name, err := headerName(ctx, r, fallback)
+	if err != nil {
+		return err
+	}
+	data, err := document.AgingWorkbook(rep, document.AgingVisibleColumns(specs, *cols), name, period, time.Now())
 	if err != nil {
 		return err
 	}

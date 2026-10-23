@@ -36,6 +36,7 @@ import {
   ProvisionError,
 } from "../src/lib/company-provisioning-shared";
 import { parseProvisionPayload } from "../src/lib/company-provisioning-queue";
+import { provisioningVerdict } from "../src/lib/company-provisioning-quota";
 import { writeAuditLog } from "../src/lib/audit";
 import { runWithCompany } from "../src/lib/company-context";
 
@@ -47,6 +48,33 @@ export async function provisionCompanyJob(ctx: JobContext): Promise<string | nul
     );
   }
   const p = parseProvisionPayload(ctx.job.payload);
+
+  /*
+   * Kuota & status DIPERIKSA ULANG di sini, sebelum basis data dibuat — route
+   * sudah memeriksanya saat menerbitkan, tetapi permintaan yang antre di
+   * belakang penyediaan lain milik tenant yang sama membaca hitungan yang
+   * belum memuat PT-PT itu (`company-provisioning-quota.ts`). Ditolak sebagai
+   * `ProvisionError` berkode, jadi layar tunggu menampilkan kalimat yang sama
+   * dengan penolakan di route.
+   */
+  const { refusal, quota } = await provisioningVerdict(tenantId);
+  if (refusal) {
+    const kode =
+      refusal === "company_quota_reached" && quota?.source === "licence"
+        ? "company_licence_limit_reached"
+        : refusal;
+    const e = new Error(
+      encodeProvisionFailure(
+        new ProvisionError(
+          `Penyediaan ditolak saat dikerjakan: ${refusal} (tenant ${tenantId}).`,
+          "validate",
+          { code: kode, values: quota ? { max: quota.maxCompanies } : undefined }
+        )
+      )
+    );
+    e.name = "ProvisionError";
+    throw e;
+  }
 
   let terakhir = -1;
   let hasil: Awaited<ReturnType<typeof provisionCompany>>;

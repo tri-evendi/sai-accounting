@@ -88,6 +88,23 @@ export type CashFlowCategoryId = "operating" | "investing" | "financing" | "unca
 /** Ember diagnostik, bukan seksi laporan — lihat keputusan 3 di atas. */
 const UNCATEGORISED: CashFlowCategoryId = "uncategorised";
 
+/**
+ * Nama kelompok Arus Kas untuk DOKUMEN CETAK. Layar memakai
+ * `cashFlowCategory.*` dari kamus, yang berbunyi SAMA PERSIS — diikat
+ * `tests/print-label-dictionary.test.ts` (issue #298), jadi kalimatnya tidak
+ * bisa berganti di satu sisi saja.
+ *
+ * Tinggal di sini (dulu di `lib/reports.ts`, yang masih mengekspornya ulang)
+ * supaya generator kontrak bisa membacanya untuk lembar sebar Go (tahap 1d)
+ * tanpa menyeret Prisma.
+ */
+export const CASH_FLOW_CATEGORY_LABELS: Record<CashFlowCategoryId, string> = {
+  operating: "Aktivitas Operasi",
+  investing: "Aktivitas Investasi",
+  financing: "Aktivitas Pendanaan",
+  uncategorised: "Belum Terkategori",
+};
+
 export interface CashFlowLineShape {
   code: string;
   name: string;
@@ -158,7 +175,7 @@ export interface CashFlowLabels {
    * `printLabel` = `group.label`; layar mengabaikannya dan memakai kamus.
    *
    * Dua sumber untuk satu bunyi, dan itu disengaja (#298): `printLabel` datang
-   * dari `CASH_FLOW_CATEGORY_LABELS` di `lib/reports.ts`, layar dari
+   * dari `CASH_FLOW_CATEGORY_LABELS` di modul ini, layar dari
    * `cashFlowCategory.*`. Keduanya diikat `tests/print-label-dictionary.test.ts`
    * — kalau salah satunya berganti kata, tesnya merah.
    */
@@ -1736,6 +1753,69 @@ export function agingHeaders(kind: AgingKind): Record<AgingColumnId, string> {
 export function agingColumns(report: { visibleColumns?: string[] }): AgingColumnId[] {
   return selectColumns(AGING_COLUMNS, report.visibleColumns, "party");
 }
+
+/**
+ * Kalimat CETAK lembar Umur Piutang/Utang yang sampai tahap 1d ditulis sebaris
+ * di `buildAgingSheet` (`report-export.ts`). Dipindah ke sini — bunyinya tidak
+ * berubah satu huruf pun — karena lembar yang SAMA kini juga ditulis Go
+ * (`services/integrator/internal/document/aging.go`), dan kalimat sebaris tidak
+ * bisa dibangkitkan ke bahasa kedua: `contract:gen` mengimpor tabel ini dan
+ * `report_layout`-nya Go membacanya. Kalimat yang hanya hidup di badan fungsi
+ * TS adalah kalimat yang Go-nya salin, lalu menyimpang.
+ */
+export const AGING_SHEET_LABELS = {
+  /** Judul blok ringkasan ember, tebal. */
+  summary: "Ringkasan umur",
+  /** Judul blok rincian dokumen, tebal. */
+  details: "Rincian dokumen",
+  /** Baris jumlah seluruh ember, tebal. */
+  total: "Total",
+  /** Sel jatuh tempo dokumen yang tidak punya tanggal jatuh tempo. */
+  noDueDate: "-",
+} as const;
+
+/**
+ * Sel umur dokumen yang diumurkan dari TANGGAL DOKUMEN (jatuh temponya tidak
+ * ada): teks berbintang, bukan angka — dua angka yang artinya berbeda tidak
+ * boleh berdiri tanpa penanda di kolom yang sama. Bintangnya dijelaskan
+ * `AGING_UNDATED_NOTE`.
+ */
+export function agingIssueAgeText(ageDays: number): string {
+  return `${ageDays} *`;
+}
+
+/**
+ * Nomor dokumen baris Umur Utang. `supplier_transactions` tidak punya kolom
+ * nomor, jadi baris pembelian dinamai dari id-nya — di layar DAN di berkas,
+ * dan (tahap 1d) di lembar Go, yang membangkitkan polanya dari fungsi ini.
+ */
+export function payableDocumentNo(id: number): string {
+  return `TRX-${id}`;
+}
+
+/**
+ * Label CETAK ember umur dan status pembayaran — PDF dan lembar sebar. Pindah
+ * dari `receivables.ts` (yang tetap mengekspor ulang keduanya dengan nama
+ * lamanya) supaya `contract:gen` bisa membangkitkannya ke Go tanpa mengimpor
+ * modul yang membuka basis data.
+ *
+ * Kuncinya kosakata `contract/accounting.yaml` (`aging.buckets`) dan
+ * `PaymentStatus` — ditulis literal di sini karena modul ini tidak mengimpor
+ * nilai apa pun; `tsc` menolak di `receivables.ts` bila keduanya berselisih.
+ */
+export const AGING_BUCKET_PRINT_LABELS = {
+  b0_30: "0–30 hari",
+  b31_60: "31–60 hari",
+  b61_90: "61–90 hari",
+  b90_plus: "> 90 hari",
+} as const;
+
+export const PAYMENT_STATUS_PRINT_LABELS = {
+  paid: "Lunas",
+  partial: "Sebagian",
+  unpaid: "Belum Bayar",
+  overdue: "Jatuh Tempo",
+} as const;
 
 // ─── Kolom Realisasi vs Anggaran ─────────────────────────────────────────────
 

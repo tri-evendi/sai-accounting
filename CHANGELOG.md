@@ -20,7 +20,22 @@ tanpa catatan tidak bisa lolos gerbang.
 
 ---
 
-## 0.14.0 — 2026-10-23 — belum digelar
+## 0.15.0 — 2026-10-23 — belum digelar
+
+Pembaruan basis data tidak lagi menghentikan seluruh layanan, dan pembuatan perusahaan baru lebih terjaga.
+
+### Berubah
+
+- Saat aplikasi diperbarui, buku satu perusahaan yang belum selesai diperbarui ditutup sementara dengan layar penjelasan, sementara perusahaan lain tetap bisa dipakai.
+
+### Perbaikan
+
+- Batas jumlah perusahaan diperiksa ulang tepat sebelum perusahaan baru dibuat, sehingga dua permintaan bersamaan tidak bisa melewatinya.
+- Ekspor Excel Umur Piutang dan Umur Utang dari halaman yang disaring "jatuh tempo saja" kini hanya memuat dokumen jatuh tempo.
+
+---
+
+## 0.14.0 — 2026-10-23 (96d110d)
 
 Kontrak bisa ditandai selesai, MFA konsol bisa dipasang dengan aplikasi authenticator, dan tanggal periode tidak lagi bergantung pada zona waktu server.
 

@@ -39,19 +39,31 @@
  * (`src/lib/recurring.ts` menghitung batas hari di UTC). Kunci yang berbutir
  * waktu lokal sementara kejadiannya berbutir UTC akan menyimpang tepat di
  * batas hari — satu jam dalam setahun di mana penerbitannya salah.
+ *
+ * ══ BUTIR, KUNCI, DAN MUATAN DARI `@sai/core/schedule-due` ═════════════════
+ * Sejak jalur `schedule` Go lahir, aturan penerbitan punya kembaran di Go
+ * (`internal/schedulelane/due.go`). Keduanya dibuktikan menghasilkan kunci
+ * yang SAMA oleh satu fikstur bersama — maka aturannya tidak lagi ditulis di
+ * skrip ini, melainkan dipanggil.
+ *
+ * ══ PENERBITNYA TEPAT SATU ════════════════════════════════════════════════
+ * `contract/kinds.yaml` → `ledger.recurring.schedule.publisher` memutuskan
+ * siapa yang menerbitkan. Bila nilainya `go`, langkah ini keluar 0 tanpa
+ * menyentuh antrean: jalur `schedule` di `svc-integrator` yang menerbitkan.
+ * Peralihan & jalan mundurnya: PRODUCTION.md §Penerbit denyut.
  */
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
 import { NOT_FROZEN_COMPANY_WHERE } from "@sai/core/tenant-migration";
 import { publishJob } from "@sai/platform/job-queue";
-
-/** `YYYY-MM-DDTHH` di UTC — butir kunci idempotensi satu putaran. */
-function jamUtc(saat: Date): string {
-  return saat.toISOString().slice(0, 13);
-}
+import { duePublications, nodePublishes, skippedPublisherNote } from "@sai/core/schedule-due";
 
 async function main() {
+  if (!nodePublishes("ledger.recurring")) {
+    console.log(skippedPublisherNote("ledger.recurring"));
+    return;
+  }
   if (!process.env.CONTROL_DATABASE_URL) {
     console.error("CONTROL_DATABASE_URL belum diset.");
     process.exit(1);
@@ -72,24 +84,24 @@ async function main() {
      putaran yang melewati tengah malam di tengah daftar akan memberi separuh
      daftar tanggal berikutnya. */
   const saat = new Date();
-  const butir = jamUtc(saat);
-  const today = saat.toISOString();
+  const slug = new Map(companies.map((c) => [c.id, c.slug]));
 
   let terbit = 0;
   let sudah = 0;
   let gagal = 0;
 
-  for (const company of companies) {
+  for (const p of duePublications("ledger.recurring", saat, companies)) {
+    const nama = slug.get(p.companyId ?? -1) ?? `#${p.companyId}`;
     try {
       const row = await publishJob({
         kind: "ledger.recurring",
-        companyId: company.id,
-        payload: { companyId: company.id, today },
-        dedupeKey: `ledger.recurring:${company.id}:${butir}`,
+        companyId: p.companyId,
+        payload: p.payload,
+        dedupeKey: p.dedupeKey,
       });
       if (row) {
         terbit += 1;
-        console.log(`  ✓ ${company.slug} → pekerjaan #${row.id}`);
+        console.log(`  ✓ ${nama} → pekerjaan #${row.id}`);
       } else {
         sudah += 1;
       }
@@ -98,7 +110,7 @@ async function main() {
          doktrin yang sama dengan empat penjadwal lain di repo ini. */
       gagal += 1;
       console.error(
-        `  ✗ ${company.slug}: gagal diterbitkan — ${error instanceof Error ? error.message : error}`
+        `  ✗ ${nama}: gagal diterbitkan — ${error instanceof Error ? error.message : error}`
       );
     }
   }

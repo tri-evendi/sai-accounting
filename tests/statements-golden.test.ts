@@ -47,8 +47,6 @@
  * 31 Maret 17.30 UTC (= 1 April WIB) — di UTC tes ini MERAH, dan memang harus.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 vi.mock("@sai/platform/i18n/server", async (importOriginal) => {
   const asli = await importOriginal<typeof import("@sai/platform/i18n/server")>();
@@ -79,36 +77,7 @@ import {
   type GoBalanceSheet,
   type GoIncomeStatement,
 } from "@/lib/statement-parity";
-import { createFakeReportClient } from "./fake-client";
-import { AKAR_REPO } from "./akar-sumber";
-
-const GO = join(AKAR_REPO, "services", "integrator", "internal");
-const NUMBERS = join(GO, "ledgerread", "testdata");
-const SHEETS = join(GO, "document", "testdata");
-
-interface Line {
-  accountId: number;
-  debit?: string;
-  credit?: string;
-  currency?: string;
-  rate?: string;
-  baseDebit?: string;
-  baseCredit?: string;
-  costCenterId?: number | null;
-}
-
-interface Book {
-  name: string;
-  companyName: string;
-  fiscalYearStart: string | null;
-  costCenters: { id: number; code: string; name: string; isActive?: boolean }[];
-  accounts: { id: number; code: string; name: string; type: string }[];
-  journals: { date: string; type?: string; lines: Line[] }[];
-  incomeStatements: { case: string; from: string; to: string; costCenter?: string }[];
-  balanceSheets: { case: string; asOf: string }[];
-  incomeComparisons?: { case: string; from: string; to: string; costCenter?: string; compare: string }[];
-  balanceComparisons?: { case: string; asOf: string; compare: string }[];
-}
+import { BOOKS, client, goNumbers, goSheet } from "./statement-books";
 
 /** Berkas emas angka komparatif — `IncomeComparisonGolden` / `BalanceComparisonGolden` Go. */
 interface GoIncomeComparison {
@@ -122,52 +91,6 @@ interface GoBalanceComparison {
   prior: GoBalanceSheet;
   priorAsOf: string;
 }
-
-const BOOKS = JSON.parse(readFileSync(join(NUMBERS, "statement_books.json"), "utf8")) as Book[];
-
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-/**
- * Klien palsu satu buku. `groupBy` dibulatkan ke sen: `SUM` NUMERIC di
- * PostgreSQL TEPAT, sedangkan penjumlah palsu menjumlahkan float — tanpa ini
- * akun "bergerak lalu nol" bisa tersisa 1e-12 dan tampil di TS, yaitu temuan
- * tentang klien palsu, bukan tentang laporan.
- */
-function client(book: Book) {
-  const fake = createFakeReportClient({
-    accounts: book.accounts,
-    fiscalYearStart: book.fiscalYearStart ? new Date(book.fiscalYearStart) : undefined,
-    costCenters: book.costCenters,
-    journals: book.journals.map((j) => ({
-      date: new Date(j.date),
-      type: j.type,
-      lines: j.lines.map((l) => ({
-        accountId: l.accountId,
-        debit: Number(l.debit ?? 0),
-        credit: Number(l.credit ?? 0),
-        currency: l.currency,
-        rate: l.rate === undefined ? undefined : Number(l.rate),
-        /* Aturan yang SAMA dengan `base()` di statements_test.go. */
-        baseDebit: Number(l.baseDebit ?? l.debit ?? 0),
-        baseCredit: Number(l.baseCredit ?? l.credit ?? 0),
-        costCenterId: l.costCenterId ?? null,
-      })),
-    })),
-  });
-  const groupBy = fake.journalLine.groupBy.bind(fake.journalLine) as unknown as (
-    args: unknown
-  ) => Promise<{ accountId: number; _sum: { baseDebit: number; baseCredit: number } }[]>;
-  (fake.journalLine as unknown as { groupBy: unknown }).groupBy = async (args: unknown) =>
-    (await groupBy(args)).map((g) => ({
-      accountId: g.accountId,
-      _sum: { baseDebit: round2(g._sum.baseDebit), baseCredit: round2(g._sum.baseCredit) },
-    }));
-  return fake;
-}
-
-const goNumbers = <T>(name: string): T =>
-  JSON.parse(readFileSync(join(NUMBERS, `${name}.golden.json`), "utf8")) as T;
-const goSheet = (name: string) => new Uint8Array(readFileSync(join(SHEETS, `${name}.golden.xlsx`)));
 
 const INCOME = reportById("income-statement")!;
 const BALANCE = reportById("balance-sheet")!;
@@ -204,6 +127,10 @@ describe("fixture bersama memuat tepian yang dijanjikan", () => {
 });
 
 for (const book of BOOKS) {
+  /* Buku yang hanya dipakai Arus Kas & Ekuitas (`buku-arus-kas`) tidak punya
+     kasus di sini — `describe` kosong adalah galat vitest, bukan kelulusan. */
+  if (book.incomeStatements.length + book.balanceSheets.length === 0) continue;
+
   describe(`${book.name}: Laba Rugi TS = Go`, () => {
     for (const c of book.incomeStatements) {
       it(`${c.case}: angka setara`, async () => {

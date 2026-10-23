@@ -1,0 +1,136 @@
+{
+  "from": "2025-12-31T17:00:00Z",
+  "to": "2026-03-31T16:59:59.999Z",
+  "groups": [
+    {
+      "category": "operating",
+      "lines": [
+        {
+          "code": "1201",
+          "name": "Piutang Usaha",
+          "type": "account_receivable",
+          "inflow": "100.11",
+          "outflow": "0.00",
+          "net": "100.11"
+        },
+        {
+          "code": "4101",
+          "name": "Penjualan",
+          "type": "revenue",
+          "inflow": "465.32",
+          "outflow": "20.05",
+          "net": "445.27"
+        },
+        {
+          "code": "6101",
+          "name": "Beban Umum",
+          "type": "expense",
+          "inflow": "0.00",
+          "outflow": "50.00",
+          "net": "-50.00"
+        },
+        {
+          "code": "6102",
+          "name": "Beban Netral",
+          "type": "expense",
+          "inflow": "7.00",
+          "outflow": "7.00",
+          "net": "0.00"
+        }
+      ],
+      "inflow": "572.43",
+      "outflow": "77.05",
+      "net": "495.38"
+    },
+    {
+      "category": "investing",
+      "lines": [
+        {
+          "code": "1501",
+          "name": "Peralatan",
+          "type": "fixed_asset",
+          "inflow": "0.00",
+          "outflow": "400000.00",
+          "net": "-400000.00"
+        }
+      ],
+      "inflow": "0.00",
+      "outflow": "400000.00",
+      "net": "-400000.00"
+    },
+    {
+      "category": "financing",
+      "lines": [
+        {
+          "code": "2501",
+          "name": "Pinjaman Bank",
+          "type": "long_term_liability",
+          "inflow": "250000.50",
+          "outflow": "0.00",
+          "net": "250000.50"
+        },
+        {
+          "code": "3101",
+          "name": "Modal Disetor",
+          "type": "equity",
+          "inflow": "2500.00",
+          "outflow": "0.00",
+          "net": "2500.00"
+        },
+        {
+          "code": "3103",
+          "name": "Prive",
+          "type": "equity",
+          "inflow": "0.00",
+          "outflow": "10000.00",
+          "net": "-10000.00"
+        }
+      ],
+      "inflow": "252500.50",
+      "outflow": "10000.00",
+      "net": "242500.50"
+    },
+    {
+      "category": "uncategorised",
+      "lines": [
+        {
+          "code": "9999",
+          "name": "Akun Bertipe Asing",
+          "type": "kas_aneh",
+          "inflow": "0.00",
+          "outflow": "1.23",
+          "net": "-1.23"
+        }
+      ],
+      "inflow": "0.00",
+      "outflow": "1.23",
+      "net": "-1.23"
+    }
+  ],
+  "totalInflow": "253072.93",
+  "totalOutflow": "410078.28",
+  "netChange": "-157005.35",
+  "openingCash": "1005000.05",
+  "closingCash": "847994.70",
+  "cashAccounts": [
+    {
+      "code": "1101",
+      "name": "Kas Kecil",
+      "opening": "1005000.05",
+      "closing": "692994.70",
+      "net": "-312005.35"
+    },
+    {
+      "code": "1102",
+      "name": "Bank USD",
+      "opening": "0.00",
+      "closing": "155000.00",
+      "net": "155000.00"
+    }
+  ],
+  "reconciled": true,
+  "suspectUnrated": 2,
+  "unknownTypes": [
+    "9999"
+  ]
+}

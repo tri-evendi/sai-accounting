@@ -73,8 +73,29 @@ export interface Rilis {
  */
 export const RILIS: readonly Rilis[] = [
   {
+    versi: "0.15.0",
+    tanggal: "2026-10-23",
+    ringkas:
+      "Pembaruan basis data tidak lagi menghentikan seluruh layanan, dan pembuatan perusahaan baru lebih terjaga.",
+    butir: [
+      {
+        jenis: "ubah",
+        teks: "Saat aplikasi diperbarui, buku satu perusahaan yang belum selesai diperbarui ditutup sementara dengan layar penjelasan, sementara perusahaan lain tetap bisa dipakai.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Batas jumlah perusahaan diperiksa ulang tepat sebelum perusahaan baru dibuat, sehingga dua permintaan bersamaan tidak bisa melewatinya.",
+      },
+      {
+        jenis: "perbaikan",
+        teks: "Ekspor Excel Umur Piutang dan Umur Utang dari halaman yang disaring \"jatuh tempo saja\" kini hanya memuat dokumen jatuh tempo.",
+      },
+    ],
+  },
+  {
     versi: "0.14.0",
     tanggal: "2026-10-23",
+    sha: "96d110d",
     ringkas:
       "Kontrak bisa ditandai selesai, MFA konsol bisa dipasang dengan aplikasi authenticator, dan tanggal periode tidak lagi bergantung pada zona waktu server.",
     butir: [

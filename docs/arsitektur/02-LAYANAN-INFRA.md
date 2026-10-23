@@ -286,9 +286,9 @@ tidak menumpuk lebih dari satu.
 | 2 | `notify:setup` | Kabar penyiapan mandek (H+1/+3/+7/+14) | `dedupe_key`, maks 4 seumur hidup |
 | 3 | `notify:invoice-due` | Kabar jatuh tempo + ringkasan mingguan | `dedupe_key` |
 | 4 | `remind:customers` | **Surel ke pelanggan** (H-3/H+1/H+7) | Kunci unik (invoice, kind, due_key) |
-| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting peran `ledger` | `dedupe_key` berbutir jam UTC |
-| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan jalur `tenant` di `svc-integrator` | `dedupe_key` berbutir hari UTC |
-| 7 | `watch:health` | Baca 3 heartbeat, kirim surel peringatan | Satu surel per status per 24 jam |
+| 5 | `recurring:publish` | **Terbitkan PEKERJAAN** dokumen berulang — satu baris `jobs` per PT; yang memposting peran `ledger`. Keluar 0 tanpa menerbitkan bila kontrak menyerahkannya ke jalur `schedule` Go | `dedupe_key` berbutir jam UTC |
+| 6 | `backup:publish` | **Terbitkan PEKERJAAN** cadangan — satu baris `jobs` per HARI; yang mencadangkan jalur `tenant` di `svc-integrator`. Idem: dilewati bila penerbitnya Go | `dedupe_key` berbutir hari UTC |
+| 7 | `watch:health` | Baca 3 heartbeat (+ denyut penerbit Go bila ada kind milik Go), kirim surel peringatan | Satu surel per status per 24 jam |
 | 8 | `prune:trails` | Pangkas jejak putaran > 90 hari | Putaran kosong = satu `SELECT` per tabel |
 
 ⚠ **Dua butir kunci yang BERBEDA, dan bedanya disengaja.** Langkah 5 berbutir
@@ -298,6 +298,12 @@ sampai besok. Langkah 6 berbutir HARI: cadensi cadangan memang harian (RPO satu
 hari), dan butir jam akan menerbitkan 24 dump seluruh pemasangan sehari. Satu
 pertanyaan memutuskan keduanya — **berapa sering pekerjaan ini SEHARUSNYA
 terjadi**, bukan berapa sering penerbitnya berjalan.
+
+Sejak Okt 2026 butir, kunci, dan muatan kedua langkah itu tidak lagi ditulis di
+skripnya: `grain`/`per_company`/`publisher` di `contract/kinds.yaml`, aturannya
+di `@sai/core/schedule-due` — kembarannya di jalur `schedule` Go dibuktikan
+sama oleh satu fikstur bersama, supaya peralihan penerbit tidak pernah
+menerbitkan dua kali (§`svc-integrator` di bawah).
 
 Tiga keputusan desain:
 
@@ -377,19 +383,40 @@ sengaja keluar bukan-nol saat menemukan sesuatu, dan tanpa penelan itu setiap
 temuan mengakhiri perannya — sejak penyatuan berarti *crash-loop* seluruh
 `svc-worker`.
 
-### `svc-integrator` — dua jalur Go, satu proses
+### `svc-integrator` — tiga jalur Go, satu proses
 
 Sejak 22 Okt 2026 (09 §3.2) satu biner, `cmd/integrator`, menjalankan pelari
-jalur `tenant` dan jalur `interactive` sisi Go bersamaan; logikanya di
-`internal/tenantlane` dan `internal/interactivelane`. Satu pelari berakhir →
+jalur `tenant`, jalur `interactive` sisi Go, dan — sejak Okt 2026 — jalur
+`schedule` bersamaan; logikanya di `internal/tenantlane`,
+`internal/interactivelane`, dan `internal/schedulelane`. Satu pelari berakhir →
 yang lain berhenti mengklaim → proses keluar **bukan-nol** → restart utuh.
 `cmd/tenant` dan `cmd/interactive` tetap ada untuk mengembangkan satu jalur,
-tapi tidak masuk image.
+tapi tidak masuk image. Jalur `bulk` punya kerangkanya (`internal/bulklane`,
+pagar memori per pekerjaan dari kontrak) tetapi **tidak dijalankan** sampai ia
+punya kind ber-handler — 09 §3.2.
 
 | Jalur | Sambungan kendali | Kenapa |
 |---|---|---|
 | `tenant` | `CONTROL_DATABASE_DIRECT_URL` — **langsung** ke `pg`; Go menolak URL pooler | pencacahan `pg_database`, pagar advisory lock, parameter `pg_dump` |
 | `interactive` (Go) | `CONTROL_DATABASE_URL` dari `.env` — PgBouncer | satu buku PT per pekerjaan |
+| `schedule` | pekerjaan: `CONTROL_DATABASE_URL` (PgBouncer); pagar: `CONTROL_DATABASE_DIRECT_URL` | membaca registry & menulis baris `jobs` — puluhan baris sejam; pagar tunggal-instans wajib di sesi yang miliknya sendiri |
+
+#### Jalur `schedule` — denyut penerbitan (bawaan: diam)
+
+Menerbitkan kind ber-`schedule:` di `contract/kinds.yaml` yang `publisher`-nya
+`go`: satu `schedule.tick` per jam UTC (`schedule.tick:<YYYY-MM-DDTHH>`), yang
+diklaim jalur itu sendiri dan menerbitkan baris yang jatuh tempo —
+`ledger.recurring` per perusahaan per jam UTC, `tenant.backup` per hari UTC —
+dengan kunci yang **identik** dengan penerbit Node (fikstur bersama,
+`internal/schedulelane/testdata/`). Hanya menulis `jobs`; yang memposting tetap
+peran `ledger` (Node). Selama kontrak menyatakan `publisher: node` — keadaan
+hari ini — jalur ini memegang pagarnya dan tidak menerbitkan apa pun, dan
+langkah `recurring:publish`/`backup:publish` peran `scheduler` yang
+menerbitkan (dan sebaliknya: begitu `go`, langkah Node keluar 0 tanpa
+menyentuh antrean). Jejaknya baris `schedule.tick` (`done` per jam), dan
+`watch:health` membacanya sebagai komponen `penerbit-go` — denyut penjadwal
+Node TIDAK menangkap penerbit Go yang mati. Peralihan & jalan mundur:
+PRODUCTION.md §Penerbit denyut.
 
 ⚠ **Rahasia cadangan kini seproses dengan masukan pengguna** — diputuskan
 pemilik, risikonya dan pemicu memisahkannya lagi di 09 §3.2.
@@ -397,9 +424,10 @@ pemilik, risikonya dan pemicu memisahkannya lagi di 09 §3.2.
 #### Jalur `tenant` — cadangan PER BASIS DATA
 
 Pelari Go yang menguras `tenant.backup` dari tabel `jobs`. Yang menjadwalkannya
-langkah `backup:publish` di putaran penjadwal, berbutir **hari** UTC: putaran
-pertama hari itu menerbitkan, 23 berikutnya menabrak `dedupe_key` dan tidak
-melakukan apa pun. RPO 1 hari, disengaja.
+langkah `backup:publish` di putaran penjadwal — atau jalur `schedule` bila
+kontrak menyerahkannya ke Go — berbutir **hari** UTC: penerbitan pertama hari
+itu menerbitkan, berikutnya menabrak `dedupe_key` dan tidak melakukan apa pun.
+RPO 1 hari, disengaja.
 
 Volume: `documents` (:ro) · `audit` (:ro) · `cadangan` (RW) · `hasil` (RW, milik
 jalur `interactive` Go). Menyambung **langsung** ke `pg`, melewati PgBouncer — pooler hanya mengekspos basis data
@@ -817,11 +845,13 @@ ketahuan tidak punya pemanggil.
 ## 12. Migration
 
 ```
-db:migrate:all
+db:migrate:all               (KETAT — manusia, CI, dev)
+db:migrate:release           (langkah RILIS & CMD image migrator — 09 §6)
 ├─ 1. db:migrate:control     prisma migrate deploy --config prisma.control.config.ts
 ├─ 2. db:migrate:platform    scripts/migrate-platform.ts  (dilewati dengan peringatan bila env kosong)
 └─ 3. db:migrate:companies   scripts/migrate-all-companies.ts  (setiap PT terdaftar,
-                             COMPANY_MIGRATE_CONCURRENCY bersamaan — bawaan 2, plafon 8)
+                             COMPANY_MIGRATE_CONCURRENCY bersamaan — bawaan 2, plafon 8;
+                             `--release` = buku yang gagal sebagian tidak menahan rilis)
 ```
 
 > **PRISMA TETAP PEMILIK SKEMA, dan itu aturan — bukan keadaan sementara.**
@@ -850,10 +880,15 @@ Keluaran tiap perusahaan **ditangkap** lalu dicetak sebagai satu blok: dengan
 `stdio: "inherit"`, N proses Prisma menulis ke terminal yang sama dan saling
 menyisip — tidak bisa dibaca justru pada hari satu di antaranya gagal.
 
-Satu perusahaan yang gagal **tidak** menghentikan yang lain (#104), dan exit
-code akhirnya bukan nol — jadi `migrate` yang dirantai
-`service_completed_successfully` tetap menahan rilis, sementara yang berhasil
-sudah benar-benar naik. Hasil per perusahaan ditanyakan ke konsol operator
+Satu perusahaan yang gagal **tidak** menghentikan yang lain (#104). Kode
+keluarnya bergantung mode (`rolloutExitCode`, `@sai/core/schema-version`):
+KETAT (`db:migrate:all`) = bukan nol bila ada yang gagal; `--release`
+(`db:migrate:release`, CMD image migrator sejak 23 Okt 2026) = nol bila
+setidaknya satu buku di kepala — buku yang gagal DITUTUP gerbang skema per
+perusahaan (di bawah), yang lain dilayani image baru — dan bukan nol bila
+tidak satu buku pun di kepala. Buku yang sudah di kepala dilewati tanpa proses
+Prisma, jadi putaran ulang = melanjutkan dari tengah; hasil per buku tercatat
+di `schema_migration_runs` (kendali). Hasil per perusahaan ditanyakan ke konsol operator
 `/backup`, yang membacanya dari `_prisma_migrations` **sendiri** alih-alih dari
 tabel jejak: jejak mengatakan "rilis melaporkan sukses", `_prisma_migrations`
 mengatakan "basis datanya memang memilikinya" — dan pada hari keduanya berbeda,
@@ -901,6 +936,15 @@ sempurna, jadi yang terlihat adalah aplikasi "sebagian rusak" — dan sebagian
 rusak pada pembukuan berarti ada angka yang masuk dan ada yang diam-diam tidak.
 Terlalu ketat → rollback darurat ikut terblokir, tepat pada saat jalan keluar
 dari insiden paling dibutuhkan.
+
+**Gerbang per perusahaan (23 Okt 2026).** Gerbang boot di atas memeriksa
+basis data KENDALI. Buku memakai tabel vonis yang SAMA, per buku
+(`src/lib/company-schema-gate.ts`): `tertinggal`/`menggantung` menutup buku
+itu saja — proxy `prisma` melempar `CompanySchemaBehindError`, halaman
+memantul ke `/book-updating`, API menjawab `503 book_schema_updating` — dan
+`/api/health` TETAP 200 (bidang `migrations` melaporkannya). Menjatuhkan probe
+karena satu buku akan membuat penyeimbang beban menolak SEMUA buku, persis
+yang dihapus 09 §6.
 
 ## 13. Variabel lingkungan
 

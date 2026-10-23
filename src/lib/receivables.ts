@@ -31,6 +31,20 @@
 import { prisma } from "@/lib/prisma";
 import { buildContractOutstanding } from "@/lib/document-chain";
 import { businessParts } from "@sai/core/business-date";
+import {
+  AGING_BUCKETS as CONTRACT_AGING_BUCKETS,
+  AGING_BUCKET_MAX_DAYS,
+  type AgingBucket as ContractAgingBucket,
+} from "@sai/core/generated/accounting";
+import {
+  AGING_BUCKET_PRINT_LABELS,
+  PARTY_RECAP_NO_PARTY,
+  PAYMENT_STATUS_PRINT_LABELS,
+  payableDocumentNo,
+} from "@/lib/statement-layout";
+
+/** Pihak faktur tanpa pelanggan (faktur warisan, #35) — bunyi yang sama dengan rekap mitra. */
+export const RECEIVABLES_NO_CUSTOMER = PARTY_RECAP_NO_PARTY["sales-by-customer"];
 
 /** Half a cent — money is Decimal(15,2), so anything under this is rounding noise. */
 const EPSILON = 0.005;
@@ -40,24 +54,22 @@ export const BASE_CURRENCY = "IDR";
 /** Derived payment state of a document. Mutually exclusive; computed, not stored. */
 export type PaymentStatus = "paid" | "partial" | "unpaid" | "overdue";
 
-export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  paid: "Lunas",
-  partial: "Sebagian",
-  unpaid: "Belum Bayar",
-  overdue: "Jatuh Tempo",
-};
+/* Label cetaknya tinggal di `statement-layout.ts` sejak tahap 1d — dari sana
+   `contract:gen` membangkitkannya ke lembar sebar Go. Nama lama tetap ada. */
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = PAYMENT_STATUS_PRINT_LABELS;
 
-/** Aging buckets required by issue #12: 0-30 / 31-60 / 61-90 / >90 days. */
-export type AgingBucket = "b0_30" | "b31_60" | "b61_90" | "b90_plus";
+/**
+ * Aging buckets required by issue #12: 0-30 / 31-60 / 61-90 / >90 days.
+ *
+ * Batasnya kontrak lintas bahasa (`contract/accounting.yaml` → `aging`), sebab
+ * Umur Piutang/Utang Go (`internal/ledgerread/aging.go`) wajib membagi umur
+ * yang sama ke ember yang sama.
+ */
+export type AgingBucket = ContractAgingBucket;
 
-export const AGING_BUCKETS: AgingBucket[] = ["b0_30", "b31_60", "b61_90", "b90_plus"];
+export const AGING_BUCKETS: AgingBucket[] = [...CONTRACT_AGING_BUCKETS];
 
-export const AGING_BUCKET_LABELS: Record<AgingBucket, string> = {
-  b0_30: "0–30 hari",
-  b31_60: "31–60 hari",
-  b61_90: "61–90 hari",
-  b90_plus: "> 90 hari",
-};
+export const AGING_BUCKET_LABELS: Record<AgingBucket, string> = AGING_BUCKET_PRINT_LABELS;
 
 /** A money row as stored: original amount + currency, with optional IDR conversion. */
 export interface MoneyRow {
@@ -101,10 +113,12 @@ export function ageInDays(date: Date, asOf: Date): number {
 
 /** Map an age in days onto an aging bucket. Ages <= 0 land in the youngest bucket. */
 export function agingBucket(days: number): AgingBucket {
-  if (days <= 30) return "b0_30";
-  if (days <= 60) return "b31_60";
-  if (days <= 90) return "b61_90";
-  return "b90_plus";
+  for (const b of AGING_BUCKETS) {
+    const max = AGING_BUCKET_MAX_DAYS[b];
+    if (max === null || days <= max) return b;
+  }
+  /* Tak terjangkau: generator menolak ember terakhir yang berbatas. */
+  return AGING_BUCKETS[AGING_BUCKETS.length - 1]!;
 }
 
 export interface StatusInput {
@@ -501,6 +515,15 @@ function contractSubtotal(items: { bags: unknown; kgPerBag: unknown; pricePerKg:
 }
 
 /**
+ * Urutan baris: tanggal terbaru dulu, lalu id terbesar. Kunci KEDUA itu bukan
+ * hiasan (tahap 1d): tanpa dia, dokumen bertanggal sama — hal yang biasa, satu
+ * hari bisa berisi belasan faktur — keluar dalam urutan sesuka PostgreSQL, dan
+ * dua pembacaan buku yang sama (layar vs berkas, TS vs Go) boleh berbeda urutan
+ * tanpa satu angka pun berubah. Umur Piutang/Utang Go memakai urutan yang sama.
+ */
+const NEWEST_FIRST = [{ date: "desc" as const }, { id: "desc" as const }];
+
+/**
  * Every open receivable: sales invoices plus contracts that carry payments.
  *
  * Both document types land in one list because both create a claim on a customer
@@ -524,7 +547,7 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
         advanceApplications: true,
         salesReturns: true,
       },
-      orderBy: { date: "desc" },
+      orderBy: NEWEST_FIRST,
     }),
     client.contract.findMany({
       where: { status: { not: "canceled" }, date: { lte: asOf } },
@@ -541,7 +564,7 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
           include: { items: true },
         },
       },
-      orderBy: { date: "desc" },
+      orderBy: NEWEST_FIRST,
     }),
   ]);
 
@@ -582,7 +605,7 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
       kind: "invoice",
       id: inv.id,
       documentNo: inv.invoiceNo,
-      partyName: inv.customer?.name ?? "Tanpa pelanggan",
+      partyName: inv.customer?.name ?? RECEIVABLES_NO_CUSTOMER,
       date: inv.date,
       terms: null,
       href: `/invoices/${inv.id}`,
@@ -699,7 +722,7 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
       advanceApplications: true,
       purchaseReturns: true,
     },
-    orderBy: { date: "desc" },
+    orderBy: NEWEST_FIRST,
   });
 
   const bySupplier = new Map<number, typeof transactions>();
@@ -808,7 +831,7 @@ export async function getPayables(query: LedgerQuery = {}, client = prisma) {
       rows.push({
         kind: "purchase",
         id: p.id,
-        documentNo: `TRX-${p.id}`,
+        documentNo: payableDocumentNo(p.id),
         partyName: p.supplier.name,
         date: p.date,
         terms: p.note ?? null,

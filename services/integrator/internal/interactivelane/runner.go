@@ -164,6 +164,17 @@ func handlerEkspor(kolam *pgxpool.Pool, root string) jobs.Handler {
 			data, filename, err = labaRugi(c.Ctx, company, m, c.Progress)
 		case contract.ReportBalanceSheet:
 			data, filename, err = neraca(c.Ctx, company, m, c.Progress)
+		// Arus Kas (tahap 1d, `go-parity` sejak 23 Okt 2026): penghasilnya
+		// ADA, tetapi `GoEngineReports` menolaknya lebih dulu sampai paritas
+		// produksinya lulus — pola yang sama dengan Laba Rugi & Neraca dulu.
+		// Laporan Perubahan Ekuitas tidak punya cabang: ia tidak punya berkas
+		// di TS sekalipun (src/lib/report-engine.ts).
+		case contract.ReportCashFlow:
+			data, filename, err = arusKas(c.Ctx, company, m, c.Progress)
+		// Umur Piutang & Umur Utang (`go-parity`): sama — penghasilnya ada,
+		// register yang memutuskan kapan cabang ini terjangkau.
+		case contract.ReportReceivables, contract.ReportPayables:
+			data, filename, err = umur(c.Ctx, company, m, c.Progress)
 		default:
 			err = fmt.Errorf("laporan %q belum punya penghasil berkas Go", m.ReportID)
 		}
@@ -319,6 +330,100 @@ func neraca(ctx context.Context, company *registry.Company, m muatanEkspor, prog
 		return nil, "", err
 	}
 	return data, document.FileName(contract.BalanceSheetTitle, now), nil
+}
+
+func arusKas(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	// Instan dihitung PENERBIT (`resolvePeriod`), diterima apa adanya. Arus
+	// Kas tidak punya kolom pembanding — muatan yang membawanya DITOLAK, bukan
+	// dicetak satu kolom diam-diam.
+	if m.Params["compare"] != "" || m.PriorFromInstant != "" || m.PriorToInstant != "" || m.PriorAsOfInstant != "" {
+		return nil, "", fmt.Errorf("arus kas tidak punya kolom pembanding (compare %q)", m.Params["compare"])
+	}
+	from, err := time.Parse(time.RFC3339Nano, m.FromInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("fromInstant %q: %w", m.FromInstant, err)
+	}
+	to, err := time.Parse(time.RFC3339Nano, m.ToInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("toInstant %q: %w", m.ToInstant, err)
+	}
+	period, err := document.PeriodRange(m.Params["from"], m.Params["to"], "")
+	if err != nil {
+		return nil, "", err
+	}
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	cf, err := r.CashFlow(ctx, &from, &to)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(cf.UnknownTypes) > 0 {
+		log.Printf("[interactive-go] ⚠ %s: akun lawan kas bertipe di luar kontrak: %s",
+			company.Slug, strings.Join(cf.UnknownTypes, ", "))
+	}
+	_ = progress(55)
+
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.CashFlowWorkbook(cf, name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(contract.CashFlowTitle, now), nil
+}
+
+// umur: Umur Piutang / Umur Utang per `asOfInstant`. Parameter halaman yang
+// ikut muatan: `cols` (kolom tampil, `resolveColumns`) dan `overdue` ("1" =
+// hanya jatuh tempo) — keduanya dibaca `buildReportPayload` TS dengan bunyi
+// yang sama.
+func umur(ctx context.Context, company *registry.Company, m muatanEkspor, progress func(int) error) ([]byte, string, error) {
+	asOf, err := time.Parse(time.RFC3339Nano, m.AsOfInstant)
+	if err != nil {
+		return nil, "", fmt.Errorf("asOfInstant %q: %w", m.AsOfInstant, err)
+	}
+	period, err := document.PeriodAsOf(m.Params["asOf"])
+	if err != nil {
+		return nil, "", err
+	}
+	specs, err := document.AgingColumnsFor(m.ReportID)
+	if err != nil {
+		return nil, "", err
+	}
+	overdue := m.Params["overdue"] == "1"
+
+	r, err := ledgerread.OpenAt(ctx, company.DatabaseName, company.InstanceURLEnvVar)
+	if err != nil {
+		return nil, "", err
+	}
+	defer r.Close()
+
+	var rep *ledgerread.AgingReport
+	if m.ReportID == contract.ReportReceivables {
+		rep, err = r.Receivables(ctx, asOf, overdue)
+	} else {
+		rep, err = r.Payables(ctx, asOf, overdue)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	_ = progress(55)
+
+	name := companyName(ctx, r, company)
+	_ = progress(70)
+
+	now := time.Now()
+	data, err := document.AgingWorkbook(rep, document.AgingVisibleColumns(specs, m.Params["cols"]), name, period, now)
+	if err != nil {
+		return nil, "", err
+	}
+	return data, document.FileName(document.AgingTitle(m.ReportID), now), nil
 }
 
 // priorIncomeStatement: Laba Rugi periode pembanding (#557), atau nil bila

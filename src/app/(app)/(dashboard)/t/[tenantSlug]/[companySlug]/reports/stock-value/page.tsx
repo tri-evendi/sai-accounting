@@ -53,7 +53,7 @@ import { TermTooltip } from "@sai/ui/term-tooltip";
 import { StatementPDFButton, StatementExcelButton } from "@/components/shared/pdf-export-buttons";
 import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { reportById, resolveColumns } from "@/lib/report-catalog";
-import { stockValueColumns, type StockValueColumnId } from "@/lib/statement-layout";
+import { stockValueColumns, stockValuePeriodLabel, type StockValueColumnId } from "@/lib/statement-layout";
 import { formatCurrency, formatDate } from "@sai/core/utils";
 import { getT } from "@sai/platform/i18n/server";
 import { ContainerOutlined, InfoCircleOutlined } from "@ant-design/icons";
@@ -87,7 +87,7 @@ export default async function StockValueReportPage({
 
   const payload: StatementPayload = {
     kind: "stock-value",
-    period: `${formatDate(from)} — ${formatDate(to)}`,
+    period: stockValuePeriodLabel(formatDate(from), formatDate(to)),
     rows: report.rows,
     /* Nilai pada AKHIR periode: angka yang dicocokkan ke neraca per tanggal itu,
        bukan penjumlahan mutasi. */
@@ -194,7 +194,10 @@ export default async function StockValueReportPage({
         actions={
           <>
             <StatementPDFButton payload={payload} />
-            <StatementExcelButton payload={payload} />
+            {/* `sumber` ikut SELALU: laporan ini `go-parity`
+                (src/lib/report-engine.ts) — begitu register beralih ke `go`,
+                lembarnya dihitung pelari Go dari PARAMETER ini. */}
+            <StatementExcelButton payload={payload} sumber={{ reportId: "stock-value", params: { from: fromISO, to: toISO, cols: sp.cols } }} />
           </>
         }
       />

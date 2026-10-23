@@ -1,0 +1,44 @@
+{
+  "year": 2026,
+  "month": 2,
+  "from": "2026-01-31T17:00:00Z",
+  "to": "2026-02-28T16:59:59.999Z",
+  "rows": [
+    {
+      "code": "4102",
+      "name": "Retur Penjualan",
+      "category": "revenue",
+      "budget": "0.00",
+      "actual": "-1000000.25",
+      "variance": "-1000000.25",
+      "variancePct": null,
+      "status": "under"
+    },
+    {
+      "code": "5101",
+      "name": "Harga Pokok Penjualan",
+      "category": "expense",
+      "budget": "10000000.00",
+      "actual": "9876543.21",
+      "variance": "-123456.79",
+      "variancePct": -1.23,
+      "status": "on_target"
+    }
+  ],
+  "totals": {
+    "budget": "10000000.00",
+    "actual": "8876542.96",
+    "variance": "-1123457.04",
+    "variancePct": -11.23,
+    "alertCount": 1
+  },
+  "hasBudgets": true,
+  "salesTarget": {
+    "totalTarget": "1000000.00",
+    "actualSales": "-1000000.25",
+    "variance": "-2000000.25",
+    "targetCount": 1,
+    "hasTargets": true
+  },
+  "unknownTypes": []
+}

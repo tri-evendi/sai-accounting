@@ -29,6 +29,8 @@ import { publishJob } from "@sai/platform/job-queue";
 import { resolveAsOf, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { reportEngine } from "@/lib/report-engine";
 import { comparisonDate, comparisonRange, parseComparison } from "@/lib/statement-compare";
+import { resolveBudgetPeriod } from "@/lib/report-payload";
+import { budgetPeriodRange } from "@/lib/budget-report";
 import { resolveStockPeriod } from "@/lib/stock-period";
 
 /** Muatan `report.export_go`. Dibaca `services/integrator/internal/interactivelane`. */
@@ -46,6 +48,11 @@ export type GoExportPayload = {
    */
   fromInstant?: string;
   toInstant?: string;
+  /*
+   * `period_month` (Realisasi vs Anggaran): `params.year` + `params.month`
+   * (0 = setahun) hasil `resolveBudgetPeriod`, dan `fromInstant`/`toInstant`
+   * = `budgetPeriodRange` — batas Laba Rugi realisasinya.
+   */
   /**
    * Kolom PEMBANDING (#557), hanya bila `params.compare` sah dan laporannya
    * komparatif (`COMPARABLE_REPORTS`). Instan, bukan tanggal, dengan alasan
@@ -135,12 +142,30 @@ export function goExportPayloadShape(
           : {}),
       };
     }
+    case "period_month": {
+      /*
+       * Realisasi vs Anggaran (tahap 1d): `?year=&month=` (month 0 = setahun)
+       * diselesaikan `resolveBudgetPeriod` — aturan yang SAMA dengan halaman
+       * dan `buildReportPayload` — lalu batas Laba Rugi-nya dikirim sebagai
+       * INSTAN dari `budgetPeriodRange`, fungsi yang dipakai pembaca TS. Go
+       * memakai `year`/`month` untuk anggaran & label, instan untuk realisasi.
+       */
+      const { year, month } = resolveBudgetPeriod(params.year, params.month, now);
+      const { start, end } = budgetPeriodRange(year, month);
+      const rest = Object.fromEntries(Object.entries(params).filter(([k]) => k !== "compare"));
+      return {
+        reportId: report.id,
+        params: { ...rest, year: String(year), month: String(month ?? 0) },
+        fromInstant: start.toISOString(),
+        toInstant: end.toISOString(),
+      };
+    }
     default:
       /* Melempar lebih jujur daripada menerbitkan pekerjaan yang pekerjanya
          tidak tahu cara membacanya. */
       throw new Error(
         `laporan \`${report.id}\` ber-paramKind \`${report.paramKind}\` — penerbit Go baru ` +
-          "mengenal `as_of` dan `period`"
+          "mengenal `as_of`, `period`, dan `period_month`"
       );
   }
 }

@@ -99,6 +99,9 @@ import {
   TRIAL_BALANCE_WIDTHS,
   sheetPrintedLine,
   AGING_WIDTHS,
+  BUDGET_WIDTHS,
+  CASH_BANK_WIDTHS,
+  PARTY_RECAP_WIDTHS,
 } from "../src/lib/report-export";
 import { REPORT_ENGINES } from "../src/lib/report-engine";
 import { REPORTS } from "../src/lib/report-catalog";
@@ -123,6 +126,21 @@ import {
 } from "../src/lib/cost-centers";
 import { COMPARISON_MODES } from "../src/lib/statement-compare";
 import { accountTypeLabel } from "../src/lib/accounting";
+import {
+  BUDGET_COLUMNS,
+  BUDGET_HEADERS,
+  BUDGET_MONTH_NAMES_ID,
+  CASH_BANK_COLUMNS,
+  CASH_BANK_HEADERS,
+  PARTY_RECAP_COLUMNS,
+  PARTY_RECAP_HEADERS,
+  RECAP_TOTAL_LABEL,
+  VARIANCE_STATUS_TEXT,
+  budgetAlertNote,
+  budgetPeriodLabel,
+  unratedNote,
+} from "../src/lib/statement-layout";
+import { DEFAULT_VARIANCE_THRESHOLD_PCT } from "../src/lib/budget";
 /* Laporan stok (tahap 1d, `go-parity`) — `stock_layout_gen.go`. */
 import { OPNAME_ADJUSTMENT_NOTE, STOCK_MOVEMENT_TYPES } from "@sai/core/constants";
 import {
@@ -2417,6 +2435,176 @@ ${kolomOpname}
 `;
 }
 
+/* Rekap per Pihak, Kas & Bank, Realisasi vs Anggaran (tahap 1d, `go-parity`,
+   23 Okt 2026): berkas TERSENDIRI dengan alasan yang sama dengan
+   `aging_layout_gen.go` — laporan yang dipindah paralel tidak menyunting satu
+   fungsi pembangkit yang sama. */
+const TUJUAN_TATA_LETAK_REKAP_GO = join(
+  AKAR,
+  "services",
+  "integrator",
+  "internal",
+  "contract",
+  "recap_layout_gen.go"
+);
+
+function bangkitkanTataLetakRekapGo(): string {
+  const kepala = `DIBANGKITKAN DARI \`src/lib/statement-layout.ts\`, \`src/lib/report-export.ts\`,
+\`src/lib/report-catalog.ts\`, dan \`src/lib/budget.ts\` — JANGAN DISUNTING TANGAN.
+
+Jalankan \`bun run contract:gen\` setelah mengubah salah satunya, dan commit
+hasilnya bersama perubahan itu. \`bun run contract:gen -- --cek\` gagal bila
+berkas ini basi (penjaga \`tests/contract-jobs.test.ts\`).
+
+Pembacanya \`internal/ledgerread\` (kosakata & ambang variansi anggaran) dan
+\`internal/document\` (lembar sebar Penjualan per Pelanggan, Pembelian per
+Pemasok, Laporan Kas & Bank, Realisasi vs Anggaran). Isi lembarnya wajib sama
+dengan \`buildPartyRecapSheet\` / \`buildCashBankSheet\` / \`buildBudgetSheet\` —
+dibuktikan \`bun run parity:<laporan>-xlsx\`.`
+    .split("\n")
+    .map((b) => `// ${b}`.trimEnd())
+    .join("\n");
+  const q = (v: string) => JSON.stringify(v);
+
+  /* Kolom katalog WAJIB = daftar kolom penentu tata letak, berurutan: Go
+     menyaring kolom tampil (`resolveColumns` → `selectColumns`) dari satu
+     daftar ini, dan urutan katalog = urutan lembar. */
+  const kolomKatalog = (
+    id: string,
+    tataLetak: readonly string[],
+    judul: Record<string, string>,
+    lebar: Record<string, number>
+  ) => {
+    const def = REPORTS.find((r) => r.id === id);
+    const spesifikasi = def?.columns ?? [];
+    const ids = spesifikasi.map((c) => c.id);
+    if (ids.join(",") !== tataLetak.join(",")) {
+      throw new Error(`kolom katalog ${id} (${ids.join(",")}) ≠ tata letak (${tataLetak.join(",")})`);
+    }
+    return spesifikasi
+      .map(
+        (c) =>
+          `\t{ID: ${q(c.id)}, Header: ${q(judul[c.id]!)}, Width: ${lebar[c.id]}, ` +
+          `Fixed: ${c.fixed === true}, DefaultOn: ${c.defaultOn !== false}},`
+      )
+      .join("\n");
+  };
+  /* Realisasi vs Anggaran tanpa pilihan kolom (katalognya tanpa `columns`):
+     semua kolom, selalu. Bila katalog kelak menyalakannya, generator ini
+     MENOLAK — lembar Go belum menyaring kolomnya. */
+  const anggaran = REPORTS.find((r) => r.id === "budget-realization");
+  if ((anggaran?.columns ?? []).length > 0) {
+    throw new Error("budget-realization kini berpilihan kolom — lembar Go (document/budget.go) belum menyaringnya");
+  }
+  const kolomAnggaran = BUDGET_COLUMNS.map(
+    (c) => `\t{Header: ${q(BUDGET_HEADERS[c])}, Width: ${BUDGET_WIDTHS[c]}},`
+  ).join("\n");
+
+  const PENANDA_BULAN = BUDGET_MONTH_NAMES_ID[0];
+  const bulanan = budgetPeriodLabel(987654321, 1);
+  if (!bulanan.includes(PENANDA_BULAN) || !bulanan.includes("987654321")) {
+    throw new Error(`pola Go: label bulan ${bulanan}`);
+  }
+  const polaBulan = bulanan.replace(/%/g, "%%").replace(PENANDA_BULAN, "%s").replace("987654321", "%d");
+  if (polaBulan.indexOf("%s") > polaBulan.indexOf("%d")) {
+    throw new Error(`pola Go: nama bulan harus mendahului tahun (${bulanan})`);
+  }
+
+  const konst = ratakan([
+    { kiri: "SalesByCustomerSheetName", kanan: `= ${q(SHEET_NAMES["sales-by-customer"])}` },
+    { kiri: "SalesByCustomerTitle", kanan: `= ${q(STATEMENT_TITLES["sales-by-customer"])}` },
+    { kiri: "SalesByCustomerNoParty", kanan: `= ${q(PARTY_RECAP_NO_PARTY["sales-by-customer"])}` },
+    { kiri: "PurchasesBySupplierSheetName", kanan: `= ${q(SHEET_NAMES["purchases-by-supplier"])}` },
+    { kiri: "PurchasesBySupplierTitle", kanan: `= ${q(STATEMENT_TITLES["purchases-by-supplier"])}` },
+    { kiri: "PurchasesBySupplierNoParty", kanan: `= ${q(PARTY_RECAP_NO_PARTY["purchases-by-supplier"])}` },
+    { kiri: "PartyRecapEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.documents)}` },
+    { kiri: "PartyRecapUnratedNoteFormat", kanan: `= ${q(polaGoBulat(unratedNote))}` },
+    { kiri: "RecapTotalLabel", kanan: `= ${q(RECAP_TOTAL_LABEL)}` },
+    { kiri: "CashBankSheetName", kanan: `= ${q(SHEET_NAMES["cash-bank"])}` },
+    { kiri: "CashBankTitle", kanan: `= ${q(STATEMENT_TITLES["cash-bank"])}` },
+    { kiri: "CashBankEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.cashBank)}` },
+    { kiri: "BudgetSheetName", kanan: `= ${q(SHEET_NAMES["budget-realization"])}` },
+    { kiri: "BudgetTitle", kanan: `= ${q(STATEMENT_TITLES["budget-realization"])}` },
+    { kiri: "BudgetEmptyLabel", kanan: `= ${q(EXPORT_EMPTY.budget)}` },
+    { kiri: "BudgetSalesTargetLabel", kanan: `= ${q(EXPORT_TOTALS.salesTarget)}` },
+    { kiri: "BudgetPeriodSalesLabel", kanan: `= ${q(EXPORT_TOTALS.periodSales)}` },
+    { kiri: "BudgetAlertNoteFormat", kanan: `= ${q(polaGoBulat(budgetAlertNote))}` },
+    { kiri: "BudgetWholeYearFormat", kanan: `= ${q(polaGoBulat((n) => budgetPeriodLabel(n, undefined)))}` },
+    { kiri: "BudgetMonthFormat", kanan: `= ${q(polaBulan)}` },
+    /* `DEFAULT_VARIANCE_THRESHOLD_PCT` (budget.ts): pita ±% "sesuai anggaran". */
+    { kiri: "BudgetVarianceThresholdPct", kanan: `= ${DEFAULT_VARIANCE_THRESHOLD_PCT}` },
+  ]);
+
+  const status = Object.entries(VARIANCE_STATUS_TEXT);
+  const konstStatus = ratakan(
+    status.map(([k]) => ({ kiri: `BudgetVariance${pengenalGo(k)}`, kanan: `BudgetVarianceStatus = ${q(k)}` }))
+  );
+  const labelStatus = ratakan(
+    status.map(([k, v]) => ({ kiri: `BudgetVariance${pengenalGo(k)}:`, kanan: `${q(v)},` }))
+  );
+
+  return `${kepala}
+
+package contract
+
+// CatalogColumn adalah satu kolom lembar yang BERPILIHAN kolom (\`?cols=\`):
+// id katalog, judul, lebar, dan aturan pilihnya (\`resolveColumns\`).
+type CatalogColumn struct {
+\tID        string
+\tHeader    string
+\tWidth     float64
+\tFixed     bool
+\tDefaultOn bool
+}
+
+// Kalimat cetak Rekap per Pihak, Kas & Bank, dan Realisasi vs Anggaran. Pola
+// ber-%d / %s disusun fmt.Sprintf; nilainya dibangkitkan dengan memanggil
+// fungsi TS-nya.
+const (
+${konst}
+)
+
+// SalesByCustomerColumns: kolom Penjualan per Pelanggan, urutan katalog.
+var SalesByCustomerColumns = []CatalogColumn{
+${kolomKatalog("sales-by-customer", PARTY_RECAP_COLUMNS, PARTY_RECAP_HEADERS["sales-by-customer"], PARTY_RECAP_WIDTHS)}
+}
+
+// PurchasesBySupplierColumns: kolom Pembelian per Pemasok, urutan katalog.
+var PurchasesBySupplierColumns = []CatalogColumn{
+${kolomKatalog("purchases-by-supplier", PARTY_RECAP_COLUMNS, PARTY_RECAP_HEADERS["purchases-by-supplier"], PARTY_RECAP_WIDTHS)}
+}
+
+// CashBankColumns: kolom Laporan Kas & Bank, urutan katalog.
+var CashBankColumns = []CatalogColumn{
+${kolomKatalog("cash-bank", CASH_BANK_COLUMNS, CASH_BANK_HEADERS, CASH_BANK_WIDTHS)}
+}
+
+// BudgetColumns: judul (BUDGET_HEADERS) dan lebar (BUDGET_WIDTHS) kolom
+// Realisasi vs Anggaran — tanpa pilihan kolom.
+var BudgetColumns = []ReportColumn{
+${kolomAnggaran}
+}
+
+// BudgetMonthNamesID: nama bulan cetak (BUDGET_MONTH_NAMES_ID), Januari dulu.
+var BudgetMonthNamesID = [12]string{
+${BUDGET_MONTH_NAMES_ID.map((m) => `\t${q(m)},`).join("\n")}
+}
+
+// BudgetVarianceStatus: arah selisih realisasi terhadap anggaran
+// (\`VarianceStatus\`, budget.ts) — dihitung saat dibaca, tidak disimpan.
+type BudgetVarianceStatus string
+
+const (
+${konstStatus}
+)
+
+// BudgetVarianceStatusLabels: kata cetak tiap arah (VARIANCE_STATUS_TEXT).
+var BudgetVarianceStatusLabels = map[BudgetVarianceStatus]string{
+${labelStatus}
+}
+`;
+}
+
 const kontrak = baca();
 const kontrakAkuntansi = bacaAkuntansi();
 const kontrakInstans = bacaInstans();
@@ -2429,6 +2617,7 @@ const berkas: { jalur: string; isi: string }[] = [
   { jalur: TUJUAN_AKUNTANSI_GO, isi: bangkitkanAkuntansiGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_GO, isi: bangkitkanTataLetakGo(kontrakAkuntansi) },
   { jalur: TUJUAN_TATA_LETAK_UMUR_GO, isi: bangkitkanTataLetakUmurGo(kontrakAkuntansi) },
+  { jalur: TUJUAN_TATA_LETAK_REKAP_GO, isi: bangkitkanTataLetakRekapGo() },
   { jalur: TUJUAN_TATA_LETAK_STOK_GO, isi: bangkitkanTataLetakStokGo() },
   { jalur: TUJUAN_INSTANS_TS, isi: bangkitkanInstans(kontrakInstans) },
   { jalur: TUJUAN_INSTANS_GO, isi: bangkitkanInstansGo(kontrakInstans) },

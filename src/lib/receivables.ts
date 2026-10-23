@@ -617,12 +617,19 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
     if (total <= EPSILON) continue;
 
     // The invoiced slice of this contract, measured by the SAME per-line
-    // name-matching arithmetic the contract detail page uses. It enters as a
-    // settlement row in the contract's own currency (the chain inherits it on
-    // a pull), valued through `toBase` at the contract's rate — a rate-less
-    // foreign contract already has no IDR value at all, so nothing new leaks.
+    // matching the contract detail page uses (`loadContractChain`): a line
+    // carries its `itemId` on BOTH legs, so `chainLineKey` / `resolveChainKey`
+    // (#491/#503) pair them — id first, then a name that points at exactly
+    // one contract line, and an ambiguous bare name is NOT guessed (it stays
+    // unmatched and settles nothing). Before this the reader passed names
+    // only, so two same-named items shared one line and the aging report
+    // disagreed with the contract page. It enters as a settlement row in the
+    // contract's own currency (the chain inherits it on a pull), valued
+    // through `toBase` at the contract's rate — a rate-less foreign contract
+    // already has no IDR value at all, so nothing new leaks.
     const invoicedValue = buildContractOutstanding({
       lines: c.items.map((i) => ({
+        itemId: i.itemId,
         itemName: i.itemName ?? "",
         bags: num(i.bags),
         kgPerBag: num(i.kgPerBag),
@@ -630,6 +637,7 @@ export async function getReceivables(query: LedgerQuery = {}, client = prisma) {
       })),
       invoiced: (c.invoices ?? []).flatMap((inv) =>
         inv.items.map((i) => ({
+          itemId: i.itemId,
           itemName: i.itemName ?? "",
           quantity: num(i.quantity),
           price: num(i.price),

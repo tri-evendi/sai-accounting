@@ -170,6 +170,45 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
        51 setara (angka, 3 periode) · isi XLSX 51 setara (3 periode) — 0 berselisih · 0 gagal. */
     parityProven: { date: "2026-10-23", books: 17 },
   },
+  /*
+   * Gelombang A laporan berberkas berikutnya (tahap 1d, 23 Okt 2026) — keempatnya
+   * `go-parity`: Go menghitung dan menulis lembar sebarnya, BERKAS masih
+   * dihasilkan TypeScript sampai sesi utama menjalankan paritas atas buku
+   * PRODUKSI — angka DAN isi berkas:
+   *   bun run parity:sales-by-customer      · parity:sales-by-customer-xlsx
+   *   bun run parity:purchases-by-supplier  · parity:purchases-by-supplier-xlsx
+   *   bun run parity:cash-bank              · parity:cash-bank-xlsx
+   *   bun run parity:budget-realization     · parity:budget-realization-xlsx
+   * Halaman keempatnya SUDAH mengirim `sumber`, penerbit Go sudah membentuk
+   * muatannya (Realisasi vs Anggaran: `period_month` → year/month + instan
+   * `budgetPeriodRange`), dan pelari Go sudah punya cabangnya — peralihan ke
+   * `go` = sunting entri di bawah + `bun run contract:gen`.
+   *
+   * Rekap per Pihak membaca DOKUMEN sumber (faktur, retur, transaksi
+   * pemasok), sen eksak seperti Umur Piutang. Kas & Bank memakai pembaca Arus
+   * Kas Go (sudah `go`) dan hanya menambah pemilihan barisnya. Realisasi vs
+   * Anggaran memakai pembaca Laba Rugi Go (sudah `go`) untuk realisasinya.
+   */
+  "sales-by-customer": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/party_recap.go",
+    parityScript: "parity:sales-by-customer",
+  },
+  "purchases-by-supplier": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/party_recap.go",
+    parityScript: "parity:purchases-by-supplier",
+  },
+  "cash-bank": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/cash_bank.go",
+    parityScript: "parity:cash-bank",
+  },
+  "budget-realization": {
+    engine: "go-parity",
+    goSource: "services/integrator/internal/ledgerread/budget.go",
+    parityScript: "parity:budget-realization",
+  },
 };
 
 /** Mesin yang menghasilkan BERKAS laporan ini hari ini. */

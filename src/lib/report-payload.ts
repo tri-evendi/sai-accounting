@@ -29,7 +29,7 @@ import {
 import { getOpnameHistory, getStockMovementReport, getStockValuePeriodReport } from "@/lib/stock-report";
 import { getPurchasesBySupplier, getSalesByCustomer } from "@/lib/party-recap";
 import { getBudgetReport, getSalesTargetRealization } from "@/lib/budget-report";
-import type { VarianceStatus } from "@/lib/budget";
+import { DEFAULT_VARIANCE_THRESHOLD_PCT, type VarianceStatus } from "@/lib/budget";
 import {
   AGING_BUCKETS,
   AGING_BUCKET_LABELS,
@@ -45,7 +45,9 @@ import type { StatementPayload } from "@/lib/pdf/statement-pdf";
 import { resolveAsOf, resolveColumns, resolvePeriod, type ReportDefinition } from "@/lib/report-catalog";
 import { resolveStockPeriod } from "@/lib/stock-period";
 import {
+  VARIANCE_STATUS_TEXT,
   asOfPeriodLabel,
+  budgetPeriodLabel,
   comparePeriodLabel,
   costCenterPeriodSuffix,
   periodRangeLabel,
@@ -74,28 +76,8 @@ export interface ReportPayloadParams {
   compare?: string;
 }
 
-/** Nama bulan untuk DOKUMEN CETAK — bahasa Indonesia, seperti isi `lib/pdf`. */
-const MONTH_NAMES_ID = [
-  "Januari",
-  "Februari",
-  "Maret",
-  "April",
-  "Mei",
-  "Juni",
-  "Juli",
-  "Agustus",
-  "September",
-  "Oktober",
-  "November",
-  "Desember",
-];
-
-/** Kata untuk arah selisih; cetakan tak punya lencana berwarna. */
-const VARIANCE_STATUS_TEXT: Record<VarianceStatus, string> = {
-  over: "Di atas anggaran",
-  under: "Di bawah anggaran",
-  on_target: "Sesuai anggaran",
-};
+/* Nama bulan cetak & kata arah selisih: `budgetPeriodLabel` / `VARIANCE_STATUS_TEXT`
+   di `statement-layout.ts` — sumber lembar sebar Go juga (tahap 1d). */
 
 /**
  * `?year=&month=` → tahun & bulan yang sah, aturan yang SAMA dengan halaman
@@ -314,7 +296,7 @@ export function budgetPayload(
 ): Extract<StatementPayload, { kind: "budget-realization" }> {
   return {
     kind: "budget-realization",
-    period: month === undefined ? `Tahun ${year}` : `${MONTH_NAMES_ID[month - 1]} ${year}`,
+    period: budgetPeriodLabel(year, month),
     rows: budget.rows.map((r) => ({
       code: r.code,
       name: r.name,
@@ -389,7 +371,8 @@ export async function buildReportPayload(
   params: ReportPayloadParams,
   /**
    * Klien buku untuk laporan yang punya padanan Go (Neraca Saldo, Neraca, Laba
-   * Rugi, Arus Kas, Perubahan Ekuitas, Umur Piutang, Umur Utang).
+   * Rugi, Arus Kas, Perubahan Ekuitas, Umur Piutang, Umur Utang, Rekap per
+   * Pihak, Kas & Bank, Realisasi vs Anggaran).
    * Bawaannya klien perusahaan biasa; skrip paritas tahap 1d menyerahkan klien
    * transaksi READ ONLY supaya perbandingan atas buku produksi terbukti hanya
    * membaca. Laporan lain mengabaikannya.
@@ -550,15 +533,15 @@ export async function buildReportPayload(
       // alamat yang diedit tangan tidak berujung 500.
       const { year, month } = resolveBudgetPeriod(params.year, params.month);
       const [{ report: budget }, sales] = await Promise.all([
-        getBudgetReport(year, month),
-        getSalesTargetRealization(year, month),
+        getBudgetReport(year, month, DEFAULT_VARIANCE_THRESHOLD_PCT, client),
+        getSalesTargetRealization(year, month, DEFAULT_VARIANCE_THRESHOLD_PCT, client),
       ]);
       return budgetPayload(report, year, month, budget, sales, params.cols);
     }
 
     case "cash-bank": {
       const { from, to } = resolvePeriod(params.from, params.to);
-      const cf = await getCashFlow(from, to);
+      const cf = await getCashFlow(from, to, client);
       return cashBankPayload(report, from, to, cf, params.cols);
     }
 
@@ -612,8 +595,8 @@ export async function buildReportPayload(
       const { from, to } = resolvePeriod(params.from, params.to);
       const result =
         report.payloadKind === "sales-by-customer"
-          ? await getSalesByCustomer(from, to)
-          : await getPurchasesBySupplier(from, to);
+          ? await getSalesByCustomer(from, to, client)
+          : await getPurchasesBySupplier(from, to, client);
       return {
         kind: report.payloadKind,
         period: periodLabel(from, to, null),

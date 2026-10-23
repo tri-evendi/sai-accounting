@@ -133,8 +133,8 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
   },
   /*
    * Laporan KEEMPAT dan KELIMA tahap 1d (23 Okt 2026). Arus Kas `go` sejak
-   * paritas produksi hari yang sama; Perubahan Ekuitas tetap `go-parity`
-   * (lihat di bawah).
+   * paritas produksi hari yang sama; Perubahan Ekuitas `go` sejak
+   * ekspornya ada (0.16.0) dan paritas produksinya lulus (23 Okt 2026).
    *
    * Arus Kas: Go menghitung (`cash_flow.go`) dan menulis lembar sebarnya
    * (`internal/document/cash_flow.go`); halaman SUDAH mengirim `sumber`
@@ -163,9 +163,12 @@ export const REPORT_ENGINES: Partial<Record<ReportId, ReportEngineEntry>> = {
     parityProven: { date: "2026-10-23", books: 17 },
   },
   "equity-changes": {
-    engine: "go-parity",
+    engine: "go",
     goSource: "services/integrator/internal/ledgerread/equity_statement.go",
     parityScript: "parity:equity-changes",
+    /* Paritas PRODUKSI 23 Okt 2026 (hanya baca, 17 buku, image 0.16.0):
+       51 setara (angka, 3 periode) · isi XLSX 51 setara (3 periode) — 0 berselisih · 0 gagal. */
+    parityProven: { date: "2026-10-23", books: 17 },
   },
 };
 

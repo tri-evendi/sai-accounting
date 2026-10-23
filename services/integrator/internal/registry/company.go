@@ -28,6 +28,32 @@ type Company struct {
 	// InstanceURLEnvVar: nama env var `db_instances.url_env_var` tempat
 	// bukunya hidup; kosong = instans bawaan (tahap 4).
 	InstanceURLEnvVar string
+	// InstanceKey: `companies.db_instance_key`; kosong = instans bawaan.
+	InstanceKey string
+}
+
+// ListAll membaca SELURUH perusahaan terdaftar — termasuk yang nonaktif —
+// urut `id`. Padanan `control.company.findMany({ orderBy: { id: "asc" } })`
+// di `scripts/check-data-conformance.ts`: buku nonaktif tetap buku, dan data
+// di dalamnya tetap bisa menyimpang.
+func ListAll(ctx context.Context, pool *pgxpool.Pool) ([]Company, error) {
+	rows, err := pool.Query(ctx, pilihCompany+` ORDER BY c.id ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("baca registry perusahaan: %w", err)
+	}
+	defer rows.Close()
+	var hasil []Company
+	for rows.Next() {
+		c, err := scanCompany(rows)
+		if err != nil {
+			return nil, err
+		}
+		hasil = append(hasil, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("baca registry perusahaan: %w", err)
+	}
+	return hasil, nil
 }
 
 // ErrNoCompany: pekerjaan tanpa konteks perusahaan yang sah.
@@ -100,5 +126,6 @@ func (c *Company) setInstance(instanceKey, urlEnvVar *string) error {
 			"perusahaan #%d menunjuk instans %q yang tidak terdaftar di db_instances", c.ID, *instanceKey)
 	}
 	c.InstanceURLEnvVar = *urlEnvVar
+	c.InstanceKey = *instanceKey
 	return nil
 }

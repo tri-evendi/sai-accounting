@@ -4,7 +4,7 @@
  * (`workers/interactive.ts`) di DALAM konteks perusahaan pekerjaannya.
  *
  * Ini SATU-SATUNYA penulis status kiriman selain rute yang membuat barisnya:
- * pohon Go tidak menulis buku PT (daftar-izin `jobs` + `backup_runs`,
+ * pohon Go tidak menulis buku PT (daftar-izin tulisan Go tidak memuatnya,
  * `tests/services-go.test.ts`). Transisinya diputuskan `applyEfakturEvent` —
  * kejadian yang terlambat atau tidak sah DIABAIKAN, tidak menimpa.
  */

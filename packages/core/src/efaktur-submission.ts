@@ -8,7 +8,7 @@
  *      `integration.efaktur_submit`.
  *   2. Jalur `integration` Go mengirimnya ke PJAP dengan `idempotency_key` baris
  *      itu, lalu MELAPORKAN hasilnya sebagai pekerjaan `efaktur.record` — Go
- *      tidak menulis buku PT (daftar-izin `jobs` + `backup_runs`).
+ *      tidak menulis buku PT (daftar-izin tulisan Go tidak memuatnya).
  *   3. Selama DJP belum memutuskan, Go menerbitkan `integration.efaktur_poll`
  *      berjeda; setiap jawaban menjadi `efaktur.record` lagi.
  *   4. Pelari `interactive` Node menerapkan `efaktur.record` lewat

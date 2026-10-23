@@ -883,6 +883,11 @@ services:
       # ke penyedia `pjap` gagal `failed` dengan pesan yang terbaca; `mock` dan
       # unggah XML manual tidak terpengaruh.
       SETTINGS_ENCRYPTION_KEY:
+      # Sapuan kesesuaian data jalur `tenant` (bila `runner: go` untuk
+      # `tenant.conformance`): buku dibaca dari template di atas, batas
+      # serentaknya env yang SAMA dengan peran `conformance` di `svc-worker`
+      # (bawaan 3, plafon 8) — satu nilai, dua kemungkinan pelaksana.
+      CONFORMANCE_CONCURRENCY:
       # Jalur `tenant` SAJA. `CONTROL_DATABASE_URL` sengaja TIDAK ditimpa di
       # sini: jalur `interactive` di proses yang sama memakainya lewat PgBouncer.
       #

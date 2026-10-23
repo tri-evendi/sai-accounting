@@ -105,7 +105,7 @@ svc-worker (peran interactive, Node) ── tulis status ─────┘
 - **`pjap`**: kerangka (`pjap.go`). Setiap metode gagal permanen dengan pesan
   "penyedia PJAP belum disambungkan". Tidak ada bentuk API yang ditebak.
 
-## Keputusan: daftar-izin tulisan Go TIDAK bertambah
+## Keputusan: daftar-izin tulisan Go TIDAK bertambah karena e-Faktur
 
 `efaktur_submissions` hidup di **buku PT** dan hanya ditulis Node. Go
 melaporkan hasil sebagai pekerjaan `efaktur.record` (baris `jobs`, tabel yang
@@ -116,7 +116,16 @@ e-Faktur alasan itu tidak berlaku, karena antrean sudah menjadi perantaranya.
 I-3 (layanan tidak saling memanggil) tetap utuh. Penjaga yang menganggap seluruh
 tabel buku PT sebagai buku juga tidak perlu dilubangi.
 
-Alasannya juga ditulis di `tests/services-go.test.ts` (`BOLEH_DITULIS`).
+Daftar itu sendiri bertambah `conformance_runs` pada hari yang sama, untuk
+sapuan kesesuaian data. Alasannya berbeda, dan perbedaannya soal tabelnya:
+
+- **`conformance_runs`** adalah denyut kesehatan di basis data **kendali**, dan
+  harus tetap tercatat meski hanya Go yang hidup.
+- **Status e-Faktur** adalah data PT di **buku PT**. Bila `svc-worker` mati,
+  `efaktur.record` menunggu sebagai `queued` lalu tercatat saat ia hidup lagi.
+  Yang tertunda hanya tampilan status, tidak ada jejak yang hilang.
+
+Kedua alasan juga ditulis di `tests/services-go.test.ts` (`BOLEH_DITULIS`).
 
 ## Yang dibutuhkan dari pemilik untuk go-live PJAP
 

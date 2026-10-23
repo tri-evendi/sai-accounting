@@ -125,6 +125,7 @@ import {
   costCenterDisplayName,
 } from "../src/lib/cost-centers";
 import { COMPARISON_MODES } from "../src/lib/statement-compare";
+import { accountTypeLabel } from "../src/lib/accounting";
 import {
   BUDGET_COLUMNS,
   BUDGET_HEADERS,
@@ -239,12 +240,16 @@ interface Schedule {
   per_company: boolean;
   publisher: (typeof SCHEDULE_PUBLISHERS)[number];
 }
+/** Pelaksana kind yang sedang BERALIH bahasa — tepat satu, tidak pernah dua. */
+const KIND_RUNNERS = ["node", "go"] as const;
 interface Kind {
   lane: string;
   max_attempts: number;
   description: string;
   writes_ledger?: boolean;
   schedule?: Schedule;
+  /** Sakelar peralihan pelaksana (lihat `tenant.conformance` di YAML). */
+  runner?: (typeof KIND_RUNNERS)[number];
 }
 /** Setiap angka yang dibaca DUA bahasa. Semuanya bilangan bulat ≥ 1. */
 interface Numbers {
@@ -345,6 +350,28 @@ function baca(): Kontrak {
             `(kini: ${String(j?.publisher)}) — tepat SATU penerbit, tidak pernah dua`
         );
       }
+    }
+  }
+
+  /* Sakelar pelaksana: nilai asing ditolak DI SINI, alasan yang sama dengan
+     `publisher` — sisi yang tidak mengenali nilainya akan mengira dirinya
+     bukan pelaksana, dan sapuannya berhenti tanpa satu galat. Tidak boleh
+     bersama `schedule:` (dua sakelar untuk satu kind = dua jawaban atas
+     "siapa yang memicunya"), dan tidak pernah di jalur `ledger`: pelaksana
+     penulis buku adalah Node, selamanya (I-2). */
+  for (const [nama, kind] of Object.entries(k.kinds ?? {})) {
+    if (kind.runner === undefined) continue;
+    if (!(KIND_RUNNERS as readonly string[]).includes(kind.runner)) {
+      salah.push(
+        `kind \`${nama}\`: runner harus salah satu dari ${KIND_RUNNERS.join("/")} ` +
+          `(kini: ${String(kind.runner)}) — tepat SATU pelaksana, tidak pernah dua`
+      );
+    }
+    if (kind.schedule !== undefined) {
+      salah.push(`kind \`${nama}\`: \`runner\` dan \`schedule:\` bersamaan — satu kind, satu sakelar`);
+    }
+    if (kind.lane === "ledger" || kind.writes_ledger) {
+      salah.push(`kind \`${nama}\`: \`runner\` pada penulis buku — pelaksananya Node, selamanya (I-2)`);
     }
   }
 
@@ -497,6 +524,9 @@ function bangkitkan(k: Kontrak): string {
     })
     .join("\n");
 
+  const beralih = kinds.filter((kk) => k.kinds[kk]!.runner !== undefined);
+  const barisPelaksana = beralih.map((nama) => `  "${nama}": "${k.kinds[nama]!.runner}",`).join("\n");
+
   return `/**
  * ${JANGAN_SUNTING(k.version, "bun run contract:gen")}
  */
@@ -556,6 +586,19 @@ export interface ScheduleSpec {
 /** Kind yang diterbitkan DENYUT, beserta penerbitnya. Dibaca \`@sai/core/schedule-due\`. */
 export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
 ${barisJadwal}
+};
+
+/** Pelaksana kind yang sedang beralih bahasa — tepat SATU. */
+export type KindRunner = ${KIND_RUNNERS.map((g) => `"${g}"`).join(" | ")};
+
+${beralih.length > 0 ? union("RunnerSwitchedKind", beralih) : "export type RunnerSwitchedKind = never;"}
+
+/**
+ * Kind ber-\`runner:\` beserta pelaksananya HARI INI. Sisi yang bukan
+ * pelaksana melewati pekerjaannya (keluar 0 / selesai tanpa bekerja).
+ */
+export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
+${barisPelaksana}
 };
 
 export const isJobKind = (v: string): v is JobKind =>
@@ -726,6 +769,16 @@ function bangkitkanGo(k: Kontrak): string {
       };
     })
   );
+  const beralihGo = kinds.filter((kk) => k.kinds[kk]!.runner !== undefined);
+  const petaPelaksana = ratakan(
+    beralihGo.map((nama) => ({
+      kiri: `Kind${pengenalGo(nama)}:`,
+      kanan: `Runner${pengenalGo(k.kinds[nama]!.runner!)},`,
+    }))
+  );
+  const konstPelaksana = ratakan(
+    KIND_RUNNERS.map((g) => ({ kiri: `Runner${pengenalGo(g)}`, kanan: `KindRunner = "${g}"` }))
+  );
   const konstGrain = ratakan(
     SCHEDULE_GRAINS.map((g) => ({ kiri: `Grain${pengenalGo(g)}`, kanan: `ScheduleGrain = "${g}"` }))
   );
@@ -845,6 +898,21 @@ var ScheduledKinds = map[JobKind]ScheduleSpec{
 ${petaJadwal}
 }
 
+// KindRunner: bahasa yang MELAKSANAKAN kind yang sedang beralih — tepat satu.
+type KindRunner string
+
+const (
+${konstPelaksana}
+)
+
+// KindRunners: kind ber-\`runner:\` beserta pelaksananya hari ini. Pelari Go
+// yang menerima pekerjaan kind ini sementara pelaksananya BUKAN Go
+// menyelesaikannya tanpa bekerja — dua pelaksana untuk satu putaran adalah
+// persis yang sakelar ini cegah. Padanan TS \`KIND_RUNNERS\`.
+var KindRunners = map[JobKind]KindRunner{
+${petaPelaksana}
+}
+
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.
 func IsJobKind(v string) bool {
 \t_, ada := JobKinds[JobKind(v)]
@@ -961,6 +1029,11 @@ interface KontrakAkuntansi {
   invoice_statuses: string[];
   contract_statuses: string[];
   aging: { buckets: { key: string; max_days?: number }[] };
+  materiality: {
+    catch_all_threshold: number;
+    catch_all_expense_type: string;
+    catch_all_name_pattern: string;
+  };
 }
 
 /** Kode mata uang ISO 4217: tiga huruf besar. */
@@ -971,6 +1044,80 @@ const SISI = ["debit", "credit"] as const;
 
 /** Nilai enum-like mengikuti docs/DATABASE.md: `snake_case` huruf kecil. */
 const SNAKE = /^[a-z][a-z0-9_]*$/;
+
+/**
+ * Pola nama penampung (#444) — subset yang artinya SAMA di RegExp JS (tanpa
+ * `u`, dengan `i`) dan RE2 Go setelah `polaPenampungGo`.
+ *
+ *   • huruf besar ASCII DITOLAK: Go menurunkan huruf ASCII NAMANYA lalu
+ *     mencocokkan tanpa `(?i)`. `(?i)` RE2 melipat Unicode (`k` ≈ U+212A
+ *     Kelvin, `s` ≈ U+017F) sementara `i` JS tanpa `u` hanya melipat ASCII;
+ *     pola huruf kecil + nama yang diturunkan ASCII-nya = lipatan JS persis.
+ *   • escape hanya `\s` `\b` `\d` `\w` (makna ASCII di kedua mesin, kecuali
+ *     `\s` yang DITERJEMAHKAN) dan tanda baca yang diloloskan.
+ *   • `.` tanpa escape DITOLAK: JS mengecualikan empat pemisah baris, RE2 satu.
+ *   • `(?`, lookaround, backreference, `\u`, `\p` DITOLAK.
+ *
+ * Pulang `null` bila sah, atau kalimat sebabnya.
+ */
+function periksaPolaPenampung(pola: unknown): string | null {
+  if (typeof pola !== "string" || pola.length === 0) return "wajib string tak kosong";
+  if (/[A-Z]/.test(pola.replace(/\\./g, ""))) {
+    return "memuat huruf besar ASCII — tulis huruf kecil (pencocokannya tanpa membedakan huruf ASCII)";
+  }
+  for (let i = 0; i < pola.length; i++) {
+    const c = pola[i]!;
+    if (c === "\\") {
+      const e = pola[i + 1] ?? "";
+      if (!/^[sbdw.()[\]{}|?*+\\\-/^$]$/.test(e)) return `escape \`\\${e}\` di luar subset lintas bahasa`;
+      i++;
+      continue;
+    }
+    if (c === ".") return "`.` tanpa escape — maknanya berbeda di JS dan RE2 (pemisah baris)";
+    if (c === "(" && pola[i + 1] === "?") return "`(?` (grup khusus/lookaround) di luar subset lintas bahasa";
+  }
+  try {
+    new RegExp(pola, "i");
+  } catch (e) {
+    return `bukan regex sah: ${String(e)}`;
+  }
+  return null;
+}
+
+/** Kelas `\s` RegExp JS, DIBACA dari mesin JS-nya sendiri — bukan diketik. */
+function kelasSpasiJsGo(): string {
+  const titik: number[] = [];
+  for (let c = 0; c <= 0xffff; c++) if (/\s/.test(String.fromCharCode(c))) titik.push(c);
+  const rentang: string[] = [];
+  const hex = (n: number) => `\\x{${n.toString(16).toUpperCase().padStart(4, "0")}}`;
+  for (let i = 0; i < titik.length; ) {
+    let j = i;
+    while (j + 1 < titik.length && titik[j + 1] === titik[j]! + 1) j++;
+    rentang.push(i === j ? hex(titik[i]!) : `${hex(titik[i]!)}-${hex(titik[j]!)}`);
+    i = j + 1;
+  }
+  return rentang.join("");
+}
+
+/** Pola kontrak → pola RE2 Go: `\s` menjadi kelas spasi JS yang persis. */
+function polaPenampungGo(pola: string): string {
+  const spasi = kelasSpasiJsGo();
+  let hasil = "";
+  let diKelas = false;
+  for (let i = 0; i < pola.length; i++) {
+    const c = pola[i]!;
+    if (c === "\\") {
+      const e = pola[i + 1]!;
+      hasil += e === "s" ? (diKelas ? spasi : `[${spasi}]`) : `\\${e}`;
+      i++;
+      continue;
+    }
+    if (c === "[") diKelas = true;
+    else if (c === "]") diKelas = false;
+    hasil += c;
+  }
+  return hasil;
+}
 
 function bacaAkuntansi(): KontrakAkuntansi {
   const k = load(readFileSync(SUMBER_AKUNTANSI, "utf8")) as KontrakAkuntansi;
@@ -1156,6 +1303,32 @@ function bacaAkuntansi(): KontrakAkuntansi {
     });
   }
 
+  /* ── Pagar materialitas (#444/#445). Ambang 0..1 EKSKLUSIF; tipe band wajib
+     tipe kontrak berkategori `expense`; pola nama wajib di subset yang SAMA
+     artinya di RegExp JS (tanpa `u`, bendera `i`) dan RE2 Go — lihat
+     `polaPenampungGo`. */
+  const mat = k.materiality;
+  if (!mat || typeof mat !== "object") {
+    salah.push("`materiality` kosong");
+  } else {
+    const t = mat.catch_all_threshold;
+    if (typeof t !== "number" || !Number.isFinite(t) || t <= 0 || t >= 1) {
+      salah.push(`materiality.catch_all_threshold harus angka 0..1 eksklusif (kini: ${String(t)})`);
+    }
+    const band = mat.catch_all_expense_type;
+    if (!(tipe ?? []).includes(band)) {
+      salah.push(`materiality.catch_all_expense_type ${JSON.stringify(band)} bukan tipe akun kontrak`);
+    } else if (k.account_type_categories?.[band] !== "expense") {
+      salah.push(
+        `materiality.catch_all_expense_type \`${band}\` berkategori ` +
+          `\`${String(k.account_type_categories?.[band])}\`, bukan \`expense\` — ` +
+          "band penampung BEBAN yang bukan beban tidak pernah ikut total bebannya"
+      );
+    }
+    const galatPola = periksaPolaPenampung(mat.catch_all_name_pattern);
+    if (galatPola) salah.push(`materiality.catch_all_name_pattern: ${galatPola}`);
+  }
+
   if (salah.length > 0) {
     console.error("✗ contract/accounting.yaml tidak sah:");
     for (const s of salah) console.error(`  • ${s}`);
@@ -1306,6 +1479,20 @@ ${k.aging.buckets.map((b) => `  "${b.key}",`).join("\n")}
 export const AGING_BUCKET_MAX_DAYS: Readonly<Record<AgingBucket, number | null>> = {
 ${k.aging.buckets.map((b) => `  ${b.key}: ${b.max_days ?? "null"},`).join("\n")}
 };
+
+// ── Pagar materialitas akun penampung (#444/#445) — dibaca \`materiality.ts\` dan Go
+
+/** Pangsa minimum terhadap total beban yang disebut material (0..1, eksklusif). */
+export const MATERIALITY_CATCH_ALL_THRESHOLD = ${k.materiality.catch_all_threshold};
+
+/** Tipe band "Beban Lain-lain" — temuan \`band\`. */
+export const MATERIALITY_CATCH_ALL_EXPENSE_TYPE = "${k.materiality.catch_all_expense_type}" satisfies AccountType;
+
+/**
+ * Nama yang menyatakan dirinya penampung — SUMBER pola, dipakai dengan bendera
+ * \`i\` (tanpa \`u\`). Go menerima terjemahannya (\`\\s\` → kelas spasi JS).
+ */
+export const MATERIALITY_CATCH_ALL_NAME_PATTERN = ${JSON.stringify(k.materiality.catch_all_name_pattern)};
 `;
 }
 
@@ -1528,6 +1715,30 @@ type AgingBucketSpec struct {
 var AgingBuckets = []AgingBucketSpec{
 ${k.aging.buckets.map((b) => b.max_days === undefined ? `\t{Key: AgingBucket${pengenalGo(b.key)}},` : `\t{Key: AgingBucket${pengenalGo(b.key)}, MaxDays: ${b.max_days}, Bounded: true},`).join("\n")}
 }
+
+// ── Pagar materialitas akun penampung (#444/#445) ─────────────────────────
+// Dibaca \`internal/conformance\` (sapuan kesesuaian jalur \`tenant\`) dan, di
+// sisi TS, \`src/lib/materiality.ts\`.
+
+// MaterialityCatchAllThreshold: pangsa minimum terhadap total beban yang
+// disebut material (0..1, eksklusif) — BAWAAN; satu putaran boleh menimpanya.
+const MaterialityCatchAllThreshold = ${k.materiality.catch_all_threshold}
+
+// MaterialityCatchAllExpenseType: tipe band "Beban Lain-lain" (temuan \`band\`).
+const MaterialityCatchAllExpenseType = AccountType${pengenalGo(k.materiality.catch_all_expense_type)}
+
+// MaterialityCatchAllTypeLabel: label band itu — DARI \`accountTypeLabel\` di
+// \`src/lib/accounting.ts\`, bukan dari YAML: label tipe akun punya satu sumber,
+// dan kalimat temuan Go wajib sama dengan kalimat Node.
+const MaterialityCatchAllTypeLabel = ${JSON.stringify(accountTypeLabel(k.materiality.catch_all_expense_type))}
+
+// MaterialityCatchAllNamePattern: pola nama penampung, SUDAH diterjemahkan ke
+// RE2 (\`\\s\` → kelas spasi RegExp JS yang persis, dibaca dari mesin JS saat
+// bangkitan). Dicocokkan TANPA \`(?i)\` terhadap nama yang huruf ASCII-nya
+// diturunkan — lipatan huruf bendera \`i\` JS tanpa \`u\`. Sumbernya:
+//
+//	${k.materiality.catch_all_name_pattern}
+const MaterialityCatchAllNamePattern = \`${polaPenampungGo(k.materiality.catch_all_name_pattern)}\`
 `;
 }
 

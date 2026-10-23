@@ -7,7 +7,7 @@
 // kosakata kontrak (`contract.EfakturStatus`). Ia tidak menghitung DPP/PPN,
 // tidak membaca buku, dan tidak menulis basis data apa pun: 09 §3.3 — Go
 // berhenti sebelum perhitungan akuntansi, dan daftar-izin tulisannya
-// `jobs` + `backup_runs`.
+// tidak memuat satu pun tabel buku PT.
 //
 // ══ PENYEDIA HARI INI ══════════════════════════════════════════════════════
 //   - `mock` — tanpa jaringan, tanpa keadaan; hasilnya ditentukan isi XML

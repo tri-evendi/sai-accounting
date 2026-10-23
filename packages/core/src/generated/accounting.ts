@@ -260,3 +260,17 @@ export const AGING_BUCKET_MAX_DAYS: Readonly<Record<AgingBucket, number | null>>
   b61_90: 90,
   b90_plus: null,
 };
+
+// ── Pagar materialitas akun penampung (#444/#445) — dibaca `materiality.ts` dan Go
+
+/** Pangsa minimum terhadap total beban yang disebut material (0..1, eksklusif). */
+export const MATERIALITY_CATCH_ALL_THRESHOLD = 0.05;
+
+/** Tipe band "Beban Lain-lain" — temuan `band`. */
+export const MATERIALITY_CATCH_ALL_EXPENSE_TYPE = "other_expense" satisfies AccountType;
+
+/**
+ * Nama yang menyatakan dirinya penampung — SUMBER pola, dipakai dengan bendera
+ * `i` (tanpa `u`). Go menerima terjemahannya (`\s` → kelas spasi JS).
+ */
+export const MATERIALITY_CATCH_ALL_NAME_PATTERN = "(lain[-\\s]?lain|lainnya|serba[-\\s]?serbi|\\bdll\\b|\\bdsb\\b|miscellaneous|\\bmisc\\b|\\bsundry\\b|\\bother\\b|\\bothers\\b)";

@@ -4,6 +4,7 @@
 import {
   ACCOUNT_TYPE_CATEGORIES,
   ACCOUNT_TYPE_VALUES as CONTRACT_ACCOUNT_TYPE_VALUES,
+  MATERIALITY_CATCH_ALL_EXPENSE_TYPE,
   type AccountCategory,
   type AccountType,
 } from "@sai/core/generated/accounting";
@@ -94,9 +95,12 @@ export const EXPENSE_ACCOUNT_TYPE_VALUES: readonly string[] = ACCOUNT_TYPES.filt
  * Coretax, akun "Lain-Lain" berskala material diprioritaskan sebagai target
  * koreksi fiskal positif otomatis, sebab sifat objek pajaknya sulit
  * diidentifikasi sistem pengawasan (issue #444). Yang membaca konstanta ini
- * adalah pagar materialitas di `@/lib/materiality`.
+ * adalah pagar materialitas di `@/lib/materiality` — dan, sejak 23 Okt 2026,
+ * kembarannya di Go (`internal/conformance`). Nilainya karena itu di
+ * `contract/accounting.yaml` (`materiality.catch_all_expense_type`), bukan di
+ * sini: dua pemeriksa yang menimbang band berbeda menuduh akun berbeda.
  */
-export const CATCH_ALL_EXPENSE_TYPE = "other_expense";
+export const CATCH_ALL_EXPENSE_TYPE: AccountType = MATERIALITY_CATCH_ALL_EXPENSE_TYPE;
 
 // ─── Sifat Beban / nature of expense (issue #445) ────────────────────────────
 

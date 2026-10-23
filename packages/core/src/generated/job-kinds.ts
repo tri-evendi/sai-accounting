@@ -131,6 +131,20 @@ export const SCHEDULED_KINDS: Readonly<Record<ScheduledKind, ScheduleSpec>> = {
   "tenant.backup": { grain: "day", perCompany: false, publisher: "go" },
 };
 
+/** Pelaksana kind yang sedang beralih bahasa — tepat SATU. */
+export type KindRunner = "node" | "go";
+
+export type RunnerSwitchedKind =
+  | "tenant.conformance";
+
+/**
+ * Kind ber-`runner:` beserta pelaksananya HARI INI. Sisi yang bukan
+ * pelaksana melewati pekerjaannya (keluar 0 / selesai tanpa bekerja).
+ */
+export const KIND_RUNNERS: Readonly<Record<RunnerSwitchedKind, KindRunner>> = {
+  "tenant.conformance": "node",
+};
+
 export const isJobKind = (v: string): v is JobKind =>
   Object.prototype.hasOwnProperty.call(JOB_KINDS, v);
 

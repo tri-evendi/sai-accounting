@@ -4987,9 +4987,11 @@
       "listFindings": "发现",
       "listFailures": "检查失败的账簿",
       "listEmpty": "无。",
-      "findingsTruncated": "显示 {total} 条中的 {shown} 条。其余见日志：docker compose logs svc-worker（以 conformance 开头的行）。",
+      "findingsTruncated": "显示 {total} 条中的 {shown} 条。其余见执行方日志：docker compose logs svc-worker（以 conformance 开头的行）或 svc-integrator（以 [kesesuaian] 开头的行）。",
       "perBookHeading": "按账簿",
       "perBookLegacy": "这次较早的运行没有逐账簿明细。",
+      "runnerLine": "由 {runner}（{service}）执行检查。",
+      "runnerUnknown": "此次运行未记录执行方（早于执行方切换）。",
       "perBookColDuration": "耗时（毫秒）",
       "failuresWhy": "无法检查的账簿不一定没有问题。即使没有发现，这次检查也需要处理。"
     },

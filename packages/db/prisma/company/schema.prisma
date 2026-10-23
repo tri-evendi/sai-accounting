@@ -2911,7 +2911,7 @@ model CompanyLogo {
 // tidak mengubah satu laporan pun. Meski begitu pohon Go TIDAK menulisnya:
 // jalur `integration` (Go) melaporkan setiap hasil PJAP sebagai pekerjaan
 // `efaktur.record`, dan pelari `interactive` Node yang menuliskannya ke sini.
-// Daftar-izin tulisan Go tetap `jobs` + `backup_runs` (keputusannya ditulis di
+// Daftar-izin tulisan Go tidak bertambah karenanya (keputusannya ditulis di
 // `tests/services-go.test.ts`).
 //
 // `xml` = berkas yang DIKIRIM, dibekukan saat antre: faktur yang disunting

@@ -4987,9 +4987,11 @@
       "listFindings": "Findings",
       "listFailures": "Books that failed to be checked",
       "listEmpty": "None.",
-      "findingsTruncated": "Showing {shown} of {total} findings. The rest are in the log: docker compose logs svc-worker (lines starting with conformance).",
+      "findingsTruncated": "Showing {shown} of {total} findings. The rest are in the runner's log: docker compose logs svc-worker (lines starting with conformance) or svc-integrator (lines starting with [kesesuaian]).",
       "perBookHeading": "Per book",
       "perBookLegacy": "This older run has no per-book details.",
+      "runnerLine": "Swept by {runner} ({service}).",
+      "runnerUnknown": "This run did not record its runner (it predates the runner switch).",
       "perBookColDuration": "Took (ms)",
       "failuresWhy": "A book that could not be checked is not necessarily clean. This sweep needs action even with zero findings."
     },

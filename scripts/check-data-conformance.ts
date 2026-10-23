@@ -36,6 +36,29 @@
  *
  * Keluar dengan kode BUKAN NOL bila ada temuan, jadi ia bisa dipasang di cron
  * atau langkah rilis dan berbunyi sendiri.
+ *
+ * ══ PELAKSANANYA DIPILIH KONTRAK (`runner:` di contract/kinds.yaml) ═════════
+ * Sejak 23 Okt 2026 sapuan yang SAMA punya kembaran Go (`internal/conformance`,
+ * jalur `tenant` di `svc-integrator`). Siapa yang menyapu diputuskan SATU
+ * nilai — `KIND_RUNNERS["tenant.conformance"]` — yang dibaca kedua sisi dari
+ * commit yang sama:
+ *
+ *   • `node` (bawaan): berkas ini menyapu, seperti sejak #374.
+ *   • `go`: berkas ini TIDAK menyapu. Ia menerbitkan satu pekerjaan
+ *     `tenant.conformance` (kunci `tenant.conformance:<jam UTC>`, jadi
+ *     container yang hidup-ulang berkali-kali dalam sejam tidak menumpuk
+ *     putaran) lalu keluar 0. Pemicu mingguannya tetap peran `conformance` di
+ *     compose — yang berpindah hanya pelaksananya.
+ *
+ * Tepat satu pelaksana, tidak pernah dua: Go menyelesaikan tanpa menyapu
+ * pekerjaan yang tiba sementara nilainya `node`. Kesetaraan kedua sisi:
+ * `bun run parity:conformance`. Peralihan & jalan mundurnya: PRODUCTION.md
+ * §Pelaksana kesesuaian data.
+ *
+ * ══ URUTAN BARIS ════════════════════════════════════════════════════════════
+ * Setiap kueri ber-ORDER BY (sejak kembaran Go lahir): tanpa itu urutan temuan
+ * adalah urutan heap — "hampir selalu sama" di dua pembaca bukan paritas, dan
+ * jumlah float pagar materialitas bergantung pada urutan barisnya.
  */
 import "dotenv/config";
 
@@ -49,9 +72,15 @@ import {
   toCompanyDatabaseTarget,
 } from "@sai/db/company-url";
 
+import { pathToFileURL } from "node:url";
+
 import { buildDetails } from "@sai/core/build-info";
 import { CONTRACT_STATUSES, CURRENCIES, INVOICE_STATUSES } from "@sai/core/constants";
+import { KIND_RUNNERS } from "@sai/core/generated/job-kinds";
 import { ACCOUNT_TYPE_VALUES, EXPENSE_ACCOUNT_TYPE_VALUES } from "../src/lib/accounting";
+/* Bentuk satu pemeriksaan yang berbunyi — SAMA dengan yang dipulangkan
+   `parity conformance` Go, dan dibandingkan `parity:conformance`. */
+import type { CheckResult } from "../src/lib/conformance-parity";
 import {
   DEFAULT_CATCH_ALL_THRESHOLD,
   assessCatchAllExpenses,
@@ -89,7 +118,7 @@ interface Check {
    * tempat yang tidak bisa diuji tanpa basis data. Yang dipulangkan tetap bentuk
    * yang sama — daftar `label` — jadi pelapornya tidak perlu tahu bedanya.
    */
-  nilai?: (rows: Record<string, unknown>[]) => { label: string }[];
+  nilai?: (rows: Record<string, unknown>[], ambang: number) => { label: string }[];
 }
 
 /**
@@ -98,18 +127,27 @@ interface Check {
  * Bisa ditimpa karena "material" bergantung pada bukunya: 5% dari beban sebuah
  * PT dagang dan 5% dari beban sebuah PT jasa adalah dua percakapan berbeda.
  */
-const ambangPenampung = (() => {
+/* Teks mentahnya juga dibutuhkan: ketika pelaksananya Go, teks INI yang
+   diteruskan di muatan pekerjaan, dan Go membacanya dengan aturan `Number()`
+   yang sama (`conformance.Threshold`) — satu nilai, satu aturan urai. */
+const ambangPenampungMentah = (() => {
   const arg = process.argv.find((a) => a.startsWith("--ambang-penampung="));
-  const persen = arg ? Number(arg.slice(arg.indexOf("=") + 1)) : NaN;
-  return Number.isFinite(persen) && persen > 0 ? persen / 100 : DEFAULT_CATCH_ALL_THRESHOLD;
+  return arg ? arg.slice(arg.indexOf("=") + 1) : undefined;
 })();
 
-const CHECKS: Check[] = [
+export function ambangDari(mentah: string | undefined): number {
+  const persen = mentah !== undefined ? Number(mentah) : NaN;
+  return Number.isFinite(persen) && persen > 0 ? persen / 100 : DEFAULT_CATCH_ALL_THRESHOLD;
+}
+
+const ambangPenampung = ambangDari(ambangPenampungMentah);
+
+export const CHECKS: Check[] = [
   {
     key: "status-kontrak",
     judul: "Status kontrak di luar kosakata aplikasi",
     sql: `SELECT CONCAT(contract_no, ' → ', status) AS label FROM contracts
-          WHERE status NOT IN (${list(CONTRACT_STATUSES)})`,
+          WHERE status NOT IN (${list(CONTRACT_STATUSES)}) ORDER BY label`,
   },
   {
     key: "status-faktur",
@@ -118,7 +156,7 @@ const CHECKS: Check[] = [
        mendapat `completed`, faktur tidak (alasannya di `INVOICE_STATUSES`).
        Faktur `completed` karena itu tetap sebuah temuan. */
     sql: `SELECT CONCAT(invoice_no, ' → ', status) AS label FROM invoices
-          WHERE status NOT IN (${list(INVOICE_STATUSES)})`,
+          WHERE status NOT IN (${list(INVOICE_STATUSES)}) ORDER BY label`,
   },
   {
     key: "mata-uang-tak-dikenal",
@@ -129,7 +167,7 @@ const CHECKS: Check[] = [
             UNION ALL SELECT CONCAT('bayar kontrak #', id, ' → ', currency), currency FROM contract_payments
             UNION ALL SELECT CONCAT('bayar faktur #', id, ' → ', currency), currency FROM invoice_payments
             UNION ALL SELECT CONCAT('transaksi pemasok #', id, ' → ', currency), currency FROM supplier_transactions
-          ) x WHERE currency NOT IN (${list(CURRENCIES)})`,
+          ) x WHERE currency NOT IN (${list(CURRENCIES)}) ORDER BY label`,
   },
   {
     key: "valas-tanpa-nilai-idr",
@@ -142,7 +180,7 @@ const CHECKS: Check[] = [
             UNION ALL SELECT CONCAT('faktur ', invoice_no, ' (', currency, ')'), currency, rate, base_amount FROM invoices
             UNION ALL SELECT CONCAT('bayar kontrak #', id, ' (', currency, ')'), currency, rate, base_amount FROM contract_payments
             UNION ALL SELECT CONCAT('bayar faktur #', id, ' (', currency, ')'), currency, rate, base_amount FROM invoice_payments
-          ) x WHERE currency <> 'IDR' AND rate IS NULL AND base_amount IS NULL`,
+          ) x WHERE currency <> 'IDR' AND rate IS NULL AND base_amount IS NULL ORDER BY label`,
   },
   {
     key: "mata-uang-bayar-beda",
@@ -155,7 +193,7 @@ const CHECKS: Check[] = [
             UNION ALL
             SELECT CONCAT('bayar kontrak #', p.id, ': ', p.currency, ' atas ', c.contract_no, ' (', c.currency, ')')
               FROM contract_payments p JOIN contracts c ON c.id = p.contract_id WHERE p.currency <> c.currency
-          ) x`,
+          ) x ORDER BY label`,
   },
   {
     key: "kelebihan-bayar-faktur",
@@ -172,7 +210,8 @@ const CHECKS: Check[] = [
                     FROM invoice_payments p GROUP BY p.invoice_id) pay
               ON pay.invoice_id = i.id
            WHERE pay.tak_terukur = 0
-             AND pay.terbayar > (nilai.total + COALESCE(i.tax_amount, 0)) + 0.005`,
+             AND pay.terbayar > (nilai.total + COALESCE(i.tax_amount, 0)) + 0.005
+           ORDER BY label`,
   },
   {
     key: "jurnal-timpang",
@@ -181,19 +220,22 @@ const CHECKS: Check[] = [
        pun yang lain: seluruh laporan berdiri di atasnya. */
     sql: `SELECT CONCAT(j.number, ': debit ', ROUND(SUM(l.base_debit), 2), ' vs kredit ', ROUND(SUM(l.base_credit), 2)) AS label
             FROM journals j JOIN journal_lines l ON l.journal_id = j.id
-           GROUP BY j.id, j.number HAVING ABS(SUM(l.base_debit) - SUM(l.base_credit)) > 0.005`,
+           GROUP BY j.id, j.number HAVING ABS(SUM(l.base_debit) - SUM(l.base_credit)) > 0.005
+           ORDER BY label`,
   },
   {
     key: "jurnal-tanpa-baris",
     judul: "Jurnal tanpa satu baris pun",
     sql: `SELECT j.number AS label FROM journals j
-           WHERE NOT EXISTS (SELECT 1 FROM journal_lines l WHERE l.journal_id = j.id)`,
+           WHERE NOT EXISTS (SELECT 1 FROM journal_lines l WHERE l.journal_id = j.id)
+           ORDER BY label`,
   },
   {
     key: "tipe-akun",
     judul: "Akun bertipe atau bersaldo normal yang tidak dikenal",
     sql: `SELECT CONCAT(code, ' ', name, ' → ', type, '/', normal_balance) AS label FROM accounts
-           WHERE type NOT IN (${list(ACCOUNT_TYPE_VALUES)}) OR normal_balance NOT IN ('debit','credit')`,
+           WHERE type NOT IN (${list(ACCOUNT_TYPE_VALUES)}) OR normal_balance NOT IN ('debit','credit')
+           ORDER BY label`,
   },
   {
     key: "akun-penampung",
@@ -207,8 +249,9 @@ const CHECKS: Check[] = [
             FROM accounts a
             JOIN journal_lines l ON l.account_id = a.id
            WHERE a.type IN (${list(EXPENSE_ACCOUNT_TYPE_VALUES)})
-           GROUP BY a.id, a.code, a.name, a.type, a.expense_nature`,
-    nilai: (rows) =>
+           GROUP BY a.id, a.code, a.name, a.type, a.expense_nature
+           ORDER BY a.code, a.id`,
+    nilai: (rows, ambang) =>
       assessCatchAllExpenses(
         rows.map((r) => ({
           code: String(r.code ?? ""),
@@ -218,7 +261,7 @@ const CHECKS: Check[] = [
           // SUM() tiba sebagai Decimal/string lewat driver-nya, bukan number.
           amount: Number(r.amount ?? 0),
         })),
-        { threshold: ambangPenampung }
+        { threshold: ambang }
       ).findings.map((f) => ({ label: describeCatchAllFinding(f) })),
   },
   {
@@ -233,8 +276,9 @@ const CHECKS: Check[] = [
             FROM accounts a
             JOIN journal_lines l ON l.account_id = a.id
            WHERE a.type IN (${list(EXPENSE_ACCOUNT_TYPE_VALUES)})
-           GROUP BY a.id, a.code, a.name, a.type, a.expense_nature`,
-    nilai: (rows) =>
+           GROUP BY a.id, a.code, a.name, a.type, a.expense_nature
+           ORDER BY a.code, a.id`,
+    nilai: (rows, ambang) =>
       findUntaggedMaterialExpenses(
         rows.map((r) => ({
           code: String(r.code ?? ""),
@@ -243,10 +287,30 @@ const CHECKS: Check[] = [
           nature: r.nature == null ? null : String(r.nature),
           amount: Number(r.amount ?? 0),
         })),
-        { threshold: ambangPenampung }
+        { threshold: ambang }
       ).findings.map((f) => ({ label: describeUntaggedExpense(f) })),
   },
 ];
+
+/**
+ * Sebelas pemeriksaan atas SATU buku; pulang HANYA yang berbunyi, dalam urutan
+ * `CHECKS`. Diekspor untuk `scripts/parity-conformance.ts` — pembanding yang
+ * memanggil kode ini LANGSUNG, bukan salinannya.
+ */
+export async function runChecks(
+  prisma: { $queryRawUnsafe: (sql: string) => Promise<unknown> },
+  ambang: number
+): Promise<CheckResult[]> {
+  const temuan: CheckResult[] = [];
+  for (const check of CHECKS) {
+    const raw = (await prisma.$queryRawUnsafe(check.sql)) as Record<string, unknown>[];
+    const rows = check.nilai ? check.nilai(raw, ambang) : (raw as unknown as { label: string }[]);
+    if (rows.length > 0) {
+      temuan.push({ key: check.key, judul: check.judul, labels: rows.map((r) => `${r.label}`) });
+    }
+  }
+  return temuan;
+}
 
 /** Adapter basis data KENDALI. Buku PT tidak dibuka lewat sini — URL-nya
  *  dari `@sai/db/company-url` (tahap 4). */
@@ -367,6 +431,10 @@ async function rekam(hasil: {
           findings: hasil.findings.slice(0, 200),
           failures: hasil.failures,
           perCompany: hasil.perCompany,
+          /* Pelaksananya — sejak sakelar `runner:`, tabel yang sama ditulis
+             dua kemungkinan pelaksana (Go menulis `"go"` + `svc-integrator`). */
+          runner: "node",
+          service: "svc-worker",
           /* Stempel image yang menjalankan sapuan ini — panel "Versi
              layanan" konsol (`@sai/core/build-info`). */
           ...buildDetails(),
@@ -381,7 +449,38 @@ async function rekam(hasil: {
   }
 }
 
+/**
+ * Pelaksananya Go: terbitkan satu pekerjaan untuk jalur `tenant`, jangan
+ * menyapu. `true` = sudah ditangani (pemanggil keluar 0).
+ *
+ * Impornya DINAMIS: `@sai/platform/job-queue` ber-`server-only`, dan jalur
+ * `node` — yang menyapu — tidak boleh bergantung padanya.
+ */
+async function serahkanKeGo(): Promise<boolean> {
+  if (KIND_RUNNERS["tenant.conformance"] !== "go") return false;
+  const { publishJob } = await import("@sai/platform/job-queue");
+  const butir = new Date().toISOString().slice(0, 13);
+  const row = await publishJob({
+    kind: "tenant.conformance",
+    payload: {
+      ...(ambangPenampungMentah !== undefined ? { ambangPenampung: ambangPenampungMentah } : {}),
+      ...(process.argv.includes("--detail") ? { detail: true } : {}),
+    },
+    dedupeKey: `tenant.conformance:${butir}`,
+  });
+  console.log(
+    "pelaksana `tenant.conformance` adalah GO (contract/kinds.yaml → runner) — sapuan Node ini " +
+      "dilewati. " +
+      (row
+        ? `Pekerjaan #${row.id} diterbitkan untuk jalur \`tenant\` di svc-integrator.`
+        : `Pekerjaan butir ${butir} sudah diterbitkan sebelumnya.`) +
+      " Hasilnya: konsol /conformance, `/api/health` → conformance, dan log svc-integrator."
+  );
+  return true;
+}
+
 async function main() {
+  if (await serahkanKeGo()) return;
   const detail = process.argv.includes("--detail");
   const startedAt = new Date();
   /* Baris laporan yang dulu HANYA tercetak ke stdout — kini ikut ke jejak. */
@@ -443,14 +542,10 @@ async function main() {
         durationMs: Date.now() - mulai,
       };
     }
-    const temuan: { check: Check; rows: { label: string }[] }[] = [];
+    let temuan: CheckResult[] = [];
 
     try {
-      for (const check of CHECKS) {
-        const raw = (await prisma.$queryRawUnsafe(check.sql)) as Record<string, unknown>[];
-        const rows = check.nilai ? check.nilai(raw) : (raw as unknown as { label: string }[]);
-        if (rows.length > 0) temuan.push({ check, rows });
-      }
+      temuan = await runChecks(prisma, ambangPenampung);
     } catch (error) {
       return {
         baris: [],
@@ -479,16 +574,16 @@ async function main() {
     const baris = [`\n✗ ${label}`];
     const temuanBaris: string[] = [];
     let jumlahTemuan = 0;
-    for (const { check, rows } of temuan) {
-      jumlahTemuan += rows.length;
-      baris.push(`   ${check.judul}: ${rows.length}`);
-      for (const r of rows) temuanBaris.push(`${company.slug} · ${check.judul}: ${r.label}`);
+    for (const { judul, labels } of temuan) {
+      jumlahTemuan += labels.length;
+      baris.push(`   ${judul}: ${labels.length}`);
+      for (const l of labels) temuanBaris.push(`${company.slug} · ${judul}: ${l}`);
       /* Tiga contoh, bukan semuanya: daftar 609 baris di terminal menyembunyikan
          justru pemeriksaan lain yang ikut berbunyi. `--detail` untuk seluruhnya. */
-      const tampil = detail ? rows : rows.slice(0, 3);
-      for (const r of tampil) baris.push(`      · ${r.label}`);
-      if (!detail && rows.length > tampil.length) {
-        baris.push(`      … ${rows.length - tampil.length} lagi (pakai --detail)`);
+      const tampil = detail ? labels : labels.slice(0, 3);
+      for (const l of tampil) baris.push(`      · ${l}`);
+      if (!detail && labels.length > tampil.length) {
+        baris.push(`      … ${labels.length - tampil.length} lagi (pakai --detail)`);
       }
     }
     return { baris, temuanBaris, jumlahTemuan, gagalPesan: null, durationMs: Date.now() - mulai };
@@ -579,7 +674,13 @@ async function main() {
   if (totalTemuan > 0 || gagal.length > 0) process.exit(1);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+/* Dijalankan sebagai skrip — bukan saat DIIMPOR `parity-conformance.ts`, yang
+   hanya butuh `CHECKS`/`runChecks`. */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+}

@@ -4987,9 +4987,11 @@
       "listFindings": "Temuan",
       "listFailures": "Buku yang gagal diperiksa",
       "listEmpty": "Tidak ada.",
-      "findingsTruncated": "Menampilkan {shown} dari {total} temuan. Sisanya ada di log: docker compose logs svc-worker (baris berawalan conformance).",
+      "findingsTruncated": "Menampilkan {shown} dari {total} temuan. Sisanya ada di log pelaksananya: docker compose logs svc-worker (baris berawalan conformance) atau svc-integrator (baris [kesesuaian]).",
       "perBookHeading": "Per buku",
       "perBookLegacy": "Putaran lama ini belum mencatat rincian per buku.",
+      "runnerLine": "Disapu oleh {runner} ({service}).",
+      "runnerUnknown": "Pelaksana sapuan ini tidak tercatat (putaran sebelum sakelar pelaksana).",
       "perBookColDuration": "Lama (ms)",
       "failuresWhy": "Buku yang gagal diperiksa belum tentu bersih. Sapuan ini tetap perlu ditindak walau tanpa temuan."
     },

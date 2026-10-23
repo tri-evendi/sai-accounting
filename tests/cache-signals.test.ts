@@ -355,3 +355,18 @@ describe("setiap sinyal punya penulis dan pembaca", () => {
     expect(pelanggar).toEqual([]);
   });
 });
+
+describe("build tanpa basis data (CI)", () => {
+  it("klien platform yang MELEMPAR saat diakses → versi tak diketahui, bukan galat", async () => {
+    const { cacheSignalVersion } = await import("@sai/platform/cache-signals");
+    const throwing = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("PLATFORM_DATABASE_URL is not set");
+        },
+      }
+    );
+    await expect(cacheSignalVersion(throwing, "brand-mark")).resolves.toBeNull();
+  });
+});

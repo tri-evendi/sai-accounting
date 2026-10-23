@@ -430,7 +430,7 @@ berbeda hasilnya. Batas ini sudah menahan dua pemindahan:
 
 | Yang tertahan | Pemicu yang menunggu |
 |---|---|
-| Kesesuaian data (`tenant.conformance`) | 2 dari 11 pemeriksaannya memanggil pagar materialitas (#444/#445) — penilaian, bukan konstanta. Pemicunya sama dengan tahap 1d |
+| ~~Kesesuaian data (`tenant.conformance`)~~ | ✅ dibangun 23 Okt 2026: ambang materialitas dibangkitkan dari `contract/accounting.yaml`, sapuan Go di jalur `tenant` di belakang sakelar `runner:` (bawaan `node`), paritas `bun run parity:conformance` (09 §3.3) |
 | Jalur `schema` lewat antrean | *expand/contract* harus berlaku lebih dulu: tanpa itu, migration di luar gerbang pemblokir berarti aplikasi melayani buku yang skemanya lebih tua daripada kodenya |
 
 | Gerbang rilis | Isinya |

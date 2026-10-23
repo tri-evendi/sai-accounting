@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,7 +39,9 @@ import (
 //     pelunasan bertanggal > asOf belum melunasi apa pun.
 //  5. Piutang: faktur + kontrak (dibatalkan dikeluarkan); bagian kontrak yang
 //     SUDAH difakturkan (pola Ambil, #15) melunasi kontraknya, diukur dengan
-//     penjodohan NAMA barang yang sama dengan `buildContractOutstanding`.
+//     penjodohan baris yang sama dengan `buildContractOutstanding` di halaman
+//     detail kontrak (#491/#503): `item_id` dulu, lalu nama yang menunjuk
+//     TEPAT SATU baris kontrak; nama bercabang tidak ditebak.
 //     Utang: baris `purchase` dilunasi alokasi tercatat dulu, sisanya FIFO
 //     (tertua dulu) — `allocatePayments`.
 //  6. Urutan: tanggal terbaru dulu, lalu id terbesar (`NEWEST_FIRST` TS).
@@ -419,13 +423,43 @@ type invoiceDoc struct {
 }
 
 type contractLine struct {
-	name  string
-	value *big.Rat // bags × kg/bag × harga/kg
+	itemID *int64 // contract_items.item_id — NULL pada baris lama (#491)
+	name   string
+	value  *big.Rat // bags × kg/bag × harga/kg
 }
 
 type invoicedLine struct {
-	name  string
-	value *big.Rat // kuantitas × harga
+	itemID *int64 // invoice_items.item_id — sering NULL (ongkos kirim, #503)
+	name   string
+	value  *big.Rat // kuantitas × harga
+}
+
+// chainLineKey: `chainLineKey` TS — `#<item_id>` bila ada, nama yang
+// dinormalkan bila tidak. `#` mustahil lahir dari NormalizeItemName, jadi
+// kedua ruang kunci tidak bertabrakan.
+func chainLineKey(itemID *int64, name string) string {
+	if itemID != nil {
+		return "#" + strconv.FormatInt(*itemID, 10)
+	}
+	return NormalizeItemName(name)
+}
+
+// resolveChainKey: `resolveChainKey` TS (#491) — urutannya:
+//  1. item_id yang cocok dengan sebuah baris kontrak;
+//  2. nama yang menunjuk TEPAT SATU baris kontrak (dokumen lama ber-item_id
+//     NULL, atau item_id yang tidak ada di kontrak);
+//  3. selain itu kuncinya NAMA sendiri — tak berjodoh, tidak ditebak.
+func resolveChainKey(itemID *int64, name string, contractKeys map[string]bool, keysByName map[string][]string) string {
+	if itemID != nil {
+		if k := "#" + strconv.FormatInt(*itemID, 10); contractKeys[k] {
+			return k
+		}
+	}
+	n := NormalizeItemName(name)
+	if c := keysByName[n]; len(c) == 1 {
+		return c[0]
+	}
+	return n
 }
 
 type contractDoc struct {
@@ -449,18 +483,25 @@ type receivablesBook struct {
 }
 
 // contractInvoicedValue: `buildContractOutstanding(...).totals.invoicedValue`
-// sebagaimana `getReceivables` memanggilnya — baris TANPA itemId, jadi kunci
-// penjodohannya NAMA yang dinormalkan: Σ per nama baris kontrak dari
-// round2(Σ kuantitas × harga faktur bernama sama). Nama faktur yang tidak ada
-// di kontrak tidak melunasi apa pun.
+// sebagaimana `getReceivables` memanggilnya — KEDUA kaki membawa item_id,
+// jadi kuncinya `chainLineKey` di sisi kontrak dan `resolveChainKey` di sisi
+// faktur: Σ per baris kontrak dari round2(Σ kuantitas × harga faktur yang
+// berjodoh dengannya). Baris faktur yang tak berjodoh (barang di luar
+// kontrak, ongkos kirim, nama bercabang tanpa item_id) tidak melunasi apa pun.
 func contractInvoicedValue(c *contractDoc, rd *rounder) Cents {
 	keys := map[string]bool{}
+	keysByName := map[string][]string{}
 	for _, l := range c.lines {
-		keys[NormalizeItemName(l.name)] = true
+		k := chainLineKey(l.itemID, l.name)
+		keys[k] = true
+		n := NormalizeItemName(l.name)
+		if !slices.Contains(keysByName[n], k) {
+			keysByName[n] = append(keysByName[n], k)
+		}
 	}
 	perKey := map[string]*big.Rat{}
 	for _, l := range c.invoiced {
-		k := NormalizeItemName(l.name)
+		k := resolveChainKey(l.itemID, l.name, keys, keysByName)
 		if !keys[k] {
 			continue
 		}
@@ -885,13 +926,14 @@ SELECT c.id, c.contract_no, c.date, c.due_date, c.buyer, c.currency, c.rate::tex
 	}
 
 	err = eachRow(ctx, tx, "baris kontrak", `
-SELECT ci.contract_id, ci.item_name, (ci.bags * ci.kg_per_bag * ci.price_per_kg)::text
+SELECT ci.contract_id, ci.item_id, ci.item_name, (ci.bags * ci.kg_per_bag * ci.price_per_kg)::text
   FROM contract_items ci JOIN contracts c ON c.id = ci.contract_id
  WHERE `+contractFilter+`
  ORDER BY ci.id`, conArgs, func(rows pgx.Rows) error {
 		var id int64
+		var itemID *int64
 		var name, value string
-		if err := rows.Scan(&id, &name, &value); err != nil {
+		if err := rows.Scan(&id, &itemID, &name, &value); err != nil {
 			return err
 		}
 		v, err := parseRat(value)
@@ -899,7 +941,7 @@ SELECT ci.contract_id, ci.item_name, (ci.bags * ci.kg_per_bag * ci.price_per_kg)
 			return err
 		}
 		if d := conByID[id]; d != nil {
-			d.lines = append(d.lines, contractLine{name: name, value: v})
+			d.lines = append(d.lines, contractLine{itemID: itemID, name: name, value: v})
 		}
 		return nil
 	})
@@ -934,13 +976,14 @@ SELECT p.contract_id, p.amount::text, p.currency, p.rate::text, p.base_amount::t
 	// Faktur "tarikan" kontrak (#15): faktur yang tidak dibatalkan dan sudah
 	// terbit per asOf — sama dengan `invoices: { where: … }` di TS.
 	err = eachRow(ctx, tx, "faktur tarikan kontrak", `
-SELECT i.contract_id, ii.item_name, (ii.quantity * ii.price)::text
+SELECT i.contract_id, ii.item_id, ii.item_name, (ii.quantity * ii.price)::text
   FROM invoices i JOIN invoice_items ii ON ii.invoice_id = i.id
  WHERE `+invoiceFilter+` AND i.contract_id IS NOT NULL
  ORDER BY ii.id`, args, func(rows pgx.Rows) error {
 		var id int64
+		var itemID *int64
 		var name, value string
-		if err := rows.Scan(&id, &name, &value); err != nil {
+		if err := rows.Scan(&id, &itemID, &name, &value); err != nil {
 			return err
 		}
 		v, err := parseRat(value)
@@ -948,7 +991,7 @@ SELECT i.contract_id, ii.item_name, (ii.quantity * ii.price)::text
 			return err
 		}
 		if d := conByID[id]; d != nil {
-			d.invoiced = append(d.invoiced, invoicedLine{name: name, value: v})
+			d.invoiced = append(d.invoiced, invoicedLine{itemID: itemID, name: name, value: v})
 		}
 		return nil
 	})

@@ -813,11 +813,16 @@ export async function loadContractChain(
       kgPerBag: num(i.kgPerBag),
       pricePerKg: num(i.pricePerKg),
     })),
+    /* `itemId` di KEDUA kaki hilir (#491/#503): tanpanya baris tertaut yang
+       namanya dipakai dua barang kontrak jatuh ke `unmatched*` — padahal
+       "Ambil" sudah menautkannya. Umur Piutang (`getReceivables` + Go
+       `ledgerread/aging.go`) memakai aturan yang SAMA. */
     delivered: deliveryOrders.flatMap((d) =>
-      d.items.map((i) => ({ itemName: i.itemName, quantity: num(i.quantity) }))
+      d.items.map((i) => ({ itemId: i.itemId, itemName: i.itemName, quantity: num(i.quantity) }))
     ),
     invoiced: invoices.flatMap((inv) =>
       inv.items.map((i) => ({
+        itemId: i.itemId,
         itemName: i.itemName,
         quantity: num(i.quantity),
         price: num(i.price),
@@ -895,18 +900,25 @@ export async function contractOutstandingForInvoice(
     }),
   ]);
 
+  /* `itemId` diteruskan di KETIGA kaki — kolomnya sudah dipilih di atas
+     sejak #491/#503 tetapi dulu tidak pernah sampai ke sini, jadi pagar ini
+     diam-diam berkunci NAMA: dua barang senama kembali berbagi satu pagu,
+     persis kasus yang melahirkan #491, dan ia berselisih dengan halaman
+     detail kontrak. */
   return buildContractOutstanding({
     lines: items.map((i) => ({
+      itemId: i.itemId,
       itemName: i.itemName,
       bags: num(i.bags),
       kgPerBag: num(i.kgPerBag),
       pricePerKg: num(i.pricePerKg),
     })),
     delivered: deliveryOrders.flatMap((d) =>
-      d.items.map((i) => ({ itemName: i.itemName, quantity: num(i.quantity) }))
+      d.items.map((i) => ({ itemId: i.itemId, itemName: i.itemName, quantity: num(i.quantity) }))
     ),
     invoiced: invoices.flatMap((inv) =>
       inv.items.map((i) => ({
+        itemId: i.itemId,
         itemName: i.itemName,
         quantity: num(i.quantity),
         price: num(i.price),

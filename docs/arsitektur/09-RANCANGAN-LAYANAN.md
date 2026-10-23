@@ -1224,7 +1224,7 @@ transaksi pemasok beserta alokasinya. Aturannya disalin dari
 
 | Bagian | Di mana |
 |---|---|
-| Pembaca: rupiah dasar (`base_amount` → `amount` IDR → `amount × rate` → TIDAK ADA), status turunan, umur hari kalender Jakarta, potret historis, bagian kontrak yang sudah difakturkan (penjodohan NAMA, #15), alokasi tercatat lalu FIFO (#37), urutan tanggal ↓ id ↓ | `ledgerread/aging.go` |
+| Pembaca: rupiah dasar (`base_amount` → `amount` IDR → `amount × rate` → TIDAK ADA), status turunan, umur hari kalender Jakarta, potret historis, bagian kontrak yang sudah difakturkan (penjodohan `item_id` lalu nama tunggal, #15 · #491/#503), alokasi tercatat lalu FIFO (#37), urutan tanggal ↓ id ↓ | `ledgerread/aging.go` |
 | Lembar sebar (kolom `?cols=`, saringan `?overdue=1`, ringkasan ember, catatan kaki) | `document/aging.go` |
 | Ember umur (batas atas inklusif 30/60/90) | `contract/accounting.yaml` → `aging` — dibaca `receivables.ts` DAN Go |
 | Kalimat, judul, lebar, label ember & status, kolom katalog | `statement-layout.ts` / `report-export.ts` / `report-catalog.ts` → `contract/aging_layout_gen.go` (berkas bangkitan tersendiri) |
@@ -1253,7 +1253,13 @@ Keputusan & temuan yang lahir di jalan:
 4. **Penjodohan bagian kontrak yang difakturkan memakai NAMA saja** — receivables
    tidak meneruskan `itemId` ke `buildContractOutstanding`, berbeda dengan
    halaman detail kontrak (#491). Disalin apa adanya ke Go; dilaporkan, tidak
-   diubah.
+   diubah. **Diperbaiki sesudahnya** (keputusan pemilik 23 Okt 2026, cabang
+   `fix/aging-contract-item-id`): TS dan Go kini meneruskan `item_id` di kedua
+   kaki — `chainLineKey` untuk baris kontrak, `resolveChainKey` untuk baris
+   faktur (id → nama yang menunjuk TEPAT SATU baris → tak berjodoh). Halaman
+   detail kontrak dan pagar faktur (`contractOutstandingForInvoice`) ikut
+   meneruskan `itemId` hilirnya, yang dulu dipilih tetapi tak pernah sampai.
+   Fikstur bersama: `ledgerread/testdata/aging-contract-matching.json`.
 
 Paritas LOKAL (23 Okt 2026, PostgreSQL 17 sekali pakai, buku sintetis +
 buku kosong; tepi ember 30/31/60/61/90/91, jatuh tempo hari ini, jatuh tempo

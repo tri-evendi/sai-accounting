@@ -79,6 +79,8 @@ import {
   AGING_UNDATED_NOTE,
   unratedNote,
   unresolvedNote,
+  RECAP_TOTAL_LABEL,
+  budgetAlertNote,
   opnameSessionLabel,
   opnameSummaryLabel,
   stockMovementDormantNote,
@@ -552,6 +554,15 @@ function buildOpnameHistorySheet(
   };
 }
 
+/** Lebar kolom Rekap per Pihak — diekspor untuk `contract:gen` (lembar Go, tahap 1d). */
+export const PARTY_RECAP_WIDTHS: Record<PartyRecapColumnId, number> = {
+  party: 36,
+  docCount: 12,
+  gross: 22,
+  returns: 20,
+  net: 22,
+};
+
 function buildPartyRecapSheet(
   p: Extract<StatementPayload, { kind: "sales-by-customer" | "purchases-by-supplier" }>
 ): SheetModel {
@@ -561,13 +572,7 @@ function buildPartyRecapSheet(
   // sebar dan PDF (#315). Lebarnya TIDAK ikut: itu urusan lembar sebar, dan
   // PDF-nya tidak memakainya sama sekali.
   const headers = PARTY_RECAP_HEADERS[p.kind];
-  const WIDTHS: Record<PartyRecapColumnId, number> = {
-    party: 36,
-    docCount: 12,
-    gross: 22,
-    returns: 20,
-    net: 22,
-  };
+  const WIDTHS = PARTY_RECAP_WIDTHS;
   // Nama baris tanpa mitra tercatat datang dari `statement-layout.ts` (#322).
   // Ia dulu ditulis sebaris di sini DAN di `statement-pdf.ts` — dua salinan di
   // dalam badan fungsi, jadi menyunting satu sisi membuat Excel dan PDF laporan
@@ -598,7 +603,7 @@ function buildPartyRecapSheet(
       })
     : [[text(EXPORT_EMPTY.documents), ...cols.slice(1).map(() => text(null))]];
 
-  const totals = cells(p.totals, "Total", true);
+  const totals = cells(p.totals, RECAP_TOTAL_LABEL, true);
   rows.push(cols.map((id) => totals[id]));
 
   if (p.totals.unratedCount > 0) {
@@ -803,14 +808,17 @@ function buildStockValueSheet(
   };
 }
 
+/** Lebar kolom Laporan Kas & Bank — diekspor untuk `contract:gen` (lembar Go, tahap 1d). */
+export const CASH_BANK_WIDTHS: Record<CashBankColumnId, number> = {
+  account: 40,
+  opening: 22,
+  net: 22,
+  closing: 22,
+};
+
 function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>): SheetModel {
   const cols = cashBankColumns(p);
-  const WIDTHS: Record<CashBankColumnId, number> = {
-    account: 40,
-    opening: 22,
-    net: 22,
-    closing: 22,
-  };
+  const WIDTHS = CASH_BANK_WIDTHS;
 
   const rows: SheetCell[][] = p.rows.length
     ? p.rows.map((r) =>
@@ -824,7 +832,7 @@ function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>)
       ];
 
   const totals: Record<CashBankColumnId, SheetCell> = {
-    account: text("Total", true),
+    account: text(RECAP_TOTAL_LABEL, true),
     opening: money(p.openingCash, true),
     net: money(p.netChange, true),
     closing: money(p.closingCash, true),
@@ -840,18 +848,21 @@ function buildCashBankSheet(p: Extract<StatementPayload, { kind: "cash-bank" }>)
   };
 }
 
+/** Lebar kolom Realisasi vs Anggaran — diekspor untuk `contract:gen` (lembar Go, tahap 1d). */
+export const BUDGET_WIDTHS: Record<BudgetColumnId, number> = {
+  account: 40,
+  budget: 20,
+  actual: 20,
+  variance: 20,
+  variancePct: 14,
+  status: 22,
+};
+
 function buildBudgetSheet(
   p: Extract<StatementPayload, { kind: "budget-realization" }>
 ): SheetModel {
   const cols = budgetColumns(p);
-  const WIDTHS: Record<BudgetColumnId, number> = {
-    account: 40,
-    budget: 20,
-    actual: 20,
-    variance: 20,
-    variancePct: 14,
-    status: 22,
-  };
+  const WIDTHS = BUDGET_WIDTHS;
 
   // Persentase sebagai ANGKA, bukan teks "+12,3%": lembar sebar yang menerima
   // angka bisa mengurutkan dan menyaringnya. Persen yang tak terdefinisi
@@ -888,12 +899,12 @@ function buildBudgetSheet(
       cell(
         {
           code: "",
-          name: "Total",
+          name: RECAP_TOTAL_LABEL,
           budget: p.totalBudget,
           actual: p.totalActual,
           variance: p.totalVariance,
           variancePct: p.totalVariancePct,
-          status: p.alertCount > 0 ? `${p.alertCount} akun melewati ambang` : "",
+          status: p.alertCount > 0 ? budgetAlertNote(p.alertCount) : "",
         },
         c,
         true

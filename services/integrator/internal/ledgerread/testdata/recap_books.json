@@ -1,0 +1,616 @@
+{
+  "budgets": [
+    {
+      "book": "buku-dagang",
+      "budgets": [
+        {
+          "accountId": 11,
+          "year": 2025,
+          "month": 3,
+          "amount": "90000000"
+        },
+        {
+          "accountId": 14,
+          "year": 2025,
+          "month": 6,
+          "amount": "60000000"
+        },
+        {
+          "accountId": 15,
+          "year": 2025,
+          "month": 12,
+          "amount": "25000000"
+        },
+        {
+          "accountId": 1,
+          "year": 2025,
+          "month": 1,
+          "amount": "5000000"
+        },
+        {
+          "accountId": 11,
+          "year": 2026,
+          "month": 1,
+          "amount": "15500000"
+        },
+        {
+          "accountId": 12,
+          "year": 2026,
+          "month": 2,
+          "amount": "0"
+        },
+        {
+          "accountId": 14,
+          "year": 2026,
+          "month": 2,
+          "amount": "10000000"
+        },
+        {
+          "accountId": 16,
+          "year": 2026,
+          "month": 3,
+          "amount": "900000"
+        },
+        {
+          "accountId": 18,
+          "year": 2026,
+          "month": 4,
+          "amount": "100000.10"
+        },
+        {
+          "accountId": 13,
+          "year": 2026,
+          "month": 5,
+          "amount": "250000"
+        },
+        {
+          "accountId": 17,
+          "year": 2026,
+          "month": 5,
+          "amount": "100"
+        },
+        {
+          "accountId": 15,
+          "year": 2026,
+          "month": 6,
+          "amount": "3000000"
+        },
+        {
+          "accountId": 15,
+          "year": 2026,
+          "month": 8,
+          "amount": "3500000.33"
+        },
+        {
+          "accountId": 15,
+          "year": 2026,
+          "month": 7,
+          "amount": "7000000"
+        },
+        {
+          "accountId": 19,
+          "year": 2026,
+          "month": 6,
+          "amount": "12345"
+        }
+      ],
+      "salesTargets": [
+        {
+          "year": 2026,
+          "month": 1,
+          "amount": "10000000"
+        },
+        {
+          "year": 2026,
+          "month": 1,
+          "amount": "5000000.50"
+        },
+        {
+          "year": 2026,
+          "month": 2,
+          "amount": "1000000"
+        }
+      ],
+      "cases": [
+        {
+          "case": "anggaran-dagang-2026",
+          "year": 2026,
+          "month": 0
+        },
+        {
+          "case": "anggaran-dagang-2026-01",
+          "year": 2026,
+          "month": 1
+        },
+        {
+          "case": "anggaran-dagang-2026-02",
+          "year": 2026,
+          "month": 2
+        },
+        {
+          "case": "anggaran-dagang-2026-05",
+          "year": 2026,
+          "month": 5
+        },
+        {
+          "case": "anggaran-dagang-2026-06-batas-hari",
+          "year": 2026,
+          "month": 6
+        },
+        {
+          "case": "anggaran-dagang-2026-07",
+          "year": 2026,
+          "month": 7
+        },
+        {
+          "case": "anggaran-dagang-2025",
+          "year": 2025,
+          "month": 0
+        },
+        {
+          "case": "anggaran-dagang-2024-kosong",
+          "year": 2024,
+          "month": 0
+        }
+      ]
+    },
+    {
+      "book": "buku-kosong",
+      "budgets": [
+        {
+          "accountId": 3,
+          "year": 2026,
+          "month": 1,
+          "amount": "1000000"
+        }
+      ],
+      "salesTargets": [
+        {
+          "year": 2026,
+          "month": 1,
+          "amount": "750000.25"
+        }
+      ],
+      "cases": [
+        {
+          "case": "anggaran-kosong-2026-01",
+          "year": 2026,
+          "month": 1
+        }
+      ]
+    }
+  ],
+  "partyRecaps": [
+    {
+      "name": "rekap-dagang",
+      "companyName": "PT Rekap Uji",
+      "customers": [
+        {
+          "id": 1,
+          "name": "PT Alfa"
+        },
+        {
+          "id": 2,
+          "name": "CV Beta"
+        },
+        {
+          "id": 3,
+          "name": "Gamma Trading"
+        },
+        {
+          "id": 4,
+          "name": "alfa kecil"
+        },
+        {
+          "id": 5,
+          "name": "Delta"
+        }
+      ],
+      "suppliers": [
+        {
+          "id": 1,
+          "name": "Pemasok Satu"
+        },
+        {
+          "id": 2,
+          "name": "Pemasok Dua"
+        },
+        {
+          "id": 3,
+          "name": "Pemasok Valas"
+        }
+      ],
+      "invoices": [
+        {
+          "id": 1,
+          "date": "2026-01-05T03:00:00.000Z",
+          "status": "pending",
+          "customerId": 1,
+          "currency": "IDR",
+          "taxAmount": "110000",
+          "items": [
+            {
+              "quantity": "10",
+              "price": "100000"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "date": "2026-01-10T03:00:00.000Z",
+          "status": "paid",
+          "customerId": 1,
+          "currency": "USD",
+          "rate": "15500",
+          "baseAmount": "15600000",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "1000"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "date": "2026-01-12T03:00:00.000Z",
+          "status": "pending",
+          "customerId": 2,
+          "currency": "USD",
+          "rate": "15750.5",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1.333",
+              "price": "300.01"
+            },
+            {
+              "quantity": "2",
+              "price": "10"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "date": "2026-01-15T03:00:00.000Z",
+          "status": "pending",
+          "customerId": 3,
+          "currency": "EUR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "5",
+              "price": "200"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "date": "2026-01-20T03:00:00.000Z",
+          "status": "canceled",
+          "customerId": 2,
+          "currency": "IDR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "999999"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "date": "2026-01-21T03:00:00.000Z",
+          "status": "pending",
+          "customerId": null,
+          "currency": "IDR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "500000"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "date": "2026-01-31T17:00:00.000Z",
+          "status": "pending",
+          "customerId": 3,
+          "currency": "IDR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "777"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "date": "2026-01-31T16:59:59.999Z",
+          "status": "pending",
+          "customerId": 4,
+          "currency": "IDR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "2",
+              "price": "250000"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "date": "2026-01-25T03:00:00.000Z",
+          "status": "pending",
+          "customerId": 3,
+          "currency": "JPY",
+          "rate": "0",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "1000"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "date": "2026-01-26T03:00:00.000Z",
+          "status": "pending",
+          "customerId": 2,
+          "currency": "",
+          "taxAmount": "100.01",
+          "items": []
+        },
+        {
+          "id": 11,
+          "date": "2025-12-31T16:59:59.999Z",
+          "status": "pending",
+          "customerId": 1,
+          "currency": "IDR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "123"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "date": "2026-01-27T03:00:00.000Z",
+          "status": "pending",
+          "customerId": 5,
+          "currency": "IDR",
+          "taxAmount": "0",
+          "items": [
+            {
+              "quantity": "1",
+              "price": "500000"
+            }
+          ]
+        }
+      ],
+      "salesReturns": [
+        {
+          "id": 1,
+          "date": "2026-01-18T03:00:00.000Z",
+          "status": "posted",
+          "customerId": 1,
+          "currency": "IDR",
+          "subtotal": "100000",
+          "taxAmount": "11000"
+        },
+        {
+          "id": 2,
+          "date": "2026-01-19T03:00:00.000Z",
+          "status": "canceled",
+          "customerId": 1,
+          "currency": "IDR",
+          "subtotal": "900000",
+          "taxAmount": "0"
+        },
+        {
+          "id": 3,
+          "date": "2026-01-22T03:00:00.000Z",
+          "status": "posted",
+          "customerId": 2,
+          "currency": "USD",
+          "rate": "15000",
+          "subtotal": "100",
+          "taxAmount": "0"
+        },
+        {
+          "id": 4,
+          "date": "2026-01-23T03:00:00.000Z",
+          "status": "posted",
+          "customerId": 3,
+          "currency": "EUR",
+          "subtotal": "10",
+          "taxAmount": "0"
+        },
+        {
+          "id": 5,
+          "date": "2026-01-24T03:00:00.000Z",
+          "status": "posted",
+          "customerId": 4,
+          "currency": "IDR",
+          "baseAmount": "600000",
+          "subtotal": "600000",
+          "taxAmount": "0"
+        }
+      ],
+      "purchases": [
+        {
+          "id": 1,
+          "date": "2026-01-03T03:00:00.000Z",
+          "type": "purchase",
+          "supplierId": 1,
+          "currency": "IDR",
+          "amount": "2000000",
+          "taxAmount": "220000"
+        },
+        {
+          "id": 2,
+          "date": "2026-01-04T03:00:00.000Z",
+          "type": "payment",
+          "supplierId": 1,
+          "currency": "IDR",
+          "amount": "2220000",
+          "taxAmount": "0"
+        },
+        {
+          "id": 3,
+          "date": "2026-01-06T03:00:00.000Z",
+          "type": "purchase",
+          "supplierId": 3,
+          "currency": "USD",
+          "rate": "15600.25",
+          "amount": "1234.56",
+          "taxAmount": "0"
+        },
+        {
+          "id": 4,
+          "date": "2026-01-07T03:00:00.000Z",
+          "type": "purchase",
+          "supplierId": 3,
+          "currency": "SGD",
+          "amount": "100",
+          "taxAmount": "0"
+        },
+        {
+          "id": 5,
+          "date": "2026-01-08T03:00:00.000Z",
+          "type": "purchase",
+          "supplierId": 2,
+          "currency": "USD",
+          "rate": "15000",
+          "baseAmount": "1500050",
+          "amount": "100",
+          "taxAmount": "0"
+        },
+        {
+          "id": 6,
+          "date": "2026-01-31T17:00:00.000Z",
+          "type": "purchase",
+          "supplierId": 2,
+          "currency": "IDR",
+          "amount": "1",
+          "taxAmount": "0"
+        },
+        {
+          "id": 7,
+          "date": "2026-01-09T03:00:00.000Z",
+          "type": "purchase",
+          "supplierId": 2,
+          "currency": "IDR",
+          "amount": "500000",
+          "taxAmount": "0"
+        }
+      ],
+      "purchaseReturns": [
+        {
+          "id": 1,
+          "date": "2026-01-15T03:00:00.000Z",
+          "status": "posted",
+          "purchaseId": 1,
+          "supplierId": null,
+          "currency": "IDR",
+          "subtotal": "200000",
+          "taxAmount": "22000"
+        },
+        {
+          "id": 2,
+          "date": "2026-01-16T03:00:00.000Z",
+          "status": "canceled",
+          "purchaseId": 1,
+          "supplierId": 1,
+          "currency": "IDR",
+          "subtotal": "1000000",
+          "taxAmount": "0"
+        },
+        {
+          "id": 3,
+          "date": "2026-01-17T03:00:00.000Z",
+          "status": "posted",
+          "purchaseId": 7,
+          "supplierId": 2,
+          "currency": "IDR",
+          "subtotal": "2500000",
+          "taxAmount": "0"
+        },
+        {
+          "id": 4,
+          "date": "2026-01-18T03:00:00.000Z",
+          "status": "posted",
+          "purchaseId": 4,
+          "supplierId": 3,
+          "currency": "SGD",
+          "subtotal": "5",
+          "taxAmount": "0"
+        }
+      ],
+      "cases": [
+        {
+          "case": "rekap-penjualan-januari",
+          "kind": "sales-by-customer",
+          "from": "2026-01-01",
+          "to": "2026-01-31"
+        },
+        {
+          "case": "rekap-penjualan-februari",
+          "kind": "sales-by-customer",
+          "from": "2026-02-01",
+          "to": "2026-02-28"
+        },
+        {
+          "case": "rekap-penjualan-kosong",
+          "kind": "sales-by-customer",
+          "from": "2024-01-01",
+          "to": "2024-12-31"
+        },
+        {
+          "case": "rekap-penjualan-batas-tahun",
+          "kind": "sales-by-customer",
+          "from": "2025-12-31",
+          "to": "2026-01-05"
+        },
+        {
+          "case": "rekap-pembelian-januari",
+          "kind": "purchases-by-supplier",
+          "from": "2026-01-01",
+          "to": "2026-01-31"
+        },
+        {
+          "case": "rekap-pembelian-februari",
+          "kind": "purchases-by-supplier",
+          "from": "2026-02-01",
+          "to": "2026-02-28"
+        },
+        {
+          "case": "rekap-pembelian-kosong",
+          "kind": "purchases-by-supplier",
+          "from": "2024-01-01",
+          "to": "2024-12-31"
+        },
+        {
+          "case": "rekap-penjualan-januari-kolom",
+          "kind": "sales-by-customer",
+          "from": "2026-01-01",
+          "to": "2026-01-31",
+          "cols": "gross,net"
+        },
+        {
+          "case": "rekap-pembelian-januari-pihak",
+          "kind": "purchases-by-supplier",
+          "from": "2026-01-01",
+          "to": "2026-01-31",
+          "cols": "party"
+        }
+      ],
+      "printedAt": "2026-10-23T03:00:00Z"
+    }
+  ]
+}

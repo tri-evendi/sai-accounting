@@ -1897,6 +1897,56 @@ export function budgetColumns(report: { visibleColumns?: string[] }): BudgetColu
   return selectColumns(BUDGET_COLUMNS, report.visibleColumns, "account");
 }
 
+/*
+ * Kalimat cetak Realisasi vs Anggaran, Rekap per Pihak, dan Kas & Bank yang
+ * sampai tahap 1d (23 Okt 2026) ditulis sebaris di `report-payload.ts` /
+ * `report-export.ts`. Dipindah ke sini — bunyinya TIDAK berubah — karena kini
+ * ada pembaca KEDUA: lembar sebar Go (`internal/document`), yang menerimanya
+ * lewat `bun run contract:gen` (`recap_layout_gen.go`). Kalimat di dalam badan
+ * fungsi tak bisa dibangkitkan; kalimat yang diketik ulang di Go adalah dua
+ * salinan yang menyimpang tanpa galat.
+ */
+
+/** Label baris Total lembar Rekap per Pihak, Kas & Bank, dan Realisasi vs Anggaran. */
+export const RECAP_TOTAL_LABEL = "Total";
+
+/** Nama bulan untuk DOKUMEN CETAK — bahasa Indonesia, seperti isi `lib/pdf`. */
+export const BUDGET_MONTH_NAMES_ID = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+] as const;
+
+/** Label periode Realisasi vs Anggaran: "Tahun 2026" atau "Maret 2026". */
+export function budgetPeriodLabel(year: number, month: number | undefined): string {
+  return month === undefined ? `Tahun ${year}` : `${BUDGET_MONTH_NAMES_ID[month - 1]} ${year}`;
+}
+
+/**
+ * Kata untuk arah selisih; cetakan tak punya lencana berwarna. Kuncinya
+ * `VarianceStatus` (`budget.ts`) — ditulis ulang di sini karena modul ini tidak
+ * mengimpor apa pun; `tsc` menolak di `budgetPayload` bila keduanya berbeda.
+ */
+export const VARIANCE_STATUS_TEXT: Record<"over" | "under" | "on_target", string> = {
+  over: "Di atas anggaran",
+  under: "Di bawah anggaran",
+  on_target: "Sesuai anggaran",
+};
+
+/** Keterangan baris Total Realisasi vs Anggaran bila ada akun di luar ambang. */
+export function budgetAlertNote(count: number): string {
+  return `${count} akun melewati ambang`;
+}
+
 // ─── Bentuk Laporan Perubahan Ekuitas ────────────────────────────────────────
 
 /**

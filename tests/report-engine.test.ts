@@ -161,9 +161,13 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     expect(p.asOfInstant).toBe(resolveAsOf("2025-12-31", now).asOf.toISOString());
     /* Tanpa tanggal → hari ini, persis seperti layar. */
     expect(goExportPayload(report, {}, now).params.asOf).toBe(resolveAsOf(undefined, now).asOfISO);
-    /* Laporan yang bukan milik Go tidak bisa diterbitkan ke jalur Go. */
-    const ts = REPORTS.find((r) => isExportable(r) && reportEngine(r.id) === "ts")!;
-    expect(() => goExportPayload(ts, {})).toThrow(/bukan milik mesin Go/);
+    /* Laporan yang bukan milik Go tidak bisa diterbitkan ke jalur Go. Sejak
+       gelombang A + laporan stok, SETIAP laporan berberkas tercatat di
+       register — yang belum `go` kini `go-parity`, jadi yang diuji adalah
+       "bukan `go`", bukan "`ts`". Bila semuanya kelak `go`, uji ini tidak
+       punya contoh lagi dan pernyataannya cukup dilewati. */
+    const bukanGo = REPORTS.find((r) => isExportable(r) && reportEngine(r.id) !== "go");
+    if (bukanGo) expect(() => goExportPayload(bukanGo, {})).toThrow(/bukan milik mesin Go/);
   });
 
   it("bentuk muatan laporan BERPERIODE (Laba Rugi) — instan dari `resolvePeriod`", () => {
@@ -345,5 +349,58 @@ describe("jalur berkas laporan `go` dicabut dari TypeScript", () => {
     )?.[1];
     expect(segmenTs).toBeDefined();
     expect(segmenGo, "pola segmen Go ≠ SEGMEN TS").toBe(segmenTs);
+  });
+});
+
+describe("gelombang A (23 Okt 2026): Rekap per Pihak, Kas & Bank, Realisasi vs Anggaran", () => {
+  const IDS = ["sales-by-customer", "purchases-by-supplier", "cash-bank", "budget-realization"] as const;
+
+  it("keempatnya `go-parity` — berkas masih TS sampai paritas PRODUKSI", () => {
+    for (const id of IDS) {
+      expect(reportEngine(id), id).toBe("go-parity");
+      expect(REPORT_ENGINES[id]!.parityProven, id).toBeUndefined();
+      expect(exportJobKind(id), id).toBe("report.export");
+    }
+  });
+
+  it("rekap pihak & kas-bank: muatan berperiode, `cols` ikut, `compare` dibuang", () => {
+    const now = new Date(2026, 9, 23, 10, 0, 0);
+    for (const id of ["sales-by-customer", "purchases-by-supplier", "cash-bank"] as const) {
+      const report = REPORTS.find((r) => r.id === id)!;
+      const p = goExportPayloadShape(report, { from: "2026-03-31", to: "2026-01-01", cols: "net", compare: "preceding" }, now);
+      const r = resolvePeriod("2026-03-31", "2026-01-01", now);
+      expect(p.params, id).toEqual({ from: r.fromISO, to: r.toISO, cols: "net" });
+      expect(p.fromInstant, id).toBe(r.from.toISOString());
+      expect(p.toInstant, id).toBe(r.to.toISOString());
+      expect(p.priorFromInstant, id).toBeUndefined();
+      expect(COMPARABLE_REPORTS).not.toContain(id);
+    }
+  });
+
+  it("anggaran: `period_month` → tahun/bulan dari `resolveBudgetPeriod`, instan dari `budgetPeriodRange`", () => {
+    const report = REPORTS.find((r) => r.id === "budget-realization")!;
+    expect(report.paramKind).toBe("period_month");
+    const now = new Date(2026, 9, 23, 10, 0, 0);
+    const bulan = goExportPayloadShape(report, { year: "2026", month: "3" }, now);
+    expect(bulan.params).toEqual({ year: "2026", month: "3" });
+    /* Maret 2026 menurut kalender Jakarta: 1 Mar 00:00 WIB … 31 Mar 23:59:59.999 WIB. */
+    expect(bulan.fromInstant).toBe("2026-02-28T17:00:00.000Z");
+    expect(bulan.toInstant).toBe("2026-03-31T16:59:59.999Z");
+    const setahun = goExportPayloadShape(report, { year: "2025", month: "0", compare: "preceding" }, now);
+    expect(setahun.params).toEqual({ year: "2025", month: "0" });
+    expect(setahun.fromInstant).toBe("2024-12-31T17:00:00.000Z");
+    expect(setahun.toInstant).toBe("2025-12-31T16:59:59.999Z");
+    /* Nilai yang diedit tangan jatuh ke periode berjalan — aturan halaman. */
+    expect(goExportPayloadShape(report, { year: "abc", month: "13" }, now).params).toEqual({ year: "2026", month: "10" });
+    expect(goExportPayloadShape(report, {}, now).params).toEqual({ year: "2026", month: "10" });
+  });
+
+  it("pelari Go punya cabang anggaran dan menolak tahun/bulan di luar bentuk penerbit", () => {
+    const runner = readFileSync(
+      join(AKAR_REPO, "services", "integrator", "internal", "interactivelane", "runner.go"),
+      "utf8"
+    );
+    expect(runner).toContain("func budgetYearMonth(");
+    expect(runner).toMatch(/case contract\.ReportBudgetRealization:\s*\n\s*data, filename, err = anggaran\(/);
   });
 });

@@ -164,13 +164,23 @@ export function workerId(
  * yang tidak saling melihat bukan pagar.
  */
 async function ambilPagar(lane: JobLane): Promise<SessionLock | "pooled" | null> {
+  return ambilPagarBernama(`sai.lane.${lane}`);
+}
+
+/**
+ * Pagar instans tunggal dengan NAMA bebas — mekanisme yang sama persis dengan
+ * pagar jalur di atas (koneksi langsung bila `CONTROL_DATABASE_DIRECT_URL`,
+ * kunci sesi lewat kolam bila tidak). Dipakai relay outbox
+ * (`sai.outbox.relay`), yang bukan jalur antrean tapi tetap tunggal-instans.
+ */
+export async function ambilPagarBernama(nama: string): Promise<SessionLock | "pooled" | null> {
   const direct = process.env.CONTROL_DATABASE_DIRECT_URL;
   if (direct) {
     /* Waktu denyutnya dari kontrak, bukan bawaan `session-lock`: pagar yang
        sama dipegang Go (`jobs.LaneLock`), dan dua pemegang satu pagar yang
        berbeda pendapat tentang kapan kunci dinyatakan hilang adalah dua
        jendela berhenti yang berbeda. */
-    return tryAcquireSessionLock(direct, `sai.lane.${lane}`, {
+    return tryAcquireSessionLock(direct, nama, {
       probeIntervalMs: LANE_LOCK_PROBE_MS,
       queryTimeoutMs: LANE_LOCK_QUERY_TIMEOUT_MS,
       idleSessionTimeoutMs: LANE_LOCK_IDLE_SESSION_MS,
@@ -181,7 +191,7 @@ async function ambilPagar(lane: JobLane): Promise<SessionLock | "pooled" | null>
      server, dan itu cukup: yang dibandingkan hanya dua proses jalur yang sama
      di server yang sama. */
   const rows = await controlDb.$queryRaw<{ ok: boolean }[]>`
-    SELECT pg_try_advisory_lock(hashtext(${`sai.lane.${lane}`})) AS ok`;
+    SELECT pg_try_advisory_lock(hashtext(${nama})) AS ok`;
   return rows[0]?.ok === true ? "pooled" : null;
 }
 

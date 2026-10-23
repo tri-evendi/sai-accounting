@@ -188,8 +188,8 @@ satu commit, beberapa `command`.
 | Jalur | Bahasa | Isinya | Instans | Rahasia | Koneksi | Keadaan |
 |---|---|---|---|---|---|---|
 | `interactive` | Node → Go¹ | ekspor & dokumen yang ditunggu pengguna; penyediaan PT baru (`company.provision`, Node, Okt 2026) | berapa pun | sisi Node: kredensial PEMILIK `PROVISION_DATABASE_URL` (06 §3.10) | pooler | tahap 1c |
-| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | tahap 1c |
-| `schedule` | Go | denyut penerbitan tiap jam | **satu** | — | pooler | tahap 1c — penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) |
+| `bulk` | Node → Go¹ | impor besar, paket laporan, email borongan | berapa pun | — | pooler | 🔶 kerangka Go (`internal/bulklane`): pagar memori per pekerjaan di kontrak, **nol kind** — tidak dijalankan sampai kind pertama (di bawah) |
+| `schedule` | **Go** | denyut penerbitan tiap jam — hanya MENERBITKAN | **satu** | — | pooler (pagar: **langsung**) | ✅ `svc-integrator` (Okt 2026) — penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaan masih Node** (peran `scheduler`, `svc-worker`) |
 | `tenant` | **Go** + Node² | cadangan per basis data **(Go)**, kesesuaian data **(Node)** | **satu** per bahasa | kunci enkripsi + kredensial unggah | **langsung** | ✅ `svc-integrator` (Go) + peran `conformance` di `svc-worker` (Node) |
 | `schema` | TypeScript³ | migration setiap perusahaan | **satu**, sekali jalan | — | **langsung** | ✅ `migrate` (`db:migrate:release`): *bounded concurrency*, buku yang gagal tidak menahan rilis — §6 |
 | `ledger` | **Node** | pekerjaan yang **menulis** buku: dokumen berulang, dunning | **satu** | — | pooler (pagar: **langsung**) | ✅ peran `ledger` di `svc-worker` |
@@ -208,6 +208,57 @@ dirancang **tidak** diterbitkan ke antrean (paragraf terakhir bagian ini), jadi
 yang tersisa hanya pilihan bahasa penerapnya — dan penerap kedua atas pembukuan
 `_prisma_migrations` tidak membeli apa pun yang belum ada.
 
+#### Jalur `schedule` & `bulk` (Okt 2026) — apa yang pindah, apa yang sengaja tidak
+
+**`schedule` — penerbit, dengan peralihan yang bisa ditarik kembali.** Jalur
+Go `internal/schedulelane` (proses `svc-integrator`) menerbitkan kind
+ber-`schedule:` di `contract/kinds.yaml` — hari ini `ledger.recurring` (per
+perusahaan per jam UTC) dan `tenant.backup` (per hari UTC). Bentuknya §4
+rekonsiliasi: tiap jam ia membaca registry, menyimpulkan apa yang jatuh tempo,
+dan menerbitkan dengan `dedupe_key` unik; ulangan tidak melakukan apa pun.
+Satu `schedule.tick` per jam UTC — diterbitkan dan diklaim jalur itu sendiri,
+hanya di pemegang pagar `sai.lane.schedule` — adalah jejak denyutnya (pohon Go
+tidak boleh menulis tabel jejak lain); `watch:health` membacanya sebagai
+komponen `penerbit-go`.
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Siapa penerbitnya? | `schedule.publisher` per kind di kontrak — `node` atau `go`, **tepat satu**. Kedua sisi membaca nilai dari commit yang sama; sisi yang bukan penerbit melewati langkahnya (Node: keluar 0; Go: memegang pagar dan diam) |
+| Bawaannya? | `node` untuk keduanya — perilaku produksi tidak berubah oleh rilis yang memuat jalur ini |
+| Kenapa peralihan tidak menerbitkan dua kali? | butir & kunci **identik sampai ke byte-nya** di kedua bahasa (`@sai/core/schedule-due` · `schedulelane/due.go`), dibuktikan SATU fikstur bersama yang dibaca vitest dan `go test`. Di jendela gelar campuran versi, penerbit kedua menabrak `dedupe_key` milik yang pertama |
+| Zonanya? | **UTC**, bukan WIB — perilaku `recurring:publish`/`backup:publish` sejak lahir, dan mesin berulang menghitung batas hari di UTC. Menukarnya menggeser setiap butir tujuh jam: pada hari peralihan satu butir terbit di bawah dua kunci |
+| Yang menulis buku? | tetap jalur `ledger` **Node** — Go hanya menulis baris `jobs` (`ledger.recurring` diterbitkan, tidak pernah diklaim, oleh Go; I-2) |
+| Sambungannya? | pekerjaan lewat PgBouncer (`CONTROL_DATABASE_URL`), pagar lewat sambungan langsung yang sudah ada (`CONTROL_DATABASE_DIRECT_URL`) — tanpa env baru |
+| Peralihan & jalan mundur | PRODUCTION.md §Penerbit denyut: satu baris kontrak + rilis; mundur = pin image sebelumnya atau revert baris itu |
+
+Yang **sengaja tetap Node** di putaran `scheduler`: `scheduler:subscriptions`
+(menulis tabel penagihan platform), `notify:setup` · `notify:invoice-due` ·
+`remind:customers` (mengirim surel lewat SMTP per tenant yang tersandi dan
+menulis riwayat kirim `invoice_sends` di buku PT — tulisan di luar daftar-izin
+Go), `watch:health` dan `prune:trails` (menghapus jejak putaran). Semuanya bukan
+"penerbitan baris `jobs`", jadi tidak satu pun milik jalur ini.
+
+**`bulk` — kerangka tanpa kind, dan itu keputusan.** Kontraknya kini lengkap:
+jalur jamak, satu pekerjaan per proses, dan **pagar memori per pekerjaan**
+(`memory_fence_mib: 512`, ditegakkan `jobs.Runner`): pekerjaan borongan yang
+membuat heap melewatinya dibatalkan dan digagalkan dengan sebab yang terbaca,
+SEBELUM OOM-killer membunuh seluruh `svc-integrator` beserta dump cadangan yang
+sedang berjalan (risiko 2 & 4 di bawah). Tidak satu pun dari tiga kind-nya
+boleh atau bisa dikerjakan Go hari ini: `import.process` menulis buku (I-2),
+`mail.batch` menulis `invoice_sends` dan memegang SMTP tenant, `report.package`
+tidak pernah ada (§9). Pelarinya karena itu TIDAK dijalankan
+(`bulklane.Enabled()` salah) — pelari tanpa kind adalah kode mati yang terlihat
+hidup.
+
+**Kind pertama `bulk` yang akan masuk: ekspor data mandiri tenant** (#142,
+`src/lib/tenant-export.ts`) — hanya membaca, berkasnya besar (ZIP seluruh buku
+setiap PT + dokumen), dan hari ini di-stream sinkron di dalam permintaan
+`app-customer`. Tiga syaratnya, semuanya keputusan, bukan kode: (1) produk —
+unduhan langsung menjadi "pekerjaan, lalu unduh"; (2) jejak audit tenant
+ditulis PENERBIT (Node) saat menerbitkan, sebab Go tidak boleh menulis
+`tenant_audit_logs`; (3) paritas CSV byte demi byte dengan `toCsv` lewat skrip
+paritas, seperti `report-engine`, sebelum versi TS dicabut.
+
 Hanya satu jalur MEMBACA rahasia — jalur `tenant`. Sampai 22 Okt 2026 ia juga
 satu-satunya container yang memegangnya, dan container itu tidak memproses
 masukan pengguna. **Itu tidak lagi benar**, dengan keputusan — lihat di bawah.
@@ -222,7 +273,7 @@ masukan pengguna. **Itu tidak lagi benar**, dengan keputusan — lihat di bawah.
 | Image | Layanan | Isinya | Cara menyatukan |
 |---|---|---|---|
 | `-migrator` | **`svc-worker`** | peran `scheduler`, `conformance`, `ledger`, `interactive` — empat PROSES | penyelia `scripts/run-workers.ts` (bun, tanpa dependensi): grup proses per peran, SIGTERM diteruskan, awalan log per peran, satu peran berakhir → container keluar bukan-nol |
-| `-integrator` | **`svc-integrator`** | jalur `tenant` + jalur `interactive` sisi Go — SATU proses | `cmd/integrator`: kedua pelari bersamaan, satu berakhir → yang lain dihentikan → keluar bukan-nol; logika di `internal/tenantlane` & `internal/interactivelane` |
+| `-integrator` | **`svc-integrator`** | jalur `tenant` + jalur `interactive` sisi Go + jalur `schedule` (Okt 2026) — SATU proses | `cmd/integrator`: setiap pelari bersamaan, satu berakhir → yang lain dihentikan → keluar bukan-nol; logika di `internal/tenantlane`, `internal/interactivelane` & `internal/schedulelane` |
 
 Yang **tetap** dari rancangan ini: setiap jalur Node masih PROSES tersendiri
 (satu ekspor yang kehabisan heap tidak menjatuhkan proses pelari `ledger`),
@@ -315,7 +366,7 @@ menahan sebagiannya.
 | `tenant` — kesesuaian data | TypeScript | **tertahan** — 2 dari 11 pemeriksaannya menghitung materialitas; pemicunya sama dengan 1d (§9) |
 | `schema` — migration | TypeScript | **tertahan** — Prisma pemilik pembukuan skema; §6 menahan asinkronisitasnya sampai *expand/contract* berlaku |
 | Integrasi luar (e-faktur, feed bank) | **Go** | belum dibangun — HTTP+XML, SFTP; tidak menyentuh pembukuan |
-| `schedule` — penerbitan | **Go** | belum dibangun — hanya menerbitkan baris `jobs`. Penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`, Node), dan itu memadai |
+| `schedule` — penerbitan | **Go** | ✅ dibangun Okt 2026 (`internal/schedulelane`, `svc-integrator`) — hanya menerbitkan baris `jobs`. Penerbit per kind dipilih kontrak (`schedule.publisher`); **bawaannya tetap Node** (peran `scheduler`) sampai peralihannya dilakukan — §3.2 |
 | `interactive` · `bulk` — ekspor & dokumen | **Go, bersyarat** | tidak menulis ke buku, tapi **menghitung angka akuntansi**; lihat batas di bawah. **Tahap 1d dimulai 22 Okt 2026**: Neraca Saldo punya implementasi Go (`internal/ledgerread`), paritas produksi lulus hari yang sama, dan ia kini `go` — lembar sebarnya dihasilkan jalur `interactive` Go di `svc-integrator` (`report.export_go`), jalur berkas TS-nya dicabut, layar dan PDF-nya tetap TS (§9) |
 | Pekerjaan yang MENULIS buku besar | **tetap Node** | ✅ jalur `ledger`, dan pintu posting satu-satunya alasan keberadaannya |
 
@@ -861,7 +912,7 @@ kehabisan waktu:
 |---|---|
 | **Outbox + relay** | §4 menyebut sendiri ia "menunggu pemakai pertamanya", dan pemakai yang dinamainya adalah fitur yang `invoice-send.ts` SENGAJA menolak mengotomatiskan. Pemicunya keputusan produk, bukan tahap: hari pertama ada pengiriman dokumen tanpa seseorang menekan tombol |
 | **`report.package`** | tidak pernah ada di aplikasi ini. Membangunnya berarti menambah FITUR di bawah nama "pindah ke server" — dua keputusan yang digabung menjadi satu |
-| Jalur `bulk` & `schedule` sebagai proses sendiri | belum ada `kind` yang diterbitkan untuk keduanya. Penerbitan hari ini masih langkah di peran `scheduler` (`svc-worker`) dan itu memadai; pelari tanpa penerbit adalah kode mati yang terlihat hidup |
+| Jalur `bulk` & `schedule` sebagai proses sendiri | ✅ **`schedule` dibangun Okt 2026** sebagai jalur di `svc-integrator` (keputusan "1 image = 1 container"): penerbit Go dengan peralihan per kind di kontrak, bawaan Node — §3.2. 🔶 **`bulk` tetap tanpa kind**: kerangkanya dan pagar memorinya ada, pelarinya tidak dijalankan sampai kind pertama (ekspor data mandiri #142, tiga syaratnya di §3.2) — pelari tanpa penerbit adalah kode mati yang terlihat hidup |
 
 Tiga generator LAPORAN masih di peramban (`finance-report`, `opname-sheet`,
 `stock-report`) — ketiganya bukan dokumen satuan, dan jalurnya `/api/reports/pdf`

@@ -93,7 +93,7 @@ graph TB
 | Traefik | Terminasi TLS; memilih aplikasi dari header `Host` |
 | `app-*` | Dua aplikasi Next, dua image. **Tidak saling memanggil lewat HTTP** |
 | `svc-worker` | Empat peran Node, satu PROSES per peran di bawah penyelia `scripts/run-workers.ts`: `scheduler` & `conformance` (loop shell yang tidur; langkahnya kini sebagian besar MENERBITKAN ke antrean), `ledger` & `interactive` (pelari jalur yang menguras tabel `jobs`). Sampai 22 Okt 2026 empat container: `job-scheduler`, `job-conformance`, `svc-ledger`, `svc-interactive` |
-| `svc-integrator` | Pelari jalur Go dalam SATU proses (`cmd/integrator`): `tenant` (cadangan) dan `interactive` sisi Go (lembar sebar `engine: go`). Sampai 22 Okt 2026 dua container: `svc-tenant`, `svc-interactive-go` |
+| `svc-integrator` | Pelari jalur Go dalam SATU proses (`cmd/integrator`): `tenant` (cadangan), `interactive` sisi Go (lembar sebar `engine: go`), dan `schedule` (denyut penerbitan; diam selama kontrak menyatakan Node penerbitnya — 09 §3.2). Sampai 22 Okt 2026 dua container: `svc-tenant`, `svc-interactive-go` |
 | `svc-integrator` (jalur `tenant`) · `migrate` | Langsung ke `pg`, melewati pooler: keduanya mencacah/menyentuh SETIAP basis data, dan pooler hanya mengekspos yang terdaftar di konfigurasinya |
 | `pg` | PostgreSQL 17: `control` + `platform` + 17 buku PT |
 
@@ -346,13 +346,15 @@ workers/                             # pelari jalur NODE
 └── interactive.ts                   # jalur `interactive` — ekspor besar (`report.export`)
 services/integrator/                 # pelari jalur GO — membaca buku, tidak pernah menulisnya
 ├── go.mod · .golangci.yml           # DI LUAR workspace bun
-├── cmd/integrator/                  # `svc-integrator` — jalur `tenant` + `interactive` dalam SATU proses (produksi)
+├── cmd/integrator/                  # `svc-integrator` — jalur `tenant` + `interactive` + `schedule` dalam SATU proses (produksi)
 ├── cmd/tenant/ · cmd/interactive/   # satu jalur saja — untuk pengembangan, TIDAK dijalankan produksi
 ├── cmd/parity/                      # perkakas paritas TS ⇄ Go (bukan layanan)
 └── internal/
     ├── contract/  (DIBANGKITKAN)    # kosakata, angka antrean, akuntansi, tata letak berkas
     ├── tenantlane/                  # jalur `tenant` — cadangan per basis data
     ├── interactivelane/             # jalur `interactive` sisi Go — `report.export_go` (1d)
+    ├── schedulelane/                # jalur `schedule` — denyut penerbitan (hanya menulis `jobs`); fikstur bersama TS ⇄ Go
+    ├── bulklane/                    # jalur `bulk` — KERANGKA, nol kind, tidak dijalankan (09 §3.2)
     ├── jobs/                        # klaim · lease · reclaim — SQL antrean
     ├── db/                          # kolam koneksi kendali, pembersih DSN
     ├── registry/                    # `companies` (kendali) — company_id → buku PT

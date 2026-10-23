@@ -38,25 +38,31 @@
  * penerbitan akan melewatkan PT yang didaftarkan antara penerbitan dan
  * pelaksanaan — dan putaran berikutnya tidak akan tahu bahwa yang kemarin tidak
  * lengkap. Pencacahan terjadi saat PELAKSANAAN, di `internal/backup/daftar.go`.
+ *
+ * ══ PENERBITNYA TEPAT SATU ════════════════════════════════════════════════
+ * Butir, kunci, dan muatan dari `@sai/core/schedule-due` — kembarannya di Go
+ * (`internal/schedulelane/due.go`) dibuktikan sama oleh satu fikstur bersama.
+ * `contract/kinds.yaml` → `tenant.backup.schedule.publisher` memutuskan siapa
+ * yang menerbitkan; bila `go`, langkah ini keluar 0 tanpa menyentuh antrean.
+ * Peralihan & jalan mundurnya: PRODUCTION.md §Penerbit denyut.
  */
 import "dotenv/config";
 
 import { controlDb } from "@sai/core/control-db";
 import { publishJob } from "@sai/platform/job-queue";
-
-/** `YYYY-MM-DD` di UTC — butir kunci idempotensi satu hari. */
-function hariUtc(saat: Date): string {
-  return saat.toISOString().slice(0, 10);
-}
+import { duePublications, nodePublishes, skippedPublisherNote } from "@sai/core/schedule-due";
 
 async function main() {
+  if (!nodePublishes("tenant.backup")) {
+    console.log(skippedPublisherNote("tenant.backup"));
+    return;
+  }
   if (!process.env.CONTROL_DATABASE_URL) {
     console.error("CONTROL_DATABASE_URL belum diset.");
     process.exit(1);
   }
 
   const saat = new Date();
-  const butir = hariUtc(saat);
 
   /* SATU pekerjaan untuk seluruh pemasangan, bukan satu per PT — berbeda dari
      `recurring:publish`, dan sebabnya di `internal/backup/jalankan.go`: peran
@@ -64,10 +70,12 @@ async function main() {
      adalah satu benda per putaran, bukan per PT. Satu pekerjaan per PT akan
      menghasilkan 17 manifest yang masing-masing tidak bisa menjawab "apakah
      putaran ini lengkap". */
+  const [p] = duePublications("tenant.backup", saat, []);
+  const butir = String(p!.payload.butir);
   const row = await publishJob({
     kind: "tenant.backup",
-    payload: { butir },
-    dedupeKey: `tenant.backup:${butir}`,
+    payload: p!.payload,
+    dedupeKey: p!.dedupeKey,
   });
 
   if (row) {

@@ -6,9 +6,35 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
+
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/bulklane"
 )
+
+func namaJalur(d []pelari) []string {
+	var n []string
+	for _, p := range d {
+		n = append(n, p.nama)
+	}
+	return n
+}
+
+func TestJalurScheduleSelaluIkutBulkHanyaBilaPunyaKind(t *testing.T) {
+	// `schedule` ikut walau Node masih penerbitnya: peralihan ke Go cukup satu
+	// baris kontrak, bukan perubahan compose. `bulk` tanpa kind = kode mati
+	// yang terlihat hidup, jadi tidak dijalankan.
+	if got := fmt.Sprint(namaJalur(daftarJalur(false))); got != "[tenant interactive-go schedule]" {
+		t.Fatalf("jalur tanpa bulk: %s", got)
+	}
+	if got := fmt.Sprint(namaJalur(daftarJalur(true))); got != "[tenant interactive-go schedule bulk]" {
+		t.Fatalf("jalur dengan bulk: %s", got)
+	}
+	if bulklane.Enabled() {
+		t.Fatal("bulklane punya kind — perbarui tes ini, 09 §3.2, dan kepala internal/bulklane")
+	}
+}
 
 // menunggu: pelari palsu yang hidup sampai `stop` selesai, lalu mencatatnya.
 func menunggu(dihentikan *bool) func(ctx, stop context.Context) error {

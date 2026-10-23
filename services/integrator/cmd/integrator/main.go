@@ -1,5 +1,6 @@
-// SVC-INTEGRATOR — jalur `tenant` dan jalur `interactive` sisi Go dalam SATU
-// proses (keputusan pemilik 22 Okt 2026: "1 image = 1 container").
+// SVC-INTEGRATOR — jalur `tenant`, jalur `interactive` sisi Go, dan jalur
+// `schedule` (denyut penerbitan) dalam SATU proses (keputusan pemilik 22 Okt
+// 2026: "1 image = 1 container"); jalur `bulk` ikut begitu ia punya kind.
 //
 //	svc-integrator   # di compose; `go run ./cmd/integrator` saat mengembangkan
 //
@@ -40,7 +41,9 @@ import (
 	"time"
 
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/buildinfo"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/bulklane"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/interactivelane"
+	"github.com/tri-evendi/sai-accounting/services/integrator/internal/schedulelane"
 	"github.com/tri-evendi/sai-accounting/services/integrator/internal/tenantlane"
 )
 
@@ -56,12 +59,32 @@ func main() {
 	log.Printf("[integrator] %s", buildinfo.Get().Banner(buildinfo.Service))
 	diminta, lepas := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer lepas()
-	kode := jalankan(context.Background(), diminta, []pelari{
-		{"tenant", tenantlane.Run},
-		{"interactive-go", interactivelane.Run},
-	})
+	kode := jalankan(context.Background(), diminta, daftarJalur(bulklane.Enabled()))
 	lepas()
 	os.Exit(kode)
+}
+
+// daftarJalur: jalur yang dijalankan proses ini.
+//
+// `schedule` ikut SELALU — juga selama Node masih penerbit setiap kind
+// berjadwal (`contract/kinds.yaml` → `schedule.publisher`). Di keadaan itu ia
+// hanya memegang pagarnya dan tidak menerbitkan apa pun, jadi peralihan
+// penerbit ke Go cukup satu baris kontrak + rilis, tanpa perubahan compose.
+//
+// `bulk` ikut HANYA bila punya sedikitnya satu kind ber-handler: pelari tanpa
+// satu kind pun adalah kode mati yang terlihat hidup (09 §9).
+func daftarJalur(bulkAktif bool) []pelari {
+	daftar := []pelari{
+		{"tenant", tenantlane.Run},
+		{"interactive-go", interactivelane.Run},
+		{"schedule", schedulelane.Run},
+	}
+	if bulkAktif {
+		daftar = append(daftar, pelari{"bulk", bulklane.Run})
+	} else {
+		log.Printf("[integrator] jalur bulk: belum ada kind ber-handler — tidak dijalankan (internal/bulklane)")
+	}
+	return daftar
 }
 
 // sinyalTerlambat: jeda untuk pelari yang pulang nil, sebelum ia dinilai

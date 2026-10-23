@@ -150,9 +150,11 @@ func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("pakai: parity trial-balance|trial-balance-xlsx|balance-sheet|balance-sheet-xlsx|" +
 			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|equity-changes-xlsx|" +
-			"receivables|receivables-xlsx|payables|payables-xlsx -database <nama> …")
+			"receivables|receivables-xlsx|payables|payables-xlsx|conformance -database <nama> …")
 	}
 	switch args[0] {
+	case "conformance":
+		return conformanceBook(args[1:])
 	case "trial-balance":
 		return trialBalance(args[1:])
 	case "trial-balance-xlsx":

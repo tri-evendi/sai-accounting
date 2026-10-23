@@ -13,20 +13,20 @@
 // `interactivelane`. Risiko yang diterima dan syarat memisahkannya lagi:
 // docs/arsitektur/09-RANCANGAN-LAYANAN.md §3.2.
 //
-// ══ JALUR INI TIDAK MENGKLAIM `tenant.conformance`, DAN ITU DISENGAJA ══════
-// Kontrak menaruh `tenant.backup` dan `tenant.conformance` di satu jalur, dan
-// keadaan akhirnya memang satu proses. Tapi dua dari sebelas pemeriksaan
-// kesesuaian data MENGHITUNG angka akuntansi — pagar materialitas (#444/#445)
-// membandingkan tiap akun beban dengan TOTAL seluruh akun, dan memakai daftar
-// nama penampung. §3.3 menahan Go di depan garis itu sampai ada pemicu
-// TERUKUR, dan memindahkannya sekarang berarti melakukan di tahap 1b apa yang
-// §9 cadangkan untuk 1d.
+// ══ `tenant.conformance`: DIKLAIM DI SINI, DILAKSANAKAN MENURUT SAKELAR ════
+// Sampai 23 Okt 2026 jalur ini sengaja TIDAK mengklaimnya: dua dari sebelas
+// pemeriksaan kesesuaian data MENGHITUNG — pagar materialitas (#444/#445)
+// membandingkan tiap akun beban dengan TOTAL seluruh akun — dan §3.3 menahan
+// Go di depan garis itu. Pemiliknya membukanya dengan syarat tahap 1d:
+// ambangnya dibangkitkan dari `contract/accounting.yaml`, dan kesetaraannya
+// dibuktikan `bun run parity:conformance` atas buku sungguhan.
 //
-// Jadi `tenant.conformance` tetap TypeScript (`scripts/check-data-conformance.ts`,
-// peran `conformance` di `svc-worker`), dan pelari ini mengklaim HANYA `kind`
-// yang punya handler di sini. Yang menjaga supaya itu bukan lubang:
-// `tests/kind-punya-pengklaim.test.ts` menolak `kind` yang DITERBITKAN tanpa
-// pengklaim — dan `tenant.conformance` tidak diterbitkan siapa pun.
+// Siapa yang MENYAPU diputuskan `runner:` kind itu di `contract/kinds.yaml`
+// (bawaan `node`): selama `node`, peran `conformance` di `svc-worker` yang
+// menyapu dan tidak menerbitkan apa pun ke sini; begitu `go`, langkah Node yang
+// sama menerbitkan satu pekerjaan dan handler di bawah yang menyapu.
+// Pekerjaan yang tiba di sini sementara pelaksananya BUKAN Go diselesaikan
+// tanpa menyapu — tepat satu pelaksana, tidak pernah dua.
 //
 // ══ SAMBUNGAN: LANGSUNG KE `pg`, BUKAN `CONTROL_DATABASE_URL` ══════════════
 // Jalur ini mencacah `pg_database`, memegang pagar advisory lock, dan
@@ -68,7 +68,8 @@ func Run(ctx, stop context.Context) error {
 		Lane:  contract.LaneTenant,
 		Queue: jobs.New(kolam),
 		Handlers: map[contract.JobKind]jobs.Handler{
-			contract.KindTenantBackup: handlerCadangan(kolam),
+			contract.KindTenantBackup:      handlerCadangan(kolam),
+			contract.KindTenantConformance: handlerKesesuaian(kolam),
 		},
 		Stop: stop,
 	}

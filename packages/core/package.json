@@ -12,6 +12,7 @@
     "./constants": "./src/constants.ts",
     "./contact-channels": "./src/contact-channels.ts",
     "./control-db": "./src/control-db.ts",
+    "./coretax-xml": "./src/coretax-xml.ts",
     "./deploy-profile": "./src/deploy-profile.ts",
     "./efaktur": "./src/efaktur.ts",
     "./entitlement": "./src/entitlement.ts",

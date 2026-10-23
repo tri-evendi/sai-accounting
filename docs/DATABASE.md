@@ -378,16 +378,15 @@ antara control dan perusahaan.
   dibatalkan lewat sinyal `site-content` di `cache_signals` (di bawah):
   penerbitan tampil dalam 5 detik, dan angka itulah yang dikatakan konsol.
 
-  **Expand/contract:** `site_contents` (bentuk lama) tetap ada dan ditulis
-  ulang di transaksi yang sama setiap kali yang tayang berubah (dual-write),
-  supaya image sebelum 0008 menampilkan kalimat yang sama bila rilis
-  di-rollback. Paruh contract = migration platform berikutnya yang
-  `DROP TABLE "site_contents"` + cabut dual-write + model `SiteContent`,
-  didaftarkan di `KONTRAKSI_DIIZINKAN` dengan rilis 0008 sebagai
-  `expandDiRilis`, setelah tidak ada image yang membaca tabel itu. Tulisan
-  image LAMA selama jendela penukaran (antara migrate dan swap) hanya
-  mendarat di `site_contents` dan tidak terbawa; produksi berisi 0 baris
-  saat 0008 ditulis.
+  **Expand/contract — SELESAI.** `site_contents` (bentuk lama) ditulis ulang
+  di transaksi yang sama selama rilis 0.18.x (dual-write), supaya image
+  sebelum 0008 menampilkan kalimat yang sama bila rilis di-rollback. Paruh
+  contract-nya migration platform `0010_drop_site_contents`: dual-write dan
+  model `SiteContent` dicabut, `DROP TABLE "site_contents"`, didaftarkan di
+  `KONTRAKSI_DIIZINKAN` dengan `expandDiRilis` 0.18.0. Syaratnya diperiksa di
+  produksi 23 Okt 2026 (hanya-baca): image yang berjalan 0.19.1, kedua tabel
+  0 baris. Konsekuensinya: rollback ke image SEBELUM 0.18.0 kini menampilkan
+  kalimat bawaan kamus.
 - **`cache_signals` (migration platform 0009): sinyal invalidasi cache lintas
   proses.** Satu baris per nama cache (`CACHE_SIGNAL_NAMES` di
   `packages/core/src/cache-signals.ts`; CHECK menutup bentuk namanya). Nilai

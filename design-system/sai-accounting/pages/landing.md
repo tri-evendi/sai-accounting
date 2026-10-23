@@ -32,8 +32,8 @@ kunci `landing.*` bisa diganti dari basis data tanpa rilis. Yang perlu
 diketahui sebelum menyunting kamus atau menyimpulkan apa yang terbaca di
 produksi:
 
-- **Kamus tetap sumber bawaan.** `site_contents` (basis data platform) hanya
-  memuat kalimat yang sudah diganti; baris yang tidak ada berarti "pakai
+- **Kamus tetap sumber bawaan.** `site_content_entries` (basis data platform)
+  hanya memuat kalimat yang sudah diganti; baris yang tidak ada berarti "pakai
   bawaan". Platform mati → pendaratan tampil utuh dengan kalimat kamus.
 - **`id.json` belum tentu sama dengan yang terbaca di `/` hari ini.** Kalau
   kalimat di produksi tidak cocok dengan kamus, periksa `/content` di konsol

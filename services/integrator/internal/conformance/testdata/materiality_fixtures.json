@@ -1,0 +1,828 @@
+{
+  "cases": [
+    {
+      "name": "nama + band, bawaan 5%",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "type": "expense",
+          "amount": 1000000,
+          "nature": "salary"
+        },
+        {
+          "code": "6999",
+          "name": "Beban Lain-lain",
+          "type": "expense",
+          "amount": 200000,
+          "nature": null
+        },
+        {
+          "code": "7201",
+          "name": "Beban Bunga & Administrasi Bank",
+          "type": "other_expense",
+          "amount": 150000,
+          "nature": "interest"
+        },
+        {
+          "code": "7999",
+          "name": "Beban Lain-lainnya",
+          "type": "other_expense",
+          "amount": 50000,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 1400000,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "6999",
+              "name": "Beban Lain-lain",
+              "amount": 200000,
+              "share": 0.14285714285714285
+            },
+            {
+              "reason": "band",
+              "code": "",
+              "name": "Beban Lain-lain",
+              "amount": 200000,
+              "share": 0.14285714285714285
+            }
+          ],
+          "labels": [
+            "6999 Beban Lain-lain = Rp 200.000 (14.3% dari total beban)",
+            "seluruh band \"Beban Lain-lain\" = Rp 200.000 (14.3% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 1400000,
+          "findings": [
+            {
+              "code": "6999",
+              "name": "Beban Lain-lain",
+              "amount": 200000,
+              "share": 0.14285714285714285
+            }
+          ],
+          "labels": [
+            "6999 Beban Lain-lain = Rp 200.000 (14.3% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "seri toFixed: pangsa tepat 6,25% → 6.3",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Sewa",
+          "type": "expense",
+          "amount": 9375,
+          "nature": "rent"
+        },
+        {
+          "code": "6998",
+          "name": "Serba Serbi",
+          "type": "expense",
+          "amount": 625,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 10000,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "6998",
+              "name": "Serba Serbi",
+              "amount": 625,
+              "share": 0.0625
+            }
+          ],
+          "labels": [
+            "6998 Serba Serbi = Rp 625 (6.3% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 10000,
+          "findings": [
+            {
+              "code": "6998",
+              "name": "Serba Serbi",
+              "amount": 625,
+              "share": 0.0625
+            }
+          ],
+          "labels": [
+            "6998 Serba Serbi = Rp 625 (6.3% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "pangsa TEPAT sama dengan ambang belum material",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Sewa",
+          "type": "expense",
+          "amount": 9500,
+          "nature": "rent"
+        },
+        {
+          "code": "6998",
+          "name": "Beban Lain Lain",
+          "type": "expense",
+          "amount": 500,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 10000,
+          "findings": [],
+          "labels": []
+        },
+        "untagged": {
+          "totalExpense": 10000,
+          "findings": [],
+          "labels": []
+        }
+      }
+    },
+    {
+      "name": "spasi NBSP & batas kata di sekitar NBSP",
+      "threshold": 0.01,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Pokok",
+          "type": "expense",
+          "amount": 1000,
+          "nature": "rent"
+        },
+        {
+          "code": "6201",
+          "name": "Beban Lain lain",
+          "type": "expense",
+          "amount": 300,
+          "nature": null
+        },
+        {
+          "code": "6202",
+          "name": "Biaya dll",
+          "type": "expense",
+          "amount": 200,
+          "nature": null
+        },
+        {
+          "code": "6203",
+          "name": "Biaya　dsb",
+          "type": "expense",
+          "amount": 100,
+          "nature": null
+        },
+        {
+          "code": "6204",
+          "name": "Serba serbi",
+          "type": "expense",
+          "amount": 90,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 1690,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "6201",
+              "name": "Beban Lain lain",
+              "amount": 300,
+              "share": 0.17751479289940827
+            },
+            {
+              "reason": "name",
+              "code": "6202",
+              "name": "Biaya dll",
+              "amount": 200,
+              "share": 0.11834319526627218
+            },
+            {
+              "reason": "name",
+              "code": "6203",
+              "name": "Biaya　dsb",
+              "amount": 100,
+              "share": 0.05917159763313609
+            },
+            {
+              "reason": "name",
+              "code": "6204",
+              "name": "Serba serbi",
+              "amount": 90,
+              "share": 0.05325443786982249
+            }
+          ],
+          "labels": [
+            "6201 Beban Lain lain = Rp 300 (17.8% dari total beban)",
+            "6202 Biaya dll = Rp 200 (11.8% dari total beban)",
+            "6203 Biaya　dsb = Rp 100 (5.9% dari total beban)",
+            "6204 Serba serbi = Rp 90 (5.3% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 1690,
+          "findings": [
+            {
+              "code": "6201",
+              "name": "Beban Lain lain",
+              "amount": 300,
+              "share": 0.17751479289940827
+            },
+            {
+              "code": "6202",
+              "name": "Biaya dll",
+              "amount": 200,
+              "share": 0.11834319526627218
+            },
+            {
+              "code": "6203",
+              "name": "Biaya　dsb",
+              "amount": 100,
+              "share": 0.05917159763313609
+            },
+            {
+              "code": "6204",
+              "name": "Serba serbi",
+              "amount": 90,
+              "share": 0.05325443786982249
+            }
+          ],
+          "labels": [
+            "6201 Beban Lain lain = Rp 300 (17.8% dari total beban)",
+            "6202 Biaya dll = Rp 200 (11.8% dari total beban)",
+            "6203 Biaya　dsb = Rp 100 (5.9% dari total beban)",
+            "6204 Serba serbi = Rp 90 (5.3% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "lipatan huruf: ASCII saja (Kelvin & s panjang BUKAN penampung)",
+      "threshold": 0.01,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Pokok",
+          "type": "expense",
+          "amount": 1000,
+          "nature": "rent"
+        },
+        {
+          "code": "6201",
+          "name": "Beban ſundry",
+          "type": "expense",
+          "amount": 300,
+          "nature": null
+        },
+        {
+          "code": "6202",
+          "name": "BEBAN MISC",
+          "type": "expense",
+          "amount": 200,
+          "nature": null
+        },
+        {
+          "code": "6203",
+          "name": "Others Kantor",
+          "type": "expense",
+          "amount": 150,
+          "nature": null
+        },
+        {
+          "code": "6204",
+          "name": "Mother Care",
+          "type": "expense",
+          "amount": 120,
+          "nature": null
+        },
+        {
+          "code": "6205",
+          "name": "Beban Miscellaneous",
+          "type": "expense",
+          "amount": 110,
+          "nature": null
+        },
+        {
+          "code": "6206",
+          "name": "Beban OTHER",
+          "type": "expense",
+          "amount": 100,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          false,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 1980,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "6202",
+              "name": "BEBAN MISC",
+              "amount": 200,
+              "share": 0.10101010101010101
+            },
+            {
+              "reason": "name",
+              "code": "6203",
+              "name": "Others Kantor",
+              "amount": 150,
+              "share": 0.07575757575757576
+            },
+            {
+              "reason": "name",
+              "code": "6205",
+              "name": "Beban Miscellaneous",
+              "amount": 110,
+              "share": 0.05555555555555555
+            },
+            {
+              "reason": "name",
+              "code": "6206",
+              "name": "Beban OTHER",
+              "amount": 100,
+              "share": 0.050505050505050504
+            }
+          ],
+          "labels": [
+            "6202 BEBAN MISC = Rp 200 (10.1% dari total beban)",
+            "6203 Others Kantor = Rp 150 (7.6% dari total beban)",
+            "6205 Beban Miscellaneous = Rp 110 (5.6% dari total beban)",
+            "6206 Beban OTHER = Rp 100 (5.1% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 1980,
+          "findings": [
+            {
+              "code": "6201",
+              "name": "Beban ſundry",
+              "amount": 300,
+              "share": 0.15151515151515152
+            },
+            {
+              "code": "6202",
+              "name": "BEBAN MISC",
+              "amount": 200,
+              "share": 0.10101010101010101
+            },
+            {
+              "code": "6203",
+              "name": "Others Kantor",
+              "amount": 150,
+              "share": 0.07575757575757576
+            },
+            {
+              "code": "6204",
+              "name": "Mother Care",
+              "amount": 120,
+              "share": 0.06060606060606061
+            },
+            {
+              "code": "6205",
+              "name": "Beban Miscellaneous",
+              "amount": 110,
+              "share": 0.05555555555555555
+            },
+            {
+              "code": "6206",
+              "name": "Beban OTHER",
+              "amount": 100,
+              "share": 0.050505050505050504
+            }
+          ],
+          "labels": [
+            "6201 Beban ſundry = Rp 300 (15.2% dari total beban)",
+            "6202 BEBAN MISC = Rp 200 (10.1% dari total beban)",
+            "6203 Others Kantor = Rp 150 (7.6% dari total beban)",
+            "6204 Mother Care = Rp 120 (6.1% dari total beban)",
+            "6205 Beban Miscellaneous = Rp 110 (5.6% dari total beban)",
+            "6206 Beban OTHER = Rp 100 (5.1% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "total beban nol atau negatif: tanpa temuan",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Lain-lain",
+          "type": "expense",
+          "amount": -100,
+          "nature": null
+        },
+        {
+          "code": "6102",
+          "name": "Beban Lain-lain 2",
+          "type": "expense",
+          "amount": 50,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          true,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": -50,
+          "findings": [],
+          "labels": []
+        },
+        "untagged": {
+          "totalExpense": -50,
+          "findings": [],
+          "labels": []
+        }
+      }
+    },
+    {
+      "name": "band dengan komponen negatif; akun negatif dilewati",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "type": "expense",
+          "amount": 1000,
+          "nature": "salary"
+        },
+        {
+          "code": "7101",
+          "name": "Beban Lain-lain",
+          "type": "other_expense",
+          "amount": 300,
+          "nature": null
+        },
+        {
+          "code": "7102",
+          "name": "Koreksi Beban Lain-lain",
+          "type": "other_expense",
+          "amount": -100,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 1200,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "7101",
+              "name": "Beban Lain-lain",
+              "amount": 300,
+              "share": 0.25
+            },
+            {
+              "reason": "band",
+              "code": "",
+              "name": "Beban Lain-lain",
+              "amount": 200,
+              "share": 0.16666666666666666
+            }
+          ],
+          "labels": [
+            "7101 Beban Lain-lain = Rp 300 (25.0% dari total beban)",
+            "seluruh band \"Beban Lain-lain\" = Rp 200 (16.7% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 1200,
+          "findings": [
+            {
+              "code": "7101",
+              "name": "Beban Lain-lain",
+              "amount": 300,
+              "share": 0.25
+            }
+          ],
+          "labels": [
+            "7101 Beban Lain-lain = Rp 300 (25.0% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "seri pangsa: urut stabil",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "type": "expense",
+          "amount": 800,
+          "nature": "salary"
+        },
+        {
+          "code": "6201",
+          "name": "Lainnya A",
+          "type": "expense",
+          "amount": 100,
+          "nature": null
+        },
+        {
+          "code": "6202",
+          "name": "Lainnya B",
+          "type": "expense",
+          "amount": 100,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true,
+          true
+        ],
+        "catchAll": {
+          "totalExpense": 1000,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "6201",
+              "name": "Lainnya A",
+              "amount": 100,
+              "share": 0.1
+            },
+            {
+              "reason": "name",
+              "code": "6202",
+              "name": "Lainnya B",
+              "amount": 100,
+              "share": 0.1
+            }
+          ],
+          "labels": [
+            "6201 Lainnya A = Rp 100 (10.0% dari total beban)",
+            "6202 Lainnya B = Rp 100 (10.0% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 1000,
+          "findings": [
+            {
+              "code": "6201",
+              "name": "Lainnya A",
+              "amount": 100,
+              "share": 0.1
+            },
+            {
+              "code": "6202",
+              "name": "Lainnya B",
+              "amount": 100,
+              "share": 0.1
+            }
+          ],
+          "labels": [
+            "6201 Lainnya A = Rp 100 (10.0% dari total beban)",
+            "6202 Lainnya B = Rp 100 (10.0% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "ambang ditimpa 20%",
+      "threshold": 0.2,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "type": "expense",
+          "amount": 700,
+          "nature": null
+        },
+        {
+          "code": "6201",
+          "name": "Beban Lain-lain",
+          "type": "expense",
+          "amount": 250,
+          "nature": null
+        },
+        {
+          "code": "7101",
+          "name": "Beban Bunga",
+          "type": "other_expense",
+          "amount": 50,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          true,
+          false
+        ],
+        "catchAll": {
+          "totalExpense": 1000,
+          "findings": [
+            {
+              "reason": "name",
+              "code": "6201",
+              "name": "Beban Lain-lain",
+              "amount": 250,
+              "share": 0.25
+            }
+          ],
+          "labels": [
+            "6201 Beban Lain-lain = Rp 250 (25.0% dari total beban)"
+          ]
+        },
+        "untagged": {
+          "totalExpense": 1000,
+          "findings": [
+            {
+              "code": "6101",
+              "name": "Beban Gaji",
+              "amount": 700,
+              "share": 0.7
+            },
+            {
+              "code": "6201",
+              "name": "Beban Lain-lain",
+              "amount": 250,
+              "share": 0.25
+            }
+          ],
+          "labels": [
+            "6101 Beban Gaji = Rp 700 (70.0% dari total beban)",
+            "6201 Beban Lain-lain = Rp 250 (25.0% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "aritmetika float: 0,1 + 0,2 dan pembulatan setengah",
+      "threshold": 0.05,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Kecil",
+          "type": "expense",
+          "amount": 0.1,
+          "nature": null
+        },
+        {
+          "code": "6102",
+          "name": "Beban Kecil Dua",
+          "type": "expense",
+          "amount": 0.2,
+          "nature": null
+        },
+        {
+          "code": "6103",
+          "name": "Beban Lain-lain",
+          "type": "expense",
+          "amount": 1000.5,
+          "nature": null
+        },
+        {
+          "code": "6104",
+          "name": "Beban Besar",
+          "type": "expense",
+          "amount": 1234567890.5,
+          "nature": ""
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          false,
+          true,
+          false
+        ],
+        "catchAll": {
+          "totalExpense": 1234568891.3,
+          "findings": [],
+          "labels": []
+        },
+        "untagged": {
+          "totalExpense": 1234568891.3,
+          "findings": [
+            {
+              "code": "6104",
+              "name": "Beban Besar",
+              "amount": 1234567890.5,
+              "share": 0.9999991893526501
+            }
+          ],
+          "labels": [
+            "6104 Beban Besar = Rp 1.234.567.891 (100.0% dari total beban)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "sifat kosong = belum bersifat",
+      "threshold": null,
+      "accounts": [
+        {
+          "code": "6101",
+          "name": "Beban Gaji",
+          "type": "expense",
+          "amount": 500,
+          "nature": ""
+        },
+        {
+          "code": "6102",
+          "name": "Beban Sewa",
+          "type": "expense",
+          "amount": 400,
+          "nature": "rent"
+        },
+        {
+          "code": "6103",
+          "name": "Beban Listrik",
+          "type": "cogs",
+          "amount": 100,
+          "nature": null
+        }
+      ],
+      "expect": {
+        "names": [
+          false,
+          false,
+          false
+        ],
+        "catchAll": {
+          "totalExpense": 1000,
+          "findings": [],
+          "labels": []
+        },
+        "untagged": {
+          "totalExpense": 1000,
+          "findings": [
+            {
+              "code": "6101",
+              "name": "Beban Gaji",
+              "amount": 500,
+              "share": 0.5
+            },
+            {
+              "code": "6103",
+              "name": "Beban Listrik",
+              "amount": 100,
+              "share": 0.1
+            }
+          ],
+          "labels": [
+            "6101 Beban Gaji = Rp 500 (50.0% dari total beban)",
+            "6103 Beban Listrik = Rp 100 (10.0% dari total beban)"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -52,8 +52,14 @@
 #                       `src/lib/receivables.ts` (`agingBucket`) dan
 #                       `internal/ledgerread/aging.go`.
 #
-# Yang SENGAJA BELUM ada: saldo normal per tipe, ambang materialitas. Tidak
-# satu pun laporan Go membacanya —
+#   • `materiality`   — pagar materialitas akun penampung beban (#444/#445);
+#                       dibaca `src/lib/materiality.ts` (sapuan kesesuaian
+#                       Node, laporan sifat beban) dan
+#                       `internal/conformance/materiality.go` (sapuan
+#                       kesesuaian Go, jalur `tenant`, 23 Okt 2026).
+#
+# Yang SENGAJA BELUM ada: saldo normal per tipe. Tidak satu pun pembaca Go
+# membacanya —
 # saldo normal hanya dibaca formulir bagan akun & buku besar (TS), dan
 # `accumulated_depreciation` membuktikan ia BUKAN turunan kategori (aset,
 # saldo normal kredit). Laba Rugi & Neraca memakai sisi KATEGORI, bukan sisi
@@ -272,3 +278,34 @@ aging:
     - key: b61_90
       max_days: 90
     - key: b90_plus
+
+# ── Pagar materialitas akun penampung beban (#444, #445) ──────────────────
+# Dibaca DUA pemeriksa kesesuaian data — `scripts/check-data-conformance.ts`
+# (lewat `src/lib/materiality.ts`) dan `internal/conformance` (Go, jalur
+# `tenant`) — dan keduanya wajib menuduh akun yang SAMA dengan kalimat yang
+# SAMA: pemeriksa yang berpindah bahasa lalu berbunyi untuk akun lain adalah
+# pemeriksa yang tidak lagi dipercaya siapa pun.
+#
+#   • `catch_all_threshold` — pangsa minimum terhadap TOTAL beban yang disebut
+#     material, 0..1 EKSKLUSIF (pangsa yang tepat sama dengan ambang BELUM
+#     material). Ambang PRAKTIK, bukan angka peraturan; alasannya di kepala
+#     `src/lib/materiality.ts`. Ditimpa per putaran lewat
+#     `--ambang-penampung=<persen>` (Node) atau muatan `ambangPenampung`
+#     pekerjaan `tenant.conformance` (Go) — nilai di sini hanya BAWAANNYA.
+#   • `catch_all_expense_type` — tipe band "Beban Lain-lain" (temuan `band`).
+#     Generator menolak tipe yang tidak ada di `account_types` atau yang
+#     kategorinya bukan `expense`. Labelnya TIDAK di sini: ia label tipe akun
+#     milik `src/lib/accounting.ts`, dan sampai ke Go lewat bangkitan.
+#   • `catch_all_name_pattern` — nama yang menyatakan dirinya penampung.
+#     Dicocokkan TANPA membedakan huruf besar-kecil — hanya huruf ASCII, sama
+#     seperti bendera `i` RegExp JS tanpa `u`. Generator menolak huruf besar
+#     ASCII di polanya (pembanding Go menurunkan huruf ASCII namanya lalu
+#     mencocokkan tanpa `(?i)`, sebab `(?i)` RE2 melipat Unicode — `K` Kelvin,
+#     `ſ` panjang — dan JS tidak) serta escape selain `\s` `\b` `\d` `\w`.
+#     `\s` diterjemahkan generator ke kelas spasi JS yang PERSIS (termasuk
+#     NBSP — nama akun yang ditempel dari lembar sebar sering membawanya);
+#     `\s` RE2 hanya spasi ASCII.
+materiality:
+  catch_all_threshold: 0.05
+  catch_all_expense_type: other_expense
+  catch_all_name_pattern: '(lain[-\s]?lain|lainnya|serba[-\s]?serbi|\bdll\b|\bdsb\b|miscellaneous|\bmisc\b|\bsundry\b|\bother\b|\bothers\b)'

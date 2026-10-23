@@ -370,6 +370,17 @@ waktu putaran. Itu sebabnya keduanya dibaca di **satu halaman**.
 `bun run check-data-conformance`, `sleep 604800`, `timeout -k 30 1800`, **hanya
 membaca** (dijaga `tests/check-data-conformance.test.ts`).
 
+**Pelaksananya dipilih kontrak** (23 Okt 2026): `runner:` kind
+`tenant.conformance` di `contract/kinds.yaml`. `node` (bawaan) — langkah ini
+menyapu. `go` — langkah yang SAMA tidak menyapu: ia menerbitkan satu pekerjaan
+`tenant.conformance` (kunci `tenant.conformance:<jam UTC>`) lalu keluar 0, dan
+jalur `tenant` di `svc-integrator` (`internal/conformance`) yang menyapu,
+dengan `CONFORMANCE_CONCURRENCY` yang sama, lalu menulis `conformance_runs`
+sendiri (`details.runner = "go"`, `service = "svc-integrator"`). Pemicunya
+tetap putaran mingguan ini; `/api/health` → `conformance` dan konsol
+`/conformance` membaca tabel yang sama apa pun pelaksananya. Pekerjaan yang
+tiba di Go sementara nilainya `node` diselesaikan tanpa menyapu.
+
 Memeriksa: status di luar enum · mata uang tak dikenal · valas tanpa kurs ·
 mata uang pembayaran ≠ dokumennya · faktur kelebihan bayar · jurnal tidak
 berimbang atau kosong · tipe akun asing · akun penampung beban berskala
@@ -563,7 +574,7 @@ direktori yang lebih baru dari 24 jam tidak pernah dibuang.
 Menguras `report.export_go`: lembar sebar laporan yang register
 `src/lib/report-engine.ts` nyatakan `engine: "go"` — sejak 22 Okt 2026 **Neraca
 Saldo**. Satu jalur, dua pelari, pola yang sama dengan jalur `tenant`
-(Go di `svc-integrator` + peran `conformance` Node); yang memisahkan keduanya adalah
+(Go di `svc-integrator` + peran `conformance` Node selama `runner: node`); yang memisahkan keduanya adalah
 `kind`, bukan jalur.
 
 | Keputusan | Alasan |
@@ -715,7 +726,7 @@ pun.
 | Pembaca | `@sai/core/build-info` (`buildInfo()`) dan Go `internal/buildinfo` (`Get()`) — satu bentuk keluaran |
 | Log start | `<layanan> v0.12.1 (abc1234, built …Z)` — kedua `app-*` (`instrumentation.ts`), penyelia `svc-worker` sekali + tiap peran, tiap pelari jalur Node, `svc-integrator` sekali + tiap jalur |
 | HTTP | `/api/health` kedua aplikasi: `version` + `build: {version, sha, builtAt}` |
-| Jejak | `jobs.claimed_by` dan `runtime_samples.instance` = `<kepala> <layanan> v<versi>+<sha>` (muat VARCHAR(100); kepala yang dipangkas, bukan stempel); `details.build` di `scheduler_runs`/`conformance_runs`. **Tanpa tabel & tanpa migration baru** — pohon Go tetap hanya menulis `jobs` dan `backup_runs` |
+| Jejak | `jobs.claimed_by` dan `runtime_samples.instance` = `<kepala> <layanan> v<versi>+<sha>` (muat VARCHAR(100); kepala yang dipangkas, bukan stempel); `details.build` di `scheduler_runs`/`conformance_runs`. **Tanpa tabel & tanpa migration baru** — pohon Go hanya menulis `jobs`, `backup_runs`, dan (sejak 23 Okt 2026, sapuan kesesuaian Go) `conformance_runs` |
 | Konsol | `/scheduler` → panel **Versi layanan**: build konsol sebagai acuan; tiap layanan+peran yang terlihat dalam 26 jam terakhir dengan putusan *Sama* / *Tertinggal* / *Tidak diketahui* |
 
 Dijaga `tests/build-stamp.test.ts` (setiap tahap akhir terbitan berstempel,

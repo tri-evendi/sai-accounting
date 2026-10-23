@@ -1,4 +1,4 @@
-// Package jscompat: tiga perilaku JavaScript yang laporan Go wajib tiru PERSIS
+// Package jscompat: perilaku JavaScript yang laporan Go wajib tiru PERSIS
 // karena teks keluarannya dibandingkan dengan TypeScript (tahap 1d, 09 §9).
 //
 // Masing-masing di sini karena padanan Go "yang wajar" BERBEDA dari JS pada
@@ -10,6 +10,14 @@
 //     dan memulangkan −0 untuk −0,5 ≤ x < 0.
 //   - `Intl.NumberFormat("id-ID").format` — pemisah ribuan ".", desimal ",",
 //     dan −0 tercetak "-0".
+//   - `Number.prototype.toFixed` ≠ `strconv.FormatFloat(x, 'f', n)`: JS
+//     memilih n yang LEBIH BESAR pada seri tepat (0,25 → "0.3"), Go
+//     membulatkan ke genap (0,25 → "0.2"). Kalimat temuan materialitas
+//     ("6.3% dari total beban") dibandingkan paritas kesesuaian data.
+//   - `Number(teks)` — cara JS membaca env var (`CONFORMANCE_CONCURRENCY`)
+//     dan argumen (`--ambang-penampung`): spasi JS dibuang, kosong = 0,
+//     `0x`/`0o`/`0b`, `Infinity`, selain itu NaN. `strconv` menerima bentuk
+//     lain (`inf`, `1_000`) dan menolak yang JS terima (`" 4 "`).
 package jscompat
 
 import (

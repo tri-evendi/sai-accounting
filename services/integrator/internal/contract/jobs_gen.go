@@ -156,6 +156,22 @@ var ScheduledKinds = map[JobKind]ScheduleSpec{
 	KindTenantBackup:    {Grain: GrainDay, PerCompany: false, Publisher: PublisherGo},
 }
 
+// KindRunner: bahasa yang MELAKSANAKAN kind yang sedang beralih — tepat satu.
+type KindRunner string
+
+const (
+	RunnerNode KindRunner = "node"
+	RunnerGo   KindRunner = "go"
+)
+
+// KindRunners: kind ber-`runner:` beserta pelaksananya hari ini. Pelari Go
+// yang menerima pekerjaan kind ini sementara pelaksananya BUKAN Go
+// menyelesaikannya tanpa bekerja — dua pelaksana untuk satu putaran adalah
+// persis yang sakelar ini cegah. Padanan TS `KIND_RUNNERS`.
+var KindRunners = map[JobKind]KindRunner{
+	KindTenantConformance: RunnerNode,
+}
+
 // IsJobKind melaporkan apakah v adalah jenis yang dikenal kontrak ini.
 func IsJobKind(v string) bool {
 	_, ada := JobKinds[JobKind(v)]

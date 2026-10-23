@@ -173,7 +173,26 @@ kinds:
   tenant.conformance:
     lane: tenant
     max_attempts: 2
-    description: sapuan kesesuaian data satu perusahaan
+    description: >
+      sapuan kesesuaian data SELURUH buku (11 pemeriksaan, hanya membaca) —
+      satu pekerjaan per putaran, bukan per perusahaan: jejaknya satu baris
+      `conformance_runs` per putaran, sama seperti sapuan Node.
+    # ══ `runner:` — SAKELAR PERALIHAN PELAKSANA (09 §3.3, 23 Okt 2026) ══════
+    # `node` (bawaan): peran `conformance` di `svc-worker` menjalankan
+    # `scripts/check-data-conformance.ts` seperti sejak #374, dan TIDAK ada
+    # baris `jobs` untuk kind ini.
+    # `go`: langkah Node yang SAMA (pemicu mingguan di compose tidak berubah)
+    # tidak menyapu — ia MENERBITKAN satu pekerjaan `tenant.conformance`
+    # (kunci `tenant.conformance:<jam UTC>`) lalu keluar 0, dan jalur `tenant`
+    # di `svc-integrator` (`internal/conformance`) yang menyapu dan menulis
+    # jejaknya. Pekerjaan yang tiba di Go sementara nilai di sini `node`
+    # diselesaikan TANPA menyapu: tepat satu pelaksana, tidak pernah dua.
+    # Kedua sisi membaca nilai yang sama dari commit yang sama. Peralihan &
+    # jalan mundurnya: PRODUCTION.md §Pelaksana kesesuaian data.
+    #
+    # Generator menolak nilai di luar node/go, `runner` bersama `schedule:`,
+    # dan `runner` pada penulis buku.
+    runner: node
 
   schema.migrate:
     lane: schema

@@ -137,6 +137,11 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
     expect(semua, "aging.buckets").toMatch(/contract\.AgingBuckets\b/);
     expect(semua, "invoice_statuses").toMatch(/contract\.InvoiceStatusCanceled\b/);
     expect(semua, "contract_statuses").toMatch(/contract\.ContractStatusCanceled\b/);
+    /* Sapuan kesesuaian data Go (`internal/conformance`, 23 Okt 2026) —
+       pagar materialitas akun penampung (#444/#445). */
+    expect(semua, "materiality.catch_all_threshold").toMatch(/contract\.MaterialityCatchAllThreshold\b/);
+    expect(semua, "materiality.catch_all_expense_type").toMatch(/contract\.MaterialityCatchAllExpenseType\b/);
+    expect(semua, "materiality.catch_all_name_pattern").toMatch(/contract\.MaterialityCatchAllNamePattern\b/);
 
     const y = load(baca("contract", "accounting.yaml")) as Record<string, unknown>;
     expect(Object.keys(y).sort(), "kunci baru butuh pembaca Go + baris di tes ini").toEqual(
@@ -152,9 +157,39 @@ describe("kontrak akuntansi: Go membaca kontrak, bukan salinannya", () => {
         "currencies",
         "income_statement",
         "invoice_statuses",
+        "materiality",
         "money",
         "version",
       ]
+    );
+  });
+
+  it("pagar materialitas: TS membaca kontrak, bukan angka/pola sendiri", async () => {
+    const gen = await import("@sai/core/generated/accounting");
+    const y = load(baca("contract", "accounting.yaml")) as {
+      materiality: { catch_all_threshold: number; catch_all_expense_type: string; catch_all_name_pattern: string };
+    };
+    expect(gen.MATERIALITY_CATCH_ALL_THRESHOLD).toBe(y.materiality.catch_all_threshold);
+    expect(gen.MATERIALITY_CATCH_ALL_EXPENSE_TYPE).toBe(y.materiality.catch_all_expense_type);
+    expect(gen.MATERIALITY_CATCH_ALL_NAME_PATTERN).toBe(y.materiality.catch_all_name_pattern);
+    const m = baca("src", "lib", "materiality.ts");
+    expect(m).not.toMatch(/DEFAULT_CATCH_ALL_THRESHOLD = 0\./);
+    expect(m, "pola penampung ditulis ulang sebagai literal").not.toMatch(/=\s*\/\(lain/);
+    expect(baca("src", "lib", "accounting.ts")).not.toMatch(/CATCH_ALL_EXPENSE_TYPE = "/);
+  });
+
+  it("pola penampung Go = terjemahan pola kontrak (`\\s` → kelas spasi JS persis)", () => {
+    const go = baca(GEN_GO);
+    const y = load(baca("contract", "accounting.yaml")) as { materiality: { catch_all_name_pattern: string } };
+    const m = /const MaterialityCatchAllNamePattern = `([^`]*)`/.exec(go);
+    expect(m, "MaterialityCatchAllNamePattern").not.toBeNull();
+    /* Tanpa `\s` RE2 (ASCII saja) — setiap `\s` sudah menjadi kelas eksplisit. */
+    expect(m![1]).not.toContain("\\s");
+    expect(m![1]).toContain("\\x{00A0}");
+    /* Selebihnya sama byte demi byte: buang kelas spasi, bandingkan. */
+    const kelas = /\\x\{0009\}[^\]]*?\\x\{FEFF\}/g;
+    expect(m![1].replace(/\[(\\x\{0009\}[^\]]*?\\x\{FEFF\})\]/g, "\\s").replace(kelas, "\\s")).toBe(
+      y.materiality.catch_all_name_pattern
     );
   });
 

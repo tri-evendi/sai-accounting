@@ -179,9 +179,11 @@ func run(args []string) error {
 			"income-statement|income-statement-xlsx|cash-flow|cash-flow-xlsx|equity-changes|equity-changes-xlsx|" +
 			"receivables|receivables-xlsx|payables|payables-xlsx|" +
 			"stock-value|stock-value-xlsx|stock-movement|stock-movement-xlsx|opname-history|opname-history-xlsx|" +
-			"sales-by-customer[-xlsx]|purchases-by-supplier[-xlsx]|cash-bank[-xlsx]|budget-realization[-xlsx] -database <nama> …")
+			"sales-by-customer[-xlsx]|purchases-by-supplier[-xlsx]|cash-bank[-xlsx]|budget-realization[-xlsx]|conformance -database <nama> …")
 	}
 	switch args[0] {
+	case "conformance":
+		return conformanceBook(args[1:])
 	case "trial-balance":
 		return trialBalance(args[1:])
 	case "trial-balance-xlsx":

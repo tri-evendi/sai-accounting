@@ -70,6 +70,9 @@ func Bersih(raw string) (dsn string, lewatPgBouncer bool, err error) {
 	}
 
 	q := u.Query()
+	if err := tanpaZonaSesi(q); err != nil {
+		return "", false, err
+	}
 	if q.Get(pgBouncerParam) == "true" {
 		lewatPgBouncer = true
 	}
@@ -79,6 +82,34 @@ func Bersih(raw string) (dsn string, lewatPgBouncer bool, err error) {
 	}
 	u.RawQuery = q.Encode()
 	return u.String(), lewatPgBouncer, nil
+}
+
+// tanpaZonaSesi menolak DSN yang menyetel TimeZone sesi.
+//
+// Kolom waktu `jobs` menyimpan jam `now()` dalam TimeZone SESI (lihat "JAM
+// KOLOM `jobs`" di `jobs/queue.go`), dan sisi Node tidak pernah menyetelnya —
+// ia memakai zona bawaan server. Satu `?timezone=UTC` di URL Go membuat baris
+// yang diklaim Go tujuh jam "lebih tua" daripada baris yang diklaim Node di
+// server WIB: upkeep salah memulangkan lease yang masih hidup, tanpa galat.
+// pgx meneruskan parameter kueri yang tidak dikenalnya sebagai runtime
+// parameter, jadi `timezone` dan `options=-c TimeZone=…` sama-sama sampai ke
+// server bila tidak ditolak di sini.
+func tanpaZonaSesi(q url.Values) error {
+	for k, vs := range q {
+		if strings.EqualFold(k, "timezone") {
+			return errors.New("DSN menyetel `timezone` — zona sesi integrator wajib zona bawaan " +
+				"server yang sama dengan sisi Node (kolom waktu `jobs` adalah jam `now()` sesi)")
+		}
+		if strings.EqualFold(k, "options") {
+			for _, v := range vs {
+				if strings.Contains(strings.ToLower(v), "timezone") {
+					return errors.New("DSN menyetel TimeZone lewat `options` — zona sesi integrator " +
+						"wajib zona bawaan server yang sama dengan sisi Node")
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // EnvKendali dan EnvKendaliLangsung: DUA jalan ke basis data kendali, dan

@@ -337,7 +337,7 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
   });
 
   it("reclaim memakai ambang lease dari kontrak, bukan dugaan durasi", () => {
-    expect(Q).toContain("claimed_at < $1");
+    expect(Q).toContain("claimed_at < LOCALTIMESTAMP - $1::bigint * interval '1 microsecond'");
     const b = badan("ReclaimStale");
     expect(b).toContain("status = 'claimed'");
     expect(b).toContain("attempts + 1");
@@ -369,6 +369,136 @@ describe("SQL antrean Go: sifat yang hilangnya tidak menghasilkan galat", () => 
     const b = badan("TryLaneLock");
     expect(b).toContain("pool.Acquire");
     expect(b).toMatch(/\*pgxpool\.Conn/);
+  });
+});
+
+describe("jam kolom waktu: Go tidak mengikat instan ke TIMESTAMP tanpa zona", () => {
+  /**
+   * Kolom waktu `jobs` dan `backup_runs` bertipe TIMESTAMP(3) TANPA zona, dan
+   * `time.Time` yang diikat pgx ke kolom seperti itu dikodekan menurut MODE
+   * koneksi: mode bawaan membuang zonanya (jam dinding PROSES terkirim), mode
+   * `exec` (PgBouncer) mengirim `timestamptz` yang dikonversi zona SESI.
+   * Hasilnya benar hanya bila TZ container kebetulan sama dengan TimeZone
+   * server — dan ketika tidak, upkeep memulangkan lease yang masih hidup atau
+   * tidak pernah memulangkan yang mati, tanpa satu galat (ditemukan 23 Okt
+   * 2026 di kotak ber-TZ CST).
+   *
+   * Dua konvensi, satu per tabel, dan keduanya ditulis di kodenya:
+   * - `jobs`: jam `now()` sesi (DEFAULT `CURRENT_TIMESTAMP` + `now()` di kedua
+   *   bahasa). Go hanya mengirim DURASI; nilai `$n` tidak pernah bersentuhan
+   *   langsung dengan kolom waktunya (`internal/jobs/queue.go`).
+   * - `backup_runs`: UTC, sebab pembacanya Prisma. Instan dikirim sebagai teks
+   *   UTC `$n::timestamp`, dan `now()` hanya dalam bentuk `AT TIME ZONE 'UTC'`
+   *   (`internal/trail/backup.go`).
+   *
+   * Perilakunya dibuktikan `internal/jobs/queue_tz_integration_test.go` (tiga
+   * TZ proses × tiga zona sesi × dua mode pgx); yang di sini menjaga BENTUKNYA
+   * di gerbang yang berjalan pada setiap PR.
+   */
+  const KOLOM = "run_after|claimed_at|started_at|finished_at|created_at|updated_at";
+  const OP = "=|<>|!=|<=|>=|<|>";
+
+  /** Literal SQL mentah (backtick) di satu berkas Go, tanpa baris komentar. */
+  const literalSql = (isi: string) =>
+    [...isi.replace(/^\s*\/\/.*$/gm, "").matchAll(/`([^`]*)`/g)]
+      .map((m) => m[1]!)
+      .filter((s) => /\b(SELECT|INSERT|UPDATE|DELETE)\b/.test(s));
+
+  /** Pisah daftar SQL pada koma tingkat teratas (tidak di dalam kurung). */
+  const pisah = (daftar: string) => {
+    const hasil: string[] = [];
+    let kedalaman = 0;
+    let kini = "";
+    for (const c of daftar) {
+      if (c === "(") kedalaman++;
+      if (c === ")") kedalaman--;
+      if (c === "," && kedalaman === 0) {
+        hasil.push(kini.trim());
+        kini = "";
+      } else kini += c;
+    }
+    if (kini.trim()) hasil.push(kini.trim());
+    return hasil;
+  };
+
+  /** Pelanggaran satu literal SQL; kosong = patuh. Diuji juga atas contoh buruk di bawah. */
+  const periksa = (sql: string): string[] => {
+    const pel: string[] = [];
+    const jobs = /\bjobs\b/.test(sql);
+    const backup = /\bbackup_runs\b/.test(sql);
+    if (!jobs && !backup) return pel;
+
+    const langsung = new RegExp(
+      `\\b(${KOLOM})\\s*(?:${OP})\\s*(\\$\\d+(?:::[a-z]+)?)|(\\$\\d+(?:::[a-z]+)?)\\s*(?:${OP})\\s*(${KOLOM})\\b`,
+      "g"
+    );
+    for (const m of sql.matchAll(langsung)) {
+      const param = m[2] ?? m[3]!;
+      const bolehUtc = backup && !jobs && param.endsWith("::timestamp");
+      if (!bolehUtc) pel.push(`${m[1] ?? m[4]} terikat langsung ke ${param}`);
+    }
+
+    const ins = sql.match(/INSERT\s+INTO\s+(jobs|backup_runs)\s*\(([^)]*)\)\s*VALUES\s*\(([\s\S]*)\)/i);
+    if (ins) {
+      const kolom = pisah(ins[2]!);
+      const nilai = pisah(ins[3]!.replace(/\)\s*(ON CONFLICT|RETURNING)[\s\S]*$/i, ""));
+      kolom.forEach((k, i) => {
+        if (!new RegExp(`^(${KOLOM})$`).test(k)) return;
+        const v = nilai[i] ?? "";
+        if (ins[1] === "jobs" && v.includes("$")) pel.push(`INSERT jobs.${k} = ${v}`);
+        if (ins[1] === "backup_runs" && !/^\$\d+::timestamp$/.test(v) && !/AT TIME ZONE 'UTC'/.test(v)) {
+          pel.push(`INSERT backup_runs.${k} = ${v}`);
+        }
+      });
+    }
+
+    if (backup && /now\(\)(?!\s*AT TIME ZONE 'UTC')/.test(sql)) {
+      pel.push("backup_runs memakai now() zona sesi, bukan UTC");
+    }
+    return pel;
+  };
+
+  it("penjaganya menolak bentuk yang dulu ada di pohon ini", () => {
+    /* Penjaga atas penjaga: bentuk persis dari sebelum perbaikan — kalau ini
+       lolos, penjaga di bawah lulus dengan nol pelanggar tanpa arti. */
+    expect(periksa("DELETE FROM jobs WHERE status = 'done' AND finished_at < $1")).not.toEqual([]);
+    expect(periksa("UPDATE jobs SET run_after = $4, claimed_at = NULL WHERE id = $1")).not.toEqual([]);
+    expect(periksa("UPDATE jobs SET status = 'queued' WHERE claimed_at < $1::timestamp")).not.toEqual([]);
+    expect(
+      periksa("INSERT INTO backup_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1, $2, $3, now(), now())")
+    ).not.toEqual([]);
+    expect(periksa("INSERT INTO jobs (kind, run_after, updated_at) VALUES ($1, $2, now())")).not.toEqual([]);
+    // …dan menerima bentuk yang benar.
+    expect(periksa("UPDATE jobs SET run_after = now() + $4::bigint * interval '1 microsecond' WHERE id = $1")).toEqual([]);
+    expect(
+      periksa(
+        "INSERT INTO backup_runs (started_at, finished_at, status, created_at, updated_at) VALUES ($1::timestamp, $2::timestamp, $3, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')"
+      )
+    ).toEqual([]);
+  });
+
+  it("tidak ada SQL Go yang mengikat nilai `$n` langsung ke kolom waktu `jobs`/`backup_runs`", () => {
+    const pelanggar: string[] = [];
+    let dilihat = 0;
+    for (const b of TANGAN_PRODUKSI) {
+      for (const sql of literalSql(b.isi)) {
+        if (/\b(jobs|backup_runs)\b/.test(sql)) dilihat++;
+        for (const p of periksa(sql)) pelanggar.push(`${b.rel}: ${p}`);
+      }
+    }
+    // Pemindai yang tidak melihat apa pun lulus dengan nol pelanggar.
+    expect(dilihat, "literal SQL `jobs`/`backup_runs` yang terbaca").toBeGreaterThanOrEqual(10);
+    expect(pelanggar, "instan terikat ke TIMESTAMP tanpa zona").toEqual([]);
+  });
+
+  it("berkas yang menulis SQL `jobs` tidak memanggil `time.Now()`", () => {
+    /* Jam proses tidak punya urusan di tabel yang jamnya `now()` server.
+       Satu `time.Now()` di berkas antrean adalah awal dari instan yang
+       berikutnya diikat ke kolomnya. */
+    const pelanggar = TANGAN_PRODUKSI.filter(
+      (b) => literalSql(b.isi).some((s) => /\bjobs\b/.test(s)) && /\btime\.Now\(/.test(b.isi)
+    ).map((b) => b.rel);
+    expect(pelanggar).toEqual([]);
   });
 });
 

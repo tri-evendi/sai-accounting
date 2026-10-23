@@ -27,6 +27,38 @@ import (
 //
 // Tidak ada `fmt.Sprintf` ke dalam teks kueri di berkas ini. Satu-satunya hal
 // yang dirangkai ke SQL adalah nama kolom yang ditulis tangan di sini.
+//
+// ══ JAM KOLOM `jobs` ADALAH JAM BASIS DATA — GO TIDAK PERNAH MENGIRIM INSTAN ══
+//
+// Kolom waktu `jobs` (`run_after`, `claimed_at`, `started_at`, `finished_at`,
+// `created_at`, `updated_at`) bertipe TIMESTAMP(3) TANPA zona, dan isinya
+// ditulis hampir seluruhnya oleh SQL: `now()` di klaim/perpanjangan/selesai
+// kedua bahasa, dan DEFAULT `CURRENT_TIMESTAMP` pada `run_after`/`created_at`.
+// Keduanya menyimpan JAM DINDING `now()` dalam TimeZone sesi — zona bawaan
+// server, sebab baik pgx maupun node-pg tidak pernah menyetelnya (dan
+// `db.Bersih` menolak DSN yang mencoba). Predikat klaim kedua bahasa pun
+// `run_after <= now()`. Itulah konvensi kolomnya; ia bukan UTC.
+//
+// Maka Go tidak menghitung instan untuk kolom ini. Ia hanya menyebut DURASI
+// (backoff, ambang basi, retensi) sebagai bilangan, dan SQL yang menjadikannya
+// waktu terhadap jam yang sama dengan yang menulis kolomnya:
+//
+//	tulis:     run_after = now() + $n * interval '1 microsecond'
+//	bandingkan: claimed_at < LOCALTIMESTAMP - $n * interval '1 microsecond'
+//
+// `LOCALTIMESTAMP` adalah `now()` dalam bentuk yang disimpan kolom (TIMESTAMP
+// tanpa zona, zona sesi), jadi perbandingannya tetap tipe-kolom-lawan-tipe-
+// kolom dan indeks tetap terpakai.
+//
+// Kenapa bukan `time.Time` terikat: pgx mengodekannya BERBEDA menurut mode
+// koneksi. Mode bawaan (koneksi langsung, jalur `tenant`) mendeskripsikan
+// parameternya sebagai `timestamp` dan MEMBUANG zona `time.Time` — jam
+// dinding PROSES yang terkirim. Mode `exec` (PgBouncer, jalur `interactive`)
+// mengirimnya sebagai `timestamptz`, yang dikonversi server dengan zona SESI.
+// Hasilnya benar hanya bila TZ container kebetulan sama dengan TimeZone
+// server; di kotak ber-TZ lain upkeep salah menilai lease basi tanpa satu
+// galat pun. Dijaga `tests/services-go.test.ts` dan dibuktikan
+// `queue_tz_integration_test.go` di bawah tiga TZ proses × tiga zona sesi.
 
 // Job adalah baris `jobs` yang sudah diklaim pekerja ini.
 type Job struct {
@@ -294,12 +326,15 @@ func (q *Queue) Fail(ctx context.Context, id int64, workerID, pesan string, acak
 		return &HasilGagal{Status: contract.StatusDead}, nil
 	}
 
-	runAfter := time.Now().Add(Backoff(attempts, acak))
+	// Backoff dikirim sebagai DURASI; `now()` di server yang menjadikannya
+	// waktu — lihat "JAM KOLOM `jobs`" di atas.
+	tunda := Backoff(attempts, acak).Microseconds()
 	if _, err := q.pool.Exec(ctx, `
 		UPDATE jobs SET status = 'queued', attempts = $2, last_error = $3,
-		                run_after = $4, claimed_at = NULL, claimed_by = NULL,
+		                run_after = now() + $4::bigint * interval '1 microsecond',
+		                claimed_at = NULL, claimed_by = NULL,
 		                updated_at = now()
-		WHERE id = $1`, id, attempts, pesan, runAfter); err != nil {
+		WHERE id = $1`, id, attempts, pesan, tunda); err != nil {
 		return nil, fmt.Errorf("pulangkan #%d: %w", id, err)
 	}
 	return &HasilGagal{Status: contract.StatusQueued}, nil
@@ -327,7 +362,9 @@ func (q *Queue) CancelRequested(ctx context.Context, id int64) (bool, error) {
 // leader election maupun kunci: pelari kedua yang menjalankannya pada saat yang
 // sama memulangkan nol baris.
 func (q *Queue) ReclaimStale(ctx context.Context, basi time.Duration) (int64, error) {
-	ambang := time.Now().Add(-basi)
+	// Ambangnya dihitung SERVER dari jam yang sama dengan yang menulis
+	// `claimed_at` (`now()` di Claim/RenewLease) — lihat "JAM KOLOM `jobs`".
+	basiMikro := basi.Microseconds()
 	// `attempts + 1` ikut dinaikkan: pekerja yang mati di tengah pekerjaan yang
 	// SELALU membunuh pekerjanya (kehabisan memori pada ekspor yang terlalu
 	// besar) harus akhirnya menjadi `dead`, bukan berputar selamanya memulangkan
@@ -340,7 +377,8 @@ func (q *Queue) ReclaimStale(ctx context.Context, basi time.Duration) (int64, er
 		                    || 'lease kedaluwarsa — pekerja diduga mati',
 		       finished_at = CASE WHEN attempts + 1 >= max_attempts THEN now() ELSE NULL END,
 		       claimed_at = NULL, claimed_by = NULL, updated_at = now()
-		 WHERE status = 'claimed' AND claimed_at < $1`, ambang)
+		 WHERE status = 'claimed'
+		   AND claimed_at < LOCALTIMESTAMP - $1::bigint * interval '1 microsecond'`, basiMikro)
 	if err != nil {
 		return 0, fmt.Errorf("pulangkan lease kedaluwarsa: %w", err)
 	}
@@ -354,9 +392,13 @@ func (q *Queue) ReclaimStale(ctx context.Context, basi time.Duration) (int64, er
 // orang berbulan-bulan kemudian. Predikat yang melebar ke "sudah selesai" akan
 // membuang justru baris yang paling dicari orang.
 func (q *Queue) ArchiveDone(ctx context.Context, retensiHari int) (int64, error) {
-	ambang := time.Now().AddDate(0, 0, -retensiHari)
-	tag, err := q.pool.Exec(ctx,
-		`DELETE FROM jobs WHERE status = 'done' AND finished_at < $1`, ambang)
+	// Retensi dikirim sebagai jumlah hari; ambangnya dihitung server terhadap
+	// jam yang menulis `finished_at` (`now()` di Complete) — lihat "JAM KOLOM
+	// `jobs`".
+	tag, err := q.pool.Exec(ctx, `
+		DELETE FROM jobs
+		 WHERE status = 'done'
+		   AND finished_at < LOCALTIMESTAMP - $1::int * interval '1 day'`, retensiHari)
 	if err != nil {
 		return 0, fmt.Errorf("buang baris done: %w", err)
 	}
